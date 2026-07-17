@@ -1,0 +1,133 @@
+:root {
+  /* 暗色主题（Phase 1 默认） */
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-status: #007ACC;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #6A6A6A;
+  --accent: #0E639C;
+  --accent-hover: #1177BB;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-active: #FFFFFF;
+  --icon-inactive: #858585;
+  --system-log: #6A6A6A;
+  --sent-echo: #0E639C;
+  --received: #D4D4D4;
+  --status-connected: #4EC9B0;
+  --status-disconnected: #6A6A6A;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+}
+
+/* 亮色主题（Phase 4 激活） */
+[data-theme="light"] {
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-status: #007ACC;
+  --bg-input: #FFFFFF;
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #999999;
+  --accent: #0078D4;
+  --accent-hover: #106EBE;
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+  --icon-active: #2D2D2D;
+  --icon-inactive: #999999;
+  --system-log: #999999;
+  --sent-echo: #0078D4;
+  --received: #2D2D2D;
+  --status-connected: #388A34;
+  --status-disconnected: #999999;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-window);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  user-select: none;
+}
+
+/* 滚动条——极细半透明 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* === 全局 UI class === */
+
+.setting-group {
+  background: var(--bg-card);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.setting-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.toggle {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: var(--border);
+  transition: background 150ms;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: white;
+  transition: transform 150ms;
+}
+.toggle.on::after { transform: translateX(16px); }
+
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  transition: border-color 150ms;
+  outline: none;
+}
+.input:focus { border-color: var(--accent); }
+
+.divider {
+  height: 1px;
+  background: var(--separator);
+  margin: 4px 0;
+}
