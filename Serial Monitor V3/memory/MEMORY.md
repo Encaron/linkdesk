@@ -14,3 +14,4 @@
 
 - [User Profile](user-profile.md) — 用户技能/环境/偏好
 - [From V2](from-v2.md) — V2 踩过的通用坑，需要移植到 V3 的教训
+- [V2.6 Lesson](v2.6-lesson.md) — 🔥 "不要重蹈 v2.6 覆辙"——用户说这句话时的含义
