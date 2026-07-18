@@ -305,17 +305,6 @@ function App() {
         onPortChange={handlePortChange}
         onBaudChange={handleBaudChange}
       />
-      {/* Phase 3: 标签栏 */}
-      <TabBar
-        tabs={tabState.tabs}
-        activeTabId={tabState.activeTabId}
-        split={tabState.split}
-        onFocusTab={focusTab}
-        onCloseTab={closeTab}
-        onCreateTab={createTab}
-        onSplitTab={splitTab}
-        onReorderTab={reorderTab}
-      />
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
         <IconBar
@@ -328,7 +317,20 @@ function App() {
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
-        <MainContent tabState={tabState} onSplitResize={updateSplitSizes} />
+        {/* Phase 3: 编辑器区域——标签栏 + 主内容（图标栏/侧栏一通到底，标签栏仅覆盖主区） */}
+        <div className="editor-area">
+          <TabBar
+            tabs={tabState.tabs}
+            activeTabId={tabState.activeTabId}
+            split={tabState.split}
+            onFocusTab={focusTab}
+            onCloseTab={closeTab}
+            onCreateTab={createTab}
+            onSplitTab={splitTab}
+            onReorderTab={reorderTab}
+          />
+          <MainContent tabState={tabState} onSplitResize={updateSplitSizes} />
+        </div>
       </div>
       </TerminalPrefsContext.Provider>
       <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} />

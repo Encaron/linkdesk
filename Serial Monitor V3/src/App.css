@@ -1,6 +1,6 @@
 .app-shell {
   display: grid;
-  grid-template-rows: auto auto 1fr auto;
+  grid-template-rows: auto 1fr auto;
   height: 100%;
   overflow: hidden;
 }
@@ -8,6 +8,16 @@
 .app-body {
   display: flex;
   overflow: hidden;
+  min-height: 0;
+}
+
+/* 编辑器区域：标签栏 + 主内容区。图标栏和侧栏从顶到底，此区域剩余 */
+.editor-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-width: 0;
 }
 
 /* 侧栏拖拽手柄 */
