@@ -43,6 +43,7 @@ function App() {
     unsplit,
     updateSplitSizes,
     restoreLayout,
+    reorderTab,
   } = useTabManager();
 
   // 当前活跃标签页的类型（用于 IconBar 高亮 + SidePanel 联动）
@@ -313,6 +314,7 @@ function App() {
         onCloseTab={closeTab}
         onCreateTab={createTab}
         onSplitTab={splitTab}
+        onReorderTab={reorderTab}
       />
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">

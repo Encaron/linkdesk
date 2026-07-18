@@ -27,6 +27,7 @@ interface TabBarProps {
   onCloseTab: (tabId: string) => void;
   onCreateTab: (type: TabType, workspaceName?: string) => void;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
+  onReorderTab?: (tabId: string, toIndex: number) => void;
 }
 
 /* ── [+] 弹出菜单 ── */
@@ -188,11 +189,24 @@ export default function TabBar({
   onCloseTab,
   onCreateTab,
   onSplitTab,
+  onReorderTab,
 }: TabBarProps) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const plusRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // 拖拽重排状态
+  const dragState = useRef<{
+    tabId: string;
+    fromIndex: number;
+    toIndex: number;
+    startX: number;
+    startY: number;
+    phase: "idle" | "reorder";
+  }>({ tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle" });
+  const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
+  const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
 
   // 点击外部关闭 [+] 菜单
   useEffect(() => {
@@ -212,52 +226,123 @@ export default function TabBar({
     }
   }, []);
 
+  // 拖拽重排——window 级别事件监听
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (dragState.current.phase !== "reorder") return;
+      if (!scrollRef.current) return;
+
+      const tabElements = scrollRef.current.querySelectorAll<HTMLElement>(".tab-item");
+      const scrollRect = scrollRef.current.getBoundingClientRect();
+      const mouseX = e.clientX - scrollRect.left + scrollRef.current.scrollLeft;
+
+      // 计算鼠标所在位置对应的插入索引
+      let insertIdx = tabs.length; // 默认插到最后
+      for (let i = 0; i < tabElements.length; i++) {
+        const rect = tabElements[i].getBoundingClientRect();
+        const midX = rect.left - scrollRect.left + scrollRef.current.scrollLeft + rect.width / 2;
+        if (mouseX < midX) {
+          insertIdx = i;
+          break;
+        }
+      }
+      // 如果拖拽的标签页在插入位置之前，插入位置需要 -1（因为移走了一个）
+      if (insertIdx > dragState.current.fromIndex) insertIdx--;
+
+      dragState.current.toIndex = insertIdx;
+      setDragInsertIndex(insertIdx);
+    };
+
+    const onMouseUp = () => {
+      if (dragState.current.phase !== "reorder") return;
+      const { tabId, toIndex } = dragState.current;
+      if (toIndex >= 0 && toIndex !== dragState.current.fromIndex) {
+        onReorderTab?.(tabId, toIndex);
+      }
+      dragState.current.phase = "idle";
+      setDragInsertIndex(null);
+      setDraggingTabId(null);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+  }, [tabs, onReorderTab]);
+
   // 确定分屏标记
   const paneIds = split ? new Set(split.tabIds) : null;
 
   return (
     <div className="tab-bar">
       <div className="tab-list" ref={scrollRef} onWheel={onWheel}>
-        {tabs.map((tab) => {
+        {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
           const inSplit = paneIds?.has(tab.id);
           const isSplitActive = inSplit && !isActive;
+          const isDragging = draggingTabId === tab.id;
 
           return (
-            <div
-              key={tab.id}
-              className={`tab-item${isActive ? " active" : ""}${isSplitActive ? " split-inactive" : ""}`}
-              title={tab.label}
-              onClick={() => onFocusTab(tab.id)}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
-              }}
-              onMouseDown={(e) => {
-                if (e.button === 1) {
-                  e.preventDefault();
-                  onCloseTab(tab.id);
-                }
-              }}
-            >
-              {tab.dirty && <span className="tab-dirty-dot">●</span>}
-              <span className="tab-icon">{TYPE_ICON[tab.type]}</span>
-              <span className="tab-label">{tab.label}</span>
-              {tab.closable && (
-                <button
-                  className="tab-close"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onCloseTab(tab.id);
-                  }}
-                  title="关闭"
-                >
-                  ×
-                </button>
+            <>
+              {/* 拖拽插入指示器 */}
+              {dragInsertIndex === idx && draggingTabId !== tab.id && (
+                <div className="tab-drop-indicator" key={`indicator-${idx}`} />
               )}
-            </div>
+              <div
+                key={tab.id}
+                className={`tab-item${isActive ? " active" : ""}${isSplitActive ? " split-inactive" : ""}${isDragging ? " dragging" : ""}`}
+                title={tab.label}
+                onClick={() => onFocusTab(tab.id)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
+                }}
+                onMouseDown={(e) => {
+                  if (e.button === 1) {
+                    e.preventDefault();
+                    onCloseTab(tab.id);
+                    return;
+                  }
+                  if (e.button === 0 && onReorderTab) {
+                    // 左键：开始拖拽重排
+                    dragState.current = {
+                      tabId: tab.id,
+                      fromIndex: idx,
+                      toIndex: idx,
+                      startX: e.clientX,
+                      startY: e.clientY,
+                      phase: "reorder",
+                    };
+                    setDraggingTabId(tab.id);
+                    setDragInsertIndex(idx);
+                  }
+                }}
+              >
+                {tab.dirty && <span className="tab-dirty-dot">●</span>}
+                <span className="tab-icon">{TYPE_ICON[tab.type]}</span>
+                <span className="tab-label">{tab.label}</span>
+                {tab.closable && (
+                  <button
+                    className="tab-close"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onCloseTab(tab.id);
+                    }}
+                    title="关闭"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            </>
           );
         })}
+        {/* 最后一个位置之后的插入指示器 */}
+        {dragInsertIndex === tabs.length && (
+          <div className="tab-drop-indicator" />
+        )}
 
         <button
           ref={plusRef}

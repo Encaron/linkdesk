@@ -231,3 +231,22 @@
   background: var(--separator);
   margin: 4px 8px;
 }
+
+/* ── 拖拽重排 ── */
+
+.tab-item.dragging {
+  opacity: 0.4;
+}
+
+.tab-drop-indicator {
+  width: 2px;
+  height: 100%;
+  background: var(--accent);
+  flex-shrink: 0;
+  animation: tab-drop-pulse 600ms ease-in-out infinite;
+}
+
+@keyframes tab-drop-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.3; }
+}
