@@ -1056,7 +1056,13 @@ useEffect(() => {
 | 分屏 resize | 防抖 1s 保存 split.sizes（allotment onChange 每像素触发） |
 | 应用退出前 | 保存全部 layout |
 
-### 11.3 恢复时的错误处理
+**⚠️ 异步写入时序：** PreferenceService（Step 0 已完成 Tauri fs 迁移）采用「缓存先更新 + 异步写文件」模式——`savePrefs()` 立即更新内存缓存 `_cache`，然后 await 写文件。这意味着：
+
+- **会话内一致性**：`loadPrefs()` 从缓存读，始终是最新状态。两次快速 `savePrefs()` 之间没有竞态——缓存是同步更新的。
+- **跨会话持久化**：两次快速 `savePrefs()` 的异步写入可能同时进行（如「关闭标签页 → 立即保存」和「切换标签页 → 500ms 防抖保存」）。极端情况下后启动的写入可能先完成，被先启动的写入覆盖。但由于每次 `savePrefs()` 写入的是**完整 prefs 对象**（含最新的 `layout`），且覆盖的是上一次写入的结果，最终文件状态 = 最后一次 `savePrefs()` 调用的状态——这正是用户最后一次操作的正确状态。
+- **崩溃场景**：如果 V3 在两次快速保存之间崩溃，文件可能处于中间状态。但 `restoreLayout()` 的 try-catch + 默认单终端保底逻辑保证不会因此无法启动。
+
+**结论：不需要写队列。** 缓存优先模式对 Phase 3 的布局持久化场景是安全的。
 
 ```ts
 function restoreLayout(): TabState {
@@ -1200,7 +1206,8 @@ Step 7: 关闭标签页边界情况
 Step 8: 布局持久化（~50 行）
   - prefs.json layout 字段
   - 恢复时的错误处理 + 保底逻辑
-  - PreferenceService 当前用 localStorage → Phase 3 顺便切 Tauri fs API（技术债务 #2）
+  - PreferenceService 的 Tauri fs API 已在 Step 0 完成迁移。Step 8 只关注布局数据的读写正确性
+  - ⚠️ 注意：`savePrefs()` 是异步的。布局保存调用（§11.2 的 5 种时机）需处理 Promise 但不阻塞 UI
 
 Step 9: 右键菜单 + 键盘快捷键
   - 标签页右键菜单（§10.4）：关闭/关闭其他/关闭右侧/分屏
@@ -1251,7 +1258,7 @@ Phase 3 没有卡片架构（Phase 4 的事）。workspace 标签页打开时，
 | 2 | TabBar 渲染 | 手动：打开 3 个标签页 → 检查 title/× 显示 → 缩小窗口 → 确认横向滚动 |
 | 3 | keep-alive 正确性 | 手动：终端标签页切换到工作台 → 切回终端 → CM6 内容保留（不闪烁/不重加载） |
 | 4 | 图标栏联动 | 手动：点 📟 → 终端标签页聚焦 → 点 📊 → 工作台打开/聚焦 → 点 ⚙ → 设置打开 |
-| 5 | allotment 分屏 | 手动：改代码设 split state → 确认两个面板都显示 → 拖分割条 → 确认 resize |
+| 5 | allotment 分屏 | **先验证 StrictMode 兼容**（React 18 dev 模式 double-mount 不破坏 allotment 布局状态，两个 Pane 尺寸正确）→ 改代码设 split state → 确认两个面板都显示 → 拖分割条 → 确认 resize |
 | 6 | 拖拽分屏 | 手动：拖终端标签页到右半区 → 确认分屏 → ESC 取消 → 确认不分 |
 | 7 | 关闭边界 | 手动：关闭分屏中的标签页 → unsplit / 关闭 dirty workspace → 确认框 / 关闭最后一个 → 保底 |
 | 8 | 布局持久化 | 手动：打开 2 标签页 + 分屏 → 关窗口 → 重开 → 布局恢复。再删 prefs.json → 重开 → 回默认 |
@@ -1327,8 +1334,8 @@ Phase 3 没有卡片架构（Phase 4 的事）。workspace 标签页打开时，
 
 | 改动 | 说明 |
 |------|------|
-| `localStorage` → Tauri fs API | 顺便清理技术债务 #2 |
-| Prefs 接口增加 `layout?` 字段 | 布局持久化 |
+| ~~`localStorage` → Tauri fs API~~ | ✅ Step 0 已完成——`isTauri()` 检测 + `fsApi` 动态 import + 内存缓存层 + Vite dev fallback |
+| Prefs 接口增加 `layout?` 字段 | 布局持久化——Step 8 实现 |
 
 ---
 
