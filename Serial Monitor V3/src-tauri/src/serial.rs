@@ -51,7 +51,12 @@ pub fn open_port(
     app: AppHandle,
     port_name: String,
     baud_rate: u32,
+    data_bits: Option<u8>,
+    stop_bits: Option<u8>,
+    parity: Option<String>,
 ) -> Result<(), String> {
+    use serialport::{DataBits, StopBits, Parity};
+
     let mut inner = state.lock().map_err(|e| e.to_string())?;
 
     // 如果已打开，先关闭
@@ -65,8 +70,21 @@ pub fn open_port(
         inner.port = None;
     }
 
+    let data = match data_bits.unwrap_or(8) {
+        5 => DataBits::Five, 6 => DataBits::Six, 7 => DataBits::Seven, _ => DataBits::Eight,
+    };
+    let stop = match stop_bits.unwrap_or(1) {
+        2 => StopBits::Two, _ => StopBits::One,
+    };
+    let par = match parity.as_deref().unwrap_or("None") {
+        "Even" => Parity::Even, "Odd" => Parity::Odd, _ => Parity::None,
+    };
+
     let app_for_err = app.clone();
     let port = serialport::new(&port_name, baud_rate)
+        .data_bits(data)
+        .stop_bits(stop)
+        .parity(par)
         .timeout(Duration::from_millis(100))
         .open()
         .map_err(move |e| {
@@ -74,6 +92,9 @@ pub fn open_port(
             let _ = app_for_err.emit("serial-system", &msg);
             msg
         })?;
+
+    // 清空硬件输入缓冲区——丢弃闭口期间积累的陈旧数据
+    let _ = port.clear(serialport::ClearBuffer::Input);
 
     inner.port = Some(port);
     inner.line_buffer.clear();
@@ -103,8 +124,22 @@ pub fn close_port(state: tauri::State<'_, SerialState>, app: AppHandle) -> Resul
 
     inner.is_closing = true;
 
+    // 冲刷硬件缓冲区残留
     if let Some(ref mut port) = inner.port {
         let _ = port.flush();
+    }
+
+    // 冲刷行缓冲区残留——在关闭消息之前 emit，保证数据在关闭消息之上
+    if !inner.line_buffer.is_empty() {
+        let residual = String::from_utf8_lossy(&inner.line_buffer).to_string();
+        inner.line_buffer.clear();
+        drop(inner);
+        let residual = residual.trim().to_string();
+        if !residual.is_empty() {
+            let _ = app.emit("serial-data", residual);
+        }
+        inner = state.lock().map_err(|e| e.to_string())?;
+        inner.is_closing = true;
     }
 
     inner.port = None;
@@ -212,10 +247,12 @@ fn read_loop(state: SerialState, app: AppHandle) {
                     Ok(0) | Err(_) => {
                         // 超时或无数据：冲刷行缓冲区残留
                         if !inner.line_buffer.is_empty() {
-                            let text = String::from_utf8_lossy(&inner.line_buffer).to_string();
+                            let text = String::from_utf8_lossy(&inner.line_buffer).trim().to_string();
                             inner.line_buffer.clear();
                             drop(inner);
-                            let _ = app.emit("serial-data", text);
+                            if !text.is_empty() {
+                                let _ = app.emit("serial-data", text);
+                            }
                         }
                         continue;
                     }
@@ -253,7 +290,10 @@ fn read_loop(state: SerialState, app: AppHandle) {
                 }
             };
 
-            let _ = app.emit("serial-data", line.trim_end_matches('\n').trim_end_matches('\r').to_string());
+            let trimmed = line.trim().to_string();
+            if !trimmed.is_empty() {
+                let _ = app.emit("serial-data", trimmed);
+            }
         }
     }
 }

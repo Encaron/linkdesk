@@ -18,6 +18,7 @@ import { RingBuffer } from "../../core/RingBuffer";
 import { useTerminalPrefs, type TerminalPrefs } from "../../core/TerminalPrefsContext";
 import { HexToBytes } from "../../core/DataConverter";
 import PreferenceService from "../../core/PreferenceService";
+import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
 import "./TerminalView.css";
 
 /* ---- CM6 深色主题 ---- */
@@ -62,21 +63,26 @@ const lineDecoField = StateField.define<RangeSet<Decoration>>({
   provide: (f) => EditorView.decorations.from(f),
 });
 
-/* ---- 智能滚底插件 ---- */
+/* ---- 智能滚底插件（对标 V2：追加前检查位置，追加后滚底） ---- */
 
 class ScrollTracker implements PluginValue {
-  userScrolledUp = false;
+  private atBottom = true;
+
   constructor(view: EditorView) {
+    // 用户手动滚轮/拖拽滚动条 → 记录是否在底部
     view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
-      this.userScrolledUp = dom.scrollHeight - dom.scrollTop - dom.clientHeight >= 30;
-    });
+      this.atBottom = dom.scrollHeight - dom.scrollTop - dom.clientHeight < 5;
+    }, { passive: true });
   }
+
   update(update: ViewUpdate) {
-    if (update.docChanged && !this.userScrolledUp) {
+    if (update.docChanged && this.atBottom) {
+      const view = update.view;
+      // 用 CM6 内置 scrollIntoView 滚到底（比手动 dispatch 更可靠）
       requestAnimationFrame(() => {
-        const pos = update.view.state.doc.length;
-        update.view.dispatch({ effects: EditorView.scrollIntoView(pos) });
+        const pos = view.state.doc.length;
+        view.dispatch({ effects: EditorView.scrollIntoView(pos, { y: "end" }) });
       });
     }
   }
@@ -88,7 +94,7 @@ const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
 function TerminalView() {
   const { t } = useTranslation();
-  const { prefs } = useTerminalPrefs();
+  const { prefs, setPrefs } = useTerminalPrefs();
 
   /* ---- 状态 ---- */
   const [paused, setPaused] = useState(false);
@@ -153,6 +159,15 @@ function TerminalView() {
   const [showHistory, setShowHistory] = useState(false);
   const [hexWarning, setHexWarning] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const [filterMode, setFilterMode] = useState<"all" | "protocol" | "plain">("all");
+  const [filterKeyword, setFilterKeyword] = useState("");
+  const filterModeRef = useRef(filterMode);
+  const filterKeywordRef = useRef(filterKeyword);
+  filterModeRef.current = filterMode;
+  filterKeywordRef.current = filterKeyword;
+  const [paletteOpen, setPaletteOpen] = useState(false);
+  const [paletteQuery, setPaletteQuery] = useState("");
+  const paletteInputRef = useRef<HTMLInputElement>(null);
   const monacoRef = useRef<any>(null);
 
   /* ---- CM6 ---- */
@@ -223,18 +238,11 @@ function TerminalView() {
     const view = cmView.current;
     if (!view) return;
 
-    let display = text;
-    // sent 消息已在调用处格式化（含时间戳），不重复加
-    if (color !== "system" && color !== "sent" && prefs.timestampFormat !== "无") {
-      const ts = formatTimestamp(prefs.timestampFormat);
-      display = ts + " " + text;
-    }
-
     const doc = view.state.doc;
     const from = doc.length;
     const pre = doc.length > 0 ? "\n" : "";
     view.dispatch({
-      changes: { from, insert: pre + display },
+      changes: { from, insert: pre + text },
       effects: addLineDeco.of({ from: from + pre.length, cls: `cm-line-${color}` }),
     });
     if (view.state.doc.lines > 2000) {
@@ -276,19 +284,45 @@ function TerminalView() {
    */
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(512));
   const listenGen = useRef(0);
+  // 时间戳格式 ref——listen 回调在 []-deps effect 里，需用 ref 读最新 prefs
+  const tsFormatRef = useRef(prefs.timestampFormat);
+  tsFormatRef.current = prefs.timestampFormat;
+  // 端口开关状态——系统消息更新，serial-data 回调检查，防 Rust 读线程竞态
+  const portOpenRef = useRef(false);
 
   useEffect(() => {
     const gen = ++listenGen.current;
     const unlisteners: (() => void)[] = [];
 
     listen<string>("serial-data", (event) => {
-      if (listenGen.current === gen) ringBuffer.current.write({ text: event.payload, type: "received" });
+      if (listenGen.current !== gen) return;
+      if (!portOpenRef.current) return; // 端口关闭时丢弃残留数据
+      const fmt = tsFormatRef.current;
+      const ts = formatTimestamp(fmt);
+      const display = fmt !== "无"
+        ? `${ts} -> ${event.payload}`   // V2 格式: HH:mm:ss:fff -> text
+        : event.payload;
+      ringBuffer.current.write({ text: display, type: "received" });
     }).then((fn) => {
       if (listenGen.current === gen) unlisteners.push(fn); else fn();
     }).catch(() => {});
 
     listen<string>("serial-system", (event) => {
-      if (listenGen.current === gen) ringBuffer.current.write({ text: event.payload, type: "system" });
+      if (listenGen.current !== gen) return;
+      const ts = formatTimestamp(tsFormatRef.current);
+      const display = tsFormatRef.current !== "无"
+        ? `${ts} ${event.payload}`
+        : event.payload;
+      ringBuffer.current.write({ text: display, type: "system" });
+      if (event.payload.includes("已打开串行端口")) {
+        portOpenRef.current = true;
+        pausedBuffer.current = [];
+        setPausedCount(0);
+        setPaused(false);
+      }
+      if (event.payload.includes("关闭串行端口")) {
+        portOpenRef.current = false;
+      }
     }).then((fn) => {
       if (listenGen.current === gen) unlisteners.push(fn); else fn();
     }).catch(() => {});
@@ -305,6 +339,15 @@ function TerminalView() {
     const drain = () => {
       const items = ringBuffer.current.drainAll();
       for (const item of items) {
+        if (!item.text || !item.text.trim()) continue; // 跳过空行
+        // 协议筛选 + 实时过滤（ref 读取，不重启 rAF）
+        if (item.type !== "system") {
+          const fm = filterModeRef.current;
+          if (fm === "protocol" && !item.text.includes("[")) continue;
+          if (fm === "plain" && item.text.includes("[")) continue;
+          const kw = filterKeywordRef.current;
+          if (kw && !item.text.toLowerCase().includes(kw.toLowerCase())) continue;
+        }
         if (paused) {
           const wasFull = pausedBuffer.current.length >= 2000;
           pausedBuffer.current.push(item.text);
@@ -583,6 +626,44 @@ function TerminalView() {
     runSearch("", false);
   }, [runSearch]);
 
+  /* ---- Command Palette ---- */
+  const paletteCommands = [
+    { id: "clear", label: t("清空接收区"), action: handleClear },
+    { id: "clearSend", label: t("清空发送区"), action: () => setSendValue("") },
+    { id: "pause", label: paused ? t("继续接收") : t("暂停接收"), action: handlePause },
+    { id: "export", label: t("导出日志"), action: handleExport },
+    { id: "hex", label: prefs.sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
+      action: () => setPrefs({ ...prefs, sendMode: prefs.sendMode === "hex" ? "text" : "hex" }) },
+    { id: "echo", label: prefs.showEcho ? t("关闭消息回显") : t("开启消息回显"),
+      action: () => setPrefs({ ...prefs, showEcho: !prefs.showEcho }) },
+    { id: "lineNum", label: prefs.showLineNumbers ? t("隐藏行号") : t("显示行号"),
+      action: () => setPrefs({ ...prefs, showLineNumbers: !prefs.showLineNumbers }) },
+  ];
+
+  const openPalette = () => { setPaletteOpen(true); setPaletteQuery(""); setTimeout(() => paletteInputRef.current?.focus(), 50); };
+  const closePalette = () => { setPaletteOpen(false); setPaletteQuery(""); };
+
+  const handlePaletteAction = (cmd: typeof paletteCommands[0]) => {
+    closePalette();
+    cmd.action();
+  };
+
+  const filteredPalette = paletteQuery
+    ? paletteCommands.filter((c) => c.label.toLowerCase().includes(paletteQuery.toLowerCase()))
+    : paletteCommands;
+
+  // Ctrl+Shift+P → Command Palette
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
+        e.preventDefault();
+        paletteOpen ? closePalette() : openPalette();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [paletteOpen, paused, prefs.sendMode]);
+
   // Ctrl+F 全局快捷键
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -608,10 +689,26 @@ function TerminalView() {
   }, [searchVisible, searchCount, openSearch, closeSearch, navigateSearch]);
 
   /* ---- Monaco 挂载 ---- */
-  const handleEditorMount = useCallback((editor: any) => {
+  const handleEditorMount = useCallback((editor: any, monaco: any) => {
     monacoRef.current = editor;
-    // ArrowUp 空输入时弹出历史
+    // 注册 V3 协议语言（首次挂载时）
+    const registered = (monaco.languages as any).getLanguages?.().some((l: any) => l.id === "v3-protocol");
+    if (!registered) {
+      monaco.languages.register({ id: "v3-protocol" });
+      monaco.languages.setMonarchTokensProvider("v3-protocol", v3ProtocolLanguage);
+      monaco.editor.defineTheme("v3-protocol-dark", v3ProtocolTheme);
+      monaco.editor.setTheme("v3-protocol-dark");
+    }
     editor.onKeyDown((e: any) => {
+      // Enter → 发送 / Shift+Enter → 换行
+      if (e.keyCode === 3 /* Enter */) {
+        if (!e.shiftKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          handleSend();
+        }
+      }
+      // ArrowUp 空输入时弹出历史
       if (e.keyCode === 38 /* ArrowUp */) {
         const model = editor.getModel();
         if (!model) return;
@@ -623,10 +720,38 @@ function TerminalView() {
         }
       }
     });
-  }, []);
+  }, [handleSend]);
 
   return (
     <div className="terminal-view">
+      {/* Command Palette 覆盖层 */}
+      {paletteOpen && (
+        <>
+          <div className="ctx-overlay" onClick={closePalette} />
+          <div className="palette">
+            <input
+              ref={paletteInputRef}
+              className="palette-input"
+              type="text"
+              placeholder={t("输入命令…")}
+              value={paletteQuery}
+              onChange={(e) => setPaletteQuery(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Escape") closePalette();
+                if (e.key === "Enter" && filteredPalette.length > 0) handlePaletteAction(filteredPalette[0]);
+              }}
+            />
+            <div className="palette-list">
+              {filteredPalette.map((cmd) => (
+                <div key={cmd.id} className="palette-item" onClick={() => handlePaletteAction(cmd)}>
+                  {cmd.label}
+                </div>
+              ))}
+            </div>
+          </div>
+        </>
+      )}
+
       {/* 工具栏 */}
       <div className="terminal-toolbar">
         <button className={`toolbar-btn${paused ? " active" : ""}`} onClick={handlePause} title={t("暂停接收")}>
@@ -641,6 +766,27 @@ function TerminalView() {
         <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
           🔍 {t("搜索")}
         </button>
+      </div>
+
+      {/* 筛选条 */}
+      <div className="filter-bar">
+        <select className="input filter-select" value={filterMode} onChange={(e) => setFilterMode(e.target.value as any)}>
+          <option value="all">{t("全部")}</option>
+          <option value="protocol">📡 {t("仅协议")}</option>
+          <option value="plain">{t("仅文本")}</option>
+        </select>
+        <input
+          className="input filter-input"
+          type="text"
+          placeholder={t("实时过滤…")}
+          value={filterKeyword}
+          onChange={(e) => setFilterKeyword(e.target.value)}
+        />
+        {(filterMode !== "all" || filterKeyword) && (
+          <button className="toolbar-btn" onClick={() => { setFilterMode("all"); setFilterKeyword(""); }}>
+            ✕ {t("清除筛选")}
+          </button>
+        )}
       </div>
 
       {/* 搜索条 */}
@@ -791,8 +937,8 @@ function TerminalView() {
         <div className="monaco-wrapper">
           <span className="monaco-prefix">&gt;</span>
           <Editor
-            height="32px"
-            language="plaintext"
+            height={`${Math.min(80, Math.max(32, 16 + 18 * (sendValue.split('\n').length)))}px`}
+            language="v3-protocol"
             value={sendValue}
             onChange={handleSendChange}
             theme="vs-dark"
