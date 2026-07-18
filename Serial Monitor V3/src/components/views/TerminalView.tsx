@@ -12,17 +12,17 @@ import {
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
 import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
-import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
+import { useTauriEvent } from "../../hooks/useTauriEvent";
 import { RingBuffer } from "../../core/RingBuffer";
 import { useTerminalPrefs, type TerminalPrefs } from "../../core/TerminalPrefsContext";
-import { HexToBytes } from "../../core/DataConverter";
 import PreferenceService from "../../core/PreferenceService";
-import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
 import SearchBar from "../terminal/SearchBar";
 import FilterMenu from "../terminal/FilterMenu";
 import CommandPalette from "../terminal/CommandPalette";
 import ReceiveContextMenu from "../terminal/ReceiveContextMenu";
+import { HexToBytes } from "../../core/DataConverter";
+import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
 import "./TerminalView.css";
 
 /* ---- CM6 深色主题 ---- */
@@ -193,7 +193,6 @@ function TerminalView() {
   const searchMatchesRef = useRef<{ from: number; to: number }[]>([]);
   const [sendHistory, setSendHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [hexWarning, setHexWarning] = useState("");
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "protocol" | "plain">("all");
   const [filterKeyword, setFilterKeyword] = useState("");
@@ -202,6 +201,7 @@ function TerminalView() {
   const filterKeywordRef = useRef(filterKeyword);
   filterModeRef.current = filterMode;
   filterKeywordRef.current = filterKeyword;
+  const [hexWarning, setHexWarning] = useState("");
   const [paletteOpen, setPaletteOpen] = useState(false);
   const monacoRef = useRef<any>(null);
 
@@ -312,54 +312,31 @@ function TerminalView() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefs]);
 
-  /* ---- Tauri 事件监听（generation counter 防 StrictMode 重复注册） ----
-   * V2 的 C# DataReceived 是同步调用，天然单订阅者。
-   * V3 的 listen() 返回 Promise——StrictMode cleanup 跑在 Promise resolve 之前，
-   * 旧 listener 的 unlisten 永远拿不到，导致多个 listener 同时存活。
-   * generation counter 确保只有最新一次注册的回调真正写入 RingBuffer。
-   */
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(512));
-  const listenGen = useRef(0);
-  // 时间戳格式 ref——listen 回调在 []-deps effect 里，需用 ref 读最新 prefs
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;
-  useEffect(() => {
-    const gen = ++listenGen.current;
-    const unlisteners: (() => void)[] = [];
 
-    listen<string>("serial-data", (event) => {
-      if (listenGen.current !== gen) return;
-      const fmt = tsFormatRef.current;
-      const ts = formatTimestamp(fmt);
-      const display = fmt !== "无"
-        ? `${ts} -> ${event.payload}`   // V2 格式: HH:mm:ss:fff -> text
-        : event.payload;
-      ringBuffer.current.write({ text: display, type: "received" });
-    }).then((fn) => {
-      if (listenGen.current === gen) unlisteners.push(fn); else fn();
-    }).catch(() => {});
+  // Tauri 事件 → RingBuffer（generation counter 在 hook 内部）
+  useTauriEvent<string>("serial-data", (payload) => {
+    const fmt = tsFormatRef.current;
+    ringBuffer.current.write({
+      text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${payload}` : payload,
+      type: "received",
+    });
+  });
 
-    listen<string>("serial-system", (event) => {
-      if (listenGen.current !== gen) return;
-      const ts = formatTimestamp(tsFormatRef.current);
-      const display = tsFormatRef.current !== "无"
-        ? `${ts} ${event.payload}`
-        : event.payload;
-      ringBuffer.current.write({ text: display, type: "system" });
-      if (event.payload.includes("已打开串行端口")) {
-        pausedBuffer.current = [];
-        setPausedCount(0);
-        setPaused(false);
-      }
-    }).then((fn) => {
-      if (listenGen.current === gen) unlisteners.push(fn); else fn();
-    }).catch(() => {});
-
-    return () => {
-      listenGen.current++; // 使旧 listener 的所有待决回调无效化
-      unlisteners.forEach((fn) => fn());
-    };
-  }, []);
+  useTauriEvent<string>("serial-system", (payload) => {
+    const fmt = tsFormatRef.current;
+    ringBuffer.current.write({
+      text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+      type: "system",
+    });
+    if (payload.includes("已打开串行端口")) {
+      pausedBuffer.current = [];
+      setPausedCount(0);
+      setPaused(false);
+    }
+  });
 
   /* ---- rAF 消费（依赖 appendLine/paused，可重跑） ---- */
   useEffect(() => {
