@@ -294,47 +294,51 @@ export default function TabBar({
         setDraggingTabId(dragState.current.tabId);
       }
 
-      // 垂直拖拽超过阈值 → 切换到分屏模式
-      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15) {
+      // 垂直拖拽超过阈值 AND 鼠标在主区 → 切换到分屏模式
+      const inEditorArea = (() => {
+        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+        if (!areaRect) return false;
+        return e.clientX >= areaRect.left && e.clientX <= areaRect.right &&
+               e.clientY >= areaRect.top && e.clientY <= areaRect.bottom;
+      })();
+
+      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15 && inEditorArea) {
         dragState.current.phase = "split";
         onDraggingChange?.(true);
         setDragInsertIndex(null);
+      }
+
+      // 反向：从 split 回到标签栏 → 切回 reorder
+      if (dragState.current.phase === "split" && !inEditorArea) {
+        dragState.current.phase = "reorder";
+        onDraggingChange?.(false);
+        onDragDropZone?.(null);
+        setPreviewPos(null);
+        // 重新计算插入位置
+        const tabElements = scrollRef.current?.querySelectorAll<HTMLElement>(".tab-item");
+        if (tabElements && scrollRef.current) {
+          const scrollRect = scrollRef.current.getBoundingClientRect();
+          const mouseX = e.clientX - scrollRect.left + scrollRef.current.scrollLeft;
+          let insertIdx = tabs.length;
+          for (let i = 0; i < tabElements.length; i++) {
+            const rect = tabElements[i].getBoundingClientRect();
+            const midX = rect.left - scrollRect.left + scrollRef.current.scrollLeft + rect.width / 2;
+            if (mouseX < midX) { insertIdx = i; break; }
+          }
+          if (insertIdx > dragState.current.fromIndex) insertIdx--;
+          setDragInsertIndex(insertIdx);
+        }
       }
 
       // ── 分屏模式 ──
       if (dragState.current.phase === "split") {
         setPreviewPos({ x: e.clientX, y: e.clientY });
 
-        // 鼠标在另一个标签栏上？→ 不显示毛玻璃（准备移动/插入）
-        let overOtherBar = false;
-        const allBars = document.querySelectorAll(".tab-bar");
-        for (const bar of allBars) {
-          if (bar === scrollRef.current?.parentElement) continue;
-          const barRect = bar.getBoundingClientRect();
-          if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
-              e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
-            overOtherBar = true;
-            break;
-          }
-        }
-        // 也在自己的标签栏上？
-        const ownBar = scrollRef.current?.parentElement;
-        if (ownBar) {
-          const ownRect = ownBar.getBoundingClientRect();
-          if (e.clientX >= ownRect.left && e.clientX <= ownRect.right &&
-              e.clientY >= ownRect.top && e.clientY <= ownRect.bottom) {
-            overOtherBar = true;
-          }
-        }
-
-        if (overOtherBar) {
-          onDragDropZone?.(null); // 不显示毛玻璃
-        } else {
-          const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-          if (areaRect) {
-            const zone = detectDropZone(e.clientX, e.clientY, areaRect);
-            onDragDropZone?.(zone);
-          }
+        // 检测 drop zone
+        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+        if (areaRect) {
+          const zone = detectDropZone(e.clientX, e.clientY, areaRect);
+          onDragDropZone?.(zone);
         }
         return;
       }
@@ -463,6 +467,7 @@ export default function TabBar({
                       startX: e.clientX,
                       startY: e.clientY,
                       phase: "reorder",
+                      _lifted: false,
                     };
                     // 不立即设 draggingTabId——等鼠标移动超阈值再"拎起来"（对标 VS Code）
                     setDragInsertIndex(idx);
