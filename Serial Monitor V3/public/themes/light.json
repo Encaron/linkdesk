@@ -23,7 +23,7 @@
     "scrollbar-thumb": "rgba(0, 0, 0, 0.15)",
     "scrollbar-thumb-hover": "rgba(0, 0, 0, 0.25)",
     "tab-hover-bg": "#E8E8E8",
-    "drop-indicator": "rgba(0, 120, 212, 0.08)",
+    "drop-indicator": "rgba(0, 0, 0, 0.06)",
     "dirty-dot": "#D4A017",
     "context-menu-shadow": "0 4px 12px rgba(0, 0, 0, 0.12)"
   }
