@@ -25,10 +25,12 @@ export default function SplitPane({
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
   const [localSizes, setLocalSizes] = useState<[number, number]>(sizes);
+  const localSizesRef = useRef<[number, number]>(sizes);
 
   // 同步外部 sizes 变化
   useEffect(() => {
     setLocalSizes(sizes);
+    localSizesRef.current = sizes;
   }, [sizes]);
 
   const onHandleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -45,12 +47,13 @@ export default function SplitPane({
       const pos = isHorizontal ? e.clientX - rect.left : e.clientY - rect.top;
       const pct = Math.min(80, Math.max(20, (pos / total) * 100));
       const newSizes: [number, number] = [pct, 100 - pct];
+      localSizesRef.current = newSizes;
       setLocalSizes(newSizes);
     };
     const onMouseUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
-      onResize?.(localSizes);
+      onResize?.(localSizesRef.current);
     };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
@@ -58,7 +61,7 @@ export default function SplitPane({
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
-  }, [direction, localSizes, onResize]);
+  }, [direction, onResize]); // 不再依赖 localSizes——用 ref 读取最新值
 
   const isHorizontal = direction === "horizontal";
 

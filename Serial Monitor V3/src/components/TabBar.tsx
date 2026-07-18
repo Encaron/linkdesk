@@ -229,7 +229,15 @@ export default function TabBar({
   // 拖拽重排——window 级别事件监听
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      if (dragState.current.phase !== "reorder") return;
+      if (dragState.current.phase === "idle") return;
+
+      // 移动距离不足阈值 → 不启动拖拽（避免点击时闪烁）
+      if (dragState.current.phase === "reorder") {
+        const dx = Math.abs(e.clientX - dragState.current.startX);
+        const dy = Math.abs(e.clientY - dragState.current.startY);
+        if (dx < 5 && dy < 5) return;
+      }
+
       if (!scrollRef.current) return;
 
       const tabElements = scrollRef.current.querySelectorAll<HTMLElement>(".tab-item");
