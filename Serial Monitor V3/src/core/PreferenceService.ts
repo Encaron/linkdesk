@@ -15,6 +15,8 @@
 let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
 let pathApi: typeof import("@tauri-apps/api/path") | null = null;
 
+import type { LayoutData } from "../hooks/useTabManager";
+
 async function isTauri(): Promise<boolean> {
   if (fsApi && pathApi) return true;
   try {
@@ -52,6 +54,8 @@ export interface Prefs {
     sendCoding: string;
   };
   quickSends: Record<string, string>;
+  /** Phase 3：标签页布局持久化。Phase 4 增加 cardLayout。 */
+  layout?: LayoutData;
 }
 
 export interface Workspace {

@@ -285,7 +285,7 @@
   border-radius: 0;
   font-size: 12px;
   white-space: nowrap;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--drag-preview-shadow);
   opacity: 0.85;
   transform: scale(1.03);
   pointer-events: none;

@@ -5,8 +5,10 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import type { Tab, TabType, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
+import { useDragReorder } from "../hooks/useDragReorder";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -51,11 +53,12 @@ function PlusMenu({
   onCreateTab: (type: TabType, workspaceName?: string) => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
+  const { t } = useTranslation();
   if (!isOpen) return null;
 
   const items: { label: string; type: TabType }[] = [
-    { label: "新建终端", type: "terminal" },
-    { label: "新建工作台", type: "workspace" },
+    { label: t("新建终端"), type: "terminal" },
+    { label: t("新建工作台"), type: "workspace" },
   ];
 
   return (
@@ -107,6 +110,7 @@ function ContextMenu({
   onCloseTab: (tabId: string) => void;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
 }) {
+  const { t } = useTranslation();
   const tab = tabs.find((t) => t.id === state.tabId);
   if (!tab) return null;
 
@@ -117,11 +121,11 @@ function ContextMenu({
 
   const items: { label: string; action: () => void; disabled?: boolean }[] = [
     {
-      label: "关闭",
+      label: t("关闭"),
       action: () => onCloseTab(state.tabId),
     },
     {
-      label: "关闭其他",
+      label: t("关闭其他"),
       action: () => {
         tabs
           .filter((t) => t.id !== state.tabId)
@@ -130,7 +134,7 @@ function ContextMenu({
       disabled: !hasOthers,
     },
     {
-      label: "关闭右侧",
+      label: t("关闭右侧"),
       action: () => {
         tabs
           .slice(tabIndex + 1)
@@ -140,12 +144,12 @@ function ContextMenu({
     },
     { label: "", action: () => {}, disabled: true }, // divider
     {
-      label: "向下分屏",
+      label: t("向下分屏"),
       action: () => onSplitTab?.(state.tabId, "vertical"),
       disabled: !canSplit,
     },
     {
-      label: "向右分屏",
+      label: t("向右分屏"),
       action: () => onSplitTab?.(state.tabId, "horizontal"),
       disabled: !canSplit,
     },
@@ -201,6 +205,7 @@ export default function TabBar({
   onDragDropZone,
   onDraggingChange,
 }: TabBarProps) {
+  const { t } = useTranslation();
   const { tabs, activeTabId } = group;
   const [plusOpen, setPlusOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -243,22 +248,6 @@ export default function TabBar({
     [tabs, onCloseTab]
   );
 
-  // 拖拽重排状态
-  const dragState = useRef<{
-    tabId: string;
-    fromIndex: number;
-    toIndex: number;
-    startX: number;
-    startY: number;
-    phase: "idle" | "reorder" | "split";
-    _lifted: boolean;
-  }>({ tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle", _lifted: false });
-  const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
-  const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
-
-  // 拖拽分屏预览位置
-  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
-
   // 点击外部关闭 [+] 菜单
   useEffect(() => {
     if (!plusOpen) return;
@@ -277,182 +266,102 @@ export default function TabBar({
     }
   }, []);
 
-  // 拖拽重排 + 分屏——window 级别事件监听
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (dragState.current.phase === "idle") return;
+  // ── 拖拽重排 + 分屏（useDragReorder hook 封装 window 级事件处理）──
 
-      const dx = e.clientX - dragState.current.startX;
-      const dy = e.clientY - dragState.current.startY;
-
-      // 移动距离不足阈值 → 不启动拖拽
-      if (dragState.current.phase === "reorder" && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-
-      // 首次超过阈值 → 把标签页"拎起来"（对标 VS Code: 移动后才开始拖拽）
-      if (dragState.current.phase === "reorder" && !dragState.current._lifted) {
-        dragState.current._lifted = true;
-        setDraggingTabId(dragState.current.tabId);
-      }
-
-      // 用 elementFromPoint 直接检测鼠标下有没有标签栏（比 getBoundingClientRect 更可靠）
-      const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
-      const overAnyTabBar = elUnderMouse?.closest(".tab-bar") != null;
-
-      const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-      const inPureEditor = areaRect && !overAnyTabBar &&
-        e.clientX >= areaRect.left && e.clientX <= areaRect.right &&
-        e.clientY >= areaRect.top && e.clientY <= areaRect.bottom;
-
-      // reorder → split
-      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15 && inPureEditor) {
-        dragState.current.phase = "split";
-        onDraggingChange?.(true);
-        setDragInsertIndex(null);
-      }
-
-      // split → reorder（鼠标回到标签栏上——保留浮空克隆，只关毛玻璃）
-      if (dragState.current.phase === "split" && !inPureEditor) {
-        dragState.current.phase = "reorder";
-        onDraggingChange?.(false);
-        onDragDropZone?.(null);
-        // 不 setPreviewPos(null)——保留浮空克隆，让用户看到标签页在哪
-      }
-
-      // ── 分屏模式 ──
-      if (dragState.current.phase === "split") {
-        setPreviewPos({ x: e.clientX, y: e.clientY });
-
-        // 检测 drop zone
-        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-        if (areaRect) {
-          const zone = detectDropZone(e.clientX, e.clientY, areaRect);
-          onDragDropZone?.(zone);
-        }
-        return;
-      }
-
-      // ── 重排模式 ──
-      setPreviewPos({ x: e.clientX, y: e.clientY }); // 浮空克隆始终跟鼠标（对标 VS Code）
-      if (!scrollRef.current) return;
-      const tabElements = scrollRef.current.querySelectorAll<HTMLElement>(".tab-item");
-      const scrollRect = scrollRef.current.getBoundingClientRect();
-      const mouseX = e.clientX - scrollRect.left + scrollRef.current.scrollLeft;
+  const computeInsertIndex = useCallback(
+    (clientX: number, _clientY: number, container: HTMLElement, fromIndex: number, _itemCount: number) => {
+      const tabElements = container.querySelectorAll<HTMLElement>(".tab-item");
+      const scrollRect = container.getBoundingClientRect();
+      const mouseX = clientX - scrollRect.left + container.scrollLeft;
 
       let insertIdx = tabs.length;
       for (let i = 0; i < tabElements.length; i++) {
         const rect = tabElements[i].getBoundingClientRect();
-        const midX = rect.left - scrollRect.left + scrollRef.current.scrollLeft + rect.width / 2;
+        const midX = rect.left - scrollRect.left + container.scrollLeft + rect.width / 2;
         if (mouseX < midX) { insertIdx = i; break; }
       }
-      if (insertIdx > dragState.current.fromIndex) insertIdx--;
+      if (insertIdx > fromIndex) insertIdx--;
+      return insertIdx;
+    },
+    [tabs.length]
+  );
 
-      dragState.current.toIndex = insertIdx;
-      setDragInsertIndex(insertIdx);
-    };
+  const isInPureEditor = useCallback(
+    (clientX: number, clientY: number) => {
+      const elUnderMouse = document.elementFromPoint(clientX, clientY);
+      const overAnyTabBar = elUnderMouse?.closest(".tab-bar") != null;
+      const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+      return !!(areaRect && !overAnyTabBar &&
+        clientX >= areaRect.left && clientX <= areaRect.right &&
+        clientY >= areaRect.top && clientY <= areaRect.bottom);
+    },
+    [editorAreaRef]
+  );
 
-    const onMouseUp = (e: MouseEvent) => {
-      if (dragState.current.phase === "idle") return;
-
-      if (dragState.current.phase === "split") {
-        // 先检查是否放到了另一个面板的标签栏上
-        let movedToOtherBar = false;
-        if (_onMoveTab) {
-          const otherBars = document.querySelectorAll(".tab-bar");
-          for (const bar of otherBars) {
-            if (bar === scrollRef.current?.parentElement) continue; // 跳过自己的标签栏
-            const barRect = bar.getBoundingClientRect();
-            if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
-                e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
-              _onMoveTab(dragState.current.tabId);
-              movedToOtherBar = true;
-              break;
-            }
-          }
-        }
-        if (!movedToOtherBar) {
-          const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-          let zone: "left" | "right" | "up" | "down" | "center" | null = null;
-          if (areaRect) {
-            zone = detectDropZone(e.clientX, e.clientY, areaRect);
-          }
-          if (zone && zone !== "center" && onDropSplit) {
-            onDropSplit(dragState.current.tabId, zone);
-          }
-        }
-        onDragDropZone?.(null);
-        onDraggingChange?.(false);
-        setPreviewPos(null);
-        dragState.current.phase = "idle";
-        setDraggingTabId(null);
-        return;
-      }
-
-      // 重排模式——先检测是否放到了另一个标签栏上
-      let movedToOtherBar = false;
-      if (_onMoveTab) {
-        const otherBars = document.querySelectorAll(".tab-bar");
-        for (const bar of otherBars) {
-          if (bar === scrollRef.current?.parentElement) continue;
-          const barRect = bar.getBoundingClientRect();
-          if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
-              e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
-            _onMoveTab(dragState.current.tabId);
-            movedToOtherBar = true;
-            break;
-          }
+  const findOtherContainer = useCallback(
+    (clientX: number, clientY: number, ownContainer: HTMLElement) => {
+      if (!_onMoveTab) return null;
+      const otherBars = document.querySelectorAll(".tab-bar");
+      for (const bar of otherBars) {
+        if (bar === ownContainer.parentElement) continue;
+        const barRect = bar.getBoundingClientRect();
+        if (clientX >= barRect.left && clientX <= barRect.right &&
+            clientY >= barRect.top && clientY <= barRect.bottom) {
+          return bar.getAttribute("data-group-id");
         }
       }
-      if (!movedToOtherBar) {
-        const { tabId, toIndex } = dragState.current;
-        if (toIndex >= 0 && toIndex !== dragState.current.fromIndex) {
-          onReorderTab?.(tabId, toIndex);
-        }
-      }
-      dragState.current.phase = "idle";
-      setDragInsertIndex(null);
-      setDraggingTabId(null);
-      setPreviewPos(null);
-    };
+      return null;
+    },
+    [_onMoveTab]
+  );
 
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dragState.current.phase === "split") {
-        dragState.current.phase = "idle";
-        onDragDropZone?.(null);
-        onDraggingChange?.(false);
-        setPreviewPos(null);
-        setDraggingTabId(null);
-      }
-    };
+  const computeSplitZone = useCallback(
+    (clientX: number, clientY: number) => {
+      const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+      if (!areaRect) return null;
+      return detectDropZone(clientX, clientY, areaRect);
+    },
+    [editorAreaRef]
+  );
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [tabs, onReorderTab, onDropSplit, editorAreaRef, onDragDropZone, onDraggingChange]);
+  const {
+    draggingId,
+    insertIndex: dragInsertIndex,
+    previewPos,
+    startDrag,
+  } = useDragReorder(scrollRef, {
+    itemCount: tabs.length,
+    editorAreaRef,
+    onReorder: onReorderTab ?? (() => {}),
+    onDropSplit,
+    onMoveToOther: _onMoveTab,
+    onDraggingChange,
+    onDragDropZone,
+    computeInsertIndex,
+    isInPureEditor,
+    findOtherContainer,
+    computeSplitZone,
+  });
 
   return (
     <div className="tab-bar">
       <div className="tab-list" ref={scrollRef} onWheel={onWheel}>
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
-          const isDragging = draggingTabId === tab.id;
+          const isDragging = draggingId === tab.id;
           const isEntering = enteringTabId === tab.id;
           const isExiting = exitingTabId === tab.id;
 
           return (
             <>
               {/* 拖拽插入指示器 */}
-              {dragInsertIndex === idx && draggingTabId !== tab.id && (
+              {dragInsertIndex === idx && draggingId !== tab.id && (
                 <div className="tab-drop-indicator" key={`indicator-${idx}`} />
               )}
               <div
                 key={tab.id}
                 className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
-                title={tab.label}
+                title={t(tab.label)}
                 onClick={() => onFocusTab(tab.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
@@ -465,31 +374,20 @@ export default function TabBar({
                     return;
                   }
                   if (e.button === 0 && onReorderTab) {
-                    // 左键：开始拖拽重排
-                    dragState.current = {
-                      tabId: tab.id,
-                      fromIndex: idx,
-                      toIndex: idx,
-                      startX: e.clientX,
-                      startY: e.clientY,
-                      phase: "reorder",
-                      _lifted: false,
-                    };
-                    // 不立即设 draggingTabId——等鼠标移动超阈值再"拎起来"（对标 VS Code）
-                    setDragInsertIndex(idx);
+                    startDrag(tab.id, idx, e);
                   }
                 }}
               >
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
                 <span className="tab-icon">{TYPE_ICON[tab.type]}</span>
-                <span className="tab-label">{tab.label}</span>
+                <span className="tab-label">{t(tab.label)}</span>
                 <button
                   className="tab-close"
                   onClick={(e) => {
                     e.stopPropagation();
                     closeWithAnimation(tab.id);
                   }}
-                  title={tabs.length === 1 && tab.type === "terminal" ? "清空接收区" : "关闭"}
+                  title={tabs.length === 1 && tab.type === "terminal" ? t("清空接收区") : t("关闭")}
                 >
                   ×
                 </button>
@@ -506,7 +404,7 @@ export default function TabBar({
           ref={plusRef}
           className={`tab-plus-btn${plusOpen ? " open" : ""}`}
           onClick={() => setPlusOpen(!plusOpen)}
-          title="新建标签页"
+          title={t("新建标签页")}
         >
           +
         </button>
@@ -530,8 +428,8 @@ export default function TabBar({
       )}
 
       {/* 拖拽预览：克隆标签页外观——图标+文字+关闭按钮（VS Code 风格） */}
-      {previewPos && draggingTabId && (() => {
-        const tab = tabs.find((t) => t.id === draggingTabId);
+      {previewPos && draggingId && (() => {
+        const tab = tabs.find((t) => t.id === draggingId);
         if (!tab) return null;
         return (
           <div
@@ -550,7 +448,7 @@ export default function TabBar({
             <span className="tab-icon" style={{ flexShrink: 0, fontSize: 13, opacity: 0.8 }}>
               {TYPE_ICON[tab.type] ?? ""}
             </span>
-            <span className="tab-label">{tab.label}</span>
+            <span className="tab-label">{t(tab.label)}</span>
           </div>
         );
       })()}

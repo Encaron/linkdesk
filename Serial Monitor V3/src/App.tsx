@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTabManager, allTabs, type TabType } from "./hooks/useTabManager";
@@ -22,6 +23,7 @@ interface PortInfo {
 }
 
 function App() {
+  const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>({ ...defaultTerminalPrefs });
@@ -71,8 +73,8 @@ function App() {
 
       // Phase 3: 恢复布局（§11.3）
       try {
-        const savedLayout = (prefs as any).layout;
-        if (savedLayout && savedLayout.tabs) {
+        const savedLayout = prefs.layout;
+        if (savedLayout?.groups) {
           restoreLayout(savedLayout);
         }
       } catch { /* 布局恢复失败不影响启动 */ }
@@ -235,11 +237,11 @@ function App() {
     const saveLayout = () => {
       try {
         const prefs = PreferenceService.loadPrefs();
-        (prefs as any).layout = {
+        prefs.layout = {
           groups: tabState.groups.map((g) => ({
             id: g.id,
             tabs: g.tabs.map((t) => ({
-              id: t.id, type: t.type, label: t.label,
+              id: t.id, type: t.type, label: t.label, dirty: t.dirty,
               workspaceName: t.workspaceName, filePath: t.filePath,
             })),
             activeTabId: g.activeTabId,
@@ -271,7 +273,7 @@ function App() {
         if (!result.closed && result.reason === "dirty") {
           const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
           const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
-          if (tab && window.confirm(`「${tab.label}」有未保存的修改，确定关闭？`)) {
+          if (tab && window.confirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
             forceCloseTab(activeTabId);
           }
         }

@@ -25,6 +25,7 @@
     "tab-hover-bg": "#353535",
     "drop-indicator": "rgba(255, 255, 255, 0.06)",
     "dirty-dot": "#CCA700",
-    "context-menu-shadow": "0 4px 12px rgba(0, 0, 0, 0.3)"
+    "context-menu-shadow": "0 4px 12px rgba(0, 0, 0, 0.3)",
+    "drag-preview-shadow": "0 4px 16px rgba(0, 0, 0, 0.35)"
   }
 }
