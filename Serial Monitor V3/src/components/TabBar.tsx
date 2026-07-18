@@ -310,12 +310,12 @@ export default function TabBar({
         setDragInsertIndex(null);
       }
 
-      // split → reorder（鼠标回到标签栏上）
+      // split → reorder（鼠标回到标签栏上——保留浮空克隆，只关毛玻璃）
       if (dragState.current.phase === "split" && !inPureEditor) {
         dragState.current.phase = "reorder";
         onDraggingChange?.(false);
         onDragDropZone?.(null);
-        setPreviewPos(null);
+        // 不 setPreviewPos(null)——保留浮空克隆，让用户看到标签页在哪
       }
 
       // ── 分屏模式 ──
@@ -332,6 +332,7 @@ export default function TabBar({
       }
 
       // ── 重排模式 ──
+      setPreviewPos({ x: e.clientX, y: e.clientY }); // 浮空克隆始终跟鼠标（对标 VS Code）
       if (!scrollRef.current) return;
       const tabElements = scrollRef.current.querySelectorAll<HTMLElement>(".tab-item");
       const scrollRect = scrollRef.current.getBoundingClientRect();
