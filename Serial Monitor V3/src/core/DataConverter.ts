@@ -92,8 +92,8 @@ export function BytesToText(
 }
 
 /** 文本 → 字节数组（按指定编码） */
-export function TextToBytes(str: string, encoding: string): Uint8Array {
-  return new TextEncoder().encode(str);
+export function TextToBytes(_str: string, _encoding: string): Uint8Array {
+  return new TextEncoder().encode(_str);
 }
 
 /**

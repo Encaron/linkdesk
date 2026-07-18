@@ -1,20 +1,44 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { listen } from "@tauri-apps/api/event";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import TopBar from "./components/TopBar";
 import StatusBar from "./components/StatusBar";
+import PreferenceService from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import "./App.css";
 
 export type ViewId = "terminal" | "workspace" | "settings";
 
+interface PortInfo {
+  name: string;
+  description: string;
+}
+
+/** 从 PreferenceService 读取已保存的终端设置（有则用，无则默认） */
+function loadTerminalPrefs(): TerminalPrefs {
+  try {
+    const saved = PreferenceService.loadPrefs().preferences;
+    return { ...defaultTerminalPrefs, ...saved };
+  } catch {
+    return { ...defaultTerminalPrefs };
+  }
+}
+
 function App() {
   const [activeView, setActiveView] = useState<ViewId>("terminal");
   const [lastContentView, setLastContentView] = useState<ViewId>("terminal");
   const [isOpen, setIsOpen] = useState(false);
-  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(defaultTerminalPrefs);
+  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(loadTerminalPrefs);
+  const [ports, setPorts] = useState<PortInfo[]>([]);
+  const [portName, setPortName] = useState(() => {
+    try { return PreferenceService.loadPrefs().lastPort; } catch { return "COM3"; }
+  });
+  const [baudRate, setBaudRate] = useState("115200");
+  const [txBytes, setTxBytes] = useState(0);
+  const [rxBytes, setRxBytes] = useState(0);
 
   /* ---- 侧栏拖拽调整宽度（直接操作 DOM，不经过 React） ---- */
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -60,24 +84,108 @@ function App() {
 
   const contentView = activeView === "settings" ? lastContentView : activeView;
 
+  /* ---- 串口控制 ---- */
+  const handleToggleOpen = useCallback(async () => {
+    try {
+      if (isOpen) {
+        await invoke("close_port");
+        setIsOpen(false);
+      } else {
+        await invoke("open_port", { portName, baudRate: parseInt(baudRate) });
+        setIsOpen(true);
+      }
+    } catch (e) {
+      console.error("串口操作失败:", e);
+    }
+  }, [isOpen, portName, baudRate]);
+
+  const handleBaudChange = useCallback(async (newBaud: string) => {
+    setBaudRate(newBaud);
+    if (isOpen) {
+      try {
+        await invoke("close_port");
+        await invoke("open_port", { portName, baudRate: parseInt(newBaud) });
+      } catch (e) {
+        console.error("波特率切换失败:", e);
+        setIsOpen(false);
+      }
+    }
+  }, [isOpen, portName]);
+
+  const handlePortChange = useCallback(async (newPort: string) => {
+    setPortName(newPort);
+    if (isOpen) {
+      try {
+        await invoke("close_port");
+        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate) });
+      } catch (e) {
+        console.error("端口切换失败:", e);
+        setIsOpen(false);
+      }
+    }
+  }, [isOpen, baudRate]);
+
+  // 终端设置变更 → 持久化到 prefs.json
+  useEffect(() => {
+    try {
+      const prefs = PreferenceService.loadPrefs();
+      prefs.preferences = terminalPrefs as any;
+      PreferenceService.savePrefs(prefs);
+    } catch { /* 静默 */ }
+  }, [terminalPrefs]);
+
+  // lastPort 变更 → 持久化
+  useEffect(() => {
+    try {
+      const prefs = PreferenceService.loadPrefs();
+      prefs.lastPort = portName;
+      PreferenceService.savePrefs(prefs);
+    } catch { /* 静默 */ }
+  }, [portName]);
+
+  // COM 口枚举 + 热插拔检测（2s 轮询）
+  useEffect(() => {
+    const refreshPorts = async () => {
+      try {
+        const list = await invoke<PortInfo[]>("list_ports");
+        setPorts(list);
+      } catch {
+        // 静默——Tauri 不可用时 fallback 到空列表
+      }
+    };
+    refreshPorts();
+    const timer = setInterval(refreshPorts, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // TX/RX 字节计数
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<{ tx?: number; rx?: number }>("serial-stats", (event) => {
+      if (event.payload.tx) setTxBytes((prev) => prev + event.payload.tx!);
+      if (event.payload.rx) setRxBytes((prev) => prev + event.payload.rx!);
+    }).then((fn) => { unlisten = fn; }).catch(() => {});
+    return () => { unlisten?.(); };
+  }, []);
+
+  // 串口关闭时重置计数
+  useEffect(() => {
+    if (!isOpen) {
+      setTxBytes(0);
+      setRxBytes(0);
+    }
+  }, [isOpen]);
+
   return (
     <div className="app-shell">
       <TopBar
-        portName="COM3"
-        baudRate="115200"
+        ports={ports}
+        portName={portName}
+        baudRate={baudRate}
         isOpen={isOpen}
-        onToggleOpen={async () => {
-          try {
-            if (isOpen) {
-              await invoke("close_port");
-            } else {
-              await invoke("open_port", { portName: "COM3", baudRate: 115200 });
-            }
-            setIsOpen(!isOpen);
-          } catch (e) {
-            console.error("串口操作失败:", e);
-          }
-        }}
+        onToggleOpen={handleToggleOpen}
+        onPortChange={handlePortChange}
+        onBaudChange={handleBaudChange}
       />
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
@@ -92,7 +200,7 @@ function App() {
         <MainContent activeView={activeView} />
       </div>
       </TerminalPrefsContext.Provider>
-      <StatusBar isOpen={isOpen} txBytes={1234} rxBytes={56789} />
+      <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} />
     </div>
   );
 }

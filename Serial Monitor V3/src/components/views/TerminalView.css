@@ -46,55 +46,126 @@
   border-color: var(--accent);
 }
 
-/* === 系统消息区域 === */
+/* === 搜索条 === */
 
-.system-log-area {
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
   background: var(--bg-card);
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
-  max-height: 108px;
-  overflow-y: auto;
-  transition: max-height 200ms ease;
 }
 
-.system-log-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 10px;
+.search-icon {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  outline: none;
+  min-width: 120px;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-count {
+  color: var(--text-secondary);
   font-size: 11px;
-  color: var(--system-log);
-  cursor: pointer;
-  user-select: none;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: center;
 }
 
-.system-log-collapse {
+.search-opt {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 100ms, color 100ms;
+}
+
+.search-opt:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.search-opt.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.search-nav {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.search-nav:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.search-close {
   background: transparent;
   border: none;
-  color: var(--system-log);
-  font-size: 10px;
+  color: var(--text-muted);
+  font-size: 12px;
   cursor: pointer;
+  padding: 2px 4px;
 }
 
-.system-log-messages {
-  padding: 2px 10px 6px;
+.search-close:hover {
+  color: var(--text-primary);
+}
+
+/* === 系统消息区域（对标 V2 lbSystemLog：固定两行 36px + accent 左边框） === */
+
+.system-log-area {
+  height: 36px;
+  min-height: 18px;
+  max-height: 72px;
+  background: var(--bg-input);
+  border-left: 3px solid var(--accent);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 2px 4px;
+  transition: opacity 200ms ease;
 }
 
 .system-log-line {
   font-size: 11px;
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--system-log);
-  line-height: 1.6;
-}
-
-.system-log-collapsed {
-  padding: 4px 10px;
-  font-size: 11px;
-  color: var(--system-log);
-  cursor: pointer;
-  background: var(--bg-card);
-  border-bottom: 1px solid var(--separator);
-  flex-shrink: 0;
+  line-height: 1.4;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 /* === CM6 接收区 === */
@@ -210,6 +281,44 @@
   to { opacity: 1; transform: scale(1); }
 }
 
+/* === 右键菜单 === */
+
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 999;
+}
+
+.ctx-menu {
+  position: fixed;
+  z-index: 1000;
+  min-width: 160px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  padding: 4px 0;
+}
+
+.ctx-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.ctx-item:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.ctx-divider {
+  height: 1px;
+  background: var(--separator);
+  margin: 4px 8px;
+}
+
 /* === 快捷发送条 === */
 
 .quick-send-bar {
@@ -263,12 +372,42 @@
   color: var(--text-primary);
 }
 
+.quick-send-add-form {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.qs-input {
+  width: 100px;
+  height: 24px;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+.ctx-item-danger {
+  color: #E06C75;
+}
+
+.ctx-item-danger:hover {
+  background: #E06C75;
+  color: white;
+}
+
 /* === 发送区 === */
 
 .sender-area {
   flex-shrink: 0;
   border-top: 1px solid var(--border);
   background: var(--bg-card);
+}
+
+.hex-warning {
+  padding: 3px 10px;
+  font-size: 11px;
+  color: #E8AB3E;
+  background: rgba(255, 200, 0, 0.1);
+  border-bottom: 1px solid rgba(255, 200, 0, 0.2);
 }
 
 .monaco-wrapper {
@@ -299,6 +438,46 @@
   justify-content: flex-end;
   gap: 4px;
   padding: 4px 8px;
+}
+
+.history-wrapper {
+  position: relative;
+}
+
+.history-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  min-width: 280px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: 100;
+}
+
+.history-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 100ms;
+}
+
+.history-item:hover {
+  background: var(--accent);
+  color: white;
+}
+
+.history-item + .history-item {
+  border-top: 1px solid var(--separator);
 }
 
 .send-btn {

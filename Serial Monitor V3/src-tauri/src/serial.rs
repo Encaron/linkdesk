@@ -65,10 +65,15 @@ pub fn open_port(
         inner.port = None;
     }
 
+    let app_for_err = app.clone();
     let port = serialport::new(&port_name, baud_rate)
         .timeout(Duration::from_millis(100))
         .open()
-        .map_err(|e| format!("打开串口失败: {}", e))?;
+        .map_err(move |e| {
+            let msg = format!("串口打开失败：{}", e);
+            let _ = app_for_err.emit("serial-system", &msg);
+            msg
+        })?;
 
     inner.port = Some(port);
     inner.line_buffer.clear();
@@ -76,19 +81,29 @@ pub fn open_port(
 
     // 启动读线程
     let state_clone = Arc::clone(state.inner());
-    thread::spawn(move || read_loop(state_clone, app));
+    let app_reader = app.clone();
+    thread::spawn(move || read_loop(state_clone, app_reader));
+
+    // 系统消息（V2 格式：---- 已打开串行端口 COM3 ----）
+    let _ = app.emit("serial-system", format!("---- 已打开串行端口 {} ----", port_name));
 
     Ok(())
 }
 
 /// 关闭串口
 #[tauri::command]
-pub fn close_port(state: tauri::State<'_, SerialState>) -> Result<(), String> {
+pub fn close_port(state: tauri::State<'_, SerialState>, app: AppHandle) -> Result<(), String> {
     let mut inner = state.lock().map_err(|e| e.to_string())?;
+
+    if inner.port.is_none() {
+        return Ok(()); // 已关闭，不重复 emit
+    }
+
+    let port_name = inner.port.as_ref().map(|p| p.name().unwrap_or_default().to_string()).unwrap_or_default();
+
     inner.is_closing = true;
 
     if let Some(ref mut port) = inner.port {
-        // 冲刷残留数据
         let _ = port.flush();
     }
 
@@ -96,15 +111,21 @@ pub fn close_port(state: tauri::State<'_, SerialState>) -> Result<(), String> {
     inner.is_closing = false;
     inner.line_buffer.clear();
 
+    let _ = app.emit("serial-system", format!("---- 关闭串行端口 {} ----", port_name));
+
     Ok(())
 }
 
 /// 发送字节数据
 #[tauri::command]
-pub fn send_data(state: tauri::State<'_, SerialState>, data: Vec<u8>) -> Result<usize, String> {
+pub fn send_data(state: tauri::State<'_, SerialState>, data: Vec<u8>, app: AppHandle) -> Result<usize, String> {
     let mut inner = state.lock().map_err(|e| e.to_string())?;
     match inner.port.as_mut() {
-        Some(port) => port.write(&data).map_err(|e| format!("发送失败: {}", e)),
+        Some(port) => {
+            let written = port.write(&data).map_err(|e| format!("发送失败: {}", e))?;
+            let _ = app.emit("serial-stats", serde_json::json!({ "tx": written }));
+            Ok(written)
+        }
         None => Err("串口未打开".into()),
     }
 }
@@ -117,6 +138,36 @@ pub fn set_dtr(state: tauri::State<'_, SerialState>, enable: bool) -> Result<(),
         Some(port) => port
             .write_data_terminal_ready(enable)
             .map_err(|e| format!("设置 DTR 失败: {}", e)),
+        None => Err("串口未打开".into()),
+    }
+}
+
+/// 发送文本（支持编码）
+#[tauri::command]
+pub fn send_text(
+    state: tauri::State<'_, SerialState>,
+    text: String,
+    encoding: String,
+    app: AppHandle,
+) -> Result<usize, String> {
+    let bytes: Vec<u8> = match encoding.as_str() {
+        "GBK" => {
+            use encoding_rs::GBK;
+            let (encoded, _, _) = GBK.encode(&text);
+            encoded.into_owned()
+        }
+        _ => {
+            // UTF-8 / ASCII / Latin-1
+            text.into_bytes()
+        }
+    };
+    let mut inner = state.lock().map_err(|e| e.to_string())?;
+    match inner.port.as_mut() {
+        Some(port) => {
+            let written = port.write(&bytes).map_err(|e| format!("发送失败: {}", e))?;
+            let _ = app.emit("serial-stats", serde_json::json!({ "tx": written }));
+            Ok(written)
+        }
         None => Err("串口未打开".into()),
     }
 }
@@ -168,7 +219,10 @@ fn read_loop(state: SerialState, app: AppHandle) {
                         }
                         continue;
                     }
-                    Ok(n) => n,
+                    Ok(n) => {
+                        let _ = app.emit("serial-stats", serde_json::json!({ "rx": n }));
+                        n
+                    }
                 },
                 None => return,
             }

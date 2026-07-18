@@ -17,13 +17,15 @@ function Select({
   value,
   options,
   onChange,
+  disabled,
 }: {
   value: string;
   options: string[];
   onChange: (v: string) => void;
+  disabled?: boolean;
 }) {
   return (
-    <select className="input select-input" value={value} onChange={(e) => onChange(e.target.value)}>
+    <select className="input select-input" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
       {options.map((opt) => (
         <option key={opt} value={opt}>{opt}</option>
       ))}
@@ -111,8 +113,12 @@ function TerminalSidebar() {
         </div>
         <div className="setting-row">
           <label>{t("发送编码")}</label>
-          <Select value={prefs.sendCoding} options={["UTF-8", "GBK", "ASCII", "Latin-1"]}
-            onChange={(v) => update({ sendCoding: v })} />
+          <Select
+            value={prefs.sendCoding}
+            options={["UTF-8", "GBK", "ASCII", "Latin-1"]}
+            onChange={(v) => update({ sendCoding: v })}
+            disabled={prefs.sendMode === "hex"}
+          />
         </div>
       </div>
     </div>

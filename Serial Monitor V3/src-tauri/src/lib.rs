@@ -9,6 +9,7 @@ pub fn run() {
             serial::open_port,
             serial::close_port,
             serial::send_data,
+            serial::send_text,
             serial::set_dtr,
             serial::set_rts,
         ])

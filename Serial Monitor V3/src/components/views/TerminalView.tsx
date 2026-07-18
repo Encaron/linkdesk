@@ -9,13 +9,15 @@ import {
   ViewUpdate,
   type PluginValue,
 } from "@codemirror/view";
-import { EditorState, StateField, StateEffect, type Extension, RangeSet } from "@codemirror/state";
-import { search, openSearchPanel, closeSearchPanel } from "@codemirror/search";
+import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
+import { search, setSearchQuery, SearchQuery, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
-import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { RingBuffer } from "../../core/RingBuffer";
-import { useTerminalPrefs } from "../../core/TerminalPrefsContext";
+import { useTerminalPrefs, type TerminalPrefs } from "../../core/TerminalPrefsContext";
+import { HexToBytes } from "../../core/DataConverter";
+import PreferenceService from "../../core/PreferenceService";
 import "./TerminalView.css";
 
 /* ---- CM6 深色主题 ---- */
@@ -92,23 +94,78 @@ function TerminalView() {
   const [paused, setPaused] = useState(false);
   const pausedBuffer = useRef<string[]>([]);
   const [pausedCount, setPausedCount] = useState(0);
-  const [logCollapsed, setLogCollapsed] = useState(false);
   const [systemLog, setSystemLog] = useState<string[]>([]);
-  const [quickSends, _setQuickSends] = useState(["AT", "AT+CWLAP", "AT+CWJAP"]);
+  const [quickSends, setQuickSends] = useState<Record<string, string>>(() => {
+    try {
+      return PreferenceService.loadPrefs().quickSends;
+    } catch {
+      return { AT: "AT\r\n" };
+    }
+  });
+  const [qsAdding, setQsAdding] = useState(false);
+  const [qsName, setQsName] = useState("");
+  const [qsContent, setQsContent] = useState("");
+  const [qsCtxMenu, setQsCtxMenu] = useState<{ key: string; x: number; y: number } | null>(null);
+
+  const saveQuickSends = useCallback((updated: Record<string, string>) => {
+    setQuickSends(updated);
+    try {
+      const prefs = PreferenceService.loadPrefs();
+      prefs.quickSends = updated;
+      PreferenceService.savePrefs(prefs);
+    } catch {
+      // localStorage 不可用时静默
+    }
+  }, []);
+
+  const handleAddQuickSend = () => {
+    if (!qsName.trim() || !qsContent.trim()) return;
+    const name = qsName.trim();
+    saveQuickSends({ ...quickSends, [name]: qsContent.trim() });
+    appendLine(`---- 快捷发送「${name}」已添加 ----`, "system");
+    setQsName("");
+    setQsContent("");
+    setQsAdding(false);
+  };
+
+  const handleDeleteQuickSend = (key: string) => {
+    const updated = { ...quickSends };
+    delete updated[key];
+    saveQuickSends(updated);
+    appendLine(`---- 快捷发送「${key}」已删除 ----`, "system");
+    setQsCtxMenu(null);
+  };
+
+  const handleQuickSendCtxMenu = (key: string, e: React.MouseEvent) => {
+    e.preventDefault();
+    setQsCtxMenu({ key, x: e.clientX, y: e.clientY });
+  };
   const [sendValue, setSendValue] = useState("");
   const [showBackToBottom, setShowBackToBottom] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchText, setSearchText] = useState("");
+  const [searchCase, setSearchCase] = useState(false);
+  const [searchCount, setSearchCount] = useState(0);
+  const [searchIdx, setSearchIdx] = useState(0);
+  const searchMatchesRef = useRef<{ from: number; to: number }[]>([]);
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [sendHistory, setSendHistory] = useState<string[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [hexWarning, setHexWarning] = useState("");
+  const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
+  const monacoRef = useRef<any>(null);
 
   /* ---- CM6 ---- */
   const cmContainer = useRef<HTMLDivElement>(null);
   const cmView = useRef<EditorView | null>(null);
+  const lineNumberCompartment = useRef(new Compartment());
 
   useEffect(() => {
     if (!cmContainer.current) return;
     const view = new EditorView({
       doc: "",
       extensions: [
-        lineNumbers(),
+        lineNumberCompartment.current.of(prefs.showLineNumbers ? lineNumbers() : []),
         darkTheme,
         lineDecoField,
         scrollTracker,
@@ -125,22 +182,50 @@ function TerminalView() {
       setShowBackToBottom(dom.scrollHeight - dom.scrollTop - dom.clientHeight >= 30);
     });
 
+    // 右键菜单
+    view.dom.addEventListener("contextmenu", (e: MouseEvent) => {
+      e.preventDefault();
+      setCtxMenu({ x: e.clientX, y: e.clientY });
+    });
+
     return () => {
-      searchObserver.current?.disconnect();
       view.destroy();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // 动态切换行号
+  useEffect(() => {
+    const view = cmView.current;
+    if (!view) return;
+    view.dispatch({
+      effects: lineNumberCompartment.current.reconfigure(
+        prefs.showLineNumbers ? lineNumbers() : []
+      ),
+    });
+  }, [prefs.showLineNumbers]);
 
   /* ---- 追加一行（带颜色） ---- */
   const appendLine = useCallback((text: string, color: "received" | "sent" | "system") => {
     // 消息回显关闭时不显示发送回显
     if (color === "sent" && !prefs.showEcho) return;
 
+    // 系统消息独立显示 → 走系统日志区，不写 CM6
+    if (color === "system" && prefs.separateSystemLog) {
+      setSystemLog((prev) => {
+        const next = [...prev, text];
+        if (next.length > 50) next.shift();
+        return next;
+      });
+      return;
+    }
+
     const view = cmView.current;
     if (!view) return;
 
     let display = text;
-    if (color !== "system" && prefs.timestampFormat !== "无") {
+    // sent 消息已在调用处格式化（含时间戳），不重复加
+    if (color !== "system" && color !== "sent" && prefs.timestampFormat !== "无") {
       const ts = formatTimestamp(prefs.timestampFormat);
       display = ts + " " + text;
     }
@@ -156,25 +241,78 @@ function TerminalView() {
       const line = view.state.doc.line(500);
       view.dispatch({ changes: { from: 0, to: line.from } });
     }
-  }, [prefs.timestampFormat, prefs.showEcho]);
+  }, [prefs.timestampFormat, prefs.showEcho, prefs.separateSystemLog]);
 
-  /* ---- Tauri 事件监听 + rAF 消费 ---- */
+  // 设置变更时打印系统消息（对标 V2 各 CheckBox/ComboBox Changed 事件）
+  const prevPrefsRef = useRef<TerminalPrefs | null>(null);
+  useEffect(() => {
+    // CM6 未就绪时跳过——避免启动时误触发
+    if (!cmView.current) return;
+    const prev = prevPrefsRef.current;
+    if (!prev) { prevPrefsRef.current = { ...prefs }; return; } // 首次跳过
+
+    if (prev.showEcho !== prefs.showEcho)
+      appendLine(`---- 消息回显：${prefs.showEcho ? "开" : "关"} ----`, "system");
+    if (prev.showLineNumbers !== prefs.showLineNumbers)
+      appendLine(`---- 行号显示：${prefs.showLineNumbers ? "开" : "关"} ----`, "system");
+    if (prev.separateSystemLog !== prefs.separateSystemLog)
+      appendLine(`---- 系统消息独立显示：${prefs.separateSystemLog ? "开" : "关"} ----`, "system");
+    if (prev.timestampFormat !== prefs.timestampFormat)
+      appendLine(`---- 时间戳：${prefs.timestampFormat === "无" ? "关" : prefs.timestampFormat} ----`, "system");
+    if (prev.autoRepeat !== prefs.autoRepeat)
+      appendLine(prefs.autoRepeat
+        ? `---- 定时发送：开（每 ${prefs.repeatInterval} ms）----`
+        : "---- 定时发送：关 ----", "system");
+
+    prevPrefsRef.current = { ...prefs };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefs]);
+
+  /* ---- Tauri 事件监听（generation counter 防 StrictMode 重复注册） ----
+   * V2 的 C# DataReceived 是同步调用，天然单订阅者。
+   * V3 的 listen() 返回 Promise——StrictMode cleanup 跑在 Promise resolve 之前，
+   * 旧 listener 的 unlisten 永远拿不到，导致多个 listener 同时存活。
+   * generation counter 确保只有最新一次注册的回调真正写入 RingBuffer。
+   */
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(512));
+  const listenGen = useRef(0);
 
   useEffect(() => {
-    let unlisten: UnlistenFn | undefined;
-    listen<string>("serial-data", (event) => {
-      ringBuffer.current.write({ text: event.payload, type: "received" });
-    }).then((fn) => { unlisten = fn; }).catch(() => {});
+    const gen = ++listenGen.current;
+    const unlisteners: (() => void)[] = [];
 
-    let rafId: number;
+    listen<string>("serial-data", (event) => {
+      if (listenGen.current === gen) ringBuffer.current.write({ text: event.payload, type: "received" });
+    }).then((fn) => {
+      if (listenGen.current === gen) unlisteners.push(fn); else fn();
+    }).catch(() => {});
+
+    listen<string>("serial-system", (event) => {
+      if (listenGen.current === gen) ringBuffer.current.write({ text: event.payload, type: "system" });
+    }).then((fn) => {
+      if (listenGen.current === gen) unlisteners.push(fn); else fn();
+    }).catch(() => {});
+
+    return () => {
+      listenGen.current++; // 使旧 listener 的所有待决回调无效化
+      unlisteners.forEach((fn) => fn());
+    };
+  }, []);
+
+  /* ---- rAF 消费（依赖 appendLine/paused，可重跑） ---- */
+  useEffect(() => {
+    let rafId = 0;
     const drain = () => {
       const items = ringBuffer.current.drainAll();
       for (const item of items) {
         if (paused) {
+          const wasFull = pausedBuffer.current.length >= 2000;
           pausedBuffer.current.push(item.text);
           if (pausedBuffer.current.length > 2000) pausedBuffer.current.shift();
           setPausedCount(pausedBuffer.current.length);
+          if (!wasFull && pausedBuffer.current.length >= 2000) {
+            appendLine("⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃", "system");
+          }
         } else {
           appendLine(item.text, item.type);
         }
@@ -182,16 +320,25 @@ function TerminalView() {
       rafId = requestAnimationFrame(drain);
     };
     rafId = requestAnimationFrame(drain);
-    return () => { unlisten?.(); cancelAnimationFrame(rafId); };
+
+    return () => { cancelAnimationFrame(rafId); };
   }, [appendLine, paused]);
 
   /* ---- 工具栏 ---- */
   const handlePause = () => {
     setPaused((p) => {
       if (p) {
+        // 恢复
+        const count = pausedBuffer.current.length;
         for (const text of pausedBuffer.current) appendLine(text, "received");
         pausedBuffer.current = [];
         setPausedCount(0);
+        if (count > 0)
+          appendLine(`---- 继续显示：补回暂停期间的 ${count} 条数据 ----`, "system");
+        else
+          appendLine("---- 继续显示 ----", "system");
+      } else {
+        appendLine("---- 暂停显示：界面已冻结，后台照常接收 ----", "system");
       }
       return !p;
     });
@@ -202,7 +349,7 @@ function TerminalView() {
     if (!view) return;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length },
-      effects: clearAllDecos.of(undefined),
+      effects: clearAllDecos.of(null as any),
     });
   };
 
@@ -210,88 +357,273 @@ function TerminalView() {
     const view = cmView.current;
     if (!view) return;
     const text = view.state.doc.toString();
+    const filename = `serial-log-${Date.now()}.txt`;
     try {
-      // WebView2 现代 API
       const handle = await (window as any).showSaveFilePicker({
-        suggestedName: `serial-log-${Date.now()}.txt`,
+        suggestedName: filename,
         types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
       });
       const writable = await handle.createWritable();
       await writable.write(text);
       await writable.close();
+      appendLine(`---- 日志已导出至 ${filename} ----`, "system");
     } catch {
       // 降级：Blob 下载
       const blob = new Blob([text], { type: "text/plain;charset=UTF-8" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
-      a.download = `serial-log-${Date.now()}.txt`;
+      a.download = filename;
       a.click();
       URL.revokeObjectURL(url);
     }
   };
 
   /* ---- 发送 ---- */
+  const recordHistory = useCallback((text: string) => {
+    setSendHistory((prev) => {
+      // 去重：相同内容移到最前
+      const filtered = prev.filter((h) => h !== text);
+      return [text, ...filtered].slice(0, 20);
+    });
+  }, []);
+
+  /* ---- HEX 自动格式化 ---- */
+  const autoFormatHex = useCallback((raw: string): { formatted: string; warning: string } => {
+    // 过滤非法字符
+    const valid = raw.replace(/[^A-Fa-f0-9 ]/g, "");
+    const invalid = raw.split("").filter((c) => !/[A-Fa-f0-9 ]/.test(c) && c !== "");
+
+    // 去空格后取纯 hex 字符
+    const hex = valid.replace(/\s/g, "").toUpperCase();
+    // 每两个字符后插空格
+    let formatted = "";
+    for (let i = 0; i < hex.length; i++) {
+      if (i > 0 && i % 2 === 0) formatted += " ";
+      formatted += hex[i];
+    }
+
+    const warning = invalid.length > 0
+      ? `⚠ HEX 输入包含无效字符: ${[...new Set(invalid)].slice(0, 5).join(" ")}`
+      : "";
+
+    return { formatted, warning };
+  }, []);
+
   const handleSend = useCallback(async () => {
     if (!sendValue.trim()) return;
+    const text = sendValue.trim();
+    recordHistory(text);
     try {
-      const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
-      const bytes = Array.from(new TextEncoder().encode(sendValue + ending));
-      await invoke("send_data", { data: bytes });
-      appendLine(sendValue, "sent");
-    } catch {
-      appendLine("[错误] 发送失败", "system");
+      if (prefs.sendMode === "hex") {
+        const bytes = Array.from(HexToBytes(text));
+        await invoke("send_data", { data: bytes });
+        // V2 格式: HH:mm:ss:fff ---- 已发送 HEX 消息 (N 字节) ----
+        const hexMsg = `${formatTimestamp(prefs.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`;
+        appendLine(hexMsg, "sent");
+        // 第二行：HEX 预览（超过 80 字符截断）
+        const preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
+        appendLine("    " + preview, "sent");
+      } else {
+        const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
+        await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
+        // V2 格式: HH:mm:ss:fff ---- 已发送 utf-8 编码消息: "content" ----
+        const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+        const sentMsg = `${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "${safeText}" ----`;
+        appendLine(sentMsg, "sent");
+      }
+    } catch (e: any) {
+      appendLine(`发送失败：${e?.message || e}`, "system");
     }
     if (prefs.autoClear) setSendValue("");
-  }, [sendValue, appendLine, prefs.lineEnding, prefs.autoClear]);
+  }, [sendValue, appendLine, recordHistory, prefs.sendMode, prefs.sendCoding, prefs.lineEnding, prefs.autoClear, prefs.timestampFormat]);
+
+  // HEX 模式 onChange：自动格式化
+  const prevHexWarningRef = useRef("");
+  const handleSendChange = useCallback((v: string | undefined) => {
+    const raw = v ?? "";
+    if (prefs.sendMode === "hex") {
+      const { formatted, warning } = autoFormatHex(raw);
+      setSendValue(formatted);
+      setHexWarning(warning);
+      // 无效字符变化时写入系统日志
+      if (warning && warning !== prevHexWarningRef.current) {
+        appendLine(warning, "system");
+      }
+      prevHexWarningRef.current = warning;
+    } else {
+      setSendValue(raw);
+      setHexWarning("");
+      prevHexWarningRef.current = "";
+    }
+  }, [prefs.sendMode, autoFormatHex, appendLine]);
 
   const handleQuickSend = async (text: string) => {
+    recordHistory(text);
     try {
-      const bytes = Array.from(new TextEncoder().encode(text + "\r\n"));
-      await invoke("send_data", { data: bytes });
-      appendLine("> " + text, "sent");
-    } catch {
-      appendLine("[错误] 发送失败", "system");
+      await invoke("send_text", { text: text + "\r\n", encoding: prefs.sendCoding });
+      const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+      appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "> ${safeText}" ----`, "sent");
+    } catch (e: any) {
+      appendLine(`发送失败：${e?.message || e}`, "system");
     }
   };
 
-  /* ---- 搜索 ---- */
-  const searchObserver = useRef<MutationObserver | null>(null);
+  const handleHistorySelect = (text: string) => {
+    setSendValue(text);
+    setShowHistory(false);
+    // 焦点回到 Monaco
+    monacoRef.current?.focus();
+  };
 
-  const handleSearch = () => {
+  /* ---- 定时发送 ---- */
+  const sendValueRef = useRef(sendValue);
+  sendValueRef.current = sendValue;
+
+  useEffect(() => {
+    if (!prefs.autoRepeat || prefs.repeatInterval <= 0) return;
+    const timer = setInterval(async () => {
+      const text = sendValueRef.current.trim();
+      if (!text) return;
+      try {
+        if (prefs.sendMode === "hex") {
+          const bytes = Array.from(HexToBytes(text));
+          await invoke("send_data", { data: bytes });
+          appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`, "sent");
+        } else {
+          const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
+          await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
+          const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
+          appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "${safeText}" ----`, "sent");
+        }
+      } catch {
+        // 静默——定时发送失败不刷屏
+      }
+    }, prefs.repeatInterval);
+    return () => clearInterval(timer);
+  }, [prefs.autoRepeat, prefs.repeatInterval, prefs.sendMode, prefs.lineEnding, appendLine]);
+
+  /* ---- 右键菜单 ---- */
+  const handleCtxMenuAction = useCallback((action: string) => {
+    setCtxMenu(null);
     const view = cmView.current;
     if (!view) return;
-    if (searchOpen) {
-      // 已经打开：关闭面板
-      closeSearchPanel(view);
-      if (searchObserver.current) {
-        searchObserver.current.disconnect();
-        searchObserver.current = null;
+    switch (action) {
+      case "copy": {
+        const sel = view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+        if (sel) navigator.clipboard.writeText(sel);
+        break;
       }
-      setSearchOpen(false);
+      case "selectAll":
+        view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+        break;
+      case "clear":
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length },
+          effects: clearAllDecos.of(null as any),
+        });
+        break;
+      case "pause":
+        setPaused((p) => !p);
+        break;
+    }
+  }, []);
+
+  /* ---- 搜索 ---- */
+  const runSearch = useCallback((query: string, caseSensitive: boolean) => {
+    const view = cmView.current;
+    if (!view) return;
+    if (!query) {
+      view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: "", caseSensitive: false })) });
+      setSearchCount(0);
+      setSearchIdx(0);
+      searchMatchesRef.current = [];
       return;
     }
-    openSearchPanel(view);
-    setSearchOpen(true);
+    const sq = new SearchQuery({ search: query, caseSensitive });
+    view.dispatch({ effects: setSearchQuery.of(sq) });
 
-    // 监听 CM6 面板从 DOM 中移除（用户点 ✕ 或 Esc）
-    requestAnimationFrame(() => {
-      const panel = view.dom.querySelector(".cm-panels");
-      if (!panel || !panel.parentNode) return;
-      const observer = new MutationObserver(() => {
-        if (!panel.parentNode) {
-          setSearchOpen(false);
-          observer.disconnect();
-          searchObserver.current = null;
-        }
-      });
-      observer.observe(panel.parentNode, { childList: true });
-      searchObserver.current = observer;
+    // 收集所有匹配位置
+    const matches: { from: number; to: number }[] = [];
+    // 转义正则特殊字符，构建 RegExpCursor
+    const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const cursor = new RegExpCursor(view.state.doc, escaped, { ignoreCase: !caseSensitive });
+    while (!cursor.next().done) {
+      matches.push({ from: cursor.value.from, to: cursor.value.to });
+    }
+    searchMatchesRef.current = matches;
+    setSearchCount(matches.length);
+    setSearchIdx(matches.length > 0 ? 1 : 0);
+  }, []);
+
+  const navigateSearch = useCallback((delta: 1 | -1) => {
+    const view = cmView.current;
+    if (!view) return;
+    const matches = searchMatchesRef.current;
+    if (matches.length === 0) return;
+    let newIdx = searchIdx + delta;
+    if (newIdx < 1) newIdx = matches.length;
+    if (newIdx > matches.length) newIdx = 1;
+    setSearchIdx(newIdx);
+    const m = matches[newIdx - 1];
+    view.dispatch({
+      selection: { anchor: m.from, head: m.to },
+      effects: EditorView.scrollIntoView(m.from, { y: "center" }),
     });
-  };
+  }, [searchIdx]);
+
+  const openSearch = useCallback(() => {
+    setSearchVisible(true);
+    setTimeout(() => searchInputRef.current?.focus(), 50);
+  }, []);
+
+  const closeSearch = useCallback(() => {
+    setSearchVisible(false);
+    setSearchText("");
+    runSearch("", false);
+  }, [runSearch]);
+
+  // Ctrl+F 全局快捷键
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        if (searchVisible) {
+          searchInputRef.current?.focus();
+          searchInputRef.current?.select();
+        } else {
+          openSearch();
+        }
+      }
+      if (e.key === "Escape" && searchVisible) {
+        closeSearch();
+      }
+      if (e.key === "Enter" && searchVisible && searchCount > 0) {
+        e.preventDefault();
+        navigateSearch(1);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [searchVisible, searchCount, openSearch, closeSearch, navigateSearch]);
 
   /* ---- Monaco 挂载 ---- */
-  const handleEditorMount = useCallback(() => {}, []);
+  const handleEditorMount = useCallback((editor: any) => {
+    monacoRef.current = editor;
+    // ArrowUp 空输入时弹出历史
+    editor.onKeyDown((e: any) => {
+      if (e.keyCode === 38 /* ArrowUp */) {
+        const model = editor.getModel();
+        if (!model) return;
+        const line = model.getLineContent(1);
+        if (!line.trim()) {
+          e.preventDefault();
+          e.stopPropagation();
+          setShowHistory(true);
+        }
+      }
+    });
+  }, []);
 
   return (
     <div className="terminal-view">
@@ -306,28 +638,60 @@ function TerminalView() {
         <button className="toolbar-btn" onClick={handleClear} title={t("清空接收区")}>
           {t("清空接收区")}
         </button>
-        <button className={`toolbar-btn${searchOpen ? " active" : ""}`} onClick={handleSearch}>
+        <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
           🔍 {t("搜索")}
         </button>
       </div>
 
-      {/* 系统消息区（独立显示开启时） */}
-      {prefs.separateSystemLog && !logCollapsed && systemLog.length > 0 && (
-        <div className="system-log-area">
-          <div className="system-log-header" onClick={() => setLogCollapsed(true)}>
-            <span>{t("系统消息")} ({systemLog.length})</span>
-            <button className="system-log-collapse">△ {t("收起")}</button>
-          </div>
-          <div className="system-log-messages">
-            {systemLog.map((msg, i) => (
-              <div key={i} className="system-log-line">{msg}</div>
-            ))}
-          </div>
+      {/* 搜索条 */}
+      {searchVisible && (
+        <div className="search-bar">
+          <span className="search-icon">🔍</span>
+          <input
+            ref={searchInputRef}
+            className="search-input"
+            type="text"
+            placeholder={t("搜索...")}
+            value={searchText}
+            onChange={(e) => {
+              setSearchText(e.target.value);
+              runSearch(e.target.value, searchCase);
+            }}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                if (e.shiftKey) navigateSearch(-1);
+                else navigateSearch(1);
+              }
+              if (e.key === "Escape") closeSearch();
+            }}
+          />
+          {searchCount > 0 && (
+            <span className="search-count">{searchIdx}/{searchCount}</span>
+          )}
+          <button
+            className={`search-opt${searchCase ? " active" : ""}`}
+            onClick={() => {
+              const next = !searchCase;
+              setSearchCase(next);
+              runSearch(searchText, next);
+            }}
+            title={t("大小写敏感")}
+          >
+            Aa
+          </button>
+          <button className="search-nav" onClick={() => navigateSearch(-1)} title={t("上一个")}>▲</button>
+          <button className="search-nav" onClick={() => navigateSearch(1)} title={t("下一个")}>▼</button>
+          <button className="search-close" onClick={closeSearch} title={t("关闭搜索")}>✕</button>
         </div>
       )}
-      {prefs.separateSystemLog && logCollapsed && (
-        <div className="system-log-collapsed" onClick={() => setLogCollapsed(false)}>
-          ▼ {t("系统消息")} ({systemLog.length})
+
+      {/* 系统消息区（对标 V2 lbSystemLog：固定 36px，独立显示开启时出现） */}
+      {prefs.separateSystemLog && systemLog.length > 0 && (
+        <div className="system-log-area">
+          {systemLog.slice(-2).map((msg, i) => (
+            <div key={i} className="system-log-line">{msg}</div>
+          ))}
         </div>
       )}
 
@@ -350,25 +714,87 @@ function TerminalView() {
         )}
       </div>
 
+      {/* 右键菜单 */}
+      {ctxMenu && (
+        <>
+          <div className="ctx-overlay" onClick={() => setCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }} />
+          <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
+            <div className="ctx-item" onClick={() => handleCtxMenuAction("copy")}>{t("复制")}</div>
+            <div className="ctx-item" onClick={() => handleCtxMenuAction("selectAll")}>{t("全选")}</div>
+            <div className="ctx-divider" />
+            <div className="ctx-item" onClick={() => handleCtxMenuAction("clear")}>{t("清空接收区")}</div>
+            <div className="ctx-item" onClick={() => handleCtxMenuAction("pause")}>{paused ? t("继续接收") : t("暂停接收")}</div>
+          </div>
+        </>
+      )}
+
       {/* 快捷发送条 */}
       <div className="quick-send-bar">
-        {quickSends.map((qs) => (
-          <button key={qs} className="quick-send-pill" onClick={() => handleQuickSend(qs)}>
-            {qs}
+        {Object.entries(quickSends).map(([name, content]) => (
+          <button
+            key={name}
+            className="quick-send-pill"
+            onClick={() => handleQuickSend(content)}
+            onContextMenu={(e) => handleQuickSendCtxMenu(name, e)}
+            title={content}
+          >
+            {name}
           </button>
         ))}
-        <button className="quick-send-add" title={t("添加快捷发送")}>+ {t("添加")}</button>
+        {qsAdding ? (
+          <div className="quick-send-add-form">
+            <input
+              className="input qs-input"
+              placeholder={t("名称")}
+              value={qsName}
+              onChange={(e) => setQsName(e.target.value)}
+              autoFocus
+            />
+            <input
+              className="input qs-input"
+              placeholder={t("发送内容")}
+              value={qsContent}
+              onChange={(e) => setQsContent(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") handleAddQuickSend(); if (e.key === "Escape") setQsAdding(false); }}
+            />
+            <button className="toolbar-btn" onClick={handleAddQuickSend}>✓</button>
+            <button className="toolbar-btn" onClick={() => setQsAdding(false)}>✕</button>
+          </div>
+        ) : (
+          <button className="quick-send-add" title={t("添加快捷发送")} onClick={() => setQsAdding(true)}>
+            + {t("添加")}
+          </button>
+        )}
       </div>
+
+      {/* 快捷发送右键菜单 */}
+      {qsCtxMenu && (
+        <>
+          <div className="ctx-overlay" onClick={() => setQsCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setQsCtxMenu(null); }} />
+          <div className="ctx-menu" style={{ left: qsCtxMenu.x, top: qsCtxMenu.y }}>
+            <div className="ctx-item" onClick={() => { setSendValue(quickSends[qsCtxMenu.key]); setQsCtxMenu(null); }}>
+              {t("回填到发送区")}
+            </div>
+            <div className="ctx-divider" />
+            <div className="ctx-item ctx-item-danger" onClick={() => handleDeleteQuickSend(qsCtxMenu.key)}>
+              {t("删除")}
+            </div>
+          </div>
+        </>
+      )}
 
       {/* 发送区 */}
       <div className="sender-area">
+        {hexWarning && (
+          <div className="hex-warning">{hexWarning}</div>
+        )}
         <div className="monaco-wrapper">
           <span className="monaco-prefix">&gt;</span>
           <Editor
             height="32px"
             language="plaintext"
             value={sendValue}
-            onChange={(v) => setSendValue(v ?? "")}
+            onChange={handleSendChange}
             theme="vs-dark"
             onMount={handleEditorMount}
             options={{
@@ -392,6 +818,29 @@ function TerminalView() {
           />
         </div>
         <div className="sender-actions">
+          <div className="history-wrapper">
+            <button
+              className={`toolbar-btn${showHistory ? " active" : ""}`}
+              onClick={() => setShowHistory(!showHistory)}
+              title={t("发送历史")}
+              disabled={sendHistory.length === 0}
+            >
+              ▼
+            </button>
+            {showHistory && sendHistory.length > 0 && (
+              <div className="history-dropdown">
+                {sendHistory.map((h, i) => (
+                  <div
+                    key={i}
+                    className="history-item"
+                    onClick={() => handleHistorySelect(h)}
+                  >
+                    {h}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
           <button className="toolbar-btn" onClick={() => setSendValue("")}>
             {t("清空发送区")}
           </button>
