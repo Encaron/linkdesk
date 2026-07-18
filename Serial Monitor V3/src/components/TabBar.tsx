@@ -387,14 +387,31 @@ export default function TabBar({
         return;
       }
 
-      // 重排模式
-      const { tabId, toIndex } = dragState.current;
-      if (toIndex >= 0 && toIndex !== dragState.current.fromIndex) {
-        onReorderTab?.(tabId, toIndex);
+      // 重排模式——先检测是否放到了另一个标签栏上
+      let movedToOtherBar = false;
+      if (_onMoveTab) {
+        const otherBars = document.querySelectorAll(".tab-bar");
+        for (const bar of otherBars) {
+          if (bar === scrollRef.current?.parentElement) continue;
+          const barRect = bar.getBoundingClientRect();
+          if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
+              e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
+            _onMoveTab(dragState.current.tabId);
+            movedToOtherBar = true;
+            break;
+          }
+        }
+      }
+      if (!movedToOtherBar) {
+        const { tabId, toIndex } = dragState.current;
+        if (toIndex >= 0 && toIndex !== dragState.current.fromIndex) {
+          onReorderTab?.(tabId, toIndex);
+        }
       }
       dragState.current.phase = "idle";
       setDragInsertIndex(null);
       setDraggingTabId(null);
+      setPreviewPos(null);
     };
 
     const onKeyDown = (e: KeyboardEvent) => {
