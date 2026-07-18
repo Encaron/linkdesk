@@ -294,40 +294,28 @@ export default function TabBar({
         setDraggingTabId(dragState.current.tabId);
       }
 
-      // 垂直拖拽超过阈值 AND 鼠标在主区 → 切换到分屏模式
-      const inEditorArea = (() => {
-        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-        if (!areaRect) return false;
-        return e.clientX >= areaRect.left && e.clientX <= areaRect.right &&
-               e.clientY >= areaRect.top && e.clientY <= areaRect.bottom;
-      })();
+      // 用 elementFromPoint 直接检测鼠标下有没有标签栏（比 getBoundingClientRect 更可靠）
+      const elUnderMouse = document.elementFromPoint(e.clientX, e.clientY);
+      const overAnyTabBar = elUnderMouse?.closest(".tab-bar") != null;
 
-      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15 && inEditorArea) {
+      const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+      const inPureEditor = areaRect && !overAnyTabBar &&
+        e.clientX >= areaRect.left && e.clientX <= areaRect.right &&
+        e.clientY >= areaRect.top && e.clientY <= areaRect.bottom;
+
+      // reorder → split
+      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15 && inPureEditor) {
         dragState.current.phase = "split";
         onDraggingChange?.(true);
         setDragInsertIndex(null);
       }
 
-      // 反向：从 split 回到标签栏 → 切回 reorder
-      if (dragState.current.phase === "split" && !inEditorArea) {
+      // split → reorder（鼠标回到标签栏上）
+      if (dragState.current.phase === "split" && !inPureEditor) {
         dragState.current.phase = "reorder";
         onDraggingChange?.(false);
         onDragDropZone?.(null);
         setPreviewPos(null);
-        // 重新计算插入位置
-        const tabElements = scrollRef.current?.querySelectorAll<HTMLElement>(".tab-item");
-        if (tabElements && scrollRef.current) {
-          const scrollRect = scrollRef.current.getBoundingClientRect();
-          const mouseX = e.clientX - scrollRect.left + scrollRef.current.scrollLeft;
-          let insertIdx = tabs.length;
-          for (let i = 0; i < tabElements.length; i++) {
-            const rect = tabElements[i].getBoundingClientRect();
-            const midX = rect.left - scrollRect.left + scrollRef.current.scrollLeft + rect.width / 2;
-            if (mouseX < midX) { insertIdx = i; break; }
-          }
-          if (insertIdx > dragState.current.fromIndex) insertIdx--;
-          setDragInsertIndex(insertIdx);
-        }
       }
 
       // ── 分屏模式 ──
