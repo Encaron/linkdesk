@@ -53,7 +53,7 @@ export function Parse(rawLine: string): ParseResult {
     }
   }
 
-  result.plainText = plainText.trimEnd();
+  result.plainText = plainText.trim();
   return result;
 }
 
@@ -79,8 +79,8 @@ function parseBracketContent(content: string): ProtocolMessage | null {
   if (args.length === 0) return null;
 
   return {
-    id: args[0],
-    fields: args.slice(1),
+    id: args[0].trim(),
+    fields: args.slice(1).map((f) => f.trim()),
   };
 }
 
@@ -121,6 +121,6 @@ function splitArgs(content: string): string[] {
     }
   }
 
-  result.push(current);
+  result.push(current.trim());
   return result;
 }

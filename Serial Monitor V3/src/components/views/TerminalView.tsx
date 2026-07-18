@@ -19,6 +19,10 @@ import { useTerminalPrefs, type TerminalPrefs } from "../../core/TerminalPrefsCo
 import { HexToBytes } from "../../core/DataConverter";
 import PreferenceService from "../../core/PreferenceService";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
+import SearchBar from "../terminal/SearchBar";
+import FilterMenu from "../terminal/FilterMenu";
+import CommandPalette from "../terminal/CommandPalette";
+import ReceiveContextMenu from "../terminal/ReceiveContextMenu";
 import "./TerminalView.css";
 
 /* ---- CM6 深色主题 ---- */
@@ -187,7 +191,6 @@ function TerminalView() {
   const [searchCount, setSearchCount] = useState(0);
   const [searchIdx, setSearchIdx] = useState(0);
   const searchMatchesRef = useRef<{ from: number; to: number }[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const [sendHistory, setSendHistory] = useState<string[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [hexWarning, setHexWarning] = useState("");
@@ -200,8 +203,6 @@ function TerminalView() {
   filterModeRef.current = filterMode;
   filterKeywordRef.current = filterKeyword;
   const [paletteOpen, setPaletteOpen] = useState(false);
-  const [paletteQuery, setPaletteQuery] = useState("");
-  const paletteInputRef = useRef<HTMLInputElement>(null);
   const monacoRef = useRef<any>(null);
 
   /* ---- CM6 ---- */
@@ -648,11 +649,7 @@ function TerminalView() {
     });
   }, [searchIdx]);
 
-  const openSearch = useCallback(() => {
-    setSearchVisible(true);
-    setTimeout(() => searchInputRef.current?.focus(), 50);
-  }, []);
-
+  const openSearch = useCallback(() => setSearchVisible(true), []);
   const closeSearch = useCallback(() => {
     setSearchVisible(false);
     setSearchText("");
@@ -676,53 +673,16 @@ function TerminalView() {
       action: () => setPrefs({ ...prefs, showLineNumbers: !prefs.showLineNumbers }) },
   ];
 
-  const openPalette = () => { setPaletteOpen(true); setPaletteQuery(""); setTimeout(() => paletteInputRef.current?.focus(), 50); };
-  const closePalette = () => { setPaletteOpen(false); setPaletteQuery(""); };
-
-  const handlePaletteAction = (cmd: typeof paletteCommands[0]) => {
-    closePalette();
-    cmd.action();
-  };
-
-  const filteredPalette = paletteQuery
-    ? paletteCommands.filter((c) => c.label.toLowerCase().includes(paletteQuery.toLowerCase()))
-    : paletteCommands;
-
-  // Ctrl+Shift+P → Command Palette
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
         e.preventDefault();
-        paletteOpen ? closePalette() : openPalette();
+        setPaletteOpen((p) => !p);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [paletteOpen, paused, prefs.sendMode]);
-
-  // Ctrl+F 全局快捷键
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
-        e.preventDefault();
-        if (searchVisible) {
-          searchInputRef.current?.focus();
-          searchInputRef.current?.select();
-        } else {
-          openSearch();
-        }
-      }
-      if (e.key === "Escape" && searchVisible) {
-        closeSearch();
-      }
-      if (e.key === "Enter" && searchVisible && searchCount > 0) {
-        e.preventDefault();
-        navigateSearch(1);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [searchVisible, searchCount, openSearch, closeSearch, navigateSearch]);
+  }, []);
 
   /* ---- Monaco 挂载 ---- */
   const handleEditorMount = useCallback((editor: any, monaco: any) => {
@@ -760,33 +720,11 @@ function TerminalView() {
 
   return (
     <div className="terminal-view">
-      {/* Command Palette 覆盖层 */}
-      {paletteOpen && (
-        <>
-          <div className="ctx-overlay" onClick={closePalette} />
-          <div className="palette">
-            <input
-              ref={paletteInputRef}
-              className="palette-input"
-              type="text"
-              placeholder={t("输入命令…")}
-              value={paletteQuery}
-              onChange={(e) => setPaletteQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape") closePalette();
-                if (e.key === "Enter" && filteredPalette.length > 0) handlePaletteAction(filteredPalette[0]);
-              }}
-            />
-            <div className="palette-list">
-              {filteredPalette.map((cmd) => (
-                <div key={cmd.id} className="palette-item" onClick={() => handlePaletteAction(cmd)}>
-                  {cmd.label}
-                </div>
-              ))}
-            </div>
-          </div>
-        </>
-      )}
+      <CommandPalette
+        open={paletteOpen}
+        commands={paletteCommands}
+        onClose={() => setPaletteOpen(false)}
+      />
 
       {/* 工具栏 */}
       <div className="terminal-toolbar">
@@ -804,7 +742,6 @@ function TerminalView() {
             className={`toolbar-btn${(filterMode !== "all" || filterKeyword !== "") ? " active" : ""}`}
             onClick={() => {
               if (filterMode !== "all" || filterKeyword !== "") {
-                // 已有筛选 → 清除
                 setFilterMode("all");
                 setFilterKeyword("");
               } else {
@@ -815,37 +752,14 @@ function TerminalView() {
           >
             📡 {t("筛选")}
           </button>
-          {filterPopupOpen && (
-            <>
-              <div className="ctx-overlay" onClick={() => setFilterPopupOpen(false)} />
-              <div className="ctx-menu filter-popup" style={{ top: 32, right: 0 }}>
-                <div className={`ctx-item${filterMode === "all" && filterKeyword === "" ? " ctx-item-checked" : ""}`}
-                  onClick={() => { setFilterMode("all"); setFilterKeyword(""); setFilterPopupOpen(false); }}>
-                  {t("全部")}
-                </div>
-                <div className={`ctx-item${filterMode === "protocol" ? " ctx-item-checked" : ""}`}
-                  onClick={() => { setFilterMode("protocol"); setFilterPopupOpen(false); }}>
-                  📡 {t("仅协议消息")}
-                </div>
-                <div className={`ctx-item${filterMode === "plain" ? " ctx-item-checked" : ""}`}
-                  onClick={() => { setFilterMode("plain"); setFilterPopupOpen(false); }}>
-                  {t("仅普通文本")}
-                </div>
-                <div className="ctx-divider" />
-                <div className="ctx-item-label">{t("关键字过滤")}</div>
-                <div className="ctx-item-input">
-                  <input
-                    className="input"
-                    style={{ width: "100%", height: 24, fontSize: 11 }}
-                    placeholder={t("输入关键字…")}
-                    value={filterKeyword}
-                    onChange={(e) => setFilterKeyword(e.target.value)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          <FilterMenu
+            open={filterPopupOpen}
+            filterMode={filterMode}
+            filterKeyword={filterKeyword}
+            onClose={() => setFilterPopupOpen(false)}
+            onModeChange={setFilterMode}
+            onKeywordChange={setFilterKeyword}
+          />
         </div>
 
         <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
@@ -853,48 +767,18 @@ function TerminalView() {
         </button>
       </div>
 
-      {/* 搜索条 */}
-      {searchVisible && (
-        <div className="search-bar">
-          <span className="search-icon">🔍</span>
-          <input
-            ref={searchInputRef}
-            className="search-input"
-            type="text"
-            placeholder={t("搜索...")}
-            value={searchText}
-            onChange={(e) => {
-              setSearchText(e.target.value);
-              runSearch(e.target.value, searchCase);
-            }}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                if (e.shiftKey) navigateSearch(-1);
-                else navigateSearch(1);
-              }
-              if (e.key === "Escape") closeSearch();
-            }}
-          />
-          {searchCount > 0 && (
-            <span className="search-count">{searchIdx}/{searchCount}</span>
-          )}
-          <button
-            className={`search-opt${searchCase ? " active" : ""}`}
-            onClick={() => {
-              const next = !searchCase;
-              setSearchCase(next);
-              runSearch(searchText, next);
-            }}
-            title={t("大小写敏感")}
-          >
-            Aa
-          </button>
-          <button className="search-nav" onClick={() => navigateSearch(-1)} title={t("上一个")}>▲</button>
-          <button className="search-nav" onClick={() => navigateSearch(1)} title={t("下一个")}>▼</button>
-          <button className="search-close" onClick={closeSearch} title={t("关闭搜索")}>✕</button>
-        </div>
-      )}
+      <SearchBar
+        visible={searchVisible}
+        text={searchText}
+        caseSensitive={searchCase}
+        matchCount={searchCount}
+        matchIndex={searchIdx}
+        onTextChange={(v) => { setSearchText(v); runSearch(v, searchCase); }}
+        onCaseToggle={(cs) => { setSearchCase(cs); runSearch(searchText, cs); }}
+        onNavigate={navigateSearch}
+        onClose={closeSearch}
+        onOpen={openSearch}
+      />
 
       {/* 系统消息区（对标 V2 lbSystemLog：固定 36px，独立显示开启时出现） */}
       {prefs.separateSystemLog && systemLog.length > 0 && (
@@ -926,16 +810,15 @@ function TerminalView() {
 
       {/* 右键菜单 */}
       {ctxMenu && (
-        <>
-          <div className="ctx-overlay" onClick={() => setCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setCtxMenu(null); }} />
-          <div className="ctx-menu" style={{ left: ctxMenu.x, top: ctxMenu.y }}>
-            <div className="ctx-item" onClick={() => handleCtxMenuAction("copy")}>{t("复制")}</div>
-            <div className="ctx-item" onClick={() => handleCtxMenuAction("selectAll")}>{t("全选")}</div>
-            <div className="ctx-divider" />
-            <div className="ctx-item" onClick={() => handleCtxMenuAction("clear")}>{t("清空接收区")}</div>
-            <div className="ctx-item" onClick={() => handleCtxMenuAction("pause")}>{paused ? t("继续接收") : t("暂停接收")}</div>
-          </div>
-        </>
+        <ReceiveContextMenu
+          x={ctxMenu.x} y={ctxMenu.y}
+          paused={paused}
+          onClose={() => setCtxMenu(null)}
+          onCopy={() => handleCtxMenuAction("copy")}
+          onSelectAll={() => handleCtxMenuAction("selectAll")}
+          onClear={() => handleCtxMenuAction("clear")}
+          onTogglePause={() => handleCtxMenuAction("pause")}
+        />
       )}
 
       {/* 快捷发送条 */}

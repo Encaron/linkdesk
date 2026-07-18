@@ -113,6 +113,7 @@ html, body, #root {
   transition: transform 150ms;
 }
 .toggle.on::after { transform: translateX(16px); }
+.toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .input {
   background: var(--bg-input);
