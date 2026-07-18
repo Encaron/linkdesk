@@ -1,0 +1,36 @@
+.status-bar {
+  display: flex;
+  align-items: center;
+  padding: 4px 10px;
+  background: var(--bg-window);
+  border-top: 1px solid var(--separator);
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-disconnected);
+  transition: background 300ms;
+}
+
+.status-dot.connected {
+  background: var(--status-connected);
+}
+
+.status-text {
+  color: var(--text-secondary);
+}
+
+.status-divider {
+  color: var(--separator);
+}
+
+.status-traffic {
+  font-size: 10px;
+  color: var(--text-muted);
+}

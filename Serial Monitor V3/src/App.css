@@ -1,0 +1,25 @@
+.app-shell {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100%;
+  overflow: hidden;
+}
+
+.app-body {
+  display: flex;
+  overflow: hidden;
+}
+
+/* 侧栏拖拽手柄 */
+.sidebar-resize-handle {
+  width: 4px;
+  cursor: col-resize;
+  background: var(--separator);
+  flex-shrink: 0;
+  transition: background 150ms;
+  user-select: none;
+}
+
+.sidebar-resize-handle:hover {
+  background: var(--accent);
+}

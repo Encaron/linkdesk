@@ -1,0 +1,57 @@
+.icon-bar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 8px;
+  gap: 2px;
+  background: #18181B;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background 150ms;
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.icon-btn.active {
+  background: radial-gradient(circle at center, rgba(0, 120, 212, 0.12), transparent 70%);
+}
+
+.icon-btn.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.icon-img {
+  width: 20px;
+  height: 20px;
+  opacity: 0.55;
+  filter: brightness(0) saturate(100%) invert(55%) sepia(0%) saturate(0%) hue-rotate(0deg);
+  transition: opacity 150ms, filter 150ms;
+}
+
+.icon-btn:hover .icon-img {
+  opacity: 0.85;
+}
+
+.icon-btn.active .icon-img {
+  opacity: 1;
+  filter: brightness(0) saturate(100%) invert(100%);
+}
