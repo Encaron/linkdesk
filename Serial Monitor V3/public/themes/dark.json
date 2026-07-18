@@ -1,0 +1,30 @@
+{
+  "name": "Dark",
+  "type": "dark",
+  "colors": {
+    "bg-window": "#1E1E1E",
+    "bg-card": "#2D2D2D",
+    "bg-status": "#007ACC",
+    "bg-input": "#3C3C3C",
+    "text-primary": "#D4D4D4",
+    "text-secondary": "#9D9D9D",
+    "text-muted": "#6A6A6A",
+    "accent": "#0E639C",
+    "accent-hover": "#1177BB",
+    "border": "#3C3C3C",
+    "separator": "#474747",
+    "icon-active": "#FFFFFF",
+    "icon-inactive": "#858585",
+    "system-log": "#6A6A6A",
+    "sent-echo": "#0E639C",
+    "received": "#D4D4D4",
+    "status-connected": "#4EC9B0",
+    "status-disconnected": "#6A6A6A",
+    "scrollbar-thumb": "rgba(255, 255, 255, 0.15)",
+    "scrollbar-thumb-hover": "rgba(255, 255, 255, 0.25)",
+    "tab-hover-bg": "#353535",
+    "drop-indicator": "rgba(14, 99, 156, 0.20)",
+    "dirty-dot": "#CCA700",
+    "context-menu-shadow": "0 4px 12px rgba(0, 0, 0, 0.3)"
+  }
+}

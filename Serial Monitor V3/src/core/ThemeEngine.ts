@@ -1,0 +1,38 @@
+/**
+ * 主题引擎——读 JSON 主题文件 → 写 CSS 变量。
+ * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
+ */
+
+export interface ThemeColors {
+  [key: string]: string;
+}
+
+export interface Theme {
+  name: string;
+  type: "dark" | "light";
+  colors: ThemeColors;
+}
+
+let currentTheme: Theme | null = null;
+
+/** 从 URL 加载主题 JSON（Vite 下 themes/ 目录通过 public 可访问） */
+export async function loadTheme(themeName: string): Promise<Theme> {
+  const res = await fetch(`/themes/${themeName.toLowerCase()}.json`);
+  if (!res.ok) throw new Error(`主题 "${themeName}" 未找到`);
+  return res.json();
+}
+
+/** 应用主题：把 JSON 的所有颜色写入 CSS 变量 */
+export function applyTheme(theme: Theme): void {
+  const root = document.documentElement;
+  for (const [key, value] of Object.entries(theme.colors)) {
+    root.style.setProperty(`--${key}`, value);
+  }
+  root.setAttribute("data-theme", theme.type);
+  currentTheme = theme;
+}
+
+/** 获取当前主题 */
+export function getCurrentTheme(): Theme | null {
+  return currentTheme;
+}

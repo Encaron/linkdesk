@@ -1,5 +1,6 @@
 :root {
-  /* 暗色主题（Phase 1 默认） */
+  /* 暗色主题默认值——ThemeEngine 会在启动时从 themes/dark.json 覆盖。
+     如果 JSON 加载失败，这里的值作为 fallback 保证软件可用。 */
   --bg-window: #1E1E1E;
   --bg-card: #2D2D2D;
   --bg-status: #007ACC;
@@ -20,9 +21,13 @@
   --status-disconnected: #6A6A6A;
   --scrollbar-thumb: rgba(255, 255, 255, 0.15);
   --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+  /* Phase 3 新增 */
+  --tab-hover-bg: #353535;
+  --drop-indicator: rgba(14, 99, 156, 0.20);
+  --dirty-dot: #CCA700;
+  --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
 }
 
-/* 亮色主题（Phase 4 激活） */
 [data-theme="light"] {
   --bg-window: #FFFFFF;
   --bg-card: #F5F5F5;
@@ -44,6 +49,11 @@
   --status-disconnected: #999999;
   --scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  /* Phase 3 新增 */
+  --tab-hover-bg: #E8E8E8;
+  --drop-indicator: rgba(0, 120, 212, 0.15);
+  --dirty-dot: #D4A017;
+  --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
 }
 
 *,

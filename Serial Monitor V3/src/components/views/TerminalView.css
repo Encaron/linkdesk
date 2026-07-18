@@ -394,7 +394,8 @@
   transition: background 100ms;
 }
 
-.palette-item:hover {
+.palette-item:hover,
+.palette-item.selected {
   background: var(--accent);
   color: white;
 }

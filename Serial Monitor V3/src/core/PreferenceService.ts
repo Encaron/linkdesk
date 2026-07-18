@@ -3,9 +3,30 @@
  * GUI 操作、文件监听、未来 WebSocket——三条路全走它。
  * 遵守 V3 设计方案 §1.5 的硬约束：没有"人用的 API"和"AI 用的 API"两套东西。
  *
- * Phase 1：从 prefs.json 读写全局配置。
- * Step 7 接入文件监听后，外部修改 prefs.json 可自动同步。
+ * Phase 3 Step 0：localStorage → Tauri 文件系统。
+ * prefs.json 存储在应用数据目录，跨版本保留。
+ *
+ * 读取模式：启动时异步加载到内存缓存，后续 `loadPrefs()` 同步返回缓存。
+ * 写入模式：立即更新缓存 + 异步写文件。
  */
+
+// Tauri API——仅在 Tauri 环境（tauri dev / 打包后）可用。
+// Vite dev（npm run dev）下这些模块的函数会抛出异常，由 isTauri() 判断兜底到 localStorage。
+let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
+let pathApi: typeof import("@tauri-apps/api/path") | null = null;
+
+async function isTauri(): Promise<boolean> {
+  if (fsApi && pathApi) return true;
+  try {
+    fsApi = await import("@tauri-apps/plugin-fs");
+    pathApi = await import("@tauri-apps/api/path");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/* ── 类型 ── */
 
 export interface Prefs {
   window: {
@@ -14,7 +35,7 @@ export interface Prefs {
     width: number;
     height: number;
   };
-  theme: "Dark" | "Light";
+  theme: "Dark" | "Light" | string;
   lastPort: string;
   preferences: {
     timestampFormat: string;
@@ -35,8 +56,10 @@ export interface Prefs {
 
 export interface Workspace {
   name: string;
-  cards: unknown[]; // Phase 2 后细化为 Card[]
+  cards: unknown[];
 }
+
+/* ── 默认值 ── */
 
 const DEFAULT_PREFS: Prefs = {
   window: { left: 100, top: 50, width: 960, height: 640 },
@@ -61,40 +84,149 @@ const DEFAULT_PREFS: Prefs = {
 
 const PREFS_KEY = "v3_prefs";
 
-class PreferenceService {
-  /** 加载全局配置 */
-  static loadPrefs(): Prefs {
-    try {
-      const raw = localStorage.getItem(PREFS_KEY);
-      if (raw) {
-        return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
-      }
-    } catch {
-      // 解析失败则用默认
-    }
-    return { ...DEFAULT_PREFS };
-  }
+/* ── 内存缓存 + 路径 ── */
 
-  /** 保存全局配置 */
-  static savePrefs(prefs: Prefs): void {
+let _cache: Prefs | null = null;
+let _prefsPath: string | null = null;
+let _workspacesDir: string | null = null;
+
+async function prefsPath(): Promise<string> {
+  if (!_prefsPath && pathApi) {
+    _prefsPath = await pathApi.join(await pathApi.appDataDir(), "prefs.json");
+  }
+  return _prefsPath || "prefs.json";
+}
+
+async function workspacesDir(): Promise<string> {
+  if (!_workspacesDir && pathApi) {
+    _workspacesDir = await pathApi.join(await pathApi.appDataDir(), "workspaces");
+  }
+  return _workspacesDir || "workspaces";
+}
+
+/* ── localStorage 读写（Vite dev 模式 fallback） ── */
+
+function loadFromLocalStorage(): Prefs {
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (raw) return { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+  } catch { /* ignore */ }
+  return { ...DEFAULT_PREFS };
+}
+
+function saveToLocalStorage(prefs: Prefs): void {
+  try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs, null, 2));
+  } catch { /* ignore */ }
+}
+
+let _useLocalStorage = false;
+
+/* ── 初始化（App 启动时调一次） ── */
+
+let _initPromise: Promise<Prefs> | null = null;
+
+async function _init(): Promise<Prefs> {
+  // 检测 Tauri 环境
+  if (!(await isTauri())) {
+    _useLocalStorage = true;
+    _cache = loadFromLocalStorage();
+    return _cache;
   }
 
-  /** 加载工作区（Phase 2 实现——从文件系统读 workspace.json） */
-  static loadWorkspace(_name: string): Workspace | null {
-    // Phase 2: Tauri fs API 读 workspace_{name}.json
-    return null;
+  // 1. 尝试读文件
+  try {
+    const path = await prefsPath();
+    if (await fsApi!.exists(path)) {
+      const raw = await fsApi!.readTextFile(path);
+      _cache = { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+      return _cache!;
+    }
+  } catch { /* 文件不存在或损坏，继续 */ }
+
+  // 2. 尝试从 localStorage 迁移旧数据
+  try {
+    const raw = localStorage.getItem(PREFS_KEY);
+    if (raw) {
+      _cache = { ...DEFAULT_PREFS, ...JSON.parse(raw) };
+      localStorage.removeItem(PREFS_KEY);
+      // 异步写入文件（不阻塞）
+      const path = await prefsPath();
+      const dir = await pathApi!.appDataDir();
+      if (!(await fsApi!.exists(dir))) await fsApi!.mkdir(dir, { recursive: true });
+      await fsApi!.writeTextFile(path, JSON.stringify(_cache, null, 2));
+      return _cache!;
+    }
+  } catch { /* 迁移失败，继续 */ }
+
+  // 3. 全部失败 → 默认值
+  _cache = { ...DEFAULT_PREFS };
+  return _cache;
+}
+
+/** 初始化 PreferenceService——App 启动时调用一次。返回 Promise，完成后所有 loadPrefs() 调用同步返回。 */
+export function initPrefs(): Promise<Prefs> {
+  if (!_initPromise) _initPromise = _init();
+  return _initPromise;
+}
+
+/* ── 读写 ── */
+
+class PreferenceService {
+  /** 同步读取全局配置——必须等 initPrefs() 完成后才能调用 */
+  static loadPrefs(): Prefs {
+    if (!_cache) throw new Error("PreferenceService 未初始化——请先 await initPrefs()");
+    return _cache;
+  }
+
+  /** 保存全局配置：立即更新缓存 + 写持久化层 */
+  static async savePrefs(prefs: Prefs): Promise<void> {
+    _cache = prefs;
+    if (_useLocalStorage) {
+      saveToLocalStorage(prefs);
+      return;
+    }
+    try {
+      const path = await prefsPath();
+      const dir = await pathApi!.appDataDir();
+      if (!(await fsApi!.exists(dir))) await fsApi!.mkdir(dir, { recursive: true });
+      await fsApi!.writeTextFile(path, JSON.stringify(prefs, null, 2));
+    } catch { /* 写入失败不影响缓存 */ }
+  }
+
+  /** 加载工作区 */
+  static async loadWorkspace(name: string): Promise<Workspace | null> {
+    if (_useLocalStorage) return null;
+    try {
+      const dir = await workspacesDir();
+      const path = await pathApi!.join(dir, `${name}.json`);
+      if (!(await fsApi!.exists(path))) return null;
+      const raw = await fsApi!.readTextFile(path);
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
   }
 
   /** 保存工作区 */
-  static saveWorkspace(_name: string, _ws: Workspace): void {
-    // Phase 2: Tauri fs API 写 workspace_{name}.json
+  static async saveWorkspace(name: string, ws: Workspace): Promise<void> {
+    if (_useLocalStorage) return;
+    try {
+      const dir = await workspacesDir();
+      if (!(await fsApi!.exists(dir))) await fsApi!.mkdir(dir, { recursive: true });
+      const path = await pathApi!.join(dir, `${name}.json`);
+      await fsApi!.writeTextFile(path, JSON.stringify(ws, null, 2));
+    } catch { /* 静默 */ }
   }
 
   /** 列出所有工作区 */
-  static listWorkspaces(): string[] {
-    // Phase 2: Tauri fs API 扫描 workspaces/ 目录
-    return [];
+  static async listWorkspaces(): Promise<string[]> {
+    try {
+      // Phase 4：使用 readDir 枚举 workspaces/ 目录
+      return [];
+    } catch {
+      return [];
+    }
   }
 }
 

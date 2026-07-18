@@ -155,9 +155,9 @@ function TerminalView() {
     try {
       const prefs = PreferenceService.loadPrefs();
       prefs.quickSends = updated;
-      PreferenceService.savePrefs(prefs);
+      PreferenceService.savePrefs(prefs).catch(() => {});
     } catch {
-      // localStorage 不可用时静默
+      // 静默
     }
   }, []);
 

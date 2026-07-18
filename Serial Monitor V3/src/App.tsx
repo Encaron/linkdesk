@@ -6,8 +6,9 @@ import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import TopBar from "./components/TopBar";
 import StatusBar from "./components/StatusBar";
-import PreferenceService from "./core/PreferenceService";
+import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
+import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import "./App.css";
 
 export type ViewId = "terminal" | "workspace" | "settings";
@@ -17,28 +18,32 @@ interface PortInfo {
   description: string;
 }
 
-/** 从 PreferenceService 读取已保存的终端设置（有则用，无则默认） */
-function loadTerminalPrefs(): TerminalPrefs {
-  try {
-    const saved = PreferenceService.loadPrefs().preferences;
-    return { ...defaultTerminalPrefs, ...saved };
-  } catch {
-    return { ...defaultTerminalPrefs };
-  }
-}
-
 function App() {
+  const [ready, setReady] = useState(false);
   const [activeView, setActiveView] = useState<ViewId>("terminal");
   const [lastContentView, setLastContentView] = useState<ViewId>("terminal");
   const [isOpen, setIsOpen] = useState(false);
-  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>(loadTerminalPrefs);
+  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>({ ...defaultTerminalPrefs });
   const [ports, setPorts] = useState<PortInfo[]>([]);
-  const [portName, setPortName] = useState(() => {
-    try { return PreferenceService.loadPrefs().lastPort; } catch { return "COM3"; }
-  });
+  const [portName, setPortName] = useState("COM3");
   const [baudRate, setBaudRate] = useState("115200");
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
+
+  /* ---- 启动初始化：PreferenceService → 加载主题 → 设置 state ---- */
+  useEffect(() => {
+    initPrefs().then((prefs) => {
+      // 主题
+      loadTheme(prefs.theme || "Dark")
+        .then(applyTheme)
+        .catch(() => { /* CSS fallback 生效 */ });
+
+      // 恢复状态
+      setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
+      setPortName(prefs.lastPort || "COM3");
+      setReady(true);
+    });
+  }, []);
 
   /* ---- 侧栏拖拽调整宽度（直接操作 DOM，不经过 React） ---- */
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -130,7 +135,7 @@ function App() {
     try {
       const prefs = PreferenceService.loadPrefs();
       prefs.preferences = terminalPrefs as any;
-      PreferenceService.savePrefs(prefs);
+      PreferenceService.savePrefs(prefs).catch(() => {});
     } catch { /* 静默 */ }
   }, [terminalPrefs]);
 
@@ -139,7 +144,7 @@ function App() {
     try {
       const prefs = PreferenceService.loadPrefs();
       prefs.lastPort = portName;
-      PreferenceService.savePrefs(prefs);
+      PreferenceService.savePrefs(prefs).catch(() => {});
     } catch { /* 静默 */ }
   }, [portName]);
 
@@ -175,6 +180,8 @@ function App() {
       setRxBytes(0);
     }
   }, [isOpen]);
+
+  if (!ready) return null; // 等待 initPrefs() 完成
 
   return (
     <div className="app-shell">
