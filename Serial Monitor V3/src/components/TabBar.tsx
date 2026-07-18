@@ -300,17 +300,17 @@ export default function TabBar({
 
   const findOtherContainer = useCallback(
     (clientX: number, clientY: number, ownContainer: HTMLElement) => {
-      if (!_onMoveTab) return null;
+      if (!_onMoveTab) return false;
       const otherBars = document.querySelectorAll(".tab-bar");
       for (const bar of otherBars) {
         if (bar === ownContainer.parentElement) continue;
         const barRect = bar.getBoundingClientRect();
         if (clientX >= barRect.left && clientX <= barRect.right &&
             clientY >= barRect.top && clientY <= barRect.bottom) {
-          return bar.getAttribute("data-group-id");
+          return true;
         }
       }
-      return null;
+      return false;
     },
     [_onMoveTab]
   );

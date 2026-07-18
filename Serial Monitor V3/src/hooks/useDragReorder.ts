@@ -58,8 +58,8 @@ export interface UseDragReorderOptions {
   ) => number;
   /** 检测鼠标是否在"纯编辑器区域"（不在任何标签栏上方），用于触发 reorder→split */
   isInPureEditor?: (clientX: number, clientY: number) => boolean;
-  /** 检测是否放在了另一个容器上。返回 null 表示没放上去 */
-  findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => string | null;
+  /** 检测是否放在了另一个容器上。返回 true 表示已处理（会调 onMoveToOther） */
+  findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => boolean;
   /** 计算分屏 drop zone。返回 null 表示不在有效区域 */
   computeSplitZone?: (clientX: number, clientY: number) => DropZone;
 }
@@ -196,8 +196,7 @@ export function useDragReorder(
         // 检测是否放到另一个容器上
         let moved = false;
         if (onMoveToOther && findOtherContainer) {
-          const otherId = findOtherContainer(e.clientX, e.clientY, container);
-          if (otherId) {
+          if (findOtherContainer(e.clientX, e.clientY, container)) {
             onMoveToOther(ds.tabId);
             moved = true;
           }
@@ -219,8 +218,7 @@ export function useDragReorder(
       // 重排模式——先检测是否放到了另一个容器上
       let moved = false;
       if (onMoveToOther && findOtherContainer) {
-        const otherId = findOtherContainer(e.clientX, e.clientY, container);
-        if (otherId) {
+        if (findOtherContainer(e.clientX, e.clientY, container)) {
           onMoveToOther(ds.tabId);
           moved = true;
         }
