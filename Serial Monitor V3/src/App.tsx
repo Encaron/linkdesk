@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTabManager, allTabs, type TabType } from "./hooks/useTabManager";
+import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
@@ -247,7 +248,7 @@ function App() {
             activeTabId: g.activeTabId,
           })),
           activeGroupId: tabState.activeGroupId,
-          split: tabState.split,
+          root: tabState.root,
         };
         PreferenceService.savePrefs(prefs).catch(() => {});
       } catch { /* 静默 */ }
@@ -258,7 +259,7 @@ function App() {
     return () => {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };
-  }, [tabState.groups, tabState.activeGroupId, tabState.split]);
+  }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
   // Phase 3: 全局键盘快捷键（§10.5）
   useEffect(() => {
@@ -295,8 +296,9 @@ function App() {
       // Ctrl+\: 分屏切换
       if (e.ctrlKey && e.key === "\\") {
         e.preventDefault();
-        if (tabState.split) {
-          unsplit();
+        const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
+        if (isSplit) {
+          unsplit(tabState.activeGroupId);
         } else {
           const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
           if (activeGroup && activeGroup.tabs.length > 1) {

@@ -6,6 +6,7 @@
 
 import { useCallback } from "react";
 import type { TabState, TabGroup } from "../hooks/useTabManager";
+import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import TerminalView from "./views/TerminalView";
@@ -24,7 +25,7 @@ interface MainContentProps {
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
   onDropSplit: (tabId: string, zone: any) => void;
-  onSplitResize?: (sizes: [number, number]) => void;
+  onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
   dropZone?: any;
   editorAreaRef?: any;
   dragDropZone?: any;
@@ -78,8 +79,8 @@ function MainContent({
 }: MainContentProps) {
 
   const handleAllotmentChange = useCallback(
-    (sizes: number[]) => {
-      if (sizes.length === 2) onSplitResize?.(sizes as [number, number]);
+    (sizes: number[], anchorGroupId: string) => {
+      if (sizes.length === 2) onSplitResize?.(anchorGroupId, sizes as [number, number]);
     },
     [onSplitResize]
   );
@@ -91,7 +92,7 @@ function MainContent({
 
   /** 渲染一个面板组——标签栏 + 内容区 */
   const renderGroup = (group: TabGroup) => (
-    <div className="tab-group-pane" key={group.id} style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0 }}>
+    <div className="tab-group-pane" key={group.id} data-group-id={group.id} style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0 }}>
       <TabBar
         group={group}
         isActiveGroup={group.id === activeGroupId}
@@ -100,9 +101,10 @@ function MainContent({
         onCreateTab={onCreateTab}
         onSplitTab={onSplitTab}
         onMoveTab={(tabId) => {
-          // move to the other group in split
-          const otherGroup = tabState.groups.find((g) => g.id !== group.id);
-          if (otherGroup) onMoveTab(tabId, otherGroup.id);
+          // move to any other group in the tree
+          const allLeafIds = getAllLeafGroupIds(tabState.root);
+          const otherGroupId = allLeafIds.find((id) => id !== group.id);
+          if (otherGroupId) onMoveTab(tabId, otherGroupId);
         }}
         onReorderTab={onReorderTab}
         onDropSplit={onDropSplit}
@@ -128,9 +130,11 @@ function MainContent({
     </div>
   );
 
-  // ── 分屏模式 ──
-  if (tabState.split) {
-    const [g1Id, g2Id] = tabState.split.groupIds;
+  // ── 分屏模式（2-pane）──
+  if (tabState.root.type === "branch") {
+    const [child0, child1] = tabState.root.children;
+    const g1Id = child0.type === "leaf" ? child0.groupId : getAllLeafGroupIds(child0)[0];
+    const g2Id = child1.type === "leaf" ? child1.groupId : getAllLeafGroupIds(child1)[0];
     const g1 = tabState.groups.find((g) => g.id === g1Id);
     const g2 = tabState.groups.find((g) => g.id === g2Id);
     if (!g1 || !g2) return null;
@@ -139,9 +143,9 @@ function MainContent({
       <div className="main-content">
         {dropOverlay}
         <SplitPane
-          direction={tabState.split.direction}
-          sizes={tabState.split.sizes}
-          onResize={handleAllotmentChange}
+          direction={tabState.root.direction}
+          sizes={tabState.root.sizes}
+          onResize={(sizes) => handleAllotmentChange(sizes, g1Id)}
         >
           {renderGroup(g1)}
           {renderGroup(g2)}
@@ -151,7 +155,8 @@ function MainContent({
   }
 
   // ── 单面板模式 ──
-  const mainGroup = tabState.groups[0];
+  const mainGroupId = tabState.root.type === "leaf" ? tabState.root.groupId : null;
+  const mainGroup = mainGroupId ? tabState.groups.find((g) => g.id === mainGroupId) : tabState.groups[0];
   if (!mainGroup) return null;
 
   return (

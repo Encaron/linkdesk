@@ -6,6 +6,16 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import {
+  type SplitNode,
+  getAllLeafGroupIds,
+  treeDepth,
+  MAX_TREE_DEPTH,
+  findParentInTree,
+  replaceLeafWithBranch,
+  removeLeafFromTree,
+  migrateLayout,
+} from "./splitTree";
 
 /* ── 类型 ── */
 
@@ -26,22 +36,21 @@ export interface TabGroup {
   activeTabId: string;
 }
 
-export interface SplitLayout {
-  direction: "horizontal" | "vertical";
-  groupIds: [string, string];
-  sizes: [number, number];
-}
-
+/** 布局持久化格式（v2：递归树） */
 export interface LayoutData {
   groups: { id: string; tabs: Tab[]; activeTabId: string }[];
   activeGroupId: string;
-  split: SplitLayout | null;
+  /** 新格式（Phase 3.x）：递归分裂树 */
+  root?: SplitNode;
+  /** @deprecated 旧格式（Phase 3 v4）：扁平 SplitLayout——启动时自动迁移 */
+  split?: { direction: "horizontal" | "vertical"; groupIds: [string, string]; sizes: [number, number] } | null;
 }
 
 export interface TabState {
   groups: TabGroup[];
   activeGroupId: string;
-  split: SplitLayout | null;
+  /** 递归分裂树——单面板时 = { type:"leaf", groupId:"main" } */
+  root: SplitNode;
 }
 
 /** 派生：平板化所有组中的标签页 */
@@ -144,7 +153,7 @@ export function createInitialTabState(): TabState {
   return {
     groups: [{ id: "main", tabs: [terminal], activeTabId: terminal.id }],
     activeGroupId: "main",
-    split: null,
+    root: { type: "leaf", groupId: "main" },
   };
 }
 
@@ -273,16 +282,23 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 
   // 从组中移除
   const remaining = group.tabs.filter((t) => t.id !== tabId);
-  let newSplit = prev.split;
 
-  // 该组变空 → unsplit 或切换活跃组
+  // 该组变空 → 从树中移除该 leaf
   if (remaining.length === 0) {
-    if (prev.split) {
-      // 分屏中 → 关掉一个组 → unsplit
-      const otherGroupId = prev.split.groupIds.find((id) => id !== group.id)!;
-      const otherGroup = prev.groups.find((g) => g.id === otherGroupId)!;
-      const newState = ensureTerminal({ groups: prev.groups.filter((g) => g.id !== group.id), activeGroupId: otherGroupId, split: null });
-      return { closed: true, tabId, reason: "unsplit", state: newState, newActiveTabId: otherGroup.activeTabId };
+    const allLeafIds = getAllLeafGroupIds(prev.root);
+    if (allLeafIds.length > 1) {
+      // 多面板 → 移除该 leaf
+      const result = removeLeafFromTree(prev.root, group.id);
+      if (result) {
+        const newGroups = prev.groups.filter((g) => g.id !== group.id);
+        const survivingGroup = prev.groups.find((g) => g.id === result.survivingSiblingGroupId);
+        const newState = ensureTerminal({
+          groups: newGroups,
+          activeGroupId: result.survivingSiblingGroupId,
+          root: result.tree,
+        });
+        return { closed: true, tabId, reason: "unsplit", state: newState, newActiveTabId: survivingGroup?.activeTabId ?? "" };
+      }
     }
     // 单面板 + 最后一个标签页已关 → 不应该到这里（终端保底已拦截）
     return { closed: false, tabId, reason: "blocked" };
@@ -296,7 +312,7 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   const result = ensureTerminal({
     groups: newGroups,
     activeGroupId: prev.activeGroupId,
-    split: newSplit,
+    root: prev.root,
   });
 
   return {
@@ -329,8 +345,14 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
     ? (sourceRemaining[0]?.id ?? "")
     : sourceGroup.activeTabId;
 
-  // 如果源组变空
+  // 如果源组变空 → 从树中移除该 leaf
   if (sourceRemaining.length === 0) {
+    const allLeafIds = getAllLeafGroupIds(prev.root);
+    let newRoot = prev.root;
+    if (allLeafIds.length > 1) {
+      const result = removeLeafFromTree(prev.root, sourceGroup.id);
+      if (result) newRoot = result.tree;
+    }
     const newGroups = prev.groups
       .filter((g) => g.id !== sourceGroup.id)
       .map((g) =>
@@ -342,7 +364,7 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
       ...prev,
       groups: newGroups,
       activeGroupId: targetGroupId,
-      split: null, // 一个组空了 → unsplit
+      root: newRoot,
     };
   }
 
@@ -357,23 +379,18 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
   };
 }
 
-/** 分屏 */
+/** 分屏——在标签页所在面板的方向创建一个新面板（对标 VS Code） */
 export function reduceSplitTab(
   prev: TabState,
   tabId: string,
   direction: "horizontal" | "vertical"
 ): TabState {
-  // 已分屏且方向相同 → 忽略
-  if (prev.split && prev.split.direction === direction) return prev;
-
-  // 已分屏但方向不同 → 切换方向（保持标签页布局不变）
-  if (prev.split) {
-    return { ...prev, split: { ...prev.split, direction } };
-  }
+  // 深度限制
+  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return prev;
 
   const sourceGroup = findGroup(prev, tabId);
   if (!sourceGroup) return prev;
-  if (sourceGroup.tabs.length < 2 && allTabs(prev).length < 2) return prev;
+  if (sourceGroup.tabs.length < 1) return prev;
 
   const tab = sourceGroup.tabs.find((t) => t.id === tabId)!;
   const sourceRemaining = sourceGroup.tabs.filter((t) => t.id !== tabId);
@@ -381,49 +398,83 @@ export function reduceSplitTab(
     ? (sourceRemaining[0]?.id ?? "")
     : sourceGroup.activeTabId;
 
+  // 创建新 group（含被拖走的 tab）
   const newGroup = createGroup([tab]);
 
-  const side = direction === "horizontal"
-    ? ([sourceGroup.id, newGroup.id] as [string, string])
-    : ([newGroup.id, sourceGroup.id] as [string, string]);
+  // 树操作：找到源 group 在树中的 leaf，替换为 branch(方向, [原leaf, 新leaf])
+  const newRoot = replaceLeafWithBranch(prev.root, sourceGroup.id, direction, newGroup.id);
+  if (!newRoot) return prev;  // groupId 不在树中，不应该发生
 
-  return {
-    activeGroupId: newGroup.id,
-    split: { direction, groupIds: side, sizes: [50, 50] },
-    groups: prev.groups.map((g) =>
+  const newGroups = prev.groups
+    .map((g) =>
       g.id === sourceGroup.id
         ? { ...g, tabs: sourceRemaining, activeTabId: sourceActiveId }
         : g
-    ).concat(newGroup),
-  };
-}
-
-export function reduceUnsplit(prev: TabState): TabState {
-  if (!prev.split) return prev;
-
-  const [g1Id, g2Id] = prev.split.groupIds;
-  const g1 = prev.groups.find((g) => g.id === g1Id);
-  const g2 = prev.groups.find((g) => g.id === g2Id);
-  if (!g1 || !g2) return { ...prev, split: null };
-
-  // 合所有标签页到 main 组
-  const merged = [...g1.tabs, ...g2.tabs];
-  const newMain: TabGroup = {
-    id: "main",
-    tabs: merged,
-    activeTabId: prev.groups.find((g) => g.id === prev.activeGroupId)?.activeTabId ?? merged[0]?.id ?? "",
-  };
+    )
+    .concat(newGroup);
 
   return {
-    groups: [newMain],
-    activeGroupId: "main",
-    split: null,
+    groups: newGroups,
+    activeGroupId: newGroup.id,
+    root: newRoot,
   };
 }
 
-export function reduceUpdateSplitSizes(prev: TabState, sizes: [number, number]): TabState {
-  if (!prev.split) return prev;
-  return { ...prev, split: { ...prev.split, sizes } };
+/** 收起指定面板——从树中移除该 leaf。只有一个 leaf 时忽略。 */
+export function reduceUnsplit(prev: TabState, groupId: string): TabState {
+  const allLeafIds = getAllLeafGroupIds(prev.root);
+  if (allLeafIds.length <= 1) return prev;  // 只有一个面板，不能 unsplit
+
+  const group = prev.groups.find((g) => g.id === groupId);
+  if (!group) return prev;
+
+  const result = removeLeafFromTree(prev.root, groupId);
+  if (!result) return prev;
+
+  const newGroups = prev.groups.filter((g) => g.id !== groupId);
+
+  return ensureTerminal({
+    groups: newGroups,
+    activeGroupId: result.survivingSiblingGroupId,
+    root: result.tree,
+  });
+}
+
+/**
+ * 更新分屏尺寸。
+ * anchorGroupId: 参与 resize 的两个 group 中任意一个的 groupId——用于在树中定位对应的 branch。
+ * 如果树中只有一个 branch（2-pane），anchorGroupId 可以为任意 groupId。
+ */
+export function reduceUpdateSplitSizes(prev: TabState, anchorGroupId: string, sizes: [number, number]): TabState {
+  const parent = findParentInTree(prev.root, anchorGroupId);
+  if (parent) {
+    // 找到了父 branch——更新它的 sizes
+    const newRoot = updateBranchSizes(prev.root, parent.parent, sizes);
+    if (newRoot) return { ...prev, root: newRoot };
+  }
+  // 如果没有父（即 anchor 是根 leaf）或者树是单 leaf——忽略
+  return prev;
+}
+
+/** 在树中定位并更新特定 branch 的 sizes */
+function updateBranchSizes(
+  node: SplitNode,
+  target: SplitNode & { type: "branch" },
+  newSizes: [number, number]
+): SplitNode | null {
+  if (node.type === "leaf") return null;
+  if (node === target) {
+    return { ...node, sizes: newSizes };
+  }
+  const leftResult = updateBranchSizes(node.children[0], target, newSizes);
+  if (leftResult) {
+    return { ...node, children: [leftResult, node.children[1]] };
+  }
+  const rightResult = updateBranchSizes(node.children[1], target, newSizes);
+  if (rightResult) {
+    return { ...node, children: [node.children[0], rightResult] };
+  }
+  return null;
 }
 
 export function reduceSetDirty(prev: TabState, tabId: string, dirty: boolean): TabState {
@@ -463,8 +514,9 @@ export function reduceReorderTab(prev: TabState, tabId: string, toIndex: number)
   };
 }
 
-/** 恢复布局 */
+/** 恢复布局——兼容旧格式（split: SplitLayout）和新格式（root: SplitNode） */
 export function reduceRestoreLayout(saved: LayoutData): TabState {
+  // 1. 验证 groups
   const validGroups = saved.groups
     .map((g) => ({
       ...g,
@@ -478,27 +530,44 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
     ? saved.activeGroupId
     : validGroups[0].id;
 
-  let split: SplitLayout | null = null;
-  if (saved.split) {
-    const [id1, id2] = saved.split.groupIds;
-    if (validGroups.some((g) => g.id === id1) && validGroups.some((g) => g.id === id2)) {
-      split = saved.split;
+  // 2. 迁移或验证树
+  let root: SplitNode;
+  try {
+    root = migrateLayout(saved);
+  } catch {
+    root = { type: "leaf", groupId: validGroups[0].id };
+  }
+
+  // 3. 验证树：所有 leaf groupId 必须在 groups 中存在
+  const groupIdSet = new Set(validGroups.map((g) => g.id));
+  const leafIds = getAllLeafGroupIds(root);
+  for (const id of leafIds) {
+    if (!groupIdSet.has(id)) {
+      // 树中引用了不存在的 group——回退到单面板
+      root = { type: "leaf", groupId: validGroups[0].id };
+      break;
     }
   }
 
-  // 确保至少一个终端
-  const all = validGroups.flatMap((g) => g.tabs);
+  // 4. 确保 groups 中有树中所有 leaf 的 group（防止树中有、groups 中无）
+  const groupsInTree = new Set(getAllLeafGroupIds(root));
+  const filteredGroups = validGroups.filter((g) => groupsInTree.has(g.id));
+
+  if (filteredGroups.length === 0) return createInitialTabState();
+
+  // 5. 确保至少一个终端
+  const all = filteredGroups.flatMap((g) => g.tabs);
   if (!all.some((t) => t.type === "terminal")) {
     const terminal = createTabDefaults("terminal");
-    const mainGroup = validGroups.find((g) => g.id === activeGroupId) ?? validGroups[0];
+    const mainGroup = filteredGroups.find((g) => g.id === activeGroupId) ?? filteredGroups[0];
     mainGroup.tabs = [terminal, ...mainGroup.tabs];
     if (!mainGroup.activeTabId) mainGroup.activeTabId = terminal.id;
   }
 
   return {
-    groups: validGroups,
+    groups: filteredGroups,
     activeGroupId,
-    split,
+    root,
   };
 }
 
@@ -593,12 +662,16 @@ export function useTabManager() {
     []
   );
 
-  const unsplit = useCallback(() => {
-    setTabState((prev) => reduceUnsplit(prev));
+  const unsplit = useCallback((groupId?: string) => {
+    setTabState((prev) => {
+      // 如果未指定 groupId，用 activeGroupId
+      const targetId = groupId ?? prev.activeGroupId;
+      return reduceUnsplit(prev, targetId);
+    });
   }, []);
 
-  const updateSplitSizes = useCallback((sizes: [number, number]) => {
-    setTabState((prev) => reduceUpdateSplitSizes(prev, sizes));
+  const updateSplitSizes = useCallback((anchorGroupId: string, sizes: [number, number]) => {
+    setTabState((prev) => reduceUpdateSplitSizes(prev, anchorGroupId, sizes));
   }, []);
 
   const setDirty = useCallback((tabId: string, dirty: boolean) => {
@@ -629,7 +702,7 @@ export function useTabManager() {
       data = {
         groups: prev.groups.map((g) => ({ ...g })),
         activeGroupId: prev.activeGroupId,
-        split: prev.split ? { ...prev.split } : null,
+        root: prev.root,
       };
       return prev;
     });

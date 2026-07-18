@@ -1,6 +1,6 @@
 /**
- * useTabManager 纯函数测试 v4（TabGroup 模型）。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §3]
+ * useTabManager 纯函数测试 v4（TabGroup 模型 + SplitNode 递归树）。
+ * 设计依据：[V3-Phase3-标签页分屏设计.md §3] + [V3-Phase3-补充-递归分屏.md]
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
@@ -21,6 +21,7 @@ import {
   type TabState,
   type LayoutData,
 } from "../useTabManager";
+import { getAllLeafGroupIds } from "../splitTree";
 import { detectDropZone } from "../tabDragTypes";
 
 /* ── 辅助函数 ── */
@@ -33,7 +34,7 @@ function stateWithTabs(...tabs: Tab[]): TabState {
   return {
     groups: [{ id: "main", tabs, activeTabId: tabs[0]?.id ?? "" }],
     activeGroupId: "main",
-    split: null,
+    root: { type: "leaf", groupId: "main" },
   };
 }
 
@@ -68,13 +69,14 @@ describe("createTabDefaults", () => {
 /* ── 初始状态 ── */
 
 describe("createInitialTabState", () => {
-  it("默认：1 组 1 终端标签页", () => {
+  it("默认：1 组 1 终端标签页，单 leaf", () => {
     const state = createInitialTabState();
     expect(state.groups).toHaveLength(1);
     expect(state.groups[0].tabs).toHaveLength(1);
     expect(state.groups[0].tabs[0].type).toBe("terminal");
     expect(state.groups[0].activeTabId).toBe(state.groups[0].tabs[0].id);
-    expect(state.split).toBeNull();
+    expect(state.root.type).toBe("leaf");
+    expect((state.root as any).groupId).toBe("main");
   });
 });
 
@@ -109,9 +111,7 @@ describe("reduceCreateTab", () => {
     let state = createInitialTabState();
     state = reduceCreateTab(state, "terminal").state;
     state = reduceSplitTab(state, "terminal-2", "horizontal");
-    // split: [main=terminal-2] | [new group=terminal-1]
     const r = reduceCreateTab(state, "workspace", { workspaceName: "pid" });
-    // 在 activeGroupId 所在组创建
     expect(allTabs(r.state)).toHaveLength(3);
   });
 });
@@ -147,13 +147,11 @@ describe("reduceMoveTab", () => {
     let state = createInitialTabState();
     state = reduceCreateTab(state, "terminal").state;
     state = reduceSplitTab(state, "terminal-2", "horizontal");
-    // groups: [main=t1] [group-2=terminal-2]
 
-    // 移 t1 到 group-2
-    const g1 = state.groups[0];
-    const g2 = state.groups[1];
+    const leafIds = getAllLeafGroupIds(state.root);
+    const g1 = state.groups.find((g) => g.id === leafIds[0])!;
+    const g2 = state.groups.find((g) => g.id === leafIds[1])!;
     const next = reduceMoveTab(state, g1.tabs[0].id, g2.id);
-    // t1 现在在 group-2 中，main 组空了
     const g2New = next.groups.find((g) => g.id === g2.id)!;
     expect(g2New.tabs).toHaveLength(2);
   });
@@ -192,48 +190,58 @@ describe("reduceCloseTab", () => {
     state = reduceSplitTab(state, "terminal-2", "horizontal");
     const r = reduceCloseTab(state, "terminal-2");
     expect(r.closed).toBe(true);
-    expect(r.state!.split).toBeNull();
+    expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });
 });
 
 /* ── reduceSplitTab + reduceUnsplit ── */
 
 describe("reduceSplitTab", () => {
-  it("创建分屏：拆出一个标签页到新组", () => {
+  it("创建分屏：拆出一个标签页到新 leaf", () => {
     let state = createInitialTabState();
     state = reduceCreateTab(state, "terminal").state;
     const next = reduceSplitTab(state, "terminal-2", "horizontal");
-    expect(next.split).not.toBeNull();
-    expect(next.split!.direction).toBe("horizontal");
-    expect(next.split!.sizes).toEqual([50, 50]);
+    const leafIds = getAllLeafGroupIds(next.root);
+    expect(leafIds).toHaveLength(2);
+    expect(next.root.type).toBe("branch");
+    expect((next.root as any).direction).toBe("horizontal");
+    expect((next.root as any).sizes).toEqual([50, 50]);
     expect(next.groups).toHaveLength(2);
   });
 
-  it("已分屏 → 忽略", () => {
+  it("深度限制：超过 MAX_TREE_DEPTH 忽略", () => {
+    // 创建深度为 MAX_TREE_DEPTH 的树，再分裂应返回原状态
     let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    state = reduceSplitTab(state, "terminal-2", "horizontal");
-    const next = reduceSplitTab(state, "terminal-1", "horizontal");
-    expect(next).toBe(state); // 不变
+    // 每分裂一次深度+1
+    for (let i = 0; i < 4; i++) {
+      state = reduceCreateTab(state, "terminal").state;
+      const lastTab = state.groups.find((g) => g.id === state.activeGroupId)?.tabs.slice(-1)[0];
+      if (lastTab && i < 3) {
+        state = reduceSplitTab(state, lastTab.id, "vertical");
+      }
+    }
+    // 第4次 split 应被忽略（深度已达上限）
+    // 此时应有 <= 4 个 leaf
+    expect(getAllLeafGroupIds(state.root).length).toBeLessThanOrEqual(4);
   });
 });
 
 describe("reduceUnsplit", () => {
-  it("取消分屏合所有标签页到一组", () => {
+  it("取消分屏——指定 groupId 的 leaf 被移除", () => {
     let state = createInitialTabState();
     state = reduceCreateTab(state, "terminal").state;
     state = reduceSplitTab(state, "terminal-2", "horizontal");
-    const next = reduceUnsplit(state);
-    expect(next.split).toBeNull();
+    const leafIds = getAllLeafGroupIds(state.root);
+    const next = reduceUnsplit(state, leafIds[1]); // unsplit the new group
+    expect(getAllLeafGroupIds(next.root)).toHaveLength(1);
     expect(next.groups).toHaveLength(1);
-    expect(next.groups[0].tabs).toHaveLength(2);
   });
 });
 
 /* ── reduceRestoreLayout ── */
 
 describe("reduceRestoreLayout", () => {
-  it("恢复保存的布局", () => {
+  it("恢复保存的布局（新格式 root）", () => {
     const term = createTabDefaults("terminal");
     term.id = "terminal-1";
     const ws = w("PID", "pid");
@@ -241,7 +249,7 @@ describe("reduceRestoreLayout", () => {
     const saved: LayoutData = {
       groups: [{ id: "main", tabs: [term, ws], activeTabId: ws.id }],
       activeGroupId: "main",
-      split: null,
+      root: { type: "leaf", groupId: "main" },
     };
 
     const restored = reduceRestoreLayout(saved);
@@ -249,12 +257,33 @@ describe("reduceRestoreLayout", () => {
     expect(restored.activeGroupId).toBe("main");
   });
 
+  it("旧格式迁移：split → root", () => {
+    const term = createTabDefaults("terminal");
+    term.id = "terminal-1";
+    const ws = w("PID", "pid");
+    ws.id = "workspace-pid";
+
+    const saved: LayoutData = {
+      groups: [
+        { id: "g1", tabs: [term], activeTabId: term.id },
+        { id: "g2", tabs: [ws], activeTabId: ws.id },
+      ],
+      activeGroupId: "g1",
+      // 旧格式——没有 root，只有 split
+      split: { direction: "vertical", groupIds: ["g1", "g2"], sizes: [30, 70] },
+    };
+
+    const restored = reduceRestoreLayout(saved);
+    expect(getAllLeafGroupIds(restored.root)).toHaveLength(2);
+    expect(restored.root.type).toBe("branch");
+  });
+
   it("无终端 → 自动补", () => {
     const ws = w("PID", "pid");
     const saved: LayoutData = {
       groups: [{ id: "main", tabs: [ws], activeTabId: ws.id }],
       activeGroupId: "main",
-      split: null,
+      root: { type: "leaf", groupId: "main" },
     };
 
     const restored = reduceRestoreLayout(saved);
@@ -276,12 +305,12 @@ describe("集成场景", () => {
     expect(allTabs(s)).toHaveLength(3);
 
     s = reduceSplitTab(s, "terminal-2", "horizontal");
-    expect(s.split).not.toBeNull();
+    expect(getAllLeafGroupIds(s.root)).toHaveLength(2);
     expect(s.groups).toHaveLength(2);
 
     const r = reduceCloseTab(s, "terminal-2");
     expect(r.closed).toBe(true);
-    expect(r.state!.split).toBeNull();
+    expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });
 });
 
