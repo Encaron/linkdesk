@@ -19,6 +19,7 @@ const sidebarTitleKeys: Record<TabType, string> = {
   workspace: "卡片属性",
   settings: "导航",
   oled: "图形属性",
+  editor: "编辑器",
 };
 
 const SidePanel = forwardRef<HTMLElement, SidePanelProps>(

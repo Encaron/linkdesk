@@ -1,35 +1,35 @@
 /**
  * TabBar — 标签栏组件。
- * Phase 3 Step 2+9：标签页列表 + [+] 菜单 + 右键上下文菜单。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §2.2, §10.4]
+ * Phase 3 v4：每个面板独立渲染自己的标签栏，接收 TabGroup。
+ * 设计依据：[V3-Phase3-标签页分屏设计.md §2.2, §4.2]
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { Tab, TabType, SplitLayout } from "../hooks/useTabManager";
+import type { Tab, TabType, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
 
-const TYPE_ICON: Record<TabType, string> = {
-  terminal: "\u{1F4DF}",  // 📟
-  workspace: "\u{1F4CA}", // 📊
-  settings: "\u{2699}\u{FE0F}",   // ⚙️
-  oled: "\u{1F3A8}",      // 🎨
+const TYPE_ICON: Record<string, string> = {
+  terminal: "\u{1F4DF}",
+  workspace: "\u{1F4CA}",
+  settings: "\u{2699}\u{FE0F}",
+  oled: "\u{1F3A8}",
+  editor: "\u{1F4DD}",
 };
 
 /* ── Props ── */
 
 interface TabBarProps {
-  tabs: Tab[];
-  activeTabId: string;
-  split: SplitLayout | null;
+  group: TabGroup;
+  isActiveGroup: boolean;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: TabType, workspaceName?: string) => void;
+  onCreateTab: (type: TabType, opts?: any) => string;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
+  onMoveTab?: (tabId: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
-  /** 拖拽分屏 */
   onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down") => void;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
   dragDropZone?: "left" | "right" | "up" | "down" | "center" | null;
@@ -97,14 +97,12 @@ interface ContextMenuState {
 function ContextMenu({
   state,
   tabs,
-  split,
   onClose,
   onCloseTab,
   onSplitTab,
 }: {
   state: ContextMenuState;
   tabs: Tab[];
-  split: SplitLayout | null;
   onClose: () => void;
   onCloseTab: (tabId: string) => void;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
@@ -115,7 +113,7 @@ function ContextMenu({
   const tabIndex = tabs.findIndex((t) => t.id === state.tabId);
   const hasOthers = tabs.length > 1;
   const hasRight = tabIndex < tabs.length - 1;
-  const canSplit = !split && tabs.length > 1;
+  const canSplit = tabs.length > 1; // v4: 由 reducer 判断是否已分屏
 
   const items: { label: string; action: () => void; disabled?: boolean }[] = [
     {
@@ -190,20 +188,20 @@ function ContextMenu({
 /* ── 组件 ── */
 
 export default function TabBar({
-  tabs,
-  activeTabId,
-  split,
+  group,
+  isActiveGroup: _isActiveGroup,
   onFocusTab,
   onCloseTab,
   onCreateTab,
   onSplitTab,
+  onMoveTab: _onMoveTab,
   onReorderTab,
   onDropSplit,
   editorAreaRef,
   onDragDropZone,
-  isDragging: _isDragging,
   onDraggingChange,
 }: TabBarProps) {
+  const { tabs, activeTabId } = group;
   const [plusOpen, setPlusOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const plusRef = useRef<HTMLButtonElement | null>(null);
@@ -378,16 +376,11 @@ export default function TabBar({
     };
   }, [tabs, onReorderTab, onDropSplit, editorAreaRef, onDragDropZone, onDraggingChange]);
 
-  // 确定分屏标记
-  const paneIds = split ? new Set(split.tabIds) : null;
-
   return (
     <div className="tab-bar">
       <div className="tab-list" ref={scrollRef} onWheel={onWheel}>
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
-          const inSplit = paneIds?.has(tab.id);
-          const isSplitActive = inSplit && !isActive;
           const isDragging = draggingTabId === tab.id;
           const isEntering = enteringTabId === tab.id;
           const isExiting = exitingTabId === tab.id;
@@ -400,7 +393,7 @@ export default function TabBar({
               )}
               <div
                 key={tab.id}
-                className={`tab-item${isActive ? " active" : ""}${isSplitActive ? " split-inactive" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
+                className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
                 title={tab.label}
                 onClick={() => onFocusTab(tab.id)}
                 onContextMenu={(e) => {
@@ -471,7 +464,6 @@ export default function TabBar({
         <ContextMenu
           state={contextMenu}
           tabs={tabs}
-          split={split}
           onClose={() => setContextMenu(null)}
           onCloseTab={onCloseTab}
           onSplitTab={onSplitTab}

@@ -1,12 +1,11 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useTabManager, type TabType } from "./hooks/useTabManager";
+import { useTabManager, allTabs, type TabType } from "./hooks/useTabManager";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
-import TabBar from "./components/TabBar";
 import TopBar from "./components/TopBar";
 import StatusBar from "./components/StatusBar";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
@@ -32,7 +31,7 @@ function App() {
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
-  // Phase 3: 标签页状态管理
+  // Phase 3 v4: 标签页状态管理
   const {
     tabState,
     openOrFocusTab,
@@ -40,8 +39,8 @@ function App() {
     closeTab,
     forceCloseTab,
     createTab,
+    moveTab,
     splitTab,
-    dropSplitTab,
     unsplit,
     updateSplitSizes,
     restoreLayout,
@@ -53,11 +52,11 @@ function App() {
   const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  // 当前活跃标签页的类型（用于 IconBar 高亮 + SidePanel 联动）
-  const activeTab = useMemo(
-    () => tabState.tabs.find((t) => t.id === tabState.activeTabId),
-    [tabState.tabs, tabState.activeTabId]
-  );
+  // 当前活跃标签页（v4: 从 groups 派生）
+  const activeTab = useMemo(() => {
+    const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+    return group?.tabs.find((t) => t.id === group.activeTabId);
+  }, [tabState.groups, tabState.activeGroupId]);
   const activeTabType: TabType | undefined = activeTab?.type;
 
   /* ---- 启动初始化 ---- */
@@ -113,16 +112,15 @@ function App() {
     };
   }, []);
 
-  /* ---- 拖拽分屏回调（Phase 3 Step 6） ---- */
+  /* ---- 拖拽分屏回调（Phase 3 v4: 用 splitTab） ---- */
   const handleDropSplit = useCallback(
     (tabId: string, zone: Exclude<DropZone, null | "center">) => {
       const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-      const side = zone === "left" || zone === "up" ? 0 : 1;
-      dropSplitTab(tabId, direction, side as 0 | 1);
+      splitTab(tabId, direction);
       setDragDropZone(null);
       setIsDragging(false);
     },
-    [dropSplitTab]
+    [splitTab]
   );
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
@@ -227,8 +225,8 @@ function App() {
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
 
+  // Phase 3 v4: 布局持久化
   useEffect(() => {
-    // 跳过首次渲染（restoreLayout 会设置初始状态）
     if (!layoutInitialized.current) {
       layoutInitialized.current = true;
       return;
@@ -238,78 +236,85 @@ function App() {
       try {
         const prefs = PreferenceService.loadPrefs();
         (prefs as any).layout = {
-          tabs: tabState.tabs.map((t) => ({
-            id: t.id,
-            type: t.type,
-            label: t.label,
-            workspaceName: t.workspaceName,
+          groups: tabState.groups.map((g) => ({
+            id: g.id,
+            tabs: g.tabs.map((t) => ({
+              id: t.id, type: t.type, label: t.label,
+              workspaceName: t.workspaceName, filePath: t.filePath,
+            })),
+            activeTabId: g.activeTabId,
           })),
-          activeTabId: tabState.activeTabId,
+          activeGroupId: tabState.activeGroupId,
           split: tabState.split,
         };
         PreferenceService.savePrefs(prefs).catch(() => {});
       } catch { /* 静默 */ }
     };
 
-    // tabs 和 split 变化 → 立即保存
-    // activeTabId 变化 → 500ms 防抖
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     layoutSaveTimer.current = setTimeout(saveLayout, 500);
     return () => {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };
-  }, [tabState.tabs, tabState.activeTabId, tabState.split]);
+  }, [tabState.groups, tabState.activeGroupId, tabState.split]);
 
   // Phase 3: 全局键盘快捷键（§10.5）
   useEffect(() => {
+    const activeTabId = activeTab?.id;
+    if (!activeTabId) return;
+
     const onKeyDown = (e: KeyboardEvent) => {
       // Ctrl+W: 关闭当前标签页
       if (e.ctrlKey && e.key === "w") {
         e.preventDefault();
-        const result = closeTab(tabState.activeTabId);
+        const result = closeTab(activeTabId);
         if (!result.closed && result.reason === "dirty") {
-          // dirty 标签页——弹出确认后强制关闭
-          // Phase 3: 简单的 window.confirm，Phase 6 替换为自定义对话框
-          const tab = tabState.tabs.find((t) => t.id === result.tabId);
+          const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+          const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
           if (tab && window.confirm(`「${tab.label}」有未保存的修改，确定关闭？`)) {
-            forceCloseTab(result.tabId);
+            forceCloseTab(activeTabId);
           }
         }
       }
       // Ctrl+Tab: 下一个标签页
       if (e.ctrlKey && e.key === "Tab") {
         e.preventDefault();
-        const idx = tabState.tabs.findIndex((t) => t.id === tabState.activeTabId);
-        if (idx !== -1) {
-          const next = e.shiftKey ? idx - 1 : idx + 1;
-          const target = tabState.tabs[(next + tabState.tabs.length) % tabState.tabs.length];
-          focusTab(target.id);
+        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+        if (activeGroup) {
+          const { tabs } = activeGroup;
+          const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+          if (idx !== -1) {
+            const next = e.shiftKey ? idx - 1 : idx + 1;
+            const target = tabs[(next + tabs.length) % tabs.length];
+            focusTab(target.id);
+          }
         }
       }
-      // Ctrl+\: 分屏切换（toggle）
+      // Ctrl+\: 分屏切换
       if (e.ctrlKey && e.key === "\\") {
         e.preventDefault();
         if (tabState.split) {
           unsplit();
         } else {
-          // 找到当前标签页之后的下一个标签页作为分屏目标
-          const idx = tabState.tabs.findIndex((t) => t.id === tabState.activeTabId);
-          const next = tabState.tabs[(idx + 1) % tabState.tabs.length];
-          if (next && next.id !== tabState.activeTabId) {
+          const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+          if (activeGroup && activeGroup.tabs.length > 1) {
+            const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+            const next = activeGroup.tabs[(idx + 1) % activeGroup.tabs.length];
             splitTab(next.id, "horizontal");
           }
         }
       }
       // Ctrl+1~9: 跳转到第 N 个标签页
+      const all = allTabs(tabState);
       const num = parseInt(e.key);
-      if (e.ctrlKey && num >= 1 && num <= 9 && tabState.tabs[num - 1]) {
+      if (e.ctrlKey && num >= 1 && num <= 9 && all[num - 1]) {
         e.preventDefault();
-        focusTab(tabState.tabs[num - 1].id);
+        focusTab(all[num - 1].id);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [tabState, closeTab, forceCloseTab, focusTab, splitTab, unsplit]);
+  }, [tabState, activeTab, closeTab, forceCloseTab, focusTab, splitTab, unsplit]);
 
   if (!ready) return null;
 
@@ -336,28 +341,25 @@ function App() {
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
-        {/* Phase 3: 编辑器区域——标签栏 + 主内容（图标栏/侧栏一通到底，标签栏仅覆盖主区） */}
+        {/* Phase 3 v4: 编辑器区域——每个面板独立标签栏（在 MainContent 内部渲染） */}
         <div className="editor-area" ref={editorAreaRef}>
-          <TabBar
-            tabs={tabState.tabs}
-            activeTabId={tabState.activeTabId}
-            split={tabState.split}
+          <MainContent
+            tabState={tabState}
+            activeGroupId={tabState.activeGroupId}
             onFocusTab={focusTab}
             onCloseTab={closeTab}
             onCreateTab={createTab}
             onSplitTab={splitTab}
+            onMoveTab={moveTab}
             onReorderTab={reorderTab}
             onDropSplit={handleDropSplit}
+            onSplitResize={updateSplitSizes}
+            dropZone={dragDropZone}
             editorAreaRef={editorAreaRef}
             dragDropZone={dragDropZone}
             onDragDropZone={setDragDropZone}
             isDragging={isDragging}
             onDraggingChange={setIsDragging}
-          />
-          <MainContent
-            tabState={tabState}
-            onSplitResize={updateSplitSizes}
-            dropZone={dragDropZone}
           />
         </div>
       </div>
