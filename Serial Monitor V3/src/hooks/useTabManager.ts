@@ -184,11 +184,11 @@ export function reduceCreateTab(
     };
   }
 
-  const newTab = createTabDefaults(type, {
-    workspaceName: opts?.workspaceName,
-    filePath: opts?.filePath,
-    label: opts?.label,
-  });
+  const overrides: Partial<Tab> = {};
+  if (opts?.workspaceName) overrides.workspaceName = opts.workspaceName;
+  if (opts?.filePath) overrides.filePath = opts.filePath;
+  if (opts?.label) overrides.label = opts.label;
+  const newTab = createTabDefaults(type, overrides);
 
   const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
   const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
@@ -363,7 +363,13 @@ export function reduceSplitTab(
   tabId: string,
   direction: "horizontal" | "vertical"
 ): TabState {
-  if (prev.split) return prev; // 已分屏 → 忽略（2-pane 限制）
+  // 已分屏且方向相同 → 忽略
+  if (prev.split && prev.split.direction === direction) return prev;
+
+  // 已分屏但方向不同 → 切换方向（保持标签页布局不变）
+  if (prev.split) {
+    return { ...prev, split: { ...prev.split, direction } };
+  }
 
   const sourceGroup = findGroup(prev, tabId);
   if (!sourceGroup) return prev;

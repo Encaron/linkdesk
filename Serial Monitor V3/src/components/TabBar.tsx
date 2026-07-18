@@ -329,14 +329,30 @@ export default function TabBar({
       if (dragState.current.phase === "idle") return;
 
       if (dragState.current.phase === "split") {
-        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-        let zone: "left" | "right" | "up" | "down" | "center" | null = null;
-        if (areaRect) {
-          zone = detectDropZone(e.clientX, e.clientY, areaRect);
+        // 先检查是否放到了另一个面板的标签栏上
+        let movedToOtherBar = false;
+        if (_onMoveTab) {
+          const otherBars = document.querySelectorAll(".tab-bar");
+          for (const bar of otherBars) {
+            if (bar === scrollRef.current?.parentElement) continue; // 跳过自己的标签栏
+            const barRect = bar.getBoundingClientRect();
+            if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
+                e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
+              _onMoveTab(dragState.current.tabId);
+              movedToOtherBar = true;
+              break;
+            }
+          }
         }
-        // 有效 zone（非 center/null）→ 执行分屏
-        if (zone && zone !== "center" && onDropSplit) {
-          onDropSplit(dragState.current.tabId, zone);
+        if (!movedToOtherBar) {
+          const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+          let zone: "left" | "right" | "up" | "down" | "center" | null = null;
+          if (areaRect) {
+            zone = detectDropZone(e.clientX, e.clientY, areaRect);
+          }
+          if (zone && zone !== "center" && onDropSplit) {
+            onDropSplit(dragState.current.tabId, zone);
+          }
         }
         onDragDropZone?.(null);
         onDraggingChange?.(false);
