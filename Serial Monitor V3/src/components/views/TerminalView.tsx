@@ -662,18 +662,15 @@ function TerminalView() {
   }, []);
 
   /* ---- Monaco 挂载 ---- */
-  const handleEditorMount = useCallback((editor: any, monaco: any) => {
+  const beforeMount = useCallback((monaco: any) => {
+    monaco.languages.register({ id: "v3-protocol" });
+    monaco.languages.setMonarchTokensProvider("v3-protocol", v3ProtocolLanguage);
+    monaco.editor.defineTheme("v3-protocol-dark", v3ProtocolTheme);
+  }, []);
+
+  const handleEditorMount = useCallback((editor: any) => {
     monacoRef.current = editor;
-    // 注册 V3 协议语言（首次挂载时）
-    const registered = (monaco.languages as any).getLanguages?.().some((l: any) => l.id === "v3-protocol");
-    if (!registered) {
-      monaco.languages.register({ id: "v3-protocol" });
-      monaco.languages.setMonarchTokensProvider("v3-protocol", v3ProtocolLanguage);
-      monaco.editor.defineTheme("v3-protocol-dark", v3ProtocolTheme);
-      monaco.editor.setTheme("v3-protocol-dark");
-    }
     editor.onKeyDown((e: any) => {
-      // Enter → 发送 / Shift+Enter → 换行
       if (e.keyCode === 3 /* Enter */) {
         if (!e.shiftKey) {
           e.preventDefault();
@@ -681,7 +678,6 @@ function TerminalView() {
           handleSend();
         }
       }
-      // ArrowUp 空输入时弹出历史
       if (e.keyCode === 38 /* ArrowUp */) {
         const model = editor.getModel();
         if (!model) return;
@@ -865,7 +861,8 @@ function TerminalView() {
             language="v3-protocol"
             value={sendValue}
             onChange={handleSendChange}
-            theme="vs-dark"
+            theme="v3-protocol-dark"
+            beforeMount={beforeMount}
             onMount={handleEditorMount}
             options={{
               minimap: { enabled: false },
