@@ -274,17 +274,20 @@
   50% { opacity: 0.3; }
 }
 
-/* ── 拖拽分屏预览 ── */
+/* ── 拖拽预览（VS Code 风格：半透明标签页被"拎起来"）── */
 
 .tab-drag-preview {
   padding: 4px 12px;
-  background: var(--accent);
-  color: #fff;
-  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+  border-radius: 0;
   font-size: 12px;
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  opacity: 0.9;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  opacity: 0.85;
+  transform: scale(1.03);
+  pointer-events: none;
 }
 
 .tab-drag-preview-label {

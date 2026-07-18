@@ -29,8 +29,11 @@
 .drop-zone-overlay {
   position: absolute;
   background: var(--drop-indicator);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
   z-index: 50;
   pointer-events: none;
+  transition: opacity 150ms;
 }
 
 .drop-zone-left {
