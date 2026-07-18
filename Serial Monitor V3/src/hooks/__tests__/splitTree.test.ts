@@ -10,6 +10,7 @@ import {
   findParentInTree,
   findLeaf,
   replaceLeafWithBranch,
+  replaceLeafGroupId,
   removeLeafFromTree,
   migrateLayout,
   validateTree,
@@ -165,6 +166,26 @@ describe("replaceLeafWithBranch", () => {
 
   it("non-existent targetGroupId returns null", () => {
     const result = replaceLeafWithBranch(twoPane, "nonexistent", "horizontal", "new");
+    expect(result).toBeNull();
+  });
+});
+
+/* ── replaceLeafGroupId ── */
+
+describe("replaceLeafGroupId", () => {
+  it("single leaf: replace groupId", () => {
+    const result = replaceLeafGroupId(singleLeaf, "main", "newGroup");
+    expect(result).toEqual({ type: "leaf", groupId: "newGroup" });
+  });
+
+  it("two-pane: replace g2 leaf groupId", () => {
+    const result = replaceLeafGroupId(twoPane, "g2", "newGroup");
+    expect(result).not.toBeNull();
+    expect(getAllLeafGroupIds(result!)).toEqual(["g1", "newGroup"]);
+  });
+
+  it("non-existent groupId returns null", () => {
+    const result = replaceLeafGroupId(twoPane, "nonexistent", "new");
     expect(result).toBeNull();
   });
 });

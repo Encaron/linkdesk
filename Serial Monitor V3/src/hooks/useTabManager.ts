@@ -394,16 +394,20 @@ export function reduceSplitTab(
 
   const tab = sourceGroup.tabs.find((t) => t.id === tabId)!;
   const sourceRemaining = sourceGroup.tabs.filter((t) => t.id !== tabId);
-  const sourceActiveId = sourceGroup.activeTabId === tabId
-    ? (sourceRemaining[0]?.id ?? "")
-    : sourceGroup.activeTabId;
 
   // 创建新 group（含被拖走的 tab）
   const newGroup = createGroup([tab]);
 
-  // 树操作：找到源 group 在树中的 leaf，替换为 branch(方向, [原leaf, 新leaf])
+  // ── 源组只有 1 个 tab → 分屏后源组会变空 → 阻止（对标 VS Code 空组行为，V3 暂无空组占位 UI）──
+  if (sourceRemaining.length === 0) return prev;
+
+  // ── 正常分屏：源组至少还有 1 个 tab，创建 branch ──
+  const sourceActiveId = sourceGroup.activeTabId === tabId
+    ? (sourceRemaining[0]?.id ?? "")
+    : sourceGroup.activeTabId;
+
   const newRoot = replaceLeafWithBranch(prev.root, sourceGroup.id, direction, newGroup.id);
-  if (!newRoot) return prev;  // groupId 不在树中，不应该发生
+  if (!newRoot) return prev;
 
   const newGroups = prev.groups
     .map((g) =>

@@ -242,6 +242,27 @@ export function cloneTree(node: SplitNode): SplitNode {
 }
 
 /**
+ * 替换树中某个 leaf 的 groupId——不改变树结构。
+ * 用于源组空时把 leaf 指向新 group，不创建多余 branch。
+ */
+export function replaceLeafGroupId(
+  node: SplitNode,
+  oldGroupId: string,
+  newGroupId: string
+): SplitNode | null {
+  if (node.type === "leaf") {
+    return node.groupId === oldGroupId
+      ? { type: "leaf", groupId: newGroupId }
+      : null;
+  }
+  const left = replaceLeafGroupId(node.children[0], oldGroupId, newGroupId);
+  if (left) return { ...node, children: [left, node.children[1]] };
+  const right = replaceLeafGroupId(node.children[1], oldGroupId, newGroupId);
+  if (right) return { ...node, children: [node.children[0], right] };
+  return null;
+}
+
+/**
  * 更新树中某个 branch 的 sizes。
  * 在树中查找第一个 children 匹配的 branch 并更新 sizes。
  */

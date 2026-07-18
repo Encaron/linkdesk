@@ -209,6 +209,28 @@ describe("reduceSplitTab", () => {
     expect(next.groups).toHaveLength(2);
   });
 
+  it("源组只有 1 个 tab → 阻止分屏（防止空面板）", () => {
+    // 先创建 2-pane，然后尝试拆分 solo-tab 组
+    let state = createInitialTabState();                    // [t1]
+    state = reduceCreateTab(state, "terminal").state;       // [t1, t2]
+    state = reduceSplitTab(state, "terminal-2", "horizontal"); // [t1] | [t2]
+    // terminal-2 在 solo 组中（只有它自己），尝试分屏它 → 应被阻止
+    const next = reduceSplitTab(state, "terminal-2", "vertical");
+    expect(getAllLeafGroupIds(next.root)).toHaveLength(2);  // 仍是 2 pane，未变
+  });
+
+  it("3-pane：源组有 ≥2 个 tab 时可创建多级分屏", () => {
+    let state = createInitialTabState();                    // [t1]
+    state = reduceCreateTab(state, "terminal").state;       // [t1, t2]
+    state = reduceCreateTab(state, "terminal").state;       // [t1, t2, t3]
+    state = reduceSplitTab(state, "terminal-3", "horizontal"); // [t1,t2] | [t3]
+    // 源组（[t1,t2]）还有 2 个 tab，可以继续分屏
+    state = reduceSplitTab(state, "terminal-2", "vertical");   // [t1] | [t2]  (左侧上下) | [t3] 右侧
+    const leafIds = getAllLeafGroupIds(state.root);
+    expect(leafIds).toHaveLength(3);
+    expect(state.root.type).toBe("branch");
+  });
+
   it("深度限制：超过 MAX_TREE_DEPTH 忽略", () => {
     // 创建深度为 MAX_TREE_DEPTH 的树，再分裂应返回原状态
     let state = createInitialTabState();
