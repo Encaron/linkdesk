@@ -298,11 +298,36 @@ export default function TabBar({
       if (dragState.current.phase === "split") {
         setPreviewPos({ x: e.clientX, y: e.clientY });
 
-        // 检测 drop zone
-        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
-        if (areaRect) {
-          const zone = detectDropZone(e.clientX, e.clientY, areaRect);
-          onDragDropZone?.(zone);
+        // 鼠标在另一个标签栏上？→ 不显示毛玻璃（准备移动/插入）
+        let overOtherBar = false;
+        const allBars = document.querySelectorAll(".tab-bar");
+        for (const bar of allBars) {
+          if (bar === scrollRef.current?.parentElement) continue;
+          const barRect = bar.getBoundingClientRect();
+          if (e.clientX >= barRect.left && e.clientX <= barRect.right &&
+              e.clientY >= barRect.top && e.clientY <= barRect.bottom) {
+            overOtherBar = true;
+            break;
+          }
+        }
+        // 也在自己的标签栏上？
+        const ownBar = scrollRef.current?.parentElement;
+        if (ownBar) {
+          const ownRect = ownBar.getBoundingClientRect();
+          if (e.clientX >= ownRect.left && e.clientX <= ownRect.right &&
+              e.clientY >= ownRect.top && e.clientY <= ownRect.bottom) {
+            overOtherBar = true;
+          }
+        }
+
+        if (overOtherBar) {
+          onDragDropZone?.(null); // 不显示毛玻璃
+        } else {
+          const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+          if (areaRect) {
+            const zone = detectDropZone(e.clientX, e.clientY, areaRect);
+            onDragDropZone?.(zone);
+          }
         }
         return;
       }
@@ -486,23 +511,31 @@ export default function TabBar({
         />
       )}
 
-      {/* 拖拽分屏预览 */}
-      {previewPos && draggingTabId && (
-        <div
-          className="tab-drag-preview"
-          style={{
-            position: "fixed",
-            left: previewPos.x - 40,
-            top: previewPos.y - 16,
-            pointerEvents: "none",
-            zIndex: 200,
-          }}
-        >
-          <span className="tab-drag-preview-label">
-            {tabs.find((t) => t.id === draggingTabId)?.label ?? ""}
-          </span>
-        </div>
-      )}
+      {/* 拖拽预览：克隆标签页外观——图标+文字+关闭按钮（VS Code 风格） */}
+      {previewPos && draggingTabId && (() => {
+        const tab = tabs.find((t) => t.id === draggingTabId);
+        if (!tab) return null;
+        return (
+          <div
+            className="tab-drag-preview"
+            style={{
+              position: "fixed",
+              left: previewPos.x - 50,
+              top: previewPos.y - 14,
+              pointerEvents: "none",
+              zIndex: 200,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+            }}
+          >
+            <span className="tab-icon" style={{ flexShrink: 0, fontSize: 13, opacity: 0.8 }}>
+              {TYPE_ICON[tab.type] ?? ""}
+            </span>
+            <span className="tab-label">{tab.label}</span>
+          </div>
+        );
+      })()}
     </div>
   );
 }

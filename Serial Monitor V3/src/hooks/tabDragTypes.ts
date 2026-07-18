@@ -19,8 +19,9 @@ export interface DragSplitState {
 }
 
 /**
- * 5-zone 检测算法。
- * 将目标矩形分为上/下/左/右/中五个区域。
+ * 4-zone 检测算法（v4: 50% 半区阈值，对标 VS Code）。
+ * 左半=左右分屏放左，右半=左右分屏放右，上半=上下分屏放上，下半=上下分屏放下。
+ * 角落在两个区域重叠时，选 mouse 离边界更近的那个方向。
  */
 export function detectDropZone(
   mouseX: number,
@@ -30,13 +31,19 @@ export function detectDropZone(
   const relX = (mouseX - rect.left) / rect.width;
   const relY = (mouseY - rect.top) / rect.height;
 
-  // 鼠标在区域外 → null
   if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
 
-  if (relY < 0.25) return "up";
-  if (relY > 0.75) return "down";
-  if (relX < 0.25) return "left";
-  if (relX > 0.75) return "right";
+  // 到各边距离
+  const distLeft = relX;
+  const distRight = 1 - relX;
+  const distUp = relY;
+  const distDown = 1 - relY;
+  const minEdge = Math.min(distLeft, distRight, distUp, distDown);
+
+  if (minEdge === distUp && relY < 0.5) return "up";
+  if (minEdge === distDown && relY > 0.5) return "down";
+  if (minEdge === distLeft && relX < 0.5) return "left";
+  if (minEdge === distRight && relX > 0.5) return "right";
   return "center";
 }
 
