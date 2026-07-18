@@ -37,8 +37,6 @@ export interface UseDragReorderOptions {
 
   /** 重排完成 */
   onReorder: (tabId: string, toIndex: number) => void;
-  /** 分屏 drop */
-  onDropSplit?: (tabId: string, zone: Exclude<DropZone, null | "center">) => void;
   /** 移到另一个容器（如另一个标签栏） */
   onMoveToOther?: (tabId: string) => void;
   /** 拖拽状态变化通知（用于毛玻璃等） */
@@ -60,8 +58,10 @@ export interface UseDragReorderOptions {
   isInPureEditor?: (clientX: number, clientY: number) => boolean;
   /** 检测是否放在了另一个容器上。返回 true 表示已处理（会调 onMoveToOther） */
   findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => boolean;
-  /** 计算分屏 drop zone。返回 null 表示不在有效区域 */
-  computeSplitZone?: (clientX: number, clientY: number) => DropZone;
+  /** 计算分屏 drop zone + 目标面板。返回 null 表示不在有效区域 */
+  computeSplitZone?: (clientX: number, clientY: number) => { zone: DropZone; targetGroupId?: string } | null;
+  /** 分屏 drop 回调——zone 是方向，targetGroupId 是鼠标落点面板（对标 VS Code：在目标面板边缘分裂） */
+  onDropSplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
 }
 
 export interface UseDragReorderResult {
@@ -171,8 +171,8 @@ export function useDragReorder(
       if (ds.phase === "split") {
         setPreviewPos({ x: e.clientX, y: e.clientY });
         if (computeSplitZone) {
-          const zone = computeSplitZone(e.clientX, e.clientY);
-          onDragDropZone?.(zone);
+          const result = computeSplitZone(e.clientX, e.clientY);
+          onDragDropZone?.(result?.zone ?? null);
         }
         return;
       }
@@ -202,9 +202,9 @@ export function useDragReorder(
           }
         }
         if (!moved && onDropSplit) {
-          const zone = computeSplitZone?.(e.clientX, e.clientY);
-          if (zone && zone !== "center") {
-            onDropSplit(ds.tabId, zone as Exclude<DropZone, null | "center">);
+          const result = computeSplitZone?.(e.clientX, e.clientY);
+          if (result?.zone && result.zone !== "center") {
+            onDropSplit(ds.tabId, result.zone as Exclude<DropZone, null | "center">, result.targetGroupId);
           }
         }
         onDragDropZone?.(null);

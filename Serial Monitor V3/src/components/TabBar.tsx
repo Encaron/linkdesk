@@ -317,9 +317,18 @@ export default function TabBar({
 
   const computeSplitZone = useCallback(
     (clientX: number, clientY: number) => {
+      // 第 1 层：找鼠标落在哪个叶子面板上（对标 VS Code：在目标面板上显示毛玻璃并返回目标 groupId）
+      const elUnderMouse = document.elementFromPoint(clientX, clientY);
+      const pane = elUnderMouse?.closest(".tab-group-pane") as HTMLElement | null;
+      if (pane) {
+        const zone = detectDropZone(clientX, clientY, pane.getBoundingClientRect());
+        const targetGroupId = pane.getAttribute("data-group-id") ?? undefined;
+        return { zone, targetGroupId };
+      }
+      // 第 2 层：不在任何面板上 → 用整个编辑器区域 rect 做 fallback
       const areaRect = editorAreaRef?.current?.getBoundingClientRect();
       if (!areaRect) return null;
-      return detectDropZone(clientX, clientY, areaRect);
+      return { zone: detectDropZone(clientX, clientY, areaRect) };
     },
     [editorAreaRef]
   );

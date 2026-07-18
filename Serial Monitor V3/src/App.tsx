@@ -44,6 +44,7 @@ function App() {
     createTab,
     moveTab,
     splitTab,
+    splitTabAt,
     unsplit,
     updateSplitSizes,
     restoreLayout,
@@ -115,15 +116,15 @@ function App() {
     };
   }, []);
 
-  /* ---- 拖拽分屏回调（Phase 3 v4: 用 splitTab） ---- */
+  /* ---- 拖拽分屏回调（Phase 3.x: 用 splitTabAt——在目标面板位置分裂） ---- */
   const handleDropSplit = useCallback(
-    (tabId: string, zone: Exclude<DropZone, null | "center">) => {
+    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
       const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-      splitTab(tabId, direction);
+      splitTabAt(tabId, direction, targetGroupId);
       setDragDropZone(null);
       setIsDragging(false);
     },
-    [splitTab]
+    [splitTabAt]
   );
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */

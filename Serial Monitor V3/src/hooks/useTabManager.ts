@@ -379,7 +379,74 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
   };
 }
 
-/** 分屏——在标签页所在面板的方向创建一个新面板（对标 VS Code） */
+/**
+ * 分屏——在指定目标面板的方向创建新面板，对标 VS Code "拖到另一个面板边缘"。
+ * targetGroupId: 鼠标落点的面板（用来算分裂方向和位置）。
+ * 如果省略，默认用 tab 所在的源组。
+ */
+export function reduceSplitTabAt(
+  prev: TabState,
+  tabId: string,
+  direction: "horizontal" | "vertical",
+  targetGroupId?: string
+): TabState {
+  if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return prev;
+
+  const sourceGroup = findGroup(prev, tabId);
+  if (!sourceGroup) return prev;
+
+  const tab = sourceGroup.tabs.find((t) => t.id === tabId)!;
+  const effectiveTarget = targetGroupId ?? sourceGroup.id;
+
+  // 从源组移除 tab
+  const sourceRemaining = sourceGroup.tabs.filter((t) => t.id !== tabId);
+
+  // 创建新 group（含被拖走的 tab）
+  const newGroup = createGroup([tab]);
+
+  // ── 处理源组变空 ──
+  let groupsWithoutSource = prev.groups;
+  let rootWithoutSource = prev.root;
+
+  if (sourceRemaining.length === 0) {
+    // 源组空了 → 移除
+    const leafIds = getAllLeafGroupIds(prev.root);
+    if (leafIds.length > 1) {
+      const remResult = removeLeafFromTree(prev.root, sourceGroup.id);
+      if (remResult) {
+        rootWithoutSource = remResult.tree;
+        groupsWithoutSource = prev.groups.filter((g) => g.id !== sourceGroup.id);
+      }
+    }
+  } else {
+    // 源组还有 tab → 只 update tabs
+    const sourceActiveId = sourceGroup.activeTabId === tabId
+      ? (sourceRemaining[0]?.id ?? "")
+      : sourceGroup.activeTabId;
+    groupsWithoutSource = prev.groups.map((g) =>
+      g.id === sourceGroup.id
+        ? { ...g, tabs: sourceRemaining, activeTabId: sourceActiveId }
+        : g
+    );
+  }
+
+  // ── 在目标面板位置创建 branch ──
+  const newRoot = replaceLeafWithBranch(
+    rootWithoutSource,
+    effectiveTarget,
+    direction,
+    newGroup.id
+  );
+  if (!newRoot) return prev;
+
+  return {
+    groups: groupsWithoutSource.concat(newGroup),
+    activeGroupId: newGroup.id,
+    root: newRoot,
+  };
+}
+
+/** 分屏——在 tab 所在面板的方向创建新面板（向后兼容） */
 export function reduceSplitTab(
   prev: TabState,
   tabId: string,
@@ -666,6 +733,13 @@ export function useTabManager() {
     []
   );
 
+  const splitTabAt = useCallback(
+    (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string) => {
+      setTabState((prev) => reduceSplitTabAt(prev, tabId, direction, targetGroupId));
+    },
+    []
+  );
+
   const unsplit = useCallback((groupId?: string) => {
     setTabState((prev) => {
       // 如果未指定 groupId，用 activeGroupId
@@ -722,6 +796,7 @@ export function useTabManager() {
     forceCloseTab,
     moveTab,
     splitTab,
+    splitTabAt,
     unsplit,
     setDirty,
     updateTabLabel,

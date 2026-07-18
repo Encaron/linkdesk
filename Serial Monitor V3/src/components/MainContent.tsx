@@ -24,7 +24,7 @@ interface MainContentProps {
   onSplitTab: (tabId: string, direction?: any) => any;
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
-  onDropSplit: (tabId: string, zone: any) => void;
+  onDropSplit: (tabId: string, zone: any, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
   dropZone?: any;
   editorAreaRef?: any;
