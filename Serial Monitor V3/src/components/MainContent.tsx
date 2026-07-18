@@ -78,91 +78,63 @@ function MainContent({
   onDraggingChange,
 }: MainContentProps) {
 
-  const handleAllotmentChange = useCallback(
-    (sizes: number[], anchorGroupId: string) => {
-      if (sizes.length === 2) onSplitResize?.(anchorGroupId, sizes as [number, number]);
-    },
-    [onSplitResize]
-  );
-
   // Drop zone 高亮覆盖层
   const dropOverlay = dropZone && dropZone !== "center" && (
     <div className={`drop-zone-overlay drop-zone-${dropZone}`} />
   );
 
   /** 渲染一个面板组——标签栏 + 内容区 */
-  const renderGroup = (group: TabGroup) => (
-    <div className="tab-group-pane" key={group.id} data-group-id={group.id} style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0 }}>
-      <TabBar
-        group={group}
-        isActiveGroup={group.id === activeGroupId}
-        onFocusTab={onFocusTab}
-        onCloseTab={onCloseTab}
-        onCreateTab={onCreateTab}
-        onSplitTab={onSplitTab}
-        onMoveTab={(tabId) => {
-          // move to any other group in the tree
-          const allLeafIds = getAllLeafGroupIds(tabState.root);
-          const otherGroupId = allLeafIds.find((id) => id !== group.id);
-          if (otherGroupId) onMoveTab(tabId, otherGroupId);
-        }}
-        onReorderTab={onReorderTab}
-        onDropSplit={onDropSplit}
-        editorAreaRef={editorAreaRef}
-        dragDropZone={dragDropZone}
-        onDragDropZone={onDragDropZone}
-        isDragging={isDragging}
-        onDraggingChange={onDraggingChange}
-      />
-      <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
-        {group.tabs.map((tab) => (
-          <div
-            key={tab.id}
-            className="tab-content-pane"
-            style={{
-              display: tab.id === group.activeTabId ? "flex" : "none",
-            }}
-          >
-            {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId)}
-          </div>
-        ))}
+  const renderGroup = useCallback(
+    (group: TabGroup) => (
+      <div className="tab-group-pane" key={group.id} data-group-id={group.id} style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0 }}>
+        <TabBar
+          group={group}
+          isActiveGroup={group.id === activeGroupId}
+          onFocusTab={onFocusTab}
+          onCloseTab={onCloseTab}
+          onCreateTab={onCreateTab}
+          onSplitTab={onSplitTab}
+          onMoveTab={(tabId) => {
+            const allLeafIds = getAllLeafGroupIds(tabState.root);
+            const otherGroupId = allLeafIds.find((id) => id !== group.id);
+            if (otherGroupId) onMoveTab(tabId, otherGroupId);
+          }}
+          onReorderTab={onReorderTab}
+          onDropSplit={onDropSplit}
+          editorAreaRef={editorAreaRef}
+          dragDropZone={dragDropZone}
+          onDragDropZone={onDragDropZone}
+          isDragging={isDragging}
+          onDraggingChange={onDraggingChange}
+        />
+        <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
+          {group.tabs.map((tab) => (
+            <div
+              key={tab.id}
+              className="tab-content-pane"
+              style={{
+                display: tab.id === group.activeTabId ? "flex" : "none",
+              }}
+            >
+              {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId)}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
+    ),
+    [tabState.root, tabState.groups, activeGroupId, onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onDropSplit, editorAreaRef, dragDropZone, onDragDropZone, isDragging, onDraggingChange]
   );
 
-  // ── 分屏模式（2-pane）──
-  if (tabState.root.type === "branch") {
-    const [child0, child1] = tabState.root.children;
-    const g1Id = child0.type === "leaf" ? child0.groupId : getAllLeafGroupIds(child0)[0];
-    const g2Id = child1.type === "leaf" ? child1.groupId : getAllLeafGroupIds(child1)[0];
-    const g1 = tabState.groups.find((g) => g.id === g1Id);
-    const g2 = tabState.groups.find((g) => g.id === g2Id);
-    if (!g1 || !g2) return null;
-
-    return (
-      <div className="main-content">
-        {dropOverlay}
-        <SplitPane
-          direction={tabState.root.direction}
-          sizes={tabState.root.sizes}
-          onResize={(sizes) => handleAllotmentChange(sizes, g1Id)}
-        >
-          {renderGroup(g1)}
-          {renderGroup(g2)}
-        </SplitPane>
-      </div>
-    );
-  }
-
-  // ── 单面板模式 ──
-  const mainGroupId = tabState.root.type === "leaf" ? tabState.root.groupId : null;
-  const mainGroup = mainGroupId ? tabState.groups.find((g) => g.id === mainGroupId) : tabState.groups[0];
-  if (!mainGroup) return null;
-
+  // ── 递归渲染分裂树 ──
   return (
     <div className="main-content">
       {dropOverlay}
-      {renderGroup(mainGroup)}
+      <SplitPane
+        node={tabState.root}
+        groups={tabState.groups}
+        renderGroup={renderGroup}
+        onResize={onSplitResize}
+      />
     </div>
   );
 }
