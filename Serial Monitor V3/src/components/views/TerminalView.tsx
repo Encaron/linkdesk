@@ -10,7 +10,7 @@ import {
   type PluginValue,
 } from "@codemirror/view";
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
-import { search, setSearchQuery, SearchQuery, RegExpCursor } from "@codemirror/search";
+import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
@@ -34,6 +34,8 @@ const darkTheme: Extension = EditorView.theme(
     ".cm-searchMatch": { background: "rgba(255,255,0,0.2)", outline: "1px solid rgba(255,255,0,0.4)" },
     ".cm-line-sent": { color: "#0E639C" },
     ".cm-line-system": { color: "#6A6A6A" },
+    ".cm-search-match": { background: "rgba(255, 200, 0, 0.25)" },
+    ".cm-search-current": { background: "rgba(255, 140, 0, 0.45)", outline: "1px solid rgba(255, 140, 0, 0.6)" },
   },
   { dark: true }
 );
@@ -56,6 +58,37 @@ const lineDecoField = StateField.define<RangeSet<Decoration>>({
       if (e.is(addLineDeco)) {
         const d = Decoration.line({ class: e.value.cls });
         updated = updated.update({ add: [d.range(e.value.from)] });
+      }
+    }
+    return updated;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+/* ---- 搜索高亮装饰系统（自建，不依赖 CM6 原生 search panel） ---- */
+
+const setSearchDecos = StateEffect.define<{ matches: { from: number; to: number }[]; current: number }>();
+const clearSearchDecos = StateEffect.define();
+
+const searchDecoField = StateField.define<RangeSet<Decoration>>({
+  create() { return RangeSet.empty; },
+  update(decos, tr) {
+    let updated = decos.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(clearSearchDecos)) {
+        updated = RangeSet.empty;
+      }
+      if (e.is(setSearchDecos)) {
+        updated = RangeSet.empty;
+        const marks: { from: number; to: number; value: Decoration }[] = [];
+        e.value.matches.forEach((m, i) => {
+          const isCurrent = i === e.value.current - 1;
+          marks.push({
+            from: m.from, to: m.to,
+            value: Decoration.mark({ class: isCurrent ? "cm-search-current" : "cm-search-match" }),
+          });
+        });
+        updated = updated.update({ add: marks });
       }
     }
     return updated;
@@ -161,6 +194,7 @@ function TerminalView() {
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "protocol" | "plain">("all");
   const [filterKeyword, setFilterKeyword] = useState("");
+  const [filterPopupOpen, setFilterPopupOpen] = useState(false);
   const filterModeRef = useRef(filterMode);
   const filterKeywordRef = useRef(filterKeyword);
   filterModeRef.current = filterMode;
@@ -183,6 +217,7 @@ function TerminalView() {
         lineNumberCompartment.current.of(prefs.showLineNumbers ? lineNumbers() : []),
         darkTheme,
         lineDecoField,
+        searchDecoField,
         scrollTracker,
         EditorState.readOnly.of(true),
         search({ top: true }),
@@ -287,16 +322,12 @@ function TerminalView() {
   // 时间戳格式 ref——listen 回调在 []-deps effect 里，需用 ref 读最新 prefs
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;
-  // 端口开关状态——系统消息更新，serial-data 回调检查，防 Rust 读线程竞态
-  const portOpenRef = useRef(false);
-
   useEffect(() => {
     const gen = ++listenGen.current;
     const unlisteners: (() => void)[] = [];
 
     listen<string>("serial-data", (event) => {
       if (listenGen.current !== gen) return;
-      if (!portOpenRef.current) return; // 端口关闭时丢弃残留数据
       const fmt = tsFormatRef.current;
       const ts = formatTimestamp(fmt);
       const display = fmt !== "无"
@@ -315,13 +346,9 @@ function TerminalView() {
         : event.payload;
       ringBuffer.current.write({ text: display, type: "system" });
       if (event.payload.includes("已打开串行端口")) {
-        portOpenRef.current = true;
         pausedBuffer.current = [];
         setPausedCount(0);
         setPaused(false);
-      }
-      if (event.payload.includes("关闭串行端口")) {
-        portOpenRef.current = false;
       }
     }).then((fn) => {
       if (listenGen.current === gen) unlisteners.push(fn); else fn();
@@ -577,26 +604,31 @@ function TerminalView() {
     const view = cmView.current;
     if (!view) return;
     if (!query) {
-      view.dispatch({ effects: setSearchQuery.of(new SearchQuery({ search: "", caseSensitive: false })) });
+      view.dispatch({ effects: clearSearchDecos.of(null as any) });
       setSearchCount(0);
       setSearchIdx(0);
       searchMatchesRef.current = [];
       return;
     }
-    const sq = new SearchQuery({ search: query, caseSensitive });
-    view.dispatch({ effects: setSearchQuery.of(sq) });
-
     // 收集所有匹配位置
     const matches: { from: number; to: number }[] = [];
-    // 转义正则特殊字符，构建 RegExpCursor
     const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
     const cursor = new RegExpCursor(view.state.doc, escaped, { ignoreCase: !caseSensitive });
     while (!cursor.next().done) {
       matches.push({ from: cursor.value.from, to: cursor.value.to });
     }
     searchMatchesRef.current = matches;
+    const idx = matches.length > 0 ? 1 : 0;
     setSearchCount(matches.length);
-    setSearchIdx(matches.length > 0 ? 1 : 0);
+    setSearchIdx(idx);
+    // 派发搜索高亮装饰
+    view.dispatch({ effects: setSearchDecos.of({ matches, current: idx }) });
+    if (matches.length > 0) {
+      view.dispatch({
+        selection: { anchor: matches[0].from, head: matches[0].to },
+        effects: EditorView.scrollIntoView(matches[0].from, { y: "center" }),
+      });
+    }
   }, []);
 
   const navigateSearch = useCallback((delta: 1 | -1) => {
@@ -609,6 +641,7 @@ function TerminalView() {
     if (newIdx > matches.length) newIdx = 1;
     setSearchIdx(newIdx);
     const m = matches[newIdx - 1];
+    view.dispatch({ effects: setSearchDecos.of({ matches, current: newIdx }) });
     view.dispatch({
       selection: { anchor: m.from, head: m.to },
       effects: EditorView.scrollIntoView(m.from, { y: "center" }),
@@ -623,8 +656,11 @@ function TerminalView() {
   const closeSearch = useCallback(() => {
     setSearchVisible(false);
     setSearchText("");
-    runSearch("", false);
-  }, [runSearch]);
+    cmView.current?.dispatch({ effects: clearSearchDecos.of(null as any) });
+    setSearchCount(0);
+    setSearchIdx(0);
+    searchMatchesRef.current = [];
+  }, []);
 
   /* ---- Command Palette ---- */
   const paletteCommands = [
@@ -763,30 +799,58 @@ function TerminalView() {
         <button className="toolbar-btn" onClick={handleClear} title={t("清空接收区")}>
           {t("清空接收区")}
         </button>
+        <div className="filter-btn-wrapper">
+          <button
+            className={`toolbar-btn${(filterMode !== "all" || filterKeyword !== "") ? " active" : ""}`}
+            onClick={() => {
+              if (filterMode !== "all" || filterKeyword !== "") {
+                // 已有筛选 → 清除
+                setFilterMode("all");
+                setFilterKeyword("");
+              } else {
+                setFilterPopupOpen(!filterPopupOpen);
+              }
+            }}
+            title={filterMode !== "all" || filterKeyword !== "" ? t("点击清除筛选") : t("筛选")}
+          >
+            📡 {t("筛选")}
+          </button>
+          {filterPopupOpen && (
+            <>
+              <div className="ctx-overlay" onClick={() => setFilterPopupOpen(false)} />
+              <div className="ctx-menu filter-popup" style={{ top: 32, right: 0 }}>
+                <div className={`ctx-item${filterMode === "all" && filterKeyword === "" ? " ctx-item-checked" : ""}`}
+                  onClick={() => { setFilterMode("all"); setFilterKeyword(""); setFilterPopupOpen(false); }}>
+                  {t("全部")}
+                </div>
+                <div className={`ctx-item${filterMode === "protocol" ? " ctx-item-checked" : ""}`}
+                  onClick={() => { setFilterMode("protocol"); setFilterPopupOpen(false); }}>
+                  📡 {t("仅协议消息")}
+                </div>
+                <div className={`ctx-item${filterMode === "plain" ? " ctx-item-checked" : ""}`}
+                  onClick={() => { setFilterMode("plain"); setFilterPopupOpen(false); }}>
+                  {t("仅普通文本")}
+                </div>
+                <div className="ctx-divider" />
+                <div className="ctx-item-label">{t("关键字过滤")}</div>
+                <div className="ctx-item-input">
+                  <input
+                    className="input"
+                    style={{ width: "100%", height: 24, fontSize: 11 }}
+                    placeholder={t("输入关键字…")}
+                    value={filterKeyword}
+                    onChange={(e) => setFilterKeyword(e.target.value)}
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
         <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
           🔍 {t("搜索")}
         </button>
-      </div>
-
-      {/* 筛选条 */}
-      <div className="filter-bar">
-        <select className="input filter-select" value={filterMode} onChange={(e) => setFilterMode(e.target.value as any)}>
-          <option value="all">{t("全部")}</option>
-          <option value="protocol">📡 {t("仅协议")}</option>
-          <option value="plain">{t("仅文本")}</option>
-        </select>
-        <input
-          className="input filter-input"
-          type="text"
-          placeholder={t("实时过滤…")}
-          value={filterKeyword}
-          onChange={(e) => setFilterKeyword(e.target.value)}
-        />
-        {(filterMode !== "all" || filterKeyword) && (
-          <button className="toolbar-btn" onClick={() => { setFilterMode("all"); setFilterKeyword(""); }}>
-            ✕ {t("清除筛选")}
-          </button>
-        )}
       </div>
 
       {/* 搜索条 */}
