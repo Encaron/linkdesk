@@ -257,15 +257,9 @@
 /* ── 拖拽重排 ── */
 
 .tab-item.dragging {
-  opacity: 0;
-  min-width: 0;
-  width: 0;
-  padding: 0;
-  margin: 0;
-  border: none;
-  overflow: hidden;
-  flex-shrink: 1;
-  transition: width 120ms, opacity 80ms, padding 120ms;
+  /* VS Code 风格：原位留灰影 placeholder，鼠标跟半透明克隆 */
+  opacity: 0.45;
+  transition: opacity 100ms;
 }
 
 .tab-drop-indicator {

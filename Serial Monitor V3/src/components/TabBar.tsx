@@ -251,7 +251,8 @@ export default function TabBar({
     startX: number;
     startY: number;
     phase: "idle" | "reorder" | "split";
-  }>({ tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle" });
+    _lifted: boolean;
+  }>({ tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle", _lifted: false });
   const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
 
@@ -286,6 +287,12 @@ export default function TabBar({
 
       // 移动距离不足阈值 → 不启动拖拽
       if (dragState.current.phase === "reorder" && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+
+      // 首次超过阈值 → 把标签页"拎起来"（对标 VS Code: 移动后才开始拖拽）
+      if (dragState.current.phase === "reorder" && !dragState.current._lifted) {
+        dragState.current._lifted = true;
+        setDraggingTabId(dragState.current.tabId);
+      }
 
       // 垂直拖拽超过阈值 → 切换到分屏模式
       if (dragState.current.phase === "reorder" && Math.abs(dy) > 15) {
@@ -457,7 +464,7 @@ export default function TabBar({
                       startY: e.clientY,
                       phase: "reorder",
                     };
-                    setDraggingTabId(tab.id);
+                    // 不立即设 draggingTabId——等鼠标移动超阈值再"拎起来"（对标 VS Code）
                     setDragInsertIndex(idx);
                   }
                 }}
