@@ -49,3 +49,8 @@
 .split-pane.vertical .split-pane-handle:hover {
   height: 6px;
 }
+
+/* resize 中冻结 CM6 渲染——防止列宽闪烁 */
+.split-pane.resizing .cm-scroller {
+  overflow: hidden !important;
+}

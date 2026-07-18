@@ -24,6 +24,7 @@ export default function SplitPane({
 }: SplitPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const dragging = useRef(false);
+  const [resizing, setResizing] = useState(false);
   const [localSizes, setLocalSizes] = useState<[number, number]>(sizes);
   const localSizesRef = useRef<[number, number]>(sizes);
 
@@ -36,6 +37,7 @@ export default function SplitPane({
   const onHandleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     dragging.current = true;
+    setResizing(true);
   }, []);
 
   useEffect(() => {
@@ -53,6 +55,7 @@ export default function SplitPane({
     const onMouseUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
+      setResizing(false);
       onResize?.(localSizesRef.current);
     };
     window.addEventListener("mousemove", onMouseMove);
@@ -68,7 +71,7 @@ export default function SplitPane({
   return (
     <div
       ref={containerRef}
-      className={`split-pane ${isHorizontal ? "horizontal" : "vertical"}`}
+      className={`split-pane ${isHorizontal ? "horizontal" : "vertical"}${resizing ? " resizing" : ""}`}
       style={{
         gridTemplateColumns: isHorizontal ? `${localSizes[0]}% 4px 1fr` : "1fr",
         gridTemplateRows: isHorizontal ? "1fr" : `${localSizes[0]}% 4px 1fr`,

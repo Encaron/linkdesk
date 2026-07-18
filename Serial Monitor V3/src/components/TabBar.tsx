@@ -196,6 +196,42 @@ export default function TabBar({
   const plusRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // 进出动画状态
+  const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
+  const [exitingTabId, setExitingTabId] = useState<string | null>(null);
+  const prevTabIds = useRef(new Set<string>(tabs.map((t) => t.id)));
+
+  // 检测新标签页 → 播放进入动画
+  useEffect(() => {
+    const currentIds = new Set(tabs.map((t) => t.id));
+    for (const id of currentIds) {
+      if (!prevTabIds.current.has(id)) {
+        setEnteringTabId(id);
+        const timer = setTimeout(() => setEnteringTabId(null), 150);
+        prevTabIds.current = currentIds;
+        return () => clearTimeout(timer);
+      }
+    }
+    prevTabIds.current = currentIds;
+  }, [tabs]);
+
+  // 关闭标签页（带动画）
+  const closeWithAnimation = useCallback(
+    (tabId: string) => {
+      // 终端保底：[×] 清空接收区
+      if (tabs.length === 1 && tabs[0].type === "terminal") {
+        window.dispatchEvent(new CustomEvent("v3-clear-terminal"));
+        return;
+      }
+      setExitingTabId(tabId);
+      setTimeout(() => {
+        onCloseTab(tabId);
+        setExitingTabId(null);
+      }, 120);
+    },
+    [tabs, onCloseTab]
+  );
+
   // 拖拽重排状态
   const dragState = useRef<{
     tabId: string;
@@ -291,6 +327,8 @@ export default function TabBar({
           const inSplit = paneIds?.has(tab.id);
           const isSplitActive = inSplit && !isActive;
           const isDragging = draggingTabId === tab.id;
+          const isEntering = enteringTabId === tab.id;
+          const isExiting = exitingTabId === tab.id;
 
           return (
             <>
@@ -300,7 +338,7 @@ export default function TabBar({
               )}
               <div
                 key={tab.id}
-                className={`tab-item${isActive ? " active" : ""}${isSplitActive ? " split-inactive" : ""}${isDragging ? " dragging" : ""}`}
+                className={`tab-item${isActive ? " active" : ""}${isSplitActive ? " split-inactive" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
                 title={tab.label}
                 onClick={() => onFocusTab(tab.id)}
                 onContextMenu={(e) => {
@@ -310,7 +348,7 @@ export default function TabBar({
                 onMouseDown={(e) => {
                   if (e.button === 1) {
                     e.preventDefault();
-                    onCloseTab(tab.id);
+                    closeWithAnimation(tab.id);
                     return;
                   }
                   if (e.button === 0 && onReorderTab) {
@@ -331,18 +369,16 @@ export default function TabBar({
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
                 <span className="tab-icon">{TYPE_ICON[tab.type]}</span>
                 <span className="tab-label">{tab.label}</span>
-                {tab.closable && (
-                  <button
-                    className="tab-close"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onCloseTab(tab.id);
-                    }}
-                    title="关闭"
-                  >
-                    ×
-                  </button>
-                )}
+                <button
+                  className="tab-close"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    closeWithAnimation(tab.id);
+                  }}
+                  title={tabs.length === 1 && tab.type === "terminal" ? "清空接收区" : "关闭"}
+                >
+                  ×
+                </button>
               </div>
             </>
           );

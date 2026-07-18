@@ -705,6 +705,20 @@ function TerminalView({ isActive }: TerminalViewProps) {
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
+  // 终端保底清空：TabBar 最后一个终端 [×] → 清空接收区
+  useEffect(() => {
+    const handler = () => {
+      const view = cmView.current;
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length },
+        });
+      }
+    };
+    window.addEventListener("v3-clear-terminal", handler);
+    return () => window.removeEventListener("v3-clear-terminal", handler);
+  }, []);
+
   return (
     <div className="terminal-view">
       <CommandPalette
