@@ -1,0 +1,51 @@
+/* SplitPane — 纯 CSS 分屏容器 */
+
+.split-pane {
+  display: grid;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.split-pane.horizontal {
+  grid-template-rows: 1fr;
+}
+
+.split-pane.vertical {
+  grid-template-columns: 1fr;
+}
+
+.split-pane-child {
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 分割手柄 */
+.split-pane-handle {
+  background: var(--separator);
+  transition: background 150ms;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+.split-pane-handle:hover {
+  background: var(--accent);
+}
+
+.split-pane.horizontal .split-pane-handle {
+  width: 4px;
+  cursor: col-resize;
+}
+.split-pane.horizontal .split-pane-handle:hover {
+  width: 6px;
+}
+
+.split-pane.vertical .split-pane-handle {
+  height: 4px;
+  cursor: row-resize;
+}
+.split-pane.vertical .split-pane-handle:hover {
+  height: 6px;
+}
