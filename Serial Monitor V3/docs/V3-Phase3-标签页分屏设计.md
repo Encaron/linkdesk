@@ -1,6 +1,6 @@
 # Phase 3：主区标签页 + 分屏系统
 
-> 2026-07-18 v3——从高层设计细化为实现规格。逐个问题排查可行性、数据流、边界条件。补充缺失内容：问题陈述、右键菜单、键盘快捷键、顶栏行为、设置变化、测试策略。
+> 2026-07-19 v4——分屏模型改为 VS Code 风格（每个面板独立标签栏 + TabGroup）。v3 的"全局标签栏+split.tabIds"作废。
 > 关联：[V3设计方案.md §3](V3设计方案.md) / [V3开发计划.md](V3开发计划.md)
 
 ---
@@ -76,17 +76,28 @@ Phase 2 只做完终端视图。当前主区一次只能显示一个视图（终
 
 ### 2.2 标签栏视觉布局
 
+**单面板模式：**
+
 ```
-[📟 终端] [📊 心率检测] [📊 PID调参]                         ← 标签栏（所有标签页）
-──────────────────────────────────────────────────────────
-                                                            ← 活跃标签页内容填满下方
+[📟 终端] [📊 心率检测] [📊 PID调参]      [+]   ← 一个标签栏，所有标签页
+──────────────────────────────────────────────────
+                                                  ← 活跃标签页内容填满下方
   📟 终端接收区
+```
+
+**分屏模式——每个面板有自己的标签栏：**
+
+```
+[📟 终端] [+]                    [📊 心率检测] [📊 PID调参] [+]
+──────────────────────────────┬─────────────────────────────
+                              │
+  📟 终端接收区                │  📊 心率检测卡片
 ```
 
 - 标签栏 `display: flex; overflow-x: auto`，滚轮横向滚动
 - 每个标签页最窄 80px，最宽 200px，超出省略号截断
 - 每个标签页右侧 [×] 关闭按钮（hover 可见，最后一个终端标签页除外——见 §10）
-- 标签栏最右侧 [+] 按钮——弹出菜单：新建终端 / 新建工作台 / 打开 workspace 文件（对标 VS Code 的 `Ctrl+N`）
+- 每个标签栏最右侧 [+] 按钮——弹出菜单：新建终端 / 新建工作台 / 打开 workspace 文件
 
 ### 2.3 标签页内容区域
 
@@ -103,31 +114,43 @@ Phase 2 只做完终端视图。当前主区一次只能显示一个视图（终
 
 拖拽标签页到主区边缘 → 左右或上下分屏。**Phase 3 限制：仅 2-pane 分屏，不支持 3-pane 嵌套。**
 
+**每个面板有自己的标签栏——标签页属于特定面板，拖拽到另一个面板 = 移动。** 对标 VS Code 的编辑器组模型。
+
 左右分屏：
 
 ```
-[📟 终端] [📊 心率检测]                                   ← 标签栏（全部标签页）
-                                                        ← 活跃标签页：两个都有下划线标记
-──────────────────────────────┬─────────────────────────
-                              │
-  📟 终端接收区                │  📊 心率检测卡片
-                              │
+┌───────────┬──────────────────────────────────────────────┐
+│ [📟 终端]  │ [📊 心率检测] [📊 PID调参]    ← 每个面板独立标签栏 │
+├───────────┼──────────────────────────────────────────────┤
+│           │                                               │
+│  📟 终端   │  📊 心率检测（当前活跃）                        │
+│  接收区    │  或切换到 PID调参                             │
+│           │                                               │
+└───────────┴──────────────────────────────────────────────┘
 ```
 
+- **左面板的标签栏**里只有"终端"——它属于左面板
+- **右面板的标签栏**里有"心率检测"和"PID调参"两个标签页——点击切换
+- 标签页可以被拖到另一个面板的标签栏 → **移动**到那个面板
+- 顶部**不再有全局标签栏**——标签页显示在它所属面板的标签栏中
 - 两个面板之间是 draggable 分割条（allotment）
-- 标签栏中的标签页显示当前在哪个面板（下划线颜色区分，或左/右小标记）
-- 标签栏中非面板内的标签页正常显示，点击会**替换最近失去焦点的面板**
+- 活跃标签页所属的面板 = 焦点面板（activeGroupId）→ 侧栏跟随焦点面板的 activeTabId
 
-### 2.5 分屏拖拽过程
+**标签页"属于哪个面板"的规则：**
+- 拖标签页到另一个面板的标签栏 → 标签页从原面板移除，加入目标面板
+- 拖标签页到分割条 → 创建新面板（替换语义）
+- 关闭面板中最后一个标签页 → 面板消失（unsplit），终端保底规则适用
 
-1. mousedown 标签页 → 记录起始位置
-2. mousemove → 半透明预览跟随鼠标（`position: fixed; transform: translate()`）
-3. 鼠标进入主区 → 检测 drop zone（左/右/上/下/中）
-4. drop zone 高亮（半透明蓝色区域）
-5. mouseup → 吸附执行分屏；拖到主区外或 ESC → 取消，预览飞回标签栏
-6. 已分屏时拖第三个标签页 → 替换目标面板的标签页（被替换的回到标签栏隐藏）
+### 2.5 分屏拖拽过程（对标 VS Code 视觉）
 
-详细算法见 [§9](#9-拖拽分屏drop-zone-检测)。
+1. mousedown 标签页 → 标签页"被拎起来"——`opacity: 0.7` + 轻微 `scale(1.02)`，跟随鼠标
+2. mousemove → 半透明标签页预览跟随（`position: fixed; transform: translate()`，GPU 合成线程）
+3. **拖到分屏 drop zone：** 鼠标进入主区边缘 → 目标区域出现**毛玻璃高亮**（`--drop-indicator` + `backdrop-filter: blur(4px)`）→ 持续显示"标签页放这里会变成什么样子"
+4. **拖到另一个面板的标签栏：** 目标标签栏出现插入指示线（竖线夹在相邻标签页之间）→ 标签页会被**移动**到那个面板
+5. **拖出所有 drop zone：** 取消拖拽（ESC 或拖到窗口外）→ 标签页飞回原位，200ms 回弹动画
+6. mouseup → 在 drop zone → 执行分屏或移动；不在任何 zone → 取消
+
+**已分屏时拖标签页到另一个面板的标签栏 → `moveTab()` 移动，不替换。** 这就是标签页"属于某个面板"的实现——拖过去就换家了。
 
 #### 标签栏内拖拽重排
 
@@ -327,9 +350,7 @@ V2.6 的教训：所有 UI 文字必须走 `t()` 函数，不硬编码中文字�
 
 ## 3. 状态架构
 
-原设计文档（v1）的 Tab 接口过于简化——只有 `id/type/label/workspaceName` 四个字段。缺失的 `dirty`（未保存标记）、`closable`（终端保底）在标签页关闭和 workspace 切换时会直接导致 UX 不完整。分屏布局数据结构也没有明确——"两个面板各有一个标签页"的模型不支持标签堆叠，但 2-pane 限制下也不需要。
-
-以下数据结构覆盖了 Phase 3 涉及的所有状态转换。
+原设计文档（v1）的 Tab 接口过于简化。且 v3 初期采用了"全局标签栏 + 面板只显示两个标签页"的简化模型。**v4 改为 VS Code 模型——每个面板独立标签栏 + 标签页属于特定面板。**
 
 ### 3.1 核心数据结构
 
@@ -338,39 +359,54 @@ V2.6 的教训：所有 UI 文字必须走 `t()` 函数，不硬编码中文字�
 
 interface Tab {
   id: string;                    // 唯一标识，规则见 §8.2
-  type: "terminal" | "workspace" | "oled" | "settings";
+  type: "terminal" | "workspace" | "oled" | "settings" | "editor";
   label: string;                 // 标签页标题（显示在标签栏）
   workspaceName?: string;        // workspace 类型才有——对应的 workspace 文件名
+  filePath?: string;             // editor 类型才有——文件路径（Phase 6）
   dirty: boolean;                // 有未保存修改 → 标签页标题前显示 ●。创建时初始值 = false
-  closable: boolean;             // 创建时初始值 = true。运行时动态更新：最后一个终端标签页 → false
 }
 
-// 创建标签页时的默认值
-function createTabDefaults(type: string, overrides?: Partial<Tab>): Tab {
-  return {
-    id: generateTabId(type, overrides?.workspaceName),
-    type,
-    label: overrides?.label ?? getDefaultLabel(type, overrides?.workspaceName),
-    workspaceName: overrides?.workspaceName,
-    dirty: false,          // 永远从 clean 开始
-    closable: true,        // 默认可关闭——终端保底逻辑在 closeTab() 中动态判断
-  };
+// ── 标签组（每个面板一个组，组有自己的标签栏）──
+
+interface TabGroup {
+  id: string;                    // 组唯一标识——"main" / "left" / "right" 等
+  tabs: Tab[];                   // 该组拥有的标签页，按打开顺序排列
+  activeTabId: string;           // 该组中当前活跃的标签页
 }
 
 // ── 分屏布局 ──
 
 interface SplitLayout {
   direction: "horizontal" | "vertical";
-  tabIds: [string, string];      // 精确 2 个——左/上、右/下
+  groupIds: [string, string];    // 精确 2 个——左/上、右/下
   sizes: [number, number];       // 百分比，如 [50, 50]。运行时由 allotment 维护
 }
 
 // ── 顶层状态 ──
 
 interface TabState {
-  tabs: Tab[];                   // 所有打开的标签页，按打开顺序排列
-  activeTabId: string;           // 最后被点击/交互的标签页——决定侧栏内容
+  groups: TabGroup[];            // 始终至少 1 个组。单面板 → [{id:"main", tabs:[...], ...}]；分屏 → 2 个组
+  activeGroupId: string;         // 最后被用户交互的组——决定侧栏内容
   split: SplitLayout | null;     // null = 单面板模式
+}
+```
+
+**和 v3 简化模型的区别：**
+- 旧：`tabs[]` 全局 + `split.tabIds` 指向当前可见的两个 → 标签页"漂浮"，不"归属"
+- 新：标签页属于特定 `TabGroup`。拖到另一个面板 = **从 groups[0].tabs 移除，加入 groups[1].tabs**
+- 换组通过 `moveTab(tabId, targetGroupId)`，不是 `splitTab`
+
+```ts
+// 创建标签页时的默认值
+function createTabDefaults(type: string, overrides?: Partial<Tab>): Tab {
+  return {
+    id: generateTabId(type, overrides?.workspaceName ?? overrides?.filePath),
+    type,
+    label: overrides?.label ?? getDefaultLabel(type, overrides?.workspaceName),
+    workspaceName: overrides?.workspaceName,
+    filePath: overrides?.filePath,
+    dirty: false,
+  };
 }
 ```
 
@@ -381,12 +417,25 @@ interface TabState {
 ```ts
 function useTabManager(): {
   tabState: TabState;
-  openOrFocusTab: (type: string) => void;     // 图标栏用——只聚焦不创建（§6.2）
-  createTab: (type: string, workspaceName?: string) => void;  // [+] 按钮用——显式创建
-  closeTab: (tabId: string) => void;           // 关闭，含边界处理
-  focusTab: (tabId: string) => void;           // 切换活跃标签页
-  splitTab: (tabId: string, direction, targetTabId?) => void;  // 形成/替换分屏
-  unsplit: () => void;                         // 取消分屏
+
+  // 标签页操作
+  openOrFocusTab: (type: string) => void;            // 图标栏用——只聚焦不创建
+  createTab: (type: string, opts?: {                // [+] 按钮 / 设置页用——显式创建
+    workspaceName?: string; filePath?: string; label?: string;
+    targetGroupId?: string;                         // 指定加入哪个组（默认 activeGroupId）
+  }) => string;                                      // 返回新标签页 ID
+  closeTab: (tabId: string) => void;                 // 关闭，含边界处理
+  focusTab: (tabId: string) => void;                 // 切换活跃标签页
+  moveTab: (tabId: string, targetGroupId: string) => void;  // 移动标签页到另一个组
+
+  // 分屏操作
+  splitTab: (tabId: string, direction: "left" | "right" | "up" | "down") => void;
+  unsplit: () => void;
+  updateSplitSizes: (sizes: [number, number]) => void;
+
+  // 持久化
+  restoreLayout: (layout: LayoutData) => void;
+  toLayoutData: () => LayoutData;
 }
 ```
 
@@ -394,21 +443,30 @@ function useTabManager(): {
 
 | 调用方法 | 条件 | 结果 |
 |------|------|------|
-| `openOrFocusTab("terminal")` | 有终端标签页 | 聚焦最近的终端标签页 |
-| `openOrFocusTab("terminal")` | 无终端标签页 | 创建 `terminal-1`，聚焦（终端保底） |
-| `createTab("workspace", "heart_rate")` | 已有同名 workspace | 聚焦已有的 |
-| `createTab("workspace", "heart_rate")` | 无同名 workspace | 创建 `workspace-heart_rate`，聚焦 |
+| `openOrFocusTab("terminal")` | 已有终端标签页 | 在任意组中找到最近的终端标签页 → 聚焦 |
+| `openOrFocusTab("terminal")` | 全局无终端标签页 | 在 `activeGroupId` 组中创建 `terminal-1`，聚焦 |
+| `createTab("workspace", { workspaceName })` | 已有同名 workspace | 聚焦已有的 |
+| `createTab("workspace", { workspaceName })` | 不存在 | 在 `targetGroupId` 组（默认 activeGroupId）中创建，聚焦 |
 | `openOrFocusTab("workspace")` | 有工作台标签页 | 聚焦最近活跃的 |
-| `openOrFocusTab("workspace")` | 无工作台标签页 | **不创建。** 触发 tooltip 提示（§6.2） |
-| `closeTab(id)` | 不是最后一个标签页 | 关闭。若被关的是分屏面板之一 → 自动 unsplit |
-| `closeTab(id)` | 是最后一个标签页 | 忽略（终端保底） |
-| `splitTab(tabId, "right")` | split === null | 以 activeTabId + tabId 创建分屏 |
-| `splitTab(tabId, "right")` | split !== null | 替换目标面板的标签页 |
-| 点击标签栏中的标签页（调用 `focusTab`） | split === null | 切换活跃标签页 |
-| 点击标签栏中的标签页（调用 `focusTab`） | split !== null，点击的已在某面板 | 切换活跃标签页 |
-| 点击标签栏中的标签页 | split !== null，点击的不在面板中 | 替换 least-recently-focused 面板 + 调用 `focusTab` |
-| `createTab(type, ...)` | split === null | 创建标签页 → `tabs[]` 追加 → 设为 activeTabId |
-| `createTab(type, ...)` | split !== null | 创建标签页 → 替换 activeTabId 所在面板的标签页（被替换的回到标签栏隐藏）。对标 VS Code：新标签页开在活跃编辑器组 |
+| `openOrFocusTab("workspace")` | 无工作台标签页 | **不创建。** 触发 tooltip（§6.2） |
+| `closeTab(id)` | 全局标签页数 > 1 | 从所属组移除。若该组变空 → unsplit。若 split 且只剩另一组 → unsplit |
+| `closeTab(id)` | 全局最后一个标签页 | 忽略（终端保底） |
+| `moveTab(tabId, targetGroupId)` | — | 从原组移除 → 加入目标组 → 聚焦。拖标签页到另一个面板的标签栏调用此方法 |
+| `splitTab(tabId, direction)` | split === null | 创建新组 → 把 tabId 移到新组 → 形成分屏 |
+| `splitTab(tabId, direction)` | split !== null | **忽略。** 2-pane 限制。拖拽到已有分屏时用 `moveTab` |
+| 点击组内标签页（调用 `focusTab`） | — | 设置该组的 `activeTabId` + 设置 `activeGroupId` |
+| `createTab(type, opts)` | 未指定 targetGroupId | 在 activeGroupId 所在组创建 |
+
+### 3.4 派生值（不在 state 中存储，useMemo 派生）
+
+```ts
+// 全局所有标签页（扁平化）
+const allTabs = tabState.groups.flatMap(g => g.tabs);
+
+// 活跃标签页——侧栏内容跟随这个
+const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
+const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
+```
 
 ### 3.4 TabManager 的可访问性
 
@@ -446,57 +504,70 @@ Phase 3 要求"切换标签页不丢状态"。**所有标签页必须同时挂�
 
 ### 4.2 渲染策略
 
+**每个 TabGroup 渲染自己的标签栏 + 内容区。** 标签页属于特定组，不在组间共享。
+
 ```tsx
 function MainContent({ tabState }: { tabState: TabState }) {
-  const { tabs, activeTabId, split } = tabState;
+  const { groups, activeGroupId, split } = tabState;
 
-  // 判断每个 tab 是否可见
-  const visibleTabIds = split
-    ? new Set(split.tabIds)
-    : new Set([activeTabId]);
-
-  // 所有 tabs 挂载在同一个 flat pool 中
-  const tabContentPool = (
-    <div className="tab-content-pool" style={{ display: "flex", flex: 1 }}>
-      {tabs.map(tab => (
-        <div
-          key={tab.id}
-          style={{
-            display: visibleTabIds.has(tab.id) ? "flex" : "none",
-            flex: 1,
-            minHeight: 0,
-            overflow: "hidden",
-          }}
-        >
-          <TabContent
-            tab={tab}
-            isActive={tab.id === activeTabId}
-          />
+  // 一个 TabGroup 渲染一个面板（标签栏 + 内容区）
+  const renderGroup = (group: TabGroup) => {
+    const activeTab = group.tabs.find(t => t.id === group.activeTabId);
+    return (
+      <div className="tab-group" style={{ display: "flex", flexDirection: "column", flex: 1 }}>
+        {/* 该组的独立标签栏 */}
+        <TabBar
+          group={group}
+          isActiveGroup={group.id === activeGroupId}
+          onTabClick={...}
+          onTabClose={...}
+          onTabDrag={...}
+        />
+        {/* 标签页内容池——keep-alive：CSS 控制显隐 */}
+        <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
+          {group.tabs.map(tab => (
+            <div
+              key={tab.id}
+              style={{
+                display: tab.id === group.activeTabId ? "flex" : "none",
+                flex: 1, minHeight: 0, overflow: "hidden",
+              }}
+            >
+              <TabContent
+                tab={tab}
+                isActive={tab.id === group.activeTabId && group.id === activeGroupId}
+              />
+            </div>
+          ))}
         </div>
-      ))}
-    </div>
-  );
+      </div>
+    );
+  };
 
   if (split) {
+    const [g1, g2] = split.groupIds.map(id => groups.find(g => g.id === id)!);
     return (
-      <Allotment onChange={(sizes) => saveSplitSizes(sizes)}>
+      <Allotment onChange={(sizes) => updateSplitSizes(sizes as [number, number])}>
         <Allotment.Pane preferredSize={`${split.sizes[0]}%`}>
-          {tabContentPool}
+          {renderGroup(g1)}
         </Allotment.Pane>
         <Allotment.Pane preferredSize={`${split.sizes[1]}%`}>
-          {tabContentPool}
+          {renderGroup(g2)}
         </Allotment.Pane>
       </Allotment>
     );
   }
 
-  return <div className="main-content">{tabContentPool}</div>;
+  // 单面板——只有 main 组
+  return <div className="main-content">{renderGroup(groups[0])}</div>;
 }
 ```
 
-**关键点：** 每个 tab 的内容在 React 树中只存在一次（通过 key 去重）。Allotment 的两个 Pane 各渲染一份 `tabContentPool`，但 React reconciliation 按 key 匹配——同一个 tab 的 DOM 只存在于其中一个 Pane 中（由 `display` CSS 控制）。Allotment 的 Pane 是 flex 容器，`display: none` 的元素不占空间。
-
-> **实现注意：** 如果 allotment 对子元素做 cloneElement 导致 key 行为异常，备选方案是在 MainContent 层做 flat pool（单个 div），用 CSS grid 模拟 split 布局，不用 allotment 的 Pane 嵌套。先用 allotment 默认路径，遇到问题再切。
+**关键点：**
+- 每个组有独立的 `TabBar` 组件实例——标签页不会"漂浮"在全局标签栏中
+- 标签页内容仍用 keep-alive（CSS display 切换），但可见性只看**该组**的 activeTabId
+- 分屏时渲染两个 `renderGroup()`，各自带自己的标签栏和内容
+- 拖标签页到另一个面板 → `moveTab(tabId, targetGroupId)` → 标签页从 groups[0].tabs 消失，出现在 groups[1].tabs 中
 
 ### 4.3 重新激活：CM6 / Monaco / ECharts 布局修复
 
@@ -832,28 +903,29 @@ function detectDropZone(
 }
 ```
 
-### 9.2 各 zone 的行为
+### 9.2 各 drop target 的行为
 
-| Drop Zone | 行为 |
-|------|------|
-| `left` | 左右分屏，拖拽的标签页放左边 |
-| `right` | 左右分屏，拖拽的标签页放右边 |
-| `up` | 上下分屏，拖拽的标签页放上边 |
-| `down` | 上下分屏，拖拽的标签页放下边 |
-| `center` | 不分屏——在同面板内切换标签页（或替换面板的标签页） |
-| `null`（拖到主区外） | 取消拖拽——预览飞回标签栏 |
+V3 的拖拽有三个合法目标区域：
+
+| Drop Target | 检测方式 | 行为 |
+|------|------|------|
+| **主区边缘** (left/right/up/down) | 5-zone 算法检测主区 rect | 未分屏 → `splitTab(tabId, direction)`；已分屏 → 忽略（2-pane 限制） |
+| **另一个面板的标签栏** | `TabBar` 组件自身的 `onDragOver` | `moveTab(tabId, targetGroupId)`——标签页**换面板** |
+| **同面板标签栏** | `TabBar` 自身检测 | 重排——交换 `tabs[]` 中位置（§2.5 标签栏内拖拽重排） |
+| **null**（拖到窗口外 / ESC） | — | 取消，预览飞回原标签栏 |
 
 ### 9.3 已分屏时的拖拽行为
 
-已分屏时拖第三个标签页：
+已分屏时拖标签页到另一个面板的标签栏 → **移动，不是替换：**
 
 ```
-当前：[终端 | 工作台A]
-拖 "工作台B" 到右面板 → 替换右面板 → [终端 | 工作台B]
-                       → 工作台A 回到标签栏（隐藏状态）
+当前：[终端] | [工作台A]
+拖 "终端" 到右面板标签栏 → 终端从 groups[0].tabs 移除 → 加入 groups[1].tabs
+结果：[空] | [工作台A] [📟 终端]
+      → groups[0] 变空 → unsplit → 只剩一个面板
 ```
 
-**替换规则：** 拖拽的标签页替换目标面板的标签页。被替换的标签页不关闭——回到标签栏中作为隐藏标签页（内容保持挂载但不可见）。
+**关键区别：** v3 的"替换"（旧标签页回全局标签栏隐藏）不再存在——因为没有全局标签栏了。标签页只存在于某个组的标签栏中。
 
 ### 9.4 实现方式
 
