@@ -6,6 +6,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { Tab, TabType, SplitLayout } from "../hooks/useTabManager";
+import { detectDropZone } from "../hooks/tabDragTypes";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -28,6 +29,13 @@ interface TabBarProps {
   onCreateTab: (type: TabType, workspaceName?: string) => void;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
+  /** 拖拽分屏 */
+  onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down") => void;
+  editorAreaRef?: React.RefObject<HTMLDivElement | null>;
+  dragDropZone?: "left" | "right" | "up" | "down" | "center" | null;
+  onDragDropZone?: (zone: "left" | "right" | "up" | "down" | "center" | null) => void;
+  isDragging?: boolean;
+  onDraggingChange?: (v: boolean) => void;
 }
 
 /* ── [+] 弹出菜单 ── */
@@ -190,6 +198,11 @@ export default function TabBar({
   onCreateTab,
   onSplitTab,
   onReorderTab,
+  onDropSplit,
+  editorAreaRef,
+  onDragDropZone,
+  isDragging: _isDragging,
+  onDraggingChange,
 }: TabBarProps) {
   const [plusOpen, setPlusOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
@@ -239,10 +252,13 @@ export default function TabBar({
     toIndex: number;
     startX: number;
     startY: number;
-    phase: "idle" | "reorder";
+    phase: "idle" | "reorder" | "split";
   }>({ tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle" });
   const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
   const [draggingTabId, setDraggingTabId] = useState<string | null>(null);
+
+  // 拖拽分屏预览位置
+  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
 
   // 点击外部关闭 [+] 菜单
   useEffect(() => {
@@ -262,43 +278,77 @@ export default function TabBar({
     }
   }, []);
 
-  // 拖拽重排——window 级别事件监听
+  // 拖拽重排 + 分屏——window 级别事件监听
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (dragState.current.phase === "idle") return;
 
-      // 移动距离不足阈值 → 不启动拖拽（避免点击时闪烁）
-      if (dragState.current.phase === "reorder") {
-        const dx = Math.abs(e.clientX - dragState.current.startX);
-        const dy = Math.abs(e.clientY - dragState.current.startY);
-        if (dx < 5 && dy < 5) return;
+      const dx = e.clientX - dragState.current.startX;
+      const dy = e.clientY - dragState.current.startY;
+
+      // 移动距离不足阈值 → 不启动拖拽
+      if (dragState.current.phase === "reorder" && Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
+
+      // 垂直拖拽超过阈值 → 切换到分屏模式
+      if (dragState.current.phase === "reorder" && Math.abs(dy) > 15) {
+        dragState.current.phase = "split";
+        onDraggingChange?.(true);
+        setDragInsertIndex(null);
       }
 
-      if (!scrollRef.current) return;
+      // ── 分屏模式 ──
+      if (dragState.current.phase === "split") {
+        setPreviewPos({ x: e.clientX, y: e.clientY });
 
+        // 检测 drop zone
+        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+        if (areaRect) {
+          const zone = detectDropZone(e.clientX, e.clientY, areaRect);
+          onDragDropZone?.(zone);
+        }
+        return;
+      }
+
+      // ── 重排模式 ──
+      if (!scrollRef.current) return;
       const tabElements = scrollRef.current.querySelectorAll<HTMLElement>(".tab-item");
       const scrollRect = scrollRef.current.getBoundingClientRect();
       const mouseX = e.clientX - scrollRect.left + scrollRef.current.scrollLeft;
 
-      // 计算鼠标所在位置对应的插入索引
-      let insertIdx = tabs.length; // 默认插到最后
+      let insertIdx = tabs.length;
       for (let i = 0; i < tabElements.length; i++) {
         const rect = tabElements[i].getBoundingClientRect();
         const midX = rect.left - scrollRect.left + scrollRef.current.scrollLeft + rect.width / 2;
-        if (mouseX < midX) {
-          insertIdx = i;
-          break;
-        }
+        if (mouseX < midX) { insertIdx = i; break; }
       }
-      // 如果拖拽的标签页在插入位置之前，插入位置需要 -1（因为移走了一个）
       if (insertIdx > dragState.current.fromIndex) insertIdx--;
 
       dragState.current.toIndex = insertIdx;
       setDragInsertIndex(insertIdx);
     };
 
-    const onMouseUp = () => {
-      if (dragState.current.phase !== "reorder") return;
+    const onMouseUp = (e: MouseEvent) => {
+      if (dragState.current.phase === "idle") return;
+
+      if (dragState.current.phase === "split") {
+        const areaRect = editorAreaRef?.current?.getBoundingClientRect();
+        let zone: "left" | "right" | "up" | "down" | "center" | null = null;
+        if (areaRect) {
+          zone = detectDropZone(e.clientX, e.clientY, areaRect);
+        }
+        // 有效 zone（非 center/null）→ 执行分屏
+        if (zone && zone !== "center" && onDropSplit) {
+          onDropSplit(dragState.current.tabId, zone);
+        }
+        onDragDropZone?.(null);
+        onDraggingChange?.(false);
+        setPreviewPos(null);
+        dragState.current.phase = "idle";
+        setDraggingTabId(null);
+        return;
+      }
+
+      // 重排模式
       const { tabId, toIndex } = dragState.current;
       if (toIndex >= 0 && toIndex !== dragState.current.fromIndex) {
         onReorderTab?.(tabId, toIndex);
@@ -308,13 +358,25 @@ export default function TabBar({
       setDraggingTabId(null);
     };
 
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && dragState.current.phase === "split") {
+        dragState.current.phase = "idle";
+        onDragDropZone?.(null);
+        onDraggingChange?.(false);
+        setPreviewPos(null);
+        setDraggingTabId(null);
+      }
+    };
+
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("keydown", onKeyDown);
     return () => {
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("keydown", onKeyDown);
     };
-  }, [tabs, onReorderTab]);
+  }, [tabs, onReorderTab, onDropSplit, editorAreaRef, onDragDropZone, onDraggingChange]);
 
   // 确定分屏标记
   const paneIds = split ? new Set(split.tabIds) : null;
@@ -414,6 +476,24 @@ export default function TabBar({
           onCloseTab={onCloseTab}
           onSplitTab={onSplitTab}
         />
+      )}
+
+      {/* 拖拽分屏预览 */}
+      {previewPos && draggingTabId && (
+        <div
+          className="tab-drag-preview"
+          style={{
+            position: "fixed",
+            left: previewPos.x - 40,
+            top: previewPos.y - 16,
+            pointerEvents: "none",
+            zIndex: 200,
+          }}
+        >
+          <span className="tab-drag-preview-label">
+            {tabs.find((t) => t.id === draggingTabId)?.label ?? ""}
+          </span>
+        </div>
       )}
     </div>
   );

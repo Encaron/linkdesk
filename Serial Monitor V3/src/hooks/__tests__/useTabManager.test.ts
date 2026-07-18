@@ -18,6 +18,7 @@ import {
   reduceCloseTab,
   reduceForceCloseTab,
   reduceSplitTab,
+  reduceDropSplit,
   reduceUnsplit,
   reduceSetDirty,
   reduceReorderTab,
@@ -25,6 +26,7 @@ import {
   type Tab,
   type TabState,
 } from "../useTabManager";
+import { detectDropZone } from "../tabDragTypes";
 
 /* ── 辅助函数 ── */
 
@@ -651,5 +653,69 @@ describe("集成场景", () => {
     const r = reduceCreateTab(s, "workspace", "pid");
     expect(r.state.tabs).toHaveLength(3); // t1 + pid + heart_rate
     expect(r.state.activeTabId).toBe("workspace-pid");
+  });
+});
+
+/* ══════════════════════════════════════════════════════════════
+   reduceDropSplit + detectDropZone
+   ══════════════════════════════════════════════════════════════ */
+
+describe("reduceDropSplit", () => {
+  it("拖到右侧 → [active | dragged]", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state; // terminal-2, activeTabId=terminal-2
+    state = reduceFocusTab(state, "terminal-1");
+    // active=terminal-1, drag terminal-2 to right
+    const next = reduceDropSplit(state, "terminal-2", "horizontal", 1);
+    expect(next.split!.tabIds).toEqual(["terminal-1", "terminal-2"]);
+  });
+
+  it("拖到左侧 → [dragged | active]", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;
+    state = reduceFocusTab(state, "terminal-1");
+    const next = reduceDropSplit(state, "terminal-2", "horizontal", 0);
+    expect(next.split!.tabIds).toEqual(["terminal-2", "terminal-1"]);
+  });
+
+  it("已分屏时拖拽替换面板", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state;
+    state = reduceFocusTab(state, "terminal-1");
+    state = reduceSplitTab(state, "terminal-2", "horizontal");
+    // [t1 | t2], activeTabId=t1
+    state = reduceCreateTab(state, "workspace", "pid").state; // replaces t1 → [ws | t2], activeTabId=ws
+    const next = reduceDropSplit(state, "terminal-1", "horizontal", 1);
+    // t1 replaces ws → [t1 | t2]
+    expect(next.split!.tabIds).toContain("terminal-1");
+    expect(next.split!.tabIds).toContain("terminal-2");
+  });
+});
+
+describe("detectDropZone", () => {
+  const rect: DOMRect = { left: 100, top: 100, width: 400, height: 300 } as DOMRect;
+
+  it("左上区域 → up", () => {
+    expect(detectDropZone(300, 130, rect)).toBe("up");
+  });
+
+  it("左下区域 → down", () => {
+    expect(detectDropZone(300, 350, rect)).toBe("down");
+  });
+
+  it("左中区域 → left", () => {
+    expect(detectDropZone(140, 250, rect)).toBe("left");
+  });
+
+  it("右中区域 → right", () => {
+    expect(detectDropZone(450, 250, rect)).toBe("right");
+  });
+
+  it("正中 → center", () => {
+    expect(detectDropZone(300, 250, rect)).toBe("center");
+  });
+
+  it("区域外 → null", () => {
+    expect(detectDropZone(50, 250, rect)).toBeNull();
   });
 });

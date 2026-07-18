@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { useTabManager, type TabType } from "./hooks/useTabManager";
+import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
@@ -40,11 +41,17 @@ function App() {
     forceCloseTab,
     createTab,
     splitTab,
+    dropSplitTab,
     unsplit,
     updateSplitSizes,
     restoreLayout,
     reorderTab,
   } = useTabManager();
+
+  // Phase 3 Step 6: 拖拽分屏
+  const editorAreaRef = useRef<HTMLDivElement>(null);
+  const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
+  const [isDragging, setIsDragging] = useState(false);
 
   // 当前活跃标签页的类型（用于 IconBar 高亮 + SidePanel 联动）
   const activeTab = useMemo(
@@ -105,6 +112,18 @@ function App() {
       window.removeEventListener("mouseup", onMouseUp);
     };
   }, []);
+
+  /* ---- 拖拽分屏回调（Phase 3 Step 6） ---- */
+  const handleDropSplit = useCallback(
+    (tabId: string, zone: Exclude<DropZone, null | "center">) => {
+      const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
+      const side = zone === "left" || zone === "up" ? 0 : 1;
+      dropSplitTab(tabId, direction, side as 0 | 1);
+      setDragDropZone(null);
+      setIsDragging(false);
+    },
+    [dropSplitTab]
+  );
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   const handleIconClick = useCallback(
@@ -318,7 +337,7 @@ function App() {
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
         {/* Phase 3: 编辑器区域——标签栏 + 主内容（图标栏/侧栏一通到底，标签栏仅覆盖主区） */}
-        <div className="editor-area">
+        <div className="editor-area" ref={editorAreaRef}>
           <TabBar
             tabs={tabState.tabs}
             activeTabId={tabState.activeTabId}
@@ -328,8 +347,18 @@ function App() {
             onCreateTab={createTab}
             onSplitTab={splitTab}
             onReorderTab={reorderTab}
+            onDropSplit={handleDropSplit}
+            editorAreaRef={editorAreaRef}
+            dragDropZone={dragDropZone}
+            onDragDropZone={setDragDropZone}
+            isDragging={isDragging}
+            onDraggingChange={setIsDragging}
           />
-          <MainContent tabState={tabState} onSplitResize={updateSplitSizes} />
+          <MainContent
+            tabState={tabState}
+            onSplitResize={updateSplitSizes}
+            dropZone={dragDropZone}
+          />
         </div>
       </div>
       </TerminalPrefsContext.Provider>

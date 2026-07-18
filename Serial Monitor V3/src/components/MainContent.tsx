@@ -19,6 +19,7 @@ import "./MainContent.css";
 interface MainContentProps {
   tabState: TabState;
   onSplitResize?: (sizes: [number, number]) => void;
+  dropZone?: "left" | "right" | "up" | "down" | "center" | null;
 }
 
 /** 根据标签页类型渲染对应 View 组件 */
@@ -44,7 +45,7 @@ function renderTabContent(
   }
 }
 
-function MainContent({ tabState, onSplitResize }: MainContentProps) {
+function MainContent({ tabState, onSplitResize, dropZone }: MainContentProps) {
   const { tabs, activeTabId, split } = tabState;
 
   const handleAllotmentChange = useCallback(
@@ -56,6 +57,11 @@ function MainContent({ tabState, onSplitResize }: MainContentProps) {
     [onSplitResize]
   );
 
+  // Drop zone 高亮覆盖层
+  const dropOverlay = dropZone && dropZone !== "center" && (
+    <div className={`drop-zone-overlay drop-zone-${dropZone}`} />
+  );
+
   // ── 分屏模式 ──
   if (split) {
     const [id1, id2] = split.tabIds;
@@ -64,6 +70,7 @@ function MainContent({ tabState, onSplitResize }: MainContentProps) {
 
     return (
       <div className="main-content">
+        {dropOverlay}
         <SplitPane
           direction={split.direction}
           sizes={split.sizes}
@@ -83,6 +90,7 @@ function MainContent({ tabState, onSplitResize }: MainContentProps) {
   // ── 单面板模式：keep-alive pool ──
   return (
     <div className="main-content">
+      {dropOverlay}
       <div className="tab-content-pool">
         {tabs.map((tab) => (
           <div

@@ -273,3 +273,20 @@
   0%, 100% { opacity: 1; }
   50% { opacity: 0.3; }
 }
+
+/* ── 拖拽分屏预览 ── */
+
+.tab-drag-preview {
+  padding: 4px 12px;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  opacity: 0.9;
+}
+
+.tab-drag-preview-label {
+  pointer-events: none;
+}

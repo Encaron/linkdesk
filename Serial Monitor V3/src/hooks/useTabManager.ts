@@ -295,6 +295,43 @@ export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResu
 }
 
 /** 分屏 */
+/** 拖拽分屏——指定标签页放在左/上(side=0)还是右/下(side=1) */
+export function reduceDropSplit(
+  prev: TabState,
+  tabId: string,
+  direction: "horizontal" | "vertical",
+  side: 0 | 1
+): TabState {
+  if (!prev.tabs.some((t) => t.id === tabId)) return prev;
+  if (prev.tabs.length < 2) return prev;
+
+  // 如果拖拽的是活跃标签页，找下一个标签页配对
+  let draggedId = tabId;
+  let otherId = prev.activeTabId;
+  if (draggedId === otherId) {
+    const idx = prev.tabs.findIndex((t) => t.id === prev.activeTabId);
+    otherId = prev.tabs[(idx + 1) % prev.tabs.length].id;
+  }
+
+  const tabIds: [string, string] =
+    side === 0 ? [draggedId, otherId] : [otherId, draggedId];
+
+  if (!prev.split) {
+    return { ...prev, split: { direction, tabIds, sizes: [50, 50] } };
+  }
+
+  // 已分屏 → 替换 activeTabId 所在面板
+  const paneIdx = prev.split.tabIds.indexOf(prev.activeTabId);
+  if (paneIdx === -1) return prev;
+  const newTabIds = [...prev.split.tabIds] as [string, string];
+  newTabIds[paneIdx] = draggedId;
+  return {
+    ...prev,
+    activeTabId: draggedId,
+    split: { ...prev.split, tabIds: newTabIds },
+  };
+}
+
 export function reduceSplitTab(
   prev: TabState,
   tabId: string,
@@ -484,6 +521,19 @@ export function useTabManager(initial?: Partial<TabState>) {
     []
   );
 
+  /** 拖拽分屏——指定侧边 */
+  const dropSplitTab = useCallback(
+    (tabId: string, direction: "horizontal" | "vertical", side: 0 | 1) => {
+      setTabState((prev) => {
+        const next = reduceDropSplit(prev, tabId, direction, side);
+        const tab = next.tabs.find((t) => t.id === tabId);
+        if (tab) lastFocusedByType.current.set(tab.type, tabId);
+        return next;
+      });
+    },
+    []
+  );
+
   const unsplit = useCallback(() => {
     setTabState((prev) => {
       const next = reduceUnsplit(prev);
@@ -523,6 +573,7 @@ export function useTabManager(initial?: Partial<TabState>) {
     closeTab,
     forceCloseTab,
     splitTab,
+    dropSplitTab,
     unsplit,
     setDirty,
     updateSplitSizes,
