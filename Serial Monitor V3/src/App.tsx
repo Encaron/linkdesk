@@ -1,9 +1,11 @@
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { useTabManager, type TabType } from "./hooks/useTabManager";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
+import TabBar from "./components/TabBar";
 import TopBar from "./components/TopBar";
 import StatusBar from "./components/StatusBar";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
@@ -11,6 +13,7 @@ import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import "./App.css";
 
+// 保留 ViewId 用于向后兼容 IconBar（Phase 3 过渡期）
 export type ViewId = "terminal" | "workspace" | "settings";
 
 interface PortInfo {
@@ -20,8 +23,6 @@ interface PortInfo {
 
 function App() {
   const [ready, setReady] = useState(false);
-  const [activeView, setActiveView] = useState<ViewId>("terminal");
-  const [lastContentView, setLastContentView] = useState<ViewId>("terminal");
   const [isOpen, setIsOpen] = useState(false);
   const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>({ ...defaultTerminalPrefs });
   const [ports, setPorts] = useState<PortInfo[]>([]);
@@ -30,22 +31,36 @@ function App() {
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
-  /* ---- 启动初始化：PreferenceService → 加载主题 → 设置 state ---- */
+  // Phase 3: 标签页状态管理
+  const {
+    tabState,
+    openOrFocusTab,
+    focusTab,
+    closeTab,
+    createTab,
+  } = useTabManager();
+
+  // 当前活跃标签页的类型（用于 IconBar 高亮 + SidePanel 联动）
+  const activeTab = useMemo(
+    () => tabState.tabs.find((t) => t.id === tabState.activeTabId),
+    [tabState.tabs, tabState.activeTabId]
+  );
+  const activeTabType: TabType | undefined = activeTab?.type;
+
+  /* ---- 启动初始化 ---- */
   useEffect(() => {
     initPrefs().then((prefs) => {
-      // 主题
       loadTheme(prefs.theme || "Dark")
         .then(applyTheme)
         .catch(() => { /* CSS fallback 生效 */ });
 
-      // 恢复状态
       setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
       setPortName(prefs.lastPort || "COM3");
       setReady(true);
     });
   }, []);
 
-  /* ---- 侧栏拖拽调整宽度（直接操作 DOM，不经过 React） ---- */
+  /* ---- 侧栏拖拽调整宽度 ---- */
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const dragging = useRef(false);
   const sidebarRef = useRef<HTMLElement>(null);
@@ -64,7 +79,6 @@ function App() {
     const onMouseUp = () => {
       if (!dragging.current) return;
       dragging.current = false;
-      // 只在松手时同步一次 React state
       if (sidebarRef.current) {
         setSidebarWidth(parseInt(sidebarRef.current.style.width) || 220);
       }
@@ -77,17 +91,13 @@ function App() {
     };
   }, []);
 
-  /* ---- 视图切换 ---- */
-  const handleViewChange = (view: ViewId) => {
-    if (view === "settings") {
-      setActiveView("settings");
-    } else {
-      setLastContentView(view);
-      setActiveView(view);
-    }
-  };
-
-  const contentView = activeView === "settings" ? lastContentView : activeView;
+  /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
+  const handleIconClick = useCallback(
+    (type: string) => {
+      openOrFocusTab(type as TabType);
+    },
+    [openOrFocusTab]
+  );
 
   /* ---- 串口控制 ---- */
   const handleToggleOpen = useCallback(async () => {
@@ -130,7 +140,7 @@ function App() {
     }
   }, [isOpen, baudRate]);
 
-  // 终端设置变更 → 持久化到 prefs.json
+  // 终端设置变更 → 持久化
   useEffect(() => {
     try {
       const prefs = PreferenceService.loadPrefs();
@@ -148,15 +158,13 @@ function App() {
     } catch { /* 静默 */ }
   }, [portName]);
 
-  // COM 口枚举 + 热插拔检测（2s 轮询）
+  // COM 口枚举 + 热插拔
   useEffect(() => {
     const refreshPorts = async () => {
       try {
         const list = await invoke<PortInfo[]>("list_ports");
         setPorts(list);
-      } catch {
-        // 静默——Tauri 不可用时 fallback 到空列表
-      }
+      } catch { /* 静默 */ }
     };
     refreshPorts();
     const timer = setInterval(refreshPorts, 2000);
@@ -181,7 +189,7 @@ function App() {
     }
   }, [isOpen]);
 
-  if (!ready) return null; // 等待 initPrefs() 完成
+  if (!ready) return null;
 
   return (
     <div className="app-shell">
@@ -194,17 +202,28 @@ function App() {
         onPortChange={handlePortChange}
         onBaudChange={handleBaudChange}
       />
+      {/* Phase 3: 标签栏 */}
+      <TabBar
+        tabs={tabState.tabs}
+        activeTabId={tabState.activeTabId}
+        split={tabState.split}
+        onFocusTab={focusTab}
+        onCloseTab={closeTab}
+        onCreateTab={createTab}
+      />
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
-        <IconBar activeView={activeView} onViewChange={handleViewChange} />
+        <IconBar
+          activeTabType={activeTabType ?? "terminal"}
+          onOpenOrFocus={handleIconClick}
+        />
         <SidePanel
           ref={sidebarRef}
-          activeView={activeView}
-          contentView={contentView}
+          activeTabType={activeTabType ?? "terminal"}
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
-        <MainContent activeView={activeView} />
+        <MainContent tabState={tabState} />
       </div>
       </TerminalPrefsContext.Provider>
       <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} />

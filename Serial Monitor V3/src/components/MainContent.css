@@ -3,5 +3,22 @@
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  background: #252528;
+  background: var(--bg-window);
 }
+
+/* Phase 3: keep-alive 标签页内容池 */
+.tab-content-pool {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.tab-content-pane {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+/* display: none 的元素不占空间、子元素的 rAF 继续运行但 CM6 不做 layout/paint */

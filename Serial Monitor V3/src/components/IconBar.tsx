@@ -1,29 +1,30 @@
 import { useTranslation } from "react-i18next";
-import type { ViewId } from "../App";
+import type { TabType } from "../hooks/useTabManager";
 import "./IconBar.css";
 
 interface IconBarProps {
-  activeView: ViewId;
-  onViewChange: (view: ViewId) => void;
+  activeTabType: TabType;
+  onOpenOrFocus: (type: string) => void;
 }
 
-const iconIds: ViewId[] = ["terminal", "workspace", "settings"];
+/** 图标栏可显示的视图类型（Phase 3: 不含 oled） */
+const iconTypes: TabType[] = ["terminal", "workspace", "settings"];
 
-function IconBar({ activeView, onViewChange }: IconBarProps) {
+function IconBar({ activeTabType, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
 
   return (
     <div className="icon-bar">
-      {iconIds.map((id) => (
+      {iconTypes.map((type) => (
         <button
-          key={id}
-          className={`icon-btn${activeView === id ? " active" : ""}`}
-          onClick={() => onViewChange(id)}
-          title={t(id)}
+          key={type}
+          className={`icon-btn${activeTabType === type ? " active" : ""}`}
+          onClick={() => onOpenOrFocus(type)}
+          title={t(type)}
         >
           <img
-            src={`/assets/icons/${id}.png`}
-            alt={t(id)}
+            src={`/assets/icons/${type}.png`}
+            alt={t(type)}
             className="icon-img"
           />
         </button>

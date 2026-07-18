@@ -1,0 +1,188 @@
+/* TabBar — 标签栏样式 */
+/* 设计依据：[V3-Phase3-标签页分屏设计.md §2.2, §2.9] */
+
+.tab-bar {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-window);
+  height: 35px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.tab-list {
+  display: flex;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  flex: 1;
+  min-width: 0;
+  /* 隐藏滚动条但保留滚动能力 */
+  scrollbar-width: none;
+}
+.tab-list::-webkit-scrollbar {
+  display: none;
+}
+
+/* ── 标签页 ── */
+
+.tab-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 80px;
+  max-width: 200px;
+  height: 100%;
+  padding: 0 10px;
+  background: var(--bg-card);
+  color: var(--text-secondary);
+  font-size: 12px;
+  cursor: pointer;
+  border-right: 1px solid var(--separator);
+  transition: background 120ms, color 120ms;
+  position: relative;
+  flex-shrink: 0;
+}
+.tab-item:hover {
+  background: var(--tab-hover-bg);
+}
+
+/* 活跃标签页 */
+.tab-item.active {
+  background: var(--bg-window);
+  color: var(--text-primary);
+}
+
+/* 分屏中可见但不活跃的标签页 */
+.tab-item.split-inactive {
+  /* 小视觉提示——底部细线 */
+}
+.tab-item.split-inactive::after {
+  content: "";
+  position: absolute;
+  bottom: 0;
+  left: 8px;
+  right: 8px;
+  height: 1px;
+  background: var(--accent);
+  opacity: 0.35;
+}
+
+/* ── dirty 圆点 ── */
+
+.tab-dirty-dot {
+  color: var(--dirty-dot);
+  font-size: 14px;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* ── 图标 ── */
+
+.tab-icon {
+  font-size: 13px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.tab-item.active .tab-icon {
+  opacity: 1;
+}
+
+/* ── 标题 ── */
+
+.tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── 关闭按钮 ── */
+
+.tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 100ms, background 100ms, color 100ms;
+}
+.tab-item:hover .tab-close,
+.tab-item.active .tab-close {
+  opacity: 1;
+}
+.tab-close:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ── [+] 按钮 ── */
+
+.tab-plus-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 100%;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 100ms, color 100ms;
+}
+.tab-plus-btn:hover,
+.tab-plus-btn.open {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ── [+] 弹出菜单 ── */
+
+.tab-plus-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 99;
+}
+
+.tab-plus-menu {
+  position: fixed;
+  z-index: 100;
+  min-width: 160px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: var(--context-menu-shadow);
+  padding: 4px 0;
+  overflow: hidden;
+}
+
+.tab-plus-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  transition: background 80ms;
+}
+.tab-plus-menu-item:hover {
+  background: var(--tab-hover-bg);
+}

@@ -65,3 +65,17 @@
 
 /* setting-row 归一化约束定义在 index.css，
    此处仅保留 SidePanel 特有的覆盖样式 */
+
+.side-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 8px;
+}
+
+.side-panel-placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 12px;
+  text-align: center;
+}

@@ -1,23 +1,28 @@
+/**
+ * SidePanel — 侧栏。Phase 3 改为跟随 activeTabType。
+ * 设计依据：[V3-Phase3-标签页分屏设计.md §7]
+ */
+
 import { useState, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { ViewId } from "../App";
+import type { TabType } from "../hooks/useTabManager";
 import TerminalSidebar from "./TerminalSidebar";
 import "./SidePanel.css";
 
 interface SidePanelProps {
-  activeView: ViewId;
-  contentView: ViewId;
+  activeTabType: TabType;
   width: number;
 }
 
-const sidebarTitleKeys: Record<ViewId, string> = {
+const sidebarTitleKeys: Record<TabType, string> = {
   terminal: "收发设置",
   workspace: "卡片属性",
   settings: "导航",
+  oled: "图形属性",
 };
 
 const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
-  function SidePanel({ activeView, contentView, width }, ref) {
+  function SidePanel({ activeTabType, width }, ref) {
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
   const { t } = useTranslation();
@@ -27,8 +32,6 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     setCollapsed(collapse);
     setTimeout(() => setAnimating(false), 220);
   };
-
-  const displayView = activeView === "settings" ? "settings" : contentView;
 
   const cls = ["side-panel"];
   if (collapsed) cls.push("collapsed");
@@ -48,7 +51,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
         <>
           <div className="side-panel-header">
             <span className="side-panel-title">
-              {t(sidebarTitleKeys[displayView])}
+              {t(sidebarTitleKeys[activeTabType])}
             </span>
             <button
               className="side-panel-collapse"
@@ -58,36 +61,28 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
               ◀
             </button>
           </div>
-          <div className="side-panel-body">
-            {activeView === "terminal" && <TerminalSidebar />}
-            {activeView === "workspace" && <WorkspaceSidebar />}
-            {activeView === "settings" && <SettingsSidebar />}
+          <div className="side-panel-content">
+            {activeTabType === "terminal" && <TerminalSidebar />}
+            {activeTabType === "workspace" && (
+              <div className="side-panel-placeholder">
+                {t("卡片属性编辑器")} — Phase 4
+              </div>
+            )}
+            {activeTabType === "settings" && (
+              <div className="side-panel-placeholder">
+                {t("导航")} — Phase 6
+              </div>
+            )}
+            {activeTabType === "oled" && (
+              <div className="side-panel-placeholder">
+                {t("图形属性")} — Phase 5
+              </div>
+            )}
           </div>
         </>
       )}
     </aside>
   );
-  }
-);
-
-function WorkspaceSidebar() {
-  return (
-    <div className="side-panel-body">
-      <span style={{ color: "var(--text-muted)", fontSize: 11, padding: 12 }}>
-        工作台侧栏——Phase 2 实现
-      </span>
-    </div>
-  );
-}
-
-function SettingsSidebar() {
-  return (
-    <div className="side-panel-body">
-      <span style={{ color: "var(--text-muted)", fontSize: 11, padding: 12 }}>
-        设置侧栏——Phase 4 实现
-      </span>
-    </div>
-  );
-}
+});
 
 export default SidePanel;

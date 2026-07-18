@@ -129,7 +129,11 @@ const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
 /* ---- 终端视图 ---- */
 
-function TerminalView() {
+interface TerminalViewProps {
+  isActive: boolean;
+}
+
+function TerminalView({ isActive }: TerminalViewProps) {
   const { t } = useTranslation();
   const { prefs, setPrefs } = useTerminalPrefs();
 
@@ -690,6 +694,16 @@ function TerminalView() {
       }
     });
   }, [handleSend]);
+
+  // Phase 3 keep-alive: 从 display:none 变为 flex 后修复 CM6/Monaco 布局
+  useEffect(() => {
+    if (!isActive) return;
+    const raf = requestAnimationFrame(() => {
+      cmView.current?.requestMeasure();
+      monacoRef.current?.layout();
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [isActive]);
 
   return (
     <div className="terminal-view">

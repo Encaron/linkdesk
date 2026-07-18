@@ -1,6 +1,10 @@
 import { useTranslation } from "react-i18next";
 
-function SettingsView() {
+interface SettingsViewProps {
+  isActive: boolean;
+}
+
+function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const { t } = useTranslation();
 
   return (
