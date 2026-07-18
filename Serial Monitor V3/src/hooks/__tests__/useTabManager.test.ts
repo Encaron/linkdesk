@@ -398,7 +398,17 @@ describe("reduceSplitTab", () => {
     expect(next.split!.sizes).toEqual([50, 50]);
   });
 
-  it("同一标签页 → 不分", () => {
+  it("同一标签页 + 有多个标签页 → 自动找下一个标签页配对", () => {
+    let state = createInitialTabState();
+    state = reduceCreateTab(state, "terminal").state; // terminal-2, activeTabId = terminal-2
+    // 对 activeTabId 分屏 → 自动配对 terminal-1
+    const next = reduceSplitTab(state, "terminal-2");
+    expect(next.split).not.toBeNull();
+    expect(next.split!.tabIds).toContain("terminal-1");
+    expect(next.split!.tabIds).toContain("terminal-2");
+  });
+
+  it("只有一个标签页 → 不分", () => {
     const prev = createInitialTabState();
     const next = reduceSplitTab(prev, prev.activeTabId);
     expect(next.split).toBeNull();

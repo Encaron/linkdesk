@@ -303,10 +303,19 @@ export function reduceSplitTab(
   if (!prev.tabs.some((t) => t.id === tabId)) return prev;
 
   if (!prev.split) {
-    if (tabId === prev.activeTabId) return prev;
+    // 没有其他标签页 → 无法分屏
+    if (prev.tabs.length < 2) return prev;
+
+    // 右键活跃标签页 → 自动找下一个标签页作为分屏目标
+    let partnerId = tabId;
+    if (tabId === prev.activeTabId) {
+      const idx = prev.tabs.findIndex((t) => t.id === prev.activeTabId);
+      partnerId = prev.tabs[(idx + 1) % prev.tabs.length].id;
+    }
+
     return {
       ...prev,
-      split: { direction, tabIds: [prev.activeTabId, tabId], sizes: [50, 50] },
+      split: { direction, tabIds: [prev.activeTabId, partnerId], sizes: [50, 50] },
     };
   }
 

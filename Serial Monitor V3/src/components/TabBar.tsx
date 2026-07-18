@@ -107,7 +107,7 @@ function ContextMenu({
   const tabIndex = tabs.findIndex((t) => t.id === state.tabId);
   const hasOthers = tabs.length > 1;
   const hasRight = tabIndex < tabs.length - 1;
-  const canSplit = !split;
+  const canSplit = !split && tabs.length > 1;
 
   const items: { label: string; action: () => void; disabled?: boolean }[] = [
     {
