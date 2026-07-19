@@ -14,9 +14,10 @@
 
 ## 当前阶段
 
-Phase 1-3 ✅ → Phase 3.5 ✅ → **Phase 4 🔜 插件系统 + 终端插件化 + 欢迎页**
+Phase 1-3.5 ✅ → **Phase 4 🔜 插件系统（设计完成，代码未写）**
 
-详见 `docs/开发管理/当前状态.md` + `docs/标签页设计/V3-Phase3.5-品质打磨.md`
+详见 `docs/phase4_插件系统/` + `docs/开发管理/当前状态.md`
+分支：`phase4-plugin-system`
 
 ## 硬约束（绝对不能违反）
 

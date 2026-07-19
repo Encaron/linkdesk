@@ -3,7 +3,13 @@
 > 2026-07-19。基于插件系统讨论的综合设计文档——核心瘦身、UI 重构、插件市场、连锁推荐。
 > 关联：memory `plugin-system.md` / `design-decisions.md` / `two-layer-container-architecture.md` / `card-promote-to-tab.md`
 >
-> **⚠️ Phase 4 不会简单。** 涉及 UI 布局变更（TopBar 移除、图标栏动态化、欢迎页），不是纯逻辑层的改动。**三栏布局（图标栏+侧栏+主区）是 Phase 3 的战果，不动。** 好在 `.claude/skills/` 下有 impeccable / ui-ux-pro-max / web-design-guidelines 三个前端 skill（71 文件，2.3MB），审计/设计/交付检查全链路覆盖。后续拆解为独立设计文档（对标 Phase 3 的 `标签页设计/` 文件夹模式）。
+> **⚠️ Phase 4 不会简单。** 涉及 UI 布局变更（TopBar 移除、图标栏动态化、欢迎页），不是纯逻辑层的改动。**三栏布局（图标栏+侧栏+主区）是 Phase 3 的战果，不动。** 好在 `.claude/skills/` 下有 impeccable / ui-ux-pro-max / web-design-guidelines 三个前端 skill（71 文件，2.3MB），审计/设计/交付检查全链路覆盖。
+>
+> **子文档（对标 Phase 3 的 `标签页设计/` 拆分模式）：**
+> - [V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md) — 欢迎页数据模型 + 状态流转 + UI + 边界情况
+> - [V3-Phase4-终端插件化设计.md](V3-Phase4-终端插件化设计.md) — TerminalView 迁移：依赖分析 + 5 步迁移 + 风险表
+> - [V3-Phase4-数据迁移.md](V3-Phase4-数据迁移.md) — prefs.json 自动迁移 + 布局恢复 + 向前兼容
+> - [V3-Phase4-测试策略.md](V3-Phase4-测试策略.md) — 旧测试保护 + 新测试 + 手动验证清单
 
 ---
 
