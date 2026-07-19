@@ -1,6 +1,6 @@
 /**
  * IconBar — 图标栏（最左 42px 垂直条）。
- * Phase 4 Step 3：从硬编码改为从 viewRegistry 动态读取。
+ * Phase 4：出厂 4 个图标（终端/工作台/设置/插件市场）+ viewRegistry 动态插件。
  * 对标 VS Code Activity Bar。
  */
 
@@ -15,36 +15,39 @@ interface IconBarProps {
   onOpenOrFocus: (type: string) => void;
 }
 
-/** 插件 ID → 图标文件名映射（临时——后续插件自带 icon 文件） */
-const PLUGIN_ICON_FILE: Record<string, string> = {
-  terminal: "terminal",
-  workspace: "workspace",
-  settings: "settings",
-  marketplace: "settings", // 暂时复用 settings 图标
-};
+/** 出厂内置图标（始终显示，即使不是插件） */
+const BUILTIN_ICONS = [
+  { pluginId: "terminal", iconFile: "terminal", label: "终端" },
+  { pluginId: "workspace", iconFile: "workspace", label: "工作台" },
+  { pluginId: "settings", iconFile: "settings", label: "设置" },
+  { pluginId: "marketplace", iconFile: "extensions", label: "插件市场" },
+];
 
 function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
 
   const viewPlugins = getViewPlugins();
 
-  // Phase 4：动态图标列表——从 viewRegistry 派生
-  const iconEntries = viewPlugins.map((p) => ({
-    pluginId: p.pluginId,
-    iconFile: PLUGIN_ICON_FILE[p.pluginId] ?? "settings",
-    label: p.manifest.name,
-  }));
+  // 从内置图标开始，追加 viewRegistry 中的非内置插件
+  const builtinIds = new Set(BUILTIN_ICONS.map((b) => b.pluginId));
+  const extraIcons = viewPlugins
+    .filter((p) => !builtinIds.has(p.pluginId))
+    .map((p) => ({
+      pluginId: p.pluginId,
+      iconFile: "settings", // 默认图标
+      label: p.manifest.name,
+    }));
 
-  // 判断哪个图标处于激活态
+  const allIcons = [...BUILTIN_ICONS, ...extraIcons];
+
   const isActive = (pluginId: string) => {
     if (activePluginId) return activePluginId === pluginId;
-    // Fallback：旧 tab type → pluginId 映射
     return activeTabType === pluginId;
   };
 
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
-      {iconEntries.map((entry) => (
+      {allIcons.map((entry) => (
         <button
           key={entry.pluginId}
           className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}`}

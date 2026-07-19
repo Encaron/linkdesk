@@ -1,12 +1,13 @@
 /**
  * 终端视图插件。
- * Phase 4 Step B3：从 src/components/views/TerminalView.tsx 迁移。
- * 接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置——全部不变。
+ * Phase 4 Step B3+B5：从 src/components/views/TerminalView.tsx 迁移 + 串口工具栏。
+ * 串口工具栏（COM/波特率/打开关闭）+ 接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。
  *
  * 设计依据：[V3-Phase4-终端插件化设计.md]
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import TerminalToolbar from "./toolbar";
 import { useTranslation } from "react-i18next";
 import {
   EditorView,
@@ -767,6 +768,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   return (
     <div className="terminal-view">
+      <TerminalToolbar />
       <CommandPalette
         open={paletteOpen}
         commands={paletteCommands}

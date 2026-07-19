@@ -84,6 +84,8 @@ export function renderTabContent(
       return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
     case "plugin-detail":
       return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
+    case "marketplace":
+      return <div key={tab.id} className="plugin-detail-empty">插件管理 — Phase 5</div>;
     default:
       return null;
   }

@@ -21,7 +21,7 @@ import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
 
 /* ── 类型 ── */
 
-export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome" | "plugin-detail";
+export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome" | "plugin-detail" | "marketplace";
 
 export interface Tab {
   id: string;
@@ -122,6 +122,7 @@ export function getDefaultLabel(
     case "editor":    return filePath || i18n.t("编辑器");
     case "welcome":   return i18n.t("欢迎");
     case "plugin-detail": return i18n.t("插件详情");
+    case "marketplace": return i18n.t("插件市场");
   }
 }
 
@@ -249,8 +250,8 @@ export function reduceOpenOrFocus(
     };
   }
 
-  // 隐式创建：terminal / settings
-  if (type === "terminal" || type === "settings") {
+  // 隐式创建：terminal / settings / marketplace
+  if (type === "terminal" || type === "settings" || type === "marketplace") {
     const r = reduceCreateTab(prev, type);
     return { state: r.state, focusedId: r.createdId };
   }

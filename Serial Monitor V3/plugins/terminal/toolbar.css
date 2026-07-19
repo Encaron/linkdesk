@@ -1,0 +1,60 @@
+.terminal-toolbar-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-window);
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.terminal-toolbar-select {
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--separator);
+  border-radius: 3px;
+  padding: 2px 6px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+}
+
+.terminal-toolbar-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.terminal-toolbar-open-btn {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  border: 1px solid var(--separator);
+  border-radius: 3px;
+  padding: 2px 10px;
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 120ms;
+}
+
+.terminal-toolbar-open-btn:hover {
+  background: var(--tab-hover-bg);
+}
+
+.terminal-toolbar-open-btn.connected {
+  border-color: var(--status-connected);
+}
+
+.terminal-toolbar-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--status-disconnected);
+  transition: background 300ms;
+}
+
+.terminal-toolbar-dot.on {
+  background: var(--status-connected);
+}

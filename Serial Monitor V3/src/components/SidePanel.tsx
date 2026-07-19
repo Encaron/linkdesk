@@ -24,6 +24,7 @@ const sidebarTitleKeys: Record<string, string> = {
   editor: "编辑器",
   welcome: "欢迎",
   "plugin-detail": "插件详情",
+  marketplace: "插件管理",
 };
 
 const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
