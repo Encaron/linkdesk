@@ -1,9 +1,10 @@
 /**
  * IconBar — 图标栏（最左 48px 垂直条）。
  * 对标 VS Code Activity Bar：拖拽排序 + 蓝色指示条。
+ * 用纯鼠标事件实现（不用 HTML5 DnD——Tauri WebView2 兼容性更好）。
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import PreferenceService from "../core/PreferenceService";
@@ -29,32 +30,31 @@ function getIconSrc(pluginId: string): string {
   return `/assets/icons/settings.svg`;
 }
 
-/* ── 图标顺序持久化 ── */
-
 function loadOrder(): string[] {
-  try {
-    return PreferenceService.loadPrefs().iconOrder ?? [];
-  } catch {
-    return [];
-  }
+  try { return PreferenceService.loadPrefs().iconOrder ?? []; } catch { return []; }
 }
-
 function saveOrder(order: string[]): void {
   try {
     const prefs = PreferenceService.loadPrefs();
     prefs.iconOrder = order;
     PreferenceService.savePrefs(prefs).catch(() => {});
-  } catch {
-    // 静默
-  }
+  } catch { /* 静默 */ }
 }
 
-/* ── 组件 ── */
+/* ── 拖拽状态 ── */
+
+interface DragState {
+  pluginId: string;
+  startY: number;
+  moved: boolean;
+}
 
 function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
-  const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const dragRef = useRef<DragState | null>(null);
+  const dropTargetRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 图标顺序
@@ -62,7 +62,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const savedOrder = loadOrder();
 
   type IconEntry = { pluginId: string; iconSrc: string; label: string };
-  const ordered = (() => {
+  const ordered: IconEntry[] = (() => {
     const result: IconEntry[] = [];
     const remaining = new Set(viewPlugins.map((p) => p.pluginId));
     for (const id of savedOrder) {
@@ -78,84 +78,82 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     }
     return result;
   })();
+  const orderedRef = useRef(ordered);
+  orderedRef.current = ordered;
 
-  /* ── 拖拽：在容器级别统一处理 dragover/drop ── */
+  /* ── 查找鼠标下的图标 ── */
 
-  const handleDragStart = useCallback((e: React.DragEvent, pluginId: string) => {
-    e.dataTransfer.effectAllowed = "move";
-    e.dataTransfer.setData("text/plain", pluginId);
-    setDraggedId(pluginId);
+  const findIconAt = useCallback((clientY: number, excludeId: string): { id: string; pos: "top" | "bottom" } | null => {
+    const container = containerRef.current;
+    if (!container) return null;
+    const buttons = container.querySelectorAll("[data-plugin-id]");
+    const cur = orderedRef.current;
+    for (const btn of buttons) {
+      const rect = btn.getBoundingClientRect();
+      if (clientY >= rect.top && clientY <= rect.bottom &&
+          btn.getAttribute("data-plugin-id") !== excludeId) {
+        return {
+          id: btn.getAttribute("data-plugin-id")!,
+          pos: clientY < rect.top + rect.height / 2 ? "top" : "bottom",
+        };
+      }
+    }
+    if (buttons.length > 0 && cur.length > 0) {
+      const last = buttons[buttons.length - 1];
+      const lastRect = last.getBoundingClientRect();
+      if (clientY > lastRect.bottom) {
+        return { id: last.getAttribute("data-plugin-id")!, pos: "bottom" };
+      }
+    }
+    return null;
   }, []);
 
-  const handleDragEnd = useCallback(() => {
-    setDraggedId(null);
-    setDropTarget(null);
+  /* ── 鼠标事件 ── */
+
+  const handleMouseDown = useCallback((e: React.MouseEvent, pluginId: string) => {
+    // 只响应左键
+    if (e.button !== 0) return;
+    dragRef.current = { pluginId, startY: e.clientY, moved: false };
+    // 不阻止默认——保留 click 事件用于普通点击
   }, []);
 
-  // 在容器上统一处理 dragover——避免被拖拽元素遮挡
-  const handleContainerDragOver = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = "move";
-      if (!draggedId) return;
+  useEffect(() => {
+    const onMouseMove = (e: MouseEvent) => {
+      if (!dragRef.current) return;
+      const dy = Math.abs(e.clientY - dragRef.current.startY);
+      if (dy < 5) return; // 5px 阈值防误触
+      dragRef.current.moved = true;
+      setDraggedId(dragRef.current.pluginId);
+      const target = findIconAt(e.clientY, dragRef.current.pluginId);
+      dropTargetRef.current = target;
+      setDropTarget(target);
+    };
+    const onMouseUp = () => {
+      const drag = dragRef.current;
+      const target = dropTargetRef.current;
+      if (!drag) return;
 
-      // 找到鼠标下的图标按钮
-      const container = containerRef.current;
-      if (!container) return;
-      const buttons = container.querySelectorAll(".icon-btn");
-      let targetId: string | null = null;
-      let pos: "top" | "bottom" = "bottom";
-
-      for (const btn of buttons) {
-        const rect = btn.getBoundingClientRect();
-        if (e.clientX >= rect.left && e.clientX <= rect.right &&
-            e.clientY >= rect.top && e.clientY <= rect.bottom) {
-          targetId = btn.getAttribute("data-plugin-id");
-          pos = e.clientY < rect.top + rect.height / 2 ? "top" : "bottom";
-          break;
-        }
-      }
-      // 如果鼠标在所有图标下方，放在末尾
-      if (!targetId && ordered.length > 0) {
-        const lastBtn = buttons[buttons.length - 1];
-        if (lastBtn) {
-          const lastRect = lastBtn.getBoundingClientRect();
-          if (e.clientY > lastRect.bottom) {
-            targetId = lastBtn.getAttribute("data-plugin-id");
-            pos = "bottom";
-          }
-        }
-      }
-      if (targetId && targetId !== draggedId) {
-        setDropTarget({ id: targetId, pos });
-      } else {
-        setDropTarget(null);
-      }
-    },
-    [draggedId, ordered]
-  );
-
-  const handleContainerDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const id = e.dataTransfer.getData("text/plain");
-      if (!id || !dropTarget || id === dropTarget.id) {
-        setDraggedId(null);
-        setDropTarget(null);
-        return;
+      if (drag.moved && target) {
+        const cur = orderedRef.current.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
+        const targetIndex = cur.indexOf(target.id);
+        const insertAt = target.pos === "top" ? targetIndex : targetIndex + 1;
+        cur.splice(Math.max(0, insertAt), 0, drag.pluginId);
+        saveOrder(cur);
       }
 
-      const newOrder = ordered.map((x) => x.pluginId).filter((x) => x !== id);
-      const targetIndex = newOrder.indexOf(dropTarget.id);
-      const insertAt = dropTarget.pos === "top" ? targetIndex : targetIndex + 1;
-      newOrder.splice(insertAt, 0, id);
-      saveOrder(newOrder);
-
+      dragRef.current = null;
+      dropTargetRef.current = null;
       setDraggedId(null);
       setDropTarget(null);
-    },
-    [ordered, dropTarget]
-  );
+    };
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+    return () => {
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []); // 用 ref 获取最新值，不需要重新注册
 
   /* ── 高亮 ── */
 
@@ -167,12 +165,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
 
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
-      <div
-        className="icon-bar-top"
-        ref={containerRef}
-        onDragOver={handleContainerDragOver}
-        onDrop={handleContainerDrop}
-      >
+      <div className="icon-bar-top" ref={containerRef}>
         {ordered.map((entry) => {
           const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
           const showAfter = dropTarget?.id === entry.pluginId && dropTarget.pos === "bottom";
@@ -182,19 +175,16 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
               <button
                 className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
                 data-plugin-id={entry.pluginId}
-                onClick={() => onOpenOrFocus(entry.pluginId)}
-                onDragStart={(e) => handleDragStart(e, entry.pluginId)}
-                onDragEnd={handleDragEnd}
-                draggable
+                onClick={() => {
+                  if (!dragRef.current?.moved) {
+                    onOpenOrFocus(entry.pluginId);
+                  }
+                }}
+                onMouseDown={(e) => handleMouseDown(e, entry.pluginId)}
                 title={t(entry.label)}
                 aria-label={t(entry.label)}
               >
-                <img
-                  src={entry.iconSrc}
-                  alt={t(entry.label)}
-                  className="icon-img"
-                  draggable={false}
-                />
+                <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
               </button>
               {showAfter && <div className="icon-drop-indicator" />}
             </div>
