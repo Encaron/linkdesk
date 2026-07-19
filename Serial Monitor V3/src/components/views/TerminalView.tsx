@@ -331,15 +331,20 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   useTauriEvent<string>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
-    ringBuffer.current.write({
-      text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
-      type: "system",
-    });
+    // 串口打开 → 重置暂停状态
     if (/Port opened|串口已打开/.test(payload)) {
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
     }
+    // 串口关闭 → 清空 RingBuffer 残留数据，再写关闭消息
+    if (/Port closed|关闭串行端口/.test(payload)) {
+      ringBuffer.current.drainAll();
+    }
+    ringBuffer.current.write({
+      text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+      type: "system",
+    });
   });
 
   /* ---- rAF 消费（依赖 appendLine/paused，可重跑） ---- */
@@ -378,22 +383,22 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   /* ---- 工具栏 ---- */
   const handlePause = () => {
-    setPaused((p) => {
-      if (p) {
-        // 恢复
-        const count = pausedBuffer.current.length;
-        for (const text of pausedBuffer.current) appendLine(text, "received");
-        pausedBuffer.current = [];
-        setPausedCount(0);
-        if (count > 0)
-          appendLine(t("---- 继续显示：补回暂停期间的 {{count}} 条数据 ----", { count }), "system");
-        else
-          appendLine(t("---- 继续显示 ----"), "system");
-      } else {
-        appendLine(t("---- 暂停显示：界面已冻结，后台照常接收 ----"), "system");
-      }
-      return !p;
-    });
+    const wasPaused = paused;
+    setPaused(!wasPaused);
+    // 副作用放在 setState 外面——React 18 StrictMode 会双重调用函数式更新器
+    if (wasPaused) {
+      // 恢复
+      const count = pausedBuffer.current.length;
+      for (const text of pausedBuffer.current) appendLine(text, "received");
+      pausedBuffer.current = [];
+      setPausedCount(0);
+      if (count > 0)
+        appendLine(t("---- 继续显示：补回暂停期间的 {{count}} 条数据 ----", { count }), "system");
+      else
+        appendLine(t("---- 继续显示 ----"), "system");
+    } else {
+      appendLine(t("---- 暂停显示：界面已冻结，后台照常接收 ----"), "system");
+    }
   };
 
   const handleClear = () => {
