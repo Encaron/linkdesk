@@ -2,7 +2,7 @@
 
 > 2026-07-20。对照 [V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md) 逐条审计代码后的完整差距 → 全部修复。
 >
-> **总计：28 commits，22 项完成，6 个 bug 修复。**
+> **总计：33 commits，22 项完成，11 个 bug 修复（B36-B46）。**
 
 ---
 
@@ -115,3 +115,28 @@
 | Git 插件 | `plugins/git/` → type: "view"，独立调 invoke，不依赖终端 |
 | 个人中心 | IconBar `BOTTOM_ICONS` Set，加一个 ID 即出现在设置上方 |
 | 所有插件 | 六类插件接口（view/card/theme/language/protocol/resource）已就绪 |
+
+---
+
+## Phase 4.2 追加 Bug（B42-B46）
+
+### B42：PluginDetailView hooks 顺序不一致 → 白屏
+- `useMemo` 在 `if (!pluginId) return` 之后 → hooks 数量随 pluginId 变化。修：所有 hooks 移到条件返回前。（`15ba1b0`）
+- **教训：React Rules of Hooks——hooks 永远在组件顶层。**
+
+### B43：图标栏拖拽完全不可用
+- 三次尝试：HTML5 DnD → mouse 事件 → click-to-swap → 最终 window 级 mouse + portal 拖影（对标 TabBar）。（`37bcf2e` `d4f51de` `11aa649`）
+- 根因：`ordered` 每帧重建 → `useEffect` 每帧重注册 → mousemove 丢失
+- **教训：Tauri/WebView2 拖拽 = window 事件 + portal + 全部 ref 避免 effect 重注册。**
+
+### B44：图标栏 300ms 点击延迟
+- 计时器区分单击/双击。修：去掉计时器，图标栏只响应单击。（`f7f84bd`）
+- **教训：Activity Bar 不需要双击——对标 VS Code 即可。**
+
+### B45：getDefaultLabel 硬编码
+- terminal/workspace/settings/marketplace 标签名硬编码。修：优先从 viewRegistry 读 manifest.name。（`117e320`）
+- **教训：标签名应是插件数据，不是代码逻辑。**
+
+### B46：CSS 硬编码 hex
+- `#e74c3c`、`#cca700`、`#fff` 散落各处。修：统一定义 `--error` / `--warning` / `--badge-text`。（`117e320`）
+- **教训：所有颜色走 CSS 变量——硬约束不能放松。**
