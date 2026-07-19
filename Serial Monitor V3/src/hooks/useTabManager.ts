@@ -147,15 +147,16 @@ function createGroup(tabs: Tab[] = []): TabGroup {
   };
 }
 
-/** Phase 4：确保 state 中至少有一个保底标签页（从 viewRegistry 查 isFallback） */
+/** Phase 4：只在全场标签页数为 0 时才补保底标签页（对标浏览器——全关才重生） */
 function ensureFallback(state: TabState): TabState {
-  const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
-  if (!allTabs(state).some((t) => t.pluginId === fallbackId || t.type === fallbackId)) {
+  const all = allTabs(state);
+  if (all.length === 0) {
+    const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
     const fb = createTabDefaults(fallbackId);
     const mainGroup = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0];
     if (mainGroup) {
-      mainGroup.tabs = [fb, ...mainGroup.tabs];
-      if (!mainGroup.activeTabId) mainGroup.activeTabId = fb.id;
+      mainGroup.tabs = [fb];
+      mainGroup.activeTabId = fb.id;
     }
   }
   return state;
