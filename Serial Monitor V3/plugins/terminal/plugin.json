@@ -15,5 +15,14 @@
   "statusBar": [
     { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
+  ],
+  "recommends": [
+    { "plugin": "workspace", "reason": "配合卡片可视化串口数据" }
+  ],
+  "suggests": [
+    { "plugin": "protocol-bracket", "reason": "协议解析——不装则只能查看原始数据" }
+  ],
+  "changelog": [
+    { "version": "1.0.0", "date": "2026-07-19", "changes": ["初始发布", "串口工具栏", "CM6 接收区 + Monaco 发送栏", "侧栏设置（时间戳/编码/换行符）"] }
   ]
 }

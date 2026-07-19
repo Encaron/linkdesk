@@ -112,3 +112,166 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* ── P2-7：操作按钮 ── */
+
+.plugin-detail-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.plugin-detail-btn {
+  font-size: 12px;
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.plugin-detail-btn:hover:not(:disabled) {
+  background: var(--bg-window);
+}
+
+.plugin-detail-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.plugin-detail-btn-uninstall {
+  border-color: var(--error, #e74c3c);
+  color: var(--error, #e74c3c);
+}
+
+.plugin-detail-core-notice {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-style: italic;
+  padding: 4px 0;
+}
+
+.plugin-detail-core-badge {
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 500;
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: auto;
+}
+
+/* ── P2-7：推荐列表 ── */
+
+.plugin-detail-recommend-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.plugin-detail-recommend-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.plugin-detail-recommend-item:hover {
+  background: var(--bg-card);
+}
+
+.plugin-detail-recommend-item.installed {
+  opacity: 0.7;
+}
+
+.plugin-detail-checkbox {
+  font-size: 14px;
+  flex-shrink: 0;
+  width: 20px;
+  text-align: center;
+}
+
+.plugin-detail-checkbox.locked {
+  opacity: 0.6;
+}
+
+.plugin-detail-recommend-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.plugin-detail-recommend-version {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.plugin-detail-recommend-reason {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex: 1;
+}
+
+.plugin-detail-recommend-status {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.plugin-detail-recommend-status.installed {
+  color: var(--accent);
+}
+
+.plugin-detail-recommend-status.missing {
+  color: var(--error, #e74c3c);
+}
+
+/* ── P2-7：反向推荐警告 ── */
+
+.plugin-detail-warning {
+  background: rgba(231, 76, 60, 0.08);
+  border: 1px solid rgba(231, 76, 60, 0.25);
+  border-radius: 6px;
+  padding: 12px 14px;
+}
+
+.plugin-detail-warning h3 {
+  color: var(--error, #e74c3c);
+  border-bottom: none;
+  margin-bottom: 6px;
+}
+
+.plugin-detail-warning ul {
+  list-style: disc;
+  padding-left: 20px;
+  margin: 0;
+}
+
+.plugin-detail-warning-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 8px 0 0;
+}
+
+/* ── P2-7：基本信息 grid ── */
+
+.plugin-detail-info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.plugin-detail-info-grid code {
+  background: var(--bg-window);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
