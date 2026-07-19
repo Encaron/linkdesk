@@ -127,7 +127,8 @@ function loadFromLocalStorage(): Prefs {
 function saveToLocalStorage(prefs: Prefs): void {
   try {
     localStorage.setItem(PREFS_KEY, JSON.stringify(prefs, null, 2));
-  } catch { /* ignore */ }
+    console.log("[PreferenceService] ✅ 已保存到 localStorage");
+  } catch (e) { console.warn("[PreferenceService] localStorage 写入失败:", e); }
 }
 
 let _useLocalStorage = false;
