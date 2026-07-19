@@ -338,7 +338,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;
-  const portOpenRef = useRef(false);
+  const portOpenRef = useRef(true); // 默认 true——串口可能在标签页创建之前就已打开
 
   // Tauri 事件 → RingBuffer（generation counter 在 hook 内部）
   useTauriEvent<string>("serial-data", (payload) => {
@@ -353,14 +353,14 @@ function TerminalView({ isActive }: TerminalViewProps) {
   useTauriEvent<string>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
     // 串口打开 → 重置暂停状态
-    if (/Port opened|串口已打开/.test(payload)) {
+    if (/Port opened|已打开/.test(payload)) {
       portOpenRef.current = true;
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
     }
     // 串口关闭 → 拒收后续数据 + 清空残留
-    if (/Port closed|关闭串行端口/.test(payload)) {
+    if (/Port closed|关闭/.test(payload)) {
       portOpenRef.current = false;
       ringBuffer.current.drainAll();
     }
