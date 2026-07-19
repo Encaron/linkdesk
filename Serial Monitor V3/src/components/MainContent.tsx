@@ -45,6 +45,15 @@ function renderTabContent(
   isActive: boolean,
   onCreateTab?: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string,
 ) {
+  // plugin-detail 和 welcome 是壳自身的视图，不走插件路由
+  if (tab.type === "plugin-detail") {
+    return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
+  }
+  if (tab.type === "welcome") {
+    return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
+  }
+
+  // 视图插件路由：查 viewRegistry
   if (tab.pluginId) {
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
@@ -54,7 +63,7 @@ function renderTabContent(
         </ErrorBoundary>
       );
     }
-    if (!["terminal", "workspace", "settings", "welcome", "oled", "editor", "plugin-detail"].includes(tab.type)) {
+    if (!["terminal", "workspace", "settings", "oled", "editor"].includes(tab.type)) {
       return (
         <div key={tab.id} className="plugin-missing-view">
           <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
@@ -78,10 +87,6 @@ function renderTabContent(
       return <div key={tab.id}>OLED 视图（Phase 6 实现）</div>;
     case "editor":
       return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 7 实现）</div>;
-    case "welcome":
-      return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
-    case "plugin-detail":
-      return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
     default:
       return null;
   }

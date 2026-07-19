@@ -1,15 +1,32 @@
 /**
  * PluginDetailView — 插件详情页。
- * Phase 4 Step 4 + P2-7：plugin.json 是唯一数据源。
- * P2-7：连锁推荐（recommends/suggests/requires）+ 安装/卸载按钮。
+ * Phase 4：对标 VS Code extension editor。
  *
- * 设计依据：[[phase4-design-decisions]] 第 11 条 + [V3-插件系统与UI重构设计.md §6]
+ * 布局：header(icon+name+author+badges) → action bar →
+ *       tab bar(Details|Changelog) → body → info sidebar
  */
 
-import { useMemo } from "react";
+import { useState, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
+import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
+
+/* ── 图标映射 ── */
+
+const PLUGIN_ICON: Record<string, string> = {
+  terminal: "terminal.png",
+  workspace: "workspace.png",
+  settings: "settings.png",
+  marketplace: "extensions.svg",
+};
+
+function getIconSrc(pluginId: string): string | undefined {
+  const p = PLUGIN_ICON[pluginId];
+  return p ? `/assets/icons/${p}` : undefined;
+}
+
+/* ── 主组件 ── */
 
 interface PluginDetailViewProps {
   isActive: boolean;
@@ -18,6 +35,7 @@ interface PluginDetailViewProps {
 
 function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewProps) {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"details" | "changelog">("details");
 
   if (!pluginId) {
     return <div className="plugin-detail-empty">{t("未指定插件 ID")}</div>;
@@ -33,21 +51,23 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   }
 
   const m = plugin.manifest;
+  const iconSrc = getIconSrc(pluginId);
 
-  // P2-7：检查推荐插件是否已安装
-  const installedPluginIds = useMemo(
+  // 已安装的插件 ID 集合（用于推荐状态检查）
+  const installedIds = useMemo(
     () => new Set(getViewPlugins().map((p) => p.pluginId)),
     []
   );
 
-  // P2-7：反向推荐——已安装插件中谁推荐了当前插件
+  // 反向推荐
   const reverseRecommends = useMemo(() => {
     const result: { pluginId: string; name: string }[] = [];
     for (const p of getViewPlugins()) {
       if (p.pluginId === pluginId) continue;
-      const recommends = p.manifest.recommends ?? [];
-      if (recommends.some((r) => r.plugin === pluginId)) {
-        result.push({ pluginId: p.pluginId, name: p.manifest.name });
+      for (const rec of p.manifest.recommends ?? []) {
+        if (rec.plugin === pluginId) {
+          result.push({ pluginId: p.pluginId, name: p.manifest.name });
+        }
       }
     }
     return result;
@@ -55,193 +75,232 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   return (
     <div className="plugin-detail">
-      {/* 头部：图标 + 名称 + 版本 + 作者 */}
-      <header className="plugin-detail-header">
-        <span className="plugin-detail-icon">
-          {m.iconSource === "codicon" ? `[${m.icon}]` : (m.icon ?? "🧩")}
-        </span>
-        <div className="plugin-detail-meta">
-          <h2 className="plugin-detail-name">{t(m.name)}</h2>
-          <span className="plugin-detail-version">v{m.version}</span>
-          {m.author && <span className="plugin-detail-author">{m.author}</span>}
+      {/* ═══ Header — VS Code: icon 128x128 + details ═══ */}
+      <header className="pd-header">
+        <div className="pd-icon-container">
+          {iconSrc ? (
+            <img src={iconSrc} alt="" className="pd-icon-img" />
+          ) : (
+            <span className="codicon codicon-symbol-misc pd-icon-codicon" />
+          )}
+          {m.core && <span className="pd-icon-badge codicon codicon-star-full" />}
         </div>
-        {m.core && <span className="plugin-detail-core-badge">{t("核心")}</span>}
+
+        <div className="pd-header-details">
+          <div className="pd-title-row">
+            <h1 className="pd-name">{t(m.name)}</h1>
+            <span className="pd-version">v{m.version}</span>
+            {m.core && <span className="pd-badge pd-badge-core">{t("内置")}</span>}
+            {m.tabBehavior?.singleton && (
+              <span className="pd-badge pd-badge-singleton">{t("单例")}</span>
+            )}
+          </div>
+
+          {m.author && (
+            <p className="pd-subtitle">
+              <span>{m.author}</span>
+            </p>
+          )}
+
+          {m.description && (
+            <p className="pd-short-desc">{t(m.description)}</p>
+          )}
+        </div>
       </header>
 
-      {m.description && (
-        <p className="plugin-detail-desc">{t(m.description)}</p>
-      )}
-
-      {/* P2-7：安装/卸载按钮 */}
-      <div className="plugin-detail-actions">
+      {/* ═══ Action Bar — 对标 VS Code ═══ */}
+      <div className="pd-action-bar">
         {m.core ? (
-          <span className="plugin-detail-core-notice">{t("核心控制面——不可卸载")}</span>
+          <span className="pd-core-notice">
+            <span className="codicon codicon-lock" /> {t("核心控制面——不可卸载")}
+          </span>
         ) : (
           <>
-            <button
-              className="plugin-detail-btn plugin-detail-btn-uninstall"
-              disabled
-              title={t("卸载（Phase 5）")}
-            >
+            <button className="pd-btn pd-btn-uninstall" disabled title={t("Phase 5")}>
               {t("卸载")}
             </button>
-            <button
-              className="plugin-detail-btn plugin-detail-btn-disable"
-              disabled
-              title={t("禁用（Phase 5）")}
-            >
+            <button className="pd-btn pd-btn-disable" disabled title={t("Phase 5")}>
               {t("禁用")}
             </button>
           </>
         )}
+
+        {/* 反向推荐警告 */}
+        {reverseRecommends.length > 0 && (
+          <div className="pd-reverse-warn">
+            <span className="codicon codicon-warning" />
+            <span>
+              {t("被以下插件依赖")}:{" "}
+              {reverseRecommends.map((r) => r.name).join(", ")}
+            </span>
+          </div>
+        )}
       </div>
 
-      {/* P2-7：反向推荐警告（卸载前提示） */}
-      {reverseRecommends.length > 0 && (
-        <section className="plugin-detail-section plugin-detail-warning">
-          <h3>⚠ {t("以下插件推荐此插件")}</h3>
-          <ul>
-            {reverseRecommends.map((r) => (
-              <li key={r.pluginId}>{r.name}</li>
-            ))}
-          </ul>
-          <p className="plugin-detail-warning-hint">
-            {t("卸载后这些插件可能功能受限")}
-          </p>
-        </section>
-      )}
+      {/* ═══ Tab Bar — VS Code NavBar ═══ */}
+      <nav className="pd-navbar">
+        <button
+          className={`pd-navtab${activeTab === "details" ? " active" : ""}`}
+          onClick={() => setActiveTab("details")}
+        >
+          {t("详情")}
+        </button>
+        {(m.changelog && m.changelog.length > 0) && (
+          <button
+            className={`pd-navtab${activeTab === "changelog" ? " active" : ""}`}
+            onClick={() => setActiveTab("changelog")}
+          >
+            {t("更新日志")}
+          </button>
+        )}
+      </nav>
 
-      {/* P2-7：硬依赖（requires） */}
-      {m.requires && m.requires.length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>🔒 {t("依赖")}</h3>
-          <ul className="plugin-detail-recommend-list">
-            {m.requires.map((req) => {
-              const installed = installedPluginIds.has(req.plugin);
-              return (
-                <li key={req.plugin} className={`plugin-detail-recommend-item${installed ? " installed" : ""}`}>
-                  <span className="plugin-detail-checkbox locked">🔒</span>
-                  <span className="plugin-detail-recommend-name">{req.plugin}</span>
-                  {req.version && (
-                    <span className="plugin-detail-recommend-version">({req.version}+)</span>
-                  )}
-                  {installed ? (
-                    <span className="plugin-detail-recommend-status installed">{t("已安装")} ✅</span>
-                  ) : (
-                    <span className="plugin-detail-recommend-status missing">{t("未安装")}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* P2-7：推荐（recommends）——默认勾选 */}
-      {m.recommends && m.recommends.length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>📦 {t("推荐同时安装")}</h3>
-          <ul className="plugin-detail-recommend-list">
-            {m.recommends.map((rec) => {
-              const installed = installedPluginIds.has(rec.plugin);
-              return (
-                <li key={rec.plugin} className={`plugin-detail-recommend-item${installed ? " installed" : ""}`}>
-                  <span className="plugin-detail-checkbox">{installed ? "✅" : "☑"}</span>
-                  <span className="plugin-detail-recommend-name">{rec.plugin}</span>
-                  {rec.reason && (
-                    <span className="plugin-detail-recommend-reason">{rec.reason}</span>
-                  )}
-                  {installed && (
-                    <span className="plugin-detail-recommend-status installed">{t("已安装")}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* P2-7：可选（suggests）——默认不勾选 */}
-      {m.suggests && m.suggests.length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>💡 {t("可选")}</h3>
-          <ul className="plugin-detail-recommend-list">
-            {m.suggests.map((sug) => {
-              const installed = installedPluginIds.has(sug.plugin);
-              return (
-                <li key={sug.plugin} className={`plugin-detail-recommend-item${installed ? " installed" : ""}`}>
-                  <span className="plugin-detail-checkbox">{installed ? "✅" : "☐"}</span>
-                  <span className="plugin-detail-recommend-name">{sug.plugin}</span>
-                  {sug.reason && (
-                    <span className="plugin-detail-recommend-reason">{sug.reason}</span>
-                  )}
-                  {installed && (
-                    <span className="plugin-detail-recommend-status installed">{t("已安装")}</span>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        </section>
-      )}
-
-      {/* 基本信息 */}
-      <section className="plugin-detail-section">
-        <h3>{t("基本信息")}</h3>
-        <div className="plugin-detail-info-grid">
-          <span>{t("类型")}: <code>{m.type}</code></span>
-          <span>{t("入口")}: <code>{m.entry ?? "index.tsx"}</code></span>
-          {m.minAppVersion && (
-            <span>{t("最低版本")}: <code>{m.minAppVersion}</code></span>
-          )}
-        </div>
-      </section>
-
-      {m.tabBehavior && Object.keys(m.tabBehavior).length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>{t("标签页行为")}</h3>
-          <ul>
-            {m.tabBehavior.singleton && <li>{t("单例——全局只允许一个实例")}</li>}
-            {m.tabBehavior.isFallback && <li>{t("保底——关闭所有标签页后自动显示")}</li>}
-            {m.tabBehavior.confirmOnClose && <li>{t("关闭确认")}：{m.tabBehavior.confirmOnClose}</li>}
-          </ul>
-        </section>
-      )}
-
-      {m.statusBar && m.statusBar.length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>{t("状态栏贡献")}</h3>
-          <ul>
-            {m.statusBar.map((item) => (
-              <li key={item.id}>
-                {item.icon && <code>[{item.icon}]</code>} {item.label || item.id}
-                {item.align === "right" && ` (${t("右侧")})`}
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {m.changelog && m.changelog.length > 0 && (
-        <section className="plugin-detail-section">
-          <h3>{t("更新日志")}</h3>
-          {m.changelog.map((entry, i) => (
-            <div key={i} className="plugin-detail-changelog-entry">
-              <span className="changelog-version">v{entry.version}</span>
-              <span className="changelog-date">{entry.date}</span>
-              {entry.changes && entry.changes.length > 0 && (
-                <ul>
-                  {entry.changes.map((change, j) => (
-                    <li key={j}>{change}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          ))}
-        </section>
-      )}
+      {/* ═══ Body ═══ */}
+      <div className="pd-body">
+        {activeTab === "details" && (
+          <DetailsTab
+            plugin={plugin}
+            installedIds={installedIds}
+          />
+        )}
+        {activeTab === "changelog" && m.changelog && (
+          <ChangelogTab changelog={m.changelog} />
+        )}
+      </div>
     </div>
   );
 }
+
+/* ── 详情 Tab ── */
+
+function DetailsTab({
+  plugin,
+  installedIds,
+}: {
+  plugin: ViewPluginEntry;
+  installedIds: Set<string>;
+}) {
+  const { t } = useTranslation();
+  const m = plugin.manifest;
+
+  return (
+    <div className="pd-details-layout">
+      {/* 主内容 */}
+      <div className="pd-details-main">
+        {m.description && (
+          <p className="pd-description">{t(m.description)}</p>
+        )}
+
+        {/* 推荐 */}
+        {m.recommends && m.recommends.length > 0 && (
+          <div className="pd-recommend-section">
+            <h4>📦 {t("推荐同时安装")}</h4>
+            <ul>
+              {m.recommends.map((rec) => (
+                <li key={rec.plugin} className={installedIds.has(rec.plugin) ? "installed" : ""}>
+                  <span className="codicon codicon-check" />
+                  <span className="pd-rec-name">{rec.plugin}</span>
+                  <span className="pd-rec-reason">{rec.reason}</span>
+                  {installedIds.has(rec.plugin) && (
+                    <span className="pd-rec-status">{t("已安装")}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 可选 */}
+        {m.suggests && m.suggests.length > 0 && (
+          <div className="pd-recommend-section">
+            <h4>💡 {t("可选")}</h4>
+            <ul>
+              {m.suggests.map((sug) => (
+                <li key={sug.plugin} className={installedIds.has(sug.plugin) ? "installed" : ""}>
+                  <span className="codicon codicon-circle-outline" />
+                  <span className="pd-rec-name">{sug.plugin}</span>
+                  <span className="pd-rec-reason">{sug.reason}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {/* 依赖 */}
+        {m.requires && m.requires.length > 0 && (
+          <div className="pd-recommend-section">
+            <h4>🔒 {t("依赖")}</h4>
+            <ul>
+              {m.requires.map((req) => (
+                <li key={req.plugin}>
+                  <span className="codicon codicon-lock" />
+                  <span className="pd-rec-name">{req.plugin}</span>
+                  {req.version && <span className="pd-rec-ver">≥{req.version}</span>}
+                  {installedIds.has(req.plugin)
+                    ? <span className="pd-rec-status">{t("已安装")}</span>
+                    : <span className="pd-rec-status missing">{t("未安装")}</span>}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      {/* 信息侧栏 — VS Code info grid */}
+      <aside className="pd-info-sidebar">
+        <InfoItem label={t("标识符")} value={plugin.pluginId} mono />
+        <InfoItem label={t("版本")} value={`v${m.version}`} />
+        {m.type && <InfoItem label={t("类型")} value={m.type} />}
+        {m.entry && <InfoItem label={t("入口")} value={m.entry} mono />}
+        {m.minAppVersion && <InfoItem label={t("最低版本")} value={`≥${m.minAppVersion}`} />}
+        {m.tabBehavior?.confirmOnClose && (
+          <InfoItem label={t("关闭确认")} value={m.tabBehavior.confirmOnClose} />
+        )}
+        {m.statusBar && m.statusBar.length > 0 && (
+          <InfoItem
+            label={t("状态栏贡献")}
+            value={m.statusBar.map((s) => s.id).join(", ")}
+          />
+        )}
+      </aside>
+    </div>
+  );
+}
+
+function InfoItem({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="pd-info-item">
+      <span className="pd-info-label">{label}</span>
+      <span className={`pd-info-value${mono ? " mono" : ""}`}>{value}</span>
+    </div>
+  );
+}
+
+/* ── 更新日志 Tab ── */
+
+function ChangelogTab({ changelog }: { changelog: NonNullable<PluginManifest["changelog"]> }) {
+  return (
+    <div className="pd-changelog">
+      {changelog.map((entry, i) => (
+        <div key={i} className="pd-changelog-entry">
+          <div className="pd-changelog-header">
+            <span className="pd-changelog-ver">v{entry.version}</span>
+            <span className="pd-changelog-date">{entry.date}</span>
+          </div>
+          {entry.changes && entry.changes.length > 0 && (
+            <ul>
+              {entry.changes.map((change, j) => (
+                <li key={j}>{change}</li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ── 类型引用 ── */
+import type { PluginManifest } from "../../core/types";
 
 export default PluginDetailView;

@@ -88,7 +88,7 @@ export function createTabDefaults(
   const base: Tab = {
     id: "",
     type: type as TabType,
-    label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath),
+    label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath, pluginId),
     workspaceName: overrides?.workspaceName,
     filePath: overrides?.filePath,
     dirty: false,
@@ -119,7 +119,8 @@ export function createTabDefaults(
 export function getDefaultLabel(
   type: string,
   workspaceName?: string,
-  filePath?: string
+  filePath?: string,
+  detailPluginId?: string,
 ): string {
   switch (type) {
     case "terminal":  return i18n.t("终端");
@@ -128,7 +129,14 @@ export function getDefaultLabel(
     case "oled":      return i18n.t("OLED");
     case "editor":    return filePath || i18n.t("编辑器");
     case "welcome":   return i18n.t("欢迎");
-    case "plugin-detail": return i18n.t("插件详情");
+    case "plugin-detail": {
+      // 显示目标插件的名称，而非通用的"插件详情"
+      if (detailPluginId) {
+        const plugin = getViewPlugin(detailPluginId);
+        return plugin?.manifest.name ?? i18n.t("插件详情");
+      }
+      return i18n.t("插件详情");
+    }
     case "marketplace": return i18n.t("插件市场");
     default: {
       // 自定义插件——从 viewRegistry 查显示名
