@@ -197,7 +197,7 @@ export interface CreateTabResult {
 export function reduceCreateTab(
   prev: TabState,
   type: string,
-  opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string }
+  opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string }
 ): CreateTabResult {
   const all = allTabs(prev);
 
@@ -229,6 +229,7 @@ export function reduceCreateTab(
   if (opts?.workspaceName) overrides.workspaceName = opts.workspaceName;
   if (opts?.filePath) overrides.filePath = opts.filePath;
   if (opts?.label) overrides.label = opts.label;
+  if (opts?.pluginId) overrides.pluginId = opts.pluginId;
   const newTab = createTabDefaults(type, overrides);
 
   const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
@@ -733,7 +734,7 @@ export function useTabManager() {
   }
 
   const createTab = useCallback(
-    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string }): string => {
+    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string }): string => {
       let createdId = "";
       setTabState((prev) => {
         const r = reduceCreateTab(prev, type, opts);

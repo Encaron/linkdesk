@@ -16,6 +16,7 @@ import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader } from "./pluginLoader/loader";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
+import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
 
@@ -373,10 +374,17 @@ function App() {
     actions: { toggleOpen: handleToggleOpen, setPortName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
+  // TabActionsContext value（Phase 4 P0-1：插件可创建标签页）
+  const tabActionsValue = useMemo(() => ({
+    createTab,
+    openOrFocusTab,
+  }), [createTab, openOrFocusTab]);
+
   if (!ready) return null;
 
   return (
     <div className="app-shell">
+      <TabActionsContext.Provider value={tabActionsValue}>
       <SerialContext.Provider value={serialContextValue}>
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
@@ -420,6 +428,7 @@ function App() {
       </div>
       </TerminalPrefsContext.Provider>
       </SerialContext.Provider>
+      </TabActionsContext.Provider>
       <StatusBar
         isOpen={isOpen}
         txBytes={txBytes}
