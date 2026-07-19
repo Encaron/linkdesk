@@ -19,40 +19,32 @@ export interface DragSplitState {
 }
 
 /**
- * Drop zone 检测——对标 VS Code EditorGroupView DropOverlay。
+ * Drop zone 检测——照抄 VS Code editorGroupView.ts onDragOver。
  *
- * 阈值：
- * - 面板中心区（relX 25-75% 且 relY 25-75%）= 合并（center）
- * - 面板边缘区 = 分屏——选距离最近的边
+ * const SPLIT_THRESHOLD = 0.25;
+ * if (x < width * SPLIT_THRESHOLD)       → LEFT
+ * else if (x > width * (1 - SPLIT_THRESHOLD)) → RIGHT
+ * else if (y < height * SPLIT_THRESHOLD)      → TOP
+ * else if (y > height * (1 - SPLIT_THRESHOLD)) → BOTTOM
+ * else → CENTER（合并）
  *
- * 四个角落在两个边缘重叠时，选鼠标距离更近的边。
+ * 左右优先于上下——对标 VS Code 的偏好设置。
  */
 export function detectDropZone(
   mouseX: number,
   mouseY: number,
   rect: DOMRect
 ): DropZone {
-  const relX = (mouseX - rect.left) / rect.width;
-  const relY = (mouseY - rect.top) / rect.height;
+  const x = mouseX - rect.left;
+  const y = mouseY - rect.top;
+  const SPLIT_THRESHOLD = 0.25;
 
-  if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
+  if (x < 0 || x > rect.width || y < 0 || y > rect.height) return null;
 
-  // 面板中央 = 合并（对标 VS Code 20% 死区——25% 更宽松）
-  if (relX >= 0.25 && relX <= 0.75 && relY >= 0.25 && relY <= 0.75) {
-    return "center";
-  }
-
-  // 面板边缘 = 分屏——选最近边
-  const distLeft = relX;
-  const distRight = 1 - relX;
-  const distUp = relY;
-  const distDown = 1 - relY;
-  const minEdge = Math.min(distLeft, distRight, distUp, distDown);
-
-  if (minEdge === distUp) return "up";
-  if (minEdge === distDown) return "down";
-  if (minEdge === distLeft) return "left";
-  if (minEdge === distRight) return "right";
+  if (x < rect.width * SPLIT_THRESHOLD) return "left";
+  if (x > rect.width * (1 - SPLIT_THRESHOLD)) return "right";
+  if (y < rect.height * SPLIT_THRESHOLD) return "up";
+  if (y > rect.height * (1 - SPLIT_THRESHOLD)) return "down";
   return "center";
 }
 
