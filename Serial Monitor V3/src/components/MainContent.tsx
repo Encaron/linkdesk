@@ -119,13 +119,16 @@ function MainContent({
   // B33 根治：所有 tab pane 收集到一个平级数组，React 树永不变。
   // 移动标签页只改 tab.groupId，不改变 pane 在 React 树中的位置 → 零 unmount。
   const flatPanes = useMemo(() => {
-    const panes: Array<{ tab: Tab; groupId: string; isActive: boolean }> = [];
+    const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
+        const isActiveInGroup = tab.id === g.activeTabId;
+        const isGroupFocused = g.id === activeGroupId;
         panes.push({
           tab,
           groupId: g.id,
-          isActive: tab.id === g.activeTabId && g.id === activeGroupId,
+          isVisible: isActiveInGroup,                        // 在组内是否可见
+          isFocused: isActiveInGroup && isGroupFocused,      // 传给组件的 isActive
         });
       }
     }
@@ -218,7 +221,7 @@ function MainContent({
       {/* B33根治：所有 tab pane 平级渲染，通过 portal 投射到对应组的 tab-content-pool。
           React 树中 tab pane 位置永不变——移动只改 portal 目标，零 unmount。
           portalsReady: 等首次 commit 后 ref 就绪再渲染 portal，useLayoutEffect 保证无闪烁。 */}
-      {portalsReady && flatPanes.map(({ tab, groupId, isActive }) => {
+      {portalsReady && flatPanes.map(({ tab, groupId, isVisible, isFocused }) => {
         const target = portalTargetsRef.current.get(groupId);
         if (!target) return null;
 
@@ -229,14 +232,14 @@ function MainContent({
             style={{
               position: "absolute",
               inset: 0,
-              display: isActive ? "flex" : "none",
+              display: isVisible ? "flex" : "none",
               flexDirection: "column",
             }}
           >
-            {renderTabContent(tab, isActive, onCreateTab)}
+            {renderTabContent(tab, isFocused, onCreateTab)}
           </div>,
           target,
-          tab.id // portal key——React 用此 key 做 reconciliation
+          tab.id
         );
       })}
     </div>
