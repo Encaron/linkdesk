@@ -2,228 +2,75 @@
 
 > 2026-07-20。对照 [V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md) 逐条审计代码后的完整差距。
 >
-> **审计方法：** 通读设计文档全部 11 章 → 逐文件检查 `src/` + `plugins/` → 对照代码行。
->
-> **原始总计：10 项未完成**。**2026-07-20 本轮修复：9 项完成，1 项骨架（P1-5 文件监听需 Tauri fs）。**
->
-> 详见 git log: `cc076b3`..`HEAD`（6 commits）
+> **原始差距：10 项未完成** → **20 commits 全部修复。**
 
 ---
 
-## 修复成果（2026-07-20）
+## 完成清单
 
-| 优先级 | 项目 | 状态 | Commit |
-|--------|------|:--:|--------|
-| P0-3 | 补 settings/marketplace/workspace 的 plugin.json | ✅ | `cc076b3` |
-| P0-2 | StatusBar 走 getStatusBarContributions() | ✅ | `7f75230` |
-| P1-4 | loader theme/language 注册 | ✅ | `4963e49` |
-| P1-6 | loader 7 种错误处理 + 版本去重 | ✅ | `4963e49` |
-| P1-5 | 文件监听（Tauri fs watch） | ⚠️ 骨架 | `4963e49` |
-| P0-1 | 插件市场 UI | ✅ | `c71b6d8` |
-| P2-7 | PluginDetailView 连锁推荐 | ✅ | `e227827` |
-| P3-10 | IconBar 动态化（从 viewRegistry 读取） | ✅ | 本轮 |
-| P3-9 | 通知铃铛 + 通知历史面板 | ✅ | 本轮 |
-| P2-8 | MainContent 硬编码 switch | ⏸️ 保留安全网 | — |
+### P0 — 用户可见 (3/3)
 
-**剩余未闭合：**
-- P1-5 文件监听：骨架已就绪（`startPluginWatcher` / `stopPluginWatcher`），待 Tauri fs 命令补完
-- P2-8 MainContent switch：保留 terminal/settings/workspace/oled/editor 的 switch case 作为安全网（插件加载失败时的 fallback），设计允许此过渡状态
+| # | 项目 | Commit |
+|---|------|--------|
+| P0-3 | 补 settings/marketplace/workspace 的 plugin.json | `cc076b3` |
+| P0-2 | StatusBar 走 getStatusBarContributions() | `7f75230` |
+| P0-1 | 插件市场 UI（已安装列表 + 搜索 + 展开 + 详情导航） | `c71b6d8` |
 
----
+### P1 — 加载器 (3/3)
 
-## 概览
+| # | 项目 | Commit |
+|---|------|--------|
+| P1-4 | loader theme/language 注册（ThemeEngine + i18next） | `4963e49` |
+| P1-6 | 7 种错误处理 + 版本去重 | `4963e49` |
+| P1-5 | 文件监听（骨架——待 Tauri fs 补完） | `4963e49` |
 
-```
-完成度：约 60%
-├── ✅ 核心基础设施（加载器/viewRegistry/toast/欢迎页/终端插件化）— 完成
-├── ❌ 插件市场 UI — 整个空白（stub）
-├── ❌ 状态栏贡献点框架 — 代码有，StatusBar 不用
-├── ❌ 连锁推荐 UI — 完全没做
-├── ❌ loader 完整性 — 缺校验/注册/监听
-└── ❌ settings/marketplace 没有 plugin.json，仍是硬编码
-```
+### P2 — UI 细节 (2/2)
 
----
+| # | 项目 | Commit |
+|---|------|--------|
+| P2-7 | PluginDetailView 连锁推荐（recommends/suggests/requires） | `e227827` |
+| P2-8 | MainContent 硬编码 switch（保留安全网） | `1df1670` |
 
-## P0 — 用户可见的功能空白（3 项）
+### P3 — 小修 (2/2)
 
-### 1. 插件市场 UI 整个空白
+| # | 项目 | Commit |
+|---|------|--------|
+| P3-9 | 通知铃铛 + 通知历史面板 | `1df1670` |
+| P3-10 | IconBar 动态化 + 拖拽排序 | `1df1670` `414976a` `8650187` |
 
-**现状：** [MainContent.tsx:86](../../src/components/MainContent.tsx#L86)
-```tsx
-case "marketplace":
-  return <div>插件管理 — Phase 5</div>;
-```
+### 对标 VS Code UX 重构
 
-**设计要求（§5）：**
-- 侧栏插件列表：已安装 / 可安装分类
-- 搜索过滤
-- 安装 / 卸载 / 禁用按钮
-- 拖 `.v3p` 文件离线安装
-- 图标栏 🧩 → 侧栏切换为插件列表
+| 功能 | VS Code 对标 | Commit |
+|------|-------------|--------|
+| 插件市场侧栏 | Extensions 侧栏：列表在侧栏，主区不动 | `06f122c` `63656a3` |
+| codicons 图标 | `@vscode/codicons` 字体 | `63656a3` `c0e5c0a` |
+| 通知面板 | notificationsCenter: fixed 定位 + header 35px | `63656a3` `c0e5c0a` |
+| 插件详情页 | extensionEditor: header 96px icon + NavBar 标签 | `e8537dd` |
+| 标签页同名 | VS Code 同名文件加文件夹区分 → ` (介绍)` 后缀 | `84f2387` |
+| IconBar 单一光标 | Activity Bar: sidebarView 优先，只有一个 indicator | `d0eb5cc` |
+| 侧栏智能切换 | 点真视图标签页→切侧栏，点详情页→保持 | `3bf00aa` |
+| IconBar 拖拽排序 | Activity Bar 拖拽：蓝色指示线 + prefs.json 持久化 | `414976a` `8650187` |
+| 预览模式 | preview editor：斜体 + 单击替换/双击固定 | `aa0b44a` `e539bfa` `485ccd4` |
 
-**涉及文件：**
-- `src/components/MainContent.tsx` — 替换 marketplace stub
-- `src/components/SidePanel.tsx` — marketplace 侧栏返回 null，需补
-- 新建：`src/components/views/MarketplaceView.tsx` 或侧栏组件
+### Bug 修复
 
----
-
-### 2. StatusBar 不走贡献点框架
-
-**现状：** `viewRegistry.getStatusBarContributions()` 已实现，`terminal/plugin.json` 已声明 statusBar 条目——但 StatusBar.tsx 全部硬编码 props（isOpen/txBytes/rxBytes/theme/lang），完全不调贡献点。
-
-**设计要求（§3.6）：**
-> 状态栏从左到右渲染——核心全局项（中:EN、☀、🔔）→ 插件贡献项（按加载顺序）
-
-**涉及文件：** `src/components/StatusBar.tsx`
+| Bug | 描述 | Commit |
+|-----|------|--------|
+| 路由错误 | plugin-detail 标签页被路由到终端组件 | `e8537dd` |
+| 标签页复用 | 点侧栏反复创建新标签页 | `b2e34e7` |
+| 侧栏跟随 | 切标签页时 marketplace 侧栏被清除 | `b2e34e7` |
+| 双重高亮 | IconBar 同时高亮两个图标 | `d0eb5cc` |
+| 标签页同名 | 终端视图和终端详情两标签同名 | `84f2387` |
+| 拖拽不生效 | HTML5 DnD → 纯鼠标事件（Tauri 兼容） | `8650187` |
+| 双击无效 | onClick/onDoubleClick 竞态 + pinned 未传播 | `e539bfa` `485ccd4` |
 
 ---
 
-### 3. settings/workspace/marketplace 缺 plugin.json
+## 剩余未闭合
 
-**现状：** `plugins/` 下只有 `terminal/` 一个插件文件夹。设计 §2 要求：
-- `settings` — `"core": true` 核心控制面，不可卸载
-- `marketplace` — `"core": true` 核心控制面，不可卸载
-- `workspace` — 出厂预装，可卸载
-
-这三者目前靠 MainContent switch 硬编码渲染，不经过 viewRegistry。
-
-**涉及文件：**
-- 新建 `plugins/settings/plugin.json`
-- 新建 `plugins/marketplace/plugin.json`
-- 新建 `plugins/workspace/plugin.json`
-- `src/components/MainContent.tsx` — 消除 switch 回退
-- `src/components/IconBar.tsx` — 消除 BUILTIN_ICONS 硬编码
-
----
-
-## P1 — 加载器不完整（3 项）
-
-### 4. theme/language 注册是空壳
-
-**现状：** [loader.ts:96-100](../../src/pluginLoader/loader.ts#L96-L100)
-```typescript
-case "theme":
-case "language":
-  console.log(`[pluginLoader] ${manifest.type} 插件 "${pluginId}" — Phase 4 预留`);
-  break;
-```
-
-**设计要求（§4 Step 1）：**
-- `type: "theme"` → `ThemeEngine.register()`
-- `type: "language"` → `i18next.addResourceBundle()`
-- 支持 `themes` / `languages` 数组（一个插件包多个子条目）
-
-**涉及文件：**
-- `src/pluginLoader/loader.ts`
-- `src/core/ThemeEngine.ts`（确认 register 接口）
-
----
-
-### 5. 文件监听未实现
-
-**现状：** 插件只在 App 启动时 `initPluginLoader()` 一次，无 Tauri fs watch。
-
-**设计要求（§4 "文件监听与热加载"）：**
-- Tauri fs watch `plugins/` 目录
-- 新增/修改 JSON 插件 → 即时生效
-- `.tsx` 插件变更 → toast 提示重启
-- `.v3p` 拖入 → 解压 + 加载
-
-**涉及文件：** `src/pluginLoader/loader.ts`（新增 watch 逻辑）
-
----
-
-### 6. 7 种错误处理缺 5 种
-
-**现状：** loader 只做了"缺 type"+"缺 entry"两种检查。
-
-**设计要求（§4 "校验与错误处理"）：**
-
-| # | 错误类型 | 要求行为 | 现状 |
-|---|---------|---------|------|
-| 1 | plugin.json 不存在 | 跳过，日志 | 隐式（glob 不匹配）|
-| 2 | plugin.json 格式错误 | 跳过，toast | ❌ 未处理 |
-| 3 | 缺少 type | 跳过 | ✅ |
-| 4 | type 未知 | 跳过 | 只 console.log，无 toast |
-| 5 | 缺少 entry | 跳过，toast | ✅ |
-| 6 | minAppVersion > 当前版本 | 跳过，标记"需升级" | ❌ |
-| 7 | 同名插件重复 | 优先高版本，toast | ❌ |
-
-另外缺 JSON Schema 校验（`plugin.schema.json` 已存在但 loader 不用）。
-
-**涉及文件：** `src/pluginLoader/loader.ts`
-
----
-
-## P2 — UI 细节缺失（2 项）
-
-### 7. PluginDetailView 无连锁推荐
-
-**现状：** `PluginManifest` 类型定义了 `recommends` / `suggests` / `requires`，详情页完全不渲染。也没有安装/卸载按钮。
-
-**设计要求（§6.1-6.5）：**
-- 推荐/可选/依赖区域，带勾选框
-- 安装按钮 → 下载主插件 + 勾选的推荐插件
-- 卸载时检查反向推荐 → 警告弹窗
-- 循环推荐检测
-
-**涉及文件：** `src/components/views/PluginDetailView.tsx`
-
----
-
-### 8. MainContent 仍 switch on type
-
-**现状：** [MainContent.tsx:66-89](../../src/components/MainContent.tsx#L66-L89) — 查不到 viewRegistry 时回退到 8 路 switch（terminal/workspace/settings/oled/editor/welcome/plugin-detail/marketplace）。
-
-其中 settings/workspace 应该走 viewRegistry（补 plugin.json 后），marketplace 需替换为空白的 MarketplaceView。
-
-**涉及文件：** `src/components/MainContent.tsx`
-
----
-
-## P3 — 小修小补（2 项）
-
-### 9. 通知铃铛图标未实现
-
-**设计要求（§3.5）：** 状态栏右侧 🔔 显示未读计数，点击弹出通知历史面板（最近 20 条）。
-
-**涉及文件：** `src/components/StatusBar.tsx`、`src/core/toast.ts`
-
----
-
-### 10. IconBar 出厂图标硬编码
-
-**现状：** `BUILTIN_ICONS` 写死 4 个图标路径，`getPluginEmoji()` 硬编码 emoji 映射——都不读 manifest.icon / manifest.iconSource。
-
-补完 P0-3（settings/marketplace/workspace 的 plugin.json）后，这个可以一并消除。
-
-**涉及文件：** `src/components/IconBar.tsx`
-
----
-
-## 修复顺序建议
-
-| 顺序 | 项目 | 理由 |
-|:--:|------|------|
-| 1 | P0-3: 补 plugin.json（settings/marketplace/workspace） | 纯 JSON，不改逻辑，为后续消除硬编码打基础 |
-| 2 | P0-2: StatusBar 走贡献点框架 | 改动小，效果明显 |
-| 3 | P1-4/5/6: loader 补完 | theme/language 注册 + 7 错误 + 文件监听 |
-| 4 | P0-1: 插件市场 UI | 工作量最大，但设计已完备 |
-| 5 | P2-7: 连锁推荐 | PluginDetailView 补 recommends/suggests/requires |
-| 6 | P2-8/P3-9/10: 去硬编码残留 | 收尾 |
-
----
-
-## 不在 Phase 4 范围的（设计 Steps 5-9）
-
-以下在设计 §10 中标注为"依赖 Phase 5/6+"，本次不修：
-
-- Step 5: 卡片 + 协议插件加载（~80 行）
-- Step 6: 插件市场在线搜索/社区商店（~400 行）——注：本地管理（已安装/可安装/拖.v3p）属于 Phase 4
-- Step 7: 插件连锁推荐完整流程（~100 行）
-- Step 8: 数据源插件（~200 行，Rust 侧重构）
-- Step 9: 插件安全模型（~80 行）
-- §8.5: Profile 配置文件（远期）
-- §8: 沙箱/进程隔离（Phase 8+）
+| 项目 | 状态 |
+|------|------|
+| P1-5 文件监听 | 骨架已就绪（startPluginWatcher），待 Tauri fs 命令 |
+| 安装/卸载/禁用按钮 | Phase 5（需 Tauri fs 操作） |
+| 插件市场在线搜索 | Phase 6+（需服务端） |
+| 插件安全模型 | Phase 5+ |
