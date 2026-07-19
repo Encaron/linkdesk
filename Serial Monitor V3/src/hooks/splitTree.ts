@@ -358,3 +358,56 @@ export function validateTree(
 
   return { valid: true };
 }
+
+/* ── B35：分支索引查找 + 更新（修复深层嵌套 resize 错位） ── */
+
+let _findCounter = 0;
+
+/** 按索引查找分支节点——用于 resize 时精确定位 */
+export function findBranchByIndex(
+  node: SplitNode,
+  targetIndex: number
+): (SplitNode & { type: "branch" }) | null {
+  _findCounter = 0;
+  return _findBranchByIndex(node, targetIndex);
+}
+
+function _findBranchByIndex(
+  node: SplitNode,
+  targetIndex: number
+): (SplitNode & { type: "branch" }) | null {
+  if (node.type === "leaf") return null;
+  _findCounter++;
+  if (_findCounter === targetIndex) return node;
+  return (
+    _findBranchByIndex(node.children[0], targetIndex) ??
+    _findBranchByIndex(node.children[1], targetIndex)
+  );
+}
+
+/** 按索引更新分支 sizes——返回新树（不可变） */
+export function updateBranchSizesByIndex(
+  node: SplitNode,
+  targetIndex: number,
+  newSizes: [number, number]
+): SplitNode | null {
+  _findCounter = 0;
+  return _updateBranchSizesByIndex(node, targetIndex, newSizes);
+}
+
+function _updateBranchSizesByIndex(
+  node: SplitNode,
+  targetIndex: number,
+  newSizes: [number, number]
+): SplitNode | null {
+  if (node.type === "leaf") return null;
+  _findCounter++;
+  if (_findCounter === targetIndex) {
+    return { ...node, sizes: newSizes };
+  }
+  const left = _updateBranchSizesByIndex(node.children[0], targetIndex, newSizes);
+  if (left) return { ...node, children: [left, node.children[1]] };
+  const right = _updateBranchSizesByIndex(node.children[1], targetIndex, newSizes);
+  if (right) return { ...node, children: [node.children[0], right] };
+  return null;
+}

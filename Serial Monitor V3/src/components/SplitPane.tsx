@@ -18,7 +18,7 @@ interface SplitPaneProps {
   node: SplitNode;
   groups: TabGroup[];
   renderGroup: (group: TabGroup) => React.ReactNode;
-  onResize?: (anchorGroupId: string, sizes: [number, number]) => void;
+  onResize?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
 }
 
 interface PanelRect {
@@ -28,7 +28,10 @@ interface PanelRect {
 
 interface HandleRect {
   id: string;
+  /** 唯一标识此 handle 所控制的分支——用 children[0] 的首叶子 groupId */
   anchorGroupId: string;
+  /** 树分支索引——在 reduceUpdateSplitSizes 中定位正确分支 */
+  branchIndex: number;
   x: number; y: number; w: number; h: number;
   direction: "horizontal" | "vertical";
 }
@@ -38,9 +41,11 @@ function firstLeafId(node: SplitNode): string {
   return node.type === "leaf" ? node.groupId : firstLeafId(node.children[0]);
 }
 
+let _branchCounter = 0;
+
 /** 从树递归算所有面板 + 分割条的百分比 rect */
 function computeLayout(
-  node: SplitNode, x: number, y: number, w: number, h: number
+  node: SplitNode, x: number, y: number, w: number, h: number, _depth = 0
 ): { panels: PanelRect[]; handles: HandleRect[] } {
   if (node.type === "leaf") {
     return { panels: [{ groupId: node.groupId, x, y, w, h }], handles: [] };
@@ -49,24 +54,25 @@ function computeLayout(
   const [s0, s1] = node.sizes;
   const handlePct = 0.4;
   const anchorId = firstLeafId(node.children[0]);
+  const branchIndex = ++_branchCounter;
 
   if (node.direction === "horizontal") {
     const w0 = w * s0 / 100;
     const w1 = w * s1 / 100;
-    const left = computeLayout(node.children[0], x, y, w0, h);
-    const right = computeLayout(node.children[1], x + w0 + handlePct, y, w1, h);
+    const left = computeLayout(node.children[0], x, y, w0, h, _depth + 1);
+    const right = computeLayout(node.children[1], x + w0 + handlePct, y, w1, h, _depth + 1);
     const handle: HandleRect = {
-      id: `h-${anchorId}`, anchorGroupId: anchorId,
+      id: `h-${anchorId}-${branchIndex}`, anchorGroupId: anchorId, branchIndex,
       x: x + w0, y, w: handlePct, h, direction: "horizontal",
     };
     return { panels: [...left.panels, ...right.panels], handles: [...left.handles, handle, ...right.handles] };
   } else {
     const h0 = h * s0 / 100;
     const h1 = h * s1 / 100;
-    const top = computeLayout(node.children[0], x, y, w, h0);
-    const bottom = computeLayout(node.children[1], x, y + h0 + handlePct, w, h1);
+    const top = computeLayout(node.children[0], x, y, w, h0, _depth + 1);
+    const bottom = computeLayout(node.children[1], x, y + h0 + handlePct, w, h1, _depth + 1);
     const handle: HandleRect = {
-      id: `h-${anchorId}`, anchorGroupId: anchorId,
+      id: `h-${anchorId}-${branchIndex}`, anchorGroupId: anchorId, branchIndex,
       x, y: y + h0, w, h: handlePct, direction: "vertical",
     };
     return { panels: [...top.panels, ...bottom.panels], handles: [...top.handles, handle, ...bottom.handles] };
@@ -78,7 +84,7 @@ function AbsoluteHandle({
   rect, onResize,
 }: {
   rect: HandleRect;
-  onResize?: (anchorGroupId: string, sizes: [number, number]) => void;
+  onResize?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isH = rect.direction === "horizontal";
@@ -94,7 +100,7 @@ function AbsoluteHandle({
     const mm = (ev: MouseEvent) => {
       const pos = isH ? ev.clientX - pr.left : ev.clientY - pr.top;
       const pct = Math.min(80, Math.max(20, (pos / total) * 100));
-      onResize(rect.anchorGroupId, [pct, 100 - pct]);
+      onResize(rect.anchorGroupId, [pct, 100 - pct], rect.branchIndex);
     };
     const mu = () => { window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); };
     window.addEventListener("mousemove", mm);
@@ -106,7 +112,7 @@ function AbsoluteHandle({
       ref={ref}
       className="split-pane-handle"
       onMouseDown={onMouseDown}
-      onDoubleClick={() => onResize?.(rect.anchorGroupId, [50, 50])}
+      onDoubleClick={() => onResize?.(rect.anchorGroupId, [50, 50], rect.branchIndex)}
       style={{
         position: "absolute", left: `${rect.x}%`, top: `${rect.y}%`,
         width: `${rect.w}%`, height: `${rect.h}%`,
@@ -119,6 +125,7 @@ function AbsoluteHandle({
 export default function SplitPane({
   node, groups, renderGroup, onResize,
 }: SplitPaneProps) {
+  _branchCounter = 0;
   const layout = useMemo(() => computeLayout(node, 0, 0, 100, 100), [node]);
 
   return (

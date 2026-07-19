@@ -16,6 +16,7 @@ import {
   replaceLeafWithBranch,
   removeLeafFromTree,
   migrateLayout,
+  updateBranchSizesByIndex,
 } from "./splitTree";
 import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
 import { getTabBehavior, findFallbackPlugin, getViewPlugin } from "../pluginLoader/viewRegistry";
@@ -578,14 +579,28 @@ export function reduceUnsplit(prev: TabState, groupId: string): TabState {
  * anchorGroupId: 参与 resize 的两个 group 中任意一个的 groupId——用于在树中定位对应的 branch。
  * 如果树中只有一个 branch（2-pane），anchorGroupId 可以为任意 groupId。
  */
-export function reduceUpdateSplitSizes(prev: TabState, anchorGroupId: string, sizes: [number, number]): TabState {
+/**
+ * 更新分屏尺寸。
+ * B35：优先用 branchIndex 精确定位分支（修复深层嵌套时 handle 定位错误）。
+ * 无 branchIndex 时降级为旧 anchorGroupId 方案（向后兼容）。
+ */
+export function reduceUpdateSplitSizes(
+  prev: TabState,
+  anchorGroupId: string,
+  sizes: [number, number],
+  branchIndex?: number,
+): TabState {
+  // B35：branchIndex 精确定位
+  if (branchIndex != null && branchIndex > 0) {
+    const newRoot = updateBranchSizesByIndex(prev.root, branchIndex, sizes);
+    if (newRoot) return { ...prev, root: newRoot };
+  }
+  // 降级：旧 anchorGroupId 方案（2-pane 等简单场景）
   const parent = findParentInTree(prev.root, anchorGroupId);
   if (parent) {
-    // 找到了父 branch——更新它的 sizes
     const newRoot = updateBranchSizes(prev.root, parent.parent, sizes);
     if (newRoot) return { ...prev, root: newRoot };
   }
-  // 如果没有父（即 anchor 是根 leaf）或者树是单 leaf——忽略
   return prev;
 }
 
@@ -827,8 +842,8 @@ export function useTabManager() {
     });
   }, []);
 
-  const updateSplitSizes = useCallback((anchorGroupId: string, sizes: [number, number]) => {
-    setTabState((prev) => reduceUpdateSplitSizes(prev, anchorGroupId, sizes));
+  const updateSplitSizes = useCallback((anchorGroupId: string, sizes: [number, number], branchIndex?: number) => {
+    setTabState((prev) => reduceUpdateSplitSizes(prev, anchorGroupId, sizes, branchIndex));
   }, []);
 
   const setDirty = useCallback((tabId: string, dirty: boolean) => {

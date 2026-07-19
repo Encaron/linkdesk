@@ -31,7 +31,7 @@ interface MainContentProps {
   onReorderTab: (tabId: string, toIndex: number) => void;
   onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
-  onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
+  onSplitResize?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
   dropZone?: DropZone | null;
   dragDropTargetGroupId?: string | null;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;

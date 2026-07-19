@@ -405,7 +405,7 @@ function App() {
             onReorderTab={reorderTab}
             onDropSplit={handleDropSplit}
             onDropCopySplit={handleDropCopySplit}
-            onSplitResize={updateSplitSizes}
+            onSplitResize={(anchorId, sizes, branchIndex) => updateSplitSizes(anchorId, sizes, branchIndex)}
             dropZone={dragDropZone}
             editorAreaRef={editorAreaRef}
             dragDropTargetGroupId={dragDropTargetGroupId}
