@@ -181,9 +181,9 @@
   left: 50%;
   top: 50%;
   transform: translate(-50%, -50%);
-  width: min(500px, 70vw);
-  height: min(500px, 70vw);
-  opacity: 0.12;
+  width: min(600px, 80vw);
+  height: min(600px, 80vw);
+  opacity: 0.06;
   pointer-events: none;
   z-index: 0;
 }
