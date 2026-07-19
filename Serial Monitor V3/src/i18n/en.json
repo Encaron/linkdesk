@@ -56,5 +56,22 @@
   "settings": "Settings",
   "图形属性": "Graphics Properties",
   "卡片属性编辑器": "Card Properties Editor",
-  "「{{label}}」有未保存的修改，确定关闭？": "\"{{label}}\" has unsaved changes. Close anyway?"
+  "「{{label}}」有未保存的修改，确定关闭？": "\"{{label}}\" has unsaved changes. Close anyway?",
+  "开": "On",
+  "关": "Off",
+  "---- {{name}}：{{value}} ----": "---- {{name}}: {{value}} ----",
+  "---- 快捷发送「{{name}}」已添加 ----": "---- Quick send \"{{name}}\" added ----",
+  "---- 快捷发送「{{name}}」已删除 ----": "---- Quick send \"{{name}}\" removed ----",
+  "---- 定时发送：开（每 {{interval}} ms）----": "---- Auto send: On (every {{interval}}ms) ----",
+  "---- 定时发送：关 ----": "---- Auto send: Off ----",
+  "⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃": "⚠ Pause buffer full (2000 lines), oldest data discarded",
+  "---- 继续显示：补回暂停期间的 {{count}} 条数据 ----": "---- Resumed: restored {{count}} buffered lines ----",
+  "---- 继续显示 ----": "---- Resumed ----",
+  "---- 暂停显示：界面已冻结，后台照常接收 ----": "---- Paused: display frozen, receiving in background ----",
+  "---- 日志已导出至 {{filename}} ----": "---- Log exported to {{filename}} ----",
+  "---- 已发送 HEX 消息 ({{bytes}} 字节) ----": "---- HEX message sent ({{bytes}} bytes) ----",
+  "---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----": "---- {{encoding}} encoded message sent: \"{{text}}\" ----",
+  "发送失败：{{error}}": "Send failed: {{error}}",
+  "⚠ HEX 输入包含无效字符: {{chars}}": "⚠ HEX input contains invalid chars: {{chars}}",
+  "⏸ 已暂停 · {{count}} 条缓冲": "⏸ Paused · {{count}} buffered"
 }

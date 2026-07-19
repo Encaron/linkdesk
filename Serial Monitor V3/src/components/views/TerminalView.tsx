@@ -25,19 +25,19 @@ import { HexToBytes } from "../../core/DataConverter";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
 import "./TerminalView.css";
 
-/* ---- CM6 深色主题 ---- */
+/* ---- CM6 主题（颜色走 CSS 变量，切主题自动响应） ---- */
 const darkTheme: Extension = EditorView.theme(
   {
-    "&": { background: "#252528", color: "#D4D4D4" },
-    ".cm-gutters": { background: "#1E1E22", borderRight: "1px solid #474747", color: "#6A6A6A" },
-    ".cm-activeLineGutter": { background: "#2D2D2D" },
+    "&": { background: "var(--bg-card)", color: "var(--text-primary)" },
+    ".cm-gutters": { background: "var(--bg-window)", borderRight: "1px solid var(--separator)", color: "var(--text-muted)" },
+    ".cm-activeLineGutter": { background: "var(--bg-card)" },
     ".cm-activeLine": { background: "rgba(255,255,255,0.04)" },
-    ".cm-cursor": { borderLeftColor: "#D4D4D4" },
+    ".cm-cursor": { borderLeftColor: "var(--text-primary)" },
     ".cm-selectionBackground": { background: "rgba(0,120,212,0.3)" },
     ".cm-selectionMatch": { background: "rgba(0,120,212,0.15)" },
     ".cm-searchMatch": { background: "rgba(255,255,0,0.2)", outline: "1px solid rgba(255,255,0,0.4)" },
-    ".cm-line-sent": { color: "#0E639C" },
-    ".cm-line-system": { color: "#6A6A6A" },
+    ".cm-line-sent": { color: "var(--sent-echo)" },
+    ".cm-line-system": { color: "var(--system-log)" },
     ".cm-search-match": { background: "rgba(255, 200, 0, 0.25)" },
     ".cm-search-current": { background: "rgba(255, 140, 0, 0.45)", outline: "1px solid rgba(255, 140, 0, 0.6)" },
   },
@@ -169,7 +169,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     if (!qsName.trim() || !qsContent.trim()) return;
     const name = qsName.trim();
     saveQuickSends({ ...quickSends, [name]: qsContent.trim() });
-    appendLine(`---- 快捷发送「${name}」已添加 ----`, "system");
+    appendLine(t("---- 快捷发送「{{name}}」已添加 ----", { name }), "system");
     setQsName("");
     setQsContent("");
     setQsAdding(false);
@@ -179,7 +179,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     const updated = { ...quickSends };
     delete updated[key];
     saveQuickSends(updated);
-    appendLine(`---- 快捷发送「${key}」已删除 ----`, "system");
+    appendLine(t("---- 快捷发送「{{name}}」已删除 ----", { name: key }), "system");
     setQsCtxMenu(null);
   };
 
@@ -300,17 +300,17 @@ function TerminalView({ isActive }: TerminalViewProps) {
     if (!prev) { prevPrefsRef.current = { ...prefs }; return; } // 首次跳过
 
     if (prev.showEcho !== prefs.showEcho)
-      appendLine(`---- 消息回显：${prefs.showEcho ? "开" : "关"} ----`, "system");
+      appendLine(t("---- {{name}}：{{value}} ----", { name: t("消息回显"), value: prefs.showEcho ? t("开") : t("关") }), "system");
     if (prev.showLineNumbers !== prefs.showLineNumbers)
-      appendLine(`---- 行号显示：${prefs.showLineNumbers ? "开" : "关"} ----`, "system");
+      appendLine(t("---- {{name}}：{{value}} ----", { name: t("行号显示"), value: prefs.showLineNumbers ? t("开") : t("关") }), "system");
     if (prev.separateSystemLog !== prefs.separateSystemLog)
-      appendLine(`---- 系统消息独立显示：${prefs.separateSystemLog ? "开" : "关"} ----`, "system");
+      appendLine(t("---- {{name}}：{{value}} ----", { name: t("系统消息独立显示"), value: prefs.separateSystemLog ? t("开") : t("关") }), "system");
     if (prev.timestampFormat !== prefs.timestampFormat)
-      appendLine(`---- 时间戳：${prefs.timestampFormat === "无" ? "关" : prefs.timestampFormat} ----`, "system");
+      appendLine(t("---- {{name}}：{{value}} ----", { name: t("时间戳"), value: prefs.timestampFormat === "无" ? t("关") : prefs.timestampFormat }), "system");
     if (prev.autoRepeat !== prefs.autoRepeat)
       appendLine(prefs.autoRepeat
-        ? `---- 定时发送：开（每 ${prefs.repeatInterval} ms）----`
-        : "---- 定时发送：关 ----", "system");
+        ? t("---- 定时发送：开（每 {{interval}} ms）----", { interval: prefs.repeatInterval })
+        : t("---- 定时发送：关 ----"), "system");
 
     prevPrefsRef.current = { ...prefs };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -335,7 +335,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
       type: "system",
     });
-    if (payload.includes("已打开串行端口")) {
+    if (/Port opened|串口已打开/.test(payload)) {
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
@@ -363,7 +363,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
           if (pausedBuffer.current.length > 2000) pausedBuffer.current.shift();
           setPausedCount(pausedBuffer.current.length);
           if (!wasFull && pausedBuffer.current.length >= 2000) {
-            appendLine("⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃", "system");
+            appendLine(t("⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃"), "system");
           }
         } else {
           appendLine(item.text, item.type);
@@ -386,11 +386,11 @@ function TerminalView({ isActive }: TerminalViewProps) {
         pausedBuffer.current = [];
         setPausedCount(0);
         if (count > 0)
-          appendLine(`---- 继续显示：补回暂停期间的 ${count} 条数据 ----`, "system");
+          appendLine(t("---- 继续显示：补回暂停期间的 {{count}} 条数据 ----", { count }), "system");
         else
-          appendLine("---- 继续显示 ----", "system");
+          appendLine(t("---- 继续显示 ----"), "system");
       } else {
-        appendLine("---- 暂停显示：界面已冻结，后台照常接收 ----", "system");
+        appendLine(t("---- 暂停显示：界面已冻结，后台照常接收 ----"), "system");
       }
       return !p;
     });
@@ -418,7 +418,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       const writable = await handle.createWritable();
       await writable.write(text);
       await writable.close();
-      appendLine(`---- 日志已导出至 ${filename} ----`, "system");
+      appendLine(t("---- 日志已导出至 {{filename}} ----", { filename }), "system");
     } catch {
       // 降级：Blob 下载
       const blob = new Blob([text], { type: "text/plain;charset=UTF-8" });
@@ -456,7 +456,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     }
 
     const warning = invalid.length > 0
-      ? `⚠ HEX 输入包含无效字符: ${[...new Set(invalid)].slice(0, 5).join(" ")}`
+      ? t("⚠ HEX 输入包含无效字符: {{chars}}", { chars: [...new Set(invalid)].slice(0, 5).join(" ") })
       : "";
 
     return { formatted, warning };
@@ -471,7 +471,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
         const bytes = Array.from(HexToBytes(text));
         await invoke("send_data", { data: bytes });
         // V2 格式: HH:mm:ss:fff ---- 已发送 HEX 消息 (N 字节) ----
-        const hexMsg = `${formatTimestamp(prefs.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`;
+        const hexMsg = `${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`;
         appendLine(hexMsg, "sent");
         // 第二行：HEX 预览（超过 80 字符截断）
         const preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
@@ -481,11 +481,11 @@ function TerminalView({ isActive }: TerminalViewProps) {
         await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
         // V2 格式: HH:mm:ss:fff ---- 已发送 utf-8 编码消息: "content" ----
         const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-        const sentMsg = `${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "${safeText}" ----`;
+        const sentMsg = `${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: safeText })}`;
         appendLine(sentMsg, "sent");
       }
     } catch (e: any) {
-      appendLine(`发送失败：${e?.message || e}`, "system");
+      appendLine(t("发送失败：{{error}}", { error: e?.message || String(e) }), "system");
     }
     if (prefs.autoClear) setSendValue("");
   }, [sendValue, appendLine, recordHistory, prefs.sendMode, prefs.sendCoding, prefs.lineEnding, prefs.autoClear, prefs.timestampFormat]);
@@ -515,9 +515,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
     try {
       await invoke("send_text", { text: text + "\r\n", encoding: prefs.sendCoding });
       const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-      appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "> ${safeText}" ----`, "sent");
+      appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: "> " + safeText })}`, "sent");
     } catch (e: any) {
-      appendLine(`发送失败：${e?.message || e}`, "system");
+      appendLine(t("发送失败：{{error}}", { error: e?.message || String(e) }), "system");
     }
   };
 
@@ -541,12 +541,12 @@ function TerminalView({ isActive }: TerminalViewProps) {
         if (prefs.sendMode === "hex") {
           const bytes = Array.from(HexToBytes(text));
           await invoke("send_data", { data: bytes });
-          appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`, "sent");
+          appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`, "sent");
         } else {
           const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
           await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
           const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-          appendLine(`${formatTimestamp(prefs.timestampFormat)} ---- 已发送 ${prefs.sendCoding.toLowerCase()} 编码消息: "${safeText}" ----`, "sent");
+          appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: safeText })}`, "sent");
         }
       } catch {
         // 静默——定时发送失败不刷屏
@@ -795,7 +795,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
         <div ref={cmContainer} className="cm-container" />
         {paused && (
           <div className="paused-banner">
-            ⏸ 已暂停 · {pausedCount} 条缓冲
+            {t("⏸ 已暂停 · {{count}} 条缓冲", { count: pausedCount })}
           </div>
         )}
         {showBackToBottom && (
