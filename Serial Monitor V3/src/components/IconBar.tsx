@@ -1,7 +1,7 @@
 /**
  * IconBar — 图标栏（最左 48px 垂直条）。
- * 对标 VS Code Activity Bar：拖拽排序 + 蓝色指示条。
- * 用纯鼠标事件实现（不用 HTML5 DnD——Tauri WebView2 兼容性更好）。
+ * 对标 VS Code Activity Bar：顶部主要图标 + 底部设置图标。
+ * 顶部图标支持拖拽排序，设置固定在底部。
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
@@ -15,7 +15,6 @@ interface IconBarProps {
   activePluginId?: string;
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
-  /** 双击图标 → 固定打开（不被预览替换） */
   onOpenPinned?: (type: string) => void;
 }
 
@@ -25,6 +24,9 @@ const PLUGIN_ICON_PATH: Record<string, string> = {
   settings: "settings.png",
   marketplace: "extensions.svg",
 };
+
+/** 固定在底部的图标——对标 VS Code 左下角 Manage（齿轮） */
+const BOTTOM_ICONS = new Set(["settings"]);
 
 function getIconSrc(pluginId: string): string {
   const path = PLUGIN_ICON_PATH[pluginId];
@@ -85,6 +87,10 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, on
   const orderedRef = useRef(ordered);
   orderedRef.current = ordered;
 
+  // 分顶部/底部——对标 VS Code Activity Bar
+  const topIcons = ordered.filter((x) => !BOTTOM_ICONS.has(x.pluginId));
+  const bottomIcons = ordered.filter((x) => BOTTOM_ICONS.has(x.pluginId));
+
   /* ── 查找鼠标下的图标 ── */
 
   const findIconAt = useCallback((clientY: number, excludeId: string): { id: string; pos: "top" | "bottom" } | null => {
@@ -115,17 +121,15 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, on
   /* ── 鼠标事件 ── */
 
   const handleMouseDown = useCallback((e: React.MouseEvent, pluginId: string) => {
-    // 只响应左键
     if (e.button !== 0) return;
     dragRef.current = { pluginId, startY: e.clientY, moved: false };
-    // 不阻止默认——保留 click 事件用于普通点击
   }, []);
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragRef.current) return;
       const dy = Math.abs(e.clientY - dragRef.current.startY);
-      if (dy < 5) return; // 5px 阈值防误触
+      if (dy < 5) return;
       dragRef.current.moved = true;
       setDraggedId(dragRef.current.pluginId);
       const target = findIconAt(e.clientY, dragRef.current.pluginId);
@@ -157,7 +161,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, on
       window.removeEventListener("mouseup", onMouseUp);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // 用 ref 获取最新值，不需要重新注册
+  }, []);
 
   /* ── 高亮 ── */
 
@@ -167,46 +171,56 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, on
     return activeTabType === pluginId;
   };
 
+  /* ── 渲染单个图标按钮 ── */
+
+  const renderIcon = (entry: IconEntry) => {
+    const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
+    const showAfter = dropTarget?.id === entry.pluginId && dropTarget.pos === "bottom";
+    const isBottom = BOTTOM_ICONS.has(entry.pluginId);
+    return (
+      <div key={entry.pluginId} className={`icon-bar-item-wrapper${isBottom ? " bottom" : ""}`}>
+        {showBefore && <div className="icon-drop-indicator" />}
+        <button
+          className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
+          data-plugin-id={entry.pluginId}
+          onClick={() => {
+            if (dragRef.current?.moved) return;
+            const id = entry.pluginId;
+            if (clickTimer.current && lastClickedId.current === id) {
+              clearTimeout(clickTimer.current);
+              clickTimer.current = null;
+              lastClickedId.current = null;
+              onOpenPinned?.(id);
+            } else {
+              lastClickedId.current = id;
+              clickTimer.current = setTimeout(() => {
+                clickTimer.current = null;
+                lastClickedId.current = null;
+                onOpenOrFocus(id);
+              }, 300);
+            }
+          }}
+          onMouseDown={(e) => !isBottom && handleMouseDown(e, entry.pluginId)}
+          title={t(entry.label)}
+          aria-label={t(entry.label)}
+        >
+          <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
+        </button>
+        {showAfter && <div className="icon-drop-indicator" />}
+      </div>
+    );
+  };
+
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
+      {/* 顶部——对标 VS Code Activity Bar 主图标区 */}
       <div className="icon-bar-top" ref={containerRef}>
-        {ordered.map((entry) => {
-          const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
-          const showAfter = dropTarget?.id === entry.pluginId && dropTarget.pos === "bottom";
-          return (
-            <div key={entry.pluginId} className="icon-bar-item-wrapper">
-              {showBefore && <div className="icon-drop-indicator" />}
-              <button
-                className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
-                data-plugin-id={entry.pluginId}
-                onClick={() => {
-                  if (dragRef.current?.moved) return;
-                  const id = entry.pluginId;
-                  // 双击：固定打开。单击：预览打开（计时器 300ms 区分）
-                  if (clickTimer.current && lastClickedId.current === id) {
-                    clearTimeout(clickTimer.current);
-                    clickTimer.current = null;
-                    lastClickedId.current = null;
-                    onOpenPinned?.(id);
-                  } else {
-                    lastClickedId.current = id;
-                    clickTimer.current = setTimeout(() => {
-                      clickTimer.current = null;
-                      lastClickedId.current = null;
-                      onOpenOrFocus(id);
-                    }, 300);
-                  }
-                }}
-                onMouseDown={(e) => handleMouseDown(e, entry.pluginId)}
-                title={t(entry.label)}
-                aria-label={t(entry.label)}
-              >
-                <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
-              </button>
-              {showAfter && <div className="icon-drop-indicator" />}
-            </div>
-          );
-        })}
+        {topIcons.map(renderIcon)}
+      </div>
+
+      {/* 底部——对标 VS Code 左下角齿轮 */}
+      <div className="icon-bar-bottom">
+        {bottomIcons.map(renderIcon)}
       </div>
     </div>
   );

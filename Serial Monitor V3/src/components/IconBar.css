@@ -1,4 +1,4 @@
-/* IconBar — 对标 VS Code Activity Bar。左侧蓝色指示条 + 图片图标。 */
+/* IconBar — 对标 VS Code Activity Bar。顶部主图标 + 底部设置图标。 */
 
 .icon-bar {
   display: flex;
@@ -13,6 +13,15 @@
   flex-direction: column;
   align-items: center;
   padding-top: 4px;
+  gap: 0;
+}
+
+/* 底部——对标 VS Code 左下角 Manage 齿轮 */
+.icon-bar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 4px;
   gap: 0;
 }
 
