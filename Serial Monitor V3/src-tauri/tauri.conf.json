@@ -1,8 +1,8 @@
 {
   "$schema": "https://raw.githubusercontent.com/nicehash/tauri/dev/crates/tauri-config-schema/schema.json",
-  "productName": "Serial Monitor V3",
+  "productName": "LinkDesk",
   "version": "0.1.0",
-  "identifier": "com.serial-monitor.v3",
+  "identifier": "com.linkdesk.app",
   "build": {
     "frontendDist": "../dist",
     "devUrl": "http://localhost:1420",
@@ -12,7 +12,7 @@
   "app": {
     "windows": [
       {
-        "title": "Serial Monitor V3",
+        "title": "LinkDesk",
         "width": 960,
         "height": 640,
         "minWidth": 720,

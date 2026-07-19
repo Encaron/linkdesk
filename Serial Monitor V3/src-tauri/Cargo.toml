@@ -1,10 +1,10 @@
 [package]
-name = "serial-monitor-v3"
+name = "linkdesk"
 version = "0.1.0"
 edition = "2021"
 
 [lib]
-name = "serial_monitor_v3_lib"
+name = "linkdesk_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]

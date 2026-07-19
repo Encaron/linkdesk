@@ -52,7 +52,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   return (
     <div className="welcome-page">
       <header className="welcome-hero">
-        <h1 className="welcome-title">Serial Monitor</h1>
+        <h1 className="welcome-title">LinkDesk</h1>
         <p className="welcome-subtitle">{t("通用调试容器")}</p>
       </header>
 

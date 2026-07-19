@@ -3,19 +3,19 @@
      如果 JSON 加载失败，这里的值作为 fallback 保证软件可用。 */
   --bg-window: #1E1E1E;
   --bg-card: #2D2D2D;
-  --bg-status: #007ACC;
+  --bg-status: #0078D4;
   --bg-input: #3C3C3C;
   --text-primary: #D4D4D4;
   --text-secondary: #9D9D9D;
   --text-muted: #8A8A8A;
-  --accent: #0E639C;
-  --accent-hover: #1177BB;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
   --border: #3C3C3C;
   --separator: #474747;
   --icon-active: #FFFFFF;
   --icon-inactive: #858585;
   --system-log: #6A6A6A;
-  --sent-echo: #0E639C;
+  --sent-echo: #0078D4;
   --received: #D4D4D4;
   --status-connected: #4EC9B0;
   --status-disconnected: #6A6A6A;

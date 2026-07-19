@@ -1,6 +1,6 @@
-# Serial Monitor V3
+# LinkDesk
 
-> Tauri v2 + React 18 + TypeScript — 卡片式串口调试工具。V2（WPF）正常使用中，V3 是重架构。
+> Tauri v2 + React 18 + TypeScript — 通用调试容器。V2（WPF）正常使用中，V3 是重架构。
 
 ## 架构：两层容器
 
