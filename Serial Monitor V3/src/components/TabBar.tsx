@@ -9,7 +9,6 @@ import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getTabBehavior } from "../pluginLoader/viewRegistry";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -272,16 +271,6 @@ export default function TabBar({
   // 关闭标签页（带动画）
   const closeWithAnimation = useCallback(
     (tabId: string) => {
-      const tab = tabs.find((t) => t.id === tabId);
-      // Phase 4：保底标签页（isFallback）在组内唯一时不可关——清空接收区 or 阻止
-      if (tabs.length === 1 && tab && getTabBehavior(tab.pluginId ?? tab.type).isFallback) {
-        return; // 欢迎页保底：组内唯一时不允许关
-      }
-      // 终端保底兼容：[×] 清空接收区
-      if (tabs.length === 1 && tabs[0].type === "terminal") {
-        window.dispatchEvent(new CustomEvent("v3-clear-terminal"));
-        return;
-      }
       setExitingTabId(tabId);
       setTimeout(() => {
         onCloseTab(tabId);
@@ -449,8 +438,8 @@ export default function TabBar({
                     e.stopPropagation();
                     closeWithAnimation(tab.id);
                   }}
-                  title={tabs.length === 1 && tab.type === "terminal" ? t("清空接收区") : tabs.length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback ? "" : t("关闭")}
-                  aria-label={tabs.length === 1 && tab.type === "terminal" ? t("清空接收区") : tabs.length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback ? "" : t("关闭")}
+                  title={t("关闭")}
+                  aria-label={t("关闭")}
                 >
                   ×
                 </button>

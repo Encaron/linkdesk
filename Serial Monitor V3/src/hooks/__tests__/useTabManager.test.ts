@@ -177,11 +177,12 @@ describe("reduceCloseTab", () => {
     expect(allTabs(r.state!)).toHaveLength(1);
   });
 
-  it("Phase 4 欢迎页保底：全局唯一欢迎页不能关", () => {
+  it("Phase 4：关闭最后一个标签页 → 自动替换为欢迎页（对标浏览器）", () => {
     const prev = createInitialTabState();
     const r = reduceCloseTab(prev, prev.groups[0].tabs[0].id);
-    expect(r.closed).toBe(false);
-    expect(r.reason).toBe("blocked");
+    expect(r.closed).toBe(true);
+    // 关闭后自动补了欢迎页
+    expect(allTabs(r.state!).some((t) => t.type === "welcome")).toBe(true);
   });
 
   it("dirty 标签页拒绝关闭", () => {

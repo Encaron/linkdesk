@@ -300,11 +300,6 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 
   const tab = group.tabs.find((t) => t.id === tabId)!;
 
-  // Phase 4：保底标签页（tabBehavior.isFallback）→ 全局唯一时不允许关
-  if (allTabs(prev).length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback) {
-    return { closed: false, tabId, reason: "blocked" };
-  }
-
   // dirty 阻断
   if (tab.dirty) {
     return { closed: false, tabId, reason: "dirty" };
@@ -313,7 +308,7 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   // 从组中移除
   const remaining = group.tabs.filter((t) => t.id !== tabId);
 
-  // 该组变空 → 从树中移除该 leaf
+  // 该组变空
   if (remaining.length === 0) {
     const allLeafIds = getAllLeafGroupIds(prev.root);
     if (allLeafIds.length > 1) {
@@ -330,8 +325,17 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
         return { closed: true, tabId, reason: "unsplit", state: newState, newActiveTabId: survivingGroup?.activeTabId ?? "" };
       }
     }
-    // 单面板 + 最后一个标签页已关 → 不应该到这里（终端保底已拦截）
-    return { closed: false, tabId, reason: "blocked" };
+    // 单面板 + 最后一个标签页 → 全场 0 标签，ensureFallback 补欢迎页
+    const fbId = findFallbackPlugin()?.pluginId ?? "welcome";
+    const fb = createTabDefaults(fbId);
+    const newGroups = prev.groups.map((g) =>
+      g.id === group.id ? { ...g, tabs: [fb], activeTabId: fb.id } : g
+    );
+    return {
+      closed: true, tabId,
+      state: { ...prev, groups: newGroups, root: prev.root },
+      newActiveTabId: fb.id,
+    };
   }
 
   const newActiveId = pickNextActive(remaining, tabId);
@@ -339,24 +343,17 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
     g.id === group.id ? { ...g, tabs: remaining, activeTabId: newActiveId } : g
   );
 
-  const result = ensureFallback({
-    groups: newGroups,
-    activeGroupId: prev.activeGroupId,
-    root: prev.root,
-  });
-
   return {
-    closed: true, tabId, state: result, newActiveTabId: newActiveId,
+    closed: true, tabId,
+    state: { ...prev, groups: newGroups },
+    newActiveTabId: newActiveId,
   };
 }
 
 export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };
-  const tab = group.tabs.find((t) => t.id === tabId)!;
-  if (allTabs(prev).length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback) {
-    return { closed: false, tabId, reason: "blocked" };
-  }
+  // dirty 已由调用方清除，直接走正常关闭
   return reduceCloseTab({ ...prev }, tabId);
 }
 
