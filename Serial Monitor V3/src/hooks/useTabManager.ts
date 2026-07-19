@@ -18,6 +18,7 @@ import {
   migrateLayout,
 } from "./splitTree";
 import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
+import { getTabBehavior, findFallbackPlugin, getViewPlugin } from "../pluginLoader/viewRegistry";
 
 /* ── 类型 ── */
 
@@ -77,14 +78,15 @@ export function resetTerminalCounter(n = 0): void {
   _terminalCounter = n;
 }
 
+/** type 可能是内置 TabType 或自定义 pluginId——创建 Tab 时统一对待 */
 export function createTabDefaults(
-  type: TabType,
+  type: string,
   overrides?: Partial<Tab>
 ): Tab {
-  const pluginId = overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type];
+  const pluginId = overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type;
   const base: Tab = {
     id: "",
-    type,
+    type: type as TabType,
     label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath),
     workspaceName: overrides?.workspaceName,
     filePath: overrides?.filePath,
@@ -109,8 +111,9 @@ export function createTabDefaults(
   return { ...base, ...overrides, id: base.id };
 }
 
+/** 标签名——内置类型走 i18n，自定义插件从 viewRegistry 拿名称 */
 export function getDefaultLabel(
-  type: TabType,
+  type: string,
   workspaceName?: string,
   filePath?: string
 ): string {
@@ -123,6 +126,11 @@ export function getDefaultLabel(
     case "welcome":   return i18n.t("欢迎");
     case "plugin-detail": return i18n.t("插件详情");
     case "marketplace": return i18n.t("插件市场");
+    default: {
+      // 自定义插件——从 viewRegistry 查显示名
+      const plugin = getViewPlugin(type);
+      return plugin?.manifest.name ?? type;
+    }
   }
 }
 
@@ -139,14 +147,15 @@ function createGroup(tabs: Tab[] = []): TabGroup {
   };
 }
 
-/** Phase 4：确保 state 中至少有一个欢迎页（保底标签页） */
+/** Phase 4：确保 state 中至少有一个保底标签页（从 viewRegistry 查 isFallback） */
 function ensureFallback(state: TabState): TabState {
-  if (!allTabs(state).some((t) => t.type === "welcome")) {
-    const welcome = createTabDefaults("welcome");
+  const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
+  if (!allTabs(state).some((t) => t.pluginId === fallbackId || t.type === fallbackId)) {
+    const fb = createTabDefaults(fallbackId);
     const mainGroup = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0];
     if (mainGroup) {
-      mainGroup.tabs = [welcome, ...mainGroup.tabs];
-      if (!mainGroup.activeTabId) mainGroup.activeTabId = welcome.id;
+      mainGroup.tabs = [fb, ...mainGroup.tabs];
+      if (!mainGroup.activeTabId) mainGroup.activeTabId = fb.id;
     }
   }
   return state;
@@ -163,10 +172,11 @@ function pickNextActive(tabs: Tab[], closedId: string): string {
 /* ── 初始状态 ── */
 
 export function createInitialTabState(): TabState {
-  // Phase 4：启动时显示欢迎页（壳的兜底，不是插件）
-  const welcome = createTabDefaults("welcome");
+  // Phase 4：查 viewRegistry 找 isFallback 插件，没有则降级到 welcome
+  const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
+  const fb = createTabDefaults(fallbackId);
   return {
-    groups: [{ id: "main", tabs: [welcome], activeTabId: welcome.id }],
+    groups: [{ id: "main", tabs: [fb], activeTabId: fb.id }],
     activeGroupId: "main",
     root: { type: "leaf", groupId: "main" },
   };
@@ -181,12 +191,12 @@ export interface CreateTabResult {
 
 export function reduceCreateTab(
   prev: TabState,
-  type: TabType,
+  type: string,
   opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string }
 ): CreateTabResult {
   const all = allTabs(prev);
 
-  // 去重
+  // 去重：workspace 同名
   if (type === "workspace" && opts?.workspaceName) {
     const existing = all.find(
       (t) => t.type === "workspace" && t.workspaceName === opts.workspaceName
@@ -199,8 +209,10 @@ export function reduceCreateTab(
       };
     }
   }
-  if ((type === "settings" || type === "oled") && all.some((t) => t.type === type)) {
-    const existing = all.find((t) => t.type === type)!;
+
+  // Phase 4 单例去重：读 tabBehavior.singleton（不再硬编码 type 名）
+  if (getTabBehavior(type).singleton && all.some((t) => t.type === type || t.pluginId === type)) {
+    const existing = all.find((t) => t.type === type || t.pluginId === type)!;
     const group = findGroup(prev, existing.id)!;
     return {
       state: { ...prev, activeGroupId: group.id, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: existing.id } : g)) },
@@ -229,13 +241,15 @@ export function reduceCreateTab(
   };
 }
 
+/** Phase 4 归一化：type 可以是内置 TabType 或自定义 pluginId */
 export function reduceOpenOrFocus(
   prev: TabState,
-  type: TabType,
+  type: string,
   lastFocusedId?: string | null
 ): { state: TabState; focusedId: string | null } {
   const all = allTabs(prev);
-  const existing = all.filter((t) => t.type === type);
+  // 同时按 type 和 pluginId 匹配——归一化后两者等价
+  const existing = all.filter((t) => t.type === type || t.pluginId === type);
 
   if (existing.length > 0) {
     const target = existing.find((t) => t.id === lastFocusedId) ?? existing[existing.length - 1];
@@ -250,9 +264,9 @@ export function reduceOpenOrFocus(
     };
   }
 
-  // 隐式创建：terminal / settings / marketplace
-  if (type === "terminal" || type === "settings" || type === "marketplace") {
-    const r = reduceCreateTab(prev, type);
+  // 隐式创建：任何 type 都可以——不再只认 terminal/settings
+  const r = reduceCreateTab(prev, type);
+  if (r.createdId) {
     return { state: r.state, focusedId: r.createdId };
   }
 
@@ -285,8 +299,8 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 
   const tab = group.tabs.find((t) => t.id === tabId)!;
 
-  // Phase 4 欢迎页保底：全局唯一标签页且是欢迎页 → 不允许关
-  if (allTabs(prev).length === 1 && tab.type === "welcome") {
+  // Phase 4：保底标签页（tabBehavior.isFallback）→ 全局唯一时不允许关
+  if (allTabs(prev).length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback) {
     return { closed: false, tabId, reason: "blocked" };
   }
 
@@ -339,7 +353,7 @@ export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResu
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };
   const tab = group.tabs.find((t) => t.id === tabId)!;
-  if (allTabs(prev).length === 1 && tab.type === "welcome") {
+  if (allTabs(prev).length === 1 && getTabBehavior(tab.pluginId ?? tab.type).isFallback) {
     return { closed: false, tabId, reason: "blocked" };
   }
   return reduceCloseTab({ ...prev }, tabId);
@@ -694,23 +708,23 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 export function useTabManager() {
   const [tabState, setTabState] = useState<TabState>(() => createInitialTabState());
 
-  const lastFocusedByType = useRef<Map<TabType, string>>(new Map());
-  // init from initial state
+  const lastFocusedByType = useRef<Map<string, string>>(new Map());
   for (const tab of tabState.groups.flatMap((g) => g.tabs)) {
-    if (!lastFocusedByType.current.has(tab.type)) {
-      lastFocusedByType.current.set(tab.type, tab.id);
+    const key = tab.pluginId ?? tab.type;
+    if (!lastFocusedByType.current.has(key)) {
+      lastFocusedByType.current.set(key, tab.id);
     }
   }
 
   const createTab = useCallback(
-    (type: TabType, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string }): string => {
+    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string }): string => {
       let createdId = "";
       setTabState((prev) => {
         const r = reduceCreateTab(prev, type, opts);
         createdId = r.createdId;
         if (createdId) {
           const tab = findGroup(r.state, createdId)?.tabs.find((t) => t.id === createdId);
-          if (tab) lastFocusedByType.current.set(tab.type, createdId);
+          if (tab) lastFocusedByType.current.set(tab.pluginId ?? tab.type, createdId);
         }
         return r.state;
       });
@@ -720,7 +734,7 @@ export function useTabManager() {
   );
 
   const openOrFocusTab = useCallback(
-    (type: TabType): string | null => {
+    (type: string): string | null => {
       let focusedId: string | null = null;
       setTabState((prev) => {
         const r = reduceOpenOrFocus(prev, type, lastFocusedByType.current.get(type));
@@ -738,7 +752,7 @@ export function useTabManager() {
       const next = reduceFocusTab(prev, tabId);
       const group = findGroup(next, tabId);
       const tab = group?.tabs.find((t) => t.id === tabId);
-      if (tab) lastFocusedByType.current.set(tab.type, tabId);
+      if (tab) lastFocusedByType.current.set(tab.pluginId ?? tab.type, tabId);
       return next;
     });
   }, []);
@@ -832,7 +846,7 @@ export function useTabManager() {
     setTabState(() => {
       const next = reduceRestoreLayout(saved);
       for (const tab of next.groups.flatMap((g) => g.tabs)) {
-        lastFocusedByType.current.set(tab.type, tab.id);
+        lastFocusedByType.current.set(tab.pluginId ?? tab.type, tab.id);
       }
       return next;
     });

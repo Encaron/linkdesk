@@ -133,10 +133,11 @@ describe("reduceOpenOrFocus", () => {
     expect(allTabs(r.state).some((t) => t.type === "terminal")).toBe(true);
   });
 
-  it("workspace 不存在则不创建", () => {
+  it("workspace 不存在则隐式创建（Phase 4 归一化——任何 type 都可隐式创建）", () => {
     const prev = createInitialTabState();
     const r = reduceOpenOrFocus(prev, "workspace");
-    expect(r.focusedId).toBeNull();
+    expect(r.focusedId).not.toBeNull();
+    expect(allTabs(r.state).some((t) => t.type === "workspace")).toBe(true);
   });
 });
 

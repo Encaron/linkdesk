@@ -54,3 +54,30 @@ export function findFallbackPlugin(): ViewPluginEntry | undefined {
 export function clearRegistry(): void {
   registry.clear();
 }
+
+/* ── 内置伪插件：欢迎页（壳的兜底，不属于 plugins/ 目录） ── */
+
+// Phase 4 归一化：欢迎页/设置是壳内建视图，不是 plugins/ 下的插件，
+// 但其 tabBehavior 需可被核心通过 getTabBehavior() 查询。
+// 通过 registerViewPlugin 注入伪条目——仅提供 tabBehavior + 元数据，不含 component。
+registerViewPlugin({
+  pluginId: "welcome",
+  manifest: {
+    type: "view",
+    name: "欢迎",
+    version: "1.0.0",
+    tabBehavior: { isFallback: true },
+  },
+  component: (() => null) as any,
+});
+
+registerViewPlugin({
+  pluginId: "settings",
+  manifest: {
+    type: "view",
+    name: "设置",
+    version: "1.0.0",
+    tabBehavior: { singleton: true },
+  },
+  component: (() => null) as any,
+});

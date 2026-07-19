@@ -5,13 +5,12 @@
 
 import { useState, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
-import type { TabType } from "../hooks/useTabManager";
 import TerminalSidebar from "./TerminalSidebar";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./SidePanel.css";
 
 interface SidePanelProps {
-  activeTabType: TabType;
+  activeTabType: string;
   activePluginId?: string;
   width: number;
 }

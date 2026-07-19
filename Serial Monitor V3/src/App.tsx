@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useTabManager, allTabs, type TabType } from "./hooks/useTabManager";
+import { useTabManager, allTabs } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
@@ -65,7 +65,7 @@ function App() {
     const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
     return group?.tabs.find((t) => t.id === group.activeTabId);
   }, [tabState.groups, tabState.activeGroupId]);
-  const activeTabType: TabType | undefined = activeTab?.type;
+  const activeTabType = activeTab?.type ?? "welcome";
   const activePluginId = activeTab?.pluginId;
 
   /* ---- 启动初始化 ---- */
@@ -174,7 +174,7 @@ function App() {
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   const handleIconClick = useCallback(
     (type: string) => {
-      openOrFocusTab(type as TabType);
+      openOrFocusTab(type);
     },
     [openOrFocusTab]
   );

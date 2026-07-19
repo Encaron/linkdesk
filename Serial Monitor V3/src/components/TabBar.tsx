@@ -6,7 +6,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import type { Tab, TabType, TabGroup } from "../hooks/useTabManager";
+import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
 import "./TabBar.css";
@@ -36,7 +36,7 @@ interface TabBarProps {
   isActiveGroup: boolean;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: TabType, opts?: any) => string;
+  onCreateTab: (type: string, opts?: any) => string;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
@@ -60,15 +60,16 @@ function PlusMenu({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTab: (type: TabType, workspaceName?: string) => void;
+  onCreateTab: (type: string, workspaceName?: string) => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const { t } = useTranslation();
   if (!isOpen) return null;
 
-  const items: { label: string; type: TabType }[] = [
+  const items: { label: string; type: string }[] = [
     { label: t("新建终端"), type: "terminal" },
     { label: t("新建工作台"), type: "workspace" },
+    { label: t("新建欢迎页"), type: "welcome" },
   ];
 
   return (

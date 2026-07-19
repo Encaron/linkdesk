@@ -5,7 +5,7 @@
  */
 
 import { useCallback } from "react";
-import type { TabState, TabGroup, TabType } from "../hooks/useTabManager";
+import type { TabState, TabGroup } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
@@ -23,7 +23,7 @@ interface MainContentProps {
   activeGroupId: string;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: TabType, opts?: { workspaceName?: string; filePath?: string }) => string;
+  onCreateTab: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string;
   onSplitTab: (tabId: string, direction?: "horizontal" | "vertical") => void;
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
@@ -44,7 +44,7 @@ interface MainContentProps {
 export function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
-  onCreateTab?: (type: string, opts?: any) => string,
+  onCreateTab?: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string,
 ) {
   // Phase 4：优先走 viewRegistry（插件系统）
   if (tab.pluginId) {
@@ -176,7 +176,7 @@ function MainContent({
                   display: tab.id === group.activeTabId ? "flex" : "none",
                 }}
               >
-                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId, onCreateTab as any)}
+                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId, onCreateTab)}
               </div>
             ))}
           </div>

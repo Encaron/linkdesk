@@ -5,12 +5,11 @@
  */
 
 import { useTranslation } from "react-i18next";
-import type { TabType } from "../hooks/useTabManager";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import "./IconBar.css";
 
 interface IconBarProps {
-  activeTabType: TabType;
+  activeTabType: string;
   activePluginId?: string;
   onOpenOrFocus: (type: string) => void;
 }
