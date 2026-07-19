@@ -15,7 +15,6 @@ interface IconBarProps {
   activePluginId?: string;
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
-  onOpenPinned?: (type: string) => void;
 }
 
 const PLUGIN_ICON_PATH: Record<string, string> = {
@@ -53,14 +52,12 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, onOpenPinned }: IconBarProps) {
+function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const dropTargetRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
-  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastClickedId = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 图标顺序
@@ -185,20 +182,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, on
           data-plugin-id={entry.pluginId}
           onClick={() => {
             if (dragRef.current?.moved) return;
-            const id = entry.pluginId;
-            if (clickTimer.current && lastClickedId.current === id) {
-              clearTimeout(clickTimer.current);
-              clickTimer.current = null;
-              lastClickedId.current = null;
-              onOpenPinned?.(id);
-            } else {
-              lastClickedId.current = id;
-              clickTimer.current = setTimeout(() => {
-                clickTimer.current = null;
-                lastClickedId.current = null;
-                onOpenOrFocus(id);
-              }, 300);
-            }
+            onOpenOrFocus(entry.pluginId);
           }}
           onMouseDown={(e) => !isBottom && handleMouseDown(e, entry.pluginId)}
           title={t(entry.label)}
