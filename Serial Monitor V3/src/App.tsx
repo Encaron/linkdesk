@@ -174,14 +174,8 @@ function App() {
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
+  // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
-
-  // 用户切换标签页时自动关闭 marketplace 侧栏
-  useEffect(() => {
-    if (activeTabType !== "marketplace") {
-      setSidebarView(null);
-    }
-  }, [activeTabType]);
 
   const handleIconClick = useCallback(
     (type: string) => {

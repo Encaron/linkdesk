@@ -209,6 +209,30 @@ export function reduceCreateTab(
 ): CreateTabResult {
   const all = allTabs(prev);
 
+  // Phase 4：plugin-detail 标签页复用——对标 VS Code 扩展编辑器
+  //   点不同插件 → 替换同一个标签页内容，不创建新标签页
+  if (type === "plugin-detail" && opts?.pluginId) {
+    const existing = all.find((t) => t.type === "plugin-detail");
+    if (existing) {
+      const group = findGroup(prev, existing.id)!;
+      const label = getDefaultLabel("plugin-detail", undefined, undefined, opts.pluginId);
+      const updatedTab = {
+        ...existing,
+        pluginId: opts.pluginId,
+        label,
+      };
+      const newGroups = prev.groups.map((g) =>
+        g.id === group.id
+          ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id }
+          : g
+      );
+      return {
+        state: { ...prev, groups: newGroups, activeGroupId: group.id },
+        createdId: existing.id,
+      };
+    }
+  }
+
   // 去重：workspace 同名
   if (type === "workspace" && opts?.workspaceName) {
     const existing = all.find(
