@@ -131,7 +131,7 @@ function saveToLocalStorage(prefs: Prefs): void {
   } catch (e) { console.warn("[PreferenceService] localStorage 写入失败:", e); }
 }
 
-let _useLocalStorage = false;
+let _useLocalStorage = true; // 默认 localStorage——Tauri 模式由 init 覆盖
 
 /* ── 初始化（App 启动时调一次） ── */
 
@@ -140,10 +140,12 @@ let _initPromise: Promise<Prefs> | null = null;
 async function _init(): Promise<Prefs> {
   // 检测 Tauri 环境
   if (!(await isTauri())) {
-    _useLocalStorage = true;
+    // 浏览器模式——localStorage（默认值已经是 true）
     _cache = loadFromLocalStorage();
     return _cache;
   }
+  // Tauri 模式——文件系统
+  _useLocalStorage = false;
 
   // 1. 尝试读文件
   try {
