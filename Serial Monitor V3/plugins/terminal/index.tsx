@@ -272,8 +272,22 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const cmContainer = useRef<HTMLDivElement>(null);
   const cmView = useRef<EditorView | null>(null);
   const lineNumberCompartment = useRef(new Compartment());
+  // B22/B33 修复：跨组移动标签页时 React 可能 unmount/remount，
+  // 用 isConnected 守卫避免 CM6 被 destroy → DOM 搬到新容器后存活。
+  const savedViewRef = useRef<EditorView | null>(null);
 
   useEffect(() => {
+    // 从旧容器恢复已保存的 CM6 view（跨组移动场景）
+    if (savedViewRef.current) {
+      const view = savedViewRef.current;
+      cmView.current = view;
+      if (cmContainer.current) {
+        cmContainer.current.appendChild(view.dom);
+      }
+      savedViewRef.current = null;
+      return;
+    }
+
     if (!cmContainer.current) return;
     const view = new EditorView({
       doc: "",
@@ -303,7 +317,13 @@ function TerminalView({ isActive }: TerminalViewProps) {
     });
 
     return () => {
-      view.destroy();
+      // 跨组移动：DOM 仍在文档中 → 保存 view，不清除
+      if (view.dom.isConnected) {
+        savedViewRef.current = view;
+      } else {
+        // 真正卸载（标签页关闭）→ 销毁
+        view.destroy();
+      }
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
