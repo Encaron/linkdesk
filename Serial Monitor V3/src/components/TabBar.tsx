@@ -4,7 +4,7 @@
  * 设计依据：[V3-Phase3-标签页分屏设计.md §2.2, §4.2]
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
@@ -407,7 +407,7 @@ export default function TabBar({
           const isExiting = exitingTabId === tab.id;
 
           return (
-            <>
+            <Fragment key={tab.id}>
               {/* 拖拽插入指示器 */}
               {dragInsertIndex === idx && draggingId !== tab.id && (
                 <div className="tab-drop-indicator" key={`indicator-${idx}`} />
@@ -449,7 +449,7 @@ export default function TabBar({
                   ×
                 </button>
               </div>
-            </>
+            </Fragment>
           );
         })}
         {/* 最后一个位置之后的插入指示器 */}
