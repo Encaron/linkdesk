@@ -149,8 +149,6 @@ function MainContent({
             minWidth: 0,
             minHeight: 0,
             position: "relative",
-            // B34: 拖拽毛玻璃在平级 tab pane 之上
-            zIndex: isTarget ? 1 : undefined,
           }}
         >
           <TabBar

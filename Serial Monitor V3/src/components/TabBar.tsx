@@ -5,6 +5,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
@@ -483,11 +484,11 @@ export default function TabBar({
         />
       )}
 
-      {/* 拖拽预览：克隆标签页外观——图标+文字+关闭按钮（VS Code 风格） */}
+      {/* 拖拽预览：portal 到 body 确保永远在最顶层（不受 stacking context 影响） */}
       {previewPos && draggingId && (() => {
         const tab = tabs.find((t) => t.id === draggingId);
         if (!tab) return null;
-        return (
+        return createPortal(
           <div
             className="tab-drag-preview"
             style={{
@@ -495,7 +496,7 @@ export default function TabBar({
               left: previewPos.x - 50,
               top: previewPos.y - 14,
               pointerEvents: "none",
-              zIndex: 200,
+              zIndex: 99999,
               display: "flex",
               alignItems: "center",
               gap: 4,
@@ -505,7 +506,8 @@ export default function TabBar({
               {getTabIcon(tab)}
             </span>
             <span className="tab-label">{t(tab.label)}</span>
-          </div>
+          </div>,
+          document.body
         );
       })()}
     </div>
