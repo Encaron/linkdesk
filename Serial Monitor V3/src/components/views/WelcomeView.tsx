@@ -51,6 +51,20 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
 
   return (
     <div className="welcome-page">
+      {/* NodeDesk 大 Logo 背景——对标 VS Code 欢迎页，文字浮在 logo 上 */}
+      <div className="welcome-logo-bg" aria-hidden="true">
+        <svg viewBox="0 0 160 160">
+          <polygon
+            points="80,10 147,45 147,115 80,150 13,115 13,45"
+            fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinejoin="round"
+          />
+          <circle cx="80" cy="46" r="8" fill="var(--text-muted)" />
+          <circle cx="46" cy="108" r="8" fill="var(--text-muted)" />
+          <circle cx="114" cy="108" r="8" fill="var(--text-muted)" />
+        </svg>
+      </div>
+
+      <div className="welcome-scroll">
       <header className="welcome-hero">
         <h1 className="welcome-title">LinkDesk</h1>
         <p className="welcome-subtitle">{t("通用调试容器")}</p>
@@ -105,19 +119,6 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
         </section>
       )}
 
-      {/* NodeDesk 大 Logo — 对标 VS Code 欢迎页底部 logo */}
-      <div className="welcome-logo">
-        <svg width="160" height="160" viewBox="0 0 160 160">
-          <polygon
-            points="80,10 147,45 147,115 80,150 13,115 13,45"
-            fill="none" stroke="var(--text-muted)" strokeWidth="3" strokeLinejoin="round" opacity="0.3"
-          />
-          <circle cx="80" cy="46" r="10" fill="var(--text-muted)" opacity="0.25" />
-          <circle cx="46" cy="108" r="10" fill="var(--text-muted)" opacity="0.25" />
-          <circle cx="114" cy="108" r="10" fill="var(--text-muted)" opacity="0.25" />
-        </svg>
-      </div>
-
       <section className="welcome-section">
         <h2 className="welcome-section-title">{t("帮助")}</h2>
         <div className="welcome-help-links">
@@ -125,6 +126,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
           <span className="welcome-help-item">⌨ {t("键盘快捷键")}</span>
         </div>
       </section>
+      </div>
     </div>
   );
 }

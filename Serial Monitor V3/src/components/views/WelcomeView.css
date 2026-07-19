@@ -5,14 +5,22 @@
  */
 
 .welcome-page {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  color: var(--text-primary);
+  background: var(--bg-window);
+}
+
+.welcome-scroll {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   padding: 48px 32px 32px;
   height: 100%;
   overflow-y: auto;
-  color: var(--text-primary);
-  background: var(--bg-window);
 }
 
 /* ── Hero ── */
@@ -167,15 +175,19 @@
   cursor: default;
 }
 
-/* NodeDesk 大 Logo — 对标 VS Code 欢迎页底部 logo */
-.welcome-logo {
-  display: flex;
-  justify-content: center;
-  padding: 40px 0 16px;
-  opacity: 0.5;
-  transition: opacity 0.3s;
+/* NodeDesk 大 Logo 背景——对标 VS Code 欢迎页，文字浮在 logo 上 */
+.welcome-logo-bg {
+  position: absolute;
+  right: -120px;
+  bottom: -60px;
+  width: 500px;
+  height: 500px;
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
 }
 
-.welcome-logo:hover {
-  opacity: 0.75;
+.welcome-logo-bg svg {
+  width: 100%;
+  height: 100%;
 }
