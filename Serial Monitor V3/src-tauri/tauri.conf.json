@@ -24,9 +24,7 @@
     }
   },
   "plugins": {
-    "fs": {
-      "scope": ["$APPDATA/**", "$APP_CONFIG/**"]
-    }
+    "fs": {}
   },
   "bundle": {
     "active": true,
