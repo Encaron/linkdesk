@@ -1,9 +1,9 @@
 /**
  * IconBar — 图标栏（最左 48px 垂直条）。
- * 对标 VS Code Activity Bar：拖拽排序 + 蓝色指示条 + 图片图标。
+ * 对标 VS Code Activity Bar：拖拽排序 + 蓝色指示条。
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import PreferenceService from "../core/PreferenceService";
@@ -53,10 +53,11 @@ function saveOrder(order: string[]): void {
 
 function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
-  const [dragOverId, setDragOverId] = useState<string | null>(null);
-  const [dragPosition, setDragPosition] = useState<"top" | "bottom">("bottom");
+  const [draggedId, setDraggedId] = useState<string | null>(null);
+  const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
 
-  // 图标顺序：先按持久化顺序排，新插件追加到末尾
+  // 图标顺序
   const viewPlugins = getViewPlugins();
   const savedOrder = loadOrder();
 
@@ -64,7 +65,6 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const ordered = (() => {
     const result: IconEntry[] = [];
     const remaining = new Set(viewPlugins.map((p) => p.pluginId));
-    // 先按保存的顺序
     for (const id of savedOrder) {
       if (remaining.has(id)) {
         remaining.delete(id);
@@ -72,7 +72,6 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
         if (p) result.push({ pluginId: id, iconSrc: getIconSrc(id), label: p.manifest.name });
       }
     }
-    // 新插件追加到末尾
     for (const id of remaining) {
       const p = viewPlugins.find((v) => v.pluginId === id);
       if (p) result.push({ pluginId: id, iconSrc: getIconSrc(id), label: p.manifest.name });
@@ -80,50 +79,82 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     return result;
   })();
 
-  /* ── 拖拽 ── */
+  /* ── 拖拽：在容器级别统一处理 dragover/drop ── */
 
   const handleDragStart = useCallback((e: React.DragEvent, pluginId: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", pluginId);
-    // 让被拖拽的图标半透明
-    const el = e.currentTarget as HTMLElement;
-    requestAnimationFrame(() => el.classList.add("dragging"));
+    setDraggedId(pluginId);
   }, []);
 
-  const handleDragEnd = useCallback((e: React.DragEvent) => {
-    (e.currentTarget as HTMLElement).classList.remove("dragging");
-    setDragOverId(null);
+  const handleDragEnd = useCallback(() => {
+    setDraggedId(null);
+    setDropTarget(null);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, pluginId: string) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    setDragOverId(pluginId);
-    // 判断鼠标在图标上半还是下半
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    setDragPosition(e.clientY < rect.top + rect.height / 2 ? "top" : "bottom");
-  }, []);
-
-  const handleDragLeave = useCallback(() => {
-    setDragOverId(null);
-  }, []);
-
-  const handleDrop = useCallback(
-    (e: React.DragEvent, targetId: string) => {
+  // 在容器上统一处理 dragover——避免被拖拽元素遮挡
+  const handleContainerDragOver = useCallback(
+    (e: React.DragEvent) => {
       e.preventDefault();
-      const draggedId = e.dataTransfer.getData("text/plain");
-      if (!draggedId || draggedId === targetId) return;
+      e.dataTransfer.dropEffect = "move";
+      if (!draggedId) return;
 
-      setDragOverId(null);
+      // 找到鼠标下的图标按钮
+      const container = containerRef.current;
+      if (!container) return;
+      const buttons = container.querySelectorAll(".icon-btn");
+      let targetId: string | null = null;
+      let pos: "top" | "bottom" = "bottom";
 
-      // 重新排序
-      const newOrder = ordered.map((x) => x.pluginId).filter((id) => id !== draggedId);
-      const targetIndex = newOrder.indexOf(targetId);
-      const insertAt = dragPosition === "top" ? targetIndex : targetIndex + 1;
-      newOrder.splice(insertAt, 0, draggedId);
-      saveOrder(newOrder);
+      for (const btn of buttons) {
+        const rect = btn.getBoundingClientRect();
+        if (e.clientX >= rect.left && e.clientX <= rect.right &&
+            e.clientY >= rect.top && e.clientY <= rect.bottom) {
+          targetId = btn.getAttribute("data-plugin-id");
+          pos = e.clientY < rect.top + rect.height / 2 ? "top" : "bottom";
+          break;
+        }
+      }
+      // 如果鼠标在所有图标下方，放在末尾
+      if (!targetId && ordered.length > 0) {
+        const lastBtn = buttons[buttons.length - 1];
+        if (lastBtn) {
+          const lastRect = lastBtn.getBoundingClientRect();
+          if (e.clientY > lastRect.bottom) {
+            targetId = lastBtn.getAttribute("data-plugin-id");
+            pos = "bottom";
+          }
+        }
+      }
+      if (targetId && targetId !== draggedId) {
+        setDropTarget({ id: targetId, pos });
+      } else {
+        setDropTarget(null);
+      }
     },
-    [ordered, dragPosition]
+    [draggedId, ordered]
+  );
+
+  const handleContainerDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const id = e.dataTransfer.getData("text/plain");
+      if (!id || !dropTarget || id === dropTarget.id) {
+        setDraggedId(null);
+        setDropTarget(null);
+        return;
+      }
+
+      const newOrder = ordered.map((x) => x.pluginId).filter((x) => x !== id);
+      const targetIndex = newOrder.indexOf(dropTarget.id);
+      const insertAt = dropTarget.pos === "top" ? targetIndex : targetIndex + 1;
+      newOrder.splice(insertAt, 0, id);
+      saveOrder(newOrder);
+
+      setDraggedId(null);
+      setDropTarget(null);
+    },
+    [ordered, dropTarget]
   );
 
   /* ── 高亮 ── */
@@ -136,21 +167,24 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
 
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
-      <div className="icon-bar-top">
+      <div
+        className="icon-bar-top"
+        ref={containerRef}
+        onDragOver={handleContainerDragOver}
+        onDrop={handleContainerDrop}
+      >
         {ordered.map((entry) => {
-          const showDropBefore = dragOverId === entry.pluginId && dragPosition === "top";
-          const showDropAfter = dragOverId === entry.pluginId && dragPosition === "bottom";
+          const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
+          const showAfter = dropTarget?.id === entry.pluginId && dropTarget.pos === "bottom";
           return (
             <div key={entry.pluginId} className="icon-bar-item-wrapper">
-              {showDropBefore && <div className="icon-drop-indicator" />}
+              {showBefore && <div className="icon-drop-indicator" />}
               <button
-                className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}`}
+                className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
+                data-plugin-id={entry.pluginId}
                 onClick={() => onOpenOrFocus(entry.pluginId)}
                 onDragStart={(e) => handleDragStart(e, entry.pluginId)}
                 onDragEnd={handleDragEnd}
-                onDragOver={(e) => handleDragOver(e, entry.pluginId)}
-                onDragLeave={handleDragLeave}
-                onDrop={(e) => handleDrop(e, entry.pluginId)}
                 draggable
                 title={t(entry.label)}
                 aria-label={t(entry.label)}
@@ -162,7 +196,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
                   draggable={false}
                 />
               </button>
-              {showDropAfter && <div className="icon-drop-indicator" />}
+              {showAfter && <div className="icon-drop-indicator" />}
             </div>
           );
         })}
