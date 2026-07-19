@@ -88,7 +88,7 @@ function MainContent({
       const isTarget = dragDropTargetGroupId === group.id && dropZone;
       return (
         <div
-          className="tab-group-pane"
+          className={`tab-group-pane${group.id === activeGroupId ? " active" : ""}`}
           key={group.id}
           data-group-id={group.id}
           style={{

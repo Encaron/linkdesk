@@ -289,6 +289,12 @@
   opacity: 0.85;
   transform: scale(1.03);
   pointer-events: none;
+  transition: left 180ms ease-out, top 180ms ease-out, opacity 180ms ease-out;
+}
+
+/* 回弹动画——标签页飞回原位 */
+.tab-drag-preview.returning {
+  opacity: 0;
 }
 
 .tab-drag-preview-label {

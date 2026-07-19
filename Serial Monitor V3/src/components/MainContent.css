@@ -79,4 +79,11 @@
 /* 面板基线——毛玻璃 absolute 定位的锚点 */
 .tab-group-pane {
   position: relative;
+  border: 1px solid transparent;
+  transition: border-color 200ms;
+}
+
+/* 活跃面板焦点边框——对标 VS Code 蓝色焦点框 */
+.tab-group-pane.active {
+  border-color: var(--accent);
 }

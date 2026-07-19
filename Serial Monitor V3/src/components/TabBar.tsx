@@ -345,6 +345,7 @@ export default function TabBar({
     draggingId,
     insertIndex: dragInsertIndex,
     previewPos,
+    isReturning,
     startDrag,
   } = useDragReorder(scrollRef, {
     itemCount: tabs.length,
@@ -378,6 +379,7 @@ export default function TabBar({
               )}
               <div
                 key={tab.id}
+                data-tab-id={tab.id}
                 className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
                 title={t(tab.label)}
                 onClick={() => onFocusTab(tab.id)}
@@ -451,7 +453,7 @@ export default function TabBar({
         if (!tab) return null;
         return (
           <div
-            className="tab-drag-preview"
+            className={`tab-drag-preview${isReturning ? " returning" : ""}`}
             style={{
               position: "fixed",
               left: previewPos.x - 50,
