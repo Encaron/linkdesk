@@ -382,13 +382,15 @@ export function reduceMoveTab(prev: TabState, tabId: string, targetGroupId: stri
 /**
  * 分屏——在指定目标面板的方向创建新面板，对标 VS Code "拖到另一个面板边缘"。
  * targetGroupId: 鼠标落点的面板（用来算分裂方向和位置）。
- * 如果省略，默认用 tab 所在的源组。
+ * zone: 拖拽落点方向（left/right/up/down）——决定新面板在目标面板的哪一侧。
+ * 如果省略，默认用 tab 所在的源组，新面板放右边/下边。
  */
 export function reduceSplitTabAt(
   prev: TabState,
   tabId: string,
   direction: "horizontal" | "vertical",
-  targetGroupId?: string
+  targetGroupId?: string,
+  zone?: "left" | "right" | "up" | "down"
 ): TabState {
   if (treeDepth(prev.root) >= MAX_TREE_DEPTH) return prev;
 
@@ -431,11 +433,14 @@ export function reduceSplitTabAt(
   }
 
   // ── 在目标面板位置创建 branch ──
+  // left/up → 新面板放 children[0]（左/上）；right/down → children[1]（右/下）
+  const newLeafSide: 0 | 1 = (zone === "left" || zone === "up") ? 0 : 1;
   const newRoot = replaceLeafWithBranch(
     rootWithoutSource,
     effectiveTarget,
     direction,
-    newGroup.id
+    newGroup.id,
+    newLeafSide
   );
   if (!newRoot) return prev;
 
@@ -734,8 +739,8 @@ export function useTabManager() {
   );
 
   const splitTabAt = useCallback(
-    (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string) => {
-      setTabState((prev) => reduceSplitTabAt(prev, tabId, direction, targetGroupId));
+    (tabId: string, direction: "horizontal" | "vertical", targetGroupId?: string, zone?: "left" | "right" | "up" | "down") => {
+      setTabState((prev) => reduceSplitTabAt(prev, tabId, direction, targetGroupId, zone));
     },
     []
   );

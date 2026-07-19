@@ -121,7 +121,7 @@ function App() {
   const handleDropSplit = useCallback(
     (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
       const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-      splitTabAt(tabId, direction, targetGroupId);
+      splitTabAt(tabId, direction, targetGroupId, zone);
       setDragDropZone(null);
       setDragDropTargetGroupId(null);
       setIsDragging(false);

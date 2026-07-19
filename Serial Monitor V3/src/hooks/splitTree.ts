@@ -95,22 +95,25 @@ export function findLeaf(
 }
 
 /**
- * 替换叶子为 branch：在 targetGroupId 的 leaf 处插入 branch(方向, [原leaf, newLeaf])。
- * 新 leaf 始终放右边/下边——children[1]。
+ * 替换叶子为 branch：在 targetGroupId 的 leaf 处插入 branch(方向, children)。
+ * newLeafSide: 0=新 leaf 放左/上（children[0]），1=放右/下（children[1]）。
+ * 对标 VS Code：left/up zone → newLeafSide=0，right/down → newLeafSide=1。
  * 返回新树（不可变——原节点不被修改）。
  */
 export function replaceLeafWithBranch(
   node: SplitNode,
   targetGroupId: string,
   direction: "horizontal" | "vertical",
-  newGroupId: string
+  newGroupId: string,
+  newLeafSide: 0 | 1 = 1
 ): SplitNode | null {
   if (node.type === "leaf") {
     if (node.groupId === targetGroupId) {
+      const newLeaf: SplitNode = { type: "leaf", groupId: newGroupId };
       return {
         type: "branch",
         direction,
-        children: [node, { type: "leaf", groupId: newGroupId }],
+        children: newLeafSide === 0 ? [newLeaf, node] : [node, newLeaf],
         sizes: [50, 50],
       };
     }
@@ -118,28 +121,16 @@ export function replaceLeafWithBranch(
   }
   // 递归查找
   const leftResult = replaceLeafWithBranch(
-    node.children[0],
-    targetGroupId,
-    direction,
-    newGroupId
+    node.children[0], targetGroupId, direction, newGroupId, newLeafSide
   );
   if (leftResult) {
-    return {
-      ...node,
-      children: [leftResult, node.children[1]],
-    };
+    return { ...node, children: [leftResult, node.children[1]] };
   }
   const rightResult = replaceLeafWithBranch(
-    node.children[1],
-    targetGroupId,
-    direction,
-    newGroupId
+    node.children[1], targetGroupId, direction, newGroupId, newLeafSide
   );
   if (rightResult) {
-    return {
-      ...node,
-      children: [node.children[0], rightResult],
-    };
+    return { ...node, children: [node.children[0], rightResult] };
   }
   return null;
 }
