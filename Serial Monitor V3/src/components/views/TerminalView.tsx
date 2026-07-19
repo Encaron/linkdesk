@@ -339,11 +339,16 @@ function TerminalView({ isActive }: TerminalViewProps) {
     const lineStart = from + pre.length;
     const effects: any[] = [addLineDeco.of({ from: lineStart, cls: `cm-line-${color}` })];
 
-    // 接收数据分区变色：时间戳 + " -> " 灰色，数据本体白色
+    // 时间戳前缀灰色（received: " -> " 分隔，sent/system: " ---- " 分隔）
     if (color === "received") {
       const arrowIdx = text.indexOf(" -> ");
       if (arrowIdx !== -1) {
         effects.push(addTimestampMark.of({ from: lineStart, to: lineStart + arrowIdx + 4 }));
+      }
+    } else if (color === "sent") {
+      const dashIdx = text.indexOf(" ---- ");
+      if (dashIdx !== -1) {
+        effects.push(addTimestampMark.of({ from: lineStart, to: lineStart + dashIdx + 5 }));
       }
     }
 

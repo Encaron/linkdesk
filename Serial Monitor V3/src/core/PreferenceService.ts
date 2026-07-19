@@ -38,6 +38,7 @@ export interface Prefs {
     height: number;
   };
   theme: "Dark" | "Light" | string;
+  language: "zh" | "en";
   lastPort: string;
   preferences: {
     timestampFormat: string;
@@ -68,6 +69,7 @@ export interface Workspace {
 const DEFAULT_PREFS: Prefs = {
   window: { left: 100, top: 50, width: 960, height: 640 },
   theme: "Dark",
+  language: "zh",
   lastPort: "COM3",
   preferences: {
     timestampFormat: "HH:mm:ss:fff",

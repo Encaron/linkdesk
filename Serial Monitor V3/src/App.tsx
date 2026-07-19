@@ -13,6 +13,7 @@ import StatusBar from "./components/StatusBar";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
+import i18n from "./i18n";
 import "./App.css";
 
 // 保留 ViewId 用于向后兼容 IconBar（Phase 3 过渡期）
@@ -31,6 +32,8 @@ function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [portName, setPortName] = useState("COM3");
   const [baudRate, setBaudRate] = useState("115200");
+  const [theme, setTheme] = useState<"Dark" | "Light">("Dark");
+  const [lang, setLang] = useState<"zh" | "en">("zh");
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
@@ -71,6 +74,11 @@ function App() {
       loadTheme(prefs.theme || "Dark")
         .then(applyTheme)
         .catch(() => { /* CSS fallback 生效 */ });
+      setTheme((prefs.theme as "Dark" | "Light") || "Dark");
+
+      const lang = prefs.language || "zh";
+      setLang(lang);
+      i18n.changeLanguage(lang);
 
       setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
       setPortName(prefs.lastPort || "COM3");
@@ -144,6 +152,21 @@ function App() {
     },
     [duplicateTab, splitTabAt]
   );
+
+  /* ---- 主题/语言切换 ---- */
+  const handleToggleTheme = useCallback(() => {
+    const next = theme === "Dark" ? "Light" : "Dark";
+    setTheme(next);
+    loadTheme(next).then(applyTheme).catch(() => {});
+    try { const p = PreferenceService.loadPrefs(); p.theme = next; PreferenceService.savePrefs(p).catch(() => {}); } catch {}
+  }, [theme]);
+
+  const handleToggleLang = useCallback(() => {
+    const next = lang === "zh" ? "en" : "zh";
+    setLang(next);
+    i18n.changeLanguage(next);
+    try { const p = PreferenceService.loadPrefs(); p.language = next; PreferenceService.savePrefs(p).catch(() => {}); } catch {}
+  }, [lang]);
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   const handleIconClick = useCallback(
@@ -351,6 +374,10 @@ function App() {
         onToggleOpen={handleToggleOpen}
         onPortChange={handlePortChange}
         onBaudChange={handleBaudChange}
+        theme={theme}
+        lang={lang}
+        onToggleTheme={handleToggleTheme}
+        onToggleLang={handleToggleLang}
       />
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">

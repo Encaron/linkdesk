@@ -14,11 +14,15 @@ interface TopBarProps {
   onToggleOpen: () => void;
   onPortChange: (port: string) => void;
   onBaudChange: (baud: string) => void;
+  theme: "Dark" | "Light";
+  lang: "zh" | "en";
+  onToggleTheme: () => void;
+  onToggleLang: () => void;
 }
 
 const baudRates = ["9600", "19200", "38400", "57600", "115200", "230400", "460800", "921600"];
 
-function TopBar({ ports, portName, baudRate, isOpen, onToggleOpen, onPortChange, onBaudChange }: TopBarProps) {
+function TopBar({ ports, portName, baudRate, isOpen, onToggleOpen, onPortChange, onBaudChange, theme, lang, onToggleTheme, onToggleLang }: TopBarProps) {
   const { t } = useTranslation();
 
   return (
@@ -64,11 +68,11 @@ function TopBar({ ports, portName, baudRate, isOpen, onToggleOpen, onPortChange,
 
       {/* 右侧：工具 */}
       <div className="top-bar-right">
-        <button className="top-btn-icon" title={t("切换语言（Phase 5）")}>
-          中/EN
+        <button className="top-btn-icon" onClick={onToggleLang} title={t("切换语言（Phase 5）")}>
+          {lang === "zh" ? "中" : "EN"}
         </button>
-        <button className="top-btn-icon" title={t("切换主题（Phase 5）")}>
-          ☀
+        <button className="top-btn-icon" onClick={onToggleTheme} title={t("切换主题（Phase 5）")}>
+          {theme === "Dark" ? "☀" : "☾"}
         </button>
         <button className="top-btn-icon" title="帮助">
           ?
