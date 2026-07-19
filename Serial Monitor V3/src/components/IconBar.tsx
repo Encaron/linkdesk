@@ -137,6 +137,8 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
       saveOrder(ids);
     }
 
+    // 清理拖拽 UI（保留 wasDragRef 给 onClick 判断）
+    dragRef.current = null;
     dropRef.current = null;
     setDraggedId(null);
     setDropTarget(null);
