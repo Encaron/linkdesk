@@ -25,6 +25,8 @@ interface MainContentProps {
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
   onDropSplit: (tabId: string, zone: any, targetGroupId?: string) => void;
+  /** Shift+拖 = 复制标签页到新面板 */
+  onDropCopySplit?: (tabId: string, zone: any, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
   dropZone?: any;
   /** 当前被拖拽悬停的目标面板 groupId——用于在该面板内渲染毛玻璃 */
@@ -70,6 +72,7 @@ function MainContent({
   onMoveTab,
   onReorderTab,
   onDropSplit,
+  onDropCopySplit,
   onSplitResize,
   dropZone,
   dragDropTargetGroupId,
@@ -117,6 +120,7 @@ function MainContent({
             }}
             onReorderTab={onReorderTab}
             onDropSplit={onDropSplit}
+            onDropCopySplit={onDropCopySplit}
             editorAreaRef={editorAreaRef}
             dragDropZone={dropZone}
             onDragDropZone={onDragDropZone}
@@ -148,7 +152,7 @@ function MainContent({
     },
     [tabState.root, tabState.groups, activeGroupId, dropZone, dragDropTargetGroupId,
      onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab,
-     onDropSplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
+     onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
 
   // ── 递归渲染分裂树 ──

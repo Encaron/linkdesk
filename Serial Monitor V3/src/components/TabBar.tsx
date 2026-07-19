@@ -33,6 +33,8 @@ interface TabBarProps {
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
   onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down", targetGroupId?: string) => void;
+  /** Shift+拖 = 复制标签页到新面板 */
+  onDropCopySplit?: (tabId: string, zone: "left" | "right" | "up" | "down", targetGroupId?: string) => void;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
   dragDropZone?: "left" | "right" | "up" | "down" | "center" | null;
   onDragDropZone?: (zone: "left" | "right" | "up" | "down" | "center" | null, targetGroupId?: string) => void;
@@ -201,6 +203,7 @@ export default function TabBar({
   onMoveTab: _onMoveTab,
   onReorderTab,
   onDropSplit,
+  onDropCopySplit,
   editorAreaRef,
   onDragDropZone,
   onDraggingChange,
@@ -348,6 +351,7 @@ export default function TabBar({
     editorAreaRef,
     onReorder: onReorderTab ?? (() => {}),
     onDropSplit,
+    onDropCopySplit,
     onMoveToOther: _onMoveTab,
     onDraggingChange,
     onDragDropZone,

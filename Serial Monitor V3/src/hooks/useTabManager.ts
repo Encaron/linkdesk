@@ -451,6 +451,33 @@ export function reduceSplitTabAt(
   };
 }
 
+/** 复制标签页——新 ID、新实例、相同属性。对标 VS Code Shift+拖 */
+export function reduceDuplicateTab(prev: TabState, tabId: string): TabState | null {
+  const group = findGroup(prev, tabId);
+  if (!group) return null;
+  const tab = group.tabs.find((t) => t.id === tabId);
+  if (!tab) return null;
+
+  // 创建副本（terminal 会自增 ID，workspace 同名去重会被 reduceCreateTab 拦截）
+  const copy = createTabDefaults(
+    tab.type,
+    { workspaceName: tab.workspaceName, filePath: tab.filePath, label: tab.label }
+  );
+  // terminal 副本用新 ID；非 terminal 追加后缀避免冲突
+  if (tab.type !== "terminal") {
+    copy.id = `${tab.id}-copy-${Date.now()}`;
+  }
+  copy.dirty = false;
+
+  const newGroups = prev.groups.map((g) =>
+    g.id === group.id
+      ? { ...g, tabs: [...g.tabs, copy] }
+      : g
+  );
+
+  return { ...prev, groups: newGroups, activeGroupId: group.id };
+}
+
 /** 分屏——在 tab 所在面板的方向创建新面板（向后兼容） */
 export function reduceSplitTab(
   prev: TabState,
@@ -745,6 +772,23 @@ export function useTabManager() {
     []
   );
 
+  const duplicateTab = useCallback(
+    (tabId: string): string | null => {
+      let newId: string | null = null;
+      setTabState((prev) => {
+        const next = reduceDuplicateTab(prev, tabId);
+        if (next) {
+          // 找到刚创建的副本——最新的 tab
+          const group = next.groups.find((g) => g.id === next.activeGroupId);
+          newId = group?.tabs[group.tabs.length - 1]?.id ?? null;
+        }
+        return next ?? prev;
+      });
+      return newId;
+    },
+    []
+  );
+
   const unsplit = useCallback((groupId?: string) => {
     setTabState((prev) => {
       // 如果未指定 groupId，用 activeGroupId
@@ -802,6 +846,7 @@ export function useTabManager() {
     moveTab,
     splitTab,
     splitTabAt,
+    duplicateTab,
     unsplit,
     setDirty,
     updateTabLabel,

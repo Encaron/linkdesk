@@ -132,6 +132,7 @@ function BranchPane({
       <div
         className="split-pane-handle"
         onMouseDown={onHandleMouseDown}
+        onDoubleClick={() => onResize?.(anchorGroupId, [50, 50])}
         style={{
           flexShrink: 0,
           cursor: direction === "horizontal" ? "col-resize" : "row-resize",

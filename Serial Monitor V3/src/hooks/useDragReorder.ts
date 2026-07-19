@@ -60,8 +60,10 @@ export interface UseDragReorderOptions {
   findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => boolean;
   /** 计算分屏 drop zone + 目标面板。返回 null 表示不在有效区域 */
   computeSplitZone?: (clientX: number, clientY: number) => { zone: DropZone; targetGroupId?: string } | null;
-  /** 分屏 drop 回调——zone 是方向，targetGroupId 是鼠标落点面板（对标 VS Code：在目标面板边缘分裂） */
+  /** 分屏 drop 回调——zone 是方向，targetGroupId 是鼠标落点面板 */
   onDropSplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
+  /** Shift+拖 = 复制标签页到新面板（对标 VS Code） */
+  onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
 }
 
 export interface UseDragReorderResult {
@@ -85,6 +87,7 @@ export function useDragReorder(
     itemCount,
     onReorder,
     onDropSplit,
+    onDropCopySplit,
     onMoveToOther,
     onDraggingChange,
     onDragDropZone,
@@ -203,11 +206,15 @@ export function useDragReorder(
         }
         if (!moved && computeSplitZone) {
           const result = computeSplitZone(e.clientX, e.clientY);
-          if (result?.zone && result.zone !== "center" && onDropSplit) {
-            // 边缘 = 分屏
-            onDropSplit(ds.tabId, result.zone as Exclude<DropZone, null | "center">, result.targetGroupId);
+          if (result?.zone && result.zone !== "center") {
+            if (e.shiftKey && onDropCopySplit) {
+              // Shift+拖 = 复制视图（对标 VS Code）
+              onDropCopySplit(ds.tabId, result.zone as Exclude<DropZone, null | "center">, result.targetGroupId);
+            } else if (onDropSplit) {
+              // 边缘 = 分屏
+              onDropSplit(ds.tabId, result.zone as Exclude<DropZone, null | "center">, result.targetGroupId);
+            }
           } else if (result?.zone === "center" && result.targetGroupId && onMoveToOther) {
-            // 中央 = 移动到目标面板（对标 VS Code：毛玻璃盖满整个面板 = 合并）
             onMoveToOther(ds.tabId, result.targetGroupId);
           }
         }

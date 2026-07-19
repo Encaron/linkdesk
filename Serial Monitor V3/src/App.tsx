@@ -45,6 +45,7 @@ function App() {
     moveTab,
     splitTab,
     splitTabAt,
+    duplicateTab,
     unsplit,
     updateSplitSizes,
     restoreLayout,
@@ -127,6 +128,21 @@ function App() {
       setIsDragging(false);
     },
     [splitTabAt]
+  );
+
+  /** Shift+拖 = 复制标签页到新面板（对标 VS Code） */
+  const handleDropCopySplit = useCallback(
+    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
+      const newId = duplicateTab(tabId);
+      if (newId) {
+        const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
+        splitTabAt(newId, direction, targetGroupId, zone);
+      }
+      setDragDropZone(null);
+      setDragDropTargetGroupId(null);
+      setIsDragging(false);
+    },
+    [duplicateTab, splitTabAt]
   );
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
@@ -360,6 +376,7 @@ function App() {
             onMoveTab={moveTab}
             onReorderTab={reorderTab}
             onDropSplit={handleDropSplit}
+            onDropCopySplit={handleDropCopySplit}
             onSplitResize={updateSplitSizes}
             dropZone={dragDropZone}
             editorAreaRef={editorAreaRef}
