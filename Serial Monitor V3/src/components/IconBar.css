@@ -3,7 +3,7 @@
   flex-direction: column;
   align-items: center;
   padding-top: 8px;
-  gap: 2px;
+  gap: var(--space-xs); /* was 2px——间距太近容易误触 */
   background: var(--bg-icon-bar);
 }
 

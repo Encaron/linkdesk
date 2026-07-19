@@ -25,6 +25,22 @@ import { HexToBytes } from "../../core/DataConverter";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "../../languages/v3-protocol";
 import "./TerminalView.css";
 
+/* ---- 常量 ---- */
+const SCROLL_AT_BOTTOM_TOLERANCE = 5;
+const BACK_TO_BOTTOM_THRESHOLD = 30;
+const SYSTEM_LOG_MAX_LINES = 50;
+const CM6_MAX_DOC_LINES = 2000;
+const CM6_TRIM_KEEP_LINES = 500;
+const RING_BUFFER_CAPACITY = 512;
+const PAUSED_BUFFER_MAX = 2000;
+const SEND_HISTORY_MAX = 20;
+const HEX_WARNING_MAX_CHARS = 5;
+const HEX_PREVIEW_MAX_LEN = 80;
+const MONACO_MAX_HEIGHT = 80;
+const MONACO_MIN_HEIGHT = 32;
+const MONACO_LINE_HEIGHT = 18;
+const MONACO_PADDING = 16;
+
 /* ---- CM6 主题（颜色走 CSS 变量，切主题自动响应） ---- */
 const darkTheme: Extension = EditorView.theme(
   {
@@ -109,7 +125,7 @@ class ScrollTracker implements PluginValue {
     // 用户手动滚轮/拖拽滚动条 → 记录是否在底部
     view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
-      this.atBottom = dom.scrollHeight - dom.scrollTop - dom.clientHeight < 5;
+      this.atBottom = dom.scrollHeight - dom.scrollTop - dom.clientHeight < SCROLL_AT_BOTTOM_TOLERANCE;
     }, { passive: true });
   }
 
@@ -234,7 +250,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
     view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
-      setShowBackToBottom(dom.scrollHeight - dom.scrollTop - dom.clientHeight >= 30);
+      setShowBackToBottom(dom.scrollHeight - dom.scrollTop - dom.clientHeight >= BACK_TO_BOTTOM_THRESHOLD);
     });
 
     // 右键菜单
@@ -269,7 +285,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     if (color === "system" && prefs.separateSystemLog) {
       setSystemLog((prev) => {
         const next = [...prev, text];
-        if (next.length > 50) next.shift();
+        if (next.length > SYSTEM_LOG_MAX_LINES) next.shift();
         return next;
       });
       return;
@@ -285,8 +301,8 @@ function TerminalView({ isActive }: TerminalViewProps) {
       changes: { from, insert: pre + text },
       effects: addLineDeco.of({ from: from + pre.length, cls: `cm-line-${color}` }),
     });
-    if (view.state.doc.lines > 2000) {
-      const line = view.state.doc.line(500);
+    if (view.state.doc.lines > CM6_MAX_DOC_LINES) {
+      const line = view.state.doc.line(CM6_TRIM_KEEP_LINES);
       view.dispatch({ changes: { from: 0, to: line.from } });
     }
   }, [prefs.timestampFormat, prefs.showEcho, prefs.separateSystemLog]);
@@ -316,7 +332,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefs]);
 
-  const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(512));
+  const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;
 
@@ -363,9 +379,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
           if (kw && !item.text.toLowerCase().includes(kw.toLowerCase())) continue;
         }
         if (paused) {
-          const wasFull = pausedBuffer.current.length >= 2000;
+          const wasFull = pausedBuffer.current.length >= PAUSED_BUFFER_MAX;
           pausedBuffer.current.push(item.text);
-          if (pausedBuffer.current.length > 2000) pausedBuffer.current.shift();
+          if (pausedBuffer.current.length > PAUSED_BUFFER_MAX) pausedBuffer.current.shift();
           setPausedCount(pausedBuffer.current.length);
           if (!wasFull && pausedBuffer.current.length >= 2000) {
             appendLine(t("⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃"), "system");
@@ -441,7 +457,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     setSendHistory((prev) => {
       // 去重：相同内容移到最前
       const filtered = prev.filter((h) => h !== text);
-      return [text, ...filtered].slice(0, 20);
+      return [text, ...filtered].slice(0, SEND_HISTORY_MAX);
     });
   }, []);
 
@@ -461,7 +477,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     }
 
     const warning = invalid.length > 0
-      ? t("⚠ HEX 输入包含无效字符: {{chars}}", { chars: [...new Set(invalid)].slice(0, 5).join(" ") })
+      ? t("⚠ HEX 输入包含无效字符: {{chars}}", { chars: [...new Set(invalid)].slice(0, HEX_WARNING_MAX_CHARS).join(" ") })
       : "";
 
     return { formatted, warning };
@@ -479,7 +495,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
         const hexMsg = `${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`;
         appendLine(hexMsg, "sent");
         // 第二行：HEX 预览（超过 80 字符截断）
-        const preview = text.length > 80 ? text.substring(0, 80) + "..." : text;
+        const preview = text.length > HEX_PREVIEW_MAX_LEN ? text.substring(0, HEX_PREVIEW_MAX_LEN) + "..." : text;
         appendLine("    " + preview, "sent");
       } else {
         const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
@@ -890,7 +906,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
         <div className="monaco-wrapper">
           <span className="monaco-prefix">&gt;</span>
           <Editor
-            height={`${Math.min(80, Math.max(32, 16 + 18 * (sendValue.split('\n').length)))}px`}
+            height={`${Math.min(MONACO_MAX_HEIGHT, Math.max(MONACO_MIN_HEIGHT, MONACO_PADDING + MONACO_LINE_HEIGHT * (sendValue.split('\n').length)))}px`}
             language="v3-protocol"
             value={sendValue}
             onChange={handleSendChange}

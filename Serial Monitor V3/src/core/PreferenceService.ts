@@ -226,7 +226,7 @@ class PreferenceService {
   /** 列出所有工作区 */
   static async listWorkspaces(): Promise<string[]> {
     try {
-      // Phase 4：使用 readDir 枚举 workspaces/ 目录
+      // TODO Phase 4：使用 readDir 枚举 workspaces/ 目录
       return [];
     } catch {
       return [];
