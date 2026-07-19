@@ -16,6 +16,29 @@
   gap: 0;
 }
 
+/* 拖拽 wrapper：包裹图标和 drop 指示线 */
+.icon-bar-item-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* VS Code 风格 drop 指示线 */
+.icon-drop-indicator {
+  width: 28px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+/* 拖拽中的图标 */
+.icon-btn.dragging {
+  opacity: 0.4;
+}
+
 .icon-btn {
   width: 48px;
   height: 48px;

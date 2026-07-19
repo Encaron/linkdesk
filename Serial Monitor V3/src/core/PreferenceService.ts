@@ -57,6 +57,8 @@ export interface Prefs {
   quickSends: Record<string, string>;
   /** Phase 4：最近打开的视图。欢迎页渲染。 */
   recentViews?: { pluginId: string; label: string; workspaceName?: string }[];
+  /** Phase 4：图标栏拖拽排序——pluginId 数组，按顺序渲染 */
+  iconOrder?: string[];
   /** Phase 3：标签页布局持久化。Phase 5 增加 cardLayout。 */
   layout?: LayoutData;
 }
