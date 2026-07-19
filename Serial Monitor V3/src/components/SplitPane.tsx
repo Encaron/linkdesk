@@ -126,7 +126,7 @@ function BranchPane({
         minHeight: 0,
       }}
     >
-      <div style={{ flex: localSizes[0], overflow: "hidden", minWidth: 0, minHeight: 0 }}>
+      <div style={{ flex: localSizes[0], overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
         {children[0]}
       </div>
       <div
@@ -137,7 +137,7 @@ function BranchPane({
           cursor: direction === "horizontal" ? "col-resize" : "row-resize",
         }}
       />
-      <div style={{ flex: localSizes[1], overflow: "hidden", minWidth: 0, minHeight: 0 }}>
+      <div style={{ flex: localSizes[1], overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
         {children[1]}
       </div>
     </div>
