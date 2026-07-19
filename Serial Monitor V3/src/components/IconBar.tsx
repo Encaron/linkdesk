@@ -23,9 +23,9 @@ interface BuiltinIcon {
 }
 
 const BUILTIN_ICONS: BuiltinIcon[] = [
-  { pluginId: "terminal", iconPath: "terminal.svg", label: "终端" },
-  { pluginId: "workspace", iconPath: "workspace.svg", label: "工作台" },
-  { pluginId: "settings", iconPath: "settings.svg", label: "设置" },
+  { pluginId: "terminal", iconPath: "terminal.png", label: "终端" },
+  { pluginId: "workspace", iconPath: "workspace.png", label: "工作台" },
+  { pluginId: "settings", iconPath: "settings.png", label: "设置" },
   { pluginId: "marketplace", iconPath: "extensions.svg", label: "插件市场" },
 ];
 
