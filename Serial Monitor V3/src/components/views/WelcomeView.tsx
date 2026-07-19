@@ -31,11 +31,13 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
     }
   })();
 
-  const handleShortcutClick = (pluginId: string, tabType: string) => {
+  const handleShortcutClick = (pluginId: string, displayName: string) => {
     if (onCreateTab) {
-      onCreateTab(tabType);
+      // pluginId 即 TabType（terminal/workspace/settings/marketplace）
+      onCreateTab(pluginId);
     }
-    recordRecentView(pluginId, tabType);
+    // 记录用显示名（"终端"），不是 manifest.type（"view"）
+    recordRecentView(pluginId, displayName);
   };
 
   const handleRecentClick = (entry: { pluginId: string; label: string; workspaceName?: string }) => {
@@ -62,7 +64,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
               <button
                 key={p.pluginId}
                 className="welcome-card"
-                onClick={() => handleShortcutClick(p.pluginId, p.manifest.type)}
+                onClick={() => handleShortcutClick(p.pluginId, p.manifest.name)}
                 title={p.manifest.description ?? p.manifest.name}
               >
                 <span className="welcome-card-icon">
