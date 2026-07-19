@@ -7,7 +7,7 @@
   --bg-input: #3C3C3C;
   --text-primary: #D4D4D4;
   --text-secondary: #9D9D9D;
-  --text-muted: #6A6A6A;
+  --text-muted: #8A8A8A;
   --accent: #0E639C;
   --accent-hover: #1177BB;
   --border: #3C3C3C;
@@ -27,6 +27,17 @@
   --dirty-dot: #CCA700;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --bg-toolbar: #1E1E22;
+  --toggle-knob: #FFFFFF;
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  /* Phase 3.5 新增 —— z-index 语义层级 */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay-backdrop: 500;
+  --z-overlay: 600;
 }
 
 [data-theme="light"] {
@@ -36,7 +47,7 @@
   --bg-input: #FFFFFF;
   --text-primary: #2D2D2D;
   --text-secondary: #5A5A5A;
-  --text-muted: #999999;
+  --text-muted: #767676;
   --accent: #0078D4;
   --accent-hover: #106EBE;
   --border: #D4D4D4;
@@ -56,6 +67,12 @@
   --dirty-dot: #D4A017;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-icon-bar: #F0F0F0;
+  --bg-side-panel: #F5F5F5;
+  --bg-toolbar: #F5F5F5;
+  --toggle-knob: #2D2D2D;
+  --hover-overlay: rgba(0, 0, 0, 0.04);
 }
 
 *,
@@ -121,7 +138,7 @@ html, body, #root {
   content: '';
   position: absolute; top: 2px; left: 2px;
   width: 16px; height: 16px; border-radius: 50%;
-  background: white;
+  background: var(--toggle-knob);
   transition: transform 150ms;
 }
 .toggle.on::after { transform: translateX(16px); }
@@ -138,6 +155,29 @@ html, body, #root {
   outline: none;
 }
 .input:focus { border-color: var(--accent); }
+
+/* Phase 3.5 新增 —— focus-visible 键盘导航指示器 */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* 保留 input 的原生 outline:none 设计，:focus 用 border-color 表示 */
+.input:focus-visible,
+.search-input:focus-visible,
+.palette-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Phase 3.5 新增 —— prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
 
 .divider {
   height: 1px;

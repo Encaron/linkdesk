@@ -4,7 +4,7 @@
   align-items: center;
   padding-top: 8px;
   gap: 2px;
-  background: #18181B;
+  background: var(--bg-icon-bar);
 }
 
 .icon-btn {
@@ -21,7 +21,7 @@
 }
 
 .icon-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
 }
 
 .icon-btn.active {

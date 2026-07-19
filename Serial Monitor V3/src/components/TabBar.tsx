@@ -363,7 +363,7 @@ export default function TabBar({
 
   return (
     <div className="tab-bar">
-      <div className="tab-list" ref={scrollRef} onWheel={onWheel}>
+      <div className="tab-list" ref={scrollRef} onWheel={onWheel} role="tablist">
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
           const isDragging = draggingId === tab.id;
@@ -407,6 +407,7 @@ export default function TabBar({
                     closeWithAnimation(tab.id);
                   }}
                   title={tabs.length === 1 && tab.type === "terminal" ? t("清空接收区") : t("关闭")}
+                  aria-label={tabs.length === 1 && tab.type === "terminal" ? t("清空接收区") : t("关闭")}
                 >
                   ×
                 </button>
@@ -424,6 +425,7 @@ export default function TabBar({
           className={`tab-plus-btn${plusOpen ? " open" : ""}`}
           onClick={() => setPlusOpen(!plusOpen)}
           title={t("新建标签页")}
+          aria-label={t("新建标签页")}
         >
           +
         </button>

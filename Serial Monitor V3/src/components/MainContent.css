@@ -31,7 +31,7 @@
   background: var(--drop-indicator);
   backdrop-filter: blur(3px);
   -webkit-backdrop-filter: blur(3px);
-  z-index: 50;
+  z-index: var(--z-sticky);
   pointer-events: none;
   opacity: 0;
   animation: drop-zone-in 120ms ease-out forwards;

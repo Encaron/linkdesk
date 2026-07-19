@@ -20,7 +20,7 @@ function WorkspaceView({ isActive: _isActive, workspaceName }: WorkspaceViewProp
         {workspaceName ? `📊 ${workspaceName}` : t("暂无卡片，请先连接串口")}
       </span>
       <span style={{ color: "var(--text-muted)", fontSize: 11, opacity: 0.7 }}>
-        卡片架构将在 Phase 4 实现
+        {t("卡片架构将在 Phase 4 实现")}
       </span>
     </div>
   );

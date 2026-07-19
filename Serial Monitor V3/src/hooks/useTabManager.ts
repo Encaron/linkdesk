@@ -6,6 +6,7 @@
  */
 
 import { useState, useCallback, useRef } from "react";
+import i18n from "../i18n";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -104,11 +105,11 @@ export function getDefaultLabel(
   filePath?: string
 ): string {
   switch (type) {
-    case "terminal":  return "终端";
-    case "workspace": return workspaceName || "工作台";
-    case "settings":  return "设置";
-    case "oled":      return "OLED";
-    case "editor":    return filePath || "编辑器";
+    case "terminal":  return i18n.t("终端");
+    case "workspace": return workspaceName || i18n.t("工作台");
+    case "settings":  return i18n.t("设置");
+    case "oled":      return i18n.t("OLED");
+    case "editor":    return filePath || i18n.t("编辑器");
   }
 }
 

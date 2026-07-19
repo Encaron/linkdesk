@@ -18,7 +18,7 @@ let currentTheme: Theme | null = null;
 /** 从 URL 加载主题 JSON（Vite 下 themes/ 目录通过 public 可访问） */
 export async function loadTheme(themeName: string): Promise<Theme> {
   const res = await fetch(`/themes/${themeName.toLowerCase()}.json`);
-  if (!res.ok) throw new Error(`主题 "${themeName}" 未找到`);
+  if (!res.ok) throw new Error(`Theme "${themeName}" not found`);
   return res.json();
 }
 

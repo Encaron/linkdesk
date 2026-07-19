@@ -5,7 +5,8 @@
  */
 
 import { useCallback } from "react";
-import type { TabState, TabGroup } from "../hooks/useTabManager";
+import type { TabState, TabGroup, TabType } from "../hooks/useTabManager";
+import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
@@ -20,19 +21,19 @@ interface MainContentProps {
   activeGroupId: string;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: any, opts?: any) => any;
-  onSplitTab: (tabId: string, direction?: any) => any;
+  onCreateTab: (type: TabType, opts?: { workspaceName?: string; filePath?: string }) => string;
+  onSplitTab: (tabId: string, direction?: "horizontal" | "vertical") => void;
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
-  onDropSplit: (tabId: string, zone: any, targetGroupId?: string) => void;
+  onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   /** Shift+拖 = 复制标签页到新面板 */
-  onDropCopySplit?: (tabId: string, zone: any, targetGroupId?: string) => void;
+  onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
-  dropZone?: any;
+  dropZone?: DropZone | null;
   /** 当前被拖拽悬停的目标面板 groupId——用于在该面板内渲染毛玻璃 */
   dragDropTargetGroupId?: string | null;
-  editorAreaRef?: any;
-  onDragDropZone?: (zone: any, targetGroupId?: string) => void;
+  editorAreaRef?: React.RefObject<HTMLDivElement | null>;
+  onDragDropZone?: (zone: DropZone | null, targetGroupId?: string) => void;
   isDragging?: boolean;
   onDraggingChange?: (v: boolean) => void;
 }

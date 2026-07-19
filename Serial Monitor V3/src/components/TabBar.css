@@ -155,12 +155,12 @@
 .tab-plus-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99;
+  z-index: var(--z-overlay-backdrop);
 }
 
 .tab-plus-menu {
   position: fixed;
-  z-index: 100;
+  z-index: var(--z-overlay);
   min-width: 160px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -182,7 +182,7 @@
   font-size: 12px;
   cursor: pointer;
   text-align: left;
-  transition: background 80ms;
+  transition: background 120ms;
 }
 .tab-plus-menu-item:hover {
   background: var(--tab-hover-bg);
@@ -193,11 +193,11 @@
 .tab-context-backdrop {
   position: fixed;
   inset: 0;
-  z-index: 99;
+  z-index: var(--z-overlay-backdrop);
 }
 
 .tab-context-menu {
-  z-index: 100;
+  z-index: var(--z-overlay);
   min-width: 140px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -217,7 +217,7 @@
   font-size: 12px;
   cursor: pointer;
   text-align: left;
-  transition: background 80ms;
+  transition: background 120ms;
 }
 .tab-context-item:hover:not(.disabled) {
   background: var(--tab-hover-bg);

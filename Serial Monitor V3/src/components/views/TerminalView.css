@@ -5,7 +5,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: #252528;
+  background: var(--bg-card);
 }
 
 /* === 工具栏 === */
@@ -14,7 +14,7 @@
   display: flex;
   gap: 4px;
   padding: 6px 10px;
-  background: #1E1E22;
+  background: var(--bg-toolbar);
   border-bottom: 1px solid var(--separator);
   flex-shrink: 0;
 }
@@ -31,7 +31,7 @@
 }
 
 .toolbar-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover-overlay);
   color: var(--text-primary);
   transform: scale(1.02);
 }
@@ -231,7 +231,7 @@
   font-size: 11px;
   text-align: center;
   animation: slideDown 200ms ease;
-  z-index: 10;
+  z-index: var(--z-sticky);
 }
 
 @keyframes slideDown {
@@ -297,7 +297,7 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   transition: transform 150ms, opacity 150ms;
   animation: fadeIn 150ms ease;
-  z-index: 10;
+  z-index: var(--z-sticky);
 }
 
 .back-to-bottom:hover {
@@ -319,12 +319,12 @@
 .ctx-overlay {
   position: fixed;
   inset: 0;
-  z-index: 999;
+  z-index: var(--z-overlay-backdrop);
 }
 
 .ctx-menu {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-overlay);
   min-width: 160px;
   background: var(--bg-card);
   border: 1px solid var(--border);
@@ -365,7 +365,7 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: var(--z-overlay);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -537,7 +537,7 @@
   border: 1px solid var(--border);
   border-radius: 6px;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  z-index: 100;
+  z-index: var(--z-dropdown);
 }
 
 .history-item {

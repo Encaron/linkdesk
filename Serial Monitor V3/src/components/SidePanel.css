@@ -1,5 +1,5 @@
 .side-panel {
-  background: #1E1E22;
+  background: var(--bg-side-panel);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -48,7 +48,7 @@
 .side-panel-collapse:hover,
 .side-panel-expand:hover {
   color: var(--text-primary);
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--hover-overlay);
 }
 
 .side-panel-expand {

@@ -14,13 +14,14 @@ function IconBar({ activeTabType, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
 
   return (
-    <div className="icon-bar">
+    <div className="icon-bar" role="navigation" aria-label={t("导航")}>
       {iconTypes.map((type) => (
         <button
           key={type}
           className={`icon-btn${activeTabType === type ? " active" : ""}`}
           onClick={() => onOpenOrFocus(type)}
           title={t(type)}
+          aria-label={t(type)}
         >
           <img
             src={`/assets/icons/${type}.png`}

@@ -1,4 +1,5 @@
 import { Component, type ReactNode } from "react";
+import i18n from "../../i18n";
 
 interface Props {
   children: ReactNode;
@@ -26,7 +27,7 @@ class ErrorBoundary extends Component<Props, State> {
           display: "flex", alignItems: "center", justifyContent: "center",
           height: "100%", color: "var(--text-muted)", fontSize: 13,
         }}>
-          模块加载失败，请重启应用
+          {i18n.t("模块加载失败，请重启应用")}
         </div>
       );
     }
