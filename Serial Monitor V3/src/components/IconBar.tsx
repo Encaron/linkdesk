@@ -1,10 +1,10 @@
 /**
  * IconBar — 图标栏（最左 48px 垂直条）。
- * 对标 VS Code Activity Bar：顶部主要图标 + 底部设置图标。
- * 顶部图标支持拖拽排序，设置固定在底部。
+ * 对标 VS Code Activity Bar：顶部主图标 + 底部设置图标。
+ * 换位方式：点击选中 → 再点另一个图标 → 交换位置。
  */
 
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import PreferenceService from "../core/PreferenceService";
@@ -24,7 +24,6 @@ const PLUGIN_ICON_PATH: Record<string, string> = {
   marketplace: "extensions.svg",
 };
 
-/** 固定在底部的图标——对标 VS Code 左下角 Manage（齿轮） */
 const BOTTOM_ICONS = new Set(["settings"]);
 
 function getIconSrc(pluginId: string): string {
@@ -44,23 +43,12 @@ function saveOrder(order: string[]): void {
   } catch { /* 静默 */ }
 }
 
-/* ── 拖拽状态 ── */
-
-interface DragState {
-  pluginId: string;
-  startY: number;
-  moved: boolean;
-}
+/* ── 组件 ── */
 
 function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
-  const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
-  const [draggedId, setDraggedId] = useState<string | null>(null);
-  const dragRef = useRef<DragState | null>(null);
-  const dropTargetRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // 图标顺序
   const viewPlugins = getViewPlugins();
   const savedOrder = loadOrder();
 
@@ -81,86 +69,43 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     }
     return result;
   })();
-  const orderedRef = useRef(ordered);
-  orderedRef.current = ordered;
 
-  // 分顶部/底部——对标 VS Code Activity Bar
   const topIcons = ordered.filter((x) => !BOTTOM_ICONS.has(x.pluginId));
   const bottomIcons = ordered.filter((x) => BOTTOM_ICONS.has(x.pluginId));
 
-  /* ── 查找鼠标下的图标 ── */
-
-  const findIconAt = useCallback((clientY: number, excludeId: string): { id: string; pos: "top" | "bottom" } | null => {
-    const container = containerRef.current;
-    if (!container) return null;
-    const buttons = container.querySelectorAll("[data-plugin-id]");
-    const cur = orderedRef.current;
-    for (const btn of buttons) {
-      const rect = btn.getBoundingClientRect();
-      if (clientY >= rect.top && clientY <= rect.bottom &&
-          btn.getAttribute("data-plugin-id") !== excludeId) {
-        return {
-          id: btn.getAttribute("data-plugin-id")!,
-          pos: clientY < rect.top + rect.height / 2 ? "top" : "bottom",
-        };
+  // 点击选中 → 再点另一个 → 交换
+  const handleIconClick = useCallback(
+    (pluginId: string) => {
+      if (selectedId && selectedId !== pluginId) {
+        // 交换两个图标的位置
+        const newOrder = ordered.map((x) => x.pluginId);
+        const i = newOrder.indexOf(selectedId);
+        const j = newOrder.indexOf(pluginId);
+        if (i !== -1 && j !== -1) {
+          [newOrder[i], newOrder[j]] = [newOrder[j], newOrder[i]];
+          saveOrder(newOrder);
+        }
+        setSelectedId(null);
+      } else {
+        // 选中或打开
+        if (selectedId === pluginId) {
+          setSelectedId(null);
+          onOpenOrFocus(pluginId);
+        } else {
+          setSelectedId(pluginId);
+        }
       }
-    }
-    if (buttons.length > 0 && cur.length > 0) {
-      const last = buttons[buttons.length - 1];
-      const lastRect = last.getBoundingClientRect();
-      if (clientY > lastRect.bottom) {
-        return { id: last.getAttribute("data-plugin-id")!, pos: "bottom" };
-      }
-    }
-    return null;
-  }, []);
+    },
+    [selectedId, ordered, onOpenOrFocus]
+  );
 
-  /* ── 鼠标事件 ── */
-
-  const handleMouseDown = useCallback((e: React.MouseEvent, pluginId: string) => {
-    if (e.button !== 0) return;
-    dragRef.current = { pluginId, startY: e.clientY, moved: false };
-  }, []);
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const dy = Math.abs(e.clientY - dragRef.current.startY);
-      if (dy < 5) return;
-      dragRef.current.moved = true;
-      setDraggedId(dragRef.current.pluginId);
-      const target = findIconAt(e.clientY, dragRef.current.pluginId);
-      dropTargetRef.current = target;
-      setDropTarget(target);
-    };
-    const onMouseUp = () => {
-      const drag = dragRef.current;
-      const target = dropTargetRef.current;
-      if (!drag) return;
-
-      if (drag.moved && target) {
-        const cur = orderedRef.current.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
-        const targetIndex = cur.indexOf(target.id);
-        const insertAt = target.pos === "top" ? targetIndex : targetIndex + 1;
-        cur.splice(Math.max(0, insertAt), 0, drag.pluginId);
-        saveOrder(cur);
-      }
-
-      dragRef.current = null;
-      dropTargetRef.current = null;
-      setDraggedId(null);
-      setDropTarget(null);
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  /* ── 高亮 ── */
+  // 点击空白取消选中
+  const handleBarClick = useCallback(
+    (e: React.MouseEvent) => {
+      if (e.target === e.currentTarget) setSelectedId(null);
+    },
+    []
+  );
 
   const isActive = (pluginId: string) => {
     if (sidebarView) return sidebarView === pluginId;
@@ -168,44 +113,31 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     return activeTabType === pluginId;
   };
 
-  /* ── 渲染单个图标按钮 ── */
-
-  const renderIcon = (entry: IconEntry) => {
-    const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
-    const showAfter = dropTarget?.id === entry.pluginId && dropTarget.pos === "bottom";
-    const isBottom = BOTTOM_ICONS.has(entry.pluginId);
-    return (
-      <div key={entry.pluginId} className={`icon-bar-item-wrapper${isBottom ? " bottom" : ""}`}>
-        {showBefore && <div className="icon-drop-indicator" />}
-        <button
-          className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
-          data-plugin-id={entry.pluginId}
-          onClick={() => {
-            if (dragRef.current?.moved) return;
-            onOpenOrFocus(entry.pluginId);
-          }}
-          onMouseDown={(e) => !isBottom && handleMouseDown(e, entry.pluginId)}
-          title={t(entry.label)}
-          aria-label={t(entry.label)}
-        >
-          <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
-        </button>
-        {showAfter && <div className="icon-drop-indicator" />}
-      </div>
-    );
-  };
+  const renderIcon = (entry: IconEntry) => (
+    <div key={entry.pluginId} className="icon-bar-item-wrapper">
+      <button
+        className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${selectedId === entry.pluginId ? " selected" : ""}`}
+        data-plugin-id={entry.pluginId}
+        onClick={() => handleIconClick(entry.pluginId)}
+        title={t(entry.label)}
+        aria-label={t(entry.label)}
+      >
+        <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
+      </button>
+    </div>
+  );
 
   return (
-    <div className="icon-bar" role="navigation" aria-label={t("导航")}>
-      {/* 顶部——对标 VS Code Activity Bar 主图标区 */}
-      <div className="icon-bar-top" ref={containerRef}>
+    <div className="icon-bar" role="navigation" aria-label={t("导航")} onClick={handleBarClick}>
+      <div className="icon-bar-top">
         {topIcons.map(renderIcon)}
       </div>
-
-      {/* 底部——对标 VS Code 左下角齿轮 */}
       <div className="icon-bar-bottom">
         {bottomIcons.map(renderIcon)}
       </div>
+      {selectedId && (
+        <div className="icon-swap-hint">{t("再点另一个图标交换位置")}</div>
+      )}
     </div>
   );
 }

@@ -69,6 +69,29 @@
   background: radial-gradient(circle at center, rgba(0, 120, 212, 0.12), transparent 70%);
 }
 
+/* 选中态（换位模式）——金色边框提示 */
+.icon-btn.selected {
+  outline: 2px solid #CCA700;
+  outline-offset: -2px;
+  border-radius: 4px;
+}
+
+/* 换位提示 */
+.icon-swap-hint {
+  position: absolute;
+  bottom: 48px;
+  left: 50px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
 .icon-btn.active::before {
   content: "";
   position: absolute;
