@@ -191,14 +191,35 @@ function App() {
   const handleIconClick = useCallback(
     (type: string) => {
       if (type === "marketplace") {
-        // 🧩 只切侧栏，不切主区（对标 VS Code Extensions）
         setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
       } else {
-        setSidebarView(null);  // 清除 marketplace 侧栏
+        setSidebarView(null);
         openOrFocusTab(type);
       }
     },
     [openOrFocusTab]
+  );
+
+  // 双击图标 → 固定打开。已存在预览→固定它，不存在→新建固定标签页
+  const handleIconDoubleClick = useCallback(
+    (type: string) => {
+      if (type === "marketplace") {
+        setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
+        return;
+      }
+      setSidebarView(null);
+      // 查找已有的预览标签页（未固定）→ 直接固定它
+      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      const previewTab = group?.tabs.find((t) => (t.type === type || t.pluginId === type) && !t.pinned);
+      if (previewTab) {
+        focusTab(previewTab.id);
+        pinTab(previewTab.id);
+      } else {
+        const id = createTab(type, { pinned: true });
+        if (id) focusTab(id);
+      }
+    },
+    [tabState.groups, tabState.activeGroupId, createTab, focusTab, pinTab]
   );
 
   /* ---- 串口控制 ---- */
@@ -415,6 +436,7 @@ function App() {
           activePluginId={activePluginId}
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
+          onOpenPinned={handleIconDoubleClick}
         />
         <SidePanel
           ref={sidebarRef}

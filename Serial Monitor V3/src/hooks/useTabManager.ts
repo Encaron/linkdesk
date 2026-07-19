@@ -808,7 +808,7 @@ export function useTabManager() {
   }
 
   const createTab = useCallback(
-    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string }): string => {
+    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string; pinned?: boolean }): string => {
       let createdId = "";
       setTabState((prev) => {
         const r = reduceCreateTab(prev, type, opts);

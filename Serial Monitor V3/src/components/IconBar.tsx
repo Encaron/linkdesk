@@ -15,6 +15,8 @@ interface IconBarProps {
   activePluginId?: string;
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
+  /** 双击图标 → 固定打开（不被预览替换） */
+  onOpenPinned?: (type: string) => void;
 }
 
 const PLUGIN_ICON_PATH: Record<string, string> = {
@@ -49,12 +51,14 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
+function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus, onOpenPinned }: IconBarProps) {
   const { t } = useTranslation();
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const dropTargetRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastClickedId = useRef<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // 图标顺序
@@ -176,8 +180,21 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
                 className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
                 data-plugin-id={entry.pluginId}
                 onClick={() => {
-                  if (!dragRef.current?.moved) {
-                    onOpenOrFocus(entry.pluginId);
+                  if (dragRef.current?.moved) return;
+                  const id = entry.pluginId;
+                  // 双击：固定打开。单击：预览打开（计时器 300ms 区分）
+                  if (clickTimer.current && lastClickedId.current === id) {
+                    clearTimeout(clickTimer.current);
+                    clickTimer.current = null;
+                    lastClickedId.current = null;
+                    onOpenPinned?.(id);
+                  } else {
+                    lastClickedId.current = id;
+                    clickTimer.current = setTimeout(() => {
+                      clickTimer.current = null;
+                      lastClickedId.current = null;
+                      onOpenOrFocus(id);
+                    }, 300);
                   }
                 }}
                 onMouseDown={(e) => handleMouseDown(e, entry.pluginId)}
