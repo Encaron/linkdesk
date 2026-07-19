@@ -28,11 +28,9 @@ interface MainContentProps {
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
   onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
-  /** Shift+拖 = 复制标签页到新面板 */
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
   dropZone?: DropZone | null;
-  /** 当前被拖拽悬停的目标面板 groupId——用于在该面板内渲染毛玻璃 */
   dragDropTargetGroupId?: string | null;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
   onDragDropZone?: (zone: DropZone | null, targetGroupId?: string) => void;
@@ -40,13 +38,11 @@ interface MainContentProps {
   onDraggingChange?: (v: boolean) => void;
 }
 
-/** 根据标签页 pluginId（优先）或 type（fallback）渲染对应 View 组件 */
-export function renderTabContent(
+function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
   onCreateTab?: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string,
 ) {
-  // Phase 4：优先走 viewRegistry（插件系统）
   if (tab.pluginId) {
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
@@ -56,7 +52,6 @@ export function renderTabContent(
         </ErrorBoundary>
       );
     }
-    // pluginId 在注册表中不存在且不是内置类型 → 占位 UI
     if (!["terminal", "workspace", "settings", "welcome", "oled", "editor", "plugin-detail", "marketplace"].includes(tab.type)) {
       return (
         <div key={tab.id} className="plugin-missing-view">
@@ -64,10 +59,8 @@ export function renderTabContent(
         </div>
       );
     }
-    // 内置类型——fall through 到硬编码视图
   }
 
-  // Phase 4 过渡期 fallback：旧版 tab（无 pluginId）走硬编码 switch
   switch (tab.type) {
     case "terminal":
       return (
@@ -94,7 +87,6 @@ export function renderTabContent(
   }
 }
 
-/** 旧版终端占位——终端已变为插件，不应走 fallback 路径 */
 function MissingTerminalFallback() {
   return (
     <div className="plugin-missing-view">
@@ -123,7 +115,6 @@ function MainContent({
   onDraggingChange,
 }: MainContentProps) {
 
-  /** 渲染一个面板组——标签栏 + 内容区 + 面板内毛玻璃 */
   const renderGroup = useCallback(
     (group: TabGroup) => {
       const isTarget = dragDropTargetGroupId === group.id && dropZone;
@@ -150,10 +141,8 @@ function MainContent({
             onSplitTab={onSplitTab}
             onMoveTab={(tabId, targetGroupId?) => {
               if (targetGroupId && targetGroupId !== group.id) {
-                // 中央放手：移到指定目标面板
                 onMoveTab(tabId, targetGroupId);
               } else if (!targetGroupId) {
-                // 拖到另一个标签栏：移到任意其他面板
                 const allLeafIds = getAllLeafGroupIds(tabState.root);
                 const otherGroupId = allLeafIds.find((id) => id !== group.id);
                 if (otherGroupId) onMoveTab(tabId, otherGroupId);
@@ -170,7 +159,7 @@ function MainContent({
           />
           <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
             {/* ⚠️ keep-alive: 用 CSS display 切换而非条件渲染。
-                不要改成 {isActive && <View />}——会丢失 CM6/Monaco 状态（B22 教训）。 */}
+                B33: 跨组移动时 React 可能 unmount/remount——CM6 组件通过模块级缓存自救。 */}
             {group.tabs.map((tab) => (
               <div
                 key={tab.id}
@@ -183,7 +172,6 @@ function MainContent({
               </div>
             ))}
           </div>
-          {/* 面板内毛玻璃——CSS 控制半边尺寸（50%），严格裁剪在 .tab-group-pane 内 */}
           {isTarget && (
             <div
               className={`drop-zone-overlay drop-zone-${dropZone}`}
@@ -198,7 +186,6 @@ function MainContent({
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
 
-  // ── 递归渲染分裂树 ──
   return (
     <div className="main-content">
       <SplitPane
