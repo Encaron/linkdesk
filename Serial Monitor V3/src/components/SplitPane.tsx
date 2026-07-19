@@ -1,14 +1,13 @@
 /**
- * SplitPane — 递归分屏容器。
- * Phase 3.x：替代扁平 2-pane，支持 SplitNode 树的任意深度渲染。
- * 每个 branch 节点有独立的可拖拽分割条。
- * 设计依据：[V3-Phase3-补充-递归分屏.md §4]
+ * SplitPane — 绝对定位平铺分屏。
+ * 所有面板是 MainContent 平级兄弟（key=groupId 永远同级）。
+ * 树只用来算每个面板的 x/y/w/h 百分比 + 分割条位置。
+ * 树结构变化只改 CSS %——React 不 unmount——所有组件状态保留。
  */
 
-import { useRef, useCallback, useEffect, useState } from "react";
+import { useRef, useCallback, useMemo } from "react";
 import type { SplitNode } from "../hooks/splitTree";
 import type { TabGroup } from "../hooks/useTabManager";
-import { getAllLeafGroupIds } from "../hooks/splitTree";
 import "./SplitPane.css";
 
 interface SplitPaneProps {
@@ -18,129 +17,127 @@ interface SplitPaneProps {
   onResize?: (anchorGroupId: string, sizes: [number, number]) => void;
 }
 
-export default function SplitPane({
-  node,
-  groups,
-  renderGroup,
-  onResize,
-}: SplitPaneProps) {
-  /* ── Leaf ── */
-  if (node.type === "leaf") {
-    const group = groups.find((g) => g.id === node.groupId);
-    if (!group) return null;
-    return <>{renderGroup(group)}</>;
-  }
-
-  /* ── Branch ── */
-  const [child0, child1] = node.children;
-
-  // 找到 child0 中任意一个 leaf groupId 作为 resize 锚点
-  const anchorGroupId =
-    child0.type === "leaf"
-      ? child0.groupId
-      : getAllLeafGroupIds(child0)[0];
-
-  return (
-    <BranchPane
-      direction={node.direction}
-      sizes={node.sizes}
-      anchorGroupId={anchorGroupId}
-      onResize={onResize}
-    >
-      <SplitPane node={child0} groups={groups} renderGroup={renderGroup} onResize={onResize} />
-      <SplitPane node={child1} groups={groups} renderGroup={renderGroup} onResize={onResize} />
-    </BranchPane>
-  );
+interface PanelRect {
+  groupId: string;
+  x: number; y: number; w: number; h: number;
 }
 
-/* ── BranchPane：单个分屏层的容器 + 拖拽分割条 ── */
-
-function BranchPane({
-  direction,
-  sizes,
-  anchorGroupId,
-  onResize,
-  children,
-}: {
-  direction: "horizontal" | "vertical";
-  sizes: [number, number];
+interface HandleRect {
+  id: string;
   anchorGroupId: string;
+  x: number; y: number; w: number; h: number;
+  direction: "horizontal" | "vertical";
+}
+
+/** 子树第一个 leaf 的 groupId */
+function firstLeafId(node: SplitNode): string {
+  return node.type === "leaf" ? node.groupId : firstLeafId(node.children[0]);
+}
+
+/** 从树递归算所有面板 + 分割条的百分比 rect */
+function computeLayout(
+  node: SplitNode, x: number, y: number, w: number, h: number
+): { panels: PanelRect[]; handles: HandleRect[] } {
+  if (node.type === "leaf") {
+    return { panels: [{ groupId: node.groupId, x, y, w, h }], handles: [] };
+  }
+
+  const [s0, s1] = node.sizes;
+  const handlePct = 0.4;
+  const anchorId = firstLeafId(node.children[0]);
+
+  if (node.direction === "horizontal") {
+    const w0 = w * s0 / 100;
+    const w1 = w * s1 / 100;
+    const left = computeLayout(node.children[0], x, y, w0, h);
+    const right = computeLayout(node.children[1], x + w0 + handlePct, y, w1, h);
+    const handle: HandleRect = {
+      id: `h-${anchorId}`, anchorGroupId: anchorId,
+      x: x + w0, y, w: handlePct, h, direction: "horizontal",
+    };
+    return { panels: [...left.panels, ...right.panels], handles: [...left.handles, handle, ...right.handles] };
+  } else {
+    const h0 = h * s0 / 100;
+    const h1 = h * s1 / 100;
+    const top = computeLayout(node.children[0], x, y, w, h0);
+    const bottom = computeLayout(node.children[1], x, y + h0 + handlePct, w, h1);
+    const handle: HandleRect = {
+      id: `h-${anchorId}`, anchorGroupId: anchorId,
+      x, y: y + h0, w, h: handlePct, direction: "vertical",
+    };
+    return { panels: [...top.panels, ...bottom.panels], handles: [...top.handles, handle, ...bottom.handles] };
+  }
+}
+
+/* 分割条 */
+function AbsoluteHandle({
+  rect, onResize,
+}: {
+  rect: HandleRect;
   onResize?: (anchorGroupId: string, sizes: [number, number]) => void;
-  children: [React.ReactNode, React.ReactNode];
 }) {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const dragging = useRef(false);
-  const [resizing, setResizing] = useState(false);
-  const [localSizes, setLocalSizes] = useState<[number, number]>(sizes);
-  const localSizesRef = useRef<[number, number]>(sizes);
+  const ref = useRef<HTMLDivElement>(null);
+  const isH = rect.direction === "horizontal";
 
-  // 同步外部 sizes 变化
-  useEffect(() => {
-    setLocalSizes(sizes);
-    localSizesRef.current = sizes;
-  }, [sizes[0], sizes[1]]);
+  const onMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!onResize || !ref.current) return;
+    const parent = ref.current.parentElement;
+    if (!parent) return;
+    const pr = parent.getBoundingClientRect();
+    const total = isH ? pr.width : pr.height;
 
-  const onHandleMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dragging.current = true;
-    setResizing(true);
-  }, []);
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragging.current || !containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const total = direction === "horizontal" ? rect.width : rect.height;
-      const pos = direction === "horizontal" ? e.clientX - rect.left : e.clientY - rect.top;
+    const mm = (ev: MouseEvent) => {
+      const pos = isH ? ev.clientX - pr.left : ev.clientY - pr.top;
       const pct = Math.min(80, Math.max(20, (pos / total) * 100));
-      const newSizes: [number, number] = [pct, 100 - pct];
-      localSizesRef.current = newSizes;
-      setLocalSizes(newSizes);
+      onResize(rect.anchorGroupId, [pct, 100 - pct]);
     };
-    const onMouseUp = () => {
-      if (!dragging.current) return;
-      dragging.current = false;
-      setResizing(false);
-      if (localSizesRef.current[0] !== sizes[0]) {
-        onResize?.(anchorGroupId, localSizesRef.current);
-      }
-    };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, [direction, sizes, anchorGroupId, onResize]);
+    const mu = () => { window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", mu); };
+    window.addEventListener("mousemove", mm);
+    window.addEventListener("mouseup", mu);
+  }, [isH, rect.anchorGroupId, onResize]);
 
   return (
     <div
-      ref={containerRef}
-      className={`split-pane ${direction === "horizontal" ? "horizontal" : "vertical"}${resizing ? " resizing" : ""}`}
+      ref={ref}
+      className="split-pane-handle"
+      onMouseDown={onMouseDown}
+      onDoubleClick={() => onResize?.(rect.anchorGroupId, [50, 50])}
       style={{
-        display: "flex",
-        flexDirection: direction === "horizontal" ? "row" : "column",
-        flex: 1,
-        minWidth: 0,
-        minHeight: 0,
+        position: "absolute", left: `${rect.x}%`, top: `${rect.y}%`,
+        width: `${rect.w}%`, height: `${rect.h}%`,
+        cursor: isH ? "col-resize" : "row-resize", zIndex: 10,
       }}
-    >
-      <div style={{ flex: localSizes[0], overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        {children[0]}
-      </div>
-      <div
-        className="split-pane-handle"
-        onMouseDown={onHandleMouseDown}
-        onDoubleClick={() => onResize?.(anchorGroupId, [50, 50])}
-        style={{
-          flexShrink: 0,
-          cursor: direction === "horizontal" ? "col-resize" : "row-resize",
-        }}
-      />
-      <div style={{ flex: localSizes[1], overflow: "hidden", minWidth: 0, minHeight: 0, display: "flex", flexDirection: "column" }}>
-        {children[1]}
-      </div>
+    />
+  );
+}
+
+export default function SplitPane({
+  node, groups, renderGroup, onResize,
+}: SplitPaneProps) {
+  const layout = useMemo(() => computeLayout(node, 0, 0, 100, 100), [node]);
+
+  return (
+    <div style={{ position: "relative", flex: 1, minWidth: 0, minHeight: 0, overflow: "hidden" }}>
+      {layout.panels.map((p) => {
+        const group = groups.find((g) => g.id === p.groupId);
+        if (!group) return null;
+        return (
+          <div
+            key={p.groupId}
+            style={{
+              position: "absolute", left: `${p.x}%`, top: `${p.y}%`,
+              width: `${p.w}%`, height: `${p.h}%`,
+              display: "flex", flexDirection: "column", overflow: "hidden",
+            }}
+          >
+            {renderGroup(group)}
+          </div>
+        );
+      })}
+      {layout.handles.map((h) => (
+        <AbsoluteHandle key={h.id} rect={h} onResize={onResize} />
+      ))}
     </div>
   );
 }

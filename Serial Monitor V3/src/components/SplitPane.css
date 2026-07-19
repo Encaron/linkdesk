@@ -1,41 +1,11 @@
-/* SplitPane — 递归分屏容器（Phase 3.x: flexbox 递归） */
-
-.split-pane {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-  min-height: 0;
-}
+/* SplitPane — 绝对定位平铺分屏（Phase 3.x） */
 
 /* 分割手柄 */
 .split-pane-handle {
-  flex-shrink: 0;
   background: var(--separator);
   transition: background 150ms;
-  z-index: 10;
 }
 
 .split-pane-handle:hover {
   background: var(--accent);
-}
-
-/* 水平分屏 → 竖分割条 */
-.split-pane.horizontal > .split-pane-handle {
-  width: 4px;
-}
-.split-pane.horizontal > .split-pane-handle:hover {
-  width: 6px;
-}
-
-/* 垂直分屏 → 横分割条 */
-.split-pane.vertical > .split-pane-handle {
-  height: 4px;
-}
-.split-pane.vertical > .split-pane-handle:hover {
-  height: 6px;
-}
-
-/* resize 中冻结 CM6 渲染——防止列宽闪烁 */
-.split-pane.resizing .cm-scroller {
-  overflow: hidden !important;
 }
