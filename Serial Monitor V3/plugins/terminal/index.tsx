@@ -173,21 +173,6 @@ class ScrollTracker implements PluginValue {
 
 const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
-/* ---- B33：模块级 CM6 view 缓存（跨 unmount/remount 存活） ---- */
-
-let _cm6IdCounter = 0;
-const _cm6SavedViews = new Map<number, EditorView>();
-
-// 每 30s 清理已脱离文档的缓存 view（标签页已关闭但未被 mount 恢复的）
-setInterval(() => {
-  for (const [id, view] of _cm6SavedViews) {
-    if (!view.dom.isConnected) {
-      view.destroy();
-      _cm6SavedViews.delete(id);
-    }
-  }
-}, 30_000);
-
 /* ---- 终端视图 ---- */
 
 interface TerminalViewProps {
@@ -288,25 +273,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const cmView = useRef<EditorView | null>(null);
   const lineNumberCompartment = useRef(new Compartment());
 
-  // B33 修复：跨组移动时 React unmount→remount，组件级 ref 丢失。
-  // 用模块级 Map 在 unmount/remount 间传递 CM6 view，key 为自增 ID。
-  const viewIdRef = useRef(0);
-  if (viewIdRef.current === 0) viewIdRef.current = ++_cm6IdCounter;
-
   useEffect(() => {
-    const saved = _cm6SavedViews.get(viewIdRef.current);
-    if (saved) {
-      // 从旧容器恢复（跨组移动后 remount）
-      cmView.current = saved;
-      _cm6SavedViews.delete(viewIdRef.current);
-      if (cmContainer.current && !cmContainer.current.contains(saved.dom)) {
-        cmContainer.current.appendChild(saved.dom);
-      }
-      // 恢复后需要 requestMeasure 以适应新容器尺寸
-      requestAnimationFrame(() => saved.requestMeasure());
-      return;
-    }
-
     if (!cmContainer.current) return;
     const view = new EditorView({
       doc: "",
@@ -336,9 +303,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     });
 
     return () => {
-      // 始终保存——无论跨组移动还是真正关闭。
-      // 跨组移动 → 下次 mount 恢复。真正关闭 → 留在 Map 中，超时清理。
-      _cm6SavedViews.set(viewIdRef.current, view);
+      view.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
