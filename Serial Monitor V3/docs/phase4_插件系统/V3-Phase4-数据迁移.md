@@ -47,7 +47,7 @@
   "lastPort": "COM3",          ← 保留。字段名虽然绑串口，但终端插件继续用。改名为 lastSource 留 Phase 5+
   "preferences": { ... },      ← 不变。终端插件自己读写
   "quickSends": { ... },       ← 不变。终端插件自己读写
-  "recentWorkspaces": [],      ← 新增。欢迎页 + workspace 切换器共享
+  "recentViews": [],           ← 新增。欢迎页"最近"区域数据源——不只是 workspace，任何视图打开后都记录
   "enabledPlugins": [],        ← 新增（Phase 4 默认空 = 全部启用。Phase 5 Profile 时使用）
   "layout": {
     "groups": [
@@ -72,7 +72,7 @@ function migratePhase4(prefs: OldPrefs): Phase4Prefs {
   return {
     ...prefs,
     locale: prefs.locale ?? "zh",           // 缺了就默认中文
-    recentWorkspaces: prefs.recentWorkspaces ?? [],
+    recentViews: prefs.recentViews ?? [],
     enabledPlugins: prefs.enabledPlugins ?? [],
     // layout 迁移：旧 terminal 标签页 → TerminalView 仍存在（现在是插件），不丢数据
     layout: migrateLayout(prefs.layout),
@@ -149,7 +149,7 @@ Phase 4：
 
 ### 3.2 prefs.json 被 Phase 4 写过后，在 Phase 3.5 中打开
 
-- `locale` / `recentWorkspaces` / `enabledPlugins` → Phase 3.5 忽略，不报错
+- `locale` / `recentViews` / `enabledPlugins` → Phase 3.5 忽略，不报错
 - `"type": "welcome"` tab → default case，空白标签页
 - 所有其他字段 → 正常读取
 
@@ -160,7 +160,7 @@ Phase 4：
 ## 4. 检查清单
 
 ```
-☐ Phase 4 首次启动 → prefs.json 自动迁移（加 locale/recentWorkspaces/enabledPlugins）
+☐ Phase 4 首次启动 → prefs.json 自动迁移（加 locale/recentViews/enabledPlugins）
 ☐ 旧布局有 terminal 标签页 → 恢复后正常渲染（插件已注册）
 ☐ 旧布局无 terminal 标签页 → 恢复后创建 welcome
 ☐ 旧布局无任何标签页 → 创建 welcome

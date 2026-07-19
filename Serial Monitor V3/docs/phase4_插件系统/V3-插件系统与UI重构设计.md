@@ -312,6 +312,53 @@ function IconBar() {
 - 关闭最后一个终端 → 核心发出 `datasource-lost` 事件 → 卡片进入"等待数据源"状态
 - 重新打开终端 → 选 COM 口 → 数据恢复，卡片自动恢复活跃
 
+### 3.3.1 数据管道绑定模型
+
+> Phase 4 预留接口，Phase 5+ 实现。但设计现在就要定——不然 Phase 5 的 AI 面对"卡片跨工作台移动"时没有参照。
+
+**核心设计：`cardId` 和 `sourceId` 分离。**
+
+| 概念 | 谁负责 | 举例 |
+|---|---|---|
+| `cardId` — 我显示什么数据 | 卡片自己 | `"adc"`, `"temp"`, `"pid_p"` |
+| `sourceId` — 数据从哪来 | 标签页/工作台 | `"terminal-tab-A"`, `"terminal-tab-B"` |
+| `{ cardId, value }` — 数据本身 | RingBuffer（数据管道层） | `{ cardId: "temp", value: 36.5 }` |
+
+卡片不认数据源，数据源不认卡片。两者通过 `cardId` 在 RingBuffer 里汇合。`Tab.sourceId` 字段（Phase 4 预留）承载消费端到数据源的绑定。
+
+**场景 1：消费者主动声明绑哪个源。**
+
+```
+terminal-tab-A (COM3) → RingBuffer A ─┬→ workspace-tab-X (sourceId: terminal-tab-A)
+terminal-tab-B (COM4) → RingBuffer B ─┼→ oled-tab-Z    (sourceId: terminal-tab-A)
+                                      └→ workspace-tab-Y (sourceId: terminal-tab-B)
+```
+
+- 工作台/OLED 的标签页工具栏有数据源下拉框，列出所有活跃终端
+- 未绑定 → 内容区显示"等待数据源"占位
+
+**场景 2：卡片晋升为独立标签页——继承 sourceId。**
+
+```
+[📊 工作台 (sourceId: terminal-tab-A)]
+    └── 📈 波形卡 (cardId: "adc")
+
+用户拖出 → [📈 波形 (sourceId: terminal-tab-A, cardId: "adc")]
+```
+
+新标签页自动继承原工作台的 `sourceId`——用户不需要重新选择。卡从哪来，数据就从哪来。
+
+**场景 3：跨工作台复制卡片——cardId 跟卡片走，sourceId 不跟。**
+
+```
+工作台A (sourceId: 绑 COM3) → 🌡️ temp → 显示 COM3 设备的温度
+工作台B (sourceId: 绑 COM4) → 🌡️ temp → 显示 COM4 设备的温度
+```
+
+同一 `cardId`，不同 `sourceId`，显示各自设备的值。数据天然隔离——每个工作台有自己的 RingBuffer。目标工作台的数据源从来不发送该 `cardId` → 卡片显示"无数据"，不崩。
+
+**约束推导：** 这三条事实在代码中可见（TerminalView 的实例级 RingBuffer + Tab.sourceId 注释 + Card 只认 cardId），任何 AI 实现"卡片移动"时都会自然推到同一套方案。见 memory `code-self-documenting.md`。
+
 ### 3.4 欢迎页（对标 VS Code Welcome）
 
 > 完整设计：[V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md)
@@ -472,27 +519,63 @@ toastQueue.push({ message: "日语语言包已安装", actions: [{ label: "切�
 ### 加载流程
 
 ```
-V3 启动
+应用启动
   → 插件加载器启动
-    → 扫描 plugins/ 目录（一级子目录）
+    → Vite 构建阶段：扫描 plugins/ 目录，每个插件独立打包为 dist/plugins/<pluginId>.js
+    → 运行时：import() 加载插件模块 → React 组件
     → 读每个子目录下的 plugin.json
     → 校验 plugin.json（JSON Schema 验证）
     → 按 type 分类注册：
         type: "view"      → 注册到 renderTabContent 映射 + 图标栏
         type: "card"      → 注册到 CardRegistry
-        type: "theme"     → 注册到 ThemeEngine 主题列表
-        type: "language"  → 注册到 i18next（addResourceBundle）
+        type: "theme"     → 注册到 ThemeEngine 主题列表（纯 JSON，文件监听热加载）
+        type: "language"  → 注册到 i18next（addResourceBundle，纯 JSON，文件监听热加载）
         type: "protocol"  → 注册到协议下拉框列表
         type: "resource"  → 注册到资源浏览器
     → 完成。应用就绪。
 ```
 
-> **⚠️ 技术待验证：** 插件 `entry: "index.tsx"` 的运行时动态加载。Vite 在生产构建中不天然支持从 `plugins/` 目录动态 `import()`（路径在构建时未确定）。方案选项：
-> - **A: Vite `import.meta.glob`** — 构建时扫描 `plugins/` 生成模块映射，插件新增需重新构建
-> - **B: Tauri `asset://` 协议** — 将 `plugins/` 注册为 Tauri 资源目录，用 script 标签动态注入
-> - **C: 构建时编译** — 插件作为 npm workspace，随 V3 一起 `vite build`（开发阶段可用 Vite HMR 即时加载）
-> 
-> Phase 4 先选方案 A/C（开发阶段），生产构建方案在 Step 1 实施时确定。不影响 plugin.json 规范和其他设计。
+### 构建与加载方案
+
+**Vite 独立打包（Phase 4 实施）：**
+
+```typescript
+// vite.config.ts —— 核心和插件分开打包
+export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        // 扫描 plugins/ 下所有视图/卡片/协议插件的入口
+        ...scanPluginEntries('plugins/'),
+      },
+    },
+  },
+})
+```
+
+- 每个含 `.tsx`/`.ts` 的插件编译为独立 JS 文件（`dist/plugins/<pluginId>.js`）
+- React、i18next 等公共库 external 共享，不重复打包
+- 开发阶段：Vite HMR 即时热更新。改终端插件代码 → 保存即生效
+- 生产构建：插件代码随 `vite build` 打包
+
+**运行时加载：**
+
+```typescript
+// src/pluginLoader/runtimeLoader.ts
+// 构建产物直接 import
+async function loadViewPlugin(pluginId: string) {
+  const module = await import(`/plugins/${pluginId}.js`)
+  return module.default  // React 组件
+}
+```
+
+**新增插件的加载行为（对标 VS Code）：**
+
+| 插件类型 | 新装后需要重启？ | 机制 |
+|---|---|---|
+| 含 `.tsx`/`.ts`（视图/卡片/协议） | ✅ 需要——构建时打包 | 对标 VS Code 装含代码的扩展后 Reload Window |
+| 纯 `.json`（主题/语言） | ❌ 不需要 | Tauri fs watch → 热注册 → 即时生效。对标 VS Code 装主题即装即用 |
 
 ### plugin.json 规范
 
@@ -508,12 +591,18 @@ V3 启动
   "author": "社区",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
+  "tabBehavior": {},
+  "statusBar": [],
   "recommends": [
     { "plugin": "bracket", "reason": "需要协议解析串口数据" }
   ],
   "suggests": [
     { "plugin": "gps-nmea", "reason": "GPS NMEA 协议可驱动地图标记" }
   ],
+  "changelog": [
+    { "version": "1.0.0", "date": "2026-07-19", "changes": ["初始发布"] }
+  ],
+  "screenshots": [],
   "minAppVersion": "3.0.0"
 }
 ```
@@ -532,12 +621,16 @@ V3 启动
 | `author` | | 作者名 |
 | `entry` | ✅ | 主入口文件（相对插件目录）。view/card/protocol 必需 |
 | `sidebar` | | 侧栏组件（仅 view 类型有效） |
+| `tabBehavior` | | 标签页行为声明 `{ singleton?: boolean, isFallback?: boolean, confirmOnClose?: string }`。核心读此字段决定去重/保底/关闭确认，不硬编码 switch pluginId。见 [设计评审](V3-Phase4-设计评审与改进.md#4-问题-3tabtype-泄漏核心概念) |
+| `statusBar` | | 状态栏贡献条目 `[{ id, icon?, label, align?, onClick? }]`。加载器收集后从左到右排列。仅 view 类型有效，见 §3.6 |
 | `file` | | 单文件入口——theme 类型的单 theme.json / language 类型的单 lang.json。和 `themes`/`languages` 二选一 |
 | `themes` | | 多主题数组 `[{id, name, file}]`——一个插件包多个子主题。仅 theme 类型 |
 | `languages` | | 多语言数组 `[{code, name, file}]`——一个插件包多个语种/方言。仅 language 类型 |
 | `recommends` | | 推荐同时安装的插件（默认勾选） |
 | `suggests` | | 可选相关插件（默认不勾选） |
-| `minAppVersion` | | 最低 V3 版本要求 |
+| `changelog` | | 更新日志 `[{ version, date, changes: string[] }]`。插件详情页渲染。`plugin.json` 是详情页唯一数据源——不引入 README 等第二种格式 |
+| `screenshots` | | 截图 URL 数组（预留，Phase 5+ 插件市场上线时启用）。加载器目前忽略 |
+| `minAppVersion` | | 最低版本要求 |
 | `docs` | | 附带文档路径（资源插件联动） |
 | `cardDocMap` | | 卡片 ID → 文档锚点映射 |
 | `i18n` | | 插件自带翻译 `{ "zh": "zh.json", "en": "en.json", "ja": "ja.json" }`。加载器在 i18next 初始化时注册。切语言 → 插件 UI 跟随。无对应翻译 → fallback 到插件声明的默认语言 → 再 fallback 到 `en` → 最后显示 key 原文 |
@@ -1066,34 +1159,63 @@ pluginLoader.scanAll({ filter: profile.plugins })
 
 ### ═══════════════════════════════════════
 
-## ▼ 现在就能做（~350 行，不依赖 Phase 5）
+## ▼ 现在就能做——Phase 4 基础设施（~600 行）
 
-### Step 1: 插件加载器基础版（~120 行）
+> **Phase 4 的职责不是"凑合把终端搬过去"，而是把插件系统的基础设施建好。** 终端是第一个用户，但每一项基础设施都按所有未来插件的标准建。
 
+### Step 1: Vite 独立打包 + 插件加载器（~200 行）
+
+- Vite 配置：`plugins/` 下每个视图/卡片/协议插件独立打包为 `dist/plugins/<pluginId>.js`
+- React/i18next 等公共库 external 共享，不重复打包
+- 运行时 `import()` 加载器：加载插件 React 组件 → 注册到 `viewRegistry`
+- 开发阶段 Vite HMR 热更新，生产构建随 `vite build` 打包
 - 扫描 `plugins/` → 按 `plugin.json` 的 `type` 分类注册：
   - `type: "view"` → `viewRegistry`（`renderTabContent` 动态化，去 switch case）
-  - `type: "theme"` → `ThemeEngine.register()`（设置页和插件市场共享同一份主题列表）
-  - `type: "language"` → `i18next.addResourceBundle()`（设置页和插件市场共享同一份语言列表）
+  - `type: "theme"` → `ThemeEngine.register()`（纯 JSON，文件监听热加载）
+  - `type: "language"` → `i18next.addResourceBundle()`（纯 JSON，文件监听热加载）
 - `plugin.json` 校验 + 7 种错误处理
-- **Phase 4 出厂不附带独立的主题/语言插件文件夹。** 暗色/亮色主题和 zh/en 语言保持内置。但加载器支持 `type: "theme"` 和 `type: "language"`——用户丢一个主题 JSON 到 `plugins/` 下就能用
-- **技术待验证：** Vite 动态 import 方案
+- 文件监听（Tauri fs watch）：新增/修改 JSON 插件即时生效，`.tsx` 插件 toast 提示重启
+- Phase 4 出厂不附带独立的主题/语言插件文件夹。暗色/亮色主题和 zh/en 语言保持内置。但加载器支持 `type: "theme"` 和 `type: "language"`——用户丢一个主题 JSON 到 `plugins/` 下就能用
 
-### Step 2: 欢迎页 + 终端插件化 + TopBar 移除（~200 行）
+### Step 2: 欢迎页 + 终端插件化 + TopBar 移除（~250 行）
 
-- 终端迁移为第一个视图插件（验证加载器）
-- **欢迎页组件**（`WelcomeView.tsx`，对标 VS Code Welcome）——快捷入口（打开终端/新建工作台/设置/插件市场）+ 最近 workspace 列表
-- 终端保底 → **欢迎页保底**（`useTabManager` 中 `reduceCloseTab` / `createInitialTabState` / `reduceRestoreLayout` 三处修改）
-- 顶栏消失——TopBar.tsx 移除。串口控制移入终端内部。主题/语言按钮移到状态栏右下角
-- 图标栏 + 侧栏从窗口顶部开始（不再从顶栏下开始），对标 VS Code Activity Bar + Side Bar
+- 终端迁移为第一个视图插件（验证整套加载器）
+- **同步解耦 `handleSend`**：提取 `useSendData` 到 `src/core/useSendData.ts`——搬家不改逻辑，但发送管道从此独立于 TerminalView，Phase 5 卡片直接复用
+- **`tabBehavior` 行为声明**：核心不再 switch on `TabType`，改为读 `viewRegistry` 的 `tabBehavior`（`isFallback` / `singleton` / `confirmOnClose`）。`Tab.type` 保留为过渡字段
+- **欢迎页组件**（`WelcomeView.tsx`）——快捷入口（从 `viewRegistry` 动态渲染）+ `recentViews` 列表
+- 欢迎页保底（`useTabManager` 中三处修改，走 `tabBehavior.isFallback` 而非 `type === "welcome"`）
+- 顶栏消失——TopBar.tsx 移除。串口控制移入终端内部工具栏。主题/语言按钮移到状态栏右下角
+- 图标栏 + 侧栏从窗口顶部开始，对标 VS Code Activity Bar + Side Bar
 - 标签栏不动——Phase 3 的 TabBar 位置、行为、动画全部保留
+- `sourceId` 字段预留：每个终端标签页分配 `sourceId = tab.id`，Phase 5 卡片绑定数据源时用
 
-### ▲ 做完 Step 1-2 的成果
+### Step 3: 插件详情页 + 状态栏框架（~150 行）
+
+- **插件详情页组件**（`PluginDetailView.tsx`）：`plugin.json` 是详情页唯一数据源——图标 + 名称 + 版本 + 作者 + 描述（多行） + 推荐列表 + 更新日志 + 安装/卸载按钮。不引入 README 等第二种格式
+- **状态栏贡献点框架**：状态栏从左到右渲染——核心全局项（`中:EN`、`☀`、`🔔`）→ 插件贡献项（按加载顺序）。Phase 4 只有终端插件贡献：连接状态 + TX/RX
+- **toast 通知队列**：堆叠显示（最多 3 条），插件安装/更新/语言变化时触发
+
+### Step 4: 插件开发文档 + JSON Schema（不占代码行，文档产出）
+
+- `docs/插件开发/plugin.json规范.md` — 所有字段定义、示例、必需/可选
+- `docs/插件开发/plugin.schema.json` — JSON Schema，`plugin.json` 的 `$schema` 引用
+- `docs/插件开发/视图插件开发.md` — `{ isActive }` 契约、keep-alive 机制、可用 hooks
+- `docs/插件开发/协议插件开发.md` — `parseLine()` / `detect()` 签名 + SBQ 完整示例
+
+### ▲ 做完 Step 1-4 的成果
 
 ```
-✅ 插件加载器就绪——新视图 = plugins/ 下丢文件夹，不碰核心 switch case
+✅ Vite 独立打包 + import() 运行时加载——和 VS Code 同样模式，新装 .tsx 插件重启即用
+✅ JSON 插件热加载——主题/语言即拖即用，对标 VS Code 装主题
+✅ 插件加载器就绪——新视图 = plugins/ 下丢文件夹 + 写 plugin.json + React 组件
 ✅ 终端是第一个视图插件——和未来社区插件走同一套加载机制
+✅ handleSend 解耦为 useSendData——Phase 5 卡片拿起来就用
+✅ tabBehavior 行为声明——核心不认插件名，新插件零核心改动
 ✅ 欢迎页替代终端保底——启动/关闭最后一个标签页时自动显示
 ✅ 顶栏消失——对标 VS Code。图标栏+侧栏从窗口顶部开始。三栏布局结构不动
+✅ 状态栏贡献点框架——未来插件声明 statusBar 即可，核心零改动
+✅ 插件详情页——plugin.json 是唯一数据源，AI 友好（一份 JSON = 一个插件）
+✅ 插件开发文档——社区开发者对着文档就能写插件
 ✅ 加新视图的复杂度从"改 5 个文件"降到"写一个 plugin.json + 一个 React 组件"
 ```
 
@@ -1101,39 +1223,43 @@ pluginLoader.scanAll({ filter: profile.plugins })
 
 ## ▼ 依赖 Phase 5（卡片架构就绪后才能做）
 
-### Step 3: 卡片 + 协议插件加载（~80 行）
+### Step 5: 卡片 + 协议插件加载（~80 行）
 
-- CardRegistry 就绪后加卡片插件加载
-- 协议切换机制 → 加载器提供协议列表
+- CardRegistry 就绪后加卡片插件加载——复用同一套 Vite 打包 + `import()` 运行时加载
+- 协议切换机制 → 加载器提供协议列表。方括号协议从 `src/core/ProtocolParser.ts` 移出，变为内置协议插件
 
-### Step 4: 插件市场 UI（~500 行）
+### Step 6: 插件市场 UI（~400 行）
 
-- 侧栏：全部/已安装/可更新 分类
-- 搜索 + 卡片列表 + 安装/卸载
+- 侧栏：全部/已安装/可安装 分类
+- 搜索 + 列表 + 安装/卸载 + 详情页（Step 3 已建好组件）
 - 离线安装（拖 `.v3p` 文件）
+- 文件监听已就绪——拖入 `.json` 插件即时生效，`.tsx` 插件 toast 提示重启
 
-### Step 5: 插件连锁推荐（~100 行）
+### Step 7: 插件连锁推荐（~100 行）
 
-- `plugin.json` 加 recommends/suggests/requires
-- 安装/卸载时触发推荐对话框
+- `plugin.json` 的 recommends/suggests/requires 字段（Phase 4 已定义在规范和 Schema 中）
+- 详情页内勾选框 + 安装/卸载时推荐警告
+- 循环推荐检测
 
-### Step 6: 数据源插件（~200 行，Rust 侧重构）
+### Step 8: 数据源插件（~200 行，Rust 侧重构 + Phase 6+）
 
-- 数据源抽象接口
+- 数据源抽象接口（`DatasourcePlugin`）
 - 串口数据源重构为第一个数据源插件
-- 多终端各自绑定数据源
+- 多终端各自绑定数据源（`sourceId` 已在 Phase 4 预留）
+- Binary 协议插件：WASM 方案（Phase 6+），Phase 4 已留好 `mode: "binary"` 字段
 
-### Step 7: 插件安全（~80 行）
+### Step 9: 插件安全（~80 行，Phase 5+）
 
 - permissions 声明 + 安装时权限确认 + checksum 校验
 
-### Phase 4 完整估行
+### 估行
 
 | 分组 | Step | 估行数 | 阻塞？ |
 |---|---|---|---|
-| **现在能做** | 1-2 | **~300 行** | 否 |
-| 依赖 Phase 5 | 3-7 | ~960 行 | 是 |
-| **Phase 4 总计** | 1-7 | **~1300 行** | |
+| **Phase 4 做** | 1-4 | **~600 行** | 否 |
+| 依赖 Phase 5 | 5-7 | ~580 行 | 是 |
+| 依赖 Phase 6+ | 8-9 | ~280 行 | 是 |
+| **总计** | 1-9 | **~1460 行** | |
 
 ---
 

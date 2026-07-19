@@ -20,10 +20,11 @@
 
 | 原则 | 说明 |
 |---|---|
-| **数据驱动渲染** | 欢迎页不硬编码任何入口。快捷入口 = 插件注册表的投影，最近列表 = `prefs.json` 的投影。加新视图插件 → 欢迎页自动多一个入口，零行改动 |
-| **归一化** | 一个概念一个名字。欢迎页的"视图入口"和插件加载器的 `viewRegistry` 是同一份数据。"最近 workspace"和 workspace 切换器共享 `prefs.json` 的 `recentWorkspaces` 字段 |
+| **数据驱动渲染** | 欢迎页不硬编码任何入口。快捷入口 = 插件注册表的投影，最近列表 = `prefs.json` 的 `recentViews` 投影。加新视图插件 → 欢迎页自动多一个入口，零行改动 |
+| **归一化** | 一个概念一个名字。欢迎页的"视图入口"和插件加载器的 `viewRegistry` 是同一份数据。"最近"和 `prefs.json` 共享 `recentViews` 字段 |
 | **AI 友好** | 所有可改的东西背后有纯文本入口。欢迎页本身的配置 = 零——不需要专门的欢迎页 JSON 文件。所有内容从已有数据源派生 |
 | **不做新概念** | 欢迎页不引入新的数据类型、新的存储文件、新的注册机制。它只是已有数据的另一种渲染方式 |
+| **壳的兜底，不是插件** | 欢迎页是核心壳的兜底 UI，不是插件。对标浏览器 `chrome://newtab`——关闭所有标签页后自动显示的"新标签页"。不在 `viewRegistry` 中，不在图标栏上，不可卸载。职责：① 无标签页时自动显示 ② 提供快捷入口（数据来自插件注册表） |
 
 ---
 
@@ -39,8 +40,8 @@ interface WelcomeData {
   // 从插件加载器派生：所有 type === "view" 的已安装插件
   shortcuts: ViewShortcut[]
   
-  // 从 prefs.json 派生：最多 10 条，最近使用排最前
-  recentWorkspaces: string[]
+  // 从 prefs.json 派生：最近打开的视图（不只是 workspace）
+  recentViews: RecentViewEntry[]
 }
 
 interface ViewShortcut {
@@ -52,12 +53,18 @@ interface ViewShortcut {
   description: string    // "串口数据收发" — tooltip
 }
 
+interface RecentViewEntry {
+  pluginId: string       // "terminal"
+  label: string          // "终端"
+  workspaceName?: string // workspace 类型才有
+}
+
 // 派生逻辑（纯函数，不存状态）：
 //   shortcuts = pluginLoader.getViewPlugins()
 //     .filter(p => p.type === "view")
 //     .map(p => ({ pluginId: p.id, tabType: p.tabType, ... }))
 //
-//   recentWorkspaces = prefs.recentWorkspaces ?? []
+//   recentViews = prefs.recentViews ?? []
 ```
 
 ### 2.2 prefs.json 扩展
@@ -71,18 +78,18 @@ interface ViewShortcut {
   "quickSends": { "AT": "AT\r\n" },
   "layout": { "groups": [...], "root": {...} },
   
-  "recentWorkspaces": [
-    "heart_rate",
-    "pid_tuning",
-    "distance_alarm"
+  "recentViews": [
+    { "pluginId": "terminal", "label": "终端" },
+    { "pluginId": "workspace", "label": "PID 调参", "workspaceName": "pid_tuning" }
   ]
 }
 ```
 
 **字段规范：**
-- `recentWorkspaces` — `string[]`，workspace 名称（不含 `.workspace.json` 后缀），最多 10 条
-- AI 可 grep：`grep "recentWorkspaces" prefs.json` 直接定位
+- `recentViews` — `{ pluginId: string, label: string, workspaceName?: string }[]`，最多 10 条
+- AI 可 grep：`grep "recentViews" prefs.json` 直接定位
 - 空数组 `[]` = 无最近记录，欢迎页"最近"区域不渲染
+- **Phase 4 就有数据：** 用户打开终端 → 记录到 `recentViews`；下次启动 → 欢迎页"最近"区域出现终端入口
 - Phase 4 阶段此字段始终为空——workspace 功能在 Phase 5。字段现在建好，Phase 5 接入后自然有数据
 
 ### 2.3 为什么不新建 welcome.json
@@ -147,22 +154,26 @@ interface ViewShortcut {
   → 渲染 PluginMarketView
 ```
 
-### 3.3 最近 workspace 交互
+### 3.3 最近视图交互
 
 ```
-用户在欢迎页点"heart_rate" → 📂
-  → 检查 workspaces/heart_rate.workspace.json 是否存在
-    ├─ 存在 → createTab("workspace", { workspaceName: "heart_rate" })
-    │         → prefs.recentWorkspaces 中该项移到头部
+用户在欢迎页点"终端"
+  → createTab("terminal")
+  → prefs.recentViews 中该项移到头部
+
+用户在欢迎页点"PID 调参"（workspace 条目）
+  → 检查 workspaces/pid_tuning.workspace.json 是否存在
+    ├─ 存在 → createTab("workspace", { workspaceName: "pid_tuning" })
+    │         → prefs.recentViews 中该项移到头部
     └─ 不存在 → toast "workspace 文件已不存在"
-                → 从 prefs.recentWorkspaces 中移除该项
+                → 从 prefs.recentViews 中移除该项
 
-用户通过其他方式打开 workspace（[+] 菜单 / 命令面板）
-  → createTab("workspace", { workspaceName: "xxx" })
-  → prefs.recentWorkspaces 头部插入 "xxx"
-  → 去重：如果 "xxx" 已存在，移到头部
+用户通过任何方式打开视图（图标栏 / [+] 菜单 / 命令面板）
+  → createTab(pluginId, ...)
+  → prefs.recentViews 头部插入 { pluginId, label, workspaceName? }
+  → 去重：同一 pluginId + workspaceName 已存在 → 移到头部
 
-recentWorkspaces 超过 10 条
+recentViews 超过 10 条
   → 保留前 10 条，砍掉尾部
 ```
 
@@ -186,8 +197,8 @@ recentWorkspaces 超过 10 条
 │    │         │  └───────────────────────────┘   │
 │    │         │                                  │
 │    │         │  ┌─ 最近 ────────────────────┐   │
-│    │         │  │ heart_rate            📂   │   │
-│    │         │  │ pid_tuning            📂   │   │
+│    │         │  │ 📟 终端                  │   │
+│    │         │  │ 📊 PID 调参           📂  │   │
 │    │         │  └───────────────────────────┘   │
 │    │         │                                  │
 │    │         │  ┌─ 帮助 ────────────────────┐   │
@@ -205,13 +216,13 @@ recentWorkspaces 超过 10 条
 
 function WelcomeView({ isActive }: { isActive: boolean }) {
   const shortcuts = usePluginLoader().getViewPlugins()
-  const recentWorkspaces = usePrefs().recentWorkspaces ?? []
+  const recentViews = usePrefs().recentViews ?? []
   
   return (
     <div className="welcome-page">
       <header className="welcome-hero">
         <h1>{APP_NAME}</h1>
-        <p>{t("嵌入式通用调试容器")}</p>
+        <p>{t("通用调试容器")}</p>
       </header>
       
       <section className="welcome-section">
@@ -230,10 +241,10 @@ function WelcomeView({ isActive }: { isActive: boolean }) {
         </div>
       </section>
       
-      {recentWorkspaces.length > 0 && (
+      {recentViews.length > 0 && (
         <section className="welcome-section">
           <h2>{t("最近")}</h2>
-          <RecentList items={recentWorkspaces} onOpen={handleOpenWorkspace} />
+          <RecentList items={recentViews} onOpen={handleOpenRecent} />
         </section>
       )}
       
@@ -271,7 +282,7 @@ interface WelcomeCardProps {
 
 ```typescript
 // 每行：workspace 名称 + hover 出现的 📂 打开图标
-// 数据源：prefs.recentWorkspaces（和 workspace 切换器共享）
+// 数据源：prefs.recentViews（和 workspace 切换器共享）
 
 interface RecentListProps {
   items: string[]              // workspace 名称，不含后缀
@@ -292,27 +303,26 @@ interface RecentListProps {
 | W1 | 零个视图插件（plugins/ 目录为空或全是非 view 类型） | "开始"区域显示空状态："暂无可用视图，请在插件市场搜索安装" + 插件市场入口链接 |
 | W2 | 只有出厂预装的视图插件（终端/工作台/设置/插件市场，4 个） | 显示 4 张 WelcomeCard。Phase 4 初始状态 |
 | W3 | 安装了 15 个视图插件 | WelcomeCard grid 自动换行，每行 3-4 张，超出垂直滚动 |
-| W4 | recentWorkspaces 中某个文件已被外部删除 | 点击 → toast "workspace 文件已不存在" → 从 recentWorkspaces 移除 → 保存 prefs.json |
-| W5 | recentWorkspaces 为空或字段不存在 | "最近"区域不渲染，不显示空状态文字 |
+| W4 | recentViews 中某个文件已被外部删除 | 点击 → toast "workspace 文件已不存在" → 从 recentViews 移除 → 保存 prefs.json |
+| W5 | recentViews 为空或字段不存在 | "最近"区域不渲染，不显示空状态文字 |
 | W6 | 用户关闭欢迎页后关闭了所有其他标签页 | 自动重建欢迎页（和首次启动同逻辑） |
 | W7 | 用户在欢迎页输入 URL/命令（未来） | 顶部可加一个迷你输入条——对标 VS Code 的 `> ` 命令输入。Phase 4 先用命令面板 Ctrl+Shift+P 覆盖 |
 | W8 | 最小窗口尺寸（720×560）下的欢迎页 | WelcomeCard 不重叠，"最近"和"帮助"区域均可见。必要时缩小 hero 区域的垂直留白 |
 | W9 | 亮色/暗色主题 | 全部颜色走 `var(--xxx)`，零硬编码 hex。欢迎页出生就支持双主题 |
 | W10 | 中/英文切换 | 全部文字走 `t()`。`ViewShortcut.name` 来自插件注册表（已随 i18next 切换）。欢迎页不持有文字 |
-
----
+| W11 | 安装了 10+ 视图插件导致"开始"区域卡片过多 | grid 自动换行，垂直滚动。`WelcomeCard` 的 grid 容器设 `max-height` + `overflow-y: auto` |
 
 ## 6. 实施清单
 
 ### 6.1 数据层
 
-- [ ] `prefs.json` schema 加 `recentWorkspaces: string[]`（可选，默认 `[]`）
-- [ ] `PreferenceService` 类型定义加 `recentWorkspaces` 字段
+- [ ] `prefs.json` schema 加 `recentViews: string[]`（可选，默认 `[]`）
+- [ ] `PreferenceService` 类型定义加 `recentViews` 字段
 - [ ] `useTabManager`：
   - `createInitialTabState()` → 改为一律创建 `type: "welcome"` 标签页（不再创建 terminal）
   - `reduceCloseTab()` → 全局唯一标签页是 welcome 时拒关（替代旧 terminal 检查）
   - `reduceRestoreLayout()` → 无标签页时补 welcome（替代旧 terminal 补丁）
-  - 任何 `createTab(...)` 成功后 → 递增 `prefs.recentWorkspaces`（仅 workspace 类型）
+  - 任何 `createTab(...)` 成功后 → 递增 `prefs.recentViews`（仅 workspace 类型）
 
 ### 6.2 UI 层
 

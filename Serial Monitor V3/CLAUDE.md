@@ -29,6 +29,7 @@ Phase 1-3.5 ✅ → **Phase 4 🔜 插件系统（设计完成，代码未写）
 6. **`setState` 函数式更新器内部不写副作用**（B25 教训）
 7. **组件只实现 OnData(fields) + OnSend**，不改路由/壳/其他组件
 8. **ProtocolParser 是独立可替换模块，RingBuffer 接口 `{ cardId, value }` 是硬边界**——开发阶段只用方括号协议，但任何代码不得写死"只有这一种协议"。Phase 4 协议插件系统通车时，只换解析器不改下游。
+9. **核心无知原则**（memory `core-ignorance-principle.md`）：核心不知道软件是干什么的。只定义"怎么接"，不定义"接什么"。往核心加东西前先问：加了之后核心变得更"知道自己是干什么的"了吗？是 → 别加，做成插件
 
 完整版：`docs/` + memory 系统
 
@@ -46,6 +47,15 @@ Phase 1-3.5 ✅ → **Phase 4 🔜 插件系统（设计完成，代码未写）
 - **drop zone 照抄 VS Code**：SPLIT_THRESHOLD=0.25 + 左右优先（不自创算法）
 - **递归分屏 SplitNode 树**：`leaf | branch(direction, [child, child], sizes)`，MAX_TREE_DEPTH=4
 
+## Phase 4 架构决策（详见 memory `phase4-design-decisions.md`）
+
+- **插件 = 独立构建产物。** Vite 将 `plugins/` 下每个插件独立打包为 `dist/plugins/<pluginId>.js`。`.tsx` 插件重启生效，`.json` 插件即时生效（对标 VS Code）
+- **核心不认 pluginId。** 标签页行为（保底/单例/关闭确认）由 `plugin.json` 的 `tabBehavior` 声明，核心读 registry 不 switch on type
+- **`useSendData` 在 Phase 4 提取到 core。** 发送管道（编码→invoke→回显→历史）独立于 TerminalView，Phase 5 卡片直接复用
+- **欢迎页是壳的兜底，不是插件。** 对标浏览器新标签页，通过 `tabBehavior.isFallback` 声明
+- **插件详情页只读 `plugin.json`。** 不引入 README 等第二种格式
+- **命名不绑版本号。** 不用 "V3" 当品牌名，插件 ID 不带版本号前缀
+
 ## 反模式——不要做
 
 - 不要自创算法，照抄 VS Code
@@ -53,6 +63,7 @@ Phase 1-3.5 ✅ → **Phase 4 🔜 插件系统（设计完成，代码未写）
 - 不要嵌套卡片（card in card）
 - 不要手写 Tauri listen()——用 `useTauriEvent` hook
 - 不要说"架构不支持"——检查六类插件接口。视图/卡片/协议/主题/语言/资源，新功能落在哪一类？每类都是窄接口，不碰架构
+- **不要说"这个功能插件做不了"——插件没有 API 白名单。** 插件代码和核心代码在同一个 WebView 里跑，React 组件就是 React 组件。`import Leaflet`、`import THREE.js`、`<iframe>`、`<video>`——核心代码能用的 JS 库和 Web API，插件全能用。视图插件的契约只有 `{ isActive: boolean }`，之外全是标准 React 自由发挥
 
 ## 开发命令
 
@@ -70,9 +81,11 @@ npx vitest run       # 单元测试（91 个）
 | 你要做什么 | 读这个 |
 |------|------|
 | 理解架构 | `docs/开发管理/当前状态.md` |
+| Phase 4 设计 | `docs/phase4_插件系统/` |
 | Phase 3.5 任务 | `docs/标签页设计/V3-Phase3.5-品质打磨.md` |
 | 标签页/分屏设计 | `docs/标签页设计/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
-| 已确认决策 | memory `design-decisions.md` |
+| 写插件 | `docs/插件开发/`——plugin.json 规范 + 视图/协议插件开发指南 + JSON Schema |
+| 已确认决策 | memory `design-decisions.md` + `phase4-design-decisions.md` |
 | 已知坑 | memory `v3-pitfalls.md` + `phase3-drag-bugs.md` |
 | 主题系统 | memory `theme-system.md` |

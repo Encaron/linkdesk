@@ -1,0 +1,265 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embeddesk.app/schemas/plugin.schema.json",
+  "title": "插件元数据",
+  "description": "plugin.json 的 JSON Schema——插件加载器校验 + IDE 自动补全",
+  "type": "object",
+  "required": ["type", "name", "version"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用——IDE 自动补全用"
+    },
+    "type": {
+      "type": "string",
+      "description": "插件类型",
+      "enum": ["view", "card", "theme", "language", "protocol", "resource", "datasource"]
+    },
+    "core": {
+      "type": "boolean",
+      "description": "是否核心控制面——不可卸载。默认 false",
+      "default": false
+    },
+    "name": {
+      "type": "string",
+      "description": "显示名称",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "语义化版本",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "icon": {
+      "type": "string",
+      "description": "图标标识——codicon 名称或文件路径"
+    },
+    "iconSource": {
+      "type": "string",
+      "description": "图标来源",
+      "enum": ["codicon", "svg", "url"],
+      "default": "codicon"
+    },
+    "description": {
+      "type": "string",
+      "description": "一句话描述，插件详情页展示。支持多行"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者名"
+    },
+    "entry": {
+      "type": "string",
+      "description": "入口文件路径，相对插件目录。view/card/protocol 必需"
+    },
+    "sidebar": {
+      "type": "string",
+      "description": "侧栏组件路径，仅 view 类型有效"
+    },
+    "tabBehavior": {
+      "type": "object",
+      "description": "标签页行为声明——核心读此字段决定去重/保底/关闭确认",
+      "properties": {
+        "isFallback": {
+          "type": "boolean",
+          "description": "场上无标签页时自动创建此标签页，且不可关闭",
+          "default": false
+        },
+        "singleton": {
+          "type": "boolean",
+          "description": "全局只允许一个实例",
+          "default": false
+        },
+        "confirmOnClose": {
+          "type": "string",
+          "description": "关闭前弹出确认对话框，值为提示文本"
+        }
+      },
+      "additionalProperties": false
+    },
+    "statusBar": {
+      "type": "array",
+      "description": "状态栏贡献条目",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "description": "唯一标识" },
+          "icon": { "type": "string", "description": "codicon 名称或 SVG 路径" },
+          "label": { "type": "string", "description": "显示文字" },
+          "align": { "type": "string", "enum": ["left", "right"], "default": "left" },
+          "onClick": { "type": "string", "description": "点击行为——命令名" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "file": {
+      "type": "string",
+      "description": "单文件入口——theme/language 类型用。和 themes/languages 二选一"
+    },
+    "themes": {
+      "type": "array",
+      "description": "多主题数组，仅 theme 类型",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "file"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "file": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "languages": {
+      "type": "array",
+      "description": "多语言数组，仅 language 类型",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "file"],
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "file": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mode": {
+      "type": "string",
+      "description": "协议模式。text = Phase 4 可用；binary = Phase 6+ WASM",
+      "enum": ["text", "binary"],
+      "default": "text"
+    },
+    "resources": {
+      "type": "array",
+      "description": "资源文件列表，仅 resource 类型",
+      "items": { "type": "string" }
+    },
+    "recommends": {
+      "type": "array",
+      "description": "推荐同时安装的插件",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "reason"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "suggests": {
+      "type": "array",
+      "description": "可选相关插件",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "reason"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requires": {
+      "type": "array",
+      "description": "硬依赖——未满足则安装按钮禁用",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "version"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "version": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "description": "更新日志",
+      "items": {
+        "type": "object",
+        "required": ["version", "date"],
+        "properties": {
+          "version": { "type": "string" },
+          "date": { "type": "string" },
+          "changes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "description": "截图 URL 数组（Phase 5+ 启用）",
+      "items": { "type": "string" }
+    },
+    "minAppVersion": {
+      "type": "string",
+      "description": "最低软件版本要求"
+    },
+    "docs": {
+      "type": "string",
+      "description": "附带文档路径（资源插件联动）"
+    },
+    "cardDocMap": {
+      "type": "object",
+      "description": "卡片 ID → 文档锚点映射",
+      "additionalProperties": { "type": "string" }
+    },
+    "i18n": {
+      "type": "object",
+      "description": "插件自带翻译文件",
+      "additionalProperties": { "type": "string" }
+    },
+    "cssVars": {
+      "type": "object",
+      "description": "插件自定义 CSS 变量",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "dark": { "type": "string" },
+          "light": { "type": "string" }
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "权限声明（Phase 5+ 启用）",
+      "items": {
+        "type": "string",
+        "enum": ["serial", "filesystem", "network"]
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "view" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "card" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "protocol" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

@@ -77,6 +77,11 @@ TerminalView.tsx (950 行)
 - keep-alive 机制 — 同上
 - SplitNode 树 — 同上
 
+### 1.4 Phase 4 同步新建（搬家时一并产出，不单独排）
+
+- **`src/core/useSendData.ts`** — 发送管道 hook。从 `TerminalView.performSend` 提取，`onEcho` / `onHistory` / `onError` 由调用方注入。Phase 5 卡片直接 import 复用
+- **`src/core/types.ts`** — `Tab` 新增 `pluginId: string` 字段。`sourceId` 字段预留（= tab.id，Phase 5 卡片绑定数据源用）
+
 ---
 
 ## 2. 目标结构
@@ -118,15 +123,18 @@ src/                                       src/
   "icon": "terminal",
   "iconSource": "codicon",
   "description": "串口数据收发——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置",
-  "author": "V3 官方",
+  "author": "官方",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
+  "tabBehavior": {
+    "confirmOnClose": "关闭此标签页将断开串口连接"
+  },
   "statusBar": [
     { "id": "connection", "icon": "circle-filled", "label": "", "align": "left", "onClick": "focusTerminal" },
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
   ],
   "recommends": [
-    { "plugin": "bracket", "reason": "需要协议解析串口数据——不装只能在原始 hex 模式使用" }
+    { "plugin": "workspace", "reason": "配合卡片可视化数据" }
   ]
 }
 ```
@@ -135,18 +143,20 @@ src/                                       src/
 
 ## 3. 迁移步骤
 
-### Step A: 核心侧——删耦合（~20 行改）
+### Step A: 核心侧——删耦合 + 改行为声明（~40 行改）
 
 | # | 文件 | 改动 |
 |---|---|---|
-| A1 | `useTabManager.ts` | `createInitialTabState()` → 创建 welcome |
-| A2 | `useTabManager.ts` | `reduceCloseTab()` → terminal 保底改为 welcome 保底 |
+| A1 | `useTabManager.ts` | `createInitialTabState()` → 创建 welcome（通过 `tabBehavior.isFallback` 查找） |
+| A2 | `useTabManager.ts` | `reduceCloseTab()` → terminal 保底改为 welcome 保底（`tabBehavior.isFallback`） |
 | A3 | `useTabManager.ts` | `reduceRestoreLayout()` → 确保 welcome 而非 terminal |
-| A4 | `MainContent.tsx` | `renderTabContent()` → 删 `case "terminal"`，走 `viewRegistry.get()` |
+| A4 | `MainContent.tsx` | `renderTabContent()` → 删所有硬编码 `case`，走 `viewRegistry.get(tab.pluginId).component` |
 | A5 | `TabBar.tsx` | terminal [×] 清空逻辑 → 改为 welcome 保底 |
 | A6 | `App.tsx` | `import TopBar` → 删。`import TerminalView` → 删 |
+| A7 | `useTabManager.ts` | 单例去重逻辑 → 从 `type === "settings"` 改为 `tabBehavior.singleton` |
+| A8 | `useTabManager.ts` | `Tab.type` 保留为过渡字段，新增 `pluginId`；旧布局恢复时自动补 `pluginId` |
 
-### Step B: 终端侧——搬文件（不改逻辑）
+### Step B: 终端侧——搬文件 + 解耦（改 import，不改逻辑）
 
 | # | 操作 |
 |---|---|
@@ -156,15 +166,18 @@ src/                                       src/
 | B4 | `TerminalSidebar.tsx` → `plugins/terminal/sidebar.tsx` |
 | B5 | TopBar 串口控制（`<select> COM口`, `<select> 波特率`, 打开按钮）→ 新建 `plugins/terminal/toolbar.tsx` |
 | B6 | 修正 import 路径（`../core/DataConverter` 等 → 相对 `plugins/terminal/`） |
+| B7 | **提取 `useSendData`** → `performSend` 逻辑从 `index.tsx` 移至 `src/core/useSendData.ts`，`onEcho`/`onHistory`/`onError` 由终端注入。终端行为和搬家前完全一致，但管道从此独立 |
 
-### Step C: 插件加载器——注册（~100 行新）
+### Step C: 插件加载器——注册（~150 行新）
 
 | # | 操作 |
 |---|---|
-| C1 | 新建 `src/pluginLoader/viewRegistry.ts` — `Map<pluginId, ViewPlugin>` |
-| C2 | 新建 `src/pluginLoader/loader.ts` — 启动扫描 `plugins/` → 读 `plugin.json` → 动态 import → 注册 |
-| C3 | `App.tsx` 启动时调 `initPluginLoader()` |
-| C4 | `MainContent.tsx` 的 `renderTabContent()` 改为 `viewRegistry.get(tab.pluginId)?.component` |
+| C1 | 新建 `src/pluginLoader/viewRegistry.ts` — `Map<pluginId, { component, tabBehavior, statusBar, ...pluginJson }>` |
+| C2 | 新建 `src/pluginLoader/loader.ts` — 启动扫描 `plugins/` → 读 `plugin.json` → Vite 独立打包 + `import()` 运行时加载 → 注册 |
+| C3 | 新建 `src/pluginLoader/runtimeLoader.ts` — `import(/plugins/<pluginId>.js)` 加载编译产物 |
+| C4 | `vite.config.ts` — 插件独立打包配置（`scanPluginEntries` + `external` 公共库） |
+| C5 | `App.tsx` 启动时调 `initPluginLoader()` |
+| C6 | `MainContent.tsx` 的 `renderTabContent()` 改为 `viewRegistry.get(tab.pluginId)?.component` |
 
 ### Step D: 顶栏移除 + 图标栏动态化（~100 行改）
 
@@ -191,7 +204,7 @@ src/                                       src/
 | # | 风险 | 后果 | 对策 |
 |---|---|---|---|
 | R1 | TerminalView 的 import 路径批量改错 | CM6/Monaco 加载失败，终端白屏 | 迁移后第一步：验证 CM6 渲染 + Monaco 输入 + Enter 发送。三项通过 = import 正确 |
-| R2 | Vite 不识别 `plugins/` 目录下的 `.tsx` 动态 import | 插件加载失败 | Step C 先验证 Vite `import.meta.glob` 或 Tauri asset 方案。不写 1000 行加载器再发现 Vite 不支持 |
+| R2 | Vite 独立打包 + `import()` 运行时加载 | 已解决——Vite 构建时将 `plugins/` 下入口独立打包，运行时 `import(/plugins/<id>.js)` 加载。开发阶段 HMR 即时生效 | ✅ 方案已定，见 [设计评审](V3-Phase4-设计评审与改进.md#2-问题-1vite-动态-import) |
 | R3 | TopBar 串口控制移入终端后，`invoke` 调用路径变化 | 打不开串口 | `invoke` 是全局的——Tauri command 注册在 Rust 端，`invoke("open_port")` 从哪调都一样。不改 Rust 一行代码 |
 | R4 | 终端插件文件名/import 和旧测试冲突 | 测试失败 | Step E 只改测试描述和初始状态，不删测试逻辑 |
 | R5 | TerminalView 的 Monaco 初始化依赖 TopBar 的某种时序 | Monaco 不渲染 | TopBar 不应该影响 Monaco 初始化——它们是独立的。但如果真出现了，terminal/toolbar.tsx 在 TerminalView mount 时同步初始化 |

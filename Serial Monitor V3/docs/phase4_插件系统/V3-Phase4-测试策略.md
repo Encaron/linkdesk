@@ -11,12 +11,12 @@
 
 | 旧测试 | 改动 |
 |---|---|
-| "默认：1 组 1 终端标签页" | → "默认：1 组 1 欢迎页" |
-| "终端保底：全局唯一终端不能关" | → "欢迎页保底：全局唯一欢迎页不能关" |
-| "创建终端标签页" | 保留——`reduceCreateTab(prev, "terminal")` 仍然合法 |
-| "workspace 去重" | 保留——逻辑不变 |
-| "settings 单例去重" | 保留——逻辑不变 |
-| 所有分屏/拖拽/右键测试 | **零改动**——这些不碰 `type` |
+| "默认：1 组 1 终端标签页" | → "默认：1 组 1 欢迎页"（通过 `tabBehavior.isFallback` 查找） |
+| "终端保底：全局唯一终端不能关" | → "欢迎页保底：全局唯一 fallback 不能关" |
+| "创建终端标签页" | 保留——`reduceCreateTab(prev, "terminal")` → `reduceCreateTab(prev, { pluginId: "terminal" })` |
+| "workspace 去重" | 保留——逻辑不变，判断依据从 `type` 改为 `pluginId` |
+| "settings 单例去重" | 保留——逻辑不变，判断依据从 `type === "settings"` 改为 `tabBehavior.singleton` |
+| 所有分屏/拖拽/右键测试 | **零改动**——这些不碰 type/pluginId |
 
 ### 1.2 splitTree 测试（~10 个用例）
 
@@ -44,6 +44,8 @@
 | L4 | `plugin.json` JSON 格式错误 → 跳过，不崩 | 返回空 map（或只有有效插件的 map） |
 | L5 | 两个插件同 pluginId → 高版本优先 | `viewRegistry.get("terminal").version === "2.0.0"` |
 | L6 | `plugin.json` 声明 `core: true` → 标记 | `viewRegistry.get("settings").core === true` |
+| L7 | Vite 构建产物包含所有视图插件模块 | `dist/plugins/` 下每个 `<pluginId>.js` 可正常 `import()` |
+| L8 | `tabBehavior` 读取正确 | singleton / isFallback / confirmOnClose 各值正确解析 |
 
 ### 2.2 插件状态测试（新文件：`src/pluginLoader/__tests__/lifecycle.test.ts`）
 
@@ -53,15 +55,17 @@
 | S2 | 启用 → 卸载 → `.disabled/` | 文件移到 `.disabled/` |
 | S3 | 卸载 → 安装 → `plugins/` | 文件移回 `plugins/` |
 | S4 | core 插件不可卸载 | `canUninstall("settings") === false` |
+| S5 | `.json` 插件（主题/语言）新装即时生效，`.tsx` 插件新装需重启 | 文件监听器验证 |
 
 ### 2.3 欢迎页保底测试（更新 useTabManager.test.ts）
 
 | # | 测试 | 预期 |
 |---|---|---|
-| W1 | 初始状态 = 1 个欢迎页 | `allTabs(state)[0].type === "welcome"` |
-| W2 | 全局唯一欢迎页不能关 | `reduceCloseTab(state, welcomeId).closed === false` |
+| W1 | 初始状态 = 1 个欢迎页 | `viewRegistry.get(tab.pluginId).tabBehavior.isFallback === true` |
+| W2 | 全局唯一 isFallback 标签页不能关 | `reduceCloseTab(state, welcomeId).closed === false` |
 | W3 | 创建 terminal 后，welcome 可被关闭 | 另一个 tab 存在时 welcome 可关 |
-| W4 | 关闭所有非 welcome → 拒关 welcome | 同 W2 |
+| W4 | 关闭所有非 fallback → 拒关 fallback | 同 W2 |
+| W5 | 设置插件 singleton 去重 | 创建第二个 settings → 聚焦已有而非新建 |
 
 ---
 
