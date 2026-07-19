@@ -37,12 +37,12 @@ export interface UseDragReorderOptions {
 
   /** 重排完成 */
   onReorder: (tabId: string, toIndex: number) => void;
-  /** 移到另一个容器（如另一个标签栏） */
-  onMoveToOther?: (tabId: string) => void;
+  /** 移到另一个容器（如另一个标签栏）。可选 targetGroupId——中央放手时传目标面板 */
+  onMoveToOther?: (tabId: string, targetGroupId?: string) => void;
   /** 拖拽状态变化通知（用于毛玻璃等） */
   onDraggingChange?: (v: boolean) => void;
-  /** drop zone 变化通知（分屏模式） */
-  onDragDropZone?: (zone: DropZone) => void;
+  /** drop zone 变化通知（分屏模式）。targetGroupId 用于在目标面板内定位毛玻璃 */
+  onDragDropZone?: (zone: DropZone, targetGroupId?: string) => void;
 
   /* ── 布局相关回调（由调用方提供，适应不同布局结构） ── */
 
@@ -172,7 +172,7 @@ export function useDragReorder(
         setPreviewPos({ x: e.clientX, y: e.clientY });
         if (computeSplitZone) {
           const result = computeSplitZone(e.clientX, e.clientY);
-          onDragDropZone?.(result?.zone ?? null);
+          onDragDropZone?.(result?.zone ?? null, result?.targetGroupId);
         }
         return;
       }
@@ -201,10 +201,14 @@ export function useDragReorder(
             moved = true;
           }
         }
-        if (!moved && onDropSplit) {
-          const result = computeSplitZone?.(e.clientX, e.clientY);
-          if (result?.zone && result.zone !== "center") {
+        if (!moved && computeSplitZone) {
+          const result = computeSplitZone(e.clientX, e.clientY);
+          if (result?.zone && result.zone !== "center" && onDropSplit) {
+            // 边缘 = 分屏
             onDropSplit(ds.tabId, result.zone as Exclude<DropZone, null | "center">, result.targetGroupId);
+          } else if (result?.zone === "center" && result.targetGroupId && onMoveToOther) {
+            // 中央 = 移动到目标面板（对标 VS Code：毛玻璃盖满整个面板 = 合并）
+            onMoveToOther(ds.tabId, result.targetGroupId);
           }
         }
         onDragDropZone?.(null);

@@ -30,12 +30,12 @@ interface TabBarProps {
   onCloseTab: (tabId: string) => void;
   onCreateTab: (type: TabType, opts?: any) => string;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
-  onMoveTab?: (tabId: string) => void;
+  onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
-  onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down") => void;
+  onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down", targetGroupId?: string) => void;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
   dragDropZone?: "left" | "right" | "up" | "down" | "center" | null;
-  onDragDropZone?: (zone: "left" | "right" | "up" | "down" | "center" | null) => void;
+  onDragDropZone?: (zone: "left" | "right" | "up" | "down" | "center" | null, targetGroupId?: string) => void;
   isDragging?: boolean;
   onDraggingChange?: (v: boolean) => void;
 }

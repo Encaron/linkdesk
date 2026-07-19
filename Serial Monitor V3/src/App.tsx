@@ -54,6 +54,7 @@ function App() {
   // Phase 3 Step 6: 拖拽分屏
   const editorAreaRef = useRef<HTMLDivElement>(null);
   const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
+  const [dragDropTargetGroupId, setDragDropTargetGroupId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
 
   // 当前活跃标签页（v4: 从 groups 派生）
@@ -122,6 +123,7 @@ function App() {
       const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
       splitTabAt(tabId, direction, targetGroupId);
       setDragDropZone(null);
+      setDragDropTargetGroupId(null);
       setIsDragging(false);
     },
     [splitTabAt]
@@ -361,8 +363,11 @@ function App() {
             onSplitResize={updateSplitSizes}
             dropZone={dragDropZone}
             editorAreaRef={editorAreaRef}
-            dragDropZone={dragDropZone}
-            onDragDropZone={setDragDropZone}
+            dragDropTargetGroupId={dragDropTargetGroupId}
+            onDragDropZone={(zone, targetGroupId) => {
+              setDragDropZone(zone);
+              setDragDropTargetGroupId(targetGroupId ?? null);
+            }}
             isDragging={isDragging}
             onDraggingChange={setIsDragging}
           />

@@ -1,7 +1,7 @@
 /**
  * MainContent — 主内容区。
- * Phase 3 v4：每面板独立标签栏（TabBar + content pool）。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §4]
+ * Phase 3.x：递归分屏——树状 SplitPane 渲染 + 面板内毛玻璃（无越界）。
+ * 设计依据：[V3-Phase3-标签页分屏设计.md §4] + [V3-Phase3-补充-递归分屏.md]
  */
 
 import { useCallback } from "react";
@@ -27,9 +27,10 @@ interface MainContentProps {
   onDropSplit: (tabId: string, zone: any, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number]) => void;
   dropZone?: any;
+  /** 当前被拖拽悬停的目标面板 groupId——用于在该面板内渲染毛玻璃 */
+  dragDropTargetGroupId?: string | null;
   editorAreaRef?: any;
-  dragDropZone?: any;
-  onDragDropZone?: (zone: any) => void;
+  onDragDropZone?: (zone: any, targetGroupId?: string) => void;
   isDragging?: boolean;
   onDraggingChange?: (v: boolean) => void;
 }
@@ -71,64 +72,103 @@ function MainContent({
   onDropSplit,
   onSplitResize,
   dropZone,
+  dragDropTargetGroupId,
   editorAreaRef,
-  dragDropZone,
   onDragDropZone,
   isDragging,
   onDraggingChange,
 }: MainContentProps) {
 
-  // Drop zone 高亮覆盖层
-  const dropOverlay = dropZone && dropZone !== "center" && (
-    <div className={`drop-zone-overlay drop-zone-${dropZone}`} />
-  );
-
-  /** 渲染一个面板组——标签栏 + 内容区 */
+  /** 渲染一个面板组——标签栏 + 内容区 + 面板内毛玻璃 */
   const renderGroup = useCallback(
-    (group: TabGroup) => (
-      <div className="tab-group-pane" key={group.id} data-group-id={group.id} style={{ display: "flex", flexDirection: "column", flex: 1, minWidth: 0, minHeight: 0 }}>
-        <TabBar
-          group={group}
-          isActiveGroup={group.id === activeGroupId}
-          onFocusTab={onFocusTab}
-          onCloseTab={onCloseTab}
-          onCreateTab={onCreateTab}
-          onSplitTab={onSplitTab}
-          onMoveTab={(tabId) => {
-            const allLeafIds = getAllLeafGroupIds(tabState.root);
-            const otherGroupId = allLeafIds.find((id) => id !== group.id);
-            if (otherGroupId) onMoveTab(tabId, otherGroupId);
+    (group: TabGroup) => {
+      const isTarget = dragDropTargetGroupId === group.id && dropZone;
+      return (
+        <div
+          className="tab-group-pane"
+          key={group.id}
+          data-group-id={group.id}
+          style={{
+            display: "flex",
+            flexDirection: "column",
+            flex: 1,
+            minWidth: 0,
+            minHeight: 0,
+            position: "relative",
           }}
-          onReorderTab={onReorderTab}
-          onDropSplit={onDropSplit}
-          editorAreaRef={editorAreaRef}
-          dragDropZone={dragDropZone}
-          onDragDropZone={onDragDropZone}
-          isDragging={isDragging}
-          onDraggingChange={onDraggingChange}
-        />
-        <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
-          {group.tabs.map((tab) => (
+        >
+          <TabBar
+            group={group}
+            isActiveGroup={group.id === activeGroupId}
+            onFocusTab={onFocusTab}
+            onCloseTab={onCloseTab}
+            onCreateTab={onCreateTab}
+            onSplitTab={onSplitTab}
+            onMoveTab={(tabId, targetGroupId?) => {
+              if (targetGroupId && targetGroupId !== group.id) {
+                // 中央放手：移到指定目标面板
+                onMoveTab(tabId, targetGroupId);
+              } else if (!targetGroupId) {
+                // 拖到另一个标签栏：移到任意其他面板
+                const allLeafIds = getAllLeafGroupIds(tabState.root);
+                const otherGroupId = allLeafIds.find((id) => id !== group.id);
+                if (otherGroupId) onMoveTab(tabId, otherGroupId);
+              }
+            }}
+            onReorderTab={onReorderTab}
+            onDropSplit={onDropSplit}
+            editorAreaRef={editorAreaRef}
+            dragDropZone={dropZone}
+            onDragDropZone={onDragDropZone}
+            isDragging={isDragging}
+            onDraggingChange={onDraggingChange}
+          />
+          <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
+            {group.tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="tab-content-pane"
+                style={{
+                  display: tab.id === group.activeTabId ? "flex" : "none",
+                }}
+              >
+                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId)}
+              </div>
+            ))}
+          </div>
+          {/* 面板内毛玻璃——严格裁剪在 .tab-group-pane 内，不越界 */}
+          {isTarget && dropZone !== "center" && (
             <div
-              key={tab.id}
-              className="tab-content-pane"
+              className={`drop-zone-overlay drop-zone-${dropZone}`}
               style={{
-                display: tab.id === group.activeTabId ? "flex" : "none",
+                position: "absolute",
+                top: 0, left: 0, right: 0, bottom: 0,
+                pointerEvents: "none",
               }}
-            >
-              {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId)}
-            </div>
-          ))}
+            />
+          )}
+          {/* 中央放手 = 合并提示 */}
+          {isTarget && dropZone === "center" && (
+            <div
+              className="drop-zone-overlay drop-zone-center"
+              style={{
+                position: "absolute",
+                top: 0, left: 0, right: 0, bottom: 0,
+                pointerEvents: "none",
+              }}
+            />
+          )}
         </div>
-      </div>
-    ),
-    [tabState.root, tabState.groups, activeGroupId, onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onDropSplit, editorAreaRef, dragDropZone, onDragDropZone, isDragging, onDraggingChange]
+      );
+    },
+    [tabState.root, tabState.groups, activeGroupId, dropZone, dragDropTargetGroupId,
+     onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab,
+     onDropSplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
 
   // ── 递归渲染分裂树 ──
   return (
     <div className="main-content">
-      {dropOverlay}
       <SplitPane
         node={tabState.root}
         groups={tabState.groups}
