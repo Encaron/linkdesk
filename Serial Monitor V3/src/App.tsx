@@ -177,6 +177,16 @@ function App() {
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
 
+  // 对标 VS Code：聚焦标签页时，如果是真视图则切侧栏，详情页则保持
+  const handleFocusTab = useCallback((tabId: string) => {
+    const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
+    const tab = group?.tabs.find((t) => t.id === tabId);
+    if (tab && tab.type !== "plugin-detail" && tab.type !== "marketplace") {
+      setSidebarView(null);
+    }
+    focusTab(tabId);
+  }, [tabState.groups, focusTab]);
+
   const handleIconClick = useCallback(
     (type: string) => {
       if (type === "marketplace") {
@@ -348,7 +358,7 @@ function App() {
           if (idx !== -1) {
             const next = e.shiftKey ? idx - 1 : idx + 1;
             const target = tabs[(next + tabs.length) % tabs.length];
-            focusTab(target.id);
+            handleFocusTab(target.id);
           }
         }
       }
@@ -372,12 +382,12 @@ function App() {
       const num = parseInt(e.key);
       if (e.ctrlKey && num >= 1 && num <= 9 && all[num - 1]) {
         e.preventDefault();
-        focusTab(all[num - 1].id);
+        handleFocusTab(all[num - 1].id);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [tabState, activeTab, closeTab, forceCloseTab, focusTab, splitTab, unsplit]);
+  }, [tabState, activeTab, closeTab, forceCloseTab, handleFocusTab, splitTab, unsplit]);
 
   // SerialContext value（Phase 4：桥接 App 串口状态和终端插件）
   const serialContextValue = useMemo(() => ({
@@ -418,7 +428,7 @@ function App() {
           <MainContent
             tabState={tabState}
             activeGroupId={tabState.activeGroupId}
-            onFocusTab={focusTab}
+            onFocusTab={handleFocusTab}
             onCloseTab={closeTab}
             onCreateTab={createTab}
             onSplitTab={splitTab}
