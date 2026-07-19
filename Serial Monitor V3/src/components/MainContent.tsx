@@ -54,7 +54,7 @@ function renderTabContent(
         </ErrorBoundary>
       );
     }
-    if (!["terminal", "workspace", "settings", "welcome", "oled", "editor", "plugin-detail", "marketplace"].includes(tab.type)) {
+    if (!["terminal", "workspace", "settings", "welcome", "oled", "editor", "plugin-detail"].includes(tab.type)) {
       return (
         <div key={tab.id} className="plugin-missing-view">
           <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
@@ -82,8 +82,6 @@ function renderTabContent(
       return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
     case "plugin-detail":
       return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
-    case "marketplace":
-      return <div key={tab.id} className="plugin-detail-empty">插件管理 — Phase 5</div>;
     default:
       return null;
   }

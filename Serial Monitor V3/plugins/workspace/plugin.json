@@ -1,0 +1,11 @@
+{
+  "$schema": "../../docs/插件开发/plugin.schema.json",
+  "type": "view",
+  "name": "工作台",
+  "version": "1.0.0",
+  "icon": "workspace",
+  "iconSource": "codicon",
+  "description": "卡片网格——可视化数据仪表板",
+  "author": "官方",
+  "entry": "index.tsx"
+}
