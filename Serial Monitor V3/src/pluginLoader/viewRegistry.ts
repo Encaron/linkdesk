@@ -8,12 +8,35 @@ import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types"
 
 const registry = new Map<string, ViewPluginEntry>();
 
-/** 注册视图插件 */
+/** 注册视图插件。同名插件优先高版本（P1-6 #7）。 */
 export function registerViewPlugin(entry: ViewPluginEntry): void {
-  if (registry.has(entry.pluginId)) {
-    console.warn(`[viewRegistry] 插件 "${entry.pluginId}" 已注册，将被覆盖`);
+  const existing = registry.get(entry.pluginId);
+  if (existing) {
+    const newVer = entry.manifest.version;
+    const oldVer = existing.manifest.version;
+    if (compareVersions(newVer, oldVer) > 0) {
+      console.warn(
+        `[viewRegistry] 插件 "${entry.pluginId}" 重复——使用高版本 v${newVer} 替代 v${oldVer}`
+      );
+    } else {
+      console.warn(
+        `[viewRegistry] 插件 "${entry.pluginId}" 重复——保留已有 v${oldVer}，忽略 v${newVer}`
+      );
+      return;
+    }
   }
   registry.set(entry.pluginId, entry);
+}
+
+/** 简单 semver 比较：返回 >0 如果 a > b，<0 如果 a < b，0 如果相等 */
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(".").map(Number);
+  const pb = b.split(".").map(Number);
+  for (let i = 0; i < 3; i++) {
+    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
+    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
+  }
+  return 0;
 }
 
 /** 获取单个视图插件 */

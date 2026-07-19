@@ -15,8 +15,29 @@ export interface Theme {
 
 let currentTheme: Theme | null = null;
 
+/** 插件注册的主题——name → Theme */
+const pluginThemes = new Map<string, Theme>();
+
+/**
+ * Phase 4：注册插件提供的主题。
+ * 插件加载器扫描到 type: "theme" 插件后调用此函数。
+ * 注册后的主题和内置主题在同一个列表中，不区分来源。
+ */
+export function registerTheme(theme: Theme): void {
+  pluginThemes.set(theme.name, theme);
+}
+
+/** 获取所有已注册主题的名称（内置 + 插件） */
+export function getAvailableThemes(): string[] {
+  return Array.from(pluginThemes.keys());
+}
+
 /** 从 URL 加载主题 JSON（Vite 下 themes/ 目录通过 public 可访问） */
 export async function loadTheme(themeName: string): Promise<Theme> {
+  // Phase 4：先查插件注册的主题
+  const pluginTheme = pluginThemes.get(themeName);
+  if (pluginTheme) return pluginTheme;
+
   const res = await fetch(`/themes/${themeName.toLowerCase()}.json`);
   if (!res.ok) throw new Error(`Theme "${themeName}" not found`);
   return res.json();
