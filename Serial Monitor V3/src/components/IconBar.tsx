@@ -4,7 +4,7 @@
  * 复用 TabBar 拖拽的 window 级 mousemove/mouseup 模式。
  */
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
@@ -66,7 +66,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const savedOrder = loadOrder();
 
   type IconEntry = { pluginId: string; iconSrc: string; label: string };
-  const ordered: IconEntry[] = (() => {
+  const ordered: IconEntry[] = useMemo(() => {
     const result: IconEntry[] = [];
     const remaining = new Set(viewPlugins.map((p) => p.pluginId));
     for (const id of savedOrder) {
@@ -81,7 +81,9 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
       if (p) result.push({ pluginId: id, iconSrc: getIconSrc(id), label: p.manifest.name });
     }
     return result;
-  })();
+  }, [viewPlugins, savedOrder]);
+  const orderedRef = useRef(ordered);
+  orderedRef.current = ordered;
 
   const topIcons = ordered.filter((x) => !BOTTOM_ICONS.has(x.pluginId));
   const bottomIcons = ordered.filter((x) => BOTTOM_ICONS.has(x.pluginId));
@@ -130,20 +132,19 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     if (!drag) return;
 
     if (drag.moved && target) {
-      const ids = ordered.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
+      const ids = orderedRef.current.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
       const targetIdx = ids.indexOf(target.id);
       const insertAt = target.pos === "top" ? targetIdx : targetIdx + 1;
       ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
       saveOrder(ids);
     }
 
-    // 清理拖拽 UI（保留 wasDragRef 给 onClick 判断）
     dragRef.current = null;
     dropRef.current = null;
     setDraggedId(null);
     setDropTarget(null);
     setPreviewPos(null);
-  }, [ordered]);
+  }, []);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleDragMouseMove);
