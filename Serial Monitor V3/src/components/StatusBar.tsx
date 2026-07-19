@@ -128,7 +128,7 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
           onClick={() => setShowNotifPanel(!showNotifPanel)}
           title={unreadCount > 0 ? t("{{count}} 条通知", { count: unreadCount }) : t("通知")}
         >
-          🔔{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
+          <span className="codicon codicon-bell" />{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
         </button>
         {showNotifPanel && (
           <div className="status-bar-notif-panel" ref={notifPanelRef}>
@@ -154,7 +154,7 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
                   <div key={n.id} className="notif-panel-item">
                     {/* VS Code: main row = icon + message + dismiss (hover reveal) */}
                     <div className="notif-main-row">
-                      <span className="notif-icon info">ℹ</span>
+                      <span className="codicon codicon-info notif-icon" />
                       <span className="notif-panel-msg">{n.message}</span>
                       <button
                         className="notif-panel-dismiss"

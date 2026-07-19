@@ -139,9 +139,17 @@ function ExtensionItem({
   // VS Code: icon-container + details (header + description + footer)
   return (
     <button className="ms-extension-item" onClick={onClick}>
-      {/* VS Code: .icon-container with badge */}
+      {/* icon: 使用 assets/icons/ 下的图片，fallback 到 codicon */}
       <div className="ms-item-icon">
-        <span className={`codicon ${PLUGIN_CODICON[plugin.pluginId] ?? "codicon-symbol-misc"}`} />
+        {PLUGIN_ICON_PATH[plugin.pluginId] ? (
+          <img
+            src={`/assets/icons/${PLUGIN_ICON_PATH[plugin.pluginId]}`}
+            alt=""
+            className="ms-item-icon-img"
+          />
+        ) : (
+          <span className={`codicon ${PLUGIN_CODICON[plugin.pluginId] ?? "codicon-symbol-misc"}`} />
+        )}
         {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
       </div>
 
@@ -164,6 +172,13 @@ function ExtensionItem({
     </button>
   );
 }
+
+const PLUGIN_ICON_PATH: Record<string, string> = {
+  terminal: "terminal.png",
+  workspace: "workspace.png",
+  settings: "settings.png",
+  marketplace: "extensions.svg",
+};
 
 const PLUGIN_CODICON: Record<string, string> = {
   terminal: "codicon-terminal",

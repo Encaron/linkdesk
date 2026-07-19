@@ -89,6 +89,10 @@
   position: relative;
 }
 
+.status-bar-notif-btn .codicon-bell {
+  font-size: 14px;
+}
+
 .status-bar-notif-btn.has-notifications {
   color: var(--accent);
 }

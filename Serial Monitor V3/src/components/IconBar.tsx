@@ -1,6 +1,7 @@
 /**
  * IconBar — 图标栏（最左 42px 垂直条）。
- * Phase 4 UX：对标 VS Code Activity Bar——codicon 图标 + viewRegistry 动态列表。
+ * Phase 4 P3-10：从 viewRegistry 动态读取图标列表。
+ * 对标 VS Code Activity Bar。图标使用 assets/icons/ 下的 PNG/SVG 文件。
  */
 
 import { useTranslation } from "react-i18next";
@@ -14,13 +15,19 @@ interface IconBarProps {
   onOpenOrFocus: (type: string) => void;
 }
 
-/** 对标 VS Code Activity Bar：pluginId → codicon 类名 */
-const PLUGIN_CODICON: Record<string, string> = {
-  terminal: "codicon-terminal",
-  workspace: "codicon-window",
-  settings: "codicon-settings-gear",
-  marketplace: "codicon-extensions",
+/** 插件 ID → 图标图片路径映射 */
+const PLUGIN_ICON_PATH: Record<string, string> = {
+  terminal: "terminal.png",
+  workspace: "workspace.png",
+  settings: "settings.png",
+  marketplace: "extensions.svg",
 };
+
+function getIconSrc(pluginId: string): string {
+  const path = PLUGIN_ICON_PATH[pluginId];
+  if (path) return `/assets/icons/${path}`;
+  return `/assets/icons/settings.svg`; // fallback
+}
 
 function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
@@ -28,7 +35,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const viewPlugins = getViewPlugins();
   const icons = viewPlugins.map((p) => ({
     pluginId: p.pluginId,
-    codiconClass: PLUGIN_CODICON[p.pluginId] ?? "codicon-symbol-misc",
+    iconSrc: getIconSrc(p.pluginId),
     label: p.manifest.name,
   }));
 
@@ -40,7 +47,6 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
 
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
-      {/* 顶部图标区 */}
       <div className="icon-bar-top">
         {icons.map((entry) => (
           <button
@@ -50,7 +56,11 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
             title={t(entry.label)}
             aria-label={t(entry.label)}
           >
-            <span className={`codicon ${entry.codiconClass}`} />
+            <img
+              src={entry.iconSrc}
+              alt={t(entry.label)}
+              className="icon-img"
+            />
           </button>
         ))}
       </div>
