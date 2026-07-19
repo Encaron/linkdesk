@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>应用图标方案 — 通用调试容器</title>
+<style>
+  :root {
+    --bg-window: #1e1e1e;
+    --bg-card: #252526;
+    --bg-card-hover: #2d2d2d;
+    --text: #cccccc;
+    --text-muted: #858585;
+    --accent: #0078d4;
+    --border: #3e3e3e;
+    --success: #4ade80;
+    --warn: #fbbf24;
+    --info: rgba(0,120,212,0.15);
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', system-ui, sans-serif;
+    --font-mono: 'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  }
+  body.light {
+    --bg-window: #f3f3f3;
+    --bg-card: #ffffff;
+    --bg-card-hover: #f9f9f9;
+    --text: #333333;
+    --text-muted: #6e6e6e;
+    --accent: #0078d4;
+    --border: #d4d4d4;
+    --info: rgba(0,120,212,0.08);
+  }
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: var(--font);
+    background: var(--bg-window);
+    color: var(--text);
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Header */
+  .page-header {
+    padding: 48px 48px 0;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .page-header h1 { font-size: 24px; font-weight: 600; letter-spacing: -0.01em; }
+  .page-header p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+  .toolbar {
+    position: fixed; top: 20px; right: 24px; z-index: 10;
+    display: flex; gap: 8px;
+  }
+  .toolbar button {
+    padding: 6px 14px; font-size: 12px; font-family: var(--font);
+    border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg-card); color: var(--text); cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .toolbar button:hover { background: var(--bg-card-hover); }
+  .toolbar button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+  /* Size demo */
+  .size-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+    gap: 20px;
+    padding: 32px 48px;
+    max-width: 1400px; margin: 0 auto;
+  }
+  .candidate {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 28px 24px 24px;
+    transition: border-color 0.2s;
+  }
+  .candidate:hover { border-color: var(--accent); }
+  .candidate-header {
+    display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  }
+  .candidate-header .name { font-size: 15px; font-weight: 600; }
+  .candidate-header .tag {
+    font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em;
+    color: var(--text-muted); background: var(--bg-window);
+    padding: 2px 8px; border-radius: 3px; font-family: var(--font-mono);
+  }
+  .icon-showcase { display: flex; gap: 32px; align-items: flex-end; justify-content: center; margin-bottom: 20px; }
+  .icon-slot { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .icon-slot .label { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
+  .icon-slot svg { display: block; }
+
+  .score-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 8px;
+    font-size: 12px; line-height: 1.5;
+  }
+  .score-grid .pro, .score-grid .con { padding: 10px 12px; border-radius: 6px; }
+  .pro { background: rgba(74, 222, 128, 0.06); }
+  .con { background: rgba(248, 113, 113, 0.06); }
+  .pro strong { color: var(--success); font-weight: 500; }
+  .con strong { color: var(--warn); font-weight: 500; }
+  .pro ul, .con ul { margin-top: 4px; padding-left: 16px; }
+  .pro li, .con li { margin-top: 2px; }
+  .verdict { margin-top: 14px; padding: 10px 12px; border-radius: 6px; font-size: 12px; text-align: center; background: var(--info); border: 1px solid rgba(0,120,212,0.2); }
+  .verdict .pick { font-weight: 600; color: var(--accent); }
+
+  /* Comparison dock */
+  .compare-section {
+    padding: 24px 48px 48px; max-width: 1400px; margin: 0 auto;
+  }
+  .compare-section h2 { font-size: 16px; font-weight: 600; margin-bottom: 16px; }
+  .compare-dock {
+    display: flex; gap: 28px; align-items: center; flex-wrap: wrap;
+    padding: 24px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px;
+  }
+  .compare-dock .entry { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .compare-dock .entry .entry-label { font-size: 11px; color: var(--text-muted); }
+  .compare-sep { color: var(--text-muted); font-size: 13px; }
+
+  /* Summary table */
+  .summary-table {
+    width: 100%; border-collapse: collapse; font-size: 13px; margin-top: 20px;
+  }
+  .summary-table th { text-align: left; padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 500; color: var(--text-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; }
+  .summary-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  .summary-table tr:last-child td { border-bottom: none; }
+  .summary-table .name-col { font-weight: 600; }
+  .star { color: var(--accent); }
+  .star-dim { color: var(--text-muted); }
+
+  .rec { margin-top: 20px; padding: 16px 20px; background: var(--bg-card); border: 1px solid var(--border); border-radius: 10px; font-size: 13px; line-height: 1.6; }
+  .rec strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <button id="btn-dark" class="active" onclick="setTheme('dark')">暗色</button>
+  <button id="btn-light" onclick="setTheme('light')">亮色</button>
+</div>
+
+<header class="page-header">
+  <h1>通用调试容器 — 应用图标方案</h1>
+  <p>候选名 LinkDesk / PinDesk / NodeDesk / WireDesk · 四个方向 · 16×16 到 256×256 · 暗/亮双主题 · Product register：restrained geometry</p>
+</header>
+
+<div class="size-row">
+
+  <!-- 1. LinkDesk -->
+  <div class="candidate">
+    <div class="candidate-header"><span class="name">LinkDesk</span><span class="tag">链路</span></div>
+    <div class="icon-showcase">
+      <div class="icon-slot"><span class="label">16</span><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="1" width="5" height="5" rx="1.5" fill="currentColor"/><rect x="10" y="10" width="5" height="5" rx="1.5" fill="currentColor"/><line x1="5.5" y1="5.5" x2="10.5" y2="10.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg></div>
+      <div class="icon-slot"><span class="label">24</span><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7" rx="2" fill="currentColor"/><rect x="15" y="15" width="7" height="7" rx="2" fill="currentColor"/><line x1="8" y1="8" x2="16" y2="16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></div>
+      <div class="icon-slot"><span class="label">32</span><svg width="32" height="32" viewBox="0 0 32 32"><rect x="3" y="3" width="9" height="9" rx="2.5" fill="currentColor"/><rect x="20" y="20" width="9" height="9" rx="2.5" fill="currentColor"/><line x1="10.5" y1="10.5" x2="21.5" y2="21.5" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg></div>
+      <div class="icon-slot"><span class="label">64</span><svg width="64" height="64" viewBox="0 0 64 64"><rect x="6" y="6" width="18" height="18" rx="5" fill="currentColor"/><rect x="40" y="40" width="18" height="18" rx="5" fill="currentColor"/><line x1="21" y1="21" x2="43" y2="43" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="score-grid">
+      <div class="pro"><strong>+</strong><ul><li>16px 辨识度最高——两个方块 + 一根线，任何尺寸都不丢</li><li>隐喻最安全——"连接"不绑任何硬件</li><li>和 VS Code 并排不撞脸</li></ul></div>
+      <div class="con"><strong>&minus;</strong><ul><li>接近通用"link/network"图标</li><li>不传递"卡片"或"工作台"概念</li></ul></div>
+    </div>
+    <div class="verdict"><span class="pick">安全之选</span> — 干净、通用、16px 无敌。不出错。</div>
+  </div>
+
+  <!-- 2. PinDesk -->
+  <div class="candidate">
+    <div class="candidate-header"><span class="name">PinDesk</span><span class="tag">卡片</span></div>
+    <div class="icon-showcase">
+      <div class="icon-slot"><span class="label">16</span><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="2" width="14" height="11" rx="2" fill="currentColor" opacity="0.85"/><rect x="5" y="5" width="6" height="4" rx="1" fill="var(--bg-window)"/><circle cx="8" cy="1" r="1.5" fill="currentColor"/></svg></div>
+      <div class="icon-slot"><span class="label">24</span><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="17" rx="3" fill="currentColor" opacity="0.85"/><rect x="7" y="7" width="10" height="7" rx="1.5" fill="var(--bg-window)"/><line x1="7" y1="20" x2="7" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><line x1="17" y1="20" x2="17" y2="23" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+      <div class="icon-slot"><span class="label">32</span><svg width="32" height="32" viewBox="0 0 32 32"><rect x="3" y="4" width="26" height="22" rx="3.5" fill="currentColor" opacity="0.85"/><rect x="10" y="9" width="12" height="9" rx="2" fill="var(--bg-window)"/><line x1="10" y1="26" x2="10" y2="31" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/><line x1="22" y1="26" x2="22" y2="31" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg></div>
+      <div class="icon-slot"><span class="label">64</span><svg width="64" height="64" viewBox="0 0 64 64"><rect x="6" y="8" width="52" height="44" rx="7" fill="currentColor" opacity="0.85"/><rect x="20" y="18" width="24" height="18" rx="3.5" fill="var(--bg-window)"/><line x1="20" y1="52" x2="20" y2="62" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/><line x1="44" y1="52" x2="44" y2="62" stroke="currentColor" stroke-width="4.5" stroke-linecap="round"/></svg></div>
+    </div>
+    <div class="score-grid">
+      <div class="pro"><strong>+</strong><ul><li>卡片隐喻——直接关联软件核心 UI 概念</li><li>独特——不容易和其他工具撞脸</li><li>针脚 = 数据引脚/连接</li></ul></div>
+      <div class="con"><strong>&minus;</strong><ul><li>16px 时内部卡片退化——需剪影简化</li><li>针脚可能被误读（不是每个人都看到"连接"）</li></ul></div>
+    </div>
+    <div class="verdict"><span class="pick">个性之选</span> — 卡片即软件名中的 Desk。16px 需纯剪影。</div>
+  </div>
+
+  <!-- 3. NodeDesk -->
+  <div class="candidate">
+    <div class="candidate-header"><span class="name">NodeDesk</span><span class="tag">节点</span></div>
+    <div class="icon-showcase">
+      <div class="icon-slot"><span class="label">16</span><svg width="16" height="16" viewBox="0 0 16 16"><polygon points="8,1 14.5,4.5 14.5,11.5 8,15 1.5,11.5 1.5,4.5" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><circle cx="8" cy="4.5" r="1.3" fill="currentColor"/><circle cx="4.5" cy="10.5" r="1.3" fill="currentColor"/><circle cx="11.5" cy="10.5" r="1.3" fill="currentColor"/></svg></div>
+      <div class="icon-slot"><span class="label">24</span><svg width="24" height="24" viewBox="0 0 24 24"><polygon points="12,2 21.5,7 21.5,17 12,22 2.5,17 2.5,7" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="7" r="2.2" fill="currentColor"/><circle cx="7" cy="15.5" r="2.2" fill="currentColor"/><circle cx="17" cy="15.5" r="2.2" fill="currentColor"/></svg></div>
+      <div class="icon-slot"><span class="label">32</span><svg width="32" height="32" viewBox="0 0 32 32"><polygon points="16,3 28.5,9.5 28.5,22.5 16,29 3.5,22.5 3.5,9.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><circle cx="16" cy="9.5" r="3" fill="currentColor"/><circle cx="9" cy="21" r="3" fill="currentColor"/><circle cx="23" cy="21" r="3" fill="currentColor"/></svg></div>
+      <div class="icon-slot"><span class="label">64</span><svg width="64" height="64" viewBox="0 0 64 64"><polygon points="32,6 57,19 57,45 32,58 7,45 7,19" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linejoin="round"/><circle cx="32" cy="19" r="5.5" fill="currentColor"/><circle cx="18" cy="42" r="5.5" fill="currentColor"/><circle cx="46" cy="42" r="5.5" fill="currentColor"/></svg></div>
+    </div>
+    <div class="score-grid">
+      <div class="pro"><strong>+</strong><ul><li>六边形——模块化：节点 = 插件/卡片</li><li>三节点暗示多模块协同</li><li>现代、有辨识度</li></ul></div>
+      <div class="con"><strong>&minus;</strong><ul><li>16px 六边形轮廓退化——节点几乎看不清</li><li>最抽象——不直接传达"调试/数据"</li></ul></div>
+    </div>
+    <div class="verdict"><span class="pick">美感之选</span> — 大图标震撼，小图标有风险。适合以 256px 应用图标为主的场景。</div>
+  </div>
+
+  <!-- 4. WireDesk -->
+  <div class="candidate">
+    <div class="candidate-header"><span class="name">WireDesk</span><span class="tag">管线</span></div>
+    <div class="icon-showcase">
+      <div class="icon-slot"><span class="label">16</span><svg width="16" height="16" viewBox="0 0 16 16"><rect x="1" y="7" width="14" height="2" rx="1" fill="currentColor"/><path d="M3 2 L6 8 L3 14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/><path d="M13 2 L10 8 L13 14" stroke="currentColor" stroke-width="1.6" fill="none" stroke-linecap="round"/><rect x="1" y="12" width="14" height="2" rx="1" fill="currentColor" opacity="0.35"/></svg></div>
+      <div class="icon-slot"><span class="label">24</span><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="11" width="20" height="2.5" rx="1.2" fill="currentColor"/><path d="M5 3 L8.5 12 L5 21" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M19 3 L15.5 12 L19 21" stroke="currentColor" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="2" y="19" width="20" height="2.5" rx="1.2" fill="currentColor" opacity="0.3"/></svg></div>
+      <div class="icon-slot"><span class="label">32</span><svg width="32" height="32" viewBox="0 0 32 32"><rect x="3" y="15" width="26" height="3" rx="1.5" fill="currentColor"/><path d="M7 4 L11.5 16 L7 28" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/><path d="M25 4 L20.5 16 L25 28" stroke="currentColor" stroke-width="2.6" fill="none" stroke-linecap="round"/><rect x="3" y="25" width="26" height="3" rx="1.5" fill="currentColor" opacity="0.3"/></svg></div>
+      <div class="icon-slot"><span class="label">64</span><svg width="64" height="64" viewBox="0 0 64 64"><rect x="6" y="30" width="52" height="5" rx="2.5" fill="currentColor"/><path d="M14 8 L23 32 L14 56" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><path d="M50 8 L41 32 L50 56" stroke="currentColor" stroke-width="5" fill="none" stroke-linecap="round"/><rect x="6" y="50" width="52" height="5" rx="2.5" fill="currentColor" opacity="0.25"/></svg></div>
+    </div>
+    <div class="score-grid">
+      <div class="pro"><strong>+</strong><ul><li>数据管道——软件区别于其他工具的核心概念</li><li>双向箭头 = 收发</li><li>16px 线条稳定</li></ul></div>
+      <div class="con"><strong>&minus;</strong><ul><li>像流程/管道类图标</li><li>不表达"卡片"概念</li><li>第二位管道淡色在 16px 基本消失</li></ul></div>
+    </div>
+    <div class="verdict"><span class="pick">隐喻之选</span> — 数据管道是本软件的 DNA。技术感强。</div>
+  </div>
+
+</div>
+
+<!-- VS Code comparison -->
+<div class="compare-section">
+  <h2>和 VS Code 并排</h2>
+  <div class="compare-dock">
+    <div class="entry"><svg width="24" height="24" viewBox="0 0 24 24"><path d="M1 3v18l22-9L1 3z" fill="#0078d4"/></svg><span class="entry-label">VS Code</span></div>
+    <span class="compare-sep">vs</span>
+    <div class="entry"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="2" width="7" height="7" rx="2" fill="var(--text)"/><rect x="15" y="15" width="7" height="7" rx="2" fill="var(--text)"/><line x1="8" y1="8" x2="16" y2="16" stroke="var(--text)" stroke-width="2.2" stroke-linecap="round"/></svg><span class="entry-label">Link</span></div>
+    <div class="entry"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="17" rx="3" fill="var(--text)" opacity="0.85"/><rect x="7" y="7" width="10" height="7" rx="1.5" fill="var(--bg-card)"/><line x1="7" y1="20" x2="7" y2="23" stroke="var(--text)" stroke-width="2" stroke-linecap="round"/><line x1="17" y1="20" x2="17" y2="23" stroke="var(--text)" stroke-width="2" stroke-linecap="round"/></svg><span class="entry-label">Pin</span></div>
+    <div class="entry"><svg width="24" height="24" viewBox="0 0 24 24"><polygon points="12,2 21.5,7 21.5,17 12,22 2.5,17 2.5,7" fill="none" stroke="var(--text)" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="7" r="2.2" fill="var(--text)"/><circle cx="7" cy="15.5" r="2.2" fill="var(--text)"/><circle cx="17" cy="15.5" r="2.2" fill="var(--text)"/></svg><span class="entry-label">Node</span></div>
+    <div class="entry"><svg width="24" height="24" viewBox="0 0 24 24"><rect x="2" y="11" width="20" height="2.5" rx="1.2" fill="var(--text)"/><path d="M5 3 L8.5 12 L5 21" stroke="var(--text)" stroke-width="2.2" fill="none" stroke-linecap="round"/><path d="M19 3 L15.5 12 L19 21" stroke="var(--text)" stroke-width="2.2" fill="none" stroke-linecap="round"/><rect x="2" y="19" width="20" height="2.5" rx="1.2" fill="var(--text)" opacity="0.3"/></svg><span class="entry-label">Wire</span></div>
+  </div>
+</div>
+
+<!-- Score table -->
+<div class="compare-section" style="padding-top: 0;">
+  <h2>评分</h2>
+  <table class="summary-table">
+    <thead><tr><th>方向</th><th style="text-align:center">16px 辨识</th><th style="text-align:center">不绑硬件</th><th style="text-align:center">独特性</th><th style="text-align:center">隐喻准度</th><th>适合场景</th></tr></thead>
+    <tbody>
+      <tr>
+        <td class="name-col">LinkDesk · 链路</td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;</span></td>
+        <td style="color:var(--text-muted)">不想出错——保守安全</td>
+      </tr>
+      <tr>
+        <td class="name-col">PinDesk · 卡片</td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="color:var(--text-muted)">个性——卡片是核心UI</td>
+      </tr>
+      <tr>
+        <td class="name-col">NodeDesk · 节点</td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;</span><span class="star-dim">&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;&#9733;</span></td>
+        <td style="color:var(--text-muted)">美感优先——大图标场景</td>
+      </tr>
+      <tr>
+        <td class="name-col">WireDesk · 管线</td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;</span></td>
+        <td style="text-align:center"><span class="star">&#9733;&#9733;&#9733;</span><span class="star-dim">&#9733;&#9733;</span></td>
+        <td style="color:var(--text-muted)">数据管道 DNA——技术感</td>
+      </tr>
+    </tbody>
+  </table>
+  <div class="rec">
+    <strong>推荐：LinkDesk（安全之选）或 PinDesk（个性之选）。</strong>
+    PinDesk 的卡片隐喻直接呼应软件核心 UI——用户每天在软件中看到卡片网格，图标引用同一概念。
+    16px 挑战可接受：标题栏用简化的纯剪影变体，256px 应用图标用完整细节版。
+    最终选择取决于软件名称确定——LinkDesk 用链路图标，PinDesk 用卡片图标，名字和图标应一致。
+  </div>
+</div>
+
+<script>
+  function setTheme(t) {
+    document.body.classList.toggle('light', t === 'light');
+    document.getElementById('btn-dark').classList.toggle('active', t === 'dark');
+    document.getElementById('btn-light').classList.toggle('active', t === 'light');
+    // Update inline SVGs that reference CSS variables
+    const bgColor = getComputedStyle(document.body).getPropertyValue('--bg-card').trim();
+    document.querySelectorAll('svg').forEach(s => {
+      // Replace var(--bg-window) and var(--bg-card) references by re-setting
+      s.style.color = getComputedStyle(document.body).getPropertyValue('--text').trim();
+    });
+  }
+  // Initial sync
+  document.querySelectorAll('svg').forEach(s => {
+    s.style.color = getComputedStyle(document.body).getPropertyValue('--text').trim();
+  });
+  // Re-sync on theme change after DOM
+  const observer = new MutationObserver(() => {
+    document.querySelectorAll('svg').forEach(s => {
+      s.style.color = getComputedStyle(document.body).getPropertyValue('--text').trim();
+    });
+  });
+  observer.observe(document.body, { attributes: true, attributeFilter: ['class'] });
+</script>
+</body>
+</html>
