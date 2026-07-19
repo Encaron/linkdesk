@@ -54,7 +54,7 @@ const darkTheme: Extension = EditorView.theme(
     ".cm-searchMatch": { background: "rgba(255,255,0,0.2)", outline: "1px solid rgba(255,255,0,0.4)" },
     ".cm-line-sent": { color: "var(--sent-echo)" },
     ".cm-line-system": { color: "var(--system-log)" },
-    ".cm-timestamp": { color: "var(--text-muted)" },
+    ".cm-timestamp": { color: "var(--cm-timestamp, var(--text-muted))" },
     ".cm-search-match": { background: "rgba(255, 200, 0, 0.25)" },
     ".cm-search-current": { background: "rgba(255, 140, 0, 0.45)", outline: "1px solid rgba(255, 140, 0, 0.6)" },
   },

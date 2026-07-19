@@ -31,6 +31,7 @@
     "bg-side-panel": "#1E1E22",
     "bg-toolbar": "#1E1E22",
     "toggle-knob": "#FFFFFF",
-    "hover-overlay": "rgba(255, 255, 255, 0.06)"
+    "hover-overlay": "rgba(255, 255, 255, 0.06)",
+    "cm-timestamp": "#8A8A8A"
   }
 }

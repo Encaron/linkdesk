@@ -33,6 +33,7 @@
   --bg-toolbar: #1E1E22;
   --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
+  --cm-timestamp: #8A8A8A;
   /* Phase 3.5 新增 —— z-index 语义层级 */
   --z-dropdown: 100;
   --z-sticky: 200;
@@ -80,6 +81,7 @@
   --bg-toolbar: #F5F5F5;
   --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
+  --cm-timestamp: #767676;
 }
 
 *,
