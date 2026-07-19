@@ -56,11 +56,11 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
         <svg viewBox="0 0 160 160">
           <polygon
             points="80,10 147,45 147,115 80,150 13,115 13,45"
-            fill="none" stroke="var(--text-primary)" strokeWidth="3" strokeLinejoin="round"
+            fill="none" stroke="var(--accent)" strokeWidth="3" strokeLinejoin="round"
           />
-          <circle cx="80" cy="46" r="10" fill="var(--text-primary)" />
-          <circle cx="46" cy="108" r="10" fill="var(--text-primary)" />
-          <circle cx="114" cy="108" r="10" fill="var(--text-primary)" />
+          <circle cx="80" cy="46" r="10" fill="var(--accent)" />
+          <circle cx="46" cy="108" r="10" fill="var(--accent)" />
+          <circle cx="114" cy="108" r="10" fill="var(--accent)" />
         </svg>
       </div>
 
