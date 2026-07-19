@@ -15,12 +15,18 @@ interface IconBarProps {
   onOpenOrFocus: (type: string) => void;
 }
 
-/** 出厂内置图标（始终显示，即使不是插件） */
-const BUILTIN_ICONS = [
-  { pluginId: "terminal", iconFile: "terminal", label: "终端" },
-  { pluginId: "workspace", iconFile: "workspace", label: "工作台" },
-  { pluginId: "settings", iconFile: "settings", label: "设置" },
-  { pluginId: "marketplace", iconFile: "extensions", label: "插件市场" },
+/** 出厂内置图标（始终显示，即使不是插件）——统一使用 24x24 SVG */
+interface BuiltinIcon {
+  pluginId: string;
+  iconPath: string;
+  label: string;
+}
+
+const BUILTIN_ICONS: BuiltinIcon[] = [
+  { pluginId: "terminal", iconPath: "terminal.svg", label: "终端" },
+  { pluginId: "workspace", iconPath: "workspace.svg", label: "工作台" },
+  { pluginId: "settings", iconPath: "settings.svg", label: "设置" },
+  { pluginId: "marketplace", iconPath: "extensions.svg", label: "插件市场" },
 ];
 
 function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps) {
@@ -34,7 +40,7 @@ function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps)
     .filter((p) => !builtinIds.has(p.pluginId))
     .map((p) => ({
       pluginId: p.pluginId,
-      iconFile: "settings", // 默认图标
+      iconPath: "settings.svg", // 默认图标
       label: p.manifest.name,
     }));
 
@@ -56,7 +62,7 @@ function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps)
           aria-label={t(entry.label)}
         >
           <img
-            src={`/assets/icons/${entry.iconFile}.png`}
+            src={`/assets/icons/${entry.iconPath}`}
             alt={t(entry.label)}
             className="icon-img"
           />
