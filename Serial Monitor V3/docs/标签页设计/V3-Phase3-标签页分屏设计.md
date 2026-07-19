@@ -1,7 +1,7 @@
 # Phase 3：主区标签页 + 分屏系统
 
 > 2026-07-19 v4——分屏模型改为 VS Code 风格（每个面板独立标签栏 + TabGroup）。v3 的"全局标签栏+split.tabIds"作废。
-> 关联：[V3设计方案.md §3](V3设计方案.md) / [V3开发计划.md](V3开发计划.md)
+> 关联：[V3设计方案.md §3](../总体设计/V3设计方案.md) / [V3开发计划.md](../开发管理/V3开发计划.md)
 
 ---
 
@@ -66,7 +66,7 @@ V3 用**两层容器**替代 V2 的单层面板筒仓：
 | 层 | 名字 | 机制 | Phase | 对标 |
 |------|------|------|:--:|------|
 | **外层** | 标签页 + 递归分屏 | 每个标签页是一个独立容器，可以 N 个同时打开、自由分屏排列 | Phase 3 | VS Code 编辑器组 |
-| **内层** | 卡片网格 | 每个工作台标签页内部是卡片自由拖拽排列 | Phase 4 | 桌面上的窗口 |
+| **内层** | 卡片网格 | 每个工作台标签页内部是卡片自由拖拽排列 | Phase 5 | 桌面上的窗口 |
 
 **两层组合 = 用户想怎么摆就怎么摆：**
 
@@ -82,7 +82,7 @@ V3 用**两层容器**替代 V2 的单层面板筒仓：
 └──────────────┴──────────────────────────┘
 ```
 
-**Phase 3 先把外层容器做好。** Phase 4 卡片系统进场后直接享受这个自由度——任何卡片可以出现在任何工作台标签页里，任何工作台标签页可以和终端/OLED 自由分屏。这就是 V3 最核心的架构升级。
+**Phase 3 先把外层容器做好。** Phase 5 卡片系统进场后直接享受这个自由度——任何卡片可以出现在任何工作台标签页里，任何工作台标签页可以和终端/OLED 自由分屏。这就是 V3 最核心的架构升级。
 
 Phase 2 只做完终端视图。当前主区一次只能显示一个视图（终端 / 工作台 / OLED）。进卡片开发后会出现两个问题：
 
@@ -91,7 +91,7 @@ Phase 2 只做完终端视图。当前主区一次只能显示一个视图（终
 
 方案：把主区升级为 **VS Code 编辑器区域模型**——标签页 + 拖拽分屏。先有容器，再放卡片。
 
-> **设计哲学：分屏自由（Phase 3）+ 卡片自由（Phase 4）= 用户想怎么摆就怎么摆。** 这不是"先把标签页做完再慢慢加卡片"的顺序问题——这是 V3 从 V2 的单层筒仓到两层可组合容器的架构跨越。
+> **设计哲学：分屏自由（Phase 3）+ 卡片自由（Phase 5）= 用户想怎么摆就怎么摆。** 这不是"先把标签页做完再慢慢加卡片"的顺序问题——这是 V3 从 V2 的单层筒仓到两层可组合容器的架构跨越。
 
 ---
 
@@ -205,7 +205,7 @@ V3 设计中，终端可以出现在两种容器里：
 | 形态 | 容器 | 大小 | Phase |
 |------|------|------|:--:|
 | **终端标签页** | 主区标签栏 | 填满面板块 | Phase 3 |
-| **终端卡** | 工作台卡片网格 | 卡片尺寸（和 gauge/switch/plot 同级） | Phase 4 |
+| **终端卡** | 工作台卡片网格 | 卡片尺寸（和 gauge/switch/plot 同级） | Phase 5 |
 
 它们**共用同一套 TerminalComponent 代码**（设计方案 §7）。区别只是壳不同——标签页的壳是标签栏，终端卡的壳是 Card Shell。
 
@@ -235,7 +235,7 @@ CM6 EditorView 只能绑定一个 DOM 父节点，所以不可能"一个终端�
 2. **终端卡是用户显式创建的。** 编辑模式 → [+] → 选"终端" → 命名 → 确定。不自动生成。
 3. **终端卡创建时不影响已有终端。** 它们是独立实例。RingBuffer、CM6、暂停状态、导出——各自独立。
 
-#### 终端卡和终端标签页的交互场景（含 Phase 4）
+#### 终端卡和终端标签页的交互场景（含 Phase 5）
 
 | # | 场景 | 行为 |
 |:--:|------|------|
@@ -245,14 +245,14 @@ CM6 EditorView 只能绑定一个 DOM 父节点，所以不可能"一个终端�
 | 4 | 关闭工作台标签页（里面有终端卡） | 终端卡随之销毁。其他终端标签页保留 |
 | 5 | 有两个终端标签页（terminal-1, terminal-2） | 各自独立。一个设 HEX 模式、一个设文本模式 |
 | 6 | 终端卡在工作台 hidden 标签页里 | keep-alive：CM6 继续接收数据但不渲染。切回来时 `requestMeasure` |
-| 7 | 终端卡在工作台内被拖拽重排（Phase 4 卡片拖拽） | 正常拖拽——终端卡和其他卡片（gauge/switch/plot）一样可以重排 |
-| 8 | 拖终端卡到标签栏（Phase 4） | 终端卡消失 → 创建新的终端标签页。**新标签页的 RingBuffer + CM6 重创建，历史数据丢失**——MCU 几十 ms 一帧，几秒内填满 |
-| 9 | 拖终端标签页到工作台（Phase 4） | 终端标签页关闭 → 工作台新建终端卡。同上，历史数据丢失但秒级恢复 |
+| 7 | 终端卡在工作台内被拖拽重排（Phase 5 卡片拖拽） | 正常拖拽——终端卡和其他卡片（gauge/switch/plot）一样可以重排 |
+| 8 | 拖终端卡到标签栏（Phase 5） | 终端卡消失 → 创建新的终端标签页。**新标签页的 RingBuffer + CM6 重创建，历史数据丢失**——MCU 几十 ms 一帧，几秒内填满 |
+| 9 | 拖终端标签页到工作台（Phase 5） | 终端标签页关闭 → 工作台新建终端卡。同上，历史数据丢失但秒级恢复 |
 | 10 | 终端卡 + 终端标签页同时暂停 | 独立暂停——一个暂停不影响另一个 |
 | 11 | 终端卡 + 终端标签页同时导出 | 两个独立导出文件，各自的时间戳/编码设置 |
 | 12 | 关闭所有终端标签页，只剩工作台（含终端卡） | 工作台的终端卡依然接收数据。不自动创建终端标签页——用户有终端卡可以看到数据。只有关闭最后一个终端卡时才触发保底（见 §10.3） |
 
-**Phase 3 只管场景 1-2、5。** 其余是 Phase 4 的事，但 Phase 3 的 keep-alive 机制和独立实例模型已经为它们铺好了路——终端卡只是 TerminalComponent 外面套一个 Card Shell，数据管道完全复用。
+**Phase 3 只管场景 1-2、5。** 其余是 Phase 5 的事，但 Phase 3 的 keep-alive 机制和独立实例模型已经为它们铺好了路——终端卡只是 TerminalComponent 外面套一个 Card Shell，数据管道完全复用。
 
 ### 2.7 分屏时顶栏的行为
 
@@ -359,7 +359,7 @@ V2.6 的教训：所有 UI 文字必须走 `t()` 函数，不硬编码中文字�
 | `tab.splitRight` | 向右分屏 | Split Right |
 | `tab.noWorkspace` | 点击标签栏 [+] 新建工作台 | Click tab bar [+] to create workspace |
 | `tab.dirtyConfirm` | 「{name}」有未保存的修改，确定关闭？ | "{name}" has unsaved changes. Close anyway? |
-| `workspace.placeholder` | 卡片架构将在 Phase 4 实现 | Card architecture coming in Phase 4 |
+| `workspace.placeholder` | 卡片架构将在 Phase 5 实现 | Card architecture coming in Phase 5 |
 | `workspace.openFile` | 打开 workspace 文件 | Open Workspace File |
 | `workspace.new` | 新建 workspace | New Workspace |
 | `workspace.waiting` | 等待卡片数据... | Waiting for card data... |
@@ -375,7 +375,7 @@ V2.6 的教训：所有 UI 文字必须走 `t()` 函数，不硬编码中文字�
 | 所有 `t()` 的 key 在 JSON 中存在 | `tsc --noEmit` + i18next 类型校验 |
 | CSS 中只用 `var(--xxx)` | `grep -rE 'color:\s*#[0-9a-fA-F]' src/**/*.css` 返回空 |
 
-> **向前兼容：** 上表中所有 CSS 变量都支持 Phase 6 的运行时覆盖（`document.documentElement.style.setProperty()`）。用户将来选自定义强调色时，`--accent` / `--sent-echo` / `--dirty-dot` 等变量的值可以被 JavaScript 动态替换——优先级高于 `:root` 中的 CSS 静态默认值。不需要在 Phase 3 做任何特殊处理。详见 [[custom-accent-colors]]。
+> **向前兼容：** 上表中所有 CSS 变量都支持 Phase 7 的运行时覆盖（`document.documentElement.style.setProperty()`）。用户将来选自定义强调色时，`--accent` / `--sent-echo` / `--dirty-dot` 等变量的值可以被 JavaScript 动态替换——优先级高于 `:root` 中的 CSS 静态默认值。不需要在 Phase 3 做任何特殊处理。详见 [[custom-accent-colors]]。
 
 ---
 
@@ -393,7 +393,7 @@ interface Tab {
   type: "terminal" | "workspace" | "oled" | "settings" | "editor";
   label: string;                 // 标签页标题（显示在标签栏）
   workspaceName?: string;        // workspace 类型才有——对应的 workspace 文件名
-  filePath?: string;             // editor 类型才有——文件路径（Phase 6）
+  filePath?: string;             // editor 类型才有——文件路径（Phase 7）
   dirty: boolean;                // 有未保存修改 → 标签页标题前显示 ●。创建时初始值 = false
 }
 
@@ -635,8 +635,8 @@ function TerminalView({ isActive }: { isActive: boolean }) {
 | 组件 | 重新激活操作 | 备注 |
 |------|------|------|
 | TerminalView | `cmView.requestMeasure()` + `monacoEditor.layout()` | CM6 + Monaco 各调一次 |
-| WorkspaceView | 每张卡的 `chart.resize()`（Phase 4） | ECharts 实例遍历 |
-| OLED | Canvas resize（Phase 5） | 重设 canvas 尺寸 |
+| WorkspaceView | 每张卡的 `chart.resize()`（Phase 5） | ECharts 实例遍历 |
+| OLED | Canvas resize（Phase 6） | 重设 canvas 尺寸 |
 | Settings | 无需操作 | 纯 DOM，CSS 自动处理 |
 
 ### 4.4 rAF 循环在隐藏标签页中的行为
@@ -681,8 +681,8 @@ function renderTabContent(tab: Tab, isActive: boolean): JSX.Element {
     case "terminal":   return <TerminalView isActive={isActive} />;
     case "workspace":  return <WorkspaceView isActive={isActive} workspaceName={tab.workspaceName} />;
     case "settings":   return <SettingsView isActive={isActive} />;
-    case "oled":       return <OLEDView isActive={isActive} />;    // Phase 5
-    case "editor":     return <EditorTab isActive={isActive} filePath={tab.filePath} />;  // Phase 6
+    case "oled":       return <OLEDView isActive={isActive} />;    // Phase 6
+    case "editor":     return <EditorTab isActive={isActive} filePath={tab.filePath} />;  // Phase 7
   }
 }
 ```
@@ -813,7 +813,7 @@ class SerialDataBus {
 **为什么 📟/⚙ 保留隐式创建，📊 不保留：**
 - 📟 终端是核心功能——串口助手的根。启动时必须有一个，关闭最后一个时必须补一个（终端保底）。隐式创建和保底逻辑一致。
 - ⚙ 设置是用户的基本预期——点齿轮就打开设置，所有软件都是这样的。而且设置只有一个，没有歧义。
-- 📊 工作台在 Phase 3 没有内容——隐式创建只是打开一个占位 UI，用户得不到任何价值。Phase 4 卡片上线后再评估是否需要恢复隐式创建（如果 workspace 模板足够智能的话）。
+- 📊 工作台在 Phase 3 没有内容——隐式创建只是打开一个占位 UI，用户得不到任何价值。Phase 5 卡片上线后再评估是否需要恢复隐式创建（如果 workspace 模板足够智能的话）。
 
 **为什么去掉"循环"：**
 - 循环行为下，同一个操作（点 📊）每次产生不同结果——用户必须记住"现在是第几个、下一个是什么"
@@ -981,9 +981,9 @@ V3 的拖拽有三个合法目标区域：
 
 关闭面板中的标签页（[×]）→ 同上，分屏取消。
 
-### 9.6 未来扩展：工作台卡片网格作为 drop target（Phase 4）
+### 9.6 未来扩展：工作台卡片网格作为 drop target（Phase 5）
 
-Phase 4 卡片架构完成后，主区会出现第三种 drop target——**工作台的卡片网格**。拖拽方向不同，语义不同：
+Phase 5 卡片架构完成后，主区会出现第三种 drop target——**工作台的卡片网格**。拖拽方向不同，语义不同：
 
 | 拖拽方向 | 行为 |
 |------|------|
@@ -1179,8 +1179,8 @@ function restoreLayout(): TabState {
       if (!t.id || !t.type || !t.label) return false;
       // workspace 标签页检查文件是否存在
       if (t.type === "workspace" && t.workspaceName) {
-        // Phase 3: workspace 文件可能还不存在（Phase 4 才实现）
-        // 先保留标签页，Phase 4 再加文件检查
+        // Phase 3: workspace 文件可能还不存在（Phase 5 才实现）
+        // 先保留标签页，Phase 5 再加文件检查
         return true;
       }
       return true;
@@ -1224,7 +1224,7 @@ Phase 3 的标签页/分屏布局是否需要支持"AI 运行时修改"——对
 
 **不需要。** 原因：
 
-| | Phase 4（卡片） | Phase 3（标签页/分屏） |
+| | Phase 5（卡片） | Phase 3（标签页/分屏） |
 |------|:--:|:--:|
 | AI 需要控制吗 | ✅ 需要——AI 扫 MCU 固件生成 workspace.json | ❌ 不需要——标签页排列是用户的个人偏好 |
 | 类比 | VS Code 的 tasks.json | VS Code 的编辑器标签页布局 |
@@ -1234,7 +1234,7 @@ VS Code 的编辑器标签页布局没有 `"openEditors": [...]` 这样的用户
 
 **Phase 3 的设计决策：`prefs.json` 中的 `layout` 字段只在启动时读取、退出时保存。** 不提供运行时文件监听同步。AI 不需要控制它，用户不需要 AI 控制它。
 
-AI 真正需要控制的是 workspace.json 的内容（Phase 4）——哪些卡片、什么类型、什么参数。这是纯文本 JSON，文件监听实时生效。
+AI 真正需要控制的是 workspace.json 的内容（Phase 5）——哪些卡片、什么类型、什么参数。这是纯文本 JSON，文件监听实时生效。
 
 ---
 
@@ -1327,14 +1327,14 @@ Step 10: 打磨
 
 ### 13.1 Phase 3 期间 workspace 标签页的占位内容
 
-Phase 3 没有卡片架构（Phase 4 的事）。workspace 标签页打开时，WorkspaceView 里没有卡片可显示。**需要一个占位 UI，不能是空白页。**
+Phase 3 没有卡片架构（Phase 5 的事）。workspace 标签页打开时，WorkspaceView 里没有卡片可显示。**需要一个占位 UI，不能是空白页。**
 
 ```
 ┌──────────────────────────────────────────┐
 │                                          │
 │           📊 工作台                       │
 │                                          │
-│      卡片架构将在 Phase 4 实现             │
+│      卡片架构将在 Phase 5 实现             │
 │                                          │
 │    [打开 workspace 文件]  [新建 workspace] │
 │                                          │
@@ -1345,13 +1345,13 @@ Phase 3 没有卡片架构（Phase 4 的事）。workspace 标签页打开时，
 - 显示当前 workspace 名称（如"心率检测"）
 - 两个按钮：打开已有 workspace 文件 / 新建空白 workspace
 - 如果 workspace 标签页是从顶栏下拉框创建的（已关联文件），显示"等待卡片数据..."
-- Phase 4 接入卡片架构后，这个占位 UI 被 CardGrid 替换
+- Phase 5 接入卡片架构后，这个占位 UI 被 CardGrid 替换
 
-**Phase 3 → 4 过渡的隐式耦合：** `Tab.workspaceName` 是标签页系统和卡片架构的唯一接触点。WorkspaceView 接收 `workspaceName` prop → Phase 3 无视它（显示占位 UI）→ Phase 4 用它加载对应的 `CardRegistry` 实例。**标签页系统不碰 CardRegistry——** 它只管"哪个 workspace 标签页是活跃的"，WorkspaceView 自己决定怎么渲染。这是松耦合，Phase 4 不需要改标签页系统的任何代码。
+**Phase 3 → 5 过渡的隐式耦合：** `Tab.workspaceName` 是标签页系统和卡片架构的唯一接触点。WorkspaceView 接收 `workspaceName` prop → Phase 3 无视它（显示占位 UI）→ Phase 5 用它加载对应的 `CardRegistry` 实例。**标签页系统不碰 CardRegistry——** 它只管"哪个 workspace 标签页是活跃的"，WorkspaceView 自己决定怎么渲染。这是松耦合，Phase 5 不需要改标签页系统的任何代码。
 
 > ⚠ **硬约束（Phase 3→4 边界）：** 标签页系统永远不持有、不访问、不导入 `CardRegistry` 或任何卡片相关类型。`Tab.workspaceName: string | undefined` 是标签页系统对卡片架构的**唯一认知**。违反此规则 = V2 的 Sensors.cs 膨胀到 3570 行的根因重演。
 
-**这个占位 UI 不是浪费——** 它验证了标签页创建、切换、关闭的完整流程，以及 keep-alive 机制在 workspace 标签页上的正确性。Phase 4 只需替换 WorkspaceView 的内部实现，标签页基础设施不动。
+**这个占位 UI 不是浪费——** 它验证了标签页创建、切换、关闭的完整流程，以及 keep-alive 机制在 workspace 标签页上的正确性。Phase 5 只需替换 WorkspaceView 的内部实现，标签页基础设施不动。
 
 ### 13.2 每步的测试策略
 
@@ -1385,7 +1385,7 @@ Phase 3 没有卡片架构（Phase 4 的事）。workspace 标签页打开时，
 | 8 | **多标签页 RingBuffer 独立消费的 GC 压力** | 低 | 低 | 5 个标签页以内无影响。超过后升级为 Pub/Sub（§5.3） |
 | 9 | **workspace 标签页引用的文件被外部删除** | 低 | 低 | 恢复布局时检查文件存在性，缺失则跳过 + 系统消息提示 |
 | 10 | **拖拽时 drop zone 检测在 Windows 高 DPI 下偏移** | 低 | 中 | `getBoundingClientRect()` 返回 CSS 像素，不受 DPI 影响。用 `clientX/clientY` 保持一致 |
-| 11 | **ECharts 在 display:none 后 resize 得 0×0** | 中 | 中 | Phase 4 处理——切回可见后调 `chart.resize()`。和 CM6 的 requestMeasure 同模式 |
+| 11 | **ECharts 在 display:none 后 resize 得 0×0** | 中 | 中 | Phase 5 处理——切回可见后调 `chart.resize()`。和 CM6 的 requestMeasure 同模式 |
 | 12 | **分屏 resize 拖拽中发送区 Monaco 高度塌陷** | 低 | 低 | allotment 提供 `onResize` 回调，mouseup 时调 `monaco.layout()` |
 
 ---

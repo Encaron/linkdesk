@@ -68,10 +68,10 @@ function TopBar({ ports, portName, baudRate, isOpen, onToggleOpen, onPortChange,
 
       {/* 右侧：工具 */}
       <div className="top-bar-right">
-        <button className="top-btn-icon" onClick={onToggleLang} title={t("切换语言（Phase 5）")}>
+        <button className="top-btn-icon" onClick={onToggleLang} title={t("切换语言（Phase 7）")}>
           {lang === "zh" ? "中" : "EN"}
         </button>
-        <button className="top-btn-icon" onClick={onToggleTheme} title={t("切换主题（Phase 5）")}>
+        <button className="top-btn-icon" onClick={onToggleTheme} title={t("切换主题（Phase 7）")}>
           {theme === "Dark" ? "☀" : "☾"}
         </button>
         <button className="top-btn-icon" title="帮助">

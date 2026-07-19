@@ -1,6 +1,6 @@
 /**
  * WorkspaceView — 工作台视图。
- * Phase 3: 占位 UI；Phase 4: 卡片网格。
+ * Phase 3: 占位 UI；Phase 5: 卡片网格。
  * 设计依据：[V3-Phase3-标签页分屏设计.md §13.1]
  */
 
@@ -20,7 +20,7 @@ function WorkspaceView({ isActive: _isActive, workspaceName }: WorkspaceViewProp
         {workspaceName ? `📊 ${workspaceName}` : t("暂无卡片，请先连接串口")}
       </span>
       <span style={{ color: "var(--text-muted)", fontSize: 11, opacity: 0.7 }}>
-        {t("卡片架构将在 Phase 4 实现")}
+        {t("卡片架构将在 Phase 5 实现")}
       </span>
     </div>
   );

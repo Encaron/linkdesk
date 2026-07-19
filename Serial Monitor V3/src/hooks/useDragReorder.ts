@@ -1,7 +1,7 @@
 /**
  * useDragReorder — 通用拖拽重排 hook。
  * 封装 window 级 mousemove/mouseup/keydown 事件处理，
- * 支持 reorder ↔ split 双向状态机，可复用于 Phase 4 卡片拖拽。
+ * 支持 reorder ↔ split 双向状态机，可复用于 Phase 5 卡片拖拽。
  *
  * 设计依据：[V3-Phase3-标签页分屏设计.md §9] + Phase 3 审计建议
  */

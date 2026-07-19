@@ -66,17 +66,17 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
             {activeTabType === "terminal" && <TerminalSidebar />}
             {activeTabType === "workspace" && (
               <div className="side-panel-placeholder">
-                {t("卡片属性编辑器")} — Phase 4
+                {t("卡片属性编辑器")} — Phase 5
               </div>
             )}
             {activeTabType === "settings" && (
               <div className="side-panel-placeholder">
-                {t("导航")} — Phase 6
+                {t("导航")} — Phase 7
               </div>
             )}
             {activeTabType === "oled" && (
               <div className="side-panel-placeholder">
-                {t("图形属性")} — Phase 5
+                {t("图形属性")} — Phase 6
               </div>
             )}
           </div>

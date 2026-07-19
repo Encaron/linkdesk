@@ -55,7 +55,7 @@ export interface Prefs {
     sendCoding: string;
   };
   quickSends: Record<string, string>;
-  /** Phase 3：标签页布局持久化。Phase 4 增加 cardLayout。 */
+  /** Phase 3：标签页布局持久化。Phase 5 增加 cardLayout。 */
   layout?: LayoutData;
 }
 
@@ -228,7 +228,7 @@ class PreferenceService {
   /** 列出所有工作区 */
   static async listWorkspaces(): Promise<string[]> {
     try {
-      // TODO Phase 4：使用 readDir 枚举 workspaces/ 目录
+      // TODO Phase 5：使用 readDir 枚举 workspaces/ 目录
       return [];
     } catch {
       return [];

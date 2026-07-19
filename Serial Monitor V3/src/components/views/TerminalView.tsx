@@ -386,7 +386,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   // ⚠️ 独立 RingBuffer 多消费者——不是 Pub/Sub。
   // 串口数据是"流"不是"事件"——每个标签页需要完整历史，不是只收订阅后的数据。
-  // Phase 4 后每个 workspace 内多个卡片可能需要 Pub/Sub——升级路径在设计文档 §5.3。
+  // Phase 5 后每个 workspace 内多个卡片可能需要 Pub/Sub——升级路径在设计文档 §5.3。
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;

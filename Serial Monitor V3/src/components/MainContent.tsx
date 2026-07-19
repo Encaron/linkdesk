@@ -55,9 +55,9 @@ export function renderTabContent(
     case "settings":
       return <SettingsView key={tab.id} isActive={isActive} />;
     case "oled":
-      return <div key={tab.id}>OLED 视图（Phase 5 实现）</div>;
+      return <div key={tab.id}>OLED 视图（Phase 6 实现）</div>;
     case "editor":
-      return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 6 实现）</div>;
+      return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 7 实现）</div>;
     default:
       return null;
   }

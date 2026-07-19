@@ -102,7 +102,7 @@
   "编辑": "Edit",
   "---- 快捷发送「{{name}}」已更新 ----": "---- Quick send \"{{name}}\" updated ----",
   "模块加载失败，请重启应用": "Module load failed. Please restart the application.",
-  "卡片架构将在 Phase 4 实现": "Card architecture coming in Phase 4",
-  "切换语言（Phase 5）": "Switch Language (Phase 5)",
-  "切换主题（Phase 5）": "Switch Theme (Phase 5)"
+  "卡片架构将在 Phase 5 实现": "Card architecture coming in Phase 5",
+  "切换语言（Phase 7）": "Switch Language (Phase 7)",
+  "切换主题（Phase 7）": "Switch Theme (Phase 7)"
 }

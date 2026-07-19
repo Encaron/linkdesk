@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://serial-monitor-v3/workspace.schema.json",
   "title": "V3 Workspace Layout",
-  "description": "标签页布局 + 卡片列表。Phase 3 已锁定标签页结构，Phase 4 卡片字段开放。",
+  "description": "标签页布局 + 卡片列表。Phase 3 已锁定标签页结构，Phase 5 卡片字段开放。",
   "type": "object",
   "required": ["tabs"],
   "properties": {
@@ -33,7 +33,7 @@
     },
     "cards": {
       "type": "array",
-      "description": "Phase 4 卡片列表（平铺数组，禁止嵌套）。字段待锁定。",
+      "description": "Phase 5 卡片列表（平铺数组，禁止嵌套）。字段待锁定。",
       "items": { "type": "object" }
     }
   },

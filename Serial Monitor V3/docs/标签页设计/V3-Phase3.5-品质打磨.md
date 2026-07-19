@@ -1,7 +1,7 @@
 # V3 Phase 3.5 — 品质打磨
 
 > 基于 impeccable + ui-ux-pro-max + web-design-guidelines 三个 skill 的全面审计结果，
-> 在卡片架构（Phase 4）开工前，对 V3 进行系统性品质提升。
+> 在卡片架构（Phase 5）开工前，对 V3 进行系统性品质提升。
 >
 > 审计日期：2026-07-19  
 > 审计范围：71 个源文件，6002 行 TS/TSX + CSS  
@@ -18,7 +18,7 @@ Phase 3 完成了架构骨架——标签页、分屏、keep-alive、拖拽—�
 - **无障碍**：对比度不达标、无 focus-visible、无 aria-label
 - **代码质量**：`any` 泛滥、魔法数字、z-index 靠 999
 
-这些问题如果留到 Phase 6 再修，就是下一个 V2.6——改动量指数增长，用户体验看不出变化但代码翻了个底朝天。
+这些问题如果留到 Phase 7 再修，就是下一个 V2.6——改动量指数增长，用户体验看不出变化但代码翻了个底朝天。
 
 Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范、更完整、更经得起切主题/切语言/键盘操作/屏幕阅读的考验。**
 
@@ -34,7 +34,7 @@ Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范�
 |:--:|------|------|
 | 1.1 | 补 26 个缺失的 i18n key — `zh.json` + `en.json` | ReceiveContextMenu / FilterMenu / SearchBar / CommandPalette / TerminalView 命令面板 / 快捷发送 |
 | 1.2 | `ErrorBoundary.tsx:29` — `模块加载失败，请重启应用` → `t()` | 错误页面 |
-| 1.3 | `WorkspaceView.tsx:23` — Phase 4 占位文字 → `t()` | 工作台视图 |
+| 1.3 | `WorkspaceView.tsx:23` — Phase 5 占位文字 → `t()` | 工作台视图 |
 | 1.4 | `TopBar.tsx:67-70` — `title` 属性 → `t()` | 语言/主题切换按钮 |
 | 1.5 | `useTabManager.ts:107-111` — `getDefaultLabel()` 返回值 → `t()` | 标签页默认标题 |
 | 1.6 | `splitTree.ts:337,347,354-355` — 验证错误消息 → 英文或错误码 | 开发者消息，保持英文或中文不变均可，统一即可 |
@@ -135,7 +135,7 @@ Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范�
 
 | # | 任务 |
 |:--:|------|
-| 9.1 | `PreferenceService.listWorkspaces()` — 加 TODO 标记，注明 Phase 4 实现 |
+| 9.1 | `PreferenceService.listWorkspaces()` — 加 TODO 标记，注明 Phase 5 实现 |
 | 9.2 | `tsconfig.json` / `tauri.conf.json` 审查（CSP、schema URL） |
 | 9.3 | 移除未使用的 `tsx` devDependency（确认未被 CLI 使用后） |
 | 9.4 | 更新 `docs/当前状态.md` 反映 Phase 3.5 完成 |
@@ -148,8 +148,8 @@ Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范�
 | # | 问题 | 理由 |
 |:--|------|------|
 | 1 | 按钮 < 44×44px WCAG 目标尺寸 | 桌面应用不强制——鼠标精度远高于手指。VS Code 的关闭按钮也是 18px。保持现状，不做无意义的放大 |
-| 2 | Monaco 打包体积 ~150KB | 发送栏需要语法高亮，textarea 无法替代。Phase 6 评估 |
-| 3 | TerminalView ~950 行 | 拆分风险 > 收益。正确路径是抽 `useSend` hook，留到 Phase 4 |
+| 2 | Monaco 打包体积 ~150KB | 发送栏需要语法高亮，textarea 无法替代。Phase 7 评估 |
+| 3 | TerminalView ~950 行 | 拆分风险 > 收益。正确路径是抽 `useSend` hook，留到 Phase 5 |
 | 4 | DTR/RTS UI / 数据位/停止位/校验 | Rust 命令就绪但 UI 未加——串口功能需求，不是品质问题 |
 | 5 | 新数据 50ms 蓝色闪烁 | P2 打磨项，不影响功能 |
 
@@ -186,7 +186,7 @@ Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范�
 
 ## Phase 3.5 完成
 
-14 个 commit，40+ 文件修改，109 个测试，Phase 4 卡片架构就绪。
+14 个 commit，40+ 文件修改，109 个测试，Phase 5 卡片架构就绪。
 
 ---
 
@@ -204,7 +204,7 @@ Memory 系统在 `~/.claude/projects/` 是私有目录。clone 仓库后新 AI �
 ### 缺口 2：workspace.schema.json — AI 不靠猜字段名
 
 workspace.json 是平铺数组——好。但 AI 加卡片时字段名叫 `id` 还是 `cardId`？有没有 `minW` 约束？
-一个最小 schema（只定义 Phase 3 已有结构，Phase 4 字段留 `additionalProperties`）让 AI 生成合法 JSON 的概率从 ~85% 提到 ~99%。
+一个最小 schema（只定义 Phase 3 已有结构，Phase 5 字段留 `additionalProperties`）让 AI 生成合法 JSON 的概率从 ~85% 提到 ~99%。
 
 ### 缺口 3：硬约束自动化 — 从"人记"到"机器执行"
 
