@@ -166,3 +166,16 @@
   color: var(--text-muted);
   cursor: default;
 }
+
+/* NodeDesk 大 Logo — 对标 VS Code 欢迎页底部 logo */
+.welcome-logo {
+  display: flex;
+  justify-content: center;
+  padding: 40px 0 16px;
+  opacity: 0.5;
+  transition: opacity 0.3s;
+}
+
+.welcome-logo:hover {
+  opacity: 0.75;
+}
