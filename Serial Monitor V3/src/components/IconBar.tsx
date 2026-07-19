@@ -4,7 +4,7 @@
  * 复用 TabBar 拖拽的 window 级 mousemove/mouseup 模式。
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
@@ -59,6 +59,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const dropRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
+  const wasDragRef = useRef(false); // 标记本次是否拖拽了——防止 onClick 误触发
   const containerRef = useRef<HTMLDivElement>(null);
 
   const viewPlugins = getViewPlugins();
@@ -104,53 +105,52 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     return null;
   };
 
-  /* ── Window 级事件（和 TabBar 拖拽同一模式） ── */
+  /* ── 拖拽事件（窗口级，和 TabBar 同一模式） ── */
+
+  const handleDragMouseMove = useCallback((e: MouseEvent) => {
+    if (!dragRef.current) return;
+    const dy = Math.abs(e.clientY - dragRef.current.startY);
+    if (dy < 5) return;
+
+    if (!dragRef.current.moved) {
+      dragRef.current.moved = true;
+      wasDragRef.current = true;
+      setDraggedId(dragRef.current.pluginId);
+    }
+
+    const target = findTarget(e.clientY, dragRef.current.pluginId);
+    dropRef.current = target;
+    setPreviewPos({ x: e.clientX - 24, y: e.clientY - 24 });
+    setDropTarget(target);
+  }, []);
+
+  const handleDragMouseUp = useCallback(() => {
+    const drag = dragRef.current;
+    const target = dropRef.current;
+    if (!drag) return;
+
+    if (drag.moved && target) {
+      const ids = ordered.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
+      const targetIdx = ids.indexOf(target.id);
+      const insertAt = target.pos === "top" ? targetIdx : targetIdx + 1;
+      ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
+      saveOrder(ids);
+    }
+
+    dropRef.current = null;
+    setDraggedId(null);
+    setDropTarget(null);
+    setPreviewPos(null);
+  }, [ordered]);
 
   useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const dy = Math.abs(e.clientY - dragRef.current.startY);
-      if (dy < 5) return;
-
-      if (!dragRef.current.moved) {
-        dragRef.current.moved = true;
-        setDraggedId(dragRef.current.pluginId);
-      }
-
-      const target = findTarget(e.clientY, dragRef.current.pluginId);
-      dropRef.current = target;
-      setPreviewPos({ x: e.clientX - 24, y: e.clientY - 24 });
-      setDropTarget(target);
-    };
-
-    const onMouseUp = () => {
-      const drag = dragRef.current;
-      const target = dropRef.current;
-      if (!drag) return;
-
-      if (drag.moved && target) {
-        const ids = ordered.map((x) => x.pluginId).filter((x) => x !== drag.pluginId);
-        const targetIdx = ids.indexOf(target.id);
-        const insertAt = target.pos === "top" ? targetIdx : targetIdx + 1;
-        ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
-        saveOrder(ids);
-      }
-
-      dragRef.current = null;
-      dropRef.current = null;
-      setDraggedId(null);
-      setDropTarget(null);
-      setPreviewPos(null);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
+    window.addEventListener("mousemove", handleDragMouseMove);
+    window.addEventListener("mouseup", handleDragMouseUp);
     return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
+      window.removeEventListener("mousemove", handleDragMouseMove);
+      window.removeEventListener("mouseup", handleDragMouseUp);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [handleDragMouseMove, handleDragMouseUp]);
 
   /* ── 高亮 ── */
 
@@ -171,11 +171,16 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           data-plugin-id={entry.pluginId}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
+            e.preventDefault(); // 阻止浏览器原生拖拽
             dragRef.current = { pluginId: entry.pluginId, startY: e.clientY, moved: false };
           }}
           onClick={() => {
-            // 拖动了就不触发 click
-            if (!dragRef.current?.moved) onOpenOrFocus(entry.pluginId);
+            if (wasDragRef.current) {
+              wasDragRef.current = false;
+              dragRef.current = null;
+              return;
+            }
+            onOpenOrFocus(entry.pluginId);
           }}
           title={t(entry.label)}
           aria-label={t(entry.label)}
