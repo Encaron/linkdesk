@@ -34,3 +34,12 @@
   font-size: 10px;
   color: var(--text-muted);
 }
+
+.status-error {
+  font-size: 11px;
+  color: #E06C75;
+  max-width: 400px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}

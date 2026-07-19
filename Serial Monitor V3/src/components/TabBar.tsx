@@ -215,6 +215,31 @@ export default function TabBar({
   const plusRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
+  // 标签溢出检测 + 滚动箭头
+  const [overflowLeft, setOverflowLeft] = useState(false);
+  const [overflowRight, setOverflowRight] = useState(false);
+
+  const checkOverflow = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setOverflowLeft(el.scrollLeft > 2);
+    setOverflowRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 2);
+  }, []);
+
+  useEffect(() => {
+    checkOverflow();
+    const el = scrollRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(checkOverflow);
+    ro.observe(el);
+    el.addEventListener("scroll", checkOverflow, { passive: true });
+    return () => { ro.disconnect(); el.removeEventListener("scroll", checkOverflow); };
+  }, [checkOverflow, tabs.length]);
+
+  const scrollTabs = (delta: number) => {
+    scrollRef.current?.scrollBy({ left: delta, behavior: "smooth" });
+  };
+
   // 进出动画状态
   const [enteringTabId, setEnteringTabId] = useState<string | null>(null);
   const [exitingTabId, setExitingTabId] = useState<string | null>(null);
@@ -363,7 +388,10 @@ export default function TabBar({
 
   return (
     <div className="tab-bar">
-      <div className="tab-list" ref={scrollRef} onWheel={onWheel} role="tablist">
+      {overflowLeft && (
+        <button className="tab-scroll-arrow tab-scroll-left" onClick={() => scrollTabs(-200)}>‹</button>
+      )}
+      <div className="tab-list" ref={scrollRef} onWheel={onWheel} onScroll={checkOverflow} role="tablist">
         {tabs.map((tab, idx) => {
           const isActive = tab.id === activeTabId;
           const isDragging = draggingId === tab.id;
@@ -419,6 +447,9 @@ export default function TabBar({
         {dragInsertIndex === tabs.length && (
           <div className="tab-drop-indicator" />
         )}
+      {overflowRight && (
+        <button className="tab-scroll-arrow tab-scroll-right" onClick={() => scrollTabs(200)}>›</button>
+      )}
 
         <button
           ref={plusRef}

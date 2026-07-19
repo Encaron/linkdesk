@@ -5,9 +5,10 @@ interface StatusBarProps {
   isOpen: boolean;
   txBytes: number;
   rxBytes: number;
+  error?: string | null;
 }
 
-function StatusBar({ isOpen, txBytes, rxBytes }: StatusBarProps) {
+function StatusBar({ isOpen, txBytes, rxBytes, error }: StatusBarProps) {
   const { t } = useTranslation();
 
   return (
@@ -16,6 +17,12 @@ function StatusBar({ isOpen, txBytes, rxBytes }: StatusBarProps) {
       <span className="status-text">
         {isOpen ? t("已连接") : t("未连接")}
       </span>
+      {error && (
+        <>
+          <span className="status-divider">│</span>
+          <span className="status-error" title={error}>{error}</span>
+        </>
+      )}
       <span className="status-divider">│</span>
       <span className="status-traffic">TX:{formatBytes(txBytes)} ↑</span>
       <span className="status-divider">│</span>

@@ -542,33 +542,42 @@ function TerminalView({ isActive }: TerminalViewProps) {
     return { formatted, warning };
   }, []);
 
-  const handleSend = useCallback(async () => {
-    if (!sendValue.trim()) return;
-    const text = sendValue.trim();
-    recordHistory(text);
+  /* ---- 统一发送逻辑（handleSend / handleQuickSend / 自动发送 共用） ---- */
+  const performSend = useCallback(async (text: string, opts?: {
+    ending?: string;      // 换行符（默认 prefs.lineEnding）
+    prefix?: string;      // echo 前缀（快捷发送用 "> "）
+    silent?: boolean;     // 失败不报错（自动发送用）
+    showHexPreview?: boolean; // 第二行 HEX 预览
+    noHistory?: boolean;  // 不记录发送历史
+  }) => {
+    if (!text.trim()) return;
+    if (!opts?.noHistory) recordHistory(text.trim());
     try {
       if (prefs.sendMode === "hex") {
         const bytes = Array.from(HexToBytes(text));
         await invoke("send_data", { data: bytes });
-        // V2 格式: HH:mm:ss:fff ---- 已发送 HEX 消息 (N 字节) ----
-        const hexMsg = `${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`;
-        appendLine(hexMsg, "sent");
-        // 第二行：HEX 预览（超过 80 字符截断）
-        const preview = text.length > HEX_PREVIEW_MAX_LEN ? text.substring(0, HEX_PREVIEW_MAX_LEN) + "..." : text;
-        appendLine("    " + preview, "sent");
+        appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`, "sent");
+        if (opts?.showHexPreview) {
+          const preview = text.length > HEX_PREVIEW_MAX_LEN ? text.substring(0, HEX_PREVIEW_MAX_LEN) + "..." : text;
+          appendLine("    " + preview, "sent");
+        }
       } else {
-        const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
+        const ending = (opts?.ending ?? prefs.lineEnding).replace(/\\r/g, "\r").replace(/\\n/g, "\n");
         await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
-        // V2 格式: HH:mm:ss:fff ---- 已发送 utf-8 编码消息: "content" ----
         const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-        const sentMsg = `${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: safeText })}`;
-        appendLine(sentMsg, "sent");
+        const displayText = (opts?.prefix ?? "") + safeText;
+        appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: displayText })}`, "sent");
       }
     } catch (e: any) {
-      appendLine(t("发送失败：{{error}}", { error: e?.message || String(e) }), "system");
+      if (!opts?.silent) appendLine(t("发送失败：{{error}}", { error: e?.message || String(e) }), "system");
     }
+  }, [appendLine, recordHistory, prefs.sendMode, prefs.sendCoding, prefs.lineEnding, prefs.timestampFormat]);
+
+  const handleSend = useCallback(async () => {
+    if (!sendValue.trim()) return;
+    await performSend(sendValue.trim(), { showHexPreview: true });
     if (prefs.autoClear) setSendValue("");
-  }, [sendValue, appendLine, recordHistory, prefs.sendMode, prefs.sendCoding, prefs.lineEnding, prefs.autoClear, prefs.timestampFormat]);
+  }, [sendValue, performSend, prefs.autoClear]);
 
   // HEX 模式 onChange：自动格式化
   const prevHexWarningRef = useRef("");
@@ -591,14 +600,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
   }, [prefs.sendMode, autoFormatHex, appendLine]);
 
   const handleQuickSend = async (text: string) => {
-    recordHistory(text);
-    try {
-      await invoke("send_text", { text: text + "\r\n", encoding: prefs.sendCoding });
-      const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-      appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: "> " + safeText })}`, "sent");
-    } catch (e: any) {
-      appendLine(t("发送失败：{{error}}", { error: e?.message || String(e) }), "system");
-    }
+    await performSend(text, { ending: "\r\n", prefix: "> " });
   };
 
   const handleHistorySelect = (text: string) => {
@@ -617,23 +619,10 @@ function TerminalView({ isActive }: TerminalViewProps) {
     const timer = setInterval(async () => {
       const text = sendValueRef.current.trim();
       if (!text) return;
-      try {
-        if (prefs.sendMode === "hex") {
-          const bytes = Array.from(HexToBytes(text));
-          await invoke("send_data", { data: bytes });
-          appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 HEX 消息 ({{bytes}} 字节) ----", { bytes: bytes.length })}`, "sent");
-        } else {
-          const ending = prefs.lineEnding.replace(/\\r/g, "\r").replace(/\\n/g, "\n");
-          await invoke("send_text", { text: text + ending, encoding: prefs.sendCoding });
-          const safeText = text.replace(/\r\n/g, "\\r\\n").replace(/\n/g, "\\n").replace(/\r/g, "\\r");
-          appendLine(`${formatTimestamp(prefs.timestampFormat)} ${t("---- 已发送 {{encoding}} 编码消息: \"{{text}}\" ----", { encoding: prefs.sendCoding.toLowerCase(), text: safeText })}`, "sent");
-        }
-      } catch {
-        // 静默——定时发送失败不刷屏
-      }
+      await performSend(text, { silent: true, noHistory: true });
     }, prefs.repeatInterval);
     return () => clearInterval(timer);
-  }, [prefs.autoRepeat, prefs.repeatInterval, prefs.sendMode, prefs.lineEnding, appendLine]);
+  }, [prefs.autoRepeat, prefs.repeatInterval, performSend]);
 
   /* ---- 右键菜单 ---- */
   const handleCtxMenuAction = useCallback((action: string) => {

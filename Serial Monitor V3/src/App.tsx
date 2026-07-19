@@ -34,6 +34,7 @@ function App() {
   const [baudRate, setBaudRate] = useState("115200");
   const [theme, setTheme] = useState<"Dark" | "Light">("Dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
+  const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
@@ -186,8 +187,8 @@ function App() {
         await invoke("open_port", { portName, baudRate: parseInt(baudRate) });
         setIsOpen(true);
       }
-    } catch (e) {
-      console.error("串口操作失败:", e);
+    } catch (e: any) {
+      setLastError(`串口操作失败：${e?.message || e}`);
     }
   }, [isOpen, portName, baudRate]);
 
@@ -197,8 +198,8 @@ function App() {
       try {
         await invoke("close_port");
         await invoke("open_port", { portName, baudRate: parseInt(newBaud) });
-      } catch (e) {
-        console.error("波特率切换失败:", e);
+      } catch (e: any) {
+        setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
       }
     }
@@ -210,8 +211,8 @@ function App() {
       try {
         await invoke("close_port");
         await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate) });
-      } catch (e) {
-        console.error("端口切换失败:", e);
+      } catch (e: any) {
+        setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);
       }
     }
@@ -418,7 +419,7 @@ function App() {
         </div>
       </div>
       </TerminalPrefsContext.Provider>
-      <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} />
+      <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} error={lastError} />
     </div>
   );
 }
