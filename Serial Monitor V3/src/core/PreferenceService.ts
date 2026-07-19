@@ -18,6 +18,8 @@ let pathApi: typeof import("@tauri-apps/api/path") | null = null;
 import type { LayoutData } from "../hooks/useTabManager";
 
 async function isTauri(): Promise<boolean> {
+  // 检查 Tauri 运行时——模块可以 import 不代表在 Tauri 环境里
+  if (!(window as any).__TAURI__) return false;
   if (fsApi && pathApi) return true;
   try {
     fsApi = await import("@tauri-apps/plugin-fs");
