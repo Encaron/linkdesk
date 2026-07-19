@@ -1,11 +1,12 @@
 /**
  * MainContent — 主内容区。
  * Phase 3.x：递归分屏——树状 SplitPane 渲染 + 面板内毛玻璃（无越界）。
- * 设计依据：[V3-Phase3-标签页分屏设计.md §4] + [V3-Phase3-补充-递归分屏.md]
+ * Phase 4 B33：tab pane 绝对定位平铺——所有标签页内容区平级渲染，
+ *   跨组移动只改 CSS 位置，React 树永不变（对标 B22 面板平铺方案）。
  */
 
-import { useCallback } from "react";
-import type { TabState, TabGroup } from "../hooks/useTabManager";
+import { useCallback, useMemo } from "react";
+import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
@@ -16,6 +17,7 @@ import SettingsView from "./views/SettingsView";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import TabPanePositioner from "./TabPanePositioner";
 import "./MainContent.css";
 
 interface MainContentProps {
@@ -115,6 +117,23 @@ function MainContent({
   onDraggingChange,
 }: MainContentProps) {
 
+  // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
+  const flatPanes = useMemo(() => {
+    const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
+    for (const g of tabState.groups) {
+      for (const tab of g.tabs) {
+        const isActiveInGroup = tab.id === g.activeTabId;
+        panes.push({
+          tab,
+          groupId: g.id,
+          isVisible: isActiveInGroup,
+          isFocused: isActiveInGroup && g.id === activeGroupId,
+        });
+      }
+    }
+    return panes;
+  }, [tabState.groups, activeGroupId]);
+
   const renderGroup = useCallback(
     (group: TabGroup) => {
       const isTarget = dragDropTargetGroupId === group.id && dropZone;
@@ -157,21 +176,12 @@ function MainContent({
             isDragging={isDragging}
             onDraggingChange={onDraggingChange}
           />
-          <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
-            {/* B33: 跨组移动时 React 跨父节点 unmount/remount。
-                有状态组件通过模块级缓存自救（见 TerminalView 的 _cm6SavedViews）。 */}
-            {group.tabs.map((tab) => (
-              <div
-                key={tab.id}
-                className="tab-content-pane"
-                style={{
-                  display: tab.id === group.activeTabId ? "flex" : "none",
-                }}
-              >
-                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId, onCreateTab)}
-              </div>
-            ))}
-          </div>
+          {/* 内容占位区——tab pane 通过绝对定位填充，不做子元素渲染 */}
+          <div
+            className="tab-content-pool"
+            data-group-id={group.id}
+            style={{ flex: 1, position: "relative", overflow: "hidden" }}
+          />
           {isTarget && (
             <div
               className={`drop-zone-overlay drop-zone-${dropZone}`}
@@ -181,7 +191,7 @@ function MainContent({
         </div>
       );
     },
-    [tabState.root, tabState.groups, activeGroupId, dropZone, dragDropTargetGroupId,
+    [tabState.root, activeGroupId, dropZone, dragDropTargetGroupId,
      onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab,
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
@@ -194,6 +204,17 @@ function MainContent({
         renderGroup={renderGroup}
         onResize={onSplitResize}
       />
+      {/* B33：所有 tab pane 平级渲染，绝对定位填入对应组的 tab-content-pool。
+          移动标签页 → groupId 变 → 绝对定位更新 → React 树不变 → 零 unmount。 */}
+      {flatPanes.map(({ tab, groupId, isVisible, isFocused }) => (
+        <TabPanePositioner
+          key={tab.id}
+          groupId={groupId}
+          isVisible={isVisible}
+        >
+          {renderTabContent(tab, isFocused, onCreateTab)}
+        </TabPanePositioner>
+      ))}
     </div>
   );
 }
