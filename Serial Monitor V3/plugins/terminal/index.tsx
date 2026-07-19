@@ -173,13 +173,29 @@ class ScrollTracker implements PluginValue {
 
 const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
+/* ---- B33：模块级 CM6 view 缓存（跨 unmount/remount 存活） ---- */
+
+const _cm6Cache = new Map<string, EditorView>();
+
+// 清理僵尸 view（标签页已关闭，缓存残留）
+setInterval(() => {
+  for (const [id, view] of _cm6Cache) {
+    if (!view.dom.isConnected) {
+      view.destroy();
+      _cm6Cache.delete(id);
+    }
+  }
+}, 30_000);
+
 /* ---- 终端视图 ---- */
 
 interface TerminalViewProps {
   isActive: boolean;
+  /** tab.id——跨组移动时组件用此 ID 恢复 CM6 状态 */
+  sourceId?: string;
 }
 
-function TerminalView({ isActive }: TerminalViewProps) {
+function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   const { t } = useTranslation();
   const { prefs, setPrefs } = useTerminalPrefs();
 
@@ -273,7 +289,20 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const cmView = useRef<EditorView | null>(null);
   const lineNumberCompartment = useRef(new Compartment());
 
+  // B33：sourceId = tab.id，跨 unmount/remount 不变
+  const cacheKey = sourceId ?? "";
+
   useEffect(() => {
+    // 尝试从缓存恢复（跨组移动后 remount）
+    const cached = cacheKey ? _cm6Cache.get(cacheKey) : undefined;
+    if (cached && cmContainer.current) {
+      cmView.current = cached;
+      cmContainer.current.appendChild(cached.dom);
+      _cm6Cache.delete(cacheKey);
+      requestAnimationFrame(() => cached.requestMeasure());
+      return;
+    }
+
     if (!cmContainer.current) return;
     const view = new EditorView({
       doc: "",
@@ -303,7 +332,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
     });
 
     return () => {
-      view.destroy();
+      // 存入缓存——跨组移动时 React 会 unmount 此组件，
+      // 下次 mount 时从缓存恢复。标签页关闭后由定时器清理。
+      if (cacheKey) _cm6Cache.set(cacheKey, view);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

@@ -108,6 +108,9 @@ export function createTabDefaults(
     base.id = type;
   }
 
+  // sourceId 默认 = tab.id——跨组移动时组件用此 ID 恢复状态
+  if (!base.sourceId) base.sourceId = base.id;
+
   return { ...base, ...overrides, id: base.id };
 }
 

@@ -4,9 +4,8 @@
  * 设计依据：[V3-Phase3-标签页分屏设计.md §4] + [V3-Phase3-补充-递归分屏.md]
  */
 
-import { useCallback, useMemo, useRef, useState, useLayoutEffect } from "react";
-import { createPortal } from "react-dom";
-import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
+import { useCallback } from "react";
+import type { TabState, TabGroup } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
@@ -116,34 +115,6 @@ function MainContent({
   onDraggingChange,
 }: MainContentProps) {
 
-  // B33 根治：所有 tab pane 收集到一个平级数组，React 树永不变。
-  // 移动标签页只改 tab.groupId，不改变 pane 在 React 树中的位置 → 零 unmount。
-  const flatPanes = useMemo(() => {
-    const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
-    for (const g of tabState.groups) {
-      for (const tab of g.tabs) {
-        const isActiveInGroup = tab.id === g.activeTabId;
-        const isGroupFocused = g.id === activeGroupId;
-        panes.push({
-          tab,
-          groupId: g.id,
-          isVisible: isActiveInGroup,                        // 在组内是否可见
-          isFocused: isActiveInGroup && isGroupFocused,      // 传给组件的 isActive
-        });
-      }
-    }
-    return panes;
-  }, [tabState.groups, activeGroupId]);
-
-  // Portal 目标 refs——每个组的 tab-content-pool div
-  const portalTargetsRef = useRef<Map<string, HTMLElement>>(new Map());
-
-  // 首次渲染时 ref 未就绪 → useLayoutEffect 后二次渲染，无视觉闪烁
-  const [portalsReady, setPortalsReady] = useState(false);
-  useLayoutEffect(() => {
-    setPortalsReady(true);
-  }, []);
-
   const renderGroup = useCallback(
     (group: TabGroup) => {
       const isTarget = dragDropTargetGroupId === group.id && dropZone;
@@ -186,16 +157,21 @@ function MainContent({
             isDragging={isDragging}
             onDraggingChange={onDraggingChange}
           />
-          {/* Portal 目标——所有 tab pane 通过 createPortal 投射到此处 */}
-          <div
-            className="tab-content-pool"
-            data-group-id={group.id}
-            ref={(el) => {
-              if (el) portalTargetsRef.current.set(group.id, el);
-              else portalTargetsRef.current.delete(group.id);
-            }}
-            style={{ flex: 1, position: "relative", overflow: "hidden" }}
-          />
+          <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
+            {/* B33: 跨组移动时 React 跨父节点 unmount/remount。
+                有状态组件通过模块级缓存自救（见 TerminalView 的 _cm6SavedViews）。 */}
+            {group.tabs.map((tab) => (
+              <div
+                key={tab.id}
+                className="tab-content-pane"
+                style={{
+                  display: tab.id === group.activeTabId ? "flex" : "none",
+                }}
+              >
+                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId, onCreateTab)}
+              </div>
+            ))}
+          </div>
           {isTarget && (
             <div
               className={`drop-zone-overlay drop-zone-${dropZone}`}
@@ -205,7 +181,7 @@ function MainContent({
         </div>
       );
     },
-    [tabState.root, activeGroupId, dropZone, dragDropTargetGroupId,
+    [tabState.root, tabState.groups, activeGroupId, dropZone, dragDropTargetGroupId,
      onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab,
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
@@ -218,33 +194,6 @@ function MainContent({
         renderGroup={renderGroup}
         onResize={onSplitResize}
       />
-      {/* B33根治：所有 tab pane 平级渲染，通过 portal 投射到对应组的 tab-content-pool。
-          React 树中 tab pane 位置永不变——移动只改 portal 目标，零 unmount。
-          portalsReady: 等首次 commit 后 ref 就绪再渲染 portal，useLayoutEffect 保证无闪烁。 */}
-      {portalsReady && flatPanes.map(({ tab, groupId, isVisible, isFocused }) => {
-        const target = portalTargetsRef.current.get(groupId);
-        if (!target) return null;
-
-        // 外层 div key 保证 React 不重建 portal children（即使 target 变化）
-        return (
-          <div key={tab.id} style={{ display: "contents" }}>
-            {createPortal(
-              <div
-                className="tab-content-pane"
-                style={{
-                  position: "absolute",
-                  inset: 0,
-                  display: isVisible ? "flex" : "none",
-                  flexDirection: "column",
-                }}
-              >
-                {renderTabContent(tab, isFocused, onCreateTab)}
-              </div>,
-              target
-            )}
-          </div>
-        );
-      })}
     </div>
   );
 }
