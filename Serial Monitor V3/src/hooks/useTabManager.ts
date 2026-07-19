@@ -222,8 +222,7 @@ export function reduceCreateTab(
 ): CreateTabResult {
   const all = allTabs(prev);
 
-  // Phase 4：plugin-detail 预览模式——对标 VS Code preview editor
-  //   未固定：替换内容。已固定：新建标签页（双屏对比）
+  // Phase 4：plugin-detail 预览模式——同类型替换内容，已固定则新建
   if (type === "plugin-detail" && opts?.pluginId) {
     const existing = all.find((t) => t.type === "plugin-detail" && !t.pinned);
     if (existing) {
@@ -234,6 +233,27 @@ export function reduceCreateTab(
         g.id === group.id ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id } : g
       );
       return { state: { ...prev, groups: newGroups, activeGroupId: group.id }, createdId: existing.id };
+    }
+  }
+
+  // VS Code：每组只有一个预览标签页——新建未固定标签→替换组内旧的预览标签
+  //   保底标签页（welcome）不参与替换——对标 VS Code Getting Started 不可被覆盖
+  if (opts?.pinned !== true) {
+    const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
+    const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
+    if (targetGroup) {
+      const previewTab = targetGroup.tabs.find(
+        (t) => !t.pinned && t.type !== type && !getTabBehavior(t.type).isFallback
+      );
+      if (previewTab) {
+        const newTab = { ...createTabDefaults(type, opts), id: previewTab.id, pinned: false };
+        const newGroups = prev.groups.map((g) =>
+          g.id === targetGroupId
+            ? { ...g, tabs: g.tabs.map((t) => (t.id === previewTab.id ? newTab : t)), activeTabId: newTab.id }
+            : g
+        );
+        return { state: { ...prev, groups: newGroups, activeGroupId: targetGroupId }, createdId: newTab.id };
+      }
     }
   }
 

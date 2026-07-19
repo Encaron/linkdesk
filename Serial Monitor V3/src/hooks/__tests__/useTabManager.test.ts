@@ -108,11 +108,14 @@ describe("reduceCreateTab", () => {
   });
 
   it("分屏时在 activeGroupId 组中创建", () => {
+    // VS Code 预览模式：新建 workspace 替换 active 组内旧的预览 terminal
     let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    state = reduceSplitTab(state, "terminal-2", "horizontal");
+    const tr = reduceCreateTab(state, "terminal");
+    state = reduceSplitTab(tr.state, tr.createdId, "horizontal");
+    // Group A: [welcome], Group B: [terminal], active=Group B
     const r = reduceCreateTab(state, "workspace", { workspaceName: "pid" });
-    expect(allTabs(r.state)).toHaveLength(3);
+    // terminal 预览被 workspace 替换 → [welcome] + [workspace] = 2
+    expect(allTabs(r.state)).toHaveLength(2);
   });
 });
 
@@ -328,20 +331,23 @@ describe("reduceRestoreLayout", () => {
 
 describe("集成场景", () => {
   it("启动 → 开 workspace → 分屏 → 关分屏", () => {
-    let s = createInitialTabState();                                   // [welcome]
+    // VS Code 预览模式：每组一个预览标签页，新建 terminal 替换 ws 预览
+    let s = createInitialTabState();
     expect(allTabs(s)).toHaveLength(1);
 
     s = reduceCreateTab(s, "workspace", { workspaceName: "heart_rate" }).state;
-    expect(allTabs(s)).toHaveLength(2);                                // [welcome, workspace-heart_rate]
+    expect(allTabs(s)).toHaveLength(2); // [welcome, workspace]
 
-    s = reduceCreateTab(s, "terminal").state;
-    expect(allTabs(s)).toHaveLength(3);                                // [welcome, ws, terminal-1]
+    const tr = reduceCreateTab(s, "terminal");
+    s = tr.state;
+    const termId = tr.createdId;
+    expect(allTabs(s)).toHaveLength(2); // [welcome, terminal]——workspace 预览被替换
 
-    s = reduceSplitTab(s, "terminal-1", "horizontal");
+    s = reduceSplitTab(s, termId, "horizontal");
     expect(getAllLeafGroupIds(s.root)).toHaveLength(2);
     expect(s.groups).toHaveLength(2);
 
-    const r = reduceCloseTab(s, "terminal-1");
+    const r = reduceCloseTab(s, termId);
     expect(r.closed).toBe(true);
     expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });
