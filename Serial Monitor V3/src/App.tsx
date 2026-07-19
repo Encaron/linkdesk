@@ -301,6 +301,7 @@ function App() {
               id: t.id, type: t.type, label: t.label, dirty: t.dirty,
               workspaceName: t.workspaceName, filePath: t.filePath,
               pluginId: t.pluginId,
+              detailPluginId: t.detailPluginId,
               sourceId: t.sourceId,
             })),
             activeTabId: g.activeTabId,

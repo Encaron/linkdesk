@@ -32,8 +32,12 @@ export interface Tab {
   workspaceName?: string;   // workspace 类型才有
   filePath?: string;         // editor 类型才有
   dirty: boolean;
-  /** Phase 4：指定哪个插件实现该标签页。渲染走 pluginId，规则走 type。 */
+  /** Phase 4：指定哪个插件实现该标签页。渲染走 pluginId，规则走 type。
+   *  plugin-detail 类型不设此字段——用 detailPluginId 代替。 */
   pluginId?: string;
+  /** Phase 4：plugin-detail 标签页的目标插件（显示谁的详情）。
+   *  对标 VS Code：编辑器标签页显示扩展名，不污染 Activity Bar 高亮。 */
+  detailPluginId?: string;
   /** Phase 4 预留：数据源标识（= 终端标签页的 id），Phase 5 卡片绑定数据源用。 */
   sourceId?: string;
 }
@@ -84,15 +88,22 @@ export function createTabDefaults(
   type: string,
   overrides?: Partial<Tab>
 ): Tab {
-  const pluginId = overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type;
+  // plugin-detail 特殊处理：pluginId 不设（避免污染 IconBar 高亮），用 detailPluginId
+  const isDetail = type === "plugin-detail";
+  const detailPluginId = overrides?.detailPluginId ?? overrides?.pluginId;
+  const pluginId = isDetail
+    ? undefined
+    : (overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type);
+
   const base: Tab = {
     id: "",
     type: type as TabType,
-    label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath, pluginId),
+    label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath, detailPluginId),
     workspaceName: overrides?.workspaceName,
     filePath: overrides?.filePath,
     dirty: false,
     pluginId,
+    detailPluginId: isDetail ? detailPluginId : overrides?.detailPluginId,
     sourceId: overrides?.sourceId,
   };
 
@@ -105,6 +116,8 @@ export function createTabDefaults(
     base.id = `workspace-${base.workspaceName}`;
   } else if (type === "editor" && base.filePath) {
     base.id = `editor-${base.filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
+  } else if (type === "plugin-detail") {
+    base.id = `plugin-detail-${detailPluginId ?? Date.now()}`;
   } else {
     base.id = type;
   }
@@ -120,7 +133,8 @@ export function getDefaultLabel(
   type: string,
   workspaceName?: string,
   filePath?: string,
-  detailPluginId?: string,
+  /** plugin-detail 类型的目标插件 ID（用于显示插件名称作为标签页标题） */
+  targetPluginId?: string,
 ): string {
   switch (type) {
     case "terminal":  return i18n.t("终端");
@@ -130,10 +144,11 @@ export function getDefaultLabel(
     case "editor":    return filePath || i18n.t("编辑器");
     case "welcome":   return i18n.t("欢迎");
     case "plugin-detail": {
-      // 显示目标插件的名称，而非通用的"插件详情"
-      if (detailPluginId) {
-        const plugin = getViewPlugin(detailPluginId);
-        return plugin?.manifest.name ?? i18n.t("插件详情");
+      if (targetPluginId) {
+        const plugin = getViewPlugin(targetPluginId);
+        const name = plugin?.manifest.name ?? targetPluginId;
+        // 对标 VS Code 同名文件加文件夹区分：插件详情页加后缀避免和视图标签页同名
+        return `${name} (介绍)`;
       }
       return i18n.t("插件详情");
     }
@@ -218,7 +233,8 @@ export function reduceCreateTab(
       const label = getDefaultLabel("plugin-detail", undefined, undefined, opts.pluginId);
       const updatedTab = {
         ...existing,
-        pluginId: opts.pluginId,
+        detailPluginId: opts.pluginId,
+        pluginId: undefined,  // 不设 pluginId——避免污染 IconBar 高亮
         label,
       };
       const newGroups = prev.groups.map((g) =>
@@ -705,7 +721,8 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
         .filter((t) => t.id && t.type && t.label)
         .map((t) => ({
           ...t,
-          pluginId: (t as Tab).pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[(t as Tab).type],
+          pluginId: (t as Tab).pluginId ?? ((t as Tab).type !== "plugin-detail" ? LEGACY_TYPE_TO_PLUGIN_ID[(t as Tab).type] : undefined),
+          detailPluginId: (t as Tab).detailPluginId,
           sourceId: (t as Tab).sourceId,
         } as Tab)),
     } as typeof g))

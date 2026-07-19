@@ -41,13 +41,13 @@ interface MainContentProps {
 }
 
 function renderTabContent(
-  tab: { id: string; type: string; pluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
+  tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
   onCreateTab?: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string,
 ) {
   // plugin-detail 和 welcome 是壳自身的视图，不走插件路由
   if (tab.type === "plugin-detail") {
-    return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
+    return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />;
   }
   if (tab.type === "welcome") {
     return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
