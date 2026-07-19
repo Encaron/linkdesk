@@ -345,7 +345,6 @@ export default function TabBar({
     draggingId,
     insertIndex: dragInsertIndex,
     previewPos,
-    isReturning,
     startDrag,
   } = useDragReorder(scrollRef, {
     itemCount: tabs.length,
@@ -453,7 +452,7 @@ export default function TabBar({
         if (!tab) return null;
         return (
           <div
-            className={`tab-drag-preview${isReturning ? " returning" : ""}`}
+            className="tab-drag-preview"
             style={{
               position: "fixed",
               left: previewPos.x - 50,

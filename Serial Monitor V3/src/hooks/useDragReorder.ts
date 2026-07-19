@@ -70,8 +70,6 @@ export interface UseDragReorderResult {
   draggingId: string | null;
   insertIndex: number | null;
   previewPos: { x: number; y: number } | null;
-  /** 回弹动画中——preview 正飞回原位 */
-  isReturning: boolean;
   /** 从 mousedown 事件启动拖拽 */
   startDrag: (tabId: string, fromIndex: number, e: React.MouseEvent) => void;
 }
@@ -105,30 +103,9 @@ export function useDragReorder(
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
-  const [isReturning, setIsReturning] = useState(false);
-  const tabOriginRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
-
-  const cancelDrag = useCallback(() => {
-    setIsReturning(true);
-    // 飞回原位
-    setPreviewPos({ x: tabOriginRef.current.x, y: tabOriginRef.current.y });
-    dragState.current.phase = "idle";
-    setTimeout(() => {
-      setIsReturning(false);
-      setPreviewPos(null);
-      setDraggingId(null);
-      setInsertIndex(null);
-    }, 200);
-  }, []);
 
   const startDrag = useCallback(
     (tabId: string, fromIndex: number, e: React.MouseEvent) => {
-      // 记录标签页在 DOM 中的原始位置（用于回弹动画）
-      const tabEl = document.querySelector(`[data-tab-id="${tabId}"]`) as HTMLElement | null;
-      if (tabEl) {
-        const rect = tabEl.getBoundingClientRect();
-        tabOriginRef.current = { x: rect.left + rect.width / 2 - 50, y: rect.top + rect.height / 2 - 14 };
-      }
       dragState.current = {
         tabId,
         fromIndex,
@@ -139,7 +116,6 @@ export function useDragReorder(
         lifted: false,
       };
       setInsertIndex(fromIndex);
-      setIsReturning(false);
     },
     []
   );
@@ -244,7 +220,9 @@ export function useDragReorder(
         }
         onDragDropZone?.(null);
         onDraggingChange?.(false);
-        cancelDrag();
+        setPreviewPos(null);
+        ds.phase = "idle";
+        setDraggingId(null);
         return;
       }
 
@@ -268,9 +246,12 @@ export function useDragReorder(
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && dragState.current.phase !== "idle") {
+        dragState.current.phase = "idle";
         onDragDropZone?.(null);
         onDraggingChange?.(false);
-        cancelDrag();
+        setPreviewPos(null);
+        setDraggingId(null);
+        setInsertIndex(null);
       }
     };
 
@@ -288,5 +269,5 @@ export function useDragReorder(
     computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone,
   ]);
 
-  return { draggingId, insertIndex, previewPos, isReturning, startDrag };
+  return { draggingId, insertIndex, previewPos, startDrag };
 }
