@@ -96,3 +96,44 @@ Phase 4 卡片拖拽需要同样的逻辑。应提取为 `useDragReorder` hook�
 | P1 | `(prefs as any).layout` → 类型化 | PreferenceService.ts + App.tsx |
 | P2 | TabBar.css `rgba(0,0,0,0.35)` → CSS 变量 | TabBar.css + themes/*.json |
 | P2 | TerminalView CM6 硬编码颜色 → CSS 变量 | TerminalView.tsx（Phase 2 遗留） |
+
+---
+
+## 后续更新（2026-07-19 同日实施）
+
+### 递归分屏（Phase 3.x）
+
+原审计指出的 2-pane 限制已突破：
+- **数据模型**：`SplitNode = leaf | branch(direction, children, sizes)`，替代扁平 `SplitLayout`
+- **渲染**：`SplitPane` 递归化——leaf→renderGroup，branch→两个递归子 SplitPane+分割条
+- **drop zone**：照抄 VS Code——`SPLIT_THRESHOLD=0.25`+左右优先顺序+rect-based 面板命中
+- **中央放手=合并**：对标 VS Code center zone→moveTab
+- **毛玻璃**：面板内 `absolute` 定位，CSS 50%半边/100%满面板，不越界
+
+### 实施中发现的 bug（8 个）
+
+| # | 现象 | 根本原因 |
+|:--:|------|------|
+| B13 | 单 tab 组分屏变空面板 | solo-tab split 未阻止 |
+| B14 | 3-pane 不渲染 | SplitPane 只展开 2-pane |
+| B15 | 毛玻璃越界/不区分中心 | elementFromPoint 不可靠+center 无操作 |
+| B16 | zone 检测与 VS Code 不同 | 自创 closest-edge 算法 |
+| B17 | 面板内容坍缩 | child div 漏 flex 声明 |
+| B18 | 跨标签栏移动回归 | 接口捏造了不存在的 data-group-id |
+| B19 | inline style 覆盖 CSS 定位 | top:0 等覆盖了 50% 规则 |
+| B20 | 分裂源组而非目标面板 | reduceSplitTab 始终用 source group |
+
+**核心教训：VS Code 的代码是正确答案，不要自创算法。** 自创的 closest-edge+50% 阈值→bug，照抄 SPLIT_THRESHOLD=0.25+左右优先→零问题。rect 遍历找面板→可靠，elementFromPoint→不可靠。
+
+### 修理计划更新
+
+| 优先级 | 条目 | 状态 |
+|:--:|------|:--:|
+| P0 | i18n：zh.json + en.json + TabBar/App 走 t() | ✅ 完成 |
+| P1 | useDragReorder hook 提取 | ✅ 完成 |
+| P1 | layout 字段类型化 | ✅ 完成 |
+| P1 | 递归 SplitNode 数据模型 | ✅ 完成 |
+| P1 | 递归 SplitPane 渲染 | ✅ 完成 |
+| P1 | VS Code 风格 drop zone + 毛玻璃 | ✅ 完成 |
+| P2 | TabBar.css rgba → CSS 变量 | ✅ 完成 |
+| P3 | TerminalView CM6 硬编码颜色 | 待 Phase 6 |

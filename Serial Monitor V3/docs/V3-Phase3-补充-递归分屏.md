@@ -598,3 +598,58 @@ function reduceRestoreLayout(saved: any): TabState {
 > - 新 CSS 变量 → `themes/*.json` + `index.css` fallback → 归一化
 > - 状态变换是纯函数 → AI 友好
 > - 所有新的拖拽分支（分屏/移动/合并/复制）必须双向可逆 → 不重蹈 Phase 3 bug
+
+---
+
+## 11. 实施记录 + 踩坑
+
+> 2026-07-19 实施，S1-S7 完成（91 tests）。以下是在实施过程中发现的 bug 和教训。
+
+### 11.1 Bug 记录
+
+| # | 现象 | 根因 | 教训 |
+|:--:|------|------|------|
+| **B13** | 单 tab 组分屏后源面板变空只有 [+] | `reduceSplitTab` 未阻止 solo-tab 分裂 | 每个 reducer 都要排查"组变空"路径 |
+| **B14** | 3-pane 第三方画面板不渲染（"被覆盖"） | SplitPane 只展开一层 2-pane | 数据层和渲染层必须同步升级 |
+| **B15a** | 毛玻璃越界到隔壁面板 | `elementFromPoint+closest` 找面板不可靠 | rect 遍历 > elementFromPoint |
+| **B15b** | 毛玻璃盖满面板不区分中央/边缘 | 中央 zone 无操作 | 中央=合并是 VS Code 标配 |
+| **B16** | drop zone 与 VS Code 不一致 | 自创 closest-edge + 50% 算法 | **不要自创，照抄 VS Code** |
+| **B17** | 面板内容坍缩——终端一行/工作台空白 | BranchPane child div 缺 `display:flex` | 递归组件每层都要声明 flex 容器 |
+| **B18** | `findOtherContainer` 回归——跨标签栏移动失效 | 接口返回了不存在的 `data-group-id` | 回调接口用调用方真实数据，别捏造 |
+
+### 11.2 核心教训
+
+**不要自创算法，照抄 VS Code。** 具体到代码：
+
+```ts
+// ✅ 照抄 VS Code editorGroupView.ts onDragOver
+const SPLIT_THRESHOLD = 0.25;
+if (x < width * SPLIT_THRESHOLD) → LEFT;
+else if (x > width * (1 - SPLIT_THRESHOLD)) → RIGHT;
+else if (y < height * SPLIT_THRESHOLD) → UP;
+else if (y > height * (1 - SPLIT_THRESHOLD)) → DOWN;
+else → CENTER;
+```
+
+```ts
+// ✅ rect 遍历找面板——不依赖 z-index/DOM 层级
+const panes = document.querySelectorAll(".tab-group-pane");
+for (const pane of panes) {
+  const r = pane.getBoundingClientRect();
+  if (mx >= r.left && mx <= r.right && my >= r.top && my <= r.bottom)
+    return pane;
+}
+```
+
+### 11.3 实施状态
+
+| Step | 内容 | 状态 |
+|:--:|------|:--:|
+| S1 | SplitNode 类型 + 辅助函数 + 测试 | ✅ |
+| S2 | useTabManager 改造 | ✅ |
+| S3 | reduceRestoreLayout 迁移 | ✅ |
+| S4 | SplitPane 递归化 | ✅ |
+| S5 | 嵌套 drop zone（rect-based + VS Code 阈值） | ✅ |
+| S6 | 中央放手=移动 | ✅ |
+| S7 | 毛玻璃面板内定位 | ✅ |
+| S8 | 递归 SplitPane 渲染修复（`display:flex`） | ✅ |
