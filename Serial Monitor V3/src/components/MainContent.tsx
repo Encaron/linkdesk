@@ -136,26 +136,11 @@ function MainContent({
               </div>
             ))}
           </div>
-          {/* 面板内毛玻璃——严格裁剪在 .tab-group-pane 内，不越界 */}
-          {isTarget && dropZone !== "center" && (
+          {/* 面板内毛玻璃——CSS 控制半边尺寸（50%），严格裁剪在 .tab-group-pane 内 */}
+          {isTarget && (
             <div
               className={`drop-zone-overlay drop-zone-${dropZone}`}
-              style={{
-                position: "absolute",
-                top: 0, left: 0, right: 0, bottom: 0,
-                pointerEvents: "none",
-              }}
-            />
-          )}
-          {/* 中央放手 = 合并提示 */}
-          {isTarget && dropZone === "center" && (
-            <div
-              className="drop-zone-overlay drop-zone-center"
-              style={{
-                position: "absolute",
-                top: 0, left: 0, right: 0, bottom: 0,
-                pointerEvents: "none",
-              }}
+              style={{ pointerEvents: "none" }}
             />
           )}
         </div>
