@@ -37,6 +37,23 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"details" | "changelog">("details");
 
+  // ⚠️ 所有 hooks 必须在条件返回之前——React Rules of Hooks
+  const installedIds = useMemo(
+    () => new Set(getViewPlugins().map((p) => p.pluginId)),
+    []
+  );
+  const reverseRecommends = useMemo(() => {
+    if (!pluginId) return [];
+    const result: { pluginId: string; name: string }[] = [];
+    for (const p of getViewPlugins()) {
+      if (p.pluginId === pluginId) continue;
+      for (const rec of p.manifest.recommends ?? []) {
+        if (rec.plugin === pluginId) result.push({ pluginId: p.pluginId, name: p.manifest.name });
+      }
+    }
+    return result;
+  }, [pluginId]);
+
   if (!pluginId) {
     return <div className="plugin-detail-empty">{t("未指定插件 ID")}</div>;
   }
@@ -52,26 +69,6 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   const m = plugin.manifest;
   const iconSrc = getIconSrc(pluginId);
-
-  // 已安装的插件 ID 集合（用于推荐状态检查）
-  const installedIds = useMemo(
-    () => new Set(getViewPlugins().map((p) => p.pluginId)),
-    []
-  );
-
-  // 反向推荐
-  const reverseRecommends = useMemo(() => {
-    const result: { pluginId: string; name: string }[] = [];
-    for (const p of getViewPlugins()) {
-      if (p.pluginId === pluginId) continue;
-      for (const rec of p.manifest.recommends ?? []) {
-        if (rec.plugin === pluginId) {
-          result.push({ pluginId: p.pluginId, name: p.manifest.name });
-        }
-      }
-    }
-    return result;
-  }, [pluginId]);
 
   return (
     <div className="plugin-detail">
