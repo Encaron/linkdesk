@@ -54,7 +54,7 @@
   line-height: 28px;
   border-radius: 14px;
   background: var(--accent);
-  color: #fff;
+  color: var(--badge-text);
   font-size: 16px !important;
   display: flex;
   align-items: center;
@@ -101,7 +101,7 @@
 
 .pd-badge-core {
   background: var(--accent);
-  color: #fff;
+  color: var(--badge-text);
 }
 
 .pd-badge-singleton {
@@ -154,7 +154,7 @@
 
 .pd-btn-uninstall {
   border-color: rgba(231, 76, 60, 0.5);
-  color: #e74c3c;
+  color: var(--error);
 }
 
 .pd-core-notice {
@@ -171,7 +171,7 @@
 
 .pd-reverse-warn {
   font-size: 11px;
-  color: #cca700;
+  color: var(--warning);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -300,7 +300,7 @@
 }
 
 .pd-rec-status.missing {
-  color: #e74c3c;
+  color: var(--error);
 }
 
 /* 信息侧栏 */

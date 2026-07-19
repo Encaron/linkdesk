@@ -56,7 +56,7 @@
 
 .toast-action-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--badge-text);
   border: none;
   border-radius: 3px;
   padding: 2px 8px;

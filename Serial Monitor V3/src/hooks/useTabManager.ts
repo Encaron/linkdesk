@@ -134,28 +134,25 @@ export function getDefaultLabel(
   /** plugin-detail 类型的目标插件 ID（用于显示插件名称作为标签页标题） */
   targetPluginId?: string,
 ): string {
+  // 归一化：优先从 viewRegistry 读插件名。
+  const plugin = getViewPlugin(targetPluginId ?? type);
+  if (plugin) {
+    if (type === "plugin-detail") return `${plugin.manifest.name} (介绍)`;
+    if (type === "workspace" && workspaceName) return workspaceName;
+    return plugin.manifest.name;
+  }
+
+  // 插件未加载时的 fallback（测试环境 / 旧布局迁移）
   switch (type) {
-    case "terminal":  return i18n.t("终端");
-    case "workspace": return workspaceName || i18n.t("工作台");
-    case "settings":  return i18n.t("设置");
-    case "oled":      return i18n.t("OLED");
-    case "editor":    return filePath || i18n.t("编辑器");
-    case "welcome":   return i18n.t("欢迎");
-    case "plugin-detail": {
-      if (targetPluginId) {
-        const plugin = getViewPlugin(targetPluginId);
-        const name = plugin?.manifest.name ?? targetPluginId;
-        // 对标 VS Code 同名文件加文件夹区分：插件详情页加后缀避免和视图标签页同名
-        return `${name} (介绍)`;
-      }
-      return i18n.t("插件详情");
-    }
+    case "terminal":    return i18n.t("终端");
+    case "workspace":   return workspaceName || i18n.t("工作台");
+    case "settings":    return i18n.t("设置");
     case "marketplace": return i18n.t("插件市场");
-    default: {
-      // 自定义插件——从 viewRegistry 查显示名
-      const plugin = getViewPlugin(type);
-      return plugin?.manifest.name ?? type;
-    }
+    case "welcome":     return i18n.t("欢迎");
+    case "oled":        return i18n.t("OLED");
+    case "editor":      return filePath || i18n.t("编辑器");
+    case "plugin-detail": return i18n.t("插件详情");
+    default:            return type;
   }
 }
 

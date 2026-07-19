@@ -27,6 +27,10 @@
   --dirty-dot: #CCA700;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* Phase 4 新增 —— 通知/错误/徽章 */
+  --error: #E06C75;
+  --warning: #CCA700;
+  --badge-text: #FFFFFF;
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-icon-bar: #18181B;
   --bg-side-panel: #1E1E22;

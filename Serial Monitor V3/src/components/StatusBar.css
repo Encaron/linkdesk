@@ -39,7 +39,7 @@
 
 .status-error {
   font-size: 11px;
-  color: #E06C75;
+  color: var(--error);
   max-width: 400px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -104,7 +104,7 @@
   font-size: 9px;
   font-weight: 600;
   background: var(--accent);
-  color: #fff;
+  color: var(--badge-text);
   border-radius: 50%;
   min-width: 12px;
   height: 12px;
@@ -225,8 +225,8 @@
 }
 
 .notif-panel-item .notif-icon.info { color: var(--accent); }
-.notif-panel-item .notif-icon.warning { color: #cca700; }
-.notif-panel-item .notif-icon.error { color: #e74c3c; }
+.notif-panel-item .notif-icon.warning { color: var(--warning); }
+.notif-panel-item .notif-icon.error { color: var(--error); }
 
 /* VS Code: message flex:1, line-height 22px, text-overflow ellipsis */
 .notif-panel-msg {
