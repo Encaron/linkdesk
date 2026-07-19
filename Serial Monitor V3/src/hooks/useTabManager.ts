@@ -229,7 +229,7 @@ export function reduceCreateTab(
     if (existing) {
       const group = findGroup(prev, existing.id)!;
       const label = getDefaultLabel("plugin-detail", undefined, undefined, opts.pluginId);
-      const updatedTab = { ...existing, detailPluginId: opts.pluginId, pluginId: undefined, label };
+      const updatedTab = { ...existing, detailPluginId: opts.pluginId, pluginId: undefined, label, pinned: opts.pinned === true ? true : existing.pinned };
       const newGroups = prev.groups.map((g) =>
         g.id === group.id ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id } : g
       );
