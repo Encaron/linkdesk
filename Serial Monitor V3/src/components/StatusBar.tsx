@@ -37,6 +37,7 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
   const [notifications, setNotifications] = useState<Toast[]>([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const notifPanelRef = useRef<HTMLDivElement>(null);
+  const notifBellRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     return subscribeToasts((toasts) => {
@@ -44,16 +45,17 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
     });
   }, []);
 
-  // 点击外部关闭通知面板
+  // 点击外部关闭通知面板（对标 VS Code：点击面板+铃铛之外的地方关闭）
   useEffect(() => {
     if (!showNotifPanel) return;
-    const onClick = (e: MouseEvent) => {
-      if (notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node)) {
-        setShowNotifPanel(false);
-      }
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (notifPanelRef.current?.contains(target)) return;
+      if (notifBellRef.current?.contains(target)) return;
+      setShowNotifPanel(false);
     };
-    window.addEventListener("mousedown", onClick);
-    return () => window.removeEventListener("mousedown", onClick);
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
   }, [showNotifPanel]);
 
   const unreadCount = notifications.length;
@@ -119,19 +121,21 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
             {renderContribution(item)}
           </Fragment>
         ))}
-        {/* P3-9：通知铃铛 */}
-        <div className="status-bar-notif-wrapper" ref={notifPanelRef}>
-          <button
-            className={`status-bar-btn status-bar-notif-btn${unreadCount > 0 ? " has-notifications" : ""}`}
-            onClick={() => setShowNotifPanel(!showNotifPanel)}
-            title={unreadCount > 0 ? t("{{count}} 条通知", { count: unreadCount }) : t("通知")}
-          >
-            🔔{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
-          </button>
-          {showNotifPanel && (
-            <div className="status-bar-notif-panel">
-              <div className="notif-panel-header">
-                <span>{t("通知")}</span>
+        {/* P3-9：通知铃铛 —— 对标 VS Code notificationsCenter */}
+        <button
+          ref={notifBellRef}
+          className={`status-bar-btn status-bar-notif-btn${unreadCount > 0 ? " has-notifications" : ""}`}
+          onClick={() => setShowNotifPanel(!showNotifPanel)}
+          title={unreadCount > 0 ? t("{{count}} 条通知", { count: unreadCount }) : t("通知")}
+        >
+          🔔{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
+        </button>
+        {showNotifPanel && (
+          <div className="status-bar-notif-panel" ref={notifPanelRef}>
+            {/* VS Code: header 35px, title uppercase, toolbar on right */}
+            <div className="notif-panel-header">
+              <span className="notif-panel-title">{t("通知")}</span>
+              <div className="notif-panel-toolbar">
                 {unreadCount > 0 && (
                   <button
                     className="notif-panel-clear"
@@ -141,26 +145,45 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
                   </button>
                 )}
               </div>
-              {notifications.length === 0 ? (
-                <div className="notif-panel-empty">{t("暂无通知")}</div>
-              ) : (
-                <div className="notif-panel-list">
-                  {notifications.map((n) => (
-                    <div key={n.id} className="notif-panel-item">
+            </div>
+            {notifications.length === 0 ? (
+              <div className="notif-panel-empty">{t("暂无通知")}</div>
+            ) : (
+              <div className="notif-panel-list">
+                {notifications.map((n) => (
+                  <div key={n.id} className="notif-panel-item">
+                    {/* VS Code: main row = icon + message + dismiss (hover reveal) */}
+                    <div className="notif-main-row">
+                      <span className="notif-icon info">ℹ</span>
                       <span className="notif-panel-msg">{n.message}</span>
                       <button
                         className="notif-panel-dismiss"
                         onClick={() => dismissToast(n.id)}
+                        title={t("关闭")}
                       >
                         ✕
                       </button>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-          )}
-        </div>
+                    {/* VS Code: source row hidden unless expanded */}
+                    <div className="notif-source-row">
+                      {n.actions && n.actions.length > 0
+                        ? n.actions.map((a, i) => (
+                            <button
+                              key={i}
+                              className="notif-panel-clear"
+                              onClick={() => { a.onClick(); dismissToast(n.id); }}
+                            >
+                              {a.label}
+                            </button>
+                          ))
+                        : null}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
         {onToggleLang && (
           <button className="status-bar-btn" onClick={onToggleLang} title={t("切换语言")}>
             {lang === "zh" ? "中" : "EN"}

@@ -77,10 +77,12 @@
   color: var(--text-primary);
 }
 
-/* ── P3-9：通知铃铛 ── */
+/* ── P3-9：通知面板 —— 对标 VS Code notificationsCenter.css ── */
+
+/* VS Code: position absolute, z-index 2545, right 7px, bottom 29px */
 
 .status-bar-notif-wrapper {
-  position: relative;
+  /* wrapper 本身不参与定位——面板是 fixed */
 }
 
 .status-bar-notif-btn {
@@ -107,33 +109,53 @@
   padding: 0 2px;
 }
 
-/* 通知面板 */
+/*
+ * 对标 VS Code .notifications-center：
+ *   position: absolute; right: 7px; bottom: 29px;
+ *   max-width: 450px; border-radius; box-shadow
+ */
 .status-bar-notif-panel {
-  position: absolute;
-  bottom: 100%;
-  right: 0;
-  margin-bottom: 4px;
-  width: 320px;
-  max-height: 360px;
+  position: fixed;
+  right: 7px;
+  bottom: 29px; /* 22px status bar + 7px */
+  width: 420px;
+  max-height: 400px;
   background: var(--bg-card);
   border: 1px solid var(--separator);
   border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35);
   overflow: hidden;
-  z-index: 100;
+  z-index: 2545; /* VS Code: above modal backdrop, below quick input */
   display: flex;
   flex-direction: column;
 }
 
+/*
+ * 对标 VS Code .notifications-center-header：
+ *   height: 35px; padding-left: 8px; padding-right: 5px;
+ *   title text-transform: uppercase; font-size: 11px
+ */
 .notif-panel-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-primary);
+  padding: 0 8px 0 12px;
+  height: 35px;
   border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.notif-panel-header .notif-panel-title {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+}
+
+.notif-panel-header .notif-panel-toolbar {
+  display: flex;
+  gap: 2px;
 }
 
 .notif-panel-clear {
@@ -143,30 +165,35 @@
   font-size: 11px;
   cursor: pointer;
   font-family: inherit;
+  padding: 2px 6px;
+  border-radius: 3px;
 }
 
 .notif-panel-clear:hover {
+  background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
 .notif-panel-empty {
-  padding: 16px;
+  padding: 32px 16px;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
 }
 
+/*
+ * 对标 VS Code .notifications-list-container .notification-list-item：
+ *   flex-direction: column-reverse; padding: 10px 5px
+ */
 .notif-panel-list {
   overflow-y: auto;
-  max-height: 300px;
+  flex: 1;
 }
 
 .notif-panel-item {
   display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 8px 12px;
-  font-size: 12px;
+  flex-direction: column-reverse; /* VS Code: details first for keyboard access */
+  padding: 10px 8px;
   border-bottom: 1px solid var(--separator);
 }
 
@@ -174,12 +201,41 @@
   border-bottom: none;
 }
 
-.notif-panel-msg {
-  flex: 1;
-  color: var(--text-secondary);
-  line-height: 1.4;
+/* Main row: icon + message + dismiss */
+.notif-panel-item .notif-main-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
 }
 
+/* VS Code: icon 16px, margin 4px, font-size 18px */
+.notif-panel-item .notif-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  margin: 0 2px;
+}
+
+.notif-panel-item .notif-icon.info { color: var(--accent); }
+.notif-panel-item .notif-icon.warning { color: #cca700; }
+.notif-panel-item .notif-icon.error { color: #e74c3c; }
+
+/* VS Code: message flex:1, line-height 22px, text-overflow ellipsis */
+.notif-panel-msg {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* VS Code: toolbar hidden until hover/focus */
 .notif-panel-dismiss {
   background: none;
   border: none;
@@ -187,9 +243,30 @@
   cursor: pointer;
   font-size: 12px;
   flex-shrink: 0;
-  padding: 0 2px;
+  padding: 0 4px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.notif-panel-item:hover .notif-panel-dismiss {
+  opacity: 1;
 }
 
 .notif-panel-dismiss:hover {
   color: var(--text-primary);
+  background: var(--tab-hover-bg);
+  border-radius: 3px;
+}
+
+/* VS Code: source row below message, hidden unless expanded */
+.notif-panel-item .notif-source-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-left: 24px; /* align with message after icon */
+  font-size: 11px;
+  color: var(--text-muted);
 }

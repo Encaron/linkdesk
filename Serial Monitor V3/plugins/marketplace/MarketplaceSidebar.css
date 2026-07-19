@@ -1,48 +1,58 @@
-/* MarketplaceSidebar — 插件管理侧栏。Phase 4 UX。对标 VS Code Extensions 侧栏。 */
+/* MarketplaceSidebar — 对标 VS Code extensionsViewlet.css */
 
 .marketplace-sidebar {
   display: flex;
   flex-direction: column;
   height: 100%;
-  color: var(--text-primary);
 }
 
-/* ── 搜索栏 ── */
+/* ── VS Code: .header 41px, search 28px ── */
 
-.ms-search {
-  display: flex;
-  align-items: center;
-  padding: 8px 10px;
+.ms-header {
+  height: 41px;
+  box-sizing: border-box;
+  padding: 5px 12px 6px 12px;
   flex-shrink: 0;
 }
 
-.ms-search-input {
-  flex: 1;
-  background: var(--bg-card);
+.ms-search-container {
+  position: relative;
+  height: 100%;
+}
+
+.ms-search-box {
+  width: 100%;
+  height: 28px;
+  line-height: 18px;
+  box-sizing: border-box;
+  padding: 4px 28px 4px 8px;
   border: 1px solid var(--separator);
   border-radius: 4px;
-  padding: 4px 8px;
-  font-size: 12px;
+  background: var(--bg-card);
   color: var(--text-primary);
+  font-size: 12px;
   font-family: inherit;
   outline: none;
 }
 
-.ms-search-input:focus {
+.ms-search-box:focus {
   border-color: var(--accent);
 }
 
-.ms-search-input::placeholder {
+.ms-search-box::placeholder {
   color: var(--text-muted);
 }
 
 .ms-search-clear {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
   background: none;
   border: none;
   color: var(--text-muted);
   cursor: pointer;
   font-size: 12px;
-  margin-left: 4px;
   padding: 2px 4px;
 }
 
@@ -50,34 +60,28 @@
   color: var(--text-primary);
 }
 
-/* ── 空状态 ── */
+/* ── VS Code: .extensions (height: calc(100% - 41px)) ── */
+
+.ms-extensions {
+  flex: 1;
+  overflow-y: auto;
+}
 
 .ms-empty {
-  padding: 16px;
+  padding: 24px 12px;
   text-align: center;
   font-size: 12px;
   color: var(--text-muted);
 }
 
-/* ── 列表 ── */
-
-.ms-list {
-  flex: 1;
-  overflow-y: auto;
-}
-
-/* ── 分区 ── */
-
-.ms-section {
-  margin-bottom: 2px;
-}
+/* ── Section header ── */
 
 .ms-section-header {
   display: flex;
   align-items: center;
   gap: 4px;
   width: 100%;
-  padding: 4px 10px;
+  padding: 4px 12px;
   background: none;
   border: none;
   cursor: pointer;
@@ -93,14 +97,8 @@
   color: var(--text-primary);
 }
 
-.ms-section-chevron {
-  font-size: 10px;
-  transition: transform 0.15s;
-  width: 10px;
-}
-
-.ms-section-chevron.open {
-  transform: rotate(90deg);
+.ms-section-header .codicon {
+  font-size: 12px;
 }
 
 .ms-section-title {
@@ -108,42 +106,106 @@
   text-align: left;
 }
 
-/* ── 插件条目 ── */
+/* ── Extension item — 对标 VS Code .extension-list-item ── */
 
-.ms-section-items {
+.ms-extension-item {
   display: flex;
-  flex-direction: column;
-}
-
-.ms-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  align-items: flex-start;
+  gap: 10px;
   width: 100%;
-  padding: 4px 10px 4px 22px;
+  padding: 8px 12px 8px 20px;
   background: none;
   border: none;
   cursor: pointer;
   font-family: inherit;
-  font-size: 12px;
-  color: var(--text-secondary);
   text-align: left;
+  color: var(--text-primary);
+  box-sizing: border-box;
 }
 
-.ms-item:hover {
+.ms-extension-item:hover {
   background: var(--tab-hover-bg);
-  color: var(--text-primary);
+}
+
+/* VS Code: .icon-container with badge */
+.ms-item-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ms-item-icon > .codicon {
+  font-size: 28px;
+  color: var(--text-secondary);
+}
+
+.ms-item-badge {
+  position: absolute;
+  bottom: 0;
+  right: -2px;
+  font-size: 10px;
+  color: var(--accent);
+}
+
+/* VS Code: .details */
+.ms-item-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ms-item-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 20px;
 }
 
 .ms-item-name {
-  flex: 1;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
 }
 
 .ms-item-version {
-  font-size: 10px;
+  font-size: 11px;
   color: var(--text-muted);
   flex-shrink: 0;
+}
+
+.ms-item-desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ms-item-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+}
+
+.ms-item-author {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+
+.ms-item-tag {
+  font-size: 9px;
+  color: var(--text-muted);
+  background: var(--bg-window);
+  padding: 1px 4px;
+  border-radius: 3px;
 }

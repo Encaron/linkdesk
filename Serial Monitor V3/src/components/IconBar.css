@@ -1,15 +1,25 @@
+/* IconBar — 对标 VS Code Activity Bar。codicon 图标 + 左侧指示条。 */
+
 .icon-bar {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding-top: 8px;
-  gap: var(--space-xs); /* was 2px——间距太近容易误触 */
+  justify-content: space-between;
+  height: 100%;
   background: var(--bg-icon-bar);
 }
 
+.icon-bar-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+  gap: 0;
+}
+
+/* VS Code: 48x48 click target, 24px icon */
 .icon-btn {
-  width: 42px;
-  height: 42px;
+  width: 48px;
+  height: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -17,41 +27,32 @@
   background: transparent;
   cursor: pointer;
   position: relative;
-  transition: background 150ms;
+  color: var(--text-muted);
+  transition: color 150ms;
 }
 
 .icon-btn:hover {
-  background: var(--hover-overlay);
+  color: var(--text-primary);
 }
 
+/* VS Code: active state — left border indicator */
 .icon-btn.active {
-  background: radial-gradient(circle at center, rgba(0, 120, 212, 0.12), transparent 70%);
+  color: var(--text-primary);
 }
 
 .icon-btn.active::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 6px;
-  bottom: 6px;
+  top: 8px;
+  bottom: 8px;
   width: 2px;
   background: var(--accent);
   border-radius: 0 2px 2px 0;
 }
 
-.icon-img {
-  width: 20px;
-  height: 20px;
-  opacity: 0.55;
-  filter: brightness(0) saturate(100%) invert(55%) sepia(0%) saturate(0%) hue-rotate(0deg);
-  transition: opacity 150ms, filter 150ms;
-}
-
-.icon-btn:hover .icon-img {
-  opacity: 0.85;
-}
-
-.icon-btn.active .icon-img {
-  opacity: 1;
-  filter: brightness(0) saturate(100%) invert(100%);
+/* codicon 字体图标 */
+.icon-btn .codicon {
+  font-size: 24px;
+  line-height: 1;
 }
