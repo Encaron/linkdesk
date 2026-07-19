@@ -14,10 +14,10 @@
 
 ## 当前阶段
 
-Phase 1-4 ✅ 代码完成（待用户验证）→ **Phase 5 🔜 卡片架构**
+Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 卡片架构**
 
-详见 `docs/phase4_插件系统/` + `docs/开发管理/当前状态.md`
-分支：`phase4-plugin-system`（7 commits，~3400 行）
+详见 `docs/phase4_插件系统/V3-Phase4-剩余工作.md`（39 commits，11 bugs 修复，VS Code UX 对标）
+分支：`phase4-plugin-system`
 
 ## 硬约束（绝对不能违反）
 
