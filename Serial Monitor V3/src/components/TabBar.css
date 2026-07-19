@@ -30,13 +30,13 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  min-width: 80px;
+  min-width: 90px;
   max-width: 200px;
   height: 100%;
   padding: 0 10px;
   background: var(--bg-card);
   color: var(--text-secondary);
-  font-size: 12px;
+  font-size: 13px;
   cursor: pointer;
   border-right: 1px solid var(--separator);
   border-bottom: 1px solid var(--separator);
@@ -82,7 +82,7 @@
 /* ── 图标 ── */
 
 .tab-icon {
-  font-size: 13px;
+  font-size: 14px;
   flex-shrink: 0;
   opacity: 0.8;
 }
