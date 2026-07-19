@@ -47,21 +47,26 @@ export function renderTabContent(
   onCreateTab?: (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string }) => string,
 ) {
   // Phase 4：优先走 viewRegistry（插件系统）
+  // metaOnly 伪条目（welcome/settings）跳过——走硬编码 fallback
   if (tab.pluginId) {
     const plugin = getViewPlugin(tab.pluginId);
-    if (plugin) {
+    if (plugin && !plugin.metaOnly) {
       return (
         <ErrorBoundary>
           <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
         </ErrorBoundary>
       );
     }
-    // pluginId 在注册表中不存在（插件被卸载/禁用）→ 占位 UI
-    return (
-      <div key={tab.id} className="plugin-missing-view">
-        <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
-      </div>
-    );
+    if (plugin && plugin.metaOnly) {
+      // 伪插件——fall through 到硬编码视图
+    } else if (!plugin) {
+      // pluginId 在注册表中不存在（插件被卸载/禁用）→ 占位 UI
+      return (
+        <div key={tab.id} className="plugin-missing-view">
+          <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
+        </div>
+      );
+    }
   }
 
   // Phase 4 过渡期 fallback：旧版 tab（无 pluginId）走硬编码 switch

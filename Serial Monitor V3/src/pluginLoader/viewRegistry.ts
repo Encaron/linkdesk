@@ -21,9 +21,9 @@ export function getViewPlugin(pluginId: string): ViewPluginEntry | undefined {
   return registry.get(pluginId);
 }
 
-/** 获取所有已注册视图插件 */
+/** 获取所有已注册视图插件（排除 metaOnly 伪条目） */
 export function getViewPlugins(): ViewPluginEntry[] {
-  return Array.from(registry.values());
+  return Array.from(registry.values()).filter((e) => !e.metaOnly);
 }
 
 /** 获取标签页行为声明——核心不认 pluginId，只读此返回值 */
@@ -69,6 +69,7 @@ registerViewPlugin({
     tabBehavior: { isFallback: true },
   },
   component: (() => null) as any,
+  metaOnly: true,
 });
 
 registerViewPlugin({
@@ -80,4 +81,5 @@ registerViewPlugin({
     tabBehavior: { singleton: true },
   },
   component: (() => null) as any,
+  metaOnly: true,
 });

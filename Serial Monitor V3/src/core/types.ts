@@ -73,6 +73,8 @@ export interface ViewPluginEntry {
   component: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
   /** 可选侧栏组件 */
   sidebarComponent?: React.ComponentType;
+  /** 仅用于 tabBehavior/元数据——不渲染、不出现在图标栏 */
+  metaOnly?: boolean;
 }
 
 /* ── Tab 类型扩展（Phase 4） ── */
