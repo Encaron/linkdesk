@@ -201,7 +201,7 @@ class PreferenceService {
       const dir = await pathApi!.appDataDir();
       if (!(await fsApi!.exists(dir))) await fsApi!.mkdir(dir, { recursive: true });
       await fsApi!.writeTextFile(path, JSON.stringify(prefs, null, 2));
-    } catch { /* 写入失败不影响缓存 */ }
+    } catch (e) { console.warn("[PreferenceService] 写入 prefs.json 失败:", e); }
   }
 
   /** 加载工作区 */
