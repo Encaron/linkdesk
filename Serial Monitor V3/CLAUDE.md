@@ -14,7 +14,7 @@
 
 ## 当前阶段
 
-Phase 3 ✅ → **Phase 3.5 🔥 品质打磨** → Phase 4 卡片架构（顺延）
+Phase 1-3 ✅ → Phase 3.5 ✅ → **Phase 4 🔜 卡片架构**
 
 详见 `docs/当前状态.md` + `docs/V3-Phase3.5-品质打磨.md`
 
