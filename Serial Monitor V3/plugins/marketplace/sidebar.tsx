@@ -4,7 +4,7 @@
  *   header（搜索）→ extension list（icon + name/version/desc + actions）
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
 import { useTabActions } from "../../src/core/TabActionsContext";
@@ -147,9 +147,24 @@ function ExtensionItem({
   onDoubleClick: () => void;
 }) {
   const m = plugin.manifest;
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // VS Code 风格：计时器区分单击/双击。300ms 内两次点击 = 双击（固定打开）
+  const handleClick = () => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onDoubleClick();
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onClick();
+      }, 300);
+    }
+  };
 
   return (
-    <button className="ms-extension-item" onClick={onClick} onDoubleClick={onDoubleClick}>
+    <button className="ms-extension-item" onClick={handleClick}>
       {/* icon: 使用 assets/icons/ 下的图片，fallback 到 codicon */}
       <div className="ms-item-icon">
         {PLUGIN_ICON_PATH[plugin.pluginId] ? (

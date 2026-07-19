@@ -416,7 +416,7 @@ export default function TabBar({
                 key={tab.id}
                 data-tab-id={tab.id}
                 className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
-                title={t(tab.label) + (tab.pinned ? "" : t(" — 双击固定"))}
+                title={tab.pinned ? t(tab.label) : `${t(tab.label)} — 双击固定`}
                 onClick={() => onFocusTab(tab.id)}
                 onDoubleClick={() => onPinTab?.(tab.id)}
                 onContextMenu={(e) => {
