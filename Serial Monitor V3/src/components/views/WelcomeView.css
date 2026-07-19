@@ -175,14 +175,15 @@
   cursor: default;
 }
 
-/* NodeDesk 大 Logo 背景——对标 VS Code 欢迎页，文字浮在 logo 上 */
+/* NodeDesk 大 Logo 水印背景——对标 VS Code 欢迎页 */
 .welcome-logo-bg {
   position: absolute;
-  right: -120px;
-  bottom: -60px;
-  width: 500px;
-  height: 500px;
-  opacity: 0.06;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(600px, 80vw);
+  height: min(600px, 80vw);
+  opacity: 0.04;
   pointer-events: none;
   z-index: 0;
 }
