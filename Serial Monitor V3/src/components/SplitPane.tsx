@@ -1,8 +1,12 @@
 /**
  * SplitPane — 绝对定位平铺分屏。
- * 所有面板是 MainContent 平级兄弟（key=groupId 永远同级）。
- * 树只用来算每个面板的 x/y/w/h 百分比 + 分割条位置。
- * 树结构变化只改 CSS %——React 不 unmount——所有组件状态保留。
+ *
+ * ⚠️ 反直觉但正确：所有面板是 MainContent 平级兄弟（key=groupId 永远同级），
+ * 树只用来算 x/y/w/h 百分比。不要改回递归 flex 嵌套——
+ * 递归嵌套 = 树变化时面板 DOM 深度改变 → React unmount → CM6/Monaco 状态丢（B22 教训）。
+ *
+ * 平铺代价：z-index / 焦点边框 / 活跃面板标识需要显式管理，
+ * 不像递归嵌套那样"层级 = 视觉"天然继承。
  */
 
 import { useRef, useCallback, useMemo } from "react";

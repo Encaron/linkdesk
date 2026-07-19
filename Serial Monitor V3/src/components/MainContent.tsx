@@ -129,6 +129,8 @@ function MainContent({
             onDraggingChange={onDraggingChange}
           />
           <div className="tab-content-pool" style={{ flex: 1, position: "relative" }}>
+            {/* ⚠️ keep-alive: 用 CSS display 切换而非条件渲染。
+                不要改成 {isActive && <View />}——会丢失 CM6/Monaco 状态（B22 教训）。 */}
             {group.tabs.map((tab) => (
               <div
                 key={tab.id}

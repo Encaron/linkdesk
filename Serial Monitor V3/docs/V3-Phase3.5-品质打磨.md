@@ -183,3 +183,71 @@ Phase 3.5 的定位：**不改变任何功能，只让已有的功能更规范�
 - [ ] `npx tsc --noEmit` 零错误
 - [ ] `npx vitest run` 全部通过（≥ 当前 91 个）
 - [ ] `npx tauri dev` 正常运行
+
+---
+
+## 补充：架构评价暴露的 AI 入口缺口（Step 10）
+
+> 2026-07-19 — 两轮架构评价（impeccable + ui-ux-pro-max 审计 + 独立架构评审）共识：
+> 架构骨架 8.5/10 分，但"AI 能安全操作"这件事上缺两层：
+> **入口层**（新 AI 30 秒内理解项目）+ **护栏层**（自动化规则防止 AI 犯错）。
+
+### 缺口 1：CLAUDE.md — 项目级 AI 入口
+
+Memory 系统在 `~/.claude/projects/` 是私有目录。clone 仓库后新 AI 看到的是裸仓库。
+`CLAUDE.md` 不是复制 memory，是浓缩——新 AI 30 秒读完能理解：这是什么、什么架构、什么不能碰、去哪找更多。
+
+### 缺口 2：workspace.schema.json — AI 不靠猜字段名
+
+workspace.json 是平铺数组——好。但 AI 加卡片时字段名叫 `id` 还是 `cardId`？有没有 `minW` 约束？
+一个最小 schema（只定义 Phase 3 已有结构，Phase 4 字段留 `additionalProperties`）让 AI 生成合法 JSON 的概率从 ~85% 提到 ~99%。
+
+### 缺口 3：硬约束自动化 — 从"人记"到"机器执行"
+
+| 约束 | 当前 | 应有 |
+|------|------|------|
+| 标签页系统不 import CardRegistry | 靠 code review | ESLint `no-restricted-imports` |
+| 所有颜色走 CSS 变量 | 靠人工 grep | stylelint `color-no-hex` |
+| 所有 UI 文字走 t() | 靠人工 grep | ESLint `no-restricted-syntax` 禁止 JSX 中文 |
+
+差的是几行配置，不是架构改动。
+
+### 缺口 4：反直觉设计标注 — 防 AI "优化"
+
+- **keep-alive `display:none`**：AI 直觉是改成 `{isActive && <View />}`——这一改标签页切换丢状态
+- **平铺方案**：AI 直觉是"为什么不用嵌套 flex？"——改回递归 → B22 回归
+- **独立 RingBuffer 多消费者**：AI 直觉是"为什么不换 Pub/Sub？"——串口数据是流不是事件
+
+这些反直觉的正确设计需要显式注释，否则 AI 会把它们"优化"掉。
+
+### 缺口 5：B13 的根本原则
+
+当前 solo tab 分屏阻止。但空组问题不只在 split——move/close 都可能导致组变空。
+原则：**每次写 reducer 时遍历所有"组变空"的路径，每个路径都有清理逻辑或显式阻止。**
+
+### 缺口 6：平铺方案的隐性复杂度
+
+递归 flex：嵌套层级 = 视觉层级，z-index/焦点/活跃面板天然继承。
+平铺方案（B22）：所有面板平级，需要显式管理 z-index（✅ 已修）、焦点边框、活跃面板标识。
+
+### 架构评分（外部评价）
+
+| 维度 | 评分 | 对应 Phase 3.5 |
+|------|:--:|------|
+| 概念纯度 | 9/10 | — |
+| 扩展性 | 9/10 | — |
+| AI 可操作性 | 8/10 | ⬜ 缺口 1+2 |
+| 防退化 | 7/10 | ⬜ 缺口 3 |
+| 对标正确性 | 9/10 | — |
+| 渲染可靠性 | 8/10 | ⬜ 缺口 4+6 |
+| 历史教训利用 | 9/10 | — |
+| 整体 | 8.5/10 | — |
+
+### Step 10 实施
+
+| # | 任务 | 产出 |
+|:--:|------|------|
+| 10.1 | 创建 `CLAUDE.md` | 项目根 |
+| 10.2 | 创建 `workspace.schema.json`（最小版） | `public/schemas/` |
+| 10.3 | ESLint `no-restricted-imports` + stylelint 规则 | `.eslintrc` / `.stylelintrc` |
+| 10.4 | keep-alive/平铺方案/RingBuffer 注释标注 | 源码关键位置 |
