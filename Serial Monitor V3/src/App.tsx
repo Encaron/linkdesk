@@ -53,6 +53,7 @@ function App() {
     updateSplitSizes,
     restoreLayout,
     reorderTab,
+    pinTab,
   } = useTabManager();
 
   // Phase 3 Step 6: 拖拽分屏
@@ -434,6 +435,7 @@ function App() {
             onSplitTab={splitTab}
             onMoveTab={moveTab}
             onReorderTab={reorderTab}
+            onPinTab={pinTab}
             onDropSplit={handleDropSplit}
             onDropCopySplit={handleDropCopySplit}
             onSplitResize={(anchorId, sizes, branchIndex) => updateSplitSizes(anchorId, sizes, branchIndex)}

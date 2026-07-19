@@ -92,6 +92,14 @@
 
 /* ── 标题 ── */
 
+/* ── 预览模式（对标 VS Code preview editor：斜体） ── */
+
+.tab-item.preview .tab-label {
+  font-style: italic;
+}
+
+/* ── 标题 ── */
+
 .tab-label {
   overflow: hidden;
   text-overflow: ellipsis;

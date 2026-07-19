@@ -29,17 +29,14 @@ export interface Tab {
   id: string;
   type: TabType;
   label: string;
-  workspaceName?: string;   // workspace 类型才有
-  filePath?: string;         // editor 类型才有
+  workspaceName?: string;
+  filePath?: string;
   dirty: boolean;
-  /** Phase 4：指定哪个插件实现该标签页。渲染走 pluginId，规则走 type。
-   *  plugin-detail 类型不设此字段——用 detailPluginId 代替。 */
   pluginId?: string;
-  /** Phase 4：plugin-detail 标签页的目标插件（显示谁的详情）。
-   *  对标 VS Code：编辑器标签页显示扩展名，不污染 Activity Bar 高亮。 */
   detailPluginId?: string;
-  /** Phase 4 预留：数据源标识（= 终端标签页的 id），Phase 5 卡片绑定数据源用。 */
   sourceId?: string;
+  /** 对标 VS Code preview editor：false=预览模式（斜体，下次点别的会替换），true=已固定 */
+  pinned?: boolean;
 }
 
 export interface TabGroup {
@@ -105,6 +102,7 @@ export function createTabDefaults(
     pluginId,
     detailPluginId: isDetail ? detailPluginId : overrides?.detailPluginId,
     sourceId: overrides?.sourceId,
+    pinned: overrides?.pinned ?? false,  // VS Code: 新标签页默认预览模式
   };
 
   if (type === "terminal") {
@@ -220,32 +218,22 @@ export interface CreateTabResult {
 export function reduceCreateTab(
   prev: TabState,
   type: string,
-  opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string }
+  opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string; pinned?: boolean }
 ): CreateTabResult {
   const all = allTabs(prev);
 
-  // Phase 4：plugin-detail 标签页复用——对标 VS Code 扩展编辑器
-  //   点不同插件 → 替换同一个标签页内容，不创建新标签页
+  // Phase 4：plugin-detail 预览模式——对标 VS Code preview editor
+  //   未固定：替换内容。已固定：新建标签页（双屏对比）
   if (type === "plugin-detail" && opts?.pluginId) {
-    const existing = all.find((t) => t.type === "plugin-detail");
+    const existing = all.find((t) => t.type === "plugin-detail" && !t.pinned);
     if (existing) {
       const group = findGroup(prev, existing.id)!;
       const label = getDefaultLabel("plugin-detail", undefined, undefined, opts.pluginId);
-      const updatedTab = {
-        ...existing,
-        detailPluginId: opts.pluginId,
-        pluginId: undefined,  // 不设 pluginId——避免污染 IconBar 高亮
-        label,
-      };
+      const updatedTab = { ...existing, detailPluginId: opts.pluginId, pluginId: undefined, label };
       const newGroups = prev.groups.map((g) =>
-        g.id === group.id
-          ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id }
-          : g
+        g.id === group.id ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id } : g
       );
-      return {
-        state: { ...prev, groups: newGroups, activeGroupId: group.id },
-        createdId: existing.id,
-      };
+      return { state: { ...prev, groups: newGroups, activeGroupId: group.id }, createdId: existing.id };
     }
   }
 
@@ -278,6 +266,7 @@ export function reduceCreateTab(
   if (opts?.filePath) overrides.filePath = opts.filePath;
   if (opts?.label) overrides.label = opts.label;
   if (opts?.pluginId) overrides.pluginId = opts.pluginId;
+  if (opts?.pinned !== undefined) overrides.pinned = opts.pinned;
   const newTab = createTabDefaults(type, overrides);
 
   const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
@@ -711,6 +700,22 @@ export function reduceReorderTab(prev: TabState, tabId: string, toIndex: number)
   };
 }
 
+/** 对标 VS Code：双击标签页 → 固定/取消固定（预览模式 ↔ 固定） */
+export function reducePinTab(prev: TabState, tabId: string): TabState {
+  const group = findGroup(prev, tabId);
+  if (!group) return prev;
+  return {
+    ...prev,
+    groups: prev.groups.map((g) => {
+      if (g.id !== group.id) return g;
+      return {
+        ...g,
+        tabs: g.tabs.map((t) => (t.id === tabId ? { ...t, pinned: !t.pinned } : t)),
+      };
+    }),
+  };
+}
+
 /** 恢复布局——兼容旧格式（split: SplitLayout）和新格式（root: SplitNode） */
 export function reduceRestoreLayout(saved: LayoutData): TabState {
   // 1. 验证 groups + Phase 4 自动补 pluginId（旧布局兼容）
@@ -908,6 +913,11 @@ export function useTabManager() {
     setTabState((prev) => reduceReorderTab(prev, tabId, toIndex));
   }, []);
 
+  /** 对标 VS Code：双击标签页 → 固定/取消固定 */
+  const pinTab = useCallback((tabId: string) => {
+    setTabState((prev) => reducePinTab(prev, tabId));
+  }, []);
+
   const restoreLayout = useCallback((saved: LayoutData) => {
     setTabState(() => {
       const next = reduceRestoreLayout(saved);
@@ -947,6 +957,7 @@ export function useTabManager() {
     updateTabLabel,
     updateSplitSizes,
     reorderTab,
+    pinTab,
     restoreLayout,
     toLayoutData,
   };

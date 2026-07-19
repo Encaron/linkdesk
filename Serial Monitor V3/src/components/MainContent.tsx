@@ -29,6 +29,7 @@ interface MainContentProps {
   onSplitTab: (tabId: string, direction?: "horizontal" | "vertical") => void;
   onMoveTab: (tabId: string, targetGroupId: string) => void;
   onReorderTab: (tabId: string, toIndex: number) => void;
+  onPinTab?: (tabId: string) => void;
   onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onSplitResize?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
@@ -109,6 +110,7 @@ function MainContent({
   onSplitTab,
   onMoveTab,
   onReorderTab,
+  onPinTab,
   onDropSplit,
   onDropCopySplit,
   onSplitResize,
@@ -171,6 +173,7 @@ function MainContent({
               }
             }}
             onReorderTab={onReorderTab}
+            onPinTab={onPinTab}
             onDropSplit={onDropSplit}
             onDropCopySplit={onDropCopySplit}
             editorAreaRef={editorAreaRef}
@@ -195,7 +198,7 @@ function MainContent({
       );
     },
     [tabState.root, activeGroupId, dropZone, dragDropTargetGroupId,
-     onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab,
+     onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onPinTab,
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
 

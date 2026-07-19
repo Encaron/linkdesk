@@ -41,6 +41,8 @@ interface TabBarProps {
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
+  /** 对标 VS Code：双击标签页 → 固定/取消固定 */
+  onPinTab?: (tabId: string) => void;
   onDropSplit?: (tabId: string, zone: "left" | "right" | "up" | "down", targetGroupId?: string) => void;
   /** Shift+拖 = 复制标签页到新面板 */
   onDropCopySplit?: (tabId: string, zone: "left" | "right" | "up" | "down", targetGroupId?: string) => void;
@@ -212,6 +214,7 @@ export default function TabBar({
   onSplitTab,
   onMoveTab: _onMoveTab,
   onReorderTab,
+  onPinTab,
   onDropSplit,
   onDropCopySplit,
   editorAreaRef,
@@ -412,9 +415,10 @@ export default function TabBar({
               <div
                 key={tab.id}
                 data-tab-id={tab.id}
-                className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}`}
-                title={t(tab.label)}
+                className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
+                title={t(tab.label) + (tab.pinned ? "" : t(" — 双击固定"))}
                 onClick={() => onFocusTab(tab.id)}
+                onDoubleClick={() => onPinTab?.(tab.id)}
                 onContextMenu={(e) => {
                   e.preventDefault();
                   setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });

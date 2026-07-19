@@ -32,8 +32,13 @@ function MarketplaceSidebar() {
   const userPlugins = filtered.filter((p) => !p.manifest.core);
   const builtinPlugins = filtered.filter((p) => p.manifest.core);
 
+  // 单击 → 预览模式（替换现有预览标签页）
   const handleOpenDetail = (pluginId: string) => {
     tabActions?.createTab("plugin-detail", { pluginId });
+  };
+  // 双击 → 固定模式（新建或固定现有标签页）
+  const handleOpenDetailPinned = (pluginId: string) => {
+    tabActions?.createTab("plugin-detail", { pluginId, pinned: true });
   };
 
   return (
@@ -69,6 +74,7 @@ function MarketplaceSidebar() {
                 title={t("已安装") + ` (${userPlugins.length})`}
                 plugins={userPlugins}
                 onOpenDetail={handleOpenDetail}
+                onOpenDetailPinned={handleOpenDetailPinned}
               />
             )}
             {builtinPlugins.length > 0 && (
@@ -76,6 +82,7 @@ function MarketplaceSidebar() {
                 title={t("内置") + ` (${builtinPlugins.length})`}
                 plugins={builtinPlugins}
                 onOpenDetail={handleOpenDetail}
+                onOpenDetailPinned={handleOpenDetailPinned}
                 defaultCollapsed
               />
             )}
@@ -92,11 +99,13 @@ function Section({
   title,
   plugins,
   onOpenDetail,
+  onOpenDetailPinned,
   defaultCollapsed = false,
 }: {
   title: string;
   plugins: ViewPluginEntry[];
   onOpenDetail: (pluginId: string) => void;
+  onOpenDetailPinned: (pluginId: string) => void;
   defaultCollapsed?: boolean;
 }) {
   const [collapsed, setCollapsed] = useState(defaultCollapsed);
@@ -117,6 +126,7 @@ function Section({
               key={p.pluginId}
               plugin={p}
               onClick={() => onOpenDetail(p.pluginId)}
+              onDoubleClick={() => onOpenDetailPinned(p.pluginId)}
             />
           ))}
         </div>
@@ -130,15 +140,16 @@ function Section({
 function ExtensionItem({
   plugin,
   onClick,
+  onDoubleClick,
 }: {
   plugin: ViewPluginEntry;
   onClick: () => void;
+  onDoubleClick: () => void;
 }) {
   const m = plugin.manifest;
 
-  // VS Code: icon-container + details (header + description + footer)
   return (
-    <button className="ms-extension-item" onClick={onClick}>
+    <button className="ms-extension-item" onClick={onClick} onDoubleClick={onDoubleClick}>
       {/* icon: 使用 assets/icons/ 下的图片，fallback 到 codicon */}
       <div className="ms-item-icon">
         {PLUGIN_ICON_PATH[plugin.pluginId] ? (
