@@ -616,6 +616,7 @@ function reduceRestoreLayout(saved: any): TabState {
 | **B16** | drop zone 与 VS Code 不一致 | 自创 closest-edge + 50% 算法 | **不要自创，照抄 VS Code** |
 | **B17** | 面板内容坍缩——终端一行/工作台空白 | BranchPane child div 缺 `display:flex` | 递归组件每层都要声明 flex 容器 |
 | **B18** | `findOtherContainer` 回归——跨标签栏移动失效 | 接口返回了不存在的 `data-group-id` | 回调接口用调用方真实数据，别捏造 |
+| **B21** | 毛玻璃指示左侧切分，松手却落在右侧 | `replaceLeafWithBranch` 永远把新 leaf 放 children[1] | `newLeafSide`：left/up→0，right/down→1 |
 
 ### 11.2 核心教训
 
