@@ -54,6 +54,7 @@ const darkTheme: Extension = EditorView.theme(
     ".cm-searchMatch": { background: "rgba(255,255,0,0.2)", outline: "1px solid rgba(255,255,0,0.4)" },
     ".cm-line-sent": { color: "var(--sent-echo)" },
     ".cm-line-system": { color: "var(--system-log)" },
+    ".cm-timestamp": { color: "var(--text-muted)" },
     ".cm-search-match": { background: "rgba(255, 200, 0, 0.25)" },
     ".cm-search-current": { background: "rgba(255, 140, 0, 0.45)", outline: "1px solid rgba(255, 140, 0, 0.6)" },
   },
@@ -63,6 +64,7 @@ const darkTheme: Extension = EditorView.theme(
 /* ---- 三色行装饰系统 ---- */
 
 const addLineDeco = StateEffect.define<{ from: number; cls: string }>();
+const addTimestampMark = StateEffect.define<{ from: number; to: number }>();
 const clearAllDecos = StateEffect.define();
 
 const lineDecoField = StateField.define<RangeSet<Decoration>>({
@@ -78,6 +80,26 @@ const lineDecoField = StateField.define<RangeSet<Decoration>>({
       if (e.is(addLineDeco)) {
         const d = Decoration.line({ class: e.value.cls });
         updated = updated.update({ add: [d.range(e.value.from)] });
+      }
+    }
+    return updated;
+  },
+  provide: (f) => EditorView.decorations.from(f),
+});
+
+/* ---- 时间戳前缀灰色装饰 ---- */
+
+const timestampMarkField = StateField.define<RangeSet<Decoration>>({
+  create() { return RangeSet.empty; },
+  update(marks, tr) {
+    let updated = marks.map(tr.changes);
+    for (const e of tr.effects) {
+      if (e.is(clearAllDecos)) {
+        updated = RangeSet.empty;
+      }
+      if (e.is(addTimestampMark)) {
+        const d = Decoration.mark({ class: "cm-timestamp" });
+        updated = updated.update({ add: [d.range(e.value.from, e.value.to)] });
       }
     }
     return updated;
@@ -166,6 +188,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     }
   });
   const [qsAdding, setQsAdding] = useState(false);
+  const [qsEditing, setQsEditing] = useState<string | null>(null); // 正在编辑的 key
   const [qsName, setQsName] = useState("");
   const [qsContent, setQsContent] = useState("");
   const [qsCtxMenu, setQsCtxMenu] = useState<{ key: string; x: number; y: number } | null>(null);
@@ -181,14 +204,29 @@ function TerminalView({ isActive }: TerminalViewProps) {
     }
   }, []);
 
-  const handleAddQuickSend = () => {
+  const handleSaveQuickSend = () => {
     if (!qsName.trim() || !qsContent.trim()) return;
     const name = qsName.trim();
-    saveQuickSends({ ...quickSends, [name]: qsContent.trim() });
-    appendLine(t("---- 快捷发送「{{name}}」已添加 ----", { name }), "system");
+    if (qsEditing && qsEditing !== name) {
+      // 改名：删旧 key，加新 key
+      const updated = { ...quickSends };
+      delete updated[qsEditing];
+      updated[name] = qsContent.trim();
+      saveQuickSends(updated);
+      appendLine(t("---- 快捷发送「{{name}}」已更新 ----", { name }), "system");
+    } else if (qsEditing) {
+      // 只改内容
+      saveQuickSends({ ...quickSends, [name]: qsContent.trim() });
+      appendLine(t("---- 快捷发送「{{name}}」已更新 ----", { name }), "system");
+    } else {
+      // 新增
+      saveQuickSends({ ...quickSends, [name]: qsContent.trim() });
+      appendLine(t("---- 快捷发送「{{name}}」已添加 ----", { name }), "system");
+    }
     setQsName("");
     setQsContent("");
     setQsAdding(false);
+    setQsEditing(null);
   };
 
   const handleDeleteQuickSend = (key: string) => {
@@ -238,6 +276,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
         lineNumberCompartment.current.of(prefs.showLineNumbers ? lineNumbers() : []),
         darkTheme,
         lineDecoField,
+        timestampMarkField,
         searchDecoField,
         scrollTracker,
         EditorState.readOnly.of(true),
@@ -297,10 +336,18 @@ function TerminalView({ isActive }: TerminalViewProps) {
     const doc = view.state.doc;
     const from = doc.length;
     const pre = doc.length > 0 ? "\n" : "";
-    view.dispatch({
-      changes: { from, insert: pre + text },
-      effects: addLineDeco.of({ from: from + pre.length, cls: `cm-line-${color}` }),
-    });
+    const lineStart = from + pre.length;
+    const effects: any[] = [addLineDeco.of({ from: lineStart, cls: `cm-line-${color}` })];
+
+    // 接收数据分区变色：时间戳 + " -> " 灰色，数据本体白色
+    if (color === "received") {
+      const arrowIdx = text.indexOf(" -> ");
+      if (arrowIdx !== -1) {
+        effects.push(addTimestampMark.of({ from: lineStart, to: lineStart + arrowIdx + 4 }));
+      }
+    }
+
+    view.dispatch({ changes: { from, insert: pre + text }, effects });
     if (view.state.doc.lines > CM6_MAX_DOC_LINES) {
       const line = view.state.doc.line(CM6_TRIM_KEEP_LINES);
       view.dispatch({ changes: { from: 0, to: line.from } });
@@ -877,10 +924,10 @@ function TerminalView({ isActive }: TerminalViewProps) {
               placeholder={t("发送内容")}
               value={qsContent}
               onChange={(e) => setQsContent(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") handleAddQuickSend(); if (e.key === "Escape") setQsAdding(false); }}
+              onKeyDown={(e) => { if (e.key === "Enter") handleSaveQuickSend(); if (e.key === "Escape") { setQsAdding(false); setQsEditing(null); } }}
             />
-            <button className="toolbar-btn" onClick={handleAddQuickSend}>✓</button>
-            <button className="toolbar-btn" onClick={() => setQsAdding(false)}>✕</button>
+            <button className="toolbar-btn" onClick={handleSaveQuickSend}>{qsEditing ? "✎" : "✓"}</button>
+            <button className="toolbar-btn" onClick={() => { setQsAdding(false); setQsEditing(null); }}>✕</button>
           </div>
         ) : (
           <button className="quick-send-add" title={t("添加快捷发送")} onClick={() => setQsAdding(true)}>
@@ -896,6 +943,16 @@ function TerminalView({ isActive }: TerminalViewProps) {
           <div className="ctx-menu" style={{ left: qsCtxMenu.x, top: qsCtxMenu.y }}>
             <div className="ctx-item" onClick={() => { setSendValue(quickSends[qsCtxMenu.key]); setQsCtxMenu(null); }}>
               {t("回填到发送区")}
+            </div>
+            <div className="ctx-item" onClick={() => {
+              const key = qsCtxMenu.key;
+              setQsEditing(key);
+              setQsName(key);
+              setQsContent(quickSends[key]);
+              setQsAdding(true);
+              setQsCtxMenu(null);
+            }}>
+              {t("编辑")}
             </div>
             <div className="ctx-divider" />
             <div className="ctx-item ctx-item-danger" onClick={() => handleDeleteQuickSend(qsCtxMenu.key)}>

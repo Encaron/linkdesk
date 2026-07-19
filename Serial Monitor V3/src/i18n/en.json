@@ -99,6 +99,8 @@
   "发送内容": "Content",
   "回填到发送区": "Fill to Send",
   "删除": "Delete",
+  "编辑": "Edit",
+  "---- 快捷发送「{{name}}」已更新 ----": "---- Quick send \"{{name}}\" updated ----",
   "模块加载失败，请重启应用": "Module load failed. Please restart the application.",
   "卡片架构将在 Phase 4 实现": "Card architecture coming in Phase 4",
   "切换语言（Phase 5）": "Switch Language (Phase 5)",
