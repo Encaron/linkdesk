@@ -39,8 +39,10 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
     label: p.manifest.name,
   }));
 
+  // 对标 VS Code Activity Bar：始终只有一个光标
+  //   侧栏开着 → 只有侧栏图标高亮。侧栏没开 → 活跃标签页的图标高亮。
   const isActive = (pluginId: string) => {
-    if (sidebarView === pluginId) return true;
+    if (sidebarView) return sidebarView === pluginId;
     if (activePluginId) return activePluginId === pluginId;
     return activeTabType === pluginId;
   };
