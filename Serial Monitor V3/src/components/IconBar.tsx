@@ -11,6 +11,8 @@ import "./IconBar.css";
 interface IconBarProps {
   activeTabType: string;
   activePluginId?: string;
+  /** Phase 4 UX：侧栏独立视图（如 marketplace），解耦图标高亮和标签页 */
+  sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
 }
 
@@ -34,7 +36,7 @@ function getIconSrc(pluginId: string, _icon?: string, _iconSource?: string): str
   return `/assets/icons/settings.svg`; // fallback 默认图标
 }
 
-function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps) {
+function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
 
   // P3-10：从 viewRegistry 动态构建图标列表
@@ -45,7 +47,9 @@ function IconBar({ activeTabType, activePluginId, onOpenOrFocus }: IconBarProps)
     label: p.manifest.name,
   }));
 
+  // Phase 4 UX：高亮规则——sidebarView 优先（🧩 侧栏模式下高亮），其次 tab
   const isActive = (pluginId: string) => {
+    if (sidebarView === pluginId) return true;
     if (activePluginId) return activePluginId === pluginId;
     return activeTabType === pluginId;
   };

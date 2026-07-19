@@ -173,9 +173,25 @@ function App() {
   }, [lang]);
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
+  // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
+  const [sidebarView, setSidebarView] = useState<string | null>(null);
+
+  // 用户切换标签页时自动关闭 marketplace 侧栏
+  useEffect(() => {
+    if (activeTabType !== "marketplace") {
+      setSidebarView(null);
+    }
+  }, [activeTabType]);
+
   const handleIconClick = useCallback(
     (type: string) => {
-      openOrFocusTab(type);
+      if (type === "marketplace") {
+        // 🧩 只切侧栏，不切主区（对标 VS Code Extensions）
+        setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
+      } else {
+        setSidebarView(null);  // 清除 marketplace 侧栏
+        openOrFocusTab(type);
+      }
     },
     [openOrFocusTab]
   );
@@ -391,12 +407,14 @@ function App() {
         <IconBar
           activeTabType={activeTabType ?? "welcome"}
           activePluginId={activePluginId}
+          sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
         />
         <SidePanel
           ref={sidebarRef}
           activeTabType={activeTabType ?? "terminal"}
           activePluginId={activePluginId}
+          sidebarView={sidebarView}
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />

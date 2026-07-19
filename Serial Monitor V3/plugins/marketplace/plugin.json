@@ -9,6 +9,7 @@
   "author": "官方",
   "core": true,
   "entry": "index.tsx",
+  "sidebar": "sidebar.tsx",
   "tabBehavior": {
     "singleton": true
   }

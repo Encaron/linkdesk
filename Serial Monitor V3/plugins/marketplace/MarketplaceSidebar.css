@@ -1,0 +1,149 @@
+/* MarketplaceSidebar — 插件管理侧栏。Phase 4 UX。对标 VS Code Extensions 侧栏。 */
+
+.marketplace-sidebar {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  color: var(--text-primary);
+}
+
+/* ── 搜索栏 ── */
+
+.ms-search {
+  display: flex;
+  align-items: center;
+  padding: 8px 10px;
+  flex-shrink: 0;
+}
+
+.ms-search-input {
+  flex: 1;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+}
+
+.ms-search-input:focus {
+  border-color: var(--accent);
+}
+
+.ms-search-input::placeholder {
+  color: var(--text-muted);
+}
+
+.ms-search-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  margin-left: 4px;
+  padding: 2px 4px;
+}
+
+.ms-search-clear:hover {
+  color: var(--text-primary);
+}
+
+/* ── 空状态 ── */
+
+.ms-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ── 列表 ── */
+
+.ms-list {
+  flex: 1;
+  overflow-y: auto;
+}
+
+/* ── 分区 ── */
+
+.ms-section {
+  margin-bottom: 2px;
+}
+
+.ms-section-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  padding: 4px 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+.ms-section-header:hover {
+  color: var(--text-primary);
+}
+
+.ms-section-chevron {
+  font-size: 10px;
+  transition: transform 0.15s;
+  width: 10px;
+}
+
+.ms-section-chevron.open {
+  transform: rotate(90deg);
+}
+
+.ms-section-title {
+  flex: 1;
+  text-align: left;
+}
+
+/* ── 插件条目 ── */
+
+.ms-section-items {
+  display: flex;
+  flex-direction: column;
+}
+
+.ms-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 10px 4px 22px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.ms-item:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+.ms-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ms-item-version {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
