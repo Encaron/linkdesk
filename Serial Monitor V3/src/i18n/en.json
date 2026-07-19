@@ -22,7 +22,7 @@
   "接收编码": "Receive Encoding",
   "发送模式": "Send Mode",
   "发送编码": "Send Encoding",
-  "暂无卡片，请先连接串口": "No cards. Please connect serial port first.",
+  "暂无卡片，请先连接串口": "No cards. Please connect a data source first.",
   "即将推出": "Coming Soon",
   "打开串口": "Open",
   "已连接": "Connected",
