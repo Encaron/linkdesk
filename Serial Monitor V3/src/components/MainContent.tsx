@@ -225,21 +225,24 @@ function MainContent({
         const target = portalTargetsRef.current.get(groupId);
         if (!target) return null;
 
-        return createPortal(
-          <div
-            key={tab.id}
-            className="tab-content-pane"
-            style={{
-              position: "absolute",
-              inset: 0,
-              display: isVisible ? "flex" : "none",
-              flexDirection: "column",
-            }}
-          >
-            {renderTabContent(tab, isFocused, onCreateTab)}
-          </div>,
-          target,
-          tab.id
+        // 外层 div key 保证 React 不重建 portal children（即使 target 变化）
+        return (
+          <div key={tab.id} style={{ display: "contents" }}>
+            {createPortal(
+              <div
+                className="tab-content-pane"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  display: isVisible ? "flex" : "none",
+                  flexDirection: "column",
+                }}
+              >
+                {renderTabContent(tab, isFocused, onCreateTab)}
+              </div>,
+              target
+            )}
+          </div>
         );
       })}
     </div>
