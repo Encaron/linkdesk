@@ -14,6 +14,7 @@ import ErrorBoundary from "./shared/ErrorBoundary";
 import WorkspaceView from "./views/WorkspaceView";
 import SettingsView from "./views/SettingsView";
 import WelcomeView from "./views/WelcomeView";
+import PluginDetailView from "./views/PluginDetailView";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./MainContent.css";
 
@@ -81,6 +82,8 @@ export function renderTabContent(
       return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 7 实现）</div>;
     case "welcome":
       return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
+    case "plugin-detail":
+      return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.pluginId} />;
     default:
       return null;
   }

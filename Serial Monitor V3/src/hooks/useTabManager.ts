@@ -21,7 +21,7 @@ import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
 
 /* ── 类型 ── */
 
-export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome";
+export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome" | "plugin-detail";
 
 export interface Tab {
   id: string;
@@ -121,6 +121,7 @@ export function getDefaultLabel(
     case "oled":      return i18n.t("OLED");
     case "editor":    return filePath || i18n.t("编辑器");
     case "welcome":   return i18n.t("欢迎");
+    case "plugin-detail": return i18n.t("插件详情");
   }
 }
 

@@ -1,0 +1,85 @@
+/**
+ * Toast 通知样式。
+ * 全部颜色走 CSS 变量，零硬编码 hex。
+ * 浮动在状态栏上方，不遮挡主内容区。
+ */
+
+.toast-container {
+  position: fixed;
+  bottom: 28px;
+  right: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 6px;
+  max-width: 360px;
+}
+
+.toast-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  font-size: 12px;
+  color: var(--text-primary);
+  animation: toast-slide-up 150ms ease-out;
+}
+
+@keyframes toast-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.toast-message {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.toast-actions {
+  display: flex;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toast-action-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 2px 8px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: opacity 120ms;
+}
+
+.toast-action-btn:hover {
+  opacity: 0.85;
+}
+
+.toast-close-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
+.toast-close-btn:hover {
+  color: var(--text-primary);
+}

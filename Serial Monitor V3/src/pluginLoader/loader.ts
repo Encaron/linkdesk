@@ -9,6 +9,7 @@
 
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin } from "./viewRegistry";
+import { pushToast } from "../core/toast";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
@@ -64,7 +65,10 @@ export async function initPluginLoader(): Promise<void> {
   // 3. 错误汇总
   if (errors.length > 0) {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
-    // Phase 4 toast 框架就绪后改为 toast 通知
+    pushToast({
+      message: `${errors.length} 个插件加载失败`,
+      ttl: 8000,
+    });
   }
 }
 

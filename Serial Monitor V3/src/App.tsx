@@ -9,6 +9,7 @@ import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
+import ToastContainer from "./components/ToastContainer";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
@@ -429,6 +430,7 @@ function App() {
         onToggleTheme={handleToggleTheme}
         onToggleLang={handleToggleLang}
       />
+      <ToastContainer />
     </div>
   );
 }
