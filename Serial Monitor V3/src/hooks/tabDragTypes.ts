@@ -19,9 +19,13 @@ export interface DragSplitState {
 }
 
 /**
- * 4-zone 检测算法（v4: 50% 半区阈值，对标 VS Code）。
- * 左半=左右分屏放左，右半=左右分屏放右，上半=上下分屏放上，下半=上下分屏放下。
- * 角落在两个区域重叠时，选 mouse 离边界更近的那个方向。
+ * Drop zone 检测——对标 VS Code EditorGroupView DropOverlay。
+ *
+ * 阈值：
+ * - 面板中心区（relX 25-75% 且 relY 25-75%）= 合并（center）
+ * - 面板边缘区 = 分屏——选距离最近的边
+ *
+ * 四个角落在两个边缘重叠时，选鼠标距离更近的边。
  */
 export function detectDropZone(
   mouseX: number,
@@ -33,17 +37,22 @@ export function detectDropZone(
 
   if (relX < 0 || relX > 1 || relY < 0 || relY > 1) return null;
 
-  // 到各边距离
+  // 面板中央 = 合并（对标 VS Code 20% 死区——25% 更宽松）
+  if (relX >= 0.25 && relX <= 0.75 && relY >= 0.25 && relY <= 0.75) {
+    return "center";
+  }
+
+  // 面板边缘 = 分屏——选最近边
   const distLeft = relX;
   const distRight = 1 - relX;
   const distUp = relY;
   const distDown = 1 - relY;
   const minEdge = Math.min(distLeft, distRight, distUp, distDown);
 
-  if (minEdge === distUp && relY < 0.5) return "up";
-  if (minEdge === distDown && relY > 0.5) return "down";
-  if (minEdge === distLeft && relX < 0.5) return "left";
-  if (minEdge === distRight && relX > 0.5) return "right";
+  if (minEdge === distUp) return "up";
+  if (minEdge === distDown) return "down";
+  if (minEdge === distLeft) return "left";
+  if (minEdge === distRight) return "right";
   return "center";
 }
 
