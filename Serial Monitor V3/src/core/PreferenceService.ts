@@ -192,13 +192,13 @@ class PreferenceService {
     return _cache;
   }
 
-  /** 保存全局配置：立即更新缓存 + 写持久化层 */
+  /** 保存全局配置：立即更新缓存 + 写持久化层。Tauri 不可用时自动兜底 localStorage。 */
   static async savePrefs(prefs: Prefs): Promise<void> {
     _cache = prefs;
-    if (_useLocalStorage) {
-      saveToLocalStorage(prefs);
-      return;
-    }
+    // 先写 localStorage（总是安全、同步）
+    saveToLocalStorage(prefs);
+    // 如果有 Tauri，再写文件系统
+    if (!(await isTauri())) return;
     try {
       const path = await prefsPath();
       const dir = await pathApi!.appDataDir();
