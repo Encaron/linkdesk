@@ -17,10 +17,11 @@ import {
   removeLeafFromTree,
   migrateLayout,
 } from "./splitTree";
+import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
 
 /* ── 类型 ── */
 
-export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor";
+export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome";
 
 export interface Tab {
   id: string;
@@ -29,6 +30,10 @@ export interface Tab {
   workspaceName?: string;   // workspace 类型才有
   filePath?: string;         // editor 类型才有
   dirty: boolean;
+  /** Phase 4：指定哪个插件实现该标签页。渲染走 pluginId，规则走 type。 */
+  pluginId?: string;
+  /** Phase 4 预留：数据源标识（= 终端标签页的 id），Phase 5 卡片绑定数据源用。 */
+  sourceId?: string;
 }
 
 export interface TabGroup {
@@ -76,6 +81,7 @@ export function createTabDefaults(
   type: TabType,
   overrides?: Partial<Tab>
 ): Tab {
+  const pluginId = overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type];
   const base: Tab = {
     id: "",
     type,
@@ -83,11 +89,15 @@ export function createTabDefaults(
     workspaceName: overrides?.workspaceName,
     filePath: overrides?.filePath,
     dirty: false,
+    pluginId,
+    sourceId: overrides?.sourceId,
   };
 
   if (type === "terminal") {
     _terminalCounter++;
     base.id = `terminal-${_terminalCounter}`;
+  } else if (type === "welcome") {
+    base.id = "welcome";
   } else if (type === "workspace" && base.workspaceName) {
     base.id = `workspace-${base.workspaceName}`;
   } else if (type === "editor" && base.filePath) {
@@ -110,6 +120,7 @@ export function getDefaultLabel(
     case "settings":  return i18n.t("设置");
     case "oled":      return i18n.t("OLED");
     case "editor":    return filePath || i18n.t("编辑器");
+    case "welcome":   return i18n.t("欢迎");
   }
 }
 
@@ -126,14 +137,14 @@ function createGroup(tabs: Tab[] = []): TabGroup {
   };
 }
 
-/** 确保 state 中至少有一个终端标签页 */
-function ensureTerminal(state: TabState): TabState {
-  if (!allTabs(state).some((t) => t.type === "terminal")) {
-    const terminal = createTabDefaults("terminal");
+/** Phase 4：确保 state 中至少有一个欢迎页（保底标签页） */
+function ensureFallback(state: TabState): TabState {
+  if (!allTabs(state).some((t) => t.type === "welcome")) {
+    const welcome = createTabDefaults("welcome");
     const mainGroup = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0];
     if (mainGroup) {
-      mainGroup.tabs = [terminal, ...mainGroup.tabs];
-      if (!mainGroup.activeTabId) mainGroup.activeTabId = terminal.id;
+      mainGroup.tabs = [welcome, ...mainGroup.tabs];
+      if (!mainGroup.activeTabId) mainGroup.activeTabId = welcome.id;
     }
   }
   return state;
@@ -150,9 +161,10 @@ function pickNextActive(tabs: Tab[], closedId: string): string {
 /* ── 初始状态 ── */
 
 export function createInitialTabState(): TabState {
-  const terminal = createTabDefaults("terminal");
+  // Phase 4：启动时显示欢迎页（壳的兜底，不是插件）
+  const welcome = createTabDefaults("welcome");
   return {
-    groups: [{ id: "main", tabs: [terminal], activeTabId: terminal.id }],
+    groups: [{ id: "main", tabs: [welcome], activeTabId: welcome.id }],
     activeGroupId: "main",
     root: { type: "leaf", groupId: "main" },
   };
@@ -271,8 +283,8 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 
   const tab = group.tabs.find((t) => t.id === tabId)!;
 
-  // 终端保底：全局唯一标签页且是终端 → 不允许关
-  if (allTabs(prev).length === 1 && tab.type === "terminal") {
+  // Phase 4 欢迎页保底：全局唯一标签页且是欢迎页 → 不允许关
+  if (allTabs(prev).length === 1 && tab.type === "welcome") {
     return { closed: false, tabId, reason: "blocked" };
   }
 
@@ -293,7 +305,7 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
       if (result) {
         const newGroups = prev.groups.filter((g) => g.id !== group.id);
         const survivingGroup = prev.groups.find((g) => g.id === result.survivingSiblingGroupId);
-        const newState = ensureTerminal({
+        const newState = ensureFallback({
           groups: newGroups,
           activeGroupId: result.survivingSiblingGroupId,
           root: result.tree,
@@ -310,7 +322,7 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
     g.id === group.id ? { ...g, tabs: remaining, activeTabId: newActiveId } : g
   );
 
-  const result = ensureTerminal({
+  const result = ensureFallback({
     groups: newGroups,
     activeGroupId: prev.activeGroupId,
     root: prev.root,
@@ -325,10 +337,10 @@ export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResu
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };
   const tab = group.tabs.find((t) => t.id === tabId)!;
-  if (allTabs(prev).length === 1 && tab.type === "terminal") {
+  if (allTabs(prev).length === 1 && tab.type === "welcome") {
     return { closed: false, tabId, reason: "blocked" };
   }
-  return reduceCloseTab({ ...prev }, tabId); // 复制后走正常关闭（dirty 已由调用方清除）
+  return reduceCloseTab({ ...prev }, tabId);
 }
 
 /** 移动标签页到另一个组 */
@@ -537,7 +549,7 @@ export function reduceUnsplit(prev: TabState, groupId: string): TabState {
 
   const newGroups = prev.groups.filter((g) => g.id !== groupId);
 
-  return ensureTerminal({
+  return ensureFallback({
     groups: newGroups,
     activeGroupId: result.survivingSiblingGroupId,
     root: result.tree,
@@ -620,12 +632,18 @@ export function reduceReorderTab(prev: TabState, tabId: string, toIndex: number)
 
 /** 恢复布局——兼容旧格式（split: SplitLayout）和新格式（root: SplitNode） */
 export function reduceRestoreLayout(saved: LayoutData): TabState {
-  // 1. 验证 groups
+  // 1. 验证 groups + Phase 4 自动补 pluginId（旧布局兼容）
   const validGroups = saved.groups
     .map((g) => ({
       ...g,
-      tabs: g.tabs.filter((t) => t.id && t.type && t.label),
-    }))
+      tabs: g.tabs
+        .filter((t) => t.id && t.type && t.label)
+        .map((t) => ({
+          ...t,
+          pluginId: (t as Tab).pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[(t as Tab).type],
+          sourceId: (t as Tab).sourceId,
+        } as Tab)),
+    } as typeof g))
     .filter((g) => g.tabs.length > 0);
 
   if (validGroups.length === 0) return createInitialTabState();
@@ -659,14 +677,8 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 
   if (filteredGroups.length === 0) return createInitialTabState();
 
-  // 5. 确保至少一个终端
-  const all = filteredGroups.flatMap((g) => g.tabs);
-  if (!all.some((t) => t.type === "terminal")) {
-    const terminal = createTabDefaults("terminal");
-    const mainGroup = filteredGroups.find((g) => g.id === activeGroupId) ?? filteredGroups[0];
-    mainGroup.tabs = [terminal, ...mainGroup.tabs];
-    if (!mainGroup.activeTabId) mainGroup.activeTabId = terminal.id;
-  }
+  // Phase 4：恢复布局尊重用户保存的内容——不强制插入欢迎页。
+  // 关闭所有标签页时会通过 ensureFallback 自动加回。
 
   return {
     groups: filteredGroups,

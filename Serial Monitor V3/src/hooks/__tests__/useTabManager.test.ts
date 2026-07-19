@@ -69,11 +69,11 @@ describe("createTabDefaults", () => {
 /* ── 初始状态 ── */
 
 describe("createInitialTabState", () => {
-  it("默认：1 组 1 终端标签页，单 leaf", () => {
+  it("Phase 4：默认 1 组 1 欢迎页，单 leaf", () => {
     const state = createInitialTabState();
     expect(state.groups).toHaveLength(1);
     expect(state.groups[0].tabs).toHaveLength(1);
-    expect(state.groups[0].tabs[0].type).toBe("terminal");
+    expect(state.groups[0].tabs[0].type).toBe("welcome");
     expect(state.groups[0].activeTabId).toBe(state.groups[0].tabs[0].id);
     expect(state.root.type).toBe("leaf");
     expect((state.root as any).groupId).toBe("main");
@@ -120,10 +120,10 @@ describe("reduceCreateTab", () => {
 
 describe("reduceOpenOrFocus", () => {
   it("终端存在则聚焦", () => {
-    let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    const r = reduceOpenOrFocus(state, "terminal", "terminal-2");
-    expect(r.focusedId).toBe("terminal-2");
+    let state = createInitialTabState();               // [welcome]
+    state = reduceCreateTab(state, "terminal").state;   // [welcome, terminal-1]
+    const r = reduceOpenOrFocus(state, "terminal", "terminal-1");
+    expect(r.focusedId).toBe("terminal-1");
   });
 
   it("终端不存在则隐式创建", () => {
@@ -144,13 +144,21 @@ describe("reduceOpenOrFocus", () => {
 
 describe("reduceMoveTab", () => {
   it("移动标签页到另一个组", () => {
-    let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    state = reduceSplitTab(state, "terminal-2", "horizontal");
+    let state = createInitialTabState();                      // [welcome]
+    state = reduceCreateTab(state, "terminal").state;         // [welcome, terminal-1]
+    state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
 
+    expect(state.groups).toHaveLength(2);
     const leafIds = getAllLeafGroupIds(state.root);
+    expect(leafIds).toHaveLength(2);
+
     const g1 = state.groups.find((g) => g.id === leafIds[0])!;
     const g2 = state.groups.find((g) => g.id === leafIds[1])!;
+    expect(g1).toBeDefined();
+    expect(g2).toBeDefined();
+    expect(g1.tabs).toHaveLength(1);
+    expect(g2.tabs).toHaveLength(1);
+
     const next = reduceMoveTab(state, g1.tabs[0].id, g2.id);
     const g2New = next.groups.find((g) => g.id === g2.id)!;
     expect(g2New.tabs).toHaveLength(2);
@@ -168,7 +176,7 @@ describe("reduceCloseTab", () => {
     expect(allTabs(r.state!)).toHaveLength(1);
   });
 
-  it("终端保底：全局唯一终端不能关", () => {
+  it("Phase 4 欢迎页保底：全局唯一欢迎页不能关", () => {
     const prev = createInitialTabState();
     const r = reduceCloseTab(prev, prev.groups[0].tabs[0].id);
     expect(r.closed).toBe(false);
@@ -185,10 +193,10 @@ describe("reduceCloseTab", () => {
   });
 
   it("关闭分屏面板中的标签页 → unsplit", () => {
-    let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    state = reduceSplitTab(state, "terminal-2", "horizontal");
-    const r = reduceCloseTab(state, "terminal-2");
+    let state = createInitialTabState();                     // [welcome]
+    state = reduceCreateTab(state, "terminal").state;        // [welcome, terminal-1]
+    state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
+    const r = reduceCloseTab(state, "terminal-1");
     expect(r.closed).toBe(true);
     expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });
@@ -198,9 +206,9 @@ describe("reduceCloseTab", () => {
 
 describe("reduceSplitTab", () => {
   it("创建分屏：拆出一个标签页到新 leaf", () => {
-    let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    const next = reduceSplitTab(state, "terminal-2", "horizontal");
+    let state = createInitialTabState();                    // [welcome]
+    state = reduceCreateTab(state, "terminal").state;       // [welcome, terminal-1]
+    const next = reduceSplitTab(state, "terminal-1", "horizontal");
     const leafIds = getAllLeafGroupIds(next.root);
     expect(leafIds).toHaveLength(2);
     expect(next.root.type).toBe("branch");
@@ -211,21 +219,21 @@ describe("reduceSplitTab", () => {
 
   it("源组只有 1 个 tab → 阻止分屏（防止空面板）", () => {
     // 先创建 2-pane，然后尝试拆分 solo-tab 组
-    let state = createInitialTabState();                    // [t1]
-    state = reduceCreateTab(state, "terminal").state;       // [t1, t2]
-    state = reduceSplitTab(state, "terminal-2", "horizontal"); // [t1] | [t2]
-    // terminal-2 在 solo 组中（只有它自己），尝试分屏它 → 应被阻止
-    const next = reduceSplitTab(state, "terminal-2", "vertical");
-    expect(getAllLeafGroupIds(next.root)).toHaveLength(2);  // 仍是 2 pane，未变
+    let state = createInitialTabState();                     // [welcome]
+    state = reduceCreateTab(state, "terminal").state;        // [welcome, t1]
+    state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [t1]
+    // terminal-1 在 solo 组中（只有它自己），尝试分屏它 → 应被阻止
+    const next = reduceSplitTab(state, "terminal-1", "vertical");
+    expect(getAllLeafGroupIds(next.root)).toHaveLength(2);   // 仍是 2 pane，未变
   });
 
   it("3-pane：源组有 ≥2 个 tab 时可创建多级分屏", () => {
-    let state = createInitialTabState();                    // [t1]
-    state = reduceCreateTab(state, "terminal").state;       // [t1, t2]
-    state = reduceCreateTab(state, "terminal").state;       // [t1, t2, t3]
-    state = reduceSplitTab(state, "terminal-3", "horizontal"); // [t1,t2] | [t3]
-    // 源组（[t1,t2]）还有 2 个 tab，可以继续分屏
-    state = reduceSplitTab(state, "terminal-2", "vertical");   // [t1] | [t2]  (左侧上下) | [t3] 右侧
+    let state = createInitialTabState();                      // [welcome]
+    state = reduceCreateTab(state, "terminal").state;         // [welcome, t1]
+    state = reduceCreateTab(state, "terminal").state;         // [welcome, t1, t2]
+    state = reduceSplitTab(state, "terminal-2", "horizontal"); // [welcome,t1] | [t2]
+    // 源组（[welcome,t1]）还有 2 个 tab，可以继续分屏
+    state = reduceSplitTab(state, "terminal-1", "vertical");   // [welcome] | [t1]  (左侧上下) | [t2] 右侧
     const leafIds = getAllLeafGroupIds(state.root);
     expect(leafIds).toHaveLength(3);
     expect(state.root.type).toBe("branch");
@@ -250,9 +258,9 @@ describe("reduceSplitTab", () => {
 
 describe("reduceUnsplit", () => {
   it("取消分屏——指定 groupId 的 leaf 被移除", () => {
-    let state = createInitialTabState();
-    state = reduceCreateTab(state, "terminal").state;
-    state = reduceSplitTab(state, "terminal-2", "horizontal");
+    let state = createInitialTabState();                     // [welcome]
+    state = reduceCreateTab(state, "terminal").state;        // [welcome, terminal-1]
+    state = reduceSplitTab(state, "terminal-1", "horizontal"); // [welcome] | [terminal-1]
     const leafIds = getAllLeafGroupIds(state.root);
     const next = reduceUnsplit(state, leafIds[1]); // unsplit the new group
     expect(getAllLeafGroupIds(next.root)).toHaveLength(1);
@@ -300,7 +308,7 @@ describe("reduceRestoreLayout", () => {
     expect(restored.root.type).toBe("branch");
   });
 
-  it("无终端 → 自动补", () => {
+  it("Phase 4：恢复布局尊重保存内容——不强制插入欢迎页", () => {
     const ws = w("PID", "pid");
     const saved: LayoutData = {
       groups: [{ id: "main", tabs: [ws], activeTabId: ws.id }],
@@ -309,7 +317,8 @@ describe("reduceRestoreLayout", () => {
     };
 
     const restored = reduceRestoreLayout(saved);
-    expect(allTabs(restored).some((t) => t.type === "terminal")).toBe(true);
+    expect(allTabs(restored)).toHaveLength(1);
+    expect(allTabs(restored)[0].type).toBe("workspace");
   });
 });
 
@@ -317,20 +326,20 @@ describe("reduceRestoreLayout", () => {
 
 describe("集成场景", () => {
   it("启动 → 开 workspace → 分屏 → 关分屏", () => {
-    let s = createInitialTabState();
+    let s = createInitialTabState();                                   // [welcome]
     expect(allTabs(s)).toHaveLength(1);
 
     s = reduceCreateTab(s, "workspace", { workspaceName: "heart_rate" }).state;
-    expect(allTabs(s)).toHaveLength(2);
+    expect(allTabs(s)).toHaveLength(2);                                // [welcome, workspace-heart_rate]
 
     s = reduceCreateTab(s, "terminal").state;
-    expect(allTabs(s)).toHaveLength(3);
+    expect(allTabs(s)).toHaveLength(3);                                // [welcome, ws, terminal-1]
 
-    s = reduceSplitTab(s, "terminal-2", "horizontal");
+    s = reduceSplitTab(s, "terminal-1", "horizontal");
     expect(getAllLeafGroupIds(s.root)).toHaveLength(2);
     expect(s.groups).toHaveLength(2);
 
-    const r = reduceCloseTab(s, "terminal-2");
+    const r = reduceCloseTab(s, "terminal-1");
     expect(r.closed).toBe(true);
     expect(getAllLeafGroupIds(r.state!.root)).toHaveLength(1);
   });

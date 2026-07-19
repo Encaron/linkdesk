@@ -8,21 +8,18 @@ import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
-import TopBar from "./components/TopBar";
 import StatusBar from "./components/StatusBar";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
+import { initPluginLoader } from "./pluginLoader/loader";
+import SerialContext from "./core/SerialContext";
+import type { PortInfo } from "./core/SerialContext";
 import i18n from "./i18n";
 import "./App.css";
 
 // 保留 ViewId 用于向后兼容 IconBar（Phase 3 过渡期）
 export type ViewId = "terminal" | "workspace" | "settings";
-
-interface PortInfo {
-  name: string;
-  description: string;
-}
 
 function App() {
   const { t } = useTranslation();
@@ -68,10 +65,14 @@ function App() {
     return group?.tabs.find((t) => t.id === group.activeTabId);
   }, [tabState.groups, tabState.activeGroupId]);
   const activeTabType: TabType | undefined = activeTab?.type;
+  const activePluginId = activeTab?.pluginId;
 
   /* ---- 启动初始化 ---- */
   useEffect(() => {
-    initPrefs().then((prefs) => {
+    initPrefs().then(async (prefs) => {
+      // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
+      await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
+
       loadTheme(prefs.theme || "Dark")
         .then(applyTheme)
         .catch(() => { /* CSS fallback 生效 */ });
@@ -287,6 +288,8 @@ function App() {
             tabs: g.tabs.map((t) => ({
               id: t.id, type: t.type, label: t.label, dirty: t.dirty,
               workspaceName: t.workspaceName, filePath: t.filePath,
+              pluginId: t.pluginId,
+              sourceId: t.sourceId,
             })),
             activeTabId: g.activeTabId,
           })),
@@ -363,32 +366,28 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [tabState, activeTab, closeTab, forceCloseTab, focusTab, splitTab, unsplit]);
 
+  // SerialContext value（Phase 4：桥接 App 串口状态和终端插件）
+  const serialContextValue = useMemo(() => ({
+    state: { ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError },
+    actions: { toggleOpen: handleToggleOpen, setPortName: handlePortChange, setBaudRate: handleBaudChange },
+  }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
+
   if (!ready) return null;
 
   return (
     <div className="app-shell">
-      <TopBar
-        ports={ports}
-        portName={portName}
-        baudRate={baudRate}
-        isOpen={isOpen}
-        onToggleOpen={handleToggleOpen}
-        onPortChange={handlePortChange}
-        onBaudChange={handleBaudChange}
-        theme={theme}
-        lang={lang}
-        onToggleTheme={handleToggleTheme}
-        onToggleLang={handleToggleLang}
-      />
+      <SerialContext.Provider value={serialContextValue}>
       <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
         <IconBar
-          activeTabType={activeTabType ?? "terminal"}
+          activeTabType={activeTabType ?? "welcome"}
+          activePluginId={activePluginId}
           onOpenOrFocus={handleIconClick}
         />
         <SidePanel
           ref={sidebarRef}
           activeTabType={activeTabType ?? "terminal"}
+          activePluginId={activePluginId}
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
@@ -419,7 +418,17 @@ function App() {
         </div>
       </div>
       </TerminalPrefsContext.Provider>
-      <StatusBar isOpen={isOpen} txBytes={txBytes} rxBytes={rxBytes} error={lastError} />
+      </SerialContext.Provider>
+      <StatusBar
+        isOpen={isOpen}
+        txBytes={txBytes}
+        rxBytes={rxBytes}
+        error={lastError}
+        theme={theme}
+        lang={lang}
+        onToggleTheme={handleToggleTheme}
+        onToggleLang={handleToggleLang}
+      />
     </div>
   );
 }

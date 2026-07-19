@@ -55,6 +55,8 @@ export interface Prefs {
     sendCoding: string;
   };
   quickSends: Record<string, string>;
+  /** Phase 4：最近打开的视图。欢迎页渲染。 */
+  recentViews?: { pluginId: string; label: string; workspaceName?: string }[];
   /** Phase 3：标签页布局持久化。Phase 5 增加 cardLayout。 */
   layout?: LayoutData;
 }

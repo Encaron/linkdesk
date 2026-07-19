@@ -10,10 +10,11 @@ import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
-import TerminalView from "./views/TerminalView";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import WorkspaceView from "./views/WorkspaceView";
 import SettingsView from "./views/SettingsView";
+import WelcomeView from "./views/WelcomeView";
+import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./MainContent.css";
 
 interface MainContentProps {
@@ -38,16 +39,36 @@ interface MainContentProps {
   onDraggingChange?: (v: boolean) => void;
 }
 
-/** 根据标签页类型渲染对应 View 组件 */
+/** 根据标签页 pluginId（优先）或 type（fallback）渲染对应 View 组件 */
 export function renderTabContent(
-  tab: { id: string; type: string; workspaceName?: string; filePath?: string },
-  isActive: boolean
+  tab: { id: string; type: string; pluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
+  isActive: boolean,
+  onCreateTab?: (type: string, opts?: any) => string,
 ) {
+  // Phase 4：优先走 viewRegistry（插件系统）
+  if (tab.pluginId) {
+    const plugin = getViewPlugin(tab.pluginId);
+    if (plugin) {
+      return (
+        <ErrorBoundary>
+          <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
+        </ErrorBoundary>
+      );
+    }
+    // pluginId 在注册表中不存在（插件被卸载/禁用）→ 占位 UI
+    return (
+      <div key={tab.id} className="plugin-missing-view">
+        <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
+      </div>
+    );
+  }
+
+  // Phase 4 过渡期 fallback：旧版 tab（无 pluginId）走硬编码 switch
   switch (tab.type) {
     case "terminal":
       return (
         <ErrorBoundary>
-          <TerminalView key={tab.id} isActive={isActive} />
+          <MissingTerminalFallback key={tab.id} />
         </ErrorBoundary>
       );
     case "workspace":
@@ -58,9 +79,20 @@ export function renderTabContent(
       return <div key={tab.id}>OLED 视图（Phase 6 实现）</div>;
     case "editor":
       return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 7 实现）</div>;
+    case "welcome":
+      return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
     default:
       return null;
   }
+}
+
+/** 旧版终端占位——终端已变为插件，不应走 fallback 路径 */
+function MissingTerminalFallback() {
+  return (
+    <div className="plugin-missing-view">
+      <p>终端插件未加载——请检查 plugins/terminal/ 目录</p>
+    </div>
+  );
 }
 
 function MainContent({
@@ -139,7 +171,7 @@ function MainContent({
                   display: tab.id === group.activeTabId ? "flex" : "none",
                 }}
               >
-                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId)}
+                {renderTabContent(tab, tab.id === group.activeTabId && group.id === activeGroupId, onCreateTab as any)}
               </div>
             ))}
           </div>

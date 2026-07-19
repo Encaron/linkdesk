@@ -104,5 +104,15 @@
   "模块加载失败，请重启应用": "Module load failed. Please restart the application.",
   "卡片架构将在 Phase 5 实现": "Card architecture coming in Phase 5",
   "切换语言（Phase 7）": "Switch Language (Phase 7)",
-  "切换主题（Phase 7）": "Switch Theme (Phase 7)"
+  "切换主题（Phase 7）": "Switch Theme (Phase 7)",
+  "欢迎": "Welcome",
+  "通用调试容器": "Universal Debug Container",
+  "开始": "Start",
+  "最近": "Recent",
+  "帮助": "Help",
+  "暂无可用视图": "No views available. Search the plugin marketplace.",
+  "使用文档": "Documentation",
+  "键盘快捷键": "Keyboard Shortcuts",
+  "插件详情": "Plugin Details",
+  "插件市场": "Marketplace"
 }

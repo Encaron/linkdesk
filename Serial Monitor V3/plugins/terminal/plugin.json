@@ -1,0 +1,19 @@
+{
+  "$schema": "../../docs/插件开发/plugin.schema.json",
+  "type": "view",
+  "name": "终端",
+  "version": "1.0.0",
+  "icon": "terminal",
+  "iconSource": "codicon",
+  "description": "串口数据收发——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置",
+  "author": "官方",
+  "entry": "index.tsx",
+  "sidebar": "sidebar.tsx",
+  "tabBehavior": {
+    "confirmOnClose": "关闭此标签页将断开串口连接"
+  },
+  "statusBar": [
+    { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
+    { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
+  ]
+}

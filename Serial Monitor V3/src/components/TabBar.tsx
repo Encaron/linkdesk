@@ -19,7 +19,15 @@ const TYPE_ICON: Record<string, string> = {
   settings: "\u{2699}\u{FE0F}",
   oled: "\u{1F3A8}",
   editor: "\u{1F4DD}",
+  welcome: "\u{1F3E0}",
 };
+
+/** 获取标签页图标：优先查 pluginId 的 icon，否则用 type */
+function getTabIcon(tab: Tab): string {
+  // Phase 4：pluginId 的图标由 viewRegistry 提供（codicon 名或 emoji fallback）
+  // 暂时用 type 映射
+  return TYPE_ICON[tab.type] ?? "\u{1F4C4}";
+}
 
 /* ── Props ── */
 
@@ -83,7 +91,7 @@ function PlusMenu({
               onClose();
             }}
           >
-            {TYPE_ICON[item.type]} {item.label}
+            {TYPE_ICON[item.type] ?? ""} {item.label}
           </button>
         ))}
       </div>
@@ -262,7 +270,11 @@ export default function TabBar({
   // 关闭标签页（带动画）
   const closeWithAnimation = useCallback(
     (tabId: string) => {
-      // 终端保底：[×] 清空接收区
+      // Phase 4：欢迎页保底——最后一个标签页不可关
+      if (tabs.length === 1 && tabs[0].type === "welcome") {
+        return;
+      }
+      // 终端保底兼容：[×] 清空接收区（Phase 4 过渡期——终端已成插件）
       if (tabs.length === 1 && tabs[0].type === "terminal") {
         window.dispatchEvent(new CustomEvent("v3-clear-terminal"));
         return;
@@ -426,7 +438,7 @@ export default function TabBar({
                 }}
               >
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
-                <span className="tab-icon">{TYPE_ICON[tab.type]}</span>
+                <span className="tab-icon">{getTabIcon(tab)}</span>
                 <span className="tab-label">{t(tab.label)}</span>
                 <button
                   className="tab-close"
@@ -498,7 +510,7 @@ export default function TabBar({
             }}
           >
             <span className="tab-icon" style={{ flexShrink: 0, fontSize: 13, opacity: 0.8 }}>
-              {TYPE_ICON[tab.type] ?? ""}
+              {getTabIcon(tab)}
             </span>
             <span className="tab-label">{t(tab.label)}</span>
           </div>
