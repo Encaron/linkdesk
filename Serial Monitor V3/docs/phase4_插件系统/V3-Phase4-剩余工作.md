@@ -4,7 +4,30 @@
 >
 > **审计方法：** 通读设计文档全部 11 章 → 逐文件检查 `src/` + `plugins/` → 对照代码行。
 >
-> **总计：10 项未完成**（设计 Steps 1-4 估 ~600 行，实际完成约 60%）
+> **原始总计：10 项未完成**。**2026-07-20 本轮修复：9 项完成，1 项骨架（P1-5 文件监听需 Tauri fs）。**
+>
+> 详见 git log: `cc076b3`..`HEAD`（6 commits）
+
+---
+
+## 修复成果（2026-07-20）
+
+| 优先级 | 项目 | 状态 | Commit |
+|--------|------|:--:|--------|
+| P0-3 | 补 settings/marketplace/workspace 的 plugin.json | ✅ | `cc076b3` |
+| P0-2 | StatusBar 走 getStatusBarContributions() | ✅ | `7f75230` |
+| P1-4 | loader theme/language 注册 | ✅ | `4963e49` |
+| P1-6 | loader 7 种错误处理 + 版本去重 | ✅ | `4963e49` |
+| P1-5 | 文件监听（Tauri fs watch） | ⚠️ 骨架 | `4963e49` |
+| P0-1 | 插件市场 UI | ✅ | `c71b6d8` |
+| P2-7 | PluginDetailView 连锁推荐 | ✅ | `e227827` |
+| P3-10 | IconBar 动态化（从 viewRegistry 读取） | ✅ | 本轮 |
+| P3-9 | 通知铃铛 + 通知历史面板 | ✅ | 本轮 |
+| P2-8 | MainContent 硬编码 switch | ⏸️ 保留安全网 | — |
+
+**剩余未闭合：**
+- P1-5 文件监听：骨架已就绪（`startPluginWatcher` / `stopPluginWatcher`），待 Tauri fs 命令补完
+- P2-8 MainContent switch：保留 terminal/settings/workspace/oled/editor 的 switch case 作为安全网（插件加载失败时的 fallback），设计允许此过渡状态
 
 ---
 

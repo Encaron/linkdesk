@@ -1,16 +1,18 @@
 /**
  * StatusBar — 底部状态栏。
  * Phase 4 P0-2：走 getStatusBarContributions() 插件贡献框架。
- * 左区：插件贡献项（align: "left"）按加载顺序排列。Phase 4 终端贡献连接状态+TX/RX。
- * 右区：插件贡献项（align: "right"）+ 核心全局项（语言、主题）。
- * 对标 VS Code Status Bar Contributions。
+ * Phase 4 P3-9：通知铃铛 🔔 + 未读计数 + 通知历史面板。
+ * 左区：插件贡献项（align: "left"）按加载顺序排列。
+ * 右区：插件贡献项（align: "right"）+ 核心全局项（语言、主题、通知）。
+ * 对标 VS Code Status Bar Contributions + Notification Bell。
  *
- * 设计依据：[V3-插件系统与UI重构设计.md §3.6]
+ * 设计依据：[V3-插件系统与UI重构设计.md §3.5 + §3.6]
  */
 
-import { Fragment } from "react";
+import { Fragment, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
+import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
 import type { StatusBarItem } from "../core/types";
 import "./StatusBar.css";
 
@@ -30,6 +32,31 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
 
   // Phase 4：从 viewRegistry 读取所有插件的 statusBar 贡献
   const allItems = getStatusBarContributions();
+
+  // P3-9：通知铃铛——未读计数 + 通知历史
+  const [notifications, setNotifications] = useState<Toast[]>([]);
+  const [showNotifPanel, setShowNotifPanel] = useState(false);
+  const notifPanelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    return subscribeToasts((toasts) => {
+      setNotifications([...toasts]);
+    });
+  }, []);
+
+  // 点击外部关闭通知面板
+  useEffect(() => {
+    if (!showNotifPanel) return;
+    const onClick = (e: MouseEvent) => {
+      if (notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node)) {
+        setShowNotifPanel(false);
+      }
+    };
+    window.addEventListener("mousedown", onClick);
+    return () => window.removeEventListener("mousedown", onClick);
+  }, [showNotifPanel]);
+
+  const unreadCount = notifications.length;
   const leftItems = allItems.filter((item) => item.align !== "right");
   const rightItems = allItems.filter((item) => item.align === "right");
 
@@ -85,13 +112,55 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
         )}
       </div>
 
-      {/* 右区：插件贡献项（align: right）+ 核心全局项（语言 + 主题） */}
+      {/* 右区：插件贡献项（align: right）+ 核心全局项（语言 + 主题 + 通知） */}
       <div className="status-bar-right">
         {rightItems.map((item) => (
           <Fragment key={`${item.pluginId}-${item.id}`}>
             {renderContribution(item)}
           </Fragment>
         ))}
+        {/* P3-9：通知铃铛 */}
+        <div className="status-bar-notif-wrapper" ref={notifPanelRef}>
+          <button
+            className={`status-bar-btn status-bar-notif-btn${unreadCount > 0 ? " has-notifications" : ""}`}
+            onClick={() => setShowNotifPanel(!showNotifPanel)}
+            title={unreadCount > 0 ? t("{{count}} 条通知", { count: unreadCount }) : t("通知")}
+          >
+            🔔{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
+          </button>
+          {showNotifPanel && (
+            <div className="status-bar-notif-panel">
+              <div className="notif-panel-header">
+                <span>{t("通知")}</span>
+                {unreadCount > 0 && (
+                  <button
+                    className="notif-panel-clear"
+                    onClick={() => notifications.forEach((n) => dismissToast(n.id))}
+                  >
+                    {t("全部清除")}
+                  </button>
+                )}
+              </div>
+              {notifications.length === 0 ? (
+                <div className="notif-panel-empty">{t("暂无通知")}</div>
+              ) : (
+                <div className="notif-panel-list">
+                  {notifications.map((n) => (
+                    <div key={n.id} className="notif-panel-item">
+                      <span className="notif-panel-msg">{n.message}</span>
+                      <button
+                        className="notif-panel-dismiss"
+                        onClick={() => dismissToast(n.id)}
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
         {onToggleLang && (
           <button className="status-bar-btn" onClick={onToggleLang} title={t("切换语言")}>
             {lang === "zh" ? "中" : "EN"}

@@ -76,3 +76,120 @@
   background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
+
+/* ── P3-9：通知铃铛 ── */
+
+.status-bar-notif-wrapper {
+  position: relative;
+}
+
+.status-bar-notif-btn {
+  position: relative;
+}
+
+.status-bar-notif-btn.has-notifications {
+  color: var(--accent);
+}
+
+.status-bar-notif-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--accent);
+  color: #fff;
+  border-radius: 50%;
+  min-width: 12px;
+  height: 12px;
+  line-height: 12px;
+  text-align: center;
+  padding: 0 2px;
+}
+
+/* 通知面板 */
+.status-bar-notif-panel {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  width: 320px;
+  max-height: 360px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+  overflow: hidden;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+}
+
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-primary);
+  border-bottom: 1px solid var(--separator);
+}
+
+.notif-panel-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.notif-panel-clear:hover {
+  color: var(--text-primary);
+}
+
+.notif-panel-empty {
+  padding: 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notif-panel-list {
+  overflow-y: auto;
+  max-height: 300px;
+}
+
+.notif-panel-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 12px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.notif-panel-item:last-child {
+  border-bottom: none;
+}
+
+.notif-panel-msg {
+  flex: 1;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notif-panel-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 0 2px;
+}
+
+.notif-panel-dismiss:hover {
+  color: var(--text-primary);
+}
