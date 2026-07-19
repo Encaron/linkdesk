@@ -140,3 +140,26 @@
 ### B46：CSS 硬编码 hex
 - `#e74c3c`、`#cca700`、`#fff` 散落各处。修：统一定义 `--error` / `--warning` / `--badge-text`。（`117e320`）
 - **教训：所有颜色走 CSS 变量——硬约束不能放松。**
+
+### B47：npm run dev 持久化竞态
+- `_useLocalStorage` 初始 false + `initPrefs()` 异步 → savePrefs 在 init 完成前走 Tauri 路径 → 报错。
+- 修：`savePrefs` 先写 localStorage（同步安全），再试探 Tauri。`isTauri()` 加 `window.__TAURI__` 检查防误判。（`50a41fa` `9681c52`）
+- **教训：异步初始化期间的安全默认值至关重要。**
+
+### B48：identifier 改名 → 数据丢失
+- `com.serial-monitor.v3` → `com.linkdesk.app` → `appDataDir()` 路径变 → 旧 prefs.json 找不到。
+- 预期行为，开发期可接受。最终定为 `com.linkdesk.app`。
+
+---
+
+## 品牌重命名（2026-07-20）
+
+| 项 | 旧 | 新 |
+|----|----|----|
+| 软件名 | Serial Monitor V3 | **LinkDesk** |
+| 窗口标题 | Serial Monitor V3 | **LinkDesk** |
+| 标识符 | com.serial-monitor.v3 | **com.linkdesk.app** |
+| 图标 | 嵌入式风格 | **NodeDesk 六边形三节点** |
+| 色调 | #0E639C | **#0078D4** (VS Code 蓝) |
+| 欢迎页标题 | Serial Monitor | **LinkDesk** |
+| i18n | "serial port" | **"data source"** |
