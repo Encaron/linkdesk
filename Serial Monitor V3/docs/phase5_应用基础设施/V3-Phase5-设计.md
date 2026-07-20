@@ -154,6 +154,39 @@ Phase 6：在基础设施上写功能
 
 **Phase 5 不是"做设置页面"——是建贡献点系统。** 设置页面只是 Configuration Registry 的一个消费端。命令面板只是 Command Registry 的一个消费端。右键菜单只是 Menu Registry 的一个消费端。所有消费端共享同一套贡献声明体系。
 
+### 1.6 Phase 4 归一化的教训——为什么这次要一起规划
+
+Phase 4 花了四个阶段做归一化（4.4 消硬编码 → 4.5 tabIdentity → 4.6 singleton+ID+语义 → 4.7 删 type+图标归一）。不是我们喜欢归一化——是被迫的。根源是 Phase 3 和 Phase 4 的脱节：
+
+```
+Phase 3：做标签页系统、图标栏、状态栏、侧栏
+         当时没有插件概念，一切都用 tab.type 字符串硬编码
+         ↓
+Phase 4：嫁接插件系统
+         → 图标 mapping 是 Phase 3 写死的（PLUGIN_ICON_PATH）
+         → 状态栏渲染是 Phase 3 写死的（if pluginId === "terminal"）
+         → 侧栏 fallback 是 Phase 3 写死的（import TerminalSidebar）
+         → 标签名 switch 是 Phase 3 写死的（getDefaultLabel）
+         → 预览/pin 逻辑是 Phase 3 写死的（tab.pinned 没有持久化）
+         ↓
+Phase 4.4-4.7：四轮归一化——修的是同一个问题：
+         Phase 3 的假设和 Phase 4 的现实不一致
+```
+
+**VS Code 没有这个问题。** Activity Bar、Editor Tabs、Status Bar、Extensions 一开始就共享 `contributes` 这一套抽象。不存在"先做的图标栏不知道后面会有插件"——因为图标栏本身就是 `contributes.viewsContainers` 的消费者，它生来就吃注册表数据。
+
+**Phase 5 必须避免重演。** 命令系统、配置系统、菜单系统、协议系统四个一起规划。它们共享同一份 `contributes` 声明、同一个 `plugin.json` 入口。不给 Phase 6 留"菜单系统是 Phase 5 做的，但卡片右键菜单当时没有考虑"这种债务。
+
+```
+Phase 5 四个系统一起设计
+  → 共享 contributes 声明格式
+  → 共享 Registry 注册模式
+  → Phase 6 卡片直接"声明 + 注册"，零额外改动
+  → Phase 7 OLED 同样
+```
+
+这也是为什么现在只留终端一个实体插件做验证——改动面极小，确认框架正确后 Phase 6 直接铺开。
+
 ---
 
 ## 二、Phase 5 四根柱子
