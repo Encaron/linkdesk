@@ -521,13 +521,19 @@ function App() {
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
-  // Phase 5：全局快捷键——不依赖 activeTab（Ctrl+, 等壳级快捷键始终可用）
+  // Phase 5：全局快捷键——不依赖 activeTab（Ctrl+,, Ctrl+Shift+P 等壳级快捷键始终可用）
   useEffect(() => {
     const onGlobalKeyDown = (e: KeyboardEvent) => {
       // Ctrl+, → 打开设置标签页（对标 VS Code Preferences: Open Settings）
       if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         createTab("settings", { pinned: true });
+        return;
+      }
+      // Ctrl+Shift+P → 命令面板（对标 VS Code Show All Commands）
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
+        e.preventDefault();
+        window.dispatchEvent(new CustomEvent("v3-show-palette"));
         return;
       }
     };
