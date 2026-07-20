@@ -11,6 +11,17 @@ import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
+
+/** 通知面板图标——对标 VS Code severity codicons */
+function getNotifIconClass(n: Toast): string {
+  if (n.icon) return n.icon.startsWith("codicon") ? n.icon : `codicon codicon-${n.icon}`;
+  switch (n.severity) {
+    case "error": return "codicon codicon-error notif-severity-error";
+    case "warning": return "codicon codicon-warning notif-severity-warning";
+    case "info":
+    default: return "codicon codicon-info";
+  }
+}
 import "./StatusBar.css";
 
 interface StatusBarProps {
@@ -149,29 +160,34 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
                 {notifications.map((n) => (
                   <div key={n.id} className="notif-panel-item">
                     <div className="notif-main-row">
-                      <span className="codicon codicon-info notif-icon" />
+                      <span className={`codicon ${getNotifIconClass(n)} notif-icon`} />
                       <span className="notif-panel-msg">{n.message}</span>
                       <button
                         className="notif-panel-dismiss"
                         onClick={() => dismissToast(n.id)}
                         title={t("关闭")}
                       >
-                        ✕
+                        <span className="codicon codicon-close" />
                       </button>
                     </div>
-                    <div className="notif-source-row">
-                      {n.actions && n.actions.length > 0
-                        ? n.actions.map((a, i) => (
-                            <button
-                              key={i}
-                              className="notif-panel-clear"
-                              onClick={() => { a.onClick(); dismissToast(n.id); }}
-                            >
-                              {a.label}
-                            </button>
-                          ))
-                        : null}
-                    </div>
+                    {(n.source || (n.actions && n.actions.length > 0)) && (
+                      <div className="notif-details-row">
+                        {n.source && <span className="notif-source">来源: {n.source}</span>}
+                        {n.actions && n.actions.length > 0 && (
+                          <div className="notif-actions-row">
+                            {n.actions.map((a, i) => (
+                              <button
+                                key={i}
+                                className={`notif-action-btn ${a.isPrimary ? "primary" : "secondary"}`}
+                                onClick={() => { a.onClick(); dismissToast(n.id); }}
+                              >
+                                {a.label}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>

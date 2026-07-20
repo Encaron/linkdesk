@@ -265,12 +265,58 @@
   border-radius: 3px;
 }
 
-/* VS Code: source row below message, hidden unless expanded */
-.notif-panel-item .notif-source-row {
+/* VS Code: details row below message——source + action buttons */
+.notif-panel-item .notif-details-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   padding-left: 24px; /* align with message after icon */
+  margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
+  flex-wrap: wrap;
 }
+
+.notif-source {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.notif-actions-row {
+  display: flex;
+  gap: 4px;
+}
+
+.notif-action-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.notif-action-btn.primary {
+  background: var(--accent);
+  color: var(--badge-text);
+}
+
+.notif-action-btn.primary:hover {
+  opacity: 0.85;
+}
+
+.notif-action-btn.secondary {
+  color: var(--text-muted);
+  border: 1px solid var(--separator);
+}
+
+.notif-action-btn.secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Severity icons in notification panel */
+.notif-severity-error { color: var(--danger) !important; }
+.notif-severity-warning { color: var(--warning) !important; }
