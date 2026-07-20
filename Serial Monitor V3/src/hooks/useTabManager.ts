@@ -215,37 +215,91 @@ export interface CreateTabResult {
   createdId: string;
 }
 
+/** 判断已有标签页 t 是否与要创建的 (type, opts) 是同一身份。
+ *  对标 VS Code：同一编辑器不替换预览。插件介绍→同一目标插件=同身份，不同目标插件=不同身份。 */
+function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions): boolean {
+  // plugin-detail：身份 = type + detailPluginId
+  if (type === "plugin-detail" && t.type === "plugin-detail") {
+    return t.detailPluginId === (opts?.detailPluginId ?? opts?.pluginId);
+  }
+  // workspace：身份 = type + workspaceName
+  if (type === "workspace" && t.type === "workspace") {
+    return t.workspaceName === opts?.workspaceName;
+  }
+  // 通用：身份 = type（同 type 的多实例允许多个，如 terminal-1 + terminal-2）
+  return t.type === type;
+}
+
+/** VS Code findEditor 对标：按身份精确匹配已有标签页。
+ *  只有具备唯一身份的 type 才做去重（plugin-detail:按目标插件, workspace:按名称）。
+ *  通用 type（terminal 等）允许多实例——对标 VS Code 同类型编辑器可开多个。 */
+function findTabByIdentity(
+  all: Tab[],
+  type: string,
+  opts?: CreateTabOptions
+): Tab | undefined {
+  // plugin-detail：按 detailPluginId 去重（不管 pinned）
+  if (type === "plugin-detail" && opts?.pluginId) {
+    return all.find((t) => t.type === "plugin-detail" && t.detailPluginId === opts.pluginId);
+  }
+  // workspace：按 workspaceName 去重
+  if (type === "workspace" && opts?.workspaceName) {
+    return all.find((t) => t.type === "workspace" && t.workspaceName === opts.workspaceName);
+  }
+  // 单例：全局只有一个
+  if (getTabBehavior(type).singleton) {
+    return all.find((t) => t.type === type || t.pluginId === type);
+  }
+  // 其他类型：允许多实例（对标 VS Code 多个同类型编辑器）
+  return undefined;
+}
+
 export function reduceCreateTab(
   prev: TabState,
   type: string,
   opts?: CreateTabOptions
 ): CreateTabResult {
   const all = allTabs(prev);
+  const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
+  const makePinned = opts?.pinned === true;
 
-  // Phase 4：plugin-detail 预览模式——同类型替换内容，已固定则新建
-  if (type === "plugin-detail" && opts?.pluginId) {
-    const existing = all.find((t) => t.type === "plugin-detail" && !t.pinned);
-    if (existing) {
-      const group = findGroup(prev, existing.id)!;
-      const label = getDefaultLabel("plugin-detail", undefined, undefined, opts.pluginId);
-      const updatedTab = { ...existing, detailPluginId: opts.pluginId, pluginId: undefined, label, pinned: opts.pinned === true ? true : existing.pinned };
-      const newGroups = prev.groups.map((g) =>
-        g.id === group.id ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id } : g
-      );
-      return { state: { ...prev, groups: newGroups, activeGroupId: group.id }, createdId: existing.id };
-    }
+  /* ── Step 1: VS Code findEditor —— 已有标签页？聚焦 + 可选 pin ── */
+  const existing = findTabByIdentity(all, type, opts);
+  if (existing) {
+    const group = findGroup(prev, existing.id)!;
+    // 调用方指定 pinned:true → 固定它（对标 VS Code：双击标签页 → doPin）
+    const needPin = makePinned && !existing.pinned;
+    const updatedTab = needPin ? { ...existing, pinned: true } : existing;
+    const newGroups = prev.groups.map((g) =>
+      g.id === group.id
+        ? { ...g, tabs: g.tabs.map((t) => (t.id === existing.id ? updatedTab : t)), activeTabId: existing.id }
+        : g
+    );
+    return { state: { ...prev, groups: newGroups, activeGroupId: group.id }, createdId: existing.id };
   }
 
-  // VS Code：每组只有一个预览标签页——新建未固定标签→替换组内旧的预览标签
-  //   保底标签页（welcome）不参与替换——对标 VS Code Getting Started 不可被覆盖
-  if (opts?.pinned !== true) {
-    const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
+  /* ── Step 2: 单例去重（settings 等） ── */
+  if (getTabBehavior(type).singleton && all.some((t) => t.type === type || t.pluginId === type)) {
+    const singleton = all.find((t) => t.type === type || t.pluginId === type)!;
+    const group = findGroup(prev, singleton.id)!;
+    return {
+      state: { ...prev, activeGroupId: group.id, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: singleton.id } : g)) },
+      createdId: singleton.id,
+    };
+  }
+
+  /* ── Step 3: VS Code preview replacement —— 未固定→替换组内预览标签页 ──
+     对标 VS Code editorGroupModel.openEditor: if (!makePinned && this.preview) { replaceEditor(this.preview, ...) }
+     预览标签页 = pinned=false 且非保底 */
+  if (!makePinned) {
     const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
     if (targetGroup) {
+      // 对标 VS Code：同一身份=聚焦(Step 1已处理)，不同身份=替换预览。
       const previewTab = targetGroup.tabs.find(
-        (t) => !t.pinned && t.type !== type && !getTabBehavior(t.type).isFallback
+        (t) => !t.pinned && !getTabBehavior(t.type).isFallback && !isSameTabIdentity(t, type, opts)
       );
       if (previewTab) {
+        // 复用 preview 的 id（保持 keep-alive 的 TabPanePositioner key 不变，避免 React unmount）
         const newTab = { ...createTabDefaults(type, opts), id: previewTab.id, pinned: false };
         const newGroups = prev.groups.map((g) =>
           g.id === targetGroupId
@@ -257,33 +311,8 @@ export function reduceCreateTab(
     }
   }
 
-  // 去重：workspace 同名
-  if (type === "workspace" && opts?.workspaceName) {
-    const existing = all.find(
-      (t) => t.type === "workspace" && t.workspaceName === opts.workspaceName
-    );
-    if (existing) {
-      const group = findGroup(prev, existing.id)!;
-      return {
-        state: { ...prev, activeGroupId: group.id, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: existing.id } : g)) },
-        createdId: existing.id,
-      };
-    }
-  }
-
-  // Phase 4 单例去重：读 tabBehavior.singleton（不再硬编码 type 名）
-  if (getTabBehavior(type).singleton && all.some((t) => t.type === type || t.pluginId === type)) {
-    const existing = all.find((t) => t.type === type || t.pluginId === type)!;
-    const group = findGroup(prev, existing.id)!;
-    return {
-      state: { ...prev, activeGroupId: group.id, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: existing.id } : g)) },
-      createdId: existing.id,
-    };
-  }
-
+  /* ── Step 4: 真正新建（无已有、无预览可替换、或显式 pinned） ── */
   const newTab = createTabDefaults(type, opts);
-
-  const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
   const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
   if (!targetGroup) return { state: prev, createdId: "" };
 
