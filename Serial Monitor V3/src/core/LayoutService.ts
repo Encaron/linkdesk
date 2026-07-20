@@ -66,21 +66,25 @@ export async function initLayoutService(): Promise<void> {
     return;
   }
 
-  // Tauri 模式：优先读文件
+  // Tauri 模式：优先读 localStorage（beforeunload 同步写入，永远最新），
+  // 文件兜底（100ms 防抖异步落盘，可能略旧于 localStorage）
   try {
+    const localRaw = localStorage.getItem("v3_layout");
     const path = await layoutPath();
-    if (await fsApi!.exists(path)) {
-      const raw = await fsApi!.readTextFile(path);
-      _layoutCache = JSON.parse(raw);
+    const fileExists = await fsApi!.exists(path);
+
+    if (localRaw) {
+      _layoutCache = JSON.parse(localRaw);
+      // 异步写回文件——补上 beforeunload 没写文件的缺口
+      fsApi!.writeTextFile(path, localRaw).catch(() => {});
       return;
     }
-  } catch { /* 文件不存在或损坏 */ }
 
-  // 文件不可用 → localStorage 兜底（Tauri 异步写盘未完成的竞态窗口）
-  try {
-    const raw = localStorage.getItem("v3_layout");
-    if (raw) _layoutCache = JSON.parse(raw);
-  } catch { /* ignore */ }
+    if (fileExists) {
+      const raw = await fsApi!.readTextFile(path);
+      _layoutCache = JSON.parse(raw);
+    }
+  } catch { /* 静默 */ }
 }
 
 /** 读取标签页布局 */
