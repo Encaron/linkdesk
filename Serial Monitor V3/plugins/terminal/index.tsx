@@ -885,16 +885,18 @@ function TerminalView({ isActive }: TerminalViewProps) {
     return () => window.removeEventListener("v3-show-palette", handler);
   }, []);
 
-  // 本地 fallback：KeybindingRegistry 可能未匹配时直接捕获 Ctrl+Shift+P
+  // 本地 fallback：KeybindingRegistry 可能未命中时直接捕获 Ctrl+Shift+P
+  // 使用 capture phase 确保在其他 handler 之前拦截；统一走事件通路
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
         e.preventDefault();
-        setPaletteOpen((p) => !p);
+        e.stopImmediatePropagation();
+        window.dispatchEvent(new CustomEvent("v3-show-palette"));
       }
     };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    window.addEventListener("keydown", onKeyDown, true); // capture phase
+    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, []);
 
   /* ---- Monaco 挂载 ---- */
