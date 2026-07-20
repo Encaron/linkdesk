@@ -108,14 +108,26 @@ describe("reduceCreateTab", () => {
   });
 
   it("分屏时在 activeGroupId 组中创建", () => {
-    // VS Code 预览模式：新建 workspace 替换 active 组内旧的预览 terminal
+    // Phase 5 rootfix：预览替换改为 opt-IN——默认不复用已有 tab
     let state = createInitialTabState();
     const tr = reduceCreateTab(state, "terminal");
     state = reduceSplitTab(tr.state, tr.createdId, "horizontal");
     // Group A: [welcome], Group B: [terminal], active=Group B
     const r = reduceCreateTab(state, "workspace", { workspaceName: "pid" });
-    // terminal 预览被 workspace 替换 → [welcome] + [workspace] = 2
-    expect(allTabs(r.state)).toHaveLength(2);
+    // 不复用 terminal 预览 → [welcome] + [terminal] + [workspace] = 3
+    expect(allTabs(r.state)).toHaveLength(3);
+  });
+
+  it("显式 pinned:false 触发预览替换（opt-IN）", () => {
+    // Phase 5：pinned:false 显式请求预览模式 → 替换组内 unpinned tab
+    let state = createInitialTabState();
+    // terminal 默认 pinned:false（createTabDefaults）
+    const tr = reduceCreateTab(state, "terminal");
+    state = tr.state;
+    expect(allTabs(state)).toHaveLength(2); // [welcome, terminal]
+    // 显式 pinned:false 开 workspace → 预览替换 terminal
+    const r = reduceCreateTab(state, "workspace", { workspaceName: "pid", pinned: false });
+    expect(allTabs(r.state)).toHaveLength(2); // [welcome, workspace]——terminal 被替换
   });
 });
 
@@ -331,7 +343,7 @@ describe("reduceRestoreLayout", () => {
 
 describe("集成场景", () => {
   it("启动 → 开 workspace → 分屏 → 关分屏", () => {
-    // VS Code 预览模式：每组一个预览标签页，新建 terminal 替换 ws 预览
+    // Phase 5 rootfix：默认不复用预览——terminal 不替换 workspace
     let s = createInitialTabState();
     expect(allTabs(s)).toHaveLength(1);
 
@@ -341,7 +353,7 @@ describe("集成场景", () => {
     const tr = reduceCreateTab(s, "terminal");
     s = tr.state;
     const termId = tr.createdId;
-    expect(allTabs(s)).toHaveLength(2); // [welcome, terminal]——workspace 预览被替换
+    expect(allTabs(s)).toHaveLength(3); // [welcome, workspace, terminal]——不复用
 
     s = reduceSplitTab(s, termId, "horizontal");
     expect(getAllLeafGroupIds(s.root)).toHaveLength(2);

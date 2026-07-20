@@ -10,7 +10,8 @@ import type { CreateTabOptions } from "./types";
 
 export interface TabActions {
   createTab: (type: string, opts?: CreateTabOptions) => string;
-  openOrFocusTab: (type: string) => string | null;
+  /** Phase 5 rootfix：加 opts 参数——调用方可传 pinned 控制预览行为 */
+  openOrFocusTab: (type: string, opts?: CreateTabOptions) => string | null;
 }
 
 const TabActionsContext = createContext<TabActions | null>(null);

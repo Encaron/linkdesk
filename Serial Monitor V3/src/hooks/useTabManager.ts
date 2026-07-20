@@ -201,10 +201,13 @@ export function reduceCreateTab(
     };
   }
 
-  /* ── Step 3: VS Code preview replacement —— 未固定→替换组内预览标签页 ──
-     对标 VS Code editorGroupModel.openEditor: if (!makePinned && this.preview) { replaceEditor(this.preview, ...) }
+  /* ── Step 3: VS Code preview replacement —— 显式 opt-IN（pinned:false）。
+     Phase 5 rootfix：原逻辑 if (!makePinned) 是 opt-OUT——默认触发替换，
+     导致每个调用方必须记住传 pinned:true，忘了就是 bug（V2.6 模式）。
+     改为 opt-IN：只有显式传 pinned:false 才触发预览替换。
+     对标 VS Code：editorGroupModel.openEditor({ pinned: false }) 表示"以预览模式打开"。
      预览标签页 = pinned=false 且非保底 */
-  if (!makePinned) {
+  if (opts?.pinned === false) {
     const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
     if (targetGroup) {
       // 对标 VS Code：同一身份=聚焦(Step 1已处理)，不同身份=替换预览。
@@ -224,7 +227,7 @@ export function reduceCreateTab(
     }
   }
 
-  /* ── Step 4: 真正新建（无已有、无预览可替换、或显式 pinned） ── */
+  /* ── Step 4: 真正新建（无已有、无显式预览替换请求） ── */
   const newTab = createTabDefaults(type, opts);
   const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
   if (!targetGroup) return { state: prev, createdId: "" };
