@@ -112,14 +112,17 @@
 | PluginDetailView 按钮 | 卸载/禁用→可用 |
 | MarketplaceSidebar | "已禁用"分区 + 启用按钮 |
 
-### 剩余未闭合
+### Phase 4 最终剩余（全部推迟到后续 Phase）
 
-| 项目 | 状态 |
-|------|------|
-| 插件市场在线搜索 | Phase 6+（需服务端） |
-| 插件安全模型 | Phase 5+ |
-| Git 插件 | Phase 5+（架构已预留） |
-| 个人中心 | Phase 7+（图标栏底部位置已预留） |
+| 项目 | Phase | 原因 |
+|------|:--:|------|
+| 插件市场在线搜索 | 6+ | 需服务端 |
+| 插件安全模型 | 5+ | 当前同 WebView 够用，接口已留 `<iframe>` 桥 |
+| Git 插件 | 5+ | 应用级插件，架构已预留 `plugins/git/` |
+| 个人中心 | 7+ | UI 功能，IconBar BOTTOM_ICONS 位置已预留 |
+| card/protocol 完整实现 | 5 | loader 已加载识别，run-time 注册 + UI 留给 Phase 5 |
+| 齿轮菜单完整版 | 7 | context key 菜单系统 + 设置联动 |
+| 命令系统 | 7 | 插件注册命令 + 右键菜单扩展点 |
 
 ---
 
@@ -393,6 +396,66 @@ export function shouldKeepSidebarOnFocus(tab: Tab): boolean {
 - 字符串硬编码全部消失——每个比较都有函数名解释为什么
 - AI 读到 `isShellRenderedTab(tab)` 不需要问"为什么这两个 type 特殊"——函数名就是答案
 - `BOTTOM_ICONS` 加注释说明这是对标 VS Code Manage 齿轮的布局规则
+
+---
+
+## Phase 4.7 — 对标 VS Code：删 type 字段 + 自动重载 + 待安装分区 + 齿轮菜单 ✅
+
+> 2026-07-20。4 个 commit，彻底对齐 VS Code 插件体验。
+
+### 1. 删 `type` 字段——检测声明替代分类开关
+
+**Before:** `plugin.json` 必须有 `"type": "view"`，loader 用 switch 分发。4/7 类型在 default 跳过。
+**After:** 无 `type` 字段。loader 检测 `entry`/`themes`/`languages`/`mode`/`resources` 等声明字段，每种贡献独立处理。
+
+| 声明 | 自动识别 | 加载 |
+|------|---------|------|
+| `entry` | view | 动态 import → viewRegistry |
+| `themes` | theme | ThemeEngine |
+| `languages` | language | i18next |
+| `mode` | protocol | 协议注册（Phase 5）|
+| `resources` | resource | 资源注册（Phase 5）|
+
+一个插件可同时声明多种贡献（entry + sidebar + statusBar + mode...）
+
+**影响文件：** `loader.ts`, `types.ts`, `plugin.schema.json`, `vite.config.ts`, 4 个 `plugin.json`, `PluginDetailView.tsx`, `docs/插件开发/plugin.json规范.md`
+
+### 2. 自动重载——对标 VS Code Reload Required
+
+安装/重新安装/启用 view 插件（.tsx entry）→ 1.5s 后 `window.location.reload()`。
+theme/language（.json）→ 即时生效（不变）。
+
+**影响文件：** `loader.ts` — `installPlugin`, `reinstallPlugin`, `enablePlugin`
+
+### 3. 待安装分区 + 绿色安装按钮
+
+Rust 新增 `list_disabled_plugin_dirs` + `reinstall_plugin`。
+市场侧栏分三个分区：
+
+| 分区 | 文件位置 | 按钮 |
+|------|---------|------|
+| 已安装 | `plugins/` | ⚙ 齿轮（启用/禁用/卸载）|
+| 已禁用 | `plugins/`（prefs 标记）| 蓝色 ▶ 启用 |
+| 待安装 | `plugins/.disabled/` | 绿色 ⬇ 安装 |
+
+**影响文件：** `plugins.rs`, `lib.rs`, `loader.ts`, `MarketplaceSidebar.tsx`+`.css`, `PluginDetailView.tsx`+`.css`
+
+### 4. ⚙ 齿轮菜单
+
+每个非 core 列表项右侧 hover 出现齿轮 → 展开"启用/禁用"+"卸载"。
+对标 VS Code `ManageExtensionAction`，Phase 7 加完整 context key 驱动菜单。
+
+### 完整场景验证
+
+```
+写入高德地图插件 → 放到 .disabled/ 目录
+  → 市场"待安装"出现 + 绿色安装按钮
+  → 点安装 → 自动重载 → 图标栏出现图标 + 标签页可用 + 侧栏可用 + 状态栏可用
+  → 齿轮菜单 → 卸载 → 标签页关闭 + 图标消失 + 状态栏消失
+  → 市场"待安装"重新出现 + 绿色安装按钮
+```
+
+**对标 VS Code 差距仅剩：** VS Code 弹 Reload 按钮 / V3 自动 reload。
 
 ---
 
