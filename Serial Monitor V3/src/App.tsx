@@ -202,14 +202,15 @@ function App() {
       const initLang = cfgLang || prefs?.language || "zh";
 
       loadTheme(initTheme)
-        .then(applyTheme)
+        .then((t) => {
+          applyTheme(t);
+          // 强调色必须在 applyTheme 之后——用户偏好覆盖主题内置 accent
+          if (cfgAccent) applyAccentColor(cfgAccent);
+        })
         .catch(() => { /* CSS fallback 生效 */ });
       setTheme(initTheme as "Dark" | "Light");
       setLang(initLang as "zh" | "en");
       i18n.changeLanguage(initLang);
-
-      // 强调色：从 ConfigurationService 读（三层合并），falback 到 CSS 默认 #0078d4
-      if (cfgAccent) applyAccentColor(cfgAccent);
 
       // Phase 5e：终端设置从 ConfigurationService 读取（替代旧 PreferenceService.preferences）
       // 逐个 key 读取以使用三层合并（Workspace > User > Default），fallback 旧 Prefs
