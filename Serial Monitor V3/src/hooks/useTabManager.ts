@@ -244,7 +244,8 @@ export function reduceCreateTab(
 export function reduceOpenOrFocus(
   prev: TabState,
   type: string,
-  lastFocusedId?: string | null
+  lastFocusedId?: string | null,
+  createOpts?: CreateTabOptions,
 ): { state: TabState; focusedId: string | null } {
   const all = allTabs(prev);
   // 同时按 type 和 pluginId 匹配——归一化后两者等价
@@ -263,8 +264,8 @@ export function reduceOpenOrFocus(
     };
   }
 
-  // 隐式创建：任何 type 都可以——不再只认 terminal/settings
-  const r = reduceCreateTab(prev, type);
+  // 隐式创建：传 opts（如 pinned:true）防止预览替换机制吃掉已有标签页
+  const r = reduceCreateTab(prev, type, createOpts);
   if (r.createdId) {
     return { state: r.state, focusedId: r.createdId };
   }
@@ -761,10 +762,10 @@ export function useTabManager() {
   );
 
   const openOrFocusTab = useCallback(
-    (type: string): string | null => {
+    (type: string, opts?: CreateTabOptions): string | null => {
       let focusedId: string | null = null;
       setTabState((prev) => {
-        const r = reduceOpenOrFocus(prev, type, lastFocusedByType.current.get(type));
+        const r = reduceOpenOrFocus(prev, type, lastFocusedByType.current.get(type), opts);
         focusedId = r.focusedId;
         if (focusedId) lastFocusedByType.current.set(type, focusedId);
         return r.state;

@@ -222,6 +222,40 @@ function App() {
     [duplicateTab, splitTabAt]
   );
 
+  // Phase 5：Settings Editor 的配置变更 → 实际生效
+  useEffect(() => {
+    import("./core/ConfigurationService").then(({ onDidChangeConfiguration }) => {
+      onDidChangeConfiguration((key, value) => {
+        if (key === "app.theme") {
+          const themeVal = value as string;
+          setTheme(themeVal as "Dark" | "Light");
+          loadTheme(themeVal).then(applyTheme).catch(() => {});
+        }
+        if (key === "app.language") {
+          const langVal = value as string;
+          setLang(langVal as "zh" | "en");
+          i18n.changeLanguage(langVal);
+        }
+        if (key === "app.accentColor") {
+          document.documentElement.style.setProperty("--accent", value as string);
+          // 动态计算 hover 和 light 变体
+          const hex = (value as string).replace("#", "");
+          const r = parseInt(hex.substring(0, 2), 16);
+          const g = parseInt(hex.substring(2, 4), 16);
+          const b = parseInt(hex.substring(4, 6), 16);
+          document.documentElement.style.setProperty(
+            "--accent-hover",
+            `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
+          );
+          document.documentElement.style.setProperty(
+            "--accent-light",
+            `rgba(${r},${g},${b},0.15)`
+          );
+        }
+      });
+    });
+  }, []);
+
   /* ---- 主题/语言切换 ---- */
   const handleToggleTheme = useCallback(() => {
     const next = theme === "Dark" ? "Light" : "Dark";
@@ -261,19 +295,19 @@ function App() {
 
   // Phase 4.6 → Phase 5：图标栏点击。
   // - isSidebarOnlyView：纯侧栏 toggle（对标 VS Code Extensions 图标）
-  // - 其余：打开/聚焦标签页 + 显示对应侧栏
-  // Phase 5 bugfix：传 pinned:true 防止预览替换机制吃掉已有标签页
-  // （对标 VS Code Activity Bar——点击打开的是"固定"视图，不是预览）
+  // - 其余：打开/聚焦标签页 + 显示对应侧栏，传 pinned:true 防止预览替换。
+  // Phase 5 rootfix：reduceOpenOrFocus 接收 opts → reduceCreateTab 跳过 Step 3 预览替换。
+  // 对标 VS Code Activity Bar——点击打开的是固定视图，不是预览。
   const handleIconClick = useCallback(
     (pluginId: string) => {
       if (isSidebarOnlyView(pluginId)) {
         setSidebarView((prev) => (prev === pluginId ? null : pluginId));
       } else {
         setSidebarView(pluginId);
-        createTab(pluginId, { pinned: true });
+        openOrFocusTab(pluginId, { pinned: true });
       }
     },
-    [createTab]
+    [openOrFocusTab]
   );
 
   /* ---- 串口控制 ---- */
