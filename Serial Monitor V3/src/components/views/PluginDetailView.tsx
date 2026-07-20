@@ -15,6 +15,16 @@ import "./PluginDetailView.css";
 
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 
+function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[]; resources?: string[] }): string {
+  const types: string[] = [];
+  if (m.entry) types.push("view");
+  if (m.mode) types.push("protocol");
+  if (m.themes) types.push("theme");
+  if (m.languages) types.push("language");
+  if (m.resources) types.push("resource");
+  return types.join(", ") || "unknown";
+}
+
 /* ── 主组件 ── */
 
 interface PluginDetailViewProps {
@@ -304,7 +314,7 @@ function DetailsTab({
       <aside className="pd-info-sidebar">
         <InfoItem label={t("标识符")} value={plugin.pluginId} mono />
         <InfoItem label={t("版本")} value={`v${m.version}`} />
-        {m.type && <InfoItem label={t("类型")} value={m.type} />}
+        <InfoItem label={t("类型")} value={deriveType(m)} />
         {m.entry && <InfoItem label={t("入口")} value={m.entry} mono />}
         {m.minAppVersion && <InfoItem label={t("最低版本")} value={`≥${m.minAppVersion}`} />}
         {m.tabBehavior?.confirmOnClose && (

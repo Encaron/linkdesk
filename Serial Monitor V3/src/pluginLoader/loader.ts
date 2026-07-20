@@ -140,11 +140,7 @@ async function loadPlugin(pluginId: string): Promise<void> {
     return;
   }
 
-  // P1-6 #3: 校验 type
-  if (!manifest.type) {
-    console.warn(`[pluginLoader] 插件 "${pluginId}" 缺少 type 字段，已跳过`);
-    return;
-  }
+  // type 字段不再必需——贡献点由 manifest 的实际声明检测（对标 VS Code contributes）
 
   // P1-6 #6: minAppVersion 版本检查
   if (manifest.minAppVersion) {
@@ -161,24 +157,52 @@ async function loadPlugin(pluginId: string): Promise<void> {
     }
   }
 
-  // 按类型分发注册
-  switch (manifest.type) {
-    case "view":
-      await loadViewPlugin(pluginId, manifest);
-      break;
-    case "theme":
+  // VS Code 对标：不 switch type——检测 manifest 实际声明了什么，每种贡献独立处理。
+  // 一个插件可以同时贡献视图 + 侧栏 + 状态栏 + 协议……新增贡献类型只需加一个 if。
+  let contributed = false;
+
+  if (manifest.entry) {
+    await loadViewPlugin(pluginId, manifest);
+    contributed = true;
+  }
+
+  if (manifest.themes && manifest.themes.length > 0) {
+    loadThemePlugin(pluginId, manifest);
+    contributed = true;
+  } else if (manifest.file) {
+    // 尝试作为主题加载（JSON 含 type: "dark"|"light" → 主题）
+    const data = getPluginDataFile(pluginId, manifest.file);
+    if (data?.type === "dark" || data?.type === "light") {
       loadThemePlugin(pluginId, manifest);
-      break;
-    case "language":
+      contributed = true;
+    }
+  }
+
+  if (manifest.languages && manifest.languages.length > 0) {
+    loadLanguagePlugin(pluginId, manifest);
+    contributed = true;
+  } else if (manifest.file && !contributed) {
+    // 尝试作为语言加载
+    const data = getPluginDataFile(pluginId, manifest.file);
+    if (data && !data.type) {
       loadLanguagePlugin(pluginId, manifest);
-      break;
-    default:
-      // P1-6 #4: 未知类型
-      console.log(`[pluginLoader] 未知插件类型 "${manifest.type}" — 跳过 "${pluginId}"`);
-      pushToast({
-        message: `插件 "${manifest.name}" 的类型 "${manifest.type}" 暂不支持`,
-        ttl: 5000,
-      });
+      contributed = true;
+    }
+  }
+
+  if (manifest.mode) {
+    // protocol 类型：text（前端 TS 解析）或 binary（Rust 端解析）
+    console.log(`[pluginLoader] 📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 5`);
+    contributed = true;
+  }
+
+  if (manifest.resources && manifest.resources.length > 0) {
+    console.log(`[pluginLoader] 📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 5`);
+    contributed = true;
+  }
+
+  if (!contributed) {
+    console.log(`[pluginLoader] 插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
   }
 
   loadedPluginIds.add(pluginId);

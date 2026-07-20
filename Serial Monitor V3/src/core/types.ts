@@ -34,7 +34,8 @@ export interface StatusBarItem {
 
 export interface PluginManifest {
   $schema?: string;
-  type: PluginType;
+  /** @deprecated 不再必需——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
+  type?: PluginType;
   core?: boolean;
   name: string;
   version: string;

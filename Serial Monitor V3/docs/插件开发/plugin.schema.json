@@ -4,7 +4,7 @@
   "title": "插件元数据",
   "description": "plugin.json 的 JSON Schema——插件加载器校验 + IDE 自动补全",
   "type": "object",
-  "required": ["type", "name", "version"],
+  "required": ["name", "version"],
   "properties": {
     "$schema": {
       "type": "string",
@@ -12,7 +12,7 @@
     },
     "type": {
       "type": "string",
-      "description": "插件类型",
+      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。",
       "enum": ["view", "card", "theme", "language", "protocol", "resource", "datasource"]
     },
     "core": {

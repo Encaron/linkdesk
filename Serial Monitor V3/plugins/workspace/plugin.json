@@ -1,6 +1,5 @@
 {
   "$schema": "../../docs/插件开发/plugin.schema.json",
-  "type": "view",
   "name": "工作台",
   "version": "1.0.0",
   "icon": "workspace",

@@ -24,7 +24,7 @@ function scanPluginEntries(): Record<string, string> {
 
       try {
         const manifest = JSON.parse(readFileSync(pluginJsonPath, "utf-8"));
-        if (manifest.type !== "view" || !manifest.entry) continue;
+        if (!manifest.entry) continue;  // 检测 entry（不再依赖 type 字段）
 
         const entryPath = resolve(pluginsDir, dir.name, manifest.entry);
         if (existsSync(entryPath)) {

@@ -1,60 +1,60 @@
 # plugin.json 规范
 
-> 插件元数据的唯一入口。一个插件 = 一个文件夹 + 一份 `plugin.json` + 一个入口文件。
+> 插件元数据的唯一入口。一个插件 = 一个文件夹 + 一份 `plugin.json` + 入口文件。
+> **对标 VS Code：不再需要 `type` 字段——loader 从声明字段自动检测贡献类型。**
 
 ---
 
-## 最小示例
+## 最小示例（视图插件）
 
 ```json
 {
-  "$schema": "../docs/插件开发/plugin.schema.json",
-  "type": "view",
   "name": "GPS 地图",
   "version": "1.0.0",
   "icon": "map",
   "iconSource": "codicon",
-  "description": "交互式地图视图，支持 Leaflet/高德/Google Maps",
+  "description": "交互式地图视图，支持 Leaflet/高德",
   "author": "社区",
   "entry": "index.tsx"
 }
 ```
+`entry` 字段 → loader 自动识别为视图插件。
 
-## 按插件类型的完整示例
+## 贡献检测规则
 
-### 视图插件（最常用）
+| 声明字段 | 自动识别为 | 加载行为 |
+|---------|-----------|---------|
+| `entry` | view | 动态 import → 注册到 viewRegistry |
+| `themes` | theme | 注册到 ThemeEngine |
+| `languages` | language | 注册到 i18next |
+| `mode` | protocol | 协议注册（Phase 5 完整实现）|
+| `resources` | resource | 资源注册（Phase 5 完整实现）|
+| `sidebar` | view + sidebar | 侧栏组件随视图一起注册 |
+| `statusBar` | view + statusBar | 状态栏贡献随视图一起注册 |
+
+**插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar`——三个贡献点独立注册，互不影响。
+
+## 完整示例
+
+### 视图 + 侧栏 + 状态栏
 
 ```json
 {
-  "$schema": "../docs/插件开发/plugin.schema.json",
-  "type": "view",
-  "name": "GPS 地图",
+  "name": "终端",
   "version": "1.0.0",
-  "icon": "map",
-  "iconSource": "codicon",
-  "description": "交互式地图视图",
-  "author": "社区",
+  "icon": "terminal",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
-  "tabBehavior": {},
   "statusBar": [
-    { "id": "coords", "label": "39.9, 116.4", "align": "left" }
-  ],
-  "recommends": [],
-  "suggests": [],
-  "changelog": [
-    { "version": "1.0.0", "date": "2026-07-19", "changes": ["初始发布"] }
-  ],
-  "screenshots": [],
-  "minAppVersion": "1.0.0"
-}
+    { "id": "connection", "label": "未连接", "align": "left" },
+    { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
+  ]
 ```
 
 ### 主题插件
 
 ```json
 {
-  "type": "theme",
   "name": "Dracula",
   "version": "1.0.0",
   "icon": "color-mode",
@@ -68,7 +68,6 @@
 
 ```json
 {
-  "type": "theme",
   "name": "Dracula Official",
   "version": "1.0.0",
   "themes": [
@@ -82,7 +81,7 @@
 
 ```json
 {
-  "type": "language",
+  "languages": [{ "code": "ja", "name": "日本語", "file": "ja.json" }],
   "name": "日本語",
   "version": "1.0.0",
   "icon": "globe",
@@ -96,7 +95,7 @@
 
 ```json
 {
-  "type": "protocol",
+  "mode": "text",
   "name": "SBQ 心率协议",
   "version": "1.0.0",
   "icon": "circuit-board",
@@ -111,7 +110,6 @@
 
 ```json
 {
-  "type": "resource",
   "name": "STM32 寄存器手册",
   "version": "1.0.0",
   "icon": "book",
