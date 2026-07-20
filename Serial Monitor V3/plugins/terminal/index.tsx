@@ -876,13 +876,25 @@ function TerminalView({ isActive }: TerminalViewProps) {
     searchMatchesRef.current = [];
   }, []);
 
-  /* ---- Command Palette（Phase 5c：数据源走 CommandRegistry，全局 Ctrl+Shift+P 由 KeybindingRegistry 处理） ---- */
+  /* ---- Command Palette（Phase 5c：数据源走 CommandRegistry） ---- */
 
-  // 监听全局命令面板事件（workbench.action.showCommands → v3-show-palette）
+  // 全局事件（workbench.action.showCommands → v3-show-palette）
   useEffect(() => {
     const handler = () => setPaletteOpen((p) => !p);
     window.addEventListener("v3-show-palette", handler);
     return () => window.removeEventListener("v3-show-palette", handler);
+  }, []);
+
+  // 本地 fallback：KeybindingRegistry 可能未匹配时直接捕获 Ctrl+Shift+P
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
+        e.preventDefault();
+        setPaletteOpen((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
   /* ---- Monaco 挂载 ---- */
