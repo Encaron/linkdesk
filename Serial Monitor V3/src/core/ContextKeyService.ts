@@ -251,23 +251,26 @@ class WhenParser {
             if (bracket.type !== "LBRACKET") {
               throw new Error(`Expected LBRACKET, got ${bracket.type}`);
             }
-            // 解析值列表
+            // 解析值列表：值以逗号分隔。
+            // 流程：readNext 读值 → parseLiteral 消费值并 advance 到逗号或 ] →
+            //       检查 this.current，是 COMMA → readNext 跳逗号读下一个值 → 循环
             const values: string[] = [];
-            let cur = this.readNext(); // 读 ']' 或第一个值
-            if (cur.type !== "RBRACKET") {
-              // cur 是字符串字面量——回退并让 parseLiteral 处理
-              this.current = cur;
-              values.push(this.parseLiteral());
-              cur = this.readNext();
-              while (cur.type === "COMMA") {
-                values.push(this.parseLiteral());
-                cur = this.readNext();
-              }
+            const first = this.readNext(); // 读 ']' 或第一个值
+            if (first.type === "RBRACKET") {
+              this.advance(); // 消费 ']' → this.current = 后续 token（EOF 或 && 等）
+              return { type: "in", key, values }; // 空列表
             }
-            if (cur.type !== "RBRACKET") {
-              throw new Error(`Expected RBRACKET, got ${cur.type}`);
+            // first 是字符串字面量
+            this.current = first;
+            values.push(this.parseLiteral()); // 消费值 → this.current = COMMA 或 RBRACKET
+            while (this.current.type === "COMMA") {
+              this.readNext(); // 跳过逗号 → this.current = 下一个值
+              values.push(this.parseLiteral()); // 消费值 → this.current = COMMA 或 RBRACKET
             }
-            // cur 已经是 RBRACKET，不需要再 advance
+            if (this.current.type !== "RBRACKET") {
+              throw new Error(`Expected RBRACKET or COMMA, got ${this.current.type}`);
+            }
+            this.advance(); // 消费 ']' → this.current = 下一个 token
             return { type: "in", key, values };
           }
           default:
