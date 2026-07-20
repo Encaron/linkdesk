@@ -22,6 +22,7 @@
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { MenuId, getMenuItems } from "../../core/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/CommandRegistry";
+import { ContextKeyService } from "../../core/ContextKeyService";
 import "./ContextMenu.css";
 
 /* ── 类型 ── */
@@ -60,6 +61,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
     for (const item of rawItems) {
       const cmd = getCommand(item.command);
       if (!cmd) continue; // 命令未注册——静默跳过（应对异步加载竞态）
+
+      // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
+      // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
+      const whenExpr = item.when ?? cmd.when;
+      if (!ContextKeyService.matches(whenExpr)) continue;
 
       const group = item.group ?? "__default";
       if (!grouped.has(group)) {

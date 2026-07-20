@@ -198,6 +198,26 @@ function App() {
     })();
   }, [restoreLayout]);
 
+  /* ── Phase 5d：运行时 context key 更新 ── */
+  // 对标 VS Code setContext——串口/标签页状态变更时同步更新全局 context key 状态机
+
+  // portOpen / portName——串口开关时更新
+  useEffect(() => {
+    ContextKeyService.setValue("portOpen", isOpen);
+    ContextKeyService.setValue("portName", isOpen ? portName : null);
+  }, [isOpen, portName]);
+
+  // activeEditor——标签页切换时更新（pluginId 即 editor 身份）
+  useEffect(() => {
+    ContextKeyService.setValue("activeEditor", activePluginId ?? null);
+  }, [activePluginId]);
+
+  // editorCount——标签页开关时更新
+  useEffect(() => {
+    const count = tabState.groups.reduce((sum, g) => sum + g.tabs.length, 0);
+    ContextKeyService.setValue("editorCount", count);
+  }, [tabState.groups]);
+
   /* ---- 侧栏拖拽调整宽度 ---- */
   const [sidebarWidth, setSidebarWidth] = useState(220);
   const dragging = useRef(false);

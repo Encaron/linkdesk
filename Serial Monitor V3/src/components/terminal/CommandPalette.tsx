@@ -10,6 +10,7 @@ import { useState, useRef, useEffect, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
+import { ContextKeyService } from "../../core/ContextKeyService";
 
 interface Props {
   open: boolean;
@@ -23,8 +24,11 @@ function CommandPalette({ open, onClose }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Phase 5c：从 CommandRegistry 获取所有已注册命令
-  const allCommands = useMemo(() => getCommands(), []);
+  // Phase 5c+5d：从 CommandRegistry 获取命令 + when 条件过滤——每次打开面板时重新求值（依赖 open trigger），
+  //   确保 context key 变更后下次打开能看到正确的命令列表
+  const allCommands = useMemo(() => {
+    return getCommands().filter((cmd) => ContextKeyService.matches(cmd.when));
+  }, [open]);
 
   useEffect(() => {
     if (open) {
