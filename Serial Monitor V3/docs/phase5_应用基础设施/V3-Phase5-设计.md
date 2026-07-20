@@ -8,30 +8,151 @@
 
 ## 一、为什么 Phase 5 必须是基础设施
 
-### Phase 4 结束时的真实状态
+### 1.1 五个真实插件场景——哪些能做到、哪些不能
+
+这是判断 Phase 4 是否完整的试金石。用五个覆盖全范围的插件场景来测：
+
+**高德地图（view，纯软件，新标签页）✅**
+```
+plugin.json: { "entry": "index.tsx" } → loader 识别 → viewRegistry 注册
+→ IconBar 出现图标 → 点击打开标签页 → React 渲染高德地图 SDK
+→ 所有 JS 库都能 import，Leaflet / 高德 / Three.js 随便用
+```
+✅ 完全可行。不需要任何新东西。
+
+**文档阅读器（view，需要右键"打开预览"）⚠️**
+```
+plugin.json: { "entry": "index.tsx" } → 基本视图 ✅
+但是：用户在文件树右键 demo.md → 菜单出现 "文档阅读器：打开预览"
+     → 点击 → 命令触发 → createTab("doc-reader", { filePath })
+```
+❌ 走不通。没有命令系统、没有右键菜单扩展点、也没有文件树。
+基本渲染能做，但入口不存在。
+
+**SBQ 协议解析（protocol，不直接对应标签页）⚠️**
+```
+plugin.json: { "mode": "text", "entry": "index.ts" }
+  → loader 检测 mode → 识别为协议 → 打印日志 → 结束
+                                         ↑
+                              没有 ProtocolRegistry 消费
+```
+❌ 走不通。loader 现在认得它了（不再 `default → 跳过`），但没有注册表、没有下拉框、现有的方括号 ProtocolParser 是硬编码的。
+
+**逻辑分析仪（datasource + protocol + card，USB 连接硬件）❌**
+```
+需要三个子系统联动：
+  - type: "datasource" — USB 连接逻辑分析仪，注册数据源
+  - mode: "binary" — 二进制帧解析，注册协议
+  - card — 波形卡片组件，注册卡片
+```
+❌ 全走不通。三种贡献类型都能被 loader 识别，但三个 registry 全没有。
+
+**CAD（view，复杂交互、文件导入导出、右键菜单）⚠️**
+```
+plugin.json: { "entry": "index.tsx" } → 视图 ✅
+但是：
+  - 右键 .dxf → "打开方式 → CAD"     → ❌ 无文件关联
+  - 文件 → 导入 .dxf / 导出 .pdf     → ⚠️ Tauri dialog API 能做文件操作，
+                                          但没有"导入/导出"命令入口
+  - 属性面板 → 侧栏复杂 UI           → ✅ sidebar.tsx 能做
+```
+⚠️ 渲染能做。但每个交互入口都要硬编码，每个新入口都要改 CAD 插件和外层框架。
+
+**共性结论：** 五个场景，只有一个（高德地图）真正能跑通。不是某个功能的缺失——是插件加载后，除了"变成一个标签页"，**没有任何与应用框架交互的能力**。
+
+### 1.2 V2 的血泪教训：先建功能 → 后补框架 → 次次改
+
+用户 V2 的经历（原话）：
+
+> "V2.3 结束后就做好了设置系统，结果没几天冒出 V2.4 卡片系统的想法，设置页面全要重做；后面冒出 V2.5 OLED，又要多更新一个设置。"
+
+**这不是一个功能 bug——是一种架构模式：**
 
 ```
-✅ 能做的：加载插件 → 出现图标 → 打开标签页 → 渲染 React 组件
-❌ 不能做的：
-   - 插件注册一个"打开预览"命令 → 没地方注册
-   - 插件贡献一个设置项 → 设置系统是硬编码的全局 Prefs
-   - 插件在右键菜单加一项 → 菜单系统不存在
-   - 插件注册一个协议解析器 → 没有 ProtocolRegistry
-   - 终端设置（时间戳/编码）→ 硬编码在全局 Prefs.preferences 里
+V2.3：建设置页（硬编码的配置界面）
+  ↓
+V2.4：加卡片 → 改设置页（加卡片相关配置项）
+  ↓
+V2.5：加 OLED → 改设置页（加 OLED 相关配置项）
+
+每次新增功能，设置页都要改。
+因为设置页"知道"有哪些设置项。
 ```
 
-**Phase 4 让插件"出现"了。Phase 5 让插件"有用"。**
-
-### VS Code 的设计顺序
+**和 Phase 4 当前的问题是同一种病：**
 
 ```
-VS Code 01-0.5：Editor (Monaco)
-VS Code 0.5-0.9：Extension Host + contributes 框架 ← 所有 UI 扩展点在此建成
+Phase 3-4：终端设置硬编码在 PreferenceService.preferences 里
+Phase 4：图标映射硬编码在 PLUGIN_ICON_PATH 里
+Phase 4：状态栏渲染硬编码在 if (pluginId === "terminal") 里
+Phase 4：type 分类硬编码在 switch(manifest.type) 里（后已修复）
+```
+
+新增功能 = 找到所有硬编码点 → 逐个加 case。这是 V2 模式。V3 必须避免。
+
+### 1.3 为什么原计划"Phase 5 = 卡片架构"必须调整
+
+原计划 Phase 5 直接做卡片工作台。但它有一个隐含前提：**插件系统的其余部分已经就绪，卡片只是"又一个视图插件"。**
+
+实际状态：命令、菜单、配置、协议——四个基础系统全都没有。如果按原计划做卡片：
+
+```
+Phase 5：做卡片工作台
+  → 卡片右键菜单？→ 硬编码
+  → 卡片设置（网格大小、吸附等）？→ 塞进全局 Prefs（和 V2 一样）
+  → 卡片注册命令（新建卡片、导出卡片）？→ 没地方注册
+  → 协议插件的数据路由到卡片？→ 没有 ProtocolRegistry
+  → 卡片组件（波形/仪表/开关）的注册？→ 没有 CardRegistry
+
+Phase 6：突然需要做 OLED
+  → 又要硬编码右键菜单？
+  → 又要往全局 Prefs 塞 OLED 配置？
+
+Phase 7：终于做设置系统
+  → 这时卡片、OLED、终端的所有设置都已经以硬编码方式散落在 Prefs 和各个组件里
+  → 拆 Prefs = 改卡片 + 改 OLED + 改终端
+  → 和 V2.3→V2.5 完全一样的重演
+```
+
+**这就是 V2.6 模式——先建具体功能，后补基础设施，每次补都要回头改之前的功能。**
+
+### 1.4 VS Code 走过的路——验证了这个顺序
+
+```
+VS Code 0.1-0.5：Editor (Monaco)  ← 一个编辑器而已
+VS Code 0.5-0.9：Extension Host + contributes 框架
+                  包括：commands, menus, keybindings, configuration, views
+                  ↑ 所有 UI 扩展点在此建成——应用框架先于具体功能
 VS Code 0.9-1.0：Extensions Marketplace
 VS Code 1.0+：  具体功能（Debug、Terminal、SCM、Notebook...）
+                  ↑ 这些全是扩展自己贡献的，不改框架一行代码
 ```
 
-**关键：** VS Code 在 1.0 之前就把扩展框架建好了。之后所有功能（包括终端）都是扩展自己贡献的。我们的顺序是反的——先做了终端插件，现在要回头补框架。
+**关键启示：VS Code 在 1.0 之前就把 `contributes` 框架建好了。** 之后 Debug、Terminal、Source Control 全部是扩展自己贡献 commands + views + menus + configuration。不是"先做 Terminal 插件，以后再补配置系统"——是反过来的。
+
+### 1.5 Phase 4 vs Phase 5 vs Phase 6 的分工
+
+```
+Phase 4：插件能被加载
+  - loader 检测声明 → viewRegistry → IconBar + TabContent + SidePanel + StatusBar
+  - 插件"存在"了——能安装、能卸载、能出现标签页
+  - 但除了"出现一个标签页"什么都做不了
+
+Phase 5：插件能做什么（当前阶段）
+  - 命令系统 → 插件注册命令 → 命令面板可执行 + 右键菜单可调用
+  - 配置系统 → 插件贡献设置 → Settings Editor 自动渲染
+  - 菜单系统 → 插件声明菜单项 → 右键/齿轮 动态内容
+  - 协议系统 → 插件注册解析器 → 终端下拉框切换协议
+  - 插件"有用"了
+
+Phase 6：在基础设施上写功能
+  - 卡片工作台 = 一个插件，用 Phase 5 的所有能力
+  - OLED = 一个插件
+  - 任何新功能 = plugin.json 贡献声明，基础设施全部自动接线
+  - 新增功能不再改已有代码
+```
+
+**Phase 5 不是"做设置页面"——是建贡献点系统。** 设置页面只是 Configuration Registry 的一个消费端。命令面板只是 Command Registry 的一个消费端。右键菜单只是 Menu Registry 的一个消费端。所有消费端共享同一套贡献声明体系。
 
 ---
 
@@ -40,6 +161,8 @@ VS Code 1.0+：  具体功能（Debug、Terminal、SCM、Notebook...）
 ### 柱子 1：命令系统 (Command Registry)
 
 **对标：** `vscode.commands` + `package.json contributes.commands`
+
+**解决什么问题：** 插件需要"可执行的操作"——文档阅读器的"打开预览"、CAD 的"导入 DXF"、终端的"清空接收区"。这些操作需要能被命令面板搜到、能被右键菜单引用、未来能被快捷键绑定。
 
 **设计：**
 
@@ -75,11 +198,13 @@ CommandRegistry.getCommands()  // → 命令面板用
 
 **对标：** `vscode.workspace.getConfiguration()` + `package.json contributes.configuration` + Settings Editor
 
+**解决什么问题：** V2 式设置系统——硬编码配置界面，新增功能要改设置页。VS Code 式——插件声明配置项 → Settings Editor 自动生成表单，不需要改 UI 代码。
+
 **设计：**
 
 ```typescript
 // 配置声明——插件在 plugin.json 里写
-// terminal/plugin.json
+// terminal/plugin.json（示例）
 {
   "name": "终端",
   "contributes": {
@@ -102,8 +227,7 @@ CommandRegistry.getCommands()  // → 命令面板用
   }
 }
 
-// 核心自己也有配置——也用同样的格式
-// 内置 core config（在代码中声明）
+// 核心自己也有配置——也用同样的格式（内置 core config）
 {
   "configuration": {
     "title": "通用",
@@ -126,13 +250,13 @@ settings.json（单一 JSON 文件，用户和 AI 都可以编辑）
     "app.language": "zh"
   }
 
-V2 对标：prefs.json 是扁平 JSON，改为 settings.json 同格式。
+对标：prefs.json 是扁平 JSON，改为 settings.json 格式相同但语义更清晰。
 ```
 
 **配置消费端：**
 
 ```typescript
-// 读配置（React hook）
+// React hook
 const [value, setValue] = useConfiguration("terminal.timestampFormat")
 
 // 程序化读写
@@ -140,7 +264,7 @@ ConfigurationService.get("terminal.timestampFormat")  // → "HH:mm:ss:fff"
 ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 ```
 
-**Settings Editor（UI 组件）：**
+**Settings Editor（UI 组件，对标 VS Code）：**
 
 ```
 ┌─────────────────────────────────────────────────────┐
@@ -154,21 +278,18 @@ ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 │   - 回显   │ Files: Auto Save                       │
 │   - 编码   │ 控制自动保存。                          │
 │ 窗口       │ [afterDelay           ▼]               │
-│ 功能       │                                        │
-│ 扩展       │ Editor: Font Family                    │
-│            │ 控制字体系列。                          │
-│            │ [Consolas, 'Courier New'               │
+│ 扩展       │ ...                                    │
 └────────────┴────────────────────────────────────────┘
 
-左侧树：按 configuration.title 分组（每个插件的 configuration 贡献自动成为一组）
-右侧：当前分组的 properties，每项 = description + 对应控件
+左侧树：按 configuration.title 分组（每个插件的 configuration 自动成为一组）
+右侧：当前分组的 properties，每项 = description + 对应控件（输入框/下拉/复选框）
 搜索：过滤所有分组的所有 properties
 ```
 
 **Phase 5 做：**
 - ConfigurationRegistry：启动时收集所有 `contributes.configuration` → 合并成一个 schema
 - ConfigurationService：`get` / `set` / `onDidChange`（默认从 settings.json 读写）
-- Settings Editor：左侧树 + 右侧表单 + 搜索框
+- Settings Editor：左侧树 + 右侧表单 + 搜索框（基础版，对标 VS Code 设置页结构）
 - 迁移：现有的 `PreferenceService.preferences` → 新 ConfigurationService
 
 **Phase 7 做：** 工作区 scope（User / Workspace 两套 settings.json）、JSON 编辑器直接打开 settings.json
@@ -177,10 +298,12 @@ ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 
 **对标：** `package.json contributes.menus` + `MenuId`
 
+**解决什么问题：** 插件需要在特定位置出现操作入口——标签页右键、文件右键、齿轮菜单。当前所有菜单都是硬编码的。
+
 **设计：**
 
 ```typescript
-// 菜单注册点（核心定义）
+// 菜单注册点（核心定义——对标 VS Code MenuId）
 enum MenuId {
   CommandPalette = "commandPalette",   // Ctrl+Shift+P 命令面板
   EditorContext = "editorContext",     // 标签页右键
@@ -189,7 +312,7 @@ enum MenuId {
   ExtensionGear = "extensionGear",     // 齿轮菜单
 }
 
-// 插件声明菜单项——当前在 plugin.json，对标 VS Code contributes.menus
+// 插件声明菜单项——对标 VS Code contributes.menus
 // terminal/plugin.json
 {
   "contributes": {
@@ -210,14 +333,16 @@ MenuService.getMenuItems(MenuId.EditorContext, contextKeys)
 
 **Phase 5 做：**
 - MenuId 定义 + MenuService：注册菜单项、查询菜单
-- CommandPalette 从 CommandRegistry 拿命令（不限于菜单注册的命令）
-- `ExtensionGear` 齿轮菜单 → 从 MenuService 动态拿，不再硬编码
+- CommandPalette 从 CommandRegistry 拿命令（不限于菜单注册的命令——所有命令都在命令面板出现）
+- `ExtensionGear` 齿轮菜单 → 从 MenuService 动态拿，不再硬编码"启用/禁用/卸载"
 
 **Phase 6/7 做：** 文件树右键、卡片右键、context key 条件过滤
 
 ### 柱子 4：协议注册表 (Protocol Registry)
 
-**对标：** 无 VS Code 对标（VS Code 不做硬件协议解析）
+**对标：** 无 VS Code 对标（VS Code 不做硬件协议解析）。这是 V3 独有的基础设施。
+
+**解决什么问题：** 当前 ProtocolParser 是硬编码的方括号解析器。换协议 = 改源码或写 if/else。协议插件加载了但不能注册解析函数。
 
 **设计：**
 
@@ -237,14 +362,10 @@ ProtocolRegistry.register({
   detect: (rawBytes) => rawBytes[0] === 0x73,  // 可选：自动检测
 })
 
-// 消费端
+// 消费端（终端下拉框）
 const protocols = ProtocolRegistry.list()
 // → [{ id: "bracket", name: "方括号协议" }, { id: "sbq", name: "SBQ 心率" }]
 
-// 终端下拉框
-<select>
-  {protocols.map(p => <option value={p.id}>{p.name}</option>)}
-</select>
 // 用户选 "SBQ 心率" → ProtocolRegistry.setActive("sbq")
 // 之后所有串口数据走 SBQ 的 parseLine
 ```
@@ -303,10 +424,10 @@ plugin.json
 ### 4.1 彻底拆掉 PreferenceService
 
 ```
-PreferenceService（现状）→ 拆分为：
+PreferenceService（现状——一块大杂烩）→ 拆分为：
   ├── ConfigurationService   → 所有设置类数据的读写（替代 Prefs.preferences）
   ├── LayoutService          → 标签页布局持久化（替代 Prefs.layout）
-  └── PluginStateService     → 插件状态（disabledPlugins, iconOrder 等——已经直接在 Prefs 里）
+  └── PluginStateService     → 插件状态（disabledPlugins, iconOrder 等）
 ```
 
 ### 4.2 终端设置迁移
@@ -316,7 +437,7 @@ PreferenceService（现状）→ 拆分为：
 新：terminal/plugin.json 声明 configuration
    → ConfigurationRegistry 注册
    → TerminalView 里用 useConfiguration("terminal.timestampFormat")
-   → 终端侧栏直接用 Settings Editor 渲染，不再手写 settings UI
+   → 终端侧栏用 Settings Editor 渲染，不再手写 TerminalSidebar.tsx
 ```
 
 ### 4.3 全局设置迁移
@@ -346,6 +467,8 @@ PreferenceService（现状）→ 拆分为：
 | 快捷键绑定 | 需要完整的 context key 系统 | 7 |
 | JSON 编辑器标签页 | 用 Monaco 做，依赖 Settings Editor 稳定 | 7 |
 | 设置同步 | 需要后端 | 8+ |
+| 齿轮菜单完整版 | context key 驱动的动态菜单 + 设置联动 | 7 |
+| 插件命令注册到命令面板之外的地方 | 右键/快捷键/齿轮 = Phase 7 context key 系统 | 7 |
 
 ---
 
@@ -359,8 +482,14 @@ Phase 6 — 卡片工作台 + 数据管道
   │   ├── commands: "workspace.newCard", "workspace.export"... → 命令面板 + 右键
   │   ├── configuration: "workspace.gridSize", "workspace.snapToGrid"... → Settings Editor
   │   └── menus: "cardContext" 菜单项
-  ├── CardRegistry（Phase 5 留的骨架）→ 卡片渲染
-  └── ProtocolRegistry（Phase 5 建的）→ 协议选择下拉框 + 数据路由
+  ├── CardRegistry（Phase 5 留的骨架）→ 卡片渲染 + react-grid-layout
+  └── ProtocolRegistry（Phase 5 建的）→ 协议选择下拉框 + 数据路由到卡片
+
+Phase 7 — OLED + 设置完善 + 文件树
+  ├── OLED 视图 = 一个插件
+  ├── 文件树 = 一个视图 + commands + menus
+  ├── Settings Editor 完善（工作区 scope + JSON 编辑器标签页）
+  └── context key 系统 + 快捷键绑定
 ```
 
 **不需要改任何基础设施代码。** 只是在 registry 上注册新东西。
