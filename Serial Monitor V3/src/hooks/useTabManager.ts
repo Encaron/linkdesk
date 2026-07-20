@@ -6,7 +6,6 @@
  */
 
 import { useState, useCallback, useRef } from "react";
-import i18n from "../i18n";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -18,8 +17,9 @@ import {
   migrateLayout,
   updateBranchSizesByIndex,
 } from "./splitTree";
-import { LEGACY_TYPE_TO_PLUGIN_ID, type CreateTabOptions } from "../core/types";
-import { getTabBehavior, findFallbackPlugin, getViewPlugin } from "../pluginLoader/viewRegistry";
+import type { CreateTabOptions } from "../core/types";
+import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
+import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId } from "./tabIdentity";
 
 /* ── 类型 ── */
 
@@ -90,7 +90,7 @@ export function createTabDefaults(
   const detailPluginId = opts?.detailPluginId ?? opts?.pluginId;
   const pluginId = isDetail
     ? undefined
-    : (opts?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type);
+    : (opts?.pluginId ?? resolveLegacyPluginId(type) ?? type);
 
   const label = opts?.label
     ?? getDefaultLabel(type, opts?.workspaceName, opts?.filePath, isDetail ? detailPluginId : undefined);
@@ -127,36 +127,6 @@ export function createTabDefaults(
   if (!base.sourceId) base.sourceId = base.id;
 
   return base;
-}
-
-/** 标签名——内置类型走 i18n，自定义插件从 viewRegistry 拿名称 */
-export function getDefaultLabel(
-  type: string,
-  workspaceName?: string,
-  filePath?: string,
-  /** plugin-detail 类型的目标插件 ID（用于显示插件名称作为标签页标题） */
-  targetPluginId?: string,
-): string {
-  // 归一化：优先从 viewRegistry 读插件名。
-  const plugin = getViewPlugin(targetPluginId ?? type);
-  if (plugin) {
-    if (type === "plugin-detail") return `${plugin.manifest.name} (介绍)`;
-    if (type === "workspace" && workspaceName) return workspaceName;
-    return plugin.manifest.name;
-  }
-
-  // 插件未加载时的 fallback（测试环境 / 旧布局迁移）
-  switch (type) {
-    case "terminal":    return i18n.t("终端");
-    case "workspace":   return workspaceName || i18n.t("工作台");
-    case "settings":    return i18n.t("设置");
-    case "marketplace": return i18n.t("插件市场");
-    case "welcome":     return i18n.t("欢迎");
-    case "oled":        return i18n.t("OLED");
-    case "editor":      return filePath || i18n.t("编辑器");
-    case "plugin-detail": return i18n.t("插件详情");
-    default:            return type;
-  }
 }
 
 /* ── 辅助 ── */
@@ -213,45 +183,6 @@ export function createInitialTabState(): TabState {
 export interface CreateTabResult {
   state: TabState;
   createdId: string;
-}
-
-/** 判断已有标签页 t 是否与要创建的 (type, opts) 是同一身份。
- *  对标 VS Code：同一编辑器不替换预览。插件介绍→同一目标插件=同身份，不同目标插件=不同身份。 */
-function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions): boolean {
-  // plugin-detail：身份 = type + detailPluginId
-  if (type === "plugin-detail" && t.type === "plugin-detail") {
-    return t.detailPluginId === (opts?.detailPluginId ?? opts?.pluginId);
-  }
-  // workspace：身份 = type + workspaceName
-  if (type === "workspace" && t.type === "workspace") {
-    return t.workspaceName === opts?.workspaceName;
-  }
-  // 通用：身份 = type（同 type 的多实例允许多个，如 terminal-1 + terminal-2）
-  return t.type === type;
-}
-
-/** VS Code findEditor 对标：按身份精确匹配已有标签页。
- *  只有具备唯一身份的 type 才做去重（plugin-detail:按目标插件, workspace:按名称）。
- *  通用 type（terminal 等）允许多实例——对标 VS Code 同类型编辑器可开多个。 */
-function findTabByIdentity(
-  all: Tab[],
-  type: string,
-  opts?: CreateTabOptions
-): Tab | undefined {
-  // plugin-detail：按 detailPluginId 去重（不管 pinned）
-  if (type === "plugin-detail" && opts?.pluginId) {
-    return all.find((t) => t.type === "plugin-detail" && t.detailPluginId === opts.pluginId);
-  }
-  // workspace：按 workspaceName 去重
-  if (type === "workspace" && opts?.workspaceName) {
-    return all.find((t) => t.type === "workspace" && t.workspaceName === opts.workspaceName);
-  }
-  // 单例：全局只有一个
-  if (getTabBehavior(type).singleton) {
-    return all.find((t) => t.type === type || t.pluginId === type);
-  }
-  // 其他类型：允许多实例（对标 VS Code 多个同类型编辑器）
-  return undefined;
 }
 
 export function reduceCreateTab(
@@ -769,7 +700,7 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
         .filter((t) => t.id && t.type && t.label)
         .map((t) => ({
           ...t,
-          pluginId: (t as Tab).pluginId ?? ((t as Tab).type !== "plugin-detail" ? LEGACY_TYPE_TO_PLUGIN_ID[(t as Tab).type] : undefined),
+          pluginId: (t as Tab).pluginId ?? ((t as Tab).type !== "plugin-detail" ? resolveLegacyPluginId((t as Tab).type) : undefined),
           detailPluginId: (t as Tab).detailPluginId,
           sourceId: (t as Tab).sourceId,
         } as Tab)),

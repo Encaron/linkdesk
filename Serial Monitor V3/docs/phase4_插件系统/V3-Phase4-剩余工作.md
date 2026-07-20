@@ -213,6 +213,97 @@
 
 ---
 
+## Phase 4.5 — 标签页身份归一化 🔥
+
+> **问题：** `findTabByIdentity` / `isSameTabIdentity` / `getDefaultLabel` / `LEGACY_TYPE_TO_PLUGIN_ID` 四个函数各自定义"标签页是谁"，规则分散且可能不一致。
+> **对标 VS Code：** `EditorInput.matches()` 一个方法决定 editor identity。
+
+### 当前问题
+
+同一概念（"这个标签页是什么"）散落在四个地方：
+
+| 位置 | 规则 |
+|------|------|
+| `findTabByIdentity` (去重) | plugin-detail→detailPluginId, workspace→workspaceName, singleton→type |
+| `isSameTabIdentity` (预览替换) | 同上逻辑，但实现独立 |
+| `getDefaultLabel` (标签名) | viewRegistry 优先 → switch(type) fallback |
+| `LEGACY_TYPE_TO_PLUGIN_ID` (旧布局迁移) | 硬编码 Record |
+
+**后果：** 修一个 bug 要改多个函数；规则不一致会产生隐蔽 bug（如 terminal 去重 vs 预览替换行为冲突）。
+
+### 改造方案
+
+**新建 `src/hooks/tabIdentity.ts`**——集中定义每种标签页类型的身份规则：
+
+```typescript
+interface TabIdentityMeta {
+  singleton: boolean;          // 是否单例
+  identityField: string | null; // 身份字段（同 type+同此字段=同一标签页）
+  fallbackLabel: string;        // 兜底标签名
+  legacyPluginId?: string;     // 旧 type→pluginId
+}
+```
+
+一张表覆盖所有内置类型：
+| type | singleton | identityField | 说明 |
+|------|:--:|------|------|
+| terminal | 否 | null | 允许多实例，同 type 不替换预览 |
+| workspace | 否 | workspaceName | 同名去重，不同名可替换预览 |
+| settings | **是** | null | 全局单例 |
+| marketplace | **是** | null | 全局单例 |
+| plugin-detail | 否 | detailPluginId | 同目标插件去重，不同目标可替换预览 |
+| welcome | 否 | null | fallback 标签页，不参与预览替换 |
+| oled | 否 | null | 允许多实例 |
+| editor | 否 | filePath | 同文件去重 |
+
+### `findTabByIdentity` 改为
+
+```typescript
+function findTabByIdentity(all, type, opts) {
+  const meta = TAB_IDENTITY[type];
+  if (meta.singleton) → 匹配 type 或 pluginId
+  if (meta.identityField && opts[identityField]) → 匹配 type + identityField
+  否则 → undefined（不去重，允许多实例）
+}
+```
+
+### `isSameTabIdentity` 改为
+
+```typescript
+function isSameTabIdentity(t, type, opts) {
+  if (t.type !== type) return false;        // 不同类型=不同身份
+  if (meta.singleton || !meta.identityField) return true;  // 身份=type 本身
+  return t[identityField] === opts[identityField];          // 身份=type+字段
+}
+```
+
+### `getDefaultLabel` 改为
+
+```typescript
+viewRegistry 优先 → TAB_IDENTITY[type].fallbackLabel → type 本身
+```
+
+### `LEGACY_TYPE_TO_PLUGIN_ID` 去除
+
+改为 `TAB_IDENTITY[type].legacyPluginId`。
+
+### 改动范围
+
+| 文件 | 改动 |
+|------|------|
+| `src/hooks/tabIdentity.ts` | **新建**——TAB_IDENTITY 表 + 4 个引用函数 |
+| `src/hooks/useTabManager.ts` | 删除原地定义的 findTabByIdentity/isSameTabIdentity，改为 import |
+| `src/core/types.ts` | 移除 LEGACY_TYPE_TO_PLUGIN_ID |
+| `src/hooks/useTabManager.ts` | getDefaultLabel 从 tabIdentity 读 fallback |
+
+### 预期效果
+
+- 新增标签页类型 = 在 TAB_IDENTITY 加一行（不用改 4 个函数）
+- identity 规则永远一致（一处定义，四处引用）
+- 对标 VS Code `EditorInput.matches()` 的架构品质
+
+---
+
 ## Phase 4.2 追加 Bug（B42-B46）
 
 ### B42：PluginDetailView hooks 顺序不一致 → 白屏

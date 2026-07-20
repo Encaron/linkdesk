@@ -106,12 +106,5 @@ export interface CreateTabOptions {
 /**
  * Tab.type 保留为逻辑角色（terminal / workspace / settings / welcome）。
  * 新增 pluginId 指定哪个插件实现该角色——渲染走 pluginId，规则走 type。
- * Phase 4 过渡期：旧布局恢复时自动补 pluginId。
+ * 旧布局恢复时的 type→pluginId 映射见 tabIdentity.ts 的 resolveLegacyPluginId。
  */
-export const LEGACY_TYPE_TO_PLUGIN_ID: Record<string, string> = {
-  terminal: "terminal",
-  workspace: "workspace",
-  settings: "settings",
-  oled: "oled",
-  editor: "editor",
-};
