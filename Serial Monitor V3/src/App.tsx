@@ -17,6 +17,7 @@ import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 // Phase 5：新基础设施服务
 import { initConfigurationService } from "./core/ConfigurationService";
+import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
@@ -100,6 +101,31 @@ function App() {
         initLayoutService(),
         initPluginStates(),
       ]).catch((e) => console.warn("[App] Phase 5 服务初始化部分失败:", e));
+
+      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
+      registerConfiguration("app", {
+        title: "通用",
+        properties: {
+          "app.theme": {
+            type: "string",
+            default: "Dark",
+            enum: ["Dark", "Light"],
+            description: "配色主题",
+          },
+          "app.language": {
+            type: "string",
+            default: "zh",
+            enum: ["zh", "en"],
+            description: "界面语言",
+          },
+          "app.accentColor": {
+            type: "string",
+            default: "#0078d4",
+            enum: ["#0078d4", "#e74856", "#ff8c00", "#107c10", "#6b69d6", "#8764b8"],
+            description: "自定义强调色（图标栏高亮、开关、焦点边框）",
+          },
+        },
+      });
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();
@@ -233,19 +259,21 @@ function App() {
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // Phase 4.6：图标栏点击。
+  // Phase 4.6 → Phase 5：图标栏点击。
   // - isSidebarOnlyView：纯侧栏 toggle（对标 VS Code Extensions 图标）
   // - 其余：打开/聚焦标签页 + 显示对应侧栏
+  // Phase 5 bugfix：传 pinned:true 防止预览替换机制吃掉已有标签页
+  // （对标 VS Code Activity Bar——点击打开的是"固定"视图，不是预览）
   const handleIconClick = useCallback(
     (pluginId: string) => {
       if (isSidebarOnlyView(pluginId)) {
         setSidebarView((prev) => (prev === pluginId ? null : pluginId));
       } else {
         setSidebarView(pluginId);
-        openOrFocusTab(pluginId);
+        createTab(pluginId, { pinned: true });
       }
     },
-    [openOrFocusTab]
+    [createTab]
   );
 
   /* ---- 串口控制 ---- */
@@ -386,7 +414,21 @@ function App() {
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
-  // Phase 3: 全局键盘快捷键（§10.5）
+  // Phase 5：全局快捷键——不依赖 activeTab（Ctrl+, 等壳级快捷键始终可用）
+  useEffect(() => {
+    const onGlobalKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+, → 打开设置标签页（对标 VS Code Preferences: Open Settings）
+      if (e.ctrlKey && e.key === ",") {
+        e.preventDefault();
+        createTab("settings", { pinned: true });
+        return;
+      }
+    };
+    window.addEventListener("keydown", onGlobalKeyDown);
+    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+  }, [createTab]);
+
+  // Phase 3: 全局键盘快捷键（§10.5）——依赖 activeTab 的快捷键
   useEffect(() => {
     const activeTabId = activeTab?.id;
     if (!activeTabId) return;

@@ -3,13 +3,16 @@
  * Phase 5 柱子 2：插件声明 contributes.configuration → 自动渲染。
  *
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子2
+ * VS Code 对标：src/vs/workbench/contrib/preferences/browser/settingsWidgets.ts
  *
- * 结构：左侧分组树 + 右侧设置表单 + 顶部搜索栏。
+ * 结构：顶部搜索栏 + 左侧分组树 + 右侧设置表单。
  * 核心无知原则：Settings Editor 不知道有哪些设置项——全部从 ConfigurationRegistry 派生。
  */
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import Toggle from "../shared/Toggle";
+import Select from "../shared/Select";
 import {
   getConfigurationContributions,
   getMergedSchema,
@@ -40,7 +43,6 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  // 刷新计数器——配置变更时重渲染
   const [version, setVersion] = useState(0);
 
   // 监听配置变更
@@ -50,23 +52,19 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     });
   }, []);
 
-  // 从 Registry 派生分组列表和 schema
-  const { groups } = useMemo(() => {
+  // 从 Registry 派生分组列表
+  const groups = useMemo(() => {
     const contributions = getConfigurationContributions();
-    const schema = getMergedSchema();
-    const groups: GroupInfo[] = [];
+    const result: GroupInfo[] = [];
 
     for (const [pluginId, contrib] of contributions) {
       const keys = Object.keys(contrib.properties);
       if (keys.length > 0) {
-        groups.push({ pluginId, title: contrib.title, keys });
+        result.push({ pluginId, title: contrib.title, keys });
       }
     }
 
-    return {
-      groups,
-      allKeys: Object.keys(schema),
-    };
+    return result;
   }, [version]);
 
   // 搜索过滤
@@ -93,12 +91,12 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const activeGroup =
     filteredGroups.find((g) => g.pluginId === selectedGroup) ?? filteredGroups[0] ?? null;
 
-  // 所有 properties（跨所有分组）
+  // 所有 properties
   const allProps = useMemo(() => getMergedSchema(), [version]);
 
   return (
     <div className="settings-editor">
-      {/* 搜索栏 */}
+      {/* 搜索栏 + Open JSON 按钮 */}
       <div className="settings-search-bar">
         <span className="codicon codicon-search settings-search-icon" />
         <input
@@ -108,6 +106,20 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           value={search}
           onChange={(e) => setSearch(e.target.value)}
         />
+        <button
+          className="settings-json-btn"
+          title={t("打开设置 (JSON)")}
+          onClick={() => {
+            // Phase 6 JSON 编辑器标签页——当前打开系统文件管理器
+            import("../../core/ConfigurationService").then(({ getUserSettings }) => {
+              const settings = getUserSettings();
+              alert("settings.json 内容:\n\n" + JSON.stringify(settings, null, 2));
+            });
+          }}
+        >
+          <span className="codicon codicon-json" />
+          <span className="settings-json-label">{t("JSON")}</span>
+        </button>
       </div>
 
       <div className="settings-body">
@@ -189,7 +201,7 @@ function SettingRow({
   );
 }
 
-/** 根据 property type 渲染对应控件 */
+/** 根据 property type 渲染对应控件——使用共享组件对标终端侧栏样式 */
 function renderControl(
   prop: ConfigurationProperty,
   value: unknown,
@@ -200,35 +212,25 @@ function renderControl(
   switch (prop.type) {
     case "boolean":
       return (
-        <label className="settings-toggle">
-          <input
-            type="checkbox"
-            checked={!!val}
-            onChange={(e) => onChange(e.target.checked)}
-          />
-          <span className="settings-toggle-knob" />
-        </label>
+        <Toggle
+          checked={!!val}
+          onChange={(v) => onChange(v)}
+        />
       );
 
     case "string":
       if (prop.enum && prop.enum.length > 0) {
         return (
-          <select
-            className="settings-select"
+          <Select
             value={String(val)}
-            onChange={(e) => onChange(e.target.value)}
-          >
-            {prop.enum.map((opt, i) => (
-              <option key={opt} value={opt}>
-                {prop.enumDescriptions?.[i] ?? opt}
-              </option>
-            ))}
-          </select>
+            options={prop.enum}
+            onChange={(v) => onChange(v)}
+          />
         );
       }
       return (
         <input
-          className="settings-input"
+          className="input"
           type="text"
           value={String(val)}
           onChange={(e) => onChange(e.target.value)}
@@ -238,17 +240,18 @@ function renderControl(
     case "number":
       return (
         <input
-          className="settings-input settings-number"
+          className="input"
           type="number"
           min={prop.minimum}
           max={prop.maximum}
           value={Number(val)}
           onChange={(e) => onChange(Number(e.target.value))}
+          style={{ width: 80 }}
         />
       );
 
     default:
-      return <span className="settings-unsupported">{String(val)}</span>;
+      return <span className="text-muted">{String(val)}</span>;
   }
 }
 
