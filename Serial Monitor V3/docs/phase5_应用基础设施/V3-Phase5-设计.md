@@ -997,7 +997,7 @@ Phase 8 — OLED（独立插件）
 | **5c** | 命令面板 + 齿轮菜单走 Registry | ~120 | 中 | 📋 |
 | **5d** | context key + when 条件打通 | ~80 | 中 | 📋 |
 | **5e** | 协议下拉框 + 终端设置迁移到 Settings Editor | ~80 | 低 | 📋 |
-| **5f** | PreferenceService 删旧路径 + 全量回归 | ~50 | 中 | 📋 |
+| **5f** | StorageService 归一化 + PreferenceService 删旧 + 全量回归 | ~200 | 中 | 📋 |
 
 ### 9.2 每批交付物 + 验证标准
 
@@ -1025,9 +1025,13 @@ Phase 8 — OLED（独立插件）
 - 验证：下拉框默认选中"方括号协议"。切换协议后解析方式变化。Settings Editor 打开 → 终端分组出现 → 12 个设置项可调。
 - 依赖：ProtocolRegistry + ConfigurationService + Settings Editor（5a 已建）。
 
-**5f — PreferenceService 删旧路径 + 全量回归：**
-- 交付：删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。完全走 ConfigurationService / LayoutService / PluginStateService。验证清单全量跑一遍。
-- 验证：`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。
+**5f — StorageService 归一化 + PreferenceService 删旧 + 全量回归：**
+- 交付：
+  1. `StorageService`——统一的持久化原语（`read(key)` / `write(key, data)`）。底层封装 Tauri fs + localStorage 兜底 + `beforeunload` 同步写入。解决 ConfigurationService / LayoutService / PluginStateService / PreferenceService 四套代码各自实现文件 I/O 的重复劳动。
+  2. 四个服务改为调 `StorageService`，删除各自的 `ensureTauri()` + `readTextFile()` + `writeTextFile()` + `localStorage.setItem()` 自研逻辑。
+  3. 删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。
+- 为什么必须在 5f 做：Phase 5a 验证中持久化 bug 反复出现（快捷发送、图标排序、主题语言、标签栏布局——四轮，同一个模式：写了没读 / 读了没写 / 写A读B / 异步落盘 F5 竞态）。不是代码写得差——是四个服务各自实现 I/O，修一个学到的教训不会传播到另外三个。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。
+- 验证：`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局/图标排序全部保留。
 
 ### 9.3 批次依赖链
 
