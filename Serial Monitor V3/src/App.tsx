@@ -117,6 +117,7 @@ function App() {
     return () => window.removeEventListener("plugin-removed", handler);
   }, [tabState.groups, forceCloseTab]);
 
+
   /* ---- 启动初始化 ---- */
   useEffect(() => {
     (async () => {
@@ -342,6 +343,16 @@ function App() {
     },
     [openOrFocusTab]
   );
+
+  // Phase 5c：监听齿轮菜单事件——跨组件通信
+  useEffect(() => {
+    const onOpenView = (e: Event) => {
+      const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
+      if (pluginId) handleIconClick(pluginId);
+    };
+    window.addEventListener("v3-open-view", onOpenView);
+    return () => window.removeEventListener("v3-open-view", onOpenView);
+  }, [handleIconClick]);
 
   /* ---- 串口控制 ---- */
   const handleToggleOpen = useCallback(async () => {

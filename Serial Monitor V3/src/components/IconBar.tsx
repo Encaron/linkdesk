@@ -12,6 +12,9 @@ import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils"
 import PreferenceService from "../core/PreferenceService";
 // Phase 5：图标排序迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+// Phase 5c：齿轮菜单
+import ContextMenu from "./shared/ContextMenu";
+import { MenuId } from "../core/MenuRegistry";
 import "./IconBar.css";
 
 interface IconBarProps {
@@ -56,6 +59,8 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
+  // Phase 5c：齿轮菜单——右键 settings 图标
+  const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const dropRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
   const wasDragRef = useRef(false); // 标记本次是否拖拽了——防止 onClick 误触发
@@ -184,6 +189,14 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
             }
             onOpenOrFocus(entry.pluginId);
           }}
+          onContextMenu={
+            BOTTOM_ICONS.has(entry.pluginId)
+              ? (e) => {
+                  e.preventDefault();
+                  setGearAnchor({ x: e.clientX, y: e.clientY });
+                }
+              : undefined
+          }
           title={t(entry.label)}
           aria-label={t(entry.label)}
         >
@@ -223,6 +236,16 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           })()}
         </div>,
         document.body
+      )}
+
+      {/* Phase 5c：齿轮菜单——右键图标栏底部图标 */}
+      {gearAnchor && (
+        <ContextMenu
+          menuId={MenuId.ExtensionGear}
+          anchor={gearAnchor}
+          context={{}}
+          onClose={() => setGearAnchor(null)}
+        />
       )}
     </div>
   );

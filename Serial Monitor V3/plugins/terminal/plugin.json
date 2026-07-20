@@ -16,13 +16,18 @@
   ],
   "contributes": {
     "commands": [
-      { "id": "terminal.copy", "title": "复制" },
-      { "id": "terminal.selectAll", "title": "全选" },
-      { "id": "terminal.clear", "title": "清空接收区" },
-      { "id": "terminal.togglePause", "title": "暂停接收" },
-      { "id": "terminal.quickSendFill", "title": "回填到发送区" },
-      { "id": "terminal.quickSendEdit", "title": "编辑" },
-      { "id": "terminal.quickSendDelete", "title": "删除" }
+      { "id": "terminal.copy", "title": "复制", "category": "终端" },
+      { "id": "terminal.selectAll", "title": "全选", "category": "终端" },
+      { "id": "terminal.clear", "title": "清空接收区", "category": "终端" },
+      { "id": "terminal.clearSend", "title": "清空发送区", "category": "终端" },
+      { "id": "terminal.togglePause", "title": "暂停接收", "category": "终端" },
+      { "id": "terminal.exportLog", "title": "导出日志", "category": "终端" },
+      { "id": "terminal.toggleSendMode", "title": "切换到 HEX 发送", "category": "终端" },
+      { "id": "terminal.toggleEcho", "title": "关闭消息回显", "category": "终端" },
+      { "id": "terminal.toggleLineNumbers", "title": "隐藏行号", "category": "终端" },
+      { "id": "terminal.quickSendFill", "title": "回填到发送区", "category": "终端" },
+      { "id": "terminal.quickSendEdit", "title": "编辑", "category": "终端" },
+      { "id": "terminal.quickSendDelete", "title": "删除", "category": "终端" }
     ],
     "menus": {
       "editorContext": [
@@ -35,6 +40,15 @@
         { "command": "terminal.quickSendFill", "group": "edit" },
         { "command": "terminal.quickSendEdit", "group": "edit" },
         { "command": "terminal.quickSendDelete", "group": "delete" }
+      ],
+      "commandPalette": [
+        { "command": "terminal.clear" },
+        { "command": "terminal.clearSend" },
+        { "command": "terminal.togglePause" },
+        { "command": "terminal.exportLog" },
+        { "command": "terminal.toggleSendMode" },
+        { "command": "terminal.toggleEcho" },
+        { "command": "terminal.toggleLineNumbers" }
       ]
     },
     "configuration": {

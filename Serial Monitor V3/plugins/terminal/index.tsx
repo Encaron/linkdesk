@@ -613,21 +613,24 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const terminalCmdRef = useRef<{
     cmView: typeof cmView;
     paused: boolean;
+    prefs: TerminalPrefs;
     quickSends: Record<string, string>;
     setPaused: (v: boolean | ((p: boolean) => boolean)) => void;
+    setPrefs: (v: TerminalPrefs | ((p: TerminalPrefs) => TerminalPrefs)) => void;
     setSendValue: (v: string) => void;
     setQsEditing: (key: string | null) => void;
     setQsName: (v: string) => void;
     setQsContent: (v: string) => void;
     setQsAdding: (v: boolean) => void;
     handleDeleteQuickSend: (key: string) => void;
-  }>({ cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend });
-  terminalCmdRef.current = { cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend };
+  }>({ cmView, paused, prefs, quickSends, setPaused, setPrefs, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend });
+  terminalCmdRef.current = { cmView, paused, prefs, quickSends, setPaused, setPrefs, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend };
 
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.copy",
       title: "复制",
+      category: "终端",
       handler: async () => {
         const view = terminalCmdRef.current.cmView.current;
         if (!view) return;
@@ -638,6 +641,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.selectAll",
       title: "全选",
+      category: "终端",
       handler: async () => {
         const view = terminalCmdRef.current.cmView.current;
         if (view) view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
@@ -646,6 +650,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.clear",
       title: "清空接收区",
+      category: "终端",
       handler: async () => {
         const view = terminalCmdRef.current.cmView.current;
         if (view) {
@@ -659,6 +664,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.togglePause",
       title: "暂停接收",
+      category: "终端",
       handler: async () => {
         terminalCmdRef.current.setPaused((p) => !p);
       },
@@ -666,6 +672,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.quickSendFill",
       title: "回填到发送区",
+      category: "终端",
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -676,6 +683,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.quickSendEdit",
       title: "编辑",
+      category: "终端",
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -690,11 +698,75 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.quickSendDelete",
       title: "删除",
+      category: "终端",
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
           terminalCmdRef.current.handleDeleteQuickSend(ctx.quickSendName);
         }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.clearSend",
+      title: "清空发送区",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setSendValue("");
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.exportLog",
+      title: "导出日志",
+      category: "终端",
+      handler: async () => {
+        const view = terminalCmdRef.current.cmView.current;
+        if (!view) return;
+        const text = view.state.doc.toString();
+        const filename = `serial-log-${Date.now()}.txt`;
+        try {
+          const handle = await (window as any).showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
+          });
+          const writable = await handle.createWritable();
+          await writable.write(text);
+          await writable.close();
+        } catch {
+          // 用户取消保存——静默
+        }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.toggleSendMode",
+      title: "切换到 HEX 发送",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({
+          ...p,
+          sendMode: p.sendMode === "hex" ? "text" : "hex",
+        }));
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.toggleEcho",
+      title: "关闭消息回显",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({
+          ...p,
+          showEcho: !p.showEcho,
+        }));
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.toggleLineNumbers",
+      title: "隐藏行号",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({
+          ...p,
+          showLineNumbers: !p.showLineNumbers,
+        }));
       },
     });
   }, []);
@@ -704,11 +776,48 @@ function TerminalView({ isActive }: TerminalViewProps) {
     registerCommand("terminal", {
       id: "terminal.togglePause",
       title: paused ? "继续接收" : "暂停接收",
+      category: "终端",
       handler: async () => {
         terminalCmdRef.current.setPaused((p) => !p);
       },
     });
   }, [paused]);
+
+  // 动态更新发送模式标题
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.toggleSendMode",
+      title: prefs.sendMode === "hex" ? "切换到文本发送" : "切换到 HEX 发送",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({ ...p, sendMode: p.sendMode === "hex" ? "text" : "hex" }));
+      },
+    });
+  }, [prefs.sendMode]);
+
+  // 动态更新回显标题
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.toggleEcho",
+      title: prefs.showEcho ? "关闭消息回显" : "开启消息回显",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({ ...p, showEcho: !p.showEcho }));
+      },
+    });
+  }, [prefs.showEcho]);
+
+  // 动态更新行号标题
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.toggleLineNumbers",
+      title: prefs.showLineNumbers ? "隐藏行号" : "显示行号",
+      category: "终端",
+      handler: async () => {
+        terminalCmdRef.current.setPrefs((p) => ({ ...p, showLineNumbers: !p.showLineNumbers }));
+      },
+    });
+  }, [prefs.showLineNumbers]);
 
   /* ---- 搜索 ---- */
   const runSearch = useCallback((query: string, caseSensitive: boolean) => {
@@ -767,29 +876,13 @@ function TerminalView({ isActive }: TerminalViewProps) {
     searchMatchesRef.current = [];
   }, []);
 
-  /* ---- Command Palette ---- */
-  const paletteCommands = [
-    { id: "clear", label: t("清空接收区"), action: handleClear },
-    { id: "clearSend", label: t("清空发送区"), action: () => setSendValue("") },
-    { id: "pause", label: paused ? t("继续接收") : t("暂停接收"), action: handlePause },
-    { id: "export", label: t("导出日志"), action: handleExport },
-    { id: "hex", label: prefs.sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
-      action: () => setPrefs({ ...prefs, sendMode: prefs.sendMode === "hex" ? "text" : "hex" }) },
-    { id: "echo", label: prefs.showEcho ? t("关闭消息回显") : t("开启消息回显"),
-      action: () => setPrefs({ ...prefs, showEcho: !prefs.showEcho }) },
-    { id: "lineNum", label: prefs.showLineNumbers ? t("隐藏行号") : t("显示行号"),
-      action: () => setPrefs({ ...prefs, showLineNumbers: !prefs.showLineNumbers }) },
-  ];
+  /* ---- Command Palette（Phase 5c：数据源走 CommandRegistry，全局 Ctrl+Shift+P 由 KeybindingRegistry 处理） ---- */
 
+  // 监听全局命令面板事件（workbench.action.showCommands → v3-show-palette）
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "P") {
-        e.preventDefault();
-        setPaletteOpen((p) => !p);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
+    const handler = () => setPaletteOpen((p) => !p);
+    window.addEventListener("v3-show-palette", handler);
+    return () => window.removeEventListener("v3-show-palette", handler);
   }, []);
 
   /* ---- Monaco 挂载 ---- */
@@ -851,7 +944,6 @@ function TerminalView({ isActive }: TerminalViewProps) {
       <TerminalToolbar />
       <CommandPalette
         open={paletteOpen}
-        commands={paletteCommands}
         onClose={() => setPaletteOpen(false)}
       />
 

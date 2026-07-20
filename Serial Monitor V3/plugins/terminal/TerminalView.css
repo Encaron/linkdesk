@@ -357,6 +357,10 @@
 }
 
 .palette-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
   padding: 7px 14px;
   font-size: 12px;
   color: var(--text-primary);
@@ -368,6 +372,23 @@
 .palette-item.selected {
   background: var(--accent);
   color: white;
+}
+
+.palette-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.palette-item-category {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.palette-item:hover .palette-item-category,
+.palette-item.selected .palette-item-category {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 /* === 快捷发送条 === */

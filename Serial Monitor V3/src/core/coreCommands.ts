@@ -1,8 +1,10 @@
 /**
  * 核心内置命令 + 菜单项注册。
  * Phase 5b：右键菜单归一化——核心内置命令走 CommandRegistry，菜单项走 MenuRegistry。
+ * Phase 5c：命令面板走 Registry——加 category + 全局命令面板入口 + Ctrl+Shift+P。
  *
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-右键菜单系统.md §六
+ *           docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子1
  *
  * 模式：模块级 callbacks ref——App.tsx 每次渲染更新 ref（零开销），
  * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
@@ -10,6 +12,7 @@
 
 import { registerCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
+import { registerKeybinding } from "./KeybindingRegistry";
 
 /* ── Callbacks ── */
 
@@ -34,12 +37,34 @@ export function updateCoreCallbacks(cb: CoreCallbacks): void {
   _callbacks = cb;
 }
 
-/* ── 命令定义（不包含 handler——handler 在 ensureRegistered 中桥接到 _callbacks） ── */
+/* ── 命令定义 ── */
 
-const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId: MenuId }> = [
+const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = [
+  {
+    id: "core.openSettings",
+    title: "设置",
+    category: "视图",
+    handler: async () => {
+      // 打开设置——通过图标栏机制：切换 sidebar 到 settings
+      window.dispatchEvent(new CustomEvent("v3-open-view", { detail: { pluginId: "settings", asSidebar: true } }));
+    },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
+  },
+  {
+    id: "workbench.action.showCommands",
+    title: "命令面板",
+    category: "视图",
+    handler: async () => {
+      window.dispatchEvent(new CustomEvent("v3-show-palette"));
+    },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
+  },
   {
     id: "core.closeTab",
     title: "关闭",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.closeTab(ctx.tabId);
@@ -50,6 +75,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId: MenuId }> = [
   {
     id: "core.closeOtherTabs",
     title: "关闭其他",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -63,6 +89,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId: MenuId }> = [
   {
     id: "core.closeRightTabs",
     title: "关闭右侧",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -79,6 +106,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId: MenuId }> = [
   {
     id: "core.splitDown",
     title: "向下分屏",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "vertical");
@@ -89,6 +117,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId: MenuId }> = [
   {
     id: "core.splitRight",
     title: "向右分屏",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "horizontal");
@@ -105,29 +134,36 @@ export function ensureCoreCommands(): void {
   if (_registered) return;
   _registered = true;
 
-  // 按 menuId 收集菜单项
+  // ── 注册核心标签页命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
 
   for (const cmd of CORE_COMMANDS) {
-    // 注册命令——如果 loader 已从 plugin.json 注册过，此调用覆盖为真实 handler
     registerCommand("app", {
       id: cmd.id,
       title: cmd.title,
+      category: cmd.category,
       handler: cmd.handler,
     });
 
-    // 收集菜单项
-    if (!menuItemsMap.has(cmd.menuId)) {
-      menuItemsMap.set(cmd.menuId, []);
+    if (cmd.menuId) {
+      if (!menuItemsMap.has(cmd.menuId)) {
+        menuItemsMap.set(cmd.menuId, []);
+      }
+      menuItemsMap.get(cmd.menuId)!.push({
+        command: cmd.id,
+        group: cmd.menuGroup,
+      });
     }
-    menuItemsMap.get(cmd.menuId)!.push({
-      command: cmd.id,
-      group: cmd.menuGroup,
-    });
   }
 
-  // 注册菜单项
   for (const [menuId, items] of menuItemsMap) {
     registerMenuItems(menuId, "app", items);
   }
+
+  // ── 注册全局快捷键 ──
+  registerKeybinding({
+    command: "workbench.action.showCommands",
+    key: "ctrl+shift+p",
+    source: "builtin",
+  });
 }
