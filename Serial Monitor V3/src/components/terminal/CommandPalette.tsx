@@ -27,7 +27,15 @@ function CommandPalette({ open, onClose }: Props) {
   // Phase 5c+5d：从 CommandRegistry 获取命令 + when 条件过滤——每次打开面板时重新求值（依赖 open trigger），
   //   确保 context key 变更后下次打开能看到正确的命令列表
   const allCommands = useMemo(() => {
-    return getCommands().filter((cmd) => ContextKeyService.matches(cmd.when));
+    const cmds = getCommands();
+    // 🔍 Phase 5d 诊断
+    const withWhen = cmds.filter((c) => c.when);
+    const ckSnapshot: Record<string, unknown> = {};
+    ["activeEditor", "portOpen", "portName", "editorCount"].forEach((k) => {
+      ckSnapshot[k] = ContextKeyService.getValue(k);
+    });
+    console.log(`[CommandPalette] ${cmds.length} 命令, ${withWhen.length} 含 when | ctx=`, ckSnapshot, "| when commands:", withWhen.map((c) => `${c.id}: ${c.when}`));
+    return cmds.filter((cmd) => ContextKeyService.matches(cmd.when));
   }, [open]);
 
   useEffect(() => {

@@ -65,6 +65,14 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
       // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
       // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
       const whenExpr = item.when ?? cmd.when;
+      // 🔍 Phase 5d 诊断：输出每个菜单项的 when 求值结果
+      if (whenExpr) {
+        const ckSnapshot: Record<string, unknown> = {};
+        ["activeEditor", "portOpen", "portName", "editorCount"].forEach((k) => {
+          ckSnapshot[k] = ContextKeyService.getValue(k);
+        });
+        console.log(`[ContextMenu] ${item.command} | when="${whenExpr}" | matches=${ContextKeyService.matches(whenExpr)} | ctx=`, ckSnapshot);
+      }
       if (!ContextKeyService.matches(whenExpr)) continue;
 
       const group = item.group ?? "__default";
