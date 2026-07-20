@@ -6,9 +6,10 @@
  *       tab bar(Details|Changelog) → body → info sidebar
  */
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
+import { disablePlugin, uninstallPlugin, enablePlugin, isPluginDisabled } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -36,6 +37,8 @@ interface PluginDetailViewProps {
 function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewProps) {
   const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState<"details" | "changelog">("details");
+  const [busy, setBusy] = useState(false);
+  const [actionError, setActionError] = useState<string | null>(null);
 
   // ⚠️ 所有 hooks 必须在条件返回之前——React Rules of Hooks
   const installedIds = useMemo(
@@ -54,15 +57,64 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
     return result;
   }, [pluginId]);
 
+  const disabled = useMemo(() => pluginId ? isPluginDisabled(pluginId) : false, [pluginId]);
+
+  const handleDisable = useCallback(async () => {
+    if (!pluginId || busy) return;
+    setBusy(true);
+    setActionError(null);
+    const r = await disablePlugin(pluginId);
+    setBusy(false);
+    if (!r.success) setActionError(r.error ?? "未知错误");
+  }, [pluginId, busy]);
+
+  const handleEnable = useCallback(async () => {
+    if (!pluginId || busy) return;
+    setBusy(true);
+    setActionError(null);
+    const r = await enablePlugin(pluginId);
+    setBusy(false);
+    if (!r.success) setActionError(r.error ?? "未知错误");
+  }, [pluginId, busy]);
+
+  const handleUninstall = useCallback(async () => {
+    if (!pluginId || busy) return;
+    if (!window.confirm(t("确定要卸载此插件吗？此操作可撤销（文件保留在 .disabled/ 目录）。"))) return;
+    setBusy(true);
+    setActionError(null);
+    const r = await uninstallPlugin(pluginId);
+    setBusy(false);
+    if (!r.success) setActionError(r.error ?? "未知错误");
+  }, [pluginId, busy, t]);
+
   if (!pluginId) {
     return <div className="plugin-detail-empty">{t("未指定插件 ID")}</div>;
   }
 
   const plugin = getViewPlugin(pluginId);
   if (!plugin) {
+    // 检查是否被禁用——如果是，提供启用按钮
+    const _disabled = isPluginDisabled(pluginId);
     return (
       <div className="plugin-detail-empty">
-        {t("插件")} "{pluginId}" {t("未安装或已禁用")}
+        <p>{t("插件")} "{pluginId}" {t("未安装或已禁用")}</p>
+        {_disabled && (
+          <button
+            className="pd-btn pd-btn-enable"
+            style={{ marginTop: 12 }}
+            onClick={async () => {
+              const r = await enablePlugin(pluginId);
+              if (r.success) {
+                // 刷新页面——enablePlugin 对视图插件返回 needRestart
+                if (r.needRestart) {
+                  // 提示用户重启
+                }
+              }
+            }}
+          >
+            <span className="codicon codicon-play" /> {t("启用插件")}
+          </button>
+        )}
       </div>
     );
   }
@@ -113,13 +165,25 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
           </span>
         ) : (
           <>
-            <button className="pd-btn pd-btn-uninstall" disabled title={t("Phase 5")}>
-              {t("卸载")}
-            </button>
-            <button className="pd-btn pd-btn-disable" disabled title={t("Phase 5")}>
-              {t("禁用")}
-            </button>
+            {disabled ? (
+              <button className="pd-btn pd-btn-enable" onClick={handleEnable} disabled={busy}>
+                <span className="codicon codicon-play" /> {t("启用")}
+              </button>
+            ) : (
+              <>
+                <button className="pd-btn pd-btn-disable" onClick={handleDisable} disabled={busy}>
+                  <span className="codicon codicon-circle-slash" /> {t("禁用")}
+                </button>
+                <button className="pd-btn pd-btn-uninstall" onClick={handleUninstall} disabled={busy}>
+                  <span className="codicon codicon-trash" /> {t("卸载")}
+                </button>
+              </>
+            )}
           </>
+        )}
+
+        {actionError && (
+          <span className="pd-action-error">{actionError}</span>
         )}
 
         {/* 反向推荐警告 */}

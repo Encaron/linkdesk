@@ -1,4 +1,5 @@
 mod serial;
+mod plugins;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -13,6 +14,9 @@ pub fn run() {
             serial::send_text,
             serial::set_dtr,
             serial::set_rts,
+            plugins::list_plugin_dirs,
+            plugins::install_plugin,
+            plugins::uninstall_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

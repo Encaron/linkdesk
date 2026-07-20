@@ -7,13 +7,17 @@
  * 加载顺序：先出厂预装 → 再用户安装 → 错误不阻断。
  *
  * P1-4：theme/language 注册（ThemeEngine + i18next）
+ * P1-5：文件监听（轮询 list_plugin_dirs）
  * P1-6：7 种错误处理 + minAppVersion 版本检查 + 同名去重
+ * Phase 4.3：安装/卸载/禁用/启用完整生命周期
  */
 
+import { invoke } from "@tauri-apps/api/core";
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
-import { registerViewPlugin } from "./viewRegistry";
+import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
 import { pushToast } from "../core/toast";
+import PreferenceService from "../core/PreferenceService";
 import i18n from "../i18n";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
@@ -56,7 +60,6 @@ function getPluginDataFile(pluginId: string, filename: string): Record<string, u
 /* ── 当前应用版本（从 package.json 读取） ── */
 
 function getAppVersion(): string {
-  // Phase 4：硬编码版本号——未来从 Rust 端获取
   return "3.0.0";
 }
 
@@ -74,21 +77,28 @@ function versionGte(a: string, b: string): boolean {
 /* ── 初始化 ── */
 
 let _initialized = false;
+/** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
+const loadedPluginIds = new Set<string>();
 
 export async function initPluginLoader(): Promise<void> {
   if (_initialized) return;
   _initialized = true;
 
   const errors: string[] = [];
+  const disabled = getDisabledList();
 
-  // 1. 收集所有已安装插件
+  // 1. 收集所有已安装插件（从 import.meta.glob 的 plugin.json 键）
   const installed = new Set<string>();
   for (const path of Object.keys(pluginManifests)) {
     installed.add(extractPluginId(path));
   }
 
-  // 2. 加载每个插件
+  // 2. 加载每个插件（跳过禁用的）
   for (const pluginId of installed) {
+    if (disabled.includes(pluginId)) {
+      console.log(`[pluginLoader] 插件 "${pluginId}" 已禁用——跳过`);
+      continue;
+    }
     try {
       await loadPlugin(pluginId);
     } catch (e: any) {
@@ -165,6 +175,8 @@ async function loadPlugin(pluginId: string): Promise<void> {
         ttl: 5000,
       });
   }
+
+  loadedPluginIds.add(pluginId);
 }
 
 /* ── 视图插件 ── */
@@ -218,7 +230,6 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
         console.warn(`[pluginLoader] 主题文件缺失 — "${pluginId}/${t.file}"`);
         continue;
       }
-      // 从 JSON 推断主题类型（有 type 字段直接用，否则默认 dark）
       const themeType = (data.type as "dark" | "light") ?? "dark";
       const colors: Record<string, string> = {};
       for (const [k, v] of Object.entries(data)) {
@@ -312,20 +323,226 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
   console.warn(`[pluginLoader] 语言插件 "${pluginId}" 未声明 file 或 languages 字段`);
 }
 
+/* ── 禁用列表持久化 ── */
+
+function getDisabledList(): string[] {
+  try {
+    return PreferenceService.loadPrefs().disabledPlugins ?? [];
+  } catch {
+    return [];
+  }
+}
+
+async function saveDisabledList(list: string[]): Promise<void> {
+  try {
+    const prefs = PreferenceService.loadPrefs();
+    prefs.disabledPlugins = list;
+    await PreferenceService.savePrefs(prefs);
+  } catch { /* 静默 */ }
+}
+
+/* ═══════════════════════════════════════════════════════════
+   Phase 4.3 生命周期 API——安装/卸载/禁用/启用
+   ═══════════════════════════════════════════════════════════ */
+
+/**
+ * 禁用插件：标记到 prefs.disabledPlugins + 从 viewRegistry 移除。
+ * 插件文件保留在 plugins/ 目录，下次启动跳过。
+ * 对标 VS Code "Disable Extension"。
+ */
+export async function disablePlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const entry = getViewPlugin(pluginId);
+    if (!entry) {
+      return { success: false, error: `插件 "${pluginId}" 未找到` };
+    }
+    if (entry.manifest.core) {
+      return { success: false, error: `核心插件 "${pluginId}" 不可禁用` };
+    }
+
+    const list = getDisabledList();
+    if (!list.includes(pluginId)) {
+      list.push(pluginId);
+      await saveDisabledList(list);
+    }
+    unregisterViewPlugin(pluginId);
+    loadedPluginIds.delete(pluginId);
+    pushToast({
+      message: `已禁用：${entry.manifest.name}`,
+      actions: [{ label: "撤销", onClick: () => enablePlugin(pluginId) }],
+      ttl: 6000,
+    });
+    console.log(`[pluginLoader] 🔒 已禁用 "${pluginId}"`);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || String(e) };
+  }
+}
+
+/**
+ * 启用插件：从 prefs.disabledPlugins 移除 + 重新加载。
+ * 对标 VS Code "Enable Extension"。
+ * 注意：.tsx 视图插件启用后需重启生效（无法运行时动态 import）。
+ */
+export async function enablePlugin(pluginId: string): Promise<{ success: boolean; error?: string; needRestart?: boolean }> {
+  try {
+    const list = getDisabledList();
+    const idx = list.indexOf(pluginId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      await saveDisabledList(list);
+    }
+
+    // 尝试重新加载——对于 .json 插件（theme/language）即时生效
+    // 对于 .tsx 视图插件，import.meta.glob 是构建时解析的，无法运行时动态注入
+    // 此时返回 needRestart: true
+    const manifestKey = Object.keys(pluginManifests).find(
+      (k) => extractPluginId(k) === pluginId
+    );
+
+    if (manifestKey) {
+      const manifest = pluginManifests[manifestKey];
+      if (manifest.type === "theme" || manifest.type === "language") {
+        // .json 插件即时生效
+        await loadPlugin(pluginId);
+        pushToast({
+          message: `已启用：${manifest.name}`,
+          ttl: 4000,
+        });
+        console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
+        return { success: true };
+      }
+      // .tsx 视图插件——需要重启
+      const needRestart = manifest.type === "view";
+      pushToast({
+        message: `已启用：${manifest.name}。视图插件需重启生效。`,
+        ttl: 8000,
+      });
+      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"（需重启）`);
+      return { success: true, needRestart: needRestart || undefined };
+    }
+
+    return { success: true, needRestart: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || String(e) };
+  }
+}
+
+/**
+ * 卸载插件：Rust 端移到 .disabled/ → 从 viewRegistry 移除 → 持久化。
+ * core 插件不可卸载。
+ */
+export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    const entry = getViewPlugin(pluginId);
+    if (!entry) {
+      return { success: false, error: `插件 "${pluginId}" 未找到` };
+    }
+    if (entry.manifest.core) {
+      return { success: false, error: `核心插件 "${pluginId}" 不可卸载` };
+    }
+
+    // Rust 端：移到 plugins/.disabled/<id>/
+    await invoke("uninstall_plugin", { pluginId });
+
+    // 前端：移除注册
+    unregisterViewPlugin(pluginId);
+    loadedPluginIds.delete(pluginId);
+
+    pushToast({
+      message: `已卸载：${entry.manifest.name}`,
+      ttl: 5000,
+    });
+    console.log(`[pluginLoader] 🗑 已卸载 "${pluginId}"`);
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || String(e) };
+  }
+}
+
+/**
+ * 安装插件：Rust 端复制到 plugins/ → 热加载。
+ * 仅对 theme/language 插件即时生效；view 插件提示重启。
+ */
+export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; error?: string; needRestart?: boolean }> {
+  try {
+    const pluginId = await invoke<string>("install_plugin", { source: sourcePath });
+
+    // 尝试热加载——主题/语言即时生效，视图插件需要重启
+    const manifestKey = Object.keys(pluginManifests).find(
+      (k) => extractPluginId(k) === pluginId
+    );
+
+    if (manifestKey) {
+      const manifest = pluginManifests[manifestKey];
+      if (manifest.type === "theme" || manifest.type === "language") {
+        await loadPlugin(pluginId);
+        pushToast({
+          message: `已安装：${manifest.name}（即时生效）`,
+          ttl: 5000,
+        });
+        return { success: true, pluginId };
+      }
+    }
+
+    // 视图插件或无法识别的类型——提示重启
+    pushToast({
+      message: `已安装：${pluginId}。重启后生效。`,
+      ttl: 8000,
+    });
+    return { success: true, pluginId, needRestart: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || String(e) };
+  }
+}
+
+/** 判断插件是否被禁用 */
+export function isPluginDisabled(pluginId: string): boolean {
+  return getDisabledList().includes(pluginId);
+}
+
 /** 是否已初始化 */
 export function isPluginLoaderReady(): boolean {
   return _initialized;
 }
 
-/* ── 文件监听（P1-5 骨架） ── */
+/** 获取禁用插件的基本信息（供市场侧栏展示） */
+export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
+  const disabled = getDisabledList();
+  const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
+  for (const pluginId of disabled) {
+    const manifestKey = Object.keys(pluginManifests).find(
+      (k) => extractPluginId(k) === pluginId
+    );
+    if (manifestKey) {
+      const m = pluginManifests[manifestKey];
+      result.push({
+        pluginId,
+        name: m.name || pluginId,
+        description: m.description,
+        version: m.version,
+      });
+    } else {
+      result.push({ pluginId, name: pluginId });
+    }
+  }
+  return result;
+}
+
+/* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */
+import { getViewPlugin } from "./viewRegistry";
+
+/* ═══════════════════════════════════════════════════════════
+   P1-5 文件监听 —— 轮询检测新插件
+   ═══════════════════════════════════════════════════════════ */
 
 let _watchInterval: ReturnType<typeof setInterval> | null = null;
 
 /**
  * Phase 4 P1-5：启动插件目录轮询。
- * TODO：需要 Tauri fs 命令 `list_plugin_dirs` 返回 `plugins/` 下的目录列表。
- * 当前骨架：2 秒轮询 + 检测新目录 → 加载 + toast。
- * 完整实现依赖 Rust 端 fs 命令或 @tauri-apps/plugin-fs。
+ * 每 2 秒调用 Rust `list_plugin_dirs` 检测新目录。
+ * - 发现新 .json 插件（theme/language）→ 即时加载 + toast
+ * - 发现新 .tsx 插件（view）→ toast 提示重启
  *
  * 设计依据：[V3-插件系统与UI重构设计.md §4 "文件监听与热加载"]
  */
@@ -334,16 +551,31 @@ export function startPluginWatcher(): void {
 
   _watchInterval = setInterval(async () => {
     try {
-      // TODO P1-5：调用 Tauri invoke("list_plugin_dirs") 获取目录列表
-      // const dirs = await invoke<string[]>("list_plugin_dirs");
-      // for (const dir of dirs) {
-      //   if (!loadedPluginIds.has(dir)) {
-      //     await loadPlugin(dir);
-      //     pushToast({ message: `发现新插件：${dir}` });
-      //   }
-      // }
+      const dirs = await invoke<string[]>("list_plugin_dirs");
+      for (const dir of dirs) {
+        if (loadedPluginIds.has(dir)) continue;
+        if (getDisabledList().includes(dir)) continue;
+
+        // 新目录——检查类型
+        const manifestKey = Object.keys(pluginManifests).find(
+          (k) => extractPluginId(k) === dir
+        );
+        if (manifestKey) {
+          const manifest = pluginManifests[manifestKey];
+          if (manifest.type === "theme" || manifest.type === "language") {
+            await loadPlugin(dir);
+            pushToast({ message: `发现新插件：${manifest.name}（即时生效）`, ttl: 5000 });
+          } else {
+            pushToast({
+              message: `发现新插件：${manifest.name || dir}。重启后生效。`,
+              ttl: 8000,
+            });
+            loadedPluginIds.add(dir); // 标记已知，不再重复提示
+          }
+        }
+      }
     } catch {
-      // 静默——轮询失败不影响运行
+      // 静默——polling 失败不影响运行（Tauri 环境未就绪等）
     }
   }, 2000);
 

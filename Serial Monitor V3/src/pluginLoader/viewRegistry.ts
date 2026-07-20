@@ -82,6 +82,11 @@ export function findFallbackPlugin(): { pluginId: string } | undefined {
   return { pluginId: "welcome" };
 }
 
+/** 注销视图插件。安装/卸载/禁用时调用。 */
+export function unregisterViewPlugin(pluginId: string): boolean {
+  return registry.delete(pluginId);
+}
+
 /** 清空注册表（测试用） */
 export function clearRegistry(): void {
   registry.clear();

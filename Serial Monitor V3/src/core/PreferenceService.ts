@@ -61,6 +61,10 @@ export interface Prefs {
   recentViews?: { pluginId: string; label: string; workspaceName?: string }[];
   /** Phase 4：图标栏拖拽排序——pluginId 数组，按顺序渲染 */
   iconOrder?: string[];
+  /** Phase 4：禁用的插件 ID 列表——loader 跳过这些插件 */
+  disabledPlugins?: string[];
+  /** Phase 4：用户安装插件的目录路径（默认 = appDataDir/plugins/） */
+  pluginsInstallPath?: string;
   /** Phase 3：标签页布局持久化。Phase 5 增加 cardLayout。 */
   layout?: LayoutData;
 }

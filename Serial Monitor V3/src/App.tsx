@@ -13,7 +13,7 @@ import ToastContainer from "./components/ToastContainer";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
-import { initPluginLoader } from "./pluginLoader/loader";
+import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -75,6 +75,8 @@ function App() {
     initPrefs().then(async (prefs) => {
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
+      // P1-5：启动文件监听（检测新插件目录）
+      startPluginWatcher();
 
       loadTheme(prefs.theme || "Dark")
         .then(applyTheme)

@@ -4,9 +4,10 @@
  *   header（搜索）→ extension list（icon + name/version/desc + actions）
  */
 
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
+import { getDisabledPluginInfo, enablePlugin } from "../../src/pluginLoader/loader";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import type { ViewPluginEntry } from "../../src/core/types";
 import "./MarketplaceSidebar.css";
@@ -17,6 +18,7 @@ function MarketplaceSidebar() {
   const [search, setSearch] = useState("");
 
   const allPlugins = getViewPlugins();
+  const disabledPlugins = getDisabledPluginInfo();
 
   const filtered = allPlugins.filter((p) => {
     if (!search) return true;
@@ -25,6 +27,16 @@ function MarketplaceSidebar() {
       p.manifest.name.toLowerCase().includes(q) ||
       p.pluginId.toLowerCase().includes(q) ||
       (p.manifest.description ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const filteredDisabled = disabledPlugins.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.pluginId.toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q)
     );
   });
 
@@ -40,6 +52,11 @@ function MarketplaceSidebar() {
   const handleOpenDetailPinned = (pluginId: string) => {
     tabActions?.createTab("plugin-detail", { pluginId, pinned: true });
   };
+
+  const handleEnable = useCallback(async (pluginId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await enablePlugin(pluginId);
+  }, []);
 
   return (
     <div className="marketplace-sidebar">
@@ -86,9 +103,86 @@ function MarketplaceSidebar() {
                 defaultCollapsed
               />
             )}
+            {filteredDisabled.length > 0 && (
+              <DisabledSection
+                title={t("已禁用") + ` (${filteredDisabled.length})`}
+                plugins={filteredDisabled}
+                onEnable={handleEnable}
+                onOpenDetail={handleOpenDetail}
+                onOpenDetailPinned={handleOpenDetailPinned}
+              />
+            )}
           </>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ── 已禁用分区 ── */
+
+function DisabledSection({
+  title,
+  plugins,
+  onEnable,
+  onOpenDetail,
+  onOpenDetailPinned,
+}: {
+  title: string;
+  plugins: Array<{ pluginId: string; name: string; description?: string; version?: string }>;
+  onEnable: (pluginId: string, e: React.MouseEvent) => void;
+  onOpenDetail: (pluginId: string) => void;
+  onOpenDetailPinned: (pluginId: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = (pluginId: string) => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onOpenDetailPinned(pluginId);
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onOpenDetail(pluginId);
+      }, 300);
+    }
+  };
+
+  return (
+    <div className="ms-section">
+      <button className="ms-section-header" onClick={() => setCollapsed(!collapsed)}>
+        <span className={`codicon ${collapsed ? "codicon-chevron-right" : "codicon-chevron-down"}`} />
+        <span className="ms-section-title">{title}</span>
+      </button>
+      {!collapsed && (
+        <div className="ms-section-items">
+          {plugins.map((p) => (
+            <div key={p.pluginId} className="ms-extension-item disabled">
+              <div className="ms-item-icon">
+                <span className="codicon codicon-symbol-misc" style={{ opacity: 0.4 }} />
+              </div>
+              <div className="ms-item-details" onClick={() => handleClick(p.pluginId)} style={{ cursor: "pointer" }}>
+                <div className="ms-item-header">
+                  <span className="ms-item-name" style={{ opacity: 0.6 }}>{p.name}</span>
+                  {p.version && <span className="ms-item-version">v{p.version}</span>}
+                </div>
+                {p.description && (
+                  <span className="ms-item-desc" style={{ opacity: 0.5 }}>{p.description}</span>
+                )}
+              </div>
+              <button
+                className="ms-item-enable-btn"
+                onClick={(e) => onEnable(p.pluginId, e)}
+                title="启用插件"
+              >
+                <span className="codicon codicon-play" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
