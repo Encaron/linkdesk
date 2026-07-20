@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, enablePlugin } from "../../src/pluginLoader/loader";
+import { getDisabledPluginInfo, enablePlugin, installPlugin } from "../../src/pluginLoader/loader";
 import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import type { ViewPluginEntry } from "../../src/core/types";
@@ -59,10 +59,37 @@ function MarketplaceSidebar() {
     await enablePlugin(pluginId);
   }, []);
 
+  const [installing, setInstalling] = useState(false);
+  const handleInstall = useCallback(async () => {
+    setInstalling(true);
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({ directory: true, title: "选择插件目录", multiple: false });
+      if (selected) {
+        await installPlugin(selected as string);
+      }
+    } catch {
+      // 非 Tauri 环境或用户取消——静默
+    } finally {
+      setInstalling(false);
+    }
+  }, []);
+
   return (
     <div className="marketplace-sidebar">
       {/* VS Code: .header 41px, search box 28px */}
       <div className="ms-header">
+        <div className="ms-header-actions">
+          <button
+            className="ms-install-btn"
+            onClick={handleInstall}
+            disabled={installing}
+            title={t("从本地安装插件")}
+          >
+            <span className="codicon codicon-add" />
+            {installing ? t("安装中...") : t("安装")}
+          </button>
+        </div>
         <div className="ms-search-container">
           <input
             className="ms-search-box"

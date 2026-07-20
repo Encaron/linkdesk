@@ -9,10 +9,43 @@
 /* ── VS Code: .header 41px, search 28px ── */
 
 .ms-header {
-  height: 41px;
+  height: auto;
   box-sizing: border-box;
   padding: 5px 12px 6px 12px;
   flex-shrink: 0;
+}
+
+.ms-header-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 4px;
+}
+
+.ms-install-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 11px;
+  font-family: inherit;
+}
+
+.ms-install-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+}
+
+.ms-install-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ms-install-btn .codicon {
+  font-size: 14px;
 }
 
 .ms-search-container {
