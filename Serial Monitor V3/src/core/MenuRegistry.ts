@@ -33,6 +33,8 @@ export enum MenuId {
   QuickSendContext = "quickSendContext",
   /** 图标栏右键 */
   IconBar = "iconBar",
+  /** 插件市场条目齿轮菜单——per-plugin 启用/禁用/卸载 */
+  MarketplaceItemGear = "marketplaceItemGear",
 }
 
 /* ── 类型 ── */

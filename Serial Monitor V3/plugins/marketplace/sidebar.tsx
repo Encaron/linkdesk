@@ -10,13 +10,62 @@ import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
 import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "../../src/pluginLoader/loader";
 import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
+import ContextMenu from "../../src/components/shared/ContextMenu";
+import { registerCommand } from "../../src/core/CommandRegistry";
+import { registerMenuItems, MenuId } from "../../src/core/MenuRegistry";
+import { ContextKeyService } from "../../src/core/ContextKeyService";
 import type { ViewPluginEntry } from "../../src/core/types";
 import "./MarketplaceSidebar.css";
+
+/* ── 模块级：注册 marketplace 命令（Phase 5f 归一化——替代手写 gear 菜单） ── */
+
+let _marketplaceCommandsRegistered = false;
+
+function ensureMarketplaceCommands(): void {
+  if (_marketplaceCommandsRegistered) return;
+  _marketplaceCommandsRegistered = true;
+
+  registerCommand("marketplace", {
+    id: "marketplace.enable",
+    title: "启用",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await enablePlugin(ctx.pluginId);
+    },
+  });
+
+  registerCommand("marketplace", {
+    id: "marketplace.disable",
+    title: "禁用",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await disablePlugin(ctx.pluginId);
+    },
+  });
+
+  registerCommand("marketplace", {
+    id: "marketplace.uninstall",
+    title: "卸载",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      if (ctx?.pluginId) await uninstallPlugin(ctx.pluginId);
+    },
+  });
+
+  registerMenuItems(MenuId.MarketplaceItemGear, "marketplace", [
+    { command: "marketplace.enable", group: "navigation", when: "pluginDisabled" },
+    { command: "marketplace.disable", group: "navigation", when: "!pluginDisabled" },
+    { command: "marketplace.uninstall", group: "delete" },
+  ]);
+}
 
 function MarketplaceSidebar() {
   const { t } = useTranslation();
   const tabActions = useTabActions();
   const [search, setSearch] = useState("");
+
+  // Phase 5f 归一化：注册 marketplace 命令（幂等——只执行一次）
+  ensureMarketplaceCommands();
 
   const allPlugins = getViewPlugins();
   const disabledPlugins = getDisabledPluginInfo();
@@ -373,22 +422,8 @@ function ExtensionItem({
 }) {
   const m = plugin.manifest;
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [gearOpen, setGearOpen] = useState(false);
-  const gearRef = useRef<HTMLButtonElement>(null);
-  const gearMenuRef = useRef<HTMLDivElement>(null);
-
-  // 点击外部关闭齿轮菜单——对标 V2 时代的常见 bug
-  useEffect(() => {
-    if (!gearOpen) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (gearMenuRef.current?.contains(target)) return;
-      if (gearRef.current?.contains(target)) return;
-      setGearOpen(false);
-    };
-    window.addEventListener("mousedown", onMouseDown);
-    return () => window.removeEventListener("mousedown", onMouseDown);
-  }, [gearOpen]);
+  const gearBtnRef = useRef<HTMLButtonElement>(null);
+  const [gearMenuAnchor, setGearMenuAnchor] = useState<{ x: number; y: number } | null>(null);
 
   // VS Code 风格：计时器区分单击/双击。300ms 内两次点击 = 双击（固定打开）
   const handleClick = () => {
@@ -404,20 +439,14 @@ function ExtensionItem({
     }
   };
 
-  // ⚙ 齿轮菜单——对标 VS Code ManageExtensionAction
+  // ⚙ 齿轮菜单——Phase 5f 归一化：走 ContextMenu + MenuRegistry（替代手写菜单）
   const handleGear = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setGearOpen(!gearOpen);
+    // 设置 context key 用于 when 条件——决定显示"启用"还是"禁用"
+    ContextKeyService.setValue("pluginDisabled", isPluginDisabled(plugin.pluginId));
+    const rect = e.currentTarget.getBoundingClientRect();
+    setGearMenuAnchor({ x: rect.right, y: rect.bottom });
   };
-
-  const handleGearAction = useCallback(async (action: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    setGearOpen(false);
-    if (action === "disable") await disablePlugin(plugin.pluginId);
-    else if (action === "enable") await enablePlugin(plugin.pluginId);
-  }, [plugin.pluginId]);
-
-  const disabled = isPluginDisabled(plugin.pluginId);
 
   return (
     <div className="ms-extension-item" onClick={handleClick}>
@@ -449,27 +478,19 @@ function ExtensionItem({
         </div>
       </div>
 
-      {/* ⚙ 齿轮 —— 对标 VS Code ManageExtensionAction */}
+      {/* ⚙ 齿轮 —— Phase 5f 归一化：ContextMenu 替代手写菜单，失焦/滚动/Escape 统一 */}
       {!m.core && (
         <div className="ms-item-gear-wrapper">
-          <button ref={gearRef} className="ms-item-gear-btn" onClick={handleGear} title="管理">
+          <button ref={gearBtnRef} className="ms-item-gear-btn" onClick={handleGear} title="管理">
             <span className="codicon codicon-gear" />
           </button>
-          {gearOpen && (
-            <div className="ms-item-gear-menu" ref={gearMenuRef}>
-              {disabled ? (
-                <button className="ms-item-gear-item" onClick={(e) => handleGearAction("enable", e)}>
-                  <span className="codicon codicon-play" /> 启用
-                </button>
-              ) : (
-                <button className="ms-item-gear-item" onClick={(e) => handleGearAction("disable", e)}>
-                  <span className="codicon codicon-circle-slash" /> 禁用
-                </button>
-              )}
-              <button className="ms-item-gear-item" onClick={(e) => { e.stopPropagation(); setGearOpen(false); uninstallPlugin(plugin.pluginId); }}>
-                <span className="codicon codicon-trash" /> 卸载
-              </button>
-            </div>
+          {gearMenuAnchor && (
+            <ContextMenu
+              menuId={MenuId.MarketplaceItemGear}
+              anchor={gearMenuAnchor}
+              context={{ pluginId: plugin.pluginId }}
+              onClose={() => setGearMenuAnchor(null)}
+            />
           )}
         </div>
       )}
