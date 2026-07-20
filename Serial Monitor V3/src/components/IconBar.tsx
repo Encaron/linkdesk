@@ -19,6 +19,7 @@ interface IconBarProps {
   onOpenOrFocus: (type: string) => void;
 }
 
+/** 固定在底部的图标——对标 VS Code Activity Bar 的 Manage 齿轮。布局规则，非类型定义。 */
 const BOTTOM_ICONS = new Set(["settings"]);
 
 function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }) {

@@ -15,6 +15,7 @@ import ErrorBoundary from "./shared/ErrorBoundary";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { isShellRenderedTab } from "../hooks/tabIdentity";
 import TabPanePositioner from "./TabPanePositioner";
 import "./MainContent.css";
 
@@ -44,12 +45,14 @@ function renderTabContent(
   isActive: boolean,
   onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
 ) {
-  // plugin-detail 和 welcome 是壳自身的视图，不走插件路由
-  if (tab.type === "plugin-detail") {
-    return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />;
-  }
-  if (tab.type === "welcome") {
-    return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
+  // 壳自身的视图——不走插件路由
+  if (isShellRenderedTab(tab.type)) {
+    if (tab.type === "plugin-detail") {
+      return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />;
+    }
+    if (tab.type === "welcome") {
+      return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
+    }
   }
 
   // Phase 4.4：视图插件路由——唯一的正常路径

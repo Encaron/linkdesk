@@ -304,6 +304,98 @@ viewRegistry 优先 → TAB_IDENTITY[type].fallbackLabel → type 本身
 
 ---
 
+## Phase 4.6 — 剩余归一化（P1+P2+P3）🔥
+
+> **原则：** 归一化的目的不是"所有字符串集中到一张表"，而是**每种比较都起个有意义的名字**——AI 读到代码时看到意图，不是魔术字符串。
+
+### P1：singleton 并行定义 → 合并
+
+**现状：** `settings` 的 singleton 在两处各写了一遍：
+- `tabIdentity.ts:30` — `settings: { singleton: true }`
+- `viewRegistry.ts:55` — `BUILTIN_TAB_BEHAVIOR: { settings: { singleton: true } }`
+
+**改法：** 删 `viewRegistry.ts` 的 `BUILTIN_TAB_BEHAVIOR`。`getTabBehavior()` 先从 `tabIdentity.ts` 读内置规则（singleton/isFallback/confirmOnClose），再用 `plugin.json` 的声明覆盖。**一处定义，两级优先级。**
+
+**文件：**
+- [ ] `viewRegistry.ts` — 删 `BUILTIN_TAB_BEHAVIOR` + `getTabBehavior()` 改为读 `tabIdentity`
+- [ ] `tabIdentity.ts` — 加 `isFallback` / `confirmOnClose` 字段
+
+### P2：ID 分配策略 → 表驱动
+
+**现状：** `createTabDefaults` 里 5 分支 if/else——每类标签页有独立的 ID 生成策略，新增类型要改 if/else 链。
+
+**改法：** `TabIdentityMeta` 加 `generateId(opts): string` 工厂函数。每行自带 ID 生成逻辑，`createTabDefaults` 只调 `meta.generateId(opts)`。
+
+```typescript
+// Before（5 分支）
+if (type === "terminal") { counter++; id = `terminal-${counter}`; }
+else if (type === "workspace" && name) { id = `workspace-${name}`; }
+// ...
+
+// After（表驱动）
+base.id = getMeta(type).generateId(opts);
+```
+
+**文件：**
+- [ ] `tabIdentity.ts` — `TabIdentityMeta` 加 `generateId`，每个内置类型填一行
+- [ ] `useTabManager.ts` — `createTabDefaults` 删 5 分支，改为调 `generateId`
+
+### P3：类型字符串 → 语义函数
+
+**核心思路：** 不把字符串集中到表，而是给比较起名字。
+
+| 位置 | 现在 | 归一为 | 方式 |
+|------|------|--------|------|
+| `MainContent.tsx` | `tab.type === "plugin-detail" \|\| "welcome"` | `isShellRenderedTab(tab)` | 语义函数 |
+| `App.tsx` `handleIconClick` | `pluginId === "marketplace"` | `isSidebarOnlyView(pluginId)` | 读 manifest |
+| `App.tsx` `handleFocusTab` | `tab.type !== "plugin-detail"` | `shouldKeepSidebarOnFocus(tab)` | 语义函数 |
+| `IconBar.tsx` | `BOTTOM_ICONS = ["settings"]` | 不变（已是语义化的） | 加注释 |
+| `viewRegistry.ts` | `BUILTIN_TAB_BEHAVIOR` | 删（合并到 P1） | — |
+
+**语义函数定义（放在 `tabIdentity.ts`）：**
+```typescript
+/** 壳自己渲染的标签页类型（不走插件路由）*/
+export function isShellRenderedTab(type: string): boolean {
+  return type === "plugin-detail" || type === "welcome";
+}
+
+/** 纯侧栏视图——点击图标 toggle 侧栏，不打开标签页 */
+export function isSidebarOnlyView(pluginId: string): boolean {
+  return pluginId === "marketplace"; // 未来可从 plugin.json sidebarOnly 声明读
+}
+
+/** 聚焦此标签页时是否保留当前侧栏 */  
+export function shouldKeepSidebarOnFocus(tab: Tab): boolean {
+  return tab.type === "plugin-detail";
+}
+```
+
+**文件：**
+- [ ] `tabIdentity.ts` — 加三个语义函数
+- [ ] `MainContent.tsx` — `tab.type === "..."` → `isShellRenderedTab()`
+- [ ] `App.tsx` — `pluginId === "marketplace"` → `isSidebarOnlyView()`、`tab.type !== "plugin-detail"` → `shouldKeepSidebarOnFocus()`
+- [ ] `IconBar.tsx` — `BOTTOM_ICONS` 加注释（已是语义化，无需改动）
+
+### 改动范围总结
+
+| 文件 | P1 | P2 | P3 |
+|------|:--:|:--:|:--:|
+| `tabIdentity.ts` | ✅ | ✅ | ✅ |
+| `viewRegistry.ts` | ✅ | | |
+| `useTabManager.ts` | | ✅ | |
+| `MainContent.tsx` | | | ✅ |
+| `App.tsx` | | | ✅ |
+| `IconBar.tsx` | | | ✅（仅注释）|
+
+### 预期效果
+
+- 新增标签页类型 = `TAB_IDENTITY` 加一行（含 `generateId`、`singleton`、`isFallback`）
+- 字符串硬编码全部消失——每个比较都有函数名解释为什么
+- AI 读到 `isShellRenderedTab(tab)` 不需要问"为什么这两个 type 特殊"——函数名就是答案
+- `BOTTOM_ICONS` 加注释说明这是对标 VS Code Manage 齿轮的布局规则
+
+---
+
 ## Phase 4.2 追加 Bug（B42-B46）
 
 ### B42：PluginDetailView hooks 顺序不一致 → 白屏

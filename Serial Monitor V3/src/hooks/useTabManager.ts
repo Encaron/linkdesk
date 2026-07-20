@@ -19,7 +19,7 @@ import {
 } from "./splitTree";
 import type { CreateTabOptions } from "../core/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
-import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId } from "./tabIdentity";
+import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
 
 /* ── 类型 ── */
 
@@ -74,11 +74,8 @@ export function findGroup(state: TabState, tabId: string): TabGroup | undefined 
 
 /* ── 默认值工厂 ── */
 
-let _terminalCounter = 0;
-
-export function resetTerminalCounter(n = 0): void {
-  _terminalCounter = n;
-}
+/** 重新导出 tabIdentity 的 resetTerminalCounter（测试兼容） */
+export { resetTerminalCounter as resetTerminalCounter } from "./tabIdentity";
 
 /** type 可能是内置 TabType 或自定义 pluginId——创建 Tab 时统一对待 */
 export function createTabDefaults(
@@ -96,7 +93,7 @@ export function createTabDefaults(
     ?? getDefaultLabel(type, opts?.workspaceName, opts?.filePath, isDetail ? detailPluginId : undefined);
 
   const base: Tab = {
-    id: "",
+    id: getMeta(type).generateId(opts),
     type: type as TabType,
     label,
     workspaceName: opts?.workspaceName,
@@ -107,21 +104,6 @@ export function createTabDefaults(
     sourceId: opts?.sourceId,
     pinned: opts?.pinned ?? false,  // VS Code: 新标签页默认预览模式
   };
-
-  if (type === "terminal") {
-    _terminalCounter++;
-    base.id = `terminal-${_terminalCounter}`;
-  } else if (type === "welcome") {
-    base.id = "welcome";
-  } else if (type === "workspace" && base.workspaceName) {
-    base.id = `workspace-${base.workspaceName}`;
-  } else if (type === "editor" && base.filePath) {
-    base.id = `editor-${base.filePath.replace(/[^a-zA-Z0-9]/g, "_")}`;
-  } else if (type === "plugin-detail") {
-    base.id = `plugin-detail-${detailPluginId ?? Date.now()}`;
-  } else {
-    base.id = type;
-  }
 
   // sourceId 默认 = tab.id——跨组移动时组件用此 ID 恢复状态
   if (!base.sourceId) base.sourceId = base.id;

@@ -5,6 +5,7 @@
  */
 
 import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types";
+import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 
 const registry = new Map<string, ViewPluginEntry>();
 
@@ -49,17 +50,11 @@ export function getViewPlugins(): ViewPluginEntry[] {
   return Array.from(registry.values());
 }
 
-/** 内置类型的 tabBehavior——欢迎页/设置不是插件，核心自带其行为定义 */
-const BUILTIN_TAB_BEHAVIOR: Record<string, TabBehavior> = {
-  welcome: { isFallback: true },
-  settings: { singleton: true },
-};
-
-/** 获取标签页行为声明——先查 viewRegistry，再查内置 fallback */
+/** 获取标签页行为声明——plugin.json 声明覆盖内置规则 */
 export function getTabBehavior(pluginId: string): TabBehavior {
-  return registry.get(pluginId)?.manifest?.tabBehavior
-    ?? BUILTIN_TAB_BEHAVIOR[pluginId]
-    ?? {};
+  const pluginDeclaration = registry.get(pluginId)?.manifest?.tabBehavior ?? {};
+  const builtin = getBuiltinTabBehavior(pluginId);
+  return { ...builtin, ...pluginDeclaration };
 }
 
 /** 获取所有插件的状态栏贡献（按加载顺序，已去重） */

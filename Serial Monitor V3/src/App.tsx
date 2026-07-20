@@ -14,6 +14,7 @@ import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
+import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -197,20 +198,20 @@ function App() {
   const handleFocusTab = useCallback((tabId: string) => {
     const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
     const tab = group?.tabs.find((t) => t.id === tabId);
-    // 只有 plugin-detail 不自动切换侧栏（它展示的是被查看插件的侧栏，不是自己的）
-    if (tab && tab.type !== "plugin-detail") {
+    // shouldKeepSidebarOnFocus：plugin-detail 保留侧栏（展示的是被查看插件的侧栏）
+    if (tab && !shouldKeepSidebarOnFocus(tab)) {
       setSidebarView(null);
     }
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // Phase 4.4：图标栏点击。
-  // - 插件市场：纯侧栏 toggle（对标 VS Code Extensions 图标）——不打开标签页
-  // - 其余插件：打开/聚焦标签页 + 显示对应侧栏
+  // Phase 4.6：图标栏点击。
+  // - isSidebarOnlyView：纯侧栏 toggle（对标 VS Code Extensions 图标）
+  // - 其余：打开/聚焦标签页 + 显示对应侧栏
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      if (pluginId === "marketplace") {
-        setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
+      if (isSidebarOnlyView(pluginId)) {
+        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
       } else {
         setSidebarView(pluginId);
         openOrFocusTab(pluginId);
