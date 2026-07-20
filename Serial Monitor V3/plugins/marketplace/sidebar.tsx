@@ -4,7 +4,7 @@
  *   header（搜索）→ extension list（icon + name/version/desc + actions）
  */
 
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
 import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "../../src/pluginLoader/loader";
@@ -23,9 +23,16 @@ function MarketplaceSidebar() {
   const [uninstalledPlugins, setUninstalledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
 
   // 异步获取已卸载的插件（.disabled/ 目录）
-  useState(() => {
+  // 挂载时加载 + 监听 plugin-removed 事件刷新（卸载操作后立即更新"待安装"列表）
+  useEffect(() => {
     getUninstalledPluginInfo().then(setUninstalledPlugins);
-  });
+
+    const onPluginRemoved = () => {
+      getUninstalledPluginInfo().then(setUninstalledPlugins);
+    };
+    window.addEventListener("plugin-removed", onPluginRemoved);
+    return () => window.removeEventListener("plugin-removed", onPluginRemoved);
+  }, []);
 
   const filtered = allPlugins.filter((p) => {
     if (!search) return true;

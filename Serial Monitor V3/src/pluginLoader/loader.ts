@@ -606,22 +606,20 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   try {
     await invoke("reinstall_plugin", { pluginId });
 
-    // 尝试热加载——theme/language 即时生效，view 自动重载
+    // 尝试热加载：重装的插件在构建时已在 glob 中，直接 loadPlugin 即可
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if (manifest.themes || manifest.languages || (!manifest.entry && manifest.file)) {
-        await loadPlugin(pluginId);
-        pushToast({ message: `已安装：${manifest.name}（即时生效）`, ttl: 5000 });
-        return { success: true };
-      }
-      // view 插件——自动重载
-      pushToast({ message: `已安装：${manifest.name}。即将重载...`, ttl: 3000 });
-    } else {
-      pushToast({ message: `已安装：${pluginId}。即将重载...`, ttl: 3000 });
+      // theme/language/json 即时生效，view 也直接 loadPlugin（glob 条目在构建时已存在，无需 reload）
+      await loadPlugin(pluginId);
+      const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
+      pushToast({ message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`, ttl: 5000 });
+      return { success: true };
     }
+    // manifest 不在 glob 中（外部安装的新插件）——view 插件需重载让 Vite 重新扫描
+    pushToast({ message: `已安装：${pluginId}。即将重载...`, ttl: 3000 });
     try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
     setTimeout(() => window.location.reload(), 1500);
     return { success: true };
