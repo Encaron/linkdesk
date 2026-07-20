@@ -410,8 +410,10 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
     pushToast({
       message: `已禁用：${entry.manifest.name}`,
-      actions: [{ label: "撤销", onClick: () => enablePlugin(pluginId) }],
-      ttl: 6000,
+      source: pluginId,
+      severity: "info",
+      actions: [{ label: "撤销", isPrimary: true, onClick: () => enablePlugin(pluginId) }],
+      ttl: 8000,
     });
     console.log(`[pluginLoader] 🔒 已禁用 "${pluginId}"`);
     return { success: true };
@@ -443,22 +445,16 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
-        // .json 插件即时生效
-        await loadPlugin(pluginId);
-        pushToast({
-          message: `已启用：${manifest.name}`,
-          ttl: 4000,
-        });
-        console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
-        return { success: true };
-      }
-      // 视图插件——自动重载
-      pushToast({ message: `已启用：${manifest.name}。即将重载...`, ttl: 3000 });
-      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
-      setTimeout(() => window.location.reload(), 1500);
+      // 清单在 glob 中 → 直接 loadPlugin（theme/language/view 都可以，glob 条目构建时已存在）
+      await loadPlugin(pluginId);
+      pushToast({
+        message: `已启用：${manifest.name}`,
+        source: pluginId,
+        severity: "info",
+        ttl: 5000,
+      });
       console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
-      return { success: true, needRestart: true };
+      return { success: true };
     }
 
     return { success: true, needRestart: true };
@@ -492,7 +488,12 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
     pushToast({
       message: `已卸载：${entry.manifest.name}`,
-      ttl: 5000,
+      source: pluginId,
+      severity: "info",
+      ttl: 8000,
+      actions: [
+        { label: "撤销", isPrimary: true, onClick: () => reinstallPlugin(pluginId) },
+      ],
     });
     console.log(`[pluginLoader] 🗑 已卸载 "${pluginId}"`);
     return { success: true };
@@ -516,27 +517,28 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
 
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
-        await loadPlugin(pluginId);
-        pushToast({
-          message: `已安装：${manifest.name}（即时生效）`,
-          ttl: 5000,
-        });
-        return { success: true, pluginId };
-      }
+      // 清单在 glob 中 → 直接 loadPlugin 即时生效
+      await loadPlugin(pluginId);
+      const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
+      pushToast({
+        message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
+        source: pluginId,
+        severity: "info",
+        ttl: 6000,
+      });
+      return { success: true, pluginId };
     }
-
-    // 视图插件——自动重载以触发 Vite 重新扫描 import.meta.glob
+    // 清单不在 glob 中（外部新装的插件）——需要重启，对标 VS Code "重载窗口"
     pushToast({
-      message: `已安装：${pluginId}。即将重载...`,
-      ttl: 3000,
+      message: `已安装：${pluginId}。重启后生效。`,
+      source: pluginId,
+      severity: "info",
+      ttl: 0,
+      actions: [
+        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+      ],
     });
-    // 持久化 prefs 以防重载丢失
-    try {
-      const prefs = PreferenceService.loadPrefs();
-      await PreferenceService.savePrefs(prefs);
-    } catch { /* 静默 */ }
-    setTimeout(() => window.location.reload(), 1500);
+    try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
     return { success: true, pluginId, needRestart: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -615,13 +617,25 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
       // theme/language/json 即时生效，view 也直接 loadPlugin（glob 条目在构建时已存在，无需 reload）
       await loadPlugin(pluginId);
       const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
-      pushToast({ message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`, ttl: 5000 });
+      pushToast({
+        message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
+        source: pluginId,
+        severity: "info",
+        ttl: 6000,
+      });
       return { success: true };
     }
-    // manifest 不在 glob 中（外部安装的新插件）——view 插件需重载让 Vite 重新扫描
-    pushToast({ message: `已安装：${pluginId}。即将重载...`, ttl: 3000 });
+    // manifest 不在 glob 中——需要重启，对标 VS Code "重载窗口"
+    pushToast({
+      message: `已安装：${pluginId}。重启后生效。`,
+      source: pluginId,
+      severity: "info",
+      ttl: 0,
+      actions: [
+        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+      ],
+    });
     try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
-    setTimeout(() => window.location.reload(), 1500);
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };

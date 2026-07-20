@@ -1,23 +1,38 @@
 /**
  * Toast 通知队列。
- * Phase 4 Step 4：插件安装/更新/语言变化时触发。
- * 对标 VS Code 右下角通知——堆叠显示（最多 3 条），自动消失。
+ * Phase 4 对标 VS Code Notifications 系统。
+ * 读源码依据：notificationsToasts.css / notificationsList.css / notificationsViewer.ts
  *
- * 设计依据：[V3-插件系统与UI重构设计.md §3.5]
+ * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
  */
+
+/** 对标 VS Code Severity */
+export type ToastSeverity = "info" | "warning" | "error";
+
+export interface ToastAction {
+  label: string;
+  /** true → 主按钮（accent 色），false/未设 → 次级文本按钮 */
+  isPrimary?: boolean;
+  onClick: () => void;
+}
 
 export interface Toast {
   id: string;
   message: string;
-  actions?: { label: string; onClick: () => void }[];
-  /** 自动消失时间（ms），默认 5000，0 = 不自动消失 */
+  severity?: ToastSeverity;
+  /** 来源（插件名等），显示在详情行 */
+  source?: string;
+  /** 图标：codicon 类名 或 'info'/'warning'/'error' 映射到默认图标 */
+  icon?: string;
+  actions?: ToastAction[];
+  /** 自动消失时间（ms），默认 6000，0 = 不自动消失 */
   ttl?: number;
 }
 
 type ToastListener = (toasts: Toast[]) => void;
 
-const MAX_VISIBLE = 3;
-const DEFAULT_TTL = 5000;
+/** 对标 VS Code：无数量上限，通知自然堆叠 */
+const DEFAULT_TTL = 6000;
 
 let _toasts: Toast[] = [];
 let _listeners: Set<ToastListener> = new Set();
@@ -29,15 +44,12 @@ function notify(): void {
   }
 }
 
-/** 推送 toast——最多 3 条可见，超出自动移除最早的 */
+/** 推送 toast。对标 VS Code `INotificationService.notify()` */
 export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   const id = toast.id ?? `toast-${++_counter}`;
   const t: Toast = { ...toast, id, ttl: toast.ttl ?? DEFAULT_TTL };
 
   _toasts.push(t);
-  while (_toasts.length > MAX_VISIBLE) {
-    _toasts.shift();
-  }
 
   // 自动消失
   if (t.ttl && t.ttl > 0) {
@@ -56,7 +68,7 @@ export function dismissToast(id: string): void {
   notify();
 }
 
-/** 获取当前 toast 列表 */
+/** 获取当前所有 toast */
 export function getToasts(): Toast[] {
   return [..._toasts];
 }
@@ -67,4 +79,9 @@ export function subscribeToasts(fn: ToastListener): () => void {
   return () => {
     _listeners.delete(fn);
   };
+}
+
+/** 未读计数（目前 = 总数，对标 VS Code 铃铛数字） */
+export function getUnreadCount(): number {
+  return _toasts.length;
 }
