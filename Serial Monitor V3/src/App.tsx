@@ -18,7 +18,7 @@ import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue } from "./core/ConfigurationService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
-import { initLayoutService, getTabLayout } from "./core/LayoutService";
+import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
@@ -156,13 +156,11 @@ function App() {
         setPortName(prefs.lastPort || "COM3");
       }
 
-      // Phase 5：布局恢复——LayoutService 优先，prefs.layout 兜底（双读过渡）
+      // Phase 5：布局恢复——LayoutService 优先
       try {
         const savedLayout = getTabLayout();
         if (savedLayout?.groups?.length > 0) {
           restoreLayout(savedLayout);
-        } else if (prefs?.layout?.groups) {
-          restoreLayout(prefs.layout);
         }
       } catch { /* 布局恢复失败不影响启动 */ }
 
@@ -415,61 +413,37 @@ function App() {
     }
   }, [isOpen]);
 
-  // Phase 5: 布局持久化——走 LayoutService（替代 PreferenceService）
+  // Phase 5: 布局持久化——走 LayoutService（layout.json），await 确保落盘
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
 
-  // Phase 3 v4 → Phase 5: 布局持久化走 LayoutService
   useEffect(() => {
     if (!layoutInitialized.current) {
       layoutInitialized.current = true;
       return;
     }
 
-    const saveLayout = () => {
-      import("./core/LayoutService").then(({ saveTabLayout }) => {
-        saveTabLayout({
-          groups: tabState.groups.map((g) => ({
-            id: g.id,
-            tabs: g.tabs.map((t) => ({
-              id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-              workspaceName: t.workspaceName, filePath: t.filePath,
-              pluginId: t.pluginId,
-              detailPluginId: t.detailPluginId,
-              sourceId: t.sourceId,
-              pinned: t.pinned,
-            })),
-            activeTabId: g.activeTabId,
+    const doSave = () => {
+      saveTabLayout({
+        groups: tabState.groups.map((g) => ({
+          id: g.id,
+          tabs: g.tabs.map((t) => ({
+            id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+            workspaceName: t.workspaceName, filePath: t.filePath,
+            pluginId: t.pluginId,
+            detailPluginId: t.detailPluginId,
+            sourceId: t.sourceId,
+            pinned: t.pinned,
           })),
-          activeGroupId: tabState.activeGroupId,
-          root: tabState.root,
-        });
+          activeTabId: g.activeTabId,
+        })),
+        activeGroupId: tabState.activeGroupId,
+        root: tabState.root,
       }).catch(() => {});
-      // Phase 5 双写过渡：同时写 PreferenceService（prefs.json）——删旧路径前保留
-      try {
-        const prefs = PreferenceService.loadPrefs();
-        prefs.layout = {
-          groups: tabState.groups.map((g) => ({
-            id: g.id,
-            tabs: g.tabs.map((t) => ({
-              id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-              workspaceName: t.workspaceName, filePath: t.filePath,
-              pluginId: t.pluginId,
-              detailPluginId: t.detailPluginId,
-              sourceId: t.sourceId,
-              pinned: t.pinned,
-            })),
-            activeTabId: g.activeTabId,
-          })),
-          activeGroupId: tabState.activeGroupId,
-          root: tabState.root,
-        };
-        PreferenceService.savePrefs(prefs).catch(() => {});
-      } catch { /* 静默 */ }
     };
 
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
-    layoutSaveTimer.current = setTimeout(saveLayout, 500);
+    layoutSaveTimer.current = setTimeout(doSave, 500);
     return () => {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };

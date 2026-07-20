@@ -56,10 +56,9 @@ async function layoutPath(): Promise<string> {
   return _layoutPath || "layout.json";
 }
 
-/** 初始化——App 启动时调一次 */
+/** 初始化——App 启动时调一次。Tauri 模式优先读 layout.json，不存在或损坏则读 localStorage 兜底 */
 export async function initLayoutService(): Promise<void> {
   if (!(await ensureTauri())) {
-    // 浏览器模式——localStorage
     try {
       const raw = localStorage.getItem("v3_layout");
       if (raw) _layoutCache = JSON.parse(raw);
@@ -67,13 +66,21 @@ export async function initLayoutService(): Promise<void> {
     return;
   }
 
+  // Tauri 模式：优先读文件
   try {
     const path = await layoutPath();
     if (await fsApi!.exists(path)) {
       const raw = await fsApi!.readTextFile(path);
       _layoutCache = JSON.parse(raw);
+      return;
     }
-  } catch { /* 文件不存在或损坏，用默认空布局 */ }
+  } catch { /* 文件不存在或损坏 */ }
+
+  // 文件不可用 → localStorage 兜底（Tauri 异步写盘未完成的竞态窗口）
+  try {
+    const raw = localStorage.getItem("v3_layout");
+    if (raw) _layoutCache = JSON.parse(raw);
+  } catch { /* ignore */ }
 }
 
 /** 读取标签页布局 */
