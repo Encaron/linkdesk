@@ -34,10 +34,18 @@ const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandI
 
 /* ── 注册 / 注销 ── */
 
-/** 注册命令。Phase 5 盲区 9（P1）：命令 ID 即插件公共 API——跨插件调用走 execute()。 */
+/**
+ * 注册命令。Phase 5 盲区 9（P1）：命令 ID 即插件公共 API——跨插件调用走 execute()。
+ *
+ * Phase 5d 关键设计：loader 先注册元数据（title/category/when），组件 mount 时重注册 handler。
+ * 重注册时只替换 handler——不覆盖元数据。对标 VS Code：package.json 是元数据源头，
+ * 运行时 extension activate 只提供实现。
+ */
 export function registerCommand(pluginId: string, command: Command): void {
   if (_commands.has(command.id)) {
-    console.warn(`[CommandRegistry] 命令 "${command.id}" 重复注册——覆盖旧处理器`);
+    // 组件 mount 时重注册——只更新 handler，保留 loader 注册的元数据
+    _commands.get(command.id)!.handler = command.handler;
+    return;
   }
   _commands.set(command.id, command);
 

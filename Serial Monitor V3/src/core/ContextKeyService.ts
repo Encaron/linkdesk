@@ -267,8 +267,10 @@ class WhenParser {
               this.readNext(); // 跳过逗号 → this.current = 下一个值
               values.push(this.parseLiteral()); // 消费值 → this.current = COMMA 或 RBRACKET
             }
-            if (this.current.type !== "RBRACKET") {
-              throw new Error(`Expected RBRACKET or COMMA, got ${this.current.type}`);
+            // TS narrows RBRACKET out of this.current.type after the while loop——
+            // 用 String() 绕过。语义等价：this.current.type !== "RBRACKET"
+            if (String(this.current.type) !== "RBRACKET") {
+              throw new Error(`Expected RBRACKET or COMMA, got ${String(this.current.type)}`);
             }
             this.advance(); // 消费 ']' → this.current = 下一个 token
             return { type: "in", key, values };
