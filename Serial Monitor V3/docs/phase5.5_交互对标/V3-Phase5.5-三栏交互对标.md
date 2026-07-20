@@ -106,7 +106,7 @@ VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签
 | `tabPrimary` | 打开/聚焦标签页 | ✅ 辅助面板（可选）| ✅ 主要渲染位置 | Terminal（但 VS Code 终端是底部面板，LinkDesk 是标签页） |
 | `tabOnly` | 打开/聚焦标签页 | ❌ 不切换侧栏 | ✅ 唯一渲染位置 | Settings Editor |
 
-**默认值：** `"tabPrimary"`——兼容所有未声明 `viewRole` 的旧插件，行为不变。
+**默认值：** `"sidebarPrimary"`——对标 VS Code：图标=侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。终端是唯一例外——显式声明 `tabPrimary`。
 
 ### 3.2 plugin.json 声明
 
@@ -158,7 +158,7 @@ interface ViewPluginEntry {
   // ... 现有字段
   viewRole: 'sidebarPrimary' | 'tabPrimary' | 'tabOnly';
 }
-// register 时读 manifest.viewRole ?? 'tabPrimary'
+// register 时读 manifest.viewRole ?? 'sidebarPrimary'  // 默认 VS Code 模型
 ```
 
 **3. App.tsx — handleIconClick（~20 行，替换旧逻辑）：**
@@ -166,7 +166,7 @@ interface ViewPluginEntry {
 const handleIconClick = useCallback(
   (pluginId: string) => {
     const plugin = getViewPlugin(pluginId);
-    const role = plugin?.viewRole ?? 'tabPrimary'; // 未声明 → tabPrimary，向后兼容
+    const role = plugin?.viewRole ?? 'sidebarPrimary'; // 默认 VS Code 模型
 
     switch (role) {
       case 'sidebarPrimary':
