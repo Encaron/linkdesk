@@ -6,9 +6,10 @@
  * V3 中插件通过此 context 获取标签页操作能力。
  */
 import { createContext, useContext } from "react";
+import type { CreateTabOptions } from "./types";
 
 export interface TabActions {
-  createTab: (type: string, opts?: Record<string, unknown>) => string;
+  createTab: (type: string, opts?: CreateTabOptions) => string;
   openOrFocusTab: (type: string) => string | null;
 }
 

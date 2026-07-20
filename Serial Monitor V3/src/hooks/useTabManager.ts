@@ -18,7 +18,7 @@ import {
   migrateLayout,
   updateBranchSizesByIndex,
 } from "./splitTree";
-import { LEGACY_TYPE_TO_PLUGIN_ID } from "../core/types";
+import { LEGACY_TYPE_TO_PLUGIN_ID, type CreateTabOptions } from "../core/types";
 import { getTabBehavior, findFallbackPlugin, getViewPlugin } from "../pluginLoader/viewRegistry";
 
 /* ── 类型 ── */
@@ -83,26 +83,29 @@ export function resetTerminalCounter(n = 0): void {
 /** type 可能是内置 TabType 或自定义 pluginId——创建 Tab 时统一对待 */
 export function createTabDefaults(
   type: string,
-  overrides?: Partial<Tab>
+  opts?: CreateTabOptions
 ): Tab {
   // plugin-detail 特殊处理：pluginId 不设（避免污染 IconBar 高亮），用 detailPluginId
   const isDetail = type === "plugin-detail";
-  const detailPluginId = overrides?.detailPluginId ?? overrides?.pluginId;
+  const detailPluginId = opts?.detailPluginId ?? opts?.pluginId;
   const pluginId = isDetail
     ? undefined
-    : (overrides?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type);
+    : (opts?.pluginId ?? LEGACY_TYPE_TO_PLUGIN_ID[type] ?? type);
+
+  const label = opts?.label
+    ?? getDefaultLabel(type, opts?.workspaceName, opts?.filePath, isDetail ? detailPluginId : undefined);
 
   const base: Tab = {
     id: "",
     type: type as TabType,
-    label: getDefaultLabel(type, overrides?.workspaceName, overrides?.filePath, detailPluginId),
-    workspaceName: overrides?.workspaceName,
-    filePath: overrides?.filePath,
+    label,
+    workspaceName: opts?.workspaceName,
+    filePath: opts?.filePath,
     dirty: false,
     pluginId,
-    detailPluginId: isDetail ? detailPluginId : overrides?.detailPluginId,
-    sourceId: overrides?.sourceId,
-    pinned: overrides?.pinned ?? false,  // VS Code: 新标签页默认预览模式
+    detailPluginId: isDetail ? detailPluginId : opts?.detailPluginId,
+    sourceId: opts?.sourceId,
+    pinned: opts?.pinned ?? false,  // VS Code: 新标签页默认预览模式
   };
 
   if (type === "terminal") {
@@ -123,8 +126,7 @@ export function createTabDefaults(
   // sourceId 默认 = tab.id——跨组移动时组件用此 ID 恢复状态
   if (!base.sourceId) base.sourceId = base.id;
 
-  // pluginId 不允许 overrides 覆盖——由 createTabDefaults 根据 type 和 isDetail 决定
-  return { ...base, ...overrides, id: base.id, pluginId: base.pluginId };
+  return base;
 }
 
 /** 标签名——内置类型走 i18n，自定义插件从 viewRegistry 拿名称 */
@@ -216,7 +218,7 @@ export interface CreateTabResult {
 export function reduceCreateTab(
   prev: TabState,
   type: string,
-  opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string; pinned?: boolean }
+  opts?: CreateTabOptions
 ): CreateTabResult {
   const all = allTabs(prev);
 
@@ -279,13 +281,7 @@ export function reduceCreateTab(
     };
   }
 
-  const overrides: Partial<Tab> = {};
-  if (opts?.workspaceName) overrides.workspaceName = opts.workspaceName;
-  if (opts?.filePath) overrides.filePath = opts.filePath;
-  if (opts?.label) overrides.label = opts.label;
-  if (opts?.pluginId) overrides.pluginId = opts.pluginId;
-  if (opts?.pinned !== undefined) overrides.pinned = opts.pinned;
-  const newTab = createTabDefaults(type, overrides);
+  const newTab = createTabDefaults(type, opts);
 
   const targetGroupId = opts?.targetGroupId ?? prev.activeGroupId;
   const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
@@ -806,7 +802,7 @@ export function useTabManager() {
   }
 
   const createTab = useCallback(
-    (type: string, opts?: { workspaceName?: string; filePath?: string; label?: string; targetGroupId?: string; pluginId?: string; pinned?: boolean }): string => {
+    (type: string, opts?: CreateTabOptions): string => {
       let createdId = "";
       setTabState((prev) => {
         const r = reduceCreateTab(prev, type, opts);

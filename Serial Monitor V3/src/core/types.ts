@@ -80,6 +80,30 @@ export interface ViewPluginEntry {
 /* ── Tab 类型扩展（Phase 4） ── */
 
 /**
+ * createTab 的可选参数。
+ * VS Code 对标：打开编辑器时的 options（viewColumn / preview / label 等）。
+ * 注意：这不是 Partial<Tab>——只暴露有意外露的字段，防止调用方覆盖内部状态。
+ */
+export interface CreateTabOptions {
+  /** 插件 ID（view 类型时指定哪个插件渲染） */
+  pluginId?: string;
+  /** plugin-detail 标签页的目标插件 ID */
+  detailPluginId?: string;
+  /** 工作台名称（workspace 类型时使用） */
+  workspaceName?: string;
+  /** 文件路径（editor 类型时使用） */
+  filePath?: string;
+  /** 自定义标签名 */
+  label?: string;
+  /** 是否固定（false=预览模式，对标 VS Code preview editor） */
+  pinned?: boolean;
+  /** 数据源 ID */
+  sourceId?: string;
+  /** 目标面板组 ID（分屏时指定落在哪个面板） */
+  targetGroupId?: string;
+}
+
+/**
  * Tab.type 保留为逻辑角色（terminal / workspace / settings / welcome）。
  * 新增 pluginId 指定哪个插件实现该角色——渲染走 pluginId，规则走 type。
  * Phase 4 过渡期：旧布局恢复时自动补 pluginId。

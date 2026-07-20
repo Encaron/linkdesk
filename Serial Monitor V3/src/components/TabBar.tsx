@@ -42,7 +42,7 @@ interface TabBarProps {
   isActiveGroup: boolean;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: string, opts?: any) => string;
+  onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => string;
   onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
@@ -68,7 +68,7 @@ function PlusMenu({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTab: (type: string, workspaceName?: string) => void;
+  onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const { t } = useTranslation();
