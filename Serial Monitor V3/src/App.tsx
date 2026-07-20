@@ -469,9 +469,6 @@ function App() {
           />
         </div>
       </div>
-      </TerminalPrefsContext.Provider>
-      </SerialContext.Provider>
-      </TabActionsContext.Provider>
       <StatusBar
         error={lastError}
         theme={theme}
@@ -480,6 +477,9 @@ function App() {
         onToggleLang={handleToggleLang}
       />
       <ToastContainer />
+      </TerminalPrefsContext.Provider>
+      </SerialContext.Provider>
+      </TabActionsContext.Provider>
     </div>
   );
 }
