@@ -537,8 +537,8 @@ function App() {
         return;
       }
     };
-    window.addEventListener("keydown", onGlobalKeyDown);
-    return () => window.removeEventListener("keydown", onGlobalKeyDown);
+    window.addEventListener("keydown", onGlobalKeyDown, true); // capture phase——在编辑器之前拦截
+    return () => window.removeEventListener("keydown", onGlobalKeyDown, true);
   }, [createTab]);
 
   // Phase 3: 全局键盘快捷键（§10.5）——依赖 activeTab 的快捷键

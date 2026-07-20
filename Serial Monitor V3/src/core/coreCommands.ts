@@ -12,7 +12,6 @@
 
 import { registerCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
-import { registerKeybinding } from "./KeybindingRegistry";
 
 /* ── Callbacks ── */
 
@@ -160,10 +159,4 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, "app", items);
   }
 
-  // ── 注册全局快捷键 ──
-  registerKeybinding({
-    command: "workbench.action.showCommands",
-    key: "ctrl+shift+p",
-    source: "builtin",
-  });
 }
