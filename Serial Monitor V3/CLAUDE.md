@@ -37,6 +37,12 @@ Phase 1-5d ✅ 完成 → **Phase 5e 🔜 协议下拉框 + 终端设置迁移**
 
 > Phase 5 拆分为 5a-5g 七批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
 
+## 提交前自检
+
+**🔥 机械操作，不是建议。** `npx tsc --noEmit` 零错误 + `npx vitest run` 全过 + `git diff --stat` 确认无调试日志残留。
+
+详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
+
 ## 硬约束（绝对不能违反）
 
 1. **所有颜色走 CSS 变量 `var(--xxx)`**，禁止硬编码 hex
