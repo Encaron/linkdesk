@@ -14,7 +14,7 @@
 
 ## 当前阶段
 
-Phase 1-5d ✅ 完成 → **Phase 5e 🔜 协议下拉框 + 终端设置迁移**
+Phase 1-5e ✅ 完成 → **Phase 5f 🔜 StorageService + 删旧双写 + 终端专用通道拆除**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 分支：`phase5-app-infrastructure`
@@ -27,8 +27,8 @@ Phase 1-5d ✅ 完成 → **Phase 5e 🔜 协议下拉框 + 终端设置迁移**
 | **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件（backdrop + 四种失焦）| ✅ | ✅ |
 | **5c** | 命令面板 + 齿轮菜单走 Registry（替代硬编码） | ✅ | ✅ |
 | **5d** | context key + when 条件打通（4 核心 key 运行时更新 + 菜单/命令过滤 + plugin.json 声明 when + 31 个解析器测试） | ✅ | ✅ |
-| **5e** | 协议下拉框 + 终端12个设置项迁移到 Settings Editor | ✅ | 🔜 |
-| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ✅ | 📋 |
+| **5e** | 协议下拉框 + 终端 12 设置项迁移 + 接收编码/HEX 模式 + Settings Editor 中文标签 | ✅ | ✅ |
+| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ✅ | 🔜 |
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动 | ✅ | 📋 |
 | 5.5 | 三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明 + 侧栏改为控制面板 | ✅ | 📋 |
 | 6 | 文件树 + 主题插件化 + 语言插件化（纯消费者） | ❌ | 📋 |
