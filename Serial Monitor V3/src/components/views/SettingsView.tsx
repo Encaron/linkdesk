@@ -67,6 +67,9 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     return result;
   }, [version, t]);
 
+  // 所有 properties——必须在 filteredGroups 之前定义（搜索过滤引用 allProps）
+  const allProps = useMemo(() => getMergedSchema(), [version]);
+
   // 搜索过滤
   const filteredGroups = useMemo(() => {
     if (!search.trim()) return groups;
@@ -90,9 +93,6 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   // 默认选中第一个分组
   const activeGroup =
     filteredGroups.find((g) => g.pluginId === selectedGroup) ?? filteredGroups[0] ?? null;
-
-  // 所有 properties
-  const allProps = useMemo(() => getMergedSchema(), [version]);
 
   return (
     <div className="settings-editor">
