@@ -110,7 +110,9 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           className="settings-json-btn"
           title={t("打开设置 (JSON)")}
           onClick={() => {
-            // Phase 6 JSON 编辑器标签页——当前打开系统文件管理器
+            // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
+            // 当前占位——Phase 6 替换为 createTab("editor", {filePath: settings.json})
+            // 文档：docs/phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md §2.17
             import("../../core/ConfigurationService").then(({ getUserSettings }) => {
               const settings = getUserSettings();
               alert("settings.json 内容:\n\n" + JSON.stringify(settings, null, 2));
