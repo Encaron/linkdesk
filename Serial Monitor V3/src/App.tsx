@@ -171,7 +171,6 @@ function App() {
           "app.accentColor": {
             type: "string",
             default: "#0078d4",
-            enum: ["#0078d4", "#e74856", "#ff8c00", "#107c10", "#6b69d6", "#8764b8"],
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
           },
         },
