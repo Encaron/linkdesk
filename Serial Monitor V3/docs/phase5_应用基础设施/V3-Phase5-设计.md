@@ -1025,13 +1025,18 @@ Phase 8 — OLED（独立插件）
 - 验证：下拉框默认选中"方括号协议"。切换协议后解析方式变化。Settings Editor 打开 → 终端分组出现 → 12 个设置项可调。
 - 依赖：ProtocolRegistry + ConfigurationService + Settings Editor（5a 已建）。
 
-**5f — StorageService 归一化 + PreferenceService 删旧 + 全量回归：**
+**5f — 归一化清旧债 + 全量回归：**
+
+> Phase 5f 的任务都有一个共同模式：Phase 3-4 时期终端是唯一插件、通用基础设施尚未建立，
+> 不得不在 core 里写专用通道。Phase 5a-e 建好了通用设施，5f 统一清债。
+
 - 交付：
-  1. `StorageService`——统一的持久化原语（`read(key)` / `write(key, data)`）。底层封装 Tauri fs + localStorage 兜底 + `beforeunload` 同步写入。解决 ConfigurationService / LayoutService / PluginStateService / PreferenceService 四套代码各自实现文件 I/O 的重复劳动。
-  2. 四个服务改为调 `StorageService`，删除各自的 `ensureTauri()` + `readTextFile()` + `writeTextFile()` + `localStorage.setItem()` 自研逻辑。
-  3. 删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。
-- 为什么必须在 5f 做：Phase 5a 验证中持久化 bug 反复出现（快捷发送、图标排序、主题语言、标签栏布局——四轮，同一个模式：写了没读 / 读了没写 / 写A读B / 异步落盘 F5 竞态）。不是代码写得差——是四个服务各自实现 I/O，修一个学到的教训不会传播到另外三个。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。
-- 验证：`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局/图标排序全部保留。
+  1. **StorageService 归一化**——统一的持久化原语（`read(key)` / `write(key, data)`）。底层封装 Tauri fs + localStorage 兜底 + `beforeunload` 同步写入。解决 ConfigurationService / LayoutService / PluginStateService / PreferenceService 四套代码各自实现文件 I/O 的重复劳动。四个服务改为调 `StorageService`，删除各自的 `ensureTauri()` + `readTextFile()` + `writeTextFile()` + `localStorage.setItem()` 自研逻辑。
+  2. **PreferenceService 删旧**——删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。Phase 5a 引入 ConfigurationService 后一直双写，5a 设计时就规划了 5f 删旧路径。
+  3. **终端插件解耦**——`"terminal"` 作为 pluginId 硬编码在 4 处不该出现的位置：`TabType` 联合类型、`TAB_IDENTITY` 表、`TerminalPrefsContext`+`TerminalSidebar` 专用组件、`App.tsx` 直接写 `"terminal"` 做 setConfigurationValue / setPluginStateValue。根因同上——Phase 3 做标签页时还没有插件系统，Phase 4 终端是最早的插件但配置/状态通用设施还没建。5f 拆掉这些专用通道，为未来引入真终端（powershell/git bash）清出命名空间。
+  4. **全量回归**——`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局/图标排序全部保留。
+- 为什么都集中在 5f：持久化 bug 反复出现（快捷发送、图标排序、主题语言、标签栏布局——四轮，同一个模式：写了没读 / 读了没写 / 写A读B / 异步落盘 F5 竞态）。不是代码写得差——是四个服务各自实现 I/O，修一个学到的教训不会传播到另外三个。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。终端耦合同理——不是某处代码写坏了，是 Phase 3-4 缺乏通用设施，专用通道是当时唯一的可行方案。现在设施齐了，统一拆除。
+- 验证：`验证清单.md` 所有 checkbox 通过。F5 刷新后主题/语言/布局/图标排序全部保留。终端改名不影响任何功能。
 
 ### 9.3 批次依赖链
 
