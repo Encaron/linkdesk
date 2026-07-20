@@ -136,5 +136,7 @@
   "接收模式": "Receive mode",
   "接收区字符编码": "Receive character encoding",
   "发送模式": "Send mode",
-  "发送区字符编码": "Send character encoding"
+  "发送区字符编码": "Send character encoding",
+  "text": "Text",
+  "hex": "HEX"
 }

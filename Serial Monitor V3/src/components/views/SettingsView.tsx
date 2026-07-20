@@ -198,7 +198,7 @@ function SettingRow({
         <span className="settings-row-desc">{t(prop.description)}</span>
       </div>
       <div className="settings-row-control">
-        {renderControl(prop, currentValue, handleChange)}
+        {renderControl(prop, currentValue, handleChange, t)}
       </div>
     </div>
   );
@@ -208,7 +208,8 @@ function SettingRow({
 function renderControl(
   prop: ConfigurationProperty,
   value: unknown,
-  onChange: (v: unknown) => void
+  onChange: (v: unknown) => void,
+  t: (key: string) => string,
 ): React.ReactNode {
   const val = value ?? prop.default;
 
@@ -223,10 +224,15 @@ function renderControl(
 
     case "string":
       if (prop.enum && prop.enum.length > 0) {
+        // Phase 5e：enum 选项用 {value, label} 显示中文标签——对齐终端侧栏
+        const enumOptions = prop.enum.map((v) => ({
+          value: v,
+          label: t(v), // "text"→"文本", "hex"→"HEX", etc.
+        }));
         return (
           <Select
             value={String(val)}
-            options={prop.enum}
+            options={enumOptions}
             onChange={(v) => onChange(v)}
           />
         );
