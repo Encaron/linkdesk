@@ -5,6 +5,8 @@
 > Phase 5 建了 Settings Editor，终端侧栏的 12 个设置项可以迁走了。
 > Phase 5.5 做两件事：① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码；② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
 > 对标 VS Code：图标 = 侧栏入口，标签页是结果不是起点。
+>
+> **⚠️ 前置声明：当前处于 Phase 5a，Phase 5.5 尚未开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件可能完全重设计为符合 VS Code 交互模型的形态，届时唯一的 `tabPrimary` 例外也可能随之消失。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 硬件调试的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
 
 ---
 
