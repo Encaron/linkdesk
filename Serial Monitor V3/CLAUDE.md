@@ -14,9 +14,9 @@
 
 ## 当前阶段
 
-Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 卡片架构**
+Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 应用基础设施层**
 
-详见 `docs/phase4_插件系统/V3-Phase4-剩余工作.md`（39 commits，11 bugs 修复，VS Code UX 对标）
+详见 `docs/phase4_插件系统/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表）
 分支：`phase4-plugin-system`
 
 ## 硬约束（绝对不能违反）

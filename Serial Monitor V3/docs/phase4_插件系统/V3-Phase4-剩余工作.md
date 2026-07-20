@@ -112,6 +112,12 @@
 | PluginDetailView 按钮 | 卸载/禁用→可用 |
 | MarketplaceSidebar | "已禁用"分区 + 启用按钮 |
 
+## Phase 5 计划
+
+> 详见：[V3-Phase5-设计.md](V3-Phase5-设计.md)
+> Phase 5 = 应用基础设施层。命令系统 + 配置注册表 + 菜单系统 + 协议注册表。
+> 卡片/工作台延后到 Phase 6。
+
 ### Phase 4 最终剩余（全部推迟到后续 Phase）
 
 | 项目 | Phase | 原因 |
