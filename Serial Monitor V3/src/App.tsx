@@ -22,6 +22,25 @@ import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutSer
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
+
+/* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
+
+/** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
+function applyAccentColor(hexColor: string): void {
+  document.documentElement.style.setProperty("--accent", hexColor);
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  document.documentElement.style.setProperty(
+    "--accent-hover",
+    `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
+  );
+  document.documentElement.style.setProperty(
+    "--accent-light",
+    `rgba(${r},${g},${b},0.15)`
+  );
+}
 // Phase 5b：核心命令注册（右键菜单归一化）
 import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
@@ -178,6 +197,7 @@ function App() {
       // Phase 5：主题/语言优先读 ConfigurationService（Settings Editor 写的），fallback 旧 Prefs
       const cfgTheme = getConfigurationValue<string>("app.theme");
       const cfgLang = getConfigurationValue<string>("app.language");
+      const cfgAccent = getConfigurationValue<string>("app.accentColor");
       const initTheme = cfgTheme || prefs?.theme || "Dark";
       const initLang = cfgLang || prefs?.language || "zh";
 
@@ -187,6 +207,9 @@ function App() {
       setTheme(initTheme as "Dark" | "Light");
       setLang(initLang as "zh" | "en");
       i18n.changeLanguage(initLang);
+
+      // 强调色：从 ConfigurationService 读（三层合并），falback 到 CSS 默认 #0078d4
+      if (cfgAccent) applyAccentColor(cfgAccent);
 
       // Phase 5e：终端设置从 ConfigurationService 读取（替代旧 PreferenceService.preferences）
       // 逐个 key 读取以使用三层合并（Workspace > User > Default），fallback 旧 Prefs
@@ -311,19 +334,7 @@ function App() {
         i18n.changeLanguage(langVal);
       }
       if (key === "app.accentColor") {
-        document.documentElement.style.setProperty("--accent", value as string);
-        const hex = (value as string).replace("#", "");
-        const r = parseInt(hex.substring(0, 2), 16);
-        const g = parseInt(hex.substring(2, 4), 16);
-        const b = parseInt(hex.substring(4, 6), 16);
-        document.documentElement.style.setProperty(
-          "--accent-hover",
-          `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
-        );
-        document.documentElement.style.setProperty(
-          "--accent-light",
-          `rgba(${r},${g},${b},0.15)`
-        );
+        applyAccentColor(value as string);
       }
       // Phase 5e：terminal.* 配置变更 → 回写 terminalPrefs（Settings Editor → 终端方向）
       if (key.startsWith("terminal.")) {
