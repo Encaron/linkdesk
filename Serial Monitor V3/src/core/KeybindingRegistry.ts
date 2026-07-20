@@ -19,8 +19,13 @@
  *   - 带 when 条件，上下文敏感
  *   - 只在 App.tsx handler 未匹配时触发（它调用 stopImmediatePropagation）
  *
- * 两个 handler 都在 capture phase。App.tsx 先注册（render 阶段），
- * 本 Registry 后注册（startup useEffect 内）→ App.tsx 优先。
+ * 两个 handler 都在 capture phase。App.tsx 先注册（render 阶段 useEffect），
+ * 本 Registry 后注册（startup useEffect 内 mountGlobalKeybindings）→ App.tsx 优先。
+ *
+ * ⚠️ 顺序依赖：如果未来有工具/服务需要在 App.tsx 之前拦截所有按键，
+ * 它必须在 render 阶段注册（早于 App.tsx useEffect）。
+ * 不要依赖"恰好先注册"的隐性顺序——每个 handler 必须用 stopImmediatePropagation
+ * 显式声明"我处理了这个键，别人不要管"。
  * ═══════════════════════════════════════════════════════════════
  */
 

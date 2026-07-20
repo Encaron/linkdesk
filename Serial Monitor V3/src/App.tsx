@@ -525,11 +525,16 @@ function App() {
    * 壳级全局快捷键——capture phase 第一优先级。
    *
    * 职责：处理不依赖上下文、始终可用的快捷键。对标 VS Code 内置 keybindings。
-   * 注意：matched 时必须调用 e.stopImmediatePropagation()——阻止 KeybindingRegistry
+   *
+   * ⚠️ 注册顺序依赖：本 handler 必须在 KeybindingRegistry 之前注册，
+   * 否则 stopImmediatePropagation 无法阻止 Registry 重复触发。
+   * 当前顺序：App render → 此 useEffect → startup useEffect → mountGlobalKeybindings。
+   * 如果未来加"全局快捷键监控/调试工具"，它必须注册在此 handler 之前。
+   *
+   * matched 时必须调用 e.stopImmediatePropagation()——阻止 KeybindingRegistry
    * 的同级 capture handler 也触发，避免双重执行。
    *
-   * KeybindingRegistry 只处理插件声明的 contributes.keybindings（带 when 条件）。
-   * 分工：壳级 → 这里；插件级 → KeybindingRegistry。
+   * 分工：壳级 → 这里；插件级（带 when 条件）→ KeybindingRegistry。
    */
   useEffect(() => {
     const onGlobalKeyDown = (e: KeyboardEvent) => {
