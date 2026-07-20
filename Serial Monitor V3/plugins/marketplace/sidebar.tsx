@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, installPlugin, reinstallPlugin } from "../../src/pluginLoader/loader";
+import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "../../src/pluginLoader/loader";
 import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import type { ViewPluginEntry } from "../../src/core/types";
@@ -366,6 +366,8 @@ function ExtensionItem({
 }) {
   const m = plugin.manifest;
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [gearOpen, setGearOpen] = useState(false);
+  const gearRef = useRef<HTMLButtonElement>(null);
 
   // VS Code 风格：计时器区分单击/双击。300ms 内两次点击 = 双击（固定打开）
   const handleClick = () => {
@@ -381,8 +383,23 @@ function ExtensionItem({
     }
   };
 
+  // ⚙ 齿轮菜单——对标 VS Code ManageExtensionAction
+  const handleGear = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGearOpen(!gearOpen);
+  };
+
+  const handleGearAction = useCallback(async (action: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setGearOpen(false);
+    if (action === "disable") await disablePlugin(plugin.pluginId);
+    else if (action === "enable") await enablePlugin(plugin.pluginId);
+  }, [plugin.pluginId]);
+
+  const disabled = isPluginDisabled(plugin.pluginId);
+
   return (
-    <button className="ms-extension-item" onClick={handleClick}>
+    <div className="ms-extension-item" onClick={handleClick}>
       {/* icon: 从 manifest 动态读取 */}
       <div className="ms-item-icon">
         {(() => {
@@ -410,7 +427,32 @@ function ExtensionItem({
           )}
         </div>
       </div>
-    </button>
+
+      {/* ⚙ 齿轮 —— 对标 VS Code ManageExtensionAction */}
+      {!m.core && (
+        <div className="ms-item-gear-wrapper">
+          <button ref={gearRef} className="ms-item-gear-btn" onClick={handleGear} title="管理">
+            <span className="codicon codicon-gear" />
+          </button>
+          {gearOpen && (
+            <div className="ms-item-gear-menu">
+              {disabled ? (
+                <button className="ms-item-gear-item" onClick={(e) => handleGearAction("enable", e)}>
+                  <span className="codicon codicon-play" /> 启用
+                </button>
+              ) : (
+                <button className="ms-item-gear-item" onClick={(e) => handleGearAction("disable", e)}>
+                  <span className="codicon codicon-circle-slash" /> 禁用
+                </button>
+              )}
+              <button className="ms-item-gear-item" onClick={(e) => { e.stopPropagation(); setGearOpen(false); uninstallPlugin(plugin.pluginId); }}>
+                <span className="codicon codicon-trash" /> 卸载
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
   );
 }
 

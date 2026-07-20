@@ -154,6 +154,7 @@
   text-align: left;
   color: var(--text-primary);
   box-sizing: border-box;
+  position: relative;
 }
 
 .ms-extension-item:hover {
@@ -311,4 +312,70 @@
 
 .ms-extension-item.uninstalled:hover {
   opacity: 0.85;
+}
+
+/* ── ⚙ 齿轮菜单 —— 对标 VS Code ManageExtensionAction ── */
+
+.ms-item-gear-wrapper {
+  position: relative;
+  flex-shrink: 0;
+  align-self: center;
+}
+
+.ms-item-gear-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  font-size: 14px;
+  border-radius: 4px;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+
+.ms-extension-item:hover .ms-item-gear-btn {
+  opacity: 1;
+}
+
+.ms-item-gear-btn:hover {
+  color: var(--text-primary);
+  background: var(--tab-hover-bg);
+}
+
+.ms-item-gear-menu {
+  position: absolute;
+  right: 0;
+  top: 100%;
+  z-index: 100;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 120px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+}
+
+.ms-item-gear-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 4px 8px;
+  background: none;
+  border: none;
+  border-radius: 4px;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  text-align: left;
+}
+
+.ms-item-gear-item:hover {
+  background: var(--tab-hover-bg);
+}
+
+.ms-item-gear-item .codicon {
+  font-size: 14px;
 }
