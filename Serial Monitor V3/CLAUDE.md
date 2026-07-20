@@ -21,13 +21,20 @@ Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 应用基础设施层**
 
 ## Phase 路线
 
-| Phase | 内容 | 改框架？ |
-|:--:|------|:--:|
-| 5 | 命令/配置/菜单/协议 + context key + 快捷键 + scope（最后一个改框架的 Phase）| ✅ |
-| 5.5 | 三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明 + 侧栏改为控制面板 | ✅ |
-| 6 | 文件树 + 主题插件化 + 语言插件化（纯消费者） | ❌ |
-| 7 | 卡片工作台 + 数据管道（纯插件）| ❌ |
-| 8 | OLED（独立插件）| ❌ |
+| Phase | 内容 | 改框架？ | 状态 |
+|:--:|------|:--:|:--:|
+| **5a** | Registry 暗线（Command/Config/Menu/Protocol + ContextKey + Keybinding + CoreEvents + 11盲区）+ 迁移双写 + Settings Editor 骨架 | ✅ | ✅ |
+| **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件（backdrop + 三种失焦） | ✅ | 🔜 |
+| **5c** | 命令面板 + 齿轮菜单走 Registry（替代硬编码） | ✅ | 📋 |
+| **5d** | context key + when 条件打通（5个核心key → 菜单/命令过滤） | ✅ | 📋 |
+| **5e** | 协议下拉框 + 终端12个设置项迁移到 Settings Editor | ✅ | 📋 |
+| **5f** | PreferenceService 删旧路径 + 全量回归 | ✅ | 📋 |
+| 5.5 | 三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明 + 侧栏改为控制面板 | ✅ | 📋 |
+| 6 | 文件树 + 主题插件化 + 语言插件化（纯消费者） | ❌ | 📋 |
+| 7 | 卡片工作台 + 数据管道（纯插件）| ❌ | 📋 |
+| 8 | OLED（独立插件）| ❌ | 📋 |
+
+> Phase 5 拆分为 5a-5f 六批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
 
 ## 硬约束（绝对不能违反）
 

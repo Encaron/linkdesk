@@ -981,3 +981,80 @@ Phase 8 — OLED（独立插件）
 ```
 
 **Phase 5 之后零框架改动。** 文件树、卡片工作台、OLED——每个都是 `plugin.json` 声明 + Registry 注册。框架不再因为"新加了一个功能"而改一行代码。这就是 VS Code 0.9→1.0 的拐点。
+
+---
+
+## 九、实施批次——拆分 Phase 5 为 6 个小批次
+
+> 2026-07-20。Phase 5 体量过大（~1,800 行 + 四处 UI 改造 + 迁移 + 回归），一口气做完风险高——命令、配置、菜单、context key、快捷键每个都是 VS Code 花了好几个 milestone 打磨的子系统。拆成 6 个小批次，每批交一个可用软件。
+
+### 9.1 批次总览
+
+| 批次 | 内容 | 行数 | 风险 | 状态 |
+|:--:|------|:--:|:--:|:--:|
+| **5a** | Registry 暗线 + 迁移双写 + Settings Editor 骨架 | ~1,800 | 低 | ✅ 完成 |
+| **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件 | ~150 | 低 | 🔜 |
+| **5c** | 命令面板 + 齿轮菜单走 Registry | ~120 | 中 | 📋 |
+| **5d** | context key + when 条件打通 | ~80 | 中 | 📋 |
+| **5e** | 协议下拉框 + 终端设置迁移到 Settings Editor | ~80 | 低 | 📋 |
+| **5f** | PreferenceService 删旧路径 + 全量回归 | ~50 | 中 | 📋 |
+
+### 9.2 每批交付物 + 验证标准
+
+**5a — Registry 暗线（已完成 ✅）：**
+- 交付：14 个新 core 模块（CommandRegistry / ConfigurationRegistry + Service / MenuRegistry / ProtocolRegistry / CardRegistry / ContextKeyService / KeybindingRegistry / CoreEvents / DataDispatch / DialogService / LogChannel / LayoutService / PluginStateService / useConfiguration hook）
+- 验证：`npx tsc --noEmit` 零错误 + `npx vitest run` 109/109 全过 + `npx tauri dev` 窗口正常打开 + 终端收发正常。所有新代码双写（新旧路径并行），旧 Prefs 路径不删不改。
+
+**5b — 右键菜单归一化：**
+- 交付：`shared/ContextMenu.tsx` + `.css`——统一的 backdrop + 三种失焦（Escape + window.blur + scroll capture）+ MenuService 驱动内容。替换 TabBar / ReceiveContextMenu / terminal/index.tsx / 齿轮菜单 四处现有右键实现。
+- 验证：四处右键菜单外观一致、失焦行为一致、同时只能弹一个。菜单内容正确（不同位置不同菜单项）。
+- 依赖：MenuRegistry（5a 已建）。
+
+**5c — 命令面板 + 齿轮菜单走 Registry：**
+- 交付：CommandPalette 命令列表从 `CommandRegistry.getCommands()` 动态获取（替代硬编码数组）。齿轮菜单从 `MenuService.getMenuItems(MenuId.ExtensionGear, context)` 动态获取（替代硬编码"启用/禁用/卸载"）。
+- 验证：Ctrl+Shift+P → 终端命令出现。齿轮菜单内容由插件 contributes.menus 声明决定。
+- 依赖：CommandRegistry + MenuRegistry（5a 已建）。
+
+**5d — context key + when 条件打通：**
+- 交付：ContextKeyService 挂上 5 个核心 key（activeEditor / editorHasSelection / editorCount / portOpen / portName）。串口开关时更新 context key。菜单/命令的 when 条件过滤生效。
+- 验证：串口未打开 → 终端右键菜单"暂停"不出现。串口打开 → "暂停"出现。非终端标签页聚焦 → 终端专属菜单项不出现。
+- 依赖：5c（菜单走 Registry 后 when 才有消费端）。
+
+**5e — 协议下拉框 + 终端设置迁移：**
+- 交付：终端工具栏新增协议下拉框（ProtocolRegistry.list() 动态生成）。方括号解析器迁移到 ProtocolRegistry（内置 "bracket" 协议）。终端 plugin.json 的 12 个配置项通过 Settings Editor 自动渲染。
+- 验证：下拉框默认选中"方括号协议"。切换协议后解析方式变化。Settings Editor 打开 → 终端分组出现 → 12 个设置项可调。
+- 依赖：ProtocolRegistry + ConfigurationService + Settings Editor（5a 已建）。
+
+**5f — PreferenceService 删旧路径 + 全量回归：**
+- 交付：删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。完全走 ConfigurationService / LayoutService / PluginStateService。验证清单全量跑一遍。
+- 验证：`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。
+
+### 9.3 批次依赖链
+
+```
+5a（Registry 暗线）✅ ── 基础，所有后续批次依赖它
+  │
+  ├── 5b（右键归一化）── 独立，无其他批次依赖
+  │
+  ├── 5c（命令面板+齿轮）── 依赖 5a（CommandRegistry + MenuRegistry）
+  │     │
+  │     └── 5d（when 条件）── 依赖 5c（菜单走 Registry 后 when 才有消费端）
+  │
+  └── 5e（协议+设置迁移）── 依赖 5a（ProtocolRegistry + ConfigurationService）
+        │
+5f（删旧+回归）── 依赖 5a-5e 全部完成
+```
+
+**5b 和 5e 互不依赖，可并行。** 建议串行——每批交一个用户验证一个，防止多线并进出问题难以定位。
+
+### 9.4 每批停止标准
+
+每批做完后：
+- [ ] `npx tsc --noEmit` 零错误
+- [ ] `npx vitest run` 全部通过
+- [ ] `npx tauri dev` 窗口正常打开
+- [ ] 终端收发正常
+- [ ] 本批特定验证项通过
+- [ ] git commit——一个批次一个 commit
+
+满足以上六条才进入下一批。不满足 → 修 bug → 重跑六条。
