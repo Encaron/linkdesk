@@ -560,7 +560,7 @@ DataDispatch.dispatch(sourceId, cardId, fields)
 
 ### 盲区 7（P0）：插件窗口 API——QuickPick / InputBox / 确认框
 
-**问题：** 插件没有任何方式弹出一个简单的交互 UI。`pushToast()` 只能通知，不能交互。`window.confirm()` 能弹出但 UI 丑陋且阻塞。
+**问题：** 插件没有任何方式弹出一个简单的交互 UI。`pushToast()` 已支持 action 按钮（对标 VS Code 通知卡片，如 "Yes/No/Don't show again"），但不能做选择列表或输入框。`window.confirm()` 能弹出但 UI 丑陋且阻塞。
 
 **Phase 6 的场景：** CAD 插件"导入 DXF"需要选文件 → Tauri dialog 能做。但"导出为什么格式？PDF/DXF/STL？"——需要一个 QuickPick 选择框。协议插件"检测到 SBQ 数据，切换协议？"——需要一个确认框。
 
@@ -709,6 +709,11 @@ PreferenceService（现状——一块大杂烩）→ 拆分为：
 | Output 查看器 UI | LogChannel 数据通道 Phase 5 建好，查看器 UI Phase 7 | 7 |
 | 插件资源访问 API（getResourceUri）| P2 优先级低，~20 行，Phase 6 再加不迟 | 6 |
 | 插件 i18n 注册（内联翻译）| 语言包插件已工作，内联翻译是 polish | 7 |
+| 通知进度条 | Toast 组件已支持静态渲染，进度条需 ProgressBar 组件 | 6 |
+| 通知来源过滤 / Do Not Disturb | 需 NotificationService 管理过滤规则 | 7 |
+| "Don't show again" 持久化 | 简单 prefs 集成，~10 行，可随需要时做 | 6 |
+| 完整 Notification Center 面板 | 铃铛入口已有，面板需滚动列表 + 分组 + 过滤 | 7 |
+| 通知 source 归类（按插件分组）| 依赖 Notification Center 面板 | 7 |
 
 ---
 

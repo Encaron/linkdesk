@@ -59,7 +59,9 @@ export default defineConfig(async () => {
           }
         : undefined,
       watch: {
-        ignored: ["**/src-tauri/**"],
+        // src-tauri/ 是 Rust 项目，plugins/ 插件由 Rust 命令操作文件（安装/卸载/重装）
+        // 忽略两者避免 Vite 检测到文件系统变化后全量 reload
+        ignored: ["**/src-tauri/**", "**/plugins/**"],
       },
     },
     build: {

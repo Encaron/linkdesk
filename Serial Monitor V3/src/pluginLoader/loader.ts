@@ -23,63 +23,32 @@ import i18n from "../i18n";
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
 // Vite 在构建时展开此 glob，生成所有插件的入口映射。
-// 同时扫描 plugins/（已安装）和 plugins/.disabled/（已卸载但可重装）。
-// 这样重装时无需动态 import——模块已在 Vite 的模块图中，不会触发全量 reload。
-const _activeModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-  "../../plugins/*/index.tsx", { eager: false }
+// 注意：只扫描 plugins/*/，不扫描 plugins/.disabled/（.disabled 多了层目录会破坏相对 import 路径）
+const pluginModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+  "../../plugins/*/index.tsx",
+  { eager: false }
 );
-const _disabledModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-  "../../plugins/.disabled/*/index.tsx", { eager: false }
-);
-const pluginModules: Record<string, () => Promise<{ default: React.ComponentType<{ isActive: boolean }> }>> = {
-  ..._activeModules,
-  ..._disabledModules,
-};
 
-const _activeSidebars = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/sidebar.tsx", { eager: false }
+const pluginSidebarModules = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/*/sidebar.tsx",
+  { eager: false }
 );
-const _disabledSidebars = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/.disabled/*/sidebar.tsx", { eager: false }
-);
-const pluginSidebarModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  ..._activeSidebars,
-  ..._disabledSidebars,
-};
 
-const _activeStatusBars = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/statusBar.tsx", { eager: false }
+const pluginStatusBarModules = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/*/statusBar.tsx",
+  { eager: false }
 );
-const _disabledStatusBars = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/.disabled/*/statusBar.tsx", { eager: false }
-);
-const pluginStatusBarModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
-  ..._activeStatusBars,
-  ..._disabledStatusBars,
-};
 
-const _activeManifests = import.meta.glob<PluginManifest>(
-  "../../plugins/*/plugin.json", { eager: true }
+const pluginManifests = import.meta.glob<PluginManifest>(
+  "../../plugins/*/plugin.json",
+  { eager: true }  // plugin.json 需要立即读取——决定注册表结构
 );
-const _disabledManifests = import.meta.glob<PluginManifest>(
-  "../../plugins/.disabled/*/plugin.json", { eager: true }
-);
-const pluginManifests: Record<string, PluginManifest> = {
-  ..._activeManifests,
-  ..._disabledManifests,
-};
 
 // P1-4：主题/语言数据文件（所有非 plugin.json 的 JSON 文件）
-const _activeDataFiles = import.meta.glob<Record<string, unknown>>(
-  "../../plugins/*/*.json", { eager: true }
+const pluginDataFiles = import.meta.glob<Record<string, unknown>>(
+  "../../plugins/*/*.json",
+  { eager: true }
 );
-const _disabledDataFiles = import.meta.glob<Record<string, unknown>>(
-  "../../plugins/.disabled/*/*.json", { eager: true }
-);
-const pluginDataFiles: Record<string, Record<string, unknown>> = {
-  ..._activeDataFiles,
-  ..._disabledDataFiles,
-};
 
 /* ── 辅助：从路径提取 pluginId ── */
 
@@ -153,27 +122,21 @@ export async function initPluginLoader(): Promise<void> {
   }
 }
 
-async function loadPlugin(pluginId: string, preloadedManifest?: PluginManifest): Promise<void> {
-  let manifest: PluginManifest;
+async function loadPlugin(pluginId: string): Promise<void> {
+  const manifestKey = Object.keys(pluginManifests).find(
+    (k) => extractPluginId(k) === pluginId
+  );
+  if (!manifestKey) {
+    throw new Error(`找不到 plugin.json`);
+  }
 
-  if (preloadedManifest) {
-    // 外部提供的 manifest（如从 Rust 文件系统读取）——跳过 glob 查找
-    manifest = preloadedManifest;
-  } else {
-    // 从构建时 glob 查找
-    const manifestKey = Object.keys(pluginManifests).find(
-      (k) => extractPluginId(k) === pluginId
-    );
-    if (!manifestKey) {
-      throw new Error(`找不到 plugin.json`);
-    }
-    try {
-      manifest = pluginManifests[manifestKey];
-    } catch {
-      pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
-      console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
-      return;
-    }
+  let manifest: PluginManifest;
+  try {
+    manifest = pluginManifests[manifestKey];
+  } catch {
+    pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
+    console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
+    return;
   }
 
   // type 字段不再必需——贡献点由 manifest 的实际声明检测（对标 VS Code contributes）
@@ -247,7 +210,6 @@ async function loadPlugin(pluginId: string, preloadedManifest?: PluginManifest):
 /* ── 视图插件 ── */
 
 async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
-  // glob 已同时覆盖 plugins/ 和 plugins/.disabled/，所有插件模块都在 Vite 模块图中
   const entryKey = Object.keys(pluginModules).find(
     (k) => extractPluginId(k) === pluginId
   );
@@ -258,6 +220,7 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
 
   const module = await pluginModules[entryKey]();
   const Component = module.default;
+
   if (!Component) {
     throw new Error("入口文件未导出 default 组件");
   }
@@ -519,6 +482,15 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
 
+    // 清理 iconOrder，确保重装后排到图标栏末尾
+    try {
+      const prefs = PreferenceService.loadPrefs();
+      if (prefs.iconOrder) {
+        prefs.iconOrder = prefs.iconOrder.filter((id) => id !== pluginId);
+        await PreferenceService.savePrefs(prefs);
+      }
+    } catch { /* 静默 */ }
+
     // Phase 4.4：通知壳关闭使用此插件的标签页
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
     pushToast({
@@ -638,34 +610,21 @@ export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: stri
 /**
  * 重新安装已卸载的插件：从 .disabled/ 移回 plugins/。
  * 对标 VS Code：扩展卸载后文件仍在本地，可一键重新安装。
+ *
+ * 如果插件在构建时已在 glob 中（出厂预装后被卸载的），移回后直接 loadPlugin 即时生效。
+ * 如果不在 glob 中（外部新装后又卸载的），需重启让 Vite 重新扫描。
  */
 export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
     await invoke("reinstall_plugin", { pluginId });
 
-    // 尝试热加载：重装的插件在构建时已在 glob 中，直接 loadPlugin 即可
+    // 检查构建时 glob 是否有此插件（出厂预装插件在构建时被扫描过）
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      // theme/language/json 即时生效，view 也直接 loadPlugin（glob 条目在构建时已存在，无需 reload）
       await loadPlugin(pluginId);
-      const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
-      pushToast({
-        message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
-        source: pluginId,
-        severity: "info",
-        ttl: 6000,
-      });
-      return { success: true };
-    }
-    // manifest 不在 build-time glob 中（.disabled/ 里的插件构建时未被扫描）
-    // → 从文件系统读 plugin.json，然后直接 loadPlugin
-    try {
-      const raw = await invoke<string>("read_plugin_manifest", { pluginId });
-      const manifest: PluginManifest = JSON.parse(raw);
-      await loadPlugin(pluginId, manifest);
       pushToast({
         message: `已安装：${manifest.name}`,
         source: pluginId,
@@ -673,20 +632,18 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
         ttl: 6000,
       });
       return { success: true };
-    } catch {
-      // 读不到 manifest 或 loadPlugin 失败 → 需重启
-      pushToast({
-        message: `已安装：${pluginId}。重启后生效。`,
-        source: pluginId,
-        severity: "info",
-        ttl: 0,
-        actions: [
-          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
-        ],
-      });
-      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
-      return { success: true };
     }
+    // glob 中没有——外部装过又卸了的插件，需重启
+    pushToast({
+      message: `已安装：${pluginId}。重启后生效。`,
+      source: pluginId,
+      severity: "info",
+      ttl: 0,
+      actions: [
+        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+      ],
+    });
+    return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }

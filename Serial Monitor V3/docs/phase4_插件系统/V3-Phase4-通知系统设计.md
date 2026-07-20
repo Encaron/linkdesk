@@ -108,6 +108,30 @@ interface ToastAction {
 
 **核心原则：不自动 reload，不自动跳转。所有操作结果通过通知告知用户，用户自行决定何时跳转/重启。**
 
+### 2.3.1 关键修复：Vite 文件监听导致的重装 reload
+
+**根因**：不是 JS 代码问题。Rust `fs::rename` 将文件从 `.disabled/` 移回 `plugins/` 时，Vite 的 `server.watch` 检测到新文件 → 触发全量 page reload。
+
+**方案**：`vite.config.ts` 中 `server.watch.ignored` 增加 `**/plugins/**`：
+
+```ts
+watch: {
+  ignored: ["**/src-tauri/**", "**/plugins/**"],
+},
+```
+
+插件通过 `import.meta.glob` 加载（构建时确定），不需要 Vite 文件监听。Rust 操作插件目录时 Vite 不再检测到变化 → 不触发 reload。
+
+**失败尝试（均已回滚）**：
+- `@vite-ignore` 动态 import：Vite 发现新模块 → 全量 reload
+- glob 覆盖 `.disabled/`：`.disabled/terminal/` 里的 `../../src/` 多一层目录，import 路径解析失败
+
+**效果**：
+- 所有插件（含已卸载的）的模块都在 Vite 模块图中，无动态 import → 无 reload
+- `extractPluginId` 对两种路径都返回相同的 pluginId
+- `initPluginLoader` 不受影响——它迭代 `list_plugin_dirs()`（Rust），不包含 `.disabled/`
+- `getUninstalledPluginInfo` 现在能正确读到 manifest 信息（之前只能显示目录名）
+
 ### 2.4 通知卡片 CSS 规范
 
 完全对标 VS Code：
@@ -205,13 +229,18 @@ interface ToastAction {
 }
 ```
 
-### 2.5 不做的（Phase 5+）
+### 2.5 不做的（后续阶段）
 
-- ❌ Notification Center 面板（铃铛图标点击后的完整通知列表）—— Phase 5
-- ❌ Do Not Disturb 模式
-- ❌ 通知来源过滤/配置菜单
-- ❌ 进度条通知
-- ❌ 展开/折叠长消息
+详见 [Phase 5 设计 §5](../phase5_应用基础设施/V3-Phase5-设计.md#五phase-5-不做的东西明确边界)。
+
+| 功能 | 阶段 | 原因 |
+|------|:--:|------|
+| "Don't show again" 持久化 | 6 | 简单 prefs 集成，~10 行 |
+| 通知进度条 | 6 | 需 ProgressBar 组件 |
+| Notification Center 面板（滚动列表+分组+过滤） | 7 | 依赖通知分类基础设施 |
+| 通知来源过滤 / Do Not Disturb | 7 | 需 NotificationService |
+| 通知 source 归类（按插件分组） | 7 | 依赖完整通知面板 |
+| 展开/折叠长消息 | 7 | polish |
 
 ---
 
