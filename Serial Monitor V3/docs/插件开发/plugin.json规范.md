@@ -243,7 +243,30 @@ function CadView() {
 }
 ```
 
-**`when` 条件：** Phase 5 的 ContextKeyService 实时求值。`when: "activeEditor == 'cad'"` → 只有 CAD 标签页聚焦时此命令可用。
+**`when` 条件：** Phase 5 的 ContextKeyService 实时求值。表达式语法：
+
+| 运算符 | 示例 | 含义 |
+|--------|------|------|
+| 裸 key | `portOpen` | key 值为 truthy → true |
+| `!` | `!portOpen` | 取反 |
+| `&&` | `activeEditor == 'terminal' && portOpen` | 逻辑与 |
+| `\|\|` | `activeEditor == 'a' \|\| activeEditor == 'b'` | 逻辑或 |
+| `==` | `activeEditor == 'terminal'` | 等于（值比较） |
+| `!=` | `editorCount != 0` | 不等于 |
+| `in [a, b]` | `activeEditor in ['terminal', 'cad']` | 集合成员 |
+| `()` | `!(portOpen \|\| editorCount > 1)` | 分组 |
+
+**可用的 Context Key：**
+
+| Key | 类型 | 说明 | 谁写入 |
+|-----|------|------|--------|
+| `activeEditor` | `string \| null` | 当前聚焦标签页的 pluginId | App.tsx（标签页切换时） |
+| `portOpen` | `boolean` | 串口是否打开 | App.tsx（串口开关时） |
+| `portName` | `string \| null` | 当前串口名，如 `"COM3"` | App.tsx（串口开关时） |
+| `editorCount` | `number` | 打开的标签页总数 | App.tsx（标签页增删时） |
+| `editorHasSelection` | `boolean` | 编辑器是否有选中文本 | 预留（Phase 6 CM6 selection listener） |
+
+> **写 when 的规则：所有插件命令都应声明 `when`。** 不加 `when` = 任何上下文都可见——命令面板在多标签页页也能看到，用户困惑。
 
 #### contributes.menus —— 插件声明右键菜单项
 
