@@ -46,6 +46,8 @@ export function isSidebarOnlyView(pluginId: string): boolean {
 
 根本问题：**不是交互逻辑错了，是它做了一个终端优先的假设——每个插件都有"主区内容"。** 文件树、市场、以及未来所有 PlatformIO 风格的插件——主区内容是侧栏内的操作触发的，不是图标触发的。
 
+**反直觉的事实：marketplace 是唯一正确的。** marketplace 点图标只切侧栏、不蹦标签页——这恰恰是 VS Code 模型。`isSidebarOnlyView` 这个硬编码函数把 marketplace 标记为"例外"，但真相相反：marketplace 不需要这个函数保护，它天然就是对的。是终端/设置/工作台被 V2 的"图标=标签页"逻辑强制绑定了标签页，才显得 marketplace 像个异类。**marketplace 是唯一不需要修的那个——其他三个才是雷。** 5.5 把默认值改为 `sidebarPrimary` 后，marketplace 一行声明都不需要加，它就是默认行为。
+
 ### 1.3 不改的话——PlatformIO 类插件全部废掉
 
 ```
