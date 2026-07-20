@@ -1,7 +1,8 @@
 # Phase 5 应用基础设施层
 
 > 2026-07-20。Phase 4 做了"插件能被加载"。
-> Phase 5 做"插件能做什么"——命令、设置、菜单、协议四根柱子 + 五个盲区（异步命令、事件系统、插件存储、deactivate 生命周期、configurationDefaults）。
+> Phase 5 做"插件能做什么"——四根柱子 + 十一个盲区。
+> 核心交付：插件加载后不只是"出现一个标签页"——能注册命令、贡献设置、添加菜单、解析协议、接收数据、弹窗交互、日志诊断、跨插件通信。
 > 工作台/卡片/OLED 延后到 Phase 6+，在基础设施上写。
 
 ---
@@ -541,6 +542,89 @@ await pluginModule.deactivate?.()
 ```
 ~15 行。在 loader.ts 里改一处。
 
+### 盲区 6（P0）：数据分发层——协议输出 → 卡片消费
+
+**问题：** Phase 4 的数据管道是硬编码的：`串口 → RingBuffer → TerminalView`。ProtocolRegistry 定义了"用哪个解析器"，但没有定义"解析后的数据去哪"。
+
+**Phase 6 的场景：** 用户选了 SBQ 协议 → 解析器输出 `{ cardId: "heartbeat", value: 72 }` → 这个数据需要路由到订阅了 "heartbeat" 的卡片组件。但是没有 DataDispatch 这层桥——数据到了解析器就停了。
+
+**如果不做：** Phase 6 卡片工作台建好了，协议解析器也注册了，但数据走不到卡片。因为 Phase 4 的管道终点是 TerminalView 的 CM6，没有"数据→卡片"的出口。
+
+**Phase 5 就该有（~100 行）：**
+```typescript
+// 卡片/视图订阅数据
+DataDispatch.subscribe(sourceId, cardId, (fields) => { ... })
+// 协议解析器输出数据后调用
+DataDispatch.dispatch(sourceId, cardId, fields)
+```
+
+### 盲区 7（P0）：插件窗口 API——QuickPick / InputBox / 确认框
+
+**问题：** 插件没有任何方式弹出一个简单的交互 UI。`pushToast()` 只能通知，不能交互。`window.confirm()` 能弹出但 UI 丑陋且阻塞。
+
+**Phase 6 的场景：** CAD 插件"导入 DXF"需要选文件 → Tauri dialog 能做。但"导出为什么格式？PDF/DXF/STL？"——需要一个 QuickPick 选择框。协议插件"检测到 SBQ 数据，切换协议？"——需要一个确认框。
+
+**如果不做：** 每个插件自己画选择框/输入框/确认框——UI 碎片化，每个插件一套交互模式。VS Code 的做法是 `vscode.window.showQuickPick / showInputBox / showInformationMessage`——统一 API，统一 UI。
+
+**Phase 5 就该有（~150 行）：**
+```typescript
+DialogService.showQuickPick(items: { label: string; description?: string }[]): Promise<string | undefined>
+DialogService.showInputBox(options: { prompt: string; value?: string }): Promise<string | undefined>
+DialogService.showConfirm(message: string): Promise<boolean>
+```
+底层是 React 组件 + Promise。对标 VS Code `vscode.window.*`。
+
+### 盲区 8（P1）：插件错误隔离——非 React 代码
+
+**问题：** 当前 `ErrorBoundary.tsx` 只保护 React 渲染。协议解析器的 `parseLine()`、命令处理器、事件回调——如果抛出异常，会直接崩掉整个管道或命令面板。
+
+**Phase 6 的场景：** 用户装了 5 个协议插件，其中一个是社区写的——它的 `parseLine()` 在某行数据上崩了。如果没有错误隔离，整个串口数据管道崩溃，所有 5 个协议都收不到数据。
+
+**如果不做：** 一个 buggy 插件拖垮整个应用。用户不知道是哪个插件崩的——只能看到一个白屏或静默失败。
+
+**Phase 5 就该有（~40 行）：** CommandRegistry、ProtocolRegistry、EventEmitter 在调用插件代码时包 `try/catch`，捕获异常后 toast 报告"插件 XXX 出错：..."并继续运行。
+
+### 盲区 9（P1）：跨插件命令调用
+
+**问题：** 当前规划的命令系统只支持"命令面板搜到命令 → 用户点 → 执行"。但如果一个插件想调用另一个插件的命令（比如工作台插件想调 `terminal.clear` 清空终端），没有标准方式。
+
+**Phase 6 的场景：** 工作台有个"重置"按钮 → 它想执行 `terminal.clear` + `workspace.resetCards`。如果只能用户手动点命令面板，体验很糟。
+
+**如果不做：** 插件之间的协作要么走硬编码 import（紧耦合），要么完全不存在。VS Code 的做法是 `vscode.commands.executeCommand('otherPlugin.doSomething', ...args)`——任何插件可以通过命令 ID 调用任何命令。
+
+**Phase 5 就该有（~15 行）：** `CommandRegistry.execute(commandId, ...args)` 已经规划了——只需要明确命令的 args 参数，以及文档约定命令 ID 就是插件的公共 API。
+
+### 盲区 10（P1）：插件日志/诊断频道
+
+**问题：** 当前 `console.log` 全进浏览器 DevTools——用户看不到，插件开发者调试时也看不到。
+
+**Phase 6 的场景：** 一个协议插件解析数据时想打印"跳过无效帧：0x00 0xFF"——这条信息对开发者有价值，但对普通用户不重要。它应该进日志频道，不是 toast。
+
+**如果不做：** 插件开发者在真机环境中完全无法调试。VS Code 的 Output 面板和 `vscode.window.createOutputChannel()` 解决了这个问题。
+
+**Phase 5 就该有（~50 行）：**
+```typescript
+LogChannel.create(pluginId, name): { appendLine(msg: string): void; show(): void }
+```
+频道先建好，Output 查看器 UI 留给 Phase 7——但数据通道必须在 Phase 5 存在，插件才能往里写。
+
+### 盲区 11（P1）：布局持久化接口——LayoutService
+
+**问题：** Phase 5 迁移计划（§4.1）提到了 LayoutService，但只说了一句话，从未定义。
+
+**Phase 6 的场景：** 卡片工作台需要保存每个卡片的 x/y/w/h。react-grid-layout 有自己的序列化格式。如果 Phase 5 没有留好 LayoutService 接口，Phase 6 要么自己造、要么塞进 PluginStateService——但卡片布局是工作区级数据，不是插件私有数据。
+
+**如果不做：** PreferenceService 拆不掉。`Prefs.layout`（标签页布局）和卡片布局混在一起。Phase 7 更难彻底迁移。
+
+**Phase 5 就该有（~50 行）：**
+```typescript
+LayoutService.saveWorkspaceLayout(name: string, cards: CardLayout[]): Promise<void>
+LayoutService.loadWorkspaceLayout(name: string): Promise<CardLayout[]>
+
+// CardLayout = { id: string; cardId: string; x: number; y: number; w: number; h: number }
+```
+格式是平铺数组（遵守设计方案 §1.5 硬约束）。
+
 ---
 
 ## 三、四根柱子的连接关系（更新）
@@ -622,6 +706,9 @@ PreferenceService（现状——一块大杂烩）→ 拆分为：
 | 动态 StatusBarItem（运行时创建）| 静态 manifest 声明够用，运行时 API Phase 6+ | 6 |
 | 任务系统（build/flash/test）| Phase 7+，异步命令模型已预留 | 7+ |
 | contributes.icons（共享图标）| 已有 codicon + manifest icon，共享图标是 polish | 7 |
+| Output 查看器 UI | LogChannel 数据通道 Phase 5 建好，查看器 UI Phase 7 | 7 |
+| 插件资源访问 API（getResourceUri）| P2 优先级低，~20 行，Phase 6 再加不迟 | 6 |
+| 插件 i18n 注册（内联翻译）| 语言包插件已工作，内联翻译是 polish | 7 |
 
 ---
 

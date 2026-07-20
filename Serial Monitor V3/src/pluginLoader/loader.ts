@@ -22,32 +22,64 @@ import i18n from "../i18n";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
-// Vite 在构建时展开此 glob，生成所有插件的入口映射
-const pluginModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-  "../../plugins/*/index.tsx",
-  { eager: false }
+// Vite 在构建时展开此 glob，生成所有插件的入口映射。
+// 同时扫描 plugins/（已安装）和 plugins/.disabled/（已卸载但可重装）。
+// 这样重装时无需动态 import——模块已在 Vite 的模块图中，不会触发全量 reload。
+const _activeModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+  "../../plugins/*/index.tsx", { eager: false }
 );
+const _disabledModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+  "../../plugins/.disabled/*/index.tsx", { eager: false }
+);
+const pluginModules: Record<string, () => Promise<{ default: React.ComponentType<{ isActive: boolean }> }>> = {
+  ..._activeModules,
+  ..._disabledModules,
+};
 
-const pluginSidebarModules = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/sidebar.tsx",
-  { eager: false }
+const _activeSidebars = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/*/sidebar.tsx", { eager: false }
 );
+const _disabledSidebars = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/.disabled/*/sidebar.tsx", { eager: false }
+);
+const pluginSidebarModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
+  ..._activeSidebars,
+  ..._disabledSidebars,
+};
 
-const pluginStatusBarModules = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/statusBar.tsx",
-  { eager: false }
+const _activeStatusBars = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/*/statusBar.tsx", { eager: false }
 );
+const _disabledStatusBars = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/.disabled/*/statusBar.tsx", { eager: false }
+);
+const pluginStatusBarModules: Record<string, () => Promise<{ default: React.ComponentType }>> = {
+  ..._activeStatusBars,
+  ..._disabledStatusBars,
+};
 
-const pluginManifests = import.meta.glob<PluginManifest>(
-  "../../plugins/*/plugin.json",
-  { eager: true }  // plugin.json 需要立即读取——决定注册表结构
+const _activeManifests = import.meta.glob<PluginManifest>(
+  "../../plugins/*/plugin.json", { eager: true }
 );
+const _disabledManifests = import.meta.glob<PluginManifest>(
+  "../../plugins/.disabled/*/plugin.json", { eager: true }
+);
+const pluginManifests: Record<string, PluginManifest> = {
+  ..._activeManifests,
+  ..._disabledManifests,
+};
 
 // P1-4：主题/语言数据文件（所有非 plugin.json 的 JSON 文件）
-const pluginDataFiles = import.meta.glob<Record<string, unknown>>(
-  "../../plugins/*/*.json",
-  { eager: true }
+const _activeDataFiles = import.meta.glob<Record<string, unknown>>(
+  "../../plugins/*/*.json", { eager: true }
 );
+const _disabledDataFiles = import.meta.glob<Record<string, unknown>>(
+  "../../plugins/.disabled/*/*.json", { eager: true }
+);
+const pluginDataFiles: Record<string, Record<string, unknown>> = {
+  ..._activeDataFiles,
+  ..._disabledDataFiles,
+};
 
 /* ── 辅助：从路径提取 pluginId ── */
 
@@ -215,18 +247,17 @@ async function loadPlugin(pluginId: string, preloadedManifest?: PluginManifest):
 /* ── 视图插件 ── */
 
 async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
+  // glob 已同时覆盖 plugins/ 和 plugins/.disabled/，所有插件模块都在 Vite 模块图中
   const entryKey = Object.keys(pluginModules).find(
     (k) => extractPluginId(k) === pluginId
   );
   if (!entryKey) {
-    // P1-6 #5: 缺少 entry
     pushToast({ message: `插件 "${manifest.name}" 缺少入口文件（${manifest.entry ?? "index.tsx"}）` });
     throw new Error(`找不到入口文件（${manifest.entry ?? "index.tsx"}）`);
   }
 
   const module = await pluginModules[entryKey]();
   const Component = module.default;
-
   if (!Component) {
     throw new Error("入口文件未导出 default 组件");
   }

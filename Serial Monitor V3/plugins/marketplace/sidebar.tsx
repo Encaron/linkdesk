@@ -375,6 +375,20 @@ function ExtensionItem({
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [gearOpen, setGearOpen] = useState(false);
   const gearRef = useRef<HTMLButtonElement>(null);
+  const gearMenuRef = useRef<HTMLDivElement>(null);
+
+  // 点击外部关闭齿轮菜单——对标 V2 时代的常见 bug
+  useEffect(() => {
+    if (!gearOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (gearMenuRef.current?.contains(target)) return;
+      if (gearRef.current?.contains(target)) return;
+      setGearOpen(false);
+    };
+    window.addEventListener("mousedown", onMouseDown);
+    return () => window.removeEventListener("mousedown", onMouseDown);
+  }, [gearOpen]);
 
   // VS Code 风格：计时器区分单击/双击。300ms 内两次点击 = 双击（固定打开）
   const handleClick = () => {
@@ -442,7 +456,7 @@ function ExtensionItem({
             <span className="codicon codicon-gear" />
           </button>
           {gearOpen && (
-            <div className="ms-item-gear-menu">
+            <div className="ms-item-gear-menu" ref={gearMenuRef}>
               {disabled ? (
                 <button className="ms-item-gear-item" onClick={(e) => handleGearAction("enable", e)}>
                   <span className="codicon codicon-play" /> 启用
