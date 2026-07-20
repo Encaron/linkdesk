@@ -531,7 +531,7 @@ function App() {
         return;
       }
       // Ctrl+Shift+P → 命令面板（对标 VS Code Show All Commands）
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
+      if (e.ctrlKey && e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
         e.preventDefault();
         window.dispatchEvent(new CustomEvent("v3-show-palette"));
         return;
