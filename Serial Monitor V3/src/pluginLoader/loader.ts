@@ -443,7 +443,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if (manifest.type === "theme" || manifest.type === "language") {
+      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
         // .json 插件即时生效
         await loadPlugin(pluginId);
         pushToast({
@@ -453,14 +453,12 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
         console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
         return { success: true };
       }
-      // .tsx 视图插件——需要重启
-      const needRestart = manifest.type === "view";
-      pushToast({
-        message: `已启用：${manifest.name}。视图插件需重启生效。`,
-        ttl: 8000,
-      });
-      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"（需重启）`);
-      return { success: true, needRestart: needRestart || undefined };
+      // 视图插件——自动重载
+      pushToast({ message: `已启用：${manifest.name}。即将重载...`, ttl: 3000 });
+      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      setTimeout(() => window.location.reload(), 1500);
+      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
+      return { success: true, needRestart: true };
     }
 
     return { success: true, needRestart: true };
@@ -518,7 +516,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
 
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if (manifest.type === "theme" || manifest.type === "language") {
+      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
         await loadPlugin(pluginId);
         pushToast({
           message: `已安装：${manifest.name}（即时生效）`,
@@ -528,11 +526,17 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       }
     }
 
-    // 视图插件或无法识别的类型——提示重启
+    // 视图插件——自动重载以触发 Vite 重新扫描 import.meta.glob
     pushToast({
-      message: `已安装：${pluginId}。重启后生效。`,
-      ttl: 8000,
+      message: `已安装：${pluginId}。即将重载...`,
+      ttl: 3000,
     });
+    // 持久化 prefs 以防重载丢失
+    try {
+      const prefs = PreferenceService.loadPrefs();
+      await PreferenceService.savePrefs(prefs);
+    } catch { /* 静默 */ }
+    setTimeout(() => window.location.reload(), 1500);
     return { success: true, pluginId, needRestart: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -602,21 +606,24 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   try {
     await invoke("reinstall_plugin", { pluginId });
 
-    // 尝试热加载
+    // 尝试热加载——theme/language 即时生效，view 自动重载
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      if (manifest.type === "theme" || manifest.type === "language") {
+      if (manifest.themes || manifest.languages || (!manifest.entry && manifest.file)) {
         await loadPlugin(pluginId);
         pushToast({ message: `已安装：${manifest.name}（即时生效）`, ttl: 5000 });
         return { success: true };
       }
-      pushToast({ message: `已安装：${manifest.name}。重启后生效。`, ttl: 8000 });
+      // view 插件——自动重载
+      pushToast({ message: `已安装：${manifest.name}。即将重载...`, ttl: 3000 });
     } else {
-      pushToast({ message: `已安装：${pluginId}。重启后生效。`, ttl: 8000 });
+      pushToast({ message: `已安装：${pluginId}。即将重载...`, ttl: 3000 });
     }
+    try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+    setTimeout(() => window.location.reload(), 1500);
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -656,7 +663,7 @@ export function startPluginWatcher(): void {
         );
         if (manifestKey) {
           const manifest = pluginManifests[manifestKey];
-          if (manifest.type === "theme" || manifest.type === "language") {
+          if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
             await loadPlugin(dir);
             pushToast({ message: `发现新插件：${manifest.name}（即时生效）`, ttl: 5000 });
           } else {
