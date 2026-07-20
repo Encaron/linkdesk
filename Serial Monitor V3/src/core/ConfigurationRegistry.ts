@@ -19,6 +19,10 @@ export interface ConfigurationProperty {
   description: string;        // 设置项说明——Settings Editor 渲染为提示
   minimum?: number;           // number 类型时可选的 min/max
   maximum?: number;
+  /** Phase 5f ConfigurationApplier：配置值变化时框架自动调用。
+   *  可 async——applyAllConfigurations 按注册顺序 await 保证时序。
+   *  如：theme onApply (async load) → accent onApply (sync setProperty) 不会竞态。 */
+  onApply?: (value: unknown) => void | Promise<void>;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

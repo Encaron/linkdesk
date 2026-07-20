@@ -17,6 +17,7 @@ import {
   getConfigurationDefaults,
   type InspectResult,
 } from "./ConfigurationRegistry";
+import { applyConfiguration } from "./ConfigurationApplier";
 
 /* ── 文件系统依赖（延迟注入——对标 PreferenceService 模式） ── */
 
@@ -156,6 +157,9 @@ export async function setConfigurationValue(
   for (const fn of _changeListeners) {
     try { fn(key, value, scope); } catch { /* 监听器异常不阻断 */ }
   }
+
+  // Phase 5f：ConfigurationApplier——自动调 onApply，组件无需手动订阅
+  applyConfiguration(key, value);
 }
 
 /* ── 监听变化 ── */

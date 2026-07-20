@@ -22,6 +22,7 @@ import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutSer
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
+import { applyConfiguration } from "./core/ConfigurationApplier";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
@@ -161,17 +162,23 @@ function App() {
             default: "Dark",
             enum: ["Dark", "Light"],
             description: "配色主题",
+            onApply: async (v) => {
+              const t = await loadTheme(v as string);
+              applyTheme(t);
+            },
           },
           "app.language": {
             type: "string",
             default: "zh",
             enum: ["zh", "en"],
             description: "界面语言",
+            onApply: (v) => { i18n.changeLanguage(v as string); },
           },
           "app.accentColor": {
             type: "string",
             default: "#0078d4",
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
+            onApply: (v) => applyAccentColor(v as string),
           },
         },
       });
@@ -193,23 +200,19 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）
       mountGlobalKeybindings();
 
-      // Phase 5：主题/语言优先读 ConfigurationService（Settings Editor 写的），fallback 旧 Prefs
+      // Phase 5f：主题/语言/强调色通过 ConfigurationApplier 框架应用。
+      // onApply 在 registerConfiguration 时声明，框架保证 theme async → accent sync 的时序。
+      // fallback 旧 Prefs → Phase 5f 删除 PreferenceService 后移除
       const cfgTheme = getConfigurationValue<string>("app.theme");
       const cfgLang = getConfigurationValue<string>("app.language");
-      const cfgAccent = getConfigurationValue<string>("app.accentColor");
       const initTheme = cfgTheme || prefs?.theme || "Dark";
       const initLang = cfgLang || prefs?.language || "zh";
 
-      loadTheme(initTheme)
-        .then((t) => {
-          applyTheme(t);
-          // 强调色必须在 applyTheme 之后——用户偏好覆盖主题内置 accent
-          if (cfgAccent) applyAccentColor(cfgAccent);
-        })
-        .catch(() => { /* CSS fallback 生效 */ });
+      await applyConfiguration("app.theme", initTheme);
+      applyConfiguration("app.language", initLang);
+      applyConfiguration("app.accentColor", getConfigurationValue<string>("app.accentColor"));
       setTheme(initTheme as "Dark" | "Light");
       setLang(initLang as "zh" | "en");
-      i18n.changeLanguage(initLang);
 
       // Phase 5e：终端设置从 ConfigurationService 读取（替代旧 PreferenceService.preferences）
       // 逐个 key 读取以使用三层合并（Workspace > User > Default），fallback 旧 Prefs
@@ -319,24 +322,15 @@ function App() {
     [duplicateTab, splitTabAt]
   );
 
-  // Phase 5：Settings Editor 的配置变更 → 实际生效（app.* + terminal.*）
+  // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
+  // 此 listener 只做 React state 同步（onApply 不碰的 UI state）。
+  // theme/language/accentColor 的 apply 由 ConfigurationApplier 框架保证，不再需要 if 分支。
   useEffect(() => {
     const unsub = onDidChangeConfiguration((key, value) => {
-      // app 层配置
-      if (key === "app.theme") {
-        const themeVal = value as string;
-        setTheme(themeVal as "Dark" | "Light");
-        loadTheme(themeVal).then(applyTheme).catch(() => {});
-      }
-      if (key === "app.language") {
-        const langVal = value as string;
-        setLang(langVal as "zh" | "en");
-        i18n.changeLanguage(langVal);
-      }
-      if (key === "app.accentColor") {
-        applyAccentColor(value as string);
-      }
+      if (key === "app.theme") setTheme(value as "Dark" | "Light");
+      if (key === "app.language") setLang(value as "zh" | "en");
       // Phase 5e：terminal.* 配置变更 → 回写 terminalPrefs（Settings Editor → 终端方向）
+      // Phase 5f 迁移到 terminal.onApply 后删除此分支
       if (key.startsWith("terminal.")) {
         const prop = key.slice("terminal.".length);
         setTerminalPrefs((prev) => {
@@ -352,21 +346,15 @@ function App() {
   const handleToggleTheme = useCallback(() => {
     const next = theme === "Dark" ? "Light" : "Dark";
     setTheme(next);
-    loadTheme(next).then(applyTheme).catch(() => {});
-    // Phase 5：持久化到 ConfigurationService（替代 PreferenceService）
-    import("./core/ConfigurationService").then(({ setConfigurationValue }) => {
-      setConfigurationValue("app.theme", next, "user").catch(() => {});
-    });
+    // Phase 5f：ConfigurationApplier 通过 onApply 自动调 loadTheme+applyTheme
+    setConfigurationValue("app.theme", next, "user").catch(() => {});
   }, [theme]);
 
   const handleToggleLang = useCallback(() => {
     const next = lang === "zh" ? "en" : "zh";
     setLang(next);
-    i18n.changeLanguage(next);
-    // Phase 5：持久化到 ConfigurationService（替代 PreferenceService）
-    import("./core/ConfigurationService").then(({ setConfigurationValue }) => {
-      setConfigurationValue("app.language", next, "user").catch(() => {});
-    });
+    // Phase 5f：ConfigurationApplier 通过 onApply 自动调 i18n.changeLanguage
+    setConfigurationValue("app.language", next, "user").catch(() => {});
   }, [lang]);
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
