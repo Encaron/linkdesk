@@ -58,6 +58,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
     const grouped = new Map<string, ResolvedItem[]>();
     const groupOrder: string[] = [];
 
+    let firstItem = true;
     for (const item of rawItems) {
       const cmd = getCommand(item.command);
       if (!cmd) continue; // 命令未注册——静默跳过（应对异步加载竞态）
@@ -65,14 +66,16 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
       // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
       // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
       const whenExpr = item.when ?? cmd.when;
-      // 🔍 Phase 5d 诊断：输出每个菜单项的 when 求值结果
-      if (whenExpr) {
+      // 🔍 Phase 5d 诊断：每个菜单项都输出——item.when + cmd.when + 最终 whenExpr + 求值结果
+      if (firstItem) {
         const ckSnapshot: Record<string, unknown> = {};
         ["activeEditor", "portOpen", "portName", "editorCount"].forEach((k) => {
           ckSnapshot[k] = ContextKeyService.getValue(k);
         });
-        console.log(`[ContextMenu] ${item.command} | when="${whenExpr}" | matches=${ContextKeyService.matches(whenExpr)} | ctx=`, ckSnapshot);
+        console.log(`[ContextMenu] menuId=${menuId}, items=${rawItems.length}, ctx=`, ckSnapshot);
+        firstItem = false;
       }
+      console.log(`[ContextMenu]   ${item.command} | item.when=${item.when ?? '(none)'} | cmd.when=${cmd.when ?? '(none)'} | final=${whenExpr ?? '(none)'} | matches=${ContextKeyService.matches(whenExpr)} | ${ContextKeyService.matches(whenExpr) ? '✓ SHOW' : '✗ HIDE'}`);
       if (!ContextKeyService.matches(whenExpr)) continue;
 
       const group = item.group ?? "__default";

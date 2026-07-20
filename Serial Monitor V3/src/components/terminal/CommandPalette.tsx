@@ -28,14 +28,17 @@ function CommandPalette({ open, onClose }: Props) {
   //   确保 context key 变更后下次打开能看到正确的命令列表
   const allCommands = useMemo(() => {
     const cmds = getCommands();
-    // 🔍 Phase 5d 诊断
+    const result = cmds.filter((cmd) => ContextKeyService.matches(cmd.when));
+    // 🔍 Phase 5d 诊断：对比过滤前后
     const withWhen = cmds.filter((c) => c.when);
+    const excluded = withWhen.filter((c) => !ContextKeyService.matches(c.when));
     const ckSnapshot: Record<string, unknown> = {};
     ["activeEditor", "portOpen", "portName", "editorCount"].forEach((k) => {
       ckSnapshot[k] = ContextKeyService.getValue(k);
     });
-    console.log(`[CommandPalette] ${cmds.length} 命令, ${withWhen.length} 含 when | ctx=`, ckSnapshot, "| when commands:", withWhen.map((c) => `${c.id}: ${c.when}`));
-    return cmds.filter((cmd) => ContextKeyService.matches(cmd.when));
+    console.log(`[CommandPalette] ${cmds.length}→${result.length} | ctx=`, ckSnapshot,
+      `| 过滤掉:`, excluded.map((c) => `${c.id}: ${c.when}→${ContextKeyService.matches(c.when)}`));
+    return result;
   }, [open]);
 
   useEffect(() => {
