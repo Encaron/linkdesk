@@ -11,6 +11,7 @@ import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -24,12 +25,13 @@ const TYPE_ICON: Record<string, string> = {
   welcome: "\u{1F3E0}",
 };
 
-/** 获取标签页图标：查 viewRegistry icon，否则 emoji fallback */
-function getTabIcon(tab: Tab): string {
+/** 标签页图标：优先 emoji，无则空 */
+function getTabIconEmoji(tab: Tab): string {
   if (tab.pluginId) {
     const p = getViewPlugins().find((v) => v.pluginId === tab.pluginId);
-    if (p?.manifest.icon && p.manifest.iconSource !== "codicon") {
-      // 非 codicon——用 emoji 兜底（图标栏才渲染图片）
+    if (p) {
+      const icon = resolvePluginIcon(p.manifest);
+      if (icon.emoji) return icon.emoji;
     }
   }
   return TYPE_ICON[tab.type] ?? "";
@@ -105,7 +107,7 @@ function PlusMenu({
               onClose();
             }}
           >
-            {getTabIcon({ type: item.type, pluginId: item.pluginId } as Tab)} {item.label}
+            {getTabIconEmoji({ type: item.type, pluginId: item.pluginId } as Tab)} {item.label}
           </button>
         ))}
       </div>
@@ -445,7 +447,7 @@ export default function TabBar({
                 }}
               >
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
-                <span className="tab-icon">{getTabIcon(tab)}</span>
+                <span className="tab-icon">{getTabIconEmoji(tab)}</span>
                 <span className="tab-label">{t(tab.label)}</span>
                 <button
                   className="tab-close"
@@ -517,7 +519,7 @@ export default function TabBar({
             }}
           >
             <span className="tab-icon" style={{ flexShrink: 0, fontSize: 13, opacity: 0.8 }}>
-              {getTabIcon(tab)}
+              {getTabIconEmoji(tab)}
             </span>
             <span className="tab-label">{t(tab.label)}</span>
           </div>,

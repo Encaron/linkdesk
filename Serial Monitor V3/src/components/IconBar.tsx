@@ -8,6 +8,7 @@ import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 import PreferenceService from "../core/PreferenceService";
 import "./IconBar.css";
 
@@ -20,27 +21,8 @@ interface IconBarProps {
 
 const BOTTOM_ICONS = new Set(["settings"]);
 
-/** 从 manifest 动态解析图标。
- *  - iconSource: "codicon" → CSS class
- *  - iconSource: "svg" / "url" → manifest.icon 即路径
- *  - 无 iconSource 或 png → 从旧 assets/icons/ 读取 PNG
- *  - 全无 → 兜底 codicon-symbol-misc
- */
-function resolveIconSrc(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }): string | null {
-  const m = entry.manifest;
-  if (m.iconSource === "codicon") return null;
-  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
-  // PNG/SVG：icon 字段 = 文件名（含扩展名 = 直接用，不含 = 加 .png）
-  const name = m.icon || entry.pluginId;
-  if (name.includes(".")) return `/assets/icons/${name}`;
-  return `/assets/icons/${name}.png`;
-}
-
-function resolveCodicon(entry: { manifest: { icon?: string; iconSource?: string } }): string | null {
-  if (entry.manifest.iconSource === "codicon" && entry.manifest.icon) {
-    return `codicon-${entry.manifest.icon}`;
-  }
-  return null;
+function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }) {
+  return resolvePluginIcon(entry.manifest) || { src: `/assets/icons/${entry.pluginId}.png` };
 }
 
 function loadOrder(): string[] {
@@ -75,7 +57,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const viewPlugins = getViewPlugins();
   const savedOrder = loadOrder();
 
-  type IconEntry = { pluginId: string; iconSrc: string | null; codicon: string | null; label: string };
+  type IconEntry = { pluginId: string; icon: ResolvedIcon; label: string };
   const ordered: IconEntry[] = useMemo(() => {
     const result: IconEntry[] = [];
     const remaining = new Set(viewPlugins.map((p) => p.pluginId));
@@ -83,12 +65,12 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
       if (remaining.has(id)) {
         remaining.delete(id);
         const p = viewPlugins.find((v) => v.pluginId === id);
-        if (p) result.push({ pluginId: id, iconSrc: resolveIconSrc(p), codicon: resolveCodicon(p), label: p.manifest.name });
+        if (p) result.push({ pluginId: id, icon: getIcon(p), label: p.manifest.name });
       }
     }
     for (const id of remaining) {
       const p = viewPlugins.find((v) => v.pluginId === id);
-      if (p) result.push({ pluginId: id, iconSrc: resolveIconSrc(p), codicon: resolveCodicon(p), label: p.manifest.name });
+      if (p) result.push({ pluginId: id, icon: getIcon(p), label: p.manifest.name });
     }
     return result;
   }, [viewPlugins, savedOrder]);
@@ -198,12 +180,12 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           title={t(entry.label)}
           aria-label={t(entry.label)}
         >
-          {entry.codicon ? (
-            <span className={`codicon ${entry.codicon} icon-codicon`} />
-          ) : entry.iconSrc ? (
-            <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
+          {entry.icon.codicon ? (
+            <span className={`codicon ${entry.icon.codicon} icon-codicon`} />
+          ) : entry.icon.src ? (
+            <img src={entry.icon.src} alt={t(entry.label)} className="icon-img" />
           ) : (
-            <span className="codicon codicon-symbol-misc icon-codicon" />
+            <span className="icon-emoji">{entry.icon.emoji ?? "📄"}</span>
           )}
         </button>
         {showAfter && <div className="icon-drop-indicator" />}
@@ -228,9 +210,9 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
         >
           {((): React.ReactNode => {
             const entry = ordered.find(e => e.pluginId === draggedId);
-            if (entry?.codicon) return <span className={`codicon ${entry.codicon} icon-codicon`} />;
-            if (entry?.iconSrc) return <img src={entry.iconSrc} alt="" className="icon-img" />;
-            return <span className="codicon codicon-symbol-misc icon-codicon" />;
+            if (entry?.icon.codicon) return <span className={`codicon ${entry.icon.codicon} icon-codicon`} />;
+            if (entry?.icon.src) return <img src={entry.icon.src} alt="" className="icon-img" />;
+            return <span className="icon-emoji">{entry?.icon.emoji ?? "📄"}</span>;
           })()}
         </div>,
         document.body

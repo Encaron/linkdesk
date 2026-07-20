@@ -8,6 +8,7 @@ import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
 import { getDisabledPluginInfo, enablePlugin } from "../../src/pluginLoader/loader";
+import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import type { ViewPluginEntry } from "../../src/core/types";
 import "./MarketplaceSidebar.css";
@@ -262,7 +263,7 @@ function ExtensionItem({
       {/* icon: 从 manifest 动态读取 */}
       <div className="ms-item-icon">
         {(() => {
-          const icon = getPluginIcon(plugin);
+          const icon = resolvePluginIcon(plugin.manifest);
           if (icon.codicon) return <span className={`codicon ${icon.codicon}`} />;
           if (icon.src) return <img src={icon.src} alt="" className="ms-item-icon-img" />;
           return <span className="codicon codicon-symbol-misc" />;
@@ -288,16 +289,6 @@ function ExtensionItem({
       </div>
     </button>
   );
-}
-
-function getPluginIcon(entry: ViewPluginEntry): { src?: string; codicon?: string } {
-  const m = entry.manifest;
-  if (m.iconSource === "codicon" && m.icon) return { codicon: `codicon-${m.icon}` };
-  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return { src: m.icon };
-  // PNG fallback
-  const name = m.icon || entry.pluginId;
-  if (name.includes(".")) return { src: `/assets/icons/${name}` };
-  return { src: `/assets/icons/${name}.png` };
 }
 
 export default MarketplaceSidebar;

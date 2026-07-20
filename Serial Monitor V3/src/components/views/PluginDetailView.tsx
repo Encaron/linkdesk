@@ -13,24 +13,7 @@ import { disablePlugin, uninstallPlugin, enablePlugin, isPluginDisabled } from "
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
-/* ── 图标解析：从 manifest 读 ── */
-
-function getIconSrc(entry: ViewPluginEntry): string | undefined {
-  const m = entry.manifest;
-  if (m.iconSource === "codicon") return undefined;
-  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
-  // PNG：icon 字段 = 文件名（含扩展名直接用，不含加 .png）
-  const name = m.icon || entry.pluginId;
-  if (name.includes(".")) return `/assets/icons/${name}`;
-  return `/assets/icons/${name}.png`;
-}
-
-function getCodicon(entry: ViewPluginEntry): string | null {
-  if (entry.manifest.iconSource === "codicon" && entry.manifest.icon) {
-    return `codicon-${entry.manifest.icon}`;
-  }
-  return null;
-}
+import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 
 /* ── 主组件 ── */
 
@@ -125,18 +108,17 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   }
 
   const m = plugin.manifest;
-  const iconSrc = getIconSrc(plugin);
-  const codicon = getCodicon(plugin);
+  const icon = resolvePluginIcon(m);
 
   return (
     <div className="plugin-detail">
       {/* ═══ Header — VS Code: icon 128x128 + details ═══ */}
       <header className="pd-header">
         <div className="pd-icon-container">
-          {codicon ? (
-            <span className={`codicon ${codicon} pd-icon-codicon`} />
-          ) : iconSrc ? (
-            <img src={iconSrc} alt="" className="pd-icon-img" />
+          {icon.codicon ? (
+            <span className={`codicon ${icon.codicon} pd-icon-codicon`} />
+          ) : icon.src ? (
+            <img src={icon.src} alt="" className="pd-icon-img" />
           ) : (
             <span className="codicon codicon-symbol-misc pd-icon-codicon" />
           )}
