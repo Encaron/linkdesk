@@ -1,7 +1,7 @@
 # Phase 4 设计评审与改进
 
 > 2026-07-19。对 Phase 4 现有设计的全面评审——逐条讨论、逐条给出方案、逐条修改现有文档。
-> 关联：[V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md) / [V3-Phase4-终端插件化设计.md](V3-Phase4-终端插件化设计.md) / [V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md)
+> 关联：[V3-Phase4-插件系统与UI重构设计.md](V3-Phase4-插件系统与UI重构设计.md) / [V3-Phase4-终端插件化设计.md](V3-Phase4-终端插件化设计.md) / [V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md)
 
 ---
 
@@ -121,7 +121,7 @@ Extension Host import()            运行时 import(Blob URL)
 
 ### 现有文档改动
 
-- `V3-插件系统与UI重构设计.md` §4：删 A/B/C 选项列表，替换为本方案
+- `V3-Phase4-插件系统与UI重构设计.md` §4：删 A/B/C 选项列表，替换为本方案
 - 技术风险表（`V3-Phase4-终端插件化设计.md` §4 R2）：从"待验证"改为"已解决"
 
 ---
@@ -156,8 +156,8 @@ WASM 优势：跨平台、前端执行不需 Tauri 侧插件系统、性能近�
 
 ### 现有文档改动
 
-- `V3-插件系统与UI重构设计.md` §7：binary mode 标注 "Phase 6+ WASM 方案"
-- `V3-插件系统与UI重构设计.md` §9.4：删除 "binary 协议插件目录结构" 中的 `parser.rs`，改为 `parser.wasm`（Phase 6+ 标注）
+- `V3-Phase4-插件系统与UI重构设计.md` §7：binary mode 标注 "Phase 6+ WASM 方案"
+- `V3-Phase4-插件系统与UI重构设计.md` §9.4：删除 "binary 协议插件目录结构" 中的 `parser.rs`，改为 `parser.wasm`（Phase 6+ 标注）
 
 ---
 
@@ -230,9 +230,9 @@ Phase 4 之后任何人写新视图插件，核心代码一行不动。`TabType`
 
 ### 现有文档改动
 
-- `V3-插件系统与UI重构设计.md` §2.4 "关键变化" 表格：更新为基于 `tabBehavior` 的方案
-- `V3-插件系统与UI重构设计.md` §9.2 T8：更新——`type` 保留但不作为规则判断依据
-- `V3-插件系统与UI重构设计.md` §4 `plugin.json` 字段表：新增 `tabBehavior` 字段说明
+- `V3-Phase4-插件系统与UI重构设计.md` §2.4 "关键变化" 表格：更新为基于 `tabBehavior` 的方案
+- `V3-Phase4-插件系统与UI重构设计.md` §9.2 T8：更新——`type` 保留但不作为规则判断依据
+- `V3-Phase4-插件系统与UI重构设计.md` §4 `plugin.json` 字段表：新增 `tabBehavior` 字段说明
 - `V3-Phase4-终端插件化设计.md` §2.1 `plugin.json`：新增 `tabBehavior`
 - 所有子文档中 `Type = "terminal"` 的硬编码引用：改为走 registry
 
@@ -293,7 +293,7 @@ interface CardDefinition {
 ### 现有文档改动
 
 - `V3-Phase4-终端插件化设计.md` §3.3：多终端场景描述中加入 sourceId 概念
-- `V3-插件系统与UI重构设计.md` §3.3 "串口生命周期规则"：补充 sourceId 绑定说明
+- `V3-Phase4-插件系统与UI重构设计.md` §3.3 "串口生命周期规则"：补充 sourceId 绑定说明
 
 ---
 
@@ -359,7 +359,7 @@ docs/插件开发/
 
 ### 现有文档改动
 
-- `V3-插件系统与UI重构设计.md` §4：`plugin.json` 规范独立为 `docs/插件开发/plugin.json规范.md`
+- `V3-Phase4-插件系统与UI重构设计.md` §4：`plugin.json` 规范独立为 `docs/插件开发/plugin.json规范.md`
 - 新增 `docs/插件开发/` 目录及其内容（Phase 4 Step 1 产出）
 
 ---
@@ -447,7 +447,7 @@ const { performSend } = useSendData(prefs, {
 
 - `V3-Phase4-终端插件化设计.md` §1.3 "完全不动"：`useSendData` 加入列表
 - `V3-Phase4-终端插件化设计.md` §3 Step B：新增 B7——提取 `useSendData` 到 `src/core/`
-- `V3-插件系统与UI重构设计.md` §9.2 T7：标注已在 Phase 4 解决
+- `V3-Phase4-插件系统与UI重构设计.md` §9.2 T7：标注已在 Phase 4 解决
 
 ---
 
@@ -506,8 +506,8 @@ const { performSend } = useSendData(prefs, {
 
 ### 现有文档改动
 
-- `V3-插件系统与UI重构设计.md` §6.1：详情页布局示例更新——所有信息来自 `plugin.json`
-- `V3-插件系统与UI重构设计.md` §4 `plugin.json` 字段表：新增 `changelog`、`screenshots`（预留）字段
+- `V3-Phase4-插件系统与UI重构设计.md` §6.1：详情页布局示例更新——所有信息来自 `plugin.json`
+- `V3-Phase4-插件系统与UI重构设计.md` §4 `plugin.json` 字段表：新增 `changelog`、`screenshots`（预留）字段
 
 ---
 
@@ -515,7 +515,7 @@ const { performSend } = useSendData(prefs, {
 
 以下是在本次评审后需要对现有 5 份设计文档做的具体修改：
 
-### 12.1 `V3-插件系统与UI重构设计.md`（主文档）
+### 12.1 `V3-Phase4-插件系统与UI重构设计.md`（主文档）
 
 | 位置 | 改动 |
 |---|---|

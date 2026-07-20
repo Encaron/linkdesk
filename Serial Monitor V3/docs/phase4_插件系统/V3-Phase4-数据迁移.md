@@ -1,7 +1,7 @@
 # Phase 4 数据迁移方案
 
 > 2026-07-19。Phase 3.5 → Phase 4：prefs.json 结构变化、布局恢复变化、终端保底→欢迎页保底。
-> 关联：[V3-Phase4-终端插件化设计.md](V3-Phase4-终端插件化设计.md) / [V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md)
+> 关联：[V3-Phase4-终端插件化设计.md](V3-Phase4-终端插件化设计.md) / [V3-Phase4-插件系统与UI重构设计.md](V3-Phase4-插件系统与UI重构设计.md)
 
 ---
 

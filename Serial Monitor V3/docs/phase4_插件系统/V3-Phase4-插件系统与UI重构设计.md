@@ -1272,4 +1272,4 @@ pluginLoader.scanAll({ filter: profile.plugins })
 - memory `two-layer-container-architecture.md` — 两层容器
 - memory `hard-constraints.md` — V3 硬约束
 - docs `../开发管理/V3开发计划.md` — 总开发计划（Phase 4 已写入）
-- docs `../标签页设计/V3-Phase3-标签页分屏设计.md` — Phase 3 设计
+- docs `../phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` — Phase 3 设计

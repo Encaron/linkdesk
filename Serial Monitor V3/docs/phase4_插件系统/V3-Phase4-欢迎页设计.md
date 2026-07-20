@@ -1,7 +1,7 @@
 # Phase 4 欢迎页设计
 
 > 2026-07-19。对标 VS Code Welcome——软件入口，不是串口入口。
-> 关联：[V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md) §3.4 / memory `two-layer-container-architecture.md`
+> 关联：[V3-Phase4-插件系统与UI重构设计.md](V3-Phase4-插件系统与UI重构设计.md) §3.4 / memory `two-layer-container-architecture.md`
 
 ---
 

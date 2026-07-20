@@ -1,7 +1,7 @@
 # Phase 4 终端插件化设计
 
 > 2026-07-19。把 TerminalView 950 行单体从核心代码里摘出来，变成 `plugins/terminal/` 下的视图插件。
-> 关联：[V3-插件系统与UI重构设计.md](V3-插件系统与UI重构设计.md) / [V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md)
+> 关联：[V3-Phase4-插件系统与UI重构设计.md](V3-Phase4-插件系统与UI重构设计.md) / [V3-Phase4-欢迎页设计.md](V3-Phase4-欢迎页设计.md)
 
 ---
 
