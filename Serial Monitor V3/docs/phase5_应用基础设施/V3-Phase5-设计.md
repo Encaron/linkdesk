@@ -1,9 +1,9 @@
 # Phase 5 应用基础设施层
 
 > 2026-07-20。Phase 4 做了"插件能被加载"。
-> Phase 5 做"插件能做什么"——四根柱子 + 十一个盲区。
-> 核心交付：插件加载后不只是"出现一个标签页"——能注册命令、贡献设置、添加菜单、解析协议、接收数据、弹窗交互、日志诊断、跨插件通信。
-> 工作台/卡片/OLED 延后到 Phase 6+，在基础设施上写。
+> Phase 5 做"插件能做什么"——四根柱子 + context key/快捷键/scope 下半身 + 十一个盲区。
+> 核心交付：插件加载后不只是"出现一个标签页"——能注册命令、贡献设置、添加菜单、解析协议、绑定快捷键、条件过滤（when）、User/Workspace 分层、接收数据、弹窗交互、日志诊断、跨插件通信。
+> Phase 5 是最后一个"改框架代码"的 Phase——之后 Phase 6/7/8 全是插件声明 + 注册，零框架改动。
 
 ---
 
@@ -131,7 +131,7 @@ VS Code 1.0+：  具体功能（Debug、Terminal、SCM、Notebook...）
 
 **关键启示：VS Code 在 1.0 之前就把 `contributes` 框架建好了。** 之后 Debug、Terminal、Source Control 全部是扩展自己贡献 commands + views + menus + configuration。不是"先做 Terminal 插件，以后再补配置系统"——是反过来的。
 
-### 1.5 Phase 4 vs Phase 5 vs Phase 6 的分工
+### 1.5 Phase 4 vs Phase 5 vs Phase 6/7/8 的分工
 
 ```
 Phase 4：插件能被加载
@@ -139,18 +139,27 @@ Phase 4：插件能被加载
   - 插件"存在"了——能安装、能卸载、能出现标签页
   - 但除了"出现一个标签页"什么都做不了
 
-Phase 5：插件能做什么（当前阶段）
-  - 命令系统 → 插件注册命令 → 命令面板可执行 + 右键菜单可调用
-  - 配置系统 → 插件贡献设置 → Settings Editor 自动渲染
-  - 菜单系统 → 插件声明菜单项 → 右键/齿轮 动态内容
+Phase 5：插件能做什么 + 系统基础闭环（当前阶段——最后一个改框架的 Phase）
+  - 命令系统 → 插件注册命令 → 命令面板/右键菜单/快捷键 三条触发路径
+  - 配置系统 → 插件贡献设置 → Settings Editor 自动渲染 + User/Workspace scope 分层
+  - 菜单系统 → 插件声明菜单项 → 右键/齿轮 动态内容 + context key when 条件过滤
   - 协议系统 → 插件注册解析器 → 终端下拉框切换协议
-  - 插件"有用"了
+  - context key 系统 → 全局状态机 → 命令/菜单的 when 条件引擎 + 键盘快捷键绑定
+  - 插件"有用"了——框架代码扩展点封板，后续 Phase 只消费不扩展
 
-Phase 6：在基础设施上写功能
-  - 卡片工作台 = 一个插件，用 Phase 5 的所有能力
-  - OLED = 一个插件
-  - 任何新功能 = plugin.json 贡献声明，基础设施全部自动接线
-  - 新增功能不再改已有代码
+Phase 6：系统视图 + 引擎插件化（纯消费者——不改框架）
+  - 文件树 = 系统视图，注册 MenuId.FileContext 锚点
+  - 主题系统插件化 → 主题成为一等公民插件类型
+  - 语言系统插件化 → 语言包成为一等公民插件类型
+  - 全部是 plugin.json 声明 + 注册到已有 Registry
+
+Phase 7：卡片工作台 + 数据管道（纯插件——第一个在地基上写的功能）
+  - CardRegistry 渲染 + react-grid-layout 工作台
+  - ProtocolRegistry → DataDispatch → 卡片消费端数据管道打通
+  - 全部是 plugin.json 声明 + 注册，零框架改动
+
+Phase 8：OLED（独立插件）
+  - 和卡片工作台同样的模式——plugin.json 声明 + 注册
 ```
 
 **Phase 5 不是"做设置页面"——是建贡献点系统。** 设置页面只是 Configuration Registry 的一个消费端。命令面板只是 Command Registry 的一个消费端。右键菜单只是 Menu Registry 的一个消费端。所有消费端共享同一套贡献声明体系。
@@ -176,17 +185,17 @@ Phase 4.4-4.7：四轮归一化——修的是同一个问题：
 
 **VS Code 没有这个问题。** Activity Bar、Editor Tabs、Status Bar、Extensions 一开始就共享 `contributes` 这一套抽象。不存在"先做的图标栏不知道后面会有插件"——因为图标栏本身就是 `contributes.viewsContainers` 的消费者，它生来就吃注册表数据。
 
-**Phase 5 必须避免重演。** 命令系统、配置系统、菜单系统、协议系统四个一起规划。它们共享同一份 `contributes` 声明、同一个 `plugin.json` 入口。不给 Phase 6 留"菜单系统是 Phase 5 做的，但卡片右键菜单当时没有考虑"这种债务。
+**Phase 5 必须避免重演。** 命令系统、配置系统、菜单系统、协议系统四个一起规划。它们共享同一份 `contributes` 声明、同一个 `plugin.json` 入口。不给 Phase 7 留"菜单系统是 Phase 5 做的，但卡片右键菜单当时没有考虑"这种债务。
 
 ```
 Phase 5 四个系统一起设计
   → 共享 contributes 声明格式
   → 共享 Registry 注册模式
-  → Phase 6 卡片直接"声明 + 注册"，零额外改动
-  → Phase 7 OLED 同样
+  → Phase 7 卡片直接"声明 + 注册"，零额外改动
+  → Phase 8 OLED 同样
 ```
 
-这也是为什么现在只留终端一个实体插件做验证——改动面极小，确认框架正确后 Phase 6 直接铺开。
+这也是为什么现在只留终端一个实体插件做验证——改动面极小，确认框架正确后 Phase 6/7 直接铺开。
 
 ---
 
@@ -206,14 +215,15 @@ interface Command {
   id: string;              // "docReader.openPreview"
   title: string;           // "打开预览"
   category?: string;       // "文档阅读器"（用于命令面板分组）
-  handler: () => void;     // 执行体
-  when?: string;           // context key 条件（Phase 7 启用，当前忽略）
+  handler: (token?: CancellationToken) => Promise<void>;  // 异步签名——Phase 5 从第一天就用 async
+  when?: string;           // context key 条件（Phase 5 实现，见柱子 6）
 }
 
 // 全局注册表
 CommandRegistry.register(pluginId, command)
-CommandRegistry.execute(commandId)
-CommandRegistry.getCommands()  // → 命令面板用
+CommandRegistry.execute(commandId, ...args)      // async——内部先触发 activationEvents 钩子再执行
+CommandRegistry.getCommands()                    // → 命令面板用
+CommandRegistry.onWillExecuteCommand             // Event<{ commandId, args }>——Phase 6 activationEvents 的钩子点
 ```
 
 **消费端（哪些地方用命令）：**
@@ -226,7 +236,7 @@ CommandRegistry.getCommands()  // → 命令面板用
 | 齿轮菜单 | 设置齿轮 → "配置 XXX" | 7 |
 
 **Phase 5 做：** Registry + 命令面板消费端（复用现有的 CommandPalette 组件）
-**Phase 7 做：** context key `when` 条件、快捷键绑定
+**Phase 5 做：** context key `when` 条件、快捷键绑定——见柱子 6（命令/菜单/配置的下半身）
 
 ### 柱子 2：配置系统 (Configuration Registry + Settings Editor)
 
@@ -303,7 +313,7 @@ ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 ```
 ┌─────────────────────────────────────────────────────┐
 │ 设置                          🔍 搜索设置            │
-│ 用户  工作区（Phase 7）                              │
+│ 用户  工作区                                        │
 ├────────────┬────────────────────────────────────────┤
 │ 常用设置    │ Editor: Font Size                     │
 │ 文本编辑器  │ 控制字体大小 (像素)。                   │
@@ -325,8 +335,9 @@ ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 - ConfigurationService：`get` / `set` / `onDidChange`（默认从 settings.json 读写）
 - Settings Editor：左侧树 + 右侧表单 + 搜索框（基础版，对标 VS Code 设置页结构）
 - 迁移：现有的 `PreferenceService.preferences` → 新 ConfigurationService
+- **自定义强调色：** 第一个非终端插件的配置项，验证 Settings Editor 多分组渲染。`"app.accentColor"` 配置项 → JS `setProperty` 动态算 `--accent-hover` / `--accent-light`。~30 行。Memory `custom-accent-colors.md` 原标 P7，随着配置系统 P5 建好，顺手做
 
-**Phase 7 做：** 工作区 scope（User / Workspace 两套 settings.json）、JSON 编辑器直接打开 settings.json
+**Phase 5 做：** User/Workspace scope 三层合并——见柱子 6。JSON 编辑器直接打开 settings.json 留给 Phase 6
 
 ### 柱子 3：菜单系统 (Menu Registry)
 
@@ -338,12 +349,17 @@ ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")
 
 ```typescript
 // 菜单注册点（核心定义——对标 VS Code MenuId）
+// 这是唯一权威的 MenuId 定义。Phase 6 只在此列表上追加，不修改已有值。
 enum MenuId {
   CommandPalette = "commandPalette",   // Ctrl+Shift+P 命令面板
-  EditorContext = "editorContext",     // 标签页右键
-  FileContext = "fileContext",         // 文件树右键（Phase 7）
-  CardContext = "cardContext",         // 卡片右键（Phase 6）
-  ExtensionGear = "extensionGear",     // 齿轮菜单
+  TabContext = "tabContext",           // 标签栏右键
+  EditorContext = "editorContext",     // 标签页内容区右键
+  ExtensionGear = "extensionGear",     // 插件市场齿轮菜单
+  MenuBar = "menuBar",                // ☰ 汉堡菜单栏（Phase 6 消费）
+  FileContext = "fileContext",         // 文件树右键（Phase 6 消费）
+  CardContext = "cardContext",         // 卡片右键（Phase 7 消费）
+  QuickSendContext = "quickSendContext", // 快捷发送右键
+  IconBar = "iconBar",                // 图标栏右键
 }
 
 // 插件声明菜单项——对标 VS Code contributes.menus
@@ -370,7 +386,7 @@ MenuService.getMenuItems(MenuId.EditorContext, contextKeys)
 - CommandPalette 从 CommandRegistry 拿命令（不限于菜单注册的命令——所有命令都在命令面板出现）
 - `ExtensionGear` 齿轮菜单 → 从 MenuService 动态拿，不再硬编码"启用/禁用/卸载"
 
-**Phase 6/7 做：** 文件树右键、卡片右键、context key 条件过滤
+**Phase 6 做：** 文件树右键（MenuId.FileContext）。**Phase 7 做：** 卡片右键（MenuId.CardContext）。context key 条件过滤 Phase 5 已做。
 
 ### 柱子 4：协议注册表 (Protocol Registry)
 
@@ -409,11 +425,11 @@ const protocols = ProtocolRegistry.list()
 - 终端下拉框：从 ProtocolRegistry 动态生成协议列表
 - 现有方括号解析器迁移到 ProtocolRegistry（作为内置 "bracket" 协议）
 
-**Phase 6 做：** binary 模式（Rust 端解析器 + WASM）
+**Phase 7 做：** binary 模式（Rust 端解析器 + WASM）
 
-### 柱子 5：卡片注册表 (Card Registry) —— 骨架
+### 柱子 5：Card Registry —— 骨架
 
-Phase 5 不做卡片渲染。但需要把 registry 接口留好，让 Phase 6 开箱即用。
+Phase 5 不做卡片渲染。但需要把 registry 接口留好，让 Phase 7 开箱即用。
 
 ```typescript
 // loader 检测到 card 贡献 → 注册
@@ -424,6 +440,196 @@ CardRegistry.register({
   acceptsFields: ["amplitude", "frequency"],  // 它能消费哪些 cardId
 })
 ```
+
+---
+
+### 柱子 6：Context Key + 快捷键 + Scope —— 命令/菜单/配置的下半身
+
+**为什么必须在 Phase 5 做：** 命令系统的 `when` 条件、配置系统的 User/Workspace scope、菜单/命令的键盘快捷键——如果留到 Phase 6/7，会出现"先建功能，后补基础设施"的 V2.6 模式。
+
+具体风险：Phase 5 注册了大量命令/菜单，`when` 条件全部空着。Phase 7 context key 系统来了 → 回头翻每一个插件声明补 `when`。每个快捷键绑定也是如此——先空着，后面补。
+
+**Phase 5 一次做完：命令系统注册时 `when` 就生效，`keybinding` 就可用，ConfigurationService 从第一天就支持 scope。**
+
+#### 6.1 Context Key 系统
+
+**对标：** VS Code `when` clause context keys + `setContext`
+
+**设计：**
+
+```typescript
+// 全局 context key 状态机
+// 对标 VS Code 的 context key——只是 VS Code 的叫 "context key"，我们同名
+interface ContextKeyState {
+  // 编辑器状态
+  "activeEditor": string | null;        // 当前活动标签页 pluginId
+  "editorHasSelection": boolean;        // 标签页内有选中内容
+  "editorCount": number;                // 打开的标签页数量
+
+  // 端口/硬件状态
+  "portOpen": boolean;                  // 串口是否打开
+  "portName": string | null;            // 当前端口名
+
+  // 插件状态
+  [key: `plugin.${string}.${string}`]: unknown;  // 插件自定义 context key
+}
+
+// 消费方式 1：命令声明 when 条件
+// plugin.json
+{
+  "contributes": {
+    "commands": [
+      {
+        "id": "terminal.clear",
+        "title": "清空接收区",
+        "when": "portOpen"              // 只有串口打开时才可用
+      }
+    ]
+  }
+}
+
+// 消费方式 2：菜单声明 when 条件
+{
+  "contributes": {
+    "menus": {
+      "editorContext": [
+        { "command": "docReader.openPreview", "when": "activeEditor == 'doc-reader'" }
+      ]
+    }
+  }
+}
+
+// 消费方式 3：运行时查询
+if (ContextKeyService.matches("portOpen && editorHasSelection")) {
+  // ...
+}
+
+// ContextKeyService 内部
+// 表达式引擎：支持 && / || / ! / == / != / in（对标 VS Code when clause 语法）
+class ContextKeyService {
+  private state: Map<string, unknown> = new Map()
+
+  setValue(key: string, value: unknown): void {
+    this.state.set(key, value)
+    this.onDidChange.fire(key)
+  }
+
+  matches(expression: string): boolean {
+    // 解析 expression → AST → 对 state 求值 → boolean
+  }
+
+  getValue<T>(key: string): T | undefined {
+    return this.state.get(key) as T
+  }
+
+  onDidChange: Event<string>  // 用 CoreEvents.EventEmitter
+}
+```
+
+**实现体量：** ~120 行。表达式解析器约 60 行（合法 token：`&& || ! == != =~ in true false`，对标 VS Code when clause parser），状态机约 40 行，CoreEvents 集成约 20 行。
+
+#### 6.2 快捷键绑定（KeybindingRegistry）
+
+**对标：** VS Code `contributes.keybindings` + `keybindings.json`
+
+**设计：**
+
+```typescript
+// 插件声明快捷键——plugin.json
+{
+  "contributes": {
+    "keybindings": [
+      {
+        "command": "terminal.clear",
+        "key": "ctrl+k",
+        "when": "portOpen"         // 可选：仅在 portOpen 时响应
+      },
+      {
+        "command": "terminal.sendBreak",
+        "key": "ctrl+shift+b",
+        "when": "activeEditor == 'terminal'"
+      }
+    ]
+  }
+}
+
+// KeybindingRegistry——启动时收集所有 contributes.keybindings
+class KeybindingRegistry {
+  private bindings: Keybinding[] = []
+
+  register(pluginId: string, keybinding: Keybinding): void
+
+  // 键盘事件 → 匹配 key → 检查 when → 执行命令
+  handleKeyEvent(event: KeyboardEvent): void {
+    const matched = this.bindings.find(b => matchesKey(b.key, event))
+    if (matched && ContextKeyService.matches(matched.when)) {
+      CommandRegistry.execute(matched.command)
+    }
+  }
+}
+```
+
+**优先级：** 用户 > 插件。用户在 `keybindings.json` 里的定义覆盖插件默认。Phase 5 只做全局 `keybindings.json`，不区分 scope。
+
+**实现体量：** ~80 行。KeybindingRegistry ~40 行，全局 `keydown` 监听 ~20 行，序列化/反序列化 ~20 行。
+
+#### 6.3 User / Workspace Scope
+
+**对标：** VS Code User vs Workspace settings
+
+**问题：** Phase 4 的 PreferenceService 只有一个全局 `prefs.json`。但如果用户有一个"PID 调参"工作台和一个"蓝牙调试"工作台——两个工作台对终端波特率、协议选择的需求不同。全局设置不够用。
+
+**设计：**
+
+```typescript
+// 三层 scope 优先级（对标 VS Code）
+// Workspace > User > Default
+enum ConfigurationScope {
+  Default = 1,     // plugin.json 里写的 default 值
+  User = 2,        // 全局 settings.json
+  Workspace = 3    // .linkdesk/settings.json（项目级）
+}
+
+// ConfigurationService——从第一天支持 scope
+class ConfigurationService {
+  // 读：自动合并三层优先级
+  get<T>(key: string, scopeHint?: ConfigurationScope): T {
+    // 1. 先查 settings.json
+    // 2. 如果关联了 workspace 且 workspace 有覆盖 → 用 workspace 的值
+    // 3. 都没有 → 回退 ConfigurationRegistry 的 default
+  }
+
+  // 写：明确写哪个 scope
+  set(key: string, value: unknown, scope: ConfigurationScope): Promise<void>
+
+  // 检查某个 key 是否被 workspace 覆盖
+  inspect<T>(key: string): {
+    key: string;
+    defaultValue: T;
+    userValue?: T;
+    workspaceValue?: T;
+    effectiveValue: T;
+  }
+}
+
+// settings.json（全局 User scope）
+{
+  "terminal.timestampFormat": "HH:mm:ss:fff",
+  "app.theme": "Dark"
+}
+
+// .linkdesk/settings.json（Workspace scope——可选，Phase 5 接口支持但 Phase 7 才建 workspace 管理 UI）
+{
+  "terminal.timestampFormat": "无"     // 这个工作台不要时间戳
+}
+
+// 此时 ConfigurationService.get("terminal.timestampFormat")
+// → 返回 "无"（Workspace 覆盖了 User）
+```
+
+**Phase 5 做：** ConfigurationService 的三层读/写/inspect 接口、`settings.json`（User scope）、`.linkdesk/settings.json`（Workspace scope——读写能力完整，UI 管理留给 Phase 7）。
+
+**实现体量：** ~100 行。三层合并逻辑 ~40 行，inspect 方法 ~20 行，序列化 ~20 行，`onDidChange` 通知 ~20 行。
 
 ---
 
@@ -546,9 +752,9 @@ await pluginModule.deactivate?.()
 
 **问题：** Phase 4 的数据管道是硬编码的：`串口 → RingBuffer → TerminalView`。ProtocolRegistry 定义了"用哪个解析器"，但没有定义"解析后的数据去哪"。
 
-**Phase 6 的场景：** 用户选了 SBQ 协议 → 解析器输出 `{ cardId: "heartbeat", value: 72 }` → 这个数据需要路由到订阅了 "heartbeat" 的卡片组件。但是没有 DataDispatch 这层桥——数据到了解析器就停了。
+**Phase 7 的场景：** 用户选了 SBQ 协议 → 解析器输出 `{ cardId: "heartbeat", value: 72 }` → 这个数据需要路由到订阅了 "heartbeat" 的卡片组件。但是没有 DataDispatch 这层桥——数据到了解析器就停了。
 
-**如果不做：** Phase 6 卡片工作台建好了，协议解析器也注册了，但数据走不到卡片。因为 Phase 4 的管道终点是 TerminalView 的 CM6，没有"数据→卡片"的出口。
+**如果不做：** Phase 7 卡片工作台建好了，协议解析器也注册了，但数据走不到卡片。因为 Phase 4 的管道终点是 TerminalView 的 CM6，没有"数据→卡片"的出口。
 
 **Phase 5 就该有（~100 行）：**
 ```typescript
@@ -562,7 +768,7 @@ DataDispatch.dispatch(sourceId, cardId, fields)
 
 **问题：** 插件没有任何方式弹出一个简单的交互 UI。`pushToast()` 已支持 action 按钮（对标 VS Code 通知卡片，如 "Yes/No/Don't show again"），但不能做选择列表或输入框。`window.confirm()` 能弹出但 UI 丑陋且阻塞。
 
-**Phase 6 的场景：** CAD 插件"导入 DXF"需要选文件 → Tauri dialog 能做。但"导出为什么格式？PDF/DXF/STL？"——需要一个 QuickPick 选择框。协议插件"检测到 SBQ 数据，切换协议？"——需要一个确认框。
+**Phase 5+ 的场景：** CAD 插件"导入 DXF"需要选文件 → Tauri dialog 能做。但"导出为什么格式？PDF/DXF/STL？"——需要一个 QuickPick 选择框。协议插件"检测到 SBQ 数据，切换协议？"——需要一个确认框。
 
 **如果不做：** 每个插件自己画选择框/输入框/确认框——UI 碎片化，每个插件一套交互模式。VS Code 的做法是 `vscode.window.showQuickPick / showInputBox / showInformationMessage`——统一 API，统一 UI。
 
@@ -578,7 +784,7 @@ DialogService.showConfirm(message: string): Promise<boolean>
 
 **问题：** 当前 `ErrorBoundary.tsx` 只保护 React 渲染。协议解析器的 `parseLine()`、命令处理器、事件回调——如果抛出异常，会直接崩掉整个管道或命令面板。
 
-**Phase 6 的场景：** 用户装了 5 个协议插件，其中一个是社区写的——它的 `parseLine()` 在某行数据上崩了。如果没有错误隔离，整个串口数据管道崩溃，所有 5 个协议都收不到数据。
+**Phase 5+ 的场景：** 用户装了 5 个协议插件，其中一个是社区写的——它的 `parseLine()` 在某行数据上崩了。如果没有错误隔离，整个串口数据管道崩溃，所有 5 个协议都收不到数据。
 
 **如果不做：** 一个 buggy 插件拖垮整个应用。用户不知道是哪个插件崩的——只能看到一个白屏或静默失败。
 
@@ -588,7 +794,7 @@ DialogService.showConfirm(message: string): Promise<boolean>
 
 **问题：** 当前规划的命令系统只支持"命令面板搜到命令 → 用户点 → 执行"。但如果一个插件想调用另一个插件的命令（比如工作台插件想调 `terminal.clear` 清空终端），没有标准方式。
 
-**Phase 6 的场景：** 工作台有个"重置"按钮 → 它想执行 `terminal.clear` + `workspace.resetCards`。如果只能用户手动点命令面板，体验很糟。
+**Phase 7 的场景：** 工作台有个"重置"按钮 → 它想执行 `terminal.clear` + `workspace.resetCards`。如果只能用户手动点命令面板，体验很糟。
 
 **如果不做：** 插件之间的协作要么走硬编码 import（紧耦合），要么完全不存在。VS Code 的做法是 `vscode.commands.executeCommand('otherPlugin.doSomething', ...args)`——任何插件可以通过命令 ID 调用任何命令。
 
@@ -598,7 +804,7 @@ DialogService.showConfirm(message: string): Promise<boolean>
 
 **问题：** 当前 `console.log` 全进浏览器 DevTools——用户看不到，插件开发者调试时也看不到。
 
-**Phase 6 的场景：** 一个协议插件解析数据时想打印"跳过无效帧：0x00 0xFF"——这条信息对开发者有价值，但对普通用户不重要。它应该进日志频道，不是 toast。
+**Phase 5+ 的场景：** 一个协议插件解析数据时想打印"跳过无效帧：0x00 0xFF"——这条信息对开发者有价值，但对普通用户不重要。它应该进日志频道，不是 toast。
 
 **如果不做：** 插件开发者在真机环境中完全无法调试。VS Code 的 Output 面板和 `vscode.window.createOutputChannel()` 解决了这个问题。
 
@@ -606,13 +812,13 @@ DialogService.showConfirm(message: string): Promise<boolean>
 ```typescript
 LogChannel.create(pluginId, name): { appendLine(msg: string): void; show(): void }
 ```
-频道先建好，Output 查看器 UI 留给 Phase 7——但数据通道必须在 Phase 5 存在，插件才能往里写。
+频道先建好，Output 查看器 UI 留给 Phase 6——但数据通道必须在 Phase 5 存在，插件才能往里写。
 
 ### 盲区 11（P1）：布局持久化接口——LayoutService
 
 **问题：** Phase 5 迁移计划（§4.1）提到了 LayoutService，但只说了一句话，从未定义。
 
-**Phase 6 的场景：** 卡片工作台需要保存每个卡片的 x/y/w/h。react-grid-layout 有自己的序列化格式。如果 Phase 5 没有留好 LayoutService 接口，Phase 6 要么自己造、要么塞进 PluginStateService——但卡片布局是工作区级数据，不是插件私有数据。
+**Phase 7 的场景：** 卡片工作台需要保存每个卡片的 x/y/w/h。react-grid-layout 有自己的序列化格式。如果 Phase 5 没有留好 LayoutService 接口，Phase 7 要么自己造、要么塞进 PluginStateService——但卡片布局是工作区级数据，不是插件私有数据。
 
 **如果不做：** PreferenceService 拆不掉。`Prefs.layout`（标签页布局）和卡片布局混在一起。Phase 7 更难彻底迁移。
 
@@ -633,23 +839,49 @@ LayoutService.loadWorkspaceLayout(name: string): Promise<CardLayout[]>
 plugin.json
   ├── contributes.commands        → CommandRegistry
   │     ├── CommandPalette 消费    → Ctrl+Shift+P 搜索执行
-  │     └── MenuService 消费      → 右键菜单 / 齿轮菜单的选项
+  │     ├── MenuService 消费      → 右键菜单 / 齿轮菜单的选项
+  │     ├── KeybindingRegistry    → 键盘快捷键触发（带 when 条件）
+  │     └── ContextKeyService     → when 条件求值
+  │
+  ├── contributes.keybindings     → KeybindingRegistry
+  │     └── 消费端：全局 keydown → 匹配 when → 执行命令
   │
   ├── contributes.configuration   → ConfigurationRegistry
-  │     ├── ConfigurationService  → get / set / hook
+  │     ├── ConfigurationService  → get/set/inspect + User/Workspace scope
   │     ├── Settings Editor 消费  → 搜索表单 UI
-  │     └── settings.json         → 持久化存储
+  │     └── settings.json         → 持久化存储（多层：User + .linkdesk/Workspace）
   │
   ├── contributes.menus           → MenuService
+  │     ├── ContextKeyService     → when 条件过滤
   │     └── 消费端：右键菜单 / 齿轮 / 命令面板
   │
   ├── mode (protocol)             → ProtocolRegistry
   │     └── 消费端：终端下拉框 / 自动检测
   │
   └── entry (view)                → viewRegistry（Phase 4 已完成）
+
+全局系统状态（独立于插件）：
+  ContextKeyService     → 实时追踪 activeEditor / portOpen / editorHasSelection 等
+  KeybindingRegistry    → 全局键盘事件监听 → 分发到匹配的命令
+  CoreEvents.EventEmitter → 所有系统的通知总线（context key 变更 / 配置变更 / 端口状态 / 主题切换）
 ```
 
-**核心原则：每一项贡献独立注册，互不影响。** 终端插件可以只贡献 view + statusBar，不贡献任何设置；主题插件可以只贡献 theme，不贡献命令。Registry 只看声明，不要求完整。
+**核心原则：每一项贡献独立注册，互不影响。** 终端插件可以只贡献 view + statusBar，不贡献任何设置；主题插件可以只贡献 theme，不贡献命令。Registry 只看声明，不要求完整。**Phase 5 后 Registry 接口封板——后续 Phase 只调 `register()`，不扩展接口签名。**
+
+**parseContributions() 设计约束：**
+- 按 key 逐项检测（`if (contributes.commands) { ... }`）——不 switch，不 reject
+- 不认识的 key → 静默跳过（Phase 6 加 `contributes.themes` 时 Phase 5 的 loader 不崩）
+- `PluginManifest.contributes` 类型使用宽松索引签名 `[key: string]: unknown`，Phase 6 在此之上加具体类型
+
+**ContextKeyState 设计约束：**
+- Phase 5 初始化 5 个 key：`activeEditor / editorHasSelection / editorCount / portOpen / portName`
+- 运行时动态，`setValue(key, value)` 接受任意 key——Phase 6 加 `activeWorkspace / fileTreeHasSelection / profile` 零改动
+- TypeScript 接口标注：`// Phase 6 将添加：activeWorkspace, fileTreeHasSelection, profile`
+
+**ConfigurationService.setWorkspaceRoot(path)：**
+- Phase 6 的 WorkspaceService 调此方法告知配置系统"当前 workspace 文件夹路径"
+- Workspace scope 的 `.linkdesk/settings.json` 相对于此路径解析
+- Phase 5 定义接口签名，Phase 6 传参消费
 
 ---
 
@@ -693,48 +925,59 @@ PreferenceService（现状——一块大杂烩）→ 拆分为：
 
 | 不做 | 理由 | 以后 |
 |------|------|:--:|
-| 工作台 / 卡片渲染 | 需要 CardRegistry 先建好，但卡片 UI 是 Phase 6 | 6 |
-| OLED | 具体功能，不是基础设施 | 7 |
-| 文件树 | 独立大功能，要在命令/菜单就绪后才有意义 | 7 |
-| 工作区 scope（User/Workspace）| 先做全局设置，scope 层后加 | 7 |
-| context key 条件系统 | 菜单/命令的 `when` 需要先建 context key 状态机 | 7 |
-| 快捷键绑定 | 需要完整的 context key 系统 | 7 |
-| JSON 编辑器标签页 | 用 Monaco 做，依赖 Settings Editor 稳定 | 7 |
+| 工作台 / 卡片渲染 | 需要 CardRegistry 先建好，但卡片 UI 是 Phase 7 | 7 |
+| OLED | 具体功能，不是基础设施 | 8 |
+| 文件树 | 系统视图，Phase 5 基础设施就绪后 Phase 6 建 | 6 |
+| 主题系统插件化 | 引擎已有（ThemeEngine），插件化是 Phase 6 | 6 |
+| 语言系统插件化 | 引擎已有（i18next），插件化是 Phase 6 | 6 |
+| JSON 编辑器标签页 | 用 Monaco 做，依赖 Settings Editor 稳定 | 6 |
 | 设置同步 | 需要后端 | 8+ |
-| 齿轮菜单完整版 | context key 驱动的动态菜单 + 设置联动 | 7 |
-| 插件命令注册到命令面板之外的地方 | 右键/快捷键/齿轮 = Phase 7 context key 系统 | 7 |
+| 齿轮菜单完整版 | context key 驱动的动态菜单 + 设置联动 UI | 6 |
 | 动态 StatusBarItem（运行时创建）| 静态 manifest 声明够用，运行时 API Phase 6+ | 6 |
-| 任务系统（build/flash/test）| Phase 7+，异步命令模型已预留 | 7+ |
-| contributes.icons（共享图标）| 已有 codicon + manifest icon，共享图标是 polish | 7 |
-| Output 查看器 UI | LogChannel 数据通道 Phase 5 建好，查看器 UI Phase 7 | 7 |
+| 任务系统（build/flash/test）| Phase 8+，异步命令模型已预留 | 8+ |
+| contributes.icons（共享图标）| 已有 codicon + manifest icon，共享图标是 polish | 6 |
+| Output 查看器 UI | LogChannel 数据通道 Phase 5 建好，查看器 UI Phase 6 | 6 |
 | 插件资源访问 API（getResourceUri）| P2 优先级低，~20 行，Phase 6 再加不迟 | 6 |
-| 插件 i18n 注册（内联翻译）| 语言包插件已工作，内联翻译是 polish | 7 |
-| 通知进度条 | Toast 组件已支持静态渲染，进度条需 ProgressBar 组件 | 6 |
+| 插件 i18n 注册（内联翻译）| 语言包插件已工作，内联翻译是 polish | 6 |
+| 通知进度条 | Toast 组件已支持静态渲染，进度条需 ProgressBar 组件 | 7 |
 | 通知来源过滤 / Do Not Disturb | 需 NotificationService 管理过滤规则 | 7 |
-| "Don't show again" 持久化 | 简单 prefs 集成，~10 行，可随需要时做 | 6 |
+| "Don't show again" 持久化 | 简单 prefs 集成，~10 行，可随需要时做 | 7 |
 | 完整 Notification Center 面板 | 铃铛入口已有，面板需滚动列表 + 分组 + 过滤 | 7 |
 | 通知 source 归类（按插件分组）| 依赖 Notification Center 面板 | 7 |
 
 ---
 
-## 六、Phase 6 的图景
+## 六、Phase 6-8 的图景
 
-Phase 5 建好基础设施后，Phase 6 就是**在基础设施上写功能**：
+Phase 5 建好基础设施后，Phase 6 起就是**在基础设施上写功能**——不改框架代码，只声明 + 注册。
 
 ```
-Phase 6 — 卡片工作台 + 数据管道
+Phase 6 — 系统视图 + 引擎插件化
+  ├── 文件树（系统视图）
+  │   ├── 注册 MenuId.FileContext 锚点 → 其他插件的菜单项可挂到文件树右键
+  │   ├── 命令面板可搜索文件操作 → CommandRegistry（Phase 5 建的）
+  │   └── 设置（自动隐藏/排除模式）→ ConfigurationRegistry（Phase 5 建的）
+  │
+  ├── 主题系统插件化
+  │   ├── theme 贡献类型升级 → 和 view/protocol 同等的插件一等公民
+  │   ├── 主题选择器 UI（搜索/预览/切换）→ view + commands
+  │   └── ThemeEngine 消费 extends 链 → 已有机制，插件化包装
+  │
+  └── 语言系统插件化
+      └── language 贡献类型升级 → 和 view/protocol 同等的插件一等公民
+
+Phase 7 — 卡片工作台 + 数据管道（第一个纯插件功能）
   ├── 工作台插件（所有能力来自 Phase 5）
-  │   ├── commands: "workspace.newCard", "workspace.export"... → 命令面板 + 右键
+  │   ├── commands: "workspace.newCard", "workspace.export"... → 命令面板 + 右键 + 快捷键
   │   ├── configuration: "workspace.gridSize", "workspace.snapToGrid"... → Settings Editor
-  │   └── menus: "cardContext" 菜单项
+  │   └── menus: "cardContext" 菜单项（when 条件从第一天生效）
   ├── CardRegistry（Phase 5 留的骨架）→ 卡片渲染 + react-grid-layout
-  └── ProtocolRegistry（Phase 5 建的）→ 协议选择下拉框 + 数据路由到卡片
+  └── ProtocolRegistry（Phase 5 建的）→ 协议选择下拉框 + DataDispatch → 卡片消费端
 
-Phase 7 — OLED + 设置完善 + 文件树
-  ├── OLED 视图 = 一个插件
-  ├── 文件树 = 一个视图 + commands + menus
-  ├── Settings Editor 完善（工作区 scope + JSON 编辑器标签页）
-  └── context key 系统 + 快捷键绑定
+Phase 8 — OLED（独立插件）
+  ├── view: OLED 视图插件
+  ├── receives: DataDispatch 订阅数据管道
+  └── configuration: OLED 设置项 → Settings Editor 自动渲染
 ```
 
-**不需要改任何基础设施代码。** 只是在 registry 上注册新东西。
+**Phase 5 之后零框架改动。** 文件树、卡片工作台、OLED——每个都是 `plugin.json` 声明 + Registry 注册。框架不再因为"新加了一个功能"而改一行代码。这就是 VS Code 0.9→1.0 的拐点。

@@ -7,7 +7,7 @@
 ```
 外层：标签页 + 递归分屏（VS Code 编辑器组模型）
   └── 标签页拖拽/分屏/合并，keep-alive 绝对定位平铺
-内层：卡片网格（Phase 5）
+内层：卡片网格（Phase 7）
   └── react-grid-layout 拖拽重排，workspace.json 平铺数组
 硬边界：标签页系统永不 import CardRegistry，唯一接触点 = Tab.workspaceName: string
 ```
@@ -16,8 +16,18 @@
 
 Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 应用基础设施层**
 
-详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表）
-分支：`phase4-plugin-system`
+详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
+分支：`phase5-app-infrastructure`
+
+## Phase 路线
+
+| Phase | 内容 | 改框架？ |
+|:--:|------|:--:|
+| 5 | 命令/配置/菜单/协议 + context key + 快捷键 + scope（最后一个改框架的 Phase）| ✅ |
+| 5.5 | 三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明 + 侧栏改为控制面板 | ✅ |
+| 6 | 文件树 + 主题插件化 + 语言插件化（纯消费者） | ❌ |
+| 7 | 卡片工作台 + 数据管道（纯插件）| ❌ |
+| 8 | OLED（独立插件）| ❌ |
 
 ## 硬约束（绝对不能违反）
 

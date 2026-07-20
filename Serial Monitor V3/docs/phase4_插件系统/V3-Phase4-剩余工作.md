@@ -112,11 +112,11 @@
 | PluginDetailView 按钮 | 卸载/禁用→可用 |
 | MarketplaceSidebar | "已禁用"分区 + 启用按钮 |
 
-## Phase 5 计划
+## Phase 5+ 计划
 
 > 详见：[V3-Phase5-设计.md](../phase5_应用基础设施/V3-Phase5-设计.md)
-> Phase 5 = 应用基础设施层。命令系统 + 配置注册表 + 菜单系统 + 协议注册表。
-> 卡片/工作台延后到 Phase 6。
+> Phase 5 = 应用基础设施层（最后一个改框架的 Phase）。命令/配置/菜单/协议 + context key + 快捷键 + scope。
+> Phase 6 = 文件树 + 主题/语言插件化（纯消费者）。Phase 7 = 卡片工作台（纯插件）。Phase 8 = OLED。
 
 ### Phase 4 最终剩余（全部推迟到后续 Phase）
 
@@ -124,11 +124,12 @@
 |------|:--:|------|
 | 插件市场在线搜索 | 6+ | 需服务端 |
 | 插件安全模型 | 5+ | 当前同 WebView 够用，接口已留 `<iframe>` 桥 |
-| Git 插件 | 5+ | 应用级插件，架构已预留 `plugins/git/` |
-| 个人中心 | 7+ | UI 功能，IconBar BOTTOM_ICONS 位置已预留 |
-| card/protocol 完整实现 | 5 | loader 已加载识别，run-time 注册 + UI 留给 Phase 5 |
-| 齿轮菜单完整版 | 7 | context key 菜单系统 + 设置联动 |
-| 命令系统 | 7 | 插件注册命令 + 右键菜单扩展点 |
+| Git 插件 | 6+ | 应用级插件 |
+| 个人中心 | 7+ | UI 功能 |
+| card 完整渲染 | 7 | CardRegistry 渲染 Phase 7 |
+| protocol run-time | 5 | ProtocolRegistry 注册+切换 Phase 5 |
+| 齿轮菜单完整版 | 6 | context key 驱动（Phase 5 建，Phase 6 UI 完善） |
+| 命令系统 | 5 | CommandRegistry + KeybindingRegistry Phase 5 |
 
 ---
 
@@ -449,7 +450,7 @@ Rust 新增 `list_disabled_plugin_dirs` + `reinstall_plugin`。
 ### 4. ⚙ 齿轮菜单
 
 每个非 core 列表项右侧 hover 出现齿轮 → 展开"启用/禁用"+"卸载"。
-对标 VS Code `ManageExtensionAction`，Phase 7 加完整 context key 驱动菜单。
+对标 VS Code `ManageExtensionAction`，Phase 6 UI 完善（context key 驱动 Phase 5 已建）。
 
 ### 完整场景验证
 

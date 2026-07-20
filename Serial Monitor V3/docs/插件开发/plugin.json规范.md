@@ -31,8 +31,15 @@
 | `resources` | resource | 资源注册（Phase 5 完整实现）|
 | `sidebar` | view + sidebar | 侧栏组件随视图一起注册 |
 | `statusBar` | view + statusBar | 状态栏贡献随视图一起注册 |
+| `contributes.commands` | — | 注册到 CommandRegistry → 命令面板/右键菜单/快捷键 |
+| `contributes.configuration` | — | 注册到 ConfigurationRegistry → Settings Editor 自动渲染 |
+| `contributes.menus` | — | 注册到 MenuService → 右键菜单动态生成 |
+| `contributes.keybindings` | — | 注册到 KeybindingRegistry → 全局键盘监听 |
+| `contributes.themes` | theme (P6) | 注册到 ThemeRegistry → 主题浏览器 |
+| `contributes.languages` | language (P6) | 注册到 LanguageRegistry |
+| `contributes.fileAssociations` | — (P6) | 注册到 FileAssociationService → 双击文件自动打开 |
 
-**插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar`——三个贡献点独立注册，互不影响。
+**插件可同时声明多种贡献。** 比如一个视图插件可以有 `entry` + `sidebar` + `statusBar` + `contributes.configuration` + `contributes.commands`——全部独立注册，互不影响。
 
 ## 完整示例
 
@@ -161,6 +168,122 @@
 | `i18n` | `object` | 插件自带翻译 `{ "zh": "zh.json", "en": "en.json" }` |
 | `cssVars` | `object` | 插件自定义 CSS 变量 `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | 权限声明 `["serial", "filesystem", "network"]`（Phase 5+ 启用） |
+
+### `contributes` 字段（Phase 5+）——对标 VS Code
+
+> **插件一旦声明 `contributes`，系统自动接线——不需要改任何核心代码。**
+
+#### contributes.configuration —— 插件设置自动出现在 Settings Editor
+
+安装后，Settings Editor 左侧树自动多一个分组，右侧自动渲染表单。**不需要手写设置界面。**
+
+```json
+{
+  "contributes": {
+    "configuration": {
+      "title": "CAD 查看器",
+      "properties": {
+        "cad.gridSize": {
+          "type": "number",
+          "default": 10,
+          "minimum": 1,
+          "maximum": 100,
+          "description": "网格大小 (mm)"
+        },
+        "cad.units": {
+          "type": "string",
+          "default": "mm",
+          "enum": ["mm", "cm", "inch"],
+          "description": "单位"
+        },
+        "cad.darkThemeOverride": {
+          "type": "boolean",
+          "default": false,
+          "description": "强制暗色视图"
+        }
+      }
+    }
+  }
+}
+```
+
+**支持的 type：** `"string"` | `"number"` | `"boolean"` | `"integer"`
+**支持的约束：** `enum`（下拉列表）| `minimum` / `maximum`（数值范围）| `default`（默认值）
+
+**插件代码里读设置：**
+```typescript
+import { useConfiguration } from "../../src/core/ConfigurationService";
+
+function CadView() {
+  const [gridSize] = useConfiguration("cad.gridSize");  // 10
+  const [units] = useConfiguration("cad.units");          // "mm"
+  // 用户在 Settings Editor 改值 → 组件自动重渲染
+}
+```
+
+#### contributes.commands —— 插件注册命令，出现在命令面板
+
+```json
+{
+  "contributes": {
+    "commands": [
+      {
+        "id": "cad.importDxf",
+        "title": "导入 DXF…",
+        "category": "CAD"
+      },
+      {
+        "id": "cad.exportPdf",
+        "title": "导出 PDF…",
+        "category": "CAD",
+        "when": "activeEditor == 'cad'"
+      }
+    ]
+  }
+}
+```
+
+**`when` 条件：** Phase 5 的 ContextKeyService 实时求值。`when: "activeEditor == 'cad'"` → 只有 CAD 标签页聚焦时此命令可用。
+
+#### contributes.menus —— 插件声明右键菜单项
+
+```json
+{
+  "contributes": {
+    "menus": {
+      "editorContext": [
+        "cad.importDxf",
+        "cad.exportPdf"
+      ],
+      "tabContext": [
+        { "command": "cad.closeAll", "when": "activeEditor == 'cad'" }
+      ]
+    }
+  }
+}
+```
+
+**可用菜单 ID：** `editorContext`（标签页内容右键）| `tabContext`（标签栏右键）| `fileContext`（文件树右键，Phase 6）| `cardContext`（卡片右键，Phase 7）
+
+**菜单位置（MenuId）由框架定义，你只管在哪个位置挂什么命令。** 框架自己也注册了内置项——"关闭"、"分屏"是框架的，"清空"、"暂停"是终端插件的，"导入 DXF"是 CAD 插件的。用户右键时看到的菜单 = 框架内置 + 终端 + CAD + 你的插件——多方贡献，合并渲染。
+
+#### contributes.keybindings —— 插件声明快捷键
+
+```json
+{
+  "contributes": {
+    "keybindings": [
+      {
+        "command": "cad.importDxf",
+        "key": "ctrl+shift+i",
+        "when": "activeEditor == 'cad'"
+      }
+    ]
+  }
+}
+```
+
+---
 
 ### `tabBehavior` 字段
 

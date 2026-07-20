@@ -99,7 +99,7 @@ V3 重架构不只是技术换底盘（WPF → Tauri + React），而是设计�
 │   └── keep-alive：所有面板平级渲染，CSS display 切换   │
 │   └── 硬边界：标签页系统永不 import 卡片系统           │
 ├─────────────────────────────────────────────────┤
-│ 内层：卡片网格（Phase 5）                           │
+│ 内层：卡片网格（Phase 7）                           │
 │   └── react-grid-layout 拖拽重排                   │
 │   └── workspace.json 一层平铺数组                   │
 │   └── 卡片组件壳分离（CardShell + CardComponent）    │
@@ -117,7 +117,7 @@ V3 重架构不只是技术换底盘（WPF → Tauri + React），而是设计�
   → 读每个 plugin.json → 校验（7 种错误类型）
   → 按 type 分发注册：
       type: "view"       → registerViewPlugin() → viewRegistry Map
-      type: "card"       → CardRegistry（Phase 5）
+      type: "card"       → CardRegistry（Phase 7）
       type: "theme"      → ThemeEngine.registerTheme()
       type: "language"   → i18next.addResourceBundle()
       type: "protocol"   → 协议下拉列表
@@ -131,7 +131,7 @@ V3 重架构不只是技术换底盘（WPF → Tauri + React），而是设计�
 | 类型 | plugin.json 关键字段 | 加载后去哪里 | 契约 |
 |------|---------------------|-------------|------|
 | `view` | entry, sidebar, tabBehavior, statusBar | viewRegistry → renderTabContent + IconBar | `{ isActive: boolean }` |
-| `card` | entry | CardRegistry（Phase 5） | `{ cardId, value, config }` |
+| `card` | entry | CardRegistry（Phase 7） | `{ cardId, value, config }` |
 | `theme` | file / themes[] | ThemeEngine.registerTheme() | JSON 颜色表 |
 | `language` | file / languages[] | i18next.addResourceBundle() | JSON 翻译表 |
 | `protocol` | entry, detect() | 协议下拉列表（Phase 5） | `parseLine(raw: string) => ParsedLine` |
@@ -350,8 +350,8 @@ localStorage 兜底：npm run dev（纯浏览器）和 Tauri init 未完成时�
 | 插件 | pluginId | 类型 | 核心？ | 可卸载？ | 功能 |
 |------|----------|------|:--:|:--:|------|
 | 终端 | terminal | view | | ✅ | CM6 接收+Monaco 发送+侧栏设置+快捷发送+搜索+暂停+导出 |
-| 工作台 | workspace | view | | ✅ | 卡片网格（Phase 5 实现，当前占位） |
-| 设置 | settings | view | ✅ | | 设置页（Phase 7 实现，当前占位） |
+| 工作台 | workspace | view | | ✅ | 卡片网格（Phase 7 实现，当前占位） |
+| 设置 | settings | view | ✅ | | 设置页（Phase 5 实现） |
 | 插件市场 | marketplace | view | ✅ | | 浏览/搜索已安装插件，侧栏+详情页 |
 
 ---
@@ -369,24 +369,30 @@ localStorage 兜底：npm run dev（纯浏览器）和 Tauri init 未完成时�
 - 109 个单元测试全过
 - 46 个 bug 修复（B1-B48）
 
-### Phase 5：卡片架构（即将开工）
+### Phase 5：应用基础设施层（即将开工——最后一个改框架的 Phase）
 
-- react-grid-layout 卡片网格
-- CardRegistry：ID → Card 字典 O(1) 路由
-- Gauge / Switch / Slider / Plot / KeyPad 组件
-- 编辑模式（属性面板 + 插入/删除）
-- ProtocolParser 路由接通
+- CommandRegistry + KeybindingRegistry + CommandPalette 消费
+- ConfigurationRegistry + Settings Editor + User/Workspace scope
+- MenuService + context key when 条件过滤
+- ProtocolRegistry + 终端下拉框动态切换
+- ContextKeyService + CoreEvents 事件总线
+- DataDispatch / DialogService / PluginStateService / deactivate 生命周期
+
+### Phase 6：文件树 + 主题/语言插件化
+
+- 文件树系统视图 + MenuId.FileContext 锚点
+- 主题成为插件一等公民
+- 语言包成为插件一等公民
+
+### Phase 7：卡片工作台 + 数据管道（纯插件）
+
+- react-grid-layout 卡片网格 + CardRegistry 渲染
+- ProtocolRegistry → DataDispatch → 卡片消费端
 - workspace.json 读写 + 多 workspace 切换
-- unknown ID 自动建 generic 卡
-- V2 旧协议兼容翻译层
 
-### Phase 6+：数据源插件
+### Phase 8：OLED（独立插件）
 
-- DatasourcePlugin 接口：stream / poll / replay
-- 串口重构为第一个数据源插件
-- CAN、TCP、摄像头、声卡、文件回放
-- Binary 协议：WASM 方案
-- 数据源面板
+- OLED 视图 + DataDispatch 订阅 + Settings Editor 配置
 
 ### AI 工作流（远期）
 
