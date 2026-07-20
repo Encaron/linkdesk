@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, enablePlugin, installPlugin } from "../../src/pluginLoader/loader";
+import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, installPlugin, reinstallPlugin } from "../../src/pluginLoader/loader";
 import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import type { ViewPluginEntry } from "../../src/core/types";
@@ -20,6 +20,12 @@ function MarketplaceSidebar() {
 
   const allPlugins = getViewPlugins();
   const disabledPlugins = getDisabledPluginInfo();
+  const [uninstalledPlugins, setUninstalledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
+
+  // 异步获取已卸载的插件（.disabled/ 目录）
+  useState(() => {
+    getUninstalledPluginInfo().then(setUninstalledPlugins);
+  });
 
   const filtered = allPlugins.filter((p) => {
     if (!search) return true;
@@ -32,6 +38,16 @@ function MarketplaceSidebar() {
   });
 
   const filteredDisabled = disabledPlugins.filter((p) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return (
+      p.name.toLowerCase().includes(q) ||
+      p.pluginId.toLowerCase().includes(q) ||
+      (p.description ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const filteredUninstalled = uninstalledPlugins.filter((p) => {
     if (!search) return true;
     const q = search.toLowerCase();
     return (
@@ -60,7 +76,23 @@ function MarketplaceSidebar() {
   }, []);
 
   const [installing, setInstalling] = useState(false);
+
   const handleInstall = useCallback(async () => {
+    setInstalling(true);
+    try {
+      const { open } = await import("@tauri-apps/plugin-dialog");
+      const selected = await open({ directory: true, title: "选择插件目录", multiple: false });
+      if (selected) await installPlugin(selected as string);
+    } catch { /* 静默 */ }
+    finally { setInstalling(false); }
+  }, []);
+
+  const handleReinstall = useCallback(async (pluginId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    await reinstallPlugin(pluginId);
+    // 刷新卸载列表
+    getUninstalledPluginInfo().then(setUninstalledPlugins);
+  }, []);
     setInstalling(true);
     try {
       const { open } = await import("@tauri-apps/plugin-dialog");
@@ -140,6 +172,15 @@ function MarketplaceSidebar() {
                 onOpenDetailPinned={handleOpenDetailPinned}
               />
             )}
+            {filteredUninstalled.length > 0 && (
+              <UninstalledSection
+                title={t("待安装") + ` (${filteredUninstalled.length})`}
+                plugins={filteredUninstalled}
+                onInstall={handleReinstall}
+                onOpenDetail={handleOpenDetail}
+                onOpenDetailPinned={handleOpenDetailPinned}
+              />
+            )}
           </>
         )}
       </div>
@@ -206,6 +247,74 @@ function DisabledSection({
                 title="启用插件"
               >
                 <span className="codicon codicon-play" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── 待安装分区（对标 VS Code 绿色 Install 按钮）── */
+
+function UninstalledSection({
+  title,
+  plugins,
+  onInstall,
+  onOpenDetail,
+  onOpenDetailPinned,
+}: {
+  title: string;
+  plugins: Array<{ pluginId: string; name: string; description?: string; version?: string }>;
+  onInstall: (pluginId: string, e: React.MouseEvent) => void;
+  onOpenDetail: (pluginId: string) => void;
+  onOpenDetailPinned: (pluginId: string) => void;
+}) {
+  const [collapsed, setCollapsed] = useState(false);
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleClick = (pluginId: string) => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onOpenDetailPinned(pluginId);
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onOpenDetail(pluginId);
+      }, 300);
+    }
+  };
+
+  return (
+    <div className="ms-section">
+      <button className="ms-section-header" onClick={() => setCollapsed(!collapsed)}>
+        <span className={`codicon ${collapsed ? "codicon-chevron-right" : "codicon-chevron-down"}`} />
+        <span className="ms-section-title">{title}</span>
+      </button>
+      {!collapsed && (
+        <div className="ms-section-items">
+          {plugins.map((p) => (
+            <div key={p.pluginId} className="ms-extension-item uninstalled">
+              <div className="ms-item-icon">
+                <span className="codicon codicon-symbol-misc" />
+              </div>
+              <div className="ms-item-details" onClick={() => handleClick(p.pluginId)} style={{ cursor: "pointer" }}>
+                <div className="ms-item-header">
+                  <span className="ms-item-name">{p.name}</span>
+                  {p.version && <span className="ms-item-version">v{p.version}</span>}
+                </div>
+                {p.description && (
+                  <span className="ms-item-desc">{p.description}</span>
+                )}
+              </div>
+              <button
+                className="ms-item-install-btn"
+                onClick={(e) => onInstall(p.pluginId, e)}
+                title="安装插件"
+              >
+                <span className="codicon codicon-cloud-download" /> 安装
               </button>
             </div>
           ))}

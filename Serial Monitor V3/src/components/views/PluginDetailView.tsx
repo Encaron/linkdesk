@@ -9,7 +9,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, uninstallPlugin, enablePlugin, isPluginDisabled } from "../../pluginLoader/loader";
+import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -81,26 +81,29 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   const plugin = getViewPlugin(pluginId);
   if (!plugin) {
-    // 检查是否被禁用——如果是，提供启用按钮
     const _disabled = isPluginDisabled(pluginId);
     return (
       <div className="plugin-detail-empty">
-        <p>{t("插件")} "{pluginId}" {t("未安装或已禁用")}</p>
-        {_disabled && (
+        <p>
+          {_disabled
+            ? t("插件") + ` "${pluginId}" ` + t("已禁用")
+            : t("插件") + ` "${pluginId}" ` + t("未安装")}
+        </p>
+        {_disabled ? (
           <button
             className="pd-btn pd-btn-enable"
             style={{ marginTop: 12 }}
-            onClick={async () => {
-              const r = await enablePlugin(pluginId);
-              if (r.success) {
-                // 刷新页面——enablePlugin 对视图插件返回 needRestart
-                if (r.needRestart) {
-                  // 提示用户重启
-                }
-              }
-            }}
+            onClick={async () => { setBusy(true); await enablePlugin(pluginId); setBusy(false); }}
           >
             <span className="codicon codicon-play" /> {t("启用插件")}
+          </button>
+        ) : (
+          <button
+            className="pd-btn pd-btn-install"
+            style={{ marginTop: 12 }}
+            onClick={async () => { setBusy(true); await reinstallPlugin(pluginId); setBusy(false); }}
+          >
+            <span className="codicon codicon-cloud-download" /> {t("安装插件")}
           </button>
         )}
       </div>

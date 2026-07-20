@@ -116,6 +116,51 @@ pub fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 列出 plugins/.disabled/ 下所有子目录名（已卸载但仍保留文件的插件）。
+/// VS Code 对标：extensions 目录中已删除但仍可在本地重新安装的扩展。
+#[tauri::command]
+pub fn list_disabled_plugin_dirs() -> Result<Vec<String>, String> {
+    let dir = plugins_dir()?.join(".disabled");
+    if !dir.exists() {
+        return Ok(Vec::new());
+    }
+    let mut names: Vec<String> = Vec::new();
+    let entries = fs::read_dir(&dir).map_err(|e| format!("读取 .disabled/ 失败: {}", e))?;
+    for entry in entries {
+        let entry = entry.map_err(|e| format!("遍历条目失败: {}", e))?;
+        if entry.file_type().map_err(|e| format!("获取文件类型失败: {}", e))?.is_dir() {
+            let name = entry.file_name().to_string_lossy().to_string();
+            if !name.starts_with('.') {
+                let manifest = entry.path().join("plugin.json");
+                if manifest.exists() {
+                    names.push(name);
+                }
+            }
+        }
+    }
+    names.sort();
+    Ok(names)
+}
+
+/// 重新安装：将 plugins/.disabled/<id>/ 移回 plugins/<id>/。
+/// 对标 VS Code：从本地重新安装已卸载的扩展（无需重新下载）。
+#[tauri::command]
+pub fn reinstall_plugin(plugin_id: String) -> Result<(), String> {
+    let dir = plugins_dir()?;
+    let disabled_dir = dir.join(".disabled");
+    let src = disabled_dir.join(&plugin_id);
+    if !src.exists() {
+        return Err(format!("已卸载的插件 \"{}\" 未找到", plugin_id));
+    }
+    let dest = dir.join(&plugin_id);
+    if dest.exists() {
+        return Err(format!("插件 \"{}\" 已存在", plugin_id));
+    }
+    fs::rename(&src, &dest)
+        .map_err(|e| format!("重新安装失败: {}", e))?;
+    Ok(())
+}
+
 /// 递归复制目录。
 fn copy_dir(src: &PathBuf, dest: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(dest)

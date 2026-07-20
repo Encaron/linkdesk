@@ -525,7 +525,7 @@ export function isPluginLoaderReady(): boolean {
   return _initialized;
 }
 
-/** 获取禁用插件的基本信息（供市场侧栏展示） */
+/** 获取禁用插件的基本信息（在 plugins/ 但被 prefs 标记禁用）*/
 export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
   const disabled = getDisabledList();
   const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
@@ -541,11 +541,62 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
         description: m.description,
         version: m.version,
       });
-    } else {
-      result.push({ pluginId, name: pluginId });
     }
   }
   return result;
+}
+
+/** 获取已卸载插件列表（在 .disabled/ 目录，对标 VS Code 本地可重装扩展）*/
+export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: string; name: string; description?: string; version?: string }>> {
+  try {
+    const dirs = await invoke<string[]>("list_disabled_plugin_dirs");
+    const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
+    for (const pluginId of dirs) {
+      if (getDisabledList().includes(pluginId)) continue; // 已禁用但未卸载的排除
+      // 尝试从 glob 读 manifest（可能不在 glob 里，因为 .disabled/ 不在 glob 路径）
+      const manifestKey = Object.keys(pluginManifests).find(
+        (k) => extractPluginId(k) === pluginId
+      );
+      if (manifestKey) {
+        const m = pluginManifests[manifestKey];
+        result.push({ pluginId, name: m.name || pluginId, description: m.description, version: m.version });
+      } else {
+        result.push({ pluginId, name: pluginId });
+      }
+    }
+    return result;
+  } catch {
+    return [];
+  }
+}
+
+/**
+ * 重新安装已卸载的插件：从 .disabled/ 移回 plugins/。
+ * 对标 VS Code：扩展卸载后文件仍在本地，可一键重新安装。
+ */
+export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
+  try {
+    await invoke("reinstall_plugin", { pluginId });
+
+    // 尝试热加载
+    const manifestKey = Object.keys(pluginManifests).find(
+      (k) => extractPluginId(k) === pluginId
+    );
+    if (manifestKey) {
+      const manifest = pluginManifests[manifestKey];
+      if (manifest.type === "theme" || manifest.type === "language") {
+        await loadPlugin(pluginId);
+        pushToast({ message: `已安装：${manifest.name}（即时生效）`, ttl: 5000 });
+        return { success: true };
+      }
+      pushToast({ message: `已安装：${manifest.name}。重启后生效。`, ttl: 8000 });
+    } else {
+      pushToast({ message: `已安装：${pluginId}。重启后生效。`, ttl: 8000 });
+    }
+    return { success: true };
+  } catch (e: any) {
+    return { success: false, error: e?.message || String(e) };
+  }
 }
 
 /* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */

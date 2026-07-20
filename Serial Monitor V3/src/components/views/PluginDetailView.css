@@ -172,6 +172,17 @@
   color: #4caf50;
 }
 
+/* 对标 VS Code extensionButton 绿色安装按钮 */
+.pd-btn-install {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--badge-text);
+}
+
+.pd-btn-install:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
 .pd-btn .codicon {
   font-size: 12px;
   vertical-align: middle;

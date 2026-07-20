@@ -16,8 +16,10 @@ pub fn run() {
             serial::set_dtr,
             serial::set_rts,
             plugins::list_plugin_dirs,
+            plugins::list_disabled_plugin_dirs,
             plugins::install_plugin,
             plugins::uninstall_plugin,
+            plugins::reinstall_plugin,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
