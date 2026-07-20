@@ -14,7 +14,7 @@
 
 ## 当前阶段
 
-Phase 1-4 ✅ 全部完成 → **Phase 5 🔜 应用基础设施层**
+Phase 1-5a ✅ 完成 → **Phase 5b 🔜 右键菜单归一化**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 分支：`phase5-app-infrastructure`
