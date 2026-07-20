@@ -332,6 +332,7 @@ function App() {
               pluginId: t.pluginId,
               detailPluginId: t.detailPluginId,
               sourceId: t.sourceId,
+              pinned: t.pinned,
             })),
             activeTabId: g.activeTabId,
           })),
