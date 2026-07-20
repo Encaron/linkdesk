@@ -16,7 +16,7 @@ import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 // Phase 5：新基础设施服务
-import { initConfigurationService } from "./core/ConfigurationService";
+import { initConfigurationService, getConfigurationValue } from "./core/ConfigurationService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
@@ -138,16 +138,20 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）
       mountGlobalKeybindings();
 
+      // Phase 5：主题/语言优先读 ConfigurationService（Settings Editor 写的），fallback 旧 Prefs
+      const cfgTheme = getConfigurationValue<string>("app.theme");
+      const cfgLang = getConfigurationValue<string>("app.language");
+      const initTheme = cfgTheme || prefs?.theme || "Dark";
+      const initLang = cfgLang || prefs?.language || "zh";
+
+      loadTheme(initTheme)
+        .then(applyTheme)
+        .catch(() => { /* CSS fallback 生效 */ });
+      setTheme(initTheme as "Dark" | "Light");
+      setLang(initLang as "zh" | "en");
+      i18n.changeLanguage(initLang);
+
       if (prefs) {
-        loadTheme(prefs.theme || "Dark")
-          .then(applyTheme)
-          .catch(() => { /* CSS fallback 生效 */ });
-        setTheme((prefs.theme as "Dark" | "Light") || "Dark");
-
-        const lang = prefs.language || "zh";
-        setLang(lang);
-        i18n.changeLanguage(lang);
-
         setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
         setPortName(prefs.lastPort || "COM3");
 
