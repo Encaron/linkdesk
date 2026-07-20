@@ -18,7 +18,7 @@ import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue } from "./core/ConfigurationService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
-import { initLayoutService } from "./core/LayoutService";
+import { initLayoutService, getTabLayout } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
@@ -154,15 +154,15 @@ function App() {
       if (prefs) {
         setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
         setPortName(prefs.lastPort || "COM3");
-
-        // Phase 3: 恢复布局（§11.3）
-        try {
-          const savedLayout = prefs.layout;
-          if (savedLayout?.groups) {
-            restoreLayout(savedLayout);
-          }
-        } catch { /* 布局恢复失败不影响启动 */ }
       }
+
+      // Phase 5：布局持久化走 LayoutService（layout.json），不再经 prefs.layout
+      try {
+        const savedLayout = getTabLayout();
+        if (savedLayout?.groups?.length > 0) {
+          restoreLayout(savedLayout);
+        }
+      } catch { /* 布局恢复失败不影响启动 */ }
 
       setReady(true);
     })();
