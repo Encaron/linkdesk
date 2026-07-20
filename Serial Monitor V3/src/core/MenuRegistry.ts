@@ -55,7 +55,7 @@ export type ManifestMenuItem = string | { command: string; when?: string; group?
 
 const _menus = new Map<MenuId, Array<MenuItem & { pluginId: string }>>();
 
-/** 注册菜单项——loader 在 parseContributions 阶段调用 */
+/** 注册菜单项——loader 在 parseContributions 阶段调用。幂等：同 pluginId + command 不会重复。 */
 export function registerMenuItems(
   menuId: MenuId,
   pluginId: string,
@@ -68,7 +68,13 @@ export function registerMenuItems(
         ? { command: item, pluginId }
         : { command: item.command, group: item.group, when: item.when, pluginId };
 
-    existing.push(normalized);
+    // 幂等——同一 menuId 下同一 pluginId 的同一 command 不重复注册
+    const duplicate = existing.some(
+      (e) => e.command === normalized.command && e.pluginId === normalized.pluginId
+    );
+    if (!duplicate) {
+      existing.push(normalized);
+    }
   }
   _menus.set(menuId, existing);
 }

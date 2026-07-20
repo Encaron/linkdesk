@@ -20,9 +20,12 @@ import { pushToast } from "../core/toast";
 import PreferenceService from "../core/PreferenceService";
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
-// Phase 5：contributes 解析
-import { registerConfiguration } from "../core/ConfigurationRegistry";
+// Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
+import { registerConfiguration, registerConfigurationDefaults } from "../core/ConfigurationRegistry";
 import type { ManifestMenuItem } from "../core/MenuRegistry";
+import { registerMenuItems } from "../core/MenuRegistry";
+import { registerCommand } from "../core/CommandRegistry";
+import { registerKeybinding } from "../core/KeybindingRegistry";
 import i18n from "../i18n";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
@@ -144,50 +147,43 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     });
   }
 
-  // contributes.commands → CommandRegistry（延迟解析——等组件 import 后 handler 才有值）
+  // contributes.commands → CommandRegistry
+  // Phase 5c fix：静态导入替代动态 import()——动态 import 的 .then() 晚于组件 mount，
+  // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
     const cmds = c.commands as Array<{ id: string; title: string; category?: string; when?: string }>;
-    // placeholder 注册：handler 暂为空，Phase 4 的组件加载后通过 setCommandHandler 补充
-    import("../core/CommandRegistry").then(({ registerCommand }) => {
-      for (const cmd of cmds) {
-        registerCommand(pluginId, {
-          id: cmd.id,
-          title: cmd.title,
-          category: cmd.category,
-          when: cmd.when,
-          handler: async () => {
-            console.warn(`[pluginLoader] 命令 "${cmd.id}" 尚未绑定 handler——请在组件 mount 时注册`);
-          },
-        });
-      }
-    });
+    for (const cmd of cmds) {
+      registerCommand(pluginId, {
+        id: cmd.id,
+        title: cmd.title,
+        category: cmd.category,
+        when: cmd.when,
+        handler: async () => {
+          console.warn(`[pluginLoader] 命令 "${cmd.id}" 尚未绑定 handler——请在组件 mount 时注册`);
+        },
+      });
+    }
   }
 
   // contributes.menus → MenuRegistry
   if (c.menus) {
     const menus = c.menus as Record<string, ManifestMenuItem[]>;
-    import("../core/MenuRegistry").then(({ registerMenuItems }) => {
-      for (const [menuId, items] of Object.entries(menus)) {
-        registerMenuItems(menuId as any, pluginId, items);
-      }
-    });
+    for (const [menuId, items] of Object.entries(menus)) {
+      registerMenuItems(menuId as any, pluginId, items);
+    }
   }
 
   // contributes.keybindings → KeybindingRegistry
   if (c.keybindings) {
     const kbs = c.keybindings as Array<{ command: string; key: string; when?: string }>;
-    import("../core/KeybindingRegistry").then(({ registerKeybinding }) => {
-      for (const kb of kbs) {
-        registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin" });
-      }
-    });
+    for (const kb of kbs) {
+      registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin" });
+    }
   }
 
   // contributes.configurationDefaults → ConfigurationRegistry（盲区 2：弱默认值）
   if (c.configurationDefaults) {
-    import("../core/ConfigurationRegistry").then(({ registerConfigurationDefaults }) => {
-      registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
-    });
+    registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
   }
 }
 

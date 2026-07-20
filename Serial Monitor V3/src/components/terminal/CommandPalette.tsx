@@ -34,6 +34,14 @@ function CommandPalette({ open, onClose }: Props) {
     }
   }, [open]);
 
+  // 窗口失焦关闭——对标 ContextMenu
+  useEffect(() => {
+    if (!open) return;
+    const onBlur = () => onClose();
+    window.addEventListener("blur", onBlur);
+    return () => window.removeEventListener("blur", onBlur);
+  }, [open, onClose]);
+
   const filtered = useMemo(() => {
     if (!query) return allCommands;
     const q = query.toLowerCase();

@@ -244,7 +244,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           menuId={MenuId.ExtensionGear}
           anchor={gearAnchor}
           context={{}}
-          onClose={() => setGearAnchor(null)}
+          onClose={() => { setGearAnchor(null); (document.activeElement as HTMLElement)?.blur(); }}
         />
       )}
     </div>
