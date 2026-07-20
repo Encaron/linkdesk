@@ -12,6 +12,9 @@ import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+// Phase 5b：统一右键菜单
+import ContextMenu from "./shared/ContextMenu";
+import { MenuId } from "../core/MenuRegistry";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -45,7 +48,6 @@ interface TabBarProps {
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => string;
-  onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
   /** 对标 VS Code：双击标签页 → 固定/取消固定 */
@@ -115,105 +117,7 @@ function PlusMenu({
   );
 }
 
-/* ── 右键上下文菜单 ── */
-
-interface ContextMenuState {
-  tabId: string;
-  x: number;
-  y: number;
-}
-
-function ContextMenu({
-  state,
-  tabs,
-  onClose,
-  onCloseTab,
-  onSplitTab,
-}: {
-  state: ContextMenuState;
-  tabs: Tab[];
-  onClose: () => void;
-  onCloseTab: (tabId: string) => void;
-  onSplitTab?: (tabId: string, direction: "horizontal" | "vertical") => void;
-}) {
-  const { t } = useTranslation();
-  const tab = tabs.find((t) => t.id === state.tabId);
-  if (!tab) return null;
-
-  const tabIndex = tabs.findIndex((t) => t.id === state.tabId);
-  const hasOthers = tabs.length > 1;
-  const hasRight = tabIndex < tabs.length - 1;
-  const canSplit = tabs.length > 1; // v4: 由 reducer 判断是否已分屏
-
-  const items: { label: string; action: () => void; disabled?: boolean }[] = [
-    {
-      label: t("关闭"),
-      action: () => onCloseTab(state.tabId),
-    },
-    {
-      label: t("关闭其他"),
-      action: () => {
-        tabs
-          .filter((t) => t.id !== state.tabId)
-          .forEach((t) => onCloseTab(t.id));
-      },
-      disabled: !hasOthers,
-    },
-    {
-      label: t("关闭右侧"),
-      action: () => {
-        tabs
-          .slice(tabIndex + 1)
-          .forEach((t) => onCloseTab(t.id));
-      },
-      disabled: !hasRight,
-    },
-    { label: "", action: () => {}, disabled: true }, // divider
-    {
-      label: t("向下分屏"),
-      action: () => onSplitTab?.(state.tabId, "vertical"),
-      disabled: !canSplit,
-    },
-    {
-      label: t("向右分屏"),
-      action: () => onSplitTab?.(state.tabId, "horizontal"),
-      disabled: !canSplit,
-    },
-  ];
-
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose]);
-
-  return (
-    <>
-      <div className="tab-context-backdrop" onClick={onClose} onContextMenu={(e) => { e.preventDefault(); onClose(); }} />
-      <div
-        className="tab-context-menu"
-        style={{ position: "fixed", left: state.x, top: state.y }}
-      >
-        {items.map((item, i) =>
-          item.label === "" ? (
-            <div key={i} className="tab-context-divider" />
-          ) : (
-            <button
-              key={i}
-              className={`tab-context-item${item.disabled ? " disabled" : ""}`}
-              disabled={item.disabled}
-              onClick={() => { item.action(); onClose(); }}
-            >
-              {item.label}
-            </button>
-          )
-        )}
-      </div>
-    </>
-  );
-}
+/* ── 右键菜单状态（Phase 5b：消费端用共享 ContextMenu） ── */
 
 /* ── 组件 ── */
 
@@ -223,7 +127,6 @@ export default function TabBar({
   onFocusTab,
   onCloseTab,
   onCreateTab,
-  onSplitTab,
   onMoveTab: _onMoveTab,
   onReorderTab,
   onPinTab,
@@ -236,7 +139,7 @@ export default function TabBar({
   const { t } = useTranslation();
   const { tabs, activeTabId } = group;
   const [plusOpen, setPlusOpen] = useState(false);
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null);
   const plusRef = useRef<HTMLButtonElement | null>(null);
   const scrollRef = useRef<HTMLDivElement | null>(null);
 
@@ -492,11 +395,10 @@ export default function TabBar({
 
       {contextMenu && (
         <ContextMenu
-          state={contextMenu}
-          tabs={tabs}
+          menuId={MenuId.TabContext}
+          anchor={{ x: contextMenu.x, y: contextMenu.y }}
+          context={{ tabId: contextMenu.tabId }}
           onClose={() => setContextMenu(null)}
-          onCloseTab={onCloseTab}
-          onSplitTab={onSplitTab}
         />
       )}
 

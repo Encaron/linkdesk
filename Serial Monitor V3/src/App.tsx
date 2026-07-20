@@ -22,6 +22,8 @@ import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutSer
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
+// Phase 5b：核心命令注册（右键菜单归一化）
+import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -60,6 +62,30 @@ function App() {
     reorderTab,
     pinTab,
   } = useTabManager();
+
+  // Phase 5b：核心命令 callbacks——每次渲染更新模块级 ref（零开销），handler 延迟读取避免闭包过期
+  const coreCallbacks: CoreCallbacks = useMemo(() => ({
+    closeTab,
+    closeOtherTabs: (groupId, exceptTabId) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.filter((t) => t.id !== exceptTabId).forEach((t) => closeTab(t.id));
+    },
+    closeRightTabs: (groupId, tabIndex) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.slice(tabIndex + 1).forEach((t) => closeTab(t.id));
+    },
+    splitTab,
+    findGroupByTabId: (tabId) => {
+      for (const g of tabState.groups) {
+        const found = g.tabs.find((t) => t.id === tabId);
+        if (found) return { groupId: g.id, tabs: g.tabs.map((t) => ({ id: t.id })) };
+      }
+      return null;
+    },
+  }), [closeTab, splitTab, tabState.groups]);
+
+  // 每次渲染更新 callbacks ref
+  updateCoreCallbacks(coreCallbacks);
 
   // Phase 3 Step 6: 拖拽分屏
   const editorAreaRef = useRef<HTMLDivElement>(null);
@@ -129,6 +155,9 @@ function App() {
 
       // Phase 5：初始化 context key 核心状态
       ContextKeyService.initCoreKeys();
+
+      // Phase 5b：注册核心命令 + TabContext 菜单项（只执行一次，幂等）
+      ensureCoreCommands();
 
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));

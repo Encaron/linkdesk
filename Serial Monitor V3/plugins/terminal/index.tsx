@@ -30,8 +30,11 @@ import { useSendData, type SendContext, type SendCallbacks } from "../../src/cor
 import SearchBar from "../../src/components/terminal/SearchBar";
 import FilterMenu from "../../src/components/terminal/FilterMenu";
 import CommandPalette from "../../src/components/terminal/CommandPalette";
-import ReceiveContextMenu from "../../src/components/terminal/ReceiveContextMenu";
 import { HexToBytes } from "../../src/core/DataConverter";
+// Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
+import { registerCommand } from "../../src/core/CommandRegistry";
+import ContextMenu from "../../src/components/shared/ContextMenu";
+import { MenuId } from "../../src/core/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "../../src/languages/v3-protocol";
 import "./TerminalView.css";
 
@@ -604,31 +607,108 @@ function TerminalView({ isActive }: TerminalViewProps) {
     return () => clearInterval(timer);
   }, [prefs.autoRepeat, prefs.repeatInterval, performSend]);
 
-  /* ---- 右键菜单 ---- */
-  const handleCtxMenuAction = useCallback((action: string) => {
-    setCtxMenu(null);
-    const view = cmView.current;
-    if (!view) return;
-    switch (action) {
-      case "copy": {
+  /* ── Phase 5b：注册终端命令真实 handler（覆盖 loader 的 placeholder）── */
+
+  // 用 ref 桥接——命令 handler 闭包需要访问最新的 cmView / paused 等
+  const terminalCmdRef = useRef<{
+    cmView: typeof cmView;
+    paused: boolean;
+    quickSends: Record<string, string>;
+    setPaused: (v: boolean | ((p: boolean) => boolean)) => void;
+    setSendValue: (v: string) => void;
+    setQsEditing: (key: string | null) => void;
+    setQsName: (v: string) => void;
+    setQsContent: (v: string) => void;
+    setQsAdding: (v: boolean) => void;
+    handleDeleteQuickSend: (key: string) => void;
+  }>({ cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend });
+  terminalCmdRef.current = { cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend };
+
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.copy",
+      title: "复制",
+      handler: async () => {
+        const view = terminalCmdRef.current.cmView.current;
+        if (!view) return;
         const sel = view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
         if (sel) navigator.clipboard.writeText(sel);
-        break;
-      }
-      case "selectAll":
-        view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
-        break;
-      case "clear":
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length },
-          effects: clearAllDecos.of(null as any),
-        });
-        break;
-      case "pause":
-        setPaused((p) => !p);
-        break;
-    }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.selectAll",
+      title: "全选",
+      handler: async () => {
+        const view = terminalCmdRef.current.cmView.current;
+        if (view) view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.clear",
+      title: "清空接收区",
+      handler: async () => {
+        const view = terminalCmdRef.current.cmView.current;
+        if (view) {
+          view.dispatch({
+            changes: { from: 0, to: view.state.doc.length },
+            effects: clearAllDecos.of(null as any),
+          });
+        }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.togglePause",
+      title: "暂停接收",
+      handler: async () => {
+        terminalCmdRef.current.setPaused((p) => !p);
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.quickSendFill",
+      title: "回填到发送区",
+      handler: async (_token, ...args) => {
+        const ctx = args[0] as { quickSendName?: string } | undefined;
+        if (ctx?.quickSendName) {
+          terminalCmdRef.current.setSendValue(terminalCmdRef.current.quickSends[ctx.quickSendName] ?? "");
+        }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.quickSendEdit",
+      title: "编辑",
+      handler: async (_token, ...args) => {
+        const ctx = args[0] as { quickSendName?: string } | undefined;
+        if (ctx?.quickSendName) {
+          const key = ctx.quickSendName;
+          terminalCmdRef.current.setQsEditing(key);
+          terminalCmdRef.current.setQsName(key);
+          terminalCmdRef.current.setQsContent(terminalCmdRef.current.quickSends[key] ?? "");
+          terminalCmdRef.current.setQsAdding(true);
+        }
+      },
+    });
+    registerCommand("terminal", {
+      id: "terminal.quickSendDelete",
+      title: "删除",
+      handler: async (_token, ...args) => {
+        const ctx = args[0] as { quickSendName?: string } | undefined;
+        if (ctx?.quickSendName) {
+          terminalCmdRef.current.handleDeleteQuickSend(ctx.quickSendName);
+        }
+      },
+    });
   }, []);
+
+  // 动态更新暂停/继续标题（paused 变化时重新注册）
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.togglePause",
+      title: paused ? "继续接收" : "暂停接收",
+      handler: async () => {
+        terminalCmdRef.current.setPaused((p) => !p);
+      },
+    });
+  }, [paused]);
 
   /* ---- 搜索 ---- */
   const runSearch = useCallback((query: string, caseSensitive: boolean) => {
@@ -857,16 +937,13 @@ function TerminalView({ isActive }: TerminalViewProps) {
         )}
       </div>
 
-      {/* 右键菜单 */}
+      {/* Phase 5b：接收区右键菜单——共享 ContextMenu */}
       {ctxMenu && (
-        <ReceiveContextMenu
-          x={ctxMenu.x} y={ctxMenu.y}
-          paused={paused}
+        <ContextMenu
+          menuId={MenuId.EditorContext}
+          anchor={{ x: ctxMenu.x, y: ctxMenu.y }}
+          context={{}}
           onClose={() => setCtxMenu(null)}
-          onCopy={() => handleCtxMenuAction("copy")}
-          onSelectAll={() => handleCtxMenuAction("selectAll")}
-          onClear={() => handleCtxMenuAction("clear")}
-          onTogglePause={() => handleCtxMenuAction("pause")}
         />
       )}
 
@@ -909,30 +986,14 @@ function TerminalView({ isActive }: TerminalViewProps) {
         )}
       </div>
 
-      {/* 快捷发送右键菜单 */}
+      {/* Phase 5b：快捷发送右键菜单——共享 ContextMenu */}
       {qsCtxMenu && (
-        <>
-          <div className="ctx-overlay" onClick={() => setQsCtxMenu(null)} onContextMenu={(e) => { e.preventDefault(); setQsCtxMenu(null); }} />
-          <div className="ctx-menu" style={{ left: qsCtxMenu.x, top: qsCtxMenu.y }}>
-            <div className="ctx-item" onClick={() => { setSendValue(quickSends[qsCtxMenu.key]); setQsCtxMenu(null); }}>
-              {t("回填到发送区")}
-            </div>
-            <div className="ctx-item" onClick={() => {
-              const key = qsCtxMenu.key;
-              setQsEditing(key);
-              setQsName(key);
-              setQsContent(quickSends[key]);
-              setQsAdding(true);
-              setQsCtxMenu(null);
-            }}>
-              {t("编辑")}
-            </div>
-            <div className="ctx-divider" />
-            <div className="ctx-item ctx-item-danger" onClick={() => handleDeleteQuickSend(qsCtxMenu.key)}>
-              {t("删除")}
-            </div>
-          </div>
-        </>
+        <ContextMenu
+          menuId={MenuId.QuickSendContext}
+          anchor={{ x: qsCtxMenu.x, y: qsCtxMenu.y }}
+          context={{ quickSendName: qsCtxMenu.key }}
+          onClose={() => setQsCtxMenu(null)}
+        />
       )}
 
       {/* 发送区 */}

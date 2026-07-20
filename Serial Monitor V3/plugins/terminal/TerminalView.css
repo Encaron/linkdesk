@@ -314,43 +314,7 @@
   to   { background: transparent; }
 }
 
-/* === 右键菜单 === */
-
-.ctx-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay-backdrop);
-}
-
-.ctx-menu {
-  position: fixed;
-  z-index: var(--z-overlay);
-  min-width: 160px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
-  padding: 4px 0;
-}
-
-.ctx-item {
-  padding: 6px 12px;
-  font-size: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background 100ms;
-}
-
-.ctx-item:hover {
-  background: var(--accent);
-  color: white;
-}
-
-.ctx-divider {
-  height: 1px;
-  background: var(--separator);
-  margin: 4px 8px;
-}
+/* === FilterMenu 专用样式（Phase 5b: .ctx-overlay/.ctx-menu/.ctx-item/.ctx-divider 迁移到 ContextMenu.css） === */
 
 /* === Command Palette === */
 
@@ -464,15 +428,6 @@
   height: 24px;
   font-size: 11px;
   padding: 2px 6px;
-}
-
-.ctx-item-danger {
-  color: #E06C75;
-}
-
-.ctx-item-danger:hover {
-  background: #E06C75;
-  color: white;
 }
 
 /* === 发送区 === */

@@ -136,7 +136,6 @@ function MainContent({
             onFocusTab={onFocusTab}
             onCloseTab={onCloseTab}
             onCreateTab={onCreateTab}
-            onSplitTab={onSplitTab}
             onMoveTab={(tabId, targetGroupId?) => {
               if (targetGroupId && targetGroupId !== group.id) {
                 onMoveTab(tabId, targetGroupId);

@@ -197,51 +197,6 @@
   background: var(--tab-hover-bg);
 }
 
-/* ── 右键上下文菜单 ── */
-
-.tab-context-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay-backdrop);
-}
-
-.tab-context-menu {
-  z-index: var(--z-overlay);
-  min-width: 140px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  box-shadow: var(--context-menu-shadow);
-  padding: 4px 0;
-  overflow: hidden;
-}
-
-.tab-context-item {
-  display: block;
-  width: 100%;
-  padding: 5px 12px;
-  border: none;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 12px;
-  cursor: pointer;
-  text-align: left;
-  transition: background 120ms;
-}
-.tab-context-item:hover:not(.disabled) {
-  background: var(--tab-hover-bg);
-}
-.tab-context-item.disabled {
-  color: var(--text-muted);
-  cursor: default;
-}
-
-.tab-context-divider {
-  height: 1px;
-  background: var(--separator);
-  margin: 4px 8px;
-}
-
 /* ── 标签页进出动画 ── */
 
 .tab-item.entering {
