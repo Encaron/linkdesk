@@ -997,7 +997,8 @@ Phase 8 — OLED（独立插件）
 | **5c** | 命令面板 + 齿轮菜单走 Registry | ~120 | 中 | 📋 |
 | **5d** | context key + when 条件打通 | ~80 | 中 | 📋 |
 | **5e** | 协议下拉框 + 终端设置迁移到 Settings Editor | ~80 | 低 | 📋 |
-| **5f** | StorageService 归一化 + PreferenceService 删旧 + 全量回归 | ~200 | 中 | 📋 |
+| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ~150 | 中 | 📋 |
+| **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动 | ~150 | 中 | 📋 |
 
 ### 9.2 每批交付物 + 验证标准
 
@@ -1025,18 +1026,31 @@ Phase 8 — OLED（独立插件）
 - 验证：下拉框默认选中"方括号协议"。切换协议后解析方式变化。Settings Editor 打开 → 终端分组出现 → 12 个设置项可调。
 - 依赖：ProtocolRegistry + ConfigurationService + Settings Editor（5a 已建）。
 
-**5f — 归一化清旧债 + 全量回归：**
+**5f — 专用通道拆除 + StorageService 归一化：**
 
-> Phase 5f 的任务都有一个共同模式：Phase 3-4 时期终端是唯一插件、通用基础设施尚未建立，
-> 不得不在 core 里写专用通道。Phase 5a-e 建好了通用设施，5f 统一清债。
+> 5f 主题：Phase 3-4 时终端是唯一插件、通用设施未建，core 里写了专用通道。Phase 5a-e 设施已就绪，5f 统一拆除+替换。
 
 - 交付：
-  1. **StorageService 归一化**——统一的持久化原语（`read(key)` / `write(key, data)`）。底层封装 Tauri fs + localStorage 兜底 + `beforeunload` 同步写入。解决 ConfigurationService / LayoutService / PluginStateService / PreferenceService 四套代码各自实现文件 I/O 的重复劳动。四个服务改为调 `StorageService`，删除各自的 `ensureTauri()` + `readTextFile()` + `writeTextFile()` + `localStorage.setItem()` 自研逻辑。
-  2. **PreferenceService 删旧**——删除所有 `PreferenceService.loadPrefs()` 双写兼容代码。Phase 5a 引入 ConfigurationService 后一直双写，5a 设计时就规划了 5f 删旧路径。
-  3. **终端插件解耦**——`"terminal"` 作为 pluginId 硬编码在 4 处不该出现的位置：`TabType` 联合类型、`TAB_IDENTITY` 表、`TerminalPrefsContext`+`TerminalSidebar` 专用组件、`App.tsx` 直接写 `"terminal"` 做 setConfigurationValue / setPluginStateValue。根因同上——Phase 3 做标签页时还没有插件系统，Phase 4 终端是最早的插件但配置/状态通用设施还没建。5f 拆掉这些专用通道，为未来引入真终端（powershell/git bash）清出命名空间。
-  4. **全量回归**——`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局/图标排序全部保留。
-- 为什么都集中在 5f：持久化 bug 反复出现（快捷发送、图标排序、主题语言、标签栏布局——四轮，同一个模式：写了没读 / 读了没写 / 写A读B / 异步落盘 F5 竞态）。不是代码写得差——是四个服务各自实现 I/O，修一个学到的教训不会传播到另外三个。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。终端耦合同理——不是某处代码写坏了，是 Phase 3-4 缺乏通用设施，专用通道是当时唯一的可行方案。现在设施齐了，统一拆除。
-- 验证：`验证清单.md` 所有 checkbox 通过。F5 刷新后主题/语言/布局/图标排序全部保留。终端改名不影响任何功能。
+  1. **StorageService 归一化**——统一的持久化原语（`read(key)` / `write(key, data)`）。底层封装 Tauri fs + localStorage 兜底 + `beforeunload` 同步写入。ConfigurationService / LayoutService / PluginStateService / PreferenceService 四个服务改为调 `StorageService`，删除各自的 `ensureTauri()` + `readTextFile()` + `writeTextFile()` + `localStorage.setItem()` 自研逻辑。
+  2. **PreferenceService 删旧**——删除所有 `PreferenceService.loadPrefs()` 双写兼容代码（Phase 5a 设计时就规划了 5f 删）。
+  3. **ConfigurationService 终端 fallbacks 移除**——[ConfigurationService.ts:261-272](Serial Monitor V3/src/core/ConfigurationService.ts#L261) 的 12 个 `terminal.*` 硬编码默认值，改为从 plugin.json `configuration.properties.default` 自动提取。
+  4. **TerminalPrefsContext 删除 + TerminalSidebar 移入插件**——[TerminalPrefsContext.ts](Serial Monitor V3/src/core/TerminalPrefsContext.ts)（45 行）整个删除，消费者改用 `useConfiguration("terminal.xxx")`。[TerminalSidebar.tsx](Serial Monitor V3/src/components/TerminalSidebar.tsx)（91 行）从 core 移到 `plugins/terminal/`。
+  5. **App.tsx 终端硬编码清理**——[App.tsx:421](Serial Monitor V3/src/App.tsx#L421) `setConfigurationValue("terminal.timestampFormat", ...)` 和 [App.tsx:435](Serial Monitor V3/src/App.tsx#L435) `setPluginStateValue("terminal", "lastPort", ...)` ——Shell 不应该知道具体插件 ID。
+  6. **全量回归**——`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局全部保留。
+- 为什么集中做：持久化 bug 反复出现（四轮，同一个模式：写了没读/读了没写/写A读B/异步落盘 F5 竞态），根因是四个服务各自实现 I/O。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。终端耦合同理——不是代码写坏了，是 Phase 3-4 缺乏通用设施。现在设施齐了，统一拆除。
+
+**5g — 类型系统去硬编码 + 插件声明驱动：**
+
+> 5g 主题：`TabType` 联合类型写死了 8 个插件 ID 字面量、`TAB_IDENTITY` 表重复了 plugin.json 的 tabBehavior、多个判断函数硬编码了特定插件的特殊行为。改为运行时从 viewRegistry + plugin.json 推导。
+
+- 交付：
+  1. **TabType 联合类型 → `string`**——[useTabManager.ts:26](Serial Monitor V3/src/hooks/useTabManager.ts#L26) 的 8 个硬编码字面量改为动态。`TabType` 不再是 `"terminal" | "workspace" | ...` 而是 `string`（或从 viewRegistry 推导的联合）。
+  2. **TAB_IDENTITY → plugin.json tabBehavior + viewRegistry 驱动**——[tabIdentity.ts:38-55](Serial Monitor V3/src/hooks/tabIdentity.ts#L38) 的 `singleton`/`confirmOnClose`/`isFallback`/`fallbackLabel` 全部可从 plugin.json 和 viewRegistry 推导。`TAB_IDENTITY` 只保留纯标签页逻辑（`identityField`/`generateId`）。
+  3. **终端插件改名**——`pluginId: "terminal"` → `"serial-monitor"`（或用户指定的名字），为未来引入真终端（powershell/git bash）清出命名空间。依赖 5f（专用通道已拆）+ 5g 前两项（类型系统不再硬编码插件 ID）。
+  4. **IconBar 图标位置 → plugin.json 声明**——[IconBar.tsx:28](Serial Monitor V3/src/components/IconBar.tsx#L28) `BOTTOM_ICONS = new Set(["settings"])` 改为读 plugin.json 的 `iconLocation: "bottom"` 字段。
+  5. **特殊类型判断 → plugin.json 声明**——[tabIdentity.ts:163-174](Serial Monitor V3/src/hooks/tabIdentity.ts#L163) 的 `isShellRenderedTab`/`isSidebarOnlyView`/`shouldKeepSidebarOnFocus` 三个函数硬编码了 `"welcome"`/`"plugin-detail"`/`"marketplace"` 的特殊行为。改为 plugin.json 声明 `shellRendered: true` / `sidebarOnly: true` / `keepSidebarOnFocus: true`。
+  6. **coreCommands.ts 硬编码清理**——[coreCommands.ts:48](Serial Monitor V3/src/core/coreCommands.ts#L48) `pluginId: "settings"` 改为从 viewRegistry 查找。
+  7. **workspace.schema.json enum → 任意字符串**——[workspace.schema.json:19](Serial Monitor V3/public/schemas/workspace.schema.json#L19) `"enum": ["terminal", "workspace", ...]` 改为接受任意字符串，加新插件类型不需改 schema。
 
 ### 9.3 批次依赖链
 
@@ -1051,7 +1065,9 @@ Phase 8 — OLED（独立插件）
   │
   └── 5e（协议+设置迁移）── 依赖 5a（ProtocolRegistry + ConfigurationService）
         │
-5f（删旧+回归）── 依赖 5a-5e 全部完成
+5f（专用通道拆除+StorageService）── 依赖 5a-5e 全部完成
+        │
+5g（类型系统去硬编码）── 依赖 5f（专用通道拆干净后才改类型系统）
 ```
 
 **5b 和 5e 互不依赖，可并行。** 建议串行——每批交一个用户验证一个，防止多线并进出问题难以定位。
