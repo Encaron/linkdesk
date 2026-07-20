@@ -22,27 +22,80 @@ ConfigurationService 只管存储（读/写/通知）
   - onDidChangeConfiguration: 4 个 if 分支       ← 散落
 ```
 
-## 二、VS Code 对照
+## 二、VS Code 对照——为什么我们不照抄
 
-VS Code 也不做"集中 apply"，但它的架构让这事不出 bug：
+### VS Code 的做法：分布式
 
 ```
-ConfigurationService.getValue(key)
-ConfigurationService.onDidChangeConfiguration(event)
-  → 50+ 消费者各自订阅
-  → 各自过滤 affectsConfiguration(key)
-  → 各自重新 apply
+┌─ ConfigurationService ─┐
+│  getValue(key)          │
+│  onDidChange(event)     │  ← 所有消费者共享一个事件
+│  updateValue(key, val)  │
+└─────────────────────────┘
+         ↑ 各自订阅
+    ┌────┼────┬─────────┬──────────┐
+    │    │    │         │          │
+ Workbench  Editor  Terminal  StatusBar   ...
+ 主题引擎   颜色    选项      颜色
+ (单独类)  (单独类) (单独类)  (单独类)
 ```
 
-**VS Code 能这么做因为：**
-- DI 容器（InstantiationService）— 初始化顺序自动保证
-- Disposable 模式 — 每个消费者 constructor/dispose 生命周期严格
-- 不在 React 里 — 没有 useEffect 的"渲染后才跑"时序问题
+每个消费者：
+```
+class ThemeEngine {
+  constructor(
+    @IConfigurationService config,   // ← DI 注入，初始化已完成
+    @IThemeService theme,
+  ) {
+    // 1. 构造时读
+    const theme = this.config.getValue('workbench.colorTheme');
+    this.apply(theme);
+    // 2. 订阅变更
+    this._register(this.config.onDidChangeConfiguration(e => {
+      if (e.affectsConfiguration('workbench.colorTheme'))
+        this.apply(this.config.getValue('workbench.colorTheme'));
+    }));
+  }
+  // 3. dispose 自动取消订阅（_register → DisposableStore）
+}
+```
 
-**V3 不能直接照搬因为：**
-- React `useEffect` 在渲染后跑 → 有颜色闪烁（B64 的症状）
-- Tauri event listener cleanup 需要 generation counter 模式（B11）
-- 没有 DI 容器 → init 顺序手动 `.then()` 链 → 竞态（B55）
+### 为什么 V3 不能照抄
+
+**1. React useEffect 时序 — 先渲染后应用 → 闪烁**
+
+VS Code 类是构造时同步 apply → 首次渲染前颜色已就位。React `useEffect` 在 DOM 提交后才跑 → 用户看到 CSS 默认色 → 然后 apply → 换色。B64 就是这个时序 bug 的直接体现。
+
+**2. 没有 DI 容器 — init 顺序靠手动 .then() 链**
+
+VS Code 的 InstantiationService 保证 ConfigurationService 在所有消费者之前初始化完毕。V3 的 init 是 async IIFE 里手动排列：
+```
+await initConfigurationService()  // 必须先完成
+registerConfiguration(...)         // 然后注册
+// ... 然后各个 apply 散落
+```
+顺序错了 → 竞态（B55）。引入 DI 容器成本太高（~500 行 + 全部组件改 constructor 注入），不值得。
+
+**3. Tauri event listener cleanup — generation counter 模式容易忘**
+
+VS Code 靠 `this._register()` → `DisposableStore.dispose()` 自动清理。V3 的 `useEffect` cleanup 在 StrictMode 下 double-mount 时 Tauri `listen()` 的 Promise 还未 resolve → unlisten 是 undefined → 注册两份（B11）。强制所有 listener 用 generation counter 成本高且容易忘。
+
+**4. onApply 不是偏离 VS Code，是适配 React**
+
+VS Code 的思路是"配置定义和消费分离，消费者自己管理生命周期"。这在 DI + Disposable 体系下零 bug。但 React 没有这个体系 — 强行照抄等于在每个 useEffect 里手写时序 + cleanup，反而引入更多 B55/B64。
+
+`onApply` 把 VS Code 的"消费者自己管"改成了"注册时声明，框架管"。**思想一致（配置和应用解耦）、实现适配（React 的声明式风格替代 DI 的命令式风格）。**
+
+### 对比总结
+
+| | VS Code | V3 当前（有 bug） | V3 方案 |
+|:--|:--|:--|:--|
+| 定义位置 | plugin.json contributes.configuration | registerConfiguration | registerConfiguration + **onApply** |
+| 应用位置 | 各消费者的 constructor | App.tsx init 散落 | 框架自动调 onApply |
+| 变更监听 | 各消费者的 onDidChangeConfiguration | onDidChangeConfiguration 4 个 if | 框架自动调 onApply |
+| 生命周期 | DI disposable | useEffect cleanup（容易忘） | unregisterConfiguration 自动清 |
+| 加新设置 | 写 consumer 类 + 注册 | 在 init 里找位置 + 判断时序 + 设 guard | **写 onApply（一步）** |
+| 出 bug 概率 | 低（DI 保证） | **高（手动管）** | **低（框架管）** |
 
 ## 三、设计
 
