@@ -391,13 +391,28 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(prefs.timestampFormat);
   tsFormatRef.current = prefs.timestampFormat;
+  // Phase 5e：receiveMode/ receiveCoding ref——供 Tauri event handler 读取，避免 effect 重建
+  const receiveModeRef = useRef(prefs.receiveMode);
+  receiveModeRef.current = prefs.receiveMode;
   const portOpenRef = useRef(true);
+
+  /** 文本转十六进制显示——Phase 5e receiveMode="hex" */
+  const toHexDisplay = (text: string): string => {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(text);
+    return Array.from(bytes)
+      .map((b) => b.toString(16).toUpperCase().padStart(2, "0"))
+      .join(" ");
+  };
 
   useTauriEvent<string>("serial-data", (payload) => {
     if (!portOpenRef.current) return;
     const fmt = tsFormatRef.current;
+    const displayText = receiveModeRef.current === "hex"
+      ? toHexDisplay(payload)
+      : payload;
     ringBuffer.current.write({
-      text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${payload}` : payload,
+      text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${displayText}` : displayText,
       type: "received",
     });
   });

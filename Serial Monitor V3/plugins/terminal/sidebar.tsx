@@ -69,21 +69,21 @@ function TerminalSidebar() {
       <div className="setting-group">
         <div className="setting-group-title">{t("编码")}</div>
         <FormRow label={t("接收模式")}>
-          <Select value={prefs.receiveMode} options={["文本", "HEX"]}
+          <Select value={prefs.receiveMode} options={["text", "hex"]}
             onChange={(v) => update({ receiveMode: v as TerminalPrefs["receiveMode"] })} />
         </FormRow>
         <FormRow label={t("接收编码")}>
-          <Select value={prefs.receiveCoding} options={["UTF-8", "GBK", "ASCII", "Latin-1"]}
+          <Select value={prefs.receiveCoding} options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
             onChange={(v) => update({ receiveCoding: v })} />
         </FormRow>
         <FormRow label={t("发送模式")}>
-          <Select value={prefs.sendMode} options={["文本", "HEX"]}
+          <Select value={prefs.sendMode} options={["text", "hex"]}
             onChange={(v) => update({ sendMode: v as TerminalPrefs["sendMode"] })} />
         </FormRow>
         <FormRow label={t("发送编码")}>
           <Select
             value={prefs.sendCoding}
-            options={["UTF-8", "GBK", "ASCII", "Latin-1"]}
+            options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
             onChange={(v) => update({ sendCoding: v })}
             disabled={prefs.sendMode === "hex"}
           />

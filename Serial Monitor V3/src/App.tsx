@@ -402,13 +402,17 @@ function App() {
   }, [handleIconClick]);
 
   /* ---- 串口控制 ---- */
+  // Phase 5e：receiveCoding ref——handleToggleOpen 不依赖 terminalPrefs，通过 ref 读取避免重创建
+  const receiveCodingRef = useRef("UTF-8");
+  receiveCodingRef.current = terminalPrefs.receiveCoding;
+
   const handleToggleOpen = useCallback(async () => {
     try {
       if (isOpen) {
         await invoke("close_port");
         setIsOpen(false);
       } else {
-        await invoke("open_port", { portName, baudRate: parseInt(baudRate) });
+        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: receiveCodingRef.current });
         setIsOpen(true);
       }
     } catch (e: any) {
@@ -421,7 +425,7 @@ function App() {
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName, baudRate: parseInt(newBaud) });
+        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: receiveCodingRef.current });
       } catch (e: any) {
         setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -434,7 +438,7 @@ function App() {
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate) });
+        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: receiveCodingRef.current });
       } catch (e: any) {
         setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);

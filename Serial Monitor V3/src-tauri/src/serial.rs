@@ -9,6 +9,8 @@ pub(crate) struct SerialInner {
     port: Option<Box<dyn SerialPort>>,
     line_buffer: Vec<u8>,
     is_closing: bool,
+    /// 接收编码——Phase 5e：从 open_port 传入，read_loop 解码用
+    encoding: String,
 }
 
 /// 线程间共享的串口状态
@@ -20,6 +22,7 @@ pub fn create_state() -> SerialState {
         port: None,
         line_buffer: Vec::new(),
         is_closing: false,
+        encoding: "UTF-8".into(),
     }))
 }
 
@@ -45,6 +48,7 @@ pub fn list_ports() -> Vec<PortInfo> {
 }
 
 /// 打开串口 + 启动读线程
+/// Phase 5e：encoding 参数——read_loop 用指定编码解码接收字节（UTF-8 / GBK / Shift-JIS / Latin-1）
 #[tauri::command]
 pub fn open_port(
     state: tauri::State<'_, SerialState>,
@@ -54,6 +58,7 @@ pub fn open_port(
     data_bits: Option<u8>,
     stop_bits: Option<u8>,
     parity: Option<String>,
+    encoding: Option<String>,
 ) -> Result<(), String> {
     use serialport::{DataBits, StopBits, Parity};
 
@@ -99,6 +104,7 @@ pub fn open_port(
     inner.port = Some(port);
     inner.line_buffer.clear();
     inner.is_closing = false;
+    inner.encoding = encoding.unwrap_or_else(|| "UTF-8".into());
 
     // 启动读线程
     let state_clone = Arc::clone(state.inner());
@@ -131,7 +137,8 @@ pub fn close_port(state: tauri::State<'_, SerialState>, app: AppHandle) -> Resul
 
     // 冲刷行缓冲区残留——在关闭消息之前 emit，保证数据在关闭消息之上
     if !inner.line_buffer.is_empty() {
-        let residual = String::from_utf8_lossy(&inner.line_buffer).to_string();
+        let encoding = inner.encoding.clone();
+        let residual = decode_bytes(&inner.line_buffer, &encoding);
         inner.line_buffer.clear();
         drop(inner);
         let residual = residual.trim().to_string();
@@ -186,13 +193,18 @@ pub fn send_text(
     app: AppHandle,
 ) -> Result<usize, String> {
     let bytes: Vec<u8> = match encoding.as_str() {
-        "GBK" => {
+        "GBK" | "GB2312" => {
             use encoding_rs::GBK;
             let (encoded, _, _) = GBK.encode(&text);
             encoded.into_owned()
         }
+        "Shift-JIS" => {
+            use encoding_rs::SHIFT_JIS;
+            let (encoded, _, _) = SHIFT_JIS.encode(&text);
+            encoded.into_owned()
+        }
         _ => {
-            // UTF-8 / ASCII / Latin-1
+            // UTF-8 / Latin-1 → UTF-8 编码（Latin-1 是 UTF-8 的 ASCII 子集）
             text.into_bytes()
         }
     };
@@ -221,11 +233,34 @@ pub fn set_rts(state: tauri::State<'_, SerialState>, enable: bool) -> Result<(),
 
 // ---- 读线程 ----
 
+/// 解码字节为字符串——根据 encoding 选择解码器。
+/// "UTF-8" / "ASCII" / "Latin-1" → from_utf8_lossy（ASCII/Latin-1 是 UTF-8 子集）
+/// "GBK" / "GB2312" → encoding_rs::GBK
+/// "Shift-JIS" → encoding_rs::SHIFT_JIS
+fn decode_bytes(bytes: &[u8], encoding: &str) -> String {
+    match encoding {
+        "GBK" | "GB2312" => {
+            use encoding_rs::GBK;
+            let (decoded, _, _) = GBK.decode(bytes);
+            decoded.into_owned()
+        }
+        "Shift-JIS" => {
+            use encoding_rs::SHIFT_JIS;
+            let (decoded, _, _) = SHIFT_JIS.decode(bytes);
+            decoded.into_owned()
+        }
+        _ => {
+            // UTF-8 / ASCII / Latin-1 → lossy UTF-8 兜底
+            String::from_utf8_lossy(bytes).to_string()
+        }
+    }
+}
+
 fn read_loop(state: SerialState, app: AppHandle) {
     let mut buf = [0u8; 256];
 
     loop {
-        // 检查是否正在关闭
+        // 检查是否正在关闭 + 读取当前编码
         {
             let inner = match state.lock() {
                 Ok(i) => i,
@@ -247,7 +282,8 @@ fn read_loop(state: SerialState, app: AppHandle) {
                     Ok(0) | Err(_) => {
                         // 超时或无数据：冲刷行缓冲区残留
                         if !inner.line_buffer.is_empty() {
-                            let text = String::from_utf8_lossy(&inner.line_buffer).trim().to_string();
+                            let encoding = inner.encoding.clone();
+                            let text = decode_bytes(&inner.line_buffer, &encoding).trim().to_string();
                             inner.line_buffer.clear();
                             drop(inner);
                             if !text.is_empty() {
@@ -284,7 +320,7 @@ fn read_loop(state: SerialState, app: AppHandle) {
                 if let Some(nl_pos) = inner.line_buffer.iter().position(|&b| b == b'\n') {
                     let line = inner.line_buffer[..=nl_pos].to_vec();
                     inner.line_buffer.drain(..=nl_pos);
-                    String::from_utf8_lossy(&line).to_string()
+                    decode_bytes(&line, &inner.encoding)
                 } else {
                     break;
                 }
