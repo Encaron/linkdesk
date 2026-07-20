@@ -123,7 +123,8 @@ export function createTabDefaults(
   // sourceId 默认 = tab.id——跨组移动时组件用此 ID 恢复状态
   if (!base.sourceId) base.sourceId = base.id;
 
-  return { ...base, ...overrides, id: base.id };
+  // pluginId 不允许 overrides 覆盖——由 createTabDefaults 根据 type 和 isDetail 决定
+  return { ...base, ...overrides, id: base.id, pluginId: base.pluginId };
 }
 
 /** 标签名——内置类型走 i18n，自定义插件从 viewRegistry 拿名称 */
