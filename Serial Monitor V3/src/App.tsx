@@ -16,7 +16,7 @@ import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 // Phase 5：新基础设施服务
-import { initConfigurationService, getConfigurationValue } from "./core/ConfigurationService";
+import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
@@ -24,6 +24,8 @@ import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
 // Phase 5b：核心命令注册（右键菜单归一化）
 import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
+// Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
+import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -160,6 +162,9 @@ function App() {
       // Phase 5b：注册核心命令 + TabContext 菜单项（只执行一次，幂等）
       ensureCoreCommands();
 
+      // Phase 5e：注册内置方括号协议到 ProtocolRegistry（只执行一次，幂等）
+      ensureBuiltinProtocols();
+
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
       // P1-5：启动文件监听（检测新插件目录）
@@ -181,10 +186,22 @@ function App() {
       setLang(initLang as "zh" | "en");
       i18n.changeLanguage(initLang);
 
-      if (prefs) {
-        setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
-        setPortName(prefs.lastPort || "COM3");
+      // Phase 5e：终端设置从 ConfigurationService 读取（替代旧 PreferenceService.preferences）
+      // 逐个 key 读取以使用三层合并（Workspace > User > Default），fallback 旧 Prefs
+      const terminalKeys = [
+        "timestampFormat", "showEcho", "showLineNumbers", "separateSystemLog",
+        "lineEnding", "autoRepeat", "repeatInterval", "autoClear",
+        "receiveMode", "receiveCoding", "sendMode", "sendCoding",
+      ] as const;
+      const fromConfig: Partial<TerminalPrefs> = {};
+      for (const k of terminalKeys) {
+        const cfgVal = getConfigurationValue(`terminal.${k}`);
+        if (cfgVal !== undefined) (fromConfig as any)[k] = cfgVal;
       }
+      // fallback：旧 PreferenceService.preferences（Phase 5f 删）
+      const oldPrefs = prefs?.preferences ?? {};
+      setTerminalPrefs({ ...defaultTerminalPrefs, ...oldPrefs, ...fromConfig });
+      setPortName(prefs?.lastPort || "COM3");
 
       // Phase 5：布局恢复——LayoutService 优先
       try {
@@ -276,38 +293,45 @@ function App() {
     [duplicateTab, splitTabAt]
   );
 
-  // Phase 5：Settings Editor 的配置变更 → 实际生效
+  // Phase 5：Settings Editor 的配置变更 → 实际生效（app.* + terminal.*）
   useEffect(() => {
-    import("./core/ConfigurationService").then(({ onDidChangeConfiguration }) => {
-      onDidChangeConfiguration((key, value) => {
-        if (key === "app.theme") {
-          const themeVal = value as string;
-          setTheme(themeVal as "Dark" | "Light");
-          loadTheme(themeVal).then(applyTheme).catch(() => {});
-        }
-        if (key === "app.language") {
-          const langVal = value as string;
-          setLang(langVal as "zh" | "en");
-          i18n.changeLanguage(langVal);
-        }
-        if (key === "app.accentColor") {
-          document.documentElement.style.setProperty("--accent", value as string);
-          // 动态计算 hover 和 light 变体
-          const hex = (value as string).replace("#", "");
-          const r = parseInt(hex.substring(0, 2), 16);
-          const g = parseInt(hex.substring(2, 4), 16);
-          const b = parseInt(hex.substring(4, 6), 16);
-          document.documentElement.style.setProperty(
-            "--accent-hover",
-            `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
-          );
-          document.documentElement.style.setProperty(
-            "--accent-light",
-            `rgba(${r},${g},${b},0.15)`
-          );
-        }
-      });
+    const unsub = onDidChangeConfiguration((key, value) => {
+      // app 层配置
+      if (key === "app.theme") {
+        const themeVal = value as string;
+        setTheme(themeVal as "Dark" | "Light");
+        loadTheme(themeVal).then(applyTheme).catch(() => {});
+      }
+      if (key === "app.language") {
+        const langVal = value as string;
+        setLang(langVal as "zh" | "en");
+        i18n.changeLanguage(langVal);
+      }
+      if (key === "app.accentColor") {
+        document.documentElement.style.setProperty("--accent", value as string);
+        const hex = (value as string).replace("#", "");
+        const r = parseInt(hex.substring(0, 2), 16);
+        const g = parseInt(hex.substring(2, 4), 16);
+        const b = parseInt(hex.substring(4, 6), 16);
+        document.documentElement.style.setProperty(
+          "--accent-hover",
+          `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
+        );
+        document.documentElement.style.setProperty(
+          "--accent-light",
+          `rgba(${r},${g},${b},0.15)`
+        );
+      }
+      // Phase 5e：terminal.* 配置变更 → 回写 terminalPrefs（Settings Editor → 终端方向）
+      if (key.startsWith("terminal.")) {
+        const prop = key.slice("terminal.".length);
+        setTerminalPrefs((prev) => {
+          if ((prev as any)[prop] === value) return prev;
+          return { ...prev, [prop]: value };
+        });
+      }
     });
+    return unsub;
   }, []);
 
   /* ---- 主题/语言切换 ---- */
@@ -415,17 +439,30 @@ function App() {
     }
   }, [isOpen, baudRate]);
 
-  // Phase 5：终端设置变更 → 持久化到 ConfigurationService + PluginStateService（替代 PreferenceService）
+  // Phase 5e：终端设置变更 → 持久化到 ConfigurationService（替代 PreferenceService.preferences）
+  // 双写模式：terminalPrefs 是运行时真源，ConfigurationService 是持久化真源。Phase 5f 删 TermialPrefsContext。
   useEffect(() => {
-    import("./core/ConfigurationService").then(async ({ setConfigurationValue }) => {
+    const sync = async () => {
       await setConfigurationValue("terminal.timestampFormat", terminalPrefs.timestampFormat, "user");
-      // 其余 terminal.* 配置项等 Settings Editor 就绪后统一迁移
-    }).catch(() => {});
-    // 同时保持 PreferenceService 兼容（Phase 5 过渡期——Settings Editor 完成后删除）
+      await setConfigurationValue("terminal.showEcho", terminalPrefs.showEcho, "user");
+      await setConfigurationValue("terminal.showLineNumbers", terminalPrefs.showLineNumbers, "user");
+      await setConfigurationValue("terminal.separateSystemLog", terminalPrefs.separateSystemLog, "user");
+      await setConfigurationValue("terminal.lineEnding", terminalPrefs.lineEnding, "user");
+      await setConfigurationValue("terminal.autoRepeat", terminalPrefs.autoRepeat, "user");
+      await setConfigurationValue("terminal.repeatInterval", terminalPrefs.repeatInterval, "user");
+      await setConfigurationValue("terminal.autoClear", terminalPrefs.autoClear, "user");
+      await setConfigurationValue("terminal.receiveMode", terminalPrefs.receiveMode, "user");
+      await setConfigurationValue("terminal.receiveCoding", terminalPrefs.receiveCoding, "user");
+      await setConfigurationValue("terminal.sendMode", terminalPrefs.sendMode, "user");
+      await setConfigurationValue("terminal.sendCoding", terminalPrefs.sendCoding, "user");
+    };
+    sync().catch(() => {});
+
+    // 同时保持 PreferenceService 兼容（Phase 5 过渡期——Phase 5f 删除）
     try {
-      const prefs = PreferenceService.loadPrefs();
-      prefs.preferences = terminalPrefs as any;
-      PreferenceService.savePrefs(prefs).catch(() => {});
+      const p = PreferenceService.loadPrefs();
+      p.preferences = terminalPrefs as any;
+      PreferenceService.savePrefs(p).catch(() => {});
     } catch { /* 静默 */ }
   }, [terminalPrefs]);
 
