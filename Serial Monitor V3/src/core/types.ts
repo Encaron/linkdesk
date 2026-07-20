@@ -63,6 +63,13 @@ export interface PluginManifest {
   i18n?: Record<string, string>;
   cssVars?: Record<string, { dark: string; light: string }>;
   permissions?: ("serial" | "filesystem" | "network")[];
+
+  /**
+   * Phase 5：对标 VS Code package.json contributes。
+   * 使用宽松索引签名——Phase 6 加 contributes.themes / languages / fileAssociations 时
+   * Phase 5 的 loader 不崩（parseContributions 按 key 逐项检测，不认识的跳过）。
+   */
+  contributes?: Record<string, unknown>;
 }
 
 /* ── 视图插件注册条目 ── */

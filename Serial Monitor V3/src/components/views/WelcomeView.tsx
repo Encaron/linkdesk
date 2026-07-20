@@ -12,6 +12,8 @@
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../pluginLoader/viewRegistry";
 import PreferenceService from "../../core/PreferenceService";
+// Phase 5：recentViews 迁移到 PluginStateService
+import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
 import "./WelcomeView.css";
 
 interface WelcomeViewProps {
@@ -25,6 +27,9 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   const viewPlugins = getViewPlugins();
   const recentViews = (() => {
     try {
+      // Phase 5：优先读 PluginStateService，fallback 旧 PreferenceService
+      const fromPss = getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews");
+      if (fromPss) return fromPss;
       return PreferenceService.loadPrefs().recentViews ?? [];
     } catch {
       return [];
@@ -142,18 +147,17 @@ function getPluginEmoji(pluginId: string): string {
   return map[pluginId] ?? "\u{1F4C4}"; // 📄 fallback
 }
 
-/** 记录最近视图到 prefs.json */
+/** 记录最近视图 */
 function recordRecentView(pluginId: string, label: string, workspaceName?: string) {
   try {
-    const prefs = PreferenceService.loadPrefs();
-    const recent = prefs.recentViews ?? [];
+    // Phase 5：写入 PluginStateService（替代 PreferenceService）
+    const recent = getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews") ?? [];
     // 去重：同一 pluginId + workspaceName 移到头部
     const filtered = recent.filter(
       (r) => !(r.pluginId === pluginId && r.workspaceName === workspaceName)
     );
     filtered.unshift({ pluginId, label: label || pluginId, workspaceName });
-    prefs.recentViews = filtered.slice(0, 10);
-    PreferenceService.savePrefs(prefs).catch(() => {});
+    setPluginStateValue("app", "recentViews", filtered.slice(0, 10));
   } catch {
     // 静默
   }

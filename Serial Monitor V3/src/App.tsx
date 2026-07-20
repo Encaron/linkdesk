@@ -15,6 +15,12 @@ import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
+// Phase 5：新基础设施服务
+import { initConfigurationService } from "./core/ConfigurationService";
+import { initLayoutService } from "./core/LayoutService";
+import { initPluginStates } from "./core/PluginStateService";
+import { ContextKeyService } from "./core/ContextKeyService";
+import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -86,34 +92,50 @@ function App() {
 
   /* ---- 启动初始化 ---- */
   useEffect(() => {
-    initPrefs().then(async (prefs) => {
+    (async () => {
+      // Phase 5：并行初始化所有服务
+      const prefs = await initPrefs().catch(() => PreferenceService.loadPrefs?.() ?? null);
+      await Promise.all([
+        initConfigurationService(),
+        initLayoutService(),
+        initPluginStates(),
+      ]).catch((e) => console.warn("[App] Phase 5 服务初始化部分失败:", e));
+
+      // Phase 5：初始化 context key 核心状态
+      ContextKeyService.initCoreKeys();
+
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
-      loadTheme(prefs.theme || "Dark")
-        .then(applyTheme)
-        .catch(() => { /* CSS fallback 生效 */ });
-      setTheme((prefs.theme as "Dark" | "Light") || "Dark");
+      // 挂载全局快捷键（Phase 5 KeybindingRegistry）
+      mountGlobalKeybindings();
 
-      const lang = prefs.language || "zh";
-      setLang(lang);
-      i18n.changeLanguage(lang);
+      if (prefs) {
+        loadTheme(prefs.theme || "Dark")
+          .then(applyTheme)
+          .catch(() => { /* CSS fallback 生效 */ });
+        setTheme((prefs.theme as "Dark" | "Light") || "Dark");
 
-      setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
-      setPortName(prefs.lastPort || "COM3");
+        const lang = prefs.language || "zh";
+        setLang(lang);
+        i18n.changeLanguage(lang);
 
-      // Phase 3: 恢复布局（§11.3）
-      try {
-        const savedLayout = prefs.layout;
-        if (savedLayout?.groups) {
-          restoreLayout(savedLayout);
-        }
-      } catch { /* 布局恢复失败不影响启动 */ }
+        setTerminalPrefs({ ...defaultTerminalPrefs, ...prefs.preferences });
+        setPortName(prefs.lastPort || "COM3");
+
+        // Phase 3: 恢复布局（§11.3）
+        try {
+          const savedLayout = prefs.layout;
+          if (savedLayout?.groups) {
+            restoreLayout(savedLayout);
+          }
+        } catch { /* 布局恢复失败不影响启动 */ }
+      }
 
       setReady(true);
-    });
+    })();
   }, [restoreLayout]);
 
   /* ---- 侧栏拖拽调整宽度 ---- */
@@ -179,14 +201,20 @@ function App() {
     const next = theme === "Dark" ? "Light" : "Dark";
     setTheme(next);
     loadTheme(next).then(applyTheme).catch(() => {});
-    try { const p = PreferenceService.loadPrefs(); p.theme = next; PreferenceService.savePrefs(p).catch(() => {}); } catch {}
+    // Phase 5：持久化到 ConfigurationService（替代 PreferenceService）
+    import("./core/ConfigurationService").then(({ setConfigurationValue }) => {
+      setConfigurationValue("app.theme", next, "user").catch(() => {});
+    });
   }, [theme]);
 
   const handleToggleLang = useCallback(() => {
     const next = lang === "zh" ? "en" : "zh";
     setLang(next);
     i18n.changeLanguage(next);
-    try { const p = PreferenceService.loadPrefs(); p.language = next; PreferenceService.savePrefs(p).catch(() => {}); } catch {}
+    // Phase 5：持久化到 ConfigurationService（替代 PreferenceService）
+    import("./core/ConfigurationService").then(({ setConfigurationValue }) => {
+      setConfigurationValue("app.language", next, "user").catch(() => {});
+    });
   }, [lang]);
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
@@ -261,8 +289,13 @@ function App() {
     }
   }, [isOpen, baudRate]);
 
-  // 终端设置变更 → 持久化
+  // Phase 5：终端设置变更 → 持久化到 ConfigurationService + PluginStateService（替代 PreferenceService）
   useEffect(() => {
+    import("./core/ConfigurationService").then(async ({ setConfigurationValue }) => {
+      await setConfigurationValue("terminal.timestampFormat", terminalPrefs.timestampFormat, "user");
+      // 其余 terminal.* 配置项等 Settings Editor 就绪后统一迁移
+    }).catch(() => {});
+    // 同时保持 PreferenceService 兼容（Phase 5 过渡期——Settings Editor 完成后删除）
     try {
       const prefs = PreferenceService.loadPrefs();
       prefs.preferences = terminalPrefs as any;
@@ -270,8 +303,12 @@ function App() {
     } catch { /* 静默 */ }
   }, [terminalPrefs]);
 
-  // lastPort 变更 → 持久化
+  // Phase 5：lastPort → PluginStateService（替代 PreferenceService）
   useEffect(() => {
+    import("./core/PluginStateService").then(({ setPluginStateValue }) => {
+      setPluginStateValue("terminal", "lastPort", portName);
+    }).catch(() => {});
+    // 同时保持 PreferenceService 兼容
     try {
       const prefs = PreferenceService.loadPrefs();
       prefs.lastPort = portName;
@@ -310,11 +347,11 @@ function App() {
     }
   }, [isOpen]);
 
-  // Phase 3: 布局持久化——保存到 prefs.json（§11）
+  // Phase 5: 布局持久化——走 LayoutService（替代 PreferenceService）
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
 
-  // Phase 3 v4: 布局持久化
+  // Phase 3 v4 → Phase 5: 布局持久化走 LayoutService
   useEffect(() => {
     if (!layoutInitialized.current) {
       layoutInitialized.current = true;
@@ -322,9 +359,8 @@ function App() {
     }
 
     const saveLayout = () => {
-      try {
-        const prefs = PreferenceService.loadPrefs();
-        prefs.layout = {
+      import("./core/LayoutService").then(({ saveTabLayout }) => {
+        saveTabLayout({
           groups: tabState.groups.map((g) => ({
             id: g.id,
             tabs: g.tabs.map((t) => ({
@@ -339,9 +375,8 @@ function App() {
           })),
           activeGroupId: tabState.activeGroupId,
           root: tabState.root,
-        };
-        PreferenceService.savePrefs(prefs).catch(() => {});
-      } catch { /* 静默 */ }
+        });
+      }).catch(() => {});
     };
 
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);

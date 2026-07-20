@@ -10,6 +10,8 @@ import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 import PreferenceService from "../core/PreferenceService";
+// Phase 5：图标排序迁移到 PluginStateService
+import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
 import "./IconBar.css";
 
 interface IconBarProps {
@@ -27,13 +29,17 @@ function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSourc
 }
 
 function loadOrder(): string[] {
-  try { return PreferenceService.loadPrefs().iconOrder ?? []; } catch { return []; }
+  try {
+    // Phase 5：优先读 PluginStateService，fallback 旧 PreferenceService
+    const fromPss = getPluginStateValue<string[]>("app", "iconOrder");
+    if (fromPss) return fromPss;
+    return PreferenceService.loadPrefs().iconOrder ?? [];
+  } catch { return []; }
 }
 function saveOrder(order: string[]): void {
   try {
-    const prefs = PreferenceService.loadPrefs();
-    prefs.iconOrder = order;
-    PreferenceService.savePrefs(prefs).catch(() => {});
+    // Phase 5：写入 PluginStateService
+    setPluginStateValue("app", "iconOrder", order);
   } catch { /* 静默 */ }
 }
 

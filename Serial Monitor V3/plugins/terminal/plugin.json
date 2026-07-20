@@ -14,6 +14,79 @@
     { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
   ],
+  "contributes": {
+    "configuration": {
+      "title": "终端",
+      "properties": {
+        "terminal.timestampFormat": {
+          "type": "string",
+          "default": "HH:mm:ss:fff",
+          "enum": ["HH:mm:ss:fff", "HH:mm:ss", "无"],
+          "description": "接收区时间戳格式"
+        },
+        "terminal.showEcho": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示已发送消息的回显"
+        },
+        "terminal.showLineNumbers": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示行号"
+        },
+        "terminal.separateSystemLog": {
+          "type": "boolean",
+          "default": true,
+          "description": "系统消息独立显示（灰色）"
+        },
+        "terminal.lineEnding": {
+          "type": "string",
+          "default": "\\r\\n",
+          "enum": ["\\r\\n", "\\n", "\\r"],
+          "description": "发送换行符"
+        },
+        "terminal.autoRepeat": {
+          "type": "boolean",
+          "default": false,
+          "description": "启用定时发送"
+        },
+        "terminal.repeatInterval": {
+          "type": "number",
+          "default": 1000,
+          "description": "定时发送间隔 (ms)"
+        },
+        "terminal.autoClear": {
+          "type": "boolean",
+          "default": false,
+          "description": "发送后清空发送栏"
+        },
+        "terminal.receiveMode": {
+          "type": "string",
+          "default": "text",
+          "enum": ["text", "hex"],
+          "description": "接收模式"
+        },
+        "terminal.receiveCoding": {
+          "type": "string",
+          "default": "UTF-8",
+          "enum": ["UTF-8", "GB2312", "Shift-JIS", "Latin-1"],
+          "description": "接收区字符编码"
+        },
+        "terminal.sendMode": {
+          "type": "string",
+          "default": "text",
+          "enum": ["text", "hex"],
+          "description": "发送模式"
+        },
+        "terminal.sendCoding": {
+          "type": "string",
+          "default": "UTF-8",
+          "enum": ["UTF-8", "GB2312", "Shift-JIS", "Latin-1"],
+          "description": "发送区字符编码"
+        }
+      }
+    }
+  },
   "recommends": [
     { "plugin": "workspace", "reason": "配合卡片可视化串口数据" }
   ],

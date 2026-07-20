@@ -18,6 +18,11 @@ import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
 import { pushToast } from "../core/toast";
 import PreferenceService from "../core/PreferenceService";
+// Phase 5：插件状态管理迁移到 PluginStateService
+import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+// Phase 5：contributes 解析
+import { registerConfiguration } from "../core/ConfigurationRegistry";
+import type { ManifestMenuItem } from "../core/MenuRegistry";
 import i18n from "../i18n";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
@@ -122,6 +127,70 @@ export async function initPluginLoader(): Promise<void> {
   }
 }
 
+/* ── Phase 5：parseContributions——对标 VS Code package.json contributes ── */
+
+/**
+ * 解析插件的 contributes 声明，分发到各 Registry。
+ * 按 key 逐项检测，不认识的 key 静默跳过。
+ * Phase 6 加 contributes.themes / contributes.languages 时此处只需加一个 if——不崩。
+ */
+function parseContributions(pluginId: string, c: Record<string, unknown>): void {
+  // contributes.configuration → ConfigurationRegistry
+  if (c.configuration) {
+    const config = c.configuration as { title: string; properties: Record<string, unknown> };
+    registerConfiguration(pluginId, {
+      title: config.title,
+      properties: config.properties as Record<string, import("../core/ConfigurationRegistry").ConfigurationProperty>,
+    });
+  }
+
+  // contributes.commands → CommandRegistry（延迟解析——等组件 import 后 handler 才有值）
+  if (c.commands) {
+    const cmds = c.commands as Array<{ id: string; title: string; category?: string; when?: string }>;
+    // placeholder 注册：handler 暂为空，Phase 4 的组件加载后通过 setCommandHandler 补充
+    import("../core/CommandRegistry").then(({ registerCommand }) => {
+      for (const cmd of cmds) {
+        registerCommand(pluginId, {
+          id: cmd.id,
+          title: cmd.title,
+          category: cmd.category,
+          when: cmd.when,
+          handler: async () => {
+            console.warn(`[pluginLoader] 命令 "${cmd.id}" 尚未绑定 handler——请在组件 mount 时注册`);
+          },
+        });
+      }
+    });
+  }
+
+  // contributes.menus → MenuRegistry
+  if (c.menus) {
+    const menus = c.menus as Record<string, ManifestMenuItem[]>;
+    import("../core/MenuRegistry").then(({ registerMenuItems }) => {
+      for (const [menuId, items] of Object.entries(menus)) {
+        registerMenuItems(menuId as any, pluginId, items);
+      }
+    });
+  }
+
+  // contributes.keybindings → KeybindingRegistry
+  if (c.keybindings) {
+    const kbs = c.keybindings as Array<{ command: string; key: string; when?: string }>;
+    import("../core/KeybindingRegistry").then(({ registerKeybinding }) => {
+      for (const kb of kbs) {
+        registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin" });
+      }
+    });
+  }
+
+  // contributes.configurationDefaults → ConfigurationRegistry（盲区 2：弱默认值）
+  if (c.configurationDefaults) {
+    import("../core/ConfigurationRegistry").then(({ registerConfigurationDefaults }) => {
+      registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
+    });
+  }
+}
+
 async function loadPlugin(pluginId: string): Promise<void> {
   const manifestKey = Object.keys(pluginManifests).find(
     (k) => extractPluginId(k) === pluginId
@@ -197,6 +266,13 @@ async function loadPlugin(pluginId: string): Promise<void> {
 
   if (manifest.resources && manifest.resources.length > 0) {
     console.log(`[pluginLoader] 📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 5`);
+    contributed = true;
+  }
+
+  // Phase 5：parseContributions——按 key 逐项检测，不认识的 key 静默跳过
+  // Phase 6 加 contributes.themes / contributes.languages 时 loader 不崩
+  if (manifest.contributes) {
+    parseContributions(pluginId, manifest.contributes);
     contributed = true;
   }
 
@@ -364,6 +440,10 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
 
 function getDisabledList(): string[] {
   try {
+    // Phase 5：优先读 PluginStateService（新路径），fallback PreferenceService（旧数据）
+    const fromPss = getPluginStateValue<string[]>("app", "disabledPlugins");
+    if (fromPss) return fromPss;
+    // 过渡期：从旧 Prefs 读取并迁移
     return PreferenceService.loadPrefs().disabledPlugins ?? [];
   } catch {
     return [];
@@ -372,9 +452,8 @@ function getDisabledList(): string[] {
 
 async function saveDisabledList(list: string[]): Promise<void> {
   try {
-    const prefs = PreferenceService.loadPrefs();
-    prefs.disabledPlugins = list;
-    await PreferenceService.savePrefs(prefs);
+    // Phase 5：写入 PluginStateService（新路径）
+    await setPluginStateValue("app", "disabledPlugins", list);
   } catch { /* 静默 */ }
 }
 
@@ -482,13 +561,11 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
 
-    // 清理 iconOrder，确保重装后排到图标栏末尾
+    // Phase 5：清理 iconOrder，确保重装后排到图标栏末尾
     try {
-      const prefs = PreferenceService.loadPrefs();
-      if (prefs.iconOrder) {
-        prefs.iconOrder = prefs.iconOrder.filter((id) => id !== pluginId);
-        await PreferenceService.savePrefs(prefs);
-      }
+      const iconOrder = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
+      const filtered = iconOrder.filter((id) => id !== pluginId);
+      await setPluginStateValue("app", "iconOrder", filtered);
     } catch { /* 静默 */ }
 
     // Phase 4.4：通知壳关闭使用此插件的标签页
