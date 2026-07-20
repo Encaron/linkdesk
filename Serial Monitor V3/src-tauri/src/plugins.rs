@@ -161,6 +161,18 @@ pub fn reinstall_plugin(plugin_id: String) -> Result<(), String> {
     Ok(())
 }
 
+/// 从文件系统读取插件的 plugin.json 内容。
+/// 用于重装不在 glob 中的插件（如 .disabled/ 里的插件构建时 glob 未扫描）。
+#[tauri::command]
+pub fn read_plugin_manifest(plugin_id: String) -> Result<String, String> {
+    let manifest_path = plugins_dir()?.join(&plugin_id).join("plugin.json");
+    if !manifest_path.exists() {
+        return Err(format!("插件 \"{}\" 的 plugin.json 不存在", plugin_id));
+    }
+    fs::read_to_string(&manifest_path)
+        .map_err(|e| format!("读取 plugin.json 失败: {}", e))
+}
+
 /// 递归复制目录。
 fn copy_dir(src: &PathBuf, dest: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(dest)

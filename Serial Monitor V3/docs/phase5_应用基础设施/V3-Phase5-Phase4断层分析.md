@@ -19,7 +19,18 @@ Phase 4 没有配置系统。所有"设置"都塞进一个大 JSON 对象 `Prefe
 
 ### 怎么办
 
-Phase 5 建 ConfigurationService。插件在 `plugin.json` 里声明自己有哪些设置项，Settings Editor 自动渲染。终端原有的设置值迁移过去，配置文件从 `prefs.json` 变为 `settings.json`。**迁移期间新老系统共存——ConfigurationService 内部先包 PreferenceService，逐个迁移 consumer。**
+Phase 5 建 ConfigurationService。插件在 `plugin.json` 里声明自己有哪些设置项，Settings Editor 自动渲染。终端原有的设置值迁移过去，配置文件从 `prefs.json` 变为 `settings.json`。
+
+**怎么迁移：**
+```
+1. 建 ConfigurationService，内部先包 PreferenceService
+   → get("terminal.timestampFormat") 内部读 Prefs.preferences.timestampFormat
+   → 这样新老代码都能用
+2. 逐一替换 consumer：
+   App.tsx 的 theme/language → useConfiguration("app.theme")
+   TerminalView 的 timestampFormat → useConfiguration("terminal.timestampFormat")
+3. 全部 consumer 切走后，删 PreferenceService 的 preferences 字段
+```
 
 ---
 
@@ -37,6 +48,18 @@ Phase 5 有了 `useConfiguration()` hook 之后，TerminalPrefsContext 变成多
 
 **不删 TerminalPrefsContext**。改它的内部实现：从读 PreferenceService 改为调 `useConfiguration()`。对外接口不变（TerminalView、TerminalSidebar 不改代码）。等 Settings Editor 替代 TerminalSidebar 后，整个 Context 可以退休。
 
+**怎么迁移：**
+```
+1. TerminalPrefsContext.ts 内部加 useConfiguration() 调用
+   → 原本 return PreferenceService.loadPrefs().preferences
+   → 改为 return { timestampFormat: useConfiguration("terminal.timestampFormat"), ... }
+2. TerminalView 和 TerminalSidebar 的 useTerminalPrefs() 调用不动
+3. Settings Editor 替代 TerminalSidebar 后
+   → 删 TerminalSidebar.tsx
+   → 删 TerminalPrefsContext.Provider 包裹
+   → 删 TerminalPrefsContext.ts 整个文件
+```
+
 ---
 
 ## 3. 终端侧栏是手写表单 → Settings Editor 自动生成
@@ -52,6 +75,15 @@ Phase 6 卡片插件需要自己的设置界面、Phase 7 OLED 又需要——�
 ### 怎么办
 
 Phase 5 建 Settings Editor——它是一个通用表单引擎，读 `plugin.json` 里的 `contributes.configuration`，自动生成表单。TerminalSidebar 暂时保留，等 Settings Editor 稳定后切过去。
+
+**怎么迁移：**
+```
+1. 终端 plugin.json 加 contributes.configuration（声明全部 12 个设置项）
+2. 建 Settings Editor 组件：左侧树（按 configuration.title 分组）+ 右侧表单
+3. 先渲染"终端"分组，和现有 TerminalSidebar 并排对比——确认行为一致
+4. TerminalView 的侧栏从 TerminalSidebar 切到 Settings Editor
+5. 删 TerminalSidebar.tsx
+```
 
 ---
 
@@ -75,6 +107,17 @@ Phase 5 有了 CommandRegistry——插件可以在 `plugin.json` 里声明自�
 
 Phase 5 把 CommandPalette 改为从 CommandRegistry 读取命令列表。终端的 7 个现有命令注册到 CommandRegistry，然后删掉 TerminalView 里的硬编码数组。
 
+**怎么迁移：**
+```
+1. 建 CommandRegistry（register / execute / getAll）
+2. 核心注册内置命令（"关闭标签页"、"分屏"等）
+3. 终端插件注册 7 个命令（清空/暂停/导出/搜索/切换 HEX/回显/行号）
+   → registerCommand("terminal.clear", handleClear)
+4. CommandPalette 改为从 CommandRegistry.getAll() 读取
+   → 旧的 paletteCommands 数组暂时保留，双列表合并显示
+5. 验证 Ctrl+Shift+P 搜到所有命令 → 删 TerminalView 的 paletteCommands
+```
+
 ---
 
 ## 5. 右键菜单是硬编码组件 → MenuService 动态生成
@@ -90,6 +133,16 @@ Phase 5 有了 MenuService——插件声明菜单项，右键自动出现。但
 ### 怎么办
 
 Phase 5 建通用的 `<ContextMenu>` 组件——从 MenuService 读当前右键位置（MenuId）和上下文，动态生成菜单项。终端插件的菜单项声明在 plugin.json 里，核心的内置项（关闭、分屏）也注册到 MenuService。
+
+**怎么迁移：**
+```
+1. 建 MenuService + MenuId 定义（editorContext / tabContext / extensionContext）
+2. 核心注册内置菜单项（关闭 / 关闭其他 / 分屏）→ MenuId.tabContext
+3. 终端 plugin.json 声明菜单项（清空/暂停/导出）→ MenuId.editorContext
+4. 建通用 <ContextMenu menuId={...} context={...} /> 组件
+5. TerminalView 的 <ReceiveContextMenu> 改为 <ContextMenu menuId="editorContext">
+6. 验证右键菜单正确 → 删 ReceiveContextMenu 组件
+```
 
 ---
 
@@ -107,6 +160,15 @@ Phase 4 的串口状态（是否打开、端口名、波特率）通过 `<Serial
 
 **两者共存，不是替代。** 建 CoreEvents 事件总线，串口状态变化时发射事件。SerialContext 的 Provider 内部订阅 CoreEvents 来同步状态（React 组件继续用 SerialContext 不变）。非 React 插件直接订阅 CoreEvents。不删 SerialContext——它是 React 友好的封装层。
 
+**怎么迁移：**
+```
+1. 建 CoreEvents（EventEmitter<T> 类 + 3-5 个 core events 实例）
+2. App.tsx 的串口 open/close 回调里加 CoreEvents.onDidChangePortState.fire(...)
+3. SerialContext.Provider 订阅 CoreEvents → setState（React 组件无感知）
+4. 协议插件等非 React 消费者直接订阅 CoreEvents
+5. 不删 SerialContext——React 组件继续用它
+```
+
 ---
 
 ## 7. 快捷发送存在全局配置里 → 插件各自的私有存储
@@ -122,6 +184,13 @@ Phase 4 的快捷发送（AT 命令、AT+CWLAP 等预设按钮）存在 `Prefere
 ### 怎么办
 
 Phase 5 建 PluginStateService——每个插件有自己的 key-value 存储（底层在 `settings.json` 的 `pluginStates` 段）。快捷发送迁移到 `PluginStateService.set("terminal", "quickSends", data)`。低优先级，不影响 Phase 5 核心功能。
+
+**怎么迁移（Phase 5 后期或 Phase 6 做）：**
+```
+1. 建 PluginStateService（get/set/getAll，底层 settings.json 的 pluginStates 段）
+2. TerminalView 的 saveQuickSends 改用 PluginStateService
+3. PreferenceService.quickSends 字段标记废弃
+```
 
 ---
 
@@ -153,6 +222,17 @@ Phase 5 新增的 CommandRegistry、ConfigurationRegistry、MenuRegistry 都需�
 }
 ```
 两条线互不干扰。loader 原有检测逻辑（检测 `entry` / `mode` / `themes`）不动，新加对 `contributes` 的解析。
+
+**怎么迁移：**
+```
+1. terminal/plugin.json 加 contributes 段（commands + menus + configuration）
+   → 原有的 entry/sidebar/statusBar/tabBehavior 不动
+2. loader.ts 加 parseContributions() 函数，解析 contributes 段
+   → 注册到 CommandRegistry / MenuRegistry / ConfigurationRegistry
+3. 其他三个插件（workspace/settings/marketplace）不需要 contributes 段——它们没有命令/配置/菜单
+```
+
+---
 
 ---
 

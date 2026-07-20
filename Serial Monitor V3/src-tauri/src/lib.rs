@@ -20,6 +20,7 @@ pub fn run() {
             plugins::install_plugin,
             plugins::uninstall_plugin,
             plugins::reinstall_plugin,
+            plugins::read_plugin_manifest,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

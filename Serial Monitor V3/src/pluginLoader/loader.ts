@@ -121,23 +121,27 @@ export async function initPluginLoader(): Promise<void> {
   }
 }
 
-async function loadPlugin(pluginId: string): Promise<void> {
-  // 找到对应的 glob key
-  const manifestKey = Object.keys(pluginManifests).find(
-    (k) => extractPluginId(k) === pluginId
-  );
-  if (!manifestKey) {
-    throw new Error(`找不到 plugin.json`);
-  }
-
+async function loadPlugin(pluginId: string, preloadedManifest?: PluginManifest): Promise<void> {
   let manifest: PluginManifest;
-  try {
-    manifest = pluginManifests[manifestKey];
-  } catch {
-    // P1-6 #2: plugin.json 格式错误
-    pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
-    console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
-    return;
+
+  if (preloadedManifest) {
+    // 外部提供的 manifest（如从 Rust 文件系统读取）——跳过 glob 查找
+    manifest = preloadedManifest;
+  } else {
+    // 从构建时 glob 查找
+    const manifestKey = Object.keys(pluginManifests).find(
+      (k) => extractPluginId(k) === pluginId
+    );
+    if (!manifestKey) {
+      throw new Error(`找不到 plugin.json`);
+    }
+    try {
+      manifest = pluginManifests[manifestKey];
+    } catch {
+      pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
+      console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
+      return;
+    }
   }
 
   // type 字段不再必需——贡献点由 manifest 的实际声明检测（对标 VS Code contributes）
@@ -625,18 +629,33 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
       });
       return { success: true };
     }
-    // manifest 不在 glob 中——需要重启，对标 VS Code "重载窗口"
-    pushToast({
-      message: `已安装：${pluginId}。重启后生效。`,
-      source: pluginId,
-      severity: "info",
-      ttl: 0,
-      actions: [
-        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
-      ],
-    });
-    try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
-    return { success: true };
+    // manifest 不在 build-time glob 中（.disabled/ 里的插件构建时未被扫描）
+    // → 从文件系统读 plugin.json，然后直接 loadPlugin
+    try {
+      const raw = await invoke<string>("read_plugin_manifest", { pluginId });
+      const manifest: PluginManifest = JSON.parse(raw);
+      await loadPlugin(pluginId, manifest);
+      pushToast({
+        message: `已安装：${manifest.name}`,
+        source: pluginId,
+        severity: "info",
+        ttl: 6000,
+      });
+      return { success: true };
+    } catch {
+      // 读不到 manifest 或 loadPlugin 失败 → 需重启
+      pushToast({
+        message: `已安装：${pluginId}。重启后生效。`,
+        source: pluginId,
+        severity: "info",
+        ttl: 0,
+        actions: [
+          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+        ],
+      });
+      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      return { success: true };
+    }
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
