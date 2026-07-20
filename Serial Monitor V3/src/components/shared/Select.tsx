@@ -1,8 +1,17 @@
+interface SelectOption {
+  value: string;
+  label: string;
+}
+
 interface SelectProps {
   value: string;
-  options: string[];
+  options: string[] | SelectOption[];
   onChange: (v: string) => void;
   disabled?: boolean;
+}
+
+function isSelectOption(o: string | SelectOption): o is SelectOption {
+  return typeof o === "object" && "value" in o && "label" in o;
 }
 
 function Select({ value, options, onChange, disabled }: SelectProps) {
@@ -13,9 +22,11 @@ function Select({ value, options, onChange, disabled }: SelectProps) {
       onChange={(e) => onChange(e.target.value)}
       disabled={disabled}
     >
-      {options.map((opt) => (
-        <option key={opt} value={opt}>{opt}</option>
-      ))}
+      {options.map((opt) =>
+        isSelectOption(opt)
+          ? <option key={opt.value} value={opt.value}>{opt.label}</option>
+          : <option key={opt} value={opt}>{opt}</option>
+      )}
     </select>
   );
 }
