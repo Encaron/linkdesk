@@ -18,19 +18,31 @@ interface IconBarProps {
   onOpenOrFocus: (type: string) => void;
 }
 
-const PLUGIN_ICON_PATH: Record<string, string> = {
-  terminal: "terminal.png",
-  workspace: "workspace.png",
-  settings: "settings.png",
-  marketplace: "extensions.svg",
-};
-
 const BOTTOM_ICONS = new Set(["settings"]);
 
-function getIconSrc(pluginId: string): string {
-  const path = PLUGIN_ICON_PATH[pluginId];
-  if (path) return `/assets/icons/${path}`;
-  return `/assets/icons/settings.svg`;
+/** 从 manifest 动态解析图标 src。
+ *  - iconSource: "codicon" → 渲染 CSS class，不返回 src
+ *  - iconSource: "svg" / "url" → manifest.icon 即路径
+ *  - 缺省 → 兜底 `/assets/icons/{pluginId}.png`
+ */
+function resolveIconSrc(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }): string | null {
+  const m = entry.manifest;
+  if (m.iconSource === "codicon") return null; // codicon 走 CSS class
+  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
+  // 兜底：尝试常见图片路径
+  if (m.icon) {
+    const id = m.icon;
+    if (id.endsWith(".svg") || id.endsWith(".png")) return `/assets/icons/${id}`;
+  }
+  return `/assets/icons/${entry.pluginId}.png`;
+}
+
+/** 返回 codicon class 名（如果是 codicon 图标） */
+function resolveCodicon(entry: { manifest: { icon?: string; iconSource?: string } }): string | null {
+  if (entry.manifest.iconSource === "codicon" && entry.manifest.icon) {
+    return `codicon-${entry.manifest.icon}`;
+  }
+  return null;
 }
 
 function loadOrder(): string[] {
@@ -65,7 +77,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const viewPlugins = getViewPlugins();
   const savedOrder = loadOrder();
 
-  type IconEntry = { pluginId: string; iconSrc: string; label: string };
+  type IconEntry = { pluginId: string; iconSrc: string | null; codicon: string | null; label: string };
   const ordered: IconEntry[] = useMemo(() => {
     const result: IconEntry[] = [];
     const remaining = new Set(viewPlugins.map((p) => p.pluginId));
@@ -73,12 +85,12 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
       if (remaining.has(id)) {
         remaining.delete(id);
         const p = viewPlugins.find((v) => v.pluginId === id);
-        if (p) result.push({ pluginId: id, iconSrc: getIconSrc(id), label: p.manifest.name });
+        if (p) result.push({ pluginId: id, iconSrc: resolveIconSrc(p), codicon: resolveCodicon(p), label: p.manifest.name });
       }
     }
     for (const id of remaining) {
       const p = viewPlugins.find((v) => v.pluginId === id);
-      if (p) result.push({ pluginId: id, iconSrc: getIconSrc(id), label: p.manifest.name });
+      if (p) result.push({ pluginId: id, iconSrc: resolveIconSrc(p), codicon: resolveCodicon(p), label: p.manifest.name });
     }
     return result;
   }, [viewPlugins, savedOrder]);
@@ -188,7 +200,13 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           title={t(entry.label)}
           aria-label={t(entry.label)}
         >
-          <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
+          {entry.codicon ? (
+            <span className={`codicon ${entry.codicon} icon-codicon`} />
+          ) : entry.iconSrc ? (
+            <img src={entry.iconSrc} alt={t(entry.label)} className="icon-img" />
+          ) : (
+            <span className="codicon codicon-symbol-misc icon-codicon" />
+          )}
         </button>
         {showAfter && <div className="icon-drop-indicator" />}
       </div>
@@ -210,11 +228,12 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
           className="icon-drag-preview"
           style={{ left: previewPos.x, top: previewPos.y }}
         >
-          <img
-            src={getIconSrc(draggedId)}
-            alt=""
-            className="icon-img"
-          />
+          {((): React.ReactNode => {
+            const entry = ordered.find(e => e.pluginId === draggedId);
+            if (entry?.codicon) return <span className={`codicon ${entry.codicon} icon-codicon`} />;
+            if (entry?.iconSrc) return <img src={entry.iconSrc} alt="" className="icon-img" />;
+            return <span className="codicon codicon-symbol-misc icon-codicon" />;
+          })()}
         </div>,
         document.body
       )}

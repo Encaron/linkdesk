@@ -73,6 +73,8 @@ export interface ViewPluginEntry {
   component: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
   /** 可选侧栏组件 */
   sidebarComponent?: React.ComponentType;
+  /** 可选状态栏组件——插件自己渲染动态状态项，对标 VS Code StatusBarItem */
+  statusBarComponent?: React.ComponentType;
 }
 
 /* ── Tab 类型扩展（Phase 4） ── */

@@ -3,7 +3,7 @@
   "type": "view",
   "name": "设置",
   "version": "1.0.0",
-  "icon": "settings",
+  "icon": "settings-gear",
   "iconSource": "codicon",
   "description": "软件设置——主题、语言、插件管理",
   "author": "官方",

@@ -259,17 +259,14 @@ function ExtensionItem({
 
   return (
     <button className="ms-extension-item" onClick={handleClick}>
-      {/* icon: 使用 assets/icons/ 下的图片，fallback 到 codicon */}
+      {/* icon: 从 manifest 动态读取 */}
       <div className="ms-item-icon">
-        {PLUGIN_ICON_PATH[plugin.pluginId] ? (
-          <img
-            src={`/assets/icons/${PLUGIN_ICON_PATH[plugin.pluginId]}`}
-            alt=""
-            className="ms-item-icon-img"
-          />
-        ) : (
-          <span className={`codicon ${PLUGIN_CODICON[plugin.pluginId] ?? "codicon-symbol-misc"}`} />
-        )}
+        {(() => {
+          const icon = getPluginIcon(plugin);
+          if (icon.codicon) return <span className={`codicon ${icon.codicon}`} />;
+          if (icon.src) return <img src={icon.src} alt="" className="ms-item-icon-img" />;
+          return <span className="codicon codicon-symbol-misc" />;
+        })()}
         {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
       </div>
 
@@ -293,18 +290,12 @@ function ExtensionItem({
   );
 }
 
-const PLUGIN_ICON_PATH: Record<string, string> = {
-  terminal: "terminal.png",
-  workspace: "workspace.png",
-  settings: "settings.png",
-  marketplace: "extensions.svg",
-};
-
-const PLUGIN_CODICON: Record<string, string> = {
-  terminal: "codicon-terminal",
-  workspace: "codicon-window",
-  settings: "codicon-settings-gear",
-  marketplace: "codicon-extensions",
-};
+function getPluginIcon(entry: ViewPluginEntry): { src?: string; codicon?: string } {
+  const m = entry.manifest;
+  if (m.iconSource === "codicon" && m.icon) return { codicon: `codicon-${m.icon}` };
+  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return { src: m.icon };
+  if (m.icon) return { src: `/assets/icons/${m.icon}` };
+  return {};
+}
 
 export default MarketplaceSidebar;

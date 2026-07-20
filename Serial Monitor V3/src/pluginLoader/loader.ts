@@ -33,6 +33,11 @@ const pluginSidebarModules = import.meta.glob<{ default: React.ComponentType }>(
   { eager: false }
 );
 
+const pluginStatusBarModules = import.meta.glob<{ default: React.ComponentType }>(
+  "../../plugins/*/statusBar.tsx",
+  { eager: false }
+);
+
 const pluginManifests = import.meta.glob<PluginManifest>(
   "../../plugins/*/plugin.json",
   { eager: true }  // plugin.json 需要立即读取——决定注册表结构
@@ -207,11 +212,21 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
     sidebarComponent = sidebarModule.default;
   }
 
+  let statusBarComponent: React.ComponentType | undefined;
+  const statusBarKey = Object.keys(pluginStatusBarModules).find(
+    (k) => extractPluginId(k) === pluginId
+  );
+  if (statusBarKey) {
+    const statusBarModule = await pluginStatusBarModules[statusBarKey]();
+    statusBarComponent = statusBarModule.default;
+  }
+
   const entry: ViewPluginEntry = {
     pluginId,
     manifest,
     component: Component,
     sidebarComponent,
+    statusBarComponent,
   };
 
   registerViewPlugin(entry);
@@ -367,6 +382,8 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     }
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
+    // Phase 4.4：通知壳关闭使用此插件的标签页
+    window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
     pushToast({
       message: `已禁用：${entry.manifest.name}`,
       actions: [{ label: "撤销", onClick: () => enablePlugin(pluginId) }],
@@ -449,6 +466,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
 
+    // Phase 4.4：通知壳关闭使用此插件的标签页
+    window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
     pushToast({
       message: `已卸载：${entry.manifest.name}`,
       ttl: 5000,

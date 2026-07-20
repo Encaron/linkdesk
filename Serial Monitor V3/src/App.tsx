@@ -14,14 +14,12 @@ import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
+import { getViewPlugin } from "./pluginLoader/viewRegistry";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
-
-// 保留 ViewId 用于向后兼容 IconBar（Phase 3 过渡期）
-export type ViewId = "terminal" | "workspace" | "settings";
 
 function App() {
   const { t } = useTranslation();
@@ -69,6 +67,22 @@ function App() {
   }, [tabState.groups, tabState.activeGroupId]);
   const activeTabType = activeTab?.type ?? "welcome";
   const activePluginId = activeTab?.pluginId;
+
+  // Phase 4.4：监听插件卸载/禁用事件，自动关闭关联标签页
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
+      for (const group of tabState.groups) {
+        for (const tab of group.tabs) {
+          if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
+            forceCloseTab(tab.id);
+          }
+        }
+      }
+    };
+    window.addEventListener("plugin-removed", handler);
+    return () => window.removeEventListener("plugin-removed", handler);
+  }, [tabState.groups, forceCloseTab]);
 
   /* ---- 启动初始化 ---- */
   useEffect(() => {
@@ -180,23 +194,27 @@ function App() {
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
 
-  // 对标 VS Code：聚焦标签页时，如果是真视图则切侧栏，详情页则保持
+  // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
     const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
     const tab = group?.tabs.find((t) => t.id === tabId);
-    if (tab && tab.type !== "plugin-detail" && tab.type !== "marketplace") {
+    // 只有 plugin-detail 不自动切换侧栏（它展示的是被查看插件的侧栏，不是自己的）
+    if (tab && tab.type !== "plugin-detail") {
       setSidebarView(null);
     }
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
+  // Phase 4.4：图标栏点击——有 sidebarComponent 的插件 toggle 侧栏，没有的直接打开标签页
   const handleIconClick = useCallback(
-    (type: string) => {
-      if (type === "marketplace") {
-        setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
+    (pluginId: string) => {
+      const plugin = getViewPlugin(pluginId);
+      if (plugin?.sidebarComponent) {
+        // 有侧栏组件 → toggle 侧栏视图（对标 VS Code Explorer/Extensions 图标）
+        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
       } else {
         setSidebarView(null);
-        openOrFocusTab(type);
+        openOrFocusTab(pluginId);
       }
     },
     [openOrFocusTab]
@@ -419,7 +437,7 @@ function App() {
         />
         <SidePanel
           ref={sidebarRef}
-          activeTabType={activeTabType ?? "terminal"}
+          activeTabType={activeTabType ?? "welcome"}
           activePluginId={activePluginId}
           sidebarView={sidebarView}
           width={sidebarWidth}
@@ -456,9 +474,6 @@ function App() {
       </SerialContext.Provider>
       </TabActionsContext.Provider>
       <StatusBar
-        isOpen={isOpen}
-        txBytes={txBytes}
-        rxBytes={rxBytes}
         error={lastError}
         theme={theme}
         lang={lang}

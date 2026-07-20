@@ -12,8 +12,6 @@ import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
-import WorkspaceView from "./views/WorkspaceView";
-import SettingsView from "./views/SettingsView";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
@@ -54,7 +52,7 @@ function renderTabContent(
     return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
   }
 
-  // 视图插件路由：查 viewRegistry
+  // Phase 4.4：视图插件路由——唯一的正常路径
   if (tab.pluginId) {
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
@@ -64,39 +62,12 @@ function renderTabContent(
         </ErrorBoundary>
       );
     }
-    if (!["terminal", "workspace", "settings", "oled", "editor"].includes(tab.type)) {
-      return (
-        <div key={tab.id} className="plugin-missing-view">
-          <p>插件 "{tab.pluginId}" 未安装或已禁用</p>
-        </div>
-      );
-    }
   }
 
-  switch (tab.type) {
-    case "terminal":
-      return (
-        <ErrorBoundary>
-          <MissingTerminalFallback key={tab.id} />
-        </ErrorBoundary>
-      );
-    case "workspace":
-      return <WorkspaceView key={tab.id} isActive={isActive} workspaceName={tab.workspaceName} />;
-    case "settings":
-      return <SettingsView key={tab.id} isActive={isActive} />;
-    case "oled":
-      return <div key={tab.id}>OLED 视图（Phase 6 实现）</div>;
-    case "editor":
-      return <div key={tab.id}>{tab.filePath}（JSON 编辑器 Phase 7 实现）</div>;
-    default:
-      return null;
-  }
-}
-
-function MissingTerminalFallback() {
+  // 通用不可用占位——插件未安装/已卸载/已禁用
   return (
-    <div className="plugin-missing-view">
-      <p>终端插件未加载——请检查 plugins/terminal/ 目录</p>
+    <div key={tab.id} className="plugin-missing-view">
+      <p>{tab.pluginId ? `插件 "${tab.pluginId}" 不可用` : "未知视图类型"}</p>
     </div>
   );
 }

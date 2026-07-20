@@ -95,12 +95,27 @@
 
 ---
 
-## 剩余未闭合
+## Phase 4.3 生命周期闭环（2026-07-20）✅
+
+> commit `f9a2570`。安装/卸载/禁用/启用 + 文件监听 P1-5。10 文件 +627/-28。
+
+| 功能 | 说明 |
+|------|------|
+| Rust `list_plugin_dirs` | 枚举 plugins/ 子目录 |
+| Rust `install_plugin` | 复制目录到 plugins/ |
+| Rust `uninstall_plugin` | 移到 plugins/.disabled/ |
+| `disablePlugin(id)` | 写 prefs + 注销 |
+| `enablePlugin(id)` | 清 prefs + 重加载（view 需重启） |
+| `uninstallPlugin(id)` | Rust 移目录 + 注销 + toast |
+| `installPlugin(path)` | Rust 复制 + 热加载 |
+| `startPluginWatcher()` | 2s 轮询 → 真正工作 |
+| PluginDetailView 按钮 | 卸载/禁用→可用 |
+| MarketplaceSidebar | "已禁用"分区 + 启用按钮 |
+
+### 剩余未闭合
 
 | 项目 | 状态 |
 |------|------|
-| P1-5 文件监听 | 骨架就绪，待 Tauri fs 命令 |
-| 安装/卸载/禁用按钮 | Phase 5（需 Tauri fs 操作） |
 | 插件市场在线搜索 | Phase 6+（需服务端） |
 | 插件安全模型 | Phase 5+ |
 | Git 插件 | Phase 5+（架构已预留） |
@@ -108,7 +123,87 @@
 
 ---
 
-## 架构预留（从本轮讨论确认）
+## Phase 4.4 — 对标 VS Code 消除核心硬编码 🔥🔥🔥
+
+> **核心原则：** VS Code 源码里找不到 `if (extensionId === "...")`。所有 UI 走 contribution points。
+> **目标：** 卸载终端 → 图标栏消失 + 侧栏消失 + 主区消失 + 状态栏消失。接新插件无需改核心代码。
+
+### 当前硬编码泄漏点（7 处）
+
+| # | 文件:行 | 硬编码内容 | VS Code 做法 |
+|---|---------|-----------|-------------|
+| 1 | `StatusBar.tsx:68,80` | `if (item.pluginId === "terminal")` 特殊渲染连接状态+TX/RX | 插件提供 `statusBar.tsx` 组件自己渲染 |
+| 2 | `SidePanel.tsx:11,64-67` | `import TerminalSidebar` + `case "terminal"/"workspace"/"settings"` fallback | 侧栏只从 registry 读 `sidebarComponent` |
+| 3 | `MainContent.tsx:67,77-93` | `switch(tab.type)` 5 个 per-type fallback | registry 查不到→通用"不可用"占位 |
+| 4 | `IconBar.tsx:21-26` | `PLUGIN_ICON_PATH` 硬编码 4 个 ID→图片路径 | 从 `manifest.icon` + `iconSource` 动态读 |
+| 5 | `TabBar.tsx:73-74` | "+" 菜单硬编码 "新建终端"/"新建工作台" | 从 `getViewPlugins()` 动态生成 |
+| 6 | `useTabManager.ts:147-150` | `getDefaultLabel` switch on TabType | 从 `viewRegistry` 读 `manifest.name` |
+| 7 | `App.tsx:24,187,195-196,422` | `ViewId` type + marketplace 特判 + `?? "terminal"` | 无特判 |
+
+### 改动清单
+
+#### Step 1：Terminal 插件自包含
+- [ ] **`plugins/terminal/statusBar.tsx`** — 新建。读 `SerialContext` 渲染连接状态 + TX/RX
+- [ ] **`plugins/terminal/plugin.json`** — 确保 `icon`/`iconSource` 字段完整
+
+#### Step 2：类型 + 加载器
+- [ ] **`core/types.ts`** — `ViewPluginEntry` 加 `statusBarComponent?: React.ComponentType`
+- [ ] **`pluginLoader/loader.ts`** — `import.meta.glob` 扫描 `statusBar.tsx` → 动态 `import()` → 注册
+
+#### Step 3：消除核心 7 处硬编码
+- [ ] **`StatusBar.tsx`** — 删 `if (pluginId==="terminal")`；有 `statusBarComponent`→渲染组件，没有→静态 label
+- [ ] **`SidePanel.tsx`** — 删 `import TerminalSidebar` + 所有 `if (effectiveType===...)`；只留 `getViewPlugin(id)?.sidebarComponent`
+- [ ] **`MainContent.tsx`** — 删 `switch(tab.type)`；只保留 welcome/plugin-detail 壳路由，其余走 viewRegistry
+- [ ] **`IconBar.tsx`** — 删 `PLUGIN_ICON_PATH`；从 manifest 读：codicon→CSS class，svg→`<img>`，无→`/assets/icons/{id}.png` 兜底
+- [ ] **`TabBar.tsx`** — "+" 菜单从 `getViewPlugins()` 动态生成
+- [ ] **`useTabManager.ts`** — `getDefaultLabel` 优先查 `viewRegistry`
+- [ ] **`App.tsx`** — 删 `ViewId` + marketplace 特判 + `?? "terminal"` → `?? "welcome"`
+
+#### Step 4：图标映射统一
+- [ ] **`PluginDetailView.tsx`** — 删 `PLUGIN_ICON`，从 manifest 读
+- [ ] **`MarketplaceSidebar.tsx`** — 删 `PLUGIN_ICON_PATH` + `PLUGIN_CODICON`，从 manifest 读
+
+#### Step 5：卸载关闭标签页
+- [ ] **`loader.ts`** — `uninstallPlugin`/`disablePlugin` 时 dispatch `plugin-removed` 自定义事件
+- [ ] **`App.tsx`** — 监听事件，关闭所有 `tab.pluginId === 被卸载ID` 的标签页
+
+#### Step 6：验证
+- [ ] `cargo check` Rust 编译
+- [ ] `npx tsc --noEmit` TypeScript
+- [ ] `npx vitest run` 109 测试
+
+### 预期效果
+
+**卸载终端前：**
+```
+┌────┬──────────┬──────────────────────────────┐
+│ 📟  │  Terminal │ [📟 COM3]                    │
+│ 📊  │  Sidebar  ├──────────────────────────────┤
+│ 🧩  │           │ CM6 接收区                    │
+│ ⚙   │           │ Monaco 发送栏                  │
+├────┴──────────┴──────────────────────────────┤
+│ ● COM3 已连接 │ TX:1,234  RX:56,789 │ ☀ 中 🔔 │
+└──────────────────────────────────────────────┘
+```
+
+**卸载终端后：**
+```
+┌────┬──────────┬──────────────────────────────┐
+│ 📊  │  (空)    │ [欢迎]  LinkDesk              │
+│ 🧩  │          ├──────────────────────────────┤
+│ ⚙   │          │ 欢迎页                        │
+│     │          │                              │
+├────┴──────────┴──────────────────────────────┤
+│                                    │ ☀ 中 🔔 │
+└──────────────────────────────────────────────┘
+```
+- 📟 图标消失
+- 侧栏回到空状态
+- 终端标签页自动关闭
+- 状态栏终端项（连接状态+TX/RX）消失
+- 插件市场终端出现在"已禁用"分区，可重新启用
+
+### 架构预留
 
 | 功能 | 预留方式 |
 |------|---------|

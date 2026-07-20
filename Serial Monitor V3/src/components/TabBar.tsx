@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
+import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import "./TabBar.css";
 
 /* ── 图标映射 ── */
@@ -23,11 +24,15 @@ const TYPE_ICON: Record<string, string> = {
   welcome: "\u{1F3E0}",
 };
 
-/** 获取标签页图标：优先查 pluginId 的 icon，否则用 type */
+/** 获取标签页图标：查 viewRegistry icon，否则 emoji fallback */
 function getTabIcon(tab: Tab): string {
-  // Phase 4：pluginId 的图标由 viewRegistry 提供（codicon 名或 emoji fallback）
-  // 暂时用 type 映射
-  return TYPE_ICON[tab.type] ?? "\u{1F4C4}";
+  if (tab.pluginId) {
+    const p = getViewPlugins().find((v) => v.pluginId === tab.pluginId);
+    if (p?.manifest.icon && p.manifest.iconSource !== "codicon") {
+      // 非 codicon——用 emoji 兜底（图标栏才渲染图片）
+    }
+  }
+  return TYPE_ICON[tab.type] ?? "";
 }
 
 /* ── Props ── */
@@ -69,9 +74,14 @@ function PlusMenu({
   const { t } = useTranslation();
   if (!isOpen) return null;
 
-  const items: { label: string; type: string }[] = [
-    { label: t("新建终端"), type: "terminal" },
-    { label: t("新建工作台"), type: "workspace" },
+  // Phase 4.4：+ 菜单从 viewRegistry 动态生成，不再硬编码插件名
+  const viewPlugins = getViewPlugins();
+  const items: { label: string; type: string; pluginId?: string }[] = [
+    ...viewPlugins.map((p) => ({
+      label: p.manifest.name,
+      type: p.pluginId,  // 打开时用 pluginId
+      pluginId: p.pluginId,
+    })),
     { label: t("新建欢迎页"), type: "welcome" },
   ];
 
@@ -95,7 +105,7 @@ function PlusMenu({
               onClose();
             }}
           >
-            {TYPE_ICON[item.type] ?? ""} {item.label}
+            {getTabIcon({ type: item.type, pluginId: item.pluginId } as Tab)} {item.label}
           </button>
         ))}
       </div>

@@ -13,18 +13,22 @@ import { disablePlugin, uninstallPlugin, enablePlugin, isPluginDisabled } from "
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
-/* ── 图标映射 ── */
+/* ── 图标解析：从 manifest 读 ── */
 
-const PLUGIN_ICON: Record<string, string> = {
-  terminal: "terminal.png",
-  workspace: "workspace.png",
-  settings: "settings.png",
-  marketplace: "extensions.svg",
-};
+function getIconSrc(entry: ViewPluginEntry): string | undefined {
+  const m = entry.manifest;
+  if (m.iconSource === "codicon") return undefined; // codicon 走 CSS class
+  if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
+  // 兜底
+  if (m.icon) return `/assets/icons/${m.icon}`;
+  return undefined;
+}
 
-function getIconSrc(pluginId: string): string | undefined {
-  const p = PLUGIN_ICON[pluginId];
-  return p ? `/assets/icons/${p}` : undefined;
+function getCodicon(entry: ViewPluginEntry): string | null {
+  if (entry.manifest.iconSource === "codicon" && entry.manifest.icon) {
+    return `codicon-${entry.manifest.icon}`;
+  }
+  return null;
 }
 
 /* ── 主组件 ── */
@@ -120,14 +124,17 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   }
 
   const m = plugin.manifest;
-  const iconSrc = getIconSrc(pluginId);
+  const iconSrc = getIconSrc(plugin);
+  const codicon = getCodicon(plugin);
 
   return (
     <div className="plugin-detail">
       {/* ═══ Header — VS Code: icon 128x128 + details ═══ */}
       <header className="pd-header">
         <div className="pd-icon-container">
-          {iconSrc ? (
+          {codicon ? (
+            <span className={`codicon ${codicon} pd-icon-codicon`} />
+          ) : iconSrc ? (
             <img src={iconSrc} alt="" className="pd-icon-img" />
           ) : (
             <span className="codicon codicon-symbol-misc pd-icon-codicon" />

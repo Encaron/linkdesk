@@ -1,25 +1,19 @@
 /**
- * StatusBar — 底部状态栏。
- * Phase 4 P0-2：走 getStatusBarContributions() 插件贡献框架。
- * Phase 4 P3-9：通知铃铛 🔔 + 未读计数 + 通知历史面板。
- * 左区：插件贡献项（align: "left"）按加载顺序排列。
- * 右区：插件贡献项（align: "right"）+ 核心全局项（语言、主题、通知）。
- * 对标 VS Code Status Bar Contributions + Notification Bell。
+ * StatusBar — 底部状态栏（22px）。
+ * Phase 4.4：对标 VS Code——插件通过 statusBarComponent 自己渲染状态项，
+ * 核心不认 pluginId。通知铃铛 + 语言/主题切换是核心固定项。
  *
- * 设计依据：[V3-插件系统与UI重构设计.md §3.5 + §3.6]
+ * 设计依据：VS Code extensionsActions.ts（插件提供 statusBar 组件）
  */
 
 import { Fragment, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
-import type { StatusBarItem } from "../core/types";
 import "./StatusBar.css";
 
 interface StatusBarProps {
-  isOpen: boolean;
-  txBytes: number;
-  rxBytes: number;
   error?: string | null;
   theme?: "Dark" | "Light";
   lang?: "zh" | "en";
@@ -27,13 +21,33 @@ interface StatusBarProps {
   onToggleLang?: () => void;
 }
 
-function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme, onToggleLang }: StatusBarProps) {
+function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBarProps) {
   const { t } = useTranslation();
 
-  // Phase 4：从 viewRegistry 读取所有插件的 statusBar 贡献
+  // 从 viewRegistry 读取所有插件的 statusBar 贡献
   const allItems = getStatusBarContributions();
 
-  // P3-9：通知铃铛——未读计数 + 通知历史
+  // 去重插件 ID（保持顺序）
+  const orderedPluginIds = (() => {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const item of allItems) {
+      if (!seen.has(item.pluginId)) {
+        seen.add(item.pluginId);
+        ids.push(item.pluginId);
+      }
+    }
+    return ids;
+  })();
+
+  const leftPluginIds = orderedPluginIds.filter((pid) =>
+    allItems.some((i) => i.pluginId === pid && i.align !== "right")
+  );
+  const rightPluginIds = orderedPluginIds.filter((pid) =>
+    allItems.some((i) => i.pluginId === pid && i.align === "right")
+  );
+
+  // P3-9：通知铃铛
   const [notifications, setNotifications] = useState<Toast[]>([]);
   const [showNotifPanel, setShowNotifPanel] = useState(false);
   const notifPanelRef = useRef<HTMLDivElement>(null);
@@ -45,7 +59,6 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
     });
   }, []);
 
-  // 点击外部关闭通知面板（对标 VS Code：点击面板+铃铛之外的地方关闭）
   useEffect(() => {
     if (!showNotifPanel) return;
     const onMouseDown = (e: MouseEvent) => {
@@ -59,40 +72,28 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
   }, [showNotifPanel]);
 
   const unreadCount = notifications.length;
-  const leftItems = allItems.filter((item) => item.align !== "right");
-  const rightItems = allItems.filter((item) => item.align === "right");
 
-  /** 渲染单个贡献条目——已知条目用动态数据，未知条目渲染静态 label */
-  function renderContribution(item: StatusBarItem & { pluginId: string }) {
-    // ── 终端插件：连接状态 ──
-    if (item.pluginId === "terminal" && item.id === "connection") {
-      return (
-        <>
-          <span className={`status-dot${isOpen ? " connected" : ""}`} />
-          <span className="status-text">
-            {isOpen ? t("已连接") : t("未连接")}
-          </span>
-        </>
-      );
+  /** 渲染某个插件的状态栏贡献——优先用插件自己的 statusBarComponent */
+  function renderPluginStatusBar(pluginId: string) {
+    const plugin = getViewPlugin(pluginId);
+    if (plugin?.statusBarComponent) {
+      const Comp = plugin.statusBarComponent;
+      return <Comp key={pluginId} />;
     }
-
-    // ── 终端插件：TX/RX 流量 ──
-    if (item.pluginId === "terminal" && item.id === "stats") {
-      return (
-        <>
-          <span className="status-traffic">TX:{formatBytes(txBytes)} ↑</span>
-          <span className="status-divider">│</span>
-          <span className="status-traffic">RX:{formatBytes(rxBytes)} ↓</span>
-        </>
-      );
-    }
-
-    // ── 通用：静态 label + 可选 icon ──
+    // 静态渲染：label + 可选 icon
+    const items = allItems.filter((i) => i.pluginId === pluginId);
     return (
-      <span className="status-text">
-        {item.icon && <span className={`codicon codicon-${item.icon}`} />}
-        {item.label || item.id}
-      </span>
+      <Fragment key={pluginId}>
+        {items.map((item, i) => (
+          <Fragment key={item.id}>
+            {i > 0 && <span className="status-divider">│</span>}
+            <span className="status-text">
+              {item.icon && <span className={`codicon codicon-${item.icon}`} />}
+              {item.label || item.id}
+            </span>
+          </Fragment>
+        ))}
+      </Fragment>
     );
   }
 
@@ -100,10 +101,10 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
     <div className="status-bar">
       {/* 左区：插件贡献项 + 错误信息 */}
       <div className="status-bar-left">
-        {leftItems.map((item, i) => (
-          <Fragment key={`${item.pluginId}-${item.id}`}>
+        {leftPluginIds.map((pid, i) => (
+          <Fragment key={pid}>
             {i > 0 && <span className="status-divider">│</span>}
-            {renderContribution(item)}
+            {renderPluginStatusBar(pid)}
           </Fragment>
         ))}
         {error && (
@@ -114,14 +115,10 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
         )}
       </div>
 
-      {/* 右区：插件贡献项（align: right）+ 核心全局项（语言 + 主题 + 通知） */}
+      {/* 右区：插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
       <div className="status-bar-right">
-        {rightItems.map((item) => (
-          <Fragment key={`${item.pluginId}-${item.id}`}>
-            {renderContribution(item)}
-          </Fragment>
-        ))}
-        {/* P3-9：通知铃铛 —— 对标 VS Code notificationsCenter */}
+        {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
+        {/* 通知铃铛 */}
         <button
           ref={notifBellRef}
           className={`status-bar-btn status-bar-notif-btn${unreadCount > 0 ? " has-notifications" : ""}`}
@@ -132,7 +129,6 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
         </button>
         {showNotifPanel && (
           <div className="status-bar-notif-panel" ref={notifPanelRef}>
-            {/* VS Code: header 35px, title uppercase, toolbar on right */}
             <div className="notif-panel-header">
               <span className="notif-panel-title">{t("通知")}</span>
               <div className="notif-panel-toolbar">
@@ -152,7 +148,6 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
               <div className="notif-panel-list">
                 {notifications.map((n) => (
                   <div key={n.id} className="notif-panel-item">
-                    {/* VS Code: main row = icon + message + dismiss (hover reveal) */}
                     <div className="notif-main-row">
                       <span className="codicon codicon-info notif-icon" />
                       <span className="notif-panel-msg">{n.message}</span>
@@ -164,7 +159,6 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
                         ✕
                       </button>
                     </div>
-                    {/* VS Code: source row hidden unless expanded */}
                     <div className="notif-source-row">
                       {n.actions && n.actions.length > 0
                         ? n.actions.map((a, i) => (
@@ -197,12 +191,6 @@ function StatusBar({ isOpen, txBytes, rxBytes, error, theme, lang, onToggleTheme
       </div>
     </div>
   );
-}
-
-function formatBytes(n: number): string {
-  if (n >= 1000000) return (n / 1000000).toFixed(1) + "M";
-  if (n >= 1000) return (n / 1000).toFixed(1) + "K";
-  return String(n);
 }
 
 export default StatusBar;

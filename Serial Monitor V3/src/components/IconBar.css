@@ -111,6 +111,18 @@
   transition: opacity 150ms, filter 150ms;
 }
 
+.icon-codicon {
+  font-size: 24px !important;
+  opacity: 0.55;
+  color: var(--text-primary);
+  transition: opacity 150ms, color 150ms;
+}
+
+.icon-btn:hover .icon-codicon,
+.icon-btn.active .icon-codicon {
+  opacity: 1;
+}
+
 .icon-btn:hover .icon-img {
   opacity: 0.85;
 }
