@@ -20,24 +20,22 @@ interface IconBarProps {
 
 const BOTTOM_ICONS = new Set(["settings"]);
 
-/** 从 manifest 动态解析图标 src。
- *  - iconSource: "codicon" → 渲染 CSS class，不返回 src
+/** 从 manifest 动态解析图标。
+ *  - iconSource: "codicon" → CSS class
  *  - iconSource: "svg" / "url" → manifest.icon 即路径
- *  - 缺省 → 兜底 `/assets/icons/{pluginId}.png`
+ *  - 无 iconSource 或 png → 从旧 assets/icons/ 读取 PNG
+ *  - 全无 → 兜底 codicon-symbol-misc
  */
 function resolveIconSrc(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }): string | null {
   const m = entry.manifest;
-  if (m.iconSource === "codicon") return null; // codicon 走 CSS class
+  if (m.iconSource === "codicon") return null;
   if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
-  // 兜底：尝试常见图片路径
-  if (m.icon) {
-    const id = m.icon;
-    if (id.endsWith(".svg") || id.endsWith(".png")) return `/assets/icons/${id}`;
-  }
-  return `/assets/icons/${entry.pluginId}.png`;
+  // PNG/SVG：icon 字段 = 文件名（含扩展名 = 直接用，不含 = 加 .png）
+  const name = m.icon || entry.pluginId;
+  if (name.includes(".")) return `/assets/icons/${name}`;
+  return `/assets/icons/${name}.png`;
 }
 
-/** 返回 codicon class 名（如果是 codicon 图标） */
 function resolveCodicon(entry: { manifest: { icon?: string; iconSource?: string } }): string | null {
   if (entry.manifest.iconSource === "codicon" && entry.manifest.icon) {
     return `codicon-${entry.manifest.icon}`;

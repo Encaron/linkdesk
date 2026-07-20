@@ -3,8 +3,7 @@
   "type": "view",
   "name": "工作台",
   "version": "1.0.0",
-  "icon": "window",
-  "iconSource": "codicon",
+  "icon": "workspace",
   "description": "卡片网格——可视化数据仪表板",
   "author": "官方",
   "entry": "index.tsx"

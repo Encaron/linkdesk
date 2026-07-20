@@ -294,8 +294,10 @@ function getPluginIcon(entry: ViewPluginEntry): { src?: string; codicon?: string
   const m = entry.manifest;
   if (m.iconSource === "codicon" && m.icon) return { codicon: `codicon-${m.icon}` };
   if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return { src: m.icon };
-  if (m.icon) return { src: `/assets/icons/${m.icon}` };
-  return {};
+  // PNG fallback
+  const name = m.icon || entry.pluginId;
+  if (name.includes(".")) return { src: `/assets/icons/${name}` };
+  return { src: `/assets/icons/${name}.png` };
 }
 
 export default MarketplaceSidebar;

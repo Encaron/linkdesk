@@ -17,11 +17,12 @@ import "./PluginDetailView.css";
 
 function getIconSrc(entry: ViewPluginEntry): string | undefined {
   const m = entry.manifest;
-  if (m.iconSource === "codicon") return undefined; // codicon 走 CSS class
+  if (m.iconSource === "codicon") return undefined;
   if (m.icon && (m.iconSource === "svg" || m.iconSource === "url")) return m.icon;
-  // 兜底
-  if (m.icon) return `/assets/icons/${m.icon}`;
-  return undefined;
+  // PNG：icon 字段 = 文件名（含扩展名直接用，不含加 .png）
+  const name = m.icon || entry.pluginId;
+  if (name.includes(".")) return `/assets/icons/${name}`;
+  return `/assets/icons/${name}.png`;
 }
 
 function getCodicon(entry: ViewPluginEntry): string | null {

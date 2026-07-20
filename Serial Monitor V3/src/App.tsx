@@ -14,7 +14,6 @@ import PreferenceService, { initPrefs } from "./core/PreferenceService";
 import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
-import { getViewPlugin } from "./pluginLoader/viewRegistry";
 import SerialContext from "./core/SerialContext";
 import type { PortInfo } from "./core/SerialContext";
 import TabActionsContext from "./core/TabActionsContext";
@@ -205,15 +204,15 @@ function App() {
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // Phase 4.4：图标栏点击——有 sidebarComponent 的插件 toggle 侧栏，没有的直接打开标签页
+  // Phase 4.4：图标栏点击。
+  // - 插件市场：纯侧栏 toggle（对标 VS Code Extensions 图标）——不打开标签页
+  // - 其余插件：打开/聚焦标签页 + 显示对应侧栏
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      const plugin = getViewPlugin(pluginId);
-      if (plugin?.sidebarComponent) {
-        // 有侧栏组件 → toggle 侧栏视图（对标 VS Code Explorer/Extensions 图标）
-        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+      if (pluginId === "marketplace") {
+        setSidebarView((prev) => (prev === "marketplace" ? null : "marketplace"));
       } else {
-        setSidebarView(null);
+        setSidebarView(pluginId);
         openOrFocusTab(pluginId);
       }
     },
