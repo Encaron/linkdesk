@@ -45,6 +45,8 @@ function App() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
+  // Phase 5e：防止 terminalPrefs sync effect 首次渲染用默认值覆盖持久化数据
+  const terminalPrefsReady = useRef(false);
 
   // Phase 3 v4: 标签页状态管理
   const {
@@ -201,6 +203,7 @@ function App() {
       // fallback：旧 PreferenceService.preferences（Phase 5f 删）
       const oldPrefs = prefs?.preferences ?? {};
       setTerminalPrefs({ ...defaultTerminalPrefs, ...oldPrefs, ...fromConfig });
+      terminalPrefsReady.current = true; // Phase 5e：解锁 sync effect
       setPortName(prefs?.lastPort || "COM3");
 
       // Phase 5：布局恢复——LayoutService 优先
@@ -441,7 +444,9 @@ function App() {
 
   // Phase 5e：终端设置变更 → 持久化到 ConfigurationService（替代 PreferenceService.preferences）
   // 双写模式：terminalPrefs 是运行时真源，ConfigurationService 是持久化真源。Phase 5f 删 TermialPrefsContext。
+  // ⚠️ terminalPrefsReady guard：防止首次渲染时 defaultTerminalPrefs 竞态覆盖 settings.json 持久化值
   useEffect(() => {
+    if (!terminalPrefsReady.current) return;
     const sync = async () => {
       await setConfigurationValue("terminal.timestampFormat", terminalPrefs.timestampFormat, "user");
       await setConfigurationValue("terminal.showEcho", terminalPrefs.showEcho, "user");
