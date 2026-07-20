@@ -9,8 +9,14 @@
  * - 打开右键菜单 → 点空白处 → 消失 ✅
  * - 打开右键菜单 → Escape → 消失 ✅
  * - 打开右键菜单 → 移动窗口/Alt+Tab → 消失 ✅ (window.blur)
- * - 打开右键菜单 → 滚动页面 → 消失 ✅ (scroll capture)
+ * - 打开右键菜单 → 鼠标滚轮 → 消失 ✅ (wheel capture——不含 CM6 程序化滚动)
  * - 所有右键菜单渲染实例共享同一套失焦逻辑——修一个 bug 全受益
+ *
+ * 🔧 5b fix：backdrop div 改为 window mousedown 监听——解决"右键换位置需要点两次"的 bug。
+ *    backdrop div 拦截了 contextmenu 事件 → 新目标收不到 → 菜单关但不打开。
+ *    mousedown 不拦截事件，只关菜单——contextmenu 正常到达新目标。
+ * 🔧 5b fix：scroll → wheel——CM6 接收数据时频繁触发 scroll 事件 → 菜单闪关。
+ *    wheel 只对用户主动滚轮输入反应，不受程序化滚动影响。
  */
 
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
@@ -31,14 +37,24 @@ export interface ContextMenuProps {
   onClose: () => void;
 }
 
+/** 解析后的菜单项（已从 CommandRegistry 补全 title） */
+interface ResolvedItem {
+  id: string;
+  label: string;
+  group: string;
+  shortcut?: string;
+}
+
 /* ── 组件 ── */
 
 export default function ContextMenu({ menuId, anchor, context, onClose }: ContextMenuProps) {
+  const menuRef = useRef<HTMLDivElement>(null);
+
   // ── 从 Registry 解析菜单项 ──
-  const resolved = useMemo(() => {
+  const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
     const rawItems = getMenuItems(menuId);
     // 按 group 分组——保留同 group 内的 order 排序
-    const grouped = new Map<string, Array<{ id: string; label: string; shortcut?: string }>>();
+    const grouped = new Map<string, ResolvedItem[]>();
     const groupOrder: string[] = [];
 
     for (const item of rawItems) {
@@ -53,13 +69,14 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
       grouped.get(group)!.push({
         id: item.command,
         label: cmd.title,
+        group,
         // 快捷键暂时不显示——KeybindingRegistry 的 resolve 逻辑留 Phase 5c
         shortcut: undefined,
       });
     }
 
     // 展开为平铺数组，组间插分隔符。"navigation" → 分隔符 → "split" → ...
-    const result: Array<{ id: string; label: string; shortcut?: string } | { type: "divider"; group: string }> = [];
+    const result: Array<ResolvedItem | { type: "divider"; group: string }> = [];
     for (let i = 0; i < groupOrder.length; i++) {
       const group = groupOrder[i];
       if (i > 0) {
@@ -70,7 +87,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
     return result;
   }, [menuId]);
 
-  /* ── 四种统一失焦 ── */
+  /* ── 统一失焦（四种方式） ── */
 
   useEffect(() => {
     // 1. Escape
@@ -79,17 +96,28 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
     };
     // 2. 窗口失焦（移动窗口/Alt+Tab）
     const onBlur = () => onClose();
-    // 3. 滚动——菜单跟着内容滚动会错位
-    const onScroll = () => onClose();
+    // 3. 鼠标滚轮——菜单跟着内容滚动会错位。wheel 而非 scroll：避免 CM6 程序化滚动误关
+    const onWheel = () => onClose();
+    // 4. 点击/右键菜单外——mousedown capture，不阻止事件传播
+    //    对标 VS Code context menu block layer，但用 mousedown 替代 backdrop div：
+    //    backdrop div 拦截了 contextmenu 事件 → 新目标收不到右键 → 需要点两次。
+    //    mousedown 只检测位置然后关菜单，不拦截事件 → contextmenu 正常到达新目标。
+    const onMouseDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
 
     window.addEventListener("keydown", onKey);
     window.addEventListener("blur", onBlur);
-    window.addEventListener("scroll", onScroll, true); // capture——捕获所有滚动事件
+    window.addEventListener("wheel", onWheel, true); // capture——捕获所有滚轮事件
+    window.addEventListener("mousedown", onMouseDown, true); // capture——在目标元素之前检测
 
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", onBlur);
-      window.removeEventListener("scroll", onScroll, true);
+      window.removeEventListener("wheel", onWheel, true);
+      window.removeEventListener("mousedown", onMouseDown, true);
     };
   }, [onClose]);
 
@@ -100,7 +128,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
 
   // 过滤出实际菜单项（非分隔符）
   const clickableItems = useMemo(
-    () => resolved.filter((r) => !("type" in r)) as Array<{ id: string; label: string; shortcut?: string }>,
+    () => resolved.filter((r) => !("type" in r)) as ResolvedItem[],
     [resolved]
   );
 
@@ -164,57 +192,42 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
 
   /* ── 渲染 ── */
 
-  // 跟踪当前活跃分组——用于设置 ref index
   let clickableIdx = 0;
 
   return (
-    <>
-      {/*
-        backdrop：全屏透明层——点击外部关闭菜单。
-        对标 VS Code context menu block layer。
-        onContextMenu 也关闭——防止右键在其他位置打开第二个菜单。
-      */}
-      <div
-        className="ctx-backdrop"
-        onClick={onClose}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          onClose();
-        }}
-      />
+    <div
+      ref={menuRef}
+      className="ctx-menu"
+      style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}
+    >
+      {resolved.map((item, i) => {
+        if ("type" in item) {
+          return <div key={`div-${i}`} className="ctx-divider" />;
+        }
 
-      {/* 菜单面板 */}
-      <div
-        className="ctx-menu"
-        style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}
-      >
-        {resolved.map((item, i) => {
-          if ("type" in item) {
-            return <div key={`div-${i}`} className="ctx-divider" />;
-          }
+        const idx = clickableIdx++;
+        const isFocused = idx === focusIdx;
+        // "delete" 组的菜单项自动标红（危险操作——对标 VS Code menu item destructive）
+        const isDanger = item.group === "delete";
 
-          const idx = clickableIdx++;
-          const isFocused = idx === focusIdx;
-
-          return (
-            <div
-              key={item.id}
-              ref={(el) => {
-                if (el) itemRefs.current.set(idx, el);
-                else itemRefs.current.delete(idx);
-              }}
-              className={`ctx-item${isFocused ? " focused" : ""}`}
-              onClick={() => handleItemClick(item.id)}
-              onMouseEnter={() => setFocusIdx(idx)}
-            >
-              <span className="ctx-item-label">{item.label}</span>
-              {item.shortcut && (
-                <span className="ctx-item-shortcut">{item.shortcut}</span>
-              )}
-            </div>
-          );
-        })}
-      </div>
-    </>
+        return (
+          <div
+            key={item.id}
+            ref={(el) => {
+              if (el) itemRefs.current.set(idx, el);
+              else itemRefs.current.delete(idx);
+            }}
+            className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
+            onClick={() => handleItemClick(item.id)}
+            onMouseEnter={() => setFocusIdx(idx)}
+          >
+            <span className="ctx-item-label">{item.label}</span>
+            {item.shortcut && (
+              <span className="ctx-item-shortcut">{item.shortcut}</span>
+            )}
+          </div>
+        );
+      })}
+    </div>
   );
 }

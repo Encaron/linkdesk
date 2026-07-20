@@ -314,7 +314,13 @@
   to   { background: transparent; }
 }
 
-/* === FilterMenu 专用样式（Phase 5b: .ctx-overlay/.ctx-menu/.ctx-item/.ctx-divider 迁移到 ContextMenu.css） === */
+/* === FilterMenu / CommandPalette 共享 overlay（Phase 5b: .ctx-menu/.ctx-item/.ctx-divider 在 ContextMenu.css） === */
+
+.ctx-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay-backdrop);
+}
 
 /* === Command Palette === */
 
