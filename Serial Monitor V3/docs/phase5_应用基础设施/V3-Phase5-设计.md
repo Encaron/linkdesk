@@ -1,7 +1,7 @@
 # Phase 5 应用基础设施层
 
 > 2026-07-20。Phase 4 做了"插件能被加载"。
-> Phase 5 做"插件能做什么"——命令、设置、菜单、协议四根柱子。
+> Phase 5 做"插件能做什么"——命令、设置、菜单、协议四根柱子 + 五个盲区（异步命令、事件系统、插件存储、deactivate 生命周期、configurationDefaults）。
 > 工作台/卡片/OLED 延后到 Phase 6+，在基础设施上写。
 
 ---
@@ -426,7 +426,124 @@ CardRegistry.register({
 
 ---
 
-## 三、四根柱子的连接关系
+### 柱子之外：VS Code 审计发现的盲区
+
+> 2026-07-20。对照 VS Code 的 `contributes` 全部清单和 `vscode.d.ts` 完整 API 审计后发现的缺失项。
+> 不加进 Phase 5 的话，Phase 6/7 需要回头拆框架。
+
+### 盲区 1（P0）：异步命令 + 取消令牌
+
+**问题：** 当前计划的 `CommandRegistry.execute(commandId)` 是同步的 `() => void`。够用于"清空接收区"，但未来 CAD 的"导出 PDF"要跑 30 秒、用户想中途取消——同步签名不支持。
+
+**VS Code：** 所有命令 handler 返回 `Promise<void>`，自动支持暂停/进度/取消。
+
+**Phase 5 就该用：**
+```typescript
+type CommandHandler = (token?: CancellationToken) => Promise<void>
+
+// 使用
+await CommandRegistry.execute("cad.exportPdf", token)
+// CAD 插件内部周期性检查 token.isCancelled → 提前返回
+```
+
+**影响：** 如果 Phase 5 用同步签名，Phase 7 加任务系统时所有插件的 handler 签名都要改。用异步签名一天都不用等任务系统——现在就用。`CancellationToken` 只是一个 `{ isCancelled: boolean }` 对象，连 20 行代码都不用。
+
+### 盲区 2（P0）：`configurationDefaults`——插件的弱默认值
+
+**问题：** 一个工作台插件想建议"终端默认时间戳格式 = HH:mm:ss"，但如果用户已经在 settings.json 里手动设了别的——用户的手动值应该赢。
+
+**如果没有 configurationDefaults：** 插件只能在启动时调 `ConfigurationService.set("terminal.timestampFormat", "HH:mm:ss")` 硬写——会覆盖用户的手动修改。
+
+**VS Code 做法：**
+```json
+"contributes": {
+  "configurationDefaults": {
+    "terminal.timestampFormat": "HH:mm:ss",
+    "[workspace:pid-tuning]": {
+      "terminal.showEcho": false
+    }
+  }
+}
+```
+优先级：`用户手动设置 > configurationDefaults（插件建议）> 插件 default > 系统 fallback`
+
+**Phase 5 就该有：** ConfigurationRegistry 注册时区分 `default`（插件自己的硬默认）和 `configurationDefaults`（插件给其他配置项的弱建议）。~50 行。
+
+### 盲区 3（P1）：核心事件系统——插件能订阅什么
+
+**问题：** Phase 5 的插件只有 React 组件的 props（`{ isActive }`）。非 React 插件（协议解析器、数据源）没有任何方式感知系统状态变化。就算是 React 组件，也无法知道"串口被其他插件关掉了"。
+
+**VS Code：** `onDidChangeConfiguration` / `onDidChangeActiveEditor` / `onDidChangeTheme`……所有插件订阅同一套事件。
+
+**Phase 5 就该有（<80 行）：**
+```typescript
+// 通用事件类型
+class EventEmitter<T> {
+  private listeners = new Set<(data: T) => void>()
+  on(fn: (data: T) => void): Disposable { ... }
+  fire(data: T): void { ... }
+}
+
+// 核心事件（启动时挂上 5 个）
+CoreEvents.onDidChangeConfiguration: Event<{ key: string; value: unknown }>
+CoreEvents.onDidChangePortState:      Event<{ isOpen: boolean; portName: string }>
+CoreEvents.onDidChangeTheme:          Event<{ theme: "Dark" | "Light" }>
+CoreEvents.onDidChangeActiveTab:      Event<{ tabId: string; pluginId?: string }>
+CoreEvents.onDidReceiveData:          Event<{ sourceId: string; raw: string }>
+
+// 插件使用
+CoreEvents.onDidChangePortState.on(({ isOpen, portName }) => {
+  if (isOpen) startMyLogic()
+  else stopMyLogic()
+})
+```
+
+**为什么必须在 Phase 5：** 没有事件系统，插件要么用 React Context（限制在 React 组件）、要么做轮询、要么根本感知不到。当真的要加事件系统时（Phase 7），所有依赖"感知系统状态"的插件都要重写集成代码。
+
+### 盲区 4（P1）：PluginStateService——插件的私有存储
+
+**问题：** CAD 插件想存"最近打开的文件列表"。终端插件想存"上次用的波特率"。没有一个统一的"插件私有存储"机制。
+
+**如果没有：** 每个插件自己管理 JSON 文件用 Tauri fs。每个插件重复造轮子，而且文件路径/格式各不同。
+
+**Phase 5 就该有：**
+```typescript
+PluginStateService.get(pluginId, key): Promise<unknown>
+PluginStateService.set(pluginId, key, value): Promise<void>
+PluginStateService.getAll(pluginId): Promise<Record<string, unknown>>
+
+// 底层：settings.json 的 pluginStates 段
+// {
+//   "pluginStates": {
+//     "terminal": { "lastBaudRate": "115200", "lastPort": "COM3" },
+//     "cad": { "recentFiles": ["/path/to/board.dxf"] }
+//   }
+// }
+```
+~60 行。
+
+### 盲区 5（P1）：deactivate 生命周期
+
+**问题：** 终端插件卸载时刚好开着串口？CAD 插件监听了一个文件变化事件？当前卸载只是 `unregisterViewPlugin`——插件没机会清理。串口连接变成野连接，文件监听器泄漏。
+
+**VS Code：** `export function deactivate() { /* cleanup */ }`
+
+**Phase 5 就该有：**
+```typescript
+// 插件可选导出
+export function deactivate(): void | Promise<void> {
+  // 关闭连接、移除监听、保存状态
+}
+
+// loader 卸载前调用
+await pluginModule.deactivate?.()
+// 然后再 unregister
+```
+~15 行。在 loader.ts 里改一处。
+
+---
+
+## 三、四根柱子的连接关系（更新）
 
 ```
 plugin.json
@@ -502,6 +619,9 @@ PreferenceService（现状——一块大杂烩）→ 拆分为：
 | 设置同步 | 需要后端 | 8+ |
 | 齿轮菜单完整版 | context key 驱动的动态菜单 + 设置联动 | 7 |
 | 插件命令注册到命令面板之外的地方 | 右键/快捷键/齿轮 = Phase 7 context key 系统 | 7 |
+| 动态 StatusBarItem（运行时创建）| 静态 manifest 声明够用，运行时 API Phase 6+ | 6 |
+| 任务系统（build/flash/test）| Phase 7+，异步命令模型已预留 | 7+ |
+| contributes.icons（共享图标）| 已有 codicon + manifest icon，共享图标是 polish | 7 |
 
 ---
 
