@@ -93,19 +93,6 @@ function MarketplaceSidebar() {
     // 刷新卸载列表
     getUninstalledPluginInfo().then(setUninstalledPlugins);
   }, []);
-    setInstalling(true);
-    try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({ directory: true, title: "选择插件目录", multiple: false });
-      if (selected) {
-        await installPlugin(selected as string);
-      }
-    } catch {
-      // 非 Tauri 环境或用户取消——静默
-    } finally {
-      setInstalling(false);
-    }
-  }, []);
 
   return (
     <div className="marketplace-sidebar">
