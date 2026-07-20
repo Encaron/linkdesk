@@ -55,7 +55,12 @@ const TAB_IDENTITY: Record<string, TabIdentityMeta> = {
 };
 
 export function getMeta(type: string): TabIdentityMeta {
-  return TAB_IDENTITY[type] ?? { singleton: false, identityField: null, fallbackLabel: type };
+  return TAB_IDENTITY[type] ?? {
+    singleton: false,
+    identityField: null,
+    fallbackLabel: type,
+    generateId: () => type,  // 未知类型用 type 本身当 ID
+  };
 }
 
 /** 获取内置类型的行为声明——替代 viewRegistry.ts 的 BUILTIN_TAB_BEHAVIOR。
