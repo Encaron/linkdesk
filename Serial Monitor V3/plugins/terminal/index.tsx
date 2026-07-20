@@ -879,24 +879,11 @@ function TerminalView({ isActive }: TerminalViewProps) {
   /* ---- Command Palette（Phase 5c：数据源走 CommandRegistry） ---- */
 
   // 全局事件（workbench.action.showCommands → v3-show-palette）
+  // App.tsx 的 capture handler 负责拦截 Ctrl+Shift+P 并 dispatch 此事件
   useEffect(() => {
     const handler = () => setPaletteOpen((p) => !p);
     window.addEventListener("v3-show-palette", handler);
     return () => window.removeEventListener("v3-show-palette", handler);
-  }, []);
-
-  // 本地 fallback：KeybindingRegistry 可能未命中时直接捕获 Ctrl+Shift+P
-  // 使用 capture phase 确保在其他 handler 之前拦截；统一走事件通路
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "P" || e.key === "p")) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.dispatchEvent(new CustomEvent("v3-show-palette"));
-      }
-    };
-    window.addEventListener("keydown", onKeyDown, true); // capture phase
-    return () => window.removeEventListener("keydown", onKeyDown, true);
   }, []);
 
   /* ---- Monaco 挂载 ---- */
