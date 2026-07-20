@@ -964,6 +964,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
         <button className={`toolbar-btn${paused ? " active" : ""}`} onClick={handlePause} title={t("暂停接收")}>
           {paused ? "▶ " + t("继续接收") : "⏸ " + t("暂停接收")}
         </button>
+        <button className="toolbar-btn" onClick={() => setPaletteOpen((p) => !p)} title={t("命令面板")}>
+          ▸ {t("命令面板")}
+        </button>
         <button className="toolbar-btn" onClick={handleExport} title={t("导出日志")}>
           {t("导出日志")}
         </button>
