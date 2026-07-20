@@ -7,6 +7,7 @@
  */
 
 import { useState, useRef, useEffect, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
 
@@ -65,7 +66,7 @@ function CommandPalette({ open, onClose }: Props) {
 
   if (!open) return null;
 
-  return (
+  return createPortal(
     <>
       <div className="ctx-overlay" onClick={onClose} />
       <div className="palette">
@@ -114,7 +115,8 @@ function CommandPalette({ open, onClose }: Props) {
           ))}
         </div>
       </div>
-    </>
+    </>,
+    document.body
   );
 }
 
