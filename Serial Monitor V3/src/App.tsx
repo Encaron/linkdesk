@@ -413,9 +413,41 @@ function App() {
     }
   }, [isOpen]);
 
-  // Phase 5: 布局持久化——走 LayoutService（layout.json），await 确保落盘
+  // Phase 5: 布局持久化——走 LayoutService（layout.json）
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
+  // 保持最新 tabState 的 ref——供 beforeunload 同步读（防抖窗口期 F5 也能保存）
+  const tabStateRef = useRef(tabState);
+  tabStateRef.current = tabState;
+
+  // beforeunload：F5/关闭窗口时同步写 localStorage，不等防抖
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      try {
+        const s = tabStateRef.current;
+        const layout = {
+          tabs: {
+            groups: s.groups.map((g) => ({
+              id: g.id,
+              tabs: g.tabs.map((t) => ({
+                id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+                workspaceName: t.workspaceName, filePath: t.filePath,
+                pluginId: t.pluginId, detailPluginId: t.detailPluginId,
+                sourceId: t.sourceId, pinned: t.pinned,
+              })),
+              activeTabId: g.activeTabId,
+            })),
+            activeGroupId: s.activeGroupId,
+            root: s.root,
+          },
+          cards: [],
+        };
+        localStorage.setItem("v3_layout", JSON.stringify(layout));
+      } catch { /* 静默 */ }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
 
   useEffect(() => {
     if (!layoutInitialized.current) {
@@ -443,7 +475,7 @@ function App() {
     };
 
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
-    layoutSaveTimer.current = setTimeout(doSave, 500);
+    layoutSaveTimer.current = setTimeout(doSave, 100);  // Phase 5: 100ms 防抖（500ms→100ms）
     return () => {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };
