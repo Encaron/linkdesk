@@ -52,7 +52,7 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     });
   }, []);
 
-  // 从 Registry 派生分组列表
+  // 从 Registry 派生分组列表——title/description 走 t() 做 i18n
   const groups = useMemo(() => {
     const contributions = getConfigurationContributions();
     const result: GroupInfo[] = [];
@@ -60,12 +60,12 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     for (const [pluginId, contrib] of contributions) {
       const keys = Object.keys(contrib.properties);
       if (keys.length > 0) {
-        result.push({ pluginId, title: contrib.title, keys });
+        result.push({ pluginId, title: t(contrib.title), keys });
       }
     }
 
     return result;
-  }, [version]);
+  }, [version, t]);
 
   // 搜索过滤
   const filteredGroups = useMemo(() => {
@@ -176,6 +176,7 @@ function SettingRow({
   prop: ConfigurationProperty | undefined;
   onChange: () => void;
 }) {
+  const { t } = useTranslation();
   if (!prop) return null;
 
   const currentValue = getConfigurationValue(configKey);
@@ -192,7 +193,7 @@ function SettingRow({
     <div className="settings-row">
       <div className="settings-row-info">
         <label className="settings-row-label">{configKey}</label>
-        <span className="settings-row-desc">{prop.description}</span>
+        <span className="settings-row-desc">{t(prop.description)}</span>
       </div>
       <div className="settings-row-control">
         {renderControl(prop, currentValue, handleChange)}
