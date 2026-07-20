@@ -7,6 +7,21 @@
  * VS Code 源码：src/vs/platform/keybinding/common/keybinding.ts
  *
  * 优先级：用户 keybindings.json > 插件 declaration > 内置默认
+ *
+ * ═══════════════════════════════════════════════════════════════
+ * 职责分工（Phase 5c 定规）：
+ *
+ * App.tsx capture handler  →  壳级快捷键（Ctrl+,, Ctrl+Shift+P 等）
+ *   - 始终可用，不依赖上下文
+ *   - matched 时调用 stopImmediatePropagation——阻止本 Registry 重复触发
+ *
+ * KeybindingRegistry        →  插件快捷键（contributes.keybindings）
+ *   - 带 when 条件，上下文敏感
+ *   - 只在 App.tsx handler 未匹配时触发（它调用 stopImmediatePropagation）
+ *
+ * 两个 handler 都在 capture phase。App.tsx 先注册（render 阶段），
+ * 本 Registry 后注册（startup useEffect 内）→ App.tsx 优先。
+ * ═══════════════════════════════════════════════════════════════
  */
 
 import { ContextKeyService } from "./ContextKeyService";
@@ -144,9 +159,9 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
       // 检查 when 条件
       if (!ContextKeyService.matches(binding.when)) continue;
 
-      // 防止浏览器默认行为（如 Ctrl+S 保存网页）
+      // 防止浏览器默认行为 + 阻止同级 capture handler（防御性）
       e.preventDefault();
-      e.stopPropagation();
+      e.stopImmediatePropagation();
 
       // 执行命令
       executeCommand(binding.command);
@@ -158,7 +173,12 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 }
 
 /**
- * 挂载全局键盘监听——App 启动时调用一次。
+ * 挂载全局键盘监听——App 启动时调用一次（在 App.tsx 壳级 handler 之后注册）。
+ *
+ * 只处理插件声明的 contributes.keybindings。壳级快捷键由 App.tsx 的
+ * capture handler 拦截——它匹配后调用 stopImmediatePropagation，
+ * 本 handler 不会收到。
+ *
  * 返回 disposable 函数（测试/热重载用）。
  */
 export function mountGlobalKeybindings(): () => void {

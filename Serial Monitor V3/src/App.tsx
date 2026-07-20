@@ -521,18 +521,29 @@ function App() {
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
-  // Phase 5：全局快捷键——不依赖 activeTab（Ctrl+,, Ctrl+Shift+P 等壳级快捷键始终可用）
+  /**
+   * 壳级全局快捷键——capture phase 第一优先级。
+   *
+   * 职责：处理不依赖上下文、始终可用的快捷键。对标 VS Code 内置 keybindings。
+   * 注意：matched 时必须调用 e.stopImmediatePropagation()——阻止 KeybindingRegistry
+   * 的同级 capture handler 也触发，避免双重执行。
+   *
+   * KeybindingRegistry 只处理插件声明的 contributes.keybindings（带 when 条件）。
+   * 分工：壳级 → 这里；插件级 → KeybindingRegistry。
+   */
   useEffect(() => {
     const onGlobalKeyDown = (e: KeyboardEvent) => {
       // Ctrl+, → 打开设置标签页（对标 VS Code Preferences: Open Settings）
       if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
+        e.stopImmediatePropagation();
         createTab("settings", { pinned: true });
         return;
       }
       // Ctrl+Shift+P → 命令面板（对标 VS Code Show All Commands）
       if (e.ctrlKey && e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
         e.preventDefault();
+        e.stopImmediatePropagation();
         window.dispatchEvent(new CustomEvent("v3-show-palette"));
         return;
       }
