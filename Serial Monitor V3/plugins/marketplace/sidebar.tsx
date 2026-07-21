@@ -8,6 +8,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
 import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "../../src/pluginLoader/loader";
+import { onPluginLifecycleChange } from "../../src/pluginLoader/lifecycle";
 import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
 import { useTabActions } from "../../src/core/TabActionsContext";
 import ContextMenu from "../../src/components/shared/ContextMenu";
@@ -72,20 +73,20 @@ function MarketplaceSidebar() {
   const [uninstalledPlugins, setUninstalledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
 
   // 异步获取已卸载的插件（.disabled/ 目录）
-  // 挂载时加载 + 监听 plugin-uninstalled/plugin-installed（文件已移走/移回后刷新"待安装"列表）
+  // 挂载时加载 + 订阅 lifecycle Emitter（对标 IconBar 订阅 viewRegistry 的模式）
+  const [uninstalledVersion, setUninstalledVersion] = useState(0);
+
   useEffect(() => {
     getUninstalledPluginInfo().then(setUninstalledPlugins);
+  }, [uninstalledVersion]);
 
-    const refreshUninstalled = () => {
-      getUninstalledPluginInfo().then(setUninstalledPlugins);
-    };
-    // plugin-uninstalled: 文件已移到 .disabled/ 之后——getUninstalledPluginInfo 返回正确数据
-    window.addEventListener("plugin-uninstalled", refreshUninstalled);
-    window.addEventListener("plugin-installed", refreshUninstalled);
-    return () => {
-      window.removeEventListener("plugin-uninstalled", refreshUninstalled);
-      window.removeEventListener("plugin-installed", refreshUninstalled);
-    };
+  useEffect(() => {
+    const unsub = onPluginLifecycleChange.event(() => {
+      setUninstalledVersion((v) => v + 1);
+    });
+    // 挂载时立即加载一次
+    getUninstalledPluginInfo().then(setUninstalledPlugins);
+    return unsub;
   }, []);
 
   const filtered = allPlugins.filter((p) => {

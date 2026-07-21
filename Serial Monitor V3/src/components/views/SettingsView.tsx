@@ -22,6 +22,7 @@ import {
   getConfigurationValue,
   setConfigurationValue,
 } from "../../core/ConfigurationService";
+import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import "./SettingsView.css";
 
 /* ── 类型 ── */
@@ -52,16 +53,9 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     });
   }, []);
 
-  // 监听插件卸载/禁用——配置分组需要刷新（unregisterConfiguration 不触发 onDidChangeConfiguration）
+  // 监听插件生命周期——配置分组需要刷新（对标 IconBar 订阅 viewRegistry 的模式）
   useEffect(() => {
-    const onPluginChanged = () => setVersion((v) => v + 1);
-    // plugin-uninstalled: 文件已移走、registry 已注销后刷新 (≠ plugin-removed 用于关标签页)
-    window.addEventListener("plugin-uninstalled", onPluginChanged);
-    window.addEventListener("plugin-installed", onPluginChanged);
-    return () => {
-      window.removeEventListener("plugin-uninstalled", onPluginChanged);
-      window.removeEventListener("plugin-installed", onPluginChanged);
-    };
+    return onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n

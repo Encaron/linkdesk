@@ -49,6 +49,14 @@ export const PluginLifecycle = {
   onDidUninstall: new Emitter<PluginUninstallEvent>(),
 };
 
+/* ── 视图刷新——Emitter 模式（对标 viewRegistry 的 onDidRegister） ── */
+
+export const onPluginLifecycleChange = new Emitter<void>();
+
+function notifyPluginViews(): void {
+  onPluginLifecycleChange.fire();
+}
+
 /* ── 消费端初始化（模块加载时注册，不依赖 App 启动顺序） ── */
 
 let _consumersInitialized = false;
@@ -123,17 +131,10 @@ export function initLifecycleConsumers(): void {
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
   });
 
-  /* ─── 消费端 5：视图刷新通知（SettingsView / marketplace） ─── */
+  /* ─── 消费端 5：视图刷新通知（CustomEvent + 版本标记双保险） ─── */
 
-  PluginLifecycle.onDidUninstall.event(({ pluginId }) => {
-    // 此时文件已移到 .disabled/、viewRegistry 已注销——getUninstalledPluginInfo 返回正确数据
-    window.dispatchEvent(new CustomEvent("plugin-uninstalled", { detail: { pluginId } }));
-  });
-
-  PluginLifecycle.onDidInstall.event(({ pluginId }) => {
-    // 重装/安装后——SettingsView 重新显示配置分组，marketplace 刷新"待安装"列表
-    window.dispatchEvent(new CustomEvent("plugin-installed", { detail: { pluginId } }));
-  });
+  PluginLifecycle.onDidUninstall.event(() => { notifyPluginViews(); });
+  PluginLifecycle.onDidInstall.event(() => { notifyPluginViews(); });
 }
 
 /* ── 图标排序辅助（和 loader.ts 共享——放在这里归一化） ── */
