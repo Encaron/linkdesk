@@ -645,8 +645,8 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       // Phase 5h：视图插件——工厂插件（在 glob 中）走 loadPlugin 重载，外部插件走 loadPluginRuntime
       // loadPlugin 使用 Vite 构建的 chunk（模块实例和核心共享），已验证可工作
       // loadPluginRuntime 用于不在 glob 中的外部插件（通过 plugin:// 协议加载独立构建产物）
+      // 注意：禁用→启用应保留图标原位置——不调 appendToIconOrder。
       await loadPlugin(pluginId);
-      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       pushToast({
         message: `已启用：${manifest.name}（即时生效）`,
         source: pluginId,
