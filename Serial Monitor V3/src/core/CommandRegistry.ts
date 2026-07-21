@@ -43,8 +43,11 @@ const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandI
  */
 export function registerCommand(pluginId: string, command: Command): void {
   if (_commands.has(command.id)) {
-    // 组件 mount 时重注册——只更新 handler，保留 loader 注册的元数据
-    _commands.get(command.id)!.handler = command.handler;
+    // 重注册：更新 handler + title（toggle 命令的 title 随状态变化动态更新）。
+    // loader 先注册元数据 → 组件 mount 时重注册覆盖 handler → useEffect 按状态更新 title。
+    const existing = _commands.get(command.id)!;
+    existing.handler = command.handler;
+    existing.title = command.title;
     return;
   }
   _commands.set(command.id, command);
