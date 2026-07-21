@@ -420,7 +420,7 @@ interface TerminalSession {
 }
 ```
 
-**默认值来源**：新建会话时，`useTerminalSessions` 内部定义 `DEFAULT_SESSION_SETTINGS` 常量。不从 `ConfigurationService` 读（12 项不再是全局配置）。不从 `plugin.json` 读（`contributes.configuration` 的 `default` 仅作文档参考）。
+**默认值来源**：`useTerminalSessions` 内部定义 `DEFAULT_SESSION` 常量（见 §3.8）。新建会话时 `createSession(name)` 展开默认值。**不从 `ConfigurationService` 读**（12 项不再是全局配置）。**不从 `plugin.json` 读**（`contributes.configuration` 已在 D9 中删除）。
 
 **Phase 6 持久化：** `useTerminalSessions` 增加 `loadSessions()` / `saveSessions()` 调用 `FileService`。5.5 不做——F5 刷新会话全部消失（预期行为）。
 
@@ -547,7 +547,21 @@ useTerminalSessions.ts (新建，~60 行)
 2. 会话是内存对象，不属于 `ConfigurationService` 管辖（`ConfigurationService` 管的是跨会话的全局设置）
 3. 设置唯一入口是侧栏——和 VS Code Explorer 侧栏一致：文件属性在侧栏改，不在 Settings Editor 改
 
-**但 `contributes.configuration` 的 `properties` 保留在 `plugin.json` 中**——作为会话默认值的**模板定义**（`default` 字段）。`useTerminalSessions` 的 `createSession()` 可以从中提取默认值。Settings Editor 的渲染逻辑判断 `"scope": "session"` 或等效标记后跳过不渲染。或者更简单的做法——`useTerminalSessions` 内部写死默认值常量，不依赖插件清单。由实现者选择。
+**但 `contributes.configuration` 不保留在 `plugin.json` 中——方案 C（最干净）。** 默认值在 `useTerminalSessions` hook 内部写死：
+
+```typescript
+// useTerminalSessions.ts
+const DEFAULT_SESSION: Omit<TerminalSession, 'id' | 'name'> = {
+  port: "", baudRate: "115200", protocol: "bracket", connected: false,
+  timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
+  separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
+  repeatInterval: 1000, autoClear: false, receiveMode: "text",
+  receiveCoding: "UTF-8", sendMode: "text", sendCoding: "UTF-8",
+  quickSends: { "AT": "AT\\r\\n" },
+};
+```
+
+**为什么不保留在 plugin.json：** 保留 = Settings Editor 渲染出来 → 用户改 Settings Editor 的值 → index.tsx 读的是 `session.xxx` → 不生效 → 两个 source of truth 冲突。删掉 = Settings Editor 搜索"终端"零结果——避免"哪里改设置"的困惑。
 
 **`ConfigurationService` 中终端相关的 12 个 key 不再使用。** `index.tsx` 从 `useConfiguration("terminal.xxx")` 改为 `session.xxx`。`useConfiguration` hook 不再出现在终端代码中（除非终端有真正的全局设置，如"最大会话数"——Phase 6+）。
 
@@ -586,9 +600,70 @@ useTerminalSessions.ts (新建，~60 行)
 [ ] npx vitest run 全部通过
 ```
 
+### 3.11 必须消失的东西——死代码清单
+
+> 🔥 5.5c 的代码改动不是"加新功能"——是**替换旧代码**。以下每一项如果没删干净，就会留下死代码或者两个 source of truth 冲突。
+
+| # | 位置 | 必须删除 | 原因 |
+|:--:|------|------|------|
+| D1 | `index.tsx` | 12 行 `useConfiguration("terminal.xxx")` | 不再读全局配置——改读 `session.xxx`。留一行 → 读错数据源 |
+| D2 | `index.tsx` | `import { useConfiguration, useConfigurationValue } from ...` | import 不留死引用 |
+| D3 | `index.tsx` | `onDidChangeConfiguration` 的 useEffect（第 385-415 行） | 终端设置不再走 ConfigurationService，这个 listener 永远收不到 `terminal.*` 事件——死代码 |
+| D4 | `sidebar.tsx` | 12 行 `useConfiguration("terminal.xxx")` | 同上——改读 `useTerminalSessions().activeSession` |
+| D5 | `sidebar.tsx` | `import { useConfiguration } from ...` | import 不留死引用 |
+| D6 | `sidebar.tsx` | 4 个 `<div className="setting-group">` 块（显示/发送/编码）+ 全部 `<FormRow>` | 替换为 2 个 `<SidebarSection>` |
+| D7 | `toolbar.tsx` | **整个文件** | 内容迁入 `ControlPanel.tsx`。旧文件不保留、不注释——直接 `git rm` |
+| D8 | `toolbar.css` | **整个文件** | 改名为 `ControlPanel.css` |
+| D9 | `plugin.json` | `contributes.configuration` 区块（第 56-126 行，71 行） | 终端 12 项设置从 Settings Editor 移除。保留 = Settings Editor 渲染终端设置 → 用户改 Settings Editor → 不生效 → bug |
+| D10 | `index.tsx` | 第 28 行 `import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from ...` | 配置读写不经过 ConfigurationService |
+
+**提交前机械验证（不是建议——是关卡）：**
+
+```
+[ ] git grep "useConfiguration"  -- plugins/terminal/ → 返回空
+[ ] git grep "ConfigurationService" -- plugins/terminal/ → 返回空
+[ ] git grep "onDidChangeConfiguration" -- plugins/terminal/ → 返回空
+[ ] git grep "terminal\." -- plugins/terminal/*.tsx → 返回空（plugin.json 中的 viewRole 声明除外）
+[ ] git status | grep "deleted.*toolbar.tsx" → 有内容
+[ ] git status | grep "deleted.*toolbar.css" → 有内容
+[ ] npx tsc --noEmit → 零错误
+```
+
+### 3.12 单个字段唯一写入入口
+
+> 🔥 V2.6 的根本原因：一个字段有多个写入入口，改 A 不改 B，两边不一致。5.5c 每个字段**只有一个地方能写**。
+
+| 字段 | 唯一写入位置 | 读取位置 |
+|------|:--:|------|
+| `session.name` | sidebar.tsx 会话列表 (F2 / hover ✎) | TabBar 标签标题 |
+| `session.port` | ControlPanel.tsx COM 口下拉框 | CM6 数据管道、SerialContext |
+| `session.baudRate` | ControlPanel.tsx 波特率下拉框 | SerialContext |
+| `session.protocol` | ControlPanel.tsx 协议下拉框 | ProtocolRegistry |
+| `session.connected` | SerialContext 派生（不是独立 set） | sidebar.tsx 连接状态点 |
+| `session.timestampFormat` | sidebar.tsx "收发设置" Section | index.tsx CM6 appendLine |
+| `session.showEcho` | sidebar.tsx "收发设置" Section | index.tsx appendLine |
+| `session.showLineNumbers` | sidebar.tsx "收发设置" Section | index.tsx CM6 lineNumberCompartment |
+| `session.separateSystemLog` | sidebar.tsx "收发设置" Section | index.tsx appendLine |
+| `session.lineEnding` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.autoRepeat` | sidebar.tsx "收发设置" Section | index.tsx setInterval |
+| `session.repeatInterval` | sidebar.tsx "收发设置" Section | index.tsx setInterval |
+| `session.autoClear` | sidebar.tsx "收发设置" Section | index.tsx handleSend |
+| `session.receiveMode` | sidebar.tsx "收发设置" Section | index.tsx _receiveMode + toHexDisplay |
+| `session.receiveCoding` | sidebar.tsx "收发设置" Section | index.tsx TextDecoder |
+| `session.sendMode` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.sendCoding` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.quickSends` | QuickSendBar (主区) | QuickSendBar (主区) |
+
+**规则：ControlPanel 只碰 port/baudRate/protocol 三项。** 任何其他设置（编码、时间戳、回显……）不放在 ControlPanel。如果 AI-B 觉得"编码下拉框放控制面板更方便"——**拒绝。** 设置的唯一入口在侧栏。控制面板 = 连接操作，侧栏 = 会话属性。
+
 ---
 
-## 四、实施顺序
+## 四、实施顺序——分步 + 风险映射
+
+> 🔥 此节是 AI-B 的执行路线图。每一步标注了**会遇到什么 bug、修法在哪里**。
+> 5.5-0a/0b 在 5.5c **之前**修复——做 5.5c 时这些 bug 已经不存在了，不会遇到。
+
+### 前置步骤：5.5-0a + 5.5-0b（5.5c 前已完成）
 
 ```
 5.5-0a: 4 Blocking（第一个 commit，~50 分钟）
@@ -597,23 +672,174 @@ useTerminalSessions.ts (新建，~60 行)
 5.5-0b: 9 Quick Wins + Prefs 删除（第二个 commit，~105 分钟）
   │   B5-B13 常量提取+LogChannel+cleanup / B14 Prefs 迁移
   │   修完后代码库从 B+ 升至 A-
-  │
-  ▼
-┌──────────┐
-│  5.5a    │  框架层——viewRole 声明
-│  ~50 行   │  改 App.tsx + plugin.json
-└────┬─────┘
-     │
-     ├──────────┐
-     ▼          ▼
-┌──────────┐  ┌──────────────┐
-│  5.5c    │  │    5.5b      │  ← 5.5a 和 5.5b 可以并行
-│  ~+40 行  │  │   ~60 行      │
-│ 终端重设计 │◄─┤  SidebarSection│     5.5c 消费两者
-└──────────┘  └──────────────┘
 ```
 
-**实际建议顺序：** 5.5-0a → 5.5-0b → 5.5a → 5.5b → 5.5c（顺序做更安全。0a/0b 先确保代码库干净。5.5a 确保 viewRole 机制正确。5.5b 建好组件。5.5c 最后一气呵成）
+**做 5.5c 时这些 bug 已经不存在。** AI-B 不会在 5.5c 遇到：
+- B1（SettingsView 监听器泄漏）→ 已在 0a 修
+- B2（unregister 从不调用）→ 已在 0a 修，卸载终端时命令/快捷键/菜单正常注销
+- B3（快捷键误删全插件）→ 已在 0a 修
+- B13（plugin watcher setInterval 永不停止）→ 已在 0b 修，HMR 行为正常
+- B14（PreferenceService 删除）→ 已在 0b 删，不会有残留 Prefs 键
+
+---
+
+### 5.5c 分步执行（5 步，顺序做）
+
+#### Step C1 — 新建 useTerminalSessions.ts（~60 行）
+
+**文件：** `plugins/terminal/useTerminalSessions.ts`（新建）
+
+**做什么：**
+```typescript
+// 模块级单例——不挂在 React 树上，对标 ConfigurationService 模式
+// 原因：侧栏 unmount 时状态不能丢（标签页还在主区显示）
+let _sessions: TerminalSession[] = [];
+let _activeSessionId: string | null = null;
+let _listeners: Set<() => void> = new Set();
+
+function notify() { _listeners.forEach(fn => fn()); }
+
+export function useTerminalSessions() {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const rerender = () => tick(n => n + 1);
+    _listeners.add(rerender);
+    return () => { _listeners.delete(rerender); };
+  }, []);
+
+  return {
+    sessions: _sessions,
+    activeSessionId: _activeSessionId,
+    activeSession: _sessions.find(s => s.id === _activeSessionId) ?? null,
+    createSession(name: string): TerminalSession {
+      const session: TerminalSession = {
+        id: `terminal-${counter++}`,  // tabId
+        name,
+        ...DEFAULT_SESSION,
+      };
+      _sessions = [..._sessions, session];
+      _activeSessionId = session.id;
+      notify();
+      return session;
+    },
+    removeSession(id: string) { ... notify(); },
+    updateSession(id: string, patch: Partial<TerminalSession>) { ... notify(); },
+    setActiveSession(id: string) { _activeSessionId = id; notify(); },
+    resetAll() { _sessions = []; _activeSessionId = null; notify(); },  // ← 供 lifecycle 的 onWillUninstall 调用
+  };
+}
+```
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| **Bug 2：状态挂载位置** | 如果 AI-B 用 React Context / useState 在 sidebar.tsx 内——侧栏切到别的插件时 unmount → 所有会话消失 → 标签页还在主区显示但读不到 session → 白屏 | 用**模块级单例**（如上）。数据不在 React 树上，对标 ConfigurationService。`resetAll()` 暴露给 lifecycle 调用 |
+| **Bug 5：快捷发送旧数据丢失** | 用户原有的 `terminal.quickSends` 在 ConfigurationService 中，迁移后第一个会话用的是默认 `{ "AT": "AT\r\n" }`，旧数据没了 | `createSession` 中尝试读旧值：`getConfigurationValue("terminal.quickSends")` ?? `DEFAULT_SESSION.quickSends`。一次性迁移，之后不读 |
+
+**这一步不需要遇到的（已在 0a/0b 修掉）：**
+- B14 Prefs 残留 —— 已删
+- B5 FALLBACK_PLUGIN_ID 常量 —— 已提取，不影响
+
+---
+
+#### Step C2 — 重写 sidebar.tsx（~100 行）
+
+**文件：** `plugins/terminal/sidebar.tsx`（重写），`plugins/terminal/sidebar.css`（重写）
+
+**做什么：** 删旧 4 个 setting-group → 换 2 个 `<SidebarSection>`（依赖 5.5b 就绪）。`SessionListItem` 组件内实现 hover [✎][✕] + F2 inline 编辑。
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| 5.5b 还没完成 → SidebarSection 组件不存在 | import 报错 | **先确保 5.5b 已交付再开始 C2。** 否则用 `<details>` 临时替代 |
+| 切换会话 → 收发设置不刷新 | 侧栏上半选了 COM5，下半还是 COM3 的设置 | `useTerminalSessions().activeSession` 是响应式的——hook 内部 listener 通知重渲染，自动联动 |
+
+---
+
+#### Step C3 — toolbar.tsx → ControlPanel.tsx（~80 行）
+
+**文件：** `plugins/terminal/toolbar.tsx` → `plugins/terminal/ControlPanel.tsx`（重构），`plugins/terminal/toolbar.css` → `plugins/terminal/ControlPanel.css`（改名）
+
+**做什么：** COM/波特率/协议下拉框 + 连接/断开/暂停/清空/导出/搜索/筛选按钮。状态从 `SerialContext` + `useTerminalSessions().activeSession` 读。
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| ControlPanel 不知该碰哪些字段——可能把编码下拉框也加了 | 编码有两个写入入口（侧栏 + ControlPanel）→ 互盖 | **§3.12 硬规则：ControlPanel 只碰 port/baudRate/protocol 三项。** 检查：grep `session.` in ControlPanel.tsx → 只允许 port/baudRate/protocol |
+
+---
+
+#### Step C4 — 瘦身 index.tsx（~ -200 行）⚠️ 最危险的一步
+
+**文件：** `plugins/terminal/index.tsx`（瘦身）
+
+**做什么：** 删 12 个 `useConfiguration("terminal.xxx")`（D1/D2）、删 `onDidChangeConfiguration` useEffect（D3）、删 ConfigurationService import（D10）。改为从 `useTerminalSessions().activeSession` 读设置。
+
+**这一步会遇到（5.5c 专属 bug，0a/0b 没覆盖）：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| **Bug 1：多标签页数据管道冲突** 🔴 | 两个终端标签页（session-1 连 COM3，session-2 也连 COM3）→ `useTauriEvent("serial-data")` 在**每个** TerminalView 实例各注册一次 → 两个 RingBuffer 同时写、两个 CM6 同时渲染同一份数据 → 性能翻倍浪费 + 连接状态显示混乱 | **数据只发给匹配的 session：** 在 `useTauriEvent` handler 中加 `if (getActiveSessionId() !== mySessionId) return;`。`mySessionId` 从 `useTerminalSessions` 拿。`portOpenRef` 也改为读 `session.connected`（从 SerialContext 派生） |
+| **Bug 3：session.connected 和 SerialContext 不一致** | 用户侧栏看到绿点 ●（session.connected=true），但实际连接断了（SerialContext.isOpen=false）→ 点进去收不到数据 | `session.connected` 不独立 set——从 `SerialContext.state.isOpen && SerialContext.state.portName === session.port` 派生。单一 source of truth |
+| **Bug 7：F5 刷新后标签页残留** | F5 → `_sessions = []` → 但标签栏还有终端标签页 → TabBar render → TerminalView 读 `getSession(tabId)` → `undefined` → 白屏 | TerminalView 检测 session 不存在 → 显示 "会话已失效" 占位（不崩）。或 App 启动时检查已打开的终端标签页 → 为每个重建 session（用默认值） |
+
+**Bug 1 的完整修法：**
+```typescript
+// index.tsx —— 每个 TerminalView 只消费自己 session 的数据
+const mySessionId = useRef(session.id);
+mySessionId.current = session.id;
+
+useTauriEvent<string>("serial-data", (payload) => {
+    // 🔥 不是我 → 跳过。对标 RingBuffer 多消费者模型——每个 session 独立消费
+    const activeId = getActiveSessionId();  // 从 hook 模块级变量读
+    if (mySessionId.current !== activeId) return;
+    
+    if (!session.connected) return;  // 读 session.connected（派生自 SerialContext）
+    // ... 原有逻辑
+});
+```
+
+**这一步不需要遇到的（已在 0a/0b 修掉）：**
+- B12（mountGlobalKeybindings 返回值丢弃）→ 已在 0b 修，cleanup 正常
+- B13（plugin watcher 永不停止）→ 已在 0b 修
+
+---
+
+#### Step C5 — 清理 plugin.json + 删除死代码（~ -40 行）
+
+**文件：** `plugins/terminal/plugin.json`（删 contributes.configuration 12 项 + 改 viewRole）
+
+**做什么：** `contributes.configuration` 整块删除（D9）。`viewRole: "tabOnly"` → `"sidebarPrimary"`。
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| **Bug 6：Settings Editor 仍渲染终端设置** | 如果 AI-B 没删 contributes.configuration 就提交 → Settings Editor 显示终端 12 项 → 用户改了 → index.tsx 读的是 session.xxx → 不生效 → 两个入口互相矛盾 | **机械验证：** `git grep "terminal.timestampFormat" -- plugins/terminal/plugin.json` → 返回空。返回非空 → 没删干净 |
+
+---
+
+### 提交前机械验证（最后防线）
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 全过
+[ ] git grep "useConfiguration"  -- plugins/terminal/ → 返回空
+[ ] git grep "ConfigurationService" -- plugins/terminal/ → 返回空
+[ ] git grep "onDidChangeConfiguration" -- plugins/terminal/ → 返回空
+[ ] git grep "terminal\." -- plugins/terminal/*.tsx → 返回空
+[ ] git status | grep "deleted.*toolbar.tsx"
+[ ] git status | grep "deleted.*toolbar.css"
+[ ] git grep "terminal.timestampFormat" -- plugins/terminal/plugin.json → 返回空（D9 已删）
+[ ] 人工：开 3 个终端标签页 → 各连不同 COM → 改各自设置 → 互不干扰
+[ ] 人工：F5 → 终端标签页消失或显示占位（不白屏不报错）
+[ ] 人工：Settings Editor 搜索 "终端" → 零结果
+```
+
+---
 
 ### 5.5 完成后的终端去特权化验证
 
@@ -668,6 +894,7 @@ Phase 5.5c 完成后必须验证：**终端不是特权插件。** 这些检查�
 | 终端会话模板 | Phase 7+ |
 | 远程会话（SSH/串口服务器） | Phase 8+ |
 | 终端 PTY | 串口是当前主要用例，PTY 可选插件不进核心 |
+| **设置表单 schema 驱动渲染** | 5.5c 的 12 个 Toggle/Select 手写在 sidebar.tsx 中。Phase 7 考虑用 contributes.configuration schema 驱动渲染会话级设置——目前手写够用 |
 
 ---
 

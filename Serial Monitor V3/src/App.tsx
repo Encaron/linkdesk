@@ -10,6 +10,7 @@ import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
+import CommandPalette from "./components/terminal/CommandPalette";
 
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
@@ -347,6 +348,7 @@ function App() {
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
+  const [paletteOpen, setPaletteOpen] = useState(false);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -385,6 +387,13 @@ function App() {
     window.addEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
     return () => window.removeEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
   }, [handleIconClick]);
+
+  /* ---- Command Palette——壳级特性，不属任何插件 ---- */
+  useEffect(() => {
+    const handler = () => setPaletteOpen((p) => !p);
+    window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
+  }, []);
 
   /* ---- 串口控制 ---- */
   // Phase 5f：receiveCoding 从 ConfigurationService 直接读取——不再依赖 terminalPrefs state
@@ -707,6 +716,10 @@ function App() {
         onToggleLang={handleToggleLang}
       />
       <ToastContainer />
+      <CommandPalette
+        open={paletteOpen}
+        onClose={() => setPaletteOpen(false)}
+      />
       </SerialContext.Provider>
       </TabActionsContext.Provider>
     </div>

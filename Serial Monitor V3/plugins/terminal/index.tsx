@@ -30,8 +30,8 @@ import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration 
 import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
 import SearchBar from "../../src/components/terminal/SearchBar";
 import FilterMenu from "../../src/components/terminal/FilterMenu";
-import CommandPalette from "../../src/components/terminal/CommandPalette";
 import { HexToBytes } from "../../src/core/DataConverter";
+import { CUSTOM_EVENTS } from "../../src/core/CoreEvents";
 // Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
 import { registerCommand } from "../../src/core/CommandRegistry";
 import ContextMenu from "../../src/components/shared/ContextMenu";
@@ -286,7 +286,6 @@ function TerminalView({ isActive }: TerminalViewProps) {
   filterModeRef.current = filterMode;
   filterKeywordRef.current = filterKeyword;
   const [hexWarning, setHexWarning] = useState("");
-  const [paletteOpen, setPaletteOpen] = useState(false);
   const monacoRef = useRef<any>(null);
 
   /* ---- CM6 ---- */
@@ -926,16 +925,6 @@ function TerminalView({ isActive }: TerminalViewProps) {
     searchMatchesRef.current = [];
   }, []);
 
-  /* ---- Command Palette（Phase 5c：数据源走 CommandRegistry） ---- */
-
-  // 全局事件（workbench.action.showCommands → v3-show-palette）
-  // App.tsx 的 capture handler 负责拦截 Ctrl+Shift+P 并 dispatch 此事件
-  useEffect(() => {
-    const handler = () => setPaletteOpen((p) => !p);
-    window.addEventListener("v3-show-palette", handler);
-    return () => window.removeEventListener("v3-show-palette", handler);
-  }, []);
-
   /* ---- Monaco 挂载 ---- */
   const beforeMount = useCallback((monaco: any) => {
     monaco.languages.register({ id: "v3-protocol" });
@@ -993,17 +982,13 @@ function TerminalView({ isActive }: TerminalViewProps) {
   return (
     <div className="terminal-view">
       <TerminalToolbar />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-      />
 
       {/* 工具栏 */}
       <div className="terminal-toolbar">
         <button className={`toolbar-btn${paused ? " active" : ""}`} onClick={handlePause} title={t("暂停接收")}>
           {paused ? "▶ " + t("继续接收") : "⏸ " + t("暂停接收")}
         </button>
-        <button className="toolbar-btn" onClick={() => setPaletteOpen((p) => !p)} title={t("命令面板")}>
+        <button className="toolbar-btn" onClick={() => window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE))} title={t("命令面板")}>
           ▸ {t("命令面板")}
         </button>
         <button className="toolbar-btn" onClick={handleExport} title={t("导出日志")}>
