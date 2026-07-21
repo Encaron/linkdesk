@@ -24,8 +24,9 @@ import Editor from "@monaco-editor/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../../src/hooks/useTauriEvent";
 import { RingBuffer } from "../../src/core/RingBuffer";
-import { useTerminalPrefs, type TerminalPrefs } from "../../src/core/TerminalPrefsContext";
-import PreferenceService from "../../src/core/PreferenceService";
+// Phase 5f：TerminalPrefsContext 删除 + PreferenceService 双写删除——改用 ConfigurationService 直连
+import { useConfiguration, useConfigurationValue } from "../../src/core/useConfiguration";
+import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "../../src/core/ConfigurationService";
 import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
 import SearchBar from "../../src/components/terminal/SearchBar";
 import FilterMenu from "../../src/components/terminal/FilterMenu";
@@ -188,7 +189,24 @@ interface TerminalViewProps {
 
 function TerminalView({ isActive }: TerminalViewProps) {
   const { t } = useTranslation();
-  const { prefs, setPrefs } = useTerminalPrefs();
+
+  // Phase 5f：每个设置项独立 useConfiguration——对标 VS Code workspace.getConfiguration()
+  const [timestampFormat, setTimestampFormat] = useConfiguration<string>("terminal.timestampFormat");
+  const [showEcho, setShowEcho] = useConfiguration<boolean>("terminal.showEcho");
+  const [showLineNumbers, setShowLineNumbers] = useConfiguration<boolean>("terminal.showLineNumbers");
+  const [separateSystemLog, setSeparateSystemLog] = useConfiguration<boolean>("terminal.separateSystemLog");
+  const [lineEnding, setLineEnding] = useConfiguration<string>("terminal.lineEnding");
+  const [autoRepeat, setAutoRepeat] = useConfiguration<boolean>("terminal.autoRepeat");
+  const [repeatInterval, setRepeatInterval] = useConfiguration<number>("terminal.repeatInterval");
+  const [autoClear, setAutoClear] = useConfiguration<boolean>("terminal.autoClear");
+  const [receiveMode] = useConfiguration<string>("terminal.receiveMode");
+  const [receiveCoding] = useConfiguration<string>("terminal.receiveCoding");
+  const [sendModeCfg, setSendModeCfg] = useConfiguration<string>("terminal.sendMode");
+  const [sendCodingCfg, setSendCodingCfg] = useConfiguration<string>("terminal.sendCoding");
+
+  // 为兼容后续代码中 prefs.sendMode / prefs.sendCoding 引用，创建别名
+  const sendMode = sendModeCfg;
+  const sendCoding = sendCodingCfg;
 
   /* ---- 状态 ---- */
   const [paused, setPaused] = useState(false);
@@ -196,8 +214,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const [pausedCount, setPausedCount] = useState(0);
   const [systemLog, setSystemLog] = useState<string[]>([]);
   const [quickSends, setQuickSends] = useState<Record<string, string>>(() => {
+    // Phase 5f：从 ConfigurationService 读取（替代 PreferenceService）
     try {
-      return PreferenceService.loadPrefs().quickSends;
+      return (getConfigurationValue("terminal.quickSends") as Record<string, string>) ?? { AT: "AT\r\n" };
     } catch {
       return { AT: "AT\r\n" };
     }
@@ -210,13 +229,8 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   const saveQuickSends = useCallback((updated: Record<string, string>) => {
     setQuickSends(updated);
-    try {
-      const p = PreferenceService.loadPrefs();
-      p.quickSends = updated;
-      PreferenceService.savePrefs(p).catch(() => {});
-    } catch {
-      // 静默
-    }
+    // Phase 5f：写入 ConfigurationService（替代 PreferenceService）
+    setConfigurationValue("terminal.quickSends", updated, "user").catch(() => {});
   }, []);
 
   const handleSaveQuickSend = () => {
@@ -321,16 +335,16 @@ function TerminalView({ isActive }: TerminalViewProps) {
     if (!view) return;
     view.dispatch({
       effects: lineNumberCompartment.current.reconfigure(
-        prefs.showLineNumbers ? lineNumbers() : []
+        showLineNumbers ? lineNumbers() : []
       ),
     });
-  }, [prefs.showLineNumbers]);
+  }, [showLineNumbers]);
 
   /* ---- 追加一行（带颜色） ---- */
   const appendLine = useCallback((text: string, color: "received" | "sent" | "system") => {
-    if (color === "sent" && !prefs.showEcho) return;
+    if (color === "sent" && !showEcho) return;
 
-    if (color === "system" && prefs.separateSystemLog) {
+    if (color === "system" && separateSystemLog) {
       setSystemLog((prev) => {
         const next = [...prev, text];
         if (next.length > SYSTEM_LOG_MAX_LINES) next.shift();
@@ -365,42 +379,51 @@ function TerminalView({ isActive }: TerminalViewProps) {
       const line = view.state.doc.line(CM6_TRIM_KEEP_LINES);
       view.dispatch({ changes: { from: 0, to: line.from } });
     }
-  }, [prefs.timestampFormat, prefs.showEcho, prefs.separateSystemLog]);
+  }, [timestampFormat, showEcho, separateSystemLog]);
 
-  // 设置变更时打印系统消息
-  const prevPrefsRef = useRef<TerminalPrefs | null>(null);
+  // Phase 5f：设置变更时打印系统消息——onDidChangeConfiguration 替代 prevPrefsRef 对比
   useEffect(() => {
     if (!cmView.current) return;
-    const prev = prevPrefsRef.current;
-    if (!prev) { prevPrefsRef.current = { ...prefs }; return; }
-
-    if (prev.showEcho !== prefs.showEcho)
-      appendLine(t("---- {{name}}：{{value}} ----", { name: t("消息回显"), value: prefs.showEcho ? t("开") : t("关") }), "system");
-    if (prev.showLineNumbers !== prefs.showLineNumbers)
-      appendLine(t("---- {{name}}：{{value}} ----", { name: t("行号显示"), value: prefs.showLineNumbers ? t("开") : t("关") }), "system");
-    if (prev.separateSystemLog !== prefs.separateSystemLog)
-      appendLine(t("---- {{name}}：{{value}} ----", { name: t("系统消息独立显示"), value: prefs.separateSystemLog ? t("开") : t("关") }), "system");
-    if (prev.timestampFormat !== prefs.timestampFormat)
-      appendLine(t("---- {{name}}：{{value}} ----", { name: t("时间戳"), value: prefs.timestampFormat === "无" ? t("关") : prefs.timestampFormat }), "system");
-    if (prev.autoRepeat !== prefs.autoRepeat)
-      appendLine(prefs.autoRepeat
-        ? t("---- 定时发送：开（每 {{interval}} ms）----", { interval: prefs.repeatInterval })
-        : t("---- 定时发送：关 ----"), "system");
-
-    prevPrefsRef.current = { ...prefs };
+    const unsub = onDidChangeConfiguration((key: string, _value: unknown) => {
+      if (!key.startsWith("terminal.")) return;
+      const prop = key.slice("terminal.".length);
+      // 延迟读取当前值——onDidChangeConfiguration 在 setConfigurationValue 内部 fire，
+      // 此时 _userSettings 已更新，getConfigurationValue 返回最新值
+      const newValue = getConfigurationValue(key);
+      switch (prop) {
+        case "showEcho":
+          appendLine(t("---- {{name}}：{{value}} ----", { name: t("消息回显"), value: newValue ? t("开") : t("关") }), "system");
+          break;
+        case "showLineNumbers":
+          appendLine(t("---- {{name}}：{{value}} ----", { name: t("行号显示"), value: newValue ? t("开") : t("关") }), "system");
+          break;
+        case "separateSystemLog":
+          appendLine(t("---- {{name}}：{{value}} ----", { name: t("系统消息独立显示"), value: newValue ? t("开") : t("关") }), "system");
+          break;
+        case "timestampFormat":
+          appendLine(t("---- {{name}}：{{value}} ----", { name: t("时间戳"), value: newValue === "无" ? t("关") : newValue as string }), "system");
+          break;
+        case "autoRepeat":
+          appendLine(newValue
+            ? t("---- 定时发送：开（每 {{interval}} ms）----", { interval: getConfigurationValue<number>("terminal.repeatInterval") })
+            : t("---- 定时发送：关 ----"), "system");
+          break;
+      }
+    });
+    return unsub;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [prefs]);
+  }, []);
 
   // ⚠️ 独立 RingBuffer 多消费者
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
-  const tsFormatRef = useRef(prefs.timestampFormat);
-  tsFormatRef.current = prefs.timestampFormat;
+  const tsFormatRef = useRef(timestampFormat);
+  tsFormatRef.current = timestampFormat;
   const portOpenRef = useRef(true);
 
   // Phase 5e：模块级变量——Tauri event handler 在 React 渲染周期外运行，
   // 用模块变量传递最新 prefs 值，避免 useRef/闭包的任何时序问题。
   // 对标 tsFormatRef 已验证的模式：渲染时写，事件回调时读。
-  _receiveMode = prefs.receiveMode;
+  _receiveMode = receiveMode;
 
   /** 文本转十六进制显示——Phase 5e receiveMode="hex" */
   const toHexDisplay = (text: string): string => {
@@ -528,17 +551,17 @@ function TerminalView({ isActive }: TerminalViewProps) {
   /* ---- 发送（useSendData 管道） ---- */
 
   const sendCtxRef = useRef<SendContext>({
-    sendMode: prefs.sendMode,
-    sendCoding: prefs.sendCoding,
-    lineEnding: prefs.lineEnding,
-    timestampFormat: prefs.timestampFormat,
+    sendMode: sendMode,
+    sendCoding: sendCoding,
+    lineEnding: lineEnding,
+    timestampFormat: timestampFormat,
   });
   // 保持 ctx ref 同步
   sendCtxRef.current = {
-    sendMode: prefs.sendMode,
-    sendCoding: prefs.sendCoding,
-    lineEnding: prefs.lineEnding,
-    timestampFormat: prefs.timestampFormat,
+    sendMode: sendMode,
+    sendCoding: sendCoding,
+    lineEnding: lineEnding,
+    timestampFormat: timestampFormat,
   };
 
   const recordHistory = useCallback((text: string) => {
@@ -583,13 +606,13 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const handleSend = useCallback(async () => {
     if (!sendValue.trim()) return;
     await performSend(sendValue.trim(), { showHexPreview: true });
-    if (prefs.autoClear) setSendValue("");
-  }, [sendValue, performSend, prefs.autoClear]);
+    if (autoClear) setSendValue("");
+  }, [sendValue, performSend, autoClear]);
 
   const prevHexWarningRef = useRef("");
   const handleSendChange = useCallback((v: string | undefined) => {
     const raw = v ?? "";
-    if (prefs.sendMode === "hex") {
+    if (sendMode === "hex") {
       const { formatted, warning } = autoFormatHex(raw);
       setSendValue(formatted);
       setHexWarning(warning);
@@ -602,7 +625,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       setHexWarning("");
       prevHexWarningRef.current = "";
     }
-  }, [prefs.sendMode, autoFormatHex, appendLine]);
+  }, [sendMode, autoFormatHex, appendLine]);
 
   const handleQuickSend = async (text: string) => {
     await performSend(text, { ending: "\r\n", prefix: "> " });
@@ -619,33 +642,47 @@ function TerminalView({ isActive }: TerminalViewProps) {
   sendValueRef.current = sendValue;
 
   useEffect(() => {
-    if (!prefs.autoRepeat || prefs.repeatInterval <= 0) return;
+    if (!autoRepeat || repeatInterval <= 0) return;
     const timer = setInterval(async () => {
       const text = sendValueRef.current.trim();
       if (!text) return;
       await performSend(text, { silent: true, noHistory: true });
-    }, prefs.repeatInterval);
+    }, repeatInterval);
     return () => clearInterval(timer);
-  }, [prefs.autoRepeat, prefs.repeatInterval, performSend]);
+  }, [autoRepeat, repeatInterval, performSend]);
 
   /* ── Phase 5b：注册终端命令真实 handler（覆盖 loader 的 placeholder）── */
 
   // 用 ref 桥接——命令 handler 闭包需要访问最新的 cmView / paused 等
+  // Phase 5f：prefs/setPrefs 替换为独立 setter refs
+  const sendModeRef = useRef(sendMode);
+  sendModeRef.current = sendMode;
+  const showEchoRef = useRef(showEcho);
+  showEchoRef.current = showEcho;
+  const showLineNumbersRef = useRef(showLineNumbers);
+  showLineNumbersRef.current = showLineNumbers;
+
+  // Phase 5f 独立 setters——命令 handler 通过 ref 调用
+  const setSendModeRef = useRef(setSendModeCfg);
+  setSendModeRef.current = setSendModeCfg;
+  const setShowEchoRef = useRef(setShowEcho);
+  setShowEchoRef.current = setShowEcho;
+  const setShowLineNumbersRef = useRef(setShowLineNumbers);
+  setShowLineNumbersRef.current = setShowLineNumbers;
+
   const terminalCmdRef = useRef<{
     cmView: typeof cmView;
     paused: boolean;
-    prefs: TerminalPrefs;
     quickSends: Record<string, string>;
     setPaused: (v: boolean | ((p: boolean) => boolean)) => void;
-    setPrefs: (v: TerminalPrefs | ((p: TerminalPrefs) => TerminalPrefs)) => void;
     setSendValue: (v: string) => void;
     setQsEditing: (key: string | null) => void;
     setQsName: (v: string) => void;
     setQsContent: (v: string) => void;
     setQsAdding: (v: boolean) => void;
     handleDeleteQuickSend: (key: string) => void;
-  }>({ cmView, paused, prefs, quickSends, setPaused, setPrefs, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend });
-  terminalCmdRef.current = { cmView, paused, prefs, quickSends, setPaused, setPrefs, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend };
+  }>({ cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend });
+  terminalCmdRef.current = { cmView, paused, quickSends, setPaused, setSendValue, setQsEditing, setQsName, setQsContent, setQsAdding, handleDeleteQuickSend };
 
   useEffect(() => {
     registerCommand("terminal", {
@@ -762,10 +799,8 @@ function TerminalView({ isActive }: TerminalViewProps) {
       title: "切换到 HEX 发送",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({
-          ...p,
-          sendMode: p.sendMode === "hex" ? "text" : "hex",
-        }));
+        // Phase 5f：直连 ConfigurationService——通过 ref 读取/写入避免闭包过期
+        setSendModeRef.current(sendModeRef.current === "hex" ? "text" : "hex");
       },
     });
     registerCommand("terminal", {
@@ -773,10 +808,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       title: "关闭消息回显",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({
-          ...p,
-          showEcho: !p.showEcho,
-        }));
+        setShowEchoRef.current(!showEchoRef.current);
       },
     });
     registerCommand("terminal", {
@@ -784,10 +816,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       title: "隐藏行号",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({
-          ...p,
-          showLineNumbers: !p.showLineNumbers,
-        }));
+        setShowLineNumbersRef.current(!showLineNumbersRef.current);
       },
     });
   }, []);
@@ -808,37 +837,37 @@ function TerminalView({ isActive }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleSendMode",
-      title: prefs.sendMode === "hex" ? "切换到文本发送" : "切换到 HEX 发送",
+      title: sendMode === "hex" ? "切换到文本发送" : "切换到 HEX 发送",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({ ...p, sendMode: p.sendMode === "hex" ? "text" : "hex" }));
+        setSendModeRef.current(sendModeRef.current === "hex" ? "text" : "hex");
       },
     });
-  }, [prefs.sendMode]);
+  }, [sendMode]);
 
   // 动态更新回显标题
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleEcho",
-      title: prefs.showEcho ? "关闭消息回显" : "开启消息回显",
+      title: showEcho ? "关闭消息回显" : "开启消息回显",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({ ...p, showEcho: !p.showEcho }));
+        setShowEchoRef.current(!showEchoRef.current);
       },
     });
-  }, [prefs.showEcho]);
+  }, [showEcho]);
 
   // 动态更新行号标题
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleLineNumbers",
-      title: prefs.showLineNumbers ? "隐藏行号" : "显示行号",
+      title: showLineNumbers ? "隐藏行号" : "显示行号",
       category: "终端",
       handler: async () => {
-        terminalCmdRef.current.setPrefs((p) => ({ ...p, showLineNumbers: !p.showLineNumbers }));
+        setShowLineNumbersRef.current(!showLineNumbersRef.current);
       },
     });
-  }, [prefs.showLineNumbers]);
+  }, [showLineNumbers]);
 
   /* ---- 搜索 ---- */
   const runSearch = useCallback((query: string, caseSensitive: boolean) => {

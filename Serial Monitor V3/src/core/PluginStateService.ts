@@ -4,9 +4,14 @@
  *
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §盲区4
  *
- * 底层存储：settings.json 的 pluginStates 段。
- * { "pluginStates": { "terminal": { "lastBaudRate": "115200" }, "cad": { ... } } }
+ * Phase 5f：文件分离——独立 `plugin-states.json`（不再和 ConfigurationService 共用 settings.json）。
+ * 持久化归一化到 StorageService（read/write）。
+ *
+ * 数据结构：
+ *   { "terminal": { "lastBaudRate": "115200" }, "app": { "iconOrder": [...] }, ... }
  */
+
+import { read, write } from "./StorageService";
 
 /* ── 类型 ── */
 
@@ -16,45 +21,12 @@ type PluginStateStore = Record<string, Record<string, unknown>>;
 
 let _states: PluginStateStore = {};
 
-/* ── 文件系统依赖 ── */
-
-let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-let _settingsPath: string | null = null;
-
-async function ensureTauri(): Promise<boolean> {
-  if (!(window as any).__TAURI__) return false;
-  if (fsApi && pathApi) return true;
-  try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
 /* ── 初始化 ── */
 
-/** 初始化——从 settings.json 加载 pluginStates 段 */
+/** 初始化——从 plugin-states.json 加载 */
 export async function initPluginStates(): Promise<void> {
-  if (!(await ensureTauri()) || !pathApi || !fsApi) {
-    // 浏览器模式——localStorage
-    try {
-      const raw = localStorage.getItem("v3_pluginStates");
-      if (raw) _states = JSON.parse(raw);
-    } catch { /* ignore */ }
-    return;
-  }
-
-  try {
-    _settingsPath = await pathApi.join(await pathApi.appDataDir(), "settings.json");
-    if (await fsApi.exists(_settingsPath)) {
-      const raw = await fsApi.readTextFile(_settingsPath);
-      const parsed = JSON.parse(raw);
-      _states = parsed.pluginStates ?? {};
-    }
-  } catch { /* 文件不存在或损坏 */ }
+  const saved = await read<PluginStateStore>("plugin-states");
+  if (saved) _states = saved;
 }
 
 /* ── 读写 ── */
@@ -99,31 +71,10 @@ export async function removePluginState(pluginId: string): Promise<void> {
   await _persist();
 }
 
-/* ── 持久化 —— 写入 settings.json 的 pluginStates 段 ── */
+/* ── 持久化 —— Phase 5f 独立文件 plugin-states.json ── */
 
 async function _persist(): Promise<void> {
-  // 始终写 localStorage
-  try {
-    localStorage.setItem("v3_pluginStates", JSON.stringify(_states, null, 2));
-  } catch { /* ignore */ }
-
-  if (!(await ensureTauri()) || !fsApi || !_settingsPath) return;
-  try {
-    // 读→改→写 settings.json（保留其他字段）
-    let settings: Record<string, unknown> = {};
-    if (await fsApi.exists(_settingsPath)) {
-      const raw = await fsApi.readTextFile(_settingsPath);
-      settings = JSON.parse(raw);
-    }
-    settings.pluginStates = _states;
-    const dir = _settingsPath.substring(0, _settingsPath.lastIndexOf("\\"));
-    if (dir && !(await fsApi.exists(dir))) {
-      await fsApi.mkdir(dir, { recursive: true });
-    }
-    await fsApi.writeTextFile(_settingsPath, JSON.stringify(settings, null, 2));
-  } catch (e) {
-    console.warn("[PluginStateService] 写入 pluginStates 失败:", e);
-  }
+  await write("plugin-states", _states);
 }
 
 /** 清空缓存（测试用） */

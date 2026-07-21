@@ -11,8 +11,7 @@
 
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "../../pluginLoader/viewRegistry";
-import PreferenceService from "../../core/PreferenceService";
-// Phase 5：recentViews 迁移到 PluginStateService
+// Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
 import "./WelcomeView.css";
 
@@ -27,10 +26,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   const viewPlugins = getViewPlugins();
   const recentViews = (() => {
     try {
-      // Phase 5：优先读 PluginStateService，fallback 旧 PreferenceService
-      const fromPss = getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews");
-      if (fromPss) return fromPss;
-      return PreferenceService.loadPrefs().recentViews ?? [];
+      return getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews") ?? [];
     } catch {
       return [];
     }

@@ -18,30 +18,13 @@ import {
   type InspectResult,
 } from "./ConfigurationRegistry";
 import { applyConfiguration } from "./ConfigurationApplier";
-
-/* ── 文件系统依赖（延迟注入——对标 PreferenceService 模式） ── */
-
-let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-
-async function ensureTauri(): Promise<boolean> {
-  if (!(window as any).__TAURI__) return false;
-  if (fsApi && pathApi) return true;
-  try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-    return true;
-  } catch {
-    return false;
-  }
-}
+import { read, write } from "./StorageService";
 
 /* ── 三层缓存 ── */
 
 let _userSettings: Record<string, unknown> = {};
 let _workspaceSettings: Record<string, unknown> = {};
 let _workspaceRoot: string | null = null;
-let _settingsPath: string | null = null;
 let _initialized = false;
 
 /* ── 监听器 ── */
@@ -59,29 +42,9 @@ export async function initConfigurationService(): Promise<void> {
   if (_initialized) return;
   _initialized = true;
 
-  const isTauri = await ensureTauri();
-
-  if (isTauri && pathApi) {
-    _settingsPath = await pathApi.join(await pathApi.appDataDir(), "settings.json");
-  }
-
-  // 加载 User scope settings.json
-  if (isTauri && fsApi && _settingsPath) {
-    try {
-      if (await fsApi.exists(_settingsPath)) {
-        const raw = await fsApi.readTextFile(_settingsPath);
-        _userSettings = JSON.parse(raw);
-      }
-    } catch {
-      console.warn("[ConfigurationService] settings.json 读取失败，使用默认值");
-    }
-  } else {
-    // 浏览器模式——localStorage
-    try {
-      const raw = localStorage.getItem("v3_settings");
-      if (raw) _userSettings = JSON.parse(raw);
-    } catch { /* ignore */ }
-  }
+  // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
+  const saved = await read<Record<string, unknown>>("settings");
+  if (saved) _userSettings = saved;
 }
 
 /* ── 读取：三层合并 ── */
@@ -183,19 +146,30 @@ export async function setWorkspaceRoot(rootPath: string | null): Promise<void> {
     return;
   }
 
+  // Phase 5f：Workspace scope 保留独立 fsApi（不在 appDataDir 下，不走 StorageService）
+  // Phase 6 WorkspaceService 接管后删除此段
+  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
+  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
+  if (!(window as any).__TAURI__) return;
+  try {
+    fsApi = await import("@tauri-apps/plugin-fs");
+    pathApi = await import("@tauri-apps/api/path");
+  } catch {
+    return;
+  }
+  if (!fsApi || !pathApi) return;
+
   // 加载 .linkdesk/settings.json
-  if (await ensureTauri() && fsApi && pathApi) {
-    const wsSettingsPath = await pathApi.join(rootPath, ".linkdesk", "settings.json");
-    try {
-      if (await fsApi.exists(wsSettingsPath)) {
-        const raw = await fsApi.readTextFile(wsSettingsPath);
-        _workspaceSettings = JSON.parse(raw);
-      } else {
-        _workspaceSettings = {};
-      }
-    } catch {
+  const wsSettingsPath = await pathApi.join(rootPath, ".linkdesk", "settings.json");
+  try {
+    if (await fsApi.exists(wsSettingsPath)) {
+      const raw = await fsApi.readTextFile(wsSettingsPath);
+      _workspaceSettings = JSON.parse(raw);
+    } else {
       _workspaceSettings = {};
     }
+  } catch {
+    _workspaceSettings = {};
   }
 }
 
@@ -218,28 +192,32 @@ export function getWorkspaceSettings(): Record<string, unknown> {
 
 /* ── 持久化 ── */
 
+/** User scope 持久化——Phase 5f 归一化到 StorageService */
 async function _persistUser(): Promise<void> {
-  // 始终写 localStorage
-  try {
-    localStorage.setItem("v3_settings", JSON.stringify(_userSettings, null, 2));
-  } catch { /* ignore */ }
-
-  // Tauri 环境写文件
-  if (!(await ensureTauri()) || !fsApi || !_settingsPath) return;
-  try {
-    const dir = _settingsPath.substring(0, _settingsPath.lastIndexOf("\\"));
-    if (dir && !(await fsApi.exists(dir))) {
-      await fsApi.mkdir(dir, { recursive: true });
-    }
-    await fsApi.writeTextFile(_settingsPath, JSON.stringify(_userSettings, null, 2));
-  } catch (e) {
-    console.warn("[ConfigurationService] 写入 settings.json 失败:", e);
-  }
+  await write("settings", _userSettings);
 }
 
+/**
+ * Workspace scope 持久化——写 .linkdesk/settings.json。
+ * Phase 5f：Workspace 路径不同于 User appDataDir，保留独立的 fsApi 引用。
+ * Phase 6 WorkspaceService 会接管这条路。
+ */
 async function _persistWorkspace(): Promise<void> {
   if (!_workspaceRoot) return;
-  if (!(await ensureTauri()) || !fsApi || !pathApi) return;
+
+  // Workspace 路径不在 appDataDir 下，不能走 StorageService（它的 key→path 映射在 appDataDir）。
+  // Phase 6 WorkspaceService 接管 workspace 读写后此函数删除。
+  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
+  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
+  if (!(window as any).__TAURI__) return;
+  try {
+    fsApi = await import("@tauri-apps/plugin-fs");
+    pathApi = await import("@tauri-apps/api/path");
+  } catch {
+    return;
+  }
+  if (!fsApi || !pathApi) return;
+
   try {
     const linkdeskDir = await pathApi.join(_workspaceRoot, ".linkdesk");
     if (!(await fsApi.exists(linkdeskDir))) {
@@ -262,18 +240,6 @@ function getSystemFallback<T>(key: string): T {
   const fallbacks: Record<string, unknown> = {
     "app.theme": "Dark",
     "app.language": "zh",
-    "terminal.timestampFormat": "HH:mm:ss:fff",
-    "terminal.showEcho": true,
-    "terminal.showLineNumbers": true,
-    "terminal.separateSystemLog": true,
-    "terminal.lineEnding": "\r\n",
-    "terminal.autoRepeat": false,
-    "terminal.repeatInterval": 1000,
-    "terminal.autoClear": false,
-    "terminal.receiveMode": "text",
-    "terminal.receiveCoding": "UTF-8",
-    "terminal.sendMode": "text",
-    "terminal.sendCoding": "UTF-8",
   };
   return (fallbacks[key] ?? undefined) as T;
 }

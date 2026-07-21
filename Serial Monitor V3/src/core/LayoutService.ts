@@ -5,9 +5,13 @@
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §盲区11 + §4.1
  *
  * 硬约束（设计方案 §1.5）：workspace.json 禁止嵌套，必须是一层平铺数组。
+ *
+ * Phase 5f：持久化归一化到 StorageService（read/write/writeSync）。
+ * beforeunload 调用 syncWrite()——同步写 localStorage，下次启动补齐文件。
  */
 
 import type { LayoutData } from "../hooks/useTabManager";
+import { read, write, writeSync } from "./StorageService";
 
 /* ── 类型 ── */
 
@@ -27,65 +31,19 @@ export interface WorkspaceLayout {
   cards: CardLayout[];
 }
 
-/* ── 文件系统依赖 ── */
+/* ── 缓存 ── */
 
-let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-
-async function ensureTauri(): Promise<boolean> {
-  if (!(window as any).__TAURI__) return false;
-  if (fsApi && pathApi) return true;
-  try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/* ── 读写 ── */
-
-let _layoutPath: string | null = null;
 let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, cards: [] };
 
-async function layoutPath(): Promise<string> {
-  if (!_layoutPath && pathApi) {
-    _layoutPath = await pathApi.join(await pathApi.appDataDir(), "layout.json");
-  }
-  return _layoutPath || "layout.json";
-}
+/* ── 初始化 ── */
 
-/** 初始化——App 启动时调一次。Tauri 模式优先读 layout.json，不存在或损坏则读 localStorage 兜底 */
+/** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底 */
 export async function initLayoutService(): Promise<void> {
-  if (!(await ensureTauri())) {
-    try {
-      const raw = localStorage.getItem("v3_layout");
-      if (raw) _layoutCache = JSON.parse(raw);
-    } catch { /* ignore */ }
-    return;
-  }
-
-  // Tauri 模式：优先读 localStorage（beforeunload 同步写入，永远最新），
-  // 文件兜底（100ms 防抖异步落盘，可能略旧于 localStorage）
-  try {
-    const localRaw = localStorage.getItem("v3_layout");
-    const path = await layoutPath();
-    const fileExists = await fsApi!.exists(path);
-
-    if (localRaw) {
-      _layoutCache = JSON.parse(localRaw);
-      // 异步写回文件——补上 beforeunload 没写文件的缺口
-      fsApi!.writeTextFile(path, localRaw).catch(() => {});
-      return;
-    }
-
-    if (fileExists) {
-      const raw = await fsApi!.readTextFile(path);
-      _layoutCache = JSON.parse(raw);
-    }
-  } catch { /* 静默 */ }
+  const saved = await read<WorkspaceLayout>("layout");
+  if (saved) _layoutCache = saved;
 }
+
+/* ── 读取 ── */
 
 /** 读取标签页布局 */
 export function getTabLayout(): LayoutData {
@@ -97,16 +55,23 @@ export function getCardLayout(): CardLayout[] {
   return _layoutCache.cards;
 }
 
+/** 加载工作区完整布局 */
+export function getWorkspaceLayout(): WorkspaceLayout {
+  return { ..._layoutCache, cards: [..._layoutCache.cards] };
+}
+
+/* ── 保存 ── */
+
 /** 保存标签页布局 */
 export async function saveTabLayout(tabs: LayoutData): Promise<void> {
   _layoutCache.tabs = tabs;
-  await _persist();
+  await write("layout", _layoutCache);
 }
 
 /** 保存卡片布局 */
 export async function saveCardLayout(cards: CardLayout[]): Promise<void> {
   _layoutCache.cards = cards;
-  await _persist();
+  await write("layout", _layoutCache);
 }
 
 /** 保存工作区完整布局——Phase 7 workspace 导入导出用 */
@@ -115,19 +80,35 @@ export async function saveWorkspaceLayout(
   cards: CardLayout[]
 ): Promise<void> {
   _layoutCache = { tabs, cards };
-  await _persist();
+  await write("layout", _layoutCache);
 }
 
-/** 加载工作区完整布局 */
-export function getWorkspaceLayout(): WorkspaceLayout {
-  return { ..._layoutCache, cards: [..._layoutCache.cards] };
+/**
+ * Phase 5f：同步写入——beforeunload 专用。
+ * beforeunload 期间不能做异步 I/O，用 writeSync 写 localStorage 保底。
+ * 下次启动时 initLayoutService 从 localStorage 读回，再异步写文件补齐。
+ */
+export function syncWriteLayout(layout: WorkspaceLayout): void {
+  _layoutCache = layout;
+  writeSync("layout", _layoutCache);
 }
+
+/* ── 具名工作区（Phase 7） ── */
 
 /** Phase 7：按名称加载特定工作区布局——详见 memory workspace-import-export.md */
 export async function loadNamedWorkspaceLayout(
   name: string
 ): Promise<WorkspaceLayout | null> {
-  if (!(await ensureTauri()) || !pathApi || !fsApi) return null;
+  // 具名工作区存在独立目录（workspaces/），不走 StorageService
+  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
+  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
+  if (!(window as any).__TAURI__) return null;
+  try {
+    fsApi = await import("@tauri-apps/plugin-fs");
+    pathApi = await import("@tauri-apps/api/path");
+  } catch {
+    return null;
+  }
   try {
     const dir = await pathApi.join(await pathApi.appDataDir(), "workspaces");
     const path = await pathApi.join(dir, `${name}.json`);
@@ -144,7 +125,15 @@ export async function saveNamedWorkspaceLayout(
   name: string,
   layout: WorkspaceLayout
 ): Promise<void> {
-  if (!(await ensureTauri()) || !pathApi || !fsApi) return;
+  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
+  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
+  if (!(window as any).__TAURI__) return;
+  try {
+    fsApi = await import("@tauri-apps/plugin-fs");
+    pathApi = await import("@tauri-apps/api/path");
+  } catch {
+    return;
+  }
   try {
     const dir = await pathApi.join(await pathApi.appDataDir(), "workspaces");
     if (!(await fsApi.exists(dir))) await fsApi.mkdir(dir, { recursive: true });
@@ -153,25 +142,7 @@ export async function saveNamedWorkspaceLayout(
   } catch { /* 静默 */ }
 }
 
-/* ── 持久化 ── */
-
-async function _persist(): Promise<void> {
-  // 始终写 localStorage
-  try {
-    localStorage.setItem("v3_layout", JSON.stringify(_layoutCache, null, 2));
-  } catch { /* ignore */ }
-
-  if (!(await ensureTauri()) || !fsApi) return;
-  try {
-    const path = await layoutPath();
-    await fsApi.writeTextFile(path, JSON.stringify(_layoutCache, null, 2));
-  } catch (e) {
-    console.warn("[LayoutService] 写入 layout.json 失败:", e);
-  }
-}
-
 /** 清空缓存（测试用） */
 export function clearLayoutCache(): void {
   _layoutCache = { tabs: { groups: [], activeGroupId: "" }, cards: [] };
-  _layoutPath = null;
 }

@@ -469,3 +469,47 @@ plugins/terminal/
 | **净变动** | | **~ -90 行** |
 
 代码变少，职责更清——终端 index.tsx 只管输出，侧栏只管操作，设置走 Settings Editor。
+
+---
+
+## 九、已知问题——5.5/Phase 6 需处理
+
+> 2026-07-21 记录。不在此刻修，但设计新机制时需考虑。
+
+### 9.1 预览标签页顶替回归（Bug）
+
+**现象：** 市场点击插件 A → 斜体"插件 A (介绍)" ✅。再点插件 B → 开新标签页而不是顶替 ❌。
+
+**根因：** `useTabManager.ts:210` Phase 5 "rootfix" 把预览替换从 opt-OUT 改成了 opt-IN（`opts?.pinned === false`），但 `marketplace/sidebar.tsx:122` 不传 `pinned` → `undefined === false` → 永不替换。
+
+**归属：** Bug——修法简单（要么 marketplace 传 `pinned: false`，要么回退 opt-IN 逻辑）。建议在 5g 之前修，因为 5g 改 TabType 类型会碰到同一段代码。
+
+详见 memory `preview-tab-regression.md`。
+
+### 9.2 卸载后无法浏览插件详情
+
+**现象：** 插件卸载后，市场里点它 → 打不开介绍页。VS Code 卸载后仍可浏览扩展详情。
+
+**根因：** 市场从 `plugins/<pluginId>/plugin.json` 读元数据。卸载移走目录 → json 消失。VS Code 有服务端 marketplace + 本地缓存，浏览和安装是独立操作。
+
+**解决方向：** 建插件元数据缓存层——安装/发现时存一份 plugin.json 副本到 localStorage 或独立缓存文件。市场从缓存读，安装/卸载只改缓存中的状态字段（不删条目）。
+
+**归属：** 5h（运行时动态加载）或 5.5。与 5h 的插件加载机制紧密相关——动态加载时自然要维护一份"已知插件清单"。
+
+详见 memory `plugin-detail-after-uninstall.md`。
+
+### 9.3 F5 键——刷新 vs 调试
+
+**现状：** LinkDesk F5 = 页面刷新（webview 默认）。VS Code F5 = 调试入口。
+
+**归属：** 远期——等 MCU 调试系统（Phase 6+）实现时，F5 改为调试触发。刷新功能移到 Ctrl+R。
+
+详见 memory `f5-debug-vs-refresh.md`。
+
+### 9.4 JSON 按钮 alert 占位
+
+**现状：** Settings Editor `{}` 按钮弹 alert 显示 JSON。代码注释写明 `TODO Phase 6 §2.17：Monaco JSON 编辑器标签页`。
+
+**归属：** Phase 6——文件树 + 编辑器能力到位后，改为 `createTab("editor", {filePath: "settings.json"})` 直接打开 Monaco JSON 编辑器标签页。
+
+详见 memory `json-button-alert-placeholder.md`。

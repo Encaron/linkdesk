@@ -11,14 +11,13 @@ import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
 import PreferenceService, { initPrefs } from "./core/PreferenceService";
-import { TerminalPrefsContext, defaultTerminalPrefs, type TerminalPrefs } from "./core/TerminalPrefsContext";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
-import { initLayoutService, getTabLayout, saveTabLayout } from "./core/LayoutService";
+import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
@@ -56,7 +55,6 @@ function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
-  const [terminalPrefs, setTerminalPrefs] = useState<TerminalPrefs>({ ...defaultTerminalPrefs });
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [portName, setPortName] = useState("COM3");
   const [baudRate, setBaudRate] = useState("115200");
@@ -65,8 +63,6 @@ function App() {
   const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
-  // Phase 5e：防止 terminalPrefs sync effect 首次渲染用默认值覆盖持久化数据
-  const terminalPrefsReady = useRef(false);
 
   // Phase 3 v4: 标签页状态管理
   const {
@@ -202,7 +198,6 @@ function App() {
 
       // Phase 5f：主题/语言/强调色通过 ConfigurationApplier 框架应用。
       // onApply 在 registerConfiguration 时声明，框架保证 theme async → accent sync 的时序。
-      // fallback 旧 Prefs → Phase 5f 删除 PreferenceService 后移除
       const cfgTheme = getConfigurationValue<string>("app.theme");
       const cfgLang = getConfigurationValue<string>("app.language");
       const initTheme = cfgTheme || prefs?.theme || "Dark";
@@ -214,22 +209,8 @@ function App() {
       setTheme(initTheme as "Dark" | "Light");
       setLang(initLang as "zh" | "en");
 
-      // Phase 5e：终端设置从 ConfigurationService 读取（替代旧 PreferenceService.preferences）
-      // 逐个 key 读取以使用三层合并（Workspace > User > Default），fallback 旧 Prefs
-      const terminalKeys = [
-        "timestampFormat", "showEcho", "showLineNumbers", "separateSystemLog",
-        "lineEnding", "autoRepeat", "repeatInterval", "autoClear",
-        "receiveMode", "receiveCoding", "sendMode", "sendCoding",
-      ] as const;
-      const fromConfig: Partial<TerminalPrefs> = {};
-      for (const k of terminalKeys) {
-        const cfgVal = getConfigurationValue(`terminal.${k}`);
-        if (cfgVal !== undefined) (fromConfig as any)[k] = cfgVal;
-      }
-      // fallback：旧 PreferenceService.preferences（Phase 5f 删）
-      const oldPrefs = prefs?.preferences ?? {};
-      setTerminalPrefs({ ...defaultTerminalPrefs, ...oldPrefs, ...fromConfig });
-      terminalPrefsReady.current = true; // Phase 5e：解锁 sync effect
+      // Phase 5f：终端设置已迁移到 useConfiguration 直连——terminal.* 默认值由 plugin.json 提供，
+      // User 值由 ConfigurationService 读取，不再需要 App 壳逐 key 读取+写 state。
       setPortName(prefs?.lastPort || "COM3");
 
       // Phase 5：布局恢复——LayoutService 优先
@@ -323,21 +304,12 @@ function App() {
   );
 
   // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
-  // 此 listener 只做 React state 同步（onApply 不碰的 UI state）。
-  // theme/language/accentColor 的 apply 由 ConfigurationApplier 框架保证，不再需要 if 分支。
+  // 此 listener 只做 React state 同步（theme/language——app shell 需要）。
+  // terminal.* 变更由 useConfiguration hook 在终端组件内部响应。
   useEffect(() => {
     const unsub = onDidChangeConfiguration((key, value) => {
       if (key === "app.theme") setTheme(value as "Dark" | "Light");
       if (key === "app.language") setLang(value as "zh" | "en");
-      // Phase 5e：terminal.* 配置变更 → 回写 terminalPrefs（Settings Editor → 终端方向）
-      // Phase 5f 迁移到 terminal.onApply 后删除此分支
-      if (key.startsWith("terminal.")) {
-        const prop = key.slice("terminal.".length);
-        setTerminalPrefs((prev) => {
-          if ((prev as any)[prop] === value) return prev;
-          return { ...prev, [prop]: value };
-        });
-      }
     });
     return unsub;
   }, []);
@@ -401,9 +373,11 @@ function App() {
   }, [handleIconClick]);
 
   /* ---- 串口控制 ---- */
-  // Phase 5e：receiveCoding ref——handleToggleOpen 不依赖 terminalPrefs，通过 ref 读取避免重创建
-  const receiveCodingRef = useRef("UTF-8");
-  receiveCodingRef.current = terminalPrefs.receiveCoding;
+  // Phase 5f：receiveCoding 从 ConfigurationService 直接读取——不再依赖 terminalPrefs state
+  function getReceiveCoding(): string {
+    try { return getConfigurationValue<string>("terminal.receiveCoding") ?? "UTF-8"; }
+    catch { return "UTF-8"; }
+  }
 
   const handleToggleOpen = useCallback(async () => {
     try {
@@ -411,7 +385,7 @@ function App() {
         await invoke("close_port");
         setIsOpen(false);
       } else {
-        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: receiveCodingRef.current });
+        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: getReceiveCoding() });
         setIsOpen(true);
       }
     } catch (e: any) {
@@ -424,7 +398,7 @@ function App() {
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: receiveCodingRef.current });
+        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: getReceiveCoding() });
       } catch (e: any) {
         setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -437,7 +411,7 @@ function App() {
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: receiveCodingRef.current });
+        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: getReceiveCoding() });
       } catch (e: any) {
         setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -445,46 +419,15 @@ function App() {
     }
   }, [isOpen, baudRate]);
 
-  // Phase 5e：终端设置变更 → 持久化到 ConfigurationService（替代 PreferenceService.preferences）
-  // 双写模式：terminalPrefs 是运行时真源，ConfigurationService 是持久化真源。Phase 5f 删 TermialPrefsContext。
-  // ⚠️ terminalPrefsReady guard：防止首次渲染时 defaultTerminalPrefs 竞态覆盖 settings.json 持久化值
-  useEffect(() => {
-    if (!terminalPrefsReady.current) return;
-    const sync = async () => {
-      await setConfigurationValue("terminal.timestampFormat", terminalPrefs.timestampFormat, "user");
-      await setConfigurationValue("terminal.showEcho", terminalPrefs.showEcho, "user");
-      await setConfigurationValue("terminal.showLineNumbers", terminalPrefs.showLineNumbers, "user");
-      await setConfigurationValue("terminal.separateSystemLog", terminalPrefs.separateSystemLog, "user");
-      await setConfigurationValue("terminal.lineEnding", terminalPrefs.lineEnding, "user");
-      await setConfigurationValue("terminal.autoRepeat", terminalPrefs.autoRepeat, "user");
-      await setConfigurationValue("terminal.repeatInterval", terminalPrefs.repeatInterval, "user");
-      await setConfigurationValue("terminal.autoClear", terminalPrefs.autoClear, "user");
-      await setConfigurationValue("terminal.receiveMode", terminalPrefs.receiveMode, "user");
-      await setConfigurationValue("terminal.receiveCoding", terminalPrefs.receiveCoding, "user");
-      await setConfigurationValue("terminal.sendMode", terminalPrefs.sendMode, "user");
-      await setConfigurationValue("terminal.sendCoding", terminalPrefs.sendCoding, "user");
-    };
-    sync().catch(() => {});
-
-    // 同时保持 PreferenceService 兼容（Phase 5 过渡期——Phase 5f 删除）
-    try {
-      const p = PreferenceService.loadPrefs();
-      p.preferences = terminalPrefs as any;
-      PreferenceService.savePrefs(p).catch(() => {});
-    } catch { /* 静默 */ }
-  }, [terminalPrefs]);
+  // Phase 5f：终端设置已迁移到 useConfiguration 直连——终端组件内部 setConfigurationValue。
+  // App 壳不再需要逐 key 同步 terminalPrefs → ConfigurationService 双写。
+  // 见 plugins/terminal/index.tsx + sidebar.tsx——每个设置项独立 useConfiguration("terminal.xxx")
 
   // Phase 5：lastPort → PluginStateService（替代 PreferenceService）
   useEffect(() => {
     import("./core/PluginStateService").then(({ setPluginStateValue }) => {
       setPluginStateValue("terminal", "lastPort", portName);
     }).catch(() => {});
-    // 同时保持 PreferenceService 兼容
-    try {
-      const prefs = PreferenceService.loadPrefs();
-      prefs.lastPort = portName;
-      PreferenceService.savePrefs(prefs).catch(() => {});
-    } catch { /* 静默 */ }
   }, [portName]);
 
   // COM 口枚举 + 热插拔
@@ -525,12 +468,13 @@ function App() {
   const tabStateRef = useRef(tabState);
   tabStateRef.current = tabState;
 
-  // beforeunload：F5/关闭窗口时同步写 localStorage，不等防抖
+  // Phase 5f：beforeunload 归一化——走 LayoutService.syncWrite() 统一入口。
+  // 不再手动序列化 + localStorage.setItem——归一化到 StorageService.writeSync。
   useEffect(() => {
     const onBeforeUnload = () => {
       try {
         const s = tabStateRef.current;
-        const layout = {
+        const layout: WorkspaceLayout = {
           tabs: {
             groups: s.groups.map((g) => ({
               id: g.id,
@@ -547,7 +491,7 @@ function App() {
           },
           cards: [],
         };
-        localStorage.setItem("v3_layout", JSON.stringify(layout));
+        syncWriteLayout(layout);
       } catch { /* 静默 */ }
     };
     window.addEventListener("beforeunload", onBeforeUnload);
@@ -699,7 +643,6 @@ function App() {
     <div className="app-shell">
       <TabActionsContext.Provider value={tabActionsValue}>
       <SerialContext.Provider value={serialContextValue}>
-      <TerminalPrefsContext.Provider value={{ prefs: terminalPrefs, setPrefs: setTerminalPrefs }}>
       <div className="app-body">
         <IconBar
           activeTabType={activeTabType ?? "welcome"}
@@ -750,7 +693,6 @@ function App() {
         onToggleLang={handleToggleLang}
       />
       <ToastContainer />
-      </TerminalPrefsContext.Provider>
       </SerialContext.Provider>
       </TabActionsContext.Provider>
     </div>

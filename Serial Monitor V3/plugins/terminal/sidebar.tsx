@@ -1,10 +1,12 @@
 /**
  * 终端侧栏设置。
  * Phase 4 Step B4：从 src/components/TerminalSidebar.tsx 迁移。
+ * Phase 5f：TerminalPrefsContext 删除——改用 useConfiguration 直连 ConfigurationService。
+ *   对标 VS Code：每个设置项独立订阅 workspace.getConfiguration().get(key)。
  */
 
 import { useTranslation } from "react-i18next";
-import { useTerminalPrefs, type TerminalPrefs } from "../../src/core/TerminalPrefsContext";
+import { useConfiguration } from "../../src/core/useConfiguration";
 import Toggle from "../../src/components/shared/Toggle";
 import Select from "../../src/components/shared/Select";
 import FormRow from "../../src/components/shared/FormRow";
@@ -15,79 +17,88 @@ const lineEndings = ["\\r\\n", "\\n", "\\r"];
 
 function TerminalSidebar() {
   const { t } = useTranslation();
-  const { prefs, setPrefs } = useTerminalPrefs();
 
-  const update = (patch: Partial<TerminalPrefs>) => {
-    setPrefs({ ...prefs, ...patch });
-  };
+  // Phase 5f：每个设置项独立 useConfiguration——对标 VS Code workspace.getConfiguration().get(key)
+  const [timestampFormat, setTimestampFormat] = useConfiguration<string>("terminal.timestampFormat");
+  const [showEcho, setShowEcho] = useConfiguration<boolean>("terminal.showEcho");
+  const [showLineNumbers, setShowLineNumbers] = useConfiguration<boolean>("terminal.showLineNumbers");
+  const [separateSystemLog, setSeparateSystemLog] = useConfiguration<boolean>("terminal.separateSystemLog");
+  const [lineEnding, setLineEnding] = useConfiguration<string>("terminal.lineEnding");
+  const [autoRepeat, setAutoRepeat] = useConfiguration<boolean>("terminal.autoRepeat");
+  const [repeatInterval, setRepeatInterval] = useConfiguration<number>("terminal.repeatInterval");
+  const [autoClear, setAutoClear] = useConfiguration<boolean>("terminal.autoClear");
+  const [receiveMode, setReceiveMode] = useConfiguration<string>("terminal.receiveMode");
+  const [receiveCoding, setReceiveCoding] = useConfiguration<string>("terminal.receiveCoding");
+  const [sendMode, setSendMode] = useConfiguration<string>("terminal.sendMode");
+  const [sendCoding, setSendCoding] = useConfiguration<string>("terminal.sendCoding");
 
   return (
     <div className="terminal-sidebar">
       <div className="setting-group">
         <div className="setting-group-title">{t("显示")}</div>
         <FormRow label={t("时间戳")}>
-          <Select value={prefs.timestampFormat} options={timeFormats}
-            onChange={(v) => update({ timestampFormat: v })} />
+          <Select value={timestampFormat} options={timeFormats}
+            onChange={(v) => setTimestampFormat(v)} />
         </FormRow>
         <FormRow label={t("消息回显")}>
-          <Toggle checked={prefs.showEcho}
-            onChange={(v) => update({ showEcho: v })} />
+          <Toggle checked={showEcho}
+            onChange={(v) => setShowEcho(v)} />
         </FormRow>
         <FormRow label={t("行号显示")}>
-          <Toggle checked={prefs.showLineNumbers}
-            onChange={(v) => update({ showLineNumbers: v })} />
+          <Toggle checked={showLineNumbers}
+            onChange={(v) => setShowLineNumbers(v)} />
         </FormRow>
         <FormRow label={t("系统消息独立显示")}>
-          <Toggle checked={prefs.separateSystemLog}
-            onChange={(v) => update({ separateSystemLog: v })} />
+          <Toggle checked={separateSystemLog}
+            onChange={(v) => setSeparateSystemLog(v)} />
         </FormRow>
       </div>
 
       <div className="setting-group">
         <div className="setting-group-title">{t("发送")}</div>
         <FormRow label={t("换行符")}>
-          <Select value={prefs.lineEnding} options={lineEndings}
-            onChange={(v) => update({ lineEnding: v })} />
+          <Select value={lineEnding} options={lineEndings}
+            onChange={(v) => setLineEnding(v)} />
         </FormRow>
         <FormRow label={t("定时发送")}>
-          <Toggle checked={prefs.autoRepeat}
-            onChange={(v) => update({ autoRepeat: v })} />
+          <Toggle checked={autoRepeat}
+            onChange={(v) => setAutoRepeat(v)} />
         </FormRow>
-        {prefs.autoRepeat && (
+        {autoRepeat && (
           <FormRow label={t("间隔(ms)")}>
-            <input className="input" type="number" value={prefs.repeatInterval}
+            <input className="input" type="number" value={repeatInterval}
               style={{ width: 80 }}
-              onChange={(e) => update({ repeatInterval: parseInt(e.target.value) || 1000 })} />
+              onChange={(e) => setRepeatInterval(parseInt(e.target.value) || 1000)} />
           </FormRow>
         )}
         <FormRow label={t("发送后清空")}>
-          <Toggle checked={prefs.autoClear}
-            onChange={(v) => update({ autoClear: v })} />
+          <Toggle checked={autoClear}
+            onChange={(v) => setAutoClear(v)} />
         </FormRow>
       </div>
 
       <div className="setting-group">
         <div className="setting-group-title">{t("编码")}</div>
         <FormRow label={t("接收模式")}>
-          <Select value={prefs.receiveMode}
+          <Select value={receiveMode}
             options={[{ value: "text", label: t("文本") }, { value: "hex", label: "HEX" }]}
-            onChange={(v) => update({ receiveMode: v as TerminalPrefs["receiveMode"] })} />
+            onChange={(v) => setReceiveMode(v)} />
         </FormRow>
         <FormRow label={t("接收编码")}>
-          <Select value={prefs.receiveCoding} options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
-            onChange={(v) => update({ receiveCoding: v })} />
+          <Select value={receiveCoding} options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
+            onChange={(v) => setReceiveCoding(v)} />
         </FormRow>
         <FormRow label={t("发送模式")}>
-          <Select value={prefs.sendMode}
+          <Select value={sendMode}
             options={[{ value: "text", label: t("文本") }, { value: "hex", label: "HEX" }]}
-            onChange={(v) => update({ sendMode: v as TerminalPrefs["sendMode"] })} />
+            onChange={(v) => setSendMode(v)} />
         </FormRow>
         <FormRow label={t("发送编码")}>
           <Select
-            value={prefs.sendCoding}
+            value={sendCoding}
             options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
-            onChange={(v) => update({ sendCoding: v })}
-            disabled={prefs.sendMode === "hex"}
+            onChange={(v) => setSendCoding(v)}
+            disabled={sendMode === "hex"}
           />
         </FormRow>
       </div>

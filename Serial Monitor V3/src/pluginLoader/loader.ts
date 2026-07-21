@@ -17,7 +17,7 @@ import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
 import { pushToast } from "../core/toast";
-import PreferenceService from "../core/PreferenceService";
+// Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
@@ -451,11 +451,8 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
 
 function getDisabledList(): string[] {
   try {
-    // Phase 5：优先读 PluginStateService（新路径），fallback PreferenceService（旧数据）
-    const fromPss = getPluginStateValue<string[]>("app", "disabledPlugins");
-    if (fromPss) return fromPss;
-    // 过渡期：从旧 Prefs 读取并迁移
-    return PreferenceService.loadPrefs().disabledPlugins ?? [];
+    // Phase 5f：PluginStateService 唯一真源（PreferenceService 兜底读已清除）
+    return getPluginStateValue<string[]>("app", "disabledPlugins") ?? [];
   } catch {
     return [];
   }
@@ -549,7 +546,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       }
       // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
       pushToast({ message: `已启用：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      // Phase 5f：PreferenceService 双写已清除——PluginStateService 是唯一真源
       setTimeout(() => window.location.reload(), 1500);
       console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"（自动重载）`);
       return { success: true, needRestart: true };
@@ -589,13 +586,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       const iconOrder = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
       const filtered = iconOrder.filter((id) => id !== pluginId);
       await setPluginStateValue("app", "iconOrder", filtered);
-      // 同步清 PreferenceService 兜底——IconBar.loadOrder() 在 PluginStateService
-      // 数据丢失时会退回读 PreferenceService，不同步→图标回到旧位置（B72）
-      const prefs = PreferenceService.loadPrefs();
-      if (prefs.iconOrder) {
-        prefs.iconOrder = filtered;
-        await PreferenceService.savePrefs(prefs);
-      }
+      // Phase 5f：PreferenceService 双写已清除——PluginStateService 是 iconOrder 唯一真源
     } catch { /* 静默 */ }
 
     // Phase 4.4：通知壳关闭使用此插件的标签页
@@ -652,7 +643,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
         { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
       ],
     });
-    try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+    // Phase 5f：PreferenceService 双写已清除
     return { success: true, pluginId, needRestart: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -744,7 +735,7 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
       }
       // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
       pushToast({ message: `已安装：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      // Phase 5f：PreferenceService 双写已清除
       setTimeout(() => window.location.reload(), 1500);
       return { success: true };
     }
