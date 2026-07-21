@@ -45,11 +45,18 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
 
-  // 监听配置变更
+  // 监听配置值变更
   useEffect(() => {
     import("../../core/ConfigurationService").then(({ onDidChangeConfiguration }) => {
       onDidChangeConfiguration(() => setVersion((v) => v + 1));
     });
+  }, []);
+
+  // 监听插件卸载/禁用——配置分组需要刷新（unregisterConfiguration 不触发 onDidChangeConfiguration）
+  useEffect(() => {
+    const onPluginRemoved = () => setVersion((v) => v + 1);
+    window.addEventListener("plugin-removed", onPluginRemoved);
+    return () => window.removeEventListener("plugin-removed", onPluginRemoved);
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n

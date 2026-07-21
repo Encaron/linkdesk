@@ -29,8 +29,9 @@ Phase 1-5e ✅ 完成 + ConfigurationApplier ✅ → **Phase 5f 🔜 StorageServ
 | **5c** | 命令面板 + 齿轮菜单走 Registry（替代硬编码） | ✅ | ✅ |
 | **5d** | context key + when 条件打通（4 核心 key 运行时更新 + 菜单/命令过滤 + plugin.json 声明 when + 31 个解析器测试） | ✅ | ✅ |
 | **5e** | 协议下拉框 + 终端 12 设置项迁移 + 接收编码/HEX 模式 + Settings Editor 中文标签 | ✅ | ✅ |
-| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ✅ | 🔜 |
-| **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动 | ✅ | 📋 |
+| **5f** | StorageService + 删旧双写 + 终端专用通道拆除（10 项） | ✅ | 🔜 |
+| **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | 📋 |
+| **5h** | 运行时动态加载——取代 `import.meta.glob`，插件安装无需刷新 | ✅ | 📋 |
 | 5.5 | 三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明 + 侧栏改为控制面板 | ✅ | 📋 |
 | 6 | 文件树 + 主题插件化 + 语言插件化（纯消费者） | ❌ | 📋 |
 | 7 | 卡片工作台 + 数据管道（纯插件）| ❌ | 📋 |

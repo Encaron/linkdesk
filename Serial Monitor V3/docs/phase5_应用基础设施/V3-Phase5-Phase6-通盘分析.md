@@ -857,7 +857,29 @@ Tauri window API                   标题栏暗色化 + 系统菜单（文件/�
 
 ## 四、实施顺序
 
-**第 0 步：Phase 5.5（Phase 6 的前提—— ~150 行）**
+> 2026-07-21 更新：Phase 5h（运行时动态加载）插入 5g 和 5.5 之间。5h 是最后一个"改框架"的 Phase——之后 5.5 是桥，Phase 6 是纯消费者。
+> 整体链路：5f（持久化归一化）→ 5g（类型系统去硬编码）→ 5h（运行时动态加载）→ 5.5（三栏交互对标）→ Phase 6（零框架改动）。
+
+**第 -1 步：Phase 5h — 运行时动态加载（Phase 6 的前提—— ~400 行）**
+
+5h 解决架构级根因：`import.meta.glob({ eager: true })` 是 Vite 构建时解析——新插件文件在磁盘上，但 JS bundle 不知道 → 必须刷新页面。替换为运行时动态加载后，插件安装/卸载/启用/禁用全部即时生效。
+
+详见 [V3-Phase5-设计.md §9.2](./V3-Phase5-设计.md) — 5h 章。
+
+```
+  ├── 插件独立构建脚本（Vite library mode，~100 行）
+  ├── Tauri 自定义 "plugin://" 协议（Rust ~50 行）
+  ├── 运行时加载器——替换 import.meta.glob（~150 行）
+  ├── 插件注册契约——window.__v3_registerPlugin()（~30 行接口）
+  ├── 安装/卸载即时生效——不刷新页面
+  └── React 单例保证——插件和核心共用 React 实例
+```
+
+**5h 依赖 5g：** 5g 把 TabType 从联合类型改为 `string`、硬编码判断改为 plugin.json 声明——5h 的 loader 才能完全声明驱动，不需要 switch 插件 ID。
+
+**5.5 受益于 5h：** 新插件安装后 viewRole 声明立即被读取 → 图标点击行为自动正确（sidebarPrimary/tabPrimary/tabOnly）→ 不需要改 App.tsx。
+
+**第 0 步：Phase 5.5 — 三栏交互对标 VS Code（~150 行）**
 
 详见 [V3-Phase5.5-三栏交互对标.md](../phase5.5_交互对标/V3-Phase5.5-三栏交互对标.md)。
 

@@ -993,12 +993,14 @@ Phase 8 — OLED（独立插件）
 | 批次 | 内容 | 行数 | 风险 | 状态 |
 |:--:|------|:--:|:--:|:--:|
 | **5a** | Registry 暗线 + 迁移双写 + Settings Editor 骨架 | ~1,800 | 低 | ✅ 完成 |
-| **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件 | ~150 | 低 | 🔜 |
-| **5c** | 命令面板 + 齿轮菜单走 Registry | ~120 | 中 | 📋 |
-| **5d** | context key + when 条件打通 | ~80 | 中 | 📋 |
-| **5e** | 协议下拉框 + 终端设置迁移到 Settings Editor | ~80 | 低 | 📋 |
-| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ~150 | 中 | 📋 |
+| **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件 | ~150 | 低 | ✅ 完成 |
+| **5c** | 命令面板 + 齿轮菜单走 Registry | ~120 | 中 | ✅ 完成 |
+| **5d** | context key + when 条件打通 | ~80 | 中 | ✅ 完成 |
+| **5e** | 协议下拉框 + 终端设置迁移到 Settings Editor | ~80 | 低 | ✅ 完成 |
+| **5f** | StorageService + 删旧双写 + 终端专用通道拆除 | ~150 | 中 | 🔜 |
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动 | ~150 | 中 | 📋 |
+| **5h** | 运行时动态加载——取代 `import.meta.glob`，插件安装无需刷新 | ~400 | 中 | 📋 |
+| **5.5** | 三栏交互对标 VS Code + 终端布局重设计——`viewRole` 声明 | ~150 | 低 | 📋 |
 
 ### 9.2 每批交付物 + 验证标准
 
@@ -1050,6 +1052,8 @@ Phase 8 — OLED（独立插件）
 **5g — 类型系统去硬编码 + 插件声明驱动：**
 
 > 5g 主题：`TabType` 联合类型写死了 8 个插件 ID 字面量、`TAB_IDENTITY` 表重复了 plugin.json 的 tabBehavior、多个判断函数硬编码了特定插件的特殊行为。改为运行时从 viewRegistry + plugin.json 推导。
+> 
+> **深度分析：** [V3-Phase5g-类型系统去硬编码-深度分析.md](V3-Phase5g-类型系统去硬编码-深度分析.md)——来龙去脉 / Phase 3→4→5 的历史 / "单线程→多线程"比喻 / VS Code EditorInput 对照 / 利弊权衡总表。
 
 - 交付：
   1. **TabType 联合类型 → `string`**——[useTabManager.ts:26](Serial Monitor V3/src/hooks/useTabManager.ts#L26) 的 8 个硬编码字面量改为动态。`TabType` 不再是 `"terminal" | "workspace" | ...` 而是 `string`（或从 viewRegistry 推导的联合）。
@@ -1060,25 +1064,58 @@ Phase 8 — OLED（独立插件）
   6. **coreCommands.ts 硬编码清理**——[coreCommands.ts:48](Serial Monitor V3/src/core/coreCommands.ts#L48) `pluginId: "settings"` 改为从 viewRegistry 查找。
   7. **workspace.schema.json enum → 任意字符串**——[workspace.schema.json:19](Serial Monitor V3/public/schemas/workspace.schema.json#L19) `"enum": ["terminal", "workspace", ...]` 改为接受任意字符串，加新插件类型不需改 schema。
 
+**5h — 运行时动态加载（取代 `import.meta.glob`）：**
+
+> 5h 主题：Phase 1-5g 的插件加载依赖 Vite 的 `import.meta.glob({ eager: true })`——构建时把所有插件 JS 打进 bundle。安装新插件 → 磁盘上有新文件但 bundle 不知道 → 必须刷新页面。这是架构级的"安装需刷新"根因。5h 替换为运行时动态加载——每个插件独立构建、Tauri 自定义协议提供 `plugin://` URL、loader 运行时扫描+动态注入。安装/卸载/启用/禁用全部即时生效，不刷新页面。
+
+- 交付：
+  1. **插件独立构建**——每个插件单独 `vite build`（library mode），产出 `plugins/<id>/dist/index.js`。构建脚本 ~100 行。插件 JS 是一个自包含 bundle，React 等共享依赖 externalize（用核心的 React 实例，避免双 React hook 错误）。
+  2. **Tauri 自定义协议**——注册 `plugin://` 协议，映射到 `plugins/` 目录。`plugin://terminal/index.js` → 读取 `plugins/terminal/dist/index.js` 返回。Rust 侧 ~50 行。
+  3. **运行时加载器**——替换 `import.meta.glob({ eager: true })`。启动时：`list_plugin_dirs`（已有）扫描目录 → 读 `plugin.json` → 对 view 插件动态创建 `<script>` 标签或 `import()` 加载 JS bundle。~150 行。
+  4. **插件注册契约**——插件 JS 加载后通过 `window.__v3_registerPlugin(manifest, exports)` 向核心注册。核心收到后走和现在完全相同的 registerViewPlugin / registerConfiguration / registerCommands 等路径。~30 行接口定义。
+  5. **安装/卸载即时生效**——安装：文件放到 `plugins/` → 触发目录扫描 → 动态加载 → 注册 → IconBar 出现图标。卸载：unregister + 文件移到 `.disabled/` → IconBar 图标消失。均不刷新页面。
+  6. **构建流程整合**——`npm run dev` 时自动构建所有插件（或按需构建变更的插件）。已有 `vite build` 基础设施，5h 加一个构建脚本 + npm script 别名。
+- 依赖：**5g**（类型系统已去硬编码——`TabType` 是 `string`，loader 不 switch 插件 ID；`BOTTOM_ICONS` 改为 `plugin.json` 声明——新插件自动定位图标位置）。**5f**（持久化已归一化——插件加载状态走 `PluginStateService` 独立文件）。
+- 为 5.5 铺路：5.5 的 `viewRole` 声明后，新安装的插件自动走正确的交互分支——不需要改 App.tsx。
+- 为 Phase 6 铺路：Phase 6 的 19 个任务中，文件树/主题浏览器等新插件安装后即时可用。Marketplace 安装流程完整体验闭环——搜索→安装→即时出现在图标栏，不需要"安装后请刷新"的 toast。
+- 为什么放在 5g 之后而不是 5f 里：5f 已经 10 个 item，体量已大。5g 给类型系统松绑后，5h 的 loader 可以完全声明驱动——不需要同时处理"去硬编码"和"换加载机制"两件事。分两步做，每步 debug 范围清晰。
+- **设计要点：React 单例**——插件和核心必须共用同一个 React 实例。插件的 Vite 构建配置将 `react` / `react-dom` / `react-i18next` 等标记为 external，运行时从核心获取。不这样做 → 两个 React 实例 → hooks 炸。
+- 验证：
+  1. `npx tauri dev` 正常启动，终端收发正常
+  2. 插件市场安装一个 `.disabled/` 中的插件 → 图标栏立即出现图标，无需 F5
+  3. 卸载一个插件 → 图标栏图标立即消失，设置页分组消失
+  4. 禁用/启用 → 即时生效
+  5. F5 刷新 → 插件状态保持（已安装的还在，已卸载的没有复活）
+  6. 现有 141 测试全过
+
 ### 9.3 批次依赖链
 
 ```
 5a（Registry 暗线）✅ ── 基础，所有后续批次依赖它
   │
-  ├── 5b（右键归一化）── 独立，无其他批次依赖
+  ├── 5b（右键归一化）✅ ── 独立，无其他批次依赖
   │
-  ├── 5c（命令面板+齿轮）── 依赖 5a（CommandRegistry + MenuRegistry）
+  ├── 5c（命令面板+齿轮）✅ ── 依赖 5a（CommandRegistry + MenuRegistry）
   │     │
-  │     └── 5d（when 条件）── 依赖 5c（菜单走 Registry 后 when 才有消费端）
+  │     └── 5d（when 条件）✅ ── 依赖 5c（菜单走 Registry 后 when 才有消费端）
   │
-  └── 5e（协议+设置迁移）── 依赖 5a（ProtocolRegistry + ConfigurationService）
+  └── 5e（协议+设置迁移）✅ ── 依赖 5a（ProtocolRegistry + ConfigurationService）
         │
 5f（专用通道拆除+StorageService）── 依赖 5a-5e 全部完成
         │
 5g（类型系统去硬编码）── 依赖 5f（专用通道拆干净后才改类型系统）
+        │
+5h（运行时动态加载）── 依赖 5f+5g（持久化归一化 + 类型系统灵活）
+        │
+5.5（三栏交互对标 VS Code）── 依赖 5g+5h（viewRole 声明 + 动态加载就绪）
+        │
+Phase 6（文件树+主题/语言插件化）── 依赖 5.5（viewRole 机制就绪）
+        └── 零框架改动承诺成立（5h 是最后一个改框架的 Phase）
 ```
 
 **5b 和 5e 互不依赖，可并行。** 建议串行——每批交一个用户验证一个，防止多线并进出问题难以定位。
+
+**5h 和 5.5 的边界：** 5h 管"插件怎么被加载"（构建→协议→动态注入），5.5 管"插件加载后怎么和壳交互"（viewRole→侧栏/标签页行为）。两层互不重叠——5h 改了 loader 不改 App.tsx 交互逻辑，5.5 改了 App.tsx 交互逻辑不改 loader。5.5 受益于 5h（新插件安装后 viewRole 声明立即生效），但实现上不依赖 5h 的具体加载细节。
 
 ### 9.4 每批停止标准
 
