@@ -299,7 +299,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
     const view = new EditorView({
       doc: "",
       extensions: [
-        lineNumberCompartment.current.of(prefs.showLineNumbers ? lineNumbers() : []),
+        lineNumberCompartment.current.of(showLineNumbers ? lineNumbers() : []),
         darkTheme,
         lineDecoField,
         timestampMarkField,
@@ -1056,7 +1056,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
       />
 
       {/* 系统消息区 */}
-      {prefs.separateSystemLog && systemLog.length > 0 && (
+      {separateSystemLog && systemLog.length > 0 && (
         <div className="system-log-area">
           {systemLog.slice(-2).map((msg, i) => (
             <div key={i} className="system-log-line">{msg}</div>
