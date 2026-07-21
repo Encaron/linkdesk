@@ -384,6 +384,11 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     loadLanguagePlugin(pluginId, manifest);
   }
 
+  // B77：运行时插件也追加到图标栏末尾
+  if (Component) {
+    await appendToIconOrder(pluginId);
+  }
+
   loadedPluginIds.add(pluginId);
 }
 
@@ -641,6 +646,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       // loadPlugin 使用 Vite 构建的 chunk（模块实例和核心共享），已验证可工作
       // loadPluginRuntime 用于不在 glob 中的外部插件（通过 plugin:// 协议加载独立构建产物）
       await loadPlugin(pluginId);
+      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       pushToast({
         message: `已启用：${manifest.name}（即时生效）`,
         source: pluginId,
@@ -723,6 +729,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       const manifest = pluginManifests[manifestKey];
       // 清单在 glob 中 → 直接 loadPlugin 即时生效
       await loadPlugin(pluginId);
+      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
       pushToast({
         message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
@@ -845,6 +852,7 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
       }
       // Phase 5h：工厂插件（在 glob 中）——走 loadPlugin 重新加载（Vite chunk，模块实例共享）
       await loadPlugin(pluginId);
+      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       pushToast({
         message: `已安装：${manifest.name}（即时生效）`,
         source: pluginId,
@@ -867,6 +875,21 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
+}
+
+/* ── 图标排序辅助 ── */
+
+/**
+ * Phase 5h/B77：将插件追加到图标栏末尾。
+ * 重装/启用/安装后调用——确保 F5 后图标位置不变（不会回退到注册顺序）。
+ */
+async function appendToIconOrder(pluginId: string): Promise<void> {
+  try {
+    const order = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
+    const filtered = order.filter((id) => id !== pluginId); // 去重
+    filtered.push(pluginId);
+    await setPluginStateValue("app", "iconOrder", filtered);
+  } catch { /* 非关键路径——静默 */ }
 }
 
 /* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */
