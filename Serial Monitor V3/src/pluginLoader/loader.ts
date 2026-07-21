@@ -879,12 +879,10 @@ import { getViewPlugin } from "./viewRegistry";
 let _watchInterval: ReturnType<typeof setInterval> | null = null;
 
 /**
- * Phase 4 P1-5：启动插件目录轮询。
- * 每 2 秒调用 Rust `list_plugin_dirs` 检测新目录。
- * - 发现新 .json 插件（theme/language）→ 即时加载 + toast
- * - 发现新 .tsx 插件（view）→ toast 提示重启
- *
- * 设计依据：[V3-插件系统与UI重构设计.md §4 "文件监听与热加载"]
+ * Phase 5h：文件监听——轮询检测新插件目录。
+ * 每 2 秒调用 Rust `list_plugin_dirs`。
+ * - 工厂插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
+ * - 运行时插件（不在 glob 中）→ loadPluginRuntime（plugin:// 协议）
  */
 export function startPluginWatcher(): void {
   if (_watchInterval) return;
@@ -896,30 +894,26 @@ export function startPluginWatcher(): void {
         if (loadedPluginIds.has(dir)) continue;
         if (getDisabledList().includes(dir)) continue;
 
-        // 新目录——检查类型
         const manifestKey = Object.keys(pluginManifests).find(
           (k) => extractPluginId(k) === dir
         );
         if (manifestKey) {
+          // 工厂插件——已在 Vite 构建中，直接 loadPlugin
+          await loadPlugin(dir);
           const manifest = pluginManifests[manifestKey];
-          if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
-            await loadPlugin(dir);
-            pushToast({ message: `发现新插件：${manifest.name}（即时生效）`, ttl: 5000 });
-          } else {
-            pushToast({
-              message: `发现新插件：${manifest.name || dir}。重启后生效。`,
-              ttl: 8000,
-            });
-            loadedPluginIds.add(dir); // 标记已知，不再重复提示
-          }
+          pushToast({ message: `发现新插件：${manifest.name}（即时生效）`, ttl: 5000 });
+        } else {
+          // Phase 5h：运行时插件——不在 glob 中，尝试 plugin:// 加载
+          await loadPluginRuntime(dir);
+          // loadPluginRuntime 内部已 toast（成功或失败）
         }
       }
     } catch {
-      // 静默——polling 失败不影响运行（Tauri 环境未就绪等）
+      // 静默——polling 失败不影响运行
     }
   }, 2000);
 
-  console.log("[pluginLoader] 文件监听已启动（2s 轮询）");
+  console.log("[pluginLoader] 文件监听已启动（2s 轮询，Phase 5h）");
 }
 
 /** 停止文件监听 */
