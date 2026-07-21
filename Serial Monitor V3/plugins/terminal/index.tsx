@@ -949,22 +949,22 @@ function TerminalView({ isActive }: TerminalViewProps) {
     return () => window.removeEventListener("v3-clear-terminal", handler);
   }, []);
 
-  // C4b Bug 7：无活跃会话时显示占位——用户需在侧栏选择或新建会话
-  if (!activeSession) {
-    return (
-      <div className="terminal-view">
+  // C4b Bug 7：无活跃会话时，终端内容 CSS 隐藏 + 占位 overlay。
+  // 注意：不能 return 早期退出——CM6 的 useEffect 在 mount 时运行，如果 cmContainer
+  // div 不在 DOM 中，cmView.current 永远是 null，之后创建会话也无法初始化。
+  return (
+    <div className="terminal-view">
+      <ControlPanel />
+
+      {!activeSession && (
         <div className="terminal-placeholder">
           <span className="terminal-placeholder-icon">▸</span>
           <p className="terminal-placeholder-title">{t("会话已失效")}</p>
           <p className="terminal-placeholder-hint">{t("请在侧栏选择一个终端会话，或新建一个以开始使用")}</p>
         </div>
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="terminal-view">
-      <ControlPanel />
+      <div className={`terminal-body${activeSession ? "" : " hidden"}`}>
 
       {/* 工具栏 */}
       <div className="terminal-toolbar">
@@ -1176,6 +1176,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
             {t("发送")}
           </button>
         </div>
+      </div>
       </div>
     </div>
   );

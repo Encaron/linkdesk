@@ -10,6 +10,19 @@
 
 /* === C4b Bug 7：会话已失效占位 === */
 
+/* terminal-body 始终在 DOM 中——保证 CM6 在 mount 时初始化。
+   activeSession 为 null 时隐藏内容、显示占位。 */
+.terminal-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.terminal-body.hidden {
+  display: none;
+}
+
 .terminal-placeholder {
   flex: 1;
   display: flex;
