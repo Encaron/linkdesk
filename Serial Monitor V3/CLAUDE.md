@@ -110,7 +110,7 @@ npx vitest run       # 单元测试（91 个）
 | Phase 3.5 任务 | `docs/phase3_标签页分屏/V3-Phase3.5-品质打磨.md` |
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
-| 写插件 | `docs/插件开发/`——plugin.json 规范 + 视图/协议插件开发指南 + JSON Schema |
+| 写插件 | `docs/插件开发/`——plugin.json 规范 + 视图/协议插件开发指南 + **插件 UI 写法规约（🔥 右键菜单/持久化/快捷键规则）** + JSON Schema |
 | 已确认决策 | memory `design-decisions.md` + `phase4-design-decisions.md` |
 | 已知坑 | memory `v3-pitfalls.md` + `phase3-drag-bugs.md` |
 | 主题系统 | memory `theme-system.md` |

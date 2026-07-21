@@ -174,7 +174,9 @@
   font-weight: 500;
   color: var(--text-primary);
   margin-bottom: 3px;
-  overflow-wrap: break-word;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .settings-row-desc {

@@ -21,7 +21,7 @@ import PreferenceService from "../core/PreferenceService";
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
-import { registerConfiguration, registerConfigurationDefaults } from "../core/ConfigurationRegistry";
+import { registerConfiguration, registerConfigurationDefaults, unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
 import type { ManifestMenuItem } from "../core/MenuRegistry";
 import { registerMenuItems } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
@@ -107,10 +107,25 @@ export async function initPluginLoader(): Promise<void> {
     installed.add(extractPluginId(path));
   }
 
-  // 2. 加载每个插件（跳过禁用的）
+  // 2. 对标 VS Code：运行时扫描文件系统，过滤掉已卸载的插件
+  //    import.meta.glob 是构建时打包的——文件被 Rust 移走后 glob 仍保留旧路径。
+  //    VS Code 的做法是启动时 scan extensions 目录，目录里没有的自然不加载。
+  let fsInstalled = new Set<string>();
+  try {
+    const dirs = await invoke<string[]>("list_plugin_dirs");
+    fsInstalled = new Set(dirs);
+  } catch {
+    // 非 Tauri 环境（npm run dev 浏览器模式）——无 invoke，回退到 glob 全量加载
+  }
+
+  // 3. 加载每个插件（跳过禁用 + 跳过文件系统不存在的）
   for (const pluginId of installed) {
     if (disabled.includes(pluginId)) {
       console.log(`[pluginLoader] 插件 "${pluginId}" 已禁用——跳过`);
+      continue;
+    }
+    if (fsInstalled.size > 0 && !fsInstalled.has(pluginId)) {
+      console.log(`[pluginLoader] 插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
       continue;
     }
     try {
@@ -120,7 +135,7 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
-  // 3. 错误汇总
+  // 4. 错误汇总
   if (errors.length > 0) {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
     pushToast({
@@ -478,6 +493,8 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
       await saveDisabledList(list);
     }
     unregisterViewPlugin(pluginId);
+    unregisterConfiguration(pluginId);       // B70——卸载/禁用后 Settings Editor 残留
+    unregisterConfigurationDefaults(pluginId);
     loadedPluginIds.delete(pluginId);
     // Phase 4.4：通知壳关闭使用此插件的标签页
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
@@ -518,16 +535,24 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      // 清单在 glob 中 → 直接 loadPlugin（theme/language/view 都可以，glob 条目构建时已存在）
-      await loadPlugin(pluginId);
-      pushToast({
-        message: `已启用：${manifest.name}`,
-        source: pluginId,
-        severity: "info",
-        ttl: 5000,
-      });
-      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
-      return { success: true };
+      // .json 插件（theme/language/file）——即时生效
+      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
+        await loadPlugin(pluginId);
+        pushToast({
+          message: `已启用：${manifest.name}（即时生效）`,
+          source: pluginId,
+          severity: "info",
+          ttl: 5000,
+        });
+        console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
+        return { success: true };
+      }
+      // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
+      pushToast({ message: `已启用：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
+      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      setTimeout(() => window.location.reload(), 1500);
+      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"（自动重载）`);
+      return { success: true, needRestart: true };
     }
 
     return { success: true, needRestart: true };
@@ -555,6 +580,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // 前端：移除注册
     unregisterViewPlugin(pluginId);
+    unregisterConfiguration(pluginId);       // B70——卸载后 Settings Editor 残留（运行时）
+    unregisterConfigurationDefaults(pluginId);
     loadedPluginIds.delete(pluginId);
 
     // Phase 5：清理 iconOrder，确保重装后排到图标栏末尾
@@ -562,6 +589,13 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       const iconOrder = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
       const filtered = iconOrder.filter((id) => id !== pluginId);
       await setPluginStateValue("app", "iconOrder", filtered);
+      // 同步清 PreferenceService 兜底——IconBar.loadOrder() 在 PluginStateService
+      // 数据丢失时会退回读 PreferenceService，不同步→图标回到旧位置（B72）
+      const prefs = PreferenceService.loadPrefs();
+      if (prefs.iconOrder) {
+        prefs.iconOrder = filtered;
+        await PreferenceService.savePrefs(prefs);
+      }
     } catch { /* 静默 */ }
 
     // Phase 4.4：通知壳关闭使用此插件的标签页
@@ -697,13 +731,21 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
     );
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
-      await loadPlugin(pluginId);
-      pushToast({
-        message: `已安装：${manifest.name}`,
-        source: pluginId,
-        severity: "info",
-        ttl: 6000,
-      });
+      // .json 插件（theme/language/file）——即时生效
+      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
+        await loadPlugin(pluginId);
+        pushToast({
+          message: `已安装：${manifest.name}（即时生效）`,
+          source: pluginId,
+          severity: "info",
+          ttl: 6000,
+        });
+        return { success: true };
+      }
+      // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
+      pushToast({ message: `已安装：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
+      try { const prefs = PreferenceService.loadPrefs(); await PreferenceService.savePrefs(prefs); } catch {}
+      setTimeout(() => window.location.reload(), 1500);
       return { success: true };
     }
     // glob 中没有——外部装过又卸了的插件，需重启

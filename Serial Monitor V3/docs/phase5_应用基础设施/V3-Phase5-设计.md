@@ -1037,6 +1037,14 @@ Phase 8 — OLED（独立插件）
   4. **TerminalPrefsContext 删除 + TerminalSidebar 移入插件**——[TerminalPrefsContext.ts](Serial Monitor V3/src/core/TerminalPrefsContext.ts)（45 行）整个删除，消费者改用 `useConfiguration("terminal.xxx")`。[TerminalSidebar.tsx](Serial Monitor V3/src/components/TerminalSidebar.tsx)（91 行）从 core 移到 `plugins/terminal/`。
   5. **App.tsx 终端硬编码清理**——[App.tsx:421](Serial Monitor V3/src/App.tsx#L421) `setConfigurationValue("terminal.timestampFormat", ...)` 和 [App.tsx:435](Serial Monitor V3/src/App.tsx#L435) `setPluginStateValue("terminal", "lastPort", ...)` ——Shell 不应该知道具体插件 ID。
   6. **全量回归**——`验证清单.md` 所有 checkbox 通过。终端旧功能全量回归（12 项）。F5 刷新后主题/语言/布局全部保留。
+  7. **PluginStateService 文件分离 + quickSends 迁移**——[PluginStateService.ts](Serial Monitor V3/src/core/PluginStateService.ts#L113-123) 目前和 ConfigurationService 共用 `settings.json`（read-modify-write），两个服务同时写会互相覆盖。5f 改为读/写独立文件（`plugin-states.json`）。同时 [plugins/terminal/index.tsx:200-219](Serial Monitor V3/plugins/terminal/index.tsx#L200) `quickSends`（AT 指令预设）目前直接走 PreferenceService 读写，完全绕开了 ConfigurationService——迁移到 `terminal.quickSends`，注册 onApply。
+  8. **beforeunload 归一化**——[App.tsx:528-555](Serial Monitor V3/src/App.tsx#L528) `beforeunload` 直接 `localStorage.setItem("v3_layout", ...)` 序列化标签页状态，和 [LayoutService.ts:158-171](Serial Monitor V3/src/core/LayoutService.ts#L158) 的 `_persist()` 各走各的，两套序列化路径可能不同步。5f 改为：LayoutService 暴露 `syncWrite()` 方法，`beforeunload` 只调用这一个入口。
+  9. **PreferenceService 兜底读清理**——以下 4 处 `PreferenceService.loadPrefs()` 兜底读在数据迁移完成后应删除（目前新数据已走 PluginStateService/ConfigurationService，旧数据兜底是死代码）：
+     - [IconBar.tsx:39](Serial Monitor V3/src/components/IconBar.tsx#L39) — `iconOrder` 兜底
+     - [WelcomeView.tsx:33](Serial Monitor V3/src/components/views/WelcomeView.tsx#L33) — `recentViews` 兜底
+     - [loader.ts:443](Serial Monitor V3/src/pluginLoader/loader.ts#L443) — `disabledPlugins` 兜底
+     - [loader.ts:621](Serial Monitor V3/src/pluginLoader/loader.ts#L621) — 插件安装后的空操作 PreferenceService 调用（死代码）
+  10. **插件 `registerOnApply` 缺口补齐**——plugin.json（JSON）不能存函数→插件的配置项只能在 React 组件里用 `useConfiguration()` hook 被动响应，不能做非 React 副作用（通知 Tauri 后端、写文件）。[ConfigurationApplier.ts](Serial Monitor V3/src/core/ConfigurationApplier.ts) 新增 `registerOnApply(key, callback): () => void`——插件代码在 mount 时注册，unmount 时 dispose。对标 VS Code `onDidChangeConfiguration` 订阅模式。注册时立即调一次 currentValue，之后每次变更自动调。
 - 为什么集中做：持久化 bug 反复出现（四轮，同一个模式：写了没读/读了没写/写A读B/异步落盘 F5 竞态），根因是四个服务各自实现 I/O。归一成一个 `StorageService` 后，"持久化 bug"不再是一个 bug 类别。终端耦合同理——不是代码写坏了，是 Phase 3-4 缺乏通用设施。现在设施齐了，统一拆除。
 
 **5g — 类型系统去硬编码 + 插件声明驱动：**
