@@ -19,9 +19,11 @@ import { registerTheme } from "../core/ThemeEngine";
 import { pushToast } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "../core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+// Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
+import { PluginLifecycle, initLifecycleConsumers, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
-import { registerConfiguration, registerConfigurationDefaults, unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
+import { registerConfiguration, registerConfigurationDefaults } from "../core/ConfigurationRegistry";
 import type { ManifestMenuItem } from "../core/MenuRegistry";
 import { registerMenuItems } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
@@ -98,6 +100,9 @@ export async function initPluginLoader(): Promise<void> {
   if (_initialized) return;
   _initialized = true;
 
+  // Phase 5h 行为归一化：注册 lifecycle 消费端（iconOrder/toast/config/tab——只注册一次）
+  initLifecycleConsumers();
+
   const errors: string[] = [];
   const disabled = getDisabledList();
 
@@ -129,7 +134,7 @@ export async function initPluginLoader(): Promise<void> {
       continue;
     }
     try {
-      await loadPlugin(pluginId);
+      await loadPlugin(pluginId, "startup");
     } catch (e: any) {
       errors.push(`${pluginId}: ${e?.message || e}`);
     }
@@ -213,7 +218,10 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   }
 }
 
-async function loadPlugin(pluginId: string): Promise<void> {
+async function loadPlugin(
+  pluginId: string,
+  reason: PluginInstallEvent["reason"] = "startup"
+): Promise<void> {
   const manifestKey = Object.keys(pluginManifests).find(
     (k) => extractPluginId(k) === pluginId
   );
@@ -229,8 +237,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
     console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
     return;
   }
-
-  // type 字段不再必需——贡献点由 manifest 的实际声明检测（对标 VS Code contributes）
 
   // P1-6 #6: minAppVersion 版本检查
   if (manifest.minAppVersion) {
@@ -248,7 +254,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
   }
 
   // VS Code 对标：不 switch type——检测 manifest 实际声明了什么，每种贡献独立处理。
-  // 一个插件可以同时贡献视图 + 侧栏 + 状态栏 + 协议……新增贡献类型只需加一个 if。
   let contributed = false;
 
   if (manifest.entry) {
@@ -260,7 +265,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
     loadThemePlugin(pluginId, manifest);
     contributed = true;
   } else if (manifest.file) {
-    // 尝试作为主题加载（JSON 含 type: "dark"|"light" → 主题）
     const data = getPluginDataFile(pluginId, manifest.file);
     if (data?.type === "dark" || data?.type === "light") {
       loadThemePlugin(pluginId, manifest);
@@ -272,7 +276,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
     loadLanguagePlugin(pluginId, manifest);
     contributed = true;
   } else if (manifest.file && !contributed) {
-    // 尝试作为语言加载
     const data = getPluginDataFile(pluginId, manifest.file);
     if (data && !data.type) {
       loadLanguagePlugin(pluginId, manifest);
@@ -281,7 +284,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
   }
 
   if (manifest.mode) {
-    // protocol 类型：text（前端 TS 解析）或 binary（Rust 端解析）
     console.log(`[pluginLoader] 📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 5`);
     contributed = true;
   }
@@ -291,8 +293,6 @@ async function loadPlugin(pluginId: string): Promise<void> {
     contributed = true;
   }
 
-  // Phase 5：parseContributions——按 key 逐项检测，不认识的 key 静默跳过
-  // Phase 6 加 contributes.themes / contributes.languages 时 loader 不崩
   if (manifest.contributes) {
     parseContributions(pluginId, manifest.contributes);
     contributed = true;
@@ -303,6 +303,9 @@ async function loadPlugin(pluginId: string): Promise<void> {
   }
 
   loadedPluginIds.add(pluginId);
+
+  // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
+  PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
 /* ── Phase 5h：运行时动态加载（不在 import.meta.glob 中的插件） ── */
@@ -362,8 +365,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   // 4. 注册视图插件
   if (Component) {
-    // B77：同步更新 iconOrder ← 必须在 registerViewPlugin 之前！否则 React 渲染微任务跑在前面
-    await appendToIconOrder(pluginId);
     const entry: ViewPluginEntry = {
       pluginId,
       manifest,
@@ -387,6 +388,10 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   }
 
   loadedPluginIds.add(pluginId);
+
+  // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
+  // 运行时插件的安装原因——从外部来源安装，视为 'install'
+  PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason: "install" });
 }
 
 /* ── 视图插件 ── */
@@ -584,19 +589,11 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
       list.push(pluginId);
       await saveDisabledList(list);
     }
+    // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + tab 关闭 + iconOrder(保留) + toast
+    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable" });
     unregisterViewPlugin(pluginId);
-    unregisterConfiguration(pluginId);       // B70——卸载/禁用后 Settings Editor 残留
-    unregisterConfigurationDefaults(pluginId);
     loadedPluginIds.delete(pluginId);
-    // Phase 4.4：通知壳关闭使用此插件的标签页
-    window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
-    pushToast({
-      message: `已禁用：${entry.manifest.name}`,
-      source: pluginId,
-      severity: "info",
-      actions: [{ label: "撤销", isPrimary: true, onClick: () => enablePlugin(pluginId) }],
-      ttl: 8000,
-    });
+    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable" });
     console.log(`[pluginLoader] 🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
@@ -629,27 +626,12 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       const manifest = pluginManifests[manifestKey];
       // .json 插件（theme/language/file）——即时生效
       if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
-        await loadPlugin(pluginId);
-        pushToast({
-          message: `已启用：${manifest.name}（即时生效）`,
-          source: pluginId,
-          severity: "info",
-          ttl: 5000,
-        });
+        await loadPlugin(pluginId, "enable");
         console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
         return { success: true };
       }
-      // Phase 5h：视图插件——工厂插件（在 glob 中）走 loadPlugin 重载，外部插件走 loadPluginRuntime
-      // loadPlugin 使用 Vite 构建的 chunk（模块实例和核心共享），已验证可工作
-      // loadPluginRuntime 用于不在 glob 中的外部插件（通过 plugin:// 协议加载独立构建产物）
-      // 注意：禁用→启用应保留图标原位置——不调 appendToIconOrder。
-      await loadPlugin(pluginId);
-      pushToast({
-        message: `已启用：${manifest.name}（即时生效）`,
-        source: pluginId,
-        severity: "info",
-        ttl: 5000,
-      });
+      // 视图插件——loadPlugin(reason:'enable') → lifecycle 消费端处理 iconOrder(保持原位) + toast
+      await loadPlugin(pluginId, "enable");
       console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（即时生效）`);
       return { success: true };
     }
@@ -674,34 +656,16 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       return { success: false, error: `核心插件 "${pluginId}" 不可卸载` };
     }
 
+    // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
+    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall" });
+
     // Rust 端：移到 plugins/.disabled/<id>/
     await invoke("uninstall_plugin", { pluginId });
 
     // 前端：移除注册
     unregisterViewPlugin(pluginId);
-    unregisterConfiguration(pluginId);       // B70——卸载后 Settings Editor 残留（运行时）
-    unregisterConfigurationDefaults(pluginId);
     loadedPluginIds.delete(pluginId);
-
-    // Phase 5：清理 iconOrder，确保重装后排到图标栏末尾
-    try {
-      const iconOrder = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
-      const filtered = iconOrder.filter((id) => id !== pluginId);
-      await setPluginStateValue("app", "iconOrder", filtered);
-      // Phase 5f：PreferenceService 双写已清除——PluginStateService 是 iconOrder 唯一真源
-    } catch { /* 静默 */ }
-
-    // Phase 4.4：通知壳关闭使用此插件的标签页
-    window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
-    pushToast({
-      message: `已卸载：${entry.manifest.name}`,
-      source: pluginId,
-      severity: "info",
-      ttl: 8000,
-      actions: [
-        { label: "撤销", isPrimary: true, onClick: () => reinstallPlugin(pluginId) },
-      ],
-    });
+    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall" });
     console.log(`[pluginLoader] 🗑 已卸载 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
@@ -723,32 +687,16 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     );
 
     if (manifestKey) {
-      const manifest = pluginManifests[manifestKey];
-      // 清单在 glob 中 → 直接 loadPlugin 即时生效
-      // B77：同步更新 iconOrder ← 必须在 loadPlugin 之前
-      await appendToIconOrder(pluginId);
-      await loadPlugin(pluginId);
-      const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
-      pushToast({
-        message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
-        source: pluginId,
-        severity: "info",
-        ttl: 6000,
-      });
+      // 清单在 glob 中 → loadPlugin(reason:'install') → lifecycle 消费端处理 iconOrder + toast
+      await loadPlugin(pluginId, "install");
       return { success: true, pluginId };
     }
-    // Phase 5h：清单不在 glob 中（运行时安装的插件）——尝试即时加载
+    // Phase 5h：清单不在 glob 中（运行时安装的插件）——loadPluginRuntime 内部 fire onDidInstall
     try {
       await loadPluginRuntime(pluginId);
-      pushToast({
-        message: `已安装：${pluginId}（即时生效）`,
-        source: pluginId,
-        severity: "info",
-        ttl: 6000,
-      });
       return { success: true, pluginId };
     } catch (e: any) {
-      // 运行时加载失败（可能未构建）——提示构建后可用
+      // 运行时加载失败（可能未构建）
       pushToast({
         message: `已安装：${pluginId}。运行 npm run build:plugins 后生效。`,
         source: pluginId,
@@ -836,65 +784,29 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
       (k) => extractPluginId(k) === pluginId
     );
     if (manifestKey) {
-      const manifest = pluginManifests[manifestKey];
-      // .json 插件（theme/language/file）——即时生效
-      if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
-        await loadPlugin(pluginId);
-        pushToast({
-          message: `已安装：${manifest.name}（即时生效）`,
-          source: pluginId,
-          severity: "info",
-          ttl: 6000,
-        });
-        return { success: true };
-      }
-      // Phase 5h：工厂插件（在 glob 中）——走 loadPlugin 重新加载（Vite chunk，模块实例共享）
-      // B77：同步更新 iconOrder ← 必须在 loadPlugin 之前！否则 React 渲染微任务跑在前面
-      await appendToIconOrder(pluginId);
-      await loadPlugin(pluginId);
+      // loadPlugin(reason:'reinstall') → lifecycle 消费端处理 iconOrder(追加末尾) + toast
+      await loadPlugin(pluginId, "reinstall");
+      return { success: true };
+    }
+    // glob 中没有——外部装过又卸了的插件，尝试 loadPluginRuntime
+    try {
+      await loadPluginRuntime(pluginId);
+      return { success: true };
+    } catch {
       pushToast({
-        message: `已安装：${manifest.name}（即时生效）`,
+        message: `已安装：${pluginId}。重启后生效。`,
         source: pluginId,
         severity: "info",
-        ttl: 6000,
+        ttl: 0,
+        actions: [
+          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+        ],
       });
       return { success: true };
     }
-    // glob 中没有——外部装过又卸了的插件，需重启
-    pushToast({
-      message: `已安装：${pluginId}。重启后生效。`,
-      source: pluginId,
-      severity: "info",
-      ttl: 0,
-      actions: [
-        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
-      ],
-    });
-    return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
-}
-
-/* ── 图标排序辅助 ── */
-
-/**
- * Phase 5h/B77：将插件追加到图标栏末尾（两步——同步内存 + 异步持久化）。
- *
- * 🔥 关键：必须在 registerViewPlugin（触发 React 渲染）之前调同步部分。
- * 否则 React 渲染微任务跑在 iconOrder 异步更新之前 → 图标按注册顺序排列。
- * 历史：F5 布局持久化 4 轮 → B72 图标位置 → B76 加载路径 → B77 iconOrder 时序——全是微任务竞态。
- */
-async function appendToIconOrder(pluginId: string): Promise<void> {
-  try {
-    const order = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
-    const filtered = order.filter((id) => id !== pluginId);
-    filtered.push(pluginId);
-    // 同步写内存——确保 registerViewPlugin 之后的 React 渲染读到正确值
-    setPluginStateValueSync("app", "iconOrder", filtered);
-    // 异步持久化——F5 安全（不阻塞 UI，失败了下次启动也能用 localStorage 恢复）
-    setPluginStateValue("app", "iconOrder", filtered).catch(() => {});
-  } catch { /* 非关键路径 */ }
 }
 
 /* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */
@@ -927,9 +839,8 @@ export function startPluginWatcher(): void {
         );
         if (manifestKey) {
           // 工厂插件——已在 Vite 构建中，直接 loadPlugin
-          await loadPlugin(dir);
-          const manifest = pluginManifests[manifestKey];
-          pushToast({ message: `发现新插件：${manifest.name}（即时生效）`, ttl: 5000 });
+          await loadPlugin(dir, "startup");
+          console.log(`[pluginLoader] 文件监听发现新工厂插件 "${dir}"——已即时加载`);
         } else {
           // Phase 5h：运行时插件——不在 glob 中，尝试 plugin:// 加载
           await loadPluginRuntime(dir);
