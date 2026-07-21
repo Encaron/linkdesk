@@ -52,7 +52,7 @@
 |:--:|------|:--:|:--:|------|
 | **5.5-0a** | **4 Blocking 修复——监听器泄漏/僵尸注册/快捷键误删/semver 重复** | **修复（第一个 commit）** | ~80 | 无 |
 | **5.5-0b** | **9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏** | **修复（第二个 commit）** | ~70 | 5.5-0a（Blocking 先修） |
-| **5.5a** | `viewRole` 声明系统 | 框架层 | ~50 | 5.5-0b（代码库干净） |
+| **5.5a** | `viewRole` 声明系统 | 框架层 | ~20 | 5.5-0b（代码库干净） |
 | **5.5b** | `<SidebarSection>` 通用组件 | UI 基础设施 | ~60 | 5.5-0b |
 | **5.5c** | 终端侧栏重设计——2 个 SidebarSection（会话列表 + 收发设置），按会话隔离 | 消费者 | ~+40 | 5.5a + 5.5b |
 
@@ -132,65 +132,75 @@
 
 ### 目标
 
-替掉 `isSidebarOnlyView` 硬编码函数（`tabIdentity.ts:166-170`），改为 `plugin.json` 的 `viewRole` 字段声明。
+替掉 `isSidebarOnlyView` 硬编码函数（`tabIdentity.ts:212-214`），改为 `plugin.json` 的 `viewRole` 字段声明。
 
 ### viewRole 定义
 
 | 值 | 图标点击行为 | 侧栏 | 标签页 | 适用插件 |
 |---|------------|------|--------|---------|
-| `sidebarPrimary`（默认） | Toggle 侧栏——不直接创建标签页 | 显示该插件的侧栏内容 | 由侧栏内操作触发创建（如点会话、双击文件） | 终端、文件树、Git、卡片工作台 |
-| `tabOnly` | 直接打开/聚焦标签页 | 不清除已有侧栏（`keepSidebarOnFocus`） | 图标点击即创建 | 设置、插件详情页 |
+| `sidebarPrimary`（默认） | Toggle 侧栏——不直接创建标签页 | 显示该插件的侧栏内容 | 由侧栏内操作触发创建（如点会话、双击文件） | 插件市场、卡片工作台、Phase 6 文件树/Git |
+| `tabOnly` | 直接打开/聚焦标签页 | 不清除已有侧栏（`keepSidebarOnFocus`） | 图标点击即创建 | 设置、终端（终端 5.5c 侧栏重设计后切到 sidebarPrimary） |
 
-`tabPrimary` 已移除——零例外。
+`tabPrimary` 已移除——零例外。5.5a 顺手删 `types.ts:78` 的类型值。
 
 ### 涉及文件
 
 | 文件 | 操作 | 改动 |
 |------|------|:--:|
-| `src/utils/tabIdentity.ts` | **删** `isSidebarOnlyView` 函数 | -8 |
-| `src/App.tsx` | `handleIconClick` 简化——读 `viewRole` 替代 `isSidebarOnlyView` 分支 | ~20 |
-| `src/pluginLoader/viewRegistry.ts` | 注册时默认 `viewRole: "sidebarPrimary"`（plugin.json 未声明时） | ~5 |
+| `src/hooks/tabIdentity.ts` | **删** `isSidebarOnlyView` 函数 | -4 |
+| `src/App.tsx` | `handleIconClick` 改用 `getViewRole()` 替代 `isSidebarOnlyView` + import 清理 | ~15 |
+| `src/pluginLoader/viewRegistry.ts` | `getViewRole` 默认值 `"tabOnly"` → `"sidebarPrimary"` | 1 |
+| `src/core/types.ts` | 删 `"tabPrimary"` 类型值（零使用） | -1 |
 | `docs/插件开发/plugin.schema.json` | `viewRole` 字段已就绪 ✅（5g 已加） | 0 |
-| `plugins/marketplace/plugin.json` | 显式声明 `"viewRole": "tabOnly"` | +1 |
-| `plugins/settings/plugin.json` | 显式声明 `"viewRole": "tabOnly"` | +1 |
-| `plugins/terminal/plugin.json` | 显式声明 `"viewRole": "sidebarPrimary"` | +1 |
-| `plugins/welcome/plugin.json` | 检查 `tabBehavior.isFallback` 是否已覆盖行为（欢迎页不需要 viewRole） | 0 |
+| `plugins/{marketplace,settings,terminal,workspace}/plugin.json` | **不动**——4 个插件 5g 已全部声明 viewRole ✅（marketplace=sidebarPrimary / settings+terminal+workspace=tabOnly） | 0 |
+
+> 5.5a **不改变**现有任何插件的点击行为。Terminal 的 viewRole 切到 `sidebarPrimary` 留给 5.5c（终端侧栏重设计后才有意义）。
 
 ### 验证
 
 ```
-1. 点 📟 → 侧栏显示终端侧栏内容（不直接开标签页）
-2. 点 🛒 → 侧栏显示市场列表（不直接开标签页）——行为不变
-3. 点 ⚙ → 直接打开设置标签页（不开侧栏）——行为不变
-4. 新写一个 mock 插件，plugin.json 不声明 viewRole → 默认 sidebarPrimary
-5. CI: npx vitest run 全部通过
+1. 点 🛒 → 侧栏 toggle（sidebarPrimary）——行为不变
+2. 点 ⚙ → 打开设置标签页（tabOnly）——行为不变
+3. 点 📟 → 打开终端标签页（tabOnly）——行为不变（等 5.5c 切换）
+4. 点 📊 → 打开工作台标签页（tabOnly）——行为不变
+5. 新写一个 mock 插件，plugin.json 不声明 viewRole → 默认 sidebarPrimary
+6. tsc 零错误 + 141 测试全过
 ```
 
 ### 代码变更
 
 ```typescript
-// === 删：src/utils/tabIdentity.ts ===
-// 删除 isSidebarOnlyView 函数及导出
+// === 删：src/hooks/tabIdentity.ts:212-214 ===
+// 删除 isSidebarOnlyView 函数（3 行）及 App.tsx 的 import
 
 // === 改：src/App.tsx handleIconClick ===
-const handleIconClick = (pluginId: string) => {
-  const viewRole = viewRegistry.get(pluginId)?.viewRole ?? "sidebarPrimary";
-  
-  if (viewRole === "sidebarPrimary") {
-    // Toggle 侧栏——对标 VS Code Activity Bar
-    setSidebarView((prev) => (prev === pluginId ? null : pluginId));
-    // 标签页由侧栏内操作触发（点会话/双击文件），不在这里创建
-  } else if (viewRole === "tabOnly") {
-    // 直接开标签页——对标 VS Code 设置
-    openOrFocusTab(pluginId);
-  }
-};
+import { getViewRole } from "./pluginLoader/viewRegistry";
 
-// === 改：src/pluginLoader/viewRegistry.ts ===
-// registerPlugin 时：
-if (!manifest.viewRole) {
-  manifest.viewRole = "sidebarPrimary"; // 默认值
+const handleIconClick = useCallback(
+  (pluginId: string) => {
+    const role = getViewRole(pluginId); // 默认 "sidebarPrimary"
+    if (role === "sidebarPrimary") {
+      // Toggle 侧栏——对标 VS Code Activity Bar
+      setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+      // 标签页由侧栏内操作触发（点会话/双击文件），不在这里创建
+    } else {
+      // tabOnly：直接开标签页——对标 VS Code 设置
+      setSidebarView(pluginId);
+      openOrFocusTab(pluginId, { pinned: true });
+    }
+  },
+  [openOrFocusTab]
+);
+
+// === 改：src/pluginLoader/viewRegistry.ts:108 ===
+export function getViewRole(pluginId: string): "sidebarPrimary" | "tabPrimary" | "tabOnly" {
+-  return registry.get(pluginId)?.manifest.viewRole ?? "tabOnly";
++  return registry.get(pluginId)?.manifest.viewRole ?? "sidebarPrimary";
 }
+
+// === 改：src/core/types.ts:78 ===
+-  viewRole?: "sidebarPrimary" | "tabPrimary" | "tabOnly";
++  viewRole?: "sidebarPrimary" | "tabOnly";
 ```
 
 ---
@@ -655,6 +665,293 @@ const DEFAULT_SESSION: Omit<TerminalSession, 'id' | 'name'> = {
 | `session.quickSends` | QuickSendBar (主区) | QuickSendBar (主区) |
 
 **规则：ControlPanel 只碰 port/baudRate/protocol 三项。** 任何其他设置（编码、时间戳、回显……）不放在 ControlPanel。如果 AI-B 觉得"编码下拉框放控制面板更方便"——**拒绝。** 设置的唯一入口在侧栏。控制面板 = 连接操作，侧栏 = 会话属性。
+
+### 3.13 视觉设计规范——Dark OLED + Glassmorphism + 颜色编码
+
+> 2026-07-22 用户确认。设计 DNA：Dark Mode OLED + Minimalism + Glassmorphism 点缀。
+> 来自 ui-ux-pro-max skill 推荐：底色 `#0F172A`，accent `#22C55E`（数据绿），字体 Inter，密度 8/10，动效 2/10。
+> 核心原则：**少用边框，多用颜色/透明度区分层级。少用实色块，多用半透明玻璃分层。**
+
+#### 3.13.1 颜色系统——和自定义强调色的关系
+
+> ⚠️ LinkDesk 有自定义强调色系统（memory `custom-accent-colors`）。用户可在设置中把 `--accent` 从默认蓝改成橙/绿/紫等任意色，所有 `var(--accent)` 自动跟随。
+> 终端 UI 使用两类颜色，互不干扰：
+> - **`var(--accent)`**——跟用户强调色走。发送提示符、focus 环、选中高亮。
+> - **`--session-color`**——CSS 变量，由终端代码在每个 session 的 DOM 上 setProperty。侧栏色条、药丸 tint、标签页图标色。和 `--accent` 是两条独立的级联链。
+
+| 变量 | 来源 | 用途 |
+|------|:--:|------|
+| `--accent` | 系统 CSS 变量（`index.css`），用户设置中可改 | 发送栏 `>` 提示符、focus ring、CM6 选中高亮——**装饰性的，跟用户偏好走** |
+| `--color-ok` | **系统级语义 token**（`index.css`，Phase 5.5 新增） | 连接状态点（已连接）、发送成功 feedback、Phase 6 Git staged 标记——**语义"正常/通过/已连接"，永远绿色，不和 `--accent` 绑定** |
+| `--color-warn` | 系统级语义 token（Phase 5.5 新增） | Phase 6 脏文件标记、超时警告——语义"注意" |
+| `--color-error` | 系统级语义 token（Phase 5.5 新增） | 断开闪烁、错误提示、Phase 6 Git conflict 标记——语义"错误/断开/冲突" |
+| `--session-color` | 终端代码 `setProperty`，每个 session 自动分配 | 侧栏 session 项左侧 2px 竖条、控制栏 COM 口名颜色、快捷发送药丸颜色、标签页图标 tint。**对标 `--card-accent`（同一条路——per-instance CSS 变量）** |
+| `--accent-hover` | 系统派生（`index.css`） | hover 变亮 |
+
+**`--session-color` 的工作方式（对标卡片调色盘）：**
+```ts
+// useTerminalSessions.ts —— 对标 memory custom-accent-colors §卡片调色盘
+const SESSION_COLORS = ['#22C55E', '#3B82F6', '#F59E0B', '#A855F7', '#06B6D4', '#EC4899'];
+let _colorIndex = 0;
+
+function createSession(name: string): TerminalSession {
+  const color = SESSION_COLORS[_colorIndex % SESSION_COLORS.length];
+  _colorIndex++;
+  // ...
+  return { ...session, color };
+}
+
+// sidebar.tsx / ControlPanel.tsx / TabBar
+<div style={{ '--session-color': session.color } as React.CSSProperties}>
+  {/* 内部所有 var(--session-color) 自动取当前 session 的颜色 */}
+</div>
+```
+
+**这个方案和卡片调色盘（`--card-accent`）是同一条路——都是"运行时设置 CSS 变量，级联到子元素"。** 终端 session 颜色不经过 `PreferenceService`，不存 `prefs.json`，纯内存。
+
+**自定义强调色如何影响终端——逐元素冲突分析：**
+
+| UI 元素 | 颜色来源 | 用户改 `--accent` 为橙色后 | 是否正确？ |
+|------|:--:|------|:--:|
+| 发送栏 `>` 提示符 | `var(--accent)` | 变橙色 | ✅ 这是用户想要的——装饰跟随偏好 |
+| Focus ring、选中高亮 | `var(--accent)` | 变橙色 | ✅ 对标 VS Code 光标/选中跟主题走 |
+| CM6 新数据脉冲 | `var(--accent)` | 变橙色 | ✅ 微装饰，不承载语义 |
+| 连接状态点 ● | **`var(--terminal-ok)`** | **不变，永远绿色** | ✅ 绿色=通，这是语义不是偏好 |
+| 侧栏 session 色条 | `var(--session-color)` | 不变 | ✅ session 标识色独立于 accent |
+| 快捷发送药丸 | `var(--session-color)` | 不变 | ✅ 同上 |
+| CM6 时间戳灰色 | `var(--cm-timestamp)` | 不变 | ✅ 已有独立变量 |
+| CM6 发送回显 | `var(--sent-echo)` | 不变 | ✅ memory 明确警告不要绑到 `--accent` |
+| CM6 系统消息 | `var(--system-log)` | 不变 | ✅ 已有独立变量 |
+
+**防呆规则——终端代码中 `var(--accent)` 只能出现在以下元素：**
+1. 发送栏 `>` 前缀
+2. Focus/选中状态
+3. 微装饰（如新数据脉冲 `box-shadow`）
+
+**绝对不能出现在以下元素（它们有独立的 CSS 变量）：**
+- ❌ 连接/断开状态指示 → 用 `var(--color-ok)` / `var(--color-error)`（系统级语义 token）
+- ❌ session 标识 → 用 `var(--session-color)`（per-instance，对标 `--card-accent`）
+- ❌ 回显/时间戳/系统消息 → 用已有的 `--sent-echo` / `--cm-timestamp` / `--system-log`
+- ❌ 快捷发送药丸 → 用 `var(--session-color)`
+
+**5.5c 附加框架任务——新增系统语义 token（~3 行，改 `src/index.css`）：**
+```css
+/* Phase 5.5 —— 系统语义颜色 token。终端先用，Phase 6 文件树/Git 全复用。 */
+--color-ok: #22C55E;     /* 成功/连接/通过——永远绿色 */
+--color-warn: #F59E0B;   /* 警告/脏文件/超时 */
+--color-error: #EF4444;  /* 错误/断开/冲突——永远红色 */
+```
+dark/light 主题用同一组值——语义颜色不随主题变化（绿色在 dark/light 下都是绿色）。
+
+#### 3.13.2 区域分层（不用框，用线 + 透明度）
+
+```
+┌──────────────────────────────────────────────┐
+│ ● COM3 │ 115200 │ bracket │ ⏸ │ 🗑 │ 📥 │ 🔍 │ ← 控制栏（1行36px）
+│                                              │    bg-base，元素间用 1px 竖线分隔
+│                                              │    │ = border-subtle
+├──────────────────────────────────────────────┤  ← 1px 实线 (border-subtle)
+│                                              │
+│                                              │
+│     CM6 接收区                                │   bg-deep（最深）
+│     ┃ 左侧 3px 绿色竖条（新数据脉冲指示）       │   行号 muted，正文 foreground
+│                                              │   滚动条半透明 4px，hover 变亮
+│                                              │
+├──────────────────────────────────────────────┤  ← 1px 实线
+│ [AT] [AT+CWLAP] [AT+MQTT]          [+ 添加] │  ← 快捷发送，bg-base，无额外背景
+│                                              │   药丸 float 在分隔线上方
+├──────────────────────────────────────────────┤  ← 1px 虚线 (border-subtle, dashed)
+│ > AT\r\n                          [清空][→] │  ← 发送栏，bg-elevated
+└──────────────────────────────────────────────┘
+```
+
+**三条分割线的语义：**
+- 实线 1：控制 vs 内容（强分隔）
+- 实线 2：内容 vs 命令（中分隔）
+- 虚线：快捷发送是发送栏的延伸（弱分隔——它们是一组的）
+
+#### 3.13.3 控制栏——一行命令条
+
+```tsx
+// ControlPanel.tsx 渲染结构
+<div className="control-bar">                     // height: 36px; padding: 0 8px;
+  <StatusDot connected={session.connected} />     // ● 8px 圆，绿脉冲/灰静态
+  <select className="control-select">COM3</select>  // 无边框 select，颜色=session accent
+  <span className="control-sep">│</span>          // 1px 竖线，border-subtle
+  <select>115200</select>
+  <span className="control-sep">│</span>
+  <select>方括号协议</select>
+  <span className="control-spacer" />            // flex-grow: 1
+  <button className="control-icon-btn" title="暂停">⏸</button>
+  <button className="control-icon-btn" title="清空">🗑</button>
+  <button className="control-icon-btn" title="导出">📥</button>
+  <button className="control-icon-btn" title="搜索">🔍</button>
+</div>
+```
+
+`control-select` 样式：
+```css
+.control-select {
+  background: transparent;
+  border: none;
+  color: var(--session-color);  /* ← session 标识色，不是 --accent */
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.control-select:hover { background: rgba(255,255,255,0.05); }
+```
+
+#### 3.13.4 快捷发送——浮动药丸云
+
+```css
+.quick-send-pill {
+  background: color-mix(in srgb, var(--session-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--session-color) 15%, transparent);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--session-color);
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+.quick-send-pill:hover {
+  background: color-mix(in srgb, var(--session-color) 15%, transparent);
+  border-color: color-mix(in srgb, var(--session-color) 30%, transparent);
+}
+.quick-send-pill:active {
+  transform: scale(0.95);
+}
+```
+
+`var(--session-color)` = 当前激活 session 的标识色。切换 session → 药丸颜色自动跟随。和 `var(--accent)`（用户强调色）无关。
+
+**交互：** hover → tooltip 显示完整内容。右键 → 编辑/删除。`+ 添加` 是虚线边框的药丸（区分于已有的实线药丸），点击 → 展开内联输入。
+
+#### 3.13.5 发送栏——终端提示符
+
+```
+> AT+CWLAP=1\r\n                          [清空] [↵]
+```
+
+```css
+.send-bar {
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+.send-prefix {
+  color: var(--accent);     /* 跟用户强调色走——橙/蓝/绿/任意 */
+  font-family: 'Sarasa Mono SC', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  margin-right: 8px;
+  user-select: none;
+}
+.send-bar .monaco-wrapper {
+  flex: 1;
+  /* Monaco 编辑器无边框、无行号、无内边距 */
+}
+```
+
+#### 3.13.6 侧栏——玻璃卡 + 颜色编码会话
+
+```
+┌────────────────────────────┐
+│ ▼ 终端会话 (3)       [+ 新建] │  ← Section header（22px，uppercase 11px 600）
+│                            │
+│ ┃ ●  COM3 PID调试    [✎][✕] │  ← ┃ = 2px session 颜色条（绿）
+│    115200 · 方括号          │     ● = 连接状态（绿/灰）
+│                            │     hover 时 [✎][✕] 出现
+│ │ ○  COM5 CAN监控    [✎][✕] │  ← │ = 2px session 颜色条（蓝）
+│    500000 · 方括号          │     ○ = 未连接
+│                            │
+│ │ ○  COM7 空闲       [✎][✕] │  ← │ = 2px session 颜色条（琥珀）
+│    未配置                   │
+│                            │
+├────────────────────────────┤
+│ ▼ 收发设置 — COM3 PID调试   │  ← 标题含当前 session 名（给予上下文）
+│   时间戳  [HH:mm:ss:fff ▼] │
+│   消息回显          [✓]     │
+│   ...(共 12 项)...         │
+└────────────────────────────┘
+```
+
+**玻璃卡样式（两个 Section 的壳）：**
+```css
+.sidebar-section {
+  background: var(--bg-glass);        /* rgba(255,255,255,0.02) */
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  margin: 4px 8px;
+  /* 没有 border——靠背景色差区分 Section */
+}
+```
+
+**会话列表项样式：**
+```css
+.session-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 6px;        /* 左侧留 2px 给色条 */
+  border-left: 2px solid transparent; /* 默认无颜色 */
+  cursor: pointer;
+  border-radius: 0 4px 4px 0;
+}
+.session-item:hover { background: rgba(255,255,255,0.03); }
+.session-item.active {
+  background: rgba(255,255,255,0.04);
+  border-left-color: var(--session-color);  /* ← session 标识色，非 --accent */
+}
+.session-item .item-name {
+  font-size: 13px;
+  color: var(--foreground);
+}
+.session-item.active .item-name {
+  color: #fff;                     /* 选中时更亮 */
+  font-weight: 600;
+}
+.session-item .item-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.session-item .hover-actions {
+  opacity: 0;                      /* 默认隐藏 */
+  transition: opacity 100ms;
+}
+.session-item:hover .hover-actions { opacity: 1; }
+```
+
+#### 3.13.7 微交互（motion=2，只做最少的动效）
+
+| # | 交互 | 实现 | 时长 |
+|:--:|------|------|:--:|
+| M1 | 新数据到达 | CM6 左侧 3px 指示条 `box-shadow: 0 0 8px var(--accent-glow)` → 渐消 | 600ms fade |
+| M2 | 连接成功 | 状态点 `●` scale(0→1.2→1) + 颜色灰→绿 | 200ms spring |
+| M3 | 断开连接 | 状态点绿→灰 + 控制栏 COM 口名变红 300ms 后恢复 | 300ms |
+| M4 | 暂停 | CM6 上覆盖 `rgba(0,0,0,0.3)` + `backdrop-filter: blur(2px)` + 文字 "⏸ 已暂停 · N 条缓冲" | 200ms fade |
+| M5 | 药丸按下 | `transform: scale(0.95)` | 50ms |
+| M6 | 搜索展开 | SearchBar `max-height: 0→40px` | 200ms ease |
+| M7 | 会话切换 | 收发设置区 `opacity: 1→0.6→1`（快速过渡，不跳跃） | 150ms |
+| M8 | 清空接收区 | CM6 内容 fade out → 新内容正常 | 200ms |
+| M9 | 回到底部 | 按钮 `opacity: 0→1` float 在右下角 | 150ms |
+
+**所有动效遵守 `prefers-reduced-motion`——用户开了减少动效就全部 0ms。**
+
+#### 3.13.8 不做的
+
+| 不做 | 理由 |
+|------|------|
+| 接收区/发送区画大边框 | 用背景色差分层，更现代更干净 |
+| 彩色背景块 | 颜色只在 2px 竖条/accent 文字/药丸上——克制才有高级感 |
+| 弹跳动画、旋转、滑动 | motion=2——只做微交互，不做装饰动画 |
+| 纯 `#000000` 背景 | OLED 会 smear，用 `#0A0E17` 替代 |
+| 快捷发送占一整行 | 药丸 float，不浪费垂直空间 |
+| emoji 作为图标 | 用 SVG（codicon 已就绪） |
 
 ---
 

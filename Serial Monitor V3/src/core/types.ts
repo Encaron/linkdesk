@@ -72,10 +72,9 @@ export interface PluginManifest {
   /** 图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区，对标 VS Code Activity Bar 齿轮）。 */
   iconLocation?: "top" | "bottom";
   /** 视图角色——声明此视图在壳中的交互模式。5g 定义字段，5.5 消费。
-   *  - tabOnly: 纯标签页视图（默认，如终端/工作台）
-   *  - sidebarPrimary: 侧栏为主——点击图标 toggle 侧栏，不自动打开标签页（如插件市场）
-   *  - tabPrimary: 标签页为主——点击图标打开标签页，侧栏为辅 */
-  viewRole?: "sidebarPrimary" | "tabPrimary" | "tabOnly";
+   *  - sidebarPrimary（默认）：侧栏为主——点击图标 toggle 侧栏，不自动打开标签页（对标 VS Code Activity Bar）
+   *  - tabOnly：纯标签页视图——点击图标直接打开/聚焦标签页（如设置） */
+  viewRole?: "sidebarPrimary" | "tabOnly";
   /** 壳自己渲染（不走插件路由）。仅欢迎页、插件详情页等壳级视图使用。不设 component 注册。 */
   shellRendered?: boolean;
   /** 聚焦此视图时保留当前侧栏不清除。如插件详情页——用户浏览插件时侧栏不变。 */

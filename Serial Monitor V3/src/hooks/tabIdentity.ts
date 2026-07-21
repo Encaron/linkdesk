@@ -15,7 +15,7 @@
  */
 
 import i18n from "../i18n";
-import { getViewPlugin, isSidebarPrimaryView, hasKeepSidebarOnFocus } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, hasKeepSidebarOnFocus } from "../pluginLoader/viewRegistry";
 import type { Tab } from "./useTabManager";
 import type { CreateTabOptions } from "../core/types";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
@@ -203,14 +203,6 @@ export function isShellRenderedTab(type: string): boolean {
 /** 是否为插件详情视图——壳内部类型，展示另一个插件的元数据。 */
 export function isPluginDetailView(type: string): boolean {
   return type === "plugin-detail";
-}
-
-/**
- * 纯侧栏视图——点击图标 toggle 侧栏，不打开标签页。
- * Phase 5g：从 plugin.json viewRole 字段读取。marketplace 声明 viewRole: "sidebarPrimary"。
- */
-export function isSidebarOnlyView(pluginId: string): boolean {
-  return isSidebarPrimaryView(pluginId);
 }
 
 /** 聚焦此标签页时是否保留当前侧栏（不清除 sidebarView）。

@@ -14,7 +14,8 @@ import CommandPalette from "./components/terminal/CommandPalette";
 
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
-import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
+import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
+import { getViewRole } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
@@ -361,18 +362,18 @@ function App() {
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // Phase 4.6 → Phase 5：图标栏点击。
-  // - isSidebarOnlyView：纯侧栏 toggle（对标 VS Code Extensions 图标）
-  // - 其余：打开/聚焦标签页 + 显示对应侧栏，传 pinned:true 防止预览替换。
-  // Phase 5 rootfix：reduceOpenOrFocus 接收 opts → reduceCreateTab 跳过 Step 3 预览替换。
+  // Phase 5.5a：图标栏点击——走 viewRole 声明（plugin.json），不再硬编码 isSidebarOnlyView。
+  // sidebarPrimary：Toggle 侧栏——对标 VS Code Activity Bar（点文件树/扩展/搜索图标）
+  // tabOnly：直接打开/聚焦标签页——对标 VS Code 设置
   // 对标 VS Code Activity Bar——点击打开的是固定视图，不是预览。
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      if (isSidebarOnlyView(pluginId)) {
-        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
-      } else {
+      const role = getViewRole(pluginId); // 未声明默认 "sidebarPrimary"
+      if (role === "tabOnly") {
         setSidebarView(pluginId);
         openOrFocusTab(pluginId, { pinned: true });
+      } else {
+        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
       }
     },
     [openOrFocusTab]

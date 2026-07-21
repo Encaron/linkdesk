@@ -103,14 +103,14 @@ export function getIconLocation(pluginId: string): "top" | "bottom" {
   return registry.get(pluginId)?.manifest.iconLocation ?? "top";
 }
 
-/** 视图角色——声明此视图如何和壳交互。默认 tabOnly（纯标签页）。 */
-export function getViewRole(pluginId: string): "sidebarPrimary" | "tabPrimary" | "tabOnly" {
-  return registry.get(pluginId)?.manifest.viewRole ?? "tabOnly";
+/** 视图角色——声明此视图如何和壳交互。默认 sidebarPrimary（对标 VS Code Activity Bar）。 */
+export function getViewRole(pluginId: string): "sidebarPrimary" | "tabOnly" {
+  return registry.get(pluginId)?.manifest.viewRole ?? "sidebarPrimary";
 }
 
 /**
  * 纯侧栏视图——点击图标 toggle 侧栏，不自动打开标签页。
- * 替代 isSidebarOnlyView 硬编码。从 plugin.json viewRole 字段读取。
+ * 从 plugin.json viewRole 字段读取。
  */
 export function isSidebarPrimaryView(pluginId: string): boolean {
   return registry.get(pluginId)?.manifest.viewRole === "sidebarPrimary";
