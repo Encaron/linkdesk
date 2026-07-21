@@ -495,7 +495,7 @@ for (const pluginId of fsInstalled) {
 
 ### 6.3 5.5 依赖 5g
 
-5.5 引入 `viewRole` 字段（`sidebarPrimary` / `tabPrimary` / `tabOnly`）。这个字段写在 `plugin.json` 里，5g 补齐了 plugin.json 的表达能力——`isSidebarOnlyView` 等硬编码函数被 plugin.json 字段替代。
+5.5 引入 `viewRole` 字段（`sidebarPrimary` / `tabOnly`，默认 `sidebarPrimary`）。`tabPrimary` 不再需要——终端和所有插件统一为侧栏入口模式。`isSidebarOnlyView` 等硬编码函数被 plugin.json 字段替代。
 
 5g 把"数据在哪"建好了（plugin.json 字段），5.5 把"逻辑怎么用"建好了（App.tsx `viewRole` switch）。
 

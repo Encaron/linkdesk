@@ -36,7 +36,7 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
 
 **5h 依赖 5g：** 5g 把 TabType 从联合类型改为 `string`、硬编码判断改为 plugin.json 声明——5h 的 loader 才能完全声明驱动，不需要 switch 插件 ID。
 
-**5.5 受益于 5h：** 新插件安装后 viewRole 声明立即被读取 → 图标点击行为自动正确（sidebarPrimary/tabPrimary/tabOnly）→ 不需要改 App.tsx。
+**5.5 受益于 5h：** 新插件安装后 viewRole 声明立即被读取 → 图标点击行为自动正确（sidebarPrimary/tabOnly）→ 不需要改 App.tsx。
 
 ---
 
@@ -50,9 +50,9 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
   ├── App.tsx handleIconClick 改用 viewRole switch（~20 行）
   ├── 删 tabIdentity.ts 的 isSidebarOnlyView 硬编码（-5 行）
   ├── marketplace → "sidebarPrimary"
-  ├── terminal → "tabPrimary"（行为不变）
+  ├── terminal → "sidebarPrimary"（侧栏出会话列表，点会话才开标签页）
   ├── settings → "tabOnly"
-  └── workspace → "tabPrimary"
+  └── workspace → "sidebarPrimary"（侧栏出卡片列表，点卡片才开标签页）
 ```
 
 **Bug 修复（在 5.5 期间）：**

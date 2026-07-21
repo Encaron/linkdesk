@@ -6,7 +6,7 @@
 > Phase 5.5 做两件事：① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码；② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
 > 对标 VS Code：图标 = 侧栏入口，标签页是结果不是起点。
 >
-> **⚠️ 前置声明：当前处于 Phase 5a，Phase 5.5 尚未开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件可能完全重设计为符合 VS Code 交互模型的形态，届时唯一的 `tabPrimary` 例外也可能随之消失。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 硬件调试的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
+> **⚠️ 前置声明：当前处于 Phase 5h，Phase 5.5 尚未开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件将完全重设计为符合 VS Code 交互模型的形态。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。终端也不再例外：点图标出侧栏会话列表，侧栏内选/新建会话才开标签页。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 硬件调试的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
 
 ---
 
@@ -92,11 +92,18 @@ VS Code：Activity Bar → Side Bar → Editor
 
 **核心：图标 = 侧栏入口，不是标签页入口。** VS Code 没有"点图标打开一个终端标签页"这种行为——终端是通过命令面板或快捷键打开的底部面板。
 
-### 2.2 LinkDesk 的正确偏离
+### 2.2 LinkDesk 终端——和所有插件遵循同一规则
 
-VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签页——这是**正确的设计偏离**。因为 LinkDesk 是硬件调试容器，终端是最主要的视图，用户拖拽它分屏、和其他插件并列——标签页比底部面板更合适。
+VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签页——但**标签页的创建不走图标点击，走侧栏内的操作**。这和其他插件（文件树、市场）完全相同：
 
-终端点 📟 → 开标签页 → 侧栏显示串口设置。这条链路保留。但这不代表**所有**插件都应该走这条链路。
+```
+点 📟 → 侧栏显示会话列表
+  ├── 点 "COM3 PID调试" → 主区打开/聚焦该会话的终端标签页
+  ├── 点 "COM5 CAN监控" → 主区切换终端标签页
+  └── [+ 新建] → 命名 → 选 COM → 选协议 → 开新终端标签页
+```
+
+**这不是"正确偏离"——这是和三栏模型完全一致的交互。** 和 VS Code 的区别只在于终端是标签页而不是底部面板——因为 LinkDesk 是硬件调试容器，终端是最主要的视图，标签页比底部面板更适合。但创建标签页的流程和文件树一模一样：侧栏选择 → 标签页出现。
 
 ---
 
@@ -107,10 +114,11 @@ VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签
 | viewRole | 图标点击行为 | 侧栏 | 标签页 | 对标 VS Code |
 |------|------|------|------|------|
 | `sidebarPrimary` | 切换侧栏，主区不动 | ✅ 主要渲染位置 | ❌ 不创建（侧栏内操作可触发）| Explorer / Extensions / PlatformIO |
-| `tabPrimary` | 打开/聚焦标签页 | ✅ 辅助面板（可选）| ✅ 主要渲染位置 | Terminal（但 VS Code 终端是底部面板，LinkDesk 是标签页） |
 | `tabOnly` | 打开/聚焦标签页 | ❌ 不切换侧栏 | ✅ 唯一渲染位置 | Settings Editor |
 
-**默认值：** `"sidebarPrimary"`——对标 VS Code：图标=侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。终端是唯一例外——显式声明 `tabPrimary`。
+> `tabPrimary`（打开/聚焦标签页 + 侧栏）不再需要——所有插件统一走 `sidebarPrimary`。终端也不例外：点图标出侧栏会话列表，侧栏内选会话才开标签页。
+
+**默认值：** `"sidebarPrimary"`——对标 VS Code：图标=侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。**没有例外。** 终端、文件树、卡片工作台——全部 `sidebarPrimary`。
 
 ### 3.2 plugin.json 声明
 
@@ -124,13 +132,13 @@ VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签
   "viewRole": "sidebarPrimary"
 }
 
-// 终端——tabPrimary（和现在行为完全一致）
+// 终端——sidebarPrimary（和文件树相同的模式：侧栏出会话列表 → 点会话 → 开标签页）
 {
   "name": "终端",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
   "statusBar": [...],
-  "viewRole": "tabPrimary"
+  "viewRole": "sidebarPrimary"
 }
 
 // 设置——tabOnly
@@ -153,14 +161,14 @@ VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签
 **1. types.ts — 类型定义（+3 行）：**
 ```typescript
 // PluginManifest 加字段
-viewRole?: 'sidebarPrimary' | 'tabPrimary' | 'tabOnly';
+viewRole?: 'sidebarPrimary' | 'tabOnly';  // 默认 sidebarPrimary
 ```
 
 **2. viewRegistry.ts — 存 viewRole（+1 行）：**
 ```typescript
 interface ViewPluginEntry {
   // ... 现有字段
-  viewRole: 'sidebarPrimary' | 'tabPrimary' | 'tabOnly';
+  viewRole: 'sidebarPrimary' | 'tabOnly';
 }
 // register 时读 manifest.viewRole ?? 'sidebarPrimary'  // 默认 VS Code 模型
 ```
@@ -172,17 +180,11 @@ const handleIconClick = useCallback(
     const plugin = getViewPlugin(pluginId);
     const role = plugin?.viewRole ?? 'sidebarPrimary'; // 默认 VS Code 模型
 
-    switch (role) {
-      case 'sidebarPrimary':
-        setSidebarView(prev => prev === pluginId ? null : pluginId);
-        break;
-      case 'tabPrimary':
-        setSidebarView(pluginId);
-        openOrFocusTab(pluginId);
-        break;
-      case 'tabOnly':
-        openOrFocusTab(pluginId);
-        break;
+    // sidebarPrimary（默认）：切换侧栏，标签页由侧栏内操作触发
+    // tabOnly（如设置）：直接开标签页，不经过侧栏
+    setSidebarView(prev => prev === pluginId ? null : pluginId);
+    if (role === 'tabOnly') {
+      openOrFocusTab(pluginId);
     }
   },
   [openOrFocusTab]
@@ -197,16 +199,16 @@ export function isSidebarOnlyView(pluginId: string): boolean {
 }
 
 // 新增（可选，其他地方可能用到）
-export function getViewRole(pluginId: string): 'sidebarPrimary' | 'tabPrimary' | 'tabOnly' {
-  return getViewPlugin(pluginId)?.viewRole ?? 'tabPrimary';
+export function getViewRole(pluginId: string): 'sidebarPrimary' | 'tabOnly' {
+  return getViewPlugin(pluginId)?.viewRole ?? 'sidebarPrimary';
 }
 ```
 
 **5. 现有插件 plugin.json 更新：**
 - `plugins/marketplace/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
-- `plugins/terminal/plugin.json` → 加 `"viewRole": "tabPrimary"`
+- `plugins/terminal/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
 - `plugins/settings/plugin.json` → 加 `"viewRole": "tabOnly"`
-- `plugins/workspace/plugin.json` → 加 `"viewRole": "tabPrimary"`
+- `plugins/workspace/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
 
 ---
 
@@ -233,19 +235,25 @@ Phase 6 文件树：
   viewRole: "sidebarPrimary" → 点 📁 → 侧栏切文件树
     侧栏内双击 .md → CommandRegistry.execute → 主区开文档阅读器标签页
 
+Phase 6 终端（升级为 sidebarPrimary）：
+  viewRole: "sidebarPrimary" → 点 📟 → 侧栏出会话列表
+    侧栏内点会话/新建 → 主区开终端标签页
+
 Phase 7 卡片工作台：
-  viewRole: "tabPrimary" → 点 📊 → 主区开工作台标签页 + 侧栏切卡片属性
+  viewRole: "sidebarPrimary" → 点 📊 → 侧栏出卡片列表
+    侧栏内点工作台 → 主区开卡片标签页
 
 Phase 8 OLED：
-  viewRole: "tabPrimary" → 点 🖥 → 主区开 OLED 标签页 + 侧栏可选
+  viewRole: "sidebarPrimary" → 点 🖥 → 侧栏出 OLED 视图列表
+    侧栏内选视图 → 主区开对应标签页
 
 未来任何第三方插件：
   侧栏为主的（数据库浏览器、Git、包管理器）→ "sidebarPrimary"
-  标签页为主的（CAD、代码编辑器、地图）→ "tabPrimary"
-  纯标签页的（PDF 阅读器）→ "tabOnly"
+  纯标签页的（设置）→ "tabOnly"
 
 永远不需要再改 App.tsx 的交互逻辑。
 这就是 VS Code "图标 = 侧栏入口"模型的完整落地。
+**没有例外。**
 ```
 
 ---
@@ -260,7 +268,7 @@ Phase 5.5 是 Phase 5 和 Phase 6 之间的桥梁。
 
 **为 Phase 6 铺路：**
 - 文件树的 `plugin.json` 写 `"viewRole": "sidebarPrimary"` 时，Phase 5.5 已经建好了 `viewRole` 机制
-- 否则文件树只能被迫作为 `tabPrimary` 加载，或者给 `isSidebarOnlyView` 再加一行硬编码
+- 否则文件树只能被迫开空标签页，或者给 `isSidebarOnlyView` 再加一行硬编码
 
 **实施顺序：**
 ```
@@ -403,11 +411,11 @@ plugins/terminal/
   │                        + 关闭按钮 + 快捷发送 + 发送栏（已连接时）
   ├── sidebar.css        ← 重写
   ├── statusBar.tsx      ← 不变（TX/RX 计数等状态栏贡献）
-  └── plugin.json        ← 加 "viewRole": "tabPrimary"
+  └── plugin.json        ← 加 "viewRole": "sidebarPrimary"
                           加 contributes.configuration（12 个设置项迁移到 Settings Editor）
 ```
 
-**为什么主区不改 `tabPrimary`：** 终端输出是用户始终需要看到的——点 📟 图标 → 主区打开/聚焦终端标签页 + 侧栏显示控制面板。这和现在一样，只是侧栏内容从"设置"变成了"控制面板"。`tabPrimary` 行为不变，侧栏内容换了。
+**为什么终端是 `sidebarPrimary`：** 点 📟 图标 → 侧栏显示会话列表和控制面板。用户从侧栏选择/新建会话 → 主区才打开终端标签页。和文件树完全相同的交互——图标只管侧栏，侧栏内的操作才创建标签页。这天然支持多终端实例——每个会话一个标签页。
 
 ### 8.5 设置项迁移到 Settings Editor
 

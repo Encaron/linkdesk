@@ -242,9 +242,9 @@
     },
     "viewRole": {
       "type": "string",
-      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏），tabOnly=纯标签页视图（默认），tabPrimary=标签页为主侧栏为辅。5g 定义字段，5.5 消费。",
-      "enum": ["sidebarPrimary", "tabPrimary", "tabOnly"],
-      "default": "tabOnly"
+      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏，标签页由侧栏内操作触发，默认），tabOnly=纯标签页视图（直接开标签页）。tabPrimary 已移除——所有插件统一 sidebarPrimary。",
+      "enum": ["sidebarPrimary", "tabOnly"],
+      "default": "sidebarPrimary"
     },
     "shellRendered": {
       "type": "boolean",
