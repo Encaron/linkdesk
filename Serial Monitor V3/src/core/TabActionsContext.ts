@@ -7,11 +7,16 @@
  */
 import { createContext, useContext } from "react";
 import type { CreateTabOptions } from "./types";
+import type { CloseTabResult } from "../hooks/useTabManager";
 
 export interface TabActions {
   createTab: (type: string, opts?: CreateTabOptions) => string;
   /** Phase 5 rootfix：加 opts 参数——调用方可传 pinned 控制预览行为 */
   openOrFocusTab: (type: string, opts?: CreateTabOptions) => string | null;
+  /** Phase 5.5c：侧栏点会话 → 聚焦该会话对应的标签页（按 tabId 精确聚焦，非按 type） */
+  focusTab: (tabId: string) => void;
+  /** Phase 5.5c：侧栏删会话 → 同步关闭对应标签页 */
+  closeTab: (tabId: string) => CloseTabResult;
 }
 
 const TabActionsContext = createContext<TabActions | null>(null);

@@ -168,10 +168,11 @@ export function useTerminalSessions() {
 
     // ── CRUD ──
 
-    /** 新建会话——返回新 session（id=tabId，已自动设为活跃） */
-    createSession(name: string): TerminalSession {
+    /** 新建会话——返回新 session（id=tabId，已自动设为活跃）。
+     *  Phase 5.5c C5：可选 id 参数——sidebar 先 createTab 拿到 tabId 再传入，确保 session.id === tab.id */
+    createSession(name: string, id?: string): TerminalSession {
       const session: TerminalSession = {
-        id: `terminal-${++_sessionCounter}`,
+        id: id ?? `terminal-${++_sessionCounter}`,
         name,
         ...cloneDefaults(),
         quickSends: getDefaultQuickSends(),

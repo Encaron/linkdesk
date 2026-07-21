@@ -659,7 +659,9 @@ function App() {
   const tabActionsValue = useMemo(() => ({
     createTab,
     openOrFocusTab,
-  }), [createTab, openOrFocusTab]);
+    focusTab,
+    closeTab,
+  }), [createTab, openOrFocusTab, focusTab, closeTab]);
 
   if (!ready) return null;
 

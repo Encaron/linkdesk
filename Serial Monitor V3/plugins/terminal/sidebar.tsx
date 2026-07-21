@@ -17,6 +17,7 @@ import { useTranslation } from "react-i18next";
 import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "../../src/core/SerialContext";
+import { useTabActions } from "../../src/core/TabActionsContext";
 import SidebarSection from "../../src/components/shared/SidebarSection";
 import Toggle from "../../src/components/shared/Toggle";
 import Select from "../../src/components/shared/Select";
@@ -159,6 +160,9 @@ function TerminalSidebar() {
   // Phase 5.5c C4b Bug 3：connected 从 SerialContext 派生——不读 session.connected（始终为 false）
   const { state: { isOpen, portName } } = useSerialContext();
 
+  // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
+  const tabActions = useTabActions();
+
   // 新建会话默认名称计数器
   const sessionCountRef = useRef(sessions.length);
   sessionCountRef.current = sessions.length;
@@ -170,10 +174,12 @@ function TerminalSidebar() {
       t("新会话名称：") ?? "新会话名称：",
       `${t("新会话")} ${n}`,
     );
-    if (name && name.trim()) {
-      createSession(name.trim());
+    if (name && name.trim() && tabActions) {
+      // 先创建标签页拿到 tabId → 再用同一个 ID 创建 session（一一对应）
+      const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true });
+      createSession(name.trim(), tabId);
     }
-  }, [t, createSession]);
+  }, [t, createSession, tabActions]);
 
   const handleRename = useCallback(
     (id: string) => (name: string) => {
@@ -192,10 +198,12 @@ function TerminalSidebar() {
       );
       if (confirmed) {
         // TODO Phase 5.5c C4: 如果 connected → 先断开串口
+        // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session
+        tabActions?.closeTab(id);
         removeSession(id);
       }
     },
-    [sessions, t, removeSession],
+    [sessions, t, removeSession, tabActions],
   );
 
   // ── 设置辅助：从 activeSession 读 / 通过 updateSession 写 ──
@@ -242,13 +250,22 @@ function TerminalSidebar() {
   // ── 渲染 ──
 
   // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
+  const handleSelectSession = useCallback(
+    (sessionId: string) => {
+      setActiveSession(sessionId);
+      // Phase 5.5c C5：点到哪个会话就聚焦哪个标签页（按 tabId 精确聚焦，不是按 type）
+      tabActions?.focusTab(sessionId);
+    },
+    [setActiveSession, tabActions],
+  );
+
   const sessionList = sessions.map((s) => (
     <SessionListItem
       key={s.id}
       session={s}
       isActive={s.id === activeSessionId}
       connected={isOpen && portName === s.port}
-      onSelect={() => setActiveSession(s.id)}
+      onSelect={() => handleSelectSession(s.id)}
       onRename={handleRename(s.id)}
       onDelete={handleDelete(s.id)}
     />
