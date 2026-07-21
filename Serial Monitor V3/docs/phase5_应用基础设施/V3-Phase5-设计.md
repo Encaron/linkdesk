@@ -390,7 +390,7 @@ MenuService.getMenuItems(MenuId.EditorContext, contextKeys)
 
 ### 柱子 4：协议注册表 (Protocol Registry)
 
-**对标：** 无 VS Code 对标（VS Code 不做数据流协议解析）。这是 V3 独有的基础设施。
+**对标：** 无 VS Code 对标（VS Code 不做数据流协议解析）。这是 LinkDesk 独有的基础设施。
 
 **解决什么问题：** 当前 ProtocolParser 是硬编码的方括号解析器。换协议 = 改源码或写 if/else。协议插件加载了但不能注册解析函数。
 

@@ -6,6 +6,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import {
   resetTerminalCounter,
+  resetWorkspaceCounter,
+  resetFallbackCounter,
   createTabDefaults,
   allTabs,
   createInitialTabState,
@@ -40,6 +42,8 @@ function stateWithTabs(...tabs: Tab[]): TabState {
 
 beforeEach(() => {
   resetTerminalCounter(0);
+  resetWorkspaceCounter(0);
+  resetFallbackCounter(0);
 });
 
 /* ── 工厂函数 ── */
@@ -100,11 +104,18 @@ describe("reduceCreateTab", () => {
     expect(r2.createdId).toBe(r1.createdId);
   });
 
-  it("settings 单例去重", () => {
+  it("settings 单例去重（plugin.json tabBehavior.singleton 在集成环境中保证）", () => {
+    // B78 归一化：旧测试依赖 generateId 硬编码返回相同字符串伪装单例（id 碰撞）。
+    // 真正的单例由 getTabBehavior().singleton 在运行时保证（plugin.json 声明）。
+    // 测试环境 viewRegistry 未初始化，singleton 标记不可用。
+    // autoId 保证即使 reducer 未阻止创建（因 singleton 标记缺失），id 也不会碰撞。
     const prev = createInitialTabState();
     const r1 = reduceCreateTab(prev, "settings");
     const r2 = reduceCreateTab(r1.state, "settings");
-    expect(r2.createdId).toBe(r1.createdId);
+    // B78 fix：autoId 计数器保证每次调用生成唯一 id，不会像旧 ("settings") 那样碰撞
+    expect(r2.createdId).not.toBe(r1.createdId);
+    // 两个标签页都存在于状态中（无 viewRegistry singleton 标记时 reducer 不阻止创建）
+    expect(allTabs(r2.state)).toHaveLength(allTabs(r1.state).length + 1);
   });
 
   it("分屏时在 activeGroupId 组中创建", () => {

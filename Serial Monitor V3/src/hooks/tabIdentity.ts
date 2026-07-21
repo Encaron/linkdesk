@@ -47,6 +47,16 @@ export function resetWorkspaceCounter(n = 0): void { _workspaceCounter = n; }
 
 /** 未知类型的全局计数器——确保 generateId 不重复 */
 let _fallbackCounter = 0;
+export function resetFallbackCounter(n = 0): void { _fallbackCounter = n; }
+
+/**
+ * B78 同类：不需要特殊 id 格式的条目统一走此 helper。
+ * `${prefix}-${counter}` — 每次调用递增，保证多实例不碰撞。
+ * 和 getMeta fallback 同一模式——唯一区别是 prefix = type 名显式传入。
+ */
+function autoId(prefix: string) {
+  return () => `${prefix}-${++_fallbackCounter}`;
+}
 
 /* ── 壳内部视图类型（Shell-rendered, not plugins）──
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
@@ -64,19 +74,19 @@ const TAB_IDENTITY: Record<string, TabIdentityMeta> = {
     // B78: 无 workspaceName 时用计数器避免 id 碰撞（标签页命名上线后此分支不再触发）
     generateId: (opts) => opts?.workspaceName ? `workspace-${opts.workspaceName}` : `workspace-${++_workspaceCounter}` },
   settings:    { identityField: null,               fallbackLabel: "设置",   legacyPluginId: "settings",
-    generateId: () => "settings" },
+    generateId: autoId("settings") },
   marketplace: { identityField: null,               fallbackLabel: "插件市场", legacyPluginId: "marketplace",
-    generateId: () => "marketplace" },
+    generateId: autoId("marketplace") },
 
   // ── 壳内部视图 ──
   "plugin-detail": { identityField: "detailPluginId", fallbackLabel: "插件详情",
     generateId: (opts) => `plugin-detail-${(opts?.detailPluginId ?? opts?.pluginId) ?? Date.now()}` },
   welcome:         { isFallback: true, identityField: null, fallbackLabel: "欢迎",
-    generateId: () => "welcome" },
+    generateId: autoId("welcome") },
 
   // ── 预留（Phase 6+ 壳实现）──
   oled:   { identityField: null, fallbackLabel: "OLED",   legacyPluginId: "oled",
-    generateId: () => `oled-${++_fallbackCounter}` },
+    generateId: autoId("oled") },
   editor: { identityField: "filePath", fallbackLabel: "编辑器", legacyPluginId: "editor",
     generateId: (opts) => opts?.filePath ? `editor-${opts.filePath.replace(/[^a-zA-Z0-9]/g, "_")}` : "editor" },
 };

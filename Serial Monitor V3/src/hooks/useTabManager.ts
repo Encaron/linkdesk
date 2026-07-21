@@ -80,7 +80,7 @@ export function findGroup(state: TabState, tabId: string): TabGroup | undefined 
 /* ── 默认值工厂 ── */
 
 /** 重新导出 tabIdentity 的 resetTerminalCounter（测试兼容） */
-export { resetTerminalCounter as resetTerminalCounter } from "./tabIdentity";
+export { resetTerminalCounter as resetTerminalCounter, resetWorkspaceCounter as resetWorkspaceCounter, resetFallbackCounter as resetFallbackCounter } from "./tabIdentity";
 
 /** type 可能是内置 TabType 或自定义 pluginId——创建 Tab 时统一对待 */
 export function createTabDefaults(

@@ -15,6 +15,43 @@ import { read, write, writeSync } from "./StorageService";
 
 /* ── 类型 ── */
 
+/**
+ * B78 归一化：旧 tab identity 硬编码 id 集合。
+ * 这些类型在 2026-07-21 前 generateId 返回固定字符串（如 "settings"），
+ * 归一化后改为 `autoId(prefix)` → `settings-1` / `settings-2` ...。
+ * 启动时自动迁移——将布局中的旧 id 映射到新 id（idempotent）。
+ */
+const LEGACY_TAB_IDS = new Set(["settings", "marketplace", "welcome", "oled"]);
+
+function migrateLegacyTabIds(layout: WorkspaceLayout): WorkspaceLayout {
+  let migrated = false;
+  const newGroups = layout.tabs.groups.map((group) => {
+    let groupChanged = false;
+    const newTabs = group.tabs.map((tab) => {
+      if (LEGACY_TAB_IDS.has(tab.id)) {
+        groupChanged = true;
+        migrated = true;
+        const newId = `${tab.id}-1`;
+        return {
+          ...tab,
+          id: newId,
+          // sourceId 默认等于 tab.id（createTabDefaults line 114），同步迁移
+          sourceId: tab.sourceId === tab.id ? newId : tab.sourceId,
+        };
+      }
+      return tab;
+    });
+    if (!groupChanged) return group;
+    const newActiveId = LEGACY_TAB_IDS.has(group.activeTabId) ? `${group.activeTabId}-1` : group.activeTabId;
+    return { ...group, tabs: newTabs, activeTabId: newActiveId };
+  });
+  if (!migrated) return layout;
+  // 异步回写——下次 saveTabLayout/syncWriteLayout 也会覆盖，但先写一份确保 crash 安全
+  const migratedLayout = { ...layout, tabs: { ...layout.tabs, groups: newGroups } };
+  write("layout", migratedLayout).catch(() => {});
+  return migratedLayout;
+}
+
 export interface CardLayout {
   id: string;        // 卡片实例 ID
   cardId: string;    // 卡片类型 ID（如 "waveform" / "gauge"）
@@ -37,10 +74,13 @@ let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, c
 
 /* ── 初始化 ── */
 
-/** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底 */
+/** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。
+ *  B78 归一化：自动迁移旧硬编码 tab id（"settings"→"settings-1"等），保证 F5 不丢布局。 */
 export async function initLayoutService(): Promise<void> {
   const saved = await read<WorkspaceLayout>("layout");
-  if (saved) _layoutCache = saved;
+  if (saved) {
+    _layoutCache = migrateLegacyTabIds(saved);
+  }
 }
 
 /* ── 读取 ── */
