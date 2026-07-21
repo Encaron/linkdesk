@@ -19,7 +19,7 @@ import { registerTheme } from "../core/ThemeEngine";
 import { pushToast } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "../core/PluginStateService";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
 import type { ManifestMenuItem } from "../core/MenuRegistry";
@@ -362,6 +362,8 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   // 4. 注册视图插件
   if (Component) {
+    // B77：同步更新 iconOrder ← 必须在 registerViewPlugin 之前！否则 React 渲染微任务跑在前面
+    await appendToIconOrder(pluginId);
     const entry: ViewPluginEntry = {
       pluginId,
       manifest,
@@ -382,11 +384,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     loadThemePlugin(pluginId, manifest);
   } else if (manifest.languages && manifest.languages.length > 0) {
     loadLanguagePlugin(pluginId, manifest);
-  }
-
-  // B77：运行时插件也追加到图标栏末尾
-  if (Component) {
-    await appendToIconOrder(pluginId);
   }
 
   loadedPluginIds.add(pluginId);
@@ -728,8 +725,9 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     if (manifestKey) {
       const manifest = pluginManifests[manifestKey];
       // 清单在 glob 中 → 直接 loadPlugin 即时生效
+      // B77：同步更新 iconOrder ← 必须在 loadPlugin 之前
+      await appendToIconOrder(pluginId);
       await loadPlugin(pluginId);
-      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       const instant = !!(manifest.themes || manifest.languages || (!manifest.entry && manifest.file));
       pushToast({
         message: `已安装：${manifest.name}${instant ? "（即时生效）" : ""}`,
@@ -851,8 +849,9 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
         return { success: true };
       }
       // Phase 5h：工厂插件（在 glob 中）——走 loadPlugin 重新加载（Vite chunk，模块实例共享）
+      // B77：同步更新 iconOrder ← 必须在 loadPlugin 之前！否则 React 渲染微任务跑在前面
+      await appendToIconOrder(pluginId);
       await loadPlugin(pluginId);
-      await appendToIconOrder(pluginId); // B77——F5 后图标位置不丢
       pushToast({
         message: `已安装：${manifest.name}（即时生效）`,
         source: pluginId,
@@ -880,16 +879,22 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
 /* ── 图标排序辅助 ── */
 
 /**
- * Phase 5h/B77：将插件追加到图标栏末尾。
- * 重装/启用/安装后调用——确保 F5 后图标位置不变（不会回退到注册顺序）。
+ * Phase 5h/B77：将插件追加到图标栏末尾（两步——同步内存 + 异步持久化）。
+ *
+ * 🔥 关键：必须在 registerViewPlugin（触发 React 渲染）之前调同步部分。
+ * 否则 React 渲染微任务跑在 iconOrder 异步更新之前 → 图标按注册顺序排列。
+ * 历史：F5 布局持久化 4 轮 → B72 图标位置 → B76 加载路径 → B77 iconOrder 时序——全是微任务竞态。
  */
 async function appendToIconOrder(pluginId: string): Promise<void> {
   try {
     const order = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
-    const filtered = order.filter((id) => id !== pluginId); // 去重
+    const filtered = order.filter((id) => id !== pluginId);
     filtered.push(pluginId);
-    await setPluginStateValue("app", "iconOrder", filtered);
-  } catch { /* 非关键路径——静默 */ }
+    // 同步写内存——确保 registerViewPlugin 之后的 React 渲染读到正确值
+    setPluginStateValueSync("app", "iconOrder", filtered);
+    // 异步持久化——F5 安全（不阻塞 UI，失败了下次启动也能用 localStorage 恢复）
+    setPluginStateValue("app", "iconOrder", filtered).catch(() => {});
+  } catch { /* 非关键路径 */ }
 }
 
 /* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */

@@ -49,11 +49,23 @@ export async function setPluginStateValue(
   key: string,
   value: unknown
 ): Promise<void> {
+  setPluginStateValueSync(pluginId, key, value);
+  await _persist();
+}
+
+/**
+ * Phase 5h/B77：同步更新插件状态的内存缓存（不等待持久化）。
+ * 用于必须在 React 渲染前更新的场景——见 [[b77-iconorder-not-updated-on-reinstall]]。
+ */
+export function setPluginStateValueSync(
+  pluginId: string,
+  key: string,
+  value: unknown
+): void {
   if (!_states[pluginId]) {
     _states[pluginId] = {};
   }
   _states[pluginId][key] = value;
-  await _persist();
 }
 
 /** 设置插件的全部状态（替换） */
