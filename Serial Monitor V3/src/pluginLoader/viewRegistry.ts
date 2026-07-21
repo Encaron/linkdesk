@@ -7,6 +7,7 @@
 import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types";
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/CoreEvents";
+import { compareVersions } from "./semverUtils";
 
 const registry = new Map<string, ViewPluginEntry>();
 
@@ -40,16 +41,6 @@ export function registerViewPlugin(entry: ViewPluginEntry): void {
   onDidRegister.fire(entry);
 }
 
-/** 简单 semver 比较：返回 >0 如果 a > b，<0 如果 a < b，0 如果相等 */
-function compareVersions(a: string, b: string): number {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] || 0) > (pb[i] || 0)) return 1;
-    if ((pa[i] || 0) < (pb[i] || 0)) return -1;
-  }
-  return 0;
-}
 
 /** 获取单个视图插件 */
 export function getViewPlugin(pluginId: string): ViewPluginEntry | undefined {

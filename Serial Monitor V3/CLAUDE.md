@@ -32,9 +32,9 @@ Phase 1-5g ✅ 完成 → **Phase 5h ✅ 完成——运行时动态加载 + Plu
 | **5f** | StorageService + 删旧双写 + 终端专用通道拆除（10 项） | ✅ | ✅ |
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | ✅ |
 | **5h** | 运行时动态加载 + PluginLifecycle 归一化 + B1/B2/B78 修复（19 commits，~900 行）| ✅ | ✅ |
-| 5.5 | 三栏交互对标 VS Code + 终端侧栏控制面板（3 层：5.5a viewRole 声明 → 5.5b `<SidebarSection>` 通用组件 → 5.5c 终端侧栏重设计） | ✅ | 📋 |
-| 6 | 编辑能力——文件树 + 文件编辑 + 主题/语言引擎（3 层：6a/6b/6c，28 项）→ `docs/phase6_编辑能力/` | ❌ | 📋 |
-| **6.5** | **抛光与补齐——通知系统/通用 API/视觉 polish（10 项，3 批）** | ❌ | 📋 |
+| 5.5 | 三栏交互对标 VS Code + Phase 5 验收修复（5 层：5.5-0a 4 Blocking → 5.5-0b 9 Quick Wins+Prefs → 5.5a viewRole → 5.5b SidebarSection → 5.5c 终端侧栏重设计） | ✅ | 📋 |
+| 6 | 编辑能力——文件树 + 文件编辑 + 主题/语言引擎 + Profile + 壳（5 层：6a/6b/6c/6d/6e，33 项）→ `docs/phase6_编辑能力/` | ❌ | 📋 |
+| **6.5** | **抛光与补齐——通知系统/通用 API/视觉 polish（10 项，3 批；Phase 6 完成后串行执行）** | ❌ | 📋 |
 | 7 | 卡片工作台 + 数据管道（纯插件）| ❌ | 📋 |
 | 8 | OLED（独立插件）| ❌ | 📋 |
 
@@ -42,7 +42,7 @@ Phase 1-5g ✅ 完成 → **Phase 5h ✅ 完成——运行时动态加载 + Plu
 
 ## 提交前自检
 
-**🔥 机械操作，不是建议。** `npx tsc --noEmit` 零错误 + `npx vitest run` 全过 + `git diff --stat` 确认无调试日志残留。
+**🔥 机械操作，不是建议。** `npx tsc --noEmit` 零错误 + `npx vitest run` 全过 + `git diff --stat` 确认无调试日志残留 + **`git diff --staged \| grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）。**
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 
@@ -57,6 +57,7 @@ Phase 1-5g ✅ 完成 → **Phase 5h ✅ 完成——运行时动态加载 + Plu
 7. **组件只实现 OnData(fields) + OnSend**，不改路由/壳/其他组件
 8. **ProtocolParser 是独立可替换模块，RingBuffer 接口 `{ cardId, value }` 是硬边界**——开发阶段只用方括号协议，但任何代码不得写死"只有这一种协议"。Phase 4 协议插件系统通车时，只换解析器不改下游。
 9. **核心无知原则**（memory `core-ignorance-principle.md`）：核心不知道软件是干什么的。只定义"怎么接"，不定义"接什么"。往核心加东西前先问：加了之后核心变得更"知道自己是干什么的"了吗？是 → 别加，做成插件
+10. **禁止在 core/ 或 pluginLoader/ 中写死插件 ID。** 禁止 `if (pluginId === "terminal")` / `switch (pluginId) { case "terminal": ... }` / `PLUGIN_ICON_PATH["terminal"]` / `BOTTOM_ICONS = ["settings"]` 等任何形式的插件 ID 字面量硬编码。所有插件差异性行为走 plugin.json 声明（`viewRole` / `tabBehavior` / `iconLocation` / `keepSidebarOnFocus` 等字段）→ Registry 模式消费。**Phase 5g 把 `TabType` 从 8 个联合类型改成 `string` 就是为了消灭这个模式——不要再写回来。**
 
 完整版：`docs/` + memory 系统
 

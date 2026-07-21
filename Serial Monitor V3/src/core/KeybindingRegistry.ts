@@ -41,8 +41,10 @@ export interface Keybinding {
   key: string;
   /** context key when 条件 */
   when?: string;
-  /** 来源：user / plugin——同 key 时 user 优先 */
+  /** 来源：user / plugin / builtin——同 key 时 user 优先 */
   source: "user" | "plugin" | "builtin";
+  /** 插件 ID——卸载时精确匹配（B3 fix：原实现 source === "plugin" 会误删所有插件快捷键） */
+  pluginId?: string;
 }
 
 /* ── 规范化 ── */
@@ -128,10 +130,9 @@ export function registerKeybinding(binding: Keybinding): void {
 }
 
 /** 注销插件的全部快捷键——卸载时调用 */
-export function unregisterPluginKeybindings(_pluginId?: string): void {
-  // 插件卸载时，移除所有 source === "plugin" 的绑定
+export function unregisterPluginKeybindings(pluginId: string): void {
   for (let i = _bindings.length - 1; i >= 0; i--) {
-    if (_bindings[i].source === "plugin") {
+    if (_bindings[i].pluginId === pluginId) {
       _bindings.splice(i, 1);
     }
   }

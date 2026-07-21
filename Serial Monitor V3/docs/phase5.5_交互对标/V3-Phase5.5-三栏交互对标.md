@@ -1,32 +1,34 @@
 # Phase 5.5 — 三栏交互对标 VS Code + 终端布局重新设计
 
-> 2026-07-20。
+> 2026-07-20。2026-07-21 修订：加入 Phase 5 验收报告 Blocking + Quick Wins 13 项作为 5.5 前置步骤。
 > Phase 4 的三栏交互逻辑是为终端定制的——"图标=标签页，侧栏=标签页的设置"。
 > Phase 5 建了 Settings Editor，终端侧栏的 12 个设置项可以迁走了。
-> Phase 5.5 做两件事：① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码；② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
+> Phase 5.5 做三件事：**⓪ Phase 5 验收修复（13 项 Bug）** → ① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码 → ② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
 > 对标 VS Code：图标 = 侧栏入口，标签页是结果不是起点。
 >
-> **⚠️ 前置声明：Phase 5h ✅ 已完成，Phase 5.5 即将开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件将完全重设计为符合 VS Code 交互模型的形态。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。终端也不再例外：点图标出侧栏会话列表，侧栏内选/新建会话才开标签页。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
+> **⚠️ 前置声明：Phase 5h ✅ 已完成。Phase 5.5 的第一件事不是做新功能——是把 Phase 5 验收报告（[V3-Phase5-最终验收报告.md](../phase5_应用基础设施/V3-Phase5-最终验收报告.md)）发现的 4 个 Blocking + 9 个 Quick Wins 修掉。** 这些是落细节的漏洞，不是架构缺陷——但修之前不能建新功能。修完后 Phase 5 从 B+ 升至 A-，然后从一个干净的基础开始 5.5 核心工作。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。
 
 ---
 
-## 子阶段拆分（5.5a → 5.5b → 5.5c）
+## 子阶段拆分（5.5-0 → 5.5a → 5.5b → 5.5c）
 
 > 对标 Phase 6 的 6a→6b→6c：基础设施 → 通用组件 → 消费者。每层独立验证，不互相阻塞。
 
 | 子阶段 | 内容 | 性质 | 净行数 | 验证方式 |
 |:--:|------|:--:|:--:|------|
-| **5.5a** | `viewRole` 声明系统——替掉 `isSidebarOnlyView` 硬编码，`plugin.json` 加 `viewRole` 字段（`sidebarPrimary`/`tabOnly`），App.tsx `handleIconClick` 简化 | 框架层 | ~50 | 市场/设置图标行为不变；新插件声明 `sidebarPrimary` 后图标 toggle 侧栏 |
-| **5.5b** | `<SidebarSection>` 通用可折叠组件——title/collapsible/badge/actions，~60 行纯 UI | UI 基础设施 | ~60 | Storybook 式自测：3 个 Section 组合，折叠/展开/标记 |
-| **5.5c** | 终端侧栏重设计——第一个用 5.5a+5.5b 的消费者。侧栏从"设置表单"→"控制面板+会话列表"；工具栏迁入侧栏；标签页标题联动侧栏会话名 | 消费者 | ~100 | 开 3 个终端会话，各连不同 COM 口，标签标题跟随侧栏改名 |
+| **5.5-0a** | **4 Blocking 修复——监听器泄漏/僵尸注册/快捷键误删/semver 重复** | 修复（第一个 commit） | ~80 | tsc+vitest + 逐项人工验收（见验收报告） |
+| **5.5-0b** | **9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏** | 修复（第二个 commit） | ~70 | tsc+vitest + git grep Prefs=0 |
+| **5.5a** | `viewRole` 声明系统——替掉 `isSidebarOnlyView` 硬编码 | 框架层 | ~50 | 6 插件×3 状态手动验证（见 §九 验证清单） |
+| **5.5b** | `<SidebarSection>` 通用可折叠组件 | UI 基础设施 | ~60 | Storybook 式自测：3 Section 组合 |
+| **5.5c** | 终端侧栏重设计——第一个用 5.5a+5.5b 的消费者 | 消费者 | ~100 | 开 3 终端会话，标签标题跟随侧栏改名 |
 
-**实施顺序：** 5a 先（框架支持）→ 5b（独立组件，无依赖）→ 5c（消费 5a+5b，终端重设计）
+**实施顺序：** 5.5-0a → 5.5-0b → 5.5a → 5.5b → 5.5c
 
 **为什么拆：**
-- 5a 和 5b 可以并行（互不依赖）
-- 5b 是通用组件——不只终端用，Phase 6 文件树/Git/数据库浏览器全复用
-- 5c 是第一个验证三栏模型 + SidebarSection 的完整用例
-- 如果 5c 发现 SidebarSection 设计不够，只改 5b，不动 5a
+- 5.5-0 必须在最前面——4 个 Blocking 中有 3 个会让新功能建立在错误基础上（B1 监听器泄漏在 SettingsView——5.5c 会重构侧栏但 5.5-0 期间 Settings Editor 仍在用；B2 6 个 unregister 从不调用——如果不先修，5.5 期间卸载插件会残留僵尸数据）
+- 5.5a 和 5.5b 可以并行（互不依赖）
+- 5.5b 是通用组件——不只终端用，Phase 6 文件树/Git/数据库浏览器全复用
+- 5.5c 是第一个验证三栏模型 + SidebarSection 的完整用例
 
 ---
 
@@ -125,7 +127,7 @@ VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签
   └── [+ 新建] → 命名 → 选 COM → 选协议 → 开新终端标签页
 ```
 
-**这不是"正确偏离"——这是和三栏模型完全一致的交互。** 和 VS Code 的区别只在于终端是标签页而不是底部面板——因为 LinkDesk 是通用容器，终端是主工作视图（不是辅助面板），标签页比底部面板更适合。但创建标签页的流程和文件树一模一样：侧栏选择 → 标签页出现。
+**这不是"正确偏离"——这是和三栏模型完全一致的交互。** 和 VS Code 的区别只在于终端渲染在标签页而不是底部面板——LinkDesk 没有底部面板概念，所有视图统一走标签页。创建标签页的流程和其他 `sidebarPrimary` 插件完全相同：侧栏选择 → 标签页出现。终端不是特权视图——它是一个普通插件，`viewRole: "sidebarPrimary"`，和文件树、卡片工作台、未来任何第三方视图平等。
 
 ---
 
@@ -509,9 +511,81 @@ plugins/terminal/
 | # | Bug | 归属 | 何时修 |
 |:--:|------|:--:|------|
 | 1 | 预览标签页顶替回归 | useTabManager.ts | 5h ✅ |
-| 2 | 卸载后无法浏览插件详情 | loader | 5h |
+| 2 | 卸载后无法浏览插件详情 | loader | 5h ✅ |
 | 3 | 终端 COM 口多实例 | terminal/plugin | 5.5 |
 | 4 | JSON 按钮 alert | Settings Editor | 6a |
 | 5 | F5 调试 vs 刷新 | 远期 | Phase 6+ |
+| **6** | **PreferenceService 残余 2 字段** | **StorageService** | **5.5** |
 
 详见 [V3-Phase5.5-已知问题.md](V3-Phase5.5-已知问题.md)。
+
+### 5.5 新增任务：PreferenceService 正式删除
+
+Phase 5f 迁移了 11 个字段中的 9 个，剩余 2 个：
+- `Prefs.window`（窗口位置 left/top/width/height）→ 迁到 Tauri 窗口状态 API 或 StorageService
+- `Prefs.pluginsInstallPath` → 迁到 PluginStateService
+
+5.5 期间完成这 2 个字段的迁移，正式删除 `PreferenceService.ts`。一个僵尸对象的存在本身就是 V2.6 风险——新 AI 可能误以为它还在用，往里面加字段。
+
+### 5.5a 手动验证清单（tsc + vitest 不够）
+
+5.5a 改的是图标点击行为——所有插件交互的公共入口。`viewRole` 声明虽然只有 ~50 行，但覆盖不全的话，某些插件的图标点击行为会静默异常。以下 6 个插件的点击行为必须在 tauri dev 中手动验证，每个测 3 种状态：
+
+| # | 插件 | viewRole | 单击图标 | 双击图标 | 失焦后再单击 |
+|:--:|------|:--:|------|------|------|
+| 1 | 终端 | sidebarPrimary | 侧栏切到终端会话列表，主区不动 | 侧栏保持，主区不变（vs 旧行为会开标签页） | 侧栏 toggle off |
+| 2 | 工作台 | sidebarPrimary | 侧栏切到卡片列表，主区不动 | 同上 | 侧栏 toggle off |
+| 3 | 设置 | tabOnly | 侧栏不变，主区开/聚焦设置标签页 | 主区保持设置标签页 | 标签页保持聚焦 |
+| 4 | 市场 | sidebarPrimary | 侧栏切到市场列表，主区不动 | 同上 | 侧栏 toggle off |
+| 5 | 欢迎页 | —（无 iconBar 入口） | 欢迎页作为 fallback 标签页正常显示 | — | — |
+| 6 | 任意第三方 view 插件 | sidebarPrimary（默认） | 侧栏显示插件 sidebar，主区不动 | 同上 | 侧栏 toggle off |
+
+**如果 5h 的运行时动态加载已生效：** 还需要验证——通过市场安装一个新插件 → 不刷新 → 图标立即出现 → 单击行为由 viewRole 声明决定。
+
+---
+
+## 十、5.5-0 — Phase 5 验收修复清单（14 项，第一个 commit）
+
+> 来源：[V3-Phase5-最终验收报告.md](../phase5_应用基础设施/V3-Phase5-最终验收报告.md) §四。
+> 这些不是架构缺陷——是落细节的漏洞。Phase 5 架构骨架 A- 级，修掉这些后升至 A-。
+> **Phase 5.5 的第一个 commit 必须是这批修复——否则新功能建在错误基础上。**
+
+### 🔴 Blocking（4 项，~50 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B1** | SettingsView `onDidChangeConfiguration` 监听器泄漏——从不取消订阅，每次 mount 一个新 listener 永久留在 Set 中 | `SettingsView.tsx:50-54` | cleanup 中调 `unsubscribe()` |
+| **B2** | 6 个 `unregister*` 函数（commands/keybindings/menus/protocols/cards/channels）定义但从不调用——卸载插件后命令面板/快捷键/右键菜单/下拉框残留僵尸数据 | `lifecycle.ts` | `onWillUninstall` 消费端追加 6 行 import + unregister |
+| **B3** | `unregisterPluginKeybindings` 参数 `_pluginId` 被忽略——匹配条件是 `source === "plugin"`（字符串）而非 `source === pluginId`（参数值）——调用会误删所有插件的快捷键 | `KeybindingRegistry.ts:131-138` | `_pluginId` → `pluginId`，条件改为精确匹配 |
+| **B4** | `versionGte` 和 `compareVersions` 两处实现相同算法——纯逻辑重复 | `loader.ts:83-91` + `viewRegistry.ts:44-52` | 提取到 `semverUtils.ts` |
+
+**验收：** 每项逐条验证（见验收报告各条目"验收"行）。
+
+### 🟡 Quick Wins（9 项，~75 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B5** | `"welcome"` 字符串硬编码 10+ 处——改名要改所有引用 | 多个文件 | 提取 `FALLBACK_PLUGIN_ID` 常量 |
+| **B6** | `loader.ts` 17 处 `console.log` 绕过 LogChannel | `loader.ts` | 创建 `channel = createLogChannel("pluginLoader")`，全部替换 |
+| **B7** | `"app"` 插件 ID 硬编码 10+ 处——改名遗漏一处读不到数据 | 多个文件 | 提取 `APP_PLUGIN_ID` 常量 |
+| **B8** | 3 个 CustomEvent 名称字符串无常量——dispatch/listen 端各写一遍，拼错就断裂 | `coreCommands.ts` 等 | 提取 `CUSTOM_EVENTS` 常量（Phase 6 再迁到 Emitter） |
+| **B9** | Toast TTL 裸数字 10 处——`8000`/`5000`/`6000` 不表达意图 | `loader.ts`/`lifecycle.ts` | 提取 `TOAST_TTL_ERROR/SUCCESS/INFO` 常量 |
+| **B10** | `getAppVersion()` 返回硬编码 `"3.0.0"`——注释说"从 package.json 读取"但实际不是 | `loader.ts:78-80` | 加 TODO Phase 6 注释，保留硬编码但标注"发版前手动更新" |
+| **B11** | `useTabManager` 返回 16 个函数无分组注释 | `useTabManager.ts:909-928` | return 语句加分组注释（生命周期/布局/持久化/工具） |
+| **B12** | `mountGlobalKeybindings()` 返回值丢弃——HMR 可能重复注册 keydown listener | `App.tsx:203` | startup useEffect cleanup 中调 `cleanupKeybindings()` |
+| **B13** | Plugin watcher `setInterval` 永不停止——`stopPluginWatcher()` 已定义但从未被调用 | `App.tsx:200` | startup useEffect cleanup 中调 `stopPluginWatcher()` |
+
+### ➕ 追加：PreferenceService 正式删除（~30 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B14** | `Prefs.window` + `Prefs.pluginsInstallPath` 仍留在 PreferenceService——僵尸对象 | `PreferenceService.ts` 等 | 迁到 StorageService/PluginStateService，删 PreferenceService.ts |
+
+> 验收报告 D7 将此标为 Phase 6。这里提前到 5.5——理由：① 5.5-0 已经在做 B5-B8 的常量提取和清理，Prefs 迁移是同一类"打扫战场"工作；② Phase 6 的 WorkspaceService + FileService + ConfigurationService 三件套已足够，PreferenceService 多存在一天就多一天"新 AI 往里面加字段"的风险。
+
+**验收（全部 14 项完成后）：**
+- [ ] `npx tsc --noEmit` 零错误
+- [ ] `npx vitest run` 141+ 测试全过（常量提取不改变行为）
+- [ ] 人工验收：安装有 commands+keybindings+menus 的插件 → 卸载 → 检查命令面板/快捷键/右键菜单无残留
+- [ ] 人工验收：SettingsView mount → unmount → remount × 3 → 检查 `_changeListeners.size === 1`
+- [ ] `git grep "PreferenceService"` 返回空（源文件目录）

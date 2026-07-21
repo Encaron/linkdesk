@@ -48,9 +48,11 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
   // 监听配置值变更
   useEffect(() => {
+    let unsubscribe: (() => void) | undefined;
     import("../../core/ConfigurationService").then(({ onDidChangeConfiguration }) => {
-      onDidChangeConfiguration(() => setVersion((v) => v + 1));
+      unsubscribe = onDidChangeConfiguration(() => setVersion((v) => v + 1));
     });
+    return () => { unsubscribe?.(); };
   }, []);
 
   // 监听插件生命周期——配置分组需要刷新（对标 IconBar 订阅 viewRegistry 的模式）

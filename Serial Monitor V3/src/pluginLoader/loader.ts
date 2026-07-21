@@ -28,6 +28,7 @@ import type { ManifestMenuItem } from "../core/MenuRegistry";
 import { registerMenuItems } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
 import { registerKeybinding } from "../core/KeybindingRegistry";
+import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
@@ -79,16 +80,6 @@ function getAppVersion(): string {
   return "3.0.0";
 }
 
-/** 简单 semver 比较：a >= b ? */
-function versionGte(a: string, b: string): boolean {
-  const pa = a.split(".").map(Number);
-  const pb = b.split(".").map(Number);
-  for (let i = 0; i < 3; i++) {
-    if ((pa[i] || 0) > (pb[i] || 0)) return true;
-    if ((pa[i] || 0) < (pb[i] || 0)) return false;
-  }
-  return true;
-}
 
 /* ── 插件元数据缓存 ── */
 
@@ -269,7 +260,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   if (c.keybindings) {
     const kbs = c.keybindings as Array<{ command: string; key: string; when?: string }>;
     for (const kb of kbs) {
-      registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin" });
+      registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "plugin", pluginId });
     }
   }
 

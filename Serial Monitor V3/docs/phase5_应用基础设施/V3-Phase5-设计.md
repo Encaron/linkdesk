@@ -894,14 +894,13 @@ PreferenceService（现状——一块大杂烩）→ 拆分为：
   ├── ConfigurationService   → 所有设置类数据的读写（替代 Prefs.preferences）      ✅ 5f 完成
   ├── LayoutService          → 标签页布局持久化（替代 Prefs.layout）               ✅ 5f 完成
   ├── PluginStateService     → 插件状态（disabledPlugins, iconOrder 等）            ✅ 5f 完成
-  └── 待定                   → 剩余 2 个字段（Phase 6-7 处理，之后可删 PreferenceService）
-           ├── Prefs.window（窗口位置 left/top/width/height）→ 计划迁到 Tauri 窗口状态 API
-           └── Prefs.pluginsInstallPath → 计划迁到 PluginStateService
+  └── 待定                   → 剩余 2 个字段（📋 5.5 迁移，之后删 PreferenceService）
+           ├── Prefs.window（窗口位置 left/top/width/height）→ 5.5 迁到 StorageService（key "windowState"）
+           └── Prefs.pluginsInstallPath → 5.5 迁到 PluginStateService
 
 Phase 5f 进度：PreferenceService 的 I/O 已归一化到 StorageService（2026-07-21）。
 11 个字段中 9 个已迁走，仅 window + pluginsInstallPath 残留。
-在新的 AI 接手时，必须知道这 2 个剩余字段——否则 PreferenceService 永远拆不掉。
-```
+**已指派 Phase 5.5 完成迁移并正式删除 PreferenceService.ts。** 僵尸对象多存在一天就多一天风险。```
 
 ### 4.2 终端设置迁移
 

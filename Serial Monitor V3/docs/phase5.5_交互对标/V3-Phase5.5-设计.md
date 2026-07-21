@@ -1,9 +1,44 @@
-# Phase 5.5 实施计划——三栏交互对标 VS Code + 终端侧栏重设计
+# Phase 5.5 实施计划——Phase 5 验收修复 + 三栏交互对标 VS Code + 终端侧栏重设计
 
-> 2026-07-21。
+> 2026-07-21。2026-07-21 修订：5 个 Agent 并行审计（[验收报告](../phase5_应用基础设施/V3-Phase5-最终验收报告.md)）发现 4 个 Blocking + 9 个 Quick Wins——必须修在 5.5 功能之前。
+
+> ⚠️ **双 AI 并行协作声明——此文档正在被两个 AI 同时修改。**
+>
+> - **AI-A（文档设计者）：** 正在重写 §三（5.5c 终端侧栏布局）和 §八（对标 PlatformIO 终端布局）——将 Phase 5 规划阶段的草稿升级为正式执行规格。
+> - **AI-B（代码执行者）：** 正在从 5.5-0a 开始逐步修复代码，最终会到达 5.5c。
+>
+> **如果你是 AI-B：** 在到达 5.5c 之前，如果发现此文档在你两次读取之间内容变了——不要慌，不是你的幻觉，是 AI-A 在同步改。**等你执行完 5.5a+5.5b 之后，重新 Read 一次 §三 和 §八，拿到 AI-A 交付的最终版终端布局规格，再开始 5.5c。**
+>
+> **如果你是 AI-A：** §三（5.5c）和 §八（终端布局）是你负责的区域。其余章节（⓪ 5.5-0a/0b、一 5.5a、二 5.5b、四 实施顺序、五 Bug 修复、六 通用交互范式、七 不做清单、九 已知问题+验证清单、十 验收修复清单）属于 AI-B 的领地——不要改。
+
 > Phase 4 的三栏交互为终端定制——"图标=标签页，侧栏=设置表单"。
 > Phase 5 建了 Settings Editor，终端 12 个设置项可以迁走了。
-> Phase 5.5 做三件事（3 层子阶段）：① `viewRole` 声明替代硬编码（框架层）；② `<SidebarSection>` 通用组件（UI 基础设施）；③ 终端侧栏重设计（消费者）。
+> Phase 5.5 做四件事（4 层子阶段）：**⓪ Phase 5 验收修复 14 项** → ① `viewRole` 声明替代硬编码（框架层）→ ② `<SidebarSection>` 通用组件（UI 基础设施）→ ③ 终端侧栏重设计（消费者）。
+
+> 🔥 **禁止写死插件 ID——反模式清单。** 以下代码模式在 Phase 5.5 及之后的所有 Phase 中**绝对不能出现**。Phase 5g 已经把 `TabType` 从 8 个联合类型改成 `string`、`BOTTOM_ICONS` 改成 `plugin.json` 的 `iconLocation` 声明——目的就是消灭这些模式。如果执行本 Phase 时想写以下任何一行，停下来——改用 plugin.json 声明。
+>
+> ```typescript
+> // ❌ 禁止——用 plugin.json viewRole 声明替代
+> if (pluginId === "terminal") { ... }
+> if (pluginId === "file-tree" || pluginId === "marketplace") { ... }
+> switch (pluginId) { case "terminal": ...; case "settings": ... }
+>
+> // ❌ 禁止——用 viewRegistry 查 plugin.json 声明替代
+> BOTTOM_ICONS = new Set(["settings"]);
+> PLUGIN_ICON_PATH = { terminal: "...", workspace: "..." };
+> if (isSidebarOnlyView(pluginId)) { ... }  // ← 5.5a 的目标就是删掉这个函数
+>
+> // ❌ 禁止——用 ConfigurationService + plugin.json 声明替代
+> if (pluginId === "terminal") { setConfigurationValue("terminal.timestampFormat", ...) }
+>
+> // ✅ 正确——通用路径，不认 pluginId
+> const role = getViewRole(pluginId);  // 从 plugin.json 读，不 switch
+> const iconLocation = getViewPlugin(pluginId)?.iconLocation ?? "top";  // plugin.json 声明
+> const settings = ConfigurationRegistry.getProperties(pluginId);  // 注册表驱动
+> ```
+>
+> **提交前 grep：** `git diff --staged | grep -E 'pluginId === "|case ".*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` → 必须返回空。
+
 >
 > **性质：** 最后一个改框架的 Phase 是 5h。5.5 是 5h→6 之间的桥梁——建好 viewRole 机制后，Phase 6 文件树/Git/数据库浏览器全走 `sidebarPrimary`，不需要再碰 `App.tsx`。
 >
@@ -15,11 +50,81 @@
 
 | 子阶段 | 内容 | 性质 | 净行数 | 依赖 |
 |:--:|------|:--:|:--:|------|
-| **5.5a** | `viewRole` 声明系统 | 框架层（改 App.tsx + plugin.json schema） | ~50 | 5h（plugin.json 字段即时生效） |
-| **5.5b** | `<SidebarSection>` 通用组件 | UI 基础设施（纯组件，不改框架） | ~60 | 无（独立组件） |
-| **5.5c** | 终端侧栏重设计 | 消费者（第一个用 5.5a+5.5b 的插件） | ~100 | 5.5a + 5.5b |
+| **5.5-0a** | **4 Blocking 修复——监听器泄漏/僵尸注册/快捷键误删/semver 重复** | **修复（第一个 commit）** | ~80 | 无 |
+| **5.5-0b** | **9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏** | **修复（第二个 commit）** | ~70 | 5.5-0a（Blocking 先修） |
+| **5.5a** | `viewRole` 声明系统 | 框架层 | ~50 | 5.5-0b（代码库干净） |
+| **5.5b** | `<SidebarSection>` 通用组件 | UI 基础设施 | ~60 | 5.5-0b |
+| **5.5c** | 终端侧栏重设计 | 消费者 | ~100 | 5.5a + 5.5b |
 
-**5.5a 和 5.5b 可以并行。** 5.5c 必须等前两者完成。
+**5.5-0a 必须在最前面——B1 SettingsView 监听器泄漏、B2 6 个 unregister 从不调用、B3 快捷键误删全插件——这三项会让 5.5a-5.5c 的新功能建在错误基础上。** 0b（Quick Wins + Prefs 删除）紧接其后——两个 commit 完成全部 14 项修复，然后从一个 A- 级代码库开始 5.5 核心工作。
+
+---
+
+## ⓪a 5.5-0a — 4 Blocking 修复（第一个 commit，~50 分钟）
+
+> 来源：[V3-Phase5-最终验收报告](../phase5_应用基础设施/V3-Phase5-最终验收报告.md) §四。
+> 不修会直接导致 5.5a-5.5c 的新功能出错。先修这 4 个——它们是阻断性的。
+
+### Blocking（4 项）
+
+| # | 问题 | 文件 | 修法 | 验收 |
+|:--:|------|------|------|------|
+| **B1** | SettingsView `onDidChangeConfiguration` 从不取消订阅——每次 mount 泄漏一个 listener | `SettingsView.tsx:50-54` | cleanup 中调 `unsubscribe()` | mount→unmount→remount×3 → `_changeListeners.size === 1` |
+| **B2** | 6 个 `unregister*` 定义但从不调用——卸载插件后命令面板/快捷键/右键菜单残留僵尸数据 | `lifecycle.ts` `initLifecycleConsumers()` | `onWillUninstall` 消费端追加 6 行 import+unregister | 安装含 commands+keybindings+menus 的插件 → 卸载 → 检查各注册表 pluginId 条目为零 |
+| **B3** | `unregisterPluginKeybindings(_pluginId)` 参数被忽略——`source === "plugin"`（字符串）会误删所有插件快捷键 | `KeybindingRegistry.ts:131-138` | `_pluginId`→`pluginId`，条件改为 `source === pluginId`（精确匹配） | 注册插件 A+B 快捷键 → 卸载 A → B 的快捷键仍在 |
+| **B4** | `versionGte` + `compareVersions` 两处实现相同算法——改一处漏一处 | `loader.ts:83-91` + `viewRegistry.ts:44-52` | 提取到 `semverUtils.ts`，`versionGte` 内部调 `compareVersions` | 现有行为不变 |
+
+### 5.5-0a 验证关卡
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 141+ 测试全过
+[ ] 人工：安装有 commands+keybindings+menus 的插件 → 卸载 → 检查命令面板/快捷键/右键菜单无残留
+[ ] 人工：SettingsView mount→unmount→remount×3 → _changeListeners.size === 1
+[ ] 人工：注册插件 A+B 快捷键 → 调 unregisterPluginKeybindings("A") → A 的被移除、B 的仍在
+[ ] git commit: "fix(5.5-0a): 4 Blocking——监听器泄漏/僵尸注册/快捷键误删/semver 归一化"
+```
+
+---
+
+## ⓪b 5.5-0b — 9 Quick Wins + Prefs 删除（第二个 commit，~105 分钟）
+
+> Blocking 修完后做——常量提取、LogChannel 迁移、cleanup 补漏、Prefs 删除。不阻塞但显著提升代码质量。
+
+### Quick Wins（9 项）
+
+| # | 问题 | 文件 | 修法 |
+|:--:|------|------|------|
+| **B5** | `"welcome"` 硬编码 10+ 处 | 多个文件 | 提取 `FALLBACK_PLUGIN_ID` 常量到 `viewRegistry.ts` |
+| **B6** | `loader.ts` 17 处 `console.log` 绕过 LogChannel | `loader.ts` | `createLogChannel("pluginLoader")`，全部替换为 `channel.appendLine()` |
+| **B7** | `"app"` 硬编码 10+ 处 | 多个文件 | 提取 `APP_PLUGIN_ID` 常量到 `PluginStateService.ts` |
+| **B8** | 3 个 CustomEvent 名称无常量——拼错一端就断裂 | `coreCommands.ts` 等 | 提取 `CUSTOM_EVENTS` 常量（Phase 6 再迁到 Emitter） |
+| **B9** | Toast TTL 裸数字 10 处 | `loader.ts`/`lifecycle.ts` | 提取 `TOAST_TTL_ERROR/SUCCESS/INFO` 常量到 `toastConstants.ts` |
+| **B10** | `getAppVersion()` 硬编码 `"3.0.0"`——注释说读 package.json 但实际不是 | `loader.ts:78-80` | 加 TODO Phase 6：`// TODO Phase 6：从 package.json 动态读取，发版前手动更新此行` |
+| **B11** | `useTabManager` 返回 16 个函数无分组注释 | `useTabManager.ts:909-928` | return 语句加分组注释（生命周期/布局/持久化/工具） |
+| **B12** | `mountGlobalKeybindings()` 返回值丢弃——HMR 重复注册 | `App.tsx:203` | startup useEffect cleanup 中调 `cleanupKeybindings()` |
+| **B13** | Plugin watcher `setInterval` 永不停止 | `App.tsx:200` | startup useEffect cleanup 中调 `stopPluginWatcher()` |
+
+### 追加：PreferenceService 正式删除（B14）
+
+| # | 问题 | 文件 | 修法 |
+|:--:|------|------|------|
+| **B14** | `Prefs.window` + `Prefs.pluginsInstallPath` 残余——PreferenceService 是僵尸对象 | `PreferenceService.ts` 等 | `window`→`StorageService`（key `"windowState"`）；`pluginsInstallPath`→`PluginStateService`；删 `PreferenceService.ts` |
+
+> 验收报告 D7 原标 Phase 6。提前到 5.5-0b——B5-B9 已经在做常量提取和清理，Prefs 迁移是同类"打扫战场"工作。
+
+### 5.5-0b 验证关卡
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 141+ 测试全过（常量提取不改变行为）
+[ ] git grep "PreferenceService" 源文件目录返回空
+[ ] git grep '"welcome"' src/ 返回 0（仅 FALLBACK_PLUGIN_ID 常量定义处一次）
+[ ] git grep '"app"' src/core/ src/pluginLoader/ 返回 0（仅 APP_PLUGIN_ID 常量定义处一次）
+[ ] git commit: "fix(5.5-0b): 9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏"
+```
+
+---
 
 ---
 
@@ -285,26 +390,52 @@ Phase 5 Settings Editor 建好了。
 ## 四、实施顺序
 
 ```
-         ┌──────────┐
-         │  5.5a    │  框架层——viewRole 声明
-         │  ~50 行   │  改 App.tsx + plugin.json
-         └────┬─────┘
-              │
-    ┌─────────┴─────────┐
-    │                   │
-    ▼                   ▼
-┌──────────┐    ┌──────────────┐
-│  5.5c    │    │    5.5b      │  ← 5.5a 和 5.5b 可以并行
-│  ~100 行  │    │   ~60 行      │
-│ 终端重设计 │◄───│  SidebarSection│     5.5c 消费两者
-└──────────┘    └──────────────┘
+5.5-0a: 4 Blocking（第一个 commit，~50 分钟）
+  │   B1 监听器泄漏 / B2 僵尸注册 / B3 快捷键误删 / B4 semver 归一化
+  │
+5.5-0b: 9 Quick Wins + Prefs 删除（第二个 commit，~105 分钟）
+  │   B5-B13 常量提取+LogChannel+cleanup / B14 Prefs 迁移
+  │   修完后代码库从 B+ 升至 A-
+  │
+  ▼
+┌──────────┐
+│  5.5a    │  框架层——viewRole 声明
+│  ~50 行   │  改 App.tsx + plugin.json
+└────┬─────┘
+     │
+     ├──────────┐
+     ▼          ▼
+┌──────────┐  ┌──────────────┐
+│  5.5c    │  │    5.5b      │  ← 5.5a 和 5.5b 可以并行
+│  ~100 行  │  │   ~60 行      │
+│ 终端重设计 │◄─┤  SidebarSection│     5.5c 消费两者
+└──────────┘  └──────────────┘
 ```
 
-**实际建议顺序：** 5.5a → 5.5b → 5.5c（顺序做更安全，5.5a 先确保 viewRole 机制正确，5.5b 建好组件，5.5c 最后一气呵成）
+**实际建议顺序：** 5.5-0a → 5.5-0b → 5.5a → 5.5b → 5.5c（顺序做更安全。0a/0b 先确保代码库干净。5.5a 确保 viewRole 机制正确。5.5b 建好组件。5.5c 最后一气呵成）
+
+### 5.5 完成后的终端去特权化验证
+
+Phase 5.5c 完成后必须验证：**终端不是特权插件。** 这些检查确保没有遗留"因为这是终端所以特殊处理"的代码路径——如果有，就是以后的 V2.6 种子。
+
+```
+[ ] 卸载终端插件 → 图标栏终端图标消失 → 侧栏消失 → 已打开的终端标签页全部关闭 → 主区无残留
+[ ] 卸载终端插件 → App.tsx 不报任何错误（没有 import 终端、没有 switch on "terminal"）
+[ ] 卸载终端插件 → 安装一个纯 sidebarPrimary 第三方插件 → 图标点击行为正确（切侧栏，不蹦标签页）
+[ ] 卸载终端插件 → Prefs/ConfigurationService 无 terminal.* 键残留
+[ ] git grep '"terminal"' src/core/ → 返回零（核心不知道终端存在）
+[ ] git grep '"terminal"' src/pluginLoader/ → 返回零（loader 不特殊处理终端）
+[ ] grep -r "terminal" src/App.tsx → 返回零
+[ ] grep -r "terminal" src/components/MainContent.tsx → 返回零
+```
+
+> 这不是针对终端的测试——这是**任意插件的去特权化测试模板。** Phase 6 文件树完成后也跑同一套：卸载文件树 → core/ 无 "file-tree" 残留。
 
 ---
 
-## 五、Bug 修复（嵌入 5.5c）
+## 五、Bug 修复（5.5-0 已覆盖 → 5.5c 嵌入）
+
+5.5-0（Phase 5 验收修复）已将全部 14 项 bug 作为第一个 commit 修掉。5.5c 期间只处理一个终端专属 bug：
 
 | Bug | 现象 | 根因 | 修法 |
 |-----|------|------|------|

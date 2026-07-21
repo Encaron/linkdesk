@@ -17,6 +17,12 @@ import { Emitter } from "../core/CoreEvents";
 import { pushToast } from "../core/toast";
 import { getPluginStateValue, setPluginStateValueSync } from "../core/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
+import { unregisterPluginCommands } from "../core/CommandRegistry";
+import { unregisterPluginKeybindings } from "../core/KeybindingRegistry";
+import { unregisterPluginMenus } from "../core/MenuRegistry";
+import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
+import { unregisterPluginCards } from "../core/CardRegistry";
+import { unregisterPluginChannels } from "../core/LogChannel";
 import type { PluginManifest } from "../core/types";
 
 /* ── 事件类型 ── */
@@ -89,6 +95,18 @@ export function initLifecycleConsumers(): void {
     // B70 教训：卸载/禁用时必须清理配置注册——不管 reason
     unregisterConfiguration(pluginId);
     unregisterConfigurationDefaults(pluginId);
+  });
+
+  /* ─── 消费端 2b：注册表全量清理（Phase 5 验收 B2——6 个 unregister* 从未被调用） ─── */
+
+  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
+    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
+    unregisterPluginCommands(pluginId);
+    unregisterPluginKeybindings(pluginId);
+    unregisterPluginMenus(pluginId);
+    unregisterPluginProtocols(pluginId);
+    unregisterPluginCards(pluginId);
+    unregisterPluginChannels(pluginId);
   });
 
   /* ─── 消费端 3：toast 通知 ─── */

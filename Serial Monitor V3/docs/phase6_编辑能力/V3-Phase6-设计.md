@@ -1,30 +1,46 @@
 # Phase 6 — 编辑能力设计
 
 > 2026-07-21。从 [Phase 5→6 通盘分析](../phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md) 提炼。
+> 2026-07-21 修订：同步 [Phase 5.5 实施计划](../phase5.5_交互对标/V3-Phase5.5-设计.md)——5.5 新增 5.5-0 前置修复步骤（14 项），Phase 6 的 Profile 五维验证和 WorkspaceService 时序要求纳入设计。
 > Phase 5 建基础设施，Phase 6 在基础设施上写功能。
-> **前提：Phase 5.5 必须先完成**（三栏交互对标 VS Code——`viewRole` 声明替代 `isSidebarOnlyView` 硬编码）。
+> **前提：Phase 5.5 必须先完成**（包括 5.5-0 验收修复 → 5.5a viewRole 声明 → 5.5b SidebarSection → 5.5c 终端侧栏重设计）。
 > 有了 `viewRole: "sidebarPrimary"`，文件树才能作为纯侧栏视图加载，不被强制开空标签页。
 >
 > **Phase 6 的本质 = 编辑能力。** 文件树 + 文件操作 + 文本编辑 + 主题/语言引擎 = 完整的文件编辑基础设施。
-> 三层（6a/6b/6c）从基础到完整递进。不新增 Registry 类型——Phase 6 是纯消费者。零框架改动。
+> 五层（6a/6b/6c/6d/6e）从基础到完整递进，含 5 项验收报告 Deferred 清旧债。不新增 Registry 类型——Phase 6 是纯消费者。零框架改动。
+
+> 🔥 **禁止写死插件 ID。** 文件树是第一个 Phase 6 新增的系统视图——不要把 Phase 3 终端硬编码的错误重演在文件树上。以下模式在 Phase 6 中**绝对不能出现**：
+> ```typescript
+> // ❌ 禁止——文件树走 viewRegistry + viewRole，不需要特殊 case
+> if (pluginId === "file-tree") { ... }
+> // ❌ 禁止——文件关联走 FileAssociationService + CommandRegistry
+> if (extension === ".md") { openTab("doc-reader") }
+> // ❌ 禁止——主题/语言走贡献注册表，不 switch pluginId
+> if (pluginId === "theme-dark" || pluginId === "theme-light") { ... }
+> ```
+> **提交前 grep：** `git diff --staged | grep -E 'pluginId === "|case "[a-z].*":' ` → 必须返回空。
 
 ---
 
-## 一、Phase 6 全部任务（3 层，28 项）
+## 一、Phase 6 全部任务（5 层，34 项——含 5 项验收 Deferred 清旧债 + 文件树键盘规范）
 
-### 6a — 文件树基础闭环
+### 6a — 文件树基础闭环（9 项）
 
-> 对标 VS Code Explorer + Editor。文件浏览/打开/关闭 + Monaco 编辑 JSON + 文件关联。
+> 对标 VS Code Explorer + Editor。文件浏览/打开/关闭 + Monaco 编辑 JSON + 文件关联 + Tauri fs 归一化。
 
 | # | 任务 | 性质 |
 |:--:|------|------|
 | 1 | 文件树（📁 图标栏图标 → 侧栏/标签页，系统视图 + MenuId.FileContext） | 新视图 |
+| 1b | **文件树键盘操作——F2 重命名 / Delete 移到回收站 / Shift+Delete 永久删除 / Ctrl+XCV 剪切复制粘贴 / Ctrl+N 新建文件 / Ctrl+Shift+N 新建文件夹——全部带 when 条件对标 VS Code** | 交互规范 |
 | 2 | 文件关联（contributes.fileAssociations） | 新贡献类型 |
 | 3 | 文件系统访问抽象（FileService + Rust 端命令） | 新服务 |
 | 4 | 工作区文件夹概念（WorkspaceService） | 新服务 |
 | 5 | 系统文件拖入窗口打开 | 交互入口 |
 | 6 | Reopen Closed Tab（Ctrl+Shift+T） | 壳功能 |
 | 7 | JSON 编辑器标签页（Monaco 打开 settings.json） | 新标签页类型 |
+| **8** | **Tauri fs API 归一化——FileService 建成后 4 个服务中的 7 处重复 I/O 自然消灭** | **清旧债（验收 D1）** |
+
+> D1 背景：`ConfigurationService`/`LayoutService`/`PreferenceService`/`StorageService` 各自封装了 `readTextFile`/`writeTextFile`。FileService 建成后，所有非 workspace 路径的读写统一走 StorageService，workspace 路径走 FileService。PreferenceService 已在 5.5-0 删除——剩余 3 个服务的 fs 调用在 FileService 上线后重构。
 
 ### 6b — 编辑体验完整闭环
 
@@ -41,23 +57,46 @@
 | 14 | 文件图标主题（File Icon Theme） | 新贡献类型 |
 | 15 | 文件装饰器框架（FileDecorationProvider 接口 + DecorationRegistry） | 新扩展点 |
 
-### 6c — 主题/语言引擎 + Profile + 壳完善
+### 6c — 主题/语言引擎（5 项，~180 行）
+
+> 消费已有 ThemeEngine + i18next。让主题和语言成为一等公民插件类型。
 
 | # | 任务 | 性质 |
 |:--:|------|------|
-| 16 | 主题系统插件化 + 主题浏览器 UI | 引擎升级 |
-| 17 | 语言系统插件化 | 引擎升级 |
-| 18 | 退路系统（核心兜底主题 + 核心兜底语言） | 壳加固 |
-| 19 | Profile 系统（插件集合声明式管理） | 新系统 |
-| 20 | activationEvents（按需激活，和 Profile 联动） | loader 升级 |
-| 21 | 插件依赖声明（extensionDependencies） | loader 升级 |
-| 22 | 齿轮菜单完整版（context key 驱动） | UI 完善 |
-| 23 | 输出面板 UI | 新视图 |
+| 16 | 主题系统插件化（ThemeRegistry + contributes.themes + 出厂 Dark/Light 迁移 + 三层退路） | 引擎升级 |
+| 17 | 语言系统插件化（LanguageRegistry + contributes.languages + 出厂 en/zh 迁移 + 两层退路） | 引擎升级 |
+| 18 | 主题浏览器 UI（Ctrl+K Ctrl+T——搜索/预览/即时切换） | UI 完善 |
+| 28 | 产品图标主题（Product Icon Theme，消费 ThemeRegistry） | 新贡献类型 |
+| 25 | 插件资源访问 API（getResourceUri——ResourcesService） | 新 API |
+
+### 6d — Profile + 激活链路（5 项，~250 行）
+
+> **逻辑密度最高的一层。** Profile / activationEvents / extensionDependencies 三者联动——Profile 决定"哪些插件参与游戏"，activationEvents 决定"什么时候加载代码"，extensionDependencies 确保"依赖不缺失"。
+
+| # | 任务 | 性质 |
+|:--:|------|------|
+| 19 | Profile 系统（ProfileService + loadProfile / switchProfile）⚠️ 五维验证 | 新系统 |
+| 20 | activationEvents（按需激活——onCommand / onFileOpen / onPortOpen） | loader 升级 |
+| 21 | extensionDependencies（插件依赖声明——加载前检查缺失依赖） | loader 升级 |
+| 22 | 齿轮菜单完整版（context key 驱动——Profile 切换时菜单项动态调整） | UI 完善 |
+| 23 | 输出面板 UI（LogChannel 消费端——Profile 切换时日志频道变化） | 新视图 |
+
+### 6e — 壳完善 + 清旧债（8 项，~340 行）
+
+> 独立任务——互不依赖，可同批推进。含 5 项验收 Deferred 清旧债。
+
+| # | 任务 | 性质 |
+|:--:|------|------|
 | 24 | 欢迎页集成（"打开文件夹"入口 + recentFolders） | UI 完善 |
-| 25 | 插件资源访问 API（getResourceUri） | 新 API |
-| 26 | 标题栏暗色化 + 系统菜单（文件/打开/导入/导出） | 壳功能 |
+| 26 | 标题栏暗色化 + 系统菜单（文件/打开/导入/导出）+ ☰ 基础四组 | 壳功能 |
 | 27 | Workspace 导入导出 | 壳功能 |
-| 28 | 产品图标主题（Product Icon Theme） | 新贡献类型 |
+| **29** | **SerialContext/useSendData 移出 core/——迁入 terminal 插件（验收 D2）** | **清旧债** |
+| **30** | **portOpen/portName → sourceOpen/sourceName 术语迁移——Rust+TS+Tauri 三层（验收 D3）** | **清旧债** |
+| **31** | **Chord 快捷键（Ctrl+K Ctrl+S 等双键序列）——KeybindingRegistry 加状态机（验收 D4）** | **新功能** |
+| **32** | **keybindings.json 用户自定义快捷键——读写/合并/优先级（验收 D6）** | **新功能** |
+| **33** | **DialogService 自定义 UI——React `<Dialog>` 组件替换 3 处 `window.confirm()`（验收 D8）** | **UI 完善** |
+
+> **验收报告 Deferred 项归入：** Phase 5 验收报告 8 个 Deferred 项全部落位。D7（Prefs 删除）→ 5.5-0b。D1 → 6a #8。D2/D3/D4/D6/D8 → 6e。
 
 ---
 
@@ -275,6 +314,8 @@ WorkspaceService.rootPath = "/home/user/stm32-project"
 ```
 
 Phase 5 的 Workspace scope 读写接口已经就绪，Phase 6 只是把"当前 workspace 文件夹是谁"这个上下文接上。
+
+**⚠️ WorkspaceService ↔ ConfigurationService 时序：** `ConfigurationService.setWorkspaceRoot(path)` 在 Phase 5 已定义接口签名，6a 的 WorkspaceService 初始化时调用它。如果任何 `useConfiguration()` 在 `setWorkspaceRoot` 之前被调用，Workspace scope 解析会缺上下文——和 Phase 5f "懒加载时序歧义"（commit `6f3d6ba`）同类问题。**解法：`setWorkspaceRoot` 在 App.tsx 初始化阶段（React render 之前或最早的 useEffect）同步调用。**
 
 **用户怎么访问文件树——📁 图标栏图标：**
 
@@ -512,6 +553,16 @@ pluginLoader.scanAll({ filter: profile.plugins })
 - ProfileService 自建 `.linkdesk/profiles/` 存储（不是 PluginStateService——Profile 是全局快照，不属于单个插件）
 
 **Phase 6 做：** ProfileService（~80 行）。`loadProfile(name)` → 批量 enablePlugins + disablePlugins + applySettings。交互：Ctrl+Shift+P → "切换 Profile…" → QuickPick 列出所有 profile。
+
+**🔴 Profile 切换五维验证（最容易出"半完成态"的操作）：** Profile 切换不是改一个变量——是批量执行六个操作（enablePlugins / disablePlugins / applySettings / switchTheme / switchLanguage / openWorkspace）。六个操作任何一个失败都不能静默——必须 toast 报告哪个操作失败了、当前是什么状态。对标 VS Code：Profile 切换失败时回退到切换前的状态。
+
+| # | 维度 | 验证方法 | 失败后果 |
+|:--:|------|------|------|
+| 1 | 插件加载列表 | `PluginStateService.getAll()` → 检查 enabled/disabled 集合 | Profile A 的插件在 Profile B 仍然活跃——"幽灵插件" |
+| 2 | settings 值 | `ConfigurationService.inspect(key)` → 检查 effectiveValue | 波特率/主题仍是上一个 Profile 的值——"配置残留"bug |
+| 3 | 主题 CSS 变量 | `getComputedStyle(document.body).getPropertyValue('--bg')` | UI 颜色半新半旧——最显眼的 bug |
+| 4 | 语言 | `i18next.language` + UI 文字实际显示 | 菜单中文、设置英文——碎片化体验 |
+| 5 | 布局（标签页+工作区） | 检查 tabs[] + activeGroupId + workspace root | 上一个 Profile 的标签页残留，或 workspace 没切换 |
 
 ---
 
@@ -879,5 +930,8 @@ Tauri window API                   标题栏暗色化 + 系统菜单（文件/�
 
 - [Phase 5→6 通盘分析（桥接文档）](../phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md)
 - [Phase 6 实施顺序](./V3-Phase6-实施顺序.md)
+- [Phase 6.5 抛光与补齐](../phase6.5_抛光/V3-Phase6.5-抛光与补齐.md) — **Phase 6 全部完成后串行执行，不并行**
+- [Phase 5.5 实施计划](../phase5.5_交互对标/V3-Phase5.5-设计.md) — Phase 6 的前提（含 5.5-0 验收修复）
+- [Phase 5 最终验收报告](../phase5_应用基础设施/V3-Phase5-最终验收报告.md)
 - [终端会话持久化（Phase 6 消费者 feature）](./V3-Phase6-终端会话持久化.md)
 - [Phase 6.5 抛光与补齐](../phase6.5_抛光/V3-Phase6.5-抛光与补齐.md)

@@ -11,10 +11,10 @@
 ## 实施链路
 
 ```
-5h（运行时动态加载）→ 5.5（三栏交互对标）→ Phase 6（零框架改动）
+5h（运行时动态加载）→ 5.5（5.5-0a/0b 验收修复 → 5.5a-5.5c 三栏交互）→ Phase 6（零框架改动）
 
-Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的：
-  6a（文件树基础闭环）→ 6b（编辑体验完整闭环）→ 6c（主题/语言引擎 + 壳完善）
+Phase 6 本身分五层——每层都先加新的，验证通过后再切旧的：
+  6a（文件树基础闭环）→ 6b（编辑体验）→ 6c（主题/语言引擎）→ 6d（Profile+激活）→ 6e（壳+旧债）
 ```
 
 ---
@@ -60,9 +60,9 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
 
 ---
 
-## Phase 6 — 3 层递进
+## Phase 6 — 5 层递进
 
-### 第 1 层：6a — 文件树基础闭环（7 项）
+### 第 1 层：6a — 文件树基础闭环（8 项）
 
 ```
   ├── CoreEvents 加 onDidChangeFileSystem + onDidChangeWorkspaceFolders
@@ -70,11 +70,20 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
   ├── FileAssociationService（后缀→命令反向索引）
   ├── WorkspaceService（单文件夹管理）
   ├── 文件树组件（系统视图，走 viewRegistry + WorkspaceService + FileService）
+  │    ├── 侧栏工具栏：刷新按钮（对标 VS Code Explorer 刷新）
+  │    ├── 键盘操作——对标 VS Code 源码 fileActions.contribution.ts：
+  │    │   F2: 重命名（when: Explorer focus + !root + writable）→ 侧栏内触发，标签标题联动
+  │    │   Delete: 移到回收站（when: Explorer focus + moveableToTrash）
+  │    │   Shift+Delete: 永久删除（when: Explorer focus）
+  │    │   Ctrl+X/C/V: 剪切/复制/粘贴（when: Explorer focus + writable）
+  │    │   Ctrl+N: 新建文件（when: Explorer focus）
+  │    │   Ctrl+Shift+N: 新建文件夹（when: Explorer focus）
+  │    └── 右键菜单：MenuId.FileContext → MenuService 驱动
   ├── Monaco JSON 编辑器标签页（打开 settings.json）
   ├── 系统文件拖入窗口 → Tauri onDragDropEvent → FileAssociationService
   ├── Ctrl+Shift+T → Reopen Closed Tab
   ├── [修] JSON 按钮 alert → 直接开 Monaco JSON 编辑器标签页
-  └── 验证：打开文件夹 → 文件树渲染 → 双击文件 → 关联插件打开 ✅
+  └── 验证：打开文件夹 → 文件树渲染 → F2 改名（标签标题同步更新）→ Delete 删除 ✅
 ```
 
 ### 第 2 层：6b — 编辑体验完整闭环（8 项）
@@ -91,22 +100,42 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
   └── 验证：Ctrl+Shift+F 搜索 → 多选文件 → 拖拽打开 → 编码切换 ✅
 ```
 
-### 第 3 层：6c — 主题/语言引擎 + Profile + 壳完善（13 项）
+### 第 3 层：6c — 主题/语言引擎（5 项）
 
 ```
-  ├── 主题系统插件化（ThemeRegistry + contributes.themes + 出厂 Dark/Light 迁移 + 退路）
-  ├── 语言系统插件化（LanguageRegistry + contributes.languages + 出厂 en/zh 迁移 + 退路）
-  ├── 主题浏览器 UI（Ctrl+K Ctrl+T）
-  ├── Profile 系统（ProfileService + loadProfile / switchProfile）
-  ├── activationEvents + extensionDependencies（loader 升级）
-  ├── 齿轮菜单完整版（context key 驱动）
-  ├── 输出面板 UI（LogChannel 消费端）
-  ├── 标题栏暗色化 + 系统菜单（文件/打开/导入/导出）+ ☰ 基础四组
-  ├── Workspace 导入导出 + 欢迎页集成 + recentFolders
-  ├── 插件资源访问 API（getResourceUri）+ ResourceService
-  ├── 终端会话持久化——终端侧栏加会话列表 + [+ 新建] + 双击恢复（消费 6a 的 FileService + WorkspaceService）
+  ├── 主题系统插件化（ThemeRegistry + contributes.themes + 出厂迁移 + 退路）
+  ├── 语言系统插件化（LanguageRegistry + contributes.languages + 出厂迁移 + 退路）
+  ├── 主题浏览器 UI（Ctrl+K Ctrl+T——搜索/预览/即时切换）
+  ├── 产品图标主题（Product Icon Theme）
+  ├── 插件资源访问 API（getResourceUri）
+  └── 验证：卸载全部主题 → 退路生效 → 恢复出厂主题 ✅
+```
+
+### 第 4 层：6d — Profile + 激活链路（5 项）
+
+```
+  ├── Profile 系统（ProfileService + loadProfile / switchProfile）⚠️ 五维验证
+  ├── activationEvents（onCommand / onFileOpen / onPortOpen——按需激活）
+  ├── extensionDependencies（加载前检查：依赖缺失 → toast → 不加载）
+  ├── 齿轮菜单完整版（context key 驱动——Profile 切换时菜单联动）
+  ├── 输出面板 UI（LogChannel 消费端——Profile 切换时频道变化）
+  ├── 终端会话持久化——终端侧栏加会话列表 + [+ 新建] + 双击恢复
   │   详见 [V3-Phase6-终端会话持久化.md](./V3-Phase6-终端会话持久化.md)
-  └── 验证：卸载全部主题 → 退路生效 → 切 Profile → 批量换插件+设置+主题 ✅
+  └── 验证：切 Profile → 插件列表+settings+主题+语言+布局 五维全变 ✅
+```
+
+### 第 5 层：6e — 壳完善 + 清旧债（8 项）
+
+```
+  ├── 欢迎页集成 + recentFolders
+  ├── 标题栏暗色化 + 系统菜单 + ☰ 基础四组
+  ├── Workspace 导入导出
+  ├── [D2] SerialContext/useSendData 移出 core/——迁入 terminal 插件
+  ├── [D3] portOpen/portName → sourceOpen/sourceName 术语迁移（Rust+TS+Tauri）
+  ├── [D4] Chord 快捷键——KeybindingRegistry 加 Chord 状态机
+  ├── [D6] keybindings.json 用户自定义快捷键——读写/合并/优先级
+  ├── [D8] DialogService 自定义 React UI——替换 3 处 window.confirm()
+  └── 验证：Ctrl+K Ctrl+S 触发命令 + keybindings.json 修改后即时生效 ✅
 ```
 
 ---
@@ -116,6 +145,24 @@ Phase 6 本身分三层——每层都先加新的，验证通过后再切旧的
 - **先加新的，验证通过后再切旧的。** 每个 Step 都产出可运行的软件。旧的始终在，直到新的确认 OK 才切。
 - **Phase 6 不新增 Registry 类型。** 全消费 Phase 5 的 Registry，零框架改动。
 - **每层独立验证。** 6a 跑通才进 6b，6b 跑通才进 6c。不并行。
+
+### 6c Profile 系统专项验证（五维）
+
+Profile 切换是最容易出"半完成态"的操作——不是代码写错了，是漏了一个维度没切。每次切 Profile 必须验证五个维度全部变化：
+
+| # | 维度 | 验证方法 | 失败后果 |
+|:--:|------|------|------|
+| 1 | 插件加载列表 | `PluginStateService.getAll()` → 检查 enabled/disabled 集合 | Profile A 的插件在 Profile B 仍然活跃，或反过来 |
+| 2 | settings 值 | `ConfigurationService.inspect(key)` → 检查 effectiveValue | 切 Profile 后波特率/主题仍是上一个 Profile 的值——"配置残留"类 bug |
+| 3 | 主题 CSS 变量 | `getComputedStyle(document.body).getPropertyValue('--bg')` | UI 颜色半新半旧——最显眼的 bug |
+| 4 | 语言 | `i18next.language` + UI 文字实际显示 | 菜单中文、设置英文——碎片化体验 |
+| 5 | 布局（标签页+工作区） | 检查 tabs[] 列表 + activeGroupId + workspace root | 上一个 Profile 的标签页残留，或 workspace 没切换 |
+
+**Profile 切换不是"改一个变量"——是批量执行 enablePlugins + disablePlugins + applySettings + switchTheme + switchLanguage + openWorkspace。** 六个操作任何一个失败都不能静默——必须 toast 报告哪个操作失败了、当前是什么状态。对标 VS Code：Profile 切换失败时，VS Code 回退到切换前的状态。
+
+### 6a WorkspaceService ↔ ConfigurationService 时序
+
+`ConfigurationService.setWorkspaceRoot(path)` 在 Phase 5 已定义接口签名，Phase 6a 的 WorkspaceService 初始化时调用它。**注意时序：** 如果任何 `useConfiguration()` 在 `setWorkspaceRoot` 之前被调用，Workspace scope 解析会缺上下文——和 Phase 5f 的"懒加载时序歧义"（commit `6f3d6ba`）同类问题。解法：`setWorkspaceRoot` 在 App.tsx 的初始化阶段（React render 之前或最早的 useEffect）同步调用。
 
 ---
 

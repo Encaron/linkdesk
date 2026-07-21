@@ -97,7 +97,23 @@
 |:--:|------|:--:|:--:|
 | 1 | 预览标签页顶替回归 | useTabManager.ts | ✅ 5h |
 | 2 | 卸载后无法浏览插件详情 | loader | ✅ 5h |
-| 3 | 终端 COM 口多实例 | terminal/plugin | 📋 5.5 |
-| 4 | JSON 按钮 alert | Settings Editor | 📋 6a |
-| 5 | F5 调试 vs 刷新 | 远期 | 📋 Phase 6+ |
+| 3 | 终端 COM 口多实例 | terminal/plugin | 📋 5.5c（侧栏重设计时做 tabId 隔离） |
+| 4 | JSON 按钮 alert | Settings Editor | 📋 6a #7（Monaco JSON 编辑器标签页） |
+| 5 | F5 调试 vs 刷新 | 远期 | 📋 Phase 6+（MCU 调试系统就位后） |
 | 6 | 工作台多实例标签页 id 碰撞 | tabIdentity.ts | ✅ 5h |
+| **7** | **PreferenceService 残余字段未迁** | **StorageService** | **📋 5.5-0 B14（验收修复批次）** |
+
+---
+
+## Bug 7：PreferenceService 残余 2 字段——僵尸对象
+
+**现象：** Phase 5f 迁移了 11 个字段中的 9 个。`Prefs.window`（窗口位置）和 `Prefs.pluginsInstallPath` 仍留在 PreferenceService。该文件现在是一个僵尸对象——只剩 2 个字段和它们的读写逻辑，但文件本身还存在，容易被新 AI 误认为"还在用"，往里面加新字段。
+
+**根因：** 5f 已明确标注"剩余 2 个字段待迁"，但未指定归属 Phase。这两个字段一直没人动——因为 window 迁到 Tauri 窗口状态 API 需要 Rust 侧配合，pluginsInstallPath 需要确认 PluginStateService 的存储结构。
+
+**修法（5.5 期间）：**
+- `Prefs.window` → 迁到 `StorageService`（独立 key `"windowState"`），格式不变（`{ left, top, width, height }`）。Tauri 窗口状态 API 远期再换——5.5 只迁存储位置，不换 API。
+- `Prefs.pluginsInstallPath` → 迁到 `PluginStateService`（独立 key `"pluginsInstallPath"`）。
+- 两个字段迁完后，删除 `PreferenceService.ts` 全文件。
+
+**归属：** 5.5。Phase 6 前必须消灭这个僵尸对象——Phase 6 的 WorkspaceService + FileService + ConfigurationService 三件套已足够，PreferenceService 多存在一天就多一天"往里面加东西"的风险。
