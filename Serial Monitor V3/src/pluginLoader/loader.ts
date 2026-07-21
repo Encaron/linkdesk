@@ -637,24 +637,18 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
         console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
         return { success: true };
       }
-      // Phase 5h：视图插件——尝试即时加载（不再自动 reload）
-      try {
-        await loadPluginRuntime(pluginId);
-        pushToast({
-          message: `已启用：${manifest.name}（即时生效）`,
-          source: pluginId,
-          severity: "info",
-          ttl: 5000,
-        });
-        console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（即时生效）`);
-        return { success: true };
-      } catch {
-        // 运行时加载失败——回退到 reload
-        pushToast({ message: `已启用：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-        setTimeout(() => window.location.reload(), 1500);
-        console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（自动重载——运行时加载失败）`);
-        return { success: true, needRestart: true };
-      }
+      // Phase 5h：视图插件——工厂插件（在 glob 中）走 loadPlugin 重载，外部插件走 loadPluginRuntime
+      // loadPlugin 使用 Vite 构建的 chunk（模块实例和核心共享），已验证可工作
+      // loadPluginRuntime 用于不在 glob 中的外部插件（通过 plugin:// 协议加载独立构建产物）
+      await loadPlugin(pluginId);
+      pushToast({
+        message: `已启用：${manifest.name}（即时生效）`,
+        source: pluginId,
+        severity: "info",
+        ttl: 5000,
+      });
+      console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（即时生效）`);
+      return { success: true };
     }
 
     return { success: true, needRestart: true };
@@ -849,21 +843,15 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
         });
         return { success: true };
       }
-      // Phase 5h：视图插件——尝试即时加载
-      try {
-        await loadPluginRuntime(pluginId);
-        pushToast({
-          message: `已安装：${manifest.name}（即时生效）`,
-          source: pluginId,
-          severity: "info",
-          ttl: 6000,
-        });
-        return { success: true };
-      } catch {
-        pushToast({ message: `已安装：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-        setTimeout(() => window.location.reload(), 1500);
-        return { success: true };
-      }
+      // Phase 5h：工厂插件（在 glob 中）——走 loadPlugin 重新加载（Vite chunk，模块实例共享）
+      await loadPlugin(pluginId);
+      pushToast({
+        message: `已安装：${manifest.name}（即时生效）`,
+        source: pluginId,
+        severity: "info",
+        ttl: 6000,
+      });
+      return { success: true };
     }
     // glob 中没有——外部装过又卸了的插件，需重启
     pushToast({
