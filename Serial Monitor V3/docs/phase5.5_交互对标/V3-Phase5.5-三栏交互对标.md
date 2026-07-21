@@ -6,7 +6,29 @@
 > Phase 5.5 做两件事：① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码；② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
 > 对标 VS Code：图标 = 侧栏入口，标签页是结果不是起点。
 >
-> **⚠️ 前置声明：当前处于 Phase 5h，Phase 5.5 尚未开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件将完全重设计为符合 VS Code 交互模型的形态。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。终端也不再例外：点图标出侧栏会话列表，侧栏内选/新建会话才开标签页。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
+> **⚠️ 前置声明：Phase 5h ✅ 已完成，Phase 5.5 即将开始。§八的终端布局重设计是 Phase 5 规划阶段写的草稿——到达 5.5 时，终端插件将完全重设计为符合 VS Code 交互模型的形态。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。终端也不再例外：点图标出侧栏会话列表，侧栏内选/新建会话才开标签页。届时会参照 VS Code 终端面板的交互模式、PlatformIO 的侧栏布局、以及 LinkDesk 的实际需求，重新设计终端 UI——不是基于当前草稿修修补补。**
+
+---
+
+## 子阶段拆分（5.5a → 5.5b → 5.5c）
+
+> 对标 Phase 6 的 6a→6b→6c：基础设施 → 通用组件 → 消费者。每层独立验证，不互相阻塞。
+
+| 子阶段 | 内容 | 性质 | 净行数 | 验证方式 |
+|:--:|------|:--:|:--:|------|
+| **5.5a** | `viewRole` 声明系统——替掉 `isSidebarOnlyView` 硬编码，`plugin.json` 加 `viewRole` 字段（`sidebarPrimary`/`tabOnly`），App.tsx `handleIconClick` 简化 | 框架层 | ~50 | 市场/设置图标行为不变；新插件声明 `sidebarPrimary` 后图标 toggle 侧栏 |
+| **5.5b** | `<SidebarSection>` 通用可折叠组件——title/collapsible/badge/actions，~60 行纯 UI | UI 基础设施 | ~60 | Storybook 式自测：3 个 Section 组合，折叠/展开/标记 |
+| **5.5c** | 终端侧栏重设计——第一个用 5.5a+5.5b 的消费者。侧栏从"设置表单"→"控制面板+会话列表"；工具栏迁入侧栏；标签页标题联动侧栏会话名 | 消费者 | ~100 | 开 3 个终端会话，各连不同 COM 口，标签标题跟随侧栏改名 |
+
+**实施顺序：** 5a 先（框架支持）→ 5b（独立组件，无依赖）→ 5c（消费 5a+5b，终端重设计）
+
+**为什么拆：**
+- 5a 和 5b 可以并行（互不依赖）
+- 5b 是通用组件——不只终端用，Phase 6 文件树/Git/数据库浏览器全复用
+- 5c 是第一个验证三栏模型 + SidebarSection 的完整用例
+- 如果 5c 发现 SidebarSection 设计不够，只改 5b，不动 5a
+
+---
 
 ---
 
@@ -486,7 +508,7 @@ plugins/terminal/
 
 | # | Bug | 归属 | 何时修 |
 |:--:|------|:--:|------|
-| 1 | 预览标签页顶替回归 | useTabManager.ts | 5h 之前 |
+| 1 | 预览标签页顶替回归 | useTabManager.ts | 5h ✅ |
 | 2 | 卸载后无法浏览插件详情 | loader | 5h |
 | 3 | 终端 COM 口多实例 | terminal/plugin | 5.5 |
 | 4 | JSON 按钮 alert | Settings Editor | 6a |

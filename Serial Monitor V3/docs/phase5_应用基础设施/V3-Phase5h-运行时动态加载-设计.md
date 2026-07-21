@@ -235,12 +235,12 @@
 
 ## 七、停止标准（每步）
 
-- [ ] `npx tsc --noEmit` 零错误
-- [ ] `npx vitest run` 全部通过
-- [ ] `npx tauri dev` 窗口正常打开
-- [ ] 终端收发正常
-- [ ] 本步特定验证项全部通过
-- [ ] git commit——一步一个 commit
+- [x] `npx tsc --noEmit` 零错误
+- [x] `npx vitest run` 全部通过（141）
+- [x] `npx tauri dev` 窗口正常打开
+- [x] 终端收发正常
+- [x] 所有四步特定验证项全部通过
+- [x] 19 个 commit——每步至少一个
 
 ---
 
