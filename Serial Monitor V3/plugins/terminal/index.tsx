@@ -7,7 +7,6 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import TerminalToolbar from "./toolbar";
 import { useTranslation } from "react-i18next";
 import {
   EditorView,
@@ -24,9 +23,9 @@ import Editor from "@monaco-editor/react";
 import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../../src/hooks/useTauriEvent";
 import { RingBuffer } from "../../src/core/RingBuffer";
-// Phase 5f：TerminalPrefsContext 删除 + PreferenceService 双写删除——改用 ConfigurationService 直连
-import { useConfiguration, useConfigurationValue } from "../../src/core/useConfiguration";
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "../../src/core/ConfigurationService";
+// Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
+import { useTerminalSessions } from "./useTerminalSessions";
+import ControlPanel from "./ControlPanel";
 import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
 import SearchBar from "../../src/components/terminal/SearchBar";
 import FilterMenu from "../../src/components/terminal/FilterMenu";
@@ -190,37 +189,31 @@ interface TerminalViewProps {
 function TerminalView({ isActive }: TerminalViewProps) {
   const { t } = useTranslation();
 
-  // Phase 5f：每个设置项独立 useConfiguration——对标 VS Code workspace.getConfiguration()
-  const [timestampFormat, setTimestampFormat] = useConfiguration<string>("terminal.timestampFormat");
-  const [showEcho, setShowEcho] = useConfiguration<boolean>("terminal.showEcho");
-  const [showLineNumbers, setShowLineNumbers] = useConfiguration<boolean>("terminal.showLineNumbers");
-  const [separateSystemLog, setSeparateSystemLog] = useConfiguration<boolean>("terminal.separateSystemLog");
-  const [lineEnding, setLineEnding] = useConfiguration<string>("terminal.lineEnding");
-  const [autoRepeat, setAutoRepeat] = useConfiguration<boolean>("terminal.autoRepeat");
-  const [repeatInterval, setRepeatInterval] = useConfiguration<number>("terminal.repeatInterval");
-  const [autoClear, setAutoClear] = useConfiguration<boolean>("terminal.autoClear");
-  const [receiveMode] = useConfiguration<string>("terminal.receiveMode");
-  const [receiveCoding] = useConfiguration<string>("terminal.receiveCoding");
-  const [sendModeCfg, setSendModeCfg] = useConfiguration<string>("terminal.sendMode");
-  const [sendCodingCfg, setSendCodingCfg] = useConfiguration<string>("terminal.sendCoding");
+  // Phase 5.5c C4a：数据源从 ConfigurationService 切到 useTerminalSessions
+  // activeSession 是 getter（非 state）——每次 render 返回最新值，tick 驱动重渲染
+  const { activeSession, activeSessionId, updateSession } = useTerminalSessions();
 
-  // 为兼容后续代码中 prefs.sendMode / prefs.sendCoding 引用，创建别名
-  const sendMode = sendModeCfg;
-  const sendCoding = sendCodingCfg;
+  // 12 项收发设置——从活跃会话读取，null-safe 默认值
+  const timestampFormat = activeSession?.timestampFormat ?? "HH:mm:ss:fff";
+  const showEcho = activeSession?.showEcho ?? true;
+  const showLineNumbers = activeSession?.showLineNumbers ?? true;
+  const separateSystemLog = activeSession?.separateSystemLog ?? true;
+  const lineEnding = activeSession?.lineEnding ?? "\\r\\n";
+  const autoRepeat = activeSession?.autoRepeat ?? false;
+  const repeatInterval = activeSession?.repeatInterval ?? 1000;
+  const autoClear = activeSession?.autoClear ?? false;
+  const receiveMode = activeSession?.receiveMode ?? "text";
+  const receiveCoding = activeSession?.receiveCoding ?? "UTF-8";
+  const sendMode = activeSession?.sendMode ?? "text";
+  const sendCoding = activeSession?.sendCoding ?? "UTF-8";
 
   /* ---- 状态 ---- */
   const [paused, setPaused] = useState(false);
   const pausedBuffer = useRef<string[]>([]);
   const [pausedCount, setPausedCount] = useState(0);
   const [systemLog, setSystemLog] = useState<string[]>([]);
-  const [quickSends, setQuickSends] = useState<Record<string, string>>(() => {
-    // Phase 5f：从 ConfigurationService 读取（替代 PreferenceService）
-    try {
-      return (getConfigurationValue("terminal.quickSends") as Record<string, string>) ?? { AT: "AT\r\n" };
-    } catch {
-      return { AT: "AT\r\n" };
-    }
-  });
+  // Phase 5.5c C4a：quickSends 从会话读取——per-session，不再走 ConfigurationService
+  const quickSends = activeSession?.quickSends ?? { AT: "AT\r\n" };
   const [qsAdding, setQsAdding] = useState(false);
   const [qsEditing, setQsEditing] = useState<string | null>(null);
   const [qsName, setQsName] = useState("");
@@ -228,10 +221,11 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const [qsCtxMenu, setQsCtxMenu] = useState<{ key: string; x: number; y: number } | null>(null);
 
   const saveQuickSends = useCallback((updated: Record<string, string>) => {
-    setQuickSends(updated);
-    // Phase 5f：写入 ConfigurationService（替代 PreferenceService）
-    setConfigurationValue("terminal.quickSends", updated, "user").catch(() => {});
-  }, []);
+    // Phase 5.5c C4a：写入会话——唯一入口 QuickSendBar（§3.12 硬规则）
+    if (activeSessionId) {
+      updateSession(activeSessionId, { quickSends: updated });
+    }
+  }, [activeSessionId, updateSession]);
 
   const handleSaveQuickSend = () => {
     if (!qsName.trim() || !qsContent.trim()) return;
@@ -380,38 +374,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
     }
   }, [timestampFormat, showEcho, separateSystemLog]);
 
-  // Phase 5f：设置变更时打印系统消息——onDidChangeConfiguration 替代 prevPrefsRef 对比
-  useEffect(() => {
-    if (!cmView.current) return;
-    const unsub = onDidChangeConfiguration((key: string, _value: unknown) => {
-      if (!key.startsWith("terminal.")) return;
-      const prop = key.slice("terminal.".length);
-      // 延迟读取当前值——onDidChangeConfiguration 在 setConfigurationValue 内部 fire，
-      // 此时 _userSettings 已更新，getConfigurationValue 返回最新值
-      const newValue = getConfigurationValue(key);
-      switch (prop) {
-        case "showEcho":
-          appendLine(t("---- {{name}}：{{value}} ----", { name: t("消息回显"), value: newValue ? t("开") : t("关") }), "system");
-          break;
-        case "showLineNumbers":
-          appendLine(t("---- {{name}}：{{value}} ----", { name: t("行号显示"), value: newValue ? t("开") : t("关") }), "system");
-          break;
-        case "separateSystemLog":
-          appendLine(t("---- {{name}}：{{value}} ----", { name: t("系统消息独立显示"), value: newValue ? t("开") : t("关") }), "system");
-          break;
-        case "timestampFormat":
-          appendLine(t("---- {{name}}：{{value}} ----", { name: t("时间戳"), value: newValue === "无" ? t("关") : newValue as string }), "system");
-          break;
-        case "autoRepeat":
-          appendLine(newValue
-            ? t("---- 定时发送：开（每 {{interval}} ms）----", { interval: getConfigurationValue<number>("terminal.repeatInterval") })
-            : t("---- 定时发送：关 ----"), "system");
-          break;
-      }
-    });
-    return unsub;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Phase 5.5c C4a：onDidChangeConfiguration 已删除——设置变更现在走 session 直读，
+  // 不再需要跨数据源监听。侧栏改动 → updateSession → activeSession getter → 本组件重渲染。
+  // 对标 VS Code：workspace 设置变更是编辑器核心功能，不是终端视图该关心的。
 
   // ⚠️ 独立 RingBuffer 多消费者
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
@@ -653,7 +618,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
   /* ── Phase 5b：注册终端命令真实 handler（覆盖 loader 的 placeholder）── */
 
   // 用 ref 桥接——命令 handler 闭包需要访问最新的 cmView / paused 等
-  // Phase 5f：prefs/setPrefs 替换为独立 setter refs
+  // Phase 5.5c C4a：值 ref 从 activeSession 别名同步（替代 useConfiguration 返回值）
   const sendModeRef = useRef(sendMode);
   sendModeRef.current = sendMode;
   const showEchoRef = useRef(showEcho);
@@ -661,13 +626,16 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const showLineNumbersRef = useRef(showLineNumbers);
   showLineNumbersRef.current = showLineNumbers;
 
-  // Phase 5f 独立 setters——命令 handler 通过 ref 调用
-  const setSendModeRef = useRef(setSendModeCfg);
-  setSendModeRef.current = setSendModeCfg;
-  const setShowEchoRef = useRef(setShowEcho);
-  setShowEchoRef.current = setShowEcho;
-  const setShowLineNumbersRef = useRef(setShowLineNumbers);
-  setShowLineNumbersRef.current = setShowLineNumbers;
+  // Phase 5.5c C4a：setter ref——命令 handler 通过 ref 调用，写入走 updateSession（单一入口 §3.12）
+  const setSendModeRef = useRef((v: string) => {
+    if (activeSessionId) updateSession(activeSessionId, { sendMode: v });
+  });
+  const setShowEchoRef = useRef((v: boolean) => {
+    if (activeSessionId) updateSession(activeSessionId, { showEcho: v });
+  });
+  const setShowLineNumbersRef = useRef((v: boolean) => {
+    if (activeSessionId) updateSession(activeSessionId, { showLineNumbers: v });
+  });
 
   const terminalCmdRef = useRef<{
     cmView: typeof cmView;
@@ -981,7 +949,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   return (
     <div className="terminal-view">
-      <TerminalToolbar />
+      <ControlPanel />
 
       {/* 工具栏 */}
       <div className="terminal-toolbar">
