@@ -867,6 +867,8 @@ loader + viewRegistry（Phase 4）      loader 升级：
 
 PreferenceService（Phase 4）         ProfileService（插件集合 + 设置 + workspace 快照）
                                      对标 VS Code Profile
+                                     ⚠️ 5f 后剩 2 个字段未迁：window（窗口位置）+ pluginsInstallPath
+                                     全迁完后 PreferenceService 可整体删除
 
 Monaco Editor（Phase 2 终端已有）     JSON 编辑器标签页
                                      Monaco 打开 settings.json / profile.json
