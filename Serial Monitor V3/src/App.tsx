@@ -16,6 +16,7 @@ import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
+import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
 import { initPluginStates } from "./core/PluginStateService";
@@ -144,6 +145,7 @@ function App() {
       // Phase 5：并行初始化所有服务
       const prefs = await initPrefs().catch(() => PreferenceService.loadPrefs?.() ?? null);
       await Promise.all([
+        initStorageService(),
         initConfigurationService(),
         initLayoutService(),
         initPluginStates(),
