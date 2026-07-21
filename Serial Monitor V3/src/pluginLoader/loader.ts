@@ -590,10 +590,11 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
       await saveDisabledList(list);
     }
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + tab 关闭 + iconOrder(保留) + toast
-    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable" });
+    const displayName = entry.manifest.name;
+    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
-    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable" });
+    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
     console.log(`[pluginLoader] 🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
@@ -657,7 +658,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     }
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
-    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall" });
+    const displayName = entry.manifest.name;
+    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // Rust 端：移到 plugins/.disabled/<id>/
     await invoke("uninstall_plugin", { pluginId });
@@ -665,7 +667,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // 前端：移除注册
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
-    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall" });
+    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     console.log(`[pluginLoader] 🗑 已卸载 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {

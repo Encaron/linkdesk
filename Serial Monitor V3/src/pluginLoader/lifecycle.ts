@@ -32,6 +32,8 @@ export interface PluginUninstallEvent {
   pluginId: string;
   /** 'uninstall' = 卸载 → 从 iconOrder 移除；'disable' = 禁用 → 保留 iconOrder 位置 */
   reason: "uninstall" | "disable";
+  /** 显示名称——onDidUninstall 触发时 viewRegistry 已注销，提前传入避免 toast 显示 pluginId */
+  displayName?: string;
 }
 
 /* ── 事件定义 ── */
@@ -95,8 +97,8 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  PluginLifecycle.onDidUninstall.event(({ pluginId, reason }) => {
-    const name = pluginId; // 尽量用 manifest.name，但已注销了拿不到
+  PluginLifecycle.onDidUninstall.event(({ pluginId, reason, displayName }) => {
+    const name = displayName ?? pluginId;
     const msg = reason === "uninstall" ? `已卸载：${name}` : `已禁用：${name}`;
     pushToast({
       message: msg,
