@@ -223,6 +223,17 @@ function App() {
       // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
       setPortName("COM3");
 
+      // Bug fix (F5 状态不同步)：F5 只重启前端 React state，Rust 后端串口仍在运行。
+      // 启动时查询后端实际状态，同步 isOpen/portName/baudRate。
+      try {
+        const status = await invoke<{ is_open: boolean; port_name: string; baud_rate: number }>("get_serial_status");
+        if (status.is_open) {
+          setPortName(status.port_name);
+          setBaudRate(String(status.baud_rate));
+          setIsOpen(true);
+        }
+      } catch { /* 首次启动或串口不可用——保持默认值 */ }
+
       // Phase 5：布局恢复——LayoutService 优先
       try {
         const savedLayout = getTabLayout();

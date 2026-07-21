@@ -34,6 +34,7 @@ pub fn run() {
         .manage(serial::create_state())
         .invoke_handler(tauri::generate_handler![
             serial::list_ports,
+            serial::get_serial_status,
             serial::open_port,
             serial::close_port,
             serial::send_data,

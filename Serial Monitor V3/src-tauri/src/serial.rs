@@ -11,6 +11,9 @@ pub(crate) struct SerialInner {
     is_closing: bool,
     /// 接收编码——Phase 5e：从 open_port 传入，read_loop 解码用
     encoding: String,
+    /// Bug fix (F5 状态不同步)：存 port_name/baud_rate，F5 刷新后前端可查询状态
+    port_name: String,
+    baud_rate: u32,
 }
 
 /// 线程间共享的串口状态
@@ -23,6 +26,8 @@ pub fn create_state() -> SerialState {
         line_buffer: Vec::new(),
         is_closing: false,
         encoding: "UTF-8".into(),
+        port_name: String::new(),
+        baud_rate: 115200,
     }))
 }
 
@@ -45,6 +50,26 @@ pub fn list_ports() -> Vec<PortInfo> {
             description: format!("{:?}", p.port_type),
         })
         .collect()
+}
+
+/// 查询当前串口连接状态——F5 刷新后前端恢复状态。
+/// Bug fix: F5 只重启前端 React state，Rust 后端串口仍在运行。
+/// 前端启动时调用此命令，同步 isOpen/portName/baudRate。
+#[derive(Clone, serde::Serialize)]
+pub struct SerialStatus {
+    pub is_open: bool,
+    pub port_name: String,
+    pub baud_rate: u32,
+}
+
+#[tauri::command]
+pub fn get_serial_status(state: tauri::State<'_, SerialState>) -> SerialStatus {
+    let inner = state.lock().unwrap_or_else(|e| e.into_inner());
+    SerialStatus {
+        is_open: inner.port.is_some(),
+        port_name: inner.port_name.clone(),
+        baud_rate: inner.baud_rate,
+    }
 }
 
 /// 打开串口 + 启动读线程
@@ -105,6 +130,8 @@ pub fn open_port(
     inner.line_buffer.clear();
     inner.is_closing = false;
     inner.encoding = encoding.unwrap_or_else(|| "UTF-8".into());
+    inner.port_name = port_name.clone();
+    inner.baud_rate = baud_rate;
 
     // 启动读线程
     let state_clone = Arc::clone(state.inner());
@@ -152,6 +179,7 @@ pub fn close_port(state: tauri::State<'_, SerialState>, app: AppHandle) -> Resul
     inner.port = None;
     inner.is_closing = false;
     inner.line_buffer.clear();
+    inner.port_name.clear();
 
     let _ = app.emit("serial-system", format!("---- 关闭串行端口 {} ----", port_name));
 
