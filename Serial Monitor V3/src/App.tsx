@@ -23,6 +23,7 @@ import { initPluginStates } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
+import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
@@ -150,6 +151,9 @@ function App() {
         initLayoutService(),
         initPluginStates(),
       ]).catch((e) => console.warn("[App] Phase 5 服务初始化部分失败:", e));
+
+      // Phase 5h: expose window.__v3_core__ before plugins load
+      initV3Api();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
       registerConfiguration("app", {

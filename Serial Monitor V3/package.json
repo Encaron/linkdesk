@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:plugins": "node scripts/build-plugins.mjs",
+    "dev:plugins": "node scripts/build-plugins.mjs --watch"
   },
   "dependencies": {
     "@codemirror/language": "^6.12.4",

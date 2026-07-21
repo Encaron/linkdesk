@@ -135,7 +135,18 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
-  // 4. 错误汇总
+  // 4. Phase 5h：加载运行时插件（文件系统存在但不在 glob 中的）
+  for (const pluginId of fsInstalled) {
+    if (installed.has(pluginId)) continue;  // 已在 glob 中加载
+    if (disabled.includes(pluginId)) continue;
+    try {
+      await loadPluginRuntime(pluginId);
+    } catch (e: any) {
+      errors.push(`${pluginId} (runtime): ${e?.message || e}`);
+    }
+  }
+
+  // 5. 错误汇总
   if (errors.length > 0) {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
     pushToast({
@@ -289,6 +300,88 @@ async function loadPlugin(pluginId: string): Promise<void> {
 
   if (!contributed) {
     console.log(`[pluginLoader] 插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
+  }
+
+  loadedPluginIds.add(pluginId);
+}
+
+/* ── Phase 5h：运行时动态加载（不在 import.meta.glob 中的插件） ── */
+
+/**
+ * 加载运行时安装的插件（不在 Vite 构建产物中）。
+ * 1. 通过 Rust 命令读取 plugin.json
+ * 2. 通过 plugin:// 协议加载 JS bundle
+ * 3. 注册到 viewRegistry + 解析 contributions
+ *
+ * 对标 VS Code：从文件系统热加载扩展，不刷新窗口。
+ */
+async function loadPluginRuntime(pluginId: string): Promise<void> {
+  // 1. 读取 manifest
+  let manifest: PluginManifest;
+  try {
+    const raw = await invoke<string>("read_plugin_manifest", { pluginId });
+    manifest = JSON.parse(raw);
+  } catch (e: any) {
+    console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
+    return;
+  }
+
+  // 2. 版本检查
+  if (manifest.minAppVersion) {
+    const appVer = getAppVersion();
+    if (!versionGte(appVer, manifest.minAppVersion)) {
+      pushToast({
+        message: `插件 "${manifest.name}" 需要应用版本 >=${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
+        ttl: 8000,
+      });
+      return;
+    }
+  }
+
+  // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
+  let Component: React.ComponentType<{ isActive: boolean }> | undefined;
+  if (manifest.entry) {
+    try {
+      // plugin:// 协议 → plugins/<id>/dist/index.js
+      const module = await import(/* @vite-ignore */ `plugin://${pluginId}/dist/index.js`);
+      Component = module.default;
+      if (!Component) {
+        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
+      }
+    } catch (e: any) {
+      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
+      pushToast({
+        message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
+        source: pluginId,
+        severity: "warning",
+        ttl: 8000,
+      });
+      // 不阻断——没有视图组件仍可贡献 commands/menus/configuration
+    }
+  }
+
+  // 4. 注册视图插件
+  if (Component) {
+    const entry: ViewPluginEntry = {
+      pluginId,
+      manifest,
+      component: Component,
+      // 运行时插件暂不支持 sidebar/statusBar（Phase 6 扩展 SDK 后支持）
+    };
+    registerViewPlugin(entry);
+    console.log(`[pluginLoader] [OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
+  }
+
+  // 5. 解析 contributions
+  if (manifest.contributes) {
+    parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
+  }
+
+  // 6. 主题/语言（和 loadPlugin 相同的逻辑）
+  if (manifest.themes && manifest.themes.length > 0) {
+    loadThemePlugin(pluginId, manifest);
+  } else if (manifest.languages && manifest.languages.length > 0) {
+    loadLanguagePlugin(pluginId, manifest);
   }
 
   loadedPluginIds.add(pluginId);
@@ -544,12 +637,24 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
         console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
         return { success: true };
       }
-      // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
-      pushToast({ message: `已启用：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-      // Phase 5f：PreferenceService 双写已清除——PluginStateService 是唯一真源
-      setTimeout(() => window.location.reload(), 1500);
-      console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"（自动重载）`);
-      return { success: true, needRestart: true };
+      // Phase 5h：视图插件——尝试即时加载（不再自动 reload）
+      try {
+        await loadPluginRuntime(pluginId);
+        pushToast({
+          message: `已启用：${manifest.name}（即时生效）`,
+          source: pluginId,
+          severity: "info",
+          ttl: 5000,
+        });
+        console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（即时生效）`);
+        return { success: true };
+      } catch {
+        // 运行时加载失败——回退到 reload
+        pushToast({ message: `已启用：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
+        setTimeout(() => window.location.reload(), 1500);
+        console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（自动重载——运行时加载失败）`);
+        return { success: true, needRestart: true };
+      }
     }
 
     return { success: true, needRestart: true };
@@ -633,18 +738,29 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       });
       return { success: true, pluginId };
     }
-    // 清单不在 glob 中（外部新装的插件）——需要重启，对标 VS Code "重载窗口"
-    pushToast({
-      message: `已安装：${pluginId}。重启后生效。`,
-      source: pluginId,
-      severity: "info",
-      ttl: 0,
-      actions: [
-        { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
-      ],
-    });
-    // Phase 5f：PreferenceService 双写已清除
-    return { success: true, pluginId, needRestart: true };
+    // Phase 5h：清单不在 glob 中（运行时安装的插件）——尝试即时加载
+    try {
+      await loadPluginRuntime(pluginId);
+      pushToast({
+        message: `已安装：${pluginId}（即时生效）`,
+        source: pluginId,
+        severity: "info",
+        ttl: 6000,
+      });
+      return { success: true, pluginId };
+    } catch (e: any) {
+      // 运行时加载失败（可能未构建）——提示构建后可用
+      pushToast({
+        message: `已安装：${pluginId}。运行 npm run build:plugins 后生效。`,
+        source: pluginId,
+        severity: "info",
+        ttl: 0,
+        actions: [
+          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+        ],
+      });
+      return { success: true, pluginId, needRestart: true };
+    }
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
@@ -733,11 +849,21 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
         });
         return { success: true };
       }
-      // 视图插件——自动重载（对标 VS Code Reload Required，但自动触发）
-      pushToast({ message: `已安装：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
-      // Phase 5f：PreferenceService 双写已清除
-      setTimeout(() => window.location.reload(), 1500);
-      return { success: true };
+      // Phase 5h：视图插件——尝试即时加载
+      try {
+        await loadPluginRuntime(pluginId);
+        pushToast({
+          message: `已安装：${manifest.name}（即时生效）`,
+          source: pluginId,
+          severity: "info",
+          ttl: 6000,
+        });
+        return { success: true };
+      } catch {
+        pushToast({ message: `已安装：${manifest.name}。即将重载...`, source: pluginId, severity: "info", ttl: 3000 });
+        setTimeout(() => window.location.reload(), 1500);
+        return { success: true };
+      }
     }
     // glob 中没有——外部装过又卸了的插件，需重启
     pushToast({
