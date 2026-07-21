@@ -1,38 +1,65 @@
 # Phase 5 → Phase 6 通盘分析
 
-> 2026-07-20。
+> 2026-07-20。2026-07-21 修订：Phase 6 按 6a/6b/6c 三层组织——6a 文件树基础闭环、6b 编辑体验完整闭环、6c 主题/语言引擎升级。
 > Phase 5 和 Phase 6 是通盘考虑的——Phase 5 建基础设施，Phase 6 在基础设施上写功能。
 > **前提：Phase 5.5 必须先完成**（三栏交互对标 VS Code + 终端布局重新设计——`viewRole` 声明替代 `isSidebarOnlyView` 硬编码）。
 > 有了 `viewRole: "sidebarPrimary"`，文件树才能作为纯侧栏视图加载，不被强制开空标签页。
 > 但 Phase 4→5 有断层分析，Phase 5→6 也应该有——不是修断层，是**在动手前想清楚接口，不留债。**
 > **照抄 VS Code，不自己发明。** 以下是读 VS Code 源码后的结论。
 > 这份文档标注：Phase 6 要做哪些事、新出现的需求怎么承接、Phase 5 留了什么但 Phase 6 还缺什么。
+>
+> **Phase 6 的本质 = 编辑能力。** 文件树 + 文件操作 + 文本编辑 + 主题/语言引擎 = 完整的文件编辑基础设施。三层（6a/6b/6c）从基础到完整递进。详见 [V3-Phase6.5-抛光与补齐.md](../phase6.5_抛光/V3-Phase6.5-抛光与补齐.md) §一。
 
 ---
 
-## 一、Phase 6 全部任务
+## 一、Phase 6 全部任务（3 层，19 + 9 = 28 项）
+
+### 6a — 文件树基础闭环（原 Phase 6 核心）
+
+> 对标 VS Code Explorer + Editor。文件浏览/打开/关闭 + Monaco 编辑 JSON + 文件关联。
 
 | # | 任务 | 性质 |
 |:--:|------|------|
 | 1 | 文件树（📁 图标栏图标 → 侧栏/标签页，系统视图 + MenuId.FileContext） | 新视图 |
-| 2 | 主题系统插件化 + 主题浏览器 UI | 引擎升级 |
-| 3 | 语言系统插件化 | 引擎升级 |
-| 4 | Profile 系统（插件集合声明式管理） | 新系统 |
-| 5 | activationEvents（按需激活，和 Profile 联动） | loader 升级 |
-| 6 | 文件关联（contributes.fileAssociations） | 新贡献类型 |
-| 7 | 文件系统访问抽象（FileService + Rust 端命令） | 新服务 |
-| 8 | 工作区文件夹概念（WorkspaceService） | 新服务 |
-| 9 | 退路系统（核心兜底主题 + 核心兜底语言） | 壳加固 |
-| 10 | 系统文件拖入窗口打开 | 交互入口 |
-| 11 | Reopen Closed Tab（Ctrl+Shift+T） | 壳功能 |
-| 12 | 插件依赖声明（extensionDependencies） | loader 升级 |
-| 13 | 齿轮菜单完整版（context key 驱动） | UI 完善 |
-| 14 | 输出面板 UI | 新视图 |
-| 15 | 欢迎页集成（"打开文件夹"入口 + recentFolders） | UI 完善 |
-| 16 | 插件资源访问 API（getResourceUri） | 新 API |
-| 17 | JSON 编辑器标签页（Monaco 打开 settings.json） | 新标签页类型 |
-| 18 | 标题栏暗色化 + 系统菜单（文件/打开/导入/导出） | 壳功能 |
-| 19 | Workspace 导入导出 | 壳功能 |
+| 2 | 文件关联（contributes.fileAssociations） | 新贡献类型 |
+| 3 | 文件系统访问抽象（FileService + Rust 端命令） | 新服务 |
+| 4 | 工作区文件夹概念（WorkspaceService） | 新服务 |
+| 5 | 系统文件拖入窗口打开 | 交互入口 |
+| 6 | Reopen Closed Tab（Ctrl+Shift+T） | 壳功能 |
+| 7 | JSON 编辑器标签页（Monaco 打开 settings.json） | 新标签页类型 |
+
+### 6b — 编辑体验完整闭环（原 Phase 6 "不做" + 6.5 文件项，回归 Phase 6）
+
+> Phase 6 本就是编辑能力——文件搜索/多选/编码/拖拽/JSON schema/多工作区/文件图标/装饰器是编辑能力的自然组成部分，不应拆到 6.5。
+
+| # | 任务 | 性质 |
+|:--:|------|------|
+| 8 | 文件搜索（Ctrl+Shift+F 跨文件内容搜索） | 新功能 |
+| 9 | 文件树多选/批量操作 | 交互增强 |
+| 10 | 文件编码检测/切换（EncodingService） | 新服务 |
+| 11 | 拖拽文件树节点到编辑区 | 交互增强 |
+| 12 | Settings Editor JSON schema 提示/自动补全 | Monaco 增强 |
+| 13 | 多工作区文件夹（Multi-root） | WorkspaceService 升级 |
+| 14 | 文件图标主题（File Icon Theme） | 新贡献类型 |
+| 15 | 文件装饰器框架（FileDecorationProvider 接口 + DecorationRegistry） | 新扩展点 |
+
+### 6c — 主题/语言引擎 + Profile + 壳完善（原 Phase 6 其余项）
+
+| # | 任务 | 性质 |
+|:--:|------|------|
+| 16 | 主题系统插件化 + 主题浏览器 UI | 引擎升级 |
+| 17 | 语言系统插件化 | 引擎升级 |
+| 18 | 退路系统（核心兜底主题 + 核心兜底语言） | 壳加固 |
+| 19 | Profile 系统（插件集合声明式管理） | 新系统 |
+| 20 | activationEvents（按需激活，和 Profile 联动） | loader 升级 |
+| 21 | 插件依赖声明（extensionDependencies） | loader 升级 |
+| 22 | 齿轮菜单完整版（context key 驱动） | UI 完善 |
+| 23 | 输出面板 UI | 新视图 |
+| 24 | 欢迎页集成（"打开文件夹"入口 + recentFolders） | UI 完善 |
+| 25 | 插件资源访问 API（getResourceUri） | 新 API |
+| 26 | 标题栏暗色化 + 系统菜单（文件/打开/导入/导出） | 壳功能 |
+| 27 | Workspace 导入导出 | 壳功能 |
+| 28 | 产品图标主题（Product Icon Theme） | 新贡献类型 |
 
 ---
 
@@ -859,6 +886,7 @@ Tauri window API                   标题栏暗色化 + 系统菜单（文件/�
 
 > 2026-07-21 更新：Phase 5h（运行时动态加载）插入 5g 和 5.5 之间。5h 是最后一个"改框架"的 Phase——之后 5.5 是桥，Phase 6 是纯消费者。
 > 整体链路：5f（持久化归一化）→ 5g（类型系统去硬编码）→ 5h（运行时动态加载）→ 5.5（三栏交互对标）→ Phase 6（零框架改动）。
+> Phase 6 本身分三层：6a（文件树基础闭环）→ 6b（编辑体验完整闭环）→ 6c（主题/语言引擎 + 壳完善）。
 
 **第 -1 步：Phase 5h — 运行时动态加载（Phase 6 的前提—— ~400 行）**
 
@@ -894,52 +922,43 @@ Tauri window API                   标题栏暗色化 + 系统菜单（文件/�
   └── workspace → "tabPrimary"
 ```
 
-**然后 Phase 6——4 步。每一步都先加新的，验证通过后再切旧的：**
+**然后 Phase 6——3 层递进。每层都先加新的，验证通过后再切旧的：**
 
 ```
-第 1 步：建基础设施（不删任何旧代码）
-  ├── CoreEvents 加 onDidChangeFileSystem + onDidChangeWorkspaceFolders + onDidChangeProfile
-  ├── FileService（封装 Tauri fs）
-  ├── Rust 端 list_dir / read_file / write_file / watch_dir 命令
+第 1 层：6a — 文件树基础闭环
+  ├── CoreEvents 加 onDidChangeFileSystem + onDidChangeWorkspaceFolders
+  ├── FileService（封装 Tauri fs）+ Rust 端 list_dir / read_file / write_file / watch_dir 命令
   ├── FileAssociationService（后缀→命令反向索引）
-  ├── WorkspaceService（文件夹管理）
-  ├── ProfileService（loadProfile / switchProfile）
-  ├── ResourceService（getResourceUri）
-  ├── loader 加 parseContributions: themes / languages / fileAssociations / resources
-  ├── loader 加 activationEvents 处理（有激活事件 → 只注册 manifest，不 import）
-  ├── loader 加 extensionDependencies 检查（依赖缺失 → 不加载 + toast）
-  ├── loader 加 scanAll({ filter: profile.plugins })
-  └── 核心硬兜底（index.css :root 变量 + i18n 30 个壳级 key）
-
-第 2 步：升级现有引擎
-  ├── ThemeEngine → ThemeRegistry（收集 contributes.themes + 旧 file 兼容）
-  ├── i18next → LanguageRegistry（收集 contributes.languages + 旧 file 兼容）
-  ├── 出厂主题 Dark/Light → 改为 contributes.themes 格式
-  ├── 出厂语言 en/zh → 改为 contributes.languages 格式
-  └── 验证旧 file 字段主题/语言继续工作
-
-第 3 步：建新视图和交互
+  ├── WorkspaceService（单文件夹管理）
   ├── 文件树组件（系统视图，走 viewRegistry + WorkspaceService + FileService）
-  ├── 主题浏览器 UI（Ctrl+K Ctrl+T）
-  ├── 输出面板 UI（LogChannel 消费端）
-  ├── JSON 编辑器标签页（Monaco 打开 settings.json / profile.json）
-  ├── 标题栏暗色化 + 系统菜单（文件 → 打开文件夹/导入/导出）
-  ├── Workspace 导入导出（文件复制）
-  ├── 欢迎页集成（"打开文件夹"入口 + recentFolders）
-  ├── 齿轮菜单完整版（context key 驱动）
+  ├── Monaco JSON 编辑器标签页（打开 settings.json）
+  ├── 系统文件拖入窗口 → Tauri onDragDropEvent → FileAssociationService
   ├── Ctrl+Shift+T → Reopen Closed Tab
-  └── 系统文件拖入窗口 → Tauri onDragDropEvent → FileAssociationService
+  └── 验证：打开文件夹 → 文件树渲染 → 双击文件 → 关联插件打开 ✅
 
-第 4 步：打通交互链和 Profile 闭环
-  ├── 文件树双击 → FileAssociationService → CommandRegistry.execute
-  ├── 文件树右键"打开方式…"→ FileAssociationService.getPluginsFor → 动态子菜单
-  ├── 文件树右键其他项 → MenuId.FileContext → MenuService.getMenuItems
-  ├── WorkspaceService.openFolder → 文件树刷新 → ConfigurationService scope 激活
-  ├── watch_dir → CoreEvents.onDidChangeFileSystem → 文件树自动刷新
-  ├── 卸载全部主题/语言 → 核心硬兜底生效 → UI 不崩
-  ├── Ctrl+Shift+P → "切换 Profile…" → QuickPick → 批量切换插件+设置+主题+workspace
-  ├── activationEvents 触发 → 首次 import() 插件 → 注册 → 下次直接执行
-  └── 插件声明依赖 → loader 检查 → 缺依赖不加载
+第 2 层：6b — 编辑体验完整闭环
+  ├── SearchService（Ctrl+Shift+F 跨文件内容搜索）
+  ├── 文件树 Ctrl/Shift 多选 + 批量操作右键菜单
+  ├── EncodingService（编码检测/切换）
+  ├── 拖拽文件树节点到编辑区
+  ├── Settings Editor JSON schema 自动补全（Monaco + ConfigurationRegistry 动态生成）
+  ├── 多工作区文件夹（WorkspaceService.addFolder / removeFolder）
+  ├── 文件图标主题（IconThemeRegistry + contributes.iconThemes）
+  ├── 文件装饰器框架（FileDecorationProvider 接口 + DecorationRegistry）
+  └── 验证：Ctrl+Shift+F 搜索 → 多选文件 → 拖拽打开 → 编码切换 ✅
+
+第 3 层：6c — 主题/语言引擎 + Profile + 壳完善
+  ├── 主题系统插件化（ThemeRegistry + contributes.themes + 出厂 Dark/Light 迁移 + 退路）
+  ├── 语言系统插件化（LanguageRegistry + contributes.languages + 出厂 en/zh 迁移 + 退路）
+  ├── 主题浏览器 UI（Ctrl+K Ctrl+T）
+  ├── Profile 系统（ProfileService + loadProfile / switchProfile）
+  ├── activationEvents + extensionDependencies（loader 升级）
+  ├── 齿轮菜单完整版（context key 驱动）
+  ├── 输出面板 UI（LogChannel 消费端）
+  ├── 标题栏暗色化 + 系统菜单（文件/打开/导入/导出）+ ☰ 基础四组
+  ├── Workspace 导入导出 + 欢迎页集成 + recentFolders
+  ├── 插件资源访问 API（getResourceUri）+ ResourceService
+  └── 验证：卸载全部主题 → 退路生效 → 切 Profile → 批量换插件+设置+主题 ✅
 ```
 
 **验证路径：** 每一个 Step 都产出可运行的软件。先建暗线（Rust 命令 + Service 层），再接明线（UI 视图 + 交互入口），最后打通循环（Profile 切换 → 批量启用/禁用 → activationEvents 按需加载 → 文件关联 → 拖入 → 全部串起来）。
@@ -956,18 +975,15 @@ Phase 6 建了文件世界的**基础闭环**。Phase 5 和 Phase 6 各自留了
 
 ## 六、Phase 6 不做的东西
 
+> 2026-07-21 修订：文件搜索/多选/编码/拖拽/JSON schema/多工作区/文件图标/装饰器/产品图标已回归 Phase 6b——这些是编辑能力的自然组成部分。
+
 | 不做 | 理由 | 以后 |
 |------|------|:--:|
 | 卡片工作台 / 卡片渲染 | CardRegistry 骨架在 P5，渲染 P7 | 7 |
 | OLED | 独立插件 | 8 |
-| 文件图标主题（File Icon Theme）| `contributes.themes` 留 `iconThemes` 扩展点（对标 VS Code），不做实现 | 7+ |
-| 文件装饰器（Git 状态/错误标记）| 需要 Git 集成，P7+ | 7+ |
-| 拖拽文件树节点到编辑区 | 拖拽在 Tauri v2 下需要 window 级事件，复杂 | 7 |
-| 文件树多选/批量操作 | 先做单选 MVP | 7 |
-| 文件编码检测/切换 | Phase 2 终端已有编码切换，文件树暂不卷入 | 7 |
-| 多工作区文件夹（Multi-root）| 对标 VS Code multi-root workspaces（1.x 才加入），Phase 6 只做单文件夹 | 8 |
-| 文件搜索（跨文件内容搜索）| 独立大功能，对标 VS Code Ctrl+Shift+F | 7 |
-| Settings Editor JSON schema 提示/自动补全 | Monaco JSON 编辑器 P6 做基础版，schema 提示 P7 | 7 |
-| 产品图标主题（Product Icon Theme）| VS Code 有 `contributes.productIconThemes`，LinkDesk 图标走 codicon，暂不需要 | 8+ |
-| 标题栏汉堡菜单 ☰ 完整版 | 标题栏暗色化 + 系统菜单 P6 做，汉堡菜单是 titleBarStyle overlay 的替代方案 | 7 |
-| V2 配置导入 | 导入导出 P6 做 LinkDesk 格式，V2 旧格式转换 P7 | 7 |
+| 文件装饰器——Git 状态实现 | `FileDecorationProvider` 接口在 6b 建，Git 集成 P7+ | 7+ |
+| 文件搜索——替换（replace in files）| 6b 只做搜索，替换是独立的命令系统功能 | 7 |
+| 文件编码——BOM 自动检测（UTF-16LE/BE）| 6b 做基础编码检测，BOM P7+ | 7 |
+| 标题栏汉堡菜单 ☰ 完整版 | 6c 做基础四组；快捷键提示/插件顶级菜单 → 6.5c | 6.5 |
+| V2 配置导入 | → 6.5c | 6.5 |
+| 完整代码编辑器（Go to Definition / 重构 / IntelliSense） | 属于具体插件——不是基础设施 | 7+ |
