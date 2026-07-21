@@ -274,10 +274,16 @@
 - `installPlugin`/`enablePlugin`/`reinstallPlugin` — 即时生效（不再 reload）
 - npm scripts: `build:plugins` / `dev:plugins`
 
-### Step 3 ✅ — 文件监听器更新 + B76 修复
-- commit: `6c544fe`
-- `startPluginWatcher`: 新插件按"在 glob / 不在 glob"分流到 `loadPlugin` / `loadPluginRuntime`
-- B76 修复: `enablePlugin`/`reinstallPlugin` 工厂插件走 `loadPlugin` 老路径（Vite chunk），外部插件走 `loadPluginRuntime`（plugin:// 协议）
-- B76 根因：两条加载路径选择条件不精确——不能在同一个 try/catch 里混用
+### Step 3 ✅ — B76/B77 修复 + 文件监听器 + 微任务时序
+- commits: `6c544fe`, `ba49853`, `4303b12`, `b1141c3`, `ac2fc0d`
+- B76: 工厂/运行时插件分流——`loadPlugin` vs `loadPluginRuntime`
+- B77: `appendToIconOrder` + `setPluginStateValueSync` 同步写内存——React 渲染前 iconOrder 已就绪
+- `startPluginWatcher`: 新插件分流到 `loadPlugin`/`loadPluginRuntime`
+- 🔥 核心教训见 memory `v3-pitfalls.md` Phase 5h 章
 
-### Step 4 🔜 — 清理 import.meta.glob 残留 + 全量回归
+### Step 4 ✅ — 清理 + 文档
+- commits: `4bf4b79`, `4efe993`
+- 删除废弃 `build-plugins.ts`
+- 设计文档实施记录补完
+- B76/B77 memory 记录 + MEMORY.md 更新
+- `v3-pitfalls.md` 新增 Phase 5h 章
