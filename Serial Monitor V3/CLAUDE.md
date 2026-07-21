@@ -14,9 +14,10 @@
 
 ## 当前阶段
 
-Phase 1-5e ✅ 完成 → **Phase 5f 🔜 StorageService + 删旧双写 + 终端专用通道拆除**
+Phase 1-5e ✅ 完成 + ConfigurationApplier ✅ → **Phase 5f 🔜 StorageService + 删旧双写 + 终端专用通道拆除**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
+详见 `docs/phase5_应用基础设施/V3-Phase5f-ConfigurationApplier-设计.md`（配置→应用归一化管道——已实现，terminal.* 迁移待 5f 完成）
 分支：`phase5-app-infrastructure`
 
 ## Phase 路线
