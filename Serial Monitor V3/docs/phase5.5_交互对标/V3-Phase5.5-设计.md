@@ -46,6 +46,86 @@
 
 ---
 
+## 〇、交互逻辑设计——对标 VS Code 三栏模型
+
+> 设计哲学详见 [V3-Phase5.5-三栏交互对标.md](V3-Phase5.5-三栏交互对标.md) §二。
+> 此节是执行概要——建 Phase 5.5 前必须理解**为什么**。
+
+### 0.1 VS Code 模型：图标 ≠ 标签页
+
+```
+VS Code：Activity Bar → Side Bar → Editor
+─────────────────────────────────────────
+
+点 🐜 PlatformIO → 侧栏变 PlatformIO 面板，主区不动
+  侧栏里点 "Create New Project" → 主区才开新标签页
+
+点 📁 Explorer → 侧栏变文件树，主区不动
+  侧栏里双击文件 → 主区开编辑器标签页
+
+点 🧩 Extensions → 侧栏变扩展列表，主区不动
+  侧栏里点扩展 → 主区开扩展详情标签页
+
+点 ⚙ Manage → 直接开设置标签页（跳过侧栏）
+```
+
+**核心规则：图标控制侧栏。标签页是侧栏内的操作触发的，不是图标直接触发的。**
+
+### 0.2 LinkDesk Phase 4 的问题
+
+Phase 4 的三栏交互做了一个终端优先的假设——每个插件点图标都强制开标签页：
+
+```typescript
+// App.tsx —— Phase 4 的硬编码逻辑
+if (isSidebarOnlyView(pluginId)) {
+  setSidebarView(...);          // 只有 marketplace 走这条
+} else {
+  setSidebarView(pluginId);
+  openOrFocusTab(pluginId);     // ← 强制开标签页
+}
+
+// tabIdentity.ts —— 硬编码
+function isSidebarOnlyView(id: string): boolean {
+  return id === "marketplace";  // ← 只有一个例外
+}
+```
+
+**后果：** 文件树、数据库浏览器、Git 管理——任何 `sidebarPrimary` 风格的插件点图标都会蹦一个空标签页。而且 `isSidebarOnlyView` 每增加一个新插件就要加一行硬编码——V2.6 的种子。
+
+### 0.3 方案：`viewRole` 声明替代硬编码
+
+每种插件在 `plugin.json` 中声明自己的交互角色。核心不知道任何插件 ID——只读 `viewRole` 字段决定行为。
+
+| viewRole | 图标点击 | 侧栏 | 标签页 | 对标 VS Code |
+|------|------|------|------|------|
+| `sidebarPrimary`（默认） | 切换侧栏 | ✅ 主要位置 | 侧栏内操作触发 | Explorer / Extensions |
+| `tabOnly` | 直接开标签页 | 不清除侧栏 | ✅ 唯一位置 | Settings |
+
+**默认 `sidebarPrimary`**——对标 VS Code：所有插件默认走"图标=侧栏入口"模型。只有明确声明 `tabOnly` 的插件（如设置）才跳过侧栏。
+
+`tabPrimary`（开标签页+侧栏）已移除——零例外。
+
+### 0.4 终端也在其中
+
+终端不是特权插件。点 📟 = 侧栏出现会话列表。侧栏里点会话 = 主区开终端标签页。和文件树（点 📁 = 侧栏出现文件列表 → 双击文件 = 开编辑器）完全相同。
+
+```
+点 📟 → 侧栏显示会话列表
+  ├── 点 "COM3 PID调试" → 主区聚焦终端标签页
+  ├── 点 [+ 新建] → 命名 → 主区开新终端标签页
+  └── hover [✕] → 关闭会话 + 标签页
+```
+
+**这不是终端特殊设计——这是 `sidebarPrimary` 标准行为。** 文件树、卡片工作台、数据库浏览器、任何第三方视图——全走同一条路。
+
+### 0.5 交互逻辑归一化
+
+Phase 5.5 完成后，所有插件的图标点击行为由 `plugin.json` 的 `viewRole` 字段决定。新增插件永远不需要改 `App.tsx`。**没有硬编码，没有例外。**
+
+> 完整的对标分析、代码改动细节、验证清单见 [V3-Phase5.5-三栏交互对标.md](V3-Phase5.5-三栏交互对标.md)。
+
+---
+
 ## 子阶段总览
 
 | 子阶段 | 内容 | 性质 | 净行数 | 依赖 |
@@ -681,12 +761,15 @@ const DEFAULT_SESSION: Omit<TerminalSession, 'id' | 'name'> = {
 
 | 变量 | 来源 | 用途 |
 |------|:--:|------|
-| `--accent` | 系统 CSS 变量（`index.css`），用户设置中可改 | 发送栏 `>` 提示符、focus ring、CM6 选中高亮——**装饰性的，跟用户偏好走** |
-| `--color-ok` | **系统级语义 token**（`index.css`，Phase 5.5 新增） | 连接状态点（已连接）、发送成功 feedback、Phase 6 Git staged 标记——**语义"正常/通过/已连接"，永远绿色，不和 `--accent` 绑定** |
-| `--color-warn` | 系统级语义 token（Phase 5.5 新增） | Phase 6 脏文件标记、超时警告——语义"注意" |
-| `--color-error` | 系统级语义 token（Phase 5.5 新增） | 断开闪烁、错误提示、Phase 6 Git conflict 标记——语义"错误/断开/冲突" |
-| `--session-color` | 终端代码 `setProperty`，每个 session 自动分配 | 侧栏 session 项左侧 2px 竖条、控制栏 COM 口名颜色、快捷发送药丸颜色、标签页图标 tint。**对标 `--card-accent`（同一条路——per-instance CSS 变量）** |
+| `--accent` | 系统 CSS 变量（`index.css`），用户设置中可改 | 发送栏 `>` 提示符、focus ring、选中高亮——**装饰性的，跟用户偏好走** |
+| `--session-color` | 终端代码 `setProperty`，每个 session 自动分配 | 侧栏 session 项左侧 2px 竖条、控制栏 COM 口名颜色、快捷发送药丸、标签页图标 tint。**对标 `--card-accent`（同一条路——per-instance CSS 变量）** |
 | `--accent-hover` | 系统派生（`index.css`） | hover 变亮 |
+| **终端专属** | | |
+| `--terminal-ok` | 终端 CSS（`TerminalView.css`） | 连接状态点（已连接）——固定绿 `#22C55E`，语义色，不跟 `--accent` |
+| `--terminal-err` | 终端 CSS（`TerminalView.css`） | 断开闪烁——固定红 `#EF4444`，语义色 |
+| `--session-color` | 终端 JS `setProperty` | 每会话标识色，对标 `--card-accent` |
+
+**为什么不提升到系统级：** 终端连接状态绿和 Phase 6 Git staged 绿是不同的语义、不同的 DOM 树、不同的视觉上下文。现在只有一个消费者（终端），提到系统级 = 提前归一化。
 
 **`--session-color` 的工作方式（对标卡片调色盘）：**
 ```ts
@@ -729,19 +812,10 @@ function createSession(name: string): TerminalSession {
 3. 微装饰（如新数据脉冲 `box-shadow`）
 
 **绝对不能出现在以下元素（它们有独立的 CSS 变量）：**
-- ❌ 连接/断开状态指示 → 用 `var(--color-ok)` / `var(--color-error)`（系统级语义 token）
+- ❌ 连接/断开状态指示 → 用 `var(--terminal-ok)` / `var(--terminal-err)`（终端 CSS 内定义）
 - ❌ session 标识 → 用 `var(--session-color)`（per-instance，对标 `--card-accent`）
 - ❌ 回显/时间戳/系统消息 → 用已有的 `--sent-echo` / `--cm-timestamp` / `--system-log`
 - ❌ 快捷发送药丸 → 用 `var(--session-color)`
-
-**5.5c 附加框架任务——新增系统语义 token（~3 行，改 `src/index.css`）：**
-```css
-/* Phase 5.5 —— 系统语义颜色 token。终端先用，Phase 6 文件树/Git 全复用。 */
---color-ok: #22C55E;     /* 成功/连接/通过——永远绿色 */
---color-warn: #F59E0B;   /* 警告/脏文件/超时 */
---color-error: #EF4444;  /* 错误/断开/冲突——永远红色 */
-```
-dark/light 主题用同一组值——语义颜色不随主题变化（绿色在 dark/light 下都是绿色）。
 
 #### 3.13.2 区域分层（不用框，用线 + 透明度）
 
