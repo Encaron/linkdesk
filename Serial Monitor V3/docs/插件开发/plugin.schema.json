@@ -234,6 +234,28 @@
         "enum": ["serial", "filesystem", "network"]
       }
     },
+    "iconLocation": {
+      "type": "string",
+      "description": "Phase 5g：图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区）。",
+      "enum": ["top", "bottom"],
+      "default": "top"
+    },
+    "viewRole": {
+      "type": "string",
+      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏），tabOnly=纯标签页视图（默认），tabPrimary=标签页为主侧栏为辅。5g 定义字段，5.5 消费。",
+      "enum": ["sidebarPrimary", "tabPrimary", "tabOnly"],
+      "default": "tabOnly"
+    },
+    "shellRendered": {
+      "type": "boolean",
+      "description": "Phase 5g：壳自己渲染此视图（不走插件路由）。仅欢迎页/插件详情页等壳级视图声明。",
+      "default": false
+    },
+    "keepSidebarOnFocus": {
+      "type": "boolean",
+      "description": "Phase 5g：聚焦此视图时保留当前侧栏不清除。如插件详情页浏览时侧栏不变。",
+      "default": false
+    },
     "contributes": {
       "type": "object",
       "description": "贡献点声明——对标 VS Code package.json contributes。Phase 5 核心机制。",

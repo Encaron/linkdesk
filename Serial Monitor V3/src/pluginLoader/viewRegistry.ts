@@ -86,3 +86,28 @@ export function unregisterViewPlugin(pluginId: string): boolean {
 export function clearRegistry(): void {
   registry.clear();
 }
+
+/* ── Phase 5g：插件元数据查询——替代硬编码特殊判断 ── */
+
+/** 图标在图标栏的位置——默认 top。settings 等管理型图标声明 bottom。 */
+export function getIconLocation(pluginId: string): "top" | "bottom" {
+  return registry.get(pluginId)?.manifest.iconLocation ?? "top";
+}
+
+/** 视图角色——声明此视图如何和壳交互。默认 tabOnly（纯标签页）。 */
+export function getViewRole(pluginId: string): "sidebarPrimary" | "tabPrimary" | "tabOnly" {
+  return registry.get(pluginId)?.manifest.viewRole ?? "tabOnly";
+}
+
+/**
+ * 纯侧栏视图——点击图标 toggle 侧栏，不自动打开标签页。
+ * 替代 isSidebarOnlyView 硬编码。从 plugin.json viewRole 字段读取。
+ */
+export function isSidebarPrimaryView(pluginId: string): boolean {
+  return registry.get(pluginId)?.manifest.viewRole === "sidebarPrimary";
+}
+
+/** 聚焦此视图时是否保留当前侧栏不清除。从 plugin.json 读取。 */
+export function hasKeepSidebarOnFocus(pluginId: string): boolean {
+  return registry.get(pluginId)?.manifest.keepSidebarOnFocus === true;
+}

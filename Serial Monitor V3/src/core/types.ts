@@ -65,6 +65,23 @@ export interface PluginManifest {
   permissions?: ("serial" | "filesystem" | "network")[];
 
   /**
+   * Phase 5g：视图元数据——声明视图和壳的交互方式。
+   * 这些字段替代 Phase 3/4 的硬编码特殊判断（isSidebarOnlyView / BOTTOM_ICONS 等）。
+   */
+
+  /** 图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区，对标 VS Code Activity Bar 齿轮）。 */
+  iconLocation?: "top" | "bottom";
+  /** 视图角色——声明此视图在壳中的交互模式。5g 定义字段，5.5 消费。
+   *  - tabOnly: 纯标签页视图（默认，如终端/工作台）
+   *  - sidebarPrimary: 侧栏为主——点击图标 toggle 侧栏，不自动打开标签页（如插件市场）
+   *  - tabPrimary: 标签页为主——点击图标打开标签页，侧栏为辅 */
+  viewRole?: "sidebarPrimary" | "tabPrimary" | "tabOnly";
+  /** 壳自己渲染（不走插件路由）。仅欢迎页、插件详情页等壳级视图使用。不设 component 注册。 */
+  shellRendered?: boolean;
+  /** 聚焦此视图时保留当前侧栏不清除。如插件详情页——用户浏览插件时侧栏不变。 */
+  keepSidebarOnFocus?: boolean;
+
+  /**
    * Phase 5：对标 VS Code package.json contributes。
    * 使用宽松索引签名——Phase 6 加 contributes.themes / languages / fileAssociations 时
    * Phase 5 的 loader 不崩（parseContributions 按 key 逐项检测，不认识的跳过）。

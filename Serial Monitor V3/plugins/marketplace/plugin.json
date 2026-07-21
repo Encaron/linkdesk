@@ -8,6 +8,7 @@
   "core": true,
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
+  "viewRole": "sidebarPrimary",
   "tabBehavior": {
     "singleton": true
   }

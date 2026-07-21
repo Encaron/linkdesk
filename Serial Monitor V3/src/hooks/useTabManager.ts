@@ -19,11 +19,16 @@ import {
 } from "./splitTree";
 import type { CreateTabOptions } from "../core/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
-import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
+import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
 
 /* ── 类型 ── */
 
-export type TabType = "terminal" | "workspace" | "oled" | "settings" | "editor" | "welcome" | "plugin-detail" | "marketplace";
+/**
+ * 标签页类型——Phase 5g 从联合类型放开为 string。
+ * 任何插件都可以定义自己的类型（= pluginId），不需要改核心代码。
+ * VS Code 对标：EditorInput.typeId——纯字符串，不维护编辑器类型 enum。
+ */
+export type TabType = string;
 
 export interface Tab {
   id: string;
@@ -82,8 +87,8 @@ export function createTabDefaults(
   type: string,
   opts?: CreateTabOptions
 ): Tab {
-  // plugin-detail 特殊处理：pluginId 不设（避免污染 IconBar 高亮），用 detailPluginId
-  const isDetail = type === "plugin-detail";
+  // 壳内部插件详情视图：pluginId 不设（避免污染 IconBar 高亮），用 detailPluginId
+  const isDetail = isPluginDetailView(type);
   const detailPluginId = opts?.detailPluginId ?? opts?.pluginId;
   const pluginId = isDetail
     ? undefined
@@ -487,14 +492,14 @@ export function reduceDuplicateTab(prev: TabState, tabId: string): TabState | nu
   const tab = group.tabs.find((t) => t.id === tabId);
   if (!tab) return null;
 
-  // 创建副本（terminal 会自增 ID，workspace 同名去重会被 reduceCreateTab 拦截）
+  // 创建副本——generateId 自增确保新 ID（如 terminal-3 → terminal-4）。
+  // 若 generateId 不做自增（如 workspace 按 workspaceName 生成同名 ID），追加后缀防冲突。
   const copy = createTabDefaults(
     tab.type,
     { workspaceName: tab.workspaceName, filePath: tab.filePath, label: tab.label }
   );
-  // terminal 副本用新 ID；非 terminal 追加后缀避免冲突
-  if (tab.type !== "terminal") {
-    copy.id = `${tab.id}-copy-${Date.now()}`;
+  if (group.tabs.some(t => t.id === copy.id)) {
+    copy.id = `${copy.id}-copy-${Date.now()}`;
   }
   copy.dirty = false;
 
@@ -686,7 +691,7 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
         .filter((t) => t.id && t.type && t.label)
         .map((t) => ({
           ...t,
-          pluginId: (t as Tab).pluginId ?? ((t as Tab).type !== "plugin-detail" ? resolveLegacyPluginId((t as Tab).type) : undefined),
+          pluginId: (t as Tab).pluginId ?? (!isPluginDetailView((t as Tab).type) ? resolveLegacyPluginId((t as Tab).type) : undefined),
           detailPluginId: (t as Tab).detailPluginId,
           sourceId: (t as Tab).sourceId,
         } as Tab)),

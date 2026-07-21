@@ -7,6 +7,8 @@
   "author": "官方",
   "core": true,
   "entry": "index.tsx",
+  "iconLocation": "bottom",
+  "viewRole": "tabOnly",
   "tabBehavior": {
     "singleton": true
   }

@@ -7,6 +7,8 @@
   "author": "官方",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
+  "iconLocation": "top",
+  "viewRole": "tabOnly",
   "tabBehavior": {
     "confirmOnClose": "关闭此标签页将断开串口连接"
   },

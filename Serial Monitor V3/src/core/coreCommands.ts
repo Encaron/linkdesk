@@ -12,6 +12,7 @@
 
 import { registerCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
+import { getViewPlugins } from "../pluginLoader/viewRegistry";
 
 /* ── Callbacks ── */
 
@@ -44,8 +45,14 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "设置",
     category: "视图",
     handler: async () => {
-      // 打开设置——通过图标栏机制：切换 sidebar 到 settings
-      window.dispatchEvent(new CustomEvent("v3-open-view", { detail: { pluginId: "settings", asSidebar: true } }));
+      // Phase 5g：不再硬编码 "settings"——从 viewRegistry 找 core + iconLocation:bottom 的插件。
+      // settings 不是唯一的 bottom 图标——未来账户/管理类插件也可声明 iconLocation: "bottom"。
+      // 齿轮菜单"设置"命令找第一个 core 插件（即 settings——它标记 core:true 且 iconLocation:bottom）。
+      const settingsPlugin = getViewPlugins().find(
+        (p) => p.manifest.core && p.manifest.iconLocation === "bottom"
+      );
+      const pluginId = settingsPlugin?.pluginId ?? "settings"; // fallback：万一 settings 被卸载
+      window.dispatchEvent(new CustomEvent("v3-open-view", { detail: { pluginId, asSidebar: true } }));
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",

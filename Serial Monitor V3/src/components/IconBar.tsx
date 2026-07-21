@@ -7,7 +7,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getIconLocation } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 // Phase 5：图标排序迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
@@ -22,9 +22,6 @@ interface IconBarProps {
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
 }
-
-/** 固定在底部的图标——对标 VS Code Activity Bar 的 Manage 齿轮。布局规则，非类型定义。 */
-const BOTTOM_ICONS = new Set(["settings"]);
 
 function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }) {
   return resolvePluginIcon(entry.manifest) || { src: `/assets/icons/${entry.pluginId}.png` };
@@ -87,8 +84,8 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const orderedRef = useRef(ordered);
   orderedRef.current = ordered;
 
-  const topIcons = ordered.filter((x) => !BOTTOM_ICONS.has(x.pluginId));
-  const bottomIcons = ordered.filter((x) => BOTTOM_ICONS.has(x.pluginId));
+  const topIcons = ordered.filter((x) => getIconLocation(x.pluginId) !== "bottom");
+  const bottomIcons = ordered.filter((x) => getIconLocation(x.pluginId) === "bottom");
 
   /* ── 查找鼠标下的图标 ── */
 
@@ -188,7 +185,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
             onOpenOrFocus(entry.pluginId);
           }}
           onContextMenu={
-            BOTTOM_ICONS.has(entry.pluginId)
+            getIconLocation(entry.pluginId) === "bottom"
               ? (e) => {
                   e.preventDefault();
                   setGearAnchor({ x: e.clientX, y: e.clientY });

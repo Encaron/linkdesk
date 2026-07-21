@@ -16,8 +16,7 @@
           "id": { "type": "string", "description": "标签页唯一 ID（UUID）" },
           "type": {
             "type": "string",
-            "enum": ["terminal", "workspace", "settings", "oled", "editor"],
-            "description": "标签页类型"
+            "description": "标签页类型——Phase 5g 放开为任意字符串（插件 ID 即类型）。不再 enum 预定义。"
           },
           "label": { "type": "string", "description": "标签页显示文本" },
           "dirty": { "type": "boolean", "description": "是否有未保存修改" },
