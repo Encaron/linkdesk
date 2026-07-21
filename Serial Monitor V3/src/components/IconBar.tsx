@@ -7,7 +7,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { getViewPlugins, getIconLocation } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getIconLocation, onDidRegister, onDidUnregister } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 // Phase 5：图标排序迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
@@ -56,31 +56,40 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
   // Phase 5c：齿轮菜单——右键 settings 图标
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
+  // Phase 5h Step 1：插件注册/注销时强制刷新——解决安装插件后图标不更新的问题
+  const [pluginVersion, setPluginVersion] = useState(0);
   const dragRef = useRef<DragState | null>(null);
   const dropRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
   const wasDragRef = useRef(false); // 标记本次是否拖拽了——防止 onClick 误触发
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const viewPlugins = getViewPlugins();
-  const savedOrder = loadOrder();
+  // Phase 5h Step 1：订阅 viewRegistry 变更——安装/卸载/禁用/启用即时更新图标栏
+  useEffect(() => {
+    const unsub1 = onDidRegister.event(() => setPluginVersion((v) => v + 1));
+    const unsub2 = onDidUnregister.event(() => setPluginVersion((v) => v + 1));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   type IconEntry = { pluginId: string; icon: ResolvedIcon; label: string };
   const ordered: IconEntry[] = useMemo(() => {
+    void pluginVersion; // Phase 5h Step 1：插件变更时重新计算图标列表
+    const plugins = getViewPlugins();
+    const order = loadOrder();
     const result: IconEntry[] = [];
-    const remaining = new Set(viewPlugins.map((p) => p.pluginId));
-    for (const id of savedOrder) {
+    const remaining = new Set(plugins.map((p) => p.pluginId));
+    for (const id of order) {
       if (remaining.has(id)) {
         remaining.delete(id);
-        const p = viewPlugins.find((v) => v.pluginId === id);
+        const p = plugins.find((v) => v.pluginId === id);
         if (p) result.push({ pluginId: id, icon: getIcon(p), label: p.manifest.name });
       }
     }
     for (const id of remaining) {
-      const p = viewPlugins.find((v) => v.pluginId === id);
+      const p = plugins.find((v) => v.pluginId === id);
       if (p) result.push({ pluginId: id, icon: getIcon(p), label: p.manifest.name });
     }
     return result;
-  }, [viewPlugins, savedOrder]);
+  }, [pluginVersion]);
   const orderedRef = useRef(ordered);
   orderedRef.current = ordered;
 

@@ -6,8 +6,17 @@
 
 import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types";
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
+import { Emitter } from "../core/CoreEvents";
 
 const registry = new Map<string, ViewPluginEntry>();
+
+/* ── Phase 5h Step 1：注册/注销事件——IconBar 响应式刷新 ── */
+
+/** 插件注册事件——IconBar/StatusBar 等消费者订阅以即时更新 UI */
+export const onDidRegister = new Emitter<ViewPluginEntry>();
+
+/** 插件注销事件——IconBar 等消费者订阅以移除图标 */
+export const onDidUnregister = new Emitter<string>();
 
 /** 注册视图插件。同名插件优先高版本（P1-6 #7）。 */
 export function registerViewPlugin(entry: ViewPluginEntry): void {
@@ -27,6 +36,8 @@ export function registerViewPlugin(entry: ViewPluginEntry): void {
     }
   }
   registry.set(entry.pluginId, entry);
+  // Phase 5h Step 1：通知所有消费者（IconBar/StatusBar 等）插件已注册
+  onDidRegister.fire(entry);
 }
 
 /** 简单 semver 比较：返回 >0 如果 a > b，<0 如果 a < b，0 如果相等 */
@@ -79,7 +90,12 @@ export function findFallbackPlugin(): { pluginId: string } | undefined {
 
 /** 注销视图插件。安装/卸载/禁用时调用。 */
 export function unregisterViewPlugin(pluginId: string): boolean {
-  return registry.delete(pluginId);
+  const deleted = registry.delete(pluginId);
+  // Phase 5h Step 1：通知消费者（仅在真正删除时——避免空事件导致 UI 无效刷新）
+  if (deleted) {
+    onDidUnregister.fire(pluginId);
+  }
+  return deleted;
 }
 
 /** 清空注册表（测试用） */
