@@ -90,6 +90,57 @@ function versionGte(a: string, b: string): boolean {
   return true;
 }
 
+/* ── 插件元数据缓存 ── */
+
+/**
+ * B2 fix：插件元数据缓存层——解决"卸载后无法浏览插件详情"。
+ *
+ * 根因：marketplace 从文件系统读 plugin.json，卸载后目录被移走 → 元数据消失。
+ * VS Code 有服务端 marketplace + 本地缓存，浏览和安装是独立操作。
+ *
+ * 方案：安装/发现时存一份 plugin.json 元数据副本到 PluginStateService。
+ * 卸载/禁用只改状态字段（不删条目）。marketplace 从缓存读，不依赖文件系统。
+ *
+ * 缓存键：app.pluginMetadataCache → Record<pluginId, CachedPluginMeta>
+ */
+interface CachedPluginMeta {
+  pluginId: string;
+  name: string;
+  description?: string;
+  version?: string;
+  /** 缓存状态：installed=已加载, disabled=已禁用但文件在, uninstalled=已卸载到.disabled/ */
+  status: "installed" | "disabled" | "uninstalled";
+}
+
+function getMetadataCache(): Record<string, CachedPluginMeta> {
+  try {
+    return getPluginStateValue<Record<string, CachedPluginMeta>>("app", "pluginMetadataCache") ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function cachePluginMetadata(
+  pluginId: string,
+  manifest: { name: string; description?: string; version?: string },
+  status: CachedPluginMeta["status"],
+): void {
+  try {
+    const cache = getMetadataCache();
+    cache[pluginId] = {
+      pluginId,
+      name: manifest.name || pluginId,
+      description: manifest.description,
+      version: manifest.version,
+      status,
+    };
+    // 异步落盘——不阻塞
+    setPluginStateValue("app", "pluginMetadataCache", cache).catch(() => {});
+  } catch {
+    /* 非关键路径 */
+  }
+}
+
 /* ── 初始化 ── */
 
 let _initialized = false;
@@ -127,10 +178,20 @@ export async function initPluginLoader(): Promise<void> {
   for (const pluginId of installed) {
     if (disabled.includes(pluginId)) {
       console.log(`[pluginLoader] 插件 "${pluginId}" 已禁用——跳过`);
+      // B2 fix: 种子缓存——禁用插件元数据从 glob 入缓存，marketplace 不依赖文件系统
+      const dKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
+      if (dKey) {
+        cachePluginMetadata(pluginId, pluginManifests[dKey], "disabled");
+      }
       continue;
     }
     if (fsInstalled.size > 0 && !fsInstalled.has(pluginId)) {
       console.log(`[pluginLoader] 插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
+      // B2 fix: 种子缓存——已卸载的工厂插件元数据入缓存（F5 后仍可浏览详情）
+      const uKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
+      if (uKey) {
+        cachePluginMetadata(pluginId, pluginManifests[uKey], "uninstalled");
+      }
       continue;
     }
     try {
@@ -304,6 +365,9 @@ async function loadPlugin(
 
   loadedPluginIds.add(pluginId);
 
+  // B2 fix: 缓存元数据——marketplace 不依赖文件系统，卸载后仍可浏览详情
+  cachePluginMetadata(pluginId, manifest, "installed");
+
   // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
@@ -340,6 +404,9 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       return;
     }
   }
+
+  // B2 fix: 缓存元数据——运行时插件也入缓存，卸载后仍可浏览详情
+  cachePluginMetadata(pluginId, manifest, "installed");
 
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
@@ -591,6 +658,8 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     }
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + tab 关闭 + iconOrder(保留) + toast
     const displayName = entry.manifest.name;
+    // B2 fix: 标记为已禁用（缓存保留——marketplace 仍可浏览详情）
+    cachePluginMetadata(pluginId, entry.manifest, "disabled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
@@ -659,6 +728,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = entry.manifest.name;
+    // B2 fix: 标记为已卸载（不删缓存——marketplace 仍可浏览详情）
+    cachePluginMetadata(pluginId, entry.manifest, "uninstalled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // Rust 端：移到 plugins/.disabled/<id>/
@@ -727,9 +798,17 @@ export function isPluginLoaderReady(): boolean {
 
 /** 获取禁用插件的基本信息（在 plugins/ 但被 prefs 标记禁用）*/
 export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
+  // B2 fix: 优先从缓存读——支持运行时插件（glob 中无清单）
+  const cache = getMetadataCache();
   const disabled = getDisabledList();
   const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
   for (const pluginId of disabled) {
+    const cached = cache[pluginId];
+    if (cached) {
+      result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version });
+      continue;
+    }
+    // 兜底：工厂插件从 glob 读（initPluginLoader 已将种子写入缓存，此分支仅用于缓存未就绪的极端情况）
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
@@ -746,28 +825,17 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
   return result;
 }
 
-/** 获取已卸载插件列表（在 .disabled/ 目录，对标 VS Code 本地可重装扩展）*/
+/** 获取已卸载插件列表（B2 fix：从元数据缓存读，不依赖文件系统——插件目录已被移走）*/
 export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: string; name: string; description?: string; version?: string }>> {
-  try {
-    const dirs = await invoke<string[]>("list_disabled_plugin_dirs");
-    const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
-    for (const pluginId of dirs) {
-      if (getDisabledList().includes(pluginId)) continue; // 已禁用但未卸载的排除
-      // 尝试从 glob 读 manifest（可能不在 glob 里，因为 .disabled/ 不在 glob 路径）
-      const manifestKey = Object.keys(pluginManifests).find(
-        (k) => extractPluginId(k) === pluginId
-      );
-      if (manifestKey) {
-        const m = pluginManifests[manifestKey];
-        result.push({ pluginId, name: m.name || pluginId, description: m.description, version: m.version });
-      } else {
-        result.push({ pluginId, name: pluginId });
-      }
+  // B2 fix: 从缓存读——不依赖 Rust 目录扫描（目录已被移走）也不依赖 globally（运行时插件不存在于此）
+  const cache = getMetadataCache();
+  const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
+  for (const [, meta] of Object.entries(cache)) {
+    if (meta.status === "uninstalled") {
+      result.push({ pluginId: meta.pluginId, name: meta.name, description: meta.description, version: meta.version });
     }
-    return result;
-  } catch {
-    return [];
   }
+  return result;
 }
 
 /**

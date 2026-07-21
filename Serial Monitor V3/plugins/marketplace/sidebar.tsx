@@ -124,8 +124,9 @@ function MarketplaceSidebar() {
   const builtinPlugins = filtered.filter((p) => p.manifest.core);
 
   // 单击 → 预览模式（替换现有预览标签页）
+  // B1 fix: 显式传 pinned:false 触发 useTabManager 的 opt-IN 预览替换逻辑
   const handleOpenDetail = (pluginId: string) => {
-    tabActions?.createTab("plugin-detail", { pluginId });
+    tabActions?.createTab("plugin-detail", { pluginId, pinned: false });
   };
   // 双击 → 固定模式（新建或固定现有标签页）
   const handleOpenDetailPinned = (pluginId: string) => {

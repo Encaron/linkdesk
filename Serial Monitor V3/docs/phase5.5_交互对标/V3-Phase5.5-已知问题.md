@@ -15,6 +15,8 @@
 
 **归属：** 5h 之前修。5h 改 loader 会碰到同一段 useTabManager 代码。
 
+**✅ 已修复（2026-07-21）**：marketplace `handleOpenDetail` 显式传 `pinned: false`，触发 useTabManager opt-IN 预览替换。
+
 详见 memory `preview-tab-regression.md`。
 
 ---
@@ -28,6 +30,8 @@
 **解决方向：** 建插件元数据缓存层——安装/发现时存一份 plugin.json 副本。市场从缓存读，安装/卸载只改缓存中的状态字段（不删条目）。
 
 **归属：** 5h（运行时动态加载）。与 5h 的插件加载机制紧密相关——动态加载时自然要维护一份"已知插件清单"。
+
+**✅ 已修复（2026-07-21）**：新增 `CachedPluginMeta` 缓存层（PluginStateService `app.pluginMetadataCache`）。加载/安装时写入，卸载/禁用只改状态字段不删条目。`getUninstalledPluginInfo`/`getDisabledPluginInfo` 从缓存读。
 
 详见 memory `plugin-detail-after-uninstall.md`。
 
@@ -75,12 +79,25 @@
 
 ---
 
+## Bug 6：工作台多实例标签页 id 碰撞（B78）
+
+**现象：** 创建两个工作台标签页 → 两个同时显示聚焦状态、关一个两个一起关、剩下的卡在中间不顶到最前面。终端正常（计数器区分）。
+
+**根因：** `tabIdentity.ts` workspace `generateId` 无 `workspaceName` 时硬编码返回 `"workspace"`——两个标签页 `tab.id` 相同。React key 重复 → reconciliation 混乱。terminal 用计数器（`terminal-1`/`terminal-2`），不受影响。
+
+**修法（2026-07-21）：** 无 `workspaceName` 时改走计数器 `workspace-${++_workspaceCounter}`，和 terminal 一致。标签页命名功能上线后 `workspaceName` 分支接管，计数器不再触发。同时修复 `oled` 同类硬编码。
+
+**归属：** 5h。标签页命名（5.5/Phase 6）从根本上消灭此问题——每个标签页有唯一名称。
+
+---
+
 ## 总结
 
-| # | Bug | 归属 Phase | 何时修 |
-|:--:|------|:--:|------|
-| 1 | 预览标签页顶替回归 | useTabManager.ts | **5h 之前** |
-| 2 | 卸载后无法浏览插件详情 | loader | **5h** |
-| 3 | 终端 COM 口多实例 | terminal/plugin | **5.5** |
-| 4 | JSON 按钮 alert | Settings Editor | **6a** |
-| 5 | F5 调试 vs 刷新 | 远期 | Phase 6+ |
+| # | Bug | 归属 Phase | 状态 |
+|:--:|------|:--:|:--:|
+| 1 | 预览标签页顶替回归 | useTabManager.ts | ✅ 5h |
+| 2 | 卸载后无法浏览插件详情 | loader | ✅ 5h |
+| 3 | 终端 COM 口多实例 | terminal/plugin | 📋 5.5 |
+| 4 | JSON 按钮 alert | Settings Editor | 📋 6a |
+| 5 | F5 调试 vs 刷新 | 远期 | 📋 Phase 6+ |
+| 6 | 工作台多实例标签页 id 碰撞 | tabIdentity.ts | ✅ 5h |

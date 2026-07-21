@@ -230,5 +230,5 @@ registerCommand("terminal", {
 | 设置同步 | 需要后端 |
 | 任务系统（build/flash/test） | Phase 8+ |
 | 完整代码编辑器（Go to Definition / 重构） | Phase 7+ 独立插件 |
-| 终端 PTY | 硬件调试不需要——串口就是终端 |
+| 终端 PTY | 串口终端是当前主要用例——PTY 作为可选插件，不进核心 |
 | Debug 断点调试 | Phase 8+ |

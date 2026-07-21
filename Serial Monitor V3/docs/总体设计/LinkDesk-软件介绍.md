@@ -108,7 +108,7 @@ V3 的硬规：一个概念一个名字，全文档全代码一致。所有颜�
 
 VS Code 的交互模式经过千万用户十年验证。Activity Bar / Side Bar / Editor Groups / Preview Editor / Notification Center / Extension Panel——每一个都是无数 A/B 测试和社区反馈打磨出来的。自己设计 = 重复踩坑。
 
-**什么时候自己设计？** 当 VS Code 的模型和 LinkDesk 的需求有根本冲突时。VS Code 的终端是底部面板，LinkDesk 的终端是标签页——因为硬件调试容器里终端是主视图，用户要拖拽分屏。这是正确偏离，不是投降。
+**什么时候自己设计？** 当 VS Code 的模型和 LinkDesk 的需求有根本冲突时。VS Code 的终端是底部面板，LinkDesk 的终端是标签页——因为 LinkDesk 里终端是主工作视图，用户要拖拽分屏。这是正确偏离，不是投降。
 
 ### 4. AI 友好——纯文本就是 API
 

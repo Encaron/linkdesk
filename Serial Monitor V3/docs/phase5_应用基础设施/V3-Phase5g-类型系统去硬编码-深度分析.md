@@ -440,7 +440,7 @@ VS Code 的 Activity Bar 图标位置由 `contributes.viewsContainers.activityba
 
 **Settings 齿轮是特殊的——** 它不是通过 `contributes` 注册的，而是 VS Code 内核硬编码的 `activitybar/manage` 图标。但它是一个布局规则（"始终在底部"），不是类型定义（"pluginId === 'settings'"）。
 
-**LinkDesk 的对标：** 5g 把 `BOTTOM_ICONS` Set 改为 `plugin.json` 字段 `iconLocation: "bottom"`。和 VS Code 的区别是 LinkDesk 允许多个底部图标（通过声明），而 VS Code 只有齿轮一个——这是正确的设计偏离：LinkDesk 的硬件调试场景可能有多个"管理类"图标需要放在底部。
+**LinkDesk 的对标：** 5g 把 `BOTTOM_ICONS` Set 改为 `plugin.json` 字段 `iconLocation: "bottom"`。和 VS Code 的区别是 LinkDesk 允许多个底部图标（通过声明），而 VS Code 只有齿轮一个——这是正确的设计偏离：LinkDesk 可能有多个"管理类"图标需要放在底部。
 
 ### 4.4 VS Code 的经验——为什么他们一开始就没用 enum
 

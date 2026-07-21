@@ -40,6 +40,11 @@ interface TabIdentityMeta {
 let _terminalCounter = 0;
 export function resetTerminalCounter(n = 0): void { _terminalCounter = n; }
 
+// B78: workspace generateId 硬编码 "workspace" → 多实例 id 碰撞（双聚焦/关一关俩/标签卡中间）。
+// 在标签页命名功能就位前，用计数器兜底。标签页命名上线后 workspaceName 分支接管，计数器不再调用。
+let _workspaceCounter = 0;
+export function resetWorkspaceCounter(n = 0): void { _workspaceCounter = n; }
+
 /** 未知类型的全局计数器——确保 generateId 不重复 */
 let _fallbackCounter = 0;
 
@@ -56,7 +61,8 @@ const TAB_IDENTITY: Record<string, TabIdentityMeta> = {
   terminal:    { identityField: null,               fallbackLabel: "终端",   legacyPluginId: "terminal",
     generateId: () => { _terminalCounter++; return `terminal-${_terminalCounter}`; } },
   workspace:   { identityField: "workspaceName",    fallbackLabel: "工作台", legacyPluginId: "workspace",
-    generateId: (opts) => opts?.workspaceName ? `workspace-${opts.workspaceName}` : "workspace" },
+    // B78: 无 workspaceName 时用计数器避免 id 碰撞（标签页命名上线后此分支不再触发）
+    generateId: (opts) => opts?.workspaceName ? `workspace-${opts.workspaceName}` : `workspace-${++_workspaceCounter}` },
   settings:    { identityField: null,               fallbackLabel: "设置",   legacyPluginId: "settings",
     generateId: () => "settings" },
   marketplace: { identityField: null,               fallbackLabel: "插件市场", legacyPluginId: "marketplace",
@@ -70,7 +76,7 @@ const TAB_IDENTITY: Record<string, TabIdentityMeta> = {
 
   // ── 预留（Phase 6+ 壳实现）──
   oled:   { identityField: null, fallbackLabel: "OLED",   legacyPluginId: "oled",
-    generateId: () => "oled" },
+    generateId: () => `oled-${++_fallbackCounter}` },
   editor: { identityField: "filePath", fallbackLabel: "编辑器", legacyPluginId: "editor",
     generateId: (opts) => opts?.filePath ? `editor-${opts.filePath.replace(/[^a-zA-Z0-9]/g, "_")}` : "editor" },
 };
