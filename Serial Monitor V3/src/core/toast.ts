@@ -34,6 +34,13 @@ type ToastListener = (toasts: Toast[]) => void;
 /** 对标 VS Code：无数量上限，通知自然堆叠 */
 const DEFAULT_TTL = 6000;
 
+/** 错误 toast 持续更久——用户需要时间读诊断信息（B9 fix：消除裸数字） */
+export const TOAST_TTL_ERROR = 8000;
+/** 成功 toast 短提示——操作完成后快速消失 */
+export const TOAST_TTL_SUCCESS = 5000;
+/** 信息 toast 中等——不紧急但有用 */
+export const TOAST_TTL_INFO = 6000;
+
 let _toasts: Toast[] = [];
 let _listeners: Set<ToastListener> = new Set();
 let _counter = 0;

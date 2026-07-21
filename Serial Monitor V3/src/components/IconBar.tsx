@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { getViewPlugins, getIconLocation, onDidRegister, onDidUnregister } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 // Phase 5：图标排序迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5c：齿轮菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
@@ -31,13 +31,13 @@ function loadOrder(): string[] {
   try {
     // Phase 5：PluginStateService 是唯一真源，不再回退 PreferenceService
     // B72 教训：兜底读 PreferenceService → 旧数据永远不清理 → 卸载重装后图标回老位置
-    return getPluginStateValue<string[]>("app", "iconOrder") ?? [];
+    return getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
   } catch { return []; }
 }
 function saveOrder(order: string[]): void {
   try {
     // Phase 5：写入 PluginStateService
-    setPluginStateValue("app", "iconOrder", order);
+    setPluginStateValue(APP_PLUGIN_ID, "iconOrder", order);
   } catch { /* 静默 */ }
 }
 

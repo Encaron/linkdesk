@@ -13,9 +13,9 @@
  * @see loader.ts —— 5 个函数只管触发此总线的事件
  */
 
-import { Emitter } from "../core/CoreEvents";
-import { pushToast } from "../core/toast";
-import { getPluginStateValue, setPluginStateValueSync } from "../core/PluginStateService";
+import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/toast";
+import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
 import { unregisterPluginCommands } from "../core/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/KeybindingRegistry";
@@ -119,7 +119,7 @@ export function initLifecycleConsumers(): void {
       message: `${msg}（即时生效）`,
       source: pluginId,
       severity: "info",
-      ttl: 6000,
+      ttl: TOAST_TTL_INFO,
     });
   });
 
@@ -130,7 +130,7 @@ export function initLifecycleConsumers(): void {
       message: msg,
       source: pluginId,
       severity: "info",
-      ttl: 8000,
+      ttl: TOAST_TTL_ERROR,
       actions: reason === "uninstall"
         ? [{ label: "撤销", isPrimary: true, onClick: () => {
             // 动态 import 避免循环依赖
@@ -146,7 +146,7 @@ export function initLifecycleConsumers(): void {
 
   PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
     // 通知壳关闭使用此插件的标签页——必须在 unregisterViewPlugin 之前
-    window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.PLUGIN_REMOVED, { detail: { pluginId } }));
   });
 
   /* ─── 消费端 5：视图刷新通知（CustomEvent + 版本标记双保险） ─── */
@@ -163,13 +163,13 @@ export function initLifecycleConsumers(): void {
  */
 function appendToIconOrder(pluginId: string): void {
   try {
-    const order = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
+    const order = getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
     const filtered = order.filter((id) => id !== pluginId);
     filtered.push(pluginId);
-    setPluginStateValueSync("app", "iconOrder", filtered);
+    setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
     import("../core/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue("app", "iconOrder", filtered).catch(() => {});
+      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
     });
   } catch { /* 非关键路径 */ }
 }
@@ -177,11 +177,11 @@ function appendToIconOrder(pluginId: string): void {
 /** B72/B77：从图标排序中移除插件（卸载时调用） */
 function removeFromIconOrder(pluginId: string): void {
   try {
-    const order = getPluginStateValue<string[]>("app", "iconOrder") ?? [];
+    const order = getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
     const filtered = order.filter((id) => id !== pluginId);
-    setPluginStateValueSync("app", "iconOrder", filtered);
+    setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     import("../core/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue("app", "iconOrder", filtered).catch(() => {});
+      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
     });
   } catch { /* 非关键路径 */ }
 }

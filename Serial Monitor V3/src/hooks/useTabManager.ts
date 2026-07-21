@@ -18,7 +18,7 @@ import {
   updateBranchSizesByIndex,
 } from "./splitTree";
 import type { CreateTabOptions } from "../core/types";
-import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
+import { getTabBehavior, findFallbackPlugin, FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
 import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
 
 /* ── 类型 ── */
@@ -133,7 +133,7 @@ function createGroup(tabs: Tab[] = []): TabGroup {
 function ensureFallback(state: TabState): TabState {
   const all = allTabs(state);
   if (all.length === 0) {
-    const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
+    const fallbackId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
     const fb = createTabDefaults(fallbackId);
     const mainGroup = state.groups.find((g) => g.id === state.activeGroupId) ?? state.groups[0];
     if (mainGroup) {
@@ -156,7 +156,7 @@ function pickNextActive(tabs: Tab[], closedId: string): string {
 
 export function createInitialTabState(): TabState {
   // Phase 4：查 viewRegistry 找 isFallback 插件，没有则降级到 welcome
-  const fallbackId = findFallbackPlugin()?.pluginId ?? "welcome";
+  const fallbackId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
   const fb = createTabDefaults(fallbackId);
   return {
     groups: [{ id: "main", tabs: [fb], activeTabId: fb.id }],
@@ -333,7 +333,7 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
       }
     }
     // 单面板 + 最后一个标签页 → 全场 0 标签，ensureFallback 补欢迎页
-    const fbId = findFallbackPlugin()?.pluginId ?? "welcome";
+    const fbId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
     const fb = createTabDefaults(fbId);
     const newGroups = prev.groups.map((g) =>
       g.id === group.id ? { ...g, tabs: [fb], activeTabId: fb.id } : g
@@ -908,21 +908,29 @@ export function useTabManager() {
 
   return {
     tabState,
+
+    // ── 生命周期（创建/打开/聚焦/关闭）──
     createTab,
     openOrFocusTab,
     focusTab,
     closeTab,
     forceCloseTab,
-    moveTab,
+
+    // ── 布局（分屏/合屏/拖拽/分割调整）──
     splitTab,
     splitTabAt,
-    duplicateTab,
     unsplit,
-    setDirty,
-    updateTabLabel,
     updateSplitSizes,
+    moveTab,
+    duplicateTab,
     reorderTab,
     pinTab,
+
+    // ── 状态（标记/标签）──
+    setDirty,
+    updateTabLabel,
+
+    // ── 持久化（恢复/导出）──
     restoreLayout,
     toLayoutData,
   };

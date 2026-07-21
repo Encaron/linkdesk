@@ -14,7 +14,7 @@ import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
-import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
 import TabPanePositioner from "./TabPanePositioner";
 import "./MainContent.css";
@@ -50,7 +50,7 @@ function renderTabContent(
     if (tab.type === "plugin-detail") {
       return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />;
     }
-    if (tab.type === "welcome") {
+    if (tab.type === FALLBACK_PLUGIN_ID) {
       return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
     }
   }

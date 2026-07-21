@@ -16,10 +16,10 @@ import { invoke } from "@tauri-apps/api/core";
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
-import { pushToast } from "../core/toast";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue } from "../core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, initLifecycleConsumers, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
@@ -30,6 +30,10 @@ import { registerCommand } from "../core/CommandRegistry";
 import { registerKeybinding } from "../core/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
+import { createLogChannel } from "../core/LogChannel";
+
+/* ── B6 fix：pluginLoader 日志频道——替代 console.log（对标 VS Code Output panel） */
+const log = createLogChannel("app", "pluginLoader", "pluginLoader");
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
@@ -76,6 +80,8 @@ function getPluginDataFile(pluginId: string, filename: string): Record<string, u
 
 /* ── 当前应用版本（从 package.json 读取） ── */
 
+/** TODO Phase 6：从 package.json 动态读取（需要 Vite define 或 import.meta.env）。
+ *  当前硬编码——发版前手动更新此行。B10 fix：注释说明实际情况。 */
 function getAppVersion(): string {
   return "3.0.0";
 }
@@ -105,7 +111,7 @@ interface CachedPluginMeta {
 
 function getMetadataCache(): Record<string, CachedPluginMeta> {
   try {
-    return getPluginStateValue<Record<string, CachedPluginMeta>>("app", "pluginMetadataCache") ?? {};
+    return getPluginStateValue<Record<string, CachedPluginMeta>>(APP_PLUGIN_ID, "pluginMetadataCache") ?? {};
   } catch {
     return {};
   }
@@ -126,7 +132,7 @@ function cachePluginMetadata(
       status,
     };
     // 异步落盘——不阻塞
-    setPluginStateValue("app", "pluginMetadataCache", cache).catch(() => {});
+    setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache).catch(() => {});
   } catch {
     /* 非关键路径 */
   }
@@ -168,7 +174,7 @@ export async function initPluginLoader(): Promise<void> {
   // 3. 加载每个插件（跳过禁用 + 跳过文件系统不存在的）
   for (const pluginId of installed) {
     if (disabled.includes(pluginId)) {
-      console.log(`[pluginLoader] 插件 "${pluginId}" 已禁用——跳过`);
+      log.appendLine(`插件 "${pluginId}" 已禁用——跳过`);
       // B2 fix: 种子缓存——禁用插件元数据从 glob 入缓存，marketplace 不依赖文件系统
       const dKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
       if (dKey) {
@@ -177,7 +183,7 @@ export async function initPluginLoader(): Promise<void> {
       continue;
     }
     if (fsInstalled.size > 0 && !fsInstalled.has(pluginId)) {
-      console.log(`[pluginLoader] 插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
+      log.appendLine(`插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
       // B2 fix: 种子缓存——已卸载的工厂插件元数据入缓存（F5 后仍可浏览详情）
       const uKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
       if (uKey) {
@@ -208,7 +214,7 @@ export async function initPluginLoader(): Promise<void> {
     console.warn("[pluginLoader] 以下插件加载失败:", errors);
     pushToast({
       message: `${errors.length} 个插件加载失败`,
-      ttl: 8000,
+      ttl: TOAST_TTL_ERROR,
     });
   }
 }
@@ -296,7 +302,7 @@ async function loadPlugin(
     if (!versionGte(appVer, manifest.minAppVersion)) {
       pushToast({
         message: `插件 "${manifest.name}" 需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
-        ttl: 8000,
+        ttl: TOAST_TTL_ERROR,
       });
       console.warn(
         `[pluginLoader] 版本不兼容 — "${pluginId}" 需要 ≥${manifest.minAppVersion}，当前 ${appVer}`
@@ -336,12 +342,12 @@ async function loadPlugin(
   }
 
   if (manifest.mode) {
-    console.log(`[pluginLoader] 📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 5`);
+    log.appendLine(`📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 5`);
     contributed = true;
   }
 
   if (manifest.resources && manifest.resources.length > 0) {
-    console.log(`[pluginLoader] 📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 5`);
+    log.appendLine(`📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 5`);
     contributed = true;
   }
 
@@ -351,7 +357,7 @@ async function loadPlugin(
   }
 
   if (!contributed) {
-    console.log(`[pluginLoader] 插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
+    log.appendLine(`插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
   }
 
   loadedPluginIds.add(pluginId);
@@ -390,7 +396,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     if (!versionGte(appVer, manifest.minAppVersion)) {
       pushToast({
         message: `插件 "${manifest.name}" 需要应用版本 >=${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
-        ttl: 8000,
+        ttl: TOAST_TTL_ERROR,
       });
       return;
     }
@@ -415,7 +421,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
         message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
         source: pluginId,
         severity: "warning",
-        ttl: 8000,
+        ttl: TOAST_TTL_ERROR,
       });
       // 不阻断——没有视图组件仍可贡献 commands/menus/configuration
     }
@@ -430,7 +436,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       // 运行时插件暂不支持 sidebar/statusBar（Phase 6 扩展 SDK 后支持）
     };
     registerViewPlugin(entry);
-    console.log(`[pluginLoader] [OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
+    log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
   }
 
   // 5. 解析 contributions
@@ -497,7 +503,7 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
   };
 
   registerViewPlugin(entry);
-  console.log(`[pluginLoader] ✅ 视图插件 "${manifest.name}" (${pluginId}) 已注册`);
+  log.appendLine(`✅ 视图插件 "${manifest.name}" (${pluginId}) 已注册`);
 }
 
 /* ── 主题插件（P1-4） ── */
@@ -523,10 +529,10 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
       registered++;
     }
     if (registered > 0) {
-      console.log(`[pluginLoader] ✅ 主题插件 "${manifest.name}" — ${registered} 个主题已注册`);
+      log.appendLine(`✅ 主题插件 "${manifest.name}" — ${registered} 个主题已注册`);
       pushToast({
         message: `新增 ${registered} 个主题：${manifest.name}`,
-        ttl: 5000,
+        ttl: TOAST_TTL_SUCCESS,
       });
     }
     return;
@@ -547,10 +553,10 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
       }
     }
     registerTheme({ name: manifest.name, type: themeType, colors });
-    console.log(`[pluginLoader] ✅ 主题插件 "${manifest.name}" 已注册`);
+    log.appendLine(`✅ 主题插件 "${manifest.name}" 已注册`);
     pushToast({
       message: `新增主题：${manifest.name}`,
-      ttl: 5000,
+      ttl: TOAST_TTL_SUCCESS,
     });
     return;
   }
@@ -576,10 +582,10 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
       registered++;
     }
     if (registered > 0) {
-      console.log(`[pluginLoader] ✅ 语言插件 "${manifest.name}" — ${registered} 个语言已注册`);
+      log.appendLine(`✅ 语言插件 "${manifest.name}" — ${registered} 个语言已注册`);
       pushToast({
         message: `新增 ${registered} 个语言：${manifest.name}`,
-        ttl: 5000,
+        ttl: TOAST_TTL_SUCCESS,
       });
     }
     return;
@@ -594,10 +600,10 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
     }
     const code = manifest.file.replace(/\.json$/, "");
     i18n.addResourceBundle(code, ns, data, true, true);
-    console.log(`[pluginLoader] ✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
+    log.appendLine(`✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
     pushToast({
       message: `新增语言：${manifest.name}`,
-      ttl: 5000,
+      ttl: TOAST_TTL_SUCCESS,
     });
     return;
   }
@@ -610,7 +616,7 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
 function getDisabledList(): string[] {
   try {
     // Phase 5f：PluginStateService 唯一真源（PreferenceService 兜底读已清除）
-    return getPluginStateValue<string[]>("app", "disabledPlugins") ?? [];
+    return getPluginStateValue<string[]>(APP_PLUGIN_ID, "disabledPlugins") ?? [];
   } catch {
     return [];
   }
@@ -619,7 +625,7 @@ function getDisabledList(): string[] {
 async function saveDisabledList(list: string[]): Promise<void> {
   try {
     // Phase 5：写入 PluginStateService（新路径）
-    await setPluginStateValue("app", "disabledPlugins", list);
+    await setPluginStateValue(APP_PLUGIN_ID, "disabledPlugins", list);
   } catch { /* 静默 */ }
 }
 
@@ -655,7 +661,7 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
-    console.log(`[pluginLoader] 🔒 已禁用 "${pluginId}"`);
+    log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -688,12 +694,12 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
       // .json 插件（theme/language/file）——即时生效
       if ((manifest.themes || manifest.languages || (!manifest.entry && manifest.file))) {
         await loadPlugin(pluginId, "enable");
-        console.log(`[pluginLoader] 🔓 已启用 "${pluginId}"`);
+        log.appendLine(`🔓 已启用 "${pluginId}"`);
         return { success: true };
       }
       // 视图插件——loadPlugin(reason:'enable') → lifecycle 消费端处理 iconOrder(保持原位) + toast
       await loadPlugin(pluginId, "enable");
-      console.log(`[pluginLoader] [OK] 已启用 "${pluginId}"（即时生效）`);
+      log.appendLine(`[OK] 已启用 "${pluginId}"（即时生效）`);
       return { success: true };
     }
 
@@ -730,7 +736,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
-    console.log(`[pluginLoader] 🗑 已卸载 "${pluginId}"`);
+    log.appendLine(`🗑 已卸载 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -901,7 +907,7 @@ export function startPluginWatcher(): void {
         if (manifestKey) {
           // 工厂插件——已在 Vite 构建中，直接 loadPlugin
           await loadPlugin(dir, "startup");
-          console.log(`[pluginLoader] 文件监听发现新工厂插件 "${dir}"——已即时加载`);
+          log.appendLine(`文件监听发现新工厂插件 "${dir}"——已即时加载`);
         } else {
           // Phase 5h：运行时插件——不在 glob 中，尝试 plugin:// 加载
           await loadPluginRuntime(dir);
@@ -913,7 +919,7 @@ export function startPluginWatcher(): void {
     }
   }, 2000);
 
-  console.log("[pluginLoader] 文件监听已启动（2s 轮询，Phase 5h）");
+  log.appendLine("文件监听已启动（2s 轮询，Phase 5h）");
 }
 
 /** 停止文件监听 */

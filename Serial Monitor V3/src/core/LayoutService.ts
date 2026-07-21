@@ -12,6 +12,7 @@
 
 import type { LayoutData } from "../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
+import { FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
 
 /* ── 类型 ── */
 
@@ -21,7 +22,7 @@ import { read, write, writeSync } from "./StorageService";
  * 归一化后改为 `autoId(prefix)` → `settings-1` / `settings-2` ...。
  * 启动时自动迁移——将布局中的旧 id 映射到新 id（idempotent）。
  */
-const LEGACY_TAB_IDS = new Set(["settings", "marketplace", "welcome", "oled"]);
+const LEGACY_TAB_IDS = new Set(["settings", "marketplace", FALLBACK_PLUGIN_ID, "oled"]);
 
 function migrateLegacyTabIds(layout: WorkspaceLayout): WorkspaceLayout {
   let migrated = false;

@@ -13,6 +13,8 @@
 import { registerCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { APP_PLUGIN_ID } from "./PluginStateService";
+import { CUSTOM_EVENTS } from "./CoreEvents";
 
 /* ── Callbacks ── */
 
@@ -52,7 +54,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
         (p) => p.manifest.core && p.manifest.iconLocation === "bottom"
       );
       const pluginId = settingsPlugin?.pluginId ?? "settings"; // fallback：万一 settings 被卸载
-      window.dispatchEvent(new CustomEvent("v3-open-view", { detail: { pluginId, asSidebar: true } }));
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_VIEW, { detail: { pluginId, asSidebar: true } }));
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -62,7 +64,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "命令面板",
     category: "视图",
     handler: async () => {
-      window.dispatchEvent(new CustomEvent("v3-show-palette"));
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -144,7 +146,7 @@ export function ensureCoreCommands(): void {
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
 
   for (const cmd of CORE_COMMANDS) {
-    registerCommand("app", {
+    registerCommand(APP_PLUGIN_ID, {
       id: cmd.id,
       title: cmd.title,
       category: cmd.category,
@@ -163,7 +165,7 @@ export function ensureCoreCommands(): void {
   }
 
   for (const [menuId, items] of menuItemsMap) {
-    registerMenuItems(menuId, "app", items);
+    registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
 }

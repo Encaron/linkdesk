@@ -1,3 +1,5 @@
+import { FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
+
 /**
  * 标签页身份元数据 —— 标签页系统内部逻辑。
  *
@@ -62,7 +64,7 @@ function autoId(prefix: string) {
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", "welcome"]);
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID]);
 
 /* ── 元数据表 ── */
 
@@ -82,7 +84,7 @@ const TAB_IDENTITY: Record<string, TabIdentityMeta> = {
   "plugin-detail": { identityField: "detailPluginId", fallbackLabel: "插件详情",
     generateId: (opts) => `plugin-detail-${(opts?.detailPluginId ?? opts?.pluginId) ?? Date.now()}` },
   welcome:         { isFallback: true, identityField: null, fallbackLabel: "欢迎",
-    generateId: autoId("welcome") },
+    generateId: autoId(FALLBACK_PLUGIN_ID) },
 
   // ── 预留（Phase 6+ 壳实现）──
   oled:   { identityField: null, fallbackLabel: "OLED",   legacyPluginId: "oled",

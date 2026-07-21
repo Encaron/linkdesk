@@ -9,6 +9,7 @@
 
 import { registerProtocol } from "./ProtocolRegistry";
 import { Parse } from "./ProtocolParser";
+import { APP_PLUGIN_ID } from "./PluginStateService";
 
 let _registered = false;
 
@@ -42,7 +43,7 @@ export function ensureBuiltinProtocols(): void {
   registerProtocol({
     id: "bracket",
     name: "方括号协议",
-    pluginId: "app", // 内置协议，不属于任何插件
+    pluginId: APP_PLUGIN_ID, // 内置协议，不属于任何插件
     mode: "text",
     parseLine: bracketParseLine,
     // 自动检测：方括号协议的特征是行内含 [xxx] 结构

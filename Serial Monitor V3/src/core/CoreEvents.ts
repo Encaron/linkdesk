@@ -73,6 +73,18 @@ export const CoreEvents = {
   onDidReceiveData: new Emitter<{ sourceId: string; raw: string }>(),
 };
 
+/* ── CustomEvent 名称常量（B8 fix——拼错一端就断开通信） ── */
+
+/**
+ * 壳级 CustomEvent 名称——Phase 5 遗留的 window.dispatchEvent 模式。
+ * Phase 6 迁移到 Emitter<T>（CoreEvents 已有基础设施）。
+ */
+export const CUSTOM_EVENTS = {
+  SHOW_PALETTE: "v3-show-palette",
+  OPEN_VIEW: "v3-open-view",
+  PLUGIN_REMOVED: "plugin-removed",
+} as const;
+
 // 确保只有 5 个——Phase 6 前不再扩展。
 // Phase 6 新增事件时更新此数字，拆掉 @ts-expect-error
 export const _Phase5EventCount: 5 = 5;

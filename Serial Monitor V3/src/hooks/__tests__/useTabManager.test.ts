@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { FALLBACK_PLUGIN_ID } from "../../pluginLoader/viewRegistry";
 import {
   resetTerminalCounter,
   resetWorkspaceCounter,
@@ -77,7 +78,7 @@ describe("createInitialTabState", () => {
     const state = createInitialTabState();
     expect(state.groups).toHaveLength(1);
     expect(state.groups[0].tabs).toHaveLength(1);
-    expect(state.groups[0].tabs[0].type).toBe("welcome");
+    expect(state.groups[0].tabs[0].type).toBe(FALLBACK_PLUGIN_ID);
     expect(state.groups[0].activeTabId).toBe(state.groups[0].tabs[0].id);
     expect(state.root.type).toBe("leaf");
     expect((state.root as any).groupId).toBe("main");
@@ -208,7 +209,7 @@ describe("reduceCloseTab", () => {
     const r = reduceCloseTab(prev, prev.groups[0].tabs[0].id);
     expect(r.closed).toBe(true);
     // 关闭后自动补了欢迎页
-    expect(allTabs(r.state!).some((t) => t.type === "welcome")).toBe(true);
+    expect(allTabs(r.state!).some((t) => t.type === FALLBACK_PLUGIN_ID)).toBe(true);
   });
 
   it("dirty 标签页拒绝关闭", () => {

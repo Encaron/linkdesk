@@ -13,6 +13,9 @@
 
 import { read, write } from "./StorageService";
 
+/** 壳级 pluginId——对标 VS Code 内置命令来源。B7 fix：统一常量替代 10+ 处 "app" 硬编码 */
+export const APP_PLUGIN_ID = "app";
+
 /* ── 类型 ── */
 
 type PluginStateStore = Record<string, Record<string, unknown>>;

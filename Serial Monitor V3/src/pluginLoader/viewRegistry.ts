@@ -70,13 +70,16 @@ export function getStatusBarContributions(): Array<StatusBarItem & { pluginId: s
   return items;
 }
 
-/** 查找保底标签页——先查 viewRegistry，无则返回内置 "welcome" */
+/** 欢迎页的 pluginId——系统内置常量，统一引用避免硬编码（B5 fix） */
+export const FALLBACK_PLUGIN_ID = "welcome";
+
+/** 查找保底标签页——先查 viewRegistry，无则返回内置欢迎页 */
 export function findFallbackPlugin(): { pluginId: string } | undefined {
   for (const entry of registry.values()) {
     if (entry.manifest.tabBehavior?.isFallback) return { pluginId: entry.pluginId };
   }
   // 内置 fallback：欢迎页
-  return { pluginId: "welcome" };
+  return { pluginId: FALLBACK_PLUGIN_ID };
 }
 
 /** 注销视图插件。安装/卸载/禁用时调用。 */

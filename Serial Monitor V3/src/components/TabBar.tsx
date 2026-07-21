@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
@@ -86,7 +86,7 @@ function PlusMenu({
       type: p.pluginId,  // 打开时用 pluginId
       pluginId: p.pluginId,
     })),
-    { label: t("新建欢迎页"), type: "welcome" },
+    { label: t("新建欢迎页"), type: FALLBACK_PLUGIN_ID },
   ];
 
   return (

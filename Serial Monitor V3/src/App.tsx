@@ -10,17 +10,19 @@ import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
-import PreferenceService, { initPrefs } from "./core/PreferenceService";
+
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
-import { initPluginLoader, startPluginWatcher } from "./pluginLoader/loader";
+import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
+import { FALLBACK_PLUGIN_ID } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
-import { initPluginStates } from "./core/PluginStateService";
+import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
+import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
@@ -120,7 +122,7 @@ function App() {
     const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
     return group?.tabs.find((t) => t.id === group.activeTabId);
   }, [tabState.groups, tabState.activeGroupId]);
-  const activeTabType = activeTab?.type ?? "welcome";
+  const activeTabType = activeTab?.type ?? FALLBACK_PLUGIN_ID;
   const activePluginId = activeTab?.pluginId;
 
   // Phase 4.4：监听插件卸载/禁用事件，自动关闭关联标签页
@@ -135,16 +137,18 @@ function App() {
         }
       }
     };
-    window.addEventListener("plugin-removed", handler);
-    return () => window.removeEventListener("plugin-removed", handler);
+    window.addEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
   }, [tabState.groups, forceCloseTab]);
 
 
   /* ---- 启动初始化 ---- */
   useEffect(() => {
+    // B12+B13 fix：捕获 cleanup 函数——HMR/StrictMode 下避免重复注册
+    let keybindingCleanup: (() => void) | undefined;
+
     (async () => {
-      // Phase 5：并行初始化所有服务
-      const prefs = await initPrefs().catch(() => PreferenceService.loadPrefs?.() ?? null);
+      // Phase 5：并行初始化所有服务（B14：PreferenceService 已删除，initPrefs 不再需要）
       await Promise.all([
         initStorageService(),
         initConfigurationService(),
@@ -156,7 +160,7 @@ function App() {
       initV3Api();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
-      registerConfiguration("app", {
+      registerConfiguration(APP_PLUGIN_ID, {
         title: "通用",
         properties: {
           "app.theme": {
@@ -199,15 +203,14 @@ function App() {
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
-      // 挂载全局快捷键（Phase 5 KeybindingRegistry）
-      mountGlobalKeybindings();
+      // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
+      keybindingCleanup = mountGlobalKeybindings();
 
       // Phase 5f：主题/语言/强调色通过 ConfigurationApplier 框架应用。
       // onApply 在 registerConfiguration 时声明，框架保证 theme async → accent sync 的时序。
-      const cfgTheme = getConfigurationValue<string>("app.theme");
-      const cfgLang = getConfigurationValue<string>("app.language");
-      const initTheme = cfgTheme || prefs?.theme || "Dark";
-      const initLang = cfgLang || prefs?.language || "zh";
+      // B14：PreferenceService 已删除——ConfigurationService 默认值已注册，无需 prefs fallback。
+      const initTheme = getConfigurationValue<string>("app.theme") ?? "Dark";
+      const initLang = getConfigurationValue<string>("app.language") ?? "zh";
 
       await applyConfiguration("app.theme", initTheme);
       applyConfiguration("app.language", initLang);
@@ -215,9 +218,8 @@ function App() {
       setTheme(initTheme as "Dark" | "Light");
       setLang(initLang as "zh" | "en");
 
-      // Phase 5f：终端设置已迁移到 useConfiguration 直连——terminal.* 默认值由 plugin.json 提供，
-      // User 值由 ConfigurationService 读取，不再需要 App 壳逐 key 读取+写 state。
-      setPortName(prefs?.lastPort || "COM3");
+      // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
+      setPortName("COM3");
 
       // Phase 5：布局恢复——LayoutService 优先
       try {
@@ -229,6 +231,12 @@ function App() {
 
       setReady(true);
     })();
+
+    // B12+B13 fix：cleanup——HMR/StrictMode double-mount 时不泄漏
+    return () => {
+      keybindingCleanup?.();
+      stopPluginWatcher();
+    };
   }, [restoreLayout]);
 
   /* ── Phase 5d：运行时 context key 更新 ── */
@@ -374,8 +382,8 @@ function App() {
       const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
       if (pluginId) handleIconClick(pluginId);
     };
-    window.addEventListener("v3-open-view", onOpenView);
-    return () => window.removeEventListener("v3-open-view", onOpenView);
+    window.addEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
+    return () => window.removeEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
   }, [handleIconClick]);
 
   /* ---- 串口控制 ---- */
@@ -564,7 +572,7 @@ function App() {
       if (e.ctrlKey && e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
         e.preventDefault();
         e.stopImmediatePropagation();
-        window.dispatchEvent(new CustomEvent("v3-show-palette"));
+        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
         return;
       }
     };
@@ -651,14 +659,14 @@ function App() {
       <SerialContext.Provider value={serialContextValue}>
       <div className="app-body">
         <IconBar
-          activeTabType={activeTabType ?? "welcome"}
+          activeTabType={activeTabType ?? FALLBACK_PLUGIN_ID}
           activePluginId={activePluginId}
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
         />
         <SidePanel
           ref={sidebarRef}
-          activeTabType={activeTabType ?? "welcome"}
+          activeTabType={activeTabType ?? FALLBACK_PLUGIN_ID}
           activePluginId={activePluginId}
           sidebarView={sidebarView}
           width={sidebarWidth}
