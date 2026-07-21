@@ -252,6 +252,27 @@
 | 插件依赖图/循环检测 | P2——4 个插件不需要 | Phase 7+ |
 | `modulepreload` 预加载 | 不需要——首次点击加载可接受 | 永不 |
 | 插件按需激活（lazy activationEvents） | Phase 6+ 才需要 | Phase 6 |
-| 插件签名/安全校验 | 桌面应用——用户自己装插件，和 VS Code 一样不校验 | Phase 8+ |
+| 插件签名/安全校验 | 桌面应用——用户自己装插件 | Phase 8+ |
 | 插件更新/版本管理 | Phase 6+ 才需要 | Phase 6 |
-| `import.meta.glob` 的 plugin.json eager 加载完全移除 | theme/language 走文件系统读取即可——不需 glob | Step 4 |
+| 运行时插件 core 模块 externalization 100% | Vite resolveId 拦截在 library mode + 非标准 root 下有死角。当前双 singleton 问题影响：运行时插件的 registerCommand 等调用走的是插件 bundle 内的 CommandRegistry 副本而非核心实例——命令面板不显示其命令。**不影响视图渲染、不影响 useSendData/useConfiguration 等 hooks（这些走 React context 传递）** | Phase 6 引入正式插件 SDK（`@v3/sdk`）后解决 |
+
+---
+
+## 九、实施记录
+
+### Step 1 ✅ — viewRegistry 事件系统 + IconBar 响应式
+- commit: `c06d9c5`
+- viewRegistry: `onDidRegister` / `onDidUnregister` Emitter 事件
+- IconBar: 订阅事件 → `pluginVersion` 计数器 → useMemo 重算图标列表
+
+### Step 2 ✅ — plugin:// 协议 + 独立构建 + 运行时加载器
+- commit: `56c1e38`
+- Rust: `plugin_protocol.rs` — `plugin://` 自定义协议 (~80行)
+- 构建: `scripts/build-plugins.mjs` — Vite library mode 独立构建 (~170行)
+- API: `v3Api.ts` — `window.__v3_core__` 运行时 API 命名空间
+- Loader: `loadPluginRuntime()` — 运行时插件发现+加载
+- `installPlugin`/`enablePlugin`/`reinstallPlugin` — 即时生效（不再 reload）
+- npm scripts: `build:plugins` / `dev:plugins`
+
+### Step 3 🔜 — 构建外部化插件完善 + 文件监听器更新
+### Step 4 🔜 — 清理 import.meta.glob 残留 + 删除 reload 调用 + 全量回归

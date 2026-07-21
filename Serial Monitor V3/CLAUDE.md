@@ -14,7 +14,7 @@
 
 ## 当前阶段
 
-Phase 1-5g ✅ 完成 → **Phase 5h 🔜 运行时动态加载——取代 import.meta.glob（~400 行）**
+Phase 1-5g ✅ 完成 → **Phase 5h 🔄 运行时动态加载——Step 1-2/4 完成，plugin:// 协议 + 独立构建 + 运行时加载器已就绪**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 详见 `docs/phase5_应用基础设施/V3-Phase5f-ConfigurationApplier-设计.md`（配置→应用归一化管道——已实现，terminal.* 迁移待 5f 完成）
@@ -31,7 +31,7 @@ Phase 1-5g ✅ 完成 → **Phase 5h 🔜 运行时动态加载——取代 impo
 | **5e** | 协议下拉框 + 终端 12 设置项迁移 + 接收编码/HEX 模式 + Settings Editor 中文标签 | ✅ | ✅ |
 | **5f** | StorageService + 删旧双写 + 终端专用通道拆除（10 项） | ✅ | ✅ |
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | ✅ |
-| **5h** | 运行时动态加载——取代 `import.meta.glob`，插件安装无需刷新 | ✅ | 🔜 |
+| **5h** | 运行时动态加载——取代 `import.meta.glob`，插件安装无需刷新（2 commits，~700 行，Step 1-2/4 完成）| ✅ | 🔄 |
 | 5.5 | 三栏交互对标 VS Code + 终端侧栏控制面板——`viewRole` 声明 + `<SidebarSection>` 组件 + 标签页改名 | ✅ | 📋 |
 | 6 | 编辑能力——文件树 + 文件编辑 + 主题/语言引擎（3 层：6a/6b/6c，28 项）→ `docs/phase6_编辑能力/` | ❌ | 📋 |
 | **6.5** | **抛光与补齐——通知系统/通用 API/视觉 polish（10 项，3 批）** | ❌ | 📋 |

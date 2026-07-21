@@ -33,6 +33,73 @@ const EXTERNALS = [
   "@tauri-apps/plugin-dialog",
 ];
 
+// Core modules that must use the singleton instance from window.__v3_core__
+// (registry functions, hooks with React context, ConfigurationService state)
+// These paths are intercepted and replaced with a virtual module that
+// re-exports from window.__v3_core__.
+const CORE_SHARED_PATHS = [
+  "../../src/core/CommandRegistry",
+  "../../src/core/useConfiguration",
+  "../../src/core/ConfigurationService",
+  "../../src/core/useSendData",
+  "../../src/hooks/useTauriEvent",
+  "../../src/core/SerialContext",
+  "../../src/core/MenuRegistry",
+  "../../src/core/KeybindingRegistry",
+  "../../src/core/ConfigurationRegistry",
+];
+
+/**
+ * Vite plugin: redirect core module imports to window.__v3_core__.
+ * Plugins built independently would otherwise bundle their own copy of
+ * singleton registries (CommandRegistry, etc.) — causing two instances.
+ */
+function v3CoreExternalPlugin() {
+  const VIRTUAL_ID = "\0v3-core-shared";
+  return {
+    name: "v3-core-external",
+    enforce: "pre",
+    resolveId(id, _importer) {
+      // Intercept resolves for modules that must be shared with core.
+      // Vite passes the id as-written (e.g. "../../src/core/CommandRegistry").
+      const normalized = id.split("?")[0];
+      for (const p of CORE_SHARED_PATHS) {
+        if (normalized === p || normalized.endsWith("/" + p)) {
+          return VIRTUAL_ID;
+        }
+      }
+      return null;
+    },
+    load(id) {
+      if (id === VIRTUAL_ID) {
+        // Re-export all API members from window.__v3_core__
+        return `
+const api = window.__v3_core__;
+export const {
+  React,
+  registerCommand,
+  registerMenuItems,
+  registerKeybinding,
+  registerConfiguration,
+  unregisterConfiguration,
+  registerConfigurationDefaults,
+  unregisterConfigurationDefaults,
+  useConfiguration,
+  useConfigurationValue,
+  useSendData,
+  useTauriEvent,
+  useSerialContext,
+  getConfigurationValue,
+  setConfigurationValue,
+  onDidChangeConfiguration,
+} = api;
+`;
+      }
+      return null;
+    },
+  };
+}
+
 // Scan plugins directory for view plugins with entry field
 function scanPlugins() {
   if (!existsSync(pluginsDir)) return [];
@@ -76,7 +143,7 @@ async function buildPlugin(plugin, watch) {
 
   const config = {
     root: pluginRoot,
-    plugins: [react()],
+    plugins: [react(), v3CoreExternalPlugin()],
     build: {
       watch: watch ? {} : undefined,
       lib: {
@@ -87,7 +154,7 @@ async function buildPlugin(plugin, watch) {
       outDir,
       emptyOutDir: true,
       rollupOptions: {
-        external: EXTERNALS,
+        external: [...EXTERNALS, ...CORE_SHARED_PATHS],
         output: {
           assetFileNames: "style.[ext]",
         },
