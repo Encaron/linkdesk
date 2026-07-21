@@ -208,11 +208,16 @@ Phase 5.5 完成后，所有插件的图标点击行为由 `plugin.json` 的 `vi
 
 ---
 
-## 一、5.5a — viewRole 声明系统
+## 一、5.5a — viewRole 声明系统（≡ VS Code 三栏交互逻辑重写）
+
+> 此节是 §〇 "交互逻辑设计" 的代码落地。
+> VS Code 模型：**图标 = 侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。**
+> Phase 4 的 `isSidebarOnlyView` + `openOrFocusTab` 强制绑定"点图标=开标签页"——反了 VS Code 模型。
+> 5.5a 用 `plugin.json` 的 `viewRole` 字段声明替代硬编码——从此 App.tsx 不再 switch on pluginId。
 
 ### 目标
 
-替掉 `isSidebarOnlyView` 硬编码函数（`tabIdentity.ts:212-214`），改为 `plugin.json` 的 `viewRole` 字段声明。
+替掉 `isSidebarOnlyView` 硬编码函数（`tabIdentity.ts:212-214`），改为 `plugin.json` 的 `viewRole` 字段声明。**这是三栏交互逻辑从"终端优先"切换到 "VS Code 模型"的一行改动——默认值从 `tabOnly` 改为 `sidebarPrimary`。**
 
 ### viewRole 定义
 
@@ -285,7 +290,10 @@ export function getViewRole(pluginId: string): "sidebarPrimary" | "tabPrimary" |
 
 ---
 
-## 二、5.5b — `<SidebarSection>` 通用组件
+## 二、5.5b — `<SidebarSection>` 通用组件（≡ VS Code 侧栏折叠面板）
+
+> 对标 VS Code Explorer 侧栏的 section header——"工作区文件夹" / "大纲" / "时间线"。
+> 5.5a 解决了"图标怎么点"，5.5b 解决"侧栏里怎么组织内容"——通用可折叠区块，终端先用，Phase 6 文件树/Git 全复用。
 
 ### 目标
 
@@ -370,7 +378,11 @@ LinkDesk 终端侧栏:
 
 ---
 
-## 三、5.5c — 终端侧栏重设计
+## 三、5.5c — 终端侧栏重设计（≡ 三栏模型第一个完整消费者）
+
+> 5.5a 建了机制（viewRole），5.5b 建了组件（SidebarSection），5.5c 是第一个把两样东西用起来的消费者。
+> 终端从 `tabOnly` → `sidebarPrimary`：点 📟 = 侧栏出会话列表，侧栏内点会话 = 主区开终端标签页。
+> 和 Phase 6 文件树完全相同——**这不是终端特殊行为，是 `sidebarPrimary` 标准行为。**
 
 > 2026-07-21 重写——AI-A 交付执行规格。旧草稿（"工具栏迁入侧栏 + 5 个 Section"）废弃。
 > 核心洞察：**不同 COM 口设备需要不同的收发参数。** COM3 是 AT 模块（回显开），COM4 是 GPS 模块（回显关）。
