@@ -72,17 +72,18 @@ function MarketplaceSidebar() {
   const [uninstalledPlugins, setUninstalledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
 
   // 异步获取已卸载的插件（.disabled/ 目录）
-  // 挂载时加载 + 监听 plugin-removed 事件刷新（卸载操作后立即更新"待安装"列表）
+  // 挂载时加载 + 监听 plugin-uninstalled/plugin-installed（文件已移走/移回后刷新"待安装"列表）
   useEffect(() => {
     getUninstalledPluginInfo().then(setUninstalledPlugins);
 
     const refreshUninstalled = () => {
       getUninstalledPluginInfo().then(setUninstalledPlugins);
     };
-    window.addEventListener("plugin-removed", refreshUninstalled);
+    // plugin-uninstalled: 文件已移到 .disabled/ 之后——getUninstalledPluginInfo 返回正确数据
+    window.addEventListener("plugin-uninstalled", refreshUninstalled);
     window.addEventListener("plugin-installed", refreshUninstalled);
     return () => {
-      window.removeEventListener("plugin-removed", refreshUninstalled);
+      window.removeEventListener("plugin-uninstalled", refreshUninstalled);
       window.removeEventListener("plugin-installed", refreshUninstalled);
     };
   }, []);

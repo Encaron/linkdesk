@@ -116,15 +116,22 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  /* ─── 消费端 4：标签页清理 + 视图刷新通知 ─── */
+  /* ─── 消费端 4：标签页清理 ─── */
 
   PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 通知壳关闭使用此插件的标签页 + SettingsView/marketplace 刷新
+    // 通知壳关闭使用此插件的标签页——必须在 unregisterViewPlugin 之前
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
   });
 
+  /* ─── 消费端 5：视图刷新通知（SettingsView / marketplace） ─── */
+
+  PluginLifecycle.onDidUninstall.event(({ pluginId }) => {
+    // 此时文件已移到 .disabled/、viewRegistry 已注销——getUninstalledPluginInfo 返回正确数据
+    window.dispatchEvent(new CustomEvent("plugin-uninstalled", { detail: { pluginId } }));
+  });
+
   PluginLifecycle.onDidInstall.event(({ pluginId }) => {
-    // 通知 SettingsView/marketplace 等视图刷新（重装/安装后）
+    // 重装/安装后——SettingsView 重新显示配置分组，marketplace 刷新"待安装"列表
     window.dispatchEvent(new CustomEvent("plugin-installed", { detail: { pluginId } }));
   });
 }

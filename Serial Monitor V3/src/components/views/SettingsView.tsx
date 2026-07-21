@@ -55,10 +55,11 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   // 监听插件卸载/禁用——配置分组需要刷新（unregisterConfiguration 不触发 onDidChangeConfiguration）
   useEffect(() => {
     const onPluginChanged = () => setVersion((v) => v + 1);
-    window.addEventListener("plugin-removed", onPluginChanged);
+    // plugin-uninstalled: 文件已移走、registry 已注销后刷新 (≠ plugin-removed 用于关标签页)
+    window.addEventListener("plugin-uninstalled", onPluginChanged);
     window.addEventListener("plugin-installed", onPluginChanged);
     return () => {
-      window.removeEventListener("plugin-removed", onPluginChanged);
+      window.removeEventListener("plugin-uninstalled", onPluginChanged);
       window.removeEventListener("plugin-installed", onPluginChanged);
     };
   }, []);
