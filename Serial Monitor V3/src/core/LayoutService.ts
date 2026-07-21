@@ -12,7 +12,7 @@
 
 import type { LayoutData } from "../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
-import { FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
+import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 
 /* ── 类型 ── */
 

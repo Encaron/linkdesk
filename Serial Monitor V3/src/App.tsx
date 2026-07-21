@@ -14,7 +14,7 @@ import ToastContainer from "./components/ToastContainer";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { isSidebarOnlyView, shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
-import { FALLBACK_PLUGIN_ID } from "./pluginLoader/viewRegistry";
+import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { initStorageService } from "./core/StorageService";

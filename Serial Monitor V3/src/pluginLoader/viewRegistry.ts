@@ -8,8 +8,8 @@ import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types"
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/CoreEvents";
 import { compareVersions } from "./semverUtils";
-import { FALLBACK_PLUGIN_ID } from "../hooks/tabIdentity";
-export { FALLBACK_PLUGIN_ID };
+import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
+
 
 const registry = new Map<string, ViewPluginEntry>();
 

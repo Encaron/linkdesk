@@ -18,7 +18,8 @@ import {
   updateBranchSizesByIndex,
 } from "./splitTree";
 import type { CreateTabOptions } from "../core/types";
-import { getTabBehavior, findFallbackPlugin, FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
+import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
+import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
 
 /* ── 类型 ── */

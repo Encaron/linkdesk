@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { FALLBACK_PLUGIN_ID } from "../../pluginLoader/viewRegistry";
+import { FALLBACK_PLUGIN_ID } from "../../utils/fallbackPluginId";
 import {
   resetTerminalCounter,
   resetWorkspaceCounter,
