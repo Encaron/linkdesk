@@ -20,7 +20,8 @@ Phase 1-5h ✅ 完成
 **Phase 5.5c C1 ✅ — `useTerminalSessions` 会话数据层（1 文件，+244 行）**
 **Phase 5.5c C2+C3 ✅ — 侧栏重写 + ControlPanel（4 文件，+857/−85 行），已验证通过**
 **Phase 5.5c C4a ✅ — 终端数据源切换 ConfigurationService → useTerminalSessions（1 文件，+42/−74 行）**
-**Phase 5.5c C4b ✅ — 修 3 个数据管道 Bug（3 文件，+64/−5 行）**
+**Phase 5.5c C4b ✅ — 修 3 个数据管道 Bug + 2 个连带修复（5 文件，+82/−5 行）**
+  附带修复：Babel JSX 箭头歧义（`sessions.map` 提取变量）、CM6 初始化时序（占位改 CSS 显隐）
 **下一阶段：5.5c C5 🔜 — plugin.json cleanup（删 contributes.configuration / viewRole 切换 / git rm toolbar.*）**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
@@ -40,7 +41,7 @@ Phase 1-5h ✅ 完成
 | **5f** | StorageService + 删旧双写 + 终端专用通道拆除（10 项） | ✅ | ✅ |
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | ✅ |
 | **5h** | 运行时动态加载 + PluginLifecycle 归一化 + B1/B2/B78 修复（19 commits，~900 行）| ✅ | ✅ |
-| **5.5** | **三栏交互对标 VS Code + Phase 5 验收修复（5.5-0a ✅ → 5.5-0b ✅ → 5.5a ✅ → 5.5b ✅ → 5.5c C1 ✅ C2+C3 ✅ 已验证 → C4a 🔜 C4b 📋 C5 📋）** | ❌ | 🔜 |
+| **5.5** | **三栏交互对标 VS Code + Phase 5 验收修复（5.5-0a ✅ → 5.5-0b ✅ → 5.5a ✅ → 5.5b ✅ → 5.5c C1 ✅ C2+C3 ✅ C4a ✅ C4b ✅ → C5 🔜）** | ❌ | 🔜 |
 | 6 | 编辑能力——文件树 + 文件编辑 + 主题/语言引擎 + Profile + 壳（5 层：6a/6b/6c/6d/6e，33 项）→ `docs/phase6_编辑能力/` | ❌ | 📋 |
 | **6.5** | **抛光与补齐——通知系统/通用 API/视觉 polish（10 项，3 批；Phase 6 完成后串行执行）** | ❌ | 📋 |
 | 7 | 卡片工作台 + 数据管道（纯插件）| ❌ | 📋 |
