@@ -16,6 +16,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
+import { useSerialContext } from "../../src/core/SerialContext";
 import SidebarSection from "../../src/components/shared/SidebarSection";
 import Toggle from "../../src/components/shared/Toggle";
 import Select from "../../src/components/shared/Select";
@@ -32,12 +33,15 @@ const lineEndings = ["\\r\\n", "\\n", "\\r"];
 function SessionListItem({
   session,
   isActive,
+  connected,
   onSelect,
   onRename,
   onDelete,
 }: {
   session: TerminalSession;
   isActive: boolean;
+  /** Phase 5.5c C4b Bug 3：从 SerialContext 派生，不读 session.connected（该字段始终为 false） */
+  connected: boolean;
   onSelect: () => void;
   onRename: (name: string) => void;
   onDelete: () => void;
@@ -88,8 +92,8 @@ function SessionListItem({
       style={{ "--session-color": session.color } as React.CSSProperties}
       onClick={onSelect}
     >
-      {/* 连接状态点 */}
-      <span className={`session-dot${session.connected ? " on" : ""}`} />
+      {/* 连接状态点——C4b Bug 3：从 SerialContext 派生，非 session.connected */}
+      <span className={`session-dot${connected ? " on" : ""}`} />
 
       {/* 名称 / 内联编辑 */}
       {editing ? (
@@ -151,6 +155,9 @@ function TerminalSidebar() {
     updateSession,
     setActiveSession,
   } = useTerminalSessions();
+
+  // Phase 5.5c C4b Bug 3：connected 从 SerialContext 派生——不读 session.connected（始终为 false）
+  const { state: { isOpen, portName } } = useSerialContext();
 
   // 新建会话默认名称计数器
   const sessionCountRef = useRef(sessions.length);
@@ -263,16 +270,21 @@ function TerminalSidebar() {
             {t("开始")}
           </div>
         ) : (
-          sessions.map((s) => (
+          sessions.map((s) => {
+            // C4b Bug 3：connected = SerialContext.isOpen && portName 匹配
+            const connected = isOpen && portName === s.port;
+            return (
             <SessionListItem
               key={s.id}
               session={s}
               isActive={s.id === activeSessionId}
+              connected={connected}
               onSelect={() => setActiveSession(s.id)}
               onRename={handleRename(s.id)}
               onDelete={handleDelete(s.id)}
             />
-          ))
+            );
+          })}
         )}
       </SidebarSection>
 

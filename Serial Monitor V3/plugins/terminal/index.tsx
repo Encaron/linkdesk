@@ -24,7 +24,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../../src/hooks/useTauriEvent";
 import { RingBuffer } from "../../src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
-import { useTerminalSessions } from "./useTerminalSessions";
+import { useTerminalSessions, getActiveSessionId } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
 import SearchBar from "../../src/components/terminal/SearchBar";
@@ -399,6 +399,8 @@ function TerminalView({ isActive }: TerminalViewProps) {
   };
 
   useTauriEvent<string>("serial-data", (payload) => {
+    // C4b Bug 1：无活跃会话时不处理数据——避免数据流向不存在或错误的会话
+    if (!getActiveSessionId()) return;
     if (!portOpenRef.current) return;
     const fmt = tsFormatRef.current;
     const displayText = _receiveMode === "hex"
@@ -946,6 +948,19 @@ function TerminalView({ isActive }: TerminalViewProps) {
     window.addEventListener("v3-clear-terminal", handler);
     return () => window.removeEventListener("v3-clear-terminal", handler);
   }, []);
+
+  // C4b Bug 7：无活跃会话时显示占位——用户需在侧栏选择或新建会话
+  if (!activeSession) {
+    return (
+      <div className="terminal-view">
+        <div className="terminal-placeholder">
+          <span className="terminal-placeholder-icon">▸</span>
+          <p className="terminal-placeholder-title">{t("会话已失效")}</p>
+          <p className="terminal-placeholder-hint">{t("请在侧栏选择一个终端会话，或新建一个以开始使用")}</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="terminal-view">
