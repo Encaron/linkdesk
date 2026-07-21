@@ -1,5 +1,3 @@
-import { FALLBACK_PLUGIN_ID } from "../pluginLoader/viewRegistry";
-
 /**
  * 标签页身份元数据 —— 标签页系统内部逻辑。
  *
@@ -59,6 +57,10 @@ export function resetFallbackCounter(n = 0): void { _fallbackCounter = n; }
 function autoId(prefix: string) {
   return () => `${prefix}-${++_fallbackCounter}`;
 }
+
+/** 欢迎页的 pluginId——系统内置常量（B5 fix）。
+ *  定义在此文件避免 tabIdentity ↔ viewRegistry 循环依赖导致 const TDZ 死区。 */
+export const FALLBACK_PLUGIN_ID = "welcome";
 
 /* ── 壳内部视图类型（Shell-rendered, not plugins）──
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。

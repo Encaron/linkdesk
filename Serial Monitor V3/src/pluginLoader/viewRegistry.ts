@@ -8,6 +8,8 @@ import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types"
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/CoreEvents";
 import { compareVersions } from "./semverUtils";
+import { FALLBACK_PLUGIN_ID } from "../hooks/tabIdentity";
+export { FALLBACK_PLUGIN_ID };
 
 const registry = new Map<string, ViewPluginEntry>();
 
@@ -69,9 +71,6 @@ export function getStatusBarContributions(): Array<StatusBarItem & { pluginId: s
   }
   return items;
 }
-
-/** 欢迎页的 pluginId——系统内置常量，统一引用避免硬编码（B5 fix） */
-export const FALLBACK_PLUGIN_ID = "welcome";
 
 /** 查找保底标签页——先查 viewRegistry，无则返回内置欢迎页 */
 export function findFallbackPlugin(): { pluginId: string } | undefined {

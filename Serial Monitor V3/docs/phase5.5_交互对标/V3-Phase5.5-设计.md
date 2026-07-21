@@ -282,107 +282,308 @@ LinkDesk 终端侧栏:
 
 ## 三、5.5c — 终端侧栏重设计
 
-### 目标
+> 2026-07-21 重写——AI-A 交付执行规格。旧草稿（"工具栏迁入侧栏 + 5 个 Section"）废弃。
+> 核心洞察：**不同 COM 口设备需要不同的收发参数。** COM3 是 AT 模块（回显开），COM4 是 GPS 模块（回显关）。
+> 因此 12 个设置项不是全局配置——是**每个会话的属性**。侧栏的"资源"是会话，侧栏只做会话管理 + 当前会话的收发设置。
+>
+> **三项已确认的设计决策（用户 2026-07-21）：**
+> 1. 控制面板（COM/波特率/协议/连接）→ **主区顶部**——每标签页自包含，对标 VS Code 终端面板的 shell 选择器
+> 2. 快捷发送 → **按会话隔离**——CAN 会话和 AT 会话各有一组
+> 3. 发送栏 → **主区底部**（不改——Monaco 是内容创作，和 CM6 同在标签页内）
 
-终端侧栏从"12 项设置表单"改为"控制面板 + 会话列表"。
-这是第一个消费 5.5a（viewRole）+ 5.5b（SidebarSection）的完整用例。
-
-### 侧栏布局（重设计后）
+### 3.1 对标模型
 
 ```
-┌──────────────────────┐
-│                      │
-│ ▼ 终端会话 (3)   [+ 新建]│  ← SidebarSection（会话列表，内存态）
-│   📟 COM3 PID调试  [✎] │  ← 点击→切换标签页；✎→侧栏内改名→标签标题联动
-│   📟 COM5 CAN监控   [✕] │  ← ✕→关闭会话+标签页
-│   📟 COM7 空闲      [✕] │
-│                      │
-├──────────────────────┤
-│                      │
-│ ▼ 控制面板       [编辑]│  ← SidebarSection（默认展开）
-│   COM口 [COM3 ▼]      │  ← 从 toolbar.tsx 迁入
-│   波特率 [115200 ▼]    │
-│   [● 打开]  [断开]     │
-│                      │
-│ ▶ 快捷发送        [编辑]│  ← SidebarSection（默认展开）
-│   ┌────┬────┬────┐   │
-│   │ AT │+CWLAP│+JAP│  │
-│   └────┴────┴────┘   │
-│   [+ 添加]            │
-│                      │
-│ ▶ 收发统计            │  ← SidebarSection
-│   TX: 1,234  RX: 56,789│
-│                      │
-├──────────────────────┤
-│                      │
-│ ▶ 设置               │  ← SidebarSection（默认合上）
-│   时间戳格式 [HH:mm:ss ▼]│  ← 读 contributes.configuration，Settings Editor 渲染
-│   显示行号    [✓]       │
-│   ...更多设置...        │  ← 不再手动维护 12 个表单项
-│                      │
-└──────────────────────┘
+VS Code Explorer                    LinkDesk 终端
+─────────────────────              ─────────────────────
+📁 Explorer 侧栏                     📟 终端侧栏
+  ├─ 文件列表 (CRUD)                  ├─ 会话列表 (CRUD)
+  ├─ 双击文件 → 开编辑器               ├─ 点会话 → 切换终端标签页
+  └─ F2 改名 → 标签页标题同步           └─ F2 改名 → 标签页标题同步
+
+主区编辑器标签页                       主区终端标签页
+  ├─ 编辑器专属工具栏                    ├─ 控制面板 (COM/波特率/协议/连接)
+  ├─ 文件内容 (Monaco)                  ├─ CM6 接收区
+  └─ 编辑器专属面板                      ├─ 快捷发送药丸 (按会话)
+                                      └─ Monaco 发送栏
 ```
 
-### 会话数据结构（内存态——Phase 5.5 不做持久化）
+### 3.2 侧栏——2 个 SidebarSection
+
+```
+┌────────────────────────────┐
+│                            │
+│ ▼ 终端会话 (3)       [+ 新建] │  ← SidebarSection，defaultOpen=true
+│                            │     badge=会话数，actions=[+ 新建] 按钮
+│ ● COM3 PID调试      [✎][✕] │  ← 选中态（深色背景）。hover 时才显示 [✎][✕]
+│    115200 · 方括号           │  ← 副标题：波特率 + 协议（灰色小字）
+│                            │     点会话行 → 切换标签页 + 下方"收发设置"联动
+│   COM5 CAN监控       [✎][✕] │  ← 未选中态
+│    500000 · 方括号           │     ✎ → inline 编辑→回车确认→标签页标题同步
+│                            │     ✕ → 关闭会话+标签页（最后会话显示空状态）
+│   COM7 空闲                 │
+│    未配置                    │
+│                            │
+├────────────────────────────┤
+│                            │
+│ ▼ 收发设置                   │  ← SidebarSection，defaultOpen=true
+│                            │     内容完全随上方选中的会话切换
+│   时间戳  [HH:mm:ss:fff ▼] │  ← 12 项——当前选中会话的属性
+│   消息回显          [✓]     │     COM3 回显开、COM5 回显关——互不干扰
+│   行号显示          [✓]     │     每项 onChange → 直接改 session 对象
+│   系统消息独立显示    [✓]     │     立即生效（不需要点"应用"）
+│   换行符      [\r\n ▼]     │
+│   定时发送          [ ]     │
+│   间隔(ms)      [1000]     │  ← 仅 autoRepeat=true 时显示
+│   发送后清空         [ ]     │
+│   接收模式    [文本 ▼]      │
+│   接收编码  [UTF-8 ▼]      │
+│   发送模式    [文本 ▼]      │
+│   发送编码  [UTF-8 ▼]      │  ← sendMode=hex 时 disabled
+│                            │
+└────────────────────────────┘
+```
+
+**侧栏只做两件事：会话列表 + 收发设置。** 没有控制面板（在主区），没有快捷发送（在主区），没有收发统计（Phase 7 做）。对标 VS Code Explorer：上半是文件列表，下半如果有 `Outline`/`Timeline` 是树视图——这里下半是当前会话的属性编辑。
+
+**收发设置联动规则：**
+```
+侧栏选中 "COM3 PID调试" → 收发设置区显示 COM3 的 12 个值
+侧栏选中 "COM5 CAN监控" → 收发设置区立即切换为 COM5 的值
+没有选中任何会话 → 收发设置区不渲染（或显示灰色占位）
+```
+
+### 3.3 主区——每标签页自包含
+
+```
+┌──────────────────────────────────────────────┐
+│ [COM3 ▼] [115200 ▼] [方括号协议 ▼]            │ ← 控制面板（迁自 toolbar.tsx）
+│ [● 已连接] [断开] [⏸ 暂停] [清空] [导出] [🔍]  │ ← 操作按钮行
+├──────────────────────────────────────────────┤
+│                                              │
+│  CM6 接收区                                   │
+│  (flex: 1，占满剩余高度)                       │
+│                                              │
+├──────────────────────────────────────────────┤
+│ [AT] [AT+CWLAP] [AT+MQTT] [+ 添加]           │ ← 快捷发送（当前会话专属）
+├──────────────────────────────────────────────┤
+│ > Monaco 发送栏                     [清空] [发送]│ ← 发送栏（不变）
+└──────────────────────────────────────────────┘
+```
+
+**和旧设计的关键区别：** 控制面板留在主区。用户切到另一个标签页后想断连/改波特率——不需要点回 📟，直接在标签页内操作。对标 VS Code 终端面板的 shell 选择器。
+
+**未连接状态：**
+```
+│ [COM3 ▼] [115200 ▼] [方括号协议 ▼]            │
+│ [● 打开]                                      │ ← 只有打开按钮，其他按钮不显示
+├──────────────────────────────────────────────┤
+│                    ⋮                          │
+│  选择串口设备并打开连接以开始                    │ ← CM6 区显示引导文字（对标 VS Code welcome view）
+│                    ⋮                          │
+```
+
+**无可用串口状态：**
+```
+│ [无可用串口] [115200 ▼]                       │ ← 下拉框 disabled
+│ [● 打开] (disabled)                           │
+```
+
+### 3.4 会话数据结构（内存态——Phase 6 持久化）
 
 ```typescript
-// plugins/terminal/sidebar.tsx 内部 state
+// plugins/terminal/useTerminalSessions.ts
 interface TerminalSession {
-  id: string;            // 唯一标识（tabId）
-  name: string;          // 用户可编辑的会话名
-  port: string;          // COM 口（空 = 未连接）
-  baudRate: number;
-  protocol: string;      // 协议插件 ID
+  id: string;                    // = tabId，一一对应
+  name: string;                  // 用户可编辑，"新会话" = 默认
+  port: string;                  // COM 口名称，"" = 未选
+  baudRate: string;              // "115200"
+  protocol: string;              // 协议插件 ID，"bracket"
   connected: boolean;
+
+  // ── 12 项收发设置 ← 每会话独立 ──
+  timestampFormat: string;       // "HH:mm:ss:fff" | "HH:mm:ss" | "无"
+  showEcho: boolean;
+  showLineNumbers: boolean;
+  separateSystemLog: boolean;
+  lineEnding: string;            // "\r\n" | "\n" | "\r"
+  autoRepeat: boolean;
+  repeatInterval: number;        // 1000
+  autoClear: boolean;
+  receiveMode: string;           // "text" | "hex"
+  receiveCoding: string;         // "UTF-8" | "GB2312" | "Shift-JIS" | "Latin-1"
+  sendMode: string;              // "text" | "hex"
+  sendCoding: string;            // "UTF-8" | "GB2312" | "Shift-JIS" | "Latin-1"
+
+  // ── 快捷发送 ← 按会话 ──
+  quickSends: Record<string, string>;  // { "AT": "AT\r\n", "AT+CWLAP": "AT+CWLAP\r\n" }
 }
 ```
 
-Phase 6 才持久化为 `.session.json`——5.5 只做 UI 交互，数据结构在内存中。
+**默认值来源**：新建会话时，`useTerminalSessions` 内部定义 `DEFAULT_SESSION_SETTINGS` 常量。不从 `ConfigurationService` 读（12 项不再是全局配置）。不从 `plugin.json` 读（`contributes.configuration` 的 `default` 仅作文档参考）。
 
-### 标签页标题联动
+**Phase 6 持久化：** `useTerminalSessions` 增加 `loadSessions()` / `saveSessions()` 调用 `FileService`。5.5 不做——F5 刷新会话全部消失（预期行为）。
 
+### 3.5 交互流
+
+**新建会话：**
 ```
-侧栏改名 "COM3 PID调试" → reduceUpdateTabLabel(tabId, "COM3 PID调试")
-  → 标签栏: [📟 COM3 PID调试] [📟 COM5 CAN监控]
-  
-侧栏删除会话 → closeTab + removeSession
-侧栏新建会话 → openNewTab + addSession
-```
-
-### 涉及文件
-
-| 文件 | 操作 | 行数 |
-|------|------|:--:|
-| `plugins/terminal/sidebar.tsx` | **重写**——5 个 SidebarSection + 会话状态管理 + 改名联动 | ~120 |
-| `plugins/terminal/sidebar.css` | **重写**——匹配新布局 | ~40 |
-| `plugins/terminal/index.tsx` | **瘦身**——删工具栏+发送栏（迁入侧栏），保留 CM6+Monaco | -180 |
-| `plugins/terminal/toolbar.tsx` | **删除** | -80 |
-| `plugins/terminal/toolbar.css` | **删除** | -30 |
-| `plugins/terminal/plugin.json` | + `contributes.configuration` 12 项（Settings Editor 接管） | +40 |
-| `plugins/terminal/useTerminalSessions.ts` | **新建**——会话 CRUD hook（增/删/改名/切换，纯内存） | ~50 |
-| **净变动** | | **~ -40 行** |
-
-### 和 Settings Editor 的关系
-
-```
-Phase 5 Settings Editor 建好了。
-终端 12 个设置项 → plugin.json contributes.configuration → Settings Editor 自动渲染。
-侧栏的"设置"区块不再手动写表单项——只放一个链接/入口到 Settings Editor。
-或者直接放设置项（useConfiguration 读值 + ContributedSetting 渲染）。
+侧栏 [+ 新建] 按钮
+  → prompt 模态/内联输入："新会话名称？"，默认值 "新会话 N"（N 递增）
+  → 回车确认
+  → createSession(name, defaults) → 新 session 对象（id=tabId，所有设置=默认值）
+  → openTab(tabId, terminal) → 主区显示空白终端（未连接状态）
+  → 标签栏: [📟 新会话 N]
+  → 侧栏自动选中新会话 → 收发设置区显示默认值
 ```
 
-### 验证
+**切换会话：**
+```
+侧栏点 "COM5 CAN监控"
+  → setActiveSession(sessionId)
+  → focusTab(tabId) → 主区切换终端标签页
+  → 控制面板显示该会话的 COM/波特率/协议状态
+  → CM6 显示该标签页的内容（keep-alive，不丢失）
+  → 快捷发送条切换为该会话的快捷发送
+  → 侧栏收发设置区刷新为该会话的 12 个值
+```
+
+**改名（F2 / hover ✎）：**
+```
+侧栏选中 "COM3 PID调试" → F2（或 hover → 点 ✎）
+  → 会话名变为内联 <input>，自动 focus + 选中全部文本
+  → 回车确认 / Esc 取消
+  → session.name = "PID调试"
+  → reduceUpdateTabLabel(tabId, "PID调试")
+  → 标签栏: [📟 PID调试]
+```
+
+**删除会话（hover ✕）：**
+```
+侧栏 hover "COM7 空闲" → 出现 [✕] → 点 ✕
+  → 确认弹窗："关闭会话「COM7 空闲」？"
+  → 确认：
+    → 如果 connected → 先断开串口
+    → closeTab(tabId)
+    → removeSession(sessionId)
+    → 如果是最后一个会话 → 侧栏显示空状态："暂无会话 [+ 新建]"
+    → 如果删除的是当前选中 → 自动选中相邻会话
+```
+
+**改变收发设置：**
+```
+侧栏"收发设置"区 → 改消息回显 Toggle → off
+  → session.showEcho = false
+  → 当前终端标签页立即生效（不点"应用"）
+  → 如果用户切到 COM5 再切回 COM3 → showEcho 仍是 false（值绑在 session 上）
+
+切换 Timeline：
+  用户操作 → session.xxx 变化 → CM6/发送行为立即生效
+  不需要"应用"/"确定"按钮——对标 VS Code 设置编辑器的即时生效
+```
+
+### 3.6 组件树
 
 ```
-1. 点 📟 → 侧栏显示控制面板（不是 12 项设置表单）
-2. 侧栏 COM 口选择 COM3 → 点打开 → 终端连接 → 接收区有数据
-3. 侧栏改名 "PID调试" → 标签页标题变为 "📟 PID调试"
-4. 新建第二个会话 → 选 COM5 → 标签栏出现两个终端标签页
-5. 切换会话 → 标签页切换，侧栏 COM 口状态跟随
-6. 删除会话 → 标签页关闭
-7. F5 刷新 → 会话全部消失（5.5 内存态，不持久化——这是预期行为）
-8. Settings Editor 里改时间戳格式 → 终端接收区格式变化
-9. CI: npx vitest run 全部通过
+TerminalSidebar (重写，~100 行)
+├── SidebarSection "终端会话" (defaultOpen=true, badge=count, actions={<新建按钮>})
+│   ├── SessionListItem × N
+│   │   ├── 连接状态点 (● 绿色=已连接, ○ 灰色=未连接)
+│   │   ├── 会话名（可 F2 内联编辑）
+│   │   ├── 副标题（波特率 + 协议，灰色小字）
+│   │   └── HoverActions (✎ 改名 / ✕ 删除，仅 hover 时显示)
+│   └── EmptyState ("暂无会话，[+ 新建] 开始")
+│
+└── SidebarSection "收发设置" (defaultOpen=true)
+    └── SessionSettings (12 个 Toggle/Select/Input，读当前 session 的值)
+        └── 每个 onChange → 直接 mutate session + notify TerminalView 重渲染
+
+TerminalView/index.tsx (瘦身，~1000 行)
+├── ControlPanel (重构自 toolbar.tsx）
+│   ├── COM 口下拉框 + 波特率下拉框 + 协议下拉框
+│   ├── 连接/断开按钮（含连接状态点）
+│   ├── 暂停/清空/导出/搜索/筛选按钮
+│   └── SearchBar (条件渲染)
+├── CM6 接收区 (flex: 1，主要空间)
+│   ├── 未连接引导文字
+│   └── 暂停遮罩条
+├── QuickSendBar (读 session.quickSends)
+│   ├── 药丸按钮 × N
+│   ├── 添加/编辑内联表单
+│   └── 右键菜单（ContextMenu）
+└── SendBar
+    ├── Monaco 单行编辑
+    ├── 发送历史下拉
+    └── 清空/发送按钮
+
+useTerminalSessions.ts (新建，~60 行)
+├── sessions: TerminalSession[]
+├── activeSessionId: string
+├── createSession(name): TerminalSession
+├── removeSession(id)
+├── updateSession(id, patch)
+└── getSession(id): TerminalSession | undefined
+```
+
+### 3.7 涉及文件
+
+| 文件 | 操作 | 净变动 | 说明 |
+|------|------|:--:|------|
+| `plugins/terminal/sidebar.tsx` | **重写** | ~100 | 2 个 SidebarSection：会话列表 + 收发设置 |
+| `plugins/terminal/sidebar.css` | **重写** | ~40 | 旧表单样式全部替换 |
+| `plugins/terminal/index.tsx` | **瘦身** | -200 | 工具栏逻辑迁入 ControlPanel；快捷发送/发送栏保留但改为读 session |
+| `plugins/terminal/toolbar.tsx` | **重构** → `ControlPanel.tsx` | ~80 | COM/波特率/协议/连接操作，每标签页一份 |
+| `plugins/terminal/toolbar.css` | 改名 → `ControlPanel.css` | 0 | 样式不变 |
+| `plugins/terminal/useTerminalSessions.ts` | **新建** | ~60 | 会话 CRUD + 默认设置常量的 hook |
+| `plugins/terminal/plugin.json` | 改 | +1 | `viewRole: "sidebarPrimary"`（替代旧 `"tabOnly"`） |
+| `plugins/terminal/plugin.json` | 删 | -40 | **移除 `contributes.configuration` 12 项**（设置不再是全局——Settings Editor 不渲染终端设置） |
+| **净变动** | | **~ +40 行** | |
+
+### 3.8 和 Settings Editor / ConfigurationService 的关系
+
+**终端 12 项设置从 Settings Editor 移除。** 理由：
+
+1. 不同 COM 口设备需要不同的收发参数——不是全局配置
+2. 会话是内存对象，不属于 `ConfigurationService` 管辖（`ConfigurationService` 管的是跨会话的全局设置）
+3. 设置唯一入口是侧栏——和 VS Code Explorer 侧栏一致：文件属性在侧栏改，不在 Settings Editor 改
+
+**但 `contributes.configuration` 的 `properties` 保留在 `plugin.json` 中**——作为会话默认值的**模板定义**（`default` 字段）。`useTerminalSessions` 的 `createSession()` 可以从中提取默认值。Settings Editor 的渲染逻辑判断 `"scope": "session"` 或等效标记后跳过不渲染。或者更简单的做法——`useTerminalSessions` 内部写死默认值常量，不依赖插件清单。由实现者选择。
+
+**`ConfigurationService` 中终端相关的 12 个 key 不再使用。** `index.tsx` 从 `useConfiguration("terminal.xxx")` 改为 `session.xxx`。`useConfiguration` hook 不再出现在终端代码中（除非终端有真正的全局设置，如"最大会话数"——Phase 6+）。
+
+### 3.9 状态归属总结
+
+| 状态 | 归属 | 读写方式 |
+|------|:--:|------|
+| 会话列表 | `useTerminalSessions` hook | CRUD |
+| 每个会话的 12 个设置 | `session.xxx` 字段 | 侧栏 Toggle/Select onChange → mutate |
+| 每个会话的快捷发送 | `session.quickSends` | 药丸 CRUD |
+| 每个会话的 COM/波特率/协议 | `session.port/baudRate/protocol` | 控制面板下拉框 |
+| 当前 COM 硬件连接 | `SerialContext`（全局，Rust 后端） | `toggleOpen()` |
+| 当前选中哪个会话 | `useTerminalSessions.activeSessionId` | 侧栏点会话 / 标签页切换 |
+| 当前活跃标签页 | 标签页系统 `activeTabId` | `focusTab()` |
+
+### 3.10 验证清单
+
+```
+[ ] 点 📟 → 侧栏显示会话列表（不是设置表单、不是控制面板）——如果无会话显示空状态
+[ ] [+ 新建] → 输入名称 → 标签栏出现新标签页 → 侧栏自动选中 → 收发设置区显示默认值
+[ ] 侧栏选中 "COM3 PID调试" → 收发设置区刷新为该会话的 12 个值
+[ ] 侧栏改消息回显 Toggle → off → 主区终端立即不显示回显
+[ ] 侧栏切到 "COM5 CAN监控" → 收发设置区切换 → COM5 的回显仍是 on（互不干扰）
+[ ] 侧栏 F2 → 内联编辑 → 回车 → 标签页标题同步更新
+[ ] 侧栏 hover 会话行 → [✎] [✕] 出现 → 点 ✕ → 确认 → 标签页关闭
+[ ] 删除最后一个会话 → 侧栏显示空状态 "暂无会话，[+ 新建] 开始"
+[ ] 主区顶部控制面板：选 COM3 → 选波特率 → 点 [● 打开] → CM6 接收区有数据
+[ ] 主区快捷发送：[AT] 药丸 → 点 → 发送 → CM6 回显
+[ ] 主区发送栏：输文字 → Enter → 发送 → CM6 回显
+[ ] 新建第二个会话 → COM5 → 不同的快捷发送列表 → 两个会话互不干扰
+[ ] F5 刷新 → 所有会话消失（5.5 内存态——预期行为）
+[ ] Settings Editor 搜索 "终端" → 零结果（终端设置从 Settings Editor 移除）
+[ ] git grep "useConfiguration.*terminal" -- plugins/terminal/ → 返回空
+[ ] git grep '"terminal"' src/core/ → 返回零
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 全部通过
 ```
 
 ---

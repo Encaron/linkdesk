@@ -314,196 +314,148 @@ Phase 5.5 体量：viewRole ~50 行 + 终端布局重设计 ~100 行 = ~150 行�
 
 ---
 
-## 八、终端插件布局重新设计——对标 PlatformIO
+## 八、终端插件布局重新设计——对标 VS Code 三栏模型
 
-### 8.1 为什么终端在 Phase 5.5 要改布局
+> 2026-07-22 重写（AI-A）。旧草稿（"工具栏/快捷发送/发送栏全部迁入侧栏"对标 PlatformIO）废弃。
+> 新设计不再对标 PlatformIO 的控制面板模式——对标 **VS Code Explorer**（侧栏=资源列表+属性面板）。
+> 三项已确认的设计决策：
+> 1. 控制面板 → **主区顶部**（每标签页自包含）
+> 2. 快捷发送 → **按会话隔离**
+> 3. 发送栏 → **主区底部**（Monaco 是内容创作，和 CM6 同在标签页内）
 
-Phase 4 的终端继承了 V2 的布局模式：
-- 侧栏 = 设置表单（时间戳格式 / 编码 / 回显 / 换行符…）
-- 工具栏 = COM 口 + 波特率 + 打开按钮（内嵌在主视图顶部）
-- 主视图 = CM6 接收区 + Monaco 发送栏
+### 8.1 为什么对标 VS Code Explorer 而非 PlatformIO
 
-**问题：** Phase 5 建了 Settings Editor 后，终端侧栏里的 12 个设置项都应该迁移到 Settings Editor——它们是配置，不是操作。侧栏空出来之后放什么？把工具栏的 COM/波特率/打开按钮挪到侧栏，变成终端的**控制面板**。
-
-### 8.2 对标 PlatformIO
-
-**PlatformIO 的侧栏 = 控制中心 + 欢迎引导：**
-
-```json
-// PlatformIO package.json
-"viewsContainers": {
-  "activitybar": [{ "id": "platformio", "title": "PlatformIO", "icon": "..." }]
-},
-"views": {
-  "platformio": [
-    { "id": "platformio-ide.projectTasks", "name": "Project Tasks", "type": "tree" },
-    { "id": "platformio-ide.quickAccess", "name": "Quick Access", "type": "tree" }
-  ]
-},
-"viewsWelcome": [
-  {
-    "view": "platformio-ide.projectTasks",
-    "contents": "You have not yet opened a PlatformIO project.\n[Pick a folder](command:...)\n[Create New Project](command:...)"
-  }
-]
-```
-
-**交互模式：**
+PlatformIO 的侧栏模式适合**纯操作型**插件（Build/Upload/Monitor 是离散命令，没有"要编辑的内容"）。
+终端不同——它有内容（CM6 接收区），有编辑（Monaco 发送栏），有属性（12 项收发设置）。
+这更接近文件树模式——文件树侧栏管文件列表 + 属性面板（Outline/Timeline），终端侧栏管会话列表 + 收发设置。
 
 ```
-点 🐜 PlatformIO → Side Bar 显示 PlatformIO 面板
-  有项目：
-    ├── Project Tasks（树）：Build / Upload / Monitor / Clean…
-    └── Quick Access（树）：PIO Home / Open / New Terminal…
-  无项目（viewsWelcome）：
-    "You have not yet opened a PlatformIO project."
-    [Pick a folder]
-    [Create New Project]
-
-  侧栏内的操作 → 触发命令 → 主区打开标签页
-  "Create New Project" → 主区开 PlatformIO Home 标签页
-  "Serial Monitor" → 主区开串口监视器标签页
+VS Code 文件树                        LinkDesk 终端
+─────────────────────              ─────────────────────
+侧栏                               侧栏
+  📁 文件列表 (CRUD)                   📟 会话列表 (CRUD)
+  📊 Outline 面板                     ⚙ 收发设置面板（当前选中会话的属性）
+  🕐 Timeline 面板
+主区                               主区
+  编辑器标签页 (Monaco)                终端标签页 (CM6+Monaco)
+  编辑器专属工具栏                     控制面板 (COM/波特率/协议/连接)
 ```
 
-**核心：侧栏 = 操作面板。主区 = 结果/输出。** 侧栏不再塞设置表单——设置走 Settings Editor。
+### 8.2 和旧设计的关键区别
 
-### 8.3 终端布局新设计
+| | 旧设计（PlatformIO 对标） | 新设计（VS Code Explorer 对标） |
+|---|---|---|
+| 对标模型 | PlatformIO 控制面板 | VS Code Explorer（侧栏=资源管理+属性） |
+| 侧栏内容 | 5 个 Section（会话+控制面板+快捷发送+统计+设置） | **2 个 Section**（会话列表 + 收发设置） |
+| 控制面板位置 | 侧栏内 | **主区顶部**（每标签页一份） |
+| 快捷发送 | 侧栏内，全局 | **主区**，**按会话隔离** |
+| 12 项收发设置 | Settings Editor 全局管理 | **侧栏第二个 Section**，**按会话属性** |
+| Settings Editor | 终端设置在其中 | **终端设置从 Settings Editor 移除** |
+| 工具栏（toolbar.tsx） | 删除 | **重构为 ControlPanel.tsx**（留在主区） |
 
-**现行（V2 继承）：**
-
-```
-┌────┬──────────────────────────────────────┐
-│    │ [COM3 ▼] [115200 ▼] [● 打开]         │ ← 工具栏在顶部
-│ 📟  │──────────────────────────────────────│
-│    │ CM6 接收区                             │
-│    │                                        │
-│    │                                        │
-│    ├──────────────────────────────────────│
-│    │ Monaco 发送栏                          │
-└────┴──────────────────────────────────────┘
-侧栏：时间戳格式 / 行号 / 回显 / 编码 / 换行符 / 定时发送… （设置表单）
-```
-
-**新设计（对标 PlatformIO 控制面板）：**
+### 8.3 新布局
 
 ```
-┌────┬──────────────────────────────────────┐
-│    │ CM6 接收区                             │ ← 主区只有输出
-│ 📟  │                                        │
-│    │                                        │
-│    │                                        │
-└────┴──────────────────────────────────────┘
-
-侧栏（终端控制面板）：
-  ● COM3 已连接 — 115200              ← 连接状态
-  [关闭]                               ← 操作按钮
-  ─────────────────────────
-  快捷发送：
-  [AT] [AT+CWLAP] [AT+CWJAP] [+ 添加]  ← 快捷发送药丸
-  ─────────────────────────
-  发送栏：
-  [________________________] [发送]     ← Monaco 单行发送
-  ─────────────────────────
-  TX: 1,234  RX: 56,789                ← 收发计数
-
-（未连接时——对标 PlatformIO viewsWelcome）：
-  "选择串口设备并打开连接以开始"
-  [COM3           ▼]
-  [115200         ▼]
-  [● 打开]
+侧栏 (2 个 Section)                 主区 (每标签页)
+┌──────────────────────┐  ┌──────────────────────────────────────────┐
+│                      │  │ [COM3 ▼] [115200 ▼] [方括号协议 ▼]       │ ← 控制面板
+│ ▼ 终端会话 (3)  [+新建]│  │ [● 已连接] [断开] ⏸ [清空] [导出] 🔍   │
+│                      │  ├──────────────────────────────────────────┤
+│ ● COM3 PID调试 [✎][✕] │  │                                          │
+│   115200 · 方括号      │  │  CM6 接收区                              │
+│                      │  │                                          │
+│   COM5 CAN监控  [✎][✕] │  │                                          │
+│   500000 · 方括号      │  │                                          │
+│                      │  ├──────────────────────────────────────────┤
+│   COM7 空闲    [✎][✕] │  │ [AT] [AT+CWLAP] [AT+MQTT] [+ 添加]     │ ← 按会话
+│   未配置               │  ├──────────────────────────────────────────┤
+│                      │  │ > Monaco 发送栏                [清空][发送]│
+├──────────────────────┤  └──────────────────────────────────────────┘
+│                      │
+│ ▼ 收发设置            │  ← 内容随上方选中的会话联动
+│   时间戳[HH:mm:ss:fff]│
+│   消息回显     [✓]     │
+│   行号显示     [✓]     │
+│   ...(共 12 项)...    │
+│                      │
+└──────────────────────┘
 ```
 
-**和 PlatformIO 的对应关系：**
+### 8.4 和 VS Code 的精确对照
 
-| PlatformIO | LinkDesk 终端 |
-|------|------|
-| `viewsWelcome` → "Pick a folder" / "Create New Project" | 未连接 → COM口选择器 + 波特率 + 打开按钮 |
-| `views.platformio` → Project Tasks 树 | 已连接 → 关闭按钮 + 快捷发送 + 发送栏 |
-| `views.platformio` → Quick Access 树 | 快捷发送药丸（可编辑列表） |
-| 侧栏按钮 → 命令 → 主区开标签页 | 侧栏"发送"→ invoke("send_data") → 主区 CM6 显示回显 |
+| VS Code 交互 | LinkDesk 终端交互 |
+|-------------|-----------------|
+| 点 📁 Explorer → 侧栏显示文件列表 | 点 📟 → 侧栏显示会话列表 |
+| 双击 .c 文件 → 主区开编辑器标签页 | 侧栏点会话 → 主区切到该终端标签页 |
+| Explorer 内 F2 改名 → 标签同步 | 侧栏 F2 / hover ✎ → inline 编辑 → 标签同步 |
+| Explorer 内 hover 文件 → 删除按钮 | 侧栏 hover 会话 → [✕] → 关标签页 |
+| Explorer 下半 Outline/Timeline 面板 | 侧栏下半"收发设置"——当前选中会话的属性 |
+| 编辑器标签页顶部——文件路径面包屑 | 主区顶部——COM口/波特率/协议（会话属性选择器） |
+| 编辑器内——编辑器专属操作 | 主区——暂停/清空/导出/搜索/筛选（终端专属操作） |
+| 设置面板 Ctrl+,——全局编辑器设置 | Settings Editor——全局应用设置（终端设置不出现在此） |
 
-### 8.4 终端插件文件变动
+### 8.5 终端插件文件变动（修订后）
 
 ```
 plugins/terminal/
-  ├── index.tsx         ← 瘦身：删除工具栏 + 发送栏 + 快捷发送（~200 行删）
-  │                        只保留 CM6 接收区 + 数据管道逻辑
-  ├── toolbar.tsx       ← 删除。内容迁入 sidebar.tsx
-  ├── toolbar.css       ← 删除
-  ├── sidebar.tsx       ← 重写：从"设置表单"变为"控制面板"
-  │                        COM/波特率/打开关闭（未连接时）
-  │                        + 关闭按钮 + 快捷发送 + 发送栏（已连接时）
-  ├── sidebar.css        ← 重写
-  ├── statusBar.tsx      ← 不变（TX/RX 计数等状态栏贡献）
-  └── plugin.json        ← 加 "viewRole": "sidebarPrimary"
-                          加 contributes.configuration（12 个设置项迁移到 Settings Editor）
+  ├── index.tsx            ← 瘦身：删工具栏逻辑（迁入 ControlPanel.tsx）
+  │                           快捷发送/发送栏保留但改为读 session 对象
+  │                           12 个 useConfiguration 调用 → session.xxx
+  ├── ControlPanel.tsx      ← 重构自 toolbar.tsx（COM/波特率/协议/连接+操作按钮）
+  │                           每标签页一份，状态来自 session 对象
+  ├── ControlPanel.css      ← 改名自 toolbar.css
+  ├── toolbar.tsx           ← 删除（内容迁入 ControlPanel.tsx）
+  ├── toolbar.css           ← 删除（改名）
+  ├── sidebar.tsx           ← 重写：2 个 SidebarSection
+  │                           会话列表（CRUD + hover 操作按钮）+ 收发设置（12 项联动）
+  ├── sidebar.css           ← 重写
+  ├── useTerminalSessions.ts← 新建：会话 CRUD hook（内存态，Phase 6 持久化）
+  │                           createSession / removeSession / updateSession / getActiveSession
+  ├── statusBar.tsx         ← 不变（TX/RX 状态栏）
+  └── plugin.json           ← viewRole: "sidebarPrimary"
+                               contributes.configuration 12 项 → 仅作文档/默认值模板
+                               Settings Editor 不渲染终端设置
 ```
 
-**为什么终端是 `sidebarPrimary`：** 点 📟 图标 → 侧栏显示会话列表和控制面板。用户从侧栏选择/新建会话 → 主区才打开终端标签页。和文件树完全相同的交互——图标只管侧栏，侧栏内的操作才创建标签页。这天然支持多终端实例——每个会话一个标签页。
+### 8.6 为什么 12 项设置要走侧栏而不是 Settings Editor
 
-### 8.5 设置项迁移到 Settings Editor
+终端 12 项收发设置（时间戳/回显/行号/编码/换行符/定时发送…）在两个方案之间：
 
-终端侧栏原有的 12 个设置项，全部迁移到 `plugin.json` 的 `contributes.configuration`：
+| 方案 | 设置归属 | 切换 COM3→COM5 | 新建会话默认值 |
+|------|:--:|------|------|
+| Settings Editor (旧) | 全局 ConfigurationService | 手动改 12 项 | 无 |
+| **侧栏按会话 (新)** | session.xxx 字段 | 自动切换为 COM5 的值 | 从默认值模板读取 |
 
-```json
-{
-  "contributes": {
-    "configuration": {
-      "title": "终端",
-      "properties": {
-        "terminal.timestampFormat": {
-          "type": "string", "default": "HH:mm:ss:fff",
-          "enum": ["HH:mm:ss", "HH:mm:ss:fff", "无"],
-          "description": "接收区时间戳格式"
-        },
-        "terminal.showLineNumbers": {
-          "type": "boolean", "default": true,
-          "description": "显示行号"
-        },
-        "terminal.showEcho": {
-          "type": "boolean", "default": true,
-          "description": "显示已发送消息的回显"
-        },
-        "terminal.encoding": {
-          "type": "string", "default": "utf-8",
-          "enum": ["utf-8", "gb2312", "shift-jis", "latin-1"],
-          "description": "接收区字符编码"
-        },
-        "terminal.lineEnding": {
-          "type": "string", "default": "\\r\\n",
-          "enum": ["\\r\\n", "\\n", "\\r"],
-          "description": "发送换行符"
-        }
-        // ... 其余 7 个设置项
-      }
-    }
-  }
-}
+选择侧栏方案的理由：
+
+1. **不同 COM 口设备需要不同的参数。** COM3 是 AT 模块（回显开、换行符 `\r\n`），COM4 是 GPS 模块（回显关、换行符 `\n`）。全局设置意味着每次切换 COM 口都要手动调整 12 个 Toggle/Select——这是 V2 时代的痛点。
+2. **对标 VS Code：** 文件树的 Outline/Timeline 面板在侧栏，不在 Settings Editor。文件的 tab size / encoding 是文件属性，不是全局编辑器设置。同理，终端的"回显"/"换行符"是**这个会话**的属性，不是所有终端的全局设置。
+3. **设置入口单一：** 侧栏是唯一改终端设置的地方。不会出现"在侧栏改了一个值，Settings Editor 显示另一个值"的同步问题。
+
+### 8.7 终端设置从 Settings Editor 移除
+
+```
+Phase 5 Settings Editor 现状：
+  ├── 终端 (12 项) ← 🔥 删除
+  ├── 外观 (主题/字体…)
+  ├── 快捷键
+  └── …其他插件配置…
+
+Phase 5.5 之后 Settings Editor：
+  ├── 外观
+  ├── 快捷键
+  └── …其他插件配置…
+  （终端设置不再出现）
 ```
 
-**终端侧栏删除的内容（~85 行 sidebar.tsx）：**
-- `<Toggle>` 时间戳 / 行号 / 系统消息 / 回显 / 暂停时自动滚动 / 发送后清空
-- `<Select>` 编码 / 换行符 / 定时发送间隔
-- `<FormRow>` 全部 12 个设置项的渲染
+`plugin.json` 中 `contributes.configuration` 的 12 项保留——值作为**新建会话的默认值模板**。但 Settings Editor 不渲染——通过 `"scope": "session"` 标记或直接在渲染端判断跳过终端插件。
 
-**替换为：** Settings Editor 自动渲染——Phase 5 建好 Settings Editor 后，终端这 12 个配置项零代码出现。
+用户改终端设置的唯一入口：
+```
+侧栏 → 点 📟 → 选会话 → 收发设置区 → 改 → 立即生效（无需保存/应用按钮）
+```
 
-### 8.6 改动量
-
-| 文件 | 操作 | 行数 |
-|------|------|:--:|
-| `sidebar.tsx` | 重写：设置表单 → 控制面板 | ~100 |
-| `sidebar.css` | 重写：表单样式 → 控制面板样式 | ~40 |
-| `index.tsx` | 瘦身：删除工具栏 + 发送栏 + 快捷发送逻辑 | -200 |
-| `toolbar.tsx` | 删除 | -50 |
-| `toolbar.css` | 删除 | -20 |
-| `plugin.json` | 加 `contributes.configuration`（12 项） | +40 |
-| **净变动** | | **~ -90 行** |
-
-代码变少，职责更清——终端 index.tsx 只管输出，侧栏只管操作，设置走 Settings Editor。
-
----
-
+对于真正跨所有终端的全局设置（如"最大会话数"、"字体大小"）——Phase 6+ 再加，届时走 Settings Editor。
 ## 九、已知问题
 
 > 2026-07-21。已知 bug 统一登记到 [V3-Phase5.5-已知问题.md](V3-Phase5.5-已知问题.md)——5 个 bug，各标注归属 Phase 和修法。
