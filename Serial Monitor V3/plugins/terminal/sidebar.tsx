@@ -270,21 +270,18 @@ function TerminalSidebar() {
             {t("开始")}
           </div>
         ) : (
-          sessions.map((s) => {
-            // C4b Bug 3：connected = SerialContext.isOpen && portName 匹配
-            const connected = isOpen && portName === s.port;
-            return (
+          sessions.map((s) => (
             <SessionListItem
               key={s.id}
               session={s}
               isActive={s.id === activeSessionId}
-              connected={connected}
+              // C4b Bug 3：connected 从 SerialContext 派生——isOpen && portName 匹配
+              connected={isOpen && portName === s.port}
               onSelect={() => setActiveSession(s.id)}
               onRename={handleRename(s.id)}
               onDelete={handleDelete(s.id)}
             />
-            );
-          })}
+          ))}
         )}
       </SidebarSection>
 
