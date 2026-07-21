@@ -241,6 +241,19 @@ function TerminalSidebar() {
 
   // ── 渲染 ──
 
+  // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
+  const sessionList = sessions.map((s) => (
+    <SessionListItem
+      key={s.id}
+      session={s}
+      isActive={s.id === activeSessionId}
+      connected={isOpen && portName === s.port}
+      onSelect={() => setActiveSession(s.id)}
+      onRename={handleRename(s.id)}
+      onDelete={handleDelete(s.id)}
+    />
+  ));
+
   return (
     <div className="terminal-sidebar">
       {/* Section 1：会话列表 */}
@@ -270,18 +283,7 @@ function TerminalSidebar() {
             {t("开始")}
           </div>
         ) : (
-          sessions.map((s) => (
-            <SessionListItem
-              key={s.id}
-              session={s}
-              isActive={s.id === activeSessionId}
-              // C4b Bug 3：connected 从 SerialContext 派生——isOpen && portName 匹配
-              connected={isOpen && portName === s.port}
-              onSelect={() => setActiveSession(s.id)}
-              onRename={handleRename(s.id)}
-              onDelete={handleDelete(s.id)}
-            />
-          ))}
+          sessionList
         )}
       </SidebarSection>
 
