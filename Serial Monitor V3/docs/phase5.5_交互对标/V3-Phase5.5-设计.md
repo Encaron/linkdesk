@@ -135,6 +135,12 @@ Phase 5.5 完成后，所有插件的图标点击行为由 `plugin.json` 的 `vi
 | **5.5a** | `viewRole` 声明系统 | 框架层 | ~20 | 5.5-0b（代码库干净） |
 | **5.5b** | `<SidebarSection>` 通用组件 | UI 基础设施 | ~60 | 5.5-0b |
 | **5.5c** | 终端侧栏重设计——2 个 SidebarSection（会话列表 + 收发设置），按会话隔离 | 消费者 | ~+40 | 5.5a + 5.5b |
+| ↳ **C1** | `useTerminalSessions` 会话数据层 | 地基 | ~60 | — |
+| ↳ **C2** | 侧栏重写——2 个 SidebarSection | UI | ~100 | C1 + 5.5b |
+| ↳ **C3** | toolbar → ControlPanel 命令条 | UI | ~80 | C1 |
+| ↳ **C4a** | 接线 ControlPanel + 删 ConfigurationService 读取 | 数据源切换 | ~-150 | C2+C3 |
+| ↳ **C4b** | 修 3 个数据管道 Bug（多实例/connected/F5） | 修复 | ~+30 | C4a |
+| ↳ **C5** | plugin.json 清理 + git rm 旧文件 + viewRole 切换 | 收尾 | ~-40 | C4b |
 
 **5.5-0a 必须在最前面——B1 SettingsView 监听器泄漏、B2 6 个 unregister 从不调用、B3 快捷键误删全插件——这三项会让 5.5a-5.5c 的新功能建在错误基础上。** 0b（Quick Wins + Prefs 删除）紧接其后——两个 commit 完成全部 14 项修复，然后从一个 A- 级代码库开始 5.5 核心工作。
 
@@ -702,6 +708,35 @@ const DEFAULT_SESSION: Omit<TerminalSession, 'id' | 'name'> = {
 [ ] npx vitest run 全部通过
 ```
 
+### 3.10a 三栏交互模型验收（≡ Phase 5.5 核心交付物）
+
+> 5.5c C5 完成后跑——验证 VS Code 三栏模型对所有插件生效，不只是终端。
+> 此验收清单是 5.5a+5.5b+5.5c 三层的集成测试——机制 → 组件 → 消费者一并验证。
+
+```
+sidebarPrimary 标准行为——图标 = 侧栏入口：
+  [ ] 点 🛒 市场 → 侧栏 toggle，主区不动（行为不变——已有）
+  [ ] 点 📊 工作台 → 侧栏 toggle，主区不动（行为不变——已有）
+  [ ] 点 📟 终端 → 侧栏显示会话列表，主区不动（⚠️ 旧行为是开标签页，5.5c 后改为 toggle 侧栏）
+  [ ] 终端侧栏内点会话 → 主区开/聚焦终端标签页（侧栏内操作触发标签页——VS Code 模型）
+  [ ] 终端侧栏 [+ 新建] → 主区开新终端标签页（侧栏内操作触发——不是图标触发）
+
+sidebarPrimary 默认值：
+  [ ] 新装插件未声明 viewRole → 默认 sidebarPrimary → toggle 侧栏，不蹦标签页
+  [ ] mock 插件无 entry（只有 sidebar）→ 点图标 toggle 侧栏，标签栏无变化
+
+tabOnly 行为——直接开标签页：
+  [ ] 点 ⚙ 设置 → 直接开/聚焦设置标签页，不切侧栏
+
+去特权化——终端不是特殊插件：
+  [ ] git grep '"terminal"' src/core/ → 返回零（核心不知道终端存在）
+  [ ] git grep '"terminal"' src/App.tsx → 返回零
+  [ ] 卸载终端插件 → 图标栏终端图标消失 → 侧栏消失 → 已打开的终端标签页全部关闭 → 主区无残留
+  [ ] 卸载终端插件 → App.tsx 不报任何错误
+```
+
+> 这不是针对终端的测试——这是**任意插件的三栏交互验证模板。** Phase 6 文件树/Git/数据库浏览器完成后也跑同一套。
+
 ### 3.11 必须消失的东西——死代码清单
 
 > 🔥 5.5c 的代码改动不是"加新功能"——是**替换旧代码**。以下每一项如果没删干净，就会留下死代码或者两个 source of truth 冲突。
@@ -1155,53 +1190,55 @@ export function useTerminalSessions() {
 
 ---
 
-#### Step C4 — 瘦身 index.tsx（~ -200 行）⚠️ 最危险的一步
+#### Step C4a — 接线 ControlPanel + 删 ConfigurationService 读取（~ -150 行）
 
-**文件：** `plugins/terminal/index.tsx`（瘦身）
+**文件：** `plugins/terminal/index.tsx`（瘦身第一步——机械改动，不碰数据管道逻辑）
 
-**做什么：** 删 12 个 `useConfiguration("terminal.xxx")`（D1/D2）、删 `onDidChangeConfiguration` useEffect（D3）、删 ConfigurationService import（D10）。改为从 `useTerminalSessions().activeSession` 读设置。
+**做什么：**
+1. import `TerminalToolbar` → `ControlPanel`（接上 C3 新建的组件）
+2. 清理不再需要的 imports：`useConfiguration`/`onDidChangeConfiguration`/`setConfigurationValue`（D2/D10）
+3. 删 12 个 `useConfiguration("terminal.xxx")` 调用（D1）
+4. 删 `onDidChangeConfiguration` 的 useEffect 整块（D3，第 385-414 行）
+5. 从 `useTerminalSessions().activeSession` 读设置值——不通过 ConfigurationService
 
-**这一步会遇到（5.5c 专属 bug，0a/0b 没覆盖）：**
+**风险：低**——改动是 grep→替换，不改数据管道核心逻辑（Tauri event handler/RingBuffer/rAF 消费）。
 
-| 风险 | 现象 | 修法 |
-|------|------|------|
-| **Bug 1：多标签页数据管道冲突** 🔴 | 两个终端标签页（session-1 连 COM3，session-2 也连 COM3）→ `useTauriEvent("serial-data")` 在**每个** TerminalView 实例各注册一次 → 两个 RingBuffer 同时写、两个 CM6 同时渲染同一份数据 → 性能翻倍浪费 + 连接状态显示混乱 | **数据只发给匹配的 session：** 在 `useTauriEvent` handler 中加 `if (getActiveSessionId() !== mySessionId) return;`。`mySessionId` 从 `useTerminalSessions` 拿。`portOpenRef` 也改为读 `session.connected`（从 SerialContext 派生） |
-| **Bug 3：session.connected 和 SerialContext 不一致** | 用户侧栏看到绿点 ●（session.connected=true），但实际连接断了（SerialContext.isOpen=false）→ 点进去收不到数据 | `session.connected` 不独立 set——从 `SerialContext.state.isOpen && SerialContext.state.portName === session.port` 派生。单一 source of truth |
-| **Bug 7：F5 刷新后标签页残留** | F5 → `_sessions = []` → 但标签栏还有终端标签页 → TabBar render → TerminalView 读 `getSession(tabId)` → `undefined` → 白屏 | TerminalView 检测 session 不存在 → 显示 "会话已失效" 占位（不崩）。或 App 启动时检查已打开的终端标签页 → 为每个重建 session（用默认值） |
+---
 
-**Bug 1 的完整修法：**
+#### Step C4b — 修 3 个数据管道 Bug（~ +30 行）
+
+**文件：** `plugins/terminal/index.tsx`（瘦身第二步——修复数据管道）
+
+**Bug 1 修法：**
 ```typescript
-// index.tsx —— 每个 TerminalView 只消费自己 session 的数据
-const mySessionId = useRef(session.id);
-mySessionId.current = session.id;
+// 每个 TerminalView 只消费自己 session 的数据
+const sessionRef = useRef(session);
+sessionRef.current = session;
 
 useTauriEvent<string>("serial-data", (payload) => {
-    // 🔥 不是我 → 跳过。对标 RingBuffer 多消费者模型——每个 session 独立消费
-    const activeId = getActiveSessionId();  // 从 hook 模块级变量读
-    if (mySessionId.current !== activeId) return;
-    
-    if (!session.connected) return;  // 读 session.connected（派生自 SerialContext）
+    const activeId = getActiveSessionId();  // 模块级 getter
+    if (sessionRef.current.id !== activeId) return;  // 不是我 → 跳过
     // ... 原有逻辑
 });
 ```
 
-**这一步不需要遇到的（已在 0a/0b 修掉）：**
-- B12（mountGlobalKeybindings 返回值丢弃）→ 已在 0b 修，cleanup 正常
-- B13（plugin watcher 永不停止）→ 已在 0b 修
+**Bug 3 修法：** `session.connected` 从 `SerialContext.state.isOpen && SerialContext.state.portName === session.port` 派生——不在 session 对象上独立 set。
+
+**Bug 7 修法：** TerminalView 检测 `session === null` → 显示 "会话已失效" 占位（不白屏）。
 
 ---
 
-#### Step C5 — 清理 plugin.json + 删除死代码（~ -40 行）
+#### Step C5 — 清理 plugin.json + git rm 旧文件（~ -40 行 + 2 文件删除）
 
-**文件：** `plugins/terminal/plugin.json`（删 contributes.configuration 12 项 + 改 viewRole）
+**文件：** `plugins/terminal/plugin.json`（删 contributes.configuration + 改 viewRole）、`toolbar.tsx`（git rm）、`toolbar.css`（git rm）
 
-**做什么：** `contributes.configuration` 整块删除（D9）。`viewRole: "tabOnly"` → `"sidebarPrimary"`。
+**做什么：**
+1. `contributes.configuration` 整块删除（D9）→ Settings Editor 不再渲染终端设置
+2. `viewRole: "tabOnly"` → `"sidebarPrimary"`（三栏模型正式生效）
+3. `git rm toolbar.tsx`（D7）——内容已迁入 ControlPanel.tsx
+4. `git rm toolbar.css`（D8）——已改名为 ControlPanel.css
 
-**这一步会遇到：**
-
-| 风险 | 现象 | 修法 |
-|------|------|------|
-| **Bug 6：Settings Editor 仍渲染终端设置** | 如果 AI-B 没删 contributes.configuration 就提交 → Settings Editor 显示终端 12 项 → 用户改了 → index.tsx 读的是 session.xxx → 不生效 → 两个入口互相矛盾 | **机械验证：** `git grep "terminal.timestampFormat" -- plugins/terminal/plugin.json` → 返回空。返回非空 → 没删干净 |
+**风险：** Bug 6——如果 D9 没删干净，Settings Editor 仍渲染终端设置 → 两个入口矛盾。
 
 ---
 
