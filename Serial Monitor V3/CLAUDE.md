@@ -25,6 +25,13 @@ Phase 1-5h ✅ 完成
 **Phase 5.5c C5 ✅ — plugin.json cleanup（删 contributes.configuration 71 行 / viewRole → sidebarPrimary / git rm toolbar.*，−220 行）**
 **Phase 5.5c 🎉 完成。5.5 全部完成。**
 
+**Bug 修复 session（2026-07-22）：**
+- `304b6b1` 侧栏不同步标签页——TabActionsContext 加 focusTab+closeTab
+- `1c80cd3` CM6 右键复制/全选失效——view.focus()
+- `df260e1` F5 串口状态不同步——Rust get_serial_status
+- `f476c21` Toggle 命令标签不随状态变——registerCommand 更新 title
+- 📋 **12 个活跃 bug + 新 AI 执行路线图** → `docs/phase5.5_交互对标/V3-Phase5.5-Bug清单-2026-07-22.md`
+
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 详见 `docs/phase5.5_交互对标/V3-Phase5.5-设计.md`（三栏交互对标 VS Code）
 详见 `docs/phase5_应用基础设施/V3-Phase5-最终验收报告.md`（Phase 5 验收——4 Blocking + 9 Quick Wins 已全部修完）
