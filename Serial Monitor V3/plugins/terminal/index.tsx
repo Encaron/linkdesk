@@ -661,6 +661,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
       handler: async () => {
         const view = terminalCmdRef.current.cmView.current;
         if (!view) return;
+        // Bug fix：右键菜单打开时 CM6 失去焦点 → selection 不渲染 → clipboard 读不到。
+        // 先 focus 恢复焦点，再读 selection。
+        view.focus();
         const sel = view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
         if (sel) navigator.clipboard.writeText(sel);
       },
@@ -671,7 +674,11 @@ function TerminalView({ isActive }: TerminalViewProps) {
       category: "终端",
       handler: async () => {
         const view = terminalCmdRef.current.cmView.current;
-        if (view) view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
+        if (!view) return;
+        // Bug fix：右键菜单打开后 CM6 失焦 → dispatch selection 生效但不高亮。
+        // 先 focus 恢复焦点，selection 高亮正常显示。
+        view.focus();
+        view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
       },
     });
     registerCommand("terminal", {
