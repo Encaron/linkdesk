@@ -1,6 +1,10 @@
 # Phase 5.5c 终端侧栏 Bug 清单
 
 > 2026-07-22。代码审查 + Encaron 实测反馈。`phase5.5` 分支。
+>
+> ⚠️ **本清单已通过六条质量原则审查（精益求精/归一化/插件自由/VS Code 化/AI 友好/易操作）。修法已定稿——新 AI 进场后可直接按本节执行，不需要重新争论方案。**
+>
+> **新 AI 前置阅读：** `CLAUDE.md` + memory `[[phase5.5c-progress]]` + `[[quality-commandments]]` + `[[core-ignorance-principle]]`。修法细节已在每个 bug 的"修法"栏注明，代码量和涉及文件也已标注。
 
 ---
 
@@ -336,3 +340,45 @@ const { activeSession } = useTerminalSessions();
 > 标签栏 ✕ = 只关视图不删数据（对标 VS Code 关闭编辑器 ≠ 删文件）。侧栏 ✕ = 真正删除 session + 关标签页。A4 是"缺失功能——点 session 应重开标签页"，不是"标签栏关标签页是 bug"。文档已据此修正。
 
 核心矛盾：5.5c 的 `sidebarPrimary` 启用了多标签页，但 `TerminalView` 仍用 5.5c 之前的单例模式（`activeSession` 是全局 getter）。**C1（per-tab session 绑定）是必须修的架构缺陷**——它是一切多标签页混乱的根源。修完后 A5、B2 自动消失，其他 bug 的严重性也会大幅降低。
+
+---
+
+## 🤖 新 AI 执行路线图
+
+### 前置准备
+1. 读 `CLAUDE.md` + memory `[[phase5.5c-progress]]` + `[[quality-commandments]]` + `[[core-ignorance-principle]]`
+2. 读本文件完整 bug 清单
+3. 读 `plugins/terminal/` 下全部 6 个源文件（`index.tsx` / `useTerminalSessions.ts` / `sidebar.tsx` / `ControlPanel.tsx` + css）
+4. 确认 `tsc --noEmit` 零错误 + `vitest run` 全过（141 个）
+
+### 执行顺序（严格——前一个修完验证再下一个）
+
+| 步 | Bug | 预计改动 | 涉及文件 | 验证 |
+|:--:|------|:--:|------|------|
+| 1 | **C1** per-tab session 绑定 | ~+40/−15 行 | `index.tsx` `useTerminalSessions.ts` `ControlPanel.tsx` `MainContent.tsx` | tsc + 测试 + 双击：两个终端标签页各显示自己的内容 |
+| 2 | **B3** F5 session 恢复 | ~+15 行 | `useTerminalSessions.ts` + `App.tsx` | tsc + 测试 + 双击：F5 后标签页和 session 同步恢复 |
+| 3 | **B4** 欢迎页 viewRole | ~+5 行 | `WelcomeView.tsx` | tsc + 测试 + 双击：欢迎页点终端卡片只出侧栏不蹦标签页 |
+| 4 | **A3+B1** port 自动填充 | ~+5 行 | `ControlPanel.tsx` | tsc + 测试 + 双击：新建→开端口→侧栏显示端口信息+按钮变色 |
+| 5 | **A1** 快捷发送清理 | ~−20 行 | `useTerminalSessions.ts` | tsc + 测试 + 双击：新会话只有默认 AT 快捷发送 |
+| 6 | **A4** 侧栏重开标签页 | ~+10 行 | `sidebar.tsx` | tsc + 测试 + 双击：标签栏✕关 → 侧栏点 → 标签页重开 |
+| 7 | **A2** 改名同步标签栏 | ~+15 行 | `sidebar.tsx` + `TabActionsContext.ts` + `App.tsx` | tsc + 测试 + 双击：改名后标签栏标题同步更新 |
+
+### 每一步完成后机械验证
+```bash
+npx tsc --noEmit    # 零错误
+npx vitest run      # 141 测试全过
+git diff --stat     # 确认只动了该动的文件
+```
+
+### 不做的事
+- ❌ A6（协议全局单例）——当前只有一个协议，不暴露
+- ❌ C2（全局串口）——Phase 7 Rust 端重构
+- ❌ 重写 TerminalView——只改 session 绑定层，不改 CM6/Monaco/数据管道核心逻辑
+
+### 完成标准
+- tsc 零错误 + 141 测试全过
+- 用户双击跑 §3.10 + §3.10a 验收清单全部通过
+- 标签栏 ✕ = 关视图不删 session ✅
+- 侧栏 ✕ = 删 session 关标签页 ✅
+- 侧栏点 session = reopen 标签页 ✅
+- F5 后标签页恢复 + session 自动重建 ✅
