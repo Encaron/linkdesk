@@ -274,5 +274,10 @@
 - `installPlugin`/`enablePlugin`/`reinstallPlugin` — 即时生效（不再 reload）
 - npm scripts: `build:plugins` / `dev:plugins`
 
-### Step 3 🔜 — 构建外部化插件完善 + 文件监听器更新
-### Step 4 🔜 — 清理 import.meta.glob 残留 + 删除 reload 调用 + 全量回归
+### Step 3 ✅ — 文件监听器更新 + B76 修复
+- commit: `6c544fe`
+- `startPluginWatcher`: 新插件按"在 glob / 不在 glob"分流到 `loadPlugin` / `loadPluginRuntime`
+- B76 修复: `enablePlugin`/`reinstallPlugin` 工厂插件走 `loadPlugin` 老路径（Vite chunk），外部插件走 `loadPluginRuntime`（plugin:// 协议）
+- B76 根因：两条加载路径选择条件不精确——不能在同一个 try/catch 里混用
+
+### Step 4 🔜 — 清理 import.meta.glob 残留 + 全量回归
