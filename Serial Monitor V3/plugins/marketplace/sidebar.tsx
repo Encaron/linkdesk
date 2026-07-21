@@ -76,11 +76,15 @@ function MarketplaceSidebar() {
   useEffect(() => {
     getUninstalledPluginInfo().then(setUninstalledPlugins);
 
-    const onPluginRemoved = () => {
+    const refreshUninstalled = () => {
       getUninstalledPluginInfo().then(setUninstalledPlugins);
     };
-    window.addEventListener("plugin-removed", onPluginRemoved);
-    return () => window.removeEventListener("plugin-removed", onPluginRemoved);
+    window.addEventListener("plugin-removed", refreshUninstalled);
+    window.addEventListener("plugin-installed", refreshUninstalled);
+    return () => {
+      window.removeEventListener("plugin-removed", refreshUninstalled);
+      window.removeEventListener("plugin-installed", refreshUninstalled);
+    };
   }, []);
 
   const filtered = allPlugins.filter((p) => {

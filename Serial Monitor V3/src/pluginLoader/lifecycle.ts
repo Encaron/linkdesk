@@ -116,11 +116,16 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  /* ─── 消费端 4：标签页清理 ─── */
+  /* ─── 消费端 4：标签页清理 + 视图刷新通知 ─── */
 
   PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 通知壳关闭使用此插件的标签页
+    // 通知壳关闭使用此插件的标签页 + SettingsView/marketplace 刷新
     window.dispatchEvent(new CustomEvent("plugin-removed", { detail: { pluginId } }));
+  });
+
+  PluginLifecycle.onDidInstall.event(({ pluginId }) => {
+    // 通知 SettingsView/marketplace 等视图刷新（重装/安装后）
+    window.dispatchEvent(new CustomEvent("plugin-installed", { detail: { pluginId } }));
   });
 }
 

@@ -145,6 +145,7 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
       const insertAt = target.pos === "top" ? targetIdx : targetIdx + 1;
       ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
       saveOrder(ids);
+      setPluginVersion((v) => v + 1); // Phase 5h: 拖拽换位后触发 useMemo 重算
     }
 
     dragRef.current = null;

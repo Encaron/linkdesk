@@ -54,9 +54,13 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
   // 监听插件卸载/禁用——配置分组需要刷新（unregisterConfiguration 不触发 onDidChangeConfiguration）
   useEffect(() => {
-    const onPluginRemoved = () => setVersion((v) => v + 1);
-    window.addEventListener("plugin-removed", onPluginRemoved);
-    return () => window.removeEventListener("plugin-removed", onPluginRemoved);
+    const onPluginChanged = () => setVersion((v) => v + 1);
+    window.addEventListener("plugin-removed", onPluginChanged);
+    window.addEventListener("plugin-installed", onPluginChanged);
+    return () => {
+      window.removeEventListener("plugin-removed", onPluginChanged);
+      window.removeEventListener("plugin-installed", onPluginChanged);
+    };
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n
