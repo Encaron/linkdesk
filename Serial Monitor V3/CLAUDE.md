@@ -20,7 +20,8 @@ Phase 1-5h ✅ 完成
 **Phase 5.5c C1 ✅ — `useTerminalSessions` 会话数据层（1 文件，+244 行）**
 **Phase 5.5c C2+C3 ✅ — 侧栏重写 + ControlPanel（4 文件，+857/−85 行），已验证通过**
 **Phase 5.5c C4a ✅ — 终端数据源切换 ConfigurationService → useTerminalSessions（1 文件，+42/−74 行）**
-**下一阶段：5.5c C4b 🔜 — 修 3 个数据管道 Bug（getActiveSessionId guard / connected 派生 / null-session 占位）**
+**Phase 5.5c C4b ✅ — 修 3 个数据管道 Bug（3 文件，+64/−5 行）**
+**下一阶段：5.5c C5 🔜 — plugin.json cleanup（删 contributes.configuration / viewRole 切换 / git rm toolbar.*）**
 
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 详见 `docs/phase5.5_交互对标/V3-Phase5.5-设计.md`（三栏交互对标 VS Code）
