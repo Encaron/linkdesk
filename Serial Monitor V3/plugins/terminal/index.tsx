@@ -21,21 +21,21 @@ import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compart
 import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
 import { invoke } from "@tauri-apps/api/core";
-import { useTauriEvent } from "../../src/hooks/useTauriEvent";
-import { RingBuffer } from "../../src/core/RingBuffer";
+import { useTauriEvent } from "@src/hooks/useTauriEvent";
+import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
 import { useSession } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
-import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
-import SearchBar from "../../src/components/terminal/SearchBar";
-import FilterMenu from "../../src/components/terminal/FilterMenu";
-import { HexToBytes } from "../../src/core/DataConverter";
-import { CUSTOM_EVENTS } from "../../src/core/CoreEvents";
+import { useSendData, type SendContext, type SendCallbacks } from "@src/core/useSendData";
+import SearchBar from "@src/components/terminal/SearchBar";
+import FilterMenu from "@src/components/terminal/FilterMenu";
+import { HexToBytes } from "@src/core/DataConverter";
+import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
 // Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
-import { registerCommand } from "../../src/core/CommandRegistry";
-import ContextMenu from "../../src/components/shared/ContextMenu";
-import { MenuId } from "../../src/core/MenuRegistry";
-import { v3ProtocolLanguage, v3ProtocolTheme } from "../../src/languages/v3-protocol";
+import { registerCommand } from "@src/core/CommandRegistry";
+import ContextMenu from "@src/components/shared/ContextMenu";
+import { MenuId } from "@src/core/MenuRegistry";
+import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./TerminalView.css";
 
 /* ---- 常量 ---- */

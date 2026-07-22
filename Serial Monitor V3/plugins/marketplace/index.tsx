@@ -8,7 +8,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
+import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
 import "./MarketplaceView.css";
 
 function MarketplaceView({ isActive: _isActive }: { isActive: boolean }) {

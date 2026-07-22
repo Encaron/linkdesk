@@ -83,7 +83,8 @@ export default defineConfig(async () => {
     },
     resolve: {
       alias: {
-        // 让插件内的 import 能正确解析到 src/ 和 node_modules
+        // 插件统一用 @src/ 引用 src/，替代手工数 ../ 的相对路径
+        "@src": resolve(__dirname, "src"),
         "@": resolve(__dirname, "src"),
       },
     },

@@ -17,7 +17,7 @@
 import { useState, useEffect, useCallback } from "react";
 // 🔧 C1 临时桥接：一次性从 ConfigurationService 迁移旧 quickSends 数据。
 // TODO Phase 5.5c C5: 移除此 import + getDefaultQuickSends() 中的迁移逻辑。
-import { getConfigurationValue } from "../../src/core/ConfigurationService";
+import { getConfigurationValue } from "@src/core/ConfigurationService";
 
 // ── 类型 ──
 

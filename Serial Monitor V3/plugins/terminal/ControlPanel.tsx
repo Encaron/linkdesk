@@ -12,12 +12,12 @@
 
 import { useTranslation } from "react-i18next";
 import { useMemo, useCallback } from "react";
-import { useSerialContext } from "../../src/core/SerialContext";
+import { useSerialContext } from "@src/core/SerialContext";
 import {
   listProtocols,
   getActiveProtocolId,
   setActiveProtocol,
-} from "../../src/core/ProtocolRegistry";
+} from "@src/core/ProtocolRegistry";
 import { useSession } from "./useTerminalSessions";
 import "./ControlPanel.css";
 

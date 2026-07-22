@@ -16,12 +16,12 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
-import { useSerialContext } from "../../src/core/SerialContext";
-import { useTabActions } from "../../src/core/TabActionsContext";
-import SidebarSection from "../../src/components/shared/SidebarSection";
-import Toggle from "../../src/components/shared/Toggle";
-import Select from "../../src/components/shared/Select";
-import FormRow from "../../src/components/shared/FormRow";
+import { useSerialContext } from "@src/core/SerialContext";
+import { useTabActions } from "@src/core/TabActionsContext";
+import SidebarSection from "@src/components/shared/SidebarSection";
+import Toggle from "@src/components/shared/Toggle";
+import Select from "@src/components/shared/Select";
+import FormRow from "@src/components/shared/FormRow";
 import "./TerminalSidebar.css";
 
 // ── 常量 ──

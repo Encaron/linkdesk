@@ -6,16 +6,16 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "../../src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "../../src/pluginLoader/loader";
-import { onPluginLifecycleChange } from "../../src/pluginLoader/lifecycle";
-import { resolvePluginIcon } from "../../src/pluginLoader/iconUtils";
-import { useTabActions } from "../../src/core/TabActionsContext";
-import ContextMenu from "../../src/components/shared/ContextMenu";
-import { registerCommand } from "../../src/core/CommandRegistry";
-import { registerMenuItems, MenuId } from "../../src/core/MenuRegistry";
-import { ContextKeyService } from "../../src/core/ContextKeyService";
-import type { ViewPluginEntry } from "../../src/core/types";
+import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
+import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "@src/pluginLoader/loader";
+import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
+import { resolvePluginIcon } from "@src/pluginLoader/iconUtils";
+import { useTabActions } from "@src/core/TabActionsContext";
+import ContextMenu from "@src/components/shared/ContextMenu";
+import { registerCommand } from "@src/core/CommandRegistry";
+import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
+import { ContextKeyService } from "@src/core/ContextKeyService";
+import type { ViewPluginEntry } from "@src/core/types";
 import "./MarketplaceSidebar.css";
 
 /* ── 模块级：注册 marketplace 命令（Phase 5f 归一化——替代手写 gear 菜单） ── */
