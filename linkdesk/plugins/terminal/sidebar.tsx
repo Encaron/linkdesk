@@ -175,9 +175,12 @@ function TerminalSidebar() {
       `${t("新会话")} ${n}`,
     );
     if (name && name.trim() && tabActions) {
-      // 先创建标签页拿到 tabId → 再用同一个 ID 创建 session（一一对应）
-      const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true });
-      createSession(name.trim(), tabId);
+      // 🔥 先创建 session（数据层）→ 再创建 tab（视图层）。
+      // 如果反过来，window.prompt() 可能打断 React 18 批处理，导致
+      // TerminalView 在 createSession 之前渲染 → useSession(sourceId) 返回 null → "会话已失效"。
+      // 两个计数器（_sessionCounter / _terminalCounter）初始为 0，每次成对调用保持同步。
+      const session = createSession(name.trim());
+      tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
     }
   }, [t, createSession, tabActions]);
 
