@@ -281,11 +281,15 @@ function TerminalSidebar() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // 通过 sourceId 找标签页——通用机制，非终端专属。
+      // A4：按 sourceId 找标签页——有则聚焦，无则创建（对标 VS Code 点文件重开编辑器）。
       // session 和 tab 用不同计数器，id 可能不一致。sourceId 是唯一可靠的链接。
-      tabActions?.focusTabBySourceId(sessionId);
+      const session = sessions.find((s) => s.id === sessionId);
+      tabActions?.openOrFocusBySourceId(sessionId, "terminal", {
+        label: session?.name,
+        pinned: true,
+      });
     },
-    [setActiveSession, tabActions],
+    [setActiveSession, tabActions, sessions],
   );
 
   const sessionList = sessions.map((s) => (
