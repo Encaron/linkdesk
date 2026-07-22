@@ -19,11 +19,8 @@ import { useState, useEffect, useCallback } from "react";
 // ── 类型 ──
 
 export interface TerminalSession {
-  /** = tabId 通常情况。布局恢复后 _terminalCounter 可能 > _sessionCounter，此时 id ≠ tabId。
-   *  TerminalView 用 sourceId（= id）找 session；focusTab 用 tabId 找标签页。 */
+  /** = tabId，一一对应。创建时自动生成 "terminal-{N}" */
   id: string;
-  /** 对应的标签页 ID——handleCreate 写入，handleSelectSession 用此值调 focusTab */
-  tabId?: string;
   /** 用户可编辑的会话名。新建时传入，侧栏 F2/hover ✎ 改名 */
   name: string;
   /** COM 口名称。"" = 未选。唯一写入入口：ControlPanel */
