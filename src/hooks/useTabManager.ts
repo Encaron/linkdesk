@@ -811,6 +811,26 @@ export function useTabManager() {
     });
   }, []);
 
+  /** 按 sourceId 找标签页并关闭——和 focusTabBySourceId 对称的通用 API。
+   *  插件删自己的数据模型时用此 API 关闭对应标签页。
+   *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接。 */
+  const closeTabBySourceId = useCallback(
+    (sourceId: string): CloseTabResult => {
+      let result: CloseTabResult = { closed: false, tabId: sourceId };
+      setTabState((prev) => {
+        const tab = prev.groups.flatMap((g) => g.tabs).find(
+          (t) => t.sourceId === sourceId || t.id === sourceId,
+        );
+        if (!tab) return prev;
+        const r = reduceCloseTab(prev, tab.id);
+        result = { closed: r.closed, tabId: tab.id, reason: r.reason, newActiveTabId: r.newActiveTabId };
+        return r.state ?? prev;
+      });
+      return result;
+    },
+    []
+  );
+
   const closeTab = useCallback(
     (tabId: string): CloseTabResult => {
       let result: CloseTabResult = { closed: false, tabId };
@@ -932,6 +952,7 @@ export function useTabManager() {
     openOrFocusTab,
     focusTab,
     focusTabBySourceId,
+    closeTabBySourceId,
     closeTab,
     forceCloseTab,
 

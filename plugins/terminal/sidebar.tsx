@@ -224,8 +224,10 @@ function TerminalSidebar() {
       );
       if (confirmed) {
         // TODO Phase 5.5c C4: 如果 connected → 先断开串口
-        // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session
-        tabActions?.closeTab(id);
+        // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session。
+        // 用 closeTabBySourceId——sourceId 是 session↔tab 的唯一可靠链接。
+        // tab.id 和 session.id 可能因布局恢复/计数器漂移不一致。
+        tabActions?.closeTabBySourceId(id);
         removeSession(id);
       }
     },
