@@ -22,9 +22,10 @@ export interface SerialState {
 }
 
 export interface SerialActions {
-  toggleOpen: () => Promise<void>;
-  setPortName: (port: string) => Promise<void>;
-  setBaudRate: (baud: string) => Promise<void>;
+  /** encoding: 从 session 传入 receiveCoding（E8 fix——不再读旧配置系统） */
+  toggleOpen: (encoding?: string) => Promise<void>;
+  setPortName: (port: string, encoding?: string) => Promise<void>;
+  setBaudRate: (baud: string, encoding?: string) => Promise<void>;
 }
 
 export interface SerialContextValue {

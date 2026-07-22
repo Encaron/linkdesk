@@ -59,6 +59,12 @@
   font-family: inherit;
   outline: none;
   max-width: 140px;
+  color-scheme: dark;
+}
+
+.control-select option {
+  background: var(--bg-window, #1e1e1e);
+  color: var(--text-primary, #cccccc);
 }
 
 .control-select:hover {
