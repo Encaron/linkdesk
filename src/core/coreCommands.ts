@@ -29,6 +29,8 @@ export interface CoreCallbacks {
   splitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
   /** 查找标签页所在的组 */
   findGroupByTabId: (tabId: string) => { groupId: string; tabs: Array<{ id: string }> } | null;
+  /** 打开/聚焦标签页 */
+  openTab: (pluginId: string) => string;
 }
 
 let _callbacks: CoreCallbacks | null = null;
@@ -47,14 +49,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "设置",
     category: "视图",
     handler: async () => {
-      // Phase 5g：不再硬编码 "settings"——从 viewRegistry 找 core + iconLocation:bottom 的插件。
-      // settings 不是唯一的 bottom 图标——未来账户/管理类插件也可声明 iconLocation: "bottom"。
-      // 齿轮菜单"设置"命令找第一个 core 插件（即 settings——它标记 core:true 且 iconLocation:bottom）。
+      // 齿轮菜单"设置"——直接打开设置标签页（对标 VS Code Ctrl+,）
       const settingsPlugin = getViewPlugins().find(
         (p) => p.manifest.core && p.manifest.iconLocation === "bottom"
       );
-      const pluginId = settingsPlugin?.pluginId ?? "settings"; // fallback：万一 settings 被卸载
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_VIEW, { detail: { pluginId, asSidebar: true } }));
+      const pluginId = settingsPlugin?.pluginId ?? "settings";
+      _callbacks?.openTab(pluginId);
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",

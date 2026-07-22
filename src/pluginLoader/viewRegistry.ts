@@ -103,29 +103,16 @@ export function getIconLocation(pluginId: string): "top" | "bottom" {
   return registry.get(pluginId)?.manifest.iconLocation ?? "top";
 }
 
-/** 视图角色——声明此视图如何和壳交互。默认 sidebarPrimary（对标 VS Code Activity Bar）。 */
-export function getViewRole(pluginId: string): "sidebarPrimary" | "tabOnly" {
-  return registry.get(pluginId)?.manifest.viewRole ?? "sidebarPrimary";
-}
-
 /**
  * 获取可作为标签页直接创建的视图插件列表。
- * 对标 VS Code：Explorer（sidebarPrimary）不出现在编辑器 [+] 菜单 / 欢迎页快捷卡片中。
- * sidebarPrimary 插件通过图标栏打开侧栏，而非直接创建标签页。
+ * 过滤规则：有侧栏组件（sidebarComponent）的插件通过图标栏开侧栏访问，
+ * 不出现在 WelcomeView 快捷卡片 / TabBar [+] 菜单中。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(
-    (entry) => entry.manifest.viewRole !== "sidebarPrimary"
+    (entry) => !entry.sidebarComponent
   );
-}
-
-/**
- * 纯侧栏视图——点击图标 toggle 侧栏，不自动打开标签页。
- * 从 plugin.json viewRole 字段读取。
- */
-export function isSidebarPrimaryView(pluginId: string): boolean {
-  return registry.get(pluginId)?.manifest.viewRole === "sidebarPrimary";
 }
 
 /** 聚焦此视图时是否保留当前侧栏不清除。从 plugin.json 读取。 */

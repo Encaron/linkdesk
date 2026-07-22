@@ -15,7 +15,6 @@ import CommandPalette from "./components/terminal/CommandPalette";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
-import { getViewRole } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
@@ -110,7 +109,8 @@ function App() {
       }
       return null;
     },
-  }), [closeTab, splitTab, tabState.groups]);
+    openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
+  }), [closeTab, splitTab, tabState.groups, openOrFocusTab]);
 
   // 每次渲染更新 callbacks ref
   updateCoreCallbacks(coreCallbacks);
@@ -388,32 +388,15 @@ function App() {
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // Phase 5.5a：图标栏点击——走 viewRole 声明（plugin.json），不再硬编码 isSidebarOnlyView。
-  // sidebarPrimary：Toggle 侧栏——对标 VS Code Activity Bar（点文件树/扩展/搜索图标）
-  // tabOnly：直接打开/聚焦标签页——对标 VS Code 设置
-  // 对标 VS Code Activity Bar——点击打开的是固定视图，不是预览。
+  // 图标栏点击——所有插件统一：toggle 侧栏。标签页从 WelcomeView/[+]/侧栏内部操作/齿轮菜单打开。
+  // 对标 VS Code Activity Bar：点 Explorer/Extensions 图标只切侧栏，不自动开编辑器。
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      const role = getViewRole(pluginId); // 未声明默认 "sidebarPrimary"
-      if (role === "tabOnly") {
-        setSidebarView(pluginId);
-        openOrFocusTab(pluginId, { pinned: true });
-      } else {
-        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
-      }
+      setSidebarView((prev) => (prev === pluginId ? null : pluginId));
     },
-    [openOrFocusTab]
+    []
   );
 
-  // Phase 5c：监听齿轮菜单事件——跨组件通信
-  useEffect(() => {
-    const onOpenView = (e: Event) => {
-      const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
-      if (pluginId) handleIconClick(pluginId);
-    };
-    window.addEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
-    return () => window.removeEventListener(CUSTOM_EVENTS.OPEN_VIEW, onOpenView);
-  }, [handleIconClick]);
 
   /* ---- Command Palette——壳级特性，不属任何插件 ---- */
   useEffect(() => {
@@ -695,8 +678,6 @@ function App() {
       <SerialContext.Provider value={serialContextValue}>
       <div className="app-body">
         <IconBar
-          activeTabType={activeTabType ?? FALLBACK_PLUGIN_ID}
-          activePluginId={activePluginId}
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
         />
