@@ -657,6 +657,7 @@ const closeWithAnimation = useCallback(
 
 已确认案例：
 - E8：`App.tsx:413` `getReceiveCoding()` 仍从 `getConfigurationValue("terminal.receiveCoding")` 读——此 key 在 ConfigurationService 中已无值
+- **H3** ✅ 已修复 (`a803bcc`)：`onDidChangeConfiguration` 事件订阅被删除——设置变更不再打印系统消息（"行号显示：开/关"等）。修法：`index.tsx` 用 prevRef 对比恢复 6 项设置的变更提示。
 
 **潜在受影响项（C4a 迁移的 12 项设置逐个审计）：**
 
@@ -681,6 +682,7 @@ const closeWithAnimation = useCallback(
 3. 删除 `App.tsx` 中残留的 `getConfigurationValue("terminal.*")` 调用
 4. 删除 `useTerminalSessions.ts` 中 A1 的 `getConfigurationValue("terminal.quickSends")` 临时桥接
 5. 全局 grep `getConfigurationValue.*terminal\.` → 确保零残留
+6. ✅ H3 已修：全局 grep `onDidChangeConfiguration` 消费端——确认 ConfigurationService 事件订阅也被迁移
 
 ---
 
