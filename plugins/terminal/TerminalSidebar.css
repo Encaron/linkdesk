@@ -157,11 +157,15 @@
 /* ── 内联新建输入框（替代 window.prompt）── */
 
 .session-create-inline {
+  display: flex;
+  align-items: center;
+  gap: 3px;
   padding: 4px 8px 8px;
 }
 
 .session-create-input {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   background: var(--bg-input, rgba(255, 255, 255, 0.06));
   border: 1px solid var(--accent);
   border-radius: 3px;
@@ -175,6 +179,39 @@
 
 .session-create-input::placeholder {
   color: var(--text-muted);
+}
+
+.session-create-ok,
+.session-create-cancel {
+  flex-shrink: 0;
+  width: 22px;
+  height: 22px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 100ms;
+}
+
+.session-create-ok {
+  color: var(--accent);
+}
+
+.session-create-ok:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.session-create-cancel {
+  color: var(--text-muted);
+}
+
+.session-create-cancel:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
 }
 
 /* ── 空状态 ── */
