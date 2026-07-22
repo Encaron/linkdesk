@@ -150,6 +150,38 @@ const { t } = useTranslation();
 
 ---
 
+## 7. 侧栏列表选中条目 → `onMouseDown`（不是 `onClick`）
+
+**❌ 禁止：** 侧栏垂直列表中选中条目用 `onClick`。
+
+**✅ 正确：**
+```tsx
+<div
+  className={`my-list-item${isActive ? " active" : ""}`}
+  onMouseDown={() => onSelect(item.id)}
+>
+  <span>{item.label}</span>
+</div>
+```
+
+**理由：** 侧栏条目垂直紧邻——快速点击时 mousedown 在条目 A、mouseup 滑到条目 B。浏览器 `click` 事件规范：mousedown 和 mouseup 落在不同元素 → click 投递到两者的共同祖先 → React 在祖先上找不到 handler → 静默丢失。`onMouseDown` 只关注按下位置，不要求释放在同一元素——消除快速点击丢事件。
+
+**对标 VS Code：** Explorer 文件树选文件用 `onMouseDown`，不是 `onClick`。这是经过千万用户验证的模式，不要自己设计。
+
+**适用场景：** 侧栏中任何垂直排列、条目间距小的可点击列表——会话列表、文件树、数据库连接、MQTT 主题、设备列表等。
+
+**子元素的处理：** 条目内的操作按钮/输入框需要加 `onMouseDown={(e) => e.stopPropagation()}` 防止误触父条目的选中：
+```tsx
+<button
+  onMouseDown={(e) => e.stopPropagation()}
+  onClick={(e) => { e.stopPropagation(); handleDelete(); }}
+>
+  ✕
+</button>
+```
+
+---
+
 ## 速查
 
 | 你要做的 | 核心设施 | 引入方式 |
@@ -160,5 +192,6 @@ const { t } = useTranslation();
 | 快捷键 | `plugin.json contributes.keybindings` | — |
 | 颜色 | CSS 变量 | `var(--xxx)`，列表见 `src/index.css` |
 | 文字 | `t()` | `useTranslation()` from `react-i18next` |
+| 侧栏列表选中 | `onMouseDown`（非 `onClick`） | 对标 VS Code Explorer——防止快速点击跨元素丢事件 |
 
 **写插件时用这些设施，别手写。写了以后也得拆——不如从第一天就归一。**
