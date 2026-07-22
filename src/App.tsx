@@ -79,6 +79,7 @@ function App() {
     focusTabBySourceId,
     closeTabBySourceId,
     openOrFocusBySourceId,
+    updateTabLabelBySourceId,
     closeTab,
     forceCloseTab,
     createTab,
@@ -674,9 +675,10 @@ function App() {
     focusTab,
     focusTabBySourceId,
     openOrFocusBySourceId,
+    updateTabLabelBySourceId,
     closeTabBySourceId,
     closeTab,
-  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, openOrFocusBySourceId, closeTabBySourceId, closeTab]);
+  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, openOrFocusBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
 
   if (!ready) return null;
 

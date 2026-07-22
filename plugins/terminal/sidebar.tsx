@@ -211,8 +211,10 @@ function TerminalSidebar() {
   const handleRename = useCallback(
     (id: string) => (name: string) => {
       updateSession(id, { name });
+      // A2+N1：侧栏改名 → 标签栏标题同步
+      tabActions?.updateTabLabelBySourceId(id, name);
     },
-    [updateSession],
+    [updateSession, tabActions],
   );
 
   const handleDelete = useCallback(

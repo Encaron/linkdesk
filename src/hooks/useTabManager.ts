@@ -941,6 +941,17 @@ export function useTabManager() {
     setTabState((prev) => reduceUpdateTabLabel(prev, tabId, label));
   }, []);
 
+  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。 */
+  const updateTabLabelBySourceId = useCallback((sourceId: string, label: string) => {
+    setTabState((prev) => {
+      const tab = prev.groups.flatMap((g) => g.tabs).find(
+        (t) => t.sourceId === sourceId || t.id === sourceId,
+      );
+      if (!tab) return prev;
+      return reduceUpdateTabLabel(prev, tab.id, label);
+    });
+  }, []);
+
   const reorderTab = useCallback((tabId: string, toIndex: number) => {
     setTabState((prev) => reduceReorderTab(prev, tabId, toIndex));
   }, []);
@@ -999,6 +1010,7 @@ export function useTabManager() {
     // ── 状态（标记/标签）──
     setDirty,
     updateTabLabel,
+    updateTabLabelBySourceId,
 
     // ── 持久化（恢复/导出）──
     restoreLayout,
