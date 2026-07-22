@@ -18,6 +18,7 @@ import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "@src/core/SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
+import { showConfirm } from "@src/components/shared/ConfirmDialog";
 import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
 import Select from "@src/components/shared/Select";
@@ -215,10 +216,10 @@ function TerminalSidebar() {
   );
 
   const handleDelete = useCallback(
-    (id: string) => () => {
+    (id: string) => async () => {
       const session = sessions.find((s) => s.id === id);
       if (!session) return;
-      const confirmed = window.confirm(
+      const confirmed = await showConfirm(
         t("关闭会话「{{name}}」？", { name: session.name }) ??
           `关闭会话「${session.name}」？`,
       );
