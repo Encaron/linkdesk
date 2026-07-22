@@ -10,7 +10,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "../../pluginLoader/viewRegistry";
+import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
 import "./WelcomeView.css";
@@ -23,7 +23,7 @@ interface WelcomeViewProps {
 function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   const { t } = useTranslation();
 
-  const viewPlugins = getViewPlugins();
+  const viewPlugins = getTabCreatableViews();
   const recentViews = (() => {
     try {
       return getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews") ?? [];

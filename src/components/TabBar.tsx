@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 // Phase 5b：统一右键菜单
@@ -79,8 +79,8 @@ function PlusMenu({
   const { t } = useTranslation();
   if (!isOpen) return null;
 
-  // Phase 4.4：+ 菜单从 viewRegistry 动态生成，不再硬编码插件名
-  const viewPlugins = getViewPlugins();
+  // Phase 4.4：+ 菜单从 viewRegistry 动态生成，过滤 sidebarPrimary（对标 VS Code Explorer 不出现在编辑器 [+] 菜单）
+  const viewPlugins = getTabCreatableViews();
   const items: { label: string; type: string; pluginId?: string }[] = [
     ...viewPlugins.map((p) => ({
       label: p.manifest.name,

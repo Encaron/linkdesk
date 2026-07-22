@@ -15,7 +15,6 @@ import CommandPalette from "./components/terminal/CommandPalette";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
-import { getViewRole } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
@@ -389,18 +388,13 @@ function App() {
   }, [tabState.groups, focusTab]);
 
   // Phase 5.5a：图标栏点击——走 viewRole 声明（plugin.json），不再硬编码 isSidebarOnlyView。
-  // sidebarPrimary：Toggle 侧栏——对标 VS Code Activity Bar（点文件树/扩展/搜索图标）
-  // tabOnly：直接打开/聚焦标签页——对标 VS Code 设置
+  // 所有视图插件点击图标都打开/聚焦标签页 + 打开侧栏。
+  // sidebarPrimary vs tabOnly 的区别只体现在 getTabCreatableViews 过滤（WelcomeView/PlusMenu 不出 sidebarPrimary）。
   // 对标 VS Code Activity Bar——点击打开的是固定视图，不是预览。
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      const role = getViewRole(pluginId); // 未声明默认 "sidebarPrimary"
-      if (role === "tabOnly") {
-        setSidebarView(pluginId);
-        openOrFocusTab(pluginId, { pinned: true });
-      } else {
-        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
-      }
+      setSidebarView(pluginId);
+      openOrFocusTab(pluginId, { pinned: true });
     },
     [openOrFocusTab]
   );
