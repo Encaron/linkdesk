@@ -4,7 +4,7 @@
 > 小步快走——每步修完 → 立刻测 → 确认无误 → 下一步。
 > 发现新 bug → 即时开支线 → 记录 → 回到主线。
 >
-> **当前进度：主线 步 1-8 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 9（E1 关闭确认弹窗）。剩余 7 主线 + 18 后续 = 25 步。**
+> **当前进度：主线 步 1-9 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 10（A4 侧栏重开标签页）。剩余 6 主线 + 18 后续 = 24 步。**
 
 ---
 
@@ -182,21 +182,16 @@ npx vitest run      # 必须 151 全过
 
 ### 第七批：标签页生命周期（3 步）
 
-#### 步 9：E1 — 关闭确认弹窗
+#### 步 9：E1 — 关闭确认弹窗　✅ 已完成（`1be3daa` `2e90fc5`）
 
 **做什么：** ✕ 关标签页 / 中键关 / Ctrl+W → 先检查插件有没有声明"关闭时要确认"→ 有就弹确认框。
+Tauri WebView 禁用 `window.confirm()` → 新增自定义 `<ConfirmDialog>` 组件（零硬编码 hex，全走 CSS 变量）。
 
-**改什么：** `TabBar.tsx` + `App.tsx`（Ctrl+W 路径）— ~+15 行
-
-**立刻怎么测：**
-1. 终端标签页连接串口 → 点 ✕ → 弹出"关闭此标签页将断开串口连接"了吗？
-2. 点取消 → 标签页没关？
-3. 点确定 → 标签页关了？
-4. 工作台标签页（没声明 confirmOnClose）→ 点 ✕ → 直接关了？
-
-**如果出问题：**
-- `window.confirm` 不够好看 → 记 TODO：Phase 6 换自定义弹窗
-- 确认后标签页动画卡住 → 开支线：检查 `closeWithAnimation` 和 confirm 的时序
+**改什么：**
+- `src/components/shared/ConfirmDialog.tsx` — 新增，imperative `showConfirm()` API
+- `src/components/shared/ConfirmDialog.css` — 新增，全走 `var(--xxx)` 零硬编码
+- `src/components/TabBar.tsx` — ✕ 按钮 + 中键关前调 `showConfirm()`
+- `src/App.tsx` — Ctrl+W 路径 + 渲染 `<ConfirmDialog />`
 
 #### 步 10：A4 — 侧栏重开标签页
 
