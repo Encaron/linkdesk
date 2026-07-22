@@ -4,7 +4,7 @@
 > 小步快走——每步修完 → 立刻测 → 确认无误 → 下一步。
 > 发现新 bug → 即时开支线 → 记录 → 回到主线。
 >
-> **当前进度：主线 步 1-9 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 10（A4 侧栏重开标签页）。剩余 6 主线 + 18 后续 = 24 步。**
+> **当前进度：主线 步 1-11 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 12（E4 接收模式从 session 读取）。剩余 4 主线 + 18 后续 = 22 步。**
 
 ---
 
@@ -193,39 +193,29 @@ Tauri WebView 禁用 `window.confirm()` → 新增自定义 `<ConfirmDialog>` �
 - `src/components/TabBar.tsx` — ✕ 按钮 + 中键关前调 `showConfirm()`
 - `src/App.tsx` — Ctrl+W 路径 + 渲染 `<ConfirmDialog />`
 
-#### 步 10：A4 — 侧栏重开标签页
+#### 步 10：A4 — 侧栏重开标签页　✅ 已完成（`0cbe359`）
 
 **做什么：** 标签栏 ✕ 关标签页后，侧栏点那个会话 → 重新打开标签页（对标 VS Code 点文件重开编辑器）。
 
-**改什么：** `plugins/terminal/sidebar.tsx` — ~+10 行
+**改什么：**
+- `src/hooks/useTabManager.ts` — 新增 `openOrFocusBySourceId(sourceId, type, opts)`：按 sourceId 找 tab，有则聚焦、无则创建
+- `src/core/TabActionsContext.ts` — 加入接口
+- `src/App.tsx` — 接线
+- `plugins/terminal/sidebar.tsx` — `handleSelectSession` 换用 `openOrFocusBySourceId`
 
-**立刻怎么测：**
-1. 终端标签页开着 → 标签栏 ✕ 关了它
-2. 侧栏点那个会话 → 标签页重新打开了？
-3. 内容还是原来的会话数据吗？
+**附：侧栏删会话弹窗**（`014f952`，步 9 遗漏——Tauri 禁用 `window.confirm`，侧栏也需要 `showConfirm`）
 
-**如果出问题：**
-- `openOrFocusTab` 创建的标签页 ID 和 session ID 不同 → 开支线：需要 `updateSession(oldId, { id: newTabId })` 重新配对
-
-#### 步 11：A2+N1 — 改名同步标签栏
+#### 步 11：A2+N1 — 改名同步标签栏　✅ 已完成（`db399aa`）
 
 **做什么：** 侧栏改会话名 → 标签栏标题跟着变。
 
 **改什么：**
-- `src/hooks/TabActionsContext.ts` — 新增 `updateTabLabel(tabId, label)` API
-- `plugins/terminal/sidebar.tsx` — 改名后调 `updateTabLabel`
-- `src/hooks/useTabManager.ts` — 实现 `reduceUpdateTabLabel`
+- `src/hooks/useTabManager.ts` — 新增 `updateTabLabelBySourceId(sourceId, label)`：按 sourceId 找 tab 并更新标题
+- `src/core/TabActionsContext.ts` — 加入接口
+- `src/App.tsx` — 接线
+- `plugins/terminal/sidebar.tsx` — `handleRename` 调 `updateTabLabelBySourceId`
 
-**改什么：** 三个文件 ~+15 行
-
-**立刻怎么测：**
-1. 侧栏"新对话1"→ F2 改名为"温度监控"
-2. 标签栏标签页标题变成"温度监控"了吗？
-3. "新对话2"的标题没变吧？
-
-**如果出问题：**
-- `updateTabLabel` 不触发重渲染 → 检查 tab state 是否正确返回新引用
-- 标签栏标题变了但侧栏没变 → 检查 session.name 和 tab.label 双向同步
+**通用性：** `openOrFocusBySourceId` / `updateTabLabelBySourceId` / `focusTabBySourceId` / `closeTabBySourceId` 四件套——sourceId 是通用概念，终端/工作台/任何插件都通过它链接标签页，不绑任何特定插件。
 
 ---
 
