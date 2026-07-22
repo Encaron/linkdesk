@@ -182,12 +182,10 @@ function TerminalSidebar() {
   const confirmCreate = useCallback(() => {
     const name = newName.trim();
     if (name && tabActions) {
-      // 先 tab 后 session——和原始逻辑一致。内联输入替代 prompt() 后
-      // React 批处理完好，createTab 正确返回 tabId。
-      const tabId = tabActions.createTab("terminal", { label: name, pinned: true });
-      if (tabId) {
-        createSession(name, tabId);
-      }
+      // 先 session（数据）→ 再 tab（视图），sourceId 链接两者。
+      // sourceId 是通用概念——任何插件可用它将自己的数据模型绑定到标签页。
+      const session = createSession(name);
+      tabActions.createTab("terminal", { label: name, pinned: true, sourceId: session.id });
     }
     setIsCreating(false);
     setNewName("");
@@ -278,8 +276,9 @@ function TerminalSidebar() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // session.id === tab.id——confirmCreate 用 createTab 返回值创建 session
-      tabActions?.focusTab(sessionId);
+      // 通过 sourceId 找标签页——通用机制，非终端专属。
+      // session 和 tab 用不同计数器，id 可能不一致。sourceId 是唯一可靠的链接。
+      tabActions?.focusTabBySourceId(sessionId);
     },
     [setActiveSession, tabActions],
   );
