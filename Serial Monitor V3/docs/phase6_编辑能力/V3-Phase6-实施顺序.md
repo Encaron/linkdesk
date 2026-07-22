@@ -1,10 +1,41 @@
 # Phase 6 — 实施顺序
 
-> 2026-07-21。从 [Phase 5→6 通盘分析](../phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md) §四 提炼。
+> 2026-07-21 初稿，2026-07-22 修订：加插件隔离前置条件。从 [Phase 5→6 通盘分析](../phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md) §四 提炼。
 >
-> **前提：** Phase 5h（运行时动态加载）✅ 已完成 + Phase 5.5（三栏交互对标）必须先完成。
+> **前提：** Phase 5h（运行时动态加载）✅ 已完成 + Phase 5.5（三栏交互对标 + **插件隔离第一层**）必须先完成。
 > 5h 是最后一个"改框架"的 Phase——之后 Phase 5.5 是桥，Phase 6 是纯消费者（零框架改动）。
 > 5.5 的 `viewRole: "sidebarPrimary"` 让文件树点击图标只切侧栏、不创建空标签页。
+>
+> **为什么隔离防线是 Phase 6 的前提：** Phase 6 开始加第二个、第三个插件——文件树、Monaco 编辑器、主题浏览器、语言选择器。每多一个插件，多一个崩溃向量。Error Boundary 兜底必须在插件数量膨胀**之前**就位，而不是事后补。详见 [插件隔离——物理上限与分层兜底](../phase5.5_交互对标/V3-Phase5.5-ErrorBoundary增强计划.md)。
+
+---
+
+## Phase 5.5 结界——做完这些才能进 Phase 6
+
+Phase 5.5 交付物分两类：**交互对标**（三栏交互 VS Code 化）和**质量防线**（插件隔离 + 归一化）。两类同属 5.5，都是 Phase 6 的硬前提。
+
+### A. 交互对标（三栏）
+
+```
+  ├── PluginManifest 加 viewRole 字段
+  ├── App.tsx handleIconClick 改用 viewRole switch
+  ├── marketplace → "sidebarPrimary"
+  ├── terminal → "sidebarPrimary"
+  ├── settings → "tabOnly"
+  ├── workspace → "sidebarPrimary"
+  └── 15 步 Bug 修复主线
+```
+
+### B. 质量防线（插件隔离 + 归一化）
+
+```
+  ├── @src alias 归一化——所有插件统一用 @src/ 引用核心模块（已完成 e4c7578）
+  ├── Error Boundary 增强——pluginId + componentDidCatch + 重试按钮
+  ├── Error Boundary 覆盖所有插件渲染点（主区 + 侧栏 + 壳视图）
+  └── 详见 Plugin Isolation 计划文档
+```
+
+**验证标准：** 故意在 terminal 插件中抛异常 → fallback 显示"「终端」已崩溃 [重试]" + 控制台输出 stack + 其他标签页正常交互。侧栏同理。
 
 ---
 
