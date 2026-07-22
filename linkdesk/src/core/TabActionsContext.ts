@@ -23,6 +23,8 @@ export interface TabActions {
   /** 按 sourceId 找标签页并聚焦或创建——A4 修复：侧栏点会话→tab 已关时自动重开。
    *  type 是创建新标签页时的类型（如 "terminal"）。 */
   openOrFocusBySourceId: (sourceId: string, type: string, opts?: CreateTabOptions) => string | null;
+  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。 */
+  updateTabLabelBySourceId: (sourceId: string, label: string) => void;
   /** 按 sourceId 找标签页并关闭——通用 API。和 focusTabBySourceId 对称。
    *  插件删自己的数据时通过 sourceId 关闭对应标签页，不依赖 tabId===sessionId 的假设。 */
   closeTabBySourceId: (sourceId: string) => CloseTabResult;
