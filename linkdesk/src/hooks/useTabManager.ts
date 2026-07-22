@@ -742,12 +742,8 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 
 /* ── Hook ── */
 
-/** 侧栏等非标签页组件读取当前标签页状态的模块级 ref。不触发重渲染。 */
-export const liveTabState: { current: TabState | null } = { current: null };
-
 export function useTabManager() {
   const [tabState, setTabState] = useState<TabState>(() => createInitialTabState());
-  liveTabState.current = tabState;
 
   const lastFocusedByType = useRef<Map<string, string>>(new Map());
   for (const tab of tabState.groups.flatMap((g) => g.tabs)) {

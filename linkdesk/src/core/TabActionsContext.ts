@@ -17,6 +17,8 @@ export interface TabActions {
   focusTab: (tabId: string) => void;
   /** Phase 5.5c：侧栏删会话 → 同步关闭对应标签页 */
   closeTab: (tabId: string) => CloseTabResult;
+  /** 更新标签页标题——通用 API，非终端专用 */
+  updateTabLabel: (tabId: string, label: string) => void;
 }
 
 const TabActionsContext = createContext<TabActions | null>(null);
