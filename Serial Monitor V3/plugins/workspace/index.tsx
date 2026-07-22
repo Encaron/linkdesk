@@ -4,4 +4,4 @@
  * 直接引用 src/ 中的 WorkspaceView 实现。
  * Phase 5：卡片网格 react-grid-layout。
  */
-export { default } from "../../src/components/views/WorkspaceView";
+export { default } from "../../../src/components/views/WorkspaceView";

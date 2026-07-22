@@ -2,14 +2,16 @@
 
 > Tauri v2 + React 18 + TypeScript — **通用容器**。比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 
-## 架构：两层容器
+## 架构
 
 ```
-外层：标签页 + 递归分屏（VS Code 编辑器组模型）
-  └── 标签页拖拽/分屏/合并，keep-alive 绝对定位平铺
-内层：卡片网格（Phase 7）
-  └── react-grid-layout 拖拽重排，workspace.json 平铺数组
-硬边界：标签页系统永不 import CardRegistry，唯一接触点 = Tab.workspaceName: string
+标签页 + 递归分屏（核心——唯一的通用容器）
+  ├── 终端标签页       → plugins/terminal
+  ├── 工作台标签页     → plugins/workspace（卡片网格，串口场景用）
+  ├── 地图标签页       → plugins/map
+  ├── 逻辑分析仪标签页 → plugins/logic-analyzer（时序图，不依赖卡片）
+  └── ...任何插件       → 核心不知道也不关心里面是什么
+硬边界：标签页系统永不 import CardRegistry。卡片工作台是插件，不是架构第二层。
 ```
 
 ## 当前阶段
