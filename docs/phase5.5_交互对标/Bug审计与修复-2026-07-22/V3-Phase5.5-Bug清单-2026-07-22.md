@@ -33,8 +33,9 @@
 | **B81** | `flushSync` 弯路——误诊为 React state 竞态 | AI 在 React 软件层猜：批处理/竞态/微任务——忽略了 DOM 事件层的物理限制 | 清掉 `flushSync`。React 官方警告 "in event handlers may cause bugs" | `b3b4ed4` |
 | **B82** | 删侧栏会话不关标签页 / 关 A 删 B（仅 `npx tauri dev`，`npx vite` 正常） | 布局持久化恢复旧 terminal-N→`_terminalCounter` 归零→新建同名 ID 碰撞→`closeTab(session.id)` 找到旧 tab | ① `closeTabBySourceId`——用 `sourceId` 找 tab；② 布局恢复后同步 `_terminalCounter` | `4be450a` |
 | **B83** | `npx tauri dev` 删会话无确认弹窗 | Tauri v2 WebView 禁用 `window.confirm()`→静默返回 `false` | Phase 6 改自定义弹窗组件。当前 `confirm` 返回 `false`→不执行删除（安全侧） | — |
+| **B84** | `App.tsx` 硬编码 `useState("COM3")`——祖传默认值，V1/V2 源码均无此硬编码 | Phase 5f 迁移时 AI 删了 `prefs?.lastPort \|\|` 前缀，留下裸 `"COM3"` | 改为 `useState("")`，配合步 5 端口自动填充——第一个可用端口自动选中 | 待 commit |
 
-**B80-B82 暴露的系统性问题：** ① `sourceId` 是 session↔tab 唯一可靠链接——`tab.id === session.id` 的假设在持久化场景下不成立；② 模块级计数器在重启后归零，但持久化数据保留旧 ID——任何类似模式（database connection ID、file handle ID）都会踩同样的坑。
+**B80-B84 暴露的系统性问题：** ① `sourceId` 是 session↔tab 唯一可靠链接——`tab.id === session.id` 的假设在持久化场景下不成立；② 模块级计数器在重启后归零，但持久化数据保留旧 ID——任何类似模式（database connection ID、file handle ID）都会踩同样的坑。
 
 ## 相关记忆更新
 

@@ -50,18 +50,19 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     (port: string) => {
       if (!sourceId) return;
       updateSession({ port });
-      setPortName(port);
+      // E8：receiveCoding 从 session 传入——不再读旧配置系统
+      setPortName(port, activeSession?.receiveCoding);
     },
-    [sourceId, updateSession, setPortName],
+    [sourceId, updateSession, setPortName, activeSession?.receiveCoding],
   );
 
   const handleBaudChange = useCallback(
     (baud: string) => {
       if (!sourceId) return;
       updateSession({ baudRate: baud });
-      setBaudRate(baud);
+      setBaudRate(baud, activeSession?.receiveCoding);
     },
-    [sourceId, updateSession, setBaudRate],
+    [sourceId, updateSession, setBaudRate, activeSession?.receiveCoding],
   );
 
   const handleProtocolChange = useCallback(
@@ -75,25 +76,28 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const handleToggleOpen = useCallback(async () => {
     // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
     if (!isOpen && activeSession) {
+      const enc = activeSession.receiveCoding;
       // A3+G23：会话还没选端口 → 自动填第一个可用端口
       if (!activeSession.port && ports.length > 0) {
         updateSession({ port: ports[0].name });
-        await setPortName(ports[0].name);
+        await setPortName(ports[0].name, enc);
       } else if (activeSession.port && activeSession.port !== state.portName) {
-        await setPortName(activeSession.port);
+        await setPortName(activeSession.port, enc);
       }
       if (activeSession.baudRate !== state.baudRate) {
-        await setBaudRate(activeSession.baudRate);
+        await setBaudRate(activeSession.baudRate, enc);
       }
     }
-    await toggleOpen();
+    // E8：receiveCoding 从 session 传入——不再读旧配置系统
+    await toggleOpen(activeSession?.receiveCoding);
   }, [isOpen, activeSession, state.portName, state.baudRate, setPortName, setBaudRate, toggleOpen, ports, updateSession]);
 
   // ── 未连接 / 无会话状态 ──
 
-  // B1：session 存的端口已不在可用端口列表中（拔掉了）→ 下拉框回退到空值
-  const portInList = !!(activeSession?.port && ports.some((p) => p.name === activeSession.port));
-  const portName = portInList ? activeSession!.port : "";
+  // B1：session 存的端口不在可用列表中 → 下拉框回退空值（不丢 session 数据，只影响显示）
+  const portName = activeSession?.port && ports.some((p) => p.name === activeSession.port)
+    ? activeSession.port
+    : "";
   const baudRate = activeSession?.baudRate ?? "115200";
 
   return (

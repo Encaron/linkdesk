@@ -62,7 +62,7 @@ function App() {
   const [ready, setReady] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [ports, setPorts] = useState<PortInfo[]>([]);
-  const [portName, setPortName] = useState("COM3");
+  const [portName, setPortName] = useState("");
   const [baudRate, setBaudRate] = useState("115200");
   const [theme, setTheme] = useState<"Dark" | "Light">("Dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
@@ -223,7 +223,7 @@ function App() {
       setLang(initLang as "zh" | "en");
 
       // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
-      setPortName("COM3");
+      setPortName("");
 
       // Bug fix (F5 状态不同步)：F5 只重启前端 React state，Rust 后端串口仍在运行。
       // 启动时查询后端实际状态，同步 isOpen/portName/baudRate。
@@ -423,19 +423,15 @@ function App() {
   }, []);
 
   /* ---- 串口控制 ---- */
-  // Phase 5f：receiveCoding 从 ConfigurationService 直接读取——不再依赖 terminalPrefs state
-  function getReceiveCoding(): string {
-    try { return getConfigurationValue<string>("terminal.receiveCoding") ?? "UTF-8"; }
-    catch { return "UTF-8"; }
-  }
+  // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
 
-  const handleToggleOpen = useCallback(async () => {
+  const handleToggleOpen = useCallback(async (encoding?: string) => {
     try {
       if (isOpen) {
         await invoke("close_port");
         setIsOpen(false);
       } else {
-        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: getReceiveCoding() });
+        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: encoding ?? "UTF-8" });
         setIsOpen(true);
       }
     } catch (e: any) {
@@ -443,12 +439,12 @@ function App() {
     }
   }, [isOpen, portName, baudRate]);
 
-  const handleBaudChange = useCallback(async (newBaud: string) => {
+  const handleBaudChange = useCallback(async (newBaud: string, encoding?: string) => {
     setBaudRate(newBaud);
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: getReceiveCoding() });
+        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -456,12 +452,12 @@ function App() {
     }
   }, [isOpen, portName]);
 
-  const handlePortChange = useCallback(async (newPort: string) => {
+  const handlePortChange = useCallback(async (newPort: string, encoding?: string) => {
     setPortName(newPort);
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: getReceiveCoding() });
+        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);
