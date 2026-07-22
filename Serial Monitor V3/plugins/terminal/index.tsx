@@ -24,7 +24,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "../../src/hooks/useTauriEvent";
 import { RingBuffer } from "../../src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
-import { useTerminalSessions, getActiveSessionId } from "./useTerminalSessions";
+import { useSession } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, type SendContext, type SendCallbacks } from "../../src/core/useSendData";
 import SearchBar from "../../src/components/terminal/SearchBar";
@@ -184,14 +184,16 @@ const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
 interface TerminalViewProps {
   isActive: boolean;
+  sourceId?: string;
 }
 
-function TerminalView({ isActive }: TerminalViewProps) {
+function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   const { t } = useTranslation();
 
-  // Phase 5.5c C4a：数据源从 ConfigurationService 切到 useTerminalSessions
-  // activeSession 是 getter（非 state）——每次 render 返回最新值，tick 驱动重渲染
-  const { activeSession, activeSessionId, updateSession } = useTerminalSessions();
+  // C1 修复：用 sourceId 绑定 per-tab session，而非读全局 activeSession。
+  // sourceId = tab.id = session.id（MainContent 传入）。
+  // session/update 响应式——底层 _sessions 变更 → listener 通知 → tick 重渲染。
+  const { session: activeSession, update: updateSession } = useSession(sourceId);
 
   // 12 项收发设置——从活跃会话读取，null-safe 默认值
   const timestampFormat = activeSession?.timestampFormat ?? "HH:mm:ss:fff";
@@ -222,10 +224,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
 
   const saveQuickSends = useCallback((updated: Record<string, string>) => {
     // Phase 5.5c C4a：写入会话——唯一入口 QuickSendBar（§3.12 硬规则）
-    if (activeSessionId) {
-      updateSession(activeSessionId, { quickSends: updated });
-    }
-  }, [activeSessionId, updateSession]);
+    // C1：updateSession 已绑定 sourceId，无需传 id 参数
+    updateSession({ quickSends: updated });
+  }, [updateSession]);
 
   const handleSaveQuickSend = () => {
     if (!qsName.trim() || !qsContent.trim()) return;
@@ -408,6 +409,9 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const tsFormatRef = useRef(timestampFormat);
   tsFormatRef.current = timestampFormat;
   const portOpenRef = useRef(true);
+  // C1：per-tab session 绑定——Tauri event handler 用 ref 读取当前 tab 的 session ID
+  const sessionIdRef = useRef(sourceId);
+  sessionIdRef.current = sourceId;
 
   // Phase 5e：模块级变量——Tauri event handler 在 React 渲染周期外运行，
   // 用模块变量传递最新 prefs 值，避免 useRef/闭包的任何时序问题。
@@ -424,8 +428,8 @@ function TerminalView({ isActive }: TerminalViewProps) {
   };
 
   useTauriEvent<string>("serial-data", (payload) => {
-    // C4b Bug 1：无活跃会话时不处理数据——避免数据流向不存在或错误的会话
-    if (!getActiveSessionId()) return;
+    // C1：用当前 tab 的 session ID 判断——per-tab 绑定，非全局 activeSession
+    if (!sessionIdRef.current) return;
     if (!portOpenRef.current) return;
     const fmt = tsFormatRef.current;
     const displayText = _receiveMode === "hex"
@@ -653,15 +657,15 @@ function TerminalView({ isActive }: TerminalViewProps) {
   const showLineNumbersRef = useRef(showLineNumbers);
   showLineNumbersRef.current = showLineNumbers;
 
-  // Phase 5.5c C4a：setter ref——命令 handler 通过 ref 调用，写入走 updateSession（单一入口 §3.12）
+  // C1：setter ref——updateSession 已绑定 sourceId，无需传 id 参数（单一入口 §3.12）
   const setSendModeRef = useRef((v: string) => {
-    if (activeSessionId) updateSession(activeSessionId, { sendMode: v });
+    updateSession({ sendMode: v });
   });
   const setShowEchoRef = useRef((v: boolean) => {
-    if (activeSessionId) updateSession(activeSessionId, { showEcho: v });
+    updateSession({ showEcho: v });
   });
   const setShowLineNumbersRef = useRef((v: boolean) => {
-    if (activeSessionId) updateSession(activeSessionId, { showLineNumbers: v });
+    updateSession({ showLineNumbers: v });
   });
 
   const terminalCmdRef = useRef<{
@@ -986,7 +990,7 @@ function TerminalView({ isActive }: TerminalViewProps) {
   // div 不在 DOM 中，cmView.current 永远是 null，之后创建会话也无法初始化。
   return (
     <div className="terminal-view">
-      <ControlPanel />
+      <ControlPanel sourceId={sourceId} />
 
       {!activeSession && (
         <div className="terminal-placeholder">

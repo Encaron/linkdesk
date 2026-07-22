@@ -14,7 +14,7 @@
  *   name → sidebar 会话列表 (F2 / hover ✎)
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 // 🔧 C1 临时桥接：一次性从 ConfigurationService 迁移旧 quickSends 数据。
 // TODO Phase 5.5c C5: 移除此 import + getDefaultQuickSends() 中的迁移逻辑。
 import { getConfigurationValue } from "../../src/core/ConfigurationService";
@@ -218,6 +218,38 @@ export function useTerminalSessions() {
       notify();
     },
   };
+}
+
+// ── Per-Tab Session Hook（C1 修复） ──
+// 主区 TerminalView / ControlPanel 用此 hook 绑定到自己的 session，
+// 而非读全局 activeSession。sourceId = tab.id = session.id。
+
+export function useSession(id: string | undefined) {
+  const [, tick] = useState(0);
+
+  useEffect(() => {
+    const rerender = () => tick((n) => n + 1);
+    _listeners.add(rerender);
+    return () => {
+      _listeners.delete(rerender);
+    };
+  }, []);
+
+  const session = id ? (_sessions.find((s) => s.id === id) ?? null) : null;
+
+  const update = useCallback(
+    (patch: Partial<TerminalSession>) => {
+      if (id) {
+        _sessions = _sessions.map((s) =>
+          s.id === id ? { ...s, ...patch } : s,
+        );
+        notify();
+      }
+    },
+    [id],
+  );
+
+  return { session, update } as const;
 }
 
 // ── 模块级 getter（非 React 上下文使用） ──

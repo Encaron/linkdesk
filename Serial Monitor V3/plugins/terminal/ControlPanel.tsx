@@ -18,7 +18,7 @@ import {
   getActiveProtocolId,
   setActiveProtocol,
 } from "../../src/core/ProtocolRegistry";
-import { useTerminalSessions } from "./useTerminalSessions";
+import { useSession } from "./useTerminalSessions";
 import "./ControlPanel.css";
 
 const BAUD_RATES = [
@@ -26,13 +26,14 @@ const BAUD_RATES = [
   "230400", "460800", "921600",
 ];
 
-function ControlPanel() {
+function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports, isOpen } = state;
   const { toggleOpen, setPortName, setBaudRate } = actions;
 
-  const { activeSession, activeSessionId, updateSession } = useTerminalSessions();
+  // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
+  const { session: activeSession, update: updateSession } = useSession(sourceId);
 
   // Phase 5e：协议列表当前是静态的（仅内置 bracket），Phase 7 多协议时加 CoreEvent 通知
   const protocols = useMemo(() => listProtocols(), []);
@@ -47,30 +48,28 @@ function ControlPanel() {
 
   const handlePortChange = useCallback(
     (port: string) => {
-      if (!activeSessionId) return;
-      updateSession(activeSessionId, { port });
+      if (!sourceId) return;
+      updateSession({ port });
       setPortName(port);
     },
-    [activeSessionId, updateSession, setPortName],
+    [sourceId, updateSession, setPortName],
   );
 
   const handleBaudChange = useCallback(
     (baud: string) => {
-      if (!activeSessionId) return;
-      updateSession(activeSessionId, { baudRate: baud });
+      if (!sourceId) return;
+      updateSession({ baudRate: baud });
       setBaudRate(baud);
     },
-    [activeSessionId, updateSession, setBaudRate],
+    [sourceId, updateSession, setBaudRate],
   );
 
   const handleProtocolChange = useCallback(
     (protocolId: string) => {
       setActiveProtocol(protocolId);
-      if (activeSessionId) {
-        updateSession(activeSessionId, { protocol: protocolId });
-      }
+      updateSession({ protocol: protocolId });
     },
-    [activeSessionId, updateSession],
+    [updateSession],
   );
 
   const handleToggleOpen = useCallback(async () => {
