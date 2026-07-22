@@ -182,8 +182,12 @@ function TerminalSidebar() {
   const confirmCreate = useCallback(() => {
     const name = newName.trim();
     if (name && tabActions) {
-      const session = createSession(name);
-      tabActions.createTab("terminal", { label: name, pinned: true, sourceId: session.id });
+      // 先 tab 后 session——和原始逻辑一致。内联输入替代 prompt() 后
+      // React 批处理完好，createTab 正确返回 tabId。
+      const tabId = tabActions.createTab("terminal", { label: name, pinned: true });
+      if (tabId) {
+        createSession(name, tabId);
+      }
     }
     setIsCreating(false);
     setNewName("");
@@ -274,7 +278,7 @@ function TerminalSidebar() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // session.id === tab.id——handleCreate 用 createTab 返回值作 session ID 保证
+      // session.id === tab.id——confirmCreate 用 createTab 返回值创建 session
       tabActions?.focusTab(sessionId);
     },
     [setActiveSession, tabActions],
