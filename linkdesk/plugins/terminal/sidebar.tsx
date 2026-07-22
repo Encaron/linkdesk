@@ -91,7 +91,7 @@ function SessionListItem({
     <div
       className={`session-item${isActive ? " active" : ""}`}
       style={{ "--session-color": session.color } as React.CSSProperties}
-      onClick={onSelect}
+      onMouseDown={onSelect}
     >
       {/* 连接状态点——C4b Bug 3：从 SerialContext 派生，非 session.connected */}
       <span className={`session-dot${connected ? " on" : ""}`} />
@@ -105,6 +105,7 @@ function SessionListItem({
           onChange={(e) => setEditValue(e.target.value)}
           onBlur={commitRename}
           onKeyDown={handleKeyDown}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => e.stopPropagation()}
         />
       ) : (
@@ -119,6 +120,7 @@ function SessionListItem({
             <button
               className="session-action-btn"
               title={t("改名")}
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 setEditing(true);
@@ -129,6 +131,7 @@ function SessionListItem({
             <button
               className="session-action-btn"
               title={t("关闭会话")}
+              onMouseDown={(e) => e.stopPropagation()}
               onClick={(e) => {
                 e.stopPropagation();
                 onDelete();
