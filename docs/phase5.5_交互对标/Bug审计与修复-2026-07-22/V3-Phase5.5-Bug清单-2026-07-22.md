@@ -23,6 +23,28 @@
 
 ---
 
+## ✅ 已修复（2026-07-22/23 实操发现——session 交互层）
+
+> Encaron 实测发现。共性：**侧栏列表条目垂直紧邻的物理特性**触发了 DOM 事件规范的边缘行为；**两个独立计数器 + 布局持久化**导致 ID 碰撞。
+
+| # | Bug | 根因 | 修法 | commit |
+|:--|------|------|------|:--|
+| **B80** | 侧栏快速连续点击不同会话→偶尔无反应（标签栏不跟随切换） | mousedown A + mouseup B → click target = 共同祖先。条目级 `onClick` 不存在于祖先 | `onClick` → `onMouseDown`——对标 VS Code Explorer。按钮/input 加 `onMouseDown` stopPropagation | `161136b` |
+| **B81** | `flushSync` 弯路——误诊为 React state 竞态 | AI 在 React 软件层猜：批处理/竞态/微任务——忽略了 DOM 事件层的物理限制 | 清掉 `flushSync`。React 官方警告 "in event handlers may cause bugs" | `b3b4ed4` |
+| **B82** | 删侧栏会话不关标签页 / 关 A 删 B（仅 `npx tauri dev`，`npx vite` 正常） | 布局持久化恢复旧 terminal-N→`_terminalCounter` 归零→新建同名 ID 碰撞→`closeTab(session.id)` 找到旧 tab | ① `closeTabBySourceId`——用 `sourceId` 找 tab；② 布局恢复后同步 `_terminalCounter` | `4be450a` |
+| **B83** | `npx tauri dev` 删会话无确认弹窗 | Tauri v2 WebView 禁用 `window.confirm()`→静默返回 `false` | Phase 6 改自定义弹窗组件。当前 `confirm` 返回 `false`→不执行删除（安全侧） | — |
+
+**B80-B82 暴露的系统性问题：** ① `sourceId` 是 session↔tab 唯一可靠链接——`tab.id === session.id` 的假设在持久化场景下不成立；② 模块级计数器在重启后归零，但持久化数据保留旧 ID——任何类似模式（database connection ID、file handle ID）都会踩同样的坑。
+
+## 相关记忆更新
+
+- [VS Code Source Reference](vscode-source-reference.md) — 新增"刻骨铭心"节：刁钻 bug 先 curl VS Code 源码
+- [User Profile](user-profile.md) — 新增"硬件直觉"优势：物理思维对软件调试的降维打击
+- [V3 Pitfalls](v3-pitfalls.md) — B80-B83 已追加
+- [插件UI写法规约](插件UI写法规约.md) — §7：侧栏列表选中用 `onMouseDown`，对标 VS Code Explorer
+
+---
+
 ## 📋 复现结果汇总（2026-07-22 Encaron 实测）
 
 > 按 bug 清单逐条复现。**19 确认 + 3 部分确认（A2/B4/G23）+ 1 已修复（G9）+ 1 日志无法确认（G21）+ 7 条件不足 + 3 代码级无法测 + 12 未测。**

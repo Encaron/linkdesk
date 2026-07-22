@@ -265,4 +265,4 @@ export function recordUnmount(pluginId: string): MemoryDelta {
 
 - [LinkDesk-Phase6-设计.md](./LinkDesk-Phase6-设计.md) — 主设计文档
 - [Phase 5.5 ErrorBoundary 增强计划](../phase5.5_交互对标/V3-Phase5.5-ErrorBoundary增强计划.md) — 四层防线完整分析（含多 WebView 迁移规则）
-- [LinkDesk-Phase7-多WebView架构.md](../phase7_多WebView与编辑能力_暂定/LinkDesk-Phase7-多WebView架构.md) — Phase 7 的进程级隔离（ErrorBoundary 的下一层）
+- [LinkDesk-Phase7-多WebView架构.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-多WebView架构.md) — Phase 7 的进程级隔离（ErrorBoundary 的下一层）

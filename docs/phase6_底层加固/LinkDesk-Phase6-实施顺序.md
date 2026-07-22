@@ -345,6 +345,128 @@ tsc 零错误——事件类型定义正确
 
 ---
 
+## 第 3 批：6d — Rust 命令插件化（~150 行 Rust）
+
+> **目标：serialport crate 从核心 Cargo.toml 消失，serial.rs 从 src-tauri/src/ 消失。**
+> 插件可以带自己的 Rust 代码——每个插件的 Rust 依赖在自己的 Cargo.toml 里，不污染核心。
+> 详情见：[LinkDesk-Phase6-Rust命令插件化.md](./LinkDesk-Phase6-Rust命令插件化.md)
+
+### 步 14：建 terminal 插件 Rust crate 骨架
+
+**文件：**
+- `plugins/terminal/rust/Cargo.toml`（新建）
+- `plugins/terminal/rust/src/lib.rs`（新建）
+
+**做什么：**
+1. 建 crate 目录结构
+2. `Cargo.toml` 依赖 `tauri`、`serde`、`serialport`、`encoding_rs`
+3. `lib.rs` 写 `pub fn register(app: &mut tauri::App)` 函数签名
+4. 此时 `register()` 函数体留空——下一步填入
+
+**预计：** +30 行
+
+**验证：**
+```bash
+cd plugins/terminal/rust && cargo check
+# → 零错误（可能有 dead_code 警告——下一步消除）
+```
+
+### 步 15：serial.rs 搬迁到插件 crate
+
+**文件：**
+- `src-tauri/src/serial.rs` → 内容搬到 `plugins/terminal/rust/src/commands.rs`
+- 状态管理 → `plugins/terminal/rust/src/state.rs`
+- `plugins/terminal/rust/src/lib.rs` → 填 `register()` 函数体
+
+**做什么：**
+1. 复制 `serial.rs` 全部 392 行到 `commands.rs`
+2. 提取 `SerialInner` / `SerialState` / `create_state()` 到 `state.rs`（~50 行）
+3. `lib.rs` 声明模块 + 实现 `register()`
+4. 内部引用关系：`commands.rs` → `use crate::state::...`
+5. **不改任何逻辑**——函数签名、参数、返回值、内部实现全部保留
+6. 6b 的术语迁移（`open_port` → `open_source` 等）照常应用在 `commands.rs` 里
+
+**预计：** +392/−392 行（纯搬家，净增 ~20 行 glue code）
+
+**验证：**
+```bash
+cd plugins/terminal/rust && cargo check
+# → 零错误
+```
+
+**如果出问题：**
+- `SerialInner` 字段权限 → 改 `pub(crate)`
+- Tauri command 宏不解析 → 检查 Cargo.toml tauri features
+- 模块声明顺序 → `lib.rs` 先 `mod state;` 再 `mod commands;`
+
+### 步 16：更新主 Cargo.toml + lib.rs
+
+**文件：**
+- `src-tauri/Cargo.toml`
+- `src-tauri/src/lib.rs`
+
+**做什么——Cargo.toml：**
+1. 删 `serialport = "4"`
+2. 加 `[features]` section
+3. 加 `linkdesk-plugin-terminal = { path = "../../plugins/terminal/rust", optional = true }`
+
+**做什么——lib.rs：**
+1. 删 `mod serial;`
+2. 删 8 个串口命令条目
+3. 删 `.manage(serial::create_state())`
+4. 加 `.setup(|app| { ... })` 闭包
+5. 闭包内：`#[cfg(feature = "plugin-terminal")] linkdesk_plugin_terminal::register(app);`
+
+**预计：** +15/−15 行
+
+**验证：**
+```bash
+cd src-tauri && cargo check
+# → 零错误
+```
+
+**⚠️ 关键风险：**
+- 如果其他文件引用了 `crate::serial::*` → 需先更新这些引用
+- `invoke_handler` 从 14 条命令变成 6 条——确认没有遗漏
+
+### 步 17：全量验证
+
+```bash
+cd linkdesk/
+npx tsc --noEmit          # TS 零错误
+npx vitest run            # 测试全过
+
+cd src-tauri/
+cargo check               # Rust 零错误
+cargo build               # release build
+
+cd ../
+npx tauri dev             # 完整桌面应用
+```
+
+**手动验证：**
+```
+□ 终端打开串口 / 关闭 / F5 → 正常
+□ 切换 COM 口 / 波特率 → 正常
+□ HEX 模式 / 时间戳 → 正常
+□ 发送文本 → 正常
+□ 状态栏 TX/RX 计数 → 正常
+□ 分屏两个终端 → 各自独立
+□ 插件市场 → 正常
+□ 设置 → 终端设置项正常
+□ 命令面板终端命令 → 正常
+```
+
+**清理验证：**
+```bash
+grep "serialport" src-tauri/Cargo.toml    # → 零结果 ✅
+grep "mod serial" src-tauri/src/lib.rs    # → 零结果 ✅
+ls src-tauri/src/serial.rs                # → 不存在 ✅
+grep "serialport" plugins/terminal/rust/Cargo.toml  # → 存在 ✅
+```
+
+---
+
 ## 支线预案
 
 | 触发条件 | 支线内容 | 优先级 |
@@ -353,6 +475,8 @@ tsc 零错误——事件类型定义正确
 | 步 2 Rust 命令改名后 tauri dev 报错 | cargo check + 逐命令排查 | 🔥 |
 | 步 7-8 FileService/WorkspaceService 时序冲突 | 比照 Phase 5f 的"懒加载时序歧义"修复模式 | 🟡 |
 | 步 10 Chord 和现有 KeybindingRegistry 冲突 | 现有单键绑定不受影响——Chord 是独立状态机 | 🟡 |
+| 步 15 serial.rs 搬迁后 cargo check 报引用错误 | 先修 src-tauri/ 内其他模块对 `crate::serial` 的引用 | 🔥 |
+| 步 16 删 `mod serial;` 后 cargo check 报错 | 确认所有引用链已更新——grep 全量搜索 | 🔥 |
 | 任何步 tsc 报错 | 停下来先修类型错误——不改逻辑 | 🔥 |
 | 任何步 vitest 失败 | 停下来先修测试——可能是测试本身需要更新 | 🔥 |
 
@@ -376,10 +500,10 @@ tsc 零错误——事件类型定义正确
 ## 不做的事
 
 - ❌ 一口气修多个概念
-- ❌ 跳过 tsc/vitest 直接 commit
+- ❌ 跳过 tsc/vitest/cargo check 直接 commit
 - ❌ "顺手"加新功能（Phase 6 零新功能）
 - ❌ 重构范围超出基础设施加固所需
-- ❌ 在 6b 终端归一化完成前开始 7a 多 WebView
+- ❌ 在 6d Rust 命令插件化完成前开始 7a 多 WebView
 
 ---
 
@@ -389,4 +513,5 @@ tsc 零错误——事件类型定义正确
 - [LinkDesk-Phase6-插件运行时安全.md](./LinkDesk-Phase6-插件运行时安全.md) — 6a 细节
 - [LinkDesk-Phase6-终端归一化.md](./LinkDesk-Phase6-终端归一化.md) — 6b 细节
 - [LinkDesk-Phase6-基础设施缺口.md](./LinkDesk-Phase6-基础设施缺口.md) — 6c 细节
+- [LinkDesk-Phase6-Rust命令插件化.md](./LinkDesk-Phase6-Rust命令插件化.md) — 6d 细节（🆕）
 - [Phase 5.5 ErrorBoundary 增强计划](../phase5.5_交互对标/V3-Phase5.5-ErrorBoundary增强计划.md)

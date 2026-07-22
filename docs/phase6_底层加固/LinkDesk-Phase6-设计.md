@@ -28,7 +28,7 @@
 
 ---
 
-## 二、Phase 6 三层（6a/6b/6c）
+## 二、Phase 6 四层（6a/6b/6c/6d）
 
 ### 6a — 插件运行时安全（~150 行）
 
@@ -91,6 +91,25 @@
 
 **WorkspaceService 同理：** "当前打开的文件夹"是一个全局概念——文件树用它、欢迎页用它、标题栏用它、设置（Workspace scope）用它。Phase 5 的 `ConfigurationService.setWorkspaceRoot()` 接口签名已经留好了——Phase 6c 只是实现。
 
+### 6d — Rust 命令插件化（~150 行）
+
+> **让插件可以带自己的 Rust 代码。** `serialport` crate 从核心 Cargo.toml 消失，`serial.rs` 从 `src-tauri/src/` 消失。Phase 8 OLED 的 I2C 依赖不污染核心。
+
+| # | 任务 | 文件 | 行数 |
+|:--:|------|------|:--:|
+| 17 | 建 terminal 插件 Rust crate | `plugins/terminal/rust/Cargo.toml` + `lib.rs`（新建） | +30 |
+| 18 | serial.rs 搬迁 | `src-tauri/src/serial.rs` → `plugins/terminal/rust/src/commands.rs` + `state.rs` | +392/−392 |
+| 19 | 主 Cargo.toml + lib.rs 更新 | 删 `serialport` + 加 feature flag + `.setup()` 中 register | +15/−15 |
+| 20 | plugin.json 声明 `rustCommands` | `plugins/terminal/plugin.json` + JSON Schema | +5 |
+
+**详情见：** [LinkDesk-Phase6-Rust命令插件化.md](./LinkDesk-Phase6-Rust命令插件化.md)
+
+**关键原则——为什么 6b 清了 TS 还不够：** 6b 把 `SerialContext` 迁出 core/，术语从 `portOpen` 改成 `sourceOpen`——但 `serialport = "4"` 仍然在核心 Cargo.toml，`mod serial;` 仍然在 lib.rs，8 个串口命令仍然是全局 Tauri 命令。这不是"残留注释"——是架构级绑定。**对标 VS Code：** VS Code 核心不 import sqlite——`vscode-sqlite` 扩展编译自己的 C++。LinkDesk 必须做到：插件的 Rust 依赖只在该插件的 Cargo.toml 里。
+
+**机制：** Cargo optional dependency + feature flag——每个带 Rust 的插件是独立 crate，core 通过 `#[cfg(feature = "plugin-xxx")]` 可选引入。不是 dlopen 动态加载——编译期注册，和 `.tsx` 插件重启生效的模型一致。新增 Rust 插件 = 加 1 个 optional dep + 1 行 register——不会膨胀 core。
+
+**为什么放在 6d（6c 之后、7a 之前）：** 多 WebView 的 IPC 切面需要知道"哪些命令是核心的、哪些是插件的"。6d 拆干净后，IPC 切面只处理真正通用的命令（FileService list_dir / read_file 等）。终端命令（open_source / send_data / set_dtr）是终端插件的——IPC 代理路由按插件 namespace 区分。另外 Phase 8 OLED 需要 I2C——如果 6d 没做，I2C crate 会加进核心 Cargo.toml，模式扩散。
+
 ---
 
 ## 三、Phase 6 不做的东西
@@ -106,6 +125,7 @@
 | 多 WebView 隔离 | 重型架构改动，终端拆干净再做 → Phase 7 | P7 |
 | 工作台卡片 | 纯消费者 → Phase 8 | P8 |
 | OLED | 独立插件 → Phase 8 | P8 |
+| dlopen 动态 Rust 加载 | Phase 6d 只用 Cargo feature 编译期注册——动态加载需要 ABI 稳定 + 加载器 + 安全沙箱 → Phase 10+ | P10+ |
 
 ---
 
@@ -116,11 +136,12 @@ Phase 6（底层加固）               Phase 7（多 WebView + 消费者）
 ─────────────────────           ─────────────────────────────
 ErrorBoundary 全覆盖             多 WebView 架构
 Rust 心跳 + 内存监控             IPC 桥接层
-终端 = 干净的参考实现            文件树（第一个新消费者）
+终端 = 干净的参考实现（TS+Rust）  文件树（第一个新消费者）
 FileService / WorkspaceService   主题/语言引擎 + 浏览器
 DialogService / Chord            Profile + 激活
 keybindings / 模糊搜索           通知系统 + 壳完善
 CoreEvents 补漏                  终端会话持久化（消费 FileService）
+Rust 命令插件化机制              OLED I2C crate 在自己的 Cargo.toml（消费 6d 机制）
 ```
 
 **Phase 7 插件诞生时的底座：**
@@ -137,18 +158,22 @@ CoreEvents 补漏                  终端会话持久化（消费 FileService）
 ```
 15 步修 Bug（当前主线，不打断）
   → 5.5d ErrorBoundary 增强（3 文件，1 小时——安全气囊立刻装）
-    → 6b 终端归一化（拆干净验证产物）
-      → 6c 基础设施缺口（补完底座）
-        → 6a 剩余项（Rust 心跳 + 内存监控）
+    → 6b 终端归一化（拆干净验证产物——TS 侧）
+      → 6c 基础设施缺口（补完底座——TS + Rust）
+        → 6d Rust 命令插件化（serial.rs 搬迁、serialport 从核心 Cargo.toml 移除——Rust 侧）
+          → 7a 多 WebView 核心（IPC 切面画在干净的底座上）
 ```
 
 **为什么这个顺序：**
 1. 15 步修 bug 最高优先级——不打断
 2. ErrorBoundary 立刻做——太小了不值得排队，而且修 bug 期间可能触发崩溃
 3. 6b 终端归一化在 6c 之前——SerialContext 迁出后 core/ 更干净，再写 FileService/WorkspaceService 时边界更清晰
-4. 6a 的 Rust 心跳和内存监控放最后——Rust 需要 cargo check，不影响 TS 侧工作
+4. 6c 在 6d 之前——FileService 的 Rust 命令（list_dir / read_file / write_file）是核心命令，需要先加入 invoke_handler。等 6d 做完后，这些核心命令和插件命令的注册路径泾渭分明
+5. 6d 在 7a 之前——多 WebView IPC 切面需要区分"核心命令"和"插件命令"。6d 拆干净后，IPC 代理只处理核心命令的路由；插件命令按 plugin namespace 独立注册
+6. 6a 的 Rust 心跳和内存监控放最后——Rust 需要 cargo check，不影响 TS 侧工作
 
 **6b 和 6c 不并行：** 6c 的 FileService 可能和 6b 的 SerialContext 有引用关系——串行避免竞态。
+**6d 和 6c 可部分重叠：** 6c 的 Rust 命令（FileService）加入 invoke_handler 后，6d 搬迁 serial.rs 的改动和 6c 的 TS 侧（WorkspaceService / DialogService / Chord 等）互不干扰——但串行更安全（lib.rs 是共享文件）。
 
 ---
 

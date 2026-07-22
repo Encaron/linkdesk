@@ -57,4 +57,4 @@ Phase 7 全部完成：
 ## 相关文档
 
 - [LinkDesk-Phase8-设计.md](./LinkDesk-Phase8-设计.md) — 主设计文档
-- [LinkDesk-Phase7-设计.md](../phase7_多WebView与编辑能力_暂定/LinkDesk-Phase7-设计.md) — Phase 8 的前置条件
+- [LinkDesk-Phase7-设计.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-设计.md) — Phase 8 的前置条件

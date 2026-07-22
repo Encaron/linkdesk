@@ -1333,4 +1333,5 @@ Phase 5.5c 完成后必须验证：**终端不是特权插件。** 这些检查�
 - [Phase 5.5 通用交互范式](V3-Phase5.5-通用交互范式.md)
 - [Phase 5.5 已知问题](V3-Phase5.5-已知问题.md)
 - [Phase 5 设计](../phase5_应用基础设施/V3-Phase5-设计.md)
-- [Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md)
+- [Phase 6 设计](../phase6_底层加固/LinkDesk-Phase6-设计.md)
+- [Phase 7 设计](../phase7_多WebView与编辑能力/LinkDesk-Phase7-设计.md)

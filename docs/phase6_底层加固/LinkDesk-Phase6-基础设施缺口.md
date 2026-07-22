@@ -375,5 +375,5 @@ CoreEvents:
 
 - [LinkDesk-Phase6-设计.md](./LinkDesk-Phase6-设计.md) — 主设计文档
 - [LinkDesk-Phase6-终端归一化.md](./LinkDesk-Phase6-终端归一化.md) — 6b SerialContext 迁出 + 术语迁移
-- [LinkDesk-Phase7-文件树与编辑.md](../phase7_多WebView与编辑能力_暂定/LinkDesk-Phase7-文件树与编辑.md) — Phase 7 文件树消费 FileService/WorkspaceService
+- [LinkDesk-Phase7-文件树与编辑.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-文件树与编辑.md) — Phase 7 文件树消费 FileService/WorkspaceService
 - [Phase 5 设计](../phase5_应用基础设施/V3-Phase5-设计.md) — ConfigurationService（已有 `setWorkspaceRoot` 接口签名）

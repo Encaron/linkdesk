@@ -75,7 +75,11 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const handleToggleOpen = useCallback(async () => {
     // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
     if (!isOpen && activeSession) {
-      if (activeSession.port && activeSession.port !== state.portName) {
+      // A3+G23：会话还没选端口 → 自动填第一个可用端口
+      if (!activeSession.port && ports.length > 0) {
+        updateSession({ port: ports[0].name });
+        await setPortName(ports[0].name);
+      } else if (activeSession.port && activeSession.port !== state.portName) {
         await setPortName(activeSession.port);
       }
       if (activeSession.baudRate !== state.baudRate) {
@@ -83,11 +87,13 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       }
     }
     await toggleOpen();
-  }, [isOpen, activeSession, state.portName, state.baudRate, setPortName, setBaudRate, toggleOpen]);
+  }, [isOpen, activeSession, state.portName, state.baudRate, setPortName, setBaudRate, toggleOpen, ports, updateSession]);
 
   // ── 未连接 / 无会话状态 ──
 
-  const portName = activeSession?.port ?? "";
+  // B1：session 存的端口已不在可用端口列表中（拔掉了）→ 下拉框回退到空值
+  const portInList = !!(activeSession?.port && ports.some((p) => p.name === activeSession.port));
+  const portName = portInList ? activeSession!.port : "";
   const baudRate = activeSession?.baudRate ?? "115200";
 
   return (
