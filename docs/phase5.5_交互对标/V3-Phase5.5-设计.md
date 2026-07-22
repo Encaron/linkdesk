@@ -1,0 +1,1336 @@
+# Phase 5.5 实施计划——Phase 5 验收修复 + 三栏交互对标 VS Code + 终端侧栏重设计
+
+> 2026-07-21。2026-07-21 修订：5 个 Agent 并行审计（[验收报告](../phase5_应用基础设施/V3-Phase5-最终验收报告.md)）发现 4 个 Blocking + 9 个 Quick Wins——必须修在 5.5 功能之前。
+
+> ⚠️ **双 AI 并行协作声明——此文档正在被两个 AI 同时修改。**
+>
+> - **AI-A（文档设计者）：** 正在重写 §三（5.5c 终端侧栏布局）和 §八（对标 PlatformIO 终端布局）——将 Phase 5 规划阶段的草稿升级为正式执行规格。
+> - **AI-B（代码执行者）：** 正在从 5.5-0a 开始逐步修复代码，最终会到达 5.5c。
+>
+> **如果你是 AI-B：** 在到达 5.5c 之前，如果发现此文档在你两次读取之间内容变了——不要慌，不是你的幻觉，是 AI-A 在同步改。**等你执行完 5.5a+5.5b 之后，重新 Read 一次 §三 和 §八，拿到 AI-A 交付的最终版终端布局规格，再开始 5.5c。**
+>
+> **如果你是 AI-A：** §三（5.5c）和 §八（终端布局）是你负责的区域。其余章节（⓪ 5.5-0a/0b、一 5.5a、二 5.5b、四 实施顺序、五 Bug 修复、六 通用交互范式、七 不做清单、九 已知问题+验证清单、十 验收修复清单）属于 AI-B 的领地——不要改。
+
+> Phase 4 的三栏交互为终端定制——"图标=标签页，侧栏=设置表单"。
+> Phase 5 建了 Settings Editor，终端 12 个设置项可以迁走了。
+> Phase 5.5 做四件事（4 层子阶段）：**⓪ Phase 5 验收修复 14 项** → ① `viewRole` 声明替代硬编码（框架层）→ ② `<SidebarSection>` 通用组件（UI 基础设施）→ ③ 终端侧栏重设计（消费者）。
+
+> 🔥 **禁止写死插件 ID——反模式清单。** 以下代码模式在 Phase 5.5 及之后的所有 Phase 中**绝对不能出现**。Phase 5g 已经把 `TabType` 从 8 个联合类型改成 `string`、`BOTTOM_ICONS` 改成 `plugin.json` 的 `iconLocation` 声明——目的就是消灭这些模式。如果执行本 Phase 时想写以下任何一行，停下来——改用 plugin.json 声明。
+>
+> ```typescript
+> // ❌ 禁止——用 plugin.json viewRole 声明替代
+> if (pluginId === "terminal") { ... }
+> if (pluginId === "file-tree" || pluginId === "marketplace") { ... }
+> switch (pluginId) { case "terminal": ...; case "settings": ... }
+>
+> // ❌ 禁止——用 viewRegistry 查 plugin.json 声明替代
+> BOTTOM_ICONS = new Set(["settings"]);
+> PLUGIN_ICON_PATH = { terminal: "...", workspace: "..." };
+> if (isSidebarOnlyView(pluginId)) { ... }  // ← 5.5a 的目标就是删掉这个函数
+>
+> // ❌ 禁止——用 ConfigurationService + plugin.json 声明替代
+> if (pluginId === "terminal") { setConfigurationValue("terminal.timestampFormat", ...) }
+>
+> // ✅ 正确——通用路径，不认 pluginId
+> const role = getViewRole(pluginId);  // 从 plugin.json 读，不 switch
+> const iconLocation = getViewPlugin(pluginId)?.iconLocation ?? "top";  // plugin.json 声明
+> const settings = ConfigurationRegistry.getProperties(pluginId);  // 注册表驱动
+> ```
+>
+> **提交前 grep：** `git diff --staged | grep -E 'pluginId === "|case ".*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` → 必须返回空。
+
+>
+> **性质：** 最后一个改框架的 Phase 是 5h。5.5 是 5h→6 之间的桥梁——建好 viewRole 机制后，Phase 6 文件树/Git/数据库浏览器全走 `sidebarPrimary`，不需要再碰 `App.tsx`。
+>
+> **对标：** VS Code 三栏模型（Activity Bar → Side Bar → Editor）。LinkDesk 在 5.5 后和 VS Code 完全对齐——没有例外。
+
+---
+
+## 〇、交互逻辑设计——对标 VS Code 三栏模型
+
+> 设计哲学详见 [V3-Phase5.5-三栏交互对标.md](V3-Phase5.5-三栏交互对标.md) §二。
+> 此节是执行概要——建 Phase 5.5 前必须理解**为什么**。
+
+### 0.1 VS Code 模型：图标 ≠ 标签页
+
+```
+VS Code：Activity Bar → Side Bar → Editor
+─────────────────────────────────────────
+
+点 🐜 PlatformIO → 侧栏变 PlatformIO 面板，主区不动
+  侧栏里点 "Create New Project" → 主区才开新标签页
+
+点 📁 Explorer → 侧栏变文件树，主区不动
+  侧栏里双击文件 → 主区开编辑器标签页
+
+点 🧩 Extensions → 侧栏变扩展列表，主区不动
+  侧栏里点扩展 → 主区开扩展详情标签页
+
+点 ⚙ Manage → 直接开设置标签页（跳过侧栏）
+```
+
+**核心规则：图标控制侧栏。标签页是侧栏内的操作触发的，不是图标直接触发的。**
+
+### 0.2 LinkDesk Phase 4 的问题
+
+Phase 4 的三栏交互做了一个终端优先的假设——每个插件点图标都强制开标签页：
+
+```typescript
+// App.tsx —— Phase 4 的硬编码逻辑
+if (isSidebarOnlyView(pluginId)) {
+  setSidebarView(...);          // 只有 marketplace 走这条
+} else {
+  setSidebarView(pluginId);
+  openOrFocusTab(pluginId);     // ← 强制开标签页
+}
+
+// tabIdentity.ts —— 硬编码
+function isSidebarOnlyView(id: string): boolean {
+  return id === "marketplace";  // ← 只有一个例外
+}
+```
+
+**后果：** 文件树、数据库浏览器、Git 管理——任何 `sidebarPrimary` 风格的插件点图标都会蹦一个空标签页。而且 `isSidebarOnlyView` 每增加一个新插件就要加一行硬编码——V2.6 的种子。
+
+### 0.3 方案：`viewRole` 声明替代硬编码
+
+每种插件在 `plugin.json` 中声明自己的交互角色。核心不知道任何插件 ID——只读 `viewRole` 字段决定行为。
+
+| viewRole | 图标点击 | 侧栏 | 标签页 | 对标 VS Code |
+|------|------|------|------|------|
+| `sidebarPrimary`（默认） | 切换侧栏 | ✅ 主要位置 | 侧栏内操作触发 | Explorer / Extensions |
+| `tabOnly` | 直接开标签页 | 不清除侧栏 | ✅ 唯一位置 | Settings |
+
+**默认 `sidebarPrimary`**——对标 VS Code：所有插件默认走"图标=侧栏入口"模型。只有明确声明 `tabOnly` 的插件（如设置）才跳过侧栏。
+
+`tabPrimary`（开标签页+侧栏）已移除——零例外。
+
+### 0.4 终端也在其中
+
+终端不是特权插件。点 📟 = 侧栏出现会话列表。侧栏里点会话 = 主区开终端标签页。和文件树（点 📁 = 侧栏出现文件列表 → 双击文件 = 开编辑器）完全相同。
+
+```
+点 📟 → 侧栏显示会话列表
+  ├── 点 "COM3 PID调试" → 主区聚焦终端标签页
+  ├── 点 [+ 新建] → 命名 → 主区开新终端标签页
+  └── hover [✕] → 关闭会话 + 标签页
+```
+
+**这不是终端特殊设计——这是 `sidebarPrimary` 标准行为。** 文件树、卡片工作台、数据库浏览器、任何第三方视图——全走同一条路。
+
+### 0.5 交互逻辑归一化
+
+Phase 5.5 完成后，所有插件的图标点击行为由 `plugin.json` 的 `viewRole` 字段决定。新增插件永远不需要改 `App.tsx`。**没有硬编码，没有例外。**
+
+> 完整的对标分析、代码改动细节、验证清单见 [V3-Phase5.5-三栏交互对标.md](V3-Phase5.5-三栏交互对标.md)。
+
+---
+
+## 子阶段总览
+
+| 子阶段 | 内容 | 性质 | 净行数 | 依赖 |
+|:--:|------|:--:|:--:|------|
+| **5.5-0a** | **4 Blocking 修复——监听器泄漏/僵尸注册/快捷键误删/semver 重复** | **修复（第一个 commit）** | ~80 | 无 |
+| **5.5-0b** | **9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏** | **修复（第二个 commit）** | ~70 | 5.5-0a（Blocking 先修） |
+| **5.5a** | `viewRole` 声明系统 | 框架层 | ~20 | 5.5-0b（代码库干净） |
+| **5.5b** | `<SidebarSection>` 通用组件 | UI 基础设施 | ~60 | 5.5-0b |
+| **5.5c** | 终端侧栏重设计——2 个 SidebarSection（会话列表 + 收发设置），按会话隔离 | 消费者 | ~+40 | 5.5a + 5.5b |
+| ↳ **C1** | `useTerminalSessions` 会话数据层 | 地基 | ~60 | — |
+| ↳ **C2** | 侧栏重写——2 个 SidebarSection | UI | ~100 | C1 + 5.5b |
+| ↳ **C3** | toolbar → ControlPanel 命令条 | UI | ~80 | C1 |
+| ↳ **C4a** | 接线 ControlPanel + 删 ConfigurationService 读取 | 数据源切换 | ~-150 | C2+C3 |
+| ↳ **C4b** | 修 3 个数据管道 Bug（多实例/connected/F5） | 修复 | ~+30 | C4a |
+| ↳ **C5** | plugin.json 清理 + git rm 旧文件 + viewRole 切换 | 收尾 | ~-40 | C4b |
+
+**5.5-0a 必须在最前面——B1 SettingsView 监听器泄漏、B2 6 个 unregister 从不调用、B3 快捷键误删全插件——这三项会让 5.5a-5.5c 的新功能建在错误基础上。** 0b（Quick Wins + Prefs 删除）紧接其后——两个 commit 完成全部 14 项修复，然后从一个 A- 级代码库开始 5.5 核心工作。
+
+---
+
+## ⓪a 5.5-0a — 4 Blocking 修复（第一个 commit，~50 分钟）
+
+> 来源：[V3-Phase5-最终验收报告](../phase5_应用基础设施/V3-Phase5-最终验收报告.md) §四。
+> 不修会直接导致 5.5a-5.5c 的新功能出错。先修这 4 个——它们是阻断性的。
+
+### Blocking（4 项）
+
+| # | 问题 | 文件 | 修法 | 验收 |
+|:--:|------|------|------|------|
+| **B1** | SettingsView `onDidChangeConfiguration` 从不取消订阅——每次 mount 泄漏一个 listener | `SettingsView.tsx:50-54` | cleanup 中调 `unsubscribe()` | mount→unmount→remount×3 → `_changeListeners.size === 1` |
+| **B2** | 6 个 `unregister*` 定义但从不调用——卸载插件后命令面板/快捷键/右键菜单残留僵尸数据 | `lifecycle.ts` `initLifecycleConsumers()` | `onWillUninstall` 消费端追加 6 行 import+unregister | 安装含 commands+keybindings+menus 的插件 → 卸载 → 检查各注册表 pluginId 条目为零 |
+| **B3** | `unregisterPluginKeybindings(_pluginId)` 参数被忽略——`source === "plugin"`（字符串）会误删所有插件快捷键 | `KeybindingRegistry.ts:131-138` | `_pluginId`→`pluginId`，条件改为 `source === pluginId`（精确匹配） | 注册插件 A+B 快捷键 → 卸载 A → B 的快捷键仍在 |
+| **B4** | `versionGte` + `compareVersions` 两处实现相同算法——改一处漏一处 | `loader.ts:83-91` + `viewRegistry.ts:44-52` | 提取到 `semverUtils.ts`，`versionGte` 内部调 `compareVersions` | 现有行为不变 |
+
+### 5.5-0a 验证关卡
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 141+ 测试全过
+[ ] 人工：安装有 commands+keybindings+menus 的插件 → 卸载 → 检查命令面板/快捷键/右键菜单无残留
+[ ] 人工：SettingsView mount→unmount→remount×3 → _changeListeners.size === 1
+[ ] 人工：注册插件 A+B 快捷键 → 调 unregisterPluginKeybindings("A") → A 的被移除、B 的仍在
+[ ] git commit: "fix(5.5-0a): 4 Blocking——监听器泄漏/僵尸注册/快捷键误删/semver 归一化"
+```
+
+---
+
+## ⓪b 5.5-0b — 9 Quick Wins + Prefs 删除（第二个 commit，~105 分钟）
+
+> Blocking 修完后做——常量提取、LogChannel 迁移、cleanup 补漏、Prefs 删除。不阻塞但显著提升代码质量。
+
+### Quick Wins（9 项）
+
+| # | 问题 | 文件 | 修法 |
+|:--:|------|------|------|
+| **B5** | `"welcome"` 硬编码 10+ 处 | 多个文件 | 提取 `FALLBACK_PLUGIN_ID` 常量到 `viewRegistry.ts` |
+| **B6** | `loader.ts` 17 处 `console.log` 绕过 LogChannel | `loader.ts` | `createLogChannel("pluginLoader")`，全部替换为 `channel.appendLine()` |
+| **B7** | `"app"` 硬编码 10+ 处 | 多个文件 | 提取 `APP_PLUGIN_ID` 常量到 `PluginStateService.ts` |
+| **B8** | 3 个 CustomEvent 名称无常量——拼错一端就断裂 | `coreCommands.ts` 等 | 提取 `CUSTOM_EVENTS` 常量（Phase 6 再迁到 Emitter） |
+| **B9** | Toast TTL 裸数字 10 处 | `loader.ts`/`lifecycle.ts` | 提取 `TOAST_TTL_ERROR/SUCCESS/INFO` 常量到 `toastConstants.ts` |
+| **B10** | `getAppVersion()` 硬编码 `"3.0.0"`——注释说读 package.json 但实际不是 | `loader.ts:78-80` | 加 TODO Phase 6：`// TODO Phase 6：从 package.json 动态读取，发版前手动更新此行` |
+| **B11** | `useTabManager` 返回 16 个函数无分组注释 | `useTabManager.ts:909-928` | return 语句加分组注释（生命周期/布局/持久化/工具） |
+| **B12** | `mountGlobalKeybindings()` 返回值丢弃——HMR 重复注册 | `App.tsx:203` | startup useEffect cleanup 中调 `cleanupKeybindings()` |
+| **B13** | Plugin watcher `setInterval` 永不停止 | `App.tsx:200` | startup useEffect cleanup 中调 `stopPluginWatcher()` |
+
+### 追加：PreferenceService 正式删除（B14）
+
+| # | 问题 | 文件 | 修法 |
+|:--:|------|------|------|
+| **B14** | `Prefs.window` + `Prefs.pluginsInstallPath` 残余——PreferenceService 是僵尸对象 | `PreferenceService.ts` 等 | `window`→`StorageService`（key `"windowState"`）；`pluginsInstallPath`→`PluginStateService`；删 `PreferenceService.ts` |
+
+> 验收报告 D7 原标 Phase 6。提前到 5.5-0b——B5-B9 已经在做常量提取和清理，Prefs 迁移是同类"打扫战场"工作。
+
+### 5.5-0b 验证关卡
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 141+ 测试全过（常量提取不改变行为）
+[ ] git grep "PreferenceService" 源文件目录返回空
+[ ] git grep '"welcome"' src/ 返回 0（仅 FALLBACK_PLUGIN_ID 常量定义处一次）
+[ ] git grep '"app"' src/core/ src/pluginLoader/ 返回 0（仅 APP_PLUGIN_ID 常量定义处一次）
+[ ] git commit: "fix(5.5-0b): 9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏"
+```
+
+---
+
+---
+
+## 一、5.5a — viewRole 声明系统（≡ VS Code 三栏交互逻辑重写）
+
+> 此节是 §〇 "交互逻辑设计" 的代码落地。
+> VS Code 模型：**图标 = 侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。**
+> Phase 4 的 `isSidebarOnlyView` + `openOrFocusTab` 强制绑定"点图标=开标签页"——反了 VS Code 模型。
+> 5.5a 用 `plugin.json` 的 `viewRole` 字段声明替代硬编码——从此 App.tsx 不再 switch on pluginId。
+
+### 目标
+
+替掉 `isSidebarOnlyView` 硬编码函数（`tabIdentity.ts:212-214`），改为 `plugin.json` 的 `viewRole` 字段声明。**这是三栏交互逻辑从"终端优先"切换到 "VS Code 模型"的一行改动——默认值从 `tabOnly` 改为 `sidebarPrimary`。**
+
+### viewRole 定义
+
+| 值 | 图标点击行为 | 侧栏 | 标签页 | 适用插件 |
+|---|------------|------|--------|---------|
+| `sidebarPrimary`（默认） | Toggle 侧栏——不直接创建标签页 | 显示该插件的侧栏内容 | 由侧栏内操作触发创建（如点会话、双击文件） | 插件市场、卡片工作台、Phase 6 文件树/Git |
+| `tabOnly` | 直接打开/聚焦标签页 | 不清除已有侧栏（`keepSidebarOnFocus`） | 图标点击即创建 | 设置、终端（终端 5.5c 侧栏重设计后切到 sidebarPrimary） |
+
+`tabPrimary` 已移除——零例外。5.5a 顺手删 `types.ts:78` 的类型值。
+
+### 涉及文件
+
+| 文件 | 操作 | 改动 |
+|------|------|:--:|
+| `src/hooks/tabIdentity.ts` | **删** `isSidebarOnlyView` 函数 | -4 |
+| `src/App.tsx` | `handleIconClick` 改用 `getViewRole()` 替代 `isSidebarOnlyView` + import 清理 | ~15 |
+| `src/pluginLoader/viewRegistry.ts` | `getViewRole` 默认值 `"tabOnly"` → `"sidebarPrimary"` | 1 |
+| `src/core/types.ts` | 删 `"tabPrimary"` 类型值（零使用） | -1 |
+| `docs/插件开发/plugin.schema.json` | `viewRole` 字段已就绪 ✅（5g 已加） | 0 |
+| `plugins/{marketplace,settings,terminal,workspace}/plugin.json` | **不动**——4 个插件 5g 已全部声明 viewRole ✅（marketplace=sidebarPrimary / settings+terminal+workspace=tabOnly） | 0 |
+
+> 5.5a **不改变**现有任何插件的点击行为。Terminal 的 viewRole 切到 `sidebarPrimary` 留给 5.5c（终端侧栏重设计后才有意义）。
+
+### 验证
+
+```
+1. 点 🛒 → 侧栏 toggle（sidebarPrimary）——行为不变
+2. 点 ⚙ → 打开设置标签页（tabOnly）——行为不变
+3. 点 📟 → 打开终端标签页（tabOnly）——行为不变（等 5.5c 切换）
+4. 点 📊 → 打开工作台标签页（tabOnly）——行为不变
+5. 新写一个 mock 插件，plugin.json 不声明 viewRole → 默认 sidebarPrimary
+6. tsc 零错误 + 141 测试全过
+```
+
+### 代码变更
+
+```typescript
+// === 删：src/hooks/tabIdentity.ts:212-214 ===
+// 删除 isSidebarOnlyView 函数（3 行）及 App.tsx 的 import
+
+// === 改：src/App.tsx handleIconClick ===
+import { getViewRole } from "./pluginLoader/viewRegistry";
+
+const handleIconClick = useCallback(
+  (pluginId: string) => {
+    const role = getViewRole(pluginId); // 默认 "sidebarPrimary"
+    if (role === "sidebarPrimary") {
+      // Toggle 侧栏——对标 VS Code Activity Bar
+      setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+      // 标签页由侧栏内操作触发（点会话/双击文件），不在这里创建
+    } else {
+      // tabOnly：直接开标签页——对标 VS Code 设置
+      setSidebarView(pluginId);
+      openOrFocusTab(pluginId, { pinned: true });
+    }
+  },
+  [openOrFocusTab]
+);
+
+// === 改：src/pluginLoader/viewRegistry.ts:108 ===
+export function getViewRole(pluginId: string): "sidebarPrimary" | "tabPrimary" | "tabOnly" {
+-  return registry.get(pluginId)?.manifest.viewRole ?? "tabOnly";
++  return registry.get(pluginId)?.manifest.viewRole ?? "sidebarPrimary";
+}
+
+// === 改：src/core/types.ts:78 ===
+-  viewRole?: "sidebarPrimary" | "tabPrimary" | "tabOnly";
++  viewRole?: "sidebarPrimary" | "tabOnly";
+```
+
+---
+
+## 二、5.5b — `<SidebarSection>` 通用组件（≡ VS Code 侧栏折叠面板）
+
+> 对标 VS Code Explorer 侧栏的 section header——"工作区文件夹" / "大纲" / "时间线"。
+> 5.5a 解决了"图标怎么点"，5.5b 解决"侧栏里怎么组织内容"——通用可折叠区块，终端先用，Phase 6 文件树/Git 全复用。
+
+### 目标
+
+建一个 ~60 行的通用可折叠侧栏区块组件。终端先用，Phase 6 文件树/Git/数据库浏览器全复用。
+
+### API
+
+```typescript
+// src/components/shared/SidebarSection.tsx
+interface SidebarSectionProps {
+  title: string;               // 区块标题（如"控制面板"、"会话列表"、"设置"）
+  collapsible?: boolean;       // 是否可折叠，默认 true
+  defaultOpen?: boolean;       // 默认展开/合上，默认 true
+  badge?: string | number;     // 右侧标记（如 "(3)"）
+  actions?: ReactNode;         // 右侧操作按钮（如 [✎] [+ 新建]）
+  children: ReactNode;         // 区块内容
+}
+```
+
+### 对标 VS Code
+
+```
+VS Code Explorer 侧栏:
+  ▼ 工作区文件夹 (2)     ← SidebarSection title="工作区文件夹" badge="(2)" defaultOpen=true
+    ├── src/
+    └── tests/
+  ▶ 大纲                 ← SidebarSection title="大纲" defaultOpen=false
+  ▶ 时间线               ← SidebarSection title="时间线" defaultOpen=false
+
+LinkDesk 终端侧栏:
+  ▼ 终端会话 (3)  [+ 新建] ← SidebarSection title="终端会话" badge="(3)" actions={<新建按钮>}
+    ├── COM3 PID调试
+    └── COM5 CAN监控
+  ▶ 控制面板       [编辑]  ← SidebarSection title="控制面板" defaultOpen=false actions={<编辑>}
+  ▶ 设置                   ← SidebarSection title="设置" defaultOpen=false
+```
+
+### 涉及文件
+
+| 文件 | 操作 | 行数 |
+|------|------|:--:|
+| `src/components/shared/SidebarSection.tsx` | **新建**——可折叠逻辑 + 三角箭头 CSS 旋转 | ~40 |
+| `src/components/shared/SidebarSection.css` | **新建**——header 高度/颜色/hover 效果/三角过渡动画 | ~25 |
+
+### CSS 关键常量（对标 VS Code）
+
+```css
+.sidebar-section-header {
+  height: 22px;              /* VS Code: 22px section header */
+  padding: 0 8px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  font-size: 11px;           /* VS Code: 11px */
+  font-weight: 600;          /* VS Code: 600 */
+  text-transform: uppercase; /* VS Code: uppercase */
+  color: var(--sidebar-section-header-fg);
+}
+
+.sidebar-section-header:hover {
+  color: var(--sidebar-section-header-hover-fg);
+}
+
+.sidebar-section-arrow {
+  transition: transform 0.1s ease;  /* 三角旋转动画 */
+}
+.sidebar-section-arrow.collapsed {
+  transform: rotate(-90deg);        /* ▶ → ▼ */
+}
+```
+
+### 验证
+
+```
+1. 独立测试：3 个 SidebarSection 组合——一个默认展开、一个默认合上、一个带 badge "(5)"
+2. 点击 header → 折叠/展开 → 三角箭头旋转动画
+3. 折叠后 children 不渲染（或 display:none）
+4. actions slot 渲染正常（按钮可点击，事件不冒泡到折叠）
+5. 纯 UI 组件——不 import 任何 core 模块
+```
+
+---
+
+## 三、5.5c — 终端侧栏重设计（≡ 三栏模型第一个完整消费者）
+
+> 5.5a 建了机制（viewRole），5.5b 建了组件（SidebarSection），5.5c 是第一个把两样东西用起来的消费者。
+> 终端从 `tabOnly` → `sidebarPrimary`：点 📟 = 侧栏出会话列表，侧栏内点会话 = 主区开终端标签页。
+> 和 Phase 6 文件树完全相同——**这不是终端特殊行为，是 `sidebarPrimary` 标准行为。**
+
+> 2026-07-21 重写——AI-A 交付执行规格。旧草稿（"工具栏迁入侧栏 + 5 个 Section"）废弃。
+> 核心洞察：**不同 COM 口设备需要不同的收发参数。** COM3 是 AT 模块（回显开），COM4 是 GPS 模块（回显关）。
+> 因此 12 个设置项不是全局配置——是**每个会话的属性**。侧栏的"资源"是会话，侧栏只做会话管理 + 当前会话的收发设置。
+>
+> **三项已确认的设计决策（用户 2026-07-21）：**
+> 1. 控制面板（COM/波特率/协议/连接）→ **主区顶部**——每标签页自包含，对标 VS Code 终端面板的 shell 选择器
+> 2. 快捷发送 → **按会话隔离**——CAN 会话和 AT 会话各有一组
+> 3. 发送栏 → **主区底部**（不改——Monaco 是内容创作，和 CM6 同在标签页内）
+
+### 3.1 对标模型
+
+```
+VS Code Explorer                    LinkDesk 终端
+─────────────────────              ─────────────────────
+📁 Explorer 侧栏                     📟 终端侧栏
+  ├─ 文件列表 (CRUD)                  ├─ 会话列表 (CRUD)
+  ├─ 双击文件 → 开编辑器               ├─ 点会话 → 切换终端标签页
+  └─ F2 改名 → 标签页标题同步           └─ F2 改名 → 标签页标题同步
+
+主区编辑器标签页                       主区终端标签页
+  ├─ 编辑器专属工具栏                    ├─ 控制面板 (COM/波特率/协议/连接)
+  ├─ 文件内容 (Monaco)                  ├─ CM6 接收区
+  └─ 编辑器专属面板                      ├─ 快捷发送药丸 (按会话)
+                                      └─ Monaco 发送栏
+```
+
+### 3.2 侧栏——2 个 SidebarSection
+
+```
+┌────────────────────────────┐
+│                            │
+│ ▼ 终端会话 (3)       [+ 新建] │  ← SidebarSection，defaultOpen=true
+│                            │     badge=会话数，actions=[+ 新建] 按钮
+│ ● COM3 PID调试      [✎][✕] │  ← 选中态（深色背景）。hover 时才显示 [✎][✕]
+│    115200 · 方括号           │  ← 副标题：波特率 + 协议（灰色小字）
+│                            │     点会话行 → 切换标签页 + 下方"收发设置"联动
+│   COM5 CAN监控       [✎][✕] │  ← 未选中态
+│    500000 · 方括号           │     ✎ → inline 编辑→回车确认→标签页标题同步
+│                            │     ✕ → 关闭会话+标签页（最后会话显示空状态）
+│   COM7 空闲                 │
+│    未配置                    │
+│                            │
+├────────────────────────────┤
+│                            │
+│ ▼ 收发设置                   │  ← SidebarSection，defaultOpen=true
+│                            │     内容完全随上方选中的会话切换
+│   时间戳  [HH:mm:ss:fff ▼] │  ← 12 项——当前选中会话的属性
+│   消息回显          [✓]     │     COM3 回显开、COM5 回显关——互不干扰
+│   行号显示          [✓]     │     每项 onChange → 直接改 session 对象
+│   系统消息独立显示    [✓]     │     立即生效（不需要点"应用"）
+│   换行符      [\r\n ▼]     │
+│   定时发送          [ ]     │
+│   间隔(ms)      [1000]     │  ← 仅 autoRepeat=true 时显示
+│   发送后清空         [ ]     │
+│   接收模式    [文本 ▼]      │
+│   接收编码  [UTF-8 ▼]      │
+│   发送模式    [文本 ▼]      │
+│   发送编码  [UTF-8 ▼]      │  ← sendMode=hex 时 disabled
+│                            │
+└────────────────────────────┘
+```
+
+**侧栏只做两件事：会话列表 + 收发设置。** 没有控制面板（在主区），没有快捷发送（在主区），没有收发统计（Phase 7 做）。对标 VS Code Explorer：上半是文件列表，下半如果有 `Outline`/`Timeline` 是树视图——这里下半是当前会话的属性编辑。
+
+**收发设置联动规则：**
+```
+侧栏选中 "COM3 PID调试" → 收发设置区显示 COM3 的 12 个值
+侧栏选中 "COM5 CAN监控" → 收发设置区立即切换为 COM5 的值
+没有选中任何会话 → 收发设置区不渲染（或显示灰色占位）
+```
+
+### 3.3 主区——每标签页自包含
+
+```
+┌──────────────────────────────────────────────┐
+│ [COM3 ▼] [115200 ▼] [方括号协议 ▼]            │ ← 控制面板（迁自 toolbar.tsx）
+│ [● 已连接] [断开] [⏸ 暂停] [清空] [导出] [🔍]  │ ← 操作按钮行
+├──────────────────────────────────────────────┤
+│                                              │
+│  CM6 接收区                                   │
+│  (flex: 1，占满剩余高度)                       │
+│                                              │
+├──────────────────────────────────────────────┤
+│ [AT] [AT+CWLAP] [AT+MQTT] [+ 添加]           │ ← 快捷发送（当前会话专属）
+├──────────────────────────────────────────────┤
+│ > Monaco 发送栏                     [清空] [发送]│ ← 发送栏（不变）
+└──────────────────────────────────────────────┘
+```
+
+**和旧设计的关键区别：** 控制面板留在主区。用户切到另一个标签页后想断连/改波特率——不需要点回 📟，直接在标签页内操作。对标 VS Code 终端面板的 shell 选择器。
+
+**未连接状态：**
+```
+│ [COM3 ▼] [115200 ▼] [方括号协议 ▼]            │
+│ [● 打开]                                      │ ← 只有打开按钮，其他按钮不显示
+├──────────────────────────────────────────────┤
+│                    ⋮                          │
+│  选择串口设备并打开连接以开始                    │ ← CM6 区显示引导文字（对标 VS Code welcome view）
+│                    ⋮                          │
+```
+
+**无可用串口状态：**
+```
+│ [无可用串口] [115200 ▼]                       │ ← 下拉框 disabled
+│ [● 打开] (disabled)                           │
+```
+
+### 3.4 会话数据结构（内存态——Phase 6 持久化）
+
+```typescript
+// plugins/terminal/useTerminalSessions.ts
+interface TerminalSession {
+  id: string;                    // = tabId，一一对应
+  name: string;                  // 用户可编辑，"新会话" = 默认
+  port: string;                  // COM 口名称，"" = 未选
+  baudRate: string;              // "115200"
+  protocol: string;              // 协议插件 ID，"bracket"
+  connected: boolean;
+
+  // ── 12 项收发设置 ← 每会话独立 ──
+  timestampFormat: string;       // "HH:mm:ss:fff" | "HH:mm:ss" | "无"
+  showEcho: boolean;
+  showLineNumbers: boolean;
+  separateSystemLog: boolean;
+  lineEnding: string;            // "\r\n" | "\n" | "\r"
+  autoRepeat: boolean;
+  repeatInterval: number;        // 1000
+  autoClear: boolean;
+  receiveMode: string;           // "text" | "hex"
+  receiveCoding: string;         // "UTF-8" | "GB2312" | "Shift-JIS" | "Latin-1"
+  sendMode: string;              // "text" | "hex"
+  sendCoding: string;            // "UTF-8" | "GB2312" | "Shift-JIS" | "Latin-1"
+
+  // ── 快捷发送 ← 按会话 ──
+  quickSends: Record<string, string>;  // { "AT": "AT\r\n", "AT+CWLAP": "AT+CWLAP\r\n" }
+}
+```
+
+**默认值来源**：`useTerminalSessions` 内部定义 `DEFAULT_SESSION` 常量（见 §3.8）。新建会话时 `createSession(name)` 展开默认值。**不从 `ConfigurationService` 读**（12 项不再是全局配置）。**不从 `plugin.json` 读**（`contributes.configuration` 已在 D9 中删除）。
+
+**Phase 6 持久化：** `useTerminalSessions` 增加 `loadSessions()` / `saveSessions()` 调用 `FileService`。5.5 不做——F5 刷新会话全部消失（预期行为）。
+
+### 3.5 交互流
+
+**新建会话：**
+```
+侧栏 [+ 新建] 按钮
+  → prompt 模态/内联输入："新会话名称？"，默认值 "新会话 N"（N 递增）
+  → 回车确认
+  → createSession(name, defaults) → 新 session 对象（id=tabId，所有设置=默认值）
+  → openTab(tabId, terminal) → 主区显示空白终端（未连接状态）
+  → 标签栏: [📟 新会话 N]
+  → 侧栏自动选中新会话 → 收发设置区显示默认值
+```
+
+**切换会话：**
+```
+侧栏点 "COM5 CAN监控"
+  → setActiveSession(sessionId)
+  → focusTab(tabId) → 主区切换终端标签页
+  → 控制面板显示该会话的 COM/波特率/协议状态
+  → CM6 显示该标签页的内容（keep-alive，不丢失）
+  → 快捷发送条切换为该会话的快捷发送
+  → 侧栏收发设置区刷新为该会话的 12 个值
+```
+
+**改名（F2 / hover ✎）：**
+```
+侧栏选中 "COM3 PID调试" → F2（或 hover → 点 ✎）
+  → 会话名变为内联 <input>，自动 focus + 选中全部文本
+  → 回车确认 / Esc 取消
+  → session.name = "PID调试"
+  → reduceUpdateTabLabel(tabId, "PID调试")
+  → 标签栏: [📟 PID调试]
+```
+
+**删除会话（hover ✕）：**
+```
+侧栏 hover "COM7 空闲" → 出现 [✕] → 点 ✕
+  → 确认弹窗："关闭会话「COM7 空闲」？"
+  → 确认：
+    → 如果 connected → 先断开串口
+    → closeTab(tabId)
+    → removeSession(sessionId)
+    → 如果是最后一个会话 → 侧栏显示空状态："暂无会话 [+ 新建]"
+    → 如果删除的是当前选中 → 自动选中相邻会话
+```
+
+**改变收发设置：**
+```
+侧栏"收发设置"区 → 改消息回显 Toggle → off
+  → session.showEcho = false
+  → 当前终端标签页立即生效（不点"应用"）
+  → 如果用户切到 COM5 再切回 COM3 → showEcho 仍是 false（值绑在 session 上）
+
+切换 Timeline：
+  用户操作 → session.xxx 变化 → CM6/发送行为立即生效
+  不需要"应用"/"确定"按钮——对标 VS Code 设置编辑器的即时生效
+```
+
+### 3.6 组件树
+
+```
+TerminalSidebar (重写，~100 行)
+├── SidebarSection "终端会话" (defaultOpen=true, badge=count, actions={<新建按钮>})
+│   ├── SessionListItem × N
+│   │   ├── 连接状态点 (● 绿色=已连接, ○ 灰色=未连接)
+│   │   ├── 会话名（可 F2 内联编辑）
+│   │   ├── 副标题（波特率 + 协议，灰色小字）
+│   │   └── HoverActions (✎ 改名 / ✕ 删除，仅 hover 时显示)
+│   └── EmptyState ("暂无会话，[+ 新建] 开始")
+│
+└── SidebarSection "收发设置" (defaultOpen=true)
+    └── SessionSettings (12 个 Toggle/Select/Input，读当前 session 的值)
+        └── 每个 onChange → 直接 mutate session + notify TerminalView 重渲染
+
+TerminalView/index.tsx (瘦身，~1000 行)
+├── ControlPanel (重构自 toolbar.tsx）
+│   ├── COM 口下拉框 + 波特率下拉框 + 协议下拉框
+│   ├── 连接/断开按钮（含连接状态点）
+│   ├── 暂停/清空/导出/搜索/筛选按钮
+│   └── SearchBar (条件渲染)
+├── CM6 接收区 (flex: 1，主要空间)
+│   ├── 未连接引导文字
+│   └── 暂停遮罩条
+├── QuickSendBar (读 session.quickSends)
+│   ├── 药丸按钮 × N
+│   ├── 添加/编辑内联表单
+│   └── 右键菜单（ContextMenu）
+└── SendBar
+    ├── Monaco 单行编辑
+    ├── 发送历史下拉
+    └── 清空/发送按钮
+
+useTerminalSessions.ts (新建，~60 行)
+├── sessions: TerminalSession[]
+├── activeSessionId: string
+├── createSession(name): TerminalSession
+├── removeSession(id)
+├── updateSession(id, patch)
+└── getSession(id): TerminalSession | undefined
+```
+
+### 3.7 涉及文件
+
+| 文件 | 操作 | 净变动 | 说明 |
+|------|------|:--:|------|
+| `plugins/terminal/sidebar.tsx` | **重写** | ~100 | 2 个 SidebarSection：会话列表 + 收发设置 |
+| `plugins/terminal/sidebar.css` | **重写** | ~40 | 旧表单样式全部替换 |
+| `plugins/terminal/index.tsx` | **瘦身** | -200 | 工具栏逻辑迁入 ControlPanel；快捷发送/发送栏保留但改为读 session |
+| `plugins/terminal/toolbar.tsx` | **重构** → `ControlPanel.tsx` | ~80 | COM/波特率/协议/连接操作，每标签页一份 |
+| `plugins/terminal/toolbar.css` | 改名 → `ControlPanel.css` | 0 | 样式不变 |
+| `plugins/terminal/useTerminalSessions.ts` | **新建** | ~60 | 会话 CRUD + 默认设置常量的 hook |
+| `plugins/terminal/plugin.json` | 改 | +1 | `viewRole: "sidebarPrimary"`（替代旧 `"tabOnly"`） |
+| `plugins/terminal/plugin.json` | 删 | -40 | **移除 `contributes.configuration` 12 项**（设置不再是全局——Settings Editor 不渲染终端设置） |
+| **净变动** | | **~ +40 行** | |
+
+### 3.8 和 Settings Editor / ConfigurationService 的关系
+
+**终端 12 项设置从 Settings Editor 移除。** 理由：
+
+1. 不同 COM 口设备需要不同的收发参数——不是全局配置
+2. 会话是内存对象，不属于 `ConfigurationService` 管辖（`ConfigurationService` 管的是跨会话的全局设置）
+3. 设置唯一入口是侧栏——和 VS Code Explorer 侧栏一致：文件属性在侧栏改，不在 Settings Editor 改
+
+**但 `contributes.configuration` 不保留在 `plugin.json` 中——方案 C（最干净）。** 默认值在 `useTerminalSessions` hook 内部写死：
+
+```typescript
+// useTerminalSessions.ts
+const DEFAULT_SESSION: Omit<TerminalSession, 'id' | 'name'> = {
+  port: "", baudRate: "115200", protocol: "bracket", connected: false,
+  timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
+  separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
+  repeatInterval: 1000, autoClear: false, receiveMode: "text",
+  receiveCoding: "UTF-8", sendMode: "text", sendCoding: "UTF-8",
+  quickSends: { "AT": "AT\\r\\n" },
+};
+```
+
+**为什么不保留在 plugin.json：** 保留 = Settings Editor 渲染出来 → 用户改 Settings Editor 的值 → index.tsx 读的是 `session.xxx` → 不生效 → 两个 source of truth 冲突。删掉 = Settings Editor 搜索"终端"零结果——避免"哪里改设置"的困惑。
+
+**`ConfigurationService` 中终端相关的 12 个 key 不再使用。** `index.tsx` 从 `useConfiguration("terminal.xxx")` 改为 `session.xxx`。`useConfiguration` hook 不再出现在终端代码中（除非终端有真正的全局设置，如"最大会话数"——Phase 6+）。
+
+### 3.9 状态归属总结
+
+| 状态 | 归属 | 读写方式 |
+|------|:--:|------|
+| 会话列表 | `useTerminalSessions` hook | CRUD |
+| 每个会话的 12 个设置 | `session.xxx` 字段 | 侧栏 Toggle/Select onChange → mutate |
+| 每个会话的快捷发送 | `session.quickSends` | 药丸 CRUD |
+| 每个会话的 COM/波特率/协议 | `session.port/baudRate/protocol` | 控制面板下拉框 |
+| 当前 COM 硬件连接 | `SerialContext`（全局，Rust 后端） | `toggleOpen()` |
+| 当前选中哪个会话 | `useTerminalSessions.activeSessionId` | 侧栏点会话 / 标签页切换 |
+| 当前活跃标签页 | 标签页系统 `activeTabId` | `focusTab()` |
+
+### 3.10 验证清单
+
+```
+[ ] 点 📟 → 侧栏显示会话列表（不是设置表单、不是控制面板）——如果无会话显示空状态
+[ ] [+ 新建] → 输入名称 → 标签栏出现新标签页 → 侧栏自动选中 → 收发设置区显示默认值
+[ ] 侧栏选中 "COM3 PID调试" → 收发设置区刷新为该会话的 12 个值
+[ ] 侧栏改消息回显 Toggle → off → 主区终端立即不显示回显
+[ ] 侧栏切到 "COM5 CAN监控" → 收发设置区切换 → COM5 的回显仍是 on（互不干扰）
+[ ] 侧栏 F2 → 内联编辑 → 回车 → 标签页标题同步更新
+[ ] 侧栏 hover 会话行 → [✎] [✕] 出现 → 点 ✕ → 确认 → 标签页关闭
+[ ] 删除最后一个会话 → 侧栏显示空状态 "暂无会话，[+ 新建] 开始"
+[ ] 主区顶部控制面板：选 COM3 → 选波特率 → 点 [● 打开] → CM6 接收区有数据
+[ ] 主区快捷发送：[AT] 药丸 → 点 → 发送 → CM6 回显
+[ ] 主区发送栏：输文字 → Enter → 发送 → CM6 回显
+[ ] 新建第二个会话 → COM5 → 不同的快捷发送列表 → 两个会话互不干扰
+[ ] F5 刷新 → 所有会话消失（5.5 内存态——预期行为）
+[ ] Settings Editor 搜索 "终端" → 零结果（终端设置从 Settings Editor 移除）
+[ ] git grep "useConfiguration.*terminal" -- plugins/terminal/ → 返回空
+[ ] git grep '"terminal"' src/core/ → 返回零
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 全部通过
+```
+
+### 3.10a 三栏交互模型验收（≡ Phase 5.5 核心交付物）
+
+> 5.5c C5 完成后跑——验证 VS Code 三栏模型对所有插件生效，不只是终端。
+> 此验收清单是 5.5a+5.5b+5.5c 三层的集成测试——机制 → 组件 → 消费者一并验证。
+
+```
+sidebarPrimary 标准行为——图标 = 侧栏入口：
+  [ ] 点 🛒 市场 → 侧栏 toggle，主区不动（行为不变——已有）
+  [ ] 点 📊 工作台 → 侧栏 toggle，主区不动（行为不变——已有）
+  [ ] 点 📟 终端 → 侧栏显示会话列表，主区不动（⚠️ 旧行为是开标签页，5.5c 后改为 toggle 侧栏）
+  [ ] 终端侧栏内点会话 → 主区开/聚焦终端标签页（侧栏内操作触发标签页——VS Code 模型）
+  [ ] 终端侧栏 [+ 新建] → 主区开新终端标签页（侧栏内操作触发——不是图标触发）
+
+sidebarPrimary 默认值：
+  [ ] 新装插件未声明 viewRole → 默认 sidebarPrimary → toggle 侧栏，不蹦标签页
+  [ ] mock 插件无 entry（只有 sidebar）→ 点图标 toggle 侧栏，标签栏无变化
+
+tabOnly 行为——直接开标签页：
+  [ ] 点 ⚙ 设置 → 直接开/聚焦设置标签页，不切侧栏
+
+去特权化——终端不是特殊插件：
+  [ ] git grep '"terminal"' src/core/ → 返回零（核心不知道终端存在）
+  [ ] git grep '"terminal"' src/App.tsx → 返回零
+  [ ] 卸载终端插件 → 图标栏终端图标消失 → 侧栏消失 → 已打开的终端标签页全部关闭 → 主区无残留
+  [ ] 卸载终端插件 → App.tsx 不报任何错误
+```
+
+> 这不是针对终端的测试——这是**任意插件的三栏交互验证模板。** Phase 6 文件树/Git/数据库浏览器完成后也跑同一套。
+
+### 3.11 必须消失的东西——死代码清单
+
+> 🔥 5.5c 的代码改动不是"加新功能"——是**替换旧代码**。以下每一项如果没删干净，就会留下死代码或者两个 source of truth 冲突。
+
+| # | 位置 | 必须删除 | 原因 |
+|:--:|------|------|------|
+| D1 | `index.tsx` | 12 行 `useConfiguration("terminal.xxx")` | 不再读全局配置——改读 `session.xxx`。留一行 → 读错数据源 |
+| D2 | `index.tsx` | `import { useConfiguration, useConfigurationValue } from ...` | import 不留死引用 |
+| D3 | `index.tsx` | `onDidChangeConfiguration` 的 useEffect（第 385-415 行） | 终端设置不再走 ConfigurationService，这个 listener 永远收不到 `terminal.*` 事件——死代码 |
+| D4 | `sidebar.tsx` | 12 行 `useConfiguration("terminal.xxx")` | 同上——改读 `useTerminalSessions().activeSession` |
+| D5 | `sidebar.tsx` | `import { useConfiguration } from ...` | import 不留死引用 |
+| D6 | `sidebar.tsx` | 4 个 `<div className="setting-group">` 块（显示/发送/编码）+ 全部 `<FormRow>` | 替换为 2 个 `<SidebarSection>` |
+| D7 | `toolbar.tsx` | **整个文件** | 内容迁入 `ControlPanel.tsx`。旧文件不保留、不注释——直接 `git rm` |
+| D8 | `toolbar.css` | **整个文件** | 改名为 `ControlPanel.css` |
+| D9 | `plugin.json` | `contributes.configuration` 区块（第 56-126 行，71 行） | 终端 12 项设置从 Settings Editor 移除。保留 = Settings Editor 渲染终端设置 → 用户改 Settings Editor → 不生效 → bug |
+| D10 | `index.tsx` | 第 28 行 `import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from ...` | 配置读写不经过 ConfigurationService |
+
+**提交前机械验证（不是建议——是关卡）：**
+
+```
+[ ] git grep "useConfiguration"  -- plugins/terminal/ → 返回空
+[ ] git grep "ConfigurationService" -- plugins/terminal/ → 返回空
+[ ] git grep "onDidChangeConfiguration" -- plugins/terminal/ → 返回空
+[ ] git grep "terminal\." -- plugins/terminal/*.tsx → 返回空（plugin.json 中的 viewRole 声明除外）
+[ ] git status | grep "deleted.*toolbar.tsx" → 有内容
+[ ] git status | grep "deleted.*toolbar.css" → 有内容
+[ ] npx tsc --noEmit → 零错误
+```
+
+### 3.12 单个字段唯一写入入口
+
+> 🔥 V2.6 的根本原因：一个字段有多个写入入口，改 A 不改 B，两边不一致。5.5c 每个字段**只有一个地方能写**。
+
+| 字段 | 唯一写入位置 | 读取位置 |
+|------|:--:|------|
+| `session.name` | sidebar.tsx 会话列表 (F2 / hover ✎) | TabBar 标签标题 |
+| `session.port` | ControlPanel.tsx COM 口下拉框 | CM6 数据管道、SerialContext |
+| `session.baudRate` | ControlPanel.tsx 波特率下拉框 | SerialContext |
+| `session.protocol` | ControlPanel.tsx 协议下拉框 | ProtocolRegistry |
+| `session.connected` | SerialContext 派生（不是独立 set） | sidebar.tsx 连接状态点 |
+| `session.timestampFormat` | sidebar.tsx "收发设置" Section | index.tsx CM6 appendLine |
+| `session.showEcho` | sidebar.tsx "收发设置" Section | index.tsx appendLine |
+| `session.showLineNumbers` | sidebar.tsx "收发设置" Section | index.tsx CM6 lineNumberCompartment |
+| `session.separateSystemLog` | sidebar.tsx "收发设置" Section | index.tsx appendLine |
+| `session.lineEnding` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.autoRepeat` | sidebar.tsx "收发设置" Section | index.tsx setInterval |
+| `session.repeatInterval` | sidebar.tsx "收发设置" Section | index.tsx setInterval |
+| `session.autoClear` | sidebar.tsx "收发设置" Section | index.tsx handleSend |
+| `session.receiveMode` | sidebar.tsx "收发设置" Section | index.tsx _receiveMode + toHexDisplay |
+| `session.receiveCoding` | sidebar.tsx "收发设置" Section | index.tsx TextDecoder |
+| `session.sendMode` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.sendCoding` | sidebar.tsx "收发设置" Section | useSendData 管道 |
+| `session.quickSends` | QuickSendBar (主区) | QuickSendBar (主区) |
+
+**规则：ControlPanel 只碰 port/baudRate/protocol 三项。** 任何其他设置（编码、时间戳、回显……）不放在 ControlPanel。如果 AI-B 觉得"编码下拉框放控制面板更方便"——**拒绝。** 设置的唯一入口在侧栏。控制面板 = 连接操作，侧栏 = 会话属性。
+
+### 3.13 视觉设计规范——Dark OLED + Glassmorphism + 颜色编码
+
+> 2026-07-22 用户确认。设计 DNA：Dark Mode OLED + Minimalism + Glassmorphism 点缀。
+> 来自 ui-ux-pro-max skill 推荐：底色 `#0F172A`，accent `#22C55E`（数据绿），字体 Inter，密度 8/10，动效 2/10。
+> 核心原则：**少用边框，多用颜色/透明度区分层级。少用实色块，多用半透明玻璃分层。**
+
+#### 3.13.1 颜色系统——和自定义强调色的关系
+
+> ⚠️ LinkDesk 有自定义强调色系统（memory `custom-accent-colors`）。用户可在设置中把 `--accent` 从默认蓝改成橙/绿/紫等任意色，所有 `var(--accent)` 自动跟随。
+> 终端 UI 使用两类颜色，互不干扰：
+> - **`var(--accent)`**——跟用户强调色走。发送提示符、focus 环、选中高亮。
+> - **`--session-color`**——CSS 变量，由终端代码在每个 session 的 DOM 上 setProperty。侧栏色条、药丸 tint、标签页图标色。和 `--accent` 是两条独立的级联链。
+
+| 变量 | 来源 | 用途 |
+|------|:--:|------|
+| `--accent` | 系统 CSS 变量（`index.css`），用户设置中可改 | 发送栏 `>` 提示符、focus ring、选中高亮——**装饰性的，跟用户偏好走** |
+| `--session-color` | 终端代码 `setProperty`，每个 session 自动分配 | 侧栏 session 项左侧 2px 竖条、控制栏 COM 口名颜色、快捷发送药丸、标签页图标 tint。**对标 `--card-accent`（同一条路——per-instance CSS 变量）** |
+| `--accent-hover` | 系统派生（`index.css`） | hover 变亮 |
+| **终端专属** | | |
+| `--terminal-ok` | 终端 CSS（`TerminalView.css`） | 连接状态点（已连接）——固定绿 `#22C55E`，语义色，不跟 `--accent` |
+| `--terminal-err` | 终端 CSS（`TerminalView.css`） | 断开闪烁——固定红 `#EF4444`，语义色 |
+| `--session-color` | 终端 JS `setProperty` | 每会话标识色，对标 `--card-accent` |
+
+**为什么不提升到系统级：** 终端连接状态绿和 Phase 6 Git staged 绿是不同的语义、不同的 DOM 树、不同的视觉上下文。现在只有一个消费者（终端），提到系统级 = 提前归一化。
+
+**`--session-color` 的工作方式（对标卡片调色盘）：**
+```ts
+// useTerminalSessions.ts —— 对标 memory custom-accent-colors §卡片调色盘
+const SESSION_COLORS = ['#22C55E', '#3B82F6', '#F59E0B', '#A855F7', '#06B6D4', '#EC4899'];
+let _colorIndex = 0;
+
+function createSession(name: string): TerminalSession {
+  const color = SESSION_COLORS[_colorIndex % SESSION_COLORS.length];
+  _colorIndex++;
+  // ...
+  return { ...session, color };
+}
+
+// sidebar.tsx / ControlPanel.tsx / TabBar
+<div style={{ '--session-color': session.color } as React.CSSProperties}>
+  {/* 内部所有 var(--session-color) 自动取当前 session 的颜色 */}
+</div>
+```
+
+**这个方案和卡片调色盘（`--card-accent`）是同一条路——都是"运行时设置 CSS 变量，级联到子元素"。** 终端 session 颜色不经过 `PreferenceService`，不存 `prefs.json`，纯内存。
+
+**自定义强调色如何影响终端——逐元素冲突分析：**
+
+| UI 元素 | 颜色来源 | 用户改 `--accent` 为橙色后 | 是否正确？ |
+|------|:--:|------|:--:|
+| 发送栏 `>` 提示符 | `var(--accent)` | 变橙色 | ✅ 这是用户想要的——装饰跟随偏好 |
+| Focus ring、选中高亮 | `var(--accent)` | 变橙色 | ✅ 对标 VS Code 光标/选中跟主题走 |
+| CM6 新数据脉冲 | `var(--accent)` | 变橙色 | ✅ 微装饰，不承载语义 |
+| 连接状态点 ● | **`var(--terminal-ok)`** | **不变，永远绿色** | ✅ 绿色=通，这是语义不是偏好 |
+| 侧栏 session 色条 | `var(--session-color)` | 不变 | ✅ session 标识色独立于 accent |
+| 快捷发送药丸 | `var(--session-color)` | 不变 | ✅ 同上 |
+| CM6 时间戳灰色 | `var(--cm-timestamp)` | 不变 | ✅ 已有独立变量 |
+| CM6 发送回显 | `var(--sent-echo)` | 不变 | ✅ memory 明确警告不要绑到 `--accent` |
+| CM6 系统消息 | `var(--system-log)` | 不变 | ✅ 已有独立变量 |
+
+**防呆规则——终端代码中 `var(--accent)` 只能出现在以下元素：**
+1. 发送栏 `>` 前缀
+2. Focus/选中状态
+3. 微装饰（如新数据脉冲 `box-shadow`）
+
+**绝对不能出现在以下元素（它们有独立的 CSS 变量）：**
+- ❌ 连接/断开状态指示 → 用 `var(--terminal-ok)` / `var(--terminal-err)`（终端 CSS 内定义）
+- ❌ session 标识 → 用 `var(--session-color)`（per-instance，对标 `--card-accent`）
+- ❌ 回显/时间戳/系统消息 → 用已有的 `--sent-echo` / `--cm-timestamp` / `--system-log`
+- ❌ 快捷发送药丸 → 用 `var(--session-color)`
+
+#### 3.13.2 区域分层（不用框，用线 + 透明度）
+
+```
+┌──────────────────────────────────────────────┐
+│ ● COM3 │ 115200 │ bracket │ ⏸ │ 🗑 │ 📥 │ 🔍 │ ← 控制栏（1行36px）
+│                                              │    bg-base，元素间用 1px 竖线分隔
+│                                              │    │ = border-subtle
+├──────────────────────────────────────────────┤  ← 1px 实线 (border-subtle)
+│                                              │
+│                                              │
+│     CM6 接收区                                │   bg-deep（最深）
+│     ┃ 左侧 3px 绿色竖条（新数据脉冲指示）       │   行号 muted，正文 foreground
+│                                              │   滚动条半透明 4px，hover 变亮
+│                                              │
+├──────────────────────────────────────────────┤  ← 1px 实线
+│ [AT] [AT+CWLAP] [AT+MQTT]          [+ 添加] │  ← 快捷发送，bg-base，无额外背景
+│                                              │   药丸 float 在分隔线上方
+├──────────────────────────────────────────────┤  ← 1px 虚线 (border-subtle, dashed)
+│ > AT\r\n                          [清空][→] │  ← 发送栏，bg-elevated
+└──────────────────────────────────────────────┘
+```
+
+**三条分割线的语义：**
+- 实线 1：控制 vs 内容（强分隔）
+- 实线 2：内容 vs 命令（中分隔）
+- 虚线：快捷发送是发送栏的延伸（弱分隔——它们是一组的）
+
+#### 3.13.3 控制栏——一行命令条
+
+```tsx
+// ControlPanel.tsx 渲染结构
+<div className="control-bar">                     // height: 36px; padding: 0 8px;
+  <StatusDot connected={session.connected} />     // ● 8px 圆，绿脉冲/灰静态
+  <select className="control-select">COM3</select>  // 无边框 select，颜色=session accent
+  <span className="control-sep">│</span>          // 1px 竖线，border-subtle
+  <select>115200</select>
+  <span className="control-sep">│</span>
+  <select>方括号协议</select>
+  <span className="control-spacer" />            // flex-grow: 1
+  <button className="control-icon-btn" title="暂停">⏸</button>
+  <button className="control-icon-btn" title="清空">🗑</button>
+  <button className="control-icon-btn" title="导出">📥</button>
+  <button className="control-icon-btn" title="搜索">🔍</button>
+</div>
+```
+
+`control-select` 样式：
+```css
+.control-select {
+  background: transparent;
+  border: none;
+  color: var(--session-color);  /* ← session 标识色，不是 --accent */
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 4px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+.control-select:hover { background: rgba(255,255,255,0.05); }
+```
+
+#### 3.13.4 快捷发送——浮动药丸云
+
+```css
+.quick-send-pill {
+  background: color-mix(in srgb, var(--session-color) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--session-color) 15%, transparent);
+  border-radius: 999px;
+  padding: 2px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--session-color);
+  transition: all 150ms ease;
+  cursor: pointer;
+}
+.quick-send-pill:hover {
+  background: color-mix(in srgb, var(--session-color) 15%, transparent);
+  border-color: color-mix(in srgb, var(--session-color) 30%, transparent);
+}
+.quick-send-pill:active {
+  transform: scale(0.95);
+}
+```
+
+`var(--session-color)` = 当前激活 session 的标识色。切换 session → 药丸颜色自动跟随。和 `var(--accent)`（用户强调色）无关。
+
+**交互：** hover → tooltip 显示完整内容。右键 → 编辑/删除。`+ 添加` 是虚线边框的药丸（区分于已有的实线药丸），点击 → 展开内联输入。
+
+#### 3.13.5 发送栏——终端提示符
+
+```
+> AT+CWLAP=1\r\n                          [清空] [↵]
+```
+
+```css
+.send-bar {
+  background: var(--bg-elevated);
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+}
+.send-prefix {
+  color: var(--accent);     /* 跟用户强调色走——橙/蓝/绿/任意 */
+  font-family: 'Sarasa Mono SC', monospace;
+  font-size: 14px;
+  font-weight: 600;
+  margin-right: 8px;
+  user-select: none;
+}
+.send-bar .monaco-wrapper {
+  flex: 1;
+  /* Monaco 编辑器无边框、无行号、无内边距 */
+}
+```
+
+#### 3.13.6 侧栏——玻璃卡 + 颜色编码会话
+
+```
+┌────────────────────────────┐
+│ ▼ 终端会话 (3)       [+ 新建] │  ← Section header（22px，uppercase 11px 600）
+│                            │
+│ ┃ ●  COM3 PID调试    [✎][✕] │  ← ┃ = 2px session 颜色条（绿）
+│    115200 · 方括号          │     ● = 连接状态（绿/灰）
+│                            │     hover 时 [✎][✕] 出现
+│ │ ○  COM5 CAN监控    [✎][✕] │  ← │ = 2px session 颜色条（蓝）
+│    500000 · 方括号          │     ○ = 未连接
+│                            │
+│ │ ○  COM7 空闲       [✎][✕] │  ← │ = 2px session 颜色条（琥珀）
+│    未配置                   │
+│                            │
+├────────────────────────────┤
+│ ▼ 收发设置 — COM3 PID调试   │  ← 标题含当前 session 名（给予上下文）
+│   时间戳  [HH:mm:ss:fff ▼] │
+│   消息回显          [✓]     │
+│   ...(共 12 项)...         │
+└────────────────────────────┘
+```
+
+**玻璃卡样式（两个 Section 的壳）：**
+```css
+.sidebar-section {
+  background: var(--bg-glass);        /* rgba(255,255,255,0.02) */
+  backdrop-filter: blur(4px);
+  border-radius: 6px;
+  margin: 4px 8px;
+  /* 没有 border——靠背景色差区分 Section */
+}
+```
+
+**会话列表项样式：**
+```css
+.session-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 8px 6px 6px;        /* 左侧留 2px 给色条 */
+  border-left: 2px solid transparent; /* 默认无颜色 */
+  cursor: pointer;
+  border-radius: 0 4px 4px 0;
+}
+.session-item:hover { background: rgba(255,255,255,0.03); }
+.session-item.active {
+  background: rgba(255,255,255,0.04);
+  border-left-color: var(--session-color);  /* ← session 标识色，非 --accent */
+}
+.session-item .item-name {
+  font-size: 13px;
+  color: var(--foreground);
+}
+.session-item.active .item-name {
+  color: #fff;                     /* 选中时更亮 */
+  font-weight: 600;
+}
+.session-item .item-subtitle {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.session-item .hover-actions {
+  opacity: 0;                      /* 默认隐藏 */
+  transition: opacity 100ms;
+}
+.session-item:hover .hover-actions { opacity: 1; }
+```
+
+#### 3.13.7 微交互（motion=2，只做最少的动效）
+
+| # | 交互 | 实现 | 时长 |
+|:--:|------|------|:--:|
+| M1 | 新数据到达 | CM6 左侧 3px 指示条 `box-shadow: 0 0 8px var(--accent-glow)` → 渐消 | 600ms fade |
+| M2 | 连接成功 | 状态点 `●` scale(0→1.2→1) + 颜色灰→绿 | 200ms spring |
+| M3 | 断开连接 | 状态点绿→灰 + 控制栏 COM 口名变红 300ms 后恢复 | 300ms |
+| M4 | 暂停 | CM6 上覆盖 `rgba(0,0,0,0.3)` + `backdrop-filter: blur(2px)` + 文字 "⏸ 已暂停 · N 条缓冲" | 200ms fade |
+| M5 | 药丸按下 | `transform: scale(0.95)` | 50ms |
+| M6 | 搜索展开 | SearchBar `max-height: 0→40px` | 200ms ease |
+| M7 | 会话切换 | 收发设置区 `opacity: 1→0.6→1`（快速过渡，不跳跃） | 150ms |
+| M8 | 清空接收区 | CM6 内容 fade out → 新内容正常 | 200ms |
+| M9 | 回到底部 | 按钮 `opacity: 0→1` float 在右下角 | 150ms |
+
+**所有动效遵守 `prefers-reduced-motion`——用户开了减少动效就全部 0ms。**
+
+#### 3.13.8 不做的
+
+| 不做 | 理由 |
+|------|------|
+| 接收区/发送区画大边框 | 用背景色差分层，更现代更干净 |
+| 彩色背景块 | 颜色只在 2px 竖条/accent 文字/药丸上——克制才有高级感 |
+| 弹跳动画、旋转、滑动 | motion=2——只做微交互，不做装饰动画 |
+| 纯 `#000000` 背景 | OLED 会 smear，用 `#0A0E17` 替代 |
+| 快捷发送占一整行 | 药丸 float，不浪费垂直空间 |
+| emoji 作为图标 | 用 SVG（codicon 已就绪） |
+
+---
+
+## 四、实施顺序——分步 + 风险映射
+
+> 🔥 此节是 AI-B 的执行路线图。每一步标注了**会遇到什么 bug、修法在哪里**。
+> 5.5-0a/0b 在 5.5c **之前**修复——做 5.5c 时这些 bug 已经不存在了，不会遇到。
+
+### 前置步骤：5.5-0a + 5.5-0b（5.5c 前已完成）
+
+```
+5.5-0a: 4 Blocking（第一个 commit，~50 分钟）
+  │   B1 监听器泄漏 / B2 僵尸注册 / B3 快捷键误删 / B4 semver 归一化
+  │
+5.5-0b: 9 Quick Wins + Prefs 删除（第二个 commit，~105 分钟）
+  │   B5-B13 常量提取+LogChannel+cleanup / B14 Prefs 迁移
+  │   修完后代码库从 B+ 升至 A-
+```
+
+**做 5.5c 时这些 bug 已经不存在。** AI-B 不会在 5.5c 遇到：
+- B1（SettingsView 监听器泄漏）→ 已在 0a 修
+- B2（unregister 从不调用）→ 已在 0a 修，卸载终端时命令/快捷键/菜单正常注销
+- B3（快捷键误删全插件）→ 已在 0a 修
+- B13（plugin watcher setInterval 永不停止）→ 已在 0b 修，HMR 行为正常
+- B14（PreferenceService 删除）→ 已在 0b 删，不会有残留 Prefs 键
+
+---
+
+### 5.5c 分步执行（5 步，顺序做）
+
+#### Step C1 — 新建 useTerminalSessions.ts（~60 行）
+
+**文件：** `plugins/terminal/useTerminalSessions.ts`（新建）
+
+**做什么：**
+```typescript
+// 模块级单例——不挂在 React 树上，对标 ConfigurationService 模式
+// 原因：侧栏 unmount 时状态不能丢（标签页还在主区显示）
+let _sessions: TerminalSession[] = [];
+let _activeSessionId: string | null = null;
+let _listeners: Set<() => void> = new Set();
+
+function notify() { _listeners.forEach(fn => fn()); }
+
+export function useTerminalSessions() {
+  const [, tick] = useState(0);
+  useEffect(() => {
+    const rerender = () => tick(n => n + 1);
+    _listeners.add(rerender);
+    return () => { _listeners.delete(rerender); };
+  }, []);
+
+  return {
+    sessions: _sessions,
+    activeSessionId: _activeSessionId,
+    activeSession: _sessions.find(s => s.id === _activeSessionId) ?? null,
+    createSession(name: string): TerminalSession {
+      const session: TerminalSession = {
+        id: `terminal-${counter++}`,  // tabId
+        name,
+        ...DEFAULT_SESSION,
+      };
+      _sessions = [..._sessions, session];
+      _activeSessionId = session.id;
+      notify();
+      return session;
+    },
+    removeSession(id: string) { ... notify(); },
+    updateSession(id: string, patch: Partial<TerminalSession>) { ... notify(); },
+    setActiveSession(id: string) { _activeSessionId = id; notify(); },
+    resetAll() { _sessions = []; _activeSessionId = null; notify(); },  // ← 供 lifecycle 的 onWillUninstall 调用
+  };
+}
+```
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| **Bug 2：状态挂载位置** | 如果 AI-B 用 React Context / useState 在 sidebar.tsx 内——侧栏切到别的插件时 unmount → 所有会话消失 → 标签页还在主区显示但读不到 session → 白屏 | 用**模块级单例**（如上）。数据不在 React 树上，对标 ConfigurationService。`resetAll()` 暴露给 lifecycle 调用 |
+| **Bug 5：快捷发送旧数据丢失** | 用户原有的 `terminal.quickSends` 在 ConfigurationService 中，迁移后第一个会话用的是默认 `{ "AT": "AT\r\n" }`，旧数据没了 | `createSession` 中尝试读旧值：`getConfigurationValue("terminal.quickSends")` ?? `DEFAULT_SESSION.quickSends`。一次性迁移，之后不读 |
+
+**这一步不需要遇到的（已在 0a/0b 修掉）：**
+- B14 Prefs 残留 —— 已删
+- B5 FALLBACK_PLUGIN_ID 常量 —— 已提取，不影响
+
+---
+
+#### Step C2 — 重写 sidebar.tsx（~100 行）
+
+**文件：** `plugins/terminal/sidebar.tsx`（重写），`plugins/terminal/sidebar.css`（重写）
+
+**做什么：** 删旧 4 个 setting-group → 换 2 个 `<SidebarSection>`（依赖 5.5b 就绪）。`SessionListItem` 组件内实现 hover [✎][✕] + F2 inline 编辑。
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| 5.5b 还没完成 → SidebarSection 组件不存在 | import 报错 | **先确保 5.5b 已交付再开始 C2。** 否则用 `<details>` 临时替代 |
+| 切换会话 → 收发设置不刷新 | 侧栏上半选了 COM5，下半还是 COM3 的设置 | `useTerminalSessions().activeSession` 是响应式的——hook 内部 listener 通知重渲染，自动联动 |
+
+---
+
+#### Step C3 — toolbar.tsx → ControlPanel.tsx（~80 行）
+
+**文件：** `plugins/terminal/toolbar.tsx` → `plugins/terminal/ControlPanel.tsx`（重构），`plugins/terminal/toolbar.css` → `plugins/terminal/ControlPanel.css`（改名）
+
+**做什么：** COM/波特率/协议下拉框 + 连接/断开/暂停/清空/导出/搜索/筛选按钮。状态从 `SerialContext` + `useTerminalSessions().activeSession` 读。
+
+**这一步会遇到：**
+
+| 风险 | 现象 | 修法 |
+|------|------|------|
+| ControlPanel 不知该碰哪些字段——可能把编码下拉框也加了 | 编码有两个写入入口（侧栏 + ControlPanel）→ 互盖 | **§3.12 硬规则：ControlPanel 只碰 port/baudRate/protocol 三项。** 检查：grep `session.` in ControlPanel.tsx → 只允许 port/baudRate/protocol |
+
+---
+
+#### Step C4a — 接线 ControlPanel + 删 ConfigurationService 读取（~ -150 行）
+
+**文件：** `plugins/terminal/index.tsx`（瘦身第一步——机械改动，不碰数据管道逻辑）
+
+**做什么：**
+1. import `TerminalToolbar` → `ControlPanel`（接上 C3 新建的组件）
+2. 清理不再需要的 imports：`useConfiguration`/`onDidChangeConfiguration`/`setConfigurationValue`（D2/D10）
+3. 删 12 个 `useConfiguration("terminal.xxx")` 调用（D1）
+4. 删 `onDidChangeConfiguration` 的 useEffect 整块（D3，第 385-414 行）
+5. 从 `useTerminalSessions().activeSession` 读设置值——不通过 ConfigurationService
+
+**风险：低**——改动是 grep→替换，不改数据管道核心逻辑（Tauri event handler/RingBuffer/rAF 消费）。
+
+---
+
+#### Step C4b — 修 3 个数据管道 Bug（~ +30 行）
+
+**文件：** `plugins/terminal/index.tsx`（瘦身第二步——修复数据管道）
+
+**Bug 1 修法：**
+```typescript
+// 每个 TerminalView 只消费自己 session 的数据
+const sessionRef = useRef(session);
+sessionRef.current = session;
+
+useTauriEvent<string>("serial-data", (payload) => {
+    const activeId = getActiveSessionId();  // 模块级 getter
+    if (sessionRef.current.id !== activeId) return;  // 不是我 → 跳过
+    // ... 原有逻辑
+});
+```
+
+**Bug 3 修法：** `session.connected` 从 `SerialContext.state.isOpen && SerialContext.state.portName === session.port` 派生——不在 session 对象上独立 set。
+
+**Bug 7 修法：** TerminalView 检测 `session === null` → 显示 "会话已失效" 占位（不白屏）。
+
+---
+
+#### Step C5 — 清理 plugin.json + git rm 旧文件（~ -40 行 + 2 文件删除）
+
+**文件：** `plugins/terminal/plugin.json`（删 contributes.configuration + 改 viewRole）、`toolbar.tsx`（git rm）、`toolbar.css`（git rm）
+
+**做什么：**
+1. `contributes.configuration` 整块删除（D9）→ Settings Editor 不再渲染终端设置
+2. `viewRole: "tabOnly"` → `"sidebarPrimary"`（三栏模型正式生效）
+3. `git rm toolbar.tsx`（D7）——内容已迁入 ControlPanel.tsx
+4. `git rm toolbar.css`（D8）——已改名为 ControlPanel.css
+
+**风险：** Bug 6——如果 D9 没删干净，Settings Editor 仍渲染终端设置 → 两个入口矛盾。
+
+---
+
+### 提交前机械验证（最后防线）
+
+```
+[ ] npx tsc --noEmit 零错误
+[ ] npx vitest run 全过
+[ ] git grep "useConfiguration"  -- plugins/terminal/ → 返回空
+[ ] git grep "ConfigurationService" -- plugins/terminal/ → 返回空
+[ ] git grep "onDidChangeConfiguration" -- plugins/terminal/ → 返回空
+[ ] git grep "terminal\." -- plugins/terminal/*.tsx → 返回空
+[ ] git status | grep "deleted.*toolbar.tsx"
+[ ] git status | grep "deleted.*toolbar.css"
+[ ] git grep "terminal.timestampFormat" -- plugins/terminal/plugin.json → 返回空（D9 已删）
+[ ] 人工：开 3 个终端标签页 → 各连不同 COM → 改各自设置 → 互不干扰
+[ ] 人工：F5 → 终端标签页消失或显示占位（不白屏不报错）
+[ ] 人工：Settings Editor 搜索 "终端" → 零结果
+```
+
+---
+
+### 5.5 完成后的终端去特权化验证
+
+Phase 5.5c 完成后必须验证：**终端不是特权插件。** 这些检查确保没有遗留"因为这是终端所以特殊处理"的代码路径——如果有，就是以后的 V2.6 种子。
+
+```
+[ ] 卸载终端插件 → 图标栏终端图标消失 → 侧栏消失 → 已打开的终端标签页全部关闭 → 主区无残留
+[ ] 卸载终端插件 → App.tsx 不报任何错误（没有 import 终端、没有 switch on "terminal"）
+[ ] 卸载终端插件 → 安装一个纯 sidebarPrimary 第三方插件 → 图标点击行为正确（切侧栏，不蹦标签页）
+[ ] 卸载终端插件 → Prefs/ConfigurationService 无 terminal.* 键残留
+[ ] git grep '"terminal"' src/core/ → 返回零（核心不知道终端存在）
+[ ] git grep '"terminal"' src/pluginLoader/ → 返回零（loader 不特殊处理终端）
+[ ] grep -r "terminal" src/App.tsx → 返回零
+[ ] grep -r "terminal" src/components/MainContent.tsx → 返回零
+```
+
+> 这不是针对终端的测试——这是**任意插件的去特权化测试模板。** Phase 6 文件树完成后也跑同一套：卸载文件树 → core/ 无 "file-tree" 残留。
+
+---
+
+## 五、Bug 修复（5.5-0 已覆盖 → 5.5c 嵌入）
+
+5.5-0（Phase 5 验收修复）已将全部 14 项 bug 作为第一个 commit 修掉。5.5c 期间只处理一个终端专属 bug：
+
+| Bug | 现象 | 根因 | 修法 |
+|-----|------|------|------|
+| **终端 COM 口多实例隔离** | 新建终端标签页继承上一个终端的 COM 口状态 | 终端侧栏全局共享 COM 口状态——未按会话隔离 | 5.5c 重写侧栏时，每个会话独立持有自己的 COM 状态 |
+
+---
+
+## 六、通用交互范式——5.5c 验证后产出
+
+> 详见 [通用交互范式](V3-Phase5.5-通用交互范式.md)——已提前写好。5.5c 完成后对照验证。
+
+核心规则：
+- **标签栏 = 导航**（切换当前在看什么）
+- **侧栏 = 管理**（增删改查插件自己的资源）
+- **主区 = 内容**（渲染/交互/编辑）
+- **改名走侧栏，不走标签栏**——对标 VS Code Explorer 侧栏改名
+
+---
+
+## 七、Phase 5.5 不做的东西
+
+| 不做 | 理由 |
+|------|------|
+| 侧栏拖拽宽度调整 | Phase 4 已实现可拖拽，不做额外改动 |
+| 侧栏位置切换（左/右） | Phase 7+ |
+| Activity Bar 位置切换（上/下/左/右） | Phase 7+——当前默认左侧，不做死 |
+| 侧栏多 tab 切换（Explorer/Search/Git 小标签） | 当前每个图标一个侧栏内容，够用 |
+| 终端会话持久化（.session.json） | 依赖 Phase 6 FileService——届时做 |
+| 终端会话模板 | Phase 7+ |
+| 远程会话（SSH/串口服务器） | Phase 8+ |
+| 终端 PTY | 串口是当前主要用例，PTY 可选插件不进核心 |
+| **设置表单 schema 驱动渲染** | 5.5c 的 12 个 Toggle/Select 手写在 sidebar.tsx 中。Phase 7 考虑用 contributes.configuration schema 驱动渲染会话级设置——目前手写够用 |
+
+---
+
+## 八、和 Phase 5g / 5h 的关系
+
+- **5g（类型系统去硬编码）** 已经加了 `viewRole` 到 `plugin.schema.json`。5.5a 是消费这个字段——App.tsx 真正读它。
+- **5h（运行时动态加载）** 保证了新装插件 `viewRole` 声明即时生效——不需要 F5 刷新。
+- 5.5a 是 5g+5h 的第一个真实消费者——证明"plugin.json 字段驱动行为"这条路走得通。
+
+---
+
+## 九、相关文档
+
+- [Phase 5.5 设计分析——三栏交互对标](V3-Phase5.5-三栏交互对标.md)
+- [Phase 5.5 终端侧栏进化](V3-Phase5.5-终端侧栏两次进化.md)
+- [Phase 5.5 通用交互范式](V3-Phase5.5-通用交互范式.md)
+- [Phase 5.5 已知问题](V3-Phase5.5-已知问题.md)
+- [Phase 5 设计](../phase5_应用基础设施/V3-Phase5-设计.md)
+- [Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md)

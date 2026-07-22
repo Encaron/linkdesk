@@ -1,0 +1,543 @@
+# Phase 5.5 — 三栏交互对标 VS Code + 终端布局重新设计
+
+> 2026-07-20。2026-07-21 修订：加入 Phase 5 验收报告 Blocking + Quick Wins 13 项作为 5.5 前置步骤。
+> Phase 4 的三栏交互逻辑是为终端定制的——"图标=标签页，侧栏=标签页的设置"。
+> Phase 5 建了 Settings Editor，终端侧栏的 12 个设置项可以迁走了。
+> Phase 5.5 做三件事：**⓪ Phase 5 验收修复（13 项 Bug）** → ① `viewRole` 声明替代 `isSidebarOnlyView` 硬编码 → ② 终端侧栏从"设置表单"改为"控制面板"（对标 PlatformIO）。
+> 对标 VS Code：图标 = 侧栏入口，标签页是结果不是起点。
+>
+> **⚠️ 前置声明：Phase 5h ✅ 已完成。Phase 5.5 的第一件事不是做新功能——是把 Phase 5 验收报告（[V3-Phase5-最终验收报告.md](../phase5_应用基础设施/V3-Phase5-最终验收报告.md)）发现的 4 个 Blocking + 9 个 Quick Wins 修掉。** 这些是落细节的漏洞，不是架构缺陷——但修之前不能建新功能。修完后 Phase 5 从 B+ 升至 A-，然后从一个干净的基础开始 5.5 核心工作。`tabPrimary` 已被移除——所有插件统一 `sidebarPrimary`。
+
+---
+
+## 子阶段拆分（5.5-0 → 5.5a → 5.5b → 5.5c）
+
+> 对标 Phase 6 的 6a→6b→6c：基础设施 → 通用组件 → 消费者。每层独立验证，不互相阻塞。
+
+| 子阶段 | 内容 | 性质 | 净行数 | 验证方式 |
+|:--:|------|:--:|:--:|------|
+| **5.5-0a** | **4 Blocking 修复——监听器泄漏/僵尸注册/快捷键误删/semver 重复** | 修复（第一个 commit） | ~80 | tsc+vitest + 逐项人工验收（见验收报告） |
+| **5.5-0b** | **9 Quick Wins + Prefs 删除——常量提取/LogChannel/cleanup 补漏** | 修复（第二个 commit） | ~70 | tsc+vitest + git grep Prefs=0 |
+| **5.5a** | `viewRole` 声明系统——替掉 `isSidebarOnlyView` 硬编码 | 框架层 | ~50 | 6 插件×3 状态手动验证（见 §九 验证清单） |
+| **5.5b** | `<SidebarSection>` 通用可折叠组件 | UI 基础设施 | ~60 | Storybook 式自测：3 Section 组合 |
+| **5.5c** | 终端侧栏重设计——第一个用 5.5a+5.5b 的消费者 | 消费者 | ~100 | 开 3 终端会话，标签标题跟随侧栏改名 |
+
+**实施顺序：** 5.5-0a → 5.5-0b → 5.5a → 5.5b → 5.5c
+
+**为什么拆：**
+- 5.5-0 必须在最前面——4 个 Blocking 中有 3 个会让新功能建立在错误基础上（B1 监听器泄漏在 SettingsView——5.5c 会重构侧栏但 5.5-0 期间 Settings Editor 仍在用；B2 6 个 unregister 从不调用——如果不先修，5.5 期间卸载插件会残留僵尸数据）
+- 5.5a 和 5.5b 可以并行（互不依赖）
+- 5.5b 是通用组件——不只终端用，Phase 6 文件树/Git/数据库浏览器全复用
+- 5.5c 是第一个验证三栏模型 + SidebarSection 的完整用例
+
+---
+
+---
+
+## 一、当前问题
+
+### 1.1 当前交互逻辑
+
+```typescript
+// App.tsx:211-221 — Phase 4 的三栏交互，两点硬伤
+const handleIconClick = (pluginId: string) => {
+  if (isSidebarOnlyView(pluginId)) {
+    setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+  } else {
+    setSidebarView(pluginId);
+    openOrFocusTab(pluginId);  // ← 强制所有"非纯侧栏"插件开标签页
+  }
+};
+
+// tabIdentity.ts:166-170 — 硬编码
+export function isSidebarOnlyView(pluginId: string): boolean {
+  return pluginId === "marketplace";  // ← 只有 market 享受这个待遇
+}
+```
+
+**两个分支，一个硬编码。** 所有不是 `marketplace` 的插件点图标都强制开标签页。
+
+### 1.2 文件树来了之后
+
+```
+点 📁（文件树）
+  → isSidebarOnlyView("file-tree") → false → 走 else 分支
+    → setSidebarView("file-tree") → 侧栏显示文件树 ✅
+    → openOrFocusTab("file-tree") → 主区多一个空标签页 ❌
+
+而且如果用户关掉这个空标签页 → 侧栏跟着消失 → 文件树用不了
+```
+
+根本问题：**不是交互逻辑错了，是它做了一个终端优先的假设——每个插件都有"主区内容"。** 文件树、市场、以及未来所有 PlatformIO 风格的插件——主区内容是侧栏内的操作触发的，不是图标触发的。
+
+**反直觉的事实：marketplace 是唯一正确的。** marketplace 点图标只切侧栏、不蹦标签页——这恰恰是 VS Code 模型。`isSidebarOnlyView` 这个硬编码函数把 marketplace 标记为"例外"，但真相相反：marketplace 不需要这个函数保护，它天然就是对的。是终端/设置/工作台被 V2 的"图标=标签页"逻辑强制绑定了标签页，才显得 marketplace 像个异类。**marketplace 是唯一不需要修的那个——其他三个才是雷。** 5.5 把默认值改为 `sidebarPrimary` 后，marketplace 一行声明都不需要加，它就是默认行为。
+
+### 1.3 不改的话——PlatformIO 类插件全部废掉
+
+```
+数据库浏览器插件 → 点图标开空标签页，侧栏显示表列表
+                  用户关掉空标签页 → 侧栏消失 → 用不了
+
+Git 管理插件 → 同上
+
+MCU 寄存器调试器 → 同上
+
+包管理器插件 → 同上
+
+每次有人写一个 sidebarPrimary 风格的插件，
+就得在 isSidebarOnlyView 里加一行 pluginId === "xxx"。
+这不是 V2.6 模式——这是同一行代码的 V2.6 模式。
+```
+
+---
+
+## 二、对标 VS Code
+
+### 2.1 VS Code 的三栏模型
+
+```
+VS Code：Activity Bar → Side Bar → Editor
+─────────────────────────────────────────
+
+图标控制侧栏。标签页是侧栏内的操作触发的，不是图标直接触发的。
+
+点 🐜 PlatformIO → 侧栏变 PlatformIO 面板，主区不动
+  侧栏里点 "Create New Project" → 主区才开新标签页
+  侧栏里点 "Pick a folder" → 弹出系统文件夹选择器
+
+点 📁 Explorer → 侧栏变文件树，主区不动
+  侧栏里双击文件 → 主区开编辑器标签页
+
+点 🧩 Extensions → 侧栏变扩展列表，主区不动
+  侧栏里点扩展 → 主区开扩展详情标签页
+
+点 ⚙ Manage (齿轮) → 不经过侧栏——直接开命令面板或设置编辑器
+```
+
+**核心：图标 = 侧栏入口，不是标签页入口。** VS Code 没有"点图标打开一个终端标签页"这种行为——终端是通过命令面板或快捷键打开的底部面板。
+
+### 2.2 LinkDesk 终端——和所有插件遵循同一规则
+
+VS Code 的终端是底部面板，不是标签页。LinkDesk 的终端是标签页——但**标签页的创建不走图标点击，走侧栏内的操作**。这和其他插件（文件树、市场）完全相同：
+
+```
+点 📟 → 侧栏显示会话列表
+  ├── 点 "COM3 PID调试" → 主区打开/聚焦该会话的终端标签页
+  ├── 点 "COM5 CAN监控" → 主区切换终端标签页
+  └── [+ 新建] → 命名 → 选 COM → 选协议 → 开新终端标签页
+```
+
+**这不是"正确偏离"——这是和三栏模型完全一致的交互。** 和 VS Code 的区别只在于终端渲染在标签页而不是底部面板——LinkDesk 没有底部面板概念，所有视图统一走标签页。创建标签页的流程和其他 `sidebarPrimary` 插件完全相同：侧栏选择 → 标签页出现。终端不是特权视图——它是一个普通插件，`viewRole: "sidebarPrimary"`，和文件树、卡片工作台、未来任何第三方视图平等。
+
+---
+
+## 三、方案：`viewRole` 声明
+
+### 3.1 三种视图角色
+
+| viewRole | 图标点击行为 | 侧栏 | 标签页 | 对标 VS Code |
+|------|------|------|------|------|
+| `sidebarPrimary` | 切换侧栏，主区不动 | ✅ 主要渲染位置 | ❌ 不创建（侧栏内操作可触发）| Explorer / Extensions / PlatformIO |
+| `tabOnly` | 打开/聚焦标签页 | ❌ 不切换侧栏 | ✅ 唯一渲染位置 | Settings Editor |
+
+> `tabPrimary`（打开/聚焦标签页 + 侧栏）不再需要——所有插件统一走 `sidebarPrimary`。终端也不例外：点图标出侧栏会话列表，侧栏内选会话才开标签页。
+
+**默认值：** `"sidebarPrimary"`——对标 VS Code：图标=侧栏入口，标签页是侧栏内操作触发的，不是图标直接触发的。**没有例外。** 终端、文件树、卡片工作台——全部 `sidebarPrimary`。
+
+### 3.2 plugin.json 声明
+
+```json
+// 文件树——sidebarPrimary
+{
+  "name": "文件树",
+  "icon": "folder",
+  "iconSource": "codicon",
+  "sidebar": "sidebar.tsx",
+  "viewRole": "sidebarPrimary"
+}
+
+// 终端——sidebarPrimary（和文件树相同的模式：侧栏出会话列表 → 点会话 → 开标签页）
+{
+  "name": "终端",
+  "entry": "index.tsx",
+  "sidebar": "sidebar.tsx",
+  "statusBar": [...],
+  "viewRole": "sidebarPrimary"
+}
+
+// 设置——tabOnly
+{
+  "name": "设置",
+  "entry": "index.tsx",
+  "viewRole": "tabOnly"
+}
+
+// 市场——sidebarPrimary（替代原来的 isSidebarOnlyView 硬编码）
+{
+  "name": "插件市场",
+  "sidebar": "sidebar.tsx",
+  "viewRole": "sidebarPrimary"
+}
+```
+
+### 3.3 代码改动
+
+**1. types.ts — 类型定义（+3 行）：**
+```typescript
+// PluginManifest 加字段
+viewRole?: 'sidebarPrimary' | 'tabOnly';  // 默认 sidebarPrimary
+```
+
+**2. viewRegistry.ts — 存 viewRole（+1 行）：**
+```typescript
+interface ViewPluginEntry {
+  // ... 现有字段
+  viewRole: 'sidebarPrimary' | 'tabOnly';
+}
+// register 时读 manifest.viewRole ?? 'sidebarPrimary'  // 默认 VS Code 模型
+```
+
+**3. App.tsx — handleIconClick（~20 行，替换旧逻辑）：**
+```typescript
+const handleIconClick = useCallback(
+  (pluginId: string) => {
+    const plugin = getViewPlugin(pluginId);
+    const role = plugin?.viewRole ?? 'sidebarPrimary'; // 默认 VS Code 模型
+
+    // sidebarPrimary（默认）：切换侧栏，标签页由侧栏内操作触发
+    // tabOnly（如设置）：直接开标签页，不经过侧栏
+    setSidebarView(prev => prev === pluginId ? null : pluginId);
+    if (role === 'tabOnly') {
+      openOrFocusTab(pluginId);
+    }
+  },
+  [openOrFocusTab]
+);
+```
+
+**4. tabIdentity.ts — 删硬编码（-5 行）：**
+```typescript
+// 删除这个函数
+export function isSidebarOnlyView(pluginId: string): boolean {
+  return pluginId === "marketplace";
+}
+
+// 新增（可选，其他地方可能用到）
+export function getViewRole(pluginId: string): 'sidebarPrimary' | 'tabOnly' {
+  return getViewPlugin(pluginId)?.viewRole ?? 'sidebarPrimary';
+}
+```
+
+**5. 现有插件 plugin.json 更新：**
+- `plugins/marketplace/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
+- `plugins/terminal/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
+- `plugins/settings/plugin.json` → 加 `"viewRole": "tabOnly"`
+- `plugins/workspace/plugin.json` → 加 `"viewRole": "sidebarPrimary"`
+
+---
+
+## 四、哪些地方用到 `isSidebarOnlyView`——需要迁移
+
+```
+src/hooks/tabIdentity.ts        → 删掉这个函数
+src/App.tsx                     → handleIconClick 用 viewRole switch 替代
+src/components/IconBar.tsx       → 不用改——IconBar 只调 handleIconClick，不直接判断
+src/components/SidePanel.tsx     → 不用改——SidePanel 读 sidebarView，不关心 viewRole
+src/components/MainContent.tsx   → 不用改——MainContent 只渲染标签页，不关心 viewRole
+```
+
+总计 ~50 行改动。App.tsx 一处逻辑替代，tabIdentity.ts 删一个函数，5 个 plugin.json 各加一行。
+
+---
+
+## 五、Phase 5.5 之后——每个 Phase 的交互都清楚了
+
+```
+Phase 5.5 完成后，后续 Phase 的插件交互逻辑全部由 plugin.json 声明决定：
+
+Phase 6 文件树：
+  viewRole: "sidebarPrimary" → 点 📁 → 侧栏切文件树
+    侧栏内双击 .md → CommandRegistry.execute → 主区开文档阅读器标签页
+
+Phase 6 终端（升级为 sidebarPrimary）：
+  viewRole: "sidebarPrimary" → 点 📟 → 侧栏出会话列表
+    侧栏内点会话/新建 → 主区开终端标签页
+
+Phase 7 卡片工作台：
+  viewRole: "sidebarPrimary" → 点 📊 → 侧栏出卡片列表
+    侧栏内点工作台 → 主区开卡片标签页
+
+Phase 8 OLED：
+  viewRole: "sidebarPrimary" → 点 🖥 → 侧栏出 OLED 视图列表
+    侧栏内选视图 → 主区开对应标签页
+
+未来任何第三方插件：
+  侧栏为主的（数据库浏览器、Git、包管理器）→ "sidebarPrimary"
+  纯标签页的（设置）→ "tabOnly"
+
+永远不需要再改 App.tsx 的交互逻辑。
+这就是 VS Code "图标 = 侧栏入口"模型的完整落地。
+**没有例外。**
+```
+
+---
+
+## 六、和 Phase 5 / Phase 6 的关系
+
+Phase 5.5 是 Phase 5 和 Phase 6 之间的桥梁。
+
+**依赖 Phase 5：**
+- Settings Editor 建好 → 终端 12 个设置项迁移到 `contributes.configuration`
+- ConfigurationService 建好 → `useConfiguration("terminal.timestampFormat")` 替代 TerminalPrefsContext
+
+**为 Phase 6 铺路：**
+- 文件树的 `plugin.json` 写 `"viewRole": "sidebarPrimary"` 时，Phase 5.5 已经建好了 `viewRole` 机制
+- 否则文件树只能被迫开空标签页，或者给 `isSidebarOnlyView` 再加一行硬编码
+
+**实施顺序：**
+```
+Phase 5 完工 → Phase 5.5（viewRole 机制 + 终端布局重设计）→ Phase 6（文件树 + 主题/语言插件化）
+```
+
+Phase 5.5 体量：viewRole ~50 行 + 终端布局重设计 ~100 行 = ~150 行净改动。对标 Phase 2.5（结构整理）和 Phase 3.5（品质打磨）——都是小 Phase，解决上一阶段遗留的架构捷径。
+
+---
+
+## 七、Phase 5.5 不做的东西
+
+| 不做 | 理由 |
+|------|------|
+| 侧栏拖拽宽度调整 | Phase 4 已实现可拖拽，不做额外改动 |
+| 侧栏位置切换（左/右） | VS Code 有这个设置，LinkDesk Phase 7+ |
+| Activity Bar 位置切换（上/下/左/右） | VS Code 有这个设置，LinkDesk Phase 7+——当前默认左侧，不做死 |
+| 侧栏多 tab 切换（Explorer/Search/Git 小标签） | VS Code 的 Side Bar 内部有 tab switcher。LinkDesk 当前每个图标一个侧栏内容，够用 |
+
+---
+
+## 八、终端插件布局重新设计——对标 VS Code 三栏模型
+
+> 2026-07-22 重写（AI-A）。旧草稿（"工具栏/快捷发送/发送栏全部迁入侧栏"对标 PlatformIO）废弃。
+> 新设计不再对标 PlatformIO 的控制面板模式——对标 **VS Code Explorer**（侧栏=资源列表+属性面板）。
+> 三项已确认的设计决策：
+> 1. 控制面板 → **主区顶部**（每标签页自包含）
+> 2. 快捷发送 → **按会话隔离**
+> 3. 发送栏 → **主区底部**（Monaco 是内容创作，和 CM6 同在标签页内）
+
+### 8.1 为什么对标 VS Code Explorer 而非 PlatformIO
+
+PlatformIO 的侧栏模式适合**纯操作型**插件（Build/Upload/Monitor 是离散命令，没有"要编辑的内容"）。
+终端不同——它有内容（CM6 接收区），有编辑（Monaco 发送栏），有属性（12 项收发设置）。
+这更接近文件树模式——文件树侧栏管文件列表 + 属性面板（Outline/Timeline），终端侧栏管会话列表 + 收发设置。
+
+```
+VS Code 文件树                        LinkDesk 终端
+─────────────────────              ─────────────────────
+侧栏                               侧栏
+  📁 文件列表 (CRUD)                   📟 会话列表 (CRUD)
+  📊 Outline 面板                     ⚙ 收发设置面板（当前选中会话的属性）
+  🕐 Timeline 面板
+主区                               主区
+  编辑器标签页 (Monaco)                终端标签页 (CM6+Monaco)
+  编辑器专属工具栏                     控制面板 (COM/波特率/协议/连接)
+```
+
+### 8.2 和旧设计的关键区别
+
+| | 旧设计（PlatformIO 对标） | 新设计（VS Code Explorer 对标） |
+|---|---|---|
+| 对标模型 | PlatformIO 控制面板 | VS Code Explorer（侧栏=资源管理+属性） |
+| 侧栏内容 | 5 个 Section（会话+控制面板+快捷发送+统计+设置） | **2 个 Section**（会话列表 + 收发设置） |
+| 控制面板位置 | 侧栏内 | **主区顶部**（每标签页一份） |
+| 快捷发送 | 侧栏内，全局 | **主区**，**按会话隔离** |
+| 12 项收发设置 | Settings Editor 全局管理 | **侧栏第二个 Section**，**按会话属性** |
+| Settings Editor | 终端设置在其中 | **终端设置从 Settings Editor 移除** |
+| 工具栏（toolbar.tsx） | 删除 | **重构为 ControlPanel.tsx**（留在主区） |
+
+### 8.3 新布局
+
+```
+侧栏 (2 个 Section)                 主区 (每标签页)
+┌──────────────────────┐  ┌──────────────────────────────────────────┐
+│                      │  │ [COM3 ▼] [115200 ▼] [方括号协议 ▼]       │ ← 控制面板
+│ ▼ 终端会话 (3)  [+新建]│  │ [● 已连接] [断开] ⏸ [清空] [导出] 🔍   │
+│                      │  ├──────────────────────────────────────────┤
+│ ● COM3 PID调试 [✎][✕] │  │                                          │
+│   115200 · 方括号      │  │  CM6 接收区                              │
+│                      │  │                                          │
+│   COM5 CAN监控  [✎][✕] │  │                                          │
+│   500000 · 方括号      │  │                                          │
+│                      │  ├──────────────────────────────────────────┤
+│   COM7 空闲    [✎][✕] │  │ [AT] [AT+CWLAP] [AT+MQTT] [+ 添加]     │ ← 按会话
+│   未配置               │  ├──────────────────────────────────────────┤
+│                      │  │ > Monaco 发送栏                [清空][发送]│
+├──────────────────────┤  └──────────────────────────────────────────┘
+│                      │
+│ ▼ 收发设置            │  ← 内容随上方选中的会话联动
+│   时间戳[HH:mm:ss:fff]│
+│   消息回显     [✓]     │
+│   行号显示     [✓]     │
+│   ...(共 12 项)...    │
+│                      │
+└──────────────────────┘
+```
+
+### 8.4 和 VS Code 的精确对照
+
+| VS Code 交互 | LinkDesk 终端交互 |
+|-------------|-----------------|
+| 点 📁 Explorer → 侧栏显示文件列表 | 点 📟 → 侧栏显示会话列表 |
+| 双击 .c 文件 → 主区开编辑器标签页 | 侧栏点会话 → 主区切到该终端标签页 |
+| Explorer 内 F2 改名 → 标签同步 | 侧栏 F2 / hover ✎ → inline 编辑 → 标签同步 |
+| Explorer 内 hover 文件 → 删除按钮 | 侧栏 hover 会话 → [✕] → 关标签页 |
+| Explorer 下半 Outline/Timeline 面板 | 侧栏下半"收发设置"——当前选中会话的属性 |
+| 编辑器标签页顶部——文件路径面包屑 | 主区顶部——COM口/波特率/协议（会话属性选择器） |
+| 编辑器内——编辑器专属操作 | 主区——暂停/清空/导出/搜索/筛选（终端专属操作） |
+| 设置面板 Ctrl+,——全局编辑器设置 | Settings Editor——全局应用设置（终端设置不出现在此） |
+
+### 8.5 终端插件文件变动（修订后）
+
+```
+plugins/terminal/
+  ├── index.tsx            ← 瘦身：删工具栏逻辑（迁入 ControlPanel.tsx）
+  │                           快捷发送/发送栏保留但改为读 session 对象
+  │                           12 个 useConfiguration 调用 → session.xxx
+  ├── ControlPanel.tsx      ← 重构自 toolbar.tsx（COM/波特率/协议/连接+操作按钮）
+  │                           每标签页一份，状态来自 session 对象
+  ├── ControlPanel.css      ← 改名自 toolbar.css
+  ├── toolbar.tsx           ← 删除（内容迁入 ControlPanel.tsx）
+  ├── toolbar.css           ← 删除（改名）
+  ├── sidebar.tsx           ← 重写：2 个 SidebarSection
+  │                           会话列表（CRUD + hover 操作按钮）+ 收发设置（12 项联动）
+  ├── sidebar.css           ← 重写
+  ├── useTerminalSessions.ts← 新建：会话 CRUD hook（内存态，Phase 6 持久化）
+  │                           createSession / removeSession / updateSession / getActiveSession
+  ├── statusBar.tsx         ← 不变（TX/RX 状态栏）
+  └── plugin.json           ← viewRole: "sidebarPrimary"
+                               contributes.configuration 12 项 → 仅作文档/默认值模板
+                               Settings Editor 不渲染终端设置
+```
+
+### 8.6 为什么 12 项设置要走侧栏而不是 Settings Editor
+
+终端 12 项收发设置（时间戳/回显/行号/编码/换行符/定时发送…）在两个方案之间：
+
+| 方案 | 设置归属 | 切换 COM3→COM5 | 新建会话默认值 |
+|------|:--:|------|------|
+| Settings Editor (旧) | 全局 ConfigurationService | 手动改 12 项 | 无 |
+| **侧栏按会话 (新)** | session.xxx 字段 | 自动切换为 COM5 的值 | 从默认值模板读取 |
+
+选择侧栏方案的理由：
+
+1. **不同 COM 口设备需要不同的参数。** COM3 是 AT 模块（回显开、换行符 `\r\n`），COM4 是 GPS 模块（回显关、换行符 `\n`）。全局设置意味着每次切换 COM 口都要手动调整 12 个 Toggle/Select——这是 V2 时代的痛点。
+2. **对标 VS Code：** 文件树的 Outline/Timeline 面板在侧栏，不在 Settings Editor。文件的 tab size / encoding 是文件属性，不是全局编辑器设置。同理，终端的"回显"/"换行符"是**这个会话**的属性，不是所有终端的全局设置。
+3. **设置入口单一：** 侧栏是唯一改终端设置的地方。不会出现"在侧栏改了一个值，Settings Editor 显示另一个值"的同步问题。
+
+### 8.7 终端设置从 Settings Editor 移除
+
+```
+Phase 5 Settings Editor 现状：
+  ├── 终端 (12 项) ← 🔥 删除
+  ├── 外观 (主题/字体…)
+  ├── 快捷键
+  └── …其他插件配置…
+
+Phase 5.5 之后 Settings Editor：
+  ├── 外观
+  ├── 快捷键
+  └── …其他插件配置…
+  （终端设置不再出现）
+```
+
+`plugin.json` 中 `contributes.configuration` 的 12 项保留——值作为**新建会话的默认值模板**。但 Settings Editor 不渲染——通过 `"scope": "session"` 标记或直接在渲染端判断跳过终端插件。
+
+用户改终端设置的唯一入口：
+```
+侧栏 → 点 📟 → 选会话 → 收发设置区 → 改 → 立即生效（无需保存/应用按钮）
+```
+
+对于真正跨所有终端的全局设置（如"最大会话数"、"字体大小"）——Phase 6+ 再加，届时走 Settings Editor。
+## 九、已知问题
+
+> 2026-07-21。已知 bug 统一登记到 [V3-Phase5.5-已知问题.md](V3-Phase5.5-已知问题.md)——5 个 bug，各标注归属 Phase 和修法。
+
+| # | Bug | 归属 | 何时修 |
+|:--:|------|:--:|------|
+| 1 | 预览标签页顶替回归 | useTabManager.ts | 5h ✅ |
+| 2 | 卸载后无法浏览插件详情 | loader | 5h ✅ |
+| 3 | 终端 COM 口多实例 | terminal/plugin | 5.5 |
+| 4 | JSON 按钮 alert | Settings Editor | 6a |
+| 5 | F5 调试 vs 刷新 | 远期 | Phase 6+ |
+| **6** | **PreferenceService 残余 2 字段** | **StorageService** | **5.5** |
+
+详见 [V3-Phase5.5-已知问题.md](V3-Phase5.5-已知问题.md)。
+
+### 5.5 新增任务：PreferenceService 正式删除
+
+Phase 5f 迁移了 11 个字段中的 9 个，剩余 2 个：
+- `Prefs.window`（窗口位置 left/top/width/height）→ 迁到 Tauri 窗口状态 API 或 StorageService
+- `Prefs.pluginsInstallPath` → 迁到 PluginStateService
+
+5.5 期间完成这 2 个字段的迁移，正式删除 `PreferenceService.ts`。一个僵尸对象的存在本身就是 V2.6 风险——新 AI 可能误以为它还在用，往里面加字段。
+
+### 5.5a 手动验证清单（tsc + vitest 不够）
+
+5.5a 改的是图标点击行为——所有插件交互的公共入口。`viewRole` 声明虽然只有 ~50 行，但覆盖不全的话，某些插件的图标点击行为会静默异常。以下 6 个插件的点击行为必须在 tauri dev 中手动验证，每个测 3 种状态：
+
+| # | 插件 | viewRole | 单击图标 | 双击图标 | 失焦后再单击 |
+|:--:|------|:--:|------|------|------|
+| 1 | 终端 | sidebarPrimary | 侧栏切到终端会话列表，主区不动 | 侧栏保持，主区不变（vs 旧行为会开标签页） | 侧栏 toggle off |
+| 2 | 工作台 | sidebarPrimary | 侧栏切到卡片列表，主区不动 | 同上 | 侧栏 toggle off |
+| 3 | 设置 | tabOnly | 侧栏不变，主区开/聚焦设置标签页 | 主区保持设置标签页 | 标签页保持聚焦 |
+| 4 | 市场 | sidebarPrimary | 侧栏切到市场列表，主区不动 | 同上 | 侧栏 toggle off |
+| 5 | 欢迎页 | —（无 iconBar 入口） | 欢迎页作为 fallback 标签页正常显示 | — | — |
+| 6 | 任意第三方 view 插件 | sidebarPrimary（默认） | 侧栏显示插件 sidebar，主区不动 | 同上 | 侧栏 toggle off |
+
+**如果 5h 的运行时动态加载已生效：** 还需要验证——通过市场安装一个新插件 → 不刷新 → 图标立即出现 → 单击行为由 viewRole 声明决定。
+
+---
+
+## 十、5.5-0 — Phase 5 验收修复清单（14 项，第一个 commit）
+
+> 来源：[V3-Phase5-最终验收报告.md](../phase5_应用基础设施/V3-Phase5-最终验收报告.md) §四。
+> 这些不是架构缺陷——是落细节的漏洞。Phase 5 架构骨架 A- 级，修掉这些后升至 A-。
+> **Phase 5.5 的第一个 commit 必须是这批修复——否则新功能建在错误基础上。**
+
+### 🔴 Blocking（4 项，~50 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B1** | SettingsView `onDidChangeConfiguration` 监听器泄漏——从不取消订阅，每次 mount 一个新 listener 永久留在 Set 中 | `SettingsView.tsx:50-54` | cleanup 中调 `unsubscribe()` |
+| **B2** | 6 个 `unregister*` 函数（commands/keybindings/menus/protocols/cards/channels）定义但从不调用——卸载插件后命令面板/快捷键/右键菜单/下拉框残留僵尸数据 | `lifecycle.ts` | `onWillUninstall` 消费端追加 6 行 import + unregister |
+| **B3** | `unregisterPluginKeybindings` 参数 `_pluginId` 被忽略——匹配条件是 `source === "plugin"`（字符串）而非 `source === pluginId`（参数值）——调用会误删所有插件的快捷键 | `KeybindingRegistry.ts:131-138` | `_pluginId` → `pluginId`，条件改为精确匹配 |
+| **B4** | `versionGte` 和 `compareVersions` 两处实现相同算法——纯逻辑重复 | `loader.ts:83-91` + `viewRegistry.ts:44-52` | 提取到 `semverUtils.ts` |
+
+**验收：** 每项逐条验证（见验收报告各条目"验收"行）。
+
+### 🟡 Quick Wins（9 项，~75 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B5** | `"welcome"` 字符串硬编码 10+ 处——改名要改所有引用 | 多个文件 | 提取 `FALLBACK_PLUGIN_ID` 常量 |
+| **B6** | `loader.ts` 17 处 `console.log` 绕过 LogChannel | `loader.ts` | 创建 `channel = createLogChannel("pluginLoader")`，全部替换 |
+| **B7** | `"app"` 插件 ID 硬编码 10+ 处——改名遗漏一处读不到数据 | 多个文件 | 提取 `APP_PLUGIN_ID` 常量 |
+| **B8** | 3 个 CustomEvent 名称字符串无常量——dispatch/listen 端各写一遍，拼错就断裂 | `coreCommands.ts` 等 | 提取 `CUSTOM_EVENTS` 常量（Phase 6 再迁到 Emitter） |
+| **B9** | Toast TTL 裸数字 10 处——`8000`/`5000`/`6000` 不表达意图 | `loader.ts`/`lifecycle.ts` | 提取 `TOAST_TTL_ERROR/SUCCESS/INFO` 常量 |
+| **B10** | `getAppVersion()` 返回硬编码 `"3.0.0"`——注释说"从 package.json 读取"但实际不是 | `loader.ts:78-80` | 加 TODO Phase 6 注释，保留硬编码但标注"发版前手动更新" |
+| **B11** | `useTabManager` 返回 16 个函数无分组注释 | `useTabManager.ts:909-928` | return 语句加分组注释（生命周期/布局/持久化/工具） |
+| **B12** | `mountGlobalKeybindings()` 返回值丢弃——HMR 可能重复注册 keydown listener | `App.tsx:203` | startup useEffect cleanup 中调 `cleanupKeybindings()` |
+| **B13** | Plugin watcher `setInterval` 永不停止——`stopPluginWatcher()` 已定义但从未被调用 | `App.tsx:200` | startup useEffect cleanup 中调 `stopPluginWatcher()` |
+
+### ➕ 追加：PreferenceService 正式删除（~30 分钟）
+
+| # | 问题 | 文件 | 一句话 |
+|:--:|------|------|------|
+| **B14** | `Prefs.window` + `Prefs.pluginsInstallPath` 仍留在 PreferenceService——僵尸对象 | `PreferenceService.ts` 等 | 迁到 StorageService/PluginStateService，删 PreferenceService.ts |
+
+> 验收报告 D7 将此标为 Phase 6。这里提前到 5.5——理由：① 5.5-0 已经在做 B5-B8 的常量提取和清理，Prefs 迁移是同一类"打扫战场"工作；② Phase 6 的 WorkspaceService + FileService + ConfigurationService 三件套已足够，PreferenceService 多存在一天就多一天"新 AI 往里面加字段"的风险。
+
+**验收（全部 14 项完成后）：**
+- [ ] `npx tsc --noEmit` 零错误
+- [ ] `npx vitest run` 141+ 测试全过（常量提取不改变行为）
+- [ ] 人工验收：安装有 commands+keybindings+menus 的插件 → 卸载 → 检查命令面板/快捷键/右键菜单无残留
+- [ ] 人工验收：SettingsView mount → unmount → remount × 3 → 检查 `_changeListeners.size === 1`
+- [ ] `git grep "PreferenceService"` 返回空（源文件目录）

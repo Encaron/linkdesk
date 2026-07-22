@@ -1,0 +1,15 @@
+{
+  "$schema": "../../docs/插件开发/plugin.schema.json",
+  "name": "插件市场",
+  "version": "1.0.0",
+  "icon": "extensions.svg",
+  "description": "浏览、安装和管理插件",
+  "author": "官方",
+  "core": true,
+  "entry": "index.tsx",
+  "sidebar": "sidebar.tsx",
+  "viewRole": "sidebarPrimary",
+  "tabBehavior": {
+    "singleton": true
+  }
+}

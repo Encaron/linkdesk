@@ -1,0 +1,377 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://embeddesk.app/schemas/plugin.schema.json",
+  "title": "插件元数据",
+  "description": "plugin.json 的 JSON Schema——插件加载器校验 + IDE 自动补全",
+  "type": "object",
+  "required": ["name", "version"],
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用——IDE 自动补全用"
+    },
+    "type": {
+      "type": "string",
+      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。",
+      "enum": ["view", "card", "theme", "language", "protocol", "resource", "datasource"]
+    },
+    "core": {
+      "type": "boolean",
+      "description": "是否核心控制面——不可卸载。默认 false",
+      "default": false
+    },
+    "name": {
+      "type": "string",
+      "description": "显示名称",
+      "minLength": 1
+    },
+    "version": {
+      "type": "string",
+      "description": "语义化版本",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "icon": {
+      "type": "string",
+      "description": "图标标识——codicon 名称或文件路径"
+    },
+    "iconSource": {
+      "type": "string",
+      "description": "图标来源",
+      "enum": ["codicon", "svg", "url"],
+      "default": "codicon"
+    },
+    "description": {
+      "type": "string",
+      "description": "一句话描述，插件详情页展示。支持多行"
+    },
+    "author": {
+      "type": "string",
+      "description": "作者名"
+    },
+    "entry": {
+      "type": "string",
+      "description": "入口文件路径，相对插件目录。view/card/protocol 必需"
+    },
+    "sidebar": {
+      "type": "string",
+      "description": "侧栏组件路径，仅 view 类型有效"
+    },
+    "tabBehavior": {
+      "type": "object",
+      "description": "标签页行为声明——核心读此字段决定去重/保底/关闭确认",
+      "properties": {
+        "isFallback": {
+          "type": "boolean",
+          "description": "场上无标签页时自动创建此标签页，且不可关闭",
+          "default": false
+        },
+        "singleton": {
+          "type": "boolean",
+          "description": "全局只允许一个实例",
+          "default": false
+        },
+        "confirmOnClose": {
+          "type": "string",
+          "description": "关闭前弹出确认对话框，值为提示文本"
+        }
+      },
+      "additionalProperties": false
+    },
+    "statusBar": {
+      "type": "array",
+      "description": "状态栏贡献条目",
+      "items": {
+        "type": "object",
+        "required": ["id"],
+        "properties": {
+          "id": { "type": "string", "description": "唯一标识" },
+          "icon": { "type": "string", "description": "codicon 名称或 SVG 路径" },
+          "label": { "type": "string", "description": "显示文字" },
+          "align": { "type": "string", "enum": ["left", "right"], "default": "left" },
+          "onClick": { "type": "string", "description": "点击行为——命令名" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "file": {
+      "type": "string",
+      "description": "单文件入口——theme/language 类型用。和 themes/languages 二选一"
+    },
+    "themes": {
+      "type": "array",
+      "description": "多主题数组，仅 theme 类型",
+      "items": {
+        "type": "object",
+        "required": ["id", "name", "file"],
+        "properties": {
+          "id": { "type": "string" },
+          "name": { "type": "string" },
+          "file": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "languages": {
+      "type": "array",
+      "description": "多语言数组，仅 language 类型",
+      "items": {
+        "type": "object",
+        "required": ["code", "name", "file"],
+        "properties": {
+          "code": { "type": "string" },
+          "name": { "type": "string" },
+          "file": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "mode": {
+      "type": "string",
+      "description": "协议模式。text = Phase 4 可用；binary = Phase 6+ WASM",
+      "enum": ["text", "binary"],
+      "default": "text"
+    },
+    "resources": {
+      "type": "array",
+      "description": "资源文件列表，仅 resource 类型",
+      "items": { "type": "string" }
+    },
+    "recommends": {
+      "type": "array",
+      "description": "推荐同时安装的插件",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "reason"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "suggests": {
+      "type": "array",
+      "description": "可选相关插件",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "reason"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "reason": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "requires": {
+      "type": "array",
+      "description": "硬依赖——未满足则安装按钮禁用",
+      "items": {
+        "type": "object",
+        "required": ["plugin", "version"],
+        "properties": {
+          "plugin": { "type": "string" },
+          "version": { "type": "string" }
+        },
+        "additionalProperties": false
+      }
+    },
+    "changelog": {
+      "type": "array",
+      "description": "更新日志",
+      "items": {
+        "type": "object",
+        "required": ["version", "date"],
+        "properties": {
+          "version": { "type": "string" },
+          "date": { "type": "string" },
+          "changes": {
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "screenshots": {
+      "type": "array",
+      "description": "截图 URL 数组（Phase 5+ 启用）",
+      "items": { "type": "string" }
+    },
+    "minAppVersion": {
+      "type": "string",
+      "description": "最低软件版本要求"
+    },
+    "docs": {
+      "type": "string",
+      "description": "附带文档路径（资源插件联动）"
+    },
+    "cardDocMap": {
+      "type": "object",
+      "description": "卡片 ID → 文档锚点映射",
+      "additionalProperties": { "type": "string" }
+    },
+    "i18n": {
+      "type": "object",
+      "description": "插件自带翻译文件",
+      "additionalProperties": { "type": "string" }
+    },
+    "cssVars": {
+      "type": "object",
+      "description": "插件自定义 CSS 变量",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "dark": { "type": "string" },
+          "light": { "type": "string" }
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "description": "权限声明（Phase 5+ 启用）",
+      "items": {
+        "type": "string",
+        "enum": ["serial", "filesystem", "network"]
+      }
+    },
+    "iconLocation": {
+      "type": "string",
+      "description": "Phase 5g：图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区）。",
+      "enum": ["top", "bottom"],
+      "default": "top"
+    },
+    "viewRole": {
+      "type": "string",
+      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏，标签页由侧栏内操作触发，默认），tabOnly=纯标签页视图（直接开标签页）。tabPrimary 已移除——所有插件统一 sidebarPrimary。",
+      "enum": ["sidebarPrimary", "tabOnly"],
+      "default": "sidebarPrimary"
+    },
+    "shellRendered": {
+      "type": "boolean",
+      "description": "Phase 5g：壳自己渲染此视图（不走插件路由）。仅欢迎页/插件详情页等壳级视图声明。",
+      "default": false
+    },
+    "keepSidebarOnFocus": {
+      "type": "boolean",
+      "description": "Phase 5g：聚焦此视图时保留当前侧栏不清除。如插件详情页浏览时侧栏不变。",
+      "default": false
+    },
+    "contributes": {
+      "type": "object",
+      "description": "贡献点声明——对标 VS Code package.json contributes。Phase 5 核心机制。",
+      "properties": {
+        "commands": {
+          "type": "array",
+          "description": "注册命令——CommandPalette/右键菜单/快捷键的消费源",
+          "items": {
+            "type": "object",
+            "required": ["id", "title"],
+            "properties": {
+              "id": { "type": "string", "description": "命令 ID——如 terminal.clear" },
+              "title": { "type": "string", "description": "显示名称" },
+              "category": { "type": "string", "description": "命令面板分组" },
+              "when": { "type": "string", "description": "context key when 条件——如 activeEditor == 'terminal'" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "menus": {
+          "type": "object",
+          "description": "菜单项声明——按 MenuId 分组",
+          "propertyNames": {
+            "enum": ["commandPalette", "tabContext", "editorContext", "extensionGear", "menuBar", "fileContext", "cardContext", "quickSendContext", "iconBar"]
+          },
+          "additionalProperties": {
+            "type": "array",
+            "items": {
+              "oneOf": [
+                { "type": "string", "description": "命令 ID（简写）" },
+                {
+                  "type": "object",
+                  "required": ["command"],
+                  "properties": {
+                    "command": { "type": "string", "description": "命令 ID" },
+                    "group": { "type": "string", "description": "分组——navigation/edit/terminal/delete/split" },
+                    "when": { "type": "string", "description": "context key when 条件" }
+                  },
+                  "additionalProperties": false
+                }
+              ]
+            }
+          }
+        },
+        "keybindings": {
+          "type": "array",
+          "description": "快捷键绑定",
+          "items": {
+            "type": "object",
+            "required": ["command", "key"],
+            "properties": {
+              "command": { "type": "string" },
+              "key": { "type": "string", "description": "如 ctrl+k" },
+              "when": { "type": "string", "description": "context key when 条件" }
+            },
+            "additionalProperties": false
+          }
+        },
+        "configuration": {
+          "type": "object",
+          "description": "设置项声明——Settings Editor 自动渲染",
+          "required": ["title", "properties"],
+          "properties": {
+            "title": { "type": "string", "description": "设置分组名" },
+            "properties": {
+              "type": "object",
+              "description": "设置项映射——key → { type, default, enum?, description }",
+              "additionalProperties": {
+                "type": "object",
+                "required": ["type", "default", "description"],
+                "properties": {
+                  "type": { "type": "string", "enum": ["string", "number", "boolean"] },
+                  "default": {},
+                  "enum": { "type": "array" },
+                  "description": { "type": "string" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "configurationDefaults": {
+          "type": "object",
+          "description": "弱默认值——插件给其他配置项的建议值，用户手动设置优先",
+          "additionalProperties": {}
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "allOf": [
+    {
+      "if": {
+        "properties": { "type": { "const": "view" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "card" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    },
+    {
+      "if": {
+        "properties": { "type": { "const": "protocol" } }
+      },
+      "then": {
+        "required": ["entry"]
+      }
+    }
+  ],
+  "additionalProperties": false
+}

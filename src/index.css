@@ -1,0 +1,258 @@
+:root {
+  /* 暗色主题默认值——ThemeEngine 会在启动时从 themes/dark.json 覆盖。
+     如果 JSON 加载失败，这里的值作为 fallback 保证软件可用。 */
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-status: #0078D4;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-active: #FFFFFF;
+  --icon-inactive: #858585;
+  --system-log: #6A6A6A;
+  --sent-echo: #0078D4;
+  --received: #D4D4D4;
+  --status-connected: #4EC9B0;
+  --status-disconnected: #6A6A6A;
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.25);
+  /* Phase 3 新增 */
+  --tab-hover-bg: #353535;
+  --drop-indicator: rgba(255, 255, 255, 0.06);
+  --dirty-dot: #CCA700;
+  --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* Phase 4 新增 —— 通知/错误/徽章 */
+  --error: #E06C75;
+  --warning: #CCA700;
+  --badge-text: #FFFFFF;
+  /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --bg-toolbar: #1E1E22;
+  --toggle-knob: #FFFFFF;
+  --hover-overlay: rgba(255, 255, 255, 0.06);
+  --cm-timestamp: #8A8A8A;
+  /* Phase 3.5 新增 —— z-index 语义层级 */
+  --z-dropdown: 100;
+  --z-sticky: 200;
+  --z-overlay-backdrop: 500;
+  --z-overlay: 600;
+  /* Phase 3.5 新增 —— 间距体系 */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+}
+
+[data-theme="light"] {
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-status: #007ACC;
+  --bg-input: #FFFFFF;
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #767676;
+  --accent: #0078D4;
+  --accent-hover: #106EBE;
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+  --icon-active: #2D2D2D;
+  --icon-inactive: #999999;
+  --system-log: #999999;
+  --sent-echo: #0078D4;
+  --received: #2D2D2D;
+  --status-connected: #388A34;
+  --status-disconnected: #999999;
+  --scrollbar-thumb: rgba(0, 0, 0, 0.15);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.25);
+  /* Phase 3 新增 */
+  --tab-hover-bg: #E8E8E8;
+  --drop-indicator: rgba(0, 0, 0, 0.06);
+  --dirty-dot: #D4A017;
+  --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+  --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-icon-bar: #F0F0F0;
+  --bg-side-panel: #F5F5F5;
+  --bg-toolbar: #F5F5F5;
+  --toggle-knob: #2D2D2D;
+  --hover-overlay: rgba(0, 0, 0, 0.04);
+  --cm-timestamp: #767676;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-window);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  font-size: 12px;
+  user-select: none;
+}
+
+/* 滚动条——极细半透明 */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--scrollbar-thumb);
+  border-radius: 2px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--scrollbar-thumb-hover);
+}
+
+/* === 全局 UI class === */
+
+.setting-group {
+  background: var(--bg-card);
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.setting-group-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.toggle {
+  width: 36px; height: 20px; border-radius: 10px;
+  background: var(--border);
+  transition: background 150ms;
+  cursor: pointer;
+  position: relative;
+  flex-shrink: 0;
+}
+.toggle.on { background: var(--accent); }
+.toggle::after {
+  content: '';
+  position: absolute; top: 2px; left: 2px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--toggle-knob);
+  transition: transform 150ms;
+}
+.toggle.on::after { transform: translateX(16px); }
+.toggle.disabled { opacity: 0.4; cursor: not-allowed; }
+
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  transition: border-color 150ms;
+  outline: none;
+}
+.input:focus { border-color: var(--accent); }
+
+/* Phase 3.5 新增 —— focus-visible 键盘导航指示器 */
+*:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* 保留 input 的原生 outline:none 设计，:focus 用 border-color 表示 */
+.input:focus-visible,
+.search-input:focus-visible,
+.palette-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+/* Phase 3.5 新增 —— prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+.divider {
+  height: 1px;
+  background: var(--separator);
+  margin: 4px 0;
+}
+
+/* === 归一化布局 class（防止控件错位） === */
+
+/*
+  所有"标签 + 控件"并排的行统一用 .form-row。
+  约束：
+  - 标签自适应宽度，溢出打省略号
+  - 控件固定宽度，不随内容变化
+  - 无论标签长短，所有行控件对齐到同一右边缘
+
+  修正记录：SidePanel 初始用 space-between 导致"消息回显"和"系统消息独立显示"
+  的 toggle 位置不一致。归一化 class 从根源消除此类问题。
+*/
+.setting-row,
+.form-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.setting-row > label,
+.setting-row > .form-label,
+.form-row > label,
+.form-row > .form-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.setting-row > .toggle,
+.setting-row > .input,
+.setting-row > select,
+.setting-row > .form-control,
+.form-row > .toggle,
+.form-row > .input,
+.form-row > select,
+.form-row > .form-control {
+  flex-shrink: 0;
+}
+
+/*
+  固定宽度的交互控件——防止不同内容撑出不同宽度。
+  具体 width 由使用处覆盖，但一律不随内容伸缩。
+*/
+input[type="number"],
+select {
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+/* 归一化滚动容器——所有可滚动区域默认 hidden-x */
+.scroll-y {
+  overflow-y: auto;
+  overflow-x: hidden;
+}

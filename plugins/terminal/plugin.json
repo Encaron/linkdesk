@@ -1,0 +1,66 @@
+{
+  "$schema": "../../docs/插件开发/plugin.schema.json",
+  "name": "终端",
+  "version": "1.0.0",
+  "icon": "terminal",
+  "description": "LinkDesk 第一个视图插件——通用容器基础设施在此验证。数据收发终端，接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。不绑定任何特定用途。",
+  "author": "官方",
+  "entry": "index.tsx",
+  "sidebar": "sidebar.tsx",
+  "iconLocation": "top",
+  "viewRole": "sidebarPrimary",
+  "tabBehavior": {
+    "confirmOnClose": "关闭此标签页将断开串口连接"
+  },
+  "statusBar": [
+    { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
+    { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
+  ],
+  "contributes": {
+    "commands": [
+      { "id": "terminal.copy", "title": "复制", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.selectAll", "title": "全选", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.clear", "title": "清空接收区", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.clearSend", "title": "清空发送区", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.togglePause", "title": "暂停接收", "category": "终端", "when": "activeEditor == 'terminal' && portOpen" },
+      { "id": "terminal.exportLog", "title": "导出日志", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.toggleSendMode", "title": "切换到 HEX 发送", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.toggleEcho", "title": "关闭消息回显", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.toggleLineNumbers", "title": "隐藏行号", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.quickSendFill", "title": "回填到发送区", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.quickSendEdit", "title": "编辑", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.quickSendDelete", "title": "删除", "category": "终端", "when": "activeEditor == 'terminal'" }
+    ],
+    "menus": {
+      "editorContext": [
+        { "command": "terminal.copy", "group": "edit", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.selectAll", "group": "edit", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.clear", "group": "terminal", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.togglePause", "group": "terminal", "when": "activeEditor == 'terminal' && portOpen" }
+      ],
+      "quickSendContext": [
+        { "command": "terminal.quickSendFill", "group": "edit" },
+        { "command": "terminal.quickSendEdit", "group": "edit" },
+        { "command": "terminal.quickSendDelete", "group": "delete" }
+      ],
+      "commandPalette": [
+        { "command": "terminal.clear", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.clearSend", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.togglePause", "when": "activeEditor == 'terminal' && portOpen" },
+        { "command": "terminal.exportLog", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.toggleSendMode", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.toggleEcho", "when": "activeEditor == 'terminal'" },
+        { "command": "terminal.toggleLineNumbers", "when": "activeEditor == 'terminal'" }
+      ]
+    }
+  },
+  "recommends": [
+    { "plugin": "workspace", "reason": "配合卡片可视化串口数据" }
+  ],
+  "suggests": [
+    { "plugin": "protocol-bracket", "reason": "协议解析——不装则只能查看原始数据" }
+  ],
+  "changelog": [
+    { "version": "1.0.0", "date": "2026-07-19", "changes": ["初始发布", "串口工具栏", "CM6 接收区 + Monaco 发送栏", "侧栏设置（时间戳/编码/换行符）"] }
+  ]
+}
