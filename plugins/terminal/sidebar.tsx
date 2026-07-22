@@ -14,7 +14,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useTerminalSessions } from "./useTerminalSessions";
+import { useTerminalSessions, getSessionById } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "@src/core/SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
@@ -175,14 +175,17 @@ function TerminalSidebar() {
       `${t("新会话")} ${n}`,
     );
     if (name && name.trim() && tabActions) {
-      // 🔥 先创建 session（数据层）→ 再创建 tab（视图层）。
-      // 如果反过来，window.prompt() 可能打断 React 18 批处理，导致
-      // TerminalView 在 createSession 之前渲染 → useSession(sourceId) 返回 null → "会话已失效"。
-      // 两个计数器（_sessionCounter / _terminalCounter）初始为 0，每次成对调用保持同步。
+      // 🔥 先 session（数据层）→ 再 tab（视图层）。
+      // 掉转顺序会导致 window.prompt() 打断 React 批处理→"会话已失效"。
       const session = createSession(name.trim());
-      tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
+      const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
+      // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tabId。
+      // 存 tabId 到 session，handleSelectSession 用它调 focusTab。
+      if (tabId) {
+        updateSession(session.id, { tabId } as Partial<TerminalSession>);
+      }
     }
-  }, [t, createSession, tabActions]);
+  }, [t, createSession, tabActions, updateSession]);
 
   const handleRename = useCallback(
     (id: string) => (name: string) => {
@@ -256,8 +259,10 @@ function TerminalSidebar() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // Phase 5.5c C5：点到哪个会话就聚焦哪个标签页（按 tabId 精确聚焦，不是按 type）
-      tabActions?.focusTab(sessionId);
+      // 🔥 用 session.tabId（创建时写入的标签页 ID）而非 session.id。
+      // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tab.id → focusTab(sessionId) 静默失败。
+      const s = getSessionById(sessionId);
+      tabActions?.focusTab(s?.tabId || sessionId);
     },
     [setActiveSession, tabActions],
   );
