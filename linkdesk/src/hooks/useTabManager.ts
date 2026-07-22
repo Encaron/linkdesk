@@ -794,6 +794,23 @@ export function useTabManager() {
     });
   }, []);
 
+  /** 按 sourceId 找标签页并聚焦——通用 API。
+   *  插件（终端/file/sqlite 等）通过 sourceId 将自己的数据绑定到标签页。
+   *  sourceId 是通用概念（CreateTabOptions.sourceId），不属任何特定插件。 */
+  const focusTabBySourceId = useCallback((sourceId: string) => {
+    setTabState((prev) => {
+      const tab = prev.groups.flatMap((g) => g.tabs).find(
+        (t) => t.sourceId === sourceId || t.id === sourceId,
+      );
+      if (!tab) return prev;
+      const next = reduceFocusTab(prev, tab.id);
+      const group = findGroup(next, tab.id);
+      const focused = group?.tabs.find((t) => t.id === tab.id);
+      if (focused) lastFocusedByType.current.set(focused.pluginId ?? focused.type, tab.id);
+      return next;
+    });
+  }, []);
+
   const closeTab = useCallback(
     (tabId: string): CloseTabResult => {
       let result: CloseTabResult = { closed: false, tabId };
@@ -914,6 +931,7 @@ export function useTabManager() {
     createTab,
     openOrFocusTab,
     focusTab,
+    focusTabBySourceId,
     closeTab,
     forceCloseTab,
 

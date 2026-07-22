@@ -17,6 +17,9 @@ export interface TabActions {
   focusTab: (tabId: string) => void;
   /** Phase 5.5c：侧栏删会话 → 同步关闭对应标签页 */
   closeTab: (tabId: string) => CloseTabResult;
+  /** 按 sourceId 找标签页并聚焦——通用 API。session/文件/数据库连接等
+   *  插件维护自己的数据模型，通过 sourceId 链接到标签页。 */
+  focusTabBySourceId: (sourceId: string) => void;
 }
 
 const TabActionsContext = createContext<TabActions | null>(null);
