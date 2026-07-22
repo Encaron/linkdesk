@@ -15,6 +15,7 @@ import CommandPalette from "./components/terminal/CommandPalette";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
+import { getTabBehavior } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
@@ -604,10 +605,14 @@ function App() {
       // Ctrl+W: 关闭当前标签页
       if (e.ctrlKey && e.key === "w") {
         e.preventDefault();
+        // E1: 检查插件是否声明了关闭确认（如终端"关闭此标签页将断开串口连接"）
+        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+        const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
+        const behavior = tab?.pluginId ? getTabBehavior(tab.pluginId) : {};
+        if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
+
         const result = closeTab(activeTabId);
         if (!result.closed && result.reason === "dirty") {
-          const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-          const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
           if (tab && window.confirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
             forceCloseTab(activeTabId);
           }
