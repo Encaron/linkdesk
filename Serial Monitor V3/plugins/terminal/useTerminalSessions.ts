@@ -172,7 +172,7 @@ export function useTerminalSessions() {
      *  Phase 5.5c C5：可选 id 参数——sidebar 先 createTab 拿到 tabId 再传入，确保 session.id === tab.id */
     createSession(name: string, id?: string): TerminalSession {
       const session: TerminalSession = {
-        id: id ?? `terminal-${++_sessionCounter}`,
+        id: id || `terminal-${++_sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
         name,
         ...cloneDefaults(),
         quickSends: getDefaultQuickSends(),

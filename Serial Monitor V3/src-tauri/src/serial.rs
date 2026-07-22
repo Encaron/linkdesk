@@ -157,25 +157,35 @@ pub fn close_port(state: tauri::State<'_, SerialState>, app: AppHandle) -> Resul
 
     inner.is_closing = true;
 
-    // 冲刷硬件缓冲区残留
-    if let Some(ref mut port) = inner.port {
+    // 取出端口对象——释放锁后在锁外执行 flush，避免设备断电时阻塞其他命令
+    let mut port_to_close = inner.port.take();
+
+    // 冲刷行缓冲区残留（仍在锁内——line_buffer 在 Mutex 中）
+    let line_residual = if !inner.line_buffer.is_empty() {
+        let encoding = inner.encoding.clone();
+        let text = decode_bytes(&inner.line_buffer, &encoding).trim().to_string();
+        inner.line_buffer.clear();
+        if text.is_empty() { None } else { Some(text) }
+    } else {
+        None
+    };
+    drop(inner);
+
+    // ↓ 锁外操作——AppHandle::emit 跨线程安全，flush 可能阻塞 ↓
+
+    // 冲刷硬件缓冲区（设备断电时 flush 可能长时间阻塞，必须在锁外执行）
+    if let Some(ref mut port) = port_to_close {
         let _ = port.flush();
     }
+    drop(port_to_close);
 
-    // 冲刷行缓冲区残留——在关闭消息之前 emit，保证数据在关闭消息之上
-    if !inner.line_buffer.is_empty() {
-        let encoding = inner.encoding.clone();
-        let residual = decode_bytes(&inner.line_buffer, &encoding);
-        inner.line_buffer.clear();
-        drop(inner);
-        let residual = residual.trim().to_string();
-        if !residual.is_empty() {
-            let _ = app.emit("serial-data", residual);
-        }
-        inner = state.lock().map_err(|e| e.to_string())?;
-        inner.is_closing = true;
+    // emit 行缓冲残留（在关闭消息之前，保证数据顺序正确）
+    if let Some(residual) = line_residual {
+        let _ = app.emit("serial-data", residual);
     }
 
+    // 重新获取锁以清理状态字段
+    let mut inner = state.lock().map_err(|e| e.to_string())?;
     inner.port = None;
     inner.is_closing = false;
     inner.line_buffer.clear();
@@ -307,8 +317,26 @@ fn read_loop(state: SerialState, app: AppHandle) {
             };
             match inner.port.as_mut() {
                 Some(port) => match port.read(&mut buf) {
-                    Ok(0) | Err(_) => {
-                        // 超时或无数据：冲刷行缓冲区残留
+                    Err(_) => {
+                        // 读错误（设备断电/噪音/断线）：休眠后再重试，防止忙循环耗尽 CPU
+                        let residual = if !inner.line_buffer.is_empty() {
+                            let encoding = inner.encoding.clone();
+                            let text = decode_bytes(&inner.line_buffer, &encoding).trim().to_string();
+                            inner.line_buffer.clear();
+                            if text.is_empty() { None } else { Some(text) }
+                        } else {
+                            None
+                        };
+                        drop(inner); // 先释放锁再 emit + sleep
+                        if let Some(text) = residual {
+                            let _ = app.emit("serial-data", text);
+                        }
+                        // 休眠避免忙循环，同时不阻塞其他命令（close_port / send_data 等）
+                        thread::sleep(Duration::from_millis(100));
+                        continue;
+                    }
+                    Ok(0) => {
+                        // 超时（100ms 无数据）：冲刷行缓冲区残留
                         if !inner.line_buffer.is_empty() {
                             let encoding = inner.encoding.clone();
                             let text = decode_bytes(&inner.line_buffer, &encoding).trim().to_string();
