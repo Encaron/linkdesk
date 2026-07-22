@@ -261,6 +261,12 @@ export function getActiveSessionId(): string | null {
   return _activeSessionId;
 }
 
+/** 设置活跃 session ID——不通过 hook，供 TerminalView 标签页聚焦时同步侧栏 */
+export function setActiveSessionId(id: string | null): void {
+  _activeSessionId = id;
+  notify();
+}
+
 /** 按 ID 查 session——不通过 hook，供非 React 上下文使用 */
 export function getSessionById(id: string): TerminalSession | undefined {
   return _sessions.find((s) => s.id === id);

@@ -24,7 +24,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { useTauriEvent } from "@src/hooks/useTauriEvent";
 import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
-import { useSession } from "./useTerminalSessions";
+import { useSession, setActiveSessionId } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, type SendContext, type SendCallbacks } from "@src/core/useSendData";
 import SearchBar from "@src/components/terminal/SearchBar";
@@ -194,6 +194,15 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   // sourceId = tab.id = session.id（MainContent 传入）。
   // session/update 响应式——底层 _sessions 变更 → listener 通知 → tick 重渲染。
   const { session: activeSession, update: updateSession } = useSession(sourceId);
+
+  // 标签页获得焦点 → 侧栏活跃会话跟随切换
+  // 对标 sidebar.tsx handleSelectSession 的反向链路：sidebar 点会话 → focusTab，
+  // 这里是 tab 激活 → setActiveSessionId。两条链路对称。
+  useEffect(() => {
+    if (isActive && sourceId) {
+      setActiveSessionId(sourceId);
+    }
+  }, [isActive, sourceId]);
 
   // 12 项收发设置——从活跃会话读取，null-safe 默认值
   const timestampFormat = activeSession?.timestampFormat ?? "HH:mm:ss:fff";
