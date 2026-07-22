@@ -81,7 +81,6 @@ export const CoreEvents = {
  */
 export const CUSTOM_EVENTS = {
   SHOW_PALETTE: "v3-show-palette",
-  OPEN_VIEW: "v3-open-view",
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 

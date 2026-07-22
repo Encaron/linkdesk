@@ -17,8 +17,6 @@ import { MenuId } from "../core/MenuRegistry";
 import "./IconBar.css";
 
 interface IconBarProps {
-  activeTabType: string;
-  activePluginId?: string;
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
 }
@@ -49,7 +47,7 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: IconBarProps) {
+function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
   const { t } = useTranslation();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
@@ -166,11 +164,8 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
 
   /* ── 高亮 ── */
 
-  const isActive = (pluginId: string) => {
-    if (sidebarView) return sidebarView === pluginId;
-    if (activePluginId) return activePluginId === pluginId;
-    return activeTabType === pluginId;
-  };
+  // 对标 VS Code Activity Bar：只有侧栏开着时才高亮图标。侧栏关掉全部灭。
+  const isActive = (pluginId: string) => sidebarView === pluginId;
 
   const renderIcon = (entry: IconEntry) => {
     const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
@@ -186,13 +181,19 @@ function IconBar({ activeTabType, activePluginId, sidebarView, onOpenOrFocus }: 
             e.preventDefault(); // 阻止浏览器原生拖拽
             dragRef.current = { pluginId: entry.pluginId, startY: e.clientY, moved: false };
           }}
-          onClick={() => {
+          onClick={(e) => {
             if (wasDragRef.current) {
               wasDragRef.current = false;
               dragRef.current = null;
               return;
             }
-            onOpenOrFocus(entry.pluginId);
+            if (getIconLocation(entry.pluginId) === "bottom") {
+              // 底部图标（齿轮）：对标 VS Code 左下齿轮，左键弹出菜单
+              e.preventDefault();
+              setGearAnchor({ x: e.clientX, y: e.clientY });
+            } else {
+              onOpenOrFocus(entry.pluginId);
+            }
           }}
           onContextMenu={
             getIconLocation(entry.pluginId) === "bottom"
