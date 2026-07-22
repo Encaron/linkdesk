@@ -109,6 +109,18 @@ export function getViewRole(pluginId: string): "sidebarPrimary" | "tabOnly" {
 }
 
 /**
+ * 获取可作为标签页直接创建的视图插件列表。
+ * 对标 VS Code：Explorer（sidebarPrimary）不出现在编辑器 [+] 菜单 / 欢迎页快捷卡片中。
+ * sidebarPrimary 插件通过图标栏打开侧栏，而非直接创建标签页。
+ * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
+ */
+export function getTabCreatableViews(): ViewPluginEntry[] {
+  return Array.from(registry.values()).filter(
+    (entry) => entry.manifest.viewRole !== "sidebarPrimary"
+  );
+}
+
+/**
  * 纯侧栏视图——点击图标 toggle 侧栏，不自动打开标签页。
  * 从 plugin.json viewRole 字段读取。
  */
