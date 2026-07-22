@@ -181,6 +181,7 @@ function TerminalSidebar() {
       const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
       // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tabId。
       // 存 tabId 到 session，handleSelectSession 用它调 focusTab。
+      console.log("[handleCreate]", { sessionId: session.id, tabId, match: session.id === tabId });
       if (tabId) {
         updateSession(session.id, { tabId } as Partial<TerminalSession>);
       }
@@ -258,10 +259,11 @@ function TerminalSidebar() {
   // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
   const handleSelectSession = useCallback(
     (sessionId: string) => {
+      const s = getSessionById(sessionId);
+      console.log("[handleSelectSession]", { sessionId, tabId: s?.tabId, resolvingTo: s?.tabId || sessionId });
       setActiveSession(sessionId);
       // 🔥 用 session.tabId（创建时写入的标签页 ID）而非 session.id。
       // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tab.id → focusTab(sessionId) 静默失败。
-      const s = getSessionById(sessionId);
       tabActions?.focusTab(s?.tabId || sessionId);
     },
     [setActiveSession, tabActions],
