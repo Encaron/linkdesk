@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getViewPlugins, getTabCreatableViews } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getTabCreatableViews, getTabBehavior } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 // Phase 5b：统一右键菜单
@@ -342,6 +342,8 @@ export default function TabBar({
                 onMouseDown={(e) => {
                   if (e.button === 1) {
                     e.preventDefault();
+                    const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
+                    if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
                     closeWithAnimation(tab.id);
                     return;
                   }
@@ -357,6 +359,8 @@ export default function TabBar({
                   className="tab-close"
                   onClick={(e) => {
                     e.stopPropagation();
+                    const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
+                    if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
                     closeWithAnimation(tab.id);
                   }}
                   title={t("关闭")}
