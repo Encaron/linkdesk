@@ -14,10 +14,11 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useTerminalSessions, getSessionById } from "./useTerminalSessions";
+import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "@src/core/SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
+import { liveTabState } from "@src/hooks/useTabManager";
 import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
 import Select from "@src/components/shared/Select";
@@ -169,24 +170,18 @@ function TerminalSidebar() {
 
   const handleCreate = useCallback(() => {
     const n = sessionCountRef.current + 1;
-    // 简单 prompt——Phase 7+ 可换成内联输入或模态
     const name = window.prompt(
       t("新会话名称：") ?? "新会话名称：",
       `${t("新会话")} ${n}`,
     );
     if (name && name.trim() && tabActions) {
       // 🔥 先 session（数据层）→ 再 tab（视图层）。
-      // 掉转顺序会导致 window.prompt() 打断 React 批处理→"会话已失效"。
+      // 掉转顺序→window.prompt() 打断 React 批处理→"会话已失效"。
+      // createTab 返回 ""（prompt() 破坏批处理）→不依赖其返回值。
       const session = createSession(name.trim());
-      const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
-      // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tabId。
-      // 存 tabId 到 session，handleSelectSession 用它调 focusTab。
-      console.log("[handleCreate]", { sessionId: session.id, tabId, match: session.id === tabId });
-      if (tabId) {
-        updateSession(session.id, { tabId } as Partial<TerminalSession>);
-      }
+      tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
     }
-  }, [t, createSession, tabActions, updateSession]);
+  }, [t, createSession, tabActions]);
 
   const handleRename = useCallback(
     (id: string) => (name: string) => {
@@ -259,12 +254,11 @@ function TerminalSidebar() {
   // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
   const handleSelectSession = useCallback(
     (sessionId: string) => {
-      const s = getSessionById(sessionId);
-      console.log("[handleSelectSession]", { sessionId, tabId: s?.tabId, resolvingTo: s?.tabId || sessionId });
       setActiveSession(sessionId);
-      // 🔥 用 session.tabId（创建时写入的标签页 ID）而非 session.id。
-      // 布局恢复后 _terminalCounter 可能超前 → session.id ≠ tab.id → focusTab(sessionId) 静默失败。
-      tabActions?.focusTab(s?.tabId || sessionId);
+      // 通过 sourceId 找标签页——不依赖 session.id === tab.id（双计数器独立）
+      const tabs = liveTabState.current?.groups.flatMap((g) => g.tabs) ?? [];
+      const tab = tabs.find((t) => t.sourceId === sessionId) ?? tabs.find((t) => t.id === sessionId);
+      if (tab) tabActions?.focusTab(tab.id);
     },
     [setActiveSession, tabActions],
   );
