@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { useTabManager, allTabs } from "./hooks/useTabManager";
+import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
@@ -76,6 +76,7 @@ function App() {
     openOrFocusTab,
     focusTab,
     focusTabBySourceId,
+    closeTabBySourceId,
     closeTab,
     forceCloseTab,
     createTab,
@@ -240,6 +241,19 @@ function App() {
         const savedLayout = getTabLayout();
         if (savedLayout?.groups?.length > 0) {
           restoreLayout(savedLayout);
+          // 布局恢复后修复 _terminalCounter——避免新 session 的 ID 和
+          // 已恢复的旧 tab ID 碰撞（两个独立计数器生命周期不一致）。
+          // tabIdentity 的 generateId 用 _terminalCounter，useTerminalSessions 用 _sessionCounter。
+          // 布局恢复了旧 tab（如 terminal-1、terminal-2），但 _terminalCounter 重启归零 →
+          // 下次 createTab 生成同名 ID → 和旧 tab 碰撞 → closeTab 关错页。
+          let maxN = 0;
+          for (const g of savedLayout.groups) {
+            for (const t of g.tabs) {
+              const m = t.id.match(/^terminal-(\d+)$/);
+              if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
+            }
+          }
+          if (maxN > 0) resetTerminalCounter(maxN);
         }
       } catch { /* 布局恢复失败不影响启动 */ }
 
@@ -673,8 +687,9 @@ function App() {
     openOrFocusTab,
     focusTab,
     focusTabBySourceId,
+    closeTabBySourceId,
     closeTab,
-  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, closeTab]);
+  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, closeTabBySourceId, closeTab]);
 
   if (!ready) return null;
 

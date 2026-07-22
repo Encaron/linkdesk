@@ -20,6 +20,9 @@ export interface TabActions {
   /** 按 sourceId 找标签页并聚焦——通用 API。session/文件/数据库连接等
    *  插件维护自己的数据模型，通过 sourceId 链接到标签页。 */
   focusTabBySourceId: (sourceId: string) => void;
+  /** 按 sourceId 找标签页并关闭——通用 API。和 focusTabBySourceId 对称。
+   *  插件删自己的数据时通过 sourceId 关闭对应标签页，不依赖 tabId===sessionId 的假设。 */
+  closeTabBySourceId: (sourceId: string) => CloseTabResult;
 }
 
 const TabActionsContext = createContext<TabActions | null>(null);
