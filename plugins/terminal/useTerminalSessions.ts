@@ -15,9 +15,6 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-// 🔧 C1 临时桥接：一次性从 ConfigurationService 迁移旧 quickSends 数据。
-// TODO Phase 5.5c C5: 移除此 import + getDefaultQuickSends() 中的迁移逻辑。
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 
 // ── 类型 ──
 
@@ -116,31 +113,6 @@ function cloneDefaults(): typeof DEFAULT_SESSION {
   };
 }
 
-// ── 一次性迁移（Bug 5） ──
-// 用户原有的 terminal.quickSends 在 ConfigurationService 中。
-// 第一个 createSession 时读一次，之后所有 session 用迁移后的值。
-// TODO Phase 5.5c C5: 删除 _migratedQuickSends + tryMigrateQuickSends()——迁移完成后不再需要。
-
-let _migratedQuickSends: Record<string, string> | null = null;
-
-function getDefaultQuickSends(): Record<string, string> {
-  if (_migratedQuickSends) return { ..._migratedQuickSends };
-
-  // 🔧 C1 临时桥接——一次性读旧 ConfigurationService 数据
-  try {
-    const old = getConfigurationValue("terminal.quickSends") as Record<string, string> | undefined;
-    if (old && typeof old === "object" && Object.keys(old).length > 0) {
-      _migratedQuickSends = { ...old };
-      return { ..._migratedQuickSends };
-    }
-  } catch {
-    // ConfigurationService 不可用——用默认值
-  }
-
-  _migratedQuickSends = { ...DEFAULT_SESSION.quickSends };
-  return { ..._migratedQuickSends };
-}
-
 // ── Hook ──
 
 export function useTerminalSessions() {
@@ -175,7 +147,6 @@ export function useTerminalSessions() {
         id: id || `terminal-${++_sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
         name,
         ...cloneDefaults(),
-        quickSends: getDefaultQuickSends(),
         color: SESSION_COLORS[_colorIndex % SESSION_COLORS.length],
       };
       _colorIndex++;
@@ -214,7 +185,6 @@ export function useTerminalSessions() {
       _activeSessionId = null;
       _sessionCounter = 0;
       _colorIndex = 0;
-      _migratedQuickSends = null;
       notify();
     },
   };
