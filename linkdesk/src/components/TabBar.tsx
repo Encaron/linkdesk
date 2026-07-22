@@ -13,6 +13,7 @@ import { useDragReorder } from "../hooks/useDragReorder";
 import { getViewPlugins, getTabCreatableViews, getTabBehavior } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+import { showConfirm } from "./shared/ConfirmDialog";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
@@ -339,11 +340,11 @@ export default function TabBar({
                   e.preventDefault();
                   setContextMenu({ tabId: tab.id, x: e.clientX, y: e.clientY });
                 }}
-                onMouseDown={(e) => {
+                onMouseDown={async (e) => {
                   if (e.button === 1) {
                     e.preventDefault();
                     const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
-                    if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
+                    if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
                     closeWithAnimation(tab.id);
                     return;
                   }
@@ -357,10 +358,10 @@ export default function TabBar({
                 <span className="tab-label">{t(tab.label)}</span>
                 <button
                   className="tab-close"
-                  onClick={(e) => {
+                  onClick={async (e) => {
                     e.stopPropagation();
                     const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
-                    if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
+                    if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
                     closeWithAnimation(tab.id);
                   }}
                   title={t("关闭")}
