@@ -174,4 +174,4 @@ VS Code 的 Explorer 侧栏就是一模一样的模式——文件名在侧栏�
 
 - [Phase 5.5 三栏交互对标](V3-Phase5.5-三栏交互对标.md)
 - [终端侧栏第一次进化（5.5 控制面板）](V3-Phase5.5-终端侧栏两次进化.md)
-- [终端会话持久化（Phase 6）](../phase6_编辑能力/V3-Phase6-终端会话持久化.md)
+- [终端会话持久化（Phase 7d）](../phase7_多WebView与编辑能力/LinkDesk-Phase7-Profile与激活.md)

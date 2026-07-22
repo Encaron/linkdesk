@@ -95,5 +95,5 @@ plugins/oled/
 ## 五、相关文档
 
 - [LinkDesk-Phase8-实施顺序.md](./LinkDesk-Phase8-实施顺序.md) — 严格逐步执行计划
-- [LinkDesk-Phase7-设计.md](../phase7_多WebView与编辑能力_暂定/LinkDesk-Phase7-设计.md) — Phase 8 的前置条件
+- [LinkDesk-Phase7-设计.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-设计.md) — Phase 8 的前置条件
 - [Phase 5 设计](../phase5_应用基础设施/V3-Phase5-设计.md) — CardRegistry 骨架 + DataPipeline

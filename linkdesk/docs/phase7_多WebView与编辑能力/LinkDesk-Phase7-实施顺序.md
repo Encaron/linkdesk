@@ -69,47 +69,47 @@ useSendData           → send → invoke("ipc:send", { data })
 
 ## 第 2 层：7b — 文件树 + 编辑（~500 行）
 
-> 详见旧 P6a/P6b 的完整设计（[旧 Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md)）——内容迁移到 [LinkDesk-Phase7-文件树与编辑.md](./LinkDesk-Phase7-文件树与编辑.md)。
+> 设计细节见 [LinkDesk-Phase7-文件树与编辑.md](./LinkDesk-Phase7-文件树与编辑.md)。
 
-| 步 | 任务 | 来源 |
-|:--:|------|:--:|
-| 5 | 文件树视图（📁 图标栏 → 侧栏/标签页 + 右键菜单 MenuId.FileContext） | 旧 P6a #1 |
-| 6 | 文件关联 + FileAssociationService | 旧 P6a #2 |
-| 7 | Monaco JSON 编辑器标签页 | 旧 P6a #7 |
-| 8 | 系统文件拖入 + Ctrl+Shift+T + 文件树键盘操作（F2/Delete/Ctrl+XCV 对标 VS Code） | 旧 P6a #5, #6, #1b |
-| 9 | 文件搜索（Ctrl+Shift+F）+ 多选/批量 + 编码检测 | 旧 P6b #8, #9, #10 |
-| 10 | JSON schema 自动补全 + 多工作区文件夹 | 旧 P6b #12, #13 |
-| 11 | 文件图标主题 + 文件装饰器框架 | 旧 P6b #14, #15 |
+| 步 | 任务 |
+|:--:|------|
+| 5 | 文件树视图（📁 图标栏 → 侧栏/标签页 + 右键菜单 MenuId.FileContext） |
+| 6 | 文件关联 + FileAssociationService |
+| 7 | Monaco JSON 编辑器标签页 |
+| 8 | 系统文件拖入 + Ctrl+Shift+T + 文件树键盘操作（F2/Delete/Ctrl+XCV 对标 VS Code） |
+| 9 | 文件搜索（Ctrl+Shift+F）+ 多选/批量 + 编码检测 |
+| 10 | JSON schema 自动补全 + 多工作区文件夹 |
+| 11 | 文件图标主题 + 文件装饰器框架 |
 
 ---
 
 ## 第 3 层：7c — 主题/语言引擎（~200 行）
 
-> 详见旧 P6c 的完整设计（[旧 Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md) §二 退路系统 + §2.5-2.7）——内容迁移到 [LinkDesk-Phase7-主题语言引擎.md](./LinkDesk-Phase7-主题语言引擎.md)。
+> 设计细节见 [LinkDesk-Phase7-主题语言引擎.md](./LinkDesk-Phase7-主题语言引擎.md)。
 
-| 步 | 任务 | 来源 |
-|:--:|------|:--:|
-| 12 | 主题系统插件化 + 三层退路 | 旧 P6c #16 |
-| 13 | 语言系统插件化 + 两层退路 | 旧 P6c #17 |
-| 14 | 主题浏览器 UI（Ctrl+K Ctrl+T） | 旧 P6c #18 |
-| 15 | 产品图标主题 + 插件资源访问 API | 旧 P6c #28, #25 |
+| 步 | 任务 |
+|:--:|------|
+| 12 | 主题系统插件化 + 三层退路 |
+| 13 | 语言系统插件化 + 两层退路 |
+| 14 | 主题浏览器 UI（Ctrl+K Ctrl+T） |
+| 15 | 产品图标主题 + 插件资源访问 API |
 
 ---
 
 ## 第 4 层：7d — Profile + 激活 + 抛光（~500 行）
 
-> 详见旧 P6d/P6e/P6.5 的完整设计——内容迁移到 [LinkDesk-Phase7-Profile与激活.md](./LinkDesk-Phase7-Profile与激活.md) + [LinkDesk-Phase7-壳完善与抛光.md](./LinkDesk-Phase7-壳完善与抛光.md)。
+> 设计细节见 [LinkDesk-Phase7-Profile与激活.md](./LinkDesk-Phase7-Profile与激活.md) + [LinkDesk-Phase7-壳完善与抛光.md](./LinkDesk-Phase7-壳完善与抛光.md)。
 
-| 步 | 任务 | 来源 |
-|:--:|------|:--:|
-| 16 | Profile 系统（五维验证） | 旧 P6d #19 |
-| 17 | activationEvents + extensionDependencies | 旧 P6d #20, #21 |
-| 18 | 齿轮菜单完整版 + 输出面板 UI | 旧 P6d #22, #23 |
-| 19 | 终端会话持久化 | 旧 P6d |
-| 20 | 欢迎页集成 + 标题栏 ☰ + Workspace 导入导出 | 旧 P6e #24, #26, #27 |
-| 21 | 通知系统全功能（5 项——进度条/过滤/DND/Notification Center/source 归类） | 旧 P6.5a |
-| 22 | 动态 StatusBarItem + 插件 i18n + Toggle 动态标题 + 模糊搜索 | 旧 P6.5b |
-| 23 | contributes.icons + ☰ 完整版 + V2 配置导入 | 旧 P6.5c |
+| 步 | 任务 |
+|:--:|------|
+| 16 | Profile 系统（五维验证） |
+| 17 | activationEvents + extensionDependencies |
+| 18 | 齿轮菜单完整版 + 输出面板 UI |
+| 19 | 终端会话持久化 |
+| 20 | 欢迎页集成 + 标题栏 ☰ + Workspace 导入导出 |
+| 21 | 通知系统全功能（5 项——进度条/过滤/DND/Notification Center/source 归类） |
+| 22 | 动态 StatusBarItem + 插件 i18n + Toggle 动态标题 |
+| 23 | contributes.icons + ☰ 完整版 + V2 配置导入 |
 
 ---
 
@@ -152,9 +152,7 @@ useSendData           → send → invoke("ipc:send", { data })
 
 - [LinkDesk-Phase7-设计.md](./LinkDesk-Phase7-设计.md) — 主设计文档
 - [LinkDesk-Phase7-多WebView架构.md](./LinkDesk-Phase7-多WebView架构.md) — 7a 细节
-- [LinkDesk-Phase7-文件树与编辑.md](./LinkDesk-Phase7-文件树与编辑.md) — 7b 细节（引用旧 P6a/P6b）
-- [LinkDesk-Phase7-主题语言引擎.md](./LinkDesk-Phase7-主题语言引擎.md) — 7c 细节（引用旧 P6c）
-- [LinkDesk-Phase7-Profile与激活.md](./LinkDesk-Phase7-Profile与激活.md) — 7d 细节（引用旧 P6d）
-- [LinkDesk-Phase7-壳完善与抛光.md](./LinkDesk-Phase7-壳完善与抛光.md) — 7d 细节（引用旧 P6e/P6.5）
-- [旧 Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md) — 旧路线图（设计细节仍有效，只是 Phase 归属变了）
-- [旧 Phase 6.5 抛光](../phase6.5_抛光/V3-Phase6.5-抛光与补齐.md) — 旧路线图（同上）
+- [LinkDesk-Phase7-文件树与编辑.md](./LinkDesk-Phase7-文件树与编辑.md) — 7b 细节
+- [LinkDesk-Phase7-主题语言引擎.md](./LinkDesk-Phase7-主题语言引擎.md) — 7c 细节
+- [LinkDesk-Phase7-Profile与激活.md](./LinkDesk-Phase7-Profile与激活.md) — 7d 前半细节
+- [LinkDesk-Phase7-壳完善与抛光.md](./LinkDesk-Phase7-壳完善与抛光.md) — 7d 后半细节

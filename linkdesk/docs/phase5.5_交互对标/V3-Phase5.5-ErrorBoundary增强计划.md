@@ -31,15 +31,19 @@ LinkDesk 是通用容器——核心只有标签页 + 分屏 + 数据管道 + �
 | 读核心状态 | 通过 `vscode.*` API 查询 | `useSerialContext()` 直接读 |
 | AI 生成插件 | 需理解 `vscode.window.createWebviewPanel` 完整 API | `export default function({ isActive }) { return <div>...</div> }` |
 
-### 1.4 双刃剑——坏的一面
+### 1.4 单 WebView 的局限——为什么需要多 WebView
 
-"能做任何事"反过来就是"能搞砸任何事"。VS Code 用独立进程（Extension Host）兜底——扩展崩了主窗口不受影响。LinkDesk 跑在 Tauri 单 WebView 里，物理上没有进程隔离。这不是设计选择——是平台硬边界。
+"能做任何事"反过来就是"能搞砸任何事"。VS Code 用独立进程（Extension Host）兜底——扩展崩了主窗口不受影响。LinkDesk 当前跑在 Tauri 单 WebView 里，物理上没有进程隔离。这不是设计选择——是平台硬边界。
 
-| | VS Code (Electron) | LinkDesk (Tauri) |
-|:--|:--|:--|
-| 架构 | Chromium + Node.js | 系统 WebView |
-| 进程模型 | 主窗口 + Extension Host 独立进程 | 单 WebView，单 JS 主线程 |
-| 插件崩了 | 扩展进程重启，主窗口正常 | 取决于崩法（见下） |
+**Phase 7 多 WebView 解决这个问题：** Tauri v2 支持多 WebView——每个插件独立 JS 上下文。对标 VS Code Extension Host。插件代码不变，IPC 翻译层 AI 写。
+
+| | VS Code (Electron) | LinkDesk 当前 (单 WebView) | LinkDesk Phase 7 (多 WebView) |
+|:--|:--|:--|:--|
+| 架构 | Chromium + Node.js | 系统 WebView | 系统 WebView × N |
+| 进程模型 | 主窗口 + Extension Host 独立进程 | 单 WebView，单 JS 主线程 | 壳 WebView + 每个插件独立 WebView |
+| 插件崩了 | 扩展进程重启，主窗口正常 | 取决于崩法（见下） | 崩的插件 WebView 重启，其他正常 |
+
+**单 WebView 的 Phase 6 期间，ErrorBoundary 兜底。多 WebView 的 Phase 7 之后，进程隔离兜底。** 两阶段递进——不是"ErrorBoundary 是唯一防线"。
 
 ---
 
@@ -78,14 +82,22 @@ LinkDesk 是通用容器——核心只有标签页 + 分屏 + 数据管道 + �
 | Error Boundary | 安全气囊 | 零影响。崩了兜底，不崩不存在 |
 | Rust 心跳看门狗 | 安全气囊 | 零影响。后台运行 |
 | 内存监控 | 安全气囊 | 零影响。后台采样 |
-| CSP 头 | 门禁（轻） | `eval()` 和动态脚本受限——Web 安全基线 |
+| 多 WebView 隔离 (Phase 7) | 进程隔离 | 插件代码不变——`useSerialContext()` Hook 内部走 IPC，对调用方透明。AI 写翻译层 |
 | 权限声明 (`plugin.json`) | 告知 | 声明了就能用——不是审批，是知情 |
+
+**明确拒绝：CSP（Content Security Policy）。** CSP 在 `tauri.conf.json` 设白名单限制插件能访问的域名——这是门禁，违反"没有 API 白名单"原则。壳替插件决定"你能访问什么"——和核心无知原则直接冲突。多 WebView 的进程隔离已经解决了"插件崩了怎么办"，不需要 CSP 提前封路。
 
 **一条不跨越的线：** 不定义 `@linkdesk/api` 作为唯一合法 import 入口。`@src/` 永远开放。防御是安全气囊，不是笼子。
 
 ---
 
 ## 四、分层防线
+
+> **核心原则：** 防线是安全气囊，不是笼子。只检测、不拦截。真正的进程隔离靠 Phase 7 多 WebView——每个插件独立 JS 上下文，崩了只崩自己。
+>
+> **单 WebView 期间的兜底（Phase 6a）：** ErrorBoundary 全覆盖 + Rust 心跳 + 内存监控——三层都是检测/兜底，不限制插件能力。
+>
+> **真正的隔离（Phase 7a）：** 多 WebView 进程隔离——对标 VS Code Extension Host。插件代码不变，IPC 翻译层 AI 写。
 
 ### 第一层：Error Boundary 增强（Phase 5.5d，待执行）
 
@@ -189,4 +201,4 @@ Tauri v2 支持多 WebView。每个插件独立 WebView → 独立的 JS context
 **相关文档：**
 - 记忆：`plugin-isolation-universal-container.md`（三层防线架构）
 - 记忆：`multi-webview-migration-rules.md`（写代码规则）
-- Phase 6 前提：`docs/phase6_编辑能力/V3-Phase6-实施顺序.md`（已更新引用本计划）
+- Phase 6 前提：`docs/phase6_底层加固/LinkDesk-Phase6-实施顺序.md`（已更新引用本计划）

@@ -6,7 +6,7 @@
 >
 > 核心交付：**`<SidebarSection>`——通用可折叠侧栏区块。** 终端先用，Phase 6 文件树/Git/数据库浏览器全复用。
 >
-> **终端会话持久化（第二次进化）依赖 Phase 6 的 FileService + WorkspaceService——已迁到 [Phase 6 终端会话持久化](../phase6_编辑能力/V3-Phase6-终端会话持久化.md)。**
+> **终端会话持久化（第二次进化）依赖 Phase 6 的 FileService + WorkspaceService——已迁到 [Phase 7d Profile 与激活](../phase7_多WebView与编辑能力/LinkDesk-Phase7-Profile与激活.md)。**
 >
 > **通用交互范式（侧栏=管理面板）已迁到 [通用交互范式](V3-Phase5.5-通用交互范式.md)。**
 
@@ -142,7 +142,7 @@ Git 侧栏:                   任何插件侧栏:
 - 5.5 设计文档 §八 已有终端布局重新设计——本文是它的细化：加了可折叠组件规格 + 标签页改名
 - 12 个设置项迁移到 Settings Editor（Phase 5 已建好）
 - **通用交互范式**（侧栏=管理面板、改名走侧栏不走标签栏）→ [V3-Phase5.5-通用交互范式.md](V3-Phase5.5-通用交互范式.md)
-- **终端会话持久化**（Phase 6 文件树消费者）→ [V3-Phase6-终端会话持久化.md](../phase6_编辑能力/V3-Phase6-终端会话持久化.md)
+- **终端会话持久化**（Phase 7d Profile）→ [LinkDesk-Phase7-Profile与激活.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-Profile与激活.md)
 
 ---
 

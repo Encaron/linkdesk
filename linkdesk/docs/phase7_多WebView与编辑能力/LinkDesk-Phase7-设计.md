@@ -200,7 +200,5 @@ keybindings.json 修改 → 即时生效
 - [LinkDesk-Phase7-主题语言引擎.md](./LinkDesk-Phase7-主题语言引擎.md) — 主题/语言插件化 + 浏览器
 - [LinkDesk-Phase7-Profile与激活.md](./LinkDesk-Phase7-Profile与激活.md) — Profile + 激活链路
 - [LinkDesk-Phase7-壳完善与抛光.md](./LinkDesk-Phase7-壳完善与抛光.md) — 通知 + 标题栏 + 模糊搜索 + 兼容
-- [LinkDesk-Phase6-设计.md](../phase6_底层加固_暂定/LinkDesk-Phase6-设计.md) — Phase 7 的前置条件
-- [旧 Phase 6 设计](../phase6_编辑能力/V3-Phase6-设计.md) — 旧路线图（内容已迁移到本 Phase 7b/7c/7d）
-- [旧 Phase 6.5 抛光](../phase6.5_抛光/V3-Phase6.5-抛光与补齐.md) — 旧路线图（内容已迁移到本 Phase 7d）
+- [LinkDesk-Phase6-设计.md](../phase6_底层加固/LinkDesk-Phase6-设计.md) — Phase 7 的前置条件
 - [Phase 5.5 ErrorBoundary 增强计划](../phase5.5_交互对标/V3-Phase5.5-ErrorBoundary增强计划.md) — 多 WebView 是防线第四层

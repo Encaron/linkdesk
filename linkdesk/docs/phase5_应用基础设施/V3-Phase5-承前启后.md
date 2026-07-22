@@ -132,7 +132,8 @@ Phase 6 三层递进：
 
 路线图唯一权威：[开发管理/V3开发计划.md](../开发管理/V3开发计划.md)。
 
-Phase 6 完整设计：[phase6_编辑能力/](../phase6_编辑能力/)
+Phase 6 完整设计：[phase6_底层加固/](../phase6_底层加固/)
+Phase 7 完整设计：[phase7_多WebView与编辑能力/](../phase7_多WebView与编辑能力/)
 
 ---
 

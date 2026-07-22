@@ -58,10 +58,9 @@ Phase 1-5h ✅ 完成
 | **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | ✅ |
 | **5h** | 运行时动态加载 + PluginLifecycle 归一化 + B1/B2/B78 修复（19 commits，~900 行）| ✅ | ✅ |
 | **5.5** | **三栏交互对标 VS Code + Phase 5 验收修复（5.5-0a ✅ → 5.5-0b ✅ → 5.5a ✅ → 5.5b ✅ → 5.5c C1 ✅ C2+C3 ✅ C4a ✅ C4b ✅ C5 ✅）** | ❌ | ✅ |
-| 6 | 编辑能力——文件树 + 文件编辑 + 主题/语言引擎 + Profile + 壳（5 层：6a/6b/6c/6d/6e，33 项）→ `docs/phase6_编辑能力/` | ❌ | 📋 |
-| **6.5** | **抛光与补齐——通知系统/通用 API/视觉 polish（10 项，3 批；Phase 6 完成后串行执行）** | ❌ | 📋 |
-| 7 | 卡片工作台 + 数据管道（纯插件）| ❌ | 📋 |
-| 8 | OLED（独立插件）| ❌ | 📋 |
+| 6 | 底层加固——零新功能。4 层：6a ErrorBoundary/心跳安全气囊 + 6b 终端归一化（TS） + 6c 基础设施缺口（FileService 等） + **6d Rust 命令插件化（serial.rs 搬迁、serialport 从核心 Cargo.toml 消失）** → `docs/phase6_底层加固/` | ❌ | 📋 |
+| 7 | 多 WebView + 编辑能力——进程隔离 + 文件树 + 主题/语言引擎 + Profile + 壳完善 → `docs/phase7_多WebView与编辑能力/` | ❌ | 📋 |
+| 8 | 卡片工作台 + OLED（纯消费者插件——验证万物皆插件）→ `docs/phase8_工作台与OLED/` | ❌ | 📋 |
 
 > Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
 
