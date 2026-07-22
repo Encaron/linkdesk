@@ -11,6 +11,7 @@ import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/terminal/CommandPalette";
+import { ConfirmDialog, showConfirm } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
@@ -601,7 +602,7 @@ function App() {
     const activeTabId = activeTab?.id;
     if (!activeTabId) return;
 
-    const onKeyDown = (e: KeyboardEvent) => {
+    const onKeyDown = async (e: KeyboardEvent) => {
       // Ctrl+W: 关闭当前标签页
       if (e.ctrlKey && e.key === "w") {
         e.preventDefault();
@@ -609,11 +610,11 @@ function App() {
         const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
         const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
         const behavior = tab?.pluginId ? getTabBehavior(tab.pluginId) : {};
-        if (behavior.confirmOnClose && !window.confirm(behavior.confirmOnClose)) return;
+        if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
 
         const result = closeTab(activeTabId);
         if (!result.closed && result.reason === "dirty") {
-          if (tab && window.confirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
+          if (tab && await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
             forceCloseTab(activeTabId);
           }
         }
@@ -733,6 +734,7 @@ function App() {
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
       />
+      <ConfirmDialog />
       </SerialContext.Provider>
       </TabActionsContext.Provider>
     </div>
