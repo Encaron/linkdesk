@@ -154,6 +154,29 @@
   color: var(--text-primary);
 }
 
+/* ── 内联新建输入框（替代 window.prompt）── */
+
+.session-create-inline {
+  padding: 4px 8px 8px;
+}
+
+.session-create-input {
+  width: 100%;
+  background: var(--bg-input, rgba(255, 255, 255, 0.06));
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 4px 6px;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.session-create-input::placeholder {
+  color: var(--text-muted);
+}
+
 /* ── 空状态 ── */
 
 .session-empty {

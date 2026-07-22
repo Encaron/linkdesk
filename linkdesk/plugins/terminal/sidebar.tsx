@@ -167,26 +167,40 @@ function TerminalSidebar() {
   const sessionCountRef = useRef(sessions.length);
   sessionCountRef.current = sessions.length;
 
-  const handleCreate = useCallback(() => {
-    // Step 1: createTab BEFORE prompt → React 批处理完好 → 拿到有效 tabId。
-    // prompt() 会破坏批处理，所以 tab 必须在 prompt 之前创建。
-    const tempId = tabActions?.createTab("terminal", { label: "新会话", pinned: true }) ?? "";
+  // 内联创建——替代 window.prompt()。prompt() 破坏 React 批处理→createTab 返回空串、
+  // updateTabLabel 失效、notify() 失效。内联输入始终在 React 事件上下文内执行。
+  const [isCreating, setIsCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const createInputRef = useRef<HTMLInputElement>(null);
 
+  const startCreate = useCallback(() => {
     const n = sessionCountRef.current + 1;
-    const name = window.prompt(
-      t("新会话名称：") ?? "新会话名称：",
-      `${t("新会话")} ${n}`,
-    );
-    if (name && name.trim() && tabActions && tempId) {
-      // Step 2: createSession 用 tempId → session.id === tab.id。
-      createSession(name.trim(), tempId);
-      // Step 3: 更新标签栏标题为用户输入的名字。
-      tabActions.updateTabLabel(tempId, name.trim());
-    } else if (tempId) {
-      // 用户取消 → 关闭预创建的标签页
-      tabActions.closeTab(tempId);
+    setNewName(`${t("新会话")} ${n}`);
+    setIsCreating(true);
+  }, [t]);
+
+  const confirmCreate = useCallback(() => {
+    const name = newName.trim();
+    if (name && tabActions) {
+      const session = createSession(name);
+      tabActions.createTab("terminal", { label: name, pinned: true, sourceId: session.id });
     }
-  }, [t, createSession, tabActions]);
+    setIsCreating(false);
+    setNewName("");
+  }, [newName, createSession, tabActions]);
+
+  const cancelCreate = useCallback(() => {
+    setIsCreating(false);
+    setNewName("");
+  }, []);
+
+  // 自动聚焦输入框
+  useEffect(() => {
+    if (isCreating) {
+      createInputRef.current?.focus();
+      createInputRef.current?.select();
+    }
+  }, [isCreating]);
 
   const handleRename = useCallback(
     (id: string) => (name: string) => {
@@ -290,7 +304,7 @@ function TerminalSidebar() {
             title={t("新建会话")}
             onClick={(e) => {
               e.stopPropagation();
-              handleCreate();
+              startCreate();
             }}
           >
             + {t("新建")}
@@ -298,10 +312,26 @@ function TerminalSidebar() {
         }
         defaultOpen={true}
       >
-        {sessions.length === 0 ? (
+        {isCreating && (
+          <div className="session-create-inline">
+            <input
+              ref={createInputRef}
+              className="session-create-input"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") confirmCreate();
+                if (e.key === "Escape") cancelCreate();
+              }}
+              onBlur={cancelCreate}
+              placeholder={t("新会话名称：") ?? ""}
+            />
+          </div>
+        )}
+        {sessions.length === 0 && !isCreating ? (
           <div className="session-empty">
             {t("暂无会话")}
-            <button className="session-empty-link" onClick={handleCreate}>
+            <button className="session-empty-link" onClick={startCreate}>
               [+ {t("新建")}]
             </button>
             {t("开始")}
