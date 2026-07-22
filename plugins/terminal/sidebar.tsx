@@ -18,7 +18,6 @@ import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "@src/core/SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
-import { liveTabState } from "@src/hooks/useTabManager";
 import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
 import Select from "@src/components/shared/Select";
@@ -169,17 +168,23 @@ function TerminalSidebar() {
   sessionCountRef.current = sessions.length;
 
   const handleCreate = useCallback(() => {
+    // Step 1: createTab BEFORE prompt → React 批处理完好 → 拿到有效 tabId。
+    // prompt() 会破坏批处理，所以 tab 必须在 prompt 之前创建。
+    const tempId = tabActions?.createTab("terminal", { label: "新会话", pinned: true }) ?? "";
+
     const n = sessionCountRef.current + 1;
     const name = window.prompt(
       t("新会话名称：") ?? "新会话名称：",
       `${t("新会话")} ${n}`,
     );
-    if (name && name.trim() && tabActions) {
-      // 🔥 先 session（数据层）→ 再 tab（视图层）。
-      // 掉转顺序→window.prompt() 打断 React 批处理→"会话已失效"。
-      // createTab 返回 ""（prompt() 破坏批处理）→不依赖其返回值。
-      const session = createSession(name.trim());
-      tabActions.createTab("terminal", { label: name.trim(), pinned: true, sourceId: session.id });
+    if (name && name.trim() && tabActions && tempId) {
+      // Step 2: createSession 用 tempId → session.id === tab.id。
+      createSession(name.trim(), tempId);
+      // Step 3: 更新标签栏标题为用户输入的名字。
+      tabActions.updateTabLabel(tempId, name.trim());
+    } else if (tempId) {
+      // 用户取消 → 关闭预创建的标签页
+      tabActions.closeTab(tempId);
     }
   }, [t, createSession, tabActions]);
 
@@ -255,10 +260,8 @@ function TerminalSidebar() {
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // 通过 sourceId 找标签页——不依赖 session.id === tab.id（双计数器独立）
-      const tabs = liveTabState.current?.groups.flatMap((g) => g.tabs) ?? [];
-      const tab = tabs.find((t) => t.sourceId === sessionId) ?? tabs.find((t) => t.id === sessionId);
-      if (tab) tabActions?.focusTab(tab.id);
+      // session.id === tab.id——handleCreate 用 createTab 返回值作 session ID 保证
+      tabActions?.focusTab(sessionId);
     },
     [setActiveSession, tabActions],
   );

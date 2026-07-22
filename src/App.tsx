@@ -87,6 +87,7 @@ function App() {
     restoreLayout,
     reorderTab,
     pinTab,
+    updateTabLabel,
   } = useTabManager();
 
   // Phase 5b：核心命令 callbacks——每次渲染更新模块级 ref（零开销），handler 延迟读取避免闭包过期
@@ -672,7 +673,8 @@ function App() {
     openOrFocusTab,
     focusTab,
     closeTab,
-  }), [createTab, openOrFocusTab, focusTab, closeTab]);
+    updateTabLabel,
+  }), [createTab, openOrFocusTab, focusTab, closeTab, updateTabLabel]);
 
   if (!ready) return null;
 
