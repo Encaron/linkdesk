@@ -211,6 +211,8 @@ const { activeSession } = useTerminalSessions();  // 模块级单例！
 
 推荐 A——最小改动，利用已有的标签页恢复机制。
 
+> ⚠️ **Phase 6 过渡标注：** 此 bug 的根因是会话持久化被设计为 Phase 6 功能（见 `V3-Phase6-终端会话持久化.md`——依赖 Phase 6a FileService + WorkspaceService）。5.5c 提前上线了会话功能但持久化层还没做。方案 A 是 **stopgap**——Phase 6 `SessionService` 上线后，`loadSessions()` 自然恢复会话，F5 后 zombie 标签页问题消失。届时这个临时重建逻辑应被正式的 FileService 加载替换。详见 Phase 6 文档 §八"不做的东西"——短期 stopgap 在 Phase 6 完成时移除。
+
 ---
 
 ### B4. 欢迎页点终端卡片 → 直接开标签页（不尊重 viewRole）
@@ -295,51 +297,806 @@ const { activeSession } = useTerminalSessions();
 
 ---
 
-## 📋 修复优先级
+---
 
-| 优先级 | Bug | 理由 |
-|:--:|------|------|
-| 🔥🔥🔥 | **C1** per-tab session 绑定 | 所有多标签页内容混乱的根因。修完 A5、B2 自动消失 |
-| 🔥🔥 | **A3 + B1** port 不自动填充 | 用户第一个操作就踩到——新建会话→开端口→"未配置" |
-| 🔥🔥 | **B3** F5 标签页恢复但 session 丢失 | 用户自然操作——F5 是最常用的刷新方式 |
-| 🔥🔥 | **B4** 欢迎页卡片不尊重 viewRole | 欢迎页是第一个接触点——点终端卡片蹦空白标签页 |
-| 🔥🔥 | **A1** 快捷发送串扰 | 数据完整性问题——旧数据漏到新会话 |
-| 🔥🔥 | **A4** 标签栏 ✕ 变僵尸 session | 用户自然操作路径——点标签 ✕ 是标准行为 |
-| 🔥 | **A5** 标签栏点不更新 activeSession | C1 修完自动消失 |
-| 🔥 | **A2** 改名串扰 + 标签栏不同步 | 需同时修 session name → tab label 同步 |
-| 🟡 | **A6** 协议全局单例 | 当前只有一个协议（bracket），暂时不暴露 |
-| 🟡 | **C2** 全局串口 | Phase 7 多串口——当前不修 |
+## 🔴 E 类——第二轮代码审查新发现（2026-07-22）
+
+> 以下 bug 通过完整代码审查发现——从标签栏、终端、插件适配三个维度逐行 trace 所有操作路径。
+> 审查覆盖了 `App.tsx` / `useTabManager.ts` / `tabIdentity.ts` / `TabBar.tsx` / `MainContent.tsx` / `SidePanel.tsx` / `WelcomeView.tsx` / `CommandRegistry.ts` / `PluginLifecycle` / `LayoutService` / `SerialContext` / `ProtocolRegistry` 以及 `plugins/terminal/` 下全部 4 个源文件。
+
+### E1. `confirmOnClose` 从 plugin.json 完全被忽略——关闭确认形同虚设
+
+**现象：** terminal 的 `plugin.json` 声明了 `"confirmOnClose": "关闭此标签页将断开串口连接"`，但任何关闭路径都不弹确认。
+
+**根因：** `getTabBehavior()` 在 `useTabManager.ts` 中只在两处被调用：
+- L201：`getTabBehavior(type).singleton`——单例去重
+- L221：`getTabBehavior(t.type).isFallback`——预览替换
+
+**`confirmOnClose` 从未被任何代码读取。** 全链路分析：
+
+| 关闭路径 | 文件 | 行为 |
+|:--|------|------|
+| 标签栏 × 按钮 | `TabBar.tsx:357-366` | `closeWithAnimation(tab.id)` → 不检查 confirmOnClose |
+| 中键点击标签 | `TabBar.tsx:342-347` | `closeWithAnimation(tab.id)` → 不检查 confirmOnClose |
+| Ctrl+W | `App.tsx:610-620` | 只弹 dirty 确认 → 不检查 confirmOnClose |
+| 侧栏 ✕ 删会话 | `sidebar.tsx:191-206` | 弹硬编码确认（`"关闭会话「{{name}}」？"`）→ 不读 plugin.json |
+
+**操作路径：**
+1. 用户打开终端标签页 + 连接串口
+2. 点标签栏 × 或按 Ctrl+W
+3. 标签页直接关闭——无任何确认提示
+4. 串口仍在后台连接（标签页关了但 `isOpen` 仍在 App state）
+
+**修法：** 三种方案：
+- **A（推荐）：** TabBar `closeWithAnimation` 中调 `getTabBehavior(tab).confirmOnClose`——如果存在则弹 `window.confirm`，确认后才调 `onCloseTab`。对标 VS Code：`workbench.editor.closeWithConfirmation`。
+- **B：** `reduceCloseTab` 返回 `reason: "confirmOnClose"` 让调用方处理。❌ 状态 reducer 不应包含 UI 逻辑。
+- **C：** App.tsx Ctrl+W handler 中加检查。❌ 只有一处，TabBar ×/中键仍需单独处理。
+
+推荐 A——在 TabBar 层统一处理，一处修改覆盖所有 UI 关闭路径。Ctrl+W 也需单独加（因为不经过 TabBar）。
 
 ---
 
-## 🔍 审查覆盖的操作路径
+### E2. 标签栏 [+] 菜单创建无 session 的终端标签页——僵尸标签页
+
+**现象：** 点标签栏 + 按钮 → 弹出菜单中有"终端" → 点击 → 创建终端标签页，标题"终端"，内容"会话已失效"。
+
+**根因：** `TabBar.tsx:82-91` `PlusMenu` 列出所有 `viewPlugins`（包括 terminal）：
+```typescript
+const viewPlugins = getViewPlugins();
+const items = [
+    ...viewPlugins.map((p) => ({
+        label: p.manifest.name,
+        type: p.pluginId,
+    })),
+    ...
+];
+```
+点击 → `onCreateTab("terminal")` → `createTab("terminal")` → 创建标签页但不创建 session → TerminalView 的 `activeSession` 为 null → 显示"会话已失效"。
+
+**同根 bug：** B4（WelcomeView 欢迎页卡片不尊重 viewRole）。共同根因：代码在多个地方列出"所有插件"但未按 `viewRole` 过滤。
+
+**操作路径：**
+1. 任意标签页打开 → 点标签栏 + 按钮
+2. 弹出菜单显示"终端"
+3. 点"终端" → 创建空白标签页
+4. 标签页内容显示"会话已失效"
+
+**修法：**
+1. `PlusMenu` 中过滤：`viewPlugins.filter(p => getViewRole(p.pluginId) !== "sidebarPrimary")`
+2. 对标 VS Code：Explorer（sidebarPrimary）不出现在编辑器 [+] 菜单中
+3. B4（WelcomeView）同修——`handleShortcutClick` 中检查 `viewRole`
+
+---
+
+### E3. 多 TerminalView 命令处理器竞态——最后一个 mount 的实例赢得所有命令
+
+**现象：** 两个终端标签页（tab A 和 tab B）。tab B 后打开。命令面板执行"清空接收区"→ 清空的是 tab B 的 CM6，即使当前聚焦的是 tab A。
+
+**根因：** `index.tsx:656-798` 每个 TerminalView mount 时通过 `registerCommand("terminal", ...)` 注册 12 个命令 handler。`CommandRegistry.ts:44-52` 重注册时覆盖 handler：
+```typescript
+if (_commands.has(command.id)) {
+    const existing = _commands.get(command.id)!;
+    existing.handler = command.handler;
+    existing.title = command.title;
+    return;
+}
+```
+所有 handler 通过 `terminalCmdRef.current` 引用本地 TerminalView 的 `cmView`/`quickSends` 等。最后一个 mount 的 TerminalView 的 handler 覆盖之前的。
+
+**操作路径：**
+1. 新建"新对话1"（tab A，terminal-1）
+2. 新建"新对话2"（tab B，terminal-2）——此时 B 的 handler 覆盖 A
+3. 点侧栏"新对话1"切回 A
+4. Ctrl+Shift+P → "清空接收区" → 清空的是 B 的内容，不是 A
+
+**影响范围：** 全部 12 个终端命令（复制/全选/清空/暂停/快捷发送回填/编辑/删除/清空发送区/导出日志/切换发送模式/切换回显/切换行号）。
+
+**修法：**
+- **短期（C1 前）：** 每个 TerminalView 用唯一 namespace 注册命令（如 `terminal-${tabId}`）并在 menu contribution 中也用动态 namespace。❌ 改动大
+- **推荐：** C1 修完后，命令 handler 从 `activeSessionId` 对应的 TerminalView 的 ref 读取。或者用 `executeCommand` 传递 `sourceId`，handler 通过 `getSessionById(sourceId)` 找到正确的 view。
+- **更简单的方案：** 命令 handler 不持有 cmView ref，而是通过 `document.querySelector` 找到当前活跃的 CM6 实例。❌ hacky
+
+实际上，C1 修复后架构变化：每个 TerminalView 绑定自己的 session（通过 `sourceId`），不再依赖全局 `activeSession`。但命令 handler 的竞态问题依然存在，因为所有 TerminalView 仍共享 `"terminal"` namespace。
+
+**最佳方案：** 命令 handler 改为按 `activeSessionId` 路由——handler 内部检查"当前活跃 session 对应的 TerminalView 是我吗？" 如果不是，委托给正确的 TerminalView。或者更简单的：handler 内用 `getActiveSessionId()` 找到 session，然后通过 session 数据操作（而非直接操作 cmView）。
+
+---
+
+### E4. `_receiveMode` 模块变量多视图冲突
+
+**现象：** TerminalView A 设置 receiveMode="text"，TerminalView B 设置 receiveMode="hex"。串口数据到达时，A 和 B 都显示 HEX 格式。
+
+**根因：** `index.tsx:59` 模块级变量 `let _receiveMode: string = "text"`——所有 TerminalView 实例共享。渲染时每个 TerminalView 写 `_receiveMode = receiveMode`，最后一个渲染者决定值。Tauri event handler（L401）读 `_receiveMode` 决定显示格式。
+
+```typescript
+// L59——模块级，所有实例共享
+let _receiveMode: string = "text";
+
+// L390——每个 TerminalView 渲染时覆盖
+_receiveMode = receiveMode;
+
+// L406——Tauri event handler 读取
+const displayText = _receiveMode === "hex" ? toHexDisplay(payload) : payload;
+```
+
+**操作路径：**
+1. 新建两个终端会话 A 和 B
+2. 侧栏切到 B → 收发设置 → 接收模式改为 HEX
+3. 侧栏切回 A
+4. 发送串口数据 → A 也显示 HEX 格式（因为 B 最后渲染，写了 `_receiveMode = "hex"`）
+
+**修法：** C1 修复后，每个 TerminalView 绑定自己的 session。Tauri event handler 中改为按 session 读取 receiveMode：
+```typescript
+// 伪代码
+useTauriEvent("serial-data", (payload) => {
+    const sid = getActiveSessionId();
+    if (!sid) return;
+    const session = getSessionById(sid);
+    const displayText = session?.receiveMode === "hex" ? toHexDisplay(payload) : payload;
+    ringBuffer.current.write({...});
+});
+```
+但这样所有 ringBuffer 都会收到数据（当前行为）。正确的做法是：每个 TerminalView 的 Tauri handler 检查"这个数据是给我的吗？"——但串口数据是广播的，没有目标 session。
+
+**从根源上：** `_receiveMode` 改为 `Map<sessionId, receiveMode>`，Tauri handler 遍历所有 session 并为每个 session 的 ringBuffer 写入对应格式的数据。或者更简单：raw 数据始终以原始格式写入 ringBuffer，格式化延迟到 `appendLine` 时（那时已知 session 的 receiveMode）。
+
+---
+
+### E5. 终端插件卸载后 session 状态残留 + 串口未关闭
+
+**现象：** 插件市场卸载终端插件 → toast 提示"已卸载：终端" → 但 `_sessions` 数组仍保留旧数据，`_activeSessionId` 仍指向旧 session。如果串口之前打开着，仍然保持连接。
+
+**根因：** `lifecycle.ts` 的 `onWillUninstall` 消费端清理了 6 个注册表（commands/keybindings/menus/protocols/cards/channels），但**没有调用 `useTerminalSessions` 的 `resetAll()`**。
+
+设计文档 `V3-Phase5.5-设计.md:1146` 明确写了：
+```
+resetAll() { _sessions = []; _activeSessionId = null; notify(); },
+// ← 供 lifecycle 的 onWillUninstall 调用
+```
+
+但此接线从未实现。`lifecycle.ts` 不知道 `useTerminalSessions` 的存在（它只处理通用注册表）。
+
+此外，App.tsx 的串口状态（`isOpen`/`portName`/`baudRate`）是 App 级 state，终端插件卸载不影响它。串口在 Rust 后端仍保持连接。
+
+**修法：**
+1. `useTerminalSessions.ts` 导出 `resetAllSessions()` 模块级函数（非 hook 方法）
+2. 终端插件在 `onWillUninstall` 时订阅 PluginLifecycle 事件 → 调 `resetAllSessions()`
+3. 终端插件还应在此事件中关闭串口（如果已连接）：`invoke("close_port")`
+
+或者更通用的方案：
+- `PluginLifecycle.onWillUninstall` 中追加消费端：调用 `window.dispatchEvent(new CustomEvent("v3-plugin-cleanup", { detail: { pluginId } }))`
+- 终端插件在自身的初始化中 listen 此事件
+
+---
+
+### E6. `handleCreate` 缺少错误处理——tabActions 为 null 或 createTab 返回空时静默失败
+
+**现象：** 如果 `TabActionsContext.Provider` 未挂载（理论上不应该，但防御性代码缺失），点侧栏"+ 新建"无任何反应，无错误提示。
+
+**根因：** `sidebar.tsx:170-181`：
+```typescript
+const handleCreate = useCallback(() => {
+    const n = sessionCountRef.current + 1;
+    const name = window.prompt(...);
+    if (name && name.trim() && tabActions) {
+      const tabId = tabActions.createTab("terminal", { label: name.trim(), pinned: true });
+      createSession(name.trim(), tabId);  // ← 如果 tabId 是空字符串呢？
+    }
+    // tabActions 为 null → 静默跳过，无 toast/console.warn
+}, [t, createSession, tabActions]);
+```
+
+`reduceCreateTab` 在找不到 targetGroup 时返回 `createdId: ""`（`useTabManager.ts:239`）。虽然正常流程不会触发（targetGroupId 默认 = activeGroupId），但防御性代码缺失。
+
+**修法：**
+1. `tabActions` 为 null 时 toast 错误
+2. `createTab` 返回空时 toast 错误，不创建 session
+
+---
+
+### E7. `saveQuickSends` 在 `activeSessionId` 为 null 时静默失败
+
+**现象：** 用户在快捷发送栏添加/编辑/删除 → 点击保存 → 无反应。无 toast，无 console.warn。
+
+**根因：** `index.tsx:223-228`：
+```typescript
+const saveQuickSends = useCallback((updated: Record<string, string>) => {
+    if (activeSessionId) {
+      updateSession(activeSessionId, { quickSends: updated });
+    }
+    // activeSessionId 为 null → 静默跳过
+}, [activeSessionId, updateSession]);
+```
+
+**修法：** `activeSessionId` 为 null 时 `console.warn` + toast 错误提示。
+
+---
+
+### E8. App.tsx 串口操作仍读 ConfigurationService 的 receiveCoding——C4a 后成断引用
+
+**现象：** 用户在侧栏收发设置中将"接收编码"从 UTF-8 改为 GB2312 → 打开串口 → Rust 后端仍以 UTF-8 解码数据。
+
+**根因：** `App.tsx:412-415`：
+```typescript
+function getReceiveCoding(): string {
+    try { return getConfigurationValue<string>("terminal.receiveCoding") ?? "UTF-8"; }
+    catch { return "UTF-8"; }
+}
+```
+
+C4a 将终端 12 项设置从 ConfigurationService 迁移到 per-session（`useTerminalSessions`）。`terminal.receiveCoding` 在 ConfigurationService 中不再有值（无 `registerConfiguration` 注册）。`getConfigurationValue` 返回 undefined → 永远 fallback 到 "UTF-8"。
+
+同时，`ControlPanel.tsx:76-87` `handleToggleOpen` 在打开端口前同步 `portName` 和 `baudRate` 到 SerialContext，但**不同步 `receiveCoding`**。
+
+**操作路径：**
+1. 新建会话 → 侧栏收发设置 → 接收编码改为 GB2312
+2. ControlPanel 选 COM3 → 点"打开"
+3. `ControlPanel.handleToggleOpen` 同步 portName/baudRate → 调 `toggleOpen()`
+4. `App.tsx.handleToggleOpen` → `invoke("open_port", { ..., encoding: getReceiveCoding() })` → encoding 始终为 "UTF-8"
+5. 串口数据以 UTF-8 解码——GB2312 中文显示乱码
+
+**修法：**
+1. `App.tsx.handleToggleOpen` 改为从 `SerialContext` 接收 `encoding` 参数（而非自己读 ConfigurationService）
+2. `SerialContext.actions.toggleOpen` 签名改为 `(encoding?: string) => Promise<void>`
+3. `ControlPanel.handleToggleOpen` 中同步 `receiveCoding`：`await toggleOpen(activeSession.receiveCoding)`
+4. 删除 `getReceiveCoding()` 函数
+
+---
+
+### E9. `appendLine` useCallback 依赖了未使用的 `timestampFormat`
+
+**现象：** 改变侧栏时间戳格式 → `appendLine` 函数引用变化 → rAF drain 循环重启（不必要的性能开销）。
+
+**根因：** `index.tsx:337-375`：
+```typescript
+const appendLine = useCallback((text, color) => {
+    // timestampFormat 未在函数体内使用！
+    // 时间戳已在 Tauri event handler 中通过 formatTimestamp(fmt) 生成，
+    // appendLine 只负责追加到 CM6 + 添加颜色装饰
+}, [timestampFormat, showEcho, separateSystemLog]);  // ← timestampFormat 多余
+```
+
+`timestampFormat` 在 deps 中但函数体内未引用。时间戳格式化在 event handler（L401-412）中已完成。
+
+**修法：** 从 deps 中移除 `timestampFormat`。`appendLine` 只在 `showEcho` 或 `separateSystemLog` 变化时才应重建。
+
+---
+
+### E10. 标签栏 TabBar `closeWithAnimation` 依赖了未使用的 `tabs`
+
+**现象：** 标签页列表每次变化（新增/删除/重排）→ `closeWithAnimation` 函数引用变化。
+
+**根因：** `TabBar.tsx:192-201`：
+```typescript
+const closeWithAnimation = useCallback(
+    (tabId: string) => {
+      setExitingTabId(tabId);
+      setTimeout(() => {
+        onCloseTab(tabId);
+        setExitingTabId(null);
+      }, 120);
+    },
+    [tabs, onCloseTab]  // ← tabs 在函数体内未使用
+  );
+```
+
+**修法：** 从 deps 中移除 `tabs`。保留 `[onCloseTab]`。
+
+---
+
+## 🟣 F 类——系统性问题（跨模块、需全局审计）
+
+> 以下不是单个 bug，而是贯穿多个模块的系统性缺陷。每个都需要全局 grep + 逐点审计。
+
+### F1. `viewRole` 未被所有消费端统一过滤——sidebarPrimary 插件泄漏到非侧栏入口
+
+**现象：** 多个"打开视图"的入口列出了所有插件，不区分 viewRole。`sidebarPrimary` 插件（如终端）的本意是"主交互在侧栏，不需要独立标签页"，但它们仍出现在：
+- B4：欢迎页快捷卡片 → 点击创建空白终端标签页
+- E2：标签栏 [+] 弹出菜单 → 点击创建空白终端标签页
+
+**根因：** 代码中有多处调用 `getViewPlugins()` 列出"所有视图插件"，但各处独立判断（或不判断）viewRole。没有一个统一的"获取可创建为标签页的插件列表"函数。
+
+**潜在受影响点（需全局 grep 审计）：**
+- `WelcomeView.tsx:26` — `getViewPlugins()` — **已确认 B4**
+- `TabBar.tsx:83` — `getViewPlugins()` (PlusMenu) — **已确认 E2**
+- 命令面板的"打开视图"命令列表
+- 快捷键绑定的视图切换
+- 未来任何新增的"列出所有插件"功能
+
+**修法：**
+1. `viewRegistry.ts` 新增 `getTabCreatableViews()`——过滤掉 `viewRole === "sidebarPrimary"` 的插件
+2. 所有消费端统一使用此函数，而非各自过滤
+3. 对标 VS Code：Explorer 视图不出现在"打开编辑器"命令列表中
+
+---
+
+### F2. `plugin.json` 声明字段与运行时消费脱节——声明了但没人读
+
+**现象：** 插件在 `plugin.json` 中声明了行为，但运行时代码不消费这些声明。已确认案例：
+- E1：`tabBehavior.confirmOnClose` —— `getTabBehavior()` 只在 singleton/isFallback 路径被调用，confirmOnClose 从未被读取
+
+**潜在受影响字段（需逐个 grep 审计）：**
+
+| plugin.json 字段 | 注册位置 | 消费端 | 状态 |
+|:--|------|------|:--:|
+| `tabBehavior.singleton` | `viewRegistry.ts:58` `getTabBehavior()` | `useTabManager.ts:201` | ✅ 已接线 |
+| `tabBehavior.isFallback` | `viewRegistry.ts:58` `getTabBehavior()` | `useTabManager.ts:221` | ✅ 已接线 |
+| `tabBehavior.confirmOnClose` | `viewRegistry.ts:58` `getTabBehavior()` | **无处消费** | 🔴 E1 |
+| `iconLocation` | `viewRegistry.ts:102` `getIconLocation()` | `IconBar.tsx` | ❓ 待验证 |
+| `keepSidebarOnFocus` | `viewRegistry.ts:120` `hasKeepSidebarOnFocus()` | `tabIdentity.ts:210` `shouldKeepSidebarOnFocus()` | ❓ 待验证 |
+| `statusBar` | `viewRegistry.ts:65` `getStatusBarContributions()` | `StatusBar.tsx` | ❓ 待验证 |
+| `viewRole` | `viewRegistry.ts:107` `getViewRole()` | `App.tsx:382` `handleIconClick` | ⚠️ 部分——漏 WelcomeView/TabBar |
+
+**修法：**
+1. 全局 grep `getTabBehavior` 的所有调用点 → 确认 singleton/isFallback/confirmOnClose 三个字段都有对应逻辑
+2. 全局 grep `getIconLocation` → 确认 IconBar 正确消费
+3. 全局 grep `getStatusBarContributions` → 确认 StatusBar 正确消费
+4. 全局 grep `getViewRole` → 确认所有"列出插件"的地方都过滤了 sidebarPrimary
+5. 对标 VS Code：`package.json` contributes 的每个字段都有对应的 `I*Service` 消费
+
+---
+
+### F3. C4a 迁移不完整——ConfigurationService → session 的数据迁移漏了写路径
+
+**现象：** C4a 将终端 12 项设置从 `ConfigurationService` 迁移到 `useTerminalSessions`（per-session），但迁移只覆盖了**读写设置值的代码路径**（sidebar 写 → session → TerminalView 读），漏了**使用设置值的操作路径**（如打开串口时传 encoding）。
+
+已确认案例：
+- E8：`App.tsx:413` `getReceiveCoding()` 仍从 `getConfigurationValue("terminal.receiveCoding")` 读——此 key 在 ConfigurationService 中已无值
+
+**潜在受影响项（C4a 迁移的 12 项设置逐个审计）：**
+
+| 设置项 | 读写路径（sidebar→session→view） | 操作路径（实际使用时） | 状态 |
+|:--|------|------|:--:|
+| `receiveCoding` | ✅ session 读写 | 🔴 `App.tsx` 仍读 ConfigurationService | E8 |
+| `sendCoding` | ✅ session → `sendCtxRef` | ✅ `useSendData` 从 ref 读 | ✅ |
+| `sendMode` | ✅ session → `sendCtxRef` | ✅ `useSendData` 从 ref 读 | ✅ |
+| `lineEnding` | ✅ session → `sendCtxRef` | ✅ `useSendData` 从 ref 读 | ✅ |
+| `timestampFormat` | ✅ session → `tsFormatRef` | ✅ Tauri event handler 从 ref 读 | ✅ |
+| `showEcho` | ✅ session → `showEchoRef` | ✅ `appendLine` 从 ref 读 | ✅ |
+| `showLineNumbers` | ✅ session → Compartment | ✅ CM6 effect 从 ref 读 | ✅ |
+| `separateSystemLog` | ✅ session → render | ✅ `appendLine` 从 render 值读 | ✅ |
+| `autoRepeat` | ✅ session → useEffect | ✅ 定时器 effect 从 render 值读 | ✅ |
+| `repeatInterval` | ✅ session → useEffect | ✅ 定时器 effect 从 render 值读 | ✅ |
+| `autoClear` | ✅ session → handleSend | ✅ `handleSend` 从 render 值读 | ✅ |
+| `receiveMode` | ✅ session → `_receiveMode` | ⚠️ 模块变量——E4 | E4 |
+
+**修法：**
+1. 修复 E8：`receiveCoding` 从 session 读 → 传入 `open_port` 的 encoding 参数
+2. 修复 E4：`_receiveMode` 模块变量 → 按 session 读取
+3. 删除 `App.tsx` 中残留的 `getConfigurationValue("terminal.*")` 调用
+4. 删除 `useTerminalSessions.ts` 中 A1 的 `getConfigurationValue("terminal.quickSends")` 临时桥接
+5. 全局 grep `getConfigurationValue.*terminal\.` → 确保零残留
+
+---
+
+## 📋 修复优先级（更新）
+
+| 优先级 | Bug | 理由 |
+|:--:|------|------|
+| 🔥🔥🔥 | **C1** per-tab session 绑定 | 所有多标签页内容混乱的根因。修完 A5、B2、E3、E4 自动消失或大幅简化 |
+| 🔥🔥🔥 | **E1** confirmOnClose 忽略 | 用户数据安全——关闭标签页静默断开串口，无任何提示 |
+| 🔥🔥 | **A3 + B1** port 不自动填充 | 用户第一个操作就踩到——新建会话→开端口→"未配置" |
+| 🔥🔥 | **B3** F5 标签页恢复但 session 丢失 | 用户自然操作——F5 是最常用的刷新方式 |
+| 🔥🔥 | **F1** viewRole 未统一消费 | 系统性问题——E2+B4 同根，需全局 grep 审计 |
+| 🔥🔥 | **E8** receiveCoding 断引用 | C4a 迁移不完整——用户改编码无效，数据乱码 |
+| 🔥🔥 | **A1** 快捷发送串扰 | 数据完整性问题——旧数据漏到新会话 |
+| 🔥🔥 | **A4** 标签栏 ✕ 变僵尸 session | 用户自然操作路径——点标签 ✕ 是标准行为 |
+| 🔥🔥 | **F3** C4a 迁移遗留残留 | 系统性问题——全局 grep `terminal\.` 清残留 |
+| 🔥 | **A5** 标签栏点不更新 activeSession | C1 修完自动消失 |
+| 🔥 | **A2** 改名串扰 + 标签栏不同步 | 需同时修 session name → tab label 同步 |
+| 🔥 | **E3** 多 TerminalView 命令竞态 | C1 修完后架构变化——需重新设计命令路由 |
+| 🔥 | **E4** _receiveMode 多视图冲突 | C1 修完后需改为按 session 读 receiveMode |
+| 🔥 | **E5** 插件卸载后 session 残留 | 内存泄漏 + 串口泄漏 |
+| 🔥 | **F2** plugin.json 声明脱节 | 系统性问题——需全局审计所有 tabBehavior/statusBar/iconLocation 消费端 |
+| 🟡 | **A6** 协议全局单例 | 当前只有一个协议（bracket），暂时不暴露 |
+| 🟡 | **C2** 全局串口 | Phase 7 多串口——当前不修 |
+| 🟢 | **E6** handleCreate 缺错误处理 | 防御性——正常流程不触发 |
+| 🟢 | **E7** saveQuickSends 静默失败 | 防御性——正常流程不触发 |
+| 🟢 | **E9** appendLine 多余 deps | 性能——不影响功能 |
+| 🟢 | **E10** closeWithAnimation 多余 deps | 性能——不影响功能 |
+
+---
+
+## 🔵 G 类——第三轮深度代码审查（2026-07-22，4 Agent 并行 + 手动交叉验证）
+
+> 审查范围扩展至 Phase 1-5 全部基础设施。4 个 agent 并行审计：
+> - Agent 1: `src/` 全部基础设施（硬编码 plugin ID 残留、生命周期泄漏、竞态条件）
+> - Agent 2: `plugins/terminal/` 深度——逻辑边界/null 安全/React 规则
+> - Agent 3: `useTabManager` / `splitTree` / `TabBar` / `MainContent` / `TabPanePositioner`
+> - Agent 4: `pluginLoader/` + `viewRegistry` / `lifecycle` / `IconBar` / `StatusBar` / `PluginDetailView`
+>
+> 手动交叉验证：`ConfigurationService` / `StorageService` / `ContextKeyService` / `CommandRegistry` / `MenuRegistry` / `KeybindingRegistry` / `CoreEvents` / `RingBuffer` / `useTauriEvent` / `v3Api`
+
+### G1. `reduceUnsplit` 静默销毁被移除面板的全部标签页——数据丢失
+
+**现象：** 用户分屏为左右两个面板，各有一个终端标签页。收起右侧面板 → 右侧标签页和其绑定的 session 全部消失，session 数据无法恢复。
+
+**根因：** `useTabManager.ts:562-579` `reduceUnsplit` 直接 `filter` 掉整个 group：
+```typescript
+const newGroups = prev.groups.filter((g) => g.id !== groupId);
+```
+VS Code 对标行为：收起面板时，被收起面板的标签页应合并到存活面板中。
+
+**修法：** 在 remove group 之前，将该 group 的 tabs 移到 `survivingSiblingGroupId` 对应的 group 中。更新存活 group 的 `activeTabId`。
+
+---
+
+### G2. `reduceForceCloseTab` 形同虚设——dirty 标记从未被清除
+
+**现象：** 用户 Ctrl+W 关闭 dirty 标签页 → 弹"有未保存的修改，确定关闭？"→ 点确定 → 标签页仍然关不掉，静默失败。
+
+**根因：** `useTabManager.ts:361-366` `reduceForceCloseTab` 做浅拷贝 `{ ...prev }` 但不清理 dirty 标记。`reduceCloseTab` 仍然读到 `tab.dirty = true` → 返回 `{ closed: false, reason: "dirty" }`。
+
+**操作路径：** 见 `App.tsx:617-618`——用户确认后的 `forceCloseTab` 从未生效。
+
+**修法：** `reduceForceCloseTab` 中先清零目标 tab 的 dirty：
+```typescript
+const cleanedGroups = prev.groups.map(g => ({
+  ...g, tabs: g.tabs.map(t => t.id === tabId ? { ...t, dirty: false } : t)
+}));
+return reduceCloseTab({ ...prev, groups: cleanedGroups }, tabId);
+```
+
+---
+
+### G3. 模块级计数器与恢复的布局不同步——F5 后 ID 碰撞
+
+**现象：** F5 刷新 → 布局恢复 `terminal-1`、`terminal-2` → 用户新建会话 → 新 tab ID 也是 `terminal-1`（计数器从 0 开始）→ 两个标签页同 ID → React key 冲突 / closeTab 关错。
+
+**根因：** `tabIdentity.ts:41-51` `_terminalCounter`、`_workspaceCounter`、`_fallbackCounter` 是模块级变量，F5 后重置为 0。但 `LayoutService` 恢复的布局可能包含已被占用的 ID。
+
+**修法：** `reduceRestoreLayout` 恢复后扫描所有 tab ID，提取数字后缀，将对应计数器设为 `max + 1`。
+
+---
+
+### G4. App.tsx 串口统计 `listen()` 未使用 generation counter——StrictMode 泄漏
+
+**现象：** React StrictMode 或 HMR 下，`serial-stats` 的第一个 Tauri listener 泄漏——永不取消。
+
+**根因：** `App.tsx:482-489`：
+```typescript
+useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<...>("serial-stats", (event) => { ... })
+      .then((fn) => { unlisten = fn; }).catch(() => {});
+    return () => { unlisten?.(); };
+}, []);
+```
+StrictMode double-mount：第一次 mount 的 `listen()` Promise 未 resolve，cleanup 中 `unlisten?.()` = undefined → 跳过。Promise 后来 resolve → 赋值给已被丢弃的局部变量 `unlisten` → 此 listener 永不取消。
+
+项目已有正确的 `useTauriEvent` hook（带 generation counter），但此处未使用。
+
+**修法：** 替换为 `useTauriEvent("serial-stats", callback)`。
+
+---
+
+### G5. `useTabManager` render 期间修改 ref——违反 React 规则
+
+**现象：** `useTabManager.ts:748-754` 在组件函数体中直接写 `lastFocusedByType.current`（非 useEffect 内）：
+```typescript
+for (const tab of tabState.groups.flatMap((g) => g.tabs)) {
+    const key = tab.pluginId ?? tab.type;
+    if (!lastFocusedByType.current.has(key)) {
+      lastFocusedByType.current.set(key, tab.id);
+    }
+}
+```
+React Concurrent Mode 下 render 可能被丢弃并重放，ref 状态不可靠。
+
+**修法：** 移到 `useEffect` 中，在 commit 后更新 ref。
+
+---
+
+### G6. `toLayoutData()` 通过 setState hack 读状态——Concurrent Mode 下彻底失效
+
+**现象：** `useTabManager.ts:897-908` `toLayoutData` 用 `setTabState(prev => { data = prev; return prev })` "偷读"当前状态。依赖 updater 同步执行 + `return prev` bail-out。Concurrent Mode 下 updater 可能异步调度 → `data` 仍为 `undefined` → `data!` 非空断言崩溃。
+
+**修法：** 用 `useRef` 存最新 tabState（对标 App.tsx `tabStateRef` 模式），`toLayoutData` 从 ref 读。
+
+---
+
+### G7. Monaco Enter 键 handler 闭包过期——键入文字后 Enter 无反应
+
+**现象：** TerminalView mount 时 Monaco 发送框为空。用户输入 `AT\r\n` 后按 Enter → 无反应，不发送。点"发送"按钮 → 正常发送。
+
+**根因：** `index.tsx:912-933` `handleEditorMount` 仅 Monaco mount 时调用一次。内部 `editor.onKeyDown` handler 捕获了 mount 时的 `handleSend`（此时 `sendValue=""`）。后续 `handleSend` 随 `sendValue`/`autoClear` 变化而重建，但 `onMount` 不重触发 → Enter 键永远调旧的 `handleSend` → `if (!sendValue.trim()) return` 提前退出。
+
+**修法：** `handleSend` 通过 ref 桥接：
+```typescript
+const handleSendRef = useRef(handleSend);
+handleSendRef.current = handleSend;
+// handleEditorMount 内：handleSendRef.current()
+// deps 改为 []（稳定引用）
+```
+
+---
+
+### G8. 插件卸载先执行前端清理再调 Rust——Rust 失败导致前端撕裂状态
+
+**现象：** 卸载插件 → Rust `invoke("uninstall_plugin")` 失败（权限不足/目录锁定）→ 但前端已清除 iconOrder、注销 config、forceClose 所有标签页、注销 registries → 插件在前端完全消失但文件仍在磁盘 → 用户无法恢复，只能 F5。
+
+**根因：** `loader.ts:729-738` 执行顺序：
+1. `cachePluginMetadata("uninstalled")` → 缓存标记已卸载
+2. `PluginLifecycle.onWillUninstall.fire()` → 消费端清理 iconOrder/config/registries/tabs
+3. `await invoke("uninstall_plugin")` → **可能抛异常**
+4. `unregisterViewPlugin()` + `onDidUninstall.fire()` → 只有 invoke 成功才执行
+
+**修法：** 将步骤 1-2 移到 invoke 成功之后。先确认 Rust 操作成功，再清理前端状态。
+
+---
+
+### G9. StatusBar 不响应插件安装/卸载——状态陈旧
+
+**现象：** 插件市场安装新插件 → 图标栏出现新图标 ✅（IconBar 订阅了 `onDidRegister`）→ 但状态栏不更新 ❌（StatusBar 未订阅任何生命周期事件）→ 需要切换标签页等触发父组件重渲染才刷新。
+
+**根因：** `StatusBar.tsx` 渲染时读 `getStatusBarContributions()` 但不订阅 `onDidRegister`/`onDidUnregister`/`onPluginLifecycleChange`。对标 IconBar（`IconBar.tsx:67-71`）已有正确的订阅模式。
+
+**修法：** StatusBar 加 `useEffect` 订阅 `onPluginLifecycleChange`，触发本地 version state 强制重渲染。
+
+---
+
+### G10. `compareVersions` 将非数字段静默当作 0——`"1.beta" == "1.0.0"` 判等
+
+**现象：** 插件版本 `"1.beta.3"` 与 `"1.0.3"` 被 `compareVersions` 视为相等。非标准 semver 字符串被静默接受。
+
+**根因：** `semverUtils.ts:11-19`：`a.split(".").map(Number)` 将非数字转为 NaN。`NaN || 0` → 0。两个不同的版本号被映射到相同的数字数组。
+
+**修法：** 加 `isValidSemver(v)` 校验函数，拒绝非法版本号。Phase 6 引入完整的 semver pre-release 支持。
+
+---
+
+### G11. 标签页拖到其他面板时目标选择随机（3+ 面板）
+
+**现象：** 3 个分屏面板（A/B/C）。从 B 拖标签页到 C → 标签页出现在 A（而非 C）。
+
+**根因：** `TabBar.tsx:253-268` `findOtherContainer` 只返回 `boolean`（鼠标是否在某个 TabBar 上），不返回具体哪个 group。`MainContent.tsx:144` fallback 选第一个非源 group：
+```typescript
+const otherGroupId = allLeafIds.find((id) => id !== group.id);
+```
+
+**修法：** `findOtherContainer` 返回 `string | null`（目标 groupId）。`useDragReorder` 和 `onMoveToOther` 传递此 groupId。
+
+---
+
+### G12. `duplicateTab` ID 碰撞检查只限同组——跨组可能碰撞
+
+**现象：** workspace `workspace-main` 在 Group A → 从 Group B 复制同一个 workspace → 产生同 ID `workspace-main` → 两个标签页同 key。
+
+**根因：** `useTabManager.ts:502`：`if (group.tabs.some(t => t.id === copy.id))` 只检查当前 group，不检查全局。
+
+**修法：** 改为全局检查：`new Set(allTabs(prev).map(t => t.id)).has(copy.id)`。
+
+---
+
+### G13. `loadPluginRuntime` 和 `loadPlugin` 功能不对等——`mode`/`resources` 缺失
+
+**现象：** 运行时（plugin:// 协议）安装的协议插件或资源插件 → `manifest.mode` 和 `manifest.resources` 被忽略 → 协议解析器不注册。
+
+**根因：** `loader.ts:382-459` `loadPluginRuntime` 未处理 `mode` 和 `resources` 字段。`loadPlugin`（line 344-352）有这些检查。同一份 manifest 在不同加载路径下行为不同——V2.6 归一化违规。
+
+**修法：** 将 `mode`/`resources` 处理提取为共享函数，两个加载路径统一调用。
+
+---
+
+### G14. PluginDetailView 在插件被卸载后不刷新——用户看到幽灵详情页
+
+**现象：** 用户打开插件 X 的详情页 → 另一个标签页中卸载插件 X → 详情页仍显示"已安装 ✓"，卸载按钮仍可见。
+
+**根因：** `PluginDetailView.tsx:42-44` `installedIds` 用 `useMemo(..., [])`——空 deps，永远不更新。组件不订阅 `onDidUnregister`。
+
+**修法：** 订阅 `onDidUnregister` → 过滤 `pluginId` 匹配 → 触发 re-render。
+
+---
+
+### G15. Toast 撤销操作——动态 import loader 无错误处理
+
+**现象：** 卸载插件 → toast "已卸载：终端 [撤销]" → 点撤销 → 模块加载失败时静默失败。
+
+**根因：** `lifecycle.ts:136-141`：`import("./loader").then(...)` 无 `.catch()`。dynamic import 失败时撤销操作无反馈。
+
+**修法：** 加 `.catch(() => pushToast({ message: "撤销失败，请重试", severity: "error" }))`。
+
+---
+
+### G16. 文件监控不检测已删除的插件目录——删除后插件仍存活
+
+**现象：** 手动删除插件目录 → 插件在 UI 中仍然存在（图标栏、已加载列表）→ 直到 F5 才消失。
+
+**根因：** `loader.ts` `startPluginWatcher` 只检测 NEW 插件（在文件系统中但不在 `loadedPluginIds`），不检测反向：已加载但文件系统已删除。
+
+**修法：** 每次轮询时比对：`loadedPluginIds` 中有但文件系统中没有 → 触发 disable/uninstall 流程。
+
+---
+
+### G17. `isSidebarPrimaryView` 死代码——被 `getViewRole` 替代但未删除
+
+**现象：** `viewRegistry.ts:115-117` 定义的函数，全代码库零调用。
+
+**根因：** Phase 5.5a 引入 `getViewRole()` 作为统一入口，但旧的 `isSidebarPrimaryView()` 未清理。
+
+**修法：** 删除函数。
+
+---
+
+### G18. `CoreEvents` 5 个 Emitter 实例——定义但从未使用（死代码）
+
+**现象：** `CoreEvents.ts:59-74` 定义了 `onDidChangeConfiguration`、`onDidChangePortState`、`onDidChangeTheme`、`onDidChangeActiveTab`、`onDidReceiveData` 共 5 个 Emitter——全代码库零订阅。
+
+与当前仍活跃的 `CUSTOM_EVENTS`（window.dispatchEvent 模式）形成两套事件系统共存的局面。
+
+**修法：** Phase 6 迁移或用 TODO 标注。当前应加 `// Phase 6: migrate CUSTOM_EVENTS to CoreEvents` 注释。
+
+---
+
+### G19. `formatTimestamp` 函数两份拷贝——归一化违规
+
+**现象：** `useSendData.ts:51-59` 和 `index.tsx:1192-1200` 有完全相同的 `formatTimestamp` 实现。
+
+**修法：** 提取到 `src/utils/timestamp.ts`，两处删除重复代码。
+
+---
+
+### G21. rAF drain 循环 pause→unpause 过渡期数据丢失
+
+**现象：** 用户暂停接收 → 继续接收 → 暂停期间的 1 帧数据（~16ms）丢失。
+
+**根因：** `index.tsx:466-481` `handlePause` 先排空 `pausedBuffer`，再 `setPaused(false)` 触发 React 重渲染。旧 rAF 循环（`paused=true` 闭包）在 effect cleanup 前可能再跑一帧，将数据写入已被清空的 `pausedBuffer`。新 rAF 循环（`paused=false`）启动后不再读 `pausedBuffer` → 这一帧数据永久丢失。
+
+**修法：** `handlePause` 在 `setPaused(false)` 前额外 drain 一次 ringBuffer，确保过渡期数据不丢失。
+
+---
+
+### G22. `repeatInterval` 输入框拒绝 0——`parseInt("0") || 1000` = 1000
+
+**现象：** 用户在间隔输入框输入 0 → 自动变成 1000。
+
+**根因：** `sidebar.tsx:343`：`parseInt(e.target.value) || 1000`。`parseInt("0") = 0` 是 falsy → `|| 1000` 返回 1000。
+
+**修法：** `const v = parseInt(e.target.value); mkSetter("repeatInterval")(isNaN(v) ? 1000 : v)`。
+
+---
+
+### G23. `handleToggleOpen` 可能在 portName 为空时调用——后端应拒绝但前端未校验
+
+**现象：** `activeSession.port` 为空 → guard 跳过 → `toggleOpen()` 用上次的 `state.portName` 打开。
+
+**根因：** `ControlPanel.tsx:79` `if (activeSession.port && ...)` — port 为空时整个 guard 跳过。
+
+**修法：** 加 guard：`if (!activeSession.port) { appendLine("请先选择串口", "system"); return; }`。
+
+---
+
+### G24. CM6 主题含 15+ 处硬编码 rgba 颜色——违反 CSS 变量规则
+
+**现象：** `index.tsx:62-79` 和 `TerminalView.css` 中大量硬编码颜色。
+
+**根因：** CM6 的 `EditorView.theme()` 和 CSS 文件中使用了 `rgba(255,255,255,0.04)`、`#FFD700` 等硬编码值，不响应主题切换。
+
+**修法：** 统一迁移到 CSS 变量（如 `--cm-active-line-bg`、`--paused-banner-color`）。
+
+---
+
+### G20. `StorageService` 跨平台路径 bug——硬编码反斜杠
+
+**现象：** `StorageService.ts:143`：
+```typescript
+const dir = path.substring(0, path.lastIndexOf("\\"));
+```
+Windows 以外的平台会得到空字符串或不正确的目录。
+
+**修法：** 用 `@tauri-apps/api/path` 的 `dirname()` 或检查 `/` 和 `\` 两种分隔符。
+
+---
+
+## 📋 最终修复优先级（三轮合并）
+
+| 优先级 | Bug | 类别 | 理由 |
+|:--:|------|:--:|------|
+| 🔥🔥🔥 | **G1** reduceUnsplit 销毁标签页 | 🔴数据丢失 | 用户分屏后合屏 → 标签页全部消失 |
+| 🔥🔥🔥 | **G2** forceCloseTab 形同虚设 | 🔴功能失效 | Dirty 标签页永远关不掉 |
+| 🔥🔥🔥 | **C1** per-tab session 绑定 | 🔴架构 | 所有多标签页混乱的根因 |
+| 🔥🔥🔥 | **G3** 计数器与布局不同步 | 🔴F5 ID 碰撞 | F5 后新建标签页和恢复的标签页同 ID |
+| 🔥🔥🔥 | **E1** confirmOnClose 忽略 | 🔴功能缺失 | 关闭确认机制完全无效 |
+| 🔥🔥 | **G7** Monaco Enter 闭包过期 | 🔴功能失效 | 键盘发送是终端核心操作 |
+| 🔥🔥 | **G8** 卸载顺序错误 | 🔴撕裂状态 | Rust 失败后前端无法恢复 |
+| 🔥🔥 | **A3+B1** port 不自动填充 | 🔴UX | 用户第一个操作就踩到 |
+| 🔥🔥 | **B3** F5 session 丢失 | 🔴数据丢失 | 最常用的刷新操作 |
+| 🔥🔥 | **E8** receiveCoding 断引用 | 🔴功能失效 | 改编码无效，数据乱码 |
+| 🔥🔥 | **F1** viewRole 未统一消费 | 🔴系统性问题 | B4+E2 同根 |
+| 🔥🔥 | **G4** Tauri listen 泄漏 | 🔴内存泄漏 | StrictMode 下 listener 泄漏 |
+| 🔥🔥 | **G6** toLayoutData hack | 🔴崩溃风险 | Concurrent Mode 下可能崩溃 |
+| 🔥🔥 | **G9** StatusBar 不响应 | 🔴UI 不同步 | 插件安装/卸载后状态栏不更新 |
+| 🔥🔥 | **G10** 拖拽目标随机 | 🔴功能错误 | 3+ 面板跨组拖拽目标错误 |
+| 🔥 | **A4** 侧栏重开标签页 | 🔴UX | 标签栏✕后点 session 无反应 |
+| 🔥 | **A1** 快捷发送串扰 | 🔴数据完整 | 旧数据漏到新会话 |
+| 🔥 | **A2** 改名不同步标签栏 | 🔴UI | 改 session 名标签栏不变 |
+| 🔥 | **E3** 命令竞态 | 🔴功能 | 多 TerminalView 命令操作错窗口 |
+| 🔥 | **E4** _receiveMode 冲突 | 🔴功能 | 多视图数据格式取决于最后渲染者 |
+| 🔥 | **E5** 插件卸载残留 | 🔴内存泄漏 | Session+串口残留 |
+| 🔥 | **F3** C4a 迁移残留 | 🔴完整性 | 全局 grep `terminal\.` 清理 |
+| 🔥 | **G5** render 期间改 ref | 🟡并发风险 | Concurrent Mode 不安全 |
+| 🔥 | **G11** dupeTab 跨组碰撞 | 🟡ID 碰撞 | 多面板时复制标签页可能碰撞 |
+| 🔥 | **G12** semver NaN 判等 | 🟡健壮性 | 非法版本号静默接受 |
+| 🔥 | **G13** loadPluginRuntime 不对等 | 🟡归一化 | 两套加载路径功能不一致 |
+| 🟡 | **A6** 协议全局单例 | 低风险 | 当前只有一个协议 |
+| 🟡 | **C2** 全局串口 | Phase 7 | Rust 端重构 |
+| 🟡 | **F2** plugin.json 声明脱节 | 系统性问题 | 全局审计 |
+| 🟡 | **G14** PluginDetailView 幽灵页 | UI 延迟 | 卸载后详情页不刷新 |
+| 🟡 | **G15** Toast 撤销无错误处理 | 健壮性 | Dynamic import 失败无反馈 |
+| 🟡 | **G16** 文件监控单向 | 功能缺失 | 删插件目录不自动卸载 |
+| 🟢 | **E6/E7/E9/E10** 防御性/性能 | 低优先级 | 整理时顺手修 |
+| 🟢 | **G17** isSidebarPrimaryView 死代码 | 清理 | 直接删除 |
+| 🟢 | **G18** CoreEvents 死代码 | 清理 | 加 TODO 或删除 |
+| 🟢 | **G19** formatTimestamp 重复 | 归一化 | 提取工具函数 |
+| 🟢 | **G20** StorageService 反斜杠 | 跨平台 | 非 Windows 才暴露 |
+
+---
+
+## 📊 三轮审查最终结论
+
+| 审查轮次 | 方法 | 发现 |
+|:--|------|:--|
+| 第一轮 | 13 条操作路径手动 trace | A 类 6 + B 类 4 + C 类 2 = 12 个 |
+| 第二轮 | 17 条路径 + 全文件逐行读 | E 类 10 + F 类 3 = 13 个 |
+| **第三轮** | **4 Agent 并行 + 手动交叉验证** | **G 类 20 个** |
+| **总计** | **覆盖 15+ 文件、60+ 操作路径** | **45 个活跃 bug（A6+B4+C2+E10+F3+G20）** |
+
+**2026-07-22 最终审查结论：**
+
+> 5.5c 的核心矛盾（C1——TerminalView 单例模式 vs 多标签页）仍是必须最先修的架构缺陷。但本轮审查揭示了一个更深的系统性问题：**Phase 1-5 的基础设施中存在多处"写了但没接线"（CoreEvents、isSidebarPrimaryView、confirmOnClose）、"接错了但没人发现"（forceCloseTab、toLayoutData、Monaco Enter）、"能工作但碰巧"（counter 不同步、ref 在 render 中改）的模式。**
+>
+> 这些不是 5.5c 引入的新 bug——它们从一开始就存在。5.5c 的多标签页只是放大了已有问题（命令竞态、receiveMode 冲突），而深度审查让隐藏问题浮出水面。
+>
+> 按 root cause 分类：
+> - **代码写了但未接线：** E1（confirmOnClose）、E5（resetAll）、G9（StatusBar）、G17（死代码）、G18（CoreEvents 死代码）
+> - **接线了但有逻辑错误：** G1（reduceUnsplit）、G2（forceCloseTab）、G7（Monaco Enter）、G10（拖拽目标）、G12（dupeTab）
+> - **碰巧能工作：** G3（counter 不同步）、G4（listen 泄漏）、G5（render 改 ref）、G6（toLayoutData hack）、G20（反斜杠）
+> - **迁移不完整：** E8（receiveCoding）、F3（C4a 残留）、G13（loadPluginRuntime 不对等）
+> - **架构未跟上：** C1（per-tab 绑定）、E3（命令竞态）、E4（receiveMode 冲突）
+
+---
+
+## 🔍 审查覆盖的操作路径（第二轮扩充）
 
 | # | 操作 | 覆盖？ | 发现 |
 |:--|------|:--:|------|
-| 1 | 侧栏 + 新建 → 命名 → 回车 | ✅ | A1 快捷发送串扰、B2 focusTab 调用正确但 C1 导致内容不变 |
-| 2 | ControlPanel 选端口 → 打开 | ✅ | A3+B1 端口不自动填充、A6 协议全局 |
+| 1 | 侧栏 + 新建 → 命名 → 回车 | ✅ | A1 快捷发送串扰、B2 focusTab 调用正确但 C1 导致内容不变、**E6 缺错误处理** |
+| 2 | ControlPanel 选端口 → 打开 | ✅ | A3+B1 端口不自动填充、A6 协议全局、**E8 receiveCoding 断引用** |
 | 3 | 侧栏点会话切换 | ✅ | B2 + C1 所有 TerminalView 共享 activeSession |
-| 4 | 标签栏点标签页切换 | ✅ | **A5**（新发现）handleFocusTab 不更新 _activeSessionId |
-| 5 | 标签栏 ✕ 关闭标签页 | ✅ | **A4**（新发现）僵尸 session |
-| 6 | 侧栏 ✕ 删会话 | ✅ | D5 已修——closeTab+removeSession |
+| 4 | 标签栏点标签页切换 | ✅ | **A5** handleFocusTab 不更新 _activeSessionId |
+| 5 | 标签栏 ✕ 关闭标签页 | ✅ | **A4** 僵尸 session、**E1 confirmOnClose 忽略** |
+| 6 | 侧栏 ✕ 删会话 | ✅ | D5 已修——closeTab+removeSession（但确认消息硬编码，非 plugin.json） |
 | 7 | 侧栏 F2 / ✎ 改名 | ✅ | A2 待定位 |
-| 8 | Ctrl+W 关标签页 | ✅ | 同 A4 |
-| 9 | F5 刷新 | ✅ | D2 已修——串口状态同步 |
-| 10 | 右键菜单复制/全选 | ✅ | D1 已修 |
-| 11 | 命令面板 toggle 命令 | ✅ | D3 已修 |
-| 12 | 快捷发送添加/编辑/删除 | ✅ | A1 串扰 |
-| 13 | 收发设置区改值 | ✅ | 数据流正确——sidebar write → session → index read |
+| 8 | Ctrl+W 关标签页 | ✅ | 同 A4 + **E1 confirmOnClose 忽略** |
+| 9 | F5 刷新 | ✅ | D2 已修——串口状态同步；B3 session 丢失；**E8 receiveCoding 断引用（刷新后 encoding 回 UTF-8）** |
+| 10 | 右键菜单复制/全选 | ✅ | D1 已修；**E3 多实例命令竞态（复制/全选可能操作错窗口）** |
+| 11 | 命令面板 toggle 命令 | ✅ | D3 已修；**E3 多实例竞态（toggle 可能切换错窗口的设置）** |
+| 12 | 快捷发送添加/编辑/删除 | ✅ | A1 串扰、**E7 静默失败（activeSessionId null 时）** |
+| 13 | 收发设置区改值 | ✅ | 数据流正确——sidebar write → session → index read；**E4 receiveMode 多视图冲突** |
+| 14 | 标签栏 [+] 菜单点终端 | ✅ | **E2** 创建无 session 的僵尸标签页 |
+| 15 | 标签栏中键关闭 | ✅ | **E1** confirmOnClose 忽略 |
+| 16 | 插件市场卸载终端 | ✅ | **E5** session 残留 + 串口未关闭 |
+| 17 | 串口数据到达 | ✅ | **E4** _receiveMode 多视图冲突——数据格式取决于最后渲染的视图 |
 
 ---
 
 ## 📊 审查结论
 
-**全部 13 条操作路径已覆盖。发现 A 类 6 个、B 类 4 个、C 类 2 个、D 类 5 个（已修）。共 12 个活跃 bug。**
+**第一轮：13 条操作路径 → A 类 6 个、B 类 4 个、C 类 2 个、D 类 5 个（已修）。共 12 个活跃 bug。**
+
+**第二轮：扩充至 17 条操作路径，逐行 trace App.tsx / useTabManager / tabIdentity / TabBar / MainContent / SidePanel / WelcomeView / CommandRegistry / PluginLifecycle / LayoutService / ProtocolRegistry / SerialContext + plugins/terminal/ 下全部 4 个源文件。新增 E 类 10 个 bug + F 类 3 个系统性问题。**
+
+**活跃 bug 总计：25 个（A 类 6 + B 类 4 + C 类 2 + E 类 10 + F 类 3）。**
 
 **2026-07-22 逻辑澄清：**
 > 标签栏 ✕ = 只关视图不删数据（对标 VS Code 关闭编辑器 ≠ 删文件）。侧栏 ✕ = 真正删除 session + 关标签页。A4 是"缺失功能——点 session 应重开标签页"，不是"标签栏关标签页是 bug"。文档已据此修正。
 
-核心矛盾：5.5c 的 `sidebarPrimary` 启用了多标签页，但 `TerminalView` 仍用 5.5c 之前的单例模式（`activeSession` 是全局 getter）。**C1（per-tab session 绑定）是必须修的架构缺陷**——它是一切多标签页混乱的根源。修完后 A5、B2 自动消失，其他 bug 的严重性也会大幅降低。
+核心矛盾（不变）：5.5c 的 `sidebarPrimary` 启用了多标签页，但 `TerminalView` 仍用 5.5c 之前的单例模式（`activeSession` 是全局 getter）。**C1（per-tab session 绑定）是必须修的架构缺陷**——它是一切多标签页混乱的根源。修完后 A5、B2、E3、E4 自动消失或大幅简化。
+
+**新发现的系统性问题：**
+- **viewRole 未被统一消费**：E2（TabBar [+]）、B4（WelcomeView）都是列出所有插件但不按 viewRole 过滤。需要全局 grep 所有 `getViewPlugins()` 调用点并逐一审计。
+- **plugin.json 声明与运行时脱节**：E1（confirmOnClose）声明了但无代码消费。需审计所有 tabBehavior/statusBar/iconLocation 等声明字段是否都有运行时消费。
+- **C4a 迁移不完整**：E8（receiveCoding 断引用）说明从 ConfigurationService → session 的迁移漏了 App.tsx 的串口操作路径。
 
 ---
 
@@ -351,17 +1108,24 @@ const { activeSession } = useTerminalSessions();
 3. 读 `plugins/terminal/` 下全部 6 个源文件（`index.tsx` / `useTerminalSessions.ts` / `sidebar.tsx` / `ControlPanel.tsx` + css）
 4. 确认 `tsc --noEmit` 零错误 + `vitest run` 全过（141 个）
 
-### 执行顺序（严格——前一个修完验证再下一个）
+### 执行顺序（严格——前一个修完验证再下一个，第二轮更新）
 
 | 步 | Bug | 预计改动 | 涉及文件 | 验证 |
 |:--:|------|:--:|------|------|
 | 1 | **C1** per-tab session 绑定 | ~+40/−15 行 | `index.tsx` `useTerminalSessions.ts` `ControlPanel.tsx` `MainContent.tsx` | tsc + 测试 + 双击：两个终端标签页各显示自己的内容 |
-| 2 | **B3** F5 session 恢复 | ~+15 行 | `useTerminalSessions.ts` + `App.tsx` | tsc + 测试 + 双击：F5 后标签页和 session 同步恢复 |
-| 3 | **B4** 欢迎页 viewRole | ~+5 行 | `WelcomeView.tsx` | tsc + 测试 + 双击：欢迎页点终端卡片只出侧栏不蹦标签页 |
-| 4 | **A3+B1** port 自动填充 | ~+5 行 | `ControlPanel.tsx` | tsc + 测试 + 双击：新建→开端口→侧栏显示端口信息+按钮变色 |
-| 5 | **A1** 快捷发送清理 | ~−20 行 | `useTerminalSessions.ts` | tsc + 测试 + 双击：新会话只有默认 AT 快捷发送 |
-| 6 | **A4** 侧栏重开标签页 | ~+10 行 | `sidebar.tsx` | tsc + 测试 + 双击：标签栏✕关 → 侧栏点 → 标签页重开 |
-| 7 | **A2** 改名同步标签栏 | ~+15 行 | `sidebar.tsx` + `TabActionsContext.ts` + `App.tsx` | tsc + 测试 + 双击：改名后标签栏标题同步更新 |
+| 2 | **E8** receiveCoding 断引用 | ~+10/−5 行 | `App.tsx` `ControlPanel.tsx` `SerialContext.tsx` | tsc + 测试 + 双击：改接收编码→开端口→中文不乱码 |
+| 3 | **B3** F5 session 恢复 | ~+15 行 | `useTerminalSessions.ts` + `App.tsx` | tsc + 测试 + 双击：F5 后标签页和 session 同步恢复 |
+| 4 | **B4 + E2** viewRole 统一消费 | ~+10 行 | `WelcomeView.tsx` `TabBar.tsx` | tsc + 测试 + 双击：欢迎页点终端只出侧栏；[+] 菜单无终端 |
+| 5 | **A3+B1** port 自动填充 | ~+5 行 | `ControlPanel.tsx` | tsc + 测试 + 双击：新建→开端口→侧栏显示端口信息+按钮变色 |
+| 6 | **A1** 快捷发送清理 | ~−20 行 | `useTerminalSessions.ts` | tsc + 测试 + 双击：新会话只有默认 AT 快捷发送 |
+| 7 | **E1** confirmOnClose 接线 | ~+15 行 | `TabBar.tsx` `App.tsx`（Ctrl+W） | tsc + 测试 + 双击：关终端标签页→弹确认框→确认后才关 |
+| 8 | **A4** 侧栏重开标签页 | ~+10 行 | `sidebar.tsx` | tsc + 测试 + 双击：标签栏✕关 → 侧栏点 → 标签页重开 |
+| 9 | **A2** 改名同步标签栏 | ~+15 行 | `sidebar.tsx` + `TabActionsContext.ts` + `App.tsx` | tsc + 测试 + 双击：改名后标签栏标题同步更新 |
+| 10 | **E5** 插件卸载清理 | ~+10 行 | `lifecycle.ts` + `useTerminalSessions.ts` | tsc + 测试 + 双击：卸载终端→session 清空+串口关闭 |
+| 11 | **E3+E4** 命令竞态 + receiveMode 冲突 | ~+20/−10 行 | `index.tsx`（C1 修完后重构） | tsc + 测试 + 双击：多标签页时命令操作正确窗口 |
+| 12 | **F1** viewRole 统一消费 | ~+10 行 | `viewRegistry.ts`（加 `getTabCreatableViews`）→ `WelcomeView.tsx` `TabBar.tsx` 切换 | tsc + 测试 + 双击：所有入口不出现 terminal |
+| 13 | **F2** plugin.json 声明审计 | ~+5 行（E1 已修）+ grep 确认 | `iconLocation` / `keepSidebarOnFocus` / `statusBar` 消费端 | grep 确认每个字段都有消费端 |
+| 14 | **F3** C4a 迁移残留清理 | ~−10 行 | `App.tsx`（删 `getReceiveCoding`）+ `useTerminalSessions.ts`（删 A1 桥接） | grep `terminal\.` 零残留 |
 
 ### 每一步完成后机械验证
 ```bash
@@ -371,14 +1135,21 @@ git diff --stat     # 确认只动了该动的文件
 ```
 
 ### 不做的事
-- ❌ A6（协议全局单例）——当前只有一个协议，不暴露
+- ❌ A6（协议全局单例）——当前只有一个协议（bracket），不暴露
 - ❌ C2（全局串口）——Phase 7 Rust 端重构
 - ❌ 重写 TerminalView——只改 session 绑定层，不改 CM6/Monaco/数据管道核心逻辑
+- ❌ E6/E7（防御性错误处理）——正常流程不触发，低优先级
+- ❌ E9/E10（多余 deps）——不影响功能，整理时顺手修
 
 ### 完成标准
 - tsc 零错误 + 141 测试全过
 - 用户双击跑 §3.10 + §3.10a 验收清单全部通过
-- 标签栏 ✕ = 关视图不删 session ✅
-- 侧栏 ✕ = 删 session 关标签页 ✅
+- 标签栏 × = 弹确认框（如有 confirmOnClose）→ 关视图不删 session ✅
+- 侧栏 × = 弹确认 → 删 session 关标签页 ✅
 - 侧栏点 session = reopen 标签页 ✅
-- F5 后标签页恢复 + session 自动重建 ✅
+- F5 后标签页恢复 + session 自动重建 + receiveCoding 正确 ✅
+- 欢迎页 / [+] 菜单不出现 terminal（sidebarPrimary 过滤）✅
+- 多标签页时命令操作正确的 TerminalView ✅
+- 卸载终端插件 → session 清空 + 串口关闭 ✅
+- `grep -r 'getConfigurationValue.*terminal\.' src/` 返回空 ✅
+- `grep -r 'getViewPlugins()' src/` 每个调用点都审计过 ✅

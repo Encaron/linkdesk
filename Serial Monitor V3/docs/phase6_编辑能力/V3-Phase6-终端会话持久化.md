@@ -133,6 +133,24 @@
 
 ---
 
+## 九、当前已知问题（Phase 6 上线前）
+
+> 2026-07-22。5.5c 提前上线了会话功能，但持久化层依赖 Phase 6a 的 FileService，尚未就位。
+
+### B3 — F5 刷新后标签页恢复但 session 丢失
+
+**现象：** 用户新建终端会话 → F5 刷新 → 标签页仍在（LayoutService 持久化）但 session 消失（纯内存态）→ 标签页显示"会话已失效"。
+
+**根因：** `useTerminalSessions._sessions` 是模块级内存数组，无持久化。标签页系统有 `LayoutService` 持久化，两个系统不同步。
+
+**5.5c 临时方案（stopgap）：** 恢复布局时检测 terminal 标签页 → 为每个 `terminal-{N}` tab 自动 `createSession(tab.label, tab.id)` 重建会话。
+
+**Phase 6 正式方案：** `SessionService.loadAll()` 从 `.linkdesk/sessions/*.session.json` 恢复所有会话 → `restoreLayout` 恢复标签页 → 标签页和 session 自然配对 → stopgap 逻辑移除。
+
+**关联 bug：** `V3-Phase5.5-Bug清单-2026-07-22.md` §B3。
+
+---
+
 ## 相关文档
 
 - [Phase 6 设计](./V3-Phase6-设计.md)
