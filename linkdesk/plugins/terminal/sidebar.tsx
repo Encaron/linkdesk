@@ -326,9 +326,10 @@ function TerminalSidebar() {
                 if (e.key === "Enter") confirmCreate();
                 if (e.key === "Escape") cancelCreate();
               }}
-              onBlur={cancelCreate}
               placeholder={t("新会话名称：") ?? ""}
             />
+            <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); confirmCreate(); }} title={t("确定")}>✓</button>
+            <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); cancelCreate(); }} title={t("取消")}>✕</button>
           </div>
         )}
         {sessions.length === 0 && !isCreating ? (
