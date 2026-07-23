@@ -224,7 +224,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
               else itemRefs.current.delete(idx);
             }}
             className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-            onClick={() => handleItemClick(item.id)}
+            onClick={(e) => { e.stopPropagation(); handleItemClick(item.id); }}
             onMouseEnter={() => setFocusIdx(idx)}
           >
             <span className="ctx-item-label">{item.label}</span>

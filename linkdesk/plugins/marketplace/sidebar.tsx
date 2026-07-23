@@ -49,7 +49,12 @@ function ensureMarketplaceCommands(): void {
     title: "卸载",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
-      if (ctx?.pluginId) await uninstallPlugin(ctx.pluginId);
+      if (ctx?.pluginId) {
+        const r = await uninstallPlugin(ctx.pluginId);
+        if (!r.success) {
+          console.error(`[marketplace] 卸载 "${ctx.pluginId}" 失败:`, r.error);
+        }
+      }
     },
   });
 
