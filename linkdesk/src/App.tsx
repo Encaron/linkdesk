@@ -486,6 +486,18 @@ function App() {
     return () => { unlisten?.(); };
   }, []);
 
+  // E5：监听 Rust serial-system 事件——invokeBeforeClose 直接调 close_port，
+  // 不走 handleToggleOpen → setIsOpen(false)。此处补刀同步 isOpen 状态。
+  useEffect(() => {
+    let unlisten: (() => void) | undefined;
+    listen<string>("serial-system", (event) => {
+      if (/Port closed|关闭/.test(event.payload)) {
+        setIsOpen(false);
+      }
+    }).then((fn) => { unlisten = fn; }).catch(() => {});
+    return () => { unlisten?.(); };
+  }, []);
+
   // 串口关闭时重置计数
   useEffect(() => {
     if (!isOpen) {
