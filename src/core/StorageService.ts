@@ -140,7 +140,9 @@ export async function write<T>(key: string, data: T): Promise<void> {
     const path = await _filePath(key);
     if (!path) return;
     // 确保目录存在
-    const dir = path.substring(0, path.lastIndexOf("\\"));
+    // 跨平台路径分隔符——Windows "\" 和 Unix "/" 都处理
+    const sepIdx = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
+    const dir = path.substring(0, sepIdx);
     if (dir && !(await _fsApi.exists(dir))) {
       await _fsApi.mkdir(dir, { recursive: true });
     }

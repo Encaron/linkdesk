@@ -84,7 +84,4 @@ export const CUSTOM_EVENTS = {
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 
-// 确保只有 5 个——Phase 6 前不再扩展。
-// Phase 6 新增事件时更新此数字，拆掉 @ts-expect-error
-export const _Phase5EventCount: 5 = 5;
-void _Phase5EventCount; // 标记已引用
+// TODO Phase 6：CoreEvents 5 个 Emitter 当前零订阅——Phase 6 系统事件总线启用时接线

@@ -48,7 +48,7 @@ export interface SendCallbacks {
 
 const HEX_PREVIEW_MAX_LEN = 80;
 
-function formatTimestamp(format: string): string {
+export function formatTimestamp(format: string): string {
   const d = new Date();
   const hh = String(d.getHours()).padStart(2, "0");
   const mm = String(d.getMinutes()).padStart(2, "0");
