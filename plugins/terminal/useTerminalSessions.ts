@@ -14,7 +14,7 @@
  *   name → sidebar 会话列表 (F2 / hover ✎)
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { PluginLifecycle } from "@src/pluginLoader/lifecycle";
 
 // ── 类型 ──
@@ -216,6 +216,24 @@ export function useSession(id: string | undefined) {
       _listeners.delete(rerender);
     };
   }, []);
+
+  // B3：F5 刷新 → 标签页恢复但 session 丢失 → 首次 mount 自动创建。
+  // didAutoCreate 确保只在组件首次挂载时检查一次，不会在 keep-alive 期间重复创建。
+  const didAutoCreate = useRef(false);
+  useEffect(() => {
+    if (!didAutoCreate.current && id && !_sessions.find((s) => s.id === id)) {
+      didAutoCreate.current = true;
+      const session: TerminalSession = {
+        id,
+        name: `会话`,
+        ...cloneDefaults(),
+        color: SESSION_COLORS[_colorIndex % SESSION_COLORS.length],
+      };
+      _colorIndex++;
+      _sessions = [..._sessions, session];
+      notify();
+    }
+  }, [id]);
 
   const session = id ? (_sessions.find((s) => s.id === id) ?? null) : null;
 
