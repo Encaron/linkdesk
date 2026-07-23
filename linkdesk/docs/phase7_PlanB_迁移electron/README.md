@@ -18,6 +18,7 @@
 | 5 | `05-API与协议设计.md` | window.linkdesk API、preload 设计、linkdesk:// 协议 | 插件开发者的接口契约——迁移前定稿 |
 | 6 | `06-实施顺序.md` | 阶段划分、分支策略、与 Phase 6-8 的关系 | 大局观——现在做什么、之后做什么 |
 | 7 | `07-体积与内存分析.md` | 安装包体积 + 运行时内存——Tauri vs Electron 真实数字 | 不美化——大了就是大了。然后看能不能接受 |
+| 8 | `08-多WebView-vs-ExtHost-开销对比.md` | 独立 WebContentsView vs 共享 ExtHost——进程拓扑、内存、启动、崩溃逐项对比 | 冷冰冰的数字——两种隔离模型的真实开销。进程级 WebviewView 反而更贵 |
 
 ---
 
@@ -26,7 +27,7 @@
 | 决策 | 结论 | 一句话理由 |
 |------|------|------|
 | 框架 | **Electron** | 多进程管理是 Chromium 标配，WebContentsView 是 stable API |
-| 插件隔离 | **独立 WebContentsView per 插件** | 共享 ExtHost 是 VS Code 的历史包袱——2015 年内存决策，不是安全最佳 |
+| 插件隔离 | **独立 WebContentsView per 插件** | 共享 ExtHost 是 VS Code 的历史包袱——2015 年内存妥协。进程级 WebviewView 比 WebContentsView 更费内存（多一个 ExtHost 进程），详见 08 |
 | 插件入口 | **React 组件** | AI 训练数据最密集的范式——写一个文件 = 一个插件 |
 | 系统权限 | **preload + contextBridge** | 对标 Tauri Capability——声明式权限，运行时不可绕过 |
 | 资源加载 | **linkdesk:// 自定义协议** | 归一化入口，未来可扩展至网络/数据库/加密包 |

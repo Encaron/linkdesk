@@ -26,7 +26,7 @@ import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
-import { useSendData, type SendContext, type SendCallbacks } from "@src/core/useSendData";
+import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/useSendData";
 import SearchBar from "@src/components/terminal/SearchBar";
 import FilterMenu from "@src/components/terminal/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
@@ -1227,16 +1227,6 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       </div>
     </div>
   );
-}
-
-function formatTimestamp(format: string): string {
-  const d = new Date();
-  const hh = String(d.getHours()).padStart(2, "0");
-  const mm = String(d.getMinutes()).padStart(2, "0");
-  const ss = String(d.getSeconds()).padStart(2, "0");
-  const fff = String(d.getMilliseconds()).padStart(3, "0");
-  if (format === "HH:mm:ss:fff") return `${hh}:${mm}:${ss}:${fff}`;
-  return `${hh}:${mm}:${ss}`;
 }
 
 export default TerminalView;

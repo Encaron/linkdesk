@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, performUninstall } from "../../pluginLoader/loader";
+import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, performUninstall } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
