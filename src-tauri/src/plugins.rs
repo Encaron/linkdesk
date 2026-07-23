@@ -78,7 +78,9 @@ pub fn install_plugin(source: String) -> Result<String, String> {
     Ok(name)
 }
 
-/// 卸载插件：将 plugins/<id>/ 移到 plugins/.disabled/<id>/。
+/// 卸载插件：将 plugins/<id>/ 复制到 plugins/.disabled/<id>/，然后删除原目录。
+/// 用 copy+delete 替代 rename——Windows 下 Vite dev server 持有文件锁，
+/// fs::rename 跨目录移动失败（ERROR_ACCESS_DENIED）。
 /// core 插件不可卸载。
 #[tauri::command]
 pub fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
@@ -110,8 +112,11 @@ pub fn uninstall_plugin(plugin_id: String) -> Result<(), String> {
             .map_err(|e| format!("清理旧 .disabled/{} 失败: {}", plugin_id, e))?;
     }
 
-    fs::rename(&src, &dest)
-        .map_err(|e| format!("移到 .disabled/ 失败: {}", e))?;
+    // 先复制到 .disabled/——文件拷贝不触发 Windows 跨目录 rename 的权限错误
+    copy_dir(&src, &dest)?;
+
+    // 再删原目录——Vite 可能锁住部分文件，删不掉的忽略
+    let _ = fs::remove_dir_all(&src);
 
     Ok(())
 }
