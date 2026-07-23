@@ -56,8 +56,8 @@ export interface UseDragReorderOptions {
   ) => number;
   /** 检测鼠标是否在"纯编辑器区域"（不在任何标签栏上方），用于触发 reorder→split */
   isInPureEditor?: (clientX: number, clientY: number) => boolean;
-  /** 检测是否放在了另一个容器上。返回 true 表示已处理（会调 onMoveToOther） */
-  findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => boolean;
+  /** 检测是否放在了另一个容器上。返回目标 groupId 或 null */
+  findOtherContainer?: (clientX: number, clientY: number, ownContainerEl: HTMLElement) => string | null;
   /** 计算分屏 drop zone + 目标面板。返回 null 表示不在有效区域 */
   computeSplitZone?: (clientX: number, clientY: number) => { zone: DropZone; targetGroupId?: string } | null;
   /** 分屏 drop 回调——zone 是方向，targetGroupId 是鼠标落点面板 */
@@ -199,8 +199,9 @@ export function useDragReorder(
         // 检测是否放到另一个容器上
         let moved = false;
         if (onMoveToOther && findOtherContainer) {
-          if (findOtherContainer(e.clientX, e.clientY, container)) {
-            onMoveToOther(ds.tabId);
+          const targetId = findOtherContainer(e.clientX, e.clientY, container);
+          if (targetId) {
+            onMoveToOther(ds.tabId, targetId);
             moved = true;
           }
         }
@@ -229,8 +230,9 @@ export function useDragReorder(
       // 重排模式——先检测是否放到了另一个容器上
       let moved = false;
       if (onMoveToOther && findOtherContainer) {
-        if (findOtherContainer(e.clientX, e.clientY, container)) {
-          onMoveToOther(ds.tabId);
+        const targetId = findOtherContainer(e.clientX, e.clientY, container);
+        if (targetId) {
+          onMoveToOther(ds.tabId, targetId);
           moved = true;
         }
       }

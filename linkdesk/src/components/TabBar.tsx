@@ -250,19 +250,21 @@ export default function TabBar({
     [editorAreaRef]
   );
 
+  // G10：返回目标面板的 groupId（string | null），不再只返回 boolean。
+  // 3+ 面板时 boolean 不够——调用方不知道鼠标准确落在哪个面板上。
   const findOtherContainer = useCallback(
-    (clientX: number, clientY: number, ownContainer: HTMLElement) => {
-      if (!_onMoveTab) return false;
+    (clientX: number, clientY: number, ownContainer: HTMLElement): string | null => {
+      if (!_onMoveTab) return null;
       const otherBars = document.querySelectorAll(".tab-bar");
       for (const bar of otherBars) {
         if (bar === ownContainer.parentElement) continue;
         const barRect = bar.getBoundingClientRect();
         if (clientX >= barRect.left && clientX <= barRect.right &&
             clientY >= barRect.top && clientY <= barRect.bottom) {
-          return true;
+          return bar.closest(".tab-group-pane")?.getAttribute("data-group-id") ?? null;
         }
       }
-      return false;
+      return null;
     },
     [_onMoveTab]
   );
