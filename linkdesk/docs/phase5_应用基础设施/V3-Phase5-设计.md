@@ -1134,3 +1134,121 @@ Phase 6（文件树+主题/语言插件化）── 依赖 5.5（viewRole 机制
 - [ ] git commit——一个批次一个 commit
 
 满足以上六条才进入下一批。不满足 → 修 bug → 重跑六条。
+
+---
+
+## 十、键盘事件架构定规（原 Phase 5c 独立文档）
+
+> 踩了 4 轮 Ctrl+Shift+P 之后得出的架构结论。2026-07-21。
+
+### 职责分工
+
+```
+按键 → capture phase
+         │
+         ├── App.tsx handler（先注册，壳级优先）
+         │     matched? → stopImmediatePropagation → 执行 → 终止
+         │
+         └── KeybindingRegistry（兜底，插件级）
+               matched? → executeCommand → 终止
+```
+
+| 层级 | 文件 | 触发 | when 条件 | 终止方式 |
+|------|------|------|:--:|------|
+| 壳级 | `App.tsx:524` | capture phase useEffect | ❌ 始终可用 | `stopImmediatePropagation` |
+| 插件级 | `KeybindingRegistry.ts:164` | capture phase `mountGlobalKeybindings()` | ✅ `ContextKeyService.matches(when)` | `stopImmediatePropagation` |
+
+### 注册顺序
+
+```
+1. App render → render 阶段 useEffect → App.tsx handler 注册（先）
+2. startup useEffect → mountGlobalKeybindings() → Registry handler 注册（后）
+```
+
+**顺序是结构性的，不是巧合**——App render 早于 startup useEffect，两者都在 capture phase，所以 App.tsx 必然先触发。
+
+### 为什么不用 bubble phase
+
+CM6、Monaco 等编辑器有内部 keydown handler 在 bubble phase。如果把壳级快捷键放 bubble 层，编辑器的 stopPropagation 会拦截。capture phase 在编辑器之前。
+
+### 为什么不用 KeybindingRegistry 处理壳级快捷键
+
+1. KeybindingRegistry 的 `executeCommand` 链路在 5c 中经过 4 轮调试仍未完全走通（B49），壳级快捷键不能依赖一个不稳定路径
+2. 壳级快捷键不需要 when 条件、不需要优先级、不需要动态注册——用最简单的 `if (e.code)` 即可
+3. VS Code 也是同一个模式：`window.addEventListener("keydown", handler)` → 匹配 → 分发
+
+### 加新快捷键的规则
+
+**壳级**（Ctrl+,, Ctrl+Shift+P, Ctrl+W 等始终可用）：
+→ 在 App.tsx `onGlobalKeyDown` 里加 `if` 分支 + `stopImmediatePropagation`
+
+**插件级**（带 when 条件，上下文敏感）：
+→ 插件 `plugin.json` 声明 `contributes.keybindings`，loader 注册到 KeybindingRegistry
+
+**调试/监控工具**（需要拦截所有按键）：
+→ 在 App.tsx 的 handler 之前注册（更早的 useEffect 或 render 阶段）。必须显式注明顺序依赖。
+
+### 防重复执行的原则
+
+**每个 matched 的 handler 必须调用 `stopImmediatePropagation()`**——这是硬约束。不允许"反正没绑定所以不会重复"的侥幸心态。未来新加的 capture handler 如果不遵守，和现有的互殴就是 B49 重演。
+
+---
+
+## 十一、类型系统去硬编码（原 Phase 5g 核心决策）
+
+> Phase 5g 拆掉 Phase 3 留下的最后一道围墙——把类型系统从"核心知道所有插件"改为"核心只知道有插件这个概念，具体是谁由 plugin.json 说"。
+
+### 为什么 Phase 3 的 union type 在 Phase 5 变成了束缚
+
+Phase 3 时只有 5 种标签页。`TabType = "terminal" | "workspace" | ...` 是正确的——编译期穷举检查确保 `switch(tab.type)` 不漏分支。
+
+Phase 4 建了插件系统，但 `TabType` 没改。Phase 5 时所有 Registry 都声明驱动了——唯独类型系统还在说"我知道有哪些插件——就这 8 个"。
+
+```
+命令系统：plugin.json 声明 → CommandRegistry 动态收集 ✅
+配置系统：plugin.json 声明 → ConfigurationRegistry 动态收集 ✅
+菜单系统：plugin.json 声明 → MenuService 动态收集 ✅
+协议系统：plugin.json 声明 → ProtocolRegistry 动态收集 ✅
+
+类型系统：useTabManager.ts:26 —— 8 个硬编码字面量 ❌
+```
+
+### 不改会怎样——加一个新插件的流程
+
+```
+① 写 plugin.json + index.tsx → 放到 plugins/my-plugin/
+② 改 TabType 联合类型 → 加 "my-plugin"
+③ 改 TAB_IDENTITY 表 → 加一行
+④ 改 workspace.schema.json enum → 加 "my-plugin"
+⑤ 如果插件图标在底部 → 改 BOTTOM_ICONS Set
+⑥ 如果插件有特殊行为 → 改 isShellRenderedTab / isSidebarOnlyView / shouldKeepSidebarOnFocus
+⑦ 改 renderTabContent → 加 case "my-plugin"
+```
+
+②-⑦ 全是改核心代码。这不是"插件"——这是"在核心里加了新功能"。
+
+### VS Code 对照
+
+VS Code 支持几十种编辑器（TextEditor、WebviewEditor、NotebookEditor…），**没有一个是 union type。**
+
+```typescript
+// VS Code 源码
+abstract class EditorInput {
+  abstract readonly typeId: string;       // 字符串，不是 enum
+  abstract matches(other: EditorInput): boolean;
+}
+```
+
+LinkDesk 的对标：`viewRegistry.getViewPlugin(pluginId)` 做运行时查找，`TabType = string` 接受任意 pluginId。
+
+### 5g 交付清单（7 项——已完成）
+
+| # | 变更 | 要点 |
+|:--:|------|------|
+| 1 | `TabType` union → `string` | 新插件的 pluginId 即 type |
+| 2 | `TAB_IDENTITY` 简化 | singleton/confirmOnClose → plugin.json tabBehavior |
+| 3 | 特殊判断声明化 | `isSidebarOnlyView`→viewRegistry.viewRole；`shouldKeepSidebarOnFocus`→keepSidebarOnFocus |
+| 4 | `BOTTOM_ICONS` 删除 | settings 声明 `iconLocation: "bottom"`，IconBar 从 viewRegistry 读取 |
+| 5 | 新元数据字段 | iconLocation / viewRole / shellRendered / keepSidebarOnFocus |
+| 6 | coreCommands 去硬编码 | "打开设置"从 viewRegistry 动态查找 |
+| 7 | schema enum → string | 任何 pluginId 都是合法 type |

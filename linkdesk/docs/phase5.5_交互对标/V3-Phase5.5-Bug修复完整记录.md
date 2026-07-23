@@ -1,12 +1,10 @@
-# Phase 5.5c 终端侧栏 Bug 清单
+# Phase 5.5 Bug 修复完整记录
 
-> 2026-07-22。代码审查 + Encaron 实测反馈。`phase5.5` 分支。
+> **48/48 ✅ 全部完成。** 2026-07-22 ~ 2026-07-24。旧框架(Tauri)最终稳定版本的 bug 修复完整记录。
 >
-> ⚠️ **本清单已通过六条质量原则审查（精益求精/归一化/插件自由/VS Code 化/AI 友好/易操作）。修法已定稿——新 AI 进场后可直接按本节执行，不需要重新争论方案。**
+> 此文件由 6 份原始文档合并而成（Bug清单/Bug复现手册/Bug多维分类/修Bug执行计划/修Bug方案审计/Bug解读）。保留清单主表 + 复现结果 + 修复时间线——其余过程视角已删除。
 >
-> **新 AI 前置阅读：** `CLAUDE.md` + memory `[[phase5.5c-progress]]` + `[[quality-commandments]]` + `[[core-ignorance-principle]]`。修法细节已在每个 bug 的"修法"栏注明，代码量和涉及文件也已标注。
->
-> 🔥 **2026-07-24 更新——卸载 bug 根因已定位：** Rust `fs::rename` 跨目录移动在 Windows + Vite dev server 下失败（ERROR_ACCESS_DENIED）。详见 memory `[[uninstall-bug-recurring]]`。9 轮修复历史、结构性改进方案（invoke 统一日志/卸载单入口/Rust error→前端 toast）待做。
+> 如需查看原始审计过程 → `git log -- phase5.5` 或 `git show 1e0b8a3:linkdesk/docs/phase5.5_交互对标/Bug审计与修复-2026-07-22/`
 
 ---
 
@@ -1376,3 +1374,23 @@ git diff --stat     # 确认只动了该动的文件
 - 两个终端标签页各连各的端口（当前限制：同一 COM 口；Phase 7 多端口）✅
 - `grep -r 'getConfigurationValue.*terminal\.' src/` 返回空 ✅
 - `grep -r 'getViewPlugins()' src/` 每个调用点都审计过 ✅
+
+---
+
+## 📅 修复时间线
+
+> 2026-07-22 ~ 2026-07-24，8 个 session，48/48 全部完成。
+
+| 日期 | Session | 内容 | 关键 commit |
+|:--|:--|------|:--|
+| 07-22 | 第一批 | C1 per-tab session 绑定 + A1/A3/B1/E8/F1/B4/E2/E1/A4/A2/E4/E3/E5/N3 | `3fce64a` `519abfc` `25e48a5` `182bf93` `d95b460` `f4e3d0e` `1be3daa` `0cbe359` `db399aa` `b64fe5c` `7548c03` `c6fdd83` |
+| 07-22 | 实测发现 | H1-H3（MCU断电/空串/系统消息）+ B80-B83（onMouseDown/flushSync/ID碰撞/confirm） | `a803bcc` `161136b` `b3b4ed4` `4be450a` |
+| 07-23 | 步14归一化 | invokeBeforeCloseTab 归一化 + B84/B85 + plugin:// 硬编码修复 + N5 重装 | `2f2125e` `1c80cd3` |
+| 07-23 | S1-S5 | S5 PluginDetailView/侧栏按钮归一化 + B86 首次开串口 + B3 F5 session 恢复 | `d4abe8b` `ae6b1a6` |
+| 07-24 | 第二批 G类 | G7 Monaco Enter + G22 0→1000 + G1 合屏 + G3 计数器 + G10 拖拽 + 卸载弹窗 + 卸载重排序 + ContextMenu stopPropagation + 卸载根因 | `cab2d4e` `683dd8b` `9727f9c` `6ecc456` `cf15db1` `4299f51` `e5a5701` `b574d8f` `aec1564` |
+| 07-24 | 第三批 A组 | G18 CoreEvents TODO + G19 formatTimestamp 归一化 + G20 StorageService 反斜杠 | `239b734` |
+| 07-24 | 第三批 B组 | F2 plugin.json 6字段审计 + F3 C4a残留 grep + G15 toast catch | `7c3b452` |
+| 07-24 | 第三批 C组 | G4 listen→useTauriEvent + G5 render改ref→useEffect + G6 toLayoutData→ref + G12 duplicateTab 跨组检查 | `af2c638` |
+
+**推迟到 Electron 迁移：** G14（PluginDetailView 幽灵页，涉及 WebView 间通信）
+**Phase 6 待做：** invoke 统一日志 / 卸载单入口 / Rust error→前端 toast（详见 `[[uninstall-bug-recurring]]`）

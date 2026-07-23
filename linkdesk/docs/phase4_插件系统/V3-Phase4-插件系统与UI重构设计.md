@@ -1273,3 +1273,49 @@ pluginLoader.scanAll({ filter: profile.plugins })
 - memory `hard-constraints.md` — V3 硬约束
 - docs `../开发管理/V3开发计划.md` — 总开发计划（Phase 4 已写入）
 - docs `../phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` — Phase 3 设计
+
+---
+
+## 12. 设计评审关键决策（原独立文档 `V3-Phase4-设计评审与改进.md` 摘录）
+
+> 2026-07-19 逐条讨论确认。以下为 10 个问题的最终决策——已全部体现在主设计中。原始评审文档已归档，此处仅保留决策结论。
+
+### 决策 1：Vite 动态 import → 双路径加载
+
+**构建时打包 + 运行时加载。** 出厂预装 `.tsx` 随 `vite build` 打包；插件市场分发编译后的 JS（`.v3p`），运行时 `Blob URL → import()` 即时可用——对标 VS Code `.vsix`。
+
+### 决策 2：二进制协议 → Phase 6+ WASM
+
+Protocol 插件的 `mode: "binary"` 字段保留在规范中，加载器跳过并 toast 提示。未来走 WASM（`parser.wasm`），跨平台、前端执行、近原生性能。
+
+### 决策 3：TabType → 声明驱动
+
+核心不认插件名，只认行为声明。`plugin.json` 新增 `tabBehavior`（`isFallback` / `singleton` / `confirmOnClose`）。核心代码从 `type === "terminal"` 切换为 `viewRegistry.get(pluginId)?.tabBehavior`。
+
+### 决策 4：欢迎页是壳的兜底 UI
+
+不注册到 `viewRegistry`，不被插件加载器管理，不可卸载。通过 `tabBehavior.isFallback: true` 声明——对标浏览器新标签页。
+
+### 决策 5：多终端数据管道 → sourceId
+
+每个终端标签页 = 独立数据源实例（自己的 RingBuffer）。Phase 4 留 `sourceId` 字段，Phase 5 启用。关闭终端 → 检查卡片依赖 → 警告。
+
+### 决策 6：状态栏动态化
+
+插件通过 `plugin.json` 的 `statusBar` 字段贡献状态栏项。Phase 4 只实现终端需要的部分（连接状态 + TX/RX），但框架支持任意插件贡献。
+
+### 决策 7：插件开发体验 → 三份文档 + JSON Schema
+
+对标 VS Code 的 `package.json` 规范 + Extension API 文档。产出：`plugin.json规范.md` + `视图插件开发.md` + `协议插件开发.md` + `plugin.schema.json`。不需要脚手架——建一个文件夹就是插件。
+
+### 决策 8：recentWorkspaces → recentViews
+
+欢迎页"最近"区域不只 workspace——任何视图都可以进最近（终端、设置等）。
+
+### 决策 9：handleSend 解耦 → useSendData
+
+从 TerminalView 提取 `useSendData` 到 `src/core/`。终端和卡片共用同一份发送逻辑，通过 hooks（`onEcho`/`onHistory`/`onError`）注入差异化行为。
+
+### 决策 10：插件详情页只读 plugin.json
+
+不引入 README 等第二种格式。详情页所有信息（名称/版本/作者/描述/changelog/推荐）全来自 `plugin.json`。AI 写插件只需一份文件 + 组件代码。
