@@ -35,7 +35,6 @@ import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
 import { registerCommand } from "@src/core/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
-import { useSerialContext } from "@src/core/SerialContext";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./TerminalView.css";
 
@@ -442,21 +441,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   receiveModeRef.current = receiveMode;
 
   // E5：tab close / plugin uninstall → disconnect serial。
-  // TerminalView unmount 时（关标签页/卸载插件），如果串口还开着就断掉。
-  const { state: { isOpen: serialIsOpen } } = useSerialContext();
-  const serialIsOpenRef = useRef(serialIsOpen);
-  serialIsOpenRef.current = serialIsOpen;
-
-  useEffect(() => {
-    return () => {
-      if (serialIsOpenRef.current) {
-        // IIFE: invoke 是异步的——unmount 时不 await 可能导致 Promise 被丢弃
-        (async () => {
-          try { await invoke("close_port"); } catch {}
-        })();
-      }
-    };
-  }, []);
+  // 已通过 tabBehavior.invokeBeforeClose 在 TabBar 层处理——确认关闭后、closeTab 前 invoke。
+  // 此机制比 useEffect cleanup 更可靠（cleanup 在 unmount 时可能因 React 批处理不可靠）。
 
   /** 文本转十六进制显示——Phase 5e receiveMode="hex" */
   const toHexDisplay = (text: string): string => {

@@ -18,6 +18,8 @@ export interface TabBehavior {
   singleton?: boolean;
   /** 关闭前弹确认框，值为提示文本。如终端。 */
   confirmOnClose?: string;
+  /** 关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后，closeTab 之前）。如终端声明 "close_port"。 */
+  invokeBeforeClose?: string;
 }
 
 /* ── 状态栏贡献条目 ── */

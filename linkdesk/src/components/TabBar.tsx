@@ -7,6 +7,7 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { invoke } from "@tauri-apps/api/core";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
@@ -345,6 +346,9 @@ export default function TabBar({
                     e.preventDefault();
                     const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
                     if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
+                    if (behavior.invokeBeforeClose) {
+                      try { await invoke(behavior.invokeBeforeClose); } catch {}
+                    }
                     closeWithAnimation(tab.id);
                     return;
                   }
@@ -362,6 +366,9 @@ export default function TabBar({
                     e.stopPropagation();
                     const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
                     if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
+                    if (behavior.invokeBeforeClose) {
+                      try { await invoke(behavior.invokeBeforeClose); } catch {}
+                    }
                     closeWithAnimation(tab.id);
                   }}
                   title={t("关闭")}
