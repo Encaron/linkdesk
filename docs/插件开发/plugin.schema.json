@@ -17,7 +17,7 @@
     },
     "core": {
       "type": "boolean",
-      "description": "是否核心控制面——不可卸载。默认 false",
+      "description": "核心控制面插件——不可卸载，卸载按钮在 UI 中不显示或禁用。外壳依赖此插件提供基础交互能力（如设置页、插件市场）。无此声明 = 普通插件，用户可自由装卸。默认 false。",
       "default": false
     },
     "name": {
@@ -73,6 +73,10 @@
         "confirmOnClose": {
           "type": "string",
           "description": "关闭前弹出确认对话框，值为提示文本"
+        },
+        "invokeBeforeClose": {
+          "type": "string",
+          "description": "关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
         }
       },
       "additionalProperties": false

@@ -173,6 +173,15 @@ pub fn read_plugin_manifest(plugin_id: String) -> Result<String, String> {
         .map_err(|e| format!("读取 plugin.json 失败: {}", e))
 }
 
+/// 返回插件目录的绝对路径。
+/// 用于动态 import——前端通过 Vite /@fs/ 协议加载插件入口文件（支持 .tsx 实时编译）。
+#[tauri::command]
+pub fn resolve_plugin_path(plugin_id: String) -> Result<String, String> {
+    let path = plugins_dir()?.join(&plugin_id);
+    // 转换为正斜杠——Windows 反斜杠在 Vite /@fs/ URL 中不兼容
+    Ok(path.to_string_lossy().replace('\\', "/"))
+}
+
 /// 递归复制目录。
 fn copy_dir(src: &PathBuf, dest: &PathBuf) -> Result<(), String> {
     fs::create_dir_all(dest)

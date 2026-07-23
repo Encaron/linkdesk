@@ -4,7 +4,7 @@
  * 设计依据：[[phase4-design-decisions]] 第 1-3 条。
  *
  * 加载时机：App 启动 initPrefs() 完成后调用 initPluginLoader()。
- * 加载顺序：先出厂预装 → 再用户安装 → 错误不阻断。
+ * 加载顺序：先源码自带 → 再外部安装 → 错误不阻断。
  *
  * P1-4：theme/language 注册（ThemeEngine + i18next）
  * P1-5：文件监听（轮询 list_plugin_dirs）
@@ -184,7 +184,7 @@ export async function initPluginLoader(): Promise<void> {
     }
     if (fsInstalled.size > 0 && !fsInstalled.has(pluginId)) {
       log.appendLine(`插件 "${pluginId}" 已卸载（文件系统不存在）——跳过`);
-      // B2 fix: 种子缓存——已卸载的工厂插件元数据入缓存（F5 后仍可浏览详情）
+      // B2 fix: 种子缓存——已卸载的glob 中的插件元数据入缓存（F5 后仍可浏览详情）
       const uKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
       if (uKey) {
         cachePluginMetadata(pluginId, pluginManifests[uKey], "uninstalled");
@@ -198,7 +198,7 @@ export async function initPluginLoader(): Promise<void> {
     }
   }
 
-  // 4. Phase 5h：加载运行时插件（文件系统存在但不在 glob 中的）
+  // 4. Phase 5h：加载glob 外的插件（文件系统存在但不在 glob 中的）
   for (const pluginId of fsInstalled) {
     if (installed.has(pluginId)) continue;  // 已在 glob 中加载
     if (disabled.includes(pluginId)) continue;
@@ -386,7 +386,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     const raw = await invoke<string>("read_plugin_manifest", { pluginId });
     manifest = JSON.parse(raw);
   } catch (e: any) {
-    console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
+    console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
     return;
   }
 
@@ -402,21 +402,24 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     }
   }
 
-  // B2 fix: 缓存元数据——运行时插件也入缓存，卸载后仍可浏览详情
+  // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
   if (manifest.entry) {
     try {
-      // plugin:// 协议 → plugins/<id>/dist/index.js
-      const module = await import(/* @vite-ignore */ `plugin://${pluginId}/dist/index.js`);
+      // Vite /@fs/ 端点——dev server 实时编译 TypeScript，浏览器直接拿 JS。
+      // 对标 import.meta.glob 底层机制，源码树 .tsx 和运行时 dist/.js 都适用。
+      // 归一化：所有非 glob 插件加载走同一条 /@fs/ 路径。
+      const absPath = await invoke<string>("resolve_plugin_path", { pluginId });
+      const module = await import(/* @vite-ignore */ `/@fs/${absPath}/${manifest.entry}`);
       Component = module.default;
       if (!Component) {
-        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
+        console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
       }
     } catch (e: any) {
-      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
+      console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
       pushToast({
         message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
         source: pluginId,
@@ -433,7 +436,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       pluginId,
       manifest,
       component: Component,
-      // 运行时插件暂不支持 sidebar/statusBar（Phase 6 扩展 SDK 后支持）
+      // glob 外的插件暂不支持 sidebar/statusBar（Phase 6 扩展 SDK 后支持）
     };
     registerViewPlugin(entry);
     log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
@@ -454,7 +457,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   loadedPluginIds.add(pluginId);
 
   // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
-  // 运行时插件的安装原因——从外部来源安装，视为 'install'
+  // glob 外的插件的安装原因——从外部来源安装，视为 'install'
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason: "install" });
 }
 
@@ -711,6 +714,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
 
 /**
  * 卸载插件：Rust 端移到 .disabled/ → 从 viewRegistry 移除 → 持久化。
+ * 如果插件之前被禁用，从禁用列表清理（卸载优先级高于禁用）。
  * core 插件不可卸载。
  */
 export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
@@ -725,12 +729,20 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = entry.manifest.name;
-    // B2 fix: 标记为已卸载（不删缓存——marketplace 仍可浏览详情）
+    // B2 fix: 标记为已卸载（缓存持久化到 PluginStateService，重启后 marketplace 仍可显示）
     cachePluginMetadata(pluginId, entry.manifest, "uninstalled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // Rust 端：移到 plugins/.disabled/<id>/
     await invoke("uninstall_plugin", { pluginId });
+
+    // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
+    const list = getDisabledList();
+    const idx = list.indexOf(pluginId);
+    if (idx !== -1) {
+      list.splice(idx, 1);
+      await saveDisabledList(list);
+    }
 
     // 前端：移除注册
     unregisterViewPlugin(pluginId);
@@ -795,7 +807,7 @@ export function isPluginLoaderReady(): boolean {
 
 /** 获取禁用插件的基本信息（在 plugins/ 但被 prefs 标记禁用）*/
 export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
-  // B2 fix: 优先从缓存读——支持运行时插件（glob 中无清单）
+  // B2 fix: 优先从缓存读——支持glob 外的插件（glob 中无清单）
   const cache = getMetadataCache();
   const disabled = getDisabledList();
   const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
@@ -805,7 +817,7 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
       result.push({ pluginId, name: cached.name, description: cached.description, version: cached.version });
       continue;
     }
-    // 兜底：工厂插件从 glob 读（initPluginLoader 已将种子写入缓存，此分支仅用于缓存未就绪的极端情况）
+    // 兜底：glob 中的插件从 glob 读（initPluginLoader 已将种子写入缓存，此分支仅用于缓存未就绪的极端情况）
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
@@ -824,7 +836,7 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
 
 /** 获取已卸载插件列表（B2 fix：从元数据缓存读，不依赖文件系统——插件目录已被移走）*/
 export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: string; name: string; description?: string; version?: string }>> {
-  // B2 fix: 从缓存读——不依赖 Rust 目录扫描（目录已被移走）也不依赖 globally（运行时插件不存在于此）
+  // B2 fix: 从缓存读——不依赖 Rust 目录扫描（目录已被移走）也不依赖 globally（glob 外的插件不存在于此）
   const cache = getMetadataCache();
   const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
   for (const [, meta] of Object.entries(cache)) {
@@ -838,39 +850,27 @@ export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: stri
 /**
  * 重新安装已卸载的插件：从 .disabled/ 移回 plugins/。
  * 对标 VS Code：扩展卸载后文件仍在本地，可一键重新安装。
- *
- * 如果插件在构建时已在 glob 中（出厂预装后被卸载的），移回后直接 loadPlugin 即时生效。
- * 如果不在 glob 中（外部新装后又卸载的），需重启让 Vite 重新扫描。
+ * 移回后需全页刷新——Vite dev server 的 import.meta.glob 在启动时扫描，需重扫才能识别移回的插件。
  */
 export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
     await invoke("reinstall_plugin", { pluginId });
 
-    // 检查构建时 glob 是否有此插件（出厂预装插件在构建时被扫描过）
+    // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/ 下则 glob 中有
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
     if (manifestKey) {
-      // loadPlugin(reason:'reinstall') → lifecycle 消费端处理 iconOrder(追加末尾) + toast
+      // 同 session 重装——模块已加载，Vite 动态 import 直接加载移回的文件，即时生效
       await loadPlugin(pluginId, "reinstall");
       return { success: true };
     }
-    // glob 中没有——外部装过又卸了的插件，尝试 loadPluginRuntime
-    try {
-      await loadPluginRuntime(pluginId);
-      return { success: true };
-    } catch {
-      pushToast({
-        message: `已安装：${pluginId}。重启后生效。`,
-        source: pluginId,
-        severity: "info",
-        ttl: 0,
-        actions: [
-          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
-        ],
-      });
-      return { success: true };
-    }
+
+    // glob 中没有（退出软件后重启 npx tauri dev 导致 Vite 重扫 glob，插件当时在
+    // .disabled/ 中未被纳入）。文件已由 reinstall_plugin 移回——通过 loadPluginRuntime
+    // 用 Vite /@fs/ 端点即时加载，无需再次重启。
+    await loadPluginRuntime(pluginId);
+    return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
@@ -888,8 +888,8 @@ let _watchInterval: ReturnType<typeof setInterval> | null = null;
 /**
  * Phase 5h：文件监听——轮询检测新插件目录。
  * 每 2 秒调用 Rust `list_plugin_dirs`。
- * - 工厂插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
- * - 运行时插件（不在 glob 中）→ loadPluginRuntime（plugin:// 协议）
+ * - glob 中的插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
+ * - glob 外的插件（不在 glob 中）→ loadPluginRuntime（plugin:// 协议）
  */
 export function startPluginWatcher(): void {
   if (_watchInterval) return;
@@ -905,11 +905,11 @@ export function startPluginWatcher(): void {
           (k) => extractPluginId(k) === dir
         );
         if (manifestKey) {
-          // 工厂插件——已在 Vite 构建中，直接 loadPlugin
+          // 已在 Vite glob 中——直接 loadPlugin
           await loadPlugin(dir, "startup");
-          log.appendLine(`文件监听发现新工厂插件 "${dir}"——已即时加载`);
+          log.appendLine(`文件监听发现新插件 "${dir}"——已即时加载`);
         } else {
-          // Phase 5h：运行时插件——不在 glob 中，尝试 plugin:// 加载
+          // 不在 glob 中——通过 Vite /@fs/ 动态 import 加载
           await loadPluginRuntime(dir);
           // loadPluginRuntime 内部已 toast（成功或失败）
         }
