@@ -101,7 +101,47 @@ let _sessionCounter = 0;
 let _colorIndex = 0;
 const _listeners = new Set<() => void>();
 
+// ── localStorage 持久化（对标 LayoutService——F5 刷新恢复 session 数据）──
+
+const STORAGE_KEY = "linkdesk:terminal:sessions";
+
+/** 从 localStorage 恢复 session——模块初始化时调用一次 */
+function _restoreSessions(): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.sessions)) {
+        // 恢复时 connected 强制 false——启动后由 SerialContext 重新派生
+        _sessions = data.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
+      }
+      if (typeof data.activeSessionId === "string") _activeSessionId = data.activeSessionId;
+      if (typeof data.sessionCounter === "number") _sessionCounter = data.sessionCounter;
+      if (typeof data.colorIndex === "number") _colorIndex = data.colorIndex;
+    }
+  } catch { /* 首次启动或数据损坏——静默忽略 */ }
+}
+
+/** 同步写 localStorage——notify 时调用 + beforeunload 兜底 */
+function _persistSessions(): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      sessions: _sessions,
+      activeSessionId: _activeSessionId,
+      sessionCounter: _sessionCounter,
+      colorIndex: _colorIndex,
+    }));
+  } catch { /* quota exceeded 等极端情况——静默忽略 */ }
+}
+
+// 模块初始化——F5 后恢复 session
+if (typeof window !== "undefined") {
+  _restoreSessions();
+  window.addEventListener("beforeunload", _persistSessions);
+}
+
 function notify(): void {
+  _persistSessions();
   _listeners.forEach((fn) => fn());
 }
 
