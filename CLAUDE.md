@@ -51,7 +51,7 @@ Phase 1-5h ✅ 完成
 详见 `docs/phase5_应用基础设施/V3-Phase5-最终验收报告.md`（Phase 5 验收——4 Blocking + 9 Quick Wins 已全部修完）
 	- **S5** 归一化按钮：PluginDetailView 与侧栏用同一套判断逻辑（元数据缓存 status > 禁用列表）
 	- **B86** 首次打开串口失败：`handleToggleOpen` 用 ref 替代闭包 state——ControlPanel 同事件循环内 setState + invoke 导致 portName 仍为空串
-	- **B3** F5 刷新 session 自动恢复：`useSession` 首次 mount 检测 sourceId 无匹配 session → 自动创建
+	- **B3** F5 刷新 session 自动恢复：useSession 首次 mount 自动创建 + localStorage 持久化 session 名 + 重命名 ✓/✕ 按钮 + 侧栏不随标签页切换跳转
 
 分支：`phase5.5`
 
