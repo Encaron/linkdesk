@@ -55,8 +55,8 @@ const MONACO_LINE_HEIGHT = 18;
 const MONACO_PADDING = 16;
 
 // Phase 5e：模块级变量——Tauri event handler 在 React 渲染周期外运行，
-// 读取此变量获取最新 receiveMode。渲染时由组件函数体写入。
-let _receiveMode: string = "text";
+// E4 修复：原 _receiveMode 模块级变量 → per-instance useRef（C1 per-tab session 绑定后，
+// 每个标签页有自己独立的 receiveMode，模块级变量会被最后渲染的实例覆盖）。
 
 /* ---- CM6 主题（颜色走 CSS 变量，切主题自动响应） ---- */
 const darkTheme: Extension = EditorView.theme(
@@ -422,10 +422,10 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   const sessionIdRef = useRef(sourceId);
   sessionIdRef.current = sourceId;
 
-  // Phase 5e：模块级变量——Tauri event handler 在 React 渲染周期外运行，
-  // 用模块变量传递最新 prefs 值，避免 useRef/闭包的任何时序问题。
+  // E4：per-instance ref——Tauri event handler 读取当前实例的接收模式。
   // 对标 tsFormatRef 已验证的模式：渲染时写，事件回调时读。
-  _receiveMode = receiveMode;
+  const receiveModeRef = useRef(receiveMode);
+  receiveModeRef.current = receiveMode;
 
   /** 文本转十六进制显示——Phase 5e receiveMode="hex" */
   const toHexDisplay = (text: string): string => {
@@ -441,7 +441,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     if (!sessionIdRef.current) return;
     if (!portOpenRef.current) return;
     const fmt = tsFormatRef.current;
-    const displayText = _receiveMode === "hex"
+    const displayText = receiveModeRef.current === "hex"
       ? toHexDisplay(payload)
       : payload;
     ringBuffer.current.write({
