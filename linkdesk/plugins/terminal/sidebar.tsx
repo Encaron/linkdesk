@@ -396,9 +396,10 @@ function TerminalSidebar() {
                   type="number"
                   value={activeSession.repeatInterval}
                   style={{ width: 80 }}
-                  onChange={(e) =>
-                    mkSetter("repeatInterval")(parseInt(e.target.value) || 1000)
-                  }
+                  onChange={(e) => {
+                    const v = parseInt(e.target.value);
+                    mkSetter("repeatInterval")(isNaN(v) ? 1000 : v);
+                  }}
                 />
               </FormRow>
             )}
