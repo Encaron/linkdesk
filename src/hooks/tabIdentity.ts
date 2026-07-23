@@ -51,6 +51,30 @@ let _fallbackCounter = 0;
 export function resetFallbackCounter(n = 0): void { _fallbackCounter = n; }
 
 /**
+ * G3：恢复布局后同步计数器——扫描所有 tab ID 提取最大值。
+ * 防止 F5 后 _terminalCounter 归零、新建 tab 与恢复的旧 tab ID 碰撞。
+ */
+export function syncCountersAfterRestore(tabs: { id: string; type: string }[]): void {
+  let maxTerminal = 0;
+  let maxWorkspace = 0;
+  let maxFallback = 0;
+
+  for (const tab of tabs) {
+    const id = tab.id;
+    const tm = id.match(/^terminal-(\d+)$/);
+    if (tm) { maxTerminal = Math.max(maxTerminal, parseInt(tm[1])); continue; }
+    const wm = id.match(/^workspace-(\d+)$/);
+    if (wm) { maxWorkspace = Math.max(maxWorkspace, parseInt(wm[1])); continue; }
+    const fm = id.match(/^(.+)-(\d+)$/);
+    if (fm) { maxFallback = Math.max(maxFallback, parseInt(fm[2])); }
+  }
+
+  _terminalCounter = maxTerminal;
+  _workspaceCounter = maxWorkspace;
+  _fallbackCounter = maxFallback;
+}
+
+/**
  * B78 同类：不需要特殊 id 格式的条目统一走此 helper。
  * `${prefix}-${counter}` — 每次调用递增，保证多实例不碰撞。
  * 和 getMeta fallback 同一模式——唯一区别是 prefix = type 名显式传入。
