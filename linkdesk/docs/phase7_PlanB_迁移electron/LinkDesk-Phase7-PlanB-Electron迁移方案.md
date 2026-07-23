@@ -1,0 +1,706 @@
+# Phase 7 Plan B — Electron 迁移方案
+
+> 2026-07-23。通查工程后定稿。
+> **决策：Tauri → Electron，独立 WebContentsView per 插件 + React 组件插件模型 + `linkdesk://` 自定义协议。**
+
+---
+
+## 零、决策摘要
+
+| 决策项 | 选择 | 一句话理由 |
+|------|------|------|
+| 框架 | **Electron** | 多进程管理是标配，WebContentsView 是 stable API |
+| 插件隔离 | **独立 WebContentsView per 插件** | VS Code 的共享 ExtHost 是历史包袱不是最佳实践——他们自己正在往 per-extension 方向改 |
+| 插件入口 | **React 组件**（保留现状） | AI 写一个文件 = 一个插件，Web 平台能力无限制 |
+| 资源加载 | **`linkdesk://` 自定义协议** | 对标 VS Code 的 `vscode-file://`，归一化入口，未来可扩展 |
+| 权限控制 | **preload + contextBridge** | 系统级能力通过 `window.linkdesk` 暴露，Web 平台能力无限制 |
+| 分支策略 | **双分支** | `phase6-tauri` 冻结退路 + `phase6-electron` 活跃开发 |
+
+---
+
+## 一、目标架构
+
+### 1.1 进程拓扑
+
+```
+┌────────────────────────────────────────────────────────────────┐
+│  Electron Main Process (Node.js)                               │
+│                                                                 │
+│  ┌──────────────────────────────────────────────────────────┐  │
+│  │ Core Services (Node.js)                                   │  │
+│  │                                                           │  │
+│  │ SerialService     ← serialport npm 包                     │  │
+│  │ FileService       ← fs 模块                               │  │
+│  │ ConfigService     ← 读/写 JSON 配置文件                   │  │
+│  │ PluginFileService ← 插件目录扫描/安装/卸载/重装            │  │
+│  │ WindowManager     ← BrowserWindow + WebContentsView       │  │
+│  │ IpcRouter         ← 消息路由（壳 ↔ 插件 WebView）         │  │
+│  │ ProtocolHandler   ← linkdesk:// 自定义协议                │  │
+│  └──────────────────────────────────────────────────────────┘  │
+│         │                                                       │
+│         │ ipcMain / contextBridge / protocol.handle             │
+│         │                                                       │
+│  ┌──────┴──────────────────────────────────────────────────┐   │
+│  │ Shell Window (BrowserWindow, Chromium Renderer)          │   │
+│  │                                                           │   │
+│  │ Workbench UI —— 图标栏/侧栏/标签栏/分屏/状态栏           │   │
+│  │ 全部 Phase 1-5 代码原样保留，一行不改                     │   │
+│  │                                                           │   │
+│  │ preload: contextBridge → window.linkdesk (壳侧 API)      │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│         │                                                       │
+│  ┌──────┴──────────────────────────────────────────────────┐   │
+│  │ Plugin WebContentsView 1 (独立 Chromium 渲染进程)        │   │
+│  │   preload: contextBridge → window.linkdesk (插件侧 API)  │   │
+│  │   加载: linkdesk://terminal/dist/bundle.js               │   │
+│  │   插件 A (终端) React 组件                                │   │
+│  │   import any JS library, use any Web API                 │   │
+│  │   崩了 → 只崩自己，壳和其他插件正常                       │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Plugin WebContentsView 2 (地图 + Leaflet + GPS)           │   │
+│  └──────────────────────────────────────────────────────────┘   │
+│  ┌──────────────────────────────────────────────────────────┐   │
+│  │ Plugin WebContentsView N (...)                            │   │
+│  └──────────────────────────────────────────────────────────┘   │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### 1.2 通信模型
+
+```
+插件 React 组件
+  │
+  │ (1) 系统级能力  ← IPC →  Main Process → 执行
+  │     window.linkdesk.serial.openPort(...)
+  │     window.linkdesk.config.set(...)
+  │     window.linkdesk.filesystem.readFile(...)
+  │
+  │ (2) Web 平台能力 ← 直接使用，不经 IPC
+  │     import Leaflet / THREE.js / ffmpeg.wasm / ...
+  │     Canvas / WebGL / WebRTC / Web Audio / ...
+  │
+  │ (3) 壳服务  ← IPC →  Shell Window → Registry
+  │     注册命令、菜单、快捷键、配置项
+  │     → CommandRegistry / MenuRegistry / ConfigurationRegistry
+  │
+  ▼
+Main Process (只做路由 + 执行，不处理业务逻辑)
+  │
+  │ 消息格式: { pluginId, type, payload }
+  │ 主进程看到 pluginId → 路由到对应服务
+  │ 主进程不知道 payload 的内容
+  │
+  ▼
+系统调用 (serialport / fs / ...)
+```
+
+**核心无知原则在消息路由层继续生效：主进程不读 payload，只看 pluginId + type 做路由。**
+
+---
+
+## 二、迁移范围——完整的"改什么、不改什么"
+
+### 2.1 完全保留（零改动）
+
+| 层 | 文件 | 说明 |
+|------|------|------|
+| **入口** | `src/main.tsx` | ReactDOM.render——Electron Renderer 不需要改 |
+| | `index.html` | Electron BrowserWindow 加载同一个 HTML |
+| | `public/` | 静态资源 |
+| **壳组件** | `src/components/IconBar.tsx` | 图标栏——读 viewRegistry，不碰 Tauri |
+| | `src/components/SidePanel.tsx` | 侧栏——读 viewRegistry |
+| | `src/components/MainContent.tsx` | 主区布局 |
+| | `src/components/SplitPane.tsx` | 分屏渲染 |
+| | `src/components/TabBar.tsx` | 标签栏 |
+| | `src/components/TabPanePositioner.tsx` | 标签面板定位 |
+| | `src/components/StatusBar.tsx` | 状态栏 |
+| | `src/components/ToastContainer.tsx` | 通知容器 |
+| | `src/components/terminal/CommandPalette.tsx` | 命令面板 |
+| | `src/components/terminal/FilterMenu.tsx` | 过滤菜单 |
+| | `src/components/terminal/SearchBar.tsx` | 搜索栏 |
+| | `src/components/shared/*` | ConfirmDialog/ContextMenu/ErrorBoundary/FormRow/Select/SidebarSection/Toggle |
+| | `src/components/views/*` | PluginDetailView/SettingsView/WelcomeView/WorkspaceView |
+| **核心服务** | `src/core/CommandRegistry.ts` | 命令注册表 |
+| | `src/core/ConfigurationRegistry.ts` | 配置注册表 |
+| | `src/core/ConfigurationService.ts` | 配置读写 |
+| | `src/core/ConfigurationApplier.ts` | onApply 模式 |
+| | `src/core/ContextKeyService.ts` | context key 状态机 |
+| | `src/core/CoreEvents.ts` | 事件总线 |
+| | `src/core/KeybindingRegistry.ts` | 快捷键注册表 |
+| | `src/core/MenuRegistry.ts` | 菜单注册表 |
+| | `src/core/ProtocolRegistry.ts` | 协议注册表 |
+| | `src/core/CardRegistry.ts` | 卡片注册表 |
+| | `src/core/ThemeEngine.ts` | 主题引擎 |
+| | `src/core/ProtocolParser.ts` | 协议解析器 |
+| | `src/core/RingBuffer.ts` | 环形缓冲区 |
+| | `src/core/DataConverter.ts` | 数据转换 |
+| | `src/core/DataDispatch.ts` | 数据分发 |
+| | `src/core/DialogService.ts` | 对话框服务 |
+| | `src/core/LayoutService.ts` | 布局持久化（调用 StorageService） |
+| | `src/core/PluginStateService.ts` | 插件状态管理（调用 StorageService） |
+| | `src/core/toast.ts` | Toast 系统 |
+| | `src/core/types.ts` | 类型定义 |
+| | `src/core/coreCommands.ts` | 核心命令 |
+| | `src/core/registerBuiltinProtocols.ts` | 内置协议 |
+| | `src/core/CancellationToken.ts` | 取消令牌 |
+| | `src/core/LogChannel.ts` | 日志频道 |
+| | `src/core/TabActionsContext.ts` | 标签页操作上下文 |
+| | `src/core/useConfiguration.ts` | 配置 Hook |
+| **Hooks** | `src/hooks/splitTree.ts` | 分屏树算法 |
+| | `src/hooks/tabIdentity.ts` | 标签页身份 |
+| | `src/hooks/tabDragTypes.ts` | 拖拽类型 |
+| | `src/hooks/useDragReorder.ts` | 拖拽重排 |
+| | `src/hooks/useTabManager.ts` | 标签页管理 |
+| **插件加载** | `src/pluginLoader/iconUtils.ts` | 图标工具 |
+| | `src/pluginLoader/lifecycle.ts` | 插件生命周期 |
+| | `src/pluginLoader/semverUtils.ts` | 版本比较 |
+| **插件** | `plugins/terminal/*` | 全部保留——React 组件不动 |
+| | `plugins/settings/*` | 全部保留 |
+| | `plugins/marketplace/*` | 全部保留 |
+| | `plugins/workspace/*` | 全部保留 |
+| **国际化** | `src/i18n/index.ts` | i18next 配置 |
+| **测试** | `src/**/__tests__/*` | 全部测试保留 |
+| | `plugins/**/__tests__/*` | 全部测试保留 |
+| **样式** | `*.css` | CSS 变量体系不变 |
+
+### 2.2 需要修改的文件（7 个）
+
+#### 文件 1：`src/App.tsx`（~20 处改动）
+
+| 原代码 | Electron 替代 |
+|------|------|
+| `import { invoke } from "@tauri-apps/api/core"` | 删除——改用 `window.linkdesk.*` |
+| `import { listen } from "@tauri-apps/api/event"` | 删除——改用 preload 暴露的 `window.linkdesk.events.*` |
+| `await invoke("get_serial_status")` | `await window.linkdesk.serial.getStatus()` |
+| `await invoke("close_port")` | `await window.linkdesk.serial.closePort()` |
+| `await invoke("open_port", { ... })` | `await window.linkdesk.serial.openPort({ ... })` |
+| `await invoke("list_ports")` | `await window.linkdesk.serial.getPorts()` |
+| `listen("serial-stats", ...)` | `window.linkdesk.serial.onStats(...)` |
+| `listen("serial-system", ...)` | `window.linkdesk.serial.onSystem(...)` |
+
+**SerialContext 保持不变：** `SerialContext.Provider` 传给插件的 value 结构不变——`{ state: { ports, portName, ... }, actions: { toggleOpen, ... } }`。区别在于 `actions` 内部实现从 `invoke(...)` 变成 `window.linkdesk.serial.*`。
+
+#### 文件 2：`src/hooks/useTauriEvent.ts`（重写为 Electron 版）
+
+```typescript
+// 原来
+import { listen } from "@tauri-apps/api/event";
+
+// 改为
+// useIpcEvent —— 基于 window.linkdesk.events 的 React hook
+// 内部使用 ipcRenderer.on / ipcRenderer.removeListener
+// generation counter 模式保留（防 StrictMode 双重注册）
+```
+
+#### 文件 3：`src/core/useSendData.ts`（2 处改动）
+
+| 原代码 | Electron 替代 |
+|------|------|
+| `import { invoke } from "@tauri-apps/api/core"` | 删除 |
+| `await invoke("send_data", { data: bytes })` | `await window.linkdesk.serial.sendData(bytes)` |
+| `await invoke("send_text", { ... })` | `await window.linkdesk.serial.sendText(text, encoding)` |
+
+#### 文件 4：`src/core/StorageService.ts`（底层 I/O 替换）
+
+| 原 Tauri API | Electron 替代 |
+|------|------|
+| `import("@tauri-apps/plugin-fs")` | `window.linkdesk.filesystem`（preload 暴露） |
+| `import("@tauri-apps/api/path")` | `window.linkdesk.path`（preload 暴露） |
+| `window.__TAURI__` 检测 | `window.linkdesk` 检测 |
+| `_fsApi.readTextFile(path)` | `window.linkdesk.filesystem.readTextFile(path)` |
+| `_fsApi.writeTextFile(path, json)` | `window.linkdesk.filesystem.writeTextFile(path, json)` |
+| `_fsApi.exists(path)` | `window.linkdesk.filesystem.exists(path)` |
+| `_fsApi.mkdir(dir, ...)` | `window.linkdesk.filesystem.mkdir(dir)` |
+| `_pathApi.appDataDir()` | `window.linkdesk.path.appDataDir()` |
+| `_pathApi.join(a, b)` | `window.linkdesk.path.join(a, b)` |
+
+**localStorage 双写机制保留不变——Electron 的 renderer 同样支持 localStorage。**
+
+#### 文件 5：`src/core/v3Api.ts`（2 处改动）
+
+| 原代码 | Electron 替代 |
+|------|------|
+| `import { useTauriEvent } from "../hooks/useTauriEvent"` | `import { useIpcEvent } from "../hooks/useIpcEvent"` |
+| `useTauriEvent`（暴露给插件） | `useIpcEvent` |
+
+#### 文件 6：`src/pluginLoader/loader.ts`（3 处改动）
+
+| 原代码 | Electron 替代 |
+|------|------|
+| `import { invoke } from "@tauri-apps/api/core"` | 删除 |
+| `await invoke("list_plugin_dirs")` | `await window.linkdesk.plugins.listDirs()` |
+| `await invoke("install_plugin", { source })` | `await window.linkdesk.plugins.install(source)` |
+| `await invoke("reinstall_plugin", { pluginId })` | `await window.linkdesk.plugins.reinstall(pluginId)` |
+| `await invoke("uninstall_plugin", { pluginId })` | `await window.linkdesk.plugins.uninstall(pluginId)` |
+
+#### 文件 7：`src/pluginLoader/viewRegistry.ts`（1 处改动）
+
+| 原代码 | Electron 替代 |
+|------|------|
+| `import { invoke } from "@tauri-apps/api/core"` | 删除 |
+| `await invoke(behavior.invokeBeforeClose)` | `await window.linkdesk.commands.execute(behavior.invokeBeforeClose)` |
+
+### 2.3 需要新建的文件
+
+```
+linkdesk/
+├── electron/
+│   ├── main.ts                    # Electron 主进程入口（~80 行）
+│   ├── preload-shell.ts           # 壳窗口 preload（~50 行）
+│   ├── preload-plugin.ts          # 插件 WebView preload（~80 行）
+│   ├── services/
+│   │   ├── serial-service.ts      # 串口服务——serialport npm 包（~200 行）
+│   │   ├── file-service.ts        # 文件服务——fs 模块封装（~60 行）
+│   │   ├── config-service.ts      # 配置服务——读写 JSON（~60 行）
+│   │   ├── plugin-file-service.ts # 插件文件操作——扫描/安装/卸载（~150 行）
+│   │   └── window-manager.ts      # WebContentsView 管理（~200 行）
+│   ├── ipc/
+│   │   ├── serial-handlers.ts     # serial:* IPC 处理器（~80 行）
+│   │   ├── file-handlers.ts       # filesystem:* IPC 处理器（~50 行）
+│   │   ├── config-handlers.ts     # config:* IPC 处理器（~40 行）
+│   │   ├── plugin-handlers.ts     # plugins:* IPC 处理器（~60 行）
+│   │   └── command-handlers.ts    # commands:* IPC 处理器（~30 行）
+│   └── protocol.ts                # linkdesk:// 协议注册（~30 行）
+├── electron-builder.yml           # 打包配置（替代 tauri.conf.json）
+```
+
+### 2.4 需要删除的内容
+
+```
+删除整个目录：
+  src-tauri/                 # Rust 后端 + 配置 + 3.9GB target/
+
+删除 npm 包：
+  @tauri-apps/api
+  @tauri-apps/plugin-fs
+  @tauri-apps/plugin-dialog
+  @tauri-apps/cli
+
+清理 vite.config.ts：
+  删除 Tauri host 相关配置
+```
+
+### 2.5 汇总
+
+| 类型 | 数量 | 行数估算 |
+|------|:--:|:--:|
+| **保留（不改）** | ~80 个文件 | ~12,000 行 |
+| **修改** | 7 个文件 | ~50 处改动 |
+| **新建** | ~15 个文件 | ~1,300 行 |
+| **删除** | 1 个目录 + 4 个 npm 包 | 3.9GB 磁盘 |
+
+---
+
+## 三、`window.linkdesk` API 设计（preload + contextBridge）
+
+### 3.1 壳窗口 preload (`electron/preload-shell.ts`)
+
+壳窗口是 Chromium 渲染进程。壳的 preload 暴露壳需要的系统能力：
+
+```typescript
+// electron/preload-shell.ts
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('linkdesk', {
+  // ── 串口 ──
+  serial: {
+    getPorts:     () => ipcRenderer.invoke('serial:getPorts'),
+    getStatus:    () => ipcRenderer.invoke('serial:getStatus'),
+    openPort:     (cfg) => ipcRenderer.invoke('serial:openPort', cfg),
+    closePort:    () => ipcRenderer.invoke('serial:closePort'),
+    sendData:     (data) => ipcRenderer.invoke('serial:sendData', data),
+    sendText:     (text, enc) => ipcRenderer.invoke('serial:sendText', text, enc),
+    onData:       (cb) => ipcRenderer.on('serial:data', (_, d) => cb(d)),
+    onStats:      (cb) => ipcRenderer.on('serial:stats', (_, d) => cb(d)),
+    onSystem:     (cb) => ipcRenderer.on('serial:system', (_, d) => cb(d)),
+  },
+  // ── 文件系统 ──
+  filesystem: {
+    readTextFile:  (p) => ipcRenderer.invoke('filesystem:readTextFile', p),
+    writeTextFile: (p, d) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
+    exists:        (p) => ipcRenderer.invoke('filesystem:exists', p),
+    mkdir:         (p, o) => ipcRenderer.invoke('filesystem:mkdir', p, o),
+    readdir:       (p) => ipcRenderer.invoke('filesystem:readdir', p),
+    copy:          (s, d) => ipcRenderer.invoke('filesystem:copy', s, d),
+    remove:        (p) => ipcRenderer.invoke('filesystem:remove', p),
+  },
+  // ── 路径 ──
+  path: {
+    appDataDir: () => ipcRenderer.invoke('path:appDataDir'),
+    join:       (...parts) => ipcRenderer.invoke('path:join', ...parts),
+  },
+  // ── 插件管理 ──
+  plugins: {
+    listDirs:     () => ipcRenderer.invoke('plugins:listDirs'),
+    install:      (src) => ipcRenderer.invoke('plugins:install', src),
+    uninstall:    (id) => ipcRenderer.invoke('plugins:uninstall', id),
+    reinstall:    (id) => ipcRenderer.invoke('plugins:reinstall', id),
+    readManifest: (id) => ipcRenderer.invoke('plugins:readManifest', id),
+  },
+  // ── 命令 ──
+  commands: {
+    execute: (id, ...args) => ipcRenderer.invoke('commands:execute', id, ...args),
+  },
+  // ── 窗口管理 ──
+  window: {
+    createPluginView: (pluginId) => ipcRenderer.invoke('window:createPluginView', pluginId),
+    closePluginView:  (pluginId) => ipcRenderer.invoke('window:closePluginView', pluginId),
+    focusPluginView:  (pluginId) => ipcRenderer.invoke('window:focusPluginView', pluginId),
+  },
+  // ── 事件 ──
+  events: {
+    on:    (ch, cb) => { ipcRenderer.on(ch, (_, d) => cb(d)); },
+    off:   (ch, cb) => { ipcRenderer.removeListener(ch, cb); },
+  },
+  // ── 对话框 ──
+  dialog: {
+    showConfirm: (msg) => ipcRenderer.invoke('dialog:showConfirm', msg),
+  },
+});
+```
+
+### 3.2 插件 WebView preload (`electron/preload-plugin.ts`)
+
+插件 WebView 的 preload 比壳更窄——**核心无知原则：插件不知道壳的存在。**
+
+```typescript
+// electron/preload-plugin.ts
+import { contextBridge, ipcRenderer } from 'electron';
+
+contextBridge.exposeInMainWorld('linkdesk', {
+  // 插件只暴露"消费核心服务"的 API——不暴露壳操作
+  serial: {
+    getPorts:  () => ipcRenderer.invoke('serial:getPorts'),
+    getStatus: () => ipcRenderer.invoke('serial:getStatus'),
+    openPort:  (cfg) => ipcRenderer.invoke('serial:openPort', cfg),
+    closePort: () => ipcRenderer.invoke('serial:closePort'),
+    sendData:  (data) => ipcRenderer.invoke('serial:sendData', data),
+    sendText:  (text, enc) => ipcRenderer.invoke('serial:sendText', text, enc),
+    onData:    (cb) => ipcRenderer.on('serial:data', (_, d) => cb(d)),
+  },
+  config: {
+    get:  (key) => ipcRenderer.invoke('config:get', key),
+    set:  (key, v) => ipcRenderer.invoke('config:set', key, v),
+    onChange: (key, cb) => ipcRenderer.on('config:changed', (_, d) => {
+      if (d.key === key) cb(d.value);
+    }),
+  },
+  commands: {
+    register: (id, handler) => ipcRenderer.invoke('commands:register', id),
+    execute:  (id, ...args) => ipcRenderer.invoke('commands:execute', id, ...args),
+  },
+  filesystem: {
+    readTextFile: (p) => ipcRenderer.invoke('filesystem:readTextFile', p),
+    writeTextFile: (p, d) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
+  },
+  // ⚠️ 注意：插件 WebView 不暴露 plugins.*（不能自己安装/卸载插件）
+  //          不暴露 window.*（不能创建/关闭 WebView）
+  //          不暴露 dialog.*（不能弹系统对话框——走壳的 toast/ConfirmDialog）
+  //          不暴露 child_process / require / fs 原始能力
+});
+```
+
+### 3.3 设计原则
+
+| 原则 | 如何体现 |
+|------|------|
+| **核心无知** | 主进程 IPC handler 只看 `pluginId + type`，不读 payload。壳转发消息不处理业务 |
+| **归一化** | 所有系统级能力走 `window.linkdesk.*`——一个入口，一个名字，全代码库一致 |
+| **AI 友好** | `window.linkdesk` 是纯 TypeScript 类型——AI 看类型定义就知道能调什么 |
+| **安全** | 插件 preload 比壳 preload 窄——插件不能调 `plugins.install` 或 `window.createPluginView` |
+
+---
+
+## 四、`linkdesk://` 协议
+
+### 4.1 对标
+
+| | VS Code | LinkDesk |
+|------|------|------|
+| 协议 | `vscode-file://` | `linkdesk://` |
+| 用途 | 加载扩展的 HTML/JS/CSS 资源 | 加载插件的 JS/CSS/HTML 资源 |
+| URI 格式 | `vscode-file:///path/to/extension/resource` | `linkdesk://terminal/dist/bundle.js` |
+| 实现 | Electron `protocol.registerFileProtocol` | Electron `protocol.handle` |
+
+### 4.2 实现（~30 行 Node.js）
+
+```typescript
+// electron/protocol.ts
+import { protocol, net } from 'electron';
+import { join, normalize } from 'path';
+import { existsSync } from 'fs';
+
+const PLUGINS_DIR = join(__dirname, '..', '..', 'plugins');
+
+protocol.handle('linkdesk', (request) => {
+  // URI: linkdesk://terminal/dist/bundle.js
+  const pluginPath = request.url.replace('linkdesk://', '');
+  const normalizedPath = normalize(pluginPath);
+
+  // 安全检查：防止路径穿越
+  if (normalizedPath.includes('..')) {
+    return new Response('Forbidden', { status: 403 });
+  }
+
+  const fullPath = join(PLUGINS_DIR, normalizedPath);
+  if (!existsSync(fullPath)) {
+    return new Response('Not Found', { status: 404 });
+  }
+
+  return net.fetch(`file://${fullPath}`);
+});
+```
+
+### 4.3 为什么不用 `loadFile()` 或 `file://`
+
+| 方案 | 问题 |
+|------|------|
+| `loadFile()` | 路径直接绑死文件系统。未来插件从网络下载→改代码；从加密包加载→改代码；从数据库加载→改代码 |
+| `file://` | Electron 默认允许 `file://`——安全风险，且无法做路径统一管理 |
+| `linkdesk://` | **归一化入口。** 今天映射到文件系统，明天可以映射到任何来源——只改协议处理器，不改插件代码 |
+
+---
+
+## 五、迁移步骤（7 步，每步可独立验证）
+
+### 步 1：Electron 壳初始化
+
+```
+目标：Electron 窗口能加载现有前端代码，壳正常渲染
+
+操作：
+1. npm install electron electron-builder --save-dev
+2. npm install serialport --save
+3. 创建 electron/main.ts —— BrowserWindow + loadFile/loadURL
+4. 创建 electron/preload-shell.ts（TODO 占位，后续逐步填 API）
+5. 修改 package.json scripts
+6. 修改 vite.config.ts——删除 Tauri host 相关配置
+
+验证：
+- npm run electron:dev → 显示 LinkDesk 界面
+- 图标栏/侧栏/标签栏/分屏全部正常渲染
+
+工作量：~1h
+```
+
+### 步 2：主进程服务——串口
+
+```
+目标：Rust serial.rs → Node.js serial-service.ts
+
+操作：
+1. 创建 electron/services/serial-service.ts
+   - serialport.list() / new SerialPort() / port.write() / port.on('data')
+   - 编码：iconv-lite（GBK/Shift-JIS）
+   - 逻辑与 Rust serial.rs 完全一致——行缓冲、\n 拆行、读错误休眠
+2. 创建 electron/ipc/serial-handlers.ts
+3. 在 preload-shell.ts 暴露 serial API
+
+验证：
+- tsc --noEmit 零错误
+- 原有 serial.rs 功能 100% 覆盖
+
+工作量：~2h
+```
+
+### 步 3：主进程服务——文件 + 配置 + 插件文件管理
+
+```
+目标：Rust plugins.rs + StorageService 底层的 Tauri FS → Node.js
+
+操作：
+1. electron/services/file-service.ts —— fs 模块封装
+2. electron/services/config-service.ts —— 读写 settings.json 等
+3. electron/services/plugin-file-service.ts —— plugins/ 目录扫描/安装/卸载
+   逻辑与 Rust plugins.rs 完全一致
+4. 创建对应 IPC handlers
+5. 在 preload-shell.ts 暴露对应 API
+
+验证：
+- 插件安装/卸载/重装功能正常
+- 设置持久化读写正常
+- 布局保存/恢复正常
+
+工作量：~3h
+```
+
+### 步 4：接前端的 Tauri API 调用 → `window.linkdesk`
+
+```
+目标：7 个 TypeScript 文件中 ~20 处 invoke/listen → window.linkdesk
+
+操作（按文件逐个改，每改一个验证一次）：
+1. src/hooks/useTauriEvent.ts → src/hooks/useIpcEvent.ts
+2. src/core/useSendData.ts → invoke → window.linkdesk.serial
+3. src/core/StorageService.ts → @tauri-apps/plugin-fs → window.linkdesk.filesystem
+4. src/core/v3Api.ts → useTauriEvent → useIpcEvent
+5. src/pluginLoader/viewRegistry.ts → invoke(invokeBeforeClose) → window.linkdesk.commands.execute
+6. src/pluginLoader/loader.ts → invoke → window.linkdesk.plugins
+7. src/App.tsx → invoke + listen → window.linkdesk.serial + window.linkdesk.events
+
+验证：
+- tsc --noEmit 零错误
+- vitest run 全过（mocking window.linkdesk）
+- npm run electron:dev → 串口收发正常、插件管理正常、配置读写正常
+
+工作量：~3h
+```
+
+### 步 5：`linkdesk://` 协议 + 插件 WebContentsView 架构
+
+```
+目标：插件从壳内同 WebView 渲染 → 独立 WebContentsView
+
+操作：
+1. 创建 electron/protocol.ts——linkdesk:// 注册
+2. 创建 electron/services/window-manager.ts
+   - createPluginView / closePluginView / focusPluginView
+   - WebContentsView + preload-plugin.js + loadURL('linkdesk://...')
+3. 壳的 MainContent 改为 WebContentsView placeholder 管理
+4. 创建 electron/preload-plugin.ts——插件侧 API（比壳 preload 窄）
+
+⚠️ 这一步只建架构——4 个现有插件仍然在壳 WebView 里渲染（向后兼容）。
+Phase 6 逐步迁移每个插件到独立 WebContentsView。
+
+验证：
+- 壳正常，现有插件正常（仍在壳内渲染）
+- 新创建的 WebContentsView 能加载 linkdesk:// 协议
+
+工作量：~4h
+```
+
+### 步 6：清理 + 测试
+
+```
+操作：
+1. 删除 src-tauri/ 整个目录（释放 3.9GB）
+2. 卸载 @tauri-apps/* 包
+3. 运行全部测试：vitest run
+4. 端到端验证：
+   - 启动 → 图标栏正常
+   - 打开终端 → 串口枚举 → 收发数据
+   - 安装/卸载插件
+   - 切换主题/语言
+   - 分屏/合屏 → 标签页拖拽
+   - F5 刷新 → 布局恢复 → 串口状态恢复
+
+工作量：~2h
+```
+
+### 步 7：提交 + Electron 打包
+
+```
+操作：
+1. 配置 electron-builder.yml
+2. npm run electron:build → LinkDesk Setup.exe
+
+工作量：~1h
+```
+
+### 总工时
+
+| 步 | 内容 | 工时 |
+|:--:|------|:--:|
+| 1 | Electron 壳 | 1h |
+| 2 | 串口服务 | 2h |
+| 3 | 文件/配置/插件管理 | 3h |
+| 4 | 接前端 API | 3h |
+| 5 | linkdesk:// 协议 + WebContentsView | 4h |
+| 6 | 清理 + 测试 | 2h |
+| 7 | 打包 | 1h |
+| **合计** | | **~16h（AI 2 天）** |
+
+---
+
+## 六、分支策略
+
+```
+phase5.5 (当前)
+    │
+    ├── 步 12-15 修完 bug  ← 共同祖先
+    │
+    ├── phase6-tauri (冻结分支)
+    │   │   继承 src-tauri/ 全部代码
+    │   │   可推进 Phase 6a-c + 6d（Rust 插件化）
+    │   │   此后不再有新 commit
+    │   │   → 仅作为退路存在
+    │
+    └── phase6-electron (活跃分支)  ← 迁移执行 + 后续开发
+        ├── 步 1-7: Electron 迁移
+        ├── Phase 6a-c (在 Electron 上)
+        │   6a: ErrorBoundary 增强（框架无关）
+        │   6b: 终端归一化（TS，框架无关）
+        │   6c: FileService / WorkspaceService（TS，框架无关）
+        │   ✕ 6d: Rust 命令插件化 → 跳过
+        ├── Phase 7: 多 WebView + 编辑能力
+        └── Phase 8: 卡片工作台 + OLED
+```
+
+**退路明确：** `phase6-tauri` 保留了完整的 Tauri 工程。切换回去丢失的是 Electron 迁移以来的代码——但所有 React 组件、Registry、Hooks、插件在两条路径上是同一份代码，不存在"白干"。
+
+---
+
+## 七、路线图更新
+
+```
+旧路线图：          新路线图：
+
+Phase 5.5 bug       Phase 5.5 bug  ← 不变
+    │                    │
+Phase 6a-c          迁移 (Phase 5.6)  ← 新增，~2 天
+Phase 6d (Rust)         │
+    │               Phase 6a-c (在 Electron 上)
+Phase 7 (Tauri)         │
+    │               Phase 7 (Electron) ← WebContentsView，不是 add_child
+Phase 8             Phase 8  ← 不变
+```
+
+**Phase 6d 被迁移替代：** Phase 6d 目标是"serialport 从核心 Cargo.toml 消失"。迁移到 Electron 后 Rust 后端整个消失——目标自动达成。Node.js 的 `serialport` npm 包天然独立，不需要"插件化"包装。
+
+---
+
+## 八、风险评估
+
+| 风险 | 概率 | 影响 | 缓解 |
+|------|:--:|:--:|------|
+| serialport npm 包功能不等价 Rust serialport-rs | 低 | 中 | `serialport` npm 包是 Node.js 生态最成熟的串口库，维护 10 年+ |
+| GBK/Shift-JIS 编码支持 | 低 | 低 | Node.js `iconv-lite` 包支持全部编码 |
+| WebContentsView 性能 | 低 | 低 | Chromium 原生管理，每个插件独立 OS 进程 |
+| 插件 preload 安全 | 中 | 高 | 插件 preload 只暴露精选 API——不暴露 require/child_process/fs |
+| AI 在 Electron API 上犯错 | 低 | 中 | 迁移所用 API 全是标准 API——训练数据充足 |
+| 安装包膨胀 | — | — | ~120MB——平台级软件的代价 |
+
+---
+
+## 九、原则更新
+
+### 原则 5 重写（CLAUDE.md 硬约束 #5）
+
+**旧版：** "Tauri `listen()` 必须用 generation counter 模式"
+
+**新版：** "`ipcRenderer.on()` 必须用 generation counter 模式——底层变了，模式不变"
+
+### 原则 6 重写
+
+**旧版：** "插件没有 API 白名单。给你自由，也给你安全。"
+
+**新版：**
+
+> **插件 Web 平台能力无限制，系统级能力走 `window.linkdesk.*` API。**
+>
+> 插件在自己的 WebContentsView 里能 `import` 任何 JS 库、调用任何 Web API——Canvas、WebGL、WebAssembly、WebRTC、Web Audio……Web 平台的一切，不加限制。
+>
+> 系统级能力（串口、文件系统、子进程）通过 preload 的 `window.linkdesk` 暴露——插件不能直接 `require('child_process')` 或 `require('fs')`。这是安全防线，也是插件市场的前提。
+>
+> **没有系统级白名单 = 没有插件市场。** VS Code 用 `vscode.*` API 证明了：开发者愿意用精心设计的 API 换取安全分发的信任。
+
+---
+
+## 十、相关文档
+
+- [LinkDesk-Phase7-框架选择分析-Tauri-vs-Electron.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-框架选择分析-Tauri-vs-Electron.md)——Tauri vs Electron 决策框架
+- [LinkDesk-Phase7-架构切换分析-插件模型抉择.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-架构切换分析-插件模型抉择.md)——三条路对比
+- [LinkDesk-Phase7-多WebView-坑与对策.md](../phase7_多WebView与编辑能力/LinkDesk-Phase7-多WebView-坑与对策.md)——七个坑逐条分析
+- `../../docs/总体设计/LinkDesk-软件介绍.md`——需更新原则 6 + 技术栈表 + 原则 5
+- `../../CLAUDE.md`——硬约束 #5 + #6 已更新

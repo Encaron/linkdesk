@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled } from "../../pluginLoader/loader";
+import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -92,15 +92,17 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   const plugin = getViewPlugin(pluginId);
   if (!plugin) {
-    const _disabled = isPluginDisabled(pluginId);
+    // 归一化：和侧栏用同一套判断逻辑——元数据缓存 status > 禁用列表
+    const cachedStatus = getPluginCachedStatus(pluginId);
+    const showEnable = isPluginDisabled(pluginId) && cachedStatus !== "uninstalled";
     return (
       <div className="plugin-detail-empty">
         <p>
-          {_disabled
+          {showEnable
             ? t("插件") + ` "${pluginId}" ` + t("已禁用")
             : t("插件") + ` "${pluginId}" ` + t("未安装")}
         </p>
-        {_disabled ? (
+        {showEnable ? (
           <button
             className="pd-btn pd-btn-enable"
             style={{ marginTop: 12 }}

@@ -65,6 +65,12 @@ function App() {
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [portName, setPortName] = useState("");
   const [baudRate, setBaudRate] = useState("115200");
+  // B86 fix：handleToggleOpen 用 ref 读最新值——ControlPanel 先 setPortName（React 异步）
+  // 紧接着调 toggleOpen，闭包里的 portName 还是旧值（""），传给 Rust → ERROR_INVALID_NAME
+  const portNameRef = useRef(portName);
+  portNameRef.current = portName;
+  const baudRateRef = useRef(baudRate);
+  baudRateRef.current = baudRate;
   const [theme, setTheme] = useState<"Dark" | "Light">("Dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
   const [lastError, setLastError] = useState<string | null>(null);
@@ -418,39 +424,41 @@ function App() {
         await invoke("close_port");
         setIsOpen(false);
       } else {
-        await invoke("open_port", { portName, baudRate: parseInt(baudRate), encoding: encoding ?? "UTF-8" });
+        // B86 fix：用 ref 读最新值——ControlPanel 在同一次事件循环里先 setPortName
+        // （React 异步 setState）再调 toggleOpen，闭包 portName 还是旧值 → 打开失败
+        await invoke("open_port", { portName: portNameRef.current, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
         setIsOpen(true);
       }
     } catch (e: any) {
       setLastError(`串口操作失败：${e?.message || e}`);
     }
-  }, [isOpen, portName, baudRate]);
+  }, [isOpen]);
 
   const handleBaudChange = useCallback(async (newBaud: string, encoding?: string) => {
     setBaudRate(newBaud);
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
+        await invoke("open_port", { portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
       }
     }
-  }, [isOpen, portName]);
+  }, [isOpen]);
 
   const handlePortChange = useCallback(async (newPort: string, encoding?: string) => {
     setPortName(newPort);
     if (isOpen) {
       try {
         await invoke("close_port");
-        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRate), encoding: encoding ?? "UTF-8" });
+        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);
       }
     }
-  }, [isOpen, baudRate]);
+  }, [isOpen]);
 
   // Phase 5f：终端设置已迁移到 useConfiguration 直连——终端组件内部 setConfigurationValue。
   // App 壳不再需要逐 key 同步 terminalPrefs → ConfigurationService 双写。

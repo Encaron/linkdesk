@@ -800,6 +800,15 @@ export function isPluginDisabled(pluginId: string): boolean {
   return getDisabledList().includes(pluginId);
 }
 
+/**
+ * 获取插件在元数据缓存中的状态。
+ * 返回值优先级高于 isPluginDisabled——缓存 "uninstalled" 的插件即使残留
+ * 在禁用列表中，也应视为已卸载（可重新安装，而非启用）。
+ */
+export function getPluginCachedStatus(pluginId: string): CachedPluginMeta["status"] | undefined {
+  return getMetadataCache()[pluginId]?.status;
+}
+
 /** 是否已初始化 */
 export function isPluginLoaderReady(): boolean {
   return _initialized;
