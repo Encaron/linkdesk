@@ -10,7 +10,8 @@
   "iconLocation": "top",
   "viewRole": "sidebarPrimary",
   "tabBehavior": {
-    "confirmOnClose": "关闭此标签页将断开串口连接"
+    "confirmOnClose": "关闭此标签页将断开串口连接",
+    "invokeBeforeClose": "close_port"
   },
   "statusBar": [
     { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
