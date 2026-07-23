@@ -134,10 +134,12 @@ export function initLifecycleConsumers(): void {
       actions: reason === "uninstall"
         ? [{ label: "撤销", isPrimary: true, onClick: () => {
             // 动态 import 避免循环依赖
-            import("./loader").then((m) => m.reinstallPlugin(pluginId));
+            import("./loader").then((m) => m.reinstallPlugin(pluginId))
+              .catch((e) => console.error("[lifecycle] 撤销卸载——模块加载失败:", e));
           }}]
         : [{ label: "撤销", isPrimary: true, onClick: () => {
-            import("./loader").then((m) => m.enablePlugin(pluginId));
+            import("./loader").then((m) => m.enablePlugin(pluginId))
+              .catch((e) => console.error("[lifecycle] 撤销禁用——模块加载失败:", e));
           }}],
     });
   });
