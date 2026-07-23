@@ -4,7 +4,7 @@
 > 小步快走——每步修完 → 立刻测 → 确认无误 → 下一步。
 > 发现新 bug → 即时开支线 → 记录 → 回到主线。
 >
-> **当前进度：主线 步 1-12 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 13（E3 命令路由）。剩余 3 主线 + 18 后续 = 21 步。**
+> **当前进度：主线 步 1-13 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 14（E5+N3 串口生命周期）。剩余 2 主线 + 18 后续 = 20 步。**
 
 ---
 
@@ -235,11 +235,11 @@ Tauri WebView 禁用 `window.confirm()` → 新增自定义 `<ConfirmDialog>` �
 **如果出问题：**
 - 所有会话同时收到数据但需要不同格式化 → 开支线：Tauri event handler 广播 raw 数据 → 每个 TerminalView 根据自己的 session.receiveMode 格式化
 
-#### 步 13：E3 — 命令路由到正确的 TerminalView
+#### 步 13：E3 — 命令路由到正确的 TerminalView　✅ 已完成（`7548c03`）
 
 **做什么：** Ctrl+Shift+P 执行终端命令时，命令作用于"当前活跃会话对应的那个 TerminalView"，而不是"最后一个 mount 的 TerminalView"。
 
-**改什么：** `plugins/terminal/index.tsx` — ~+20/−10 行
+**改什么：** `plugins/terminal/index.tsx` — +48/−55 行。删 7 个本地 ref（`terminalCmdRef` / `sendModeRef` / `showEchoRef` / `showLineNumbersRef` + 对应 setter ref），换 1 个模块级 `_activeCmd` 变量。每个 TerminalView 在 `isActive` 时写入——所有 13 个命令 handler 通过 `_activeCmd!` 间接寻址，始终路由到活跃标签页。
 
 **立刻怎么测：**
 1. 会话A 和 会话B 两个标签页 → 切到会话A
