@@ -944,6 +944,11 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     monaco.editor.defineTheme("v3-protocol-dark", v3ProtocolTheme);
   }, []);
 
+  // G7：handleSend 依赖 sendValue（每次键入都变），但 Monaco onKeyDown 只在 mount 时注册一次。
+  // ref 桥接——onKeyDown 始终读最新 handleSend，对标 B86 的 ref 模式。
+  const handleSendRef = useRef(handleSend);
+  handleSendRef.current = handleSend;
+
   const handleEditorMount = useCallback((editor: any) => {
     monacoRef.current = editor;
     editor.onKeyDown((e: any) => {
@@ -951,7 +956,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         if (!e.shiftKey) {
           e.preventDefault();
           e.stopPropagation();
-          handleSend();
+          handleSendRef.current();
         }
       }
       if (e.keyCode === 38 /* ArrowUp */) {
@@ -965,7 +970,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       }
     });
-  }, [handleSend]);
+  }, []);
 
   // Phase 3 keep-alive: 从 display:none 变为 flex 后修复 CM6/Monaco 布局
   useEffect(() => {
