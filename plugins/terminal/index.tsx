@@ -450,7 +450,10 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     return () => {
       if (serialIsOpenRef.current) {
-        invoke("close_port").catch(() => {});
+        // IIFE: invoke 是异步的——unmount 时不 await 可能导致 Promise 被丢弃
+        (async () => {
+          try { await invoke("close_port"); } catch {}
+        })();
       }
     };
   }, []);

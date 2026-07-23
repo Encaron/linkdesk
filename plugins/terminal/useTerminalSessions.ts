@@ -15,7 +15,6 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { PluginLifecycle } from "@src/pluginLoader/lifecycle";
 
 // ── 类型 ──
 
@@ -105,17 +104,6 @@ const _listeners = new Set<() => void>();
 function notify(): void {
   _listeners.forEach((fn) => fn());
 }
-
-// N3：插件卸载 → 清空所有会话。模块级订阅——不依赖任何 React 组件是否 mounted。
-PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-  if (pluginId === "terminal") {
-    _sessions = [];
-    _activeSessionId = null;
-    _sessionCounter = 0;
-    _colorIndex = 0;
-    notify();
-  }
-});
 
 /** 深度克隆默认值——防止多个 session 共享同一个 quickSends 对象引用 */
 function cloneDefaults(): typeof DEFAULT_SESSION {
