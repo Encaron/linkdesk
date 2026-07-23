@@ -9,6 +9,8 @@ import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
+import { invoke } from "@tauri-apps/api/core";
+import { showConfirm } from "../components/shared/ConfirmDialog";
 
 
 const registry = new Map<string, ViewPluginEntry>();
@@ -59,6 +61,21 @@ export function getTabBehavior(pluginId: string): TabBehavior {
   const pluginDeclaration = registry.get(pluginId)?.manifest?.tabBehavior ?? {};
   const builtin = getBuiltinTabBehavior(pluginId);
   return { ...builtin, ...pluginDeclaration };
+}
+
+/**
+ * 执行标签页关闭前的检查与副作用——归一化入口。
+ * 读取 tabBehavior 声明，依次执行 confirmOnClose 弹窗和 invokeBeforeClose 命令。
+ * TabBar [×]/中键/Ctrl+W 三条关闭路径统一调此函数。
+ * @returns true = 继续关闭，false = 用户取消
+ */
+export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
+  const behavior = getTabBehavior(pluginId);
+  if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
+  if (behavior.invokeBeforeClose) {
+    try { await invoke(behavior.invokeBeforeClose); } catch {}
+  }
+  return true;
 }
 
 /** 获取所有插件的状态栏贡献（按加载顺序，已去重） */
