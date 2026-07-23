@@ -10,8 +10,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus } from "../../pluginLoader/loader";
-import { showConfirm } from "../shared/ConfirmDialog";
+import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, performUninstall } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -79,14 +78,10 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   const handleUninstall = useCallback(async () => {
     if (!pluginId || busy) return;
-    const confirmed = await showConfirm(t("确定要卸载此插件吗？此操作可撤销（文件保留在 .disabled/ 目录）。"));
-    if (!confirmed) return;
     setBusy(true);
-    setActionError(null);
-    const r = await uninstallPlugin(pluginId);
+    await performUninstall(pluginId);
     setBusy(false);
-    if (!r.success) setActionError(r.error ?? "未知错误");
-  }, [pluginId, busy, t]);
+  }, [pluginId, busy]);
 
   if (!pluginId) {
     return <div className="plugin-detail-empty">{t("未指定插件 ID")}</div>;

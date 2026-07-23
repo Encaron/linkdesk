@@ -751,10 +751,30 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
+    pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     return { success: true };
   } catch (e: any) {
-    return { success: false, error: e?.message || String(e) };
+    const msg = e?.message || String(e);
+    console.error(`[pluginLoader] 卸载 "${pluginId}" 失败:`, msg);
+    pushToast({ message: `卸载失败：${msg}`, source: pluginId, ttl: TOAST_TTL_ERROR, severity: "error" });
+    return { success: false, error: msg };
   }
+}
+
+/**
+ * 卸载插件的唯一入口——带确认弹窗 + 错误反馈。
+ * 两个 UI 入口（齿轮菜单 + 详情页）都调此函数，确保行为一致。
+ */
+export async function performUninstall(pluginId: string): Promise<boolean> {
+  const { showConfirm } = await import("../components/shared/ConfirmDialog");
+  const entry = getViewPlugin(pluginId);
+  const name = entry?.manifest.name ?? pluginId;
+  const confirmed = await showConfirm(
+    i18n.t("确定要卸载") + ` "${name}"？` + i18n.t("此操作可撤销（文件保留在 .disabled/ 目录）。")
+  );
+  if (!confirmed) return false;
+  const r = await uninstallPlugin(pluginId);
+  return r.success;
 }
 
 /**
