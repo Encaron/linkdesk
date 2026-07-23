@@ -4,11 +4,31 @@
 > 小步快走——每步修完 → 立刻测 → 确认无误 → 下一步。
 > 发现新 bug → 即时开支线 → 记录 → 回到主线。
 >
-> **当前进度：主线 步 1-14 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 15（B3 F5 session 自恢复）。剩余 1 主线 + 18 后续 = 19 步。**
+> **当前进度：主线 步 1-14 ✅ 完成 + 归一化支线 ✅ + B80-B85 ✅。下一步 → 步 15（B3 F5 session 自恢复）。剩余 1 主线 + 18 后续 = 19 步。**
 
 ---
 
-## 🔥 实操发现的新 bug（B80-B83，不在原始 49 个中）
+## 🔥 步 14 归一化支线——`invokeBeforeCloseTab`（2026-07-23）
+
+> 发现 Bug B84/B85 后开支线，将三条关闭路径的重复逻辑抽成一个归一化函数。
+
+| 改动 | 文件 | 说明 |
+|:--|------|------|
+| 新增 `invokeBeforeCloseTab()` | `viewRegistry.ts` | 归一化函数——读 tabBehavior，依次 confirmOnClose → invokeBeforeClose。三条路径统一调用 |
+| TabBar [×] + 中键 | `TabBar.tsx` | 两处 inlined 逻辑 → `invokeBeforeCloseTab(tab.pluginId)` |
+| App.tsx Ctrl+W | `App.tsx` | `getTabBehavior` + `showConfirm` → `invokeBeforeCloseTab(tab.pluginId)` |
+| 删 import | `TabBar.tsx` | 移除 `invoke`、`showConfirm` import（逻辑在 viewRegistry 里） |
+
+**归一化收益：** 任何插件在 `plugin.json` 声明 `tabBehavior.confirmOnClose` / `invokeBeforeClose`，TabBar [×]/中键/Ctrl+W 三条关闭路径自动执行——插件零代码。
+
+## 🔥 新发现 bug（B84-B85，步 14 归一化过程暴露）
+
+| # | Bug | 根因 | 修复 | 状态 |
+|:--|------|------|------|:--:|
+| **B84** | 插件无法卸载（所有插件） | `useTerminalSessions.ts` 模块级 `PluginLifecycle` 订阅阻塞卸载流程（`2f2125e` 已移除） | 已修——预存 bug，不是步 14 引入 | ✅ |
+| **B85** | 归一化半成品 `import { invokeBeforeCloseTab }` 但函数不存在 | 另一个 AI 同步改 import 时把 `getTabBehavior` 误写为 `invokeBeforeCloseTab`（此时 viewRegistry 还没定义此函数） | 补完 `invokeBeforeCloseTab` 函数 + 三条路径全部对接 | ✅ |
+
+---## 🔥 实操发现的新 bug（B80-B83，不在原始 49 个中）
 
 > 2026-07-22/23 Encaron 实测发现。已全部修复并记录。
 
