@@ -43,8 +43,12 @@ OLED 模拟器 = Canvas + 串口数据源。逐像素刷新走 `requestAnimation
 | # | 任务 | 行数 |
 |:--:|------|:--:|
 | 5 | OLED 视图插件——视图注册 + 标签页 + keep-alive | ~50 |
-| 6 | I2C 通信层（Electron main process）| ~80 |
+| 6 | I2C 通信层——Electron main process 服务 + preload API | ~80 |
 | 7 | OLED 像素渲染（Canvas）| ~70 |
+
+> ⚠️ **Task 6 不是纯插件。** I2C 需要 Electron 主进程服务——和 E1 步 2 串口服务完全相同的模式：
+> `npm i i2c-bus` → `electron/services/i2c-service.ts` → `preload-shell.ts` 暴露 `window.linkdesk.i2c.*`。
+> 参考 E1 串口服务的实现模板——不需要从零设计。
 
 ### 底座依赖
 

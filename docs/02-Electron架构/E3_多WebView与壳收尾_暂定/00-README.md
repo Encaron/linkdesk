@@ -21,7 +21,12 @@
 | E3a | **多 WebView 进程隔离**——每个 view 插件独立 WebContentsView | 原 P7a | 架构核心 |
 | E3b | **主题引擎跨进程**——切主题后所有 WebView 同步 CSS 变量 | 原 P7c 的主题部分 | 架构级 |
 | E3c | **语言引擎跨进程**——切语言后所有 WebView 同步 i18n | 原 P7c 的语言部分 | 架构级 |
-| E3d | **Profile + 壳完善**——多 Profile 切换 + 壳的最终收尾 | 原 P7d | 架构收尾 |
+| E3d | **Profile + 激活**——多 Profile 切换 + activationEvents 按需激活 | 原 P7d Profile 部分 | 架构收尾 |
+| E3e | **通知系统全功能**——进度条/DND/Notification Center | 原 P7d 通知部分 | 壳级能力 |
+| E3f | **壳 UI 收尾**——标题栏/☰菜单/输出面板/欢迎页/Workspace/会话持久化 | 原 P7d 壳完善部分 | 壳收尾 |
+| E3g | **通用 API + V2 兼容**——StatusBarItem/共享图标/☰完整版/V2导入 | 原 P7d API/V2 部分 | 壳收尾 |
+
+> 旧 E3d "Profile与壳完善"（18 任务/1,060 行）太胖——拆为 E3d/E3e/E3f/E3g 四个独立可验证的子任务。
 
 ## 完工标准（架构终点）
 
@@ -38,22 +43,28 @@
 
 | 子任务 | 任务数 | 总行数 |
 |------|:--:|:--:|
-| E3a — 多 WebView 进程隔离 | 5 | ~600 |
+| E3a — 多 WebView 进程隔离 | 9 | ~590 |
 | E3b — 主题引擎跨进程 | 5 | ~290 |
 | E3c — 语言引擎跨进程 | 5 | ~240 |
-| E3d — Profile 与壳完善 | 18 | ~1,060 |
-| **合计** | **33** | **~2,190 行** |
+| E3d — Profile 与激活 | 3 | ~230 |
+| E3e — 通知系统全功能 | 5 | ~230 |
+| E3f — 壳 UI 收尾 | 7 | ~350 |
+| E3g — API + V2 兼容 | 4 | ~240 |
+| **合计** | **38** | **~2,170 行** |
 
-任务 ID 从 `#24` 到 `#56`，承接 E2 的 `#1`-`#23`。
+任务 ID 从 `#24` 到 `#61`，承接 E2 的 `#1`-`#23`。
 
 ## 详细设计文档
 
 | # | 文档 | 内容 |
 |:--:|------|------|
-| 1 | `01-E3a-多WebView进程隔离.md` | WebContentsView 管理 + IPC 桥接 + 现有插件迁移 |
+| 1 | `01-E3a-多WebView进程隔离.md` | WindowManager + IpcBridge + preload + 插件逐个迁移（9 任务） |
 | 2 | `02-E3b-主题引擎跨进程.md` | ThemeRegistry 三层退路 + CSS 变量广播 + 主题浏览器 + 产品图标主题 |
 | 3 | `03-E3c-语言引擎跨进程.md` | LanguageRegistry 两层退路 + i18n 同步 + 语言选择器 + 插件内联翻译 |
-| 4 | `04-E3d-Profile与壳完善.md` | Profile 五维验证 + activationEvents + 齿轮菜单 + 通知系统全功能 + 标题栏☰ + StatusBarItem + 欢迎页 + V2兼容 |
+| 4 | `04-E3d-Profile与激活.md` | ProfileService 五维验证 + activationEvents + extensionDependencies |
+| 5 | `05-E3e-通知系统.md` | 进度条 + 来源过滤/DND + "不再提示" + Notification Center + 分组 |
+| 6 | `06-E3f-壳UI收尾.md` | 标题栏暗色化 + ☰ 基础四组 + 齿轮菜单 + 输出面板 + 欢迎页 + Workspace IO + 会话持久化 |
+| 7 | `07-E3g-API与V2兼容.md` | StatusBarItem + 共享图标 + ☰ 完整版（快捷键/禁用态/插件菜单） + V2 配置导入 |
 
 ## 做完 E3 后的事——不占用编号
 
@@ -85,7 +96,7 @@ CoreEvents                           文件树监听 onDidChangeFileSystem
 
 ## 历史参考
 
-- 原 P7 设计已吸收到 E3a-E3d + 插件_文件树与编辑器_暂定
+- 原 P7 设计已吸收到 E3a-E3g + 插件_文件树与编辑器_暂定
 - 七个坑分析已吸收到 `01-E3a-多WebView进程隔离.md` 附录
 
 ---
