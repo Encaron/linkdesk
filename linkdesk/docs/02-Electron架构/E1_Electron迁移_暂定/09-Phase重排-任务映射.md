@@ -47,7 +47,7 @@
 |---|---|---|---|
 | **Phase 7a** | 多 WebView | → **E3a** | API 变——WebContentsView（stable）替代 add_child（unstable） |
 | **Phase 7c** | 主题/语言引擎插件化 | → **E3b + E3c** | 拆为两子任务——主题跨进程广播 + 语言跨进程同步 |
-| **Phase 7d** | Profile + 壳完善 | → **E3d** | 不变——纯 TS/React |
+| **Phase 7d** | Profile + 壳完善 | → **E3d + E3e + E3f + E3g** | 拆为四子任务——Profile与激活 / 通知系统 / 壳UI收尾 / API与V2兼容 |
 
 ### 从编号移除——降级为插件文件夹
 
@@ -86,10 +86,13 @@ E2: 底层加固 + 侧栏扩展位
     │      E2d: 侧栏扩展位（🆕 新设计）
     │
 E3: 多 WebView + 壳收尾  ← 🏁 架构完工
-    │      E3a: 多 WebView（原 7a）
+    │      E3a: 多 WebView（原 7a，9 任务）
     │      E3b: 主题引擎跨进程（原 7c 主题部分）
     │      E3c: 语言引擎跨进程（原 7c 语言部分）
-    │      E3d: Profile + 壳完善（原 7d）
+    │      E3d: Profile + 激活（原 7d）
+    │      E3e: 通知系统全功能（原 7d）
+    │      E3f: 壳 UI 收尾（原 7d）
+    │      E3g: API + V2 兼容（原 7d）
     │
 ────── E 编号到此为止 ──────
     │
