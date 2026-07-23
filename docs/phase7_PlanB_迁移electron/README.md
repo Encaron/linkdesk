@@ -1,7 +1,7 @@
-# Phase 7 Plan B — Electron 迁移
+# Phase 6 — Electron 迁移（原 Phase 7 Plan B）
 
-> 此文件夹包含 Tauri → Electron 迁移的完整设计文档。
-> 与 `phase7_多WebView与编辑能力/` 是两套独立方案——前者 Tauri add_child，此处 Electron WebContentsView。
+> 此文件夹包含 Tauri → Electron 迁移的完整设计文档。**Phase 5.5 结束即迁移——迁移是新 Phase 6。**
+> 与 `phase7_多WebView与编辑能力/` 是两套独立方案——前者 Tauri add_child，此处 Electron WebContentsView。原 phase7 文件夹的分析（七个坑等）在新 Phase 7 仍然有效。
 
 ---
 
@@ -19,6 +19,7 @@
 | 6 | `06-实施顺序.md` | 阶段划分、分支策略、与 Phase 6-8 的关系 | 大局观——现在做什么、之后做什么 |
 | 7 | `07-体积与内存分析.md` | 安装包体积 + 运行时内存——Tauri vs Electron 真实数字 | 不美化——大了就是大了。然后看能不能接受 |
 | 8 | `08-多WebView-vs-ExtHost-开销对比.md` | 独立 WebContentsView vs 共享 ExtHost——进程拓扑、内存、启动、崩溃逐项对比 | 冷冰冰的数字——两种隔离模型的真实开销。进程级 WebviewView 反而更贵 |
+| 9 | `09-Phase重排-任务映射.md` | 原 P6/P7 → 新 P6/P7 任务映射——Phase 编号权威对照 | Phase 6 = 迁移，Phase 7 = 原 P6 底层加固 + 原 P7 多 WebView 编辑能力 |
 
 ---
 
