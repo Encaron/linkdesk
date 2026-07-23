@@ -7,7 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled } from "@src/pluginLoader/loader";
+import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled, performUninstall } from "@src/pluginLoader/loader";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
 import { resolvePluginIcon } from "@src/pluginLoader/iconUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
@@ -49,12 +49,7 @@ function ensureMarketplaceCommands(): void {
     title: "卸载",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
-      if (ctx?.pluginId) {
-        const r = await uninstallPlugin(ctx.pluginId);
-        if (!r.success) {
-          console.error(`[marketplace] 卸载 "${ctx.pluginId}" 失败:`, r.error);
-        }
-      }
+      if (ctx?.pluginId) await performUninstall(ctx.pluginId);
     },
   });
 
