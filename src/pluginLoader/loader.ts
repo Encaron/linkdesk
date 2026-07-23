@@ -729,12 +729,14 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = entry.manifest.name;
-    // B2 fix: 标记为已卸载（缓存持久化到 PluginStateService，重启后 marketplace 仍可显示）
+
+    // Rust 端先执行——成功后再做前端变更。
+    // 如果 Rust 失败，前端保持原样不进入撕裂状态；且调用方组件未卸载，能显示错误。
+    await invoke("uninstall_plugin", { pluginId });
+
+    // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, entry.manifest, "uninstalled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
-
-    // Rust 端：移到 plugins/.disabled/<id>/
-    await invoke("uninstall_plugin", { pluginId });
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
     const list = getDisabledList();
