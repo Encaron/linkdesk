@@ -5,7 +5,7 @@
  * 设计依据：[V3-Phase3-标签页分屏设计.md §3]
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -499,7 +499,8 @@ export function reduceDuplicateTab(prev: TabState, tabId: string): TabState | nu
     tab.type,
     { workspaceName: tab.workspaceName, filePath: tab.filePath, label: tab.label }
   );
-  if (group.tabs.some(t => t.id === copy.id)) {
+  // G12：跨组检查 ID 碰撞——不只查当前组，多面板时同名 workspace 可能在不同组
+  if (prev.groups.flatMap(g => g.tabs).some(t => t.id === copy.id)) {
     copy.id = `${copy.id}-copy-${Date.now()}`;
   }
   copy.dirty = false;
@@ -758,14 +759,20 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 
 export function useTabManager() {
   const [tabState, setTabState] = useState<TabState>(() => createInitialTabState());
+  // G6：ref 桥接——替代 setState updater hack 读当前状态，Concurrent Mode 安全
+  const tabStateRef = useRef(tabState);
+  tabStateRef.current = tabState;
 
   const lastFocusedByType = useRef<Map<string, string>>(new Map());
-  for (const tab of tabState.groups.flatMap((g) => g.tabs)) {
-    const key = tab.pluginId ?? tab.type;
-    if (!lastFocusedByType.current.has(key)) {
-      lastFocusedByType.current.set(key, tab.id);
+  // G5：ref 写入移出 render 函数体——Concurrent Mode 安全（render 期间禁止副作用）
+  useEffect(() => {
+    for (const tab of tabState.groups.flatMap((g) => g.tabs)) {
+      const key = tab.pluginId ?? tab.type;
+      if (!lastFocusedByType.current.has(key)) {
+        lastFocusedByType.current.set(key, tab.id);
+      }
     }
-  }
+  }, [tabState]);
 
   const createTab = useCallback(
     (type: string, opts?: CreateTabOptions): string => {
@@ -985,17 +992,14 @@ export function useTabManager() {
     });
   }, []);
 
+  // G6：ref 读当前状态——替代 setState updater hack（Concurrent Mode 下 updater 可能异步调度）
   const toLayoutData = useCallback((): LayoutData => {
-    let data!: LayoutData;
-    setTabState((prev) => {
-      data = {
-        groups: prev.groups.map((g) => ({ ...g })),
-        activeGroupId: prev.activeGroupId,
-        root: prev.root,
-      };
-      return prev;
-    });
-    return data!;
+    const prev = tabStateRef.current;
+    return {
+      groups: prev.groups.map((g) => ({ ...g })),
+      activeGroupId: prev.activeGroupId,
+      root: prev.root,
+    };
   }, []);
 
   return {

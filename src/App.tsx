@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { invoke } from "@tauri-apps/api/core";
-import { listen } from "@tauri-apps/api/event";
+import { useTauriEvent } from "./hooks/useTauriEvent";
 import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
@@ -484,27 +484,19 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // TX/RX 字节计数
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    listen<{ tx?: number; rx?: number }>("serial-stats", (event) => {
-      if (event.payload.tx) setTxBytes((prev) => prev + event.payload.tx!);
-      if (event.payload.rx) setRxBytes((prev) => prev + event.payload.rx!);
-    }).then((fn) => { unlisten = fn; }).catch(() => {});
-    return () => { unlisten?.(); };
-  }, []);
+  // TX/RX 字节计数——useTauriEvent 内置 generation counter，防 StrictMode 泄漏
+  useTauriEvent<{ tx?: number; rx?: number }>("serial-stats", (payload) => {
+    if (payload.tx) setTxBytes((prev) => prev + payload.tx!);
+    if (payload.rx) setRxBytes((prev) => prev + payload.rx!);
+  });
 
   // E5：监听 Rust serial-system 事件——invokeBeforeClose 直接调 close_port，
   // 不走 handleToggleOpen → setIsOpen(false)。此处补刀同步 isOpen 状态。
-  useEffect(() => {
-    let unlisten: (() => void) | undefined;
-    listen<string>("serial-system", (event) => {
-      if (/Port closed|关闭/.test(event.payload)) {
-        setIsOpen(false);
-      }
-    }).then((fn) => { unlisten = fn; }).catch(() => {});
-    return () => { unlisten?.(); };
-  }, []);
+  useTauriEvent<string>("serial-system", (payload) => {
+    if (/Port closed|关闭/.test(payload)) {
+      setIsOpen(false);
+    }
+  });
 
   // 串口关闭时重置计数
   useEffect(() => {
