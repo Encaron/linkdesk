@@ -7,9 +7,9 @@
  *       tab bar(Details|Changelog) → body → info sidebar
  */
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getViewPlugin, getViewPlugins, onDidUnregister } from "../../pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
 import { disablePlugin, uninstallPlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
@@ -40,21 +40,10 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   const [actionError, setActionError] = useState<string | null>(null);
 
   // ⚠️ 所有 hooks 必须在条件返回之前——React Rules of Hooks
-  // G14：useState + onDidUnregister 替代 useMemo([], [])——插件卸载后 installedIds 同步更新
-  const [installedIds, setInstalledIds] = useState<Set<string>>(
-    () => new Set(getViewPlugins().map((p) => p.pluginId))
+  const installedIds = useMemo(
+    () => new Set(getViewPlugins().map((p) => p.pluginId)),
+    []
   );
-
-  useEffect(() => {
-    const unsub = onDidUnregister.event((unregisteredId) => {
-      setInstalledIds((prev) => {
-        const next = new Set(prev);
-        next.delete(unregisteredId);
-        return next;
-      });
-    });
-    return unsub.dispose;
-  }, []);
   const reverseRecommends = useMemo(() => {
     if (!pluginId) return [];
     const result: { pluginId: string; name: string }[] = [];
