@@ -38,6 +38,14 @@ Phase 1-5h ✅ 完成
 - `f476c21` Toggle 命令标签不随状态变——registerCommand 更新 title
 - 📋 **12 个活跃 bug + 新 AI 执行路线图** → `docs/phase5.5_交互对标/V3-Phase5.5-Bug清单-2026-07-22.md`
 
+**Bug 修复 session（2026-07-23，步 14）：**
+- 归一化 `invokeBeforeCloseTab()` — Ctrl+W/[×]/中键三条关闭路径统一（viewRegistry.ts, TabBar.tsx, App.tsx）
+- `loadPluginRuntime` 硬编码 `plugin://${id}/dist/index.js` → 改用 Vite `/@fs/` 端点 + Rust `resolve_plugin_path`
+- `uninstallPlugin` 归一化：卸载=移文件+清禁用列表；`core:true` 插件不可卸载
+- `reinstallPlugin` 同 session 热装 + 退出重进 /@fs/ 即时加载（零重启）
+- `plugin.schema.json` `core` 字段语义补全 + `tabBehavior.invokeBeforeClose` 补录
+- 注释清理 `loader.ts`：消灭"工厂插件""运行时插件"→ 用声明字段描述
+
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 详见 `docs/phase5.5_交互对标/V3-Phase5.5-设计.md`（三栏交互对标 VS Code）
 详见 `docs/phase5_应用基础设施/V3-Phase5-最终验收报告.md`（Phase 5 验收——4 Blocking + 9 Quick Wins 已全部修完）
@@ -82,6 +90,7 @@ Phase 1-5h ✅ 完成
 8. **ProtocolParser 是独立可替换模块，RingBuffer 接口 `{ cardId, value }` 是硬边界**——开发阶段只用方括号协议，但任何代码不得写死"只有这一种协议"。Phase 4 协议插件系统通车时，只换解析器不改下游。
 9. **核心无知原则**（memory `core-ignorance-principle.md`）：核心不知道软件是干什么的。只定义"怎么接"，不定义"接什么"。往核心加东西前先问：加了之后核心变得更"知道自己是干什么的"了吗？是 → 别加，做成插件
 10. **禁止在 core/ 或 pluginLoader/ 中写死插件 ID。** 禁止 `if (pluginId === "terminal")` / `switch (pluginId) { case "terminal": ... }` / `PLUGIN_ICON_PATH["terminal"]` / `BOTTOM_ICONS = ["settings"]` 等任何形式的插件 ID 字面量硬编码。所有插件差异性行为走 plugin.json 声明（`viewRole` / `tabBehavior` / `iconLocation` / `keepSidebarOnFocus` 等字段）→ Registry 模式消费。**Phase 5g 把 `TabType` 从 8 个联合类型改成 `string` 就是为了消灭这个模式——不要再写回来。**
+11. **插件身份唯一来源是 plugin.json 声明字段。** 禁止用文件位置、目录名、是否在 Vite glob 中、是否在源码树里来推断插件属性。`core: true` 定义不可卸载，`tabBehavior` 定义标签页行为，`entry` 定义入口文件——所有属性都在 `PluginManifest` 类型和 JSON Schema 中有对应字段。代码注释中禁止发明 schema 里没有的分类名词（如"工厂插件""内置插件"）——用字段名：`core: true 的插件`、`glob 中的插件`。
 
 完整版：`docs/` + memory 系统
 

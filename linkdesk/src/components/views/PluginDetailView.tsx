@@ -1,3 +1,4 @@
+
 /**
  * PluginDetailView — 插件详情页。
  * Phase 4：对标 VS Code extension editor。
