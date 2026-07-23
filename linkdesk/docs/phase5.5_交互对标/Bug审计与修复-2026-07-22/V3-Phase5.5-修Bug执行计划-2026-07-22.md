@@ -4,7 +4,7 @@
 > 小步快走——每步修完 → 立刻测 → 确认无误 → 下一步。
 > 发现新 bug → 即时开支线 → 记录 → 回到主线。
 >
-> **当前进度：主线 步 1-13 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 14（E5+N3 串口生命周期）。剩余 2 主线 + 18 后续 = 20 步。**
+> **当前进度：主线 步 1-14 ✅ 完成 + B80-B83 ✅ 修复。下一步 → 步 15（B3 F5 session 自恢复）。剩余 1 主线 + 18 后续 = 19 步。**
 
 ---
 
@@ -255,13 +255,13 @@ Tauri WebView 禁用 `window.confirm()` → 新增自定义 `<ConfirmDialog>` �
 
 ### 第九批：串口生命周期——关了就断开（2 步）
 
-#### 步 14：E5+N3 — 标签页关 / 插件卸载 → 断开串口
+#### 步 14：E5+N3 — 标签页关 / 插件卸载 → 断开串口　✅ 已完成（`c6fdd83`）
 
 **做什么：**
-- 关终端标签页 → 自动断开串口
-- 卸载终端插件 → 自动断开串口 + 清空所有会话
+- 关终端标签页 → 自动断开串口（`invoke("close_port")`）
+- 卸载终端插件 → 自动断开串口（同上，TerminalView unmount cleanup）+ 清空所有会话（模块级 `_sessions` 等重置）
 
-**改什么：** `plugins/terminal/index.tsx` + `plugins/terminal/useTerminalSessions.ts` — ~+15 行
+**改什么：** `plugins/terminal/index.tsx` +15 行 + `plugins/terminal/useTerminalSessions.ts` +12 行
 
 **立刻怎么测：**
 1. 打开串口 → ✕ 关标签页 → 确认弹窗 → 确定 → 串口断开了吗？（Rust 状态）
