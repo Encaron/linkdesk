@@ -945,6 +945,18 @@ export function startPluginWatcher(): void {
           // loadPluginRuntime 内部已 toast（成功或失败）
         }
       }
+
+      // G16：反向检测——已加载但文件系统已删除 → 自动卸载
+      const fsSet = new Set(dirs);
+      for (const id of [...loadedPluginIds]) {
+        if (!fsSet.has(id) && !getDisabledList().includes(id)) {
+          log.appendLine(`插件 "${id}" 目录已手动删除——自动移除注册`);
+          unregisterViewPlugin(id);
+          loadedPluginIds.delete(id);
+          PluginLifecycle.onWillUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
+          PluginLifecycle.onDidUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
+        }
+      }
     } catch {
       // 静默——polling 失败不影响运行
     }
