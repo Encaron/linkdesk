@@ -99,16 +99,20 @@ function SessionListItem({
 
       {/* 名称 / 内联编辑 */}
       {editing ? (
-        <input
-          ref={inputRef}
-          className="session-inline-input"
-          value={editValue}
-          onChange={(e) => setEditValue(e.target.value)}
-          onBlur={commitRename}
-          onKeyDown={handleKeyDown}
-          onMouseDown={(e) => e.stopPropagation()}
-          onClick={(e) => e.stopPropagation()}
-        />
+        <>
+          <input
+            ref={inputRef}
+            className="session-inline-input"
+            value={editValue}
+            onChange={(e) => setEditValue(e.target.value)}
+            onBlur={commitRename}
+            onKeyDown={handleKeyDown}
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => e.stopPropagation()}
+          />
+          <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); commitRename(); }} title={t("确定")}>✓</button>
+          <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }} title={t("取消")}>✕</button>
+        </>
       ) : (
         <>
           <div className="session-item-info">

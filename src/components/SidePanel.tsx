@@ -5,7 +5,7 @@
  * 设计依据：VS Code viewsService + viewDescriptorService（侧栏内容由扩展声明）
  */
 
-import { useState, forwardRef } from "react";
+import { useState, useEffect, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./SidePanel.css";
@@ -34,7 +34,15 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   if (animating) cls.push("animating");
 
   // Phase 4.4：侧栏内容只有一个来源——viewRegistry
-  const effectivePluginId = sidebarView ?? activePluginId;
+  // 对标 VS Code：侧栏独立于编辑器/标签页切换。sidebarView 由图标栏点击控制，
+  // lastSidebar 记住上次有效侧栏——关闭标签页不会把侧栏切到别的插件。
+  const [lastSidebar, setLastSidebar] = useState<string | null>(null);
+  const effectivePluginId = sidebarView ?? lastSidebar ?? activePluginId;
+
+  // effectivePluginId 有值时更新 lastSidebar——下次标签页切换不回退到 activePluginId
+  useEffect(() => {
+    if (effectivePluginId) setLastSidebar(effectivePluginId);
+  }, [effectivePluginId]);
 
   const renderSidebarContent = () => {
     if (!effectivePluginId) return null;
