@@ -20,7 +20,7 @@ import {
 import type { CreateTabOptions } from "../core/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, resetTerminalCounter as _resetTerminalCounter } from "./tabIdentity";
+import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, resetTerminalCounter as _resetTerminalCounter, syncCountersAfterRestore } from "./tabIdentity";
 
 /* ── 类型 ── */
 
@@ -743,6 +743,9 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 
   // Phase 4：恢复布局尊重用户保存的内容——不强制插入欢迎页。
   // 关闭所有标签页时会通过 ensureFallback 自动加回。
+
+  // G3：恢复布局后同步计数器——防止 F5 后模块级计数器归零导致新建 tab ID 碰撞
+  syncCountersAfterRestore(filteredGroups.flatMap((g) => g.tabs));
 
   return {
     groups: filteredGroups,
