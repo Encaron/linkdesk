@@ -53,6 +53,18 @@ Phase 1-5h ✅ 完成
 	- **B86** 首次打开串口失败：`handleToggleOpen` 用 ref 替代闭包 state——ControlPanel 同事件循环内 setState + invoke 导致 portName 仍为空串
 	- **B3** F5 刷新 session 自动恢复：useSession 首次 mount 自动创建 + localStorage 持久化 session 名 + 重命名 ✓/✕ 按钮 + 侧栏不随标签页切换跳转
 
+**Bug 修复 session（2026-07-24，第二批 G 类 + 卸载根因）：**
+- `cab2d4e` G7 Monaco Enter 闭包过期 → ref 桥接
+- `683dd8b` G22 `parseInt("0") || 1000` → `isNaN(v) ? 1000 : v`
+- `9727f9c` G1 合屏丢标签页 → reduceUnsplit 迁移 tabs 到存活面板
+- `6ecc456` G3 F5 后计数器归零 ID 碰撞 → syncCountersAfterRestore
+- `cf15db1` G10 3+ 面板拖拽目标随机 → findOtherContainer 返回 groupId
+- `4299f51` 卸载弹窗 `window.confirm` → `showConfirm`（Tauri 兼容）
+- `e5a5701` uninstallPlugin 重排序——Rust invoke 移到前端变更之前
+- `b574d8f` ContextMenu 加 stopPropagation + marketplace 卸载命令加错误日志
+- 🔥 **`aec1564` 卸载根因——Rust `fs::rename` → `copy_dir` + `fs::remove_dir_all`**（Windows Vite 文件锁致 rename 跨目录失败）
+- 🔥 结构性改进待做：invoke 统一日志 / 卸载单入口 / Rust error→前端 toast。详见 memory `uninstall-bug-recurring`
+
 分支：`phase5.5`
 
 ## Phase 路线

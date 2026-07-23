@@ -5,6 +5,8 @@
 > ⚠️ **本清单已通过六条质量原则审查（精益求精/归一化/插件自由/VS Code 化/AI 友好/易操作）。修法已定稿——新 AI 进场后可直接按本节执行，不需要重新争论方案。**
 >
 > **新 AI 前置阅读：** `CLAUDE.md` + memory `[[phase5.5c-progress]]` + `[[quality-commandments]]` + `[[core-ignorance-principle]]`。修法细节已在每个 bug 的"修法"栏注明，代码量和涉及文件也已标注。
+>
+> 🔥 **2026-07-24 更新——卸载 bug 根因已定位：** Rust `fs::rename` 跨目录移动在 Windows + Vite dev server 下失败（ERROR_ACCESS_DENIED）。详见 memory `[[uninstall-bug-recurring]]`。9 轮修复历史、结构性改进方案（invoke 统一日志/卸载单入口/Rust error→前端 toast）待做。
 
 ---
 
