@@ -558,7 +558,8 @@ export function reduceSplitTab(
   };
 }
 
-/** 收起指定面板——从树中移除该 leaf。只有一个 leaf 时忽略。 */
+/** 收起指定面板——从树中移除该 leaf。只有一个 leaf 时忽略。
+ *  G1 修复：合屏时被合面板的标签页迁移到存活面板——不丢数据。 */
 export function reduceUnsplit(prev: TabState, groupId: string): TabState {
   const allLeafIds = getAllLeafGroupIds(prev.root);
   if (allLeafIds.length <= 1) return prev;  // 只有一个面板，不能 unsplit
@@ -569,11 +570,21 @@ export function reduceUnsplit(prev: TabState, groupId: string): TabState {
   const result = removeLeafFromTree(prev.root, groupId);
   if (!result) return prev;
 
-  const newGroups = prev.groups.filter((g) => g.id !== groupId);
+  const survivingId = result.survivingSiblingGroupId;
+  const migratingTabs = group.tabs;
+
+  // G1：标签页迁移到存活面板——不直接 filter 丢掉
+  const newGroups = prev.groups
+    .filter((g) => g.id !== groupId)
+    .map((g) =>
+      g.id === survivingId
+        ? { ...g, tabs: [...g.tabs, ...migratingTabs] }
+        : g
+    );
 
   return ensureFallback({
     groups: newGroups,
-    activeGroupId: result.survivingSiblingGroupId,
+    activeGroupId: survivingId,
     root: result.tree,
   });
 }
