@@ -65,6 +65,12 @@ Phase 1-5h ✅ 完成
 - 🔥 **`aec1564` 卸载根因——Rust `fs::rename` → `copy_dir` + `fs::remove_dir_all`**（Windows Vite 文件锁致 rename 跨目录失败）
 - 🔥 结构性改进待做：invoke 统一日志 / 卸载单入口 / Rust error→前端 toast。详见 memory `uninstall-bug-recurring`
 
+**Bug 修复 session（2026-07-24，第三批代码质量）：**
+- `239b734` A组——G18 CoreEvents `_Phase5EventCount` hack → TODO; G19 formatTimestamp 提取到 useSendData 导出; G20 StorageService 反斜杠跨平台修复
+- `7c3b452` B组——F2 plugin.json 6 字段审计（viewRole 🔴 零消费）; F3 C4a 残留 grep 确认干净; G15 撤销 toast .catch
+- `af2c638` C组——G4 listen 泄漏 → useTauriEvent; G5 render 改 ref → useEffect; G6 toLayoutData setState hack → ref; G12 duplicateTab 跨组 ID 检查
+- G14 推迟到 Electron 迁移; G17 代码已不存在（之前已删）
+
 分支：`phase5.5`
 
 ## Phase 路线
