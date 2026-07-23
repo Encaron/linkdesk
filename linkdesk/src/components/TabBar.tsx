@@ -7,14 +7,12 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
 import type { Tab, TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getViewPlugins, getTabCreatableViews, getTabBehavior } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getTabCreatableViews, invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
-import { showConfirm } from "./shared/ConfirmDialog";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
@@ -344,11 +342,7 @@ export default function TabBar({
                 onMouseDown={async (e) => {
                   if (e.button === 1) {
                     e.preventDefault();
-                    const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
-                    if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
-                    if (behavior.invokeBeforeClose) {
-                      try { await invoke(behavior.invokeBeforeClose); } catch {}
-                    }
+                    if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
                     closeWithAnimation(tab.id);
                     return;
                   }
@@ -364,11 +358,7 @@ export default function TabBar({
                   className="tab-close"
                   onClick={async (e) => {
                     e.stopPropagation();
-                    const behavior = tab.pluginId ? getTabBehavior(tab.pluginId) : {};
-                    if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
-                    if (behavior.invokeBeforeClose) {
-                      try { await invoke(behavior.invokeBeforeClose); } catch {}
-                    }
+                    if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
                     closeWithAnimation(tab.id);
                   }}
                   title={t("关闭")}

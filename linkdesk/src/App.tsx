@@ -16,7 +16,7 @@ import { ConfirmDialog, showConfirm } from "./components/shared/ConfirmDialog";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
-import { getTabBehavior } from "./pluginLoader/viewRegistry";
+import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
@@ -620,11 +620,9 @@ function App() {
       // Ctrl+W: 关闭当前标签页
       if (e.ctrlKey && e.key === "w") {
         e.preventDefault();
-        // E1: 检查插件是否声明了关闭确认（如终端"关闭此标签页将断开串口连接"）
         const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
         const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
-        const behavior = tab?.pluginId ? getTabBehavior(tab.pluginId) : {};
-        if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return;
+        if (tab?.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
 
         const result = closeTab(activeTabId);
         if (!result.closed && result.reason === "dirty") {
