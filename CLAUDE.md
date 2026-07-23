@@ -49,6 +49,10 @@ Phase 1-5h ✅ 完成
 详见 `docs/phase5_应用基础设施/V3-Phase5-设计.md`（命令系统 + 配置注册表 + 菜单系统 + 协议注册表 + context key + 快捷键 + scope）
 详见 `docs/phase5.5_交互对标/V3-Phase5.5-设计.md`（三栏交互对标 VS Code）
 详见 `docs/phase5_应用基础设施/V3-Phase5-最终验收报告.md`（Phase 5 验收——4 Blocking + 9 Quick Wins 已全部修完）
+	- **S5** 归一化按钮：PluginDetailView 与侧栏用同一套判断逻辑（元数据缓存 status > 禁用列表）
+	- **B86** 首次打开串口失败：`handleToggleOpen` 用 ref 替代闭包 state——ControlPanel 同事件循环内 setState + invoke 导致 portName 仍为空串
+	- **B3** F5 刷新 session 自动恢复：`useSession` 首次 mount 检测 sourceId 无匹配 session → 自动创建
+
 分支：`phase5.5`
 
 ## Phase 路线
