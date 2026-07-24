@@ -69,7 +69,7 @@ Phase 1-5h ✅ 完成
 - `239b734` A组——G18 CoreEvents `_Phase5EventCount` hack → TODO; G19 formatTimestamp 提取到 useSendData 导出; G20 StorageService 反斜杠跨平台修复
 - `7c3b452` B组——F2 plugin.json 6 字段审计（viewRole 🔴 零消费）; F3 C4a 残留 grep 确认干净; G15 撤销 toast .catch
 - `af2c638` C组——G4 listen 泄漏 → useTauriEvent; G5 render 改 ref → useEffect; G6 toLayoutData setState hack → ref; G12 duplicateTab 跨组 ID 检查
-- G14 推迟到 Electron 迁移; G17 代码已不存在（之前已删）
+- G14 → **E2c #19a**（PluginDetailView 幽灵页——订阅 onDidUnregister）；G17 代码已不存在（之前已删）
 
 分支：`phase5.5`
 
@@ -165,12 +165,16 @@ npx vitest run       # 单元测试（91 个）
 
 | 你要做什么 | 读这个 |
 |------|------|
+| 🔥 写 Electron 代码前 | **`docs/02-Electron架构/00-元文档/00-旧Bug预警与新生风险.md`** — 48 个旧 bug 哪些会回来、哪些新 bug 会出现 |
+| 🔥🔥🔥 迁移执行——每步检查项 | **`docs/02-Electron架构/00-元文档/00-迁移执行守则.md`** — 10 个 bug 模式 + 6 个新风险 → 每步/每任务的具体检查项清单 |
+| 🔥 E1 执行前必读 | **`docs/02-Electron架构/E1_Electron迁移_暂定/10-迁移方案缺口补丁.md`** — 7 个缺口（Vite/main.ts/测试/dev workflow/entry/RingBuffer/G14/preload防御/plugin-handlers完整性） |
+| 🔥 全方案审计 | **`docs/02-Electron架构/00-元文档/00-全方案步进审计.md`** — 29 份文档 + 18 个源文件逐步推演 + 两轮审计 20 项缺失已全部修复 |
 | 理解架构 | `docs/开发管理/当前状态.md` |
 | Phase 4 设计 | `docs/phase4_插件系统/` |
 | Phase 3.5 任务 | `docs/phase3_标签页分屏/V3-Phase3.5-品质打磨.md` |
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |
 | 部件名称 | `docs/总体设计/V3-部件命名规范.md` |
-| 写插件 | `docs/插件开发/`——plugin.json 规范 + 视图/协议插件开发指南 + **插件 UI 写法规约（🔥 右键菜单/持久化/快捷键规则）** + JSON Schema |
+| 写插件 | **`docs/03-插件制造/`**——00-README 概览 / 01-API契约 / 02-生命周期 / 03-contributes / 04-分发 / 05-UI写法规约 / 06-plugin.json规范 / plugin.schema.json |
 | 已确认决策 | memory `design-decisions.md` + `phase4-design-decisions.md` |
 | 已知坑 | memory `v3-pitfalls.md` + `phase3-drag-bugs.md` |
 | 主题系统 | memory `theme-system.md` |

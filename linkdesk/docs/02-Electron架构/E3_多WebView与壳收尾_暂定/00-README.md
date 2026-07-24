@@ -43,22 +43,22 @@
 
 | 子任务 | 任务数 | 总行数 |
 |------|:--:|:--:|
-| E3a — 多 WebView 进程隔离 | 9 | ~590 |
+| E3a — 多 WebView 进程隔离 | 12 | ~670 |
 | E3b — 主题引擎跨进程 | 5 | ~290 |
 | E3c — 语言引擎跨进程 | 5 | ~240 |
-| E3d — Profile 与激活 | 3 | ~230 |
+| E3d — Profile 与激活 | 3 | ~250 |
 | E3e — 通知系统全功能 | 5 | ~230 |
-| E3f — 壳 UI 收尾 | 7 | ~350 |
+| E3f — 壳 UI 收尾 | 9 | ~450 |
 | E3g — API + V2 兼容 | 4 | ~240 |
-| **合计** | **38** | **~2,170 行** |
+| **合计** | **43** | **~2,370 行** |
 
-任务 ID 从 `#24` 到 `#61`，承接 E2 的 `#1`-`#23`。
+任务 ID 从 `#24` 到 `#63` + `#25a` + `#29a` + `#32a`，承接 E2 的 `#1`-`#23` + `#12a` + `#12b` + `#13a` + `#13b` + `#17a` + `#19a`-`#19l`。
 
 ## 详细设计文档
 
 | # | 文档 | 内容 |
 |:--:|------|------|
-| 1 | `01-E3a-多WebView进程隔离.md` | WindowManager + IpcBridge + preload + 插件逐个迁移（9 任务） |
+| 1 | `01-E3a-多WebView进程隔离.md` | WindowManager + IpcBridge + preload + SidebarTabSync 归一化 + 四个插件逐个迁移（12 任务） |
 | 2 | `02-E3b-主题引擎跨进程.md` | ThemeRegistry 三层退路 + CSS 变量广播 + 主题浏览器 + 产品图标主题 |
 | 3 | `03-E3c-语言引擎跨进程.md` | LanguageRegistry 两层退路 + i18n 同步 + 语言选择器 + 插件内联翻译 |
 | 4 | `04-E3d-Profile与激活.md` | ProfileService 五维验证 + activationEvents + extensionDependencies |
@@ -83,7 +83,7 @@ E2 建好                              E3 消费
 ─────────────────────                ─────────────────
 ErrorBoundary 全覆盖                  插件 WebView 崩了 → fallback，不白屏
 心跳看门狗                            多 WebView 插件死循环 → 心跳检测 + 可单独重载
-终端 = 干净的参考实现                  文件树/主题浏览器以终端为模板——不复制坏模式
+终端 = 串口工具参考实现                  文件树/主题浏览器参考终端的 IPC 桥接模式——但不照搬串口逻辑
 FileService                          文件树读目录 + Monaco 读文件 + 会话持久化写文件
 WorkspaceService                     文件树根路径 + Workspace scope 设置
 DialogService                        Profile 切换确认 / 插件卸载确认（不再用 window.confirm）

@@ -2,7 +2,9 @@
 
 > 2026-07-24。从旧 P7d 拆分——Profile 决定"谁参与游戏"，activationEvents 决定"什么时候加载"。
 > **性质：** 纯 TS/React，框架无关。Profile 切换后插件集合/设置/主题/布局全部替换。
-> **依赖：** E3a（多 WebView——activationEvents 触发时创建 WebContentsView）
+> **依赖：** E3a（多 WebView——activationEvents 触发时创建 WebContentsView）+ **E3b（主题引擎——Profile 切换后应用主题）+ E3c（语言引擎——Profile 切换后应用语言）**
+>
+> Profile 切换时五维验证的第 3 维（主题 CSS 变量）和第 4 维（语言）依赖 E3b/E3c 的跨进程广播能力——必须先运行 E3a→E3b+E3c→再 E3d。**这是硬依赖，不是建议。**
 
 ---
 
@@ -66,7 +68,18 @@
   activationEvents 触发 → 创建插件 WebContentsView → 加载 JS → React render
 ```
 
-**触发源：** FileAssociationService（`onFileOpen:.dxf`）、CommandRegistry（`onCommand:xxx`）、CoreEvents（`onPortOpen` 等）。
+**全部 activationEvent 触发源：**
+
+| 事件 | 触发时机 | 例子 |
+|------|------|------|
+| `*` | 启动时立即加载 | 欢迎页、设置页 |
+| `onCommand:<commandId>` | 用户执行命令（命令面板/快捷键/右键菜单） | `onCommand:cad.importDxf` |
+| `onFileOpen:<extension>` | 用户双击/打开文件 | `onFileOpen:.dxf` |
+| `onPortOpen` | 串口连接建立 | 卡片插件只在有数据时才需要 |
+| `onLanguage:<langId>` | 🆕 打开特定语言的文件 | `onLanguage:cpp` → 激活 C++ Language Server |
+| `onView:<viewId>` | 🆕 用户展开特定视图容器 | `onView:explorer` → 激活文件树自定义扩展 |
+
+不声明 `activationEvents` = 等同于 `"*"` = 启动时立即加载。
 
 ---
 
@@ -84,9 +97,9 @@ loader 检查：file-tree 没安装/被禁用 → 不加载 → toast "需要文
 
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
-| — | ProfileService——loadProfile / switchProfile + 五维验证 | ~150 | 切 Profile → 五维全过，失败回退+toast |
-| — | activationEvents——onCommand / onFileOpen / onPortOpen 触发 | ~40 | cad.dxf → 只注册不加载 → 双击才激活 |
-| — | extensionDependencies——加载前检查缺失依赖 | ~40 | 缺 file-tree → toast 提示 |
+| 43 | ProfileService——loadProfile / switchProfile + 五维验证 | ~150 | 切 Profile → 五维全过，失败回退+toast |
+| 44 | activationEvents——`*` / onCommand / onFileOpen / onPortOpen / onLanguage / onView 触发 | ~60 | cad.dxf → 只注册不加载 → 双击才激活 |
+| 45 | extensionDependencies——加载前检查缺失依赖 | ~40 | 缺 file-tree → toast 提示 |
 | **合计** | | **~230 行** | |
 
 ---

@@ -11,19 +11,19 @@
 | Phase | **E1**——换地基 |
 | 输入 | Tauri P6 + tsc 零错 + vitest 全过 |
 | 输出 | Electron 桌面应用，功能与迁移前 100% 一致 |
-| 工时 | ~16h AI |
+| 工时 | ~13.5h AI（1.5-2 天） |
 | 分支 | `electron`（活跃）+ `phase6`（Tauri 冻结退路） |
 
 ## 迁移内容
 
-Tauri Rust 后端（751 行）→ Node.js（~1,300 行新文件）：
+Tauri Rust 后端（751 行）→ Node.js（~1,100 行新文件）：
 - 串口：Rust `serialport-rs` → Node.js `serialport` npm
 - 文件系统：`@tauri-apps/plugin-fs` → `window.linkdesk.filesystem`
 - 插件管理：Rust `plugins.rs` → Node.js `plugin-file-service.ts`
 - 配置：Rust 配置读写 → Node.js `config-service.ts`
 - 协议：`plugin://` → `linkdesk://`
 
-7 个前端文件 ~50 处 `invoke()` → `window.linkdesk.*`。
+7 个前端文件 ~17 处 `invoke()` → `window.linkdesk.*`（实际 grep 确认）。
 
 ## 迁移后什么不变
 
@@ -55,3 +55,7 @@ Tauri Rust 后端（751 行）→ Node.js（~1,300 行新文件）：
 | 7 | `07-体积与内存分析.md` | 安装包体积 + 运行时内存真实数字 |
 | 8 | `08-多WebView-vs-ExtHost-开销对比.md` | 冷冰冰的数字——独立 WebContentsView vs 共享 ExtHost |
 | 9 | `09-Phase重排-任务映射.md` | Tauri 旧编号 → Electron E 编号权威对照 |
+| 10 | `10-迁移方案缺口补丁.md` | **通查工程后的缺口补丁**——Vite/main.ts/preload防御/测试/dev workflow/entry/RingBuffer/G14/plugin-handlers完整性 |
+| 🔥🔥🔥 | `../00-元文档/00-迁移执行守则.md` | **执行第一站——每步/每任务的检查项清单**（10 个旧模式 + 6 个新风险 → 机械操作） |
+| 🔥 | `../00-元文档/00-旧Bug预警与新生风险.md` | **写任何代码前必读**——48 个旧 bug 哪些会回来、哪些新 bug 会出现 |
+| 🔥 | `../00-元文档/00-全方案步进审计.md` | **逐文档逐代码步进推演**——两轮审计 20 项缺失全部已修 |

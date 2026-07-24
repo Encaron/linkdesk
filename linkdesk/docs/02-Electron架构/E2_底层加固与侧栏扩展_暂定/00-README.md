@@ -46,12 +46,12 @@
 | 子任务 | 任务数 | 总行数 |
 |------|:--:|:--:|
 | E2a — ErrorBoundary 增强 | 6 | ~140 |
-| E2b — 终端归一化 | 6 | ~110/−95 |
-| E2c — 基础设施缺口 | 7 | ~370 |
+| E2b — 终端归一化 | 8 | ~170/−105 |
+| E2c — 基础设施缺口 | 22 | ~775 |
 | E2d — 侧栏扩展位 | 4 | ~110 |
-| **合计** | **23** | **~730 行** |
+| **合计** | **40** | **~1,195 行** |
 
-任务 ID 从 `#1` 到 `#23`，跨子任务连续编号。
+任务 ID 从 `#1` 到 `#23` + `#12a` + `#12b` + `#13a` + `#13b` + `#17a` + `#19a`-`#19l`，跨子任务连续编号。
 
 ## 详细设计文档
 
@@ -59,7 +59,7 @@
 |:--:|------|------|
 | 1 | `01-E2a-ErrorBoundary增强.md` | ErrorBoundary 加 pluginId/重试 + 心跳 + 内存监控 |
 | 2 | `02-E2b-终端归一化.md` | SerialContext 迁出 + 术语迁移 + 模块状态消灭 + 命令路由 + 硬编码审计 |
-| 3 | `03-E2c-基础设施缺口.md` | FileService / WorkspaceService / DialogService / Chord / keybindings / 模糊搜索 / CoreEvents |
+| 3 | `03-E2c-基础设施缺口.md` | FileService / WorkspaceService / DialogService / Chord / keybindings / KeybindingResolver / 模糊搜索 / CoreEvents + **G14 fix（PluginDetailView 幽灵页）+ `\|\|` vs `??` 审计 + 旧代码 I/O 归一化 + factoryRole 工厂插槽解耦（settings+marketplace）+ tabIdentity 声明驱动化 + 壳去终端化 + ThemeEngine 5 缺口修复 + statusBar onClick 消费 + WelcomeView+TabBar emoji 声明驱动化 + manifest 11 零消费字段清理 + deriveType 排他分类 + 审计补充 13 项细粒度缺口** |
 | 4 | `04-E2d-侧栏扩展位.md` | 侧栏双槽位 + plugin.json sidebarRole + 壳渲染逻辑 |
 
 ## 历史参考
