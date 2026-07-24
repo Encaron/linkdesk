@@ -86,6 +86,11 @@ try {
     },
     clipboard: {},
     env: {},
+
+    // ── 事件（E2a #5 心跳看门狗等）──
+    events: {
+      heartbeat: () => ipcRenderer.send('heartbeat'),
+    },
   });
 
   // 通知主进程 preload 加载成功

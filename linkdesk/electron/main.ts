@@ -7,7 +7,7 @@
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain, protocol } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, dialog } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
@@ -74,6 +74,39 @@ function createWindow(): void {
 ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
 });
+
+// ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
+// 渲染进程每 500ms 发 heartbeat。主进程每 1s 检查一次，
+// 若超过 2s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
+// 限制：单 WebView 下只能检测，无法恢复。E3 多进程后改为只重载卡死的 WebView。
+let lastHeartbeat = Date.now();
+const HEARTBEAT_TIMEOUT = 2000; // ms
+const HEARTBEAT_CHECK_INTERVAL = 1000; // ms
+
+ipcMain.on('heartbeat', () => {
+  lastHeartbeat = Date.now();
+});
+
+setInterval(() => {
+  if (mainWindow === null || mainWindow.isDestroyed()) return;
+  const elapsed = Date.now() - lastHeartbeat;
+  if (elapsed > HEARTBEAT_TIMEOUT) {
+    // 防止重复弹窗——重置计时器避免连续弹出
+    lastHeartbeat = Date.now();
+    dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: '应用无响应',
+      message: 'LinkDesk 界面无响应，可能是插件导致的主线程阻塞。',
+      buttons: ['刷新', '等待'],
+      defaultId: 1,
+    }).then(({ response }) => {
+      if (response === 0) {
+        app.relaunch();
+        app.exit(0);
+      }
+    });
+  }
+}, HEARTBEAT_CHECK_INTERVAL);
 
 // ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
 protocol.registerSchemesAsPrivileged([
