@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
 import { useIpcEvent } from "./hooks/useIpcEvent";
+import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
@@ -62,6 +63,9 @@ import "./App.css";
 function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
+
+  // E2a #5：心跳看门狗——App mount 即开始发送，主进程 2s 未收到 → 弹窗 "应用无响应"
+  useHeartbeat();
   const [isOpen, setIsOpen] = useState(false);
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [portName, setPortName] = useState("");
