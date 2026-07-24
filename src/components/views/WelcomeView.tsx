@@ -137,7 +137,7 @@ function getPluginEmoji(pluginId: string): string {
   const map: Record<string, string> = {
     terminal: "\u{1F4DF}",   // 📟
     workspace: "\u{1F4CA}",  // 📊
-    settings: "⚙️}", // ⚙
+    settings: "⚙️", // ⚙
     marketplace: "\u{1F9E9}", // 🧩
   };
   return map[pluginId] ?? "\u{1F4C4}"; // 📄 fallback

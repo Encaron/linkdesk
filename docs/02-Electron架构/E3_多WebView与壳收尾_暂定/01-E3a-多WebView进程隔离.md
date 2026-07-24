@@ -121,6 +121,30 @@ class WindowManager {
         nodeIntegration: false,
       }
     });
+
+    // 🔥 崩溃检测——插件 WebView 崩了触发壳侧清理链（模式 2 预防）
+    view.webContents.on('crashed', (event) => {
+      console.error(`[WindowManager] 插件 "${pluginId}" WebContentsView 崩溃`);
+      // 触发清理链——unregister + 持久化状态清理
+      PluginLifecycle.onWillUninstall.fire({ pluginId, reason: 'crashed', displayName: pluginId });
+      // 销毁崩溃的 WebView——释放资源
+      this.destroyPluginView(pluginId);
+    });
+
+    view.webContents.on('destroyed', () => {
+      // WebContentsView 被外部关闭（非崩溃）——同样清理
+      this.pluginViews.delete(pluginId);
+    });
+
+    // 🔥 新 WebView 创建后——主动推送当前主题/语言/配置（新风险 4 预防）
+    // 在 loadURL 之前注入初始状态——避免新 View 在下次广播前用默认值
+    view.webContents.on('did-finish-load', () => {
+      const currentTheme = ThemeEngine.getCurrentTheme();
+      const currentLang = i18next.language;
+      view.webContents.send('theme:changed', { themeId: currentTheme.id, variables: currentTheme.variables });
+      view.webContents.send('lang:changed', { lang: currentLang, resources: i18next.getResourceBundle(currentLang, null) });
+    });
+
     view.webContents.loadURL(`linkdesk://${pluginId}/dist/index.html`);
     shellWindow.contentView.addChildView(view);
     this.pluginViews.set(pluginId, view);
@@ -136,6 +160,18 @@ class WindowManager {
   }
 
   focusPluginView(pluginId: string): void { /* ... */ }
+
+  // 🔧 开发辅助——多 WebView 调试时逐个打开 DevTools，不自动弹 6 个窗口
+  toggleDevTools(pluginId: string): void {
+    const view = this.pluginViews.get(pluginId);
+    if (view && !app.isPackaged) {
+      if (view.webContents.isDevToolsOpened()) {
+        view.webContents.closeDevTools();
+      } else {
+        view.webContents.openDevTools({ mode: 'detach' });
+      }
+    }
+  }
 }
 ```
 
@@ -144,7 +180,7 @@ class WindowManager {
 | preload | 暴露的 API | 说明 |
 |------|------|------|
 | `preload-shell.ts` | 全部 `window.linkdesk.*` | 壳需要完整系统能力 |
-| `preload-plugin.ts` | 精选子集 | 不暴露 `plugins.*`（不能安装/卸载）、`window.*`（不能创建/关闭 WebView）、`dialog.*` |
+| `preload-plugin.ts` | 精选子集 | 不暴露 `plugins.*`（不能安装/卸载）、`window.*`（不能创建/关闭 WebView）、`dialog.*`。**暴露 `filesystem.readTextFile`/`writeTextFile`（受限——只能读写 `.linkdesk/plugins/<id>/` 下的文件）** |
 
 ### 4.3 IPC 通道
 
@@ -157,6 +193,38 @@ ipcRenderer.sendTo(pluginView.webContents, 'plugin:ipc', { ... });
 // 插件 → 壳（插件请求核心服务）
 ipcRenderer.invoke('plugin:ipc', { channel: 'config:get', ... });
 ```
+
+### 4.4 资源休眠——后台 WebView 降频 + 内存压力检测（~40 行）
+
+**对标 VS Code：** VS Code 的 Extension Host 有 30s 内存采样（RSS > 800MB × 3 → 重启）。Electron 的 `WebContents` 原生支持 `setBackgroundThrottling`——Chromium 自动降频隐藏页面的定时器和绘制。
+
+```typescript
+// electron/services/window-manager.ts —— WindowManager 新增方法
+
+// 标签页切换时调——活跃的解除限流，隐藏的降频
+setThrottling(pluginId: string, isVisible: boolean): void {
+  const view = this.pluginViews.get(pluginId);
+  if (!view) return;
+  view.webContents.setBackgroundThrottling(!isVisible);
+}
+
+// 每 30s 采样所有插件 WebView 的内存
+async checkMemoryPressure(): Promise<void> {
+  let totalRSS = 0;
+  for (const [pluginId, view] of this.pluginViews) {
+    const mem = await view.webContents.getProcessMemoryInfo();
+    totalRSS += mem.residentSet;
+  }
+  // RSS > 1GB → toast "内存占用较高，建议关闭不活跃插件"
+  if (totalRSS > 1024 * 1024 * 1024) {
+    shellWindow.webContents.send('system:memory-pressure', { totalRSS });
+  }
+}
+```
+
+**何时休眠：** 标签页后台超过 5 分钟 → `setBackgroundThrottling(true)`。用户切回该标签页 → `setBackgroundThrottling(false)`。不销毁 WebContentsView——保留状态，只降频。
+
+**Why 不是销毁：** 销毁后重建需要重新加载 JS → 用户切回标签页时延迟不可接受。对标浏览器标签页休眠——保留进程，降频不销毁。
 
 ---
 
@@ -178,6 +246,7 @@ ipcRenderer.invoke('plugin:ipc', { channel: 'config:get', ... });
 |:--:|------|:--:|------|
 | 24 | WindowManager——WebContentsView 创建/销毁/聚焦（壳侧生命周期） | ~110 | 创建→`contentView.addChildView`→关闭→`webContents.close()` 无泄漏 |
 | 25 | PluginViewRegistry——插件 ID→WebContentsView 映射 + bounds 管理 + 重载 | ~90 | Map 增删查 + 重载后 pluginId 不变 |
+| 25a | **资源休眠——后台 WebView 降频 + 内存压力检测** | ~40 | 隐藏标签页→`setBackgroundThrottling(true)`；每 30s `getProcessMemoryInfo()` 采样；RSS > 阈值 → toast + 建议关闭不活跃插件 |
 
 ### 通信——IpcBridge
 
@@ -190,8 +259,39 @@ ipcRenderer.invoke('plugin:ipc', { channel: 'config:get', ... });
 
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
-| 28 | preload-plugin.ts——插件侧精选 API（无 `plugins.*`/`window.*`/`dialog.*`） | ~80 | contextBridge 白名单审计 |
+| 28 | preload-plugin.ts——插件侧精选 API（无 `plugins.*`/`window.*`/`dialog.*`，含 `filesystem` 受限读写） | ~80 | contextBridge 白名单审计 + **IPC 回调模板（ref 桥接 + cleanup + 超时）** |
 | 29 | MainContent 改为 WebContentsView placeholder 管理 | ~100 | 壳标签页切换 → WebContentsView 显隐 |
+
+### 壳侧归一化
+
+| # | 任务 | 行数 | 独立验证 |
+|:--:|------|:--:|------|
+| 29a | **SidebarTabSync——侧栏↔标签页三向同步归一化** | ~30 | 侧栏点 session→主区切换→侧栏高亮同步 |
+
+**为什么需要 #29a：** 模式 3（三栏交互不同步）是 Tauri 时代第三大 bug 来源（18 个 bug）。根因是 SidePanel/TabBar/MainContent 各自维护 "用户选择了哪个内容" 的状态同步逻辑——三份拷贝，漏同步一个=一个 bug。
+
+```typescript
+// src/core/SidebarTabSync.ts —— ~30 行
+// 单一真相源——侧栏↔标签页↔图标栏全部调它
+
+export function activateSidebarItem(sourceId: string, pluginId: string): void {
+  // 1. 聚焦/创建对应的标签页
+  const tab = TabActionsContext.focusOrCreateTab(pluginId, sourceId);
+  // 2. 标签栏高亮对应标签页
+  TabActionsContext.setActiveTab(tab.id);
+  // 3. 侧栏高亮对应条目（如果侧栏是 tagFollower 模式）
+  //    对标 VS Code——Explorer 中点击文件→编辑器打开→Explorer 中该文件高亮
+  SidebarActions.setActiveSourceId(sourceId);
+}
+
+// 消费端（改前→改后）：
+// SidePanel.tsx:    onMouseDown → activateTab(sourceId)  → activateSidebarItem(sourceId, pluginId)
+// TabBar.tsx:       onTabClick → setActiveTab(tabId)     → activateSidebarItem(tab.sourceId, tab.pluginId)
+// IconBar.tsx:      onIconClick → handlePluginClick(id)  → activateSidebarItem(..., id)
+// MainContent.tsx:  tab switch → 通知侧栏                  → SidebarActions.setActiveSourceId(...)
+```
+
+**对标 VS Code：** VS Code 的 `EditorService.openEditor()` 是单一入口——Explorer/Tabs/Breadcrumbs 全部走它。`SidebarTabSync.activateSidebarItem()` 同理。
 
 ### 现有插件迁移——逐个独立
 
@@ -200,9 +300,12 @@ ipcRenderer.invoke('plugin:ipc', { channel: 'config:get', ... });
 | 30 | terminal 插件迁移——useSerialContext→useIpcSerialContext + useSendData→ipc | ~50 | 终端收发不变 |
 | 31 | marketplace 插件迁移——plugin.json 列表读 IPC | ~10 | 插件市场列表正常 |
 | 32 | settings 插件迁移——配置读写 IPC | ~10 | 设置页读写正常 |
-| **合计** | | **~590 行** | |
+| 32a | 🆕 **workspace 插件迁移**——卡片网格 IPC | ~10 | 工作台卡片正常 |
+| **合计** | | **~670 行** | |
 
-> 三个插件迁移拆开——terminal 的 IPC 失败不影响 marketplace/settings 的验证。
+> 四个插件迁移拆开——terminal 的 IPC 失败不影响 marketplace/settings/workspace 的验证。
+> #29a SidebarTabSync 在 #30 之前做——终端迁移验证依赖侧栏↔标签页同步正确。
+> ⚠️ **2026-07-24 再审计发现：** 原迁移清单只有 3 个插件（terminal/marketplace/settings），漏了 workspace。workspace 插件同样需要迁移到独立 WebContentsView。
 
 ---
 
@@ -223,6 +326,18 @@ ipcRenderer.invoke('plugin:ipc', { channel: 'config:get', ... });
 4. 卸载 terminal → 对应 WebContentsView 销毁 → JS heap 回收到基线
 
 5. IPC 延迟：串口收发 → 无明显延迟（< 16ms per frame）
+
+🔥 旧 Bug 回归测试（多 WebView 后原 Tauri 时代 bug 会以新面目重现）：
+6. C1 回归——两个终端标签页 → 侧栏会话列表点 A → 主区显示 A 不是 B
+   （C1 根因：单 WebView 时代模块级 `_activeSessionId` 共享 → E3a 后每个标签页在独立 WebContentsView，但 session 数据和 IPC 通道仍需正确隔离）
+7. B86 回归——首次打开串口 → ControlPanel "打开" 按钮正常工作
+   （B86 根因：useCallback 闭包 portName 为空 → E3a 后 IPC invoke 多一层异步，类似问题可能重现）
+8. 模式 4 预防——IPC 回调中用到 React state 的全部用 ref 桥接
+   → grep "ipcRenderer.on\|ipc.onEvent" 逐条检查回调内是否引用了 React state → 全用 ref
+9. 新 WebView 创建后 → 主动拉取当前主题/语言 → 新 View 颜色和语言与壳一致
+   （新风险 4——不主动拉取 = 新 View 在下次广播前用默认主题/语言）
+10. 插件 WebView 崩溃 → 壳侧清理链执行 → 注册表无残留（新风险 2）
+    → 模拟：在插件 console 执行 process.crash() → 壳检测到 crashed → 清理注册表
 ```
 
 ---
