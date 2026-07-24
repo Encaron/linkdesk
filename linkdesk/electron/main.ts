@@ -10,6 +10,11 @@
 
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
+import { fileURLToPath } from 'url';
+
+// ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
