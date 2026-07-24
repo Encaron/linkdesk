@@ -11,6 +11,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { registerSerialHandlers } from './ipc/serial-handlers';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);
@@ -42,6 +43,9 @@ function createWindow(): void {
     title: 'LinkDesk',
     show: false, // ready-to-show 后再显示，避免白屏闪烁
   });
+
+  // ── 注册 IPC 处理器（步 2：串口；步 3：文件/插件管理；步 4：命令/配置/剪贴板）──
+  registerSerialHandlers(mainWindow);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
