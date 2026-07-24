@@ -3,6 +3,8 @@
  * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
  */
 
+import { getAssetPath } from "./assetPath";
+
 export interface ThemeColors {
   [key: string]: string;
 }
@@ -38,7 +40,7 @@ export async function loadTheme(themeName: string): Promise<Theme> {
   const pluginTheme = pluginThemes.get(themeName);
   if (pluginTheme) return pluginTheme;
 
-  const res = await fetch(`/themes/${themeName.toLowerCase()}.json`);
+  const res = await fetch(getAssetPath(`themes/${themeName.toLowerCase()}.json`));
   if (!res.ok) throw new Error(`Theme "${themeName}" not found`);
   return res.json();
 }
