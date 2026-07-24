@@ -10,6 +10,7 @@
     "preview": "vite preview",
 
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && electron .\"",
+    "electron:build": "npm run build && tsc -p electron/tsconfig.json && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch"
   },
