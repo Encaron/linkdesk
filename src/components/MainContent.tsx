@@ -47,21 +47,31 @@ function renderTabContent(
   onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
 ) {
   // 壳自身的视图——不走插件路由
+  // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
   if (isShellRenderedTab(tab.type)) {
     if (tab.type === "plugin-detail") {
-      return <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />;
+      return (
+        <ErrorBoundary pluginId={tab.detailPluginId ?? "plugin-detail"}>
+          <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />
+        </ErrorBoundary>
+      );
     }
     if (tab.type === FALLBACK_PLUGIN_ID) {
-      return <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />;
+      return (
+        <ErrorBoundary pluginId="welcome">
+          <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />
+        </ErrorBoundary>
+      );
     }
   }
 
   // Phase 4.4：视图插件路由——唯一的正常路径
+  // E2a #3：pluginId 传入 ErrorBoundary——崩溃显示 "「终端」已崩溃 [重试]"
   if (tab.pluginId) {
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
       return (
-        <ErrorBoundary>
+        <ErrorBoundary pluginId={tab.pluginId}>
           <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
         </ErrorBoundary>
       );

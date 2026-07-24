@@ -8,6 +8,7 @@
 import { useState, useEffect, forwardRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import ErrorBoundary from "./shared/ErrorBoundary";
 import "./SidePanel.css";
 
 interface SidePanelProps {
@@ -49,7 +50,11 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     const plugin = getViewPlugin(effectivePluginId);
     if (plugin?.sidebarComponent) {
       const SidebarComponent = plugin.sidebarComponent;
-      return <SidebarComponent />;
+      return (
+        <ErrorBoundary pluginId={effectivePluginId}>
+          <SidebarComponent />
+        </ErrorBoundary>
+      );
     }
     // 无侧栏——对标 VS Code 空侧栏
     return <div className="side-panel-placeholder">{t("无设置项")}</div>;
