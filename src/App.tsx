@@ -55,8 +55,8 @@ function applyAccentColor(hexColor: string): void {
 import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
-import SerialContext from "./core/SerialContext";
-import type { PortInfo } from "./core/SerialContext";
+import SourceStateContext from "./core/SourceStateContext";
+import type { PortInfo } from "./core/SourceStateContext";
 import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
@@ -680,8 +680,8 @@ function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [tabState, activeTab, closeTab, forceCloseTab, handleFocusTab, splitTab, unsplit]);
 
-  // SerialContext value（Phase 4：桥接 App 串口状态和终端插件）
-  const serialContextValue = useMemo(() => ({
+  // E2b #7：SourceStateContext——替代 SerialContext（核心只知道"数据源"，不知道"串口"）
+  const sourceStateValue = useMemo(() => ({
     state: { ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError },
     actions: { toggleOpen: handleToggleOpen, setPortName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
@@ -703,7 +703,7 @@ function App() {
   return (
     <div className="app-shell">
       <TabActionsContext.Provider value={tabActionsValue}>
-      <SerialContext.Provider value={serialContextValue}>
+      <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-body">
         <IconBar
           sidebarView={sidebarView}
@@ -757,7 +757,7 @@ function App() {
         onClose={() => setPaletteOpen(false)}
       />
       <ConfirmDialog />
-      </SerialContext.Provider>
+      </SourceStateContext.Provider>
       </TabActionsContext.Provider>
     </div>
   );

@@ -27,7 +27,7 @@ import { useConfiguration, useConfigurationValue } from "./useConfiguration";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
 import { useSendData } from "./useSendData";
 import { useIpcEvent } from "../hooks/useIpcEvent";
-import { useSerialContext } from "./SerialContext";
+import { useSourceState } from "./SourceStateContext";
 
 /** The V3 runtime plugin API surface. Exposed as window.__v3_core__. */
 const v3Api = {
@@ -48,7 +48,7 @@ const v3Api = {
   useConfigurationValue,
   useSendData,
   useIpcEvent,
-  useSerialContext,
+  useSourceState,
 
   // --- Configuration service (singleton state) ---
   getConfigurationValue,
