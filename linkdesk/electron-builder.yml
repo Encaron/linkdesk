@@ -1,0 +1,48 @@
+# electron-builder 打包配置
+#
+# E1 步 7：替代 Tauri 的 tauri.conf.json。
+# 生成 NSIS 安装器（Windows .exe）。
+#
+# 关键设计：
+#   - plugins/ 不打进 ASAR（extraResources）——安装/卸载需要动态文件系统操作
+#   - linkdesk:// 协议根据 app.isPackaged 切换路径前缀
+#   - npmRebuild 自动处理 serialport 原生模块
+
+appId: com.linkdesk.app
+productName: LinkDesk
+copyright: Copyright © 2026 LinkDesk
+
+directories:
+  output: release
+  buildResources: build
+
+files:
+  - dist/**/*
+  - dist-electron/**/*
+  - package.json
+  - node_modules/**/*
+
+# 🔥 plugins/ 不打进 ASAR——保持为独立目录以支持动态安装/卸载
+# 开发模式：PLUGINS_DIR = <project>/plugins/
+# 打包模式：PLUGINS_DIR = <resources>/plugins/
+asar: true
+
+extraResources:
+  - from: plugins
+    to: plugins
+    filter:
+      - "**/*"
+      - "!.disabled/**"
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+
+# 自动 rebuild 原生模块（serialport）以匹配 Electron 的 Node.js ABI
+npmRebuild: true
