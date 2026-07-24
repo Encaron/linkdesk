@@ -2,7 +2,6 @@
   "$schema": "../../docs/插件开发/plugin.schema.json",
   "name": "工作台",
   "version": "1.0.0",
-  "core": true,
   "icon": "workspace",
   "description": "卡片网格——可视化数据仪表板",
   "author": "官方",
