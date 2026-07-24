@@ -195,6 +195,18 @@ Settings Editor
 
 ---
 
+### 九-B、设置项一键恢复默认（防呆）
+
+**对标 VS Code：** 每个设置项左侧有齿轮图标 → "Reset Setting"——用户改乱了直接回出厂值。
+
+**实现：** `ConfigurationService` 已有每个 key 的 `default` 值（来自 `contributes.configuration`）。恢复默认 = 删用户值 → 重新读 → 回退到 default。
+
+**UI：** 每个设置项右侧加一个齿轮图标（× 还原）。点击 → `showConfirm("恢复默认值？")` → 确认 → `ConfigurationService.reset(key)` → 控件值即时更新。齿轮图标始终显示（没有修改值的 gray out，用户手动设了值再改回 default 也要有这个路径）。
+
+~15 行。
+
+---
+
 ## 十、任务清单
 
 | # | 任务 | 行数 | 独立验证 |
@@ -208,7 +220,8 @@ Settings Editor
 | 57 | 终端会话持久化——sessions.json 读写 | ~30 | 关闭 → 重启 → 会话列表恢复 |
 | 58 | **Developer: Toggle Plugin DevTools**——QuickPick + WindowManager.toggleDevTools | ~10 | Ctrl+Shift+P → 选插件 → DevTools 弹出/关闭 |
 | 59 | **设置页快捷键子栏**——双 tab + 表格视图 + 冲突检测 | ~60 | 打开设置→快捷键 tab→所有快捷键可搜索→双击改绑定→冲突红字 |
-| **合计** | | **~450 行** | |
+| 59a | **设置项一键恢复默认**——每项齿轮图标 + `showConfirm` + `ConfigurationService.reset(key)`（防呆） | ~15 | 改值→齿轮亮→点击→确认→回到出厂默认 |
+| **合计** | | **~465 行** | |
 
 ---
 
