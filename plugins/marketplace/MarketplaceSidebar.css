@@ -11,7 +11,7 @@
 .ms-header {
   height: auto;
   box-sizing: border-box;
-  padding: 5px 12px 6px 12px;
+  padding: 5px 12px 8px 12px;
   flex-shrink: 0;
 }
 
@@ -98,6 +98,7 @@
 .ms-extensions {
   flex: 1;
   overflow-y: auto;
+  padding-top: 2px;
 }
 
 .ms-empty {
@@ -126,6 +127,8 @@
   text-transform: uppercase;
   letter-spacing: 0.3px;
   color: var(--text-muted);
+  position: relative;
+  z-index: 1;
 }
 
 .ms-section-header:hover {
