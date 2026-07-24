@@ -25,7 +25,7 @@ export default function TerminalStatusBar() {
       )}
       {showTxRx && (
         <span className="status-text">
-          {isOpen ? `TX:${txBytes}  RX:${rxBytes}` : "TX:—  RX:—"}
+          {isOpen ? "TX:" + txBytes + "  RX:" + rxBytes : "TX:--  RX:--"}
         </span>
       )}
     </>
