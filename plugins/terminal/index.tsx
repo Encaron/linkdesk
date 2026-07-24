@@ -23,7 +23,7 @@ import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
 import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
-import { useSession, setActiveSessionId } from "./useTerminalSessions";
+import { useSession, setActiveSessionId, getActiveSessionId } from "./useTerminalSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/useSendData";
 import SearchBar from "@src/components/terminal/SearchBar";
@@ -53,10 +53,9 @@ const MONACO_MIN_HEIGHT = 32;
 const MONACO_LINE_HEIGHT = 18;
 const MONACO_PADDING = 16;
 
-// E3 fix：_activeCmd — 命令路由到当前活跃的 TerminalView。
-// 多个终端标签页各自 mount 时都调 registerCommand，同 ID → 最后一个覆盖。
-// 所有 handler 读此 ref——每个 TerminalView 在 isActive 时更新它。
-// E2b #10：const ref 包装代替 let——防 StrictMode 双重 mount 时序问题。
+// E2b #11：命令路由用 sourceId → Map 分发。
+// 每个 TerminalView 挂载时注册自己的 ActiveCmd，命令 handler 通过活跃 session ID 查找。
+// 消灭了"最后一个 mount 的 TerminalView 接收所有命令"的问题。
 interface ActiveCmd {
   cmView: { current: EditorView | null };
   paused: boolean; quickSends: Record<string, string>;
@@ -70,7 +69,11 @@ interface ActiveCmd {
   setQsContent: (v: string) => void; setQsAdding: (v: boolean) => void;
   handleDeleteQuickSend: (key: string) => void;
 }
-const _activeCmd = { current: null as ActiveCmd | null };
+const _cmdMap = new Map<string, ActiveCmd>();
+function getActiveCmd(): ActiveCmd | null {
+  const id = getActiveSessionId();
+  return id ? (_cmdMap.get(id) ?? null) : null;
+}
 
 /* ---- CM6 主题（颜色走 CSS 变量，切主题自动响应） ---- */
 const darkTheme: Extension = EditorView.theme(
@@ -675,9 +678,9 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   /* ── Phase 5b：注册终端命令真实 handler（覆盖 loader 的 placeholder）── */
 
-  // E3：isActive 时更新模块级 _activeCmd——所有命令 handler 读此变量路由到正确实例
-  if (isActive) {
-    _activeCmd.current = {
+  // E2b #11：按 sourceId 注册到 _cmdMap——不依赖 isActive 竞态
+  if (sourceId) {
+    _cmdMap.set(sourceId, {
       cmView, paused, quickSends,
       sendMode, showEcho, showLineNumbers,
       setPaused, setSendValue,
@@ -686,8 +689,15 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       setShowLineNumbers: (v: boolean) => { updateSession({ showLineNumbers: v }); },
       setQsEditing, setQsName, setQsContent, setQsAdding,
       handleDeleteQuickSend,
-    };
+    });
   }
+
+  // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
+  useEffect(() => {
+    return () => {
+      if (sourceId) _cmdMap.delete(sourceId);
+    };
+  }, [sourceId]);
 
   useEffect(() => {
     registerCommand("terminal", {
@@ -695,7 +705,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "复制",
       category: "终端",
       handler: async () => {
-        const view = _activeCmd.current!.cmView.current;
+        const view = getActiveCmd()!.cmView.current;
         if (!view) return;
         // Bug fix：右键菜单打开时 CM6 失去焦点 → selection 不渲染 → clipboard 读不到。
         // 先 focus 恢复焦点，再读 selection。
@@ -709,7 +719,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "全选",
       category: "终端",
       handler: async () => {
-        const view = _activeCmd.current!.cmView.current;
+        const view = getActiveCmd()!.cmView.current;
         if (!view) return;
         // Bug fix：右键菜单打开后 CM6 失焦 → dispatch selection 生效但不高亮。
         // 先 focus 恢复焦点，selection 高亮正常显示。
@@ -722,7 +732,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "清空接收区",
       category: "终端",
       handler: async () => {
-        const view = _activeCmd.current!.cmView.current;
+        const view = getActiveCmd()!.cmView.current;
         if (view) {
           view.dispatch({
             changes: { from: 0, to: view.state.doc.length },
@@ -736,7 +746,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "暂停接收",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setPaused((p) => !p);
+        getActiveCmd()!.setPaused((p) => !p);
       },
     });
     registerCommand("terminal", {
@@ -746,7 +756,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
-          _activeCmd.current!.setSendValue(_activeCmd.current!.quickSends[ctx.quickSendName] ?? "");
+          getActiveCmd()!.setSendValue(getActiveCmd()!.quickSends[ctx.quickSendName] ?? "");
         }
       },
     });
@@ -758,10 +768,10 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
           const key = ctx.quickSendName;
-          _activeCmd.current!.setQsEditing(key);
-          _activeCmd.current!.setQsName(key);
-          _activeCmd.current!.setQsContent(_activeCmd.current!.quickSends[key] ?? "");
-          _activeCmd.current!.setQsAdding(true);
+          getActiveCmd()!.setQsEditing(key);
+          getActiveCmd()!.setQsName(key);
+          getActiveCmd()!.setQsContent(getActiveCmd()!.quickSends[key] ?? "");
+          getActiveCmd()!.setQsAdding(true);
         }
       },
     });
@@ -772,7 +782,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
-          _activeCmd.current!.handleDeleteQuickSend(ctx.quickSendName);
+          getActiveCmd()!.handleDeleteQuickSend(ctx.quickSendName);
         }
       },
     });
@@ -781,7 +791,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "清空发送区",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setSendValue("");
+        getActiveCmd()!.setSendValue("");
       },
     });
     registerCommand("terminal", {
@@ -789,7 +799,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "导出日志",
       category: "终端",
       handler: async () => {
-        const view = _activeCmd.current!.cmView.current;
+        const view = getActiveCmd()!.cmView.current;
         if (!view) return;
         const text = view.state.doc.toString();
         const filename = `serial-log-${Date.now()}.txt`;
@@ -812,7 +822,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       category: "终端",
       handler: async () => {
         // Phase 5f：直连 ConfigurationService——通过 ref 读取/写入避免闭包过期
-        _activeCmd.current!.setSendMode(_activeCmd.current!.sendMode === "hex" ? "text" : "hex");
+        getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
     });
     registerCommand("terminal", {
@@ -820,7 +830,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "关闭消息回显",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setShowEcho(!_activeCmd.current!.showEcho);
+        getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
     });
     registerCommand("terminal", {
@@ -828,7 +838,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: "隐藏行号",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setShowLineNumbers(!_activeCmd.current!.showLineNumbers);
+        getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
   }, []);
@@ -840,7 +850,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: paused ? "继续接收" : "暂停接收",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setPaused((p) => !p);
+        getActiveCmd()!.setPaused((p) => !p);
       },
     });
   }, [paused]);
@@ -852,7 +862,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: sendMode === "hex" ? "切换到文本发送" : "切换到 HEX 发送",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setSendMode(_activeCmd.current!.sendMode === "hex" ? "text" : "hex");
+        getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
     });
   }, [sendMode]);
@@ -864,7 +874,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: showEcho ? "关闭消息回显" : "开启消息回显",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setShowEcho(!_activeCmd.current!.showEcho);
+        getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
     });
   }, [showEcho]);
@@ -876,7 +886,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       title: showLineNumbers ? "隐藏行号" : "显示行号",
       category: "终端",
       handler: async () => {
-        _activeCmd.current!.setShowLineNumbers(!_activeCmd.current!.showLineNumbers);
+        getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
   }, [showLineNumbers]);
