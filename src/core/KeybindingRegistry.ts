@@ -106,6 +106,35 @@ function keyboardEventToKeyString(e: KeyboardEvent): string {
   }).join("+");
 }
 
+/* ── Chord 状态机（E2c #16）── */
+
+interface ChordState {
+  isPending: boolean;
+  firstKey: string;
+  timer: ReturnType<typeof setTimeout> | null;
+}
+
+const _chordState: ChordState = {
+  isPending: false,
+  firstKey: "",
+  timer: null,
+};
+
+/** 检查 key 是否是 chord 的第一键——有已注册的 binding 以此 key 开头 */
+function isChordPrefix(normalizedKey: string): boolean {
+  return _bindings.some((b) => b.key.startsWith(normalizedKey + " "));
+}
+
+/** 重置 chord 状态——超时或第二键不匹配时调用 */
+function resetChord(): void {
+  if (_chordState.timer) {
+    clearTimeout(_chordState.timer);
+  }
+  _chordState.isPending = false;
+  _chordState.firstKey = "";
+  _chordState.timer = null;
+}
+
 /* ── Registry ── */
 
 const _bindings: Keybinding[] = [];
@@ -153,23 +182,49 @@ export function findKeybindingForCommand(commandId: string): Keybinding | undefi
 /**
  * 全局 keydown 处理器——对标 VS Code 的键盘事件分发。
  * 挂到 window 上，App 启动时调用一次。
+ *
+ * E2c #16：支持 chord（双键序列）——如 Ctrl+K Ctrl+S。
  */
 export function handleKeyEvent(e: KeyboardEvent): boolean {
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 
-  // 找到匹配的 binding（按注册顺序，后注册优先）
+  // ── Chord 第二键 ──
+  if (_chordState.isPending) {
+    resetChord(); // 清除 timer（already set）
+    const fullChord = `${_chordState.firstKey} ${keyString}`;
+
+    // 检查完整 chord 是否匹配
+    for (let i = _bindings.length - 1; i >= 0; i--) {
+      const binding = _bindings[i];
+      if (binding.key === fullChord) {
+        if (!ContextKeyService.matches(binding.when)) continue;
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        executeCommand(binding.command);
+        return true;
+      }
+    }
+    // chord 第二键不匹配 → 不消费事件
+    return false;
+  }
+
+  // ── Chord 第一键：检查此 key 是否有子 chord ──
+  if (isChordPrefix(keyString)) {
+    _chordState.isPending = true;
+    _chordState.firstKey = keyString;
+    _chordState.timer = setTimeout(resetChord, 2000); // 2s 无第二键 → 取消
+    e.preventDefault();
+    return true; // 消费了事件——等待第二键
+  }
+
+  // ── 单键匹配 ──
   for (let i = _bindings.length - 1; i >= 0; i--) {
     const binding = _bindings[i];
     if (binding.key === keyString) {
-      // 检查 when 条件
       if (!ContextKeyService.matches(binding.when)) continue;
-
-      // 防止浏览器默认行为 + 阻止同级 capture handler（防御性）
       e.preventDefault();
       e.stopImmediatePropagation();
-
-      // 执行命令
       executeCommand(binding.command);
       return true;
     }
@@ -200,4 +255,5 @@ export function mountGlobalKeybindings(): () => void {
 /** 清空注册表（测试用） */
 export function clearKeybindings(): void {
   _bindings.length = 0;
+  resetChord();
 }
