@@ -59,6 +59,13 @@ try {
       readdir:       (p: string)           => ipcRenderer.invoke('filesystem:readdir', p),
       copy:          (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
       remove:        (p: string)           => ipcRenderer.invoke('filesystem:remove', p),
+      // E2c #13 新增：listDir / readBinaryFile / watch
+      listDir:       (p: string)           => ipcRenderer.invoke('filesystem:listDir', p),
+      readBinaryFile:(p: string)           => ipcRenderer.invoke('filesystem:readBinaryFile', p),
+      watch:         (p: string)           => ipcRenderer.invoke('filesystem:watch', p),
+      unwatch:       (id: number)          => ipcRenderer.invoke('filesystem:unwatch', id),
+      onFileChange:  makeListener('filesystem:changed'),
+      offFileChange: makeOff('filesystem:changed'),
     },
 
     // ── 路径（步 3 接入——对标 @tauri-apps/api/path）──

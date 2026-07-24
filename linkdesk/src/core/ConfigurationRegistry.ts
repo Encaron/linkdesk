@@ -43,17 +43,39 @@ export interface InspectResult<T> {
 /* ── Registry ── */
 
 const _contributions = new Map<string, ConfigurationContribution>(); // pluginId → contribution
+const _configKeyOwner = new Map<string, string>();                      // configKey → pluginId（冲突检测）
 
 /** 注册插件的配置贡献——loader 在 parseContributions 阶段调用 */
 export function registerConfiguration(
   pluginId: string,
   contribution: ConfigurationContribution
 ): void {
+  // E2c #13 16.2：检测重复 key → 抛硬错误（fail-fast）。
+  // 两个插件声明同名配置 key → 后注册者静默覆盖 → 运行时才暴露。
+  for (const key of Object.keys(contribution.properties)) {
+    const owner = _configKeyOwner.get(key);
+    if (owner && owner !== pluginId) {
+      throw new Error(
+        `[ConfigurationRegistry] 配置项 "${key}" 已由插件 "${owner}" 注册，` +
+        `插件 "${pluginId}" 重复声明。修改 plugin.json 中 contributes.configuration 的 key 名。`
+      );
+    }
+    _configKeyOwner.set(key, pluginId);
+  }
   _contributions.set(pluginId, contribution);
 }
 
 /** 注销插件的配置贡献——卸载时调用 */
 export function unregisterConfiguration(pluginId: string): boolean {
+  // 清理 configKey → owner 映射
+  const contrib = _contributions.get(pluginId);
+  if (contrib) {
+    for (const key of Object.keys(contrib.properties)) {
+      if (_configKeyOwner.get(key) === pluginId) {
+        _configKeyOwner.delete(key);
+      }
+    }
+  }
   return _contributions.delete(pluginId);
 }
 
@@ -79,9 +101,7 @@ export function getMergedSchema(): Record<string, ConfigurationProperty> {
   const merged: Record<string, ConfigurationProperty> = {};
   for (const contrib of _contributions.values()) {
     for (const [key, prop] of Object.entries(contrib.properties)) {
-      if (merged[key]) {
-        console.warn(`[ConfigurationRegistry] 配置项 "${key}" 重复——后注册覆盖先注册`);
-      }
+      // E2c #13 16.2：重复 key 已在 registerConfiguration() 抛硬错误——此处不再 check
       merged[key] = prop;
     }
   }
@@ -130,5 +150,6 @@ export function getConfigurationDefaults(): Record<string, unknown> {
 /** 清空注册表（测试用） */
 export function clearConfigurationRegistrations(): void {
   _contributions.clear();
+  _configKeyOwner.clear();
   _configurationDefaults.clear();
 }

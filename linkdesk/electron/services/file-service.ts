@@ -8,9 +8,18 @@
  */
 
 import * as fs from 'fs/promises';
-import { existsSync } from 'fs';
+import { existsSync, watch } from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+
+export interface FileEntry {
+  name: string;
+  path: string;
+  isDirectory: boolean;
+  isFile: boolean;
+  size?: number;
+  modifiedAt?: number;
+}
 
 class FileService {
   // ── 路径工具（对标 @tauri-apps/api/path）──
@@ -86,6 +95,63 @@ class FileService {
     const s = await fs.stat(filePath);
     return { isDirectory: s.isDirectory(), isFile: s.isFile() };
   }
+
+  /** 列出目录内容——返回 FileEntry[]（含 isDirectory/isFile/size/modifiedAt） */
+  async listDir(dirPath: string): Promise<FileEntry[]> {
+    const entries = await fs.readdir(dirPath, { withFileTypes: true });
+    const result: FileEntry[] = [];
+    for (const entry of entries) {
+      const fullPath = path.join(dirPath, entry.name);
+      const entryData: FileEntry = {
+        name: entry.name,
+        path: fullPath,
+        isDirectory: entry.isDirectory(),
+        isFile: entry.isFile(),
+      };
+      // 文件补充 size + modifiedAt（目录跳过——stat 目录性能无意义）
+      if (entry.isFile()) {
+        try {
+          const s = await fs.stat(fullPath);
+          entryData.size = s.size;
+          entryData.modifiedAt = s.mtimeMs;
+        } catch { /* 文件可能刚被删除 */ }
+      }
+      result.push(entryData);
+    }
+    return result;
+  }
+
+  /** 读取二进制文件——返回 Buffer（Electron IPC 原生支持 Buffer 传输） */
+  async readBinaryFile(filePath: string): Promise<Buffer> {
+    return fs.readFile(filePath);
+  }
+
+  /** 开始监听文件/目录变化——返回 watcherId */
+  watchFile(
+    dirPath: string,
+    onEvent: (event: { path: string; type: "created" | "changed" | "deleted" }) => void,
+  ): number {
+    const watcher = watch(dirPath, { recursive: false }, (eventType, filename) => {
+      if (!filename) return;
+      const fullPath = path.join(dirPath, filename);
+      onEvent({ path: fullPath, type: eventType as "created" | "changed" | "deleted" });
+    });
+    const id = this._nextWatcherId++;
+    this._watchers.set(id, watcher);
+    return id;
+  }
+
+  /** 停止监听 */
+  unwatchFile(watcherId: number): void {
+    const watcher = this._watchers.get(watcherId);
+    if (watcher) {
+      watcher.close();
+      this._watchers.delete(watcherId);
+    }
+  }
+
+  private _nextWatcherId = 1;
+  private _watchers = new Map<number, ReturnType<typeof watch>>();
 }
 
 export const fileService = new FileService();
