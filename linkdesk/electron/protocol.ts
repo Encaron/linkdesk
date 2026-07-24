@@ -26,7 +26,7 @@ export function registerProtocol(): void {
     ? path.join(process.resourcesPath, 'plugins')
     : path.join(app.getAppPath(), 'plugins');
 
-  protocol.handle('linkdesk', (request) => {
+  protocol.handle('linkdesk', async (request) => {
     // URI: linkdesk://terminal/dist/bundle.js
     // 提取路径部分（去掉 "linkdesk://"）
     const urlPath = request.url.replace(/^linkdesk:\/\//, '');
@@ -44,8 +44,15 @@ export function registerProtocol(): void {
       return new Response('Not Found', { status: 404 });
     }
 
-    // 通过 Electron net.fetch 返回文件内容
-    // file:// 协议在渲染进程中被 protocol.handle 安全处理
-    return net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
+    // 通过 Electron net.fetch 返回文件内容，附加 CORS 头以支持 dev 模式跨域 fetch
+    const fileResponse = await net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
+    const body = await fileResponse.arrayBuffer();
+    const headers = new Headers(fileResponse.headers);
+    headers.set('Access-Control-Allow-Origin', '*');
+    return new Response(body, {
+      status: fileResponse.status,
+      statusText: fileResponse.statusText,
+      headers,
+    });
   });
 }
