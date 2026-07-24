@@ -166,7 +166,7 @@ function TerminalSidebar() {
   } = useTerminalSessions();
 
   // Phase 5.5c C4b Bug 3：connected 从 SerialContext 派生——不读 session.connected（始终为 false）
-  const { state: { isOpen, portName } } = useSerialContext();
+  const { state: { isOpen, sourceName: portName } } = useSerialContext();
 
   // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
   const tabActions = useTabActions();

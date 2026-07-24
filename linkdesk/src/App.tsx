@@ -682,8 +682,8 @@ function App() {
 
   // E2b #7：SourceStateContext——替代 SerialContext（核心只知道"数据源"，不知道"串口"）
   const sourceStateValue = useMemo(() => ({
-    state: { ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError },
-    actions: { toggleOpen: handleToggleOpen, setPortName: handlePortChange, setBaudRate: handleBaudChange },
+    state: { ports, sourceName: portName, baudRate, isOpen, txBytes, rxBytes, lastError },
+    actions: { toggleOpen: handleToggleOpen, setSourceName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
   // TabActionsContext value（Phase 4 P0-1：插件可创建标签页）

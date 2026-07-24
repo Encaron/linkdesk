@@ -19,7 +19,7 @@ export interface PortInfo {
 /** 数据源运行时状态 */
 export interface SourceState {
   ports: PortInfo[];
-  portName: string;
+  sourceName: string;
   baudRate: string;
   isOpen: boolean;
   txBytes: number;
@@ -30,7 +30,7 @@ export interface SourceState {
 /** 数据源操作 */
 export interface SourceActions {
   toggleOpen: (encoding?: string) => Promise<void>;
-  setPortName: (port: string, encoding?: string) => Promise<void>;
+  setSourceName: (name: string, encoding?: string) => Promise<void>;
   setBaudRate: (baud: string, encoding?: string) => Promise<void>;
 }
 
