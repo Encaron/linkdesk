@@ -30,7 +30,7 @@ import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type W
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
-import { mountGlobalKeybindings } from "./core/KeybindingRegistry";
+import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
 
@@ -228,6 +228,9 @@ function App() {
 
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
+
+      // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
+      initUserKeybindings().catch((e) => console.warn("[App] 用户快捷键初始化失败:", e));
 
       // Phase 5f：主题/语言/强调色通过 ConfigurationApplier 框架应用。
       // onApply 在 registerConfiguration 时声明，框架保证 theme async → accent sync 的时序。

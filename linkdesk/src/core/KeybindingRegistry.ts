@@ -31,6 +31,8 @@
 
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand } from "./CommandRegistry";
+import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "./FileService";
+import { CoreEvents } from "./CoreEvents";
 
 /* ── 类型 ── */
 
@@ -133,6 +135,145 @@ function resetChord(): void {
   _chordState.isPending = false;
   _chordState.firstKey = "";
   _chordState.timer = null;
+}
+
+/* ── User keybindings.json 持久化（E2c #17）── */
+
+const KEYBINDINGS_FILENAME = "keybindings.json";
+
+/** 快捷键文件完整路径——appDataDir + keybindings.json */
+let _keybindingsPath: string | null = null;
+
+async function getKeybindingsPath(): Promise<string | null> {
+  if (_keybindingsPath) return _keybindingsPath;
+  const dir = await appDataDir();
+  if (!dir) return null;
+  _keybindingsPath = await joinPath(dir, KEYBINDINGS_FILENAME);
+  return _keybindingsPath;
+}
+
+/** 清除所有用户快捷键（source === "user"）——重载 keybindings.json 前调用 */
+function clearUserKeybindings(): void {
+  for (let i = _bindings.length - 1; i >= 0; i--) {
+    if (_bindings[i].source === "user") {
+      _bindings.splice(i, 1);
+    }
+  }
+}
+
+/**
+ * 加载用户自定义快捷键——对标 VS Code keybindings.json。
+ * 启动时调用一次；runtime 文件变动时 watch 自动重载。
+ *
+ * 不存在文件 → 用出厂默认（静默跳过）。
+ * JSON 格式：`[{ "command": "...", "key": "...", "when?": "..." }]`
+ */
+async function loadUserKeybindings(): Promise<void> {
+  const filePath = await getKeybindingsPath();
+  if (!filePath) return;
+
+  const fileExists = await exists(filePath);
+  if (!fileExists) return;
+
+  try {
+    const raw = await readFile(filePath);
+    const userBindings = JSON.parse(raw) as Array<{ command: string; key: string; when?: string }>;
+
+    // 清除旧用户绑定 → 重新注册（用户覆盖出厂优先级由 registerKeybinding 保证）
+    clearUserKeybindings();
+    for (const kb of userBindings) {
+      registerKeybinding({ command: kb.command, key: kb.key, when: kb.when, source: "user" });
+    }
+  } catch (e) {
+    console.warn("[KeybindingRegistry] 读取 keybindings.json 失败:", e);
+  }
+}
+
+/**
+ * 保存用户快捷键到 keybindings.json——"Open Keybindings Settings" 命令调用。
+ * 返回文件路径（null = Electron 环境不可用）。
+ */
+async function saveUserKeybindings(): Promise<string | null> {
+  const filePath = await getKeybindingsPath();
+  if (!filePath) return null;
+
+  const userBindings = _bindings
+    .filter((b) => b.source === "user")
+    .map((b) => {
+      const entry: { command: string; key: string; when?: string } = { command: b.command, key: b.key };
+      if (b.when) entry.when = b.when;
+      return entry;
+    });
+
+  await writeFile(filePath, JSON.stringify(userBindings, null, 2));
+  return filePath;
+}
+
+let _keybindingsWatcherUnsub: (() => void) | null = null;
+
+/**
+ * 监听 keybindings.json 文件变化——对标 VS Code 热更新。
+ * 文件变动 → 300ms 防抖 → 重新加载 → fire onDidChangeKeybindings。
+ * 文件被删除 → 清除用户绑定 → 回退出厂默认。
+ */
+async function watchUserKeybindings(): Promise<void> {
+  if (_keybindingsWatcherUnsub) return; // 已监听
+
+  const dir = await appDataDir();
+  if (!dir) return;
+
+  const filePath = await getKeybindingsPath();
+  if (!filePath) return;
+
+  let debounce: ReturnType<typeof setTimeout> | null = null;
+  _keybindingsWatcherUnsub = await watchFile(dir, (event) => {
+    // 只关心 keybindings.json
+    const name = event.path.replace(/\\/g, "/").split("/").pop();
+    if (name !== KEYBINDINGS_FILENAME) return;
+
+    if (debounce) clearTimeout(debounce);
+    debounce = setTimeout(async () => {
+      const stillExists = await exists(filePath);
+      if (!stillExists) {
+        clearUserKeybindings();
+        CoreEvents.onDidChangeKeybindings.fire();
+        return;
+      }
+      await loadUserKeybindings();
+      CoreEvents.onDidChangeKeybindings.fire();
+    }, 300);
+  });
+}
+
+/* ── 公开入口——App.tsx 启动时调用 ── */
+
+/**
+ * 初始化用户快捷键——加载 keybindings.json + 启动文件监听。
+ * 对标 VS Code：keybindings.json 读写 + watch 热更新。
+ * 在 mountGlobalKeybindings() 之后调用。
+ */
+export async function initUserKeybindings(): Promise<void> {
+  await loadUserKeybindings();
+  await watchUserKeybindings();
+}
+
+/**
+ * 打开快捷键设置文件——确保文件存在，返回路径供外部编辑器打开。
+ * "workbench.action.openKeybindingsSettings" 命令的 handler。
+ */
+export async function openKeybindingsSettings(): Promise<string | null> {
+  const filePath = await saveUserKeybindings();
+  // 首次打开：文件尚不存在时 saveUserKeybindings 会写入空数组 `[]`，保证文件已创建
+  if (!filePath) {
+    // 兜底：文件还没创建过 → 写一个空数组进去
+    const dir = await appDataDir();
+    if (dir) {
+      const p = await joinPath(dir, KEYBINDINGS_FILENAME);
+      await writeFile(p, "[]\n");
+      return p;
+    }
+  }
+  return filePath;
 }
 
 /* ── Registry ── */
@@ -255,5 +396,10 @@ export function mountGlobalKeybindings(): () => void {
 /** 清空注册表（测试用） */
 export function clearKeybindings(): void {
   _bindings.length = 0;
+  _keybindingsPath = null;
+  if (_keybindingsWatcherUnsub) {
+    _keybindingsWatcherUnsub();
+    _keybindingsWatcherUnsub = null;
+  }
   resetChord();
 }

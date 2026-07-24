@@ -71,6 +71,9 @@ export const CoreEvents = {
 
   /** 收到串口数据——对标 VS Code onDidWriteTerminalData */
   onDidReceiveData: new Emitter<{ sourceId: string; raw: string }>(),
+
+  /** 快捷键绑定变更——对标 VS Code onDidChangeKeybindings（E2c #17） */
+  onDidChangeKeybindings: new Emitter<void>(),
 };
 
 /* ── CustomEvent 名称常量（B8 fix——拼错一端就断开通信） ── */
