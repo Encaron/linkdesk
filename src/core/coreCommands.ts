@@ -15,6 +15,7 @@ import { registerMenuItems, MenuId } from "./MenuRegistry";
 import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
+import { openKeybindingsSettings } from "./KeybindingRegistry";
 
 /* ── Callbacks ── */
 
@@ -68,6 +69,22 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
+  },
+  {
+    id: "workbench.action.openKeybindingsSettings",
+    title: "打开键盘快捷方式",
+    category: "首选项",
+    handler: async () => {
+      const path = await openKeybindingsSettings();
+      if (path) {
+        // 通知用户文件位置——后续 Phase 6 JSON 编辑器接管此命令
+        const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+        pushToast({
+          message: `快捷键配置文件：${path}`,
+          ttl: TOAST_TTL_INFO,
+        });
+      }
+    },
   },
   {
     id: "core.closeTab",
