@@ -465,10 +465,11 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${displayText}` : displayText,
       type: "received",
     });
+    console.log('[terminal] ringBuffer size after write:', (ringBuffer.current as any)._buffer?.length);
   });
 
   useIpcEvent<string>("serial-system", (payload) => {
-    console.log('[terminal] serial-system received:', payload);
+    console.log('[terminal] serial-system received:', payload.substring(0, 80));
     const fmt = tsFormatRef.current;
     if (/Port opened|已打开/.test(payload)) {
       console.log('[terminal] portOpenRef → true');
