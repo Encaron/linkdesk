@@ -143,8 +143,8 @@ function MarketplaceSidebar() {
   const handleInstall = useCallback(async () => {
     setInstalling(true);
     try {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const selected = await open({ directory: true, title: "选择插件目录", multiple: false });
+      const lk = (window as any).linkdesk;
+      const selected = await lk.dialog.open({ directory: true, title: "选择插件目录" });
       if (selected) await installPlugin(selected as string);
     } catch { /* 静默 */ }
     finally { setInstalling(false); }
