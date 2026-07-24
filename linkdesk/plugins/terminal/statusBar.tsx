@@ -5,7 +5,7 @@
  */
 import { Fragment } from "react";
 import { useTranslation } from "react-i18next";
-import { useSerialContext } from "../SerialContext";
+import { useSerialContext } from "./SerialContext";
 
 function TerminalStatusBar() {
   const { t } = useTranslation();
