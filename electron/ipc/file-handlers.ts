@@ -5,7 +5,7 @@
  * 所有文件 I/O 走此入口——E2c 归一化后成为唯一入口。
  */
 
-import { ipcMain } from 'electron';
+import { ipcMain, BrowserWindow } from 'electron';
 import { fileService } from '../services/file-service.js';
 
 export function registerFileHandlers(): void {
@@ -47,5 +47,30 @@ export function registerFileHandlers(): void {
 
   ipcMain.handle('filesystem:remove', async (_event, dirPath: string) => {
     await fileService.remove(dirPath);
+  });
+
+  // ── E2c #13 新增：listDir / readBinaryFile / watch ──
+
+  ipcMain.handle('filesystem:listDir', async (_event, dirPath: string) => {
+    return fileService.listDir(dirPath);
+  });
+
+  ipcMain.handle('filesystem:readBinaryFile', async (_event, filePath: string) => {
+    return fileService.readBinaryFile(filePath);
+  });
+
+  ipcMain.handle('filesystem:watch', (event, dirPath: string) => {
+    const watcherId = fileService.watchFile(dirPath, (change) => {
+      // 通过 webContents 推送事件到渲染进程
+      const win = BrowserWindow.fromWebContents(event.sender);
+      if (win && !win.isDestroyed()) {
+        win.webContents.send('filesystem:changed', change);
+      }
+    });
+    return watcherId;
+  });
+
+  ipcMain.handle('filesystem:unwatch', (_event, watcherId: number) => {
+    fileService.unwatchFile(watcherId);
   });
 }

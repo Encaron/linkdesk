@@ -232,10 +232,11 @@ function renderControl(
 
     case "string":
       if (prop.enum && prop.enum.length > 0) {
-        // Phase 5e：enum 选项用 {value, label} 显示中文标签——对齐终端侧栏
-        const enumOptions = prop.enum.map((v) => ({
+        // E2c #13 16.1：enumDescriptions 优先于 enum 作为 label 来源。
+        // prop.enumDescriptions[i] 与 prop.enum[i] 一一对应——值是 "hex" 但显示 "HEX 编码"。
+        const enumOptions = prop.enum.map((v, i) => ({
           value: v,
-          label: t(v), // "text"→"文本", "hex"→"HEX", etc.
+          label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
         }));
         return (
           <Select
