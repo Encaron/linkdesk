@@ -92,7 +92,10 @@ try {
       open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
     },
     clipboard: {},
-    env: {},
+    // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
+    env: {
+      get: (pluginId?: string) => ipcRenderer.invoke('env:get', pluginId),
+    },
 
     // ── 事件（E2a #5 心跳看门狗等）──
     events: {
