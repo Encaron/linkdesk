@@ -16,7 +16,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
-import { useSerialContext } from "../SerialContext";
+import { useSerialContext } from "./SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { showConfirm } from "@src/components/shared/ConfirmDialog";
 import SidebarSection from "@src/components/shared/SidebarSection";
