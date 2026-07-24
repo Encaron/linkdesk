@@ -1,8 +1,8 @@
 # LinkDesk
 
-> Tauri v2 + React 18 + TypeScript — **通用容器**。比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
+> **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Phase 1-5 建好了通用容器的全部基础设施。终端（串口收发）是验证这套设施的第一个插件——也是当前唯一功能完整的插件。Phase 6 开始加第二个、第三个。**
+> **Tauri 时代 P1-P6 🎉 全部完成。Git 锚点 `52730fc`（2026-07-24）。Electron 迁移（E1→E2→E3，90 步，~4,755 行）即将开始。**
 
 ## 架构
 
@@ -71,7 +71,7 @@ Phase 1-5h ✅ 完成
 - `af2c638` C组——G4 listen 泄漏 → useTauriEvent; G5 render 改 ref → useEffect; G6 toLayoutData setState hack → ref; G12 duplicateTab 跨组 ID 检查
 - G14 → **E2c #19a**（PluginDetailView 幽灵页——订阅 onDidUnregister）；G17 代码已不存在（之前已删）
 
-分支：`phase5.5`
+分支：`phase5.5` → 将重命名为 `phase6`（Tauri 冻结），新分支 `electron` 开始迁移。Git 锚点 `52730fc`。
 
 ## Phase 路线
 
@@ -79,18 +79,11 @@ Phase 1-5h ✅ 完成
 
 | Phase | 内容 | 改框架？ | 状态 |
 |:--:|------|:--:|:--:|
-| **5a** | Registry 暗线（Command/Config/Menu/Protocol + ContextKey + Keybinding + CoreEvents + 11盲区）+ 迁移双写 + Settings Editor 骨架 | ✅ | ✅ |
-| **5b** | 右键菜单归一化——`<ContextMenu>` 统一组件（backdrop + 四种失焦）| ✅ | ✅ |
-| **5c** | 命令面板 + 齿轮菜单走 Registry（替代硬编码） | ✅ | ✅ |
-| **5d** | context key + when 条件打通（4 核心 key 运行时更新 + 菜单/命令过滤 + plugin.json 声明 when + 31 个解析器测试） | ✅ | ✅ |
-| **5e** | 协议下拉框 + 终端 12 设置项迁移 + 接收编码/HEX 模式 + Settings Editor 中文标签 | ✅ | ✅ |
-| **5f** | StorageService + 删旧双写 + 终端专用通道拆除（10 项） | ✅ | ✅ |
-| **5g** | 类型系统去硬编码——TabType 动态化 + plugin.json 声明驱动（7 项） | ✅ | ✅ |
-| **5h** | 运行时动态加载 + PluginLifecycle 归一化 + B1/B2/B78 修复（19 commits，~900 行）| ✅ | ✅ |
-| **5.5** | **三栏交互对标 VS Code + Phase 5 验收修复（5.5-0a ✅ → 5.5-0b ✅ → 5.5a ✅ → 5.5b ✅ → 5.5c C1 ✅ C2+C3 ✅ C4a ✅ C4b ✅ C5 ✅）** | ❌ | ✅ |
-| 6 | 底层加固——零新功能。4 层：6a ErrorBoundary/心跳安全气囊 + 6b 终端归一化（TS） + 6c 基础设施缺口（FileService 等） + **6d Rust 命令插件化（serial.rs 搬迁、serialport 从核心 Cargo.toml 消失）** → `docs/phase6_底层加固/` | ❌ | 📋 |
-| 7 | 多 WebView + 编辑能力——进程隔离 + 文件树 + 主题/语言引擎 + Profile + 壳完善 → `docs/phase7_多WebView与编辑能力/` | ❌ | 📋 |
-| 8 | 卡片工作台 + OLED（纯消费者插件——验证万物皆插件）→ `docs/phase8_工作台与OLED/` | ❌ | 📋 |
+| **P1-P6** | **Tauri 时代——全部基础设施 + 48/48 bug** | ✅ | ✅ |
+| **E1** | **Electron 迁移——换地基（7 步，~1,190 行）** | ✅ | 🔜 |
+| **E2** | **底层加固 + 侧栏扩展位（40 任务，~1,195 行）** | ❌ | 📋 |
+| **E3** | **多 WebView + 壳收尾（43 任务，~2,370 行）🏁 架构最后一站** | ❌ | 📋 |
+| 之后 | 文件树/编辑器/工作台/OLED/地图/逻辑分析仪——全是插件 | ❌ | 📋 |
 
 > Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
 
@@ -153,13 +146,12 @@ Phase 1-5h ✅ 完成
 ## 开发命令
 
 ```bash
-npm run dev          # 纯前端预览
-npx tauri dev        # 完整桌面应用
+npm run dev          # 纯前端预览（Vite）
+npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）
+npm run tauri dev    # Tauri 桌面应用（phase6 分支退路）
 npx tsc --noEmit     # TypeScript 检查
-npx vitest run       # 单元测试（91 个）
+npx vitest run       # 单元测试（151 个）
 ```
-
-改 Tauri 配置（tauri.conf.json / Cargo.toml / lib.rs）后 → 先 `cargo check` → 零错误再 `tauri dev`。
 
 ## 关键文件
 
