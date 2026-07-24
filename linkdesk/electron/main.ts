@@ -73,8 +73,6 @@ function createWindow(): void {
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
 ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
-  // E2a #5：preload 就绪后初始化心跳计时。2s 内收不到 renderer heartbeat → 弹窗。
-  lastHeartbeat = Date.now();
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
