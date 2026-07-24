@@ -11,9 +11,9 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { registerSerialHandlers } from './ipc/serial-handlers';
-import { registerFileHandlers } from './ipc/file-handlers';
-import { registerPluginHandlers } from './ipc/plugin-handlers';
+import { registerSerialHandlers } from './ipc/serial-handlers.js';
+import { registerFileHandlers } from './ipc/file-handlers.js';
+import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);

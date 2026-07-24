@@ -13,7 +13,7 @@
 import * as fs from 'fs/promises';
 import { existsSync, readFileSync } from 'fs';
 import * as path from 'path';
-import { fileService } from './file-service';
+import { fileService } from './file-service.js';
 
 class PluginFileService {
   // ── 工具 ──

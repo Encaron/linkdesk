@@ -6,7 +6,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { fileService } from '../services/file-service';
+import { fileService } from '../services/file-service.js';
 
 export function registerFileHandlers(): void {
   // ── 路径 ──

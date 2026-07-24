@@ -10,7 +10,7 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron';
-import { serialService, OpenPortConfig } from '../services/serial-service';
+import { serialService, OpenPortConfig } from '../services/serial-service.js';
 
 /**
  * 注册所有串口 IPC 处理器。
