@@ -2,7 +2,7 @@
 
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Tauri 时代 P1-P6 🎉 全部完成。Git 锚点 `52730fc`（2026-07-24）。🔥 Electron 迁移 E1 进行中——步 4/7 完成，串口收发已通。**
+> **Tauri 时代 P1-P6 🎉 全部完成。Git 锚点 `52730fc`（2026-07-24）。🔥 Electron 迁移 E1 🎉 完成——7 步 + 3 打包补丁，`npm run electron:build` 生成安装包验证通过。→ E2 底层加固。**
 
 ## 架构
 
