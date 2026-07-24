@@ -2,7 +2,7 @@
  * 终端状态栏组件——E2b #12a + #12b。
  *
  * TX/RX 实时计数 + 连接状态指示灯。
- * loader.ts Vite glob (`plugins/*/statusBar.tsx`) 自动加载，
+ * loader.ts Vite glob (plugins/*/statusBar.tsx) 自动加载，
  * StatusBar.tsx 优先用此组件渲染，替代 plugin.json 中静态文本。
  *
  * #12b：读 serial-monitor.statusBar.txrx / .connection 配置——Settings Editor 可显隐。
