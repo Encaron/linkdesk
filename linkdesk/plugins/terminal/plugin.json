@@ -18,6 +18,25 @@
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
   ],
   "contributes": {
+    "configuration": {
+      "title": "串口监视器",
+      "properties": {
+        "serial-monitor.statusBar.txrx": {
+          "type": "boolean",
+          "default": true,
+          "description": "状态栏显示 TX/RX 计数"
+        },
+        "serial-monitor.statusBar.connection": {
+          "type": "boolean",
+          "default": true,
+          "description": "状态栏显示连接状态指示灯"
+        }
+      }
+    },
+    "configurationDefaults": {
+      "serial-monitor.statusBar.txrx": true,
+      "serial-monitor.statusBar.connection": true
+    },
     "commands": [
       { "id": "terminal.copy", "title": "复制", "category": "终端", "when": "activeEditor == 'terminal'" },
       { "id": "terminal.selectAll", "title": "全选", "category": "终端", "when": "activeEditor == 'terminal'" },
