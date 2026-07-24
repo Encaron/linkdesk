@@ -15,6 +15,8 @@ import {
   unregisterDialogRenderers,
   type DialogOptions,
 } from "../../core/DialogService";
+// E2c #15：re-export showConfirm 兼容旧 import 路径（terminal sidebar 仍引用此文件）
+export { showConfirm } from "../../core/DialogService";
 import "./ConfirmDialog.css";
 
 /* ── 类型 ── */
