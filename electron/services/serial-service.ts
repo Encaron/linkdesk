@@ -86,6 +86,7 @@ class SerialService {
   private portName = '';
   private baudRate = 115200;
   private callbacks: SerialCallbacks | null = null;
+  private flushTimer: ReturnType<typeof setTimeout> | null = null;
 
   /** 注册事件回调——serial-handlers 在初始化时调用 */
   setCallbacks(cb: SerialCallbacks): void {
@@ -174,8 +175,11 @@ class SerialService {
     this.port.on('data', (chunk: Buffer) => {
       if (this.isClosing) return;
 
-      // DEBUG: 验证串口收到原始数据
-      console.log('[serial-service] RX raw:', chunk.length, 'bytes, first byte:', chunk[0]?.toString(16));
+      // 收到新数据就重置超时计时器
+      if (this.flushTimer) {
+        clearTimeout(this.flushTimer);
+        this.flushTimer = null;
+      }
 
       // RX 统计
       this.callbacks?.onStats({ rx: chunk.length });
@@ -185,6 +189,12 @@ class SerialService {
 
       // 按 \n 拆行并 push（对标 Rust read_loop 行拆分逻辑）
       this.flushLines();
+
+      // 对标 Rust 100ms 超时冲刷——无 \n 的数据不会永远滞留缓冲区
+      this.flushTimer = setTimeout(() => {
+        this.flushTimer = null;
+        this.flushLineResidual();
+      }, 100);
     });
 
     // 错误处理——对标 Rust 读错误休眠 100ms
@@ -225,7 +235,6 @@ class SerialService {
           const line = complete.subarray(start, i + 1);
           const text = decodeBuffer(Buffer.from(line), this.encoding).trim();
           if (text) {
-            console.log('[serial-service] emit onData:', JSON.stringify(text));
             this.callbacks?.onData(text);
           }
           start = i + 1;
