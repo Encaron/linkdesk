@@ -50,12 +50,12 @@ export function registerConfiguration(
   pluginId: string,
   contribution: ConfigurationContribution
 ): void {
-  // E2c #13 16.2：检测重复 key → 抛硬错误（fail-fast）。
-  // 两个插件声明同名配置 key → 后注册者静默覆盖 → 运行时才暴露。
+  // E2c #13 16.2：检测重复 key → console.warn（暂不抛硬错误——parseContributions 没有 try/catch，
+  // 抛错会导致整个插件加载失败。待 E2c #19b 审计后改 fail-fast。）
   for (const key of Object.keys(contribution.properties)) {
     const owner = _configKeyOwner.get(key);
     if (owner && owner !== pluginId) {
-      throw new Error(
+      console.warn(
         `[ConfigurationRegistry] 配置项 "${key}" 已由插件 "${owner}" 注册，` +
         `插件 "${pluginId}" 重复声明。修改 plugin.json 中 contributes.configuration 的 key 名。`
       );
@@ -101,7 +101,12 @@ export function getMergedSchema(): Record<string, ConfigurationProperty> {
   const merged: Record<string, ConfigurationProperty> = {};
   for (const contrib of _contributions.values()) {
     for (const [key, prop] of Object.entries(contrib.properties)) {
-      // E2c #13 16.2：重复 key 已在 registerConfiguration() 抛硬错误——此处不再 check
+      // E2c #13 16.2：重复 key——运行时 warn，待 #19b 审计后改 fail-fast
+      if (merged[key]) {
+        const owner = _configKeyOwner.get(key);
+        console.warn(`[ConfigurationRegistry] 配置项 "${key}" 重复` +
+          (owner ? `——先注册插件 "${owner}"，后注册覆盖` : "——后注册覆盖先注册"));
+      }
       merged[key] = prop;
     }
   }
