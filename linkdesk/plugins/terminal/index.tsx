@@ -20,8 +20,7 @@ import {
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
 import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
-import { invoke } from "@tauri-apps/api/core";
-import { useTauriEvent } from "@src/hooks/useTauriEvent";
+import { useIpcEvent } from "@src/hooks/useIpcEvent";
 import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId } from "./useTerminalSessions";
@@ -453,7 +452,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       .join(" ");
   };
 
-  useTauriEvent<string>("serial-data", (payload) => {
+  useIpcEvent<string>("serial-data", (payload) => {
     // C1：用当前 tab 的 session ID 判断——per-tab 绑定，非全局 activeSession
     if (!sessionIdRef.current) return;
     if (!portOpenRef.current) return;
@@ -467,7 +466,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
   });
 
-  useTauriEvent<string>("serial-system", (payload) => {
+  useIpcEvent<string>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
     if (/Port opened|已打开/.test(payload)) {
       portOpenRef.current = true;
