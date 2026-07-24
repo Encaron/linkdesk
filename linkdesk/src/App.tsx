@@ -1,7 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { invoke } from "@tauri-apps/api/core";
-import { useTauriEvent } from "./hooks/useTauriEvent";
+// Electron IPC——window.linkdesk 由 preload-shell.ts 注入
+const linkdesk = () => (window as any).linkdesk;
+import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
@@ -238,10 +239,10 @@ function App() {
       // Bug fix (F5 状态不同步)：F5 只重启前端 React state，Rust 后端串口仍在运行。
       // 启动时查询后端实际状态，同步 isOpen/portName/baudRate。
       try {
-        const status = await invoke<{ is_open: boolean; port_name: string; baud_rate: number }>("get_serial_status");
-        if (status.is_open) {
-          setPortName(status.port_name);
-          setBaudRate(String(status.baud_rate));
+        const status = await linkdesk().serial.getStatus();
+        if (status.isOpen) {
+          setPortName(status.portName);
+          setBaudRate(String(status.baudRate));
           setIsOpen(true);
         }
       } catch { /* 首次启动或串口不可用——保持默认值 */ }
@@ -421,12 +422,12 @@ function App() {
   const handleToggleOpen = useCallback(async (encoding?: string) => {
     try {
       if (isOpen) {
-        await invoke("close_port");
+        await linkdesk().serial.closePort();
         setIsOpen(false);
       } else {
         // B86 fix：用 ref 读最新值——ControlPanel 在同一次事件循环里先 setPortName
         // （React 异步 setState）再调 toggleOpen，闭包 portName 还是旧值 → 打开失败
-        await invoke("open_port", { portName: portNameRef.current, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
+        await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
         setIsOpen(true);
       }
     } catch (e: any) {
@@ -438,8 +439,8 @@ function App() {
     setBaudRate(newBaud);
     if (isOpen) {
       try {
-        await invoke("close_port");
-        await invoke("open_port", { portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
+        await linkdesk().serial.closePort();
+        await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`波特率切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -451,8 +452,8 @@ function App() {
     setPortName(newPort);
     if (isOpen) {
       try {
-        await invoke("close_port");
-        await invoke("open_port", { portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
+        await linkdesk().serial.closePort();
+        await linkdesk().serial.openPort({ portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(`端口切换失败：${e?.message || e}`);
         setIsOpen(false);
@@ -475,7 +476,7 @@ function App() {
   useEffect(() => {
     const refreshPorts = async () => {
       try {
-        const list = await invoke<PortInfo[]>("list_ports");
+        const list = await linkdesk().serial.listPorts();
         setPorts(list);
       } catch { /* 静默 */ }
     };
@@ -485,14 +486,14 @@ function App() {
   }, []);
 
   // TX/RX 字节计数——useTauriEvent 内置 generation counter，防 StrictMode 泄漏
-  useTauriEvent<{ tx?: number; rx?: number }>("serial-stats", (payload) => {
+  useIpcEvent<{ tx?: number; rx?: number }>("serial-stats", (payload) => {
     if (payload.tx) setTxBytes((prev) => prev + payload.tx!);
     if (payload.rx) setRxBytes((prev) => prev + payload.rx!);
   });
 
   // E5：监听 Rust serial-system 事件——invokeBeforeClose 直接调 close_port，
   // 不走 handleToggleOpen → setIsOpen(false)。此处补刀同步 isOpen 状态。
-  useTauriEvent<string>("serial-system", (payload) => {
+  useIpcEvent<string>("serial-system", (payload) => {
     if (/Port closed|关闭/.test(payload)) {
       setIsOpen(false);
     }

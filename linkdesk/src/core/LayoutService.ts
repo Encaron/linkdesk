@@ -141,20 +141,13 @@ export async function loadNamedWorkspaceLayout(
   name: string
 ): Promise<WorkspaceLayout | null> {
   // 具名工作区存在独立目录（workspaces/），不走 StorageService
-  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-  if (!(window as any).__TAURI__) return null;
+  const lk = (window as any).linkdesk;
+  if (!lk?.filesystem) return null;
   try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-  } catch {
-    return null;
-  }
-  try {
-    const dir = await pathApi.join(await pathApi.appDataDir(), "workspaces");
-    const path = await pathApi.join(dir, `${name}.json`);
-    if (!(await fsApi.exists(path))) return null;
-    const raw = await fsApi.readTextFile(path);
+    const dir = await lk.path.join(await lk.path.appDataDir(), "workspaces");
+    const path = await lk.path.join(dir, `${name}.json`);
+    if (!(await lk.filesystem.exists(path))) return null;
+    const raw = await lk.filesystem.readTextFile(path);
     return JSON.parse(raw);
   } catch {
     return null;
@@ -166,20 +159,13 @@ export async function saveNamedWorkspaceLayout(
   name: string,
   layout: WorkspaceLayout
 ): Promise<void> {
-  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-  if (!(window as any).__TAURI__) return;
+  const lk = (window as any).linkdesk;
+  if (!lk?.filesystem) return;
   try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-  } catch {
-    return;
-  }
-  try {
-    const dir = await pathApi.join(await pathApi.appDataDir(), "workspaces");
-    if (!(await fsApi.exists(dir))) await fsApi.mkdir(dir, { recursive: true });
-    const path = await pathApi.join(dir, `${name}.json`);
-    await fsApi.writeTextFile(path, JSON.stringify(layout, null, 2));
+    const dir = await lk.path.join(await lk.path.appDataDir(), "workspaces");
+    if (!(await lk.filesystem.exists(dir))) await lk.filesystem.mkdir(dir, { recursive: true });
+    const path = await lk.path.join(dir, `${name}.json`);
+    await lk.filesystem.writeTextFile(path, JSON.stringify(layout, null, 2));
   } catch { /* 静默 */ }
 }
 

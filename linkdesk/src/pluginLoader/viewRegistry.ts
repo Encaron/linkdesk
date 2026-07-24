@@ -9,7 +9,8 @@ import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { invoke } from "@tauri-apps/api/core";
+// Electron IPC——window.linkdesk 由 preload-shell.ts 注入
+const linkdesk = () => (window as any).linkdesk;
 import { showConfirm } from "../components/shared/ConfirmDialog";
 
 
@@ -73,7 +74,7 @@ export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
   if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
   if (behavior.invokeBeforeClose) {
-    try { await invoke(behavior.invokeBeforeClose); } catch {}
+    try { await linkdesk().commands.execute(behavior.invokeBeforeClose); } catch {}
   }
   return true;
 }
