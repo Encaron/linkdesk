@@ -80,7 +80,10 @@ try {
     // ── 以下命名空间在步 4 接入 ──
     commands: {},
     config: {},
-    dialog: {},
+    // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
+    dialog: {
+      open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
+    },
     clipboard: {},
     env: {},
   });
