@@ -372,8 +372,13 @@ async function loadPlugin(
   }
 
   if (manifest.contributes) {
-    parseContributions(pluginId, manifest.contributes);
-    contributed = true;
+    try {
+      parseContributions(pluginId, manifest.contributes);
+      contributed = true;
+    } catch (e: any) {
+      console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
+      // 不阻断——插件视图可能已注册成功，只有配置/命令/菜单等声明失效
+    }
   }
 
   if (!contributed) {
@@ -464,7 +469,11 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   // 5. 解析 contributions
   if (manifest.contributes) {
-    parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
+    try {
+      parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
+    } catch (e: any) {
+      console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
+    }
   }
 
   // 6. 主题/语言（和 loadPlugin 相同的逻辑）
