@@ -6,7 +6,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { pluginFileService } from '../services/plugin-file-service';
+import { pluginFileService } from '../services/plugin-file-service.js';
 
 export function registerPluginHandlers(): void {
   // 列出插件目录
