@@ -2,6 +2,9 @@ node_modules/
 dist/
 dist-electron/
 target/
+release/
+tsconfig.tsbuildinfo
+.claude/
 *.log
 .DS_Store
 Thumbs.db
