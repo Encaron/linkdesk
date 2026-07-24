@@ -95,10 +95,12 @@ const SESSION_COLORS = [
 // ── 模块级单例状态 ──
 // 不在 React 树上——对标 ConfigurationService。侧栏切到别的插件时 unmount 但状态不丢。
 
-let _sessions: TerminalSession[] = [];
-let _activeSessionId: string | null = null;
-let _sessionCounter = 0;
-let _colorIndex = 0;
+const _store = {
+  sessions: [] as TerminalSession[],
+  activeSessionId: null as string | null,
+  sessionCounter: 0,
+  colorIndex: 0,
+}
 const _listeners = new Set<() => void>();
 
 // ── localStorage 持久化（对标 LayoutService——F5 刷新恢复 session 数据）──
@@ -113,11 +115,11 @@ function _restoreSessions(): void {
       const data = JSON.parse(raw);
       if (Array.isArray(data.sessions)) {
         // 恢复时 connected 强制 false——启动后由 SerialContext 重新派生
-        _sessions = data.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
+        _store.sessions = data.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
       }
-      if (typeof data.activeSessionId === "string") _activeSessionId = data.activeSessionId;
-      if (typeof data.sessionCounter === "number") _sessionCounter = data.sessionCounter;
-      if (typeof data.colorIndex === "number") _colorIndex = data.colorIndex;
+      if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
+      if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
+      if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
     }
   } catch { /* 首次启动或数据损坏——静默忽略 */ }
 }
@@ -126,10 +128,10 @@ function _restoreSessions(): void {
 function _persistSessions(): void {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      sessions: _sessions,
-      activeSessionId: _activeSessionId,
-      sessionCounter: _sessionCounter,
-      colorIndex: _colorIndex,
+      sessions: _store.sessions,
+      activeSessionId: _store.activeSessionId,
+      sessionCounter: _store.sessionCounter,
+      colorIndex: _store.colorIndex,
     }));
   } catch { /* quota exceeded 等极端情况——静默忽略 */ }
 }
@@ -168,14 +170,14 @@ export function useTerminalSessions() {
 
   return {
     /** 所有会话（不可直接 mutate——用 updateSession） */
-    sessions: _sessions,
+    sessions: _store.sessions,
 
     /** 当前选中会话的 ID */
-    activeSessionId: _activeSessionId,
+    activeSessionId: _store.activeSessionId,
 
     /** 当前选中会话——派生值，响应式更新 */
     get activeSession(): TerminalSession | null {
-      return _sessions.find((s) => s.id === _activeSessionId) ?? null;
+      return _store.sessions.find((s) => s.id === _store.activeSessionId) ?? null;
     },
 
     // ── CRUD ──
@@ -184,30 +186,30 @@ export function useTerminalSessions() {
      *  Phase 5.5c C5：可选 id 参数——sidebar 先 createTab 拿到 tabId 再传入，确保 session.id === tab.id */
     createSession(name: string, id?: string): TerminalSession {
       const session: TerminalSession = {
-        id: id || `terminal-${++_sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
+        id: id || `terminal-${++_store.sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
         name,
         ...cloneDefaults(),
-        color: SESSION_COLORS[_colorIndex % SESSION_COLORS.length],
+        color: SESSION_COLORS[_store.colorIndex % SESSION_COLORS.length],
       };
-      _colorIndex++;
-      _sessions = [..._sessions, session];
-      _activeSessionId = session.id;
+      _store.colorIndex++;
+      _store.sessions = [..._store.sessions, session];
+      _store.activeSessionId = session.id;
       notify();
       return session;
     },
 
     /** 删除会话——自动重选相邻会话（如果删除的是当前活跃） */
     removeSession(id: string): void {
-      _sessions = _sessions.filter((s) => s.id !== id);
-      if (_activeSessionId === id) {
-        _activeSessionId = _sessions.length > 0 ? _sessions[0].id : null;
+      _store.sessions = _store.sessions.filter((s) => s.id !== id);
+      if (_store.activeSessionId === id) {
+        _store.activeSessionId = _store.sessions.length > 0 ? _store.sessions[0].id : null;
       }
       notify();
     },
 
     /** 部分更新会话字段——浅合并（§3.12：每个字段只有一个写入入口，但底层都走这一个函数） */
     updateSession(id: string, patch: Partial<TerminalSession>): void {
-      _sessions = _sessions.map((s) =>
+      _store.sessions = _store.sessions.map((s) =>
         s.id === id ? { ...s, ...patch } : s,
       );
       notify();
@@ -215,16 +217,16 @@ export function useTerminalSessions() {
 
     /** 切换活跃会话 */
     setActiveSession(id: string | null): void {
-      _activeSessionId = id;
+      _store.activeSessionId = id;
       notify();
     },
 
     /** 重置所有状态——供插件 onWillUninstall 调用 */
     resetAll(): void {
-      _sessions = [];
-      _activeSessionId = null;
-      _sessionCounter = 0;
-      _colorIndex = 0;
+      _store.sessions = [];
+      _store.activeSessionId = null;
+      _store.sessionCounter = 0;
+      _store.colorIndex = 0;
       notify();
     },
   };
@@ -249,26 +251,26 @@ export function useSession(id: string | undefined) {
   // didAutoCreate ref 确保只在组件首次挂载时检查一次，不会在 keep-alive 期间重复创建。
   const didAutoCreate = useRef(false);
   useEffect(() => {
-    if (!didAutoCreate.current && id && !_sessions.find((s) => s.id === id)) {
+    if (!didAutoCreate.current && id && !_store.sessions.find((s) => s.id === id)) {
       didAutoCreate.current = true;
       const session: TerminalSession = {
         id,
         name: `会话`,
         ...cloneDefaults(),
-        color: SESSION_COLORS[_colorIndex % SESSION_COLORS.length],
+        color: SESSION_COLORS[_store.colorIndex % SESSION_COLORS.length],
       };
-      _colorIndex++;
-      _sessions = [..._sessions, session];
+      _store.colorIndex++;
+      _store.sessions = [..._store.sessions, session];
       notify();
     }
   }, [id]);
 
-  const session = id ? (_sessions.find((s) => s.id === id) ?? null) : null;
+  const session = id ? (_store.sessions.find((s) => s.id === id) ?? null) : null;
 
   const update = useCallback(
     (patch: Partial<TerminalSession>) => {
       if (id) {
-        _sessions = _sessions.map((s) =>
+        _store.sessions = _store.sessions.map((s) =>
           s.id === id ? { ...s, ...patch } : s,
         );
         notify();
@@ -286,23 +288,23 @@ export function useSession(id: string | undefined) {
 
 /** 获取当前活跃 session ID——不通过 hook，供 Tauri event handler 使用 */
 export function getActiveSessionId(): string | null {
-  return _activeSessionId;
+  return _store.activeSessionId;
 }
 
 /** 设置活跃 session ID——不通过 hook，供 TerminalView 标签页聚焦时同步侧栏 */
 export function setActiveSessionId(id: string | null): void {
-  _activeSessionId = id;
+  _store.activeSessionId = id;
   notify();
 }
 
 /** 按 ID 查 session——不通过 hook，供非 React 上下文使用 */
 export function getSessionById(id: string): TerminalSession | undefined {
-  return _sessions.find((s) => s.id === id);
+  return _store.sessions.find((s) => s.id === id);
 }
 
 /** 按 ID 更新 session——不通过 hook，供非 React 上下文使用 */
 export function updateSessionById(id: string, patch: Partial<TerminalSession>): void {
-  _sessions = _sessions.map((s) =>
+  _store.sessions = _store.sessions.map((s) =>
     s.id === id ? { ...s, ...patch } : s,
   );
   notify();
