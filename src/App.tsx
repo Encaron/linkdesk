@@ -4,6 +4,7 @@ import { useTranslation } from "react-i18next";
 const linkdesk = () => (window as any).linkdesk;
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
+import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
@@ -66,6 +67,8 @@ function App() {
 
   // E2a #5：心跳看门狗——App mount 即开始发送，主进程 2s 未收到 → 弹窗 "应用无响应"
   useHeartbeat();
+  // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
+  useMemoryMonitor();
   const [isOpen, setIsOpen] = useState(false);
   const [ports, setPorts] = useState<PortInfo[]>([]);
   const [portName, setPortName] = useState("");
