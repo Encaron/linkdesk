@@ -20,6 +20,7 @@ export function registerSerialHandlers(mainWindow: BrowserWindow): void {
   // 将 serial-service 的数据推送到渲染进程
   serialService.setCallbacks({
     onData: (text) => {
+      console.log('[serial-handlers] pushing serial:data:', JSON.stringify(text));
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:data', text);
       }
@@ -30,6 +31,7 @@ export function registerSerialHandlers(mainWindow: BrowserWindow): void {
       }
     },
     onSystem: (msg) => {
+      console.log('[serial-handlers] pushing serial:system:', msg);
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:system', msg);
       }

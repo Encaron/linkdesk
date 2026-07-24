@@ -174,6 +174,9 @@ class SerialService {
     this.port.on('data', (chunk: Buffer) => {
       if (this.isClosing) return;
 
+      // DEBUG: 验证串口收到原始数据
+      console.log('[serial-service] RX raw:', chunk.length, 'bytes, first byte:', chunk[0]?.toString(16));
+
       // RX 统计
       this.callbacks?.onStats({ rx: chunk.length });
 
@@ -222,6 +225,7 @@ class SerialService {
           const line = complete.subarray(start, i + 1);
           const text = decodeBuffer(Buffer.from(line), this.encoding).trim();
           if (text) {
+            console.log('[serial-service] emit onData:', JSON.stringify(text));
             this.callbacks?.onData(text);
           }
           start = i + 1;
