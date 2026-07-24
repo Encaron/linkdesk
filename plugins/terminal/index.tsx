@@ -702,8 +702,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.copy",
-      title: "复制",
-      category: "终端",
+      title: t("复制"),
+      category: t("终端"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -716,8 +716,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.selectAll",
-      title: "全选",
-      category: "终端",
+      title: t("全选"),
+      category: t("终端"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -729,8 +729,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.clear",
-      title: "清空接收区",
-      category: "终端",
+      title: t("清空接收区"),
+      category: t("终端"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (view) {
@@ -743,16 +743,16 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.togglePause",
-      title: "暂停接收",
-      category: "终端",
+      title: t("暂停接收"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setPaused((p) => !p);
       },
     });
     registerCommand("terminal", {
       id: "terminal.quickSendFill",
-      title: "回填到发送区",
-      category: "终端",
+      title: t("回填到发送区"),
+      category: t("终端"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -762,8 +762,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.quickSendEdit",
-      title: "编辑",
-      category: "终端",
+      title: t("编辑"),
+      category: t("终端"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -777,8 +777,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.quickSendDelete",
-      title: "删除",
-      category: "终端",
+      title: t("删除"),
+      category: t("终端"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -788,16 +788,16 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.clearSend",
-      title: "清空发送区",
-      category: "终端",
+      title: t("清空发送区"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setSendValue("");
       },
     });
     registerCommand("terminal", {
       id: "terminal.exportLog",
-      title: "导出日志",
-      category: "终端",
+      title: t("导出日志"),
+      category: t("终端"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -818,8 +818,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.toggleSendMode",
-      title: "切换到 HEX 发送",
-      category: "终端",
+      title: t("切换到 HEX 发送"),
+      category: t("终端"),
       handler: async () => {
         // Phase 5f：直连 ConfigurationService——通过 ref 读取/写入避免闭包过期
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
@@ -827,16 +827,16 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
     registerCommand("terminal", {
       id: "terminal.toggleEcho",
-      title: "关闭消息回显",
-      category: "终端",
+      title: t("关闭消息回显"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
     });
     registerCommand("terminal", {
       id: "terminal.toggleLineNumbers",
-      title: "隐藏行号",
-      category: "终端",
+      title: t("隐藏行号"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
@@ -847,8 +847,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.togglePause",
-      title: paused ? "继续接收" : "暂停接收",
-      category: "终端",
+      title: paused ? t("继续接收") : t("暂停接收"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setPaused((p) => !p);
       },
@@ -859,8 +859,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleSendMode",
-      title: sendMode === "hex" ? "切换到文本发送" : "切换到 HEX 发送",
-      category: "终端",
+      title: sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
@@ -871,8 +871,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleEcho",
-      title: showEcho ? "关闭消息回显" : "开启消息回显",
-      category: "终端",
+      title: showEcho ? t("关闭消息回显") : t("开启消息回显"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
@@ -883,8 +883,8 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   useEffect(() => {
     registerCommand("terminal", {
       id: "terminal.toggleLineNumbers",
-      title: showLineNumbers ? "隐藏行号" : "显示行号",
-      category: "终端",
+      title: showLineNumbers ? t("隐藏行号") : t("显示行号"),
+      category: t("终端"),
       handler: async () => {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
