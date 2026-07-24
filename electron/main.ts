@@ -79,9 +79,9 @@ ipcMain.on('preload-ready', () => {
 // 渲染进程每 500ms 发 heartbeat。主进程每 1s 检查一次，
 // 若超过 2s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
 // 限制：单 WebView 下只能检测，无法恢复。E3 多进程后改为只重载卡死的 WebView。
-let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（preload 未就绪前不弹窗）
-const HEARTBEAT_TIMEOUT = 2000; // ms
-const HEARTBEAT_CHECK_INTERVAL = 1000; // ms
+let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（渲染进程未就绪前不弹窗）
+const HEARTBEAT_TIMEOUT = 10_000; // 10s 无心跳 → 判定卡死
+const HEARTBEAT_CHECK_INTERVAL = 3000; // 每 3s 检查一次
 
 ipcMain.on('heartbeat', () => {
   lastHeartbeat = Date.now();
@@ -89,7 +89,7 @@ ipcMain.on('heartbeat', () => {
 
 setInterval(() => {
   if (mainWindow === null || mainWindow.isDestroyed()) return;
-  if (lastHeartbeat === 0) return; // preload 未就绪——渲染进程还没开始发心跳
+  if (lastHeartbeat === 0) return; // 渲染进程未就绪——还没开始发心跳
   const elapsed = Date.now() - lastHeartbeat;
   if (elapsed > HEARTBEAT_TIMEOUT) {
     // 防止重复弹窗——重置计时器避免连续弹出
