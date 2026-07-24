@@ -30,7 +30,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports, isOpen } = state;
-  const { toggleOpen, setPortName, setBaudRate } = actions;
+  const { toggleOpen, setSourceName: setPortName, setBaudRate } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
   const { session: activeSession, update: updateSession } = useSession(sourceId);
@@ -41,8 +41,8 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
   // ── session.connected 派生规则（Bug 3 防御） ──
   // 不是独立 set——从 SerialContext 派生。
-  // session.port 和 SerialContext.portName 一致 + SerialContext.isOpen = true → connected
-  const connected = isOpen && activeSession !== null && state.portName === activeSession.port;
+  // session.port 和 SourceState.sourceName 一致 + SourceState.isOpen = true → connected
+  const connected = isOpen && activeSession !== null && state.sourceName === activeSession.port;
 
   // ── 操作 ──
 
@@ -81,7 +81,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       if (!activeSession.port && ports.length > 0) {
         updateSession({ port: ports[0].name });
         await setPortName(ports[0].name, enc);
-      } else if (activeSession.port && activeSession.port !== state.portName) {
+      } else if (activeSession.port && activeSession.port !== state.sourceName) {
         await setPortName(activeSession.port, enc);
       }
       if (activeSession.baudRate !== state.baudRate) {
@@ -90,7 +90,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     }
     // E8：receiveCoding 从 session 传入——不再读旧配置系统
     await toggleOpen(activeSession?.receiveCoding);
-  }, [isOpen, activeSession, state.portName, state.baudRate, setPortName, setBaudRate, toggleOpen, ports, updateSession]);
+  }, [isOpen, activeSession, state.sourceName, state.baudRate, setPortName, setBaudRate, toggleOpen, ports, updateSession]);
 
   // ── 未连接 / 无会话状态 ──
 
