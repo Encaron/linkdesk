@@ -73,13 +73,15 @@ function createWindow(): void {
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
 ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
+  // E2a #5：preload 就绪后初始化心跳计时。2s 内收不到 renderer heartbeat → 弹窗。
+  lastHeartbeat = Date.now();
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
 // 渲染进程每 500ms 发 heartbeat。主进程每 1s 检查一次，
 // 若超过 2s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
 // 限制：单 WebView 下只能检测，无法恢复。E3 多进程后改为只重载卡死的 WebView。
-let lastHeartbeat = Date.now();
+let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（preload 未就绪前不弹窗）
 const HEARTBEAT_TIMEOUT = 2000; // ms
 const HEARTBEAT_CHECK_INTERVAL = 1000; // ms
 
@@ -89,6 +91,7 @@ ipcMain.on('heartbeat', () => {
 
 setInterval(() => {
   if (mainWindow === null || mainWindow.isDestroyed()) return;
+  if (lastHeartbeat === 0) return; // preload 未就绪——渲染进程还没开始发心跳
   const elapsed = Date.now() - lastHeartbeat;
   if (elapsed > HEARTBEAT_TIMEOUT) {
     // 防止重复弹窗——重置计时器避免连续弹出
