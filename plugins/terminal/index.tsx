@@ -454,8 +454,9 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   useIpcEvent<string>("serial-data", (payload) => {
     // C1：用当前 tab 的 session ID 判断——per-tab 绑定，非全局 activeSession
-    if (!sessionIdRef.current) return;
-    if (!portOpenRef.current) return;
+    console.log('[terminal] serial-data received, sessionId=', sessionIdRef.current, 'portOpen=', portOpenRef.current);
+    if (!sessionIdRef.current) { console.log('[terminal] serial-data DROPPED: no sessionId'); return; }
+    if (!portOpenRef.current) { console.log('[terminal] serial-data DROPPED: port not open'); return; }
     const fmt = tsFormatRef.current;
     const displayText = receiveModeRef.current === "hex"
       ? toHexDisplay(payload)
@@ -467,8 +468,10 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   });
 
   useIpcEvent<string>("serial-system", (payload) => {
+    console.log('[terminal] serial-system received:', payload);
     const fmt = tsFormatRef.current;
     if (/Port opened|已打开/.test(payload)) {
+      console.log('[terminal] portOpenRef → true');
       portOpenRef.current = true;
       pausedBuffer.current = [];
       setPausedCount(0);
