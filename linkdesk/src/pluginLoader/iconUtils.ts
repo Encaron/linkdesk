@@ -6,9 +6,7 @@
  */
 
 import type { PluginManifest } from "../core/types";
-
-/** Vite base 路径——生产构建用相对路径，dev 用绝对路径 */
-const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
+import { getAssetPath } from "../core/assetPath";
 
 export interface ResolvedIcon {
   /** img src——非 codicon 图标时返回路径 */
@@ -23,7 +21,7 @@ export interface ResolvedIcon {
  * 从 manifest 解析图标。
  * - iconSource: "codicon" → { codicon: "codicon-{icon}" }
  * - iconSource: "svg" | "url" → { src: icon }
- * - 无 iconSource → { src: "${BASE}assets/icons/{icon}.png" }
+ * - 无 iconSource → { src: getAssetPath("assets/icons/{icon}.png") }
  * - icon 含 "." → 当作完整文件名（如 "extensions.svg"）
  * - 全无 → { emoji: "📄" }
  */
@@ -41,8 +39,8 @@ export function resolvePluginIcon(manifest: PluginManifest | { icon?: string; ic
 
   if (icon) {
     // PNG 兜底：含扩展名=直接用，不含=加 .png
-    if (icon.includes(".")) return { src: `${BASE}assets/icons/${icon}` };
-    return { src: `${BASE}assets/icons/${icon}.png` };
+    if (icon.includes(".")) return { src: getAssetPath(`assets/icons/${icon}`) };
+    return { src: getAssetPath(`assets/icons/${icon}.png`) };
   }
 
   return { emoji: "📄" };
@@ -51,5 +49,5 @@ export function resolvePluginIcon(manifest: PluginManifest | { icon?: string; ic
 /** 从 pluginId + manifest 生成默认图标（插件未声明 icon 时使用） */
 export function resolvePluginIconById(pluginId: string, manifest?: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
   if (manifest) return resolvePluginIcon(manifest);
-  return { src: `${BASE}assets/icons/${pluginId}.png`, emoji: "📄" };
+  return { src: getAssetPath(`assets/icons/${pluginId}.png`), emoji: "📄" };
 }
