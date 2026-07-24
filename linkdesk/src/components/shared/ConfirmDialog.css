@@ -24,6 +24,13 @@
   z-index: var(--z-overlay);
 }
 
+.confirm-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
 .confirm-message {
   margin: 0 0 20px 0;
   font-size: 13px;

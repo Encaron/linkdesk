@@ -14,7 +14,8 @@ import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/terminal/CommandPalette";
-import { ConfirmDialog, showConfirm } from "./components/shared/ConfirmDialog";
+import { ConfirmDialog } from "./components/shared/ConfirmDialog";
+import { showConfirm } from "./core/DialogService";
 
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
