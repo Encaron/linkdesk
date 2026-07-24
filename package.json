@@ -8,7 +8,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
-    "tauri": "tauri",
+
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && electron .\"",
     "build:plugins": "node scripts/build-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch"
@@ -19,9 +19,7 @@
     "@codemirror/state": "^6.7.1",
     "@codemirror/view": "^6.43.6",
     "@monaco-editor/react": "^4.7.0",
-    "@tauri-apps/api": "^2",
-    "@tauri-apps/plugin-dialog": "^2.7.2",
-    "@tauri-apps/plugin-fs": "^2.5.1",
+
     "@vscode/codicons": "^0.0.45",
     "canvas": "^3.2.3",
     "concurrently": "^10.0.3",
@@ -34,7 +32,7 @@
     "wait-on": "^9.1.0"
   },
   "devDependencies": {
-    "@tauri-apps/cli": "^2",
+
     "@testing-library/react": "^16.3.2",
     "@types/iconv-lite": "^0.0.1",
     "@types/react": "^18.3.12",

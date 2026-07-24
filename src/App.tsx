@@ -485,7 +485,7 @@ function App() {
     return () => clearInterval(timer);
   }, []);
 
-  // TX/RX 字节计数——useTauriEvent 内置 generation counter，防 StrictMode 泄漏
+  // TX/RX 字节计数——useIpcEvent 内置 generation counter，防 StrictMode 泄漏
   useIpcEvent<{ tx?: number; rx?: number }>("serial-stats", (payload) => {
     if (payload.tx) setTxBytes((prev) => prev + payload.tx!);
     if (payload.rx) setRxBytes((prev) => prev + payload.rx!);
