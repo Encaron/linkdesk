@@ -46,6 +46,8 @@ export default defineConfig(async () => {
 
   return {
     plugins: [react()],
+    // Electron loadFile 需要相对路径——绝对路径 /assets/ 会解析到文件系统根
+    base: './',
     clearScreen: false,
     server: {
       port: 1420,
