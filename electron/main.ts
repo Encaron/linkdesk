@@ -1,20 +1,20 @@
 /**
  * Electron 主进程入口
  *
- * E1 步 1：创建 BrowserWindow 加载 LinkDesk UI。
- * 串口/文件/插件管理服务在步 2-4 逐步接入。
+ * E1 步 1-5：Electron 壳 + 串口/文件/插件/dialog + linkdesk:// 协议。
  *
- * 架构：单实例锁 + BrowserWindow + preload 加载确认。
+ * 架构：单实例锁 + BrowserWindow + preload 加载确认 + linkdesk:// 自定义协议。
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol } from 'electron';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
 import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
+import { registerProtocol } from './protocol.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);
@@ -75,8 +75,16 @@ ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
 });
 
+// ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
+protocol.registerSchemesAsPrivileged([
+  { scheme: 'linkdesk', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+]);
+
 // ── 应用生命周期 ──
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  registerProtocol();
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   app.quit();
