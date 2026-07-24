@@ -14,7 +14,12 @@ export default function TerminalStatusBar() {
   return (
     <>
       {showConnection && (
-        <span title={isOpen ? "已连接" : "未连接"}>●</span>
+        <span
+          title={isOpen ? "已连接" : "未连接"}
+          style={{ color: isOpen ? "var(--terminal-ok, #22C55E)" : "var(--text-muted)" }}
+        >
+          ●
+        </span>
       )}
       {showConnection && showTxRx && (
         <span className="status-divider">│</span>
