@@ -14,6 +14,7 @@ import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
 import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
+import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerProtocol } from './protocol.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
@@ -52,6 +53,7 @@ function createWindow(): void {
   registerFileHandlers();
   registerPluginHandlers();
   registerDialogHandlers();
+  registerEnvHandlers();
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
