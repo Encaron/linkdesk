@@ -8,7 +8,8 @@
  */
 
 import { useCallback } from "react";
-import { invoke } from "@tauri-apps/api/core";
+// Electron IPC——window.linkdesk 由 preload-shell.ts 注入
+const linkdesk = () => (window as any).linkdesk;
 import { HexToBytes } from "./DataConverter";
 
 /* ── 类型 ── */
@@ -79,7 +80,7 @@ export function useSendData(
     try {
       if (ctx.sendMode === "hex") {
         const bytes = Array.from(HexToBytes(text));
-        await invoke("send_data", { data: bytes });
+        await linkdesk().serial.sendData(bytes);
         cb.onEcho(
           `${formatTimestamp(ctx.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`
         );
@@ -93,7 +94,7 @@ export function useSendData(
         const ending = (opts?.ending ?? ctx.lineEnding)
           .replace(/\\r/g, "\r")
           .replace(/\\n/g, "\n");
-        await invoke("send_text", { text: text + ending, encoding: ctx.sendCoding });
+        await linkdesk().serial.sendText(text + ending, ctx.sendCoding);
         const safeText = text
           .replace(/\r\n/g, "\\r\\n")
           .replace(/\n/g, "\\n")

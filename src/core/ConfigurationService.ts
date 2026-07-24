@@ -148,22 +148,14 @@ export async function setWorkspaceRoot(rootPath: string | null): Promise<void> {
 
   // Phase 5f：Workspace scope 保留独立 fsApi（不在 appDataDir 下，不走 StorageService）
   // Phase 6 WorkspaceService 接管后删除此段
-  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-  if (!(window as any).__TAURI__) return;
-  try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-  } catch {
-    return;
-  }
-  if (!fsApi || !pathApi) return;
+  const lk = (window as any).linkdesk;
+  if (!lk?.filesystem) return;
 
   // 加载 .linkdesk/settings.json
-  const wsSettingsPath = await pathApi.join(rootPath, ".linkdesk", "settings.json");
+  const wsSettingsPath = await lk.path.join(rootPath, ".linkdesk", "settings.json");
   try {
-    if (await fsApi.exists(wsSettingsPath)) {
-      const raw = await fsApi.readTextFile(wsSettingsPath);
+    if (await lk.filesystem.exists(wsSettingsPath)) {
+      const raw = await lk.filesystem.readTextFile(wsSettingsPath);
       _workspaceSettings = JSON.parse(raw);
     } else {
       _workspaceSettings = {};
@@ -207,24 +199,16 @@ async function _persistWorkspace(): Promise<void> {
 
   // Workspace 路径不在 appDataDir 下，不能走 StorageService（它的 key→path 映射在 appDataDir）。
   // Phase 6 WorkspaceService 接管 workspace 读写后此函数删除。
-  let fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-  let pathApi: typeof import("@tauri-apps/api/path") | null = null;
-  if (!(window as any).__TAURI__) return;
-  try {
-    fsApi = await import("@tauri-apps/plugin-fs");
-    pathApi = await import("@tauri-apps/api/path");
-  } catch {
-    return;
-  }
-  if (!fsApi || !pathApi) return;
+  const lk = (window as any).linkdesk;
+  if (!lk?.filesystem) return;
 
   try {
-    const linkdeskDir = await pathApi.join(_workspaceRoot, ".linkdesk");
-    if (!(await fsApi.exists(linkdeskDir))) {
-      await fsApi.mkdir(linkdeskDir, { recursive: true });
+    const linkdeskDir = await lk.path.join(_workspaceRoot, ".linkdesk");
+    if (!(await lk.filesystem.exists(linkdeskDir))) {
+      await lk.filesystem.mkdir(linkdeskDir);
     }
-    const wsSettingsPath = await pathApi.join(linkdeskDir, "settings.json");
-    await fsApi.writeTextFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
+    const wsSettingsPath = await lk.path.join(linkdeskDir, "settings.json");
+    await lk.filesystem.writeTextFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
   } catch (e) {
     console.warn("[ConfigurationService] 写入 .linkdesk/settings.json 失败:", e);
   }

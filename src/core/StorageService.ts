@@ -4,25 +4,16 @@
  *
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §9.2 5f
  *
- * 底层：Tauri fs（文件系统）+ localStorage（浏览器模式 + beforeunload 同步兜底）。
+ * 底层：window.linkdesk.filesystem（Electron IPC）+ localStorage（浏览器模式 + beforeunload 同步兜底）。
  * 写入时始终同时写 localStorage（同步，F5 安全）和文件系统（异步，持久化）。
  */
 
-/* ── 文件系统依赖（延迟注入——只此一处） ── */
+/* ── 文件系统依赖（Electron IPC——window.linkdesk 由 preload-shell.ts 注入）── */
 
-let _fsApi: typeof import("@tauri-apps/plugin-fs") | null = null;
-let _pathApi: typeof import("@tauri-apps/api/path") | null = null;
+const linkdesk = () => (window as any).linkdesk;
 
-async function _ensureTauri(): Promise<boolean> {
-  if (!(window as any).__TAURI__) return false;
-  if (_fsApi && _pathApi) return true;
-  try {
-    _fsApi = await import("@tauri-apps/plugin-fs");
-    _pathApi = await import("@tauri-apps/api/path");
-    return true;
-  } catch {
-    return false;
-  }
+function _hasLinkdesk(): boolean {
+  return !!(window as any).linkdesk?.filesystem;
 }
 
 /* ── key → localStorage key 映射 ── */
@@ -46,13 +37,13 @@ const _filePaths = new Map<string, string>();
 async function _filePath(key: string): Promise<string> {
   if (_filePaths.has(key)) return _filePaths.get(key)!;
 
-  if (!_pathApi) {
-    // 没有 Tauri——不需要文件路径
+  if (!_hasLinkdesk()) {
+    // 非 Electron 环境（npm run dev 浏览器模式）——不需要文件路径
     return "";
   }
 
   if (!_appDataDir) {
-    _appDataDir = await _pathApi.appDataDir();
+    _appDataDir = await linkdesk().path.appDataDir();
   }
 
   const map: Record<string, string> = {
@@ -62,7 +53,7 @@ async function _filePath(key: string): Promise<string> {
     "prefs": "prefs.json",
   };
   const filename = map[key] ?? `${key}.json`;
-  const fullPath = await _pathApi.join(_appDataDir, filename);
+  const fullPath = linkdesk().path.join(_appDataDir, filename);
   _filePaths.set(key, fullPath);
   return fullPath;
 }
@@ -71,11 +62,10 @@ async function _filePath(key: string): Promise<string> {
 
 let _initialized = false;
 
-/** 初始化——App 启动时调用一次。预加载 Tauri API */
+/** 初始化——App 启动时调用一次 */
 export async function initStorageService(): Promise<void> {
   if (_initialized) return;
   _initialized = true;
-  await _ensureTauri();
 }
 
 /* ── 读取 ── */
@@ -92,11 +82,11 @@ export async function read<T>(key: string): Promise<T | null> {
   } catch { /* ignore */ }
 
   // 2. 尝试文件系统
-  if (await _ensureTauri() && _fsApi) {
+  if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
-      if (path && await _fsApi.exists(path)) {
-        const raw = await _fsApi.readTextFile(path);
+      if (path && await linkdesk().filesystem.exists(path)) {
+        const raw = await linkdesk().filesystem.readTextFile(path);
         // 读到后回写 localStorage——补齐 beforeunload 没写文件的缺口
         try { localStorage.setItem(_lsKey(key), raw); } catch { /* ignore */ }
         return JSON.parse(raw) as T;
@@ -134,19 +124,18 @@ export async function write<T>(key: string, data: T): Promise<void> {
     localStorage.setItem(_lsKey(key), json);
   } catch { /* ignore */ }
 
-  // 2. Tauri 环境写文件
-  if (!(await _ensureTauri()) || !_fsApi) return;
+  // 2. Electron 环境写文件
+  if (!_hasLinkdesk()) return;
   try {
     const path = await _filePath(key);
     if (!path) return;
-    // 确保目录存在
-    // 跨平台路径分隔符——Windows "\" 和 Unix "/" 都处理
+    // 确保目录存在（mkdir 内置 recursive）
     const sepIdx = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
     const dir = path.substring(0, sepIdx);
-    if (dir && !(await _fsApi.exists(dir))) {
-      await _fsApi.mkdir(dir, { recursive: true });
+    if (dir && !(await linkdesk().filesystem.exists(dir))) {
+      await linkdesk().filesystem.mkdir(dir);
     }
-    await _fsApi.writeTextFile(path, json);
+    await linkdesk().filesystem.writeTextFile(path, json);
   } catch (e) {
     console.warn(`[StorageService] 写入 ${key} 文件失败:`, e);
   }
@@ -173,10 +162,10 @@ export async function exists(key: string): Promise<boolean> {
     if (localStorage.getItem(_lsKey(key))) return true;
   } catch { /* ignore */ }
 
-  if (await _ensureTauri() && _fsApi) {
+  if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
-      return path ? await _fsApi.exists(path) : false;
+      return path ? await linkdesk().filesystem.exists(path) : false;
     } catch { /* ignore */ }
   }
 

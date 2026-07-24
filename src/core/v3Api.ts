@@ -26,7 +26,7 @@ import { registerConfiguration, unregisterConfiguration, registerConfigurationDe
 import { useConfiguration, useConfigurationValue } from "./useConfiguration";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
 import { useSendData } from "./useSendData";
-import { useTauriEvent } from "../hooks/useTauriEvent";
+import { useIpcEvent } from "../hooks/useIpcEvent";
 import { useSerialContext } from "./SerialContext";
 
 /** The V3 runtime plugin API surface. Exposed as window.__v3_core__. */
@@ -47,7 +47,7 @@ const v3Api = {
   useConfiguration,
   useConfigurationValue,
   useSendData,
-  useTauriEvent,
+  useIpcEvent,
   useSerialContext,
 
   // --- Configuration service (singleton state) ---

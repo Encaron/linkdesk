@@ -12,7 +12,8 @@
  * Phase 4.3：安装/卸载/禁用/启用完整生命周期
  */
 
-import { invoke } from "@tauri-apps/api/core";
+// Electron IPC——window.linkdesk 由 preload-shell.ts 注入
+const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
@@ -165,7 +166,7 @@ export async function initPluginLoader(): Promise<void> {
   //    VS Code 的做法是启动时 scan extensions 目录，目录里没有的自然不加载。
   let fsInstalled = new Set<string>();
   try {
-    const dirs = await invoke<string[]>("list_plugin_dirs");
+    const dirs = await linkdesk().plugins.listDirs();
     fsInstalled = new Set(dirs);
   } catch {
     // 非 Tauri 环境（npm run dev 浏览器模式）——无 invoke，回退到 glob 全量加载
@@ -383,7 +384,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   // 1. 读取 manifest
   let manifest: PluginManifest;
   try {
-    const raw = await invoke<string>("read_plugin_manifest", { pluginId });
+    const raw = await linkdesk().plugins.readManifest(pluginId);
     manifest = JSON.parse(raw);
   } catch (e: any) {
     console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
@@ -412,7 +413,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       // Vite /@fs/ 端点——dev server 实时编译 TypeScript，浏览器直接拿 JS。
       // 对标 import.meta.glob 底层机制，源码树 .tsx 和运行时 dist/.js 都适用。
       // 归一化：所有非 glob 插件加载走同一条 /@fs/ 路径。
-      const absPath = await invoke<string>("resolve_plugin_path", { pluginId });
+      const absPath = await linkdesk().plugins.resolvePath(pluginId);
       const module = await import(/* @vite-ignore */ `/@fs/${absPath}/${manifest.entry}`);
       Component = module.default;
       if (!Component) {
@@ -732,7 +733,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Rust 端先执行——成功后再做前端变更。
     // 如果 Rust 失败，前端保持原样不进入撕裂状态；且调用方组件未卸载，能显示错误。
-    await invoke("uninstall_plugin", { pluginId });
+    await linkdesk().plugins.uninstall(pluginId);
 
     // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, entry.manifest, "uninstalled");
@@ -783,7 +784,7 @@ export async function performUninstall(pluginId: string): Promise<boolean> {
  */
 export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; error?: string; needRestart?: boolean }> {
   try {
-    const pluginId = await invoke<string>("install_plugin", { source: sourcePath });
+    const pluginId = await linkdesk().plugins.install(sourcePath);
 
     // 尝试热加载——主题/语言即时生效，视图插件需要重启
     const manifestKey = Object.keys(pluginManifests).find(
@@ -885,7 +886,7 @@ export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: stri
  */
 export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await invoke("reinstall_plugin", { pluginId });
+    await linkdesk().plugins.reinstall(pluginId);
 
     // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/ 下则 glob 中有
     const manifestKey = Object.keys(pluginManifests).find(
@@ -927,7 +928,7 @@ export function startPluginWatcher(): void {
 
   _watchInterval = setInterval(async () => {
     try {
-      const dirs = await invoke<string[]>("list_plugin_dirs");
+      const dirs = await linkdesk().plugins.listDirs();
       for (const dir of dirs) {
         if (loadedPluginIds.has(dir)) continue;
         if (getDisabledList().includes(dir)) continue;
