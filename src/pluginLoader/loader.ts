@@ -786,7 +786,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  * 两个 UI 入口（齿轮菜单 + 详情页）都调此函数，确保行为一致。
  */
 export async function performUninstall(pluginId: string): Promise<boolean> {
-  const { showConfirm } = await import("../components/shared/ConfirmDialog");
+  const { showConfirm } = await import("../core/DialogService");
   const entry = getViewPlugin(pluginId);
   const name = entry?.manifest.name ?? pluginId;
   const confirmed = await showConfirm(

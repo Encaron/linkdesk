@@ -1,66 +1,91 @@
 /**
- * ConfirmDialog — 自定义确认弹窗，替代 window.confirm()。
- * Tauri WebView 禁用了 window.confirm()，需要一个 React 实现的替代品。
- * Phase 6 会升级为更完善的对话框系统。
+ * ConfirmDialog — React 确认/提示弹窗组件。
+ * E2c #15：注册到 DialogService，替代模块级桥接变量。
  *
- * 使用方式：await showConfirm("确定关闭吗？") → true/false
+ * 全部颜色走 CSS 变量，暗色/亮色自动适配。
+ * 使用方式：
+ *   import { confirm, alert } from "../../core/DialogService";
+ *   const ok = await confirm({ title: "关闭", message: "确定关闭吗？" });
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import {
+  registerDialogRenderers,
+  unregisterDialogRenderers,
+  type DialogOptions,
+} from "../../core/DialogService";
 import "./ConfirmDialog.css";
 
-/* ── 模块级桥接——showConfirm() 是 imperative API，通过 ref 连接到 React state ── */
+/* ── 类型 ── */
 
-let gResolve: ((v: boolean) => void) | null = null;
-let gSetOpen: ((open: boolean) => void) | null = null;
-let gSetMessage: ((msg: string) => void) | null = null;
-
-/**
- * 显示确认弹窗，返回 Promise<boolean>。
- * 用户点"确定"→ resolve(true)，点"取消"或点 backdrop → resolve(false)。
- */
-export function showConfirm(message: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    gResolve = resolve;
-    gSetMessage?.(message);
-    gSetOpen?.(true);
-  });
+interface DialogState {
+  open: boolean;
+  options: DialogOptions;
+  resolve: ((v: boolean) => void) | null;
+  /** alert 模式——只有确认按钮，不返回 boolean */
+  alertResolve: (() => void) | null;
 }
 
-/** 确认弹窗组件——在 App.tsx 中渲染一次即可。 */
+/* ── 组件 ── */
+
 export function ConfirmDialog() {
   const { t } = useTranslation();
-  const [open, setOpen] = useState(false);
-  const [message, setMessage] = useState("");
+  const [state, setState] = useState<DialogState>({
+    open: false,
+    options: { title: "", message: "" },
+    resolve: null,
+    alertResolve: null,
+  });
 
-  gSetOpen = setOpen;
-  gSetMessage = setMessage;
+  // 注册到 DialogService——挂载时注册，卸载时清理
+  useEffect(() => {
+    const confirmRenderer = (options: DialogOptions): Promise<boolean> => {
+      return new Promise((resolve) => {
+        setState({ open: true, options, resolve, alertResolve: null });
+      });
+    };
+
+    const alertRenderer = (options: DialogOptions): Promise<void> => {
+      return new Promise((resolve) => {
+        setState({ open: true, options, resolve: null, alertResolve: resolve });
+      });
+    };
+
+    registerDialogRenderers(confirmRenderer, alertRenderer);
+    return () => unregisterDialogRenderers();
+  }, []);
 
   const handleConfirm = useCallback(() => {
-    setOpen(false);
-    gResolve?.(true);
-    gResolve = null;
-  }, []);
+    setState((prev) => ({ ...prev, open: false }));
+    if (state.resolve) state.resolve(true);
+    if (state.alertResolve) state.alertResolve();
+  }, [state.resolve, state.alertResolve]);
 
   const handleCancel = useCallback(() => {
-    setOpen(false);
-    gResolve?.(false);
-    gResolve = null;
-  }, []);
+    setState((prev) => ({ ...prev, open: false }));
+    if (state.resolve) state.resolve(false);
+    // alert 模式没有取消——点 backdrop 关闭不触发任何回调
+  }, [state.resolve]);
 
-  if (!open) return null;
+  if (!state.open) return null;
+
+  const { options } = state;
+  const isAlert = !!state.alertResolve;
 
   return (
-    <div className="confirm-backdrop" onClick={handleCancel}>
+    <div className="confirm-backdrop" onClick={isAlert ? undefined : handleCancel}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
-        <p className="confirm-message">{message}</p>
+        {options.title && <h3 className="confirm-title">{options.title}</h3>}
+        <p className="confirm-message">{options.message}</p>
         <div className="confirm-actions">
-          <button className="confirm-btn confirm-btn-secondary" onClick={handleCancel}>
-            {t("取消")}
-          </button>
+          {!isAlert && (
+            <button className="confirm-btn confirm-btn-secondary" onClick={handleCancel}>
+              {options.cancelLabel ?? t("取消")}
+            </button>
+          )}
           <button className="confirm-btn confirm-btn-primary" onClick={handleConfirm}>
-            {t("确定")}
+            {options.confirmLabel ?? (isAlert ? t("确定") : t("确定"))}
           </button>
         </div>
       </div>
