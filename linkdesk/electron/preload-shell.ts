@@ -50,10 +50,34 @@ try {
       offSystem:  makeOff('serial:system'),
     },
 
-    // ── 以下命名空间在步 3-4 逐步接入 ──
-    filesystem: {},
-    path: {},
-    plugins: {},
+    // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──
+    filesystem: {
+      readTextFile:  (p: string)           => ipcRenderer.invoke('filesystem:readTextFile', p),
+      writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
+      exists:        (p: string)           => ipcRenderer.invoke('filesystem:exists', p),
+      mkdir:         (p: string)           => ipcRenderer.invoke('filesystem:mkdir', p),
+      readdir:       (p: string)           => ipcRenderer.invoke('filesystem:readdir', p),
+      copy:          (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
+      remove:        (p: string)           => ipcRenderer.invoke('filesystem:remove', p),
+    },
+
+    // ── 路径（步 3 接入——对标 @tauri-apps/api/path）──
+    path: {
+      appDataDir: () => ipcRenderer.invoke('path:appDataDir'),
+      join: (...parts: string[]) => ipcRenderer.invoke('path:join', ...parts),
+    },
+
+    // ── 插件管理（步 3 接入——对标 Rust plugins.rs）──
+    plugins: {
+      listDirs:     () => ipcRenderer.invoke('plugins:listDirs'),
+      install:      (src: string) => ipcRenderer.invoke('plugins:install', src),
+      uninstall:    (id: string) => ipcRenderer.invoke('plugins:uninstall', id),
+      reinstall:    (id: string) => ipcRenderer.invoke('plugins:reinstall', id),
+      readManifest: (id: string) => ipcRenderer.invoke('plugins:readManifest', id),
+      resolvePath:  (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
+    },
+
+    // ── 以下命名空间在步 4 接入 ──
     commands: {},
     config: {},
     dialog: {},
