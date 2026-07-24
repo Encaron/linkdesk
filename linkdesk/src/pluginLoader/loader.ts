@@ -28,6 +28,7 @@ import { registerConfiguration, registerConfigurationDefaults } from "../core/Co
 import type { ManifestMenuItem } from "../core/MenuRegistry";
 import { registerMenuItems } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
+import { registerFileAssociation } from "../core/FileAssociationService";
 import { registerKeybinding } from "../core/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
@@ -274,6 +275,24 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   // contributes.configurationDefaults → ConfigurationRegistry（盲区 2：弱默认值）
   if (c.configurationDefaults) {
     registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
+  }
+
+  // contributes.fileAssociations → FileAssociationService（E2c #13a）
+  if (c.fileAssociations) {
+    const list = c.fileAssociations as Array<{
+      extension: string;
+      pluginId: string;
+      command?: string;
+      displayName?: string;
+    }>;
+    for (const fa of list) {
+      registerFileAssociation({
+        extension: fa.extension,
+        pluginId: pluginId,
+        command: fa.command,
+        displayName: fa.displayName,
+      });
+    }
   }
 }
 
