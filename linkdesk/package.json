@@ -3,11 +3,13 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
+  "main": "dist-electron/main.js",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "tauri": "tauri",
+    "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && electron .\"",
     "build:plugins": "node scripts/build-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch"
   },
@@ -22,10 +24,13 @@
     "@tauri-apps/plugin-fs": "^2.5.1",
     "@vscode/codicons": "^0.0.45",
     "canvas": "^3.2.3",
+    "concurrently": "^10.0.3",
     "i18next": "^26.3.6",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "react-i18next": "^17.0.10"
+    "react-i18next": "^17.0.10",
+    "serialport": "^13.0.0",
+    "wait-on": "^9.1.0"
   },
   "devDependencies": {
     "@tauri-apps/cli": "^2",
@@ -35,6 +40,8 @@
     "@typescript-eslint/eslint-plugin": "^8.0.0",
     "@typescript-eslint/parser": "^8.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "eslint": "^9.0.0",
     "jsdom": "^29.1.1",
     "tsx": "^4.23.1",
