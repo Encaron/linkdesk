@@ -395,6 +395,8 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 
   // ── Chord 第二键 ──
   if (_chordState.isPending) {
+    // 忽略重复的同一按键——键盘重复（key repeat）会发送相同的 keydown
+    if (keyString === _chordState.firstKey) return true;
     const firstKey = _chordState.firstKey; // 保存——resetChord 会清掉
     resetChord(); // 清除 timer + 清除状态栏提示
     const fullChord = `${firstKey} ${keyString}`;
