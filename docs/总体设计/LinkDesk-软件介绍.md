@@ -197,15 +197,17 @@ V2 的 Sensors.cs 膨胀到 3570 行——面板和卡片混在一起，没有�
 
 ## 三、技术栈
 
+> **2026-07-24 迁移：Tauri v2 → Electron。** Tauri 用系统 WebView，单 WebView 限制所有插件共享一个 JS 上下文——插件崩了全崩。Electron 的 `WebContentsView`（Electron 30+ stable API）支持每插件独立 renderer process——真正的进程隔离。迁移成本 7 步 ~1,190 行（E1），包含 4 个打包补丁。详见 `docs/02-Electron架构/`。
+
 | 层 | 技术 | 为什么 |
 |------|------|------|
-| 桌面框架 | Tauri v2 | Rust 后端 + 系统 WebView2，不绑 Chromium |
+| 桌面框架 | Electron 30+ | WebContentsView per 插件——真正的进程隔离 |
 | 前端 | React 18 + TypeScript | 生态最丰富 |
 | 接收区 | CodeMirror 6 | 只读终端视图，三色行装饰，rAF 批量更新 |
 | 发送栏 | Monaco Editor | VS Code 同款，单行模式 |
-| 串口 | Rust `serialport` + tokio | 异步读线程，和 UI 线程物理隔离 |
+| 串口 | `serialport` npm + Node.js | Electron 主进程直接调 Node.js——不需要 Rust 桥接 |
 | 构建 | Vite 6 | `import.meta.glob` 扫描插件目录 |
-| 测试 | Vitest | 132 个核心通过 |
+| 测试 | Vitest | 151 个核心通过 |
 | 图标 | `@vscode/codicons` | VS Code 同款，MIT |
 
 ### 两层容器
