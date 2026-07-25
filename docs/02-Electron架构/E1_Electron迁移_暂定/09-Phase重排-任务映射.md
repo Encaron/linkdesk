@@ -17,7 +17,7 @@
 | 新编号 | 内容 | 完工标准 |
 |---|---|---|
 | **E1** | Electron 迁移 | 软件行为与迁移前 100% 一致 |
-| **E2** | 底层加固 + 侧栏扩展位 | ErrorBoundary 全覆盖 + 侧栏支持常驻面板（写一个最小文件树验证） |
+| **E2** | 底层加固 + 侧栏扩展位 | ErrorBoundary 全覆盖 + 核心服务就绪（侧栏扩展位 E2d 已取消） |
 | **E3** | 多 WebView + 主题/语言 + Profile | 多进程隔离就绪 + 主题/语言跨进程同步 + 壳收尾。**架构完工。** |
 
 ---
@@ -39,7 +39,7 @@
 | **Phase 6b** | 终端归一化 | → **E2b** | 不变——serialport npm 替代 Rust |
 | **Phase 6c** | FileService / WorkspaceService / DialogService | → **E2c** | 不变——window.linkdesk 替代 @tauri-apps |
 | **Phase 6d** | Rust 命令插件化 | → **删除** | 目标自动达成——Rust 消失 |
-| 🆕 | **侧栏扩展位设计** | → **E2d** | 新设计——侧栏支持 persistent 面板 |
+| 🆕 | **侧栏扩展位设计** | → **E2d** | ❌ 已取消——VS Code 单槽位，现有 lastSidebar 已正确 |
 
 ### E3 —— 多 WebView + 壳收尾（架构最后一站）
 
@@ -83,7 +83,7 @@ E2: 底层加固 + 侧栏扩展位
     │      E2a: ErrorBoundary（原 6a）
     │      E2b: 终端归一化（原 6b）
     │      E2c: FileService 等（原 6c）
-    │      E2d: 侧栏扩展位（🆕 新设计）
+    │      E2d: 侧栏扩展位（已取消）
     │
 E3: 多 WebView + 壳收尾  ← 🏁 架构完工
     │      E3a: 多 WebView（原 7a，9 任务）
@@ -154,7 +154,7 @@ E3a: 多 WebView           ← 依赖 E2a（ErrorBoundary）
 |---|---|
 | **原 Phase 6d 跳过** | 不需要写 400 行 Rust 插件化代码再删——迁移直接达成目标 |
 | **E3 第一天就用 stable API** | `WebContentsView` 替代 `add_child`——不需要先跟 unstable API 搏斗 |
-| **文件树/Monaco 不再占用架构编号** | 它们是插件——E2d 给它们挖好坑位，它们来用就行 |
+| **文件树/Monaco 不再占用架构编号** | 它们是插件——走现有侧栏单槽位 + lastSidebar 即可，零架构改动 |
 | **E 编号从 1 开始，到 3 为止** | 新框架，新编号。此后任何新功能 = 写插件。来一个建一个 `插件_xxx/` 文件夹，不排序、不顺延 |
 | **三期每期可独立验证** | E1 = 行为不变，E2 = 侧栏能挂文件树，E3 = 多进程隔离就绪 |
 

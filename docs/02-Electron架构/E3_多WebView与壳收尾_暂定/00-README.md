@@ -10,7 +10,7 @@
 | | |
 |---|---|
 | Phase | **E3**——架构完工 |
-| 输入 | E2 完成——核心服务就绪、侧栏扩展位就绪 |
+| 输入 | E2 完成——核心服务就绪 |
 | 输出 | 每个插件独立 WebContentsView + 主题跨进程广播 + 语言跨进程生效 + Profile 可用 |
 | 依赖 | E2 完成 |
 
@@ -35,7 +35,7 @@
 - ErrorBoundary 兜底——任意插件崩不影响壳和其他插件
 - 主题/语言引擎可切换——所有进程同步
 - Profile 可用——切换 Profile 后插件/配置/布局独立
-- 核心服务齐全——文件/配置/对话框/命令/菜单/快捷键/侧栏扩展位
+- 核心服务齐全——文件/配置/对话框/命令/菜单/快捷键
 
 **此后任何人往 LinkDesk 加功能——写 `plugin.json` + `index.tsx`，扔进 `plugins/` 文件夹。不碰 `src/`，不碰 `electron/`，不碰架构。**
 
@@ -91,7 +91,7 @@ Chord + keybindings                  文件树键盘操作 (F2/Delete/Ctrl+XCV)
                                      主题浏览器 Ctrl+K Ctrl+T
 CoreEvents                           文件树监听 onDidChangeFileSystem
                                      WorkspaceService → onDidChangeWorkspaceFolders
-侧栏扩展位 (E2d)                      文件树侧栏常驻（sidebarRole: "persistent"）
+lastSidebar (E2c 已有)                 文件树侧栏视图——单槽位切换（对标 VS Code Explorer）
 ```
 
 ## 历史参考
