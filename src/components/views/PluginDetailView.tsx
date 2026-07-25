@@ -17,14 +17,13 @@ import "./PluginDetailView.css";
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 
-function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[]; resources?: string[] }): string {
-  const types: string[] = [];
-  if (m.entry) types.push("view");
-  if (m.mode) types.push("protocol");
-  if (m.themes) types.push("theme");
-  if (m.languages) types.push("language");
-  if (m.resources) types.push("resource");
-  return types.join(", ") || "unknown";
+/** 排他分类——一个插件只有一个主类型。优先级：theme > language > protocol > view */
+function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[] }): string {
+  if (m.themes?.length) return "theme";
+  if (m.languages?.length) return "language";
+  if (m.mode) return "protocol";
+  if (m.entry) return "view";
+  return "unknown";
 }
 
 /* ── 主组件 ── */
