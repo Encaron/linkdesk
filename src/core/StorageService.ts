@@ -8,9 +8,9 @@
  * 写入时始终同时写 localStorage（同步，F5 安全）和文件系统（异步，持久化）。
  */
 
-/* ── 文件系统依赖（Electron IPC——window.linkdesk 由 preload-shell.ts 注入）── */
+/* ── 文件系统依赖（统一走 FileService——E2c #19c 归一化）── */
 
-const linkdesk = () => (window as any).linkdesk;
+import { exists as fsExists, readFile, writeFile, joinPath, appDataDir } from "./FileService";
 
 function _hasLinkdesk(): boolean {
   return !!(window as any).linkdesk?.filesystem;
@@ -43,7 +43,7 @@ async function _filePath(key: string): Promise<string> {
   }
 
   if (!_appDataDir) {
-    _appDataDir = await linkdesk().path.appDataDir();
+    _appDataDir = await appDataDir();
   }
 
   const map: Record<string, string> = {
@@ -53,7 +53,7 @@ async function _filePath(key: string): Promise<string> {
     "prefs": "prefs.json",
   };
   const filename = map[key] ?? `${key}.json`;
-  const fullPath = linkdesk().path.join(_appDataDir, filename);
+  const fullPath = await joinPath(_appDataDir, filename);
   _filePaths.set(key, fullPath);
   return fullPath;
 }
@@ -85,8 +85,8 @@ export async function read<T>(key: string): Promise<T | null> {
   if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
-      if (path && await linkdesk().filesystem.exists(path)) {
-        const raw = await linkdesk().filesystem.readTextFile(path);
+      if (path && await fsExists(path)) {
+        const raw = await readFile(path);
         // 读到后回写 localStorage——补齐 beforeunload 没写文件的缺口
         try { localStorage.setItem(_lsKey(key), raw); } catch { /* ignore */ }
         return JSON.parse(raw) as T;
@@ -124,18 +124,12 @@ export async function write<T>(key: string, data: T): Promise<void> {
     localStorage.setItem(_lsKey(key), json);
   } catch { /* ignore */ }
 
-  // 2. Electron 环境写文件
+  // 2. Electron 环境写文件——FileService.writeFile 自动创建父目录
   if (!_hasLinkdesk()) return;
   try {
     const path = await _filePath(key);
     if (!path) return;
-    // 确保目录存在（mkdir 内置 recursive）
-    const sepIdx = Math.max(path.lastIndexOf("\\"), path.lastIndexOf("/"));
-    const dir = path.substring(0, sepIdx);
-    if (dir && !(await linkdesk().filesystem.exists(dir))) {
-      await linkdesk().filesystem.mkdir(dir);
-    }
-    await linkdesk().filesystem.writeTextFile(path, json);
+    await writeFile(path, json);
   } catch (e) {
     console.warn(`[StorageService] 写入 ${key} 文件失败:`, e);
   }
@@ -165,7 +159,7 @@ export async function exists(key: string): Promise<boolean> {
   if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
-      return path ? await linkdesk().filesystem.exists(path) : false;
+      return path ? await fsExists(path) : false;
     } catch { /* ignore */ }
   }
 

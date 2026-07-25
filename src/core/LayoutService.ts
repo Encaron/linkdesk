@@ -12,6 +12,7 @@
 
 import type { LayoutData } from "../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
+import { exists, readFile, writeFile, mkdir, joinPath, appDataDir } from "./FileService";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 
 /* ── 类型 ── */
@@ -140,14 +141,12 @@ export function syncWriteLayout(layout: WorkspaceLayout): void {
 export async function loadNamedWorkspaceLayout(
   name: string
 ): Promise<WorkspaceLayout | null> {
-  // 具名工作区存在独立目录（workspaces/），不走 StorageService
-  const lk = (window as any).linkdesk;
-  if (!lk?.filesystem) return null;
+  // E2c #19c：统一走 FileService
   try {
-    const dir = await lk.path.join(await lk.path.appDataDir(), "workspaces");
-    const path = await lk.path.join(dir, `${name}.json`);
-    if (!(await lk.filesystem.exists(path))) return null;
-    const raw = await lk.filesystem.readTextFile(path);
+    const dir = await joinPath(await appDataDir(), "workspaces");
+    const filePath = await joinPath(dir, `${name}.json`);
+    if (!(await exists(filePath))) return null;
+    const raw = await readFile(filePath);
     return JSON.parse(raw);
   } catch {
     return null;
@@ -159,13 +158,12 @@ export async function saveNamedWorkspaceLayout(
   name: string,
   layout: WorkspaceLayout
 ): Promise<void> {
-  const lk = (window as any).linkdesk;
-  if (!lk?.filesystem) return;
+  // E2c #19c：统一走 FileService
   try {
-    const dir = await lk.path.join(await lk.path.appDataDir(), "workspaces");
-    if (!(await lk.filesystem.exists(dir))) await lk.filesystem.mkdir(dir, { recursive: true });
-    const path = await lk.path.join(dir, `${name}.json`);
-    await lk.filesystem.writeTextFile(path, JSON.stringify(layout, null, 2));
+    const dir = await joinPath(await appDataDir(), "workspaces");
+    if (!(await exists(dir))) await mkdir(dir);
+    const filePath = await joinPath(dir, `${name}.json`);
+    await writeFile(filePath, JSON.stringify(layout, null, 2));
   } catch { /* 静默 */ }
 }
 
