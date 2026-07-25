@@ -96,6 +96,7 @@ export const CoreEvents = {
 export const CUSTOM_EVENTS = {
   SHOW_PALETTE: "v3-show-palette",
   SHOW_THEME_BROWSER: "v3-show-theme-browser",
+  CHORD_CHANGED: "v3-chord-changed",
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 
