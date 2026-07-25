@@ -443,6 +443,7 @@ function App() {
   const [sidebarView, setSidebarView] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
+  const [themeBrowserPluginId, setThemeBrowserPluginId] = useState<string | undefined>(undefined);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -477,8 +478,10 @@ function App() {
       setThemeBrowserOpen(false);
       setPaletteOpen((p) => !p);
     };
-    const onThemeBrowser = () => {
+    const onThemeBrowser = (e: Event) => {
+      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
       setPaletteOpen(false);
+      setThemeBrowserPluginId(pluginId);
       setThemeBrowserOpen(true);
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
@@ -820,7 +823,8 @@ function App() {
       />
       <ThemeBrowser
         open={themeBrowserOpen}
-        onClose={() => setThemeBrowserOpen(false)}
+        onClose={() => { setThemeBrowserOpen(false); setThemeBrowserPluginId(undefined); }}
+        pluginId={themeBrowserPluginId}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>

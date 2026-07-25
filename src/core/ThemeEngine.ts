@@ -60,6 +60,11 @@ export function getAvailableThemes(): string[] {
   return Array.from(pluginThemes.keys());
 }
 
+/** 获取指定插件注册的主题名称——插件卡片齿轮用（VS Code 同款过滤） */
+export function getThemesByPlugin(pluginId: string): string[] {
+  return _pluginThemeNames.get(pluginId) ?? [];
+}
+
 /** 从插件注册表加载主题——三层退路：ThemeRegistry → 找不到抛错（调用方回退到 index.css :root） */
 export async function loadTheme(themeName: string): Promise<Theme> {
   const pluginTheme = pluginThemes.get(themeName);

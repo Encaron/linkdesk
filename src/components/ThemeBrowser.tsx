@@ -12,6 +12,7 @@
 import { useEffect, useRef } from "react";
 import {
   getAvailableThemes,
+  getThemesByPlugin,
   loadTheme,
   applyTheme,
   getCurrentTheme,
@@ -22,9 +23,11 @@ import QuickPick from "./shared/QuickPick";
 interface Props {
   open: boolean;
   onClose: () => void;
+  /** 插件卡片齿轮传入——只显示该插件的主题，否则全部 */
+  pluginId?: string;
 }
 
-export default function ThemeBrowser({ open, onClose }: Props) {
+export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
   const originalTheme = useRef<string | null>(null);
   const committed = useRef(false);
 
@@ -62,7 +65,8 @@ export default function ThemeBrowser({ open, onClose }: Props) {
     onClose();
   };
 
-  const themes = getAvailableThemes();
+  /** 齿轮=只该插件，全局=全部——对标 VS Code getQuickPickEntries(this.extension) */
+  const themes = pluginId ? getThemesByPlugin(pluginId) : getAvailableThemes();
 
   return (
     <QuickPick

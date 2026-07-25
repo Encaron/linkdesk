@@ -74,8 +74,11 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.selectTheme",
     title: "选择颜色主题",
     category: "首选项",
-    handler: async () => {
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER));
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER, {
+        detail: { pluginId: ctx?.pluginId },
+      }));
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
