@@ -19,6 +19,7 @@ import {
 } from "./ConfigurationRegistry";
 import { applyConfiguration } from "./ConfigurationApplier";
 import { read, write } from "./StorageService";
+import { exists, readFile, writeFile, mkdir, joinPath } from "./FileService";
 
 /* ── 三层缓存 ── */
 
@@ -146,16 +147,11 @@ export async function setWorkspaceRoot(rootPath: string | null): Promise<void> {
     return;
   }
 
-  // Phase 5f：Workspace scope 保留独立 fsApi（不在 appDataDir 下，不走 StorageService）
-  // Phase 6 WorkspaceService 接管后删除此段
-  const lk = (window as any).linkdesk;
-  if (!lk?.filesystem) return;
-
-  // 加载 .linkdesk/settings.json
-  const wsSettingsPath = await lk.path.join(rootPath, ".linkdesk", "settings.json");
+  // E2c #19c：Workspace scope 统一走 FileService（不在 appDataDir 下，不走 StorageService）
+  const wsSettingsPath = await joinPath(rootPath, ".linkdesk", "settings.json");
   try {
-    if (await lk.filesystem.exists(wsSettingsPath)) {
-      const raw = await lk.filesystem.readTextFile(wsSettingsPath);
+    if (await exists(wsSettingsPath)) {
+      const raw = await readFile(wsSettingsPath);
       _workspaceSettings = JSON.parse(raw);
     } else {
       _workspaceSettings = {};
@@ -191,24 +187,18 @@ async function _persistUser(): Promise<void> {
 
 /**
  * Workspace scope 持久化——写 .linkdesk/settings.json。
- * Phase 5f：Workspace 路径不同于 User appDataDir，保留独立的 fsApi 引用。
- * Phase 6 WorkspaceService 会接管这条路。
+ * E2c #19c：统一走 FileService。
  */
 async function _persistWorkspace(): Promise<void> {
   if (!_workspaceRoot) return;
 
-  // Workspace 路径不在 appDataDir 下，不能走 StorageService（它的 key→path 映射在 appDataDir）。
-  // Phase 6 WorkspaceService 接管 workspace 读写后此函数删除。
-  const lk = (window as any).linkdesk;
-  if (!lk?.filesystem) return;
-
   try {
-    const linkdeskDir = await lk.path.join(_workspaceRoot, ".linkdesk");
-    if (!(await lk.filesystem.exists(linkdeskDir))) {
-      await lk.filesystem.mkdir(linkdeskDir);
+    const linkdeskDir = await joinPath(_workspaceRoot, ".linkdesk");
+    if (!(await exists(linkdeskDir))) {
+      await mkdir(linkdeskDir);
     }
-    const wsSettingsPath = await lk.path.join(linkdeskDir, "settings.json");
-    await lk.filesystem.writeTextFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
+    const wsSettingsPath = await joinPath(linkdeskDir, "settings.json");
+    await writeFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));
   } catch (e) {
     console.warn("[ConfigurationService] 写入 .linkdesk/settings.json 失败:", e);
   }
