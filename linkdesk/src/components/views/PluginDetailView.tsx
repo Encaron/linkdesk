@@ -9,8 +9,8 @@
 
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, getPluginCachedMeta, performUninstall } from "../../pluginLoader/loader";
+import { getViewPlugin } from "../../pluginLoader/viewRegistry";
+import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, getPluginCachedMeta, performUninstall, getLoadedPluginManifests } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -18,9 +18,11 @@ import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 
 /** 排他分类——一个插件只有一个主类型。优先级：theme > language > protocol > view */
-function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[] }): string {
-  if (m.themes?.length) return "theme";
-  if (m.languages?.length) return "language";
+function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[]; contributes?: Record<string, unknown> }): string {
+  // 新格式：contributes.themes / contributes.languages
+  const c = m.contributes as Record<string, unknown> | undefined;
+  if ((m.themes?.length) || (c?.themes as unknown[] | undefined)?.length) return "theme";
+  if ((m.languages?.length) || (c?.languages as unknown[] | undefined)?.length) return "language";
   if (m.mode) return "protocol";
   if (m.entry) return "view";
   return "unknown";
@@ -48,13 +50,13 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
 
   // ⚠️ 所有 hooks 必须在条件返回之前——React Rules of Hooks
   const installedIds = useMemo(
-    () => new Set(getViewPlugins().map((p) => p.pluginId)),
+    () => new Set(getLoadedPluginManifests().map((p) => p.pluginId)),
     [lifecycleVersion]
   );
   const reverseRecommends = useMemo(() => {
     if (!pluginId) return [];
     const result: { pluginId: string; name: string }[] = [];
-    for (const p of getViewPlugins()) {
+    for (const p of getLoadedPluginManifests()) {
       if (p.pluginId === pluginId) continue;
       for (const rec of p.manifest.recommends ?? []) {
         if (rec.plugin === pluginId) result.push({ pluginId: p.pluginId, name: p.manifest.name });
