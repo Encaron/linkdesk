@@ -207,6 +207,55 @@ Settings Editor
 
 ---
 
+### 九-C、FileDecorationRegistry——文件装饰器注册中心
+
+**对标 VS Code：** `IExplorerService` 有一个 `FileDecorationProvider` 注册中心。Git 插件注册装饰器（M/A/D），文件树渲染时调用。供需双方在两个插件里——**注册中心理应是核心服务。**
+
+**为什么在 E3 而不是 E4：** E3 是最后一次碰核心的机会。封板后后悔就只能给 E4 打补丁了。~40 行换一个干净的架构边界。
+
+```typescript
+// src/core/FileDecorationRegistry.ts（新）
+// 🔥 文件装饰器注册中心——Git 注册，文件树消费
+
+interface FileDecoration {
+  badge?: string;              // "M" "A" "D" "!"
+  color?: string;              // CSS 变量
+  tooltip?: string;            // 悬停提示
+  propagate?: boolean;         // 是否向上传播到父目录
+}
+
+interface FileDecorationProvider {
+  id: string;
+  priority?: number;            // 默认 0，Git = 10。高优先级覆盖低优先级
+  onDidChangeFileDecorations: Event<string[]>;  // 空数组 = 全部刷新
+  provideDecoration(uri: string): FileDecoration | undefined;
+}
+
+class FileDecorationRegistry {
+  private _providers: FileDecorationProvider[] = [];
+
+  register(provider: FileDecorationProvider): IDisposable;
+  unregister(id: string): void;
+
+  getDecorations(uri: string): FileDecoration[] {
+    return this._providers
+      .sort((a, b) => (b.priority ?? 0) - (a.priority ?? 0))
+      .map(p => p.provideDecoration(uri))
+      .filter(Boolean) as FileDecoration[];
+  }
+}
+```
+
+**消费关系：**
+- **Git 插件** → `fileDecorationRegistry.register({ id: 'git', provideDecoration })`
+- **文件树 (E4)** → `fileDecorationRegistry.getDecorations(uri)` → 取最高优先级显示
+
+**为什么不是 `FileDecoration[]` 返回值：** 当前取最高优先级单装饰（VS Code 行为）。v2 如果有需求横向合并多装饰，接口升级为 `FileDecoration | FileDecoration[]`——注册中心不变，调用方改合并逻辑。
+
+~40 行。
+
+---
+
 ## 十、任务清单
 
 | # | 任务 | 行数 | 独立验证 |
@@ -221,7 +270,8 @@ Settings Editor
 | 58 | **Developer: Toggle Plugin DevTools**——QuickPick + WindowManager.toggleDevTools | ~10 | Ctrl+Shift+P → 选插件 → DevTools 弹出/关闭 |
 | 59 | **设置页快捷键子栏**——双 tab + 表格视图 + 冲突检测 | ~60 | 打开设置→快捷键 tab→所有快捷键可搜索→双击改绑定→冲突红字 |
 | 59a | **设置项一键恢复默认**——每项齿轮图标 + `showConfirm` + `ConfigurationService.reset(key)`（防呆） | ~15 | 改值→齿轮亮→点击→确认→回到出厂默认 |
-| **合计** | | **~465 行** | |
+| 59b | **🔥 FileDecorationRegistry**——文件装饰器注册中心，Git 注册/文件树消费 | ~40 | Git 注册 provider→getDecorations(uri) 返回装饰→注销→返回空 |
+| **合计** | | **~505 行** | |
 
 ---
 

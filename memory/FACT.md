@@ -38,3 +38,9 @@ LinkDesk — Electron + React 通用容器。核心是空壳，万物皆插件�
 - 记忆目录：`C:\Users\fengy\.claude\projects\e--linkdesk\memory\`
 - E1-E3 文档：`docs/02-Electron架构/`
 - 当前分支：`electron`
+
+## 记忆操作约定
+- 用户说"存记忆"/"看记忆" → 指 `C:\Users\fengy\.claude\projects\e--linkdesk\memory\` 目录
+- 存记忆 = 在该目录写/编辑 .md 文件 + 更新 MEMORY.md 索引
+- 看记忆 = 读取该目录下的文件
+- 这不是 CherryStudio 的记忆，不是 mcp__agent-memory 工具的记忆
