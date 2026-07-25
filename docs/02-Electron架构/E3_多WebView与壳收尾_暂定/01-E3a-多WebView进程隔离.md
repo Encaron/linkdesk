@@ -226,6 +226,66 @@ async checkMemoryPressure(): Promise<void> {
 
 **Why 不是销毁：** 销毁后重建需要重新加载 JS → 用户切回标签页时延迟不可接受。对标浏览器标签页休眠——保留进程，降频不销毁。
 
+### 4.5 保活宽限期——关闭标签页延迟销毁 WebView（~25 行）
+
+**问题：** 关闭标签页立刻销毁 WebView 太激进——用户手滑关错终端，0.5 秒后重开，结果整个 WebView 要重建（加载 HTML → 解析 JS → 渲染组件 → 恢复状态），延迟不可接受。
+
+**对标 VS Code：** Extension Host 在所有编辑器标签页关闭后仍然存活——因为扩展可能还在跑后台任务。
+
+**设计：** 关闭标签页 → 先隐藏 WebView → 启动 60s 倒计时 → 超时则真正 `webContents.close()` 销毁。期间重开标签页 → 取消倒计时 → WebView 恢复显示，零重建延迟。
+
+```typescript
+// electron/services/window-manager.ts —— WindowManager 新增
+
+private graceTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+/** 关闭标签页——不立即销毁，保留 WebView 60s */
+scheduleViewDestroy(pluginId: string): void {
+  const view = this.pluginViews.get(pluginId);
+  if (!view) return;
+  // 先隐藏 + 降频
+  view.setVisible(false);
+  view.webContents.setBackgroundThrottling(true);
+
+  // 启动 60s 保活宽限期
+  const timer = setTimeout(() => {
+    this.destroyPluginView(pluginId);
+    this.graceTimers.delete(pluginId);
+  }, 60_000);
+  this.graceTimers.set(pluginId, timer);
+}
+
+/** 重开标签页——如果在宽限期内则复用 WebView */
+cancelViewDestroy(pluginId: string): boolean {
+  const timer = this.graceTimers.get(pluginId);
+  if (timer) {
+    clearTimeout(timer);
+    this.graceTimers.delete(pluginId);
+    const view = this.pluginViews.get(pluginId);
+    if (view) {
+      view.setVisible(true);
+      view.webContents.setBackgroundThrottling(false);
+      return true;  // 复用成功，零重建
+    }
+  }
+  return false;  // 已销毁，需新建
+}
+```
+
+**内存压力联动：** `checkMemoryPressure()` 检测到 RSS > 1GB → 无视宽限期，立即销毁所有处于保活期的 WebView——内存安全优先。
+
+### 4.6 关闭标签页时的 keep-alive 策略
+
+针对不同插件采用不同策略——由 `plugin.json` 行为声明决定：
+
+| tabBehavior 声明 | 关闭行为 | 原因 |
+|------|------|------|
+| `singleton: true`（终端） | 保留 60s 宽限期 | 用户最常开关终端，重开要即时要看到串口状态 |
+| 无声明（文件树/地图） | 立刻销毁 | 无状态需要保留——文件树下次打开重新 `listDir()` 即可 |
+| `isFallback: true`（欢迎页） | 永不销毁 | 壳兜底——场上无标签页时自动出现 |
+
+> 此策略写入 WindowManager 的 `scheduleViewDestroy()`——读取 PluginViewRegistry 的 manifest 判断宽限期时长。
+
 ---
 
 ## 五、现有插件迁移
@@ -247,6 +307,7 @@ async checkMemoryPressure(): Promise<void> {
 | 24 | WindowManager——WebContentsView 创建/销毁/聚焦（壳侧生命周期） | ~110 | 创建→`contentView.addChildView`→关闭→`webContents.close()` 无泄漏 |
 | 25 | PluginViewRegistry——插件 ID→WebContentsView 映射 + bounds 管理 + 重载 | ~90 | Map 增删查 + 重载后 pluginId 不变 |
 | 25a | **资源休眠——后台 WebView 降频 + 内存压力检测** | ~40 | 隐藏标签页→`setBackgroundThrottling(true)`；每 30s `getProcessMemoryInfo()` 采样；RSS > 阈值 → toast + 建议关闭不活跃插件 |
+| 25b | 🆕 **保活宽限期——关闭标签页延迟销毁 WebView** | ~25 | 关闭→60s 倒计时→重开复用零重建→超时销毁；内存压力→立刻销毁 |
 
 ### 通信——IpcBridge
 
