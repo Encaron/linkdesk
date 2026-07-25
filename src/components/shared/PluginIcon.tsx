@@ -20,7 +20,7 @@ const FALLBACK = "📄";
 
 export function PluginIcon({ pluginId, className, alt = "" }: PluginIconProps) {
   const plugin = getViewPlugin(pluginId);
-  const resolved = plugin ? resolvePluginIcon(plugin.manifest) : { emoji: FALLBACK };
+  const resolved = plugin ? resolvePluginIcon(pluginId, plugin.manifest) : { emoji: FALLBACK };
 
   if (resolved.codicon) {
     return (

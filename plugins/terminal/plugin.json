@@ -2,7 +2,7 @@
   "$schema": "../../docs/插件开发/plugin.schema.json",
   "name": "终端",
   "version": "1.0.0",
-  "icon": "terminal",
+  "icon": "icon.png",
   "description": "LinkDesk 第一个视图插件——通用容器基础设施在此验证。数据收发终端，接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。不绑定任何特定用途。",
   "author": "官方",
   "entry": "index.tsx",

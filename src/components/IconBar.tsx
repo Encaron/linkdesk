@@ -23,7 +23,7 @@ interface IconBarProps {
 }
 
 function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }) {
-  return resolvePluginIcon(entry.manifest) || { src: `/assets/icons/${entry.pluginId}.png` };
+  return resolvePluginIcon(entry.pluginId, entry.manifest);
 }
 
 function loadOrder(): string[] {

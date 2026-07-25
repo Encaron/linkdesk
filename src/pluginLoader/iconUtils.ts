@@ -1,15 +1,17 @@
 /**
  * 插件图标解析 —— 单一真相来源。
- * IconBar / PluginDetailView / MarketplaceSidebar / TabBar / WelcomeView 全部引用此文件。
+ * IconBar / PluginDetailView / PluginIcon / TabBar / WelcomeView 全部引用此文件。
+ *
+ * E2c #19j-icon：图标路径相对插件目录（对标 VS Code），通过 linkdesk:// 协议访问。
+ * 插件作者只需把 icon 文件放在自己插件目录下，plugin.json 声明文件名即可。
  *
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
 
 import type { PluginManifest } from "../core/types";
-import { getAssetPath } from "../core/assetPath";
 
 export interface ResolvedIcon {
-  /** img src——非 codicon 图标时返回路径 */
+  /** img src——非 codicon 图标时返回 linkdesk:// 协议路径 */
   src?: string;
   /** codicon CSS class——codicon 图标时返回 "codicon-xxx" */
   codicon?: string;
@@ -20,12 +22,13 @@ export interface ResolvedIcon {
 /**
  * 从 manifest 解析图标。
  * - iconSource: "codicon" → { codicon: "codicon-{icon}" }
- * - iconSource: "svg" | "url" → { src: icon }
- * - 无 iconSource → { src: getAssetPath("assets/icons/{icon}.png") }
- * - icon 含 "." → 当作完整文件名（如 "extensions.svg"）
+ * - iconSource: "svg" | "url" → { src: icon（直接当 URL 用）}
+ * - 无 iconSource → { src: "linkdesk://{pluginId}/{icon}" }
+ *   - icon 含 "." → 当完整文件名（如 "icon.svg"）
+ *   - icon 不含 "." → 自动加 .png（如 "icon" → "icon.png"）
  * - 全无 → { emoji: "📄" }
  */
-export function resolvePluginIcon(manifest: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
+export function resolvePluginIcon(pluginId: string, manifest: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
   const icon = manifest.icon;
   const source = (manifest as PluginManifest).iconSource;
 
@@ -38,9 +41,9 @@ export function resolvePluginIcon(manifest: PluginManifest | { icon?: string; ic
   }
 
   if (icon) {
-    // PNG 兜底：含扩展名=直接用，不含=加 .png
-    if (icon.includes(".")) return { src: getAssetPath(`assets/icons/${icon}`) };
-    return { src: getAssetPath(`assets/icons/${icon}.png`) };
+    // 插件目录下的图标文件——通过 linkdesk:// 协议访问
+    const filename = icon.includes(".") ? icon : `${icon}.png`;
+    return { src: `linkdesk://${pluginId}/${filename}` };
   }
 
   return { emoji: "📄" };
@@ -48,6 +51,6 @@ export function resolvePluginIcon(manifest: PluginManifest | { icon?: string; ic
 
 /** 从 pluginId + manifest 生成默认图标（插件未声明 icon 时使用） */
 export function resolvePluginIconById(pluginId: string, manifest?: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
-  if (manifest) return resolvePluginIcon(manifest);
-  return { src: getAssetPath(`assets/icons/${pluginId}.png`), emoji: "📄" };
+  if (manifest) return resolvePluginIcon(pluginId, manifest);
+  return { src: `linkdesk://${pluginId}/icon.png`, emoji: "📄" };
 }
