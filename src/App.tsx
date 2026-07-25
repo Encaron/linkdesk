@@ -18,9 +18,9 @@ import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
 import { loadTheme, applyTheme, getAvailableThemes } from "./core/ThemeEngine";
-import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
+import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
-import { getViewPlugins, getViewPlugin } from "./pluginLoader/viewRegistry";
+import { getViewPlugin } from "./pluginLoader/viewRegistry";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
@@ -257,7 +257,7 @@ function App() {
       }
 
       // E2c #19e：初始化系统插槽——必须在插件加载后、首次消费前
-      factorySlots.initialize(getViewPlugins().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
+      factorySlots.initialize(getLoadedPluginManifests().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
 
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
