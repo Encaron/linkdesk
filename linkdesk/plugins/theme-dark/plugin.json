@@ -1,0 +1,17 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "暗色主题",
+  "version": "1.0.0",
+  "description": "出厂暗色主题——可卸载，卸载后回退到默认配色",
+  "author": "官方",
+  "contributes": {
+    "themes": [
+      {
+        "id": "dark",
+        "label": "Dark",
+        "uiTheme": "dark",
+        "path": "dark.json"
+      }
+    ]
+  }
+}
