@@ -95,12 +95,12 @@ function _initIPC(): void {
     if (status) _setState((p) => mergeStatus(p, status));
   });
 
-  // 订阅——tx/rx 统计实时更新
+  // 订阅——tx/rx 统计累加（对标 App.tsx useIpcEvent("serial-stats")）
   s.onStats?.((stats: any) => {
     _setState((p) => ({
       ...p,
-      txBytes: stats.tx ?? p.txBytes,
-      rxBytes: stats.rx ?? p.rxBytes,
+      txBytes: p.txBytes + (stats.tx ?? 0),
+      rxBytes: p.rxBytes + (stats.rx ?? 0),
     }));
   });
 
@@ -136,15 +136,17 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const status = await s.getStatus();
     if (status?.isOpen) {
       await s.closePort();
+      // 关闭时重置计数（对标 App.tsx useEffect([isOpen])）
+      _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
     } else {
       await s.openPort({
         portName: sourceNameRef.current,
         baudRate: Number(baudRateRef.current),
         encoding,
       });
+      const fresh = await s.getStatus();
+      if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
-    const fresh = await s.getStatus();
-    if (fresh) _setState((p) => mergeStatus(p, fresh));
   }, []);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
