@@ -103,7 +103,8 @@
   border-radius: 0 2px 2px 0;
 }
 
-.icon-img {
+/* E2c #19j：icon-bar-plugin-icon——PluginIcon 组件统一渲染 */
+.icon-btn .plugin-icon--img {
   width: 24px;
   height: 24px;
   opacity: 0.55;
@@ -111,25 +112,37 @@
   transition: opacity 150ms, filter 150ms;
 }
 
-.icon-codicon {
+.icon-btn .plugin-icon--codicon {
   font-size: 24px !important;
   opacity: 0.55;
   color: var(--text-primary);
   transition: opacity 150ms, color 150ms;
 }
 
-.icon-btn:hover .icon-codicon,
-.icon-btn.active .icon-codicon {
+.icon-btn .plugin-icon--emoji {
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.55;
+  transition: opacity 150ms;
+}
+
+.icon-btn:hover .plugin-icon--codicon,
+.icon-btn.active .plugin-icon--codicon {
   opacity: 1;
 }
 
-.icon-btn:hover .icon-img {
+.icon-btn:hover .plugin-icon--img {
   opacity: 0.85;
 }
 
-.icon-btn.active .icon-img {
+.icon-btn.active .plugin-icon--img {
   opacity: 1;
   filter: brightness(0) saturate(100%) invert(100%);
+}
+
+.icon-btn:hover .plugin-icon--emoji,
+.icon-btn.active .plugin-icon--emoji {
+  opacity: 1;
 }
 
 /* 拖拽中的图标——原位留半透明影子 */
@@ -154,7 +167,7 @@
   pointer-events: none;
 }
 
-.icon-drag-preview .icon-img {
+.icon-drag-preview .plugin-icon--img {
   width: 24px;
   height: 24px;
   opacity: 0.8;

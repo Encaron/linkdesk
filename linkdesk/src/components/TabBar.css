@@ -82,12 +82,21 @@
 
 /* ── 图标 ── */
 
-.tab-icon {
+.tab-icon.plugin-icon--img {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  opacity: 0.8;
+}
+.tab-icon.plugin-icon--codicon,
+.tab-icon.plugin-icon--emoji {
   font-size: 14px;
   flex-shrink: 0;
   opacity: 0.8;
 }
-.tab-item.active .tab-icon {
+.tab-item.active .tab-icon.plugin-icon--img,
+.tab-item.active .tab-icon.plugin-icon--codicon,
+.tab-item.active .tab-icon.plugin-icon--emoji {
   opacity: 1;
 }
 
