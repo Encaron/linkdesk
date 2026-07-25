@@ -165,7 +165,7 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
 
   return (
     <div className="status-bar">
-      {/* 左区：插件贡献项 + 错误信息 */}
+      {/* 左区：插件贡献项 + 错误信息 + Chord 提示 */}
       <div className="status-bar-left">
         {leftPluginIds.map((pid, i) => (
           <Fragment key={pid}>
@@ -179,9 +179,16 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
             <span className="status-error" title={error}>{error}</span>
           </>
         )}
+        {/* Chord 提示——插件图标后面，对标 VS Code */}
+        {chordLabel && (
+          <>
+            <span className="status-divider">│</span>
+            <span className="status-text status-chord">{chordLabel}</span>
+          </>
+        )}
       </div>
 
-      {/* 右区：Chord 提示 + 插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
+      {/* 右区：插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
         {/* 通知铃铛 */}
@@ -193,10 +200,6 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
         >
           <span className="codicon codicon-bell" />{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
         </button>
-        {/* Chord 提示——临时出现，放最右边不影响固定按钮 */}
-        {chordLabel && (
-          <span className="status-text status-chord">{chordLabel}</span>
-        )}
         {showNotifPanel && (
           <div className="status-bar-notif-panel" ref={notifPanelRef}>
             <div className="notif-panel-header">
