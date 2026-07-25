@@ -20,6 +20,9 @@ export interface TabBehavior {
   confirmOnClose?: string;
   /** 关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后，closeTab 之前）。如终端声明 "close_port"。 */
   invokeBeforeClose?: string;
+  /** CreateTabOptions 中用于判断标签页身份的唯一字段。null=允许多实例不去重（默认）。
+   *  如 workspace 声明 "workspaceName"——同名工作台只允许一个标签页。 */
+  identityField?: string;
 }
 
 /* ── 状态栏贡献条目 ── */

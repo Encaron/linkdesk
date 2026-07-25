@@ -77,6 +77,10 @@
         "invokeBeforeClose": {
           "type": "string",
           "description": "关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
+        },
+        "identityField": {
+          "type": "string",
+          "description": "CreateTabOptions 中用于判断标签页身份的唯一字段。不声明=允许多实例不去重。如 workspace 声明 \"workspaceName\"——同名工作台只允许一个标签页。"
         }
       },
       "additionalProperties": false
