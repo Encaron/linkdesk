@@ -39,22 +39,41 @@ const log = createLogChannel("app", "pluginLoader", "pluginLoader");
 
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
-// Vite 在构建时展开此 glob，生成所有插件的入口映射。
+// Vite 在构建时展开 glob，生成所有插件的入口映射。
+// E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
 // 注意：只扫描 plugins/*/，不扫描 plugins/.disabled/（.disabled 多了层目录会破坏相对 import 路径）
-const pluginModules = import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-  "../../plugins/*/index.tsx",
-  { eager: false }
-);
+const pluginModules = {
+  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+    "../../plugins/*/index.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+    "../../plugins/*/src/index.tsx",
+    { eager: false }
+  ),
+};
 
-const pluginSidebarModules = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/sidebar.tsx",
-  { eager: false }
-);
+const pluginSidebarModules = {
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/*/sidebar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/*/src/sidebar.tsx",
+    { eager: false }
+  ),
+};
 
-const pluginStatusBarModules = import.meta.glob<{ default: React.ComponentType }>(
-  "../../plugins/*/statusBar.tsx",
-  { eager: false }
-);
+const pluginStatusBarModules = {
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/*/statusBar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/*/src/statusBar.tsx",
+    { eager: false }
+  ),
+};
 
 const pluginManifests = import.meta.glob<PluginManifest>(
   "../../plugins/*/plugin.json",
@@ -69,9 +88,12 @@ const pluginDataFiles = import.meta.glob<Record<string, unknown>>(
 
 /* ── 辅助：从路径提取 pluginId ── */
 
+/** 从 glob key 提取插件 ID——"../../plugins/<id>/..." → "<id>" */
 function extractPluginId(path: string): string {
+  // 找到 "plugins" 目录，插件 ID 是它后面第一个段
   const parts = path.split("/");
-  return parts[parts.length - 2];
+  const idx = parts.indexOf("plugins");
+  return idx >= 0 && idx + 1 < parts.length ? parts[idx + 1] : parts[parts.length - 2];
 }
 
 /** 获取插件目录下的数据文件内容 */
