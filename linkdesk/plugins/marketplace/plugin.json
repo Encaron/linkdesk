@@ -6,6 +6,7 @@
   "description": "浏览、安装和管理插件",
   "author": "官方",
   "core": true,
+  "factoryRole": "marketplace",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
   "viewRole": "sidebarPrimary",

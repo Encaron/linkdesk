@@ -51,6 +51,9 @@ export interface PluginManifest {
   entry?: string;
   sidebar?: string;
   tabBehavior?: TabBehavior;
+  /** 系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页，marketplace=插件市场。
+   *  多个插件声明同一 role → 第一个 core: true 的胜出。 */
+  factoryRole?: "settings" | "marketplace";
   statusBar?: StatusBarItem[];
   file?: string;
   themes?: { id: string; name: string; file: string }[];

@@ -20,6 +20,11 @@
       "description": "核心控制面插件——不可卸载，卸载按钮在 UI 中不显示或禁用。外壳依赖此插件提供基础交互能力（如设置页、插件市场）。无此声明 = 普通插件，用户可自由装卸。默认 false。",
       "default": false
     },
+    "factoryRole": {
+      "type": "string",
+      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
+      "enum": ["settings", "marketplace"]
+    },
     "name": {
       "type": "string",
       "description": "显示名称",

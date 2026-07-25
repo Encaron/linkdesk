@@ -6,6 +6,7 @@
   "description": "软件设置——主题、语言、插件管理",
   "author": "官方",
   "core": true,
+  "factoryRole": "settings",
   "entry": "index.tsx",
   "iconLocation": "bottom",
   "viewRole": "tabOnly",

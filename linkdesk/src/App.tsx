@@ -19,6 +19,8 @@ import { showConfirm } from "./core/DialogService";
 
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
+import { factorySlots } from "./core/FactorySlots";
+import { getViewPlugins } from "./pluginLoader/viewRegistry";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
@@ -227,6 +229,9 @@ function App() {
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
+
+      // E2c #19e：初始化系统插槽——必须在插件加载后、首次消费前
+      factorySlots.initialize(getViewPlugins().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
 
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
