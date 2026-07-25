@@ -44,6 +44,7 @@ function createWindow(): void {
       contextIsolation: true,
       nodeIntegration: false,
       sandbox: false, // preload 需要访问 Node.js API 做 contextBridge
+      backgroundThrottling: false, // E2c fix：禁止 Chromium 节流后台定时器——心跳看门狗失焦时误判"无响应"
     },
     title: 'LinkDesk',
     show: false, // ready-to-show 后再显示，避免白屏闪烁
