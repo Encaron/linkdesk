@@ -7,7 +7,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import { getViewPlugins, getIconLocation, onDidRegister, onDidUnregister } from "../pluginLoader/viewRegistry";
+import { getViewPlugins, getViewPlugin, getIconLocation, onDidRegister, onDidUnregister } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5：图标排序迁移到 PluginStateService
@@ -186,6 +186,12 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
             if (wasDragRef.current) {
               wasDragRef.current = false;
               dragRef.current = null;
+              return;
+            }
+            // E2c #19k：viewRole="tabOnly" → 直接开标签页（优先于 bottom 齿轮菜单）
+            const plugin = getViewPlugin(entry.pluginId);
+            if (plugin?.manifest.viewRole === "tabOnly") {
+              onOpenOrFocus(entry.pluginId);
               return;
             }
             if (getIconLocation(entry.pluginId) === "bottom") {

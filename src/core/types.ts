@@ -42,7 +42,7 @@ export interface StatusBarItem {
 
 export interface PluginManifest {
   $schema?: string;
-  /** @deprecated 不再必需——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
+  /** @deprecated 使用 contributes + tabBehavior 等声明字段代替——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
   type?: PluginType;
   core?: boolean;
   name: string;
@@ -71,6 +71,7 @@ export interface PluginManifest {
   minAppVersion?: string;
   docs?: string;
   cardDocMap?: Record<string, string>;
+  /** @deprecated 使用 languages + file 字段代替——i18n 资源走统一的 languages 体系 */
   i18n?: Record<string, string>;
   cssVars?: Record<string, { dark: string; light: string }>;
   permissions?: ("serial" | "filesystem" | "network")[];
@@ -86,7 +87,7 @@ export interface PluginManifest {
    *  - sidebarPrimary（默认）：侧栏为主——点击图标 toggle 侧栏，不自动打开标签页（对标 VS Code Activity Bar）
    *  - tabOnly：纯标签页视图——点击图标直接打开/聚焦标签页（如设置） */
   viewRole?: "sidebarPrimary" | "tabOnly";
-  /** 壳自己渲染（不走插件路由）。仅欢迎页、插件详情页等壳级视图使用。不设 component 注册。 */
+  /** @deprecated E2c #19d 后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
   shellRendered?: boolean;
   /** 聚焦此视图时保留当前侧栏不清除。如插件详情页——用户浏览插件时侧栏不变。 */
   keepSidebarOnFocus?: boolean;

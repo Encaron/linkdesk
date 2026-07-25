@@ -8,7 +8,8 @@
   "properties": {
     "$schema": {
       "type": "string",
-      "description": "JSON Schema 引用——IDE 自动补全用"
+      "description": "JSON Schema 引用——IDE 自动补全用",
+      "$comment": "$schema 仅用于 IDE 自动补全，运行时不做 JSON Schema 验证"
     },
     "type": {
       "type": "string",
@@ -59,7 +60,8 @@
     },
     "sidebar": {
       "type": "string",
-      "description": "侧栏组件路径，仅 view 类型有效"
+      "description": "侧栏组件路径，仅 view 类型有效",
+      "$comment": "由 Vite glob 自动发现，无需插件声明"
     },
     "tabBehavior": {
       "type": "object",
@@ -208,7 +210,8 @@
     },
     "screenshots": {
       "type": "array",
-      "description": "截图 URL 数组（Phase 5+ 启用）",
+      "description": "截图 URL 数组",
+      "$comment": "Phase 6 PluginDetailView 增强时启用",
       "items": { "type": "string" }
     },
     "minAppVersion": {
@@ -217,11 +220,13 @@
     },
     "docs": {
       "type": "string",
-      "description": "附带文档路径（资源插件联动）"
+      "description": "附带文档路径（资源插件联动）",
+      "$comment": "Phase 6 文档链接"
     },
     "cardDocMap": {
       "type": "object",
       "description": "卡片 ID → 文档锚点映射",
+      "$comment": "Phase 8 卡片文档映射",
       "additionalProperties": { "type": "string" }
     },
     "i18n": {
@@ -232,6 +237,7 @@
     "cssVars": {
       "type": "object",
       "description": "插件自定义 CSS 变量",
+      "$comment": "Phase 7 启用——插件注入 CSS 变量到 :root",
       "additionalProperties": {
         "type": "object",
         "properties": {
@@ -242,7 +248,8 @@
     },
     "permissions": {
       "type": "array",
-      "description": "权限声明（Phase 5+ 启用）",
+      "description": "权限声明",
+      "$comment": "Phase 6 启用——serial/filesystem/network 权限白名单",
       "items": {
         "type": "string",
         "enum": ["serial", "filesystem", "network"]

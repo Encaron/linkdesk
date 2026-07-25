@@ -41,9 +41,13 @@ export function resolvePluginIcon(pluginId: string, manifest: PluginManifest | {
   }
 
   if (icon) {
-    // 插件目录下的图标文件——通过 linkdesk:// 协议访问
-    const filename = icon.includes(".") ? icon : `${icon}.png`;
-    return { src: `linkdesk://${pluginId}/${filename}` };
+    // iconSource 未显式声明 → 根据 icon 值推断（对齐 schema default: "codicon"）
+    // 含 / 或 . → 文件路径（如 "resources/icon.png"）；否则 → codicon 名（如 "terminal"）
+    if (icon.includes("/") || icon.includes(".")) {
+      const filename = icon.includes(".") ? icon : `${icon}.png`;
+      return { src: `linkdesk://${pluginId}/${filename}` };
+    }
+    return { codicon: `codicon-${icon}` };
   }
 
   return { emoji: "📄" };

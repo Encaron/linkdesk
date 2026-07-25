@@ -20,7 +20,7 @@ import { showConfirm } from "./core/DialogService";
 import { loadTheme, applyTheme } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
-import { getViewPlugins } from "./pluginLoader/viewRegistry";
+import { getViewPlugins, getViewPlugin } from "./pluginLoader/viewRegistry";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
@@ -417,13 +417,19 @@ function App() {
     focusTab(tabId);
   }, [tabState.groups, focusTab]);
 
-  // 图标栏点击——所有插件统一：toggle 侧栏。标签页从 WelcomeView/[+]/侧栏内部操作/齿轮菜单打开。
-  // 对标 VS Code Activity Bar：点 Explorer/Extensions 图标只切侧栏，不自动开编辑器。
+  // 图标栏点击——viewRole 声明决定行为。
+  // sidebarPrimary（默认）：toggle 侧栏，对标 VS Code Activity Bar。
+  // tabOnly：直接开标签页，对标 VS Code 设置齿轮。
   const handleIconClick = useCallback(
     (pluginId: string) => {
-      setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+      const plugin = getViewPlugin(pluginId);
+      if (plugin?.manifest.viewRole === "tabOnly") {
+        createTab(pluginId);
+      } else {
+        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+      }
     },
-    []
+    [createTab]
   );
 
 
