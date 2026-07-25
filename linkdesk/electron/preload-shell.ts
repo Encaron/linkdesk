@@ -113,16 +113,20 @@ try {
       heartbeat: () => ipcRenderer.send('heartbeat'),
     },
 
-    // ── E3a #26：bridge——壳侧处理插件 IPC 请求的中继 API ──
+    // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──
     bridge: {
-      // React 侧 IpcBridgeHandler 注册请求处理器
+      // React 侧 IpcBridgeHandler 注册请求处理器（#26）
       onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) => {
         bridgeRequestHandler = cb;
         return () => { bridgeRequestHandler = null; };
       },
-      // React 侧 IpcBridgeHandler 响应请求
+      // React 侧 IpcBridgeHandler 响应请求（#26）
       respond: (requestId: string, result?: unknown, error?: string) => {
         ipcRenderer.send('bridge:response', { requestId, result, error });
+      },
+      // 壳侧推送事件到插件 WebView（#27）——串口数据、配置变更等
+      pushToPlugin: (pluginId: string, channel: string, payload: unknown) => {
+        ipcRenderer.send('bridge:push-to-plugin', { pluginId, channel, payload });
       },
     },
   });

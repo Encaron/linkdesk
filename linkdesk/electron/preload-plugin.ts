@@ -79,6 +79,29 @@ try {
     env: {
       get: () => ipcRenderer.invoke('env:get'),
     },
+
+    // ── E3a #27：通用事件订阅——壳推送事件到插件 WebView ──
+    events: {
+      // 订阅事件——对标 VS Code onDidChangeXxx
+      on: (channel: string, cb: (payload: any) => void) => {
+        const handler = (_event: any, data: { channel: string; payload: any }) => {
+          if (data.channel === channel) cb(data.payload);
+        };
+        ipcRenderer.on('plugin:push', handler);
+        return () => ipcRenderer.removeListener('plugin:push', handler);
+      },
+      // 取消某 channel 的全部订阅
+      off: (channel: string) => {
+        // removeAllListeners 不支持按 channel 过滤——手动遍历
+        // 注意：这会移除该 channel 的所有 listener（包括其他组件的）
+        // 对标 VS Code：每个 dispose 只移除自己注册的 listener
+        // 所以推荐使用 on() 返回的 unsubscribe 函数，而不是 off()
+        const listeners = (ipcRenderer as any).rawListeners?.('plugin:push') ?? [];
+        for (const fn of listeners) {
+          ipcRenderer.removeListener('plugin:push', fn);
+        }
+      },
+    },
   });
 
   // 通知主进程 preload 成功
