@@ -74,6 +74,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER));
     },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
   },
   {
     id: "workbench.action.openKeybindingsSettings",
