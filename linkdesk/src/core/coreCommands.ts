@@ -192,4 +192,9 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
+  // E3b #36e：选择颜色主题——同时出现在底部齿轮 + 插件卡片齿轮
+  registerMenuItems(MenuId.MarketplaceItemGear, APP_PLUGIN_ID, [
+    { command: "workbench.action.selectTheme", group: "navigation" },
+  ]);
+
 }
