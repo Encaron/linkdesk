@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
 import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled, performUninstall } from "@src/pluginLoader/loader";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
-import { resolvePluginIcon } from "@src/pluginLoader/iconUtils";
+import { PluginIcon } from "@src/components/shared/PluginIcon";
 import { useTabActions } from "@src/core/TabActionsContext";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { registerCommand } from "@src/core/CommandRegistry";
@@ -280,7 +280,7 @@ function DisabledSection({
           {plugins.map((p) => (
             <div key={p.pluginId} className="ms-extension-item disabled">
               <div className="ms-item-icon">
-                <span className="codicon codicon-symbol-misc" style={{ opacity: 0.4 }} />
+                <PluginIcon pluginId={p.pluginId} />
               </div>
               <div className="ms-item-details" onClick={() => handleClick(p.pluginId)} style={{ cursor: "pointer" }}>
                 <div className="ms-item-header">
@@ -348,7 +348,7 @@ function UninstalledSection({
           {plugins.map((p) => (
             <div key={p.pluginId} className="ms-extension-item uninstalled">
               <div className="ms-item-icon">
-                <span className="codicon codicon-symbol-misc" />
+                <PluginIcon pluginId={p.pluginId} />
               </div>
               <div className="ms-item-details" onClick={() => handleClick(p.pluginId)} style={{ cursor: "pointer" }}>
                 <div className="ms-item-header">
@@ -459,12 +459,7 @@ function ExtensionItem({
     <div className="ms-extension-item" onClick={handleClick}>
       {/* icon: 从 manifest 动态读取 */}
       <div className="ms-item-icon">
-        {(() => {
-          const icon = resolvePluginIcon(plugin.manifest);
-          if (icon.codicon) return <span className={`codicon ${icon.codicon}`} />;
-          if (icon.src) return <img src={icon.src} alt="" className="ms-item-icon-img" />;
-          return <span className="codicon codicon-symbol-misc" />;
-        })()}
+        <PluginIcon pluginId={plugin.pluginId} />
         {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
       </div>
 
