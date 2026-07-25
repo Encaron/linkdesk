@@ -993,7 +993,8 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
 /** 同步 app.theme 枚举——主题注册/注销后调用。不影响 onApply，只更新下拉选项。 */
 function syncAppThemeEnum(): void {
   const available = getAvailableThemes();
-  updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0] ?? "Dark");
+  if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
+  updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0]);
 }
 
 /** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退 */
