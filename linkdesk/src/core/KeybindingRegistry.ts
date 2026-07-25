@@ -387,6 +387,8 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 
+  console.log("[KeybindingRegistry] keyString:", keyString, "chordPending:", _chordState.isPending);
+
   // ── Chord 第二键 ──
   if (_chordState.isPending) {
     resetChord(); // 清除 timer
