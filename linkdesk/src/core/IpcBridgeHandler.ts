@@ -10,6 +10,17 @@
 
 import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
 import { executeCommand } from "./CommandRegistry";
+import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import {
+  enablePlugin,
+  disablePlugin,
+  installPlugin,
+  uninstallPlugin,
+  reinstallPlugin,
+  getDisabledPluginInfo,
+  getUninstalledPluginInfo,
+  isPluginDisabled,
+} from "../pluginLoader/loader";
 
 export function initIpcBridgeHandler(): void {
   const linkdesk = (window as any).linkdesk;
@@ -37,6 +48,14 @@ export function initIpcBridgeHandler(): void {
           await executeCommand(commandId as string, undefined, ...rest);
           break;
         }
+
+        // ── E3a #31：插件管理 IPC ──
+        case "plugins:call": {
+          const [method, ...methodArgs] = req.args as [string, ...any[]];
+          result = await handlePluginsCall(method, methodArgs);
+          break;
+        }
+
         default:
           throw new Error(`未知的 bridge channel: ${req.channel}`);
       }
@@ -47,5 +66,42 @@ export function initIpcBridgeHandler(): void {
     }
   });
 
-  console.log("[IpcBridgeHandler] 已注册 bridge 请求处理器");
+  console.log("[IpcBridgeHandler] 已注册 bridge 请求处理器（含 plugins:call）");
+}
+
+// ── E3a #31：插件管理方法路由 ──
+
+async function handlePluginsCall(method: string, args: any[]): Promise<unknown> {
+  switch (method) {
+    case "list":
+      return getViewPlugins().map((p) => ({
+        pluginId: p.pluginId,
+        manifest: {
+          name: p.manifest.name,
+          description: p.manifest.description,
+          version: p.manifest.version,
+          core: p.manifest.core,
+          author: p.manifest.author,
+          statusBar: p.manifest.statusBar,
+        },
+      }));
+    case "enable":
+      return enablePlugin(args[0] as string);
+    case "disable":
+      return disablePlugin(args[0] as string);
+    case "uninstall":
+      return uninstallPlugin(args[0] as string);
+    case "install":
+      return installPlugin(args[0] as string);
+    case "reinstall":
+      return reinstallPlugin(args[0] as string);
+    case "getDisabled":
+      return getDisabledPluginInfo();
+    case "getUninstalled":
+      return getUninstalledPluginInfo();
+    case "isDisabled":
+      return isPluginDisabled(args[0] as string);
+    default:
+      throw new Error(`未知的 plugins 方法: ${method}`);
+  }
 }
