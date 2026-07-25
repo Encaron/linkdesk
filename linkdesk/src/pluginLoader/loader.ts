@@ -979,10 +979,10 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
     }
   }
 
-  // 2. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest）
+  // 2. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest——仅 loadedPluginIds 中有的，防僵尸缓存）
   const cache = getMetadataCache();
   for (const [pluginId, meta] of Object.entries(cache)) {
-    if (meta.status === "installed" && meta.manifest && !seen.has(pluginId)) {
+    if (meta.status === "installed" && meta.manifest && !seen.has(pluginId) && loadedPluginIds.has(pluginId)) {
       result.push({ pluginId, manifest: meta.manifest });
     }
   }
