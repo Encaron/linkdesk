@@ -18,7 +18,6 @@ import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
-import { PluginViewRegistry } from './plugin-view-registry.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);
@@ -34,8 +33,6 @@ if (!gotLock) {
 let mainWindow: BrowserWindow | null = null;
 // E3a #24：插件 WebContentsView 生命周期管理
 let windowManager: WindowManager | null = null;
-// E3a #25：插件 ID→View 映射 + bounds 管理 + 重载
-let pluginViewRegistry: PluginViewRegistry | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -65,8 +62,6 @@ function createWindow(): void {
 
   // E3a #24：初始化 WindowManager
   windowManager = new WindowManager(mainWindow);
-  // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
-  pluginViewRegistry = new PluginViewRegistry(windowManager);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
@@ -163,5 +158,5 @@ app.on('second-instance', () => {
 });
 
 // 导出窗口引用——后续步 2-4 的 SerialService 等服务需要它推送数据到渲染进程
-// E3a #24-#25：导出 WindowManager + PluginViewRegistry——IpcBridge/MainContent 需要它们
-export { mainWindow, windowManager, pluginViewRegistry };
+// E3a #24：导出 WindowManager——PluginViewRegistry / IpcBridge 需要它管理 WebContentsView
+export { mainWindow, windowManager };
