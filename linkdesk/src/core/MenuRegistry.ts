@@ -21,8 +21,10 @@ export enum MenuId {
   TabContext = "tabContext",
   /** 标签页主内容区右键（终端接收区、编辑器等） */
   EditorContext = "editorContext",
-  /** 插件市场齿轮菜单 */
+  /** 底部齿轮菜单——全局操作入口（设置、命令面板、主题选择器）。IconBar 消费。 */
   ExtensionGear = "extensionGear",
+  /** 插件市场条目齿轮——per-plugin 操作（启用/禁用/卸载）。marketplace sidebar 消费。 */
+  MarketplaceItemGear = "marketplaceItemGear",
   /** ☰ 汉堡菜单栏（Phase 6 消费） */
   MenuBar = "menuBar",
   /** 文件树右键（Phase 6 消费） */
@@ -33,8 +35,6 @@ export enum MenuId {
   QuickSendContext = "quickSendContext",
   /** 图标栏右键 */
   IconBar = "iconBar",
-  /** 插件市场条目齿轮菜单——per-plugin 启用/禁用/卸载 */
-  MarketplaceItemGear = "marketplaceItemGear",
 }
 
 /* ── 类型 ── */
