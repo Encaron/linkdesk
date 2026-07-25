@@ -14,10 +14,14 @@ import * as path from 'path';
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
 const MEMORY_CHECK_INTERVAL = 30_000; // 每 30s 采样一次
+/** 关闭标签页后保留 WebView 的宽限期——60s 内重开则复用，超时则真正销毁 */
+const GRACE_PERIOD_MS = 60_000;
 
 export class WindowManager {
   private pluginViews = new Map<string, WebContentsView>();
   private memoryTimer: ReturnType<typeof setInterval> | null = null;
+  /** 保活宽限期定时器——key=pluginId，value=setTimeout handle */
+  private graceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
@@ -96,7 +100,8 @@ export class WindowManager {
       console.error(`[WindowManager] 移除 "${pluginId}" WebContentsView 失败:`, err);
     }
 
-    // 取消保活定时器（#25b 实现后替换为 this.graceTimers.delete(pluginId)）
+    // 取消保活定时器（如果处于宽限期）
+    this.cancelGraceTimer(pluginId);
     view.webContents.close();
     this.pluginViews.delete(pluginId);
     console.log(`[WindowManager] 插件 "${pluginId}" WebContentsView 已销毁`);
@@ -192,11 +197,89 @@ export class WindowManager {
 
     if (totalRSS > MEMORY_PRESSURE_THRESHOLD) {
       console.warn(`[WindowManager] 内存压力——插件 WebView 总 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
+      // 内存安全优先——无视宽限期立即销毁
+      this.flushGracePeriods();
       // 通知壳渲染进程显示 toast
       this.mainWindow.webContents.send('system:memory-pressure', {
         totalRSS,
         threshold: MEMORY_PRESSURE_THRESHOLD,
       });
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // E3a #25b——保活宽限期
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * 关闭标签页时不立即销毁 WebView——先隐藏并启动 60s 宽限期。
+   * 期间重开标签页 → 零重建延迟。超时 → 真正销毁。
+   * 对标 VS Code Extension Host 的保活策略。
+   */
+  scheduleViewDestroy(pluginId: string): void {
+    const view = this.pluginViews.get(pluginId);
+    if (!view || this.graceTimers.has(pluginId)) return;
+
+    // 先隐藏 + 降频（不销毁——保留 JS 状态）
+    view.setVisible(false);
+    view.webContents.setBackgroundThrottling(true);
+
+    const timer = setTimeout(() => {
+      this.destroyPluginView(pluginId);
+      this.graceTimers.delete(pluginId);
+    }, GRACE_PERIOD_MS);
+    this.graceTimers.set(pluginId, timer);
+
+    console.log(`[WindowManager] 插件 "${pluginId}" 进入保活宽限期（${GRACE_PERIOD_MS / 1000}s）`);
+  }
+
+  /**
+   * 重开标签页——如果在宽限期内则复用 WebView。
+   * @returns true=复用成功，false=已销毁需重建
+   */
+  cancelViewDestroy(pluginId: string): boolean {
+    const timer = this.graceTimers.get(pluginId);
+    if (!timer) return false;
+
+    clearTimeout(timer);
+    this.graceTimers.delete(pluginId);
+
+    const view = this.pluginViews.get(pluginId);
+    if (view) {
+      view.setVisible(true);
+      view.webContents.setBackgroundThrottling(false);
+      console.log(`[WindowManager] 插件 "${pluginId}" 从宽限期恢复——零重建`);
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * 检查插件是否处于保活宽限期（隐藏但未销毁）。
+   */
+  isInGracePeriod(pluginId: string): boolean {
+    return this.graceTimers.has(pluginId);
+  }
+
+  /** 取消保活定时器（内部使用） */
+  private cancelGraceTimer(pluginId: string): void {
+    const timer = this.graceTimers.get(pluginId);
+    if (timer) {
+      clearTimeout(timer);
+      this.graceTimers.delete(pluginId);
+    }
+  }
+
+  /**
+   * 内存压力时立即销毁所有处于宽限期的 WebView——内存安全优先。
+   */
+  private flushGracePeriods(): void {
+    for (const pluginId of this.getAllPluginIds()) {
+      if (this.graceTimers.has(pluginId)) {
+        console.warn(`[WindowManager] 内存压力——强制销毁宽限期插件 "${pluginId}"`);
+        this.cancelGraceTimer(pluginId);
+        this.destroyPluginView(pluginId);
+      }
     }
   }
 
@@ -215,6 +298,11 @@ export class WindowManager {
       clearInterval(this.memoryTimer);
       this.memoryTimer = null;
     }
+    // 清理所有保活定时器
+    for (const timer of this.graceTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.graceTimers.clear();
     for (const pluginId of this.getAllPluginIds()) {
       this.destroyPluginView(pluginId);
     }
