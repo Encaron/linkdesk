@@ -2,7 +2,7 @@
  * Phase 4 核心类型定义。
  * 插件元数据、标签页扩展字段、视图注册表条目。
  *
- * 设计依据：[[phase4-design-decisions]] + docs/插件开发/plugin.schema.json
+ * 设计依据：[[phase4-design-decisions]] + public/schemas/plugin.schema.json
  */
 
 /* ── 插件类型枚举 ── */

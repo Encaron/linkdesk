@@ -1,5 +1,5 @@
 {
-  "$schema": "../../docs/插件开发/plugin.schema.json",
+  "$schema": "../../public/schemas/plugin.schema.json",
   "name": "设置",
   "version": "1.0.0",
   "icon": "resources/icon.png",
