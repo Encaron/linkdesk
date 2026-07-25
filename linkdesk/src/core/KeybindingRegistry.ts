@@ -49,6 +49,12 @@ export interface Keybinding {
   pluginId?: string;
 }
 
+/** 快捷键冲突——E2c #17a：≥2 个 binding 映射到同一个 key */
+export interface KeybindingConflict {
+  key: string;
+  bindings: Keybinding[];
+}
+
 /* ── 规范化 ── */
 
 /**
@@ -280,24 +286,75 @@ export async function openKeybindingsSettings(): Promise<string | null> {
 
 const _bindings: Keybinding[] = [];
 
-/** 注册快捷键——插件加载时 / 用户 keybindings.json 加载时调用 */
+/** 注册快捷键——插件加载时 / 用户 keybindings.json 加载时调用。
+ *  E2c #17a：允许多个 binding 映射到同一个 key（冲突由 Resolver 在 dispatch 时仲裁）。 */
 export function registerKeybinding(binding: Keybinding): void {
-  const normalized = { ...binding, key: normalizeKey(binding.key) };
+  _bindings.push({ ...binding, key: normalizeKey(binding.key) });
+}
 
-  // 同 key → 优先级：user > plugin > builtin
-  const existingIdx = _bindings.findIndex((b) => b.key === normalized.key);
-  if (existingIdx !== -1) {
-    const existing = _bindings[existingIdx];
-    const priorityOrder = { user: 3, plugin: 2, builtin: 1 };
-    if (priorityOrder[normalized.source] > priorityOrder[existing.source]) {
-      _bindings[existingIdx] = normalized;
+/* ── KeybindingResolver（E2c #17a）── */
+
+/**
+ * 快捷键冲突检测 + 优先级仲裁。
+ * 对标 VS Code KeybindingResolver——分离注册层与 dispatch 层：
+ * - registerKeybinding 只管"有哪些声明"
+ * - Resolver 在按键时根据 when 条件 + source 优先级决定谁生效
+ *
+ * VS Code 源码：src/vs/platform/keybinding/common/keybindingResolver.ts
+ */
+class KeybindingResolver {
+  /**
+   * 检测所有冲突——同一 key 有 ≥2 个 binding。
+   * E3f 快捷键 UI 用它高亮冲突行。
+   */
+  detectConflicts(): KeybindingConflict[] {
+    const byKey = new Map<string, Keybinding[]>();
+    for (const b of _bindings) {
+      const list = byKey.get(b.key);
+      if (list) list.push(b);
+      else byKey.set(b.key, [b]);
     }
-    // 否则保留已有（已有优先级更高）
-    return;
+    return [...byKey.values()]
+      .filter((list) => list.length > 1)
+      .map((bindings) => ({ key: bindings[0].key, bindings }));
   }
 
-  _bindings.push(normalized);
+  /**
+   * 仲裁单个 key——按 when 条件匹配度 → source 优先级 → 注册顺序排序。
+   * 返回最优 binding；无匹配时返回 undefined。
+   */
+  resolve(key: string): Keybinding | undefined {
+    const candidates = _bindings.filter((b) => b.key === key);
+    if (candidates.length === 0) return undefined;
+
+    const sorted = [...candidates].sort((a, b) => {
+      // 1. when 条件匹配者优先——有 when 且不满足 → 排后面
+      const aMatch = a.when ? ContextKeyService.matches(a.when) : true;
+      const bMatch = b.when ? ContextKeyService.matches(b.when) : true;
+      if (aMatch !== bMatch) return aMatch ? -1 : 1;
+
+      // 2. source 优先级：user > plugin > builtin
+      const priority = { user: 3, plugin: 2, builtin: 1 };
+      if (priority[a.source] !== priority[b.source]) {
+        return priority[b.source] - priority[a.source];
+      }
+
+      // 3. 同优先级 → 后注册者生效（_bindings 索引更大 = 更晚注册）
+      return _bindings.indexOf(b) - _bindings.indexOf(a);
+    });
+
+    const winner = sorted[0];
+    if (winner.when && !ContextKeyService.matches(winner.when)) return undefined;
+    return winner;
+  }
+
+  /** E3f 快捷键 UI 消费——获取所有冲突 */
+  getConflictingBindings(): KeybindingConflict[] {
+    return this.detectConflicts();
+  }
 }
+
+export const keybindingResolver = new KeybindingResolver();
 
 /** 注销插件的全部快捷键——卸载时调用 */
 export function unregisterPluginKeybindings(pluginId: string): void {
@@ -332,19 +389,15 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 
   // ── Chord 第二键 ──
   if (_chordState.isPending) {
-    resetChord(); // 清除 timer（already set）
+    resetChord(); // 清除 timer
     const fullChord = `${_chordState.firstKey} ${keyString}`;
 
-    // 检查完整 chord 是否匹配
-    for (let i = _bindings.length - 1; i >= 0; i--) {
-      const binding = _bindings[i];
-      if (binding.key === fullChord) {
-        if (!ContextKeyService.matches(binding.when)) continue;
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        executeCommand(binding.command);
-        return true;
-      }
+    const winner = keybindingResolver.resolve(fullChord);
+    if (winner) {
+      e.preventDefault();
+      e.stopImmediatePropagation();
+      executeCommand(winner.command);
+      return true;
     }
     // chord 第二键不匹配 → 不消费事件
     return false;
@@ -359,16 +412,13 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     return true; // 消费了事件——等待第二键
   }
 
-  // ── 单键匹配 ──
-  for (let i = _bindings.length - 1; i >= 0; i--) {
-    const binding = _bindings[i];
-    if (binding.key === keyString) {
-      if (!ContextKeyService.matches(binding.when)) continue;
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      executeCommand(binding.command);
-      return true;
-    }
+  // ── 单键匹配——Resolver 仲裁（E2c #17a） ──
+  const winner = keybindingResolver.resolve(keyString);
+  if (winner) {
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    executeCommand(winner.command);
+    return true;
   }
 
   return false;
