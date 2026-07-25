@@ -386,13 +386,15 @@ async function loadPlugin(
     }
   }
 
+  // TODO Phase 6: registerProtocol(pluginId, manifest.mode)——当前仅 stub 检测抑制 "未声明贡献" 警告
   if (manifest.mode) {
-    log.appendLine(`📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 5`);
+    log.appendLine(`📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 6`);
     contributed = true;
   }
 
+  // TODO Phase 6: ResourceRegistry.register(pluginId, manifest.resources)——当前仅 stub 检测
   if (manifest.resources && manifest.resources.length > 0) {
-    log.appendLine(`📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 5`);
+    log.appendLine(`📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 6`);
     contributed = true;
   }
 
