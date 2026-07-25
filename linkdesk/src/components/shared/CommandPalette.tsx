@@ -12,6 +12,38 @@ import { useTranslation } from "react-i18next";
 import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
 
+/* ── 模糊搜索（E2c #18）── */
+
+/**
+ * 对标 VS Code fuzzyScore——首字母连续匹配→高分，中间连续匹配→中分，跳跃匹配→低分。
+ * 返回值 = 0 表示不匹配。
+ */
+function fuzzyScore(query: string, target: string): number {
+  query = query.toLowerCase();
+  target = target.toLowerCase();
+  let score = 0;
+  let qi = 0;
+  let consecutive = 0;
+  for (let ti = 0; ti < target.length && qi < query.length; ti++) {
+    if (target[ti] === query[qi]) {
+      qi++;
+      consecutive++;
+      // 首字母 / 空格后 / 点后 → 权重高
+      if (ti === 0 || target[ti - 1] === " " || target[ti - 1] === ".") score += 10;
+      if (consecutive > 1) score += 5;
+      else score += 1;
+    } else {
+      consecutive = 0;
+    }
+  }
+  return qi === query.length ? score : 0;
+}
+
+/** 取命令的搜索目标——title + category + id，category 权重略低 */
+function searchText(cmd: Command): string {
+  return `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`;
+}
+
 interface Props {
   open: boolean;
   onClose: () => void;
@@ -47,15 +79,14 @@ function CommandPalette({ open, onClose }: Props) {
     return () => window.removeEventListener("blur", onBlur);
   }, [open, onClose]);
 
+  // E2c #18：模糊搜索——fuzzyScore 排序，匹配度高的排前面
   const filtered = useMemo(() => {
     if (!query) return allCommands;
-    const q = query.toLowerCase();
-    return allCommands.filter(
-      (c) =>
-        c.title.toLowerCase().includes(q) ||
-        (c.category?.toLowerCase().includes(q) ?? false) ||
-        c.id.toLowerCase().includes(q)
-    );
+    const scored = allCommands
+      .map((cmd) => ({ cmd, score: fuzzyScore(query, searchText(cmd)) }))
+      .filter((s) => s.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored.map((s) => s.cmd);
   }, [query, allCommands]);
 
   // 输入变化时重置选中
