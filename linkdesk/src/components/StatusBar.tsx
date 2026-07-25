@@ -12,6 +12,7 @@ import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
 import { getConfigurationValue } from "../core/ConfigurationService";
+import { executeCommand } from "../core/CommandRegistry";
 
 /** 通知面板图标——对标 VS Code severity codicons */
 function getNotifIconClass(n: Toast): string {
@@ -103,15 +104,31 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
     if (visibleItems.length === 0) return null;
     return (
       <Fragment key={pluginId}>
-        {visibleItems.map((item, i) => (
-          <Fragment key={item.id}>
-            {i > 0 && <span className="status-divider">│</span>}
-            <span className="status-text">
+        {visibleItems.map((item, i) => {
+          const content = (
+            <>
               {item.icon && <span className={`codicon codicon-${item.icon}`} />}
               {item.label || item.id}
-            </span>
-          </Fragment>
-        ))}
+            </>
+          );
+          // E2c #19i：onClick 声明 → 渲染为可点击按钮
+          const el = item.onClick ? (
+            <button
+              className="status-bar-btn"
+              onClick={() => executeCommand(item.onClick!)}
+            >
+              {content}
+            </button>
+          ) : (
+            <span className="status-text">{content}</span>
+          );
+          return (
+            <Fragment key={item.id}>
+              {i > 0 && <span className="status-divider">│</span>}
+              {el}
+            </Fragment>
+          );
+        })}
       </Fragment>
     );
   }
