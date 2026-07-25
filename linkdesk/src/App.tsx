@@ -14,6 +14,7 @@ import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/shared/CommandPalette";
+import ThemeBrowser from "./components/ThemeBrowser";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
@@ -33,7 +34,7 @@ import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
-import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
+import { mountGlobalKeybindings, initUserKeybindings, registerKeybinding } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
 
@@ -262,6 +263,13 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
 
+      // E3b #36d：注册内置快捷键 Ctrl+K Ctrl+T → 选择颜色主题
+      registerKeybinding({
+        command: "workbench.action.selectTheme",
+        key: "ctrl+k ctrl+t",
+        source: "builtin",
+      });
+
       // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
       initUserKeybindings().catch((e) => console.warn("[App] 用户快捷键初始化失败:", e));
 
@@ -434,6 +442,7 @@ function App() {
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
   const [paletteOpen, setPaletteOpen] = useState(false);
+  const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -467,6 +476,13 @@ function App() {
     const handler = () => setPaletteOpen((p) => !p);
     window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
     return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
+  }, []);
+
+  /* ---- Theme Browser——E3b #36d 壳级特性 ---- */
+  useEffect(() => {
+    const handler = () => setThemeBrowserOpen(true);
+    window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, handler);
   }, []);
 
   /* ---- 串口控制 ---- */
@@ -797,6 +813,10 @@ function App() {
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}
+      />
+      <ThemeBrowser
+        open={themeBrowserOpen}
+        onClose={() => setThemeBrowserOpen(false)}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>
