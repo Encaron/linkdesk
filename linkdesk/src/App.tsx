@@ -483,12 +483,7 @@ function App() {
   // App 壳不再需要逐 key 同步 terminalPrefs → ConfigurationService 双写。
   // 见 plugins/terminal/index.tsx + sidebar.tsx——每个设置项独立 useConfiguration("terminal.xxx")
 
-  // Phase 5：lastPort → PluginStateService（替代 PreferenceService）
-  useEffect(() => {
-    import("./core/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue("terminal", "lastPort", portName);
-    }).catch(() => {});
-  }, [portName]);
+  // E2c #19f：lastPort 持久化已搬到终端插件 ControlPanel.handlePortChange——壳不再知道 terminal
 
   // COM 口枚举 + 热插拔
   useEffect(() => {
@@ -615,7 +610,8 @@ function App() {
       if (e.ctrlKey && e.key === ",") {
         e.preventDefault();
         e.stopImmediatePropagation();
-        createTab("settings", { pinned: true });
+        const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
+        createTab(settingsId, { pinned: true });
         return;
       }
       // Ctrl+Shift+P → 命令面板（对标 VS Code Show All Commands）

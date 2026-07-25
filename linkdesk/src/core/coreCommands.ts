@@ -12,7 +12,7 @@
 
 import { registerCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
-import { getViewPlugins } from "../pluginLoader/viewRegistry";
+import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
@@ -50,12 +50,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "设置",
     category: "视图",
     handler: async () => {
-      // 齿轮菜单"设置"——直接打开设置标签页（对标 VS Code Ctrl+,）
-      const settingsPlugin = getViewPlugins().find(
-        (p) => p.manifest.core && p.manifest.iconLocation === "bottom"
-      );
-      const pluginId = settingsPlugin?.pluginId ?? "settings";
-      _callbacks?.openTab(pluginId);
+      // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
+      const pluginId = factorySlots.getPluginId("settings");
+      if (pluginId) _callbacks?.openTab(pluginId);
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
