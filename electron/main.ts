@@ -17,7 +17,6 @@ import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
-import { WindowManager } from './window-manager.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);
@@ -31,8 +30,6 @@ if (!gotLock) {
 
 // ── 窗口引用（后续 SerialService/file-service 需要 mainWindow.webContents.send()）──
 let mainWindow: BrowserWindow | null = null;
-// E3a #24：插件 WebContentsView 生命周期管理
-let windowManager: WindowManager | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -59,9 +56,6 @@ function createWindow(): void {
   registerPluginHandlers();
   registerDialogHandlers();
   registerEnvHandlers();
-
-  // E3a #24：初始化 WindowManager
-  windowManager = new WindowManager(mainWindow);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
@@ -137,8 +131,6 @@ app.on('window-all-closed', () => {
 
 // 保险：非 window-all-closed 路径退出时（如 app.quit() 直接调用）也清理 watcher
 app.on('before-quit', () => {
-  // E3a #24：先销毁所有插件 WebContentsView，再关文件 watcher
-  windowManager?.dispose();
   fileService.closeAllWatchers();
 });
 
@@ -158,5 +150,4 @@ app.on('second-instance', () => {
 });
 
 // 导出窗口引用——后续步 2-4 的 SerialService 等服务需要它推送数据到渲染进程
-// E3a #24：导出 WindowManager——PluginViewRegistry / IpcBridge 需要它管理 WebContentsView
-export { mainWindow, windowManager };
+export { mainWindow };
