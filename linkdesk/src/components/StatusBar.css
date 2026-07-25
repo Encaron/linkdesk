@@ -46,6 +46,17 @@
   white-space: nowrap;
 }
 
+.status-chord {
+  font-size: 11px;
+  color: var(--accent);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
 .status-bar-left {
   display: flex;
   align-items: center;
