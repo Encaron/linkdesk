@@ -11,14 +11,14 @@
 
 ```
 plugins/my-plugin/
-  plugin.json           # 插件元数据（必需）
-  src/                  # 源代码
-    index.tsx           # 入口组件
-    sidebar.tsx         # 侧栏组件（如有）
-    styles.css          # 样式
-  resources/            # 静态资源——图标/图片/字体等
-    icon.png            # 图标（SVG 推荐）
-  dist/                 # 构建产物（自动生成）
+├── plugin.json              # 插件元数据（唯一必需）
+├── resources/               # 静态资源——图标/图片/字体
+│   └── icon.svg             # 图标（推荐 SVG）
+├── src/                     # 源代码
+│   ├── index.tsx            # 入口组件
+│   ├── sidebar.tsx          # 侧栏组件（如有）
+│   └── styles.css           # 样式
+└── dist/                    # 构建产物（自动生成，不手改）
 ```
 
 | 文件 | 说明 |
@@ -38,11 +38,10 @@ plugins/my-plugin/
 {
   "name": "GPS 地图",
   "version": "1.0.0",
-  "icon": "map",
-  "iconSource": "codicon",
+  "icon": "resources/map.svg",
   "description": "交互式地图视图，支持 Leaflet/高德",
   "author": "社区",
-  "entry": "index.tsx"
+  "entry": "src/index.tsx"
 }
 ```
 `entry` 字段 → loader 自动识别为视图插件。
@@ -207,8 +206,8 @@ plugins/my-plugin/
 | 方式 | `icon` 值 | `iconSource` | 文件位置 |
 |------|-----------|-------------|---------|
 | codicon 内置图标 | `"package"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
-| 自定义 SVG / PNG | `"icon.svg"` | 不写 | `plugins/<插件ID>/icon.svg`（插件目录下） |
-| 自定义 PNG（无扩展名） | `"icon"` | 不写 | `plugins/<插件ID>/icon.png`（自动加 `.png`） |
+| 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `plugins/<插件ID>/resources/icon.svg`（推荐 `resources/` 子目录） |
+| 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `plugins/<插件ID>/resources/icon.png`（自动加 `.png`） |
 | 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
 
 **示例：**
@@ -218,12 +217,12 @@ plugins/my-plugin/
 { "icon": "package" }
 
 // 自定义 SVG——推荐，矢量不模糊，fill="currentColor" 跟随主题
-{ "icon": "icon.svg" }
-// 文件直接放在插件目录下：plugins/my-plugin/icon.svg
+{ "icon": "resources/icon.svg" }
+// 文件放在插件目录下：plugins/my-plugin/resources/icon.svg
 
 // 自定义 PNG——位图，多尺寸可能模糊
-{ "icon": "icon.png" }
-// 文件直接放在插件目录下：plugins/my-plugin/icon.png
+{ "icon": "resources/icon.png" }
+// 文件放在插件目录下：plugins/my-plugin/resources/icon.png
 
 // 外部 URL
 { "icon": "https://example.com/icon.svg", "iconSource": "url" }
