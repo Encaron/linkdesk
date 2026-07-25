@@ -23,6 +23,7 @@ import {
   setConfigurationValue,
 } from "../../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
+import { CUSTOM_EVENTS } from "../../core/CoreEvents";
 import "./SettingsView.css";
 
 /* ── 类型 ── */
@@ -59,6 +60,19 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   // 监听插件生命周期——配置分组需要刷新（对标 IconBar 订阅 viewRegistry 的模式）
   useEffect(() => {
     return onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
+  }, []);
+
+  // E3b：齿轮"扩展设置"→跳转到指定插件的配置分组
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
+      if (pluginId) {
+        setSearch("");
+        setSelectedGroup(pluginId);
+      }
+    };
+    window.addEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, handler);
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n

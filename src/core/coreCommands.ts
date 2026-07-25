@@ -78,6 +78,19 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
   {
+    id: "workbench.action.openExtensionSettings",
+    title: "扩展设置",
+    category: "首选项",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_SETTINGS, {
+        detail: { pluginId: ctx?.pluginId },
+      }));
+    },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
+  },
+  {
     id: "workbench.action.openKeybindingsSettings",
     title: "打开键盘快捷方式",
     category: "首选项",
@@ -195,6 +208,7 @@ export function ensureCoreCommands(): void {
   // E3b #36e：选择颜色主题——底部齿轮始终显，插件卡片仅对有 contributes.themes 的插件显
   registerMenuItems(MenuId.MarketplaceItemGear, APP_PLUGIN_ID, [
     { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
+    { command: "workbench.action.openExtensionSettings", group: "navigation", when: "extensionHasConfiguration" },
   ]);
 
 }
