@@ -9,7 +9,6 @@
 
 import { app, BrowserWindow, ipcMain, protocol, dialog } from 'electron';
 import * as path from 'path';
-import { fileURLToPath } from 'url';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
 import { registerPluginHandlers } from './ipc/plugin-handlers.js';
@@ -19,10 +18,6 @@ import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
-
-// ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
