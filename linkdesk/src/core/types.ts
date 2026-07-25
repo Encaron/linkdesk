@@ -33,6 +33,9 @@ export interface StatusBarItem {
   label: string;
   align?: "left" | "right";
   onClick?: string;
+  /** 声明 true → 壳自动注册配置项（<pluginId>.statusBar.<id>）+ 注入 visible prop。
+   *  插件作者只写一行 JSON，用户可在 Settings Editor 开关。 */
+  configurable?: boolean;
 }
 
 /* ── 插件元数据（plugin.json 的 TS 类型） ── */

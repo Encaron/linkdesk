@@ -101,7 +101,8 @@
           "icon": { "type": "string", "description": "codicon 名称或 SVG 路径" },
           "label": { "type": "string", "description": "显示文字" },
           "align": { "type": "string", "enum": ["left", "right"], "default": "left" },
-          "onClick": { "type": "string", "description": "点击行为——命令名" }
+          "onClick": { "type": "string", "description": "点击行为——命令名" },
+          "configurable": { "type": "boolean", "description": "声明 true → 壳自动注册配置项并注入 visible prop。插件作者只写一行 JSON，零代码。", "default": false }
         },
         "additionalProperties": false
       }
