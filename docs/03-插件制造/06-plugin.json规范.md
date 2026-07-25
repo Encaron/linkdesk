@@ -446,5 +446,5 @@ plugins/<pluginId>/
 
 - `docs/插件开发/视图插件开发.md` — 视图插件完整开发指南
 - `docs/插件开发/协议插件开发.md` — 协议插件完整开发指南
-- `docs/插件开发/plugin.schema.json` — JSON Schema 文件
+- `public/schemas/plugin.schema.json` — JSON Schema 文件（权威版本）
 - memory `plugin-system.md` — 插件系统完整设计

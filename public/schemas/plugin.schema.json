@@ -2,7 +2,7 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://embeddesk.app/schemas/plugin.schema.json",
   "title": "插件元数据",
-  "description": "plugin.json 的 JSON Schema——⚠️ 此文件仅供文档参考。权威版本在 public/schemas/plugin.schema.json。插件的 $schema 字段应指向 ../../public/schemas/plugin.schema.json。",
+  "description": "plugin.json 的 JSON Schema——IDE 自动补全 + JSON 校验",
   "type": "object",
   "required": ["name", "version"],
   "properties": {
@@ -83,7 +83,7 @@
         },
         "invokeBeforeClose": {
           "type": "string",
-          "description": "关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
+          "description": "关闭前调用的命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
         },
         "identityField": {
           "type": "string",
