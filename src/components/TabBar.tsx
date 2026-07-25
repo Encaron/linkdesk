@@ -7,39 +7,16 @@
 import { useState, useRef, useEffect, useCallback, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import type { Tab, TabGroup } from "../hooks/useTabManager";
+import type { TabGroup } from "../hooks/useTabManager";
 import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
-import { getViewPlugins, getTabCreatableViews, invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
+import { getTabCreatableViews, invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
 import "./TabBar.css";
-
-/* ── 图标映射 ── */
-
-const TYPE_ICON: Record<string, string> = {
-  terminal: "\u{1F4DF}",
-  workspace: "\u{1F4CA}",
-  settings: "\u{2699}\u{FE0F}",
-  oled: "\u{1F3A8}",
-  editor: "\u{1F4DD}",
-  welcome: "\u{1F3E0}",
-};
-
-/** 标签页图标：优先 emoji，无则空 */
-function getTabIconEmoji(tab: Tab): string {
-  if (tab.pluginId) {
-    const p = getViewPlugins().find((v) => v.pluginId === tab.pluginId);
-    if (p) {
-      const icon = resolvePluginIcon(p.manifest);
-      if (icon.emoji) return icon.emoji;
-    }
-  }
-  return TYPE_ICON[tab.type] ?? "";
-}
 
 /* ── Props ── */
 
@@ -110,7 +87,7 @@ function PlusMenu({
               onClose();
             }}
           >
-            {getTabIconEmoji({ type: item.type, pluginId: item.pluginId } as Tab)} {item.label}
+            <PluginIcon pluginId={item.pluginId ?? item.type} className="tab-icon" /> {item.label}
           </button>
         ))}
       </div>
@@ -354,7 +331,7 @@ export default function TabBar({
                 }}
               >
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
-                <span className="tab-icon">{getTabIconEmoji(tab)}</span>
+                <PluginIcon pluginId={tab.pluginId ?? tab.type} className="tab-icon" />
                 <span className="tab-label">{t(tab.label)}</span>
                 <button
                   className="tab-close"
@@ -425,9 +402,7 @@ export default function TabBar({
               gap: 4,
             }}
           >
-            <span className="tab-icon" style={{ flexShrink: 0, fontSize: 13, opacity: 0.8 }}>
-              {getTabIconEmoji(tab)}
-            </span>
+            <PluginIcon pluginId={tab.pluginId ?? tab.type} className="tab-icon" />
             <span className="tab-label">{t(tab.label)}</span>
           </div>,
           document.body

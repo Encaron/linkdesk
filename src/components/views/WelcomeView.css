@@ -92,7 +92,12 @@
   background: var(--tab-active-bg);
 }
 
-.welcome-card-icon {
+.welcome-card-icon.plugin-icon--img {
+  width: 24px;
+  height: 24px;
+}
+.welcome-card-icon.plugin-icon--codicon,
+.welcome-card-icon.plugin-icon--emoji {
   font-size: 24px;
   line-height: 1;
 }
@@ -144,7 +149,13 @@
   background: var(--tab-hover-bg);
 }
 
-.welcome-recent-icon {
+.welcome-recent-icon.plugin-icon--img {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.welcome-recent-icon.plugin-icon--codicon,
+.welcome-recent-icon.plugin-icon--emoji {
   font-size: 16px;
   flex-shrink: 0;
 }

@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import { getViewPlugins, getIconLocation, onDidRegister, onDidUnregister } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
+import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5：图标排序迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5c：齿轮菜单
@@ -206,13 +207,7 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
           title={t(entry.label)}
           aria-label={t(entry.label)}
         >
-          {entry.icon.codicon ? (
-            <span className={`codicon ${entry.icon.codicon} icon-codicon`} />
-          ) : entry.icon.src ? (
-            <img src={entry.icon.src} alt={t(entry.label)} className="icon-img" />
-          ) : (
-            <span className="icon-emoji">{entry.icon.emoji ?? "📄"}</span>
-          )}
+          <PluginIcon pluginId={entry.pluginId} className="icon-bar-plugin-icon" alt={t(entry.label)} />
         </button>
         {showAfter && <div className="icon-drop-indicator" />}
       </div>
@@ -234,12 +229,7 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
           className="icon-drag-preview"
           style={{ left: previewPos.x, top: previewPos.y }}
         >
-          {((): React.ReactNode => {
-            const entry = ordered.find(e => e.pluginId === draggedId);
-            if (entry?.icon.codicon) return <span className={`codicon ${entry.icon.codicon} icon-codicon`} />;
-            if (entry?.icon.src) return <img src={entry.icon.src} alt="" className="icon-img" />;
-            return <span className="icon-emoji">{entry?.icon.emoji ?? "📄"}</span>;
-          })()}
+          <PluginIcon pluginId={draggedId} className="icon-bar-plugin-icon" />
         </div>,
         document.body
       )}

@@ -13,6 +13,7 @@ import { useTranslation } from "react-i18next";
 import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
+import { PluginIcon } from "../shared/PluginIcon";
 import "./WelcomeView.css";
 
 interface WelcomeViewProps {
@@ -82,9 +83,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
                 onClick={() => handleShortcutClick(p.pluginId, p.manifest.name)}
                 title={p.manifest.description ?? p.manifest.name}
               >
-                <span className="welcome-card-icon">
-                  {getPluginEmoji(p.pluginId)}
-                </span>
+                <PluginIcon pluginId={p.pluginId} className="welcome-card-icon" />
                 <span className="welcome-card-label">{t(p.manifest.name)}</span>
                 {p.manifest.description && (
                   <span className="welcome-card-desc">{t(p.manifest.description)}</span>
@@ -107,9 +106,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
                 className="welcome-recent-item"
                 onClick={() => handleRecentClick(entry)}
               >
-                <span className="welcome-recent-icon">
-                  {getPluginEmoji(entry.pluginId)}
-                </span>
+                <PluginIcon pluginId={entry.pluginId} className="welcome-recent-icon" />
                 <span className="welcome-recent-label">{t(entry.label)}</span>
                 {entry.workspaceName && (
                   <span className="welcome-recent-workspace">{entry.workspaceName}</span>
@@ -130,17 +127,6 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
       </div>
     </div>
   );
-}
-
-/** 插件 ID → emoji 图标映射 */
-function getPluginEmoji(pluginId: string): string {
-  const map: Record<string, string> = {
-    terminal: "\u{1F4DF}",   // 📟
-    workspace: "\u{1F4CA}",  // 📊
-    settings: "⚙️", // ⚙
-    marketplace: "\u{1F9E9}", // 🧩
-  };
-  return map[pluginId] ?? "\u{1F4C4}"; // 📄 fallback
 }
 
 /** 记录最近视图 */

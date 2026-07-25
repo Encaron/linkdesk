@@ -169,6 +169,39 @@
 | `cssVars` | `object` | 插件自定义 CSS 变量 `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | 权限声明 `["serial", "filesystem", "network"]`（Phase 5+ 启用） |
 
+### `icon` 字段详解
+
+图标出现在图标栏、标签栏、欢迎页、[+] 菜单——所有地方显示同一个图标，由 `<PluginIcon>` 组件统一渲染。
+
+**三种方式指定图标：**
+
+| 方式 | `icon` 值 | `iconSource` | 文件位置 |
+|------|-----------|-------------|---------|
+| codicon 内置图标 | `"terminal"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
+| 自定义 SVG / PNG | `"my-icon.svg"` | 不写 | `public/assets/icons/my-icon.svg` |
+| 自定义 SVG / PNG（无扩展名） | `"my-icon"` | 不写 | `public/assets/icons/my-icon.png`（自动加 `.png`） |
+| 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
+
+**示例：**
+
+```json
+// codicon 内置图标——零文件，直接写 codicon 名
+{ "icon": "package" }
+
+// 自定义 SVG——推荐，矢量不模糊，fill="currentColor" 跟随主题
+{ "icon": "my-tool.svg" }
+// 文件放到 public/assets/icons/my-tool.svg
+
+// 自定义 PNG——位图，多尺寸可能模糊
+{ "icon": "my-tool.png" }
+// 文件放到 public/assets/icons/my-tool.png
+
+// 外部 URL
+{ "icon": "https://example.com/icon.svg", "iconSource": "url" }
+```
+
+> **推荐 SVG + `fill="currentColor"`：** 一个文件适配所有尺寸（图标栏 24px、标签栏 14px、欢迎页 24px/16px），亮/暗主题自动变色。PNG 放大会模糊，不推荐。
+
 ### `contributes` 字段（Phase 5+）——对标 VS Code
 
 > **插件一旦声明 `contributes`，系统自动接线——不需要改任何核心代码。**
