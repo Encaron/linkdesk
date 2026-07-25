@@ -28,7 +28,7 @@ import "./StatusBar.css";
 
 interface StatusBarProps {
   error?: string | null;
-  theme?: "Dark" | "Light";
+  theme?: string;
   lang?: "zh" | "en";
   onToggleTheme?: () => void;
   onToggleLang?: () => void;

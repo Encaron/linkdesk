@@ -17,7 +17,7 @@ import CommandPalette from "./components/shared/CommandPalette";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
-import { loadTheme, applyTheme } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, getAvailableThemes } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugins, getViewPlugin } from "./pluginLoader/viewRegistry";
@@ -83,7 +83,7 @@ function App() {
   portNameRef.current = portName;
   const baudRateRef = useRef(baudRate);
   baudRateRef.current = baudRate;
-  const [theme, setTheme] = useState<"Dark" | "Light">("Dark");
+  const [theme, setTheme] = useState<string>("Dark");
   const [lang, setLang] = useState<"zh" | "en">("zh");
   const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
@@ -189,6 +189,7 @@ function App() {
       initIpcBridgeHandler();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
+      // Phase 5：注册核心配置（app.theme 暂用占位枚举——插件加载后用真实主题列表覆盖）
       registerConfiguration(APP_PLUGIN_ID, {
         title: "通用",
         properties: {
@@ -234,6 +235,27 @@ function App() {
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
+      // #34：插件加载完成后，用真实主题列表覆盖 app.theme 枚举
+      const availableThemes = getAvailableThemes();
+      if (availableThemes.length > 0) {
+        registerConfiguration(APP_PLUGIN_ID, {
+          title: "通用",
+          properties: {
+            "app.theme": {
+              type: "string",
+              default: availableThemes.includes("Dark") ? "Dark" : availableThemes[0],
+              enum: availableThemes,
+              description: "配色主题",
+              onApply: async (v) => {
+                const t = await loadTheme(v as string);
+                applyTheme(t);
+                applyAccentColor(getConfigurationValue<string>("app.accentColor"));
+              },
+            },
+          },
+        });
+      }
+
       // E2c #19e：初始化系统插槽——必须在插件加载后、首次消费前
       factorySlots.initialize(getViewPlugins().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
 
@@ -252,7 +274,7 @@ function App() {
       await applyConfiguration("app.theme", initTheme);
       applyConfiguration("app.language", initLang);
       applyConfiguration("app.accentColor", getConfigurationValue<string>("app.accentColor"));
-      setTheme(initTheme as "Dark" | "Light");
+      setTheme(initTheme);
       setLang(initLang as "zh" | "en");
 
       // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
@@ -383,7 +405,7 @@ function App() {
   // terminal.* 变更由 useConfiguration hook 在终端组件内部响应。
   useEffect(() => {
     const unsub = onDidChangeConfiguration((key, value) => {
-      if (key === "app.theme") setTheme(value as "Dark" | "Light");
+      if (key === "app.theme") setTheme(value as string);
       if (key === "app.language") setLang(value as "zh" | "en");
     });
     return unsub;
@@ -391,7 +413,10 @@ function App() {
 
   /* ---- 主题/语言切换 ---- */
   const handleToggleTheme = useCallback(() => {
-    const next = theme === "Dark" ? "Light" : "Dark";
+    const themes = getAvailableThemes();
+    if (themes.length === 0) return;
+    const idx = themes.indexOf(theme);
+    const next = themes[(idx + 1) % themes.length];
     setTheme(next);
     // Phase 5f：ConfigurationApplier 通过 onApply 自动调 loadTheme+applyTheme
     setConfigurationValue("app.theme", next, "user").catch(() => {});

@@ -3,7 +3,6 @@
  * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
  */
 
-import { getAssetPath } from "./assetPath";
 import { CoreEvents } from "./CoreEvents";
 
 export interface ThemeColors {
@@ -23,9 +22,6 @@ const pluginThemes = new Map<string, Theme>();
 
 /** 插件 → 主题名列表——卸载时批量清理 */
 const _pluginThemeNames = new Map<string, string[]>();
-
-/** 内置主题名——这些不从插件注册来，直接从 themes/*.json 加载 */
-const BUILTIN_THEMES = ["Dark", "Light"];
 
 /**
  * Phase 4：注册插件提供的主题。
@@ -59,23 +55,16 @@ export function unregisterPluginThemes(pluginId: string): void {
   }
 }
 
-/** 获取所有已注册主题的名称（内置 + 插件） */
+/** 获取所有已注册主题的名称（仅插件提供——主题全走 contributes.themes） */
 export function getAvailableThemes(): string[] {
-  // E2c #19h A4：补内置主题——getAvailableThemes 漏掉 Dark/Light
-  const pluginNames = Array.from(pluginThemes.keys());
-  // 去重：插件可能覆盖内置主题
-  return [...new Set([...BUILTIN_THEMES, ...pluginNames])];
+  return Array.from(pluginThemes.keys());
 }
 
-/** 从 URL 加载主题 JSON（Vite 下 themes/ 目录通过 public 可访问） */
+/** 从插件注册表加载主题——三层退路：ThemeRegistry → 找不到抛错（调用方回退到 index.css :root） */
 export async function loadTheme(themeName: string): Promise<Theme> {
-  // Phase 4：先查插件注册的主题
   const pluginTheme = pluginThemes.get(themeName);
   if (pluginTheme) return pluginTheme;
-
-  const res = await fetch(getAssetPath(`themes/${themeName.toLowerCase()}.json`));
-  if (!res.ok) throw new Error(`Theme "${themeName}" not found`);
-  return res.json();
+  throw new Error(`Theme "${themeName}" not found——主题未注册或已被卸载`);
 }
 
 /** 应用主题：清理旧变量 → 写入新变量 → 标记 data-theme → fire 事件 */
