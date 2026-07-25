@@ -111,7 +111,7 @@ try {
     },
 
     // ── E3a #31：插件管理——list/enable/disable/install/uninstall/reinstall ──
-    plugins: {
+    pluginManager: {
       list:           () => ipcRenderer.invoke('plugins:call', 'list'),
       enable:         (id: string) => ipcRenderer.invoke('plugins:call', 'enable', id),
       disable:        (id: string) => ipcRenderer.invoke('plugins:call', 'disable', id),
