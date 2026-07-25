@@ -45,6 +45,7 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [jsonDialog, setJsonDialog] = useState<string | null>(null); // null=关闭, string=JSON 内容
 
   // 监听配置值变更
   useEffect(() => {
@@ -119,11 +120,9 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           title={t("打开设置 (JSON)")}
           onClick={() => {
             // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
-            // 当前占位——Phase 6 替换为 createTab("editor", {filePath: settings.json})
-            // 文档：docs/phase5_应用基础设施/V3-Phase5-Phase6-通盘分析.md §2.17
+            // 当前占位——React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互
             import("../../core/ConfigurationService").then(({ getUserSettings }) => {
-              const settings = getUserSettings();
-              alert("settings.json 内容:\n\n" + JSON.stringify(settings, null, 2));
+              setJsonDialog(JSON.stringify(getUserSettings(), null, 2));
             });
           }}
         >
@@ -171,6 +170,24 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           )}
         </div>
       </div>
+
+      {/* JSON 设置弹窗——用 React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互 */}
+      {jsonDialog !== null && (
+        <div className="settings-json-overlay" onClick={() => setJsonDialog(null)}>
+          <div className="settings-json-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-json-header">
+              <span className="settings-json-title">settings.json</span>
+              <button
+                className="settings-json-close"
+                onClick={() => setJsonDialog(null)}
+              >
+                {t("确定")}
+              </button>
+            </div>
+            <pre className="settings-json-content">{jsonDialog}</pre>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
