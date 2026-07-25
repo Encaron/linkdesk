@@ -18,6 +18,7 @@ import { useTerminalSessions } from "./useTerminalSessions";
 import type { TerminalSession } from "./useTerminalSessions";
 import { useSerialContext } from "./SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
+import { activateSidebarItem } from "@src/core/SidebarTabSync";
 import { showConfirm } from "@src/components/shared/ConfirmDialog";
 import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
@@ -285,16 +286,17 @@ function TerminalSidebar() {
   // ── 渲染 ──
 
   // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
+  // 🔥 E3a #29a：SidebarTabSync 归一化——侧栏↔标签页走单一入口
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
-      // A4：按 sourceId 找标签页——有则聚焦，无则创建（对标 VS Code 点文件重开编辑器）。
-      // session 和 tab 用不同计数器，id 可能不一致。sourceId 是唯一可靠的链接。
       const session = sessions.find((s) => s.id === sessionId);
-      tabActions?.openOrFocusBySourceId(sessionId, "terminal", {
-        label: session?.name,
-        pinned: true,
-      });
+      if (tabActions) {
+        activateSidebarItem(tabActions, sessionId, "terminal", {
+          label: session?.name,
+          pinned: true,
+        });
+      }
     },
     [setActiveSession, tabActions, sessions],
   );
