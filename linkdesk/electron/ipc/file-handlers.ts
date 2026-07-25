@@ -61,7 +61,8 @@ export function registerFileHandlers(): void {
 
   ipcMain.handle('filesystem:watch', (event, dirPath: string) => {
     const watcherId = fileService.watchFile(dirPath, (change) => {
-      // 通过 webContents 推送事件到渲染进程
+      // 渲染进程可能已销毁（关闭窗口/退出应用时 fs.watch 仍可能触发）
+      if (event.sender.isDestroyed()) return;
       const win = BrowserWindow.fromWebContents(event.sender);
       if (win && !win.isDestroyed()) {
         win.webContents.send('filesystem:changed', change);

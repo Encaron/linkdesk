@@ -16,6 +16,7 @@ import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerProtocol } from './protocol.js';
+import { fileService } from './services/file-service.js';
 
 // ESM 兼容——__dirname 在 ES 模块中不可用，需手动派生
 const __filename = fileURLToPath(import.meta.url);
@@ -123,7 +124,13 @@ app.whenReady().then(() => {
 });
 
 app.on('window-all-closed', () => {
+  fileService.closeAllWatchers();
   app.quit();
+});
+
+// 保险：非 window-all-closed 路径退出时（如 app.quit() 直接调用）也清理 watcher
+app.on('before-quit', () => {
+  fileService.closeAllWatchers();
 });
 
 app.on('activate', () => {

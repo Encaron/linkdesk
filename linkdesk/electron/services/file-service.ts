@@ -150,6 +150,14 @@ class FileService {
     }
   }
 
+  /** 关闭所有 watcher——app 退出前调用，防止 fs.watch 回调在窗口销毁后触发 */
+  closeAllWatchers(): void {
+    for (const [id, watcher] of this._watchers) {
+      watcher.close();
+    }
+    this._watchers.clear();
+  }
+
   private _nextWatcherId = 1;
   private _watchers = new Map<number, ReturnType<typeof watch>>();
 }
