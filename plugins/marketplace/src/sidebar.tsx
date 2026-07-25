@@ -6,8 +6,8 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
-import { getDisabledPluginInfo, getUninstalledPluginInfo, enablePlugin, disablePlugin, uninstallPlugin, installPlugin, reinstallPlugin, isPluginDisabled, performUninstall } from "@src/pluginLoader/loader";
+// E3a #31：数据路径 IPC 化——plugin 管理走 window.linkdesk.plugins.*
+// UI 组件/命令注册保持 @src/ 导入（WebView 未分离，仍在壳进程）
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 import { useTabActions } from "@src/core/TabActionsContext";
@@ -17,6 +17,9 @@ import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import type { ViewPluginEntry } from "@src/core/types";
 import "./MarketplaceSidebar.css";
+
+/** E3a #31：插件管理 API 快捷访问 */
+const lk = () => (window as any).linkdesk;
 
 /* ── 模块级：注册 marketplace 命令（Phase 5f 归一化——替代手写 gear 菜单） ── */
 
@@ -31,7 +34,7 @@ function ensureMarketplaceCommands(): void {
     title: "启用",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
-      if (ctx?.pluginId) await enablePlugin(ctx.pluginId);
+      if (ctx?.pluginId) await lk().plugins.enable(ctx.pluginId);
     },
   });
 
@@ -40,7 +43,7 @@ function ensureMarketplaceCommands(): void {
     title: "禁用",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
-      if (ctx?.pluginId) await disablePlugin(ctx.pluginId);
+      if (ctx?.pluginId) await lk().plugins.disable(ctx.pluginId);
     },
   });
 
@@ -49,7 +52,7 @@ function ensureMarketplaceCommands(): void {
     title: "卸载",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
-      if (ctx?.pluginId) await performUninstall(ctx.pluginId);
+      if (ctx?.pluginId) await lk().plugins.uninstall(ctx.pluginId);
     },
   });
 
@@ -68,26 +71,33 @@ function MarketplaceSidebar() {
   // Phase 5f 归一化：注册 marketplace 命令（幂等——只执行一次）
   ensureMarketplaceCommands();
 
-  const allPlugins = getViewPlugins();
-  const disabledPlugins = getDisabledPluginInfo();
+  // E3a #31：插件列表走 IPC——异步获取替代同步 getViewPlugins()
+  const [allPlugins, setAllPlugins] = useState<ViewPluginEntry[]>([]);
+  const [disabledPlugins, setDisabledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
   const [uninstalledPlugins, setUninstalledPlugins] = useState<Array<{ pluginId: string; name: string; description?: string; version?: string }>>([]);
+  const [loading, setLoading] = useState(true);
 
-  // 异步获取已卸载的插件（.disabled/ 目录）
-  // 挂载时加载 + 订阅 lifecycle Emitter（对标 IconBar 订阅 viewRegistry 的模式）
-  const [uninstalledVersion, setUninstalledVersion] = useState(0);
-
-  useEffect(() => {
-    getUninstalledPluginInfo().then(setUninstalledPlugins);
-  }, [uninstalledVersion]);
-
-  useEffect(() => {
-    const unsub = onPluginLifecycleChange.event(() => {
-      setUninstalledVersion((v) => v + 1);
-    });
-    // 挂载时立即加载一次
-    getUninstalledPluginInfo().then(setUninstalledPlugins);
-    return unsub;
+  const refreshLists = useCallback(async () => {
+    try {
+      const [plugins, disabled, uninstalled] = await Promise.all([
+        lk().plugins.list(),
+        lk().plugins.getDisabled(),
+        lk().plugins.getUninstalled(),
+      ]);
+      setAllPlugins(plugins);
+      setDisabledPlugins(disabled);
+      setUninstalledPlugins(uninstalled);
+    } catch { /* 静默 */ }
+    finally { setLoading(false); }
   }, []);
+
+  useEffect(() => {
+    refreshLists();
+    const unsub = onPluginLifecycleChange.event(() => {
+      refreshLists();
+    });
+    return unsub;
+  }, [refreshLists]);
 
   const filtered = allPlugins.filter((p) => {
     if (!search) return true;
@@ -135,7 +145,7 @@ function MarketplaceSidebar() {
 
   const handleEnable = useCallback(async (pluginId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await enablePlugin(pluginId);
+    await lk().plugins.enable(pluginId);
   }, []);
 
   const [installing, setInstalling] = useState(false);
@@ -143,19 +153,17 @@ function MarketplaceSidebar() {
   const handleInstall = useCallback(async () => {
     setInstalling(true);
     try {
-      const lk = (window as any).linkdesk;
-      const selected = await lk.dialog.open({ directory: true, title: "选择插件目录" });
-      if (selected) await installPlugin(selected as string);
+      const selected = await lk().dialog.open({ directory: true, title: "选择插件目录" });
+      if (selected) await lk().plugins.install(selected as string);
     } catch { /* 静默 */ }
     finally { setInstalling(false); }
   }, []);
 
   const handleReinstall = useCallback(async (pluginId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await reinstallPlugin(pluginId);
-    // 刷新卸载列表
-    getUninstalledPluginInfo().then(setUninstalledPlugins);
-  }, []);
+    await lk().plugins.reinstall(pluginId);
+    refreshLists();
+  }, [refreshLists]);
 
   return (
     <div className="marketplace-sidebar">
@@ -190,7 +198,9 @@ function MarketplaceSidebar() {
 
       {/* VS Code: .extensions list area (height: calc(100% - 41px)) */}
       <div className="ms-extensions">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="ms-empty">{t("加载中...")}</div>
+        ) : filtered.length === 0 && filteredDisabled.length === 0 && filteredUninstalled.length === 0 ? (
           <div className="ms-empty">
             {search ? t("未找到匹配的插件") : t("暂无插件")}
           </div>
@@ -447,10 +457,12 @@ function ExtensionItem({
   };
 
   // ⚙ 齿轮菜单——Phase 5f 归一化：走 ContextMenu + MenuRegistry（替代手写菜单）
-  const handleGear = (e: React.MouseEvent) => {
+  const handleGear = async (e: React.MouseEvent) => {
     e.stopPropagation();
     // 设置 context key 用于 when 条件——决定显示"启用"还是"禁用"
-    ContextKeyService.setValue("pluginDisabled", isPluginDisabled(plugin.pluginId));
+    // E3a #31：isPluginDisabled 走 IPC
+    const disabled = await lk().plugins.isDisabled(plugin.pluginId);
+    ContextKeyService.setValue("pluginDisabled", disabled);
     const rect = e.currentTarget.getBoundingClientRect();
     setGearMenuAnchor({ x: rect.right, y: rect.bottom });
   };

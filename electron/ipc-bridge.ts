@@ -32,6 +32,8 @@ export class IpcBridge {
     'config:get',
     'config:set',
     'commands:execute',
+    // E3a #31：插件管理——marketplace 数据路径 IPC 化
+    'plugins:call',
   ];
 
   constructor(

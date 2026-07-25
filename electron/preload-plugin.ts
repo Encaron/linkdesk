@@ -110,6 +110,24 @@ try {
       get: () => ipcRenderer.invoke('env:get'),
     },
 
+    // ── E3a #31：插件管理——list/enable/disable/install/uninstall/reinstall ──
+    plugins: {
+      list:           () => ipcRenderer.invoke('plugins:call', 'list'),
+      enable:         (id: string) => ipcRenderer.invoke('plugins:call', 'enable', id),
+      disable:        (id: string) => ipcRenderer.invoke('plugins:call', 'disable', id),
+      uninstall:      (id: string) => ipcRenderer.invoke('plugins:call', 'uninstall', id),
+      install:        (path: string) => ipcRenderer.invoke('plugins:call', 'install', path),
+      reinstall:      (id: string) => ipcRenderer.invoke('plugins:call', 'reinstall', id),
+      getDisabled:    () => ipcRenderer.invoke('plugins:call', 'getDisabled'),
+      getUninstalled: () => ipcRenderer.invoke('plugins:call', 'getUninstalled'),
+      isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
+    },
+
+    // ── 对话框（同壳 preload——直接走 main process handler，不经过 bridge）──
+    dialog: {
+      open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
+    },
+
     // ── E3a #27-#28：通用事件订阅——壳推送→集中分发→插件回调 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // React 侧推荐使用 usePluginIpcEvent() hook（src/core/usePluginIpcEvent.ts）。
