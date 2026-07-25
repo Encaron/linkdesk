@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
+import { getConfigurationValue } from "../core/ConfigurationService";
 
 /** 通知面板图标——对标 VS Code severity codicons */
 function getNotifIconClass(n: Toast): string {
@@ -93,9 +94,16 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
     }
     // 静态渲染：label + 可选 icon
     const items = allItems.filter((i) => i.pluginId === pluginId);
+    // E2c #19g：configurable 条目按配置值过滤显隐
+    const visibleItems = items.filter((item) => {
+      if (!item.configurable) return true;
+      const configKey = `${pluginId}.statusBar.${item.id}`;
+      return getConfigurationValue<boolean>(configKey) ?? true;
+    });
+    if (visibleItems.length === 0) return null;
     return (
       <Fragment key={pluginId}>
-        {items.map((item, i) => (
+        {visibleItems.map((item, i) => (
           <Fragment key={item.id}>
             {i > 0 && <span className="status-divider">│</span>}
             <span className="status-text">

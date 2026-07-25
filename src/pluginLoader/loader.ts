@@ -538,6 +538,23 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
   };
 
   registerViewPlugin(entry);
+
+  // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
+  // 在 registerViewPlugin 之后、parseContributions 之前调用——
+  // registerConfiguration 为 merge 语义，parseContributions 的配置会合并进来不丢失。
+  const configurableItems = (manifest.statusBar ?? []).filter((i) => i.configurable);
+  if (configurableItems.length > 0) {
+    const properties: Record<string, { type: "boolean"; default: boolean; description: string }> = {};
+    const defaults: Record<string, boolean> = {};
+    for (const item of configurableItems) {
+      const key = `${pluginId}.statusBar.${item.id}`;
+      properties[key] = { type: "boolean", default: true, description: `状态栏显示 "${item.label || item.id}"` };
+      defaults[key] = true;
+    }
+    registerConfiguration(pluginId, { title: manifest.name, properties });
+    registerConfigurationDefaults(pluginId, defaults);
+  }
+
   log.appendLine(`✅ 视图插件 "${manifest.name}" (${pluginId}) 已注册`);
 }
 

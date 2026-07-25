@@ -62,7 +62,13 @@ export function registerConfiguration(
     }
     _configKeyOwner.set(key, pluginId);
   }
-  _contributions.set(pluginId, contribution);
+  // E2c #19g：merge 语义——同一个 pluginId 多次注册时合并属性（如 contributes.configuration + 自动注册的 statusBar 配置）
+  const existing = _contributions.get(pluginId);
+  if (existing) {
+    Object.assign(existing.properties, contribution.properties);
+  } else {
+    _contributions.set(pluginId, contribution);
+  }
 }
 
 /** 注销插件的配置贡献——卸载时调用 */
