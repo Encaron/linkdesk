@@ -79,6 +79,7 @@ function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
   ContextKeyService.setValue("extensionHasThemes", !!c.themes);
   ContextKeyService.setValue("extensionHasLanguages", !!c.languages);
   ContextKeyService.setValue("extensionHasIconThemes", !!c.iconThemes);
+  ContextKeyService.setValue("extensionHasConfiguration", !!c.configuration);
 }
 
 function MarketplaceSidebar() {

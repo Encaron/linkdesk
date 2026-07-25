@@ -481,13 +481,22 @@ function App() {
       setPaletteOpen(false);
       setThemeBrowserOpen(true);
     };
+    const onSettings = (e: Event) => {
+      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
+      if (pluginId) {
+        const settingsId = factorySlots.getPluginId("settings");
+        if (settingsId) createTab(settingsId, { pinned: true });
+      }
+    };
     window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
     window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+    window.addEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, onSettings);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, onSettings);
     };
-  }, []);
+  }, [createTab]);
 
   /* ---- 串口控制 ---- */
   // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
