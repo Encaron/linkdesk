@@ -65,8 +65,8 @@ function createWindow(): void {
   windowManager = new WindowManager(mainWindow);
   // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
   pluginViewRegistry = new PluginViewRegistry(windowManager);
-  // E3a #26：初始化 IpcBridge——注册 config/command IPC 代理 handler
-  ipcBridge = new IpcBridge(mainWindow);
+  // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
+  ipcBridge = new IpcBridge(mainWindow, windowManager);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
