@@ -460,11 +460,12 @@ function ExtensionItem({
   // ⚙ 齿轮菜单——Phase 5f 归一化：走 ContextMenu + MenuRegistry（替代手写菜单）
   const handleGear = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    // 设置 context key 用于 when 条件——决定显示"启用"还是"禁用"
+    // 🔥 rect 必须在 await 之前捕获——React 合成事件在 handler 返回后回收，
+    // await 让出执行权后 e.currentTarget 变 null（B86 同类——异步边界 + React 事件池）
+    const rect = e.currentTarget.getBoundingClientRect();
     // E3a #31：isPluginDisabled 走 IPC
     const disabled = await pm().isDisabled(plugin.pluginId);
     ContextKeyService.setValue("pluginDisabled", disabled);
-    const rect = e.currentTarget.getBoundingClientRect();
     setGearMenuAnchor({ x: rect.right, y: rect.bottom });
   };
 
