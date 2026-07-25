@@ -6,9 +6,11 @@
  * 改为直接 IPC——window.linkdesk.serial.* 调用壳侧 serial-service。
  *
  * 调用方不感知变化——useSerialContext() 接口完全不变。
+ * 🔥 B86 预防：sourceName/baudRate 用 ref 桥接——ControlPanel 先 setSourceName
+ *   再 toggleOpen（同事件循环），闭包里的 state 还没更新（React 异步 setState）。
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
 // ── 类型（与 SourceStateContext 内联——避免跨模块依赖）──
 
@@ -29,12 +31,6 @@ interface SerialActions {
   setSourceName: (name: string, encoding?: string) => Promise<void>;
   setBaudRate: (baud: string, encoding?: string) => Promise<void>;
 }
-
-// ═══════════════════════════════════════════════════════
-// E3a #30：IPC 版 useSerialContext
-// 对标 useSourceState 的 { state, actions } 接口，
-// 但数据来源从 React Context 改为 IPC。
-// ═══════════════════════════════════════════════════════
 
 // serial-service getStatus() 返回 portName，终端状态用 sourceName——做 key 映射
 function mergeStatus(p: SerialState, status: any): SerialState {
@@ -61,6 +57,12 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     rxBytes: 0,
     lastError: null,
   });
+
+  // 🔥 B86 预防：ref 桥接——action 闭包永远读最新值
+  const sourceNameRef = useRef(state.sourceName);
+  sourceNameRef.current = state.sourceName;
+  const baudRateRef = useRef(state.baudRate);
+  baudRateRef.current = state.baudRate;
 
   // 初始加载——拉取端口列表 + 串口状态
   // 兼容两套 preload：壳侧 listPorts，插件侧 getPorts
@@ -94,7 +96,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     return () => unsub?.();
   }, []);
 
-  // ── 操作（对标 SourceActions，体感不变）──
+  // ── 操作（对标 SourceActions，ref 桥接防 B86）──
 
   const toggleOpen = useCallback(async (encoding?: string) => {
     if (!s) return;
@@ -102,41 +104,40 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (status?.isOpen) {
       await s.closePort();
     } else {
+      // 🔥 用 ref 读最新值——不用 state 闭包（B86）
       await s.openPort({
-        portName: status?.portName ?? state.sourceName,
-        baudRate: Number(status?.baudRate ?? state.baudRate),
+        portName: sourceNameRef.current,
+        baudRate: Number(baudRateRef.current),
         encoding,
       });
     }
     const fresh = await s.getStatus();
     if (fresh) setState((p) => mergeStatus(p, fresh));
-  }, [state.sourceName, state.baudRate]);
+  }, []);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
-    const status = await s.getStatus();
-    if (status?.isOpen) {
+    setState((p) => ({ ...p, sourceName: name }));
+    // 如果已打开——先关再开（切换端口）
+    if (state.isOpen) {
       await s.closePort();
-      await s.openPort({ portName: name, baudRate: Number(status?.baudRate ?? "115200"), encoding });
+      await s.openPort({ portName: name, baudRate: Number(baudRateRef.current), encoding });
       const fresh = await s.getStatus();
       if (fresh) setState((p) => mergeStatus(p, fresh));
-    } else {
-      setState((p) => ({ ...p, sourceName: name }));
     }
-  }, []);
+  }, [state.isOpen]);
 
   const setBaudRate = useCallback(async (baud: string, encoding?: string) => {
     if (!s) return;
-    const status = await s.getStatus();
-    if (status?.isOpen) {
+    setState((p) => ({ ...p, baudRate: baud }));
+    // 如果已打开——先关再开（切换波特率）
+    if (state.isOpen) {
       await s.closePort();
-      await s.openPort({ portName: status?.portName ?? "", baudRate: Number(baud), encoding });
+      await s.openPort({ portName: sourceNameRef.current, baudRate: Number(baud), encoding });
       const fresh = await s.getStatus();
       if (fresh) setState((p) => mergeStatus(p, fresh));
-    } else {
-      setState((p) => ({ ...p, baudRate: baud }));
     }
-  }, []);
+  }, [state.isOpen]);
 
   return { state, actions: { toggleOpen, setSourceName, setBaudRate } };
 }
