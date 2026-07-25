@@ -95,6 +95,19 @@ try {
       resolvePath:  (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
     },
 
+    // ── E3a #31：插件管理（桥接——走 IpcBridge → IpcBridgeHandler → loader 函数）──
+    pluginManager: {
+      list:           () => ipcRenderer.invoke('plugins:call', 'list'),
+      enable:         (id: string) => ipcRenderer.invoke('plugins:call', 'enable', id),
+      disable:        (id: string) => ipcRenderer.invoke('plugins:call', 'disable', id),
+      uninstall:      (id: string) => ipcRenderer.invoke('plugins:call', 'uninstall', id),
+      install:        (path: string) => ipcRenderer.invoke('plugins:call', 'install', path),
+      reinstall:      (id: string) => ipcRenderer.invoke('plugins:call', 'reinstall', id),
+      getDisabled:    () => ipcRenderer.invoke('plugins:call', 'getDisabled'),
+      getUninstalled: () => ipcRenderer.invoke('plugins:call', 'getUninstalled'),
+      isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
+    },
+
     // ── 以下命名空间在步 4 接入 ──
     commands: {},
     config: {},
