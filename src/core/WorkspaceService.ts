@@ -11,7 +11,7 @@
  *   设置   → Workspace scope settings.json 的路径
  */
 
-import { Emitter, type Event } from "./CoreEvents";
+import { Emitter, type Event, CoreEvents } from "./CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
 
 /* ── 类型 ── */
@@ -80,6 +80,7 @@ export function addFolder(folderPath: string): void {
 
   _folders = [..._folders, folder];
   _onDidChangeFolders.fire([..._folders]);
+  CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
   // 联动 ConfigurationService——workspace scope 的 settings.json 路径
   setWorkspaceRoot(folderPath);
@@ -97,6 +98,7 @@ export function removeFolder(folderPath: string): void {
   _folders = _folders.map((f, i) => ({ ...f, index: i }));
 
   _onDidChangeFolders.fire([..._folders]);
+  CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
   // 如果移除的是第一个文件夹，更新 workspace root
   setWorkspaceRoot(_folders[0]?.uri ?? null);

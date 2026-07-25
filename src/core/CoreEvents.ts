@@ -50,6 +50,11 @@ export class Emitter<T> {
   }
 }
 
+/* ── 依赖类型（import type——零运行时开销，不产生循环依赖） ── */
+
+import type { FileChangeEvent } from "./FileService";
+import type { WorkspaceFolder } from "./WorkspaceService";
+
 /* ── 5 个核心事件 ── */
 
 /**
@@ -74,6 +79,12 @@ export const CoreEvents = {
 
   /** 快捷键绑定变更——对标 VS Code onDidChangeKeybindings（E2c #17） */
   onDidChangeKeybindings: new Emitter<void>(),
+
+  /** 文件系统变更——FileService.watch 检测外部变动时 emit（E2c #19） */
+  onDidChangeFileSystem: new Emitter<FileChangeEvent[]>(),
+
+  /** 工作区文件夹变更——WorkspaceService 打开/关闭文件夹时 emit（E2c #19） */
+  onDidChangeWorkspaceFolders: new Emitter<WorkspaceFolder[]>(),
 };
 
 /* ── CustomEvent 名称常量（B8 fix——拼错一端就断开通信） ── */

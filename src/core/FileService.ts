@@ -14,6 +14,8 @@
  *   归一后：所有 fs 操作走 FileService——不存在"A 写 B 不知道"。
  */
 
+import { CoreEvents } from "./CoreEvents";
+
 /* ── 类型 ── */
 
 export interface FileEntry {
@@ -136,6 +138,8 @@ export async function watchFile(
   const watcherId = await a.watch(dirPath);
   const unsub = a.onFileChange((event: FileChangeEvent) => {
     onEvent(event);
+    // E2c #19：广播到 CoreEvents——文件树等订阅方自动刷新
+    CoreEvents.onDidChangeFileSystem.fire([event]);
   });
 
   return () => {
