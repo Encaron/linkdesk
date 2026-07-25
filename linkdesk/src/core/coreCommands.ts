@@ -16,6 +16,7 @@ import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
+import { requestSettingsGroup } from "./ConfigurationRegistry";
 
 /* ── Callbacks ── */
 
@@ -52,12 +53,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
-      // 如果传了 pluginId → 跳转到指定插件的配置分组
-      if (ctx?.pluginId) {
-        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_SETTINGS, {
-          detail: { pluginId: ctx.pluginId },
-        }));
-      }
+      if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
       const settingsId = factorySlots.getPluginId("settings");
       if (settingsId) _callbacks?.openTab(settingsId);
     },
@@ -198,12 +194,5 @@ export function ensureCoreCommands(): void {
   for (const [menuId, items] of menuItemsMap) {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
-
-  // E3b #36e：底部齿轮始终显的菜单项（ExtensionGear）→ 命令定义上挂 menuId
-  // 以下三个仅插件卡片齿轮显（MarketplaceItemGear），按 contributes 类型过滤：
-  registerMenuItems(MenuId.MarketplaceItemGear, APP_PLUGIN_ID, [
-    { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
-    { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
-  ]);
 
 }

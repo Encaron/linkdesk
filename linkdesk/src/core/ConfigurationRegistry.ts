@@ -176,3 +176,19 @@ export function clearConfigurationRegistrations(): void {
   _configKeyOwner.clear();
   _configurationDefaults.clear();
 }
+
+/* ── 设置页跳转目标——打开设置前 set，SettingsView mount 时 consume ── */
+
+let _pendingSettingsGroup: string | null = null;
+
+/** 标记：下次打开设置页时选中此插件分组 */
+export function requestSettingsGroup(pluginId: string): void {
+  _pendingSettingsGroup = pluginId;
+}
+
+/** 消费：SettingsView mount 时调用，返回目标插件 ID 并清空 */
+export function consumeSettingsGroup(): string | null {
+  const v = _pendingSettingsGroup;
+  _pendingSettingsGroup = null;
+  return v;
+}

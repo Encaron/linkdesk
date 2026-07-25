@@ -94,10 +94,9 @@ export const CoreEvents = {
  * Phase 6 迁移到 Emitter<T>（CoreEvents 已有基础设施）。
  */
 export const CUSTOM_EVENTS = {
-  SHOW_PALETTE: "v3-show-palette",
-  SHOW_THEME_BROWSER: "v3-show-theme-browser",
-  SHOW_SETTINGS: "v3-show-settings",
-  CHORD_CHANGED: "v3-chord-changed",
+  SHOW_PALETTE: "linkdesk:show-palette",
+  SHOW_THEME_BROWSER: "linkdesk:show-theme-browser",
+  CHORD_CHANGED: "linkdesk:chord-changed",
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 
