@@ -266,6 +266,22 @@ export async function initPluginLoader(): Promise<void> {
       ttl: TOAST_TTL_ERROR,
     });
   }
+
+  // 6. 清理僵尸缓存——status="installed" 但未真正加载的条目（插件目录已删除）
+  const cache = getMetadataCache();
+  let staleCount = 0;
+  for (const [id, meta] of Object.entries(cache)) {
+    if (meta.status === "installed" && !loadedPluginIds.has(id)) {
+      delete cache[id];
+      staleCount++;
+    }
+  }
+  if (staleCount > 0) {
+    try {
+      setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache);
+      log.appendLine(`🧹 清理 ${staleCount} 条僵尸缓存`);
+    } catch { /* 非关键路径 */ }
+  }
 }
 
 /* ── Phase 5：parseContributions——对标 VS Code package.json contributes ── */
