@@ -938,6 +938,18 @@ export function getPluginCachedMeta(pluginId: string): CachedPluginMeta | undefi
   return getMetadataCache()[pluginId];
 }
 
+/** 获取所有已加载插件的 manifest（含非视图插件：主题/语言等） */
+export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest }> {
+  const result: Array<{ pluginId: string; manifest: PluginManifest }> = [];
+  for (const [path, manifest] of Object.entries(pluginManifests)) {
+    const pluginId = extractPluginId(path);
+    if (loadedPluginIds.has(pluginId)) {
+      result.push({ pluginId, manifest });
+    }
+  }
+  return result;
+}
+
 /** 是否已初始化 */
 export function isPluginLoaderReady(): boolean {
   return _initialized;
