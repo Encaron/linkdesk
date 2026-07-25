@@ -8,12 +8,12 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { getViewPlugins } from "@src/pluginLoader/viewRegistry";
+import { getLoadedPluginManifests } from "@src/pluginLoader/loader";
 import "./MarketplaceView.css";
 
 function MarketplaceView({ isActive: _isActive }: { isActive: boolean }) {
   const { t } = useTranslation();
-  const count = getViewPlugins().length;
+  const count = getLoadedPluginManifests().length;
 
   return (
     <div className="marketplace-view">
