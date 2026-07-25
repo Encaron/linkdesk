@@ -5,6 +5,33 @@
 
 ---
 
+## 插件目录结构
+
+一个插件就是一个文件夹，放在 `plugins/<插件ID>/` 下。**目录名 = 插件 ID**（如 `plugins/terminal/`）。
+
+```
+plugins/my-plugin/
+  plugin.json        # 插件元数据（必需，唯一）
+  icon.png           # 图标文件（推荐 icon.png 或 icon.svg）
+  src/               # 源代码（推荐）
+    index.tsx        # 入口组件
+    sidebar.tsx      # 侧栏组件（如有）
+    styles.css       # 样式
+  dist/              # 构建产物（自动生成，不手改）
+```
+
+| 文件 | 说明 |
+|------|------|
+| `plugin.json` | **唯一必需文件。** 文件名固定，不可改名 |
+| `icon.png` / `icon.svg` | 图标。通过 `linkdesk://` 协议自动加载。`plugin.json` 的 `icon` 字段声明文件名即可 |
+| `src/` | **推荐**把源码放在 `src/` 子目录下，避免所有文件平铺在插件根目录 |
+| `dist/` | Vite 构建输出，由 `npm run build` 自动生成，不要手动编辑 |
+| `__tests__/` | 测试文件（如有），放在 `src/__tests__/` 下跟随源码 |
+
+> **`entry` / `sidebar` 路径是相对于 `plugin.json` 所在目录的。** 源码放在 `src/` 下时，`plugin.json` 写 `"entry": "src/index.tsx"`。
+
+---
+
 ## 最小示例（视图插件）
 
 ```json
