@@ -118,6 +118,54 @@ LinkDesk 从 Phase 1 就把主题引擎和双语引擎写进了脚手架。不�
 
 ---
 
+## 1.5、历史进程——从 V2 到圆形大厅
+
+这个软件不是一天长成这样的。每一次转折下面都有一次"差点死掉"的教训。
+
+### 第一纪：V2——Serial Monitor（2024-2025）
+
+C# WPF，一个人断断续续写了一年。6300 行。功能能用。
+
+**死因：** 面板类型写死在 enum 里。`renderTabContent()` 是一个巨大的 switch case。图标栏写死了 `iconTypes` 数组。串口渗透到每一层。主题切换做了一半放弃——93 处 `SetResourceReference`，写到 30 处就不知道漏了哪。
+
+**教训：加功能就要改核心 → 核心越来越胖 → 最后没人敢动。**
+
+### 第二纪：V3 / LinkDesk——Tauri 时代（2026 上半年）
+
+遇到 Claude。决定用 Tauri v2 + React 18 + TypeScript 完全重写。**全工程 AI 驱动。**
+
+P1-P2：终端 + 主题/双语引擎——第一天就用 `var(--xxx)` 和 `t()`。
+P3：标签页分屏。自创 closest-edge + 50% 算法 → 15 个 bug → 翻 VS Code 源码 → `SPLIT_THRESHOLD=0.25` → 零 bug。**定下死规矩：照抄 VS Code，别自己发明。**
+P4：插件系统。六类插件接口。终端变成第一个视图插件——硬编码全部清零。
+P5：命令/配置/菜单/协议/快捷键/context key——八个子阶段。**在任何一个功能插件之前建完基础设施。**
+P5.5：交互对标 VS Code。三栏布局。48/48 bug 全部修复。
+
+**P5 完成 = 框架封闭。** `App.tsx` 和 `core/` 不再膨胀。往后加新功能 = 写 plugin.json + React 组件。
+
+**认知跃迁：** 一场和网页 AI 的对话中，回头看代码——ProtocolRegistry 已经在核心层实现了全套注册入口。代码在我意识到"协议可以插件化"之前，就已经是那个形状了。**我给的是原则（归一化、AI 友好、核心无知），AI 把原则推到极限，输出的结构恰好就是插件系统。** 从那天起，LinkDesk 的定义从"串口调试工具"变成"通用容器平台"。
+
+### 第三纪：Electron 迁移（2026-07-24）
+
+**Tauri 的物理限制：** 系统 WebView 只有一个 JS 上下文。所有插件共享同一个 WebView——一个插件 `while(true){}`，整个应用卡死。多 WebView 在 Tauri 是 unstable API，不敢用。
+
+**迁移到 Electron。** `WebContentsView`（Electron 30+ stable API）——每插件独立 renderer process。插件崩了只崩自己的进程。
+
+**E1（7 步，~1,190 行）：** 换地基。BrowserWindow + IPC 注册 + preload + `linkdesk://` 协议 + 打包配置。4 个硬编码路径 bug（`file://` 协议下 `assets/` 字面量全部炸裂）→ `getAssetPath()` 归一化。
+
+**E2（36/40 任务，~1,310 行）：** 底层加固。FileService、WorkspaceService、DialogService、Chord 快捷键、CommandPalette 抬升、PluginIcon 归一化、factoryRole 系统插槽、壳去终端化。E2d 4 个侧栏任务取消——VS Code 源码证实侧栏单槽位，双槽位是 AI 编的。
+
+### 第四纪：圆形大厅（2026-07-25）
+
+**E3（46 任务，当前 E3a #26 完成）：** 架构最后一站。多 WebView 进程隔离（#24-#32a）、主题/语言引擎跨进程广播（#33-#42）、Profile 五维切换（#43-#45）、通知系统（#46-#50）、壳 UI 收尾（#51-#59b）、API 与 V2 兼容（#60-#63）。**E3 封板后框架永远不改。**
+
+**E4（34 任务，文档已就绪）：** 最后一批 E 编号。文件树 + Monaco 编辑器——第一批消费者插件。对标 VS Code Explorer + Search + Editor。**E4 之后全是插件，不占编号。**
+
+**认知跃迁——圆形大厅：** 在审视 FileDecorationRegistry（文件装饰器注册中心——Git 登记 M/A/D，文件树消费）要不要放核心时，突然悟到了一个更大的东西。**整个软件不是一个"空壳"——它是一个圆形大厅。** 核心是中央大厅，提供桌子（Registry/Service）给插件用。插件是周边小房间（独立 WebContentsView 进程），开门=激活，交流=走到大厅桌子前翻电话本、贴名片。高频推流走后门（点对点 IPC 通道）。
+
+**LinkDesk = Link（连接）+ Desk（桌子）。** 这个名字在起名时就写好了——从 V3 改名 LinkDesk 的那天，这个名字就已经在等我了。到今天才追上。
+
+---
+
 ## 二、我认的几条死理
 
 这些不是贴在墙上的口号。每一条背后都至少踩过一次坑。
