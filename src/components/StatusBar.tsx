@@ -165,14 +165,8 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
 
   return (
     <div className="status-bar">
-      {/* 左区：Chord 提示 + 插件贡献项 + 错误信息 */}
+      {/* 左区：插件贡献项 + 错误信息 */}
       <div className="status-bar-left">
-        {chordLabel && (
-          <>
-            <span className="status-text status-chord">{chordLabel}</span>
-            <span className="status-divider">│</span>
-          </>
-        )}
         {leftPluginIds.map((pid, i) => (
           <Fragment key={pid}>
             {i > 0 && <span className="status-divider">│</span>}
@@ -187,7 +181,7 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
         )}
       </div>
 
-      {/* 右区：插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
+      {/* 右区：Chord 提示 + 插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
         {/* 通知铃铛 */}
@@ -199,6 +193,10 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
         >
           <span className="codicon codicon-bell" />{unreadCount > 0 && <span className="status-bar-notif-badge">{unreadCount}</span>}
         </button>
+        {/* Chord 提示——临时出现，放最右边不影响固定按钮 */}
+        {chordLabel && (
+          <span className="status-text status-chord">{chordLabel}</span>
+        )}
         {showNotifPanel && (
           <div className="status-bar-notif-panel" ref={notifPanelRef}>
             <div className="notif-panel-header">
