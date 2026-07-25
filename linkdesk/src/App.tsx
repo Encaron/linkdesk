@@ -471,18 +471,22 @@ function App() {
   );
 
 
-  /* ---- Command Palette——壳级特性，不属任何插件 ---- */
+  /* ---- QuickPick 互斥——同时只允许一个浮动面板打开（对标 VS Code） ---- */
   useEffect(() => {
-    const handler = () => setPaletteOpen((p) => !p);
-    window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, handler);
-  }, []);
-
-  /* ---- Theme Browser——E3b #36d 壳级特性 ---- */
-  useEffect(() => {
-    const handler = () => setThemeBrowserOpen(true);
-    window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, handler);
+    const onPalette = () => {
+      setThemeBrowserOpen(false);
+      setPaletteOpen((p) => !p);
+    };
+    const onThemeBrowser = () => {
+      setPaletteOpen(false);
+      setThemeBrowserOpen(true);
+    };
+    window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
+    window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+    return () => {
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+    };
   }, []);
 
   /* ---- 串口控制 ---- */
