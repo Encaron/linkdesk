@@ -85,6 +85,18 @@ export function unregisterConfiguration(pluginId: string): boolean {
   return _contributions.delete(pluginId);
 }
 
+/** 动态更新配置项的 enum + default——不影响 onApply。用于主题列表/语言列表等运行时变化。 */
+export function updateConfigurationEnum(key: string, enumValues: string[], defaultValue?: string): void {
+  for (const [, contrib] of _contributions) {
+    if (contrib.properties[key]) {
+      contrib.properties[key].enum = enumValues;
+      if (defaultValue !== undefined) {
+        contrib.properties[key].default = defaultValue;
+      }
+    }
+  }
+}
+
 /** 获取所有配置贡献——Settings Editor 消费 */
 export function getConfigurationContributions(): Map<string, ConfigurationContribution> {
   return new Map(_contributions);

@@ -24,6 +24,7 @@ import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/CardRegistry";
 import { unregisterPluginChannels } from "../core/LogChannel";
 import { unregisterPluginThemes } from "../core/ThemeEngine";
+import { ThemeRegistry } from "../core/ThemeRegistry";
 import type { PluginManifest } from "../core/types";
 
 /* ── 事件类型 ── */
@@ -109,6 +110,7 @@ export function initLifecycleConsumers(): void {
     unregisterPluginCards(pluginId);
     unregisterPluginChannels(pluginId);
     unregisterPluginThemes(pluginId);
+    ThemeRegistry.unregisterPlugin(pluginId);
   });
 
   /* ─── 消费端 3：toast 通知 ─── */

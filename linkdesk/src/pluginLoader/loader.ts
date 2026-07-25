@@ -16,7 +16,7 @@
 const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
-import { registerTheme } from "../core/ThemeEngine";
+import { registerTheme, getAvailableThemes } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
 import type { ThemeContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
@@ -26,7 +26,8 @@ import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, initLifecycleConsumers, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
-import { registerConfiguration, registerConfigurationDefaults } from "../core/ConfigurationRegistry";
+import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/ConfigurationRegistry";
+import { getConfigurationValue, setConfigurationValue } from "../core/ConfigurationService";
 import type { ManifestMenuItem } from "../core/MenuRegistry";
 import { registerMenuItems } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
@@ -460,6 +461,9 @@ async function loadPlugin(
   // B2 fix: 缓存元数据——marketplace 不依赖文件系统，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
+  // #34：主题枚举同步
+  syncAppThemeEnum();
+
   // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
@@ -554,6 +558,9 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   }
 
   loadedPluginIds.add(pluginId);
+
+  // #34：主题枚举同步
+  syncAppThemeEnum();
 
   // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
   // glob 外的插件的安装原因——从外部来源安装，视为 'install'
@@ -781,6 +788,8 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
+    revertThemeIfCurrent(pluginId);
+    syncAppThemeEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
@@ -867,6 +876,9 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
+    // #34：卸载后同步主题枚举 + 自动回退当前主题
+    revertThemeIfCurrent(pluginId);
+    syncAppThemeEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     return { success: true };
@@ -953,16 +965,51 @@ export function getPluginCachedMeta(pluginId: string): CachedPluginMeta | undefi
   return getMetadataCache()[pluginId];
 }
 
-/** 获取所有已加载插件的 manifest（含非视图插件：主题/语言等） */
+/** 获取所有已加载插件的 manifest（含非视图插件 + 运行时加载的插件） */
 export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest }> {
   const result: Array<{ pluginId: string; manifest: PluginManifest }> = [];
+  const seen = new Set<string>();
+
+  // 1. Vite glob 中的插件（构建时扫描）
   for (const [path, manifest] of Object.entries(pluginManifests)) {
     const pluginId = extractPluginId(path);
     if (loadedPluginIds.has(pluginId)) {
       result.push({ pluginId, manifest });
+      seen.add(pluginId);
     }
   }
+
+  // 2. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest）
+  const cache = getMetadataCache();
+  for (const [pluginId, meta] of Object.entries(cache)) {
+    if (meta.status === "installed" && meta.manifest && !seen.has(pluginId)) {
+      result.push({ pluginId, manifest: meta.manifest });
+    }
+  }
+
   return result;
+}
+
+/** 同步 app.theme 枚举——主题注册/注销后调用。不影响 onApply，只更新下拉选项。 */
+function syncAppThemeEnum(): void {
+  const available = getAvailableThemes();
+  updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0] ?? "Dark");
+}
+
+/** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退 */
+async function revertThemeIfCurrent(pluginId: string): Promise<void> {
+  try {
+    const currentTheme = getConfigurationValue<string>("app.theme");
+    const theme = ThemeRegistry.get(currentTheme ?? "");
+    if (!theme || theme.pluginId !== pluginId) return;
+
+    // 当前主题来自被卸载/禁用的插件 → 找替代
+    const available = getAvailableThemes();
+    if (available.length > 0) {
+      await setConfigurationValue("app.theme", available[0], "user");
+    }
+    // 无可用主题 → 保持当前 CSS（index.css :root 为兜底），设定下次启动的默认值
+  } catch { /* 非关键路径 */ }
 }
 
 /** 是否已初始化 */
