@@ -304,11 +304,25 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
   }
 
-  // contributes.themes → ThemeRegistry
+  // contributes.themes → ThemeRegistry + ThemeEngine
   if (c.themes) {
     const themeList = c.themes as ThemeContribution[];
     for (const tc of themeList) {
       ThemeRegistry.register(tc, pluginId);
+      // 同步注册完整主题数据——ThemeEngine.loadTheme 需要从 pluginThemes Map 查找
+      const data = getPluginDataFile(pluginId, tc.path);
+      if (data) {
+        const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+        const colors: Record<string, string> = {};
+        for (const [k, v] of Object.entries(data)) {
+          if (k !== "type" && k !== "name" && typeof v === "string") {
+            colors[k] = v;
+          }
+        }
+        registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+      } else {
+        console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}"`);
+      }
     }
   }
 
@@ -383,6 +397,11 @@ async function loadPlugin(
       loadThemePlugin(pluginId, manifest);
       contributed = true;
     }
+  }
+
+  // contributes.themes（parseContributions 中注册——此处仅标记 contributed）
+  if (manifest.contributes?.themes) {
+    contributed = true;
   }
 
   if (manifest.languages && manifest.languages.length > 0) {
