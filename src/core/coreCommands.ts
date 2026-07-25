@@ -49,10 +49,17 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.openSettings",
     title: "设置",
     category: "视图",
-    handler: async () => {
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { pluginId?: string } | undefined;
       // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
-      const pluginId = factorySlots.getPluginId("settings");
-      if (pluginId) _callbacks?.openTab(pluginId);
+      // 如果传了 pluginId → 跳转到指定插件的配置分组
+      if (ctx?.pluginId) {
+        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_SETTINGS, {
+          detail: { pluginId: ctx.pluginId },
+        }));
+      }
+      const settingsId = factorySlots.getPluginId("settings");
+      if (settingsId) _callbacks?.openTab(settingsId);
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -73,19 +80,6 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: "首选项",
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER));
-    },
-    menuId: MenuId.ExtensionGear,
-    menuGroup: "navigation",
-  },
-  {
-    id: "workbench.action.openExtensionSettings",
-    title: "扩展设置",
-    category: "首选项",
-    handler: async (_token, ...args) => {
-      const ctx = args[0] as { pluginId?: string } | undefined;
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_SETTINGS, {
-        detail: { pluginId: ctx?.pluginId },
-      }));
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -205,10 +199,11 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
-  // E3b #36e：选择颜色主题——底部齿轮始终显，插件卡片仅对有 contributes.themes 的插件显
+  // E3b #36e：底部齿轮始终显的菜单项（ExtensionGear）→ 命令定义上挂 menuId
+  // 以下三个仅插件卡片齿轮显（MarketplaceItemGear），按 contributes 类型过滤：
   registerMenuItems(MenuId.MarketplaceItemGear, APP_PLUGIN_ID, [
+    { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
     { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
-    { command: "workbench.action.openExtensionSettings", group: "navigation", when: "extensionHasConfiguration" },
   ]);
 
 }
