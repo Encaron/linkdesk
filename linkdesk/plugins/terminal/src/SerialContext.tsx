@@ -1,19 +1,18 @@
 /**
  * 终端插件的 SerialContext——IPC 版本（E3a #30）。
  *
- * E2b #7 时是薄封装层：useSerialContext → useSourceState → React Context → App.tsx Provider。
  * E3a 多 WebView：终端在自己的 WebView 中运行，无法访问壳的 React Context。
  * 改为直接 IPC——window.linkdesk.serial.* 调用壳侧 serial-service。
  *
- * 🔥 关键：模块级共享状态——替代 React Context 的跨组件共享。
- * 每个 useSerialContext() 共享同一份 state，任意组件调 actions 所有组件都重渲染。
- * 🔥 B86 预防：sourceName/baudRate 用 ref 桥接——ControlPanel 先 setSourceName
- *   再 toggleOpen（同事件循环），闭包里的 state 还没更新（React 异步 setState）。
+ * 🔥 模块级共享状态——所有 useSerialContext() 共享同一份 state。
+ * 用最朴素的手写订阅（useState + useEffect subscribe），避免 useSyncExternalStore
+ * 与高频 onStats 回调的潜在交互问题。
+ * 🔥 B86 预防：sourceName/baudRate 用 ref 桥接。
  */
 
-import { useState, useEffect, useCallback, useRef, useSyncExternalStore } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 
-// ── 类型（与 SourceStateContext 内联——避免跨模块依赖）──
+// ── 类型 ──
 
 interface PortInfo { name: string; description: string; }
 
@@ -34,7 +33,7 @@ interface SerialActions {
 }
 
 // ═══════════════════════════════════════════════════════
-// 模块级共享状态——替代 React Context 的跨组件共享
+// 模块级共享状态
 // ═══════════════════════════════════════════════════════
 
 let _sharedState: SerialState = {
@@ -47,23 +46,21 @@ let _sharedState: SerialState = {
   lastError: null,
 };
 
-const _listeners = new Set<() => void>();
+let _listenerId = 0;
+const _listeners = new Map<number, () => void>();
 
 function _setState(updater: (p: SerialState) => SerialState): void {
   _sharedState = updater(_sharedState);
-  for (const fn of _listeners) fn();
-}
-
-function _getState(): SerialState {
-  return _sharedState;
+  // 异步通知——让 React 18 自动批处理多个 _setState
+  for (const fn of _listeners.values()) fn();
 }
 
 function _subscribe(cb: () => void): () => void {
-  _listeners.add(cb);
-  return () => { _listeners.delete(cb); };
+  const id = ++_listenerId;
+  _listeners.set(id, cb);
+  return () => { _listeners.delete(id); };
 }
 
-// serial-service getStatus() 返回 portName，终端状态用 sourceName——做 key 映射
 function mergeStatus(p: SerialState, status: any): SerialState {
   return {
     ...p,
@@ -76,7 +73,6 @@ function mergeStatus(p: SerialState, status: any): SerialState {
   };
 }
 
-// 标记是否已初始化（只跑一次 IPC 订阅）
 let _initialized = false;
 
 function _initIPC(): void {
@@ -86,7 +82,6 @@ function _initIPC(): void {
   const s = (window as any).linkdesk?.serial;
   if (!s) return;
 
-  // 初始加载——拉取端口列表 + 串口状态
   const listPorts = s.listPorts ?? s.getPorts;
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
@@ -95,7 +90,7 @@ function _initIPC(): void {
     if (status) _setState((p) => mergeStatus(p, status));
   });
 
-  // 订阅——tx/rx 统计累加（对标 App.tsx useIpcEvent("serial-stats")）
+  // 高频 stats 回调——累加而非覆盖
   s.onStats?.((stats: any) => {
     _setState((p) => ({
       ...p,
@@ -104,39 +99,39 @@ function _initIPC(): void {
     }));
   });
 
-  // 订阅——系统消息（错误等）
   s.onSystem?.((msg: any) => {
     _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
   });
 }
 
 // ═══════════════════════════════════════════════════════
-// useSerialContext——共享状态 + actions
+// useSerialContext
 // ═══════════════════════════════════════════════════════
 
 export function useSerialContext(): { state: SerialState; actions: SerialActions } {
   const s = (window as any).linkdesk?.serial;
 
-  // 首次渲染时初始化 IPC 订阅（只跑一次）
+  // 首次渲染初始化 IPC（只跑一次）
   _initIPC();
 
-  // useSyncExternalStore 确保所有组件共享同一份 state
-  const state = useSyncExternalStore(_subscribe, _getState, _getState);
+  // 朴素的订阅模式：useState + useEffect subscribe
+  const [state, setState] = useState<SerialState>(_sharedState);
 
-  // 🔥 B86 预防：ref 桥接——action 闭包永远读最新值
+  useEffect(() => {
+    return _subscribe(() => setState(_sharedState));
+  }, []);
+
+  // 🔥 B86 预防：ref 桥接
   const sourceNameRef = useRef(state.sourceName);
   sourceNameRef.current = state.sourceName;
   const baudRateRef = useRef(state.baudRate);
   baudRateRef.current = state.baudRate;
-
-  // ── 操作（对标 SourceActions）──
 
   const toggleOpen = useCallback(async (encoding?: string) => {
     if (!s) return;
     const status = await s.getStatus();
     if (status?.isOpen) {
       await s.closePort();
-      // 关闭时重置计数（对标 App.tsx useEffect([isOpen])）
       _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
     } else {
       await s.openPort({
