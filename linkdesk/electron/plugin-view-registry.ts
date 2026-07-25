@@ -52,7 +52,6 @@ export class PluginViewRegistry {
   /**
    * 控制插件 WebContentsView 的可见性。
    * 标签页切换时——当前标签页可见，其他隐藏。
-   * 自动联动 WindowManager 的降频策略——可见=解除限流，隐藏=降频。
    */
   setVisible(pluginId: string, visible: boolean): void {
     const view = this.windowManager.getPluginView(pluginId);
@@ -61,8 +60,6 @@ export class PluginViewRegistry {
       return;
     }
     view.setVisible(visible);
-    // E3a #25a：可见性联动资源休眠
-    this.windowManager.setThrottling(pluginId, visible);
   }
 
   /**
