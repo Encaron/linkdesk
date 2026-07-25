@@ -13,6 +13,7 @@ import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
 import { getConfigurationValue } from "../core/ConfigurationService";
 import { executeCommand } from "../core/CommandRegistry";
+import { CUSTOM_EVENTS } from "../core/CoreEvents";
 
 /** 通知面板图标——对标 VS Code severity codicons */
 function getNotifIconClass(n: Toast): string {
@@ -70,6 +71,23 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
     return subscribeToasts((toasts) => {
       setNotifications([...toasts]);
     });
+  }, []);
+
+  // E3b #36d：Chord 状态栏提示——归一化，所有 chord（Ctrl+K Ctrl+T 等）共用
+  const [chordLabel, setChordLabel] = useState<string | null>(null);
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { isPending, firstKey } = (e as CustomEvent).detail as { isPending: boolean; firstKey?: string };
+      if (isPending && firstKey) {
+        // 格式化显示："ctrl+k" → "Ctrl+K"
+        const display = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        setChordLabel(`(${display}) 已按下，正在等待第二键…`);
+      } else {
+        setChordLabel(null);
+      }
+    };
+    window.addEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
   }, []);
 
   useEffect(() => {
@@ -135,8 +153,14 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
 
   return (
     <div className="status-bar">
-      {/* 左区：插件贡献项 + 错误信息 */}
+      {/* 左区：Chord 提示 + 插件贡献项 + 错误信息 */}
       <div className="status-bar-left">
+        {chordLabel && (
+          <>
+            <span className="status-text status-chord">{chordLabel}</span>
+            <span className="status-divider">│</span>
+          </>
+        )}
         {leftPluginIds.map((pid, i) => (
           <Fragment key={pid}>
             {i > 0 && <span className="status-divider">│</span>}

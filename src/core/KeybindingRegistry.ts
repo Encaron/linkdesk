@@ -32,7 +32,7 @@
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand } from "./CommandRegistry";
 import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "./FileService";
-import { CoreEvents } from "./CoreEvents";
+import { CoreEvents, CUSTOM_EVENTS } from "./CoreEvents";
 
 /* ── 类型 ── */
 
@@ -133,14 +133,20 @@ function isChordPrefix(normalizedKey: string): boolean {
   return _bindings.some((b) => b.key.startsWith(normalizedKey + " "));
 }
 
-/** 重置 chord 状态——超时或第二键不匹配时调用 */
+/** 重置 chord 状态——超时/第二键匹配/不匹配时调用。顺带通知状态栏清除提示。 */
 function resetChord(): void {
   if (_chordState.timer) {
     clearTimeout(_chordState.timer);
   }
+  const wasPending = _chordState.isPending;
   _chordState.isPending = false;
   _chordState.firstKey = "";
   _chordState.timer = null;
+  if (wasPending) {
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
+      detail: { isPending: false },
+    }));
+  }
 }
 
 /* ── User keybindings.json 持久化（E2c #17）── */
@@ -387,11 +393,9 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 
-  console.log("[KeybindingRegistry] keyString:", keyString, "chordPending:", _chordState.isPending);
-
   // ── Chord 第二键 ──
   if (_chordState.isPending) {
-    resetChord(); // 清除 timer
+    resetChord(); // 清除 timer + 清除状态栏提示
     const fullChord = `${_chordState.firstKey} ${keyString}`;
 
     const winner = keybindingResolver.resolve(fullChord);
@@ -410,6 +414,9 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     _chordState.isPending = true;
     _chordState.firstKey = keyString;
     _chordState.timer = setTimeout(resetChord, 2000); // 2s 无第二键 → 取消
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
+      detail: { isPending: true, firstKey: keyString },
+    }));
     e.preventDefault();
     return true; // 消费了事件——等待第二键
   }
