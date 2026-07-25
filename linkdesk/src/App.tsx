@@ -194,6 +194,8 @@ function App() {
             onApply: async (v) => {
               const t = await loadTheme(v as string);
               applyTheme(t);
+              // 主题文件自带 accent 颜色——用户自定义强调色需盖回去，否则切主题后强调色丢失
+              applyAccentColor(getConfigurationValue<string>("app.accentColor"));
             },
           },
           "app.language": {
