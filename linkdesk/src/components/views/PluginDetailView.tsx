@@ -7,7 +7,7 @@
  *       tab bar(Details|Changelog) → body → info sidebar
  */
 
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
 import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, performUninstall } from "../../pluginLoader/loader";
@@ -15,6 +15,7 @@ import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
+import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 
 function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[]; resources?: string[] }): string {
   const types: string[] = [];
@@ -38,11 +39,18 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   const [activeTab, setActiveTab] = useState<"details" | "changelog">("details");
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+  // G14 fix：监听插件生命周期——卸载/安装时触发重渲染，消灭幽灵页
+  const [lifecycleVersion, setLifecycleVersion] = useState(0);
+  useEffect(() => {
+    return onPluginLifecycleChange.event(() => {
+      setLifecycleVersion((v) => v + 1);
+    });
+  }, []);
 
   // ⚠️ 所有 hooks 必须在条件返回之前——React Rules of Hooks
   const installedIds = useMemo(
     () => new Set(getViewPlugins().map((p) => p.pluginId)),
-    []
+    [lifecycleVersion]
   );
   const reverseRecommends = useMemo(() => {
     if (!pluginId) return [];
