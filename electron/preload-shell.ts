@@ -141,6 +141,10 @@ try {
       pushToPlugin: (pluginId: string, channel: string, payload: unknown) => {
         ipcRenderer.send('bridge:push-to-plugin', { pluginId, channel, payload });
       },
+      // E3b #35：广播到所有插件 WebView——主题切换、语言切换等全局事件
+      broadcast: (channel: string, payload: unknown) => {
+        ipcRenderer.send('bridge:broadcast', { channel, payload });
+      },
     },
 
     // ── E3a #29：插件视图管理——壳侧控制插件 WebContentsView 的显隐和位置 ──

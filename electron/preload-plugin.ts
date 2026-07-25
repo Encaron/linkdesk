@@ -29,6 +29,25 @@ try {
   const eventSubscriptions = new Map<string, Set<(payload: any) => void>>();
 
   ipcRenderer.on('plugin:push', (_event, data: { channel: string; payload: any }) => {
+    // E3b #35：默认处理——theme:changed 自动注入 CSS 变量，插件无需手动订阅
+    if (data.channel === 'theme:changed') {
+      const { themeId, themeType, variables } = data.payload;
+      try {
+        document.documentElement.setAttribute('data-theme', themeType ?? 'dark');
+        let style = document.getElementById('linkdesk-theme') as HTMLStyleElement | null;
+        if (!style) {
+          style = document.createElement('style');
+          style.id = 'linkdesk-theme';
+          document.head.appendChild(style);
+        }
+        style.textContent = `:root { ${
+          Object.entries(variables as Record<string, string>).map(([k, v]) => `--${k}:${v};`).join(' ')
+        } }`;
+      } catch (e) {
+        console.error('[preload-plugin] theme:changed CSS 注入失败:', e);
+      }
+    }
+
     const handlers = eventSubscriptions.get(data.channel);
     if (!handlers) return;
     for (const fn of handlers) {
