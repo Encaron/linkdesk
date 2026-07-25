@@ -64,6 +64,23 @@ function ensureMarketplaceCommands(): void {
   ]);
 }
 
+/**
+ * 归一化：从插件 manifest 提取所有贡献特征，映射到 ContextKeyService。
+ * 菜单项的 `when` 条件消费这些 key，添加新类型时只需加一行映射。
+ *
+ * 设计依据：VS Code `cksOverlay`——`extensionsActions.ts` line ~1300
+ *   cksOverlay.push(['extensionHasColorThemes', ...]);
+ *   cksOverlay.push(['extensionHasFileIconThemes', ...]);
+ *   cksOverlay.push(['extensionHasProductIconThemes', ...]);
+ */
+function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
+  const c = manifest?.contributes ?? {};
+  ContextKeyService.setValue("pluginDisabled", isDisabled);
+  ContextKeyService.setValue("extensionHasThemes", !!c.themes);
+  ContextKeyService.setValue("extensionHasLanguages", !!c.languages);
+  ContextKeyService.setValue("extensionHasIconThemes", !!c.iconThemes);
+}
+
 function MarketplaceSidebar() {
   const { t } = useTranslation();
   const tabActions = useTabActions();
@@ -465,8 +482,7 @@ function ExtensionItem({
     const rect = e.currentTarget.getBoundingClientRect();
     // E3a #31：isPluginDisabled 走 IPC
     const disabled = await pm().isDisabled(plugin.pluginId);
-    ContextKeyService.setValue("pluginDisabled", disabled);
-    ContextKeyService.setValue("extensionHasThemes", !!(plugin.manifest as any)?.contributes?.themes);
+    applyExtensionContextKeys(plugin.manifest, disabled);
     setGearMenuAnchor({ x: rect.right, y: rect.bottom });
   };
 
