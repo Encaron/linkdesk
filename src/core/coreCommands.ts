@@ -192,9 +192,9 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
-  // E3b #36e：选择颜色主题——同时出现在底部齿轮 + 插件卡片齿轮
+  // E3b #36e：选择颜色主题——底部齿轮始终显，插件卡片仅对有 contributes.themes 的插件显
   registerMenuItems(MenuId.MarketplaceItemGear, APP_PLUGIN_ID, [
-    { command: "workbench.action.selectTheme", group: "navigation" },
+    { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
   ]);
 
 }

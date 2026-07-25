@@ -466,6 +466,7 @@ function ExtensionItem({
     // E3a #31：isPluginDisabled 走 IPC
     const disabled = await pm().isDisabled(plugin.pluginId);
     ContextKeyService.setValue("pluginDisabled", disabled);
+    ContextKeyService.setValue("extensionHasThemes", !!(plugin.manifest as any)?.contributes?.themes);
     setGearMenuAnchor({ x: rect.right, y: rect.bottom });
   };
 
