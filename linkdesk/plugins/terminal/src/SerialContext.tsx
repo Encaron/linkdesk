@@ -36,6 +36,19 @@ interface SerialActions {
 // 但数据来源从 React Context 改为 IPC。
 // ═══════════════════════════════════════════════════════
 
+// serial-service getStatus() 返回 portName，终端状态用 sourceName——做 key 映射
+function mergeStatus(p: SerialState, status: any): SerialState {
+  return {
+    ...p,
+    sourceName: status.portName ?? p.sourceName,
+    baudRate: status.baudRate ?? p.baudRate,
+    isOpen: status.isOpen ?? p.isOpen,
+    txBytes: status.txBytes ?? p.txBytes,
+    rxBytes: status.rxBytes ?? p.rxBytes,
+    lastError: status.lastError ?? p.lastError,
+  };
+}
+
 export function useSerialContext(): { state: SerialState; actions: SerialActions } {
   const s = (window as any).linkdesk?.serial;
 
@@ -50,12 +63,14 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   });
 
   // 初始加载——拉取端口列表 + 串口状态
+  // 兼容两套 preload：壳侧 listPorts，插件侧 getPorts
   useEffect(() => {
-    s?.getPorts()?.then((ports: PortInfo[]) => {
+    const listPorts = s?.listPorts ?? s?.getPorts;
+    listPorts?.()?.then((ports: PortInfo[]) => {
       if (ports) setState((p) => ({ ...p, ports }));
     });
     s?.getStatus()?.then((status: any) => {
-      if (status) setState((p) => ({ ...p, ...status }));
+      if (status) setState((p) => mergeStatus(p, status));
     });
   }, []);
 
@@ -94,7 +109,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       });
     }
     const fresh = await s.getStatus();
-    if (fresh) setState((p) => ({ ...p, ...fresh }));
+    if (fresh) setState((p) => mergeStatus(p, fresh));
   }, [state.sourceName, state.baudRate]);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
@@ -103,8 +118,11 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (status?.isOpen) {
       await s.closePort();
       await s.openPort({ name, baudRate: status?.baudRate ?? "115200", encoding });
+      const fresh = await s.getStatus();
+      if (fresh) setState((p) => mergeStatus(p, fresh));
+    } else {
+      setState((p) => ({ ...p, sourceName: name }));
     }
-    setState((p) => ({ ...p, sourceName: name }));
   }, []);
 
   const setBaudRate = useCallback(async (baud: string, encoding?: string) => {
@@ -113,8 +131,11 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (status?.isOpen) {
       await s.closePort();
       await s.openPort({ name: status?.portName ?? "", baudRate: baud, encoding });
+      const fresh = await s.getStatus();
+      if (fresh) setState((p) => mergeStatus(p, fresh));
+    } else {
+      setState((p) => ({ ...p, baudRate: baud }));
     }
-    setState((p) => ({ ...p, baudRate: baud }));
   }, []);
 
   return { state, actions: { toggleOpen, setSourceName, setBaudRate } };
