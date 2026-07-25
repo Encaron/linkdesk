@@ -183,15 +183,19 @@
   justify-content: center;
 }
 
-.ms-item-icon > .codicon {
+.ms-item-icon .plugin-icon--codicon {
   font-size: 28px;
   color: var(--text-secondary);
 }
 
-.ms-item-icon-img {
+.ms-item-icon .plugin-icon--img {
   width: 28px;
   height: 28px;
   opacity: 0.65;
+}
+
+.ms-item-icon .plugin-icon--emoji {
+  font-size: 24px;
 }
 
 .ms-item-badge {
