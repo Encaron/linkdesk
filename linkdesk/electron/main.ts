@@ -18,6 +18,7 @@ import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
+import { IpcBridge } from './ipc-bridge.js';
 
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -31,6 +32,8 @@ let mainWindow: BrowserWindow | null = null;
 let windowManager: WindowManager | null = null;
 // E3a #25：插件 ID→View 映射 + bounds 管理 + 重载
 let pluginViewRegistry: PluginViewRegistry | null = null;
+// E3a #26：插件 WebView ↔ 壳渲染进程 IPC 中继
+let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
 
@@ -62,6 +65,8 @@ function createWindow(): void {
   windowManager = new WindowManager(mainWindow);
   // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
   pluginViewRegistry = new PluginViewRegistry(windowManager);
+  // E3a #26：初始化 IpcBridge——注册 config/command IPC 代理 handler
+  ipcBridge = new IpcBridge(mainWindow);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
@@ -139,6 +144,7 @@ app.on('window-all-closed', () => {
 app.on('before-quit', () => {
   // E3a #24：先销毁所有插件 WebContentsView，再关文件 watcher
   windowManager?.dispose();
+  ipcBridge?.dispose();
   fileService.closeAllWatchers();
 });
 
@@ -158,5 +164,5 @@ app.on('second-instance', () => {
 });
 
 // 导出窗口引用——后续步 2-4 的 SerialService 等服务需要它推送数据到渲染进程
-// E3a #24-#25：导出 WindowManager + PluginViewRegistry——IpcBridge/MainContent 需要它们
-export { mainWindow, windowManager, pluginViewRegistry };
+// E3a #24-#26：导出 WindowManager + PluginViewRegistry + IpcBridge——MainContent 等需要它们
+export { mainWindow, windowManager, pluginViewRegistry, ipcBridge };

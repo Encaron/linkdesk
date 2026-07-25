@@ -32,6 +32,7 @@ import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type W
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
+import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
@@ -183,6 +184,9 @@ function App() {
 
       // Phase 5h: expose window.__v3_core__ before plugins load
       initV3Api();
+
+      // E3a #26：初始化 IpcBridge 壳侧处理器——监听主进程转发的插件 IPC 请求
+      initIpcBridgeHandler();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
       registerConfiguration(APP_PLUGIN_ID, {

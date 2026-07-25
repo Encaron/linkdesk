@@ -12,6 +12,17 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 
+// ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
+let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
+
+ipcRenderer.on('bridge:request', (_event, req: any) => {
+  if (bridgeRequestHandler !== null) {
+    bridgeRequestHandler(req);
+  } else {
+    console.warn('[preload-shell] 收到 bridge:request 但壳侧处理器未注册——IpcBridgeHandler 未初始化？');
+  }
+});
+
 try {
   // ── 事件监听辅助（对标 Tauri listen() / useTauriEvent）──
   // 每个 on*() 返回 unsubscribe 函数，支持 generation counter 模式
@@ -100,6 +111,19 @@ try {
     // ── 事件（E2a #5 心跳看门狗等）──
     events: {
       heartbeat: () => ipcRenderer.send('heartbeat'),
+    },
+
+    // ── E3a #26：bridge——壳侧处理插件 IPC 请求的中继 API ──
+    bridge: {
+      // React 侧 IpcBridgeHandler 注册请求处理器
+      onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) => {
+        bridgeRequestHandler = cb;
+        return () => { bridgeRequestHandler = null; };
+      },
+      // React 侧 IpcBridgeHandler 响应请求
+      respond: (requestId: string, result?: unknown, error?: string) => {
+        ipcRenderer.send('bridge:response', { requestId, result, error });
+      },
     },
   });
 
