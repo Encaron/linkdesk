@@ -577,7 +577,7 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
           colors[k] = v;
         }
       }
-      registerTheme({ name: t.name, type: themeType, colors });
+      registerTheme({ name: t.name, type: themeType, colors }, pluginId);
       registered++;
     }
     if (registered > 0) {
@@ -604,7 +604,7 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
         colors[k] = v;
       }
     }
-    registerTheme({ name: manifest.name, type: themeType, colors });
+    registerTheme({ name: manifest.name, type: themeType, colors }, pluginId);
     log.appendLine(`✅ 主题插件 "${manifest.name}" 已注册`);
     pushToast({
       message: `新增主题：${manifest.name}`,
