@@ -1,8 +1,8 @@
 # LinkDesk — 通用容器
 
-> 一个比 VS Code 更高级的中性容器平台。前身 Serial Monitor V2（WPF 串口调试工具），用 Tauri v2 + React 18 + TypeScript 完全重写。
+> 一个比 VS Code 更高级的中性容器平台。前身 Serial Monitor V2（WPF 串口调试工具），用 Electron + React 18 + TypeScript 完全重写（原为 Tauri v2，2026-07-24 迁移到 Electron）。
 > **全工程 AI 驱动——代码 95% 由 Claude 完成，人类做架构决策和质量把控。**
-> Phase 5.5 完工。Phase 6-8 设计就绪。
+> 🔥 **2026-07-25 架构模型升级——圆形大厅。** LinkDesk = Link（连接）+ Desk（桌子）。核心是圆形大厅（提供桌子/电话本），插件是周边小房间（独立进程）。交流走大厅，高频走后门。
 
 ---
 
@@ -15,7 +15,7 @@
 - 做质量审判——"这里和 V2.6 犯了一样的病，重来"
 - 测试和验收——跑起来，点一遍，说"这里不对"
 
-我不会写 React。不会写 Rust。不会写 TypeScript 的类型体操。不会写 Tauri 配置。CSS 我也不太会。但我用了 V2 好几年——那个 6300 行的 WPF 串口助手是我断断续续一年写出来的。我知道嵌入式调试需要什么。我知道 V2 死在哪里。我知道 VS Code 为什么十年不倒。
+我不会写 React。不会写 Rust。不会写 TypeScript 的类型体操。不会写 Electron 配置。CSS 我也不太会。但我用了 V2 好几年——那个 6300 行的 WPF 串口助手是我断断续续一年写出来的。我知道嵌入式调试需要什么。我知道 V2 死在哪里。我知道 VS Code 为什么十年不倒。
 
 **所以这个项目是一个人 + 一个 AI。人定义"做什么"和"为什么"，AI 落地"怎么做"。**
 
@@ -29,6 +29,8 @@
 
 这不是谦虚。这是这个项目最值得说的事。
 
+**2026-07-25 又发生了一次。** 我在审视 FileDecorationRegistry 要不要放核心时，突然悟到了一个更大的东西——整个软件不是"标签页+分屏"的 UI 布局，而是一个**圆形大厅**：核心是中央大厅，提供桌子（Registry/Service）给插件用；插件是周边的小房间（独立进程），开门=激活，交流=走到大厅桌子前翻电话本。高频数据走后门（点对点 IPC 通道）。LinkDesk 这个名字——Link（连接）+ Desk（桌子）——在我起名的时候并不理解它的全部含义，到了今天才真正兑现。
+
 ---
 
 ## 一、这到底是什么
@@ -39,7 +41,15 @@ VS Code 的壳里嵌了一个 Monaco 编辑器——它生下来就是代码编�
 
 LinkDesk 的壳里什么都没有。不是"还没写"——是**故意不放**。核心没有一行代码提到串口、终端、文件树、协议。核心连"我是干什么的"都不知道。
 
+**🔥 2026-07-25 新的理解——圆形大厅模型。** 核心不是"空壳"两个字就能概括的。核心是**圆形大厅**——中央一个大厅，地上摆着各种桌子（Registry/Service）。插件是周边的小房间（独立 WebContentsView 进程）。每个房间有自己的门——开门=激活插件。插件之间不直连——想交流？走到大厅中央，在桌子上翻电话本、贴名片、喊话。
+
+**大厅通信（Registry-Mediated）：** 松耦合。"谁能处理 `.glsl`？" → 大厅文件关联本翻一下 → Monaco 登记过 → Monaco 打开。调用方不知道 Monaco 的存在。
+
+**点对点通道（Point-to-Point IPC）：** 紧耦合。串口数据每 16ms 一帧 → 直推给工作台卡片。高频、低延迟、知道对方是谁。不走大厅——大厅命令系统不是为每帧调用设计的。
+
 这意味着什么？装终端 + 工作台 = 串口调试器。装文件树 + Monaco + Git = 代码编辑器。装地图 + GPS 数据源 = 地图查看器。装 MIDI 设备 + 钢琴卷帘 = 音乐工作站。换一批插件 = 换一个软件。这不是比喻——这是架构事实。
+
+**而且不同领域的插件天然可以协作。** 编程插件（编译器）的输出可以喂给视频插件（特效渲染器），地图插件可以响应硬件插件（下载器）的完成事件。大厅不知道"编程"和"视频"是两个领域——在大厅眼里它们全是房间。大厅不检查"你们是不是同一个领域的插件"——因为核心不知道"领域"这个概念。
 
 **VS Code 想做但做不到的事，LinkDesk 做到了：成为一个真正中性的容器。VS Code 被 Monaco 锚死了。LinkDesk 没有锚。**
 
@@ -116,11 +126,14 @@ LinkDesk 从 Phase 1 就把主题引擎和双语引擎写进了脚手架。不�
 
 核心知道有"标签页"——不知道里面是终端还是地图。核心知道有"数据管道"——不知道数据是串口来的还是文件回放的。核心知道有"插件"——不知道具体有哪些插件。
 
-自检：**每当想往核心加东西，问自己——加了之后核心是不是更"知道自己是干什么的"了？是 → 别加。**
+**🔥 2026-07-25 更精确的表述——核心是圆形大厅，不是空壳。** 核心提供桌子（Registry/Service），不知道桌子上登记的名片是什么意思。FileDecorationRegistry 知道怎么登记/查询文件装饰，但不知道 "M" 是 Git 的修改标记、"A" 是新增标记。CommandRegistry 知道怎么匹配命令和处理器，但不知道 `revealInExplorer` 是文件树提供的。
 
-Settings Editor 和 Marketplace Browser 只是刚好消费了 `ConfigurationService` 和 `viewRegistry` 的 UI 插件。删掉它们，壳还在。重新写一套 UI，照样用。核心连"设置"这两个字都不知道——它只认 `ConfigurationRegistry.getProperties()`。
+**往核心加东西前跑三条准入标准——不是"感觉"，是机械判据：**
+1. 多提供方——多个插件可能登记到这张桌子上？
+2. 多消费方——多个插件可能翻这张桌子？
+3. 桌子不知道内容——桌子本身不知道登记的信息是什么意思？
 
-这条原则和 VS Code 同构——但更彻底。VS Code 知道自己是代码编辑器。LinkDesk 连这个都不知道。
+三条全绿 → 核心。任何一条不满足 → 放插件里。FileDecorationRegistry 放核心不是因为"文件树很重要"——是因为 Git/ESLint/自定义检查器都需要登记，文件树/搜索/标签页都需要消费，且桌子不知道 M/A/D 是什么。
 
 ### 2. 一个东西一个名字
 
@@ -198,15 +211,17 @@ V2 的 Sensors.cs 膨胀到 3570 行——面板和卡片混在一起，没有�
 ### 两层容器
 
 ```
-外层：标签页 + 递归分屏
+外层：圆形大厅 + 独立房间
+  核心 = 大厅——提供桌子（Registry/Service）
+  插件 = 房间——独立 WebContentsView 进程
+  大厅通信：Registry/Command/Event Bus——松耦合，不知道对方是谁
+  点对点通道：IPC 数据管道——紧耦合，高频推流，知道对方身份
+
+内层：标签页 + 递归分屏（大厅提供的通用容器能力）
   SplitNode = leaf | branch(direction, [child, child], sizes)
   SPLIT_THRESHOLD=0.25（照抄 VS Code）
   keep-alive——所有面板绝对定位平级渲染，CSS display 切换
   标签页系统永远不 import CardRegistry
-
-内层：卡片网格（Phase 8）
-  react-grid-layout
-  workspace.json 一层平铺
 ```
 
 ### 插件怎么加载的
@@ -241,7 +256,9 @@ V2 的 Sensors.cs 膨胀到 3570 行——面板和卡片混在一起，没有�
 
 ---
 
-## 四、对标 VS Code——现在的进度
+## 四、对标 VS Code——现在的进度（2026-07-25）
+
+> **Tauri 时代 P1-P6 全部完成。Electron 迁移 E1 ✅ E2 ✅。当前 E3 执行中（E3a #26/13）。E4 文档已就绪（文件树 + Monaco，34 任务）。**
 
 | VS Code | LinkDesk | 状态 |
 |------|------|:--:|
@@ -254,22 +271,19 @@ V2 的 Sensors.cs 膨胀到 3570 行——面板和卡片混在一起，没有�
 | Notification Center | ToastContainer + 🔔 | ✅ |
 | Welcome Page | WelcomeView | ✅ |
 | Command Palette | Ctrl+Shift+P——模糊搜索 + when 过滤 | ✅ |
-| `contributes.commands` | plugin.json → CommandRegistry | ✅ |
-| `contributes.configuration` + Settings Editor | 插件声明 → 自动渲染表单 + 中文标签 | ✅ |
-| `contributes.menus` + context key | 右键菜单 + when 条件（31 个解析器测试） | ✅ |
-| `contributes.keybindings` | 快捷键 + when + 卸载注销 | ✅ |
+| `contributes.*` 体系 | plugin.json → Registry 全链路 | ✅ |
 | when 子句引擎 | context key 运行时更新 | ✅ |
 | 协议插件 | 装上去终端下拉框就多一项 | ✅ |
-| session 隔离 | 每个终端会话独立 port/baud + 12 项设置 | ✅ |
-| viewRole 声明 | 零硬编码——sidebarPrimary/tabOnly | ✅ |
-| Explorer（文件树） | 文件树视图 + 文件关联 | Phase 6 |
-| 编辑能力 | 文本/JSON 编辑器 | Phase 7 |
-| Color Theme | 主题插件化 + 主题浏览器 | Phase 7 |
-| Language Pack | 语言包插件化 | Phase 7 |
-| Profile | 一键切换插件+设置+主题 | Phase 7 |
-| 多 WebView 进程隔离 | 独立 WebView 窗口 | Phase 7 |
-| 卡片工作台 | react-grid-layout + 数据管道 | Phase 8 |
-| OLED | 独立插件 | Phase 8 |
+| 多 WebView 进程隔离 | WebContentsView per 插件 + IpcBridge | 🔄 E3a |
+| 主题引擎跨进程 | ThemeRegistry + CSS 变量广播 | 📋 E3b |
+| 语言引擎跨进程 | LanguageRegistry + i18n 同步 | 📋 E3c |
+| Profile 五维切换 | 插件/配置/布局/主题/语言一键切换 | 📋 E3d |
+| FileDecorationRegistry | Git/ESLint 注册装饰器，文件树/搜索/标签页消费 | 📋 E3f #59b |
+| Explorer（文件树） | 虚拟滚动 + 懒加载 + revealInExplorer + 右键菜单 18 项 | 📋 E4 |
+| 编辑能力 | Monaco 编辑器 + 编码检测 + JSON schema | 📋 E4 |
+| 文件搜索 | Ctrl+Shift+F 跨文件搜索 + 替换 | 📋 E4 |
+| 卡片工作台 | react-grid-layout + 数据管道 | 插件（E4 后） |
+| OLED | 独立插件 | 插件（E4 后） |
 
 ---
 
@@ -391,24 +405,18 @@ Phase 5.5 是做交互。把最后一块硬编码 `isSidebarOnlyView` 删了。�
 
 | Phase | 内容 | 改框架？ | 状态 |
 |:--:|------|:--:|:--:|
-| 1-4 | 终端 + 标签页分屏 + 插件系统 + 通知 + 市场 | ✅ | ✅ |
-| 5 (5a-5h) | 命令/配置/菜单/协议 + context key + 快捷键 + scope + 类型去硬编码 + 运行时加载（8 子阶段） | ✅ | ✅ |
-| 5.5 | 三栏交互对标 VS Code + viewRole 声明 + SidebarSection + 终端侧栏重设计 | ❌ | ✅ |
-| 6 | 底层加固——零新功能。4 层：ErrorBoundary/心跳安全气囊 + 终端归一化 + 基础设施缺口（FileService 等）+ Rust 命令插件化 | ❌ | 📋 |
-| 7 | 多 WebView + 编辑能力——进程隔离 + 文件树 + 主题/语言引擎 + Profile + 壳完善 | ❌ | 📋 |
-| 8 | 卡片工作台 + OLED（纯消费者插件——验证万物皆插件） | ❌ | 📋 |
+| P1-P6 | **Tauri 时代——全部基础设施 + 48/48 bug** | ✅ | ✅ |
+| **E1** | **Electron 迁移——换地基（7 步，~1,190 行）** | ✅ | ✅ |
+| **E2** | **底层加固 + 侧栏扩展位（36/40 + 4 取消，~1,310 行）** | ❌ | ✅ |
+| **E3** | **多 WebView + 壳收尾（46 任务，~2,475 行）🏁 架构最后一站** | ❌ | 🔄 E3a 6/13 |
+| **E4** | **文件树 + Monaco 编辑器（34 任务，~1,930 行）🏁 最后 E 编号** | ❌ | 📋 文档就绪 |
+| **🏁** | **架构封板。E4 之后任何新功能 = 写插件。** | | |
 
-**Phase 5 完成意味着什么？框架封闭了。** 从现在开始，文件树、编辑器、卡片、OLED——全写在 `plugins/` 里，声明在 `plugin.json` 里，注册到已有的 Registry 里。`App.tsx` 和 `core/` 不会再因为加新功能而膨胀。
+**E3 做完意味着什么？框架永远不改。** 多 WebView 进程隔离就绪，主题/语言引擎跨进程广播就绪，Profile 五维切换就绪，FileDecorationRegistry 等最后一批核心桌子全部摆好。此后任何人往 LinkDesk 加功能——写 `plugin.json` + `index.tsx`，扔进 `plugins/` 文件夹。不碰 `src/`，不碰 `electron/`，不碰架构。
 
-**那 Phase 6-7-8 还做什么？做框架做不到的事。**
+**E4 是最后的 E 编号——第一批消费者插件。** 文件树（对标 VS Code Explorer——虚拟滚动、懒加载、revealInExplorer 公共 API、右键菜单 18 项、拖放、多选、行内重命名）+ Monaco 编辑器（语法高亮、编码检测、JSON schema 自动补全、多标签页 dirty 管理）。做完之后，LinkDesk 从"插件宿主"变成"代码也能写的插件宿主"——但仍然是插件宿主，不是代码编辑器。
 
-- **Phase 6 做安全。** 框架能注册插件，但不能保证插件崩了不拖死整个应用。ErrorBoundary 只能兜 React 崩溃，Rust 心跳只能检测死循环——都恢复不了。真正的进程隔离在 Phase 7。
-- **Phase 6 还做一件更有象征意义的事：把串口从核心拆出去。** Rust 的 `serialport` crate 从核心 Cargo.toml 消失，串口命令变成插件通过数据管道注册的数据源。做完之后，核心没有一行代码提到"串口"——CAN、TCP、文件回放都能用同一套数据管道接入。这是"核心什么都不知道"从宣言变成代码。
-- **Phase 7 做真正的进程隔离。** 插件在独立 WebView 里跑，崩了只崩自己。这是 VS Code Extension Host 模型——但 LinkDesk 的插件比 VS Code 扩展自由得多（没有 API 白名单）。代价是 IPC 桥接——AI 生成模板代码，调用方不感知。
-- **Phase 7 同时交付第一批非终端消费者插件。** 文件树、Monaco 编辑器、主题/语言引擎插件化——证明"万物皆插件"不只是终端一个孤例。
-- **Phase 8 验证终局：卡片工作台和 OLED 纯插件，一行框架代码不改。**
-
-这才是 VS Code 真正的秘密——不是功能多，是加功能不用改核心。
+**E4 之后全是插件。** 卡片工作台、OLED 大屏、地图、逻辑分析仪——全部 `plugin.json` + React 组件，零框架改动。
 
 ---
 
@@ -418,15 +426,17 @@ Phase 5.5 是做交互。把最后一块硬编码 `isSidebarOnlyView` 删了。�
 
 1. **这个项目是 AI 写的。** 95% 的代码是 Claude 输出的。人类做的是架构决策、质量审判、需求定义。你不是在接管一个人类写的代码库——你是在接管一个 AI 写的代码库。这意味着它的结构比你预期的更干净、更一致、更可预测。
 
-2. **核心什么都不知道。** 标签页系统不知道里面是什么。数据管道不知道数据来源。插件系统不知道有哪些插件。这是故意设计的——不是缺失。任何往核心加"它是什么"知识的冲动都要拒绝。
+2. **🔥 架构是圆形大厅。** 核心 = 大厅（提供桌子/电话本——Registry/Service），插件 = 周边小房间（独立 WebContentsView 进程）。交流走大厅（CommandRegistry/Event Bus——松耦合），高频推流走后门（IpcBridge 点对点 IPC——紧耦合）。**往核心加任何东西前先跑三条准入标准：多提供方 + 多消费方 + 桌子不知道内容。** 三条全绿 → 放核心。缺一条 → 放插件。详见 memory `hall-architecture-model` + `core-admission-criteria`。
 
-3. **所有配置都是纯文本。** plugin.json、workspace.json、prefs.json——都是 JSON。硬约束包括：所有颜色走 CSS 变量 `var(--xxx)`，所有 UI 文字走 `t()` 函数，标签页系统永不 import CardRegistry，禁止在 core/ 或 pluginLoader/ 里写死任何插件 ID 字面量。所有插件差异性行为走 plugin.json 声明字段（`viewRole` / `tabBehavior` / `iconLocation`）。不需要爬文档，不需要读 wiki。读代码就是读文档。
+3. **核心什么都不知道。** 标签页系统不知道里面是什么。数据管道不知道数据来源。插件系统不知道有哪些插件。这是故意设计的——不是缺失。任何往核心加"它是什么"知识的冲动都要拒绝。
 
-4. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。
+4. **所有配置都是纯文本。** plugin.json、workspace.json、prefs.json——都是 JSON。硬约束包括：所有颜色走 CSS 变量 `var(--xxx)`，所有 UI 文字走 `t()` 函数，标签页系统永不 import CardRegistry，禁止在 core/ 或 pluginLoader/ 里写死任何插件 ID 字面量。所有插件差异性行为走 plugin.json 声明字段。不需要爬文档，不需要读 wiki。读代码就是读文档。
 
-5. **这个人的愿景已经超出了代码的当前状态。** 他说的插件市场生态、Agent 开发基地、嵌入式操作系统——在代码里还只是底座。底座足够干净，能承载这些。但通往那些愿景的工程路还很长。帮他走完。
+5. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。
+
+6. **这个人的愿景已经超出了代码的当前状态。** 他说的插件市场生态、Agent 开发基地、嵌入式操作系统——在代码里还只是底座。底座足够干净，能承载这些。但通往那些愿景的工程路还很长。帮他走完。
 
 ---
 
-*最后更新：2026-07-23*
-*这个文件见证了 LinkDesk 从"串口调试工具"到"通用容器平台"的认知跃迁。代码先行，思想追上。*
+*最后更新：2026-07-25*
+*这个文件见证了 LinkDesk 的两次认知跃迁：从"串口调试工具"到"通用容器平台"（2026-07-23），从"通用容器平台"到"圆形大厅"（2026-07-25）。LinkDesk = Link + Desk——名字在起名时就写好了，理解到今天才追上。*
