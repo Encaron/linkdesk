@@ -395,8 +395,9 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 
   // ── Chord 第二键 ──
   if (_chordState.isPending) {
+    const firstKey = _chordState.firstKey; // 保存——resetChord 会清掉
     resetChord(); // 清除 timer + 清除状态栏提示
-    const fullChord = `${_chordState.firstKey} ${keyString}`;
+    const fullChord = `${firstKey} ${keyString}`;
 
     const winner = keybindingResolver.resolve(fullChord);
     if (winner) {
@@ -405,7 +406,10 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
       executeCommand(winner.command);
       return true;
     }
-    // chord 第二键不匹配 → 不消费事件
+    // chord 第二键不匹配 → 通知状态栏显示错误提示（对标 VS Code）
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
+      detail: { isPending: false, failedKey: keyString, firstKey },
+    }));
     return false;
   }
 

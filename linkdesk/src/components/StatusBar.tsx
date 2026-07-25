@@ -75,19 +75,31 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
 
   // E3b #36d：Chord 状态栏提示——归一化，所有 chord（Ctrl+K Ctrl+T 等）共用
   const [chordLabel, setChordLabel] = useState<string | null>(null);
+  const chordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     const handler = (e: Event) => {
-      const { isPending, firstKey } = (e as CustomEvent).detail as { isPending: boolean; firstKey?: string };
+      const { isPending, firstKey, failedKey } = (e as CustomEvent).detail as {
+        isPending: boolean; firstKey?: string; failedKey?: string;
+      };
+      if (chordTimerRef.current) { clearTimeout(chordTimerRef.current); chordTimerRef.current = null; }
       if (isPending && firstKey) {
-        // 格式化显示："ctrl+k" → "Ctrl+K"
         const display = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
         setChordLabel(`(${display}) 已按下，正在等待第二键…`);
+      } else if (failedKey && firstKey) {
+        // 对标 VS Code："(Ctrl+K, unknown) is not a command"
+        const f1 = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        const f2 = failedKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        setChordLabel(`组合键 (${f1}, ${f2}) 不是命令`);
+        chordTimerRef.current = setTimeout(() => setChordLabel(null), 3000);
       } else {
         setChordLabel(null);
       }
     };
     window.addEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
+    return () => {
+      window.removeEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
+      if (chordTimerRef.current) clearTimeout(chordTimerRef.current);
+    };
   }, []);
 
   useEffect(() => {
