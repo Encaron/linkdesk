@@ -15,10 +15,17 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+/** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
+const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
+const MEMORY_CHECK_INTERVAL = 30_000; // 每 30s 采样一次
+
 export class WindowManager {
   private pluginViews = new Map<string, WebContentsView>();
+  private memoryTimer: ReturnType<typeof setInterval> | null = null;
 
-  constructor(private mainWindow: BrowserWindow) {}
+  constructor(private mainWindow: BrowserWindow) {
+    this.startMemoryMonitoring();
+  }
 
   /**
    * 为指定插件创建独立的 WebContentsView。
@@ -144,10 +151,74 @@ export class WindowManager {
     }
   }
 
+  // ═══════════════════════════════════════════════════════
+  // E3a #25a——资源休眠
+  // ═══════════════════════════════════════════════════════
+
+  /**
+   * 标签页切换时调用——活跃的解除限流，隐藏的降频。
+   * 对标 Chromium 的后台标签页节流行为。
+   */
+  setThrottling(pluginId: string, isVisible: boolean): void {
+    const view = this.pluginViews.get(pluginId);
+    if (!view) return;
+    view.webContents.setBackgroundThrottling(!isVisible);
+  }
+
+  /**
+   * 每 30s 采样所有插件 WebView 的内存。
+   * 通过 app.getAppMetrics() + PID 匹配——Electron 43 的 getProcessMemoryInfo()
+   * 在 Process 上（Node 进程自身），不在 WebContents 上。
+   *
+   * RSS 总和 > 1GB → 通知壳渲染进程（toast 提示用户）。
+   */
+  checkMemoryPressure(): void {
+    // 收集所有插件 WebView 的 OS PID
+    const pluginPids = new Set<number>();
+    for (const [pluginId, view] of this.pluginViews) {
+      try {
+        pluginPids.add(view.webContents.getOSProcessId());
+      } catch {
+        // WebView 可能已销毁但还没从 Map 清理，忽略
+      }
+    }
+
+    if (pluginPids.size === 0) return;
+
+    // 获取所有进程指标，按 PID 匹配插件 WebView
+    const metrics = app.getAppMetrics();
+    let totalRSS = 0;
+    for (const m of metrics) {
+      if (pluginPids.has(m.pid)) {
+        totalRSS += m.memory.workingSetSize;
+      }
+    }
+
+    if (totalRSS > MEMORY_PRESSURE_THRESHOLD) {
+      console.warn(`[WindowManager] 内存压力——插件 WebView 总 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
+      // 通知壳渲染进程显示 toast
+      this.mainWindow.webContents.send('system:memory-pressure', {
+        totalRSS,
+        threshold: MEMORY_PRESSURE_THRESHOLD,
+      });
+    }
+  }
+
+  /** 启动周期性内存监控（构造函数中自动调用） */
+  private startMemoryMonitoring(): void {
+    this.memoryTimer = setInterval(() => {
+      this.checkMemoryPressure();
+    }, MEMORY_CHECK_INTERVAL);
+  }
+
   /**
    * 销毁所有插件 WebContentsView——应用退出时调用。
    */
   dispose(): void {
+    if (this.memoryTimer) {
+      clearInterval(this.memoryTimer);
+      this.memoryTimer = null;
+    }
     for (const pluginId of this.getAllPluginIds()) {
       this.destroyPluginView(pluginId);
     }
