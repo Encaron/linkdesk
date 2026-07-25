@@ -33,6 +33,7 @@ plugins/factory/editor/
 | `DialogService.confirm()` | "文件已修改，是否保存？" | E2c #15 |
 | `getAssetPath()` | Monaco worker 路径（打包后 file:// 协议） | E1 步 7 |
 | E3b 主题引擎 | `theme:changed` IPC → Monaco 切换 vs/vs-dark | E3 |
+| `FileDecorationRegistry` | 🔥 v2——标签页标题显示 M/A/D 装饰标记（对标 VS Code）。注册中心在核心，无需跨插件通信 | E3f #59b |
 
 ---
 

@@ -133,6 +133,9 @@ function MainContent({
 
   const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
 
+  // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
+  const registeredViewIdsRef = useRef<Set<string>>(new Set());
+
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv) return;
@@ -141,7 +144,6 @@ function MainContent({
     const currentStates = new Map<string, { groupId: string; isFocused: boolean }>();
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
-        // 只处理插件标签页（非壳自身视图）
         if (tab.pluginId && !isShellRenderedTab(tab.type)) {
           const isActiveInGroup = tab.id === g.activeTabId;
           currentStates.set(tab.pluginId, {
@@ -152,41 +154,48 @@ function MainContent({
       }
     }
 
-    // 对每个插件标签页——切换时更新可见性
-    const prev = pluginViewsRef.current;
-    for (const [pluginId, state] of currentStates) {
-      const prevState = prev.get(pluginId);
-      if (prevState?.isFocused !== state.isFocused) {
-        pv.setVisible(pluginId, state.isFocused);
-      }
-    }
+    // 异步获取已注册的 WebView 列表，只对已注册的插件做 setVisible/setBounds
+    pv.getAllIds?.()?.then((ids: string[]) => {
+      const registeredSet = new Set(ids);
+      registeredViewIdsRef.current = registeredSet;
 
-    // 之前有但现在没有的插件——隐藏
-    for (const pluginId of prev.keys()) {
-      if (!currentStates.has(pluginId)) {
-        pv.setVisible(pluginId, false);
-      }
-    }
-
-    pluginViewsRef.current = currentStates;
-
-    // 异步更新聚焦插件的 WebView bounds（等 DOM 布局完成）
-    requestAnimationFrame(() => {
+      const prev = pluginViewsRef.current;
       for (const [pluginId, state] of currentStates) {
-        if (state.isFocused) {
-          const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
-          if (pool) {
-            const rect = pool.getBoundingClientRect();
-            pv.setBounds(pluginId, {
-              x: Math.round(rect.x),
-              y: Math.round(rect.y),
-              width: Math.round(rect.width),
-              height: Math.round(rect.height),
-            });
-          }
+        if (!registeredSet.has(pluginId)) continue;
+        const prevState = prev.get(pluginId);
+        if (prevState?.isFocused !== state.isFocused) {
+          pv.setVisible(pluginId, state.isFocused);
         }
       }
+
+      for (const pluginId of prev.keys()) {
+        if (!currentStates.has(pluginId) && registeredSet.has(pluginId)) {
+          pv.setVisible(pluginId, false);
+        }
+      }
+
+      // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
+      if (ids.length > 0) {
+        requestAnimationFrame(() => {
+          for (const [pluginId, state] of currentStates) {
+            if (state.isFocused && registeredSet.has(pluginId)) {
+              const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
+              if (pool) {
+                const rect = pool.getBoundingClientRect();
+                pv.setBounds(pluginId, {
+                  x: Math.round(rect.x),
+                  y: Math.round(rect.y),
+                  width: Math.round(rect.width),
+                  height: Math.round(rect.height),
+                });
+              }
+            }
+          }
+        });
+      }
     });
+
+    pluginViewsRef.current = currentStates;
   }, [tabState.groups, activeGroupId]);
 
   const renderGroup = useCallback(
