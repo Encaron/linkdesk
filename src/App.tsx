@@ -13,7 +13,7 @@ import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
-import CommandPalette from "./components/terminal/CommandPalette";
+import CommandPalette from "./components/shared/CommandPalette";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
