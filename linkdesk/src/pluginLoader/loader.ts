@@ -105,16 +105,21 @@ function getPluginDataFile(pluginId: string, filename: string): Record<string, u
   return pluginDataFiles[target];
 }
 
-/** 查找已加载插件的 manifest——含视图和非视图插件（主题/语言等） */
+/** 查找已加载插件的 manifest——含视图和非视图插件（主题/语言等）+ 运行时加载的插件 */
 function getLoadedManifest(pluginId: string): PluginManifest | undefined {
-  // 先查视图插件
+  // 1. 先查视图插件
   const viewEntry = getViewPlugin(pluginId);
   if (viewEntry) return viewEntry.manifest;
-  // 再查非视图插件（loadedPluginIds 中有但不属于视图注册表）
+  // 2. 再查 glob 中的非视图插件（loadedPluginIds 中有但不属于视图注册表）
   for (const [path, manifest] of Object.entries(pluginManifests)) {
     if (extractPluginId(path) === pluginId && loadedPluginIds.has(pluginId)) {
       return manifest;
     }
+  }
+  // 3. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest）
+  const meta = getMetadataCache()[pluginId];
+  if (meta?.status === "installed" && meta.manifest && loadedPluginIds.has(pluginId)) {
+    return meta.manifest;
   }
   return undefined;
 }
