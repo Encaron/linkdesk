@@ -188,19 +188,19 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
               dragRef.current = null;
               return;
             }
-            // E2c #19k：viewRole="tabOnly" → 直接开标签页（优先于 bottom 齿轮菜单）
+            if (getIconLocation(entry.pluginId) === "bottom") {
+              // 底部图标（齿轮）：对标 VS Code 左下齿轮，左键弹出菜单——优先于 viewRole
+              e.preventDefault();
+              setGearAnchor({ x: e.clientX, y: e.clientY });
+              return;
+            }
+            // E2c #19k：viewRole="tabOnly" → 直接开标签页（顶部图标才到这）
             const plugin = getViewPlugin(entry.pluginId);
             if (plugin?.manifest.viewRole === "tabOnly") {
               onOpenOrFocus(entry.pluginId);
               return;
             }
-            if (getIconLocation(entry.pluginId) === "bottom") {
-              // 底部图标（齿轮）：对标 VS Code 左下齿轮，左键弹出菜单
-              e.preventDefault();
-              setGearAnchor({ x: e.clientX, y: e.clientY });
-            } else {
-              onOpenOrFocus(entry.pluginId);
-            }
+            onOpenOrFocus(entry.pluginId);
           }}
           onContextMenu={
             getIconLocation(entry.pluginId) === "bottom"
