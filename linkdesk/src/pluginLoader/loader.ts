@@ -109,6 +109,8 @@ interface CachedPluginMeta {
   version?: string;
   /** 缓存状态：installed=已加载, disabled=已禁用但文件在, uninstalled=已卸载到.disabled/ */
   status: "installed" | "disabled" | "uninstalled";
+  /** 完整 manifest——卸载后详情页仍可展示完整信息（G14 fix v2） */
+  manifest?: PluginManifest;
 }
 
 function getMetadataCache(): Record<string, CachedPluginMeta> {
@@ -121,7 +123,7 @@ function getMetadataCache(): Record<string, CachedPluginMeta> {
 
 function cachePluginMetadata(
   pluginId: string,
-  manifest: { name: string; description?: string; version?: string },
+  manifest: PluginManifest,
   status: CachedPluginMeta["status"],
 ): void {
   try {
@@ -132,6 +134,7 @@ function cachePluginMetadata(
       description: manifest.description,
       version: manifest.version,
       status,
+      manifest, // G14 fix v2：存完整 manifest——卸载后详情页仍可展示完整信息
     };
     // 异步落盘——不阻塞
     setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache).catch(() => {});
@@ -858,6 +861,11 @@ export function isPluginDisabled(pluginId: string): boolean {
  */
 export function getPluginCachedStatus(pluginId: string): CachedPluginMeta["status"] | undefined {
   return getMetadataCache()[pluginId]?.status;
+}
+
+/** 获取插件完整缓存元数据——PluginDetailView 卸载后重建详情页用（G14 fix v2） */
+export function getPluginCachedMeta(pluginId: string): CachedPluginMeta | undefined {
+  return getMetadataCache()[pluginId];
 }
 
 /** 是否已初始化 */

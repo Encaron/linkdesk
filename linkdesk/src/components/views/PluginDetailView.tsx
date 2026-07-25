@@ -10,7 +10,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin, getViewPlugins } from "../../pluginLoader/viewRegistry";
-import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, performUninstall } from "../../pluginLoader/loader";
+import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, getPluginCachedMeta, performUninstall } from "../../pluginLoader/loader";
 import type { ViewPluginEntry } from "../../core/types";
 import "./PluginDetailView.css";
 
@@ -64,8 +64,6 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
     return result;
   }, [pluginId]);
 
-  const disabled = useMemo(() => pluginId ? isPluginDisabled(pluginId) : false, [pluginId]);
-
   const handleDisable = useCallback(async () => {
     if (!pluginId || busy) return;
     setBusy(true);
@@ -95,9 +93,24 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
     return <div className="plugin-detail-empty">{t("未指定插件 ID")}</div>;
   }
 
-  const plugin = getViewPlugin(pluginId);
+  let plugin = getViewPlugin(pluginId);
+
+  // G14 fix v2：插件不在注册表中（已卸载/已禁用）但缓存中有 manifest → 重建详情页
+  // 用户可以看到完整描述/版本/依赖等信息再决定是否安装
   if (!plugin) {
-    // 归一化：和侧栏用同一套判断逻辑——元数据缓存 status > 禁用列表
+    const cached = getPluginCachedMeta(pluginId);
+    if (cached?.manifest) {
+      // 用缓存重建一个 ViewPluginEntry 壳——manifest 来自缓存，其他字段填空
+      plugin = {
+        pluginId,
+        manifest: cached.manifest,
+        component: null as any,
+      };
+    }
+  }
+
+  // 无缓存——从未安装过或缓存已清除
+  if (!plugin) {
     const cachedStatus = getPluginCachedStatus(pluginId);
     const showEnable = isPluginDisabled(pluginId) && cachedStatus !== "uninstalled";
     return (
@@ -107,28 +120,21 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
             ? t("插件") + ` "${pluginId}" ` + t("已禁用")
             : t("插件") + ` "${pluginId}" ` + t("未安装")}
         </p>
-        {showEnable ? (
-          <button
-            className="pd-btn pd-btn-enable"
-            style={{ marginTop: 12 }}
-            onClick={async () => { setBusy(true); await enablePlugin(pluginId); setBusy(false); }}
-          >
-            <span className="codicon codicon-play" /> {t("启用插件")}
-          </button>
-        ) : (
-          <button
-            className="pd-btn pd-btn-install"
-            style={{ marginTop: 12 }}
-            onClick={async () => { setBusy(true); await reinstallPlugin(pluginId); setBusy(false); }}
-          >
-            <span className="codicon codicon-cloud-download" /> {t("安装插件")}
-          </button>
-        )}
+        <button
+          className="pd-btn pd-btn-install"
+          style={{ marginTop: 12 }}
+          onClick={async () => { setBusy(true); await reinstallPlugin(pluginId); setBusy(false); }}
+        >
+          <span className="codicon codicon-cloud-download" /> {t("安装插件")}
+        </button>
       </div>
     );
   }
 
   const m = plugin.manifest;
+  const cachedStatus = getPluginCachedStatus(pluginId);
+  const isUninstalled = cachedStatus === "uninstalled";
+  const isDisabled = isPluginDisabled(pluginId);
   const icon = resolvePluginIcon(m);
 
   return (
@@ -151,6 +157,7 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
             <h1 className="pd-name">{t(m.name)}</h1>
             <span className="pd-version">v{m.version}</span>
             {m.core && <span className="pd-badge pd-badge-core">{t("内置")}</span>}
+            {isUninstalled && <span className="pd-badge pd-badge-uninstalled">{t("未安装")}</span>}
             {m.tabBehavior?.singleton && (
               <span className="pd-badge pd-badge-singleton">{t("单例")}</span>
             )}
@@ -174,9 +181,17 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
           <span className="pd-core-notice">
             <span className="codicon codicon-lock" /> {t("核心控制面——不可卸载")}
           </span>
+        ) : isUninstalled ? (
+          <button className="pd-btn pd-btn-install" onClick={async () => {
+            setBusy(true);
+            await reinstallPlugin(pluginId);
+            setBusy(false);
+          }} disabled={busy}>
+            <span className="codicon codicon-cloud-download" /> {t("安装插件")}
+          </button>
         ) : (
           <>
-            {disabled ? (
+            {isDisabled ? (
               <button className="pd-btn pd-btn-enable" onClick={handleEnable} disabled={busy}>
                 <span className="codicon codicon-play" /> {t("启用")}
               </button>
