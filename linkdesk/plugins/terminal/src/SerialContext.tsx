@@ -103,8 +103,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       await s.closePort();
     } else {
       await s.openPort({
-        name: status?.portName ?? state.sourceName,
-        baudRate: status?.baudRate ?? state.baudRate,
+        portName: status?.portName ?? state.sourceName,
+        baudRate: Number(status?.baudRate ?? state.baudRate),
         encoding,
       });
     }
@@ -117,7 +117,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const status = await s.getStatus();
     if (status?.isOpen) {
       await s.closePort();
-      await s.openPort({ name, baudRate: status?.baudRate ?? "115200", encoding });
+      await s.openPort({ portName: name, baudRate: Number(status?.baudRate ?? "115200"), encoding });
       const fresh = await s.getStatus();
       if (fresh) setState((p) => mergeStatus(p, fresh));
     } else {
@@ -130,7 +130,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const status = await s.getStatus();
     if (status?.isOpen) {
       await s.closePort();
-      await s.openPort({ name: status?.portName ?? "", baudRate: baud, encoding });
+      await s.openPort({ portName: status?.portName ?? "", baudRate: Number(baud), encoding });
       const fresh = await s.getStatus();
       if (fresh) setState((p) => mergeStatus(p, fresh));
     } else {

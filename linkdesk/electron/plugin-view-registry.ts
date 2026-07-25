@@ -42,10 +42,7 @@ export class PluginViewRegistry {
    */
   setBounds(pluginId: string, bounds: ViewBounds): void {
     const view = this.windowManager.getPluginView(pluginId);
-    if (!view) {
-      console.warn(`[PluginViewRegistry] setBounds 失败——插件 "${pluginId}" 未注册`);
-      return;
-    }
+    if (!view) return; // 插件 WebView 尚未创建——静默跳过
     view.setBounds(bounds);
   }
 
@@ -56,10 +53,7 @@ export class PluginViewRegistry {
    */
   setVisible(pluginId: string, visible: boolean): void {
     const view = this.windowManager.getPluginView(pluginId);
-    if (!view) {
-      console.warn(`[PluginViewRegistry] setVisible 失败——插件 "${pluginId}" 未注册`);
-      return;
-    }
+    if (!view) return; // 插件 WebView 尚未创建——静默跳过（E3a 迁移过渡期正常）
     view.setVisible(visible);
     // E3a #25a：可见性联动资源休眠
     this.windowManager.setThrottling(pluginId, visible);
