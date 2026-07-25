@@ -78,7 +78,7 @@ Git 插件需要的全部能力都已在 E1-E3 中提供：
 |------|:--:|------|
 | 执行 Git 命令 | E1 主进程 `exec` 能力 | `window.linkdesk.exec("git", [...])` |
 | 读写文件 | E2c FileService | `window.linkdesk.filesystem.readTextFile(path)` |
-| 侧栏渲染 | E2d 侧栏扩展位 | `"sidebar": "sidebar.tsx"` → 自动出现在侧栏 |
+| 侧栏渲染 | plugin.json `sidebar` 字段（现有机制） | `"sidebar": "sidebar.tsx"` → 自动出现在侧栏 |
 | 标签页（Diff 查看器） | E3 | `entry` → Monaco 编辑器 WebContentsView |
 | 状态栏（当前分支） | E2c statusBar | `"statusBar": [{ "id": "branch", "text": "main" }]` |
 | 右键菜单 | Phase 5 MenuRegistry | 文件树右键 → "Git: 查看历史" |
