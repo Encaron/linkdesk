@@ -173,13 +173,15 @@
 
 图标出现在图标栏、标签栏、欢迎页、[+] 菜单——所有地方显示同一个图标，由 `<PluginIcon>` 组件统一渲染。
 
+**对标 VS Code：** 图标文件放在插件自己的目录下，`icon` 字段写文件名即可。
+
 **三种方式指定图标：**
 
 | 方式 | `icon` 值 | `iconSource` | 文件位置 |
 |------|-----------|-------------|---------|
-| codicon 内置图标 | `"terminal"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
-| 自定义 SVG / PNG | `"my-icon.svg"` | 不写 | `public/assets/icons/my-icon.svg` |
-| 自定义 SVG / PNG（无扩展名） | `"my-icon"` | 不写 | `public/assets/icons/my-icon.png`（自动加 `.png`） |
+| codicon 内置图标 | `"package"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
+| 自定义 SVG / PNG | `"icon.svg"` | 不写 | `plugins/<插件ID>/icon.svg`（插件目录下） |
+| 自定义 PNG（无扩展名） | `"icon"` | 不写 | `plugins/<插件ID>/icon.png`（自动加 `.png`） |
 | 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
 
 **示例：**
@@ -189,12 +191,12 @@
 { "icon": "package" }
 
 // 自定义 SVG——推荐，矢量不模糊，fill="currentColor" 跟随主题
-{ "icon": "my-tool.svg" }
-// 文件放到 public/assets/icons/my-tool.svg
+{ "icon": "icon.svg" }
+// 文件直接放在插件目录下：plugins/my-plugin/icon.svg
 
 // 自定义 PNG——位图，多尺寸可能模糊
-{ "icon": "my-tool.png" }
-// 文件放到 public/assets/icons/my-tool.png
+{ "icon": "icon.png" }
+// 文件直接放在插件目录下：plugins/my-plugin/icon.png
 
 // 外部 URL
 { "icon": "https://example.com/icon.svg", "iconSource": "url" }

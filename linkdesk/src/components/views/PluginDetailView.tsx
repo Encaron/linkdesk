@@ -135,7 +135,7 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
   const cachedStatus = getPluginCachedStatus(pluginId);
   const isUninstalled = cachedStatus === "uninstalled";
   const isDisabled = isPluginDisabled(pluginId);
-  const icon = resolvePluginIcon(m);
+  const icon = resolvePluginIcon(pluginId, m);
 
   return (
     <div className="plugin-detail">
