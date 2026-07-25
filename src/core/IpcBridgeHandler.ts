@@ -10,7 +10,6 @@
 
 import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
 import { executeCommand } from "./CommandRegistry";
-import { getViewPlugins } from "../pluginLoader/viewRegistry";
 import {
   enablePlugin,
   disablePlugin,
@@ -20,6 +19,7 @@ import {
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
   isPluginDisabled,
+  getLoadedPluginManifests,
 } from "../pluginLoader/loader";
 
 export function initIpcBridgeHandler(): void {
@@ -74,7 +74,7 @@ export function initIpcBridgeHandler(): void {
 async function handlePluginsCall(method: string, args: any[]): Promise<unknown> {
   switch (method) {
     case "list":
-      return getViewPlugins().map((p) => ({
+      return getLoadedPluginManifests().map((p) => ({
         pluginId: p.pluginId,
         manifest: {
           name: p.manifest.name,
