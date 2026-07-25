@@ -481,20 +481,11 @@ function App() {
       setPaletteOpen(false);
       setThemeBrowserOpen(true);
     };
-    const onSettings = (e: Event) => {
-      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
-      if (pluginId) {
-        const settingsId = factorySlots.getPluginId("settings");
-        if (settingsId) createTab(settingsId, { pinned: true });
-      }
-    };
     window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
     window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
-    window.addEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, onSettings);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, onSettings);
     };
   }, [createTab]);
 

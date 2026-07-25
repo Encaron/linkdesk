@@ -16,6 +16,7 @@ import Select from "../shared/Select";
 import {
   getConfigurationContributions,
   getMergedSchema,
+  consumeSettingsGroup,
   type ConfigurationProperty,
 } from "../../core/ConfigurationRegistry";
 import {
@@ -23,7 +24,6 @@ import {
   setConfigurationValue,
 } from "../../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-import { CUSTOM_EVENTS } from "../../core/CoreEvents";
 import "./SettingsView.css";
 
 /* ── 类型 ── */
@@ -62,17 +62,13 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     return onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
   }, []);
 
-  // E3b：齿轮"扩展设置"→跳转到指定插件的配置分组
+  // E3b：齿轮"设置"→跳转到指定插件的配置分组（模块级变量，零事件）
   useEffect(() => {
-    const handler = (e: Event) => {
-      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
-      if (pluginId) {
-        setSearch("");
-        setSelectedGroup(pluginId);
-      }
-    };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.SHOW_SETTINGS, handler);
+    const target = consumeSettingsGroup();
+    if (target) {
+      setSearch("");
+      setSelectedGroup(target);
+    }
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n
