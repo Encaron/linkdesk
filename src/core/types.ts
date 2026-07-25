@@ -9,6 +9,14 @@
 
 export type PluginType = "view" | "card" | "theme" | "language" | "protocol" | "resource" | "datasource";
 
+/** contributes.themes 条目——对标 VS Code theme extension point */
+export interface ThemeContribution {
+  id: string;
+  label: string;
+  uiTheme: "dark" | "light" | "highContrast";
+  path: string;
+}
+
 /* ── 标签页行为声明 ── */
 
 export interface TabBehavior {

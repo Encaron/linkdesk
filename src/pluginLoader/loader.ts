@@ -17,6 +17,8 @@ const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme } from "../core/ThemeEngine";
+import { ThemeRegistry } from "../core/ThemeRegistry";
+import type { ThemeContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
@@ -300,6 +302,14 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   // contributes.configurationDefaults → ConfigurationRegistry（盲区 2：弱默认值）
   if (c.configurationDefaults) {
     registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
+  }
+
+  // contributes.themes → ThemeRegistry
+  if (c.themes) {
+    const themeList = c.themes as ThemeContribution[];
+    for (const tc of themeList) {
+      ThemeRegistry.register(tc, pluginId);
+    }
   }
 
   // contributes.fileAssociations → FileAssociationService（E2c #13a）

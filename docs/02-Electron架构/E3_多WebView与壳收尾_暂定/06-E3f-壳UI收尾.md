@@ -256,6 +256,36 @@ class FileDecorationRegistry {
 
 ---
 
+### 九-D、`<SelectBox>` 归一化下拉组件——替代所有原生 `<select>`
+
+**对标 VS Code：** VS Code 不用原生 `<select>`——自己画 `SelectBox`（`src/vs/base/browser/ui/selectBox/`）。原生 `<select>` 在 Electron 里走独立 OS 渲染通道，跟 Chromium 合成器节奏不同步，表现为无动画闪出。跟 `alert()`/`confirm()` 是同一类问题（[dialog-normalization-requirement]）。
+
+**归一化要求：**
+- 全局只有一个 `<SelectBox>` 组件——不同页面/插件传不同的 `options`、`value`、`onChange`
+- UI 行为统一：动画曲线、最大高度、搜索过滤（options > 8 时自动出现）、键盘导航（↑↓Enter Esc）
+- 主题色适配：下拉面板背景 `var(--bg-window)`、选中项 `var(--accent)`、分隔线 `var(--separator)`
+
+**组件接口：**
+```typescript
+// src/components/shared/SelectBox.tsx（新）
+interface SelectBoxProps {
+  options: { value: string; label: string }[];
+  value: string;
+  onChange: (value: string) => void;
+  disabled?: boolean;
+  placeholder?: string;
+}
+```
+
+**替换范围（grep `<select` 全项目）：**
+- `plugins/terminal/src/ControlPanel.tsx`——COM/波特率/协议（3 个）
+- 其他插件/组件中的 `<select>`（grep 确认）
+- 替换后项目里不允许新的原生 `<select>` 出现
+
+~100 行。
+
+---
+
 ## 十、任务清单
 
 | # | 任务 | 行数 | 独立验证 |
@@ -271,7 +301,8 @@ class FileDecorationRegistry {
 | 59 | **设置页快捷键子栏**——双 tab + 表格视图 + 冲突检测 | ~60 | 打开设置→快捷键 tab→所有快捷键可搜索→双击改绑定→冲突红字 |
 | 59a | **设置项一键恢复默认**——每项齿轮图标 + `showConfirm` + `ConfigurationService.reset(key)`（防呆） | ~15 | 改值→齿轮亮→点击→确认→回到出厂默认 |
 | 59b | **🔥 FileDecorationRegistry**——文件装饰器注册中心，Git 注册/文件树消费 | ~40 | Git 注册 provider→getDecorations(uri) 返回装饰→注销→返回空 |
-| **合计** | | **~505 行** | |
+| 59c | **🔥 `<SelectBox>` 归一化**——替代全项目原生 `<select>`，统一动画/搜索/键盘导航 | ~100 | ControlPanel 三个下拉→同组件；设置页/主题/语言选择器→同组件 |
+| **合计** | | **~605 行** | |
 
 ---
 
