@@ -104,6 +104,20 @@ function getPluginDataFile(pluginId: string, filename: string): Record<string, u
   return pluginDataFiles[target];
 }
 
+/** 查找已加载插件的 manifest——含视图和非视图插件（主题/语言等） */
+function getLoadedManifest(pluginId: string): PluginManifest | undefined {
+  // 先查视图插件
+  const viewEntry = getViewPlugin(pluginId);
+  if (viewEntry) return viewEntry.manifest;
+  // 再查非视图插件（loadedPluginIds 中有但不属于视图注册表）
+  for (const [path, manifest] of Object.entries(pluginManifests)) {
+    if (extractPluginId(path) === pluginId && loadedPluginIds.has(pluginId)) {
+      return manifest;
+    }
+  }
+  return undefined;
+}
+
 /* ── 当前应用版本（从 package.json 读取） ── */
 
 /** TODO Phase 6：从 package.json 动态读取（需要 Vite define 或 import.meta.env）。
@@ -745,11 +759,11 @@ async function saveDisabledList(list: string[]): Promise<void> {
  */
 export async function disablePlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const entry = getViewPlugin(pluginId);
-    if (!entry) {
+    const manifest = getLoadedManifest(pluginId);
+    if (!manifest) {
       return { success: false, error: `插件 "${pluginId}" 未找到` };
     }
-    if (entry.manifest.core) {
+    if (manifest.core) {
       return { success: false, error: `核心插件 "${pluginId}" 不可禁用` };
     }
 
@@ -759,11 +773,12 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
       await saveDisabledList(list);
     }
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + tab 关闭 + iconOrder(保留) + toast
-    const displayName = entry.manifest.name;
+    const displayName = manifest.name;
     // B2 fix: 标记为已禁用（缓存保留——marketplace 仍可浏览详情）
-    cachePluginMetadata(pluginId, entry.manifest, "disabled");
+    cachePluginMetadata(pluginId, manifest, "disabled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
-    unregisterViewPlugin(pluginId);
+    // 仅视图插件需要注销组件注册
+    if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
@@ -821,23 +836,23 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
  */
 export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const entry = getViewPlugin(pluginId);
-    if (!entry) {
+    const manifest = getLoadedManifest(pluginId);
+    if (!manifest) {
       return { success: false, error: `插件 "${pluginId}" 未找到` };
     }
-    if (entry.manifest.core) {
+    if (manifest.core) {
       return { success: false, error: `核心插件 "${pluginId}" 不可卸载` };
     }
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
-    const displayName = entry.manifest.name;
+    const displayName = manifest.name;
 
     // Rust 端先执行——成功后再做前端变更。
     // 如果 Rust 失败，前端保持原样不进入撕裂状态；且调用方组件未卸载，能显示错误。
     await linkdesk().plugins.uninstall(pluginId);
 
     // Rust 成功 → 前端更新
-    cachePluginMetadata(pluginId, entry.manifest, "uninstalled");
+    cachePluginMetadata(pluginId, manifest, "uninstalled");
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
@@ -848,8 +863,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       await saveDisabledList(list);
     }
 
-    // 前端：移除注册
-    unregisterViewPlugin(pluginId);
+    // 前端：移除注册（仅视图插件需要）
+    if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
@@ -869,8 +884,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  */
 export async function performUninstall(pluginId: string): Promise<boolean> {
   const { showConfirm } = await import("../core/DialogService");
-  const entry = getViewPlugin(pluginId);
-  const name = entry?.manifest.name ?? pluginId;
+  const manifest = getLoadedManifest(pluginId);
+  const name = manifest?.name ?? pluginId;
   const confirmed = await showConfirm(
     i18n.t("确定要卸载") + ` "${name}"？` + i18n.t("此操作可撤销（文件保留在 .disabled/ 目录）。")
   );
