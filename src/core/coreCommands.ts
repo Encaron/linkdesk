@@ -68,6 +68,14 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
   {
+    id: "workbench.action.selectTheme",
+    title: "选择颜色主题",
+    category: "首选项",
+    handler: async () => {
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER));
+    },
+  },
+  {
     id: "workbench.action.openKeybindingsSettings",
     title: "打开键盘快捷方式",
     category: "首选项",
