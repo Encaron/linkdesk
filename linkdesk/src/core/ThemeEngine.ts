@@ -85,6 +85,16 @@ export function applyTheme(theme: Theme): void {
   root.setAttribute("data-theme", theme.type);
   currentTheme = theme;
 
+  // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
+  const bridge = (window as any).linkdesk?.bridge;
+  if (bridge?.broadcast) {
+    bridge.broadcast("theme:changed", {
+      themeId: theme.name,
+      themeType: theme.type,
+      variables: theme.colors,
+    });
+  }
+
   // E2c #19h A5：通知所有订阅者——多 WebView 跨进程主题同步 + UI 联动
   CoreEvents.onDidChangeTheme.fire({ theme: theme.name });
 }

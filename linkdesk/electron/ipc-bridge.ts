@@ -43,6 +43,7 @@ export class IpcBridge {
     this.registerProxyHandlers();
     this.registerResponseListener();
     this.registerPushListener();
+    this.registerBroadcastListener();
   }
 
   /**
@@ -179,6 +180,27 @@ export class IpcBridge {
     } finally {
       this.pushQueues.delete(pluginId);
       this.flushing.delete(pluginId);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // E3b #35——广播推送（壳 → 所有插件 WebView）
+  // ═══════════════════════════════════════════════════════
+
+  private registerBroadcastListener(): void {
+    ipcMain.on('bridge:broadcast', (_event, { channel, payload }: {
+      channel: string;
+      payload: unknown;
+    }) => {
+      this.broadcast(channel, payload);
+    });
+    console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
+  }
+
+  /** 广播事件到所有已注册的插件 WebView */
+  broadcast(channel: string, payload: unknown): void {
+    for (const pluginId of this.windowManager.getAllPluginIds()) {
+      this.pushToPlugin(pluginId, channel, payload);
     }
   }
 
