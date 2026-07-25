@@ -129,6 +129,14 @@ try {
         ipcRenderer.send('bridge:push-to-plugin', { pluginId, channel, payload });
       },
     },
+
+    // ── E3a #29：插件视图管理——壳侧控制插件 WebContentsView 的显隐和位置 ──
+    pluginViews: {
+      setVisible: (id: string, v: boolean) => ipcRenderer.invoke('plugin-view:setVisible', id, v),
+      setBounds: (id: string, b: { x: number; y: number; width: number; height: number }) =>
+        ipcRenderer.invoke('plugin-view:setBounds', id, b),
+      getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
+    },
   });
 
   // 通知主进程 preload 加载成功

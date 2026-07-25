@@ -3,9 +3,11 @@
  * Phase 3.x：递归分屏——树状 SplitPane 渲染 + 面板内毛玻璃（无越界）。
  * Phase 4 B33：tab pane 绝对定位平铺——所有标签页内容区平级渲染，
  *   跨组移动只改 CSS 位置，React 树永不变（对标 B22 面板平铺方案）。
+ * E3a #29：新增 WebContentsView placeholder 管理——插件标签页切换时
+ *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { useCallback, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -122,6 +124,69 @@ function MainContent({
       }
     }
     return panes;
+  }, [tabState.groups, activeGroupId]);
+
+  // ═══════════════════════════════════════════════════════
+  // E3a #29：WebContentsView 显隐同步
+  // 插件标签页切换 → 壳侧 sync → main process → WindowManager → WebView 显隐/位置
+  // ═══════════════════════════════════════════════════════
+
+  const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
+
+  useEffect(() => {
+    const pv = (window as any).linkdesk?.pluginViews;
+    if (!pv) return;
+
+    // 收集所有插件标签页的状态
+    const currentStates = new Map<string, { groupId: string; isFocused: boolean }>();
+    for (const g of tabState.groups) {
+      for (const tab of g.tabs) {
+        // 只处理插件标签页（非壳自身视图）
+        if (tab.pluginId && !isShellRenderedTab(tab.type)) {
+          const isActiveInGroup = tab.id === g.activeTabId;
+          currentStates.set(tab.pluginId, {
+            groupId: g.id,
+            isFocused: isActiveInGroup && g.id === activeGroupId,
+          });
+        }
+      }
+    }
+
+    // 对每个插件标签页——切换时更新可见性
+    const prev = pluginViewsRef.current;
+    for (const [pluginId, state] of currentStates) {
+      const prevState = prev.get(pluginId);
+      if (prevState?.isFocused !== state.isFocused) {
+        pv.setVisible(pluginId, state.isFocused);
+      }
+    }
+
+    // 之前有但现在没有的插件——隐藏
+    for (const pluginId of prev.keys()) {
+      if (!currentStates.has(pluginId)) {
+        pv.setVisible(pluginId, false);
+      }
+    }
+
+    pluginViewsRef.current = currentStates;
+
+    // 异步更新聚焦插件的 WebView bounds（等 DOM 布局完成）
+    requestAnimationFrame(() => {
+      for (const [pluginId, state] of currentStates) {
+        if (state.isFocused) {
+          const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
+          if (pool) {
+            const rect = pool.getBoundingClientRect();
+            pv.setBounds(pluginId, {
+              x: Math.round(rect.x),
+              y: Math.round(rect.y),
+              width: Math.round(rect.width),
+              height: Math.round(rect.height),
+            });
+          }
+        }
+      }
+    });
   }, [tabState.groups, activeGroupId]);
 
   const renderGroup = useCallback(
