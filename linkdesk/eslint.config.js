@@ -1,9 +1,10 @@
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
+import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
   {
-    files: ["src/**/*.ts", "src/**/*.tsx"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -12,8 +13,21 @@ export default [
         ecmaFeatures: { jsx: true },
       },
     },
-    plugins: { "@typescript-eslint": tseslint },
+    plugins: {
+      "@typescript-eslint": tseslint,
+      "linkdesk": { rules: linkdeskRules },
+    },
     rules: {
+      // ═══ 提交前自检 4：禁止插件 ID 硬编码 ═══
+      "no-restricted-syntax": [
+        "error",
+        // v3- 遗骨禁止新增
+        {
+          selector: "Literal[value=/^v3[-_]/]",
+          message: "🚫 禁止新增 v3- 前缀标识符。请改用 linkdesk- 或 CUSTOM_EVENTS 常量。",
+        },
+      ],
+
       // ═══ Phase 3→4 硬约束：标签页系统不持有 CardRegistry ═══
       "no-restricted-imports": [
         "error",
@@ -28,11 +42,17 @@ export default [
         },
       ],
 
+      // ═══ #59c 硬约束 13：async init 竞态 ═══
+      "linkdesk/no-async-init-guard-only": "error",
+
+      // ═══ #59c 硬约束 14：effect 回调缺活跃守卫 ═══
+      "linkdesk/no-effect-callback-without-active-guard": "warn",
+
       // ═══ 防止副作用写在 setState 内部（B25 教训） ═══
       // 此规则在 TypeScript 层面无法精确检测，由 code review 辅助。
       // 原则：setState((prev) => { ... return newState }) 内不放 appendLine/emit/invoke。
 
-      // ═══ 建议规则（warning 而非 error） ═══
+      // ═══ 建议规则 ═══
       "@typescript-eslint/no-explicit-any": "warn",
     },
   },

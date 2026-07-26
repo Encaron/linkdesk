@@ -27,6 +27,8 @@ let _userSettings: Record<string, unknown> = {};
 let _workspaceSettings: Record<string, unknown> = {};
 let _workspaceRoot: string | null = null;
 let _initialized = false;
+/** initConfigurationService 的进行中 Promise——StrictMode 双重 effect 时第二次调用等第一次完成 */
+let _initPromise: Promise<void> | null = null;
 
 /* ── 监听器 ── */
 
@@ -40,12 +42,15 @@ const _changeListeners = new Set<ChangeListener>();
  * 加载 settings.json（User scope）。Workspace scope 等 WorkspaceService setWorkspaceRoot 后加载。
  */
 export async function initConfigurationService(): Promise<void> {
-  if (_initialized) return;
+  // 🔥 #59c fix：和 initPluginLoader 同样模式——return 进行中 Promise 防 StrictMode 竞态
+  if (_initialized) return _initPromise ?? Promise.resolve();
   _initialized = true;
 
+  return (_initPromise = (async () => {
   // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
   const saved = await read<Record<string, unknown>>("settings");
   if (saved) _userSettings = saved;
+  })());
 }
 
 /* ── 读取：三层合并 ── */
