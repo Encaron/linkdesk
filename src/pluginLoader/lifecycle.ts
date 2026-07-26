@@ -14,7 +14,7 @@
  */
 
 import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/toast";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
 import { unregisterPluginCommands } from "../core/CommandRegistry";

@@ -2,6 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
+import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/NotificationService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
@@ -12,6 +13,7 @@ import IconBar from "./components/IconBar";
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
+import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/shared/CommandPalette";
 import ThemeBrowser from "./components/ThemeBrowser";
@@ -295,6 +297,13 @@ function App() {
           syncCountersAfterRestore(allTabs);
         }
       } catch { /* 布局恢复失败不影响启动 */ }
+
+      // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
+      (window as any).__showProgress = showProgress;
+      (window as any).__setDoNotDisturb = setDoNotDisturb;
+      (window as any).__setSourceFilter = setSourceFilter;
+      (window as any).__pushToast = pushToast;
+      (window as any).__clearDismissed = () => localStorage.removeItem("v3_dismissed_toasts");
 
       setReady(true);
     })();
@@ -798,6 +807,7 @@ function App() {
         onToggleLang={handleToggleLang}
       />
       <ToastContainer />
+      <ProgressBar />
       <CommandPalette
         open={paletteOpen}
         onClose={() => setPaletteOpen(false)}

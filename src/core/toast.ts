@@ -27,6 +27,11 @@ export interface Toast {
   actions?: ToastAction[];
   /** 自动消失时间（ms），默认 6000，0 = 不自动消失 */
   ttl?: number;
+  /**
+   * 关闭后不再显示——对标 VS Code `isCloseAffordance`。
+   * 设为 true 后，用户点 × 关闭此通知 → localStorage 持久化 → 下次同 source+message 的通知不弹。
+   */
+  isCloseAffordance?: boolean;
 }
 
 type ToastListener = (toasts: Toast[]) => void;
@@ -45,6 +50,30 @@ let _toasts: Toast[] = [];
 let _listeners: Set<ToastListener> = new Set();
 let _counter = 0;
 
+/** "Don't show again" 持久化 key */
+const DISMISSED_KEY = "v3_dismissed_toasts";
+
+function isDismissed(toast: { source?: string; message: string; isCloseAffordance?: boolean }): boolean {
+  if (!toast.isCloseAffordance) return false;
+  try {
+    const key = `${toast.source ?? ""}::${toast.message}`;
+    const dismissed = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
+    return dismissed.includes(key);
+  } catch { return false; }
+}
+
+function persistDismiss(toast: { source?: string; message: string; isCloseAffordance?: boolean }): void {
+  if (!toast.isCloseAffordance) return;
+  try {
+    const key = `${toast.source ?? ""}::${toast.message}`;
+    const dismissed = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
+    if (!dismissed.includes(key)) {
+      dismissed.push(key);
+      localStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed));
+    }
+  } catch { /* localStorage 不可用时静默 */ }
+}
+
 function notify(): void {
   for (const fn of _listeners) {
     fn([..._toasts]);
@@ -53,6 +82,11 @@ function notify(): void {
 
 /** 推送 toast。对标 VS Code `INotificationService.notify()` */
 export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
+  // "Don't show again" 检查——用户之前点 × 关过同款通知
+  if (toast.isCloseAffordance && isDismissed(toast)) {
+    return "";
+  }
+
   const id = toast.id ?? `toast-${++_counter}`;
   const t: Toast = { ...toast, id, ttl: toast.ttl ?? DEFAULT_TTL };
 
@@ -71,6 +105,10 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
 
 /** 移除 toast */
 export function dismissToast(id: string): void {
+  // "Don't show again" 持久化——关闭前记录
+  const toast = _toasts.find((t) => t.id === id);
+  if (toast) persistDismiss(toast);
+
   _toasts = _toasts.filter((t) => t.id !== id);
   notify();
 }

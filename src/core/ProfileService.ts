@@ -18,7 +18,7 @@ import {
   isPluginDisabled,
 } from "../pluginLoader/loader";
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "./ConfigurationService";
-import { pushToast, TOAST_TTL_ERROR } from "./toast";
+import { pushToast, TOAST_TTL_ERROR } from "./NotificationService";
 import {
   appDataDir,
   joinPath,
