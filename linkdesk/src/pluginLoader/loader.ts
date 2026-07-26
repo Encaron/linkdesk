@@ -385,17 +385,11 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     }
   }
 
-  // contributes.languages → LanguageRegistry + i18next
+  // contributes.languages → LanguageRegistry（metadata only——数据在 loadPlugin/loadPluginRuntime 中异步加载）
   if (c.languages) {
     const langList = c.languages as LanguageContribution[];
     for (const lc of langList) {
       LanguageRegistry.register(lc, pluginId);
-      const data = getPluginDataFile(pluginId, lc.path);
-      if (data) {
-        registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
-      } else {
-        console.warn(`[pluginLoader] 语言文件缺失 — "${pluginId}/${lc.path}"`);
-      }
     }
   }
 
@@ -528,6 +522,12 @@ async function loadPlugin(
       console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
       // 不阻断——插件视图可能已注册成功，只有配置/命令/菜单等声明失效
     }
+  }
+
+  // contributes.languages 数据异步加载——parseContributions 已注册 metadata，此处 fetch 实际 JSON
+  // 🔥 不用 getPluginDataFile（Vite glob 缓存问题——新插件目录的 JSON 文件可能不被 glob 实时发现）
+  if (hasNewLanguages) {
+    await loadLanguageContributionData(pluginId, manifest);
   }
 
   if (!contributed) {
@@ -671,6 +671,11 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
     } catch (e: any) {
       console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
+    }
+
+    // contributes.languages 数据异步加载（对标 theme 数据补充——parseContributions 仅注册 metadata）
+    if (manifest.contributes.languages) {
+      await loadLanguageContributionData(pluginId, manifest);
     }
 
     // Runtime 主题数据补充——parseContributions 中 getPluginDataFile 依赖 import.meta.glob，
@@ -836,6 +841,36 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
   }
 
   console.warn(`[pluginLoader] 主题插件 "${pluginId}" 未声明 file 或 themes 字段`);
+}
+
+/* ── 语言 JSON 数据异步加载（#39 fix：绕过 Vite glob 缓存） ── */
+
+/**
+ * 加载 contributes.languages 声明的 JSON 翻译文件。
+ * 和 loadLanguagePlugin 并行——后者处理旧格式 manifest.languages。
+ * 🔥 用 fetch() 而不用 getPluginDataFile()——后者依赖 import.meta.glob，
+ * Vite 在 dev 模式下可能缓存旧快照，新插件目录的 JSON 文件不被实时发现。
+ */
+async function loadLanguageContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
+  const langList = manifest.contributes?.languages as LanguageContribution[] | undefined;
+  if (!langList?.length) return;
+
+  for (const lc of langList) {
+    try {
+      const url = import.meta.env.DEV
+        ? `http://localhost:1420/plugins/${pluginId}/${lc.path}`
+        : `linkdesk://${pluginId}/${lc.path}`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.warn(`[pluginLoader] 语言文件加载失败 — "${pluginId}/${lc.path}" (${response.status})`);
+        continue;
+      }
+      const data = await response.json();
+      registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
+    } catch (e: any) {
+      console.warn(`[pluginLoader] 语言文件加载异常 — "${pluginId}/${lc.path}": ${e?.message || e}`);
+    }
+  }
 }
 
 /* ── 语言资源注册——归一化（#38b：消两处 addResourceBundle 重复） ── */
