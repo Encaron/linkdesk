@@ -303,7 +303,7 @@ function App() {
       (window as any).__setDoNotDisturb = setDoNotDisturb;
       (window as any).__setSourceFilter = setSourceFilter;
       (window as any).__pushToast = pushToast;
-      (window as any).__clearDismissed = () => localStorage.removeItem("v3_dismissed_toasts");
+      (window as any).__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
 
       setReady(true);
     })();
