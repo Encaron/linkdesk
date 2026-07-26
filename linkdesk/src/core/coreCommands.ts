@@ -17,6 +17,7 @@ import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
 import { requestSettingsGroup } from "./ConfigurationRegistry";
+import i18n from "../i18n";
 
 /* ── Callbacks ── */
 
@@ -48,8 +49,8 @@ export function updateCoreCallbacks(cb: CoreCallbacks): void {
 const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = [
   {
     id: "core.openSettings",
-    title: "设置",
-    category: "视图",
+    title: i18n.t("设置"),
+    category: i18n.t("视图"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
@@ -62,8 +63,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.showCommands",
-    title: "命令面板",
-    category: "视图",
+    title: i18n.t("命令面板"),
+    category: i18n.t("视图"),
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
     },
@@ -72,8 +73,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.selectTheme",
-    title: "选择颜色主题",
-    category: "首选项",
+    title: i18n.t("选择颜色主题"),
+    category: i18n.t("首选项"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER, {
@@ -85,15 +86,15 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.openKeybindingsSettings",
-    title: "打开键盘快捷方式",
-    category: "首选项",
+    title: i18n.t("打开键盘快捷方式"),
+    category: i18n.t("首选项"),
     handler: async () => {
       const path = await openKeybindingsSettings();
       if (path) {
         // 通知用户文件位置——后续 Phase 6 JSON 编辑器接管此命令
         const { pushToast, TOAST_TTL_INFO } = await import("./toast");
         pushToast({
-          message: `快捷键配置文件：${path}`,
+          message: i18n.t("快捷键配置文件：") + path,
           ttl: TOAST_TTL_INFO,
         });
       }
@@ -101,8 +102,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeTab",
-    title: "关闭",
-    category: "标签页",
+    title: i18n.t("关闭"),
+    category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.closeTab(ctx.tabId);
@@ -112,8 +113,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeOtherTabs",
-    title: "关闭其他",
-    category: "标签页",
+    title: i18n.t("关闭其他"),
+    category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -126,8 +127,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeRightTabs",
-    title: "关闭右侧",
-    category: "标签页",
+    title: i18n.t("关闭右侧"),
+    category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -143,8 +144,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.splitDown",
-    title: "向下分屏",
-    category: "标签页",
+    title: i18n.t("向下分屏"),
+    category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "vertical");
@@ -154,8 +155,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.splitRight",
-    title: "向右分屏",
-    category: "标签页",
+    title: i18n.t("向右分屏"),
+    category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "horizontal");
