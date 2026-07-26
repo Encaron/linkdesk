@@ -12,7 +12,7 @@
  */
 
 import { useEffect, useRef } from "react";
-import { pushToast } from "../core/toast";
+import { pushToast } from "../core/NotificationService";
 
 /** JS heap 使用率超过此阈值时告警 */
 const HEAP_WARNING_RATIO = 0.8;
