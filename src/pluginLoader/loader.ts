@@ -18,7 +18,8 @@ import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
-import type { ThemeContribution } from "../core/types";
+import { IconRegistry } from "../core/IconRegistry";
+import type { ThemeContribution, IconThemeContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
@@ -372,6 +373,14 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
       } else {
         console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}"`);
       }
+    }
+  }
+
+  // contributes.iconThemes → IconRegistry
+  if (c.iconThemes) {
+    const list = c.iconThemes as IconThemeContribution[];
+    for (const it of list) {
+      IconRegistry.register(it, pluginId);
     }
   }
 

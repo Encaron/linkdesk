@@ -17,6 +17,13 @@ export interface ThemeContribution {
   path: string;
 }
 
+/** contributes.iconThemes 条目——对标 VS Code productIconThemes extension point */
+export interface IconThemeContribution {
+  id: string;
+  label: string;
+  path: string;
+}
+
 /* ── 标签页行为声明 ── */
 
 export interface TabBehavior {

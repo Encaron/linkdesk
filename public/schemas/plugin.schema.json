@@ -362,6 +362,20 @@
           "type": "object",
           "description": "弱默认值——插件给其他配置项的建议值，用户手动设置优先",
           "additionalProperties": {}
+        },
+        "iconThemes": {
+          "type": "array",
+          "description": "产品图标主题——对标 VS Code productIconThemes。插件声明图标集供用户切换。",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "path"],
+            "properties": {
+              "id": { "type": "string", "description": "图标主题 ID——如 codicon" },
+              "label": { "type": "string", "description": "显示名称——如 Codicon" },
+              "path": { "type": "string", "description": "图标定义 JSON 文件路径" }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
