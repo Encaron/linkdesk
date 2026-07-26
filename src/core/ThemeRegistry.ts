@@ -11,6 +11,7 @@
  */
 
 import type { ThemeContribution } from "./types";
+import { findTheme } from "./ThemeEngine";
 
 interface RegisteredTheme extends ThemeContribution {
   pluginId: string;
@@ -52,9 +53,25 @@ export const ThemeRegistry = {
    * 三层退路查找。
    * 找到 → 返回 RegisteredTheme（第 1/2 层命中）
    * undefined → 调用方应回退到第 3 层 index.css :root 硬兜底
+   *
+   * 单真源：ThemeRegistry 自己的登记本未命中 → fallback 到 ThemeEngine（旧格式主题）。
+   * 消除双写——不再要求旧格式 manifest.themes/manifest.file 也调 ThemeRegistry.register()。
    */
   get(themeId: string): RegisteredTheme | undefined {
-    return themes.get(themeId);
+    const registered = themes.get(themeId);
+    if (registered) return registered;
+    // Fallback：旧格式主题只在 ThemeEngine 中有登记
+    const theme = findTheme(themeId);
+    if (theme?.pluginId) {
+      return {
+        id: theme.name,
+        label: theme.name,
+        uiTheme: theme.type,
+        path: "",
+        pluginId: theme.pluginId,
+      };
+    }
+    return undefined;
   },
 
   /** 所有已注册主题 */
