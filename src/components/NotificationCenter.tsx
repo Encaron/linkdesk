@@ -29,6 +29,42 @@ function formatTimeAgo(ts: number): string {
   return `${d} 天前`;
 }
 
+/* ── E3e #50：source 归类 ── */
+
+interface SourceGroup {
+  key: string;
+  label: string;
+  unread: number;
+  items: Toast[];
+}
+
+function buildSourceGroups(notifications: Toast[]): SourceGroup[] {
+  const map = new Map<string, Toast[]>();
+  for (const n of notifications) {
+    // source 取第一段作为插件名——"terminal.portErrors" → "terminal"
+    const src = n.source?.split(".")[0] || "";
+    const key = src || "__other__";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(n);
+  }
+
+  const groups: SourceGroup[] = [];
+  for (const [key, items] of map) {
+    items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const unread = items.filter((n) => !_seenIds.has(n.id)).length;
+    groups.push({
+      key,
+      label: key === "__other__" ? "其他" : key,
+      unread,
+      items,
+    });
+  }
+
+  // 有未读的组排前面
+  groups.sort((a, b) => b.unread - a.unread);
+  return groups;
+}
+
 /* ── 图标映射 ── */
 
 function getNotifIconClass(n: Toast): string {
@@ -86,12 +122,8 @@ function NotificationCenter() {
   // 未读计数
   const unreadCount = notifications.filter((n) => !_seenIds.has(n.id)).length;
 
-  // 按时间分组：未读 + 已读（按时间降序）
-  const unread = notifications.filter((n) => !_seenIds.has(n.id));
-  const read = notifications.filter((n) => _seenIds.has(n.id));
-  // 每个组内最新在前
-  unread.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
-  read.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  // E3e #50：按 source 归类——同插件通知放一起，最新在前
+  const sourceGroups = buildSourceGroups(notifications);
 
   return (
     <>
@@ -125,18 +157,17 @@ function NotificationCenter() {
             <div className="notif-panel-empty">{t("暂无通知")}</div>
           ) : (
             <div className="notif-panel-list">
-              {unread.length > 0 && (
-                <>
-                  <div className="notif-panel-section-header">{t("未读")}</div>
-                  {unread.map(renderNotifItem)}
-                </>
-              )}
-              {read.length > 0 && (
-                <>
-                  <div className="notif-panel-section-header">{t("已读")}</div>
-                  {read.map(renderNotifItem)}
-                </>
-              )}
+              {sourceGroups.map((group) => (
+                <div key={group.key}>
+                  <div className="notif-panel-section-header">
+                    <span className="notif-source-group-label">{group.label}</span>
+                    {group.unread > 0 && (
+                      <span className="notif-source-group-badge">{group.unread}</span>
+                    )}
+                  </div>
+                  {group.items.map(renderNotifItem)}
+                </div>
+              ))}
             </div>
           )}
         </div>
