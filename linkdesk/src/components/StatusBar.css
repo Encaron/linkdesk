@@ -331,3 +331,23 @@
 /* Severity icons in notification panel */
 .notif-severity-error { color: var(--danger) !important; }
 .notif-severity-warning { color: var(--warning) !important; }
+
+/* ── E3e #49：NotificationCenter 增强 —— 分组标题 + 时间标签 ── */
+
+/* 分组标题——"未读" / "已读" */
+.notif-panel-section-header {
+  padding: 6px 12px 2px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+/* 时间标签 */
+.notif-panel-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+}

@@ -32,6 +32,8 @@ export interface Toast {
    * 设为 true 后，用户点 × 关闭此通知 → localStorage 持久化 → 下次同 source+message 的通知不弹。
    */
   isCloseAffordance?: boolean;
+  /** 创建时间戳——Notification Center 按时间排序/分组用。pushToast 自动填。 */
+  createdAt?: number;
 }
 
 type ToastListener = (toasts: Toast[]) => void;
@@ -51,7 +53,7 @@ let _listeners: Set<ToastListener> = new Set();
 let _counter = 0;
 
 /** "Don't show again" 持久化 key */
-const DISMISSED_KEY = "v3_dismissed_toasts";
+const DISMISSED_KEY = "linkdesk_dismissed_toasts";
 
 function isDismissed(toast: { source?: string; message: string; isCloseAffordance?: boolean }): boolean {
   if (!toast.isCloseAffordance) return false;
@@ -88,7 +90,7 @@ export function pushToast(toast: Omit<Toast, "id"> & { id?: string }): string {
   }
 
   const id = toast.id ?? `toast-${++_counter}`;
-  const t: Toast = { ...toast, id, ttl: toast.ttl ?? DEFAULT_TTL };
+  const t: Toast = { ...toast, id, ttl: toast.ttl ?? DEFAULT_TTL, createdAt: toast.createdAt ?? Date.now() };
 
   _toasts.push(t);
 
