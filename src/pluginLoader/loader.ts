@@ -558,6 +558,8 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
+  let sidebarComponent: React.ComponentType | undefined;
+  let statusBarComponent: React.ComponentType | undefined;
   if (manifest.entry) {
     try {
       // Vite /@fs/ 端点——dev server 实时编译 TypeScript，浏览器直接拿 JS。
@@ -568,6 +570,30 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       Component = module.default;
       if (!Component) {
         console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
+      }
+
+      // Bug 3 fix：运行时插件也加载 sidebar.tsx / statusBar.tsx（对标 loadViewPlugin glob 行为）。
+      // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime，
+      // 不加载 sidebar 则侧栏不显示。同时尝试平铺和 src/ 子目录两种结构。
+      try {
+        const sm = await import(/* @vite-ignore */ `/@fs/${absPath}/sidebar.tsx`);
+        sidebarComponent = sm.default;
+      } catch { /* 无 sidebar.tsx——正常 */ }
+      if (!sidebarComponent) {
+        try {
+          const sm = await import(/* @vite-ignore */ `/@fs/${absPath}/src/sidebar.tsx`);
+          sidebarComponent = sm.default;
+        } catch { /* 无 src/sidebar.tsx——正常 */ }
+      }
+      try {
+        const sbm = await import(/* @vite-ignore */ `/@fs/${absPath}/statusBar.tsx`);
+        statusBarComponent = sbm.default;
+      } catch { /* 无 statusBar.tsx——正常 */ }
+      if (!statusBarComponent) {
+        try {
+          const sbm = await import(/* @vite-ignore */ `/@fs/${absPath}/src/statusBar.tsx`);
+          statusBarComponent = sbm.default;
+        } catch { /* 无 src/statusBar.tsx——正常 */ }
       }
     } catch (e: any) {
       console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
@@ -587,7 +613,8 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       pluginId,
       manifest,
       component: Component,
-      // glob 外的插件暂不支持 sidebar/statusBar（Phase 6 扩展 SDK 后支持）
+      sidebarComponent,
+      statusBarComponent,
     };
     registerViewPlugin(entry);
     log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
