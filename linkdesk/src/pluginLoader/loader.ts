@@ -190,13 +190,17 @@ function cachePluginMetadata(
 /* ── 初始化 ── */
 
 let _initialized = false;
+/** initPluginLoader 的进行中 Promise——StrictMode 双重 effect 时第二次调用等第一次完成 */
+let _loadingPromise: Promise<void> | null = null;
 /** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
 const loadedPluginIds = new Set<string>();
 
 export async function initPluginLoader(): Promise<void> {
-  if (_initialized) return;
+  // 🔥 #59c fix：StrictMode 双重 effect 第二次调用时等第一次 Promise 完成
+  if (_initialized) return _loadingPromise ?? Promise.resolve();
   _initialized = true;
 
+  return (_loadingPromise = (async () => {
   // Phase 5h 行为归一化：注册 lifecycle 消费端（iconOrder/toast/config/tab——只注册一次）
   initLifecycleConsumers();
 
@@ -282,6 +286,7 @@ export async function initPluginLoader(): Promise<void> {
       log.appendLine(`🧹 清理 ${staleCount} 条僵尸缓存`);
     } catch { /* 非关键路径 */ }
   }
+  })());
 }
 
 /* ── Phase 5：parseContributions——对标 VS Code package.json contributes ── */
