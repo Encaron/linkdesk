@@ -177,13 +177,19 @@ export function clearConfigurationRegistrations(): void {
   _configurationDefaults.clear();
 }
 
-/* ── 设置页跳转目标——打开设置前 set，SettingsView mount 时 consume ── */
+/* ── 设置页跳转目标——双通道：Emitter（已打开时跳转）+ pending 变量（未打开时 mount 消费）── */
+
+import { Emitter } from "./CoreEvents";
 
 let _pendingSettingsGroup: string | null = null;
 
-/** 标记：下次打开设置页时选中此插件分组 */
+/** Emitter 通道——SettingsView 已打开时实时跳转 */
+export const onRequestSettingsGroup = new Emitter<string>();
+
+/** 标记：下次打开设置页时选中此插件分组。同时 fire Emitter——设置已打开时即时跳转。 */
 export function requestSettingsGroup(pluginId: string): void {
   _pendingSettingsGroup = pluginId;
+  onRequestSettingsGroup.fire(pluginId);
 }
 
 /** 消费：SettingsView mount 时调用，返回目标插件 ID 并清空 */
