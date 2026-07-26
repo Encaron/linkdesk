@@ -23,8 +23,15 @@ export class WindowManager {
   /** 保活宽限期定时器——key=pluginId，value=setTimeout handle */
   private graceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
+  private ipcBridge: any = null;
+
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
+  }
+
+  /** E3c #40：setter——IpcBridge 晚于 WindowManager 创建 */
+  setIpcBridge(bridge: any): void {
+    this.ipcBridge = bridge;
   }
 
   /**
@@ -63,13 +70,9 @@ export class WindowManager {
       this.pluginViews.delete(pluginId);
     });
 
-    // ── 新 WebView 创建后主动推送当前状态（新风险 4 预防）──
-    // ⚠️ E3b/E3c 实现前占位——主题/语言跨进程广播就绪后替换为 IPC send
+    // ── 新 WebView 创建后重放当前状态（#35 + #40）──
     view.webContents.on('did-finish-load', () => {
-      // TODO E3b: 推送当前主题 CSS 变量到新 WebView
-      // mainWindow.webContents.send('theme:push-to-plugin', { pluginId, ... })
-      // TODO E3c: 推送当前语言资源到新 WebView
-      // mainWindow.webContents.send('lang:push-to-plugin', { pluginId, ... })
+      this.ipcBridge?.replayToPlugin(pluginId);
     });
 
     // 加载内容

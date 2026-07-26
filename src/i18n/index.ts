@@ -12,4 +12,28 @@ i18n.use(initReactI18next).init({
   parseMissingKeyHandler: (key) => key,
 });
 
+// E3c #40：插件 WebView 语言同步——接收壳广播的翻译资源
+if (typeof window !== "undefined") {
+  const linkdesk = (window as any).linkdesk;
+  if (linkdesk?.lang) {
+    const applyLang = (data: { lang: string; resources: Record<string, unknown> }) => {
+      if (!data?.resources) return;
+      for (const [lng, bundle] of Object.entries(data.resources)) {
+        if (bundle && typeof bundle === "object") {
+          i18n.addResourceBundle(lng, "translation", bundle, true, true);
+        }
+      }
+      if (data.lang) {
+        i18n.changeLanguage(data.lang);
+      }
+    };
+
+    const initial = linkdesk.lang.getInitial();
+    if (initial) applyLang(initial);
+
+    // 订阅后续语言变更
+    linkdesk.lang.onChange(applyLang);
+  }
+}
+
 export default i18n;

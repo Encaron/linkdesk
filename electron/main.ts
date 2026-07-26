@@ -70,6 +70,7 @@ function createWindow(): void {
   registerPluginViewHandlers(pluginViewRegistry);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
   ipcBridge = new IpcBridge(mainWindow, windowManager);
+  windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {

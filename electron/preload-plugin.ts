@@ -28,6 +28,10 @@ try {
 
   const eventSubscriptions = new Map<string, Set<(payload: any) => void>>();
 
+  // ── 语言资源缓存（E3c #40：接收壳广播的初始语言数据）──
+  let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
+  const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
+
   ipcRenderer.on('plugin:push', (_event, data: { channel: string; payload: any }) => {
     // E3b #35：默认处理——theme:changed 自动注入 CSS 变量，插件无需手动订阅
     if (data.channel === 'theme:changed') {
@@ -45,6 +49,16 @@ try {
         } }`;
       } catch (e) {
         console.error('[preload-plugin] theme:changed CSS 注入失败:', e);
+      }
+    }
+
+    // E3c #40：默认处理——lang:changed 缓存 + 通知订阅者
+    if (data.channel === 'lang:changed') {
+      _langCache = data.payload as { lang: string; resources: Record<string, unknown> };
+      for (const fn of _langSubscribers) {
+        try { fn(_langCache); } catch (e) {
+          console.error('[preload-plugin] lang:changed 回调异常:', e);
+        }
       }
     }
 
@@ -140,6 +154,17 @@ try {
       getDisabled:    () => ipcRenderer.invoke('plugins:call', 'getDisabled'),
       getUninstalled: () => ipcRenderer.invoke('plugins:call', 'getUninstalled'),
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
+    },
+
+    // ── E3c #40：语言同步——壳广播→缓存→订阅者通知 ──
+    lang: {
+      /** 获取初始语言数据（WebView 加载时壳已推送） */
+      getInitial: () => _langCache,
+      /** 订阅语言变更——返回 unsubscribe */
+      onChange: (cb: (data: { lang: string; resources: Record<string, unknown> }) => void) => {
+        _langSubscribers.add(cb);
+        return () => { _langSubscribers.delete(cb); };
+      },
     },
 
     // ── E3a #27-#28：通用事件订阅——壳推送→集中分发→插件回调 ──

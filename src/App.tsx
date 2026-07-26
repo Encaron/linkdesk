@@ -199,7 +199,19 @@ function App() {
             default: "zh",
             enum: ["zh", "en"],
             description: "界面语言",
-            onApply: (v) => { i18n.changeLanguage(v as string); },
+            onApply: (v) => {
+              i18n.changeLanguage(v as string);
+              // E3c #40：跨进程广播——壳切语言 → 所有插件 WebView 同步
+              const bridge = (window as any).linkdesk?.bridge;
+              if (bridge?.broadcast) {
+                const resources: Record<string, unknown> = {};
+                for (const lang of i18n.languages ?? []) {
+                  const bundle = i18n.getResourceBundle(lang, "translation");
+                  if (bundle) resources[lang] = bundle;
+                }
+                bridge.broadcast("lang:changed", { lang: v, resources });
+              }
+            },
           },
           "app.accentColor": {
             type: "string",
