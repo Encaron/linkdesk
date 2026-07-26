@@ -129,6 +129,8 @@ Phase 1-5h ✅ 完成
 3. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 4. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
 5. **🔥 修了任何 `import`/`export` 路径 → 删 `node_modules/.vite` 清 Vite deps 缓存。** 不手动清 → 缓存了失败模块 → 路径改对也白屏。`tsc` 抓不到这个。（memory `vite-cache-after-import-fix.md`）
+6. **新增 async init* 函数 → grep `_initialized`**：如果有 `_initialized = true` 在 `await` 前面，必须配 `_loadingPromise`。`grep '_initialized = true'` 每处都确认在 await 后面或有 `_loadingPromise`。（硬约束 13）
+7. **新增/修改 useEffect → grep 回调 prop 名**：如果 effect 依赖数组含 `onChange|onHighlight|onSelect|onApply`，必须有 `if (!open)` 或 `if (!isActive)` 守卫。`grep -E 'useEffect.*\[.*on(Change|Highlight|Select|Apply)'` 每处确认。（硬约束 14）
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 
