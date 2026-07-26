@@ -877,12 +877,34 @@ async function loadLanguageContributionData(pluginId: string, manifest: PluginMa
   const langList = manifest.contributes?.languages as LanguageContribution[] | undefined;
   if (!langList?.length) return;
 
+  let registered = 0;
   for (const lc of langList) {
     const data = await fetchPluginDataFile(pluginId, lc.path);
     if (data) {
       registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
+      registered++;
     }
   }
+
+  // #42：新语言插件安装后重播当前语言资源——插件 WebView 无需等用户切语言
+  if (registered > 0) syncLanguageBroadcast();
+}
+
+/**
+ * 广播当前语言资源到所有插件 WebView。
+ * #42：新语言插件安装后调用——插件 WebView 即时获得新翻译，无需等用户切语言。
+ * 对标 App.tsx onApply 的广播——同一段逻辑，两处触发（语言切换 + 新翻译注册）。
+ */
+function syncLanguageBroadcast(): void {
+  const bridge = (window as any).linkdesk?.bridge;
+  if (!bridge?.broadcast) return;
+  const currentLang = i18n.language;
+  const resources: Record<string, unknown> = {};
+  for (const lang of i18n.languages ?? []) {
+    const bundle = i18n.getResourceBundle(lang, "translation");
+    if (bundle) resources[lang] = bundle;
+  }
+  bridge.broadcast("lang:changed", { lang: currentLang, resources });
 }
 
 /* ── 语言资源注册——归一化（#38b：消两处 addResourceBundle 重复） ── */
@@ -917,6 +939,7 @@ async function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): P
         message: `新增 ${registered} 个语言：${manifest.name}`,
         ttl: TOAST_TTL_SUCCESS,
       });
+      syncLanguageBroadcast(); // #42：新翻译注册→即时广播到插件 WebView
     }
     return;
   }
@@ -932,6 +955,7 @@ async function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): P
       message: `新增语言：${manifest.name}`,
       ttl: TOAST_TTL_SUCCESS,
     });
+    syncLanguageBroadcast(); // #42：新翻译注册→即时广播到插件 WebView
     return;
   }
 
