@@ -811,11 +811,23 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
   console.warn(`[pluginLoader] 主题插件 "${pluginId}" 未声明 file 或 themes 字段`);
 }
 
+/* ── 语言资源注册——归一化（#38b：消两处 addResourceBundle 重复） ── */
+
+/**
+ * 注册语言翻译资源到 i18next。
+ * 两处调用：loadLanguagePlugin（旧格式 manifest.languages）+
+ * parseContributions（新格式 contributes.languages）。
+ * 归一化后两处各一行调用——新增语言注册路径不复制粘贴。
+ */
+function registerLanguageBundle(langCode: string, data: Record<string, unknown>, pluginId: string): void {
+  const ns = "translation";
+  i18n.addResourceBundle(langCode, ns, data, true, true);
+  i18n.addResourceBundle(langCode, pluginId, data, true, true);
+}
+
 /* ── 语言插件（P1-4） ── */
 
 function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
-  const ns = "translation";
-
   // 多语言数组
   if (manifest.languages && manifest.languages.length > 0) {
     let registered = 0;
@@ -825,8 +837,7 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
         console.warn(`[pluginLoader] 语言文件缺失 — "${pluginId}/${lang.file}"`);
         continue;
       }
-      i18n.addResourceBundle(lang.code, ns, data, true, true);
-      i18n.addResourceBundle(lang.code, pluginId, data, true, true);
+      registerLanguageBundle(lang.code, data, pluginId);
       registered++;
     }
     if (registered > 0) {
@@ -847,8 +858,7 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
       return;
     }
     const code = manifest.file.replace(/\.json$/, "");
-    i18n.addResourceBundle(code, ns, data, true, true);
-    i18n.addResourceBundle(code, pluginId, data, true, true);
+    registerLanguageBundle(code, data, pluginId);
     log.appendLine(`✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
     pushToast({
       message: `新增语言：${manifest.name}`,
