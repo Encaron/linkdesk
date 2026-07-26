@@ -12,7 +12,7 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
-import Select from "../shared/Select";
+import SelectBox from "../shared/SelectBox";
 import {
   getConfigurationContributions,
   getMergedSchema,
@@ -275,7 +275,7 @@ function renderControl(
           label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
         }));
         return (
-          <Select
+          <SelectBox
             value={String(val)}
             options={enumOptions}
             onChange={(v) => onChange(v)}
