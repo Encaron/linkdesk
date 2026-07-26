@@ -117,8 +117,13 @@ export function applyTheme(theme: Theme): void {
  * 内置兜底主题——在插件加载前注册，确保卸载全部主题插件后设置下拉框仍有 Dark/Light。
  * 空 colors——应用时清空插件变量，index.css :root 硬兜底接管。
  * 插件主题（theme-defaults）后注册 → 同名覆盖 → getAvailableThemes() 返回插件版本。
+ *
+ * 🔥 #59c fix：防重入——React StrictMode 双重 effect 导致本函数在插件加载后再次执行。
  */
+let _fallbacksRegistered = false;
 export function registerFallbackThemes(): void {
+  if (_fallbacksRegistered) return;
+  _fallbacksRegistered = true;
   registerTheme({ name: "Dark", type: "dark", colors: {} });
   registerTheme({ name: "Light", type: "light", colors: {} });
 }
