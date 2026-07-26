@@ -85,12 +85,6 @@ const pluginManifests = import.meta.glob<PluginManifest>(
   { eager: true }  // plugin.json 需要立即读取——决定注册表结构
 );
 
-// P1-4：主题/语言数据文件（所有非 plugin.json 的 JSON 文件）
-const pluginDataFiles = import.meta.glob<Record<string, unknown>>(
-  "../../plugins/*/*.json",
-  { eager: true }
-);
-
 /* ── 辅助：从路径提取 pluginId ── */
 
 /** 从 glob key 提取插件 ID——"../../plugins/<id>/..." → "<id>" */
@@ -99,12 +93,6 @@ function extractPluginId(path: string): string {
   const parts = path.split("/");
   const idx = parts.indexOf("plugins");
   return idx >= 0 && idx + 1 < parts.length ? parts[idx + 1] : parts[parts.length - 2];
-}
-
-/** 获取插件目录下的数据文件内容 */
-function getPluginDataFile(pluginId: string, filename: string): Record<string, unknown> | undefined {
-  const target = `../../plugins/${pluginId}/${filename}`;
-  return pluginDataFiles[target];
 }
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
@@ -360,20 +348,11 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
   }
 
-  // contributes.themes → ThemeRegistry + ThemeEngine
+  // contributes.themes → ThemeRegistry（metadata only——数据在 loadPlugin/loadPluginRuntime 中异步加载）
   if (c.themes) {
     const themeList = c.themes as ThemeContribution[];
     for (const tc of themeList) {
       ThemeRegistry.register(tc, pluginId);
-      // 同步注册完整主题数据——ThemeEngine.loadTheme 需要从 pluginThemes Map 查找
-      const data = getPluginDataFile(pluginId, tc.path);
-      if (data) {
-        const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-        const colors = extractThemeColors(data);
-        registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
-      } else {
-        console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}"`);
-      }
     }
   }
 
@@ -464,13 +443,13 @@ async function loadPlugin(
   const hasNewThemes = !!manifest.contributes?.themes;
   if (!hasNewThemes) {
     if (manifest.themes && manifest.themes.length > 0) {
-      loadThemePlugin(pluginId, manifest);
+      await loadThemePlugin(pluginId, manifest);
       contributed = true;
     }
     if (manifest.file) {
-      const data = getPluginDataFile(pluginId, manifest.file);
+      const data = await fetchPluginDataFile(pluginId, manifest.file);
       if (data?.type === "dark" || data?.type === "light") {
-        loadThemePlugin(pluginId, manifest);
+        await loadThemePlugin(pluginId, manifest);
         contributed = true;
       }
     }
@@ -485,13 +464,13 @@ async function loadPlugin(
   const hasNewLanguages = !!manifest.contributes?.languages;
   if (!hasNewLanguages) {
     if (manifest.languages && manifest.languages.length > 0) {
-      loadLanguagePlugin(pluginId, manifest);
+      await loadLanguagePlugin(pluginId, manifest);
       contributed = true;
     }
     if (manifest.file) {
-      const data = getPluginDataFile(pluginId, manifest.file);
+      const data = await fetchPluginDataFile(pluginId, manifest.file);
       if (data && !data.type) {
-        loadLanguagePlugin(pluginId, manifest);
+        await loadLanguagePlugin(pluginId, manifest);
         contributed = true;
       }
     }
@@ -524,8 +503,11 @@ async function loadPlugin(
     }
   }
 
-  // contributes.languages 数据异步加载——parseContributions 已注册 metadata，此处 fetch 实际 JSON
-  // 🔥 不用 getPluginDataFile（Vite glob 缓存问题——新插件目录的 JSON 文件可能不被 glob 实时发现）
+  // contributes.themes / contributes.languages 数据异步加载——parseContributions 仅注册 metadata，此处 fetch 实际 JSON
+  // 🔥 用 fetchPluginDataFile() 而非 getPluginDataFile()——绕开 Vite glob 缓存（#39a）
+  if (hasNewThemes) {
+    await loadThemeContributionData(pluginId, manifest);
+  }
   if (hasNewLanguages) {
     await loadLanguageContributionData(pluginId, manifest);
   }
@@ -673,7 +655,10 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
     }
 
-    // contributes.languages 数据异步加载（对标 theme 数据补充——parseContributions 仅注册 metadata）
+    // contributes.themes / contributes.languages 数据异步加载（parseContributions 仅注册 metadata）
+    if (manifest.contributes.themes) {
+      await loadThemeContributionData(pluginId, manifest);
+    }
     if (manifest.contributes.languages) {
       await loadLanguageContributionData(pluginId, manifest);
     }
@@ -708,10 +693,10 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   // 6. 主题/语言（和 loadPlugin 相同的 M4 守卫逻辑）
   // L5：独立 if（非 else if）——同时声明旧格式 theme+language 的插件两者都加载
   if (!manifest.contributes?.themes && manifest.themes && manifest.themes.length > 0) {
-    loadThemePlugin(pluginId, manifest);
+    await loadThemePlugin(pluginId, manifest);
   }
   if (!manifest.contributes?.languages && manifest.languages && manifest.languages.length > 0) {
-    loadLanguagePlugin(pluginId, manifest);
+    await loadLanguagePlugin(pluginId, manifest);
   }
 
   applyPostLoadSteps(pluginId, manifest, "install");
@@ -788,16 +773,13 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
 
 /* ── 主题插件（P1-4） ── */
 
-function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
+async function loadThemePlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
   // 多主题数组
   if (manifest.themes && manifest.themes.length > 0) {
     let registered = 0;
     for (const t of manifest.themes) {
-      const data = getPluginDataFile(pluginId, t.file);
-      if (!data) {
-        console.warn(`[pluginLoader] 主题文件缺失 — "${pluginId}/${t.file}"`);
-        continue;
-      }
+      const data = await fetchPluginDataFile(pluginId, t.file);
+      if (!data) continue;
       const themeType = (data.type as "dark" | "light") ?? "dark";
       const colors = extractThemeColors(data);
       registerTheme({ name: t.name, type: themeType, colors }, pluginId);
@@ -817,7 +799,7 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
 
   // 单主题
   if (manifest.file) {
-    const data = getPluginDataFile(pluginId, manifest.file);
+    const data = await fetchPluginDataFile(pluginId, manifest.file);
     if (!data) {
       console.warn(`[pluginLoader] 主题文件缺失 — "${pluginId}/${manifest.file}"`);
       return;
@@ -843,6 +825,46 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
   console.warn(`[pluginLoader] 主题插件 "${pluginId}" 未声明 file 或 themes 字段`);
 }
 
+/* ── 插件数据文件 fetch（#39a：全量迁移——绕开 Vite glob 缓存） ── */
+
+/**
+ * 🔥 替代 getPluginDataFile——用 fetch() 而非 import.meta.glob。
+ * Vite glob 在 dev 模式下只在启动时扫描一次，新插件目录的 JSON 不被实时发现。
+ * 对标 loadPluginRuntime 的主题数据加载——从一开始就用 fetch。
+ */
+async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
+  try {
+    const url = import.meta.env.DEV
+      ? `http://localhost:1420/plugins/${pluginId}/${filePath}`
+      : `linkdesk://${pluginId}/${filePath}`;
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (${response.status})`);
+      return null;
+    }
+    return await response.json() as Record<string, unknown>;
+  } catch (e: any) {
+    console.warn(`[pluginLoader] 数据文件加载异常 — "${pluginId}/${filePath}": ${e?.message || e}`);
+    return null;
+  }
+}
+
+/* ── 主题 JSON 数据异步加载（对标 loadLanguageContributionData） ── */
+
+/** 加载 contributes.themes 声明的 JSON 颜色文件——用 fetch() 绕开 glob 缓存 */
+async function loadThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
+  const themeList = manifest.contributes?.themes as ThemeContribution[] | undefined;
+  if (!themeList?.length) return;
+
+  for (const tc of themeList) {
+    const data = await fetchPluginDataFile(pluginId, tc.path);
+    if (!data) continue;
+    const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+    const colors = extractThemeColors(data);
+    registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+  }
+}
+
 /* ── 语言 JSON 数据异步加载（#39 fix：绕过 Vite glob 缓存） ── */
 
 /**
@@ -856,19 +878,9 @@ async function loadLanguageContributionData(pluginId: string, manifest: PluginMa
   if (!langList?.length) return;
 
   for (const lc of langList) {
-    try {
-      const url = import.meta.env.DEV
-        ? `http://localhost:1420/plugins/${pluginId}/${lc.path}`
-        : `linkdesk://${pluginId}/${lc.path}`;
-      const response = await fetch(url);
-      if (!response.ok) {
-        console.warn(`[pluginLoader] 语言文件加载失败 — "${pluginId}/${lc.path}" (${response.status})`);
-        continue;
-      }
-      const data = await response.json();
+    const data = await fetchPluginDataFile(pluginId, lc.path);
+    if (data) {
       registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
-    } catch (e: any) {
-      console.warn(`[pluginLoader] 语言文件加载异常 — "${pluginId}/${lc.path}": ${e?.message || e}`);
     }
   }
 }
@@ -889,16 +901,13 @@ function registerLanguageBundle(langCode: string, data: Record<string, unknown>,
 
 /* ── 语言插件（P1-4） ── */
 
-function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
+async function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
   // 多语言数组
   if (manifest.languages && manifest.languages.length > 0) {
     let registered = 0;
     for (const lang of manifest.languages) {
-      const data = getPluginDataFile(pluginId, lang.file);
-      if (!data) {
-        console.warn(`[pluginLoader] 语言文件缺失 — "${pluginId}/${lang.file}"`);
-        continue;
-      }
+      const data = await fetchPluginDataFile(pluginId, lang.file);
+      if (!data) continue;
       registerLanguageBundle(lang.code, data, pluginId);
       registered++;
     }
@@ -914,11 +923,8 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
 
   // 单语言文件——从文件名推导语言代码
   if (manifest.file) {
-    const data = getPluginDataFile(pluginId, manifest.file);
-    if (!data) {
-      console.warn(`[pluginLoader] 语言文件缺失 — "${pluginId}/${manifest.file}"`);
-      return;
-    }
+    const data = await fetchPluginDataFile(pluginId, manifest.file);
+    if (!data) return;
     const code = manifest.file.replace(/\.json$/, "");
     registerLanguageBundle(code, data, pluginId);
     log.appendLine(`✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
