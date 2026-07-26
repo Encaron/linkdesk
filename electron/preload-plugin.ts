@@ -142,11 +142,6 @@ try {
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
     },
 
-    // ── 对话框（同壳 preload——直接走 main process handler，不经过 bridge）──
-    dialog: {
-      open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
-    },
-
     // ── E3a #27-#28：通用事件订阅——壳推送→集中分发→插件回调 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // React 侧推荐使用 usePluginIpcEvent() hook（src/core/usePluginIpcEvent.ts）。
