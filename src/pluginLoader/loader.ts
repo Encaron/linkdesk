@@ -673,6 +673,8 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
         }
       }
       registerTheme({ name: t.name, type: themeType, colors }, pluginId);
+      // H2：旧格式主题同步写入 ThemeRegistry——卸载时 revertThemeIfCurrent 能找到归属
+      ThemeRegistry.register({ id: t.name, label: t.name, uiTheme: themeType, path: t.file }, pluginId);
       registered++;
     }
     if (registered > 0) {
@@ -700,6 +702,8 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
       }
     }
     registerTheme({ name: manifest.name, type: themeType, colors }, pluginId);
+    // H2：旧格式主题同步写入 ThemeRegistry——卸载时 revertThemeIfCurrent 能找到归属
+    ThemeRegistry.register({ id: manifest.name, label: manifest.name, uiTheme: themeType, path: manifest.file }, pluginId);
     log.appendLine(`✅ 主题插件 "${manifest.name}" 已注册`);
     pushToast({
       message: `新增主题：${manifest.name}`,
