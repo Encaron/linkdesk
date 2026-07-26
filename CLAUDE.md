@@ -186,6 +186,10 @@ Phase 1-5h ✅ 完成
 ## 开发命令
 
 ```bash
+# 🔥 提交前必跑——一条命令 = tsc + ESLint + vitest
+npm run check
+
+npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
 npm run dev          # 纯前端预览（Vite）
 npm run electron:dev # 完整 Electron 桌面应用（E1 步 1 后可用）
 npm run tauri dev    # Tauri 桌面应用（phase6 分支退路）
