@@ -22,6 +22,9 @@ import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
  * 这些类型在 2026-07-21 前 generateId 返回固定字符串（如 "settings"），
  * 归一化后改为 `autoId(prefix)` → `settings-1` / `settings-2` ...。
  * 启动时自动迁移——将布局中的旧 id 映射到新 id（idempotent）。
+ *
+ * @deprecated 2026-07-21 (B78)。当所有用户的布局 JSON 已自动迁移为新格式后，
+ *   此迁移逻辑可安全删除。预计 2026-09 后新用户不再产生旧格式布局。
  */
 const LEGACY_TAB_IDS = new Set(["settings", "marketplace", FALLBACK_PLUGIN_ID, "oled"]);
 
