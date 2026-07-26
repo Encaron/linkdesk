@@ -1,5 +1,6 @@
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
+import reactHooks from "eslint-plugin-react-hooks";
 import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
@@ -16,8 +17,13 @@ export default [
     plugins: {
       "@typescript-eslint": tseslint,
       "linkdesk": { rules: linkdeskRules },
+      "react-hooks": reactHooks,
     },
     rules: {
+      // ═══ React Hooks 官方规则 ═══
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
+
       // ═══ 提交前自检 4：禁止插件 ID 硬编码 ═══
       "no-restricted-syntax": [
         "error",
