@@ -82,6 +82,7 @@ function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
   ContextKeyService.setValue("extensionHasLanguages", !!c.languages);
   ContextKeyService.setValue("extensionHasIconThemes", !!c.iconThemes);
   ContextKeyService.setValue("extensionHasConfiguration", !!c.configuration);
+  ContextKeyService.setValue("extensionHasKeybindings", !!c.keybindings);
 }
 
 /** 齿轮菜单关闭时清理所有扩展 context key——#36f10。不清理会导致下次打开不同插件齿轮时残留旧 key。 */
@@ -91,6 +92,7 @@ function clearExtensionContextKeys(): void {
   ContextKeyService.setValue("extensionHasLanguages", false);
   ContextKeyService.setValue("extensionHasIconThemes", false);
   ContextKeyService.setValue("extensionHasConfiguration", false);
+  ContextKeyService.setValue("extensionHasKeybindings", false);
 }
 
 function MarketplaceSidebar() {
