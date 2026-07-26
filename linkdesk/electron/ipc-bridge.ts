@@ -184,8 +184,11 @@ export class IpcBridge {
   }
 
   // ═══════════════════════════════════════════════════════
-  // E3b #35——广播推送（壳 → 所有插件 WebView）
+  // E3b #35 + E3c #40——广播推送（壳 → 所有插件 WebView）
   // ═══════════════════════════════════════════════════════
+
+  /** 按 channel 存储最后一次广播——新 WebView 创建时重放 */
+  private lastBroadcasts = new Map<string, unknown>();
 
   private registerBroadcastListener(): void {
     ipcMain.on('bridge:broadcast', (_event, { channel, payload }: {
@@ -197,9 +200,17 @@ export class IpcBridge {
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
   }
 
-  /** 广播事件到所有已注册的插件 WebView */
+  /** 广播事件到所有已注册的插件 WebView——并存储 payload 供新 WebView 重放 */
   broadcast(channel: string, payload: unknown): void {
+    this.lastBroadcasts.set(channel, payload);
     for (const pluginId of this.windowManager.getAllPluginIds()) {
+      this.pushToPlugin(pluginId, channel, payload);
+    }
+  }
+
+  /** 新 WebView 创建后重放所有已存储的广播状态（E3c #40） */
+  replayToPlugin(pluginId: string): void {
+    for (const [channel, payload] of this.lastBroadcasts) {
       this.pushToPlugin(pluginId, channel, payload);
     }
   }
