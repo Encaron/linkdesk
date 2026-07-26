@@ -15,7 +15,7 @@ import { getLoadedPluginManifests } from "../pluginLoader/loader";
 /* ── 类型 ── */
 
 /** 系统插槽角色——插件声明自己填充哪个系统级功能。 */
-export type FactoryRole = "settings" | "marketplace";
+export type FactoryRole = string;
 
 /** 插件条目——initialize() 的输入。 */
 export interface SlotPluginEntry {
