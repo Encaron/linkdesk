@@ -216,19 +216,14 @@ async function _persistWorkspace(): Promise<void> {
 
 /* ── M3：enum 验证 —— */
 
-/** 验证 enum 值——无效时清理缓存并返回 undefined，调用方 fallthrough 到下一层 */
-function _validateEnum(key: string, value: unknown, scope: "user" | "workspace"): unknown {
+/** 验证 enum 值——无效时 warn + 返回 undefined，调用方 fallthrough 到默认值。不删缓存——enum 可能瞬态为空（插件重载）。 */
+function _validateEnum(key: string, value: unknown, _scope: "user" | "workspace"): unknown {
   const schema = getMergedSchema();
   const prop = schema[key];
   if (!prop?.enum) return value;
   if (prop.enum.includes(value as string)) return value;
 
-  console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——已清除`);
-  if (scope === "workspace") {
-    delete _workspaceSettings[key];
-  } else {
-    delete _userSettings[key];
-  }
+  console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——本次回退到默认值`);
   return undefined;
 }
 
