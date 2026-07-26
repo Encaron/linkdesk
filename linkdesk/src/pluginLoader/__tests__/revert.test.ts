@@ -61,8 +61,6 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
 
     // 验证：theme 插件注册后，revert 能找到 theme（ThemeRegistry.get）
     // 如果 ThemeRegistry 里有 PLUGIN_ID 的主题且当前值匹配 → 触发回退
-    // mock setConfigurationValue 被调用 = revert 生效
-    const { setConfigurationValue } = await import("../../core/ConfigurationService");
     // 这里实际上不能简单断言——因为 mock store 里 app.theme 初始值是 "Dark"，
     // "Dark" 不属于 PLUGIN_ID → revertThemeIfCurrent 会 return early
     // 我们需要先设 current theme 为 plugin 的主题
@@ -116,7 +114,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     await setCfg("app.language", "zh", "user");
 
     // 重置 mock——清除之前的调用记录
-    setCfg.mockClear();
+    (setCfg as any).mockClear();
 
     await revertLanguageIfCurrent(PLUGIN_ID);
 
