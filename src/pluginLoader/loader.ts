@@ -16,7 +16,7 @@
 const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes } from "../core/ThemeEngine";
+import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
 import type { ThemeContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
@@ -628,6 +628,32 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
     } catch (e: any) {
       console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
+    }
+
+    // Runtime 主题数据补充——parseContributions 中 getPluginDataFile 依赖 import.meta.glob，
+    // runtime 插件不在 glob 中 → ThemeRegistry 有记录但 ThemeEngine 无颜色数据。
+    if (manifest.contributes.themes) {
+      const themeList = manifest.contributes.themes as ThemeContribution[];
+      for (const tc of themeList) {
+        if (findTheme(tc.label)) continue; // glob 插件——parseContributions 已加载
+        try {
+          const absPath = await linkdesk().plugins.resolvePath(pluginId);
+          const url = import.meta.env.DEV
+            ? `/@fs/${absPath}/${tc.path}`
+            : `linkdesk://${pluginId}/${tc.path}`;
+          const response = await fetch(url);
+          if (!response.ok) {
+            console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}" (HTTP ${response.status})`);
+            continue;
+          }
+          const data = await response.json();
+          const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+          const colors = extractThemeColors(data);
+          registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+        } catch (e: any) {
+          console.warn(`[pluginLoader] 主题数据加载失败 — "${pluginId}/${tc.path}": ${e?.message || e}`);
+        }
+      }
     }
   }
 
