@@ -24,6 +24,13 @@ export interface IconThemeContribution {
   path: string;
 }
 
+/** contributes.languages 条目——对标 VS Code language extension point */
+export interface LanguageContribution {
+  id: string;
+  label: string;
+  path: string;
+}
+
 /* ── 标签页行为声明 ── */
 
 export interface TabBehavior {

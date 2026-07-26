@@ -376,6 +376,20 @@
             },
             "additionalProperties": false
           }
+        },
+        "languages": {
+          "type": "array",
+          "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "path"],
+            "properties": {
+              "id": { "type": "string", "description": "语言代码——如 zh / en / ja" },
+              "label": { "type": "string", "description": "显示名称——如 中文 / English / 日本語" },
+              "path": { "type": "string", "description": "i18n JSON 翻译文件路径" }
+            },
+            "additionalProperties": false
+          }
         }
       },
       "additionalProperties": false
