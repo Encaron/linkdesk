@@ -31,7 +31,7 @@ import FilterMenu from "@src/components/terminal/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
 import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
 // Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
-import { registerCommand } from "@src/core/CommandRegistry";
+import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
@@ -843,12 +843,10 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     });
 
     // #36k2：最后一个终端标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
-    // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 === 1（仅剩自身）
+    // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
     return () => {
       if (_cmdMap.size <= 1) {
-        import("@src/core/CommandRegistry").then(({ unregisterPluginCommands }) => {
-          unregisterPluginCommands("terminal");
-        });
+        unregisterPluginCommands("terminal");
       }
     };
   }, []);
