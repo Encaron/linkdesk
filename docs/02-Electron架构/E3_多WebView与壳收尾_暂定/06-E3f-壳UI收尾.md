@@ -86,18 +86,226 @@ Electron `BrowserWindow` 的 `titleBarStyle` / `backgroundColor` → 暗色标�
 
 ---
 
-## 三、齿轮菜单完整版
+## 三、齿轮菜单全集——四种齿轮，四个 MenuId（🔥 2026-07-26 重写）
+
+> 齿轮菜单问题困扰已久。此处一次性理清 LinkDesk 所有齿轮——对标 VS Code 四种齿轮，每种独立 `MenuId` 互不串扰。
+
+### 3.1 总览——LinkDesk 四种齿轮
 
 ```
-插件 → 齿轮菜单：
-  ├── 启用 / 禁用         → 已有
-  ├── 卸载               → 已有
-  ├── 配置 [插件名]...    → 跳到 Settings Editor 对应分组
-  ├── 查看日志            → 打开 Output 面板对应频道
-  └── 重新安装            → 已有
+┌─────────────────────────────────────────────────────────────────────┐
+│ 齿轮 #1：全局左下齿轮          齿轮 #2：插件卡片齿轮                 │
+│ MenuId.ExtensionGear           MenuId.MarketplaceItemGear           │
+│ 位置：图标栏底部 ⚙             位置：marketplace 侧栏每个插件卡片 ⚙   │
+│ 谁注册：核心 coreCommands.ts   谁注册：marketplace ensureMarketplace  │
+│ 出现条件：永远可见              出现条件：非 core:true 插件            │
+│ 菜单位置：IconBar.tsx          菜单位置：marketplace/sidebar.tsx      │
+│ 状态：✅ 已实现                 状态：✅ 已实现（#36g 补全中）         │
+├─────────────────────────────────────────────────────────────────────┤
+│ 齿轮 #3：设置项齿轮            齿轮 #4：命令面板齿轮                 │
+│ MenuId.SettingItemGear         MenuId.CommandPaletteItemGear        │
+│ 位置：Settings Editor 每个设    位置：Ctrl+Shift+P 悬浮窗每个命令     │
+│       置项 hover 时出现 ⚙            项 hover 时出现 ⚙               │
+│ 谁注册：核心 coreCommands.ts   谁注册：核心 coreCommands.ts           │
+│ 出现条件：hover 时可见          出现条件：hover 时可见                 │
+│ 菜单位置：SettingsView.tsx     菜单位置：QuickPick.tsx               │
+│ 状态：❌ #53（本文设计）         状态：❌ #53b（本文新增）            │
+└─────────────────────────────────────────────────────────────────────┘
 ```
 
-齿轮菜单内容 = `MenuService.getMenuItems(MenuId.ExtensionGear, context)`——不是硬编码列表。~40 行。
+**四种齿轮共用同一套基础设施：**
+- 菜单项注册 → 全部走 `MenuRegistry.registerMenuItems(menuId, pluginId, items)`
+- 渲染 → 全部走共享 `<ContextMenu>` 组件
+- 显隐过滤 → 全部走 `ContextKeyService.matches(when)`
+- 命令 → 全部走 `CommandRegistry.executeCommand(id, ctx)`
+
+**四种齿轮互不串扰——** 每个有独立的 `MenuId`，注册到不同的菜单本分区。全局齿轮的项不会出现在插件卡片齿轮里，反之亦然。
+
+### 3.2 齿轮 #1——全局左下齿轮（`ExtensionGear`）✅
+
+**对标 VS Code：** Activity Bar 左下角 Manage 按钮（`Settings / Keyboard Shortcuts / Themes / ...`）
+
+**位置：** `IconBar.tsx` 图标栏底部 ⚙ 按钮。永远可见——不依赖任何插件。
+
+**菜单项（当前）：**
+
+| 菜单项 | 命令 | when |
+|------|------|------|
+| 设置 | `core.openSettings` | — |
+| 命令面板 | `workbench.action.showCommandPalette` | — |
+| 选择颜色主题 | `workbench.action.selectTheme` | — |
+| 打开键盘快捷方式 | `workbench.action.openKeyboardShortcuts` | — |
+
+**归属：** 核心 `coreCommands.ts` 注册到 `MenuId.ExtensionGear`。**换 marketplace 不影响此齿轮。**
+
+### 3.3 齿轮 #2——插件卡片齿轮（`MarketplaceItemGear`）✅
+
+**对标 VS Code：** Extensions 视图中每个扩展卡片右侧 ⚙ 按钮。
+
+**位置：** `marketplace/sidebar.tsx` 每个插件卡片的齿轮按钮。仅非 `core: true` 插件显示。
+
+**菜单项（声明驱动——根据 `plugin.json` `contributes` 自动显隐）：**
+
+| 菜单项 | 命令 | when |
+|------|------|------|
+| 设置 | `core.openSettings` | `extensionHasConfiguration` |
+| 选择颜色主题 | `workbench.action.selectTheme` | `extensionHasThemes` |
+| 键盘快捷方式 | `workbench.action.openExtensionKeybindings` | `extensionHasKeybindings`（#36g2） |
+| 语言入口 | （待定） | `extensionHasLanguages`（#36g3） |
+| 图标主题入口 | （待定） | `extensionHasIconThemes`（#36g4） |
+| 启用 | `marketplace.enable` | `pluginDisabled` |
+| 禁用 | `marketplace.disable` | `!pluginDisabled` |
+| 卸载 | `marketplace.uninstall` | — |
+
+**归属：** marketplace 插件 `ensureMarketplaceCommands()` 注册到 `MenuId.MarketplaceItemGear`。**换 marketplace 不影响全局齿轮。** 加菜单项只改一个文件：`plugins/marketplace/src/sidebar.tsx`（`gear-menu-normalization.md` 机械规则）。
+
+**声明驱动链路：**
+```
+点击插件齿轮
+  → applyExtensionContextKeys(manifest, isDisabled)
+    → c.configuration 存在 → extensionHasConfiguration = true
+    → c.themes 存在       → extensionHasThemes = true
+    → c.languages 存在    → extensionHasLanguages = true
+    → ...
+  → ContextMenu 渲染 → 逐项求值 when → 过滤 → 显示匹配项
+```
+
+**没有一行代码是 `if (pluginId === "...")`。** 分辨逻辑唯一来源 = `plugin.json` 的 `contributes` 块。
+
+### 3.4 齿轮 #3——设置项齿轮（`SettingItemGear`）❌
+
+**对标 VS Code：** Settings Editor 每个设置项 hover 时右侧出现齿轮，点击弹出：
+```
+┌──────────────────────────┐
+│ 重置此设置                │  ← 仅用户改过值时显示
+│ 复制设置 ID               │
+│ 将设置复制为 JSON 文本     │
+│ 将设置复制为 URL           │  ← Phase 6
+│ ✓ 同步此设置              │  ← Phase 6
+└──────────────────────────┘
+```
+
+**位置：** `SettingsView.tsx` 每个设置行 hover 时右侧出现齿轮图标。
+
+**菜单项设计：**
+
+| 菜单项 | 命令 | when | 说明 |
+|------|------|------|------|
+| 重置此设置 | `workbench.action.resetSetting` | `settingModified` | 仅用户改过值时显示——还原到 `default` 值 |
+| 复制设置 ID | `workbench.action.copySettingId` | — | `navigator.clipboard.writeText(key)` |
+| 复制为 JSON | `workbench.action.copySettingAsJson` | — | `JSON.stringify({key, value})` |
+| 复制为 URL | `workbench.action.copySettingAsUrl` | — | Phase 6——深层链接 |
+| 同步此设置 | `workbench.action.toggleSettingSync` | — | Phase 6——Profile sync |
+
+**Context key：** 打开齿轮前设 `settingKey`（当前 hover 的设置项 key）+ `settingModified`（当前值 ≠ default 值）。
+
+**归属：** 核心 `coreCommands.ts` 注册到 `MenuId.SettingItemGear`。菜单项对所有设置项相同——不依赖具体插件。唯一变量是 `settingModified` context key（是否显示"重置"）。
+
+**渲染位置：** `SettingsView.tsx` 每个设置行的 JSX 中。hover → ⚙ 图标出现 → 点击 → `<ContextMenu menuId={MenuId.SettingItemGear}>`。
+
+**与 #59a 的合并：** #59a "设置项一键恢复默认" 描述的是同一齿轮的功能。"重置此设置" 菜单项消费 `ConfigurationService.reset(key)` + `showConfirm` 防呆。
+
+### 3.5 齿轮 #4——命令面板齿轮（`CommandPaletteItemGear`）❌
+
+**对标 VS Code：** Ctrl+Shift+P 命令面板中，几乎每个命令项 hover 时右侧出现齿轮，点击弹出：
+```
+┌──────────────────────────────────────┐
+│ 重置 "文件操作需要预览" 的选项        │  ← 仅 toggle 命令显示
+│ ─────────────────────────────────── │
+│ 帮助：报告问题...                     │
+│ 帮助：报告性能问题...                 │
+│ 帮助：查看许可证                      │
+│ 帮助：订阅 VS Code 新闻邮件           │
+│ 帮助：辅助功能入门                    │
+│ 帮助：个人资料                        │
+│ 帮助：关于                            │
+│ 帮助：欢迎                            │
+│ 帮助：键盘快捷键参考 (Ctrl+K Ctrl+R)  │
+└──────────────────────────────────────┘
+```
+
+**VS Code 的齿轮内容分两组：**
+- **上组：重置选项** ——仅对 toggle 类命令出现（"Reset choice for '...'"）→ 跳转到设置中的具体配置项
+- **下组：帮助类** ——对所有命令都出现（"Help: Report Issue / View License / About / Welcome / ..."）
+
+**位置：** `QuickPick.tsx` 悬浮窗每个命令项 hover 时右侧出现齿轮图标。
+
+**菜单项设计（LinkDesk 版）：**
+
+| 菜单项 | 命令 | when | 说明 |
+|------|------|------|------|
+| 重置选项 | `workbench.action.resetCommandChoice` | `commandHasSetting` | 仅 toggle 命令——跳转到设置中的对应配置项 |
+| 打开插件详情 | `workbench.action.openPluginDetail` | `commandPluginId` | 跳转到命令所属插件的详情页 |
+| 报告问题 | `workbench.action.reportIssue` | `commandPluginId` | Phase 6——打开 GitHub issue |
+| 复制命令 ID | `workbench.action.copyCommandId` | — | `navigator.clipboard.writeText(commandId)` |
+
+**Context key（打开齿轮前设置）：**
+
+| key | 值 | 来源 |
+|------|------|------|
+| `commandId` | 当前 hover 的命令 ID | QuickPick item data |
+| `commandPluginId` | 命令所属插件 | `CommandRegistry._owners.get(commandId)` |
+| `commandHasSetting` | 是否为 toggle 命令（关联到某个设置项） | `CommandRegistry` 命令元数据 `configurationKey` 字段 |
+
+**声明驱动——不硬编码命令名：**
+```
+QuickPick 渲染命令项
+  → 从 CommandRegistry 获取 command 元数据
+    → command.configurationKey 存在 → commandHasSetting = true
+    → command.pluginId              → commandPluginId = "marketplace"
+  → 齿轮菜单 ContextMenu
+    → "重置选项" when: "commandHasSetting"
+      → handler: openSettings({ pluginId: commandPluginId, scrollTo: configurationKey })
+    → "打开插件详情" when: "commandPluginId"
+      → handler: openOrFocusTab("plugin-detail", { detailPluginId: commandPluginId })
+    → "复制命令 ID" → handlers: clipboard.writeText(commandId)
+```
+
+**没有 `if (commandId === "...")`。** 命令的类型信息（是否为 toggle、关联哪个设置项 key、属于哪个插件）全部从 `plugin.json` `contributes.commands` 的声明字段推导。`CommandRegistry` 注册时存储这些字段。
+
+### 3.6 四种齿轮对比——一眼分清
+
+| | 全局左下 | 插件卡片 | 设置项 ⚙ | 命令面板 ⚙ |
+|------|:--:|:--:|:--:|:--:|
+| `MenuId` | `ExtensionGear` | `MarketplaceItemGear` | `SettingItemGear` | `CommandPaletteItemGear` |
+| 触发方式 | 点击 | 点击 | hover 出现 | hover 出现 |
+| 菜单位置 | 左下角弹出 | 齿轮旁弹出 | 设置行旁弹出 | 命令项旁弹出 |
+| 菜单项由谁注册 | 核心 | marketplace 插件 | 核心 | 核心 |
+| context 来源 | 插件→无 | `applyExtensionContextKeys` | 设置项 key + 是否被修改 | 命令 ID + 所属插件 + 是否 toggle |
+| 菜单项因插件而异？ | 否 | 是——取决于 `contributes` | 否——对所有设置项相同 | 部分——toggle 显示"重置"，其余相同 |
+| 换 marketplace 后 | 不受影响 | 跟随新的 marketplace | 不受影响 | 不受影响 |
+
+### 3.7 实现路线
+
+| 齿轮 | 任务 | 状态 |
+|------|------|:--:|
+| #1 全局左下 | 已有——`coreCommands.ts` → `MenuId.ExtensionGear` | ✅ |
+| #2 插件卡片 | 已有——`marketplace/sidebar.tsx` → `MenuId.MarketplaceItemGear`；#36g 补 context key | ✅ |
+| #3 设置项 | #53（本文——合并 #59a） | ❌ |
+| #4 命令面板 | #53b（本文新增） | ❌ |
+
+### 3.8 任务清单
+
+#### #53 设置项齿轮（合并 #59a，~65 行）
+
+- **#53a** `MenuRegistry` 加 `MenuId.SettingItemGear`（1 行）
+- **#53b** `registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [...])`——5 个菜单项 + when 条件（~15 行）
+- **#53c** `SettingsView.tsx` 每行加 hover 齿轮图标 + `<ContextMenu menuId={MenuId.SettingItemGear}>`（~20 行）
+- **#53d** 齿轮打开前设置 context key：`settingKey` + `settingModified`（~10 行）
+- **#53e** `core.openSettings` handler 支持 `scrollTo` 参数——跳转到设置中的具体配置项 + 滚动定位（~20 行）
+
+**验证：** 打开设置→hover 任意设置项→齿轮出现→点击→"重置此设置"（仅修改过的）/ "复制设置 ID" / "复制为 JSON" → 点击"重置"→确认弹窗→值回到 default
+
+#### #53b 命令面板齿轮（新增，~50 行）
+
+- **#53b1** `CommandRegistry` 注册时存储 `configurationKey`（toggle 命令关联的设置项 key）——从 `plugin.json` `contributes.commands[].configurationKey` 读取（~5 行）
+- **#53b2** `MenuRegistry` 加 `MenuId.CommandPaletteItemGear`（1 行）
+- **#53b3** `registerMenuItems(MenuId.CommandPaletteItemGear, APP_PLUGIN_ID, [...])`——4 个菜单项 + when 条件（~15 行）
+- **#53b4** `QuickPick.tsx` 每个命令项行加 hover 齿轮图标 + `<ContextMenu menuId={MenuId.CommandPaletteItemGear}>`（~15 行）
+- **#53b5** 齿轮打开前设置 context key：`commandId` + `commandPluginId` + `commandHasSetting`（~10 行）
+- **#53b6** `plugin.schema.json` `contributes.commands` 加 `configurationKey` 字段——toggle 命令关联到哪个设置项 key（~4 行）
+
+**验证：** Ctrl+Shift+P→hover "Toggle Terminal" 命令→齿轮出现→点击→"重置选项"（跳转到设置页对应配置项+滚动定位）/ "打开插件详情"（跳转到终端插件详情页）/ "复制命令 ID"（剪贴板="terminal.toggle"）
 
 ---
 
