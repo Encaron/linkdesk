@@ -448,7 +448,8 @@ async function loadPlugin(
     if (manifest.themes && manifest.themes.length > 0) {
       loadThemePlugin(pluginId, manifest);
       contributed = true;
-    } else if (manifest.file) {
+    }
+    if (manifest.file) {
       const data = getPluginDataFile(pluginId, manifest.file);
       if (data?.type === "dark" || data?.type === "light") {
         loadThemePlugin(pluginId, manifest);
@@ -465,7 +466,8 @@ async function loadPlugin(
   if (manifest.languages && manifest.languages.length > 0) {
     loadLanguagePlugin(pluginId, manifest);
     contributed = true;
-  } else if (manifest.file && !contributed) {
+  }
+  if (manifest.file) {
     const data = getPluginDataFile(pluginId, manifest.file);
     if (data && !data.type) {
       loadLanguagePlugin(pluginId, manifest);
@@ -866,12 +868,13 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     const displayName = manifest.name;
     // B2 fix: 标记为已禁用（缓存保留——marketplace 仍可浏览详情）
     cachePluginMetadata(pluginId, manifest, "disabled");
+    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题后 revert 找不到归属
+    await revertThemeIfCurrent(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
     // 仅视图插件需要注销组件注册
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
-    await revertThemeIfCurrent(pluginId);
     syncAppThemeEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
@@ -945,6 +948,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, manifest, "uninstalled");
+    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题后 revert 找不到归属
+    await revertThemeIfCurrent(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
@@ -959,8 +964,6 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
-    // #34：卸载后同步主题枚举 + 自动回退当前主题
-    await revertThemeIfCurrent(pluginId);
     syncAppThemeEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
