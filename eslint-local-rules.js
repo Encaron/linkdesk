@@ -174,7 +174,110 @@ const noEffectCallbackWithoutActiveGuard = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 3：useEffect cleanup 禁止动态 import()
+// ═══════════════════════════════════════════════════════════
+//
+// #36k2 教训：cleanup 中的 import() 异步执行，
+// StrictMode 下在重挂载后 resolve → 误删新注册的数据。
+//
+// 错误示例：
+//   useEffect(() => {
+//     registerCommands();
+//     return () => {
+//       import("./registry").then(m => m.unregister()); // ← 异步！在重挂载后执行
+//     };
+//   }, []);
+//
+// 正确示例：
+//   import { unregister } from "./registry"; // ← 顶部静态 import
+//   useEffect(() => {
+//     registerCommands();
+//     return () => { unregister(); }; // ← 同步执行
+//   }, []);
+
+const noDynamicImportInEffectCleanup = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "useEffect cleanup 禁止动态 import()——异步执行在 StrictMode 重挂载后误删新数据",
+      recommended: true,
+    },
+    messages: {
+      dynamicImport:
+        "🔥 useEffect cleanup 中禁止动态 import()。" +
+        " import() 异步执行——React StrictMode 会先 unmount（触发此 cleanup）再 mount（重新注册），" +
+        " 异步 import 在 mount 之后才 resolve → 把新注册的数据也删了（#36k2 教训）。" +
+        " 修复：改成文件顶部静态 import。",
+    },
+  },
+
+  create(context) {
+    return {
+      CallExpression(node) {
+        // 只检查 useEffect / useCallback
+        if (
+          node.callee.type !== "Identifier" ||
+          (node.callee.name !== "useEffect" && node.callee.name !== "useCallback")
+        )
+          return;
+
+        const args = node.arguments;
+        if (args.length === 0) return;
+        const body = args[0];
+        if (!body || (body.type !== "ArrowFunctionExpression" && body.type !== "FunctionExpression"))
+          return;
+
+        // 检查函数体中的 return 语句
+        const bodyNode = body.body;
+        if (!bodyNode) return;
+
+        // 箭头函数直接返回 → 检查表达式
+        if (bodyNode.type === "CallExpression" && bodyNode.callee?.type === "Import") {
+          context.report({ node: bodyNode, messageId: "dynamicImport" });
+          return;
+        }
+
+        // 函数体 → 遍历所有 return 语句
+        if (bodyNode.type !== "BlockStatement") return;
+        for (const stmt of bodyNode.body) {
+          if (stmt.type !== "ReturnStatement" || !stmt.argument) continue;
+          checkForDynamicImport(stmt.argument, context);
+        }
+      },
+    };
+  },
+};
+
+/** AST 属性名——只遍历这些语法子节点，跳过 parent/scope 等元数据属性 */
+const AST_CHILD_KEYS = new Set([
+  "body", "expression", "argument", "callee", "alternate", "consequent",
+  "test", "init", "left", "right", "object", "property", "elements",
+  "declarations", "params", "id", "handler", "finalizer",
+]);
+
+/** 递归检查子树中的动态 import() 调用（跳过 parent 等循环引用属性） */
+function checkForDynamicImport(node, context, depth = 0) {
+  if (!node || depth > 20) return; // 深度限制防意外
+  if (node.type === "CallExpression" && node.callee?.type === "Import") {
+    context.report({ node, messageId: "dynamicImport" });
+    return;
+  }
+  for (const key of AST_CHILD_KEYS) {
+    const child = node[key];
+    if (!child) continue;
+    if (Array.isArray(child)) {
+      for (const item of child) {
+        if (item && typeof item.type === "string") checkForDynamicImport(item, context, depth + 1);
+      }
+    } else if (typeof child.type === "string") {
+      checkForDynamicImport(child, context, depth + 1);
+    }
+  }
+}
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
+  "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
 };
