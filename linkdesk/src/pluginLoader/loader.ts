@@ -1408,3 +1408,6 @@ export function stopPluginWatcher(): void {
     _watchInterval = null;
   }
 }
+
+// 导出供 vitest——防止新增贡献类型时漏加 revert（主题/语言/图标主题…）
+export { revertThemeIfCurrent, revertLanguageIfCurrent };
