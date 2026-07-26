@@ -18,7 +18,7 @@ import ThemeBrowser from "./components/ThemeBrowser";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
-import { loadTheme, applyTheme, getAvailableThemes } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, getAvailableThemes, registerFallbackThemes } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
@@ -188,6 +188,9 @@ function App() {
 
       // E3a #26：初始化 IpcBridge 壳侧处理器——监听主进程转发的插件 IPC 请求
       initIpcBridgeHandler();
+
+      // M2：注册内置兜底主题——插件主题后注册同名覆盖。确保卸载全部主题插件后下拉框不为空
+      registerFallbackThemes();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
       // Phase 5：注册核心配置（app.theme 暂用占位枚举——插件加载后用真实主题列表覆盖）
