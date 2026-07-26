@@ -19,7 +19,8 @@ import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
 import { IconRegistry } from "../core/IconRegistry";
-import type { ThemeContribution, IconThemeContribution } from "../core/types";
+import { LanguageRegistry } from "../core/LanguageRegistry";
+import type { ThemeContribution, IconThemeContribution, LanguageContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
@@ -384,6 +385,20 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     }
   }
 
+  // contributes.languages → LanguageRegistry + i18next
+  if (c.languages) {
+    const langList = c.languages as LanguageContribution[];
+    for (const lc of langList) {
+      LanguageRegistry.register(lc, pluginId);
+      const data = getPluginDataFile(pluginId, lc.path);
+      if (data) {
+        registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
+      } else {
+        console.warn(`[pluginLoader] 语言文件缺失 — "${pluginId}/${lc.path}"`);
+      }
+    }
+  }
+
   // contributes.fileAssociations → FileAssociationService（E2c #13a）
   if (c.fileAssociations) {
     const list = c.fileAssociations as Array<{
@@ -472,16 +487,25 @@ async function loadPlugin(
     contributed = true;
   }
 
-  if (manifest.languages && manifest.languages.length > 0) {
-    loadLanguagePlugin(pluginId, manifest);
-    contributed = true;
-  }
-  if (manifest.file) {
-    const data = getPluginDataFile(pluginId, manifest.file);
-    if (data && !data.type) {
+  // M4：contributes.languages 优先——旧格式 manifest.languages / manifest.file 仅在新格式缺失时兜底
+  const hasNewLanguages = !!manifest.contributes?.languages;
+  if (!hasNewLanguages) {
+    if (manifest.languages && manifest.languages.length > 0) {
       loadLanguagePlugin(pluginId, manifest);
       contributed = true;
     }
+    if (manifest.file) {
+      const data = getPluginDataFile(pluginId, manifest.file);
+      if (data && !data.type) {
+        loadLanguagePlugin(pluginId, manifest);
+        contributed = true;
+      }
+    }
+  }
+
+  // contributes.languages（parseContributions 中注册——此处仅标记 contributed）
+  if (hasNewLanguages) {
+    contributed = true;
   }
 
   // TODO Phase 6: registerProtocol(pluginId, manifest.mode)——当前仅 stub 检测抑制 "未声明贡献" 警告
@@ -675,10 +699,12 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     }
   }
 
-  // 6. 主题/语言（和 loadPlugin 相同的逻辑）
-  if (manifest.themes && manifest.themes.length > 0) {
+  // 6. 主题/语言（和 loadPlugin 相同的 M4 守卫逻辑）
+  // L5：独立 if（非 else if）——同时声明旧格式 theme+language 的插件两者都加载
+  if (!manifest.contributes?.themes && manifest.themes && manifest.themes.length > 0) {
     loadThemePlugin(pluginId, manifest);
-  } else if (manifest.languages && manifest.languages.length > 0) {
+  }
+  if (!manifest.contributes?.languages && manifest.languages && manifest.languages.length > 0) {
     loadLanguagePlugin(pluginId, manifest);
   }
 
