@@ -91,6 +91,11 @@ export interface PluginManifest {
   changelog?: { version: string; date: string; changes?: string[] }[];
   screenshots?: string[];
   minAppVersion?: string;
+  /** 激活事件——对标 VS Code activationEvents。空或含 "*" = 启动时立即加载。
+   *  具体事件：onCommand:id / onFileOpen:.ext / onPortOpen / onLanguage:id / onView:id */
+  activationEvents?: string[];
+  /** 扩展依赖——加载前检查。缺失 → toast + 跳过（#45 实现） */
+  extensionDependencies?: string[];
   docs?: string;
   cardDocMap?: Record<string, string>;
   /** @deprecated 使用 languages + file 字段代替——i18n 资源走统一的 languages 体系 */

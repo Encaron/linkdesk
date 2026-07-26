@@ -76,13 +76,25 @@ export function unregisterPluginCommands(pluginId: string): void {
 /**
  * 执行命令——对标 VS Code executeCommand。
  * Phase 5 盲区 8（P1）：包 try/catch 做错误隔离——一个 buggy 命令不崩命令面板。
- * Phase 6 activationEvents：如果命令所属插件还未加载 → 先触发激活再执行。
+ * #44 activationEvents：如果命令所属插件还未加载 → 先触发激活再执行。
  */
+
+/** 命令执行前的预激活钩子——loader.ts 注入（避免循环依赖） */
+let _preActivateHook: ((commandId: string) => Promise<void>) | null = null;
+
+/** 设置预激活钩子——loader.ts 在初始化时调用 */
+export function setPreActivateHook(hook: (commandId: string) => Promise<void>): void {
+  _preActivateHook = hook;
+}
+
 export async function executeCommand(
   commandId: string,
   token?: CancellationToken,
   ...args: unknown[]
 ): Promise<void> {
+  // #44：执行前激活延迟插件——onCommand 触发源
+  if (_preActivateHook) await _preActivateHook(commandId);
+
   const cmd = _commands.get(commandId);
   if (!cmd) {
     console.warn(`[CommandRegistry] 命令 "${commandId}" 未注册`);
