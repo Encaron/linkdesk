@@ -65,8 +65,8 @@ export const CoreEvents = {
   /** 配置变更——对标 VS Code onDidChangeConfiguration */
   onDidChangeConfiguration: new Emitter<{ key: string; value: unknown; scope: "user" | "workspace" }>(),
 
-  /** 串口状态变更——对标 VS Code onDidChangeTerminalState */
-  onDidChangePortState: new Emitter<{ isOpen: boolean; portName: string | null }>(),
+  /** 数据源状态变更——对标 VS Code onDidChangeTerminalState */
+  onDidChangeSourceState: new Emitter<{ isOpen: boolean; sourceName: string | null }>(),
 
   /** 主题切换——对标 VS Code onDidChangeTheme */
   onDidChangeTheme: new Emitter<{ theme: string }>(),
