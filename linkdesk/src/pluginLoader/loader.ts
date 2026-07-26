@@ -210,11 +210,11 @@ export async function initPluginLoader(): Promise<void> {
   initLifecycleConsumers();
 
   // #44：注册命令预激活钩子——CommandRegistry 执行命令前检查是否需要先激活延迟插件
-  import("../core/CommandRegistry").then(({ setPreActivateHook }) => {
-    setPreActivateHook(async (commandId: string) => {
-      const pluginId = findDeferredByCommand(commandId);
-      if (pluginId) await activatePlugin(pluginId);
-    });
+  // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪
+  const { setPreActivateHook } = await import("../core/CommandRegistry");
+  setPreActivateHook(async (commandId: string) => {
+    const pluginId = findDeferredByCommand(commandId);
+    if (pluginId) await activatePlugin(pluginId);
   });
 
   const errors: string[] = [];
