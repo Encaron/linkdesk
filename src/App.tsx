@@ -15,6 +15,7 @@ import StatusBar from "./components/StatusBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/shared/CommandPalette";
 import ThemeBrowser from "./components/ThemeBrowser";
+import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
@@ -401,11 +402,8 @@ function App() {
   }, [theme]);
 
   const handleToggleLang = useCallback(() => {
-    const next = lang === "zh" ? "en" : "zh";
-    setLang(next);
-    // Phase 5f：ConfigurationApplier 通过 onApply 自动调 i18n.changeLanguage
-    setConfigurationValue("app.language", next, "user").catch(() => {});
-  }, [lang]);
+    setLangPickerOpen(true);
+  }, []);
 
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
@@ -414,6 +412,7 @@ function App() {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
   const [themeBrowserPluginId, setThemeBrowserPluginId] = useState<string | undefined>(undefined);
+  const [langPickerOpen, setLangPickerOpen] = useState(false);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -795,6 +794,10 @@ function App() {
         open={themeBrowserOpen}
         onClose={() => { setThemeBrowserOpen(false); setThemeBrowserPluginId(undefined); }}
         pluginId={themeBrowserPluginId}
+      />
+      <LanguagePicker
+        open={langPickerOpen}
+        onClose={() => setLangPickerOpen(false)}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>
