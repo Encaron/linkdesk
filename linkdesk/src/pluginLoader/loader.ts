@@ -554,6 +554,7 @@ async function loadPlugin(
 function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: PluginInstallEvent["reason"]): void {
   loadedPluginIds.add(pluginId);
   syncAppThemeEnum();
+  syncAppLanguageEnum();
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
@@ -950,6 +951,7 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
     syncAppThemeEnum();
+    syncAppLanguageEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
   } catch (e: any) {
@@ -1039,6 +1041,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     syncAppThemeEnum();
+    syncAppLanguageEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
     return { success: true };
@@ -1155,6 +1158,14 @@ function syncAppThemeEnum(): void {
   const available = getAvailableThemes();
   if (available.length === 0) return; // 无主题时不更新——保留上次枚举，避免下拉变输入框
   updateConfigurationEnum("app.theme", available, available.includes("Dark") ? "Dark" : available[0]);
+}
+
+/** 同步 app.language 枚举——语言注册/注销后调用。不影响 onApply，只更新下拉选项。 */
+function syncAppLanguageEnum(): void {
+  const languages = LanguageRegistry.getAll();
+  if (languages.length === 0) return; // 无语言时不更新——保留上次枚举
+  const codes = languages.map(l => l.id);
+  updateConfigurationEnum("app.language", codes, codes.includes("zh") ? "zh" : codes[0]);
 }
 
 /** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退 */
