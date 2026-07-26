@@ -205,6 +205,8 @@ let _initialized = false;
 let _loadingPromise: Promise<void> | null = null;
 /** 已成功加载的插件 ID 集合（用于文件监听检测新插件） */
 const loadedPluginIds = new Set<string>();
+/** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
+const _loadingPromises = new Map<string, Promise<void>>();
 
 export async function initPluginLoader(): Promise<void> {
   // 🔥 #59c fix：StrictMode 双重 effect 第二次调用时等第一次 Promise 完成
@@ -396,6 +398,10 @@ async function loadPlugin(
   pluginId: string,
   reason: PluginInstallEvent["reason"] = "startup"
 ): Promise<void> {
+  if (loadedPluginIds.has(pluginId)) return;
+  // 🔥 硬约束 13：竞态守卫——两次 concurrent 调用 → 第二次等第一次的 Promise
+  if (_loadingPromises.has(pluginId)) { await _loadingPromises.get(pluginId)!; return; }
+
   const manifestKey = Object.keys(pluginManifests).find(
     (k) => extractPluginId(k) === pluginId
   );
@@ -403,6 +409,7 @@ async function loadPlugin(
     throw new Error(`找不到 plugin.json`);
   }
 
+  const promise = (async () => {
   let manifest: PluginManifest;
   try {
     manifest = pluginManifests[manifestKey];
@@ -503,6 +510,10 @@ async function loadPlugin(
 
   // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
+  })();
+  _loadingPromises.set(pluginId, promise);
+  try { await promise; }
+  finally { _loadingPromises.delete(pluginId); }
 }
 
 /* ── Phase 5h：运行时动态加载（不在 import.meta.glob 中的插件） ── */
@@ -516,7 +527,11 @@ async function loadPlugin(
  * 对标 VS Code：从文件系统热加载扩展，不刷新窗口。
  */
 async function loadPluginRuntime(pluginId: string): Promise<void> {
+  if (loadedPluginIds.has(pluginId)) return;
+  if (_loadingPromises.has(pluginId)) { await _loadingPromises.get(pluginId)!; return; }
+
   // 1. 读取 manifest
+  const promise = (async () => {
   let manifest: PluginManifest;
   try {
     const raw = await linkdesk().plugins.readManifest(pluginId);
@@ -603,6 +618,10 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
   // glob 外的插件的安装原因——从外部来源安装，视为 'install'
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason: "install" });
+  })();
+  _loadingPromises.set(pluginId, promise);
+  try { await promise; }
+  finally { _loadingPromises.delete(pluginId); }
 }
 
 /* ── 视图插件 ── */

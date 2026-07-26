@@ -15,9 +15,10 @@ import {
   getThemesByPlugin,
   loadTheme,
   applyTheme,
+  applyAccentColor,
   getCurrentTheme,
 } from "../core/ThemeEngine";
-import { setConfigurationValue } from "../core/ConfigurationService";
+import { setConfigurationValue, getConfigurationValue } from "../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
 
@@ -46,11 +47,14 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
     setConfigurationValue("app.theme", themeName, "user").catch(() => {});
   };
 
-  /** ↑↓ / hover：预览主题（即时 apply，不写配置） */
+  /** ↑↓ / hover：预览主题（即时 apply，不写配置）。
+   *  主题自带 accent → 预览后必须恢复用户自定义强调色，否则用户看到的是主题硬编码的 accent。 */
   const handleHighlight = async (themeName: string) => {
     try {
       const theme = await loadTheme(themeName);
       applyTheme(theme);
+      // 对标 App.tsx onApply：applyTheme 后恢复用户强调色——盖回主题自带的 accent
+      applyAccentColor(getConfigurationValue<string>("app.accentColor") || "#0078D4");
     } catch {
       // 加载失败——静默，keep current
     }

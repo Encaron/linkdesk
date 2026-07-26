@@ -18,7 +18,7 @@ import ThemeBrowser from "./components/ThemeBrowser";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
-import { loadTheme, applyTheme, getAvailableThemes, registerFallbackThemes } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, applyAccentColor, getAvailableThemes, registerFallbackThemes } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
@@ -41,21 +41,6 @@ import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namesp
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
-function applyAccentColor(hexColor: string): void {
-  document.documentElement.style.setProperty("--accent", hexColor);
-  const hex = hexColor.replace("#", "");
-  const r = parseInt(hex.substring(0, 2), 16);
-  const g = parseInt(hex.substring(2, 4), 16);
-  const b = parseInt(hex.substring(4, 6), 16);
-  document.documentElement.style.setProperty(
-    "--accent-hover",
-    `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
-  );
-  document.documentElement.style.setProperty(
-    "--accent-light",
-    `rgba(${r},${g},${b},0.15)`
-  );
-}
 // Phase 5b：核心命令注册（右键菜单归一化）
 import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）

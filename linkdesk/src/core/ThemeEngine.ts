@@ -45,7 +45,9 @@ export function registerTheme(theme: Theme, pluginId?: string): void {
   pluginThemes.set(theme.name, theme);
   if (pluginId) {
     const names = _pluginThemeNames.get(pluginId) ?? [];
-    names.push(theme.name);
+    if (!names.includes(theme.name)) {
+      names.push(theme.name);
+    }
     _pluginThemeNames.set(pluginId, names);
   }
 }
@@ -111,6 +113,26 @@ export function applyTheme(theme: Theme): void {
 
   // E2c #19h A5：通知所有订阅者——多 WebView 跨进程主题同步 + UI 联动
   CoreEvents.onDidChangeTheme.fire({ theme: theme.name });
+}
+
+/**
+ * 应用用户自定义强调色——覆盖主题自带的 accent。
+ * 预览主题时调用：先 applyTheme（含主题的 accent）再 applyAccentColor（用户的 accent 盖回去）。
+ */
+export function applyAccentColor(hexColor: string): void {
+  document.documentElement.style.setProperty("--accent", hexColor);
+  const hex = hexColor.replace("#", "");
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+  document.documentElement.style.setProperty(
+    "--accent-hover",
+    `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`
+  );
+  document.documentElement.style.setProperty(
+    "--accent-light",
+    `rgba(${r},${g},${b},0.15)`
+  );
 }
 
 /**
