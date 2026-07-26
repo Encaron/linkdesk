@@ -45,7 +45,18 @@ export async function initConfigurationService(): Promise<void> {
 
   // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
   const saved = await read<Record<string, unknown>>("settings");
-  if (saved) _userSettings = saved;
+  if (saved) {
+    _userSettings = saved;
+    // M3：清理手动编辑 settings.json 写入的无效 enum 值
+    const schema = getMergedSchema();
+    for (const key of Object.keys(_userSettings)) {
+      const prop = schema[key];
+      if (prop?.enum && !prop.enum.includes(_userSettings[key] as string)) {
+        console.warn(`[ConfigurationService] "${key}: ${_userSettings[key]}" 不在 enum [${prop.enum}] 中——已清除`);
+        delete _userSettings[key];
+      }
+    }
+  }
 }
 
 /* ── 读取：三层合并 ── */
@@ -109,6 +120,14 @@ export async function setConfigurationValue(
   value: unknown,
   scope: "user" | "workspace" = "user"
 ): Promise<void> {
+  // M3：写入前 enum 验证——非法的主题 ID/语言代码等拒绝写入
+  const schema = getMergedSchema();
+  const prop = schema[key];
+  if (prop?.enum && !prop.enum.includes(value as string)) {
+    console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——拒绝写入`);
+    return;
+  }
+
   if (scope === "workspace") {
     _workspaceSettings[key] = value;
     await _persistWorkspace();
