@@ -135,6 +135,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
         options={protocols.length > 0 ? protocols.map((p) => ({ value: p.id, label: p.name })) : []}
         onChange={handleProtocolChange}
         placeholder={t("方括号协议")}
+        title={t("协议解析器")}
       />
 
       <span className="control-spacer" />

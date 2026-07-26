@@ -24,13 +24,15 @@ interface SelectBoxProps {
   onChange: (v: string) => void;
   disabled?: boolean;
   placeholder?: string;
+  title?: string;
+  className?: string;
 }
 
 function isOption(o: string | SelectBoxOption): o is SelectBoxOption {
   return typeof o === "object" && "value" in o && "label" in o;
 }
 
-function SelectBox({ value, options, onChange, disabled, placeholder }: SelectBoxProps) {
+function SelectBox({ value, options, onChange, disabled, placeholder, title, className }: SelectBoxProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -134,7 +136,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder }: SelectBo
 
   return (
     <div
-      className={`selectbox ${open ? "selectbox-open" : ""} ${disabled ? "selectbox-disabled" : ""}`}
+      className={`selectbox ${open ? "selectbox-open" : ""} ${disabled ? "selectbox-disabled" : ""} ${className ?? ""}`}
       ref={containerRef}
     >
       {/* 触发器 */}
@@ -142,6 +144,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder }: SelectBo
         type="button"
         className="selectbox-trigger"
         disabled={disabled}
+        title={title}
         onClick={() => setOpen((v) => !v)}
       >
         <span className="selectbox-label">{currentLabel}</span>
