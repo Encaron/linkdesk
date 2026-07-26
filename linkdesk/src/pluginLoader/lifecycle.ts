@@ -80,7 +80,7 @@ export function initLifecycleConsumers(): void {
   PluginLifecycle.onDidInstall.event(({ pluginId, reason }) => {
     if (reason === "install" || reason === "reinstall") {
       // 新装/重装 → 追加到图标栏末尾
-      appendToIconOrder(pluginId);
+      updateIconOrder(pluginId, "append");
     }
     // 'enable'/'startup' → 保持原位——不操作 iconOrder
   });
@@ -88,7 +88,7 @@ export function initLifecycleConsumers(): void {
   PluginLifecycle.onWillUninstall.event(({ pluginId, reason }) => {
     if (reason === "uninstall") {
       // 卸载 → 从 iconOrder 移除（下次重装时排到末尾）
-      removeFromIconOrder(pluginId);
+      updateIconOrder(pluginId, "remove");
     }
     // 'disable' → 保留 iconOrder 位置（下次启用时恢复原位）
   });
@@ -171,28 +171,16 @@ export function initLifecycleConsumers(): void {
 /* ── 图标排序辅助（和 loader.ts 共享——放在这里归一化） ── */
 
 /**
- * B77：将插件追加到图标栏末尾。
+ * B72/B77 归一化：图标排序更新——"append" 追加到末尾，"remove" 从列表中移除。
  * 同步写内存缓存——确保 React 渲染前生效。
  */
-function appendToIconOrder(pluginId: string): void {
+function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
   try {
     const order = getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
     const filtered = order.filter((id) => id !== pluginId);
-    filtered.push(pluginId);
+    if (mode === "append") filtered.push(pluginId);
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
-    import("../core/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
-    });
-  } catch { /* 非关键路径 */ }
-}
-
-/** B72/B77：从图标排序中移除插件（卸载时调用） */
-function removeFromIconOrder(pluginId: string): void {
-  try {
-    const order = getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
-    const filtered = order.filter((id) => id !== pluginId);
-    setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     import("../core/PluginStateService").then(({ setPluginStateValue }) => {
       setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
     });
