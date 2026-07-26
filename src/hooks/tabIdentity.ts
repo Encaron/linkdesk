@@ -109,9 +109,15 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
   },
 };
 
-/** viewRegistry 不可用时的兜底元数据——仅测试/极端边界用到。
- *  插件正常运行时所有信息从 manifest 推导。
- *  此处只保留无法从代码推导的信息：中文标签名 + identityField（身份匹配策略）。 */
+/**
+ * viewRegistry 不可用时的兜底元数据——仅测试/极端边界用到。
+ * 插件正常运行时所有信息从 manifest 推导。
+ * 此处只保留无法从代码推导的信息：中文标签名 + identityField（身份匹配策略）。
+ *
+ * @deprecated `identityField` 计划迁入 `plugin.json` `tabBehavior.identityField`。
+ *   迁移后本表仅保留 `label`（中文兜底标签），`identityField` 从 manifest 声明读取。
+ *   当前仍在此处定义 `identityField`，确保 viewRegistry 不可用时（测试/极端边界）不掉链。
+ */
 const FALLBACK_META: Record<string, { label: string; identityField?: string | null }> = {
   terminal:    { label: "终端",    identityField: null },
   workspace:   { label: "工作台",  identityField: "workspaceName" },
