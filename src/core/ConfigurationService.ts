@@ -114,7 +114,6 @@ export async function setConfigurationValue(
   // M3：写入前 enum 验证——非法的主题 ID/语言代码等拒绝写入
   const schema = getMergedSchema();
   const prop = schema[key];
-  console.log(`[M3-TRACE] setConfigurationValue("${key}", "${value}") → schema has key: ${!!prop}, enum: [${prop?.enum}]`);
   if (prop?.enum && !prop.enum.includes(value as string)) {
     console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——拒绝写入`);
     return;
