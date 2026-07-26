@@ -501,21 +501,27 @@ async function loadPlugin(
     log.appendLine(`插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
   }
 
-  loadedPluginIds.add(pluginId);
-
   // B2 fix: 缓存元数据——marketplace 不依赖文件系统，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
-  // #34：主题枚举同步——必须在 parseContributions 注册主题之后、onDidInstall 之前。
-  // onDidInstall 消费端依赖枚举已更新（如设置页下拉即时刷新），调换顺序 → 消费端看到旧枚举。
-  syncAppThemeEnum();
-
-  // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
-  PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
+  applyPostLoadSteps(pluginId, manifest, reason);
   })();
   _loadingPromises.set(pluginId, promise);
   try { await promise; }
   finally { _loadingPromises.delete(pluginId); }
+}
+
+/**
+ * 加载后收敛步骤——loadPlugin 和 loadPluginRuntime 共享。
+ * 🔥 这不是消重复——是堵缝。两条独立函数应收敛到相同终态。
+ * 历史上每次给 loadPlugin 加能力，loadPluginRuntime 就漏掉。
+ * 加此函数后，新增能力只需改一处，两条路径自动受益。
+ * 同类 bug：Bug 3（runtime 无侧栏）、L6（runtime 无主题颜色）、#34 bug 6（重装不显示）。
+ */
+function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: PluginInstallEvent["reason"]): void {
+  loadedPluginIds.add(pluginId);
+  syncAppThemeEnum();
+  PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
 
 /* ── Phase 5h：运行时动态加载（不在 import.meta.glob 中的插件） ── */
@@ -667,15 +673,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     loadLanguagePlugin(pluginId, manifest);
   }
 
-  loadedPluginIds.add(pluginId);
-
-  // #34：主题枚举同步——同上 loadPlugin：必须在主题注册之后、onDidInstall 之前。
-  // 调换顺序 → onDidInstall 消费端（设置页下拉）看到旧枚举。
-  syncAppThemeEnum();
-
-  // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
-  // glob 外的插件的安装原因——从外部来源安装，视为 'install'
-  PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason: "install" });
+  applyPostLoadSteps(pluginId, manifest, "install");
   })();
   _loadingPromises.set(pluginId, promise);
   try { await promise; }
