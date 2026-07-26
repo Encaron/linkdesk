@@ -6,7 +6,6 @@
   "description": "卡片网格——可视化数据仪表板",
   "author": "官方",
   "entry": "src/index.tsx",
-  "viewRole": "sidebarPrimary",
   "tabBehavior": {
     "identityField": "workspaceName"
   }
