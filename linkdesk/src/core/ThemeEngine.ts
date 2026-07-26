@@ -13,6 +13,8 @@ export interface Theme {
   name: string;
   type: "dark" | "light";
   colors: ThemeColors;
+  /** 提供方插件 ID——单真源：ThemeRegistry.get() fallback 通过此字段找到归属 */
+  pluginId?: string;
 }
 
 let currentTheme: Theme | null = null;
@@ -32,6 +34,10 @@ export function registerTheme(theme: Theme, pluginId?: string): void {
   // E2c #19h A2：冲突检测——同名主题后注册者覆盖，console.warn
   if (pluginThemes.has(theme.name)) {
     console.warn(`[ThemeEngine] 主题 "${theme.name}" 重复注册——后注册者覆盖先注册者`);
+  }
+  // 单真源：存储 pluginId 到 Theme 对象——ThemeRegistry.get() fallback 通过此字段找到归属
+  if (pluginId) {
+    theme.pluginId = pluginId;
   }
   pluginThemes.set(theme.name, theme);
   if (pluginId) {
@@ -102,6 +108,11 @@ export function applyTheme(theme: Theme): void {
 
   // E2c #19h A5：通知所有订阅者——多 WebView 跨进程主题同步 + UI 联动
   CoreEvents.onDidChangeTheme.fire({ theme: theme.name });
+}
+
+/** 同步查找主题——ThemeRegistry.get() 单真源 fallback（旧格式主题未在 ThemeRegistry 登记时走此路） */
+export function findTheme(themeName: string): Theme | undefined {
+  return pluginThemes.get(themeName);
 }
 
 /** 获取当前主题 */
