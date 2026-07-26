@@ -31,9 +31,12 @@ const _pluginThemeNames = new Map<string, string[]>();
  * 注册后的主题和内置主题在同一个列表中，不区分来源。
  */
 export function registerTheme(theme: Theme, pluginId?: string): void {
-  // E2c #19h A2：冲突检测——同名主题后注册者覆盖，console.warn
+  // 覆盖 fallback 主题（无 pluginId）不告警——插件主题上位是预期行为
   if (pluginThemes.has(theme.name)) {
-    console.warn(`[ThemeEngine] 主题 "${theme.name}" 重复注册——后注册者覆盖先注册者`);
+    const existing = pluginThemes.get(theme.name)!;
+    if (existing.pluginId) {
+      console.warn(`[ThemeEngine] 主题 "${theme.name}" 重复注册——后注册者覆盖先注册者`);
+    }
   }
   // 单真源：存储 pluginId 到 Theme 对象——ThemeRegistry.get() fallback 通过此字段找到归属
   if (pluginId) {
