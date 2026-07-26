@@ -841,6 +841,16 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
+
+    // #36k2：最后一个终端标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
+    // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 === 1（仅剩自身）
+    return () => {
+      if (_cmdMap.size <= 1) {
+        import("@src/core/CommandRegistry").then(({ unregisterPluginCommands }) => {
+          unregisterPluginCommands("terminal");
+        });
+      }
+    };
   }, []);
 
   // 动态更新暂停/继续标题（paused 变化时重新注册）
