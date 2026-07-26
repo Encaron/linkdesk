@@ -22,7 +22,7 @@ import { activateSidebarItem } from "@src/core/SidebarTabSync";
 import { showConfirm } from "@src/components/shared/ConfirmDialog";
 import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
-import Select from "@src/components/shared/Select";
+import SelectBox from "@src/components/shared/SelectBox";
 import FormRow from "@src/components/shared/FormRow";
 import "./TerminalSidebar.css";
 
@@ -273,7 +273,7 @@ function TerminalSidebar() {
       const value = activeSession?.[key];
       const setter = mkSetter(key);
       return (
-        <Select
+        <SelectBox
           value={String(value ?? "")}
           options={options}
           onChange={(v) => setter(v as TerminalSession[typeof key])}
@@ -412,7 +412,7 @@ function TerminalSidebar() {
 
           <div className="setting-group">
             <FormRow label={t("接收模式")}>
-              <Select
+              <SelectBox
                 value={activeSession.receiveMode}
                 options={[
                   { value: "text", label: t("文本") },
@@ -425,7 +425,7 @@ function TerminalSidebar() {
               {mkSelect("receiveCoding", ["UTF-8", "GB2312", "Shift-JIS", "Latin-1"])}
             </FormRow>
             <FormRow label={t("发送模式")}>
-              <Select
+              <SelectBox
                 value={activeSession.sendMode}
                 options={[
                   { value: "text", label: t("文本") },
@@ -435,7 +435,7 @@ function TerminalSidebar() {
               />
             </FormRow>
             <FormRow label={t("发送编码")}>
-              <Select
+              <SelectBox
                 value={activeSession.sendCoding}
                 options={["UTF-8", "GB2312", "Shift-JIS", "Latin-1"]}
                 onChange={(v) => mkSetter("sendCoding")(v)}
