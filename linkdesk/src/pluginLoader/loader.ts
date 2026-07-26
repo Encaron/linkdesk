@@ -564,11 +564,13 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   let statusBarComponent: React.ComponentType | undefined;
   if (manifest.entry) {
     try {
-      // Vite /@fs/ 端点——dev server 实时编译 TypeScript，浏览器直接拿 JS。
-      // 对标 import.meta.glob 底层机制，源码树 .tsx 和运行时 dist/.js 都适用。
-      // 归一化：所有非 glob 插件加载走同一条 /@fs/ 路径。
-      const absPath = await linkdesk().plugins.resolvePath(pluginId);
-      const module = await import(/* @vite-ignore */ `/@fs/${absPath}/${manifest.entry}`);
+      const isDev = import.meta.env.DEV;
+      // dev：Vite /@fs/ 即时编译 TSX。prod：linkdesk:// 协议加载预构建 JS。
+      const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
+      const entryUrl = isDev
+        ? `/@fs/${absPath}/${manifest.entry}`
+        : `linkdesk://${pluginId}/${manifest.entry}`;
+      const module = await import(/* @vite-ignore */ entryUrl);
       Component = module.default;
       if (!Component) {
         console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
@@ -577,23 +579,24 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       // Bug 3 fix：运行时插件也加载 sidebar.tsx / statusBar.tsx（对标 loadViewPlugin glob 行为）。
       // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime，
       // 不加载 sidebar 则侧栏不显示。同时尝试平铺和 src/ 子目录两种结构。
+      const sidebarBase = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
       try {
-        const sm = await import(/* @vite-ignore */ `/@fs/${absPath}/sidebar.tsx`);
+        const sm = await import(/* @vite-ignore */ `${sidebarBase}/sidebar.tsx`);
         sidebarComponent = sm.default;
       } catch { /* 无 sidebar.tsx——正常 */ }
       if (!sidebarComponent) {
         try {
-          const sm = await import(/* @vite-ignore */ `/@fs/${absPath}/src/sidebar.tsx`);
+          const sm = await import(/* @vite-ignore */ `${sidebarBase}/src/sidebar.tsx`);
           sidebarComponent = sm.default;
         } catch { /* 无 src/sidebar.tsx——正常 */ }
       }
       try {
-        const sbm = await import(/* @vite-ignore */ `/@fs/${absPath}/statusBar.tsx`);
+        const sbm = await import(/* @vite-ignore */ `${sidebarBase}/statusBar.tsx`);
         statusBarComponent = sbm.default;
       } catch { /* 无 statusBar.tsx——正常 */ }
       if (!statusBarComponent) {
         try {
-          const sbm = await import(/* @vite-ignore */ `/@fs/${absPath}/src/statusBar.tsx`);
+          const sbm = await import(/* @vite-ignore */ `${sidebarBase}/src/statusBar.tsx`);
           statusBarComponent = sbm.default;
         } catch { /* 无 src/statusBar.tsx——正常 */ }
       }
