@@ -332,16 +332,35 @@
 .notif-severity-error { color: var(--danger) !important; }
 .notif-severity-warning { color: var(--warning) !important; }
 
-/* ── E3e #49：NotificationCenter 增强 —— 分组标题 + 时间标签 ── */
+/* ── E3e #49/#50：NotificationCenter 增强 —— source 分组标题 + 未读徽章 + 时间标签 ── */
 
-/* 分组标题——"未读" / "已读" */
+/* 分组标题——插件名 + 未读数 */
 .notif-panel-section-header {
-  padding: 6px 12px 2px;
-  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 2px;
+}
+
+.notif-source-group-label {
+  font-size: 11px;
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.3px;
-  color: var(--text-muted);
+  color: var(--text-secondary);
+}
+
+.notif-source-group-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--badge-text);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
 }
 
 /* 时间标签 */
