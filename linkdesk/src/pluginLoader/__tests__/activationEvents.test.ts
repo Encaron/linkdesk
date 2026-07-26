@@ -7,17 +7,7 @@
  * 3. activatePlugin 正常激活 + 重复激活无副作用
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
-
-// Mock 掉 pluginManifests glob——我们的测试对象是纯逻辑函数，不依赖 Vite
-vi.mock("../loader", async () => {
-  const actual = await vi.importActual("../loader");
-  return actual;
-});
-
-// 直接从 loader 导入需要测试的函数
-// 注意：findDeferredByCommand 和 activatePlugin 依赖模块变量 _deferredPlugins
-// 这些是私有的，我们通过间接方式测试
+import { describe, it, expect } from "vitest";
 
 describe("activationEvents——延迟加载判断", () => {
   it("空 activationEvents → 立即加载", () => {
