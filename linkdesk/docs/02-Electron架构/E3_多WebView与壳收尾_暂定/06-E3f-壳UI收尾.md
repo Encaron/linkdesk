@@ -494,6 +494,129 @@ interface SelectBoxProps {
 
 ---
 
+### 九-E、`dependsOn`——配置项声明式条件显隐（🔥 基础设施）
+
+**对标 VS Code：** `package.json` `when` 条件。VS Code 设置页里关掉 `editor.minimap.enabled`，下面 `minimap.maxColumn`、`minimap.renderCharacters` 等子设置全部消失。没人觉得跳不好看——因为这是**语义分组**："不启用小地图"意味着"小地图参数不需要存在"。
+
+**问题：** 当前强调色只有一个选项——用户设一个颜色，永远显示这个颜色。加上 `app.accentMode`（跟随主题 vs 自定义）后，选"跟随主题"时 `app.accentColor` 色块不应该出现——用户不需要自己选颜色了。
+
+#### 设计决策：隐藏 vs 灰色禁用
+
+```
+❌ 灰色禁用（不用这个方案）：
+   强调色模式 [自定义 ▼]
+   强调色     [#f077ee] [■]    ← 可见但灰了
+   
+   用户困惑："为什么灰了？我怎么才能点它？"
+
+✅ 条件隐藏（对标 VS Code）：
+   强调色模式 [跟随主题 ▼]     ← 切换为跟随主题
+   （强调色行消失）              ← 语义：不需要自己选颜色
+
+   强调色模式 [自定义 ▼]        ← 切换为自定义
+   强调色     [#f077ee] [■]     ← 出现：现在需要自己选颜色
+```
+
+#### 数据结构——`ConfigurationProperty` 加一个字段
+
+```typescript
+// src/core/ConfigurationRegistry.ts
+
+interface ConfigurationProperty {
+  // ...existing fields...
+  
+  /**
+   * 🔥 声明式条件显隐——父配置项满足此值时才渲染本行。
+   * 对标 VS Code package.json 的 "when" 条件。
+   * 
+   * 只支持 == 判断（足够覆盖当前需求。未来需要 != / in / regex → 升级为 when 表达式字符串）。
+   */
+  dependsOn?: {
+    key: string;       // 父配置项 key，如 "app.accentMode"
+    value: unknown;    // 期望值，如 "custom"
+  };
+}
+```
+
+#### 渲染逻辑——5 行，一次写完
+
+```typescript
+// src/components/views/SettingsView.tsx —— 渲染每行前加一行判断
+
+// 条件不满足 → 整行不渲染
+const hidden = prop.dependsOn 
+  && getConfigurationValue(prop.dependsOn.key) !== prop.dependsOn.value;
+if (hidden) return null;
+```
+
+**不是为强调色写死代码——是给整个配置系统加了一个声明式条件显隐能力。** 5 行代码，一次写完，所有配置项通用。以后任何设置需要"选了 A 才出现 B"——加一行 `dependsOn` 声明就行。
+
+#### 第一个消费方——强调色
+
+```
+        跟随主题：                      自定义：
+  配色主题  [Dark ▼]            配色主题  [Dark ▼]
+  强调色模式 [跟随主题 ▼]         强调色模式 [自定义 ▼]
+  界面语言  [中文 ▼]             强调色    [#f077ee] [■]  ← 多出一行
+  字体大小  [14]                界面语言  [中文 ▼]
+                                字体大小  [14]
+
+  语义：主题自带强调色 →            语义：用户要自己选颜色 →
+  不需要颜色选择器                  颜色选择器出现
+  dependsOn 不满足 → return null   dependsOn 满足 → 正常渲染
+```
+
+#### 未来——任意插件可用
+
+```json
+// 以后随便哪个插件的 plugin.json：
+{
+  "contributes": {
+    "configuration": {
+      "properties": {
+        "myPlugin.mode": { 
+          "type": "string", 
+          "enum": ["simple", "advanced"] 
+        },
+        "myPlugin.advancedOption": { 
+          "type": "string",
+          "dependsOn": { "key": "myPlugin.mode", "value": "advanced" }
+        },
+        "myPlugin.extraOption": {
+          "type": "number",
+          "dependsOn": { "key": "myPlugin.mode", "value": "advanced" }
+        }
+      }
+    }
+  }
+}
+```
+
+选 "simple" → `advancedOption` 和 `extraOption` 同时消失。选 "advanced" → 两行同时出现。
+
+#### 与其他机制的关系——各管各的，不冲突
+
+| 机制 | 管什么 | 位置 |
+|------|------|------|
+| `dependsOn` | 这行该不该存在？ | `ConfigurationProperty` → `SettingsView.tsx` 渲染前过滤 |
+| #53 齿轮菜单 | 存在的行 hover 齿轮显示什么？ | `MenuId.SettingItemGear` → `<ContextMenu>` |
+| `when` (context key) | 齿轮菜单中的某个菜单项该不该出现？ | `ContextKeyService.matches(when)` |
+
+**不满足 `dependsOn` 的行根本不渲染 → 齿轮菜单自然不存在 → 三个机制各管各的，不冲突。**
+
+#### 为什么是基础设施而不是强调色专用代码
+
+```
+强调色场景：app.accentMode → app.accentColor           ✓ 第一个消费方
+未来场景：   myPlugin.mode → myPlugin.advancedOption     ✓ 声明式复用
+未来场景：   editor.minimap → editor.minimapSize          ✓ 声明式复用
+未来场景：   terminal.type → terminal.baudRate            ✓ 声明式复用
+```
+
+**写 5 行通用代码，而不是为强调色写 15 行专用 `if (key === "app.accentColor")`。** 前者是归一化基础设施，后者是硬编码债务。
+
+---
+
 ## 十、任务清单
 
 | # | 任务 | 行数 | 独立验证 |
@@ -510,7 +633,9 @@ interface SelectBoxProps {
 | 59a | **设置项一键恢复默认**——每项齿轮图标 + `showConfirm` + `ConfigurationService.reset(key)`（防呆） | ~15 | 改值→齿轮亮→点击→确认→回到出厂默认 |
 | 59b | **🔥 FileDecorationRegistry**——文件装饰器注册中心，Git 注册/文件树消费 | ~40 | Git 注册 provider→getDecorations(uri) 返回装饰→注销→返回空 |
 | 59c | **🔥 `<SelectBox>` 归一化**——替代全项目原生 `<select>`，统一动画/搜索/键盘导航 | ~100 | ControlPanel 三个下拉→同组件；设置页/主题/语言选择器→同组件 |
-| **合计** | | **~605 行** | |
+| 59d | **🔥 强调色模式——跟随主题 vs 自定义**——`dependsOn` 基础设施 + 强调色逻辑 | ~80 | 选"跟随主题"→强调色行消失；选"自定义"→强调色行出现+色块 |
+| 59e | **🔥 `<ColorPicker>` 归一化**——替代 `<input type="color">`，饱和度面板+色相条+hex输入+预设色 | ~200 | SettingsView 色块→弹出浮层→拖动取色→Enter 确认；Esc 取消恢复旧值 |
+| **合计** | | **~885 行** | |
 
 ---
 

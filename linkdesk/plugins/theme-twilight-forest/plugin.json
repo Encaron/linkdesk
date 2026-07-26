@@ -1,0 +1,35 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "暮色森林",
+  "version": "1.0.0",
+  "description": "暗色主题合集——青澜/暮紫/翠微，森林色系",
+  "author": "Encaron",
+  "contributes": {
+    "themes": [
+      {
+        "id": "sunset",
+        "label": "暮光 Sunset",
+        "uiTheme": "dark",
+        "path": "sunset.json"
+      },
+      {
+        "id": "teal",
+        "label": "青澜 Teal",
+        "uiTheme": "dark",
+        "path": "teal.json"
+      },
+      {
+        "id": "twilight-purple",
+        "label": "暮紫 Twilight Purple",
+        "uiTheme": "dark",
+        "path": "purple.json"
+      },
+      {
+        "id": "verdant",
+        "label": "翠微 Verdant",
+        "uiTheme": "dark",
+        "path": "green.json"
+      }
+    ]
+  }
+}
