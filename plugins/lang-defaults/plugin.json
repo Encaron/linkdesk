@@ -1,0 +1,21 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "官方语言",
+  "version": "1.0.0",
+  "description": "出厂中文/English 语言包——可卸载，卸载后 t(key) 返回 key 原文",
+  "author": "官方",
+  "contributes": {
+    "languages": [
+      {
+        "id": "zh",
+        "label": "中文",
+        "path": "zh.json"
+      },
+      {
+        "id": "en",
+        "label": "English",
+        "path": "en.json"
+      }
+    ]
+  }
+}
