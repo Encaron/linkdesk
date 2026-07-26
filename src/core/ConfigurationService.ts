@@ -45,18 +45,7 @@ export async function initConfigurationService(): Promise<void> {
 
   // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
   const saved = await read<Record<string, unknown>>("settings");
-  if (saved) {
-    _userSettings = saved;
-    // M3：清理手动编辑 settings.json 写入的无效 enum 值
-    const schema = getMergedSchema();
-    for (const key of Object.keys(_userSettings)) {
-      const prop = schema[key];
-      if (prop?.enum && !prop.enum.includes(_userSettings[key] as string)) {
-        console.warn(`[ConfigurationService] "${key}: ${_userSettings[key]}" 不在 enum [${prop.enum}] 中——已清除`);
-        delete _userSettings[key];
-      }
-    }
-  }
+  if (saved) _userSettings = saved;
 }
 
 /* ── 读取：三层合并 ── */
@@ -68,12 +57,14 @@ export async function initConfigurationService(): Promise<void> {
 export function getConfigurationValue<T>(key: string): T {
   // 1. Workspace scope（最高优先级）
   if (key in _workspaceSettings) {
-    return _workspaceSettings[key] as T;
+    const v = _validateEnum(key, _workspaceSettings[key], "workspace");
+    if (v !== undefined) return v as T;
   }
 
   // 2. User scope
   if (key in _userSettings) {
-    return _userSettings[key] as T;
+    const v = _validateEnum(key, _userSettings[key], "user");
+    if (v !== undefined) return v as T;
   }
 
   // 3. configurationDefaults（盲区 2：弱默认值——插件建议但用户可覆盖）
@@ -221,6 +212,24 @@ async function _persistWorkspace(): Promise<void> {
   } catch (e) {
     console.warn("[ConfigurationService] 写入 .linkdesk/settings.json 失败:", e);
   }
+}
+
+/* ── M3：enum 验证 —— */
+
+/** 验证 enum 值——无效时清理缓存并返回 undefined，调用方 fallthrough 到下一层 */
+function _validateEnum(key: string, value: unknown, scope: "user" | "workspace"): unknown {
+  const schema = getMergedSchema();
+  const prop = schema[key];
+  if (!prop?.enum) return value;
+  if (prop.enum.includes(value as string)) return value;
+
+  console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——已清除`);
+  if (scope === "workspace") {
+    delete _workspaceSettings[key];
+  } else {
+    delete _userSettings[key];
+  }
+  return undefined;
 }
 
 /* ── 系统兜底 ── */
