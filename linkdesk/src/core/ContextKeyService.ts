@@ -8,9 +8,9 @@
  *
  * 合法 token：&& || ! == != =~ in true false
  * 表达式示例：
- *   "portOpen"                       — truthy check
- *   "!portOpen"                      — negation
- *   "portOpen && editorHasSelection" — AND
+ *   "sourceOpen"                       — truthy check
+ *   "!sourceOpen"                      — negation
+ *   "sourceOpen && editorHasSelection" — AND
  *   "activeEditor == 'terminal'"     — equality
  *   "editorCount != 0"               — inequality
  *   "langId =~ /^markdown/"          — regex match (Phase 5 parser 支持，Phase 6 消费)
@@ -391,8 +391,8 @@ class ContextKeyServiceImpl {
     this._state.set("activeEditor", null);
     this._state.set("editorHasSelection", false);
     this._state.set("editorCount", 0);
-    this._state.set("portOpen", false);
-    this._state.set("portName", null);
+    this._state.set("sourceOpen", false);
+    this._state.set("sourceName", null);
   }
 
   /** 订阅 context key 变化——对标 VS Code onDidChangeContext */
