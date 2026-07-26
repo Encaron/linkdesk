@@ -125,11 +125,11 @@ Phase 1-5h ✅ 完成
 **🔥 机械操作，不是建议。** 每步必须执行，少一步不提交。
 
 1. `npx tsc --noEmit` 零错误
-2. `npx vitest run` 全过
-3. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
-4. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
-5. **🔥 修了任何 `import`/`export` 路径 → 删 `node_modules/.vite` 清 Vite deps 缓存。** 不手动清 → 缓存了失败模块 → 路径改对也白屏。`tsc` 抓不到这个。（memory `vite-cache-after-import-fix.md`）
-6. **`npx eslint src/ plugins/` 零 error**。ESLint 内置硬约束 13-14 检查——grep 不再需要手动跑。warning 必须全部处理（disable 注释写清原因）。（硬约束 13/14）
+2. `npm run lint` 零 error——ESLint 会自动跑硬约束 13/14
+3. `npx vitest run` 全过
+4. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
+5. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
+6. **🔥 修了任何 `import`/`export` 路径 → 删 `node_modules/.vite` 清 Vite deps 缓存。** 不手动清 → 缓存了失败模块 → 路径改对也白屏。`tsc` 抓不到这个。（memory `vite-cache-after-import-fix.md`）
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 

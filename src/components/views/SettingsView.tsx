@@ -223,8 +223,6 @@ function SettingRow({
   onChange: () => void;
 }) {
   const { t } = useTranslation();
-  if (!prop) return null;
-
   const currentValue = getConfigurationValue(configKey);
 
   const handleChange = useCallback(
@@ -234,6 +232,8 @@ function SettingRow({
     },
     [configKey, onChange]
   );
+
+  if (!prop) return null;
 
   return (
     <div className="settings-row">
