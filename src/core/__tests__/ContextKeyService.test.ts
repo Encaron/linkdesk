@@ -24,13 +24,13 @@ describe("ContextKeyService — when clause parser & evaluator", () => {
   /* ── 裸 key（truthy check） ── */
 
   it("裸 key — true → 满足", () => {
-    ContextKeyService.setValue("portOpen", true);
-    expect(ContextKeyService.matches("portOpen")).toBe(true);
+    ContextKeyService.setValue("sourceOpen", true);
+    expect(ContextKeyService.matches("sourceOpen")).toBe(true);
   });
 
   it("裸 key — false → 不满足", () => {
-    ContextKeyService.setValue("portOpen", false);
-    expect(ContextKeyService.matches("portOpen")).toBe(false);
+    ContextKeyService.setValue("sourceOpen", false);
+    expect(ContextKeyService.matches("sourceOpen")).toBe(false);
   });
 
   it("裸 key — 未设置 → 不满足（undefined → falsy）", () => {
@@ -40,13 +40,13 @@ describe("ContextKeyService — when clause parser & evaluator", () => {
   /* ── NOT (!) ── */
 
   it("!true → false", () => {
-    ContextKeyService.setValue("portOpen", true);
-    expect(ContextKeyService.matches("!portOpen")).toBe(false);
+    ContextKeyService.setValue("sourceOpen", true);
+    expect(ContextKeyService.matches("!sourceOpen")).toBe(false);
   });
 
   it("!false → true", () => {
-    ContextKeyService.setValue("portOpen", false);
-    expect(ContextKeyService.matches("!portOpen")).toBe(true);
+    ContextKeyService.setValue("sourceOpen", false);
+    expect(ContextKeyService.matches("!sourceOpen")).toBe(true);
   });
 
   it("!未设置 → true", () => {
@@ -56,29 +56,29 @@ describe("ContextKeyService — when clause parser & evaluator", () => {
   /* ── AND (&&) ── */
 
   it("true && true → true", () => {
-    ContextKeyService.setValue("portOpen", true);
+    ContextKeyService.setValue("sourceOpen", true);
     ContextKeyService.setValue("activeEditor", "terminal");
-    expect(ContextKeyService.matches("portOpen && activeEditor == 'terminal'")).toBe(true);
+    expect(ContextKeyService.matches("sourceOpen && activeEditor == 'terminal'")).toBe(true);
   });
 
   it("true && false → false", () => {
-    ContextKeyService.setValue("portOpen", true);
+    ContextKeyService.setValue("sourceOpen", true);
     ContextKeyService.setValue("activeEditor", "settings");
-    expect(ContextKeyService.matches("portOpen && activeEditor == 'terminal'")).toBe(false);
+    expect(ContextKeyService.matches("sourceOpen && activeEditor == 'terminal'")).toBe(false);
   });
 
   /* ── OR (||) ── */
 
   it("false || true → true", () => {
-    ContextKeyService.setValue("portOpen", false);
+    ContextKeyService.setValue("sourceOpen", false);
     ContextKeyService.setValue("activeEditor", "terminal");
-    expect(ContextKeyService.matches("portOpen || activeEditor == 'terminal'")).toBe(true);
+    expect(ContextKeyService.matches("sourceOpen || activeEditor == 'terminal'")).toBe(true);
   });
 
   it("false || false → false", () => {
-    ContextKeyService.setValue("portOpen", false);
+    ContextKeyService.setValue("sourceOpen", false);
     ContextKeyService.setValue("activeEditor", null);
-    expect(ContextKeyService.matches("portOpen || activeEditor == 'terminal'")).toBe(false);
+    expect(ContextKeyService.matches("sourceOpen || activeEditor == 'terminal'")).toBe(false);
   });
 
   /* ── 等式 (==) ── */
@@ -121,32 +121,32 @@ describe("ContextKeyService — when clause parser & evaluator", () => {
   /* ── 括号分组 ── */
 
   it("(true || false) && true → true", () => {
-    ContextKeyService.setValue("portOpen", true);
+    ContextKeyService.setValue("sourceOpen", true);
     ContextKeyService.setValue("activeEditor", "terminal");
-    expect(ContextKeyService.matches("(portOpen || activeEditor == 'settings') && activeEditor == 'terminal'")).toBe(true);
+    expect(ContextKeyService.matches("(sourceOpen || activeEditor == 'settings') && activeEditor == 'terminal'")).toBe(true);
   });
 
   it("运算符优先级：AND 优先于 OR", () => {
     // false || false && true → false || false → false（AND 优先）
-    ContextKeyService.setValue("portOpen", false);
+    ContextKeyService.setValue("sourceOpen", false);
     ContextKeyService.setValue("activeEditor", "terminal");
     ContextKeyService.setValue("editorCount", 2);
-    // portOpen || activeEditor == 'settings' && editorCount > 0
+    // sourceOpen || activeEditor == 'settings' && editorCount > 0
     // = false || false && true = false
-    expect(ContextKeyService.matches("portOpen || activeEditor == 'settings' && editorCount != 0")).toBe(false);
+    expect(ContextKeyService.matches("sourceOpen || activeEditor == 'settings' && editorCount != 0")).toBe(false);
   });
 
   /* ── 复杂组合 ── */
 
-  it("activeEditor == 'terminal' && portOpen — 终端聚焦且串口打开", () => {
-    // 模拟：终端聚焦 + 串口关闭 → "暂停"不可见
+  it("activeEditor == 'terminal' && sourceOpen — 终端聚焦且数据源打开", () => {
+    // 模拟：终端聚焦 + 数据源关闭 → "暂停"不可见
     ContextKeyService.setValue("activeEditor", "terminal");
-    ContextKeyService.setValue("portOpen", false);
-    expect(ContextKeyService.matches("activeEditor == 'terminal' && portOpen")).toBe(false);
+    ContextKeyService.setValue("sourceOpen", false);
+    expect(ContextKeyService.matches("activeEditor == 'terminal' && sourceOpen")).toBe(false);
 
-    // 模拟：终端聚焦 + 串口打开 → "暂停"可见
-    ContextKeyService.setValue("portOpen", true);
-    expect(ContextKeyService.matches("activeEditor == 'terminal' && portOpen")).toBe(true);
+    // 模拟：终端聚焦 + 数据源打开 → "暂停"可见
+    ContextKeyService.setValue("sourceOpen", true);
+    expect(ContextKeyService.matches("activeEditor == 'terminal' && sourceOpen")).toBe(true);
   });
 
   it("activeEditor == 'terminal' — 非终端标签页时终端命令不可见", () => {
@@ -198,24 +198,24 @@ describe("ContextKeyService — setValue / getValue / onDidChangeContext", () =>
   });
 
   it("setValue → getValue 往返", () => {
-    ContextKeyService.setValue("portOpen", true);
-    expect(ContextKeyService.getValue("portOpen")).toBe(true);
+    ContextKeyService.setValue("sourceOpen", true);
+    expect(ContextKeyService.getValue("sourceOpen")).toBe(true);
   });
 
   it("setValue 相同值不触发通知", () => {
-    ContextKeyService.setValue("portOpen", true);
+    ContextKeyService.setValue("sourceOpen", true);
     let fired = false;
     ContextKeyService.onDidChangeContext(() => { fired = true; });
-    ContextKeyService.setValue("portOpen", true); // 相同值
+    ContextKeyService.setValue("sourceOpen", true); // 相同值
     expect(fired).toBe(false);
   });
 
   it("setValue 不同值触发通知", () => {
-    ContextKeyService.setValue("portOpen", false);
+    ContextKeyService.setValue("sourceOpen", false);
     let changedKey = "";
     ContextKeyService.onDidChangeContext((key) => { changedKey = key; });
-    ContextKeyService.setValue("portOpen", true);
-    expect(changedKey).toBe("portOpen");
+    ContextKeyService.setValue("sourceOpen", true);
+    expect(changedKey).toBe("sourceOpen");
   });
 
   it("onDidChangeContext 返回 unsubscribe 函数", () => {
@@ -233,7 +233,7 @@ describe("ContextKeyService — setValue / getValue / onDidChangeContext", () =>
     expect(ContextKeyService.getValue("activeEditor")).toBeNull();
     expect(ContextKeyService.getValue("editorHasSelection")).toBe(false);
     expect(ContextKeyService.getValue("editorCount")).toBe(0);
-    expect(ContextKeyService.getValue("portOpen")).toBe(false);
-    expect(ContextKeyService.getValue("portName")).toBeNull();
+    expect(ContextKeyService.getValue("sourceOpen")).toBe(false);
+    expect(ContextKeyService.getValue("sourceName")).toBeNull();
   });
 });

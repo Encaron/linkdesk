@@ -300,10 +300,10 @@ function App() {
   /* ── Phase 5d：运行时 context key 更新 ── */
   // 对标 VS Code setContext——串口/标签页状态变更时同步更新全局 context key 状态机
 
-  // portOpen / portName——串口开关时更新
+  // sourceOpen / sourceName——数据源开关时更新
   useEffect(() => {
-    ContextKeyService.setValue("portOpen", isOpen);
-    ContextKeyService.setValue("portName", isOpen ? portName : null);
+    ContextKeyService.setValue("sourceOpen", isOpen);
+    ContextKeyService.setValue("sourceName", isOpen ? portName : null);
   }, [isOpen, portName]);
 
   // activeEditor——标签页切换时更新（pluginId 即 editor 身份）
