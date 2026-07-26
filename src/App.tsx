@@ -243,10 +243,15 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
 
-      // E3b #36d：注册内置快捷键 Ctrl+K Ctrl+T → 选择颜色主题
+      // E3b #36d + E3c #41：注册内置快捷键
       registerKeybinding({
         command: "workbench.action.selectTheme",
         key: "ctrl+k ctrl+t",
+        source: "builtin",
+      });
+      registerKeybinding({
+        command: "workbench.action.selectLanguage",
+        key: "ctrl+k ctrl+l",
         source: "builtin",
       });
 
@@ -445,6 +450,7 @@ function App() {
   useEffect(() => {
     const onPalette = () => {
       setThemeBrowserOpen(false);
+      setLangPickerOpen(false);
       setPaletteOpen((p) => !p);
     };
     const onThemeBrowser = (e: Event) => {
@@ -455,9 +461,15 @@ function App() {
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
     window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+    const onLanguagePicker = () => {
+      setPaletteOpen(false);
+      setLangPickerOpen(true);
+    };
+    window.addEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
     };
   }, [createTab]);
 

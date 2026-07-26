@@ -85,6 +85,16 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
   {
+    id: "workbench.action.selectLanguage",
+    title: i18n.t("选择语言"),
+    category: i18n.t("首选项"),
+    handler: async () => {
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER));
+    },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
+  },
+  {
     id: "workbench.action.openKeybindingsSettings",
     title: i18n.t("打开键盘快捷方式"),
     category: i18n.t("首选项"),
