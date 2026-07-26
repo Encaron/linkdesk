@@ -407,6 +407,36 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   }
 }
 
+/* ── #45：extensionDependencies 检查 ── */
+
+/**
+ * 检查插件的 extensionDependencies——所有依赖必须已安装且未被禁用。
+ * 共享函数——loadPlugin 和 loadPluginRuntime 都走这条路。
+ * @returns true = 依赖满足或无需依赖，false = 缺失（已 toast）
+ */
+function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean {
+  if (!manifest.extensionDependencies?.length) return true;
+
+  const disabled = getDisabledList();
+  const installed = new Set<string>();
+  for (const k of Object.keys(pluginManifests)) installed.add(extractPluginId(k));
+  for (const [id] of _deferredPlugins) installed.add(id);
+  for (const id of loadedPluginIds) installed.add(id);
+
+  const missing = manifest.extensionDependencies.filter(
+    (dep) => dep !== pluginId && (!installed.has(dep) || disabled.includes(dep)),
+  );
+  if (missing.length === 0) return true;
+
+  const reason = missing.map((d) => `"${d}"`).join("、");
+  pushToast({
+    message: `插件 "${manifest.name}" 缺少依赖: ${reason}——已跳过`,
+    ttl: TOAST_TTL_ERROR,
+  });
+  console.warn(`[pluginLoader] 依赖缺失 — "${pluginId}" 需要 ${reason}`);
+  return false;
+}
+
 async function loadPlugin(
   pluginId: string,
   reason: PluginInstallEvent["reason"] = "startup",
@@ -447,6 +477,9 @@ async function loadPlugin(
       return;
     }
   }
+
+  // #45：extensionDependencies——加载前检查依赖是否已安装且未被禁用
+  if (!_checkDependencies(pluginId, manifest)) return;
 
   // VS Code 对标：不 switch type——检测 manifest 实际声明了什么，每种贡献独立处理。
   let contributed = false;
@@ -596,6 +629,9 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       return;
     }
   }
+
+  // #45：extensionDependencies——加载前检查依赖
+  if (!_checkDependencies(pluginId, manifest)) return;
 
   // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
