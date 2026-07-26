@@ -60,6 +60,7 @@ function ensureMarketplaceCommands(): void {
   registerMenuItems(MenuId.MarketplaceItemGear, "marketplace", [
     { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
     { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
+    { command: "workbench.action.selectLanguage", group: "navigation", when: "extensionHasLanguages" },
     { command: "workbench.action.openExtensionKeybindings", group: "navigation", when: "extensionHasKeybindings" },
     { command: "marketplace.enable", group: "navigation", when: "pluginDisabled" },
     { command: "marketplace.disable", group: "navigation", when: "!pluginDisabled" },
