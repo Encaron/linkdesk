@@ -23,6 +23,7 @@ import { unregisterPluginMenus } from "../core/MenuRegistry";
 import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/CardRegistry";
 import { unregisterPluginChannels } from "../core/LogChannel";
+import { unregisterPluginFileAssociations } from "../core/FileAssociationService";
 import { unregisterPluginThemes } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
 import type { PluginManifest } from "../core/types";
@@ -109,6 +110,7 @@ export function initLifecycleConsumers(): void {
     unregisterPluginProtocols(pluginId);
     unregisterPluginCards(pluginId);
     unregisterPluginChannels(pluginId);
+    unregisterPluginFileAssociations(pluginId);
     unregisterPluginThemes(pluginId);
     ThemeRegistry.unregisterPlugin(pluginId);
   });
