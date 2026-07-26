@@ -819,6 +819,7 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
         continue;
       }
       i18n.addResourceBundle(lang.code, ns, data, true, true);
+      i18n.addResourceBundle(lang.code, pluginId, data, true, true);
       registered++;
     }
     if (registered > 0) {
@@ -840,6 +841,7 @@ function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): void {
     }
     const code = manifest.file.replace(/\.json$/, "");
     i18n.addResourceBundle(code, ns, data, true, true);
+    i18n.addResourceBundle(code, pluginId, data, true, true);
     log.appendLine(`✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
     pushToast({
       message: `新增语言：${manifest.name}`,

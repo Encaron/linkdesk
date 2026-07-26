@@ -26,6 +26,7 @@ import { unregisterPluginChannels } from "../core/LogChannel";
 import { unregisterPluginFileAssociations } from "../core/FileAssociationService";
 import { unregisterPluginThemes } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/ThemeRegistry";
+import i18n from "../i18n";
 import type { PluginManifest } from "../core/types";
 
 /* ── 事件类型 ── */
@@ -113,6 +114,10 @@ export function initLifecycleConsumers(): void {
     unregisterPluginFileAssociations(pluginId);
     unregisterPluginThemes(pluginId);
     ThemeRegistry.unregisterPlugin(pluginId);
+    // H6：清理语言插件注册的 i18n 资源（按 pluginId 命名空间追踪）
+    for (const lang of i18n.languages ?? []) {
+      i18n.removeResourceBundle(lang, pluginId);
+    }
   });
 
   /* ─── 消费端 3：toast 通知 ─── */
