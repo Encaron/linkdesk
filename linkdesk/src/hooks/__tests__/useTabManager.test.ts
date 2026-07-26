@@ -6,8 +6,7 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { FALLBACK_PLUGIN_ID } from "../../utils/fallbackPluginId";
 import {
-  resetTerminalCounter,
-  resetWorkspaceCounter,
+  resetPluginCounter,
   resetFallbackCounter,
   createTabDefaults,
   allTabs,
@@ -42,8 +41,8 @@ function stateWithTabs(...tabs: Tab[]): TabState {
 }
 
 beforeEach(() => {
-  resetTerminalCounter(0);
-  resetWorkspaceCounter(0);
+  resetPluginCounter("terminal", 0);
+  resetPluginCounter("workspace", 0);
   resetFallbackCounter(0);
 });
 

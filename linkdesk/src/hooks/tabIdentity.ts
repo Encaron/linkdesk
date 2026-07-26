@@ -48,8 +48,7 @@ function nextCounter(type: string): number {
   return n;
 }
 
-export function resetTerminalCounter(n = 0): void { _counters["terminal"] = n; }
-export function resetWorkspaceCounter(n = 0): void { _counters["workspace"] = n; }
+export function resetPluginCounter(pluginId: string, n = 0): void { _counters[pluginId] = n; }
 export function resetFallbackCounter(_n = 0): void {
   // 清除所有计数器——测试 beforeEach 用
   for (const k of Object.keys(_counters)) delete _counters[k];
