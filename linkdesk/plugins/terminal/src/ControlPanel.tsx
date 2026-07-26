@@ -14,6 +14,7 @@ import { useTranslation } from "react-i18next";
 import { useMemo, useCallback } from "react";
 import { useSerialContext } from "./SerialContext";
 import { setPluginStateValue } from "@src/core/PluginStateService";
+import SelectBox from "@src/components/shared/SelectBox";
 import {
   listProtocols,
   getActiveProtocolId,
@@ -109,57 +110,32 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       <span className={`control-dot${connected ? " on" : ""}`} />
 
       {/* COM 口下拉框 */}
-      <select
-        className="control-select port-select"
+      <SelectBox
         value={portName}
-        onChange={(e) => handlePortChange(e.target.value)}
+        options={ports.map((p) => ({ value: p.name, label: p.name }))}
+        onChange={handlePortChange}
         disabled={isOpen}
-      >
-        {ports.length > 0 ? (
-          ports.map((p) => (
-            <option key={p.name} value={p.name}>
-              {p.name}
-            </option>
-          ))
-        ) : (
-          <option value="">{t("无可用串口")}</option>
-        )}
-      </select>
+        placeholder={t("无可用串口")}
+      />
 
       <span className="control-sep" />
 
       {/* 波特率下拉框 */}
-      <select
-        className="control-select"
+      <SelectBox
         value={baudRate}
-        onChange={(e) => handleBaudChange(e.target.value)}
-      >
-        {BAUD_RATES.map((b) => (
-          <option key={b} value={b}>
-            {b}
-          </option>
-        ))}
-      </select>
+        options={BAUD_RATES}
+        onChange={handleBaudChange}
+      />
 
       <span className="control-sep" />
 
       {/* 协议下拉框 */}
-      <select
-        className="control-select"
+      <SelectBox
         value={activeSession?.protocol ?? activeProtocolId}
-        onChange={(e) => handleProtocolChange(e.target.value)}
-        title={t("协议解析器")}
-      >
-        {protocols.length > 0 ? (
-          protocols.map((p) => (
-            <option key={p.id} value={p.id}>
-              {p.name}
-            </option>
-          ))
-        ) : (
-          <option value="bracket">{t("方括号协议")}</option>
-        )}
-      </select>
+        options={protocols.length > 0 ? protocols.map((p) => ({ value: p.id, label: p.name })) : []}
+        onChange={handleProtocolChange}
+        placeholder={t("方括号协议")}
+      />
 
       <span className="control-spacer" />
 
