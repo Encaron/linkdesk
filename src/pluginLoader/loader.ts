@@ -1383,6 +1383,7 @@ export async function activatePlugin(pluginId: string): Promise<boolean> {
     syncAppThemeEnum();
     syncAppLanguageEnum();
     onPluginLifecycleChange.fire();
+    console.log(`[pluginLoader] ⚡ 延迟激活 "${pluginId}"`);
     log.appendLine(`⚡ 延迟激活 "${pluginId}"`);
     return true;
   } catch (e: any) {
