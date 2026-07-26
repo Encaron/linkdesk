@@ -1008,8 +1008,9 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     const displayName = manifest.name;
     // B2 fix: 标记为已禁用（缓存保留——marketplace 仍可浏览详情）
     cachePluginMetadata(pluginId, manifest, "disabled");
-    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题后 revert 找不到归属
+    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
+    await revertLanguageIfCurrent(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
     // 仅视图插件需要注销组件注册
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
@@ -1089,8 +1090,9 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 
     // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, manifest, "uninstalled");
-    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题后 revert 找不到归属
+    // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
+    await revertLanguageIfCurrent(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
@@ -1231,6 +1233,22 @@ function syncAppLanguageEnum(): void {
   if (languages.length === 0) return; // 无语言时不更新——保留上次枚举
   const codes = languages.map(l => l.id);
   updateConfigurationEnum("app.language", codes, codes.includes("zh") ? "zh" : codes[0]);
+}
+
+/** 当前语言是否来自此插件——卸载/禁用当前语言时自动回退（对标 revertThemeIfCurrent） */
+async function revertLanguageIfCurrent(pluginId: string): Promise<void> {
+  try {
+    const currentLang = getConfigurationValue<string>("app.language") ?? "zh";
+    const lang = LanguageRegistry.get(currentLang);
+    if (!lang || lang.pluginId !== pluginId) return;
+
+    // 当前语言来自被卸载/禁用的插件 → 找替代
+    const languages = LanguageRegistry.getAll();
+    const fallback = languages.length > 0
+      ? (languages.find(l => l.id === "zh")?.id ?? languages[0].id)
+      : "zh";
+    await setConfigurationValue("app.language", fallback, "user");
+  } catch { /* 非关键路径 */ }
 }
 
 /** 当前主题是否来自此插件——卸载/禁用当前主题时自动回退 */
