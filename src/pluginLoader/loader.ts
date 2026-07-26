@@ -871,7 +871,7 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
-    revertThemeIfCurrent(pluginId);
+    await revertThemeIfCurrent(pluginId);
     syncAppThemeEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
@@ -960,7 +960,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     loadedPluginIds.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     // #34：卸载后同步主题枚举 + 自动回退当前主题
-    revertThemeIfCurrent(pluginId);
+    await revertThemeIfCurrent(pluginId);
     syncAppThemeEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
