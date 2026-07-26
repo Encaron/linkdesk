@@ -224,7 +224,6 @@ function _validateEnum(key: string, value: unknown, scope: "user" | "workspace")
   if (prop.enum.includes(value as string)) return value;
 
   console.warn(`[ConfigurationService] "${key}: ${value}" 不在 enum [${prop.enum}] 中——已清除`);
-  console.log(`🔥🔥🔥 M3 enum 验证生效: "${key}" 的值 "${value}" 已被清除，回退到默认值`);
   if (scope === "workspace") {
     delete _workspaceSettings[key];
   } else {
