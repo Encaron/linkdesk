@@ -123,11 +123,12 @@ export default function QuickPick<T>({
 
   // onHighlight 回调——选中项变化时触发（主题预览）
   useEffect(() => {
+    if (!open) return;
     if (onHighlight && filtered.length > 0) {
       const idx = Math.min(selected, filtered.length - 1);
       onHighlight(filtered[idx]);
     }
-  }, [selected, filtered, onHighlight]);
+  }, [open, selected, filtered, onHighlight]);
 
   if (!open) return null;
 
