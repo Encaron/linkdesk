@@ -9,6 +9,8 @@
  */
 
 import type { PluginManifest } from "./types";
+import { PluginLifecycle } from "../pluginLoader/lifecycle";
+import { getLoadedPluginManifests } from "../pluginLoader/loader";
 
 /* ── 类型 ── */
 
@@ -26,6 +28,16 @@ export interface SlotPluginEntry {
 class FactorySlots {
   private _slots = new Map<FactoryRole, string>();
 
+  constructor() {
+    // 桌子管理规则——机制 2：插件进出自动重扫描
+    PluginLifecycle.onDidInstall.event(() => {
+      this.refreshFromPlugins();
+    });
+    PluginLifecycle.onDidUninstall.event(() => {
+      this.refreshFromPlugins();
+    });
+  }
+
   /**
    * 扫描所有已加载插件，自动填充插槽。
    * 优先级：core: true > 第一个声明者。
@@ -39,6 +51,19 @@ class FactorySlots {
         this._slots.set(role, p.pluginId);
       }
     }
+  }
+
+  /**
+   * 从当前已加载插件重新扫描插槽。
+   * 插件安装/卸载/启用/禁用后自动调用——调用方无需手动刷新。
+   */
+  refreshFromPlugins(): void {
+    const plugins = getLoadedPluginManifests().map((p) => ({
+      pluginId: p.pluginId,
+      manifest: p.manifest,
+    }));
+    this._slots.clear();
+    this.initialize(plugins);
   }
 
   /** 获取填充指定角色的插件 ID。未找到返回 undefined。 */
