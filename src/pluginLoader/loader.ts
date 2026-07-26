@@ -424,19 +424,23 @@ async function loadPlugin(
     contributed = true;
   }
 
-  if (manifest.themes && manifest.themes.length > 0) {
-    loadThemePlugin(pluginId, manifest);
-    contributed = true;
-  } else if (manifest.file) {
-    const data = getPluginDataFile(pluginId, manifest.file);
-    if (data?.type === "dark" || data?.type === "light") {
+  // M4：contributes.themes 优先——旧格式 manifest.themes / manifest.file 仅在新格式缺失时兜底
+  const hasNewThemes = !!manifest.contributes?.themes;
+  if (!hasNewThemes) {
+    if (manifest.themes && manifest.themes.length > 0) {
       loadThemePlugin(pluginId, manifest);
       contributed = true;
+    } else if (manifest.file) {
+      const data = getPluginDataFile(pluginId, manifest.file);
+      if (data?.type === "dark" || data?.type === "light") {
+        loadThemePlugin(pluginId, manifest);
+        contributed = true;
+      }
     }
   }
 
   // contributes.themes（parseContributions 中注册——此处仅标记 contributed）
-  if (manifest.contributes?.themes) {
+  if (hasNewThemes) {
     contributed = true;
   }
 
