@@ -17,6 +17,7 @@ import {
   getConfigurationContributions,
   getMergedSchema,
   consumeSettingsGroup,
+  onRequestSettingsGroup,
   type ConfigurationProperty,
 } from "../../core/ConfigurationRegistry";
 import {
@@ -62,13 +63,21 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     return onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
   }, []);
 
-  // E3b：齿轮"设置"→跳转到指定插件的配置分组（模块级变量，零事件）
+  // M1 双通道 A：mount 时消费 pending 变量——设置未打开时齿轮"设置"跳转到指定分组
   useEffect(() => {
     const target = consumeSettingsGroup();
     if (target) {
       setSearch("");
       setSelectedGroup(target);
     }
+  }, []);
+
+  // M1 双通道 B：Emitter 订阅——设置已打开时齿轮"设置"实时跳转
+  useEffect(() => {
+    return onRequestSettingsGroup.event((pluginId) => {
+      setSearch("");
+      setSelectedGroup(pluginId);
+    });
   }, []);
 
   // 从 Registry 派生分组列表——title/description 走 t() 做 i18n
