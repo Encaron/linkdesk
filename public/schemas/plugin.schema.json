@@ -24,7 +24,6 @@
     "factoryRole": {
       "type": "string",
       "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
-      "enum": ["settings", "marketplace"]
     },
     "name": {
       "type": "string",
