@@ -45,46 +45,6 @@
   50% { box-shadow: 0 0 10px var(--terminal-ok, #22C55E); }
 }
 
-/* ── 无边框 select ── */
-
-.control-select {
-  background: transparent;
-  border: none;
-  color: var(--text-primary);
-  font-size: 12px;
-  font-weight: 500;
-  padding: 2px 4px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-family: inherit;
-  outline: none;
-  max-width: 140px;
-  color-scheme: dark;
-}
-
-.control-select option {
-  background: var(--bg-window, #1e1e1e);
-  color: var(--text-primary, #cccccc);
-}
-
-.control-select:hover {
-  background: rgba(255, 255, 255, 0.05);
-}
-
-.control-select:focus {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-.control-select:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-/* COM 口名颜色 = session 色 */
-.port-select {
-  color: var(--session-color);
-}
-
 /* ── 1px 竖线分隔 ── */
 
 .control-sep {
@@ -140,10 +100,3 @@
   color: var(--terminal-err, #EF4444);
 }
 
-/* ── 响应式：窗口太窄时压缩 select 宽度 ── */
-
-@media (max-width: 480px) {
-  .control-select {
-    max-width: 80px;
-  }
-}
