@@ -239,27 +239,6 @@ function App() {
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
-      // #34：插件加载完成后，用真实主题列表覆盖 app.theme 枚举
-      const availableThemes = getAvailableThemes();
-      if (availableThemes.length > 0) {
-        registerConfiguration(APP_PLUGIN_ID, {
-          title: "通用",
-          properties: {
-            "app.theme": {
-              type: "string",
-              default: availableThemes.includes("Dark") ? "Dark" : availableThemes[0],
-              enum: availableThemes,
-              description: "配色主题",
-              onApply: async (v) => {
-                const t = await loadTheme(v as string);
-                applyTheme(t);
-                applyAccentColor(getConfigurationValue<string>("app.accentColor"));
-              },
-            },
-          },
-        });
-      }
-
       // E2c #19e：初始化系统插槽——必须在插件加载后、首次消费前
       factorySlots.initialize(getLoadedPluginManifests().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
 
