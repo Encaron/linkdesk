@@ -31,6 +31,7 @@ import {
 } from "./FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 import { Emitter } from "./CoreEvents";
+import { getWorkspaceRoot } from "./WorkspaceService";
 
 /* ── 事件 ── */
 
@@ -55,6 +56,8 @@ export interface Profile {
 interface RuntimeSnapshot {
   plugins: string[];
   settings: Record<string, unknown>;
+  /** 切换前的工作区根路径——回退时恢复 */
+  workspaceRoot: string | null;
 }
 
 /* ── 文件路径 ── */
@@ -155,6 +158,7 @@ function _captureSnapshot(): RuntimeSnapshot {
   return {
     plugins: getLoadedPluginManifests().map((m) => m.pluginId),
     settings: getUserSettings(),
+    workspaceRoot: getWorkspaceRoot() ?? null,
   };
 }
 
@@ -183,6 +187,16 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
       await setConfigurationValue(key, value, "user");
     } catch (e: any) {
       errors.push(`回退——设置 "${key}" 失败: ${e?.message || e}`);
+    }
+  }
+
+  // 恢复 workspace——如果 Profile 切换改了工作区，回退到旧路径
+  if (prev.workspaceRoot && getWorkspaceRoot() !== prev.workspaceRoot) {
+    try {
+      const { addFolder } = await import("./WorkspaceService");
+      addFolder(prev.workspaceRoot);
+    } catch (e: any) {
+      errors.push(`回退——工作区恢复失败: ${e?.message || e}`);
     }
   }
 
@@ -243,14 +257,9 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
 
   // 维度 5：布局——检查工作区根路径
   if (expected.workspace) {
-    try {
-      const { getWorkspaceRoot } = await import("./WorkspaceService");
-      const root = getWorkspaceRoot();
-      if (root !== expected.workspace) {
-        errors.push({ dimension: 5, message: `工作区路径不匹配——期望 "${expected.workspace}" 实际 "${root ?? "无"}"` });
-      }
-    } catch {
-      /* WorkspaceService 可能未就绪——非阻断 */
+    const root = getWorkspaceRoot();
+    if (root !== expected.workspace) {
+      errors.push({ dimension: 5, message: `工作区路径不匹配——期望 "${expected.workspace}" 实际 "${root ?? "无"}"` });
     }
   }
 
@@ -332,9 +341,9 @@ export async function switchProfile(name: string): Promise<boolean> {
     const rollbackErrors = await _restoreSnapshot(snapshot);
     const summary = errors.slice(0, 3).join("; ");
     const tail = errors.length > 3 ? ` ...等${errors.length}项` : "";
-    const rbMsg = rollbackErrors.length > 0
-      ? `（回退${rollbackErrors.length === 1 ? "成功" : "部分失败——请手动检查"}）`
-      : "（已回退）";
+    const rbMsg = rollbackErrors.length === 0
+      ? "（已回退）"
+      : "（回退部分失败——请手动检查）";
     pushToast({
       message: `Profile 切换失败: ${summary}${tail} ${rbMsg}`,
       severity: "warning",
