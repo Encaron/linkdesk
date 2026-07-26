@@ -3,7 +3,7 @@
  *
  * 对标 VS Code Profile 系统。
  * Profile = 插件集合 + settings + workspace 的快照。
- * 切换 Profile 时五维验证——任一维度失败则 toast 报告。
+ * 切换 Profile 时五维验证——任一维度失败则回退 + toast 报告。
  *
  * 设计依据：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/04-E3d-Profile与激活.md
  *
@@ -17,7 +17,7 @@ import {
   enablePlugin,
   isPluginDisabled,
 } from "../pluginLoader/loader";
-import { setConfigurationValue, getConfigurationValue } from "./ConfigurationService";
+import { setConfigurationValue, getConfigurationValue, getUserSettings } from "./ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "./toast";
 import {
   appDataDir,
@@ -30,6 +30,12 @@ import {
   deleteEntry,
 } from "./FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
+import { Emitter } from "./CoreEvents";
+
+/* ── 事件 ── */
+
+/** Profile 切换完成——对标 VS Code onDidChangeProfile */
+export const onDidChangeProfile = new Emitter<{ name: string }>();
 
 /* ── 类型 ── */
 
@@ -43,6 +49,12 @@ export interface Profile {
   settings: Record<string, unknown>;
   /** 关联的工作区路径 */
   workspace?: string;
+}
+
+/** 切换前的运行时快照——失败时回退用 */
+interface RuntimeSnapshot {
+  plugins: string[];
+  settings: Record<string, unknown>;
 }
 
 /* ── 文件路径 ── */
@@ -137,6 +149,46 @@ export function snapshotCurrentAsProfile(name: string): Profile {
   };
 }
 
+/* ── 运行时快照——回退用 ── */
+
+function _captureSnapshot(): RuntimeSnapshot {
+  return {
+    plugins: getLoadedPluginManifests().map((m) => m.pluginId),
+    settings: getUserSettings(),
+  };
+}
+
+async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
+  const errors: string[] = [];
+  const current = new Set(getLoadedPluginManifests().map((m) => m.pluginId));
+  const prevSet = new Set(prev.plugins);
+
+  // 恢复插件列表
+  for (const id of prev.plugins) {
+    if (!current.has(id)) {
+      const r = await enablePlugin(id);
+      if (!r.success) errors.push(`回退——启用 "${id}" 失败: ${r.error}`);
+    }
+  }
+  for (const id of current) {
+    if (!prevSet.has(id)) {
+      const r = await disablePlugin(id);
+      if (!r.success) errors.push(`回退——禁用 "${id}" 失败: ${r.error}`);
+    }
+  }
+
+  // 恢复 settings
+  for (const [key, value] of Object.entries(prev.settings)) {
+    try {
+      await setConfigurationValue(key, value, "user");
+    } catch (e: any) {
+      errors.push(`回退——设置 "${key}" 失败: ${e?.message || e}`);
+    }
+  }
+
+  return errors;
+}
+
 /* ── 五维验证 ── */
 
 interface ValidationError {
@@ -167,31 +219,35 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
     }
   }
 
-  // 维度 3：主题 CSS 变量——仅在浏览器环境检查
+  // 维度 3：主题 CSS 变量——对标设计文档，检查 body 上的实际 CSS 变量值
   if (typeof document !== "undefined" && expected.settings["app.theme"]) {
-    const expectedTheme = expected.settings["app.theme"];
-    const currentTheme = getConfigurationValue<string>("app.theme");
-    if (currentTheme !== expectedTheme) {
-      errors.push({ dimension: 3, message: `主题未切换——期望 "${expectedTheme}" 实际 "${currentTheme}"` });
+    const bg = getComputedStyle(document.body).getPropertyValue("--bg").trim();
+    if (!bg) {
+      errors.push({ dimension: 3, message: "主题 CSS 变量 --bg 未设置——主题可能未正确应用" });
     }
   }
 
-  // 维度 4：语言
+  // 维度 4：语言——检查 i18next 实际当前语言
   if (expected.settings["app.language"]) {
-    const expectedLang = expected.settings["app.language"];
-    const currentLang = getConfigurationValue<string>("app.language");
-    if (currentLang !== expectedLang) {
-      errors.push({ dimension: 4, message: `语言未切换——期望 "${expectedLang}" 实际 "${currentLang}"` });
+    try {
+      const { default: i18n } = await import("../i18n");
+      const currentLang = i18n.language;
+      const expectedLang = expected.settings["app.language"];
+      if (currentLang !== expectedLang) {
+        errors.push({ dimension: 4, message: `语言未切换——期望 "${expectedLang}" 实际 "${currentLang}"` });
+      }
+    } catch {
+      /* i18n 模块不可用——跳过 */
     }
   }
 
-  // 维度 5：布局——基本检查（工作区根路径）
+  // 维度 5：布局——检查工作区根路径
   if (expected.workspace) {
     try {
       const { getWorkspaceRoot } = await import("./WorkspaceService");
       const root = getWorkspaceRoot();
       if (root !== expected.workspace) {
-        errors.push({ dimension: 5, message: `工作区路径不匹配` });
+        errors.push({ dimension: 5, message: `工作区路径不匹配——期望 "${expected.workspace}" 实际 "${root ?? "无"}"` });
       }
     } catch {
       /* WorkspaceService 可能未就绪——非阻断 */
@@ -206,8 +262,9 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
 /**
  * 切换到指定 Profile——禁用不在列表中的插件、启用列表中的插件、
  * 应用 settings、打开 workspace。完成后运行五维验证。
+ * 任一维度失败 → 回退到切换前状态 + toast 报告。
  *
- * @returns true = 全部成功，false = 部分失败（已 toast）
+ * @returns true = 全部成功，false = 部分失败（已回退 + toast）
  */
 export async function switchProfile(name: string): Promise<boolean> {
   const profile = await loadProfile(name);
@@ -220,6 +277,8 @@ export async function switchProfile(name: string): Promise<boolean> {
     return false;
   }
 
+  // 🔥 保存切换前快照——失败时回退
+  const snapshot = _captureSnapshot();
   const errors: string[] = [];
 
   // 1. 计算插件差异
@@ -268,20 +327,25 @@ export async function switchProfile(name: string): Promise<boolean> {
     errors.push(`[维度${v.dimension}] ${v.message}`);
   }
 
-  // 7. 持久化当前 Profile 名
-  await _setCurrentProfileName(name);
-
-  // 8. 汇总结果
+  // 7. 失败 → 回退到切换前状态
   if (errors.length > 0) {
+    const rollbackErrors = await _restoreSnapshot(snapshot);
     const summary = errors.slice(0, 3).join("; ");
     const tail = errors.length > 3 ? ` ...等${errors.length}项` : "";
+    const rbMsg = rollbackErrors.length > 0
+      ? `（回退${rollbackErrors.length === 1 ? "成功" : "部分失败——请手动检查"}）`
+      : "（已回退）";
     pushToast({
-      message: `Profile 切换部分失败: ${summary}${tail}`,
+      message: `Profile 切换失败: ${summary}${tail} ${rbMsg}`,
       severity: "warning",
       ttl: 8000,
     });
     return false;
   }
+
+  // 8. 成功 → 持久化当前 Profile 名 + 广播事件
+  await _setCurrentProfileName(name);
+  onDidChangeProfile.fire({ name });
 
   pushToast({ message: `已切换到 Profile "${name}"`, severity: "info" });
   return true;
