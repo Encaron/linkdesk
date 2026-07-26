@@ -83,6 +83,7 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
           core: p.manifest.core,
           author: p.manifest.author,
           statusBar: p.manifest.statusBar,
+          contributes: p.manifest.contributes,
         },
       }));
     case "enable":

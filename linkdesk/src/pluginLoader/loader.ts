@@ -105,6 +105,17 @@ function getPluginDataFile(pluginId: string, filename: string): Record<string, u
   return pluginDataFiles[target];
 }
 
+/** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
+function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
+  const raw = data.colors;
+  if (!raw || typeof raw !== "object") return {};
+  const colors: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (typeof v === "string") colors[k] = v;
+  }
+  return colors;
+}
+
 /** 查找已加载插件的 manifest——含视图和非视图插件（主题/语言等）+ 运行时加载的插件 */
 function getLoadedManifest(pluginId: string): PluginManifest | undefined {
   // 1. 先查视图插件
@@ -354,12 +365,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
       const data = getPluginDataFile(pluginId, tc.path);
       if (data) {
         const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-        const colors: Record<string, string> = {};
-        for (const [k, v] of Object.entries(data)) {
-          if (k !== "type" && k !== "name" && typeof v === "string") {
-            colors[k] = v;
-          }
-        }
+        const colors = extractThemeColors(data);
         registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
       } else {
         console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}"`);
@@ -491,7 +497,8 @@ async function loadPlugin(
   // B2 fix: 缓存元数据——marketplace 不依赖文件系统，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
 
-  // #34：主题枚举同步
+  // #34：主题枚举同步——必须在 parseContributions 注册主题之后、onDidInstall 之前。
+  // onDidInstall 消费端依赖枚举已更新（如设置页下拉即时刷新），调换顺序 → 消费端看到旧枚举。
   syncAppThemeEnum();
 
   // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）由 lifecycle 消费端统一处理
@@ -589,7 +596,8 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   loadedPluginIds.add(pluginId);
 
-  // #34：主题枚举同步
+  // #34：主题枚举同步——同上 loadPlugin：必须在主题注册之后、onDidInstall 之前。
+  // 调换顺序 → onDidInstall 消费端（设置页下拉）看到旧枚举。
   syncAppThemeEnum();
 
   // Phase 5h 行为归一化：副作用由 lifecycle 消费端统一处理
@@ -675,12 +683,7 @@ function loadThemePlugin(pluginId: string, manifest: PluginManifest): void {
         continue;
       }
       const themeType = (data.type as "dark" | "light") ?? "dark";
-      const colors: Record<string, string> = {};
-      for (const [k, v] of Object.entries(data)) {
-        if (k !== "type" && k !== "name" && typeof v === "string") {
-          colors[k] = v;
-        }
-      }
+      const colors = extractThemeColors(data);
       registerTheme({ name: t.name, type: themeType, colors }, pluginId);
       // H2：旧格式主题同步写入 ThemeRegistry——卸载时 revertThemeIfCurrent 能找到归属
       ThemeRegistry.register({ id: t.name, label: t.name, uiTheme: themeType, path: t.file }, pluginId);
