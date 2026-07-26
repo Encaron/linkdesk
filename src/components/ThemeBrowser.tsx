@@ -54,7 +54,7 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
       const theme = await loadTheme(themeName);
       applyTheme(theme);
       // 对标 App.tsx onApply：applyTheme 后恢复用户强调色——盖回主题自带的 accent
-      applyAccentColor(getConfigurationValue<string>("app.accentColor") || "#0078D4");
+      applyAccentColor(getConfigurationValue<string>("app.accentColor"));
     } catch {
       // 加载失败——静默，keep current
     }
