@@ -84,6 +84,15 @@ function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
   ContextKeyService.setValue("extensionHasConfiguration", !!c.configuration);
 }
 
+/** 齿轮菜单关闭时清理所有扩展 context key——#36f10。不清理会导致下次打开不同插件齿轮时残留旧 key。 */
+function clearExtensionContextKeys(): void {
+  ContextKeyService.setValue("pluginDisabled", false);
+  ContextKeyService.setValue("extensionHasThemes", false);
+  ContextKeyService.setValue("extensionHasLanguages", false);
+  ContextKeyService.setValue("extensionHasIconThemes", false);
+  ContextKeyService.setValue("extensionHasConfiguration", false);
+}
+
 function MarketplaceSidebar() {
   const { t } = useTranslation();
   const tabActions = useTabActions();
@@ -525,7 +534,7 @@ function ExtensionItem({
               menuId={MenuId.MarketplaceItemGear}
               anchor={gearMenuAnchor}
               context={{ pluginId: plugin.pluginId }}
-              onClose={() => setGearMenuAnchor(null)}
+              onClose={() => { clearExtensionContextKeys(); setGearMenuAnchor(null); }}
             />
           )}
         </div>

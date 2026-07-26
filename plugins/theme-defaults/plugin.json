@@ -2,7 +2,6 @@
   "$schema": "../../public/schemas/plugin.schema.json",
   "name": "官方主题",
   "version": "1.0.0",
-  "core": true,
   "description": "出厂暗色/亮色主题——内置工厂插件，不可卸载",
   "author": "官方",
   "contributes": {

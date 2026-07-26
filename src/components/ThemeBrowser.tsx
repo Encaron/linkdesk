@@ -9,7 +9,7 @@
  * VS Code 对标：src/vs/workbench/contrib/themes/browser/themes.contribution.ts
  */
 
-import { useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   getAvailableThemes,
   getThemesByPlugin,
@@ -18,6 +18,7 @@ import {
   getCurrentTheme,
 } from "../core/ThemeEngine";
 import { setConfigurationValue } from "../core/ConfigurationService";
+import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
 
 interface Props {
@@ -66,7 +67,19 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
   };
 
   /** 齿轮=只该插件，全局=全部——对标 VS Code getQuickPickEntries(this.extension) */
-  const themes = pluginId ? getThemesByPlugin(pluginId) : getAvailableThemes();
+  const [themes, setThemes] = useState<string[]>([]);
+
+  // #36f12：打开时填充列表 + 订阅插件生命周期——卸载/安装主题插件时列表即时刷新
+  useEffect(() => {
+    if (!open) return;
+    const refresh = () => {
+      const list = pluginId ? getThemesByPlugin(pluginId) : getAvailableThemes();
+      setThemes(list);
+    };
+    refresh();
+    const unsub = onPluginLifecycleChange.event(refresh);
+    return unsub;
+  }, [open, pluginId]);
 
   return (
     <QuickPick
