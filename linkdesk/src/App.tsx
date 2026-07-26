@@ -46,7 +46,7 @@ import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./c
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
 import SourceStateContext from "./core/SourceStateContext";
-import type { PortInfo } from "./core/SourceStateContext";
+import type { SourceInfo } from "./core/SourceStateContext";
 import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
@@ -60,7 +60,7 @@ function App() {
   // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
   useMemoryMonitor();
   const [isOpen, setIsOpen] = useState(false);
-  const [ports, setPorts] = useState<PortInfo[]>([]);
+  const [ports, setPorts] = useState<SourceInfo[]>([]);
   const [portName, setPortName] = useState("");
   const [baudRate, setBaudRate] = useState("115200");
   // B86 fix：handleToggleOpen 用 ref 读最新值——ControlPanel 先 setPortName（React 异步）

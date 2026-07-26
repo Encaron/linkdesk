@@ -11,15 +11,16 @@
 import { createContext, useContext } from "react";
 
 /** 可用数据源列表项 */
-export interface PortInfo {
+export interface SourceInfo {
   name: string;
   description: string;
 }
 
 /** 数据源运行时状态 */
 export interface SourceState {
-  ports: PortInfo[];
+  ports: SourceInfo[];
   sourceName: string;
+  /** 波特率——串口特定字段。非串口数据源（TCP/BLE/文件）忽略此字段。 */
   baudRate: string;
   isOpen: boolean;
   txBytes: number;
