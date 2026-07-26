@@ -26,7 +26,7 @@ import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/toast";
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
-import { PluginLifecycle, initLifecycleConsumers, type PluginInstallEvent } from "./lifecycle";
+import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/ConfigurationRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../core/ConfigurationService";
@@ -197,6 +197,8 @@ let _loadingPromise: Promise<void> | null = null;
 const loadedPluginIds = new Set<string>();
 /** 🔥 硬约束 13：async init 竞态守卫——loadPlugin concurrent 调用时第二次返回第一次的 Promise */
 const _loadingPromises = new Map<string, Promise<void>>();
+/** 延迟激活的插件——有 activationEvents（非 "*"），manifest 已注册但 JS 未 import */
+const _deferredPlugins = new Map<string, PluginManifest>();
 
 export async function initPluginLoader(): Promise<void> {
   // 🔥 #59c fix：StrictMode 双重 effect 第二次调用时等第一次 Promise 完成
@@ -206,6 +208,14 @@ export async function initPluginLoader(): Promise<void> {
   return (_loadingPromise = (async () => {
   // Phase 5h 行为归一化：注册 lifecycle 消费端（iconOrder/toast/config/tab——只注册一次）
   initLifecycleConsumers();
+
+  // #44：注册命令预激活钩子——CommandRegistry 执行命令前检查是否需要先激活延迟插件
+  import("../core/CommandRegistry").then(({ setPreActivateHook }) => {
+    setPreActivateHook(async (commandId: string) => {
+      const pluginId = findDeferredByCommand(commandId);
+      if (pluginId) await activatePlugin(pluginId);
+    });
+  });
 
   const errors: string[] = [];
   const disabled = getDisabledList();
@@ -248,7 +258,13 @@ export async function initPluginLoader(): Promise<void> {
       continue;
     }
     try {
-      await loadPlugin(pluginId, "startup");
+      // #44：activationEvents——非 "*" 时延迟 JS import，只注册 manifest
+      const mKey = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
+      const manifest = mKey ? pluginManifests[mKey] : null;
+      const defer = manifest && manifest.activationEvents?.length
+        && !manifest.activationEvents.includes("*");
+      await loadPlugin(pluginId, "startup", { skipView: !!defer });
+      if (defer && manifest) _deferredPlugins.set(pluginId, manifest);
     } catch (e: any) {
       errors.push(`${pluginId}: ${e?.message || e}`);
     }
@@ -393,7 +409,8 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
 
 async function loadPlugin(
   pluginId: string,
-  reason: PluginInstallEvent["reason"] = "startup"
+  reason: PluginInstallEvent["reason"] = "startup",
+  opts?: { skipView?: boolean },
 ): Promise<void> {
   if (loadedPluginIds.has(pluginId)) return;
   // 🔥 硬约束 13：竞态守卫——两次 concurrent 调用 → 第二次等第一次的 Promise
@@ -434,8 +451,11 @@ async function loadPlugin(
   // VS Code 对标：不 switch type——检测 manifest 实际声明了什么，每种贡献独立处理。
   let contributed = false;
 
-  if (manifest.entry) {
+  if (manifest.entry && !opts?.skipView) {
     await loadViewPlugin(pluginId, manifest);
+    contributed = true;
+  } else if (manifest.entry && opts?.skipView) {
+    // #44：延迟激活——只标记 contributed，不 import JS
     contributed = true;
   }
 
@@ -1015,6 +1035,7 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     // 仅视图插件需要注销组件注册
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
+    _deferredPlugins.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
     syncAppThemeEnum();
     syncAppLanguageEnum();
@@ -1106,6 +1127,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // 前端：移除注册（仅视图插件需要）
     if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
+    _deferredPlugins.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     syncAppThemeEnum();
     syncAppLanguageEnum();
@@ -1341,6 +1363,44 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
   }
+}
+
+/* ── #44：延迟激活——activationEvents 插件按需 import ── */
+
+/**
+ * 激活之前延迟加载的插件——import JS → registerViewPlugin → fire onDidInstall。
+ * 调用时机：onCommand 执行前 / onFileOpen / onPortOpen 等触发源。
+ */
+export async function activatePlugin(pluginId: string): Promise<boolean> {
+  const manifest = _deferredPlugins.get(pluginId);
+  if (!manifest) return false; // 不是延迟插件——可能已激活或不存在
+
+  try {
+    await loadViewPlugin(pluginId, manifest);
+    _deferredPlugins.delete(pluginId);
+    // 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默）、
+    // 图标排序已正确。只需通知 UI 刷新（例如图标从灰变亮）
+    syncAppThemeEnum();
+    syncAppLanguageEnum();
+    onPluginLifecycleChange.fire();
+    log.appendLine(`⚡ 延迟激活 "${pluginId}"`);
+    return true;
+  } catch (e: any) {
+    console.error(`[pluginLoader] 激活 "${pluginId}" 失败:`, e);
+    pushToast({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${e?.message || e}`, severity: "error" });
+    return false;
+  }
+}
+
+/** 根据 commandId 查找所属的延迟插件——executeCommand 预激活用 */
+export function findDeferredByCommand(commandId: string): string | undefined {
+  for (const [pluginId, manifest] of _deferredPlugins) {
+    const events = manifest.activationEvents ?? [];
+    for (const ev of events) {
+      if (ev === `onCommand:${commandId}` || ev === "*") return pluginId;
+    }
+  }
+  return undefined;
 }
 
 /* ── 获取 viewPlugin（从 registry，导出给外部使用） ── */
