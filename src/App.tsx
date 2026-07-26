@@ -5,7 +5,7 @@ const linkdesk = () => (window as any).linkdesk;
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
-import { useTabManager, allTabs, resetTerminalCounter } from "./hooks/useTabManager";
+import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
@@ -271,19 +271,10 @@ function App() {
         const savedLayout = getTabLayout();
         if (savedLayout?.groups?.length > 0) {
           restoreLayout(savedLayout);
-          // 布局恢复后修复 _terminalCounter——避免新 session 的 ID 和
-          // 已恢复的旧 tab ID 碰撞（两个独立计数器生命周期不一致）。
-          // tabIdentity 的 generateId 用 _terminalCounter，useTerminalSessions 用 _sessionCounter。
-          // 布局恢复了旧 tab（如 terminal-1、terminal-2），但 _terminalCounter 重启归零 →
-          // 下次 createTab 生成同名 ID → 和旧 tab 碰撞 → closeTab 关错页。
-          let maxN = 0;
-          for (const g of savedLayout.groups) {
-            for (const t of g.tabs) {
-              const m = t.id.match(/^terminal-(\d+)$/);
-              if (m) maxN = Math.max(maxN, parseInt(m[1], 10));
-            }
-          }
-          if (maxN > 0) resetTerminalCounter(maxN);
+          // G3：恢复后同步计数器——扫描所有 tab ID 提取最大值，
+          // 避免 F5 后计数器归零与旧 tab ID 碰撞（syncCountersAfterRestore 泛化处理所有类型）
+          const allTabs = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
+          syncCountersAfterRestore(allTabs);
         }
       } catch { /* 布局恢复失败不影响启动 */ }
 
