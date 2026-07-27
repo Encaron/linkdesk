@@ -78,6 +78,10 @@ export class WindowManager {
     // 加载内容
     view.webContents.loadURL(url);
 
+    // 🔥 默认隐藏——等 MainContent 通过 setBounds 设定正确位置和大小后再显示（#58d）
+    // 不隐藏 → WebContentsView 全屏覆盖壳的 React 内容（标签栏、主区全被挡住）
+    view.setVisible(false);
+
     // 添加到壳窗口
     this.mainWindow.contentView.addChildView(view);
     this.pluginViews.set(pluginId, view);
