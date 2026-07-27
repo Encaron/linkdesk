@@ -781,8 +781,8 @@ function App() {
 
   return (
     <div className="app-shell">
-      {/* E3f #52g：TitleBar——titlebar 或 both 模式显示 */}
-      {showTitleBar && <TitleBar />}
+      {/* E3f #52g：TitleBar 始终渲染——hamburger 时只隐藏菜单按钮，Logo+拖拽区保留 */}
+      <TitleBar showMenus={showTitleBar} />
       {/* E3f #52f：窗口控件（─ □ ×）——始终渲染，不受 menuStyle 影响 */}
       <WindowControls />
       <TabActionsContext.Provider value={tabActionsValue}>
