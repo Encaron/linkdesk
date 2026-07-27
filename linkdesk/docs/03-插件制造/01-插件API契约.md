@@ -179,6 +179,20 @@ window.linkdesk.commands.execute(id: string, ...args: unknown[]): Promise<unknow
 // index.tsx:
 //   export function cad_importDxf() { ... }   // handler 命名：id 中的 . 换 _
 
+// 插件执行其他插件/壳提供的命令
+const color = await linkdesk.commands.execute('color-picker.pick', { initialColor: '#ff0000' })
+await linkdesk.commands.execute('serial-monitor.send', [0xFF, 0x01, 0x01])
+```
+
+**已知可调用的命令（壳/其他插件注册）：**
+
+| 命令 ID | 提供方 | 参数 | 返回值 | 说明 |
+|------|------|------|------|------|
+| `color-picker.pick` | 壳（#59e） | `{ initialColor, title? }` | `string \| undefined` | 弹出调色盘→返回用户选的颜色；取消返回 undefined |
+| `serial-monitor.send` | 终端（#79） | `number[] \| string` | `Promise<void>` | 发送数据到串口 |
+| `sbq-protocol.encode` | 协议插件 | `Record<string, unknown>` | `number[]` | 编码字段为串口字节（示例——尚未实现） |
+| … | 任何插件 | … | … | 🆕 新插件注册命令→往此表加一行 |
+
 // 插件执行壳命令——打开新标签页
 await window.linkdesk.commands.execute("workbench.action.splitRight");
 ```

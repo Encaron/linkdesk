@@ -119,9 +119,9 @@ body {
 /* === Editor Body (tab content) === */
 .editor-body { flex: 1; display: flex; overflow: hidden; }
 
-/* === Color Panel (left within tab) === */
+/* === Color Panel (right within tab, like Figma properties) === */
 .color-panel {
-  width: 220px; flex-shrink: 0; border-right: 1px solid #2A2A2A;
+  width: 220px; flex-shrink: 0; border-left: 1px solid #2A2A2A;
   overflow-y: auto; background: #131313;
 }
 .color-panel::-webkit-scrollbar { width: 4px; }
@@ -217,6 +217,57 @@ body {
 .mock-status-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--status-connected); }
 
 /* legend */
+/* float trigger in sidebar */
+.float-btn {
+  font-size: 11px; cursor: pointer; opacity: 0; padding: 2px 4px; border-radius: 3px;
+  transition: opacity 120ms, background 120ms; flex-shrink: 0;
+}
+.theme-mini:hover .float-btn { opacity: 0.6; }
+.float-btn:hover { opacity: 1 !important; background: rgba(255,255,255,0.08); }
+
+/* === FloatingPanel === */
+.float-overlay {
+  position: fixed; inset: 0; z-index: 2000;
+  background: rgba(0,0,0,0.55);
+  display: none; align-items: center; justify-content: center;
+}
+.float-overlay.visible { display: flex; }
+.float-panel {
+  width: 860px; height: 560px;
+  background: #161616;
+  border: 1px solid #444; border-radius: 10px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  animation: floatIn 200ms ease-out;
+}
+@keyframes floatIn {
+  from { transform: scale(0.96); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+.float-header {
+  display: flex; align-items: center; height: 36px; padding: 0 16px;
+  background: #1A1A1A; border-bottom: 1px solid #333; flex-shrink: 0;
+}
+.float-title { font-size: 13px; font-weight: 600; }
+.float-close {
+  margin-left: auto; width: 26px; height: 26px; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 5px; color: #999; font-size: 14px; transition: all 120ms;
+}
+.float-close:hover { background: rgba(239,68,68,0.15); color: #EF4444; }
+.float-body { flex: 1; display: flex; overflow: hidden; }
+.float-actions {
+  display: flex; align-items: center; height: 38px; padding: 0 12px; gap: 8px;
+  border-top: 1px solid #333; flex-shrink: 0; justify-content: flex-end;
+}
+.float-action {
+  height: 28px; padding: 0 14px; border-radius: 5px; font-size: 11px; cursor: pointer;
+  border: 1px solid #444; background: transparent; color: #999; transition: all 120ms;
+}
+.float-action:hover { border-color: #888; color: #ddd; }
+.float-action.primary { background: var(--accent); color: #1A1A1A; border-color: var(--accent); font-weight: 500; }
+
 .legend {
   position: fixed; bottom: 16px; right: 16px;
   background: #1A1A1A; border: 1px solid #333; border-radius: 6px;
@@ -248,6 +299,7 @@ body {
           <div class="theme-mini-name">琥珀 Amber</div>
           <div class="theme-mini-meta">dark · 33 色键 · 官方</div>
         </div>
+        <span class="float-btn" title="在浮动面板中打开" data-theme="琥珀 Amber">&#128205;</span>
       </div>
       <div class="theme-mini">
         <div class="theme-mini-cb"></div>
@@ -255,6 +307,7 @@ body {
           <div class="theme-mini-name">薄荷苏打</div>
           <div class="theme-mini-meta">light · 33 色键 · 官方</div>
         </div>
+        <span class="float-btn" title="在浮动面板中打开" data-theme="薄荷苏打">&#128205;</span>
       </div>
       <div class="theme-mini">
         <div class="theme-mini-cb"></div>
@@ -273,7 +326,8 @@ body {
 
       <div class="sidebar-section-label">操作</div>
       <button class="sidebar-btn" style="margin-bottom:2px;">+ 新建主题</button>
-      <button class="sidebar-btn" style="margin-bottom:6px;">导入 JSON</button>
+      <button class="sidebar-btn" style="margin-bottom:2px;">导入 JSON</button>
+      <button class="sidebar-btn primary" style="margin-bottom:6px;">保存当前</button>
 
       <div class="sidebar-section-label">导出</div>
       <button class="sidebar-btn accent" style="margin-bottom:2px;">导出选中 (1)</button>
@@ -291,26 +345,11 @@ body {
         <span class="tab-item-close">&#10005;</span>
       </div>
       <div class="tab-item">Welcome <span class="tab-item-close">&#10005;</span></div>
-      <div class="tabbar-actions">
-        <button class="tabbar-btn">新建</button>
-        <button class="tabbar-btn">导入 JSON</button>
-        <button class="tabbar-btn primary">保存</button>
-      </div>
     </div>
 
     <!-- Editor Body -->
     <div class="editor-body">
-      <!-- Color Panel (left 220px) -->
-      <div class="color-panel" id="colorPanel">
-        <div class="theme-info">
-          <label>主题名称</label>
-          <input value="琥珀 Amber" id="themeName">
-          <label>类型</label>
-          <select id="themeType"><option selected>dark</option><option>light</option></select>
-        </div>
-      </div>
-
-      <!-- Preview Pane (right flex) -->
+      <!-- Preview Pane (left, main focus area) -->
       <div class="preview-pane">
         <div class="preview-toolbar">
           <span class="preview-label">实时预览</span>
@@ -347,6 +386,70 @@ body {
           </div>
         </div>
       </div>
+
+      <!-- Color Panel (right 220px, like Figma properties) -->
+      <div class="color-panel" id="colorPanel">
+        <div class="theme-info">
+          <label>主题名称</label>
+          <input value="琥珀 Amber" id="themeName">
+          <label>类型</label>
+          <select id="themeType"><option selected>dark</option><option>light</option></select>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- FloatingPanel Overlay -->
+<div class="float-overlay" id="floatOverlay">
+  <div class="float-panel">
+    <div class="float-header">
+      <span class="float-title">主题制作器 — 琥珀 Amber（浮动面板）</span>
+      <span class="float-close">&#10005;</span>
+    </div>
+    <div class="float-body">
+      <!-- same preview + color panel as tab -->
+      <div class="preview-pane" style="border-right:1px solid #2A2A2A;">
+        <div class="preview-toolbar">
+          <span class="preview-label">实时预览</span>
+          <span class="preview-zoom">100%</span>
+        </div>
+        <div class="preview-content">
+          <div class="mock">
+            <div class="mock-top">LinkDesk &nbsp; 文件 &nbsp; 查看 &nbsp; 帮助</div>
+            <div class="mock-body">
+              <div class="mock-ibar">
+                <span class="mock-icon active">&#128194;</span><span class="mock-icon">&#128269;</span><span class="mock-icon">&#9881;</span>
+              </div>
+              <div class="mock-side">
+                <div class="mock-side-item">&#9660; src</div>
+                <div class="mock-side-item" style="padding-left:8px;">App.tsx</div>
+                <div class="mock-side-item" style="padding-left:8px;">main.ts</div>
+              </div>
+              <div class="mock-main">
+                <div class="mock-title">Hello LinkDesk</div>
+                <div class="mock-text">正文文字预览——展示颜色搭配效果。</div>
+                <div class="mock-btns"><button class="mock-btn">主要按钮</button><button class="mock-btn sec">次要按钮</button></div>
+                <input class="mock-input" placeholder="输入框占位文字...">
+                <div class="mock-card">卡片区域——展示背景和边框</div>
+              </div>
+            </div>
+            <div class="mock-status"><span class="mock-status-dot"></span> 已连接 &nbsp; UTF-8 &nbsp; Ln 14, Col 8</div>
+          </div>
+        </div>
+      </div>
+      <div class="color-panel" id="floatColorPanel">
+        <div class="theme-info">
+          <label>主题名称</label>
+          <input value="琥珀 Amber"><label>类型</label>
+          <select><option selected>dark</option><option>light</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="float-actions">
+      <button class="float-action">在主窗口中打开</button>
+      <button class="float-action">最大化</button>
+      <button class="float-action primary">关闭</button>
     </div>
   </div>
 </div>
@@ -354,7 +457,8 @@ body {
 <div class="legend">
   <div><b>图标栏</b> 点 🎨 → 侧栏显示主题列表</div>
   <div><b>侧栏</b> 轻——跟着图标栏切换</div>
-  <div><b>主区标签页</b> 重——持久存在，不受图标栏影响</div>
+  <div><b>主区标签页</b> 重——持久编辑</div>
+  <div>侧栏 <b>&#128205;</b> → FloatingPanel 浮层（临时调色）</div>
   <div>点色块可调系统取色器 → 预览区即时变色</div>
 </div>
 
@@ -371,24 +475,55 @@ const COLOR_GROUPS = [
   { name: '阴影',      open: false, keys: ['context-menu-shadow','drag-preview-shadow'] },
 ];
 
-const panel = document.getElementById('colorPanel');
-COLOR_GROUPS.forEach(g => {
-  const sec = document.createElement('div'); sec.className = 'color-section';
-  const h = document.createElement('div'); h.className = 'color-section-h';
-  h.innerHTML = `<span class="arrow${g.open?'':' collapsed'}">&#9660;</span>${g.name}`;
-  const b = document.createElement('div'); b.className = 'color-section-b';
-  if (!g.open) b.classList.add('collapsed');
-  h.addEventListener('click', () => { b.classList.toggle('collapsed'); h.querySelector('.arrow').classList.toggle('collapsed'); });
-  g.keys.forEach(key => {
-    const hex = getComputedStyle(document.documentElement).getPropertyValue(`--${key}`).trim();
-    const row = document.createElement('div'); row.className = 'color-row';
-    row.innerHTML = `<span class="color-label">${key}</span><span class="color-hex" data-key="${key}">${hex}</span><span class="color-swatch" style="background:${hex};"><input type="color" value="${hex}" data-key="${key}"></span>`;
-    b.appendChild(row);
+
+// FloatingPanel toggle
+const floatOverlay = document.getElementById('floatOverlay');
+document.querySelectorAll('.float-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    floatOverlay.classList.add('visible');
   });
-  sec.appendChild(h); sec.appendChild(b); panel.appendChild(sec);
+});
+floatOverlay.addEventListener('click', e => {
+  if (e.target === floatOverlay) floatOverlay.classList.remove('visible');
+});
+document.querySelector('.float-close').addEventListener('click', () => {
+  floatOverlay.classList.remove('visible');
+});
+document.querySelector('.float-action.primary').addEventListener('click', () => {
+  floatOverlay.classList.remove('visible');
+  // Switch to tab mode — highlight the active tab
+  const activeTab = document.querySelector('.tab-item.active');
+  if (activeTab) {
+    activeTab.style.transition = 'box-shadow 600ms ease-out';
+    activeTab.style.boxShadow = 'inset 0 0 0 2px var(--accent)';
+    setTimeout(() => { activeTab.style.boxShadow = 'inset 0 0 0 0px var(--accent)'; }, 600);
+  }
 });
 
-// live preview wiring
+// live preview wiring (both panels)
+function buildColorPanel(containerId) {
+  const panel = document.getElementById(containerId);
+  if (!panel) return;
+  COLOR_GROUPS.forEach(g => {
+    const sec = document.createElement('div'); sec.className = 'color-section';
+    const h = document.createElement('div'); h.className = 'color-section-h';
+    h.innerHTML = `<span class="arrow${g.open?'':' collapsed'}">&#9660;</span>${g.name}`;
+    const b = document.createElement('div'); b.className = 'color-section-b';
+    if (!g.open) b.classList.add('collapsed');
+    h.addEventListener('click', () => { b.classList.toggle('collapsed'); h.querySelector('.arrow').classList.toggle('collapsed'); });
+    g.keys.forEach(key => {
+      const hex = getComputedStyle(document.documentElement).getPropertyValue(`--${key}`).trim();
+      const row = document.createElement('div'); row.className = 'color-row';
+      row.innerHTML = `<span class="color-label">${key}</span><span class="color-hex" data-key="${key}">${hex}</span><span class="color-swatch" style="background:${hex};"><input type="color" value="${hex}" data-key="${key}"></span>`;
+      b.appendChild(row);
+    });
+    sec.appendChild(h); sec.appendChild(b); panel.appendChild(sec);
+  });
+}
+buildColorPanel('colorPanel');
+buildColorPanel('floatColorPanel');
+
 document.querySelectorAll('.color-swatch input[type=color]').forEach(inp => {
   inp.addEventListener('input', e => {
     const k = e.target.dataset.key, v = e.target.value;

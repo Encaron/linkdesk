@@ -17,7 +17,6 @@ import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings, registerKeybinding } from "./KeybindingRegistry"; // E3f #59-F
 import { requestSettingsGroup, requestScrollToSetting } from "./ConfigurationRegistry";
-import { pushToast } from "./NotificationService";
 import i18n from "../i18n";
 import { getWorkspaceLayout } from "./LayoutService"; // E3f #56
 import { getUserSettings } from "./ConfigurationService"; // E3f #56
@@ -402,37 +401,6 @@ export function ensureCoreCommands(): void {
   registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [
     { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
     { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
-  ]);
-
-  // E3g #63：V2 配置导入
-  const linkdesk = () => (window as any).linkdesk;
-  registerCommand(APP_PLUGIN_ID, {
-    id: "workbench.action.importV2Settings",
-    title: i18n.t("导入 V2 配置…"),
-    category: i18n.t("文件"),
-    handler: async () => {
-      try {
-        const filePath = await linkdesk().dialog.open({
-          title: "选择 V2 配置文件",
-          filters: [{ name: "JSON", extensions: ["json"] }],
-        });
-        if (!filePath) return; // 用户取消
-        const raw = await linkdesk().filesystem.readTextFile(filePath);
-        const json = JSON.parse(raw);
-        // 动态 import 避免循环依赖
-        const { importV2Config } = await import("./V2Migration");
-        importV2Config(json);
-      } catch (e: any) {
-        pushToast({
-          message: `V2 配置导入失败: ${e?.message ?? String(e)}`,
-          source: "v2-migration",
-          severity: "error",
-        });
-      }
-    },
-  });
-  registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
-    { command: "workbench.action.importV2Settings", group: "file" },
   ]);
 
 }
