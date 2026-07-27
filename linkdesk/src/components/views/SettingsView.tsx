@@ -9,7 +9,7 @@
  * 核心无知原则：Settings Editor 不知道有哪些设置项——全部从 ConfigurationRegistry 派生。
  */
 
-import { useState, useMemo, useCallback, useEffect } from "react";
+import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
@@ -18,13 +18,19 @@ import {
   getMergedSchema,
   consumeSettingsGroup,
   onRequestSettingsGroup,
+  consumeScrollToSetting,
+  onRequestScrollToSetting,
   type ConfigurationProperty,
 } from "../../core/ConfigurationRegistry";
 import {
   getConfigurationValue,
   setConfigurationValue,
+  inspectConfiguration,
 } from "../../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
+import { MenuId } from "../../core/MenuRegistry";
+import { ContextKeyService } from "../../core/ContextKeyService";
+import ContextMenu from "../shared/ContextMenu";
 import "./SettingsView.css";
 
 /* ── 类型 ── */
@@ -94,6 +100,37 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
     return result;
   }, [version, t]);
+
+  // E3f #53e：scrollTo 订阅——跳转到设置中指定配置项（#53b 命令面板齿轮"重置选项"消费）
+  useEffect(() => {
+    // mount 时消费 pending 值
+    const pendingKey = consumeScrollToSetting();
+    if (pendingKey) {
+      setSearch("");
+      for (const g of groups) {
+        if (g.keys.includes(pendingKey)) {
+          setSelectedGroup(g.pluginId);
+          break;
+        }
+      }
+      setTimeout(() => {
+        document.getElementById(`setting-row-${pendingKey}`)?.scrollIntoView({ block: "center" });
+      }, 150);
+    }
+    // 已打开时实时滚动
+    return onRequestScrollToSetting.event((key) => {
+      setSearch("");
+      for (const g of groups) {
+        if (g.keys.includes(key)) {
+          setSelectedGroup(g.pluginId);
+          break;
+        }
+      }
+      setTimeout(() => {
+        document.getElementById(`setting-row-${key}`)?.scrollIntoView({ block: "center" });
+      }, 150);
+    });
+  }, [groups]);
 
   // 所有 properties——必须在 filteredGroups 之前定义（搜索过滤引用 allProps）
   const allProps = useMemo(() => getMergedSchema(), [version]);
@@ -223,6 +260,8 @@ function SettingRow({
   onChange: () => void;
 }) {
   const { t } = useTranslation();
+  const gearRef = useRef<HTMLButtonElement>(null);
+  const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
   const currentValue = getConfigurationValue(configKey);
 
   const handleChange = useCallback(
@@ -233,10 +272,28 @@ function SettingRow({
     [configKey, onChange]
   );
 
+  // E3f #53d：齿轮打开前设 context key
+  const handleGearClick = useCallback(() => {
+    const insp = inspectConfiguration(configKey);
+    ContextKeyService.setValue("settingKey", configKey);
+    ContextKeyService.setValue("settingModified", insp.userValue !== undefined);
+    const rect = gearRef.current?.getBoundingClientRect();
+    if (rect) {
+      setGearAnchor({ x: rect.left, y: rect.bottom + 4 });
+    }
+  }, [configKey]);
+
+  // 齿轮关闭——清理 context key
+  const handleGearClose = useCallback(() => {
+    setGearAnchor(null);
+    ContextKeyService.setValue("settingKey", undefined);
+    ContextKeyService.setValue("settingModified", false);
+  }, []);
+
   if (!prop) return null;
 
   return (
-    <div className="settings-row">
+    <div className="settings-row" id={`setting-row-${configKey}`}>
       <div className="settings-row-info">
         <label className="settings-row-label">{configKey}</label>
         <span className="settings-row-desc">{t(prop.description)}</span>
@@ -244,6 +301,23 @@ function SettingRow({
       <div className="settings-row-control">
         {renderControl(prop, currentValue, handleChange, t)}
       </div>
+      {/* E3f #53c：hover 齿轮——对标 VS Code Settings Editor per-setting gear */}
+      <button
+        ref={gearRef}
+        className="settings-row-gear"
+        title={t("更多操作")}
+        onClick={handleGearClick}
+      >
+        <span className="codicon codicon-gear" />
+      </button>
+      {gearAnchor && (
+        <ContextMenu
+          menuId={MenuId.SettingItemGear}
+          anchor={gearAnchor}
+          context={{}}
+          onClose={handleGearClose}
+        />
+      )}
     </div>
   );
 }

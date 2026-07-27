@@ -35,6 +35,8 @@ export enum MenuId {
   QuickSendContext = "quickSendContext",
   /** 图标栏右键 */
   IconBar = "iconBar",
+  /** E3f #53：设置项齿轮——Settings Editor 每行 hover 齿轮菜单 */
+  SettingItemGear = "settingItemGear",
 }
 
 /* ── 类型 ── */

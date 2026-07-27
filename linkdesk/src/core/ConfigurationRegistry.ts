@@ -198,3 +198,23 @@ export function consumeSettingsGroup(): string | null {
   _pendingSettingsGroup = null;
   return v;
 }
+
+/* ── E3f #53e：滚动到指定配置项——对标 VS Code "跳转到设置中的具体配置项" ── */
+
+let _pendingScrollToKey: string | null = null;
+
+/** Emitter 通道——SettingsView 已打开时实时滚动 */
+export const onRequestScrollToSetting = new Emitter<string>();
+
+/** 标记：下次 SettingsView 渲染后滚动到指定 key。同时 fire Emitter——设置已打开时即时滚动。 */
+export function requestScrollToSetting(key: string): void {
+  _pendingScrollToKey = key;
+  onRequestScrollToSetting.fire(key);
+}
+
+/** 消费：SettingsView mount/update 时调用，返回目标 key 并清空 */
+export function consumeScrollToSetting(): string | null {
+  const v = _pendingScrollToKey;
+  _pendingScrollToKey = null;
+  return v;
+}

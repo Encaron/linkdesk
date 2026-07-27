@@ -141,6 +141,34 @@ export async function setConfigurationValue(
   applyConfiguration(key, value);
 }
 
+/**
+ * E3f #53b：重置配置值——删除用户覆盖，回退到 default。
+ * 对标 VS Code "Reset Setting"——移除 User scope 的 key，下次读取自动走 default 层。
+ */
+export async function resetConfigurationValue(
+  key: string,
+  scope: "user" | "workspace" = "user"
+): Promise<void> {
+  if (scope === "workspace") {
+    delete _workspaceSettings[key];
+    await _persistWorkspace();
+  } else {
+    delete _userSettings[key];
+    await _persistUser();
+  }
+
+  // 取回退后的值（走 default 层）
+  const effective = getConfigurationValue(key);
+
+  // 通知监听器——SettingsView 刷新
+  for (const fn of _changeListeners) {
+    try { fn(key, effective, scope); } catch { /* 监听器异常不阻断 */ }
+  }
+
+  // ConfigurationApplier——重置后自动调 onApply
+  applyConfiguration(key, effective);
+}
+
 /* ── 监听变化 ── */
 
 /** 订阅配置变化——对标 VS Code onDidChangeConfiguration */
