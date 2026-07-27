@@ -14,14 +14,244 @@ Electron `BrowserWindow` 的 `titleBarStyle` / `backgroundColor` → 暗色标�
 
 ---
 
-## 二、菜单栏——hamburger + menubar 双模式，同一数据源（🔥 2026-07-27 重写）
+## 二、自定义标题栏 + 菜单栏——HTML/CSS 渲染，插件可扩展顶级菜单（🔥 2026-07-27 第三次重写）
 
-> 对标 VS Code 源码 `GlobalCompositeBar` + `GlobalActivityActionViewItem`。
-> 源码依据：`src/vs/workbench/browser/parts/globalCompositeBar.ts` + `activitybarPart.ts`。
+> **前两版为什么放弃：**
+> - 第一版（Electron 原生 Menu）：Windows 上原生菜单白色/系统灰，字体/颜色由 OS 决定，跟 LinkDesk 暗色主题完全割裂。菜单内容硬编码在 `menu-builder.ts`。
+> - 第二版（汉堡在图标栏）：桌面软件不应该把菜单藏在二级面板里。对标 VS Code **桌面版**——File/Edit/View 横排在窗口顶部，一目了然。
+>
+> **第三版：对标 VS Code 桌面版标题栏。** 自己画 HTML/CSS 标题栏 + 菜单栏，数据来自 `MenuRegistry`。
+> 插件可扩展顶级菜单（终端、运行、帮助...），加 `group` + `children` 声明即可——**零硬编码，零 TitleBar 代码改动。**
+>
+> VS Code 源码依据：`src/vs/workbench/browser/parts/titlebar/titlebarPart.ts`
 
-### 2.1 VS Code 怎么做——逐行对照
+### 2.1 为什么不用 Electron 原生菜单
 
-**汉堡在图标栏第一个位置，不是独立元素。**
+| | Electron 原生 Menu | 自定义 HTML/CSS TitleBar |
+|------|:--:|:--:|
+| 颜色 | OS 决定——Windows 白色/灰色，深色主题下割裂 | CSS 变量——跟随 LinkDesk 主题 |
+| 字体 | OS 决定——无法控制大小/字重 | 由 LinkDesk 主题控制 |
+| 扩展性 | 必须硬编码——`Menu.buildFromTemplate` 需要完整模板 | 声明式——插件注册 `MenuId.MenuBar` + `group` + `children` |
+| 未来加"终端"菜单 | 改 `menu-builder.ts` 硬编码 | 插件注册 `{ group: "terminal", label: "终端", children: [...] }` → 自动出现 |
+
+### 2.2 布局——对标 VS Code 桌面版，不是 web 版
+
+```
+┌──────────────────────────────────────────────────────────┐
+│ ☰  文件 ▼  编辑 ▼  查看 ▼  终端 ▼  帮助 ▼     ─  □  ×  │  ← TitleBar（新组件）
+├──────┬───────────────────────────────────────────────────┤
+│ ☐    │ 侧栏              │  编辑器                       │  ← app-body（现有）
+│ ☐    │                   │                               │
+│ ⚙    │                   │                               │
+├──────┴───────────────────────────────────────────────────┤
+│ 状态栏                                                   │
+└──────────────────────────────────────────────────────────┘
+```
+
+- **TitleBar**：30px 高，暗色背景 `var(--bg-titlebar)`，整个条 `-webkit-app-region: drag`（拖拽移动窗口）
+- **☰**：最左侧——点击弹出菜单面板（和之前汉堡菜单内容完全一样，hover 展开子菜单）。对标 VS Code 左上角应用图标
+- **文件 ▼ / 编辑 ▼ / 查看 ▼ / ...**：横排菜单按钮——点击弹出下拉面板，已在打开状态的按钮 hover 时自动切换
+- **声明式扩展**：未来"终端"插件注册 `MenuId.MenuBar` + `group: "terminal"` → TitleBar 不做任何代码改动，自动多一个"终端 ▼"按钮
+- **窗口控制**：─ □ × 在右上角，由 Electron 原生渲染（不自己画——避免跨平台一致性问题，对标 VS Code 的做法）
+
+### 2.3 声明式菜单——零硬编码
+
+**错的（硬编码）：**
+```typescript
+const GROUP_LABELS: Record<string, string> = {
+  file: "File", edit: "Edit", view: "View", help: "Help",
+  // 每次加新菜单都要改这里 ← 硬编码
+};
+```
+
+**对的（声明式——从注册数据动态读取）：**
+```typescript
+// coreCommands.ts 注册时已经带了 label：
+registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
+  { command: "", group: "file", label: "文件", children: [
+    { command: "core.openSettings" },
+  ]},
+  { command: "", group: "view", label: "查看", children: [
+    { command: "workbench.action.showCommands" },
+    { command: "workbench.action.selectTheme" },
+  ]},
+]);
+
+// 未来插件注册（不需要改 TitleBar 任何代码）：
+registerMenuItems(MenuId.MenuBar, "terminal-plugin", [
+  { command: "", group: "terminal", label: "终端", children: [
+    { command: "terminal.newTerminal" },
+    { command: "terminal.splitTerminal" },
+  ]},
+]);
+
+// TitleBar 渲染逻辑（零硬编码）：
+//   1. getMenuItems(MenuId.MenuBar) → 按 group 分组
+//   2. 每个 group 的第一项的 label = 菜单按钮文字
+//   3. 每个 group 的所有项 = 下拉面板内容
+//   4. 任何插件注册新 group → 自动出现新按钮
+```
+
+**`group` 字段控制排序——越小组越靠左：**
+
+```typescript
+const GROUP_ORDER: Record<string, number> = {
+  file: 0, edit: 1, view: 2,
+  // 插件注册 group: "terminal" 时声明 order: 3 → 排在 View 后面
+  // 不声明 order → 默认 99 → 排在最后
+};
+```
+
+### 2.4 交互——对标 VS Code 菜单行为
+
+1. **点击菜单按钮** → 下方弹出下拉面板（跟之前汉堡下拉同款样式）
+2. **在已打开的菜单上移动鼠标到另一个按钮** → 自动切换展开（对标 VS Code——不用重新点击）
+3. **hover 有 children 的项** → 右侧弹出子菜单（同 #52d 的逻辑）
+4. **点击叶子项** → `executeCommand` + 关闭面板
+5. **点击菜单外部** → 关闭面板
+6. **☰ 始终在左上角** → 点击弹出完整的菜单面板（跟之前汉堡菜单一样），方便只有一个入口时快速访问
+
+### 2.5 数据流——MenuRegistry 是唯一真源
+
+```
+MenuRegistry.getMenuItems(MenuId.MenuBar)
+        │
+        ├──→ TitleBar 渲染（HTML/CSS 菜单按钮 + 下拉面板）
+        │      │
+        │      └──→ 插件注册新 group → 自动出现新按钮
+        │
+        └──→ （不再需要原生 menubar——删除 menu-builder.ts）
+```
+
+**一份数据，一种渲染。** 桌面版 = 浏览器版——同一个 TitleBar 组件。不区分 hamburger/menubar 模式。
+
+### 2.6 子任务——逐条可验证
+
+#### #52f — 创建 TitleBar 组件（~60 行，新文件）
+
+**文件：** `src/components/TitleBar.tsx`（新）+ `src/components/TitleBar.css`（新）
+
+**做什么：**
+1. 从 `MenuRegistry.getMenuItems(MenuId.MenuBar)` 读取所有菜单项
+2. 按 `group` 字段分组——每个 group 一个菜单按钮
+3. 每个按钮显示该 group 第一个 item 的 `label`（如"文件"、"查看"）
+4. 点击按钮 → 该按钮下方弹出下拉面板（同之前汉堡下拉样式）
+5. 已打开一个菜单时鼠标移到另一个按钮 → 自动切换展开
+6. 下拉面板内：hover 有 `children` 的项 → 右侧弹出子菜单（复用 #52d 的逻辑）
+7. 点击叶子项 → `executeCommand(item.command)` → 关闭面板
+8. ☰ 按钮在最左侧——点击始终弹出完整的菜单面板
+9. 整个 TitleBar 是 `-webkit-app-region: drag`——可拖拽移动窗口
+10. 菜单按钮是 `-webkit-app-region: no-drag`——可点击
+
+**验证：** 窗口顶部出现 30px 暗色标题栏 → ☰ + 文件 ▼ + 查看 ▼ 按钮 → 点击"文件"弹出菜单
+
+**CSS 关键参数（对标 VS Code）：**
+- 高度：30px
+- 背景：`var(--bg-titlebar)`（新增 CSS 变量，默认 `#1e1e1e`）
+- 菜单按钮：padding 6px 10px，font-size 12px
+- 下拉面板：跟之前汉堡下拉同款样式（`bg-card` 背景，边框，阴影）
+- z-index：2548（在 StatusBar 和 NotificationCenter 之上）
+
+#### #52g — App.tsx 布局调整（~10 行）
+
+**文件：** `src/App.tsx`
+
+**做什么：**
+1. Import `TitleBar` 组件
+2. 在 `app-shell` div 的第一行渲染 `<TitleBar />`
+3. `app-body` 在 TitleBar 下面（现有结构不变）
+
+```tsx
+<div className="app-shell">
+  <TitleBar />                    {/* ← 新增 */}
+  <div className="app-body">      {/* ← 现有 */}
+    <IconBar ... />
+    ...
+  </div>
+  <StatusBar ... />
+  <ToastContainer />
+  ...
+</div>
+```
+
+**验证：** TitleBar → IconBar → editor → StatusBar 垂直排列
+
+#### #52h — IconBar 去掉汉堡（~5 行）
+
+**文件：** `src/components/IconBar.tsx`
+
+**做什么：**
+1. 删除 `import HamburgerMenu` 
+2. 删除 `<HamburgerMenu />` 渲染
+
+**验证：** 图标栏只有视图图标 + 底部齿轮，顶部不再有 ☰
+
+#### #52i — 删除旧 hamburger/menubar 代码（~-150 行）
+
+**文件清理清单（7 个文件）：**
+
+| 文件 | 操作 | 说明 |
+|------|------|------|
+| `src/components/HamburgerMenu.tsx` | **删除整个文件** | TitleBar 替代 |
+| `src/components/HamburgerMenu.css` | **删除整个文件** | TitleBar 替代 |
+| `electron/menu-builder.ts` | **删除整个文件** | 不再需要原生菜单 |
+| `electron/main.ts` | 删除以下内容：`import { buildAppMenu }`、`import { Menu }` from electron、`menu-bar-data` IPC handler（3 行）、`set-menu-style` IPC handler（8 行）、`_menuData` 变量、`_menuStyle` 变量 | 回归到只管理窗口，不管菜单 |
+| `electron/preload-shell.ts` | 删除 `events` 中的 `notifyMenuBarData`、`setMenuStyle`、以及 `menu:command` IPC listener（4 行） | 回归到只暴露基础 IPC |
+| `src/core/coreCommands.ts` | 删除 `syncMenuBarToMain()` 函数（~15 行）及其调用 | 不再需要往主进程发菜单数据 |
+| `src/App.tsx` | 删除 `import { executeCommand } from "./core/CommandRegistry"`（如果只用于 native-menu-command）、删除 `native-menu-command` useEffect（8 行） | 原生菜单已删除 |
+
+**验证：** `grep -r "HamburgerMenu\|menu-builder\|menu-bar-data\|set-menu-style\|native-menu-command\|syncMenuBarToMain\|notifyMenuBarData" src/ electron/` 零结果
+
+#### #52j — coreCommands.ts 菜单注册声明式（~15 行）
+
+**文件：** `src/core/coreCommands.ts`
+
+**做什么：**
+1. 在 `ensureCoreCommands()` 里，保留 `MenuId.MenuBar` 注册——数据不变
+2. 删除 `syncMenuBarToMain()`（已在 #52i 中做）
+3. `GROUP_ORDER` 改为从注册数据的 `order` 字段读取——不硬编码映射表
+4. 确保每个 group 的父菜单项有 `label` 字段（TitleBar 用它当按钮文字）
+
+**注册数据示例（保持不变）：**
+```typescript
+registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
+  {
+    command: "", label: i18n.t("文件"), group: "file", order: 0,
+    children: [{ command: "core.openSettings" }],
+  },
+  {
+    command: "", label: i18n.t("查看"), group: "view", order: 2,
+    children: [
+      { command: "workbench.action.showCommands" },
+      { command: "workbench.action.selectTheme" },
+      { command: "workbench.action.selectLanguage" },
+      { command: "workbench.action.openKeybindingsSettings" },
+    ],
+  },
+]);
+```
+
+**验证：** 未来任何插件注册 `{ command: "", label: "终端", group: "terminal", order: 3, children: [...] }` → TitleBar 自动出现"终端"按钮——不改 TitleBar 任何代码
+
+### 2.7 旧代码清理对照表——新 AI 进场必读
+
+| 文件 | 删什么 | 为什么删 |
+|------|------|------|
+| `HamburgerMenu.tsx` | 整个文件 | 菜单栏移到 TitleBar 横排显示 |
+| `HamburgerMenu.css` | 整个文件 | 同上 |
+| `menu-builder.ts` | 整个文件 | 不再用 Electron 原生 Menu API |
+| `main.ts` | `import { Menu }` / `import { buildAppMenu }` / `menu-bar-data` handler / `set-menu-style` handler / `_menuData` / `_menuStyle` | 主进程不管菜单了——纯粹窗口管理 |
+| `preload-shell.ts` | `notifyMenuBarData` / `setMenuStyle` / `menu:command` listener | 菜单数据不再需要 IPC |
+| `coreCommands.ts` | `syncMenuBarToMain()` 函数 + 调用 | 不再往主进程发数据 |
+| `App.tsx` | `import { executeCommand }`（如果仅用于 native-menu） / `native-menu-command` useEffect | 不再有原生菜单命令 |
+| `IconBar.tsx` | `import HamburgerMenu` + `<HamburgerMenu />` | 菜单在 TitleBar 里 |
+
+### 2.8 后续可扩展（不在此任务范围）
+
+- 用户通过 `plugin.json` `contributes.menus` 注册到 `MenuId.MenuBar` → TitleBar 自动显示
+- `group` 的 `order` 支持插件声明排序优先级
+- TitleBar 右侧可加自定义区域（通知铃铛、账号头像等）
+- 窗口控制按钮可改为自定义（对标 VS Code `window-controls-overlay`）
 
 ```
 VS Code 源码结构：
@@ -770,11 +1000,12 @@ if (hidden) return null;
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
 | 51 | 标题栏暗色化——Electron nativeTheme + backgroundColor | ~25 | 标题栏颜色 = 主题色 |
-| 52a | 🔥 MenuRegistry 加 submenu 类型——children 字段支持嵌套 | ~25 | `getMenuItems()` 返回带 children 的 item |
-| 52b | 🔥 汉堡移入 IconBar 第一个位置——对标 VS Code GlobalCompositeBar | ~40 | 汉堡在图标栏顶部，不可拖拽 |
-| 52c | 🔥 注册菜单栏内容——File/Edit/View/Help + 嵌套 children | ~35 | 汉堡 → 弹出 → File 展开子菜单 |
-| 52d | 🔥 汉堡渲染嵌套菜单——hover 展开子菜单 | ~50 | hover File → 右侧弹出二级菜单 |
-| 52e | 🔥 原生 menubar 适配器改读 MenuRegistry——消硬编码 | ~30 | 切 menubar → 原生菜单内容跟汉堡一致 |
+| 52a-e | 🔥 第一版菜单栏（已废弃——被 TitleBar 方案替代） | — | — |
+| 52f | 🔥 TitleBar 组件——横排菜单按钮 + 下拉面板 + 拖拽区 | ~60 | 顶部暗色标题栏，☰+文件▼+查看▼ |
+| 52g | App.tsx 布局调整——TitleBar 在 app-body 上面 | ~10 | TitleBar → IconBar → editor 垂直排列 |
+| 52h | IconBar 去掉汉堡——菜单已在顶部 | ~5 | 图标栏不再有 ☰ |
+| 52i | 删除旧 hamburger/menubar 代码——7 个文件 | ~-150 | `grep` 零残留 |
+| 52j | coreCommands 菜单注册声明式——label + group + order | ~15 | 加 group="terminal"→TitleBar 自动出现 |
 | 53 | 齿轮菜单完整版——context key 驱动 5 项 | ~40 | 齿轮 → 配置/查看日志 跳到对应位置 |
 | 54 | 输出面板 UI——频道选择器 + 日志列表 + 清空/导出 | ~80 | 切频道 → 日志内容切换 |
 | 55 | 欢迎页集成——三种状态切换 + recentFolders | ~40 | 打开文件夹 → 状态 B → 关闭 → 状态 A |
