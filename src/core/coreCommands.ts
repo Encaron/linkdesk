@@ -209,4 +209,13 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
+  // E3f #52：☰ 菜单栏——File / Edit / View / Help 四组
+  registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
+    { command: "core.openSettings", group: "file" },
+    { command: "workbench.action.showCommands", group: "view" },
+    { command: "workbench.action.selectTheme", group: "view" },
+    { command: "workbench.action.selectLanguage", group: "view" },
+    { command: "workbench.action.openKeybindingsSettings", group: "view" },
+  ]);
+
 }

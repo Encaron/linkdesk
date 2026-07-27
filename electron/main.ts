@@ -7,7 +7,7 @@
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu } from 'electron';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
@@ -20,6 +20,7 @@ import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
 import { IpcBridge } from './ipc-bridge.js';
+import { buildAppMenu } from './menu-builder.js';
 
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -98,6 +99,18 @@ ipcMain.on('theme-changed', (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
+  }
+});
+
+// E3f #52：原生菜单栏模式——用户切 menubar 时设置
+// 默认 hamburger（无原生菜单栏，走 <HamburgerMenu /> 组件）
+ipcMain.on('set-menu-style', (_event, style: string) => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (style === 'menubar') {
+    const menu = buildAppMenu(mainWindow);
+    Menu.setApplicationMenu(menu);
+  } else {
+    Menu.setApplicationMenu(null);
   }
 });
 

@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
 import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/NotificationService";
+import HamburgerMenu from "./components/HamburgerMenu";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
@@ -40,6 +41,7 @@ import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings, registerKeybinding } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
+import { executeCommand } from "./core/CommandRegistry"; // E3f #52: native menu → command dispatch
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
@@ -482,6 +484,16 @@ function App() {
     };
   }, [createTab]);
 
+  // E3f #52：原生菜单栏命令 → 转发到 CommandRegistry
+  useEffect(() => {
+    const onNativeMenu = (e: Event) => {
+      const commandId = (e as CustomEvent).detail as string;
+      executeCommand(commandId);
+    };
+    window.addEventListener('native-menu-command', onNativeMenu);
+    return () => window.removeEventListener('native-menu-command', onNativeMenu);
+  }, []);
+
   /* ---- 串口控制 ---- */
   // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
 
@@ -760,6 +772,7 @@ function App() {
       <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-body">
+        <HamburgerMenu />
         <IconBar
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
