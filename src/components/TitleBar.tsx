@@ -12,7 +12,7 @@ import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
 import "./TitleBar.css";
 
-function TitleBar() {
+function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -212,8 +212,8 @@ function TitleBar() {
       {/* Logo */}
       <span className="titlebar-logo">LD</span>
 
-      {/* 菜单按钮 */}
-      <div className="titlebar-menus">
+      {/* 菜单按钮——hamburger 模式下隐藏 */}
+      {showMenus && <div className="titlebar-menus">
         {sortedGroupNames.map((groupName) => (
           <button
             key={groupName}
@@ -225,7 +225,7 @@ function TitleBar() {
             {getGroupLabel(groupName)}
           </button>
         ))}
-      </div>
+      </div>}
 
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />
