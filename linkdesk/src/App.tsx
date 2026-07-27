@@ -274,6 +274,12 @@ function App() {
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
             onApply: (v) => applyAccentColor(v as string),
           },
+          "app.accentMode": {
+            type: "string",
+            default: "custom",
+            enum: ["custom", "followTheme"],
+            description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
+          },
           "app.menuStyle": {
             type: "string",
             default: "titlebar",

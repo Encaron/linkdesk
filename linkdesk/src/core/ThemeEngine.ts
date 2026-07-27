@@ -163,3 +163,26 @@ export function findTheme(themeName: string): Theme | undefined {
 export function getCurrentTheme(): Theme | null {
   return currentTheme;
 }
+
+/* ── E3f #59d1：强调色归一化——三种路径一条函数 ── */
+
+import { getConfigurationValue } from "./ConfigurationService";
+
+/**
+ * 获取有效强调色——三种路径归一化：
+ *   followTheme + 主题有 accent → 主题色
+ *   followTheme + 主题无 accent → 自定义兜底
+ *   custom → 自定义色
+ *
+ * 所有需要强调色的地方（onApply app.theme / ThemeBrowser 预览）都走此函数——
+ * 不要各自手写 if/else 判断。
+ */
+export function getEffectiveAccentColor(): string {
+  const mode = (getConfigurationValue("app.accentMode") as string) ?? "custom";
+  const customColor = (getConfigurationValue("app.accentColor") as string) ?? "#0078d4";
+  if (mode === "followTheme") {
+    const theme = getCurrentTheme();
+    if (theme?.colors?.accent) return theme.colors.accent;
+  }
+  return customColor;
+}
