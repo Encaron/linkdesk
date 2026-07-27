@@ -157,6 +157,20 @@ try {
         ipcRenderer.invoke('plugin-view:setBounds', id, b),
       getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
     },
+
+    // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
+    window: {
+      minimize:  () => ipcRenderer.send('window:minimize'),
+      maximize:  () => ipcRenderer.send('window:maximize'),
+      unmaximize:() => ipcRenderer.send('window:unmaximize'),
+      close:     () => ipcRenderer.send('window:close'),
+      isMaximized:() => ipcRenderer.invoke('window:isMaximized'),
+      onMaximizeChange: (cb: (maximized: boolean) => void) => {
+        const h = (_e: any, m: boolean) => cb(m);
+        ipcRenderer.on('window:maximize-change', h);
+        return () => ipcRenderer.removeListener('window:maximize-change', h);
+      },
+    },
   });
 
   // E3f #52：原生菜单命令 → 自定义事件 → 渲染进程执行
