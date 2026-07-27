@@ -42,6 +42,8 @@ export enum MenuId {
 export interface MenuItem {
   /** 命令 ID——引用 CommandRegistry 中的命令。有 children 时可为空（父菜单项）。 */
   command: string;
+  /** 显示标签——有值时覆盖 getCommand(id).title。父菜单项（无 command）必填。 */
+  label?: string;
   /** 分组——菜单内的分隔（"navigation" / "edit" / "extension" 等） */
   group?: string;
   /** context key when 条件——Phase 5 实现（见 ContextKeyService） */
@@ -60,6 +62,7 @@ export type ManifestMenuItem =
   | string
   | {
       command: string;
+      label?: string;
       when?: string;
       group?: string;
       /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
@@ -85,6 +88,7 @@ export function registerMenuItems(
     } else {
       normalized = {
         command: item.command,
+        label: item.label,
         group: item.group,
         when: item.when,
         pluginId,
@@ -95,12 +99,13 @@ export function registerMenuItems(
           if (typeof c === "string") return { command: c, pluginId };
           return {
             command: c.command,
+            label: c.label,
             group: c.group,
             when: c.when,
             pluginId,
             ...(c.children?.length ? {
               children: c.children.map((gc): MenuItem & { pluginId: string } =>
-                typeof gc === "string" ? { command: gc, pluginId } : { command: gc.command, group: gc.group, when: gc.when, pluginId }
+                typeof gc === "string" ? { command: gc, pluginId } : { command: gc.command, label: gc.label, group: gc.group, when: gc.when, pluginId }
               ),
             } : {}),
           };

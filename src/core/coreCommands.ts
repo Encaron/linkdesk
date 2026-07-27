@@ -209,13 +209,27 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
-  // E3f #52：☰ 菜单栏——File / Edit / View / Help 四组
+  // E3f #52c：☰ 菜单栏——File（子菜单）/ View（平级），对标 VS Code MenuId.GlobalActivity
   registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
-    { command: "core.openSettings", group: "file" },
-    { command: "workbench.action.showCommands", group: "view" },
-    { command: "workbench.action.selectTheme", group: "view" },
-    { command: "workbench.action.selectLanguage", group: "view" },
-    { command: "workbench.action.openKeybindingsSettings", group: "view" },
+    {
+      command: "",
+      label: i18n.t("文件"),
+      group: "file",
+      children: [
+        { command: "core.openSettings", group: "file" },
+      ],
+    },
+    {
+      command: "",
+      label: i18n.t("查看"),
+      group: "view",
+      children: [
+        { command: "workbench.action.showCommands", group: "view" },
+        { command: "workbench.action.selectTheme", group: "view" },
+        { command: "workbench.action.selectLanguage", group: "view" },
+        { command: "workbench.action.openKeybindingsSettings", group: "view" },
+      ],
+    },
   ]);
 
 }
