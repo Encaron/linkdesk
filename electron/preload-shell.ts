@@ -163,6 +163,7 @@ try {
       maximize:  () => ipcRenderer.send('window:maximize'),
       unmaximize:() => ipcRenderer.send('window:unmaximize'),
       close:     () => ipcRenderer.send('window:close'),
+      toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'), // E3f #58
       isMaximized:() => ipcRenderer.invoke('window:isMaximized'),
       onMaximizeChange: (cb: (maximized: boolean) => void) => {
         const h = (_e: any, m: boolean) => cb(m);
