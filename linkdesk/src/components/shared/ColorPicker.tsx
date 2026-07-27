@@ -234,7 +234,7 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
             }}
             spellCheck={false}
           />
-          <button className="colorpicker-ok" onClick={() => onChange(hexInput)}>OK</button>
+          <button className="colorpicker-ok" onClick={() => { onChange(hexInput); onClose(); }}>OK</button>
         </div>
 
         {/* 预设色 */}
