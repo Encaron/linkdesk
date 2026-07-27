@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk 主题制作器 — UI 预览</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-window: #2B2A24;
+  --bg-card: #1E1E1C;
+  --bg-input: #1A1A18;
+  --bg-icon-bar: #1F1E1A;
+  --bg-side-panel: #23221E;
+  --bg-toolbar: #23221E;
+  --bg-status: #2B2A24;
+  --text-primary: #E8E4D8;
+  --text-secondary: #A09C90;
+  --text-muted: #6B6760;
+  --accent: #C8A42A;
+  --accent-hover: #D4B040;
+  --icon-active: #C8A42A;
+  --icon-inactive: #6B6760;
+  --toggle-knob: #C8A42A;
+  --dirty-dot: #C8A42A;
+  --hover-overlay: rgba(200,164,42,0.06);
+  --border: #3A3830;
+  --separator: #3A3830;
+  --status-connected: #4EC9B0;
+  --status-disconnected: #6B6760;
+  --tab-hover-bg: #2E2D28;
+  --drop-indicator: rgba(200,164,42,0.06);
+  --scrollbar-thumb: rgba(200,164,42,0.15);
+  --scrollbar-thumb-hover: rgba(200,164,42,0.25);
+  --system-log: #6B6760;
+  --sent-echo: #C8A42A;
+  --received: #E8E4D8;
+  --cm-timestamp: #6B6760;
+  --context-menu-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  --drag-preview-shadow: 0 4px 16px rgba(0,0,0,0.35);
+}
+
+body {
+  background: #0A0A0A;
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; user-select: none;
+}
+
+/* === Main Container === */
+.app {
+  width: 1100px; height: 680px;
+  background: #121212;
+  border: 1px solid #333;
+  border-radius: 10px;
+  display: flex; flex-direction: column;
+  overflow: hidden;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+}
+
+/* === Top Bar === */
+.topbar {
+  display: flex; align-items: center; height: 40px; padding: 0 16px; gap: 12px;
+  background: #1A1A1A; border-bottom: 1px solid #333; flex-shrink: 0;
+}
+.topbar-icon { font-size: 16px; }
+.topbar-title { font-size: 13px; font-weight: 600; }
+.topbar-spacer { flex: 1; }
+.topbar-btn {
+  height: 28px; padding: 0 12px; border-radius: 5px; font-size: 11px;
+  cursor: pointer; border: 1px solid #444; background: #222; color: #999;
+  transition: all 150ms;
+}
+.topbar-btn:hover { border-color: #888; color: #ddd; }
+.topbar-btn.primary { background: #C8A42A; color: #1A1A1A; border-color: #C8A42A; font-weight: 500; }
+.topbar-btn.primary:hover { background: #D4B040; }
+.dirty-dot-topbar { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); margin-right: 4px; }
+
+/* === Body === */
+.body { flex: 1; display: flex; overflow: hidden; }
+
+/* === Left: Color Panel === */
+.color-panel {
+  width: 220px; flex-shrink: 0; border-right: 1px solid #333;
+  overflow-y: auto; background: #161616;
+}
+.color-panel::-webkit-scrollbar { width: 4px; }
+.color-panel::-webkit-scrollbar-thumb { background: #333; border-radius: 2px; }
+
+/* theme info */
+.theme-info {
+  padding: 10px 12px; border-bottom: 1px solid #2A2A2A;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.theme-info label { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; }
+.theme-info input, .theme-info select {
+  width: 100%; height: 28px; padding: 0 8px; border-radius: 4px;
+  border: 1px solid #444; background: #1A1A1A; color: #ddd; font-size: 12px; outline: none;
+}
+.theme-info input:focus, .theme-info select:focus { border-color: var(--accent); }
+
+/* section */
+.color-section { border-bottom: 1px solid #2A2A2A; }
+.color-section-header {
+  display: flex; align-items: center; height: 24px; padding: 0 10px;
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #777; cursor: pointer;
+}
+.color-section-header .arrow { font-size: 7px; margin-right: 4px; transition: transform 100ms; }
+.color-section-header .arrow.collapsed { transform: rotate(-90deg); }
+.color-section-body { padding: 2px 0; }
+.color-section-body.collapsed { display: none; }
+
+/* color row */
+.color-row {
+  display: flex; align-items: center; height: 28px; padding: 0 10px; gap: 8px;
+}
+.color-row:hover { background: rgba(255,255,255,0.02); }
+.color-label {
+  font: 10px "Fira Code", monospace; color: #999; flex: 1;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.color-hex {
+  font: 10px "Fira Code", monospace; color: #ddd; width: 60px; text-align: right; flex-shrink: 0;
+}
+.color-swatch {
+  width: 16px; height: 16px; border-radius: 3px; border: 1px solid #555;
+  cursor: pointer; flex-shrink: 0; position: relative;
+  transition: transform 150ms, border-color 150ms;
+}
+.color-swatch:hover { transform: scale(1.15); border-color: var(--accent); }
+.color-swatch input[type=color] {
+  position: absolute; inset: 0; opacity: 0; cursor: pointer; width: 100%; height: 100%;
+}
+
+/* === Center: Preview === */
+.preview-pane {
+  flex: 1; display: flex; flex-direction: column;
+  background: #1A1A1A; border-right: 1px solid #333;
+}
+.preview-toolbar {
+  display: flex; align-items: center; height: 28px; padding: 0 10px;
+  border-bottom: 1px solid #2A2A2A; gap: 8px; flex-shrink: 0;
+}
+.preview-toolbar-title { font-size: 10px; color: #777; text-transform: uppercase; letter-spacing: 0.5px; }
+.preview-zoom {
+  margin-left: auto; font-size: 10px; color: #999;
+  padding: 2px 8px; border: 1px solid #444; border-radius: 3px; cursor: pointer;
+}
+.preview-content {
+  flex: 1; display: flex; align-items: center; justify-content: center; padding: 12px;
+  overflow: hidden;
+}
+
+/* Shell mockup */
+.shell-mock {
+  width: 420px; height: 280px;
+  display: flex; flex-direction: column;
+  border: 1px solid var(--border);
+  border-radius: 4px; overflow: hidden;
+  box-shadow: var(--drag-preview-shadow);
+}
+.shell-topbar {
+  display: flex; align-items: center; height: 24px; padding: 0 10px;
+  background: var(--bg-toolbar); border-bottom: 1px solid var(--separator);
+  font-size: 10px; color: var(--text-secondary);
+}
+.shell-main { flex: 1; display: flex; }
+.shell-iconbar {
+  width: 30px; flex-shrink: 0; background: var(--bg-icon-bar);
+  display: flex; flex-direction: column; align-items: center; padding-top: 6px; gap: 6px;
+  border-right: 1px solid var(--separator);
+}
+.shell-icon {
+  width: 18px; height: 18px; border-radius: 3px;
+  display: flex; align-items: center; justify-content: center; font-size: 9px;
+  color: var(--icon-inactive);
+}
+.shell-icon.active { color: var(--icon-active); }
+.shell-sidebar {
+  width: 80px; flex-shrink: 0; background: var(--bg-side-panel);
+  border-right: 1px solid var(--separator); padding: 8px 6px;
+  font-size: 9px; color: var(--text-secondary);
+}
+.shell-sidebar-item {
+  padding: 2px 4px; border-radius: 2px; margin-bottom: 2px;
+}
+.shell-sidebar-item:hover { background: var(--tab-hover-bg); }
+.shell-content {
+  flex: 1; background: var(--bg-window); padding: 16px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.shell-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.shell-text { font-size: 10px; color: var(--text-secondary); line-height: 1.5; }
+.shell-btn {
+  align-self: flex-start; padding: 4px 14px; border-radius: 4px; font-size: 10px;
+  background: var(--accent); color: #1A1A1A; border: none; cursor: pointer; font-weight: 500;
+}
+.shell-btn:hover { background: var(--accent-hover); }
+.shell-input {
+  width: 70%; padding: 4px 8px; border-radius: 4px; font-size: 10px;
+  border: 1px solid var(--border); background: var(--bg-input); color: var(--text-primary);
+}
+.shell-card {
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 4px; padding: 10px; font-size: 10px; color: var(--text-primary);
+}
+.shell-statusbar {
+  display: flex; align-items: center; height: 18px; padding: 0 8px;
+  background: var(--bg-status); border-top: 1px solid var(--separator);
+  font-size: 9px; color: var(--text-muted); gap: 12px;
+}
+.shell-status-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--status-connected);
+}
+
+/* === Right: Theme List === */
+.theme-list-panel {
+  width: 200px; flex-shrink: 0; background: #161616;
+  display: flex; flex-direction: column;
+}
+.theme-list-header {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+  color: #777; padding: 10px 12px 6px; flex-shrink: 0;
+}
+.theme-list-body {
+  flex: 1; overflow-y: auto; padding: 0 8px;
+}
+.theme-item {
+  display: flex; align-items: center; gap: 8px; padding: 8px;
+  border-radius: 6px; cursor: pointer; margin-bottom: 2px;
+  transition: background 100ms; border: 1px solid transparent;
+}
+.theme-item:hover { background: rgba(255,255,255,0.03); }
+.theme-item.active { background: rgba(200,164,42,0.1); border-color: var(--accent); }
+.theme-item-cb {
+  width: 14px; height: 14px; border-radius: 3px; border: 1px solid #555;
+  display: flex; align-items: center; justify-content: center; font-size: 8px; flex-shrink: 0;
+}
+.theme-item-cb.checked { background: var(--accent); border-color: var(--accent); color: #1A1A1A; }
+.theme-item-info { flex: 1; min-width: 0; }
+.theme-item-name { font-size: 11px; font-weight: 500; }
+.theme-item-type { font-size: 9px; color: #777; margin-top: 1px; }
+.theme-item-actions { opacity: 0; transition: opacity 100ms; }
+.theme-item:hover .theme-item-actions { opacity: 1; }
+.theme-list-actions {
+  padding: 10px 12px; border-top: 1px solid #2A2A2A; flex-shrink: 0;
+  display: flex; flex-direction: column; gap: 6px;
+}
+.theme-list-btn {
+  width: 100%; height: 30px; border-radius: 5px; font-size: 11px; cursor: pointer;
+  border: 1px solid #444; background: #222; color: #999; transition: all 150ms;
+}
+.theme-list-btn:hover { border-color: #888; color: #ddd; }
+.theme-list-btn.accent { background: var(--accent); color: #1A1A1A; border-color: var(--accent); font-weight: 500; }
+.theme-list-btn.accent:hover { background: var(--accent-hover); }
+
+.ai-hint {
+  font-size: 9px; color: #555; text-align: center; padding: 8px 12px;
+  line-height: 1.4; border-top: 1px solid #2A2A2A; flex-shrink: 0;
+}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Top Bar -->
+  <div class="topbar">
+    <span class="topbar-icon">&#127912;</span>
+    <span class="topbar-title">主题制作器 — 琥珀 Amber</span>
+    <span class="dirty-dot-topbar"></span>
+    <span class="topbar-spacer"></span>
+    <button class="topbar-btn">新建</button>
+    <button class="topbar-btn">导入 JSON</button>
+    <button class="topbar-btn primary">保存</button>
+    <button class="topbar-btn">导出</button>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <!-- Left: Color Panel -->
+    <div class="color-panel" id="colorPanel">
+      <!-- theme info -->
+      <div class="theme-info">
+        <label>主题名称</label>
+        <input value="琥珀 Amber" id="themeName">
+        <label>类型</label>
+        <select id="themeType"><option selected>dark</option><option>light</option></select>
+      </div>
+    </div>
+
+    <!-- Center: Preview -->
+    <div class="preview-pane">
+      <div class="preview-toolbar">
+        <span class="preview-toolbar-title">实时预览</span>
+        <span class="preview-zoom">100%</span>
+      </div>
+      <div class="preview-content">
+        <div class="shell-mock" id="shellMock">
+          <div class="shell-topbar">LinkDesk &nbsp; 文件 &nbsp; 查看 &nbsp; 帮助</div>
+          <div class="shell-main">
+            <div class="shell-iconbar">
+              <span class="shell-icon active">&#128194;</span>
+              <span class="shell-icon">&#128269;</span>
+              <span class="shell-icon">&#9881;</span>
+              <span class="shell-icon">&#128220;</span>
+            </div>
+            <div class="shell-sidebar">
+              <div class="shell-sidebar-item">&#9660; src</div>
+              <div class="shell-sidebar-item" style="padding-left:12px;">App.tsx</div>
+              <div class="shell-sidebar-item" style="padding-left:12px;">main.ts</div>
+              <div class="shell-sidebar-item">&#9654; plugins</div>
+            </div>
+            <div class="shell-content">
+              <div class="shell-title">Hello LinkDesk</div>
+              <div class="shell-text">这是正文文字——用于预览文字颜色、背景色和强调色的搭配效果。</div>
+              <button class="shell-btn">主要按钮</button>
+              <input class="shell-input" placeholder="输入框占位文字...">
+              <div class="shell-card">卡片区域——展示卡片背景和边框颜色</div>
+            </div>
+          </div>
+          <div class="shell-statusbar">
+            <span class="shell-status-dot"></span> 已连接 &nbsp; UTF-8 &nbsp; Ln 14, Col 8
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right: Theme List -->
+    <div class="theme-list-panel">
+      <div class="theme-list-header">已保存的主题</div>
+      <div class="theme-list-body">
+        <div class="theme-item active">
+          <div class="theme-item-cb checked">&#10003;</div>
+          <div class="theme-item-info">
+            <div class="theme-item-name">琥珀 Amber</div>
+            <div class="theme-item-type">dark · 33 色键</div>
+          </div>
+        </div>
+        <div class="theme-item">
+          <div class="theme-item-cb"></div>
+          <div class="theme-item-info">
+            <div class="theme-item-name">薄荷苏打</div>
+            <div class="theme-item-type">light · 33 色键</div>
+          </div>
+        </div>
+        <div class="theme-item">
+          <div class="theme-item-cb"></div>
+          <div class="theme-item-info">
+            <div class="theme-item-name">暮光 Sunset</div>
+            <div class="theme-item-type">dark · 33 色键</div>
+          </div>
+        </div>
+        <div class="theme-item">
+          <div class="theme-item-cb"></div>
+          <div class="theme-item-info">
+            <div class="theme-item-name">晨曦 Dawn</div>
+            <div class="theme-item-type">light · 33 色键</div>
+          </div>
+        </div>
+      </div>
+      <div class="theme-list-actions">
+        <button class="theme-list-btn">+ 新建主题</button>
+        <button class="theme-list-btn accent">导出选中 (1)</button>
+        <button class="theme-list-btn">导出全部 (4)</button>
+      </div>
+      <div class="ai-hint">AI 是独立插件——通过命令<br>操作本制作器的色键值</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// === 33 color key definitions ===
+const COLOR_GROUPS = [
+  {
+    name: '窗口/背景', defaultOpen: true,
+    keys: ['bg-window','bg-card','bg-input','bg-icon-bar','bg-side-panel','bg-toolbar','bg-status']
+  },
+  {
+    name: '文字', defaultOpen: true,
+    keys: ['text-primary','text-secondary','text-muted']
+  },
+  {
+    name: '强调/交互', defaultOpen: true,
+    keys: ['accent','accent-hover','icon-active','icon-inactive','toggle-knob','dirty-dot','hover-overlay']
+  },
+  {
+    name: '边框/分隔', defaultOpen: false,
+    keys: ['border','separator']
+  },
+  {
+    name: '状态', defaultOpen: false,
+    keys: ['status-connected','status-disconnected']
+  },
+  {
+    name: '标签页/拖放', defaultOpen: false,
+    keys: ['tab-hover-bg','drop-indicator']
+  },
+  {
+    name: '滚动条', defaultOpen: false,
+    keys: ['scrollbar-thumb','scrollbar-thumb-hover']
+  },
+  {
+    name: '日志/数据', defaultOpen: false,
+    keys: ['system-log','sent-echo','received','cm-timestamp']
+  },
+  {
+    name: '阴影', defaultOpen: false,
+    keys: ['context-menu-shadow','drag-preview-shadow']
+  }
+];
+
+// === Build left panel ===
+const colorPanel = document.getElementById('colorPanel');
+
+COLOR_GROUPS.forEach(group => {
+  const section = document.createElement('div');
+  section.className = 'color-section';
+
+  const header = document.createElement('div');
+  header.className = 'color-section-header';
+  header.innerHTML = `<span class="arrow${group.defaultOpen ? '' : ' collapsed'}">&#9660;</span>${group.name}`;
+
+  const body = document.createElement('div');
+  body.className = 'color-section-body';
+  if (!group.defaultOpen) body.classList.add('collapsed');
+
+  header.addEventListener('click', () => {
+    body.classList.toggle('collapsed');
+    header.querySelector('.arrow').classList.toggle('collapsed');
+  });
+
+  group.keys.forEach(key => {
+    const row = document.createElement('div');
+    row.className = 'color-row';
+
+    const hex = getComputedStyle(document.documentElement).getPropertyValue(`--${key}`).trim();
+
+    row.innerHTML = `
+      <span class="color-label">${key}</span>
+      <span class="color-hex" data-key="${key}">${hex}</span>
+      <span class="color-swatch" style="background:${hex};">
+        <input type="color" value="${hex}" data-key="${key}">
+      </span>
+    `;
+    body.appendChild(row);
+  });
+
+  section.appendChild(header);
+  section.appendChild(body);
+  colorPanel.appendChild(section);
+});
+
+// === Wire up color inputs → live preview ===
+document.querySelectorAll('.color-swatch input[type=color]').forEach(input => {
+  input.addEventListener('input', (e) => {
+    const key = e.target.dataset.key;
+    const hex = e.target.value;
+    document.documentElement.style.setProperty(`--${key}`, hex);
+    // update swatch bg + hex text
+    e.target.parentElement.style.background = hex;
+    const hexSpan = e.target.parentElement.parentElement.querySelector('.color-hex');
+    if (hexSpan) hexSpan.textContent = hex;
+  });
+});
+</script>
+</body>
+</html>
