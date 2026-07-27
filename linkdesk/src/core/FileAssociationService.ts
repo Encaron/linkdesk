@@ -46,6 +46,13 @@ export function registerFileAssociation(association: FileAssociation): void {
   // 同插件重复注册 → 静默忽略
   if (list.some((a) => a.pluginId === association.pluginId)) return;
 
+  // #59f3：已有其他插件注册同一扩展名——警告（多注册合法，但开发者应知情）
+  if (list.length > 0) {
+    console.warn(
+      `[FileAssociationService] "${ext}" 已有关联（${list.map(a => a.pluginId).join(', ')}），新增: ${association.pluginId}`
+    );
+  }
+
   list.push({ ...association, extension: ext });
   _associations.set(ext, list);
 

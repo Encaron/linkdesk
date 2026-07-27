@@ -46,6 +46,13 @@ export function registerCommand(pluginId: string, command: Command): void {
     // 重注册：更新 handler + title（toggle 命令的 title 随状态变化动态更新）。
     // loader 先注册元数据 → 组件 mount 时重注册覆盖 handler → useEffect 按状态更新 title。
     const existing = _commands.get(command.id)!;
+    // #59f1：异插件覆盖警告——两插件声明同一命令 ID
+    for (const [pid, ids] of _pluginCommands) {
+      if (ids.has(command.id) && pid !== pluginId) {
+        console.warn(`[CommandRegistry] "${command.id}" 被覆盖——原注册者: ${pid}，新注册者: ${pluginId}`);
+        break;
+      }
+    }
     existing.handler = command.handler;
     existing.title = command.title;
     return;
