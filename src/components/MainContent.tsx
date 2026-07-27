@@ -7,7 +7,7 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -146,8 +146,9 @@ function MainContent({
 
   const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
 
-  // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
-  const registeredViewIdsRef = useRef<Set<string>>(new Set());
+  // 追踪有 WebView 注册的插件——用 state（非 ref），ID 就绪时触发重渲染，
+  // 确保 React fallback → WebView 切换的时序正确。#58e 用 ref 导致第二帧才切→空白。
+  const [registeredViewIds, setRegisteredViewIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
@@ -170,7 +171,7 @@ function MainContent({
     // 异步获取已注册的 WebView 列表，只对已注册的插件做 setVisible/setBounds
     pv.getAllIds?.()?.then((ids: string[]) => {
       const registeredSet = new Set(ids);
-      registeredViewIdsRef.current = registeredSet;
+      setRegisteredViewIds(registeredSet);
 
       const prev = pluginViewsRef.current;
       for (const [pluginId, state] of currentStates) {
@@ -291,7 +292,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, onCreateTab, registeredViewIdsRef.current)}
+          {renderTabContent(tab, isFocused, onCreateTab, registeredViewIds)}
         </TabPanePositioner>
       ))}
     </div>
