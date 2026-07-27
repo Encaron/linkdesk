@@ -274,7 +274,14 @@ function App() {
             default: "custom",
             enum: ["custom", "followTheme"],
             description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
-            onApply: () => applyAccentColor(getEffectiveAccentColor()),
+            onApply: (v) => {
+              if (v === "custom") {
+                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
+                const current = document.documentElement.style.getPropertyValue("--accent").trim();
+                if (current) setConfigurationValue("app.accentColor", current, "user");
+              }
+              applyAccentColor(getEffectiveAccentColor());
+            },
           },
           "app.accentColor": {
             type: "string",
