@@ -176,12 +176,47 @@ const showHamburger = menuStyle !== "titlebar";   // hamburger 或 both → 显�
 9. 整个 TitleBar 是 `-webkit-app-region: drag`——可拖拽移动窗口
 10. 菜单按钮是 `-webkit-app-region: no-drag`——可点击
 
-**CSS 关键参数（对标 VS Code）：**
-- 高度：30px
-- 背景：`var(--bg-titlebar)`（新增 CSS 变量，默认 `#1e1e1e`）
-- 菜单按钮：padding 6px 10px，font-size 12px
-- 下拉面板：跟之前汉堡下拉同款样式（`bg-card` 背景，边框，阴影）
-- z-index：2548
+**CSS 关键参数（对标 VS Code TitleBar + 匹配 LinkDesk 设计系统）：**
+
+```
+┌──────────────────────────────────────────────────────────────┐
+│ ☰ 标  文件 ▼  编辑 ▼  查看 ▼  终端 ▼  帮助 ▼    ─   □   ×  │ 30px
+│ 志                                                        │
+├──────────────────────────────────────────────────────────────┤
+│ 菜单下拉面板（点击弹出）：                                    │
+│ ┌──────────┬──────────┐                                    │
+│ │ 设置     │ Ctrl+,   │  ← 同现 HamburgerMenu 下拉样式     │
+│ │ 退出     │ Alt+F4   │                                    │
+│ └──────────┴──────────┘                                    │
+└──────────────────────────────────────────────────────────────┘
+```
+
+| 元素 | 规格 | 对标 |
+|------|------|------|
+| 整体高度 | 30px | VS Code TitleBar 30px |
+| 背景色 | `var(--bg-titlebar)` → 新增 CSS 变量，默认 `#252526`（比 `--bg-window` `#1e1e1e` 稍亮——区分标题栏和编辑区） | VS Code `TITLE_BAR_ACTIVE_BACKGROUND`: `#252526`（暗色）|
+| ☰ 按钮 | 左侧 36×30px，图标 `codicon-menu` 14px，颜色 `var(--text-secondary)` | VS Code 左上角 logo |
+| ☰ 按钮 hover | 背景 `rgba(255,255,255,0.05)` | 同现 HamburgerMenu hover |
+| 应用 Logo/名 | ☰ 右侧：LinkDesk 文字 11px `var(--text-muted)`，不可点击 | VS Code 标题栏中间的窗口标题 |
+| 菜单按钮 | padding 4px 10px，font-size 12px，颜色 `var(--text-secondary)`，border-radius 3px | VS Code 菜单栏按钮 |
+| 菜单按钮 hover | 背景 `rgba(255,255,255,0.06)`，颜色 `var(--text-primary)` | 120ms transition |
+| 菜单按钮 open | 背景 `rgba(255,255,255,0.08)`（比 hover 稍亮——"按下去"的感觉） | 120ms transition |
+| 菜单按钮间距 | 2px gap | 紧凑但不拥挤 |
+| 下拉面板 | `bg-card` 背景，1px `separator` 边框，border-radius 4px，阴影 `0 4px 16px rgba(0,0,0,0.3)` | 同现 HamburgerMenu |
+| 下拉面板定位 | 菜单按钮正下方，left 对齐 | VS Code |
+| 子菜单面板 | 父面板右侧弹出，left 对齐父项，跟 #52d 逻辑一致 | VS Code |
+| 菜单项 | 同现 HamburgerMenu——12px 字体，24px 行高，hover `accent` 高亮 | |
+| 拖拽区 | 整个 TitleBar `-webkit-app-region: drag`，按钮/☰ `no-drag` | VS Code |
+| z-index | TitleBar: auto（正常流），下拉面板: 2548（Dialog 下方，Notification 上方） | |
+
+**新增 CSS 变量——`index.css` 或 `ThemeEngine` 注册：**
+```css
+:root {
+  --bg-titlebar: #252526;  /* 比 --bg-window 稍亮，区分标题栏 */
+}
+```
+
+**暗色/亮色主题跟随——和 LinkDesk 其他 UI 一样走 CSS 变量，零硬编码颜色。**
 
 **验证：** 顶部出现 30px 暗色标题栏 → ☰ + 文件 ▼ + 查看 ▼ 按钮 → 点击弹出菜单
 
