@@ -148,6 +148,14 @@ export function getPluginCommands(pluginId: string): string[] {
   return Array.from(_pluginCommands.get(pluginId) ?? []);
 }
 
+/** 反向查找命令所属插件——命令面板齿轮"打开插件详情"消费 */
+export function getCommandPluginId(commandId: string): string | undefined {
+  for (const [pluginId, cmdSet] of _pluginCommands) {
+    if (cmdSet.has(commandId)) return pluginId;
+  }
+  return undefined;
+}
+
 /** 清空注册表（测试用） */
 export function clearCommands(): void {
   _commands.clear();
