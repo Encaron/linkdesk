@@ -14,75 +14,223 @@ Electron `BrowserWindow` 的 `titleBarStyle` / `backgroundColor` → 暗色标�
 
 ---
 
-## 二、菜单栏——hamburger + menubar 双模式，同一数据源
+## 二、菜单栏——hamburger + menubar 双模式，同一数据源（🔥 2026-07-27 重写）
 
-### 2.1 为什么是双模式
+> 对标 VS Code 源码 `GlobalCompositeBar` + `GlobalActivityActionViewItem`。
+> 源码依据：`src/vs/workbench/browser/parts/globalCompositeBar.ts` + `activitybarPart.ts`。
 
-**对标 VS Code 的做法。** VS Code 有两套菜单渲染：
+### 2.1 VS Code 怎么做——逐行对照
 
-| 平台 | 菜单位置 | 实现 |
+**汉堡在图标栏第一个位置，不是独立元素。**
+
+```
+VS Code 源码结构：
+  ActivitybarPart.createContentArea(parent)
+    → this.content = $('.content')                         ← 图标栏内容容器
+    → PaneCompositeBar → CompositeBar.create(parent)        ← 视图图标列表（activity bar items）
+    → GlobalCompositeBar.create(parent)                     ← 汉堡菜单（在视图图标之前）
+
+  GlobalCompositeBar：
+    → this.element = $('div')                               ← 只能装两个 action 的容器
+    → this.globalActivityActionBar = new ActionBar(...)      ← 垂直 ActionBar
+      → actionViewItemProvider:
+          if action.id === GLOBAL_ACTIVITY_ID:
+            return GlobalActivityActionViewItem              ← ☰ 按钮
+          if action.id === ACCOUNTS_ACTIVITY_ID:
+            return AccountsActivityActionViewItem            ← 账号按钮
+    → push(globalActivityAction)                            ← 推入汉堡 action
+```
+
+**关键点：**
+
+1. **位置：图标栏第一个** — `GlobalCompositeBar` 创建后 `append` 到 activity bar 内容区，在视图图标列表**之前**
+2. **只有两个 action** — 汉堡（必显）+ 账号（可选），不是通用视图列表。两个 action 都在同一个垂直 `ActionBar` 里
+3. **不可拖拽** — `draggable: false`，不在 `CompositeDragAndDrop` 里
+4. **独立颜色** — `ICompositeBarColors` 参数传入，不跟视图图标共享颜色
+5. **点击=展开上下文菜单** — `AbstractGlobalActivityActionViewItem.run()` → `contextMenuService.showContextMenu({ getActions: () => menu.getActions() })`
+6. **菜单数据来自 MenuId.GlobalActivity** — 不是 `MenuId.MenuBar`。`MenuId.GlobalActivity` 里的菜单项通过 `getActionBarActions()` 转为 `IAction[]`，支持 `SubmenuAction` 嵌套
+
+**LinkDesk 当前实现的问题：**
+
+| | VS Code | LinkDesk 当前 |
 |------|------|------|
-| 桌面版（Windows/macOS/Linux） | 窗口顶部原生菜单栏——File / Edit / Selection / View / Go / Run / Terminal / Help | Electron `Menu.setApplicationMenu()` |
-| 浏览器版（vscode.dev） | 标题栏左侧 ☰ 图标 → 点击弹出下拉菜单 | 纯 HTML/CSS 下拉层 |
+| 位置 | 图标栏第一个 item | App.tsx 里独立 `<HamburgerMenu />` |
+| 不可移动 | `draggable: false` | 在 IconBar 外面，无所谓 |
+| 独立颜色 | `ICompositeBarColors` 单独传入 | 自己写了 `.hamburger-btn` 样式 |
+| 菜单层级 | `SubmenuAction` — File → 子菜单 | 平级命令列表 |
+| 原生 menubar | 读 MenuRegistry | `menu-builder.ts` 硬编码菜单内容 |
 
-**两套渲染共享同一份菜单数据。** VS Code 的 `MenuRegistry` 存储菜单项树（label + command + when 条件 + keybinding 提示），桌面版喂给 Electron `Menu.buildFromTemplate()`，浏览器版喂给 React `<MenuBar>` 组件。菜单项的新增/删除/显隐——改数据层，两个渲染目标自动同步。
+### 2.2 改造方案——子任务拆分
 
-**LinkDesk 同理。** 虽然长时间内会在桌面端（Electron），但架构不应绑死桌面。`MenuRegistry` 数据模型已在 Phase 5 建好——多级嵌套、when 条件、command 绑定、accelerator 提示——缺的只是第二个渲染目标。
+**不新增 `MenuId.GlobalActivity`——复用已有的 `MenuId.MenuBar`。** 语义相同，够用。以后如果 LinkDesk 需要区分"汉堡底部菜单"和"窗口顶部菜单栏"，再拆。
 
-### 2.2 双模式设计
+#### #52a MenuRegistry 加 submenu 类型（~25 行）
 
-```
-设置项: "menuStyle": "hamburger" | "menubar"    默认 "hamburger"
+`MenuItem` 目前是 `{ command, group, when, order }`——只支持平级命令。
+加 `children?: MenuItem[]` 字段——有 children 时无视 command，渲染为嵌套子菜单。
 
-              MenuRegistry (数据源——已有，不新增)
-               ├── 壳级菜单：File / Edit / View / Help
-               ├── 插件贡献：contributes.menus (menuBar 位置)
-               └── onDidChange → 渲染目标自动同步
-                      │
-          ┌───────────┴───────────┐
-          │                       │
-    hamburger 渲染器          menubar 渲染器
-    (全平台可用，默认)         (Electron 桌面端)
-          │                       │
-    <HamburgerMenu />        Menu.buildFromTemplate()
-    position:fixed 下拉       → Menu.setApplicationMenu()
-    ~90 行 React             ~20 行适配函数
-```
+```typescript
+// src/core/MenuRegistry.ts
 
-- **hamburger**（默认）：全平台一致。Electron 桌面能用，未来浏览器版也能用。不依赖 OS 原生菜单 API——菜单颜色跟随主题，不和标题栏打架。对标 VS Code 浏览器版。
-- **menubar**：桌面用户可选。Electron `Menu.buildFromTemplate()` 吃的是类似的树形结构——写一个适配函数把 `MenuRegistry` 的 menu tree 转成 Electron `MenuItem` constructor 格式。macOS 上菜单在屏幕顶部，Windows/Linux 上嵌在窗口标题栏下方。`menuService.onDidChange → Menu.setApplicationMenu()` 订阅即可。
+export interface MenuItem {
+  command: string;
+  group?: string;
+  when?: string;
+  order?: number;
+  /** E3f #52a：嵌套子菜单——有 children 时无视 command，渲染为可展开子菜单 */
+  children?: MenuItem[];
+}
 
-**为什么默认 hamburger 而不是 menubar：**
-1. 一套代码全平台跑——不需要为不同 OS 写不同的菜单逻辑
-2. 菜单颜色跟随 LinkDesk 主题——原生菜单栏在 Windows 上不受 CSS 控制，深色主题下白菜单栏割裂
-3. 插件贡献的菜单项在 ☰ 里自动出现——和原生菜单栏完全相同的可见性
-4. 用户想要原生体验时切到 menubar——只是一个设置项，不是架构改动
+// 注册时支持 children
+export function registerMenuItems(
+  menuId: MenuId,
+  pluginId: string,
+  items: ManifestMenuItem[]
+): void {
+  // ManifestMenuItem 也加 children 支持
+}
 
-### 2.3 菜单内容（两种模式共享）
-
-```
-  File
-    ├ Open Folder…              Ctrl+K Ctrl+O
-    ├ Open Recent ▼
-    ├ Import Workspace…
-    ├ Export Workspace…
-    ├ Exit                      Alt+F4
-
-  Edit
-    ├ Undo / Redo              Ctrl+Z / Ctrl+Y
-    ├ Cut / Copy / Paste / Select All
-
-  View
-    ├ Command Palette…          Ctrl+Shift+P
-    ├ Toggle Sidebar            Ctrl+B
-    ├ Settings…                 Ctrl+,
-    ├ Theme ▼ / Language ▼
-
-  Help
-    ├ About / Open Log Folder
+export type ManifestMenuItem = 
+  | string 
+  | { command: string; when?: string; group?: string; children?: ManifestMenuItem[] };
 ```
 
-插件贡献顶级菜单组（`contributes.menus` 中 `location: "menuBar"` 的项）→ 两种模式自动多一项。~90 行（hamburger 渲染器）+ ~20 行（menubar 适配函数）+ ~10 行（menuStyle 配置项注册）= ~120 行。
+验证：注册带 children 的菜单项 → `getMenuItems()` 返回的 item 包含 children
+
+#### #52b 汉堡移入 IconBar 第一个位置（~40 行）
+
+对标 VS Code `GlobalCompositeBar`——在 `IconBar.tsx` 里，视图图标列表**之前**渲染一个独立的 `HomeIndicator`（汉堡 + 可选账号）。
+
+```tsx
+// src/components/IconBar.tsx
+<div className="icon-bar">
+  {/* E3f #52b：汉堡——图标栏第一个位置，固定不可移动 */}
+  <HamburgerMenu />
+  
+  {/* 分隔线——汉堡和视图图标之间 */}
+  <div className="icon-bar-separator" />
+  
+  {/* 视图图标列表（可拖拽排序） */}
+  {orderedIds.map(id => <IconBarItem ... />)}
+  
+  {/* 底部齿轮 */}
+  <GearMenu />
+</div>
+```
+
+- 汉堡在图标栏**里面**，不是 App.tsx 里的独立元素
+- 不参与 `orderedIds` 排序——永远在第一
+- 颜色走 `ICompositeBarColors`（同一个参数控制 active/inactive）
+- 大小、间距跟其他图标一致——但因为颜色不同，视觉上"不一样"
+
+验证：汉堡在图标栏最顶部 → 不能拖拽移动 → 点击弹出菜单
+
+#### #52c 注册菜单栏内容——File/Edit/View/Help（~35 行）
+
+在 `coreCommands.ts` 注册到 `MenuId.MenuBar`，带嵌套 children：
+
+```typescript
+// src/core/coreCommands.ts —— ensureCoreCommands() 追加
+
+// E3f #52c：菜单栏内容——File 组（含子菜单）
+registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
+  {
+    command: '',  // 父项——无 command
+    group: 'file',
+    children: [
+      { command: 'core.openSettings', group: 'file' },
+      // ... 更多 File 子项
+    ],
+  },
+  {
+    command: 'workbench.action.showCommands',  // 平级——无子菜单
+    group: 'view',
+  },
+  ...
+]);
+```
+
+菜单内容设计（对标 VS Code，前期精简）：
+
+```
+File                    group: file
+  ├─ 设置       Ctrl+,    → core.openSettings
+  └─ 退出       Alt+F4    → core.exit
+
+View                    group: view
+  ├─ 命令面板  Ctrl+Shift+P   → workbench.action.showCommands
+  ├─ 选择颜色主题             → workbench.action.selectTheme
+  ├─ 选择语言                → workbench.action.selectLanguage
+  └─ 打开键盘快捷方式          → workbench.action.openKeybindingsSettings
+```
+
+验证：汉堡 → 弹出菜单 → File 展开 → 子菜单项
+
+#### #52d 汉堡渲染嵌套菜单（~50 行）
+
+`HamburgerMenu.tsx` 改为读 `MenuId.MenuBar`，支持嵌套 children：
+
+```tsx
+function renderMenuItem(item: MenuItem) {
+  if (item.children && item.children.length > 0) {
+    // 嵌套子菜单——hover 或点击展开
+    return <SubmenuItem item={item}>
+      {item.children.map(child => renderMenuItem(child))}
+    </SubmenuItem>;
+  }
+  // 叶子——点击执行命令
+  return <CommandItem item={item} />;
+}
+```
+
+- 子菜单展开方式：hover 时右侧弹出二级菜单（对标 VS Code）
+- 叶子项：点击 → `executeCommand(item.command)` → 关闭菜单
+- 快捷键显示：从 `KeybindingRegistry.getKeybindings()` 查找
+
+验证：汉堡 → File → hover → 右侧弹出子菜单 "设置" / "退出"
+
+#### #52e 原生 menubar 适配器改读 MenuRegistry（~30 行）
+
+`electron/menu-builder.ts` 不再硬编码——改为从渲染进程读取 `MenuId.MenuBar` 的菜单数据，转成 Electron `MenuItem` 格式。
+
+```typescript
+// electron/menu-builder.ts
+// Phase 1（本任务）：从渲染进程一次性获取菜单数据
+export function buildAppMenuFromRegistry(
+  mainWindow: BrowserWindow,
+  menuData: MenuItemTree[]  // 通过 IPC 从渲染进程传来
+): Menu {
+  return Menu.buildFromTemplate(convertToTemplate(menuData, mainWindow));
+}
+
+function convertToTemplate(items: MenuItemTree[], mainWindow: BrowserWindow): any[] {
+  return items.map(item => {
+    if (item.children?.length) {
+      return { label: item.label, submenu: convertToTemplate(item.children, mainWindow) };
+    }
+    return {
+      label: item.label,
+      accelerator: item.keybinding,
+      click: () => mainWindow.webContents.send('menu:command', item.command),
+    };
+  });
+}
+```
+
+获取 menuData 的方式：渲染进程 `ensureCoreCommands()` 之后，`ipcRenderer.send('menu-bar-data', menuItems)` → 主进程收到后构建原生菜单。
+
+验证：切换到 menubar → 原生菜单栏出现 → 内容跟汉堡一致 → 点击 File → 子菜单一致
+
+### 2.3 任务汇总
+
+| # | 任务 | 文件 | 行数 | 独立验证 |
+|:--:|------|------|:--:|------|
+| 52a | MenuRegistry 加 submenu 类型 | `MenuRegistry.ts` | ~25 | `getMenuItems()` 返回带 children 的 item |
+| 52b | 汉堡移入 IconBar 第一个位置 | `IconBar.tsx` + `App.tsx` | ~40 | 汉堡在图标栏顶部，不能拖拽 |
+| 52c | 注册菜单栏内容 File/Edit/View/Help | `coreCommands.ts` | ~35 | 汉堡 → 弹出 → File 展开子菜单 |
+| 52d | 汉堡渲染嵌套菜单 | `HamburgerMenu.tsx` | ~50 | hover File → 右侧弹出二级菜单 |
+| 52e | 原生 menubar 适配器改读 MenuRegistry | `menu-builder.ts` | ~30 | 切 menubar → 原生菜单内容跟汉堡一致 |
+| **合计** | | | **~180 行** | |
 
 ---
 
@@ -621,8 +769,12 @@ if (hidden) return null;
 
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
-| 51 | 标题栏暗色化——Electron titleBarStyle/backgroundColor | ~20 | 标题栏颜色 = 主题色 |
-| 52 | 菜单栏双模式——hamburger（默认）+ menubar（Electron 原生），共享 MenuRegistry 数据源 | ~120 | 点击 ☰ → 四组菜单；切 menubar → 原生菜单栏内容一致 |
+| 51 | 标题栏暗色化——Electron nativeTheme + backgroundColor | ~25 | 标题栏颜色 = 主题色 |
+| 52a | 🔥 MenuRegistry 加 submenu 类型——children 字段支持嵌套 | ~25 | `getMenuItems()` 返回带 children 的 item |
+| 52b | 🔥 汉堡移入 IconBar 第一个位置——对标 VS Code GlobalCompositeBar | ~40 | 汉堡在图标栏顶部，不可拖拽 |
+| 52c | 🔥 注册菜单栏内容——File/Edit/View/Help + 嵌套 children | ~35 | 汉堡 → 弹出 → File 展开子菜单 |
+| 52d | 🔥 汉堡渲染嵌套菜单——hover 展开子菜单 | ~50 | hover File → 右侧弹出二级菜单 |
+| 52e | 🔥 原生 menubar 适配器改读 MenuRegistry——消硬编码 | ~30 | 切 menubar → 原生菜单内容跟汉堡一致 |
 | 53 | 齿轮菜单完整版——context key 驱动 5 项 | ~40 | 齿轮 → 配置/查看日志 跳到对应位置 |
 | 54 | 输出面板 UI——频道选择器 + 日志列表 + 清空/导出 | ~80 | 切频道 → 日志内容切换 |
 | 55 | 欢迎页集成——三种状态切换 + recentFolders | ~40 | 打开文件夹 → 状态 B → 关闭 → 状态 A |
