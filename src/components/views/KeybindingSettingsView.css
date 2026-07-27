@@ -74,6 +74,10 @@
   align-items: center;
 }
 
+.keybindings-row {
+  cursor: pointer;
+}
+
 .keybindings-row:hover {
   background: var(--hover-overlay);
 }

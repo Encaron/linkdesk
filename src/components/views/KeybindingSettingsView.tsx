@@ -64,7 +64,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     const conflicts = keybindingResolver.detectConflicts();
     const conflictKeys = new Set(conflicts.map((c) => c.key));
 
-    return commands.map((cmd): KeybindingRow & { _conflict: boolean } => {
+    const rows = commands.map((cmd): KeybindingRow & { _conflict: boolean } => {
       const kb = findKeybindingForCommand(cmd.id);
       return {
         command: cmd.id,
@@ -76,6 +76,9 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
         _conflict: kb ? conflictKeys.has(kb.key) : false,
       };
     });
+    // 按命令标题字母升序——对标 VS Code Keyboard Shortcuts
+    rows.sort((a, b) => a.title.localeCompare(b.title, "zh"));
+    return rows;
   }, [version]);
 
   const filtered = useMemo(() => {
