@@ -154,6 +154,7 @@ try {
       setBounds: (id: string, b: { x: number; y: number; width: number; height: number }) =>
         ipcRenderer.invoke('plugin-view:setBounds', id, b),
       getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
+      toggleDevTools: (id: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', id), // E3f #58
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

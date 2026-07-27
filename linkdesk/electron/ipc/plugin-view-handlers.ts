@@ -25,5 +25,10 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     return _registry?.getAllPluginIds() ?? [];
   });
 
-  console.log('[plugin-view-handlers] 已注册 3 个 IPC handler');
+  // E3f #58：切换插件 DevTools
+  ipcMain.handle('plugin-view:toggleDevTools', (_event, pluginId: string) => {
+    _registry?.toggleDevTools?.(pluginId);
+  });
+
+  console.log('[plugin-view-handlers] 已注册 4 个 IPC handler');
 }
