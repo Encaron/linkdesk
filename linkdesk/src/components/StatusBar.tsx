@@ -10,6 +10,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/StatusBarService";
 import { getConfigurationValue } from "../core/ConfigurationService";
 import { executeCommand } from "../core/CommandRegistry";
 import { CUSTOM_EVENTS } from "../core/CoreEvents";
@@ -27,8 +28,14 @@ interface StatusBarProps {
 function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBarProps) {
   const { t } = useTranslation();
 
-  // 从 viewRegistry 读取所有插件的 statusBar 贡献
-  const allItems = getStatusBarContributions();
+  // 动态状态栏项变更 → 重渲染
+  const [, setStatusBarTick] = useState(0);
+  useEffect(() => {
+    return onDidChangeStatusBar.event(() => setStatusBarTick((n) => n + 1));
+  }, []);
+
+  // 合并静态（plugin.json）+ 动态（StatusBarService）两源
+  const allItems = [...getStatusBarContributions(), ...getDynamicStatusBarItems()];
 
   // 去重插件 ID（保持顺序）
   const orderedPluginIds = (() => {
