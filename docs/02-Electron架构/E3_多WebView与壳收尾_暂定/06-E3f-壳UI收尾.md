@@ -1086,7 +1086,11 @@ if (hidden) return null;
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
 | 51 | 标题栏暗色化——Electron nativeTheme + backgroundColor | ~25 | 标题栏颜色 = 主题色 |
-| 52a-e | 🔥 第一/二版菜单栏（已废弃——被 TitleBar 方案替代） | — | — |
+| 52a | MenuRegistry 加 `children` 嵌套 | — | ✅ 保留——TitleBar + HamburgerMenu 共用 |
+| 52b | 汉堡移入 IconBar 第一个 | — | ✅ 保留——`menuStyle: "hamburger"` 模式用 |
+| 52c | 注册 File/View 菜单内容 | — | ✅ 保留——两份渲染的共同数据源 |
+| 52d | hover 展开子菜单 | — | ✅ 保留——两份渲染共用交互逻辑 |
+| 52e | 原生 menubar 适配器 | — | ❌ 废弃——被 TitleBar 替代（#52i 清理） |
 | 52f | 🔥 TitleBar 组件——横排菜单 + 下拉面板 + 拖拽区 | ~60 | 顶部暗色标题栏，☰+文件▼+查看▼ |
 | 52g | 🔥 `app.menuStyle` 配置项 + App.tsx 条件渲染 | ~20 | 设置里切换 → TitleBar/Hamburger 显隐 |
 | 52h | IconBar 接收 `showHamburger` prop | ~5 | prop 控制图标栏汉堡显隐 |
