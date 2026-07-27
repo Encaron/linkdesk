@@ -15,6 +15,7 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "@src/core/PluginStateService"; // E3f #57
 
 // ── 类型 ──
 
@@ -107,14 +108,26 @@ const _listeners = new Set<() => void>();
 
 const STORAGE_KEY = "linkdesk:terminal:sessions";
 
-/** 从 localStorage 恢复 session——模块初始化时调用一次 */
+/** 从 PluginStateService 恢复 session（文件持久化优先），localStorage 兜底。E3f #57 */
 function _restoreSessions(): void {
   try {
+    // PluginStateService 优先——走 StorageService → 文件持久化
+    const psData = getPluginStateValue<{
+      sessions: TerminalSession[]; activeSessionId: string | null;
+      sessionCounter: number; colorIndex: number;
+    }>("terminal", "sessions");
+    if (psData?.sessions) {
+      _store.sessions = psData.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
+      if (typeof psData.activeSessionId === "string") _store.activeSessionId = psData.activeSessionId;
+      if (typeof psData.sessionCounter === "number") _store.sessionCounter = psData.sessionCounter;
+      if (typeof psData.colorIndex === "number") _store.colorIndex = psData.colorIndex;
+      return;
+    }
+    // 兜底：localStorage 旧数据
     const raw = localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const data = JSON.parse(raw);
       if (Array.isArray(data.sessions)) {
-        // 恢复时 connected 强制 false——启动后由 SerialContext 重新派生
         _store.sessions = data.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
       }
       if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
@@ -124,16 +137,20 @@ function _restoreSessions(): void {
   } catch { /* 首次启动或数据损坏——静默忽略 */ }
 }
 
-/** 同步写 localStorage——notify 时调用 + beforeunload 兜底 */
+/** 持久化会话——localStorage（同步保底）+ PluginStateService（文件持久化）。E3f #57 */
 function _persistSessions(): void {
+  const data = {
+    sessions: _store.sessions,
+    activeSessionId: _store.activeSessionId,
+    sessionCounter: _store.sessionCounter,
+    colorIndex: _store.colorIndex,
+  };
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      sessions: _store.sessions,
-      activeSessionId: _store.activeSessionId,
-      sessionCounter: _store.sessionCounter,
-      colorIndex: _store.colorIndex,
-    }));
-  } catch { /* quota exceeded 等极端情况——静默忽略 */ }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+  } catch { /* quota exceeded——静默 */ }
+  try {
+    setPluginStateValueSync("terminal", "sessions", data);
+  } catch { /* 静默 */ }
 }
 
 // 模块初始化——F5 后恢复 session
@@ -144,6 +161,13 @@ if (typeof window !== "undefined") {
 
 function notify(): void {
   _persistSessions();
+  // 异步写文件——fire-and-forget，不影响 UI 响应
+  setPluginStateValue("terminal", "sessions", {
+    sessions: _store.sessions,
+    activeSessionId: _store.activeSessionId,
+    sessionCounter: _store.sessionCounter,
+    colorIndex: _store.colorIndex,
+  }).catch(() => {});
   _listeners.forEach((fn) => fn());
 }
 
