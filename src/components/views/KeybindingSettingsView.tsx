@@ -13,6 +13,7 @@ import {
   saveUserKeybindings,
   keybindingResolver,
   removeKeybindingForCommand,
+  resetKeybindingToDefault,
   keyboardEventToKeyString,
   findKeybindingForCommand,
   setKeybindingCaptureActive,
@@ -176,6 +177,15 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     return "—";
   };
 
+  // E3f #59-G：重置为默认
+  const handleResetDefault = useCallback(async (row: KeybindingRow) => {
+    const { showConfirm } = await import("../../core/DialogService");
+    const confirmed = await showConfirm(t("确定要将「{{cmd}}」的快捷键重置为默认值吗？", { cmd: row.title }));
+    if (!confirmed) return;
+    resetKeybindingToDefault(row.command);
+    await saveUserKeybindings();
+  }, [t]);
+
   // 预填已有键值：将 chord "ctrl+k ctrl+t" 拆分为 first="ctrl+k" second="ctrl+t"
   const splitChord = useCallback((row: KeybindingRow) => {
     if (row.key === "—") return;
@@ -269,6 +279,16 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
                     <span className={`keybindings-col-key ${row._conflict ? "conflict-key" : ""}`}>
                       {row.key}
                     </span>
+                  )}
+                  {/* E3f #59-G：自定义过（source=user）的行显示重置齿轮 */}
+                  {!isEditing && row.source === "user" && (
+                    <button
+                      className="keybindings-row-gear"
+                      title={t("重置为默认")}
+                      onClick={(e) => { e.stopPropagation(); handleResetDefault(row); }}
+                    >
+                      <span className="codicon codicon-gear" />
+                    </button>
                   )}
                 </div>
                 <div className="keybindings-col-source">{sourceLabel(row.source)}</div>

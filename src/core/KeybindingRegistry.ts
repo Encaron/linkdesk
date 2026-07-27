@@ -319,6 +319,18 @@ export function removeKeybindingForCommand(commandId: string): void {
   CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B
 }
 
+/** E3f #59-G：重置为默认——只删 user 绑定，保留 builtin/plugin。 */
+export function resetKeybindingToDefault(commandId: string): void {
+  let removed = false;
+  for (let i = _bindings.length - 1; i >= 0; i--) {
+    if (_bindings[i].command === commandId && _bindings[i].source === "user") {
+      _bindings.splice(i, 1);
+      removed = true;
+    }
+  }
+  if (removed) CoreEvents.onDidChangeKeybindings.fire();
+}
+
 /* ── KeybindingResolver（E2c #17a）── */
 
 /**
