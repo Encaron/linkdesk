@@ -11,37 +11,14 @@
   -webkit-app-region: drag;
   user-select: none;
   flex-shrink: 0;
-  padding: 0 2px;
+  padding: 0 8px;
 }
 
-/* ☰ 按钮——左侧 36×30px */
-.titlebar-hamburger {
-  width: 36px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 14px;
-  -webkit-app-region: no-drag;
-  border-radius: 3px;
-  transition: background 120ms, color 120ms;
-  flex-shrink: 0;
-}
-
-.titlebar-hamburger:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--text-primary);
-}
-
-/* 应用名——☰ 右侧，不可点击 */
+/* 应用名——左侧，不可点击 */
 .titlebar-app-name {
   font-size: 11px;
   color: var(--text-muted);
-  margin: 0 8px;
+  margin-right: 12px;
   flex-shrink: 0;
 }
 
@@ -76,8 +53,7 @@
   color: var(--text-primary);
 }
 
-.titlebar-menu-btn.titlebar-btn-open,
-.titlebar-hamburger.titlebar-btn-open {
+.titlebar-menu-btn.titlebar-btn-open {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
 }
