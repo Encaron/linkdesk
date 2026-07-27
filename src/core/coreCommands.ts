@@ -114,6 +114,15 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       }
     },
   },
+  // E3f #58：开发者工具——切换插件 DevTools
+  {
+    id: "workbench.action.togglePluginDevTools",
+    title: i18n.t("切换插件 DevTools"),
+    category: i18n.t("开发者"),
+    handler: async () => {
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER));
+    },
+  },
   // E3f #54：输出面板
   {
     id: "workbench.action.showOutput",

@@ -77,6 +77,11 @@ export class PluginViewRegistry {
     return this.windowManager.getPluginView(pluginId);
   }
 
+  /** E3f #58：切换插件 DevTools——委托 WindowManager */
+  toggleDevTools(pluginId: string): void {
+    this.windowManager.toggleDevTools(pluginId);
+  }
+
   /** 检查插件是否已注册 */
   isRegistered(pluginId: string): boolean {
     return this.windowManager.hasPluginView(pluginId);

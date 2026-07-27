@@ -18,6 +18,7 @@ import StatusBar from "./components/StatusBar";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
 import CommandPalette from "./components/shared/CommandPalette";
+import QuickPick from "./components/shared/QuickPick"; // E3f #58
 import ThemeBrowser from "./components/ThemeBrowser";
 import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
@@ -436,6 +437,9 @@ function App() {
   const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
   const [themeBrowserPluginId, setThemeBrowserPluginId] = useState<string | undefined>(undefined);
   const [langPickerOpen, setLangPickerOpen] = useState(false);
+  // E3f #58：开发者工具——DevTools picker
+  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
+  const [devtoolsPluginIds, setDevtoolsPluginIds] = useState<string[]>([]);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -487,6 +491,15 @@ function App() {
     // E3f #54：输出面板
     const onOutput = () => { openOrFocusTab("output", { pinned: true }); };
     window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
+    // E3f #58：DevTools picker
+    const onDevtoolsPicker = async () => {
+      const lk = (window as any).linkdesk;
+      const ids: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
+      if (ids.length === 0) return;
+      setDevtoolsPluginIds(ids);
+      setDevtoolsOpen(true);
+    };
+    window.addEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
     // E3f #56：工作区导入——恢复布局 + 设置
     const onRestoreWorkspace = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
@@ -509,6 +522,7 @@ function App() {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
       window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
     };
   }, [createTab, openOrFocusTab, restoreLayout]);
 
@@ -870,6 +884,26 @@ function App() {
       <LanguagePicker
         open={langPickerOpen}
         onClose={() => setLangPickerOpen(false)}
+      />
+      {/* E3f #58：DevTools picker——列出所有运行中的插件 WebView */}
+      <QuickPick
+        open={devtoolsOpen}
+        onClose={() => setDevtoolsOpen(false)}
+        items={devtoolsPluginIds}
+        placeholder={t("选择插件…")}
+        getSearchText={(id) => id}
+        getKey={(id) => id}
+        onSelect={async (pluginId) => {
+          const lk = (window as any).linkdesk;
+          await lk?.pluginViews?.toggleDevTools?.(pluginId);
+          setDevtoolsOpen(false);
+        }}
+        renderItem={(id) => (
+          <>
+            <span className="palette-item-label">{id}</span>
+            <span className="palette-item-category">{t("切换 DevTools")}</span>
+          </>
+        )}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>
