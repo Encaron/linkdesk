@@ -5,17 +5,16 @@
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子1
  * VS Code 对标：QuickOpen → Show All Commands
  *
- * 🔥 E3f #53b 齿轮设计（对标 VS Code）：
+ * 🔥 E3f #53b + #59 齿轮设计（对标 VS Code）：
  * VS Code 命令面板齿轮是单按钮（不是子菜单）——点击打开快捷键设置。
- * LinkDesk #59 前快捷键设置 UI 未就绪 → 齿轮暂退化为"复制命令 ID"。
- * #59 做完后改为：点击齿轮 → 打开快捷键设置页，搜索框预填该命令 ID。
- * 详见 docs/02-Electron架构/E3_多WebView与壳收尾_暂定/06-E3f-壳UI收尾.md §三.5。
+ * #59 快捷键设置 UI 已就绪：齿轮 → 切换到设置页快捷键 tab，搜索框预填命令 ID。
  */
 
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
+import { openKeybindingsSettings } from "../../core/KeybindingRegistry"; // E3f #59
 import QuickPick from "./QuickPick";
 
 interface Props {
@@ -32,11 +31,9 @@ function CommandPalette({ open, onClose }: Props) {
     return cmds.filter((cmd) => ContextKeyService.matches(cmd.when));
   }, [open]);
 
-  const handleGearClick = async (cmd: Command, e: React.MouseEvent) => {
+  const handleGearClick = (cmd: Command, e: React.MouseEvent) => {
     e.stopPropagation();
-    await navigator.clipboard.writeText(cmd.id);
-    const { pushToast, TOAST_TTL_INFO } = await import("../../core/NotificationService");
-    pushToast({ message: t("已复制：") + cmd.id, ttl: TOAST_TTL_INFO });
+    openKeybindingsSettings({ query: cmd.id });
   };
 
   return (
@@ -62,7 +59,7 @@ function CommandPalette({ open, onClose }: Props) {
       renderItemActions={(cmd, _isSelected) => (
         <button
           className="palette-item-gear codicon codicon-gear"
-          title={t("复制命令 ID")}
+          title={t("配置快捷键")}
           onClick={(e) => handleGearClick(cmd, e)}
           onMouseDown={(e) => e.stopPropagation()}
         />

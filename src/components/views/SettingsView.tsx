@@ -13,6 +13,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
+import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
+import { CUSTOM_EVENTS } from "../../core/CoreEvents"; // E3f #59
 import {
   getConfigurationContributions,
   getMergedSchema,
@@ -50,8 +52,12 @@ interface GroupInfo {
 function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const { t } = useTranslation();
 
+  // E3f #59：双 tab——设置 / 快捷键
+  const [activeTab, setActiveTab] = useState<"settings" | "keybindings">("settings");
+
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
+  const [keybindingQuery, setKeybindingQuery] = useState<string | undefined>(); // E3f #59
   const [version, setVersion] = useState(0);
   const [jsonDialog, setJsonDialog] = useState<string | null>(null); // null=关闭, string=JSON 内容
 
@@ -100,6 +106,17 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
     return result;
   }, [version, t]);
+
+  // E3f #59：监听外部"打开快捷键设置"请求——从命令面板齿轮跳转
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent<{ query?: string }>).detail;
+      setActiveTab("keybindings");
+      if (detail?.query) setKeybindingQuery(detail.query);
+    };
+    window.addEventListener(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, handler);
+    return () => window.removeEventListener(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, handler);
+  }, []);
 
   // E3f #53e：scrollTo 订阅——跳转到设置中指定配置项（#53b 命令面板齿轮"重置选项"消费）
   useEffect(() => {
@@ -161,88 +178,110 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
   return (
     <div className="settings-editor">
-      {/* 搜索栏 + Open JSON 按钮 */}
-      <div className="settings-search-bar">
-        <span className="codicon codicon-search settings-search-icon" />
-        <input
-          className="settings-search-input"
-          type="text"
-          placeholder={t("搜索设置")}
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
+      {/* E3f #59：双 tab——设置 / 快捷键 */}
+      <div className="settings-tab-bar">
         <button
-          className="settings-json-btn"
-          title={t("打开设置 (JSON)")}
-          onClick={() => {
-            // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
-            // 当前占位——React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互
-            import("../../core/ConfigurationService").then(({ getUserSettings }) => {
-              setJsonDialog(JSON.stringify(getUserSettings(), null, 2));
-            });
-          }}
+          className={`settings-tab ${activeTab === "settings" ? "active" : ""}`}
+          onClick={() => { setActiveTab("settings"); setKeybindingQuery(undefined); }}
         >
-          <span className="codicon codicon-json" />
-          <span className="settings-json-label">{t("JSON")}</span>
+          {t("设置")}
+        </button>
+        <button
+          className={`settings-tab ${activeTab === "keybindings" ? "active" : ""}`}
+          onClick={() => setActiveTab("keybindings")}
+        >
+          {t("快捷键")}
         </button>
       </div>
 
-      <div className="settings-body">
-        {/* 左侧分组树 */}
-        <nav className="settings-nav">
-          {filteredGroups.map((g) => (
+      {activeTab === "keybindings" ? (
+        <KeybindingSettingsView initialQuery={keybindingQuery} />
+      ) : (
+        <>
+          {/* 搜索栏 + Open JSON 按钮 */}
+          <div className="settings-search-bar">
+            <span className="codicon codicon-search settings-search-icon" />
+            <input
+              className="settings-search-input"
+              type="text"
+              placeholder={t("搜索设置")}
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
             <button
-              key={g.pluginId}
-              className={`settings-nav-item ${activeGroup?.pluginId === g.pluginId ? "active" : ""}`}
-              onClick={() => setSelectedGroup(g.pluginId)}
+              className="settings-json-btn"
+              title={t("打开设置 (JSON)")}
+              onClick={() => {
+                // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
+                // 当前占位——React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互
+                import("../../core/ConfigurationService").then(({ getUserSettings }) => {
+                  setJsonDialog(JSON.stringify(getUserSettings(), null, 2));
+                });
+              }}
             >
-              {g.title}
-              <span className="settings-nav-count">{g.keys.length}</span>
+              <span className="codicon codicon-json" />
+              <span className="settings-json-label">{t("JSON")}</span>
             </button>
-          ))}
-          {filteredGroups.length === 0 && (
-            <div className="settings-nav-empty">{t("无匹配设置")}</div>
-          )}
-        </nav>
-
-        {/* 右侧设置表单 */}
-        <div className="settings-form" key={activeGroup?.pluginId}>
-          {activeGroup ? (
-            <>
-              <h2 className="settings-group-title">{activeGroup.title}</h2>
-              {activeGroup.keys.map((key) => (
-                <SettingRow
-                  key={key}
-                  configKey={key}
-                  prop={allProps[key]}
-                  onChange={() => setVersion((v) => v + 1)}
-                />
-              ))}
-            </>
-          ) : (
-            <div className="settings-empty">
-              {search ? t("无匹配设置") : t("选择一个分组以开始配置")}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* JSON 设置弹窗——用 React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互 */}
-      {jsonDialog !== null && (
-        <div className="settings-json-overlay" onClick={() => setJsonDialog(null)}>
-          <div className="settings-json-dialog" onClick={(e) => e.stopPropagation()}>
-            <div className="settings-json-header">
-              <span className="settings-json-title">settings.json</span>
-              <button
-                className="settings-json-close"
-                onClick={() => setJsonDialog(null)}
-              >
-                {t("确定")}
-              </button>
-            </div>
-            <pre className="settings-json-content">{jsonDialog}</pre>
           </div>
-        </div>
+
+          <div className="settings-body">
+            {/* 左侧分组树 */}
+            <nav className="settings-nav">
+              {filteredGroups.map((g) => (
+                <button
+                  key={g.pluginId}
+                  className={`settings-nav-item ${activeGroup?.pluginId === g.pluginId ? "active" : ""}`}
+                  onClick={() => setSelectedGroup(g.pluginId)}
+                >
+                  {g.title}
+                  <span className="settings-nav-count">{g.keys.length}</span>
+                </button>
+              ))}
+              {filteredGroups.length === 0 && (
+                <div className="settings-nav-empty">{t("无匹配设置")}</div>
+              )}
+            </nav>
+
+            {/* 右侧设置表单 */}
+            <div className="settings-form" key={activeGroup?.pluginId}>
+              {activeGroup ? (
+                <>
+                  <h2 className="settings-group-title">{activeGroup.title}</h2>
+                  {activeGroup.keys.map((key) => (
+                    <SettingRow
+                      key={key}
+                      configKey={key}
+                      prop={allProps[key]}
+                      onChange={() => setVersion((v) => v + 1)}
+                    />
+                  ))}
+                </>
+              ) : (
+                <div className="settings-empty">
+                  {search ? t("无匹配设置") : t("选择一个分组以开始配置")}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* JSON 设置弹窗——用 React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互 */}
+          {jsonDialog !== null && (
+            <div className="settings-json-overlay" onClick={() => setJsonDialog(null)}>
+              <div className="settings-json-dialog" onClick={(e) => e.stopPropagation()}>
+                <div className="settings-json-header">
+                  <span className="settings-json-title">settings.json</span>
+                  <button
+                    className="settings-json-close"
+                    onClick={() => setJsonDialog(null)}
+                  >
+                    {t("确定")}
+                  </button>
+                </div>
+                <pre className="settings-json-content">{jsonDialog}</pre>
+              </div>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -101,6 +101,8 @@ export const CUSTOM_EVENTS = {
   RESTORE_WORKSPACE: "linkdesk:restore-workspace", // E3f #56
   SHOW_DEVTOOLS_PICKER: "linkdesk:show-devtools-picker", // E3f #58
   CHORD_CHANGED: "linkdesk:chord-changed",
+  OPEN_SETTINGS: "linkdesk:open-settings", // E3f #59
+  OPEN_KEYBINDINGS_SETTINGS: "linkdesk:open-keybindings-settings", // E3f #59
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 

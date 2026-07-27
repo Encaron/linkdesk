@@ -27,7 +27,8 @@
 | E4f | **Monaco 编辑器**——编辑器包装 + 编码检测 + JSON schema + 多标签页 + dirty + Ctrl+Shift+T | 4 | 新——对标 VS Code Editor |
 
 总计 **34 任务，~1,885 行** + **4 项前置任务**。E4 执行时重新审定行数。
-任务 ID `#64`–`#97`，承接 E3 的 `#24`–`#63`。进度见 `07-执行清单.md`（**唯一真相源**）。
+任务 ID `#80`–`#113`，承接 E3 的 `#24`–`#79`。进度见 `07-执行清单.md`（**唯一真相源**）。
+**🔥 UI 布局规格：** `00.5-UI布局规格.md`——整体 wireframe + 设计 token + 状态矩阵 + 动画规格。**开发前必读，不凭感觉写 CSS。**
 
 ## 为什么不是 15 任务
 
@@ -71,6 +72,7 @@
 | `PluginStateService` | 🔥 **E4e 状态持久化统一入口** | 已有 |
 | `EncodingService` | 🔥 **在核心——file-tree 搜索 + editor 共享** | E4 前置 |
 | `setDirty(tabId, bool)` | 🔥 **壳已提供——编辑器消费，不新建命令** | useTabManager |
+| `plugins/factory/` + `plugins/market/` 目录分离 | 🔥 **前置——~40 行 loader.ts glob + install 目标** | E4 前置 |
 | `closedTabStack` | 🔥 **前置——useTabManager 加 ~10 行** | E4 前置 |
 
 ## 完工标准
@@ -96,4 +98,4 @@
 ---
 
 > **← 上一 Phase：** `../E3_多WebView与壳收尾_暂定/`
-> **🏁 E 编号到此为止。** E4 是最后的 E 编号。#64-#97 是最后 34 个有编号的任务。此后全是 `plugin.json` + `index.tsx`。
+> **🏁 E 编号到此为止。** E4 是最后的 E 编号。#80-#113 是最后 34 个有编号的任务。此后全是 `plugin.json` + `index.tsx`。

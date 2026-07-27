@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk FileTree — UI 预览</title>
+<style>
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ui-ux-pro-max Dark Mode (OLED) */
+  --bg-card: #1E293B;
+  --bg-input: #0F172A;
+  --bg-page: #0F172A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border: #475569;
+  --separator: #334155;
+  --accent: #22C55E;
+
+  /* FileTree tokens */
+  --tree-item-height: 22px;
+  --tree-indent: 16px;
+  --tree-twistie-size: 16px;
+  --tree-icon-size: 16px;
+  --tree-icon-gap: 6px;
+  --tree-item-padding-x: 8px;
+  --tree-foreground: #F8FAFC;
+  --tree-dimmed: #94A3B8;
+  --tree-twistie: #64748B;
+  --tree-twistie-hover: #F8FAFC;
+  --tree-icon-folder: #EAB308;
+  --tree-icon-root: #60A5FA;
+  --tree-bg-selected: #1E3A5F;
+  --tree-bg-selected-unfocused: #1E293B;
+  --tree-bg-hover: #272F42;
+  --tree-bg-highlight: rgba(34, 197, 94, 0.4);
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* === Sidebar Shell === */
+.sidebar {
+  width: 280px;
+  height: 600px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* === Header === */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 28px;
+  padding: 0 12px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--separator);
+}
+.sidebar-header-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--tree-dimmed);
+}
+.sidebar-header-actions {
+  display: flex;
+  gap: 2px;
+}
+
+/* === Path Breadcrumb === */
+.path-breadcrumb {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 10px;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--tree-dimmed);
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+.path-breadcrumb .root-icon {
+  width: 14px; height: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--tree-icon-root);
+  flex-shrink: 0;
+}
+.path-breadcrumb .path-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.path-breadcrumb .path-switch {
+  margin-left: auto;
+  cursor: pointer;
+  color: var(--tree-twistie);
+  font-size: 10px;
+  padding: 2px 4px;
+  border-radius: 3px;
+  flex-shrink: 0;
+}
+.path-breadcrumb .path-switch:hover { color: var(--tree-foreground); background: var(--tree-bg-hover); }
+
+/* === Toolbar === */
+.toolbar {
+  display: flex;
+  align-items: center;
+  height: 28px;
+  padding: 0 8px;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  width: 22px; height: 22px;
+  display: flex; align-items: center; justify-content: center;
+  border: none; background: none;
+  color: var(--tree-twistie);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 13px;
+  transition: color 150ms ease-out, background 150ms ease-out;
+  position: relative;
+}
+.toolbar-btn:hover { color: var(--tree-foreground); background: var(--tree-bg-hover); }
+.toolbar-btn:active { background: var(--tree-bg-selected); }
+
+/* tooltip on hover */
+.toolbar-btn::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0F172A;
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 3px 6px;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease-out;
+  z-index: 10;
+  margin-top: 4px;
+}
+.toolbar-btn:hover::after { opacity: 1; }
+
+/* === Tree Body === */
+.tree-body {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 2px 0;
+}
+/* custom scrollbar */
+.tree-body::-webkit-scrollbar { width: 4px; }
+.tree-body::-webkit-scrollbar-track { background: transparent; }
+.tree-body::-webkit-scrollbar-thumb { background: var(--separator); border-radius: 2px; }
+.tree-body::-webkit-scrollbar-thumb:hover { background: var(--border); }
+
+/* === Tree Row === */
+.tree-row {
+  display: flex;
+  align-items: center;
+  height: var(--tree-item-height);
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 80ms ease-out;
+  position: relative;
+}
+.tree-row:hover { background: var(--tree-bg-hover); }
+.tree-row.selected { background: var(--tree-bg-selected); }
+.tree-row.highlight {
+  animation: revealHighlight 2s ease-out;
+}
+@keyframes revealHighlight {
+  0% { background: var(--tree-bg-highlight); }
+  100% { background: transparent; }
+}
+
+/* indent spacer */
+.tree-indent { flex-shrink: 0; }
+
+/* twistie */
+.tree-twistie {
+  width: var(--tree-twistie-size);
+  height: var(--tree-twistie-size);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  color: var(--tree-twistie);
+  font-size: 10px;
+  transition: transform 100ms ease-out, color 100ms ease-out;
+}
+.tree-twistie:hover { color: var(--tree-twistie-hover); }
+.tree-twistie.expanded { transform: rotate(90deg); }
+.tree-twistie.empty { visibility: hidden; }
+
+/* file/folder icon */
+.tree-icon {
+  width: var(--tree-icon-size);
+  height: var(--tree-icon-size);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 15px;
+  margin-right: var(--tree-icon-gap);
+}
+
+/* file name */
+.tree-name {
+  font-size: 13px;
+  color: var(--tree-foreground);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+/* dimmed name for excluded/gitignored files */
+.tree-name.dimmed { color: var(--tree-dimmed); }
+
+/* decoration badge */
+.tree-badge {
+  font-size: 11px;
+  font-weight: 600;
+  margin-left: 4px;
+  flex-shrink: 0;
+  padding-right: 6px;
+}
+.tree-badge.modified { color: #EAB308; }
+.tree-badge.added    { color: #22C55E; }
+.tree-badge.deleted  { color: #EF4444; }
+
+/* === Compact Folder === */
+.tree-name.compact-folder .cf-separator {
+  color: var(--tree-dimmed);
+  font-size: 11px;
+  font-weight: 400;
+  margin: 0 3px;
+}
+
+/* === Indent guide lines === */
+.tree-row.has-guide::before {
+  content: '';
+  position: absolute;
+  left: calc(var(--tree-item-padding-x) + var(--tree-twistie-size) / 2);
+  top: calc(var(--tree-item-height) / 2);
+  bottom: calc(-1 * var(--tree-item-height) / 2);
+  width: 1px;
+  background: var(--separator);
+  pointer-events: none;
+}
+
+/* === Divider === */
+.tree-divider {
+  height: 1px;
+  background: var(--separator);
+  margin: 2px 0;
+}
+
+/* === Legend Overlay === */
+.legend {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 11px;
+  color: var(--tree-dimmed);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 100;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.legend-dot.modified { background: #EAB308; }
+.legend-dot.added { background: #22C55E; }
+.legend-dot.deleted { background: #EF4444; }
+
+/* click ripple */
+@keyframes clickRipple {
+  0% { box-shadow: inset 0 0 0 0 rgba(34,197,94,0.3); }
+  100% { box-shadow: inset 0 0 0 0 rgba(34,197,94,0); }
+}
+.tree-row:active { animation: clickRipple 150ms ease-out; }
+</style>
+</head>
+<body>
+
+<div class="sidebar">
+  <!-- Header -->
+  <div class="sidebar-header">
+    <span class="sidebar-header-title">资源管理器</span>
+    <span class="sidebar-header-actions">
+      <button class="toolbar-btn" data-tooltip="更多操作…" style="font-size:14px;">⋯</button>
+    </span>
+  </div>
+
+  <!-- Path Breadcrumb -->
+  <div class="path-breadcrumb">
+    <span class="root-icon">📁</span>
+    <span class="path-text">linkdesk-project</span>
+    <span class="path-switch" title="切换工作区">▾</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <button class="toolbar-btn" data-tooltip="新建文件">📄</button>
+    <button class="toolbar-btn" data-tooltip="新建文件夹">📂</button>
+    <button class="toolbar-btn" data-tooltip="刷新">↻</button>
+    <button class="toolbar-btn" data-tooltip="收起所有文件夹">⊟</button>
+  </div>
+
+  <!-- Tree -->
+  <div class="tree-body" id="treeBody"></div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot modified"></span> M 已修改 (Git)</div>
+  <div class="legend-item"><span class="legend-dot added"></span> A 新增 (Git)</div>
+  <div class="legend-item"><span class="legend-dot deleted"></span> D 已删除 (Git)</div>
+  <div style="font-size:10px;color:#64748B;margin-top:2px;">装饰器标记 — 模拟 FileDecorationProvider</div>
+</div>
+
+<script>
+// === Tree Data ===
+// each node: { name, isDir, children (null=unloaded, []=empty), icon?, badge?, dimmed? }
+const treeData = {
+  name: 'linkdesk-project',
+  isDir: true,
+  children: [
+    {
+      name: 'src',
+      isDir: true,
+      children: [
+        {
+          name: 'components',
+          isDir: true,
+          children: [
+            {
+              name: 'views',
+              isDir: true,
+              children: [
+                { name: 'SettingsView.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+                { name: 'WorkspaceView.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB', badge: 'M', dimmed: false },
+                { name: 'PluginDetailView.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+              ]
+            },
+            {
+              name: 'shared',
+              isDir: true,
+              children: [
+                { name: 'SidebarSection.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+                { name: 'SelectBox.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+                { name: 'ColorPicker.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB', badge: 'A' },
+              ]
+            },
+            { name: 'ThemeBrowser.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+          ]
+        },
+        {
+          name: 'core',
+          isDir: true,
+          children: [
+            { name: 'CoreEvents.ts', isDir: false, icon: '🔷', iconColor: '#3178C6', badge: 'M', dimmed: false },
+            { name: 'coreCommands.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+            { name: 'ThemeEngine.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+            { name: 'ConfigurationRegistry.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+            { name: 'FileService.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+            { name: 'EncodingService.ts', isDir: false, icon: '🔷', iconColor: '#3178C6', badge: 'A' },
+          ]
+        },
+        { name: 'App.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+        { name: 'main.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+        { name: 'index.css', isDir: false, icon: '🎨', iconColor: '#38BDF8' },
+      ]
+    },
+    {
+      name: 'plugins',
+      isDir: true,
+      children: [
+        {
+          name: 'factory',
+          isDir: true,
+          children: [
+            {
+              name: 'file-tree',
+              isDir: true,
+              children: [
+                { name: 'plugin.json', isDir: false, icon: '{ }', iconColor: '#F8FAFC' },
+                { name: 'sidebar.tsx', isDir: false, icon: '⚛', iconColor: '#61DAFB' },
+              ]
+            },
+            { name: 'terminal', isDir: true, children: null },
+            { name: 'settings', isDir: true, children: null },
+            { name: 'editor', isDir: true, children: null },
+          ]
+        },
+        {
+          name: 'market',
+          isDir: true,
+          children: [
+            { name: 'theme-twilight-forest', isDir: true, children: null },
+          ]
+        },
+      ]
+    },
+    {
+      name: 'docs',
+      isDir: true,
+      children: [
+        { name: '02-Electron架构', isDir: true, children: null },
+        { name: '03-插件制造', isDir: true, children: null },
+        { name: '04-未来规划', isDir: true, children: null },
+      ]
+    },
+    { name: 'package.json', isDir: false, icon: '📦', iconColor: '#CB3837' },
+    { name: 'tsconfig.json', isDir: false, icon: '⚙', iconColor: '#3178C6' },
+    { name: 'CLAUDE.md', isDir: false, icon: '📖', iconColor: '#22C55E' },
+    { name: '.gitignore', isDir: false, icon: '🚫', iconColor: '#F05032', dimmed: true },
+    { name: 'README.md', isDir: false, icon: '📖', iconColor: '#22C55E' },
+    {
+      name: 'node_modules',
+      isDir: true,
+      children: null,
+      dimmed: true,
+    },
+    {
+      name: '.git',
+      isDir: true,
+      children: null,
+      dimmed: true,
+    },
+  ]
+};
+
+// === Flat list builder (depth-first, expanded paths) ===
+const expandedPaths = new Set([
+  '/linkdesk-project',
+  '/linkdesk-project/src',
+  '/linkdesk-project/src/components',
+  '/linkdesk-project/src/components/views',
+  '/linkdesk-project/src/components/shared',
+  '/linkdesk-project/src/core',
+  '/linkdesk-project/plugins',
+  '/linkdesk-project/plugins/factory',
+  '/linkdesk-project/plugins/factory/file-tree',
+  '/linkdesk-project/plugins/market',
+  '/linkdesk-project/docs',
+]);
+
+let selectedPath = '/linkdesk-project/src/core/CoreEvents.ts';
+
+function flattenTree(node, depth, path, result) {
+  const isExpanded = expandedPaths.has(path);
+  const hasChildren = node.isDir && node.children !== null && node.children !== undefined;
+  const hasLoadedChildren = hasChildren && Array.isArray(node.children);
+  const isEmpty = node.isDir && Array.isArray(node.children) && node.children.length === 0;
+
+  result.push({
+    ...node,
+    depth,
+    path,
+    expanded: isExpanded,
+    hasChildren,
+    hasLoadedChildren,
+    isEmpty,
+    guideDepth: null, // computed later
+  });
+
+  if (isExpanded && hasLoadedChildren) {
+    for (const child of node.children) {
+      flattenTree(child, depth + 1, path + '/' + child.name, result);
+    }
+  }
+}
+
+function buildVisibleList() {
+  const flat = [];
+  flattenTree(treeData, 0, '/linkdesk-project', flat);
+  return flat;
+}
+
+// === Render ===
+const treeBody = document.getElementById('treeBody');
+
+function render() {
+  const list = buildVisibleList();
+  let html = '';
+
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+
+    // Check if this row needs a vertical guide line (has a next sibling at same depth)
+    let needsGuide = false;
+    if (item.depth > 0) {
+      for (let j = i + 1; j < list.length; j++) {
+        if (list[j].depth < item.depth) break;
+        if (list[j].depth === item.depth) { needsGuide = true; break; }
+      }
+    }
+
+    const isSelected = item.path === selectedPath;
+    const indent = item.depth * 16;
+    const hasTwistie = item.isDir && !item.isEmpty;
+
+    let rowClass = 'tree-row';
+    if (isSelected) rowClass += ' selected';
+    if (needsGuide) rowClass += ' has-guide';
+
+    let twistieClass = 'tree-twistie';
+    if (!hasTwistie) twistieClass += ' empty';
+    if (item.expanded) twistieClass += ' expanded';
+
+    // icon color
+    const iconStyle = item.iconColor ? `color:${item.iconColor};` : '';
+    const iconColorClass = item.isDir
+      ? (item.depth === 0 ? 'root' : (item.expanded ? 'open' : 'closed'))
+      : '';
+
+    // folder icon
+    let iconHtml = '';
+    if (item.isDir) {
+      if (item.depth === 0) {
+        iconHtml = `<span class="tree-icon" style="color:var(--tree-icon-root);">📁</span>`;
+      } else if (item.expanded) {
+        iconHtml = `<span class="tree-icon" style="color:var(--tree-icon-folder);">📂</span>`;
+      } else {
+        iconHtml = `<span class="tree-icon" style="color:var(--tree-icon-folder);">📁</span>`;
+      }
+    } else {
+      iconHtml = `<span class="tree-icon" style="${iconStyle}">${item.icon || '📄'}</span>`;
+    }
+
+    // name with dimmed if needed
+    let nameClass = 'tree-name';
+    if (item.dimmed) nameClass += ' dimmed';
+
+    // badge
+    let badgeHtml = '';
+    if (item.badge) {
+      const badgeClass = item.badge === 'M' ? 'modified' : item.badge === 'A' ? 'added' : 'deleted';
+      badgeHtml = `<span class="tree-badge ${badgeClass}">${item.badge}</span>`;
+    }
+
+    html += `
+      <div class="${rowClass}" data-path="${item.path}" style="padding-left:${indent}px;">
+        <span class="${twistieClass}">▶</span>
+        ${iconHtml}
+        <span class="${nameClass}">${item.name}</span>
+        ${badgeHtml}
+      </div>`;
+  }
+
+  treeBody.innerHTML = html;
+  bindEvents();
+}
+
+function bindEvents() {
+  treeBody.querySelectorAll('.tree-row').forEach(row => {
+    row.addEventListener('click', (e) => {
+      const path = row.dataset.path;
+      const item = findItem(path);
+
+      // click twistie?
+      const twistie = row.querySelector('.tree-twistie');
+      if (twistie && e.target === twistie) {
+        e.stopPropagation();
+        if (expandedPaths.has(path)) {
+          expandedPaths.delete(path);
+        } else {
+          expandedPaths.add(path);
+          // auto-expand parent chain
+          const parts = path.split('/');
+          for (let i = 2; i < parts.length; i++) {
+            expandedPaths.add(parts.slice(0, i).join('/'));
+          }
+        }
+        render();
+        return;
+      }
+
+      // select
+      selectedPath = path;
+      // highlight animation
+      row.classList.add('highlight');
+      row.addEventListener('animationend', () => row.classList.remove('highlight'), { once: true });
+      render();
+    });
+  });
+}
+
+function findItem(path) {
+  const parts = path.split('/').slice(2); // skip '/linkdesk-project'
+  let node = treeData;
+  for (const part of parts) {
+    if (!node.children) return null;
+    node = node.children.find(c => c.name === part);
+    if (!node) return null;
+  }
+  return node;
+}
+
+// === Init ===
+render();
+</script>
+</body>
+</html>
