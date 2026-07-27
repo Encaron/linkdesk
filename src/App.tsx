@@ -895,7 +895,7 @@ function App() {
         onClose={() => setDevtoolsOpen(false)}
         items={devtoolsTargets}
         placeholder={t("选择插件…")}
-        getSearchText={(target) => target.kind === 'shell' ? t("壳窗口") : target.id}
+        getSearchText={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
         getKey={(target) => target.kind === 'shell' ? '__shell__' : target.id}
         onSelect={async (target) => {
           const lk = (window as any).linkdesk;
@@ -909,7 +909,7 @@ function App() {
         renderItem={(target) => (
           <>
             <span className="palette-item-label">
-              {target.kind === 'shell' ? t("壳窗口") : target.id}
+              {target.kind === 'shell' ? 'shell' : target.id}
             </span>
             <span className="palette-item-category">{t("切换 DevTools")}</span>
           </>
