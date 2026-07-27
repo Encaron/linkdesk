@@ -10,6 +10,7 @@ import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getCommands, getCommandPluginId, executeCommand, type Command } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
+import { APP_PLUGIN_ID } from "../../core/PluginStateService";
 import { MenuId } from "../../core/MenuRegistry";
 import ContextMenu from "./ContextMenu";
 import QuickPick from "./QuickPick";
@@ -33,8 +34,10 @@ function CommandPalette({ open, onClose }: Props) {
   }, [open]);
 
   const handleGearOpen = (cmd: Command, anchor: { x: number; y: number }) => {
+    const pluginId = getCommandPluginId(cmd.id);
     ContextKeyService.setValue("commandId", cmd.id);
-    ContextKeyService.setValue("commandPluginId", getCommandPluginId(cmd.id) ?? false);
+    // 核心命令（APP_PLUGIN_ID）不设 commandPluginId——"打开插件详情"不显示
+    ContextKeyService.setValue("commandPluginId", pluginId && pluginId !== APP_PLUGIN_ID ? pluginId : false);
     ContextKeyService.setValue("commandHasSetting", !!cmd.configurationKey);
     setGearMenu({ commandId: cmd.id, anchor });
   };
@@ -57,12 +60,15 @@ function CommandPalette({ open, onClose }: Props) {
         getKey={(cmd) => cmd.id}
         onSelect={(cmd) => executeCommand(cmd.id)}
         renderItem={(cmd, _isSelected) => (
-          <>
-            <span className="palette-item-label">{cmd.title}</span>
-            {cmd.category && (
-              <span className="palette-item-category">{cmd.category}</span>
-            )}
-          </>
+          <div className="palette-item-content">
+            <div className="palette-item-row">
+              <span className="palette-item-label">{cmd.title}</span>
+              {cmd.category && (
+                <span className="palette-item-category">{cmd.category}</span>
+              )}
+            </div>
+            <span className="palette-item-detail">{cmd.id}</span>
+          </div>
         )}
         renderItemActions={(cmd, _isSelected) => (
           <button
