@@ -157,6 +157,11 @@ try {
     },
   });
 
+  // E3f #52：原生菜单命令 → 自定义事件 → 渲染进程执行
+  ipcRenderer.on('menu:command', (_event, commandId: string) => {
+    window.dispatchEvent(new CustomEvent('native-menu-command', { detail: commandId }));
+  });
+
   // 通知主进程 preload 加载成功
   // 为什么：新风险 3——preload 抛异常不进 ErrorBoundary。主进程需要知道
   // window.linkdesk 是否成功暴露，否则所有调用白屏无诊断

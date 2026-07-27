@@ -1,0 +1,94 @@
+/* HamburgerMenu —— ☰ 按钮 + 下拉面板 */
+
+/* 按钮——放在图标栏左上角 */
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 18px;
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover,
+.hamburger-btn.hamburger-open {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+/* 下拉面板 */
+.hamburger-dropdown {
+  position: fixed;
+  top: 42px;
+  left: 0;
+  width: 220px;
+  max-height: calc(100vh - 60px);
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 0 6px 6px 0;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  z-index: 2550;
+  padding: 4px 0;
+}
+
+/* 组 */
+.hamburger-group {
+  padding: 4px 0;
+}
+
+.hamburger-group + .hamburger-group {
+  border-top: 1px solid var(--separator);
+}
+
+/* 组标题 */
+.hamburger-group-label {
+  padding: 2px 12px 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+/* 菜单项 */
+.hamburger-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 80ms;
+}
+
+.hamburger-item:hover {
+  background: var(--accent);
+  color: var(--badge-text);
+}
+
+/* 快捷键提示 */
+.hamburger-item-key {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 16px;
+}
+
+.hamburger-item:hover .hamburger-item-key {
+  color: var(--badge-text);
+  opacity: 0.8;
+}
