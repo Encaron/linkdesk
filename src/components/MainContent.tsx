@@ -204,6 +204,8 @@ function MainContent({
           }
         });
       }
+    }).catch((err: unknown) => {
+      console.warn('[MainContent] WebView 同步失败:', err);
     });
 
     pluginViewsRef.current = currentStates;
