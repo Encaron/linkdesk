@@ -260,6 +260,32 @@ html, body, #root {
   color: rgba(255, 255, 255, 0.7);
 }
 
+/* E3f #53b：命令面板齿轮——hover 时显示，对标 VS Code per-command gear */
+.palette-item-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+.palette-item-gear {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 100ms;
+  border-radius: 3px;
+}
+.palette-item:hover .palette-item-gear,
+.palette-item.selected .palette-item-gear {
+  opacity: 0.8;
+}
+.palette-item-gear:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.15);
+}
+
 /* Phase 3.5 新增 —— prefers-reduced-motion */
 @media (prefers-reduced-motion: reduce) {
   *,

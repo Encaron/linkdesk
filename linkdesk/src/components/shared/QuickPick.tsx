@@ -60,6 +60,8 @@ export interface QuickPickProps<T> {
   getKey: (item: T) => string;
   /** 自定义渲染——默认显示 getSearchText(item) */
   renderItem?: (item: T, isSelected: boolean) => ReactNode;
+  /** E3f #53b：每行右侧操作区——命令面板齿轮等。QuickPick 不关心内容，只留位置。 */
+  renderItemActions?: (item: T, isSelected: boolean) => ReactNode;
 }
 
 /* ── 组件 ── */
@@ -74,6 +76,7 @@ export default function QuickPick<T>({
   getSearchText,
   getKey,
   renderItem,
+  renderItemActions,
 }: QuickPickProps<T>) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
@@ -178,7 +181,14 @@ export default function QuickPick<T>({
               onClick={() => handleSelect(item)}
               onMouseEnter={() => setSelected(i)}
             >
-              {renderItem ? renderItem(item, i === selected) : getSearchText(item)}
+              <span className="palette-item-label">
+                {renderItem ? renderItem(item, i === selected) : getSearchText(item)}
+              </span>
+              {renderItemActions && (
+                <span className="palette-item-actions">
+                  {renderItemActions(item, i === selected)}
+                </span>
+              )}
             </div>
           ))}
         </div>

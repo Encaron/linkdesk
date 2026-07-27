@@ -6,10 +6,12 @@
  * VS Code 对标：QuickOpen → Show All Commands
  */
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
+import { getCommands, getCommandPluginId, executeCommand, type Command } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
+import { MenuId } from "../../core/MenuRegistry";
+import ContextMenu from "./ContextMenu";
 import QuickPick from "./QuickPick";
 
 interface Props {
@@ -19,6 +21,10 @@ interface Props {
 
 function CommandPalette({ open, onClose }: Props) {
   const { t } = useTranslation();
+  const [gearMenu, setGearMenu] = useState<{
+    commandId: string;
+    anchor: { x: number; y: number };
+  } | null>(null);
 
   // 从 CommandRegistry 获取命令 + when 条件过滤——每次打开面板时重新求值（依赖 open trigger）
   const allCommands = useMemo(() => {
@@ -26,24 +32,60 @@ function CommandPalette({ open, onClose }: Props) {
     return cmds.filter((cmd) => ContextKeyService.matches(cmd.when));
   }, [open]);
 
+  const handleGearOpen = (cmd: Command, anchor: { x: number; y: number }) => {
+    ContextKeyService.setValue("commandId", cmd.id);
+    ContextKeyService.setValue("commandPluginId", getCommandPluginId(cmd.id) ?? false);
+    ContextKeyService.setValue("commandHasSetting", !!cmd.configurationKey);
+    setGearMenu({ commandId: cmd.id, anchor });
+  };
+
+  const handleGearClose = () => {
+    setGearMenu(null);
+    ContextKeyService.setValue("commandId", undefined);
+    ContextKeyService.setValue("commandPluginId", undefined);
+    ContextKeyService.setValue("commandHasSetting", undefined);
+  };
+
   return (
-    <QuickPick
-      open={open}
-      onClose={onClose}
-      items={allCommands}
-      placeholder={t("输入命令…")}
-      getSearchText={(cmd) => `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`}
-      getKey={(cmd) => cmd.id}
-      onSelect={(cmd) => executeCommand(cmd.id)}
-      renderItem={(cmd, _isSelected) => (
-        <>
-          <span className="palette-item-label">{cmd.title}</span>
-          {cmd.category && (
-            <span className="palette-item-category">{cmd.category}</span>
-          )}
-        </>
+    <>
+      <QuickPick
+        open={open}
+        onClose={onClose}
+        items={allCommands}
+        placeholder={t("输入命令…")}
+        getSearchText={(cmd) => `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`}
+        getKey={(cmd) => cmd.id}
+        onSelect={(cmd) => executeCommand(cmd.id)}
+        renderItem={(cmd, _isSelected) => (
+          <>
+            <span className="palette-item-label">{cmd.title}</span>
+            {cmd.category && (
+              <span className="palette-item-category">{cmd.category}</span>
+            )}
+          </>
+        )}
+        renderItemActions={(cmd, _isSelected) => (
+          <button
+            className="palette-item-gear codicon codicon-gear"
+            title={t("更多操作…")}
+            onClick={(e) => {
+              e.stopPropagation();
+              const rect = (e.target as HTMLElement).getBoundingClientRect();
+              handleGearOpen(cmd, { x: rect.right, y: rect.bottom });
+            }}
+            onMouseDown={(e) => e.stopPropagation()}
+          />
+        )}
+      />
+      {gearMenu && (
+        <ContextMenu
+          menuId={MenuId.CommandPaletteItemGear}
+          anchor={gearMenu.anchor}
+          context={{ commandId: gearMenu.commandId }}
+          onClose={handleGearClose}
+        />
       )}
-    />
+    </>
   );
 }
 
