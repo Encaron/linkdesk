@@ -33,6 +33,7 @@ import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import { MenuId } from "../../core/MenuRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
 import ContextMenu from "../shared/ContextMenu";
+import ColorPicker from "../shared/ColorPicker";
 import "./SettingsView.css";
 
 /* ── 类型 ── */
@@ -301,6 +302,8 @@ function SettingRow({
   const { t } = useTranslation();
   const gearRef = useRef<HTMLButtonElement>(null);
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerAnchor, setColorPickerAnchor] = useState<{ x: number; y: number } | null>(null);
   const currentValue = getConfigurationValue(configKey);
 
   const handleChange = useCallback(
@@ -344,7 +347,11 @@ function SettingRow({
         <span className="settings-row-desc">{t(prop.description)}</span>
       </div>
       <div className="settings-row-control">
-        {renderControl(prop, currentValue, handleChange, t)}
+        {renderControl(prop, currentValue, handleChange, t, (e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setColorPickerAnchor({ x: rect.right + 4, y: rect.top });
+          setColorPickerOpen(true);
+        })}
       </div>
       {/* E3f #53c：hover 齿轮——对标 VS Code Settings Editor per-setting gear */}
       <button
@@ -363,6 +370,17 @@ function SettingRow({
           onClose={handleGearClose}
         />
       )}
+      {/* E3f #59e：色块点击 → 弹出 ColorPicker */}
+      {prop.renderHint === "color" && (
+        <ColorPicker
+          open={colorPickerOpen}
+          value={String(currentValue ?? prop.default)}
+          onChange={(hex) => handleChange(hex)}
+          onClose={() => setColorPickerOpen(false)}
+          anchor={colorPickerAnchor}
+          presets={["#0078d4", "#e81123", "#10893e", "#ff8c00", "#6b69d6", "#0099bc"]}
+        />
+      )}
     </div>
   );
 }
@@ -373,6 +391,7 @@ function renderControl(
   value: unknown,
   onChange: (v: unknown) => void,
   t: (key: string) => string,
+  onColorSwatchClick?: (e: React.MouseEvent<HTMLDivElement>) => void,
 ): React.ReactNode {
   const val = value ?? prop.default;
 
@@ -409,6 +428,7 @@ function renderControl(
               className="settings-color-swatch"
               style={{ background: String(val) }}
               title={String(val)}
+              onClick={onColorSwatchClick}
             />
             <input
               className="input"

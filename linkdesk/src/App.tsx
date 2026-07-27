@@ -50,6 +50,7 @@ import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namesp
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）
 import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
+import { registerCommand } from "./core/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
 import SourceStateContext from "./core/SourceStateContext";
@@ -296,6 +297,20 @@ function App() {
 
       // Phase 5b：注册核心命令 + TabContext 菜单项（只执行一次，幂等）
       ensureCoreCommands();
+      // E3f #59e：color-picker.pick 命令——插件调 linkdesk.commands.execute 弹出调色器
+      registerCommand(APP_PLUGIN_ID, {
+        id: "color-picker.pick",
+        title: "选择颜色…",
+        category: "开发人员",
+        handler: async (_token, ...args: unknown[]) => {
+          // TODO: Promise 包装——需宿主渲染 ColorPicker 浮层 resolve/reject。
+          // 当期直接走设置页入口（齿轮 → 强调色色块 → ColorPicker）。
+          const initialColor = (args[0] as { initialColor?: string })?.initialColor ?? "#0078d4";
+          window.dispatchEvent(new CustomEvent("linkdesk:color-picker-pick", {
+            detail: { initialColor },
+          }));
+        },
+      });
 
       // Phase 5e：注册内置方括号协议到 ProtocolRegistry（只执行一次，幂等）
       ensureBuiltinProtocols();
