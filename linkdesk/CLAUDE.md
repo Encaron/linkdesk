@@ -2,7 +2,7 @@
 
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Tauri 时代 P1-P6 🎉 全部完成。🔥 Electron 迁移进行中——当前 E3（架构最后一站），E3a 🎉 E3b 🎉 E3c 🎉 E3d 🎉 E3e 🎉，E3f #51+#52+#53+#53b 🎉 27/54，→ #54。进度见 `docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md`（唯一真相源）。E4 文档已就绪。**
+> **Tauri 时代 P1-P6 🎉 全部完成。🔥 Electron 迁移进行中——当前 E3（架构最后一站），E3a 🎉 E3b 🎉 E3c 🎉 E3d 🎉 E3e 🎉，E3f #51+#52+#53+#53b+#54+#55 🎉 29/54，→ #56。进度见 `docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md`（唯一真相源）。E4 文档已就绪。**
 
 ## 架构——圆形大厅模型
 
@@ -148,6 +148,7 @@ Phase 1-5h ✅ 完成
 13. **🔥 async 初始化函数必须防 StrictMode 双重 effect 竞态。** `init*()` 有 `_initialized` guard 不够——第一次调用是 async，第二次可能在第一次完成前到达。第二次调必须返回第一次的进行中 Promise（`_loadingPromise`），不能直接 return undefined。详见 memory `invisible-bugs-lesson-59c.md` Bug 1。
 14. **🔥 useEffect 有回调 prop（onChange/onHighlight/onSelect 等）做非 DOM 副作用时，必须加活跃守卫。** 组件 `return null` 不代表 effect 不跑——React effect 只看挂载不看 DOM。守卫模式：`if (!open) return;` / `if (!isActive) return;`，且 `open`/`isActive` 必须纳入依赖数组。**写完后 grep 同组件的其他 effect——所有 effect 应有同样的守卫，漏掉的就是 bug。** 详见 memory `invisible-bugs-lesson-59c.md` Bug 2。
 15. **🔥🔥🔥 出了隐形 bug 不要猜——`git checkout` 逐 commit 二分定位。** 静态分析死胡同就立刻跳版本，`git checkout -f <commit>` 测完一个再跳。找到最后一个正常版本和第一个异常版本之间的 diff，bug 就在那个 commit 里。不要墨迹。
+16. **🔥🔥🔥🔥 任何 CSS / 样式 / 配色 / 字体 / 间距 / 布局 / UI 外观改动前，必须先通过 `Skill` 工具调用 `ui-ux-pro-max` 拿设计系统，禁止凭感觉手写。** 不调用 skill = 违反硬约束。调完后落地设计 token 到 CSS 变量，不要硬编码 hex/px。
 
 ## 部件命名
 

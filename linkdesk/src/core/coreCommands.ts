@@ -112,6 +112,17 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       }
     },
   },
+  // E3f #54：输出面板
+  {
+    id: "workbench.action.showOutput",
+    title: i18n.t("输出"),
+    category: i18n.t("视图"),
+    handler: async () => {
+      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_OUTPUT));
+    },
+    menuId: MenuId.ExtensionGear,
+    menuGroup: "navigation",
+  },
   {
     id: "core.closeTab",
     title: i18n.t("关闭"),
@@ -284,6 +295,7 @@ export function ensureCoreCommands(): void {
       group: "view",
       children: [
         { command: "workbench.action.showCommands", group: "view" },
+        { command: "workbench.action.showOutput", group: "view" }, // E3f #54
         { command: "workbench.action.selectTheme", group: "view" },
         { command: "workbench.action.selectLanguage", group: "view" },
         { command: "workbench.action.openKeybindingsSettings", group: "view" },

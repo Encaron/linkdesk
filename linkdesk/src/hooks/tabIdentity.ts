@@ -96,7 +96,7 @@ function makeGenerateId(type: string, identityField: string | null): (opts?: Cre
  * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
  * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
 
-const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID]);
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output"]); // E3f #54
 
 /* ── 壳内部类型元数据（最小特殊处理——仅 plugin-detail 和 welcome）── */
 
@@ -125,6 +125,7 @@ const FALLBACK_META: Record<string, { label: string; identityField?: string | nu
   marketplace: { label: "插件市场", identityField: null },
   oled:        { label: "OLED",   identityField: null },
   editor:      { label: "编辑器",  identityField: "filePath" },
+  output:      { label: "输出",    identityField: null }, // E3f #54
 };
 
 /* ── 核心：getMeta —— 从声明推导，不查表 ── */

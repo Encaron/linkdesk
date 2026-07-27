@@ -16,6 +16,7 @@ import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
+import OutputPanel from "./views/OutputPanel"; // E3f #54
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
@@ -62,6 +63,14 @@ function renderTabContent(
       return (
         <ErrorBoundary pluginId="welcome">
           <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />
+        </ErrorBoundary>
+      );
+    }
+    // E3f #54：输出面板——壳级视图，消费 LogChannel 数据
+    if (tab.type === "output") {
+      return (
+        <ErrorBoundary pluginId="output">
+          <OutputPanel key={tab.id} isActive={isActive} initialChannelId={tab.sourceId} />
         </ErrorBoundary>
       );
     }

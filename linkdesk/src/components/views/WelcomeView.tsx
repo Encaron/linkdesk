@@ -9,10 +9,12 @@
  * - 最近列表 = prefs.recentViews 投影
  */
 
+import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
+import { openFolder, addFolder, onDidChangeFolders } from "../../core/WorkspaceService"; // E3f #55
 import { PluginIcon } from "../shared/PluginIcon";
 import "./WelcomeView.css";
 
@@ -32,6 +34,33 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
       return [];
     }
   })();
+
+  // E3f #55：最近文件夹——对标 VS Code File > Open Recent
+  const recentFolders = (() => {
+    try {
+      return getPluginStateValue<Array<{ path: string; name: string }>>("app", "recentFolders") ?? [];
+    } catch {
+      return [];
+    }
+  })();
+
+  const handleOpenFolder = () => { openFolder(); };
+
+  const handleRecentFolderClick = (folderPath: string) => { addFolder(folderPath); };
+
+  // 订阅文件夹变更——自动记录到 recentFolders
+  useEffect(() => {
+    const unsub = onDidChangeFolders((folders) => {
+      if (folders.length === 0) return;
+      const recent = getPluginStateValue<Array<{ path: string; name: string }>>("app", "recentFolders") ?? [];
+      for (const f of folders) {
+        const filtered = recent.filter((r) => r.path !== f.uri);
+        filtered.unshift({ path: f.uri, name: f.name });
+        setPluginStateValue("app", "recentFolders", filtered.slice(0, 10));
+      }
+    });
+    return unsub;
+  }, []);
 
   const handleShortcutClick = (pluginId: string, displayName: string) => {
     if (onCreateTab) {
@@ -71,6 +100,32 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
         <h1 className="welcome-title">LinkDesk</h1>
         <p className="welcome-subtitle">{t("通用调试容器")}</p>
       </header>
+
+      {/* E3f #55：打开文件夹 */}
+      <section className="welcome-section">
+        <h2 className="welcome-section-title">{t("文件夹")}</h2>
+        <button className="welcome-card welcome-open-folder" onClick={handleOpenFolder}>
+          <span className="welcome-card-icon">📂</span>
+          <span className="welcome-card-label">{t("打开文件夹")}</span>
+        </button>
+        {recentFolders.length > 0 && (
+          <div className="welcome-recent-list">
+            <h3 className="welcome-recent-subtitle">{t("最近")}</h3>
+            {recentFolders.slice(0, 5).map((f, i) => (
+              <button
+                key={`${f.path}-${i}`}
+                className="welcome-recent-item"
+                onClick={() => handleRecentFolderClick(f.path)}
+                title={f.path}
+              >
+                <span className="welcome-recent-icon">📁</span>
+                <span className="welcome-recent-label">{f.name}</span>
+                <span className="welcome-recent-workspace">{f.path}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
 
       <section className="welcome-section">
         <h2 className="welcome-section-title">{t("开始")}</h2>

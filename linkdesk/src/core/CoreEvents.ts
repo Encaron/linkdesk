@@ -97,6 +97,7 @@ export const CUSTOM_EVENTS = {
   SHOW_PALETTE: "linkdesk:show-palette",
   SHOW_THEME_BROWSER: "linkdesk:show-theme-browser",
   SHOW_LANGUAGE_PICKER: "linkdesk:show-language-picker",
+  SHOW_OUTPUT: "linkdesk:show-output", // E3f #54
   CHORD_CHANGED: "linkdesk:chord-changed",
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
