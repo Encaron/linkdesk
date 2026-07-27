@@ -496,10 +496,10 @@ function App() {
     const onDevtoolsPicker = async () => {
       const lk = (window as any).linkdesk;
       const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-      // 独立 WebView 优先，兜底从 viewRegistry 取视图插件列表
+      // 有独立 WebView → 列出所有插件 + 壳窗口入口
       if (webViewIds.length > 0) {
         devtoolsIsWebViewRef.current = true;
-        setDevtoolsPluginIds(webViewIds);
+        setDevtoolsPluginIds([...webViewIds, "壳窗口"]);
       } else {
         devtoolsIsWebViewRef.current = false;
         const { getViewPlugins } = await import("./pluginLoader/viewRegistry");
@@ -905,7 +905,9 @@ function App() {
         getKey={(id) => id}
         onSelect={async (pluginId) => {
           const lk = (window as any).linkdesk;
-          if (devtoolsIsWebViewRef.current) {
+          if (pluginId === "壳窗口") {
+            await lk?.window?.toggleDevTools?.();
+          } else if (devtoolsIsWebViewRef.current) {
             await lk?.pluginViews?.toggleDevTools?.(pluginId);
           } else {
             await lk?.window?.toggleDevTools?.();
