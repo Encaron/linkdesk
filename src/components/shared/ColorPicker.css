@@ -109,6 +109,7 @@
 
 .colorpicker-hex {
   flex: 1;
+  min-width: 0;
   height: 26px;
   padding: 2px 6px;
   border: 1px solid var(--separator);
@@ -118,6 +119,7 @@
   font-family: var(--font-mono);
   font-size: 12px;
   outline: none;
+  box-sizing: border-box;
 }
 
 .colorpicker-hex:focus {
