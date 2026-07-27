@@ -132,3 +132,25 @@ export function subscribeToasts(fn: ToastListener): () => void {
 export function getUnreadCount(): number {
   return _toasts.length;
 }
+
+/* ── Toast 显隐——NotificationCenter 打开面板时隐藏 toast，对标 VS Code ── */
+
+let _toastsSuppressed = false;
+let _suppressListeners = new Set<(v: boolean) => void>();
+
+/** NotificationCenter 面板打开/关闭时调用——打开时隐藏 toast，关闭后恢复 */
+export function setToastsSuppressed(suppressed: boolean): void {
+  _toastsSuppressed = suppressed;
+  for (const fn of _suppressListeners) fn(suppressed);
+}
+
+/** 当前 suppress 状态——ToastContainer 消费 */
+export function isToastsSuppressed(): boolean {
+  return _toastsSuppressed;
+}
+
+/** 订阅 suppress 变化——React hook 用 */
+export function subscribeToastSuppressed(fn: (v: boolean) => void): () => void {
+  _suppressListeners.add(fn);
+  return () => { _suppressListeners.delete(fn); };
+}

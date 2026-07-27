@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
+import { subscribeToasts, dismissToast, setToastsSuppressed, type Toast } from "../core/toast";
 
 /* ── 模块级未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 ── */
 
@@ -94,8 +94,9 @@ function NotificationCenter() {
     });
   }, []);
 
-  // 面板打开时标记所有为已读
+  // 面板打开时标记所有为已读 + 隐藏右下角 toast
   useEffect(() => {
+    setToastsSuppressed(showPanel);
     if (showPanel) {
       for (const n of notifications) _seenIds.add(n.id);
     }
