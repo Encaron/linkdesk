@@ -14,18 +14,10 @@
   padding: 0;
 }
 
-/* Logo——左侧品牌标识 */
+/* Logo——左侧品牌标识。换 logo = 替换 public/assets/logo.svg */
 .titlebar-logo {
   width: 22px;
   height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent);
-  color: var(--badge-text);
-  border-radius: 4px;
-  font-size: 10px;
-  font-weight: 700;
   margin: 0 8px;
   flex-shrink: 0;
   -webkit-app-region: no-drag;

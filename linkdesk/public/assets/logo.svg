@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <!-- LinkDesk Logo — 替换此文件即可更换 logo，无需改代码 -->
+  <rect width="32" height="32" rx="6" fill="#0078d4"/>
+  <text x="16" y="22" text-anchor="middle" font-family="system-ui, sans-serif" font-weight="700" font-size="18" fill="#ffffff">LD</text>
+</svg>
