@@ -125,33 +125,38 @@ MenuRegistry.getMenuItems(MenuId.MenuBar)
 
 **一份数据，一种渲染。** 桌面版 = 浏览器版——同一个 TitleBar 组件。不区分 hamburger/menubar 模式。
 
-### 2.6 平台切换——对标 VS Code 的双模式
+### 2.6 配置项驱动——用户自选菜单模式
 
-| | 桌面版（Electron） | 浏览器版（Web） |
-|------|:--:|:--:|
-| 对标 | VS Code 桌面版 | vscode.dev |
-| 菜单渲染 | `<TitleBar />` 横排按钮 | `<HamburgerMenu />` 在图标栏 |
-| 标题栏 | 有（30px，暗色，可拖拽） | 无（浏览器自带标题栏） |
-| 菜单数据 | `MenuRegistry` → `MenuId.MenuBar` | 同一份数据 |
-| 检测方式 | `!!(window as any).linkdesk`（Electron preload 暴露） | `window.linkdesk` 不存在 |
+**对标 VS Code 的 `window.menuBarVisibility` 设置项。**
 
+注册配置项 `app.menuStyle`，三个选项：
+
+| 值 | 效果 | TitleBar | 图标栏汉堡 |
+|------|------|:--:|:--:|
+| `"titlebar"` | 只显示顶部菜单栏（默认） | ✅ | ❌ |
+| `"hamburger"` | 只显示图标栏汉堡 | ❌ | ✅ |
+| `"both"` | 两者都显示 | ✅ | ✅ |
+
+**用户记忆：** `app.menuStyle` 走 `ConfigurationService`——改一次，持久化，重启保留。
+
+**渲染逻辑（声明式——不写 `if (menuStyle === "...")` 在组件里）：**
+
+```tsx
+// App.tsx
+const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+const showTitleBar = menuStyle !== "hamburger";   // titlebar 或 both → 显示
+const showHamburger = menuStyle !== "titlebar";   // hamburger 或 both → 显示
+
+// TitleBar + HamburgerMenu 各自从同一个 MenuRegistry 读数据
 ```
-桌面版（Electron）：                    浏览器版（Web）：
-┌──────────────────────────────┐        ┌────┬──────────────────┐
-│ ☰ 文件▼ 查看▼          ─ □ × │        │ ☰  │                  │
-├────┬─────────────────────────┤        │ 文 │  编辑器           │
-│ ☐  │ 侧栏    │  编辑器       │        │ 件 │                  │
-│ ⚙  │         │               │        │ 查 │                  │
-├────┴─────────────────────────┤        │ 看 │                  │
-│ 状态栏                       │        ├────┴──────────────────┤
-└──────────────────────────────┘        │ 状态栏                │
-                                        └───────────────────────┘
+
+**设置页 UI：**
 ```
-
-- 桌面版：TitleBar 有 ☰（始终可用）+ 横排菜单按钮。图标栏里没有汉堡。
-- 浏览器版：没有 TitleBar。图标栏第一个位置是汉堡 ☰ → 点击弹出菜单面板（跟之前一样）。
-
-**HamburgerMenu.tsx 不删除。** 它是浏览器版的菜单入口。TitleBar.tsx 是桌面版的菜单入口。两个组件从同一个 `MenuRegistry.getMenuItems(MenuId.MenuBar)` 读数据。
+菜单栏样式    [标题栏 ▼]
+               ├ 标题栏     ← 默认
+               ├ 汉堡菜单
+               └ 两个都显示
+```
 
 ### 2.7 子任务——逐条可验证
 
@@ -165,75 +170,66 @@ MenuRegistry.getMenuItems(MenuId.MenuBar)
 3. 每个按钮显示该 group 第一个 item 的 `label`（如"文件"、"查看"）
 4. 点击按钮 → 该按钮下方弹出下拉面板（同之前汉堡下拉样式）
 5. 已打开一个菜单时鼠标移到另一个按钮 → 自动切换展开
-6. 下拉面板内：hover 有 `children` 的项 → 右侧弹出子菜单（复用 #52d 的逻辑）
+6. 下拉面板内：hover 有 `children` 的项 → 右侧弹出子菜单
 7. 点击叶子项 → `executeCommand(item.command)` → 关闭面板
 8. ☰ 按钮在最左侧——点击始终弹出完整的菜单面板
 9. 整个 TitleBar 是 `-webkit-app-region: drag`——可拖拽移动窗口
 10. 菜单按钮是 `-webkit-app-region: no-drag`——可点击
-
-**验证：** 窗口顶部出现 30px 暗色标题栏 → ☰ + 文件 ▼ + 查看 ▼ 按钮 → 点击"文件"弹出菜单
 
 **CSS 关键参数（对标 VS Code）：**
 - 高度：30px
 - 背景：`var(--bg-titlebar)`（新增 CSS 变量，默认 `#1e1e1e`）
 - 菜单按钮：padding 6px 10px，font-size 12px
 - 下拉面板：跟之前汉堡下拉同款样式（`bg-card` 背景，边框，阴影）
-- z-index：2548（在 StatusBar 和 NotificationCenter 之上）
+- z-index：2548
 
-#### #52g — App.tsx 布局调整（~10 行）
+**验证：** 顶部出现 30px 暗色标题栏 → ☰ + 文件 ▼ + 查看 ▼ 按钮 → 点击弹出菜单
+
+#### #52g — App.tsx 布局 + `app.menuStyle` 配置项注册（~20 行）
 
 **文件：** `src/App.tsx`
 
 **做什么：**
-1. Import `TitleBar` 组件
-2. 在 `app-shell` div 的第一行渲染 `<TitleBar />`
-3. `app-body` 在 TitleBar 下面（现有结构不变）
+1. 在 `registerConfiguration` 块中注册 `app.menuStyle` 配置项（enum: `["titlebar", "hamburger", "both"]`，默认 `"titlebar"`）
+2. 读取配置值 → `showTitleBar` / `showHamburger` 布尔值
+3. 条件渲染 `<TitleBar />` 和 `<HamburgerMenu />`
 
 ```tsx
-<div className="app-shell">
-  <TitleBar />                    {/* ← 新增 */}
-  <div className="app-body">      {/* ← 现有 */}
-    <IconBar ... />
+const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+
+{/* TitleBar——titlebar 或 both 模式显示 */}
+{menuStyle !== "hamburger" && <TitleBar />}
+
+<div className="app-body">
+  <IconBar
+    showHamburger={menuStyle !== "titlebar"}  {/* hamburger 或 both */}
     ...
-  </div>
-  <StatusBar ... />
-  <ToastContainer />
+  />
   ...
 </div>
 ```
 
-**验证：** TitleBar → IconBar → editor → StatusBar 垂直排列
+**验证：** 默认看到顶部 TitleBar → 设置里切到"汉堡菜单" → TitleBar 消失 + 图标栏出现汉堡
 
-#### #52h — 桌面版隐藏图标栏汉堡（~5 行）
+#### #52h — IconBar 接收 `showHamburger` prop（~5 行）
 
 **文件：** `src/components/IconBar.tsx`
 
 **做什么：**
-桌面版（`window.linkdesk` 存在）→ 图标栏**不**渲染汉堡（菜单在 TitleBar 里）。
-浏览器版（`window.linkdesk` 不存在）→ 图标栏第一个位置渲染汉堡。
+1. `IconBarProps` 加 `showHamburger?: boolean`
+2. 条件渲染 `<HamburgerMenu />`
 
 ```tsx
-const isElectron = !!(window as any).linkdesk;
-// ...
-{!isElectron && <HamburgerMenu />}  {/* 浏览器版才有图标栏汉堡 */}
+interface IconBarProps {
+  showHamburger?: boolean;  // E3f #52h
+  ...
+}
+
+// icon-bar-top 里：
+{showHamburger && <HamburgerMenu />}
 ```
 
-**验证：** Electron 桌面版 → 图标栏没有 ☰（菜单在顶部 TitleBar）。浏览器版 → 图标栏有 ☰（没有 TitleBar）。
-
-#### #52h2 — TitleBar 桌面版不渲染（~3 行）
-
-**文件：** `src/components/TitleBar.tsx`
-
-**做什么：**
-TitleBar 只在桌面版渲染。`App.tsx` 中：
-
-```tsx
-const isElectron = !!(window as any).linkdesk;
-// ...
-{isElectron && <TitleBar />}
-```
-
-**验证：** Electron 桌面版 → 顶部有 TitleBar。浏览器版 → 没有 TitleBar。
+**验证：** `showHamburger=true` → 图标栏顶部有 ☰。`false` → 没有。
 
 #### #52i — 删除原生 menubar 代码（HamburgerMenu 保留，浏览器版需要）（~-60 行）
 
@@ -297,9 +293,9 @@ registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
 **保留：**
 | 文件 | 保留原因 |
 |------|------|
-| `HamburgerMenu.tsx` + `.css` | 浏览器版的菜单入口——从 `MenuRegistry` 读同一份数据 |
-| `MenuRegistry` + `MenuId.MenuBar` | 唯一真源——两种渲染共享 |
-| `coreCommands.ts` 菜单注册 | 菜单内容——桌面版和浏览器版都消费 |
+| `HamburgerMenu.tsx` + `.css` | `app.menuStyle: "hamburger"` 或 `"both"` 时在图标栏显示 |
+| `MenuRegistry` + `MenuId.MenuBar` | 唯一真源——TitleBar 和 HamburgerMenu 共享 |
+| `coreCommands.ts` 菜单注册 | 菜单内容——声明式，不改 TitleBar/Hamburger 代码 |
 
 ### 2.8 后续可扩展（不在此任务范围）
 
@@ -1056,11 +1052,11 @@ if (hidden) return null;
 |:--:|------|:--:|------|
 | 51 | 标题栏暗色化——Electron nativeTheme + backgroundColor | ~25 | 标题栏颜色 = 主题色 |
 | 52a-e | 🔥 第一/二版菜单栏（已废弃——被 TitleBar 方案替代） | — | — |
-| 52f | 🔥 TitleBar 组件——横排菜单按钮 + 下拉面板 + 拖拽区 | ~60 | 顶部暗色标题栏，☰+文件▼+查看▼ |
-| 52g | App.tsx 布局 + 平台检测——`isElectron` 切换 TitleBar/Hamburger | ~15 | 桌面版有 TitleBar 无汉堡；浏览器版无 TitleBar 有汉堡 |
-| 52h | IconBar 按平台显隐汉堡——`isElectron` 条件渲染 | ~5 | 桌面版图标栏无 ☰；浏览器版有 ☰ |
-| 52i | 删除原生 menubar 代码——5 文件（HamburgerMenu 保留） | ~-60 | `grep` 零残留（HamburgerMenu 除外） |
-| 52j | coreCommands 菜单注册声明式——label + group + order | ~15 | 加 group="terminal"→TitleBar/Hamburger 自动出现 |
+| 52f | 🔥 TitleBar 组件——横排菜单 + 下拉面板 + 拖拽区 | ~60 | 顶部暗色标题栏，☰+文件▼+查看▼ |
+| 52g | 🔥 `app.menuStyle` 配置项 + App.tsx 条件渲染 | ~20 | 设置里切换 → TitleBar/Hamburger 显隐 |
+| 52h | IconBar 接收 `showHamburger` prop | ~5 | prop 控制图标栏汉堡显隐 |
+| 52i | 删除原生 menubar 代码——5 文件（HamburgerMenu 保留） | ~-60 | `grep` 零残留 |
+| 52j | coreCommands 菜单注册声明式——label + group + order | ~15 | 加 group="terminal"→自动出现 |
 | 53 | 齿轮菜单完整版——context key 驱动 5 项 | ~40 | 齿轮 → 配置/查看日志 跳到对应位置 |
 | 54 | 输出面板 UI——频道选择器 + 日志列表 + 清空/导出 | ~80 | 切频道 → 日志内容切换 |
 | 55 | 欢迎页集成——三种状态切换 + recentFolders | ~40 | 打开文件夹 → 状态 B → 关闭 → 状态 A |
