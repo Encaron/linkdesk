@@ -10,6 +10,7 @@ import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTab
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
+import TitleBar from "./components/TitleBar"; // E3f #52f
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
@@ -222,6 +223,12 @@ function App() {
             default: "#0078d4",
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
             onApply: (v) => applyAccentColor(v as string),
+          },
+          "app.menuStyle": {
+            type: "string",
+            default: "titlebar",
+            enum: ["titlebar", "hamburger", "both"],
+            description: "菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示",
           },
         },
       });
@@ -766,14 +773,22 @@ function App() {
 
   if (!ready) return null;
 
+  // E3f #52g：菜单样式——titlebar / hamburger / both
+  const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+  const showTitleBar = menuStyle !== "hamburger";
+  const showHamburger = menuStyle !== "titlebar";
+
   return (
     <div className="app-shell">
+      {/* E3f #52g：TitleBar——titlebar 或 both 模式显示 */}
+      {showTitleBar && <TitleBar />}
       <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-body">
         <IconBar
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
+          showHamburger={showHamburger}
         />
         <SidePanel
           ref={sidebarRef}
