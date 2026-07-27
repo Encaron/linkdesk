@@ -21,6 +21,8 @@ import "./IconBar.css";
 interface IconBarProps {
   sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
+  /** E3f #52h：控制图标栏汉堡菜单显隐。true=显示，false/undefined=隐藏 */
+  showHamburger?: boolean;
 }
 
 function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSource?: string } }) {
@@ -49,7 +51,7 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
+function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
   const { t } = useTranslation();
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
@@ -224,8 +226,8 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
       <div className="icon-bar-top" ref={containerRef}>
-        {/* E3f #52b：汉堡——图标栏第一个位置，对标 VS Code GlobalCompositeBar */}
-        <HamburgerMenu />
+        {/* E3f #52b+#52h：汉堡——图标栏第一个位置，showHamburger 控制显隐 */}
+        {showHamburger && <HamburgerMenu />}
         {topIcons.map(renderIcon)}
       </div>
       <div className="icon-bar-bottom">
