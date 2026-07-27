@@ -101,10 +101,14 @@ export function applyTheme(theme: Theme): void {
   root.setAttribute("data-theme", theme.type);
   currentTheme = theme;
 
+  // E3f #51：通知主进程标题栏颜色
+  const linkdesk = (window as any).linkdesk;
+  const isDark = theme.type === "dark";
+  linkdesk?.events?.notifyTheme?.(isDark);
+
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
-  const bridge = (window as any).linkdesk?.bridge;
-  if (bridge?.broadcast) {
-    bridge.broadcast("theme:changed", {
+  if (linkdesk?.bridge?.broadcast) {
+    linkdesk.bridge.broadcast("theme:changed", {
       themeId: theme.name,
       themeType: theme.type,
       variables: theme.colors,
