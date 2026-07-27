@@ -1,94 +1,79 @@
 /**
  * menu-builder — 将 MenuRegistry 菜单数据转为 Electron 原生 Menu。
- * E3f #52：menubar 模式——注册 MenuId.MenuBar 的菜单项自动出现在原生菜单栏。
+ * E3f #52e：menubar 模式——数据来自渲染进程 MenuRegistry.getMenuItems(MenuId.MenuBar)。
  *
  * 设计文档：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/06-E3f-壳UI收尾.md §二.2
- *
- * Phase 6：改为从渲染进程 MenuRegistry 动态读取（通过 IPC），不再硬编码菜单内容。
  */
 
-import { Menu, BrowserWindow, app } from 'electron';
+import { Menu, BrowserWindow } from 'electron';
+
+/** IPC 传来的菜单项（MenuRegistry 序列化后的最小结构） */
+export interface MenuBarItem {
+  command: string;
+  label?: string;
+  group?: string;
+  children?: MenuBarItem[];
+}
+
+/** 组名 → 顶级菜单标签 */
+const GROUP_LABELS: Record<string, string> = {
+  file: 'File',
+  edit: 'Edit',
+  view: 'View',
+  help: 'Help',
+};
+
+const GROUP_ORDER: Record<string, number> = {
+  file: 0,
+  edit: 1,
+  view: 2,
+  help: 3,
+};
 
 /**
- * 构建原生菜单——静态 File/Edit/View/Help 四组。
+ * 从 MenuRegistry 数据构建 Electron 原生菜单。
+ * menuItems = getMenuItems(MenuId.MenuBar) 序列化后通过 IPC 传来。
  */
-export function buildAppMenu(mainWindow: BrowserWindow): Menu {
-  const isMac = process.platform === 'darwin';
-
-  const template: any[] = [];
-
-  // macOS 应用菜单
-  if (isMac) {
-    template.push({
-      label: app.name,
-      submenu: [
-        { label: '关于 LinkDesk', role: 'about' },
-        { type: 'separator' },
-        { label: '退出', accelerator: 'Cmd+Q', role: 'quit' },
-      ],
-    });
+export function buildAppMenu(menuItems: MenuBarItem[], mainWindow: BrowserWindow): Menu {
+  // 按 group 分组
+  const groups = new Map<string, MenuBarItem[]>();
+  for (const item of menuItems) {
+    const group = item.group ?? 'other';
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group)!.push(item);
   }
 
-  template.push(
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: '设置',
-          accelerator: 'CmdOrCtrl+,',
-          click: () => mainWindow.webContents.send('menu:command', 'core.openSettings'),
-        },
-        { type: 'separator' },
-        isMac
-          ? { label: '退出', role: 'quit' }
-          : { label: '退出', accelerator: 'Alt+F4', click: () => app.quit() },
-      ],
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { label: '撤销', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
-        { label: '重做', accelerator: 'CmdOrCtrl+Shift+Z', role: 'redo' },
-        { type: 'separator' },
-        { label: '剪切', accelerator: 'CmdOrCtrl+X', role: 'cut' },
-        { label: '复制', accelerator: 'CmdOrCtrl+C', role: 'copy' },
-        { label: '粘贴', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-        { label: '全选', accelerator: 'CmdOrCtrl+A', role: 'selectAll' },
-      ],
-    },
-    {
-      label: 'View',
-      submenu: [
-        {
-          label: '命令面板',
-          accelerator: 'CmdOrCtrl+Shift+P',
-          click: () => mainWindow.webContents.send('menu:command', 'workbench.action.showCommands'),
-        },
-        { type: 'separator' },
-        {
-          label: '选择颜色主题',
-          accelerator: 'CmdOrCtrl+K CmdOrCtrl+T',
-          click: () => mainWindow.webContents.send('menu:command', 'workbench.action.selectTheme'),
-        },
-        {
-          label: '选择语言',
-          click: () => mainWindow.webContents.send('menu:command', 'workbench.action.selectLanguage'),
-        },
-        { type: 'separator' },
-        { label: '重新加载', accelerator: 'CmdOrCtrl+R', role: 'reload' },
-        { label: '开发者工具', accelerator: 'F12', role: 'toggleDevTools' },
-      ],
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: '关于 LinkDesk',
-          click: () => mainWindow.webContents.send('menu:command', 'core.openSettings'),
-        },
-      ],
-    }
+  // 排序
+  const sorted = [...groups.entries()].sort(
+    (a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99)
   );
 
+  // 转换——每组的 children 作为子菜单
+  const template: any[] = sorted.map(([group, items]) => ({
+    label: GROUP_LABELS[group] ?? group,
+    submenu: items.map((item) => convertItem(item, mainWindow)),
+  }));
+
   return Menu.buildFromTemplate(template);
+}
+
+/** 递归转换单个菜单项 */
+function convertItem(item: MenuBarItem, mainWindow: BrowserWindow): any {
+  // 有 children → 子菜单
+  if (item.children?.length) {
+    return {
+      label: item.label ?? '',
+      submenu: item.children.map((c) => convertItem(c, mainWindow)),
+    };
+  }
+
+  // 叶子项 → 发 IPC 到渲染进程执行命令
+  return {
+    label: item.label ?? item.command,
+    click: () => {
+      if (item.command) {
+        mainWindow.webContents.send('menu:command', item.command);
+      }
+    },
+  };
 }

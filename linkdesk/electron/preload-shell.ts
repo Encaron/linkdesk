@@ -125,6 +125,7 @@ try {
     events: {
       heartbeat: () => ipcRenderer.send('heartbeat'),
       notifyTheme: (isDark: boolean) => ipcRenderer.send('theme-changed', isDark), // E3f #51
+      notifyMenuBarData: (data: any) => ipcRenderer.send('menu-bar-data', data), // E3f #52e
     },
 
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──

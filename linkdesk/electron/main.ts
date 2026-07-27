@@ -102,13 +102,25 @@ ipcMain.on('theme-changed', (_event, isDark: boolean) => {
   }
 });
 
-// E3f #52：原生菜单栏模式——用户切 menubar 时设置
+// E3f #52e：原生菜单栏模式——接收 MenuRegistry 数据 + 模式切换
 // 默认 hamburger（无原生菜单栏，走 <HamburgerMenu /> 组件）
+let _menuData: import('./menu-builder.js').MenuBarItem[] = [];
+
+ipcMain.on('menu-bar-data', (_event, data: import('./menu-builder.js').MenuBarItem[]) => {
+  _menuData = data;
+  // 重建原生菜单（如果当前是 menubar 模式）
+  if (mainWindow && !mainWindow.isDestroyed() && _menuStyle === 'menubar') {
+    Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
+  }
+});
+
+let _menuStyle = 'hamburger';
+
 ipcMain.on('set-menu-style', (_event, style: string) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
+  _menuStyle = style;
   if (style === 'menubar') {
-    const menu = buildAppMenu(mainWindow);
-    Menu.setApplicationMenu(menu);
+    Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
   } else {
     Menu.setApplicationMenu(null);
   }
