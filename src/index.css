@@ -32,6 +32,7 @@
   --warning: #CCA700;
   --badge-text: #FFFFFF;
   /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-titlebar: #252526;
   --bg-icon-bar: #18181B;
   --bg-side-panel: #1E1E22;
   --bg-toolbar: #1E1E22;
@@ -80,6 +81,7 @@
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
   /* Phase 3.5 新增 —— 主题全覆盖 */
+  --bg-titlebar: #DDDDDD;
   --bg-icon-bar: #F0F0F0;
   --bg-side-panel: #F5F5F5;
   --bg-toolbar: #F5F5F5;
