@@ -156,6 +156,7 @@ try {
       getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
       toggleDevTools: (id: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', id), // E3f #58
       create: (id: string) => ipcRenderer.invoke('plugin-view:create', id), // E3f #58a
+      destroy: (id: string) => ipcRenderer.invoke('plugin-view:destroy', id), // E3f #58d
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
