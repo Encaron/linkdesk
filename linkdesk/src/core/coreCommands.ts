@@ -36,6 +36,14 @@ export interface CoreCallbacks {
   findGroupByTabId: (tabId: string) => { groupId: string; tabs: Array<{ id: string }> } | null;
   /** 打开/聚焦标签页 */
   openTab: (pluginId: string) => string;
+  /** E3f #59-F：关闭当前活跃标签页 */
+  closeActiveTab: () => void;
+  /** E3f #59-F：切换到组内下一个标签页（shift=true 则上一个） */
+  focusNextTab: (shift: boolean) => void;
+  /** E3f #59-F：切换分屏/合屏 */
+  toggleSplit: () => void;
+  /** E3f #59-F：跳转到第 N 个标签页（全局，1-based） */
+  focusNthTab: (n: number) => void;
 }
 
 let _callbacks: CoreCallbacks | null = null;
@@ -289,6 +297,42 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
     menuId: MenuId.SettingItemGear,
     menuGroup: "navigation",
+  },
+
+  // ── E3f #59-F：壳级快捷键命令（原 App.tsx 原始 keydown handler 迁移）──
+
+  {
+    id: "workbench.action.closeActiveTab",
+    title: i18n.t("关闭标签页"),
+    category: i18n.t("标签页"),
+    handler: async () => {
+      _callbacks?.closeActiveTab();
+    },
+  },
+  {
+    id: "workbench.action.nextTab",
+    title: i18n.t("下一个标签页"),
+    category: i18n.t("标签页"),
+    handler: async (_token, ...args) => {
+      _callbacks?.focusNextTab(!!(args[0] as { shift?: boolean } | undefined)?.shift);
+    },
+  },
+  {
+    id: "workbench.action.toggleSplit",
+    title: i18n.t("切换分屏"),
+    category: i18n.t("标签页"),
+    handler: async () => {
+      _callbacks?.toggleSplit();
+    },
+  },
+  {
+    id: "workbench.action.focusNthTab",
+    title: i18n.t("跳转到标签页"),
+    category: i18n.t("标签页"),
+    handler: async (_token, ...args) => {
+      const n = (args[0] as { n: number } | undefined)?.n;
+      if (n) _callbacks?.focusNthTab(n);
+    },
   },
 
 ];

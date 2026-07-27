@@ -47,6 +47,8 @@ export interface Keybinding {
   source: "user" | "plugin" | "builtin";
   /** 插件 ID——卸载时精确匹配（B3 fix：原实现 source === "plugin" 会误删所有插件快捷键） */
   pluginId?: string;
+  /** E3f #59-F：执行时透传给 executeCommand 的额外参数 */
+  args?: unknown[];
 }
 
 /** 快捷键冲突——E2c #17a：≥2 个 binding 映射到同一个 key */
@@ -429,7 +431,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     if (winner) {
       e.preventDefault();
       e.stopImmediatePropagation();
-      executeCommand(winner.command);
+      executeCommand(winner.command, undefined, ...(winner.args ?? []));
       return true;
     }
     // chord 第二键不匹配 → 通知状态栏显示错误提示（对标 VS Code）
@@ -456,7 +458,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
   if (winner) {
     e.preventDefault();
     e.stopImmediatePropagation();
-    executeCommand(winner.command);
+    executeCommand(winner.command, undefined, ...(winner.args ?? []));
     return true;
   }
 

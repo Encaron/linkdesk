@@ -108,6 +108,16 @@ function App() {
     pinTab,
   } = useTabManager();
 
+  // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
+  const handleFocusTab = useCallback((tabId: string) => {
+    const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
+    const tab = group?.tabs.find((t) => t.id === tabId);
+    if (tab && !shouldKeepSidebarOnFocus(tab)) {
+      setSidebarView(null);
+    }
+    focusTab(tabId);
+  }, [tabState.groups, focusTab]);
+
   // Phase 5b：核心命令 callbacks——每次渲染更新模块级 ref（零开销），handler 延迟读取避免闭包过期
   const coreCallbacks: CoreCallbacks = useMemo(() => ({
     closeTab,
@@ -128,7 +138,45 @@ function App() {
       return null;
     },
     openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
-  }), [closeTab, splitTab, tabState.groups, openOrFocusTab]);
+    // E3f #59-F：壳级快捷键迁移到 KeybindingRegistry
+    closeActiveTab: async () => {
+      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      const tab = group?.tabs.find((t) => t.id === group.activeTabId);
+      if (!tab) return;
+      if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+      const result = closeTab(tab.id);
+      if (!result.closed && result.reason === "dirty") {
+        if (await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
+          forceCloseTab(tab.id);
+        }
+      }
+    },
+    focusNextTab: (shift) => {
+      const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      if (!activeGroup) return;
+      const { tabs } = activeGroup;
+      const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+      if (idx === -1) return;
+      const next = shift ? idx - 1 : idx + 1;
+      handleFocusTab(tabs[(next + tabs.length) % tabs.length].id);
+    },
+    toggleSplit: () => {
+      const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
+      if (isSplit) {
+        unsplit(tabState.activeGroupId);
+      } else {
+        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+        if (activeGroup && activeGroup.tabs.length > 1) {
+          const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+          splitTab(activeGroup.tabs[(idx + 1) % activeGroup.tabs.length].id, "horizontal");
+        }
+      }
+    },
+    focusNthTab: (n) => {
+      const all = allTabs(tabState);
+      if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
+    },
+  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
 
   // 每次渲染更新 callbacks ref
   updateCoreCallbacks(coreCallbacks);
@@ -258,19 +306,31 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
 
-      // E3b #36d + E3c #41：注册内置快捷键（防 StrictMode 双 effect 重复注册）
+      // E3f #59-F：注册全部壳级快捷键（防 StrictMode 双 effect 重复注册）
       if (!_builtinKeybindingsRegistered) {
         _builtinKeybindingsRegistered = true;
-        registerKeybinding({
-          command: "workbench.action.selectTheme",
-          key: "ctrl+k ctrl+t",
-          source: "builtin",
-        });
-        registerKeybinding({
-          command: "workbench.action.selectLanguage",
-          key: "ctrl+k ctrl+l",
-          source: "builtin",
-        });
+        const builtins: Array<{ command: string; key: string; args?: unknown[] }> = [
+          { command: "core.openSettings", key: "ctrl+," },
+          { command: "workbench.action.showCommands", key: "ctrl+shift+p" },
+          { command: "workbench.action.selectTheme", key: "ctrl+k ctrl+t" },
+          { command: "workbench.action.selectLanguage", key: "ctrl+k ctrl+l" },
+          { command: "workbench.action.closeActiveTab", key: "ctrl+w" },
+          { command: "workbench.action.nextTab", key: "ctrl+tab" },
+          { command: "workbench.action.nextTab", key: "ctrl+shift+tab", args: [{ shift: true }] },
+          { command: "workbench.action.toggleSplit", key: "ctrl+\\" },
+          { command: "workbench.action.focusNthTab", key: "ctrl+1", args: [{ n: 1 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+2", args: [{ n: 2 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+3", args: [{ n: 3 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+4", args: [{ n: 4 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+5", args: [{ n: 5 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+6", args: [{ n: 6 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+7", args: [{ n: 7 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+8", args: [{ n: 8 }] },
+          { command: "workbench.action.focusNthTab", key: "ctrl+9", args: [{ n: 9 }] },
+        ];
+        for (const b of builtins) {
+          registerKeybinding({ ...b, source: "builtin" });
+        }
       }
 
       // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
@@ -447,17 +507,6 @@ function App() {
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
   type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' };
   const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
-
-  // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
-  const handleFocusTab = useCallback((tabId: string) => {
-    const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
-    const tab = group?.tabs.find((t) => t.id === tabId);
-    // shouldKeepSidebarOnFocus：plugin-detail 保留侧栏（展示的是被查看插件的侧栏）
-    if (tab && !shouldKeepSidebarOnFocus(tab)) {
-      setSidebarView(null);
-    }
-    focusTab(tabId);
-  }, [tabState.groups, focusTab]);
 
   // 图标栏点击——viewRole 声明决定行为。
   // sidebarPrimary（默认）：toggle 侧栏，对标 VS Code Activity Bar。
@@ -706,103 +755,9 @@ function App() {
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
-  /**
-   * 壳级全局快捷键——capture phase 第一优先级。
-   *
-   * 职责：处理不依赖上下文、始终可用的快捷键。对标 VS Code 内置 keybindings。
-   *
-   * ⚠️ 注册顺序依赖：本 handler 必须在 KeybindingRegistry 之前注册，
-   * 否则 stopImmediatePropagation 无法阻止 Registry 重复触发。
-   * 当前顺序：App render → 此 useEffect → startup useEffect → mountGlobalKeybindings。
-   * 如果未来加"全局快捷键监控/调试工具"，它必须注册在此 handler 之前。
-   *
-   * matched 时必须调用 e.stopImmediatePropagation()——阻止 KeybindingRegistry
-   * 的同级 capture handler 也触发，避免双重执行。
-   *
-   * 分工：壳级 → 这里；插件级（带 when 条件）→ KeybindingRegistry。
-   */
-  useEffect(() => {
-    const onGlobalKeyDown = (e: KeyboardEvent) => {
-      // Ctrl+, → 打开设置标签页（对标 VS Code Preferences: Open Settings）
-      if (e.ctrlKey && e.key === ",") {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
-        createTab(settingsId, { pinned: true });
-        return;
-      }
-      // Ctrl+Shift+P → 命令面板（对标 VS Code Show All Commands）
-      if (e.ctrlKey && e.shiftKey && (e.code === "KeyP" || e.key === "P" || e.key === "p")) {
-        e.preventDefault();
-        e.stopImmediatePropagation();
-        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
-        return;
-      }
-    };
-    window.addEventListener("keydown", onGlobalKeyDown, true); // capture phase——在编辑器之前拦截
-    return () => window.removeEventListener("keydown", onGlobalKeyDown, true);
-  }, [createTab]);
-
-  // Phase 3: 全局键盘快捷键（§10.5）——依赖 activeTab 的快捷键
-  useEffect(() => {
-    const activeTabId = activeTab?.id;
-    if (!activeTabId) return;
-
-    const onKeyDown = async (e: KeyboardEvent) => {
-      // Ctrl+W: 关闭当前标签页
-      if (e.ctrlKey && e.key === "w") {
-        e.preventDefault();
-        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-        const tab = activeGroup?.tabs.find((t) => t.id === activeTabId);
-        if (tab?.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
-
-        const result = closeTab(activeTabId);
-        if (!result.closed && result.reason === "dirty") {
-          if (tab && await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
-            forceCloseTab(activeTabId);
-          }
-        }
-      }
-      // Ctrl+Tab: 下一个标签页
-      if (e.ctrlKey && e.key === "Tab") {
-        e.preventDefault();
-        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-        if (activeGroup) {
-          const { tabs } = activeGroup;
-          const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-          if (idx !== -1) {
-            const next = e.shiftKey ? idx - 1 : idx + 1;
-            const target = tabs[(next + tabs.length) % tabs.length];
-            handleFocusTab(target.id);
-          }
-        }
-      }
-      // Ctrl+\: 分屏切换
-      if (e.ctrlKey && e.key === "\\") {
-        e.preventDefault();
-        const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
-        if (isSplit) {
-          unsplit(tabState.activeGroupId);
-        } else {
-          const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-          if (activeGroup && activeGroup.tabs.length > 1) {
-            const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-            const next = activeGroup.tabs[(idx + 1) % activeGroup.tabs.length];
-            splitTab(next.id, "horizontal");
-          }
-        }
-      }
-      // Ctrl+1~9: 跳转到第 N 个标签页
-      const all = allTabs(tabState);
-      const num = parseInt(e.key);
-      if (e.ctrlKey && num >= 1 && num <= 9 && all[num - 1]) {
-        e.preventDefault();
-        handleFocusTab(all[num - 1].id);
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [tabState, activeTab, closeTab, forceCloseTab, handleFocusTab, splitTab, unsplit]);
+  // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
+  // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
+  // （Ctrl+W / Ctrl+Tab / Ctrl+\ / Ctrl+1~9）已删除。执行走 coreCommands.ts 的 CoreCallbacks 模式。
 
   // E2b #7：SourceStateContext——替代 SerialContext（核心只知道"数据源"，不知道"串口"）
   const sourceStateValue = useMemo(() => ({
