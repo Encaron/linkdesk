@@ -129,3 +129,19 @@
   color: var(--badge-text);
   opacity: 0.8;
 }
+
+/* 禁用态——when 条件不满足时灰色不可点击 */
+.hamburger-item-disabled,
+.hamburger-item-disabled:hover,
+.hamburger-item-disabled.hamburger-item-hovered {
+  color: var(--text-muted);
+  opacity: 0.45;
+  background: none !important;
+  cursor: default;
+}
+
+.hamburger-item-disabled .hamburger-item-key,
+.hamburger-item-disabled .hamburger-chevron {
+  color: var(--text-muted);
+  opacity: 0.45;
+}

@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
 import { getKeybindings } from "../core/KeybindingRegistry";
+import { ContextKeyService } from "../core/ContextKeyService";
 import "./HamburgerMenu.css";
 
 function HamburgerMenu() {
@@ -39,6 +40,12 @@ function HamburgerMenu() {
   useEffect(() => {
     if (!open) setHoveredKey(null);
   }, [open]);
+
+  // 订阅 context key 变化——when 条件可能随时改变（如串口打开/关闭）
+  const [, setCtxTick] = useState(0);
+  useEffect(() => {
+    return ContextKeyService.onDidChangeContext(() => setCtxTick((n) => n + 1));
+  }, []);
 
   const handleCommand = useCallback((command: string) => {
     if (!command) return;
@@ -75,14 +82,30 @@ function HamburgerMenu() {
     return "";
   }
 
+  /** 格式化快捷键显示——chord 如 ctrl+k ctrl+t → Ctrl+K Ctrl+T */
+  function formatKeyLabel(key: string): string {
+    return key
+      .split(" ")
+      .map((chord) =>
+        chord
+          .replace(/ctrl\+/i, "Ctrl+")
+          .replace(/alt\+/i, "Alt+")
+          .replace(/shift\+/i, "Shift+")
+          .replace(/\+\w/g, (m) => m.toUpperCase())
+      )
+      .join(" ");
+  }
+
   function getKeyLabel(command: string): string | null {
     const kb = allKeybindings.find((k) => k.command === command);
     if (!kb?.key) return null;
-    return kb.key
-      .replace(/ctrl/i, "Ctrl+")
-      .replace(/alt/i, "Alt+")
-      .replace(/shift/i, "Shift+")
-      .toUpperCase();
+    return formatKeyLabel(kb.key);
+  }
+
+  /** when 条件不满足 → 菜单项禁用（灰色不可点击） */
+  function isDisabled(item: MenuItem): boolean {
+    if (!open) return false; // 菜单关闭时全部显示为可用——避免闪烁
+    return !ContextKeyService.matches(item.when);
   }
 
   /** 获取当前 hover 的 item 的 children */
@@ -121,13 +144,16 @@ function HamburgerMenu() {
                   const key = item.command + (item.label ?? "");
                   const hasChildren = item.children && item.children.length > 0;
 
+                  const disabled = isDisabled(item);
+
                   return (
                     <button
                       key={`${item.pluginId}:${key}`}
-                      className={`hamburger-item${hoveredKey === key ? " hamburger-item-hovered" : ""}`}
+                      className={`hamburger-item${hoveredKey === key ? " hamburger-item-hovered" : ""}${disabled ? " hamburger-item-disabled" : ""}`}
+                      disabled={disabled}
                       onMouseEnter={() => scheduleHover(hasChildren ? key : null)}
                       onClick={() => {
-                        if (hasChildren) return; // 有子菜单——不执行命令
+                        if (disabled || hasChildren) return;
                         handleCommand(item.command);
                       }}
                     >
@@ -157,18 +183,24 @@ function HamburgerMenu() {
               }}
               onMouseLeave={() => scheduleHover(null)}
             >
-              {hoveredChildren.map((child) => (
-                <button
-                  key={`${child.pluginId}:${child.command}:${child.label}`}
-                  className="hamburger-item hamburger-sub-item"
-                  onClick={() => handleCommand(child.command)}
-                >
-                  <span className="hamburger-item-label">{getLabel(child)}</span>
-                  {getKeyLabel(child.command) && (
-                    <span className="hamburger-item-key">{getKeyLabel(child.command)}</span>
-                  )}
-                </button>
-              ))}
+              {hoveredChildren.map((child) => {
+                const childDisabled = isDisabled(child);
+                return (
+                  <button
+                    key={`${child.pluginId}:${child.command}:${child.label}`}
+                    className={`hamburger-item hamburger-sub-item${childDisabled ? " hamburger-item-disabled" : ""}`}
+                    disabled={childDisabled}
+                    onClick={() => {
+                      if (!childDisabled) handleCommand(child.command);
+                    }}
+                  >
+                    <span className="hamburger-item-label">{getLabel(child)}</span>
+                    {getKeyLabel(child.command) && (
+                      <span className="hamburger-item-key">{getKeyLabel(child.command)}</span>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           )}
         </div>
