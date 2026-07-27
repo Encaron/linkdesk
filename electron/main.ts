@@ -42,6 +42,8 @@ const isDev = !app.isPackaged;
 function createWindow(): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
   nativeTheme.themeSource = 'dark';
+  // E3f #52：去掉 Electron 默认菜单栏（File/Edit/View/Window）——LinkDesk 用自己的
+  Menu.setApplicationMenu(null);
 
   mainWindow = new BrowserWindow({
     width: 1400,
