@@ -241,6 +241,7 @@ export function ensureCoreCommands(): void {
 function syncMenuBarToMain(): void {
   try {
     const items = getMenuItems(MenuId.MenuBar);
+    console.log('[coreCommands] 发送菜单数据到主进程:', items.length, '项');
     // 提取主进程需要的字段（去掉 pluginId 等渲染进程专有字段）
     const serialized = items.map((item) => ({
       command: item.command,
