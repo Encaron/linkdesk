@@ -784,6 +784,7 @@ function App() {
       {showTitleBar && <TitleBar />}
       <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
+      <div className="app-main">
       <div className="app-body">
         <IconBar
           sidebarView={sidebarView}
@@ -832,6 +833,7 @@ function App() {
         onToggleTheme={handleToggleTheme}
         onToggleLang={handleToggleLang}
       />
+      </div>
       <ToastContainer />
       <ProgressBar />
       <CommandPalette
