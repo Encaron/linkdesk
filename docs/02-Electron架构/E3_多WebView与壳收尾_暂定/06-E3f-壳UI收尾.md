@@ -125,7 +125,35 @@ MenuRegistry.getMenuItems(MenuId.MenuBar)
 
 **一份数据，一种渲染。** 桌面版 = 浏览器版——同一个 TitleBar 组件。不区分 hamburger/menubar 模式。
 
-### 2.6 子任务——逐条可验证
+### 2.6 平台切换——对标 VS Code 的双模式
+
+| | 桌面版（Electron） | 浏览器版（Web） |
+|------|:--:|:--:|
+| 对标 | VS Code 桌面版 | vscode.dev |
+| 菜单渲染 | `<TitleBar />` 横排按钮 | `<HamburgerMenu />` 在图标栏 |
+| 标题栏 | 有（30px，暗色，可拖拽） | 无（浏览器自带标题栏） |
+| 菜单数据 | `MenuRegistry` → `MenuId.MenuBar` | 同一份数据 |
+| 检测方式 | `!!(window as any).linkdesk`（Electron preload 暴露） | `window.linkdesk` 不存在 |
+
+```
+桌面版（Electron）：                    浏览器版（Web）：
+┌──────────────────────────────┐        ┌────┬──────────────────┐
+│ ☰ 文件▼ 查看▼          ─ □ × │        │ ☰  │                  │
+├────┬─────────────────────────┤        │ 文 │  编辑器           │
+│ ☐  │ 侧栏    │  编辑器       │        │ 件 │                  │
+│ ⚙  │         │               │        │ 查 │                  │
+├────┴─────────────────────────┤        │ 看 │                  │
+│ 状态栏                       │        ├────┴──────────────────┤
+└──────────────────────────────┘        │ 状态栏                │
+                                        └───────────────────────┘
+```
+
+- 桌面版：TitleBar 有 ☰（始终可用）+ 横排菜单按钮。图标栏里没有汉堡。
+- 浏览器版：没有 TitleBar。图标栏第一个位置是汉堡 ☰ → 点击弹出菜单面板（跟之前一样）。
+
+**HamburgerMenu.tsx 不删除。** 它是浏览器版的菜单入口。TitleBar.tsx 是桌面版的菜单入口。两个组件从同一个 `MenuRegistry.getMenuItems(MenuId.MenuBar)` 读数据。
+
+### 2.7 子任务——逐条可验证
 
 #### #52f — 创建 TitleBar 组件（~60 行，新文件）
 
@@ -176,31 +204,54 @@ MenuRegistry.getMenuItems(MenuId.MenuBar)
 
 **验证：** TitleBar → IconBar → editor → StatusBar 垂直排列
 
-#### #52h — IconBar 去掉汉堡（~5 行）
+#### #52h — 桌面版隐藏图标栏汉堡（~5 行）
 
 **文件：** `src/components/IconBar.tsx`
 
 **做什么：**
-1. 删除 `import HamburgerMenu` 
-2. 删除 `<HamburgerMenu />` 渲染
+桌面版（`window.linkdesk` 存在）→ 图标栏**不**渲染汉堡（菜单在 TitleBar 里）。
+浏览器版（`window.linkdesk` 不存在）→ 图标栏第一个位置渲染汉堡。
 
-**验证：** 图标栏只有视图图标 + 底部齿轮，顶部不再有 ☰
+```tsx
+const isElectron = !!(window as any).linkdesk;
+// ...
+{!isElectron && <HamburgerMenu />}  {/* 浏览器版才有图标栏汉堡 */}
+```
 
-#### #52i — 删除旧 hamburger/menubar 代码（~-150 行）
+**验证：** Electron 桌面版 → 图标栏没有 ☰（菜单在顶部 TitleBar）。浏览器版 → 图标栏有 ☰（没有 TitleBar）。
 
-**文件清理清单（7 个文件）：**
+#### #52h2 — TitleBar 桌面版不渲染（~3 行）
+
+**文件：** `src/components/TitleBar.tsx`
+
+**做什么：**
+TitleBar 只在桌面版渲染。`App.tsx` 中：
+
+```tsx
+const isElectron = !!(window as any).linkdesk;
+// ...
+{isElectron && <TitleBar />}
+```
+
+**验证：** Electron 桌面版 → 顶部有 TitleBar。浏览器版 → 没有 TitleBar。
+
+#### #52i — 删除原生 menubar 代码（HamburgerMenu 保留，浏览器版需要）（~-60 行）
+
+**保留：**
+- `src/components/HamburgerMenu.tsx` + `.css` —— 浏览器版的菜单入口
+- `src/core/coreCommands.ts` 的 `MenuId.MenuBar` 注册 —— 两份渲染的数据源
+
+**删除：**
 
 | 文件 | 操作 | 说明 |
 |------|------|------|
-| `src/components/HamburgerMenu.tsx` | **删除整个文件** | TitleBar 替代 |
-| `src/components/HamburgerMenu.css` | **删除整个文件** | TitleBar 替代 |
 | `electron/menu-builder.ts` | **删除整个文件** | 不再需要原生菜单 |
-| `electron/main.ts` | 删除以下内容：`import { buildAppMenu }`、`import { Menu }` from electron、`menu-bar-data` IPC handler（3 行）、`set-menu-style` IPC handler（8 行）、`_menuData` 变量、`_menuStyle` 变量 | 回归到只管理窗口，不管菜单 |
-| `electron/preload-shell.ts` | 删除 `events` 中的 `notifyMenuBarData`、`setMenuStyle`、以及 `menu:command` IPC listener（4 行） | 回归到只暴露基础 IPC |
-| `src/core/coreCommands.ts` | 删除 `syncMenuBarToMain()` 函数（~15 行）及其调用 | 不再需要往主进程发菜单数据 |
-| `src/App.tsx` | 删除 `import { executeCommand } from "./core/CommandRegistry"`（如果只用于 native-menu-command）、删除 `native-menu-command` useEffect（8 行） | 原生菜单已删除 |
+| `electron/main.ts` | 删除：`import { buildAppMenu }`、`import { Menu }`、`menu-bar-data` handler（3 行）、`set-menu-style` handler（8 行）、`_menuData` / `_menuStyle` 变量、`Menu.setApplicationMenu(null)`（这一行保留——清默认菜单） | 主进程不管菜单 |
+| `electron/preload-shell.ts` | 删除 `events` 中的 `notifyMenuBarData` + `setMenuStyle` + `menu:command` IPC listener（4 行） | 不再需要 IPC |
+| `src/core/coreCommands.ts` | 删除 `syncMenuBarToMain()` 函数（15 行）+ 调用（1 行） | 不再发 IPC |
+| `src/App.tsx` | 删除 `import { executeCommand }`（如果仅用于 native-menu）、删除 `native-menu-command` useEffect（8 行） | 原生菜单已删除 |
 
-**验证：** `grep -r "HamburgerMenu\|menu-builder\|menu-bar-data\|set-menu-style\|native-menu-command\|syncMenuBarToMain\|notifyMenuBarData" src/ electron/` 零结果
+**验证：** `grep -r "menu-builder\|menu-bar-data\|set-menu-style\|native-menu-command\|syncMenuBarToMain\|notifyMenuBarData" src/ electron/` **零结果**（HamburgerMenu 不在此列——保留）
 
 #### #52j — coreCommands.ts 菜单注册声明式（~15 行）
 
@@ -233,18 +284,22 @@ registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
 
 **验证：** 未来任何插件注册 `{ command: "", label: "终端", group: "terminal", order: 3, children: [...] }` → TitleBar 自动出现"终端"按钮——不改 TitleBar 任何代码
 
-### 2.7 旧代码清理对照表——新 AI 进场必读
+### 2.9 旧代码清理对照表——新 AI 进场必读
 
 | 文件 | 删什么 | 为什么删 |
 |------|------|------|
-| `HamburgerMenu.tsx` | 整个文件 | 菜单栏移到 TitleBar 横排显示 |
-| `HamburgerMenu.css` | 整个文件 | 同上 |
-| `menu-builder.ts` | 整个文件 | 不再用 Electron 原生 Menu API |
-| `main.ts` | `import { Menu }` / `import { buildAppMenu }` / `menu-bar-data` handler / `set-menu-style` handler / `_menuData` / `_menuStyle` | 主进程不管菜单了——纯粹窗口管理 |
+| `menu-builder.ts` | **整个文件** | 不再用 Electron 原生 Menu API |
+| `main.ts` | `import { Menu }` / `import { buildAppMenu }` / `menu-bar-data` handler / `set-menu-style` handler / `_menuData` / `_menuStyle` | 主进程不管菜单——纯粹窗口管理 |
 | `preload-shell.ts` | `notifyMenuBarData` / `setMenuStyle` / `menu:command` listener | 菜单数据不再需要 IPC |
 | `coreCommands.ts` | `syncMenuBarToMain()` 函数 + 调用 | 不再往主进程发数据 |
 | `App.tsx` | `import { executeCommand }`（如果仅用于 native-menu） / `native-menu-command` useEffect | 不再有原生菜单命令 |
-| `IconBar.tsx` | `import HamburgerMenu` + `<HamburgerMenu />` | 菜单在 TitleBar 里 |
+
+**保留：**
+| 文件 | 保留原因 |
+|------|------|
+| `HamburgerMenu.tsx` + `.css` | 浏览器版的菜单入口——从 `MenuRegistry` 读同一份数据 |
+| `MenuRegistry` + `MenuId.MenuBar` | 唯一真源——两种渲染共享 |
+| `coreCommands.ts` 菜单注册 | 菜单内容——桌面版和浏览器版都消费 |
 
 ### 2.8 后续可扩展（不在此任务范围）
 
@@ -1000,12 +1055,12 @@ if (hidden) return null;
 | # | 任务 | 行数 | 独立验证 |
 |:--:|------|:--:|------|
 | 51 | 标题栏暗色化——Electron nativeTheme + backgroundColor | ~25 | 标题栏颜色 = 主题色 |
-| 52a-e | 🔥 第一版菜单栏（已废弃——被 TitleBar 方案替代） | — | — |
+| 52a-e | 🔥 第一/二版菜单栏（已废弃——被 TitleBar 方案替代） | — | — |
 | 52f | 🔥 TitleBar 组件——横排菜单按钮 + 下拉面板 + 拖拽区 | ~60 | 顶部暗色标题栏，☰+文件▼+查看▼ |
-| 52g | App.tsx 布局调整——TitleBar 在 app-body 上面 | ~10 | TitleBar → IconBar → editor 垂直排列 |
-| 52h | IconBar 去掉汉堡——菜单已在顶部 | ~5 | 图标栏不再有 ☰ |
-| 52i | 删除旧 hamburger/menubar 代码——7 个文件 | ~-150 | `grep` 零残留 |
-| 52j | coreCommands 菜单注册声明式——label + group + order | ~15 | 加 group="terminal"→TitleBar 自动出现 |
+| 52g | App.tsx 布局 + 平台检测——`isElectron` 切换 TitleBar/Hamburger | ~15 | 桌面版有 TitleBar 无汉堡；浏览器版无 TitleBar 有汉堡 |
+| 52h | IconBar 按平台显隐汉堡——`isElectron` 条件渲染 | ~5 | 桌面版图标栏无 ☰；浏览器版有 ☰ |
+| 52i | 删除原生 menubar 代码——5 文件（HamburgerMenu 保留） | ~-60 | `grep` 零残留（HamburgerMenu 除外） |
+| 52j | coreCommands 菜单注册声明式——label + group + order | ~15 | 加 group="terminal"→TitleBar/Hamburger 自动出现 |
 | 53 | 齿轮菜单完整版——context key 驱动 5 项 | ~40 | 齿轮 → 配置/查看日志 跳到对应位置 |
 | 54 | 输出面板 UI——频道选择器 + 日志列表 + 清空/导出 | ~80 | 切频道 → 日志内容切换 |
 | 55 | 欢迎页集成——三种状态切换 + recentFolders | ~40 | 打开文件夹 → 状态 B → 关闭 → 状态 A |
