@@ -669,63 +669,62 @@ function convertToTemplate(items: MenuItemTree[], mainWindow: BrowserWindow): an
 
 **与 #59a 的合并：** #59a "设置项一键恢复默认" 描述的是同一齿轮的功能。"重置此设置" 菜单项消费 `ConfigurationService.reset(key)` + `showConfirm` 防呆。
 
-### 3.5 齿轮 #4——命令面板齿轮（`CommandPaletteItemGear`）❌
+### 3.5 齿轮 #4——命令面板齿轮（`CommandPaletteItemGear`）✅
 
-**对标 VS Code：** Ctrl+Shift+P 命令面板中，几乎每个命令项 hover 时右侧出现齿轮，点击弹出：
+**对标 VS Code：** Ctrl+Shift+P 命令面板中，每个命令项 hover 时右侧出现齿轮。**VS Code 的齿轮是单按钮（不是子菜单）**——点击直接打开键盘快捷方式设置，搜索框预填该命令名。
+
 ```
-┌──────────────────────────────────────┐
-│ 重置 "文件操作需要预览" 的选项        │  ← 仅 toggle 命令显示
-│ ─────────────────────────────────── │
-│ 帮助：报告问题...                     │
-│ 帮助：报告性能问题...                 │
-│ 帮助：查看许可证                      │
-│ 帮助：订阅 VS Code 新闻邮件           │
-│ 帮助：辅助功能入门                    │
-│ 帮助：个人资料                        │
-│ 帮助：关于                            │
-│ 帮助：欢迎                            │
-│ 帮助：键盘快捷键参考 (Ctrl+K Ctrl+R)  │
-└──────────────────────────────────────┘
+VS Code QuickPick item buttons:
+  { iconClass: Codicon.gear, tooltip: "Configure Keybinding" }
+  trigger: () => openGlobalKeybindingSettings({ query: commandId })
 ```
 
-**VS Code 的齿轮内容分两组：**
-- **上组：重置选项** ——仅对 toggle 类命令出现（"Reset choice for '...'"）→ 跳转到设置中的具体配置项
-- **下组：帮助类** ——对所有命令都出现（"Help: Report Issue / View License / About / Welcome / ..."）
+**🔥 当前实现（2026-07-27）：** 齿轮退化为"复制命令 ID"（单按钮单操作）。
+- 点击齿轮 → `navigator.clipboard.writeText(cmd.id)` → toast "已复制：terminal.toggleLineNumbers"
+- **不做子菜单。不对标 VS Code 子菜单模式（VS Code 本身也没子菜单）。**
+
+**🔥 #59 升级路线——做 #59 的 AI 必须执行：**
+> #59 做完快捷键设置 UI 后，命令面板齿轮从"复制命令 ID"升级为"配置快捷键"。
+>
+> 1. 修改 `CommandPalette.tsx` 的 `handleGearClick`：
+>    ```tsx
+>    // 旧（复制命令 ID）：
+>    await navigator.clipboard.writeText(cmd.id);
+>    pushToast({ message: t("已复制：") + cmd.id, ... });
+>    
+>    // 新（打开快捷键设置，搜索框预填该命令名）：
+>    import { openKeybindingsSettings } from "../../core/KeybindingRegistry";
+>    await openKeybindingsSettings({ query: cmd.id });
+>    // 同时打开设置页、自动切到快捷键 tab、搜索框填 cmd.id
+>    ```
+> 2. 接口签名变更：`openKeybindingsSettings()` 需要接收 `{ query?: string }` 参数。
+>    ```typescript
+>    // src/core/KeybindingRegistry.ts
+>    export async function openKeybindingsSettings(opts?: { query?: string }): Promise<string> {
+>      // 如果 opts.query 存在 → 设置页打开后搜索框预填该命令名
+>      // 对标 VS Code: openGlobalKeybindingSettings(false, { query: commandId })
+>    }
+>    ```
+> 3. 修改快捷提示文本：`title={t("配置快捷键")}`（替代 `t("复制命令 ID")`）
+> 4. 修改 toast 提示：`pushToast({ message: t("已打开快捷键设置") })`
+>
+> **文件改动范围：**
+> - `src/components/shared/CommandPalette.tsx` — handleGearClick ~3 行
+> - `src/core/KeybindingRegistry.ts` — openKeybindingsSettings 加 opts 参数 ~5 行
+> - i18n 加 key：`"配置快捷键"`、`"已打开快捷键设置"`
+>
+> **总计 ~10 行。不涉及 MenuRegistry、ContextMenu、CommandRegistry。**
+>
+> **验收标准：**
+> 1. Ctrl+Shift+P → hover 任意命令 → 齿轮 tooltip = "配置快捷键"
+> 2. 点击齿轮 → 打开设置页、自动切到快捷键 tab、搜索框预填该命令 ID
+> 3. 搜索框为空时（用户删除预填内容后），快捷键表格显示全部
 
 **位置：** `QuickPick.tsx` 悬浮窗每个命令项 hover 时右侧出现齿轮图标。
 
-**菜单项设计（LinkDesk 版）：**
+**归属：** 核心 `CommandPalette.tsx` 渲染齿轮按钮，handleGearClick 执行操作。不需要 MenuRegistry 注册，不需要 ContextMenu 子菜单。
 
-| 菜单项 | 命令 | when | 说明 |
-|------|------|------|------|
-| 重置选项 | `workbench.action.resetCommandChoice` | `commandHasSetting` | 仅 toggle 命令——跳转到设置中的对应配置项 |
-| 打开插件详情 | `workbench.action.openPluginDetail` | `commandPluginId` | 跳转到命令所属插件的详情页 |
-| 报告问题 | `workbench.action.reportIssue` | `commandPluginId` | Phase 6——打开 GitHub issue |
-| 复制命令 ID | `workbench.action.copyCommandId` | — | `navigator.clipboard.writeText(commandId)` |
-
-**Context key（打开齿轮前设置）：**
-
-| key | 值 | 来源 |
-|------|------|------|
-| `commandId` | 当前 hover 的命令 ID | QuickPick item data |
-| `commandPluginId` | 命令所属插件 | `CommandRegistry._owners.get(commandId)` |
-| `commandHasSetting` | 是否为 toggle 命令（关联到某个设置项） | `CommandRegistry` 命令元数据 `configurationKey` 字段 |
-
-**声明驱动——不硬编码命令名：**
-```
-QuickPick 渲染命令项
-  → 从 CommandRegistry 获取 command 元数据
-    → command.configurationKey 存在 → commandHasSetting = true
-    → command.pluginId              → commandPluginId = "marketplace"
-  → 齿轮菜单 ContextMenu
-    → "重置选项" when: "commandHasSetting"
-      → handler: openSettings({ pluginId: commandPluginId, scrollTo: configurationKey })
-    → "打开插件详情" when: "commandPluginId"
-      → handler: openOrFocusTab("plugin-detail", { detailPluginId: commandPluginId })
-    → "复制命令 ID" → handlers: clipboard.writeText(commandId)
-```
-
-**没有 `if (commandId === "...")`。** 命令的类型信息（是否为 toggle、关联哪个设置项 key、属于哪个插件）全部从 `plugin.json` `contributes.commands` 的声明字段推导。`CommandRegistry` 注册时存储这些字段。
+**没有 `if (commandId === "...")`。** 齿轮是泛型操作——对所有命令一样：VS Code 风格 = 配置快捷键。
 
 ### 3.6 四种齿轮对比——一眼分清
 
@@ -745,8 +744,8 @@ QuickPick 渲染命令项
 |------|------|:--:|
 | #1 全局左下 | 已有——`coreCommands.ts` → `MenuId.ExtensionGear` | ✅ |
 | #2 插件卡片 | 已有——`marketplace/sidebar.tsx` → `MenuId.MarketplaceItemGear`；#36g 补 context key | ✅ |
-| #3 设置项 | #53（本文——合并 #59a） | ❌ |
-| #4 命令面板 | #53b（本文新增） | ❌ |
+| #3 设置项 | #53（本文——合并 #59a） | ✅ |
+| #4 命令面板 | #53b（本文）——单按钮"复制命令 ID"，#59 升级为"配置快捷键" | ✅ |
 
 ### 3.8 任务清单
 
@@ -760,16 +759,29 @@ QuickPick 渲染命令项
 
 **验证：** 打开设置→hover 任意设置项→齿轮出现→点击→"重置此设置"（仅修改过的）/ "复制设置 ID" / "复制为 JSON" → 点击"重置"→确认弹窗→值回到 default
 
-#### #53b 命令面板齿轮（新增，~50 行）
+#### #53b 命令面板齿轮（✅ 已完成，~110 行——含 #59 升级交接文档）
 
-- **#53b1** `CommandRegistry` 注册时存储 `configurationKey`（toggle 命令关联的设置项 key）——从 `plugin.json` `contributes.commands[].configurationKey` 读取（~5 行）
-- **#53b2** `MenuRegistry` 加 `MenuId.CommandPaletteItemGear`（1 行）
-- **#53b3** `registerMenuItems(MenuId.CommandPaletteItemGear, APP_PLUGIN_ID, [...])`——4 个菜单项 + when 条件（~15 行）
-- **#53b4** `QuickPick.tsx` 每个命令项行加 hover 齿轮图标 + `<ContextMenu menuId={MenuId.CommandPaletteItemGear}>`（~15 行）
-- **#53b5** 齿轮打开前设置 context key：`commandId` + `commandPluginId` + `commandHasSetting`（~10 行）
-- **#53b6** `plugin.schema.json` `contributes.commands` 加 `configurationKey` 字段——toggle 命令关联到哪个设置项 key（~4 行）
+**已实现（对标 VS Code 单按钮模式）：**
 
-**验证：** Ctrl+Shift+P→hover "Toggle Terminal" 命令→齿轮出现→点击→"重置选项"（跳转到设置页对应配置项+滚动定位）/ "打开插件详情"（跳转到终端插件详情页）/ "复制命令 ID"（剪贴板="terminal.toggle"）
+- **#53b1** ✅ `CommandRegistry` `Command` 接口加 `configurationKey?: string`（~2 行）
+- **#53b2** ✅ `MenuRegistry` 加 `MenuId.CommandPaletteItemGear`（~2 行）——保留以备将来需要子菜单模式
+- **#53b4** ✅ `QuickPick.tsx` 加 `renderItemActions` prop——每行右侧操作区（~12 行）
+- **#53b4** ✅ `CommandPalette.tsx` 齿轮按钮——点击复制命令 ID + toast（~30 行）
+- **#53b4** ✅ `index.css` 齿轮 hover 渐显动画（~26 行）
+- **#53b5** ✅ 齿轮打开前设 context key——已在 #53b4 中一并实现（~5 行）
+- **#53b6** ✅ `plugin.schema.json` `contributes.commands` 加 `configurationKey` 字段 + 补 3 个 MenuId（~5 行）
+
+**已删除（设计变更——不对标子菜单模式）：**
+- ~~#53b3~~ ~~4 个 ContextMenu 子菜单命令~~ —— VS Code 齿轮是单按钮，不弹出子菜单
+- ~~#53b4~~ ~~ContextMenu 渲染~~ —— 退化为单按钮单操作
+
+**🔥 #59 升级交接（见 §3.5 详细说明）：**
+- `CommandPalette.tsx` `handleGearClick`：复制命令 ID → `openKeybindingsSettings({ query: cmd.id })`
+- `KeybindingRegistry.ts` `openKeybindingsSettings()` 加 `opts?: { query?: string }` 参数
+- i18n 加 key：`"配置快捷键"`、`"已打开快捷键设置"`
+- **~10 行改动，不涉及 MenuRegistry/ContextMenu/CommandRegistry。**
+
+**验证：** Ctrl+Shift+P→hover 命令→齿轮出现→点击→toast "已复制：terminal.toggleLineNumbers"
 
 ---
 
