@@ -191,6 +191,7 @@ html, body {
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
+  border-left: 3px solid var(--border);
   border-radius: var(--radius);
   margin-bottom: 14px;
   overflow: hidden;
@@ -200,6 +201,39 @@ html, body {
 .card:hover {
   border-color: var(--border-light);
   box-shadow: var(--shadow-md);
+}
+
+/* ── Card accent left borders — semantic by category ── */
+.card-accent-bash      { border-left-color: #22C55E; }
+.card-accent-electron  { border-left-color: #34d399; }
+.card-accent-vite      { border-left-color: #f59e0b; }
+.card-accent-git       { border-left-color: #f59e0b; }
+.card-accent-url       { border-left-color: #06b6d4; }
+.card-accent-devtools  { border-left-color: #f43f5e; }
+.card-accent-json      { border-left-color: #a78bfa; }
+.card-accent-cd        { border-left-color: #64748b; }
+
+/* ── Highlighted cards — frequently used commands ── */
+.card-highlight {
+  border: 1px solid rgba(34,197,94,0.35);
+  background: #0d2818;
+}
+.card-highlight.card-accent-vite {
+  border-color: rgba(251,191,36,0.35);
+  background: #281f0a;
+}
+.card-highlight.card-accent-electron {
+  border-color: rgba(52,211,153,0.35);
+  background: #0a281e;
+}
+.card-highlight.card-accent-url {
+  border-color: rgba(34,211,238,0.35);
+  background: #0a1e28;
+}
+.card-highlight .card-body pre {
+  font-size: 20px;
+  font-weight: 500;
+  color: #f1f5f9;
 }
 
 .card-header {
@@ -231,13 +265,25 @@ html, body {
   font-weight: 500;
   padding: 3px 8px;
   border-radius: 5px;
-  background: var(--accent-soft);
-  color: var(--accent);
   white-space: nowrap;
 }
-.tag:nth-child(2n) { background: var(--green-soft); color: var(--green); }
-.tag:nth-child(3n) { background: var(--amber-soft); color: var(--amber); }
-.tag:nth-child(4n) { background: var(--purple-soft); color: var(--purple); }
+/* Semantic tag colors — keyed by tag text, not position */
+.tag-bash     { background: rgba(34,197,94,0.15);  color: #4ade80; }
+.tag-git      { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+.tag-url      { background: rgba(34,211,238,0.15);  color: #22d3ee; }
+.tag-json     { background: rgba(167,139,250,0.15); color: #a78bfa; }
+.tag-dev      { background: rgba(34,197,94,0.15);  color: #4ade80; }
+.tag-electron { background: rgba(52,211,153,0.15);  color: #34d399; }
+.tag-vite     { background: rgba(251,191,36,0.15);  color: #fbbf24; }
+.tag-cd       { background: rgba(148,163,184,0.15);  color: #94a3b8; }
+.tag-log      { background: rgba(148,163,184,0.15);  color: #94a3b8; }
+.tag-status   { background: rgba(245,158,11,0.15);  color: #fbbf24; }
+.tag-localhost{ background: rgba(34,211,238,0.15);  color: #22d3ee; }
+.tag-devtools { background: rgba(244,63,94,0.15);  color: #fb7185; }
+.tag-console  { background: rgba(244,63,94,0.15);  color: #fb7185; }
+.tag-plugin   { background: rgba(167,139,250,0.15); color: #a78bfa; }
+/* ── Fallback for tags without explicit class ── */
+.tag:not([class*="tag-"]) { background: var(--accent-soft); color: var(--accent); }
 
 .card-body {
   padding: 14px 18px;
@@ -328,7 +374,6 @@ mark {
     <button class="nav-item" data-section="s1">新会话开场白</button>
 
     <div class="nav-category">✅ 完成</div>
-    <button class="nav-item" data-section="s2">任务完成报告</button>
     <button class="nav-item" data-section="s3">全部完成后收尾</button>
 
     <div class="nav-category">🔍 质量追问</div>
@@ -336,14 +381,14 @@ mark {
     <button class="nav-item" data-section="s5">Bug 分析三问</button>
     <button class="nav-item" data-section="s6">生态友好检查</button>
 
+    <div class="nav-category">💻 常用命令</div>
+    <button class="nav-item" data-section="s10">开发启动</button>
+    <button class="nav-item" data-section="s11">Git 常用</button>
+
     <div class="nav-category">📝 进度指令</div>
     <button class="nav-item" data-section="s7">继续下一步</button>
     <button class="nav-item" data-section="s8">更新记忆 & 文档</button>
     <button class="nav-item" data-section="s9">记录文档 & Bug & 存 Git</button>
-
-    <div class="nav-category">💻 终端命令</div>
-    <button class="nav-item" data-section="s10">开发启动</button>
-    <button class="nav-item" data-section="s11">Git 常用</button>
 
     <div class="nav-category">🎯 Skill 触发词</div>
     <button class="nav-item" data-section="s12">项目 Skills (5 个)</button>
@@ -392,31 +437,6 @@ mark {
     <div class="card-body">
       <button class="copy-btn" data-text="你是否了解？先说，不要做">复制</button>
       <pre>你是否了解？先说，不要做</pre>
-    </div>
-  </div>
-</section>
-
-<!-- S2: 任务完成报告 -->
-<section id="s2" class="section">
-  <div class="section-title">✅ 任务完成报告</div>
-  <div class="section-desc">每个子任务完成时发的格式</div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">完成报告模板</span>
-      <span class="card-tags"><span class="tag">完成</span><span class="tag">报告</span><span class="tag">格式</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="#36k1 ✅ 完成
-改了什么： preload-plugin.ts -5 行 — 删除 dialog.open 暴露，注释和代码现在一致（都说 ❌ dialog.*）
-UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketplace 的"从本地安装"按钮在壳进程运行，走的是 preload-shell.ts 的 dialog.open，不受影响。
-下一步： #36k2 — 终端插件命令注册加清理（useEffect 返回注销函数）（+15 行）
-继续？">复制</button>
-      <pre>#36k1 ✅ 完成
-改了什么： preload-plugin.ts -5 行 — 删除 dialog.open 暴露，注释和代码现在一致（都说 ❌ dialog.*）
-UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketplace 的"从本地安装"按钮在壳进程运行，走的是 preload-shell.ts 的 dialog.open，不受影响。
-下一步： #36k2 — 终端插件命令注册加清理（useEffect 返回注销函数）（+15 行）
-继续？</pre>
     </div>
   </div>
 </section>
@@ -504,6 +524,78 @@ UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketp
   </div>
 </section>
 
+<!-- S10: 开发启动 -->
+<section id="s10" class="section">
+  <div class="section-title">💻 开发启动</div>
+  <div class="section-desc">每天开发时在 Git Bash 输入的常用命令</div>
+
+  <div class="card card-accent-cd card-highlight">
+    <div class="card-header">
+      <span class="card-label">进入项目目录</span>
+      <span class="card-tags"><span class="tag tag-bash">bash</span><span class="tag tag-cd">cd</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text='cd "linkdesk"'>复制</button>
+      <pre>cd "linkdesk"</pre>
+    </div>
+  </div>
+
+  <div class="card card-accent-electron card-highlight">
+    <div class="card-header">
+      <span class="card-label">启动 Electron 桌面应用</span>
+      <span class="card-tags"><span class="tag tag-bash">bash</span><span class="tag tag-electron">electron</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="npm run electron:dev">复制</button>
+      <pre>npm run electron:dev</pre>
+    </div>
+  </div>
+
+  <div class="card card-accent-vite card-highlight">
+    <div class="card-header">
+      <span class="card-label">启动前端开发服务器</span>
+      <span class="card-tags"><span class="tag tag-bash">bash</span><span class="tag tag-vite">vite</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="npm run dev">复制</button>
+      <pre>npm run dev</pre>
+    </div>
+  </div>
+
+  <div class="card card-accent-url card-highlight">
+    <div class="card-header">
+      <span class="card-label">开发服务器地址</span>
+      <span class="card-tags"><span class="tag tag-url">url</span><span class="tag tag-localhost">localhost</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="http://localhost:1420/">复制</button>
+      <pre>http://localhost:1420/</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">DevTools 粘贴许可</span>
+      <span class="card-tags"><span class="tag tag-devtools">devtools</span><span class="tag tag-console">console</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="allow pasting">复制</button>
+      <pre>allow pasting</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">plugin.json 标记 core 插件</span>
+      <span class="card-tags"><span class="tag tag-json">json</span><span class="tag tag-plugin">plugin</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="&quot;core&quot;: true,">复制</button>
+      <pre>"core": true,</pre>
+    </div>
+  </div>
+</section>
+
 <!-- S7: 继续下一步 -->
 <section id="s7" class="section">
   <div class="section-title">📝 继续下一步</div>
@@ -555,78 +647,6 @@ UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketp
   </div>
 </section>
 
-<!-- S10: 开发启动 -->
-<section id="s10" class="section">
-  <div class="section-title">💻 开发启动</div>
-  <div class="section-desc">每天开发时在 Git Bash 输入的常用命令</div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">进入项目目录</span>
-      <span class="card-tags"><span class="tag">bash</span><span class="tag">cd</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text='cd "linkdesk"'>复制</button>
-      <pre>cd "linkdesk"</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">启动前端开发服务器</span>
-      <span class="card-tags"><span class="tag">bash</span><span class="tag">vite</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="npm run dev">复制</button>
-      <pre>npm run dev</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">启动 Electron 桌面应用</span>
-      <span class="card-tags"><span class="tag">bash</span><span class="tag">electron</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="npm run electron:dev">复制</button>
-      <pre>npm run electron:dev</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">开发服务器地址</span>
-      <span class="card-tags"><span class="tag">url</span><span class="tag">localhost</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="http://localhost:1420/">复制</button>
-      <pre>http://localhost:1420/</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">DevTools 粘贴许可</span>
-      <span class="card-tags"><span class="tag">devtools</span><span class="tag">console</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="allow pasting">复制</button>
-      <pre>allow pasting</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">plugin.json 标记 core 插件</span>
-      <span class="card-tags"><span class="tag">json</span><span class="tag">plugin</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="&quot;core&quot;: true,">复制</button>
-      <pre>"core": true,</pre>
-    </div>
-  </div>
-</section>
-
 <!-- S11: Git 常用 -->
 <section id="s11" class="section">
   <div class="section-title">🔧 Git 常用</div>
@@ -635,7 +655,7 @@ UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketp
   <div class="card">
     <div class="card-header">
       <span class="card-label">查看工作区状态</span>
-      <span class="card-tags"><span class="tag">git</span><span class="tag">status</span></span>
+      <span class="card-tags"><span class="tag tag-git">git</span><span class="tag tag-status">status</span></span>
     </div>
     <div class="card-body">
       <button class="copy-btn" data-text="git status">复制</button>
@@ -646,7 +666,7 @@ UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketp
   <div class="card">
     <div class="card-header">
       <span class="card-label">查看最近提交日志</span>
-      <span class="card-tags"><span class="tag">git</span><span class="tag">log</span></span>
+      <span class="card-tags"><span class="tag tag-git">git</span><span class="tag tag-log">log</span></span>
     </div>
     <div class="card-body">
       <button class="copy-btn" data-text="git log --oneline -10">复制</button>
