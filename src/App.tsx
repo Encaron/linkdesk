@@ -487,13 +487,30 @@ function App() {
     // E3f #54：输出面板
     const onOutput = () => { openOrFocusTab("output", { pinned: true }); };
     window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
+    // E3f #56：工作区导入——恢复布局 + 设置
+    const onRestoreWorkspace = (e: Event) => {
+      const detail = (e as CustomEvent).detail as {
+        layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
+        settings?: Record<string, unknown>;
+      };
+      if (detail.layout?.tabs?.groups?.length) {
+        restoreLayout(detail.layout.tabs as Parameters<typeof restoreLayout>[0]);
+      }
+      if (detail.settings) {
+        for (const [key, value] of Object.entries(detail.settings)) {
+          try { setConfigurationValue(key, value); } catch { /* skip invalid keys */ }
+        }
+      }
+    };
+    window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
+      window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
     };
-  }, [createTab, openOrFocusTab]);
+  }, [createTab, openOrFocusTab, restoreLayout]);
 
   // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
   useEffect(() => {

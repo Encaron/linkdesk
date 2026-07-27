@@ -18,6 +18,8 @@ import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "./ConfigurationRegistry";
 import i18n from "../i18n";
+import { getWorkspaceLayout } from "./LayoutService"; // E3f #56
+import { getUserSettings } from "./ConfigurationService"; // E3f #56
 
 /* ── Callbacks ── */
 
@@ -122,6 +124,48 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
+  },
+  // E3f #56：工作区导入导出
+  {
+    id: "workbench.action.exportWorkspace",
+    title: i18n.t("导出工作区"),
+    category: i18n.t("文件"),
+    handler: async () => {
+      const layout = getWorkspaceLayout();
+      const settings = getUserSettings();
+      const workspace = JSON.stringify({ version: 1, layout, settings }, null, 2);
+      const blob = new Blob([workspace], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "workspace.linkdesk-workspace";
+      a.click();
+      URL.revokeObjectURL(url);
+    },
+  },
+  {
+    id: "workbench.action.importWorkspace",
+    title: i18n.t("导入工作区"),
+    category: i18n.t("文件"),
+    handler: async () => {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = ".linkdesk-workspace";
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) return;
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          if (data.layout) {
+            window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.RESTORE_WORKSPACE, {
+              detail: { layout: data.layout, settings: data.settings },
+            }));
+          }
+        } catch { /* 格式错误——静默 */ }
+      };
+      input.click();
+    },
   },
   {
     id: "core.closeTab",
@@ -286,6 +330,8 @@ export function ensureCoreCommands(): void {
       label: i18n.t("文件"),
       group: "file",
       children: [
+        { command: "workbench.action.exportWorkspace", group: "file" }, // E3f #56
+        { command: "workbench.action.importWorkspace", group: "file" }, // E3f #56
         { command: "core.openSettings", group: "file" },
       ],
     },
