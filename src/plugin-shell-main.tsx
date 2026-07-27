@@ -45,18 +45,53 @@ function bootstrap() {
       return;
     }
 
+    // ErrorBoundary——组件抛错时显示错误信息，不发 ready（React fallback 继续兜底）
+    class PluginErrorBoundary extends React.Component<
+      { children: React.ReactNode },
+      { error: Error | null }
+    > {
+      constructor(props: { children: React.ReactNode }) {
+        super(props);
+        this.state = { error: null };
+      }
+      static getDerivedStateFromError(error: Error) {
+        return { error };
+      }
+      render() {
+        if (this.state.error) {
+          return React.createElement("div", {
+            style: {
+              padding: "20px",
+              color: "var(--error, #f44747)",
+              fontFamily: "monospace",
+              fontSize: "13px",
+              whiteSpace: "pre-wrap",
+            },
+          }, `插件 ${pluginId} 渲染失败:\n${this.state.error.message}\n\n${this.state.error.stack ?? ""}`);
+        }
+        return this.props.children;
+      }
+    }
+
     ReactDOM.createRoot(root).render(
-      <React.StrictMode>
-        <I18nextProvider i18n={i18n}>
-          <Component isActive={true} />
-        </I18nextProvider>
-      </React.StrictMode>,
+      <PluginErrorBoundary>
+        <React.StrictMode>
+          <I18nextProvider i18n={i18n}>
+            <Component isActive={true} />
+          </I18nextProvider>
+        </React.StrictMode>
+      </PluginErrorBoundary>,
     );
 
-    // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback
-    try {
-      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-    } catch { /* preload 未就绪时静默 */ }
+    // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback。
+    // 延时一帧确保 React commit 完成（ErrorBoundary 有机会捕获错误）。
+    requestAnimationFrame(() => {
+      try {
+        (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+      } catch { /* preload 未就绪时静默 */ }
+    });
+  }).catch((err: any) => {
+    root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
   });
 }
 
