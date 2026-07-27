@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { createRoot } from "react-dom/client";
 import "./ColorPicker.css";
 
 /* ── 颜色转换工具（内联——零依赖）── */
@@ -260,4 +261,43 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
       </div>
     </>
   );
+}
+
+/* ── E3f #59e2：命令入口——Promise 桥接，插件调 commands.execute 弹出浮层 ── */
+
+export interface ShowColorPickerOptions {
+  initialColor?: string;
+  presets?: string[];
+  anchor?: { x: number; y: number } | null;
+}
+
+/**
+ * 命令式弹出 ColorPicker——对标 QuickPick show() 模式。
+ * 插件调 `linkdesk.commands.execute('color-picker.pick', { initialColor: '#f00' })`
+ * → 浮层挂到 document.body → 选色 → resolve(hex) → 自动清理 DOM。
+ */
+export function showColorPicker(options: ShowColorPickerOptions = {}): Promise<string | undefined> {
+  return new Promise((resolve) => {
+    const container = document.createElement("div");
+    container.className = "colorpicker-command-root";
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const cleanup = (color?: string) => {
+      root.unmount();
+      container.remove();
+      resolve(color);
+    };
+
+    root.render(
+      <ColorPicker
+        open={true}
+        value={options.initialColor ?? "#0078d4"}
+        presets={options.presets}
+        anchor={options.anchor}
+        onChange={(hex) => cleanup(hex)}
+        onClose={() => cleanup(undefined)}
+      />
+    );
+  });
 }
