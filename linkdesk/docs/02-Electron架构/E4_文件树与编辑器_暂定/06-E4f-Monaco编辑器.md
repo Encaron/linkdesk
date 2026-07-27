@@ -39,14 +39,14 @@ src/core/encoding/
 | `getAssetPath()` | Monaco worker 路径（打包后 file:// 协议） | E1 步 7 |
 | E3b 主题引擎 | `theme:changed` IPC → Monaco 切换 vs/vs-dark | E3 |
 | `FileDecorationRegistry` | 🔥 v2——标签页标题显示 M/A/D 装饰标记 | E3f #59b |
-| `EncodingService` | 🔥 编码检测——在核心 `src/core/encoding/` | E4f #95 |
+| `EncodingService` | 🔥 编码检测——在核心 `src/core/encoding/` | E4f #111 |
 | `setDirty(tabId, bool)` | 🔥 壳已提供——编辑器调用，不新建命令 | useTabManager |
 
 ---
 
 ## 三、任务清单
 
-### #94 Monaco React 包装（~90 行）
+### #110 Monaco React 包装（~90 行）
 
 > 🔥🔥🔥 **Monaco worker 路径——Electron 下的已知坑。** Monaco 的 TS/JS/HTML/CSS/JSON 语言服务各需一个 Web Worker（`ts.worker.js`、`html.worker.js` 等）。在 `http://` dev 模式下 Vite 自动处理，但打包后 `file://` 协议 + 多 WebView 环境下 worker 加载会失败。
 >
@@ -148,10 +148,10 @@ const EditorView: React.FC<{ filePath: string; tabId: string }> = ({ filePath, t
 };
 ```
 
-### #95 编码检测/切换（~70 行）
+### #111 编码检测/切换（~70 行）
 
 > 🔥🔥🔥 **EncodingService 不在 editor 插件里——它在 `src/core/encoding/` 中。**
-> 原因：文件搜索（E4d #85）也需要编码检测。EncodingService 在 editor 插件里 → file-tree 要么 import editor（破坏圆形大厅），要么复制代码（归一化灾难）。
+> 原因：文件搜索（E4d #101）也需要编码检测。EncodingService 在 editor 插件里 → file-tree 要么 import editor（破坏圆形大厅），要么复制代码（归一化灾难）。
 >
 > **位置：`src/core/encoding/EncodingService.ts`**——已有 `DataConverter.ts`（GBK/UTF-8 底层转换），EncodingService 在此基础上加检测层。
 
@@ -217,7 +217,7 @@ import { EncodingService } from '@src/core/encoding/EncodingService';
 
 满足第 2-3 条 → 准入。但不是注册中心模式（不满足"多提供方"）→ 用简单的静态 class，不用 Registry 模式。
 
-### #96 JSON schema 自动补全（~30 行）
+### #112 JSON schema 自动补全（~30 行）
 
 ```typescript
 // MonacoSchemaConfig.ts
@@ -247,7 +247,7 @@ export async function configureJsonSchema(editor: monaco.editor.IStandaloneCodeE
 }
 ```
 
-### #97 多标签页 + dirty + Ctrl+Shift+T（~20 行）
+### #113 多标签页 + dirty + Ctrl+Shift+T（~20 行）
 
 ```typescript
 // editor multi-tab support (壳级功能，编辑器消费)
@@ -279,7 +279,7 @@ export async function configureJsonSchema(editor: monaco.editor.IStandaloneCodeE
 
 **🔥 配置项（editor 插件的 plugin.json）：**
 ```json
-// editor 插件负责声明 files.encoding 和 files.autoSave——与 E4e #91 协调
+// editor 插件负责声明 files.encoding 和 files.autoSave——与 E4e #107 协调
 {
   "configuration": {
     "title": "文本编辑器",
@@ -307,10 +307,10 @@ export async function configureJsonSchema(editor: monaco.editor.IStandaloneCodeE
 
 | # | 任务 | 标杆 | 行数 |
 |:--:|------|:--:|:--:|
-| #94 | Monaco React 包装——创建/复用编辑器 + Ctrl+S + **language-map 数据驱动** | VS Code editor | ~90 |
-| #95 | EncodingService——**在核心 `src/core/encoding/`**，file-tree+editor 共享 | VS Code encoding | ~70 |
-| #96 | JSON schema 自动补全——settings.json / keybindings.json | VS Code JSON language | ~30 |
-| #97 | 多标签页 + **setDirty(tabId)** 现有 API + files.encoding/files.autoSave 配置 | VS Code editorGroupModel | ~25 |
+| #110 | Monaco React 包装——创建/复用编辑器 + Ctrl+S + **language-map 数据驱动** | VS Code editor | ~90 |
+| #111 | EncodingService——**在核心 `src/core/encoding/`**，file-tree+editor 共享 | VS Code encoding | ~70 |
+| #112 | JSON schema 自动补全——settings.json / keybindings.json | VS Code JSON language | ~30 |
+| #113 | 多标签页 + **setDirty(tabId)** 现有 API + files.encoding/files.autoSave 配置 | VS Code editorGroupModel | ~25 |
 | **合计** | | | **~215 行** |
 
 ---

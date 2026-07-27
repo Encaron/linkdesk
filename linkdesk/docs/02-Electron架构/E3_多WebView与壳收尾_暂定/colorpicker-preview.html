@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk ColorPicker — UI 预览</title>
+<style>
+/* === Reset & Base === */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* ui-ux-pro-max Dark Mode (OLED) */
+  --bg-card: #1E293B;
+  --bg-input: #0F172A;
+  --bg-page: #0F172A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border: #475569;
+  --separator: #334155;
+  --accent: #22C55E;
+  --accent-hover: #16A34A;
+  --color-destructive: #EF4444;
+
+  /* ColorPicker tokens */
+  --cp-panel-size: 180px;
+  --cp-hue-bar-height: 12px;
+  --cp-cursor-dot-size: 8px;
+  --cp-input-height: 30px;
+  --cp-input-width: 144px;
+  --cp-preview-size: 30px;
+  --cp-preset-dot-size: 16px;
+  --cp-padding: 12px;
+  --cp-section-gap: 8px;
+  --cp-dimmed: #94A3B8;
+  --cp-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --cp-font: 13px Inter, -apple-system, sans-serif;
+  --cp-font-label: 11px Inter, -apple-system, sans-serif;
+  --cp-font-mono: 13px "Fira Code", "Cascadia Code", monospace;
+  --cp-total-width: 204px;
+
+  /* current hue (updated by JS) */
+  --cp-hue: 210;
+}
+
+body {
+  background: var(--bg-page);
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* === Trigger Button === */
+.trigger-area {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+.trigger-label { font-size: 13px; color: var(--text-secondary); }
+.trigger-btn {
+  width: 40px; height: 40px;
+  border-radius: 6px;
+  border: 2px solid var(--border);
+  cursor: pointer;
+  transition: border-color 150ms ease-out, transform 150ms ease-out;
+}
+.trigger-btn:hover { border-color: var(--accent); transform: scale(1.05); }
+.trigger-btn:active { transform: scale(0.95); }
+
+/* === Overlay Backdrop === */
+.cp-backdrop {
+  position: fixed; inset: 0;
+  z-index: 1599;
+  /* invisible click-catcher */
+}
+
+/* === ColorPicker Panel === */
+.cp-panel {
+  position: absolute;
+  width: var(--cp-total-width);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: var(--cp-padding);
+  box-shadow: var(--cp-shadow);
+  z-index: 1600;
+  display: flex;
+  flex-direction: column;
+  gap: var(--cp-section-gap);
+  /* animation state set by JS */
+}
+
+/* open/close animation */
+@media (prefers-reduced-motion: no-preference) {
+  .cp-panel {
+    transition: transform 150ms ease-out, opacity 150ms ease-out;
+  }
+  .cp-panel.closing {
+    transition: transform 120ms ease-in, opacity 120ms ease-in;
+    transform: scale(0.95); opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cp-panel, .cp-panel.closing { transition: none; }
+}
+
+/* === Saturation-Lightness Panel === */
+.cp-sat-light-panel {
+  position: relative;
+  width: var(--cp-panel-size);
+  height: var(--cp-panel-size);
+  border-radius: 4px;
+  overflow: hidden;
+  cursor: crosshair;
+}
+.cp-sat-layer {
+  position: absolute; inset: 0;
+  background: linear-gradient(to right, #fff, hsl(var(--cp-hue), 100%, 50%));
+}
+.cp-light-layer {
+  position: absolute; inset: 0;
+  background: linear-gradient(to bottom, transparent, #000);
+}
+/* cursor dot */
+.cp-cursor-dot {
+  position: absolute;
+  width: var(--cp-cursor-dot-size);
+  height: var(--cp-cursor-dot-size);
+  border-radius: 50%;
+  border: 2px solid #fff;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+/* === Hue Bar === */
+.cp-hue-bar-wrap {
+  position: relative;
+  width: var(--cp-panel-size);
+  height: var(--cp-hue-bar-height);
+}
+.cp-hue-bar {
+  width: 100%; height: 100%;
+  border-radius: 6px;
+  cursor: ew-resize;
+  background: linear-gradient(to right,
+    hsl(0,100%,50%),
+    hsl(60,100%,50%),
+    hsl(120,100%,50%),
+    hsl(180,100%,50%),
+    hsl(240,100%,50%),
+    hsl(300,100%,50%),
+    hsl(360,100%,50%)
+  );
+}
+.cp-hue-indicator {
+  position: absolute;
+  top: calc(var(--cp-hue-bar-height) + 2px);
+  width: 0; height: 0;
+  border-left: 5px solid transparent;
+  border-right: 5px solid transparent;
+  border-top: 7px solid #fff;
+  filter: drop-shadow(0 1px 1px rgba(0,0,0,0.4));
+  pointer-events: none;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+/* === Hex Input + Preview === */
+.cp-hex-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.cp-hex-input {
+  width: var(--cp-input-width);
+  height: var(--cp-input-height);
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-primary);
+  font: var(--cp-font-mono);
+  padding: 0 8px;
+  outline: none;
+  transition: border-color 200ms ease-out, box-shadow 200ms ease-out;
+}
+.cp-hex-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.25);
+}
+.cp-hex-input.error {
+  border-color: var(--color-destructive);
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.25);
+}
+.cp-hex-input::placeholder { color: var(--text-secondary); }
+.cp-preview {
+  width: var(--cp-preview-size);
+  height: var(--cp-preview-size);
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* === Separator === */
+.cp-separator {
+  height: 1px;
+  background: var(--separator);
+  margin: 0;
+}
+
+/* === Presets & Recent === */
+.cp-dots-label {
+  font: var(--cp-font-label);
+  color: var(--cp-dimmed);
+  margin-bottom: 6px;
+}
+.cp-dots-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.cp-preset-dot {
+  width: var(--cp-preset-dot-size);
+  height: var(--cp-preset-dot-size);
+  border-radius: 50%;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  transition: transform 150ms ease-out, border-color 150ms ease-out, box-shadow 150ms ease-out;
+  position: relative;
+}
+.cp-preset-dot:hover { transform: scale(1.18); }
+.cp-preset-dot:active { transform: scale(0.92); }
+.cp-preset-dot.selected {
+  border: 2px solid var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+/* white dot visibility */
+.cp-preset-dot.white-dot { border-color: var(--cp-dimmed); }
+
+/* === Error tooltip === */
+.cp-error-msg {
+  font: 11px Inter, sans-serif;
+  color: var(--color-destructive);
+  display: none;
+  margin-top: 2px;
+}
+.cp-hex-input.error + .cp-error-msg { display: block; }
+
+/* === Hint text === */
+.cp-hint {
+  text-align: center;
+  font: 11px Inter, sans-serif;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+/* === Color info display === */
+.color-display {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.color-display-swatch {
+  width: 64px; height: 64px;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+}
+.color-display-hex {
+  font: 14px "Fira Code", monospace;
+  color: var(--text-primary);
+}
+.color-display-hsl {
+  font: 12px Inter, sans-serif;
+  color: var(--text-secondary);
+}
+</style>
+</head>
+<body>
+
+<div class="trigger-area">
+  <div class="trigger-label">点击色块打开调色盘</div>
+  <div id="triggerBtn" class="trigger-btn" style="background: #3182CE;" tabindex="0" role="button" aria-label="打开颜色选择器"></div>
+  <div class="color-display">
+    <div id="displaySwatch" class="color-display-swatch" style="background: #3182CE;"></div>
+    <div id="displayHex" class="color-display-hex">#3182CE</div>
+    <div id="displayHsl" class="color-display-hsl">hsl(210, 60%, 50%)</div>
+  </div>
+</div>
+
+<div id="cpRoot"></div>
+
+<script>
+// === State ===
+let currentColor = { h: 210, s: 60, l: 50 }; // #3182CE
+let startColor = { ...currentColor };
+let open = false;
+let panelEl = null;
+let backdropEl = null;
+
+const PRESETS = [
+  '#FFFFFF', '#E53E3E', '#DD6B20', '#38A169',
+  '#3182CE', '#805AD5', '#D53F8C', '#000000'
+];
+let recentColors = ['#1A1A2E', '#0E639C', '#F7931A'];
+
+// === DOM refs ===
+const triggerBtn = document.getElementById('triggerBtn');
+const cpRoot = document.getElementById('cpRoot');
+const displaySwatch = document.getElementById('displaySwatch');
+const displayHex = document.getElementById('displayHex');
+const displayHsl = document.getElementById('displayHsl');
+
+// === Render ===
+function hexFromHSL(h, s, l) {
+  s /= 100; l /= 100;
+  const k = n => (n + h / 30) % 12;
+  const a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  const r = Math.round(255 * f(0));
+  const g = Math.round(255 * f(8));
+  const b = Math.round(255 * f(4));
+  return '#' + [r, g, b].map(x => x.toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
+function hslFromHex(hex) {
+  hex = hex.replace('#', '');
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  const r = parseInt(hex.slice(0, 2), 16) / 255;
+  const g = parseInt(hex.slice(2, 4), 16) / 255;
+  const b = parseInt(hex.slice(4, 6), 16) / 255;
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h = 0, s = 0, l = (max + min) / 2;
+  if (max !== min) {
+    const d = max - min;
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
+      case g: h = ((b - r) / d + 2) / 6; break;
+      case b: h = ((r - g) / d + 4) / 6; break;
+    }
+  }
+  return { h: Math.round(h * 360), s: Math.round(s * 100), l: Math.round(l * 100) };
+}
+
+function updateDisplay() {
+  const hex = hexFromHSL(currentColor.h, currentColor.s, currentColor.l);
+  document.documentElement.style.setProperty('--cp-hue', currentColor.h);
+  displaySwatch.style.background = hex;
+  displayHex.textContent = hex;
+  displayHsl.textContent = `hsl(${currentColor.h}, ${currentColor.s}%, ${currentColor.l}%)`;
+  triggerBtn.style.background = hex;
+
+  // update cursor dot position
+  if (panelEl) {
+    const sx = (currentColor.s / 100) * 180;
+    const sy = ((100 - currentColor.l) / 100) * 180;
+    const dot = panelEl.querySelector('.cp-cursor-dot');
+    if (dot) { dot.style.left = sx + 'px'; dot.style.top = sy + 'px'; }
+
+    // update hue indicator
+    const hi = panelEl.querySelector('.cp-hue-indicator');
+    if (hi) { hi.style.left = ((currentColor.h / 360) * 180) + 'px'; }
+
+    // update hex input
+    const input = panelEl.querySelector('.cp-hex-input');
+    if (input && document.activeElement !== input) {
+      input.value = hex;
+      input.classList.remove('error');
+    }
+
+    // update preview
+    const preview = panelEl.querySelector('.cp-preview');
+    if (preview) preview.style.background = hex;
+
+    // update preset selection
+    panelEl.querySelectorAll('.cp-preset-dot').forEach(dot => {
+      dot.classList.toggle('selected', dot.dataset.hex?.toUpperCase() === hex.toUpperCase());
+    });
+    // update recent selection
+    panelEl.querySelectorAll('.cp-recent-dot').forEach(dot => {
+      dot.classList.toggle('selected', dot.dataset.hex?.toUpperCase() === hex.toUpperCase());
+    });
+  }
+}
+
+// === Build Panel HTML ===
+function buildPanel() {
+  const hex = hexFromHSL(currentColor.h, currentColor.s, currentColor.l);
+  const sx = (currentColor.s / 100) * 180;
+  const sy = ((100 - currentColor.l) / 100) * 180;
+  const hx = (currentColor.h / 360) * 180;
+
+  const presetsHtml = PRESETS.map(h =>
+    `<div class="cp-preset-dot${h === '#FFFFFF' ? ' white-dot' : ''}${h === hex ? ' selected' : ''}"
+          style="background:${h};" data-hex="${h}" title="${h}"></div>`
+  ).join('');
+
+  const recentHtml = recentColors.map(h =>
+    `<div class="cp-preset-dot cp-recent-dot${h === hex ? ' selected' : ''}"
+          style="background:${h};" data-hex="${h}" title="${h}"></div>`
+  ).join('');
+
+  return `
+    <div class="cp-panel" style="transform:scale(0.95);opacity:0;">
+      <div class="cp-sat-light-panel" id="satLightPanel">
+        <div class="cp-sat-layer"></div>
+        <div class="cp-light-layer"></div>
+        <div class="cp-cursor-dot" style="left:${sx}px;top:${sy}px;"></div>
+      </div>
+      <div class="cp-hue-bar-wrap" id="hueBarWrap">
+        <div class="cp-hue-bar"></div>
+        <div class="cp-hue-indicator" style="left:${hx}px;"></div>
+      </div>
+      <div class="cp-hex-row">
+        <input class="cp-hex-input" value="${hex}" placeholder="#000000" maxlength="9" spellcheck="false">
+        <div class="cp-preview" style="background:${hex};"></div>
+      </div>
+      <div class="cp-error-msg">无效的颜色值</div>
+      <div class="cp-separator"></div>
+      <div class="cp-dots-label">预设色</div>
+      <div class="cp-dots-row" id="presetRow">${presetsHtml}</div>
+      ${recentColors.length > 0 ? `
+        <div class="cp-dots-label">最近使用</div>
+        <div class="cp-dots-row" id="recentRow">${recentHtml}</div>
+      ` : ''}
+      <div class="cp-hint">Enter 确认 · Esc 取消 · 拖拽取色</div>
+    </div>
+  `;
+}
+
+// === Open / Close ===
+function openPanel() {
+  if (open) return;
+  open = true;
+  startColor = { ...currentColor };
+
+  cpRoot.innerHTML = `
+    <div class="cp-backdrop" id="cpBackdrop"></div>
+    ${buildPanel()}
+  `;
+
+  backdropEl = document.getElementById('cpBackdrop');
+  panelEl = cpRoot.querySelector('.cp-panel');
+
+  // position panel below trigger
+  const rect = triggerBtn.getBoundingClientRect();
+  const panelH = 310; // approximate
+  let top = rect.bottom + 4;
+  if (top + panelH > window.innerHeight - 20) {
+    top = rect.top - panelH - 4;
+  }
+  const left = Math.max(8, Math.min(rect.left, window.innerWidth - 216));
+  panelEl.style.position = 'fixed';
+  panelEl.style.left = left + 'px';
+  panelEl.style.top = top + 'px';
+
+  // animate in
+  requestAnimationFrame(() => {
+    panelEl.style.transform = 'scale(1)';
+    panelEl.style.opacity = '1';
+  });
+
+  bindEvents();
+}
+
+function closePanel(revert) {
+  if (!open) return;
+
+  if (revert) {
+    currentColor = { ...startColor };
+    updateDisplay();
+  }
+
+  // save recent color
+  const hex = hexFromHSL(currentColor.h, currentColor.s, currentColor.l);
+  recentColors = [hex, ...recentColors.filter(c => c !== hex)].slice(0, 5);
+
+  open = false;
+
+  // animate out
+  if (panelEl) {
+    panelEl.classList.add('closing');
+    panelEl.addEventListener('transitionend', () => {
+      cpRoot.innerHTML = '';
+      panelEl = null;
+      backdropEl = null;
+      triggerBtn.focus();
+    }, { once: true });
+    // fallback if transitionend doesn't fire
+    setTimeout(() => {
+      if (!open && cpRoot.innerHTML) {
+        cpRoot.innerHTML = '';
+        panelEl = null;
+        backdropEl = null;
+      }
+    }, 200);
+  }
+}
+
+// === Panel Interactions ===
+let satDrag = false;
+let hueDrag = false;
+
+function getSatLight(e) {
+  const panel = document.getElementById('satLightPanel');
+  if (!panel) return null;
+  const r = panel.getBoundingClientRect();
+  const x = (e.clientX || (e.touches && e.touches[0].clientX)) - r.left;
+  const y = (e.clientY || (e.touches && e.touches[0].clientY)) - r.top;
+  return {
+    s: Math.round(Math.max(0, Math.min(100, (x / 180) * 100))),
+    l: Math.round(100 - Math.max(0, Math.min(100, (y / 180) * 100)))
+  };
+}
+
+function getHue(e) {
+  const wrap = document.getElementById('hueBarWrap');
+  if (!wrap) return null;
+  const r = wrap.getBoundingClientRect();
+  const x = (e.clientX || (e.touches && e.touches[0].clientX)) - r.left;
+  return Math.round(Math.max(0, Math.min(360, (x / 180) * 360)));
+}
+
+function onSatDown(e) {
+  satDrag = true;
+  panelEl.style.userSelect = 'none';
+  const sl = getSatLight(e);
+  if (sl) { currentColor.s = sl.s; currentColor.l = sl.l; updateDisplay(); }
+  e.preventDefault();
+}
+function onHueDown(e) {
+  hueDrag = true;
+  panelEl.style.userSelect = 'none';
+  const h = getHue(e);
+  if (h !== null) { currentColor.h = h; updateDisplay(); }
+  e.preventDefault();
+}
+function onMove(e) {
+  if (satDrag) {
+    const sl = getSatLight(e);
+    if (sl) { currentColor.s = sl.s; currentColor.l = sl.l; updateDisplay(); }
+  }
+  if (hueDrag) {
+    const h = getHue(e);
+    if (h !== null) { currentColor.h = h; updateDisplay(); }
+  }
+}
+function onUp() {
+  satDrag = false;
+  hueDrag = false;
+  if (panelEl) panelEl.style.userSelect = '';
+}
+
+function bindEvents() {
+  const satPanel = document.getElementById('satLightPanel');
+  const hueWrap = document.getElementById('hueBarWrap');
+
+  satPanel.addEventListener('mousedown', onSatDown);
+  satPanel.addEventListener('touchstart', onSatDown, { passive: false });
+  hueWrap.addEventListener('mousedown', onHueDown);
+  hueWrap.addEventListener('touchstart', onHueDown, { passive: false });
+
+  document.addEventListener('mousemove', onMove);
+  document.addEventListener('touchmove', onMove, { passive: false });
+  document.addEventListener('mouseup', onUp);
+  document.addEventListener('touchend', onUp);
+
+  // Hex input
+  const hexInput = panelEl.querySelector('.cp-hex-input');
+  hexInput.addEventListener('input', () => {
+    let val = hexInput.value.trim();
+    hexInput.classList.remove('error');
+    // auto-add #
+    if (val.length > 0 && !val.startsWith('#')) {
+      val = '#' + val;
+      hexInput.value = val;
+    }
+  });
+  hexInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') {
+      hexInput.blur();
+    }
+    if (e.key === 'Escape') {
+      closePanel(true);
+    }
+  });
+  hexInput.addEventListener('blur', () => {
+    let val = hexInput.value.trim();
+    if (!val.startsWith('#')) val = '#' + val;
+    // validate
+    if (/^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/.test(val)) {
+      if (val.length === 4) val = '#' + val[1]+val[1] + val[2]+val[2] + val[3]+val[3];
+      const hsl = hslFromHex(val);
+      currentColor = hsl;
+      updateDisplay();
+      hexInput.value = val.toUpperCase();
+      hexInput.classList.remove('error');
+    } else if (val === '#' || val === '') {
+      // empty — revert to start on blur
+      hexInput.value = hexFromHSL(currentColor.h, currentColor.s, currentColor.l);
+      hexInput.classList.remove('error');
+    } else {
+      hexInput.classList.add('error');
+      // revert after a moment
+      setTimeout(() => {
+        hexInput.value = hexFromHSL(currentColor.h, currentColor.s, currentColor.l);
+        hexInput.classList.remove('error');
+      }, 1500);
+    }
+  });
+  hexInput.addEventListener('focus', () => {
+    hexInput.select();
+  });
+
+  // Preset dots
+  panelEl.querySelectorAll('.cp-preset-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const hex = dot.dataset.hex;
+      const hsl = hslFromHex(hex);
+      currentColor = hsl;
+      updateDisplay();
+      closePanel(false);
+    });
+  });
+
+  // Recent dots
+  panelEl.querySelectorAll('.cp-recent-dot').forEach(dot => {
+    dot.addEventListener('click', () => {
+      const hex = dot.dataset.hex;
+      const hsl = hslFromHex(hex);
+      currentColor = hsl;
+      updateDisplay();
+      closePanel(false);
+    });
+  });
+
+  // Backdrop click to close (revert)
+  backdropEl.addEventListener('mousedown', (e) => {
+    if (e.target === backdropEl) {
+      closePanel(true);
+    }
+  });
+
+  // Global Esc
+  const escHandler = (e) => {
+    if (e.key === 'Escape') {
+      closePanel(true);
+      document.removeEventListener('keydown', escHandler);
+    }
+    if (e.key === 'Enter' && document.activeElement?.classList.contains('cp-hex-input')) {
+      closePanel(false);
+    }
+  };
+  document.addEventListener('keydown', escHandler);
+}
+
+// === Trigger ===
+triggerBtn.addEventListener('click', () => {
+  if (open) { closePanel(true); }
+  else { openPanel(); }
+});
+
+triggerBtn.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' || e.key === ' ') {
+    e.preventDefault();
+    if (open) { closePanel(true); }
+    else { openPanel(); }
+  }
+});
+
+// === Init ===
+updateDisplay();
+</script>
+</body>
+</html>

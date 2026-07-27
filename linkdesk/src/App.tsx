@@ -58,6 +58,9 @@ import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
 
+// E3f #59：防 StrictMode 双 effect 重复注册内置快捷键
+let _builtinKeybindingsRegistered = false;
+
 function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
@@ -255,17 +258,20 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
 
-      // E3b #36d + E3c #41：注册内置快捷键
-      registerKeybinding({
-        command: "workbench.action.selectTheme",
-        key: "ctrl+k ctrl+t",
-        source: "builtin",
-      });
-      registerKeybinding({
-        command: "workbench.action.selectLanguage",
-        key: "ctrl+k ctrl+l",
-        source: "builtin",
-      });
+      // E3b #36d + E3c #41：注册内置快捷键（防 StrictMode 双 effect 重复注册）
+      if (!_builtinKeybindingsRegistered) {
+        _builtinKeybindingsRegistered = true;
+        registerKeybinding({
+          command: "workbench.action.selectTheme",
+          key: "ctrl+k ctrl+t",
+          source: "builtin",
+        });
+        registerKeybinding({
+          command: "workbench.action.selectLanguage",
+          key: "ctrl+k ctrl+l",
+          source: "builtin",
+        });
+      }
 
       // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
       initUserKeybindings().catch((e) => console.warn("[App] 用户快捷键初始化失败:", e));
@@ -520,12 +526,19 @@ function App() {
       }
     };
     window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
+    // E3f #59-A：外部打开设置标签页——快捷键命令/齿轮跳转
+    const onOpenSettings = () => {
+      const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
+      openOrFocusTab(settingsId, { pinned: true });
+    };
+    window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
       window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
+      window.removeEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
     };
   }, [createTab, openOrFocusTab, restoreLayout]);

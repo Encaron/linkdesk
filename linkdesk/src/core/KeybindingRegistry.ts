@@ -83,7 +83,7 @@ function normalizeKey(key: string): string {
  * KeyboardEvent → 规范化快捷键字符串。
  * 对标 VS Code 的键盘事件到 keybinding 的映射。
  */
-function keyboardEventToKeyString(e: KeyboardEvent): string {
+export function keyboardEventToKeyString(e: KeyboardEvent): string {
   const parts: string[] = [];
   if (e.ctrlKey) parts.push("ctrl");
   if (e.shiftKey) parts.push("shift");
@@ -205,7 +205,7 @@ async function loadUserKeybindings(): Promise<void> {
  * 保存用户快捷键到 keybindings.json——"Open Keybindings Settings" 命令调用。
  * 返回文件路径（null = Electron 环境不可用）。
  */
-async function saveUserKeybindings(): Promise<string | null> {
+export async function saveUserKeybindings(): Promise<string | null> {
   const filePath = await getKeybindingsPath();
   if (!filePath) return null;
 
@@ -270,22 +270,27 @@ export async function initUserKeybindings(): Promise<void> {
 }
 
 /**
- * 打开快捷键设置文件——确保文件存在，返回路径供外部编辑器打开。
+ * 打开快捷键设置——通知 SettingsView 切换到快捷键 tab。
+ * E3f #59：opts.query 非空时搜索框预填该命令名。
  * "workbench.action.openKeybindingsSettings" 命令的 handler。
  */
-export async function openKeybindingsSettings(): Promise<string | null> {
+export async function openKeybindingsSettings(opts?: { query?: string }): Promise<void> {
+  // 确保 keybindings.json 存在
   const filePath = await saveUserKeybindings();
-  // 首次打开：文件尚不存在时 saveUserKeybindings 会写入空数组 `[]`，保证文件已创建
   if (!filePath) {
-    // 兜底：文件还没创建过 → 写一个空数组进去
     const dir = await appDataDir();
     if (dir) {
       const p = await joinPath(dir, KEYBINDINGS_FILENAME);
       await writeFile(p, "[]\n");
-      return p;
     }
   }
-  return filePath;
+  // E3f #59-A：先打开设置标签页，等 mount 后再切换快捷键 tab
+  window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_SETTINGS));
+  setTimeout(() => {
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, {
+      detail: { query: opts?.query },
+    }));
+  }, 100);
 }
 
 /* ── Registry ── */
@@ -296,6 +301,17 @@ const _bindings: Keybinding[] = [];
  *  E2c #17a：允许多个 binding 映射到同一个 key（冲突由 Resolver 在 dispatch 时仲裁）。 */
 export function registerKeybinding(binding: Keybinding): void {
   _bindings.push({ ...binding, key: normalizeKey(binding.key) });
+  CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B：通知 UI 刷新
+}
+
+/** 移除指定命令的全部快捷键绑定——不限 source。E3f #59-E 归一化：改绑时先清再建。 */
+export function removeKeybindingForCommand(commandId: string): void {
+  for (let i = _bindings.length - 1; i >= 0; i--) {
+    if (_bindings[i].command === commandId) {
+      _bindings.splice(i, 1);
+    }
+  }
+  CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B
 }
 
 /* ── KeybindingResolver（E2c #17a）── */
@@ -376,12 +392,19 @@ export function getKeybindings(): Keybinding[] {
   return [..._bindings];
 }
 
-/** 使用指定快捷键 */
+/** 获取指定命令的快捷键——优先返回最高优先级绑定（user > plugin > builtin） */
 export function findKeybindingForCommand(commandId: string): Keybinding | undefined {
-  return _bindings.find((b) => b.command === commandId);
+  const candidates = _bindings.filter((b) => b.command === commandId);
+  if (candidates.length === 0) return undefined;
+  const priority = { user: 3, plugin: 2, builtin: 1 };
+  return candidates.sort((a, b) => priority[b.source] - priority[a.source])[0];
 }
 
 /* ── 全局键盘事件处理 ── */
+
+/** E3f #59-D：行内编辑活跃时阻止全局快捷键分发——防止 chord 状态机冲突 */
+let _captureActive = false;
+export function setKeybindingCaptureActive(active: boolean): void { _captureActive = active; }
 
 /**
  * 全局 keydown 处理器——对标 VS Code 的键盘事件分发。
@@ -390,6 +413,7 @@ export function findKeybindingForCommand(commandId: string): Keybinding | undefi
  * E2c #16：支持 chord（双键序列）——如 Ctrl+K Ctrl+S。
  */
 export function handleKeyEvent(e: KeyboardEvent): boolean {
+  if (_captureActive) return false; // E3f #59-D：行内编辑优先
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 

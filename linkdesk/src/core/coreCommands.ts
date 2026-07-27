@@ -103,15 +103,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("打开键盘快捷方式"),
     category: i18n.t("首选项"),
     handler: async () => {
-      const path = await openKeybindingsSettings();
-      if (path) {
-        // 通知用户文件位置——后续 Phase 6 JSON 编辑器接管此命令
-        const { pushToast, TOAST_TTL_INFO } = await import("./toast");
-        pushToast({
-          message: i18n.t("快捷键配置文件：") + path,
-          ttl: TOAST_TTL_INFO,
-        });
-      }
+      await openKeybindingsSettings();
+      // E3f #59：openKeybindingsSettings 现在打开设置页快捷键 tab，
+      // 不再返回文件路径。保留命令入口供外部调用。
     },
   },
   // E3f #58：开发者工具——切换插件 DevTools
