@@ -267,6 +267,24 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     when: "commandPluginId",
   },
   {
+    id: "workbench.action.openCommandPluginSettings",
+    title: i18n.t("打开插件设置"),
+    category: i18n.t("首选项"),
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { commandId?: string } | undefined;
+      if (!ctx?.commandId) return;
+      const pluginId = getCommandPluginId(ctx.commandId);
+      if (pluginId) {
+        requestSettingsGroup(pluginId);
+        const settingsId = factorySlots.getPluginId("settings");
+        if (settingsId) _callbacks?.openTab(settingsId);
+      }
+    },
+    menuId: MenuId.CommandPaletteItemGear,
+    menuGroup: "navigation",
+    when: "commandPluginId",
+  },
+  {
     id: "workbench.action.copyCommandId",
     title: i18n.t("复制命令 ID"),
     category: i18n.t("首选项"),
