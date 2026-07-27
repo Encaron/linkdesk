@@ -24,10 +24,10 @@
 /* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
 .hamburger-dropdown {
   position: fixed;
-  top: 0;
+  top: 30px; /* TitleBar 高度——避开 -webkit-app-region: drag 拖拽区截鼠标事件 */
   left: 42px; /* 图标栏宽度 */
   display: flex;
-  max-height: 100vh;
+  max-height: calc(100vh - 30px);
   background: var(--bg-card);
   border: 1px solid var(--separator);
   border-left: none;
