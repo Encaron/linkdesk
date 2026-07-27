@@ -10,7 +10,7 @@
  * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, type Command } from "./CommandRegistry";
+import { registerCommand, getCommand, type Command } from "./CommandRegistry";
 import { registerMenuItems, getMenuItems, MenuId } from "./MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
@@ -241,22 +241,17 @@ export function ensureCoreCommands(): void {
 function syncMenuBarToMain(): void {
   try {
     const items = getMenuItems(MenuId.MenuBar);
-    // 提取主进程需要的字段（去掉 pluginId 等渲染进程专有字段）
-    const serialized = items.map((item) => ({
-      command: item.command,
-      label: item.label,
-      group: item.group,
-      children: item.children?.map((c) => ({
-        command: c.command,
-        label: c.label,
-        group: c.group,
-        children: c.children?.map((gc) => ({
-          command: gc.command,
-          label: gc.label,
-          group: gc.group,
-        })),
-      })),
-    }));
+    // 提取主进程需要的字段，叶子项补全 title
+    function serialize(item: import("./MenuRegistry").MenuItem & { pluginId?: string }): any {
+      const label = item.label || (item.command ? getCommand(item.command)?.title : "");
+      return {
+        command: item.command,
+        label,
+        group: item.group,
+        children: item.children?.map(serialize),
+      };
+    }
+    const serialized = items.map(serialize);
     (window as any).linkdesk?.events?.notifyMenuBarData?.(serialized);
   } catch { /* 静默 */ }
 }
