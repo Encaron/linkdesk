@@ -5,44 +5,75 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Encaron 常用语料库 — LinkDesk</title>
 <style>
+/* ═══════════ FONTS ═══════════ */
+@import url('https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;700&display=swap');
+
+/* ═══════════ TOKENS ═══════════ */
 :root {
-  --bg: #1e1e1e;
-  --bg-sidebar: #252526;
-  --bg-card: #2d2d30;
-  --bg-code: #1a1a1a;
-  --fg: #cccccc;
-  --fg-dim: #969696;
-  --fg-bright: #e0e0e0;
-  --accent: #007acc;
-  --accent-hover: #1a8ad4;
-  --border: #3e3e42;
-  --copy-bg: #3a3a3d;
-  --copy-hover: #4a4a4d;
-  --tag-bg: #3a3a3d;
-  --tag-fg: #8fc9ff;
+  /* ══ Surfaces — Developer Tool / IDE palette (ui-ux-pro-max) ══ */
+  --bg:            #0F172A;   /* deep OLED slate */
+  --bg-sidebar:    #151d30;   /* slightly lifted sidebar */
+  --bg-card:       #1B2336;   /* card surface */
+  --bg-input:      #0c1322;   /* input field recessed */
+  --bg-code:       #111927;   /* code block background */
+
+  /* ══ Text ══ */
+  --fg-body:       #cbd5e1;   /* readable body on dark */
+  --fg-heading:    #f1f5f9;   /* headings pop */
+  --fg-dim:        #64748b;   /* muted/secondary */
+  --fg-code:       #e2e8f0;   /* code text */
+
+  /* ══ Accent — Developer green ══ */
+  --accent:        #22C55E;
+  --accent-soft:   rgba(34,197,94,0.12);
+  --accent-hover:  #4ade80;
+
+  /* ══ Semantic ══ */
+  --green:         #22C55E;
+  --green-soft:    rgba(34,197,94,0.15);
+  --amber:         #f59e0b;
+  --amber-soft:    rgba(245,158,11,0.15);
+  --rose:          #f43f5e;
+  --rose-soft:     rgba(244,63,94,0.15);
+  --purple:        #a78bfa;
+  --purple-soft:   rgba(167,139,250,0.15);
+  --cyan:          #22d3ee;
+  --cyan-soft:     rgba(34,211,238,0.15);
+
+  /* ══ Borders & Shadows ══ */
+  --border:        #334155;
+  --border-light:  #475569;
+  --shadow-sm:     0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md:     0 4px 16px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.03);
+  --radius:        10px;
+  --radius-sm:     6px;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 html, body {
   height: 100%;
-  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-family: "Inter", "Noto Sans SC", -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
   font-size: 14px;
+  line-height: 1.6;
   background: var(--bg);
-  color: var(--fg);
+  color: var(--fg-body);
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
 }
 
-/* ── Layout ── */
+/* ═══════════ LAYOUT ═══════════ */
 #app {
   display: flex;
   height: 100vh;
 }
 
-/* ── Sidebar ── */
+/* ═══════════ SIDEBAR ═══════════ */
 #sidebar {
-  width: 260px;
-  min-width: 260px;
+  width: 270px;
+  min-width: 270px;
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
   display: flex;
@@ -51,191 +82,236 @@ html, body {
 }
 
 #sidebar-header {
-  padding: 16px 16px 8px;
+  padding: 20px 18px 6px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
   font-size: 13px;
-  font-weight: 600;
-  color: var(--fg-bright);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  font-weight: 700;
+  color: var(--fg-heading);
+  letter-spacing: 0.6px;
   flex-shrink: 0;
 }
 
 #search-box {
-  margin: 8px 12px;
-  padding: 6px 10px;
-  background: var(--bg);
+  margin: 12px 14px;
+  padding: 9px 14px;
+  background: var(--bg-input);
   border: 1px solid var(--border);
-  border-radius: 4px;
-  color: var(--fg);
+  border-radius: 8px;
+  color: var(--fg-body);
+  font-family: "Inter", "Noto Sans SC", sans-serif;
   font-size: 13px;
   outline: none;
   flex-shrink: 0;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
-#search-box:focus { border-color: var(--accent); }
+#search-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
 #search-box::placeholder { color: var(--fg-dim); }
 
 #nav {
   flex: 1;
   overflow-y: auto;
-  padding: 4px 0 16px;
+  padding: 6px 0 20px;
 }
 
 .nav-category {
-  padding: 8px 16px 2px;
-  font-size: 11px;
+  padding: 16px 18px 4px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 10.5px;
   font-weight: 700;
   color: var(--fg-dim);
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
+  letter-spacing: 0.9px;
 }
 
 .nav-item {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 5px 16px 5px 24px;
+  padding: 7px 18px 7px 28px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
   font-size: 13px;
-  color: var(--fg);
+  font-weight: 400;
+  color: var(--fg-body);
   background: none;
   border: none;
+  border-left: 2px solid transparent;
   cursor: pointer;
   line-height: 1.5;
-  transition: background 0.1s;
+  transition: all 0.15s ease;
 }
-.nav-item:hover { background: var(--copy-bg); }
+.nav-item:hover {
+  background: var(--accent-soft);
+  color: var(--fg-heading);
+}
 .nav-item.active {
-  background: var(--accent);
-  color: #fff;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-left-color: var(--accent);
+  font-weight: 500;
 }
 
-/* ── Main ── */
+/* ═══════════ MAIN ═══════════ */
 #main {
   flex: 1;
   overflow-y: auto;
-  padding: 24px 32px 48px;
-  /* Fix: keep scroll position on tab switch */
+  padding: 32px 48px 64px;
   scroll-behavior: auto;
+  background:
+    radial-gradient(ellipse 700px 500px at 85% 5%, rgba(34,197,94,0.05) 0%, transparent 60%),
+    radial-gradient(ellipse 500px 400px at 15% 95%, rgba(167,139,250,0.04) 0%, transparent 60%),
+    var(--bg);
 }
 
 .section {
-  margin-bottom: 36px;
-  scroll-margin-top: 24px;
+  margin-bottom: 48px;
+  scroll-margin-top: 32px;
 }
 
 .section-title {
-  font-size: 18px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 22px;
   font-weight: 700;
-  color: var(--fg-bright);
-  margin-bottom: 4px;
-  padding-bottom: 6px;
-  border-bottom: 1px solid var(--border);
+  color: var(--fg-heading);
+  margin-bottom: 6px;
+  padding-bottom: 10px;
+  border-bottom: 2px solid var(--border-light);
+  letter-spacing: -0.3px;
 }
 
 .section-desc {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--fg-dim);
-  margin-bottom: 12px;
+  margin-bottom: 18px;
+  line-height: 1.6;
 }
 
-/* ── Card ── */
+/* ═══════════ CARD ═══════════ */
 .card {
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
-  margin-bottom: 12px;
+  border-radius: var(--radius);
+  margin-bottom: 14px;
   overflow: hidden;
+  box-shadow: var(--shadow-sm);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.card:hover {
+  border-color: var(--border-light);
+  box-shadow: var(--shadow-md);
 }
 
 .card-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 8px 12px;
+  padding: 10px 16px;
   border-bottom: 1px solid var(--border);
-  background: rgba(0,0,0,0.15);
+  background: rgba(255,255,255,0.015);
 }
 
 .card-label {
-  font-size: 12px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 13px;
   font-weight: 600;
-  color: var(--fg-bright);
+  color: var(--fg-heading);
+  letter-spacing: -0.2px;
 }
 
 .card-tags {
   display: flex;
-  gap: 4px;
+  gap: 5px;
   flex-wrap: wrap;
 }
 
 .tag {
-  font-size: 10px;
-  padding: 1px 6px;
-  border-radius: 3px;
-  background: var(--tag-bg);
-  color: var(--tag-fg);
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 10.5px;
+  font-weight: 500;
+  padding: 3px 8px;
+  border-radius: 5px;
+  background: var(--accent-soft);
+  color: var(--accent);
   white-space: nowrap;
 }
+.tag:nth-child(2n) { background: var(--green-soft); color: var(--green); }
+.tag:nth-child(3n) { background: var(--amber-soft); color: var(--amber); }
+.tag:nth-child(4n) { background: var(--purple-soft); color: var(--purple); }
 
 .card-body {
-  padding: 10px 12px;
+  padding: 14px 18px;
   position: relative;
 }
 
 .card-body pre {
-  font-family: "Cascadia Code", "Fira Code", "Consolas", "Microsoft YaHei", monospace;
-  font-size: 12.5px;
-  line-height: 1.65;
-  color: var(--fg);
+  font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", "Consolas", "Noto Sans SC", monospace;
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.75;
+  color: var(--fg-code);
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
 }
 
+/* ═══════════ COPY BUTTON ═══════════ */
 .copy-btn {
   position: absolute;
-  top: 6px;
-  right: 8px;
-  padding: 2px 8px;
-  font-size: 11px;
-  background: var(--copy-bg);
+  top: 8px;
+  right: 12px;
+  padding: 4px 12px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 11.5px;
+  font-weight: 500;
+  background: var(--border);
   color: var(--fg-dim);
-  border: 1px solid var(--border);
-  border-radius: 3px;
+  border: 1px solid transparent;
+  border-radius: 6px;
   cursor: pointer;
   opacity: 0;
-  transition: opacity 0.15s, background 0.1s;
+  transition: all 0.2s ease;
 }
 .card:hover .copy-btn { opacity: 1; }
-.copy-btn:hover { background: var(--copy-hover); color: var(--fg-bright); }
-.copy-btn.copied { background: #1a6b3c; color: #a0e0a0; border-color: #2d8f54; }
-
-/* ── Highlight matched text ── */
-mark {
-  background: #6b5a00;
+.copy-btn:hover {
+  background: var(--accent);
   color: #fff;
-  border-radius: 2px;
-  padding: 0 1px;
+  border-color: var(--accent);
+}
+.copy-btn.copied {
+  background: var(--green);
+  color: #fff;
+  border-color: var(--green);
 }
 
-/* ── Scrollbar ── */
+/* ═══════════ SCROLLBAR ═══════════ */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #555; }
+::-webkit-scrollbar-thumb { background: #2e3038; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #3e404a; }
 
-/* ── Empty search ── */
+/* ═══════════ SEARCH ═══════════ */
 .no-results {
   text-align: center;
-  padding: 60px 20px;
+  padding: 80px 20px;
   color: var(--fg-dim);
-  font-size: 14px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 15px;
+}
+
+mark {
+  background: rgba(224,168,80,0.35);
+  color: var(--fg-highlight);
+  border-radius: 3px;
+  padding: 1px 3px;
 }
 
 .hidden { display: none !important; }
 
+/* ═══════════ RESPONSIVE ═══════════ */
 @media (max-width: 700px) {
   #sidebar { display: none; }
-  #main { padding: 16px; }
+  #main { padding: 20px; }
 }
 </style>
 </head>
@@ -304,7 +380,7 @@ mark {
     </div>
     <div class="card-body">
       <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
-      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</pre>
+      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git</pre>
     </div>
   </div>
 
@@ -486,42 +562,6 @@ UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketp
 
   <div class="card">
     <div class="card-header">
-      <span class="card-label">进入项目 + 启动开发</span>
-      <span class="card-tags"><span class="tag">bash</span><span class="tag">dev</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="cd &quot;linkdesk&quot;
-npm run dev
-npm run electron:dev">复制</button>
-      <pre>cd "linkdesk"
-npm run dev
-npm run electron:dev</pre>
-    </div>
-  </div>
-
-  <div class="card">
-    <div class="card-header">
-      <span class="card-label">开发服务器地址</span>
-      <span class="card-tags"><span class="tag">url</span><span class="tag">localhost</span></span>
-    </div>
-    <div class="card-body">
-      <button class="copy-btn" data-text="http://localhost:1420/
-allow pasting
-&quot;core&quot;: true,">复制</button>
-      <pre>http://localhost:1420/
-allow pasting
-"core": true,</pre>
-    </div>
-  </div>
-</section>
-
-<!-- S11: Git 常用 -->
-<section id="s11" class="section">
-  <div class="section-title">🔧 Git 常用</div>
-  <div class="section-desc">日常 Git 操作命令</div>
-
-  <div class="card">
-    <div class="card-header">
       <span class="card-label">进入项目目录</span>
       <span class="card-tags"><span class="tag">bash</span><span class="tag">cd</span></span>
     </div>
@@ -533,14 +573,84 @@ allow pasting
 
   <div class="card">
     <div class="card-header">
-      <span class="card-label">查看状态 / 日志</span>
+      <span class="card-label">启动前端开发服务器</span>
+      <span class="card-tags"><span class="tag">bash</span><span class="tag">vite</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="npm run dev">复制</button>
+      <pre>npm run dev</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">启动 Electron 桌面应用</span>
+      <span class="card-tags"><span class="tag">bash</span><span class="tag">electron</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="npm run electron:dev">复制</button>
+      <pre>npm run electron:dev</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">开发服务器地址</span>
+      <span class="card-tags"><span class="tag">url</span><span class="tag">localhost</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="http://localhost:1420/">复制</button>
+      <pre>http://localhost:1420/</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">DevTools 粘贴许可</span>
+      <span class="card-tags"><span class="tag">devtools</span><span class="tag">console</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="allow pasting">复制</button>
+      <pre>allow pasting</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">plugin.json 标记 core 插件</span>
+      <span class="card-tags"><span class="tag">json</span><span class="tag">plugin</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="&quot;core&quot;: true,">复制</button>
+      <pre>"core": true,</pre>
+    </div>
+  </div>
+</section>
+
+<!-- S11: Git 常用 -->
+<section id="s11" class="section">
+  <div class="section-title">🔧 Git 常用</div>
+  <div class="section-desc">日常 Git 操作命令</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">查看工作区状态</span>
+      <span class="card-tags"><span class="tag">git</span><span class="tag">status</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="git status">复制</button>
+      <pre>git status</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">查看最近提交日志</span>
       <span class="card-tags"><span class="tag">git</span><span class="tag">log</span></span>
     </div>
     <div class="card-body">
-      <button class="copy-btn" data-text="git status
-git log --oneline -10">复制</button>
-      <pre>git status
-git log --oneline -10</pre>
+      <button class="copy-btn" data-text="git log --oneline -10">复制</button>
+      <pre>git log --oneline -10</pre>
     </div>
   </div>
 </section>

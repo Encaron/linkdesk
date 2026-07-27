@@ -16,7 +16,8 @@ import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
-import { requestSettingsGroup } from "./ConfigurationRegistry";
+import { requestSettingsGroup, requestScrollToSetting } from "./ConfigurationRegistry";
+import { ContextKeyService } from "./ContextKeyService";
 import i18n from "../i18n";
 
 /* ── Callbacks ── */
@@ -52,9 +53,11 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("设置"),
     category: i18n.t("视图"),
     handler: async (_token, ...args) => {
-      const ctx = args[0] as { pluginId?: string } | undefined;
+      const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
       // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
       if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
+      // E3f #53e：滚动到指定配置项——#53b 命令面板齿轮"重置选项"消费
+      if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
       const settingsId = factorySlots.getPluginId("settings");
       if (settingsId) _callbacks?.openTab(settingsId);
     },
@@ -174,6 +177,59 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MenuId.TabContext,
     menuGroup: "split",
   },
+
+  // ── E3f #53：设置项齿轮命令 ──
+
+  {
+    id: "workbench.action.resetSetting",
+    title: i18n.t("重置此设置"),
+    category: i18n.t("首选项"),
+    handler: async () => {
+      const key = ContextKeyService.getValue<string>("settingKey");
+      if (!key) return;
+      const { showConfirm } = await import("./DialogService");
+      const confirmed = await showConfirm(
+        i18n.t("确定要将「{{key}}」重置为默认值吗？", { key })
+      );
+      if (!confirmed) return;
+      const { resetConfigurationValue } = await import("./ConfigurationService");
+      await resetConfigurationValue(key);
+    },
+    menuId: MenuId.SettingItemGear,
+    menuGroup: "navigation",
+    when: "settingModified",
+  },
+  {
+    id: "workbench.action.copySettingId",
+    title: i18n.t("复制设置 ID"),
+    category: i18n.t("首选项"),
+    handler: async () => {
+      const key = ContextKeyService.getValue<string>("settingKey");
+      if (!key) return;
+      await navigator.clipboard.writeText(key);
+      const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+      pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
+    },
+    menuId: MenuId.SettingItemGear,
+    menuGroup: "navigation",
+  },
+  {
+    id: "workbench.action.copySettingAsJson",
+    title: i18n.t("复制为 JSON"),
+    category: i18n.t("首选项"),
+    handler: async () => {
+      const key = ContextKeyService.getValue<string>("settingKey");
+      if (!key) return;
+      const { getConfigurationValue } = await import("./ConfigurationService");
+      const value = getConfigurationValue(key);
+      const json = JSON.stringify({ [key]: value }, null, 2);
+      await navigator.clipboard.writeText(json);
+      const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+      pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
+    },
+    menuId: MenuId.SettingItemGear,
+    menuGroup: "navigation",
+  },
 ];
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
@@ -230,6 +286,13 @@ export function ensureCoreCommands(): void {
         { command: "workbench.action.openKeybindingsSettings", group: "view" },
       ],
     },
+  ]);
+
+  // E3f #53b：设置项齿轮菜单——Phase 6 占位（复制为 URL / 同步此设置）
+  // when: "false" → 永不显示；Phase 6 时注册对应命令 + 改 when 条件
+  registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [
+    { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
+    { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
   ]);
 
 }
