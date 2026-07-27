@@ -439,8 +439,8 @@ function App() {
   const [langPickerOpen, setLangPickerOpen] = useState(false);
   // E3f #58：开发者工具——DevTools picker
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
-  const [devtoolsPluginIds, setDevtoolsPluginIds] = useState<string[]>([]);
-  const devtoolsIsWebViewRef = useRef(false); // 独立 WebView=true，壳兜底=false
+  type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' };
+  const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -496,17 +496,11 @@ function App() {
     const onDevtoolsPicker = async () => {
       const lk = (window as any).linkdesk;
       const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-      // 有独立 WebView → 列出所有插件 + 壳窗口入口
-      if (webViewIds.length > 0) {
-        devtoolsIsWebViewRef.current = true;
-        setDevtoolsPluginIds([...webViewIds, "壳窗口"]);
-      } else {
-        devtoolsIsWebViewRef.current = false;
-        const { getViewPlugins } = await import("./pluginLoader/viewRegistry");
-        const ids = getViewPlugins().map((p: { pluginId: string }) => p.pluginId);
-        if (ids.length === 0) return;
-        setDevtoolsPluginIds(ids);
-      }
+      const targets: DevToolsTarget[] = webViewIds.map(id => ({ kind: 'plugin' as const, id }));
+      // 始终提供壳窗口入口（不管有没有插件 WebView）
+      targets.push({ kind: 'shell' });
+      if (targets.length === 0) return;
+      setDevtoolsTargets(targets);
       setDevtoolsOpen(true);
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
@@ -895,28 +889,28 @@ function App() {
         open={langPickerOpen}
         onClose={() => setLangPickerOpen(false)}
       />
-      {/* E3f #58：DevTools picker——列出所有运行中的插件 WebView */}
+      {/* E3f #58：DevTools picker——列出所有运行中的插件 WebView + 壳窗口 */}
       <QuickPick
         open={devtoolsOpen}
         onClose={() => setDevtoolsOpen(false)}
-        items={devtoolsPluginIds}
+        items={devtoolsTargets}
         placeholder={t("选择插件…")}
-        getSearchText={(id) => id}
-        getKey={(id) => id}
-        onSelect={async (pluginId) => {
+        getSearchText={(target) => target.kind === 'shell' ? t("壳窗口") : target.id}
+        getKey={(target) => target.kind === 'shell' ? '__shell__' : target.id}
+        onSelect={async (target) => {
           const lk = (window as any).linkdesk;
-          if (pluginId === "壳窗口") {
+          if (target.kind === 'shell') {
             await lk?.window?.toggleDevTools?.();
-          } else if (devtoolsIsWebViewRef.current) {
-            await lk?.pluginViews?.toggleDevTools?.(pluginId);
           } else {
-            await lk?.window?.toggleDevTools?.();
+            await lk?.pluginViews?.toggleDevTools?.(target.id);
           }
           setDevtoolsOpen(false);
         }}
-        renderItem={(id) => (
+        renderItem={(target) => (
           <>
-            <span className="palette-item-label">{id}</span>
+            <span className="palette-item-label">
+              {target.kind === 'shell' ? t("壳窗口") : target.id}
+            </span>
             <span className="palette-item-category">{t("切换 DevTools")}</span>
           </>
         )}
