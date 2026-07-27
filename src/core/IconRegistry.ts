@@ -13,15 +13,21 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
-import type { IconThemeContribution } from "./types";
+import type { IconThemeContribution, IconContribution } from "./types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
+  pluginId: string;
+}
+
+interface RegisteredIcon extends IconContribution {
   pluginId: string;
 }
 
 class IconRegistryImpl extends RegistryBase {
   private themes = new Map<string, RegisteredIconTheme>();
   private pluginThemeIds = new Map<string, string[]>();
+  private icons = new Map<string, RegisteredIcon>();
+  private pluginIconIds = new Map<string, string[]>();
 
   constructor() {
     super();
@@ -57,12 +63,44 @@ class IconRegistryImpl extends RegistryBase {
     return this.themes.has(themeId);
   }
 
+  /* ── 共享图标（contributes.icons） ── */
+
+  /** 注册插件贡献的共享图标。同名 ID 后注册者覆盖（warn）。 */
+  registerIcon(iconId: string, contribution: IconContribution, pluginId: string): void {
+    const icon: RegisteredIcon = { ...contribution, pluginId };
+    if (this.icons.has(iconId)) {
+      console.warn(
+        `[IconRegistry] 共享图标 "${iconId}" 重复注册——后注册者 "${pluginId}" 覆盖`
+      );
+    }
+    this.icons.set(iconId, icon);
+    const ids = this.pluginIconIds.get(pluginId) ?? [];
+    ids.push(iconId);
+    this.pluginIconIds.set(pluginId, ids);
+    this.markPlugin(pluginId);
+  }
+
+  /** 按 ID 查找共享图标 */
+  getIcon(iconId: string): RegisteredIcon | undefined {
+    return this.icons.get(iconId);
+  }
+
+  /** 是否有此共享图标 */
+  hasIcon(iconId: string): boolean {
+    return this.icons.has(iconId);
+  }
+
   /** 插件卸载时自动清理——由 RegistryBase 调用 */
   protected unregisterAll(pluginId: string): void {
     const ids = this.pluginThemeIds.get(pluginId);
     if (ids) {
       for (const id of ids) this.themes.delete(id);
       this.pluginThemeIds.delete(pluginId);
+    }
+    const iconIds = this.pluginIconIds.get(pluginId);
+    if (iconIds) {
+      for (const id of iconIds) this.icons.delete(id);
+      this.pluginIconIds.delete(pluginId);
     }
   }
 }

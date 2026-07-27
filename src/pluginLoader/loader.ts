@@ -20,7 +20,7 @@ import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngin
 import { ThemeRegistry } from "../core/ThemeRegistry";
 import { IconRegistry } from "../core/IconRegistry";
 import { LanguageRegistry } from "../core/LanguageRegistry";
-import type { ThemeContribution, IconThemeContribution, LanguageContribution } from "../core/types";
+import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/NotificationService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
@@ -377,6 +377,14 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     const list = c.iconThemes as IconThemeContribution[];
     for (const it of list) {
       IconRegistry.register(it, pluginId);
+    }
+  }
+
+  // contributes.icons → IconRegistry（共享图标）
+  if (c.icons) {
+    const map = c.icons as Record<string, IconContribution>;
+    for (const [iconId, contribution] of Object.entries(map)) {
+      IconRegistry.registerIcon(iconId, contribution, pluginId);
     }
   }
 
