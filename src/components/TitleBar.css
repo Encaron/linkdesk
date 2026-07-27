@@ -14,14 +14,6 @@
   padding: 0 8px;
 }
 
-/* 应用名——左侧，不可点击 */
-.titlebar-app-name {
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-right: 12px;
-  flex-shrink: 0;
-}
-
 /* 菜单按钮容器 */
 .titlebar-menus {
   display: flex;

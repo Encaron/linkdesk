@@ -216,9 +216,6 @@ function TitleBar() {
 
   return (
     <div className="titlebar" ref={titlebarRef}>
-      {/* 应用名 */}
-      <span className="titlebar-app-name">LinkDesk</span>
-
       {/* 菜单按钮——每个 group 一个按钮 */}
       <div className="titlebar-menus">
         {sortedGroupNames.map((groupName) => (

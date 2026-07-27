@@ -50,6 +50,12 @@ function createWindow(): void {
     height: 900,
     minWidth: 800,
     minHeight: 500,
+    frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
+    titleBarOverlay: { // E3f #52f：Windows 原生窗口控件（─ □ ×）叠在自定义 TitleBar 右上角
+      color: '#252526',
+      symbolColor: '#d4d4d4',
+      height: 30,
+    },
     backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
       preload: path.join(__dirname, 'preload-shell.js'),
