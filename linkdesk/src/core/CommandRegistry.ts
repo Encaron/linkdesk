@@ -25,8 +25,6 @@ export interface Command {
   category?: string;
   /** context key when 条件——Phase 5 实现（见 ContextKeyService） */
   when?: string;
-  /** toggle 命令关联的设置项 key——如 "terminal.statusBar.showTx"。命令面板齿轮"重置选项"消费 */
-  configurationKey?: string;
   /** 异步处理器——从第一天就用 async 签名 */
   handler: (token?: CancellationToken, ...args: unknown[]) => Promise<void>;
 }
@@ -146,14 +144,6 @@ export function getCommands(): Command[] {
 /** 获取插件的所有命令 ID */
 export function getPluginCommands(pluginId: string): string[] {
   return Array.from(_pluginCommands.get(pluginId) ?? []);
-}
-
-/** 反向查找命令所属插件——命令面板齿轮"打开插件详情"消费 */
-export function getCommandPluginId(commandId: string): string | undefined {
-  for (const [pluginId, cmdSet] of _pluginCommands) {
-    if (cmdSet.has(commandId)) return pluginId;
-  }
-  return undefined;
 }
 
 /** 清空注册表（测试用） */
