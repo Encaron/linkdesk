@@ -226,3 +226,32 @@
 .keybindings-inline-btn.cancel:hover {
   color: var(--error, #f44747);
 }
+
+/* ── E3f #59-G：快捷键行重置齿轮 ── */
+
+.keybindings-row-gear {
+  flex-shrink: 0;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  margin-left: 2px;
+}
+
+.keybindings-row:hover .keybindings-row-gear {
+  opacity: 1;
+}
+
+.keybindings-row-gear:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}

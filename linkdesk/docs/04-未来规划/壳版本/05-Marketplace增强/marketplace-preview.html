@@ -9,19 +9,21 @@
 
 :root {
   --bg-page: #0A0F1A;
-  --bg-card: #1E293B;
-  --bg-input: #0F172A;
-  --text-primary: #F8FAFC;
+  --bg-panel: #121926;
+  --bg-card: #192235;
+  --bg-card-hover: #1C2A42;
+  --bg-input: #0D1525;
+  --bg-icon-bar: #1A2740;
+  --text-primary: #F1F5F9;
   --text-secondary: #94A3B8;
   --text-muted: #64748B;
-  --border: #475569;
-  --separator: #334155;
+  --border: #334155;
+  --border-hover: #475569;
+  --separator: #1E293B;
   --accent: #22C55E;
-  --accent-hover: #16A34A;
-  --star-color: #EAB308;
+  --accent-glow: rgba(34,197,94,0.15);
+  --star-color: #F59E0B;
   --destructive: #EF4444;
-  --store-card-width: 180px;
-  --store-card-hover-shadow: 0 12px 24px rgba(0,0,0,0.25);
 }
 
 body {
@@ -29,150 +31,183 @@ body {
   color: var(--text-primary);
   font-family: Inter, -apple-system, "Segoe UI", sans-serif;
   display: flex; align-items: center; justify-content: center;
-  min-height: 100vh; user-select: none;
+  min-height: 100vh; user-select: none; -webkit-user-select: none;
 }
 
 /* === FloatingPanel === */
-.panel-overlay {
-  position: relative;
-  width: 900px; height: 600px;
-  display: flex; align-items: center; justify-content: center;
-}
 .panel {
-  width: 100%; height: 100%;
-  background: var(--bg-card);
+  width: 900px; height: 640px;
+  background: var(--bg-panel);
   border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  display: flex; flex-direction: column;
-  overflow: hidden;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(0,0,0,0.6), 0 0 0 1px rgba(255,255,255,0.03) inset;
+  display: flex; flex-direction: column; overflow: hidden;
 }
 
 /* === Header === */
 .panel-header {
-  display: flex; align-items: center; height: 36px; padding: 0 16px;
-  border-bottom: 1px solid var(--separator); flex-shrink: 0;
-  background: #182233;
+  display: flex; align-items: center; height: 44px; padding: 0 20px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02) 0%, transparent 100%);
+  border-bottom: 1px solid var(--separator);
 }
-.panel-header-title { font-size: 13px; font-weight: 600; }
+.panel-header-title { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
 .panel-header-close {
-  margin-left: auto; width: 22px; height: 22px; cursor: pointer;
+  margin-left: auto; width: 28px; height: 28px; cursor: pointer;
   display: flex; align-items: center; justify-content: center;
-  border-radius: 4px; color: var(--text-secondary); font-size: 14px;
+  border-radius: 6px; color: var(--text-muted); font-size: 16px;
+  transition: all 150ms;
 }
-.panel-header-close:hover { background: var(--separator); color: var(--text-primary); }
+.panel-header-close:hover { background: rgba(239,68,68,0.15); color: var(--destructive); }
 
 /* === Search Bar === */
 .search-bar {
-  display: flex; align-items: center; height: 44px; padding: 0 16px; gap: 8px;
+  display: flex; align-items: center; height: 56px; padding: 0 20px; gap: 10px;
   border-bottom: 1px solid var(--separator); flex-shrink: 0;
 }
-.search-input-wrap {
-  flex: 1; position: relative; max-width: 400px;
+.search-wrap {
+  flex: 1; position: relative; max-width: 380px;
+}
+.search-wrap::before {
+  content: '🔍'; position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+  font-size: 13px; pointer-events: none; z-index: 1; opacity: 0.6;
 }
 .search-input {
-  width: 100%; height: 32px; padding: 0 12px 0 32px; border-radius: 16px;
+  width: 100%; height: 36px; padding: 0 14px 0 38px; border-radius: 18px;
   border: 1px solid var(--border); background: var(--bg-input);
-  color: var(--text-primary); font-size: 12px; outline: none;
+  color: var(--text-primary); font-size: 13px; outline: none;
+  transition: border-color 200ms, box-shadow 200ms;
+}
+.search-input::placeholder { color: var(--text-muted); }
+.search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+.search-select {
+  height: 36px; padding: 0 12px; border-radius: 18px; font-size: 12px;
+  border: 1px solid var(--border); background: var(--bg-input);
+  color: var(--text-secondary); cursor: pointer; outline: none;
   transition: border-color 200ms;
+  appearance: none; -webkit-appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2364748B'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px;
 }
-.search-input:focus { border-color: var(--accent); }
-.search-icon {
-  position: absolute; left: 12px; top: 50%; transform: translateY(-50%);
-  color: var(--text-muted); font-size: 12px; pointer-events: none;
-}
-.search-filter, .search-sort {
-  height: 32px; padding: 0 10px; border-radius: 16px; font-size: 11px;
-  border: 1px solid var(--border); background: var(--bg-input);
-  color: var(--text-secondary); cursor: pointer;
-}
-.search-filter:hover, .search-sort:hover { border-color: var(--accent); }
+.search-select:hover, .search-select:focus { border-color: var(--border-hover); }
 
 /* === Body === */
-.panel-body {
-  flex: 1; display: flex; overflow: hidden;
-}
+.panel-body { flex: 1; display: flex; overflow: hidden; }
 
 /* === Category Sidebar === */
 .cat-sidebar {
-  width: 160px; flex-shrink: 0; border-right: 1px solid var(--separator);
-  padding: 8px 0; overflow-y: auto;
+  width: 172px; flex-shrink: 0; border-right: 1px solid var(--separator);
+  padding: 12px 0; overflow-y: auto;
 }
-.cat-title {
-  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
-  color: var(--text-muted); padding: 4px 12px; margin-top: 4px;
+.cat-section-title {
+  font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.8px;
+  color: var(--text-muted); padding: 6px 16px; margin-top: 2px;
 }
 .cat-item {
-  display: flex; align-items: center; height: 30px; padding: 0 12px; gap: 8px;
-  font-size: 12px; color: var(--text-secondary); cursor: pointer;
-  transition: background 80ms, color 80ms;
+  display: flex; align-items: center; height: 32px; padding: 0 12px 0 16px; margin: 0 4px;
+  gap: 8px; font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  border-radius: 6px; transition: all 120ms;
 }
-.cat-item:hover { background: #272F42; color: var(--text-primary); }
-.cat-item.active { background: #1E3A5F; color: var(--text-primary); }
-.cat-item .cat-icon { width: 16px; text-align: center; flex-shrink: 0; font-size: 13px; }
-.cat-item .cat-count { margin-left: auto; font-size: 10px; color: var(--text-muted); }
+.cat-item:hover { background: var(--bg-card); color: var(--text-primary); }
+.cat-item.active { background: #1E3A5F; color: var(--text-primary); font-weight: 500; }
+.cat-icon { width: 18px; text-align: center; flex-shrink: 0; font-size: 14px; }
+.cat-count { margin-left: auto; font-size: 11px; color: var(--text-muted); font-weight: 400; }
+.cat-item.active .cat-count { color: #60A5FA; }
+
+/* === Divider in sidebar === */
+.cat-divider { height: 1px; background: var(--separator); margin: 6px 12px; }
 
 /* === Card Grid === */
 .card-grid {
-  flex: 1; overflow-y: auto; padding: 16px;
+  flex: 1; overflow-y: auto; padding: 20px 16px;
   display: grid;
-  grid-template-columns: repeat(4, var(--store-card-width));
-  gap: 12px;
-  align-content: start;
-  justify-content: center;
+  grid-template-columns: repeat(4, 176px);
+  gap: 14px;
+  align-content: start; justify-content: center;
 }
+.card-grid::-webkit-scrollbar { width: 4px; }
+.card-grid::-webkit-scrollbar-track { background: transparent; }
+.card-grid::-webkit-scrollbar-thumb { background: var(--separator); border-radius: 2px; }
 
 /* === Plugin Card === */
 .plugin-card {
-  width: var(--store-card-width);
-  background: #1A2740;
-  border: 1px solid var(--border);
-  border-radius: 10px; padding: 12px;
+  width: 176px; background: var(--bg-card);
+  border: 1px solid transparent;
+  border-radius: 12px; padding: 16px 14px 14px;
   display: flex; flex-direction: column; align-items: center;
-  cursor: pointer;
-  transition: transform 250ms ease-out, box-shadow 250ms ease-out, border-color 250ms ease-out;
+  cursor: pointer; position: relative;
+  transition: transform 280ms cubic-bezier(0.16,1,0.3,1),
+              box-shadow 280ms cubic-bezier(0.16,1,0.3,1),
+              border-color 280ms ease-out,
+              background 200ms ease-out;
 }
 .plugin-card:hover {
-  transform: translateY(-4px) scale(1.02);
-  box-shadow: var(--store-card-hover-shadow);
+  transform: translateY(-6px);
+  box-shadow: 0 16px 32px rgba(0,0,0,0.35), 0 0 0 1px var(--accent);
   border-color: var(--accent);
+  background: var(--bg-card-hover);
 }
-.plugin-card:active { transform: translateY(-2px) scale(0.99); }
+.plugin-card:active { transform: translateY(-2px) scale(0.98); }
 
+/* icon */
+.plugin-card-icon-wrap { position: relative; margin-bottom: 10px; }
 .plugin-card-icon {
-  width: 48px; height: 48px; border-radius: 10px; margin-bottom: 8px;
+  width: 52px; height: 52px; border-radius: 12px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 22px; flex-shrink: 0;
+  font-size: 24px; flex-shrink: 0;
+  position: relative; overflow: hidden;
 }
+/* subtle glass highlight on icon */
+.plugin-card-icon::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, rgba(255,255,255,0.12) 0%, transparent 50%);
+  border-radius: 12px; pointer-events: none;
+}
+/* update dot */
+.update-dot {
+  position: absolute; top: -3px; right: -3px;
+  width: 8px; height: 8px; border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid var(--bg-card);
+  z-index: 1; box-shadow: 0 0 6px var(--accent-glow);
+}
+
+/* name */
 .plugin-card-name {
-  font-size: 13px; font-weight: 600; text-align: center;
+  font-size: 13px; font-weight: 600; text-align: center; letter-spacing: -0.01em;
   width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  margin-bottom: 2px;
+  margin-bottom: 3px;
 }
+/* meta row */
 .plugin-card-meta {
-  font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;
+  font-size: 10px; color: var(--text-secondary); margin-bottom: 6px;
   display: flex; align-items: center; gap: 4px;
 }
-.plugin-card-meta .stars { color: var(--star-color); }
+.plugin-card-meta .stars { color: var(--star-color); letter-spacing: 1px; }
+.plugin-card-meta .rating { font-weight: 500; color: var(--text-secondary); }
 .plugin-card-meta .downloads { color: var(--text-muted); }
+.plugin-card-meta .sep { color: var(--text-muted); opacity: 0.5; }
+/* desc */
 .plugin-card-desc {
-  font-size: 10px; color: var(--text-secondary); text-align: center;
-  line-height: 1.4; width: 100%;
+  font-size: 11px; color: var(--text-muted); text-align: center;
+  line-height: 1.45; width: 100%;
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
-  overflow: hidden; min-height: 28px; margin-bottom: 8px;
+  overflow: hidden; min-height: 32px; margin-bottom: 12px;
 }
+/* button */
 .plugin-card-btn {
-  width: 100%; height: 26px; border-radius: 5px; font-size: 11px; font-weight: 500;
-  cursor: pointer; border: none;
-  transition: background 150ms, border-color 150ms;
+  width: 100%; height: 30px; border-radius: 7px; font-size: 12px; font-weight: 500;
+  cursor: pointer; border: none; letter-spacing: 0.01em;
+  transition: all 200ms ease-out;
 }
-.plugin-card-btn.install {
-  background: var(--accent); color: #000;
-}
-.plugin-card-btn.install:hover { background: var(--accent-hover); }
+.plugin-card-btn.install { background: var(--accent); color: #000; }
+.plugin-card-btn.install:hover { background: #16A34A; box-shadow: 0 2px 8px var(--accent-glow); }
 .plugin-card-btn.installed {
-  background: transparent; color: var(--text-secondary);
-  border: 1px solid var(--text-muted);
+  background: transparent; color: var(--text-muted);
+  border: 1px solid var(--border);
 }
 .plugin-card-btn.installed:hover { border-color: var(--accent); color: var(--accent); }
 .plugin-card-btn.update {
@@ -181,209 +216,224 @@ body {
 }
 .plugin-card-btn.update:hover { background: var(--accent); color: #000; }
 
-/* update dot */
-.plugin-card-icon-wrap { position: relative; }
-.update-dot {
-  position: absolute; top: -2px; right: -2px;
-  width: 7px; height: 7px; border-radius: 50%; background: var(--accent);
-  border: 1px solid #1A2740;
+/* === Pagination === */
+.pagination {
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  height: 44px; border-top: 1px solid var(--separator); flex-shrink: 0;
+  font-size: 12px; color: var(--text-secondary);
 }
+.pag-btn {
+  width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;
+  border-radius: 6px; cursor: pointer; color: var(--text-muted); font-size: 11px;
+  border: 1px solid transparent; transition: all 150ms;
+}
+.pag-btn:hover { border-color: var(--border); color: var(--text-primary); }
+.pag-btn.active { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 600; }
 
-/* === Panel Actions === */
+/* === Bottom Actions === */
 .panel-actions {
-  display: flex; align-items: center; height: 36px; padding: 0 12px; gap: 8px;
+  display: flex; align-items: center; height: 44px; padding: 0 16px; gap: 8px;
   border-top: 1px solid var(--separator); flex-shrink: 0;
   justify-content: flex-end;
 }
-.panel-action-btn {
-  height: 26px; padding: 0 14px; border-radius: 4px; font-size: 11px;
-  cursor: pointer; border: 1px solid var(--border);
-  background: var(--bg-input); color: var(--text-secondary);
+.action-btn {
+  height: 30px; padding: 0 16px; border-radius: 7px; font-size: 12px;
+  cursor: pointer; transition: all 150ms;
+  border: 1px solid var(--border); background: transparent; color: var(--text-secondary);
 }
-.panel-action-btn:hover { border-color: var(--accent); color: var(--text-primary); }
-.panel-action-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); }
-.panel-action-btn.primary:hover { background: var(--accent-hover); }
-
-/* === Pagination === */
-.pagination {
-  display: flex; align-items: center; justify-content: center; gap: 12px;
-  padding: 10px 16px; border-top: 1px solid var(--separator); flex-shrink: 0;
-  font-size: 11px; color: var(--text-secondary);
-}
-.pagination-arrow {
-  width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;
-  border-radius: 4px; cursor: pointer; color: var(--text-secondary);
-  border: 1px solid transparent; font-size: 12px;
-}
-.pagination-arrow:hover { border-color: var(--border); color: var(--text-primary); }
-.pagination-current { color: var(--text-primary); font-weight: 500; }
-
-/* scrollbar */
-.card-grid::-webkit-scrollbar { width: 4px; }
-.card-grid::-webkit-scrollbar-thumb { background: var(--separator); border-radius: 2px; }
+.action-btn:hover { border-color: var(--border-hover); color: var(--text-primary); }
+.action-btn.primary { background: var(--accent); color: #000; border-color: var(--accent); font-weight: 500; }
+.action-btn.primary:hover { background: #16A34A; }
 
 /* === Legend === */
 .legend {
-  position: fixed; bottom: 20px; right: 20px;
-  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
-  padding: 8px 12px; font-size: 10px; color: var(--text-secondary);
-  display: flex; flex-direction: column; gap: 4px;
+  position: fixed; bottom: 24px; right: 24px;
+  background: var(--bg-panel); border: 1px solid var(--border); border-radius: 8px;
+  padding: 10px 14px; font-size: 10px; color: var(--text-muted);
+  display: flex; flex-direction: column; gap: 5px;
 }
-.legend span { color: var(--text-primary); }
+.legend b { color: var(--text-primary); }
+.legend .dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; margin-right: 4px; vertical-align: middle; }
+.legend .dot.green { background: var(--accent); }
+.legend .dot.amber { background: var(--star-color); }
+
+/* Stagger animation */
+@media (prefers-reduced-motion: no-preference) {
+  .plugin-card {
+    animation: cardEnter 500ms ease-out both;
+  }
+  .plugin-card:nth-child(1) { animation-delay: 0.00s; }
+  .plugin-card:nth-child(2) { animation-delay: 0.04s; }
+  .plugin-card:nth-child(3) { animation-delay: 0.08s; }
+  .plugin-card:nth-child(4) { animation-delay: 0.12s; }
+  .plugin-card:nth-child(5) { animation-delay: 0.16s; }
+  .plugin-card:nth-child(6) { animation-delay: 0.20s; }
+  .plugin-card:nth-child(7) { animation-delay: 0.24s; }
+  .plugin-card:nth-child(8) { animation-delay: 0.28s; }
+}
+@keyframes cardEnter {
+  from { opacity: 0; transform: translateY(20px) scale(0.94); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .plugin-card { animation: none; }
+}
 </style>
 </head>
 <body>
 
-<div class="panel-overlay">
-  <div class="panel">
-    <!-- Header -->
-    <div class="panel-header">
-      <span class="panel-header-title">插件市场</span>
-      <span class="panel-header-close">✕</span>
+<div class="panel">
+  <!-- Header -->
+  <div class="panel-header">
+    <span class="panel-header-title">插件市场</span>
+    <span class="panel-header-close">✕</span>
+  </div>
+
+  <!-- Search Bar -->
+  <div class="search-bar">
+    <div class="search-wrap">
+      <input class="search-input" placeholder="搜索插件...">
+    </div>
+    <select class="search-select"><option>全部插件</option><option>已安装</option><option>可更新</option></select>
+    <select class="search-select"><option>按下载量</option><option>按评分</option><option>按名称</option></select>
+  </div>
+
+  <!-- Body -->
+  <div class="panel-body">
+    <!-- Category Sidebar -->
+    <div class="cat-sidebar">
+      <div class="cat-section-title">分类</div>
+      <div class="cat-item active"><span class="cat-icon">★</span>全部<span class="cat-count">28</span></div>
+      <div class="cat-item"><span class="cat-icon">📡</span>串口<span class="cat-count">3</span></div>
+      <div class="cat-item"><span class="cat-icon">🎨</span>主题<span class="cat-count">5</span></div>
+      <div class="cat-item"><span class="cat-icon">🗺️</span>地图<span class="cat-count">2</span></div>
+      <div class="cat-item"><span class="cat-icon">📊</span>仪表<span class="cat-count">1</span></div>
+      <div class="cat-divider"></div>
+      <div class="cat-section-title">更多</div>
+      <div class="cat-item"><span class="cat-icon">🌐</span>语言<span class="cat-count">4</span></div>
+      <div class="cat-item"><span class="cat-icon">🔧</span>工具<span class="cat-count">6</span></div>
+      <div class="cat-item"><span class="cat-icon">🔌</span>协议<span class="cat-count">2</span></div>
+      <div class="cat-item"><span class="cat-icon">📦</span>其他<span class="cat-count">5</span></div>
     </div>
 
-    <!-- Search -->
-    <div class="search-bar">
-      <div class="search-input-wrap">
-        <span class="search-icon">&#128269;</span>
-        <input class="search-input" placeholder="搜索插件...">
+    <!-- Card Grid -->
+    <div class="card-grid">
+      <!-- 1: 已安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#1E3A5F,#2563EB);color:#93C5FD;">📁</div>
+        </div>
+        <div class="plugin-card-name">文件树</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.8</span><span class="sep">·</span><span class="downloads">5.2k</span></div>
+        <div class="plugin-card-desc">侧栏文件浏览器——展开、搜索、拖放、右键菜单</div>
+        <button class="plugin-card-btn installed">已安装</button>
       </div>
-      <select class="search-filter"><option>全部</option><option>已安装</option><option>可更新</option></select>
-      <select class="search-sort"><option>▼ 按下载量</option><option>按评分</option><option>按名称</option></select>
-    </div>
 
-    <!-- Body -->
-    <div class="panel-body">
-      <!-- Category Sidebar -->
-      <div class="cat-sidebar">
-        <div class="cat-title">分类</div>
-        <div class="cat-item active"><span class="cat-icon">&#9733;</span>全部<span class="cat-count">28</span></div>
-        <div class="cat-item"><span class="cat-icon">&#128268;</span>串口<span class="cat-count">3</span></div>
-        <div class="cat-item"><span class="cat-icon">&#127912;</span>主题<span class="cat-count">5</span></div>
-        <div class="cat-item"><span class="cat-icon">&#128506;</span>地图<span class="cat-count">2</span></div>
-        <div class="cat-item"><span class="cat-icon">&#127758;</span>语言<span class="cat-count">4</span></div>
-        <div class="cat-item"><span class="cat-icon">&#128736;</span>工具<span class="cat-count">6</span></div>
-        <div class="cat-item"><span class="cat-icon">&#129520;</span>协议<span class="cat-count">2</span></div>
-        <div class="cat-item"><span class="cat-icon">&#128295;</span>其他<span class="cat-count">6</span></div>
+      <!-- 2: 可更新 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="update-dot"></div>
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#14532D,#22C55E);color:#86EFAC;">⚡</div>
+        </div>
+        <div class="plugin-card-name">串口终端</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★★</span><span class="rating">4.9</span><span class="sep">·</span><span class="downloads">8.7k</span></div>
+        <div class="plugin-card-desc">多会话串口终端——CM6 编辑器 + 数据管道 + 实时波形</div>
+        <button class="plugin-card-btn update">更新 v2.3</button>
       </div>
 
-      <!-- Card Grid -->
-      <div class="card-grid">
-        <!-- Card 1: 已安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#1E3A5F;color:#60A5FA;">&#128194;</div>
-          </div>
-          <div class="plugin-card-name">文件树</div>
-          <div class="plugin-card-meta"><span>v1.0.0</span><span>·</span><span class="stars">&#9733;4.8</span><span class="downloads">5.2k</span></div>
-          <div class="plugin-card-desc">侧栏文件浏览器——展开、搜索、拖放、右键菜单</div>
-          <button class="plugin-card-btn installed">已安装</button>
+      <!-- 3: 未安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#1E1B4B,#7C3AED);color:#C4B5FD;">🗺️</div>
         </div>
+        <div class="plugin-card-name">GPS 地图</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.2</span><span class="sep">·</span><span class="downloads">1.3k</span></div>
+        <div class="plugin-card-desc">Leaflet 实时轨迹——航点标记 + 热力图 + GPX 导入</div>
+        <button class="plugin-card-btn install">安装</button>
+      </div>
 
-        <!-- Card 2: 可更新 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="update-dot"></div>
-            <div class="plugin-card-icon" style="background:#1A2E1A;color:#4ADE80;">&#9889;</div>
-          </div>
-          <div class="plugin-card-name">串口终端</div>
-          <div class="plugin-card-meta"><span>v2.2.1</span><span>·</span><span class="stars">&#9733;4.9</span><span class="downloads">8.7k</span></div>
-          <div class="plugin-card-desc">多会话串口终端——CM6 编辑器 + 数据管道</div>
-          <button class="plugin-card-btn update">更新 v2.3.0</button>
+      <!-- 4: 未安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#0C4A6E,#0EA5E9);color:#7DD3FC;">🎨</div>
         </div>
+        <div class="plugin-card-name">暮色森林</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.6</span><span class="sep">·</span><span class="downloads">3.1k</span></div>
+        <div class="plugin-card-desc">暗色主题合集——青澜 / 暮紫 / 翠微 / 暮光四款森林色系</div>
+        <button class="plugin-card-btn install">安装</button>
+      </div>
 
-        <!-- Card 3: 未安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#2D1F3A;color:#C084FC;">&#127760;</div>
-          </div>
-          <div class="plugin-card-name">GPS 地图</div>
-          <div class="plugin-card-meta"><span>v0.9.0</span><span>·</span><span class="stars">&#9733;4.2</span><span class="downloads">1.3k</span></div>
-          <div class="plugin-card-desc">Leaflet 地图——实时 GPS 轨迹 + 航点标记</div>
-          <button class="plugin-card-btn install">安装</button>
+      <!-- 5: 已安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#7C2D12,#EA580C);color:#FED7AA;">📝</div>
         </div>
+        <div class="plugin-card-name">Monaco 编辑器</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.7</span><span class="sep">·</span><span class="downloads">4.5k</span></div>
+        <div class="plugin-card-desc">语法高亮 + IntelliSense + JSON Schema 自动补全</div>
+        <button class="plugin-card-btn installed">已安装</button>
+      </div>
 
-        <!-- Card 4: 未安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#1A2A2A;color:#38BDF8;">&#127912;</div>
-          </div>
-          <div class="plugin-card-name">暮色森林</div>
-          <div class="plugin-card-meta"><span>v1.0.0</span><span>·</span><span class="stars">&#9733;4.6</span><span class="downloads">3.1k</span></div>
-          <div class="plugin-card-desc">暗色主题合集——青澜/暮紫/翠微四款森林色系</div>
-          <button class="plugin-card-btn install">安装</button>
+      <!-- 6: 未安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#064E3B,#10B981);color:#6EE7B7;">🌿</div>
         </div>
+        <div class="plugin-card-name">Git 版本控制</div>
+        <div class="plugin-card-meta"><span class="stars">★★★</span><span class="rating">3.9</span><span class="sep">·</span><span class="downloads">892</span></div>
+        <div class="plugin-card-desc">暂存、提交、Diff 查看、分支管理——对标 VS Code SCM</div>
+        <button class="plugin-card-btn install">安装</button>
+      </div>
 
-        <!-- Card 5: 已安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#3A251F;color:#F97316;">&#128187;</div>
-          </div>
-          <div class="plugin-card-name">Monaco 编辑器</div>
-          <div class="plugin-card-meta"><span>v1.0.0</span><span>·</span><span class="stars">&#9733;4.7</span><span class="downloads">4.5k</span></div>
-          <div class="plugin-card-desc">Monaco 文本编辑器——语法高亮 + IntelliSense</div>
-          <button class="plugin-card-btn installed">已安装</button>
+      <!-- 7: 未安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#2E1065,#8B5CF6);color:#DDD6FE;">🎛️</div>
         </div>
+        <div class="plugin-card-name">卡片工作台</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.4</span><span class="sep">·</span><span class="downloads">2.8k</span></div>
+        <div class="plugin-card-desc">无限画布仪表盘——10 种卡片 + 网格布局 + 实时数据流</div>
+        <button class="plugin-card-btn install">安装</button>
+      </div>
 
-        <!-- Card 6: 未安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#1F2A1F;color:#34D399;">&#127793;</div>
-          </div>
-          <div class="plugin-card-name">Git 版本控制</div>
-          <div class="plugin-card-meta"><span>v0.5.0</span><span>·</span><span class="stars">&#9733;3.9</span><span class="downloads">892</span></div>
-          <div class="plugin-card-desc">Git 集成——暂存、提交、Diff 查看、分支管理</div>
-          <button class="plugin-card-btn install">安装</button>
+      <!-- 8: 已安装 -->
+      <div class="plugin-card">
+        <div class="plugin-card-icon-wrap">
+          <div class="plugin-card-icon" style="background:linear-gradient(135deg,#1E293B,#475569);color:#CBD5E1;">⚙️</div>
         </div>
-
-        <!-- Card 7: 未安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#1F2A30;color:#818CF8;">&#127768;</div>
-          </div>
-          <div class="plugin-card-name">卡片工作台</div>
-          <div class="plugin-card-meta"><span>v1.0.0</span><span>·</span><span class="stars">&#9733;4.4</span><span class="downloads">2.8k</span></div>
-          <div class="plugin-card-desc">无限画布仪表盘——10 种卡片 + 网格布局 + 实时数据</div>
-          <button class="plugin-card-btn install">安装</button>
-        </div>
-
-        <!-- Card 8: 已安装 -->
-        <div class="plugin-card">
-          <div class="plugin-card-icon-wrap">
-            <div class="plugin-card-icon" style="background:#1A2030;color:#A78BFA;">&#9881;</div>
-          </div>
-          <div class="plugin-card-name">设置</div>
-          <div class="plugin-card-meta"><span>v1.0.0</span><span>·</span><span class="stars">&#9733;4.3</span><span class="downloads">6.1k</span></div>
-          <div class="plugin-card-desc">系统设置——主题/语言/强调色/快捷键/JSON 编辑器</div>
-          <button class="plugin-card-btn installed">已安装</button>
-        </div>
+        <div class="plugin-card-name">设置</div>
+        <div class="plugin-card-meta"><span class="stars">★★★★</span><span class="rating">4.3</span><span class="sep">·</span><span class="downloads">6.1k</span></div>
+        <div class="plugin-card-desc">系统设置——主题 / 语言 / 强调色 / 快捷键 / JSON 编辑器</div>
+        <button class="plugin-card-btn installed">已安装</button>
       </div>
     </div>
+  </div>
 
-    <!-- Pagination -->
-    <div class="pagination">
-      <span class="pagination-arrow">&#9664;</span>
-      <span class="pagination-current">1</span>
-      <span>/ 3</span>
-      <span class="pagination-arrow">&#9654;</span>
-      <span style="margin-left:8px;">共 28 个插件</span>
-    </div>
+  <!-- Pagination -->
+  <div class="pagination">
+    <span class="pag-btn">←</span>
+    <span class="pag-btn active">1</span>
+    <span class="pag-btn">2</span>
+    <span class="pag-btn">3</span>
+    <span class="pag-btn">→</span>
+    <span style="margin-left:10px;font-size:11px;">共 28 个插件</span>
+  </div>
 
-    <!-- Actions -->
-    <div class="panel-actions">
-      <button class="panel-action-btn">在主窗口中打开</button>
-      <button class="panel-action-btn">最大化</button>
-      <button class="panel-action-btn primary">关闭</button>
-    </div>
+  <!-- Actions -->
+  <div class="panel-actions">
+    <button class="action-btn">在主窗口中打开</button>
+    <button class="action-btn">最大化</button>
+    <button class="action-btn primary">关闭</button>
   </div>
 </div>
 
 <!-- Legend -->
 <div class="legend">
-  <div>卡片尺寸 <span>180px</span> · 圆角 <span>10px</span></div>
-  <div>图标 <span>48×48</span> · 评分 <span style="color:#EAB308;">&#9733; amber</span></div>
-  <div>hover <span>y-4px + scale(1.02)</span></div>
-  <div>3 种按钮: <span style="color:#22C55E;">安装</span> / <span style="color:#94A3B8;">已安装</span> / <span style="color:#22C55E;">更新</span></div>
+  <div><span class="dot green"></span> <b>安装</b> — 未安装插件</div>
+  <div style="color:#94A3B8;"><b>已安装</b> — 灰色边框</div>
+  <div><span class="dot green"></span> <b>更新</b> — 绿色边框 + 角标</div>
+  <div><span class="dot amber"></span> <b>★</b> 评分 · amber 金色</div>
+  <div>卡片 <b>176px</b> · 图标 <b>52px</b> · hover <b>-6px</b></div>
 </div>
 
 </body>
