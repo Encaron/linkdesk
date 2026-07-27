@@ -125,8 +125,6 @@ try {
     events: {
       heartbeat: () => ipcRenderer.send('heartbeat'),
       notifyTheme: (isDark: boolean) => ipcRenderer.send('theme-changed', isDark), // E3f #51
-      notifyMenuBarData: (data: any) => ipcRenderer.send('menu-bar-data', data), // E3f #52e
-      setMenuStyle: (style: string) => ipcRenderer.send('set-menu-style', style), // E3f #52
     },
 
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──
@@ -171,11 +169,6 @@ try {
         return () => ipcRenderer.removeListener('window:maximize-change', h);
       },
     },
-  });
-
-  // E3f #52：原生菜单命令 → 自定义事件 → 渲染进程执行
-  ipcRenderer.on('menu:command', (_event, commandId: string) => {
-    window.dispatchEvent(new CustomEvent('native-menu-command', { detail: commandId }));
   });
 
   // 通知主进程 preload 加载成功

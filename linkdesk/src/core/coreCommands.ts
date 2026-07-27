@@ -10,8 +10,8 @@
  * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, getCommand, type Command } from "./CommandRegistry";
-import { registerMenuItems, getMenuItems, MenuId } from "./MenuRegistry";
+import { registerCommand, type Command } from "./CommandRegistry";
+import { registerMenuItems, MenuId } from "./MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
@@ -232,26 +232,5 @@ export function ensureCoreCommands(): void {
     },
   ]);
 
-  // E3f #52e：发送菜单数据到主进程——原生 menubar 与汉堡共享数据源
-  syncMenuBarToMain();
-
 }
 
-/** E3f #52e：将 MenuId.MenuBar 的菜单数据序列化后发送到主进程 */
-function syncMenuBarToMain(): void {
-  try {
-    const items = getMenuItems(MenuId.MenuBar);
-    // 提取主进程需要的字段，叶子项补全 title
-    function serialize(item: import("./MenuRegistry").MenuItem & { pluginId?: string }): any {
-      const label = item.label || (item.command ? getCommand(item.command)?.title : "");
-      return {
-        command: item.command,
-        label,
-        group: item.group,
-        children: item.children?.map(serialize),
-      };
-    }
-    const serialized = items.map(serialize);
-    (window as any).linkdesk?.events?.notifyMenuBarData?.(serialized);
-  } catch { /* 静默 */ }
-}

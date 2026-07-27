@@ -3,803 +3,927 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Encaron 常用语料库</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&family=JetBrains+Mono:wght@400;500&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+<title>Encaron 常用语料库 — LinkDesk</title>
 <style>
-  :root {
-    --bg: #1a1b1e;
-    --sidebar-bg: #1e1f22;
-    --sidebar-active: #2a2b30;
-    --text: #c4c4cc;
-    --text-bright: #e8e8ed;
-    --text-dim: #7a7b82;
-    --accent: #4a9eff;
-    --accent-light: #6bb5ff;
-    --border: #34353a;
-    --code-bg: #212226;
-    --hover: #25262a;
-    --copied: #4ec9b0;
-    --tag-bg: #2a2b30;
-    --tag-text: #9cdcfe;
-    --search-bg: #2a2b30;
-    --highlight: rgba(74, 158, 255, 0.15);
+:root {
+  --bg: #1e1e1e;
+  --bg-sidebar: #252526;
+  --bg-card: #2d2d30;
+  --bg-code: #1a1a1a;
+  --fg: #cccccc;
+  --fg-dim: #969696;
+  --fg-bright: #e0e0e0;
+  --accent: #007acc;
+  --accent-hover: #1a8ad4;
+  --border: #3e3e42;
+  --copy-bg: #3a3a3d;
+  --copy-hover: #4a4a4d;
+  --tag-bg: #3a3a3d;
+  --tag-fg: #8fc9ff;
+}
 
-    /* category accent colors */
-    --c-red:    #f44771;
-    --c-orange: #f0a060;
-    --c-amber:  #e5c07b;
-    --c-green:  #6dcd7c;
-    --c-teal:   #4ec9b0;
-    --c-blue:   #4a9eff;
-    --c-purple: #b392f0;
-    --c-pink:   #f778c1;
-    --c-cyan:   #56c8d8;
-  }
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { height: 100%; font-family: "Inter", "Noto Sans SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: var(--bg); color: var(--text); overflow: hidden; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
-  body { display: flex; }
+* { margin: 0; padding: 0; box-sizing: border-box; }
 
-  /* ── Sidebar ── */
-  nav {
-    width: 260px; min-width: 260px; height: 100vh;
-    background: var(--sidebar-bg); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  nav .search-wrap { padding: 12px; border-bottom: 1px solid var(--border); }
-  nav .search-wrap input {
-    width: 100%; padding: 6px 10px; border-radius: 4px;
-    border: 1px solid var(--border); background: var(--search-bg);
-    color: var(--text-bright); font-size: 13px; outline: none;
-  }
-  nav .search-wrap input:focus { border-color: var(--accent); }
-  nav .search-wrap input::placeholder { color: var(--text-dim); }
-  nav .tree { flex: 1; overflow-y: auto; padding: 8px 0; }
-  nav .tree::-webkit-scrollbar { width: 6px; }
-  nav .tree::-webkit-scrollbar-thumb { background: #424242; border-radius: 3px; }
-  nav .cat { padding: 6px 16px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-dim); cursor: default; user-select: none; }
-  nav .item {
-    display: block; width: 100%; padding: 6px 16px 6px 24px;
-    font-size: 13px; color: var(--text); text-decoration: none;
-    border: none; border-left: 2px solid transparent;
-    background: none; text-align: left; cursor: pointer;
-    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-    transition: background 0.12s, border-color 0.12s, color 0.12s;
-  }
-  nav .item:hover { background: var(--hover); border-left-color: var(--accent); color: var(--text-bright); }
-  nav .item.active { background: var(--sidebar-active); border-left-color: var(--accent); color: var(--text-bright); font-weight: 500; }
-  nav .count { float: right; font-size: 11px; color: var(--text-dim); }
+html, body {
+  height: 100%;
+  font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  background: var(--bg);
+  color: var(--fg);
+  overflow: hidden;
+}
 
-  /* ── Main ── */
-  main {
-    flex: 1; height: 100vh; overflow-y: auto; padding: 32px 36px 80px;
-  }
-  main::-webkit-scrollbar { width: 10px; }
-  main::-webkit-scrollbar-thumb { background: #3a3a40; border-radius: 5px; }
-  main::-webkit-scrollbar-thumb:hover { background: #4a4a50; }
+/* ── Layout ── */
+#app {
+  display: flex;
+  height: 100vh;
+}
 
-  .page-header {
-    background: linear-gradient(135deg, rgba(74,158,255,0.12) 0%, rgba(179,146,240,0.08) 50%, rgba(247,120,193,0.06) 100%);
-    border: 1px solid rgba(74,158,255,0.15);
-    border-radius: 10px; padding: 22px 28px; margin-bottom: 32px;
-  }
-  .page-header h1 {
-    font-size: 24px; font-weight: 700; color: var(--text-bright); margin-bottom: 4px;
-    background: linear-gradient(135deg, var(--c-blue), var(--c-purple));
-    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
-    background-clip: text;
-  }
-  .page-header .subtitle { font-size: 13px; color: var(--text-dim); margin: 0; }
+/* ── Sidebar ── */
+#sidebar {
+  width: 260px;
+  min-width: 260px;
+  background: var(--bg-sidebar);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
 
-  section { margin-bottom: 48px; }
-  section h2 {
-    font-size: 15px; font-weight: 700; color: var(--text-bright); margin-bottom: 10px;
-    padding: 0 0 8px 0; border-bottom: 2px solid var(--border);
-    display: flex; align-items: center; gap: 8px;
-  }
-  section h2 .dot {
-    width: 8px; height: 8px; border-radius: 50%; display: inline-block; flex-shrink: 0;
-  }
-  section h3 {
-    font-size: 13px; font-weight: 600; color: var(--text-dim); margin: 20px 0 10px;
-    text-transform: uppercase; letter-spacing: 0.4px;
-  }
+#sidebar-header {
+  padding: 16px 16px 8px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg-bright);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  flex-shrink: 0;
+}
 
-  .block {
-    position: relative; background: var(--code-bg); border: 1px solid var(--border);
-    border-left: 3px solid var(--accent); border-radius: 0 6px 6px 0; margin-bottom: 16px; overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s;
-  }
-  .block:hover { border-left-color: var(--accent-light); box-shadow: 0 2px 12px rgba(0,0,0,0.3); }
-  .block .label {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 7px 14px; background: rgba(255,255,255,0.02);
-    border-bottom: 1px solid var(--border); font-size: 12px; color: var(--text-dim);
-  }
-  .block .label .tags { display: flex; gap: 6px; }
-  .block .label .tag {
-    font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 10px;
-    background: var(--tag-bg); color: var(--tag-text);
-    letter-spacing: 0.3px;
-  }
-  /* tag color variants */
-  .block .label .tag.t-red  { color: var(--c-red);  }
-  .block .label .tag.t-amber{ color: var(--c-amber); }
-  .block .label .tag.t-green{ color: var(--c-green); }
-  .block .label .tag.t-blue { color: var(--c-blue);  }
-  .block .label .tag.t-purple{color: var(--c-purple);}
-  .block .label .tag.t-pink { color: var(--c-pink);  }
-  .block .label .tag.t-teal { color: var(--c-teal);  }
-  .block .content {
-    padding: 14px 16px; font-family: "JetBrains Mono", "Cascadia Code", "Fira Code", Consolas, monospace;
-    font-size: 13px; line-height: 1.75; white-space: pre-wrap; word-break: break-word;
-    color: #c8c8d0; letter-spacing: 0.1px;
-  }
-  .block .content.shell { color: #8fc97a; }
-  .block .content.shell .prompt { color: #569cd6; }
-  .block .content.shell .cmd { color: #dcdcaa; }
-  .btn-copy {
-    position: absolute; top: 7px; right: 12px;
-    padding: 3px 10px; font-size: 11px; font-weight: 500;
-    background: var(--accent); color: #fff; border: none;
-    border-radius: 4px; cursor: pointer; opacity: 0;
-    transition: opacity 0.15s, background 0.15s, transform 0.1s;
-  }
-  .block:hover .btn-copy { opacity: 1; }
-  .btn-copy:hover { background: var(--accent-light); transform: scale(1.05); }
-  .btn-copy.copied { background: var(--c-green); }
+#search-box {
+  margin: 8px 12px;
+  padding: 6px 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--fg);
+  font-size: 13px;
+  outline: none;
+  flex-shrink: 0;
+}
+#search-box:focus { border-color: var(--accent); }
+#search-box::placeholder { color: var(--fg-dim); }
 
-  .hint { font-size: 12px; color: var(--text-dim); margin-bottom: 12px; font-style: italic; }
+#nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0 16px;
+}
 
-  /* ── Toast ── */
-  .toast {
-    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
-    padding: 10px 24px; background: var(--c-green); color: #111;
-    border-radius: 8px; font-size: 13px; font-weight: 600; letter-spacing: 0.3px;
-    opacity: 0; transition: opacity 0.2s, transform 0.2s; pointer-events: none; z-index: 999;
-    transform: translateX(-50%) translateY(8px);
-    box-shadow: 0 4px 20px rgba(78,201,176,0.3);
-  }
-  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+.nav-category {
+  padding: 8px 16px 2px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
 
-  /* ── Responsive ── */
-  @media (max-width: 768px) {
-    nav { width: 200px; min-width: 200px; }
-    main { padding: 16px; }
-  }
+.nav-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 5px 16px 5px 24px;
+  font-size: 13px;
+  color: var(--fg);
+  background: none;
+  border: none;
+  cursor: pointer;
+  line-height: 1.5;
+  transition: background 0.1s;
+}
+.nav-item:hover { background: var(--copy-bg); }
+.nav-item.active {
+  background: var(--accent);
+  color: #fff;
+}
 
-  .highlight-target {
-    animation: flash 0.6s ease-out;
-  }
-  @keyframes flash {
-    0% { background: var(--highlight); }
-    100% { background: transparent; }
-  }
+/* ── Main ── */
+#main {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px 32px 48px;
+  /* Fix: keep scroll position on tab switch */
+  scroll-behavior: auto;
+}
+
+.section {
+  margin-bottom: 36px;
+  scroll-margin-top: 24px;
+}
+
+.section-title {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--fg-bright);
+  margin-bottom: 4px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-desc {
+  font-size: 12px;
+  color: var(--fg-dim);
+  margin-bottom: 12px;
+}
+
+/* ── Card ── */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(0,0,0,0.15);
+}
+
+.card-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--fg-bright);
+}
+
+.card-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.tag {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--tag-bg);
+  color: var(--tag-fg);
+  white-space: nowrap;
+}
+
+.card-body {
+  padding: 10px 12px;
+  position: relative;
+}
+
+.card-body pre {
+  font-family: "Cascadia Code", "Fira Code", "Consolas", "Microsoft YaHei", monospace;
+  font-size: 12.5px;
+  line-height: 1.65;
+  color: var(--fg);
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+}
+
+.copy-btn {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  padding: 2px 8px;
+  font-size: 11px;
+  background: var(--copy-bg);
+  color: var(--fg-dim);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, background 0.1s;
+}
+.card:hover .copy-btn { opacity: 1; }
+.copy-btn:hover { background: var(--copy-hover); color: var(--fg-bright); }
+.copy-btn.copied { background: #1a6b3c; color: #a0e0a0; border-color: #2d8f54; }
+
+/* ── Highlight matched text ── */
+mark {
+  background: #6b5a00;
+  color: #fff;
+  border-radius: 2px;
+  padding: 0 1px;
+}
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #424242; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #555; }
+
+/* ── Empty search ── */
+.no-results {
+  text-align: center;
+  padding: 60px 20px;
+  color: var(--fg-dim);
+  font-size: 14px;
+}
+
+.hidden { display: none !important; }
+
+@media (max-width: 700px) {
+  #sidebar { display: none; }
+  #main { padding: 16px; }
+}
 </style>
 </head>
 <body>
+<div id="app">
 
-<!-- ════════════ Sidebar ════════════ -->
-<nav>
-  <div class="search-wrap">
-    <input type="text" id="search" placeholder="搜索语料… (Ctrl+K)" autocomplete="off">
-  </div>
-  <div class="tree" id="tree"></div>
-</nav>
+<!-- ═══════════ SIDEBAR ═══════════ -->
+<aside id="sidebar">
+  <div id="sidebar-header">📋 常用语料库</div>
+  <input id="search-box" type="text" placeholder="搜索关键词…" autocomplete="off">
 
-<!-- ════════════ Main ════════════ -->
+  <nav id="nav">
+    <div class="nav-category">🚀 启动</div>
+    <button class="nav-item" data-section="s1">新会话开场白</button>
+
+    <div class="nav-category">✅ 完成</div>
+    <button class="nav-item" data-section="s2">任务完成报告</button>
+    <button class="nav-item" data-section="s3">全部完成后收尾</button>
+
+    <div class="nav-category">🔍 质量追问</div>
+    <button class="nav-item" data-section="s4">归一化 / 硬编码 检查</button>
+    <button class="nav-item" data-section="s5">Bug 分析三问</button>
+    <button class="nav-item" data-section="s6">生态友好检查</button>
+
+    <div class="nav-category">📝 进度指令</div>
+    <button class="nav-item" data-section="s7">继续下一步</button>
+    <button class="nav-item" data-section="s8">更新记忆 & 文档</button>
+    <button class="nav-item" data-section="s9">记录文档 & Bug & 存 Git</button>
+
+    <div class="nav-category">💻 终端命令</div>
+    <button class="nav-item" data-section="s10">开发启动</button>
+    <button class="nav-item" data-section="s11">Git 常用</button>
+
+    <div class="nav-category">🎯 Skill 触发词</div>
+    <button class="nav-item" data-section="s12">项目 Skills (5 个)</button>
+    <button class="nav-item" data-section="s13">全局 Skills (14 个)</button>
+
+    <div class="nav-category">🏗️ 架构原则</div>
+    <button class="nav-item" data-section="s14">核心九条 / 大厅模型</button>
+  </nav>
+</aside>
+
+<!-- ═══════════ MAIN ═══════════ -->
 <main id="main">
-  <div class="page-header">
-    <h1>📋 Encaron 常用语料库</h1>
-    <p class="subtitle">跟 AI 对话时反复使用的固定模板、问句、命令。点击侧栏定位，悬停复制。</p>
+
+<!-- S1: 新会话开场白 -->
+<section id="s1" class="section">
+  <div class="section-title">🚀 新会话开场白</div>
+  <div class="section-desc">新 AI 进场时发的第一条消息</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">E3 继续 — 标准开场</span>
+      <span class="card-tags"><span class="tag">E3</span><span class="tag">开场</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="你将继续做E3剩下部分，自行阅读，明确自己接下来需要做什么，你知道制作规矩吧，说说看，要求每次开始和结束前说说当前进行到什么地方">复制</button>
+      <pre>你将继续做E3剩下部分，自行阅读，明确自己接下来需要做什么，你知道制作规矩吧，说说看，要求每次开始和结束前说说当前进行到什么地方</pre>
+    </div>
   </div>
 
-  <!-- ── 1. 开场白 ── -->
-  <section id="sec-opening">
-    <h2>🚀 开场白 — 新 AI 进场</h2>
-    <p class="hint">新对话开始时，告诉 AI 当前进度和规矩。</p>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">继续执行 — 简短版</span>
+      <span class="card-tags"><span class="tag">继续</span><span class="tag">简短</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
+      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</pre>
+    </div>
+  </div>
 
-    <h3>标准开场</h3>
-    <div class="block" data-label="标准开场">
-      <div class="label"><span>新 AI 进场 · 完整版</span><span class="tags"><span class="tag">开场</span><span class="tag t-red">必用</span></span></div>
-      <div class="content">你将继续做E3剩下部分，自行阅读，明确自己接下来需要做什么，你知道制作规矩吧，说说看，要求每次开始和结束前说说当前进行到什么地方
-例如结束时候：
-#36k1 ✅ 完成
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">确认理解 — 先说不做</span>
+      <span class="card-tags"><span class="tag">确认</span><span class="tag">先说</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="你是否了解？先说，不要做">复制</button>
+      <pre>你是否了解？先说，不要做</pre>
+    </div>
+  </div>
+</section>
+
+<!-- S2: 任务完成报告 -->
+<section id="s2" class="section">
+  <div class="section-title">✅ 任务完成报告</div>
+  <div class="section-desc">每个子任务完成时发的格式</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">完成报告模板</span>
+      <span class="card-tags"><span class="tag">完成</span><span class="tag">报告</span><span class="tag">格式</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="#36k1 ✅ 完成
 改了什么： preload-plugin.ts -5 行 — 删除 dialog.open 暴露，注释和代码现在一致（都说 ❌ dialog.*）
 UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketplace 的"从本地安装"按钮在壳进程运行，走的是 preload-shell.ts 的 dialog.open，不受影响。
 下一步： #36k2 — 终端插件命令注册加清理（useEffect 返回注销函数）（+15 行）
-继续？
-你是否了解？先说，不要做</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+继续？">复制</button>
+      <pre>#36k1 ✅ 完成
+改了什么： preload-plugin.ts -5 行 — 删除 dialog.open 暴露，注释和代码现在一致（都说 ❌ dialog.*）
+UI 验证：无。 没有插件在独立 WebView 中使用 dialog.open。Marketplace 的"从本地安装"按钮在壳进程运行，走的是 preload-shell.ts 的 dialog.open，不受影响。
+下一步： #36k2 — 终端插件命令注册加清理（useEffect 返回注销函数）（+15 行）
+继续？</pre>
     </div>
+  </div>
+</section>
 
-    <h3>确认后的执行指令</h3>
-    <div class="block" data-label="确认后继续">
-      <div class="label"><span>AI 理解后 · 继续执行</span><span class="tags"><span class="tag">执行</span><span class="tag t-red">必用</span></span></div>
-      <div class="content">继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S3: 全部完成后收尾 -->
+<section id="s3" class="section">
+  <div class="section-title">📦 全部完成后收尾</div>
+  <div class="section-desc">一轮任务全部做完后，收尾记录</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">最终收尾指令</span>
+      <span class="card-tags"><span class="tag">收尾</span><span class="tag">记录</span><span class="tag">Git</span></span>
     </div>
-  </section>
-
-  <!-- ── 2. 结束语 ── -->
-  <section id="sec-closing">
-    <h2>🏁 结束语 — 任务完成报告</h2>
-
-    <h3>阶段性收尾 — 更新记忆</h3>
-    <div class="block" data-label="更新记忆">
-      <div class="label"><span>阶段完成 · 更新记忆</span><span class="tags"><span class="tag">记忆</span><span class="tag t-teal">收尾</span></span></div>
-      <div class="content">更新记忆，更新文档，该勾的勾掉</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题">复制</button>
+      <pre>记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</pre>
     </div>
+  </div>
+</section>
 
-    <h3>全部完成 — 归档收尾</h3>
-    <div class="block" data-label="归档收尾">
-      <div class="label"><span>全部完成 · 归档</span><span class="tags"><span class="tag">归档</span><span class="tag t-teal">收尾</span></span></div>
-      <div class="content">记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S4: 归一化 / 硬编码 检查 -->
+<section id="s4" class="section">
+  <div class="section-title">🔍 归一化 / 硬编码 检查</div>
+  <div class="section-desc">做完修改后追问质量</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">归一化 + 硬编码 追问</span>
+      <span class="card-tags"><span class="tag">质量</span><span class="tag">归一化</span><span class="tag">硬编码</span></span>
     </div>
-  </section>
-
-  <!-- ── 3. 质量追问 ── -->
-  <section id="sec-quality">
-    <h2>🔍 质量追问 — 代码审查</h2>
-    <p class="hint">每次 AI 修完 bug 后，用这些问题追问归一性、硬编码、生态影响。</p>
-
-    <h3>Bug 归因追问</h3>
-    <div class="block" data-label="Bug归因">
-      <div class="label"><span>Bug 分析 · 三连问</span><span class="tags"><span class="tag t-blue">质量</span><span class="tag t-amber">高频</span></span></div>
-      <div class="content">这个bug常见吗？属于未归一化的bug吗,有硬编码吗？</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="这个bug常见吗？属于未归一化的bug吗,有硬编码吗？">复制</button>
+      <pre>这个bug常见吗？属于未归一化的bug吗,有硬编码吗？</pre>
     </div>
+  </div>
 
-    <h3>归一性确认（commit 后）</h3>
-    <div class="block" data-label="归一性确认">
-      <div class="label"><span>commit 后 · 归一性确认</span><span class="tags"><span class="tag t-blue">质量</span><span class="tag t-amber">高频</span></span></div>
-      <div class="content">如今的配置后，对未来的各种百花齐放的插件开发是有利还是不利，有利于我软件生态吗？还是说这是为这个插件写的死代码？符合归一性吗？</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">品质九条自查</span>
+      <span class="card-tags"><span class="tag">质量</span><span class="tag">全面</span></span>
     </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="工程内文件夹有无要更新的？
 
-    <h3>修完后小 bug 追问</h3>
-    <div class="block" data-label="小bug追问">
-      <div class="label"><span>修完后的遗漏检查</span><span class="tags"><span class="tag t-blue">质量</span></span></div>
-      <div class="content">刚才修完c1后的小bug怎么回事？是归一化问题吗？还是独属于终端的bug，对未来插件适用吗，以后还会发生类似问题吗</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
+      <pre>工程内文件夹有无要更新的？
+
+我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
     </div>
+  </div>
+</section>
 
-    <h3>精益求精宣言</h3>
-    <div class="block" data-label="精益求精">
-      <div class="label"><span>质量宣言 · 完整版</span><span class="tags"><span class="tag t-blue">质量</span><span class="tag">宣言</span></span></div>
-      <div class="content">我要做的是精益求精，慢工出细活，完美的的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S5: Bug 分析三问 -->
+<section id="s5" class="section">
+  <div class="section-title">🐛 Bug 分析三问</div>
+  <div class="section-desc">修完 bug 后的深度追问</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">Bug 根因分析</span>
+      <span class="card-tags"><span class="tag">bug</span><span class="tag">根因</span></span>
     </div>
-  </section>
-
-  <!-- ── 4. Git Bash 常用命令 ── -->
-  <section id="sec-shell">
-    <h2>💻 Git Bash 常用命令</h2>
-    <p class="hint">在项目根目录的 Git Bash 中执行。</p>
-
-    <h3>进入项目</h3>
-    <div class="block" data-label="进入项目">
-      <div class="label"><span>切换到项目目录</span><span class="tags"><span class="tag t-green">shell</span></span></div>
-      <div class="content shell"><span class="cmd">cd</span> "linkdesk"</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="刚才修完c1后的小bug怎么回事？是归一化问题吗？还是独属于终端的bug，对未来插件适用吗，以后还会发生类似问题吗">复制</button>
+      <pre>刚才修完c1后的小bug怎么回事？是归一化问题吗？还是独属于终端的bug，对未来插件适用吗，以后还会发生类似问题吗</pre>
     </div>
+  </div>
+</section>
 
-    <h3>开发启动</h3>
-    <div class="block" data-label="启动前端">
-      <div class="label"><span>纯前端 Vite 预览</span><span class="tags"><span class="tag t-green">shell</span><span class="tag t-teal">dev</span></span></div>
-      <div class="content shell"><span class="cmd">npm run dev</span></div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S6: 生态友好检查 -->
+<section id="s6" class="section">
+  <div class="section-title">🌱 生态友好检查</div>
+  <div class="section-desc">检查修改是否有利于插件生态</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">生态 vs 死代码 追问</span>
+      <span class="card-tags"><span class="tag">生态</span><span class="tag">归一性</span></span>
     </div>
-
-    <div class="block" data-label="启动Electron">
-      <div class="label"><span>完整 Electron 桌面应用</span><span class="tags"><span class="tag t-green">shell</span><span class="tag t-teal">dev</span></span></div>
-      <div class="content shell"><span class="cmd">npm run electron:dev</span></div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="如今的配置后，对未来的各种百花齐放的插件开发是有利还是不利，有利于我软件生态吗？还是说这是为这个插件写的死代码？符合归一性吗？">复制</button>
+      <pre>如今的配置后，对未来的各种百花齐放的插件开发是有利还是不利，有利于我软件生态吗？还是说这是为这个插件写的死代码？符合归一性吗？</pre>
     </div>
+  </div>
+</section>
 
-    <h3>质量检查</h3>
-    <div class="block" data-label="check">
-      <div class="label"><span>提交前必跑 — tsc + ESLint + vitest</span><span class="tags"><span class="tag t-green">shell</span><span class="tag t-red">必用</span></span></div>
-      <div class="content shell"><span class="cmd">npm run check</span></div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S7: 继续下一步 -->
+<section id="s7" class="section">
+  <div class="section-title">📝 继续下一步</div>
+  <div class="section-desc">确认后继续执行的指令</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">继续执行指令</span>
+      <span class="card-tags"><span class="tag">继续</span><span class="tag">执行</span></span>
     </div>
-
-    <h3>常用 URL</h3>
-    <div class="block" data-label="URL">
-      <div class="label"><span>开发模式地址</span><span class="tags"><span class="tag">url</span></span></div>
-      <div class="content">http://localhost:1420/</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
+      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</pre>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ── 5. Git 操作 ── -->
-  <section id="sec-git">
-    <h2>🔀 Git 操作</h2>
+<!-- S8: 更新记忆 & 文档 -->
+<section id="s8" class="section">
+  <div class="section-title">🧠 更新记忆 & 文档</div>
+  <div class="section-desc">完成一部分后同步记忆和文档</div>
 
-    <h3>提交格式（照这个抄）</h3>
-    <div class="block" data-label="提交格式">
-      <div class="label"><span>commit message 规范</span><span class="tags"><span class="tag t-pink">git</span><span class="tag t-red">必用</span></span></div>
-      <div class="content shell">fix: #51 标题栏变色提前——IPC 在 CSS 之前发送，消除延迟
-feat: E3f #51 — 标题栏暗色化 + 主题同步（~25 行）
-docs: E3e 🎉 5/5 完成——打勾 + CLAUDE.md 进度更新
-fix: 铃铛面板打开时隐藏右下角 toast——对标 VS Code（~35 行）
-feat: E3e #50 — 通知面板按 source 分组 + 未读徽章 (~50 行)</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">更新记忆 + 文档 + 打勾</span>
+      <span class="card-tags"><span class="tag">记忆</span><span class="tag">文档</span><span class="tag">打勾</span></span>
     </div>
-
-    <h3>提交前检查</h3>
-    <div class="block" data-label="提交前检查">
-      <div class="label"><span>提交前必做</span><span class="tags"><span class="tag t-pink">git</span><span class="tag t-red">必用</span></span></div>
-      <div class="content shell"><span class="cmd">npm run check</span>
-<span class="cmd">git diff --stat</span>
-git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="更新记忆，更新文档，该勾的勾掉">复制</button>
+      <pre>更新记忆，更新文档，该勾的勾掉</pre>
     </div>
+  </div>
+</section>
 
-    <h3>常用操作</h3>
-    <div class="block" data-label="git常用">
-      <div class="label"><span>Git 常用命令</span><span class="tags"><span class="tag t-pink">git</span></span></div>
-      <div class="content shell"><span class="cmd">git status</span>
-<span class="cmd">git diff</span>
-<span class="cmd">git add -A</span>
-<span class="cmd">git commit -m "fix: #xx — 描述"</span>
-<span class="cmd">git push</span>
-<span class="cmd">git pull</span>
-<span class="cmd">git log --oneline -10</span>
-<span class="cmd">git stash</span>
-<span class="cmd">git stash pop</span></div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S9: 记录文档 & Bug & 存 Git -->
+<section id="s9" class="section">
+  <div class="section-title">📋 记录文档 & Bug & 存 Git</div>
+  <div class="section-desc">全部完成后的收尾记录</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">完整收尾</span>
+      <span class="card-tags"><span class="tag">收尾</span><span class="tag">Git</span><span class="tag">移交</span></span>
     </div>
-  </section>
-
-  <!-- ── 6. plugin.json 代码片段 ── -->
-  <section id="sec-pluginjson">
-    <h2>🔌 plugin.json 常用片段</h2>
-
-    <h3>出厂插件标记</h3>
-    <div class="block" data-label="core:true">
-      <div class="label"><span>不可卸载的出厂插件</span><span class="tags"><span class="tag">plugin.json</span></span></div>
-      <div class="content">"core": true,</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题">复制</button>
+      <pre>记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</pre>
     </div>
+  </div>
+</section>
 
-    <h3>allow pasting</h3>
-    <div class="block" data-label="allow pasting">
-      <div class="label"><span>Electron 开发控制台粘贴</span><span class="tags"><span class="tag t-teal">dev</span><span class="tag">console</span></span></div>
-      <div class="content">allow pasting</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S10: 开发启动 -->
+<section id="s10" class="section">
+  <div class="section-title">💻 开发启动</div>
+  <div class="section-desc">每天开发时在 Git Bash 输入的常用命令</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">进入项目 + 启动开发</span>
+      <span class="card-tags"><span class="tag">bash</span><span class="tag">dev</span></span>
     </div>
-  </section>
-
-  <!-- ── 6. Skill 触发词 ── -->
-  <section id="sec-skills">
-    <h2>🎯 Skill 触发词速查</h2>
-    <p class="hint">在对话中提及这些关键词时，对应 skill 会自动激活。</p>
-
-    <h3>impeccable — 前端设计/审查</h3>
-    <div class="block" data-label="impeccable">
-      <div class="label"><span>/impeccable — 23 个子命令</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag t-purple">设计</span></span></div>
-      <div class="content">触发词：设计、redesign、shape、critique、audit、polish、clarify、distill、harden、optimize、adapt、animate、colorize、extract、improve frontend
-子命令：craft shape audit polish critique clarify distill harden optimize adapt animate colorize extract bolder quieter delight typeset layout teach init document carbonize
-
-网站/落地页/仪表盘/产品UI/组件/表单/设置/空状态 → 说这些自动触发</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="cd &quot;linkdesk&quot;
+npm run dev
+npm run electron:dev">复制</button>
+      <pre>cd "linkdesk"
+npm run dev
+npm run electron:dev</pre>
     </div>
+  </div>
 
-    <h3>ui-ux-pro-max — UI/UX 设计规则数据库</h3>
-    <div class="block" data-label="ui-ux-pro-max">
-      <div class="label"><span>ui-ux-pro-max — 84 风格 + 192 调色板 + 98 UX 指南</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">UI</span></span></div>
-      <div class="content">触发词：UI结构、视觉设计、交互模式、用户体验、设计新页面、创建/重构UI组件、颜色/排版/间距/布局系统、导航/动画/响应式、无障碍/可访问性
-覆盖 22 个技术栈：React, Next.js, Vue, Nuxt, Svelte, Astro, SwiftUI, React Native, Flutter, Tailwind, shadcn/ui, Jetpack Compose, Angular, Laravel, JavaFX, WPF, WinUI, Avalonia, Uno Platform, UWP, Three.js, HTML/CSS</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">开发服务器地址</span>
+      <span class="card-tags"><span class="tag">url</span><span class="tag">localhost</span></span>
     </div>
-
-    <h3>taste-skill — 反模板化前端</h3>
-    <div class="block" data-label="taste-skill">
-      <div class="label"><span>design-taste-frontend — 落地页/作品集/重设计</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag t-purple">设计</span></span></div>
-      <div class="content">触发词：landing page、portfolio、redesign、anti-slop、设计品味、不模板化
-适用：落地页、作品集、重设计。不适用：仪表盘、数据表、多步骤产品 UI</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="http://localhost:1420/
+allow pasting
+&quot;core&quot;: true,">复制</button>
+      <pre>http://localhost:1420/
+allow pasting
+"core": true,</pre>
     </div>
+  </div>
+</section>
 
-    <h3>web-design-guidelines — Web 界面规范审查</h3>
-    <div class="block" data-label="web-design-guidelines">
-      <div class="label"><span>Vercel Web Interface Guidelines</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">审查</span></span></div>
-      <div class="content">触发词：review my UI、check accessibility、audit design、review UX、check my site against best practices</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S11: Git 常用 -->
+<section id="s11" class="section">
+  <div class="section-title">🔧 Git 常用</div>
+  <div class="section-desc">日常 Git 操作命令</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">进入项目目录</span>
+      <span class="card-tags"><span class="tag">bash</span><span class="tag">cd</span></span>
     </div>
-
-    <h3>find-skills — 技能发现</h3>
-    <div class="block" data-label="find-skills">
-      <div class="label"><span>查找/安装技能包</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">工具</span></span></div>
-      <div class="content">触发词：找技能、find skill、install skill、how do I do X、is there a skill for X
-命令：npx skills find [query] / npx skills add &lt;package&gt; / npx skills update</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text='cd "linkdesk"'>复制</button>
+      <pre>cd "linkdesk"</pre>
     </div>
+  </div>
 
-    <h3>skill-creator — 创建技能</h3>
-    <div class="block" data-label="skill-creator">
-      <div class="label"><span>创建/修改/评估技能</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">工具</span></span></div>
-      <div class="content">触发词：create skill、edit skill、optimize skill、skill performance、benchmark skill、skill eval
-Cherry Studio 流程：skills init → 写 SKILL.md → skills register</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">查看状态 / 日志</span>
+      <span class="card-tags"><span class="tag">git</span><span class="tag">log</span></span>
     </div>
-
-    <h3>amap-skills — 高德地图 JSAPI</h3>
-    <div class="block" data-label="amap-skills">
-      <div class="label"><span>高德地图 JSAPI v2.0 技能包</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">地图</span></span></div>
-      <div class="content">触发词：高德地图、AMap、地图开发、JSAPI、地图控制、覆盖物、图层、LBS服务、地理编码、地图白屏、安全密钥</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="git status
+git log --oneline -10">复制</button>
+      <pre>git status
+git log --oneline -10</pre>
     </div>
+  </div>
+</section>
 
-    <h3>其他内置 Skill</h3>
-    <div class="block" data-label="other-skills">
-      <div class="label"><span>系统内置 Skills 速查</span><span class="tags"><span class="tag t-blue">skill</span><span class="tag">系统</span></span></div>
-      <div class="content">c-drive-cleanup-guide — C盘清理
-deepseek-vision-migration — DeepSeek 多模态迁移
-full-output-enforcement — 禁止截断/占位符
-nanobanana-ppt-skills — PPT 生成
-slidev — Slidev 演示文稿
-summarize — URL/文件摘要
-tbs-pack — STM32H750 TPA 模板打包
-vision-tool — 豆包识图
-wpf-developer — WPF 开发
-keybindings-help — 快捷键自定义
-simplify — 代码简化审查
-fewer-permission-prompts — 减少权限弹窗
-loop — 定时循环任务
-update-config — 配置管理
-claude-api — Claude API 参考
-run — 启动应用
-init — 初始化 CLAUDE.md
-review — 代码审查
-security-review — 安全审查</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+<!-- S12: 项目 Skills -->
+<section id="s12" class="section">
+  <div class="section-title">🎯 项目 Skills 触发词（5 个）</div>
+  <div class="section-desc">LinkDesk 项目本地 skills（linkdesk/.claude/skills/）</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">ui-ux-pro-max</span>
+      <span class="card-tags"><span class="tag">UI/UX</span><span class="tag">设计</span><span class="tag">配色</span><span class="tag">动效</span></span>
     </div>
-  </section>
-
-  <!-- ── 7. 记忆管理 ── -->
-  <section id="sec-memory">
-    <h2>🧠 记忆管理</h2>
-
-    <h3>记忆文件路径</h3>
-    <div class="block" data-label="记忆路径">
-      <div class="label"><span>Memory 目录</span><span class="tags"><span class="tag t-teal">路径</span></span></div>
-      <div class="content">C:\Users\fengy\.claude\projects\e--linkdesk\memory\</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="设计新页面、UI 组件、配色/排版/动效/响应式、UI 审查、无障碍检查">复制</button>
+      <pre>触发词：设计新页面、UI 组件、配色/排版/动效/响应式、UI 审查、无障碍检查
+覆盖：84 风格 + 192 色板 + 74 字体 + 98 UX 指南 + 22 技术栈</pre>
     </div>
+  </div>
 
-    <h3>记忆索引</h3>
-    <div class="block" data-label="记忆索引">
-      <div class="label"><span>MEMORY.md 索引文件</span><span class="tags"><span class="tag t-teal">路径</span></span></div>
-      <div class="content">C:\Users\fengy\.claude\projects\e--linkdesk\memory\MEMORY.md</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">web-design-guidelines</span>
+      <span class="card-tags"><span class="tag">审查</span><span class="tag">可访问性</span><span class="tag">UX</span></span>
     </div>
-  </section>
-
-  <!-- ── 8. 开发命令全集 ── -->
-  <section id="sec-devcommands">
-    <h2>⚡ 开发命令全集</h2>
-    <p class="hint">来自 CLAUDE.md，提交前必跑。</p>
-
-    <h3>提交前自检</h3>
-    <div class="block" data-label="提交前">
-      <div class="label"><span>机械操作 · 少一步不提交</span><span class="tags"><span class="tag t-red">必用</span><span class="tag">check</span></span></div>
-      <div class="content shell"><span class="cmd">1. 一条命令跑完 tsc + ESLint + vitest</span>
-<span class="cmd">npm run check</span>
-
-<span class="cmd">2. 确认无调试日志残留</span>
-<span class="cmd">git diff --stat</span>
-
-<span class="cmd">3. 确认无新增插件 ID 硬编码</span>
-git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'
-
-<span class="cmd">4. 修了 import/export 路径 → 清 Vite deps 缓存</span>
-<span class="cmd">rm -rf node_modules/.vite</span></div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="review my UI / check accessibility / audit design / review UX / check my site against best practices">复制</button>
+      <pre>触发词：review my UI / check accessibility / audit design / review UX / check my site against best practices
+来源：Vercel Web Interface Guidelines（实时拉取最新规则）</pre>
     </div>
+  </div>
 
-    <h3>全部命令</h3>
-    <div class="block" data-label="全部命令">
-      <div class="label"><span>package.json scripts</span><span class="tags"><span class="tag">命令</span><span class="tag">参考</span></span></div>
-      <div class="content shell"><span class="cmd">npm run check</span>          tsc + ESLint + vitest 一条命令
-<span class="cmd">npm run lint</span>           单独 ESLint（含硬约束自定义规则）
-<span class="cmd">npm run dev</span>            纯前端 Vite 预览
-<span class="cmd">npm run electron:dev</span>   完整 Electron 桌面应用
-<span class="cmd">npx tsc --noEmit</span>      TypeScript 类型检查
-<span class="cmd">npx vitest run</span>       单元测试（151 个）</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">amap-jsapi-skill</span>
+      <span class="card-tags"><span class="tag">地图</span><span class="tag">高德</span><span class="tag">LBS</span></span>
     </div>
-  </section>
-
-  <!-- ── 9. 硬约束速查 ── -->
-  <section id="sec-constraints">
-    <h2>🛡️ 硬约束速查（15 条）</h2>
-    <p class="hint">绝对不能违反。AI 进场必读。</p>
-
-    <div class="block" data-label="硬约束">
-      <div class="label"><span>15 条硬约束 · 精简版</span><span class="tags"><span class="tag t-amber">规则</span><span class="tag t-red">必读</span></span></div>
-      <div class="content">1. 所有颜色走 CSS 变量 var(--xxx)，禁止硬编码 hex
-2. 所有 UI 文字走 t()，禁止硬编码中文
-3. 标签页系统不 import CardRegistry
-4. workspace.json 禁止嵌套，必须一层平铺数组
-5. IPC 事件订阅必须用 generation counter 模式
-6. setState 函数式更新器内部不写副作用
-7. 组件只实现 OnData(fields) + OnSend
-8. ProtocolParser 独立可替换，RingBuffer { cardId, value } 硬边界
-9. 核心无知原则：核心不知道软件是干什么的
-10. 禁止 core/ 或 pluginLoader/ 中写死插件 ID
-11. 插件身份唯一来源是 plugin.json 声明字段
-12. 禁止硬编码路径——所有资产路径走 getAssetPath()
-13. async 初始化函数必须防 StrictMode 双重 effect 竞态
-14. useEffect 有回调 prop 做非 DOM 副作用时加活跃守卫
-15. 出了隐形 bug 不要猜——git checkout 逐 commit 二分定位</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="高德地图、地图初始化、覆盖物、3D 视图、LBS 服务、地理编码、路径规划、marker、信息窗">复制</button>
+      <pre>触发词：高德地图、地图初始化、覆盖物、3D 视图、LBS 服务、地理编码、路径规划、marker、信息窗
+需要：AMAP_JSAPI_KEY 环境变量（安全密钥强制配置）</pre>
     </div>
-  </section>
+  </div>
 
-  <!-- ── 10. 执行纪律 ── -->
-  <section id="sec-discipline">
-    <h2>📏 执行纪律</h2>
-
-    <div class="block" data-label="执行纪律">
-      <div class="label"><span>每步必遵的纪律</span><span class="tags"><span class="tag">纪律</span><span class="tag t-red">必读</span></span></div>
-      <div class="content">做完一步 → 验证 → 提交 → 等 Encaron 确认 → 再下一步。不要一口气做多个任务。
-每个 commit 只做一个任务——即使小任务也不合并。
-做前大白话解释 / 做完简短说改了啥 / 最后说 UI 能验证什么
-归一化迁移 grep 必须同时搜 src/ + plugins/
-修完 import/export 错误后必须清 Vite deps 缓存</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">impeccable</span>
+      <span class="card-tags"><span class="tag">前端设计</span><span class="tag">23 命令</span><span class="tag">品牌</span></span>
     </div>
-  </section>
+    <div class="card-body">
+      <button class="copy-btn" data-text="/impeccable polish — 打磨 UI 细节
+/impeccable audit — 审查可访问性/UX
+/impeccable critique — 设计批评
+/impeccable shape — 从零设计新界面
+/impeccable animate — 动效/微交互
+/impeccable bolder — 让设计更出彩
+/impeccable quieter — 让设计更安静
+/impeccable colorize — 配色方案
+/impeccable typeset — 排版
+/impeccable layout — 布局调整
+/impeccable distill — 简化/去冗余
+/impeccable harden — 边界/错误状态
+/impeccable delight — 惊喜细节
+/impeccable init — 初始化 PRODUCT.md
+/impeccable document — 写设计文档
+/impeccable extract — 提取设计 token
+/impeccable overdrive — 极致视觉效果
+/impeccable adapt — 适配不同平台
+/impeccable clarify — 信息架构梳理
+/impeccable optimize — 性能优化">复制</button>
+      <pre>/impeccable polish    — 打磨 UI 细节
+/impeccable audit     — 审查可访问性/UX
+/impeccable critique  — 设计批评
+/impeccable shape     — 从零设计新界面
+/impeccable animate   — 动效/微交互
+/impeccable bolder    — 让设计更出彩
+/impeccable quieter   — 让设计更安静
+/impeccable colorize  — 配色方案
+/impeccable typeset   — 排版
+/impeccable layout    — 布局调整
+/impeccable distill   — 简化/去冗余
+/impeccable harden    — 边界/错误状态
+/impeccable delight   — 惊喜细节
+/impeccable init      — 初始化 PRODUCT.md
+/impeccable document  — 写设计文档
+/impeccable extract   — 提取设计 token
+/impeccable overdrive — 极致视觉效果
+/impeccable adapt     — 适配不同平台
+/impeccable clarify   — 信息架构梳理
+/impeccable optimize  — 性能优化
 
-  <!-- ── 11. 反模式 ── -->
-  <section id="sec-antipatterns">
-    <h2>🚫 反模式 — 不要做</h2>
-
-    <div class="block" data-label="反模式">
-      <div class="label"><span>LinkDesk 开发反模式</span><span class="tags"><span class="tag t-amber">规则</span><span class="tag t-red">必读</span></span></div>
-      <div class="content">不要自创算法，照抄 VS Code
-不要改 flex 元素拖拽时的 width（用 opacity 留占位）
-不要嵌套卡片（card in card）
-不要手写 Tauri listen()——用 useTauriEvent hook
-不要说"架构不支持"——检查六类插件接口
-不要把壳级功能放在插件里——删了插件功能还在吗？
-不要说"这个功能插件做不了"——插件没有 API 白名单
-不要把终端当成软件的定义——LinkDesk 是通用容器</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+还有：onboard / live / teach / craft
+安装：npx impeccable install → /impeccable init</pre>
     </div>
-  </section>
+  </div>
 
-  <!-- ── 12. E3 进度 ── -->
-  <section id="sec-progress">
-    <h2>📊 E3 当前进度</h2>
-
-    <div class="block" data-label="E3进度">
-      <div class="label"><span>E3 架构最后一站</span><span class="tags"><span class="tag">进度</span><span class="tag">E3</span></span></div>
-      <div class="content">E3a ✅ 13/13 — 多 WebView 基础
-E3b ✅ 57/57 🎉 — 主题引擎插件化
-E3c ✅ 13/13 🎉 — 语言引擎插件化
-E3d ✅ 3/3 🎉 — ProfileService + activationEvents
-E3e ✅ 5/5 🎉 — 标题栏暗色化 + 通知面板分组
-→ E3f 壳 UI 收尾（进行中）
-→ E4 文件树 + Monaco 编辑器（34 任务，文档已就绪）
-
-执行清单：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md（唯一真相源）</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">linkdesk:find-skills + linkdesk:skill-creator</span>
+      <span class="card-tags"><span class="tag">scoped</span><span class="tag">skill管理</span></span>
     </div>
-  </section>
+    <div class="card-body">
+      <button class="copy-btn" data-text="linkdesk:find-skills — 搜索/安装 skill（项目域）
+linkdesk:skill-creator — 创建/修改/评测 skill（项目域）
 
-  <!-- ── 13. 常用路径 ── -->
-  <section id="sec-paths">
-    <h2>📁 常用路径速查</h2>
+触发词：找技能、安装 skill、创建 skill、修改 skill、评测 skill">复制</button>
+      <pre>linkdesk:find-skills    → 搜索/安装 skill（项目域优先用 skillhub）
+linkdesk:skill-creator   → 创建/修改/优化/评测 skill
 
-    <div class="block" data-label="常用路径">
-      <div class="label"><span>项目 & 文档路径</span><span class="tags"><span class="tag t-teal">路径</span></span></div>
-      <div class="content">项目根：          e:\linkdesk\linkdesk\
-文档根：          docs/
-Electron 架构：    docs/02-Electron架构/
-插件制造：        docs/03-插件制造/
-未来规划：        docs/04-未来规划/
-开发管理：        docs/开发管理/
-总体设计：        docs/总体设计/
-E3 执行清单：     docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md
-元文档：          docs/02-Electron架构/00-元文档/
-CLAUDE.md：      e:\linkdesk\linkdesk\CLAUDE.md
-Memory 索引：     C:\Users\fengy\.claude\projects\e--linkdesk\memory\MEMORY.md
-plugin.schema：  public/schemas/plugin.schema.json</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+触发词：找技能、安装 skill、创建 skill、修改 skill、评测 skill</pre>
     </div>
-  </section>
+  </div>
+</section>
 
-  <!-- ── 14. 部件命名 ── -->
-  <section id="sec-naming">
-    <h2>🧭 部件命名速查</h2>
-    <p class="hint">固定名称，不用"三栏中间那个"。来自 CLAUDE.md。</p>
+<!-- S13: 全局 Skills -->
+<section id="s13" class="section">
+  <div class="section-title">🌐 全局 Skills 触发词</div>
+  <div class="section-desc">Claude Code 内置全局 skills</div>
 
-    <div class="block" data-label="部件命名">
-      <div class="label"><span>UI 区域固定名称</span><span class="tags"><span class="tag">术语</span><span class="tag t-red">必读</span></span></div>
-      <div class="content">图标栏 — 最左 42px 竖条
-侧栏   — 图标栏右边，插件面板区
-主区   — 标签页内容区
-标签栏 — 主区顶部，标签页 tabs
-顶栏   — 整个窗口最上面（标题栏）
-状态栏 — 整个窗口最下面</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">常用全局 Skills 一览</span>
+      <span class="card-tags"><span class="tag">全局</span><span class="tag">skill</span></span>
     </div>
-  </section>
-
-  <!-- ── 15. 关键文件速查表 ── -->
-  <section id="sec-keyfiles">
-    <h2>🗺️ 关键文件速查表</h2>
-    <p class="hint">你要做什么 → 读这个。来自 CLAUDE.md。</p>
-
-    <div class="block" data-label="关键文件">
-      <div class="label"><span>任务 → 文件对照表</span><span class="tags"><span class="tag">导航</span><span class="tag t-red">必读</span></span></div>
-      <div class="content">写 Electron 代码前       → docs/02-Electron架构/00-元文档/00-旧Bug预警与新生风险.md
-迁移执行每步检查         → docs/02-Electron架构/00-元文档/00-迁移执行守则.md
-E1 执行前必读            → docs/02-Electron架构/E1_Electron迁移_暂定/10-迁移方案缺口补丁.md
-全方案审计               → docs/02-Electron架构/00-元文档/00-全方案步进审计.md
-理解架构                 → docs/开发管理/当前状态.md
-部件名称                 → docs/总体设计/V3-部件命名规范.md
-写插件                   → docs/03-插件制造/（00-README 概览）
-已确认决策               → memory design-decisions + phase4-design-decisions
-已知坑                   → memory v3-pitfalls + phase3-drag-bugs
-主题系统                 → memory theme-system</div>
-      <button class="btn-copy" onclick="copyBlock(this)">复制</button>
+    <div class="card-body">
+      <button class="copy-btn" data-text="skill-creator: 创建/修改/优化 skill
+find-skills: 搜索/安装 skill
+claude-api: Claude API/SDK 参数/定价/模型
+run: 启动项目 App 验证改动
+simplify: 代码复用/简化/效率审查
+review: 代码审查（找 bug）
+security-review: 安全审查
+dataviz: 图表/可视化（plotly/d3/matplotlib）
+slidev: Slidev 演示文稿（技术分享）
+summarize: 摘要 URL/文件（web/PDF/图片/音频）
+loop: 定时重复运行命令
+update-config: 配置 settings.json / 权限 / 环境变量
+keybindings-help: 自定义快捷键
+full-output-enforcement: 强制完整输出、禁止占位符">复制</button>
+      <pre>skill-creator    → 创建/修改/优化 skill
+find-skills      → 搜索/安装 skill
+claude-api       → Claude API/SDK 参数/定价/模型
+run              → 启动项目 App 验证改动
+simplify         → 代码复用/简化/效率审查
+review           → 代码审查（找 bug）
+security-review  → 安全审查
+dataviz          → 图表/可视化（plotly/d3/matplotlib…）
+slidev           → Slidev 演示文稿（技术分享）
+summarize        → 摘要 URL/文件（web/PDF/图片/音频）
+loop             → 定时重复运行命令
+update-config    → 配置 settings.json / 权限 / 环境变量
+keybindings-help → 自定义快捷键
+full-output-enforcement → 强制完整输出、禁止占位符</pre>
     </div>
-  </section>
+  </div>
+</section>
+
+<!-- S14: 架构原则 -->
+<section id="s14" class="section">
+  <div class="section-title">🏗️ 核心原则速查</div>
+  <div class="section-desc">LinkDesk 核心设计原则 —— 做任何修改前对照检查</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">九条品质戒律</span>
+      <span class="card-tags"><span class="tag">品质</span><span class="tag">戒律</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="精益求精 / 慢工出细活 / 完美 / AI友好 / 归一化 / 插件自由 / VS Code化 / 易操作 / 禁止硬编码">复制</button>
+      <pre>1. 精益求精 — 不满足于"能用"
+2. 慢工出细活 — 宁可慢，不返工
+3. 完美 — 不放过任何一个缝 bug
+4. AI 友好 — GUI / 结构化文件 / 代码归一化 三层
+5. 归一化 — 一个概念只在一个地方实现（不会 v2.6）
+6. 插件自由 — 插件可以替换、扩展，不被核心限制
+7. VS Code 化 — 对标 VS Code 交互，不降级
+8. 易操作 — 用户不查文档就能用
+9. 禁止硬编码 — getAssetPath() 归一化，无绝对路径</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">大厅模型速记</span>
+      <span class="card-tags"><span class="tag">架构</span><span class="tag">大厅</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="LinkDesk = Link（连接）+ Desk（桌子）
+核心是圆形大厅（提供桌子），插件是周边小房间（独立进程）
+交流走大厅 — Registry-mediated / 松耦合
+直连走点对点 IPC — 高频推流
+
+核心准入三条机械规则：
+1. 多提供方 — 至少 2 个插件能提供此能力
+2. 多消费方 — 至少 2 个插件消费此能力
+3. 桌子不知道内容 — 核心不感知数据语义">复制</button>
+      <pre>LinkDesk = Link（连接）+ Desk（桌子）
+核心是圆形大厅（提供桌子），插件是周边小房间（独立进程）
+交流走大厅 — Registry-mediated / 松耦合
+直连走点对点 IPC — 高频推流
+
+核心准入三条机械规则：
+1. 多提供方 — 至少 2 个插件能提供此能力
+2. 多消费方 — 至少 2 个插件消费此能力
+3. 桌子不知道内容 — 核心不感知数据语义</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">AI 友好三层</span>
+      <span class="card-tags"><span class="tag">AI友好</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="1. GUI 层 — 声明式配置，所见即所得
+2. 结构化文件层 — JSON/YAML 配置，AI 可读写
+3. 代码归一化层 — 一个概念一个实现，AI 改了不会漏">复制</button>
+      <pre>1. GUI 层 — 声明式配置，所见即所得
+2. 结构化文件层 — JSON/YAML 配置，AI 可读写
+3. 代码归一化层 — 一个概念一个实现，AI 改了不会漏</pre>
+    </div>
+  </div>
+</section>
+
 </main>
-
-<!-- ════════════ Toast ════════════ -->
-<div class="toast" id="toast">已复制 ✓</div>
+</div>
 
 <script>
-// ── Build sidebar tree ──
+// ── Fix: save/restore scroll position on tab switch ──
 (function() {
-  const tree = document.getElementById('tree');
-  const sections = document.querySelectorAll('main section');
-  const categories = [
-    { id: 'sec-opening',      icon: '🚀', label: '开场白 — 新 AI 进场' },
-    { id: 'sec-closing',      icon: '🏁', label: '结束语 — 任务报告' },
-    { id: 'sec-quality',      icon: '🔍', label: '质量追问 — 代码审查' },
-    { id: 'sec-shell',        icon: '💻', label: 'Git Bash 常用命令' },
-    { id: 'sec-git',          icon: '🔀', label: 'Git 操作' },
-    { id: 'sec-pluginjson',   icon: '🔌', label: 'plugin.json 片段' },
-    { id: 'sec-skills',       icon: '🎯', label: 'Skill 触发词速查' },
-    { id: 'sec-memory',       icon: '🧠', label: '记忆管理' },
-    { id: 'sec-devcommands',  icon: '⚡', label: '开发命令全集' },
-    { id: 'sec-constraints',  icon: '🛡️', label: '硬约束速查（15条）' },
-    { id: 'sec-discipline',   icon: '📏', label: '执行纪律' },
-    { id: 'sec-antipatterns', icon: '🚫', label: '反模式 — 不要做' },
-    { id: 'sec-progress',     icon: '📊', label: 'E3 当前进度' },
-    { id: 'sec-paths',        icon: '📁', label: '常用路径速查' },
-    { id: 'sec-naming',       icon: '🧭', label: '部件命名速查' },
-    { id: 'sec-keyfiles',     icon: '🗺️', label: '关键文件速查表' },
-  ];
+  const main = document.getElementById('main');
+  const KEY = 'ld-corpus-scroll';
 
-  // Count items per category
-  const counts = {};
-  sections.forEach(s => {
-    const blocks = s.querySelectorAll('.block');
-    counts[s.id] = blocks.length;
-  });
-
-  let html = '';
-  categories.forEach(c => {
-    const count = counts[c.id] || 0;
-    html += `<a class="item" href="#${c.id}" data-id="${c.id}">${c.icon} ${c.label}<span class="count">${count}</span></a>`;
-  });
-  tree.innerHTML = html;
-
-  // Click handler
-  tree.addEventListener('click', function(e) {
-    const item = e.target.closest('.item');
-    if (!item) return;
-    e.preventDefault();
-    const id = item.dataset.id;
-    const sec = document.getElementById(id);
-    if (sec) {
-      sec.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      // Flash highlight
-      sec.classList.add('highlight-target');
-      setTimeout(() => sec.classList.remove('highlight-target'), 700);
-    }
-    // Update active
-    tree.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
-    item.classList.add('active');
-  });
-
-  // Scroll spy
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        tree.querySelectorAll('.item').forEach(el => el.classList.remove('active'));
-        const item = tree.querySelector(`[data-id="${entry.target.id}"]`);
-        if (item) item.classList.add('active');
-      }
+  // Restore saved scroll position on load
+  const saved = sessionStorage.getItem(KEY);
+  if (saved) {
+    requestAnimationFrame(() => {
+      main.scrollTop = parseInt(saved, 10);
     });
-  }, { rootMargin: '-20% 0px -70% 0px' });
-  sections.forEach(s => observer.observe(s));
+  }
+
+  // Save on visibility change (tab switch) and before unload
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) {
+      sessionStorage.setItem(KEY, main.scrollTop);
+    }
+  });
+
+  window.addEventListener('beforeunload', () => {
+    sessionStorage.setItem(KEY, main.scrollTop);
+  });
 })();
 
-// ── Copy ──
-function copyBlock(btn) {
-  const block = btn.closest('.block');
-  const content = block.querySelector('.content');
-  const text = content.textContent;
-  navigator.clipboard.writeText(text).then(() => {
-    btn.textContent = '已复制 ✓';
-    btn.classList.add('copied');
-    showToast();
-    setTimeout(() => {
-      btn.textContent = '复制';
-      btn.classList.remove('copied');
-    }, 1500);
+// ── Copy to clipboard ──
+document.querySelectorAll('.copy-btn').forEach(btn => {
+  btn.addEventListener('click', e => {
+    e.stopPropagation();
+    const text = btn.dataset.text;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✓ 已复制';
+      btn.classList.add('copied');
+      setTimeout(() => {
+        btn.textContent = '复制';
+        btn.classList.remove('copied');
+      }, 1500);
+    });
   });
+});
+
+// ── Sidebar navigation: smooth scroll + active highlight ──
+const navItems = document.querySelectorAll('.nav-item');
+const sections = document.querySelectorAll('.section');
+
+function activateNav(id) {
+  navItems.forEach(n => n.classList.toggle('active', n.dataset.section === id));
 }
 
-function showToast() {
-  const toast = document.getElementById('toast');
-  toast.classList.add('show');
-  clearTimeout(toast._timeout);
-  toast._timeout = setTimeout(() => toast.classList.remove('show'), 1500);
-}
+navItems.forEach(item => {
+  item.addEventListener('click', () => {
+    const id = item.dataset.section;
+    const target = document.getElementById(id);
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      activateNav(id);
+    }
+  });
+});
+
+// ── Scroll spy ──
+const mainEl = document.getElementById('main');
+mainEl.addEventListener('scroll', () => {
+  let current = null;
+  sections.forEach(sec => {
+    const rect = sec.getBoundingClientRect();
+    if (rect.top <= 120) current = sec.id;
+  });
+  if (current) activateNav(current);
+});
 
 // ── Search ──
-(function() {
-  const search = document.getElementById('search');
-  const sections = document.querySelectorAll('main section');
-  const blocks = document.querySelectorAll('.block');
-  const items = document.querySelectorAll('#tree .item');
+const searchBox = document.getElementById('search-box');
+searchBox.addEventListener('input', () => {
+  const query = searchBox.value.trim().toLowerCase();
 
-  search.addEventListener('input', function() {
-    const q = this.value.toLowerCase().trim();
-    if (!q) {
-      sections.forEach(s => s.style.display = '');
-      blocks.forEach(b => b.style.display = '');
-      items.forEach(i => i.style.display = '');
-      return;
-    }
+  if (!query) {
+    sections.forEach(s => s.classList.remove('hidden'));
+    document.querySelectorAll('.card').forEach(c => c.classList.remove('hidden'));
+    document.querySelector('.no-results')?.remove();
+    document.querySelectorAll('mark').forEach(m => {
+      m.replaceWith(...m.childNodes);
+    });
+    return;
+  }
 
-    // Show/hide sidebar items
-    const visibleCats = new Set();
-    sections.forEach(s => {
-      const secText = (s.textContent || '').toLowerCase();
-      const secId = s.id;
-      let anyVisible = false;
-      s.querySelectorAll('.block').forEach(b => {
-        const text = (b.textContent || '').toLowerCase();
-        const label = (b.dataset.label || '').toLowerCase();
-        if (text.includes(q) || label.includes(q)) {
-          b.style.display = '';
-          anyVisible = true;
-          visibleCats.add(secId);
-        } else {
-          b.style.display = 'none';
-        }
-      });
-      s.style.display = anyVisible ? '' : 'none';
+  let anyVisible = false;
+
+  sections.forEach(section => {
+    const cards = section.querySelectorAll('.card');
+    let sectionVisible = false;
+
+    cards.forEach(card => {
+      const text = card.textContent.toLowerCase();
+      const match = text.includes(query);
+      card.classList.toggle('hidden', !match);
+      if (match) sectionVisible = true;
     });
-    items.forEach(i => {
-      const id = i.dataset.id;
-      i.style.display = visibleCats.has(id) ? '' : 'none';
-    });
+
+    section.classList.toggle('hidden', !sectionVisible);
+    if (sectionVisible) anyVisible = true;
   });
 
-  // Ctrl+K focus
-  document.addEventListener('keydown', function(e) {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      e.preventDefault();
-      search.focus();
-      search.select();
+  // Clear old highlights
+  document.querySelectorAll('mark').forEach(m => m.replaceWith(...m.childNodes));
+  if (query) {
+    document.querySelectorAll('.card:not(.hidden) pre').forEach(pre => {
+      highlightText(pre, query);
+    });
+  }
+
+  // No results
+  let nr = document.querySelector('.no-results');
+  if (!anyVisible) {
+    if (!nr) {
+      nr = document.createElement('div');
+      nr.className = 'no-results';
+      nr.textContent = '🔍 没有匹配 "' + searchBox.value + '" 的结果';
+      elId('main').appendChild(nr);
     }
+  } else {
+    nr?.remove();
+  }
+});
+
+function elId(id) { return document.getElementById(id); }
+
+function highlightText(el, query) {
+  const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT, null, false);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+
+  nodes.forEach(node => {
+    const text = node.textContent;
+    const idx = text.toLowerCase().indexOf(query);
+    if (idx === -1) return;
+
+    const span = document.createElement('span');
+    span.innerHTML =
+      escapeHTML(text.slice(0, idx)) +
+      '<mark>' + escapeHTML(text.slice(idx, idx + query.length)) + '</mark>' +
+      escapeHTML(text.slice(idx + query.length));
+    node.replaceWith(span);
   });
-})();
+}
+
+function escapeHTML(s) {
+  const div = document.createElement('div');
+  div.appendChild(document.createTextNode(s));
+  return div.innerHTML;
+}
+
+// ── Init: first nav item active ──
+if (navItems.length) activateNav(navItems[0].dataset.section);
 </script>
-
 </body>
 </html>
