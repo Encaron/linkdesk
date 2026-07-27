@@ -274,6 +274,7 @@ function App() {
             default: "custom",
             enum: ["custom", "followTheme"],
             description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
+            onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           "app.accentColor": {
             type: "string",
