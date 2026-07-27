@@ -23,6 +23,9 @@ export interface ConfigurationProperty {
    *  可 async——applyAllConfigurations 按注册顺序 await 保证时序。
    *  如：theme onApply (async load) → accent onApply (sync setProperty) 不会竞态。 */
   onApply?: (value: unknown) => void | Promise<void>;
+  /** E3f #59d0：声明式条件显隐——依赖 key 的值不等于 value 时整行不渲染。
+   *  对标 VS Code package.json `when` 条件。所有配置项通用，一次写完，任意插件复用。 */
+  dependsOn?: { key: string; value: unknown };
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */
