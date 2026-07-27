@@ -42,7 +42,6 @@ import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings, registerKeybinding } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
-import { executeCommand } from "./core/CommandRegistry"; // E3f #52: native menu → command dispatch
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
@@ -490,16 +489,6 @@ function App() {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
     };
   }, [createTab]);
-
-  // E3f #52：原生菜单栏命令 → 转发到 CommandRegistry
-  useEffect(() => {
-    const onNativeMenu = (e: Event) => {
-      const commandId = (e as CustomEvent).detail as string;
-      executeCommand(commandId);
-    };
-    window.addEventListener('native-menu-command', onNativeMenu);
-    return () => window.removeEventListener('native-menu-command', onNativeMenu);
-  }, []);
 
   /* ---- 串口控制 ---- */
   // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）

@@ -20,8 +20,6 @@ import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
 import { IpcBridge } from './ipc-bridge.js';
-import { buildAppMenu } from './menu-builder.js';
-
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -116,30 +114,6 @@ ipcMain.on('theme-changed', (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
-  }
-});
-
-// E3f #52e：原生菜单栏模式——接收 MenuRegistry 数据 + 模式切换
-// 默认 hamburger（无原生菜单栏，走 <HamburgerMenu /> 组件）
-let _menuData: import('./menu-builder.js').MenuBarItem[] = [];
-
-ipcMain.on('menu-bar-data', (_event, data: import('./menu-builder.js').MenuBarItem[]) => {
-  _menuData = data;
-  // 重建原生菜单（如果当前是 menubar 模式）
-  if (mainWindow && !mainWindow.isDestroyed() && _menuStyle === 'menubar') {
-    Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
-  }
-});
-
-let _menuStyle = 'hamburger';
-
-ipcMain.on('set-menu-style', (_event, style: string) => {
-  if (!mainWindow || mainWindow.isDestroyed()) return;
-  _menuStyle = style;
-  if (style === 'menubar') {
-    Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
-  } else {
-    Menu.setApplicationMenu(null);
   }
 });
 
