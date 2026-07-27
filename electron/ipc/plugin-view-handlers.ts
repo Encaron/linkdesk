@@ -30,5 +30,13 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     _registry?.toggleDevTools?.(pluginId);
   });
 
-  console.log('[plugin-view-handlers] 已注册 4 个 IPC handler');
+  // E3f #58a：创建插件 WebView——占位 HTML，真渲染后续迁移
+  ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plugin: ${pluginId}</title>
+<style>body{background:#1e1e1e;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:14px;margin:0}</style></head>
+<body><div>🔌 ${pluginId}</div></body></html>`;
+    _registry?.registerPlugin(pluginId, `data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+  });
+
+  console.log('[plugin-view-handlers] 已注册 5 个 IPC handler');
 }
