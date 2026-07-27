@@ -3,7 +3,6 @@ import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
 import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/NotificationService";
-import HamburgerMenu from "./components/HamburgerMenu";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
@@ -772,7 +771,6 @@ function App() {
       <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-body">
-        <HamburgerMenu />
         <IconBar
           sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
