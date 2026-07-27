@@ -15,6 +15,7 @@ import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core
 // Phase 5c：齿轮菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
+import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏第一个位置
 import "./IconBar.css";
 
 interface IconBarProps {
@@ -223,6 +224,8 @@ function IconBar({ sidebarView, onOpenOrFocus }: IconBarProps) {
   return (
     <div className="icon-bar" role="navigation" aria-label={t("导航")}>
       <div className="icon-bar-top" ref={containerRef}>
+        {/* E3f #52b：汉堡——图标栏第一个位置，对标 VS Code GlobalCompositeBar */}
+        <HamburgerMenu />
         {topIcons.map(renderIcon)}
       </div>
       <div className="icon-bar-bottom">

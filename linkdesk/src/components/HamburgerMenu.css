@@ -1,6 +1,6 @@
-/* HamburgerMenu —— ☰ 按钮 + 下拉面板 */
+/* HamburgerMenu —— 图标栏第一个位置，对标 VS Code GlobalCompositeBar */
 
-/* 按钮——放在图标栏左上角 */
+/* 按钮——和图标栏按钮同尺寸，颜色更淡区分于视图图标 */
 .hamburger-btn {
   display: flex;
   align-items: center;
@@ -11,29 +11,28 @@
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  font-size: 18px;
+  font-size: 20px;
   transition: background 120ms, color 120ms;
   flex-shrink: 0;
 }
 
 .hamburger-btn:hover,
 .hamburger-btn.hamburger-open {
-  background: var(--tab-hover-bg);
   color: var(--text-primary);
 }
 
-/* 下拉面板 */
+/* 下拉面板——从图标栏右侧弹出 */
 .hamburger-dropdown {
   position: fixed;
-  top: 42px;
-  left: 0;
-  width: 220px;
-  max-height: calc(100vh - 60px);
+  top: 0;
+  left: 42px; /* 图标栏宽度 */
+  width: 200px;
+  max-height: 100vh;
   overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid var(--separator);
-  border-radius: 0 6px 6px 0;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+  border-left: none;
+  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
   z-index: 2550;
   padding: 4px 0;
 }
