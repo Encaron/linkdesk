@@ -12,24 +12,13 @@ import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
 import "./TitleBar.css";
 
-/** window.linkdesk.window API —— preload-shell.ts 注入 */
-const win = () => (window as any).linkdesk?.window;
-
 function TitleBar() {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [maximized, setMaximized] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titlebarRef = useRef<HTMLDivElement>(null);
-
-  // 监听窗口最大化状态变化
-  useEffect(() => {
-    win()?.isMaximized().then((m: boolean) => setMaximized(m));
-    const unsub = win()?.onMaximizeChange((m: boolean) => setMaximized(m));
-    return () => { unsub?.(); };
-  }, []);
 
   // 点击外部关闭下拉
   useEffect(() => {
@@ -240,31 +229,6 @@ function TitleBar() {
 
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />
-
-      {/* 窗口控制按钮 */}
-      <div className="titlebar-controls">
-        <button
-          className="titlebar-ctrl-btn"
-          onClick={() => win()?.minimize()}
-          title="最小化"
-        >
-          <span className="codicon codicon-chrome-minimize" />
-        </button>
-        <button
-          className="titlebar-ctrl-btn"
-          onClick={() => maximized ? win()?.unmaximize() : win()?.maximize()}
-          title={maximized ? "还原" : "最大化"}
-        >
-          <span className={`codicon ${maximized ? "codicon-chrome-restore" : "codicon-chrome-maximize"}`} />
-        </button>
-        <button
-          className="titlebar-ctrl-btn titlebar-ctrl-close"
-          onClick={() => win()?.close()}
-          title="关闭"
-        >
-          <span className="codicon codicon-chrome-close" />
-        </button>
-      </div>
 
       {/* 下拉面板 */}
       {renderDropdown()}

@@ -11,6 +11,7 @@ import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import TitleBar from "./components/TitleBar"; // E3f #52f
+import WindowControls from "./components/WindowControls"; // E3f #52f
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
@@ -782,6 +783,8 @@ function App() {
     <div className="app-shell">
       {/* E3f #52g：TitleBar——titlebar 或 both 模式显示 */}
       {showTitleBar && <TitleBar />}
+      {/* E3f #52f：窗口控件（─ □ ×）——始终渲染，不受 menuStyle 影响 */}
+      <WindowControls />
       <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-main">

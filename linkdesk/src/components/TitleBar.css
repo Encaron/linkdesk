@@ -74,39 +74,6 @@
   -webkit-app-region: drag;
 }
 
-/* 窗口控制按钮容器——对标 VS Code Windows 原生控件 */
-.titlebar-controls {
-  display: flex;
-  flex-shrink: 0;
-  -webkit-app-region: no-drag;
-}
-
-.titlebar-ctrl-btn {
-  width: 38px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: var(--text-secondary);
-  cursor: pointer;
-  font-size: 12px;
-  font-family: inherit;
-  -webkit-app-region: no-drag;
-  transition: background 120ms, color 120ms;
-}
-
-.titlebar-ctrl-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-}
-
-.titlebar-ctrl-close:hover {
-  background: var(--titlebar-close-hover);
-  color: #fff;
-}
-
 /* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
 .titlebar-dropdown {
   position: fixed;
