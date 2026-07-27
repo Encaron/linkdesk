@@ -5,13 +5,15 @@
  * 每个函数对应一个 ipcMain.handle() 通道。
  */
 
-import { app, ipcMain } from 'electron';
+import { app, ipcMain, BrowserWindow } from 'electron';
 import type { PluginViewRegistry, ViewBounds } from '../plugin-view-registry.js';
 
 let _registry: PluginViewRegistry | null = null;
+let _mainWindow: BrowserWindow | null = null;
 
-export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
+export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWindow: BrowserWindow): void {
   _registry = registry;
+  _mainWindow = mainWindow;
 
   ipcMain.handle('plugin-view:setVisible', (_event, pluginId: string, visible: boolean) => {
     _registry?.setVisible(pluginId, visible);
@@ -45,5 +47,12 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     _registry?.registerPlugin(pluginId, url);
   });
 
-  console.log('[plugin-view-handlers] 已注册 6 个 IPC handler');
+  // #58e 修复：插件 WebView 渲染完成通知——主进程转发到壳窗口
+  ipcMain.on('plugin-view:ready', (_event, pluginId: string) => {
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('plugin-view:ready', pluginId);
+    }
+  });
+
+  console.log('[plugin-view-handlers] 已注册 7 个 IPC handler');
 }

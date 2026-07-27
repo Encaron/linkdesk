@@ -157,6 +157,12 @@ try {
       toggleDevTools: (id: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', id), // E3f #58
       create: (id: string) => ipcRenderer.invoke('plugin-view:create', id), // E3f #58a
       destroy: (id: string) => ipcRenderer.invoke('plugin-view:destroy', id), // E3f #58d
+      // #58e 修复：订阅插件 WebView 渲染完成通知——壳收到后才关 React fallback
+      onReady: (cb: (pluginId: string) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, pluginId: string) => cb(pluginId);
+        ipcRenderer.on('plugin-view:ready', handler);
+        return () => ipcRenderer.removeListener('plugin-view:ready', handler);
+      },
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

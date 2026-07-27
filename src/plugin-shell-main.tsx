@@ -52,6 +52,11 @@ function bootstrap() {
         </I18nextProvider>
       </React.StrictMode>,
     );
+
+    // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback
+    try {
+      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+    } catch { /* preload 未就绪时静默 */ }
   });
 }
 
