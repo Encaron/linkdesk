@@ -329,13 +329,14 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   // Phase 5c fix：静态导入替代动态 import()——动态 import 的 .then() 晚于组件 mount，
   // 导致 terminal 组件注册的真实 handler 被 placeholder 覆盖。
   if (c.commands) {
-    const cmds = c.commands as Array<{ id: string; title: string; category?: string; when?: string }>;
+    const cmds = c.commands as Array<{ id: string; title: string; category?: string; when?: string; configurationKey?: string }>;
     for (const cmd of cmds) {
       registerCommand(pluginId, {
         id: cmd.id,
         title: cmd.title,
         category: cmd.category,
         when: cmd.when,
+        configurationKey: cmd.configurationKey,
         handler: async () => {
           console.warn(`[pluginLoader] 命令 "${cmd.id}" 尚未绑定 handler——请在组件 mount 时注册`);
         },
