@@ -32,6 +32,7 @@ const GROUP_ORDER: Record<string, number> = {
 function HamburgerMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
@@ -49,11 +50,12 @@ function HamburgerMenu() {
   }, [open]);
 
   const handleCommand = useCallback((command: string) => {
+    if (!command) return; // 父菜单项——不执行命令
     setOpen(false);
     executeCommand(command);
   }, []);
 
-  // 构建分组数据
+  // 构建分组数据——每个 group 下可能有多个顶级 item（含子菜单）
   const items = getMenuItems(MenuId.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
 
@@ -71,6 +73,60 @@ function HamburgerMenu() {
   // 查找快捷键
   const allKeybindings = getKeybindings();
 
+  /** 获取显示标签——label > 命令 title > command id */
+  function getLabel(item: MenuItem): string {
+    if (item.label) return item.label;
+    if (item.command) return getCommand(item.command)?.title ?? item.command;
+    return "";
+  }
+
+  /** 渲染单个菜单项（叶子或父节点） */
+  function renderItem(item: MenuItem & { pluginId: string }, depth: number) {
+    const hasChildren = item.children && item.children.length > 0;
+    const isExpanded = expanded.has(item.command + item.label);
+    const label = getLabel(item);
+    const kb = item.command ? allKeybindings.find((k) => k.command === item.command) : null;
+    const keyLabel = kb?.key
+      ?.replace(/ctrl/i, "Ctrl+")
+      ?.replace(/alt/i, "Alt+")
+      ?.replace(/shift/i, "Shift+")
+      ?.toUpperCase();
+
+    return (
+      <div key={`${item.pluginId}:${item.command}:${item.label}`}>
+        <button
+          className="hamburger-item"
+          style={{ paddingLeft: 12 + depth * 12 }}
+          onClick={() => {
+            if (hasChildren) {
+              setExpanded((prev) => {
+                const next = new Set(prev);
+                if (next.has(item.command + item.label)) next.delete(item.command + item.label);
+                else next.add(item.command + item.label);
+                return next;
+              });
+            } else {
+              handleCommand(item.command);
+            }
+          }}
+        >
+          <span className="hamburger-item-label">{label}</span>
+          <span className="hamburger-item-right">
+            {keyLabel && <span className="hamburger-item-key">{keyLabel}</span>}
+            {hasChildren && (
+              <span className={`codicon ${isExpanded ? "codicon-chevron-down" : "codicon-chevron-right"} hamburger-chevron`} />
+            )}
+          </span>
+        </button>
+        {hasChildren && isExpanded && (
+          <div className="hamburger-submenu">
+            {item.children!.map((c) => renderItem(c as MenuItem & { pluginId: string }, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
   return (
     <>
       <button
@@ -84,38 +140,12 @@ function HamburgerMenu() {
 
       {open && (
         <div className="hamburger-dropdown" ref={menuRef}>
-          {sortedGroups.map(([group, groupItems]) => {
-            const label = GROUP_LABELS[group] ?? group;
-            return (
-              <div key={group} className="hamburger-group">
-                <div className="hamburger-group-label">{label}</div>
-                {groupItems.map((item) => {
-                  const cmd = getCommand(item.command);
-                  const kb = allKeybindings.find((k) => k.command === item.command);
-                  const keyLabel = kb?.key
-                    ?.replace(/ctrl/i, "Ctrl+")
-                    ?.replace(/alt/i, "Alt+")
-                    ?.replace(/shift/i, "Shift+")
-                    ?.toUpperCase();
-
-                  return (
-                    <button
-                      key={`${item.pluginId}:${item.command}`}
-                      className="hamburger-item"
-                      onClick={() => handleCommand(item.command)}
-                    >
-                      <span className="hamburger-item-label">
-                        {cmd?.title ?? item.command}
-                      </span>
-                      {keyLabel && (
-                        <span className="hamburger-item-key">{keyLabel}</span>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            );
-          })}
+          {sortedGroups.map(([group, groupItems]) => (
+            <div key={group} className="hamburger-group">
+              <div className="hamburger-group-label">{GROUP_LABELS[group] ?? group}</div>
+              {groupItems.map((item) => renderItem(item, 0))}
+            </div>
+          ))}
         </div>
       )}
     </>
