@@ -7,7 +7,7 @@
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain, protocol, dialog } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme } from 'electron';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
@@ -39,11 +39,15 @@ let ipcBridge: IpcBridge | null = null;
 const isDev = !app.isPackaged;
 
 function createWindow(): void {
+  // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
+  nativeTheme.themeSource = 'dark';
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 500,
+    backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
       preload: path.join(__dirname, 'preload-shell.js'),
       contextIsolation: true,
@@ -88,6 +92,14 @@ function createWindow(): void {
     mainWindow = null;
   });
 }
+
+// E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
+ipcMain.on('theme-changed', (_event, isDark: boolean) => {
+  nativeTheme.themeSource = isDark ? 'dark' : 'light';
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
+  }
+});
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
 ipcMain.on('preload-ready', () => {
