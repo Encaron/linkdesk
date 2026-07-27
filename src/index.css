@@ -228,9 +228,8 @@ html, body, #root {
 .palette-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 7px 14px;
+  gap: 8px;
+  padding: 6px 14px;
   font-size: 12px;
   color: var(--text-primary);
   cursor: pointer;
@@ -243,21 +242,49 @@ html, body, #root {
   color: white;
 }
 
+/* E3f #53b：对标 VS Code 两排布局——rows(column) > row(flex) */
+.palette-item-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.palette-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
 .palette-item-label {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  flex: 1;
 }
 
 .palette-item-category {
   flex-shrink: 0;
   font-size: 11px;
-  color: var(--text-muted);
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+.palette-item-detail {
+  font-size: 11px;
+  opacity: 0.6;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin-top: 1px;
 }
 
 .palette-item:hover .palette-item-category,
-.palette-item.selected .palette-item-category {
-  color: rgba(255, 255, 255, 0.7);
+.palette-item:hover .palette-item-detail,
+.palette-item.selected .palette-item-category,
+.palette-item.selected .palette-item-detail {
+  opacity: 0.85;
 }
 
 /* E3f #53b：命令面板齿轮——hover 时显示，对标 VS Code per-command gear */

@@ -10,7 +10,7 @@
 
 | | |
 |---|---|
-| Phase | **E4**——第一批消费者插件（34 任务，~1,930 行） |
+| Phase | **E4**——第一批消费者插件（34 任务，~1,885 行）+ 前置 4 项 |
 | 输入 | E3 完成——多 WebView + 主题/语言跨进程 + Profile 就绪 |
 | 输出 | 文件树侧栏视图 + Monaco 编辑器标签页 + 跨插件命令 API + 文件搜索 + 多工作区 |
 | 依赖 | E3 完成（E3a 多 WebView + E2c FileService + E2c FileAssociationService） |
@@ -26,7 +26,7 @@
 | E4e | **工作区与持久化**——Multi-root + .linkdesk-workspace + 状态持久化(展开/选中/滚动) + 配置项清单 | 5 | 新——对标 VS Code Workspace |
 | E4f | **Monaco 编辑器**——编辑器包装 + 编码检测 + JSON schema + 多标签页 + dirty + Ctrl+Shift+T | 4 | 新——对标 VS Code Editor |
 
-总计 **34 任务，~1,930 行**。E4 执行时重新审定行数。
+总计 **34 任务，~1,885 行** + **4 项前置任务**。E4 执行时重新审定行数。
 任务 ID `#64`–`#97`，承接 E3 的 `#24`–`#63`。进度见 `07-执行清单.md`（**唯一真相源**）。
 
 ## 为什么不是 15 任务
@@ -46,26 +46,38 @@
 
 ## 涉及架构改动
 
-**零。** 全部走 `plugin.json` + React 组件。E1-E3 建的设施已就绪。
+**接近零。** 全部走 `plugin.json` + React 组件。E1-E3 建的设施已就绪。仅 3 项核心新增（均有准入理由）：
+
+| 新增项 | 位置 | 理由 |
+|---|---|---|
+| `FileService.copy()` | `src/core/FileService.ts` | 🔥 弥补缺口——底层 API 有定义但未导出。E4b 拖放/剪贴板依赖 |
+| `EncodingService` | `src/core/encoding/EncodingService.ts` | 🔥 多消费方准入——file-tree 搜索 + editor 都需编码检测 |
+| `closedTabStack` | `src/hooks/useTabManager.ts` | 🔥 Ctrl+Shift+T 恢复关闭标签页——~10 行 |
 
 | 已有设施 | E4 消费 | 来源 |
 |---|---|---|
-| `FileService.*` | 读/写/删/建/监听/列目录 | E2c #13 |
+| `FileService.*` | 读/写/删/建/监听/列目录 + 🔥 **copy() 前置补缺** | E2c #13 + E4 前置 |
 | `FileAssociationService.*` | 扩展名→编辑器映射 | E2c #13a |
 | `DialogService.confirm()` | 删除确认 / 覆盖确认 / 拖放确认 | E2c #15 |
 | `WorkspaceService.*` | 多根工作区 | E2c #14 |
-| KeybindingRegistry | F2/Delete/Ctrl+XCV/Ctrl+Shift+F | E2c #16-#17a |
+| `KeybindingRegistry` | F2/Delete/Ctrl+XCV/Ctrl+Shift+F | E2c #16-#17a |
+| `ContextKeyService` | 右键菜单 when 条件 + 快捷键 when | 已有 |
+| `MenuRegistry` | 🔥 **`MenuId.FileContext`——文件树注册 + Git 注入** | 已有 |
 | `CoreEvents.onDidChangeFileSystem` | 外部文件操作→刷新 | E2c #19 |
 | `lastSidebar` | 📁 图标 toggle 侧栏 | E2d 已验证 |
 | `FactorySlots` | 声明为 settings 插槽消费者 | E2c #19e |
 | E3a 多 WebView | 文件树独立进程 + Monaco 独立进程 | E3 |
-| `FileDecorationRegistry` | 文件装饰器注册/注销/查询——Git 注册/文件树消费 | E3f #59b |
+| `FileDecorationRegistry` | 🔥 **前置——E3f #59b 必须完工** | E3f #59b |
+| `PluginStateService` | 🔥 **E4e 状态持久化统一入口** | 已有 |
+| `EncodingService` | 🔥 **在核心——file-tree 搜索 + editor 共享** | E4 前置 |
+| `setDirty(tabId, bool)` | 🔥 **壳已提供——编辑器消费，不新建命令** | useTabManager |
+| `closedTabStack` | 🔥 **前置——useTabManager 加 ~10 行** | E4 前置 |
 
 ## 完工标准
 
 - 点 📁 图标 → 侧栏显示文件树 → 展开目录 → 看到文件（含虚拟滚动，万级文件不卡）
 - 双击 .json/.md/.txt → Monaco 编辑器打开 → 语法高亮 + IntelliSense
-- 右键文件 → 18 项菜单完整 → 重命名/删除/新建/剪切/复制/粘贴/复制路径/在文件管理器中显示/打开方式… 全有
+- 右键文件 → 18 项菜单完整（MenuRegistry 注册，Git 可注入）→ 重命名/删除/新建/剪切/复制/粘贴/复制路径/在文件管理器中显示/打开方式… 全有
 - F2 重命名 → 行内编辑 → Enter 确认 → Esc 取消 → 文件名冲突时提示覆盖
 - 设置页 "在文件树中显示 settings.json" → 文件树展开定位 + 高亮 + 滚动到可见区域
 - F5 刷新 → 文件树恢复展开状态 + 选中状态 + 滚动位置
