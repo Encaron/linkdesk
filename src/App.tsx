@@ -38,6 +38,7 @@ import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type W
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
+import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings, registerKeybinding } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
@@ -483,12 +484,24 @@ function App() {
       setLangPickerOpen(true);
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
+    // E3f #54：输出面板
+    const onOutput = () => { openOrFocusTab("output", { pinned: true }); };
+    window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
     return () => {
       window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
+      window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
     };
-  }, [createTab]);
+  }, [createTab, openOrFocusTab]);
+
+  // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
+  useEffect(() => {
+    const unsub = onDidRequestShowChannel.event((channelId: string) => {
+      openOrFocusTab("output", { pinned: true, sourceId: channelId });
+    });
+    return unsub;
+  }, [openOrFocusTab]);
 
   /* ---- 串口控制 ---- */
   // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
