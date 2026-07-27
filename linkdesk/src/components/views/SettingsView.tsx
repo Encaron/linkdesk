@@ -272,7 +272,7 @@ function SettingRow({
     [configKey, onChange]
   );
 
-  // E3f #53d：齿轮打开前设 context key
+  // E3f #53d：齿轮打开前设 context key（settingModified 给 ContextMenu 的 when 过滤用）
   const handleGearClick = useCallback(() => {
     const insp = inspectConfiguration(configKey);
     ContextKeyService.setValue("settingKey", configKey);
@@ -314,7 +314,7 @@ function SettingRow({
         <ContextMenu
           menuId={MenuId.SettingItemGear}
           anchor={gearAnchor}
-          context={{}}
+          context={{ settingKey: configKey }}
           onClose={handleGearClose}
         />
       )}

@@ -17,7 +17,6 @@ import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings } from "./KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "./ConfigurationRegistry";
-import { ContextKeyService } from "./ContextKeyService";
 import i18n from "../i18n";
 
 /* ── Callbacks ── */
@@ -184,8 +183,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.resetSetting",
     title: i18n.t("重置此设置"),
     category: i18n.t("首选项"),
-    handler: async () => {
-      const key = ContextKeyService.getValue<string>("settingKey");
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { settingKey?: string } | undefined;
+      const key = ctx?.settingKey;
       if (!key) return;
       const { showConfirm } = await import("./DialogService");
       const confirmed = await showConfirm(
@@ -203,8 +203,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingId",
     title: i18n.t("复制设置 ID"),
     category: i18n.t("首选项"),
-    handler: async () => {
-      const key = ContextKeyService.getValue<string>("settingKey");
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { settingKey?: string } | undefined;
+      const key = ctx?.settingKey;
       if (!key) return;
       await navigator.clipboard.writeText(key);
       const { pushToast, TOAST_TTL_INFO } = await import("./toast");
@@ -217,8 +218,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingAsJson",
     title: i18n.t("复制为 JSON"),
     category: i18n.t("首选项"),
-    handler: async () => {
-      const key = ContextKeyService.getValue<string>("settingKey");
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { settingKey?: string } | undefined;
+      const key = ctx?.settingKey;
       if (!key) return;
       const { getConfigurationValue } = await import("./ConfigurationService");
       const value = getConfigurationValue(key);
