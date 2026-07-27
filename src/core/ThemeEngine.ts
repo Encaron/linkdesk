@@ -85,6 +85,11 @@ export async function loadTheme(themeName: string): Promise<Theme> {
 
 /** 应用主题：清理旧变量 → 写入新变量 → 标记 data-theme → fire 事件 */
 export function applyTheme(theme: Theme): void {
+  // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
+  const linkdesk = (window as any).linkdesk;
+  const isDark = theme.type === "dark";
+  linkdesk?.events?.notifyTheme?.(isDark);
+
   const root = document.documentElement;
 
   // E2c #19h A1：清理旧主题的所有 CSS 变量——防止残留
@@ -100,11 +105,6 @@ export function applyTheme(theme: Theme): void {
   }
   root.setAttribute("data-theme", theme.type);
   currentTheme = theme;
-
-  // E3f #51：通知主进程标题栏颜色
-  const linkdesk = (window as any).linkdesk;
-  const isDark = theme.type === "dark";
-  linkdesk?.events?.notifyTheme?.(isDark);
 
   // E3b #35：广播 CSS 变量到所有插件 WebView——跨进程主题同步
   if (linkdesk?.bridge?.broadcast) {
