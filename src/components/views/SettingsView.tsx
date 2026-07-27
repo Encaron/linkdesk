@@ -401,6 +401,24 @@ function renderControl(
           />
         );
       }
+      // E3f #59d3：renderHint "color" → 色块预览（#59e ColorPicker 替换为弹出调色器）
+      if (prop.renderHint === "color") {
+        return (
+          <div className="settings-color-control">
+            <div
+              className="settings-color-swatch"
+              style={{ background: String(val) }}
+              title={String(val)}
+            />
+            <input
+              className="input"
+              type="text"
+              value={String(val)}
+              onChange={(e) => onChange(e.target.value)}
+            />
+          </div>
+        );
+      }
       return (
         <input
           className="input"

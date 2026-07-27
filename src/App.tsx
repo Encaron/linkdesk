@@ -272,6 +272,8 @@ function App() {
             type: "string",
             default: "#0078d4",
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
+            dependsOn: { key: "app.accentMode", value: "custom" },
+            renderHint: "color",
             onApply: (v) => applyAccentColor(v as string),
           },
           "app.accentMode": {

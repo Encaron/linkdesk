@@ -316,3 +316,18 @@
   white-space: pre;
   user-select: text;
 }
+
+/* E3f #59d3：色块预览——#59e ColorPicker 替换为弹出调色器 */
+.settings-color-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid var(--separator);
+  flex-shrink: 0;
+}
