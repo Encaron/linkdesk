@@ -17,8 +17,9 @@ import {
   applyTheme,
   applyAccentColor,
   getCurrentTheme,
+  getEffectiveAccentColor,
 } from "../core/ThemeEngine";
-import { setConfigurationValue, getConfigurationValue } from "../core/ConfigurationService";
+import { setConfigurationValue } from "../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
 
@@ -53,8 +54,8 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
     try {
       const theme = await loadTheme(themeName);
       applyTheme(theme);
-      // 对标 App.tsx onApply：applyTheme 后恢复用户强调色——盖回主题自带的 accent
-      applyAccentColor(getConfigurationValue<string>("app.accentColor"));
+      // E3f #59d2：强调色走归一化函数——followTheme 模式走主题色，custom 模式走自定义
+      applyAccentColor(getEffectiveAccentColor());
     } catch {
       // 加载失败——静默，keep current
     }
