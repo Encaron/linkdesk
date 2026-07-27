@@ -2,7 +2,7 @@
  * TitleBar —— 自定义标题栏，对标 VS Code 桌面版 titlebarPart。
  * E3f #52f：HTML/CSS 渲染，数据来自 MenuRegistry。插件可扩展顶级菜单。
  *
- * 只渲染横排菜单按钮（文件▼、查看▼...）——☰ 属于 IconBar 的 HamburgerMenu。
+ * 布局：Logo ─ 菜单按钮 ─ 拖拽区 ─ ─ □ ×
  *
  * 设计文档：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/06-E3f-壳UI收尾.md §二
  */
@@ -12,15 +12,26 @@ import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
 import "./TitleBar.css";
 
+/** window.linkdesk.window API —— preload-shell.ts 注入 */
+const win = () => (window as any).linkdesk?.window;
+
 function TitleBar() {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
+  const [maximized, setMaximized] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titlebarRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭
+  // 监听窗口最大化状态变化
+  useEffect(() => {
+    win()?.isMaximized().then((m: boolean) => setMaximized(m));
+    const unsub = win()?.onMaximizeChange((m: boolean) => setMaximized(m));
+    return () => { unsub?.(); };
+  }, []);
+
+  // 点击外部关闭下拉
   useEffect(() => {
     if (!openGroup) return;
     const onMouseDown = (e: MouseEvent) => {
@@ -53,7 +64,7 @@ function TitleBar() {
     }
   }, []);
 
-  // 菜单数据——按 group 分组
+  // 菜单数据
   const allItems = getMenuItems(MenuId.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
@@ -71,7 +82,6 @@ function TitleBar() {
     return "";
   }
 
-  /** 展平一个 group——跳过无 command 的父项，将其 children 提升到顶层 */
   function flattenGroupItems(
     groupItems: Array<MenuItem & { pluginId: string }>
   ): Array<MenuItem & { pluginId: string }> {
@@ -92,7 +102,6 @@ function TitleBar() {
     return result;
   }
 
-  /** 获取当前 hover 项的 children（子面板数据） */
   const hoveredChildren = (() => {
     if (!hoveredKey || !openGroup) return null;
     const groupItems = flattenGroupItems(groups.get(openGroup) ?? []);
@@ -105,14 +114,12 @@ function TitleBar() {
     return null;
   })();
 
-  /** 获取 group 的按钮标签 */
   function getGroupLabel(groupName: string): string {
     const items = groups.get(groupName);
     if (!items?.length) return groupName;
     return items[0].label ?? groupName;
   }
 
-  /** hover 另一个菜单按钮时自动切换 */
   const handleButtonHover = useCallback(
     (group: string) => {
       if (openGroup && openGroup !== group) {
@@ -123,7 +130,6 @@ function TitleBar() {
     [openGroup]
   );
 
-  /** 计算下拉面板定位——菜单按钮正下方 */
   function getDropdownStyle(): React.CSSProperties {
     if (!openGroup) return { display: "none" };
     const btn = btnRefs.current.get(openGroup);
@@ -145,7 +151,6 @@ function TitleBar() {
     };
   }
 
-  /** 渲染单个菜单项 */
   function renderSingleItem(item: MenuItem & { pluginId: string }) {
     const key = item.command + (item.label ?? "");
     const hasChildren = item.children && item.children.length > 0;
@@ -170,7 +175,6 @@ function TitleBar() {
     );
   }
 
-  /** 渲染下拉面板 */
   function renderDropdown() {
     if (!openGroup) return null;
     const groupItems = groups.get(openGroup);
@@ -216,7 +220,10 @@ function TitleBar() {
 
   return (
     <div className="titlebar" ref={titlebarRef}>
-      {/* 菜单按钮——每个 group 一个按钮 */}
+      {/* Logo */}
+      <span className="titlebar-logo">LD</span>
+
+      {/* 菜单按钮 */}
       <div className="titlebar-menus">
         {sortedGroupNames.map((groupName) => (
           <button
@@ -231,8 +238,33 @@ function TitleBar() {
         ))}
       </div>
 
-      {/* 右侧拖拽区——填充剩余空间 */}
+      {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />
+
+      {/* 窗口控制按钮 */}
+      <div className="titlebar-controls">
+        <button
+          className="titlebar-ctrl-btn"
+          onClick={() => win()?.minimize()}
+          title="最小化"
+        >
+          <span className="codicon codicon-chrome-minimize" />
+        </button>
+        <button
+          className="titlebar-ctrl-btn"
+          onClick={() => maximized ? win()?.unmaximize() : win()?.maximize()}
+          title={maximized ? "还原" : "最大化"}
+        >
+          <span className={`codicon ${maximized ? "codicon-chrome-restore" : "codicon-chrome-maximize"}`} />
+        </button>
+        <button
+          className="titlebar-ctrl-btn titlebar-ctrl-close"
+          onClick={() => win()?.close()}
+          title="关闭"
+        >
+          <span className="codicon codicon-chrome-close" />
+        </button>
+      </div>
 
       {/* 下拉面板 */}
       {renderDropdown()}

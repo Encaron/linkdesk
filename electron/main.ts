@@ -38,6 +38,7 @@ let pluginViewRegistry: PluginViewRegistry | null = null;
 let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
+let _windowIpcRegistered = false; // E3f #52f：窗口控制 IPC handler 只注册一次
 
 function createWindow(): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
@@ -96,6 +97,18 @@ function createWindow(): void {
   mainWindow.once('ready-to-show', () => {
     mainWindow?.show();
   });
+
+  // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
+  if (!_windowIpcRegistered) {
+    _windowIpcRegistered = true;
+    ipcMain.on('window:minimize', () => mainWindow?.minimize());
+    ipcMain.on('window:maximize', () => mainWindow?.maximize());
+    ipcMain.on('window:unmaximize', () => mainWindow?.unmaximize());
+    ipcMain.on('window:close', () => mainWindow?.close());
+    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+  }
+  mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
+  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
 
   mainWindow.on('closed', () => {
     mainWindow = null;
