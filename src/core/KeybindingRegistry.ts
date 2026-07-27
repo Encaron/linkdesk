@@ -300,9 +300,12 @@ export async function openKeybindingsSettings(opts?: { query?: string }): Promis
 const _bindings: Keybinding[] = [];
 
 /** 注册快捷键——插件加载时 / 用户 keybindings.json 加载时调用。
- *  E2c #17a：允许多个 binding 映射到同一个 key（冲突由 Resolver 在 dispatch 时仲裁）。 */
+ *  E2c #17a：允许多个 binding 映射到同一个 key（冲突由 Resolver 在 dispatch 时仲裁）。
+ *  E3f #59：同命令同 key 去重——防止 builtin+user 重复注册导致冲突红字。 */
 export function registerKeybinding(binding: Keybinding): void {
-  _bindings.push({ ...binding, key: normalizeKey(binding.key) });
+  const normKey = normalizeKey(binding.key);
+  if (_bindings.some((b) => b.command === binding.command && b.key === normKey)) return;
+  _bindings.push({ ...binding, key: normKey });
   CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B：通知 UI 刷新
 }
 
@@ -340,6 +343,8 @@ class KeybindingResolver {
     }
     return [...byKey.values()]
       .filter((list) => list.length > 1)
+      // E3f #59：同命令同 key 不算冲突——只报不同命令抢同一键
+      .filter((list) => new Set(list.map((b) => b.command)).size > 1)
       .map((bindings) => ({ key: bindings[0].key, bindings }));
   }
 
