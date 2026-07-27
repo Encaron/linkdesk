@@ -11,7 +11,7 @@
  */
 
 import { registerCommand, type Command } from "./CommandRegistry";
-import { registerMenuItems, MenuId } from "./MenuRegistry";
+import { registerMenuItems, getMenuItems, MenuId } from "./MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
@@ -232,4 +232,31 @@ export function ensureCoreCommands(): void {
     },
   ]);
 
+  // E3f #52e：发送菜单数据到主进程——原生 menubar 与汉堡共享数据源
+  syncMenuBarToMain();
+
+}
+
+/** E3f #52e：将 MenuId.MenuBar 的菜单数据序列化后发送到主进程 */
+function syncMenuBarToMain(): void {
+  try {
+    const items = getMenuItems(MenuId.MenuBar);
+    // 提取主进程需要的字段（去掉 pluginId 等渲染进程专有字段）
+    const serialized = items.map((item) => ({
+      command: item.command,
+      label: item.label,
+      group: item.group,
+      children: item.children?.map((c) => ({
+        command: c.command,
+        label: c.label,
+        group: c.group,
+        children: c.children?.map((gc) => ({
+          command: gc.command,
+          label: gc.label,
+          group: gc.group,
+        })),
+      })),
+    }));
+    (window as any).linkdesk?.events?.notifyMenuBarData?.(serialized);
+  } catch { /* 静默 */ }
 }
