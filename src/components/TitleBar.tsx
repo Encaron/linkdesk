@@ -8,6 +8,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { getAssetPath } from "../core/assetPath";
 import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
 import "./TitleBar.css";
@@ -209,8 +210,8 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
 
   return (
     <div className="titlebar" ref={titlebarRef}>
-      {/* Logo */}
-      <span className="titlebar-logo">LD</span>
+      {/* Logo——替换 public/assets/logo.svg 即可换 logo，无需改代码 */}
+      <img className="titlebar-logo" src={getAssetPath("assets/logo.svg")} alt="LinkDesk" />
 
       {/* 菜单按钮——hamburger 模式下隐藏 */}
       {showMenus && <div className="titlebar-menus">
