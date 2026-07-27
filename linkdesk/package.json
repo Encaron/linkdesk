@@ -10,8 +10,8 @@
     "preview": "vite preview",
     "lint": "eslint src/ plugins/",
     "check": "tsc --noEmit && eslint src/ plugins/ && vitest run",
-    "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && electron .\"",
-    "electron:build": "npm run build && tsc -p electron/tsconfig.json && electron-builder",
+    "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron .\"",
+    "electron:build": "npm run build && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
     "dev:plugins": "node scripts/build-plugins.mjs --watch"
   },
