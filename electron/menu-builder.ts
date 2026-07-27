@@ -48,11 +48,19 @@ export function buildAppMenu(menuItems: MenuBarItem[], mainWindow: BrowserWindow
     (a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99)
   );
 
-  // 转换——每组的 children 作为子菜单
-  const template: any[] = sorted.map(([group, items]) => ({
-    label: GROUP_LABELS[group] ?? group,
-    submenu: items.map((item) => convertItem(item, mainWindow)),
-  }));
+  // 转换——每组一个顶级菜单。父菜单项（command 为空）展平 children
+  const template: any[] = sorted.map(([group, items]) => {
+    const submenu: any[] = [];
+    for (const item of items) {
+      if (item.children?.length) {
+        // 父菜单项——children 直接作为子菜单项
+        submenu.push(...item.children.map((c) => convertItem(c, mainWindow)));
+      } else {
+        submenu.push(convertItem(item, mainWindow));
+      }
+    }
+    return { label: GROUP_LABELS[group] ?? group, submenu };
+  });
 
   return Menu.buildFromTemplate(template);
 }

@@ -108,6 +108,7 @@ let _menuData: import('./menu-builder.js').MenuBarItem[] = [];
 
 ipcMain.on('menu-bar-data', (_event, data: import('./menu-builder.js').MenuBarItem[]) => {
   _menuData = data;
+  console.log('[main] 收到菜单数据:', data.length, '组');
   // 重建原生菜单（如果当前是 menubar 模式）
   if (mainWindow && !mainWindow.isDestroyed() && _menuStyle === 'menubar') {
     Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
@@ -119,7 +120,11 @@ let _menuStyle = 'hamburger';
 ipcMain.on('set-menu-style', (_event, style: string) => {
   if (!mainWindow || mainWindow.isDestroyed()) return;
   _menuStyle = style;
+  console.log('[main] 菜单模式切换:', style, '| 已有数据:', _menuData.length, '组');
   if (style === 'menubar') {
+    if (_menuData.length === 0) {
+      console.log('[main] ⚠️ 菜单数据为空——renderer 可能还没发 menu-bar-data');
+    }
     Menu.setApplicationMenu(buildAppMenu(_menuData, mainWindow));
   } else {
     Menu.setApplicationMenu(null);
