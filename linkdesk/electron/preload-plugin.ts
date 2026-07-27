@@ -167,6 +167,11 @@ try {
       },
     },
 
+    // #58e 修复：插件 WebView 渲染完成 → 通知壳，壳收到后才关 React fallback
+    pluginViews: {
+      notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
+    },
+
     // ── E3a #27-#28：通用事件订阅——壳推送→集中分发→插件回调 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // React 侧推荐使用 usePluginIpcEvent() hook（src/core/usePluginIpcEvent.ts）。

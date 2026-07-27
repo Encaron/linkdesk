@@ -75,7 +75,7 @@ function createWindow(): void {
   // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
   pluginViewRegistry = new PluginViewRegistry(windowManager);
   // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
-  registerPluginViewHandlers(pluginViewRegistry);
+  registerPluginViewHandlers(pluginViewRegistry, mainWindow);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
   ipcBridge = new IpcBridge(mainWindow, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
