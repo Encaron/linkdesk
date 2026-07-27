@@ -1,11 +1,11 @@
 /**
  * 插件视图管理 IPC 处理器——壳渲染进程 → 主进程 PluginViewRegistry
  *
- * E3a #29：壳侧 MainContent 通过 IPC 控制插件 WebContentView 的显隐和位置。
+ * E3f #58c：多 WebView 渲染——plugin-view:create 加载真实 React 页面（取代 #58a 占位 HTML）。
  * 每个函数对应一个 ipcMain.handle() 通道。
  */
 
-import { ipcMain } from 'electron';
+import { app, ipcMain } from 'electron';
 import type { PluginViewRegistry, ViewBounds } from '../plugin-view-registry.js';
 
 let _registry: PluginViewRegistry | null = null;
@@ -30,12 +30,14 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     _registry?.toggleDevTools?.(pluginId);
   });
 
-  // E3f #58a：创建插件 WebView——占位 HTML，真渲染后续迁移
+  // E3f #58c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
   ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Plugin: ${pluginId}</title>
-<style>body{background:#1e1e1e;color:#888;display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;font-size:14px;margin:0}</style></head>
-<body><div>🔌 ${pluginId}</div></body></html>`;
-    _registry?.registerPlugin(pluginId, `data:text/html;charset=utf-8,${encodeURIComponent(html)}`);
+    const isDev = !app.isPackaged;
+    const url = isDev
+      ? `http://localhost:1420/plugin-view.html?plugin-view=${pluginId}`
+      // 生产环境通过 linkdesk:// 协议加载（需确保 dist/plugin-view.html 已构建并部署到协议映射的路径）
+      : `linkdesk://${pluginId}/plugin-view.html?plugin-view=${pluginId}`;
+    _registry?.registerPlugin(pluginId, url);
   });
 
   console.log('[plugin-view-handlers] 已注册 5 个 IPC handler');
