@@ -14,22 +14,6 @@ import { getCommand, executeCommand } from "../core/CommandRegistry";
 import { getKeybindings } from "../core/KeybindingRegistry";
 import "./HamburgerMenu.css";
 
-/** 组标签映射——命令 group → 菜单章节名 */
-const GROUP_LABELS: Record<string, string> = {
-  file: "File",
-  edit: "Edit",
-  view: "View",
-  help: "Help",
-};
-
-/** 组排序——越小组越靠前 */
-const GROUP_ORDER: Record<string, number> = {
-  file: 0,
-  edit: 1,
-  view: 2,
-  help: 3,
-};
-
 function HamburgerMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -81,7 +65,7 @@ function HamburgerMenu() {
     groups.get(group)!.push(item);
   }
   const sortedGroups = [...groups.entries()].sort(
-    (a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99)
+    (a, b) => (a[1][0]?.order ?? 99) - (b[1][0]?.order ?? 99)
   );
   const allKeybindings = getKeybindings();
 
@@ -132,7 +116,7 @@ function HamburgerMenu() {
           <div className="hamburger-main-panel">
             {sortedGroups.map(([group, groupItems]) => (
               <div key={group} className="hamburger-group">
-                <div className="hamburger-group-label">{GROUP_LABELS[group] ?? group}</div>
+                <div className="hamburger-group-label">{groupItems[0]?.label ?? group}</div>
                 {groupItems.map((item) => {
                   const key = item.command + (item.label ?? "");
                   const hasChildren = item.children && item.children.length > 0;
