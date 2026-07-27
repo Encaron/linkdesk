@@ -21,20 +21,35 @@
   color: var(--text-primary);
 }
 
-/* 下拉面板——从图标栏右侧弹出 */
+/* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
 .hamburger-dropdown {
   position: fixed;
   top: 0;
   left: 42px; /* 图标栏宽度 */
-  width: 200px;
+  display: flex;
   max-height: 100vh;
-  overflow-y: auto;
   background: var(--bg-card);
   border: 1px solid var(--separator);
   border-left: none;
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
   z-index: 2550;
+}
+
+/* 主面板（左侧） */
+.hamburger-main-panel {
+  width: 180px;
   padding: 4px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* 子面板（右侧——hover 时出现） */
+.hamburger-sub-panel {
+  width: 200px;
+  padding: 4px 0;
+  border-left: 1px solid var(--separator);
+  overflow-y: auto;
+  flex-shrink: 0;
 }
 
 /* 组 */
@@ -56,11 +71,10 @@
   color: var(--text-muted);
 }
 
-/* 菜单项 */
+/* 菜单项（主面板 + 子面板共用） */
 .hamburger-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   width: 100%;
   padding: 4px 12px;
   background: none;
@@ -74,22 +88,10 @@
   transition: background 80ms;
 }
 
-.hamburger-item:hover {
+.hamburger-item:hover,
+.hamburger-item.hamburger-item-hovered {
   background: var(--accent);
   color: var(--badge-text);
-}
-
-/* 快捷键提示 */
-.hamburger-item-key {
-  font-size: 10px;
-  color: var(--text-muted);
-  flex-shrink: 0;
-  margin-left: 16px;
-}
-
-.hamburger-item:hover .hamburger-item-key {
-  color: var(--badge-text);
-  opacity: 0.8;
 }
 
 /* 右侧：快捷键 + chevron */
@@ -101,18 +103,29 @@
   margin-left: auto;
 }
 
-/* 展开/收起箭头 */
-.hamburger-chevron {
-  font-size: 12px;
+/* 快捷键提示 */
+.hamburger-item-key {
+  font-size: 10px;
   color: var(--text-muted);
   flex-shrink: 0;
+  margin-left: 8px;
 }
 
-.hamburger-item:hover .hamburger-chevron {
+.hamburger-item:hover .hamburger-item-key,
+.hamburger-item.hamburger-item-hovered .hamburger-item-key {
   color: var(--badge-text);
   opacity: 0.8;
 }
 
-/* 子菜单——缩进，上部不加 padding */
-.hamburger-submenu {
-  /* children 的缩进由 renderItem depth 参数控制 paddingLeft */}
+/* 展开箭头 */
+.hamburger-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.hamburger-item:hover .hamburger-chevron,
+.hamburger-item.hamburger-item-hovered .hamburger-chevron {
+  color: var(--badge-text);
+  opacity: 0.8;
+}

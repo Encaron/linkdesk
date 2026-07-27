@@ -1,7 +1,8 @@
 /**
  * HamburgerMenu —— ☰ 菜单按钮 + 下拉面板。
- * E3f #52：对标 VS Code 浏览器版标题栏左侧汉堡菜单。
+ * E3f #52：对标 VS Code 浏览器版 GlobalActivityActionViewItem。
  * 数据源：MenuRegistry → MenuId.MenuBar → 按 group 分组。
+ * 交互：hover 展开子菜单（右侧弹出），点击叶子项执行命令。
  *
  * 设计文档：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/06-E3f-壳UI收尾.md §二
  */
@@ -32,9 +33,10 @@ const GROUP_ORDER: Record<string, number> = {
 function HamburgerMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // 点击外部关闭
   useEffect(() => {
@@ -49,83 +51,69 @@ function HamburgerMenu() {
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [open]);
 
+  // 菜单关闭时清除 hover 状态
+  useEffect(() => {
+    if (!open) setHoveredKey(null);
+  }, [open]);
+
   const handleCommand = useCallback((command: string) => {
-    if (!command) return; // 父菜单项——不执行命令
+    if (!command) return;
     setOpen(false);
     executeCommand(command);
   }, []);
 
-  // 构建分组数据——每个 group 下可能有多个顶级 item（含子菜单）
+  /** tiny 延迟——防止快速划过时闪烁 */
+  const scheduleHover = useCallback((key: string | null) => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    if (key === null) {
+      hoverTimerRef.current = setTimeout(() => setHoveredKey(null), 150);
+    } else {
+      hoverTimerRef.current = setTimeout(() => setHoveredKey(key), 100);
+    }
+  }, []);
+
+  // 菜单数据
   const items = getMenuItems(MenuId.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
-
   for (const item of items) {
     const group = item.group ?? "other";
     if (!groups.has(group)) groups.set(group, []);
     groups.get(group)!.push(item);
   }
-
-  // 按 group 排序
   const sortedGroups = [...groups.entries()].sort(
     (a, b) => (GROUP_ORDER[a[0]] ?? 99) - (GROUP_ORDER[b[0]] ?? 99)
   );
-
-  // 查找快捷键
   const allKeybindings = getKeybindings();
 
-  /** 获取显示标签——label > 命令 title > command id */
   function getLabel(item: MenuItem): string {
     if (item.label) return item.label;
     if (item.command) return getCommand(item.command)?.title ?? item.command;
     return "";
   }
 
-  /** 渲染单个菜单项（叶子或父节点） */
-  function renderItem(item: MenuItem & { pluginId: string }, depth: number) {
-    const hasChildren = item.children && item.children.length > 0;
-    const isExpanded = expanded.has(item.command + item.label);
-    const label = getLabel(item);
-    const kb = item.command ? allKeybindings.find((k) => k.command === item.command) : null;
-    const keyLabel = kb?.key
-      ?.replace(/ctrl/i, "Ctrl+")
-      ?.replace(/alt/i, "Alt+")
-      ?.replace(/shift/i, "Shift+")
-      ?.toUpperCase();
-
-    return (
-      <div key={`${item.pluginId}:${item.command}:${item.label}`}>
-        <button
-          className="hamburger-item"
-          style={{ paddingLeft: 12 + depth * 12 }}
-          onClick={() => {
-            if (hasChildren) {
-              setExpanded((prev) => {
-                const next = new Set(prev);
-                if (next.has(item.command + item.label)) next.delete(item.command + item.label);
-                else next.add(item.command + item.label);
-                return next;
-              });
-            } else {
-              handleCommand(item.command);
-            }
-          }}
-        >
-          <span className="hamburger-item-label">{label}</span>
-          <span className="hamburger-item-right">
-            {keyLabel && <span className="hamburger-item-key">{keyLabel}</span>}
-            {hasChildren && (
-              <span className={`codicon ${isExpanded ? "codicon-chevron-down" : "codicon-chevron-right"} hamburger-chevron`} />
-            )}
-          </span>
-        </button>
-        {hasChildren && isExpanded && (
-          <div className="hamburger-submenu">
-            {item.children!.map((c) => renderItem(c as MenuItem & { pluginId: string }, depth + 1))}
-          </div>
-        )}
-      </div>
-    );
+  function getKeyLabel(command: string): string | null {
+    const kb = allKeybindings.find((k) => k.command === command);
+    if (!kb?.key) return null;
+    return kb.key
+      .replace(/ctrl/i, "Ctrl+")
+      .replace(/alt/i, "Alt+")
+      .replace(/shift/i, "Shift+")
+      .toUpperCase();
   }
+
+  /** 获取当前 hover 的 item 的 children */
+  const hoveredChildren = (() => {
+    if (!hoveredKey) return null;
+    for (const [, groupItems] of sortedGroups) {
+      for (const item of groupItems) {
+        const key = item.command + (item.label ?? "");
+        if (key === hoveredKey && item.children?.length) {
+          return item.children as Array<MenuItem & { pluginId: string }>;
+        }
+      }
+    }
+    return null;
+  })();
 
   return (
     <>
@@ -140,12 +128,65 @@ function HamburgerMenu() {
 
       {open && (
         <div className="hamburger-dropdown" ref={menuRef}>
-          {sortedGroups.map(([group, groupItems]) => (
-            <div key={group} className="hamburger-group">
-              <div className="hamburger-group-label">{GROUP_LABELS[group] ?? group}</div>
-              {groupItems.map((item) => renderItem(item, 0))}
+          {/* 主面板——顶级菜单项 */}
+          <div className="hamburger-main-panel">
+            {sortedGroups.map(([group, groupItems]) => (
+              <div key={group} className="hamburger-group">
+                <div className="hamburger-group-label">{GROUP_LABELS[group] ?? group}</div>
+                {groupItems.map((item) => {
+                  const key = item.command + (item.label ?? "");
+                  const hasChildren = item.children && item.children.length > 0;
+
+                  return (
+                    <button
+                      key={`${item.pluginId}:${key}`}
+                      className={`hamburger-item${hoveredKey === key ? " hamburger-item-hovered" : ""}`}
+                      onMouseEnter={() => scheduleHover(hasChildren ? key : null)}
+                      onClick={() => {
+                        if (hasChildren) return; // 有子菜单——不执行命令
+                        handleCommand(item.command);
+                      }}
+                    >
+                      <span className="hamburger-item-label">{getLabel(item)}</span>
+                      <span className="hamburger-item-right">
+                        {getKeyLabel(item.command) && (
+                          <span className="hamburger-item-key">{getKeyLabel(item.command)}</span>
+                        )}
+                        {hasChildren && (
+                          <span className="codicon codicon-chevron-right hamburger-chevron" />
+                        )}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+
+          {/* 子面板——hover 时右侧弹出 */}
+          {hoveredChildren && (
+            <div
+              className="hamburger-sub-panel"
+              onMouseEnter={() => {
+                // 保持 hover 状态——鼠标移入子面板时不关闭
+                if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+              }}
+              onMouseLeave={() => scheduleHover(null)}
+            >
+              {hoveredChildren.map((child) => (
+                <button
+                  key={`${child.pluginId}:${child.command}:${child.label}`}
+                  className="hamburger-item hamburger-sub-item"
+                  onClick={() => handleCommand(child.command)}
+                >
+                  <span className="hamburger-item-label">{getLabel(child)}</span>
+                  {getKeyLabel(child.command) && (
+                    <span className="hamburger-item-key">{getKeyLabel(child.command)}</span>
+                  )}
+                </button>
+              ))}
             </div>
-          ))}
+          )}
         </div>
       )}
     </>
