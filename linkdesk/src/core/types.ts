@@ -24,6 +24,15 @@ export interface IconThemeContribution {
   path: string;
 }
 
+/** contributes.icons 条目——对标 VS Code icon extension point。插件贡献共享图标供其他插件引用。 */
+export interface IconContribution {
+  description: string;
+  default: {
+    fontPath?: string;
+    fontCharacter?: string;
+  };
+}
+
 /** contributes.languages 条目——对标 VS Code language extension point */
 export interface LanguageContribution {
   id: string;

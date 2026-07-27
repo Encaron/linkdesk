@@ -377,6 +377,26 @@
             "additionalProperties": false
           }
         },
+        "icons": {
+          "type": "object",
+          "description": "共享图标——插件贡献图标供其他插件通过 iconSource:shared 引用。对标 VS Code icon extension point。",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["description", "default"],
+            "properties": {
+              "description": { "type": "string", "description": "图标描述" },
+              "default": {
+                "type": "object",
+                "properties": {
+                  "fontPath": { "type": "string", "description": "字体文件路径" },
+                  "fontCharacter": { "type": "string", "description": "字体字符码——如 \\e001" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "additionalProperties": false
+          }
+        },
         "languages": {
           "type": "array",
           "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
