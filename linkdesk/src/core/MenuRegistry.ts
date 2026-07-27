@@ -40,7 +40,7 @@ export enum MenuId {
 /* ── 类型 ── */
 
 export interface MenuItem {
-  /** 命令 ID——引用 CommandRegistry 中的命令 */
+  /** 命令 ID——引用 CommandRegistry 中的命令。有 children 时可为空（父菜单项）。 */
   command: string;
   /** 分组——菜单内的分隔（"navigation" / "edit" / "extension" 等） */
   group?: string;
@@ -48,10 +48,23 @@ export interface MenuItem {
   when?: string;
   /** 排序权重——同 group 内越小越靠前 */
   order?: number;
+  /**
+   * E3f #52a：嵌套子菜单——对标 VS Code SubmenuAction。
+   * 有 children 时 command 可为空字符串——父菜单项不执行命令，展开子菜单。
+   */
+  children?: MenuItem[];
 }
 
 /** 插件在 plugin.json 里声明的菜单项——command 或 submenu 二选一 */
-export type ManifestMenuItem = string | { command: string; when?: string; group?: string };
+export type ManifestMenuItem =
+  | string
+  | {
+      command: string;
+      when?: string;
+      group?: string;
+      /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
+      children?: ManifestMenuItem[];
+    };
 
 /* ── Registry ── */
 
@@ -65,15 +78,41 @@ export function registerMenuItems(
 ): void {
   const existing = _menus.get(menuId) ?? [];
   for (const item of items) {
-    const normalized: MenuItem & { pluginId: string } =
-      typeof item === "string"
-        ? { command: item, pluginId }
-        : { command: item.command, group: item.group, when: item.when, pluginId };
+    let normalized: MenuItem & { pluginId: string };
 
-    // 幂等——同一 menuId 下同一 pluginId 的同一 command 不重复注册
-    const duplicate = existing.some(
-      (e) => e.command === normalized.command && e.pluginId === normalized.pluginId
-    );
+    if (typeof item === "string") {
+      normalized = { command: item, pluginId };
+    } else {
+      normalized = {
+        command: item.command,
+        group: item.group,
+        when: item.when,
+        pluginId,
+      };
+      // E3f #52a：递归处理嵌套 children
+      if (item.children?.length) {
+        normalized.children = item.children.map((c): MenuItem & { pluginId: string } => {
+          if (typeof c === "string") return { command: c, pluginId };
+          return {
+            command: c.command,
+            group: c.group,
+            when: c.when,
+            pluginId,
+            ...(c.children?.length ? {
+              children: c.children.map((gc): MenuItem & { pluginId: string } =>
+                typeof gc === "string" ? { command: gc, pluginId } : { command: gc.command, group: gc.group, when: gc.when, pluginId }
+              ),
+            } : {}),
+          };
+        });
+      }
+    }
+
+    // 幂等——同一 menuId 下同一 pluginId 同一 command 不重复注册
+    // 父菜单项（command 为空但有 children）不做幂等检查——允许多个同名组
+    const duplicate = normalized.command
+      ? existing.some((e) => e.command === normalized.command && e.pluginId === normalized.pluginId)
+      : false;
     if (!duplicate) {
       existing.push(normalized);
     }
