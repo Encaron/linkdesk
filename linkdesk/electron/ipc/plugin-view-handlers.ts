@@ -30,6 +30,11 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     _registry?.toggleDevTools?.(pluginId);
   });
 
+  // E3f #58d：销毁插件 WebView——插件卸载/注销时调用
+  ipcMain.handle('plugin-view:destroy', (_event, pluginId: string) => {
+    _registry?.unregisterPlugin(pluginId);
+  });
+
   // E3f #58c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
   ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
     const isDev = !app.isPackaged;
@@ -40,5 +45,5 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry): void {
     _registry?.registerPlugin(pluginId, url);
   });
 
-  console.log('[plugin-view-handlers] 已注册 5 个 IPC handler');
+  console.log('[plugin-view-handlers] 已注册 6 个 IPC handler');
 }

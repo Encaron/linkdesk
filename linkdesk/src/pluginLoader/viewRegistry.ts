@@ -105,6 +105,8 @@ export function unregisterViewPlugin(pluginId: string): boolean {
   // Phase 5h Step 1：通知消费者（仅在真正删除时——避免空事件导致 UI 无效刷新）
   if (deleted) {
     onDidUnregister.fire(pluginId);
+    // #58d：插件注销→销毁对应 WebContentsView（释放内存）
+    try { linkdesk()?.pluginViews?.destroy?.(pluginId); } catch { /* IPC 不可用时静默 */ }
   }
   return deleted;
 }

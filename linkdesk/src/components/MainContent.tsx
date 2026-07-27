@@ -7,7 +7,7 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { useCallback, useEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -48,6 +48,8 @@ function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
   onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
+  // #58d：有独立 WebView 的插件壳侧只放占位 div，不渲染 React 组件
+  hasPluginView?: (pluginId: string) => boolean,
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -76,9 +78,14 @@ function renderTabContent(
     }
   }
 
-  // Phase 4.4：视图插件路由——唯一的正常路径
+  // Phase 4.4：视图插件路由
+  // #58d：有独立 WebView 的插件——壳侧只放占位 div，由 WebView 渲染内容
   // E2a #3：pluginId 传入 ErrorBoundary——崩溃显示 "「终端」已崩溃 [重试]"
   if (tab.pluginId) {
+    if (hasPluginView?.(tab.pluginId)) {
+      return <div key={tab.id} className="plugin-webview-placeholder" data-plugin-id={tab.pluginId} />;
+    }
+    // 回退路径——WebView 尚未注册时走 React 渲染
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
       return (
@@ -144,6 +151,12 @@ function MainContent({
 
   // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
   const registeredViewIdsRef = useRef<Set<string>>(new Set());
+  // #58d：state 副本——触发 renderTabContent 重渲染，跳过有 WebView 的插件 React 组件
+  const [registeredViewIds, setRegisteredViewIds] = useState<Set<string>>(new Set());
+  const hasPluginView = useCallback(
+    (pluginId: string) => registeredViewIds.has(pluginId),
+    [registeredViewIds],
+  );
 
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
@@ -167,6 +180,8 @@ function MainContent({
     pv.getAllIds?.()?.then((ids: string[]) => {
       const registeredSet = new Set(ids);
       registeredViewIdsRef.current = registeredSet;
+      // #58d：同步 state 以触发 renderTabContent 重渲染
+      setRegisteredViewIds(registeredSet);
 
       const prev = pluginViewsRef.current;
       for (const [pluginId, state] of currentStates) {
@@ -285,7 +300,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, onCreateTab)}
+          {renderTabContent(tab, isFocused, onCreateTab, hasPluginView)}
         </TabPanePositioner>
       ))}
     </div>
