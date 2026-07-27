@@ -54,6 +54,9 @@ export default [
       // ═══ #59c 硬约束 14：effect 回调缺活跃守卫 ═══
       "linkdesk/no-effect-callback-without-active-guard": "warn",
 
+      // ═══ #58e 硬约束 17：JSX 中禁止 ref.current 直接渲染 ═══
+      "linkdesk/no-ref-current-in-jsx": "error",
+
       // ═══ #36k2 硬约束：useEffect/useCallback cleanup 禁止动态 import() ═══
       "linkdesk/no-dynamic-import-in-effect-cleanup": "error",
 

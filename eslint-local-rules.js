@@ -276,8 +276,54 @@ function checkForDynamicImport(node, context, depth = 0) {
   }
 }
 
+// ═══════════════════════════════════════════════════════════
+// 规则 4：JSX 中禁止 ref.current 直接用于渲染
+// ═══════════════════════════════════════════════════════════
+//
+// #58e 教训：异步更新 ref.current 不触发重渲染 → UI 与实际状态脱节。
+// 渲染决策走 useState，ref 仅用于 DOM 引用/前值对比/generation counter。
+//
+// 错误示例：
+//   const idsRef = useRef(new Set());           // ← 用 ref 存渲染状态
+//   return <div>{idsRef.current.size} 项</div>; // ← ref 更新不重渲染
+//
+// 正确示例：
+//   const [ids, setIds] = useState(new Set());  // ← state 驱动渲染
+//   return <div>{ids.size} 项</div>;
+
+const noRefCurrentInJsx = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "JSX 中禁止 ref.current 直接用于渲染——ref 更新不触发重渲染",
+      recommended: true,
+    },
+    messages: {
+      noRefCurrent:
+        "🔥 JSX 中禁止 {{name}}.current——ref 更新不触发 React 重渲染。" +
+        " 异步拿到数据 → ref 更新 → 组件不知道 → 下次任何事件触发重渲染时突然切状态 → UI 跳变/空白（#58e 教训）。" +
+        " 修复：改用 useState。ref 仅用于 DOM 引用/前值对比/generation counter。",
+    },
+  },
+
+  create(context) {
+    return {
+      // 捕获 JSX 表达式容器中的 .current 访问
+      "JSXExpressionContainer > MemberExpression[property.name='current']"(node) {
+        const objectName = node.object.type === "Identifier" ? node.object.name : "?";
+        context.report({
+          node,
+          messageId: "noRefCurrent",
+          data: { name: objectName },
+        });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
   "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
+  "no-ref-current-in-jsx": noRefCurrentInJsx,
 };
