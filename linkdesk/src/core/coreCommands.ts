@@ -260,11 +260,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { commandId?: string } | undefined;
       if (!ctx?.commandId) return;
       const pluginId = getCommandPluginId(ctx.commandId);
-      if (pluginId) {
-        requestSettingsGroup(pluginId);
-        const settingsId = factorySlots.getPluginId("settings");
-        if (settingsId) _callbacks?.openTab(settingsId);
-      }
+      if (pluginId) _callbacks?.openTab(pluginId);
     },
     menuId: MenuId.CommandPaletteItemGear,
     menuGroup: "navigation",
