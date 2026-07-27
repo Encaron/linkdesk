@@ -134,7 +134,11 @@ function HamburgerMenu() {
       </button>
 
       {open && (
-        <div className="hamburger-dropdown" ref={menuRef}>
+        <div
+          className="hamburger-dropdown"
+          ref={menuRef}
+          onMouseLeave={() => scheduleHover(null)}
+        >
           {/* 主面板——顶级菜单项 */}
           <div className="hamburger-main-panel">
             {sortedGroups.map(([group, groupItems]) => (
@@ -181,7 +185,6 @@ function HamburgerMenu() {
                 // 保持 hover 状态——鼠标移入子面板时不关闭
                 if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
               }}
-              onMouseLeave={() => scheduleHover(null)}
             >
               {hoveredChildren.map((child) => {
                 const childDisabled = isDisabled(child);
