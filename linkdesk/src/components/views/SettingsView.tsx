@@ -331,6 +331,12 @@ function SettingRow({
 
   if (!prop) return null;
 
+  // E3f #59d0：声明式条件显隐——prop.dependsOn.key 的值不等于指定值时整行不渲染
+  if (prop.dependsOn) {
+    const depValue = getConfigurationValue(prop.dependsOn.key);
+    if (depValue !== prop.dependsOn.value) return null;
+  }
+
   return (
     <div className="settings-row" id={`setting-row-${configKey}`}>
       <div className="settings-row-info">
