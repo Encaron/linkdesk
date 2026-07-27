@@ -268,6 +268,12 @@ function App() {
               }
             },
           },
+          "app.accentMode": {
+            type: "string",
+            default: "custom",
+            enum: ["custom", "followTheme"],
+            description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
+          },
           "app.accentColor": {
             type: "string",
             default: "#0078d4",
@@ -275,12 +281,6 @@ function App() {
             dependsOn: { key: "app.accentMode", value: "custom" },
             renderHint: "color",
             onApply: (v) => applyAccentColor(v as string),
-          },
-          "app.accentMode": {
-            type: "string",
-            default: "custom",
-            enum: ["custom", "followTheme"],
-            description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
           },
           "app.menuStyle": {
             type: "string",
