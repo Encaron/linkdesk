@@ -46,7 +46,7 @@
       { "id": "terminal.exportLog", "title": "导出日志", "category": "终端", "when": "activeEditor == 'terminal'" },
       { "id": "terminal.toggleSendMode", "title": "切换到 HEX 发送", "category": "终端", "when": "activeEditor == 'terminal'" },
       { "id": "terminal.toggleEcho", "title": "关闭消息回显", "category": "终端", "when": "activeEditor == 'terminal'" },
-      { "id": "terminal.toggleLineNumbers", "title": "隐藏行号", "category": "终端", "when": "activeEditor == 'terminal'" },
+      { "id": "terminal.toggleLineNumbers", "title": "隐藏行号", "category": "终端", "when": "activeEditor == 'terminal'", "configurationKey": "serial-monitor.statusBar.txrx" },
       { "id": "terminal.quickSendFill", "title": "回填到发送区", "category": "终端", "when": "activeEditor == 'terminal'" },
       { "id": "terminal.quickSendEdit", "title": "编辑", "category": "终端", "when": "activeEditor == 'terminal'" },
       { "id": "terminal.quickSendDelete", "title": "删除", "category": "终端", "when": "activeEditor == 'terminal'" }
