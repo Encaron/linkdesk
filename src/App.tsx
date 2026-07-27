@@ -305,18 +305,18 @@ function App() {
 
       // Phase 5b：注册核心命令 + TabContext 菜单项（只执行一次，幂等）
       ensureCoreCommands();
-      // E3f #59e：color-picker.pick 命令——插件调 linkdesk.commands.execute 弹出调色器
+      // E3f #59e2：color-picker.pick 命令——Promise 桥接，插件调 commands.execute 弹出浮层拿到返回值
       registerCommand(APP_PLUGIN_ID, {
         id: "color-picker.pick",
         title: "选择颜色…",
         category: "开发人员",
         handler: async (_token, ...args: unknown[]) => {
-          // TODO: Promise 包装——需宿主渲染 ColorPicker 浮层 resolve/reject。
-          // 当期直接走设置页入口（齿轮 → 强调色色块 → ColorPicker）。
-          const initialColor = (args[0] as { initialColor?: string })?.initialColor ?? "#0078d4";
-          window.dispatchEvent(new CustomEvent("linkdesk:color-picker-pick", {
-            detail: { initialColor },
-          }));
+          const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
+          const color = await import("./components/shared/ColorPicker").then(m =>
+            m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets })
+          );
+          // 返回值通过 executeCommand 的 Promise 传回调用方——对标 VS Code commands.executeCommand
+          return color as unknown as void;
         },
       });
 
