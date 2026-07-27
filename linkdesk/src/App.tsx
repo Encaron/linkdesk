@@ -41,7 +41,7 @@ import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
-import { mountGlobalKeybindings, initUserKeybindings, registerKeybinding } from "./core/KeybindingRegistry";
+import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
 import { applyConfiguration } from "./core/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
 
@@ -49,7 +49,7 @@ import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namesp
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）
-import { ensureCoreCommands, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
+import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
 import SourceStateContext from "./core/SourceStateContext";
@@ -57,9 +57,6 @@ import type { SourceInfo } from "./core/SourceStateContext";
 import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
-
-// E3f #59：防 StrictMode 双 effect 重复注册内置快捷键
-let _builtinKeybindingsRegistered = false;
 
 function App() {
   const { t } = useTranslation();
@@ -306,32 +303,8 @@ function App() {
       // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
       keybindingCleanup = mountGlobalKeybindings();
 
-      // E3f #59-F：注册全部壳级快捷键（防 StrictMode 双 effect 重复注册）
-      if (!_builtinKeybindingsRegistered) {
-        _builtinKeybindingsRegistered = true;
-        const builtins: Array<{ command: string; key: string; args?: unknown[] }> = [
-          { command: "core.openSettings", key: "ctrl+," },
-          { command: "workbench.action.showCommands", key: "ctrl+shift+p" },
-          { command: "workbench.action.selectTheme", key: "ctrl+k ctrl+t" },
-          { command: "workbench.action.selectLanguage", key: "ctrl+k ctrl+l" },
-          { command: "workbench.action.closeActiveTab", key: "ctrl+w" },
-          { command: "workbench.action.nextTab", key: "ctrl+tab" },
-          { command: "workbench.action.nextTab", key: "ctrl+shift+tab", args: [{ shift: true }] },
-          { command: "workbench.action.toggleSplit", key: "ctrl+\\" },
-          { command: "workbench.action.focusNthTab", key: "ctrl+1", args: [{ n: 1 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+2", args: [{ n: 2 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+3", args: [{ n: 3 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+4", args: [{ n: 4 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+5", args: [{ n: 5 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+6", args: [{ n: 6 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+7", args: [{ n: 7 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+8", args: [{ n: 8 }] },
-          { command: "workbench.action.focusNthTab", key: "ctrl+9", args: [{ n: 9 }] },
-        ];
-        for (const b of builtins) {
-          registerKeybinding({ ...b, source: "builtin" });
-        }
-      }
+      // E3f #59-F：注册全部壳级快捷键——声明式 CORE_KEYBINDINGS，幂等
+      ensureCoreKeybindings();
 
       // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
       initUserKeybindings().catch((e) => console.warn("[App] 用户快捷键初始化失败:", e));
