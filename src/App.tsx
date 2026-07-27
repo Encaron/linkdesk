@@ -24,7 +24,7 @@ import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { showConfirm } from "./core/DialogService";
 
-import { loadTheme, applyTheme, applyAccentColor, getAvailableThemes, registerFallbackThemes } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, applyAccentColor, getAvailableThemes, registerFallbackThemes, getEffectiveAccentColor } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
@@ -245,8 +245,8 @@ function App() {
             onApply: async (v) => {
               const t = await loadTheme(v as string);
               applyTheme(t);
-              // 主题文件自带 accent 颜色——用户自定义强调色需盖回去，否则切主题后强调色丢失
-              applyAccentColor(getConfigurationValue<string>("app.accentColor"));
+              // E3f #59d2：强调色走归一化函数——三种路径一条函数，不手写 if/else
+              applyAccentColor(getEffectiveAccentColor());
             },
           },
           "app.language": {
