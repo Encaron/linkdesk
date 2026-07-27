@@ -59,12 +59,13 @@ const MONACO_PADDING = 16;
 interface ActiveCmd {
   cmView: { current: EditorView | null };
   paused: boolean; quickSends: Record<string, string>;
-  sendMode: string; showEcho: boolean; showLineNumbers: boolean;
+  sendMode: string; showEcho: boolean; showLineNumbers: boolean; separateSystemLog: boolean;
   setPaused: (v: boolean | ((p: boolean) => boolean)) => void;
   setSendValue: (v: string) => void;
   setSendMode: (v: string) => void;
   setShowEcho: (v: boolean) => void;
   setShowLineNumbers: (v: boolean) => void;
+  setSeparateSystemLog: (v: boolean) => void;
   setQsEditing: (v: string | null) => void; setQsName: (v: string) => void;
   setQsContent: (v: string) => void; setQsAdding: (v: boolean) => void;
   handleDeleteQuickSend: (key: string) => void;
@@ -682,11 +683,12 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   if (sourceId) {
     _cmdMap.set(sourceId, {
       cmView, paused, quickSends,
-      sendMode, showEcho, showLineNumbers,
+      sendMode, showEcho, showLineNumbers, separateSystemLog,
       setPaused, setSendValue,
       setSendMode: (v: string) => { updateSession({ sendMode: v }); },
       setShowEcho: (v: boolean) => { updateSession({ showEcho: v }); },
       setShowLineNumbers: (v: boolean) => { updateSession({ showLineNumbers: v }); },
+      setSeparateSystemLog: (v: boolean) => { updateSession({ separateSystemLog: v }); },
       setQsEditing, setQsName, setQsContent, setQsAdding,
       handleDeleteQuickSend,
     });
@@ -841,6 +843,14 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
+    registerCommand("terminal", {
+      id: "terminal.toggleSystemLog",
+      title: t("关闭系统消息独立显示"),
+      category: t("终端"),
+      handler: async () => {
+        getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
+      },
+    });
 
     // #36k2：最后一个终端标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
     // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
@@ -898,6 +908,18 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
       },
     });
   }, [showLineNumbers]);
+
+  // 动态更新系统消息独立显示标题
+  useEffect(() => {
+    registerCommand("terminal", {
+      id: "terminal.toggleSystemLog",
+      title: separateSystemLog ? t("关闭系统消息独立显示") : t("开启系统消息独立显示"),
+      category: t("终端"),
+      handler: async () => {
+        getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
+      },
+    });
+  }, [separateSystemLog]);
 
   /* ---- 搜索 ---- */
   const runSearch = useCallback((query: string, caseSensitive: boolean) => {
