@@ -48,6 +48,7 @@
   width: 200px;
   padding: 4px 0;
   border-left: 1px solid var(--separator);
+  margin-left: -1px; /* 消主面板→子面板间 1px 缝——鼠标划过缝隙会触发 mouseLeave 导致子面板消失 */
   overflow-y: auto;
   flex-shrink: 0;
 }
