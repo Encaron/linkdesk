@@ -10,7 +10,7 @@
  * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, type Command } from "./CommandRegistry";
+import { registerCommand, getCommand, getCommandPluginId, type Command } from "./CommandRegistry";
 import { registerMenuItems, MenuId } from "./MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
@@ -232,6 +232,58 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MenuId.SettingItemGear,
     menuGroup: "navigation",
   },
+
+  // ── E3f #53b：命令面板齿轮命令 ──
+
+  {
+    id: "workbench.action.resetCommandSetting",
+    title: i18n.t("重置选项"),
+    category: i18n.t("首选项"),
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { commandId?: string } | undefined;
+      if (!ctx?.commandId) return;
+      const cmd = getCommand(ctx.commandId);
+      if (!cmd?.configurationKey) return;
+      requestScrollToSetting(cmd.configurationKey);
+      const settingsId = factorySlots.getPluginId("settings");
+      if (settingsId) _callbacks?.openTab(settingsId);
+    },
+    menuId: MenuId.CommandPaletteItemGear,
+    menuGroup: "navigation",
+    when: "commandHasSetting",
+  },
+  {
+    id: "workbench.action.openCommandPluginDetail",
+    title: i18n.t("打开插件详情"),
+    category: i18n.t("首选项"),
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { commandId?: string } | undefined;
+      if (!ctx?.commandId) return;
+      const pluginId = getCommandPluginId(ctx.commandId);
+      if (pluginId) {
+        requestSettingsGroup(pluginId);
+        const settingsId = factorySlots.getPluginId("settings");
+        if (settingsId) _callbacks?.openTab(settingsId);
+      }
+    },
+    menuId: MenuId.CommandPaletteItemGear,
+    menuGroup: "navigation",
+    when: "commandPluginId",
+  },
+  {
+    id: "workbench.action.copyCommandId",
+    title: i18n.t("复制命令 ID"),
+    category: i18n.t("首选项"),
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { commandId?: string } | undefined;
+      if (!ctx?.commandId) return;
+      await navigator.clipboard.writeText(ctx.commandId);
+      const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+      pushToast({ message: i18n.t("已复制：") + ctx.commandId, ttl: TOAST_TTL_INFO });
+    },
+    menuId: MenuId.CommandPaletteItemGear,
+    menuGroup: "navigation",
+  },
 ];
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
@@ -295,6 +347,12 @@ export function ensureCoreCommands(): void {
   registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [
     { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
     { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
+  ]);
+
+  // E3f #53b：命令面板齿轮菜单——Phase 6 占位（报告问题）
+  // when: "false" → 永不显示；Phase 6 时注册对应命令 + 改 when 条件
+  registerMenuItems(MenuId.CommandPaletteItemGear, APP_PLUGIN_ID, [
+    { command: "workbench.action.reportCommandIssue", group: "phase6", when: "false" },
   ]);
 
 }
