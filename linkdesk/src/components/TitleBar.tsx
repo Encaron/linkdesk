@@ -10,16 +10,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAssetPath } from "../core/assetPath";
 import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
-import { getCommand, executeCommand } from "../core/CommandRegistry";
-import { getKeybindings } from "../core/KeybindingRegistry";
+import { executeCommand } from "../core/CommandRegistry";
+import { MenuRenderer } from "./shared/MenuRenderer";
 import "./TitleBar.css";
 
 function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const titlebarRef = useRef<HTMLDivElement>(null);
 
   // 点击外部关闭下拉
@@ -36,26 +34,13 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     return () => window.removeEventListener("mousedown", onMouseDown);
   }, [openGroup]);
 
-  useEffect(() => {
-    if (!openGroup) setHoveredKey(null);
-  }, [openGroup]);
-
   const handleCommand = useCallback((command: string) => {
     if (!command) return;
     setOpenGroup(null);
     executeCommand(command);
   }, []);
 
-  const scheduleHover = useCallback((key: string | null) => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    if (key === null) {
-      hoverTimerRef.current = setTimeout(() => setHoveredKey(null), 150);
-    } else {
-      hoverTimerRef.current = setTimeout(() => setHoveredKey(key), 100);
-    }
-  }, []);
-
-  // 菜单数据
+  // 菜单数据——按 group 分组，每个 group = TitleBar 上一个按钮
   const allItems = getMenuItems(MenuId.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
@@ -67,33 +52,10 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
   );
 
-  function getLabel(item: MenuItem): string {
-    if (item.label) return item.label;
-    if (item.command) return getCommand(item.command)?.title ?? item.command;
-    return "";
-  }
-
-  const allKeybindings = getKeybindings();
-
-  function formatKeyLabel(key: string): string {
-    return key
-      .split(" ")
-      .map((chord) =>
-        chord
-          .replace(/ctrl\+/i, "Ctrl+")
-          .replace(/alt\+/i, "Alt+")
-          .replace(/shift\+/i, "Shift+")
-          .replace(/\+\w/g, (m) => m.toUpperCase())
-      )
-      .join(" ");
-  }
-
-  function getKeyLabel(command: string): string | null {
-    const kb = allKeybindings.find((k) => k.command === command);
-    if (!kb?.key) return null;
-    return formatKeyLabel(kb.key);
-  }
-
+  /**
+   * 展平 group 内的菜单项——无 command 的父项展开为其 children。
+   * TitleBar 下拉面板不显示嵌套父项，直接平铺最终命令。
+   */
   function flattenGroupItems(
     groupItems: Array<MenuItem & { pluginId: string }>
   ): Array<MenuItem & { pluginId: string }> {
@@ -114,29 +76,17 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     return result;
   }
 
-  const hoveredChildren = (() => {
-    if (!hoveredKey || !openGroup) return null;
-    const groupItems = flattenGroupItems(groups.get(openGroup) ?? []);
-    for (const item of groupItems) {
-      const key = item.command + (item.label ?? "");
-      if (key === hoveredKey && item.children?.length) {
-        return item.children as Array<MenuItem & { pluginId: string }>;
-      }
-    }
-    return null;
-  })();
-
   function getGroupLabel(groupName: string): string {
     const items = groups.get(groupName);
     if (!items?.length) return groupName;
     return items[0].label ?? groupName;
   }
 
+  /** 鼠标划过不同 group 按钮时自动切换下拉 */
   const handleButtonHover = useCallback(
     (group: string) => {
       if (openGroup && openGroup !== group) {
         setOpenGroup(group);
-        setHoveredKey(null);
       }
     },
     [openGroup]
@@ -163,33 +113,7 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     };
   }
 
-  function renderSingleItem(item: MenuItem & { pluginId: string }) {
-    const key = item.command + (item.label ?? "");
-    const hasChildren = item.children && item.children.length > 0;
-
-    return (
-      <button
-        key={`${item.pluginId}:${key}`}
-        className={`titlebar-item${hoveredKey === key ? " titlebar-item-hovered" : ""}`}
-        onMouseEnter={() => scheduleHover(hasChildren ? key : null)}
-        onClick={() => {
-          if (hasChildren) return;
-          handleCommand(item.command);
-        }}
-      >
-        <span className="titlebar-item-label">{getLabel(item)}</span>
-        <span className="titlebar-item-right">
-          {getKeyLabel(item.command) && (
-            <span className="titlebar-item-key">{getKeyLabel(item.command)}</span>
-          )}
-          {hasChildren && (
-            <span className="codicon codicon-chevron-right titlebar-chevron" />
-          )}
-        </span>
-      </button>
-    );
-  }
-
+  /** 下拉面板——委托 MenuRenderer 归一化渲染（E3h #64） */
   function renderDropdown() {
     if (!openGroup) return null;
     const groupItems = groups.get(openGroup);
@@ -199,31 +123,13 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
 
     return (
       <div className="titlebar-dropdown" ref={dropdownRef} style={getDropdownStyle()}>
-        <div className="titlebar-main-panel">
-          {flattened.map(renderSingleItem)}
-        </div>
-        {hoveredChildren && (
-          <div
-            className="titlebar-sub-panel"
-            onMouseEnter={() => {
-              if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-            }}
-            onMouseLeave={() => scheduleHover(null)}
-          >
-            {hoveredChildren.map((child) => (
-              <button
-                key={`${child.pluginId}:${child.command}:${child.label ?? ""}`}
-                className="titlebar-item titlebar-sub-item"
-                onClick={() => handleCommand(child.command)}
-              >
-                <span className="titlebar-item-label">{getLabel(child)}</span>
-                {getKeyLabel(child.command) && (
-                  <span className="titlebar-item-key">{getKeyLabel(child.command)}</span>
-                )}
-              </button>
-            ))}
-          </div>
-        )}
+        <MenuRenderer
+          key={openGroup}
+          items={flattened}
+          onCommand={handleCommand}
+          cssPrefix="titlebar"
+          showKeybindings
+        />
       </div>
     );
   }
