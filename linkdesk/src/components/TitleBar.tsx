@@ -11,6 +11,7 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { getAssetPath } from "../core/assetPath";
 import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
 import { getCommand, executeCommand } from "../core/CommandRegistry";
+import { getKeybindings } from "../core/KeybindingRegistry";
 import "./TitleBar.css";
 
 function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
@@ -70,6 +71,27 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     if (item.label) return item.label;
     if (item.command) return getCommand(item.command)?.title ?? item.command;
     return "";
+  }
+
+  const allKeybindings = getKeybindings();
+
+  function formatKeyLabel(key: string): string {
+    return key
+      .split(" ")
+      .map((chord) =>
+        chord
+          .replace(/ctrl\+/i, "Ctrl+")
+          .replace(/alt\+/i, "Alt+")
+          .replace(/shift\+/i, "Shift+")
+          .replace(/\+\w/g, (m) => m.toUpperCase())
+      )
+      .join(" ");
+  }
+
+  function getKeyLabel(command: string): string | null {
+    const kb = allKeybindings.find((k) => k.command === command);
+    if (!kb?.key) return null;
+    return formatKeyLabel(kb.key);
   }
 
   function flattenGroupItems(
@@ -157,6 +179,9 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
       >
         <span className="titlebar-item-label">{getLabel(item)}</span>
         <span className="titlebar-item-right">
+          {getKeyLabel(item.command) && (
+            <span className="titlebar-item-key">{getKeyLabel(item.command)}</span>
+          )}
           {hasChildren && (
             <span className="codicon codicon-chevron-right titlebar-chevron" />
           )}
@@ -192,6 +217,9 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
                 onClick={() => handleCommand(child.command)}
               >
                 <span className="titlebar-item-label">{getLabel(child)}</span>
+                {getKeyLabel(child.command) && (
+                  <span className="titlebar-item-key">{getKeyLabel(child.command)}</span>
+                )}
               </button>
             ))}
           </div>
