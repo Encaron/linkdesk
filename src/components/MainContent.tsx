@@ -7,7 +7,7 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef } from "react";
 import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -48,7 +48,6 @@ function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
   onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
-  webViewPluginIds?: Set<string>,
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -77,12 +76,11 @@ function renderTabContent(
     }
   }
 
-  // Phase 4.4：视图插件路由
-  // E3f #58e：有独立 WebView 的插件——跳过 React 渲染，WebView 已接管显示
+  // Phase 4.4：视图插件路由——唯一的正常路径
+  // E2a #3：pluginId 传入 ErrorBoundary——崩溃显示 "「终端」已崩溃 [重试]"
+  // #58d：有独立 WebView 的插件——React 先渲染作 fallback，WebView 就绪后 MainContent 的
+  //   E3a #29 代码设好 bounds + setVisible(true)，WebView 自然覆盖 React 组件。
   if (tab.pluginId) {
-    if (webViewPluginIds?.has(tab.pluginId)) {
-      return <div key={tab.id} className="plugin-webview-placeholder" />;
-    }
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
       return (
@@ -146,9 +144,8 @@ function MainContent({
 
   const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
 
-  // 追踪有 WebView 注册的插件——用 state（非 ref），ID 就绪时触发重渲染，
-  // 确保 React fallback → WebView 切换的时序正确。#58e 用 ref 导致第二帧才切→空白。
-  const [registeredViewIds, setRegisteredViewIds] = useState<Set<string>>(new Set());
+  // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
+  const registeredViewIdsRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
@@ -171,7 +168,7 @@ function MainContent({
     // 异步获取已注册的 WebView 列表，只对已注册的插件做 setVisible/setBounds
     pv.getAllIds?.()?.then((ids: string[]) => {
       const registeredSet = new Set(ids);
-      setRegisteredViewIds(registeredSet);
+      registeredViewIdsRef.current = registeredSet;
 
       const prev = pluginViewsRef.current;
       for (const [pluginId, state] of currentStates) {
@@ -292,7 +289,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, onCreateTab, registeredViewIds)}
+          {renderTabContent(tab, isFocused, onCreateTab)}
         </TabPanePositioner>
       ))}
     </div>
