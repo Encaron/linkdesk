@@ -290,8 +290,7 @@
               "id": { "type": "string", "description": "命令 ID——如 terminal.clear" },
               "title": { "type": "string", "description": "显示名称" },
               "category": { "type": "string", "description": "命令面板分组" },
-              "when": { "type": "string", "description": "context key when 条件——如 activeEditor == 'terminal'" },
-              "configurationKey": { "type": "string", "description": "toggle 命令关联的设置项 key——命令面板齿轮重置选项消费" }
+              "when": { "type": "string", "description": "context key when 条件——如 activeEditor == 'terminal'" }
             },
             "additionalProperties": false
           }
@@ -300,7 +299,7 @@
           "type": "object",
           "description": "菜单项声明——按 MenuId 分组",
           "propertyNames": {
-            "enum": ["commandPalette", "tabContext", "editorContext", "extensionGear", "marketplaceItemGear", "menuBar", "fileContext", "cardContext", "quickSendContext", "iconBar", "settingItemGear", "commandPaletteItemGear"]
+            "enum": ["commandPalette", "tabContext", "editorContext", "extensionGear", "marketplaceItemGear", "menuBar", "fileContext", "cardContext", "quickSendContext", "iconBar", "settingItemGear"]
           },
           "additionalProperties": {
             "type": "array",
