@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { subscribeToasts, dismissToast, type Toast } from "../core/toast";
+import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/toast";
 import "./ToastContainer.css";
 
 /** VS Code 默认通知行高 */
@@ -15,18 +15,22 @@ const ROW_HEIGHT = 42;
 
 function ToastContainer() {
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [suppressed, setSuppressed] = useState(false);
   const prevIds = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     return subscribeToasts((t) => {
-      // 检测新通知——用于触发入场动画
       const currentIds = new Set(t.map((x) => x.id));
       prevIds.current = currentIds;
       setToasts(t);
     });
   }, []);
 
-  if (toasts.length === 0) return null;
+  useEffect(() => {
+    return subscribeToastSuppressed((v) => setSuppressed(v));
+  }, []);
+
+  if (toasts.length === 0 || suppressed) return null;
 
   return (
     <div className="toast-container">

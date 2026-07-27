@@ -126,6 +126,7 @@ import {
 } from "./toast";
 export type { Toast, ToastSeverity, ToastAction } from "./toast";
 export { dismissToast, getToasts, subscribeToasts, getUnreadCount };
+export { setToastsSuppressed, isToastsSuppressed, subscribeToastSuppressed } from "./toast";
 export { TOAST_TTL_ERROR, TOAST_TTL_INFO, TOAST_TTL_SUCCESS } from "./toast";
 
 /* ── 通知来源过滤 / Do Not Disturb ── */
