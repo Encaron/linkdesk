@@ -440,6 +440,7 @@ function App() {
   // E3f #58：开发者工具——DevTools picker
   const [devtoolsOpen, setDevtoolsOpen] = useState(false);
   const [devtoolsPluginIds, setDevtoolsPluginIds] = useState<string[]>([]);
+  const devtoolsIsWebViewRef = useRef(false); // 独立 WebView=true，壳兜底=false
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
   const handleFocusTab = useCallback((tabId: string) => {
@@ -494,9 +495,18 @@ function App() {
     // E3f #58：DevTools picker
     const onDevtoolsPicker = async () => {
       const lk = (window as any).linkdesk;
-      const ids: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-      if (ids.length === 0) return;
-      setDevtoolsPluginIds(ids);
+      const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
+      // 独立 WebView 优先，兜底从 viewRegistry 取视图插件列表
+      if (webViewIds.length > 0) {
+        devtoolsIsWebViewRef.current = true;
+        setDevtoolsPluginIds(webViewIds);
+      } else {
+        devtoolsIsWebViewRef.current = false;
+        const { getViewPlugins } = await import("./pluginLoader/viewRegistry");
+        const ids = getViewPlugins().map((p: { pluginId: string }) => p.pluginId);
+        if (ids.length === 0) return;
+        setDevtoolsPluginIds(ids);
+      }
       setDevtoolsOpen(true);
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
@@ -895,7 +905,11 @@ function App() {
         getKey={(id) => id}
         onSelect={async (pluginId) => {
           const lk = (window as any).linkdesk;
-          await lk?.pluginViews?.toggleDevTools?.(pluginId);
+          if (devtoolsIsWebViewRef.current) {
+            await lk?.pluginViews?.toggleDevTools?.(pluginId);
+          } else {
+            await lk?.window?.toggleDevTools?.();
+          }
           setDevtoolsOpen(false);
         }}
         renderItem={(id) => (

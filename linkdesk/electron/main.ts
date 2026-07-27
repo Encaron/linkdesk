@@ -100,6 +100,12 @@ function createWindow(): void {
     ipcMain.on('window:unmaximize', () => mainWindow?.unmaximize());
     ipcMain.on('window:close', () => mainWindow?.close());
     ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+    // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
+    ipcMain.handle('window:toggleDevTools', () => {
+      if (!mainWindow || app.isPackaged) return;
+      const wc = mainWindow.webContents;
+      wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
+    });
   }
   mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
