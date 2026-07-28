@@ -1,5 +1,5 @@
 /**
- * 终端侧栏——会话列表 + 收发设置。
+ * 串口监视器侧栏——会话列表 + 收发设置。
  * Phase 5.5c Step C2：旧 4 个 setting-group → 2 个 `<SidebarSection>`。
  * Phase 5f useConfiguration → 5.5c useSerialSessions.activeSession。
  *

@@ -1,8 +1,8 @@
 /**
- * 终端控制面板——一行命令条。
+ * 串口监视器控制面板——一行命令条。
  * Phase 5.5c Step C3：toolbar.tsx → ControlPanel.tsx（COM/波特率/协议 + 连接操作）。
  *
- * 对标 VS Code 终端面板的 shell 选择器——每标签页自包含。
+ * 对标 VS Code 串口监视器面板的 shell 选择器——每标签页自包含。
  *
  * 硬规则（§3.12）：
  *   port/baudRate/protocol 唯一写入入口 → 本文件
@@ -54,7 +54,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       updateSession({ port });
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
       setPortName(port, activeSession?.receiveCoding);
-      // E2c #19f：终端自己持久化 lastPort——壳不再知道 terminal 插件
+      // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
       setPluginStateValue("serial-monitor", "lastPort", port).catch(() => {});
     },
     [sourceId, updateSession, setPortName, activeSession?.receiveCoding],

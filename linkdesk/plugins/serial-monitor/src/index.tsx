@@ -1,9 +1,9 @@
 /**
- * 终端视图插件。
+ * 串口监视器视图插件。
  * Phase 4 Step B3+B5：从 src/components/views/TerminalView.tsx 迁移 + 串口工具栏。
  * 串口工具栏（COM/波特率/打开关闭）+ 接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。
  *
- * 设计依据：[V3-Phase4-终端插件化设计.md]
+ * 设计依据：[V3-Phase4-串口监视器插件化设计.md]
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -30,7 +30,7 @@ import SearchBar from "./components/SearchBar";
 import FilterMenu from "./components/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
 import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
-// Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
+// Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
@@ -200,7 +200,7 @@ class ScrollTracker implements PluginValue {
 
 const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
-/* ---- 终端视图 ---- */
+/* ---- 串口监视器视图 ---- */
 
 interface SerialMonitorViewProps {
   isActive: boolean;
@@ -872,7 +872,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
 
-    // #36k2：最后一个终端标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
+    // #36k2：最后一个串口监视器标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
     // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
     return () => {
       if (_cmdMap.size <= 1) {
@@ -1067,7 +1067,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
-  // C4b Bug 7：无活跃会话时，终端内容 CSS 隐藏 + 占位 overlay。
+  // C4b Bug 7：无活跃会话时，串口监视器内容 CSS 隐藏 + 占位 overlay。
   // 注意：不能 return 早期退出——CM6 的 useEffect 在 mount 时运行，如果 cmContainer
   // div 不在 DOM 中，cmView.current 永远是 null，之后创建会话也无法初始化。
   return (
