@@ -83,7 +83,9 @@ function _initIPC(): void {
   if (!s) return;
 
   // E3j #81：判断运行环境——pluginViews.notifyReady 仅存在于插件 WebView preload，
-  // 壳 preload 没有此方法。壳 fallback 只做最小 UI 占位，不注册持久数据回调。
+  // 壳 preload 没有此方法。壳 fallback 只做最小 UI 占位——不注册状态累积回调
+  // （onStats/onSystem 写的 _sharedState 在壳切空 div 后无人读取），
+  // 但 onData 保留——events.emit 是全局数据管道，无论数据到哪个 webContents 都要上桌。
   const isPluginWebView = typeof (window as any).linkdesk?.pluginViews?.notifyReady === "function";
 
   const listPorts = s.listPorts ?? s.getPorts;
@@ -94,8 +96,18 @@ function _initIPC(): void {
     if (status) _setState((p) => mergeStatus(p, status));
   });
 
+  // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费。
+  // 无论壳 fallback 还是 WebView 都要注册——端口可能在任一侧打开，数据管道不能丢。
+  s.onData?.((text: string) => {
+    (window as any).linkdesk?.events?.emit("serial:rawData", {
+      sourceName: _sharedState.sourceName,
+      text,
+    });
+  });
+
   // 以下回调仅在插件 WebView 中注册——壳 fallback 是临时占位，WebView 就绪后壳切空 div。
-  // 壳 fallback 注册的 IPC 监听器永不清理（模块级 _initIPC），导致僵尸回调。
+  // 壳 fallback 注册的 IPC 监听器永不清理（模块级 _initIPC），但只影响 _sharedState 写入
+  // （无人读取的僵尸 state），不影响数据管道。
   if (!isPluginWebView) return;
 
   // 高频 stats 回调——累加而非覆盖
@@ -109,14 +121,6 @@ function _initIPC(): void {
 
   s.onSystem?.((msg: any) => {
     _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
-  });
-
-  // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
-  s.onData?.((text: string) => {
-    (window as any).linkdesk?.events?.emit("serial:rawData", {
-      sourceName: _sharedState.sourceName,
-      text,
-    });
   });
 }
 
