@@ -29,7 +29,7 @@ import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } fr
 import SearchBar from "./components/SearchBar";
 import FilterMenu from "./components/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
-import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
+
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
@@ -1147,9 +1147,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
           <span className={`codicon ${paused ? "codicon-debug-start" : "codicon-debug-pause"}`} />
           {paused ? t("继续接收") : t("暂停接收")}
         </button>
-        <button className="toolbar-btn" onClick={() => window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE))} title={t("命令面板")}>
-          ▸ {t("命令面板")}
-        </button>
+
         <button className="toolbar-btn" onClick={handleExport} title={t("导出日志")}>
           <span className="codicon codicon-export" />
           {t("导出日志")}
