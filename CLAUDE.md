@@ -2,7 +2,7 @@
 
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Tauri 时代 P1-P6 🎉 全部完成。🔥 Electron 迁移进行中——当前 E3（架构最后一站），E3a 🎉 E3b 🎉 E3c 🎉 E3d 🎉 E3e 🎉 E3f 🎉 55/70 E3g 🎉 3/4 E3h 🎉 4/5（#65 跳过）E3i 🎉 4/4。进度见 `docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md`（唯一真相源）。E4 文档已就绪。**
+> **Tauri 时代 P1-P6 🎉 全部完成。🔥 E3 🎉 架构最后一站——E3a-E3i 全部完成，E3j 11/12（仅 #81 双份渲染根因待新 AI）。E4 文档已就绪。进度见 `docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md`。**
 
 ## 架构——圆形大厅模型
 
