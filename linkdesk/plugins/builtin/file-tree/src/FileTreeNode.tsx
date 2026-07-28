@@ -17,10 +17,11 @@ interface FileTreeNodeProps {
   indent: number;
   /** E4a #95c: 紧凑文件夹——压缩路径段 */
   compactedSegments?: string[];
-  onSelect: () => void;
-  onOpen: (mode: "preview" | "pin") => void;
-  onTwistieClick: () => void;
-  onContextMenu?: (e: React.MouseEvent) => void;
+  /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效 */
+  onSelect: (uri: string) => void;
+  onOpen: (item: ExplorerItem, mode: "preview" | "pin") => void;
+  onTwistieClick: (item: ExplorerItem) => void;
+  onContextMenu?: (item: ExplorerItem, e: React.MouseEvent) => void;
 }
 
 function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
@@ -54,9 +55,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = (e: React.MouseEvent) => {
-    onSelect();
+    onSelect(item.uri);
     if (e.detail === 2) {
-      onOpen("pin");
+      onOpen(item, "pin");
     }
   };
 
@@ -67,7 +68,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     } else {
       timerRef.current = setTimeout(() => {
         timerRef.current = null;
-        onOpen("preview");
+        onOpen(item, "preview");
       }, 250);
     }
   };
@@ -93,7 +94,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       style={{ paddingLeft: `calc(${indent}px + (${depth} - 1) * var(--tree-indent))` }}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
-      onContextMenu={onContextMenu}
+      onContextMenu={onContextMenu ? (e: React.MouseEvent) => onContextMenu(item, e) : undefined}
     >
       {/* twistie */}
       {item.isDirectory ? (
@@ -101,7 +102,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
           className={`codicon ${chevron} ${twistieClass}`}
           onClick={(e) => {
             e.stopPropagation();
-            onTwistieClick();
+            onTwistieClick(item);
           }}
         />
       ) : (
