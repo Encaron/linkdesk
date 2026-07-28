@@ -10,6 +10,14 @@
  * P1-5：文件监听（轮询 list_plugin_dirs）
  * P1-6：7 种错误处理 + minAppVersion 版本检查 + 同名去重
  * Phase 4.3：安装/卸载/禁用/启用完整生命周期
+ *
+ * 🔒 E3j #72-#73：IPC 时序保护——loader 中的四条高风险路径已覆盖：
+ *   - 插件加载/卸载 → plugins:call 走 #72 请求队列（FIFO 串行）
+ *   - 主题切换       → bridge:broadcast 走 #27 push 队列（顺序交付）
+ *   - 语言切换       → bridge:broadcast 走 #27 push 队列（顺序交付）
+ *   - 生命周期事件   → shell Emitter 同步触发（不经过 IPC）
+ *   本文件不直接调用 ipcRenderer.invoke——走 window.linkdesk 桥接层，
+ *   主进程自动排队，loader 代码无需感知队列存在。
  */
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入

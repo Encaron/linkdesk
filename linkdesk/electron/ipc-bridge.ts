@@ -238,6 +238,13 @@ export class IpcBridge {
    * #72：清空指定插件的请求队列——插件卸载时调用。
    * 队列中已入队的请求仍会完成（不中断进行中的请求），
    * 但后续新请求不再受旧链约束——新链从头开始。
+   *
+   * #73 调用点：WindowManager.destroyPluginView——WebView 销毁时自动清理。
+   * 四条高风险路径覆盖：
+   *   - 插件加载/卸载（plugins:call）→ #72 请求队列（PROXY_CHANNELS）
+   *   - 主题切换（bridge:broadcast）      → #27 push 队列（pushToPlugin）
+   *   - 语言切换（bridge:broadcast）      → #27 push 队列（pushToPlugin）
+   *   - 生命周期事件（onWill/DidUninstall）→ shell 同步 Emitter，不经过 IPC
    */
   clearPluginQueue(pluginId: string): void {
     this.pluginRequestQueues.delete(pluginId);
