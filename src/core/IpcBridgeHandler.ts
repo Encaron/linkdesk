@@ -9,7 +9,11 @@
  */
 
 import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
-import { executeCommand } from "./CommandRegistry";
+import { getMergedSchema } from "./ConfigurationRegistry";
+import { executeCommand, getCommands } from "./CommandRegistry";
+import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
+import { LanguageRegistry } from "./LanguageRegistry";
+import i18n from "../i18n";
 import {
   enablePlugin,
   disablePlugin,
@@ -102,6 +106,19 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return getUninstalledPluginInfo();
     case "isDisabled":
       return isPluginDisabled(args[0] as string);
+    // E3j #74：linkdesk API——跨进程查询壳侧注册表
+    case "getCommands":
+      return getCommands();
+    case "getSchema":
+      return getMergedSchema();
+    case "getAvailableThemes":
+      return getAvailableThemes();
+    case "getCurrentTheme":
+      return getCurrentTheme()?.name ?? null;
+    case "getAvailableLanguages":
+      return LanguageRegistry.getAll();
+    case "getCurrentLanguage":
+      return i18n.language;
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }

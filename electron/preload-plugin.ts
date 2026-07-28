@@ -104,10 +104,12 @@ try {
       },
     },
 
-    // ── 配置（读/写/订阅）──
-    config: {
+    // ── 配置（读/写/订阅/schema）──
+    // E3j #74：linkdesk API 命名空间——对标 VS Code vscode.workspace.getConfiguration
+    configuration: {
       get:  (key: string) => ipcRenderer.invoke('config:get', key),
       set:  (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
+      getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
       onChange: (key: string, cb: (v: any) => void) => {
         const handler = (_: any, d: { key: string; value: any }) => {
           if (d.key === key) cb(d.value);
@@ -117,12 +119,14 @@ try {
       },
     },
 
-    // ── 命令（执行壳侧命令）──
+    // ── 命令（执行/查询壳侧命令）──
     // 🔒 不含 register——handler 函数无法通过 IPC 序列化。
     // 命令注册走 plugin.json 的 contributes.commands 声明。
+    // E3j #74：executeCommand 对 execute 重命名——对标 VS Code vscode.commands.executeCommand
     commands: {
-      execute: (id: string, ...args: any[]) =>
+      executeCommand: (id: string, ...args: any[]) =>
         ipcRenderer.invoke('commands:execute', id, ...args),
+      getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
     },
 
     // ── 文件系统（受限——主进程校验路径，仅允许读写插件数据目录）──
@@ -157,8 +161,21 @@ try {
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
     },
 
-    // ── E3c #40：语言同步——壳广播→缓存→订阅者通知 ──
-    lang: {
+    // ── E3j #74：主题查询——跨进程读 ThemeEngine ──
+    theme: {
+      getCurrent: () => ipcRenderer.invoke('plugins:call', 'getCurrentTheme'),
+      getAvailable: () => ipcRenderer.invoke('plugins:call', 'getAvailableThemes'),
+      apply: (themeId: string) => ipcRenderer.invoke('config:set', 'app.theme', themeId),
+    },
+
+    // ── E3j #74：语言查询 + E3c #40 广播缓存 ──
+    language: {
+      /** 获取当前语言 */
+      getCurrent: () => ipcRenderer.invoke('plugins:call', 'getCurrentLanguage'),
+      /** 获取所有可用语言列表 */
+      getAvailable: () => ipcRenderer.invoke('plugins:call', 'getAvailableLanguages'),
+      /** 切换语言 */
+      set: (langId: string) => ipcRenderer.invoke('config:set', 'app.language', langId),
       /** 获取初始语言数据（WebView 加载时壳已推送） */
       getInitial: () => _langCache,
       /** 订阅语言变更——返回 unsubscribe */
