@@ -90,11 +90,11 @@ const WelcomeView: React.FC = () => {
         justifyContent: "center",
         height: "100%",
         padding: 24,
-        color: "var(--color-dimmed, #94A3B8)",
+        color: "var(--color-dimmed)",
         fontSize: 13,
         textAlign: "center",
         gap: 12,
-        border: dragOver ? "2px dashed var(--color-accent, #22C55E)" : "2px solid transparent",
+        border: dragOver ? "2px dashed var(--color-accent)" : "2px solid transparent",
         borderRadius: 4,
         transition: "border-color 100ms ease-out",
       }}
@@ -105,10 +105,10 @@ const WelcomeView: React.FC = () => {
         onClick={handleOpenFolder}
         style={{
           padding: "6px 16px",
-          border: "1px solid var(--color-border, #1E293B)",
+          border: "1px solid var(--color-border)",
           borderRadius: 4,
-          background: "var(--color-muted, #1E293B)",
-          color: "var(--color-foreground, #F8FAFC)",
+          background: "var(--color-muted)",
+          color: "var(--color-foreground)",
           cursor: "pointer",
           fontSize: 12,
         }}
@@ -143,7 +143,7 @@ const WelcomeView: React.FC = () => {
                 border: "none",
                 borderRadius: 4,
                 background: "transparent",
-                color: "var(--color-dimmed, #94A3B8)",
+                color: "var(--color-dimmed)",
                 cursor: "pointer",
                 fontSize: 12,
                 textAlign: "left",
@@ -153,7 +153,7 @@ const WelcomeView: React.FC = () => {
               }}
               title={folderPath}
               onMouseEnter={(e) => {
-                (e.currentTarget as HTMLElement).style.background = "var(--color-muted, #1E293B)";
+                (e.currentTarget as HTMLElement).style.background = "var(--color-muted)";
               }}
               onMouseLeave={(e) => {
                 (e.currentTarget as HTMLElement).style.background = "transparent";
@@ -170,7 +170,7 @@ const WelcomeView: React.FC = () => {
       )}
 
       {dragOver && (
-        <p style={{ margin: 0, color: "var(--color-accent, #22C55E)", fontSize: 12 }}>
+        <p style={{ margin: 0, color: "var(--color-accent)", fontSize: 12 }}>
           {t("释放以打开文件夹")}
         </p>
       )}
