@@ -1133,7 +1133,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
 
       {!activeSession && (
         <div className="serial-monitor-placeholder">
-          <span className="serial-monitor-placeholder-icon">▸</span>
+          <span className="codicon codicon-info serial-monitor-placeholder-icon" />
           <p className="serial-monitor-placeholder-title">{t("会话已失效")}</p>
           <p className="serial-monitor-placeholder-hint">{t("请在侧栏选择一个串口监视器会话，或新建一个以开始使用")}</p>
         </div>
@@ -1268,8 +1268,8 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
               onChange={(e) => setQsContent(e.target.value)}
               onKeyDown={(e) => { if (e.key === "Enter") handleSaveQuickSend(); if (e.key === "Escape") { setQsAdding(false); setQsEditing(null); } }}
             />
-            <button className="toolbar-btn" onClick={handleSaveQuickSend}>{qsEditing ? "✎" : "✓"}</button>
-            <button className="toolbar-btn" onClick={() => { setQsAdding(false); setQsEditing(null); }}>✕</button>
+            <button className="toolbar-btn" onClick={handleSaveQuickSend}>{qsEditing ? <span className="codicon codicon-edit" /> : <span className="codicon codicon-check" />}</button>
+            <button className="toolbar-btn" onClick={() => { setQsAdding(false); setQsEditing(null); }}><span className="codicon codicon-close" /></button>
           </div>
         ) : (
           <button className="quick-send-add" title={t("添加快捷发送")} onClick={() => setQsAdding(true)}>
@@ -1294,7 +1294,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
           <div className="hex-warning">{hexWarning}</div>
         )}
         <div className="monaco-wrapper">
-          <span className="monaco-prefix">&gt;</span>
+          <span className="monaco-prefix">→</span>
           <Editor
             height={`${Math.min(MONACO_MAX_HEIGHT, Math.max(MONACO_MIN_HEIGHT, MONACO_PADDING + MONACO_LINE_HEIGHT * (sendValue.split('\n').length)))}px`}
             language="v3-protocol"
