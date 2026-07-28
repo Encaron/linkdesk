@@ -8,7 +8,7 @@
  * 崩了不波及壳，卸载时物理清空 JS heap。
  */
 
-import { BrowserWindow, WebContentsView, app } from 'electron';
+import { BrowserWindow, WebContentsView, app, WebContents } from 'electron';
 import * as path from 'path';
 
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
@@ -127,6 +127,17 @@ export class WindowManager {
   /** 返回所有活跃的插件 ID */
   getAllPluginIds(): string[] {
     return Array.from(this.pluginViews.keys());
+  }
+
+  /**
+   * 从 WebContents 反查插件 ID。
+   * E3j #72——IPC 消息队列需识别发起请求的插件。
+   */
+  getPluginIdFromWebContents(wc: WebContents): string | undefined {
+    for (const [pluginId, view] of this.pluginViews) {
+      if (view.webContents === wc) return pluginId;
+    }
+    return undefined;
   }
 
   /**
