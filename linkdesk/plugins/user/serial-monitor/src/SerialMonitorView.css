@@ -220,6 +220,12 @@
   padding: 4px 12px 8px;
 }
 
+.filter-keyword-input {
+  width: 100%;
+  height: 24px;
+  font-size: 11px;
+}
+
 /* === 系统消息区域（对标 V2 lbSystemLog：固定两行 36px + accent 左边框） === */
 
 .system-log-area {
