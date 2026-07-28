@@ -281,6 +281,7 @@ export async function initPluginLoader(): Promise<void> {
   }
 
   // 3. 加载每个插件（跳过禁用 + 跳过文件系统不存在的）
+  console.log(`[pluginLoader] pluginManifests keys: ${Object.keys(pluginManifests).length}, installed: ${[...installed].join(', ')}`);
   for (const pluginId of installed) {
     if (disabled.includes(pluginId)) {
       log.appendLine(`插件 "${pluginId}" 已禁用——跳过`);
@@ -965,8 +966,12 @@ async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<
       // dev 模式：先试 builtin 再试 user
       for (const sub of ['builtin', 'user']) {
         const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
-        const response = await fetch(url);
-        if (response.ok) return await response.json() as Record<string, unknown>;
+        try {
+          const response = await fetch(url);
+          if (response.ok) {
+            return await response.json() as Record<string, unknown>;
+          }
+        } catch { /* fetch 失败继续试下一个 */ }
       }
       console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
       return null;
