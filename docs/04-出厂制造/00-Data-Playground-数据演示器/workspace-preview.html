@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LinkDesk 卡片工作台 — UI 预览</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-page: #0F172A;
+  --bg-card: #1E293B;
+  --bg-input: #0F172A;
+  --text-primary: #F8FAFC;
+  --text-secondary: #94A3B8;
+  --border: #475569;
+  --separator: #334155;
+  --accent: #22C55E;
+  --color-destructive: #EF4444;
+  --card-title-height: 28px;
+  --card-border-radius: 6px;
+  --card-padding: 8px;
+  --card-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+body {
+  background: #0A0F1A;
+  color: var(--text-primary);
+  font-family: Inter, -apple-system, "Segoe UI", sans-serif;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh; user-select: none;
+}
+
+/* === Outer Shell === */
+.shell {
+  width: 960px; height: 600px;
+  background: var(--bg-page);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: flex; overflow: hidden;
+}
+
+/* === Sidebar === */
+.sidebar {
+  width: 240px; flex-shrink: 0;
+  background: var(--bg-card);
+  border-right: 1px solid var(--separator);
+  display: flex; flex-direction: column;
+}
+.sidebar-section { border-bottom: 1px solid var(--separator); }
+.sidebar-header {
+  display: flex; align-items: center;
+  height: 22px; padding: 0 10px;
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-secondary);
+  cursor: pointer;
+}
+.sidebar-header .arrow { font-size: 8px; margin-right: 4px; color: var(--text-secondary); transition: transform 100ms; }
+.sidebar-body { padding: 4px 0; }
+
+/* card set list */
+.cardset-item {
+  display: flex; align-items: center; height: 28px; padding: 0 10px 0 20px;
+  font-size: 12px; cursor: pointer; color: var(--text-primary);
+  transition: background 80ms;
+}
+.cardset-item:hover { background: #272F42; }
+.cardset-item.active { background: #1E3A5F; }
+.cardset-item .dot { width: 6px; height: 6px; border-radius: 50%; margin-right: 6px; flex-shrink: 0; }
+.cardset-item .dot.green { background: var(--accent); }
+
+/* protocol checkboxes */
+.protocol-item {
+  display: flex; align-items: center; height: 24px; padding: 0 10px 0 12px;
+  font-size: 12px; color: var(--text-primary); gap: 6px;
+}
+.protocol-item .check {
+  width: 14px; height: 14px; border: 1px solid var(--border); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0; font-size: 10px;
+}
+.protocol-item .check.checked { background: var(--accent); border-color: var(--accent); color: #000; }
+
+/* sidebar footer actions */
+.sidebar-footer { padding: 8px 10px; display: flex; gap: 4px; flex-direction: column; }
+.sidebar-footer button {
+  width: 100%; height: 26px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-secondary); font-size: 11px; cursor: pointer;
+}
+.sidebar-footer button:hover { border-color: var(--accent); color: var(--text-primary); }
+
+/* === Main Area === */
+.main { flex: 1; display: flex; flex-direction: column; }
+
+/* === Toolbar === */
+.toolbar {
+  display: flex; align-items: center; height: 32px; padding: 0 12px; gap: 8px;
+  background: var(--bg-card); border-bottom: 1px solid var(--separator); flex-shrink: 0;
+}
+.toolbar-btn {
+  height: 24px; padding: 0 10px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-secondary); font-size: 11px; cursor: pointer;
+}
+.toolbar-btn:hover { border-color: var(--accent); color: var(--text-primary); }
+.toolbar-spacer { flex: 1; }
+.toolbar-label { font-size: 11px; color: var(--text-secondary); }
+.toolbar-select {
+  width: 120px; height: 24px; padding: 0 6px; border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-primary); font-size: 11px;
+}
+
+/* === Canvas === */
+.canvas {
+  flex: 1; position: relative; overflow: hidden;
+  background-image: radial-gradient(circle, var(--separator) 1px, transparent 1px);
+  background-size: 80px 80px; /* gridUnit = 80px */
+}
+
+/* === Cards === */
+.card {
+  position: absolute;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--card-border-radius);
+  display: flex; flex-direction: column;
+  /* sizes set inline per card */
+}
+
+/* card chrome */
+.card-titlebar {
+  display: flex; align-items: center; height: var(--card-title-height);
+  padding: 0 var(--card-padding); flex-shrink: 0;
+}
+.card-title { font-size: 12px; font-weight: 600; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-chrome-icons { display: flex; gap: 4px; opacity: 0.4; }
+.card-chrome-icon { width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; font-size: 10px; cursor: pointer; }
+.card-body {
+  flex: 1; padding: 0 var(--card-padding) var(--card-padding);
+  display: flex; flex-direction: column; justify-content: center; align-items: center;
+  min-height: 0;
+}
+
+/* value card */
+.value-big { font: 700 28px "Fira Code", monospace; line-height: 1; }
+.value-unit { font: 400 12px Inter, sans-serif; color: var(--text-secondary); margin-left: 2px; }
+.value-subitem {
+  width: 100%; height: 18px; margin-top: 8px; border-radius: 3px;
+  background: var(--bg-input); position: relative; overflow: hidden;
+}
+.value-subitem-fill { position: absolute; inset: 0; width: 74%; background: var(--accent); border-radius: 3px; }
+.value-subitem-label { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font: 10px Inter, sans-serif; color: #fff; }
+
+/* chart card */
+.chart-placeholder {
+  flex: 1; width: 100%;
+  background: var(--bg-input); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative; overflow: hidden;
+}
+.chart-line {
+  position: absolute; bottom: 0; left: 0; right: 0; height: 100%;
+  background:
+    linear-gradient(to bottom, transparent 60%, rgba(34,197,94,0.08) 100%);
+}
+.chart-line::before {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0;
+  height: 60%; border-bottom: 2px solid var(--accent);
+  border-radius: 0 0 3px 3px;
+  mask: radial-gradient(ellipse 120% 30% at 50% 100%, black 40%, transparent 80%);
+  -webkit-mask: radial-gradient(ellipse 120% 30% at 50% 100%, black 40%, transparent 80%);
+}
+.chart-wave { position: absolute; inset: 20% 8px 20% 8px; opacity: 0.6; }
+.chart-wave svg { width: 100%; height: 100%; }
+.chart-toolbar {
+  display: flex; height: 22px; align-items: center; gap: 4px; margin-top: 4px;
+}
+.chart-time-tag {
+  font-size: 10px; padding: 1px 6px; border-radius: 3px; cursor: pointer;
+  color: var(--text-secondary); background: transparent;
+}
+.chart-time-tag.active { background: var(--accent); color: #000; }
+
+/* slider card */
+.slider-track {
+  width: 100%; height: 6px; background: var(--bg-input); border-radius: 3px; margin-top: 6px;
+  position: relative;
+}
+.slider-fill { position: absolute; left: 0; top: 0; bottom: 0; width: 75%; background: var(--accent); border-radius: 3px; }
+.slider-thumb {
+  position: absolute; top: 50%; left: 75%; transform: translate(-50%,-50%);
+  width: 14px; height: 14px; background: #fff; border-radius: 50%;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.3); cursor: grab;
+}
+.slider-range { display: flex; justify-content: space-between; font-size: 10px; color: var(--text-secondary); margin-top: 4px; }
+
+/* indicator card */
+.indicator-dot {
+  width: 36px; height: 36px; border-radius: 50%; background: var(--accent);
+  box-shadow: 0 0 12px rgba(34,197,94,0.5);
+  margin-bottom: 4px;
+}
+.indicator-label { font-size: 11px; color: var(--text-primary); }
+
+/* resize handle */
+.card-handle {
+  position: absolute; right: 2px; bottom: 2px;
+  width: 8px; height: 8px; opacity: 0.3; cursor: nwse-resize;
+}
+.card-handle::after {
+  content: '▞'; font-size: 8px; color: var(--text-secondary);
+}
+
+/* scale control */
+.scale-control {
+  position: absolute; right: 16px; bottom: 16px;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+  padding: 4px 10px; font-size: 11px; color: var(--text-secondary);
+  z-index: 10;
+}
+.scale-btn { cursor: pointer; color: var(--text-secondary); font-size: 13px; }
+.scale-btn:hover { color: var(--text-primary); }
+.scale-pct { font-size: 11px; min-width: 32px; text-align: center; color: var(--text-primary); }
+
+/* legend */
+.legend {
+  position: fixed; bottom: 20px; right: 20px;
+  background: var(--bg-card); border: 1px solid var(--border); border-radius: 6px;
+  padding: 8px 12px; font-size: 10px; color: var(--text-secondary);
+  display: flex; flex-direction: column; gap: 4px;
+}
+.legend span { color: var(--text-primary); }
+</style>
+</head>
+<body>
+
+<div class="shell">
+  <!-- Sidebar -->
+  <div class="sidebar">
+    <!-- Card Sets -->
+    <div class="sidebar-section">
+      <div class="sidebar-header"><span class="arrow">▼</span>卡片集</div>
+      <div class="sidebar-body">
+        <div class="cardset-item active"><span class="dot green"></span>环境监测</div>
+        <div class="cardset-item"><span class="dot"></span>电机控制</div>
+        <div class="cardset-item"><span class="dot"></span>调试</div>
+        <div class="cardset-item" style="color:var(--text-secondary);">+ 新建卡片集</div>
+      </div>
+    </div>
+    <!-- Protocols -->
+    <div class="sidebar-section">
+      <div class="sidebar-header"><span class="arrow">▼</span>协议激活</div>
+      <div class="sidebar-body">
+        <div class="protocol-item"><span class="check checked">✓</span>方括号</div>
+        <div class="protocol-item"><span class="check checked">✓</span>SBQ</div>
+        <div class="protocol-item"><span class="check"></span>JSON 行</div>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div class="sidebar-footer">
+      <button>导入工作区</button>
+      <button>导出工作区</button>
+    </div>
+  </div>
+
+  <!-- Main -->
+  <div class="main">
+    <!-- Toolbar -->
+    <div class="toolbar">
+      <button class="toolbar-btn">+ 新建卡片集</button>
+      <button class="toolbar-btn">导入</button>
+      <button class="toolbar-btn">导出</button>
+      <span class="toolbar-spacer"></span>
+      <span class="toolbar-label">协议:</span>
+      <select class="toolbar-select"><option>方括号</option><option>SBQ</option></select>
+    </div>
+
+    <!-- Canvas (640px remaining) -->
+    <div class="canvas">
+      <!-- Value Card 2×2 at (0,0) -->
+      <div class="card" style="left:0;top:0;width:160px;height:160px;">
+        <div class="card-titlebar">
+          <span class="card-title">温度</span>
+          <span class="card-chrome-icons">
+            <span class="card-chrome-icon">≡</span>
+            <span class="card-chrome-icon">✕</span>
+          </span>
+        </div>
+        <div class="card-body">
+          <div><span class="value-big">37.2</span><span class="value-unit">°C</span></div>
+          <div class="value-subitem">
+            <div class="value-subitem-fill"></div>
+            <div class="value-subitem-label">74%</div>
+          </div>
+        </div>
+        <div class="card-handle"></div>
+      </div>
+
+      <!-- LineChart Card 4×2 at (3,0) -->
+      <div class="card" style="left:240px;top:0;width:320px;height:160px;">
+        <div class="card-titlebar">
+          <span class="card-title">温度趋势</span>
+          <span class="card-chrome-icons">
+            <span class="card-chrome-icon">≡</span>
+            <span class="card-chrome-icon">✕</span>
+          </span>
+        </div>
+        <div class="card-body" style="align-items:stretch;">
+          <div class="chart-placeholder">
+            <div class="chart-line"></div>
+            <div class="chart-wave">
+              <svg viewBox="0 0 300 80">
+                <path d="M0,60 L20,55 L40,45 L60,50 L80,30 L100,35 L120,20 L140,25 L160,10 L180,15 L200,5 L220,8 L240,3 L260,6 L280,4 L300,2"
+                  fill="none" stroke="#22C55E" stroke-width="1.5" opacity="0.8"/>
+              </svg>
+            </div>
+          </div>
+          <div class="chart-toolbar">
+            <span class="chart-time-tag">30s</span>
+            <span class="chart-time-tag active">60s</span>
+            <span class="chart-time-tag">120s</span>
+            <span class="chart-time-tag">300s</span>
+          </div>
+        </div>
+        <div class="card-handle"></div>
+      </div>
+
+      <!-- Slider Card 2×1 at (0,3) -->
+      <div class="card" style="left:0;top:240px;width:160px;height:80px;">
+        <div class="card-titlebar">
+          <span class="card-title">转速</span>
+          <span class="card-chrome-icons">
+            <span class="card-chrome-icon">≡</span>
+            <span class="card-chrome-icon">✕</span>
+          </span>
+        </div>
+        <div class="card-body" style="align-items:stretch;">
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span class="value-big" style="font-size:22px;">75</span>
+            <span class="value-unit">%</span>
+          </div>
+          <div class="slider-track">
+            <div class="slider-fill"></div>
+            <div class="slider-thumb"></div>
+          </div>
+          <div class="slider-range"><span>0</span><span>100</span></div>
+        </div>
+        <div class="card-handle"></div>
+      </div>
+
+      <!-- Indicator Card 1×1 at (3,3) -->
+      <div class="card" style="left:240px;top:240px;width:80px;height:80px;">
+        <div class="card-body" style="padding-top:4px;">
+          <div class="indicator-dot"></div>
+          <div class="indicator-label">运行中</div>
+        </div>
+        <div class="card-handle"></div>
+      </div>
+
+      <!-- Scale Control -->
+      <div class="scale-control">
+        <span class="scale-btn">⊖</span>
+        <span class="scale-btn">⊘</span>
+        <span class="scale-pct">100%</span>
+        <span class="scale-btn">⊕</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div>网格单元 <span>80px</span></div>
+  <div>侧栏宽 <span>240px</span></div>
+  <div>卡片标题栏 <span>28px</span></div>
+  <div>2×2 卡片 <span>160×160</span></div>
+  <div>4×2 卡片 <span>320×160</span></div>
+  <div>1×1 卡片 <span>80×80</span></div>
+</div>
+
+</body>
+</html>
