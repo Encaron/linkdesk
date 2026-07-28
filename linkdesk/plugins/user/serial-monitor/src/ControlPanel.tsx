@@ -153,7 +153,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
         onClick={handleToggleOpen}
         disabled={!activeSession}
       >
-        {connected ? t("断开") : t("● 打开")}
+        {connected ? t("断开") : t("打开")}
       </button>
     </div>
   );
