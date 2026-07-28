@@ -32,7 +32,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports, isOpen } = state;
-  const { toggleOpen, setSourceName: setPortName, setBaudRate } = actions;
+  const { toggleOpen, setSourceName: setPortName, setBaudRate, refreshPorts } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
   const { session: activeSession, update: updateSession } = useSession(sourceId);
@@ -109,11 +109,12 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       {/* 连接状态点 */}
       <span className={`control-dot${connected ? " on" : ""}`} />
 
-      {/* COM 口下拉框 */}
+      {/* COM 口下拉框——打开时自动刷新端口列表（USB 热插拔即时更新） */}
       <SelectBox
         value={portName}
         options={ports.map((p) => ({ value: p.name, label: p.name }))}
         onChange={handlePortChange}
+        onOpen={refreshPorts}
         disabled={isOpen}
         placeholder={t("无可用串口")}
       />
