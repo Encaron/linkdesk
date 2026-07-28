@@ -67,7 +67,7 @@ const WelcomeView: React.FC = () => {
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     setDragOver(false);
-    const file = e.dataTransfer.files[0];
+    const file = e.dataTransfer.files[0] as (File & { path?: string }) | null;
     if (file?.path) addFolder(file.path);
   }, []);
 

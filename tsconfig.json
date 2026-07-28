@@ -15,7 +15,11 @@
     "noUnusedLocals": true,
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "paths": {
+      "@src/*": ["./src/*"]
+    }
   },
-  "include": ["src"]
+  "include": ["src", "plugins/builtin"],
+  "exclude": ["plugins/user"]
 }
