@@ -20,6 +20,7 @@ import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
 import { IpcBridge } from './ipc-bridge.js';
+import { APP_SCHEME } from './constants.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -164,7 +165,7 @@ setInterval(() => {
 
 // ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
 protocol.registerSchemesAsPrivileged([
-  { scheme: 'linkdesk', privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 // ── 应用生命周期 ──

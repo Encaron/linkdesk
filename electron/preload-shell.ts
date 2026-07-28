@@ -11,6 +11,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+import { APP_NAMESPACE } from './constants';
 
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
 let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
@@ -41,7 +42,7 @@ try {
     return () => ipcRenderer.removeAllListeners(channel);
   };
 
-  contextBridge.exposeInMainWorld('linkdesk', {
+  contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     // ── 串口（步 2 接入）──
     serial: {
       listPorts:  ()                    => ipcRenderer.invoke('serial:listPorts'),

@@ -13,6 +13,7 @@
 import { protocol, net, app } from 'electron';
 import * as path from 'path';
 import { existsSync } from 'fs';
+import { APP_SCHEME } from './constants';
 
 /**
  * 注册 linkdesk:// 协议。
@@ -26,10 +27,10 @@ export function registerProtocol(): void {
     ? path.join(process.resourcesPath, 'plugins')
     : path.join(app.getAppPath(), 'plugins');
 
-  protocol.handle('linkdesk', async (request) => {
+  protocol.handle(APP_SCHEME, async (request) => {
     // URI: linkdesk://terminal/dist/bundle.js
     // 提取路径部分（去掉 "linkdesk://"）
-    const urlPath = request.url.replace(/^linkdesk:\/\//, '');
+    const urlPath = request.url.replace(new RegExp(`^${APP_SCHEME}://`), "");
 
     // 安全检查：拒绝路径穿越（../ 或 ..\）
     if (urlPath.includes('..')) {

@@ -19,6 +19,7 @@
  */
 
 import { contextBridge, ipcRenderer } from 'electron';
+import { APP_NAMESPACE } from './constants';
 
 try {
   // ═══════════════════════════════════════════════════════
@@ -71,7 +72,7 @@ try {
     }
   });
 
-  contextBridge.exposeInMainWorld('linkdesk', {
+  contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
     // 不经过 events channel。E3a #30 终端迁移后，数据走 bridge:push-to-plugin →
