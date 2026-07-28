@@ -73,20 +73,26 @@ function mergeStatus(p: SerialState, status: any): SerialState {
   };
 }
 
-let _initialized = false;
+// ═══════════════════════════════════════════════════════
+// E3j #81 方向 B：组件级生命周期 + 引用计数
+//
+// _initOnce()  —— 一次性数据拉取（listPorts / getStatus），模块级，只跑一次
+// _registerIPCListeners()   —— 注册 onData/onStats/onSystem，引用计数
+// _unregisterIPCListeners() —— 减引用，最后一个卸载时清理全部监听器
+//
+// 壳 fallback 和 WebView 用同一套逻辑——不判断运行环境。
+// 壳切空 div → ControlPanel unmount → 自动清理 → 零僵尸监听器。
+// ═══════════════════════════════════════════════════════
 
-function _initIPC(): void {
-  if (_initialized) return;
-  _initialized = true;
+let _oneTimeFetched = false;
+
+/** 一次性数据拉取——端口列表 + 状态。模块级调用，只跑一次。 */
+function _initOnce(): void {
+  if (_oneTimeFetched) return;
+  _oneTimeFetched = true;
 
   const s = (window as any).linkdesk?.serial;
   if (!s) return;
-
-  // E3j #81：判断运行环境——pluginViews.notifyReady 仅存在于插件 WebView preload，
-  // 壳 preload 没有此方法。壳 fallback 只做最小 UI 占位——不注册状态累积回调
-  // （onStats/onSystem 写的 _sharedState 在壳切空 div 后无人读取），
-  // 但 onData 保留——events.emit 是全局数据管道，无论数据到哪个 webContents 都要上桌。
-  const isPluginWebView = typeof (window as any).linkdesk?.pluginViews?.notifyReady === "function";
 
   const listPorts = s.listPorts ?? s.getPorts;
   listPorts?.()?.then((ports: PortInfo[]) => {
@@ -95,33 +101,47 @@ function _initIPC(): void {
   s.getStatus?.()?.then((status: any) => {
     if (status) _setState((p) => mergeStatus(p, status));
   });
+}
 
-  // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费。
-  // 无论壳 fallback 还是 WebView 都要注册——端口可能在任一侧打开，数据管道不能丢。
-  s.onData?.((text: string) => {
-    (window as any).linkdesk?.events?.emit("serial:rawData", {
-      sourceName: _sharedState.sourceName,
-      text,
-    });
-  });
+let _refCount = 0;
+let _ipcCleanups: Array<() => void> = [];
 
-  // 以下回调仅在插件 WebView 中注册——壳 fallback 是临时占位，WebView 就绪后壳切空 div。
-  // 壳 fallback 注册的 IPC 监听器永不清理（模块级 _initIPC），但只影响 _sharedState 写入
-  // （无人读取的僵尸 state），不影响数据管道。
-  if (!isPluginWebView) return;
+/** 注册 IPC 监听器——引用计数。第一个 consumer mount → 注册；后续只加引用。 */
+function _registerIPCListeners(): void {
+  _refCount++;
+  if (_refCount > 1) return;
 
-  // 高频 stats 回调——累加而非覆盖
-  s.onStats?.((stats: any) => {
-    _setState((p) => ({
-      ...p,
-      txBytes: p.txBytes + (stats.tx ?? 0),
-      rxBytes: p.rxBytes + (stats.rx ?? 0),
-    }));
-  });
+  const s = (window as any).linkdesk?.serial;
+  if (!s) return;
 
-  s.onSystem?.((msg: any) => {
-    _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
-  });
+  _ipcCleanups = [
+    // 高频 stats 回调——累加而非覆盖
+    s.onStats?.((stats: any) => {
+      _setState((p) => ({
+        ...p,
+        txBytes: p.txBytes + (stats.tx ?? 0),
+        rxBytes: p.rxBytes + (stats.rx ?? 0),
+      }));
+    }),
+    s.onSystem?.((msg: any) => {
+      _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
+    }),
+    // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
+    s.onData?.((text: string) => {
+      (window as any).linkdesk?.events?.emit("serial:rawData", {
+        sourceName: _sharedState.sourceName,
+        text,
+      });
+    }),
+  ].filter(Boolean) as Array<() => void>;
+}
+
+/** 注销 IPC 监听器——减引用，最后一个 consumer unmount → 全清。 */
+function _unregisterIPCListeners(): void {
+  _refCount = Math.max(0, _refCount - 1);
+  if (_refCount > 0) return;
+  for (const fn of _ipcCleanups) fn();
+  _ipcCleanups = [];
 }
 
 // ═══════════════════════════════════════════════════════
@@ -131,11 +151,18 @@ function _initIPC(): void {
 export function useSerialContext(): { state: SerialState; actions: SerialActions } {
   const s = (window as any).linkdesk?.serial;
 
-  // 首次渲染初始化 IPC（只跑一次）
-  _initIPC();
+  // 一次性数据拉取——端口列表 + 状态（模块级 guard，只跑一次）
+  _initOnce();
 
   // 朴素的订阅模式：useState + useEffect subscribe
   const [state, setState] = useState<SerialState>(_sharedState);
+
+  // E3j #81 方向 B：IPC 监听器走组件生命周期——引用计数，
+  // mount → 注册（第一个 consumer），unmount → 减引用（最后一个 consumer 全清）。
+  useEffect(() => {
+    _registerIPCListeners();
+    return () => _unregisterIPCListeners();
+  }, []);
 
   useEffect(() => {
     return _subscribe(() => setState(_sharedState));
