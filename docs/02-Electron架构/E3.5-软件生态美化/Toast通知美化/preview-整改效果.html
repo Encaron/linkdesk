@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Toast 通知 E3.5 整改 — Before vs After 左右对比</title>
+<style>
+:root {
+  --bg-window: #1e1e1e; --bg-card: #252526; --bg-input: #3c3c3c;
+  --text-primary: #d4d4d4; --text-secondary: #999; --text-muted: #777;
+  --border: #3c3c3c; --separator: #454545; --accent: #0078d4;
+  --accent-hover: #1a8ad4; --text-on-accent: #fff; --bg-hover: rgba(255,255,255,0.06);
+  --danger: #ef4444; --warning: #e8ab3e;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  color-scheme: dark;
+}
+body.light {
+  --bg-window: #f3f3f3; --bg-card: #fff; --bg-input: #fff;
+  --text-primary: #333; --text-secondary: #666; --text-muted: #999;
+  --border: #d4d4d4; --separator: #e8e8e8; --accent: #0078d4;
+  --accent-hover: #106ebe; --text-on-accent: #fff;
+  --bg-hover: rgba(0,0,0,0.06); --danger: #d32f2f; --warning: #c78500;
+  color-scheme: light;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--font-ui); background: #0d0d0d; color: var(--text-primary);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px; min-height: 100vh;
+}
+body.light { background: #e8e8e8; }
+
+.toolbar {
+  display: flex; align-items: center; gap: 20px; margin-bottom: 24px;
+  flex-wrap: wrap; justify-content: center;
+}
+.toolbar label { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.toolbar select {
+  font-family: var(--font-ui); padding: 5px 10px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+}
+.toolbar h1 { font-size: 16px; font-weight: 700; }
+.toolbar button {
+  font-family: var(--font-ui); padding: 6px 16px; font-size: 12px; font-weight: 600;
+  border: none; border-radius: 4px; cursor: pointer; color: #fff;
+}
+.btn-push { background: #22c55e; }
+.btn-push:hover { opacity: 0.85; }
+.btn-clear { background: var(--danger); }
+.btn-clear:hover { opacity: 0.85; }
+
+.compare-wrap {
+  display: flex; gap: 20px; width: 100%; max-width: 1220px; align-items: flex-start;
+}
+.compare-col {
+  flex: 1; min-width: 0; background: var(--bg-window);
+  border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3); position: relative;
+}
+.col-header {
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--separator);
+}
+.col-header.before { background: #3d2020; color: #f87171; }
+.col-header.after  { background: #1a3d1a; color: #4ade80; }
+
+.demo-inner {
+  padding: 32px 20px; display: flex; flex-direction: column; gap: 16px;
+  height: 400px; position: relative; overflow: hidden;
+}
+
+/* ═══ 编辑器背景 ═══ */
+.editor-bg {
+  flex: 1; background: var(--bg-window); border-radius: 4px;
+  border: 1px solid var(--separator); position: relative;
+}
+
+/* ═══════════════════════════════════════════
+   Toast 通用样式
+   ═══════════════════════════════════════════ */
+
+.toast-container {
+  position: absolute; bottom: 8px; right: 8px; z-index: 100;
+  display: flex; flex-direction: column-reverse; gap: 4px;
+  max-width: 380px;
+}
+.toast-item {
+  background: var(--bg-card); border: 1px solid var(--separator);
+  border-radius: 4px; box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  padding: 10px 8px;
+  opacity: 0; transform: translateY(8px);
+  transition: transform 300ms ease-out, opacity 300ms ease-out;
+}
+.toast-item.visible {
+  opacity: 1; transform: translateY(0);
+}
+
+/* BEFORE 退出：瞬间消失（无动画），加红色闪烁示意 */
+.before-toast .toast-item.removing {
+  opacity: 0;
+  transition: none;        /* ← 关键差异：无过渡 */
+}
+
+/* AFTER 退出：上滑 + 淡出 */
+.toast-item.exiting {
+  opacity: 0;
+  transform: translateY(-8px);
+  transition: transform 200ms ease-in, opacity 200ms ease-in;
+}
+
+.toast-main-row {
+  display: flex; align-items: center; gap: 0;
+}
+.toast-icon {
+  flex: 0 0 16px; display: flex; align-items: center; justify-content: center;
+  font-size: 16px; margin-right: 8px; margin-left: 4px;
+}
+.toast-icon.info { color: var(--accent); }
+.toast-icon.warn { color: var(--warning); }
+.toast-icon.err  { color: var(--danger); }
+.toast-message { flex: 1; line-height: 22px; font-size: 12px; color: var(--text-primary); }
+.toast-close {
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  font-size: 14px; padding: 2px 4px; display: none;
+}
+.toast-item:hover .toast-close { display: flex; }
+
+/* ═══ 标签 ═══ */
+.tags {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.tags span { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+.tag-good { background: #22c55e15; color: #22c55e; }
+.tag-bad  { background: #ef444415; color: #ef4444; }
+
+.callout {
+  position: absolute; font-size: 10px; padding: 3px 8px; border-radius: 4px;
+  pointer-events: none; white-space: nowrap; z-index: 10; font-weight: 600;
+  top: 12px;
+}
+.callout.bad  { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; left: 12px; }
+.callout.good { background: #22c55e15; color: #22c55e; border: 1px solid #22c55e30; left: 12px; }
+
+.hint-text {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%,-50%);
+  font-size: 13px; color: var(--text-muted); opacity: 0.5; pointer-events: none;
+}
+
+/* ═══ 图例 ═══ */
+.legend {
+  display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px;
+  font-size: 11px; color: var(--text-muted); justify-content: center;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.ld-new { background: #22c55e; } .ld-bad { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>Toast 通知 · Before vs After</h1>
+  <label>主题
+    <select id="themeSelect">
+      <option value="dark">暗色</option>
+      <option value="light">浅色</option>
+    </select>
+  </label>
+  <button class="btn-push" id="pushBtn">⬆ 推送通知</button>
+  <button class="btn-clear" id="clearBtn">✕ 全部清除</button>
+</div>
+
+<div class="compare-wrap">
+
+  <!-- ═══════════ 整改前 ═══════════ -->
+  <div class="compare-col before-toast" id="beforeCol">
+    <div class="col-header before">整改前 — 退出瞬间消失</div>
+    <div class="demo-inner">
+      <div class="tags">
+        <span class="tag-bad">❌ 退出无动画</span>
+        <span class="tag-bad">❌ 瞬间消失</span>
+      </div>
+      <div class="editor-bg" id="beforeArea">
+        <div class="callout bad">点 × 关闭 → transition: none<br>通知瞬间消失，体感是"卡了"</div>
+        <div class="hint-text">通知会出现在右下角</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 整改后 ═══════════ -->
+  <div class="compare-col" id="afterCol">
+    <div class="col-header after">整改后 — 退出上滑+淡出</div>
+    <div class="demo-inner">
+      <div class="tags">
+        <span class="tag-good">✓ 退出 translateY(-8px)</span>
+        <span class="tag-good">✓ 退出 opacity 200ms</span>
+      </div>
+      <div class="editor-bg" id="afterArea">
+        <div class="callout good">点 × 关闭 → 上滑 + 淡出 200ms<br>体感平滑，"它在离开"</div>
+        <div class="hint-text">通知会出现在右下角</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot ld-new"></span> 新增 — 退出动画 200ms（上滑+淡出）</div>
+  <div class="legend-item"><span class="legend-dot ld-bad"></span> 整改前 — 瞬间消失无反馈</div>
+</div>
+
+<script>
+let beforeCounter = 0, afterCounter = 0;
+
+function createToast(area, id, isAfter) {
+  // 移除旧容器
+  const old = area.querySelector('.toast-container');
+  if (old) old.remove();
+
+  const container = document.createElement('div');
+  container.className = 'toast-container';
+  area.appendChild(container);
+
+  const item = document.createElement('div');
+  item.className = 'toast-item';
+  const ico = id % 3 === 0 ? 'info' : id % 3 === 1 ? 'warn' : 'err';
+  const icoLabel = ico === 'info' ? 'ⓘ' : ico === 'warn' ? '⚠' : '✕';
+  const msgs = ['插件安装完成', '内存压力——820MB', '串口连接失败', '主题已切换', '快捷键冲突'];
+  const msg = msgs[id % msgs.length];
+
+  item.innerHTML = `
+    <div class="toast-main-row">
+      <div class="toast-icon ${ico}">${icoLabel}</div>
+      <div class="toast-message">${msg}</div>
+      <button class="toast-close" title="关闭">✕</button>
+    </div>
+  `;
+  container.appendChild(item);
+
+  // 入场动画
+  requestAnimationFrame(() => { item.classList.add('visible'); });
+
+  // 关闭按钮
+  const closeBtn = item.querySelector('.toast-close');
+  closeBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+
+    if (isAfter) {
+      // AFTER：退出动画 → transitionend 后移除
+      item.classList.remove('visible');
+      item.classList.add('exiting');
+      item.addEventListener('transitionend', (ev) => {
+        if (ev.target === item && ev.propertyName === 'opacity') {
+          item.remove();
+          if (!container.querySelector('.toast-item')) container.remove();
+        }
+      });
+    } else {
+      // BEFORE：瞬间移除
+      item.classList.add('removing');
+      item.remove();
+      if (!container.querySelector('.toast-item')) container.remove();
+    }
+  });
+}
+
+document.getElementById('pushBtn').addEventListener('click', () => {
+  createToast(document.getElementById('beforeArea'), beforeCounter++, false);
+  createToast(document.getElementById('afterArea'), afterCounter++, true);
+});
+
+document.getElementById('clearBtn').addEventListener('click', () => {
+  document.querySelectorAll('.toast-container').forEach(c => c.remove());
+  beforeCounter = 0; afterCounter = 0;
+});
+
+document.getElementById('themeSelect').addEventListener('change', (e) => {
+  document.body.classList.toggle('light', e.target.value === 'light');
+});
+
+// 初始展示两条
+createToast(document.getElementById('beforeArea'), beforeCounter++, false);
+createToast(document.getElementById('afterArea'), afterCounter++, true);
+</script>
+</body>
+</html>

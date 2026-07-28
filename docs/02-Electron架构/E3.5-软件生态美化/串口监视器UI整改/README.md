@@ -66,16 +66,16 @@
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `plugins/serial-monitor/plugin.json` | 86 | 插件声明、命令、菜单、配置 |
-| `plugins/serial-monitor/src/index.tsx` | 1356 | **主视图**——CM6 接收区 + 工具栏 + 搜索 + 快捷发送 + Monaco 发送区 |
-| `plugins/serial-monitor/src/ControlPanel.tsx` | 157 | **控制面板**——COM/波特率/协议选择器 + 连接按钮 |
-| `plugins/serial-monitor/src/sidebar.tsx` | 462 | **侧栏**——会话列表 + 12 项收发设置 |
-| `plugins/serial-monitor/src/statusBar.tsx` | 37 | **状态栏**——连接指示 + TX/RX 计数 |
-| `plugins/serial-monitor/src/SerialContext.tsx` | 230 | **IPC 状态**——模块级共享 SerialState + 引用计数生命周期 |
-| `plugins/serial-monitor/src/useSerialSessions.ts` | 340 | **会话管理**——CRUD + 12 项设置 + 持久化 |
-| `plugins/serial-monitor/src/components/SearchBar.tsx` | 85 | **搜索条**——CM6 内搜索 + 大小写 + 导航 |
-| `plugins/serial-monitor/src/components/FilterMenu.tsx` | 56 | **筛选菜单**——协议/文本/关键字三级筛选 |
-| `plugins/serial-monitor/src/index.css` (dist/style.css) | ~540 | **全部样式**——主视图 + 控制面板 + 侧栏 |
+| `plugins/user/serial-monitor/plugin.json` | 86 | 插件声明、命令、菜单、配置 |
+| `plugins/user/serial-monitor/src/index.tsx` | 1356 | **主视图**——CM6 接收区 + 工具栏 + 搜索 + 快捷发送 + Monaco 发送区 |
+| `plugins/user/serial-monitor/src/ControlPanel.tsx` | 157 | **控制面板**——COM/波特率/协议选择器 + 连接按钮 |
+| `plugins/user/serial-monitor/src/sidebar.tsx` | 462 | **侧栏**——会话列表 + 12 项收发设置 |
+| `plugins/user/serial-monitor/src/statusBar.tsx` | 37 | **状态栏**——连接指示 + TX/RX 计数 |
+| `plugins/user/serial-monitor/src/SerialContext.tsx` | 230 | **IPC 状态**——模块级共享 SerialState + 引用计数生命周期 |
+| `plugins/user/serial-monitor/src/useSerialSessions.ts` | 340 | **会话管理**——CRUD + 12 项设置 + 持久化 |
+| `plugins/user/serial-monitor/src/components/SearchBar.tsx` | 85 | **搜索条**——CM6 内搜索 + 大小写 + 导航 |
+| `plugins/user/serial-monitor/src/components/FilterMenu.tsx` | 56 | **筛选菜单**——协议/文本/关键字三级筛选 |
+| `plugins/user/serial-monitor/src/index.css` (dist/style.css) | ~540 | **全部样式**——主视图 + 控制面板 + 侧栏 |
 
 ## 设计 DNA（现有）
 

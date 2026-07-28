@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>状态栏 E3.5 整改 — Before vs After 左右对比</title>
+<style>
+:root {
+  --bg-window: #1e1e1e; --bg-card: #252526; --bg-input: #3c3c3c;
+  --text-primary: #d4d4d4; --text-secondary: #999; --text-muted: #777;
+  --border: #3c3c3c; --separator: #454545; --accent: #0078d4;
+  --accent-hover: #1a8ad4; --text-on-accent: #fff;
+  --status-connected: #22c55e; --status-disconnected: #555;
+  --error: #f44747; --tab-hover-bg: rgba(255,255,255,0.06);
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Sarasa Mono SC', 'Cascadia Code', Consolas, monospace;
+  color-scheme: dark;
+}
+body.light {
+  --bg-window: #f3f3f3; --bg-card: #fff; --bg-input: #fff;
+  --text-primary: #333; --text-secondary: #666; --text-muted: #999;
+  --border: #d4d4d4; --separator: #e8e8e8; --accent: #0078d4;
+  --accent-hover: #106ebe; --text-on-accent: #fff;
+  --status-connected: #22c55e; --status-disconnected: #bbb;
+  --error: #d32f2f; --tab-hover-bg: rgba(0,0,0,0.06);
+  color-scheme: light;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--font-ui); background: #0d0d0d; color: var(--text-primary);
+  display: flex; flex-direction: column; align-items: center;
+  padding: 24px 16px; min-height: 100vh;
+}
+body.light { background: #e8e8e8; }
+
+.toolbar {
+  display: flex; align-items: center; gap: 20px; margin-bottom: 24px;
+  flex-wrap: wrap; justify-content: center;
+}
+.toolbar label { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.toolbar select {
+  font-family: var(--font-ui); padding: 5px 10px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+}
+.toolbar h1 { font-size: 16px; font-weight: 700; }
+
+.compare-wrap {
+  display: flex; gap: 20px; width: 100%; max-width: 1220px; align-items: flex-start;
+}
+.compare-col {
+  flex: 1; min-width: 0; background: var(--bg-window);
+  border-radius: 8px; border: 1px solid var(--border); overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.col-header {
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--separator);
+}
+.col-header.before { background: #3d2020; color: #f87171; }
+.col-header.after  { background: #1a3d1a; color: #4ade80; }
+
+.demo-inner {
+  padding: 40px 24px; display: flex; flex-direction: column; gap: 28px;
+}
+
+/* ═══ 模拟编辑器 ═══ */
+.editor-area {
+  flex: 1; background: var(--bg-window); border-radius: 6px;
+  border: 1px solid var(--separator); min-height: 200px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.editor-hint {
+  font-size: 13px; color: var(--text-muted); opacity: 0.6;
+}
+
+/* ═══════════════════════════════════════════
+   AFTER — 整改后状态栏
+   ═══════════════════════════════════════════ */
+
+.after-bar {
+  display: flex; align-items: center; height: 22px; padding: 0 10px;
+  background: var(--bg-window); border-top: 1px solid var(--separator);
+  gap: 6px; font-size: 12px; color: var(--text-secondary); flex-shrink: 0;
+}
+.after-left {
+  display: flex; align-items: center; gap: 8px; flex: 1;
+}
+.after-right {
+  display: flex; align-items: center; gap: 6px;
+}
+.after-btn {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 12px; padding: 0 6px; height: 22px; cursor: pointer;
+  transition: background 120ms, color 120ms; border-radius: 0;
+  display: flex; align-items: center; gap: 4px;
+}
+.after-btn:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+.after-divider {
+  display: inline-block; width: 1px; height: 14px;
+  margin: 0 8px; background: var(--separator); vertical-align: middle;
+}
+.after-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--status-disconnected); transition: background 300ms;
+}
+.after-dot.on { background: var(--status-connected); }
+.after-text { color: var(--text-secondary); font-size: 12px; }
+.after-error {
+  font-size: 11px; color: var(--error); max-width: 400px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.after-chord {
+  font-size: 11px; color: var(--accent); max-width: 320px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.after-bell {
+  background: none; border: none; color: var(--text-secondary);
+  font-size: 14px; padding: 0 6px; height: 22px; cursor: pointer;
+  display: flex; align-items: center; position: relative;
+  transition: background 120ms, color 120ms;
+}
+.after-bell:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+.after-bell .badge {
+  position: absolute; top: 1px; right: 1px; font-size: 9px; font-weight: 600;
+  background: var(--accent); color: #fff; border-radius: 50%;
+  min-width: 12px; height: 12px; line-height: 12px; text-align: center; padding: 0 2px;
+}
+
+/* ═══════════════════════════════════════════
+   BEFORE — 整改前状态栏
+   ═══════════════════════════════════════════ */
+
+.before-bar {
+  display: flex; align-items: center; height: 22px; padding: 0 10px;
+  background: var(--bg-window); border-top: 1px solid var(--separator);
+  gap: 6px; font-size: 12px; color: var(--text-muted); flex-shrink: 0;
+}
+.before-left {
+  display: flex; align-items: center; gap: 6px; flex: 1;
+}
+.before-right {
+  display: flex; align-items: center; gap: 2px;
+}
+.before-btn {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 12px; padding: 0 6px; height: 22px; cursor: pointer;
+  transition: background 120ms, color 120ms; border-radius: 0;
+}
+.before-btn:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+.before-divider {
+  display: inline-block; width: 1px; height: 12px;
+  margin: 0 6px; background: var(--separator);
+}
+.before-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--status-disconnected); transition: background 300ms;
+}
+.before-dot.on { background: var(--status-connected); }
+.before-text { color: var(--text-secondary); font-size: 12px; }
+.before-error {
+  font-size: 11px; color: var(--error); max-width: 400px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.before-chord {
+  font-size: 11px; color: var(--accent); max-width: 320px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.before-bell {
+  background: none; border: none; color: var(--text-muted);
+  font-size: 14px; padding: 0 6px; height: 22px; cursor: pointer;
+  display: flex; align-items: center; position: relative;
+  transition: background 120ms, color 120ms;
+}
+.before-bell:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+.before-bell .badge {
+  position: absolute; top: 1px; right: 1px; font-size: 9px; font-weight: 600;
+  background: var(--accent); color: #fff; border-radius: 50%;
+  min-width: 12px; height: 12px; line-height: 12px; text-align: center; padding: 0 2px;
+}
+
+/* ═══ 标签 ═══ */
+.tags {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px;
+}
+.tags span { font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600; }
+.tag-good  { background: #22c55e15; color: #22c55e; }
+.tag-fix   { background: #f59e0b15; color: #f59e0b; }
+.tag-bad   { background: #ef444415; color: #ef4444; }
+
+.callout {
+  position: absolute; font-size: 10px; padding: 3px 8px; border-radius: 4px;
+  pointer-events: none; white-space: nowrap; z-index: 10; font-weight: 600;
+  bottom: 32px;
+}
+.callout.bad  { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+.callout.good { background: #22c55e15; color: #22c55e; border: 1px solid #22c55e30; }
+
+/* ═══ 图例 ═══ */
+.legend {
+  display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px;
+  font-size: 11px; color: var(--text-muted); justify-content: center;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.ld-new { background: #22c55e; } .ld-fix { background: #f59e0b; } .ld-bad { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>状态栏 · Before vs After</h1>
+  <label>主题
+    <select id="themeSelect">
+      <option value="dark">暗色</option>
+      <option value="light">浅色</option>
+    </select>
+  </label>
+</div>
+
+<div class="compare-wrap">
+
+  <!-- ═══════════ 整改前 ═══════════ -->
+  <div class="compare-col">
+    <div class="col-header before">整改前 — 4 个痛点</div>
+    <div class="demo-inner">
+
+      <div class="tags">
+        <span class="tag-bad">❌ 对比度 #777</span>
+        <span class="tag-bad">❌ │ 文本分隔</span>
+        <span class="tag-bad">❌ ☀/☾ Unicode</span>
+        <span class="tag-bad">❌ 右区 2px 挤</span>
+      </div>
+
+      <div class="editor-area" style="position:relative;">
+        <div class="editor-hint">编辑器区</div>
+        <div class="callout bad" style="left:6px;">#777 对比度 4.4:1<br>WCAG AA 不达标</div>
+        <div class="callout bad" style="left:200px;">"│" 文本字符<br>CSS 画线被撑破</div>
+        <div class="callout bad" style="right:120px;">☀ 跨平台<br>可能显示方框</div>
+        <div class="callout bad" style="right:10px;">gap:2px<br>挤在一起</div>
+
+        <div style="position:absolute; bottom:0; left:0; right:0;">
+          <div class="before-bar">
+            <div class="before-left">
+              <span class="before-dot on"></span>
+              <span class="before-text">TX:1.2K  RX:8K</span>
+              <span class="before-divider">│</span>
+              <span class="before-error">串口操作失败：ERROR_INVALID_NAME</span>
+            </div>
+            <div class="before-right">
+              <button class="before-bell"><span style="font-size:14px;">🔔</span><span class="badge">3</span></button>
+              <button class="before-btn" title="切换语言">中</button>
+              <button class="before-btn" title="切换主题">☀</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 整改后 ═══════════ -->
+  <div class="compare-col">
+    <div class="col-header after">整改后 — 4 项改进</div>
+    <div class="demo-inner">
+
+      <div class="tags">
+        <span class="tag-good">✓ 对比度 #999</span>
+        <span class="tag-fix">✓ CSS 画线</span>
+        <span class="tag-fix">✓ codicon 图标</span>
+        <span class="tag-good">✓ 统一 gap:6px</span>
+      </div>
+
+      <div class="editor-area" style="position:relative;">
+        <div class="editor-hint">编辑器区</div>
+        <div class="callout good" style="left:6px;">#999 对比度 7:1<br>WCAG AAA ✓</div>
+        <div class="callout good" style="left:190px;">1px×14px CSS 线<br>清掉文本 │</div>
+        <div class="callout good" style="right:100px;">codicon-globe<br>codicon-color-mode</div>
+        <div class="callout good" style="right:10px;">gap:6px 统一<br>2px→6px 不再挤</div>
+
+        <div style="position:absolute; bottom:0; left:0; right:0;">
+          <div class="after-bar">
+            <div class="after-left">
+              <span class="after-dot on"></span>
+              <span class="after-text">TX:1.2K  RX:8K</span>
+              <span class="after-divider"></span>
+              <span class="after-error">串口操作失败：ERROR_INVALID_NAME</span>
+            </div>
+            <div class="after-right">
+              <button class="after-bell"><span style="font-size:14px;">🔔</span><span class="badge">3</span></button>
+              <button class="after-btn" title="切换语言 (中文)">
+                <span style="font-size:14px;">🌐</span>
+              </button>
+              <button class="after-btn" title="切换主题 (Dark)">
+                <span style="font-size:14px;">🎨</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot ld-new"></span> 新增 — 对比度 AAA / 右区 2→6px</div>
+  <div class="legend-item"><span class="legend-dot ld-fix"></span> 修复 — CSS 画线 / codicon / 按钮 hover 区</div>
+  <div class="legend-item"><span class="legend-dot ld-bad"></span> 整改前 — 对比度不足 / │文本 / Unicode / 2px 挤</div>
+</div>
+
+<script>
+document.getElementById('themeSelect').addEventListener('change', (e) => {
+  document.body.classList.toggle('light', e.target.value === 'light');
+});
+</script>
+</body>
+</html>
