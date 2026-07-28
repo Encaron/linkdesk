@@ -479,7 +479,22 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
 
   useIpcEvent<string>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
-    if (/Port opened|已打开/.test(payload)) {
+    // 解析系统消息中的端口名——"---- 已打开串行端口 COM13 ----" → COM13
+    // 只让端口匹配的标签页激活 portOpenRef，解决多标签页串口数据串流 bug。
+    const portMatch = payload.match(/(?:已打开|关闭)串行端口\s+(\S+)/);
+    const msgPort = portMatch?.[1] ?? null;
+    const myPort = activeSession?.port ?? null;
+    const isMyPort = !msgPort || !myPort || msgPort === myPort;
+
+    if (/已打开/.test(payload)) {
+      if (!isMyPort) {
+        // 不是这个标签页的端口——只显示系统消息文本，不激活数据接收
+        ringBuffer.current.write({
+          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+          type: "system",
+        });
+        return;
+      }
       portOpenRef.current = true;
       pausedBuffer.current = [];
       setPausedCount(0);
@@ -492,7 +507,14 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
         }
       });
     }
-    if (/Port closed|关闭/.test(payload)) {
+    if (/关闭/.test(payload)) {
+      if (!isMyPort) {
+        ringBuffer.current.write({
+          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+          type: "system",
+        });
+        return;
+      }
       portOpenRef.current = false;
       ringBuffer.current.drainAll();
       // E3j #78：断开用缓存的信息（端口已关无法查）
