@@ -37,8 +37,14 @@ export function registerProtocol(): void {
       return new Response('Forbidden', { status: 403 });
     }
 
-    // 转换为本地文件路径
-    const fullPath = path.join(pluginsDir, urlPath);
+    // 转换为本地文件路径——先试 builtin/ 再试 user/
+    let fullPath = path.join(pluginsDir, 'builtin', urlPath);
+    if (!existsSync(fullPath)) {
+      fullPath = path.join(pluginsDir, 'user', urlPath);
+    }
+    if (!existsSync(fullPath)) {
+      fullPath = path.join(pluginsDir, urlPath);  // 兜底：直接查根（兼容 .disabled 等）
+    }
 
     // 文件不存在 → 404
     if (!existsSync(fullPath)) {
