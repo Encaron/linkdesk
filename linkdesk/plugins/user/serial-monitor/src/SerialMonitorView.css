@@ -82,6 +82,11 @@
   color: var(--text-primary);
 }
 
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 .toolbar-btn.active {
   background: var(--accent);
   color: var(--text-primary);
@@ -121,6 +126,11 @@
 
 .search-input:focus {
   border-color: var(--accent);
+}
+
+.search-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
 }
 
 .search-count {
@@ -337,13 +347,9 @@
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  transition: transform 150ms, opacity 150ms;
+  transition: opacity 150ms;
   animation: fadeIn 150ms ease;
   z-index: var(--z-sticky);
-}
-
-.back-to-bottom:hover {
-  transform: scale(1.1);
 }
 
 @keyframes fadeIn {
@@ -351,10 +357,6 @@
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes dataFlash {
-  from { background: rgba(0,120,212,0.18); }
-  to   { background: transparent; }
-}
 
 /* === FilterMenu overlay——.ctx-overlay 已抬升到 src/index.css，FilterMenu 从壳 CSS 消费 === */
 
@@ -390,9 +392,14 @@
   background: var(--accent);
 }
 
+.quick-send-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 .quick-send-add {
   background: transparent;
-  border: 1px dashed var(--border);
+  border: 1px solid var(--border);
   border-radius: 12px;
   padding: 2px 10px;
   font-size: 11px;
