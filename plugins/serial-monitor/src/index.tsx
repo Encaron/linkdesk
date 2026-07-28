@@ -724,6 +724,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       title: t("发送"),
       category: t("串口监视器"),
       handler: async (_token, sendMode: "text" | "hex", data: string) => {
+        if (!data) return; // Ctrl+Shift+P 无参直接回车 → 忽略
         const s = (window as any).linkdesk?.serial;
         if (!s) return;
         if (sendMode === "hex") {
