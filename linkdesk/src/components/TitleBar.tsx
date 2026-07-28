@@ -9,8 +9,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAssetPath } from "../core/assetPath";
-import { getMenuItems, MenuId, type MenuItem } from "../core/MenuRegistry";
+import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from "../core/MenuRegistry";
 import { executeCommand } from "../core/CommandRegistry";
+import { ContextKeyService } from "../core/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
 import "./TitleBar.css";
 
@@ -39,6 +40,35 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     setOpenGroup(null);
     executeCommand(command);
   }, []);
+
+  // 订阅 context key 变化——TitleBar 槽位按钮的 when 条件可能随时改变
+  const [, setCtxTick] = useState(0);
+  useEffect(() => {
+    return ContextKeyService.onDidChangeContext(() => setCtxTick((n) => n + 1));
+  }, []);
+
+  // E3h #66：插件贡献的 TitleBar 槽位按钮
+  const leftButtons = getTitleBarContributions("left");
+  const rightButtons = getTitleBarContributions("right");
+
+  function renderSlotButton(item: { command: string; icon?: string; when?: string }) {
+    if (item.when && !ContextKeyService.matches(item.when)) return null;
+    return (
+      <button
+        key={item.command}
+        className="titlebar-btn titlebar-slot-btn"
+        onClick={() => executeCommand(item.command)}
+        title={item.command}
+        style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+      >
+        {item.icon ? (
+          <span className={`codicon ${item.icon}`} />
+        ) : (
+          <span className="codicon codicon-circle-outline" />
+        )}
+      </button>
+    );
+  }
 
   // 菜单数据——按 group 分组，每个 group = TitleBar 上一个按钮
   const allItems = getMenuItems(MenuId.MenuBar);
@@ -147,6 +177,9 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
       {/* Logo——替换 public/assets/logo.svg 即可换 logo，无需改代码 */}
       <img className="titlebar-logo" src={getAssetPath("assets/logo.svg")} alt="LinkDesk" />
 
+      {/* E3h #66：左槽位——插件贡献的导航按钮（Logo 右侧、菜单按钮左侧） */}
+      {leftButtons.map(renderSlotButton)}
+
       {/* 菜单按钮——hamburger 模式下隐藏 */}
       {showMenus && <div className="titlebar-menus">
         {sortedGroupNames.map((groupName) => (
@@ -161,6 +194,9 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
           </button>
         ))}
       </div>}
+
+      {/* E3h #66：右槽位——插件贡献的工具按钮（菜单按钮右侧、拖拽区左侧） */}
+      {rightButtons.map(renderSlotButton)}
 
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />

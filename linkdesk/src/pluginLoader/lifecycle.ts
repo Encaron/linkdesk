@@ -19,7 +19,7 @@ import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
 import { unregisterPluginCommands } from "../core/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/KeybindingRegistry";
-import { unregisterPluginMenus } from "../core/MenuRegistry";
+import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/MenuRegistry";
 import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/CardRegistry";
 import { unregisterPluginChannels } from "../core/LogChannel";
@@ -109,6 +109,7 @@ export function initLifecycleConsumers(): void {
     unregisterPluginCommands(pluginId);
     unregisterPluginKeybindings(pluginId);
     unregisterPluginMenus(pluginId);
+    unregisterPluginTitleBarContributions(pluginId);
     unregisterPluginProtocols(pluginId);
     unregisterPluginCards(pluginId);
     unregisterPluginChannels(pluginId);

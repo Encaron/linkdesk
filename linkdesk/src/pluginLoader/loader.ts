@@ -30,8 +30,8 @@ import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type 
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/ConfigurationRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../core/ConfigurationService";
-import type { ManifestMenuItem } from "../core/MenuRegistry";
-import { registerMenuItems } from "../core/MenuRegistry";
+import type { ManifestMenuItem, TitleBarContribution } from "../core/MenuRegistry";
+import { registerMenuItems, registerTitleBarContribution } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
 import { registerFileAssociation } from "../core/FileAssociationService";
 import { registerKeybinding } from "../core/KeybindingRegistry";
@@ -393,6 +393,21 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     const langList = c.languages as LanguageContribution[];
     for (const lc of langList) {
       LanguageRegistry.register(lc, pluginId);
+    }
+  }
+
+  // E3h #66：contributes.titleBar → MenuRegistry（TitleBar 左右槽位按钮）
+  if (c.titleBar) {
+    const tb = c.titleBar as { left?: TitleBarContribution[]; right?: TitleBarContribution[] };
+    if (tb.left) {
+      for (const item of tb.left) {
+        registerTitleBarContribution(pluginId, "left", item);
+      }
+    }
+    if (tb.right) {
+      for (const item of tb.right) {
+        registerTitleBarContribution(pluginId, "right", item);
+      }
     }
   }
 

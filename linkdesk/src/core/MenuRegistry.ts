@@ -162,3 +162,45 @@ export function getAllMenus(): Map<MenuId, Array<MenuItem & { pluginId: string }
 export function clearMenus(): void {
   _menus.clear();
 }
+
+/* ── E3h #66：TitleBar 声明式扩展区域 ── */
+
+/** 插件在 plugin.json 里声明的 TitleBar 按钮 */
+export interface TitleBarContribution {
+  /** 点击时执行的命令 ID */
+  command: string;
+  /** codicon 类名（如 "codicon-settings"）或图片路径 */
+  icon?: string;
+  /** context key when 条件——不满足时隐藏按钮 */
+  when?: string;
+  /** 排序权重——越小越靠外 */
+  order?: number;
+}
+
+const _titleBar = new Map<string, Array<TitleBarContribution & { pluginId: string }>>();
+
+/** 插件声明 contributes.titleBar → 注册按钮到指定槽位 */
+export function registerTitleBarContribution(
+  pluginId: string,
+  slot: "left" | "right",
+  item: TitleBarContribution
+): void {
+  const list = _titleBar.get(slot) ?? [];
+  list.push({ ...item, pluginId });
+  list.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
+  _titleBar.set(slot, list);
+}
+
+/** 获取指定槽位的所有按钮（已按 order 排序） */
+export function getTitleBarContributions(
+  slot: "left" | "right"
+): Array<TitleBarContribution & { pluginId: string }> {
+  return _titleBar.get(slot) ?? [];
+}
+
+/** 注销插件在 TitleBar 的所有按钮——卸载时调用 */
+export function unregisterPluginTitleBarContributions(pluginId: string): void {
+  for (const [slot, items] of _titleBar) {
+    _titleBar.set(slot, items.filter((i) => i.pluginId !== pluginId));
+  }
+}
