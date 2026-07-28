@@ -83,6 +83,7 @@
 .toolbar-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
 
 .toolbar-btn:focus-visible {
