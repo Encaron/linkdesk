@@ -111,6 +111,13 @@ export async function exists(filePath: string): Promise<boolean> {
   return a.exists(filePath);
 }
 
+/** 复制文件或目录（递归） */
+export async function copy(src: string, dest: string): Promise<void> {
+  const a = api();
+  if (!a) return;
+  await a.copy(src, dest);
+}
+
 /** 创建目录（递归） */
 export async function mkdir(dirPath: string): Promise<void> {
   const a = api();
