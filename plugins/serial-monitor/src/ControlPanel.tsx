@@ -11,7 +11,7 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useMemo, useCallback } from "react";
+import { useMemo, useCallback, useEffect } from "react";
 import { useSerialContext } from "./SerialContext";
 import { setPluginStateValue } from "@src/core/PluginStateService";
 import SelectBox from "@src/components/shared/SelectBox";
@@ -45,6 +45,11 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   // 不是独立 set——从 SerialContext 派生。
   // session.port 和 SourceState.sourceName 一致 + SourceState.isOpen = true → connected
   const connected = isOpen && activeSession !== null && state.sourceName === activeSession.port;
+
+  // mount 时立即刷新端口列表——_initOnce() 是异步的，首帧 ports=[] 会显示"无可用串口"
+  useEffect(() => {
+    refreshPorts();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── 操作 ──
 
