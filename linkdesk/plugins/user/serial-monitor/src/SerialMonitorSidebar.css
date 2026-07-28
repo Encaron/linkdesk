@@ -270,9 +270,6 @@
 
 .setting-group {
   padding: 4px 12px;
-  background: transparent;
-  border-radius: 0;
-  margin-bottom: 0;
 }
 
 .setting-group + .setting-group {
