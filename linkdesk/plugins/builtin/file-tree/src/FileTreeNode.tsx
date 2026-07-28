@@ -7,6 +7,7 @@
 
 import React from "react";
 import type { ExplorerItem } from "./FileTreeModel";
+import { defaultIconResolver } from "./FileIconResolver";
 
 interface FileTreeNodeProps {
   item: ExplorerItem;
@@ -26,24 +27,11 @@ interface FileTreeNodeProps {
 
 const ITEM_HEIGHT = 22;
 
-/** 文件名 → codicon 类名（E4a #93 会用 FileIconResolver 替换此硬编码映射） */
-const FILE_ICONS: Record<string, string> = {
-  ".tsx": "codicon-react",
-  ".ts": "codicon-symbol-namespace",
-  ".json": "codicon-json",
-  ".md": "codicon-markdown",
-  ".css": "codicon-symbol-color",
-  ".html": "codicon-code",
-  ".js": "codicon-symbol-file",
-  ".svg": "codicon-symbol-snippet",
-};
-
 function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
   if (item.isDirectory) {
-    return expanded ? "codicon-folder-opened" : "codicon-folder";
+    return expanded ? defaultIconResolver.getFolderIconOpened() : defaultIconResolver.getFolderIcon(item);
   }
-  const ext = item.name.includes(".") ? item.name.slice(item.name.lastIndexOf(".")) : "";
-  return FILE_ICONS[item.name] ?? FILE_ICONS[ext] ?? "codicon-file";
+  return defaultIconResolver.getIcon(item);
 }
 
 const FileTreeNode: React.FC<FileTreeNodeProps> = ({
