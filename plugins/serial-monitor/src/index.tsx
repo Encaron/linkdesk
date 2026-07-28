@@ -723,8 +723,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       id: "serial-monitor.send",
       title: t("发送"),
       category: t("串口监视器"),
+      when: "false", // 纯程序化命令——不显示在命令面板，仅供插件 API 调用
       handler: async (_token, sendMode: "text" | "hex", data: string) => {
-        if (!data) return; // Ctrl+Shift+P 无参直接回车 → 忽略
+        if (!data) return;
         const s = (window as any).linkdesk?.serial;
         if (!s) return;
         if (sendMode === "hex") {
