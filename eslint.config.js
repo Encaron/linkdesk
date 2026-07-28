@@ -5,7 +5,7 @@ import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
   {
-    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
