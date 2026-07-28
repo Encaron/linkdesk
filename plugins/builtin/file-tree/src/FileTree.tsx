@@ -266,10 +266,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={item.uri === selectedUri}
             compactedSegments={compactedSegments}
-            onSelect={() => handleSelect(item.uri)}
-            onOpen={(mode) => handleOpen(item, mode)}
-            onTwistieClick={() => handleTwistie(item)}
-            onContextMenu={(e) => handleContextMenu(item, e)}
+            onSelect={handleSelect}
+            onOpen={handleOpen}
+            onTwistieClick={handleTwistie}
+            onContextMenu={handleContextMenu}
           />
         ))}
       </div>
