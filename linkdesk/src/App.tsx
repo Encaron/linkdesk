@@ -651,7 +651,7 @@ function App() {
 
   // Phase 5f：终端设置已迁移到 useConfiguration 直连——终端组件内部 setConfigurationValue。
   // App 壳不再需要逐 key 同步 terminalPrefs → ConfigurationService 双写。
-  // 见 plugins/terminal/index.tsx + sidebar.tsx——每个设置项独立 useConfiguration("terminal.xxx")
+  // 见 plugins/user/serial-monitor/index.tsx + sidebar.tsx——每个设置项独立 useConfiguration("serial-monitor.xxx")
 
   // E2c #19f：lastPort 持久化已搬到终端插件 ControlPanel.handlePortChange——壳不再知道 terminal
 

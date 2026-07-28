@@ -1280,7 +1280,7 @@ export async function performUninstall(pluginId: string): Promise<boolean> {
 }
 
 /**
- * 安装插件：Rust 端复制到 plugins/ → 热加载。
+ * 安装插件：Electron 端复制到 plugins/user/ → 热加载。
  * 仅对 theme/language 插件即时生效；view 插件提示重启。
  */
 export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; error?: string; needRestart?: boolean }> {
@@ -1415,7 +1415,7 @@ export function isPluginLoaderReady(): boolean {
   return _initialized;
 }
 
-/** 获取禁用插件的基本信息（在 plugins/ 但被 prefs 标记禁用）*/
+/** 获取禁用插件的基本信息（在 plugins/.disabled/ 下）*/
 export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string; description?: string; version?: string }> {
   // B2 fix: 优先从缓存读——支持glob 外的插件（glob 中无清单）
   const cache = getMetadataCache();
@@ -1466,7 +1466,7 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   try {
     await linkdesk().plugins.reinstall(pluginId);
 
-    // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/ 下则 glob 中有
+    // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/builtin/ 或 plugins/user/ 下则 glob 中有
     const manifestKey = Object.keys(pluginManifests).find(
       (k) => extractPluginId(k) === pluginId
     );
