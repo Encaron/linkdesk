@@ -115,6 +115,15 @@ export function dismissToast(id: string): void {
   notify();
 }
 
+/** 更新 toast 消息——进度条模式用。不改变其他属性（ttl/severity 等） */
+export function updateToast(id: string, message: string): void {
+  const toast = _toasts.find((t) => t.id === id);
+  if (toast) {
+    toast.message = message;
+    notify();
+  }
+}
+
 /** 获取当前所有 toast */
 export function getToasts(): Toast[] {
   return [..._toasts];

@@ -13,6 +13,8 @@ import { getMergedSchema } from "./ConfigurationRegistry";
 import { executeCommand, getCommands } from "./CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "./LanguageRegistry";
+import { pushToast, dismissToast, updateToast } from "./toast";
+import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
 import {
   enablePlugin,
@@ -119,6 +121,35 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return LanguageRegistry.getAll();
     case "getCurrentLanguage":
       return i18n.language;
+    // E3j #76：插件通知——跨进程触发壳侧 toast
+    case "showNotification": {
+      const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];
+      const severity: ToastSeverity =
+        options?.type === "error" ? "error" :
+        options?.type === "warning" ? "warning" : "info";
+      const id = pushToast({
+        message,
+        severity,
+        ttl: options?.progress ? 0 : undefined, // 进度条：不自动消失
+      });
+      return options?.progress ? id : undefined;
+    }
+    case "updateNotification": {
+      const [handleId, message] = args as [string, string];
+      updateToast(handleId, message);
+      break;
+    }
+    case "finishNotification": {
+      const [handleId, message] = args as [string, string | undefined];
+      dismissToast(handleId);
+      if (message) pushToast({ message, severity: "info" });
+      break;
+    }
+    case "cancelNotification": {
+      const [handleId] = args as [string];
+      dismissToast(handleId);
+      break;
+    }
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }
