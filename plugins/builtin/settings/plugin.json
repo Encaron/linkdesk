@@ -5,6 +5,7 @@
   "icon": "resources/icon.png",
   "description": "软件设置——主题、语言、插件管理",
   "author": "官方",
+  "distribution": "builtin",
   "core": true,
   "factoryRole": "settings",
   "entry": "src/index.tsx",
