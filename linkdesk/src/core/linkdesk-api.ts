@@ -100,9 +100,10 @@ export interface LinkDeskAPI {
     show(message: string, options?: { type?: "info" | "warning" | "error"; progress?: boolean }): Promise<NotificationHandle | undefined>;
   };
 
-  /** 通用事件订阅 */
+  /** 通用事件订阅 + 发布——插件间数据管道 */
   events: {
     on(channel: string, cb: (payload: unknown) => void): () => void;
+    emit(channel: string, payload: unknown): void;
   };
 }
 

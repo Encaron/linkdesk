@@ -102,6 +102,14 @@ function _initIPC(): void {
   s.onSystem?.((msg: any) => {
     _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
   });
+
+  // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
+  s.onData?.((text: string) => {
+    (window as any).linkdesk?.events?.emit("serial:rawData", {
+      sourceName: _sharedState.sourceName,
+      text,
+    });
+  });
 }
 
 // ═══════════════════════════════════════════════════════
