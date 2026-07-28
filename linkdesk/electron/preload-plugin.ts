@@ -158,6 +158,22 @@ try {
       get: () => ipcRenderer.invoke('env:get'),
     },
 
+    // ── E3j #76：通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage ──
+    notifications: {
+      /** 弹出通知。progress=true 时返回 ProgressHandle */
+      show: (message: string, options?: { type?: string; progress?: boolean }) => {
+        return ipcRenderer.invoke('plugins:call', 'showNotification', message, options)
+          .then((handleId: string | undefined) => {
+            if (!handleId) return undefined;
+            return {
+              update: (msg: string) => ipcRenderer.invoke('plugins:call', 'updateNotification', handleId, msg),
+              finish: (msg?: string) => ipcRenderer.invoke('plugins:call', 'finishNotification', handleId, msg),
+              cancel: () => ipcRenderer.invoke('plugins:call', 'cancelNotification', handleId),
+            };
+          });
+      },
+    },
+
     // ── E3a #31：插件管理——list/enable/disable/install/uninstall/reinstall ──
     pluginManager: {
       list:           () => ipcRenderer.invoke('plugins:call', 'list'),

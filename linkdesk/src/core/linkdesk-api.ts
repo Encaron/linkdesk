@@ -94,10 +94,26 @@ export interface LinkDeskAPI {
     set(langId: string): Promise<void>;
   };
 
+  /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
+  notifications: {
+    /** 弹出通知。progress=true 时返回 ProgressHandle（含 update/finish/cancel） */
+    show(message: string, options?: { type?: "info" | "warning" | "error"; progress?: boolean }): Promise<NotificationHandle | undefined>;
+  };
+
   /** 通用事件订阅 */
   events: {
     on(channel: string, cb: (payload: unknown) => void): () => void;
   };
+}
+
+/** 进度通知句柄——progress=true 时 show() 返回 */
+export interface NotificationHandle {
+  /** 更新进度消息 */
+  update(message: string): Promise<void>;
+  /** 完成——关闭进度通知，可选弹完成 toast */
+  finish(message?: string): Promise<void>;
+  /** 取消——直接关闭，不弹完成 toast */
+  cancel(): Promise<void>;
 }
 
 // ── 获取 typed API 实例 ──
