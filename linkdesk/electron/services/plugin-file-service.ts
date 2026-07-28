@@ -40,20 +40,33 @@ class PluginFileService {
     return manifest?.core === true;
   }
 
+  /** 查找插件所在的子目录——"builtin" | "user" | null */
+  private _findPluginDir(pluginId: string): string | null {
+    const dir = this.pluginsDir();
+    for (const sub of ['builtin', 'user']) {
+      if (existsSync(path.join(dir, sub, pluginId))) return sub;
+    }
+    return null;
+  }
+
   // ── 列出插件（对标 Rust list_plugin_dirs）──
 
   async listPluginDirs(): Promise<string[]> {
     const dir = this.pluginsDir();
     if (!existsSync(dir)) return [];
 
-    const entries = await fs.readdir(dir, { withFileTypes: true });
     const names: string[] = [];
+    for (const sub of ['builtin', 'user']) {
+      const subDir = path.join(dir, sub);
+      if (!existsSync(subDir)) continue;
 
-    for (const entry of entries) {
-      if (!entry.isDirectory()) continue;
-      if (entry.name.startsWith('.')) continue;
-      if (existsSync(path.join(dir, entry.name, 'plugin.json'))) {
-        names.push(entry.name);
+      const entries = await fs.readdir(subDir, { withFileTypes: true });
+      for (const entry of entries) {
+        if (!entry.isDirectory()) continue;
+        if (entry.name.startsWith('.')) continue;
+        if (existsSync(path.join(subDir, entry.name, 'plugin.json'))) {
+          names.push(entry.name);
+        }
       }
     }
 
@@ -102,12 +115,25 @@ class PluginFileService {
       throw new Error(`plugin.json 格式错误: ${e.message}`);
     }
 
-    const destDir = path.join(this.pluginsDir(), name);
+    const destDir = path.join(this.pluginsDir(), 'user', name);
     if (existsSync(destDir)) {
       throw new Error(`插件 "${name}" 已存在。请先卸载旧版本。`);
     }
 
     await fileService.copyDir(source, destDir);
+
+    // 安装后强制消毒——市场下载的插件永远不是 builtin/core
+    const destManifestPath = path.join(destDir, 'plugin.json');
+    try {
+      const raw = await fs.readFile(destManifestPath, 'utf-8');
+      const manifest = JSON.parse(raw);
+      if (manifest.distribution !== 'user' || manifest.core === true) {
+        manifest.distribution = 'user';
+        manifest.core = false;
+        await fs.writeFile(destManifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
+      }
+    } catch { /* 消毒失败不阻断安装 */ }
+
     return name;
   }
 
@@ -115,11 +141,11 @@ class PluginFileService {
 
   async uninstallPlugin(pluginId: string): Promise<void> {
     const dir = this.pluginsDir();
-    const src = path.join(dir, pluginId);
-
-    if (!existsSync(src)) {
+    const subdir = this._findPluginDir(pluginId);
+    if (!subdir) {
       throw new Error(`插件 "${pluginId}" 不存在`);
     }
+    const src = path.join(dir, subdir, pluginId);
 
     // 检查是否 core 插件
     if (this.isCorePlugin(src)) {
@@ -152,19 +178,24 @@ class PluginFileService {
       throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
     }
 
-    const dest = path.join(dir, pluginId);
+    // 重装到 user/——用户主动操作，变更为用户管理
+    const dest = path.join(dir, 'user', pluginId);
     if (existsSync(dest)) {
       throw new Error(`插件 "${pluginId}" 已存在`);
     }
 
-    // 从 .disabled/ 移回 plugins/——同级目录 rename 不受跨目录限制
+    // 从 .disabled/ 移回 plugins/user/——同级目录 rename 不受跨目录限制
     await fs.rename(src, dest);
   }
 
   // ── 读取 manifest（对标 Rust read_plugin_manifest）──
 
   async readManifest(pluginId: string): Promise<string> {
-    const manifestPath = path.join(this.pluginsDir(), pluginId, 'plugin.json');
+    const subdir = this._findPluginDir(pluginId);
+    const manifestPath = subdir
+      ? path.join(this.pluginsDir(), subdir, pluginId, 'plugin.json')
+      : path.join(this.pluginsDir(), pluginId, 'plugin.json');
+
     // 如果不在主目录，检查 .disabled/
     if (!existsSync(manifestPath)) {
       const disabledPath = path.join(this.pluginsDir(), '.disabled', pluginId, 'plugin.json');
@@ -179,7 +210,10 @@ class PluginFileService {
   // ── 解析路径（对标 Rust resolve_plugin_path——返回正斜杠路径）──
 
   resolvePath(pluginId: string): string {
-    const p = path.join(this.pluginsDir(), pluginId);
+    const subdir = this._findPluginDir(pluginId);
+    const p = subdir
+      ? path.join(this.pluginsDir(), subdir, pluginId)
+      : path.join(this.pluginsDir(), pluginId);
     // 正斜杠——Windows 反斜杠在 Vite /@fs/ URL 中不兼容
     return p.replace(/\\/g, '/');
   }
