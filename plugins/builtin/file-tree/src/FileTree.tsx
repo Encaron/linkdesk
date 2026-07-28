@@ -235,8 +235,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         overflowY: "auto",
         overflowX: "hidden",
         outline: "none",
-        color: "var(--color-foreground, #F8FAFC)",
-        backgroundColor: "var(--color-bg, #0B1120)",
+        color: "var(--color-foreground)",
+        background: "transparent",
       }}
     >
       <div style={{ height: totalHeight, position: "relative" }}>

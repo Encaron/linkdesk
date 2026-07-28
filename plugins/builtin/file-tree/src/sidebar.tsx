@@ -84,7 +84,7 @@ const FileTreeSidebar: React.FC = () => {
           fontWeight: 600,
           textTransform: "uppercase",
           letterSpacing: "0.5px",
-          color: "var(--color-dimmed, #94A3B8)",
+          color: "var(--color-dimmed)",
           flexShrink: 0,
         }}
       >
@@ -100,9 +100,9 @@ const FileTreeSidebar: React.FC = () => {
             alignItems: "center",
             padding: "0 12px",
             fontSize: 12,
-            color: "var(--color-dimmed, #94A3B8)",
+            color: "var(--color-dimmed)",
             flexShrink: 0,
-            borderBottom: "1px solid var(--color-border, #1E293B)",
+            borderBottom: "1px solid var(--color-border)",
           }}
         >
           <span className="codicon codicon-root-folder" style={{ marginRight: 6, fontSize: 14 }} />
@@ -159,13 +159,13 @@ const ToolbarButton: React.FC<{
       justifyContent: "center",
       border: "none",
       background: "transparent",
-      color: "var(--color-dimmed, #94A3B8)",
+      color: "var(--color-dimmed)",
       cursor: "pointer",
       borderRadius: 4,
       padding: 0,
     }}
-    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-foreground, #F8FAFC)"; }}
-    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-dimmed, #94A3B8)"; }}
+    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-foreground)"; }}
+    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--color-dimmed)"; }}
   >
     <span className={`codicon ${icon}`} style={{ fontSize: 14 }} />
   </button>
