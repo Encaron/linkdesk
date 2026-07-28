@@ -19,7 +19,10 @@ const pluginId = params.get("plugin-view");
 
 // import.meta.glob：Vite 预扫描插件入口，返回 { path: () => import(path) } 映射。
 // 无需 linkdesk().plugins.resolvePath——Vite 在构建时静态展开 glob。
-const pluginModules = import.meta.glob("../plugins/*/src/index.tsx");
+const pluginModules = {
+  ...import.meta.glob("../plugins/builtin/*/src/index.tsx"),
+  ...import.meta.glob("../plugins/user/*/src/index.tsx"),
+};
 
 function bootstrap() {
   const root = document.getElementById("root");

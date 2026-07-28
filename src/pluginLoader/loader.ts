@@ -54,44 +54,74 @@ const log = createLogChannel("app", "pluginLoader", "pluginLoader");
 
 // Vite 在构建时展开 glob，生成所有插件的入口映射。
 // E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
-// 注意：只扫描 plugins/*/，不扫描 plugins/.disabled/（.disabled 多了层目录会破坏相对 import 路径）
+// E4 #86：插件分离到 builtin/ 和 user/ 两个子目录——每个 glob 拆为两份。
 const pluginModules = {
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/*/index.tsx",
+    "../../plugins/builtin/*/index.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
-    "../../plugins/*/src/index.tsx",
+    "../../plugins/builtin/*/src/index.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+    "../../plugins/user/*/index.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(
+    "../../plugins/user/*/src/index.tsx",
     { eager: false }
   ),
 };
 
 const pluginSidebarModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/*/sidebar.tsx",
+    "../../plugins/builtin/*/sidebar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/*/src/sidebar.tsx",
+    "../../plugins/builtin/*/src/sidebar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/sidebar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/src/sidebar.tsx",
     { eager: false }
   ),
 };
 
 const pluginStatusBarModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/*/statusBar.tsx",
+    "../../plugins/builtin/*/statusBar.tsx",
     { eager: false }
   ),
   ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/*/src/statusBar.tsx",
+    "../../plugins/builtin/*/src/statusBar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/statusBar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/src/statusBar.tsx",
     { eager: false }
   ),
 };
 
-const pluginManifests = import.meta.glob<PluginManifest>(
-  "../../plugins/*/plugin.json",
-  { eager: true }  // plugin.json 需要立即读取——决定注册表结构
-);
+const pluginManifests = {
+  ...import.meta.glob<PluginManifest>(
+    "../../plugins/builtin/*/plugin.json",
+    { eager: true }
+  ),
+  ...import.meta.glob<PluginManifest>(
+    "../../plugins/user/*/plugin.json",
+    { eager: true }
+  ),
+};
 
 /* ── 辅助：从路径提取 pluginId ── */
 
