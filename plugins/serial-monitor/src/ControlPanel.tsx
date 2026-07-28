@@ -32,7 +32,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports, isOpen } = state;
-  const { toggleOpen, setSourceName: setPortName, setBaudRate, refreshPorts } = actions;
+  const { setSourceName: setPortName, setBaudRate, refreshPorts, openPort, closePort } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
   const { session: activeSession, update: updateSession } = useSession(sourceId);
@@ -78,23 +78,24 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   );
 
   const handleToggleOpen = useCallback(async () => {
-    // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
-    if (!isOpen && activeSession) {
-      const enc = activeSession.receiveCoding;
-      // A3+G23：会话还没选端口 → 自动填第一个可用端口
+    if (!activeSession) return;
+    const enc = activeSession.receiveCoding;
+
+    if (connected) {
+      // 当前标签页的端口已打开 → 关闭
+      await closePort();
+    } else {
+      // 当前标签页的端口未打开 → 打开（serial-service 会自动先关其他端口）
+      // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
       if (!activeSession.port && ports.length > 0) {
         updateSession({ port: ports[0].name });
-        await setPortName(ports[0].name, enc);
-      } else if (activeSession.port && activeSession.port !== state.sourceName) {
-        await setPortName(activeSession.port, enc);
       }
-      if (activeSession.baudRate !== state.baudRate) {
-        await setBaudRate(activeSession.baudRate, enc);
-      }
+      const targetPort = activeSession.port || ports[0]?.name;
+      const targetBaud = Number(activeSession.baudRate || 115200);
+      if (!targetPort) return;
+      await openPort(targetPort, targetBaud, enc);
     }
-    // E8：receiveCoding 从 session 传入——不再读旧配置系统
-    await toggleOpen(activeSession?.receiveCoding);
-  }, [isOpen, activeSession, state.sourceName, state.baudRate, setPortName, setBaudRate, toggleOpen, ports, updateSession]);
+  }, [connected, activeSession, closePort, openPort, ports, updateSession]);
 
   // ── 未连接 / 无会话状态 ──
 

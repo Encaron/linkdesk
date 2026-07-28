@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>串口监视器 E3.5 整改后 — 整体预览</title>
+<style>
+/* ══════════════════════════════════════════════════════════════
+   CSS 变量 —— 对标 LinkDesk 主题系统，明暗双主题共用
+   ══════════════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1e1e1e;
+  --bg-card: #252526;
+  --bg-toolbar: #2d2d2d;
+  --bg-input: #3c3c3c;
+  --bg-sidebar: #1e1e1e;
+  --text-primary: #cccccc;
+  --text-secondary: #999999;
+  --text-muted: #777777;
+  --border: #3c3c3c;
+  --separator: #454545;
+  --accent: #0078d4;
+  --accent-hover: #1a8ad4;
+  --hover-overlay: rgba(255,255,255,0.04);
+  --active-overlay: rgba(255,255,255,0.08);
+  --text-on-accent: #ffffff;
+  --warning-text: #e8ab3e;
+  --warning-bg: rgba(255,200,0,0.12);
+  --danger: #ef4444;
+  --serial-ok: #22c55e;
+  --serial-disconnected: #555;
+  --system-log: #a0a0a0;
+  --sent-echo: #569cd6;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Sarasa Mono SC', 'Cascadia Code', Consolas, 'Courier New', monospace;
+  color-scheme: dark;
+}
+body.light {
+  --bg-window: #f3f3f3;
+  --bg-card: #ffffff;
+  --bg-toolbar: #f8f8f8;
+  --bg-input: #ffffff;
+  --bg-sidebar: #f3f3f3;
+  --text-primary: #333333;
+  --text-secondary: #666666;
+  --text-muted: #999999;
+  --border: #d4d4d4;
+  --separator: #e8e8e8;
+  --hover-overlay: rgba(0,0,0,0.04);
+  --active-overlay: rgba(0,0,0,0.08);
+  --text-on-accent: #ffffff;
+  --warning-bg: rgba(255,200,0,0.1);
+  --serial-disconnected: #bbb;
+  --system-log: #888;
+  --sent-echo: #0451a5;
+  color-scheme: light;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--font-ui); background: #0d0d0d; color: var(--text-primary);
+  display: flex; justify-content: center; padding: 20px;
+}
+.app-shell {
+  width: 1100px; height: 90vh; display: flex; border-radius: 8px; overflow: hidden;
+  box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+}
+
+/* ═══ 图标栏（最左 42px） ═══ */
+.icon-bar {
+  width: 42px; background: var(--bg-window); display: flex; flex-direction: column;
+  align-items: center; padding-top: 8px; gap: 4px; border-right: 1px solid var(--separator);
+}
+.icn {
+  width: 36px; height: 36px; display: flex; align-items: center; justify-content: center;
+  border-radius: 4px; cursor: pointer; font-size: 18px; color: var(--text-muted);
+  position: relative; transition: color 120ms;
+}
+.icn:hover { color: var(--text-primary); }
+.icn.active { color: var(--text-primary); }
+.icn.active::before {
+  content:''; position:absolute; left:0; top:6px; bottom:6px; width:2px;
+  background: var(--accent); border-radius: 0 2px 2px 0;
+}
+.icon-spacer { flex:1; }
+
+/* ═══ 侧栏（200px） ═══ */
+.sidebar {
+  width: 220px; background: var(--bg-sidebar); border-right: 1px solid var(--separator);
+  display: flex; flex-direction: column; overflow: hidden; flex-shrink: 0;
+}
+.sidebar-section {
+  border-bottom: 1px solid var(--separator);
+}
+.sidebar-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 12px; font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.4px; color: var(--text-muted); cursor: pointer; user-select: none;
+}
+.sidebar-header:hover { color: var(--text-primary); }
+.sidebar-body { overflow-y: auto; }
+
+/* 会话列表项 */
+.sess {
+  display: flex; align-items: center; padding: 6px 8px 6px 6px;
+  border-left: 2px solid transparent; cursor: pointer; transition: background 100ms;
+}
+.sess:hover { background: var(--hover-overlay); }
+.sess.active { background: var(--active-overlay); border-left-color: var(--session-color, var(--serial-ok)); }
+.sess-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-right: 6px;
+  background: var(--serial-disconnected); transition: background 300ms;
+}
+.sess-dot.on { background: var(--serial-ok); box-shadow: 0 0 4px var(--serial-ok); }
+.sess-info { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.sess-name { font-size:12px; color:var(--text-primary); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sess.active .sess-name { color:#fff; font-weight:600; }
+.sess-sub { font-size:10px; color:var(--text-muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sess-acts { display:flex; gap:2px; flex-shrink:0; opacity:0; transition:opacity 100ms; }
+.sess:hover .sess-acts, .sess:focus-within .sess-acts { opacity:1; }
+.act-btn {
+  background:transparent; border:none; color:var(--text-muted); font-size:12px;
+  padding:2px 4px; border-radius:3px; cursor:pointer; transition:background 100ms, color 100ms;
+  font-family: var(--font-ui);
+}
+.act-btn:hover { background:var(--hover-overlay); color:var(--text-primary); }
+.act-btn:focus-visible { outline:2px solid var(--accent); outline-offset:-1px; }
+
+.btn-new {
+  background:transparent; border:none; color:var(--text-muted); font-size:11px;
+  padding:2px 6px; border-radius:3px; cursor:pointer; font-family: var(--font-ui);
+}
+.btn-new:hover { background:var(--hover-overlay); color:var(--text-primary); }
+
+/* 侧栏设置区 */
+.set-group { padding:2px 0; }
+.set-group + .set-group { border-top:1px solid var(--separator); }
+.set-label {
+  padding:8px 12px 2px; font-size:10px; font-weight:600; text-transform:uppercase;
+  letter-spacing:0.3px; color:var(--text-muted);
+}
+.set-row { display:flex; align-items:center; justify-content:space-between; padding:5px 12px; gap:8px; }
+.set-row-label { font-size:11px; color:var(--text-primary); }
+.sel {
+  background:var(--bg-input); border:1px solid var(--border); border-radius:3px;
+  color:var(--text-primary); font-size:11px; padding:2px 6px; cursor:pointer; font-family:var(--font-ui);
+}
+.tgl {
+  width:28px; height:16px; border-radius:8px; background:var(--accent); position:relative;
+  cursor:pointer; flex-shrink:0; transition:background 150ms;
+}
+.tgl::after {
+  content:''; position:absolute; top:2px; left:14px; width:12px; height:12px;
+  border-radius:50%; background:#fff;
+}
+.tgl.off { background:var(--border); }
+.tgl.off::after { left:2px; }
+.num-inp {
+  background:var(--bg-input); border:1px solid var(--border); border-radius:3px;
+  color:var(--text-primary); font-size:11px; padding:2px 6px; width:64px; font-family:var(--font-mono);
+}
+
+/* ═══ 主区 ═══ */
+.main {
+  flex:1; display:flex; flex-direction:column; overflow:hidden; background:var(--bg-card);
+}
+
+/* 标签栏 */
+.tab-bar {
+  display:flex; background:var(--bg-window); border-bottom:1px solid var(--separator);
+  padding:0 8px; height:32px; align-items:flex-end;
+}
+.tab {
+  padding:6px 14px; font-size:12px; color:var(--text-muted); cursor:pointer;
+  border-bottom:2px solid transparent; white-space:nowrap; margin-bottom:-1px;
+}
+.tab.active { color:var(--text-primary); border-bottom-color:var(--accent); }
+
+/* 控制面板 —— 36px 命令条 */
+.ctrl-bar {
+  display:flex; align-items:center; gap:4px; height:36px; padding:0 8px;
+  background:var(--bg-window); border-bottom:1px solid var(--separator); flex-shrink:0;
+}
+.ctrl-dot {
+  width:8px; height:8px; border-radius:50%; flex-shrink:0; margin-right:2px;
+  background:var(--serial-disconnected);
+}
+.ctrl-dot.on { background:var(--serial-ok); box-shadow:0 0 6px var(--serial-ok); }
+.ctrl-sel {
+  font-size:12px; padding:3px 8px; border-radius:3px; background:var(--bg-input);
+  border:1px solid var(--border); color:var(--text-primary); cursor:pointer;
+  font-family:var(--font-ui);
+}
+.ctrl-sep { width:1px; height:18px; background:var(--separator); flex-shrink:0; margin:0 2px; }
+.ctrl-spacer { flex:1; min-width:4px; }
+.ctrl-btn {
+  display:flex; align-items:center; gap:4px; background:transparent;
+  border:1px solid var(--border); border-radius:4px; color:var(--text-secondary);
+  font-size:12px; padding:3px 10px; cursor:pointer; font-family:var(--font-ui);
+  transition:background 120ms, color 120ms, box-shadow 120ms;
+}
+.ctrl-btn:hover { background:var(--hover-overlay); color:var(--text-primary); box-shadow:0 0 0 1px rgba(255,255,255,0.08); }
+.ctrl-btn:focus-visible { outline:2px solid var(--accent); outline-offset:-1px; }
+.ctrl-btn.on { border-color:var(--serial-ok); color:var(--serial-ok); }
+.ctrl-btn.on:hover { border-color:var(--danger); color:var(--danger); }
+
+/* 工具栏 */
+.toolbar {
+  display:flex; gap:4px; padding:6px 10px; background:var(--bg-toolbar);
+  border-bottom:1px solid var(--separator); flex-shrink:0;
+}
+.tbtn {
+  background:transparent; border:1px solid var(--border); border-radius:4px;
+  color:var(--text-secondary); font-size:11px; padding:3px 10px; cursor:pointer;
+  display:flex; align-items:center; gap:5px; font-family:var(--font-ui);
+  transition:background 150ms, color 150ms, box-shadow 120ms;
+}
+.tbtn:hover { background:var(--hover-overlay); color:var(--text-primary); box-shadow:0 0 0 1px rgba(255,255,255,0.08); }
+.tbtn:active { background:var(--active-overlay); }
+.tbtn:focus-visible { outline:2px solid var(--accent); outline-offset:-1px; }
+.tbtn.on { background:var(--accent); color:var(--text-on-accent); border-color:var(--accent); }
+.tbtn.on:hover { background:var(--accent-hover); }
+
+.icon-mono { font-family:var(--font-mono); font-size:13px; }
+
+/* 系统消息区 */
+.sys-log {
+  max-height:40px; background:var(--bg-input); border-left:3px solid var(--accent);
+  border-bottom:1px solid var(--separator); flex-shrink:0; overflow-y:auto;
+  padding:3px 6px; font-size:11px; font-family:var(--font-mono); color:var(--system-log);
+}
+
+/* CM6 接收区（模拟） */
+.cm-area {
+  flex:1; background:var(--bg-card); overflow-y:auto; padding:4px 0;
+  position:relative; font-family:var(--font-mono); font-size:12px; line-height:1.7;
+}
+.cm-line { padding:0 12px; white-space:nowrap; }
+.cm-line .ts { color:var(--text-muted); }
+.cm-line.recv { color:var(--text-primary); }
+.cm-line.sent { color:var(--sent-echo); }
+.cm-line.sys { color:var(--system-log); }
+.cm-gutter { display:inline-block; width:24px; text-align:right; color:var(--text-muted); margin-right:8px; font-size:10px; }
+
+.paused-banner {
+  position:sticky; top:0; padding:4px 10px; background:var(--warning-bg);
+  color:var(--warning-text); font-size:11px; text-align:center; font-family:var(--font-ui);
+}
+.back-btn {
+  position:absolute; bottom:12px; right:12px; width:36px; height:36px;
+  border-radius:50%; background:var(--accent); border:none; color:var(--text-on-accent);
+  font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,0.3);
+}
+
+/* 快捷发送条 */
+.qs-bar {
+  display:flex; gap:4px; padding:6px 10px; background:var(--bg-card);
+  border-top:1px solid var(--separator); flex-shrink:0; flex-wrap:wrap; align-items:center;
+  min-height:30px;
+}
+.qs-pill {
+  background:var(--bg-input); border:1px solid var(--border); border-radius:12px;
+  padding:2px 10px; font-size:11px; font-family:var(--font-mono); color:var(--text-primary);
+  cursor:pointer; transition:background 150ms;
+}
+.qs-pill:hover { background:var(--accent); }
+.qs-pill:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.qs-add {
+  background:transparent; border:1px solid var(--border); border-radius:12px;
+  padding:2px 10px; font-size:11px; color:var(--text-muted); cursor:pointer;
+  font-family:var(--font-ui); transition:border-color 150ms, color 150ms;
+}
+.qs-add:hover { border-color:var(--accent); color:var(--text-primary); }
+
+/* 发送区 */
+.send-area {
+  flex-shrink:0; border-top:1px solid var(--border); background:var(--bg-card);
+}
+.send-row {
+  display:flex; align-items:stretch; border-bottom:1px solid var(--separator);
+}
+.send-prefix {
+  display:flex; align-items:center; padding:0 6px 0 10px; color:var(--accent);
+  font-family:var(--font-mono); font-size:14px; font-weight:600;
+}
+.send-input {
+  flex:1; background:transparent; border:none; color:var(--text-primary);
+  font-family:var(--font-mono); font-size:13px; padding:8px 0; resize:none; outline:none;
+}
+.send-input::placeholder { color:var(--text-muted); }
+.send-actions {
+  display:flex; justify-content:flex-end; gap:4px; padding:4px 8px;
+}
+.send-btn {
+  background:var(--accent); border:none; border-radius:4px; color:var(--text-on-accent);
+  font-size:12px; padding:4px 20px; cursor:pointer; font-family:var(--font-ui);
+  transition:background 150ms;
+}
+.send-btn:hover { background:var(--accent-hover); }
+.send-btn:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* 状态栏 */
+.status-bar {
+  height:22px; background:var(--accent); display:flex; align-items:center;
+  padding:0 10px; gap:6px; font-size:11px; color:var(--text-on-accent); flex-shrink:0;
+}
+.status-div { opacity:0.5; }
+
+/* ═══ 浅色覆写 ═══ */
+body.light .sess.active .sess-name { color:#222; }
+body.light .ctrl-dot { background:var(--serial-disconnected); }
+body.light .ctrl-dot.on { background:var(--serial-ok); }
+body.light .ctrl-btn.on { border-color:var(--serial-ok); color:var(--serial-ok); }
+
+/* 标签 */
+.badge-mini {
+  font-size:9px; background:var(--hover-overlay); color:var(--text-muted);
+  padding:0 5px; border-radius:8px; margin-left:4px;
+}
+.legend {
+  position:fixed; bottom:16px; right:16px; background:var(--bg-card);
+  border:1px solid var(--separator); border-radius:6px; padding:10px 14px;
+  font-size:11px; color:var(--text-muted); display:flex; gap:12px;
+}
+.legend span { display:flex; align-items:center; gap:4px; }
+.legend .dot { width:6px; height:6px; border-radius:50%; }
+.legend .dot.green { background:var(--serial-ok); }
+
+/* 主题切换按钮 */
+.theme-bar {
+  position:fixed; top:12px; right:16px; display:flex; gap:6px; z-index:100;
+}
+.theme-bar button {
+  padding:4px 12px; border:1px solid rgba(255,255,255,0.2); border-radius:4px;
+  background:rgba(255,255,255,0.06); color:#aaa; cursor:pointer; font-size:11px;
+  font-family:var(--font-ui);
+}
+.theme-bar button.on { background:var(--accent); border-color:var(--accent); color:#fff; }
+body.light .theme-bar button { border-color:rgba(0,0,0,0.15); color:#666; }
+body.light .theme-bar button.on { background:var(--accent); color:#fff; }
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button id="btn-dark" class="on" onclick="setTheme('dark')">暗色</button>
+  <button id="btn-light" onclick="setTheme('light')">浅色</button>
+  <span style="color:#888;font-size:11px;margin-left:8px;">预览中</span>
+</div>
+
+<div class="app-shell">
+
+  <!-- ═══════════ 图标栏 ═══════════ -->
+  <div class="icon-bar">
+    <div class="icn" title="串口监视器">📟</div>
+    <div class="icn" title="工作台">⬡</div>
+    <div class="icn" title="插件市场">⊞</div>
+    <div class="icon-spacer"></div>
+    <div class="icn active" title="设置">⚙</div>
+  </div>
+
+  <!-- ═══════════ 侧栏 ═══════════ -->
+  <div class="sidebar">
+    <!-- 会话列表 -->
+    <div class="sidebar-section">
+      <div class="sidebar-header">
+        串口监视器会话 <span class="badge-mini">2</span>
+        <button class="btn-new">+ 新建</button>
+      </div>
+      <div class="sidebar-body">
+        <div class="sess active" style="--session-color:var(--serial-ok)">
+          <span class="sess-dot on"></span>
+          <div class="sess-info">
+            <span class="sess-name">ESP32 调试</span>
+            <span class="sess-sub">115200 · bracket</span>
+          </div>
+          <div class="sess-acts">
+            <button class="act-btn" title="改名">✎</button>
+            <button class="act-btn" title="关闭">✕</button>
+          </div>
+        </div>
+        <div class="sess" style="--session-color:#3b82f6">
+          <span class="sess-dot"></span>
+          <div class="sess-info">
+            <span class="sess-name">STM32 日志</span>
+            <span class="sess-sub">9600 · bracket</span>
+          </div>
+          <div class="sess-acts">
+            <button class="act-btn" title="改名">✎</button>
+            <button class="act-btn" title="关闭">✕</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 收发设置（带分区标题 ✓） -->
+    <div class="sidebar-section" style="flex:1;overflow-y:auto;">
+      <div class="sidebar-header">收发设置 — ESP32 调试</div>
+      <div class="sidebar-body">
+        <div class="set-label">显示</div>
+        <div class="set-group">
+          <div class="set-row"><span class="set-row-label">时间戳</span><select class="sel"><option>HH:mm:ss:fff</option></select></div>
+          <div class="set-row"><span class="set-row-label">消息回显</span><span class="tgl"></span></div>
+          <div class="set-row"><span class="set-row-label">行号显示</span><span class="tgl"></span></div>
+          <div class="set-row"><span class="set-row-label">系统消息独立显示</span><span class="tgl"></span></div>
+        </div>
+        <div class="set-label">发送行为</div>
+        <div class="set-group">
+          <div class="set-row"><span class="set-row-label">换行符</span><select class="sel"><option>\r\n</option></select></div>
+          <div class="set-row"><span class="set-row-label">定时发送</span><span class="tgl off"></span></div>
+          <div class="set-row"><span class="set-row-label">发送后清空</span><span class="tgl off"></span></div>
+        </div>
+        <div class="set-label">编码</div>
+        <div class="set-group">
+          <div class="set-row"><span class="set-row-label">接收模式</span><select class="sel"><option>文本</option></select></div>
+          <div class="set-row"><span class="set-row-label">接收编码</span><select class="sel"><option>UTF-8</option></select></div>
+          <div class="set-row"><span class="set-row-label">发送模式</span><select class="sel"><option>文本</option></select></div>
+          <div class="set-row"><span class="set-row-label">发送编码</span><select class="sel"><option>UTF-8</option></select></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 主区 ═══════════ -->
+  <div class="main">
+
+    <!-- 标签栏 -->
+    <div class="tab-bar">
+      <div class="tab active">ESP32 调试</div>
+      <div class="tab">STM32 日志</div>
+    </div>
+
+    <!-- 控制面板 —— 连接状态点无脉冲动画 ✓ -->
+    <div class="ctrl-bar">
+      <span class="ctrl-dot on"></span>
+      <select class="ctrl-sel"><option>COM3</option></select>
+      <span class="ctrl-sep"></span>
+      <select class="ctrl-sel"><option>115200</option></select>
+      <span class="ctrl-sep"></span>
+      <select class="ctrl-sel"><option>方括号协议</option></select>
+      <span class="ctrl-spacer"></span>
+      <button class="ctrl-btn on">断开</button>
+    </div>
+
+    <!-- 工具栏 —— 无命令面板按钮、无 emoji、无 scale ✓ -->
+    <div class="toolbar">
+      <button class="tbtn">
+        <span class="icon-mono">⏸</span> 暂停接收
+      </button>
+      <button class="tbtn">
+        <span class="icon-mono">⤓</span> 导出日志
+      </button>
+      <button class="tbtn">
+        <span class="icon-mono">⌧</span> 清空接收区
+      </button>
+      <button class="tbtn on" style="border-color:transparent;">
+        <span class="icon-mono">⧅</span> 筛选: 协议
+      </button>
+      <button class="tbtn">
+        <span class="icon-mono">🔍</span> 搜索
+      </button>
+    </div>
+
+    <!-- 系统消息区 ✓ -->
+    <div class="sys-log">
+      <div>---- 已打开串行端口 COM3 ----</div>
+      <div>---- 消息回显：开 ----</div>
+    </div>
+
+    <!-- 接收区（CM6 模拟） ✓ -->
+    <div class="cm-area">
+      <div class="cm-line recv"><span class="cm-gutter">1</span><span class="ts">14:23:01:234 →</span> AT</div>
+      <div class="cm-line sent"><span class="cm-gutter">2</span><span class="ts">14:23:01:236 ----</span> AT</div>
+      <div class="cm-line recv"><span class="cm-gutter">3</span><span class="ts">14:23:01:456 →</span> OK</div>
+      <div class="cm-line recv"><span class="cm-gutter">4</span><span class="ts">14:23:02:789 →</span> +CWLAP:(1,"WiFi-Home",-45,"a4:2b:b0:..."),</div>
+      <div class="cm-line recv"><span class="cm-gutter">5</span><span class="ts">14:23:02:790 →</span> +CWLAP:(2,"Office",-62,"b8:69:f4:..."),</div>
+      <div class="cm-line recv"><span class="cm-gutter">6</span><span class="ts">14:23:02:791 →</span> +CWLAP:(3,"Guest",-78,"cc:2d:83:..."),</div>
+      <div class="cm-line recv"><span class="cm-gutter">7</span><span class="ts">14:23:03:012 →</span> OK</div>
+      <div class="cm-line sys"><span class="cm-gutter">8</span>---- 快捷发送「AT」已添加 ----</div>
+      <div class="cm-line recv"><span class="cm-gutter">9</span><span class="ts">14:23:15:001 →</span> {"temp": 23.5, "humidity": 67.2, "pressure": 1013.2}</div>
+
+      <!-- 暂停横幅 ✓ 颜色走 CSS 变量 -->
+      <div class="paused-banner">⏸ 已暂停 · 42 条缓冲</div>
+
+      <button class="back-btn" title="回到底部">↓</button>
+    </div>
+
+    <!-- 快捷发送条 ✓ pill 有 focus-visible -->
+    <div class="qs-bar">
+      <span class="qs-pill" tabindex="0">AT</span>
+      <span class="qs-pill" tabindex="0">READ</span>
+      <span class="qs-pill" tabindex="0">STATUS</span>
+      <button class="qs-add">+ 添加</button>
+    </div>
+
+    <!-- 发送区 ✓ 前缀 → -->
+    <div class="send-area">
+      <div class="send-row">
+        <span class="send-prefix">→</span>
+        <input class="send-input" placeholder="输入要发送的数据…" value="AT">
+      </div>
+      <div class="send-actions">
+        <button class="tbtn" style="font-size:11px;">▼</button>
+        <button class="tbtn" style="font-size:11px;">清空发送区</button>
+        <button class="send-btn">发送</button>
+      </div>
+    </div>
+
+    <!-- 状态栏 ✓ 无 emoji -->
+    <div class="status-bar">
+      <span>●</span> <span>已连接</span>
+      <span class="status-div">│</span>
+      <span>TX:1,234</span>
+      <span style="opacity:0.7;">RX:5,678</span>
+    </div>
+
+  </div>
+</div>
+
+<!-- 图例 -->
+<div class="legend">
+  <span><span class="dot green"></span> 连接状态点（静态光晕，不脉冲）</span>
+  <span style="color:var(--warning-text);">⚠ 颜色走 CSS 变量</span>
+  <span style="color:var(--accent);">✦ hover → box-shadow（无 scale）</span>
+</div>
+
+<script>
+function setTheme(t) {
+  document.body.className = t === 'light' ? 'light' : '';
+  document.getElementById('btn-dark').classList.toggle('on', t === 'dark');
+  document.getElementById('btn-light').classList.toggle('on', t === 'light');
+}
+</script>
+
+</body>
+</html>
