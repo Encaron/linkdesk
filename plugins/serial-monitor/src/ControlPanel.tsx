@@ -20,7 +20,7 @@ import {
   getActiveProtocolId,
   setActiveProtocol,
 } from "@src/core/ProtocolRegistry";
-import { useSession } from "./useTerminalSessions";
+import { useSession } from "./useSerialSessions";
 import "./ControlPanel.css";
 
 const BAUD_RATES = [
@@ -55,7 +55,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
       setPortName(port, activeSession?.receiveCoding);
       // E2c #19f：终端自己持久化 lastPort——壳不再知道 terminal 插件
-      setPluginStateValue("terminal", "lastPort", port).catch(() => {});
+      setPluginStateValue("serial-monitor", "lastPort", port).catch(() => {});
     },
     [sourceId, updateSession, setPortName, activeSession?.receiveCoding],
   );

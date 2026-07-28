@@ -1,3 +1,5 @@
+:root { --serial-monitor-ok: #22C55E; }
+
 /**
  * 控制面板样式——Phase 5.5c。
  * 对标 VS Code 终端面板 shell 选择器：一行命令条 36px。
@@ -35,14 +37,14 @@
 }
 
 .control-dot.on {
-  background: var(--terminal-ok, #22C55E);
-  box-shadow: 0 0 6px var(--terminal-ok, #22C55E);
+  background: var(--serial-monitor-ok);
+  box-shadow: 0 0 6px var(--serial-monitor-ok);
   animation: dotPulse 2s ease-in-out infinite;
 }
 
 @keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 4px var(--terminal-ok, #22C55E); }
-  50% { box-shadow: 0 0 10px var(--terminal-ok, #22C55E); }
+  0%, 100% { box-shadow: 0 0 4px var(--serial-monitor-ok); }
+  50% { box-shadow: 0 0 10px var(--serial-monitor-ok); }
 }
 
 /* ── 1px 竖线分隔 ── */
@@ -91,8 +93,8 @@
 }
 
 .control-connect-btn.connected {
-  border-color: var(--terminal-ok, #22C55E);
-  color: var(--terminal-ok, #22C55E);
+  border-color: var(--serial-monitor-ok);
+  color: var(--serial-monitor-ok);
 }
 
 .control-connect-btn.connected:hover {

@@ -19,8 +19,8 @@ import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } fro
 
 // ── 类型 ──
 
-export interface TerminalSession {
-  /** = tabId，一一对应。创建时自动生成 "terminal-{N}" */
+export interface SerialSession {
+  /** = tabId，一一对应。创建时自动生成 "serial-monitor-{N}" */
   id: string;
   /** 用户可编辑的会话名。新建时传入，侧栏 F2/hover ✎ 改名 */
   name: string;
@@ -60,7 +60,7 @@ export interface TerminalSession {
 
 // ── 默认值 ──
 
-const DEFAULT_SESSION: Omit<TerminalSession, "id" | "name" | "color"> = {
+const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
   port: "",
   baudRate: "115200",
   protocol: "bracket",
@@ -97,7 +97,7 @@ const SESSION_COLORS = [
 // 不在 React 树上——对标 ConfigurationService。侧栏切到别的插件时 unmount 但状态不丢。
 
 const _store = {
-  sessions: [] as TerminalSession[],
+  sessions: [] as SerialSession[],
   activeSessionId: null as string | null,
   sessionCounter: 0,
   colorIndex: 0,
@@ -106,29 +106,37 @@ const _listeners = new Set<() => void>();
 
 // ── localStorage 持久化（对标 LayoutService——F5 刷新恢复 session 数据）──
 
-const STORAGE_KEY = "linkdesk:terminal:sessions";
+const STORAGE_KEY = "linkdesk:serial-monitor:sessions";
 
 /** 从 PluginStateService 恢复 session（文件持久化优先），localStorage 兜底。E3f #57 */
 function _restoreSessions(): void {
   try {
     // PluginStateService 优先——走 StorageService → 文件持久化
     const psData = getPluginStateValue<{
-      sessions: TerminalSession[]; activeSessionId: string | null;
+      sessions: SerialSession[]; activeSessionId: string | null;
       sessionCounter: number; colorIndex: number;
-    }>("terminal", "sessions");
+    }>("serial-monitor", "sessions");
     if (psData?.sessions) {
-      _store.sessions = psData.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
+      _store.sessions = psData.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
       if (typeof psData.activeSessionId === "string") _store.activeSessionId = psData.activeSessionId;
       if (typeof psData.sessionCounter === "number") _store.sessionCounter = psData.sessionCounter;
       if (typeof psData.colorIndex === "number") _store.colorIndex = psData.colorIndex;
       return;
     }
     // 兜底：localStorage 旧数据
-    const raw = localStorage.getItem(STORAGE_KEY);
+    let raw = localStorage.getItem(STORAGE_KEY);
+    // 迁移：terminal → serial-monitor
+    if (!raw) {
+      const oldRaw = localStorage.getItem("linkdesk:terminal:sessions");
+      if (oldRaw) {
+        raw = oldRaw;
+        localStorage.setItem(STORAGE_KEY, oldRaw);
+      }
+    }
     if (raw) {
       const data = JSON.parse(raw);
       if (Array.isArray(data.sessions)) {
-        _store.sessions = data.sessions.map((s: TerminalSession) => ({ ...s, connected: false }));
+        _store.sessions = data.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
       }
       if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
       if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
@@ -149,7 +157,7 @@ function _persistSessions(): void {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   } catch { /* quota exceeded——静默 */ }
   try {
-    setPluginStateValueSync("terminal", "sessions", data);
+    setPluginStateValueSync("serial-monitor", "sessions", data);
   } catch { /* 静默 */ }
 }
 
@@ -162,7 +170,7 @@ if (typeof window !== "undefined") {
 function notify(): void {
   _persistSessions();
   // 异步写文件——fire-and-forget，不影响 UI 响应
-  setPluginStateValue("terminal", "sessions", {
+  setPluginStateValue("serial-monitor", "sessions", {
     sessions: _store.sessions,
     activeSessionId: _store.activeSessionId,
     sessionCounter: _store.sessionCounter,
@@ -181,7 +189,7 @@ function cloneDefaults(): typeof DEFAULT_SESSION {
 
 // ── Hook ──
 
-export function useTerminalSessions() {
+export function useSerialSessions() {
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -200,7 +208,7 @@ export function useTerminalSessions() {
     activeSessionId: _store.activeSessionId,
 
     /** 当前选中会话——派生值，响应式更新 */
-    get activeSession(): TerminalSession | null {
+    get activeSession(): SerialSession | null {
       return _store.sessions.find((s) => s.id === _store.activeSessionId) ?? null;
     },
 
@@ -208,9 +216,9 @@ export function useTerminalSessions() {
 
     /** 新建会话——返回新 session（id=tabId，已自动设为活跃）。
      *  Phase 5.5c C5：可选 id 参数——sidebar 先 createTab 拿到 tabId 再传入，确保 session.id === tab.id */
-    createSession(name: string, id?: string): TerminalSession {
-      const session: TerminalSession = {
-        id: id || `terminal-${++_store.sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
+    createSession(name: string, id?: string): SerialSession {
+      const session: SerialSession = {
+        id: id || `serial-monitor-${++_store.sessionCounter}`, // `||` 而非 `??`——空字符串也视为无效，自动生成新 ID
         name,
         ...cloneDefaults(),
         color: SESSION_COLORS[_store.colorIndex % SESSION_COLORS.length],
@@ -232,7 +240,7 @@ export function useTerminalSessions() {
     },
 
     /** 部分更新会话字段——浅合并（§3.12：每个字段只有一个写入入口，但底层都走这一个函数） */
-    updateSession(id: string, patch: Partial<TerminalSession>): void {
+    updateSession(id: string, patch: Partial<SerialSession>): void {
       _store.sessions = _store.sessions.map((s) =>
         s.id === id ? { ...s, ...patch } : s,
       );
@@ -257,7 +265,7 @@ export function useTerminalSessions() {
 }
 
 // ── Per-Tab Session Hook（C1 修复） ──
-// 主区 TerminalView / ControlPanel 用此 hook 绑定到自己的 session，
+// 主区 SerialMonitorView / ControlPanel 用此 hook 绑定到自己的 session，
 // 而非读全局 activeSession。sourceId = tab.id = session.id。
 
 export function useSession(id: string | undefined) {
@@ -277,7 +285,7 @@ export function useSession(id: string | undefined) {
   useEffect(() => {
     if (!didAutoCreate.current && id && !_store.sessions.find((s) => s.id === id)) {
       didAutoCreate.current = true;
-      const session: TerminalSession = {
+      const session: SerialSession = {
         id,
         name: `会话`,
         ...cloneDefaults(),
@@ -292,7 +300,7 @@ export function useSession(id: string | undefined) {
   const session = id ? (_store.sessions.find((s) => s.id === id) ?? null) : null;
 
   const update = useCallback(
-    (patch: Partial<TerminalSession>) => {
+    (patch: Partial<SerialSession>) => {
       if (id) {
         _store.sessions = _store.sessions.map((s) =>
           s.id === id ? { ...s, ...patch } : s,
@@ -307,31 +315,31 @@ export function useSession(id: string | undefined) {
 }
 
 // ── 模块级 getter（非 React 上下文使用） ──
-// Tauri event handler、生命周期回调等不在组件内的代码用这些函数读状态。
+// IPC event handler、生命周期回调等不在组件内的代码用这些函数读状态。
 // 对标 _receiveMode 模块级变量模式——已验证可行。
 
-/** 获取当前活跃 session ID——不通过 hook，供 Tauri event handler 使用 */
+/** 获取当前活跃 session ID——不通过 hook，供 IPC event handler 使用 */
 export function getActiveSessionId(): string | null {
   return _store.activeSessionId;
 }
 
-/** 设置活跃 session ID——不通过 hook，供 TerminalView 标签页聚焦时同步侧栏 */
+/** 设置活跃 session ID——不通过 hook，供 SerialMonitorView 标签页聚焦时同步侧栏 */
 export function setActiveSessionId(id: string | null): void {
   _store.activeSessionId = id;
   notify();
 }
 
 /** 按 ID 查 session——不通过 hook，供非 React 上下文使用 */
-export function getSessionById(id: string): TerminalSession | undefined {
+export function getSessionById(id: string): SerialSession | undefined {
   return _store.sessions.find((s) => s.id === id);
 }
 
 /** 按 ID 更新 session——不通过 hook，供非 React 上下文使用 */
-export function updateSessionById(id: string, patch: Partial<TerminalSession>): void {
+export function updateSessionById(id: string, patch: Partial<SerialSession>): void {
   _store.sessions = _store.sessions.map((s) =>
     s.id === id ? { ...s, ...patch } : s,
   );
   notify();
 }
 
-export default useTerminalSessions;
+export default useSerialSessions;
