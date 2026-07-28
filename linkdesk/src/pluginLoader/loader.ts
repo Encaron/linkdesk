@@ -125,12 +125,17 @@ const pluginManifests = {
 
 /* ── 辅助：从路径提取 pluginId ── */
 
-/** 从 glob key 提取插件 ID——"../../plugins/<id>/..." → "<id>" */
+/** 从 glob key 提取插件 ID——"../../plugins/<builtin|user>/<id>/..." → "<id>" */
 function extractPluginId(path: string): string {
-  // 找到 "plugins" 目录，插件 ID 是它后面第一个段
+  // 找到 "plugins" 目录，后面可能是 builtin/user 子目录 → 再跳一段才是 pluginId
   const parts = path.split("/");
   const idx = parts.indexOf("plugins");
-  return idx >= 0 && idx + 1 < parts.length ? parts[idx + 1] : parts[parts.length - 2];
+  if (idx < 0) return parts[parts.length - 2];
+  const next = parts[idx + 1];
+  if (next === "builtin" || next === "user") {
+    return idx + 2 < parts.length ? parts[idx + 2] : parts[parts.length - 2];
+  }
+  return idx + 1 < parts.length ? parts[idx + 1] : parts[parts.length - 2];
 }
 
 /** 从主题 JSON 数据中提取扁平化 colors——归一化 #36j2。消两处重复。 */
@@ -956,9 +961,18 @@ async function loadThemePlugin(pluginId: string, manifest: PluginManifest): Prom
  */
 async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
   try {
-    const url = import.meta.env.DEV
-      ? `http://localhost:1420/plugins/${pluginId}/${filePath}`
-      : `linkdesk://${pluginId}/${filePath}`;
+    if (import.meta.env.DEV) {
+      // dev 模式：先试 builtin 再试 user
+      for (const sub of ['builtin', 'user']) {
+        const url = `http://localhost:1420/plugins/${sub}/${pluginId}/${filePath}`;
+        const response = await fetch(url);
+        if (response.ok) return await response.json() as Record<string, unknown>;
+      }
+      console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (not in builtin/ or user/)`);
+      return null;
+    }
+    // prod 模式：linkdesk:// 协议——protocol.ts 已处理 builtin/user 回退
+    const url = `linkdesk://${pluginId}/${filePath}`;
     const response = await fetch(url);
     if (!response.ok) {
       console.warn(`[pluginLoader] 数据文件加载失败 — "${pluginId}/${filePath}" (${response.status})`);
