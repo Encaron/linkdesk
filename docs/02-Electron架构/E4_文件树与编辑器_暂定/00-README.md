@@ -74,7 +74,7 @@
 | `PluginStateService` | 🔥 **E4e 状态持久化统一入口** | 已有 |
 | `EncodingService` | 🔥 **在核心——file-tree 搜索 + editor 共享** | E4 前置 |
 | `setDirty(tabId, bool)` | 🔥 **壳已提供——编辑器消费，不新建命令** | useTabManager |
-| `plugins/factory/` + `plugins/market/` 目录分离 | 🔥 **前置——~40 行 loader.ts glob + install 目标** | E4 前置 |
+| `plugins/builtin/` + `plugins/user/` 目录分离 | 🔥 **前置——~40 行 loader.ts glob + install 目标** | E4 前置 |
 | `closedTabStack` | 🔥 **前置——useTabManager 加 ~10 行** | E4 前置 |
 
 ## 完工标准
