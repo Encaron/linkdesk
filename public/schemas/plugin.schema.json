@@ -25,6 +25,12 @@
       "type": "string",
       "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
     },
+    "distribution": {
+      "type": "string",
+      "enum": ["builtin", "user"],
+      "default": "user",
+      "description": "分发渠道——builtin=内置（随安装包分发，放 plugins/builtin/），user=用户安装（放 plugins/user/）。第三方插件不填即可，默认 user。"
+    },
     "name": {
       "type": "string",
       "description": "显示名称",
