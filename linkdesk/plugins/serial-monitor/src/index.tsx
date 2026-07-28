@@ -723,7 +723,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       id: "serial-monitor.send",
       title: t("发送"),
       category: t("串口监视器"),
-      handler: async (sendMode: "text" | "hex", data: string) => {
+      handler: async (_token, sendMode: "text" | "hex", data: string) => {
         const s = (window as any).linkdesk?.serial;
         if (!s) return;
         if (sendMode === "hex") {
