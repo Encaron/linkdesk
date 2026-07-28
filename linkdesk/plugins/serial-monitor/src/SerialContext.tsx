@@ -28,6 +28,10 @@ interface SerialState {
 
 interface SerialActions {
   toggleOpen: (encoding?: string) => Promise<void>;
+  /** 明确打开指定端口——多标签页场景：ControlPanel 按 per-tab connected 决策，不盲翻转 */
+  openPort: (portName: string, baudRate: number, encoding?: string) => Promise<void>;
+  /** 明确关闭当前端口 */
+  closePort: () => Promise<void>;
   setSourceName: (name: string, encoding?: string) => Promise<void>;
   setBaudRate: (baud: string, encoding?: string) => Promise<void>;
   /** 刷新可用串口列表——USB 热插拔后下拉框即时更新 */
@@ -193,6 +197,22 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     }
   }, []);
 
+  // 支线：明确打开/关闭——多标签页场景 ControlPanel 按 per-tab connected 决策
+  const openPort = useCallback(async (portName: string, baudRate: number, encoding?: string) => {
+    if (!s) return;
+    sourceNameRef.current = portName;
+    baudRateRef.current = String(baudRate);
+    await s.openPort({ portName, baudRate, encoding });
+    const fresh = await s.getStatus();
+    if (fresh) _setState((p) => mergeStatus(p, fresh));
+  }, []);
+
+  const closePort = useCallback(async () => {
+    if (!s) return;
+    await s.closePort();
+    _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
+  }, []);
+
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
     sourceNameRef.current = name;
@@ -225,5 +245,5 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (ports) _setState((p) => ({ ...p, ports }));
   }, []);
 
-  return { state, actions: { toggleOpen, setSourceName, setBaudRate, refreshPorts } };
+  return { state, actions: { toggleOpen, openPort, closePort, setSourceName, setBaudRate, refreshPorts } };
 }
