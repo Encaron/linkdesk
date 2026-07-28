@@ -33,8 +33,15 @@ function bootstrap() {
     return;
   }
 
-  const modulePath = `../plugins/${pluginId}/src/index.tsx`;
-  const loader = pluginModules[modulePath];
+  // E4 #86：插件在 builtin/ 或 user/ 下——遍历 glob keys 查找匹配路径
+  let modulePath: string | undefined;
+  for (const path of Object.keys(pluginModules)) {
+    if (path.includes(`/${pluginId}/`)) {
+      modulePath = path;
+      break;
+    }
+  }
+  const loader = modulePath ? pluginModules[modulePath] : undefined;
 
   if (!loader) {
     root.textContent = `未找到插件: ${pluginId}`;
