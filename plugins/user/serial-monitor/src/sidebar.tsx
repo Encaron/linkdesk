@@ -104,6 +104,7 @@ function SessionListItem({
           <input
             ref={inputRef}
             className="session-inline-input"
+            aria-label={t("重命名会话")}
             value={editValue}
             onChange={(e) => setEditValue(e.target.value)}
             onBlur={commitRename}
@@ -111,8 +112,8 @@ function SessionListItem({
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => e.stopPropagation()}
           />
-          <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); commitRename(); }} title={t("确定")}>✓</button>
-          <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }} title={t("取消")}>✕</button>
+          <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); commitRename(); }} title={t("确定")}><span className="codicon codicon-check" /></button>
+          <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); setEditing(false); }} title={t("取消")}><span className="codicon codicon-close" /></button>
         </>
       ) : (
         <>
@@ -132,7 +133,7 @@ function SessionListItem({
                 setEditing(true);
               }}
             >
-              ✎
+              <span className="codicon codicon-edit" />
             </button>
             <button
               className="session-action-btn"
@@ -143,7 +144,7 @@ function SessionListItem({
                 onDelete();
               }}
             >
-              ✕
+              <span className="codicon codicon-close" />
             </button>
           </span>
         </>
@@ -346,17 +347,16 @@ function SerialMonitorSidebar() {
               }}
               placeholder={t("新会话名称：") ?? ""}
             />
-            <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); confirmCreate(); }} title={t("确定")}>✓</button>
-            <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); cancelCreate(); }} title={t("取消")}>✕</button>
+            <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); confirmCreate(); }} title={t("确定")}><span className="codicon codicon-check" /></button>
+            <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); cancelCreate(); }} title={t("取消")}><span className="codicon codicon-close" /></button>
           </div>
         )}
         {sessions.length === 0 && !isCreating ? (
           <div className="session-empty">
-            {t("暂无会话")}
+            {t("暂无串口监视器会话。")}
             <button className="session-empty-link" onClick={startCreate}>
               [+ {t("新建")}]
             </button>
-            {t("开始")}
           </div>
         ) : (
           sessionList
@@ -370,6 +370,7 @@ function SerialMonitorSidebar() {
           defaultOpen={true}
         >
           <div className="setting-group">
+            <div className="setting-section-label">{t("显示")}</div>
             <FormRow label={t("时间戳")}>
               {mkSelect("timestampFormat", timeFormats)}
             </FormRow>
@@ -385,6 +386,7 @@ function SerialMonitorSidebar() {
           </div>
 
           <div className="setting-group">
+            <div className="setting-section-label">{t("发送行为")}</div>
             <FormRow label={t("换行符")}>
               {mkSelect("lineEnding", lineEndings)}
             </FormRow>
@@ -411,6 +413,7 @@ function SerialMonitorSidebar() {
           </div>
 
           <div className="setting-group">
+            <div className="setting-section-label">{t("编码")}</div>
             <FormRow label={t("接收模式")}>
               <SelectBox
                 value={activeSession.receiveMode}

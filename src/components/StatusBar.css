@@ -29,7 +29,11 @@
 }
 
 .status-divider {
-  color: var(--separator);
+  display: inline-block;
+  width: 1px;
+  height: 12px;
+  margin: 0 6px;
+  background: var(--separator);
 }
 
 .status-traffic {

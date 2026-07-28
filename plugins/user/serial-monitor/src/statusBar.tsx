@@ -20,11 +20,11 @@ export default function SerialMonitorStatusBar() {
           title={isOpen ? t("已连接") : t("未连接")}
           style={{ color: isOpen ? "var(--serial-monitor-ok)" : "var(--text-muted)" }}
         >
-          ●
+          <span className="codicon codicon-circle-filled" />
         </span>
       )}
       {showConnection && showTxRx && (
-        <span className="status-divider">│</span>
+        <span className="status-divider" />
       )}
       {showTxRx && (
         <span className="status-text">
