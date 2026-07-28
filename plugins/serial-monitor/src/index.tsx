@@ -483,8 +483,11 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     // 只让端口匹配的标签页激活 portOpenRef，解决多标签页串口数据串流 bug。
     const portMatch = payload.match(/(?:已打开|关闭)串行端口\s+(\S+)/);
     const msgPort = portMatch?.[1] ?? null;
-    const myPort = activeSession?.port ?? null;
-    const isMyPort = !msgPort || !myPort || msgPort === myPort;
+    const myPort = activeSession?.port || null;
+    // 消息无端口名 → 容错，保持旧行为（消息格式不会永远不变）
+    // 标签页未配端口 → 不匹配（新标签页用户还没选 COM 口）
+    // 两者都有 → 精确比对
+    const isMyPort = !msgPort ? true : myPort ? msgPort === myPort : false;
 
     if (/已打开/.test(payload)) {
       if (!isMyPort) {
