@@ -82,6 +82,10 @@ function _initIPC(): void {
   const s = (window as any).linkdesk?.serial;
   if (!s) return;
 
+  // E3j #81：判断运行环境——pluginViews.notifyReady 仅存在于插件 WebView preload，
+  // 壳 preload 没有此方法。壳 fallback 只做最小 UI 占位，不注册持久数据回调。
+  const isPluginWebView = typeof (window as any).linkdesk?.pluginViews?.notifyReady === "function";
+
   const listPorts = s.listPorts ?? s.getPorts;
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
@@ -89,6 +93,10 @@ function _initIPC(): void {
   s.getStatus?.()?.then((status: any) => {
     if (status) _setState((p) => mergeStatus(p, status));
   });
+
+  // 以下回调仅在插件 WebView 中注册——壳 fallback 是临时占位，WebView 就绪后壳切空 div。
+  // 壳 fallback 注册的 IPC 监听器永不清理（模块级 _initIPC），导致僵尸回调。
+  if (!isPluginWebView) return;
 
   // 高频 stats 回调——累加而非覆盖
   s.onStats?.((stats: any) => {

@@ -181,6 +181,7 @@ window.linkdesk.commands.execute(id: string, ...args: unknown[]): Promise<unknow
 
 // 插件执行其他插件/壳提供的命令
 const color = await linkdesk.commands.execute('color-picker.pick', { initialColor: '#ff0000' })
+const choice = await linkdesk.commands.execute('quickpick.show', { title: '选择端口', items: [{ label: 'COM3' }, { label: 'COM5' }] })
 await linkdesk.commands.execute('serial-monitor.send', [0xFF, 0x01, 0x01])
 ```
 
@@ -189,6 +190,7 @@ await linkdesk.commands.execute('serial-monitor.send', [0xFF, 0x01, 0x01])
 | 命令 ID | 提供方 | 参数 | 返回值 | 说明 |
 |------|------|------|------|------|
 | `color-picker.pick` | 壳（#59e） | `{ initialColor, title? }` | `string \| undefined` | 弹出调色盘→返回用户选的颜色；取消返回 undefined |
+| `quickpick.show` | 壳（#80） | `{ title?, items: { label, description? }[] }` | `{ label, description? } \| undefined` | 弹出浮动列表让用户选一项；对标 VS Code `showQuickPick()` |
 | `serial-monitor.send` | 终端（#79） | `number[] \| string` | `Promise<void>` | 发送数据到串口 |
 | `sbq-protocol.encode` | 协议插件 | `Record<string, unknown>` | `number[]` | 编码字段为串口字节（示例——尚未实现） |
 | … | 任何插件 | … | … | 🆕 新插件注册命令→往此表加一行 |
