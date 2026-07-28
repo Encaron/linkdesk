@@ -39,12 +39,6 @@
 .control-dot.on {
   background: var(--serial-monitor-ok);
   box-shadow: 0 0 6px var(--serial-monitor-ok);
-  animation: dotPulse 2s ease-in-out infinite;
-}
-
-@keyframes dotPulse {
-  0%, 100% { box-shadow: 0 0 4px var(--serial-monitor-ok); }
-  50% { box-shadow: 0 0 10px var(--serial-monitor-ok); }
 }
 
 /* ── 1px 竖线分隔 ── */
@@ -87,6 +81,11 @@
   color: var(--text-primary);
 }
 
+.control-connect-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
 .control-connect-btn:disabled {
   opacity: 0.4;
   cursor: not-allowed;
@@ -98,7 +97,7 @@
 }
 
 .control-connect-btn.connected:hover {
-  border-color: var(--terminal-err, #EF4444);
-  color: var(--terminal-err, #EF4444);
+  border-color: var(--danger);
+  color: var(--danger);
 }
 
