@@ -321,9 +321,105 @@ const noRefCurrentInJsx = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 5：禁止模块级 _initialized guard + IPC 监听器注册
+// ═══════════════════════════════════════════════════════════
+//
+// E3j #81 教训：模块级 _initIPC() 用 _initialized guard → 导入即执行 → 永不清理。
+// 壳 fallback 渲染时注册的 IPC 监听器在 WebView 就绪后成为僵尸回调。
+//
+// 错误示例：
+//   let _initialized = false;
+//   function _initIPC() {
+//     if (_initialized) return;
+//     _initialized = true;
+//     s.onData(callback);  // ← 永不 removeListener
+//   }
+//
+// 正确示例（方向 B）：
+//   // 一次性数据拉取——模块级，无 IPC 监听器
+//   function _initOnce() { ... listPorts(); }
+//   // IPC 监听器走 React 生命周期 + 引用计数
+//   useEffect(() => { _registerIPCListeners(); return () => _unregisterIPCListeners(); }, []);
+
+const IPC_LISTENER_METHODS = ["onData", "onStats", "onSystem", "ipcRenderer.on"];
+
+const noModuleLevelIpcListener = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "禁止模块级函数用 _initialized guard + IPC 监听器注册——必须走 React useEffect 生命周期（E3j #81 教训）",
+      recommended: true,
+    },
+    messages: {
+      moduleGuard:
+        "🔥 模块级函数 {{name}} 用 _initialized guard + IPC 监听器注册（{{methods}}）。" +
+        " 模块级 = 导入执行一次 = 永不清理 → 壳 fallback 中成为僵尸回调（E3j #81 教训）。" +
+        " 修复：拆为 _initOnce()（一次性数据拉取）+ useEffect 引用计数（_registerIPCListeners/_unregisterIPCListeners）。" +
+        " 详见 memory [[serial-multi-tab-data-leak-fix]]。",
+    },
+  },
+
+  create(context) {
+    let programScopeInitializedVars = new Set();
+
+    return {
+      // 收集模块顶层（Program）声明的 _initialized / _oneTimeFetched 类 guard 变量
+      "Program > VariableDeclaration > VariableDeclarator > Identifier[name=/^_init/i]"(
+        node,
+      ) {
+        programScopeInitializedVars.add(node.name);
+      },
+
+      // 检测模块顶层函数中的 guard 赋值 + IPC 注册
+      "Program > :matches(FunctionDeclaration, VariableDeclaration > VariableDeclarator > :matches(FunctionExpression, ArrowFunctionExpression))"(node) {
+        // 跳过 React hooks
+        const funcNode =
+          node.type === "FunctionDeclaration" ? node : node.parent?.parent?.init ?? node;
+        const funcName = (funcNode.id && funcNode.id.name) || "";
+
+        // 只检查模块级私有函数（_ 开头）——不检查 useXxx hooks
+        if (!funcName.startsWith("_")) return;
+
+        // 检查函数体是否引用了 guard 变量
+        const funcText = context.getSourceCode().getText(funcNode);
+        let usesGuardVar = false;
+        for (const varName of programScopeInitializedVars) {
+          if (funcText.includes(varName)) {
+            usesGuardVar = true;
+            break;
+          }
+        }
+        if (!usesGuardVar) return;
+
+        // 检查是否调用了 IPC 监听器注册方法
+        const foundMethods = [];
+        for (const method of IPC_LISTENER_METHODS) {
+          if (funcText.includes(method)) {
+            foundMethods.push(method);
+          }
+        }
+
+        if (foundMethods.length === 0) return;
+
+        context.report({
+          node: funcNode,
+          messageId: "moduleGuard",
+          data: {
+            name: funcName,
+            methods: foundMethods.join("、"),
+          },
+        });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
   "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
   "no-ref-current-in-jsx": noRefCurrentInJsx,
+  "no-module-level-ipc-listener": noModuleLevelIpcListener,
 };
