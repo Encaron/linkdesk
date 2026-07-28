@@ -7,10 +7,10 @@
 
 ## 插件目录结构
 
-一个插件就是一个文件夹，放在 `plugins/<插件ID>/` 下。**目录名 = 插件 ID**（如 `plugins/terminal/`）。
+一个插件就是一个文件夹，放在 `plugins/user/<插件ID>/` 下。**目录名 = 插件 ID**（如 `plugins/user/my-plugin/`）。内置插件放 `plugins/builtin/`，由 `distribution` 字段区分。
 
 ```
-plugins/my-plugin/
+plugins/user/my-plugin/
 ├── plugin.json              # 插件元数据（唯一必需）
 ├── resources/               # 静态资源——图标/图片/字体
 │   └── icon.svg             # 图标（推荐 SVG）
@@ -172,6 +172,8 @@ plugins/my-plugin/
 |---|---|---|
 | `$schema` | `string` | JSON Schema 引用路径 |
 | `core` | `boolean` | `true` = 核心控制面，不可卸载。默认 `false` |
+| `distribution` | `string` | `"builtin"` \| `"user"`。默认 `"user"`——第三方插件不填即可 |
+| `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。第三方通常不填 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |
 | `author` | `string` | 作者名 |
@@ -206,8 +208,8 @@ plugins/my-plugin/
 | 方式 | `icon` 值 | `iconSource` | 文件位置 |
 |------|-----------|-------------|---------|
 | codicon 内置图标 | `"package"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
-| 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `plugins/<插件ID>/resources/icon.svg`（推荐 `resources/` 子目录） |
-| 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `plugins/<插件ID>/resources/icon.png`（自动加 `.png`） |
+| 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `plugins/user/<插件ID>/resources/icon.svg`（推荐 `resources/` 子目录） |
+| 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `plugins/user/<插件ID>/resources/icon.png`（自动加 `.png`） |
 | 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
 
 **示例：**
@@ -218,7 +220,7 @@ plugins/my-plugin/
 
 // 自定义 SVG——推荐，矢量不模糊，fill="currentColor" 跟随主题
 { "icon": "resources/icon.svg" }
-// 文件放在插件目录下：plugins/my-plugin/resources/icon.svg
+// 文件放在插件目录下：plugins/user/my-plugin/resources/icon.svg
 
 // 自定义 PNG——位图，多尺寸可能模糊
 { "icon": "resources/icon.png" }
@@ -411,7 +413,8 @@ function CadView() {
 ## 目录结构约定
 
 ```
-plugins/<pluginId>/
+plugins/user/<pluginId>/    ← 第三方插件放这里
+plugins/builtin/<pluginId>/ ← 内置插件（随安装包分发）放这里
 ├── plugin.json          ← 必需：元数据
 ├── index.tsx            ← 视图/卡片入口（entry 字段指向的文件）
 ├── sidebar.tsx          ← 可选的侧栏组件
@@ -420,7 +423,7 @@ plugins/<pluginId>/
 └── assets/              ← 可选的资源目录（图片/字体等）
 ```
 
-`<pluginId>` = 文件夹名 = `plugin.json` 中引用的插件唯一标识。命名规则：
+`<pluginId>` = 文件夹名 = `plugin.json` 中引用的插件唯一标识。`distribution` 字段声明归属（默认 `"user"`，不填即可）。命名规则：
 - 小写英文 + 连字符：`gps-map`、`protocol-sbq`、`theme-dracula`
 - 不带软件名、不带版本号：`terminal` 不是 `v3-terminal`
 
