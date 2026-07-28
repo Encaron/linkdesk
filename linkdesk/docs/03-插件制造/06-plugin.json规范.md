@@ -32,6 +32,56 @@ plugins/user/my-plugin/
 
 ---
 
+## 内置插件 vs 用户插件
+
+LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
+
+| | 用户插件（默认） | 内置插件 |
+|------|:--:|:--:|
+| 放哪里 | `plugins/user/` | `plugins/builtin/` |
+| `distribution` 字段 | 不填（默认 `"user"`） | `"builtin"` |
+| 谁做的 | 第三方作者 / 官方市场 | 官方——随安装包分发 |
+| 安装包更新 | 不动 | 覆盖 |
+| 打包后位置 | `%APPDATA%/LinkDesk/plugins/user/` | `安装目录/resources/plugins/builtin/` |
+
+### 创建用户插件（第三方/官方市场）
+
+```jsonc
+// plugins/user/my-plugin/plugin.json
+{
+  "name": "我的插件",
+  "version": "1.0.0",
+  "entry": "src/index.tsx"
+  // distribution 不用写——默认就是 "user"
+}
+```
+
+丢 `plugins/user/` 下 → 自动加载。
+
+### 创建内置插件（LinkDesk 官方）
+
+```jsonc
+// plugins/builtin/file-tree/plugin.json
+{
+  "name": "文件树",
+  "version": "1.0.0",
+  "distribution": "builtin",   // 🔥 告诉打包脚本：跟安装包走
+  "core": true,                // 🔥 告诉 UI：不可卸载
+  "entry": "src/index.tsx"
+}
+```
+
+**内置插件的两条规则：**
+
+1. **目录和声明要一致。** 放 `builtin/` → 必须声明 `"distribution": "builtin"`。放 `user/` → 不要声明 `builtin`。
+2. **`distribution` ≠ `core`。** `distribution` 管物理位置（打包时放哪），`core` 管 UI 行为（是否显示卸载按钮）。一个插件可以 `builtin` + `core`（不可卸载的内置设置页），也可以 `builtin` + 非 `core`（可卸载的内置主题）。
+
+### 官方发插件到市场
+
+官方做的插件也可以不进 `builtin/`——如果它不是随安装包分发，而是从插件市场下载的，那就和第三方一样：放 `plugins/user/`，不写 `distribution`。
+
+---
+
 ## 最小示例（视图插件）
 
 ```json
