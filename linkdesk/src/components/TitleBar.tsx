@@ -159,6 +159,7 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
           onCommand={handleCommand}
           cssPrefix="titlebar"
           showKeybindings
+          checkWhen
         />
       </div>
     );
