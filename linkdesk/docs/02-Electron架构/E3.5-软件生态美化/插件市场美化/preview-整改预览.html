@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件市场美化 — 整改预览</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.35/dist/codicon.css">
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   LinkDesk 插件市场 — E3.5 整改后预览
+   右上角切换暗色/浅色主题，展示整改后全貌
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── 主题切换 ── */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-input: #3C3C3C;
+  --bg-side-panel: #1E1E22;
+  --bg-icon-bar: #18181B;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --error: #E06C75;
+  --warning: #CCA700;
+  --badge-text: #FFFFFF;
+  --tab-hover-bg: #353535;
+  --bg-titlebar: #252526;
+  --hover-overlay: rgba(255,255,255,0.06);
+  /* E3.5 新增 */
+  --success: #4CAF50;
+  --success-bg: rgba(76, 175, 80, 0.1);
+  --success-border: rgba(76, 175, 80, 0.4);
+  --error-border: rgba(224, 108, 117, 0.5);
+  --warning-border: rgba(204, 167, 0, 0.5);
+}
+[data-theme="light"] {
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-input: #FFFFFF;
+  --bg-side-panel: #F5F5F5;
+  --bg-icon-bar: #F0F0F0;
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #767676;
+  --accent: #0078D4;
+  --accent-hover: #106EBE;
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+  --error: #E06C75;
+  --warning: #D4A017;
+  --badge-text: #FFFFFF;
+  --tab-hover-bg: #E8E8E8;
+  --bg-titlebar: #DDDDDD;
+  --hover-overlay: rgba(0,0,0,0.04);
+  --success: #388A34;
+  --success-bg: rgba(56, 138, 52, 0.08);
+  --success-border: rgba(56, 138, 52, 0.35);
+  --error-border: rgba(224, 108, 117, 0.5);
+  --warning-border: rgba(212, 160, 23, 0.5);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  background: #0a0a0a;
+  color: var(--text-primary);
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 24px 0;
+}
+/* Theme toggle */
+.theme-bar {
+  position: fixed; top: 12px; right: 16px; z-index: 1000;
+  display: flex; gap: 8px;
+}
+.theme-bar button {
+  padding: 4px 12px; border-radius: 4px; border: 1px solid var(--separator);
+  background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+  font-size: 12px; font-family: inherit;
+}
+.theme-bar button.active { border-color: var(--accent); color: var(--accent); }
+
+h2.section-label {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.5px; color: var(--text-muted);
+  margin: 32px 0 12px; padding: 0 12px;
+}
+.layout-row {
+  display: flex; gap: 16px; width: 100%; max-width: 1100px;
+  justify-content: center; flex-wrap: wrap;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   左侧：MarketplaceSidebar 预览 (280px)
+   ═══════════════════════════════════════════════════════════════════ */
+.sidebar-preview {
+  width: 300px; flex-shrink: 0;
+  background: var(--bg-side-panel); border-radius: 8px;
+  overflow: hidden; border: 1px solid var(--separator);
+  display: flex; flex-direction: column; height: 640px;
+}
+.sidebar-preview .titlebar-mock {
+  height: 28px; background: var(--bg-titlebar);
+  display: flex; align-items: center; padding: 0 10px;
+  font-size: 11px; color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* Header */
+.sb-header {
+  padding: 8px 12px; flex-shrink: 0;
+}
+.sb-install-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border: 1px solid var(--separator); border-radius: 4px;
+  background: transparent; color: var(--text-primary); cursor: pointer;
+  font-size: 11px; font-family: inherit;
+  transition: background 150ms;
+}
+.sb-install-btn:hover { background: var(--tab-hover-bg); }
+.sb-install-btn .codicon { font-size: 14px; }
+
+.sb-search-wrap { position: relative; margin-top: 6px; }
+.sb-search-box {
+  width: 100%; height: 28px; box-sizing: border-box;
+  padding: 4px 28px 4px 8px; border: 1px solid var(--separator);
+  border-radius: 4px; background: var(--bg-input); color: var(--text-primary);
+  font-size: 12px; font-family: inherit; outline: none;
+  transition: border-color 150ms, box-shadow 150ms;
+}
+.sb-search-box::placeholder { color: var(--text-muted); }
+.sb-search-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+.sb-search-clear {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 2px 4px; font-size: 12px;
+  transition: color 150ms;
+}
+.sb-search-clear:hover { color: var(--text-primary); }
+.sb-search-clear:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* Extension list */
+.sb-list { flex: 1; overflow-y: auto; padding-top: 2px; }
+
+/* Section */
+.sb-section-header {
+  display: flex; align-items: center; gap: 4px;
+  width: 100%; min-height: 22px; padding: 4px 12px;
+  background: none; border: none; cursor: pointer;
+  font-family: inherit; font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px;
+  color: var(--text-muted);
+  transition: color 150ms;
+}
+.sb-section-header:hover { color: var(--text-primary); }
+.sb-section-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.sb-section-header .codicon { font-size: 12px; width: 14px; flex-shrink: 0; }
+
+/* Item */
+.sb-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px 8px 20px; cursor: pointer;
+  transition: background 150ms;
+  position: relative;
+}
+.sb-item:hover { background: var(--tab-hover-bg); }
+.sb-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.sb-item:focus-within .sb-item-gear { opacity: 1; }
+
+.sb-item-icon {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.sb-item-icon .codicon { font-size: 24px; color: var(--text-secondary); }
+
+.sb-item-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.sb-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item-desc { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sb-item-footer { display: flex; gap: 8px; margin-top: 2px; }
+.sb-item-author { font-size: 10px; color: var(--text-muted); }
+.sb-item-ver { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+/* Gear button — hover reveal + keyboard fallback */
+.sb-item-gear {
+  position: relative; flex-shrink: 0; align-self: center;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 4px; font-size: 14px; border-radius: 4px;
+  opacity: 0; transition: opacity 120ms, color 150ms;
+}
+.sb-item:hover .sb-item-gear { opacity: 1; }
+.sb-item-gear:hover { color: var(--text-primary); background: var(--tab-hover-bg); }
+.sb-item-gear:focus-visible { opacity: 1; outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* Enable button */
+.sb-enable-btn {
+  flex-shrink: 0; align-self: center;
+  background: none; border: 1px solid var(--success-border, rgba(76,175,80,0.4));
+  border-radius: 4px; color: var(--success, #4CAF50); cursor: pointer;
+  padding: 3px 8px; font-size: 14px; margin-left: 8px;
+  transition: background 150ms, border-color 150ms;
+}
+.sb-enable-btn:hover {
+  background: var(--success-bg, rgba(76,175,80,0.1));
+  border-color: var(--success-border, rgba(76,175,80,0.4));
+}
+.sb-enable-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* Disabled item */
+.sb-item.disabled { opacity: 0.7; }
+.sb-item.disabled:hover { opacity: 1; }
+.sb-item-disabled-name { opacity: 0.6; }
+.sb-item-disabled-desc { opacity: 0.5; }
+
+/* Install button */
+.sb-install-item-btn {
+  flex-shrink: 0; align-self: center;
+  background: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
+  color: var(--badge-text); cursor: pointer; padding: 3px 10px;
+  font-size: 11px; font-family: inherit; white-space: nowrap; margin-left: 8px;
+  transition: opacity 150ms;
+}
+.sb-install-item-btn:hover { opacity: 0.9; }
+.sb-install-item-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Empty state */
+.sb-empty {
+  padding: 24px 12px; text-align: center; font-size: 12px; color: var(--text-muted);
+}
+.sb-empty .codicon { font-size: 32px; display: block; margin-bottom: 8px; opacity: 0.4; }
+
+/* Star badge */
+.sb-badge {
+  position: absolute; bottom: 0; right: -2px;
+  font-size: 10px; color: var(--accent);
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   右侧：PluginDetailView 预览 (flex)
+   ═══════════════════════════════════════════════════════════════════ */
+.detail-preview {
+  flex: 1; min-width: 500px; max-width: 750px;
+  background: var(--bg-window); border-radius: 8px;
+  overflow: hidden; border: 1px solid var(--separator);
+  display: flex; flex-direction: column; height: 640px;
+}
+.detail-preview .titlebar-mock {
+  height: 28px; background: var(--bg-titlebar);
+  display: flex; align-items: center; padding: 0 10px;
+  font-size: 11px; color: var(--text-muted); flex-shrink: 0;
+}
+
+.detail-body { flex: 1; overflow-y: auto; padding: 0; }
+
+/* Header */
+.pd-header {
+  display: flex; padding: 20px 20px 12px 20px; gap: 16px;
+}
+.pd-icon {
+  width: 96px; height: 96px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.pd-icon .codicon { font-size: 96px; color: var(--text-secondary); }
+.pd-icon-badge {
+  position: absolute; right: -4px; bottom: -4px;
+  width: 28px; height: 28px; line-height: 28px; border-radius: 14px;
+  background: var(--accent); color: var(--badge-text);
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+}
+
+.pd-header-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.pd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pd-name { font-size: 26px; font-weight: 600; }
+.pd-ver { font-size: 14px; color: var(--text-muted); }
+.pd-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap;
+}
+.pd-badge-core { background: var(--accent); color: var(--badge-text); }
+.pd-badge-singleton { border: 1px solid var(--separator); color: var(--text-muted); }
+.pd-badge-uninstalled { background: transparent; border: 1px solid var(--warning); color: var(--warning); }
+.pd-subtitle { font-size: 13px; color: var(--text-secondary); }
+.pd-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+/* Action bar */
+.pd-actions {
+  display: flex; align-items: center; gap: 8px; padding: 8px 20px 12px; flex-wrap: wrap;
+}
+.pd-btn {
+  font-size: 12px; padding: 5px 14px; border-radius: 4px; cursor: pointer;
+  font-family: inherit; background: transparent; color: var(--text-primary);
+  border: 1px solid var(--separator);
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+.pd-btn:hover:not(:disabled) { background: var(--tab-hover-bg); }
+.pd-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.pd-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+.pd-btn-uninstall {
+  border-color: var(--error-border, rgba(231,76,60,0.5));
+  color: var(--error);
+}
+.pd-btn-disable { color: var(--text-secondary); }
+.pd-btn-disable:hover:not(:disabled) {
+  color: var(--warning);
+  border-color: var(--warning-border, rgba(204,167,0,0.5));
+}
+.pd-btn-enable {
+  border-color: var(--success-border, rgba(76,175,80,0.5));
+  color: var(--success, #4CAF50);
+}
+.pd-btn-install { background: var(--accent); border-color: var(--accent); color: var(--badge-text); }
+.pd-btn-install:hover:not(:disabled) { opacity: 0.9; }
+.pd-core-notice { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+
+/* Nav tabs */
+.pd-nav {
+  display: flex; border-bottom: 1px solid var(--separator);
+  padding: 0 20px; flex-shrink: 0;
+}
+.pd-navtab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 8px 12px; font-size: 13px; font-family: inherit;
+  color: var(--text-muted); cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+.pd-navtab:hover { color: var(--text-primary); }
+.pd-navtab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+.pd-navtab:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+
+/* Body */
+.pd-main { flex: 1; overflow-y: auto; padding: 16px 20px; }
+
+.pd-layout { display: flex; gap: 32px; }
+.pd-content { flex: 1; min-width: 0; }
+.pd-sidebar { width: 220px; flex-shrink: 0; display: flex; flex-direction: column; gap: 1px; }
+
+/* Info items */
+.pd-info { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.pd-info-label { font-size: 11px; color: var(--text-muted); }
+.pd-info-val { font-size: 12px; color: var(--text-primary); word-break: break-all; }
+.pd-info-val.mono { font-family: monospace; font-size: 11px; }
+
+/* Recommend sections */
+.pd-section { margin-bottom: 16px; }
+.pd-section h4 {
+  font-size: 12px; font-weight: 600; margin: 0 0 6px;
+  color: var(--text-primary); display: flex; align-items: center; gap: 6px;
+}
+.pd-section h4 .codicon { font-size: 14px; color: var(--text-secondary); }
+.pd-section ul { list-style: none; padding: 0; margin: 0; }
+.pd-section li {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 4px;
+  font-size: 13px; color: var(--text-secondary);
+  transition: background 150ms;
+}
+.pd-section li:hover { background: var(--bg-card); }
+.pd-section li.installed { opacity: 0.6; }
+.pd-section li .codicon { font-size: 12px; flex-shrink: 0; }
+.pd-rec-name { font-weight: 500; font-family: monospace; font-size: 12px; color: var(--text-primary); }
+.pd-rec-reason { flex: 1; font-size: 12px; }
+.pd-rec-status { font-size: 11px; flex-shrink: 0; }
+.pd-rec-status.missing { color: var(--error); }
+
+/* Desc */
+.pd-description {
+  font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin: 0 0 20px;
+}
+
+/* Change indicator — "整改后新增" 标记 */
+.changed {
+  position: relative;
+}
+.changed::after {
+  content: "✨"; position: absolute; top: -4px; right: -12px;
+  font-size: 10px; opacity: 0.8;
+}
+
+/* Focus-visible demo — 半透明蓝色轮廓示意 */
+.focus-demo-hint {
+  font-size: 10px; color: var(--accent); margin-left: 8px;
+  font-style: italic; opacity: 0.7;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; }
+}
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button id="btn-dark" class="active" onclick="setTheme('dark')">暗色</button>
+  <button id="btn-light" onclick="setTheme('light')">浅色</button>
+</div>
+
+<div style="margin-top: 40px; max-width: 1100px; width: 100%;">
+
+  <h2 class="section-label" style="margin-top:0">左侧栏 — MarketplaceSidebar 整改后</h2>
+  <div class="layout-row">
+
+    <!-- ═══ MarketplaceSidebar ═══ -->
+    <div class="sidebar-preview">
+      <div class="titlebar-mock">插件市场 — 侧栏</div>
+
+      <!-- Header -->
+      <div class="sb-header">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+          <button class="sb-install-btn">
+            <span class="codicon codicon-add"></span> 安装
+          </button>
+        </div>
+        <div class="sb-search-wrap">
+          <input class="sb-search-box" type="text" placeholder="搜索插件..." value="">
+          <!-- 清除按钮 —— 之前是 ✕, 现在是 codicon-close -->
+          <button class="sb-search-clear changed" style="display:none" title="清除搜索">
+            <span class="codicon codicon-close"></span>
+          </button>
+        </div>
+      </div>
+
+      <!-- List -->
+      <div class="sb-list">
+
+        <!-- 已安装 Section -->
+        <button class="sb-section-header">
+          <span class="codicon codicon-chevron-down"></span>
+          <span>已安装 (3)</span>
+        </button>
+
+        <!-- Item 1: 插件市场（core） -->
+        <div class="sb-item" tabindex="0" role="button" aria-label="插件市场">
+          <div class="sb-item-icon" style="position:relative">
+            <span class="codicon codicon-package"></span>
+            <span class="sb-badge codicon codicon-star-full"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">插件市场</div>
+            <div class="sb-item-desc">浏览、安装和管理插件</div>
+            <div class="sb-item-footer">
+              <span class="sb-item-author">官方</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Item 2: 串口监视器（user, with gear） -->
+        <div class="sb-item" tabindex="0" role="button" aria-label="串口监视器">
+          <div class="sb-item-icon">
+            <span class="codicon codicon-plug"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">串口监视器</div>
+            <div class="sb-item-desc">串口数据收发与监视</div>
+            <div class="sb-item-footer">
+              <span class="sb-item-author">官方</span>
+            </div>
+          </div>
+          <!-- ⚙ 齿轮 —— hover 显示 + focus-within 键盘可达 ✨ -->
+          <button class="sb-item-gear changed" title="管理" tabindex="0">
+            <span class="codicon codicon-gear"></span>
+          </button>
+        </div>
+
+        <!-- Item 3: 工作台（user, with gear） -->
+        <div class="sb-item" tabindex="0" role="button" aria-label="工作台">
+          <div class="sb-item-icon">
+            <span class="codicon codicon-window"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">工作台</div>
+            <div class="sb-item-desc">卡片化工作空间</div>
+            <div class="sb-item-footer">
+              <span class="sb-item-author">官方</span>
+            </div>
+          </div>
+          <button class="sb-item-gear changed" title="管理" tabindex="0">
+            <span class="codicon codicon-gear"></span>
+          </button>
+        </div>
+
+        <!-- 内置 Section (collapsed) -->
+        <button class="sb-section-header">
+          <span class="codicon codicon-chevron-right"></span>
+          <span>内置 (6)</span>
+        </button>
+
+        <!-- 已禁用 Section -->
+        <button class="sb-section-header">
+          <span class="codicon codicon-chevron-down"></span>
+          <span>已禁用 (1)</span>
+        </button>
+
+        <!-- Disabled item + enable button -->
+        <div class="sb-item disabled" tabindex="0" role="button" aria-label="日语测试包">
+          <div class="sb-item-icon">
+            <span class="codicon codicon-globe"></span>
+          </div>
+          <div class="sb-item-details sb-item-clickable">
+            <div class="sb-item-name sb-item-disabled-name">日语测试包</div>
+            <div class="sb-item-desc sb-item-disabled-desc">Language test: ja</div>
+            <div class="sb-item-footer">
+              <span class="sb-item-author">官方</span>
+              <span class="sb-item-ver">v1.0.0</span>
+            </div>
+          </div>
+          <!-- ▶ 启用按钮 —— 之前 #4caf50, 现在 var(--success) ✨ -->
+          <button class="sb-enable-btn changed" title="启用插件" tabindex="0">
+            <span class="codicon codicon-play"></span>
+          </button>
+        </div>
+
+        <!-- 待安装 Section -->
+        <button class="sb-section-header">
+          <span class="codicon codicon-chevron-down"></span>
+          <span>待安装 (1)</span>
+        </button>
+
+        <!-- Uninstalled item + install button -->
+        <div class="sb-item" style="opacity:0.6" tabindex="0" role="button" aria-label="抹茶拿铁主题">
+          <div class="sb-item-icon">
+            <span class="codicon codicon-symbol-color"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">抹茶拿铁主题</div>
+            <div class="sb-item-desc">柔和温暖的浅色主题</div>
+            <div class="sb-item-footer">
+              <span class="sb-item-author">官方</span>
+              <span class="sb-item-ver">v1.0.0</span>
+            </div>
+          </div>
+          <button class="sb-install-item-btn" tabindex="0">
+            <span class="codicon codicon-cloud-download"></span> 安装
+          </button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ═══ PluginDetailView ═══ -->
+    <div class="detail-preview">
+      <div class="titlebar-mock">插件详情 — 串口监视器</div>
+
+      <div class="detail-body">
+        <!-- Header -->
+        <header class="pd-header">
+          <div class="pd-icon">
+            <span class="codicon codicon-plug"></span>
+            <span class="pd-icon-badge codicon codicon-star-full"></span>
+          </div>
+          <div class="pd-header-info">
+            <div class="pd-title-row">
+              <h1 class="pd-name">串口监视器</h1>
+              <span class="pd-ver">v1.0.0</span>
+              <span class="pd-badge pd-badge-core">内置</span>
+              <span class="pd-badge pd-badge-singleton">单例</span>
+            </div>
+            <p class="pd-subtitle">官方</p>
+            <p class="pd-desc">串口数据收发与监视——LinkDesk 第一个视图插件</p>
+          </div>
+        </header>
+
+        <!-- Action Bar -->
+        <div class="pd-actions">
+          <button class="pd-btn pd-btn-disable">
+            <span class="codicon codicon-circle-slash"></span> 禁用
+          </button>
+          <button class="pd-btn pd-btn-uninstall">
+            <span class="codicon codicon-trash"></span> 卸载
+          </button>
+        </div>
+
+        <!-- Nav Tabs -->
+        <nav class="pd-nav">
+          <button class="pd-navtab active">详情</button>
+          <button class="pd-navtab">更新日志</button>
+        </nav>
+
+        <!-- Body -->
+        <div class="pd-main">
+          <div class="pd-layout">
+            <!-- Main content -->
+            <div class="pd-content">
+              <p class="pd-description">
+                串口数据收发与监视。支持多会话管理、CM6 接收区、Monaco 发送区、协议解析、快捷发送等完整功能。
+              </p>
+
+              <!-- 推荐 —— 📦 换成 codicon-package ✨ -->
+              <div class="pd-section changed">
+                <h4><span class="codicon codicon-package"></span> 推荐同时安装</h4>
+                <ul>
+                  <li class="installed">
+                    <span class="codicon codicon-check"></span>
+                    <span class="pd-rec-name">serial-simulator</span>
+                    <span class="pd-rec-reason">离线开发时需要模拟数据源</span>
+                    <span class="pd-rec-status">已安装</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- 可选 —— 💡 换成 codicon-lightbulb ✨ -->
+              <div class="pd-section changed">
+                <h4><span class="codicon codicon-lightbulb"></span> 可选</h4>
+                <ul>
+                  <li>
+                    <span class="codicon codicon-circle-outline"></span>
+                    <span class="pd-rec-name">protocol-custom</span>
+                    <span class="pd-rec-reason">自定义协议解析规则</span>
+                  </li>
+                </ul>
+              </div>
+
+              <!-- 依赖 —— 🔒 换成 codicon-lock ✨ -->
+              <div class="pd-section changed">
+                <h4><span class="codicon codicon-lock"></span> 依赖</h4>
+                <ul>
+                  <li>
+                    <span class="codicon codicon-lock"></span>
+                    <span class="pd-rec-name">serial-service</span>
+                    <span class="pd-rec-status">已安装</span>
+                  </li>
+                </ul>
+              </div>
+            </div>
+
+            <!-- Info sidebar -->
+            <aside class="pd-sidebar">
+              <div class="pd-info">
+                <span class="pd-info-label">标识符</span>
+                <span class="pd-info-val mono">serial-monitor</span>
+              </div>
+              <div class="pd-info">
+                <span class="pd-info-label">版本</span>
+                <span class="pd-info-val">v1.0.0</span>
+              </div>
+              <div class="pd-info">
+                <span class="pd-info-label">类型</span>
+                <span class="pd-info-val">view</span>
+              </div>
+              <div class="pd-info">
+                <span class="pd-info-label">入口</span>
+                <span class="pd-info-val mono">src/index.tsx</span>
+              </div>
+              <div class="pd-info">
+                <span class="pd-info-label">状态栏贡献</span>
+                <span class="pd-info-val">serial-status</span>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /layout-row -->
+
+  <!-- ═══ 图标对照表 ═══ -->
+  <h2 class="section-label">整改对照</h2>
+  <div style="max-width:1100px;width:100%">
+    <table style="width:100%;border-collapse:collapse;font-size:13px;background:var(--bg-card);border-radius:8px;overflow:hidden;border:1px solid var(--separator)">
+      <thead>
+        <tr style="background:var(--bg-side-panel)">
+          <th style="padding:8px 16px;text-align:left;font-size:12px;color:var(--text-muted)">位置</th>
+          <th style="padding:8px 16px;text-align:left;font-size:12px;color:var(--text-muted)">之前</th>
+          <th style="padding:8px 16px;text-align:left;font-size:12px;color:var(--text-muted)">之后 ✨</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">清除搜索按钮</td>
+          <td style="padding:8px 16px"><code>✕</code> 文本字符</td>
+          <td style="padding:8px 16px"><span class="codicon codicon-close" style="color:var(--accent)"></span> codicon-close</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">推荐分区图标</td>
+          <td style="padding:8px 16px">📦 emoji</td>
+          <td style="padding:8px 16px"><span class="codicon codicon-package" style="color:var(--accent)"></span> codicon-package</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">可选分区图标</td>
+          <td style="padding:8px 16px">💡 emoji</td>
+          <td style="padding:8px 16px"><span class="codicon codicon-lightbulb" style="color:var(--accent)"></span> codicon-lightbulb</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">依赖分区图标</td>
+          <td style="padding:8px 16px">🔒 emoji</td>
+          <td style="padding:8px 16px"><span class="codicon codicon-lock" style="color:var(--accent)"></span> codicon-lock</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">启用按钮颜色</td>
+          <td style="padding:8px 16px"><code style="color:#4caf50">#4caf50</code> 硬编码</td>
+          <td style="padding:8px 16px"><code>var(--success)</code> CSS 变量</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">启用按钮边框</td>
+          <td style="padding:8px 16px"><code>rgba(76,175,80,0.4)</code> 硬编码</td>
+          <td style="padding:8px 16px"><code>var(--success-border)</code> CSS 变量</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">卸载按钮边框</td>
+          <td style="padding:8px 16px"><code>rgba(231,76,60,0.5)</code> 硬编码</td>
+          <td style="padding:8px 16px"><code>var(--error-border)</code> CSS 变量</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">齿轮按钮可见性</td>
+          <td style="padding:8px 16px">仅 hover 显示</td>
+          <td style="padding:8px 16px">hover + <code>:focus-within</code> 键盘可达</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">焦点指示</td>
+          <td style="padding:8px 16px">无 <code>:focus-visible</code></td>
+          <td style="padding:8px 16px"><code>outline: 2px solid var(--accent)</code></td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">搜索框焦点</td>
+          <td style="padding:8px 16px">仅 border-color 变化</td>
+          <td style="padding:8px 16px">border-color + box-shadow 光晕</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">插件列表项可访问性</td>
+          <td style="padding:8px 16px">div onClick 无 ARIA</td>
+          <td style="padding:8px 16px">role=button + tabIndex + aria-label + onKeyDown</td>
+        </tr>
+        <tr style="border-top:1px solid var(--separator)">
+          <td style="padding:8px 16px">badge-uninstalled</td>
+          <td style="padding:8px 16px">CSS 类缺失（无样式）</td>
+          <td style="padding:8px 16px"><code>border: 1px solid var(--warning)</code></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p style="text-align:center;color:var(--text-muted);font-size:11px;margin:24px 0 40px">
+    E3.5 插件市场美化 — 预览 | ✨ = 整改后有变化
+    &nbsp;|&nbsp; Hover 齿轮按钮试试（它现在是 <code>opacity: 0 → 1</code> 过渡）
+  </p>
+
+</div>
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : '');
+  document.getElementById('btn-dark').classList.toggle('active', t === 'dark');
+  document.getElementById('btn-light').classList.toggle('active', t === 'light');
+}
+</script>
+</body>
+</html>
