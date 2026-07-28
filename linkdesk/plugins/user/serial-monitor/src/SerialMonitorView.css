@@ -74,17 +74,12 @@
   font-size: 12px;
   padding: 3px 10px;
   cursor: pointer;
-  transition: background 150ms, color 150ms, transform 100ms;
+  transition: background 150ms, color 150ms;
 }
 
 .toolbar-btn:hover {
   background: var(--hover-overlay);
   color: var(--text-primary);
-  transform: scale(1.02);
-}
-
-.toolbar-btn:active {
-  transform: scale(0.97);
 }
 
 .toolbar-btn.active {
@@ -386,18 +381,13 @@
   font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 150ms, transform 100ms;
+  transition: background 150ms;
   flex-shrink: 0;
   line-height: 1.5;
 }
 
 .quick-send-pill:hover {
   background: var(--accent);
-  transform: scale(1.02);
-}
-
-.quick-send-pill:active {
-  transform: scale(0.96);
 }
 
 .quick-send-add {
@@ -523,14 +513,9 @@
   font-size: 12px;
   padding: 4px 20px;
   cursor: pointer;
-  transition: background 150ms, transform 100ms;
+  transition: background 150ms;
 }
 
 .send-btn:hover {
   background: var(--accent-hover);
-  transform: scale(1.02);
-}
-
-.send-btn:active {
-  transform: scale(0.96);
 }
