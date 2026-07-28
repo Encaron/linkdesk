@@ -72,6 +72,29 @@ try {
     }
   });
 
+  // E3j #75：commands 对象——execute（向后兼容别名）+ executeCommand + getCommands
+  const commandsObj = {
+    execute: (id: string, ...args: any[]) =>
+      ipcRenderer.invoke('commands:execute', id, ...args),
+    executeCommand: (id: string, ...args: any[]) =>
+      ipcRenderer.invoke('commands:execute', id, ...args),
+    getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
+  };
+
+  // E3j #75：configuration 对象——config 为向后兼容别名
+  const configurationObj = {
+    get:  (key: string) => ipcRenderer.invoke('config:get', key),
+    set:  (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
+    getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
+    onChange: (key: string, cb: (v: any) => void) => {
+      const handler = (_: any, d: { key: string; value: any }) => {
+        if (d.key === key) cb(d.value);
+      };
+      ipcRenderer.on('config:changed', handler);
+      return () => ipcRenderer.removeListener('config:changed', handler);
+    },
+  };
+
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
@@ -105,29 +128,16 @@ try {
     },
 
     // ── 配置（读/写/订阅/schema）──
-    // E3j #74：linkdesk API 命名空间——对标 VS Code vscode.workspace.getConfiguration
-    configuration: {
-      get:  (key: string) => ipcRenderer.invoke('config:get', key),
-      set:  (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
-      getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
-      onChange: (key: string, cb: (v: any) => void) => {
-        const handler = (_: any, d: { key: string; value: any }) => {
-          if (d.key === key) cb(d.value);
-        };
-        ipcRenderer.on('config:changed', handler);
-        return () => ipcRenderer.removeListener('config:changed', handler);
-      },
-    },
+    // E3j #74：新名 configuration——对标 VS Code vscode.workspace.getConfiguration
+    // E3j #75：旧名 config 为向后兼容别名
+    configuration: configurationObj,
+    config: configurationObj,
 
     // ── 命令（执行/查询壳侧命令）──
     // 🔒 不含 register——handler 函数无法通过 IPC 序列化。
-    // 命令注册走 plugin.json 的 contributes.commands 声明。
-    // E3j #74：executeCommand 对 execute 重命名——对标 VS Code vscode.commands.executeCommand
-    commands: {
-      executeCommand: (id: string, ...args: any[]) =>
-        ipcRenderer.invoke('commands:execute', id, ...args),
-      getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
-    },
+    // E3j #74：新名 executeCommand——对标 VS Code vscode.commands.executeCommand
+    // E3j #75：旧名 execute 为向后兼容别名
+    commands: commandsObj,
 
     // ── 文件系统（受限——主进程校验路径，仅允许读写插件数据目录）──
     // 🔒 插件只能读写 .linkdesk/plugins/<pluginId>/ 下的文件，

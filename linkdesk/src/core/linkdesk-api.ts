@@ -51,23 +51,30 @@ export interface LinkDeskConfigSchema {
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  */
 export interface LinkDeskAPI {
+  /** 命令——对标 VS Code vscode.commands */
   commands: {
+    /** @deprecated E3j #75——向后兼容别名，新代码用 executeCommand */
+    execute<T = void>(commandId: string, ...args: unknown[]): Promise<T>;
     /** 执行壳侧命令 */
     executeCommand<T = void>(commandId: string, ...args: unknown[]): Promise<T>;
     /** 获取所有已注册命令列表 */
     getCommands(): Promise<LinkDeskCommand[]>;
   };
 
+  /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */
   configuration: {
     /** 读取配置值 */
     get<T = unknown>(key: string): Promise<T>;
     /** 写入配置值 */
     set(key: string, value: unknown): Promise<void>;
-    /** 获取配置 schema（可选 key 过滤） */
+    /** 获取配置 schema */
     getSchema(key?: string): Promise<LinkDeskConfigSchema>;
     /** 订阅配置变更——返回 unsubscribe 函数 */
     onChange(key: string, cb: (value: unknown) => void): () => void;
   };
+
+  /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
+  config: LinkDeskAPI["configuration"];
 
   theme: {
     /** 获取当前主题 ID */
