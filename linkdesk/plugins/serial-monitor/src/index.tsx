@@ -707,9 +707,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
 
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.copy",
+      id: "serial-monitor.copy",
       title: t("复制"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -721,9 +721,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.selectAll",
+      id: "serial-monitor.selectAll",
       title: t("全选"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -734,9 +734,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.clear",
+      id: "serial-monitor.clear",
       title: t("清空接收区"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (view) {
@@ -748,17 +748,17 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.togglePause",
+      id: "serial-monitor.togglePause",
       title: t("暂停接收"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setPaused((p) => !p);
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.quickSendFill",
+      id: "serial-monitor.quickSendFill",
       title: t("回填到发送区"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -767,9 +767,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.quickSendEdit",
+      id: "serial-monitor.quickSendEdit",
       title: t("编辑"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -782,9 +782,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.quickSendDelete",
+      id: "serial-monitor.quickSendDelete",
       title: t("删除"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async (_token, ...args) => {
         const ctx = args[0] as { quickSendName?: string } | undefined;
         if (ctx?.quickSendName) {
@@ -793,17 +793,17 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.clearSend",
+      id: "serial-monitor.clearSend",
       title: t("清空发送区"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setSendValue("");
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.exportLog",
+      id: "serial-monitor.exportLog",
       title: t("导出日志"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         const view = getActiveCmd()!.cmView.current;
         if (!view) return;
@@ -823,50 +823,50 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleSendMode",
+      id: "serial-monitor.toggleSendMode",
       title: t("切换到 HEX 发送"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         // Phase 5f：直连 ConfigurationService——通过 ref 读取/写入避免闭包过期
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleEcho",
+      id: "serial-monitor.toggleEcho",
       title: t("关闭消息回显"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleLineNumbers",
+      id: "serial-monitor.toggleLineNumbers",
       title: t("隐藏行号"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleSystemLog",
+      id: "serial-monitor.toggleSystemLog",
       title: t("关闭系统消息独立显示"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleAutoRepeat",
+      id: "serial-monitor.toggleAutoRepeat",
       title: t("关闭自动重发"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
       },
     });
     registerCommand("serial-monitor", {
-      id: "terminal.toggleAutoClear",
+      id: "serial-monitor.toggleAutoClear",
       title: t("关闭自动清屏"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
       },
@@ -884,9 +884,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新暂停/继续标题（paused 变化时重新注册）
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.togglePause",
+      id: "serial-monitor.togglePause",
       title: paused ? t("继续接收") : t("暂停接收"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setPaused((p) => !p);
       },
@@ -896,9 +896,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新发送模式标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleSendMode",
+      id: "serial-monitor.toggleSendMode",
       title: sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
@@ -908,9 +908,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新回显标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleEcho",
+      id: "serial-monitor.toggleEcho",
       title: showEcho ? t("关闭消息回显") : t("开启消息回显"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
@@ -920,9 +920,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新行号标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleLineNumbers",
+      id: "serial-monitor.toggleLineNumbers",
       title: showLineNumbers ? t("隐藏行号") : t("显示行号"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
@@ -932,9 +932,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新系统消息独立显示标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleSystemLog",
+      id: "serial-monitor.toggleSystemLog",
       title: separateSystemLog ? t("关闭系统消息独立显示") : t("开启系统消息独立显示"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
       },
@@ -944,9 +944,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新自动重发标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleAutoRepeat",
+      id: "serial-monitor.toggleAutoRepeat",
       title: autoRepeat ? t("关闭自动重发") : t("开启自动重发"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
       },
@@ -956,9 +956,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // 动态更新自动清屏标题
   useEffect(() => {
     registerCommand("serial-monitor", {
-      id: "terminal.toggleAutoClear",
+      id: "serial-monitor.toggleAutoClear",
       title: autoClear ? t("关闭自动清屏") : t("开启自动清屏"),
-      category: t("终端"),
+      category: t("串口监视器"),
       handler: async () => {
         getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
       },
@@ -1078,7 +1078,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
         <div className="serial-monitor-placeholder">
           <span className="serial-monitor-placeholder-icon">▸</span>
           <p className="serial-monitor-placeholder-title">{t("会话已失效")}</p>
-          <p className="serial-monitor-placeholder-hint">{t("请在侧栏选择一个终端会话，或新建一个以开始使用")}</p>
+          <p className="serial-monitor-placeholder-hint">{t("请在侧栏选择一个串口监视器会话，或新建一个以开始使用")}</p>
         </div>
       )}
 
