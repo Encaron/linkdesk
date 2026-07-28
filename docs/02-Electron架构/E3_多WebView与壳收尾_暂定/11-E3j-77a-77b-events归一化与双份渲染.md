@@ -178,6 +178,15 @@ s.onData?.((text: string) => {
 
 - `npm run check` 零错误
 - 串口监视器收发正常
-- 壳 DevTools `events.on('serial:rawData', ...)` → 不再收到（fallback 不发）
-- 串口监视器 DevTools `events.on('serial:rawData', ...)` → 仍然收到（WebView 发）
-- 协议插件订阅 `serial:rawData` → 只收到一份（不重复）
+- 壳 DevTools `events.on('serial:rawData', ...)` → 收到数据
+- 协议插件订阅 `serial:rawData` → 收到数据
+
+### 🔥 #77b 实际结果与教训
+
+**实测推翻了设计假设。** 串口数据不是"两处都到"——只到**打开串口的那个 webContents**。
+当前场景下数据到壳 → emit 在壳 → 不重复。#77b 的守卫反而把唯一管道堵了。
+
+**已回退守卫**（commit `3eea884`）。正确的结论：
+- 串口数据只到一个地方（谁 openPort 谁收数据）→ 不存在重复 emit
+- 崩的根因是壳缺 `events.emit`（#77a 修复），不是重复
+- #77b 的设计文档保留作为记录——假设如何被推翻、为什么守卫是错的
