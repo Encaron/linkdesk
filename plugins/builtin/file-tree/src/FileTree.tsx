@@ -13,7 +13,7 @@ import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { getCompactedPath } from "./CompactFolder";
-import { TREE_TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
+import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 
 /* ── 类型 ── */
 
