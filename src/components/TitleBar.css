@@ -175,3 +175,19 @@
   color: var(--badge-text);
   opacity: 0.8;
 }
+
+/* E3h #67：禁用态——when 条件不满足时灰显不可点击（对标 HamburgerMenu） */
+.titlebar-item-disabled,
+.titlebar-item-disabled:hover,
+.titlebar-item-disabled.titlebar-item-hovered {
+  color: var(--text-muted);
+  opacity: 0.45;
+  background: none !important;
+  cursor: default;
+}
+
+.titlebar-item-disabled .titlebar-item-key,
+.titlebar-item-disabled .titlebar-chevron {
+  color: var(--text-muted);
+  opacity: 0.45;
+}
