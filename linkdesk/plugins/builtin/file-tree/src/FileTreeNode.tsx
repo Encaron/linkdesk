@@ -152,7 +152,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
             marginLeft: 4,
             fontSize: 11,
             fontWeight: 600,
-            color: item.decoration.color ?? "var(--color-accent)",
+            color: item.decoration.color ?? "var(--accent)",
             flexShrink: 0,
           }}
         >

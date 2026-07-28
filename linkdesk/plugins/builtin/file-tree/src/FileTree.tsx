@@ -235,7 +235,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         overflowY: "auto",
         overflowX: "hidden",
         outline: "none",
-        color: "var(--color-foreground)",
+        color: "var(--text-primary)",
         background: "transparent",
       }}
     >
