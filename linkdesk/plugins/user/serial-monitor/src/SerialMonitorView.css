@@ -168,6 +168,9 @@
 }
 
 .search-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: 1px solid var(--border);
   border-radius: 3px;
@@ -183,6 +186,9 @@
 }
 
 .search-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: transparent;
   border: none;
   color: var(--text-muted);
