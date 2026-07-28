@@ -73,7 +73,7 @@
 }
 
 .session-item.active .session-item-name {
-  color: #fff;
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -97,7 +97,8 @@
   transition: opacity 100ms ease;
 }
 
-.session-item:hover .session-item-actions {
+.session-item:hover .session-item-actions,
+.session-item:focus-within .session-item-actions {
   opacity: 1;
 }
 
@@ -116,6 +117,11 @@
 .session-action-btn:hover {
   background: rgba(255, 255, 255, 0.08);
   color: var(--text-primary);
+}
+
+.session-action-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
 }
 
 /* ── 内联编辑输入框 ── */
@@ -247,6 +253,17 @@
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
+}
+
+/* ── 设置分区标题 ── */
+
+.setting-section-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 8px 0 4px;
 }
 
 /* ── 设置组（复用旧样式，轻量调整） ── */
