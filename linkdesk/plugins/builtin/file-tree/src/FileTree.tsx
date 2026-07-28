@@ -230,18 +230,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       tabIndex={0}
       onScroll={handleScroll}
       onKeyDown={handleKeyDown}
-      style={{
-        height: "100%",
-        overflowY: "auto",
-        overflowX: "hidden",
-        outline: "none",
-        color: "var(--text-primary)",
-        background: "transparent",
-      }}
+      className="file-tree-scroll"
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         <div style={{ height: startIndex * ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth }, i) => (
+        {renderedItems.map(({ item, depth }) => (
           <FileTreeNode
             key={item.uri}
             item={item}
@@ -249,7 +242,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={item.uri === selectedUri}
-            isFocused={item.uri === focusedUri}
             onSelect={() => handleSelect(item.uri)}
             onOpen={(mode) => handleOpen(item, mode)}
             onTwistieClick={() => handleTwistie(item)}

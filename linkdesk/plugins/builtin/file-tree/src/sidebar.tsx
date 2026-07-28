@@ -13,12 +13,7 @@ import FileTree from "./FileTree";
 import WelcomeView from "./WelcomeView";
 import { FileTreeModel } from "./FileTreeModel";
 import type { ExplorerItem } from "./FileTreeModel";
-
-/* ── 常量 ── */
-
-const TITLE_BAR_H = 28;
-const BREADCRUMB_H = 28;
-const TOOLBAR_H = 28;
+import "./file-tree.css";
 
 /* ── 组件 ── */
 
@@ -72,65 +67,36 @@ const FileTreeSidebar: React.FC = () => {
   const rootName = roots[0]?.name ?? "";
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div className="file-tree-root file-tree-sidebar">
       {/* 标题栏 */}
-      <div
-        style={{
-          height: TITLE_BAR_H,
-          display: "flex",
-          alignItems: "center",
-          padding: "0 12px",
-          fontSize: 11,
-          fontWeight: 600,
-          textTransform: "uppercase",
-          letterSpacing: "0.5px",
-          color: "var(--text-secondary)",
-          flexShrink: 0,
-        }}
-      >
-        {t("资源管理器")}
-      </div>
+      <div className="file-tree-header">{t("资源管理器")}</div>
 
       {/* 路径面包屑 */}
       {rootName && (
-        <div
-          style={{
-            height: BREADCRUMB_H,
-            display: "flex",
-            alignItems: "center",
-            padding: "0 12px",
-            fontSize: 12,
-            color: "var(--text-secondary)",
-            flexShrink: 0,
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
-          <span className="codicon codicon-root-folder" style={{ marginRight: 6, fontSize: 14 }} />
-          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            {rootName}
-          </span>
+        <div className="file-tree-breadcrumb">
+          <span className="codicon codicon-root-folder file-tree-breadcrumb-icon" />
+          <span className="file-tree-breadcrumb-path">{rootName}</span>
         </div>
       )}
 
       {/* 工具栏 */}
-      <div
-        style={{
-          height: TOOLBAR_H,
-          display: "flex",
-          alignItems: "center",
-          gap: 4,
-          padding: "0 8px",
-          flexShrink: 0,
-        }}
-      >
-        <ToolbarButton icon="codicon-new-file" title={t("新建文件")} onClick={() => {/* TODO E4b #98 */}} />
-        <ToolbarButton icon="codicon-new-folder" title={t("新建文件夹")} onClick={() => {/* TODO E4b #98 */}} />
-        <ToolbarButton icon="codicon-refresh" title={t("刷新")} onClick={handleRefresh} />
-        <ToolbarButton icon="codicon-collapse-all" title={t("收起全部")} onClick={handleCollapseAll} />
+      <div className="file-tree-toolbar">
+        <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => {/* TODO E4b #98 */}}>
+          <span className="codicon codicon-new-file" />
+        </button>
+        <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => {/* TODO E4b #98 */}}>
+          <span className="codicon codicon-new-folder" />
+        </button>
+        <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={handleRefresh}>
+          <span className="codicon codicon-refresh" />
+        </button>
+        <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={handleCollapseAll}>
+          <span className="codicon codicon-collapse-all" />
+        </button>
       </div>
 
       {/* 文件树 或 空工作区 */}
-      <div style={{ flex: 1, overflow: "hidden" }}>
+      <div className="file-tree-body">
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
@@ -140,35 +106,5 @@ const FileTreeSidebar: React.FC = () => {
     </div>
   );
 };
-
-/* ── 工具栏按钮 ── */
-
-const ToolbarButton: React.FC<{
-  icon: string;
-  title: string;
-  onClick: () => void;
-}> = ({ icon, title, onClick }) => (
-  <button
-    title={title}
-    onClick={onClick}
-    style={{
-      width: 22,
-      height: 22,
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      border: "none",
-      background: "transparent",
-      color: "var(--text-secondary)",
-      cursor: "pointer",
-      borderRadius: 4,
-      padding: 0,
-    }}
-    onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-primary)"; }}
-    onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = "var(--text-secondary)"; }}
-  >
-    <span className={`codicon ${icon}`} style={{ fontSize: 14 }} />
-  </button>
-);
 
 export default FileTreeSidebar;
