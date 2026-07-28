@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>设置 — 两级导航树</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   CSS 变量
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1e1e1e; --bg-card: #252526; --bg-input: #3c3c3c;
+  --text-primary: #cccccc; --text-secondary: #999; --text-muted: #777;
+  --border: #3c3c3c; --separator: #454545; --accent: #0078d4;
+  --accent-hover: #1a8ad4; --hover-overlay: rgba(255,255,255,0.04);
+  --active-overlay: rgba(255,255,255,0.08); --text-on-accent: #fff;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Sarasa Mono SC', 'Cascadia Code', Consolas, monospace;
+}
+body.light {
+  --bg-window: #f3f3f3; --bg-card: #ffffff; --bg-input: #ffffff;
+  --text-primary: #333; --text-secondary: #666; --text-muted: #999;
+  --border: #d4d4d4; --separator: #e8e8e8;
+  --hover-overlay: rgba(0,0,0,0.03); --active-overlay: rgba(0,0,0,0.06);
+  --text-on-accent: #fff;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--font-ui);background:#0d0d0d;color:var(--text-primary);display:flex;justify-content:center;padding:30px}
+
+.theme-bar{position:fixed;top:12px;right:16px;display:flex;gap:6px;z-index:100}
+.theme-bar button{padding:4px 12px;border:1px solid rgba(255,255,255,.2);border-radius:4px;background:rgba(255,255,255,.06);color:#aaa;cursor:pointer;font-size:11px;font-family:var(--font-ui)}
+.theme-bar button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+body.light .theme-bar button{border-color:rgba(0,0,0,.15);color:#666}
+body.light .theme-bar button.on{background:var(--accent);color:#fff}
+
+/* ═══════════════════════════════════════════════════════
+   编辑器
+   ═══════════════════════════════════════════════════════ */
+.editor{width:820px;height:90vh;display:flex;flex-direction:column;background:var(--bg-window);border-radius:8px;overflow:hidden;box-shadow:0 8px 40px rgba(0,0,0,.5)}
+body.light .editor{box-shadow:0 4px 20px rgba(0,0,0,.1)}
+
+/* Tab */
+.tab-bar{display:flex;border-bottom:1px solid var(--separator);padding:0 16px;flex-shrink:0}
+.tab-btn{padding:8px 16px;font-size:13px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--text-muted);cursor:pointer;margin-bottom:-1px;font-family:var(--font-ui)}
+.tab-btn:hover{color:var(--text-primary)}
+.tab-btn[aria-selected=true]{color:var(--text-primary);border-bottom-color:var(--accent)}
+
+/* 搜索 */
+.search-bar{display:flex;align-items:center;padding:8px 16px;border-bottom:1px solid var(--separator);gap:8px;flex-shrink:0}
+.search-icon{color:var(--text-muted);flex-shrink:0}
+.search-input{flex:1;background:var(--bg-input);border:1px solid var(--border);color:var(--text-primary);font-size:13px;padding:5px 8px;outline:none;font-family:var(--font-ui);border-radius:3px}
+.search-input:focus{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.json-btn{display:flex;align-items:center;gap:4px;padding:4px 8px;background:transparent;border:1px solid var(--border);color:var(--text-primary);font-size:12px;cursor:pointer;border-radius:3px;font-family:var(--font-ui)}
+.json-btn:hover{background:var(--hover-overlay)}
+
+/* 主体 */
+.body-wrap{display:flex;flex:1;overflow:hidden}
+
+/* ═══════════════════════════════════════════════════════
+   左侧 — 两级树
+   ═══════════════════════════════════════════════════════ */
+.nav{width:220px;flex-shrink:0;overflow-y:auto;border-right:1px solid var(--separator);padding:4px 0}
+
+/* 顶层分组 */
+.nav-group{}
+.nav-group-header{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:6px 16px 6px 20px;font-size:13px;color:var(--text-primary);
+  background:transparent;border:none;cursor:pointer;text-align:left;
+  font-family:var(--font-ui);transition:background 100ms;
+  border-left:2px solid transparent;
+}
+.nav-group-header:hover{background:var(--hover-overlay)}
+.nav-group-header:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+.nav-group-header .arrow{font-size:10px;color:var(--text-muted);transition:transform 150ms;margin-right:4px}
+.nav-group-header.expanded .arrow{transform:rotate(90deg)}
+
+/* 顶层无子节点 → 选中态 */
+.nav-group.flat>.nav-group-header[aria-current=page]{background:var(--hover-overlay);font-weight:500;border-left-color:var(--accent)}
+
+/* 有子节点 → 展开时高亮 */
+.nav-group.has-kids>.nav-group-header.expanded{color:var(--text-primary)}
+
+/* 子节点 */
+.nav-sub{overflow:hidden;transition:max-height 200ms ease;max-height:0}
+.nav-sub.open{max-height:400px}
+.nav-sub-item{
+  display:flex;align-items:center;justify-content:space-between;
+  width:100%;padding:5px 16px 5px 40px;font-size:12px;color:var(--text-secondary);
+  background:transparent;border:none;cursor:pointer;text-align:left;
+  font-family:var(--font-ui);transition:background 100ms;
+  border-left:2px solid transparent;
+}
+.nav-sub-item:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.nav-sub-item:focus-visible{outline:2px solid var(--accent);outline-offset:-1px}
+.nav-sub-item[aria-current=page]{background:var(--hover-overlay);color:var(--text-primary);font-weight:500;border-left-color:var(--accent)}
+.nav-sub-count{font-size:10px;color:var(--text-muted)}
+
+/* ═══════════════════════════════════════════════════════
+   右侧 — 合并显示
+   ═══════════════════════════════════════════════════════ */
+.form{flex:1;overflow-y:auto;padding:24px 32px;scroll-behavior:smooth}
+
+/* ★ 大标题 = 顶层分组名 */
+.main-title{font-size:22px;font-weight:600;margin:0 0 6px;color:var(--text-primary)}
+
+/* ★ 子标题 = 当前 section */
+.section-title{font-size:16px;font-weight:500;color:var(--text-secondary);margin:0 0 24px}
+
+/* section 之间的分隔 */
+.section-block{margin-bottom:40px}
+.section-block-header{font-size:15px;font-weight:600;color:var(--text-primary);padding-bottom:8px;border-bottom:1px solid var(--separator);margin-bottom:8px}
+
+/* 行 */
+.set-row{display:flex;align-items:flex-start;padding:8px 12px;border-radius:4px;border-left:2px solid transparent;gap:20px;transition:background 120ms}
+.set-row:hover{background:var(--hover-overlay)}
+.set-row.modified{border-left-color:var(--accent)}
+.set-row-info{flex:1;min-width:0}
+.set-row-label{display:block;font-size:13px;font-weight:500;color:var(--text-primary);margin-bottom:3px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.set-row-desc{display:block;font-size:12px;color:var(--text-muted);line-height:1.5}
+.set-row.modified .set-row-desc{color:var(--text-secondary)}
+
+.set-row-ctrl{flex-shrink:0;display:flex;align-items:center;gap:6px;width:170px;justify-content:flex-end}
+.sel{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-size:12px;padding:4px 8px;cursor:pointer;font-family:var(--font-ui);min-width:120px}
+.tgl{width:28px;height:16px;border-radius:8px;background:var(--accent);position:relative;cursor:pointer;flex-shrink:0}
+.tgl::after{content:'';position:absolute;top:2px;left:14px;width:12px;height:12px;border-radius:50%;background:#fff}
+.tgl.off{background:var(--border)}
+.tgl.off::after{left:2px}
+.txt-inp{background:var(--bg-input);border:1px solid var(--border);border-radius:3px;color:var(--text-primary);font-size:12px;padding:4px 8px;font-family:var(--font-mono);outline:none;width:160px}
+.txt-inp:focus{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+.gear{flex-shrink:0;width:26px;height:26px;display:flex;align-items:center;justify-content:center;background:transparent;border:none;border-radius:3px;color:var(--text-muted);font-size:13px;cursor:pointer;opacity:0;transition:opacity 120ms ease,background 120ms ease}
+.set-row:hover .gear,.set-row:focus-within .gear{opacity:1}
+.gear:hover{background:var(--hover-overlay);color:var(--text-primary)}
+.gear:focus-visible{opacity:1;outline:2px solid var(--accent);outline-offset:-1px}
+.swatch{width:22px;height:22px;border-radius:3px;border:1px solid var(--separator);flex-shrink:0;cursor:pointer}
+.swatch:hover{border-color:var(--accent)}
+
+/* ═══════════════════════════════════════════════════════
+   快捷键页
+   ═══════════════════════════════════════════════════════ */
+.tab-content{display:none;flex:1;overflow:hidden;flex-direction:column}
+.tab-content.active{display:flex}
+.kb-table{flex:1;overflow-y:auto}
+.kb-hd{display:grid;grid-template-columns:1.5fr 1fr .6fr 1fr;padding:6px 16px;font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);position:sticky;top:0;background:var(--bg-window);border-bottom:1px solid var(--separator);z-index:1}
+.kb-r{display:grid;grid-template-columns:1.5fr 1fr .6fr 1fr;padding:6px 16px;font-size:12px;border-bottom:1px solid var(--separator);align-items:center;transition:background 100ms}
+.kb-r:hover{background:var(--hover-overlay)}
+.kb-r.conflict{background:rgba(239,68,68,.06)}
+.kb-key{display:inline-block;background:var(--bg-input);border:1px solid var(--border);border-radius:3px;padding:1px 6px;font-size:11px;font-family:var(--font-mono);color:var(--text-primary)}
+.kb-key+.kb-key{margin-left:3px}
+.kb-src{font-size:11px}.kb-src.user{color:var(--accent)}.kb-src.def{color:var(--text-muted)}
+.kb-when{font-size:10px;color:var(--text-muted);font-family:var(--font-mono)}
+</style>
+</head>
+<body>
+
+<div class="theme-bar">
+  <button id="btn-dark" class="on" onclick="t('dark')">暗色</button>
+  <button id="btn-light" onclick="t('light')">浅色</button>
+</div>
+
+<div class="editor">
+
+  <div class="tab-bar" role="tablist">
+    <button class="tab-btn" role="tab" aria-selected="true" onclick="switchTab('settings')">设置</button>
+    <button class="tab-btn" role="tab" aria-selected="false" onclick="switchTab('keybindings')">快捷键</button>
+  </div>
+
+  <!-- ===== 设置 ===== -->
+  <div id="ct-settings" class="tab-content active">
+
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" placeholder="搜索设置">
+      <button class="json-btn">JSON</button>
+    </div>
+
+    <div class="body-wrap">
+
+      <!-- ★★★ 两级树 ★★★ -->
+      <nav class="nav" id="left-nav"></nav>
+
+      <!-- ★★★ 合并显示 ★★★ -->
+      <div class="form" id="right-form"></div>
+
+    </div>
+  </div>
+
+  <!-- ===== 快捷键 ===== -->
+  <div id="ct-keybindings" class="tab-content">
+    <div class="search-bar">
+      <span class="search-icon">🔍</span>
+      <input class="search-input" placeholder="搜索快捷键...">
+    </div>
+    <div class="kb-table">
+      <div class="kb-hd"><span>命令</span><span>快捷键</span><span>来源</span><span>条件</span></div>
+      <div class="kb-r"><span>串口监视器: 清空接收区</span><span><span class="kb-key">Ctrl</span><span class="kb-key">K</span></span><span class="kb-src user">用户</span><span class="kb-when">activeEditor == serial-monitor</span></div>
+      <div class="kb-r"><span>串口监视器: 暂停接收</span><span><span class="kb-key">Ctrl</span><span class="kb-key">P</span></span><span class="kb-src user">用户</span><span class="kb-when">activeEditor == serial-monitor</span></div>
+      <div class="kb-r conflict"><span>串口监视器: 复制</span><span><span class="kb-key">Ctrl</span><span class="kb-key">C</span></span><span class="kb-src def">默认</span><span class="kb-when">activeEditor == serial-monitor</span></div>
+      <div class="kb-r conflict"><span>工作台: 复制</span><span><span class="kb-key">Ctrl</span><span class="kb-key">C</span></span><span class="kb-src def">默认</span><span class="kb-when">activeEditor == workspace</span></div>
+      <div class="kb-r"><span>串口监视器: 全选</span><span><span class="kb-key">Ctrl</span><span class="kb-key">A</span></span><span class="kb-src def">默认</span><span class="kb-when">activeEditor == serial-monitor</span></div>
+      <div class="kb-r"><span>串口监视器: HEX 发送</span><span><span class="kb-key">Ctrl</span><span class="kb-key">H</span></span><span class="kb-src user">用户</span><span class="kb-when">activeEditor == serial-monitor</span></div>
+      <div class="kb-r"><span>设置: 打开快捷键</span><span><span class="kb-key">Ctrl</span><span class="kb-key">K</span><span class="kb-key">S</span></span><span class="kb-src def">默认</span><span class="kb-when">—</span></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   数据 — 两级结构
+   sections 非空 → 展开为子节点
+   sections 为空 → 扁平顶层
+   ════════════════════════════════════════ */
+const tree = [
+  {
+    id:'general', title:'通用', sections:[
+      { id:'theme', title:'主题', keys:[
+        { key:'app.theme', type:'sel', val:'Dark', opts:['Dark','Light','Amber HC'], desc:'选择界面配色主题', mod:true },
+        { key:'app.accentMode', type:'sel', val:'自定义', opts:['自定义','跟随主题'], desc:'强调色来源', mod:false },
+        { key:'app.accentColor', type:'color', val:'#ff8c00', desc:'自定义强调色值', mod:true },
+        { key:'theme-defaults.autoSwitch', type:'bool', val:false, desc:'根据系统主题自动切换', mod:false },
+        { key:'theme-defaults.accentFollowTheme', type:'bool', val:true, desc:'强调色跟随主题', mod:false },
+        { key:'theme-defaults.fontSize', type:'num', val:'13', min:10, max:24, desc:'界面字体大小', mod:true }
+      ]},
+      { id:'language', title:'语言', keys:[
+        { key:'app.language', type:'sel', val:'中文', opts:['中文','English','日本語'], desc:'选择界面显示语言', mod:true }
+      ]},
+      { id:'font', title:'字体', keys:[
+        { key:'app.fontFamily', type:'text', val:'Inter, sans-serif', desc:'界面字体家族', mod:false }
+      ]}
+    ]
+  },
+  {
+    id:'serial', title:'串口监视器', sections:null, flatKeys:[
+      { key:'serial-monitor.statusBar.txrx', type:'bool', val:true, desc:'状态栏显示 TX/RX 计数', mod:false },
+      { key:'serial-monitor.statusBar.connection', type:'bool', val:false, desc:'状态栏显示连接状态指示灯', mod:true }
+    ]
+  },
+  {
+    id:'keybinding', title:'快捷键', sections:null, flatKeys:[
+      { key:'keybinding.showConflictWarning', type:'bool', val:true, desc:'快捷键冲突时显示警告', mod:false },
+      { key:'keybinding.allowChords', type:'bool', val:true, desc:'允许组合快捷键', mod:false },
+      { key:'keybinding.maxChordDelay', type:'num', val:'1000', min:200, max:5000, desc:'组合键最大延迟(ms)', mod:false }
+    ]
+  }
+];
+
+// 排序：外层按 title A-Z
+tree.sort((a,b) => a.title.localeCompare(b.title));
+tree.forEach(g => {
+  if(g.sections) g.sections.sort((a,b) => a.title.localeCompare(b.title));
+});
+
+/* ════════════════════════════════════════
+   状态
+   ════════════════════════════════════════ */
+let activeTop = tree[0].id;
+let activeSection = tree[0].sections ? tree[0].sections[0].id : null;
+let expanded = new Set(tree.filter(g => g.sections).map(g => g.id));
+
+/* ════════════════════════════════════════
+   渲染
+   ════════════════════════════════════════ */
+function renderAll(){
+  const cur = tree.find(g => g.id === activeTop);
+  if(!cur) return;
+  if(!cur.sections) activeSection = null; // 扁平组无子节点
+
+  // ── 左导航 ──
+  const nav = document.getElementById('left-nav');
+  nav.innerHTML = tree.map(g => {
+    const hasKids = !!g.sections;
+    const isExp = expanded.has(g.id);
+    const isCurrentTop = g.id === activeTop;
+    // 扁平组选中态
+    const ariaCur = (!hasKids && isCurrentTop) ? 'page' : 'false';
+    // 有子节点且展开时的类
+    const hdrClass = hasKids && isExp ? 'expanded' : '';
+
+    let subHTML = '';
+    if(hasKids){
+      subHTML = `<div class="nav-sub${isExp?' open':''}">` +
+        g.sections.map(s => {
+          const isCur = isCurrentTop && s.id === activeSection;
+          return `<button class="nav-sub-item" aria-current="${isCur?'page':'false'}"
+            onclick="selectSection('${g.id}','${s.id}')">
+            ${s.title}
+            <span class="nav-sub-count">${s.keys.length}</span>
+          </button>`;
+        }).join('') +
+        `</div>`;
+    }
+
+    return `<div class="nav-group ${hasKids?'has-kids':'flat'}">
+      <button class="nav-group-header ${hdrClass}" aria-current="${ariaCur}"
+        onclick="${hasKids ? `toggleGroup('${g.id}')` : `selectTop('${g.id}')`}">
+        <span style="display:flex;align-items:center;gap:2px">
+          ${hasKids ? `<span class="arrow">▶</span>` : ''}
+          ${g.title}
+        </span>
+      </button>
+      ${subHTML}
+    </div>`;
+  }).join('');
+
+  // ── 右表单 ──
+  const form = document.getElementById('right-form');
+
+  if(!cur.sections){
+    // 扁平组 — 大标题 + 直接陈列
+    form.innerHTML = `<div class="main-title">${cur.title}</div>` +
+      cur.flatKeys.map(k => renderRow(k)).join('');
+    return;
+  }
+
+  // 有子节点 — 大标题 + 子标题 + 仅当前 section 的设置
+  const sec = cur.sections.find(s => s.id === activeSection) || cur.sections[0];
+  form.innerHTML = `<div class="main-title">${cur.title}</div>
+    <div class="section-title">${sec.title}</div>
+    <div class="section-block" id="sec-${sec.id}">
+      ${sec.keys.map(k => renderRow(k)).join('')}
+    </div>`;
+}
+
+function renderRow(k){
+  const mc = k.mod ? ' modified' : '';
+  let ctrl = '';
+  switch(k.type){
+    case 'bool':
+      ctrl = `<span class="tgl${k.val?'':' off'}"></span>`; break;
+    case 'sel':
+      ctrl = `<select class="sel">${k.opts.map(o => `<option ${o===k.val?'selected':''}>${o}</option>`).join('')}</select>`; break;
+    case 'text':
+      ctrl = `<input class="txt-inp" value="${k.val||''}">`; break;
+    case 'color':
+      ctrl = `<span class="swatch" style="background:${k.val||'#0078d4'}"></span><input class="txt-inp" style="width:100px" value="${k.val||''}">`; break;
+    case 'num':
+      ctrl = `<input class="txt-inp" style="width:70px" type="number" value="${k.val||''}" min="${k.min||0}" max="${k.max||99}">`; break;
+  }
+  return `<div class="set-row${mc}">
+    <div class="set-row-info"><span class="set-row-label">${k.key}</span><span class="set-row-desc">${k.desc}</span></div>
+    <div class="set-row-ctrl">${ctrl}</div>
+    <button class="gear" tabindex="0" title="更多操作">⚙</button>
+  </div>`;
+}
+
+/* ════════════════════════════════════════
+   交互
+   ════════════════════════════════════════ */
+function selectTop(id){
+  activeTop = id;
+  const g = tree.find(x => x.id === id);
+  activeSection = g?.sections ? g.sections[0].id : null;
+  if(g?.sections) expanded.add(id);
+  renderAll();
+  // 滚动到顶部
+  document.getElementById('right-form').scrollTop = 0;
+}
+
+function selectSection(topId, secId){
+  activeTop = topId;
+  activeSection = secId;
+  expanded.add(topId);
+  renderAll();
+  // 滚动到对应 section block
+  setTimeout(() => {
+    document.getElementById(`sec-${secId}`)?.scrollIntoView({ block:'start', behavior:'smooth' });
+  }, 50);
+}
+
+function toggleGroup(id){
+  if(expanded.has(id)){
+    expanded.delete(id);
+    // 如果关的是当前活跃顶层 → 不做额外操作（侧栏折叠不影响主区）
+  } else {
+    expanded.add(id);
+  }
+  renderAll();
+}
+
+/* ════════════════════════════════════════
+   Tab / 主题
+   ════════════════════════════════════════ */
+function switchTab(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.setAttribute('aria-selected', i===0 ? tab==='settings' : tab==='keybindings'));
+  document.getElementById('ct-settings').classList.toggle('active', tab==='settings');
+  document.getElementById('ct-keybindings').classList.toggle('active', tab==='keybindings');
+}
+function t(theme){
+  document.body.className = theme==='light'?'light':'';
+  document.getElementById('btn-dark').classList.toggle('on', theme==='dark');
+  document.getElementById('btn-light').classList.toggle('on', theme==='light');
+}
+
+renderAll();
+</script>
+</body>
+</html>
