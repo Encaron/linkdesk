@@ -51,7 +51,7 @@ export function initIpcBridgeHandler(): void {
         }
         case "commands:execute": {
           const [commandId, ...rest] = req.args;
-          await executeCommand(commandId as string, undefined, ...rest);
+          result = await executeCommand(commandId as string, undefined, ...rest);
           break;
         }
 

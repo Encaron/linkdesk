@@ -26,7 +26,7 @@ export interface Command {
   /** context key when 条件——Phase 5 实现（见 ContextKeyService） */
   when?: string;
   /** 异步处理器——从第一天就用 async 签名 */
-  handler: (token?: CancellationToken, ...args: unknown[]) => Promise<void>;
+  handler: (token?: CancellationToken, ...args: unknown[]) => Promise<unknown>;
 }
 
 const _commands = new Map<string, Command>();
@@ -98,7 +98,7 @@ export async function executeCommand(
   commandId: string,
   token?: CancellationToken,
   ...args: unknown[]
-): Promise<void> {
+): Promise<unknown> {
   // #44：执行前激活延迟插件——onCommand 触发源
   if (_preActivateHook) await _preActivateHook(commandId);
 
@@ -109,7 +109,7 @@ export async function executeCommand(
   }
 
   try {
-    await cmd.handler(token, ...args);
+    return await cmd.handler(token, ...args);
   } catch (err) {
     console.error(`[CommandRegistry] 命令 "${commandId}" 执行出错:`, err);
     // Phase 5 盲区 8：错误隔离——toast 报告但不崩面板
