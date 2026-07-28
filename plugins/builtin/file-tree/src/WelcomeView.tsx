@@ -21,6 +21,15 @@ const WelcomeView: React.FC = () => {
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
 
+  /* ── 最近文件夹更新（必须在 useEffect 之前——const 暂时性死区） ── */
+
+  const updateRecent = useCallback(async (uris: string[]) => {
+    const stored = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
+    const merged = [...new Set([...uris, ...stored])].slice(0, MAX_RECENT);
+    await setPluginStateValue(PLUGIN_ID, RECENT_KEY, merged);
+    setRecentFolders(merged);
+  }, []);
+
   /* ── 加载最近文件夹 ── */
 
   useEffect(() => {
@@ -36,13 +45,6 @@ const WelcomeView: React.FC = () => {
     });
     return unsub;
   }, [updateRecent]);
-
-  const updateRecent = useCallback(async (uris: string[]) => {
-    const stored = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
-    const merged = [...new Set([...uris, ...stored])].slice(0, MAX_RECENT);
-    await setPluginStateValue(PLUGIN_ID, RECENT_KEY, merged);
-    setRecentFolders(merged);
-  }, []);
 
   /* ── 打开文件夹 ── */
 
