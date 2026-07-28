@@ -77,14 +77,66 @@ export interface WorkspaceLayout {
 
 let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, cards: [] };
 
+/* ── E3i #70：插件改名布局迁移 ── */
+
+/**
+ * 插件改名后自动迁移布局中的旧 tab id。
+ * flag 保证幂等——迁移过一次后不再重复。
+ *
+ * @param layout  当前布局
+ * @param oldId   旧插件 ID（如 "terminal"）
+ * @param newId   新插件 ID（如 "serial-monitor"）
+ * @param flag    幂等标志——写入 layout 对象的 property name
+ */
+function migratePluginIdRename(
+  layout: WorkspaceLayout,
+  oldId: string,
+  newId: string,
+  flag: string
+): WorkspaceLayout {
+  if ((layout as unknown as Record<string, unknown>)[flag]) return layout;
+
+  const oldPrefix = `${oldId}-`;
+  const newPrefix = `${newId}-`;
+  let migrated = false;
+
+  const newGroups = layout.tabs.groups.map((group) => {
+    const newTabs = group.tabs.map((tab) => {
+      if (tab.id.startsWith(oldPrefix)) {
+        migrated = true;
+        const suffix = tab.id.slice(oldPrefix.length);
+        return {
+          ...tab,
+          id: `${newPrefix}${suffix}`,
+          type: tab.type === oldId ? newId : tab.type,
+        };
+      }
+      return tab;
+    });
+    return { ...group, tabs: newTabs };
+  });
+
+  if (!migrated) {
+    // 无需迁移但标记 flag——避免后续启动重复检查
+    return { ...layout, [flag]: true };
+  }
+
+  const result = { ...layout, tabs: { ...layout.tabs, groups: newGroups }, [flag]: true };
+  write("layout", result).catch(() => {});
+  return result;
+}
+
 /* ── 初始化 ── */
 
 /** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。
- *  B78 归一化：自动迁移旧硬编码 tab id（"settings"→"settings-1"等），保证 F5 不丢布局。 */
+ *  B78 归一化：自动迁移旧硬编码 tab id（"settings"→"settings-1"等），保证 F5 不丢布局。
+ *  E3i #70：terminal → serial-monitor 自动迁移。 */
 export async function initLayoutService(): Promise<void> {
-  const saved = await read<WorkspaceLayout>("layout");
+  let saved = await read<WorkspaceLayout>("layout");
   if (saved) {
-    _layoutCache = migrateLegacyTabIds(saved);
+    saved = migrateLegacyTabIds(saved);
+    saved = migratePluginIdRename(saved, "terminal", "serial-monitor", "_migrated_terminal_to_serial_monitor");
+    _layoutCache = saved;
   }
 }
 
