@@ -27,7 +27,7 @@ function FilterMenu({ open, filterMode, filterKeyword, onClose, onModeChange, on
           className={`ctx-item${filterMode === "protocol" ? " ctx-item-checked" : ""}`}
           onClick={() => { onModeChange("protocol"); onClose(); }}
         >
-          📡 {t("仅协议消息")}
+          <span className="codicon codicon-symbol-bracket" /> {t("仅协议消息")}
         </div>
         <div
           className={`ctx-item${filterMode === "plain" ? " ctx-item-checked" : ""}`}
@@ -39,8 +39,7 @@ function FilterMenu({ open, filterMode, filterKeyword, onClose, onModeChange, on
         <div className="ctx-item-label">{t("关键字过滤")}</div>
         <div className="ctx-item-input">
           <input
-            className="input"
-            style={{ width: "100%", height: 24, fontSize: 11 }}
+            className="input filter-keyword-input"
             placeholder={t("输入关键字…")}
             value={filterKeyword}
             onChange={(e) => onKeywordChange(e.target.value)}

@@ -47,7 +47,7 @@ function SearchBar({
 
   return (
     <div className="search-bar">
-      <span className="search-icon">🔍</span>
+      <span className="codicon codicon-search search-icon" />
       <input
         ref={inputRef}
         className="search-input"
@@ -74,9 +74,9 @@ function SearchBar({
       >
         Aa
       </button>
-      <button className="search-nav" onClick={() => onNavigate(-1)} title={t("上一个")}>▲</button>
-      <button className="search-nav" onClick={() => onNavigate(1)} title={t("下一个")}>▼</button>
-      <button className="search-close" onClick={onClose} title={t("关闭搜索")}>✕</button>
+      <button className="search-nav" onClick={() => onNavigate(-1)} title={t("上一个")}><span className="codicon codicon-arrow-up" /></button>
+      <button className="search-nav" onClick={() => onNavigate(1)} title={t("下一个")}><span className="codicon codicon-arrow-down" /></button>
+      <button className="search-close" onClick={onClose} title={t("关闭搜索")}><span className="codicon codicon-close" /></button>
     </div>
   );
 }
