@@ -214,6 +214,8 @@ export class IpcBridge {
     }) => {
       // 广播到所有插件 WebView（含自己——对标 CoreEvents 模式）
       this.broadcast(channel, payload);
+      // 也转发到壳渲染进程——壳侧 components 可订阅插件事件
+      this.mainWindow.webContents.send('plugin:push', { channel, payload });
     });
     console.log('[IpcBridge] 已注册 plugin:emit 插件间数据管道');
   }
