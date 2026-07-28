@@ -764,6 +764,8 @@ export function useTabManager() {
   tabStateRef.current = tabState;
 
   const lastFocusedByType = useRef<Map<string, string>>(new Map());
+  // E4 #87：关闭标签页栈——Ctrl+Shift+T 恢复最近关闭的标签页
+  const closedTabStack = useRef<Array<{ type: string; opts?: CreateTabOptions }>>([]);
   // G5：ref 写入移出 render 函数体——Concurrent Mode 安全（render 期间禁止副作用）
   useEffect(() => {
     for (const tab of tabState.groups.flatMap((g) => g.tabs)) {
@@ -887,6 +889,16 @@ export function useTabManager() {
       setTabState((prev) => {
         const r = reduceCloseTab(prev, tabId);
         result = { closed: r.closed, tabId, reason: r.reason, newActiveTabId: r.newActiveTabId };
+        if (r.closed) {
+          const closedTab = prev.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
+          if (closedTab && !getTabBehavior(closedTab.type).isFallback) {
+            closedTabStack.current.push({
+              type: closedTab.type,
+              opts: { label: closedTab.label, workspaceName: closedTab.workspaceName, filePath: closedTab.filePath, sourceId: closedTab.sourceId, pinned: closedTab.pinned },
+            });
+            if (closedTabStack.current.length > 20) closedTabStack.current.shift();
+          }
+        }
         return r.state ?? prev;
       });
       return result;
@@ -992,6 +1004,13 @@ export function useTabManager() {
     });
   }, []);
 
+  /** E4 #87：恢复最近关闭的标签页——Ctrl+Shift+T */
+  const restoreClosedTab = useCallback((): string | null => {
+    const entry = closedTabStack.current.pop();
+    if (!entry) return null;
+    return createTab(entry.type, entry.opts);
+  }, [createTab]);
+
   // G6：ref 读当前状态——替代 setState updater hack（Concurrent Mode 下 updater 可能异步调度）
   const toLayoutData = useCallback((): LayoutData => {
     const prev = tabStateRef.current;
@@ -1033,5 +1052,6 @@ export function useTabManager() {
     // ── 持久化（恢复/导出）──
     restoreLayout,
     toLayoutData,
+    restoreClosedTab,
   };
 }
