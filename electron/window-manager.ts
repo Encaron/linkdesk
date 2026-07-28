@@ -109,6 +109,8 @@ export class WindowManager {
 
     // 取消保活定时器（如果处于宽限期）
     this.cancelGraceTimer(pluginId);
+    // #73：清空该插件的 IPC 请求队列——卸载后重装同一 pluginId 时不继承旧链
+    this.ipcBridge?.clearPluginQueue(pluginId);
     view.webContents.close();
     this.pluginViews.delete(pluginId);
     console.log(`[WindowManager] 插件 "${pluginId}" WebContentsView 已销毁`);
