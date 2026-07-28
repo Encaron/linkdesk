@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import FileTree from "./FileTree";
+import WelcomeView from "./WelcomeView";
 import { FileTreeModel } from "./FileTreeModel";
 import type { ExplorerItem } from "./FileTreeModel";
 
@@ -131,7 +132,7 @@ const FileTreeSidebar: React.FC = () => {
       {/* 文件树 或 空工作区 */}
       <div style={{ flex: 1, overflow: "hidden" }}>
         {roots.length === 0 ? (
-          <EmptyWorkspace onOpenFolder={() => {/* TODO E4a #92 WelcomeView */}} />
+          <WelcomeView />
         ) : (
           <FileTree model={model} onOpenFile={handleOpenFile} />
         )}
@@ -169,44 +170,5 @@ const ToolbarButton: React.FC<{
     <span className={`codicon ${icon}`} style={{ fontSize: 14 }} />
   </button>
 );
-
-/* ── 空工作区占位（E4a #92 WelcomeView 替换） ── */
-
-const EmptyWorkspace: React.FC<{ onOpenFolder: () => void }> = ({ onOpenFolder }) => {
-  const { t } = useTranslation();
-
-  return (
-    <div
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        padding: 24,
-        color: "var(--color-dimmed, #94A3B8)",
-        fontSize: 13,
-        textAlign: "center",
-        gap: 12,
-      }}
-    >
-      <p style={{ margin: 0 }}>{t("你没有打开文件夹。")}</p>
-      <button
-        onClick={onOpenFolder}
-        style={{
-          padding: "6px 16px",
-          border: "1px solid var(--color-border, #1E293B)",
-          borderRadius: 4,
-          background: "var(--color-muted, #1E293B)",
-          color: "var(--color-foreground, #F8FAFC)",
-          cursor: "pointer",
-          fontSize: 12,
-        }}
-      >
-        {t("打开文件夹")}
-      </button>
-    </div>
-  );
-};
 
 export default FileTreeSidebar;
