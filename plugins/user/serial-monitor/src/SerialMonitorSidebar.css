@@ -263,13 +263,13 @@
   color: var(--text-secondary);
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  padding: 8px 0 4px;
+  padding: 8px 12px 4px;
 }
 
 /* ── 设置组（复用旧样式，轻量调整） ── */
 
 .setting-group {
-  padding: 4px 0;
+  padding: 4px 12px;
 }
 
 .setting-group + .setting-group {
