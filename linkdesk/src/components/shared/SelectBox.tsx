@@ -26,13 +26,15 @@ interface SelectBoxProps {
   placeholder?: string;
   title?: string;
   className?: string;
+  /** 下拉面板打开时回调——用于刷新动态选项列表（如串口热插拔） */
+  onOpen?: () => void;
 }
 
 function isOption(o: string | SelectBoxOption): o is SelectBoxOption {
   return typeof o === "object" && "value" in o && "label" in o;
 }
 
-function SelectBox({ value, options, onChange, disabled, placeholder, title, className }: SelectBoxProps) {
+function SelectBox({ value, options, onChange, disabled, placeholder, title, className, onOpen }: SelectBoxProps) {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -71,6 +73,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
       setFocusIdx(-1);
       return;
     }
+    onOpen?.();
     const idx = filtered.findIndex((o) => o.value === value);
     setFocusIdx(idx >= 0 ? idx : 0);
     if (normalized.length > 8) {

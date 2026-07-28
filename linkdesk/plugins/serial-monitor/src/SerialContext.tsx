@@ -30,6 +30,8 @@ interface SerialActions {
   toggleOpen: (encoding?: string) => Promise<void>;
   setSourceName: (name: string, encoding?: string) => Promise<void>;
   setBaudRate: (baud: string, encoding?: string) => Promise<void>;
+  /** 刷新可用串口列表——USB 热插拔后下拉框即时更新 */
+  refreshPorts: () => Promise<void>;
 }
 
 // ═══════════════════════════════════════════════════════
@@ -215,5 +217,13 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     }
   }, []);
 
-  return { state, actions: { toggleOpen, setSourceName, setBaudRate } };
+  // 支线：刷新可用串口列表——USB 热插拔后下拉框即时更新
+  const refreshPorts = useCallback(async () => {
+    if (!s) return;
+    const listPorts = s.listPorts ?? s.getPorts;
+    const ports = await listPorts?.();
+    if (ports) _setState((p) => ({ ...p, ports }));
+  }, []);
+
+  return { state, actions: { toggleOpen, setSourceName, setBaudRate, refreshPorts } };
 }
