@@ -10,7 +10,7 @@
 Monaco 是重型库（~5MB），E3a 多 WebView 保证它跑在独立进程中——崩了不影响壳和其他插件。
 
 ```
-plugins/factory/editor/
+plugins/builtin/editor/
 ├── plugin.json              → contributes.editors + keybindings + files.encoding/files.autoSave 配置
 ├── resources/icon.svg
 └── src/
