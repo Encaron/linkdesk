@@ -718,6 +718,22 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   }, [sourceId]);
 
   useEffect(() => {
+    // E3j #79：发送能力——工作台卡片等插件通过命令系统发数据到串口
+    registerCommand("serial-monitor", {
+      id: "serial-monitor.send",
+      title: t("发送"),
+      category: t("串口监视器"),
+      handler: async (sendMode: "text" | "hex", data: string) => {
+        const s = (window as any).linkdesk?.serial;
+        if (!s) return;
+        if (sendMode === "hex") {
+          const bytes = data.split(/[\s,]+/).filter(Boolean).map((h: string) => parseInt(h, 16));
+          await s.sendData(bytes);
+        } else {
+          await s.sendText(data, "utf-8");
+        }
+      },
+    });
     registerCommand("serial-monitor", {
       id: "serial-monitor.copy",
       title: t("复制"),
