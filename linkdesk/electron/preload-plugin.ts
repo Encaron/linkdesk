@@ -20,56 +20,45 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { APP_NAMESPACE } from './constants';
+import { createEventSystem } from './event-system';
 
 try {
-  // ═══════════════════════════════════════════════════════
-  // E3a #28：集中式事件分发——单个 ipcRenderer.on('plugin:push')
-  // 路由到各 channel 的订阅者。避免每个订阅注册一个 ipcRenderer 监听器。
-  // ═══════════════════════════════════════════════════════
-
-  const eventSubscriptions = new Map<string, Set<(payload: any) => void>>();
-
   // ── 语言资源缓存（E3c #40：接收壳广播的初始语言数据）──
   let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
-  ipcRenderer.on('plugin:push', (_event, data: { channel: string; payload: any }) => {
-    // E3b #35：默认处理——theme:changed 自动注入 CSS 变量，插件无需手动订阅
-    if (data.channel === 'theme:changed') {
-      const { themeId, themeType, variables } = data.payload;
-      try {
-        document.documentElement.setAttribute('data-theme', themeType ?? 'dark');
-        let style = document.getElementById('linkdesk-theme') as HTMLStyleElement | null;
-        if (!style) {
-          style = document.createElement('style');
-          style.id = 'linkdesk-theme';
-          document.head.appendChild(style);
+  // ── E3j #77a：归一化事件系统——提取到 event-system.ts ──
+  const events = createEventSystem(ipcRenderer, {
+    logPrefix: 'preload-plugin',
+    extraHandlers: {
+      // E3b #35：theme:changed 自动注入 CSS 变量，插件无需手动订阅
+      'theme:changed': (payload) => {
+        const { themeId, themeType, variables } = payload as any;
+        try {
+          document.documentElement.setAttribute('data-theme', themeType ?? 'dark');
+          let style = document.getElementById('linkdesk-theme') as HTMLStyleElement | null;
+          if (!style) {
+            style = document.createElement('style');
+            style.id = 'linkdesk-theme';
+            document.head.appendChild(style);
+          }
+          style.textContent = `:root { ${
+            Object.entries(variables as Record<string, string>).map(([k, v]) => `--${k}:${v};`).join(' ')
+          } }`;
+        } catch (e) {
+          console.error('[preload-plugin] theme:changed CSS 注入失败:', e);
         }
-        style.textContent = `:root { ${
-          Object.entries(variables as Record<string, string>).map(([k, v]) => `--${k}:${v};`).join(' ')
-        } }`;
-      } catch (e) {
-        console.error('[preload-plugin] theme:changed CSS 注入失败:', e);
-      }
-    }
-
-    // E3c #40：默认处理——lang:changed 缓存 + 通知订阅者
-    if (data.channel === 'lang:changed') {
-      _langCache = data.payload as { lang: string; resources: Record<string, unknown> };
-      for (const fn of _langSubscribers) {
-        try { fn(_langCache); } catch (e) {
-          console.error('[preload-plugin] lang:changed 回调异常:', e);
+      },
+      // E3c #40：lang:changed 缓存 + 通知订阅者
+      'lang:changed': (payload) => {
+        _langCache = payload as { lang: string; resources: Record<string, unknown> };
+        for (const fn of _langSubscribers) {
+          try { fn(_langCache); } catch (e) {
+            console.error('[preload-plugin] lang:changed 回调异常:', e);
+          }
         }
-      }
-    }
-
-    const handlers = eventSubscriptions.get(data.channel);
-    if (!handlers) return;
-    for (const fn of handlers) {
-      try { fn(data.payload); } catch (e) {
-        console.error(`[preload-plugin] 事件回调异常 (channel=${data.channel}):`, e);
-      }
-    }
+      },
+    },
   });
 
   // E3j #75：commands 对象——execute（向后兼容别名）+ executeCommand + getCommands
@@ -218,33 +207,8 @@ try {
 
     // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
-    // React 侧推荐使用 usePluginIpcEvent() hook（src/core/usePluginIpcEvent.ts）。
-    events: {
-      /**
-       * 订阅壳推送事件。
-       * @returns unsubscribe 函数——组件 unmount 时调用以清理。
-       */
-      on: (channel: string, cb: (payload: any) => void) => {
-        let set = eventSubscriptions.get(channel);
-        if (!set) {
-          set = new Set();
-          eventSubscriptions.set(channel, set);
-        }
-        set.add(cb);
-        return () => {
-          set?.delete(cb);
-          if (set && set.size === 0) eventSubscriptions.delete(channel);
-        };
-      },
-      /**
-       * E3j #77：插件发布数据到大厅 events 频道——对标 CoreEvents.emit。
-       * 数据经主进程广播到所有插件 WebView + 壳渲染进程。
-       * 频道名由插件自定——核心不知道频道的存在。
-       */
-      emit: (channel: string, payload: unknown) => {
-        ipcRenderer.send('plugin:emit', { channel, payload });
-      },
-    },
+    // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
+    events,
   });
 
   // 通知主进程 preload 成功

@@ -12,6 +12,7 @@
 
 import { contextBridge, ipcRenderer } from 'electron';
 import { APP_NAMESPACE } from './constants';
+import { createEventSystem } from './event-system';
 
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
 let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
@@ -24,17 +25,9 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
   }
 });
 
-// ── E3j #77：壳侧事件系统——接收 plugin:push + 提供 events.on/emit ──
-const shellEventSubscriptions = new Map<string, Set<(payload: any) => void>>();
-
-ipcRenderer.on('plugin:push', (_event, data: { channel: string; payload: any }) => {
-  const handlers = shellEventSubscriptions.get(data.channel);
-  if (!handlers) return;
-  for (const fn of handlers) {
-    try { fn(data.payload); } catch (e) {
-      console.error(`[preload-shell] 事件回调异常 (channel=${data.channel}):`, e);
-    }
-  }
+// ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
+const events = createEventSystem(ipcRenderer, {
+  logPrefix: 'preload-shell',
 });
 
 try {
@@ -135,27 +128,11 @@ try {
       get: (pluginId?: string) => ipcRenderer.invoke('env:get', pluginId),
     },
 
-    // ── 事件（E2a #5 心跳看门狗 + E3j #77 插件间数据管道）──
+    // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {
+      ...events, // on + emit 由 createEventSystem() 提供
       heartbeat: () => ipcRenderer.send('heartbeat'),
-      notifyTheme: (isDark: boolean) => ipcRenderer.send('theme-changed', isDark), // E3f #51
-      /** E3j #77：订阅事件——壳侧组件可订阅插件发出的数据 */
-      on: (channel: string, cb: (payload: any) => void) => {
-        let set = shellEventSubscriptions.get(channel);
-        if (!set) {
-          set = new Set();
-          shellEventSubscriptions.set(channel, set);
-        }
-        set.add(cb);
-        return () => {
-          set?.delete(cb);
-          if (set && set.size === 0) shellEventSubscriptions.delete(channel);
-        };
-      },
-      /** E3j #77：发布事件——壳侧代码可推数据到大厅 */
-      emit: (channel: string, payload: unknown) => {
-        ipcRenderer.send('plugin:emit', { channel, payload });
-      },
+      notifyTheme: (isDark: boolean) => ipcRenderer.send('theme-changed', isDark),
     },
 
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──
