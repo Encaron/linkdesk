@@ -11,6 +11,7 @@
 import type { FileEntry } from "@src/core/FileService";
 import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
+import type { FileExcludeFilter } from "./FileExcludeFilter";
 
 /* ── 类型 ── */
 
@@ -29,20 +30,21 @@ export interface ExplorerItem {
   decoration?: FileDecoration;
 }
 
-/** 排除过滤器——E4a #95 提供 FileExcludeFilter 实现 */
-export type ExcludePredicate = (name: string, isDirectory: boolean) => boolean;
-
 /* ── 模型 ── */
 
 export class FileTreeModel {
   private _roots: ExplorerItem[] = [];
   private _expanded = new Set<string>();
   private _sortOrder: SortOrder;
-  private _excludeFilter: ExcludePredicate | null;
+  private _excludeFilter: FileExcludeFilter | null = null;
 
-  constructor(sortOrder?: SortOrder, excludeFilter?: ExcludePredicate) {
+  constructor(sortOrder?: SortOrder) {
     this._sortOrder = sortOrder ?? "foldersFirst";
-    this._excludeFilter = excludeFilter ?? null;
+  }
+
+  /** E4a #95d: 设置排除过滤器 */
+  setExcludeFilter(filter: FileExcludeFilter): void {
+    this._excludeFilter = filter;
   }
 
   get roots(): ExplorerItem[] { return this._roots; }
@@ -64,8 +66,13 @@ export class FileTreeModel {
   async getChildren(parent: ExplorerItem): Promise<ExplorerItem[]> {
     if (parent.children !== null) return parent.children;
     const entries = await listDir(parent.uri);
+    const parentLen = parent.uri.replace(/\\/g, "/").length;
     const filtered = this._excludeFilter
-      ? entries.filter((e) => !this._excludeFilter!(e.name, e.isDirectory))
+      ? entries.filter((e) => {
+          // 计算相对路径给 FileExcludeFilter.matches()
+          const relPath = e.path.replace(/\\/g, "/").slice(parentLen + 1);
+          return !this._excludeFilter!.matches(relPath);
+        })
       : entries;
     parent.children = filtered.map((e) => this._toExplorerItem(e, parent));
     this._sort(parent.children);
