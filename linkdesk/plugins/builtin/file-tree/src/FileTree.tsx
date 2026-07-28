@@ -13,6 +13,7 @@ import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { getCompactedPath } from "./CompactFolder";
+import { TREE_TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 
 /* ── 类型 ── */
 
@@ -29,11 +30,7 @@ interface FlatItem {
   compactedSegments?: string[];
 }
 
-/* ── 常量 ── */
-
-/** 对齐 CSS token: --tree-item-height（file-tree.css） */
-const ITEM_HEIGHT = 22;
-const OVERSCAN = 10;
+/* ── 常量（从 layoutTokens.ts 导入） ── */
 
 /* ── 工具 ── */
 
@@ -103,10 +100,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     return flattenTree(model);
   }, [model, version]);
 
-  const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
-  const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / ITEM_HEIGHT) + 2 * OVERSCAN : 50;
+  const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
+  const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
-  const totalHeight = flatItems.length * ITEM_HEIGHT;
+  const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
 
   const renderedItems = useMemo(
     () => flatItems.slice(startIndex, endIndex),
@@ -236,12 +233,12 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   function scrollToItem(index: number) {
     const el = containerRef.current;
     if (!el) return;
-    const targetTop = index * ITEM_HEIGHT;
+    const targetTop = index * TREE_ITEM_HEIGHT;
     const { scrollTop: st, clientHeight: ch } = el;
     if (targetTop < st) {
       el.scrollTop = targetTop;
-    } else if (targetTop + ITEM_HEIGHT > st + ch) {
-      el.scrollTop = targetTop - ch + ITEM_HEIGHT;
+    } else if (targetTop + TREE_ITEM_HEIGHT > st + ch) {
+      el.scrollTop = targetTop - ch + TREE_ITEM_HEIGHT;
     }
   }
 
@@ -256,7 +253,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       className="file-tree-scroll"
     >
       <div style={{ height: totalHeight, position: "relative" }}>
-        <div style={{ height: startIndex * ITEM_HEIGHT }} />
+        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
         {renderedItems.map(({ item, depth, compactedSegments }) => (
           <FileTreeNode
             key={item.uri}

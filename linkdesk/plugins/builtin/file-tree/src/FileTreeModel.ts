@@ -12,6 +12,7 @@ import type { FileEntry } from "@src/core/FileService";
 import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
+import { basename, splitPath } from "./pathUtils";
 
 /* ── 类型 ── */
 
@@ -54,7 +55,7 @@ export class FileTreeModel {
     this._expanded.clear();
     this._roots = rootPaths.map((p) => ({
       uri: p,
-      name: p.split(/[/\\]/).pop() ?? p,
+      name: basename(p),
       isDirectory: true,
       isSymlink: false,
       children: null,
@@ -87,7 +88,7 @@ export class FileTreeModel {
 
     const relative = uri.slice(root.uri.length).replace(/^[/\\]/, "");
     if (!relative) return root;
-    const parts = relative.split(/[/\\]/);
+    const parts = splitPath(relative);
     let current: ExplorerItem = root;
 
     for (const part of parts) {

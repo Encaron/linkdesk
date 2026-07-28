@@ -7,6 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { openFolder, addFolder, onDidChangeFolders } from "@src/core/WorkspaceService";
 import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
+import { basename } from "./pathUtils";
 
 const PLUGIN_ID = "file-tree";
 const RECENT_KEY = "recentFolders";
@@ -96,7 +97,7 @@ const WelcomeView: React.FC = () => {
               onClick={() => handleOpenRecent(folderPath)}
             >
               <span className="codicon codicon-root-folder file-tree-recent-item-icon" />
-              {folderPath.split(/[/\\]/).pop()}
+              {basename(folderPath)}
               <span className="file-tree-recent-item-path">{folderPath}</span>
             </button>
           ))}
