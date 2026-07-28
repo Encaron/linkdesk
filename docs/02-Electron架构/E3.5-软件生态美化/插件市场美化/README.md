@@ -1,11 +1,12 @@
 # 插件市场美化 — E3.5 生态美化
 
 > 2026-07-29 启动。E3.5 并行轨道第三个专题——插件市场全量 UI/UX 审计与整改。
-> 范围：侧栏列表、主区引导页、插件详情页。UI 边界判定、布局、配色、图标、动效、无障碍。不改操作逻辑。
+> 范围：侧栏列表、插件详情页。UI 边界判定、布局、配色、图标、动效、无障碍。不改操作逻辑。
+> **⚠️ MarketplaceView 引导页无法到达（三栏设计——点图标只激活侧栏），不纳入审计。**
 
 ## 架构总览
 
-插件市场由三大 UI 表面组成：
+插件市场由两个可达 UI 表面组成（主区 MarketplaceView 引导页永远不可达）：
 
 ```
 ┌─ MarketplaceSidebar（侧栏 280px）──┬─ MainContent（主区）──────────────┐
@@ -34,9 +35,9 @@
 
 | 文件 | 行数 | 职责 |
 |------|------|------|
-| `plugins/marketplace/src/index.tsx` | 35 | **主区引导页**——Hero 居中布局，显示插件计数和提示 |
+| `plugins/marketplace/src/index.tsx` | 35 | ⚠️ **死代码**——主区引导页，永远不可达 |
 | `plugins/marketplace/src/sidebar.tsx` | 552 | **侧栏列表**——搜索 + 四分区（已安装/内置/已禁用/待安装）+ 齿轮菜单 |
-| `plugins/marketplace/src/MarketplaceView.css` | 276 | 主区引导页 + 搜索栏 + 列表行 + 展开详情样式 |
+| `plugins/marketplace/src/MarketplaceView.css` | 276 | ⚠️ **死代码**——引导页样式，大部分未使用 |
 | `plugins/marketplace/src/MarketplaceSidebar.css` | 360 | 侧栏——header/搜索框/分区标题/插件项/齿轮按钮/安装按钮 |
 | `src/components/views/PluginDetailView.tsx` | 395 | **插件详情页**——Header + ActionBar + TabBar + Details/Changelog |
 | `src/components/views/PluginDetailView.css` | 410 | 详情页全部样式——header/按钮/navbar/信息侧栏/推荐列表/changelog |
