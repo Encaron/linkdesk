@@ -45,6 +45,8 @@
   "添加": "Add",
   "添加快捷发送": "Add Quick Send",
   "关闭": "Close",
+  "关闭会话": "Close Session",
+  "关闭会话「{{name}}」？": "Close session \"{{name}}\"?",
   "关闭其他": "Close Others",
   "关闭右侧": "Close to the Right",
   "向下分屏": "Split Down",
