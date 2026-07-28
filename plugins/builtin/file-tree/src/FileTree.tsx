@@ -28,6 +28,7 @@ interface FlatItem {
 
 /* ── 常量 ── */
 
+/** 对齐 CSS token: --tree-item-height（file-tree.css） */
 const ITEM_HEIGHT = 22;
 const OVERSCAN = 10;
 

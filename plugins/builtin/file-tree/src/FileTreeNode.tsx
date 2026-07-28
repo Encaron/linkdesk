@@ -87,7 +87,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   return (
     <div
       className={rowClass}
-      style={{ paddingLeft: indent + (depth - 1) * 16 }}
+      style={{ paddingLeft: `calc(${indent}px + (${depth} - 1) * var(--tree-indent))` }}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onContextMenu={onContextMenu}
