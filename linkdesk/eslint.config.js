@@ -1,6 +1,7 @@
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import reactHooks from "eslint-plugin-react-hooks";
+import importX from "eslint-plugin-import-x";
 import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
@@ -18,6 +19,15 @@ export default [
       "@typescript-eslint": tseslint,
       "linkdesk": { rules: linkdeskRules },
       "react-hooks": reactHooks,
+      "import-x": importX,
+    },
+    settings: {
+      "import-x/resolver": {
+        typescript: {
+          alwaysTryTypes: true,
+          project: "./tsconfig.json",
+        },
+      },
     },
     rules: {
       // ═══ React Hooks 官方规则 ═══
@@ -72,6 +82,10 @@ export default [
       // ═══ 防止副作用写在 setState 内部（B25 教训） ═══
       // 此规则在 TypeScript 层面无法精确检测，由 code review 辅助。
       // 原则：setState((prev) => { ... return newState }) 内不放 appendLine/emit/invoke。
+
+      // ═══ 导入机械防线——与 tsc 互补 ═══
+      // 模块路径拼错（tsc 也会抓，但 ESLint 更快；双保险）
+      "import-x/no-unresolved": "error",
 
       // ═══ 建议规则 ═══
       "@typescript-eslint/no-explicit-any": "warn",
