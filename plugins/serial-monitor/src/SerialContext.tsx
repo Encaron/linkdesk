@@ -79,6 +79,9 @@ function _initIPC(): void {
   if (_initialized) return;
   _initialized = true;
 
+  // #77b：仅 WebView 实例推数据到大厅——壳 fallback 不发射，避免协议插件收到重复数据
+  const isPluginWebView = typeof (window as any).linkdesk?.pluginViews?.notifyReady === 'function';
+
   const s = (window as any).linkdesk?.serial;
   if (!s) return;
 
@@ -104,12 +107,15 @@ function _initIPC(): void {
   });
 
   // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
-  s.onData?.((text: string) => {
-    (window as any).linkdesk?.events?.emit("serial:rawData", {
-      sourceName: _sharedState.sourceName,
-      text,
+  // E3j #77b：仅 WebView 实例发射——壳 fallback 不参与，避免重复
+  if (isPluginWebView) {
+    s.onData?.((text: string) => {
+      (window as any).linkdesk?.events?.emit("serial:rawData", {
+        sourceName: _sharedState.sourceName,
+        text,
+      });
     });
-  });
+  }
 }
 
 // ═══════════════════════════════════════════════════════
