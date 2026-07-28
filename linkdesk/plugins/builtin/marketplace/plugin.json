@@ -5,6 +5,7 @@
   "icon": "resources/icon.svg",
   "description": "浏览、安装和管理插件",
   "author": "官方",
+  "distribution": "builtin",
   "core": true,
   "factoryRole": "marketplace",
   "entry": "src/index.tsx",
