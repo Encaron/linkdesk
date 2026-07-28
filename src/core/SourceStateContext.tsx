@@ -3,7 +3,7 @@
  *
  * 核心只知道"数据源"概念——{ name, isOpen, stats }——不知道"串口"。
  * 所有数据源类型（串口、TCP、BLE、文件等）共用此上下文。
- * 终端插件通过 plugins/terminal/SerialContext.tsx 别名导入。
+ * 串口监视器插件通过 plugins/user/serial-monitor/SerialContext.tsx 别名导入。
  *
  * 对标 VS Code：src/vs/platform/ — platform services that don't know about specific features.
  */
