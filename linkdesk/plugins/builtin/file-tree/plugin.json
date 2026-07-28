@@ -1,0 +1,58 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "文件树",
+  "version": "1.0.0",
+  "icon": "resources/icon.svg",
+  "description": "浏览和管理文件——对标 VS Code 资源管理器",
+  "author": "官方",
+  "distribution": "builtin",
+  "core": true,
+  "entry": "src/index.tsx",
+  "sidebar": "src/sidebar.tsx",
+  "viewRole": "sidebarPrimary",
+  "tabBehavior": {
+    "singleton": true
+  },
+  "contributes": {
+    "commands": [
+      { "id": "revealInExplorer", "title": "在文件树中显示" },
+      { "id": "explorer.newFile", "title": "新建文件" },
+      { "id": "explorer.newFolder", "title": "新建文件夹" },
+      { "id": "explorer.refresh", "title": "刷新资源管理器" },
+      { "id": "explorer.collapseAll", "title": "收起所有文件夹" },
+      { "id": "explorer.openFolder", "title": "打开文件夹…" }
+    ],
+    "keybindings": [
+      { "key": "Ctrl+Shift+E", "command": "workbench.view.explorer" }
+    ],
+    "configuration": {
+      "title": "资源管理器",
+      "properties": {
+        "explorer.sortOrder": {
+          "type": "string",
+          "enum": ["foldersFirst", "name", "modifiedAt"],
+          "default": "foldersFirst",
+          "description": "文件树排序方式"
+        },
+        "explorer.compactFolders": {
+          "type": "boolean",
+          "default": true,
+          "description": "紧凑文件夹——单子目录压缩为单行路径"
+        },
+        "explorer.autoReveal": {
+          "type": "boolean",
+          "default": true,
+          "description": "切换编辑器标签页时自动在文件树中定位"
+        },
+        "files.exclude": {
+          "type": "object",
+          "default": {
+            "**/node_modules": true,
+            "**/.git": true
+          },
+          "description": "glob 模式排除文件/文件夹"
+        }
+      }
+    }
+  }
+}
