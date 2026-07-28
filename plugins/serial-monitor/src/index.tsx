@@ -437,7 +437,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(timestampFormat);
   tsFormatRef.current = timestampFormat;
-  const portOpenRef = useRef(true);
+  // 默认 false——新标签页未打开端口时不接收数据。
+  // 系统消息"已打开串行端口 XXX"匹配后才置 true。
+  const portOpenRef = useRef(false);
   // C1：per-tab session 绑定——IPC event handler 用 ref 读取当前 tab 的 session ID
   const sessionIdRef = useRef(sourceId);
   sessionIdRef.current = sourceId;
