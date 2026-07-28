@@ -9,6 +9,7 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
+import { Emitter, Event } from "./CoreEvents";
 
 /* ── 类型 ── */
 
@@ -26,34 +27,64 @@ export interface FileDecoration {
 
 /** 装饰器提供方接口——插件实现此接口 */
 export interface FileDecorationProvider {
+  /** 返回单个文件的装饰信息 */
   provideDecoration(uri: string): FileDecoration | null | Promise<FileDecoration | null>;
+  /** 装饰变更事件——空数组 = 全部刷新，传入 uri 数组 = 增量刷新 */
+  onDidChangeFileDecorations?: Event<string[] | void>;
 }
 
 /* ── Registry ── */
 
 class FileDecorationRegistryImpl extends RegistryBase {
   private _providers = new Map<string, FileDecorationProvider>();
+  private _subscriptions = new Map<string, () => void>();
+  private _onDidChange = new Emitter<string[] | void>();
 
   constructor() {
     super();
+  }
+
+  /** 装饰变更事件——文件树等消费者订阅以触发重新渲染 */
+  get onDidChange(): Event<string[] | void> {
+    return this._onDidChange.event;
   }
 
   /** 注册装饰器提供方 */
   register(pluginId: string, provider: FileDecorationProvider): void {
     this._providers.set(pluginId, provider);
     this.markPlugin(pluginId);
+
+    // 订阅 provider 的变更事件——自动转发到注册中心
+    if (provider.onDidChangeFileDecorations) {
+      const unsub = provider.onDidChangeFileDecorations((uris) => {
+        this._onDidChange.fire(uris);
+      });
+      this._subscriptions.set(pluginId, unsub);
+    }
   }
 
   /** 手动注销（RegistryBase 也会在卸载时自动调用） */
   unregister(pluginId: string): boolean {
+    this._cleanupSubscription(pluginId);
     return this._providers.delete(pluginId);
+  }
+
+  /** 获取指定文件的所有装饰——同步返回全部非空装饰 */
+  getDecorations(uri: string): FileDecoration[] {
+    const results: FileDecoration[] = [];
+    for (const provider of this._providers.values()) {
+      const deco = provider.provideDecoration(uri);
+      if (deco !== null && deco !== undefined && !(deco instanceof Promise)) {
+        results.push(deco);
+      }
+    }
+    return results;
   }
 
   /** 获取指定文件的所有装饰——按注册顺序返回第一个非空装饰 */
   getDecoration(uri: string): FileDecoration | null {
     for (const provider of this._providers.values()) {
       const deco = provider.provideDecoration(uri);
-      // 同步提供方直接返回，异步提供方跳过（文件树应监听变更后重新查询）
       if (deco !== null && deco !== undefined && !(deco instanceof Promise)) {
         return deco;
       }
@@ -78,7 +109,16 @@ class FileDecorationRegistryImpl extends RegistryBase {
 
   /** RegistryBase 要求的清理方法 */
   protected unregisterAll(pluginId: string): void {
+    this._cleanupSubscription(pluginId);
     this._providers.delete(pluginId);
+  }
+
+  private _cleanupSubscription(pluginId: string): void {
+    const unsub = this._subscriptions.get(pluginId);
+    if (unsub) {
+      unsub();
+      this._subscriptions.delete(pluginId);
+    }
   }
 }
 
