@@ -17,22 +17,28 @@ function scanPluginEntries(): Record<string, string> {
 
   const entries: Record<string, string> = {};
   try {
-    for (const dir of readdirSync(pluginsDir, { withFileTypes: true })) {
-      if (!dir.isDirectory()) continue;
-      const pluginJsonPath = resolve(pluginsDir, dir.name, "plugin.json");
-      if (!existsSync(pluginJsonPath)) continue;
+    // E4 #86：插件分离到 builtin/ 和 user/ 两个子目录
+    for (const sub of ['builtin', 'user']) {
+      const subDir = resolve(pluginsDir, sub);
+      if (!existsSync(subDir)) continue;
 
-      try {
-        const manifest = JSON.parse(readFileSync(pluginJsonPath, "utf-8"));
-        if (!manifest.entry) continue;  // 检测 entry（不再依赖 type 字段）
+      for (const dir of readdirSync(subDir, { withFileTypes: true })) {
+        if (!dir.isDirectory()) continue;
+        const pluginJsonPath = resolve(subDir, dir.name, "plugin.json");
+        if (!existsSync(pluginJsonPath)) continue;
 
-        const entryPath = resolve(pluginsDir, dir.name, manifest.entry);
-        if (existsSync(entryPath)) {
-          // key = "plugins/terminal" → output = dist/plugins/terminal.js
-          entries[`plugins/${dir.name}`] = entryPath;
+        try {
+          const manifest = JSON.parse(readFileSync(pluginJsonPath, "utf-8"));
+          if (!manifest.entry) continue;  // 检测 entry（不再依赖 type 字段）
+
+          const entryPath = resolve(subDir, dir.name, manifest.entry);
+          if (existsSync(entryPath)) {
+            // key = "plugins/builtin/terminal" → output = dist/plugins/builtin/terminal.js
+            entries[`plugins/${sub}/${dir.name}`] = entryPath;
+          }
+        } catch {
+          // plugin.json 解析失败，跳过
         }
-      } catch {
-        // plugin.json 解析失败，跳过
       }
     }
   } catch {
