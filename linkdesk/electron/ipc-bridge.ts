@@ -26,6 +26,8 @@ export class IpcBridge {
   /** #27：每个插件的待推送事件队列——保证顺序交付 */
   private pushQueues = new Map<string, Array<{ channel: string; payload: unknown }>>();
   private flushing = new Set<string>();
+  /** #72：每个插件的请求 Promise 链——保证 FIFO 串行处理 */
+  private pluginRequestQueues = new Map<string, Promise<unknown>>();
 
   /** 需要从插件 WebView 代理到壳渲染进程的 channel（#26） */
   private static PROXY_CHANNELS = [
@@ -53,23 +55,40 @@ export class IpcBridge {
    */
   private registerProxyHandlers(): void {
     for (const channel of IpcBridge.PROXY_CHANNELS) {
-      ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
+      ipcMain.handle(channel, async (event, ...args: unknown[]) => {
         const requestId = `bridge-${++this.requestCounter}-${Date.now()}`;
 
-        return new Promise<unknown>((resolve, reject) => {
-          const timer = setTimeout(() => {
-            this.pendingRequests.delete(requestId);
-            reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
-          }, 10_000);
+        const doRequest = (): Promise<unknown> => {
+          return new Promise<unknown>((resolve, reject) => {
+            const timer = setTimeout(() => {
+              this.pendingRequests.delete(requestId);
+              reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
+            }, 10_000);
 
-          this.pendingRequests.set(requestId, { resolve, reject, timer });
+            this.pendingRequests.set(requestId, { resolve, reject, timer });
 
-          this.mainWindow.webContents.send('bridge:request', {
-            requestId,
-            channel,
-            args,
+            this.mainWindow.webContents.send('bridge:request', {
+              requestId,
+              channel,
+              args,
+            });
           });
-        });
+        };
+
+        // #72：同插件请求 FIFO 串行——后续请求等前面完成才执行
+        const pluginId = this.windowManager.getPluginIdFromWebContents(event.sender);
+        if (pluginId) {
+          const prev = this.pluginRequestQueues.get(pluginId) ?? Promise.resolve();
+          // prev 可能已拒绝——.catch() 确保链不断，错误隔离
+          const current = prev
+            .catch(() => {})
+            .then(() => doRequest());
+          this.pluginRequestQueues.set(pluginId, current);
+          return current;
+        }
+
+        // 非插件来源（壳自身等）——直接执行，不走队列
+        return doRequest();
       });
     }
 
@@ -215,6 +234,15 @@ export class IpcBridge {
     }
   }
 
+  /**
+   * #72：清空指定插件的请求队列——插件卸载时调用。
+   * 队列中已入队的请求仍会完成（不中断进行中的请求），
+   * 但后续新请求不再受旧链约束——新链从头开始。
+   */
+  clearPluginQueue(pluginId: string): void {
+    this.pluginRequestQueues.delete(pluginId);
+  }
+
   /** 清理所有待处理请求和推送队列——应用退出时调用 */
   dispose(): void {
     for (const [id, pending] of this.pendingRequests) {
@@ -224,5 +252,6 @@ export class IpcBridge {
     this.pendingRequests.clear();
     this.pushQueues.clear();
     this.flushing.clear();
+    this.pluginRequestQueues.clear();
   }
 }
