@@ -52,6 +52,11 @@
   --space-lg: 16px;
   --space-xl: 24px;
   --space-2xl: 32px;
+  /* E3.5 新增 —— 串口监视器 UI 整改 */
+  --warning-text: #E8AB3E;
+  --warning-bg: rgba(255, 200, 0, 0.12);
+  --text-on-accent: #FFFFFF;
+  --danger: #EF4444;
 }
 
 [data-theme="light"] {
@@ -89,6 +94,11 @@
   --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
   --cm-timestamp: #767676;
+  /* E3.5 新增 —— 串口监视器 UI 整改（浅色覆写） */
+  --warning-text: #BF8800;
+  --warning-bg: rgba(200, 150, 0, 0.08);
+  --text-on-accent: #FFFFFF;
+  --danger: #D32F2F;
 }
 
 *,
