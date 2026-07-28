@@ -11,6 +11,8 @@
 
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { createRoot } from "react-dom/client";
+import { registerCommand } from "../../core/CommandRegistry";
 
 /* ── 模糊搜索（E2c #18）── */
 
@@ -197,3 +199,62 @@ export default function QuickPick<T>({
     document.body,
   );
 }
+
+/* ── E3j #80：命令入口——Promise 桥接，插件调 commands.execute 弹出浮动列表 ── */
+
+export interface QuickPickItem {
+  label: string;
+  description?: string;
+}
+
+interface ShowQuickPickOptions {
+  title?: string;
+  items: QuickPickItem[];
+}
+
+/**
+ * 命令式弹出 QuickPick——对标 VS Code vscode.window.showQuickPick()。
+ * 插件调 `linkdesk.commands.executeCommand('quickpick.show', { title, items })`
+ * → 浮动列表 → 用户选一项 / Esc → 返回结果 / undefined → 自动清理 DOM。
+ */
+export function showQuickPick(options: ShowQuickPickOptions): Promise<QuickPickItem | undefined> {
+  return new Promise((resolve) => {
+    const container = document.createElement("div");
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const cleanup = (result?: QuickPickItem) => {
+      root.unmount();
+      container.remove();
+      resolve(result);
+    };
+
+    root.render(
+      <QuickPick<QuickPickItem>
+        open={true}
+        onClose={() => cleanup(undefined)}
+        items={options.items}
+        placeholder={options.title ?? ""}
+        onSelect={(item) => cleanup(item)}
+        getSearchText={(item) => item.label}
+        getKey={(item) => item.label}
+        renderItem={(item) => (
+          <span>
+            <span>{item.label}</span>
+            {item.description && <span style={{ opacity: 0.6, marginLeft: 8 }}>{item.description}</span>}
+          </span>
+        )}
+      />,
+    );
+  });
+}
+
+// 注册命令——插件侧调 linkdesk.commands.executeCommand('quickpick.show', { title, items })
+registerCommand("linkdesk", {
+  id: "quickpick.show",
+  title: "QuickPick",
+  when: "false",
+  handler: async (_token: unknown, ...args: unknown[]) => {
+    return showQuickPick(args[0] as ShowQuickPickOptions);
+  },
+});
