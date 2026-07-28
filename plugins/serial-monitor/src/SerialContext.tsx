@@ -113,6 +113,7 @@ let _refCount = 0;
 let _ipcCleanups: Array<() => void> = [];
 
 /** 注册 IPC 监听器——引用计数。第一个 consumer mount → 注册；后续只加引用。 */
+// eslint-disable-next-line linkdesk/no-module-level-ipc-listener -- 方向 B 正确实现：useEffect mount 调用，_unregisterIPCListeners 在 cleanup 中清理
 function _registerIPCListeners(): void {
   _refCount++;
   if (_refCount > 1) return;

@@ -322,94 +322,134 @@ const noRefCurrentInJsx = {
 };
 
 // ═══════════════════════════════════════════════════════════
-// 规则 5：禁止模块级 _initialized guard + IPC 监听器注册
+// 规则 5：禁止模块级函数注册 IPC 监听器（E3j #81 教训）
 // ═══════════════════════════════════════════════════════════
 //
-// E3j #81 教训：模块级 _initIPC() 用 _initialized guard → 导入即执行 → 永不清理。
-// 壳 fallback 渲染时注册的 IPC 监听器在 WebView 就绪后成为僵尸回调。
+// 检测：模块顶层函数中调用 .onData / .onStats / .onSystem / ipcRenderer.on，
+// 且函数体引用了模块级 _ 开头的 let guard 变量。
+//
+// 不依赖函数名——任何模块顶层（非 hook、非嵌套）函数都拦。
+// IPC 方法走 AST MemberExpression.property.name 精确匹配——注释/字符串不误报。
+// guard 变量匹配放宽——任何 _ 开头的模块级 let 变量都算。
 //
 // 错误示例：
-//   let _initialized = false;
-//   function _initIPC() {
-//     if (_initialized) return;
-//     _initialized = true;
-//     s.onData(callback);  // ← 永不 removeListener
+//   let _booted = false;
+//   function initListeners() {   // ← 无 _ 前缀也拦
+//     if (_booted) return;
+//     _booted = true;
+//     s.onData(callback);        // ← AST 精确命中
 //   }
 //
 // 正确示例（方向 B）：
-//   // 一次性数据拉取——模块级，无 IPC 监听器
-//   function _initOnce() { ... listPorts(); }
-//   // IPC 监听器走 React 生命周期 + 引用计数
-//   useEffect(() => { _registerIPCListeners(); return () => _unregisterIPCListeners(); }, []);
+//   function initOnce() { ... listPorts(); }  // 无 IPC 监听器
+//   useEffect(() => { _registerIPCListeners(); return _unregisterIPCListeners; }, []);
 
-const IPC_LISTENER_METHODS = ["onData", "onStats", "onSystem", "ipcRenderer.on"];
+/** 从节点向上查找包含它的函数（跳过箭头/函数表达式，直到顶层函数声明） */
+function findEnclosingFunction(node, stopAtType = "Program") {
+  let cur = node;
+  while (cur && cur.type !== stopAtType) {
+    if (
+      cur.type === "FunctionDeclaration" ||
+      cur.type === "FunctionExpression" ||
+      cur.type === "ArrowFunctionExpression"
+    ) {
+      return cur;
+    }
+    cur = cur.parent;
+  }
+  return null;
+}
 
 const noModuleLevelIpcListener = {
   meta: {
     type: "problem",
     docs: {
       description:
-        "禁止模块级函数用 _initialized guard + IPC 监听器注册——必须走 React useEffect 生命周期（E3j #81 教训）",
+        "禁止模块级函数注册 IPC 监听器——必须走 React useEffect 生命周期（E3j #81）",
       recommended: true,
     },
     messages: {
-      moduleGuard:
-        "🔥 模块级函数 {{name}} 用 _initialized guard + IPC 监听器注册（{{methods}}）。" +
-        " 模块级 = 导入执行一次 = 永不清理 → 壳 fallback 中成为僵尸回调（E3j #81 教训）。" +
-        " 修复：拆为 _initOnce()（一次性数据拉取）+ useEffect 引用计数（_registerIPCListeners/_unregisterIPCListeners）。" +
+      moduleIpc:
+        "🔥 模块级函数 {{name}} 注册了 IPC 监听器（{{method}}）。" +
+        " 模块级 = 导入执行一次 = 永不清理 → 壳 fallback 中成为僵尸回调。" +
+        " 修复：拆为一次性数据拉取（模块级）+ useEffect 引用计数（_register/_unregister）。" +
         " 详见 memory [[serial-multi-tab-data-leak-fix]]。",
     },
   },
 
   create(context) {
-    let programScopeInitializedVars = new Set();
+    // 收集模块顶层所有 _ 开头的 let 变量
+    const guardVars = new Set();
 
     return {
-      // 收集模块顶层（Program）声明的 _initialized / _oneTimeFetched 类 guard 变量
-      "Program > VariableDeclaration > VariableDeclarator > Identifier[name=/^_init/i]"(
+      // Step 1: 收集 guard 变量
+      "Program > VariableDeclaration[kind='let'] > VariableDeclarator > Identifier[name=/^_/]"(
         node,
       ) {
-        programScopeInitializedVars.add(node.name);
+        guardVars.add(node.name);
       },
 
-      // 检测模块顶层函数中的 guard 赋值 + IPC 注册
-      "Program > :matches(FunctionDeclaration, VariableDeclaration > VariableDeclarator > :matches(FunctionExpression, ArrowFunctionExpression))"(node) {
-        // 跳过 React hooks
-        const funcNode =
-          node.type === "FunctionDeclaration" ? node : node.parent?.parent?.init ?? node;
-        const funcName = (funcNode.id && funcNode.id.name) || "";
+      // Step 2: 检测 .onData / .onStats / .onSystem 调用
+      "MemberExpression[property.name=/^on(Data|Stats|System)$/]"(
+        node,
+      ) {
+        if (node.parent?.type !== "CallExpression") return;
 
-        // 只检查模块级私有函数（_ 开头）——不检查 useXxx hooks
-        if (!funcName.startsWith("_")) return;
+        const func = findEnclosingFunction(node);
+        if (!func) return;
+
+        const funcName = (func.id && func.id.name) || "";
+        if (funcName.startsWith("use")) return;
+
+        // 检查是否在 Program 的直接子级（模块顶层，非嵌套在 useEffect/useCallback 内）
+        if (func.parent?.type !== "Program" &&
+            func.parent?.parent?.type !== "Program" &&
+            func.parent?.parent?.parent?.type !== "Program") {
+          return;
+        }
 
         // 检查函数体是否引用了 guard 变量
-        const funcText = context.getSourceCode().getText(funcNode);
-        let usesGuardVar = false;
-        for (const varName of programScopeInitializedVars) {
-          if (funcText.includes(varName)) {
-            usesGuardVar = true;
-            break;
-          }
+        const funcText = context.getSourceCode().getText(func);
+        let hasGuard = false;
+        for (const v of guardVars) {
+          if (funcText.includes(v)) { hasGuard = true; break; }
         }
-        if (!usesGuardVar) return;
-
-        // 检查是否调用了 IPC 监听器注册方法
-        const foundMethods = [];
-        for (const method of IPC_LISTENER_METHODS) {
-          if (funcText.includes(method)) {
-            foundMethods.push(method);
-          }
-        }
-
-        if (foundMethods.length === 0) return;
+        if (!hasGuard) return;
 
         context.report({
-          node: funcNode,
-          messageId: "moduleGuard",
-          data: {
-            name: funcName,
-            methods: foundMethods.join("、"),
-          },
+          node: func,
+          messageId: "moduleIpc",
+          data: { name: funcName || "(anonymous)", method: node.property.name },
+        });
+      },
+
+      // Step 3: 检测 ipcRenderer.on( 调用
+      "CallExpression > MemberExpression[object.name='ipcRenderer'][property.name='on']"(
+        node,
+      ) {
+        const func = findEnclosingFunction(node);
+        if (!func) return;
+
+        const funcName = (func.id && func.id.name) || "";
+        if (funcName.startsWith("use")) return;
+
+        if (func.parent?.type !== "Program" &&
+            func.parent?.parent?.type !== "Program" &&
+            func.parent?.parent?.parent?.type !== "Program") {
+          return;
+        }
+
+        const funcText = context.getSourceCode().getText(func);
+        let hasGuard = false;
+        for (const v of guardVars) {
+          if (funcText.includes(v)) { hasGuard = true; break; }
+        }
+        if (!hasGuard) return;
+
+        context.report({
+          node: func,
+          messageId: "moduleIpc",
+          data: { name: funcName || "(anonymous)", method: "ipcRenderer.on" },
         });
       },
     };
