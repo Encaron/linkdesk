@@ -46,6 +46,7 @@ export class IpcBridge {
     this.registerResponseListener();
     this.registerPushListener();
     this.registerBroadcastListener();
+    this.registerPluginEmitListener();
   }
 
   /**
@@ -200,6 +201,23 @@ export class IpcBridge {
       this.pushQueues.delete(pluginId);
       this.flushing.delete(pluginId);
     }
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // E3j #77——插件间数据管道（插件 → 主进程 → 广播到所有插件 + 壳）
+  // ═══════════════════════════════════════════════════════
+
+  private registerPluginEmitListener(): void {
+    ipcMain.on('plugin:emit', (_event, { channel, payload }: {
+      channel: string;
+      payload: unknown;
+    }) => {
+      // 广播到所有插件 WebView（含自己——对标 CoreEvents 模式）
+      this.broadcast(channel, payload);
+      // 也转发到壳渲染进程——壳侧组件可订阅插件事件
+      this.mainWindow.webContents.send('plugin:push', { channel, payload });
+    });
+    console.log('[IpcBridge] 已注册 plugin:emit 插件间数据管道');
   }
 
   // ═══════════════════════════════════════════════════════

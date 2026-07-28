@@ -216,20 +216,13 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
-    // ── E3a #27-#28：通用事件订阅——壳推送→集中分发→插件回调 ──
+    // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // React 侧推荐使用 usePluginIpcEvent() hook（src/core/usePluginIpcEvent.ts）。
     events: {
       /**
        * 订阅壳推送事件。
        * @returns unsubscribe 函数——组件 unmount 时调用以清理。
-       *
-       * 使用示例：
-       *   const unsub = window.linkdesk.events.on('serial:data', (data) => {
-       *     setText(prev => prev + data);  // ⚠️ 注意闭包过期——推荐用 ref 桥接
-       *   });
-       *   // 组件清理时：
-       *   unsub();
        */
       on: (channel: string, cb: (payload: any) => void) => {
         let set = eventSubscriptions.get(channel);
@@ -242,6 +235,14 @@ try {
           set?.delete(cb);
           if (set && set.size === 0) eventSubscriptions.delete(channel);
         };
+      },
+      /**
+       * E3j #77：插件发布数据到大厅 events 频道——对标 CoreEvents.emit。
+       * 数据经主进程广播到所有插件 WebView + 壳渲染进程。
+       * 频道名由插件自定——核心不知道频道的存在。
+       */
+      emit: (channel: string, payload: unknown) => {
+        ipcRenderer.send('plugin:emit', { channel, payload });
       },
     },
   });

@@ -74,7 +74,7 @@ export const CoreEvents = {
   /** 活跃标签页切换——对标 VS Code onDidChangeActiveEditor */
   onDidChangeActiveTab: new Emitter<{ tabId: string; pluginId?: string }>(),
 
-  /** 收到串口数据——对标 VS Code onDidWriteTerminalData */
+  /** 收到数据源数据——sourceId 标识数据源，raw 为文本。串口/网络/文件等通用。插件间数据走 events 频道 */
   onDidReceiveData: new Emitter<{ sourceId: string; raw: string }>(),
 
   /** 快捷键绑定变更——对标 VS Code onDidChangeKeybindings（E2c #17） */
