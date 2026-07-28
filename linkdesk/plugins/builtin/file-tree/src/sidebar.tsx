@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import FileTree from "./FileTree";
+import FileTreeContextMenu, { activateFileTreeContextMenu } from "./FileTreeContextMenu";
 import WelcomeView from "./WelcomeView";
 import { FileTreeModel } from "./FileTreeModel";
 import type { ExplorerItem } from "./FileTreeModel";
@@ -25,6 +26,23 @@ const FileTreeSidebar: React.FC = () => {
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
   const [, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
+
+  /* ── 注册 explorer 命令 + FileContext 菜单项（对标 marketplace） ── */
+  useEffect(() => { activateFileTreeContextMenu(); }, []);
+
+  /* ── 右键菜单状态 ── */
+  const [contextMenu, setContextMenu] = useState<{
+    item: ExplorerItem | null;
+    anchor: { x: number; y: number };
+  } | null>(null);
+
+  const handleContextMenu = useCallback(
+    (item: ExplorerItem, event: React.MouseEvent) => {
+      event.preventDefault();
+      setContextMenu({ item, anchor: { x: event.clientX, y: event.clientY } });
+    },
+    [],
+  );
 
   /* ── 同步工作区根 ── */
 
@@ -100,9 +118,18 @@ const FileTreeSidebar: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} onOpenFile={handleOpenFile} />
+          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
         )}
       </div>
+
+      {/* 右键菜单 */}
+      {contextMenu && (
+        <FileTreeContextMenu
+          item={contextMenu.item}
+          anchor={contextMenu.anchor}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
     </div>
   );
 };
