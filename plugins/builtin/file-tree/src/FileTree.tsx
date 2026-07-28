@@ -12,6 +12,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
+import { getCompactedPath } from "./CompactFolder";
 
 /* ── 类型 ── */
 
@@ -24,6 +25,8 @@ interface FileTreeProps {
 interface FlatItem {
   item: ExplorerItem;
   depth: number;
+  /** 紧凑文件夹——压缩后的路径段，如 ["src", "components", "Button.tsx"] */
+  compactedSegments?: string[];
 }
 
 /* ── 常量 ── */
@@ -37,6 +40,17 @@ const OVERSCAN = 10;
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number) {
+    // 🔥 E4a #95c: 紧凑文件夹——检查是否可压缩
+    if (item.isDirectory) {
+      const compacted = getCompactedPath(item);
+      if (compacted) {
+        // 压缩链——以 leaf 作为 item，显示完整路径段
+        const leaf = findLeaf(item);
+        result.push({ item: leaf ?? item, depth, compactedSegments: compacted });
+        // 跳过子节点——已压缩为单行
+        return;
+      }
+    }
     result.push({ item, depth });
     if (item.isDirectory && model.isExpanded(item.uri) && item.children !== null) {
       for (const child of item.children) {
@@ -48,6 +62,14 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
     walk(root, 1);
   }
   return result;
+}
+
+/** 沿单子目录链找到最后一个节点 */
+function findLeaf(item: ExplorerItem): ExplorerItem | null {
+  if (!item.isDirectory || item.children === null || item.children.length !== 1) return item;
+  const child = item.children[0];
+  if (!child.isDirectory) return child;
+  return findLeaf(child);
 }
 
 /* ── 组件 ── */
@@ -235,7 +257,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         <div style={{ height: startIndex * ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth }) => (
+        {renderedItems.map(({ item, depth, compactedSegments }) => (
           <FileTreeNode
             key={item.uri}
             item={item}
@@ -243,6 +265,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={item.uri === selectedUri}
+            compactedSegments={compactedSegments}
             onSelect={() => handleSelect(item.uri)}
             onOpen={(mode) => handleOpen(item, mode)}
             onTwistieClick={() => handleTwistie(item)}

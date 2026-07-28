@@ -15,6 +15,8 @@ interface FileTreeNodeProps {
   isSelected: boolean;
   expanded: boolean;
   indent: number;
+  /** E4a #95c: 紧凑文件夹——压缩路径段 */
+  compactedSegments?: string[];
   onSelect: () => void;
   onOpen: (mode: "preview" | "pin") => void;
   onTwistieClick: () => void;
@@ -34,6 +36,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   isSelected,
   expanded,
   indent,
+  compactedSegments,
   onSelect,
   onOpen,
   onTwistieClick,
@@ -108,8 +111,17 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       {/* 图标 */}
       <span className={`codicon ${getFileIconClass(item, expanded)} file-tree-icon`} />
 
-      {/* 文件名 */}
-      <span className="file-tree-name">{item.name}</span>
+      {/* 文件名（或紧凑路径） */}
+      <span className="file-tree-name">
+        {compactedSegments
+          ? compactedSegments.map((seg, i) => (
+              <React.Fragment key={i}>
+                {i > 0 && <span className="file-tree-compact-sep"> / </span>}
+                {seg}
+              </React.Fragment>
+            ))
+          : item.name}
+      </span>
 
       {/* 装饰器 badge */}
       {item.decoration?.badge && (
