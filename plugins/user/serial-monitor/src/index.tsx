@@ -1144,15 +1144,18 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       {/* 工具栏 */}
       <div className="serial-monitor-toolbar">
         <button className={`toolbar-btn${paused ? " active" : ""}`} onClick={handlePause} title={t("暂停接收")}>
-          {paused ? "▶ " + t("继续接收") : "⏸ " + t("暂停接收")}
+          <span className={`codicon ${paused ? "codicon-debug-start" : "codicon-debug-pause"}`} />
+          {paused ? t("继续接收") : t("暂停接收")}
         </button>
         <button className="toolbar-btn" onClick={() => window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE))} title={t("命令面板")}>
           ▸ {t("命令面板")}
         </button>
         <button className="toolbar-btn" onClick={handleExport} title={t("导出日志")}>
+          <span className="codicon codicon-export" />
           {t("导出日志")}
         </button>
         <button className="toolbar-btn" onClick={handleClear} title={t("清空接收区")}>
+          <span className="codicon codicon-clear-all" />
           {t("清空接收区")}
         </button>
         <div className="filter-btn-wrapper">
@@ -1168,7 +1171,8 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
             }}
             title={filterMode !== "all" || filterKeyword !== "" ? t("点击清除筛选") : t("筛选")}
           >
-            📡 {t("筛选")}
+            <span className="codicon codicon-filter" />
+            {t("筛选")}
           </button>
           <FilterMenu
             open={filterPopupOpen}
@@ -1181,7 +1185,8 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
         </div>
 
         <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
-          🔍 {t("搜索")}
+          <span className="codicon codicon-search" />
+          {t("搜索")}
         </button>
       </div>
 
