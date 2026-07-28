@@ -273,8 +273,8 @@
   left: 0;
   right: 0;
   padding: 4px 10px;
-  background: rgba(255, 200, 0, 0.15);
-  color: #FFD700;
+  background: var(--warning-bg);
+  color: var(--warning-text);
   font-size: 11px;
   text-align: center;
   animation: slideDown 200ms ease;
@@ -334,7 +334,7 @@
   bottom: 12px;
   right: 12px;
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 50%;
   width: 36px;
@@ -440,8 +440,8 @@
 .hex-warning {
   padding: 3px 10px;
   font-size: 11px;
-  color: #E8AB3E;
-  background: rgba(255, 200, 0, 0.1);
+  color: var(--warning-text);
+  background: var(--warning-bg);
   border-bottom: 1px solid rgba(255, 200, 0, 0.2);
 }
 
@@ -508,7 +508,7 @@
 
 .history-item:hover {
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 .history-item + .history-item {
@@ -519,7 +519,7 @@
   background: var(--accent);
   border: none;
   border-radius: 4px;
-  color: white;
+  color: var(--text-on-accent);
   font-size: 12px;
   padding: 4px 20px;
   cursor: pointer;
