@@ -4,13 +4,13 @@
  *
  * 设计 DNA：Dark OLED + Minimalism + Glassmorphism 点缀（§3.13）
  * - 颜色走 CSS 变量 `var(--session-color)`（per-instance，对标 --card-accent）
- * - 连接状态走终端专属变量 `--terminal-ok` / `--terminal-err`
+ * - 连接状态走串口监视器专属变量 `--serial-monitor-ok` / `--serial-monitor-err`
  * - 少用边框，多用颜色/透明度区分层级
  */
 
 /* ── 侧栏容器 ── */
 
-.terminal-sidebar {
+.serial-monitor-sidebar {
   padding: 0;
   /* SidebarSection 自带间距——这里不额外加 padding */
 }
@@ -49,8 +49,8 @@
 }
 
 .session-dot.on {
-  background: var(--terminal-ok, #22C55E);
-  box-shadow: 0 0 4px var(--terminal-ok, #22C55E);
+  background: var(--serial-monitor-ok);
+  box-shadow: 0 0 4px var(--serial-monitor-ok);
 }
 
 /* ── 会话信息（名称 + 副标题） ── */

@@ -22,12 +22,12 @@ import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
 import { RingBuffer } from "@src/core/RingBuffer";
-// Phase 5.5c C4a：12 项设置切到 useTerminalSessions——每会话独立，侧栏写入主区读取
-import { useSession, setActiveSessionId, getActiveSessionId } from "./useTerminalSessions";
+// Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
+import { useSession, setActiveSessionId, getActiveSessionId } from "./useSerialSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/useSendData";
-import SearchBar from "@src/components/terminal/SearchBar";
-import FilterMenu from "@src/components/terminal/FilterMenu";
+import SearchBar from "./components/SearchBar";
+import FilterMenu from "./components/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
 import { CUSTOM_EVENTS } from "@src/core/CoreEvents";
 // Phase 5b：统一右键菜单——终端命令注册 + 共享 ContextMenu
@@ -35,7 +35,7 @@ import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegi
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
-import "./TerminalView.css";
+import "./SerialMonitorView.css";
 
 /* ---- 常量 ---- */
 const SCROLL_AT_BOTTOM_TOLERANCE = 5;
@@ -54,8 +54,8 @@ const MONACO_LINE_HEIGHT = 18;
 const MONACO_PADDING = 16;
 
 // E2b #11：命令路由用 sourceId → Map 分发。
-// 每个 TerminalView 挂载时注册自己的 ActiveCmd，命令 handler 通过活跃 session ID 查找。
-// 消灭了"最后一个 mount 的 TerminalView 接收所有命令"的问题。
+// 每个 SerialMonitorView 挂载时注册自己的 ActiveCmd，命令 handler 通过活跃 session ID 查找。
+// 消灭了"最后一个 mount 的 SerialMonitorView 接收所有命令"的问题。
 interface ActiveCmd {
   cmView: { current: EditorView | null };
   paused: boolean; quickSends: Record<string, string>;
@@ -202,12 +202,12 @@ const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
 /* ---- 终端视图 ---- */
 
-interface TerminalViewProps {
+interface SerialMonitorViewProps {
   isActive: boolean;
   sourceId?: string;
 }
 
-function TerminalView({ isActive, sourceId }: TerminalViewProps) {
+function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   const { t } = useTranslation();
 
   // C1 修复：用 sourceId 绑定 per-tab session，而非读全局 activeSession。
@@ -438,11 +438,11 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   const tsFormatRef = useRef(timestampFormat);
   tsFormatRef.current = timestampFormat;
   const portOpenRef = useRef(true);
-  // C1：per-tab session 绑定——Tauri event handler 用 ref 读取当前 tab 的 session ID
+  // C1：per-tab session 绑定——IPC event handler 用 ref 读取当前 tab 的 session ID
   const sessionIdRef = useRef(sourceId);
   sessionIdRef.current = sourceId;
 
-  // E4：per-instance ref——Tauri event handler 读取当前实例的接收模式。
+  // E4：per-instance ref——IPC event handler 读取当前实例的接收模式。
   // 对标 tsFormatRef 已验证的模式：渲染时写，事件回调时读。
   const receiveModeRef = useRef(receiveMode);
   receiveModeRef.current = receiveMode;
@@ -706,7 +706,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   }, [sourceId]);
 
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.copy",
       title: t("复制"),
       category: t("终端"),
@@ -720,7 +720,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         if (sel) navigator.clipboard.writeText(sel);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.selectAll",
       title: t("全选"),
       category: t("终端"),
@@ -733,7 +733,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.clear",
       title: t("清空接收区"),
       category: t("终端"),
@@ -747,7 +747,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.togglePause",
       title: t("暂停接收"),
       category: t("终端"),
@@ -755,7 +755,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setPaused((p) => !p);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.quickSendFill",
       title: t("回填到发送区"),
       category: t("终端"),
@@ -766,7 +766,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.quickSendEdit",
       title: t("编辑"),
       category: t("终端"),
@@ -781,7 +781,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.quickSendDelete",
       title: t("删除"),
       category: t("终端"),
@@ -792,7 +792,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.clearSend",
       title: t("清空发送区"),
       category: t("终端"),
@@ -800,7 +800,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setSendValue("");
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.exportLog",
       title: t("导出日志"),
       category: t("终端"),
@@ -822,7 +822,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         }
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleSendMode",
       title: t("切换到 HEX 发送"),
       category: t("终端"),
@@ -831,7 +831,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleEcho",
       title: t("关闭消息回显"),
       category: t("终端"),
@@ -839,7 +839,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleLineNumbers",
       title: t("隐藏行号"),
       category: t("终端"),
@@ -847,7 +847,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleSystemLog",
       title: t("关闭系统消息独立显示"),
       category: t("终端"),
@@ -855,7 +855,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleAutoRepeat",
       title: t("关闭自动重发"),
       category: t("终端"),
@@ -863,7 +863,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
         getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
       },
     });
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleAutoClear",
       title: t("关闭自动清屏"),
       category: t("终端"),
@@ -876,14 +876,14 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
     return () => {
       if (_cmdMap.size <= 1) {
-        unregisterPluginCommands("terminal");
+        unregisterPluginCommands("serial-monitor");
       }
     };
   }, []);
 
   // 动态更新暂停/继续标题（paused 变化时重新注册）
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.togglePause",
       title: paused ? t("继续接收") : t("暂停接收"),
       category: t("终端"),
@@ -895,7 +895,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新发送模式标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleSendMode",
       title: sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
       category: t("终端"),
@@ -907,7 +907,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新回显标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleEcho",
       title: showEcho ? t("关闭消息回显") : t("开启消息回显"),
       category: t("终端"),
@@ -919,7 +919,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新行号标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleLineNumbers",
       title: showLineNumbers ? t("隐藏行号") : t("显示行号"),
       category: t("终端"),
@@ -931,7 +931,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新系统消息独立显示标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleSystemLog",
       title: separateSystemLog ? t("关闭系统消息独立显示") : t("开启系统消息独立显示"),
       category: t("终端"),
@@ -943,7 +943,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新自动重发标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleAutoRepeat",
       title: autoRepeat ? t("关闭自动重发") : t("开启自动重发"),
       category: t("终端"),
@@ -955,7 +955,7 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
 
   // 动态更新自动清屏标题
   useEffect(() => {
-    registerCommand("terminal", {
+    registerCommand("serial-monitor", {
       id: "terminal.toggleAutoClear",
       title: autoClear ? t("关闭自动清屏") : t("开启自动清屏"),
       category: t("终端"),
@@ -1067,39 +1067,25 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
-  // 终端保底清空：TabBar 最后一个终端 [×] → 清空接收区
-  useEffect(() => {
-    const handler = () => {
-      const view = cmView.current;
-      if (view) {
-        view.dispatch({
-          changes: { from: 0, to: view.state.doc.length },
-        });
-      }
-    };
-    window.addEventListener("v3-clear-terminal", handler);
-    return () => window.removeEventListener("v3-clear-terminal", handler);
-  }, []);
-
   // C4b Bug 7：无活跃会话时，终端内容 CSS 隐藏 + 占位 overlay。
   // 注意：不能 return 早期退出——CM6 的 useEffect 在 mount 时运行，如果 cmContainer
   // div 不在 DOM 中，cmView.current 永远是 null，之后创建会话也无法初始化。
   return (
-    <div className="terminal-view">
+    <div className="serial-monitor-view">
       <ControlPanel sourceId={sourceId} />
 
       {!activeSession && (
-        <div className="terminal-placeholder">
-          <span className="terminal-placeholder-icon">▸</span>
-          <p className="terminal-placeholder-title">{t("会话已失效")}</p>
-          <p className="terminal-placeholder-hint">{t("请在侧栏选择一个终端会话，或新建一个以开始使用")}</p>
+        <div className="serial-monitor-placeholder">
+          <span className="serial-monitor-placeholder-icon">▸</span>
+          <p className="serial-monitor-placeholder-title">{t("会话已失效")}</p>
+          <p className="serial-monitor-placeholder-hint">{t("请在侧栏选择一个终端会话，或新建一个以开始使用")}</p>
         </div>
       )}
 
-      <div className={`terminal-body${activeSession ? "" : " hidden"}`}>
+      <div className={`serial-monitor-body${activeSession ? "" : " hidden"}`}>
 
       {/* 工具栏 */}
-      <div className="terminal-toolbar">
+      <div className="serial-monitor-toolbar">
         <button className={`toolbar-btn${paused ? " active" : ""}`} onClick={handlePause} title={t("暂停接收")}>
           {paused ? "▶ " + t("继续接收") : "⏸ " + t("暂停接收")}
         </button>
@@ -1314,4 +1300,4 @@ function TerminalView({ isActive, sourceId }: TerminalViewProps) {
   );
 }
 
-export default TerminalView;
+export default SerialMonitorView;

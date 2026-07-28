@@ -1,7 +1,7 @@
 /**
  * 终端侧栏——会话列表 + 收发设置。
  * Phase 5.5c Step C2：旧 4 个 setting-group → 2 个 `<SidebarSection>`。
- * Phase 5f useConfiguration → 5.5c useTerminalSessions.activeSession。
+ * Phase 5f useConfiguration → 5.5c useSerialSessions.activeSession。
  *
  * 对标 VS Code Explorer 侧栏：
  * - 上半 = 文件列表（会话 CRUD）
@@ -14,8 +14,8 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useTerminalSessions } from "./useTerminalSessions";
-import type { TerminalSession } from "./useTerminalSessions";
+import { useSerialSessions } from "./useSerialSessions";
+import type { SerialSession } from "./useSerialSessions";
 import { useSerialContext } from "./SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { activateSidebarItem } from "@src/core/SidebarTabSync";
@@ -24,7 +24,7 @@ import SidebarSection from "@src/components/shared/SidebarSection";
 import Toggle from "@src/components/shared/Toggle";
 import SelectBox from "@src/components/shared/SelectBox";
 import FormRow from "@src/components/shared/FormRow";
-import "./TerminalSidebar.css";
+import "./SerialMonitorSidebar.css";
 
 // ── 常量 ──
 
@@ -41,7 +41,7 @@ function SessionListItem({
   onRename,
   onDelete,
 }: {
-  session: TerminalSession;
+  session: SerialSession;
   isActive: boolean;
   /** Phase 5.5c C4b Bug 3：从 SerialContext 派生，不读 session.connected（该字段始终为 false） */
   connected: boolean;
@@ -154,7 +154,7 @@ function SessionListItem({
 
 // ── 侧栏主体 ──
 
-function TerminalSidebar() {
+function SerialMonitorSidebar() {
   const { t } = useTranslation();
   const {
     sessions,
@@ -164,7 +164,7 @@ function TerminalSidebar() {
     removeSession,
     updateSession,
     setActiveSession,
-  } = useTerminalSessions();
+  } = useSerialSessions();
 
   // Phase 5.5c C4b Bug 3：connected 从 SerialContext 派生——不读 session.connected（始终为 false）
   const { state: { isOpen, sourceName: portName } } = useSerialContext();
@@ -194,7 +194,7 @@ function TerminalSidebar() {
       // 先 session（数据）→ 再 tab（视图），sourceId 链接两者。
       // sourceId 是通用概念——任何插件可用它将自己的数据模型绑定到标签页。
       const session = createSession(name);
-      tabActions.createTab("terminal", { label: name, pinned: true, sourceId: session.id });
+      tabActions.createTab("serial-monitor", { label: name, pinned: true, sourceId: session.id });
     }
     setIsCreating(false);
     setNewName("");
@@ -245,23 +245,23 @@ function TerminalSidebar() {
   // ── 设置辅助：从 activeSession 读 / 通过 updateSession 写 ──
 
   const mkSetter = useCallback(
-    <K extends keyof TerminalSession>(key: K) =>
-      (value: TerminalSession[K]) => {
+    <K extends keyof SerialSession>(key: K) =>
+      (value: SerialSession[K]) => {
         if (activeSessionId) {
-          updateSession(activeSessionId, { [key]: value } as Partial<TerminalSession>);
+          updateSession(activeSessionId, { [key]: value } as Partial<SerialSession>);
         }
       },
     [activeSessionId, updateSession],
   );
 
   const mkToggle = useCallback(
-    (key: keyof TerminalSession) => {
+    (key: keyof SerialSession) => {
       const value = activeSession?.[key];
       const setter = mkSetter(key);
       return (
         <Toggle
           checked={Boolean(value)}
-          onChange={(v) => setter(v as TerminalSession[typeof key])}
+          onChange={(v) => setter(v as SerialSession[typeof key])}
         />
       );
     },
@@ -269,14 +269,14 @@ function TerminalSidebar() {
   );
 
   const mkSelect = useCallback(
-    (key: keyof TerminalSession, options: string[] | { value: string; label: string }[]) => {
+    (key: keyof SerialSession, options: string[] | { value: string; label: string }[]) => {
       const value = activeSession?.[key];
       const setter = mkSetter(key);
       return (
         <SelectBox
           value={String(value ?? "")}
           options={options}
-          onChange={(v) => setter(v as TerminalSession[typeof key])}
+          onChange={(v) => setter(v as SerialSession[typeof key])}
         />
       );
     },
@@ -292,7 +292,7 @@ function TerminalSidebar() {
       setActiveSession(sessionId);
       const session = sessions.find((s) => s.id === sessionId);
       if (tabActions) {
-        activateSidebarItem(tabActions, sessionId, "terminal", {
+        activateSidebarItem(tabActions, sessionId, "serial-monitor", {
           label: session?.name,
           pinned: true,
         });
@@ -314,7 +314,7 @@ function TerminalSidebar() {
   ));
 
   return (
-    <div className="terminal-sidebar">
+    <div className="serial-monitor-sidebar">
       {/* Section 1：会话列表 */}
       <SidebarSection
         title={t("终端会话")}
@@ -458,4 +458,4 @@ function TerminalSidebar() {
   );
 }
 
-export default TerminalSidebar;
+export default SerialMonitorSidebar;
