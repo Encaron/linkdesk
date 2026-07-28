@@ -317,7 +317,7 @@ function SerialMonitorSidebar() {
     <div className="serial-monitor-sidebar">
       {/* Section 1：会话列表 */}
       <SidebarSection
-        title={t("终端会话")}
+        title={t("串口监视器会话")}
         badge={sessions.length > 0 ? `(${sessions.length})` : undefined}
         actions={
           <button

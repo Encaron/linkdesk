@@ -145,5 +145,8 @@
   "发送模式": "Send mode",
   "发送区字符编码": "Send character encoding",
   "text": "Text",
-  "hex": "HEX"
+  "hex": "HEX",
+  "串口监视器": "Serial Monitor",
+  "串口监视器会话": "Serial Monitor Sessions",
+  "请在侧栏选择一个串口监视器会话，或新建一个以开始使用": "Select a serial monitor session in the sidebar, or create a new one to get started"
 }
