@@ -474,6 +474,9 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     });
   });
 
+  // E3j #78：缓存最后一次连接状态——断开时 port 已关、getStatus 拿不到信息
+  const lastPortInfoRef = useRef<{ portName: string; baudRate: number } | null>(null);
+
   useIpcEvent<string>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
     if (/Port opened|已打开/.test(payload)) {
@@ -481,10 +484,19 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
+      // E3j #78：连接状态推到大厅 events 频道——结构化数据、消费者无需解析
+      (window as any).linkdesk?.serial?.getStatus?.()?.then((status: any) => {
+        if (status) {
+          lastPortInfoRef.current = { portName: status.portName, baudRate: status.baudRate };
+          (window as any).linkdesk?.events?.emit("serial:connected", lastPortInfoRef.current);
+        }
+      });
     }
     if (/Port closed|关闭/.test(payload)) {
       portOpenRef.current = false;
       ringBuffer.current.drainAll();
+      // E3j #78：断开用缓存的信息（端口已关无法查）
+      (window as any).linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
     }
     ringBuffer.current.write({
       text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
