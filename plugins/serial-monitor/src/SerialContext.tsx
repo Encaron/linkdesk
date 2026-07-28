@@ -1,5 +1,5 @@
 /**
- * 终端插件的 SerialContext——IPC 版本（E3a #30）。
+ * 串口监视器插件的 SerialContext——IPC 版本（E3a #30）。
  *
  * E3a 多 WebView：终端在自己的 WebView 中运行，无法访问壳的 React Context。
  * 改为直接 IPC——window.linkdesk.serial.* 调用壳侧 serial-service。

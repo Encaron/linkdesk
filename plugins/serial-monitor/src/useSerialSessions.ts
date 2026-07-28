@@ -1,5 +1,5 @@
 /**
- * 终端会话管理——模块级单例 hook。
+ * 串口监视器会话管理——模块级单例 hook。
  * Phase 5.5c Step C1：会话 CRUD + 每会话 12 项收发设置 + session 标识色。
  *
  * 对标 ConfigurationService 模式——数据在 React 树外，侧栏 unmount 时状态不丢。
