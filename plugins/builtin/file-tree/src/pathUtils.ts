@@ -49,3 +49,25 @@ export function dirname(uri: string): string {
 export function joinPath(parent: string, name: string): string {
   return normalizePath(parent) + "/" + name;
 }
+
+/**
+ * 获取文件扩展名——不含前导点。
+ * 无扩展名返回空字符串。多点扩展名取最后一个。
+ *   extension("file.ts") → "ts"
+ *   extension("file.tar.gz") → "gz"
+ *   extension(".gitignore") → ""
+ */
+export function extension(name: string): string {
+  const idx = name.lastIndexOf(".");
+  return idx > 0 ? name.slice(idx + 1) : "";
+}
+
+/**
+ * 获取文件扩展名——含前导点。
+ * 无扩展名返回空字符串。
+ *   extensionWithDot("file.ts") → ".ts"
+ */
+export function extensionWithDot(name: string): string {
+  const idx = name.lastIndexOf(".");
+  return idx > 0 ? name.slice(idx) : "";
+}
