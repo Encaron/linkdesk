@@ -197,7 +197,7 @@ SidePanel 的渲染逻辑——不管当前是哪个 container，同一句话：
 ### 3.1 不受影响的文件
 
 - `IconBar.tsx`——零改动。仍然传 pluginId 给 `handleIconClick`，App 内部 resolve 出 containerId
-- `SidebarSection.tsx`——零改动。ViewSection 直接复用，它是纯 UI 组件
+- `SidebarSection.tsx`——加 4 个 prop（titleDescription/titleTooltip/showActions/headerHidden），~27 行 CSS+TSX 扩展
 - `PluginStateService`——零改动。container 切换是纯 UI 状态，不需要持久化
 - `WorkspaceService` / `CommandRegistry` / `KeybindingRegistry` / `ConfigurationService`——零改动
 
@@ -219,7 +219,7 @@ SidePanel 的渲染逻辑——不管当前是哪个 container，同一句话：
 
 | 文档 | 内容 |
 |:--|------|
-| `05-执行清单.md` | **🔥 唯一真相源。** 43 任务 4 轮 + E4 8 任务，进度追踪 |
+| `05-执行清单.md` | **🔥 唯一真相源。** 4 轮 47 任务，进度追踪 |
 | `06-UI-UX审查.md` | 🆕 **设计系统对照。** Dark Mode (OLED) 审查——5 P0 + 3 P1 问题，8 项已融入执行清单 |
 | `01-核心桌子/ViewContainerService.md` | E36#1–#2：Service 类 v2 完整 API |
 | `02-壳层改造/SidePanel改造.md` | E36#3：SidePanel 渲染循环重写 |

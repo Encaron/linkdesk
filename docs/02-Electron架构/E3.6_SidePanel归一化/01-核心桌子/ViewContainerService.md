@@ -113,6 +113,21 @@ class ViewContainerModel {
 
 ```typescript
 export class ViewContainerService extends RegistryBase {
+  // 🔴 排序说明：RegistryBase 构造函数自动注册 onWillUninstall 处理程序。
+  // 如果 lifecycle.ts 导入 ViewContainerService（E36#4.7 需要），ES 模块提升意味着
+  // ViewContainerService 的构造函数在 lifecycle.ts 主体代码之前运行——
+  // 因此自动处理程序在 PLUGIN_REMOVED dispatch（L163）之前注册。
+  // 执行顺序变为：unregisterAll → dispatchEvent(PLUGIN_REMOVED) → revertContainerIfCurrent。
+  //
+  // 🔥 缓解措施：revertContainerIfCurrent 从 getViewPlugin().manifest 读取——
+  // PluginManifest，而不是 ViewContainerService 数据。即使 unregisterAll 先运行，
+  // PluginManifest 在 viewRegistry 中仍然可用（它稍后在生命周期中被清除）。
+  // 因此 revertContainerIfCurrent 在任一顺序下都能工作。
+  //
+  // 🔥 E36#4.7 的显式处理程序（在 lifecycle.ts L165 之后）作为安全网——如果自动处理程序
+  // 已经清理过了，则对 unregisterAll 的第二次调用是幂等的。关键是 PLUGIN_REMOVED 的
+  // DOM 事件监听器在设置 sidebarView(null) 之前仍然可以读取 manifest。
+
   // ═══ 容器管理 ═══
   
   /** 注册容器——返回已存在的同 ID 容器（幂等）。对标 VS Code IViewContainersRegistry.registerViewContainer */
