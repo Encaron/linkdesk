@@ -10,6 +10,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ViewPluginEntry } from "@src/core/types";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
+import { ViewContainerService } from "@src/core/ViewContainerService";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 
@@ -109,6 +110,24 @@ export function useMarketplacePlugins() {
   /* 订阅搜索变化 */
   useEffect(() => {
     return onMarketplaceSearchChange(rerender);
+  }, [rerender]);
+
+  /* 🔥 E36#7.3e badge 归一化——四组 badge 集中在此更新，各 view 组件零改动 */
+  useEffect(() => {
+    const updateBadge = (viewId: string, count: number) => {
+      const existing = ViewContainerService.getView(viewId);
+      if (!existing) return;
+      ViewContainerService.registerView("marketplace", "marketplace", {
+        id: viewId,
+        title: existing.title,
+        render: existing.render,
+        badge: count,
+      });
+    };
+    updateBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
+    updateBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
+    updateBadge("disabled", _disabledPlugins.length);
+    updateBadge("uninstalled", _uninstalledPlugins.length);
   }, [rerender]);
 
   const search = getMarketplaceSearch().toLowerCase();
