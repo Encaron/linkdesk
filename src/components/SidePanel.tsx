@@ -6,7 +6,7 @@
  * 它只做一件事——查表 + 循环渲染。谁注册了什么就渲染什么。
  */
 
-import { useState, useEffect, forwardRef, useCallback, useRef, useLayoutEffect } from "react";
+import { useState, useEffect, forwardRef, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ViewContainerService } from "../core/ViewContainerService";
 import type { ViewDescriptor } from "../core/ViewContainerService";
@@ -79,21 +79,10 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const singleView = activeViews.length === 1;
   const mergeHeader = singleView && container?.mergeHeaderWhenSingle === true;
 
-  // 🔥 E3.6 ST2: 分组——toolbar view（title=""）和标准 section
-  const toolbarViews = activeViews.filter((v) => v.title === "");
-  const sectionViews = activeViews.filter((v) => v.title !== "");
-  const toolbarRef = useRef<HTMLDivElement>(null);
-  const [toolbarHeight, setToolbarHeight] = useState(0);
-
-  useLayoutEffect(() => {
-    if (toolbarRef.current) {
-      setToolbarHeight(toolbarRef.current.offsetHeight);
-    } else {
-      setToolbarHeight(0);
-    }
-  }, [activeViews]);
-
-  /** SidebarSection header 固定高度——用于计算 sticky top 叠加偏移 */
+  // 🔥 E3.6 ST2 预留：stickyTop 计算逻辑。
+  // toolbarHeight = 0（待 ST2 正式执行时用 ResizeObserver 测量）。
+  // SECTION_HEADER_HEIGHT = 22（SidebarSection header 固定高度）。
+  const toolbarHeight = 0;
   const SECTION_HEADER_HEIGHT = 22;
 
   const renderSidebarContent = () => {
@@ -108,62 +97,57 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       );
     }
 
-    return (
-      <>
-        {/* Toolbar views——不包 SidebarSection，聚合成一个测量块 */}
-        {toolbarViews.length > 0 && (
-          <div ref={toolbarRef}>
-            {toolbarViews.map((view) => (
-              <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
-                <view.render />
-              </ErrorBoundary>
-            ))}
-          </div>
-        )}
+    return activeViews.map((view, i) => {
+      // 🔥 E36#7.3b：title 为空串的 view = 工具栏——不包 SidebarSection，直接渲染
+      const isToolbar = view.title === "";
+      if (isToolbar) {
+        return (
+          <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
+            <view.render />
+          </ErrorBoundary>
+        );
+      }
 
-        {/* Section views——每个包 SidebarSection，header sticky 叠加 */}
-        {sectionViews.map((view, i) => {
-          // sticky top = toolbar 高度 + 前面 section header 的累积高度
-          const stickyTop = toolbarHeight + i * SECTION_HEADER_HEIGHT;
+      // 🔥 ST2 预留：stickyTop = toolbarHeight + sectionIndex * SECTION_HEADER_HEIGHT
+      const sectionIndex = activeViews.filter((v, j) => v.title !== "" && j < i).length;
+      const stickyTop = toolbarHeight + sectionIndex * SECTION_HEADER_HEIGHT;
 
-          if (mergeHeader) {
-            return (
-              <SidebarSection
-                key={view.id}
-                title=""
-                collapsible={false}
-                defaultOpen
-                stickyTop={stickyTop}
-                headerHidden
-              >
-                <ErrorBoundary pluginId={effectiveContainerId}>
-                  <view.render />
-                </ErrorBoundary>
-              </SidebarSection>
-            );
-          }
+      if (mergeHeader) {
+        return (
+          <SidebarSection
+            key={view.id}
+            title=""
+            collapsible={false}
+            defaultOpen
+            stickyTop={stickyTop}
+            headerHidden
+          >
+            <ErrorBoundary pluginId={effectiveContainerId}>
+              <view.render />
+            </ErrorBoundary>
+          </SidebarSection>
+        );
+      }
 
-          return (
-            <SidebarSection
-              key={view.id}
-              title={view.title}
-              collapsible
-              defaultOpen={!view.collapsed}
-              badge={view.badge}
-              actions={view.actions}
-              titleDescription={view.titleDescription}
-              titleTooltip={view.titleTooltip}
-              showActions={view.showActions ?? "default"}
-              stickyTop={stickyTop}
-            >
-              <ErrorBoundary pluginId={effectiveContainerId}>
-                <view.render />
-              </ErrorBoundary>
-            </SidebarSection>
-          );
-        })}
-      </>
-    );
+      return (
+        <SidebarSection
+          key={view.id}
+          title={view.title}
+          collapsible
+          defaultOpen={!view.collapsed}
+          badge={view.badge}
+          actions={view.actions}
+          titleDescription={view.titleDescription}
+          titleTooltip={view.titleTooltip}
+          showActions={view.showActions ?? "default"}
+          stickyTop={stickyTop}
+        >
+          <ErrorBoundary pluginId={effectiveContainerId}>
+            <view.render />
+          </ErrorBoundary>
+        </SidebarSection>
+      );
+    });
   };
 
   // 标题：容器 title，mergeHeader 时用 view.singleViewPaneContainerTitle
