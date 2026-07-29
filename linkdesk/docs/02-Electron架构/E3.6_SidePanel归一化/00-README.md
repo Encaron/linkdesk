@@ -215,5 +215,22 @@ SidePanel 的渲染逻辑——不管当前是哪个 container，同一句话：
 
 ---
 
+## 文档导航
+
+| 文档 | 内容 |
+|:--|------|
+| `05-执行清单.md` | **🔥 唯一真相源。** 10 任务线性排列，进度追踪 |
+| `01-核心桌子/ViewContainerService.md` | E36#1–#2：Service 类 + schema 设计 |
+| `02-壳层改造/SidePanel改造.md` | E36#3：SidePanel 渲染循环重写 |
+| `02-壳层改造/App+IconBar改造.md` | E36#4：containerId 语义 + 点击→渲染完整链路 |
+| `02-壳层改造/Loader+类型改造.md` | E36#5：types + loader parseContributions |
+| `03-插件迁移/file-tree.md` | E36#6：file-tree 迁移方案 |
+| `03-插件迁移/marketplace.md` | E36#7：marketplace 迁移方案 |
+| `03-插件迁移/serial-monitor.md` | E36#8：serial-monitor 迁移方案（460行拆分） |
+| `04-清理/废弃sidebarComponent.md` | E36#9–#10：删除旧系统 |
+| `05-快通道备选/README.md` | 备选方案：旧代码一刀不动，整体注册一个 view |
+
+---
+
 > **← 上一 Phase：** `../E3_多WebView与壳收尾_暂定/`
 > **→ 下一 Phase：** `../E4_文件树与编辑器_暂定/`
