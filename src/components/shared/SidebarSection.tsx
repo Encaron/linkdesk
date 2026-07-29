@@ -34,6 +34,8 @@ export interface SidebarSectionProps {
   showActions?: "always" | "whenExpanded" | "default";
   /** 🆕 E3.6：隐藏 header——mergeHeaderWhenSingle 时使用 */
   headerHidden?: boolean;
+  /** 🆕 E3.6 ST：header sticky 时的 top 偏移（px）。SidePanel 按 section 叠加顺序计算 */
+  stickyTop?: number;
 }
 
 function SidebarSection({
@@ -47,6 +49,7 @@ function SidebarSection({
   titleTooltip,
   showActions = "default",
   headerHidden = false,
+  stickyTop,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -77,6 +80,7 @@ function SidebarSection({
     <div className="sidebar-section">
       <div
         className={`sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
+        style={stickyTop !== undefined ? { top: stickyTop } : undefined}
         onClick={toggle}
         role="button"
         title={titleTooltip}
