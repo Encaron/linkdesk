@@ -1,7 +1,7 @@
 # 01 — ExplorerItem 与 FileTreeModel
 
 > 对标 VS Code `explorerModel.ts`（526 行）。数据模型——ExplorerItem 结构 + FileTreeModel 操作。
-> 对应执行清单：第 1 层 #1-#9。
+> 对应执行清单：**#1-#3（已完成——FileTreeModel + pathUtils + 归一化）+ #4-#5（CompactController 待修）**。
 
 ---
 

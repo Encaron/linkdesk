@@ -154,6 +154,30 @@
 
 **预计：** ~5 行（−6 旧 + 4 新）
 
+### 🆕 #CP23：ThemeBrowser 加 detail——显示主题类型
+
+**文件：** `ThemeBrowser.tsx`
+**背景：** 主题有 `uiTheme` 字段（"dark"/"light"/"highContrast"），已存在 `ThemeRegistry` 中，但 ThemeBrowser 只用主题名字符串，第二行空白。
+**内容：**
+1. `renderDetail` 通过 `ThemeRegistry.get(name)` 查找主题元数据
+2. 显示 uiTheme 翻译：`"dark" → "暗色主题"` / `"light" → "浅色主题"` / `"highContrast" → "高对比度"`
+3. 不传 `renderDetail` 则第二行不出现（不受影响）
+4. items 类型不变（仍是 `string[]`——只在 renderDetail 回调内做查找）
+
+**预计：** ~5 行
+
+### 🆕 #CP24：DevTools picker 加 detail——显示目标类型
+
+**文件：** `App.tsx`
+**背景：** DevTools 选择器目前只有一行（plugin ID + 分类），第二行空白。用户需要区分不同目标类型。
+**内容：**
+1. 加 `renderDetail`：
+   - `kind === 'shell'` → 显示 `"Electron 主窗口控制台"`
+   - `kind === 'plugin'` → 显示 `"插件 WebView DevTools"`
+2. 目的：让插件目标项也有第二行，视觉统一
+
+**预计：** ~5 行
+
 ---
 
 ## 四、迁移后的效果
@@ -161,9 +185,9 @@
 | 消费者 | 第一行 | 第二行 | 统一？ |
 |------|------|------|:--:|
 | CommandPalette | title + category pill | ID + keycap pill | ✅ |
-| ThemeBrowser | theme name + "当前" | (empty) | ✅ |
+| ThemeBrowser | theme name + "当前" | 🆕 "暗色主题" / "浅色主题" | ✅ |
 | LanguagePicker | lang label | lang code | ✅ |
-| DevTools picker | plugin ID | (empty) | ✅ |
+| DevTools picker | plugin ID | 🆕 "插件 WebView DevTools" / "主窗口控制台" | ✅ |
 | showQuickPick | label | description | ✅ |
 
 **所有消费者自动获得相同的两行布局、间距、字体、hover 态——因为结构是 QuickPick 锁死的。**
@@ -181,9 +205,17 @@
 | 动画 | #CP01-#CP03a 已完成 |
 | 快捷键显示 | #CP04-#CP07 已完成——#CP18 只改结构不改内容 |
 
+## 六、ESLint 机械防线
+
+`linkdesk/no-quickpick-render-item`（error 级别）
+
+**规则：** `<QuickPick renderItem=...>` → 报错。
+**绕过：** `// eslint-disable-next-line`（遇到 slot 不够用时可手写 `renderItem`，防线是提醒不是封锁）。
+**注册：** `eslint-local-rules.js` + `eslint.config.js`（#CP25）
+
 ---
 
-## 六、总计
+## 七、总计
 
 | 任务 | 文件 | 行数 |
 |------|------|:--:|
@@ -193,4 +225,7 @@
 | #CP20 LanguagePicker 切 slot | LanguagePicker.tsx | ~8 |
 | #CP21 DevTools 切 slot | App.tsx | ~5 |
 | #CP22 showQuickPick 切 slot | QuickPick.tsx | ~5 |
-| **合计** | 4 文件 | **~73 行** |
+| #CP23 ThemeBrowser 加 detail | ThemeBrowser.tsx | ~5 |
+| #CP24 DevTools 加 detail | App.tsx | ~5 |
+| #CP25 ESLint 防线 | eslint-local-rules.js | ~40 |
+| **合计** | 6 文件 | **~123 行** |

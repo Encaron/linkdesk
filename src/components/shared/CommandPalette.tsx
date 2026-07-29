@@ -42,6 +42,7 @@ function CommandPalette({ open, onClose }: Props) {
       onClose={onClose}
       items={allCommands}
       placeholder={t("输入命令…")}
+      prefix=">"
       getSearchText={(cmd) => `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`}
       getKey={(cmd) => cmd.id}
       onSelect={(cmd) => executeCommand(cmd.id)}
