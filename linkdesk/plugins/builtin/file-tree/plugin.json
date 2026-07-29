@@ -14,6 +14,14 @@
     "singleton": true
   },
   "contributes": {
+    "viewsContainers": {
+      "explorer": { "title": "资源管理器", "location": "sidebar" }
+    },
+    "views": {
+      "explorer": [
+        { "id": "folders", "title": "", "render": "../../plugins/builtin/file-tree/src/sidebar.tsx", "order": 0 }
+      ]
+    },
     "commands": [
       { "id": "revealInExplorer", "title": "在文件树中显示" },
       { "id": "explorer.newFile", "title": "新建文件" },

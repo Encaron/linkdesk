@@ -482,7 +482,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           try {
-            const renderModule = await import(/* @vite-ignore */ viewDef.render);
+            const renderModule = await import(viewDef.render);
             const RenderComponent = renderModule.default ?? renderModule;
             ViewContainerService.registerView(pluginId, containerId, {
               id: viewDef.id,
