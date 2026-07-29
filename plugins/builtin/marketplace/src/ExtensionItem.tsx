@@ -1,0 +1,116 @@
+/**
+ * ExtensionItem — 插件列表行组件。
+ * E3.6 E36#7.2：从 sidebar.tsx L466-549 提取（纯 UI、props 驱动、零副作用）。
+ * clickTimer 区分单击（预览）/ 双击（固定打开）。
+ */
+
+import { useRef, useState } from "react";
+import { PluginIcon } from "@src/components/shared/PluginIcon";
+import ContextMenu from "@src/components/shared/ContextMenu";
+import { MenuId } from "@src/core/MenuRegistry";
+import { ContextKeyService } from "@src/core/ContextKeyService";
+import type { ViewPluginEntry } from "@src/core/types";
+
+const pm = () => (window as any).linkdesk?.pluginManager;
+
+/** 齿轮菜单打开时设置 context key（菜单项 when 条件消费） */
+function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
+  const c = manifest?.contributes ?? {};
+  ContextKeyService.setValue("pluginDisabled", isDisabled);
+  ContextKeyService.setValue("extensionHasThemes", !!c.themes);
+  ContextKeyService.setValue("extensionHasLanguages", !!c.languages);
+  ContextKeyService.setValue("extensionHasIconThemes", !!c.iconThemes);
+  ContextKeyService.setValue("extensionHasConfiguration", !!c.configuration);
+  ContextKeyService.setValue("extensionHasKeybindings", !!c.keybindings);
+}
+
+/** 齿轮菜单关闭时清理 context key */
+function clearExtensionContextKeys(): void {
+  ContextKeyService.setValue("pluginDisabled", false);
+  ContextKeyService.setValue("extensionHasThemes", false);
+  ContextKeyService.setValue("extensionHasLanguages", false);
+  ContextKeyService.setValue("extensionHasIconThemes", false);
+  ContextKeyService.setValue("extensionHasConfiguration", false);
+  ContextKeyService.setValue("extensionHasKeybindings", false);
+}
+
+interface ExtensionItemProps {
+  plugin: ViewPluginEntry;
+  onClick: () => void;
+  onDoubleClick: () => void;
+}
+
+export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemProps) {
+  const m = plugin.manifest;
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const gearBtnRef = useRef<HTMLButtonElement>(null);
+  const [gearMenuAnchor, setGearMenuAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  /* VS Code 风格：计时器区分单击/双击。300ms 内两次点击 = 双击（固定打开） */
+  const handleClick = () => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      onDoubleClick();
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        onClick();
+      }, 300);
+    }
+  };
+
+  /* ⚙ 齿轮菜单——Phase 5f 归一化：走 ContextMenu + MenuRegistry */
+  const handleGear = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    const disabled = await pm().isDisabled(plugin.pluginId);
+    applyExtensionContextKeys(plugin.manifest, disabled);
+    setGearMenuAnchor({ x: rect.right, y: rect.bottom });
+  };
+
+  return (
+    <div className="ms-extension-item" onClick={handleClick}>
+      {/* icon: 从 manifest 动态读取 */}
+      <div className="ms-item-icon">
+        <PluginIcon pluginId={plugin.pluginId} />
+        {m.core && <span className="ms-item-badge codicon codicon-star-full" />}
+      </div>
+
+      {/* VS Code: .details */}
+      <div className="ms-item-details">
+        <div className="ms-item-header">
+          <span className="ms-item-name">{m.name}</span>
+          <span className="ms-item-version">v{m.version}</span>
+        </div>
+        {m.description && <span className="ms-item-desc">{m.description}</span>}
+        <div className="ms-item-footer">
+          {m.author && <span className="ms-item-author">{m.author}</span>}
+          {m.statusBar && m.statusBar.length > 0 && (
+            <span className="ms-item-tag">{m.statusBar.length} status</span>
+          )}
+        </div>
+      </div>
+
+      {/* ⚙ 齿轮——core 插件无齿轮菜单 */}
+      {!m.core && (
+        <div className="ms-item-gear-wrapper">
+          <button ref={gearBtnRef} className="ms-item-gear-btn" onClick={handleGear} title="管理">
+            <span className="codicon codicon-gear" />
+          </button>
+          {gearMenuAnchor && (
+            <ContextMenu
+              menuId={MenuId.MarketplaceItemGear}
+              anchor={gearMenuAnchor}
+              context={{ pluginId: plugin.pluginId }}
+              onClose={() => {
+                clearExtensionContextKeys();
+                setGearMenuAnchor(null);
+              }}
+            />
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

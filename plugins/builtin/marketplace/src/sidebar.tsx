@@ -2,6 +2,9 @@
  * MarketplaceSidebar — 插件管理侧栏。
  * Phase 4 UX：对标 VS Code Extensions 侧栏。
  *   header（搜索）→ extension list（icon + name/version/desc + actions）
+ *
+ * @deprecated E3.6——SidePanel 现在通过 ViewContainerService 渲染 4 个独立 view。
+ * 此文件在 R4 删除。
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
