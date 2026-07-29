@@ -136,6 +136,16 @@
   outline-offset: -1px;
 }
 
+/* E4b #99: 拖放状态 */
+.file-tree-node--dragging {
+  opacity: 0.4;
+}
+
+.file-tree-node--drop-target {
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
 /* ── twistie ── */
 
 .file-tree-twistie {
