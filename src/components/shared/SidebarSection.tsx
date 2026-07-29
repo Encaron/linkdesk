@@ -26,6 +26,14 @@ export interface SidebarSectionProps {
   actions?: ReactNode;
   /** 区块内容 */
   children: ReactNode;
+  /** 🆕 E3.6：标题旁的副文字——如 "(5 files)"。对标 VS Code ViewPane.titleDescription */
+  titleDescription?: string;
+  /** 🆕 E3.6：标题 hover tooltip——标题截断时显示完整文字 */
+  titleTooltip?: string;
+  /** 🆕 E3.6：控制 actions 显隐时机——'always' | 'whenExpanded' | 'default'（hover 显示） */
+  showActions?: "always" | "whenExpanded" | "default";
+  /** 🆕 E3.6：隐藏 header——mergeHeaderWhenSingle 时使用 */
+  headerHidden?: boolean;
 }
 
 function SidebarSection({
