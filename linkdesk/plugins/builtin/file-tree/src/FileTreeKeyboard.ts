@@ -16,14 +16,11 @@ import { useRef, useCallback } from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
+import type { FlatItem } from "./pathUtils";
 
 /* ── 类型 ── */
 
-export interface FlatItem {
-  item: ExplorerItem;
-  depth: number;
-  compactedSegments?: string[];
-}
+export type { FlatItem } from "./pathUtils";
 
 export interface KeyboardState {
   model: FileTreeModel;

@@ -10,14 +10,10 @@ import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
 import { copy, deleteEntry } from "@src/core/FileService";
+import { dirname, joinPath } from "./pathUtils";
+import type { FlatItem } from "./pathUtils";
 
 /* ── 类型 ── */
-
-export interface FlatItem {
-  item: ExplorerItem;
-  depth: number;
-  compactedSegments?: string[];
-}
 
 export type DropEffect = "copy" | "move" | "none";
 
@@ -62,25 +58,12 @@ export function resolveDropTarget(
   };
 }
 
-/** 获取 URI 的父目录路径 */
-export function dirname(uri: string): string {
-  const normalized = uri.replace(/\\/g, "/");
-  const lastSlash = normalized.lastIndexOf("/");
-  return lastSlash > 0 ? normalized.slice(0, lastSlash) : normalized;
-}
-
 /** 检查 source 是否是 target 的祖先——禁止拖祖先到后代 */
 export function isAncestorOf(source: ExplorerItem, target: ExplorerItem): boolean {
   if (!source.isDirectory) return false;
-  const sn = source.uri.replace(/\\/g, "/");
-  const tn = target.uri.replace(/\\/g, "/");
+  const sn = source.uri;
+  const tn = target.uri;
   return sn !== tn && tn.startsWith(sn + "/");
-}
-
-/** 拼接路径 */
-export function joinPath(parent: string, name: string): string {
-  const sep = parent.includes("\\") ? "\\" : "/";
-  return parent + sep + name;
 }
 
 /* ── Drag 事件类型 ── */
