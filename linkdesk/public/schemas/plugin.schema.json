@@ -23,7 +23,7 @@
     },
     "factoryRole": {
       "type": "string",
-      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
+      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。"
     },
     "distribution": {
       "type": "string",
@@ -416,6 +416,77 @@
             },
             "additionalProperties": false
           }
+        },
+        "viewsContainers": {
+          "type": "object",
+          "description": "声明侧栏容器——点此插件图标时切换到此容器。对标 VS Code viewsContainers。",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "object",
+              "required": ["title"],
+              "properties": {
+                "title": { "type": "string", "description": "容器标题——侧栏 header 显示" },
+                "icon": { "type": "string", "description": "容器图标——覆盖插件自身的图标" },
+                "location": {
+                  "type": "string",
+                  "enum": ["sidebar", "panel", "auxiliarybar"],
+                  "default": "sidebar",
+                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏"
+                },
+                "hideIfEmpty": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "无活跃 view 时自动隐藏容器"
+                },
+                "order": {
+                  "type": "number",
+                  "description": "同位置内的排序权重。小值靠前"
+                },
+                "mergeHeaderWhenSingle": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "容器内只有一个 view 时隐藏 view header——标题合并到容器 header。对标 VS Code mergeViewWithContainerWhenSingleView"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "views": {
+          "type": "object",
+          "description": "往容器注册视图——key = 容器 ID。对标 VS Code views。",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "render"],
+                "properties": {
+                  "id": { "type": "string", "description": "View 唯一 ID——如 folders / sessions / settings" },
+                  "title": { "type": "string", "description": "显示标题——SidebarSection 的 header 文字。空字符串=不显示折叠头" },
+                  "render": { "type": "string", "description": "视图组件的模块路径——相对插件根目录" },
+                  "when": { "type": "string", "description": "Context key when 条件" },
+                  "order": { "type": "number", "description": "同容器内的排序权重。小值在上" },
+                  "collapsed": { "type": "boolean", "default": false, "description": "初始折叠状态" },
+                  "canToggleVisibility": { "type": "boolean", "default": true, "description": "用户可通过 Views 子菜单切换可见性" },
+                  "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },
+                  "hideByDefault": { "type": "boolean", "default": false, "description": "默认隐藏——用户需手动从 Views 菜单开启" },
+                  "singleViewPaneContainerTitle": { "type": "string", "description": "单 view 且容器 mergeHeaderWhenSingle 时替代容器 title" },
+                  "titleDescription": { "type": "string", "description": "标题旁的副文字——如 (5 files)" },
+                  "showActions": {
+                    "type": "string",
+                    "enum": ["always", "whenExpanded", "default"],
+                    "default": "default",
+                    "description": "actions 显隐时机——always=始终, whenExpanded=展开时, default=hover 显示"
+                  },
+                  "titleTooltip": { "type": "string", "description": "标题 hover tooltip——标题截断时显示完整文字" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         }
       },
       "additionalProperties": false
