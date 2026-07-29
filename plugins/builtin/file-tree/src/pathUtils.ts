@@ -1,7 +1,22 @@
 /**
  * 路径工具函数——跨文件复用，避免重复 split+pop。
  * E4 品质加固：FileTreeModel + WelcomeView 共用。
+ * E4b #99d：dirname / joinPath / FlatItem 归一化收口——全插件从这一个文件导入。
  */
+
+import type { ExplorerItem } from "./FileTreeModel";
+
+/* ── 类型 ── */
+
+/** 扁平化后的树节点——虚拟滚动消费 */
+export interface FlatItem {
+  item: ExplorerItem;
+  depth: number;
+  /** 紧凑文件夹——压缩后的路径段，如 ["src", "components", "Button.tsx"] */
+  compactedSegments?: string[];
+}
+
+/* ── 路径函数 ── */
 
 /** 获取路径最后一段（文件名/文件夹名）。跨平台——支持 / 和 \ 分隔符 */
 export function basename(fullPath: string): string {
@@ -21,4 +36,16 @@ export function splitPath(fullPath: string): string[] {
  */
 export function normalizePath(fullPath: string): string {
   return fullPath.replace(/\\/g, "/");
+}
+
+/** 获取父目录路径 */
+export function dirname(uri: string): string {
+  const normalized = normalizePath(uri);
+  const lastSlash = normalized.lastIndexOf("/");
+  return lastSlash > 0 ? normalized.slice(0, lastSlash) : normalized;
+}
+
+/** 拼接路径——确保用 / 分隔 */
+export function joinPath(parent: string, name: string): string {
+  return normalizePath(parent) + "/" + name;
 }

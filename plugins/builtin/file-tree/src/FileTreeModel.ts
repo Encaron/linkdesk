@@ -67,7 +67,7 @@ export class FileTreeModel {
   async getChildren(parent: ExplorerItem): Promise<ExplorerItem[]> {
     if (parent.children !== null) return parent.children;
     const entries = await listDir(parent.uri);
-    const parentLen = parent.uri.replace(/\\/g, "/").length;
+    const parentLen = parent.uri.length; // E4b #99e: #99a 归一化后 uri 已是 /
     const filtered = this._excludeFilter
       ? entries.filter((e) => {
           // 计算相对路径给 FileExcludeFilter.matches()
