@@ -1,0 +1,75 @@
+/**
+ * UninstalledListView — 待安装插件列表。
+ * E3.6 E36#7.6：简化行（非 ViewPluginEntry 类型），含安装按钮。
+ */
+
+import { useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { PluginIcon } from "@src/components/shared/PluginIcon";
+import { useTabActions } from "@src/core/TabActionsContext";
+import { useMarketplacePlugins } from "../marketplaceShared";
+import "../MarketplaceSidebar.css";
+
+const pm = () => (window as any).linkdesk?.pluginManager;
+
+export default function UninstalledListView() {
+  const { t } = useTranslation();
+  const tabActions = useTabActions();
+  const { uninstalled, refresh } = useMarketplacePlugins();
+
+  const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const makeClickHandler = (pluginId: string) => () => {
+    if (clickTimer.current) {
+      clearTimeout(clickTimer.current);
+      clickTimer.current = null;
+      tabActions?.createTab("plugin-detail", { pluginId, pinned: true });
+    } else {
+      clickTimer.current = setTimeout(() => {
+        clickTimer.current = null;
+        tabActions?.createTab("plugin-detail", { pluginId, pinned: false });
+      }, 300);
+    }
+  };
+
+  const handleInstall = useCallback(
+    async (pluginId: string, e: React.MouseEvent) => {
+      e.stopPropagation();
+      await pm().reinstall(pluginId);
+      refresh();
+    },
+    [refresh],
+  );
+
+  if (uninstalled.length === 0) return null;
+
+  return (
+    <div className="ms-section-items">
+      {uninstalled.map((p) => (
+        <div key={p.pluginId} className="ms-extension-item uninstalled">
+          <div className="ms-item-icon">
+            <PluginIcon pluginId={p.pluginId} />
+          </div>
+          <div
+            className="ms-item-details"
+            onClick={makeClickHandler(p.pluginId)}
+            style={{ cursor: "pointer" }}
+          >
+            <div className="ms-item-header">
+              <span className="ms-item-name">{p.name}</span>
+              {p.version && <span className="ms-item-version">v{p.version}</span>}
+            </div>
+            {p.description && <span className="ms-item-desc">{p.description}</span>}
+          </div>
+          <button
+            className="ms-item-install-btn"
+            onClick={(e) => handleInstall(p.pluginId, e)}
+            title={t("安装插件")}
+          >
+            <span className="codicon codicon-cloud-download" /> 安装
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}

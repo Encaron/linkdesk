@@ -13,6 +13,11 @@
   box-sizing: border-box;
   padding: 5px 12px 8px 12px;
   flex-shrink: 0;
+  /* E3.6 E36#7.3a: 搜索+安装区域 sticky——列表滚动时始终可见 */
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--side-panel-bg);
 }
 
 .ms-header-actions {
