@@ -105,7 +105,12 @@ export function initLifecycleConsumers(): void {
   /* ─── 消费端 2b：注册表全量清理（Phase 5 验收 B2——6 个 unregister* 从未被调用） ─── */
 
   PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
+    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 10 个注册表
+    // E36#4.7: ViewContainerService 显式清理（RegistryBase 自动处理程序已覆盖，idempotent）
+    // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
+    import("../core/ViewContainerService").then(({ ViewContainerService }) => {
+      ViewContainerService.unregisterAll(pluginId);
+    }).catch(() => {});
     unregisterPluginCommands(pluginId);
     unregisterPluginKeybindings(pluginId);
     unregisterPluginMenus(pluginId);
