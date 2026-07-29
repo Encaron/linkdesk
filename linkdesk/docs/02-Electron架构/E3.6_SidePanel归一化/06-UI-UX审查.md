@@ -244,7 +244,7 @@ const toggleCollapse = (collapse: boolean) => {
 | codicons 图标集 | ✅ | 统一的矢量图标——符合 `pro-rules.md` "Consistent icon family" |
 | CSS 变量颜色系统 | ✅ | Token-driven theming——符合 `pro-rules.md` "Token-driven theming" |
 | SidePanel 折叠动画 220ms | ⚠️ | 时长在 150-300ms 范围内——符合。但实现方式需改（P0-3） |
-| SidebarSection 复用零改动 | ✅ | 组件纯度正确——不重复造轮子 |
+| SidebarSection 复用 | ✅ | 组件纯度正确——不重复造轮子。需扩展 4 个 prop（E36#3.5b） |
 | IconBar 42px 宽 | ✅ | 对标 VS Code Activity Bar 48px——在范围内 |
 | 侧栏最小宽度 160px | ✅ | 对标 VS Code——足够显示文件树 |
 | 拖拽调整宽度 | ✅ | 对标 VS Code——正确交互 |
