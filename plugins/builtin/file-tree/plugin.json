@@ -19,7 +19,7 @@
     },
     "views": {
       "explorer": [
-        { "id": "folders", "title": "", "render": "../../plugins/builtin/file-tree/src/sidebar.tsx", "order": 0 }
+        { "id": "folders", "title": "", "render": "../../plugins/builtin/file-tree/src/views/FoldersView.tsx", "order": 0 }
       ]
     },
     "commands": [
