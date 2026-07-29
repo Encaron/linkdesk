@@ -130,6 +130,12 @@
   background: var(--bg-card) !important;
 }
 
+/* E4b #97: 键盘焦点——与选中分离 */
+.file-tree-node--focused {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
 /* ── twistie ── */
 
 .file-tree-twistie {

@@ -14,6 +14,8 @@ import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { getCompactedPath } from "./CompactFolder";
 import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
+import { useFileTreeKeyboard } from "./FileTreeKeyboard";
+import type { FlatItem } from "./FileTreeKeyboard";
 
 /* ── 类型 ── */
 
@@ -21,13 +23,6 @@ interface FileTreeProps {
   model: FileTreeModel;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
-}
-
-interface FlatItem {
-  item: ExplorerItem;
-  depth: number;
-  /** 紧凑文件夹——压缩后的路径段，如 ["src", "components", "Button.tsx"] */
-  compactedSegments?: string[];
 }
 
 /* ── 常量（从 layoutTokens.ts 导入） ── */
@@ -159,88 +154,19 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     [onContextMenu],
   );
 
-  /* ── 键盘导航 ── */
+  /* ── 键盘导航（E4b #97——提取到 FileTreeKeyboard） ── */
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (flatItems.length === 0) return;
-      const currentIdx = flatItems.findIndex((f) => f.item.uri === focusedUri);
-      const idx = currentIdx === -1 ? 0 : currentIdx;
-
-      switch (e.key) {
-        case "ArrowUp": {
-          e.preventDefault();
-          const prev = Math.max(0, idx - 1);
-          setFocusedUri(flatItems[prev].item.uri);
-          scrollToItem(prev);
-          break;
-        }
-        case "ArrowDown": {
-          e.preventDefault();
-          const next = Math.min(flatItems.length - 1, idx + 1);
-          setFocusedUri(flatItems[next].item.uri);
-          scrollToItem(next);
-          break;
-        }
-        case "ArrowLeft": {
-          e.preventDefault();
-          const fi = flatItems[idx];
-          if (fi.item.isDirectory && model.isExpanded(fi.item.uri)) {
-            model.collapse(fi.item.uri);
-            rerender();
-          }
-          break;
-        }
-        case "ArrowRight": {
-          e.preventDefault();
-          const fi = flatItems[idx];
-          if (fi.item.isDirectory && !model.isExpanded(fi.item.uri)) {
-            model.expand(fi.item.uri);
-            model.getChildren(fi.item).then(() => rerender());
-          }
-          break;
-        }
-        case "Home": {
-          e.preventDefault();
-          setFocusedUri(flatItems[0].item.uri);
-          scrollToItem(0);
-          break;
-        }
-        case "End": {
-          e.preventDefault();
-          const last = flatItems.length - 1;
-          setFocusedUri(flatItems[last].item.uri);
-          scrollToItem(last);
-          break;
-        }
-        case "Enter": {
-          e.preventDefault();
-          const fi = flatItems[idx];
-          setSelectedUri(fi.item.uri);
-          if (fi.item.isDirectory) {
-            handleTwistie(fi.item);
-          } else {
-            onOpenFile(fi.item, "pin");
-          }
-          break;
-        }
-      }
+  const handleKeyDown = useFileTreeKeyboard(
+    { model, flatItems, focusedUri },
+    {
+      setFocusedUri,
+      setSelectedUri,
+      rerender,
+      onOpenFile,
+      onTwistie: handleTwistie,
+      getContainerEl: () => containerRef.current,
     },
-    [flatItems, focusedUri, model, onOpenFile, handleTwistie, rerender],
   );
-
-  /** 滚动使指定 index 可见 */
-  function scrollToItem(index: number) {
-    const el = containerRef.current;
-    if (!el) return;
-    const targetTop = index * TREE_ITEM_HEIGHT;
-    const { scrollTop: st, clientHeight: ch } = el;
-    if (targetTop < st) {
-      el.scrollTop = targetTop;
-    } else if (targetTop + TREE_ITEM_HEIGHT > st + ch) {
-      el.scrollTop = targetTop - ch + TREE_ITEM_HEIGHT;
-    }
-  }
 
   /* ── 渲染 ── */
 
@@ -262,6 +188,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={item.uri === selectedUri}
+            isFocused={item.uri === focusedUri}
             compactedSegments={compactedSegments}
             onSelect={handleSelect}
             onOpen={handleOpen}
