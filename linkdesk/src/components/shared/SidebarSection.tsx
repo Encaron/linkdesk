@@ -44,6 +44,7 @@ function SidebarSection({
   actions,
   children,
   titleDescription,
+  titleTooltip,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -67,6 +68,7 @@ function SidebarSection({
         className={`sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
         onClick={toggle}
         role="button"
+        title={titleTooltip}
         aria-expanded={collapsible ? open : undefined}
         tabIndex={collapsible ? 0 : undefined}
         onKeyDown={collapsible ? onKeyDown : undefined}
