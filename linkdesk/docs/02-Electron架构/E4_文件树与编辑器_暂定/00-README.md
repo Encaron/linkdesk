@@ -16,7 +16,7 @@
 | `06-执行清单.md` | **🔥 唯一真相源。** 从 1 开始编号，7 层 44 任务 |
 | `00.5-UI布局规格.md` | CSS token + wireframe + 状态矩阵——**开发前必读** |
 | `00.9-Explorer架构重审.md` | VS Code 源码分析 + 8 层差距分析 + 重构建议 |
-| [filetree-preview.html](filetree-preview.html) | 🎨 浏览器交互预览 |
+| [filetree-preview.html](filetree-preview.html) | 🎨 🔥🔥🔥 **AI 进场第一步——浏览器打开看完整 UI 效果** |
 | `📦 已归档/` | 旧设计文档（E4a-E4f）——历史参考，不再更新 |
 
 ### 架构层设计文档（待建——按需创建）
