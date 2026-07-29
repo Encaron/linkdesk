@@ -34,6 +34,8 @@ export interface SidebarSectionProps {
   showActions?: "always" | "whenExpanded" | "default";
   /** 🆕 E3.6：隐藏 header——mergeHeaderWhenSingle 时使用 */
   headerHidden?: boolean;
+  /** 🆕 E3.6 ST1：sticky header 的 top 偏移（px）——由 SidePanel 根据 toolbar 高度 + section 序号计算 */
+  stickyTop?: number;
 }
 
 function SidebarSection({
@@ -47,6 +49,7 @@ function SidebarSection({
   titleTooltip,
   showActions = "default",
   headerHidden = false,
+  stickyTop,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -83,6 +86,7 @@ function SidebarSection({
         aria-expanded={collapsible ? open : undefined}
         tabIndex={collapsible ? 0 : undefined}
         onKeyDown={collapsible ? onKeyDown : undefined}
+        style={stickyTop !== undefined ? { top: stickyTop } : undefined}
       >
         {collapsible && (
           <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>

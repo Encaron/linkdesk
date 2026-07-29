@@ -29,6 +29,10 @@
   letter-spacing: 0.3px;
   color: var(--sidebar-section-header-fg, var(--text-muted));
   transition: color 0.1s ease;
+  /* 🆕 E3.6 ST1：section header sticky 叠加——全局行为 */
+  position: sticky;
+  z-index: 1;
+  background: var(--bg-side-panel);
 }
 
 .sidebar-section-header:hover {
