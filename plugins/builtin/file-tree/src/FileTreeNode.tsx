@@ -22,6 +22,8 @@ interface FileTreeNodeProps {
   /** E4b #99: 拖放——dragStart / dragOver 指示线 */
   isDragSource?: boolean;
   isDragHover?: boolean;
+  /** E4b #99k: excluded 文件灰显 */
+  isDimmed?: boolean;
   onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
   /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效 */
   onSelect: (uri: string) => void;
@@ -47,6 +49,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   compactedSegments,
   isDragSource,
   isDragHover,
+  isDimmed,
   onDragStart,
   onSelect,
   onOpen,
@@ -59,6 +62,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     isFocused && !isSelected && "file-tree-node--focused",
     isDragSource && "file-tree-node--dragging",
     isDragHover && "file-tree-node--drop-target",
+    isDimmed && "file-tree-node--dimmed",
   ]
     .filter(Boolean)
     .join(" ");
