@@ -298,6 +298,73 @@ body {
 .legend-dot.added { background: #22C55E; }
 .legend-dot.deleted { background: #EF4444; }
 
+/* === View Section (ViewContainer 子视图) === */
+
+.view-section {
+  border-bottom: 1px solid var(--separator);
+}
+.view-section:last-child { border-bottom: none; }
+
+.view-section-header {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.view-section-header.expanded { font-weight: 700; }
+.view-section-header.collapsed { font-weight: 600; }
+
+.view-section-header .tree-twistie {
+  width: 16px;
+  height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--tree-twistie);
+}
+.view-section-header .tree-twistie.dimmed { color: var(--separator); }
+
+.view-section-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.view-section-title.root-name {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: none;
+  font-size: 13px;
+}
+.view-section-title.dimmed { color: var(--tree-dimmed); }
+
+.view-section-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.view-section-hint {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  color: var(--tree-dimmed);
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* dimmed sections (插件未安装时灰显) */
+.view-section.outline-section,
+.view-section.timeline-section {
+  opacity: 0.5;
+}
+
 /* click ripple */
 @keyframes clickRipple {
   0% { box-shadow: inset 0 0 0 0 rgba(34,197,94,0.3); }
@@ -309,7 +376,7 @@ body {
 <body>
 
 <div class="sidebar">
-  <!-- Header -->
+  <!-- Explorer Header (viewlet title) -->
   <div class="sidebar-header">
     <span class="sidebar-header-title">资源管理器</span>
     <span class="sidebar-header-actions">
@@ -317,23 +384,48 @@ body {
     </span>
   </div>
 
-  <!-- Path Breadcrumb -->
-  <div class="path-breadcrumb">
-    <span class="root-icon">📁</span>
-    <span class="path-text">linkdesk-project</span>
-    <span class="path-switch" title="切换工作区">▾</span>
+  <!-- OPEN EDITORS (collapsed section —— ViewContainer 子视图 1) -->
+  <div class="view-section">
+    <div class="view-section-header collapsed">
+      <span class="tree-twistie collapsed">▶</span>
+      <span class="view-section-title">OPEN EDITORS</span>
+    </div>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="toolbar-btn" data-tooltip="新建文件">📄</button>
-    <button class="toolbar-btn" data-tooltip="新建文件夹">📂</button>
-    <button class="toolbar-btn" data-tooltip="刷新">↻</button>
-    <button class="toolbar-btn" data-tooltip="收起所有文件夹">⊟</button>
+  <!-- FOLDERS section (root name + toolbar inline —— ViewContainer 子视图 2) -->
+  <div class="view-section">
+    <div class="view-section-header folders expanded">
+      <span class="tree-twistie expanded">▼</span>
+      <span class="root-icon">📁</span>
+      <span class="view-section-title root-name">linkdesk-project</span>
+      <span class="view-section-actions">
+        <button class="toolbar-btn" data-tooltip="新建文件">📄</button>
+        <button class="toolbar-btn" data-tooltip="新建文件夹">📂</button>
+        <button class="toolbar-btn" data-tooltip="刷新">↻</button>
+        <button class="toolbar-btn" data-tooltip="收起所有文件夹">⊟</button>
+      </span>
+    </div>
+    <!-- Tree -->
+    <div class="tree-body" id="treeBody"></div>
   </div>
 
-  <!-- Tree -->
-  <div class="tree-body" id="treeBody"></div>
+  <!-- OUTLINE (collapsed section —— 语言插件可贡献的 ViewContainer 子视图) -->
+  <div class="view-section outline-section">
+    <div class="view-section-header collapsed dimmed">
+      <span class="tree-twistie collapsed dimmed">▶</span>
+      <span class="view-section-title dimmed">大纲</span>
+      <span class="view-section-hint">需要语言扩展</span>
+    </div>
+  </div>
+
+  <!-- TIMELINE (collapsed section —— Git 插件可贡献的 ViewContainer 子视图) -->
+  <div class="view-section timeline-section">
+    <div class="view-section-header collapsed dimmed">
+      <span class="tree-twistie collapsed dimmed">▶</span>
+      <span class="view-section-title dimmed">时间线</span>
+      <span class="view-section-hint">需要 Git 扩展</span>
+    </div>
+  </div>
 </div>
 
 <!-- Legend -->
@@ -487,7 +579,7 @@ function flattenTree(node, depth, path, result) {
     hasChildren,
     hasLoadedChildren,
     isEmpty,
-    guideDepth: null, // computed later
+    guideDepth: null,
   });
 
   if (isExpanded && hasLoadedChildren) {
@@ -499,7 +591,7 @@ function flattenTree(node, depth, path, result) {
 
 function buildVisibleList() {
   const flat = [];
-  flattenTree(treeData, 0, '/linkdesk-project', flat);
+  flattenTree(treeData, 0, '/linkdesk-project', flat);  // root depth=0
   return flat;
 }
 
