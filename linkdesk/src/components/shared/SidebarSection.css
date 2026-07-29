@@ -29,10 +29,8 @@
   letter-spacing: 0.3px;
   color: var(--sidebar-section-header-fg, var(--text-muted));
   transition: color 0.1s ease;
-  /* 🔥 E3.6 ST1: section header sticky——层层叠加，top 由 SidePanel 动态计算 */
-  position: sticky;
-  z-index: 1;
-  background: var(--side-panel-bg);
+  /* 🔥 E3.6 ST1 预留：position: sticky + z-index + background。
+   * 待 sticky 叠加任务集正式执行时取消注释。 */
 }
 
 .sidebar-section-header:hover {
