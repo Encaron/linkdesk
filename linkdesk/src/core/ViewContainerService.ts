@@ -147,6 +147,7 @@ class ViewContainerModel {
   removePluginViews(pluginId: string): ViewDescriptor[] {
     const removed: ViewDescriptor[] = [];
     this.allViewDescriptors = this.allViewDescriptors.filter((v) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
       if ((v as any)._pluginId === pluginId) {
         removed.push(v);
         this._hidden.delete(v.id);
@@ -244,10 +245,12 @@ export class ViewContainerServiceClass extends RegistryBase {
     this.markPlugin(pluginId);
 
     // 给 descriptor 打上 _pluginId 标记——unregisterAll 时用到
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
     (descriptor as any)._pluginId = pluginId;
 
     const model = this._models.get(containerId)!;
     const existing = model.allViewDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
       (v) => v.id === descriptor.id && (v as any)._pluginId === pluginId
     );
 
