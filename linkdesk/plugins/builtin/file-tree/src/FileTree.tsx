@@ -16,6 +16,7 @@ import { getCompactedPath } from "./CompactFolder";
 import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
+import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
@@ -169,6 +170,16 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     },
   );
 
+  /* ── 拖放（E4b #99——useFileTreeDnD hook） ── */
+
+  const { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop } =
+    useFileTreeDnD({
+      flatItems,
+      model,
+      rerender,
+      getContainerEl: () => containerRef.current,
+    });
+
   /* ── 上下文键（E4b #98——快捷键 when 条件） ── */
 
   /** 文件树获得/失去键盘焦点——设置 explorerFocus context key */
@@ -200,11 +211,14 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       onKeyDown={handleKeyDown}
       onFocus={handleFocus}
       onBlur={handleBlur}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
       className="file-tree-scroll"
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments }) => (
+        {renderedItems.map(({ item, depth, compactedSegments }, i) => (
           <FileTreeNode
             key={item.uri}
             item={item}
@@ -213,7 +227,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={item.uri === selectedUri}
             isFocused={item.uri === focusedUri}
+            isDragSource={dndState.sourceUri === item.uri}
+            isDragHover={dndState.hoverIndex === startIndex + i}
             compactedSegments={compactedSegments}
+            onDragStart={handleDragStart}
             onSelect={handleSelect}
             onOpen={handleOpen}
             onTwistieClick={handleTwistie}

@@ -1,0 +1,193 @@
+/**
+ * FileTreeDnD——拖放工具。
+ * E4b #99：OS 拖入 + 树内拖拽 + 插入线/目录高亮 + 祖先后代约束。
+ *
+ * 对标 VS Code explorerViewer.ts——DragAndDrop + onDragOver + onDrop。
+ */
+
+import { useState, useCallback, useRef } from "react";
+import type { ExplorerItem } from "./FileTreeModel";
+import type { FileTreeModel } from "./FileTreeModel";
+import { TREE_ITEM_HEIGHT } from "./layoutTokens";
+import { copy, deleteEntry } from "@src/core/FileService";
+
+/* ── 类型 ── */
+
+export interface FlatItem {
+  item: ExplorerItem;
+  depth: number;
+  compactedSegments?: string[];
+}
+
+export type DropEffect = "copy" | "move" | "none";
+
+export interface DropTarget {
+  /** flatItems 中的索引 */
+  index: number;
+  /** 目标项 */
+  item: ExplorerItem;
+  /** 目标目录路径——drop 后的实际目标 */
+  targetDir: string;
+  /** 拖放效果 */
+  effect: DropEffect;
+}
+
+/* ── 工具 ── */
+
+/** 由鼠标 Y + scrollTop 计算 flatItems 中的索引 */
+export function getDropTargetIndex(
+  mouseY: number,
+  scrollTop: number,
+  containerTop: number,
+): number {
+  return Math.floor((mouseY - containerTop + scrollTop) / TREE_ITEM_HEIGHT);
+}
+
+/**
+ * 解析拖放目标——给定 flatItems 和索引，返回目标目录。
+ * 目录节点 → 自身。文件节点 → 其父目录。
+ */
+export function resolveDropTarget(
+  targetIndex: number,
+  flatItems: FlatItem[],
+): DropTarget | null {
+  if (targetIndex < 0 || targetIndex >= flatItems.length) return null;
+  const fi = flatItems[targetIndex];
+  const targetDir = fi.item.isDirectory ? fi.item.uri : dirname(fi.item.uri);
+  return {
+    index: targetIndex,
+    item: fi.item,
+    targetDir,
+    effect: "move",
+  };
+}
+
+/** 获取 URI 的父目录路径 */
+export function dirname(uri: string): string {
+  const normalized = uri.replace(/\\/g, "/");
+  const lastSlash = normalized.lastIndexOf("/");
+  return lastSlash > 0 ? normalized.slice(0, lastSlash) : normalized;
+}
+
+/** 检查 source 是否是 target 的祖先——禁止拖祖先到后代 */
+export function isAncestorOf(source: ExplorerItem, target: ExplorerItem): boolean {
+  if (!source.isDirectory) return false;
+  const sn = source.uri.replace(/\\/g, "/");
+  const tn = target.uri.replace(/\\/g, "/");
+  return sn !== tn && tn.startsWith(sn + "/");
+}
+
+/** 拼接路径 */
+export function joinPath(parent: string, name: string): string {
+  const sep = parent.includes("\\") ? "\\" : "/";
+  return parent + sep + name;
+}
+
+/* ── Drag 事件类型 ── */
+
+export interface DnDState {
+  /** 正在被拖拽的源 URI */
+  sourceUri: string | null;
+  /** 鼠标悬停位置对应的 flatItems 索引（-1 = 无有效目标） */
+  hoverIndex: number;
+}
+
+export interface DnDCallbacks {
+  flatItems: FlatItem[];
+  model: FileTreeModel;
+  rerender: () => void;
+  getContainerEl: () => HTMLDivElement | null;
+}
+
+/**
+ * 文件树拖放 hook——返回 drag 事件处理器 + 状态。
+ * 在 FileTree 组件中消费。
+ */
+export function useFileTreeDnD(callbacks: DnDCallbacks): {
+  dndState: DnDState;
+  handleDragStart: (item: ExplorerItem, e: React.DragEvent) => void;
+  handleDragOver: (e: React.DragEvent) => void;
+  handleDragLeave: (e: React.DragEvent) => void;
+  handleDrop: (e: React.DragEvent) => Promise<void>;
+} {
+  const [dndState, setDndState] = useState<DnDState>({ sourceUri: null, hoverIndex: -1 });
+  const dragItemRef = useRef<ExplorerItem | null>(null);
+
+  /** dragStart——记录被拖拽的项 */
+  const handleDragStart = useCallback((item: ExplorerItem, e: React.DragEvent) => {
+    dragItemRef.current = item;
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", item.uri);
+    setDndState({ sourceUri: item.uri, hoverIndex: -1 });
+  }, []);
+
+  /** dragOver——计算 drop target + 显示指示线 */
+  const handleDragOver = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const el = callbacks.getContainerEl();
+      if (!el) return;
+      const rect = el.getBoundingClientRect();
+      const idx = getDropTargetIndex(e.clientY, el.scrollTop, rect.top);
+      const clamped = Math.max(0, Math.min(callbacks.flatItems.length - 1, idx));
+      setDndState((prev) => (prev.hoverIndex === clamped ? prev : { ...prev, hoverIndex: clamped }));
+    },
+    [callbacks],
+  );
+
+  /** dragLeave——清除 hover */
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    // 只在离开容器时清除
+    if (e.currentTarget === e.target) {
+      setDndState({ sourceUri: null, hoverIndex: -1 });
+    }
+  }, []);
+
+  /** drop——执行文件操作 */
+  const handleDrop = useCallback(
+    async (e: React.DragEvent) => {
+      e.preventDefault();
+      const target = resolveDropTarget(dndState.hoverIndex, callbacks.flatItems);
+      setDndState({ sourceUri: null, hoverIndex: -1 });
+
+      if (!target) return;
+
+      const sourceItem = dragItemRef.current;
+      dragItemRef.current = null;
+
+      // OS 拖入——e.dataTransfer.files
+      if (e.dataTransfer.files.length > 0) {
+        for (let i = 0; i < e.dataTransfer.files.length; i++) {
+          const file = e.dataTransfer.files[i];
+          const srcPath = (file as any).path as string;
+          if (srcPath) {
+            const dest = joinPath(target.targetDir, file.name);
+            await copy(srcPath, dest);
+          }
+        }
+        callbacks.model.refresh(target.targetDir).then(() => callbacks.rerender());
+        return;
+      }
+
+      // 树内拖拽——dataTransfer text/plain 是 URI
+      const uri = e.dataTransfer.getData("text/plain");
+      if (!uri || !sourceItem) return;
+
+      // 不能拖祖先到后代
+      if (isAncestorOf(sourceItem, target.item)) return;
+
+      // 不能拖到自己所在的目录
+      const srcDir = dirname(uri);
+      if (srcDir === target.targetDir) return;
+
+      const dest = joinPath(target.targetDir, sourceItem.name);
+      await copy(uri, dest);
+      await deleteEntry(uri);
+      callbacks.model.refresh(srcDir).then(() => callbacks.rerender());
+      callbacks.model.refresh(target.targetDir).then(() => callbacks.rerender());
+    },
+    [dndState.hoverIndex, callbacks],
+  );
+
+  return { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop };
+}

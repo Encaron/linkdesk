@@ -19,6 +19,10 @@ interface FileTreeNodeProps {
   indent: number;
   /** E4a #95c: 紧凑文件夹——压缩路径段 */
   compactedSegments?: string[];
+  /** E4b #99: 拖放——dragStart / dragOver 指示线 */
+  isDragSource?: boolean;
+  isDragHover?: boolean;
+  onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
   /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效 */
   onSelect: (uri: string) => void;
   onOpen: (item: ExplorerItem, mode: "preview" | "pin") => void;
@@ -41,6 +45,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   expanded,
   indent,
   compactedSegments,
+  isDragSource,
+  isDragHover,
+  onDragStart,
   onSelect,
   onOpen,
   onTwistieClick,
@@ -50,6 +57,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     "file-tree-node",
     isSelected && "file-tree-node--selected",
     isFocused && !isSelected && "file-tree-node--focused",
+    isDragSource && "file-tree-node--dragging",
+    isDragHover && "file-tree-node--drop-target",
   ]
     .filter(Boolean)
     .join(" ");
@@ -96,6 +105,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     <div
       className={rowClass}
       style={{ paddingLeft: `calc(${indent}px + (${depth} - 1) * var(--tree-indent))` }}
+      draggable={true}
+      onDragStart={onDragStart ? (e: React.DragEvent) => onDragStart(item, e) : undefined}
       onClick={handleClick}
       onMouseDown={handleMouseDown}
       onContextMenu={onContextMenu ? (e: React.MouseEvent) => onContextMenu(item, e) : undefined}
