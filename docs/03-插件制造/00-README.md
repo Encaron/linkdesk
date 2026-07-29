@@ -87,6 +87,7 @@
 | 5 | `05-插件UI写法规约.md` | 右键菜单/浮层/持久化/快捷键——必须走核心设施 |
 | 6 | `06-plugin.json规范.md` | plugin.json 全部字段参考 |
 | 7 | `07-插件间通信.md` | 插件之间怎么传数据——大厅 vs 后门，events + p2p |
+| 8 | `08-ViewContainer-视图容器API.md` | 🆕 E3.6——如何注册侧栏视图、往别人的容器里加内容 |
 
 **JSON Schema：** `plugin.schema.json`——IDE 自动补全
 

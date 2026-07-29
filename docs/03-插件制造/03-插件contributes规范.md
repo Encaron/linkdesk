@@ -27,7 +27,9 @@
 | `protocols` | ✅ 已实现 | 注册协议解析器 | ProtocolRegistry |
 | `fileAssociations` | 🆕 E3 后 | 文件扩展名 → 编辑器插件路由 | FileAssociationService |
 | `icons` | E3g | 共享图标——插件 A 贡献、插件 B 引用 | IconRegistry |
-| `views` | 🆕 E3 后 | 声明侧栏视图容器（对标 VS Code viewsContainers） | viewRegistry |
+| `viewsContainers` | 🆕 E3.6 | 声明侧栏容器——点图标时切换到该容器 | ViewContainerService |
+| `viewsContainers` | 🆕 E3.6 | 声明侧栏容器——点图标栏切换到此容器 | ViewContainerService |
+| `views` | 🆕 E3.6 | 往容器注册视图——任何插件可往任意容器注册 | ViewContainerService |
 | `aiFunctions` | 远期 | AI 可调用的 Function 接口 | AI Agent |
 | `statusBar` | ✅ 已实现 | 状态栏条目 | StatusBar |
 
@@ -264,7 +266,74 @@ registerCard({
 
 **壳消费方式：** `FileAssociationService` 维护 `extension → pluginId[]` 映射。双击文件 → 查找对应插件 → 未激活的先激活 → 打开标签页。多个插件注册同一扩展名 → 弹出"打开方式…"选择器。
 
-### 3.8 `contributes.icons`——共享图标（🆕 E3g）
+### 3.8 `contributes.viewsContainers` + `contributes.views`——侧栏视图（🆕 E3.6）
+
+> 完整 API 文档：`08-ViewContainer-视图容器API.md`
+
+**viewsContainers——声明侧栏频道：**
+
+```json
+{
+  "contributes": {
+    "viewsContainers": {
+      "explorer": {
+        "title": "资源管理器",
+        "location": "sidebar",
+        "hideIfEmpty": false
+      }
+    }
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `title` | ✅ | 侧栏 header 显示的名称 |
+| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"`。默认 `"sidebar"` |
+| `hideIfEmpty` | ❌ | 无活跃 view 时自动隐藏容器 |
+| `order` | ❌ | 同位置排序。小值靠前 |
+| `icon` | ❌ | 覆盖插件自身图标 |
+
+**views——往容器注册内容：**
+
+```json
+{
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "timeline",
+          "title": "TIMELINE",
+          "render": "src/views/TimelineView.tsx",
+          "order": 100,
+          "when": "gitOpen"
+        }
+      ]
+    }
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `id` | ✅ | View 唯一 ID |
+| `render` | ✅ | 组件模块路径。如 `"src/views/MyView.tsx"` |
+| `title` | ❌ | SidebarSection 折叠头标题。空字符串 = 不渲染折叠头 |
+| `order` | ❌ | 容器内排序。小值在上 |
+| `collapsed` | ❌ | 初始折叠 |
+| `when` | ❌ | Context key 条件——满足时才显示 |
+| `canToggleVisibility` | ❌ | 用户可切换可见性（未来） |
+| `canMoveView` | ❌ | 用户可拖到其他容器（未来） |
+| `hideByDefault` | ❌ | 默认隐藏（未来） |
+
+**关键特性：任何插件** 都能往别人的容器注册 view：
+```json
+// Git 插件——往 file-tree 的 explorer 容器注册 TIMELINE
+{ "contributes": { "views": { "explorer": [{ "id": "timeline", ... }] } } }
+```
+文件树插件零改动。`registerView("explorer", ...)` 命令式等效。
+
+### 3.9 `contributes.icons`——共享图标（🆕 E3g）
 
 ```json
 // 插件 A 贡献图标

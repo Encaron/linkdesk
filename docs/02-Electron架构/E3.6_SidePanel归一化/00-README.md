@@ -219,16 +219,49 @@ SidePanel 的渲染逻辑——不管当前是哪个 container，同一句话：
 
 | 文档 | 内容 |
 |:--|------|
-| `05-执行清单.md` | **🔥 唯一真相源。** 10 任务线性排列，进度追踪 |
-| `01-核心桌子/ViewContainerService.md` | E36#1–#2：Service 类 + schema 设计 |
+| `05-执行清单.md` | **🔥 唯一真相源。** 43 任务 4 轮 + E4 8 任务，进度追踪 |
+| `06-UI-UX审查.md` | 🆕 **设计系统对照。** Dark Mode (OLED) 审查——5 P0 + 3 P1 问题，8 项已融入执行清单 |
+| `01-核心桌子/ViewContainerService.md` | E36#1–#2：Service 类 v2 完整 API |
 | `02-壳层改造/SidePanel改造.md` | E36#3：SidePanel 渲染循环重写 |
 | `02-壳层改造/App+IconBar改造.md` | E36#4：containerId 语义 + 点击→渲染完整链路 |
 | `02-壳层改造/Loader+类型改造.md` | E36#5：types + loader parseContributions |
 | `03-插件迁移/file-tree.md` | E36#6：file-tree 迁移方案 |
+| `03-插件迁移/file-tree-toolbar-演进路线.md` | 🆕 **工具栏 + sticky scroll 三阶段演进路线**——E3.6 暂态→E4 永久→未来粘顶 |
 | `03-插件迁移/marketplace.md` | E36#7：marketplace 迁移方案 |
 | `03-插件迁移/serial-monitor.md` | E36#8：serial-monitor 迁移方案（460行拆分） |
-| `04-清理/废弃sidebarComponent.md` | E36#9–#10：删除旧系统 |
-| `05-快通道备选/README.md` | 备选方案：旧代码一刀不动，整体注册一个 view |
+| `04-清理/废弃sidebarComponent.md` | E36#10：删除旧系统 |
+| `05-快通道备选/README.md` | 已废弃——采用全拆方案 |
+
+---
+
+## 对标 VS Code 侧栏细节——完整覆盖
+
+| # | VS Code 细节 | LinkDesk | 阶段 |
+|:--|------|------|:--:|
+| 1 | View header title | `ViewDescriptor.title` | E3.6 ✅ |
+| 2 | View header actions | `ViewDescriptor.actions` | E3.6 ✅ |
+| 3 | View header titleDescription | `ViewDescriptor.titleDescription` | E3.6 ✅ |
+| 4 | View header titleTooltip | `ViewDescriptor.titleTooltip` | E3.6 ✅ |
+| 5 | View header showActions | `ViewDescriptor.showActions` | E3.6 ✅ |
+| 6 | mergeViewWithContainerWhenSingleView | `ViewContainerDescriptor.mergeHeaderWhenSingle` | E3.6 ✅ |
+| 7 | singleViewPaneContainerTitle | `ViewDescriptor.singleViewPaneContainerTitle` | E3.6 ✅ |
+| 8 | View collapsed | `ViewDescriptor.collapsed` | E3.6 ✅ |
+| 9 | View canToggleVisibility | `ViewDescriptor.canToggleVisibility` | E3.6 ✅ |
+| 10 | View canMoveView | `ViewDescriptor.canMoveView` | E3.6 ✅ |
+| 11 | View when context key | `ViewDescriptor.when` | E3.6 ✅ |
+| 12 | View hideByDefault | `ViewDescriptor.hideByDefault` | E3.6 ✅ |
+| 13 | View order | `ViewDescriptor.order` | E3.6 ✅ |
+| 14 | Sticky scroll (父目录粘顶) | FileTree sticky ancestors | E4 ✅ |
+| 15 | `...` 更多操作溢出菜单 | View header toolbar overflow | E4 ✅ |
+| 16 | View welcome content | `registerViewWelcomeContent` | E4 ✅ |
+| 17 | Pane resize (view 间拖拽) | SidebarSection sash | E4 ✅ |
+| 18 | 折叠状态持久化 | PluginStateService | E4 ✅ |
+| 19 | View 拖放排序 | View reorder | E4 ✅ |
+| 20 | View 拖到其他容器 | View move | E4 ✅ |
+| 21 | View 右键菜单 | `MenuId.ViewTitleContext` | E4 ✅ |
+| 22 | Views 子菜单（显隐 view） | `MenuId.ViewsSubmenu` | E4 ✅ |
+
+**全覆盖——15 个字段在 E3.6 数据结构中就绪，7 个行为在 E4 实现。**
 
 ---
 
