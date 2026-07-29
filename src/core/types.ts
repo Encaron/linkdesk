@@ -130,10 +130,43 @@ export interface PluginManifest {
 
   /**
    * Phase 5：对标 VS Code package.json contributes。
-   * 使用宽松索引签名——Phase 6 加 contributes.themes / languages / fileAssociations 时
-   * Phase 5 的 loader 不崩（parseContributions 按 key 逐项检测，不认识的跳过）。
+   * 使用 Record<string, unknown> 兼容未知 key——parseContributions 按 key 逐项检测。
+   * 已知 key 的类型见下方 ContributesViewsContainers / ContributesViews。
    */
   contributes?: Record<string, unknown>;
+}
+
+/* ── E3.6：contributes 已知 key 类型——用于 as 类型断言，消费端安全访问 ── */
+
+/** contributes.viewsContainers 的形状 */
+export interface ContributesViewsContainers {
+  [containerId: string]: {
+    title: string;
+    icon?: string;
+    location?: "sidebar" | "panel" | "auxiliarybar";
+    hideIfEmpty?: boolean;
+    order?: number;
+    mergeHeaderWhenSingle?: boolean;
+  };
+}
+
+/** contributes.views 的形状 */
+export interface ContributesViews {
+  [containerId: string]: Array<{
+    id: string;
+    title?: string;
+    render: string;
+    when?: string;
+    order?: number;
+    collapsed?: boolean;
+    canToggleVisibility?: boolean;
+    canMoveView?: boolean;
+    hideByDefault?: boolean;
+    singleViewPaneContainerTitle?: string;
+    titleDescription?: string;
+    showActions?: "always" | "whenExpanded" | "default";
+    titleTooltip?: string;
+  }>;
 }
 
 /* ── 视图插件注册条目 ── */
