@@ -327,7 +327,9 @@ body {
   flex-shrink: 0;
   font-size: 10px;
   color: var(--tree-twistie);
+  transition: transform 100ms ease-out;
 }
+.view-section-header.expanded .tree-twistie { transform: rotate(90deg); }
 .view-section-header .tree-twistie.dimmed { color: var(--separator); }
 
 .view-section-title {
@@ -387,7 +389,7 @@ body {
   <!-- OPEN EDITORS (collapsed section —— ViewContainer 子视图 1) -->
   <div class="view-section">
     <div class="view-section-header collapsed">
-      <span class="tree-twistie collapsed">▶</span>
+      <span class="tree-twistie">▶</span>
       <span class="view-section-title">OPEN EDITORS</span>
     </div>
   </div>
@@ -395,7 +397,7 @@ body {
   <!-- FOLDERS section (root name + toolbar inline —— ViewContainer 子视图 2) -->
   <div class="view-section">
     <div class="view-section-header folders expanded">
-      <span class="tree-twistie expanded">▼</span>
+      <span class="tree-twistie">▶</span>
       <span class="root-icon">📁</span>
       <span class="view-section-title root-name">linkdesk-project</span>
       <span class="view-section-actions">
@@ -412,7 +414,7 @@ body {
   <!-- OUTLINE (collapsed section —— 语言插件可贡献的 ViewContainer 子视图) -->
   <div class="view-section outline-section">
     <div class="view-section-header collapsed dimmed">
-      <span class="tree-twistie collapsed dimmed">▶</span>
+      <span class="tree-twistie dimmed">▶</span>
       <span class="view-section-title dimmed">大纲</span>
       <span class="view-section-hint">需要语言扩展</span>
     </div>
@@ -421,7 +423,7 @@ body {
   <!-- TIMELINE (collapsed section —— Git 插件可贡献的 ViewContainer 子视图) -->
   <div class="view-section timeline-section">
     <div class="view-section-header collapsed dimmed">
-      <span class="tree-twistie collapsed dimmed">▶</span>
+      <span class="tree-twistie dimmed">▶</span>
       <span class="view-section-title dimmed">时间线</span>
       <span class="view-section-hint">需要 Git 扩展</span>
     </div>
@@ -721,18 +723,17 @@ function findItem(path) {
 }
 
 // === FOLDERS section header twistie ===
-document.querySelector('.folders .view-section-header').addEventListener('click', function(e) {
+document.querySelector('.folders').addEventListener('click', function(e) {
+  const header = this.querySelector('.view-section-header');
   const rootPath = '/linkdesk-project';
   if (expandedPaths.has(rootPath)) {
     expandedPaths.delete(rootPath);
-    this.classList.remove('expanded');
-    this.classList.add('collapsed');
-    this.querySelector('.tree-twistie').textContent = '▶';
+    header.classList.remove('expanded');
+    header.classList.add('collapsed');
   } else {
     expandedPaths.add(rootPath);
-    this.classList.remove('collapsed');
-    this.classList.add('expanded');
-    this.querySelector('.tree-twistie').textContent = '▼';
+    header.classList.remove('collapsed');
+    header.classList.add('expanded');
   }
   render();
 });
