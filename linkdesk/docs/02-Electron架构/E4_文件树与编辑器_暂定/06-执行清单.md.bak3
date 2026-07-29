@@ -1,0 +1,497 @@
+# E4 执行清单——v2 重构版
+
+> 2026-07-29 重写。**对标 VS Code Explorer 6 文件 ~5,500 行。**
+> **🔥 进度唯一真相源。** 实现细节见对应专题文档——本清单只列任务+文件+行数+依赖+验证。
+>
+> 🎨 **AI 进场第一步——浏览器打开 [filetree-preview.html](filetree-preview.html) 看完整 UI 效果。**
+>
+> ⚠️ **v2 任务编号独立。** 本文 E4V#1–E4V#47 是新编号。已完成的旧 E4 #83–#95 仍保留在 commit 历史和 memory 中。两套编号互不冲突——旧编号是执行历史，新编号是剩余工作。
+
+---
+
+## 当前代码状态（新 AI 进场须知）
+
+```
+plugins/builtin/file-tree/src/
+├── FileTreeModel.ts       182 行  数据模型——懒加载+排序+findClosest+refresh
+├── FileTree.tsx            251 行  虚拟滚动+flattenTree+选中/聚焦+twistie+拖放hook+键盘hook
+├── FileTreeNode.tsx        161 行  节点渲染——React.memo+twistie+图标+compacted+decoration badge
+├── FileTreeContextMenu.tsx 130 行  15 命令注册(全占位)+15 菜单项到 MenuId.FileContext
+├── FileTreeKeyboard.ts     230 行  键盘导航+type-ahead(↑↓←→ Home/End Enter Space 字母跳转)
+├── FileTreeDnD.ts          192 行  拖放——OS拖入+树内拖拽+isAncestorOf+refreshDir
+├── CompactFolder.ts         43 行  getCompactedPath+isCompacted(⚠️ 视图层——待提取到模型层)
+├── FileExcludeFilter.ts     72 行  glob 排除过滤器(简单 **/*.ext/*name 模式)
+├── FileIconResolver.ts     125 行  数据驱动图标映射(customMappings 注入点)
+├── icon-mappings.ts         —    图标映射数据表
+├── pathUtils.ts             74 行  basename/splitPath/normalizePath/dirname/joinPath/extension/extensionWithDot
+├── layoutTokens.ts          16 行  TREE_ITEM_HEIGHT(22)/TREE_INDENT(16)/OVERSCAN(10)
+├── sidebar.tsx             137 行  侧栏容器——HEADER+面包屑+工具栏+FileTree/WelcomeView+右键菜单
+├── WelcomeView.tsx         113 行  空工作区——打开文件夹+最近列表(PluginStateService)+拖放
+├── index.tsx                 6 行  重导出 sidebar
+├── file-tree.css           346 行  BEM 全局样式——token+layout+node+scroll+menu+welcome+dnd+guide+dimmed
+└── plugin.json              68 行  图标栏注册+7命令+10快捷键+4配置项
+```
+
+**已安装防线：**
+- tsc 扫 `plugins/builtin/`（`tsconfig.json` include）
+- ESLint `import-x/no-unresolved: error`（`eslint.config.js`）
+- 所有路径走 `pathUtils.ts` 归一化
+- 所有颜色走 `var(--xxx)` CSS 变量
+- 所有 UI 文字走 `t()` i18n
+- React.memo 生效——回调传参数不传闭包
+
+**已知占位（尚未接线的骨架）：**
+- 工具栏"新建文件/新建文件夹"按钮 onClick 空
+- `onOpenFile` 回调空——等 E4V#24 FileAssociation
+- 15 个命令 handler 全部 `console.warn` 占位
+- `files.exclude` 配置未从 ConfigurationService 读取
+- `explorer.compactFolders` 配置未读取——压缩始终生效
+
+---
+
+## 🔴 致命级 Bug——新 AI 进场先看
+
+| # | 症状 | 根因 | 状态 |
+|:--|:--|:--|:--:|
+| OS 拖入祖先→后代 | 拖根目录到子目录→递归嵌套→1.85GB | OS 拖入无祖先检查 | ✅ `afc9bb6` |
+| OS 拖入自己→自己 | 拖 `sub/` 到树上 `sub` → `sub/sub/` 递归 | `afc9bb6` 只拦祖先→后代，未拦自己→自己 | ⬜ E4V#2 |
+| 两分支安全检查不归一 | OS 拖入+树内拖拽各做各的检查 | V2.6 式重复——下次第三个入口又会漏 | ⬜ E4V#3 |
+| CompactFolder A | 同名目录压缩——点两下才展开 | | ⬜ E4V#4 |
+| CompactFolder B | 压缩链末端文件→twistie 消失回不去 | `findLeaf` 返回文件无 twistie | ⬜ E4V#4 |
+| CompactFolder C | 叶子展开后子节点不可见 | `flattenTree` 压缩分支 `return` 提前退出 | ⬜ E4V#4 |
+
+---
+
+## 第 1 轮：🔴 安全——递归数据损毁（先修）
+
+> 不修 = 不敢验证 UI。数据损毁不可逆。
+
+### E4V#1 🔴🔴🔴 验证现有拖放防御
+**文件：** `FileTreeDnD.ts`
+**内容：** 跑 6 步测试清单（`02-视图与渲染/05-拖放系统.md` §三），确认 `afc9bb6` 已生效。
+**⚠️ 用测试目录，不用真实数据。**
+**验证：** 步骤 3（拖根目录到子目录）必须被拦截不执行。
+
+### E4V#2 🔴🔴🔴 OS 拖入补漏——自己→自己同目录拦截
+**文件：** `FileTreeDnD.ts` L159 | ~3 行
+**内容：** 加 `normalizedSrc === normalizedTarget` 判断。
+**Why：** `afc9bb6` 只拦了 `ancestor→descendant`，没拦 `self→self`。从资源管理器拖 `sub/` 到树上 `sub` 节点 → `joinPath(sub, "sub")` = `sub/sub/` → 递归嵌套。
+**修复：**
+```
+if (normalizedSrc === normalizedTarget || normalizedTarget.startsWith(normalizedSrc + "/")) continue;
+```
+**验证：** 从资源管理器拖 `test/sub/` 到树上 `test/sub` 节点——不执行、Console 无报错。
+
+### E4V#3 🔧 归一化——提取 `executeSafeDrop()`
+**文件：** `FileTreeDnD.ts` | ~25 行
+**设计文档：** `02-视图与渲染/05-拖放系统.md` §四
+**内容：** 提取一个函数，三个检查（祖先→后代/自己→自己/同路径）只写一处。OS 拖入和树内拖拽两分支都调用。
+**Why：** 两分支各自做安全检查 = V2.6 式重复。新增拖放入口时必然又漏。
+**验证：** 再跑 6 步测试清单——全部通过。
+
+---
+
+## 第 2 轮：🔴 CompactFolder——三合一修复
+
+> 阻塞多选（压缩行上选不了）、阻塞键盘导航（压缩段内移动）。
+
+### E4V#4 🔴 CompactFolder Bug A/B/C 修复
+**文件：** `FileTree.tsx` flattenTree L39-51 | ~10 行
+**设计文档：** `02-视图与渲染/02-压缩控制器.md` §四
+**内容：** 三合一修复：
+- A: 同名目录——leaf 引用走 `model.findClosest`
+- B: 文件末端——`findLeaf` 返文件时，用父目录做 twistieItem
+- C: 展开后——`shouldUnfold` 判断 `twistieItem` 而非 `leaf`
+**验证：** 展开/折叠压缩链——twistie 不消失、展开后有子节点、同名目录一次展开。
+
+### E4V#5 🔧 CompactController 类——对标 VS Code ITreeCompressionDelegate
+**文件：** 新 `CompactController.ts` | ~30 行
+**设计文档：** `02-视图与渲染/02-压缩控制器.md` §五
+**内容：** 新建 `CompactController` 类：
+- `isCompacted(item)`——查询压缩态
+- `expandCompact(uri)` / `collapseCompact(uri)`——展开/折叠压缩链
+- `isIncompressible(item)`→ 根/文件/根直子不可压缩
+- 从 `flattenTree` 中移除 `getCompactedPath` 调用，改为调 controller
+**验证：** `CompactController` 单元测试——压缩/展开/折叠逻辑独立可测。
+
+### E4V#6 🔧 CompactController 接入——模型层 + 视图层接线
+**文件：** `FileTreeModel.ts` + `FileTree.tsx` | ~20 行
+**内容：**
+- `FileTreeModel` 持有 `CompactController` 实例
+- `flattenTree` 调 `model.compactController.isCompacted(item)` 替代 `getCompactedPath`
+- `handleTwistie` 中展开/折叠走 `compactController.expandCompact`/`collapseCompact`
+**Why：** 压缩应在模型层——不在 `flattenTree` 里 `return` 跳过。对标 VS Code `CompressibleObjectTreeModel`。
+**验证：** 同 E4V#4——压缩链行为不变但逻辑在模型层。展开/折叠正常。
+
+---
+
+## 第 3 轮：数据模型扩展——对标 VS Code 补齐
+
+> 排序/过滤/配置——模型层的最后缺口。不做的话排序只能 foldersFirst、过滤只有简单 glob、配置项散落各处。
+
+### E4V#12 FileSorter 扩展——对标 VS Code 6 种排序
+**文件：** `FileTreeModel.ts` `_sort` 方法 | ~40 行
+**设计文档：** `01-数据模型/01-ExplorerItem与FileTreeModel.md` + VS Code `SortOrder` enum
+**内容：** 将 `SortOrder` 从 3 种扩到 6 种——`default` / `mixed` / `filesFirst` / `type` / `modified` / `foldersNestsFiles`。新增排序逻辑放在 `_sort` 的 switch 分支中。
+**验证：** 改 `explorer.sortOrder` → 树排序立即变化。
+
+### E4V#13 FileExcludeFilter——.gitignore 集成
+**文件：** `FileExcludeFilter.ts` + `sidebar.tsx` | ~20 行
+**设计文档：** `02-视图与渲染/03-过滤器.md`
+**内容：** 读取根目录 `.gitignore`→解析→合并到排除模式。由 `explorer.excludeGitIgnore` 配置控制开关。
+**验证：** 打开含 `.gitignore` 的目录→被 ignore 的文件不在树中出现。取消配置→文件恢复。
+
+### E4V#14 FileExcludeFilter——fileNesting 文件嵌套
+**文件：** `FileExcludeFilter.ts` + `FileTreeModel.ts` | ~20 行
+**设计文档：** `02-视图与渲染/03-过滤器.md`
+**内容：** `file.ts` → `file.d.ts`、`file.js`、`file.js.map` 折叠为子节点。`explorer.fileNesting.enabled`/`expand`/`patterns` 配置控制。
+**验证：** 文件夹中有 `app.ts` + `app.js` + `app.js.map`→`app.ts` 下嵌套显示 `.js` 和 `.js.map`。
+
+### E4V#15 FileExcludeFilter——只读/锁定检查
+**文件：** `FileTreeModel.ts` | ~10 行
+**内容：** 在 `_toExplorerItem` 中检查文件只读属性→设置 `explorerResourceReadonly` context key 的数据源。
+**验证：** 右键只读文件→重命名菜单项消失（`when: "!explorerResourceReadonly"`）。
+
+### E4V#16 配置项完整清单——补齐 plugin.json
+**文件：** `plugin.json` `contributes.configuration.properties` | ~30 行
+**设计文档：** `05-配置系统/01-配置项清单与归属.md`
+**内容：** 将文档中已列出的 20+ 配置项声明到 plugin.json——`explorer.confirmDelete` / `explorer.confirmDragAndDrop` / `explorer.enableDragAndDrop` / `explorer.expandSingleFolderWorkspaces` / `explorer.incrementalNaming` / `explorer.excludeGitIgnore` / `explorer.fileNesting.*` / `explorer.autoOpenDroppedFile` / `explorer.decorations.*`。
+**Why：** 声明式——所有配置项走 `plugin.json` + `ConfigurationService`。默认值对标 VS Code。
+**验证：** `ConfigurationService.get("explorer.confirmDelete")` 返回 `true`。
+
+---
+
+## 第 4 轮：🔴 Context Key——解阻塞
+
+> `explorerResourceCut` 阻塞剪贴板粘贴 when、`explorerResourceReadonly` 阻塞重命名安全判断。
+
+### E4V#17 🔴 Context Key P0（阻塞剪贴板+重命名）
+**文件：** `FileTreeContextMenu.tsx` + `FileTree.tsx` | ~15 行
+**设计文档：** `03-视图容器/02-ContextKey矩阵.md` §三 P0
+**内容：**
+- `explorerResourceCut`——剪贴板有剪切项时 setValue(true)，粘贴 when 依赖此 key
+- `explorerResourceReadonly`——聚焦项只读时 setValue(true)，重命名/删除 when 用 `!explorerResourceReadonly`
+- `explorerResourceMoveableToTrash`——Windows 可回收站时 setValue(true)，删除确认文案区分
+**验证：** 右键菜单 when 条件——`explorerResourceCut` 和 `explorerResourceReadonly` 可查询。
+
+### E4V#18 Context Key P1（压缩导航+UI）
+**文件：** `FileTree.tsx` | ~10 行
+**设计文档：** `03-视图容器/02-ContextKey矩阵.md` §三 P1
+**内容：**
+- `explorerViewletCompressedFocus` + `CompressedFirstFocus` + `CompressedLastFocus`
+- `viewHasSomeCollapsibleItem`——有已展开目录时为 true，驱动"全部折叠"按钮显隐
+**验证：** 聚焦压缩节点时 `explorerViewletCompressedFocus` = true。
+
+---
+
+## 第 5 轮：剪贴板服务
+
+### E4V#19 FileTreeClipboard 服务
+**文件：** 新 `FileTreeClipboard.ts` | ~40 行
+**内容：** 存储剪切/复制的文件 URI 列表 + 操作类型（cut/copy）+ 剪切一次性标记。
+**API：** `cut(uris)` / `copy(uris)` / `paste(targetDir)` / `isEmpty` / `isCut`.
+**剪贴板有内容时设 `explorerResourceCut` context key。
+**验证：** 右键文件→剪切→右键目录→粘贴菜单项可见（`explorerResourceCut` 使 when 通过）。
+
+---
+
+## 第 6 轮：UI 对齐 VS Code
+
+### E4V#20 Sidebar 布局——对齐 VS Code
+**文件：** `sidebar.tsx` + `FileTree.tsx` | ~25 行
+**设计文档：** `00.5-UI布局规格.md` §一（侧栏内部结构），`03-视图容器/01-侧栏与面包屑.md` §三
+**内容：**
+- a) toolbar（[+新建][🔄][⊟收]）移到 header 行——与根名同行对标 VS Code
+- b) 去面包屑独立行——根节点名 = 路径，`depth=0` 加粗 `file-tree-node--root`
+- c) `flattenTree` 根 `walk(root, 0)` 替代 `walk(root, 1)`——根缩进 0，第一层子节点缩进 1
+**验证：** 对照 `filetree-preview.html`——header 行显示 `📁 工具软件 [+][🔄][⊟]`。
+
+### E4V#21 CSS 引导线 + dimmed 接线
+**文件：** `FileTree.tsx` | ~20 行
+**内容：**
+- a) `flattenTree` 中给每行设置 `guide` flag——本层还有后续兄弟节点时 `guide: true`
+- b) `FlatItem` 加 `guide?: boolean` 字段
+- c) `FileTreeNode` 接入 `guide` → class `file-tree-node--guide`
+- d) `FileTreeModel` 加 `getFilteredItems`——展开排除目录时子节点保留但标记 dimmed（不直接过滤）
+- e) `FileTreeNode` 接入 `isDimmed` prop → class `file-tree-node--dimmed`
+**验证：** 展开 `node_modules` 子项灰显、缩进引导线贯通。
+
+---
+
+## 第 7 轮：简单命令 handler
+
+### E4V#22 copyPath + copyRelativePath handler
+**文件：** `FileTreeContextMenu.tsx` | ~15 行
+**内容：** `navigator.clipboard.writeText(item.uri)` + 相对路径版（取 `uri` 相对于 `root.uri`）。
+**验证：** 右键文件→复制路径→粘贴到记事本→正确。
+
+### E4V#23 revealInOS handler
+**文件：** `FileTreeContextMenu.tsx` | ~15 行
+**内容：** IPC 调 `shell.showItemInFolder(item.uri)`（Electron `shell` API）。
+**验证：** 右键文件→在文件管理器中显示→资源管理器打开并选中该文件。
+
+### E4V#24 openInTerminal handler
+**文件：** `FileTreeContextMenu.tsx` | ~15 行
+**内容：** IPC 调 `shell.openPath(dirname(item.uri))`——在系统终端打开目录。
+**验证：** 右键目录→在终端中打开→系统终端在该目录启动。
+
+---
+
+## 第 8 轮：新建文件/文件夹
+
+### E4V#25 newFile + newFolder handler + toolbar 接线
+**文件：** `FileTreeContextMenu.tsx` + `sidebar.tsx` | ~30 行
+**内容：**
+- a) handler 实现——`FileService.writeFile(joinPath(dir, defaultName), "")` + 刷新 + 自动进入重命名（待 E4V#32 完成后接入）
+- b) sidebar.tsx 工具栏按钮接线——新建文件/新建文件夹 onClick 调 handler
+**验证：** 点工具栏 [+新建文件]→文件出现在树中→可重命名。
+
+---
+
+## 第 9 轮：多选
+
+### E4V#26 Ctrl+Click——toggle 单项选中
+**文件：** `FileTree.tsx` | ~15 行
+**内容：** `selection: Set<string>` 替代 `selectedUri: string | null`。Ctrl+Click 切换单个 URI 进/出选中集合。
+**验证：** Ctrl+Click 两个文件→两个都高亮→再 Ctrl+Click 其中一个→取消选中。
+
+### E4V#27 Shift+Click——范围选中
+**文件：** `FileTree.tsx` | ~15 行
+**内容：** 从 `lastClickedUri` 到当前 item 之间的所有行加入选中集合。无修饰键的单 Click 清空集合并设此项为新选中。
+**验证：** 点第 2 行→Shift+点第 5 行→2/3/4/5 行全部高亮。
+
+### E4V#28 Ctrl+A——全选
+**文件：** `FileTree.tsx` | ~10 行
+**内容：** 全选 `flatItems` 中所有项。右键菜单前：如果右键的项不在选中集合→自动切为单选中（对标 VS Code）。
+**验证：** Ctrl+A→所有行高亮→右键→批量删除（E4V#29 后生效）。
+
+---
+
+## 第 10 轮：编辑命令 handler
+
+### E4V#29 delete handler
+**文件：** `FileTreeContextMenu.tsx` | ~25 行
+**内容：** 读取 `selection` 集合→`confirmDelete` 配置→`FileService.deleteEntry`（回收站 or 永久删除）→刷新父目录。
+**验证：** 选中多个文件→Delete→确认弹窗→文件消失。
+
+### E4V#30 cut + copy handler
+**文件：** `FileTreeContextMenu.tsx` | ~20 行
+**内容：** `FileTreeClipboard.cut/selections` + `FileTreeClipboard.copy/selections`。cut 后选中项设 `explorerResourceCut`。
+**验证：** 右键文件→剪切→图标灰显（可通过 CSS `opacity: 0.5`）。
+
+### E4V#31 paste handler
+**文件：** `FileTreeContextMenu.tsx` | ~20 行
+**内容：** 读 `FileTreeClipboard`→`executeSafeDrop`（E4V#3 归一化函数）→`FileService.copy`/`deleteEntry`→清剪贴板→刷新。
+**验证：** 剪切文件→点目标目录→粘贴→源消失目标出现。
+
+---
+
+## 第 11 轮：行内重命名
+
+### E4V#32 F2 行内重命名
+**文件：** `FileTree.tsx` | ~50 行
+**内容：**
+- F2 或右键重命名→选中节点切换到 `<input>` inline 编辑
+- `extension` from pathUtils 取扩展名——选中时只选文件名不含扩展名（对标 VS Code）
+- Enter 确认→`FileService.renameEntry` + `joinPath(dirname, newName)` + 冲突检测
+- Esc 取消→恢复显示
+- 冲突时自动加 "Copy" 后缀递增
+**验证：** F2→编辑→Enter→文件重命名成功→Esc 取消恢复原名。
+
+---
+
+## 第 12 轮：打开文件
+
+### E4V#33 FileAssociation 连线——openFile handler
+**文件：** `FileTreeContextMenu.tsx` + `sidebar.tsx` | ~35 行
+**内容：**
+- `sidebar.tsx` 的 `handleOpenFile` 从 `FileAssociationService` 查扩展名→`createTab(editorPluginId, { filePath })`
+- `openFile` handler 替换占位——调 `handleOpenFile(item, "pin")`
+- `extensionWithDot` from pathUtils 取扩展名给 FileAssociation
+**验证：** 双击 .json→Monaco 编辑器打开（需 Monaco 插件就绪，否则至少 tab 创建成功）。
+
+### E4V#34 openToSide + openFocused handler
+**文件：** `FileTreeContextMenu.tsx` | ~15 行
+**内容：** `openToSide`——`createTab` 到非活跃分屏。`openFocused`——聚焦项是文件则打开、是目录则 toggle 展开。
+**验证：** Ctrl+Enter→侧边打开文件。Enter→打开聚焦项。
+
+---
+
+## 第 13 轮：定位与装饰
+
+### E4V#35 revealInExplorer——定位文件并展开目录链
+**文件：** `FileTreeModel.ts` + `FileTreeContextMenu.tsx` | ~60 行
+**内容：**
+- 实现 `findAndExpandToBypassExclude(uri)`——`pathUtils.splitPath` 逐段 `listDir` 绕过 FileExcludeFilter→展开→重渲染
+- 入口 `normalizePath(args.filePath)`
+- 定位后高亮 + `scrollToItem`
+**验证：** 从其他插件调 `revealInExplorer`→文件树自动展开深层目录→高亮目标文件。
+
+### E4V#36 FileDecoration 消费
+**文件：** 新 `FileTreeDecoration.ts` | ~50 行
+**内容：** `import type { FileDecorationRegistry } from "@src/core/FileDecorationRegistry"`→订阅 `onDidChange`→`FileTreeModel` apply decoration→`FileTreeNode` 渲染 badge。
+**验证：** Git 插件注册 decoration→文件树显示 M/U/A 标记。
+
+---
+
+## 第 14 轮：ViewContainer——侧栏桌子化
+
+> 🔴 **sidebar 不能写死 file-tree。** HTML 预览已画好 FOLDERS/OUTLINE/TIMELINE。对标 VS Code ViewContainer——侧栏 = 容器，文件树只是往里放的一个视图。谁装了谁就出现。
+
+### E4V#7 ViewContainerService 类——核心桌子
+**文件：** 新 `src/core/ViewContainerService.ts` | ~50 行
+**设计文档：** `00.9-Explorer架构重审.md` §层 6
+**内容：** `ViewContainerService` 类——`registerViewContainer` / `registerView` / `getViews` / `onDidChangeViews` / `setViewVisibility`。Event emitter 模式（对标 core 其他 Service——`CommandRegistry`/`ConfigurationService` 的 emitter 模式）。
+**Why：** 新桌子——准入三条全满足（多提供方+多消费方+桌子不知道内容）。
+**验证：** `new ViewContainerService()` → `getViews("explorer")` 返回空数组。
+
+### E4V#8 ViewContainer schema——plugin.json 贡献点
+**文件：** `public/schemas/plugin.schema.json` | ~25 行
+**设计文档：** `00.9-Explorer架构重审.md` §层 6 L136-148
+**内容：** 加两个贡献点 schema：
+- `contributes.viewsContainers`——`{ id, title, icon }` 声明容器
+- `contributes.views`——`{ "[containerId]": [{ id, name, when }] }` 声明视图归属
+**Why：** 声明式——插件通过 plugin.json 注册视图，不写代码。
+**验证：** plugin.json 写 `contributes.views.explorer: [{ id: "test" }]` → schema 不报错。
+
+### E4V#9 sidebar.tsx 重写——渲染循环替代硬编码
+**文件：** `sidebar.tsx` | ~55 行
+**设计文档：** `filetree-preview.html` L389–430
+**内容：**
+- a) 移除 `import FileTree` / `import WelcomeView` 硬编码
+- b) 改为渲染循环——`getViews("explorer").map(view => <ViewSection ...>)` (~15 行)
+- c) 每个 `.view-section` JSX：twistie 折叠/展开 + section 标题 + toolbar actions + 内容区 (~20 行)
+- d) per-section collapse state——`useState` 管理折叠/展开 (~10 行)
+- e) 右键 section 标题→显示/隐藏菜单项（对标 VS Code，`setViewVisibility`）(~5 行)
+- f) `explorerFocus` context key 从 FileTree 手动 setValue → ViewContainerService 自动绑定 (~5 行)
+- g) **不写死视图列表。** 有几个插件注册就显示几个 section。当前只有 file-tree → 只有一个 FOLDERS
+**验证：** 侧栏渲染一个 FOLDERS section（与 HTML 预览一致）——`📁 根名 [+][🔄][⊟]` + 树内容。右键标题可隐藏。
+
+### E4V#10 file-tree 注册到 ViewContainer
+**文件：** file-tree `index.tsx` | ~10 行
+**内容：** file-tree 插件 `activate()` 中调用 `ViewContainerService.registerView("explorer", { id: "folders", title: rootName, render: FileTreeSidebar })`。
+**验证：** 侧栏通过 ViewContainerService 找到 file-tree 注册的视图→渲染 FOLDERS section。
+
+### E4V#11 ViewContainer CSS——对标 HTML 预览
+**文件：** `file-tree.css` | ~70 行
+**设计文档：** `filetree-preview.html` L301–368
+**内容：** 将 HTML 预览中已写好的 `.view-section` / `.view-section-header` / `.view-section-title` / `.view-section-actions` / `.view-section-hint` / `.outline-section` / `.timeline-section` 样式搬到 `file-tree.css`。包括：header 布局（flex + gap + height 22px）、twistie 旋转动画、dimmed 灰显态（插件未安装时）、root-name 加粗样式。
+**验证：** 侧栏 section 外观与 `filetree-preview.html` 一致——twistie 箭头旋转动画、标题大写加粗、dimmed section 半透明。
+
+---
+
+## 第 15 轮：集成
+
+### E4V#37 tabActions autoReveal
+**文件：** `sidebar.tsx` | ~30 行
+**内容：** 订阅 `onDidChangeActiveTab`→`tab.payload.filePath` 调 `revealInExplorer`（E4V#35）。
+**验证：** 编辑器切标签页→文件树自动定位到对应文件。
+
+### E4V#38 MenuBar 菜单栏贡献
+**文件：** `FileTreeContextMenu.tsx` | ~30 行
+**设计文档：** `04-命令系统/05-菜单栏贡献.md`
+**内容：** `registerMenuItems(MenuId.MenuBar, "file-tree", [...])`。对标 VS Code 文件/编辑/选择菜单——分组见设计文档。
+**Why：** 核心 `MenuId.MenuBar` + `TitleBar.tsx` 已就绪——只需注册，零核心改动。
+**验证：** 顶栏出现 [文件][编辑][选择] 菜单项。
+
+### E4V#39 配置项接入
+**文件：** `sidebar.tsx` + `FileTreeModel.ts` | ~25 行
+**内容：**
+- `explorer.sortOrder` → `FileTreeModel` 构造时从 `ConfigurationService.get` 读取
+- `explorer.compactFolders` → `getCompactedPath` 前检查配置、`onDidChange` 订阅
+- `files.exclude` → `FileExcludeFilter.configure` 从 `ConfigurationService.get` 读取
+**验证：** 改 settings.json `files.exclude` 加 `"*.log": true`→.log 文件从树中消失。
+
+---
+
+## 第 16 轮：Multi-root 工作区
+
+### E4V#40 Multi-root 支持
+**文件：** `FileTreeModel.ts` + `sidebar.tsx` | ~50 行
+**内容：** `setRoots` 支持多个根→每个根 `depth=0` 加粗样式→根间不互相包含检查。
+**验证：** 打开两个文件夹→树中两个根并排显示。
+
+### E4V#41 工作区状态持久化
+**文件：** 新 `workspace-state.ts` | ~50 行
+**内容：** 展开/选中/滚动位置 → `PluginStateService` 读写。F5 恢复。debounce 500ms 写。
+**🛡️：** 反序列化后逐项 `normalizePath()`——防旧数据含 `\`。
+**验证：** 展开目录→F5→展开状态恢复。
+
+---
+
+## 第 17 轮：文件搜索
+
+> ⚠️ 搜索可独立于文件树——可能独立成插件。当前先在 file-tree 插件内实现。
+
+### E4V#42 SearchView UI
+**文件：** 新 `SearchView.tsx` | ~80 行
+**内容：** 搜索框 + 替换框 + include/exclude files 输入 + 结果列表虚拟滚动。
+**验证：** Ctrl+Shift+F→搜索面板出现。
+
+### E4V#43 FileSearcher
+**文件：** 新 `FileSearcher.ts` | ~60 行
+**内容：** 递归搜索 + `EncodingService` 编码检测 + 取消（AbortController）+ 结果缓冲 2000 条上限。
+**🛡️：** 存储 `filePath` 时调 `normalizePath()`。
+**验证：** 搜索 "import"→结果列表显示所有匹配文件。
+
+### E4V#44 SearchReplace + 结果导航
+**文件：** `SearchReplace.ts` + `SearchView.tsx` | ~60 行
+**内容：** 替换全部（确认不可撤销）+ F4/Shift+F4 导航 + 搜索历史走 `PluginStateService`。
+**🛡️：** 持久化走 PluginStateService——禁止 localStorage。B66/B67/B68 教训。
+**验证：** 搜索 "foo"→替换为 "bar"→文件内容变更。
+
+---
+
+## 第 18 轮：Monaco 编辑器（独立插件 `plugins/builtin/editor/`）
+
+### E4V#45 Editor React 包装
+**文件：** 新 `plugins/builtin/editor/` 目录 | ~80 行
+**内容：** Monaco Editor React 包装 + Ctrl+S 保存 + `language-map.ts` 扩展名→语言 ID 映射。
+**🛡️：** 扩展名映射用 `extension` from pathUtils。
+**验证：** 打开 .tsx→语法高亮正确。Ctrl+S→文件保存。
+
+### E4V#46 EncodingService（核心）
+**文件：** `src/core/encoding/EncodingService.ts` | ~50 行
+**内容：** BOM/UTF-8/GBK 检测 + 解码。`E4V#43` FileSearcher 和 editor 共用。
+**验证：** 打开 GBK 编码文件→不乱码。
+
+### E4V#47 JSON Schema 自动补全 + 多标签页
+**文件：** `MonacoSchemaConfig.ts` + `EditorView.tsx` | ~40 行
+**内容：**
+- `settings.json`/`keybindings.json` → JSON Schema 自动补全
+- `setDirty` + `files.encoding`/`files.autoSave` 消费 + Ctrl+Shift+T 恢复
+**🛡️：** encoding/autoSave 在 editor 的 `contributes.configuration`——不在 file-tree plugin.json。
+**验证：** 编辑 settings.json→自动补全字段名。
+
+---
+
+## 🔴 致命 Bug 速查
+
+| Bug | 症状 | 修复 |
+|:--|:--|:--:|
+| OS 拖入祖先→后代 1.85GB | 拖根目录到子目录→递归嵌套膨胀 | ✅ `afc9bb6` |
+| OS 拖入自己→自己 | 拖 `sub/` 到树上 `sub` → `sub/sub/` 递归 | ⬜ E4V#2 |
+| 两分支安全检查不归一 | V2.6 式重复——未来第三个入口必漏 | ⬜ E4V#3 |
+| CompactFolder A 同名目录 | 点两下才展开 | ⬜ E4V#4 |
+| CompactFolder B 文件末端 | twistie 消失回不去 | ⬜ E4V#4 |
+| CompactFolder C 叶子展开 | 子节点不可见 | ⬜ E4V#4 |
+| 打开第二个文件夹不刷新 | `syncRoots` async 竞态 | 已知——调查中 |
+
+---
+
+## AI 友好度检查清单（每任务执行前）
+
+> 来源：`📦 已归档/00.8-跨任务审计与预防.md` §九
+
+- [ ] 涉及路径字符串？→ 入口 `normalizePath()` + 拼接 `joinPath()`
+- [ ] 需要文件扩展名？→ `import { extension } from "./pathUtils"`
+- [ ] 需要持久化？→ `PluginStateService`，不写 localStorage/新文件
+- [ ] import 核心类型？→ `import type { ... } from "@src/core/..."`，不重定义
+- [ ] 需要路径比较？→ 两端都 normalize 后再比
+- [ ] 涉及拖放？→ 走 `executeSafeDrop()`（E4V#3 归一化函数）——不另写安全检查
+
+---
+
+> **← 索引：** `00-README.md`
+> **← 架构重审：** `00.9-Explorer架构重审.md`
+> **← 旧清单：** `📦 已归档/07-执行清单.md`

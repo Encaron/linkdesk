@@ -883,6 +883,8 @@ function App() {
         // E3.5 #CP21: 切 slot props
         renderLabel={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
         renderCategory={() => t("切换 DevTools")}
+        // E3.5 #CP24: 显示目标类型
+        renderDetail={(target) => target.kind === 'shell' ? t("壳窗口 DevTools") : t("插件 DevTools")}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>

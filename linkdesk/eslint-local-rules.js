@@ -456,10 +456,59 @@ const noModuleLevelIpcListener = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 6：禁止 QuickPick renderItem——新代码必须走 slot props
+// ═══════════════════════════════════════════════════════════
+//
+// E3.5 #CP17 QuickPick 布局归一化：renderItem 自由度过高导致视觉不统一。
+// 新代码必须用 renderLabel/renderCategory/renderDetail/renderDetailRight。
+// renderItem 仅保留向后兼容，已迁移的 5 个消费者全部切 slot。
+//
+// 错误示例：
+//   <QuickPick renderItem={(item) => <span>...</span>} ... />
+//
+// 正确示例：
+//   <QuickPick renderLabel={(item) => item.title} renderDetail={(item) => item.id} ... />
+
+const noQuickpickRenderItem = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "QuickPick 禁止 renderItem——新代码必须用 structured slot props",
+      recommended: true,
+    },
+    messages: {
+      noRenderItem:
+        "🔥 QuickPick renderItem 已废弃——E3.5 #CP17 布局归一化后禁止使用。" +
+        " renderItem 自由度过高导致各面板视觉不统一。" +
+        " 改用 slot props：renderLabel / renderCategory / renderDetail / renderDetailRight。" +
+        " 详见 docs/02-Electron架构/E3.5-软件生态美化/命令面板美化/03-QuickPick布局归一化.md",
+    },
+  },
+
+  create(context) {
+    return {
+      // 匹配 <QuickPick renderItem={...} ... />
+      JSXElement(node) {
+        const tagName = node.openingElement.name;
+        if (tagName.type !== "Identifier" || tagName.name !== "QuickPick") return;
+
+        for (const attr of node.openingElement.attributes) {
+          if (attr.type === "JSXAttribute" && attr.name.type === "JSXIdentifier" && attr.name.name === "renderItem") {
+            context.report({ node: attr, messageId: "noRenderItem" });
+            return;
+          }
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
   "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
   "no-ref-current-in-jsx": noRefCurrentInJsx,
   "no-module-level-ipc-listener": noModuleLevelIpcListener,
+  "no-quickpick-render-item": noQuickpickRenderItem,
 };

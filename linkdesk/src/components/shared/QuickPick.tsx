@@ -12,6 +12,7 @@
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
+import { useTranslation } from "react-i18next";
 import { registerCommand } from "../../core/CommandRegistry";
 
 /* ── 模糊搜索（E2c #18）── */
@@ -70,6 +71,8 @@ export interface QuickPickProps<T> {
   renderDetail?: (item: T) => ReactNode;
   /** E3.5 #CP17：第二行右侧——快捷键/状态。不传则不显示。 */
   renderDetailRight?: (item: T) => ReactNode;
+  /** E3.5 #CP09：输入前缀字符——命令面板传 ">" 标明命令模式 */
+  prefix?: string;
   /** E3f #53b：每行右侧操作区——命令面板齿轮等。QuickPick 不关心内容，只留位置。 */
   renderItemActions?: (item: T, isSelected: boolean) => ReactNode;
 }
@@ -91,7 +94,9 @@ export default function QuickPick<T>({
   renderDetail,
   renderDetailRight,
   renderItemActions,
+  prefix,
 }: QuickPickProps<T>) {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -187,14 +192,17 @@ export default function QuickPick<T>({
     <>
       <div ref={overlayRef} className="ctx-overlay" onClick={onClose} />
       <div ref={paletteRef} className="palette">
-        <input
-          ref={inputRef}
-          className="palette-input"
-          type="text"
-          placeholder={placeholder}
-          value={query}
-          onChange={(e) => onQueryChange(e.target.value)}
-          onKeyDown={(e) => {
+        {/* E3.5 #CP10: input 行——prefix + input + (future: clear) */}
+        <div className="palette-input-row">
+          {prefix && <span className="palette-prefix">{prefix}</span>}
+          <input
+            ref={inputRef}
+            className="palette-input"
+            type="text"
+            placeholder={placeholder}
+            value={query}
+            onChange={(e) => onQueryChange(e.target.value)}
+            onKeyDown={(e) => {
             if (e.key === "Escape") {
               onClose();
               return;
@@ -215,9 +223,24 @@ export default function QuickPick<T>({
               return;
             }
           }}
-        />
+          />
+          {/* E3.5 #CP13: 清除按钮——query 非空时显示 */}
+          {query && (
+            <button
+              className="palette-clear codicon codicon-close"
+              onClick={() => { setQuery(""); setSelected(0); inputRef.current?.focus(); }}
+              title={t("清除")}
+            />
+          )}
+        </div>
         <div className="palette-list" ref={listRef}>
-          {filtered.map((item, i) => {
+          {/* E3.5 #CP08: 空态提示——无匹配结果时显示，避免白板 */}
+          {filtered.length === 0 ? (
+            <div className="palette-empty">
+              {query ? t("未找到匹配命令") : t("输入命令名称搜索…")}
+            </div>
+          ) : (
+            filtered.map((item, i) => {
             const isSelected = i === selected;
             return (
             <div
@@ -259,7 +282,12 @@ export default function QuickPick<T>({
               )}
             </div>
             );
-          })}
+          })
+          )}
+          {/* E3.5 #CP16: 结果计数 */}
+          {filtered.length > 0 && (
+            <div className="palette-count">{filtered.length} {t("个命令")}</div>
+          )}
         </div>
       </div>
     </>,
@@ -305,12 +333,9 @@ export function showQuickPick(options: ShowQuickPickOptions): Promise<QuickPickI
         onSelect={(item) => cleanup(item)}
         getSearchText={(item) => item.label}
         getKey={(item) => item.label}
-        renderItem={(item) => (
-          <span>
-            <span>{item.label}</span>
-            {item.description && <span style={{ opacity: 0.6, marginLeft: 8 }}>{item.description}</span>}
-          </span>
-        )}
+        // E3.5 #CP22: 切 slot props——description 从第一行移到第二行 detail
+        renderLabel={(item) => item.label}
+        renderDetail={(item) => item.description}
       />,
     );
   });

@@ -79,6 +79,9 @@ export default [
       // ═══ E3j #81 硬约束：禁止模块级 _initialized guard + IPC 监听器 ═══
       "linkdesk/no-module-level-ipc-listener": "error",
 
+      // ═══ E3.5 #CP17 硬约束：QuickPick 禁止 renderItem——新代码走 slot props ═══
+      "linkdesk/no-quickpick-render-item": "error",
+
       // ═══ 防止副作用写在 setState 内部（B25 教训） ═══
       // 此规则在 TypeScript 层面无法精确检测，由 code review 辅助。
       // 原则：setState((prev) => { ... return newState }) 内不放 appendLine/emit/invoke。

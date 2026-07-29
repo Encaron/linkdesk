@@ -19,6 +19,7 @@ import {
   getCurrentTheme,
   getEffectiveAccentColor,
 } from "../core/ThemeEngine";
+import { ThemeRegistry } from "../core/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
@@ -99,6 +100,12 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
       // E3.5 #CP19: 切 slot props
       renderLabel={(name) => name}
       renderCategory={(name) => name === originalTheme.current ? "当前" : undefined}
+      // E3.5 #CP23: 显示主题类型——uiTheme 已在 ThemeRegistry 中
+      renderDetail={(name) => {
+        const theme = ThemeRegistry.get(name);
+        if (!theme) return null;
+        return theme.uiTheme === "dark" ? "暗色主题" : theme.uiTheme === "light" ? "浅色主题" : "高对比度";
+      }}
     />
   );
 }
