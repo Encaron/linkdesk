@@ -35,14 +35,19 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number) {
     // 🔥 E4a #95c: 紧凑文件夹——检查是否可压缩
+    //   ⚠️ 如果叶子目录已展开且子节点已加载 → 不压缩，正常渲染子节点
     if (item.isDirectory) {
       const compacted = getCompactedPath(item);
       if (compacted) {
-        // 压缩链——以 leaf 作为 item，显示完整路径段
         const leaf = findLeaf(item);
-        result.push({ item: leaf ?? item, depth, compactedSegments: compacted });
-        // 跳过子节点——已压缩为单行
-        return;
+        const shouldUnfold = leaf && leaf.isDirectory
+          && model.isExpanded(leaf.uri) && leaf.children !== null;
+        if (!shouldUnfold) {
+          // 压缩链——以 leaf 作为 item，显示完整路径段
+          result.push({ item: leaf ?? item, depth, compactedSegments: compacted });
+          return; // 跳过子节点——已压缩为单行
+        }
+        // 叶子已展开 → fall through 到正常渲染
       }
     }
     result.push({ item, depth });
