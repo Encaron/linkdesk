@@ -114,20 +114,31 @@ export function useMarketplacePlugins() {
 
   /* 🔥 E36#7.3e badge 归一化——四组 badge 集中在此更新，各 view 组件零改动 */
   useEffect(() => {
-    const updateBadge = (viewId: string, count: number) => {
-      const existing = ViewContainerService.getView(viewId);
-      if (!existing) return;
-      ViewContainerService.registerView("marketplace", "marketplace", {
-        id: viewId,
-        title: existing.title,
-        render: existing.render,
-        badge: count,
-      });
+    const updateAllBadges = () => {
+      const setBadge = (viewId: string, count: number) => {
+        const existing = ViewContainerService.getView(viewId);
+        if (!existing) return;
+        ViewContainerService.registerView("marketplace", "marketplace", {
+          id: viewId,
+          title: existing.title,
+          render: existing.render,
+          badge: count,
+        });
+      };
+      setBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
+      setBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
+      setBadge("disabled", _disabledPlugins.length);
+      setBadge("uninstalled", _uninstalledPlugins.length);
     };
-    updateBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
-    updateBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
-    updateBadge("disabled", _disabledPlugins.length);
-    updateBadge("uninstalled", _uninstalledPlugins.length);
+
+    updateAllBadges();
+
+    /* 🔥 loader 异步 import view 组件后才注册——不能假设首次渲染时 view 已就绪。
+     * 订阅 onDidChangeViews 确保 view 注册完成后 badge 能追上。 */
+    const sub = ViewContainerService.onDidChangeViews.event(({ containerId }) => {
+      if (containerId === "marketplace") updateAllBadges();
+    });
+    return () => sub();
   }, [rerender]);
 
   const search = getMarketplaceSearch().toLowerCase();
