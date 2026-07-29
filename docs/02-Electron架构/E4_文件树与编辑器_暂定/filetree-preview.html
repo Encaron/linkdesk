@@ -489,6 +489,24 @@ const treeData = {
                 { name: 'validate.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
               ]
             },
+            {
+              // 🔴 Bug B 复现：目录链→文件→压缩后 twistie 消失
+              //   utils/STLINK Utility/v4.6.0/setup.exe
+              //   压缩链: "STLINK Utility / v4.6.0"
+              //   findLeaf 返回 setup.exe(文件)→无 twistie→回不去
+              name: 'STLINK Utility',
+              isDir: true,
+              compact: true,
+              children: [
+                {
+                  name: 'v4.6.0',
+                  isDir: true,
+                  children: [
+                    { name: 'STM32 ST-LINK Utility v4.6.0-setup.exe', isDir: false, icon: '⚙', iconColor: '#94A3B8' },
+                  ]
+                },
+              ]
+            },
           ]
         },
         {
