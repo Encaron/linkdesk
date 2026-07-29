@@ -155,6 +155,15 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       const sourceItem = dragItemRef.current;
       dragItemRef.current = null;
 
+      // 工具：刷新目录——若展开则重载子节点，保证 twistie 箭头与内容一致
+      const refreshDir = async (dir: string) => {
+        callbacks.model.refresh(dir);
+        if (callbacks.model.isExpanded(dir)) {
+          const item = callbacks.model.findClosest(dir);
+          if (item) await callbacks.model.getChildren(item);
+        }
+      };
+
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
@@ -165,7 +174,8 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
             await copy(srcPath, dest);
           }
         }
-        callbacks.model.refresh(target.targetDir).then(() => callbacks.rerender());
+        await refreshDir(target.targetDir);
+        callbacks.rerender();
         return;
       }
 
@@ -183,8 +193,9 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       const dest = joinPath(target.targetDir, sourceItem.name);
       await copy(uri, dest);
       await deleteEntry(uri);
-      callbacks.model.refresh(srcDir).then(() => callbacks.rerender());
-      callbacks.model.refresh(target.targetDir).then(() => callbacks.rerender());
+      await refreshDir(srcDir);
+      await refreshDir(target.targetDir);
+      callbacks.rerender();
     },
     [dndState.hoverIndex, callbacks],
   );
