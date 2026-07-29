@@ -1,27 +1,22 @@
 /**
- * FileTreeSidebar——文件树侧栏包装。
- * E4a #90：路径面包屑 + 工具栏 + 文件树 / 空工作区欢迎。
+ * FoldersView——文件树视图。
+ * E3.6：从 sidebar.tsx 提取——SidePanel 统画 header，此处只负责内容。
  *
- * 对标 VS Code ExplorerView。
- *
- * @deprecated E3.6——SidePanel 现在通过 ViewContainerService 渲染 FoldersView。
- *   保留此文件仅用于旧 sidebar 字段兼容，R4 删除。
+ * 对标 VS Code ExplorerView 的 FOLDERS section。
  */
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { CoreEvents } from "@src/core/CoreEvents";
-import FileTree from "./FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu } from "./FileTreeContextMenu";
-import WelcomeView from "./WelcomeView";
-import { FileTreeModel } from "./FileTreeModel";
-import type { ExplorerItem } from "./FileTreeModel";
-import "./file-tree.css";
+import FileTree from "../FileTree";
+import FileTreeContextMenu, { activateFileTreeContextMenu } from "../FileTreeContextMenu";
+import WelcomeView from "../WelcomeView";
+import { FileTreeModel } from "../FileTreeModel";
+import type { ExplorerItem } from "../FileTreeModel";
+import "../file-tree.css";
 
-/* ── 组件 ── */
-
-const FileTreeSidebar: React.FC = () => {
+const FoldersView: React.FC = () => {
   const { t } = useTranslation();
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
@@ -30,7 +25,7 @@ const FileTreeSidebar: React.FC = () => {
   const [, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
-  /* ── 注册 explorer 命令 + FileContext 菜单项（对标 marketplace） ── */
+  /* ── 注册 explorer 命令 + FileContext 菜单项 ── */
   useEffect(() => { activateFileTreeContextMenu(); }, []);
 
   /* ── 右键菜单状态 ── */
@@ -48,7 +43,6 @@ const FileTreeSidebar: React.FC = () => {
   );
 
   /* ── 同步工作区根 ── */
-
   const syncRoots = useCallback(async () => {
     const folders = getWorkspaceFolders();
     setRoots(folders);
@@ -65,14 +59,12 @@ const FileTreeSidebar: React.FC = () => {
     return () => { unsub1(); unsub2(); };
   }, [syncRoots, model, rerender]);
 
-  /* ── 打开文件（占位——E4c #103 FileAssociation 连线） ── */
-
+  /* ── 打开文件 ── */
   const handleOpenFile = useCallback((_item: ExplorerItem, _mode: "preview" | "pin") => {
-    // TODO E4c #103: 通过 FileAssociationService 打开编辑器
+    // TODO E4c #103
   }, []);
 
   /* ── 工具栏操作 ── */
-
   const handleRefresh = useCallback(async () => {
     await model.refresh();
     rerender();
@@ -83,15 +75,10 @@ const FileTreeSidebar: React.FC = () => {
     rerender();
   }, [model, rerender]);
 
-  /* ── 渲染 ── */
-
   const rootName = roots[0]?.name ?? "";
 
   return (
-    <div className="file-tree-root file-tree-sidebar">
-      {/* 标题栏 */}
-      <div className="file-tree-header">{t("资源管理器")}</div>
-
+    <div className="file-tree-root">
       {/* 路径面包屑 */}
       {rootName && (
         <div className="file-tree-breadcrumb">
@@ -102,10 +89,10 @@ const FileTreeSidebar: React.FC = () => {
 
       {/* 工具栏 */}
       <div className="file-tree-toolbar">
-        <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => {/* TODO E4b #98 */}}>
+        <button className="file-tree-toolbar-btn" title={t("新建文件")}>
           <span className="codicon codicon-new-file" />
         </button>
-        <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => {/* TODO E4b #98 */}}>
+        <button className="file-tree-toolbar-btn" title={t("新建文件夹")}>
           <span className="codicon codicon-new-folder" />
         </button>
         <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={handleRefresh}>
@@ -137,4 +124,4 @@ const FileTreeSidebar: React.FC = () => {
   );
 };
 
-export default FileTreeSidebar;
+export default FoldersView;
