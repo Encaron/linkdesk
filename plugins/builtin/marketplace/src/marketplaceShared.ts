@@ -118,6 +118,9 @@ export function useMarketplacePlugins() {
       const setBadge = (viewId: string, count: number) => {
         const existing = ViewContainerService.getView(viewId);
         if (!existing) return;
+        // 🔥 防止死循环：registerView 无条件 fire onDidChangeViews，
+        // 如果 badge 值没变就跳过——否则事件→更新→事件→更新 无限循环
+        if (existing.badge === count) return;
         ViewContainerService.registerView("marketplace", "marketplace", {
           id: viewId,
           title: existing.title,
