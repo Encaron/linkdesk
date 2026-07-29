@@ -514,7 +514,7 @@ function App() {
   type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' };
   const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
 
-  // 图标栏点击——viewRole 声明决定行为。
+  // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
   // sidebarPrimary（默认）：toggle 侧栏，对标 VS Code Activity Bar。
   // tabOnly：直接开标签页，对标 VS Code 设置齿轮。
   const handleIconClick = useCallback(
@@ -522,9 +522,17 @@ function App() {
       const plugin = getViewPlugin(pluginId);
       if (plugin?.manifest.viewRole === "tabOnly") {
         createTab(pluginId);
-      } else {
-        setSidebarView((prev) => (prev === pluginId ? null : pluginId));
+        return;
       }
+      // E3.6：sidebarView 现在存 containerId，不是 pluginId
+      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      if (!containers) {
+        console.warn(`[App] 插件 "${pluginId}" 未声明 viewsContainers——无法打开侧栏`);
+        return;
+      }
+      const containerId = Object.keys(containers)[0];
+      if (!containerId) return;
+      setSidebarView((prev) => (prev === containerId ? null : containerId));
     },
     [createTab]
   );
