@@ -111,6 +111,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
           title={sectionTitle}
           collapsible={!mergeHeader}
           defaultOpen={!view.collapsed}
+          badge={view.badge}
           actions={view.actions}
           titleDescription={view.titleDescription}
           titleTooltip={view.titleTooltip}

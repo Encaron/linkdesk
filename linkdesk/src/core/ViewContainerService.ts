@@ -75,6 +75,8 @@ export interface ViewDescriptor {
   showActions?: "always" | "whenExpanded" | "default";
   /** 标题 hover tooltip——标题截断时显示完整文字。对标 VS Code titleContainerHover */
   titleTooltip?: string;
+  /** 标题右侧标记——数字/短文字（如已安装数量 "15"）。对标 VS Code IViewDescriptor.badge */
+  badge?: string | number;
 }
 
 /** 容器变更事件 */
@@ -259,8 +261,8 @@ export class ViewContainerServiceClass extends RegistryBase {
       const oldRender = existing.render;
       Object.assign(existing, descriptor);
       // 保留原 render——如果新 descriptor 未提供 render
-      if (!descriptor.render || descriptor.render === oldRender) {
-        // render 没变，用已有的
+      if (!descriptor.render) {
+        existing.render = oldRender;
       }
     } else {
       model.allViewDescriptors.push(descriptor);
