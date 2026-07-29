@@ -13,6 +13,8 @@ interface FileTreeNodeProps {
   item: ExplorerItem;
   depth: number;
   isSelected: boolean;
+  /** E4b #97: 键盘焦点——与选中分离，聚焦时有 outline */
+  isFocused: boolean;
   expanded: boolean;
   indent: number;
   /** E4a #95c: 紧凑文件夹——压缩路径段 */
@@ -35,6 +37,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   item,
   depth,
   isSelected,
+  isFocused,
   expanded,
   indent,
   compactedSegments,
@@ -46,6 +49,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const rowClass = [
     "file-tree-node",
     isSelected && "file-tree-node--selected",
+    isFocused && !isSelected && "file-tree-node--focused",
   ]
     .filter(Boolean)
     .join(" ");
