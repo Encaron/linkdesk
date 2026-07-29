@@ -2,6 +2,7 @@
 
 > 2026-07-25。**4 任务，~200 行。** 对标 VS Code 文本编辑器——语法高亮 + IntelliSense + 编码检测 + JSON schema + 多标签页。
 > **性质：** 纯插件——`import * as monaco from 'monaco-editor'` → React 组件。壳不知道 Monaco 的存在。
+> 🆕 **2026-07-30 更新：** Monaco 集成模式已在 `plugins/user/serial-monitor/src/index.tsx` 中验证（`@monaco-editor/react` + Vite Workers + 自定义语言 + 自定义主题 + keep-alive）。本文档描述如何将已验证模式提取为独立编辑器插件——不是从零集成。
 
 ---
 
