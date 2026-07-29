@@ -591,7 +591,12 @@ function flattenTree(node, depth, path, result) {
 
 function buildVisibleList() {
   const flat = [];
-  flattenTree(treeData, 0, '/linkdesk-project', flat);  // root depth=0
+  // VS Code: root 在 FOLDERS 标题行——不进入树。跳过 root，直接展开子节点
+  if (expandedPaths.has('/linkdesk-project') && treeData.children) {
+    for (const child of treeData.children) {
+      flattenTree(child, 1, '/linkdesk-project/' + child.name, flat);
+    }
+  }
   return flat;
 }
 
@@ -714,6 +719,23 @@ function findItem(path) {
   }
   return node;
 }
+
+// === FOLDERS section header twistie ===
+document.querySelector('.folders .view-section-header').addEventListener('click', function(e) {
+  const rootPath = '/linkdesk-project';
+  if (expandedPaths.has(rootPath)) {
+    expandedPaths.delete(rootPath);
+    this.classList.remove('expanded');
+    this.classList.add('collapsed');
+    this.querySelector('.tree-twistie').textContent = '▶';
+  } else {
+    expandedPaths.add(rootPath);
+    this.classList.remove('collapsed');
+    this.classList.add('expanded');
+    this.querySelector('.tree-twistie').textContent = '▼';
+  }
+  render();
+});
 
 // === Init ===
 render();
