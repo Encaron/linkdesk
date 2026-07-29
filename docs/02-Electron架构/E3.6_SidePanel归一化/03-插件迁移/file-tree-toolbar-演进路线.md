@@ -18,9 +18,9 @@ VS Code 的做法是两层保护：
 │ 资源管理器            [◀折叠] │  ← container header（固定）
 ├──────────────────────────────┤
 │ ▶ linkdesk/           [+][🔄][⊟] │  ← view header（固定——actions 在此）
-│   ▶ docs/                     │  ← sticky scroll 粘顶
-│     ▶ 02-Electron架构/        │  ← sticky scroll 粘顶
-│       ▶ E3.6_SidePanel归一化/  │  ← sticky scroll 粘顶
+│   ▶ docs/                     │  ← 父子粘顶（linkdesk 的子）
+│     ▶ 02-Electron架构/        │  ← 父子粘顶（docs 的子）
+│       ▶ E3.6_SidePanel归一化/  │  ← 同级粘顶（02-Electron架构 的子，可被兄弟目录顶替）
 │ ──────────────────────────── │  ← 粘性区域结束
 │         01-核心桌子/          │  ← 正常滚动
 │         ViewContainerService.md│

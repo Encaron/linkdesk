@@ -6,7 +6,7 @@
  * 它只做一件事——查表 + 循环渲染。谁注册了什么就渲染什么。
  */
 
-import { useState, useEffect, forwardRef, useCallback, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, forwardRef, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ViewContainerService } from "../core/ViewContainerService";
 import type { ViewDescriptor } from "../core/ViewContainerService";
@@ -75,6 +75,23 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     ? ViewContainerService.getActiveViews(effectiveContainerId)
     : [];
 
+  // 🆕 E3.6 ST2b：ResizeObserver 监听 toolbar 动态高度——无需 React re-render 即可响应尺寸变化
+  const toolbarRef = useRef<HTMLDivElement>(null);
+  const [toolbarHeight, setToolbarHeight] = useState(0);
+
+  useLayoutEffect(() => {
+    const el = toolbarRef.current;
+    if (!el) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const h = entry.contentRect.height;
+        setToolbarHeight((prev) => (prev !== h ? h : prev));
+      }
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
+
   // mergeHeaderWhenSingle——单 view 时隐藏 view header
   const singleView = activeViews.length === 1;
   const mergeHeader = singleView && container?.mergeHeaderWhenSingle === true;
@@ -91,46 +108,94 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       );
     }
 
-    return activeViews.map((view) => {
-      // title 为空串 = 工具栏（如搜索框）——headerHidden 隐藏折叠头、不可折叠。
-      // file-tree FoldersView、marketplace SearchView 共用此约定。
-      const noHeader = view.title === "";
+    // mergeHeaderWhenSingle——单 view 容器不拆分 toolbar/section、不走 sticky
+    if (mergeHeader) {
+      return activeViews.map((view) => {
+        const noHeader = view.title === "";
 
-      if (mergeHeader && !noHeader) {
+        if (mergeHeader && !noHeader) {
+          return (
+            <SidebarSection
+              key={view.id}
+              title=""
+              collapsible={false}
+              defaultOpen
+              headerHidden
+            >
+              <ErrorBoundary pluginId={effectiveContainerId}>
+                <view.render />
+              </ErrorBoundary>
+            </SidebarSection>
+          );
+        }
+
         return (
           <SidebarSection
             key={view.id}
-            title=""
-            collapsible={false}
-            defaultOpen
-            headerHidden
+            title={view.title}
+            collapsible={!noHeader}
+            defaultOpen={!view.collapsed}
+            badge={view.badge}
+            actions={view.actions}
+            titleDescription={view.titleDescription}
+            titleTooltip={view.titleTooltip}
+            showActions={view.showActions ?? "default"}
+            headerHidden={noHeader}
           >
             <ErrorBoundary pluginId={effectiveContainerId}>
               <view.render />
             </ErrorBoundary>
           </SidebarSection>
         );
-      }
+      });
+    }
 
-      return (
-        <SidebarSection
-          key={view.id}
-          title={view.title}
-          collapsible={!noHeader}
-          defaultOpen={!view.collapsed}
-          badge={view.badge}
-          actions={view.actions}
-          titleDescription={view.titleDescription}
-          titleTooltip={view.titleTooltip}
-          showActions={view.showActions ?? "default"}
-          headerHidden={noHeader}
-        >
-          <ErrorBoundary pluginId={effectiveContainerId}>
-            <view.render />
-          </ErrorBoundary>
-        </SidebarSection>
-      );
-    });
+    // 🆕 E3.6 ST2：多 view 容器——拆分 toolbar（title=""）和 section，section header sticky 层层叠加
+    const toolbarViews = activeViews.filter((v) => v.title === "");
+    const sectionViews = activeViews.filter((v) => v.title !== "");
+
+    return (
+      <>
+        {toolbarViews.length > 0 && (
+          <div
+            ref={toolbarRef}
+            style={{
+              position: "sticky",
+              top: 0,
+              zIndex: 2,
+              background: "var(--bg-side-panel)",
+              overflow: "hidden",
+            }}
+          >
+            {toolbarViews.map((view) => (
+              <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
+                <view.render />
+              </ErrorBoundary>
+            ))}
+          </div>
+        )}
+        {/* 🆕 ST2：同级 section header 共用一个 sticky top——碰顶时替换而非叠加。
+             对标 VS Code：同级 view header 互相顶走，只有父子才层层叠加。 */}
+        {sectionViews.map((view) => (
+          <SidebarSection
+            key={view.id}
+            title={view.title}
+            collapsible
+            defaultOpen={!view.collapsed}
+            badge={view.badge}
+            actions={view.actions}
+            titleDescription={view.titleDescription}
+            titleTooltip={view.titleTooltip}
+            showActions={view.showActions ?? "default"}
+            stickyTop={toolbarHeight}
+          >
+            <ErrorBoundary pluginId={effectiveContainerId}>
+              <view.render />
+            </ErrorBoundary>
+          </SidebarSection>
+        ))}
+      </>
+    );
   };
 
   // 标题：容器 title，mergeHeader 时用 view.singleViewPaneContainerTitle

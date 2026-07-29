@@ -60,7 +60,7 @@
 
 **VS Code 做法：** 搜索框是 viewlet header 的一部分——`position: sticky; top: 0`，始终可见。
 
-**修复选项 A（E3.6 内）：** 搜索框 + 安装按钮区域加 `position: sticky; top: 0; z-index: 1; background: var(--side-panel-bg)`。不依赖容器 header 机制。
+**修复选项 A（E3.6 内）：** 搜索框 + 安装按钮区域加 `position: sticky; top: 0; z-index: 1; background: var(--bg-side-panel)`。不依赖容器 header 机制。
 
 **修复选项 B（未来）：** 容器 header 支持自定义 widget 插槽——整个 header 区域 sticky。E3.6 后用。
 
