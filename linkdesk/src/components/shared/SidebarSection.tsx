@@ -45,6 +45,7 @@ function SidebarSection({
   children,
   titleDescription,
   titleTooltip,
+  showActions = "default",
   headerHidden = false,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
@@ -98,7 +99,7 @@ function SidebarSection({
         <span className="sidebar-section-spacer" />
         {actions && (
           <span
-            className="sidebar-section-actions"
+            className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}`}
             onClick={(e) => e.stopPropagation()}
           >
             {actions}
