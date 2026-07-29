@@ -92,6 +92,16 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     }
 
     return activeViews.map((view) => {
+      // 🔥 E36#7.3b：title 为空串的 view = 工具栏/搜索栏——不包 SidebarSection，直接渲染
+      const isToolbar = view.title === "";
+      if (isToolbar) {
+        return (
+          <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
+            <view.render />
+          </ErrorBoundary>
+        );
+      }
+
       const headerHidden = mergeHeader;
       const sectionTitle = mergeHeader ? "" : view.title;
 
