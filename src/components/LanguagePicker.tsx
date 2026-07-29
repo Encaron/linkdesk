@@ -53,19 +53,13 @@ export default function LanguagePicker({ open, onClose }: Props) {
       }}
       getKey={(code) => code}
       onSelect={handleSelect}
-      renderItem={(code, _isSelected) => {
+      // E3.5 #CP20: 切 slot props——语言代码从第一行移到第二行 detail
+      renderLabel={(code) => {
         const entry = langs.find(l => l.id === code);
-        const isCurrent = code === currentLang;
-        return (
-          <>
-            <span className="palette-item-label">{entry?.label ?? code}</span>
-            <span className="palette-item-category" style={{ opacity: 0.5, marginLeft: "auto" }}>{code}</span>
-            {isCurrent && (
-              <span className="palette-item-category">当前</span>
-            )}
-          </>
-        );
+        return entry?.label ?? code;
       }}
+      renderCategory={(code) => code === currentLang ? "当前" : undefined}
+      renderDetail={(code) => code}
     />
   );
 }

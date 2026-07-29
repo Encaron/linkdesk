@@ -289,7 +289,9 @@ function App() {
             description: "自定义强调色（图标栏高亮、开关、焦点边框）",
             dependsOn: { key: "app.accentMode", value: "custom" },
             renderHint: "color",
-            onApply: (v) => applyAccentColor(v as string),
+            // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
+            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
+            onApply: () => applyAccentColor(getEffectiveAccentColor()),
           },
           "app.menuStyle": {
             type: "string",
@@ -878,14 +880,9 @@ function App() {
           }
           setDevtoolsOpen(false);
         }}
-        renderItem={(target) => (
-          <>
-            <span className="palette-item-label">
-              {target.kind === 'shell' ? 'shell' : target.id}
-            </span>
-            <span className="palette-item-category">{t("切换 DevTools")}</span>
-          </>
-        )}
+        // E3.5 #CP21: 切 slot props
+        renderLabel={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
+        renderCategory={() => t("切换 DevTools")}
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>

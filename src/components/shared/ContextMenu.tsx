@@ -23,6 +23,7 @@ import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { MenuId, getMenuItems } from "../../core/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
+import { findKeybindingForCommand } from "../../core/KeybindingRegistry";
 import "./ContextMenu.css";
 
 /* ── 类型 ── */
@@ -76,8 +77,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
         id: item.command,
         label: cmd.title,
         group,
-        // 快捷键暂时不显示——KeybindingRegistry 的 resolve 逻辑留 Phase 5c
-        shortcut: undefined,
+        // E3.5: 接线 KeybindingRegistry——自动查找命令对应的快捷键
+        shortcut: findKeybindingForCommand(item.command)?.key,
       });
     }
 
@@ -197,6 +198,15 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
 
     return { left, top };
   }, [anchor, resolved.length]);
+
+  /* ── 出现动画——首帧渲染后下一帧加 .show 触发 transition ── */
+
+  useEffect(() => {
+    const el = menuRef.current;
+    if (!el) return;
+    const frame = requestAnimationFrame(() => el.classList.add("show"));
+    return () => cancelAnimationFrame(frame);
+  }, []);
 
   /* ── 渲染 ── */
 

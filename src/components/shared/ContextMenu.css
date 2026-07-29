@@ -2,18 +2,10 @@
  * ContextMenu 归一化样式。
  * Phase 5b：合并 TabBar.css .tab-context-* + TerminalView.css .ctx-* → 单一权威样式源。
  * VS Code 对标：context menu block layer（backdrop）+ menu widget（面板）。
+ * E3.5 美化：对比度提升 + 动画 + 快捷键 + 死代码清理。
  *
- * 约束：所有颜色走 CSS 变量——禁止硬编码 hex（`.ctx-item-danger` 色彩除外，该色是语义化的 #E06C75）。
+ * 约束：所有颜色走 CSS 变量——禁止硬编码 hex。
  */
-
-/* ── Backdrop：全屏透明层——对标 VS Code context menu block layer ── */
-
-.ctx-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay-backdrop);
-  /* 透明——不需要背景色，只拦截点击 */
-}
 
 /* ── 菜单面板 ── */
 
@@ -24,11 +16,21 @@
   max-width: 280px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: var(--context-menu-shadow);
   padding: 4px 0;
   overflow: hidden;
-  /* 确保菜单在最顶层——不受父级 stacking context 限制 */
+
+  /* E3.5: 出现动画——scale+opacity 150ms */
+  opacity: 0;
+  transform: scale(0.96);
+  transform-origin: top left;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.ctx-menu.show {
+  opacity: 1;
+  transform: scale(1);
 }
 
 /* ── 菜单项 ── */
@@ -36,38 +38,63 @@
 .ctx-item {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 5px 12px;
+  gap: 8px;
+  padding: 6px 12px;
   font-size: 13.5px;
+  font-weight: 500;
+  line-height: 20px;
   color: var(--text-primary);
   cursor: pointer;
-  transition: background 80ms;
+  transition: background 60ms;
   user-select: none;
+
+  /* E3.5: text-shadow 微光——暗色主题下灰字灰底对比度不足时提笔画边缘
+     对标 UI/UX Pro Max: dark-mode Card Foreground 应为近白非灰 */
+  text-shadow: 0 0 0.4px currentColor;
 }
 
 .ctx-item:hover,
 .ctx-item.focused {
   background: var(--accent);
-  color: #fff;
+  color: var(--badge-text);
+}
+
+/* 图标——E3.5 icon 支持 */
+.ctx-item-icon {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.75;
+}
+
+.ctx-item:hover .ctx-item-icon,
+.ctx-item.focused .ctx-item-icon {
+  opacity: 1;
 }
 
 /* 快捷键标注——右对齐，颜色 muted */
 .ctx-item-shortcut {
   flex-shrink: 0;
-  margin-left: auto;
+  margin-left: 12px;
   font-size: 11px;
-  color: var(--text-muted);
-  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  opacity: 0.6;
+  font-family: var(--font-mono, 'Sarasa Mono SC', Consolas, 'Courier New', monospace);
+  letter-spacing: 0.2px;
 }
 
 .ctx-item:hover .ctx-item-shortcut,
 .ctx-item.focused .ctx-item-shortcut {
-  color: rgba(255, 255, 255, 0.8);
+  opacity: 0.9;
+  color: var(--text-on-accent);
 }
 
 /* 菜单项标签——允许文字截断 */
 .ctx-item-label {
+  flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -78,22 +105,27 @@
 .ctx-divider {
   height: 1px;
   background: var(--separator);
-  margin: 4px 8px;
+  margin: 4px 12px;
 }
 
-/* ── 危险操作（删除等）——语义色彩 #E06C75 ── */
+/* ── 危险操作（删除等）── */
 
 .ctx-item-danger {
-  color: #E06C75;
+  color: var(--danger);
+}
+
+.ctx-item-danger .ctx-item-icon {
+  opacity: 1;
 }
 
 .ctx-item-danger:hover,
 .ctx-item-danger.focused {
-  background: #E06C75;
-  color: #fff;
+  background: var(--danger);
+  color: var(--text-on-accent);
 }
 
 .ctx-item-danger:hover .ctx-item-shortcut,
 .ctx-item-danger.focused .ctx-item-shortcut {
-  color: rgba(255, 255, 255, 0.8);
+  opacity: 0.9;
+  color: var(--text-on-accent);
 }

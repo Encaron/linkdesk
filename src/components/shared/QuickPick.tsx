@@ -60,8 +60,16 @@ export interface QuickPickProps<T> {
   getSearchText: (item: T) => string;
   /** 提取唯一 React key */
   getKey: (item: T) => string;
-  /** 自定义渲染——默认显示 getSearchText(item) */
+  /** 自定义渲染——默认显示 getSearchText(item)。⚠️ 旧 API——新代码用 slot props */
   renderItem?: (item: T, isSelected: boolean) => ReactNode;
+  /** E3.5 #CP17：第一行左侧——标题/名称。不传则 fallback 到 getSearchText(item)。 */
+  renderLabel?: (item: T) => ReactNode;
+  /** E3.5 #CP17：第一行右侧——分类/标签。不传则不显示。 */
+  renderCategory?: (item: T) => ReactNode;
+  /** E3.5 #CP17：第二行左侧——描述/ID。不传则不显示第二行。 */
+  renderDetail?: (item: T) => ReactNode;
+  /** E3.5 #CP17：第二行右侧——快捷键/状态。不传则不显示。 */
+  renderDetailRight?: (item: T) => ReactNode;
   /** E3f #53b：每行右侧操作区——命令面板齿轮等。QuickPick 不关心内容，只留位置。 */
   renderItemActions?: (item: T, isSelected: boolean) => ReactNode;
 }
@@ -78,12 +86,32 @@ export default function QuickPick<T>({
   getSearchText,
   getKey,
   renderItem,
+  renderLabel,
+  renderCategory,
+  renderDetail,
+  renderDetailRight,
   renderItemActions,
 }: QuickPickProps<T>) {
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const overlayRef = useRef<HTMLDivElement>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
+
+  // E3.5 #CP03: 退场动画——open→false 时先去 .show，等 transition 150ms 再卸载
+  const [closing, setClosing] = useState(false);
+  const prevOpen = useRef(open);
+  useEffect(() => {
+    if (prevOpen.current && !open) {
+      overlayRef.current?.classList.remove("show");
+      paletteRef.current?.classList.remove("show");
+      setClosing(true);
+      const timer = setTimeout(() => setClosing(false), 150);
+      return () => clearTimeout(timer);
+    }
+    prevOpen.current = open;
+  }, [open]);
 
   // 打开时重置——聚焦输入框，清空搜索和选中
   useEffect(() => {
@@ -135,17 +163,30 @@ export default function QuickPick<T>({
     }
   }, [open, selected, filtered, onHighlight]);
 
-  if (!open) return null;
+  // E3.5 #CP03a: 入场动画——首次渲染后下一帧加 .show 触发 CSS transition
+  useEffect(() => {
+    if (!open) return;
+    const frame = requestAnimationFrame(() => {
+      overlayRef.current?.classList.add("show");
+      paletteRef.current?.classList.add("show");
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [open]);
+
+  if (!open && !closing) return null;
 
   const handleSelect = (item: T) => {
     onSelect(item);
     onClose();
   };
 
+  // E3.5 #CP17: 任一 slot prop 有值 → 使用新结构化布局（消费者填空，壳提供结构）
+  const useSlots = renderLabel != null || renderCategory != null || renderDetail != null || renderDetailRight != null;
+
   return createPortal(
     <>
-      <div className="ctx-overlay" onClick={onClose} />
-      <div className="palette">
+      <div ref={overlayRef} className="ctx-overlay" onClick={onClose} />
+      <div ref={paletteRef} className="palette">
         <input
           ref={inputRef}
           className="palette-input"
@@ -176,23 +217,49 @@ export default function QuickPick<T>({
           }}
         />
         <div className="palette-list" ref={listRef}>
-          {filtered.map((item, i) => (
+          {filtered.map((item, i) => {
+            const isSelected = i === selected;
+            return (
             <div
               key={getKey(item)}
-              className={`palette-item${i === selected ? " selected" : ""}`}
+              className={`palette-item${isSelected ? " selected" : ""}`}
               onClick={() => handleSelect(item)}
               onMouseEnter={() => setSelected(i)}
             >
-              <span className="palette-item-label">
-                {renderItem ? renderItem(item, i === selected) : getSearchText(item)}
-              </span>
+              {useSlots ? (
+                /* E3.5 #CP17: 新 API——结构化两行布局，消费者只填槽位 */
+                <div className="palette-item-content">
+                  <div className="palette-item-row">
+                    <span className="palette-item-label">
+                      {renderLabel?.(item) ?? getSearchText(item)}
+                    </span>
+                    {renderCategory?.(item) && (
+                      <span className="palette-item-category">{renderCategory(item)}</span>
+                    )}
+                  </div>
+                  {(renderDetail || renderDetailRight) && (
+                    <span className="palette-item-detail">
+                      <span className="palette-item-detail-id">{renderDetail?.(item)}</span>
+                      {renderDetailRight?.(item) && (
+                        <span className="palette-item-detail-right">{renderDetailRight(item)}</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+              ) : (
+                /* 旧 API——renderItem 或默认 getSearchText（向后兼容） */
+                <span className="palette-item-label">
+                  {renderItem ? renderItem(item, isSelected) : getSearchText(item)}
+                </span>
+              )}
               {renderItemActions && (
                 <span className="palette-item-actions">
-                  {renderItemActions(item, i === selected)}
+                  {renderItemActions(item, isSelected)}
                 </span>
               )}
             </div>
-          ))}
+            );
+          })}
         </div>
       </div>
     </>,
