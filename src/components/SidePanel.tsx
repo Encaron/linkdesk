@@ -98,21 +98,13 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     }
 
     return activeViews.map((view, i) => {
-      // 🔥 E36#7.3b：title 为空串的 view = 工具栏——不包 SidebarSection，直接渲染
+      // 🔥 E36#7-NORM：所有 view 走同一条路径——SidebarSection。
+      // title 为空串 = 工具栏（如搜索框），headerHidden 隐藏折叠头。
       const isToolbar = view.title === "";
-      if (isToolbar) {
-        return (
-          <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
-            <view.render />
-          </ErrorBoundary>
-        );
-      }
+      // ST2 预留：stickyTop = 前面所有 section 的累积 header 高度
+      const stickyTop = toolbarHeight + i * SECTION_HEADER_HEIGHT;
 
-      // 🔥 ST2 预留：stickyTop = toolbarHeight + sectionIndex * SECTION_HEADER_HEIGHT
-      const sectionIndex = activeViews.filter((v, j) => v.title !== "" && j < i).length;
-      const stickyTop = toolbarHeight + sectionIndex * SECTION_HEADER_HEIGHT;
-
-      if (mergeHeader) {
+      if (mergeHeader && !isToolbar) {
         return (
           <SidebarSection
             key={view.id}
@@ -133,7 +125,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
         <SidebarSection
           key={view.id}
           title={view.title}
-          collapsible
+          collapsible={!isToolbar}
           defaultOpen={!view.collapsed}
           badge={view.badge}
           actions={view.actions}
@@ -141,6 +133,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
           titleTooltip={view.titleTooltip}
           showActions={view.showActions ?? "default"}
           stickyTop={stickyTop}
+          headerHidden={isToolbar}
         >
           <ErrorBoundary pluginId={effectiveContainerId}>
             <view.render />
