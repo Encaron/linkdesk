@@ -42,7 +42,7 @@ export function registerFileHandlers(): void {
   });
 
   ipcMain.handle('filesystem:copy', async (_event, src: string, dest: string) => {
-    await fileService.copyDir(src, dest);
+    await fileService.copy(src, dest);
   });
 
   ipcMain.handle('filesystem:remove', async (_event, dirPath: string) => {

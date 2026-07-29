@@ -81,6 +81,16 @@ class FileService {
     }
   }
 
+  /** 复制文件或目录——自动判断源类型 */
+  async copy(src: string, dest: string): Promise<void> {
+    const s = await fs.stat(src);
+    if (s.isDirectory()) {
+      await this.copyDir(src, dest);
+    } else {
+      await fs.copyFile(src, dest);
+    }
+  }
+
   async remove(dirPath: string): Promise<void> {
     // 忽略不存在的路径（对标 Rust remove_dir_all + 容忍失败）
     try {
