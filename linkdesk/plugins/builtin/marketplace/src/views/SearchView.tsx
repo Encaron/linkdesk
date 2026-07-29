@@ -1,46 +1,22 @@
 /**
  * SearchView — 搜索框 + 安装按钮（独立 view，不折叠）。
  * E3.6 E36#7.3 修正：从 InstalledListView 提取——不再绑在"已安装"里。
- * E3.6 E36#7.3c：本地 state 即时响应输入 + 模块级搜索防抖 150ms——每键不再触发 5 view 重渲染。
+ * E3.6 E36#7.3c：useDebouncedInput——本地 state 即时响应 + 模块级搜索防抖 150ms。
  * SidePanel 对 title 为空串的 view 不包 SidebarSection，直接渲染。
  */
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch } from "../marketplaceShared";
+import { useDebouncedInput } from "@src/hooks/useDebouncedInput";
 import "../MarketplaceSidebar.css";
 
 const lk = () => (window as any).linkdesk;
 
-const DEBOUNCE_MS = 150;
-
 export default function SearchView() {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
-  const [inputValue, setInputValue] = useState("");
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  /* 输入即时更新本地 state，防抖后同步到模块级搜索 */
-  const handleChange = useCallback((value: string) => {
-    setInputValue(value);
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setMarketplaceSearch(value);
-    }, DEBOUNCE_MS);
-  }, []);
-
-  /* 卸载时清理防抖定时器 */
-  useEffect(() => {
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, []);
-
-  const handleClear = useCallback(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    setInputValue("");
-    setMarketplaceSearch("");
-  }, []);
+  const { value, onChange, onClear } = useDebouncedInput(setMarketplaceSearch);
 
   const handleInstall = useCallback(async () => {
     setInstalling(true);
@@ -72,11 +48,11 @@ export default function SearchView() {
           className="ms-search-box"
           type="text"
           placeholder={t("搜索插件...")}
-          value={inputValue}
-          onChange={(e) => handleChange(e.target.value)}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
         />
-        {inputValue && (
-          <button className="ms-search-clear" onClick={handleClear}>
+        {value && (
+          <button className="ms-search-clear" onClick={onClear}>
             ✕
           </button>
         )}
