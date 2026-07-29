@@ -475,6 +475,23 @@ const treeData = {
           ]
         },
         {
+          // 单子目录链——CompactFolder 压缩为 "utils / helpers"
+          name: 'utils',
+          isDir: true,
+          compact: true,
+          children: [
+            {
+              name: 'helpers',
+              isDir: true,
+              compact: true,
+              children: [
+                { name: 'format.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+                { name: 'validate.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+              ]
+            },
+          ]
+        },
+        {
           name: 'core',
           isDir: true,
           children: [
@@ -567,11 +584,47 @@ const expandedPaths = new Set([
 
 let selectedPath = '/linkdesk-project/src/core/CoreEvents.ts';
 
+function getCompactedPath(node) {
+  // 对标 LinkDesk CompactFolder：单子目录链压缩
+  if (!node.isDir || !node.children || node.children.length !== 1) return null;
+  const child = node.children[0];
+  if (!child.isDir) return null;
+  const childSegments = getCompactedPath(child);
+  if (childSegments) return [node.name, ...childSegments];
+  return [node.name, child.name];
+}
+
+function findLeaf(node) {
+  if (!node.isDir || !node.children || node.children.length !== 1) return node;
+  const child = node.children[0];
+  if (!child.isDir) return child;
+  return findLeaf(child);
+}
+
 function flattenTree(node, depth, path, result) {
   const isExpanded = expandedPaths.has(path);
   const hasChildren = node.isDir && node.children !== null && node.children !== undefined;
   const hasLoadedChildren = hasChildren && Array.isArray(node.children);
-  const isEmpty = node.isDir && Array.isArray(node.children) && node.children.length === 0;
+
+  // CompactFolder：单子目录链 → 压缩为一行
+  if (node.isDir && !isExpanded && hasLoadedChildren) {
+    const compacted = getCompactedPath(node);
+    if (compacted) {
+      const leaf = findLeaf(node);
+      result.push({
+        ...leaf,
+        depth,
+        path,
+        expanded: false,
+        hasChildren: leaf.isDir && !!leaf.children && leaf.children.length > 0,
+        hasLoadedChildren: false,
+        isEmpty: false,
+        compactedSegments: compacted,
+        guideDepth: null,
+      });
+      return; // 跳过子节点
+    }
+  }
 
   result.push({
     ...node,
@@ -580,7 +633,7 @@ function flattenTree(node, depth, path, result) {
     expanded: isExpanded,
     hasChildren,
     hasLoadedChildren,
-    isEmpty,
+    isEmpty: node.isDir && Array.isArray(node.children) && node.children.length === 0,
     guideDepth: null,
   });
 
@@ -656,6 +709,15 @@ function render() {
     // name with dimmed if needed
     let nameClass = 'tree-name';
     if (item.dimmed) nameClass += ' dimmed';
+    if (item.compactedSegments) nameClass += ' compact-folder';
+
+    // CompactFolder display
+    let nameHtml = item.name;
+    if (item.compactedSegments) {
+      nameHtml = item.compactedSegments.map((seg, i) =>
+        (i > 0 ? '<span class="cf-separator"> / </span>' : '') + seg
+      ).join('');
+    }
 
     // badge
     let badgeHtml = '';
@@ -668,7 +730,7 @@ function render() {
       <div class="${rowClass}" data-path="${item.path}" style="padding-left:${indent}px;">
         <span class="${twistieClass}">▶</span>
         ${iconHtml}
-        <span class="${nameClass}">${item.name}</span>
+        <span class="${nameClass}">${nameHtml}</span>
         ${badgeHtml}
       </div>`;
   }
@@ -687,12 +749,20 @@ function bindEvents() {
       const twistie = row.querySelector('.tree-twistie');
       if (twistie && e.target === twistie) {
         e.stopPropagation();
-        if (expandedPaths.has(path)) {
-          expandedPaths.delete(path);
-        } else {
-          expandedPaths.add(path);
-          // auto-expand parent chain
+        // CompactFolder: twistie controls leaf directory expansion
+        let expandPath = path;
+        if (item.compactedSegments && item.compactedSegments.length > 1) {
+          // Reconstruct leaf path from compacted segments
           const parts = path.split('/');
+          parts.pop(); // remove leaf name
+          expandPath = parts.concat(item.compactedSegments).join('/');
+        }
+        if (expandedPaths.has(expandPath)) {
+          expandedPaths.delete(expandPath);
+        } else {
+          expandedPaths.add(expandPath);
+          // auto-expand parent chain
+          const parts = expandPath.split('/');
           for (let i = 2; i < parts.length; i++) {
             expandedPaths.add(parts.slice(0, i).join('/'));
           }
