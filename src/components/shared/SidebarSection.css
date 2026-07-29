@@ -68,14 +68,22 @@
   white-space: nowrap;
 }
 
-/* ── Badge ── */
+/* ── Badge —— 对标 VS Code .badge ── */
 
 .sidebar-section-badge {
   flex-shrink: 0;
-  opacity: 0.7;
-  font-weight: 400;
-  /* badge 不 uppercase——允许混合大小写标记如 "新" */
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--badge-background, var(--accent));
+  color: var(--badge-foreground, var(--badge-text));
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
   text-transform: none;
+  /* 主题作者可通过 --badge-background / --badge-foreground 覆盖颜色 */
 }
 
 /* ── Spacer —— 把 actions 推到右侧 ── */
