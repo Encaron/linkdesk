@@ -12,7 +12,7 @@ import type { FileEntry } from "@src/core/FileService";
 import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
-import { basename, splitPath } from "./pathUtils";
+import { basename, splitPath, normalizePath } from "./pathUtils";
 
 /* ── 类型 ── */
 
@@ -54,7 +54,7 @@ export class FileTreeModel {
   async setRoots(rootPaths: string[]): Promise<void> {
     this._expanded.clear();
     this._roots = rootPaths.map((p) => ({
-      uri: p,
+      uri: normalizePath(p),
       name: basename(p),
       isDirectory: true,
       isSymlink: false,
@@ -152,7 +152,7 @@ export class FileTreeModel {
 
   private _toExplorerItem(entry: FileEntry, parent: ExplorerItem | null): ExplorerItem {
     return {
-      uri: entry.path,
+      uri: normalizePath(entry.path),
       name: entry.name,
       isDirectory: entry.isDirectory,
       isSymlink: false,
