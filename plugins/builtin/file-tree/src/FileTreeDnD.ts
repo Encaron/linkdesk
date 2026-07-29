@@ -156,9 +156,13 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       dragItemRef.current = null;
 
       // 工具：刷新目录——若展开则重载子节点，保证 twistie 箭头与内容一致
+      // 🔥 路径归一化：dirname 用 "/" 但 _expanded 存的是 listDir 返回的 "\"（Windows），
+      //    两边都试确保 isExpanded 命中。
       const refreshDir = async (dir: string) => {
         callbacks.model.refresh(dir);
-        if (callbacks.model.isExpanded(dir)) {
+        const expanded = callbacks.model.isExpanded(dir)
+          || callbacks.model.isExpanded(dir.replace(/\//g, "\\"));
+        if (expanded) {
           const item = callbacks.model.findClosest(dir);
           if (item) await callbacks.model.getChildren(item);
         }
