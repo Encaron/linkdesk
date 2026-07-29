@@ -45,6 +45,7 @@ function SidebarSection({
   children,
   titleDescription,
   titleTooltip,
+  headerHidden = false,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -61,6 +62,15 @@ function SidebarSection({
     },
     [toggle],
   );
+
+  // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
+  if (headerHidden) {
+    return (
+      <div className="sidebar-section">
+        {open && <div className="sidebar-section-body">{children}</div>}
+      </div>
+    );
+  }
 
   return (
     <div className="sidebar-section">
