@@ -16,6 +16,7 @@ import { getCompactedPath } from "./CompactFolder";
 import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
+import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
 
@@ -168,6 +169,27 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     },
   );
 
+  /* ── 上下文键（E4b #98——快捷键 when 条件） ── */
+
+  /** 文件树获得/失去键盘焦点——设置 explorerFocus context key */
+  const handleFocus = useCallback(() => {
+    ContextKeyService.setValue("explorerFocus", true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    ContextKeyService.setValue("explorerFocus", false);
+  }, []);
+
+  /** focusedUri 变化时更新 isFile context key */
+  useEffect(() => {
+    if (focusedUri) {
+      const fi = flatItems.find((f) => f.item.uri === focusedUri);
+      ContextKeyService.setValue("explorerItemIsFile", fi?.item.isDirectory === false);
+    } else {
+      ContextKeyService.setValue("explorerItemIsFile", false);
+    }
+  }, [focusedUri, flatItems]);
+
   /* ── 渲染 ── */
 
   return (
@@ -176,6 +198,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       tabIndex={0}
       onScroll={handleScroll}
       onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
       className="file-tree-scroll"
     >
       <div style={{ height: totalHeight, position: "relative" }}>

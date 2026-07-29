@@ -42,6 +42,7 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.rename",          title: "重命名",               handler: placeholder("explorer.rename") });
   registerCommand("file-tree", { id: "explorer.delete",          title: "删除",                 handler: placeholder("explorer.delete") });
   registerCommand("file-tree", { id: "explorer.findInFolder",    title: "在文件夹中查找…",        handler: placeholder("explorer.findInFolder") });
+  registerCommand("file-tree", { id: "explorer.openFocused",    title: "打开聚焦项",              handler: placeholder("explorer.openFocused") });
 
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
   registerCommand("file-tree", { id: "explorer.newFile",         title: "新建文件",              handler: placeholder("explorer.newFile") });
