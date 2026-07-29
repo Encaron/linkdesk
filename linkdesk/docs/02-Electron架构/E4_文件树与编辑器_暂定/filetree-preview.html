@@ -724,7 +724,7 @@ function findItem(path) {
 
 // === FOLDERS section header twistie ===
 document.querySelector('.folders').addEventListener('click', function(e) {
-  const header = this.querySelector('.view-section-header');
+  const header = this;  // .folders 自己就是 header
   const rootPath = '/linkdesk-project';
   if (expandedPaths.has(rootPath)) {
     expandedPaths.delete(rootPath);
