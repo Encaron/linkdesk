@@ -201,13 +201,20 @@ html, body, #root {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay-backdrop);
+  /* E3.5 #CP02: 遮罩 fade 动画 */
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.ctx-overlay.show {
+  opacity: 1;
 }
 
 .palette {
   position: fixed;
   top: 20%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(0.95);
   width: 420px;
   max-height: 300px;
   background: var(--bg-card);
@@ -218,6 +225,14 @@ html, body, #root {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  /* E3.5 #CP01: scale+opacity 出现动画——对标 VS Code quickInput */
+  opacity: 0;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.palette.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
 }
 
 .palette-input {
@@ -281,13 +296,61 @@ html, body, #root {
   white-space: nowrap;
 }
 
+/* E3.5 #CP04: detail 行改为 flex——ID(左) + 快捷键pill(右) 对标 VS Code */
 .palette-item-detail {
-  font-size: 11px;
-  opacity: 0.6;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  opacity: 0.55;
+  margin-top: 1px;
+}
+
+.palette-item-detail-id {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  margin-top: 1px;
+  flex: 1;
+  min-width: 0;
+}
+
+.palette-item-detail-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* E3.5 #CP06 #CP07: keycap pill——对标 VS Code keybinding widget */
+.keybinding-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+}
+
+.keybinding-pill kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
+  background: rgba(128,128,128,0.1);
+  border: 1px solid rgba(128,128,128,0.12);
+  border-radius: 3px;
+  line-height: 1.5;
+}
+
+.keybinding-sep {
+  opacity: 0.4;
+  margin: 0 1px;
+}
+
+/* hover/selected 态 keycap 变亮 */
+.palette-item:hover .keybinding-pill kbd,
+.palette-item.selected .keybinding-pill kbd {
+  background: rgba(255,255,255,0.2);
+  border-color: rgba(255,255,255,0.35);
 }
 
 .palette-item:hover .palette-item-category,

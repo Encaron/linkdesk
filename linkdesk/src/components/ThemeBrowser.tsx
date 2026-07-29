@@ -96,17 +96,9 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
       getKey={(name) => name}
       onSelect={handleSelect}
       onHighlight={handleHighlight}
-      renderItem={(name, _isSelected) => {
-        const isCurrent = name === originalTheme.current;
-        return (
-          <>
-            <span className="palette-item-label">{name}</span>
-            {isCurrent && (
-              <span className="palette-item-category">当前</span>
-            )}
-          </>
-        );
-      }}
+      // E3.5 #CP19: 切 slot props
+      renderLabel={(name) => name}
+      renderCategory={(name) => name === originalTheme.current ? "当前" : undefined}
     />
   );
 }

@@ -14,7 +14,7 @@ import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
-import { openKeybindingsSettings } from "../../core/KeybindingRegistry"; // E3f #59
+import { openKeybindingsSettings, findKeybindingForCommand } from "../../core/KeybindingRegistry"; // E3f #59 + E3.5 #CP05
 import QuickPick from "./QuickPick";
 
 interface Props {
@@ -45,17 +45,25 @@ function CommandPalette({ open, onClose }: Props) {
       getSearchText={(cmd) => `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`}
       getKey={(cmd) => cmd.id}
       onSelect={(cmd) => executeCommand(cmd.id)}
-      renderItem={(cmd, _isSelected) => (
-        <div className="palette-item-content">
-          <div className="palette-item-row">
-            <span className="palette-item-label">{cmd.title}</span>
-            {cmd.category && (
-              <span className="palette-item-category">{cmd.category}</span>
-            )}
-          </div>
-          <span className="palette-item-detail">{cmd.id}</span>
-        </div>
-      )}
+      // E3.5 #CP18: 切 slot props——布局由 QuickPick 锁死，只填内容
+      renderLabel={(cmd) => cmd.title}
+      renderCategory={(cmd) => cmd.category || undefined}
+      renderDetail={(cmd) => cmd.id}
+      renderDetailRight={(cmd) => {
+        const kb = findKeybindingForCommand(cmd.id);
+        if (!kb) return null;
+        const keys = kb.key.split("+");
+        return (
+          <span className="keybinding-pill">
+            {keys.map((k, ki) => (
+              <span key={ki}>
+                {ki > 0 && <span className="keybinding-sep">+</span>}
+                <kbd>{k.charAt(0).toUpperCase() + k.slice(1)}</kbd>
+              </span>
+            ))}
+          </span>
+        );
+      }}
       renderItemActions={(cmd, _isSelected) => (
         <button
           className="palette-item-gear codicon codicon-gear"
