@@ -79,12 +79,6 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const singleView = activeViews.length === 1;
   const mergeHeader = singleView && container?.mergeHeaderWhenSingle === true;
 
-  // 🔥 E3.6 ST2 预留：stickyTop 计算逻辑。
-  // toolbarHeight = 0（待 ST2 正式执行时用 ResizeObserver 测量）。
-  // SECTION_HEADER_HEIGHT = 22（SidebarSection header 固定高度）。
-  const toolbarHeight = 0;
-  const SECTION_HEADER_HEIGHT = 22;
-
   const renderSidebarContent = () => {
     if (!effectiveContainerId) return null;
 
@@ -97,21 +91,18 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       );
     }
 
-    return activeViews.map((view, i) => {
-      // 🔥 E36#7-NORM：所有 view 走同一条路径——SidebarSection。
-      // title 为空串 = 工具栏（如搜索框），headerHidden 隐藏折叠头。
-      const isToolbar = view.title === "";
-      // ST2 预留：stickyTop = 前面所有 section 的累积 header 高度
-      const stickyTop = toolbarHeight + i * SECTION_HEADER_HEIGHT;
+    return activeViews.map((view) => {
+      // title 为空串 = 工具栏（如搜索框）——headerHidden 隐藏折叠头、不可折叠。
+      // file-tree FoldersView、marketplace SearchView 共用此约定。
+      const noHeader = view.title === "";
 
-      if (mergeHeader && !isToolbar) {
+      if (mergeHeader && !noHeader) {
         return (
           <SidebarSection
             key={view.id}
             title=""
             collapsible={false}
             defaultOpen
-            stickyTop={stickyTop}
             headerHidden
           >
             <ErrorBoundary pluginId={effectiveContainerId}>
@@ -125,15 +116,14 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
         <SidebarSection
           key={view.id}
           title={view.title}
-          collapsible={!isToolbar}
+          collapsible={!noHeader}
           defaultOpen={!view.collapsed}
           badge={view.badge}
           actions={view.actions}
           titleDescription={view.titleDescription}
           titleTooltip={view.titleTooltip}
           showActions={view.showActions ?? "default"}
-          stickyTop={stickyTop}
-          headerHidden={isToolbar}
+          headerHidden={noHeader}
         >
           <ErrorBoundary pluginId={effectiveContainerId}>
             <view.render />
