@@ -153,6 +153,10 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
           const file = e.dataTransfer.files[i];
           const srcPath = (file as any).path as string;
           if (srcPath) {
+            const normalizedSrc = srcPath.replace(/\\/g, "/");
+            const normalizedTarget = target.targetDir.replace(/\\/g, "/");
+            // 🔥 禁止 OS 拖祖先到后代——防止递归嵌套（X/ → X/sub/X/sub/... 指数膨胀）
+            if (normalizedTarget.startsWith(normalizedSrc + "/")) continue;
             const dest = joinPath(target.targetDir, file.name);
             await copy(srcPath, dest);
           }
