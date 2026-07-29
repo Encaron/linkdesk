@@ -168,8 +168,14 @@ function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
 
   /* ── 高亮 ── */
 
-  // 对标 VS Code Activity Bar：只有侧栏开着时才高亮图标。侧栏关掉全部灭。
-  const isActive = (pluginId: string) => sidebarView === pluginId;
+  // E3.6：sidebarView 现在是 containerId。高亮 = 该插件的 viewsContainers 含 sidebarView。
+  const isActive = (pluginId: string) => {
+    if (!sidebarView) return false;
+    const plugin = getViewPlugin(pluginId);
+    const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+    if (!containers) return false;
+    return Object.keys(containers).some((id) => id === sidebarView);
+  };
 
   const renderIcon = (entry: IconEntry) => {
     const showBefore = dropTarget?.id === entry.pluginId && dropTarget.pos === "top";
