@@ -80,7 +80,15 @@ export class FileTreeModel {
     return parent.children;
   }
 
-  /** 按路径查找已加载节点——不触发懒加载 */
+  /**
+   * 按路径查找已加载节点——不触发懒加载。
+   *
+   * ⚠️ 限制：沿 root.children → child.children 链深度遍历。
+   * 如果路径链中某个目录未展开（children === null），链在此断开→返回 null。
+   * 需要绕过此限制的场景（如 revealInExplorer #104）用 findAndExpandToBypassExclude。
+   *
+   * E4b #99h：AI 进场须知——"找文件"前先确保路径已展开。
+   */
   findClosest(uri: string): ExplorerItem | null {
     const root = this.findClosestRoot(uri);
     if (!root) return null;
@@ -116,6 +124,14 @@ export class FileTreeModel {
   collapse(uri: string): void { this._expanded.delete(uri); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
   collapseAll(): void { this._expanded.clear(); }
+
+  /**
+   * TODO #104 revealInExplorer——绕过排除逐层展开到目标文件。
+   * 与 findClosest 不同：路径链未加载时会自动展开（不受 files.exclude 影响）。
+   * 对标 VS Code IExplorerService.select() —— 逐层 listDir + 绕过 FileExcludeFilter + 展开。
+   * @returns 目标文件的 ExplorerItem，找不到返回 null
+   */
+  // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
 
   /** 刷新——path 为空则清空所有已展开节点的缓存 */
   async refresh(path?: string): Promise<void> {
