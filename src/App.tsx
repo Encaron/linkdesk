@@ -193,10 +193,27 @@ function App() {
   const activeTabType = activeTab?.type ?? FALLBACK_PLUGIN_ID;
   const activePluginId = activeTab?.pluginId;
 
+  // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
+  // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
+  const sidebarViewRef = useRef<string | null>(null);
+  const revertContainerIfCurrent = useCallback((pluginId: string) => {
+    const current = sidebarViewRef.current;
+    if (!current) return;
+    const plugin = getViewPlugin(pluginId);
+    const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+    if (!containers) return;
+    const containerIds = Object.keys(containers);
+    if (containerIds.includes(current)) {
+      setSidebarView(null);
+    }
+  }, []);
+
   // Phase 4.4：监听插件卸载/禁用事件，自动关闭关联标签页
   useEffect(() => {
     const handler = (e: Event) => {
       const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
+      // 🔥 E36#4.5：关闭侧栏在先——需要 ViewContainerService 还有数据时读 manifest
+      revertContainerIfCurrent(pluginId);
       for (const group of tabState.groups) {
         for (const tab of group.tabs) {
           if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
@@ -207,7 +224,7 @@ function App() {
     };
     window.addEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
     return () => window.removeEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
-  }, [tabState.groups, forceCloseTab]);
+  }, [tabState.groups, forceCloseTab, revertContainerIfCurrent]);
 
 
   /* ---- 启动初始化 ---- */
@@ -505,6 +522,8 @@ function App() {
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
+  // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
+  sidebarViewRef.current = sidebarView;
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
   const [themeBrowserPluginId, setThemeBrowserPluginId] = useState<string | undefined>(undefined);
