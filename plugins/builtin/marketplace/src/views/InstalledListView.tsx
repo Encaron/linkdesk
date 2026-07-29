@@ -4,10 +4,8 @@
  * SidePanel 外裹 <SidebarSection>——此组件不包 header。
  */
 
-import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useTabActions } from "@src/core/TabActionsContext";
-import { ViewContainerService } from "@src/core/ViewContainerService";
 import { useMarketplacePlugins, getMarketplaceSearch } from "../marketplaceShared";
 import { ExtensionItem } from "../ExtensionItem";
 import "../MarketplaceSidebar.css";
@@ -16,18 +14,6 @@ export default function InstalledListView() {
   const { t } = useTranslation();
   const tabActions = useTabActions();
   const { installed, loading } = useMarketplacePlugins();
-
-  /* 动态更新 badge——已安装数量变化时同步到 section header */
-  useEffect(() => {
-    const descriptor = ViewContainerService.getView("installed");
-    if (!descriptor) return;
-    ViewContainerService.registerView("marketplace", "marketplace", {
-      id: "installed",
-      title: descriptor.title,
-      render: descriptor.render,
-      badge: installed.length,
-    });
-  }, [installed.length]);
 
   const handleOpenDetail = (pluginId: string) => {
     tabActions?.createTab("plugin-detail", { pluginId, pinned: false });
