@@ -455,6 +455,61 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     }
   }
 
+  // E3.6：contributes.viewsContainers → ViewContainerService（同步）
+  if (c.viewsContainers) {
+    const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
+    void (async () => {
+      const { ViewContainerService } = await import("../core/ViewContainerService");
+      for (const [containerId, desc] of Object.entries(containers)) {
+        ViewContainerService.registerViewContainer(pluginId, {
+          id: containerId,
+          title: desc.title,
+          icon: desc.icon,
+          location: (desc.location as "sidebar" | "panel" | "auxiliarybar") ?? "sidebar",
+          hideIfEmpty: desc.hideIfEmpty,
+          order: desc.order,
+          mergeHeaderWhenSingle: desc.mergeHeaderWhenSingle,
+        });
+      }
+    })().catch((e) => console.error("[loader] viewsContainers 注册失败:", e));
+  }
+
+  // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
+  if (c.views) {
+    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string }>>;
+    void (async () => {
+      const { ViewContainerService } = await import("../core/ViewContainerService");
+      for (const [containerId, viewDefs] of Object.entries(views)) {
+        for (const viewDef of viewDefs) {
+          try {
+            const renderModule = await import(/* @vite-ignore */ viewDef.render);
+            const RenderComponent = renderModule.default ?? renderModule;
+            ViewContainerService.registerView(pluginId, containerId, {
+              id: viewDef.id,
+              title: viewDef.title ?? "",
+              render: RenderComponent,
+              order: viewDef.order,
+              collapsed: viewDef.collapsed,
+              when: viewDef.when,
+              canToggleVisibility: viewDef.canToggleVisibility,
+              canMoveView: viewDef.canMoveView,
+              hideByDefault: viewDef.hideByDefault,
+              singleViewPaneContainerTitle: viewDef.singleViewPaneContainerTitle,
+              titleDescription: viewDef.titleDescription,
+              showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
+              titleTooltip: viewDef.titleTooltip,
+            });
+          } catch (e) {
+            console.error(
+              `[loader] ❌ 加载 view 失败: plugin="${pluginId}" container="${containerId}" render="${viewDef.render}"`,
+              e
+            );
+          }
+        }
+      }
+    })().catch((e) => console.error("[loader] views 注册失败:", e));
+  }
+
   // contributes.fileAssociations → FileAssociationService（E2c #13a）
   if (c.fileAssociations) {
     const list = c.fileAssociations as Array<{
