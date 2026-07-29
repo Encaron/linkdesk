@@ -72,11 +72,33 @@ async function refreshData(): Promise<void> {
   }
 }
 
+/* ═══ badge 更新（模块级——数据加载 effect + 生命周期 + onDidChangeViews 三处调用） ═══ */
+
+function updateAllBadges(): void {
+  const setBadge = (viewId: string, count: number) => {
+    const existing = ViewContainerService.getView(viewId);
+    if (!existing) return;
+    // 🔥 防止死循环：registerView 无条件 fire onDidChangeViews，
+    // 如果 badge 值没变就跳过——否则事件→更新→事件→更新 无限循环
+    if (existing.badge === count) return;
+    ViewContainerService.registerView("marketplace", "marketplace", {
+      id: viewId,
+      title: existing.title,
+      render: existing.render,
+      badge: count,
+    });
+  };
+  setBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
+  setBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
+  setBadge("disabled", _disabledPlugins.length);
+  setBadge("uninstalled", _uninstalledPlugins.length);
+}
+
 export function useMarketplacePlugins() {
   const [, setTick] = useState(0);
   const rerender = useCallback(() => setTick((t) => t + 1), []);
 
-  /* 首次加载 + 生命周期订阅 */
+  /* 首次加载 + 生命周期订阅 + badge 更新 */
   useEffect(() => {
     let active = true;
 
@@ -88,9 +110,15 @@ export function useMarketplacePlugins() {
       if (!active) return; // 🔥 Bug 4 防线——组件已卸载时不更新
       rerender();
 
+      // 🔥 数据到了才更新 badge——不在 mount 时空跑
+      updateAllBadges();
+
       /* 订阅插件生命周期变更——安装/卸载/启用/禁用后自动刷新 */
       const unsubLifecycle = onPluginLifecycleChange.event(() => {
-        refreshData().then(() => notifyDataListeners());
+        refreshData().then(() => {
+          notifyDataListeners();
+          updateAllBadges();
+        });
       });
       _dataListeners.add(rerender);
 
@@ -112,37 +140,13 @@ export function useMarketplacePlugins() {
     return onMarketplaceSearchChange(rerender);
   }, [rerender]);
 
-  /* 🔥 E36#7.3e badge 归一化——四组 badge 集中在此更新，各 view 组件零改动 */
+  /* 🔥 loader 异步 import view 组件后才注册——onDidChangeViews 兜底 */
   useEffect(() => {
-    const updateAllBadges = () => {
-      const setBadge = (viewId: string, count: number) => {
-        const existing = ViewContainerService.getView(viewId);
-        if (!existing) return;
-        // 🔥 防止死循环：registerView 无条件 fire onDidChangeViews，
-        // 如果 badge 值没变就跳过——否则事件→更新→事件→更新 无限循环
-        if (existing.badge === count) return;
-        ViewContainerService.registerView("marketplace", "marketplace", {
-          id: viewId,
-          title: existing.title,
-          render: existing.render,
-          badge: count,
-        });
-      };
-      setBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
-      setBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
-      setBadge("disabled", _disabledPlugins.length);
-      setBadge("uninstalled", _uninstalledPlugins.length);
-    };
-
-    updateAllBadges();
-
-    /* 🔥 loader 异步 import view 组件后才注册——不能假设首次渲染时 view 已就绪。
-     * 订阅 onDidChangeViews 确保 view 注册完成后 badge 能追上。 */
     const sub = ViewContainerService.onDidChangeViews.event(({ containerId }) => {
       if (containerId === "marketplace") updateAllBadges();
     });
     return () => sub();
-  }, [rerender]);
+  }, []);
 
   const search = getMarketplaceSearch().toLowerCase();
 
