@@ -5,10 +5,12 @@
  * 设计依据：VS Code viewsService + viewDescriptorService（侧栏内容由扩展声明）
  */
 
-import { useState, useEffect, forwardRef } from "react";
+import { useState, useEffect, forwardRef, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { getViewPlugin } from "../pluginLoader/viewRegistry";
+import { ViewContainerService } from "../core/ViewContainerService";
+import type { ViewDescriptor } from "../core/ViewContainerService";
 import ErrorBoundary from "./shared/ErrorBoundary";
+import SidebarSection from "./shared/SidebarSection";
 import "./SidePanel.css";
 
 interface SidePanelProps {
