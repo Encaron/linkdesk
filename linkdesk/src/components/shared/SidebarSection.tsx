@@ -43,6 +43,7 @@ function SidebarSection({
   badge,
   actions,
   children,
+  titleDescription,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
 
@@ -76,6 +77,9 @@ function SidebarSection({
           </span>
         )}
         <span className="sidebar-section-title">{title}</span>
+        {titleDescription && (
+          <span className="sidebar-section-title-description">{titleDescription}</span>
+        )}
         {badge !== undefined && badge !== "" && (
           <span className="sidebar-section-badge">{badge}</span>
         )}
