@@ -30,6 +30,8 @@ export interface ExplorerItem {
   size?: number;
   modifiedAt?: number;
   decoration?: FileDecoration;
+  /** E4V#10: 文件只读标记——驱动 explorerResourceReadonly context key */
+  isReadonly?: boolean;
 }
 
 /* ── 模型 ── */
@@ -219,6 +221,7 @@ export class FileTreeModel {
       parent,
       size: entry.size,
       modifiedAt: entry.modifiedAt,
+      isReadonly: entry.isReadonly,
     };
   }
 }
