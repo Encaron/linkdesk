@@ -14,7 +14,6 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem } from './event-system';
 
-console.log("[preload-shell] starting, webUtils:", typeof webUtils, "getPathForFile:", typeof webUtils?.getPathForFile);
 
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
 let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
@@ -52,11 +51,7 @@ try {
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
-    getFilePath: (file: File) => {
-      const p = webUtils.getPathForFile(file);
-      console.log("[preload-shell] getFilePath name:", file.name, "path:", p);
-      return p;
-    },
+    getFilePath: (file: File) => webUtils.getPathForFile(file),
 
     // ── 串口（步 2 接入）──
     serial: {
