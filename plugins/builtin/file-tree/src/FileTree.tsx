@@ -280,56 +280,60 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       onDrop={handleDrop}
       className="file-tree-scroll"
     >
-      <div style={{ height: totalHeight, position: "relative" }}>
-        {/* E4V#20+iii: sticky scroll——回流内 position:sticky 穿透到 .side-panel-content */}
-        {stickyAncestors.map(({ item, depth }, i) => (
-          <div
-            key={`sticky-${item.uri}`}
-            style={{
-              position: "sticky",
-              top: i * TREE_ITEM_HEIGHT,
-              height: TREE_ITEM_HEIGHT,
-              zIndex: 2,
-              background: "var(--side-panel-bg)",
-              borderBottom: "1px solid var(--border)",
-            }}
-          >
-            <FileTreeNode
-              item={item}
-              depth={depth}
-              indent={0}
-              expanded={true}
-              isSelected={false}
-              isFocused={false}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-              onTwistieClick={handleTwistie}
-              onContextMenu={handleContextMenu}
-            />
-          </div>
-        ))}
-        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+      {/* E4V#20+iii: sticky rows——flex-shrink:0 定高，position:sticky 粘顶 */}
+      {stickyAncestors.map(({ item, depth }, i) => (
+        <div
+          key={`sticky-${item.uri}`}
+          style={{
+            position: "sticky",
+            top: i * TREE_ITEM_HEIGHT,
+            height: TREE_ITEM_HEIGHT,
+            flexShrink: 0,
+            zIndex: 2,
+            background: "var(--side-panel-bg)",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
           <FileTreeNode
-            key={item.uri}
             item={item}
             depth={depth}
             indent={0}
-            expanded={item.isDirectory && model.isExpanded(item.uri)}
-            isSelected={item.uri === selectedUri}
-            isFocused={item.uri === focusedUri}
-            isDragSource={dndState.sourceUri === item.uri}
-            isDragHover={dndState.hoverIndex === startIndex + i}
-            compactedSegments={compactedSegments}
-            guide={guide}
-            isDimmed={isDimmed}
-            onDragStart={handleDragStart}
+            expanded={true}
+            isSelected={false}
+            isFocused={false}
             onSelect={handleSelect}
             onOpen={handleOpen}
             onTwistieClick={handleTwistie}
             onContextMenu={handleContextMenu}
           />
-        ))}
+        </div>
+      ))}
+      {/* 虚拟列表 clip——flex:1 填充剩余高度，overflow:hidden 裁剪溢出 */}
+      <div className="file-tree-scroll-clip">
+        <div style={{ height: totalHeight, position: "relative" }}>
+          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+            <FileTreeNode
+              key={item.uri}
+              item={item}
+              depth={depth}
+              indent={0}
+              expanded={item.isDirectory && model.isExpanded(item.uri)}
+              isSelected={item.uri === selectedUri}
+              isFocused={item.uri === focusedUri}
+              isDragSource={dndState.sourceUri === item.uri}
+              isDragHover={dndState.hoverIndex === startIndex + i}
+              compactedSegments={compactedSegments}
+              guide={guide}
+              isDimmed={isDimmed}
+              onDragStart={handleDragStart}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+              onTwistieClick={handleTwistie}
+              onContextMenu={handleContextMenu}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
