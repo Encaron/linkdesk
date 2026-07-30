@@ -10,8 +10,16 @@ import React, { useEffect } from "react";
 import { registerCommand } from "@src/core/CommandRegistry";
 import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
+import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
+import { dirname, normalizePath } from "./pathUtils";
+
+/** 菜单传入的 command args */
+interface FileMenuContext {
+  uri: string;
+  isDirectory: boolean;
+}
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
 
@@ -29,15 +37,43 @@ export function activateFileTreeContextMenu(): void {
   };
 
   // 新增命令（不在 plugin.json contributes.commands 中——此处是唯一注册点）
+  // ── E4V#17: copyPath + copyRelativePath ──
+  registerCommand("file-tree", { id: "explorer.copyPath", title: "复制路径", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx) return;
+    await navigator.clipboard.writeText(ctx.uri);
+  }});
+  registerCommand("file-tree", { id: "explorer.copyRelativePath", title: "复制相对路径", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx) return;
+    const folders = getWorkspaceFolders();
+    const root = folders.find((f) => ctx.uri.startsWith(normalizePath(f.uri)));
+    if (!root) { await navigator.clipboard.writeText(ctx.uri); return; }
+    const relative = ctx.uri.slice(normalizePath(root.uri).length).replace(/^[/\\]/, "");
+    await navigator.clipboard.writeText(relative || ctx.uri);
+  }});
+
+  // ── E4V#18: revealInOS ──
+  registerCommand("file-tree", { id: "explorer.revealInOS", title: "在文件管理器中显示", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx) return;
+    (window as any).linkdesk?.shell?.showItemInFolder(ctx.uri);
+  }});
+
+  // ── E4V#19: openInTerminal ──
+  registerCommand("file-tree", { id: "explorer.openInTerminal", title: "在终端中打开", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx) return;
+    const targetPath = ctx.isDirectory ? ctx.uri : dirname(ctx.uri);
+    (window as any).linkdesk?.shell?.openPath(targetPath);
+  }});
+
+  // 其余占位——后续任务替换
   registerCommand("file-tree", { id: "explorer.openFile",        title: "打开",                 handler: placeholder("explorer.openFile") });
   registerCommand("file-tree", { id: "explorer.openToSide",      title: "在侧边打开",            handler: placeholder("explorer.openToSide") });
   registerCommand("file-tree", { id: "explorer.openWith",        title: "打开方式…",            handler: placeholder("explorer.openWith") });
-  registerCommand("file-tree", { id: "explorer.revealInOS",      title: "在文件管理器中显示",     handler: placeholder("explorer.revealInOS") });
-  registerCommand("file-tree", { id: "explorer.openInTerminal",  title: "在终端中打开",           handler: placeholder("explorer.openInTerminal") });
   registerCommand("file-tree", { id: "explorer.cut",             title: "剪切",                 handler: placeholder("explorer.cut") });
   registerCommand("file-tree", { id: "explorer.copy",            title: "复制",                 handler: placeholder("explorer.copy") });
-  registerCommand("file-tree", { id: "explorer.copyPath",        title: "复制路径",              handler: placeholder("explorer.copyPath") });
-  registerCommand("file-tree", { id: "explorer.copyRelativePath",title: "复制相对路径",          handler: placeholder("explorer.copyRelativePath") });
   registerCommand("file-tree", { id: "explorer.paste",           title: "粘贴",                 handler: placeholder("explorer.paste") });
   registerCommand("file-tree", { id: "explorer.rename",          title: "重命名",               handler: placeholder("explorer.rename") });
   registerCommand("file-tree", { id: "explorer.delete",          title: "删除",                 handler: placeholder("explorer.delete") });

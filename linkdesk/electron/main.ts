@@ -7,7 +7,7 @@
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell } from 'electron';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
@@ -110,6 +110,10 @@ function createWindow(): void {
   }
   mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
+
+  // E4V#18-#19: Shell IPC——revealInOS / openInTerminal
+  ipcMain.handle('shell:openPath', async (_e, p: string) => shell.openPath(p));
+  ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
 
   mainWindow.on('closed', () => {
     mainWindow = null;
