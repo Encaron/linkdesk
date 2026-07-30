@@ -22,21 +22,18 @@ interface FileMenuContext {
   isDirectory: boolean;
 }
 
-/* ── E4V#20e: 模块级 ref 桥接——command handler 访问 model + rerender ── */
+/* ── E4V#20e: 模块级 ref 桥接——command handler 访问 model ── */
 
 let _model: FileTreeModel | null = null;
-let _rerender: (() => void) | null = null;
 
-/** FoldersView mount 时调用——注入 model + rerender 供 command handler 使用 */
-export function setFileTreeRefs(model: FileTreeModel, rerender: () => void): void {
+/** FoldersView mount 时调用——注入 model 供 command handler 使用 */
+export function setFileTreeRefs(model: FileTreeModel): void {
   _model = model;
-  _rerender = rerender;
 }
 
 /** FoldersView unmount 时调用——清除引用防泄漏 */
 export function clearFileTreeRefs(): void {
   _model = null;
-  _rerender = null;
 }
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
@@ -116,10 +113,9 @@ export function activateFileTreeContextMenu(): void {
     }
     await writeFile(filePath, "");
     await model.refresh(dirUri);
-    // refresh 后重载父目录——立即显示新文件
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
-    _rerender?.();
+    // refresh + getChildren → onDidChange.fire → 自动 rerender
   }});
 
   registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
@@ -139,24 +135,20 @@ export function activateFileTreeContextMenu(): void {
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
-    _rerender?.();
   }});
 
   registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
     const model = _model;
     if (!model) return;
     await model.refresh();
-    // refresh 后重载所有已展开目录 + 根
     for (const uri of model.getExpandedUris()) {
       const item = model.findClosest(uri);
       if (item) await model.getChildren(item).catch(() => {});
     }
-    _rerender?.();
   }});
 
   registerCommand("file-tree", { id: "explorer.collapseAll", title: "收起所有文件夹", handler: async () => {
     _model?.collapseAll();
-    _rerender?.();
   }});
 
   // ── 注册菜单项到 MenuId.FileContext ──

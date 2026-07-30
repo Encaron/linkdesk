@@ -22,8 +22,6 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 interface FileTreeProps {
   model: FileTreeModel;
-  /** E4V#20e: FoldersView 递增此值驱动 flatItems 重算——command handler 无法触及 FileTree 内部 state */
-  treeVersion?: number;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
@@ -80,7 +78,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, treeVersion, onOpenFile, onContextMenu }) => {
+const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -102,12 +100,20 @@ const FileTree: React.FC<FileTreeProps> = ({ model, treeVersion, onOpenFile, onC
     return () => ro.disconnect();
   }, []);
 
+  /* ── E4V#55b: 订阅模型变更——model 方法 fire 后自动重渲染 ── */
+
+  useEffect(() => {
+    return model.onDidChange.event(() => {
+      rerender();
+    });
+  }, [model, rerender]);
+
   /* ── 虚拟列表计算 ── */
 
   const flatItems = useMemo(() => {
-    void (version); void (treeVersion); // cache-bust: model 变更 + 外部驱动
+    void (version); // cache-bust: onDidChange 驱动 version 递增
     return flattenTree(model);
-  }, [model, version, treeVersion]);
+  }, [model, version]);
 
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
@@ -131,25 +137,24 @@ const FileTree: React.FC<FileTreeProps> = ({ model, treeVersion, onOpenFile, onC
 
   const handleTwistie = useCallback(
     async (item: ExplorerItem) => {
-      // E4V#9: 目录或有嵌套子节点的文件可以展开/折叠
       if (!item.isDirectory && item.children === null) return;
       if (model.isExpanded(item.uri)) {
         model.collapse(item.uri);
         model.compactController.collapseCompact(item.uri);
-        rerender();
+        // collapse → onDidChange.fire → 自动 rerender
       } else {
         model.expand(item.uri);
         model.compactController.expandCompact(item.uri);
+        // expand → onDidChange.fire; getChildren → onDidChange.fire
         try {
           const children = await model.getChildren(item);
           console.log("[file-tree] expand done:", item.uri, "children:", children.length);
         } catch (e) {
           console.error("[file-tree] expand failed:", item.uri, e);
         }
-        rerender();
       }
     },
-    [model, rerender],
+    [model],
   );
 
   /* ── 选中 + 打开 ── */
