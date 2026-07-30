@@ -36,6 +36,7 @@ function compileGlob(pattern: string): MatchFn {
 
 export class FileExcludeFilter {
   private _patterns: PatternEntry[] = [];
+  private _gitignore: PatternEntry[] = [];
 
   /**
    * 配置排除模式。
@@ -52,12 +53,40 @@ export class FileExcludeFilter {
   }
 
   /**
+   * E4V#8: 解析 .gitignore 内容并设为 gitignore 排除规则。
+   * 与 files.exclude 独立——configure() 不清空 gitignore 规则。
+   */
+  setGitignore(content: string): void {
+    this._gitignore = [];
+    const lines = content.split(/\r?\n/);
+    for (const raw of lines) {
+      const line = raw.trim();
+      if (!line || line.startsWith("#")) continue;
+      const isNegated = line.startsWith("!");
+      const pattern = isNegated ? line.slice(1) : line;
+      this._gitignore.push({ isNegated, match: compileGlob(pattern) });
+    }
+  }
+
+  /** E4V#8: 清空 gitignore 规则 */
+  clearGitignore(): void {
+    this._gitignore = [];
+  }
+
+  /**
    * 检查相对路径是否应被排除。
-   * 返回 true = 排除。
+   * 返回 true = 排除（files.exclude 或 .gitignore 任一声明排除即排除）。
    */
   matches(relativePath: string): boolean {
+    // files.exclude 优先
     let excluded = false;
     for (const { isNegated, match } of this._patterns) {
+      if (match(relativePath)) {
+        excluded = !isNegated;
+      }
+    }
+    // .gitignore 追加
+    for (const { isNegated, match } of this._gitignore) {
       if (match(relativePath)) {
         excluded = !isNegated;
       }
@@ -68,5 +97,6 @@ export class FileExcludeFilter {
   /** 清空所有模式 */
   clear(): void {
     this._patterns = [];
+    this._gitignore = [];
   }
 }
