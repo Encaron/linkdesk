@@ -22,7 +22,6 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem } from './event-system';
 
-console.log("[preload] starting, webUtils:", typeof webUtils, "getPathForFile:", typeof webUtils?.getPathForFile);
 
 try {
   // ── 语言资源缓存（E3c #40：接收壳广播的初始语言数据）──
@@ -88,11 +87,7 @@ try {
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
-    getFilePath: (file: File) => {
-      const p = webUtils.getPathForFile(file);
-      console.log("[preload] getFilePath name:", file.name, "path:", p);
-      return p;
-    },
+    getFilePath: (file: File) => webUtils.getPathForFile(file),
 
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
@@ -219,8 +214,6 @@ try {
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
     events,
   });
-
-  console.log("[preload] contextBridge done, keys:", Object.keys({ serial:1, configuration:1, commands:1, filesystem:1, clipboard:1, env:1, notifications:1, pluginManager:1, theme:1, language:1, pluginViews:1, events:1, getFilePath:1 }));
 
   // 通知主进程 preload 成功
   ipcRenderer.send('preload-plugin-ready');
