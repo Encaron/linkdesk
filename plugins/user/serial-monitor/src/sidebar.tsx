@@ -10,6 +10,9 @@
  * 硬规则（§3.12）：
  *   name 唯一写入入口 → 本文件（F2 / hover ✎）
  *   12 项设置唯一写入入口 → 本文件的"收发设置" Section
+ *
+ * @deprecated 自 E3.6——拆为 SessionListView + SerialSettingsView，通过 ViewContainerService 渲染。
+ * 保留此文件直到 E3.6 R4 清理旧 sidebar 系统。
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
