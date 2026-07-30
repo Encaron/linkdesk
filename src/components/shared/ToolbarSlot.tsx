@@ -37,17 +37,7 @@ export default function ToolbarSlot({ views, pluginId, onHeightChange }: Toolbar
   if (views.length === 0) return null;
 
   return (
-    <div
-      ref={ref}
-      className="side-panel-toolbar"
-      style={{
-        position: "sticky",
-        top: 0,
-        zIndex: "calc(var(--z-sidebar-sticky-header) + 1)",
-        background: "var(--bg-side-panel)",
-        overflow: "hidden",
-      }}
-    >
+    <div ref={ref} className="side-panel-toolbar">
       {views.map((view) => (
         <ErrorBoundary key={view.id} pluginId={pluginId}>
           <view.render />
