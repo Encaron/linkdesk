@@ -61,13 +61,12 @@ const FoldersView: React.FC = () => {
   }, [syncRoots, model, rerender]);
 
   /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
-   * title 永不为空串（plugin.json 初始=" "）→ 始终走 sectionViews 分支 → 永不 remount。
-   * 无工作区时 SidebarSection header 显示最小占位（几乎不可见）。
+   * E36#ROLE：role 字段保证始终 sectionViews——title 可安全为空，不再需要 " " 占位。
    * E4V#35：多根时标题走 workspace name。 */
   useEffect(() => {
     const updateTitle = () => {
       const folders = getWorkspaceFolders();
-      const title = folders[0]?.name || " ";
+      const title = folders[0]?.name ?? "";
       const existing = ViewContainerService.getView("folders");
       ViewContainerService.registerView("file-tree", "explorer", {
         id: "folders",
