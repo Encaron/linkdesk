@@ -115,8 +115,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       onMouseDown={handleMouseDown}
       onContextMenu={onContextMenu ? (e: React.MouseEvent) => onContextMenu(item, e) : undefined}
     >
-      {/* twistie */}
-      {item.isDirectory ? (
+      {/* twistie——目录或有嵌套子节点的文件 */}
+      {item.isDirectory || item.children !== null ? (
         <span
           className={`codicon ${chevron} ${twistieClass}`}
           onClick={(e) => {

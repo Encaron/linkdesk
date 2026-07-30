@@ -56,7 +56,8 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
       }
     }
     result.push({ item, depth });
-    if (item.isDirectory && model.isExpanded(item.uri) && item.children !== null) {
+    // 展开后渲染子节点——目录或有嵌套文件的文件
+    if (model.isExpanded(item.uri) && item.children !== null) {
       for (const child of item.children) {
         walk(child, depth + 1);
       }
@@ -129,7 +130,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   const handleTwistie = useCallback(
     async (item: ExplorerItem) => {
-      if (!item.isDirectory) return;
+      // E4V#9: 目录或有嵌套子节点的文件可以展开/折叠
+      if (!item.isDirectory && item.children === null) return;
       if (model.isExpanded(item.uri)) {
         model.collapse(item.uri);
         model.compactController.collapseCompact(item.uri);
