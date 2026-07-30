@@ -19,6 +19,8 @@ export interface FileEntry {
   isFile: boolean;
   size?: number;
   modifiedAt?: number;
+  /** E4V#10: 文件是否只读（不可写） */
+  isReadonly?: boolean;
 }
 
 class FileService {
