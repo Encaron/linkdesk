@@ -1,17 +1,19 @@
 /**
  * SidePanel — 侧栏。E3.6：从"渲染单个 sidebarComponent"归一化为
- * "查 ViewContainerService 桌子 → 循环渲染 <SidebarSection>"。
+ * "查 ViewContainerService 桌子 → 分组 → 委托 Slot 组件"。
+ *
+ * 🆕 E36#ROLE7：ToolbarSlot + SectionStack 替代 title="" hack + inline 分支。
+ * SidePanel 不再做分支判断——只读表、分组、委托。
  *
  * 对标 VS Code：SidePanel 不知道 FOLDERS 是什么、不知道"收发设置"是什么。
  * 它只做一件事——查表 + 循环渲染。谁注册了什么就渲染什么。
  */
 
-import { useState, useEffect, useLayoutEffect, forwardRef, useCallback, useRef } from "react";
+import { useState, useEffect, forwardRef, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { ViewContainerService } from "../core/ViewContainerService";
-import type { ViewDescriptor } from "../core/ViewContainerService";
-import ErrorBoundary from "./shared/ErrorBoundary";
-import SidebarSection from "./shared/SidebarSection";
+import ToolbarSlot from "./shared/ToolbarSlot";
+import SectionStack from "./shared/SectionStack";
 import "./SidePanel.css";
 
 interface SidePanelProps {
@@ -63,7 +65,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     if (!effectiveContainerId) return;
     const sub = ViewContainerService.onDidChangeActiveViews.event(({ containerId }) => {
       if (containerId !== effectiveContainerId) return;
-      setVersion((v) => v + 1); // force re-render——setState(prev=>prev) 不触发重渲染
+      setVersion((v) => v + 1);
     });
     return () => sub();
   }, [effectiveContainerId]);
@@ -72,36 +74,26 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const container = effectiveContainerId
     ? ViewContainerService.getViewContainer(effectiveContainerId)
     : undefined;
-  const activeViews: ViewDescriptor[] = effectiveContainerId
+  const activeViews = effectiveContainerId
     ? ViewContainerService.getActiveViews(effectiveContainerId)
     : [];
 
-  // 🔥 Bug 2 修复：切容器时重置 toolbarHeight——旧容器残留值会导致新容器 section header stickyTop 偏移
-  useEffect(() => {
-    setToolbarHeight(0);
-  }, [effectiveContainerId]);
+  // 🆕 E36#ROLE：按 role 分组——替代 title="" hack。
+  // toolbar 角色粘顶，section 角色（默认）有折叠头同级替换。
+  const toolbarViews = activeViews.filter((v) => v.role === "toolbar");
+  const sectionViews = activeViews.filter((v) => v.role !== "toolbar");
 
-  // 🆕 E3.6 ST2b：ResizeObserver 监听 toolbar 动态高度——无需 React re-render 即可响应尺寸变化
-  const toolbarRef = useRef<HTMLDivElement>(null);
+  // toolbarHeight 从 ToolbarSlot 回调接收——状态归 ToolbarSlot 管，SidePanel 只是转交
   const [toolbarHeight, setToolbarHeight] = useState(0);
 
-  useLayoutEffect(() => {
-    const el = toolbarRef.current;
-    // 🔥 归一化：toolbar 消失时高度归零。绑在 DOM 存在性上——无论切容器/卸载插件/隐藏 view，只要 toolbar div 不在 DOM 中，高度就归零。
-    if (!el) { setToolbarHeight(0); return; }
-    const observer = new ResizeObserver((entries) => {
-      for (const entry of entries) {
-        const h = entry.contentRect.height;
-        setToolbarHeight((prev) => (prev !== h ? h : prev));
-      }
-    });
-    observer.observe(el);
-    return () => observer.disconnect();
-  });
-
-  // mergeHeaderWhenSingle——单 view 时隐藏 view header
+  // mergeHeaderWhenSingle——容器 header 标题逻辑
   const singleView = activeViews.length === 1;
   const mergeHeader = singleView && container?.mergeHeaderWhenSingle === true;
+
+  let title = container?.title ?? "";
+  if (mergeHeader && activeViews[0]) {
+    title = activeViews[0].singleViewPaneContainerTitle ?? activeViews[0].title ?? title;
+  }
 
   const renderSidebarContent = () => {
     if (!effectiveContainerId) return null;
@@ -115,92 +107,22 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       );
     }
 
-    // mergeHeaderWhenSingle——单 view 容器不拆分 toolbar/section、不走 sticky
-    if (mergeHeader) {
-      return activeViews.map((view) => {
-        const noHeader = view.title === "";
-
-        if (mergeHeader && !noHeader) {
-          return (
-            <SidebarSection
-              key={view.id}
-              title=""
-              collapsible={false}
-              defaultOpen
-              headerHidden
-            >
-              <ErrorBoundary pluginId={effectiveContainerId}>
-                <view.render />
-              </ErrorBoundary>
-            </SidebarSection>
-          );
-        }
-
-        return (
-          <SidebarSection
-            key={view.id}
-            title={view.title}
-            collapsible={!noHeader}
-            defaultOpen={!view.collapsed}
-            badge={view.badge}
-            actions={view.actions}
-            titleDescription={view.titleDescription}
-            titleTooltip={view.titleTooltip}
-            showActions={view.showActions ?? "default"}
-            headerHidden={noHeader}
-          >
-            <ErrorBoundary pluginId={effectiveContainerId}>
-              <view.render />
-            </ErrorBoundary>
-          </SidebarSection>
-        );
-      });
-    }
-
-    // 🆕 E3.6 ST2：多 view 容器——拆分 toolbar（title=""）和 section，section header sticky 层层叠加
-    const toolbarViews = activeViews.filter((v) => v.title === "");
-    const sectionViews = activeViews.filter((v) => v.title !== "");
-
     return (
       <>
-        {toolbarViews.length > 0 && (
-          <div ref={toolbarRef} className="side-panel-toolbar">
-            {toolbarViews.map((view) => (
-              <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
-                <view.render />
-              </ErrorBoundary>
-            ))}
-          </div>
-        )}
-        {/* 🆕 ST2：同级 section header 共用一个 sticky top——碰顶时替换而非叠加。
-             对标 VS Code：同级 view header 互相顶走，只有父子才层层叠加。 */}
-        {sectionViews.map((view) => (
-          <SidebarSection
-            key={view.id}
-            title={view.title}
-            collapsible
-            defaultOpen={!view.collapsed}
-            badge={view.badge}
-            actions={view.actions}
-            titleDescription={view.titleDescription}
-            titleTooltip={view.titleTooltip}
-            showActions={view.showActions ?? "default"}
-            stickyTop={toolbarHeight}
-          >
-            <ErrorBoundary pluginId={effectiveContainerId}>
-              <view.render />
-            </ErrorBoundary>
-          </SidebarSection>
-        ))}
+        <ToolbarSlot
+          views={toolbarViews}
+          pluginId={effectiveContainerId}
+          onHeightChange={setToolbarHeight}
+        />
+        <SectionStack
+          views={sectionViews}
+          pluginId={effectiveContainerId}
+          toolbarHeight={toolbarHeight}
+          mergeHeaderWhenSingle={container?.mergeHeaderWhenSingle}
+        />
       </>
     );
   };
-
-  // 标题：容器 title，mergeHeader 时用 view.singleViewPaneContainerTitle
-  let title = container?.title ?? "";
-  if (mergeHeader && activeViews[0]) {
-    title = activeViews[0].singleViewPaneContainerTitle ?? activeViews[0].title ?? title;
-  }
 
   return (
     <aside
