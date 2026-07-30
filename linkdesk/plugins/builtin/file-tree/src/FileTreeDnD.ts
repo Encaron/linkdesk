@@ -157,8 +157,8 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
           if (srcPath) {
             const normalizedSrc = srcPath.replace(/\\/g, "/");
             const normalizedTarget = target.targetDir.replace(/\\/g, "/");
-            // 🔥 禁止 OS 拖祖先到后代——防止递归嵌套（X/ → X/sub/X/sub/... 指数膨胀）
-            if (normalizedTarget.startsWith(normalizedSrc + "/")) continue;
+            // 🔥 禁止自己→自己 + 祖先→后代——防递归嵌套
+            if (normalizedSrc === normalizedTarget || normalizedTarget.startsWith(normalizedSrc + "/")) continue;
             const dest = joinPath(target.targetDir, file.name);
             await copy(srcPath, dest);
           }
