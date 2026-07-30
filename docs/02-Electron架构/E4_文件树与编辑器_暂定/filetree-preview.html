@@ -394,14 +394,10 @@ body {
     </div>
   </div>
 
-  <!-- ═══ FOLDERS section（单根——E4V#15b 最终态） ═══
-       🔥 本预览仅画单工作区。多根工作区（E4V#35）根节点回到树中：
-          ▼ MyProject   [📄][📂][↻][⊟]
-            📂 linkdesk              ← depth=0 加粗
-              ▶ src/
-            📂 serial-monitor        ← depth=0 加粗
-              ▶ docs/
-       ——多根需单独 HTML 预览或在此文件追加第二套 DOM。
+  <!-- ═══ FOLDERS section ═══
+       🔥 2026-07-31: E4V#15b 已回退——单根多根统一在树中显示根节点（depth=1）。
+       单根：header = 根名，树中一个根节点
+       多根（R15）：header = workspace 名，树中多个根节点（加粗+选中高亮）
   -->
   <!-- FOLDERS section (root name + toolbar inline —— ViewContainer 子视图 2) -->
   <div class="view-section">
