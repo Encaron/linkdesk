@@ -7,6 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
@@ -57,8 +58,10 @@ const FoldersView: React.FC = () => {
       const folders = getWorkspaceFolders();
       setRoots(folders);
       await model.setRoots(folders.map((f) => f.uri));
-      // E4V#8: 读取根目录 .gitignore 并合并到排除过滤器
+      // E4V#8a: 读取 files.exclude 配置 + .gitignore 并合并到排除过滤器
       const filter = filterRef.current;
+      const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
+      filter.configure(excludeCfg);
       filter.clearGitignore();
       for (const f of folders) {
         const gitignorePath = joinPath(f.uri, ".gitignore");
@@ -82,7 +85,16 @@ const FoldersView: React.FC = () => {
     const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
       model.refresh().then(() => rerender());
     });
-    return () => { unsub1(); unsub2(); };
+    // E4V#8a: 订阅 files.exclude 变化→重新配置过滤器+刷新
+    const unsub3 = onDidChangeConfiguration((key, _value) => {
+      if (key === "files.exclude") {
+        const filter = filterRef.current;
+        const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
+        filter.configure(excludeCfg);
+        model.refresh().then(() => rerender());
+      }
+    });
+    return () => { unsub1(); unsub2(); unsub3(); };
   }, [syncRoots, model, rerender]);
 
   /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
