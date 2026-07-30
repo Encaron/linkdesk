@@ -22,6 +22,8 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 interface FileTreeProps {
   model: FileTreeModel;
+  /** E4V#20e: FoldersView 递增此值驱动 flatItems 重算——command handler 无法触及 FileTree 内部 state */
+  treeVersion?: number;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
@@ -78,7 +80,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
+const FileTree: React.FC<FileTreeProps> = ({ model, treeVersion, onOpenFile, onContextMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -103,9 +105,9 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /* ── 虚拟列表计算 ── */
 
   const flatItems = useMemo(() => {
-    void (version); // cache-bust: model 内部 mutable state 变更后递增
+    void (version); void (treeVersion); // cache-bust: model 变更 + 外部驱动
     return flattenTree(model);
-  }, [model, version]);
+  }, [model, version, treeVersion]);
 
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
