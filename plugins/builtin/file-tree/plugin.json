@@ -47,8 +47,8 @@
       "properties": {
         "explorer.sortOrder": {
           "type": "string",
-          "enum": ["foldersFirst", "name", "modifiedAt"],
-          "default": "foldersFirst",
+          "enum": ["default", "mixed", "filesFirst", "type", "modified", "foldersNestsFiles"],
+          "default": "default",
           "description": "文件树排序方式"
         },
         "explorer.compactFolders": {
