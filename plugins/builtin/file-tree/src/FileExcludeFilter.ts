@@ -6,7 +6,25 @@
  * 🔥 当前版本覆盖常见模式（**、*、! 取反）。后续可升级为 picomatch 做完整 glob。
  */
 
+import type { FileEntry } from "@src/core/FileService";
+
 type MatchFn = (input: string) => boolean;
+
+/** E4V#9: 文件嵌套模式——对标 VS Code explorer.fileNesting.patterns */
+interface NestingRule {
+  parentPattern: string;   // e.g. "*.ts"
+  childPatterns: string[]; // e.g. ["${capture}.js", "${capture}.js.map"]
+}
+
+/** 默认嵌套规则——对标 VS Code 内置 patterns */
+const DEFAULT_NESTING_RULES: NestingRule[] = [
+  { parentPattern: "*.ts", childPatterns: ["${capture}.js", "${capture}.js.map", "${capture}.d.ts"] },
+  { parentPattern: "*.tsx", childPatterns: ["${capture}.js", "${capture}.js.map"] },
+  { parentPattern: "*.jsx", childPatterns: ["${capture}.js", "${capture}.js.map"] },
+  { parentPattern: "*.js", childPatterns: ["${capture}.js.map", "${capture}.d.ts"] },
+  { parentPattern: "*.css", childPatterns: ["${capture}.css.map"] },
+  { parentPattern: "*.scss", childPatterns: ["${capture}.css", "${capture}.css.map"] },
+];
 
 interface PatternEntry {
   isNegated: boolean;
@@ -99,4 +117,34 @@ export class FileExcludeFilter {
     this._patterns = [];
     this._gitignore = [];
   }
+
+  /**
+   * E4V#9: 构建文件嵌套映射——匹配 parent→children 关系。
+   * 返回 Map<parentPath, childEntries>。不在任何嵌套关系中的条目独立显示。
+   */
+  buildNestingMap(entries: FileEntry[]): Map<string, FileEntry[]> {
+    const map = new Map<string, FileEntry[]>();
+    for (const rule of DEFAULT_NESTING_RULES) {
+      for (const entry of entries) {
+        const match = matchNestingParent(entry.name, rule.parentPattern);
+        if (!match) continue;
+        const children: FileEntry[] = [];
+        for (const childPattern of rule.childPatterns) {
+          const resolved = childPattern.replace(/\$\{capture\}/g, match);
+          const child = entries.find((e) => e.name === resolved);
+          if (child && child !== entry) children.push(child);
+        }
+        if (children.length > 0) map.set(entry.path, children);
+      }
+    }
+    return map;
+  }
+}
+
+/** 匹配嵌套父模式——返回 capture 组（不含扩展名的文件名），不匹配返回 null */
+function matchNestingParent(name: string, pattern: string): string | null {
+  if (!pattern.startsWith("*.")) return null;
+  const ext = pattern.slice(1); // ".ts"
+  if (!name.endsWith(ext)) return null;
+  return name.slice(0, -ext.length); // "app.ts" → "app"
 }

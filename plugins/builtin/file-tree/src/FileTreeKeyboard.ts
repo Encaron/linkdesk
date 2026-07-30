@@ -130,12 +130,12 @@ export function useFileTreeKeyboard(
 
         case "ArrowLeft": {
           e.preventDefault();
-          if (fi.isDirectory && model.isExpanded(fi.uri)) {
+          if (model.isExpanded(fi.uri) && fi.children !== null) {
             // 已展开 → 折叠
             model.collapse(fi.uri);
             callbacks.rerender();
           } else {
-            // 已折叠或文件 → 跳父节点
+            // 已折叠或不可展开项 → 跳父节点
             const parent = fi.parent;
             if (parent) {
               const pIdx = flatItems.findIndex((f) => f.item.uri === parent.uri);
@@ -152,11 +152,11 @@ export function useFileTreeKeyboard(
 
         case "ArrowRight": {
           e.preventDefault();
-          if (fi.isDirectory && !model.isExpanded(fi.uri)) {
+          if (fi.children !== null && !model.isExpanded(fi.uri)) {
             // 已折叠 → 展开
             model.expand(fi.uri);
             model.getChildren(fi).then(() => callbacks.rerender());
-          } else if (fi.isDirectory && model.isExpanded(fi.uri)) {
+          } else if (model.isExpanded(fi.uri) && fi.children !== null) {
             // 已展开 → 跳首子节点
             if (fi.children && fi.children.length > 0) {
               const child = fi.children[0];
@@ -193,7 +193,7 @@ export function useFileTreeKeyboard(
         case "Enter": {
           e.preventDefault();
           callbacks.setSelectedUri(fi.uri);
-          if (fi.isDirectory) {
+          if (fi.isDirectory || fi.children !== null) {
             callbacks.onTwistie(fi);
           } else {
             callbacks.onOpenFile(fi, "pin");
@@ -201,11 +201,11 @@ export function useFileTreeKeyboard(
           break;
         }
 
-        /* ── Space——展开/折叠目录（对标 VS Code） ── */
+        /* ── Space——展开/折叠（对标 VS Code） ── */
 
         case " ": {
           e.preventDefault();
-          if (fi.isDirectory) {
+          if (fi.isDirectory || fi.children !== null) {
             callbacks.onTwistie(fi);
           }
           break;

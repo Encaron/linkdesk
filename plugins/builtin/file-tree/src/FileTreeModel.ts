@@ -81,6 +81,24 @@ export class FileTreeModel {
         })
       : entries;
     current.children = filtered.map((e) => this._toExplorerItem(e, current));
+    // E4V#9: 文件嵌套——相关文件折叠为父文件的子节点
+    if (this._excludeFilter) {
+      const nesting = this._excludeFilter.buildNestingMap(filtered);
+      // 归一化 key——FileEntry.path 可能含反斜杠
+      const normalizedNesting = new Map<string, typeof filtered>();
+      const nestedPaths = new Set<string>();
+      for (const [parentPath, children] of nesting) {
+        normalizedNesting.set(normalizePath(parentPath), children);
+        for (const c of children) nestedPaths.add(normalizePath(c.path));
+      }
+      for (const item of current.children) {
+        const nested = normalizedNesting.get(item.uri);
+        if (nested) {
+          item.children = nested.map((e) => this._toExplorerItem(e, item));
+        }
+      }
+      current.children = current.children.filter((c) => !nestedPaths.has(normalizePath(c.uri)));
+    }
     this._sort(current.children);
     return current.children;
   }
