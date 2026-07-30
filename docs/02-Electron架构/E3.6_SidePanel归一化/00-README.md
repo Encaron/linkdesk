@@ -223,6 +223,7 @@ SidePanel 的渲染逻辑——不管当前是哪个 container，同一句话：
 | `06-UI-UX审查.md` | 🆕 **设计系统对照。** Dark Mode (OLED) 审查——5 P0 + 3 P1 问题，8 项已融入执行清单 |
 | `01-核心桌子/ViewContainerService.md` | E36#1–#2：Service 类 v2 完整 API |
 | `02-壳层改造/SidePanel改造.md` | E36#3：SidePanel 渲染循环重写 |
+| `02-壳层改造/ContainerRole-容器角色重构.md` | 🆕🔥 E36#TB-ROLE：`title=""` hack → 显式 `role` 字段，消灭分支 + 状态泄漏 |
 | `02-壳层改造/App+IconBar改造.md` | E36#4：containerId 语义 + 点击→渲染完整链路 |
 | `02-壳层改造/Loader+类型改造.md` | E36#5：types + loader parseContributions |
 | `03-插件迁移/file-tree.md` | E36#6：file-tree 迁移方案 |
