@@ -12,6 +12,7 @@ import type { FileEntry } from "@src/core/FileService";
 import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
+import { CompactController } from "./CompactController";
 import { basename, splitPath, normalizePath } from "./pathUtils";
 
 /* ── 类型 ── */
@@ -38,9 +39,11 @@ export class FileTreeModel {
   private _expanded = new Set<string>();
   private _sortOrder: SortOrder;
   private _excludeFilter: FileExcludeFilter | null = null;
+  readonly compactController: CompactController;
 
   constructor(sortOrder?: SortOrder) {
     this._sortOrder = sortOrder ?? "foldersFirst";
+    this.compactController = new CompactController();
   }
 
   /** E4a #95d: 设置排除过滤器 */
