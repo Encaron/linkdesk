@@ -118,12 +118,14 @@ class FileService {
         isDirectory: entry.isDirectory(),
         isFile: entry.isFile(),
       };
-      // 文件补充 size + modifiedAt（目录跳过——stat 目录性能无意义）
+      // 文件补充 size + modifiedAt + readonly（目录跳过——stat 目录性能无意义）
       if (entry.isFile()) {
         try {
           const s = await fs.stat(fullPath);
           entryData.size = s.size;
           entryData.modifiedAt = s.mtimeMs;
+          // E4V#10: 检查写权限——Windows 兼容（mode 0o222 = owner/group/other write）
+          entryData.isReadonly = (s.mode & 0o222) === 0;
         } catch { /* 文件可能刚被删除 */ }
       }
       result.push(entryData);
