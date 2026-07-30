@@ -81,3 +81,12 @@
   padding: 12px;
   text-align: center;
 }
+
+/* 🔥 UX04：尊重系统"减少动画"偏好——关闭所有 transition */
+@media (prefers-reduced-motion: reduce) {
+  .side-panel.animating,
+  .side-panel-collapse,
+  .side-panel-expand {
+    transition: none !important;
+  }
+}
