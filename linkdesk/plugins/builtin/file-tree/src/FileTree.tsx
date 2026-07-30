@@ -199,7 +199,15 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       getContainerEl: () => containerRef.current,
     });
 
-  /* ── 上下文键（E4b #98——快捷键 when 条件） ── */
+  /* ── 上下文键（E4b #98 + E4V#12-#13——快捷键 when 条件） ── */
+
+  /** E4V#12: 平台级 context key——mount 时初始化 */
+  useEffect(() => {
+    // 剪贴板剪切标记——R5 FileTreeClipboard 会动态更新，此处初始化
+    ContextKeyService.setValue("explorerResourceCut", false);
+    // Windows 可回收站→删除确认文案为"移至回收站"
+    ContextKeyService.setValue("explorerResourceMoveableToTrash", navigator.platform.includes("Win"));
+  }, []);
 
   /** 文件树获得/失去键盘焦点——设置 explorerFocus context key */
   const handleFocus = useCallback(() => {
@@ -210,15 +218,23 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     ContextKeyService.setValue("explorerFocus", false);
   }, []);
 
-  /** focusedUri 变化时更新 isFile context key */
+  /** focusedUri 变化时更新 context keys */
   useEffect(() => {
     if (focusedUri) {
       const fi = flatItems.find((f) => f.item.uri === focusedUri);
       ContextKeyService.setValue("explorerItemIsFile", fi?.item.isDirectory === false);
+      // E4V#12 P0: 只读标记——重命名/删除 when 用 !explorerResourceReadonly
+      ContextKeyService.setValue("explorerResourceReadonly", fi?.item.isReadonly === true);
+      // E4V#13 P1: 压缩节点聚焦——键盘 ← → 段间导航
+      ContextKeyService.setValue("explorerViewletCompressedFocus", (fi?.compactedSegments?.length ?? 0) > 0);
     } else {
       ContextKeyService.setValue("explorerItemIsFile", false);
+      ContextKeyService.setValue("explorerResourceReadonly", false);
+      ContextKeyService.setValue("explorerViewletCompressedFocus", false);
     }
-  }, [focusedUri, flatItems]);
+    // E4V#13 P1: 有已展开项→"全部折叠"按钮可见
+    ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
+  }, [focusedUri, flatItems, model]);
 
   /* ── 渲染 ── */
 

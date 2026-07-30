@@ -98,18 +98,19 @@ interface FileTreeContextMenuProps {
  * 通过 ContextKeyService 求值 when 条件。
  */
 const FileTreeContextMenu: React.FC<FileTreeContextMenuProps> = ({ item, anchor, onClose }) => {
-  // 设置瞬态 context key——菜单渲染前注入，关闭时清除
+  // E4V#12: 设置瞬态 context key——菜单渲染前注入，关闭时清除
   useEffect(() => {
     ContextKeyService.setValue("explorerItemIsFile", item?.isDirectory === false);
     ContextKeyService.setValue("explorerItemIsDir", item?.isDirectory === true);
     ContextKeyService.setValue("explorerItemIsRoot", item?.parent === null);
-    // explorerClipboardEmpty 待 #102 剪贴板服务实现后接入
+    // E4V#12: 只读标记——右键只读文件时隐藏重命名/删除
+    ContextKeyService.setValue("explorerResourceReadonly", item?.isReadonly === true);
 
     return () => {
-      // 对标 VS Code——context key 是瞬时状态，关闭即清除
       ContextKeyService.setValue("explorerItemIsFile", false);
       ContextKeyService.setValue("explorerItemIsDir", false);
       ContextKeyService.setValue("explorerItemIsRoot", false);
+      ContextKeyService.setValue("explorerResourceReadonly", false);
     };
   }, [item]);
 
