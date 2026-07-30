@@ -18,6 +18,29 @@
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
   ],
   "contributes": {
+    "viewsContainers": {
+      "serial-monitor": {
+        "title": "串口监视器",
+        "location": "sidebar",
+        "hideIfEmpty": false
+      }
+    },
+    "views": {
+      "serial-monitor": [
+        {
+          "id": "sessions",
+          "title": "串口监视器会话",
+          "render": "src/views/SessionListView.tsx",
+          "order": 0
+        },
+        {
+          "id": "settings",
+          "title": "收发设置",
+          "render": "src/views/SerialSettingsView.tsx",
+          "order": 1
+        }
+      ]
+    },
     "configuration": {
       "title": "串口监视器",
       "properties": {
