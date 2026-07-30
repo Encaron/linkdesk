@@ -87,7 +87,8 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
 
   useLayoutEffect(() => {
     const el = toolbarRef.current;
-    if (!el) return;
+    // 🔥 归一化：toolbar 消失时高度归零。绑在 DOM 存在性上——无论切容器/卸载插件/隐藏 view，只要 toolbar div 不在 DOM 中，高度就归零。
+    if (!el) { setToolbarHeight(0); return; }
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const h = entry.contentRect.height;
