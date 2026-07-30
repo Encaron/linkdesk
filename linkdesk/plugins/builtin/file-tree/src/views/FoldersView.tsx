@@ -58,13 +58,7 @@ const FoldersView: React.FC = () => {
       const folders = getWorkspaceFolders();
       setRoots(folders);
       await model.setRoots(folders.map((f) => f.uri));
-      // E4V#15: 单根自动展开——跳过根节点显示，树从子节点开始
-      if (model.roots.length === 1) {
-        const root = model.roots[0];
-        model.expand(root.uri);
-        await model.getChildren(root);
-      }
-      // E4V#8a: 读取 files.exclude 配置 + .gitignore 并合并到排除过滤器
+      // E4V#8a: filter 必须在 getChildren 之前设置——否则首次加载不过滤
       const filter = filterRef.current;
       const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
       filter.configure(excludeCfg);
@@ -79,6 +73,12 @@ const FoldersView: React.FC = () => {
         }
       }
       model.setExcludeFilter(filter);
+      // E4V#15: 单根自动展开——filter 就绪后再加载子节点
+      if (model.roots.length === 1) {
+        const root = model.roots[0];
+        model.expand(root.uri);
+        await model.getChildren(root);
+      }
       rerender();
     })().finally(() => { _syncGuardRef.current = null; });
     _syncGuardRef.current = promise;
@@ -89,7 +89,13 @@ const FoldersView: React.FC = () => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
-      model.refresh().then(() => rerender());
+      model.refresh().then(async () => {
+        // E4V#15: 单根跳过根节点——refresh 清空后自动重载
+        if (model.roots.length === 1 && model.isExpanded(model.roots[0].uri)) {
+          await model.getChildren(model.roots[0]);
+        }
+        rerender();
+      });
     });
     // E4V#8a: 订阅 files.exclude 变化→重新配置过滤器+刷新
     const unsub3 = onDidChangeConfiguration((key, _value) => {
