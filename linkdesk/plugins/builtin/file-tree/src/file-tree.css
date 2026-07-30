@@ -114,11 +114,20 @@
 
 .file-tree-scroll {
   height: 100%;
-  /* E4V#20+iii: overflow:visible 让 position:sticky 穿透到 .side-panel-content */
+  /* E4V#20+iii: overflow:visible 让 position:sticky 穿透到 .side-panel-content；
+     display:flex 分离 sticky rows（定高）和 clip（flex:1+overflow:hidden） */
   overflow: visible;
+  display: flex;
+  flex-direction: column;
   outline: none;
   color: var(--text-primary);
   background: transparent;
+}
+
+.file-tree-scroll-clip {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* E4b #99k: 自定义滚动条——暗色主题，对标 HTML 预览 */
