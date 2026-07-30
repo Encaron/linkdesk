@@ -74,25 +74,6 @@ const pluginModules = {
   ),
 };
 
-const pluginSidebarModules = {
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/sidebar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/builtin/*/src/sidebar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/sidebar.tsx",
-    { eager: false }
-  ),
-  ...import.meta.glob<{ default: React.ComponentType }>(
-    "../../plugins/user/*/src/sidebar.tsx",
-    { eager: false }
-  ),
-};
-
 const pluginStatusBarModules = {
   ...import.meta.glob<{ default: React.ComponentType }>(
     "../../plugins/builtin/*/statusBar.tsx",
@@ -761,7 +742,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
-  let sidebarComponent: React.ComponentType | undefined;
   let statusBarComponent: React.ComponentType | undefined;
   if (manifest.entry) {
     try {
@@ -777,27 +757,16 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
         console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
       }
 
-      // Bug 3 fix：运行时插件也加载 sidebar.tsx / statusBar.tsx（对标 loadViewPlugin glob 行为）。
-      // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime，
-      // 不加载 sidebar 则侧栏不显示。同时尝试平铺和 src/ 子目录两种结构。
-      const sidebarBase = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
+      // Bug 3 fix：运行时插件也加载 statusBar.tsx（对标 loadViewPlugin glob 行为）。
+      // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime。
+      const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
       try {
-        const sm = await import(/* @vite-ignore */ `${sidebarBase}/sidebar.tsx`);
-        sidebarComponent = sm.default;
-      } catch { /* 无 sidebar.tsx——正常 */ }
-      if (!sidebarComponent) {
-        try {
-          const sm = await import(/* @vite-ignore */ `${sidebarBase}/src/sidebar.tsx`);
-          sidebarComponent = sm.default;
-        } catch { /* 无 src/sidebar.tsx——正常 */ }
-      }
-      try {
-        const sbm = await import(/* @vite-ignore */ `${sidebarBase}/statusBar.tsx`);
+        const sbm = await import(/* @vite-ignore */ `${basePath}/statusBar.tsx`);
         statusBarComponent = sbm.default;
       } catch { /* 无 statusBar.tsx——正常 */ }
       if (!statusBarComponent) {
         try {
-          const sbm = await import(/* @vite-ignore */ `${sidebarBase}/src/statusBar.tsx`);
+          const sbm = await import(/* @vite-ignore */ `${basePath}/src/statusBar.tsx`);
           statusBarComponent = sbm.default;
         } catch { /* 无 src/statusBar.tsx——正常 */ }
       }
@@ -819,7 +788,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       pluginId,
       manifest,
       component: Component,
-      sidebarComponent,
       statusBarComponent,
     };
     registerViewPlugin(entry);
@@ -905,15 +873,6 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
     throw new Error("入口文件未导出 default 组件");
   }
 
-  let sidebarComponent: React.ComponentType | undefined;
-  const sidebarKey = Object.keys(pluginSidebarModules).find(
-    (k) => extractPluginId(k) === pluginId
-  );
-  if (sidebarKey) {
-    const sidebarModule = await pluginSidebarModules[sidebarKey]();
-    sidebarComponent = sidebarModule.default;
-  }
-
   let statusBarComponent: React.ComponentType | undefined;
   const statusBarKey = Object.keys(pluginStatusBarModules).find(
     (k) => extractPluginId(k) === pluginId
@@ -927,7 +886,6 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
     pluginId,
     manifest,
     component: Component,
-    sidebarComponent,
     statusBarComponent,
   };
 

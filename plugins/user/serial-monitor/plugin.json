@@ -6,7 +6,6 @@
   "description": "串口数据监视器——接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。LinkDesk 第一个视图插件，通用容器基础设施在此验证。不绑定任何特定用途。",
   "author": "官方",
   "entry": "src/index.tsx",
-  "sidebar": "src/sidebar.tsx",
   "iconLocation": "top",
   "viewRole": "sidebarPrimary",
   "tabBehavior": {

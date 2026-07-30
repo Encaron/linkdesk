@@ -8,7 +8,6 @@
   "distribution": "builtin",
   "core": true,
   "entry": "src/index.tsx",
-  "sidebar": "src/sidebar.tsx",
   "viewRole": "sidebarPrimary",
   "tabBehavior": {
     "singleton": true
