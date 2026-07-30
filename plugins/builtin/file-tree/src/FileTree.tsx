@@ -12,7 +12,6 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { getCompactedPath } from "./CompactFolder";
 import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
@@ -34,9 +33,9 @@ interface FileTreeProps {
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number) {
-    // 🔥 E4V#4: CompactFolder Bug A/B/C 三合一修复
+    // 🔥 E4V#6: CompactFolder Bug A/B/C 三合一修复——走 CompactController
     if (item.isDirectory) {
-      const compacted = getCompactedPath(item);
+      const compacted = model.compactController.getCompactedSegments(item);
       if (compacted) {
         const leaf = findLeaf(item);
         // Bug A: model.findClosest 获取当前活跃对象——防 stale 引用（同名目录）
@@ -133,9 +132,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       if (!item.isDirectory) return;
       if (model.isExpanded(item.uri)) {
         model.collapse(item.uri);
+        model.compactController.collapseCompact(item.uri);
         rerender();
       } else {
         model.expand(item.uri);
+        model.compactController.expandCompact(item.uri);
         try {
           const children = await model.getChildren(item);
           console.log("[file-tree] expand done:", item.uri, "children:", children.length);

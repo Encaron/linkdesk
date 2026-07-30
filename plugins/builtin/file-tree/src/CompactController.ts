@@ -15,14 +15,16 @@ export class CompactController {
 
   /* ── 查询 ── */
 
-  /** 查询 item 是否处于压缩态（单子目录链） */
+  /** 查询 item 是否处于压缩态（单子目录链且未手动展开） */
   isCompacted(item: ExplorerItem): boolean {
     if (this.isIncompressible(item)) return false;
+    if (this._uncompacted.has(item.uri)) return false;
     return getCompactedPath(item) !== null;
   }
 
   /** 获取压缩路径段（供视图层渲染面包屑），null = 不压缩 */
   getCompactedSegments(item: ExplorerItem): string[] | null {
+    if (!item.isDirectory) return null;
     if (this.isIncompressible(item)) return null;
     return getCompactedPath(item);
   }
