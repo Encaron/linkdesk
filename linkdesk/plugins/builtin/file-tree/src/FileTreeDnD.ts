@@ -10,7 +10,7 @@ import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
 import { copy, deleteEntry } from "@src/core/FileService";
-import { dirname, joinPath } from "./pathUtils";
+import { dirname, joinPath, normalizePath } from "./pathUtils";
 import type { FlatItem } from "./pathUtils";
 
 /* ── 类型 ── */
@@ -64,6 +64,28 @@ export function isAncestorOf(source: ExplorerItem, target: ExplorerItem): boolea
   const sn = source.uri;
   const tn = target.uri;
   return sn !== tn && tn.startsWith(sn + "/");
+}
+
+/**
+ * 🔥 拖放安全检查——归一化入口。
+ * OS 拖入和树内拖拽两分支都调此函数，三个检查只写一处。
+ * 对标 VS Code FileDragAndDrop。
+ */
+export async function executeSafeDrop(
+  sources: { path: string; name: string }[],
+  targetDir: string,
+  operation: "copy" | "move",
+): Promise<void> {
+  const t = normalizePath(targetDir);
+  for (const src of sources) {
+    const s = normalizePath(src.path);
+    const dest = joinPath(t, src.name);
+    if (t.startsWith(s + "/")) continue;  // 祖先→后代——防递归嵌套
+    if (s === t) continue;                // 自己→自己——防 sub→sub/sub
+    if (s === dest) continue;             // 同路径——无操作
+    await copy(src.path, dest);
+    if (operation === "move") await deleteEntry(src.path);
+  }
 }
 
 /* ── Drag 事件类型 ── */
@@ -150,19 +172,13 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
         const gfp = (window as any).linkdesk?.getFilePath as ((f: File) => string) | undefined;
+        const sources: { path: string; name: string }[] = [];
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
           const file = e.dataTransfer.files[i];
-          // Electron 43 contextIsolation → File.path 为空，走 preload webUtils.getPathForFile
           const srcPath = gfp?.(file) || (file as any).path as string;
-          if (srcPath) {
-            const normalizedSrc = srcPath.replace(/\\/g, "/");
-            const normalizedTarget = target.targetDir.replace(/\\/g, "/");
-            // 🔥 禁止自己→自己 + 祖先→后代——防递归嵌套
-            if (normalizedSrc === normalizedTarget || normalizedTarget.startsWith(normalizedSrc + "/")) continue;
-            const dest = joinPath(target.targetDir, file.name);
-            await copy(srcPath, dest);
-          }
+          if (srcPath) sources.push({ path: srcPath, name: file.name });
         }
+        await executeSafeDrop(sources, target.targetDir, "copy");
         await refreshDir(target.targetDir);
         callbacks.rerender();
         return;
@@ -172,17 +188,11 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
       const uri = e.dataTransfer.getData("text/plain");
       if (!uri || !sourceItem) return;
 
-      // 不能拖祖先到后代
-      if (isAncestorOf(sourceItem, target.item)) return;
-
       // 不能拖到自己所在的目录
-      const srcDir = dirname(uri);
-      if (srcDir === target.targetDir) return;
+      if (dirname(uri) === target.targetDir) return;
 
-      const dest = joinPath(target.targetDir, sourceItem.name);
-      await copy(uri, dest);
-      await deleteEntry(uri);
-      await refreshDir(srcDir);
+      await executeSafeDrop([{ path: uri, name: sourceItem.name }], target.targetDir, "move");
+      await refreshDir(dirname(uri));
       await refreshDir(target.targetDir);
       callbacks.rerender();
     },
