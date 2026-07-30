@@ -260,10 +260,18 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   /* ── E4V#20+iv: sticky state——对标 VS Code findStickyState ── */
 
-  const stickyState = useMemo(
-    () => findStickyState(flatItems, model, scrollTop, containerHeight),
-    [flatItems, model, scrollTop, containerHeight],
-  );
+  const _stickyIdRef = useRef("");
+  const _stickyCachedRef = useRef<StickyRow[]>([]);
+
+  const stickyState = useMemo(() => {
+    const state = findStickyState(flatItems, model, scrollTop, containerHeight);
+    // E4V#20+vi: 状态比较——对标 VS Code StickyScrollState.equal
+    const id = state.map((r) => `${r.item.uri}@${r.position.toFixed(0)}`).join("|");
+    if (id === _stickyIdRef.current) return _stickyCachedRef.current;
+    _stickyIdRef.current = id;
+    _stickyCachedRef.current = state;
+    return state;
+  }, [flatItems, model, scrollTop, containerHeight]);
 
   /* ── 滚动——E4V#20+ii: 监听真实滚动容器 .side-panel-content ── */
 
