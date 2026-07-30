@@ -20,15 +20,22 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 10px 12px;
+  height: 35px;
+  padding: 0 12px;
   border-bottom: 1px solid var(--separator);
   background: var(--bg-side-panel);
 }
 
+/* 🔥 UX06：对标 VS Code——11px/uppercase/letter-spacing/ellipsis */
 .side-panel-title {
-  font-size: 13px;
+  font-size: 11px;
   font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
 }
 
 .side-panel-collapse,
