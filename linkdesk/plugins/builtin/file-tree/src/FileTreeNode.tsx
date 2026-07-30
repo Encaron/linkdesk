@@ -19,10 +19,12 @@ interface FileTreeNodeProps {
   indent: number;
   /** E4a #95c: 紧凑文件夹——压缩路径段 */
   compactedSegments?: string[];
+  /** E4V#16: CSS 引导线——本层还有后续兄弟 */
+  guide?: boolean;
   /** E4b #99: 拖放——dragStart / dragOver 指示线 */
   isDragSource?: boolean;
   isDragHover?: boolean;
-  /** E4b #99k: excluded 文件灰显 */
+  /** E4b #99k + E4V#16: excluded 文件灰显 */
   isDimmed?: boolean;
   onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
   /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效 */
@@ -47,6 +49,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   expanded,
   indent,
   compactedSegments,
+  guide,
   isDragSource,
   isDragHover,
   isDimmed,
@@ -62,6 +65,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     isFocused && !isSelected && "file-tree-node--focused",
     isDragSource && "file-tree-node--dragging",
     isDragHover && "file-tree-node--drop-target",
+    guide && "file-tree-node--guide",
     isDimmed && "file-tree-node--dimmed",
   ]
     .filter(Boolean)

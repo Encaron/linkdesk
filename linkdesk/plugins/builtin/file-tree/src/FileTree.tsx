@@ -32,39 +32,49 @@ interface FileTreeProps {
 
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
-  function walk(item: ExplorerItem, depth: number) {
+  /** guide: 本层还有后续兄弟→CSS 引导线 */
+  function walk(item: ExplorerItem, depth: number, guide: boolean) {
     // 🔥 E4V#6: CompactFolder Bug A/B/C 三合一修复——走 CompactController
     if (item.isDirectory) {
       const compacted = model.compactController.getCompactedSegments(item);
       if (compacted) {
         const leaf = findLeaf(item);
-        // Bug A: model.findClosest 获取当前活跃对象——防 stale 引用（同名目录）
         const currentLeaf = leaf ? (model.findClosest(leaf.uri) ?? leaf) : null;
-        // Bug B: 文件末端——用父目录做 twistie 控制器（文件无 twistie）
         const twistieItem = (currentLeaf && !currentLeaf.isDirectory && currentLeaf.parent)
           ? currentLeaf.parent
           : currentLeaf;
-        // Bug C: 展开后解压缩——判断 twistieItem 而非 leaf
         const shouldUnfold = twistieItem?.isDirectory === true
           && model.isExpanded(twistieItem.uri)
           && twistieItem.children !== null;
         if (!shouldUnfold) {
-          result.push({ item: twistieItem ?? item, depth, compactedSegments: compacted });
+          result.push({ item: twistieItem ?? item, depth, compactedSegments: compacted, guide });
           return;
         }
-        // twistieItem 已展开 → fall through 到正常渲染
       }
     }
-    result.push({ item, depth });
-    // 展开后渲染子节点——目录或有嵌套文件的文件
+    result.push({ item, depth, guide });
     if (model.isExpanded(item.uri) && item.children !== null) {
-      for (const child of item.children) {
-        walk(child, depth + 1);
+      const len = item.children.length;
+      for (let i = 0; i < len; i++) {
+        walk(item.children[i], depth + 1, i < len - 1);
       }
     }
   }
-  for (const root of model.roots) {
-    walk(root, 1);
+  // E4V#15: 单根跳过根节点，多根预留
+  const roots = model.roots;
+  if (roots.length === 1) {
+    const root = roots[0];
+    if (root.children !== null) {
+      const len = root.children.length;
+      for (let i = 0; i < len; i++) {
+        walk(root.children[i], 1, i < len - 1);
+      }
+    }
+  } else {
+    const len = roots.length;
+    for (let i = 0; i < len; i++) {
+      walk(roots[i], 0, i < len - 1);
+    }
   }
   return result;
 }
@@ -254,7 +264,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     >
       <div style={{ height: totalHeight, position: "relative" }}>
         <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments }, i) => (
+        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode
             key={item.uri}
             item={item}
@@ -266,6 +276,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             isDragSource={dndState.sourceUri === item.uri}
             isDragHover={dndState.hoverIndex === startIndex + i}
             compactedSegments={compactedSegments}
+            guide={guide}
+            isDimmed={isDimmed}
             onDragStart={handleDragStart}
             onSelect={handleSelect}
             onOpen={handleOpen}

@@ -14,6 +14,10 @@ export interface FlatItem {
   depth: number;
   /** 紧凑文件夹——压缩后的路径段，如 ["src", "components", "Button.tsx"] */
   compactedSegments?: string[];
+  /** E4V#16: 本层还有后续兄弟——CSS 引导线 */
+  guide?: boolean;
+  /** E4V#16: 被排除但保留显示的条目灰显 */
+  isDimmed?: boolean;
 }
 
 /* ── 路径函数 ── */
