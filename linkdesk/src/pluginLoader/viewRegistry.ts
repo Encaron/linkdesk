@@ -125,13 +125,13 @@ export function getIconLocation(pluginId: string): "top" | "bottom" {
 
 /**
  * 获取可作为标签页直接创建的视图插件列表。
- * 过滤规则：有侧栏组件（sidebarComponent）的插件通过图标栏开侧栏访问，
+ * 过滤规则：有 viewsContainers 声明的插件通过图标栏开侧栏访问，
  * 不出现在 WelcomeView 快捷卡片 / TabBar [+] 菜单中。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(
-    (entry) => !entry.sidebarComponent
+    (entry) => !entry.manifest.contributes?.viewsContainers
   );
 }
 

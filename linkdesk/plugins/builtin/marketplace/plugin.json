@@ -9,7 +9,6 @@
   "core": true,
   "factoryRole": "marketplace",
   "entry": "src/index.tsx",
-  "sidebar": "src/sidebar.tsx",
   "viewRole": "sidebarPrimary",
   "tabBehavior": {
     "singleton": true
