@@ -290,7 +290,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
             height: TREE_ITEM_HEIGHT,
             flexShrink: 0,
             zIndex: 2,
-            background: "var(--side-panel-bg)",
+            background: "var(--bg-side-panel)",
             borderBottom: "1px solid var(--border)",
           }}
         >
