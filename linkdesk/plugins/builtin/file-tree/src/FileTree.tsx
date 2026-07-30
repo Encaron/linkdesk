@@ -264,67 +264,75 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /* ── 渲染 ── */
 
   return (
-    <div
-      ref={containerRef}
-      tabIndex={0}
-      onScroll={handleScroll}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="file-tree-scroll"
-    >
-      <div style={{ height: totalHeight, position: "relative" }}>
-        {/* E4V#20+iii: sticky scroll 祖先粘顶——position:sticky 堆叠 */}
-        {stickyAncestors.map(({ item, depth }, i) => (
-          <div
-            key={`sticky-${item.uri}`}
-            className="file-tree-sticky-row"
-            style={{
-              position: "sticky",
-              top: i * TREE_ITEM_HEIGHT,
-              height: TREE_ITEM_HEIGHT,
-              zIndex: 2,
-            }}
-          >
+    <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
+      {/* E4V#20+iii: sticky scroll 祖先粘顶——position:absolute overlay 不参与滚动 */}
+      {stickyAncestors.length > 0 && (
+        <div
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            zIndex: 2,
+            background: "var(--side-panel-bg)",
+            borderBottom: "1px solid var(--border)",
+          }}
+        >
+          {stickyAncestors.map(({ item, depth }) => (
+            <div key={`sticky-${item.uri}`} style={{ height: TREE_ITEM_HEIGHT }}>
+              <FileTreeNode
+                item={item}
+                depth={depth}
+                indent={0}
+                expanded={true}
+                isSelected={false}
+                isFocused={false}
+                onSelect={handleSelect}
+                onOpen={handleOpen}
+                onTwistieClick={handleTwistie}
+                onContextMenu={handleContextMenu}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        onScroll={handleScroll}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className="file-tree-scroll"
+        style={{ height: "100%" }}
+      >
+        <div style={{ height: totalHeight, position: "relative" }}>
+          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
             <FileTreeNode
+              key={item.uri}
               item={item}
               depth={depth}
               indent={0}
-              expanded={true}
-              isSelected={false}
-              isFocused={false}
+              expanded={item.isDirectory && model.isExpanded(item.uri)}
+              isSelected={item.uri === selectedUri}
+              isFocused={item.uri === focusedUri}
+              isDragSource={dndState.sourceUri === item.uri}
+              isDragHover={dndState.hoverIndex === startIndex + i}
+              compactedSegments={compactedSegments}
+              guide={guide}
+              isDimmed={isDimmed}
+              onDragStart={handleDragStart}
               onSelect={handleSelect}
               onOpen={handleOpen}
               onTwistieClick={handleTwistie}
               onContextMenu={handleContextMenu}
             />
-          </div>
-        ))}
-        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-          <FileTreeNode
-            key={item.uri}
-            item={item}
-            depth={depth}
-            indent={0}
-            expanded={item.isDirectory && model.isExpanded(item.uri)}
-            isSelected={item.uri === selectedUri}
-            isFocused={item.uri === focusedUri}
-            isDragSource={dndState.sourceUri === item.uri}
-            isDragHover={dndState.hoverIndex === startIndex + i}
-            compactedSegments={compactedSegments}
-            guide={guide}
-            isDimmed={isDimmed}
-            onDragStart={handleDragStart}
-            onSelect={handleSelect}
-            onOpen={handleOpen}
-            onTwistieClick={handleTwistie}
-            onContextMenu={handleContextMenu}
-          />
-        ))}
+          ))}
+        </div>
       </div>
     </div>
   );
