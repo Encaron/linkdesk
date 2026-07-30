@@ -60,22 +60,10 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
       }
     }
   }
-  // E4V#15: 单根——根名已在 header，树里永远不画根
   const roots = model.roots;
-  if (roots.length === 1) {
-    const root = roots[0];
-    if (root.children !== null) {
-      const len = root.children.length;
-      for (let i = 0; i < len; i++) {
-        walk(root.children[i], 1, i < len - 1);
-      }
-    }
-    // children 为 null → 不渲染（refresh 后 onDidChangeFileSystem 自动重载）
-  } else {
-    const len = roots.length;
-    for (let i = 0; i < len; i++) {
-      walk(roots[i], 0, i < len - 1);
-    }
+  const len = roots.length;
+  for (let i = 0; i < len; i++) {
+    walk(roots[i], 1, i < len - 1);
   }
   return result;
 }

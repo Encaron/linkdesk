@@ -73,12 +73,6 @@ const FoldersView: React.FC = () => {
         }
       }
       model.setExcludeFilter(filter);
-      // E4V#15: 单根自动展开——filter 就绪后再加载子节点
-      if (model.roots.length === 1) {
-        const root = model.roots[0];
-        model.expand(root.uri);
-        await model.getChildren(root);
-      }
       rerender();
     })().finally(() => { _syncGuardRef.current = null; });
     _syncGuardRef.current = promise;
@@ -89,15 +83,7 @@ const FoldersView: React.FC = () => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
-      model.refresh().then(async () => {
-        // E4V#15: 单根——refresh 清空后自动重载（root 永远展开）
-        if (model.roots.length === 1) {
-          const root = model.roots[0];
-          model.expand(root.uri);
-          await model.getChildren(root);
-        }
-        rerender();
-      });
+      model.refresh().then(() => rerender());
     });
     // E4V#8a: 订阅 files.exclude 变化→重新配置过滤器+刷新
     const unsub3 = onDidChangeConfiguration((key, _value) => {
@@ -143,10 +129,6 @@ const FoldersView: React.FC = () => {
 
   const handleCollapseAll = useCallback(() => {
     model.collapseAll();
-    // E4V#15: 单根——root 永远展开
-    if (model.roots.length === 1) {
-      model.expand(model.roots[0].uri);
-    }
     rerender();
   }, [model, rerender]);
 
