@@ -130,6 +130,11 @@ export class FileTreeModel {
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
   collapseAll(): void { this._expanded.clear(); }
 
+  /** E4V#6a: 获取所有已展开 URI——供工作区状态持久化（E4V#36） */
+  getExpandedUris(): string[] {
+    return Array.from(this._expanded);
+  }
+
   /**
    * TODO #104 revealInExplorer——绕过排除逐层展开到目标文件。
    * 与 findClosest 不同：路径链未加载时会自动展开（不受 files.exclude 影响）。
