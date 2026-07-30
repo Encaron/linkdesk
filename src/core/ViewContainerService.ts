@@ -52,6 +52,9 @@ export interface ViewDescriptor {
   title: string;
   /** React 组件 */
   render: React.ComponentType;
+  /** 🆕 E36#ROLE：容器角色——替代 title="" hack。默认 "section"。
+   *  "toolbar" = 粘顶，不被 section 覆盖。 "section" = 有折叠头，同级替换。 */
+  role?: "toolbar" | "section";
   /** Context key when 条件——满足时才显示。null = 始终显示。对标 VS Code IViewDescriptor.when */
   when?: string;
   /** 同容器内的排序权重。小值在上。对标 VS Code IViewDescriptor.order */
