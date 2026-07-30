@@ -10,17 +10,21 @@ import { useTranslation } from "react-i18next";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
+import { readFile, exists } from "@src/core/FileService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
+import { FileExcludeFilter } from "../FileExcludeFilter";
+import { joinPath } from "../pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
+  const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
 
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
   const [, setVersion] = useState(0);
@@ -53,6 +57,19 @@ const FoldersView: React.FC = () => {
       const folders = getWorkspaceFolders();
       setRoots(folders);
       await model.setRoots(folders.map((f) => f.uri));
+      // E4V#8: 读取根目录 .gitignore 并合并到排除过滤器
+      const filter = filterRef.current;
+      filter.clearGitignore();
+      for (const f of folders) {
+        const gitignorePath = joinPath(f.uri, ".gitignore");
+        if (await exists(gitignorePath)) {
+          try {
+            const content = await readFile(gitignorePath);
+            filter.setGitignore(content);
+          } catch { /* 读取失败静默跳过 */ }
+        }
+      }
+      model.setExcludeFilter(filter);
       rerender();
     })().finally(() => { _syncGuardRef.current = null; });
     _syncGuardRef.current = promise;
