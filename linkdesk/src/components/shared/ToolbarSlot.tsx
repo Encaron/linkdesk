@@ -43,7 +43,7 @@ export default function ToolbarSlot({ views, pluginId, onHeightChange }: Toolbar
       style={{
         position: "sticky",
         top: 0,
-        zIndex: 2,
+        zIndex: "calc(var(--z-sidebar-sticky-header) + 1)",
         background: "var(--bg-side-panel)",
         overflow: "hidden",
       }}
