@@ -1,0 +1,8 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "E36#12 测试插件",
+  "version": "1.0.0",
+  "description": "临时——验证跨插件注册 view 到 explorer 容器。验证后删除。",
+  "author": "E36#12",
+  "entry": "src/index.tsx"
+}
