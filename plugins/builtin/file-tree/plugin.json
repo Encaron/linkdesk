@@ -61,6 +61,62 @@
           "default": true,
           "description": "切换编辑器标签页时自动在文件树中定位"
         },
+        "explorer.confirmDelete": {
+          "type": "boolean",
+          "default": true,
+          "description": "删除文件/文件夹前弹出确认框"
+        },
+        "explorer.confirmDragAndDrop": {
+          "type": "boolean",
+          "default": true,
+          "description": "拖放移动文件前弹出确认框"
+        },
+        "explorer.enableDragAndDrop": {
+          "type": "boolean",
+          "default": true,
+          "description": "启用文件树拖放"
+        },
+        "explorer.expandSingleFolderWorkspaces": {
+          "type": "boolean",
+          "default": true,
+          "description": "打开文件夹时自动展开根节点"
+        },
+        "explorer.incrementalNaming": {
+          "type": "string",
+          "enum": ["smart", "disabled"],
+          "default": "smart",
+          "description": "重名文件自动加数字后缀（如 test-1.txt）"
+        },
+        "explorer.excludeGitIgnore": {
+          "type": "boolean",
+          "default": true,
+          "description": "读取 .gitignore 排除文件"
+        },
+        "explorer.autoOpenDroppedFile": {
+          "type": "boolean",
+          "default": false,
+          "description": "从资源管理器拖入文件后自动打开"
+        },
+        "explorer.fileNesting.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "文件嵌套——相关文件折叠为父文件的子节点"
+        },
+        "explorer.fileNesting.expand": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件嵌套默认展开"
+        },
+        "explorer.decorations.colors": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件装饰器——颜色标记"
+        },
+        "explorer.decorations.badges": {
+          "type": "boolean",
+          "default": true,
+          "description": "文件装饰器——徽章标记"
+        },
         "files.exclude": {
           "type": "object",
           "default": {
