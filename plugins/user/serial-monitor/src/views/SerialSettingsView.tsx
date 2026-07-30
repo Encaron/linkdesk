@@ -5,10 +5,11 @@
  * 对标 VS Code Explorer 下半 = 文件属性（收发设置，随选中会话联动）。
  */
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../useSerialSessions";
 import type { SerialSession } from "../useSerialSessions";
+import { ViewContainerService } from "@src/core/ViewContainerService";
 import Toggle from "@src/components/shared/Toggle";
 import SelectBox from "@src/components/shared/SelectBox";
 import FormRow from "@src/components/shared/FormRow";
@@ -62,6 +63,18 @@ export default function SerialSettingsView() {
     },
     [activeSession, mkSetter],
   );
+
+  // ── 动态标题——随 activeSession.name 变化更新 ViewDescriptor ──
+  // registerView 同一 (pluginId, id) 重复调用 = 更新已有（不创建第二条记录）
+  useEffect(() => {
+    const title = activeSession?.name
+      ? `${t("收发设置")} — ${activeSession.name}`
+      : t("收发设置");
+    ViewContainerService.registerView("serial-monitor", "serial-monitor", {
+      id: "settings",
+      title,
+    });
+  }, [activeSession?.name, t]);
 
   // ── 无活跃会话时显示占位 ──
 
