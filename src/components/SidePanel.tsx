@@ -58,11 +58,12 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   }, [effectiveContainerId]);
 
   // 🔥 Bug 3/4 防线——StrictMode remount 旧订阅清理 + 不活跃时不处理事件
+  const [, setVersion] = useState(0);
   useEffect(() => {
     if (!effectiveContainerId) return;
     const sub = ViewContainerService.onDidChangeActiveViews.event(({ containerId }) => {
       if (containerId !== effectiveContainerId) return;
-      setLastSidebar((prev) => prev); // force re-render
+      setVersion((v) => v + 1); // force re-render——setState(prev=>prev) 不触发重渲染
     });
     return () => sub();
   }, [effectiveContainerId]);

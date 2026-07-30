@@ -52,6 +52,7 @@
 但对 file-tree 来说，工具栏按钮（刷新/收起全部）的 onClick 回调是 FoldersView 内部的 `useCallback`（`handleRefresh` / `handleCollapseAll`）。这些回调闭包捕获了 `model` ref 和 `rerender`——放在 header actions 里需要通过 ref 桥接才能拿到（对标 B86 `portNameRef` 模式）。E3.6 不做这个桥接。
 
 **决策：** 工具栏留在 `FoldersView` 内容区顶部——和当前 sidebar.tsx 行为一致。**`actions` 字段留给操作模块级状态的场景**——如 marketplace 的搜索+安装按钮（操作模块级 search state，不依赖组件内部 state）。
+**🔥 TB2-TB3：** E3.6 暂态——工具栏加 `position: sticky; top: 0` + `flex-wrap: wrap`。E4V#20 完成后从内容区删除。
 
 **E4：** 工具栏操作走命令系统（E4V#20a–d 实现 `explorer.refresh` / `explorer.collapseAll` handler）→ header actions 通过 `executeCommand` 触发 → 不需要 ref 桥接 → 工具栏从内容区移到 `ViewDescriptor.actions`。
 

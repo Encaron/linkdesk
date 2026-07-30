@@ -8,6 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
+import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu } from "../FileTreeContextMenu";
@@ -59,6 +60,26 @@ const FoldersView: React.FC = () => {
     return () => { unsub1(); unsub2(); };
   }, [syncRoots, model, rerender]);
 
+  /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
+   * title 永不为空串（plugin.json 初始=" "）→ 始终走 sectionViews 分支 → 永不 remount。
+   * 无工作区时 SidebarSection header 显示最小占位（几乎不可见）。
+   * E4V#35：多根时标题走 workspace name。 */
+  useEffect(() => {
+    const updateTitle = () => {
+      const folders = getWorkspaceFolders();
+      const title = folders[0]?.name || " ";
+      const existing = ViewContainerService.getView("folders");
+      ViewContainerService.registerView("file-tree", "explorer", {
+        id: "folders",
+        title,
+        render: existing?.render ?? (() => null),
+      });
+    };
+    updateTitle();
+    const unsub = onDidChangeFolders(updateTitle);
+    return unsub;
+  }, []);
+
   /* ── 打开文件 ── */
   const handleOpenFile = useCallback((_item: ExplorerItem, _mode: "preview" | "pin") => {
     // TODO E4c #103
@@ -75,18 +96,8 @@ const FoldersView: React.FC = () => {
     rerender();
   }, [model, rerender]);
 
-  const rootName = roots[0]?.name ?? "";
-
   return (
     <div className="file-tree-root">
-      {/* 路径面包屑 */}
-      {rootName && (
-        <div className="file-tree-breadcrumb">
-          <span className="codicon codicon-root-folder file-tree-breadcrumb-icon" />
-          <span className="file-tree-breadcrumb-path">{rootName}</span>
-        </div>
-      )}
-
       {/* 工具栏 */}
       <div className="file-tree-toolbar">
         <button className="file-tree-toolbar-btn" title={t("新建文件")}>
