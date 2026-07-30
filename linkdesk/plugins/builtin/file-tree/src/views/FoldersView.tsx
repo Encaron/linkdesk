@@ -7,6 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { executeCommand } from "@src/core/CommandRegistry";
 import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
@@ -119,48 +120,38 @@ const FoldersView: React.FC = () => {
         id: "folders",
         title,
         render: existing?.render ?? (() => null),
+        // E4V#20f: 工具栏迁移到 header actions——对标 VS Code ▶ FOLDERS [+][🔄][⊟]
+        actions: (
+          <>
+            <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => executeCommand("explorer.newFile")}>
+              <span className="codicon codicon-new-file" />
+            </button>
+            <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => executeCommand("explorer.newFolder")}>
+              <span className="codicon codicon-new-folder" />
+            </button>
+            <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => executeCommand("explorer.refresh")}>
+              <span className="codicon codicon-refresh" />
+            </button>
+            <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => executeCommand("explorer.collapseAll")}>
+              <span className="codicon codicon-collapse-all" />
+            </button>
+          </>
+        ),
       });
     };
     updateTitle();
     const unsub = onDidChangeFolders(updateTitle);
     return unsub;
-  }, []);
+  }, [t]);
 
   /* ── 打开文件 ── */
   const handleOpenFile = useCallback((_item: ExplorerItem, _mode: "preview" | "pin") => {
     // TODO E4c #103
   }, []);
 
-  /* ── 工具栏操作 ── */
-  const handleRefresh = useCallback(async () => {
-    await model.refresh();
-    rerender();
-  }, [model, rerender]);
-
-  const handleCollapseAll = useCallback(() => {
-    model.collapseAll();
-    rerender();
-  }, [model, rerender]);
-
   return (
     <div className="file-tree-root">
-      {/* 工具栏 */}
-      <div className="file-tree-toolbar">
-        <button className="file-tree-toolbar-btn" title={t("新建文件")}>
-          <span className="codicon codicon-new-file" />
-        </button>
-        <button className="file-tree-toolbar-btn" title={t("新建文件夹")}>
-          <span className="codicon codicon-new-folder" />
-        </button>
-        <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={handleRefresh}>
-          <span className="codicon codicon-refresh" />
-        </button>
-        <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={handleCollapseAll}>
-          <span className="codicon codicon-collapse-all" />
-        </button>
-      </div>
-
-      {/* 文件树 或 空工作区 */}
+      {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
       <div className="file-tree-body">
         {roots.length === 0 ? (
           <WelcomeView />
