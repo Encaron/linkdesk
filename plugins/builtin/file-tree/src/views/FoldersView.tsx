@@ -94,7 +94,14 @@ const FoldersView: React.FC = () => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
-      model.refresh().then(() => rerender());
+      model.refresh().then(async () => {
+        // 刷新后自动重载已展开目录——外部变更实时可见
+        for (const uri of model.getExpandedUris()) {
+          const item = model.findClosest(uri);
+          if (item) await model.getChildren(item).catch(() => {});
+        }
+        rerender();
+      });
     });
     // E4V#8a: 订阅 files.exclude 变化→重新配置过滤器+刷新
     const unsub3 = onDidChangeConfiguration((key, _value) => {
