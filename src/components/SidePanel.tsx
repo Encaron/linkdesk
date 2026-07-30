@@ -76,6 +76,11 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     ? ViewContainerService.getActiveViews(effectiveContainerId)
     : [];
 
+  // 🔥 Bug 2 修复：切容器时重置 toolbarHeight——旧容器残留值会导致新容器 section header stickyTop 偏移
+  useEffect(() => {
+    setToolbarHeight(0);
+  }, [effectiveContainerId]);
+
   // 🆕 E3.6 ST2b：ResizeObserver 监听 toolbar 动态高度——无需 React re-render 即可响应尺寸变化
   const toolbarRef = useRef<HTMLDivElement>(null);
   const [toolbarHeight, setToolbarHeight] = useState(0);

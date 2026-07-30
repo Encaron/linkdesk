@@ -65,19 +65,21 @@ export class FileTreeModel {
 
   /** 懒加载子节点——对标 VS Code ExplorerModel.getChildren() */
   async getChildren(parent: ExplorerItem): Promise<ExplorerItem[]> {
-    if (parent.children !== null) return parent.children;
-    const entries = await listDir(parent.uri);
-    const parentLen = parent.uri.length; // E4b #99e: #99a 归一化后 uri 已是 /
+    // 🔥 防御过时引用：syncRoots 可能重建了 _roots，传入的 parent 可能是旧对象。
+    // 用 URI 查找当前活跃对象，确保 children 写到正确的实例上。
+    const current = this.findClosest(parent.uri) ?? parent;
+    if (current.children !== null) return current.children;
+    const entries = await listDir(current.uri);
+    const parentLen = current.uri.length;
     const filtered = this._excludeFilter
       ? entries.filter((e) => {
-          // 计算相对路径给 FileExcludeFilter.matches()
           const relPath = e.path.replace(/\\/g, "/").slice(parentLen + 1);
           return !this._excludeFilter!.matches(relPath);
         })
       : entries;
-    parent.children = filtered.map((e) => this._toExplorerItem(e, parent));
-    this._sort(parent.children);
-    return parent.children;
+    current.children = filtered.map((e) => this._toExplorerItem(e, current));
+    this._sort(current.children);
+    return current.children;
   }
 
   /**
