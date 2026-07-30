@@ -13,6 +13,7 @@ import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
+import { Emitter } from "@src/core/CoreEvents";
 import { basename, splitPath, normalizePath, extension } from "./pathUtils";
 
 /* ── 类型 ── */
@@ -42,6 +43,8 @@ export class FileTreeModel {
   private _sortOrder: SortOrder;
   private _excludeFilter: FileExcludeFilter | null = null;
   readonly compactController: CompactController;
+  /** E4V#55: 模型变更通知——FileTree 订阅后自动重渲染 */
+  readonly onDidChange = new Emitter<void>();
 
   constructor(sortOrder?: SortOrder) {
     this._sortOrder = sortOrder ?? "default";
@@ -66,6 +69,7 @@ export class FileTreeModel {
       children: null,
       parent: null,
     }));
+    this.onDidChange.fire();
   }
 
   /** 懒加载子节点——对标 VS Code ExplorerModel.getChildren() */
@@ -83,6 +87,7 @@ export class FileTreeModel {
         })
       : entries;
     current.children = filtered.map((e) => this._toExplorerItem(e, current));
+    this.onDidChange.fire();
     // E4V#9: 文件嵌套——相关文件折叠为父文件的子节点
     if (this._excludeFilter) {
       const nesting = this._excludeFilter.buildNestingMap(filtered);
@@ -145,10 +150,10 @@ export class FileTreeModel {
 
   /* ── 展开/折叠 ── */
 
-  expand(uri: string): void { this._expanded.add(uri); }
-  collapse(uri: string): void { this._expanded.delete(uri); }
+  expand(uri: string): void { this._expanded.add(uri); this.onDidChange.fire(); }
+  collapse(uri: string): void { this._expanded.delete(uri); this.onDidChange.fire(); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
-  collapseAll(): void { this._expanded.clear(); }
+  collapseAll(): void { this._expanded.clear(); this.onDidChange.fire(); }
 
   /** E4V#6a: 获取所有已展开 URI——供工作区状态持久化（E4V#36） */
   getExpandedUris(): string[] {
@@ -173,11 +178,11 @@ export class FileTreeModel {
         const item = this.findClosest(uri);
         if (item) item.children = null;
       }
-      // 同时清空根节点缓存
       for (const root of this._roots) {
         if (root.children !== null) root.children = null;
       }
     }
+    this.onDidChange.fire();
   }
 
   /* ── 私有方法 ── */

@@ -31,13 +31,13 @@ const FoldersView: React.FC = () => {
   const _unwatchRef = useRef<(() => void) | null>(null);
 
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
-  const [version, setVersion] = useState(0);
+  const [, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
   /* ── 注册 explorer 命令 + FileContext 菜单项 + ref 桥接 ── */
   useEffect(() => {
     activateFileTreeContextMenu();
-    setFileTreeRefs(model, rerender);
+    setFileTreeRefs(model);
     return () => { clearFileTreeRefs(); };
   }, [model, rerender]);
 
@@ -176,7 +176,7 @@ const FoldersView: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} treeVersion={version} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
+          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
         )}
       </div>
 
