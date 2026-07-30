@@ -45,6 +45,10 @@
   --z-sticky: 200;
   --z-overlay-backdrop: 500;
   --z-overlay: 600;
+  /* 🔥 UX10：侧栏内 z-index 分层 */
+  --z-sidebar-content: 0;
+  --z-sidebar-sticky-header: 10;
+  --z-sidebar-context-menu: 100;
   /* Phase 3.5 新增 —— 间距体系 */
   --space-xs: 4px;
   --space-sm: 8px;
