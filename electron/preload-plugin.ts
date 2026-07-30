@@ -22,6 +22,8 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem } from './event-system';
 
+console.log("[preload] starting, webUtils:", typeof webUtils, "getPathForFile:", typeof webUtils?.getPathForFile);
+
 try {
   // ── 语言资源缓存（E3c #40：接收壳广播的初始语言数据）──
   let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
@@ -217,6 +219,8 @@ try {
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
     events,
   });
+
+  console.log("[preload] contextBridge done, keys:", Object.keys({ serial:1, configuration:1, commands:1, filesystem:1, clipboard:1, env:1, notifications:1, pluginManager:1, theme:1, language:1, pluginViews:1, events:1, getFilePath:1 }));
 
   // 通知主进程 preload 成功
   ipcRenderer.send('preload-plugin-ready');
