@@ -131,6 +131,7 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
     async (e: React.DragEvent) => {
       e.preventDefault();
       console.log("[DnD] handleDrop called, hoverIndex:", dndState.hoverIndex, "files:", e.dataTransfer.files.length, "types:", e.dataTransfer.types);
+      console.log("[DnD] window.linkdesk keys:", (window as any).linkdesk ? Object.keys((window as any).linkdesk) : "linkdesk MISSING");
       const target = resolveDropTarget(dndState.hoverIndex, callbacks.flatItems);
       setDndState({ sourceUri: null, hoverIndex: -1 });
 
