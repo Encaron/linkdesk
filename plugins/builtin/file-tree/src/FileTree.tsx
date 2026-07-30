@@ -127,20 +127,27 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   /* ── E4V#20+ii: sticky scroll——视口第一个可见节点的展开祖先链 ── */
 
+  const _stickyCountRef = useRef(0);
+
   const stickyAncestors = useMemo(() => {
-    const firstVisibleIndex = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+    // 对标 VS Code：已粘顶的 sticky rows 占据的像素不计入视口——
+    // 跳过已被 sticky 覆盖的项，取 sticky 下方的第一个可见节点。
+    const offset = _stickyCountRef.current * TREE_ITEM_HEIGHT;
+    const firstVisibleIndex = Math.floor((scrollTop + offset) / TREE_ITEM_HEIGHT);
     const firstVisible = flatItems[firstVisibleIndex];
-    if (!firstVisible) return [];
+    if (!firstVisible) { _stickyCountRef.current = 0; return []; }
     const ancestors = model.getAncestors(firstVisible.item);
     // 约束：最多 7 个、总高不超过视口 40%
     const maxByHeight = containerHeight > 0
       ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT)
       : 7;
     const maxCount = Math.min(7, maxByHeight);
-    return ancestors.slice(0, maxCount).map((item, i) => ({
+    const result = ancestors.slice(0, maxCount).map((item, i) => ({
       item,
       depth: i + 1, // 第一个祖先是根（depth=1），第二个是 depth=2...
     }));
+    _stickyCountRef.current = result.length;
+    return result;
   }, [flatItems, scrollTop, model, containerHeight]);
 
   /* ── 滚动——监听真实滚动容器 .side-panel-content ── */
