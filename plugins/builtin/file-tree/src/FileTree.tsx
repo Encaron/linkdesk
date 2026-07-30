@@ -125,6 +125,24 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     [flatItems, startIndex, endIndex],
   );
 
+  /* ── E4V#20+ii: sticky scroll——视口第一个可见节点的展开祖先链 ── */
+
+  const stickyAncestors = useMemo(() => {
+    const firstVisibleIndex = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+    const firstVisible = flatItems[firstVisibleIndex];
+    if (!firstVisible) return [];
+    const ancestors = model.getAncestors(firstVisible.item);
+    // 约束：最多 7 个、总高不超过视口 40%
+    const maxByHeight = containerHeight > 0
+      ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT)
+      : 7;
+    const maxCount = Math.min(7, maxByHeight);
+    return ancestors.slice(0, maxCount).map((item, i) => ({
+      item,
+      depth: i + 1, // 第一个祖先是根（depth=1），第二个是 depth=2...
+    }));
+  }, [flatItems, scrollTop, model, containerHeight]);
+
   /* ── 滚动 ── */
 
   const handleScroll = useCallback(() => {
@@ -259,6 +277,32 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       className="file-tree-scroll"
     >
       <div style={{ height: totalHeight, position: "relative" }}>
+        {/* E4V#20+iii: sticky scroll 祖先粘顶——position:sticky 堆叠 */}
+        {stickyAncestors.map(({ item, depth }, i) => (
+          <div
+            key={`sticky-${item.uri}`}
+            className="file-tree-sticky-row"
+            style={{
+              position: "sticky",
+              top: i * TREE_ITEM_HEIGHT,
+              height: TREE_ITEM_HEIGHT,
+              zIndex: 2,
+            }}
+          >
+            <FileTreeNode
+              item={item}
+              depth={depth}
+              indent={0}
+              expanded={true}
+              isSelected={false}
+              isFocused={false}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+              onTwistieClick={handleTwistie}
+              onContextMenu={handleContextMenu}
+            />
+          </div>
+        ))}
         <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
         {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode
