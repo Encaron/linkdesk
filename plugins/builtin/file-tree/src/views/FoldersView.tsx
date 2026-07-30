@@ -90,9 +90,11 @@ const FoldersView: React.FC = () => {
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
       model.refresh().then(async () => {
-        // E4V#15: 单根跳过根节点——refresh 清空后自动重载
-        if (model.roots.length === 1 && model.isExpanded(model.roots[0].uri)) {
-          await model.getChildren(model.roots[0]);
+        // E4V#15: 单根——refresh 清空后自动重载（root 永远展开）
+        if (model.roots.length === 1) {
+          const root = model.roots[0];
+          model.expand(root.uri);
+          await model.getChildren(root);
         }
         rerender();
       });
@@ -141,6 +143,10 @@ const FoldersView: React.FC = () => {
 
   const handleCollapseAll = useCallback(() => {
     model.collapseAll();
+    // E4V#15: 单根——root 永远展开
+    if (model.roots.length === 1) {
+      model.expand(model.roots[0].uri);
+    }
     rerender();
   }, [model, rerender]);
 
