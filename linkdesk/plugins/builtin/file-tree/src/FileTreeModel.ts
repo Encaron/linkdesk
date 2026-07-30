@@ -13,11 +13,11 @@ import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
-import { basename, splitPath, normalizePath } from "./pathUtils";
+import { basename, splitPath, normalizePath, extension } from "./pathUtils";
 
 /* ── 类型 ── */
 
-export type SortOrder = "foldersFirst" | "name" | "modifiedAt";
+export type SortOrder = "default" | "mixed" | "filesFirst" | "type" | "modified" | "foldersNestsFiles";
 
 export interface ExplorerItem {
   uri: string;
@@ -42,7 +42,7 @@ export class FileTreeModel {
   readonly compactController: CompactController;
 
   constructor(sortOrder?: SortOrder) {
-    this._sortOrder = sortOrder ?? "foldersFirst";
+    this._sortOrder = sortOrder ?? "default";
     this.compactController = new CompactController();
   }
 
@@ -162,16 +162,31 @@ export class FileTreeModel {
 
   /* ── 私有方法 ── */
 
+  /** E4V#7: 6 种排序——对标 VS Code SortOrder enum */
   private _sort(items: ExplorerItem[]): void {
+    const order = this._sortOrder;
     items.sort((a, b) => {
-      if (this._sortOrder === "foldersFirst") {
+      // 目录优先（default + foldersNestsFiles）
+      if (order === "default" || order === "foldersNestsFiles") {
         if (a.isDirectory !== b.isDirectory) return a.isDirectory ? -1 : 1;
       }
-      if (this._sortOrder === "modifiedAt") {
+      // 文件优先
+      if (order === "filesFirst") {
+        if (a.isDirectory !== b.isDirectory) return a.isDirectory ? 1 : -1;
+      }
+      // 按类型（扩展名）
+      if (order === "type") {
+        const ea = extension(a.name);
+        const eb = extension(b.name);
+        if (ea !== eb) return ea.localeCompare(eb);
+      }
+      // 按修改时间（最新在前）
+      if (order === "modified") {
         const ma = a.modifiedAt ?? 0;
         const mb = b.modifiedAt ?? 0;
         if (ma !== mb) return mb - ma;
       }
+      // mixed + 最终平局：按名称字母序
       return a.name.localeCompare(b.name);
     });
   }
