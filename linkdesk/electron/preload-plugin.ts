@@ -18,7 +18,7 @@
  *   ❌ path.*      — 不能获取系统路径（壳操作）
  */
 
-import { contextBridge, ipcRenderer } from 'electron';
+import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem } from './event-system';
 
@@ -85,6 +85,9 @@ try {
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
+    /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
+    getFilePath: (file: File) => webUtils.getPathForFile(file),
+
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
     // 不经过 events channel。E3a #30 终端迁移后，数据走 bridge:push-to-plugin →
