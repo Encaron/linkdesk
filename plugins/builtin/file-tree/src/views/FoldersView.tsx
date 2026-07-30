@@ -44,11 +44,19 @@ const FoldersView: React.FC = () => {
   );
 
   /* ── 同步工作区根 ── */
+  // 🛡️ _loadingPromise guard——防 StrictMode 双重 effect + onDidChangeFolders 快速触发
+  // E4V#35 setRoots 可能异步化后，并发 syncRoots 会残留旧文件夹。
+  const _syncGuardRef = useRef<Promise<void> | null>(null);
   const syncRoots = useCallback(async () => {
-    const folders = getWorkspaceFolders();
-    setRoots(folders);
-    await model.setRoots(folders.map((f) => f.uri));
-    rerender();
+    if (_syncGuardRef.current) return _syncGuardRef.current;
+    const promise = (async () => {
+      const folders = getWorkspaceFolders();
+      setRoots(folders);
+      await model.setRoots(folders.map((f) => f.uri));
+      rerender();
+    })().finally(() => { _syncGuardRef.current = null; });
+    _syncGuardRef.current = promise;
+    return promise;
   }, [model, rerender]);
 
   useEffect(() => {
