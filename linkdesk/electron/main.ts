@@ -8,6 +8,7 @@
  */
 
 import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell } from 'electron';
+import { exec } from 'child_process';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
@@ -111,9 +112,18 @@ function createWindow(): void {
   mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
   mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
 
-  // E4V#18-#19: Shell IPC——revealInOS / openInTerminal
-  ipcMain.handle('shell:openPath', async (_e, p: string) => shell.openPath(p));
+  // E4V#18: Shell IPC——revealInOS
   ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
+
+  // E4V#19: 在系统终端打开目录——spawn cmd / powershell
+  ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string) => {
+    const cmd = process.platform === 'win32'
+      ? `start cmd /k "cd /d ${dirPath}"`
+      : `open -a Terminal "${dirPath}"`;
+    exec(cmd, (err) => {
+      if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+    });
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

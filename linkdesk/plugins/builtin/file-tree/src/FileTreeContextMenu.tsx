@@ -65,7 +65,7 @@ export function activateFileTreeContextMenu(): void {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
     const targetPath = ctx.isDirectory ? ctx.uri : dirname(ctx.uri);
-    (window as any).linkdesk?.shell?.openPath(targetPath);
+    (window as any).linkdesk?.shell?.openInTerminal(targetPath);
   }});
 
   // 其余占位——后续任务替换

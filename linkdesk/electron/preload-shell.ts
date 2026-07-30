@@ -129,8 +129,8 @@ try {
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
     shell: {
-      openPath:        (p: string) => ipcRenderer.invoke('shell:openPath', p),
       showItemInFolder:(p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
+      openInTerminal:  (p: string) => ipcRenderer.invoke('shell:openInTerminal', p),
     },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
