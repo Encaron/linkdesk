@@ -60,19 +60,17 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
       }
     }
   }
-  // E4V#15: 单根跳过根节点（展开且有子节点时），多根预留
+  // E4V#15: 单根——根名已在 header，树里永远不画根
   const roots = model.roots;
   if (roots.length === 1) {
     const root = roots[0];
-    if (root.children !== null && model.isExpanded(root.uri)) {
+    if (root.children !== null) {
       const len = root.children.length;
       for (let i = 0; i < len; i++) {
         walk(root.children[i], 1, i < len - 1);
       }
-    } else {
-      // 根未展开或子节点未加载→显示根自身
-      walk(root, 1, false);
     }
+    // children 为 null → 不渲染（refresh 后 onDidChangeFileSystem 自动重载）
   } else {
     const len = roots.length;
     for (let i = 0; i < len; i++) {
