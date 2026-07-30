@@ -11,6 +11,7 @@ import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/Confi
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
+import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists } from "@src/core/FileService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu } from "../FileTreeContextMenu";
@@ -43,6 +44,11 @@ const FoldersView: React.FC = () => {
   const handleContextMenu = useCallback(
     (item: ExplorerItem, event: React.MouseEvent) => {
       event.preventDefault();
+      // E4V#12 fix: setState 前设 context key——确保菜单 when 求值时已生效
+      ContextKeyService.setValue("explorerItemIsFile", item.isDirectory === false);
+      ContextKeyService.setValue("explorerItemIsDir", item.isDirectory === true);
+      ContextKeyService.setValue("explorerItemIsRoot", item.parent === null);
+      ContextKeyService.setValue("explorerResourceReadonly", item.isReadonly === true);
       setContextMenu({ item, anchor: { x: event.clientX, y: event.clientY } });
     },
     [],
