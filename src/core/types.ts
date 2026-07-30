@@ -156,6 +156,7 @@ export interface ContributesViews {
     id: string;
     title?: string;
     render: string;
+    role?: "toolbar" | "section";
     when?: string;
     order?: number;
     collapsed?: boolean;

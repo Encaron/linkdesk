@@ -468,6 +468,7 @@
                   "render": { "type": "string", "description": "视图组件的模块路径——相对插件根目录" },
                   "when": { "type": "string", "description": "Context key when 条件" },
                   "order": { "type": "number", "description": "同容器内的排序权重。小值在上" },
+                  "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "容器角色——toolbar 粘顶不被覆盖，section 有折叠头同级替换" },
                   "collapsed": { "type": "boolean", "default": false, "description": "初始折叠状态" },
                   "canToggleVisibility": { "type": "boolean", "default": true, "description": "用户可通过 Views 子菜单切换可见性" },
                   "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },
