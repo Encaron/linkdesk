@@ -130,7 +130,12 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         rerender();
       } else {
         model.expand(item.uri);
-        await model.getChildren(item);
+        try {
+          const children = await model.getChildren(item);
+          console.log("[file-tree] expand done:", item.uri, "children:", children.length);
+        } catch (e) {
+          console.error("[file-tree] expand failed:", item.uri, e);
+        }
         rerender();
       }
     },
