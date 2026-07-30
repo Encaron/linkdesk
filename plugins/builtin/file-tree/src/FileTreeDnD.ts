@@ -149,9 +149,11 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
 
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
+        const gfp = (window as any).linkdesk?.getFilePath as ((f: File) => string) | undefined;
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
           const file = e.dataTransfer.files[i];
-          const srcPath = (file as any).path as string;
+          // Electron 43 contextIsolation → File.path 为空，走 preload webUtils.getPathForFile
+          const srcPath = gfp?.(file) || (file as any).path as string;
           if (srcPath) {
             const normalizedSrc = srcPath.replace(/\\/g, "/");
             const normalizedTarget = target.targetDir.replace(/\\/g, "/");
