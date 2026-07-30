@@ -476,7 +476,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
 
   // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
   if (c.views) {
-    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string }>>;
+    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string }>>;
     void (async () => {
       const { ViewContainerService } = await import("../core/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
@@ -488,6 +488,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
               id: viewDef.id,
               title: viewDef.title ?? "",
               render: RenderComponent,
+              role: viewDef.role,
               order: viewDef.order,
               collapsed: viewDef.collapsed,
               when: viewDef.when,
