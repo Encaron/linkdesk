@@ -264,8 +264,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /* ── 渲染 ── */
 
   return (
-    <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>
-      {/* E4V#20+iii: sticky scroll 祖先粘顶——position:absolute overlay 不参与滚动 */}
+    <>
+      {/* E4V#20+iii: sticky scroll——position:absolute 在 .file-tree-body 内、不参与滚动 */}
       {stickyAncestors.length > 0 && (
         <div
           style={{
@@ -307,7 +307,9 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         className="file-tree-scroll"
-        style={{ height: "100%" }}
+        style={{
+          paddingTop: stickyAncestors.length * TREE_ITEM_HEIGHT,
+        }}
       >
         <div style={{ height: totalHeight, position: "relative" }}>
           <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
@@ -334,7 +336,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
           ))}
         </div>
       </div>
-    </div>
+    </>
   );
 };
 
