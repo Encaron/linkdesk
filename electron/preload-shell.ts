@@ -127,6 +127,11 @@ try {
       open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
     },
     clipboard: {},
+    // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
+    shell: {
+      openPath:        (p: string) => ipcRenderer.invoke('shell:openPath', p),
+      showItemInFolder:(p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
+    },
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke('env:get', pluginId),
