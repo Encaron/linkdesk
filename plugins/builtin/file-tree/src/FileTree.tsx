@@ -125,32 +125,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     [flatItems, startIndex, endIndex],
   );
 
-  /* ── E4V#20+ii: sticky scroll——视口第一个可见节点的展开祖先链 ── */
-
-  const _stickyCountRef = useRef(0);
-
-  const stickyAncestors = useMemo(() => {
-    // 对标 VS Code：已粘顶的 sticky rows 占据的像素不计入视口——
-    // 跳过已被 sticky 覆盖的项，取 sticky 下方的第一个可见节点。
-    const offset = _stickyCountRef.current * TREE_ITEM_HEIGHT;
-    const firstVisibleIndex = Math.floor((scrollTop + offset) / TREE_ITEM_HEIGHT);
-    const firstVisible = flatItems[firstVisibleIndex];
-    if (!firstVisible) { _stickyCountRef.current = 0; return []; }
-    const ancestors = model.getAncestors(firstVisible.item);
-    // 约束：最多 7 个、总高不超过视口 40%
-    const maxByHeight = containerHeight > 0
-      ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT)
-      : 7;
-    const maxCount = Math.min(7, maxByHeight);
-    const result = ancestors.slice(0, maxCount).map((item, i) => ({
-      item,
-      depth: i + 1, // 第一个祖先是根（depth=1），第二个是 depth=2...
-    }));
-    _stickyCountRef.current = result.length;
-    return result;
-  }, [flatItems, scrollTop, model, containerHeight]);
-
-  /* ── 滚动——监听真实滚动容器 .side-panel-content ── */
+  /* ── 滚动——E4V#20+ii: 监听真实滚动容器 .side-panel-content ── */
 
   useEffect(() => {
     const el = containerRef.current;
@@ -287,60 +262,29 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       onDrop={handleDrop}
       className="file-tree-scroll"
     >
-      {/* E4V#20+iii: sticky rows——flex-shrink:0 定高，position:sticky 粘顶 */}
-      {stickyAncestors.map(({ item, depth }, i) => (
-        <div
-          key={`sticky-${item.uri}`}
-          style={{
-            position: "sticky",
-            top: i * TREE_ITEM_HEIGHT,
-            height: TREE_ITEM_HEIGHT,
-            flexShrink: 0,
-            zIndex: 2,
-            background: "var(--bg-side-panel)",
-            borderBottom: "1px solid var(--border)",
-          }}
-        >
+      <div style={{ height: totalHeight, position: "relative" }}>
+        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode
+            key={item.uri}
             item={item}
             depth={depth}
             indent={0}
-            expanded={true}
-            isSelected={false}
-            isFocused={false}
+            expanded={item.isDirectory && model.isExpanded(item.uri)}
+            isSelected={item.uri === selectedUri}
+            isFocused={item.uri === focusedUri}
+            isDragSource={dndState.sourceUri === item.uri}
+            isDragHover={dndState.hoverIndex === startIndex + i}
+            compactedSegments={compactedSegments}
+            guide={guide}
+            isDimmed={isDimmed}
+            onDragStart={handleDragStart}
             onSelect={handleSelect}
             onOpen={handleOpen}
             onTwistieClick={handleTwistie}
             onContextMenu={handleContextMenu}
           />
-        </div>
-      ))}
-      {/* 虚拟列表 clip——flex:1 填充剩余高度，overflow:hidden 裁剪溢出 */}
-      <div className="file-tree-scroll-clip">
-        <div style={{ height: totalHeight, position: "relative" }}>
-          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-            <FileTreeNode
-              key={item.uri}
-              item={item}
-              depth={depth}
-              indent={0}
-              expanded={item.isDirectory && model.isExpanded(item.uri)}
-              isSelected={item.uri === selectedUri}
-              isFocused={item.uri === focusedUri}
-              isDragSource={dndState.sourceUri === item.uri}
-              isDragHover={dndState.hoverIndex === startIndex + i}
-              compactedSegments={compactedSegments}
-              guide={guide}
-              isDimmed={isDimmed}
-              onDragStart={handleDragStart}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-              onTwistieClick={handleTwistie}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
