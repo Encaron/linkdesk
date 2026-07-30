@@ -115,10 +115,10 @@ function createWindow(): void {
   // E4V#18: Shell IPC——revealInOS
   ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
 
-  // E4V#19: 在系统终端打开目录——spawn cmd / powershell
+  // E4V#19: 在系统终端打开目录——Windows 走 PowerShell，macOS 走 Terminal
   ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string) => {
     const cmd = process.platform === 'win32'
-      ? `start cmd /k "cd /d ${dirPath}"`
+      ? `start powershell -NoExit -Command "cd '${dirPath}'"`
       : `open -a Terminal "${dirPath}"`;
     exec(cmd, (err) => {
       if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
