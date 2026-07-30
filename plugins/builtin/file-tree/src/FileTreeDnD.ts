@@ -130,6 +130,7 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
   const handleDrop = useCallback(
     async (e: React.DragEvent) => {
       e.preventDefault();
+      console.log("[DnD] handleDrop called, hoverIndex:", dndState.hoverIndex, "files:", e.dataTransfer.files.length, "types:", e.dataTransfer.types);
       const target = resolveDropTarget(dndState.hoverIndex, callbacks.flatItems);
       setDndState({ sourceUri: null, hoverIndex: -1 });
 
@@ -149,11 +150,14 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
 
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
+        console.log("[DnD] OS drop:", e.dataTransfer.files.length, "files, target:", target.targetDir);
         const gfp = (window as any).linkdesk?.getFilePath as ((f: File) => string) | undefined;
+        console.log("[DnD] getFilePath available:", typeof gfp);
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
           const file = e.dataTransfer.files[i];
           // Electron 43 contextIsolation → File.path 为空，走 preload webUtils.getPathForFile
           const srcPath = gfp?.(file) || (file as any).path as string;
+          console.log("[DnD] file", i, "name:", file.name, "srcPath:", JSON.stringify(srcPath));
           if (srcPath) {
             const normalizedSrc = srcPath.replace(/\\/g, "/");
             const normalizedTarget = target.targetDir.replace(/\\/g, "/");

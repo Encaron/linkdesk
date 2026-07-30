@@ -86,7 +86,11 @@ try {
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
-    getFilePath: (file: File) => webUtils.getPathForFile(file),
+    getFilePath: (file: File) => {
+      const p = webUtils.getPathForFile(file);
+      console.log("[preload] getFilePath name:", file.name, "path:", p);
+      return p;
+    },
 
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
