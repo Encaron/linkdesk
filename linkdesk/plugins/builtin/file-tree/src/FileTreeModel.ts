@@ -160,6 +160,20 @@ export class FileTreeModel {
     return Array.from(this._expanded);
   }
 
+  /** E4V#20+i: 获取节点的展开祖先链——从根到最近父节点，供 sticky scroll */
+  getAncestors(node: ExplorerItem): ExplorerItem[] {
+    const ancestors: ExplorerItem[] = [];
+    let current: ExplorerItem | null = node.parent;
+    while (current) {
+      if (current.isDirectory && this._expanded.has(current.uri)) {
+        ancestors.push(current);
+      }
+      current = current.parent;
+    }
+    ancestors.reverse();
+    return ancestors;
+  }
+
   /**
    * TODO #104 revealInExplorer——绕过排除逐层展开到目标文件。
    * 与 findClosest 不同：路径链未加载时会自动展开（不受 files.exclude 影响）。
