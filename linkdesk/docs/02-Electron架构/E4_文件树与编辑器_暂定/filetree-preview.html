@@ -669,12 +669,8 @@ function flattenTree(node, depth, path, result) {
 
 function buildVisibleList() {
   const flat = [];
-  // VS Code: root 在 FOLDERS 标题行——不进入树。跳过 root，直接展开子节点
-  if (expandedPaths.has('/linkdesk-project') && treeData.children) {
-    for (const child of treeData.children) {
-      flattenTree(child, 1, '/linkdesk-project/' + child.name, flat);
-    }
-  }
+  // 2026-07-31: E4V#15b 已回退——单根多根统一，根在树中
+  flattenTree(treeData, 0, '', flat);
   return flat;
 }
 
