@@ -26,6 +26,19 @@ interface FileTreeProps {
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
 
+/** E4V#20+iii: StickyRow——对标 VS Code StickyScrollNode */
+interface StickyRow {
+  item: ExplorerItem;
+  depth: number;
+  /** sticky 行在 overlay 中的 top 像素值（不是 CSS `top: i*22`） */
+  position: number;
+  height: number;
+  /** 该祖先在 flatItems 中第一个后代的索引 */
+  startIndex: number;
+  /** 该祖先在 flatItems 中最后一个后代的索引 */
+  endIndex: number;
+}
+
 /* ── 常量（从 layoutTokens.ts 导入） ── */
 
 /* ── 工具 ── */
@@ -76,6 +89,126 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
   return findLeaf(child);
 }
 
+/* ── E4V#20+iv: sticky scroll 算法——对标 VS Code StickyScrollController ── */
+
+/** 对标 VS Code getAncestorUnderPrevious：沿父链向上走，遇到 prevAncestor 就返回其正下方的祖先 */
+function getAncestorUnderPrevious(
+  node: ExplorerItem,
+  prevAncestor: ExplorerItem | undefined,
+  model: FileTreeModel,
+): ExplorerItem | null {
+  let current: ExplorerItem = node;
+  let parent: ExplorerItem | null = current.parent;
+  while (parent) {
+    if (parent === prevAncestor) return current;
+    if (!model.isExpanded(parent.uri)) {
+      current = parent;
+      parent = current.parent;
+      continue;
+    }
+    current = parent;
+    parent = current.parent;
+  }
+  if (prevAncestor === undefined) return current;
+  return null;
+}
+
+/** 查找祖先在 flatItems 中的索引区间（第一个到最后一个后代） */
+function getNodeRange(
+  ancestor: ExplorerItem,
+  flatItems: FlatItem[],
+): { startIndex: number; endIndex: number } | null {
+  const ancUri = ancestor.uri;
+  let startIndex = -1;
+  let endIndex = -1;
+  for (let i = 0; i < flatItems.length; i++) {
+    const itemUri = flatItems[i].item.uri;
+    if (itemUri === ancUri || (itemUri.startsWith(ancUri) && itemUri[ancUri.length] === "/")) {
+      if (startIndex === -1) startIndex = i;
+      endIndex = i;
+    } else if (startIndex !== -1) {
+      break;
+    }
+  }
+  if (startIndex === -1) return null;
+  return { startIndex, endIndex };
+}
+
+/**
+ * 对标 VS Code calculateStickyNodePosition：
+ * sticky 行被最后一个后代"推出"屏幕时才移动位置。
+ */
+function calculateStickyPosition(
+  lastDescendantIndex: number,
+  stickyHeight: number,
+  scrollTop: number,
+  containerHeight: number,
+): number {
+  if (containerHeight <= 0) return stickyHeight;
+  const lastChildTop = lastDescendantIndex * TREE_ITEM_HEIGHT - scrollTop;
+  const lastChildBottom = lastChildTop + TREE_ITEM_HEIGHT;
+  const stickyBottom = stickyHeight + TREE_ITEM_HEIGHT;
+  // 如果 sticky 底边 > 最后一个后代底边 → 被推出
+  if (stickyBottom > lastChildBottom && stickyHeight <= lastChildBottom) {
+    return lastChildBottom - TREE_ITEM_HEIGHT;
+  }
+  return stickyHeight;
+}
+
+/**
+ * 对标 VS Code StickyScrollController.findStickyState：
+ * 迭代循环——每个 sticky 创建后从其底部重算 firstVisible。
+ */
+function findStickyState(
+  flatItems: FlatItem[],
+  model: FileTreeModel,
+  scrollTop: number,
+  containerHeight: number,
+): StickyRow[] {
+  const rows: StickyRow[] = [];
+  let stickyHeight = 0;
+  let prevAncestor: ExplorerItem | undefined;
+
+  let firstVisibleIdx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+  if (firstVisibleIdx >= flatItems.length) return rows;
+
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    const firstVisible = flatItems[firstVisibleIdx];
+    if (!firstVisible) break;
+
+    const ancestor = getAncestorUnderPrevious(firstVisible.item, prevAncestor, model);
+    if (!ancestor) break;
+
+    const range = getNodeRange(ancestor, flatItems);
+    if (!range) break;
+
+    const position = calculateStickyPosition(
+      range.endIndex, stickyHeight, scrollTop, containerHeight,
+    );
+
+    rows.push({
+      item: ancestor,
+      depth: model.getAncestors(ancestor).length + 1,
+      position,
+      height: TREE_ITEM_HEIGHT,
+      startIndex: range.startIndex,
+      endIndex: range.endIndex,
+    });
+
+    stickyHeight += TREE_ITEM_HEIGHT;
+    prevAncestor = ancestor;
+
+    if (rows.length >= 7) break;
+    if (containerHeight > 0 && stickyHeight > containerHeight * 0.4) break;
+
+    firstVisibleIdx = Math.floor((scrollTop + stickyHeight) / TREE_ITEM_HEIGHT);
+    if (firstVisibleIdx >= flatItems.length) break;
+  }
+
+  return rows;
+}
+
 /* ── 组件 ── */
 
 const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
@@ -123,6 +256,13 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const renderedItems = useMemo(
     () => flatItems.slice(startIndex, endIndex),
     [flatItems, startIndex, endIndex],
+  );
+
+  /* ── E4V#20+iv: sticky state——对标 VS Code findStickyState ── */
+
+  const stickyState = useMemo(
+    () => findStickyState(flatItems, model, scrollTop, containerHeight),
+    [flatItems, model, scrollTop, containerHeight],
   );
 
   /* ── 滚动——E4V#20+ii: 监听真实滚动容器 .side-panel-content ── */
@@ -248,45 +388,76 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
   }, [focusedUri, flatItems, model]);
 
+  const stickyOverlayHeight = stickyState.length > 0
+    ? stickyState[stickyState.length - 1].position + TREE_ITEM_HEIGHT
+    : 0;
+
   /* ── 渲染 ── */
 
   return (
-    <div
-      ref={containerRef}
-      tabIndex={0}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="file-tree-scroll"
-    >
-      <div style={{ height: totalHeight, position: "relative" }}>
-        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-          <FileTreeNode
-            key={item.uri}
-            item={item}
-            depth={depth}
-            indent={0}
-            expanded={item.isDirectory && model.isExpanded(item.uri)}
-            isSelected={item.uri === selectedUri}
-            isFocused={item.uri === focusedUri}
-            isDragSource={dndState.sourceUri === item.uri}
-            isDragHover={dndState.hoverIndex === startIndex + i}
-            compactedSegments={compactedSegments}
-            guide={guide}
-            isDimmed={isDimmed}
-            onDragStart={handleDragStart}
-            onSelect={handleSelect}
-            onOpen={handleOpen}
-            onTwistieClick={handleTwistie}
-            onContextMenu={handleContextMenu}
-          />
-        ))}
+    <>
+      {/* E4V#20+v: sticky scroll overlay——绝对定位在 .file-tree-body 顶部 */}
+      {stickyState.length > 0 && (
+        <div className="file-tree-sticky-container" style={{ height: stickyOverlayHeight }}>
+          {stickyState.map((row) => (
+            <div
+              key={`sticky-${row.item.uri}`}
+              className="file-tree-sticky-row"
+              style={{ top: row.position, height: row.height }}
+            >
+              <FileTreeNode
+                item={row.item}
+                depth={row.depth}
+                indent={0}
+                expanded={true}
+                isSelected={false}
+                isFocused={false}
+                onSelect={handleSelect}
+                onOpen={handleOpen}
+                onTwistieClick={handleTwistie}
+                onContextMenu={handleContextMenu}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+      <div
+        ref={containerRef}
+        tabIndex={0}
+        onKeyDown={handleKeyDown}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+        className="file-tree-scroll"
+      >
+        <div style={{ height: totalHeight, position: "relative" }}>
+          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+            <FileTreeNode
+              key={item.uri}
+              item={item}
+              depth={depth}
+              indent={0}
+              expanded={item.isDirectory && model.isExpanded(item.uri)}
+              isSelected={item.uri === selectedUri}
+              isFocused={item.uri === focusedUri}
+              isDragSource={dndState.sourceUri === item.uri}
+              isDragHover={dndState.hoverIndex === startIndex + i}
+              compactedSegments={compactedSegments}
+              guide={guide}
+              isDimmed={isDimmed}
+              onDragStart={handleDragStart}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+              onTwistieClick={handleTwistie}
+              onContextMenu={handleContextMenu}
+            />
+          ))}
+        </div>
       </div>
-    </div>
+    </>
   );
 };
 
