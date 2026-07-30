@@ -158,16 +158,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     return (
       <>
         {toolbarViews.length > 0 && (
-          <div
-            ref={toolbarRef}
-            style={{
-              position: "sticky",
-              top: 0,
-              zIndex: 2,
-              background: "var(--bg-side-panel)",
-              overflow: "hidden",
-            }}
-          >
+          <div ref={toolbarRef} className="side-panel-toolbar">
             {toolbarViews.map((view) => (
               <ErrorBoundary key={view.id} pluginId={effectiveContainerId}>
                 <view.render />
