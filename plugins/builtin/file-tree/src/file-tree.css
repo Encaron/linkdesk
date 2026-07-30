@@ -108,14 +108,14 @@
 
 .file-tree-body {
   flex: 1;
-  overflow: hidden;
-  position: relative; /* E4V#20+iii: sticky overlay 的定位参照物 */
+  /* E4V#20+iii: 不放 overflow:hidden——让 position:sticky 穿透到 .side-panel-content */
+  position: relative;
 }
 
 .file-tree-scroll {
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* E4V#20+iii: overflow:visible 让 position:sticky 穿透到 .side-panel-content */
+  overflow: visible;
   outline: none;
   color: var(--text-primary);
   background: transparent;
