@@ -203,8 +203,9 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   /** E4V#12: 平台级 context key——mount 时初始化 */
   useEffect(() => {
-    // 剪贴板剪切标记——R5 FileTreeClipboard 会动态更新，此处初始化
+    // R5 FileTreeClipboard 会动态更新，此处初始化默认值
     ContextKeyService.setValue("explorerResourceCut", false);
+    ContextKeyService.setValue("explorerClipboardEmpty", true);
     // Windows 可回收站→删除确认文案为"移至回收站"
     ContextKeyService.setValue("explorerResourceMoveableToTrash", navigator.platform.includes("Win"));
   }, []);
