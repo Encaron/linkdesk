@@ -109,7 +109,6 @@ export function activateFileTreeContextMenu(): void {
     if (!dirUri) return;
     let name = "新建文件";
     let filePath = joinPath(dirUri, name);
-    // 简单递增避免覆盖——E4V#27 行内重命名后再细化
     for (let i = 1; i < 100; i++) {
       if (!await exists(filePath)) break;
       name = `新建文件-${i}`;
@@ -117,6 +116,9 @@ export function activateFileTreeContextMenu(): void {
     }
     await writeFile(filePath, "");
     await model.refresh(dirUri);
+    // refresh 后重载父目录——立即显示新文件
+    const parent = model.findClosest(dirUri);
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
     _rerender?.();
   }});
 
@@ -135,11 +137,20 @@ export function activateFileTreeContextMenu(): void {
     }
     await mkdir(dirPath);
     await model.refresh(dirUri);
+    const parent = model.findClosest(dirUri);
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
     _rerender?.();
   }});
 
   registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
-    await _model?.refresh();
+    const model = _model;
+    if (!model) return;
+    await model.refresh();
+    // refresh 后重载所有已展开目录 + 根
+    for (const uri of model.getExpandedUris()) {
+      const item = model.findClosest(uri);
+      if (item) await model.getChildren(item).catch(() => {});
+    }
     _rerender?.();
   }});
 
