@@ -34,20 +34,26 @@ interface FileTreeProps {
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number) {
-    // 🔥 E4a #95c: 紧凑文件夹——检查是否可压缩
-    //   ⚠️ 如果叶子目录已展开且子节点已加载 → 不压缩，正常渲染子节点
+    // 🔥 E4V#4: CompactFolder Bug A/B/C 三合一修复
     if (item.isDirectory) {
       const compacted = getCompactedPath(item);
       if (compacted) {
         const leaf = findLeaf(item);
-        const shouldUnfold = leaf && leaf.isDirectory
-          && model.isExpanded(leaf.uri) && leaf.children !== null;
+        // Bug A: model.findClosest 获取当前活跃对象——防 stale 引用（同名目录）
+        const currentLeaf = leaf ? (model.findClosest(leaf.uri) ?? leaf) : null;
+        // Bug B: 文件末端——用父目录做 twistie 控制器（文件无 twistie）
+        const twistieItem = (currentLeaf && !currentLeaf.isDirectory && currentLeaf.parent)
+          ? currentLeaf.parent
+          : currentLeaf;
+        // Bug C: 展开后解压缩——判断 twistieItem 而非 leaf
+        const shouldUnfold = twistieItem?.isDirectory === true
+          && model.isExpanded(twistieItem.uri)
+          && twistieItem.children !== null;
         if (!shouldUnfold) {
-          // 压缩链——以 leaf 作为 item，显示完整路径段
-          result.push({ item: leaf ?? item, depth, compactedSegments: compacted });
-          return; // 跳过子节点——已压缩为单行
+          result.push({ item: twistieItem ?? item, depth, compactedSegments: compacted });
+          return;
         }
-        // 叶子已展开 → fall through 到正常渲染
+        // twistieItem 已展开 → fall through 到正常渲染
       }
     }
     result.push({ item, depth });
