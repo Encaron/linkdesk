@@ -13,7 +13,7 @@ import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
-import { readFile, exists } from "@src/core/FileService";
+import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
@@ -28,6 +28,7 @@ const FoldersView: React.FC = () => {
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
+  const _unwatchRef = useRef<(() => void) | null>(null);
 
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
   const [, setVersion] = useState(0);
@@ -84,6 +85,15 @@ const FoldersView: React.FC = () => {
         }
       }
       model.setExcludeFilter(filter);
+      // 启动文件监听——外部变更实时刷新
+      if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
+      if (folders.length > 0) {
+        try {
+          _unwatchRef.current = await watchFile(folders[0].uri, (event) => {
+            CoreEvents.onDidChangeFileSystem.fire([event]);
+          });
+        } catch { /* watcher 启动失败静默 */ }
+      }
       rerender();
     })().finally(() => { _syncGuardRef.current = null; });
     _syncGuardRef.current = promise;
@@ -112,7 +122,10 @@ const FoldersView: React.FC = () => {
         model.refresh().then(() => rerender());
       }
     });
-    return () => { unsub1(); unsub2(); unsub3(); };
+    return () => {
+      unsub1(); unsub2(); unsub3();
+      if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
+    };
   }, [syncRoots, model, rerender]);
 
   /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
