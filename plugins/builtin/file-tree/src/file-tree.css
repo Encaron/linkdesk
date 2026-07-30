@@ -341,6 +341,13 @@
   color: var(--text-secondary);
 }
 
+/* ═══ sticky scroll 祖先粘顶（E4V#20+iv） ═══ */
+
+.file-tree-sticky-row {
+  background: var(--side-panel-bg);
+  border-bottom: 1px solid var(--border);
+}
+
 /* ═══ 动画（尊重 prefers-reduced-motion） ═══ */
 
 @media (prefers-reduced-motion: no-preference) {
