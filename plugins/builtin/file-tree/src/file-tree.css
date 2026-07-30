@@ -109,6 +109,27 @@
 .file-tree-body {
   flex: 1;
   overflow: hidden;
+  position: relative; /* E4V#20+v: sticky overlay 的定位参照物 */
+}
+
+/* ═══ sticky scroll overlay（E4V#20+v+vii） ═══ */
+
+.file-tree-sticky-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  overflow: hidden;
+  pointer-events: auto;
+}
+
+.file-tree-sticky-row {
+  position: absolute;
+  left: 0;
+  right: 0;
+  background: var(--bg-side-panel);
+  border-bottom: 1px solid var(--border);
 }
 
 .file-tree-scroll {
