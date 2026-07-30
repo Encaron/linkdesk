@@ -14,7 +14,7 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
@@ -32,8 +32,12 @@ const FoldersView: React.FC = () => {
   const [, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
-  /* ── 注册 explorer 命令 + FileContext 菜单项 ── */
-  useEffect(() => { activateFileTreeContextMenu(); }, []);
+  /* ── 注册 explorer 命令 + FileContext 菜单项 + ref 桥接 ── */
+  useEffect(() => {
+    activateFileTreeContextMenu();
+    setFileTreeRefs(model, rerender);
+    return () => { clearFileTreeRefs(); };
+  }, [model, rerender]);
 
   /* ── 右键菜单状态 ── */
   const [contextMenu, setContextMenu] = useState<{

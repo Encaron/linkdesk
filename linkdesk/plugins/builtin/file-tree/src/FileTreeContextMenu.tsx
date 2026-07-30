@@ -12,13 +12,31 @@ import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import type { ExplorerItem } from "./FileTreeModel";
-import { dirname, normalizePath } from "./pathUtils";
+import type { ExplorerItem, FileTreeModel } from "./FileTreeModel";
+import { dirname, normalizePath, joinPath } from "./pathUtils";
+import { writeFile, mkdir, exists } from "@src/core/FileService";
 
 /** 菜单传入的 command args */
 interface FileMenuContext {
   uri: string;
   isDirectory: boolean;
+}
+
+/* ── E4V#20e: 模块级 ref 桥接——command handler 访问 model + rerender ── */
+
+let _model: FileTreeModel | null = null;
+let _rerender: (() => void) | null = null;
+
+/** FoldersView mount 时调用——注入 model + rerender 供 command handler 使用 */
+export function setFileTreeRefs(model: FileTreeModel, rerender: () => void): void {
+  _model = model;
+  _rerender = rerender;
+}
+
+/** FoldersView unmount 时调用——清除引用防泄漏 */
+export function clearFileTreeRefs(): void {
+  _model = null;
+  _rerender = null;
 }
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
@@ -80,9 +98,55 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.findInFolder",    title: "在文件夹中查找…",        handler: placeholder("explorer.findInFolder") });
   registerCommand("file-tree", { id: "explorer.openFocused",    title: "打开聚焦项",              handler: placeholder("explorer.openFocused") });
 
+  // ── E4V#20a-d: 新建/刷新/收起 handler ──
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
-  registerCommand("file-tree", { id: "explorer.newFile",         title: "新建文件",              handler: placeholder("explorer.newFile") });
-  registerCommand("file-tree", { id: "explorer.newFolder",       title: "新建文件夹",            handler: placeholder("explorer.newFolder") });
+
+  registerCommand("file-tree", { id: "explorer.newFile", title: "新建文件", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    const model = _model;
+    if (!model) return;
+    const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
+    if (!dirUri) return;
+    let name = "新建文件";
+    let filePath = joinPath(dirUri, name);
+    // 简单递增避免覆盖——E4V#27 行内重命名后再细化
+    for (let i = 1; i < 100; i++) {
+      if (!await exists(filePath)) break;
+      name = `新建文件-${i}`;
+      filePath = joinPath(dirUri, name);
+    }
+    await writeFile(filePath, "");
+    await model.refresh(dirUri);
+    _rerender?.();
+  }});
+
+  registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    const model = _model;
+    if (!model) return;
+    const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
+    if (!dirUri) return;
+    let name = "新建文件夹";
+    let dirPath = joinPath(dirUri, name);
+    for (let i = 1; i < 100; i++) {
+      if (!await exists(dirPath)) break;
+      name = `新建文件夹-${i}`;
+      dirPath = joinPath(dirUri, name);
+    }
+    await mkdir(dirPath);
+    await model.refresh(dirUri);
+    _rerender?.();
+  }});
+
+  registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
+    await _model?.refresh();
+    _rerender?.();
+  }});
+
+  registerCommand("file-tree", { id: "explorer.collapseAll", title: "收起所有文件夹", handler: async () => {
+    _model?.collapseAll();
+    _rerender?.();
+  }});
 
   // ── 注册菜单项到 MenuId.FileContext ──
   // 5 组：navigation / editing / creation / modify / search
