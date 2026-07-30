@@ -58,6 +58,12 @@ const FoldersView: React.FC = () => {
       const folders = getWorkspaceFolders();
       setRoots(folders);
       await model.setRoots(folders.map((f) => f.uri));
+      // E4V#15: 单根自动展开——跳过根节点显示，树从子节点开始
+      if (model.roots.length === 1) {
+        const root = model.roots[0];
+        model.expand(root.uri);
+        await model.getChildren(root);
+      }
       // E4V#8a: 读取 files.exclude 配置 + .gitignore 并合并到排除过滤器
       const filter = filterRef.current;
       const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
