@@ -125,21 +125,15 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;
 
-  /* ── 滚动检测 ── */
+  /* ── 滚动检测——.file-tree-scroll 是实际滚动容器 ── */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    let scrollEl: HTMLElement | null = el.parentElement;
-    while (scrollEl) {
-      if (/(auto|scroll)/.test(window.getComputedStyle(scrollEl).overflowY)) break;
-      scrollEl = scrollEl.parentElement;
-    }
-    if (!scrollEl) return;
-    scrollTopRef.current = scrollEl.scrollTop;
-    setScrollTop(scrollEl.scrollTop);
-    const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
-    scrollEl.addEventListener("scroll", handler, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", handler);
+    scrollTopRef.current = el.scrollTop;
+    setScrollTop(el.scrollTop);
+    const handler = () => { scrollTopRef.current = el.scrollTop; setScrollTop(el.scrollTop); };
+    el.addEventListener("scroll", handler, { passive: true });
+    return () => el.removeEventListener("scroll", handler);
   }, []);
 
   /* ── twistie 展开/折叠 ── */
