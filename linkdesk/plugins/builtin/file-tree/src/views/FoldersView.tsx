@@ -15,9 +15,10 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs, setSelectedUris, setFocusedUriBridge } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandle, clearFileTreeHandle } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
+import type { FileTreeHandle } from "../FileTree";
 import type { ExplorerItem } from "../FileTreeModel";
 import { FileExcludeFilter } from "../FileExcludeFilter";
 import { joinPath, normalizePath } from "../pathUtils";
@@ -35,12 +36,16 @@ const FoldersView: React.FC = () => {
   const [, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
-  /* ── 注册 explorer 命令 + FileContext 菜单项 + ref 桥接 ── */
+  /* ── 注册 explorer 命令 + FileContext 菜单项 + 🔥 归一化桥接 ── */
+  const fileTreeRef = useRef<FileTreeHandle>(null);
+
   useEffect(() => {
     activateFileTreeContextMenu();
-    setFileTreeRefs(model, rerender);
-    return () => { clearFileTreeRefs(); };
-  }, [model, rerender]);
+    return () => { clearFileTreeHandle(); };
+  }, []);
+
+  // 每次渲染后同步 handle（useImperativeHandle 在 commit 阶段设置 ref）
+  if (fileTreeRef.current) setFileTreeHandle(fileTreeRef.current);
 
   /* ── 右键菜单状态 ── */
   const [contextMenu, setContextMenu] = useState<{
@@ -186,15 +191,6 @@ const FoldersView: React.FC = () => {
     // TODO E4c #103
   }, []);
 
-  /** E4V#24: selection 变化 → 桥接到模块级变量——command handler 读选中 URI */
-  const handleSelectionChange = useCallback((uris: string[]) => {
-    setSelectedUris(uris);
-  }, []);
-  /** E4V#26: focusedUri 变化 → 桥接到模块级变量——键盘粘贴推断目标目录 */
-  const handleFocusChange = useCallback((uri: string | null) => {
-    setFocusedUriBridge(uri);
-  }, []);
-
   return (
     <div className="file-tree-root">
       {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
@@ -202,7 +198,7 @@ const FoldersView: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} onSelectionChange={handleSelectionChange} onFocusChange={handleFocusChange} />
+          <FileTree ref={fileTreeRef} model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
         )}
       </div>
 
