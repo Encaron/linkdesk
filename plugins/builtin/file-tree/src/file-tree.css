@@ -123,8 +123,6 @@
 /* ═══ E4V#20+F3: sticky fixed overlay ═══ */
 
 .file-tree-sticky-overlay {
-  position: relative;
-  overflow: hidden;
   pointer-events: auto;
   background: var(--bg-side-panel);
   border-bottom: 1px solid var(--border);
