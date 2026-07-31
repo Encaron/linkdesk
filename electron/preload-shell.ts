@@ -45,10 +45,6 @@ try {
     };
   };
 
-  const makeOff = (channel: string) => {
-    return () => ipcRenderer.removeAllListeners(channel);
-  };
-
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -67,9 +63,6 @@ try {
       onData:     makeListener('serial:data'),
       onStats:    makeListener('serial:stats'),
       onSystem:   makeListener('serial:system'),
-      offData:    makeOff('serial:data'),
-      offStats:   makeOff('serial:stats'),
-      offSystem:  makeOff('serial:system'),
     },
 
     // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──
