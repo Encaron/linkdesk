@@ -108,37 +108,36 @@
 
 .file-tree-body {
   flex: 1;
-  overflow: hidden;
-  position: relative; /* E4V#20+v: sticky overlay 的定位参照物 */
+  /* E4V#20+vii: overflow:visible+flex 让 sticky 穿透，clip 裁虚拟列表 */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
 }
 
-/* ═══ sticky scroll overlay（E4V#20+v+vii） ═══ */
-
-.file-tree-sticky-container {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  z-index: 2;
-  overflow: hidden;
-  pointer-events: auto;
-}
+/* ═══ sticky scroll row（E4V#20+vii） ═══ */
 
 .file-tree-sticky-row {
-  position: absolute;
-  left: 0;
-  right: 0;
+  flex-shrink: 0;
   background: var(--bg-side-panel);
   border-bottom: 1px solid var(--border);
 }
 
 .file-tree-scroll {
   height: 100%;
-  overflow-y: auto;
-  overflow-x: hidden;
+  /* overflow:visible 让 position:sticky 子元素穿透到 .side-panel-content */
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
   outline: none;
   color: var(--text-primary);
   background: transparent;
+}
+
+/* clip 虚拟列表溢出——sticky 穿透，这里裁 */
+.file-tree-scroll-clip {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
 }
 
 /* E4b #99k: 自定义滚动条——暗色主题，对标 HTML 预览 */

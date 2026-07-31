@@ -165,8 +165,11 @@ export class FileTreeModel {
     const ancestors: ExplorerItem[] = [];
     let current: ExplorerItem | null = node.parent;
     while (current) {
-      if (current.isDirectory && this._expanded.has(current.uri)) {
-        ancestors.push(current);
+      if (current.isDirectory) {
+        // 根（parent===null）始终纳入，其他需在 _expanded 中
+        if (current.parent === null || this._expanded.has(current.uri)) {
+          ancestors.push(current);
+        }
       }
       current = current.parent;
     }
