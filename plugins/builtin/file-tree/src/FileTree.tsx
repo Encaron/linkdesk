@@ -245,7 +245,13 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     return state;
   }, [flatItems, model, scrollTop, containerHeight]);
 
-  /* ── 滚动——E4V#20+ii: rAF 延迟后 DOM 遍历找滚动祖先 ── */
+  /* ── 滚动——E4V#20+ii: onScroll 保底 + DOM 遍历找滚动祖先 ── */
+
+  const handleScroll = useCallback(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setScrollTop(el.scrollTop);
+  }, []);
 
   useEffect(() => {
     const el = containerRef.current;
@@ -416,6 +422,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       <div
         ref={containerRef}
         tabIndex={0}
+        onScroll={handleScroll}
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         onBlur={handleBlur}
