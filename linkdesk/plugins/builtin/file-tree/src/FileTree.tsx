@@ -65,7 +65,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
-  const scrollTopRef = useRef(0); // 实时值，绕过 React setState 异步延迟
+  const scrollTopRef = useRef(0);
   const [containerHeight, setContainerHeight] = useState(0);
   const [sidePanelRect, setSidePanelRect] = useState({ top: 0, left: 0, width: 0 });
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
@@ -88,15 +88,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [model, rerender]);
 
   /* ── 虚拟列表 ── */
-  const flatItemsRef = useRef<FlatItem[]>([]);
   const flatItems = useMemo(() => {
     void (version);
     const items = flattenTree(model);
-    flatItemsRef.current = items;
-    console.log("[file-tree] flatItems=%d roots=[%s] expanded=[%s]",
-      items.length,
-      model.roots.map(r => r.name).join(","),
-      model.getExpandedUris().map(u => u.replace(/.*[\\/]/, "")).join(","));
+    console.log("[tree] flat=%d expanded=%d roots=%d",
+      items.length, model.getExpandedUris().length, model.roots.length);
     return items;
   }, [model, version]);
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
@@ -105,7 +101,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  // E4V#20+F2: sticky rows——根始终在最前，约束 ≤7 + ≤40% 视口
+  /* ── sticky rows——根始终在最前，约束 ≤7 + ≤40% 视口 ── */
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
     if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
@@ -119,14 +115,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     }
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
-    const parts = result.map(r => `${r.item.name}(idx=[-,-] top=${-(st)}px)`);
-    console.log("[sticky] st=%d idx=%d first='%s'(d=%d) flatTotal=%d → [%s]",
-      st, idx, first.item.name, first.depth, flatItems.length, parts.join(" > ") || "(无)");
-    return result;
+    return ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
   }, [flatItems, model, scrollTop, containerHeight]);
 
-  /* ── 滚动检测——找真实滚动容器的 scrollTop ── */
+  /* ── 滚动检测 ── */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -138,29 +130,18 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     if (!scrollEl) return;
     scrollTopRef.current = scrollEl.scrollTop;
     setScrollTop(scrollEl.scrollTop);
-    const handler = () => {
-      const st = scrollEl.scrollTop;
-      scrollTopRef.current = st; setScrollTop(st);
-      // 打印视口顶部 3 行：item名 + 像素top(负=已滚出)
-      const fi = flatItemsRef.current;
-      if (fi.length > 0) {
-        const i0 = Math.floor(st / TREE_ITEM_HEIGHT);
-        const top3 = [fi[i0], fi[i0 + 1], fi[i0 + 2]].filter(Boolean).map((f, k) =>
-          `${f.item.name}(d=${f.depth} top=${(i0 + k) * TREE_ITEM_HEIGHT - st}px)`);
-        console.log("[scroll] st=%d top3=[%s]", st, top3.join(", "));
-      }
-    };
+    const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
     scrollEl.addEventListener("scroll", handler, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handler);
   }, []);
 
-  // E4V#20+F1: 追踪 .side-panel-content 屏幕坐标
+  /* ── side-panel rect ── */
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const scrollEl = el.closest<HTMLElement>(".side-panel-content");
     if (!scrollEl) return;
-    const update = () => { const r = scrollEl.getBoundingClientRect(); console.log("[sticky] rect: top=%d left=%d w=%d scrollTop=%d", r.top, r.left, r.width, scrollEl.scrollTop); setSidePanelRect({ top: r.top, left: r.left, width: r.width }); };
+    const update = () => { const r = scrollEl.getBoundingClientRect(); setSidePanelRect({ top: r.top, left: r.left, width: r.width }); };
     update();
     scrollEl.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
@@ -171,6 +152,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const handleTwistie = useCallback(async (item: ExplorerItem) => {
     if (!item.isDirectory && item.children === null) return;
     if (model.isExpanded(item.uri)) {
+      console.log("[tree] ← collapse: %s", item.name);
       model.collapse(item.uri);
       model.compactController.collapseCompact(item.uri);
     } else {
@@ -178,8 +160,9 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       model.compactController.expandCompact(item.uri);
       try {
         const children = await model.getChildren(item);
-        console.log("[file-tree] expand: %s → %d children", item.name, children.length);
-      } catch (e) { console.error("[file-tree] expand failed:", item.name, e); }
+        console.log("[tree] → expand: %s +%d children, total expanded=%d",
+          item.name, children.length, model.getExpandedUris().length);
+      } catch (e) { console.error("[tree] expand failed:", item.name, e); }
     }
   }, [model]);
 
@@ -225,15 +208,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /* ── 渲染 ── */
   return (
     <>
-      {(() => {
-        if (stickyRows.length > 0 && sidePanelRect.width > 0) {
-          console.log("[sticky] portal render: rect=(%d,%d,%d) rows=%d",
-            sidePanelRect.top, sidePanelRect.left, sidePanelRect.width, stickyRows.length);
-          return true;
-        }
-        if (stickyRows.length > 0) console.log("[sticky] portal SKIP: width=0");
-        return false;
-      })() && createPortal(
+      {stickyRows.length > 0 && sidePanelRect.width > 0 && createPortal(
         <div className="file-tree-sticky-overlay" style={{
           position: "fixed", top: sidePanelRect.top, left: sidePanelRect.left,
           width: sidePanelRect.width, zIndex: 10,
