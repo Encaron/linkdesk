@@ -65,7 +65,8 @@ const FoldersView: React.FC = () => {
   // E4V#35 setRoots 可能异步化后，并发 syncRoots 会残留旧文件夹。
   const _syncGuardRef = useRef<Promise<void> | null>(null);
   const syncRoots = useCallback(async () => {
-    if (_syncGuardRef.current) return _syncGuardRef.current;
+    if (_syncGuardRef.current) { console.log("[fs-watch] syncRoots SKIP (guard active)"); return _syncGuardRef.current; }
+    console.log("[fs-watch] syncRoots START at %ds", ((Date.now() - performance.timeOrigin) / 1000).toFixed(1));
     const promise = (async () => {
       const folders = getWorkspaceFolders();
       setRoots(folders);
@@ -90,6 +91,9 @@ const FoldersView: React.FC = () => {
       if (folders.length > 0) {
         try {
           _unwatchRef.current = await watchFile(folders[0].uri, (event) => {
+            console.log("[fs-watch] watcher callback at %ds: %s %s",
+              ((Date.now() - performance.timeOrigin) / 1000).toFixed(1),
+              event.type, event.path);
             CoreEvents.onDidChangeFileSystem.fire([event]);
           });
         } catch { /* watcher 启动失败静默 */ }
@@ -103,13 +107,18 @@ const FoldersView: React.FC = () => {
   useEffect(() => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
-    const unsub2 = CoreEvents.onDidChangeFileSystem.event(() => {
+    const unsub2 = CoreEvents.onDidChangeFileSystem.event((events) => {
+      console.log("[fs-watch] TRIGGER at %ds: %d events, expanded=%d",
+        ((Date.now() - performance.timeOrigin) / 1000).toFixed(1),
+        events.length, model.getExpandedUris().length);
       model.refresh().then(async () => {
-        // 刷新后自动重载已展开目录——外部变更实时可见
         for (const uri of model.getExpandedUris()) {
           const item = model.findClosest(uri);
           if (item) await model.getChildren(item).catch(() => {});
         }
+        console.log("[fs-watch] RELOAD done at %ds, expanded=%d",
+          ((Date.now() - performance.timeOrigin) / 1000).toFixed(1),
+          model.getExpandedUris().length);
         rerender();
       });
     });
