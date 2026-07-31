@@ -120,13 +120,7 @@
   background: transparent;
 }
 
-/* ═══ E4V#20+F3: sticky fixed overlay ═══ */
-
-.file-tree-sticky-overlay {
-  pointer-events: auto;
-  background: var(--bg-side-panel);
-  border-bottom: 1px solid var(--border);
-}
+/* ═══ E4V#20+P: sticky row——PinnedSlot 壳层渲染 ═══ */
 
 .file-tree-sticky-row {
   display: flex;
