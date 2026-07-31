@@ -72,15 +72,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
-  const [_expandStart, setExpandStart] = useState(0);
-  const [timer, setTimer] = useState(0);
-
-  // 展开计时器——_expandStart>0 时每 100ms 更新
-  useEffect(() => {
-    if (!_expandStart) return;
-    const id = setInterval(() => setTimer(Date.now() - _expandStart), 100);
-    return () => clearInterval(id);
-  }, [_expandStart]);
+  const [bootTime] = useState(Date.now());
+  const [firstExpandTime, setFirstExpandTime] = useState(0);
 
   /* ── ResizeObserver ── */
   useEffect(() => {
@@ -158,7 +151,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       model.collapse(item.uri);
       model.compactController.collapseCompact(item.uri);
     } else {
-      setExpandStart(Date.now());
+      if (!firstExpandTime) setFirstExpandTime(Date.now());
       model.expand(item.uri);
       model.compactController.expandCompact(item.uri);
       try {
@@ -172,8 +165,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
           await model.getChildren(child);
           next = child;
         }
-        setExpandStart(0);
-      } catch (e) { console.error("[file-tree] expand failed:", item.name, e); setExpandStart(0); }
+      } catch (e) { console.error("[file-tree] expand failed:", item.name, e); }
     }
   }, [model]);
 
@@ -241,14 +233,15 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         onFocus={handleFocus} onBlur={handleBlur}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
         className="file-tree-scroll">
-        {timer > 0 && (
-          <div style={{
-            position: "fixed", top: 8, right: 8, zIndex: 9999,
-            background: timer > 10000 ? "#FF0000" : "rgba(0,0,0,0.7)",
-            color: "#FFF", padding: "4px 10px", borderRadius: 4,
-            fontSize: 14, fontFamily: "monospace",
-          }}>{(timer / 1000).toFixed(1)}s</div>
-        )}
+        <div style={{
+          position: "fixed", top: 8, right: 8, zIndex: 9999,
+          background: "rgba(0,0,0,0.7)", color: "#FFF",
+          padding: "4px 10px", borderRadius: 4,
+          fontSize: 14, fontFamily: "monospace",
+        }}>
+          boot: {((Date.now() - bootTime) / 1000).toFixed(0)}s
+          {firstExpandTime > 0 ? ` | expand: ${((Date.now() - firstExpandTime) / 1000).toFixed(0)}s` : ""}
+        </div>
         <div style={{ height: totalHeight, position: "relative" }}>
           <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
           {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
