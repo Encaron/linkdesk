@@ -151,7 +151,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     } else {
       model.expand(item.uri);
       model.compactController.expandCompact(item.uri);
-      try { await model.getChildren(item); } catch (e) { /* ignore */ }
+      try { await model.getChildren(item); } catch (e) { console.error("[file-tree] expand failed:", item.name, e); }
     }
   }, [model]);
 
