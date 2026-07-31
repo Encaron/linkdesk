@@ -106,13 +106,16 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——VS Code 每行独立推出 + PinnedSlot壳层渲染 ── */
+  /* ── sticky rows——9种转换全覆盖：推出 + 过渡期新旧共存 ── */
+  const prevStickyRef = useRef<StickyRow[]>([]);
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) return [] as StickyRow[];
+    if (st <= 0 || flatItems.length === 0) {
+      prevStickyRef.current = [];
+      return [] as StickyRow[];
+    }
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
     let first = flatItems[Math.min(idx, flatItems.length - 1)];
-    // 视口第一行是文件→退到父目录
     if (first && !first.item.isDirectory && first.item.parent) {
       for (let j = idx - 1; j >= 0; j--) {
         if (flatItems[j].item.uri === first.item.parent.uri) { first = flatItems[j]; break; }
@@ -126,25 +129,71 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     }
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const constrained = ancestors.slice(0, maxCount);
-    // VS Code calculateStickyNodePosition——每行完全独立，基准=i*22
-    // 后裔底边进入本行范围→本行推出至后裔底边-rowH。z-index降序→藏到浅行下面
-    const rows: StickyRow[] = [];
-    for (let i = 0; i < constrained.length; i++) {
-      const item = constrained[i];
-      const normalTop = i * TREE_ITEM_HEIGHT;
-      const endIdx = findLastDescendant(item.uri, flatItems);
-      let top = normalTop;
-      if (endIdx >= 0) {
-        const bottomOfLast = (endIdx * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
-        // 后裔底边在本行范围内(normalTop < bottomOfLast <= normalTop+H)→推出
-        if (normalTop + TREE_ITEM_HEIGHT > bottomOfLast && normalTop <= bottomOfLast) {
-          top = bottomOfLast - TREE_ITEM_HEIGHT;
+    const newAncestors = ancestors.slice(0, maxCount);
+    const prev = prevStickyRef.current;
+
+    // 单行推出计算
+    const calcTop = (item: ExplorerItem, normalTop2: number): number => {
+      const ei = findLastDescendant(item.uri, flatItems);
+      if (ei < 0) return normalTop2;
+      const bol = (ei * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
+      if (normalTop2 + TREE_ITEM_HEIGHT > bol && normalTop2 <= bol) return bol - TREE_ITEM_HEIGHT;
+      return normalTop2;
+    };
+
+    // ①③⑧⑨ 无旧链或首次→直接用新链
+    if (prev.length === 0) {
+      const rows: StickyRow[] = newAncestors.map((item, i) => ({
+        item, depth: i + 1, top: calcTop(item, i * TREE_ITEM_HEIGHT),
+      }));
+      prevStickyRef.current = rows;
+      return rows;
+    }
+
+    // 找共同前缀长度
+    let commonLen = 0;
+    while (commonLen < prev.length && commonLen < newAncestors.length
+      && prev[commonLen].item.uri === newAncestors[commonLen].uri) {
+      commonLen++;
+    }
+
+    // ②⑧ 纯追加（新链包含旧链全部）→直接用新链
+    if (commonLen === prev.length) {
+      const rows: StickyRow[] = newAncestors.map((item, i) => ({
+        item, depth: i + 1, top: calcTop(item, i * TREE_ITEM_HEIGHT),
+      }));
+      prevStickyRef.current = rows;
+      return rows;
+    }
+
+    // ③④⑤⑥⑦ 过渡期：保留旧链独有行（还有可见后裔的）+ 新链独有行
+    const result: StickyRow[] = [];
+    // 共同前缀——用新链（和旧链一样），depth=treedepth
+    for (let i = 0; i < commonLen; i++) {
+      result.push({ item: newAncestors[i], depth: i + 1,
+        top: calcTop(newAncestors[i], i * TREE_ITEM_HEIGHT) });
+    }
+    // 旧链独有行——从浅到深检查，后裔不可见即停止。depth保留原值
+    for (let i = commonLen; i < prev.length; i++) {
+      const ei = findLastDescendant(prev[i].item.uri, flatItems);
+      if (ei >= 0) {
+        const lct = ei * TREE_ITEM_HEIGHT - st;
+        if (lct > -TREE_ITEM_HEIGHT) {
+          const nt = result.length * TREE_ITEM_HEIGHT;
+          result.push({ item: prev[i].item, depth: prev[i].depth, top: calcTop(prev[i].item, nt) });
+          continue;
         }
       }
-      rows.push({ item, depth: i + 1, top });
+      break;
     }
-    return rows;
+    // 新链独有行——depth用树深度(i+1)，不是结果位置
+    for (let i = commonLen; i < newAncestors.length && result.length < maxCount; i++) {
+      const nt = result.length * TREE_ITEM_HEIGHT;
+      result.push({ item: newAncestors[i], depth: i + 1, top: calcTop(newAncestors[i], nt) });
+    }
+    const trimmed = result.slice(0, maxCount);
+    prevStickyRef.current = trimmed;
+    return trimmed;
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;
