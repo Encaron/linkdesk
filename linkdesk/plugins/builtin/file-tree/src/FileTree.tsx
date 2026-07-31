@@ -26,19 +26,6 @@ interface FileTreeProps {
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
 
-/** E4V#20+iii: StickyRow——对标 VS Code StickyScrollNode */
-interface StickyRow {
-  item: ExplorerItem;
-  depth: number;
-  /** sticky 行在 overlay 中的 top 像素值（不是 CSS `top: i*22`） */
-  position: number;
-  height: number;
-  /** 该祖先在 flatItems 中第一个后代的索引 */
-  startIndex: number;
-  /** 该祖先在 flatItems 中最后一个后代的索引 */
-  endIndex: number;
-}
-
 /* ── 常量（从 layoutTokens.ts 导入） ── */
 
 /* ── 工具 ── */
@@ -87,95 +74,6 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
   const child = item.children[0];
   if (!child.isDirectory) return child;
   return findLeaf(child);
-}
-
-/* ── E4V#20+iv: sticky scroll 算法——对标 VS Code StickyScrollController ── */
-
-/** 查找祖先在 flatItems 中的索引区间（第一个到最后一个后代） */
-function getNodeRange(
-  ancestor: ExplorerItem,
-  flatItems: FlatItem[],
-): { startIndex: number; endIndex: number } | null {
-  const ancUri = ancestor.uri;
-  let startIndex = -1;
-  let endIndex = -1;
-  for (let i = 0; i < flatItems.length; i++) {
-    const itemUri = flatItems[i].item.uri;
-    if (itemUri === ancUri || (itemUri.startsWith(ancUri) && itemUri[ancUri.length] === "/")) {
-      if (startIndex === -1) startIndex = i;
-      endIndex = i;
-    } else if (startIndex !== -1) {
-      break;
-    }
-  }
-  if (startIndex === -1) return null;
-  return { startIndex, endIndex };
-}
-
-/**
- * 对标 VS Code calculateStickyNodePosition：
- * sticky 行被最后一个后代"推出"屏幕时才移动位置。
- */
-function calculateStickyPosition(
-  lastDescendantIndex: number,
-  stickyHeight: number,
-  scrollTop: number,
-  containerHeight: number,
-): number {
-  if (containerHeight <= 0) return stickyHeight;
-  const lastChildTop = lastDescendantIndex * TREE_ITEM_HEIGHT - scrollTop;
-  const lastChildBottom = lastChildTop + TREE_ITEM_HEIGHT;
-  const stickyBottom = stickyHeight + TREE_ITEM_HEIGHT;
-  if (stickyBottom > lastChildBottom && stickyHeight <= lastChildBottom) {
-    return lastChildBottom - TREE_ITEM_HEIGHT;
-  }
-  return stickyHeight;
-}
-
-/**
- * findStickyState——取视口第一个可见节点，沿 parent 链收集展开祖先。
- */
-function findStickyState(
-  flatItems: FlatItem[],
-  model: FileTreeModel,
-  scrollTop: number,
-  containerHeight: number,
-): StickyRow[] {
-  // 半行缓冲：超过 50% 可见才算"第一个可见"——减少目录边界振荡
-  const firstVisibleIdx = Math.floor((scrollTop + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
-  const firstVisible = flatItems[firstVisibleIdx];
-  if (!firstVisible) return [];
-
-  const ancestors = model.getAncestors(firstVisible.item);
-  if (ancestors.length === 0) return [];
-
-  const rows: StickyRow[] = [];
-  let stickyHeight = 0;
-
-  for (const ancestor of ancestors) {
-    const range = getNodeRange(ancestor, flatItems);
-    if (!range) continue;
-
-    const position = calculateStickyPosition(
-      range.endIndex, stickyHeight, scrollTop, containerHeight,
-    );
-
-    rows.push({
-      item: ancestor,
-      depth: model.getAncestors(ancestor).length + 1,
-      position,
-      height: TREE_ITEM_HEIGHT,
-      startIndex: range.startIndex,
-      endIndex: range.endIndex,
-    });
-
-    stickyHeight += TREE_ITEM_HEIGHT;
-
-    if (rows.length >= 7) break;
-    if (containerHeight > 0 && stickyHeight > containerHeight * 0.4) break;
-  }
-
-  return rows;
 }
 
 /* ── 组件 ── */
@@ -227,50 +125,12 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     [flatItems, startIndex, endIndex],
   );
 
-  /* ── E4V#20+iv: sticky state——对标 VS Code findStickyState ── */
-
-  const _stickyIdRef = useRef("");
-  const _stickyCachedRef = useRef<StickyRow[]>([]);
-
-  const stickyState = useMemo(() => {
-    const state = findStickyState(flatItems, model, scrollTop, containerHeight);
-    // E4V#20+vi: 状态比较——对标 VS Code StickyScrollState.equal
-    const id = state.map((r) => `${r.item.uri}@${r.position.toFixed(0)}`).join("|");
-    if (id === _stickyIdRef.current) return _stickyCachedRef.current;
-    _stickyIdRef.current = id;
-    _stickyCachedRef.current = state;
-    return state;
-  }, [flatItems, model, scrollTop, containerHeight]);
-
-  /* ── 滚动——E4V#20+ii: onScroll 保底 + DOM 遍历找滚动祖先 ── */
+  /* ── 滚动 ── */
 
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     setScrollTop(el.scrollTop);
-  }, []);
-
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    let cleanup: (() => void) | undefined;
-    const raf = requestAnimationFrame(() => {
-      let scrollEl: HTMLElement | null = el.parentElement;
-      while (scrollEl) {
-        const s = window.getComputedStyle(scrollEl);
-        if (s.overflowY === "auto" || s.overflowY === "scroll") break;
-        scrollEl = scrollEl.parentElement;
-      }
-      if (!scrollEl) return;
-      setScrollTop(scrollEl.scrollTop);
-      const handler = () => setScrollTop(scrollEl.scrollTop);
-      scrollEl.addEventListener("scroll", handler, { passive: true });
-      cleanup = () => scrollEl!.removeEventListener("scroll", handler);
-    });
-    return () => {
-      cancelAnimationFrame(raf);
-      cleanup?.();
-    };
   }, []);
 
   /* ── twistie 展开/折叠 ── */
@@ -398,58 +258,29 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       onDrop={handleDrop}
       className="file-tree-scroll"
     >
-      {/* E4V#20+v: sticky rows——flex item + position:sticky 穿透到 .side-panel-content */}
-      {stickyState.map((row, i) => (
-        <div
-          key={`sticky-${row.item.uri}`}
-          className="file-tree-sticky-row"
-          style={{
-            position: "sticky",
-            top: i * TREE_ITEM_HEIGHT,
-            height: TREE_ITEM_HEIGHT,
-            zIndex: 2,
-          }}
-        >
+      <div style={{ height: totalHeight, position: "relative" }}>
+        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode
-            item={row.item}
-            depth={row.depth}
+            key={item.uri}
+            item={item}
+            depth={depth}
             indent={0}
-            expanded={true}
-            isSelected={false}
-            isFocused={false}
+            expanded={item.isDirectory && model.isExpanded(item.uri)}
+            isSelected={item.uri === selectedUri}
+            isFocused={item.uri === focusedUri}
+            isDragSource={dndState.sourceUri === item.uri}
+            isDragHover={dndState.hoverIndex === startIndex + i}
+            compactedSegments={compactedSegments}
+            guide={guide}
+            isDimmed={isDimmed}
+            onDragStart={handleDragStart}
             onSelect={handleSelect}
             onOpen={handleOpen}
             onTwistieClick={handleTwistie}
             onContextMenu={handleContextMenu}
           />
-        </div>
-      ))}
-      {/* 虚拟列表 clip——flex:1 填剩余高度，overflow:hidden 裁溢出 */}
-      <div className="file-tree-scroll-clip">
-        <div style={{ height: totalHeight, position: "relative" }}>
-          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-            <FileTreeNode
-              key={item.uri}
-              item={item}
-              depth={depth}
-              indent={0}
-              expanded={item.isDirectory && model.isExpanded(item.uri)}
-              isSelected={item.uri === selectedUri}
-              isFocused={item.uri === focusedUri}
-              isDragSource={dndState.sourceUri === item.uri}
-              isDragHover={dndState.hoverIndex === startIndex + i}
-              compactedSegments={compactedSegments}
-              guide={guide}
-              isDimmed={isDimmed}
-              onDragStart={handleDragStart}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-              onTwistieClick={handleTwistie}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
-        </div>
+        ))}
       </div>
     </div>
   );
