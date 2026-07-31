@@ -19,6 +19,8 @@ interface FileTreeProps {
   model: FileTreeModel;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
+  /** E4V#24: selection 变化时回调——command handler 需要知道选中了哪些文件 */
+  onSelectionChange?: (uris: string[]) => void;
 }
 
 /* ── 工具 ── */
@@ -61,7 +63,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
+const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, onSelectionChange }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
@@ -74,6 +76,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /** E4V#22: ref 桥接——handleSelect 读最新 flatItems/lastClickedUri 做范围选中，回调保持 [] deps 稳定 */
   const flatItemsRef = useRef<FlatItem[]>([]);
   const lastClickedUriRef = useRef<string | null>(null);
+
+  /** E4V#24: selection 变化 → 桥接到模块级变量——command handler 读 */
+  useEffect(() => {
+    onSelectionChange?.(Array.from(selection));
+  }, [selection, onSelectionChange]);
 
   /** E4V#21: 键盘/单击→单选（清 Set + 加一项）——键盘回调签名不变 */
   const selectSingle = useCallback((uri: string) => {

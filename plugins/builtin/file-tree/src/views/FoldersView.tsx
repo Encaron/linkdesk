@@ -15,7 +15,7 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs, setSelectedUris } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
@@ -186,6 +186,11 @@ const FoldersView: React.FC = () => {
     // TODO E4c #103
   }, []);
 
+  /** E4V#24: selection 变化 → 桥接到模块级变量——command handler 读选中 URI */
+  const handleSelectionChange = useCallback((uris: string[]) => {
+    setSelectedUris(uris);
+  }, []);
+
   return (
     <div className="file-tree-root">
       {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
@@ -193,7 +198,7 @@ const FoldersView: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
+          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} onSelectionChange={handleSelectionChange} />
         )}
       </div>
 
