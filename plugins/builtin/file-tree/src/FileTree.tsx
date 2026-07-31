@@ -134,18 +134,20 @@ function calculateStickyPosition(
 
 /**
  * findStickyState——取视口第一个可见节点，沿 parent 链收集展开祖先。
- * flatItems 是扁平列表、parent 链完整——不需要 VS Code 的迭代 getAncestorUnderPrevious。
+ * @param stickyOffset 上一帧 sticky 高度——跳过已被粘顶覆盖的项，防止边界振荡
  */
 function findStickyState(
   flatItems: FlatItem[],
   model: FileTreeModel,
   scrollTop: number,
   containerHeight: number,
+  stickyOffset: number,
 ): StickyRow[] {
   // 对标 VS Code update()：scrollTop===0 时不 sticky
   if (scrollTop <= 0) return [];
 
-  const firstVisibleIdx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+  // 对标 VS Code：sticky 自身高度从 scrollTop 中扣除，跳过已粘顶的项
+  const firstVisibleIdx = Math.floor((scrollTop + stickyOffset) / TREE_ITEM_HEIGHT);
   const firstVisible = flatItems[firstVisibleIdx];
   if (!firstVisible) return [];
 
@@ -234,14 +236,16 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   const _stickyIdRef = useRef("");
   const _stickyCachedRef = useRef<StickyRow[]>([]);
+  const _prevStickyHeightRef = useRef(0);
 
   const stickyState = useMemo(() => {
-    const state = findStickyState(flatItems, model, scrollTop, containerHeight);
+    const state = findStickyState(flatItems, model, scrollTop, containerHeight, _prevStickyHeightRef.current);
     // E4V#20+vi: 状态比较——对标 VS Code StickyScrollState.equal
     const id = state.map((r) => `${r.item.uri}@${r.position.toFixed(0)}`).join("|");
     if (id === _stickyIdRef.current) return _stickyCachedRef.current;
     _stickyIdRef.current = id;
     _stickyCachedRef.current = state;
+    _prevStickyHeightRef.current = state.length * TREE_ITEM_HEIGHT;
     return state;
   }, [flatItems, model, scrollTop, containerHeight]);
 
