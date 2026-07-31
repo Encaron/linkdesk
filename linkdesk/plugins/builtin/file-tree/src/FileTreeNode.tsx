@@ -27,8 +27,9 @@ interface FileTreeNodeProps {
   /** E4b #99k + E4V#16: excluded 文件灰显 */
   isDimmed?: boolean;
   onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
-  /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效 */
-  onSelect: (uri: string) => void;
+  /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效。
+   *  E4V#21: 第二个参数 event——Ctrl+Click 多选 toggle */
+  onSelect: (uri: string, event: React.MouseEvent) => void;
   onOpen: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onTwistieClick: (item: ExplorerItem) => void;
   onContextMenu?: (item: ExplorerItem, e: React.MouseEvent) => void;
@@ -76,7 +77,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = (e: React.MouseEvent) => {
-    onSelect(item.uri);
+    // E4V#21: 传 event 给父组件——检测 ctrlKey/metaKey 做多选 toggle
+    onSelect(item.uri, e);
     if (e.detail === 2) {
       onOpen(item, "pin");
     }
