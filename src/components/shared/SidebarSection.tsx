@@ -70,14 +70,6 @@ function SidebarSection({
     [toggle],
   );
 
-  /**
-   * section-header-height: SidebarSection header 行高——CSS `.sidebar-section-header { height: 22px }`。
-   * pinnedContent sticky top 偏移需对齐此值。若 header 被隐藏（headerHidden），偏移退化为 0。
-   * 🔥 28px = 22px header + 6px 额外间距（与 file-tree-header 28px 对齐）。TODO 归一到 CSS 变量。
-   */
-  // 同步 CSS：.sidebar-section-header { height: 22px }
-  const HEADER_H = 22;
-
   // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
   if (headerHidden) {
     return (
@@ -98,47 +90,47 @@ function SidebarSection({
 
   return (
     <div className="sidebar-section">
-      <div
-        className={`sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
-        onClick={toggle}
-        role="button"
-        title={titleTooltip}
-        aria-expanded={collapsible ? open : undefined}
-        tabIndex={collapsible ? 0 : undefined}
-        onKeyDown={collapsible ? onKeyDown : undefined}
-        style={stickyTop !== undefined ? { top: stickyTop } : undefined}
-      >
-        {collapsible && (
-          <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>
-            ▼
-          </span>
-        )}
-        <span className="sidebar-section-title">{title}</span>
-        {titleDescription && (
-          <span className="sidebar-section-title-description">{titleDescription}</span>
-        )}
-        {badge !== undefined && badge !== "" && (
-          <span className="sidebar-section-badge">{badge}</span>
-        )}
-        <span className="sidebar-section-spacer" />
-        {actions && (
-          <span
-            className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}`}
-            onClick={(e) => e.stopPropagation()}
-          >
-            {actions}
-          </span>
+      {/* 🔥 E4V#fix: header + pinned 包进同一个 sticky 容器——消除 HEADER_H 硬编码。
+         浏览器自动处理堆叠——不再各自算 top，不再有 CSS-TSX 不同步导致的缝。 */}
+      <div className="sidebar-section-sticky-head"
+        style={stickyTop !== undefined ? { top: stickyTop } : undefined}>
+        <div
+          className={`sidebar-section-header${!collapsible ? " not-collapsible" : ""}`}
+          onClick={toggle}
+          role="button"
+          title={titleTooltip}
+          aria-expanded={collapsible ? open : undefined}
+          tabIndex={collapsible ? 0 : undefined}
+          onKeyDown={collapsible ? onKeyDown : undefined}
+        >
+          {collapsible && (
+            <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>
+              ▼
+            </span>
+          )}
+          <span className="sidebar-section-title">{title}</span>
+          {titleDescription && (
+            <span className="sidebar-section-title-description">{titleDescription}</span>
+          )}
+          {badge !== undefined && badge !== "" && (
+            <span className="sidebar-section-badge">{badge}</span>
+          )}
+          <span className="sidebar-section-spacer" />
+          {actions && (
+            <span
+              className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              {actions}
+            </span>
+          )}
+        </div>
+        {open && pinnedContent && (
+          <div className="sidebar-section-pinned">
+            {pinnedContent()}
+          </div>
         )}
       </div>
-      {open && pinnedContent && (
-        <div className="sidebar-section-pinned" style={{
-          position: "sticky",
-          top: (stickyTop ?? 0) + HEADER_H,
-          zIndex: 1,
-        }}>
-          {pinnedContent()}
-        </div>
-      )}
       {open && <div className="sidebar-section-body">{children}</div>}
     </div>
   );
