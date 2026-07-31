@@ -12,6 +12,7 @@ import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
+import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
 
@@ -113,6 +114,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, o
   }, [model, rerender]);
 
   /* ── 虚拟列表 ── */
+  /** 🔥 剪切中 URI 集合——render body 直读，FoldersView.rerender 驱动刷新 */
+  const cutUris = fileTreeClipboard.isCut ? new Set(fileTreeClipboard.uris) : new Set<string>();
   const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
   flatItemsRef.current = flatItems; // E4V#22: handleSelect 通过 ref 读最新 flatItems
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
@@ -272,6 +275,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, o
             isSelected={selection.has(item.uri)} isFocused={item.uri === focusedUri}
             isDragSource={dndState.sourceUri === item.uri}
             isDragHover={dndState.hoverIndex === startIndex + i}
+            isCut={cutUris.has(item.uri)}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
             onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
             onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />

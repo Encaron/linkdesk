@@ -26,6 +26,8 @@ interface FileTreeNodeProps {
   isDragHover?: boolean;
   /** E4b #99k + E4V#16: excluded 文件灰显 */
   isDimmed?: boolean;
+  /** 🔥 Ctrl+X 剪切后灰显——对标 VS Code cut 标记 */
+  isCut?: boolean;
   onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
   /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效。
    *  E4V#21: 第二个参数 event——Ctrl+Click 多选 toggle */
@@ -54,6 +56,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   isDragSource,
   isDragHover,
   isDimmed,
+  isCut,
   onDragStart,
   onSelect,
   onOpen,
@@ -68,6 +71,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     isDragHover && "file-tree-node--drop-target",
     guide && "file-tree-node--guide",
     isDimmed && "file-tree-node--dimmed",
+    isCut && "file-tree-node--cut",
   ]
     .filter(Boolean)
     .join(" ");
