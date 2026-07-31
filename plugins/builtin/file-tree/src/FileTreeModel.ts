@@ -185,7 +185,7 @@ export class FileTreeModel {
    */
   // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
 
-  /** 刷新——path 为空则清空所有已展开节点的缓存 */
+  /** 刷新——path 为空则清空所有已展开节点的缓存。🔥 不 fire onDidChange——调用方 reload 后自行触发，避免中间态 flatItems=1 */
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
@@ -199,7 +199,6 @@ export class FileTreeModel {
         if (root.children !== null) root.children = null;
       }
     }
-    this.onDidChange.fire();
   }
 
   /* ── 私有方法 ── */
