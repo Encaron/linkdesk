@@ -141,23 +141,25 @@ function findStickyState(
   scrollTop: number,
   containerHeight: number,
 ): StickyRow[] {
-  if (scrollTop <= 0) return [];
-
   // 半行缓冲：超过 50% 可见才算"第一个可见"——减少目录边界振荡
   const firstVisibleIdx = Math.floor((scrollTop + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
   const firstVisible = flatItems[firstVisibleIdx];
   if (!firstVisible) return [];
 
   const ancestors = model.getAncestors(firstVisible.item);
-  // 根本身半滚出时 firstVisible 还是根，getAncestors 返回空——补上根
-  if (ancestors.length === 0 && firstVisible.item.parent === null && firstVisible.item.isDirectory) {
-    // 根部分滚出屏幕 → 粘根
-    const range = getNodeRange(firstVisible.item, flatItems);
-    if (!range) return [];
-    return [{
-      item: firstVisible.item, depth: 1, position: 0,
-      height: TREE_ITEM_HEIGHT, startIndex: range.startIndex, endIndex: range.endIndex,
-    }];
+  // scrollTop===0 或根本身部分滚出时 getAncestors 返回空——根至少有一个
+  if (ancestors.length === 0 && scrollTop < TREE_ITEM_HEIGHT) {
+    const root = model.roots[0];
+    if (root) {
+      const range = getNodeRange(root, flatItems);
+      if (range) {
+        return [{
+          item: root, depth: 1, position: 0,
+          height: TREE_ITEM_HEIGHT, startIndex: range.startIndex, endIndex: range.endIndex,
+        }];
+      }
+    }
+    return [];
   }
   if (ancestors.length === 0) return [];
 
