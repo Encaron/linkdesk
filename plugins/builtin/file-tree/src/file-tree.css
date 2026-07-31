@@ -216,16 +216,16 @@
 
 .file-tree-rename-input {
   margin-left: var(--tree-icon-gap);
-  padding: 1px 4px;
+  padding: 0 4px;
   font-size: 13px;
-  line-height: calc(var(--tree-item-height) - 2px);
+  height: var(--tree-item-height);
   border: 1px solid var(--accent);
   outline: none;
   background: var(--input-bg);
   color: var(--text-primary);
   box-sizing: border-box;
   width: 100%;
-  max-width: 260px;
+  max-width: 200px;
 }
 
 /* ── 装饰器 badge ── */

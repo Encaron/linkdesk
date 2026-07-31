@@ -12,6 +12,7 @@ import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
+import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
@@ -101,10 +102,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
   const startRename = useCallback(() => {
-    if (focusedUri) setRenamingUri(focusedUri);
+    if (!focusedUri) return;
+    setRenamingUri(focusedUri);
+    // 🔥 屏蔽全局快捷键——防止 KeybindingRegistry 抢 Enter/Escape
+    setKeybindingCaptureActive(true);
+    ContextKeyService.setValue("inputFocus", true);
   }, [focusedUri]);
   const finishRename = useCallback(async (uri: string, newName: string) => {
     setRenamingUri(null);
+    setKeybindingCaptureActive(false);
+    ContextKeyService.setValue("inputFocus", false);
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
@@ -113,7 +120,11 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     await deleteEntry(uri);
     model.refresh(dir).then(() => rerender());
   }, [model, rerender]);
-  const cancelRename = useCallback(() => setRenamingUri(null), []);
+  const cancelRename = useCallback(() => {
+    setRenamingUri(null);
+    setKeybindingCaptureActive(false);
+    ContextKeyService.setValue("inputFocus", false);
+  }, []);
 
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
   useImperativeHandle(ref, () => ({
