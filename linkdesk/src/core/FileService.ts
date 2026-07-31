@@ -46,10 +46,9 @@ function api() {
     remove(path: string): Promise<void>;
     listDir(path: string): Promise<FileEntry[]>;
     readBinaryFile(path: string): Promise<Uint8Array>;
-    watch(path: string): Promise<number>;
-    unwatch(id: number): Promise<void>;
-    onFileChange(cb: (event: FileChangeEvent) => void): () => void;
-    offFileChange(): void;
+    // E4V#fix: watch 一步完成——dirPath + callback → 返回 unsubscribe。
+    // 内部走 filesystem:changed:${watcherId}，每个 watcher 独立 IPC 通道。
+    watch(dirPath: string, onEvent: (e: FileChangeEvent) => void): Promise<() => void>;
   } | undefined;
 }
 
@@ -128,7 +127,8 @@ export async function mkdir(dirPath: string): Promise<void> {
 
 /**
  * 监听文件/目录变化——返回 unsubscribe 函数。
- * 底层用 Node.js fs.watch，通过 IPC 事件推送。
+ * 每个 watcher 走独立 IPC 通道（filesystem:changed:${watcherId}），
+ * 不同 watcher 之间物理隔离——不再共享全局频道。
  *
  * 使用示例：
  *   const unsub = await watchFile("/path/to/dir", (event) => {
@@ -142,16 +142,7 @@ export async function watchFile(
 ): Promise<() => void> {
   const a = api();
   if (!a) return () => {};
-
-  const watcherId = await a.watch(dirPath);
-  const unsub = a.onFileChange((event: FileChangeEvent) => {
-    onEvent(event);
-  });
-
-  return () => {
-    unsub();
-    a.unwatch(watcherId).catch(() => {});
-  };
+  return a.watch(dirPath, onEvent);
 }
 
 /** 路径拼接——对标 Tauri path.join() */
