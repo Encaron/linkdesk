@@ -46,11 +46,13 @@ export class CompactController {
 
   /** 展开压缩链——标记为不再压缩 */
   expandCompact(uri: string): void {
+    console.log("[compact] expand: %s", uri.replace(/.*[\\/]/, ""));
     this._uncompacted.add(uri);
   }
 
   /** 折叠压缩链——恢复压缩 */
   collapseCompact(uri: string): void {
+    console.log("[compact] collapse: %s", uri.replace(/.*[\\/]/, ""));
     this._uncompacted.delete(uri);
   }
 
