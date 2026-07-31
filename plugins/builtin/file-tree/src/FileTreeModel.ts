@@ -60,7 +60,6 @@ export class FileTreeModel {
 
   /** 设置工作区根 */
   async setRoots(rootPaths: string[]): Promise<void> {
-    console.log("[model] setRoots: _expanded.clear() (stack=%s)", new Error().stack?.split("\n")[2]?.trim());
     this._expanded.clear();
     this._roots = rootPaths.map((p) => ({
       uri: normalizePath(p),
@@ -153,17 +152,9 @@ export class FileTreeModel {
 
   expand(uri: string): void { this._expanded.add(uri); /* fire 由 getChildren 触发——避免中间态无子节点闪现 */ }
 
-  collapse(uri: string): void {
-    console.log("[model] collapse: %s (stack=%s)", uri.replace(/.*[\\/]/, ""), new Error().stack?.split("\n")[2]?.trim());
-    this._expanded.delete(uri); this.onDidChange.fire();
-  }
-
+  collapse(uri: string): void { this._expanded.delete(uri); this.onDidChange.fire(); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
-
-  collapseAll(): void {
-    console.log("[model] collapseAll (stack=%s)", new Error().stack?.split("\n")[2]?.trim());
-    this._expanded.clear(); this.onDidChange.fire();
-  }
+  collapseAll(): void { this._expanded.clear(); this.onDidChange.fire(); }
 
   /** E4V#6a: 获取所有已展开 URI——供工作区状态持久化（E4V#36） */
   getExpandedUris(): string[] {

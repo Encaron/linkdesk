@@ -88,13 +88,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [model, rerender]);
 
   /* ── 虚拟列表 ── */
-  const flatItems = useMemo(() => {
-    void (version);
-    const items = flattenTree(model);
-    console.log("[tree] flat=%d expanded=%d roots=%d",
-      items.length, model.getExpandedUris().length, model.roots.length);
-    return items;
-  }, [model, version]);
+  const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
@@ -152,17 +146,12 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const handleTwistie = useCallback(async (item: ExplorerItem) => {
     if (!item.isDirectory && item.children === null) return;
     if (model.isExpanded(item.uri)) {
-      console.log("[tree] ← collapse: %s", item.name);
       model.collapse(item.uri);
       model.compactController.collapseCompact(item.uri);
     } else {
       model.expand(item.uri);
       model.compactController.expandCompact(item.uri);
-      try {
-        const children = await model.getChildren(item);
-        console.log("[tree] → expand: %s +%d children, total expanded=%d",
-          item.name, children.length, model.getExpandedUris().length);
-      } catch (e) { console.error("[tree] expand failed:", item.name, e); }
+      try { await model.getChildren(item); } catch (e) { /* ignore */ }
     }
   }, [model]);
 
