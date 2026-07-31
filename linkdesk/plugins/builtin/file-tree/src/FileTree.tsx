@@ -149,6 +149,16 @@ function findStickyState(
   if (!firstVisible) return [];
 
   const ancestors = model.getAncestors(firstVisible.item);
+  // 根本身半滚出时 firstVisible 还是根，getAncestors 返回空——补上根
+  if (ancestors.length === 0 && firstVisible.item.parent === null && firstVisible.item.isDirectory) {
+    // 根部分滚出屏幕 → 粘根
+    const range = getNodeRange(firstVisible.item, flatItems);
+    if (!range) return [];
+    return [{
+      item: firstVisible.item, depth: 1, position: 0,
+      height: TREE_ITEM_HEIGHT, startIndex: range.startIndex, endIndex: range.endIndex,
+    }];
+  }
   if (ancestors.length === 0) return [];
 
   const rows: StickyRow[] = [];
