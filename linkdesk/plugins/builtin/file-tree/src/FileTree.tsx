@@ -27,6 +27,15 @@ interface FileTreeProps {
 
 /* ── 工具 ── */
 
+/** 在 flatItems 中找目录最后一个后代的索引——滞回判断用 */
+function findLastDescendant(dirUri: string, flatItems: FlatItem[]): number {
+  for (let i = flatItems.length - 1; i >= 0; i--) {
+    const uri = flatItems[i].item.uri;
+    if (uri === dirUri || uri.startsWith(dirUri + "/")) return i;
+  }
+  return -1;
+}
+
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
@@ -97,10 +106,14 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——最简祖先链，固定top，PinnedSlot壳层渲染 ── */
+  /* ── sticky rows——最简祖先链 + 滞回，PinnedSlot壳层渲染 ── */
+  const prevStickyRef = useRef<StickyRow[]>([]);
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) return [] as StickyRow[];
+    if (st <= 0 || flatItems.length === 0) {
+      prevStickyRef.current = [];
+      return [] as StickyRow[];
+    }
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
     let first = flatItems[Math.min(idx, flatItems.length - 1)];
     // 视口第一行是文件→退到父目录
@@ -117,10 +130,29 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     }
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    // 每行固定 top = i × 22，零推出，零动画。PinnedSlot 壳层渲染，不参与文件树滚动。
-    return ancestors.slice(0, maxCount).map((item, i) => ({
+    const constrained = ancestors.slice(0, maxCount);
+    const rows: StickyRow[] = constrained.map((item, i) => ({
       item, depth: i + 1, top: i * TREE_ITEM_HEIGHT,
     }));
+    // 滞回：最深目录切换时，旧目录还有可见子文件→赖着不换
+    const prev = prevStickyRef.current;
+    if (prev.length > 0 && rows.length > 0) {
+      const prevLast = prev[prev.length - 1];
+      const currLast = rows[rows.length - 1];
+      if (prevLast.item.uri !== currLast.item.uri) {
+        const endIdx = findLastDescendant(prevLast.item.uri, flatItems);
+        if (endIdx >= 0) {
+          const lastChildTop = endIdx * TREE_ITEM_HEIGHT - st;
+          if (lastChildTop > 0) {
+            // 旧目录还有子文件在视口内——保持旧 sticky
+            prevStickyRef.current = prev;
+            return prev;
+          }
+        }
+      }
+    }
+    prevStickyRef.current = rows;
+    return rows;
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;
