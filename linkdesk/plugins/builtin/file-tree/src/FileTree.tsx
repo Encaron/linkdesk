@@ -112,6 +112,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
+  // E4V#20+F1: .side-panel-content 的屏幕坐标——fixed overlay 定位依据
+  const [sidePanelRect, setSidePanelRect] = useState({ top: 0, left: 0, width: 0 });
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
   // 版本号——model 变更后递增，驱动 useMemo 重算
@@ -183,6 +185,25 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     const handler = () => setScrollTop(scrollEl.scrollTop);
     scrollEl.addEventListener("scroll", handler, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handler);
+  }, []);
+
+  // E4V#20+F1: 追踪 .side-panel-content 的屏幕坐标——fixed overlay 定位依据
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const scrollEl = el.closest<HTMLElement>(".side-panel-content");
+    if (!scrollEl) return;
+    const update = () => {
+      const r = scrollEl.getBoundingClientRect();
+      setSidePanelRect({ top: r.top, left: r.left, width: r.width });
+    };
+    update();
+    scrollEl.addEventListener("scroll", update, { passive: true });
+    window.addEventListener("resize", update);
+    return () => {
+      scrollEl.removeEventListener("scroll", update);
+      window.removeEventListener("resize", update);
+    };
   }, []);
 
   /* ── twistie 展开/折叠 ── */
