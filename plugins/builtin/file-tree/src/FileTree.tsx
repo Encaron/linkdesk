@@ -7,7 +7,7 @@ import React, { useState, useRef, useCallback, useEffect, useMemo } from "react"
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { TREE_ITEM_HEIGHT, TREE_INDENT, OVERSCAN } from "./layoutTokens";
+import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
 import { useFileTreeKeyboard } from "./FileTreeKeyboard";
 import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
