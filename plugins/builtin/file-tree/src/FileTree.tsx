@@ -15,7 +15,7 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
 
-export interface StickyRow { item: ExplorerItem; depth: number; _push?: number }
+export interface StickyRow { item: ExplorerItem; depth: number; top: number }
 
 interface FileTreeProps {
   model: FileTreeModel;
@@ -26,15 +26,6 @@ interface FileTreeProps {
 }
 
 /* ── 工具 ── */
-
-/** S1: 在 flatItems 中找目录最后一个后代的索引。反向扫描——第一个匹配即停。 */
-function findLastDescendant(dirUri: string, flatItems: FlatItem[]): number {
-  for (let i = flatItems.length - 1; i >= 0; i--) {
-    const uri = flatItems[i].item.uri;
-    if (uri === dirUri || uri.startsWith(dirUri + "/")) return i;
-  }
-  return -1;
-}
 
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
@@ -106,40 +97,30 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——VS Code calculateStickyNodePosition，约束 ≤7 + ≤40% 视口 ── */
+  /* ── sticky rows——最简祖先链，固定top，PinnedSlot壳层渲染 ── */
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
     if (st <= 0 || flatItems.length === 0) return [] as StickyRow[];
-    // 取视口第一行的祖先链
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
-    const first = flatItems[Math.min(idx, flatItems.length - 1)];
+    let first = flatItems[Math.min(idx, flatItems.length - 1)];
+    // 视口第一行是文件→退到父目录
+    if (first && !first.item.isDirectory && first.item.parent) {
+      for (let j = idx - 1; j >= 0; j--) {
+        if (flatItems[j].item.uri === first.item.parent.uri) { first = flatItems[j]; break; }
+      }
+    }
     const ancestors = model.getAncestors(first.item);
     const root = flatItems[0]?.item;
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
     if (first.item.isDirectory && model.isExpanded(first.item.uri) && first.item.uri !== root?.uri) {
       ancestors.push(first.item);
     }
-    // 约束数量
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const constrained = ancestors.slice(0, maxCount);
-    // VS Code calculateStickyNodePosition——每行独立算位置
-    const rows: StickyRow[] = [];
-    let stickyH = 0;
-    for (let i = 0; i < constrained.length; i++) {
-      const item = constrained[i];
-      const endIdx = findLastDescendant(item.uri, flatItems);
-      let position = stickyH;
-      if (endIdx >= 0) {
-        const bottomOfLast = (endIdx * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
-        if (stickyH + TREE_ITEM_HEIGHT > bottomOfLast && stickyH <= bottomOfLast) {
-          position = bottomOfLast - TREE_ITEM_HEIGHT;
-        }
-      }
-      rows.push({ item, depth: i + 1, _push: stickyH - position });
-      stickyH += TREE_ITEM_HEIGHT;
-    }
-    return rows;
+    // 每行固定 top = i × 22，零推出，零动画。PinnedSlot 壳层渲染，不参与文件树滚动。
+    return ancestors.slice(0, maxCount).map((item, i) => ({
+      item, depth: i + 1, top: i * TREE_ITEM_HEIGHT,
+    }));
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;
