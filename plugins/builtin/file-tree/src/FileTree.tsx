@@ -127,22 +127,22 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
     const constrained = ancestors.slice(0, maxCount);
-    // VS Code calculateStickyNodePosition——每行找自己的最后后裔，独立算位置
-    // 深行后裔滚出视口→深行被推上去→藏到浅行下面(z-index降序)
+    // VS Code calculateStickyNodePosition——每行完全独立，基准=i*22
+    // 后裔接近视口顶部(<1行高度)→本行被推出。z-index降序→藏到浅行下面
     const rows: StickyRow[] = [];
-    let accumTop = 0;
     for (let i = 0; i < constrained.length; i++) {
       const item = constrained[i];
+      const normalTop = i * TREE_ITEM_HEIGHT;
       const endIdx = findLastDescendant(item.uri, flatItems);
-      let top = accumTop;
+      let top = normalTop;
       if (endIdx >= 0) {
-        const bottomOfLast = (endIdx * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
-        if (accumTop + TREE_ITEM_HEIGHT > bottomOfLast && accumTop <= bottomOfLast) {
-          top = bottomOfLast - TREE_ITEM_HEIGHT;
+        const lastChildTop = endIdx * TREE_ITEM_HEIGHT - st;
+        // 最后一个后裔离视口顶不到一行→本行开始被推出
+        if (lastChildTop < TREE_ITEM_HEIGHT) {
+          top = Math.max(-TREE_ITEM_HEIGHT, lastChildTop);
         }
       }
       rows.push({ item, depth: i + 1, top });
-      accumTop = top + TREE_ITEM_HEIGHT;
     }
     return rows;
   }, [flatItems, model, scrollTop, containerHeight]);
