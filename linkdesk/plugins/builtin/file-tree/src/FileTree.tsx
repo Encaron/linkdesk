@@ -15,10 +15,14 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
 
+export interface StickyRow { item: ExplorerItem; depth: number }
+
 interface FileTreeProps {
   model: FileTreeModel;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
+  /** PinnedSlot——FileTree 把当前 stickyRows 写入此 ref，外部 pinnedContent 读取 */
+  stickyRowsRef?: React.MutableRefObject<StickyRow[]>;
 }
 
 /* ── 工具 ── */
@@ -61,7 +65,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
+const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, stickyRowsRef }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
@@ -109,6 +113,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     const maxCount = Math.min(7, Math.max(1, byHeight));
     return ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
   }, [flatItems, model, scrollTop, containerHeight]);
+  // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
+  if (stickyRowsRef) stickyRowsRef.current = stickyRows;
 
   /* ── 滚动检测 ── */
   useEffect(() => {
