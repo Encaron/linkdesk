@@ -178,7 +178,7 @@ const FoldersView: React.FC = () => {
             </button>
           </>
         ),
-        // E4V#20+P2: sticky scroll——壳层 PinnedSlot 渲染祖先链
+        // E4V#57: sticky scroll——壳层 PinnedSlot 渲染，零推出，固定位置
         pinnedContent: () => {
           const rows = stickyRowsRef.current;
           if (rows.length === 0) return null;
@@ -189,16 +189,15 @@ const FoldersView: React.FC = () => {
                 <div key={row.item.uri} className="file-tree-sticky-row"
                   style={{
                     position: "absolute",
-                    top: i * TREE_ITEM_HEIGHT,
+                    top: row.top,
                     left: 0,
                     right: 0,
                     height: TREE_ITEM_HEIGHT,
                     zIndex: count - i,
                     paddingLeft: (row.depth - 1) * TREE_INDENT,
-                    transform: row._push ? `translateY(-${row._push}px)` : undefined,
                   }}>
                   <span className={`codicon ${row.item.isDirectory ? "codicon-chevron-down" : ""} file-tree-twistie file-tree-twistie--expanded`} />
-                  <span className={`codicon codicon-folder-opened file-tree-icon`} />
+                  <span className="codicon codicon-folder-opened file-tree-icon" />
                   <span className="file-tree-name">{row.item.name}</span>
                 </div>
               ))}
