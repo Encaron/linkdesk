@@ -77,7 +77,7 @@ export class FileTreeModel {
     // 🔥 防御过时引用：syncRoots 可能重建了 _roots，传入的 parent 可能是旧对象。
     // 用 URI 查找当前活跃对象，确保 children 写到正确的实例上。
     const current = this.findClosest(parent.uri) ?? parent;
-    if (current.children !== null) return current.children;
+    if (current.children !== null) { this.onDidChange.fire(); return current.children; }
     const entries = await listDir(current.uri);
     const parentLen = current.uri.length;
     const filtered = this._excludeFilter
@@ -150,7 +150,7 @@ export class FileTreeModel {
 
   /* ── 展开/折叠 ── */
 
-  expand(uri: string): void { this._expanded.add(uri); this.onDidChange.fire(); }
+  expand(uri: string): void { this._expanded.add(uri); /* fire 由 getChildren 统一触发 */ }
 
   collapse(uri: string): void { this._expanded.delete(uri); this.onDidChange.fire(); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
