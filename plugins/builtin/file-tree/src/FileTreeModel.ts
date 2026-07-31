@@ -150,7 +150,7 @@ export class FileTreeModel {
 
   /* ── 展开/折叠 ── */
 
-  expand(uri: string): void { this._expanded.add(uri); this.onDidChange.fire(); }
+  expand(uri: string): void { this._expanded.add(uri); /* fire 由 getChildren 统一触发 */ }
 
   collapse(uri: string): void { this._expanded.delete(uri); this.onDidChange.fire(); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
@@ -186,7 +186,7 @@ export class FileTreeModel {
    */
   // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
 
-  /** 刷新——path 为空则清空所有已展开节点的缓存 */
+  /** 刷新——path 为空则清空所有已展开节点的缓存。不 fire——调用方重载后统一触发 */
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
@@ -200,7 +200,6 @@ export class FileTreeModel {
         if (root.children !== null) root.children = null;
       }
     }
-    this.onDidChange.fire();
   }
 
   /* ── 私有方法 ── */
