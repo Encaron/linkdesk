@@ -386,51 +386,49 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
   }, [focusedUri, flatItems, model]);
 
-  const stickyOverlayHeight = stickyState.length > 0
-    ? stickyState[stickyState.length - 1].position + TREE_ITEM_HEIGHT
-    : 0;
-
   /* ── 渲染 ── */
 
   return (
-    <>
-      {/* E4V#20+v: sticky scroll overlay——绝对定位在 .file-tree-body 顶部 */}
-      {stickyState.length > 0 && (
-        <div className="file-tree-sticky-container" style={{ height: stickyOverlayHeight }}>
-          {stickyState.map((row) => (
-            <div
-              key={`sticky-${row.item.uri}`}
-              className="file-tree-sticky-row"
-              style={{ top: row.position, height: row.height }}
-            >
-              <FileTreeNode
-                item={row.item}
-                depth={row.depth}
-                indent={0}
-                expanded={true}
-                isSelected={false}
-                isFocused={false}
-                onSelect={handleSelect}
-                onOpen={handleOpen}
-                onTwistieClick={handleTwistie}
-                onContextMenu={handleContextMenu}
-              />
-            </div>
-          ))}
+    <div
+      ref={containerRef}
+      tabIndex={0}
+      onScroll={handleScroll}
+      onKeyDown={handleKeyDown}
+      onFocus={handleFocus}
+      onBlur={handleBlur}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+      className="file-tree-scroll"
+    >
+      {/* E4V#20+v: sticky rows——flex item + position:sticky 穿透到 .side-panel-content */}
+      {stickyState.map((row, i) => (
+        <div
+          key={`sticky-${row.item.uri}`}
+          className="file-tree-sticky-row"
+          style={{
+            position: "sticky",
+            top: i * TREE_ITEM_HEIGHT,
+            height: TREE_ITEM_HEIGHT,
+            zIndex: 2,
+          }}
+        >
+          <FileTreeNode
+            item={row.item}
+            depth={row.depth}
+            indent={0}
+            expanded={true}
+            isSelected={false}
+            isFocused={false}
+            onSelect={handleSelect}
+            onOpen={handleOpen}
+            onTwistieClick={handleTwistie}
+            onContextMenu={handleContextMenu}
+          />
         </div>
-      )}
-      <div
-        ref={containerRef}
-        tabIndex={0}
-        onScroll={handleScroll}
-        onKeyDown={handleKeyDown}
-        onFocus={handleFocus}
-        onBlur={handleBlur}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        className="file-tree-scroll"
-      >
+      ))}
+      {/* 虚拟列表 clip——flex:1 填剩余高度，overflow:hidden 裁溢出 */}
+      <div className="file-tree-scroll-clip">
         <div style={{ height: totalHeight, position: "relative" }}>
           <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
           {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
@@ -456,7 +454,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
           ))}
         </div>
       </div>
-    </>
+    </div>
   );
 };
 
