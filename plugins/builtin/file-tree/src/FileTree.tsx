@@ -106,14 +106,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——最简祖先链 + 滞回，PinnedSlot壳层渲染 ── */
-  const prevStickyRef = useRef<StickyRow[]>([]);
+  /* ── sticky rows——VS Code 每行独立推出 + PinnedSlot壳层渲染 ── */
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) {
-      prevStickyRef.current = [];
-      return [] as StickyRow[];
-    }
+    if (st <= 0 || flatItems.length === 0) return [] as StickyRow[];
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
     let first = flatItems[Math.min(idx, flatItems.length - 1)];
     // 视口第一行是文件→退到父目录
@@ -131,27 +127,23 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
     const constrained = ancestors.slice(0, maxCount);
-    const rows: StickyRow[] = constrained.map((item, i) => ({
-      item, depth: i + 1, top: i * TREE_ITEM_HEIGHT,
-    }));
-    // 滞回：最深目录切换时，旧目录还有可见子文件→赖着不换
-    const prev = prevStickyRef.current;
-    if (prev.length > 0 && rows.length > 0) {
-      const prevLast = prev[prev.length - 1];
-      const currLast = rows[rows.length - 1];
-      if (prevLast.item.uri !== currLast.item.uri) {
-        const endIdx = findLastDescendant(prevLast.item.uri, flatItems);
-        if (endIdx >= 0) {
-          const lastChildTop = endIdx * TREE_ITEM_HEIGHT - st;
-          if (lastChildTop > 0) {
-            // 旧目录还有子文件在视口内——保持旧 sticky
-            prevStickyRef.current = prev;
-            return prev;
-          }
+    // VS Code calculateStickyNodePosition——每行找自己的最后后裔，独立算位置
+    // 深行后裔滚出视口→深行被推上去→藏到浅行下面(z-index降序)
+    const rows: StickyRow[] = [];
+    let accumTop = 0;
+    for (let i = 0; i < constrained.length; i++) {
+      const item = constrained[i];
+      const endIdx = findLastDescendant(item.uri, flatItems);
+      let top = accumTop;
+      if (endIdx >= 0) {
+        const bottomOfLast = (endIdx * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
+        if (accumTop + TREE_ITEM_HEIGHT > bottomOfLast && accumTop <= bottomOfLast) {
+          top = bottomOfLast - TREE_ITEM_HEIGHT;
         }
       }
+      rows.push({ item, depth: i + 1, top });
+      accumTop = top + TREE_ITEM_HEIGHT;
     }
-    prevStickyRef.current = rows;
     return rows;
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
