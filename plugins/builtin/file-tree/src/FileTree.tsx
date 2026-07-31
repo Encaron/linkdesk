@@ -1,11 +1,6 @@
 /**
  * FileTree——虚拟滚动文件树组件。
  * E4a #89：对标 VS Code AsyncDataTree + explorerViewer。
- *
- * 关键行为：
- *   onMouseDown 选中 → 250ms 后无双击触发 preview 打开
- *   双击 → pin 打开
- *   twistie 点击 → 展开/折叠（懒加载）
  */
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
@@ -26,56 +21,20 @@ interface FileTreeProps {
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
 
-interface StickyRow {
-  item: ExplorerItem;
-  depth: number;
-}
-
-/* ── 常量（从 layoutTokens.ts 导入） ── */
-
-/* ── E4V#20+iv: sticky scroll 算法 ── */
-
-function findStickyState(
-  flatItems: FlatItem[],
-  model: FileTreeModel,
-  scrollTop: number,
-  containerHeight: number,
-): StickyRow[] {
-  if (scrollTop <= 0) return [];
-  const idx = Math.floor((scrollTop + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
-  const first = flatItems[idx];
-  if (!first) return [];
-  const ancestors = model.getAncestors(first.item);
-  // 根（flatItems[0]）始终在最前面——对标 E4V#15b 单根多根统一
-  const root = flatItems[0]?.item;
-  if (root && root.isDirectory && ancestors[0] !== root) {
-    ancestors.unshift(root);
-  }
-  const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
-  return ancestors.slice(0, maxCount).map((item, i) => ({
-    item,
-    depth: i + 1,
-  }));
-}
-
 /* ── 工具 ── */
 
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
-  /** guide: 本层还有后续兄弟→CSS 引导线 */
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
-    // 🔥 E4V#6: CompactFolder Bug A/B/C 三合一修复——走 CompactController
     if (item.isDirectory) {
       const compacted = model.compactController.getCompactedSegments(item);
       if (compacted) {
         const leaf = findLeaf(item);
         const currentLeaf = leaf ? (model.findClosest(leaf.uri) ?? leaf) : null;
         const twistieItem = (currentLeaf && !currentLeaf.isDirectory && currentLeaf.parent)
-          ? currentLeaf.parent
-          : currentLeaf;
+          ? currentLeaf.parent : currentLeaf;
         const shouldUnfold = twistieItem?.isDirectory === true
-          && model.isExpanded(twistieItem.uri)
-          && twistieItem.children !== null;
+          && model.isExpanded(twistieItem.uri) && twistieItem.children !== null;
         if (!shouldUnfold) {
           result.push({ item: twistieItem ?? item, depth, compactedSegments: compacted, guide });
           return;
@@ -85,20 +44,14 @@ function flattenTree(model: FileTreeModel): FlatItem[] {
     result.push({ item, depth, guide });
     if (model.isExpanded(item.uri) && item.children !== null) {
       const len = item.children.length;
-      for (let i = 0; i < len; i++) {
-        walk(item.children[i], depth + 1, i < len - 1);
-      }
+      for (let i = 0; i < len; i++) walk(item.children[i], depth + 1, i < len - 1);
     }
   }
   const roots = model.roots;
-  const len = roots.length;
-  for (let i = 0; i < len; i++) {
-    walk(roots[i], 1, i < len - 1);
-  }
+  for (let i = 0; i < roots.length; i++) walk(roots[i], 1, i < roots.length - 1);
   return result;
 }
 
-/** 沿单子目录链找到最后一个节点 */
 function findLeaf(item: ExplorerItem): ExplorerItem | null {
   if (!item.isDirectory || item.children === null || item.children.length !== 1) return item;
   const child = item.children[0];
@@ -112,72 +65,46 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  // E4V#20+F1: .side-panel-content 的屏幕坐标——fixed overlay 定位依据
-  const [sidePanelRect, setSidePanelRect] = useState({ top: 0, left: 0, width: 0 });
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
-  // 版本号——model 变更后递增，驱动 useMemo 重算
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
   /* ── ResizeObserver ── */
-
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => {
-      setContainerHeight(entries[0].contentRect.height);
-    });
+    const ro = new ResizeObserver((entries) => { setContainerHeight(entries[0].contentRect.height); });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
-  /* ── E4V#55b: 订阅模型变更——model 方法 fire 后自动重渲染 ── */
-
+  /* ── 模型变更 → 重渲染 ── */
   useEffect(() => {
-    return model.onDidChange.event(() => {
-      rerender();
-    });
+    return model.onDidChange.event(() => { rerender(); });
   }, [model, rerender]);
 
-  /* ── 虚拟列表计算 ── */
-
-  const flatItems = useMemo(() => {
-    void (version); // cache-bust: onDidChange 驱动 version 递增
-    return flattenTree(model);
-  }, [model, version]);
-
+  /* ── 虚拟列表 ── */
+  const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
+  const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  const renderedItems = useMemo(
-    () => flatItems.slice(startIndex, endIndex),
-    [flatItems, startIndex, endIndex],
-  );
-
-  const stickyState = useMemo(
-    () => findStickyState(flatItems, model, scrollTop, containerHeight),
-    [flatItems, model, scrollTop, containerHeight],
-  );
-
-  /* ── 滚动 ── */
-
+  /* ── 滚动检测——找真实滚动容器的 scrollTop ── */
   const handleScroll = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
     setScrollTop(el.scrollTop);
   }, []);
 
-  // E4V#20+ii: 找真实滚动容器（overflow-y:auto 的祖先），监听其 scroll 事件
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     let scrollEl: HTMLElement | null = el.parentElement;
     while (scrollEl) {
-      const s = window.getComputedStyle(scrollEl);
-      if (s.overflowY === "auto" || s.overflowY === "scroll") break;
+      if (/(auto|scroll)/.test(window.getComputedStyle(scrollEl).overflowY)) break;
       scrollEl = scrollEl.parentElement;
     }
     if (!scrollEl) return;
@@ -187,200 +114,76 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     return () => scrollEl.removeEventListener("scroll", handler);
   }, []);
 
-  // E4V#20+F1: 追踪 .side-panel-content 的屏幕坐标——fixed overlay 定位依据
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const scrollEl = el.closest<HTMLElement>(".side-panel-content");
-    if (!scrollEl) return;
-    const update = () => {
-      const r = scrollEl.getBoundingClientRect();
-      setSidePanelRect({ top: r.top, left: r.left, width: r.width });
-    };
-    update();
-    scrollEl.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => {
-      scrollEl.removeEventListener("scroll", update);
-      window.removeEventListener("resize", update);
-    };
-  }, []);
-
   /* ── twistie 展开/折叠 ── */
+  const handleTwistie = useCallback(async (item: ExplorerItem) => {
+    if (!item.isDirectory && item.children === null) return;
+    if (model.isExpanded(item.uri)) {
+      model.collapse(item.uri);
+      model.compactController.collapseCompact(item.uri);
+    } else {
+      model.expand(item.uri);
+      model.compactController.expandCompact(item.uri);
+      try { await model.getChildren(item); } catch (e) { console.error("[file-tree] expand failed:", item.uri, e); }
+    }
+  }, [model]);
 
-  const handleTwistie = useCallback(
-    async (item: ExplorerItem) => {
-      if (!item.isDirectory && item.children === null) return;
-      if (model.isExpanded(item.uri)) {
-        model.collapse(item.uri);
-        model.compactController.collapseCompact(item.uri);
-        // collapse → onDidChange.fire → 自动 rerender
-      } else {
-        model.expand(item.uri);
-        model.compactController.expandCompact(item.uri);
-        // expand → onDidChange.fire; getChildren → onDidChange.fire
-        try {
-          const children = await model.getChildren(item);
-          console.log("[file-tree] expand done:", item.uri, "children:", children.length);
-        } catch (e) {
-          console.error("[file-tree] expand failed:", item.uri, e);
-        }
-      }
-    },
-    [model],
-  );
+  /* ── 选中 / 打开 / 右键 ── */
+  const handleSelect = useCallback((uri: string) => { setSelectedUri(uri); setFocusedUri(uri); }, []);
+  const handleOpen = useCallback((item: ExplorerItem, mode: "preview" | "pin") => { onOpenFile(item, mode); }, [onOpenFile]);
+  const handleContextMenu = useCallback((item: ExplorerItem, event: React.MouseEvent) => {
+    setSelectedUri(item.uri);
+    onContextMenu?.(item, event);
+  }, [onContextMenu]);
 
-  /* ── 选中 + 打开 ── */
-
-  const handleSelect = useCallback((uri: string) => {
-    setSelectedUri(uri);
-    setFocusedUri(uri);
-  }, []);
-
-  const handleOpen = useCallback(
-    (item: ExplorerItem, mode: "preview" | "pin") => {
-      onOpenFile(item, mode);
-    },
-    [onOpenFile],
-  );
-
-  /* ── 右键菜单 ── */
-
-  const handleContextMenu = useCallback(
-    (item: ExplorerItem, event: React.MouseEvent) => {
-      setSelectedUri(item.uri);
-      onContextMenu?.(item, event);
-    },
-    [onContextMenu],
-  );
-
-  /* ── 键盘导航（E4b #97——提取到 FileTreeKeyboard） ── */
-
+  /* ── 键盘 / 拖放 ── */
   const handleKeyDown = useFileTreeKeyboard(
     { model, flatItems, focusedUri },
-    {
-      setFocusedUri,
-      setSelectedUri,
-      rerender,
-      onOpenFile,
-      onTwistie: handleTwistie,
-      getContainerEl: () => containerRef.current,
-    },
+    { setFocusedUri, setSelectedUri, rerender, onOpenFile, onTwistie: handleTwistie, getContainerEl: () => containerRef.current },
   );
+  const { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop } = useFileTreeDnD({
+    flatItems, model, rerender, getContainerEl: () => containerRef.current,
+  });
 
-  /* ── 拖放（E4b #99——useFileTreeDnD hook） ── */
-
-  const { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop } =
-    useFileTreeDnD({
-      flatItems,
-      model,
-      rerender,
-      getContainerEl: () => containerRef.current,
-    });
-
-  /* ── 上下文键（E4b #98 + E4V#12-#13——快捷键 when 条件） ── */
-
-  /** E4V#12: 平台级 context key——mount 时初始化 */
+  /* ── context keys ── */
   useEffect(() => {
-    // R5 FileTreeClipboard 会动态更新，此处初始化默认值
     ContextKeyService.setValue("explorerResourceCut", false);
     ContextKeyService.setValue("explorerClipboardEmpty", true);
-    // Windows 可回收站→删除确认文案为"移至回收站"
     ContextKeyService.setValue("explorerResourceMoveableToTrash", navigator.platform.includes("Win"));
   }, []);
-
-  /** 文件树获得/失去键盘焦点——设置 explorerFocus context key */
-  const handleFocus = useCallback(() => {
-    ContextKeyService.setValue("explorerFocus", true);
-  }, []);
-
-  const handleBlur = useCallback(() => {
-    ContextKeyService.setValue("explorerFocus", false);
-  }, []);
-
-  /** focusedUri 变化时更新 context keys */
+  const handleFocus = useCallback(() => { ContextKeyService.setValue("explorerFocus", true); }, []);
+  const handleBlur = useCallback(() => { ContextKeyService.setValue("explorerFocus", false); }, []);
   useEffect(() => {
     if (focusedUri) {
       const fi = flatItems.find((f) => f.item.uri === focusedUri);
       ContextKeyService.setValue("explorerItemIsFile", fi?.item.isDirectory === false);
-      // E4V#12 P0: 只读标记——重命名/删除 when 用 !explorerResourceReadonly
       ContextKeyService.setValue("explorerResourceReadonly", fi?.item.isReadonly === true);
-      // E4V#13 P1: 压缩节点聚焦——键盘 ← → 段间导航
       ContextKeyService.setValue("explorerViewletCompressedFocus", (fi?.compactedSegments?.length ?? 0) > 0);
     } else {
       ContextKeyService.setValue("explorerItemIsFile", false);
       ContextKeyService.setValue("explorerResourceReadonly", false);
       ContextKeyService.setValue("explorerViewletCompressedFocus", false);
     }
-    // E4V#13 P1: 有已展开项→"全部折叠"按钮可见
     ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
   }, [focusedUri, flatItems, model]);
 
   /* ── 渲染 ── */
-
   return (
-    <div
-      ref={containerRef}
-      tabIndex={0}
-      onScroll={handleScroll}
-      onKeyDown={handleKeyDown}
-      onFocus={handleFocus}
-      onBlur={handleBlur}
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
-      className="file-tree-scroll"
-    >
-      {stickyState.map((row, i) => (
-        <div
-          key={`sticky-${row.item.uri}`}
-          className="file-tree-sticky-row"
-          style={{
-            position: "sticky",
-            top: i * TREE_ITEM_HEIGHT,
-            height: TREE_ITEM_HEIGHT,
-            zIndex: 2,
-          }}
-        >
-          <FileTreeNode
-            item={row.item}
-            depth={row.depth}
-            indent={0}
-            expanded={true}
-            isSelected={false}
-            isFocused={false}
-            onSelect={handleSelect}
-            onOpen={handleOpen}
-            onTwistieClick={handleTwistie}
-            onContextMenu={handleContextMenu}
-          />
-        </div>
-      ))}
-      <div className="file-tree-scroll-clip">
-        <div style={{ height: totalHeight, position: "relative" }}>
-          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-            <FileTreeNode
-              key={item.uri}
-              item={item}
-              depth={depth}
-              indent={0}
-              expanded={item.isDirectory && model.isExpanded(item.uri)}
-              isSelected={item.uri === selectedUri}
-              isFocused={item.uri === focusedUri}
-              isDragSource={dndState.sourceUri === item.uri}
-              isDragHover={dndState.hoverIndex === startIndex + i}
-              compactedSegments={compactedSegments}
-              guide={guide}
-              isDimmed={isDimmed}
-              onDragStart={handleDragStart}
-              onSelect={handleSelect}
-              onOpen={handleOpen}
-              onTwistieClick={handleTwistie}
-              onContextMenu={handleContextMenu}
-            />
-          ))}
-        </div>
+    <div ref={containerRef} tabIndex={0} onScroll={handleScroll} onKeyDown={handleKeyDown}
+      onFocus={handleFocus} onBlur={handleBlur}
+      onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+      className="file-tree-scroll">
+      <div style={{ height: totalHeight, position: "relative" }}>
+        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+          <FileTreeNode key={item.uri} item={item} depth={depth} indent={0}
+            expanded={item.isDirectory && model.isExpanded(item.uri)}
+            isSelected={item.uri === selectedUri} isFocused={item.uri === focusedUri}
+            isDragSource={dndState.sourceUri === item.uri}
+            isDragHover={dndState.hoverIndex === startIndex + i}
+            compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
+            onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
+            onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />
+        ))}
       </div>
     </div>
   );
