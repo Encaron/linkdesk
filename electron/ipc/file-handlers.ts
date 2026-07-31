@@ -59,13 +59,13 @@ export function registerFileHandlers(): void {
     return fileService.readBinaryFile(filePath);
   });
 
+  // E4V#fix: 每个 watcher 独立 IPC 通道——文件树和快捷键系统不再共享 filesystem:changed
   ipcMain.handle('filesystem:watch', (event, dirPath: string) => {
     const watcherId = fileService.watchFile(dirPath, (change) => {
-      // 渲染进程可能已销毁（关闭窗口/退出应用时 fs.watch 仍可能触发）
       if (event.sender.isDestroyed()) return;
       const win = BrowserWindow.fromWebContents(event.sender);
       if (win && !win.isDestroyed()) {
-        win.webContents.send('filesystem:changed', change);
+        win.webContents.send(`filesystem:changed:${watcherId}`, change);
       }
     });
     return watcherId;

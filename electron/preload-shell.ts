@@ -84,10 +84,18 @@ try {
       // E2c #13 新增：listDir / readBinaryFile / watch
       listDir:       (p: string)           => ipcRenderer.invoke('filesystem:listDir', p),
       readBinaryFile:(p: string)           => ipcRenderer.invoke('filesystem:readBinaryFile', p),
-      watch:         (p: string)           => ipcRenderer.invoke('filesystem:watch', p),
-      unwatch:       (id: number)          => ipcRenderer.invoke('filesystem:unwatch', id),
-      onFileChange:  makeListener('filesystem:changed'),
-      offFileChange: makeOff('filesystem:changed'),
+      // E4V#fix: watch 一步完成——内部走 filesystem:changed:${watcherId}，自动隔离
+      watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
+        return ipcRenderer.invoke('filesystem:watch', dirPath).then((watcherId: number) => {
+          const channel = `filesystem:changed:${watcherId}`;
+          const handler = (_event: Electron.IpcRendererEvent, change: any) => onEvent(change);
+          ipcRenderer.on(channel, handler);
+          return () => {
+            ipcRenderer.removeListener(channel, handler);
+            ipcRenderer.invoke('filesystem:unwatch', watcherId).catch(() => {});
+          };
+        });
+      },
     },
 
     // ── 路径（步 3 接入——对标 @tauri-apps/api/path）──
