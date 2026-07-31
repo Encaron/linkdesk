@@ -101,7 +101,8 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
     if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
-    const idx = Math.floor((st + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
+    // 取视口中间位置——滑过边界是平滑的，不会1px换一套sticky
+    const idx = Math.floor((st + containerHeight / 2) / TREE_ITEM_HEIGHT);
     const first = flatItems[Math.min(idx, flatItems.length - 1)];
     const ancestors = model.getAncestors(first.item);
     const root = flatItems[0]?.item;
