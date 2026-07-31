@@ -182,18 +182,28 @@ const FoldersView: React.FC = () => {
         pinnedContent: () => {
           const rows = stickyRowsRef.current;
           if (rows.length === 0) return null;
-          return rows.map((row) => (
-            <div key={row.item.uri} className="file-tree-sticky-row"
-              style={{
-                height: TREE_ITEM_HEIGHT,
-                paddingLeft: (row.depth - 1) * TREE_INDENT,
-                transform: row._push ? `translateY(-${row._push}px)` : undefined,
-              }}>
-              <span className={`codicon ${row.item.isDirectory ? "codicon-chevron-down" : ""} file-tree-twistie file-tree-twistie--expanded`} />
-              <span className={`codicon codicon-folder-opened file-tree-icon`} />
-              <span className="file-tree-name">{row.item.name}</span>
+          const count = rows.length;
+          return (
+            <div style={{ position: "relative", height: count * TREE_ITEM_HEIGHT }}>
+              {rows.map((row, i) => (
+                <div key={row.item.uri} className="file-tree-sticky-row"
+                  style={{
+                    position: "absolute",
+                    top: i * TREE_ITEM_HEIGHT,
+                    left: 0,
+                    right: 0,
+                    height: TREE_ITEM_HEIGHT,
+                    zIndex: count - i,
+                    paddingLeft: (row.depth - 1) * TREE_INDENT,
+                    transform: row._push ? `translateY(-${row._push}px)` : undefined,
+                  }}>
+                  <span className={`codicon ${row.item.isDirectory ? "codicon-chevron-down" : ""} file-tree-twistie file-tree-twistie--expanded`} />
+                  <span className={`codicon codicon-folder-opened file-tree-icon`} />
+                  <span className="file-tree-name">{row.item.name}</span>
+                </div>
+              ))}
             </div>
-          ));
+          );
         },
       });
     };
