@@ -58,6 +58,8 @@ export function ConfirmDialog() {
     return () => unregisterDialogRenderers();
   }, []);
 
+  const isAlert = !!state.alertResolve;
+
   const handleConfirm = useCallback(() => {
     setState((prev) => ({ ...prev, open: false }));
     if (state.resolve) state.resolve(true);
@@ -70,14 +72,20 @@ export function ConfirmDialog() {
     // alert 模式没有取消——点 backdrop 关闭不触发任何回调
   }, [state.resolve]);
 
+  /** Enter=确认 / Escape=取消——对标原生 dialog 键盘行为 */
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { e.preventDefault(); handleConfirm(); }
+    else if (e.key === "Escape" && !isAlert) { e.preventDefault(); handleCancel(); }
+  }, [handleConfirm, handleCancel, isAlert]);
+
   if (!state.open) return null;
 
   const { options } = state;
-  const isAlert = !!state.alertResolve;
 
   return (
     <div className="confirm-backdrop" onClick={isAlert ? undefined : handleCancel}>
-      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+      <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}
+        tabIndex={-1} ref={(el) => el?.focus()} onKeyDown={handleKeyDown}>
         {options.title && <h3 className="confirm-title">{options.title}</h3>}
         <p className="confirm-message">{options.message}</p>
         <div className="confirm-actions">
