@@ -241,10 +241,14 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
   }, [focusedUri, flatItems, model]);
 
+  /** 点文件树空白处→清空选中（对标 VS Code）。节点 onClick 已 stopPropagation 不冒泡到这里 */
+  const handleClearSelection = useCallback(() => setSelection(new Set()), []);
+
   /* ── 渲染 ── */
   return (
     <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown}
       onFocus={handleFocus} onBlur={handleBlur}
+      onClick={handleClearSelection}
       onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
       className="file-tree-scroll">
       <div style={{ height: totalHeight, position: "relative" }}>
