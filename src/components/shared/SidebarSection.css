@@ -134,6 +134,12 @@
   display: none;
 }
 
+/* ── 🆕 PinnedSlot —— header 下方的粘顶内容 ── */
+
+.sidebar-section-pinned {
+  background: var(--bg-side-panel);
+}
+
 /* ── Body —— 折叠时不渲染（由 TSX 条件渲染保证） ── */
 
 .sidebar-section-body {
