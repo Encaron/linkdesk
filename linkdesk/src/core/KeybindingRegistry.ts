@@ -355,8 +355,16 @@ class KeybindingResolver {
     }
     return [...byKey.values()]
       .filter((list) => list.length > 1)
-      // E3f #59：同命令同 key 不算冲突——只报不同命令抢同一键
+      // 同命令同 key 不算冲突——只报不同命令抢同一键
       .filter((list) => new Set(list.map((b) => b.command)).size > 1)
+      // 🔥 when 互斥检测：全部有 when 且各不相同 → 不同上下文 → 不算冲突
+      .filter((list) => {
+        const whens = list.map((b) => b.when ?? "");
+        // 有无条件绑定（无 when）→ 确实冲突——全局绑定与上下文绑定竞争
+        if (whens.some((w) => w === "")) return true;
+        // 有重复 when → 同上下文竞争 → 冲突
+        return new Set(whens).size !== list.length;
+      })
       .map((bindings) => ({ key: bindings[0].key, bindings }));
   }
 
