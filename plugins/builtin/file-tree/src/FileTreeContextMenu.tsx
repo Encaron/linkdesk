@@ -12,7 +12,8 @@ import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import type { ExplorerItem, FileTreeModel } from "./FileTreeModel";
+import type { ExplorerItem } from "./FileTreeModel";
+import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "./pathUtils";
 import { writeFile, mkdir, exists, deleteEntry } from "@src/core/FileService";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
@@ -26,37 +27,29 @@ interface FileMenuContext {
   isDirectory: boolean;
 }
 
-/* ── E4V#20e: 模块级 ref 桥接——command handler 访问 model + selection ── */
+/* ── 🔥 归一化桥接：一个 FileTreeHandle 替代 _model + _selectedUris + _focusedUri + _onClipboardChange ── */
 
-let _model: FileTreeModel | null = null;
-/** E4V#24: command handler 读当前选中 URI 列表——delete/cut/copy 需要 */
-let _selectedUris: string[] = [];
-/** E4V#26: 键盘粘贴时推断目标目录——focused item 是目录则粘进去，是文件则粘到父目录 */
-let _focusedUri: string | null = null;
-/** 🔥 cut/copy/paste 后触发 FileTree 重渲染——剪贴板状态变更需要更新节点样式 */
-let _onClipboardChange: (() => void) | null = null;
+let _handle: FileTreeHandle | null = null;
 
-/** FoldersView mount 时调用——注入 model + rerender 供 command handler 使用 */
-export function setFileTreeRefs(model: FileTreeModel, onClipboardChange?: () => void): void {
-  _model = model;
-  _onClipboardChange = onClipboardChange ?? null;
-}
-
-/** E4V#24: 注入选中 URI 列表——FileTree selection 变化时同步 */
-export function setSelectedUris(uris: string[]): void {
-  _selectedUris = uris;
-}
-
-/** E4V#26: 注入聚焦 URI——键盘粘贴推断目标目录 */
-export function setFocusedUriBridge(uri: string | null): void {
-  _focusedUri = uri;
+/** FoldersView mount 时调用——注入 handle 供 command handler 查询实时状态 */
+export function setFileTreeHandle(handle: FileTreeHandle): void {
+  _handle = handle;
 }
 
 /** FoldersView unmount 时调用——清除引用防泄漏 */
-export function clearFileTreeRefs(): void {
-  _model = null;
-  _onClipboardChange = null;
+export function clearFileTreeHandle(): void {
+  _handle = null;
 }
+
+/** 兼容旧调用方——FoldersView mount 时注入（别名，逐步迁移后删除） */
+export { setFileTreeHandle as setFileTreeRefs };
+export { clearFileTreeHandle as clearFileTreeRefs };
+
+// ── 已废弃的旧 API（保留导出避免编译错误，后续轮次删除）──
+/** @deprecated 使用 _handle.getSelection() */
+export function setSelectedUris(_uris: string[]): void {}
+/** @deprecated 使用 _handle.getFocusedUri() */
+export function setFocusedUriBridge(_uri: string | null): void {}
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
 
@@ -111,28 +104,35 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.openWith",        title: "打开方式…",            handler: placeholder("explorer.openWith") });
   // ── E4V#25: cut + copy ──
   registerCommand("file-tree", { id: "explorer.cut", title: "剪切", handler: async (_token, ...args: unknown[]) => {
+    if (!_handle) return;
     const ctx = args[0] as FileMenuContext | undefined;
-    const uris = _selectedUris.length > 0 ? _selectedUris : (ctx ? [ctx.uri] : []);
+    const selection = _handle.getSelection();
+    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
-    _onClipboardChange?.(); // 触发重渲染→节点灰显
+    _handle.rerender(); // 触发重渲染→节点灰显
   }});
   registerCommand("file-tree", { id: "explorer.copy", title: "复制", handler: async (_token, ...args: unknown[]) => {
+    if (!_handle) return;
     const ctx = args[0] as FileMenuContext | undefined;
-    const uris = _selectedUris.length > 0 ? _selectedUris : (ctx ? [ctx.uri] : []);
+    const selection = _handle.getSelection();
+    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
   }});
   // ── E4V#26: paste ──
   registerCommand("file-tree", { id: "explorer.paste", title: "粘贴", handler: async (_token, ...args: unknown[]) => {
-    const model = _model;
-    if (!model) return;
+    if (!_handle) return;
+    const model = _handle.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
     // 目标目录：右键菜单传 ctx → 键盘快捷键从 focusedUri 推断 → 回退到 root
     let targetDir = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : "";
-    if (!targetDir && _focusedUri) {
-      const focused = model.findClosest(_focusedUri);
-      targetDir = focused?.isDirectory ? focused.uri : dirname(_focusedUri);
+    if (!targetDir) {
+      const focusedUri = _handle.getFocusedUri();
+      if (focusedUri) {
+        const focused = model.findClosest(focusedUri);
+        targetDir = focused?.isDirectory ? focused.uri : dirname(focusedUri);
+      }
     }
     if (!targetDir) targetDir = model.roots[0]?.uri ?? "";
     if (!targetDir) return;
@@ -140,8 +140,7 @@ export function activateFileTreeContextMenu(): void {
     if (uris.length === 0) return;
     const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
     await executeSafeDrop(sources, targetDir, isCut ? "move" : "copy");
-    _selectedUris = [];
-    _onClipboardChange?.(); // paste 后剪贴板清空→恢复节点样式
+    _handle.rerender(); // paste 后剪贴板清空→恢复节点样式
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
@@ -149,12 +148,12 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.rename",          title: "重命名",               handler: placeholder("explorer.rename") });
   // ── E4V#24: delete ──
   registerCommand("file-tree", { id: "explorer.delete", title: "删除", handler: async (_token, ...args: unknown[]) => {
-    const model = _model;
-    if (!model) return;
+    if (!_handle) return;
+    const model = _handle.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
-    const uris = _selectedUris.length > 0 ? _selectedUris : (ctx ? [ctx.uri] : []);
+    const selection = _handle.getSelection();
+    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
-    // confirmDelete 配置——对标 VS Code explorer.confirmDelete，默认 true
     const confirmDelete = getConfigurationValue<boolean>("explorer.confirmDelete") ?? true;
     if (confirmDelete) {
       const nameList = uris.map((u) => `"${u.split("/").pop() ?? u}"`).join(", ");
@@ -166,7 +165,6 @@ export function activateFileTreeContextMenu(): void {
       await deleteEntry(uri);
       parentUris.add(dirname(uri));
     }
-    _selectedUris = [];
     for (const parentUri of parentUris) {
       await model.refresh(parentUri);
       const parent = model.findClosest(parentUri);
@@ -180,9 +178,9 @@ export function activateFileTreeContextMenu(): void {
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
 
   registerCommand("file-tree", { id: "explorer.newFile", title: "新建文件", handler: async (_token, ...args: unknown[]) => {
+    if (!_handle) return;
+    const model = _handle.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
-    const model = _model;
-    if (!model) return;
     const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
     if (!dirUri) return;
     let name = "新建文件";
@@ -196,13 +194,12 @@ export function activateFileTreeContextMenu(): void {
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
-    // refresh + getChildren → onDidChange.fire → 自动 rerender
   }});
 
   registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
+    if (!_handle) return;
+    const model = _handle.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
-    const model = _model;
-    if (!model) return;
     const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
     if (!dirUri) return;
     let name = "新建文件夹";
@@ -219,8 +216,8 @@ export function activateFileTreeContextMenu(): void {
   }});
 
   registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
-    const model = _model;
-    if (!model) return;
+    if (!_handle) return;
+    const model = _handle.getModel();
     await model.refresh();
     for (const uri of model.getExpandedUris()) {
       const item = model.findClosest(uri);
@@ -229,7 +226,7 @@ export function activateFileTreeContextMenu(): void {
   }});
 
   registerCommand("file-tree", { id: "explorer.collapseAll", title: "收起所有文件夹", handler: async () => {
-    _model?.collapseAll();
+    _handle?.getModel().collapseAll();
   }});
 
   // ── 注册菜单项到 MenuId.FileContext ──

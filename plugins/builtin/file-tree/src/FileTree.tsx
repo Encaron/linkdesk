@@ -3,7 +3,7 @@
  * E4a #89：对标 VS Code AsyncDataTree + explorerViewer。
  */
 
-import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import React, { useState, useRef, useCallback, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
@@ -16,14 +16,18 @@ import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
 
+/** 🔥 command handler 通过此接口查询 FileTree 实时状态——一个桥接点替代多个模块级变量 */
+export interface FileTreeHandle {
+  getSelection(): string[];
+  getFocusedUri(): string | null;
+  getModel(): FileTreeModel;
+  rerender(): void;
+}
+
 interface FileTreeProps {
   model: FileTreeModel;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
-  /** E4V#24: selection 变化时回调——command handler 需要知道选中了哪些文件 */
-  onSelectionChange?: (uris: string[]) => void;
-  /** E4V#26: focusedUri 变化时回调——键盘粘贴推断目标目录 */
-  onFocusChange?: (uri: string | null) => void;
 }
 
 /* ── 工具 ── */
@@ -66,7 +70,9 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, onSelectionChange, onFocusChange }) => {
+const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
+  { model, onOpenFile, onContextMenu }, ref,
+) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
@@ -80,15 +86,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, o
   const flatItemsRef = useRef<FlatItem[]>([]);
   const lastClickedUriRef = useRef<string | null>(null);
 
-  /** E4V#24: selection 变化 → 桥接到模块级变量——command handler 读 */
-  useEffect(() => {
-    onSelectionChange?.(Array.from(selection));
-  }, [selection, onSelectionChange]);
-  /** E4V#26: focusedUri 变化 → 桥接到模块级变量——键盘粘贴推断目标目录 */
-  useEffect(() => {
-    onFocusChange?.(focusedUri);
-  }, [focusedUri, onFocusChange]);
-
   /** E4V#21: 键盘/单击→单选（清 Set + 加一项）——键盘回调签名不变 */
   const selectSingle = useCallback((uri: string) => {
     setSelection(new Set([uri]));
@@ -98,6 +95,14 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, o
   lastClickedUriRef.current = lastClickedUri;
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
+
+  /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
+  useImperativeHandle(ref, () => ({
+    getSelection: () => Array.from(selection),
+    getFocusedUri: () => focusedUri,
+    getModel: () => model,
+    rerender: () => rerender(),
+  }), [selection, focusedUri, model, rerender]);
 
   /* ── ResizeObserver ── */
   useEffect(() => {
@@ -283,6 +288,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, o
       </div>
     </div>
   );
-};
+});
 
 export default FileTree;
