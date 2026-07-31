@@ -102,16 +102,22 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
   const startRename = useCallback(() => {
-    if (!focusedUri) return;
-    setRenamingUri(focusedUri);
+    // 优先取 selection 中第一个（右键菜单设了 selection 但未必设了 focusedUri）
+    const target = selection.size > 0 ? [...selection][0] : focusedUri;
+    if (!target) return;
+    setRenamingUri(target);
+    setFocusedUri(target);
+    setSelection(new Set([target]));
     // 🔥 屏蔽全局快捷键——防止 KeybindingRegistry 抢 Enter/Escape
     setKeybindingCaptureActive(true);
     ContextKeyService.setValue("inputFocus", true);
-  }, [focusedUri]);
+  }, [selection, focusedUri]);
   const finishRename = useCallback(async (uri: string, newName: string) => {
     setRenamingUri(null);
     setKeybindingCaptureActive(false);
     ContextKeyService.setValue("inputFocus", false);
+    // 🔥 rename 后 input 卸载→焦点飞到 body→explorerFocus=false→快捷键失效。重聚焦容器。
+    containerRef.current?.focus();
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
@@ -124,6 +130,8 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     setRenamingUri(null);
     setKeybindingCaptureActive(false);
     ContextKeyService.setValue("inputFocus", false);
+    // 🔥 取消时也重聚焦容器——否则快捷键失效
+    containerRef.current?.focus();
   }, []);
 
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
