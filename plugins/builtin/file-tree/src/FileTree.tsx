@@ -27,7 +27,7 @@ interface FileTreeProps {
 
 /* ── 工具 ── */
 
-/** 在 flatItems 中找目录最后一个后代的索引。反向扫描——第一个匹配即停。 */
+/** S1: 在 flatItems 中找目录最后一个后代的索引。反向扫描——第一个匹配即停。 */
 function findLastDescendant(dirUri: string, flatItems: FlatItem[]): number {
   for (let i = flatItems.length - 1; i >= 0; i--) {
     const uri = flatItems[i].item.uri;
@@ -106,11 +106,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——VS Code 式推出，约束 ≤7 + ≤40% 视口 ── */
+  /* ── sticky rows——VS Code calculateStickyNodePosition，约束 ≤7 + ≤40% 视口 ── */
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
-    // 候选：取视口第一行
+    if (st <= 0 || flatItems.length === 0) return [] as StickyRow[];
+    // 取视口第一行的祖先链
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
     const first = flatItems[Math.min(idx, flatItems.length - 1)];
     const ancestors = model.getAncestors(first.item);
@@ -119,27 +119,27 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     if (first.item.isDirectory && model.isExpanded(first.item.uri) && first.item.uri !== root?.uri) {
       ancestors.push(first.item);
     }
+    // 约束数量
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
-    // 推出：最深行在其最后一个后代滚出视口时往上滑
-    const last = result[result.length - 1];
-    if (last && last.item.parent !== null) {
-      let lastDescIdx = -1;
-      const dirUri = last.item.uri;
-      for (let i = flatItems.length - 1; i >= 0; i--) {
-        const uri = flatItems[i].item.uri;
-        if (uri === dirUri || uri.startsWith(dirUri + "/")) { lastDescIdx = i; break; }
-      }
-      if (lastDescIdx >= 0) {
-        const stickyH = result.length * TREE_ITEM_HEIGHT;
-        const push = Math.max(0, stickyH - (lastDescIdx * TREE_ITEM_HEIGHT - st));
-        if (push > 0) {
-          last._push = Math.min(push, TREE_ITEM_HEIGHT);
+    const constrained = ancestors.slice(0, maxCount);
+    // VS Code calculateStickyNodePosition——每行独立算位置
+    const rows: StickyRow[] = [];
+    let stickyH = 0;
+    for (let i = 0; i < constrained.length; i++) {
+      const item = constrained[i];
+      const endIdx = findLastDescendant(item.uri, flatItems);
+      let position = stickyH;
+      if (endIdx >= 0) {
+        const bottomOfLast = (endIdx * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
+        if (stickyH + TREE_ITEM_HEIGHT > bottomOfLast && stickyH <= bottomOfLast) {
+          position = bottomOfLast - TREE_ITEM_HEIGHT;
         }
       }
+      rows.push({ item, depth: i + 1, _push: stickyH - position });
+      stickyH += TREE_ITEM_HEIGHT;
     }
-    return result;
+    return rows;
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;

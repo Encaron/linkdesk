@@ -182,7 +182,7 @@ const FoldersView: React.FC = () => {
         pinnedContent: () => {
           const rows = stickyRowsRef.current;
           if (rows.length === 0) return null;
-          return rows.map((row, i) => (
+          return rows.map((row) => (
             <div key={row.item.uri} className="file-tree-sticky-row"
               style={{
                 height: TREE_ITEM_HEIGHT,
