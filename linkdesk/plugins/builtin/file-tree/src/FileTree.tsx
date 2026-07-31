@@ -87,7 +87,15 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [model, rerender]);
 
   /* ── 虚拟列表 ── */
-  const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
+  const flatItems = useMemo(() => {
+    void (version);
+    const items = flattenTree(model);
+    console.log("[file-tree] flatItems=%d roots=[%s] expanded=[%s]",
+      items.length,
+      model.roots.map(r => r.name).join(","),
+      model.getExpandedUris().map(u => u.replace(/.*[\\/]/, "")).join(","));
+    return items;
+  }, [model, version]);
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
@@ -104,8 +112,12 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
     const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
     const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
-    console.log("[sticky] scrollTop=%d firstVisible=%s sticky=[%s]",
-      scrollTop, first.item.name, result.map(r => r.item.name).join(" > ") || "(无)");
+    const stickyNames = result.map(r => r.item.name).join(" > ") || "(无)";
+    console.log("[sticky] scrollTop=%d containerH=%d idx=%d flatTotal=%d first='%s' parents=[%s] → sticky=[%s]",
+      scrollTop, containerHeight, idx, flatItems.length,
+      first.item.name,
+      model.getAncestors(first.item).map(a => a.name).join(">"),
+      stickyNames);
     return result;
   }, [flatItems, model, scrollTop, containerHeight]);
 
@@ -137,7 +149,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     if (!el) return;
     const scrollEl = el.closest<HTMLElement>(".side-panel-content");
     if (!scrollEl) return;
-    const update = () => { const r = scrollEl.getBoundingClientRect(); setSidePanelRect({ top: r.top, left: r.left, width: r.width }); };
+    const update = () => { const r = scrollEl.getBoundingClientRect(); console.log("[sticky] rect: top=%d left=%d w=%d scrollTop=%d", r.top, r.left, r.width, scrollEl.scrollTop); setSidePanelRect({ top: r.top, left: r.left, width: r.width }); };
     update();
     scrollEl.addEventListener("scroll", update, { passive: true });
     window.addEventListener("resize", update);
@@ -153,7 +165,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     } else {
       model.expand(item.uri);
       model.compactController.expandCompact(item.uri);
-      try { await model.getChildren(item); } catch (e) { console.error("[file-tree] expand failed:", item.uri, e); }
+      try {
+        const children = await model.getChildren(item);
+        console.log("[file-tree] expand: %s → %d children", item.name, children.length);
+      } catch (e) { console.error("[file-tree] expand failed:", item.name, e); }
     }
   }, [model]);
 
