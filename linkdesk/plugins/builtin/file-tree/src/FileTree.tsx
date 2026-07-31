@@ -15,7 +15,7 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
 
-export interface StickyRow { item: ExplorerItem; depth: number }
+export interface StickyRow { item: ExplorerItem; depth: number; _push?: number }
 
 interface FileTreeProps {
   model: FileTreeModel;
@@ -97,57 +97,40 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  /* ── sticky rows——滞回防振荡，约束 ≤7 + ≤40% 视口 ── */
-  const prevStickyRef = useRef<StickyRow[]>([]);
+  /* ── sticky rows——VS Code 式推出，约束 ≤7 + ≤40% 视口 ── */
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) {
-      prevStickyRef.current = [];
-      return [] as { item: ExplorerItem; depth: number }[];
-    }
+    if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
     // 候选：取视口第一行
     const idx = Math.floor(st / TREE_ITEM_HEIGHT);
     const first = flatItems[Math.min(idx, flatItems.length - 1)];
-    const candidate = model.getAncestors(first.item);
+    const ancestors = model.getAncestors(first.item);
     const root = flatItems[0]?.item;
-    if (root && root.isDirectory && candidate[0]?.uri !== root.uri) candidate.unshift(root);
+    if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
     if (first.item.isDirectory && model.isExpanded(first.item.uri) && first.item.uri !== root?.uri) {
-      candidate.push(first.item);
+      ancestors.push(first.item);
     }
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const candidateMapped = candidate.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
-    // 滞回：如果上一个 sticky 的最深目录仍有后裔在视口内，保持不动
-    const prev = prevStickyRef.current;
-    const prevDeepest = prev[prev.length - 1];
-    const candDeepest = candidateMapped[candidateMapped.length - 1];
-    // 滞回——只在平级目录间生效。父子关系直接切换。
-    const prevUris = prev.map(p => p.item.uri);
-    const candUris = candidateMapped.map(c => c.item.uri);
-    const isDescending = prevUris.length > 0
-      && prevUris.every((u, i) => candUris[i] === u);  // 进入子目录
-    const isAscending = candUris.length > 0
-      && candUris.every((u, i) => prevUris[i] === u);   // 退回父目录
-    if (prev.length > 0 && prevDeepest && candDeepest
-      && prevDeepest.item.parent !== null
-      && prevDeepest.item.uri !== candDeepest.item.uri
-      && !isDescending && !isAscending) {
-      // 平级切换——滞回：旧目录后裔还在视口内就不换
-      const visibleStart = Math.floor(st / TREE_ITEM_HEIGHT);
-      const visibleEnd = Math.floor((st + containerHeight) / TREE_ITEM_HEIGHT);
-      const limit = Math.min(visibleEnd, flatItems.length - 1);
-      let keep = false;
-      for (let i = visibleStart; i <= limit; i++) {
+    const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
+    // 推出：最深行在其最后一个后代滚出视口时往上滑
+    const last = result[result.length - 1];
+    if (last && last.item.parent !== null) {
+      let lastDescIdx = -1;
+      const dirUri = last.item.uri;
+      for (let i = flatItems.length - 1; i >= 0; i--) {
         const uri = flatItems[i].item.uri;
-        if (uri === prevDeepest.item.uri || uri.startsWith(prevDeepest.item.uri + "/")) {
-          keep = true;
-          break;
+        if (uri === dirUri || uri.startsWith(dirUri + "/")) { lastDescIdx = i; break; }
+      }
+      if (lastDescIdx >= 0) {
+        const stickyH = result.length * TREE_ITEM_HEIGHT;
+        const push = Math.max(0, stickyH - (lastDescIdx * TREE_ITEM_HEIGHT - st));
+        if (push > 0) {
+          last._push = Math.min(push, TREE_ITEM_HEIGHT);
         }
       }
-      if (keep) return prev;
     }
-    prevStickyRef.current = candidateMapped;
-    return candidateMapped;
+    return result;
   }, [flatItems, model, scrollTop, containerHeight]);
   // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
   if (stickyRowsRef) stickyRowsRef.current = stickyRows;

@@ -182,9 +182,13 @@ const FoldersView: React.FC = () => {
         pinnedContent: () => {
           const rows = stickyRowsRef.current;
           if (rows.length === 0) return null;
-          return rows.map((row) => (
+          return rows.map((row, i) => (
             <div key={row.item.uri} className="file-tree-sticky-row"
-              style={{ height: TREE_ITEM_HEIGHT, paddingLeft: (row.depth - 1) * TREE_INDENT }}>
+              style={{
+                height: TREE_ITEM_HEIGHT,
+                paddingLeft: (row.depth - 1) * TREE_INDENT,
+                transform: row._push ? `translateY(-${row._push}px)` : undefined,
+              }}>
               <span className={`codicon ${row.item.isDirectory ? "codicon-chevron-down" : ""} file-tree-twistie file-tree-twistie--expanded`} />
               <span className={`codicon codicon-folder-opened file-tree-icon`} />
               <span className="file-tree-name">{row.item.name}</span>
