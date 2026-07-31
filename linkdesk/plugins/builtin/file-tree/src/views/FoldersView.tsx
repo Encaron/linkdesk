@@ -15,7 +15,7 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs, setSelectedUris } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs, setSelectedUris, setFocusedUriBridge } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
@@ -190,6 +190,10 @@ const FoldersView: React.FC = () => {
   const handleSelectionChange = useCallback((uris: string[]) => {
     setSelectedUris(uris);
   }, []);
+  /** E4V#26: focusedUri 变化 → 桥接到模块级变量——键盘粘贴推断目标目录 */
+  const handleFocusChange = useCallback((uri: string | null) => {
+    setFocusedUriBridge(uri);
+  }, []);
 
   return (
     <div className="file-tree-root">
@@ -198,7 +202,7 @@ const FoldersView: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} onSelectionChange={handleSelectionChange} />
+          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} onSelectionChange={handleSelectionChange} onFocusChange={handleFocusChange} />
         )}
       </div>
 
