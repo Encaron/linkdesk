@@ -145,7 +145,10 @@ export function activateFileTreeContextMenu(): void {
     const parent = model.findClosest(targetDir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
   }});
-  registerCommand("file-tree", { id: "explorer.rename",          title: "重命名",               handler: placeholder("explorer.rename") });
+  // ── E4V#27: F2 行内重命名 ──
+  registerCommand("file-tree", { id: "explorer.rename", title: "重命名", handler: async () => {
+    _handle?.startRename();
+  }});
   // ── E4V#24: delete ──
   registerCommand("file-tree", { id: "explorer.delete", title: "删除", handler: async (_token, ...args: unknown[]) => {
     if (!_handle) return;

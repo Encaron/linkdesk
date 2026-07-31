@@ -28,6 +28,10 @@ interface FileTreeNodeProps {
   isDimmed?: boolean;
   /** 🔥 Ctrl+X 剪切后灰显——对标 VS Code cut 标记 */
   isCut?: boolean;
+  /** E4V#27: 行内重命名——true 时显示 input 替代文件名 */
+  isRenaming?: boolean;
+  onRenameConfirm?: (uri: string, newName: string) => void;
+  onRenameCancel?: () => void;
   onDragStart?: (item: ExplorerItem, e: React.DragEvent) => void;
   /** E4a #95e: 回调传参数（非闭包）→引用稳定→React.memo 生效。
    *  E4V#21: 第二个参数 event——Ctrl+Click 多选 toggle */
@@ -57,6 +61,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   isDragHover,
   isDimmed,
   isCut,
+  isRenaming,
+  onRenameConfirm,
+  onRenameCancel,
   onDragStart,
   onSelect,
   onOpen,
@@ -107,6 +114,35 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     };
   }, []);
 
+  /* ── E4V#27: 行内重命名 input ── */
+
+  const inputRef = React.useRef<HTMLInputElement>(null);
+  const [renameValue, setRenameValue] = React.useState(item.name);
+
+  // 进入 rename 模式时：auto-focus + 选中文名不含扩展名
+  React.useEffect(() => {
+    if (!isRenaming || !inputRef.current) return;
+    const input = inputRef.current;
+    setRenameValue(item.name);
+    // 微任务：等 React 渲染完 input 再 focus/select
+    requestAnimationFrame(() => {
+      input.focus();
+      if (!item.isDirectory) {
+        const dotIdx = item.name.lastIndexOf(".");
+        if (dotIdx > 0) input.setSelectionRange(0, dotIdx);
+        else input.select();
+      } else {
+        input.select();
+      }
+    });
+  }, [isRenaming, item.name, item.isDirectory]);
+
+  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") { e.preventDefault(); onRenameConfirm?.(item.uri, renameValue); }
+    else if (e.key === "Escape") { e.preventDefault(); onRenameCancel?.(); }
+    e.stopPropagation(); // 阻止冒泡到树——键盘 handler 不应在此处理
+  };
+
   /* ── twistie ── */
 
   const twistieClass = [
@@ -142,17 +178,29 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       {/* 图标 */}
       <span className={`codicon ${getFileIconClass(item, expanded)} file-tree-icon`} />
 
-      {/* 文件名（或紧凑路径） */}
-      <span className="file-tree-name">
-        {compactedSegments
-          ? compactedSegments.map((seg, i) => (
-              <React.Fragment key={i}>
-                {i > 0 && <span className="file-tree-compact-sep"> / </span>}
-                {seg}
-              </React.Fragment>
-            ))
-          : item.name}
-      </span>
+      {/* 文件名 / E4V#27 行内重命名 input */}
+      {isRenaming ? (
+        <input
+          ref={inputRef}
+          className="file-tree-rename-input"
+          value={renameValue}
+          onChange={(e) => setRenameValue(e.target.value)}
+          onKeyDown={handleRenameKeyDown}
+          onBlur={() => onRenameCancel?.()}
+          onClick={(e) => e.stopPropagation()}
+        />
+      ) : (
+        <span className="file-tree-name">
+          {compactedSegments
+            ? compactedSegments.map((seg, i) => (
+                <React.Fragment key={i}>
+                  {i > 0 && <span className="file-tree-compact-sep"> / </span>}
+                  {seg}
+                </React.Fragment>
+              ))
+            : item.name}
+        </span>
+      )}
 
       {/* 装饰器 badge */}
       {item.decoration?.badge && (
