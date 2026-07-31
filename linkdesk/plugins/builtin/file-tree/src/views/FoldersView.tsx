@@ -184,7 +184,7 @@ const FoldersView: React.FC = () => {
           if (rows.length === 0) return null;
           const count = rows.length;
           return (
-            <div style={{ position: "relative", height: count * TREE_ITEM_HEIGHT }}>
+            <div style={{ position: "relative", height: count * TREE_ITEM_HEIGHT, overflow: "hidden" }}>
               {rows.map((row, i) => (
                 <div key={row.item.uri} className="file-tree-sticky-row"
                   style={{
