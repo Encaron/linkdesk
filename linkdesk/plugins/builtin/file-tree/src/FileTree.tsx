@@ -22,6 +22,8 @@ export interface FileTreeHandle {
   getFocusedUri(): string | null;
   getModel(): FileTreeModel;
   rerender(): void;
+  /** E4V#27: 对 focused item 启动行内重命名 */
+  startRename(): void;
 }
 
 interface FileTreeProps {
@@ -96,13 +98,31 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
+  /** E4V#27: 行内重命名——F2 或右键重命名 */
+  const [renamingUri, setRenamingUri] = useState<string | null>(null);
+  const startRename = useCallback(() => {
+    if (focusedUri) setRenamingUri(focusedUri);
+  }, [focusedUri]);
+  const finishRename = useCallback(async (uri: string, newName: string) => {
+    setRenamingUri(null);
+    if (!newName || newName === uri.split("/").pop()) return;
+    const dir = uri.substring(0, uri.lastIndexOf("/"));
+    const dest = dir + "/" + newName;
+    const { copy, deleteEntry } = await import("@src/core/FileService");
+    await copy(uri, dest);
+    await deleteEntry(uri);
+    model.refresh(dir).then(() => rerender());
+  }, [model, rerender]);
+  const cancelRename = useCallback(() => setRenamingUri(null), []);
+
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
   useImperativeHandle(ref, () => ({
     getSelection: () => Array.from(selection),
     getFocusedUri: () => focusedUri,
     getModel: () => model,
     rerender: () => rerender(),
-  }), [selection, focusedUri, model, rerender]);
+    startRename,
+  }), [selection, focusedUri, model, rerender, startRename]);
 
   /* ── ResizeObserver ── */
   useEffect(() => {
@@ -281,6 +301,9 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
             isDragSource={dndState.sourceUri === item.uri}
             isDragHover={dndState.hoverIndex === startIndex + i}
             isCut={cutUris.has(item.uri)}
+            isRenaming={item.uri === renamingUri}
+            onRenameConfirm={finishRename}
+            onRenameCancel={cancelRename}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
             onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
             onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />

@@ -212,6 +212,22 @@
   line-height: var(--tree-item-height);
 }
 
+/* ── E4V#27: 行内重命名 input ── */
+
+.file-tree-rename-input {
+  margin-left: var(--tree-icon-gap);
+  padding: 1px 4px;
+  font-size: 13px;
+  line-height: calc(var(--tree-item-height) - 2px);
+  border: 1px solid var(--accent);
+  outline: none;
+  background: var(--input-bg);
+  color: var(--text-primary);
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 260px;
+}
+
 /* ── 装饰器 badge ── */
 
 .file-tree-badge {
