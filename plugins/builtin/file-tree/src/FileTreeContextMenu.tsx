@@ -33,10 +33,13 @@ let _model: FileTreeModel | null = null;
 let _selectedUris: string[] = [];
 /** E4V#26: 键盘粘贴时推断目标目录——focused item 是目录则粘进去，是文件则粘到父目录 */
 let _focusedUri: string | null = null;
+/** 🔥 cut/copy/paste 后触发 FileTree 重渲染——剪贴板状态变更需要更新节点样式 */
+let _onClipboardChange: (() => void) | null = null;
 
-/** FoldersView mount 时调用——注入 model 供 command handler 使用 */
-export function setFileTreeRefs(model: FileTreeModel): void {
+/** FoldersView mount 时调用——注入 model + rerender 供 command handler 使用 */
+export function setFileTreeRefs(model: FileTreeModel, onClipboardChange?: () => void): void {
   _model = model;
+  _onClipboardChange = onClipboardChange ?? null;
 }
 
 /** E4V#24: 注入选中 URI 列表——FileTree selection 变化时同步 */
@@ -52,6 +55,7 @@ export function setFocusedUriBridge(uri: string | null): void {
 /** FoldersView unmount 时调用——清除引用防泄漏 */
 export function clearFileTreeRefs(): void {
   _model = null;
+  _onClipboardChange = null;
 }
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
@@ -111,6 +115,7 @@ export function activateFileTreeContextMenu(): void {
     const uris = _selectedUris.length > 0 ? _selectedUris : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
+    _onClipboardChange?.(); // 触发重渲染→节点灰显
   }});
   registerCommand("file-tree", { id: "explorer.copy", title: "复制", handler: async (_token, ...args: unknown[]) => {
     const ctx = args[0] as FileMenuContext | undefined;
@@ -136,6 +141,7 @@ export function activateFileTreeContextMenu(): void {
     const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
     await executeSafeDrop(sources, targetDir, isCut ? "move" : "copy");
     _selectedUris = [];
+    _onClipboardChange?.(); // paste 后剪贴板清空→恢复节点样式
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});

@@ -38,7 +38,7 @@ const FoldersView: React.FC = () => {
   /* ── 注册 explorer 命令 + FileContext 菜单项 + ref 桥接 ── */
   useEffect(() => {
     activateFileTreeContextMenu();
-    setFileTreeRefs(model);
+    setFileTreeRefs(model, rerender);
     return () => { clearFileTreeRefs(); };
   }, [model, rerender]);
 
