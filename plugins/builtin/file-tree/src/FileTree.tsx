@@ -233,15 +233,22 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         onFocus={handleFocus} onBlur={handleBlur}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
         className="file-tree-scroll">
-        <div style={{
-          position: "fixed", top: 8, right: 8, zIndex: 9999,
-          background: "rgba(0,0,0,0.7)", color: "#FFF",
-          padding: "4px 10px", borderRadius: 4,
-          fontSize: 14, fontFamily: "monospace",
-        }}>
-          boot: {((Date.now() - bootTime) / 1000).toFixed(0)}s
-          {firstExpandTime > 0 ? ` | expand: ${((Date.now() - firstExpandTime) / 1000).toFixed(0)}s` : ""}
-        </div>
+        {(() => {
+          const now = Date.now();
+          const elapsed = (now - bootTime) / 1000;
+          const isRed = elapsed >= 10;
+          return (
+            <div style={{
+              position: "fixed", top: 8, right: 8, zIndex: 9999,
+              background: isRed ? "#FF0000" : "rgba(0,0,0,0.7)",
+              color: "#FFF", padding: "4px 10px", borderRadius: 4,
+              fontSize: 14, fontFamily: "monospace",
+            }}>
+              boot: {elapsed.toFixed(0)}s
+              {firstExpandTime > 0 ? ` | expand: ${((now - firstExpandTime) / 1000).toFixed(0)}s` : ""}
+            </div>
+          );
+        })()}
         <div style={{ height: totalHeight, position: "relative" }}>
           <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
           {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
