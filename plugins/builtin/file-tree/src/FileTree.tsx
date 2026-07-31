@@ -91,28 +91,6 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── E4V#20+iv: sticky scroll 算法——对标 VS Code StickyScrollController ── */
 
-/** 对标 VS Code getAncestorUnderPrevious：沿父链向上走，遇到 prevAncestor 就返回其正下方的祖先 */
-function getAncestorUnderPrevious(
-  node: ExplorerItem,
-  prevAncestor: ExplorerItem | undefined,
-  model: FileTreeModel,
-): ExplorerItem | null {
-  let current: ExplorerItem = node;
-  let parent: ExplorerItem | null = current.parent;
-  while (parent) {
-    if (parent === prevAncestor) return current;
-    if (!model.isExpanded(parent.uri)) {
-      current = parent;
-      parent = current.parent;
-      continue;
-    }
-    current = parent;
-    parent = current.parent;
-  }
-  if (prevAncestor === undefined) return current;
-  return null;
-}
-
 /** 查找祖先在 flatItems 中的索引区间（第一个到最后一个后代） */
 function getNodeRange(
   ancestor: ExplorerItem,
@@ -148,7 +126,6 @@ function calculateStickyPosition(
   const lastChildTop = lastDescendantIndex * TREE_ITEM_HEIGHT - scrollTop;
   const lastChildBottom = lastChildTop + TREE_ITEM_HEIGHT;
   const stickyBottom = stickyHeight + TREE_ITEM_HEIGHT;
-  // 如果 sticky 底边 > 最后一个后代底边 → 被推出
   if (stickyBottom > lastChildBottom && stickyHeight <= lastChildBottom) {
     return lastChildBottom - TREE_ITEM_HEIGHT;
   }
@@ -156,8 +133,8 @@ function calculateStickyPosition(
 }
 
 /**
- * 对标 VS Code StickyScrollController.findStickyState：
- * 迭代循环——每个 sticky 创建后从其底部重算 firstVisible。
+ * findStickyState——取视口第一个可见节点，沿 parent 链收集展开祖先。
+ * flatItems 是扁平列表、parent 链完整——不需要 VS Code 的迭代 getAncestorUnderPrevious。
  */
 function findStickyState(
   flatItems: FlatItem[],
@@ -165,23 +142,22 @@ function findStickyState(
   scrollTop: number,
   containerHeight: number,
 ): StickyRow[] {
+  // 对标 VS Code update()：scrollTop===0 时不 sticky
+  if (scrollTop <= 0) return [];
+
+  const firstVisibleIdx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+  const firstVisible = flatItems[firstVisibleIdx];
+  if (!firstVisible) return [];
+
+  const ancestors = model.getAncestors(firstVisible.item);
+  if (ancestors.length === 0) return [];
+
   const rows: StickyRow[] = [];
   let stickyHeight = 0;
-  let prevAncestor: ExplorerItem | undefined;
 
-  let firstVisibleIdx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
-  if (firstVisibleIdx >= flatItems.length) return rows;
-
-  // eslint-disable-next-line no-constant-condition
-  while (true) {
-    const firstVisible = flatItems[firstVisibleIdx];
-    if (!firstVisible) break;
-
-    const ancestor = getAncestorUnderPrevious(firstVisible.item, prevAncestor, model);
-    if (!ancestor) break;
-
+  for (const ancestor of ancestors) {
     const range = getNodeRange(ancestor, flatItems);
-    if (!range) break;
+    if (!range) continue;
 
     const position = calculateStickyPosition(
       range.endIndex, stickyHeight, scrollTop, containerHeight,
@@ -197,13 +173,9 @@ function findStickyState(
     });
 
     stickyHeight += TREE_ITEM_HEIGHT;
-    prevAncestor = ancestor;
 
     if (rows.length >= 7) break;
     if (containerHeight > 0 && stickyHeight > containerHeight * 0.4) break;
-
-    firstVisibleIdx = Math.floor((scrollTop + stickyHeight) / TREE_ITEM_HEIGHT);
-    if (firstVisibleIdx >= flatItems.length) break;
   }
 
   return rows;
