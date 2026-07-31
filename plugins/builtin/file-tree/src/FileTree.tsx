@@ -103,10 +103,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
 
-  // E4V#20+F2: sticky rows——根始终在最前，约束 ≤7 + ≤40% 视口
+  // E4V#20+F2: sticky rows——根始终在最前，约束 ≤7 + ≤40% 视口，含推出过渡
   const stickyRows = useMemo(() => {
     const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
+    if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number; position: number }[];
     const idx = Math.floor((st + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
     const first = flatItems[Math.min(idx, flatItems.length - 1)];
     const ancestors = model.getAncestors(first.item);
@@ -114,13 +114,28 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
-    const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
-    const stickyNames = result.map(r => r.item.name).join(" > ") || "(无)";
-    console.log("[sticky] st=%d(state=%d) containerH=%d idx=%d flatTotal=%d first='%s' parents=[%s] → sticky=[%s]",
-      st, scrollTop, containerHeight, idx, flatItems.length,
-      first.item.name,
-      model.getAncestors(first.item).map(a => a.name).join(">"),
-      stickyNames);
+    // 给每个 sticky 行计算动态 position（推出过渡）
+    const result: { item: ExplorerItem; depth: number; position: number }[] = [];
+    let stickyH = 0;
+    for (let i = 0; i < Math.min(ancestors.length, maxCount); i++) {
+      const ancestor = ancestors[i];
+      // 找该祖先在 flatItems 中最后一个后代的索引
+      let endIdx = 0;
+      const ancUri = ancestor.uri;
+      for (let j = 0; j < flatItems.length; j++) {
+        const u = flatItems[j].item.uri;
+        if (u === ancUri || (u.startsWith(ancUri) && u[ancUri.length] === "/")) endIdx = j;
+      }
+      // 推出过渡：sticky 底边 > 最后一个后代底边 → 往上推
+      const lastBottom = endIdx * TREE_ITEM_HEIGHT - st + TREE_ITEM_HEIGHT;
+      const stickyBottom = stickyH + TREE_ITEM_HEIGHT;
+      const pos = (stickyBottom > lastBottom && stickyH <= lastBottom) ? lastBottom - TREE_ITEM_HEIGHT : stickyH;
+      result.push({ item: ancestor, depth: i + 1, position: pos });
+      stickyH = pos + TREE_ITEM_HEIGHT;
+    }
+    console.log("[sticky] st=%d idx=%d first='%s' → sticky=[%s]",
+      st, idx, first.item.name,
+      result.map(r => `${r.item.name}@${r.position}`).join(" > ") || "(无)");
     return result;
   }, [flatItems, model, scrollTop, containerHeight]);
 
@@ -214,20 +229,23 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     <>
       {(() => {
         if (stickyRows.length > 0 && sidePanelRect.width > 0) {
-          console.log("[sticky] portal render: rect=(%d,%d,%d) rows=%d",
-            sidePanelRect.top, sidePanelRect.left, sidePanelRect.width, stickyRows.length);
-          return true;
+          const overlayH = stickyRows[stickyRows.length - 1].position + TREE_ITEM_HEIGHT;
+          console.log("[sticky] portal render: rect=(%d,%d,%d) overlayH=%d rows=%d",
+            sidePanelRect.top, sidePanelRect.left, sidePanelRect.width, overlayH, stickyRows.length);
+          return overlayH;
         }
         if (stickyRows.length > 0) console.log("[sticky] portal SKIP: width=0");
-        return false;
-      })() && createPortal(
+        return 0;
+      })() > 0 && createPortal(
         <div className="file-tree-sticky-overlay" style={{
           position: "fixed", top: sidePanelRect.top, left: sidePanelRect.left,
           width: sidePanelRect.width, zIndex: 10,
+          height: stickyRows[stickyRows.length - 1].position + TREE_ITEM_HEIGHT,
         }}>
           {stickyRows.map((row) => (
             <div key={row.item.uri} className="file-tree-sticky-row" style={{
-              height: TREE_ITEM_HEIGHT, paddingLeft: (row.depth - 1) * TREE_INDENT,
+              position: "absolute", top: row.position, height: TREE_ITEM_HEIGHT,
+              left: 0, right: 0, paddingLeft: (row.depth - 1) * TREE_INDENT,
             }}>
               <FileTreeNode item={row.item} depth={row.depth} indent={0}
                 expanded={true} isSelected={false} isFocused={false}
