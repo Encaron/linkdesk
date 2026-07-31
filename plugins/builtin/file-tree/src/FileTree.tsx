@@ -114,10 +114,6 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   }, [selection, focusedUri]);
   const finishRename = useCallback(async (uri: string, newName: string) => {
     setRenamingUri(null);
-    setKeybindingCaptureActive(false);
-    ContextKeyService.setValue("inputFocus", false);
-    // 🔥 rename 后 input 卸载→焦点飞到 body→explorerFocus=false→快捷键失效。重聚焦容器。
-    containerRef.current?.focus();
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
@@ -126,13 +122,17 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     await deleteEntry(uri);
     model.refresh(dir).then(() => rerender());
   }, [model, rerender]);
-  const cancelRename = useCallback(() => {
-    setRenamingUri(null);
-    setKeybindingCaptureActive(false);
-    ContextKeyService.setValue("inputFocus", false);
-    // 🔥 取消时也重聚焦容器——否则快捷键失效
-    containerRef.current?.focus();
-  }, []);
+  const cancelRename = useCallback(() => setRenamingUri(null), []);
+
+  // 🔥 rename 退出后恢复全局快捷键 + 重聚焦（useEffect 解耦——避免同步 focus 触发 onBlur 链式反应）
+  useEffect(() => {
+    if (renamingUri === null) {
+      setKeybindingCaptureActive(false);
+      ContextKeyService.setValue("inputFocus", false);
+      // 微任务：等 React 渲染完 input 已卸载再聚焦
+      requestAnimationFrame(() => containerRef.current?.focus());
+    }
+  }, [renamingUri]);
 
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
   useImperativeHandle(ref, () => ({
