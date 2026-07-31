@@ -77,6 +77,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleClick = (e: React.MouseEvent) => {
+    e.stopPropagation(); // 阻止冒泡到容器——容器 onClick 负责清空选中
     // E4V#21: 传 event 给父组件——检测 ctrlKey/metaKey 做多选 toggle
     onSelect(item.uri, e);
     if (e.detail === 2) {
