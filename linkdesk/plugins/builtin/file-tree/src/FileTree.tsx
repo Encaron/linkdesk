@@ -121,7 +121,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     const prev = prevStickyRef.current;
     const prevDeepest = prev[prev.length - 1];
     const candDeepest = candidateMapped[candidateMapped.length - 1];
-    if (prev.length > 0 && prevDeepest && candDeepest && prevDeepest.item.uri !== candDeepest.item.uri) {
+    // 滞回只对非根目录生效——根的后裔永远是整个视口，不参与
+    if (prev.length > 0 && prevDeepest && candDeepest
+      && prevDeepest.item.parent !== null
+      && prevDeepest.item.uri !== candDeepest.item.uri) {
       const visibleStart = Math.floor(st / TREE_ITEM_HEIGHT);
       const visibleEnd = Math.floor((st + containerHeight) / TREE_ITEM_HEIGHT);
       const limit = Math.min(visibleEnd, flatItems.length - 1);
