@@ -42,10 +42,15 @@ function findStickyState(
   containerHeight: number,
 ): StickyRow[] {
   if (scrollTop <= 0) return [];
-  const idx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+  const idx = Math.floor((scrollTop + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
   const first = flatItems[idx];
   if (!first) return [];
   const ancestors = model.getAncestors(first.item);
+  // 根（flatItems[0]）始终在最前面——对标 E4V#15b 单根多根统一
+  const root = flatItems[0]?.item;
+  if (root && root.isDirectory && ancestors[0] !== root) {
+    ancestors.unshift(root);
+  }
   const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
   return ancestors.slice(0, maxCount).map((item, i) => ({
     item,
