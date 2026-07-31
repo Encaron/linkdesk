@@ -147,20 +147,6 @@ function findStickyState(
   if (!firstVisible) return [];
 
   const ancestors = model.getAncestors(firstVisible.item);
-  // 根部分滚出（0 < scrollTop < 22）且 firstVisible 还是根本身时，补根
-  if (ancestors.length === 0 && scrollTop > 0) {
-    const root = firstVisible.item.parent === null ? firstVisible.item : model.roots[0];
-    if (root) {
-      const range = getNodeRange(root, flatItems);
-      if (range) {
-        return [{
-          item: root, depth: 1, position: 0,
-          height: TREE_ITEM_HEIGHT, startIndex: range.startIndex, endIndex: range.endIndex,
-        }];
-      }
-    }
-    return [];
-  }
   if (ancestors.length === 0) return [];
 
   const rows: StickyRow[] = [];
