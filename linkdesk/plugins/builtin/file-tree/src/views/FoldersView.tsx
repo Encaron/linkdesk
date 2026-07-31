@@ -178,13 +178,14 @@ const FoldersView: React.FC = () => {
             </button>
           </>
         ),
-        // E4V#57: sticky scroll——壳层 PinnedSlot 渲染，零推出，固定位置
+        // E4V#57: sticky scroll——壳层 PinnedSlot，固定高度7行=154px，消振荡
         pinnedContent: () => {
           const rows = stickyRowsRef.current;
           if (rows.length === 0) return null;
           const count = rows.length;
+          const MAX_STICKY = 7;
           return (
-            <div style={{ position: "relative", height: count * TREE_ITEM_HEIGHT }}>
+            <div style={{ position: "relative", height: MAX_STICKY * TREE_ITEM_HEIGHT }}>
               {rows.map((row, i) => (
                 <div key={row.item.uri} className="file-tree-sticky-row"
                   style={{
