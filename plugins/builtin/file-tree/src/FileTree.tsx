@@ -72,8 +72,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
-  const bootTime = performance.timeOrigin; // 页面加载时间 ≈ app 启动时间
-  const [firstExpandTime, setFirstExpandTime] = useState(0);
 
   /* ── ResizeObserver ── */
   useEffect(() => {
@@ -151,7 +149,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       model.collapse(item.uri);
       model.compactController.collapseCompact(item.uri);
     } else {
-      if (!firstExpandTime) setFirstExpandTime(Date.now());
       model.expand(item.uri);
       model.compactController.expandCompact(item.uri);
       try {
@@ -233,22 +230,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         onFocus={handleFocus} onBlur={handleBlur}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
         className="file-tree-scroll">
-        {(() => {
-          const now = Date.now();
-          const elapsed = (now - bootTime) / 1000;
-          const isRed = elapsed >= 10;
-          return (
-            <div style={{
-              position: "fixed", top: 65, left: 48, zIndex: 9999,
-              background: isRed ? "#FF0000" : "rgba(0,0,0,0.7)",
-              color: "#FFF", padding: "4px 10px", borderRadius: 4,
-              fontSize: 14, fontFamily: "monospace",
-            }}>
-              boot: {elapsed.toFixed(0)}s
-              {firstExpandTime > 0 ? ` | expand: ${((now - firstExpandTime) / 1000).toFixed(0)}s` : ""}
-            </div>
-          );
-        })()}
         <div style={{ height: totalHeight, position: "relative" }}>
           <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
           {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
