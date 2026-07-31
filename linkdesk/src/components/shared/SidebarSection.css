@@ -3,6 +3,7 @@
  * 对标 VS Code section header：22px / 11px / 600 / uppercase。
  *
  * CSS 变量（theme 作者可覆盖——不覆盖也有 fallback 正常工作）：
+ *   --sidebar-section-header-height     默认 22px（TSX 中 HEADER_H 同步读此值）
  *   --sidebar-section-header-fg        默认 var(--text-muted)
  *   --sidebar-section-header-hover-fg  默认 var(--text-primary)
  */
@@ -16,7 +17,7 @@
 /* ── Header —— VS Code: 22px / 11px / 600 / uppercase ── */
 
 .sidebar-section-header {
-  height: 22px;
+  height: var(--sidebar-section-header-height, 22px);
   padding: 0 8px;
   cursor: pointer;
   user-select: none;

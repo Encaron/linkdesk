@@ -75,7 +75,8 @@ function SidebarSection({
    * pinnedContent sticky top 偏移需对齐此值。若 header 被隐藏（headerHidden），偏移退化为 0。
    * 🔥 28px = 22px header + 6px 额外间距（与 file-tree-header 28px 对齐）。TODO 归一到 CSS 变量。
    */
-  const HEADER_H = 28;
+  // 同步 CSS：.sidebar-section-header { height: 22px }
+  const HEADER_H = 22;
 
   // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
   if (headerHidden) {
