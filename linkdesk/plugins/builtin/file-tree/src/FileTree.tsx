@@ -26,7 +26,32 @@ interface FileTreeProps {
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
 }
 
+interface StickyRow {
+  item: ExplorerItem;
+  depth: number;
+}
+
 /* ── 常量（从 layoutTokens.ts 导入） ── */
+
+/* ── E4V#20+iv: sticky scroll 算法 ── */
+
+function findStickyState(
+  flatItems: FlatItem[],
+  model: FileTreeModel,
+  scrollTop: number,
+  containerHeight: number,
+): StickyRow[] {
+  if (scrollTop <= 0) return [];
+  const idx = Math.floor(scrollTop / TREE_ITEM_HEIGHT);
+  const first = flatItems[idx];
+  if (!first) return [];
+  const ancestors = model.getAncestors(first.item);
+  const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
+  return ancestors.slice(0, maxCount).map((item, i) => ({
+    item,
+    depth: i + 1,
+  }));
+}
 
 /* ── 工具 ── */
 
@@ -123,6 +148,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const renderedItems = useMemo(
     () => flatItems.slice(startIndex, endIndex),
     [flatItems, startIndex, endIndex],
+  );
+
+  const stickyState = useMemo(
+    () => findStickyState(flatItems, model, scrollTop, containerHeight),
+    [flatItems, model, scrollTop, containerHeight],
   );
 
   /* ── 滚动 ── */
@@ -275,29 +305,56 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       onDrop={handleDrop}
       className="file-tree-scroll"
     >
-      <div style={{ height: totalHeight, position: "relative" }}>
-        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+      {stickyState.map((row, i) => (
+        <div
+          key={`sticky-${row.item.uri}`}
+          className="file-tree-sticky-row"
+          style={{
+            position: "sticky",
+            top: i * TREE_ITEM_HEIGHT,
+            height: TREE_ITEM_HEIGHT,
+            zIndex: 2,
+          }}
+        >
           <FileTreeNode
-            key={item.uri}
-            item={item}
-            depth={depth}
+            item={row.item}
+            depth={row.depth}
             indent={0}
-            expanded={item.isDirectory && model.isExpanded(item.uri)}
-            isSelected={item.uri === selectedUri}
-            isFocused={item.uri === focusedUri}
-            isDragSource={dndState.sourceUri === item.uri}
-            isDragHover={dndState.hoverIndex === startIndex + i}
-            compactedSegments={compactedSegments}
-            guide={guide}
-            isDimmed={isDimmed}
-            onDragStart={handleDragStart}
+            expanded={true}
+            isSelected={false}
+            isFocused={false}
             onSelect={handleSelect}
             onOpen={handleOpen}
             onTwistieClick={handleTwistie}
             onContextMenu={handleContextMenu}
           />
-        ))}
+        </div>
+      ))}
+      <div className="file-tree-scroll-clip">
+        <div style={{ height: totalHeight, position: "relative" }}>
+          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+            <FileTreeNode
+              key={item.uri}
+              item={item}
+              depth={depth}
+              indent={0}
+              expanded={item.isDirectory && model.isExpanded(item.uri)}
+              isSelected={item.uri === selectedUri}
+              isFocused={item.uri === focusedUri}
+              isDragSource={dndState.sourceUri === item.uri}
+              isDragHover={dndState.hoverIndex === startIndex + i}
+              compactedSegments={compactedSegments}
+              guide={guide}
+              isDimmed={isDimmed}
+              onDragStart={handleDragStart}
+              onSelect={handleSelect}
+              onOpen={handleOpen}
+              onTwistieClick={handleTwistie}
+              onContextMenu={handleContextMenu}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
