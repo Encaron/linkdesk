@@ -69,6 +69,8 @@ export interface ViewDescriptor {
   hideByDefault?: boolean;
   /** 折叠头右侧的操作按钮。ReactNode——不可在 plugin.json 声明，仅命令式 registerView 使用 */
   actions?: React.ReactNode;
+  /** 🆕 PinnedSlot——粘顶内容。壳在 Section header 下方渲染，position:sticky。每次渲染调用——内容动态变化 */
+  pinnedContent?: () => React.ReactNode;
   /** 标题旁的副文字。对标 VS Code ViewPane.titleDescription */
   titleDescription?: string;
   /** 单 view 且容器 mergeHeaderWhenSingle 时，容器 header 显示此标题替代容器 title。

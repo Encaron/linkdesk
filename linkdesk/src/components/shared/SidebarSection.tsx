@@ -24,6 +24,8 @@ export interface SidebarSectionProps {
   badge?: string | number;
   /** 右侧操作按钮 slot——点击不冒泡到折叠 */
   actions?: ReactNode;
+  /** 🆕 PinnedSlot——粘顶内容，header 下方、body 上方 */
+  pinnedContent?: () => ReactNode;
   /** 区块内容 */
   children: ReactNode;
   /** 🆕 E3.6：标题旁的副文字——如 "(5 files)"。对标 VS Code ViewPane.titleDescription */
@@ -44,6 +46,7 @@ function SidebarSection({
   defaultOpen = true,
   badge,
   actions,
+  pinnedContent,
   children,
   titleDescription,
   titleTooltip,
@@ -110,6 +113,15 @@ function SidebarSection({
           </span>
         )}
       </div>
+      {open && pinnedContent && (
+        <div className="sidebar-section-pinned" style={{
+          position: "sticky",
+          top: (stickyTop ?? 0) + 28,
+          zIndex: 1,
+        }}>
+          {pinnedContent()}
+        </div>
+      )}
       {open && <div className="sidebar-section-body">{children}</div>}
     </div>
   );
