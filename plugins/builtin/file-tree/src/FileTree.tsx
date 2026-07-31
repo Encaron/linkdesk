@@ -15,26 +15,13 @@ import { ContextKeyService } from "@src/core/ContextKeyService";
 
 /* ── 类型 ── */
 
-export interface StickyRow { item: ExplorerItem; depth: number; top: number }
-
 interface FileTreeProps {
   model: FileTreeModel;
   onOpenFile: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onContextMenu?: (item: ExplorerItem, event: React.MouseEvent) => void;
-  /** PinnedSlot——FileTree 把当前 stickyRows 写入此 ref，外部 pinnedContent 读取 */
-  stickyRowsRef?: React.MutableRefObject<StickyRow[]>;
 }
 
 /* ── 工具 ── */
-
-/** 在 flatItems 中找目录最后一个后代的索引——滞回判断用 */
-function findLastDescendant(dirUri: string, flatItems: FlatItem[]): number {
-  for (let i = flatItems.length - 1; i >= 0; i--) {
-    const uri = flatItems[i].item.uri;
-    if (uri === dirUri || uri.startsWith(dirUri + "/")) return i;
-  }
-  return -1;
-}
 
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
@@ -74,7 +61,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 
 /* ── 组件 ── */
 
-const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, stickyRowsRef }) => {
+const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
@@ -105,98 +92,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
   const totalHeight = flatItems.length * TREE_ITEM_HEIGHT;
   const renderedItems = useMemo(() => flatItems.slice(startIndex, endIndex), [flatItems, startIndex, endIndex]);
-
-  /* ── sticky rows——9种转换全覆盖：推出 + 过渡期新旧共存 ── */
-  const prevStickyRef = useRef<StickyRow[]>([]);
-  const stickyRows = useMemo(() => {
-    const st = scrollTopRef.current;
-    if (st <= 0 || flatItems.length === 0) {
-      prevStickyRef.current = [];
-      return [] as StickyRow[];
-    }
-    const idx = Math.floor(st / TREE_ITEM_HEIGHT);
-    let first = flatItems[Math.min(idx, flatItems.length - 1)];
-    if (first && !first.item.isDirectory && first.item.parent) {
-      for (let j = idx - 1; j >= 0; j--) {
-        if (flatItems[j].item.uri === first.item.parent.uri) { first = flatItems[j]; break; }
-      }
-    }
-    const ancestors = model.getAncestors(first.item);
-    const root = flatItems[0]?.item;
-    if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
-    if (first.item.isDirectory && model.isExpanded(first.item.uri) && first.item.uri !== root?.uri) {
-      ancestors.push(first.item);
-    }
-    const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
-    const maxCount = Math.min(7, Math.max(1, byHeight));
-    const newAncestors = ancestors.slice(0, maxCount);
-    const prev = prevStickyRef.current;
-
-    // 单行推出计算
-    const calcTop = (item: ExplorerItem, normalTop2: number): number => {
-      const ei = findLastDescendant(item.uri, flatItems);
-      if (ei < 0) return normalTop2;
-      const bol = (ei * TREE_ITEM_HEIGHT - st) + TREE_ITEM_HEIGHT;
-      if (normalTop2 + TREE_ITEM_HEIGHT > bol && normalTop2 <= bol) return bol - TREE_ITEM_HEIGHT;
-      return normalTop2;
-    };
-
-    // ①③⑧⑨ 无旧链或首次→直接用新链
-    if (prev.length === 0) {
-      const rows: StickyRow[] = newAncestors.map((item, i) => ({
-        item, depth: i + 1, top: calcTop(item, i * TREE_ITEM_HEIGHT),
-      }));
-      prevStickyRef.current = rows;
-      return rows;
-    }
-
-    // 找共同前缀长度
-    let commonLen = 0;
-    while (commonLen < prev.length && commonLen < newAncestors.length
-      && prev[commonLen].item.uri === newAncestors[commonLen].uri) {
-      commonLen++;
-    }
-
-    // ②⑧ 纯追加（新链包含旧链全部）→直接用新链
-    if (commonLen === prev.length) {
-      const rows: StickyRow[] = newAncestors.map((item, i) => ({
-        item, depth: i + 1, top: calcTop(item, i * TREE_ITEM_HEIGHT),
-      }));
-      prevStickyRef.current = rows;
-      return rows;
-    }
-
-    // ③④⑤⑥⑦ 过渡期：保留旧链独有行（还有可见后裔的）+ 新链独有行
-    const result: StickyRow[] = [];
-    // 共同前缀——用新链（和旧链一样），depth=treedepth
-    for (let i = 0; i < commonLen; i++) {
-      result.push({ item: newAncestors[i], depth: i + 1,
-        top: calcTop(newAncestors[i], i * TREE_ITEM_HEIGHT) });
-    }
-    // 旧链独有行——从浅到深检查，后裔不可见即停止。depth保留原值
-    for (let i = commonLen; i < prev.length; i++) {
-      const ei = findLastDescendant(prev[i].item.uri, flatItems);
-      if (ei >= 0) {
-        const lct = ei * TREE_ITEM_HEIGHT - st;
-        if (lct > -TREE_ITEM_HEIGHT) {
-          const nt = result.length * TREE_ITEM_HEIGHT;
-          result.push({ item: prev[i].item, depth: prev[i].depth, top: calcTop(prev[i].item, nt) });
-          continue;
-        }
-      }
-      break;
-    }
-    // 新链独有行——depth用树深度(i+1)，不是结果位置
-    for (let i = commonLen; i < newAncestors.length && result.length < maxCount; i++) {
-      const nt = result.length * TREE_ITEM_HEIGHT;
-      result.push({ item: newAncestors[i], depth: i + 1, top: calcTop(newAncestors[i], nt) });
-    }
-    const trimmed = result.slice(0, maxCount);
-    prevStickyRef.current = trimmed;
-    return trimmed;
-  }, [flatItems, model, scrollTop, containerHeight]);
-  // 对外暴露——PinnedSlot 的 pinnedContent 从这里读
-  if (stickyRowsRef) stickyRowsRef.current = stickyRows;
 
   /* ── 滚动检测——.side-panel-content 是实际滚动容器 ── */
   useEffect(() => {

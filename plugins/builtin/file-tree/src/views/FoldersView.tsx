@@ -15,14 +15,12 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import type { StickyRow } from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeRefs, clearFileTreeRefs } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
 import { FileExcludeFilter } from "../FileExcludeFilter";
 import { joinPath, normalizePath } from "../pathUtils";
-import { TREE_ITEM_HEIGHT, TREE_INDENT } from "../layoutTokens";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
@@ -32,8 +30,6 @@ const FoldersView: React.FC = () => {
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
   const _unwatchRef = useRef<(() => void) | null>(null);
   const _debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const stickyRowsRef = useRef<StickyRow[]>([]);
-  const [stickyVersion, setStickyVersion] = useState(0);
 
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
   const [, setVersion] = useState(0);
@@ -151,7 +147,7 @@ const FoldersView: React.FC = () => {
   /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
    * E36#ROLE：role 字段保证始终 sectionViews——title 可安全为空，不再需要 " " 占位。
    * E4V#35：多根时标题走 workspace name。
-   * E4V#56+P2：加 pinnedContent——sticky scroll 祖先链。 */
+   * E4V#56+P2：pinnedContent——sticky scroll 已移除（E4V#57 放弃）。 */
   useEffect(() => {
     const updateTitle = () => {
       const folders = getWorkspaceFolders();
@@ -178,55 +174,12 @@ const FoldersView: React.FC = () => {
             </button>
           </>
         ),
-        // E4V#57: sticky scroll——壳层 PinnedSlot，VS Code推出算法
-        pinnedContent: () => {
-          const rows = stickyRowsRef.current;
-          if (rows.length === 0) return null;
-          const count = rows.length;
-          return (
-            <div style={{ position: "relative", height: count * TREE_ITEM_HEIGHT, overflow: "hidden" }}>
-              {rows.map((row, i) => (
-                <div key={row.item.uri} className="file-tree-sticky-row"
-                  style={{
-                    position: "absolute",
-                    top: row.top,
-                    left: 0,
-                    right: 0,
-                    height: TREE_ITEM_HEIGHT,
-                    zIndex: count - i,
-                    paddingLeft: (row.depth - 1) * TREE_INDENT,
-                  }}>
-                  <span className={`codicon ${row.item.isDirectory ? "codicon-chevron-down" : ""} file-tree-twistie file-tree-twistie--expanded`} />
-                  <span className="codicon codicon-folder-opened file-tree-icon" />
-                  <span className="file-tree-name">{row.item.name}</span>
-                </div>
-              ))}
-            </div>
-          );
-        },
       });
     };
     updateTitle();
     const unsub = onDidChangeFolders(updateTitle);
     return unsub;
-  }, [t, stickyVersion]);
-
-  /* ── E4V#20+P2: Scroll 监听——触发壳层 sticky 更新 ── */
-  useEffect(() => {
-    // 找滚动容器（与 FileTree 共用同一个 .side-panel-content）
-    const scrollEl = document.querySelector<HTMLElement>(".side-panel-content");
-    if (!scrollEl) return;
-    let raf = 0;
-    const handler = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        setStickyVersion((v) => v + 1);
-      });
-    };
-    scrollEl.addEventListener("scroll", handler, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", handler);
-  }, []);
+  }, [t]);
 
   /* ── 打开文件 ── */
   const handleOpenFile = useCallback((_item: ExplorerItem, _mode: "preview" | "pin") => {
@@ -240,8 +193,7 @@ const FoldersView: React.FC = () => {
         {roots.length === 0 ? (
           <WelcomeView />
         ) : (
-          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu}
-            stickyRowsRef={stickyRowsRef} />
+          <FileTree model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
         )}
       </div>
 
