@@ -121,10 +121,18 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu, s
     const prev = prevStickyRef.current;
     const prevDeepest = prev[prev.length - 1];
     const candDeepest = candidateMapped[candidateMapped.length - 1];
-    // 滞回只对非根目录生效——根的后裔永远是整个视口，不参与
+    // 滞回——只在平级目录间生效。父子关系直接切换。
+    const prevUris = prev.map(p => p.item.uri);
+    const candUris = candidateMapped.map(c => c.item.uri);
+    const isDescending = prevUris.length > 0
+      && prevUris.every((u, i) => candUris[i] === u);  // 进入子目录
+    const isAscending = candUris.length > 0
+      && candUris.every((u, i) => prevUris[i] === u);   // 退回父目录
     if (prev.length > 0 && prevDeepest && candDeepest
       && prevDeepest.item.parent !== null
-      && prevDeepest.item.uri !== candDeepest.item.uri) {
+      && prevDeepest.item.uri !== candDeepest.item.uri
+      && !isDescending && !isAscending) {
+      // 平级切换——滞回：旧目录后裔还在视口内就不换
       const visibleStart = Math.floor(st / TREE_ITEM_HEIGHT);
       const visibleEnd = Math.floor((st + containerHeight) / TREE_ITEM_HEIGHT);
       const limit = Math.min(visibleEnd, flatItems.length - 1);
