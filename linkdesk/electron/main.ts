@@ -144,11 +144,11 @@ ipcMain.on('preload-ready', () => {
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
-// 渲染进程每 500ms 发 heartbeat。主进程每 1s 检查一次，
-// 若超过 2s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
+// 渲染进程每 2s 发 heartbeat。主进程每 3s 检查一次，
+// 若超过 30s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
 // 限制：单 WebView 下只能检测，无法恢复。E3 多进程后改为只重载卡死的 WebView。
 let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（渲染进程未就绪前不弹窗）
-const HEARTBEAT_TIMEOUT = 10_000; // 10s 无心跳 → 判定卡死
+const HEARTBEAT_TIMEOUT = 30_000; // 30s 无心跳 → 判定卡死
 const HEARTBEAT_CHECK_INTERVAL = 3000; // 每 3s 检查一次
 
 ipcMain.on('heartbeat', () => {
