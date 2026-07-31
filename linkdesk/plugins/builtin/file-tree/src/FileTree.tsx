@@ -103,7 +103,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     const root = flatItems[0]?.item;
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
     const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
-    return ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
+    const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
+    console.log("[sticky] scrollTop=%d firstVisible=%s sticky=[%s]",
+      scrollTop, first.item.name, result.map(r => r.item.name).join(" > ") || "(无)");
+    return result;
   }, [flatItems, model, scrollTop, containerHeight]);
 
   /* ── 滚动检测——找真实滚动容器的 scrollTop ── */
@@ -196,7 +199,15 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   /* ── 渲染 ── */
   return (
     <>
-      {stickyRows.length > 0 && sidePanelRect.width > 0 && createPortal(
+      {(() => {
+        if (stickyRows.length > 0 && sidePanelRect.width > 0) {
+          console.log("[sticky] portal render: rect=(%d,%d,%d) rows=%d",
+            sidePanelRect.top, sidePanelRect.left, sidePanelRect.width, stickyRows.length);
+          return true;
+        }
+        if (stickyRows.length > 0) console.log("[sticky] portal SKIP: width=0");
+        return false;
+      })() && createPortal(
         <div className="file-tree-sticky-overlay" style={{
           position: "fixed", top: sidePanelRect.top, left: sidePanelRect.left,
           width: sidePanelRect.width, zIndex: 10,
