@@ -27,6 +27,15 @@ interface FileTreeProps {
 
 /* ── 工具 ── */
 
+/** 在 flatItems 中找目录最后一个后代的索引。反向扫描——第一个匹配即停。 */
+function findLastDescendant(dirUri: string, flatItems: FlatItem[]): number {
+  for (let i = flatItems.length - 1; i >= 0; i--) {
+    const uri = flatItems[i].item.uri;
+    if (uri === dirUri || uri.startsWith(dirUri + "/")) return i;
+  }
+  return -1;
+}
+
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
