@@ -31,6 +31,8 @@ interface FileMenuContext {
 let _model: FileTreeModel | null = null;
 /** E4V#24: command handler 读当前选中 URI 列表——delete/cut/copy 需要 */
 let _selectedUris: string[] = [];
+/** E4V#26: 键盘粘贴时推断目标目录——focused item 是目录则粘进去，是文件则粘到父目录 */
+let _focusedUri: string | null = null;
 
 /** FoldersView mount 时调用——注入 model 供 command handler 使用 */
 export function setFileTreeRefs(model: FileTreeModel): void {
@@ -40,6 +42,11 @@ export function setFileTreeRefs(model: FileTreeModel): void {
 /** E4V#24: 注入选中 URI 列表——FileTree selection 变化时同步 */
 export function setSelectedUris(uris: string[]): void {
   _selectedUris = uris;
+}
+
+/** E4V#26: 注入聚焦 URI——键盘粘贴推断目标目录 */
+export function setFocusedUriBridge(uri: string | null): void {
+  _focusedUri = uri;
 }
 
 /** FoldersView unmount 时调用——清除引用防泄漏 */
@@ -116,13 +123,18 @@ export function activateFileTreeContextMenu(): void {
     const model = _model;
     if (!model) return;
     const ctx = args[0] as FileMenuContext | undefined;
-    const targetDir = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
+    // 目标目录：右键菜单传 ctx → 键盘快捷键从 focusedUri 推断 → 回退到 root
+    let targetDir = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : "";
+    if (!targetDir && _focusedUri) {
+      const focused = model.findClosest(_focusedUri);
+      targetDir = focused?.isDirectory ? focused.uri : dirname(_focusedUri);
+    }
+    if (!targetDir) targetDir = model.roots[0]?.uri ?? "";
     if (!targetDir) return;
     const { uris, isCut } = fileTreeClipboard.pull();
     if (uris.length === 0) return;
     const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
     await executeSafeDrop(sources, targetDir, isCut ? "move" : "copy");
-    // 🛡️ paste 后清空模块级选中（clipboard.pull 已清空 cut 内容）
     _selectedUris = [];
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
