@@ -54,7 +54,7 @@
 | R5 | 剪贴板服务 | E4V#14 | 1/1 | ✅ 2026-07-31 |
 | R6 | UI 对齐 VS Code | E4V#15-E4V#16 | 2/2 | ✅ 2026-07-31 🔥 E4V#15b 已放弃 |
 | R7 | 简单命令 handler | E4V#17-E4V#19 | 3/3 | ✅ 2026-07-31 |
-| R8 | 新建文件/文件夹 + sticky scroll（←CSS→fixed→🆕PinnedSlot 壳层槽位） | E4V#20a–h + E4V#20+i–viii + E4V#20+F0–F5 + E4V#20+P0–P3 | 15/26 | 🔄 P0-P3 待做 |
+| R8 | 新建文件/文件夹 + sticky scroll（🗑️CSS→fixed→🆕PinnedSlot） | E4V#20a–h + 20+i–viii + 20+F0–F5 + 20+P0–P3 | 21/26 | 🔄 P0-P3 待做，前两方案已废弃 |
 | R9 | 多选 | E4V#21-E4V#23 | 0/3 | |
 | R10 | 编辑命令 handler | E4V#24-E4V#26 | 0/3 | |
 | R11 | 行内重命名 | E4V#27 | 0/1 | |
