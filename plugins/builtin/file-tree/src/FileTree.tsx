@@ -66,8 +66,22 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [selectedUri, setSelectedUri] = useState<string | null>(null);
+  /** E4V#21: 多选——Set<string> 替代 selectedUri 单选 */
+  const [selection, setSelection] = useState<Set<string>>(new Set());
+  const [lastClickedUri, setLastClickedUri] = useState<string | null>(null);
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
+
+  /** E4V#22: ref 桥接——handleSelect 读最新 flatItems/lastClickedUri 做范围选中，回调保持 [] deps 稳定 */
+  const flatItemsRef = useRef<FlatItem[]>([]);
+  const lastClickedUriRef = useRef<string | null>(null);
+
+  /** E4V#21: 键盘/单击→单选（清 Set + 加一项）——键盘回调签名不变 */
+  const selectSingle = useCallback((uri: string) => {
+    setSelection(new Set([uri]));
+    setLastClickedUri(uri);
+  }, []);
+  // E4V#22: 同步 lastClickedUri ref——handleSelect 读最新值，保持 [] deps 稳定
+  lastClickedUriRef.current = lastClickedUri;
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
 
@@ -87,6 +101,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   /* ── 虚拟列表 ── */
   const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
+  flatItemsRef.current = flatItems; // E4V#22: handleSelect 通过 ref 读最新 flatItems
   const startIndex = Math.max(0, Math.floor(scrollTop / TREE_ITEM_HEIGHT) - OVERSCAN);
   const visibleCount = containerHeight > 0 ? Math.ceil(containerHeight / TREE_ITEM_HEIGHT) + 2 * OVERSCAN : 50;
   const endIndex = Math.min(flatItems.length, startIndex + visibleCount);
@@ -135,18 +150,71 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [model]);
 
   /* ── 选中 / 打开 / 右键 ── */
-  const handleSelect = useCallback((uri: string) => { setSelectedUri(uri); setFocusedUri(uri); }, []);
+  /**
+   * E4V#21: Ctrl/Meta+Click → toggle 单项进/出选中集合。
+   * E4V#22: Shift+Click → 从 lastClickedUri 到当前项范围选中。
+   * 普通 Click → 单选。
+   * 🛡️ [] deps + ref 桥接——回调稳定，React.memo(FileTreeNode) 不重渲染。
+   */
+  const handleSelect = useCallback((uri: string, event: React.MouseEvent) => {
+    // E4V#22: Shift+Click 范围选中
+    if (event.shiftKey && lastClickedUriRef.current) {
+      const items = flatItemsRef.current;
+      const lastIdx = items.findIndex(f => f.item.uri === lastClickedUriRef.current);
+      const currIdx = items.findIndex(f => f.item.uri === uri);
+      if (lastIdx !== -1 && currIdx !== -1) {
+        const [start, end] = lastIdx < currIdx ? [lastIdx, currIdx] : [currIdx, lastIdx];
+        setSelection(new Set(items.slice(start, end + 1).map(f => f.item.uri)));
+        setFocusedUri(uri);
+        // 🔥 Shift+Click 不更新 lastClickedUri——对标 VS Code 行为
+        return;
+      }
+      // lastClickedUri 不在 flatItems 中（已折叠/删除）→ 退化为单选
+    }
+
+    // E4V#21: Ctrl/Meta+Click → toggle
+    if (event.ctrlKey || event.metaKey) {
+      setSelection((prev) => {
+        const next = new Set(prev);
+        if (next.has(uri)) { next.delete(uri); } else { next.add(uri); }
+        return next;
+      });
+    } else {
+      setSelection(new Set([uri]));
+    }
+    setFocusedUri(uri);
+    setLastClickedUri(uri);
+  }, []);
   const handleOpen = useCallback((item: ExplorerItem, mode: "preview" | "pin") => { onOpenFile(item, mode); }, [onOpenFile]);
+  /** E4V#21: 右键菜单前——右键项不在选中集合则自动切为单选（对标 VS Code）。
+   *  🛡️ ref 桥接——避免 selection 进 useCallback deps 导致所有 React.memo 节点重渲染 */
+  const selectionRef = useRef(selection);
+  selectionRef.current = selection;
   const handleContextMenu = useCallback((item: ExplorerItem, event: React.MouseEvent) => {
-    setSelectedUri(item.uri);
+    if (!selectionRef.current.has(item.uri)) {
+      setSelection(new Set([item.uri]));
+    }
     onContextMenu?.(item, event);
   }, [onContextMenu]);
 
   /* ── 键盘 / 拖放 ── */
-  const handleKeyDown = useFileTreeKeyboard(
+  const rawKeyDown = useFileTreeKeyboard(
     { model, flatItems, focusedUri },
-    { setFocusedUri, setSelectedUri, rerender, onOpenFile, onTwistie: handleTwistie, getContainerEl: () => containerRef.current },
+    { setFocusedUri, setSelectedUri: selectSingle, rerender, onOpenFile, onTwistie: handleTwistie, getContainerEl: () => containerRef.current },
   );
+
+  /** E4V#23: Ctrl+A 全选——拦截后走 ref 读最新 flatItems，其余键委托给键盘 hook */
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.key === "a") {
+      e.preventDefault();
+      const items = flatItemsRef.current;
+      if (items.length > 0) {
+        setSelection(new Set(items.map(f => f.item.uri)));
+      }
+      return;
+    }
+    rawKeyDown(e);
+  }, [rawKeyDown]);
   const { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop } = useFileTreeDnD({
     flatItems, model, rerender, getContainerEl: () => containerRef.current,
   });
@@ -184,7 +252,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
           <FileTreeNode key={item.uri} item={item} depth={depth} indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
-            isSelected={item.uri === selectedUri} isFocused={item.uri === focusedUri}
+            isSelected={selection.has(item.uri)} isFocused={item.uri === focusedUri}
             isDragSource={dndState.sourceUri === item.uri}
             isDragHover={dndState.hoverIndex === startIndex + i}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
