@@ -112,6 +112,10 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     const ancestors = model.getAncestors(first.item);
     const root = flatItems[0]?.item;
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
+    // firstVisible 本身是展开的目录 → 也加入（对标 VS Code getNextStickyNode）
+    if (first.item.isDirectory && model.isExpanded(first.item.uri) && first.item.uri !== root?.uri) {
+      ancestors.push(first.item);
+    }
     const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
     const maxCount = Math.min(7, Math.max(1, byHeight));
     // 给每个 sticky 行计算动态 position（推出过渡）

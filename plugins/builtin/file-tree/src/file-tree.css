@@ -124,8 +124,10 @@
 
 .file-tree-sticky-overlay {
   position: relative;
+  overflow: hidden;
   pointer-events: auto;
   background: var(--bg-side-panel);
+  border-bottom: 1px solid var(--border);
 }
 
 .file-tree-sticky-row {
