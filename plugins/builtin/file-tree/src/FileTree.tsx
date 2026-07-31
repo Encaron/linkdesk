@@ -133,6 +133,23 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     setScrollTop(el.scrollTop);
   }, []);
 
+  // E4V#20+ii: 找真实滚动容器（overflow-y:auto 的祖先），监听其 scroll 事件
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    let scrollEl: HTMLElement | null = el.parentElement;
+    while (scrollEl) {
+      const s = window.getComputedStyle(scrollEl);
+      if (s.overflowY === "auto" || s.overflowY === "scroll") break;
+      scrollEl = scrollEl.parentElement;
+    }
+    if (!scrollEl) return;
+    setScrollTop(scrollEl.scrollTop);
+    const handler = () => setScrollTop(scrollEl.scrollTop);
+    scrollEl.addEventListener("scroll", handler, { passive: true });
+    return () => scrollEl.removeEventListener("scroll", handler);
+  }, []);
+
   /* ── twistie 展开/折叠 ── */
 
   const handleTwistie = useCallback(
