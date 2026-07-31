@@ -20,7 +20,7 @@ import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { ExplorerItem } from "../FileTreeModel";
 import { FileExcludeFilter } from "../FileExcludeFilter";
-import { joinPath } from "../pathUtils";
+import { joinPath, normalizePath } from "../pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
@@ -108,17 +108,18 @@ const FoldersView: React.FC = () => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     const unsub2 = CoreEvents.onDidChangeFileSystem.event((events) => {
-      console.log("[fs-watch] TRIGGER at %ds: %d events, expanded=%d",
-        ((Date.now() - performance.timeOrigin) / 1000).toFixed(1),
-        events.length, model.getExpandedUris().length);
+      const folders = getWorkspaceFolders();
+      const inWorkspace = events.some(e => folders.some(f => {
+        const np = normalizePath(e.path);
+        const nr = normalizePath(f.uri);
+        return np === nr || np.startsWith(nr + "/");
+      }));
+      if (!inWorkspace) return;
       model.refresh().then(async () => {
         for (const uri of model.getExpandedUris()) {
           const item = model.findClosest(uri);
           if (item) await model.getChildren(item).catch(() => {});
         }
-        console.log("[fs-watch] RELOAD done at %ds, expanded=%d",
-          ((Date.now() - performance.timeOrigin) / 1000).toFixed(1),
-          model.getExpandedUris().length);
         rerender();
       });
     });
