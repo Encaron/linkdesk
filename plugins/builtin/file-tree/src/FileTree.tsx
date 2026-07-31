@@ -245,17 +245,29 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     return state;
   }, [flatItems, model, scrollTop, containerHeight]);
 
-  /* ── 滚动——E4V#20+ii: 监听真实滚动容器 .side-panel-content ── */
+  /* ── 滚动——E4V#20+ii: rAF 延迟后 DOM 遍历找滚动祖先 ── */
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const scrollEl = el.closest<HTMLElement>(".side-panel-content");
-    if (!scrollEl) return;
-    setScrollTop(scrollEl.scrollTop);
-    const handler = () => setScrollTop(scrollEl.scrollTop);
-    scrollEl.addEventListener("scroll", handler, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", handler);
+    let cleanup: (() => void) | undefined;
+    const raf = requestAnimationFrame(() => {
+      let scrollEl: HTMLElement | null = el.parentElement;
+      while (scrollEl) {
+        const s = window.getComputedStyle(scrollEl);
+        if (s.overflowY === "auto" || s.overflowY === "scroll") break;
+        scrollEl = scrollEl.parentElement;
+      }
+      if (!scrollEl) return;
+      setScrollTop(scrollEl.scrollTop);
+      const handler = () => setScrollTop(scrollEl.scrollTop);
+      scrollEl.addEventListener("scroll", handler, { passive: true });
+      cleanup = () => scrollEl!.removeEventListener("scroll", handler);
+    });
+    return () => {
+      cancelAnimationFrame(raf);
+      cleanup?.();
+    };
   }, []);
 
   /* ── twistie 展开/折叠 ── */
