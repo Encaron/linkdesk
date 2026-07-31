@@ -150,7 +150,7 @@ export class FileTreeModel {
 
   /* ── 展开/折叠 ── */
 
-  expand(uri: string): void { this._expanded.add(uri); this.onDidChange.fire(); }
+  expand(uri: string): void { this._expanded.add(uri); /* fire 由 getChildren 触发——避免中间态无子节点闪现 */ }
   collapse(uri: string): void { this._expanded.delete(uri); this.onDidChange.fire(); }
   isExpanded(uri: string): boolean { return this._expanded.has(uri); }
   collapseAll(): void { this._expanded.clear(); this.onDidChange.fire(); }
