@@ -72,7 +72,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
-  const [bootTime] = useState(Date.now());
+  const bootTime = performance.timeOrigin; // 页面加载时间 ≈ app 启动时间
   const [firstExpandTime, setFirstExpandTime] = useState(0);
 
   /* ── ResizeObserver ── */
@@ -239,7 +239,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
           const isRed = elapsed >= 10;
           return (
             <div style={{
-              position: "fixed", top: 8, right: 8, zIndex: 9999,
+              position: "fixed", top: 65, left: 48, zIndex: 9999,
               background: isRed ? "#FF0000" : "rgba(0,0,0,0.7)",
               color: "#FFF", padding: "4px 10px", borderRadius: 4,
               fontSize: 14, fontFamily: "monospace",
