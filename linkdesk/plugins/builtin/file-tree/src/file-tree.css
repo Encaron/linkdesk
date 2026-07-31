@@ -120,6 +120,20 @@
   background: transparent;
 }
 
+/* ═══ E4V#20+F3: sticky fixed overlay ═══ */
+
+.file-tree-sticky-overlay {
+  pointer-events: auto;
+  background: var(--bg-side-panel);
+  border-bottom: 1px solid var(--border);
+}
+
+.file-tree-sticky-row {
+  display: flex;
+  align-items: center;
+  background: var(--bg-side-panel);
+}
+
 /* E4b #99k: 自定义滚动条——暗色主题，对标 HTML 预览 */
 .file-tree-scroll::-webkit-scrollbar { width: 4px; }
 .file-tree-scroll::-webkit-scrollbar-track { background: transparent; }
