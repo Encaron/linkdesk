@@ -65,6 +65,7 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const scrollTopRef = useRef(0); // 实时值，绕过 React setState 异步延迟
   const [containerHeight, setContainerHeight] = useState(0);
   const [sidePanelRect, setSidePanelRect] = useState({ top: 0, left: 0, width: 0 });
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
@@ -104,17 +105,19 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   // E4V#20+F2: sticky rows——根始终在最前，约束 ≤7 + ≤40% 视口
   const stickyRows = useMemo(() => {
-    if (scrollTop <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
-    const idx = Math.floor((scrollTop + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
+    const st = scrollTopRef.current;
+    if (st <= 0 || flatItems.length === 0) return [] as { item: ExplorerItem; depth: number }[];
+    const idx = Math.floor((st + TREE_ITEM_HEIGHT / 2) / TREE_ITEM_HEIGHT);
     const first = flatItems[Math.min(idx, flatItems.length - 1)];
     const ancestors = model.getAncestors(first.item);
     const root = flatItems[0]?.item;
     if (root && root.isDirectory && ancestors[0]?.uri !== root.uri) ancestors.unshift(root);
-    const maxCount = Math.min(7, containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7);
+    const byHeight = containerHeight > 0 ? Math.floor(containerHeight * 0.4 / TREE_ITEM_HEIGHT) : 7;
+    const maxCount = Math.min(7, Math.max(1, byHeight));
     const result = ancestors.slice(0, maxCount).map((item, i) => ({ item, depth: i + 1 }));
     const stickyNames = result.map(r => r.item.name).join(" > ") || "(无)";
-    console.log("[sticky] scrollTop=%d containerH=%d idx=%d flatTotal=%d first='%s' parents=[%s] → sticky=[%s]",
-      scrollTop, containerHeight, idx, flatItems.length,
+    console.log("[sticky] st=%d(state=%d) containerH=%d idx=%d flatTotal=%d first='%s' parents=[%s] → sticky=[%s]",
+      st, scrollTop, containerHeight, idx, flatItems.length,
       first.item.name,
       model.getAncestors(first.item).map(a => a.name).join(">"),
       stickyNames);
@@ -122,12 +125,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [flatItems, model, scrollTop, containerHeight]);
 
   /* ── 滚动检测——找真实滚动容器的 scrollTop ── */
-  const handleScroll = useCallback(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    setScrollTop(el.scrollTop);
-  }, []);
-
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -137,8 +134,9 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       scrollEl = scrollEl.parentElement;
     }
     if (!scrollEl) return;
+    scrollTopRef.current = scrollEl.scrollTop;
     setScrollTop(scrollEl.scrollTop);
-    const handler = () => setScrollTop(scrollEl.scrollTop);
+    const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
     scrollEl.addEventListener("scroll", handler, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handler);
   }, []);
@@ -240,7 +238,7 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
         </div>,
         document.body,
       )}
-      <div ref={containerRef} tabIndex={0} onScroll={handleScroll} onKeyDown={handleKeyDown}
+      <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown}
         onFocus={handleFocus} onBlur={handleBlur}
         onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
         className="file-tree-scroll">
