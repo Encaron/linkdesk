@@ -4,7 +4,6 @@
  */
 
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
-import { createPortal } from "react-dom";
 import FileTreeNode from "./FileTreeNode";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
@@ -67,7 +66,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
   const [containerHeight, setContainerHeight] = useState(0);
-  const [sidePanelRect, setSidePanelRect] = useState({ top: 0, left: 0, width: 0 });
   const [selectedUri, setSelectedUri] = useState<string | null>(null);
   const [focusedUri, setFocusedUri] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
@@ -127,19 +125,6 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
     scrollEl.addEventListener("scroll", handler, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handler);
-  }, []);
-
-  /* ── side-panel rect ── */
-  useEffect(() => {
-    const el = containerRef.current;
-    if (!el) return;
-    const scrollEl = el.closest<HTMLElement>(".side-panel-content");
-    if (!scrollEl) return;
-    const update = () => { const r = scrollEl.getBoundingClientRect(); setSidePanelRect({ top: r.top, left: r.left, width: r.width }); };
-    update();
-    scrollEl.addEventListener("scroll", update, { passive: true });
-    window.addEventListener("resize", update);
-    return () => { scrollEl.removeEventListener("scroll", update); window.removeEventListener("resize", update); };
   }, []);
 
   /* ── twistie 展开/折叠 ── */
@@ -207,44 +192,24 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
 
   /* ── 渲染 ── */
   return (
-    <>
-      {stickyRows.length > 0 && sidePanelRect.width > 0 && createPortal(
-        <div className="file-tree-sticky-overlay" style={{
-          position: "fixed", top: sidePanelRect.top, left: sidePanelRect.left,
-          width: sidePanelRect.width, zIndex: 10,
-        }}>
-          {stickyRows.map((row) => (
-            <div key={row.item.uri} className="file-tree-sticky-row" style={{
-              height: TREE_ITEM_HEIGHT, paddingLeft: (row.depth - 1) * TREE_INDENT,
-            }}>
-              <FileTreeNode item={row.item} depth={row.depth} indent={0}
-                expanded={true} isSelected={false} isFocused={false}
-                onSelect={handleSelect} onOpen={handleOpen}
-                onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />
-            </div>
-          ))}
-        </div>,
-        document.body,
-      )}
-      <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown}
-        onFocus={handleFocus} onBlur={handleBlur}
-        onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
-        className="file-tree-scroll">
-        <div style={{ height: totalHeight, position: "relative" }}>
-          <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
-          {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-            <FileTreeNode key={item.uri} item={item} depth={depth} indent={0}
-              expanded={item.isDirectory && model.isExpanded(item.uri)}
-              isSelected={item.uri === selectedUri} isFocused={item.uri === focusedUri}
-              isDragSource={dndState.sourceUri === item.uri}
-              isDragHover={dndState.hoverIndex === startIndex + i}
-              compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
-              onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
-              onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />
-          ))}
-        </div>
+    <div ref={containerRef} tabIndex={0} onKeyDown={handleKeyDown}
+      onFocus={handleFocus} onBlur={handleBlur}
+      onDragOver={handleDragOver} onDragLeave={handleDragLeave} onDrop={handleDrop}
+      className="file-tree-scroll">
+      <div style={{ height: totalHeight, position: "relative" }}>
+        <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
+        {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
+          <FileTreeNode key={item.uri} item={item} depth={depth} indent={0}
+            expanded={item.isDirectory && model.isExpanded(item.uri)}
+            isSelected={item.uri === selectedUri} isFocused={item.uri === focusedUri}
+            isDragSource={dndState.sourceUri === item.uri}
+            isDragHover={dndState.hoverIndex === startIndex + i}
+            compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
+            onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
+            onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />
+        ))}
       </div>
-    </>
+    </div>
   );
 };
 

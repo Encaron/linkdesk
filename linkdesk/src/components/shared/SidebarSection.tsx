@@ -70,10 +70,26 @@ function SidebarSection({
     [toggle],
   );
 
+  /**
+   * section-header-height: SidebarSection header 行高——CSS `.sidebar-section-header { height: 22px }`。
+   * pinnedContent sticky top 偏移需对齐此值。若 header 被隐藏（headerHidden），偏移退化为 0。
+   * 🔥 28px = 22px header + 6px 额外间距（与 file-tree-header 28px 对齐）。TODO 归一到 CSS 变量。
+   */
+  const HEADER_H = 28;
+
   // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
   if (headerHidden) {
     return (
       <div className="sidebar-section">
+        {open && pinnedContent && (
+          <div className="sidebar-section-pinned" style={{
+            position: "sticky",
+            top: stickyTop ?? 0,
+            zIndex: 1,
+          }}>
+            {pinnedContent()}
+          </div>
+        )}
         {open && <div className="sidebar-section-body">{children}</div>}
       </div>
     );
@@ -116,7 +132,7 @@ function SidebarSection({
       {open && pinnedContent && (
         <div className="sidebar-section-pinned" style={{
           position: "sticky",
-          top: (stickyTop ?? 0) + 28,
+          top: (stickyTop ?? 0) + HEADER_H,
           zIndex: 1,
         }}>
           {pinnedContent()}
