@@ -88,9 +88,11 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
   }, [model, rerender]);
 
   /* ── 虚拟列表 ── */
+  const flatItemsRef = useRef<FlatItem[]>([]);
   const flatItems = useMemo(() => {
     void (version);
     const items = flattenTree(model);
+    flatItemsRef.current = items;
     console.log("[file-tree] flatItems=%d roots=[%s] expanded=[%s]",
       items.length,
       model.roots.map(r => r.name).join(","),
@@ -137,9 +139,18 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
       result.push({ item: ancestor, depth: i + 1, position: pos });
       stickyH = pos + TREE_ITEM_HEIGHT;
     }
-    console.log("[sticky] st=%d idx=%d first='%s' → sticky=[%s]",
-      st, idx, first.item.name,
-      result.map(r => `${r.item.name}@${r.position}`).join(" > ") || "(无)");
+    const parts = result.map(r => {
+      // 找该 sticky 行在 flatItems 中的区间
+      let s = -1, e = -1;
+      for (let j = 0; j < flatItems.length; j++) {
+        const u = flatItems[j].item.uri;
+        if (u === r.item.uri || (u.startsWith(r.item.uri) && u[r.item.uri.length] === "/")) { if (s === -1) s = j; e = j; }
+      }
+      const topPx = s >= 0 ? s * TREE_ITEM_HEIGHT - st : -1; // 该项在视口中的 top
+      return `${r.item.name}(pos=${r.position}px idx=[${s},${e}] itemTop=${topPx}px)`;
+    }).join("\n    ");
+    console.log("[sticky] st=%d idx=%d first='%s'(d=%d) flatTotal=%d →\n    %s",
+      st, idx, first.item.name, first.depth, flatItems.length, parts || "(无)");
     return result;
   }, [flatItems, model, scrollTop, containerHeight]);
 
@@ -155,7 +166,18 @@ const FileTree: React.FC<FileTreeProps> = ({ model, onOpenFile, onContextMenu })
     if (!scrollEl) return;
     scrollTopRef.current = scrollEl.scrollTop;
     setScrollTop(scrollEl.scrollTop);
-    const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
+    const handler = () => {
+      const st = scrollEl.scrollTop;
+      scrollTopRef.current = st; setScrollTop(st);
+      // 打印视口顶部 3 行：item名 + 像素top(负=已滚出)
+      const fi = flatItemsRef.current;
+      if (fi.length > 0) {
+        const i0 = Math.floor(st / TREE_ITEM_HEIGHT);
+        const top3 = [fi[i0], fi[i0 + 1], fi[i0 + 2]].filter(Boolean).map((f, k) =>
+          `${f.item.name}(d=${f.depth} top=${(i0 + k) * TREE_ITEM_HEIGHT - st}px)`);
+        console.log("[scroll] st=%d top3=[%s]", st, top3.join(", "));
+      }
+    };
     scrollEl.addEventListener("scroll", handler, { passive: true });
     return () => scrollEl.removeEventListener("scroll", handler);
   }, []);
