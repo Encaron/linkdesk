@@ -147,9 +147,9 @@ function findStickyState(
   if (!firstVisible) return [];
 
   const ancestors = model.getAncestors(firstVisible.item);
-  // scrollTop===0 或根本身部分滚出时 getAncestors 返回空——根至少有一个
-  if (ancestors.length === 0 && scrollTop < TREE_ITEM_HEIGHT) {
-    const root = model.roots[0];
+  // 根部分滚出（0 < scrollTop < 22）且 firstVisible 还是根本身时，补根
+  if (ancestors.length === 0 && scrollTop > 0) {
+    const root = firstVisible.item.parent === null ? firstVisible.item : model.roots[0];
     if (root) {
       const range = getNodeRange(root, flatItems);
       if (range) {
