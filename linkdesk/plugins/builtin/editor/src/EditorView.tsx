@@ -58,15 +58,28 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 影子 model 扫描在 beforeMount 中启动，但异步，可能晚于 TS worker 首次分析。
-    //    等扫描完成后，modelswitch 触发 TS 重分析——切 plaintext 再切回，零文件改动。
-    scanWorkspaceForTypeScript(monaco).then(() => {
-      const m = editor.getModel();
-      if (!m || m.isDisposed()) return;
-      const lang = m.getLanguageId();
-      monaco.editor.setModelLanguage(m, "plaintext");
-      monaco.editor.setModelLanguage(m, lang);
-      console.log("[editor] TS re-analyze after scan");
+    // 🔥 诊断：注册 F12 handler——直接问 TS worker 能否找到定义
+    editor.addAction({
+      id: "linkdesk-go-to-definition",
+      label: "Go to Definition (LinkDesk)",
+      keybindings: [monaco.KeyCode.F12],
+      run: async (ed: any) => {
+        const model = ed.getModel();
+        const pos = ed.getPosition();
+        if (!model || !pos) return;
+        console.log("[editor] F12——查询定义:", model.uri.toString(), pos.lineNumber, pos.column);
+        try {
+          const worker = await monaco.languages.typescript.getTypeScriptWorker();
+          const client = await worker(model.uri);
+          const defs = await client.getDefinitionAtPosition(
+            model.uri.toString(),
+            { line: pos.lineNumber, offset: pos.column - 1 },
+          );
+          console.log("[editor] F12——TS worker 返回:", JSON.stringify(defs));
+        } catch (e) {
+          console.error("[editor] F12——TS worker 出错:", e);
+        }
+      },
     });
   }, []);
 
