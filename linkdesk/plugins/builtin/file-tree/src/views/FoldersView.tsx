@@ -22,6 +22,7 @@ import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
 import { FileTreeDecorationService } from "../FileTreeDecoration";
 import WelcomeView from "../WelcomeView";
+import SearchView from "./SearchView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { FileTreeHandle } from "../FileTree";
 import type { ExplorerItem } from "../FileTreeModel";
@@ -340,7 +341,7 @@ const FoldersView: React.FC = () => {
       title: t("搜索"),
       order: 1,
       collapsed: true,
-      render: () => null, // placeholder——E4V#37c 替换为 <SearchView />
+      render: () => <SearchView />,
     });
   }, [t]);
 

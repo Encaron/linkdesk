@@ -1,0 +1,302 @@
+/**
+ * SearchView——文件搜索侧栏面板。
+ * E4V#37c：对标 VS Code search viewlet。
+ *
+ * 消费 FileSearcher（src/core/）——纯视图层，不碰搜索逻辑。
+ */
+
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
+import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
+import { getWorkspaceFolders } from "@src/core/WorkspaceService";
+import { useTabActions } from "@src/core/TabActionsContext";
+import { getPluginFor } from "@src/core/FileAssociationService";
+import { extension } from "../pathUtils";
+import "./SearchView.css";
+
+/* ── 状态 ── */
+
+type SearchState = "idle" | "searching" | "hasResults" | "noResults" | "error";
+
+/* ── 组件 ── */
+
+const SearchView: React.FC = () => {
+  const { t } = useTranslation();
+  const tabActions = useTabActions();
+
+  /* ── 输入 ── */
+  const [query, setQuery] = useState("");
+  const [replaceText, setReplaceText] = useState("");
+  const [showReplace, setShowReplace] = useState(false);
+  const [include, setInclude] = useState("");
+  const [exclude, setExclude] = useState("");
+  const [caseSensitive, setCaseSensitive] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
+  const [useRegex, setUseRegex] = useState(false);
+
+  /* ── 结果 ── */
+  const [state, setState] = useState<SearchState>("idle");
+  const [results, setResults] = useState<FileSearchResult[]>([]);
+  const [totalFiles, setTotalFiles] = useState(0);
+  const [totalMatches, setTotalMatches] = useState(0);
+  const [errorMsg, setErrorMsg] = useState("");
+  const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+
+  /* ── 搜索逻辑 ── */
+  const abortRef = useRef<AbortController | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const doSearch = useCallback(async (q: string) => {
+    if (!q.trim()) {
+      setState("idle");
+      setResults([]);
+      setTotalFiles(0);
+      setTotalMatches(0);
+      return;
+    }
+
+    // 取消旧搜索
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const roots = getWorkspaceFolders().map((f) => f.uri);
+    if (roots.length === 0) {
+      setState("idle");
+      return;
+    }
+
+    setState("searching");
+    setErrorMsg("");
+
+    try {
+      const found = await searchFiles({
+        roots,
+        query: q,
+        include: include || undefined,
+        exclude: exclude || undefined,
+        caseSensitive,
+        wholeWord,
+        useRegex,
+        signal: controller.signal,
+      });
+
+      if (controller.signal.aborted) return;
+
+      const files = found.length;
+      const matches = found.reduce((sum, f) => sum + f.matches.length, 0);
+      setResults(found);
+      setTotalFiles(files);
+      setTotalMatches(matches);
+      // 自动展开第一个文件
+      if (found.length > 0) {
+        setExpandedFiles(new Set([found[0].filePath]));
+      }
+      setState(files > 0 ? "hasResults" : "noResults");
+    } catch (err) {
+      if (controller.signal.aborted) return;
+      setState("error");
+      setErrorMsg(String(err));
+    }
+  }, [include, exclude, caseSensitive, wholeWord, useRegex]);
+
+  // 300ms debounce
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => doSearch(query), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [query, doSearch]);
+
+  // cleanup on unmount
+  useEffect(() => () => {
+    if (abortRef.current) abortRef.current.abort();
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+  }, []);
+
+  /* ── 打开文件 ── */
+
+  const handleOpenMatch = useCallback((match: SearchMatch) => {
+    const ext = extension(match.filePath);
+    if (!ext) return;
+    const pluginId = getPluginFor(ext);
+    if (!pluginId) return;
+    tabActions?.createTab(pluginId, {
+      filePath: match.filePath,
+      label: match.filePath.split("/").pop() ?? match.filePath,
+      pinned: true,
+    });
+  }, [tabActions]);
+
+  /* ── 折叠展开 ── */
+
+  const toggleFile = useCallback((filePath: string) => {
+    setExpandedFiles((prev) => {
+      const next = new Set(prev);
+      if (next.has(filePath)) next.delete(filePath);
+      else next.add(filePath);
+      return next;
+    });
+  }, []);
+
+  /* ── 替换全部 ── */
+
+  const handleReplaceAll = useCallback(async () => {
+    if (!replaceText || results.length === 0) return;
+    const ok = window.confirm(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
+    if (!ok) return;
+
+    const { readBinaryFile, writeFile } = await import("@src/core/FileService");
+    const { EncodingService } = await import("@src/core/encoding/EncodingService");
+    let replaced = 0;
+
+    for (const file of results) {
+      try {
+        const buffer = await readBinaryFile(file.filePath);
+        const encoding = EncodingService.detect(buffer);
+        let content = EncodingService.decode(buffer, encoding);
+        for (const m of file.matches.reverse()) {
+          const lineStart = content.split("\n").slice(0, m.lineNumber - 1).join("\n").length;
+          const absStart = lineStart + (m.lineNumber === 1 ? 0 : 1) + m.matchStart;
+          content = content.slice(0, absStart) + replaceText + content.slice(absStart + (m.matchEnd - m.matchStart));
+          replaced++;
+        }
+        await writeFile(file.filePath, content);
+      } catch { /* 替换失败静默 */ }
+    }
+
+    // 重新搜索
+    doSearch(query);
+  }, [replaceText, results, totalMatches, query, doSearch, t]);
+
+  /* ── 统计文案 ── */
+
+  const statsText = state === "searching"
+    ? t("搜索中…")
+    : state === "noResults"
+      ? t("未找到结果")
+      : state === "hasResults"
+        ? `${totalFiles} ${t("个文件")}, ${totalMatches} ${t("个匹配")}`
+        : "";
+
+  /* ── 键盘：Enter 搜索 / Escape 清空 ── */
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      setQuery("");
+      inputRef.current?.blur();
+    }
+  }, []);
+
+  return (
+    <div className="search-view">
+      {/* 搜索框 */}
+      <div className="search-input-row">
+        <input
+          ref={inputRef}
+          className="search-input"
+          type="text"
+          placeholder={t("搜索")}
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          onKeyDown={handleKeyDown}
+        />
+        <div className="search-input-actions">
+          <button className={`search-option-btn ${caseSensitive ? "search-option-btn--active" : ""}`}
+            title={t("区分大小写")} onClick={() => setCaseSensitive((v) => !v)}>Aa</button>
+          <button className={`search-option-btn ${wholeWord ? "search-option-btn--active" : ""}`}
+            title={t("全词匹配")} onClick={() => setWholeWord((v) => !v)}>ab</button>
+          <button className={`search-option-btn ${useRegex ? "search-option-btn--active" : ""}`}
+            title={t("正则表达式")} onClick={() => setUseRegex((v) => !v)}>.*</button>
+        </div>
+      </div>
+
+      {/* 替换框 */}
+      {showReplace && (
+        <div className="search-input-row">
+          <input
+            className="search-input"
+            type="text"
+            placeholder={t("替换")}
+            value={replaceText}
+            onChange={(e) => setReplaceText(e.target.value)}
+          />
+          <button className="search-replace-btn" onClick={handleReplaceAll}
+            disabled={state !== "hasResults" || !replaceText}>
+            {t("全部替换")}
+          </button>
+        </div>
+      )}
+
+      {/* 过滤输入 */}
+      <div className="search-filter-row">
+        <input
+          className="search-filter-input"
+          type="text"
+          placeholder={t("要包含的文件")}
+          value={include}
+          onChange={(e) => setInclude(e.target.value)}
+        />
+        <input
+          className="search-filter-input"
+          type="text"
+          placeholder={t("要排除的文件")}
+          value={exclude}
+          onChange={(e) => setExclude(e.target.value)}
+        />
+      </div>
+
+      {/* 工具栏：替换开关 + 折叠全部 */}
+      <div className="search-toolbar">
+        <span className="search-stats">{statsText}</span>
+        <div className="search-toolbar-actions">
+          <button className="search-option-btn" title={t("替换")}
+            onClick={() => setShowReplace((v) => !v)}>{t("替换")}</button>
+          {state === "hasResults" && (
+            <button className="search-option-btn" title={t("折叠全部")}
+              onClick={() => setExpandedFiles(new Set())}>{t("折叠全部")}</button>
+          )}
+        </div>
+      </div>
+
+      {/* 错误 */}
+      {state === "error" && (
+        <div className="search-error">{errorMsg}</div>
+      )}
+
+      {/* 结果列表 */}
+      {state === "hasResults" && (
+        <div className="search-results">
+          {results.map((file) => (
+            <div key={file.filePath} className="search-file">
+              <div className="search-file-header" onClick={() => toggleFile(file.filePath)}>
+                <span className={`codicon ${expandedFiles.has(file.filePath) ? "codicon-chevron-down" : "codicon-chevron-right"} search-file-chevron`} />
+                <span className="codicon codicon-file search-file-icon" />
+                <span className="search-file-name">{file.filePath.split("/").pop()}</span>
+                <span className="search-file-path">{file.filePath}</span>
+                <span className="search-file-count">{file.matches.length}</span>
+              </div>
+              {expandedFiles.has(file.filePath) && (
+                <div className="search-matches">
+                  {file.matches.map((m, i) => (
+                    <div key={i} className="search-match" onDoubleClick={() => handleOpenMatch(m)}>
+                      <span className="search-match-line">{m.lineNumber}</span>
+                      <span className="search-match-text">{m.lineText}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* 空结果 */}
+      {state === "noResults" && (
+        <div className="search-empty">{t("未找到结果")}</div>
+      )}
+    </div>
+  );
+};
+
+export default SearchView;
