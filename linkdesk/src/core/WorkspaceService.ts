@@ -29,7 +29,9 @@ export interface WorkspaceFolder {
 /* ── 状态 ── */
 
 let _folders: WorkspaceFolder[] = [];
+let _activeWorkspaceUri: string | null = null;
 const _onDidChangeFolders = new Emitter<WorkspaceFolder[]>();
+const _onDidChangeActiveWorkspace = new Emitter<string>();
 
 /* ── 查询 ── */
 
@@ -45,6 +47,22 @@ export function getWorkspaceRoot(): string | undefined {
 
 /** 订阅文件夹变化——对标 VS Code onDidChangeWorkspaceFolders */
 export const onDidChangeFolders: Event<WorkspaceFolder[]> = _onDidChangeFolders.event;
+
+/** 查询当前活跃工作区 URI——对标 VS Code workspace.workspaceFolders 的 active */
+export function getActiveWorkspace(): string | undefined {
+  return _activeWorkspaceUri ?? undefined;
+}
+
+/** 设置活跃工作区——下游插件（编译/下载/搜索）以活跃工作区为目标 */
+export function setActiveWorkspace(uri: string): void {
+  const normalized = normalizePath(uri);
+  if (_activeWorkspaceUri === normalized) return;
+  _activeWorkspaceUri = normalized;
+  _onDidChangeActiveWorkspace.fire(normalized);
+}
+
+/** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
+export const onDidChangeActiveWorkspace: Event<string> = _onDidChangeActiveWorkspace.event;
 
 /* ── 操作 ── */
 
@@ -85,6 +103,11 @@ export function addFolder(folderPath: string): void {
   _onDidChangeFolders.fire([..._folders]);
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
+  // 首个文件夹自动设为活跃工作区
+  if (_folders.length === 1) {
+    setActiveWorkspace(uri);
+  }
+
   // 联动 ConfigurationService——workspace scope 的 settings.json 路径
   setWorkspaceRoot(uri);
 }
@@ -103,6 +126,16 @@ export function removeFolder(folderPath: string): void {
 
   _onDidChangeFolders.fire([..._folders]);
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
+
+  // 若移除的是活跃工作区→自动切到第一个剩余文件夹；无剩余→清空
+  if (_activeWorkspaceUri === normalized) {
+    if (_folders.length > 0) {
+      setActiveWorkspace(_folders[0].uri);
+    } else {
+      _activeWorkspaceUri = null;
+      _onDidChangeActiveWorkspace.fire("");
+    }
+  }
 
   // 如果移除的是第一个文件夹，更新 workspace root
   setWorkspaceRoot(_folders[0]?.uri ?? null);
