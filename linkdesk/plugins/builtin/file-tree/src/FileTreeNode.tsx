@@ -166,6 +166,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       {item.isDirectory || item.children !== null ? (
         <span
           className={`codicon ${chevron} ${twistieClass}`}
+          onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
             onTwistieClick(item);
