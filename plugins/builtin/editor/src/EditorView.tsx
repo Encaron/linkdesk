@@ -62,35 +62,27 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 F12 诊断——多参数格式试
+    // 🔥 F12 诊断
     const queryDefinition = async () => {
       const m = editor.getModel();
       const pos = editor.getPosition();
       if (!m || !pos) return;
-      const uri = m.uri.toString();
-      console.log("[editor] F12——位置:", pos.lineNumber, pos.column,
-        "URI:", uri,
-        "model内容长度:", m.getValueLength(),
-        "model行数:", m.getLineCount());
+      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "URI:", m.uri.toString());
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
 
-        // 试 1: offset = column (1-based)
-        const r1 = await client.getDefinitionAtPosition(uri, { line: pos.lineNumber, offset: pos.column });
-        console.log("[editor]   offset=column(1-based):", JSON.stringify(r1));
+        // 定义尝试
+        const defs = await client.getDefinitionAtPosition(m.uri.toString(), pos);
+        console.log("[editor]   getDefinition(Monaco IPosition):", JSON.stringify(defs));
 
-        // 试 2: offset = column - 1 (0-based)
-        const r2 = await client.getDefinitionAtPosition(uri, { line: pos.lineNumber, offset: pos.column - 1 });
-        console.log("[editor]   offset=column-1(0-based):", JSON.stringify(r2));
+        // 诊断内容
+        const diags = await client.getSemanticDiagnostics(m.uri.toString());
+        console.log("[editor]   诊断数:", diags?.length, diags?.map((d: any) => d.messageText));
 
-        // 试 3: 用 Monaco IPosition 格式
-        const r3 = await client.getDefinitionAtPosition(uri, { lineNumber: pos.lineNumber, column: pos.column } as any);
-        console.log("[editor]   lineNumber+column:", JSON.stringify(r3));
-
-        // 试 4: 检查 getSemanticDiagnostics 是否工作
-        const diags = await client.getSemanticDiagnostics(uri);
-        console.log("[editor]   诊断数:", diags?.length);
+        // 🔥 用 Monaco 内置 action——如果弹出 peek 窗说明 TS worker 内部是好的
+        console.log("[editor]   尝试内置 revealDefinition...");
+        editor.getAction("editor.action.revealDefinition")?.run();
       } catch (e) {
         console.error("[editor] F12——出错:", e);
       }
