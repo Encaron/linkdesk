@@ -331,15 +331,23 @@ export function activateFileTreeContextMenu(): void {
     { command: "explorer.findInFolder",    group: "5_search", when: "explorerItemIsDir" },
   ]);
 
-  // ── E4V#33: MenuBar 菜单栏贡献——顶栏 [编辑] 菜单 + 追加 [文件] 菜单项 ──
+  // ── E4V#33: MenuBar 菜单栏贡献——[文件] 追加 + 新建 [编辑] 菜单 ──
+  // pattern: 父项 command="" label="按钮名" children=[...]——对标 coreCommands.ts
   registerMenuItems(MenuId.MenuBar, "file-tree", [
     // 追加到已有 [文件] 菜单
     { command: "explorer.newFile",   group: "file", label: "新建文件" },
     { command: "explorer.openFolder",group: "file", label: "打开文件夹…" },
-    // 新建 [编辑] 菜单
-    { command: "explorer.cut",       group: "edit", label: "剪切" },
-    { command: "explorer.copy",      group: "edit", label: "复制" },
-    { command: "explorer.paste",     group: "edit", label: "粘贴" },
+    // 新建 [编辑] 菜单——父项 label="编辑" 给按钮名，子项是下拉菜单内容
+    {
+      command: "",
+      label: "编辑",
+      group: "edit",
+      children: [
+        { command: "explorer.cut",   group: "edit" },
+        { command: "explorer.copy",  group: "edit" },
+        { command: "explorer.paste", group: "edit" },
+      ],
+    },
   ]);
 }
 
