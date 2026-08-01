@@ -8,7 +8,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { executeCommand } from "@src/core/CommandRegistry";
-import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
+import { getConfigurationValue } from "@src/core/ConfigurationService";
+import { useConfigurationValue } from "@src/core/useConfiguration";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
@@ -195,23 +196,35 @@ const FoldersView: React.FC = () => {
         rerender();
       }, 300);
     });
-    // 配置变更订阅——files.exclude / compactFolders / excludeGitIgnore
-    const unsub3 = onDidChangeConfiguration(async (key, _value) => {
-      if (key === "files.exclude") {
-        const filter = filterRef.current;
-        const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
-        filter.configure(excludeCfg);
-        model.refresh().then(() => rerender());
-      }
-      if (key === "explorer.compactFolders") {
-        model.onDidChange.fire();
-      }
-      // E4V#34g1: excludeGitIgnore 热更新——重新读/清 .gitignore
-      if (key === "explorer.excludeGitIgnore") {
-        const filter = filterRef.current;
-        filter.clearGitignore();
-        if (getConfigurationValue<boolean>("explorer.excludeGitIgnore") ?? true) {
-          const folders = getWorkspaceFolders();
+    // 🔥 归一化：useConfigurationValue = 读 + 订阅一行搞定，不再手写 onDidChangeConfiguration 回调
+    const excludeCfg = useConfigurationValue<Record<string, boolean>>("files.exclude");
+    const compactFolders = useConfigurationValue<boolean>("explorer.compactFolders");
+    const excludeGitIgnore = useConfigurationValue<boolean>("explorer.excludeGitIgnore");
+    // 跳过 mount 首次渲染——syncRoots 已做初始化，effect 只响应后续变更
+    const initialRender = useRef(true);
+
+    // files.exclude 变更 → 重配 filter + 刷新
+    useEffect(() => {
+      if (initialRender.current || excludeCfg === undefined) return;
+      const filter = filterRef.current;
+      filter.configure(excludeCfg);
+      model.refresh().then(() => rerender());
+    }, [excludeCfg, model, rerender]);
+
+    // compactFolders 变更 → 触发 useMemo 重算 flattenTree
+    useEffect(() => {
+      if (initialRender.current || compactFolders === undefined) return;
+      model.onDidChange.fire();
+    }, [compactFolders, model]);
+
+    // excludeGitIgnore 变更 → 重新读/清 .gitignore
+    useEffect(() => {
+      if (initialRender.current || excludeGitIgnore === undefined) return;
+      const filter = filterRef.current;
+      filter.clearGitignore();
+      if (excludeGitIgnore) {
+        const folders = getWorkspaceFolders();
+        (async () => {
           for (const f of folders) {
             const gitignorePath = joinPath(f.uri, ".gitignore");
             if (await exists(gitignorePath)) {
@@ -221,17 +234,23 @@ const FoldersView: React.FC = () => {
               } catch { /* skip */ }
             }
           }
-        }
-        await model.refresh();
-        for (const uri of model.getExpandedUris()) {
-          const item = model.findClosest(uri);
-          if (item) await model.getChildren(item).catch(() => {});
-        }
-        rerender();
+          await model.refresh();
+          for (const uri of model.getExpandedUris()) {
+            const item = model.findClosest(uri);
+            if (item) await model.getChildren(item).catch(() => {});
+          }
+          rerender();
+        })();
+      } else {
+        model.refresh().then(() => rerender());
       }
-    });
+    }, [excludeGitIgnore, model, rerender]);
+
+    // 初始渲染标记：在第一个 effect 之后翻转
+    useEffect(() => { initialRender.current = false; }, []);
+
     return () => {
-      unsub1(); unsub2(); unsub3();
+      unsub1(); unsub2();
       if (_debounceRef.current) clearTimeout(_debounceRef.current);
       if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
     };
