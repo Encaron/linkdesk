@@ -11,6 +11,7 @@ import { executeCommand } from "@src/core/CommandRegistry";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { useConfigurationValue } from "@src/core/useConfiguration";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
+import { setPluginStateValue, getPluginStateValue } from "@src/core/PluginStateService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
@@ -124,6 +125,21 @@ const FoldersView: React.FC = () => {
         }
       }
       model.setExcludeFilter(filter);
+      // E4V#36b: 恢复展开状态——逐层重建（浅层先于深层，确保 findClosest 能找到父节点）
+      const savedUris = getPluginStateValue<string[]>("file-tree", "expandedUris");
+      if (savedUris && savedUris.length > 0) {
+        const currentRoots = model.roots;
+        const toExpand = savedUris
+          .map((u) => normalizePath(u))
+          .filter((u) => currentRoots.some((r) => u === r.uri || u.startsWith(r.uri + "/")));
+        // 按深度排序——父目录先于子目录
+        toExpand.sort((a, b) => a.split("/").length - b.split("/").length);
+        for (const uri of toExpand) {
+          model.expand(uri);
+          const item = model.findClosest(uri);
+          if (item) await model.getChildren(item).catch(() => {});
+        }
+      }
       // E4V#34i: explorer.expandSingleFolderWorkspaces——单目录工作区自动展开根
       if ((getConfigurationValue<boolean>("explorer.expandSingleFolderWorkspaces") ?? true)
           && folders.length === 1) {
@@ -252,6 +268,23 @@ const FoldersView: React.FC = () => {
       rerender();
     })();
   }, [excludeGitIgnore, model, rerender]);
+
+  /** E4V#36a: 展开状态持久化——debounce 500ms，F5 恢复 */
+  const _expandSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    return model.onDidChange.event(() => {
+      if (_expandSaveTimerRef.current) clearTimeout(_expandSaveTimerRef.current);
+      _expandSaveTimerRef.current = setTimeout(() => {
+        _expandSaveTimerRef.current = null;
+        const uris = model.getExpandedUris();
+        if (uris.length > 0) {
+          setPluginStateValue("file-tree", "expandedUris", uris).catch(() => {});
+        }
+      }, 500);
+    });
+  }, [model]);
+  // cleanup timer on unmount
+  useEffect(() => () => { if (_expandSaveTimerRef.current) clearTimeout(_expandSaveTimerRef.current); }, []);
 
   // 首个 effect 触发后翻转标记——后续变更正常响应
   useEffect(() => { isInitialMount.current = false; }, []);
