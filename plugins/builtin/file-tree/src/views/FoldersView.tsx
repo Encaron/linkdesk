@@ -126,11 +126,15 @@ const FoldersView: React.FC = () => {
       _debounceRef.current = setTimeout(async () => {
         _debounceRef.current = null;
         // 🔥 定向 refresh：按变更路径定向清理+重载——避免全局 refresh 扫荡已修好的目录
+        // 事件路径是相对路径→拼接工作区根得到绝对路径
+        const folders = getWorkspaceFolders();
+        const rootUri = folders[0] ? normalizePath(folders[0].uri) : "";
         const affectedDirs = new Set<string>();
         for (const e of events) {
-          const np = normalizePath(e.path);
-          const dir = np.substring(0, np.lastIndexOf("/"));
-          if (dir) affectedDirs.add(dir); else affectedDirs.add(np);
+          const relPath = normalizePath(e.path);
+          const absPath = rootUri ? (rootUri + "/" + relPath) : relPath;
+          const dir = absPath.substring(0, absPath.lastIndexOf("/"));
+          if (dir) affectedDirs.add(dir); else affectedDirs.add(absPath);
         }
         for (const dir of affectedDirs) {
           await model.refresh(dir);
@@ -138,7 +142,6 @@ const FoldersView: React.FC = () => {
           if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch(() => {});
         }
         if (affectedDirs.size === 0) {
-          // 无路径信息时回退到全局 refresh（兼容旧事件）
           await model.refresh();
           for (const uri of model.getExpandedUris()) {
             const item = model.findClosest(uri);
