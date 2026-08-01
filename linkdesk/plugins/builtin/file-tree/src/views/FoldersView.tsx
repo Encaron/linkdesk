@@ -263,7 +263,8 @@ const FoldersView: React.FC = () => {
   useEffect(() => {
     const updateTitle = () => {
       const folders = getWorkspaceFolders();
-      const title = folders[0]?.name ?? "";
+      // E4V#35f: 单根→根名，多根→"工作区"（对标 VS Code WORKSPACE）
+      const title = folders.length === 1 ? folders[0].name : (folders.length > 1 ? t("工作区") : "");
       const existing = ViewContainerService.getView("folders");
       ViewContainerService.registerView("file-tree", "explorer", {
         id: "folders",
