@@ -103,12 +103,16 @@ function escapeRegexChar(ch: string): string {
   return /[.*+?^${}()|[\]\\]/.test(ch) ? "\\" + ch : ch;
 }
 
-/** glob 逗号分隔的多个模式——任一匹配即通过 */
+/** glob 逗号分隔的多个模式——任一匹配即通过。同时匹配完整路径和文件名 */
 function globMatch(path: string, globs?: string): boolean {
   if (!globs) return true;
   const patterns = globs.split(",").map((s) => s.trim()).filter(Boolean);
   if (patterns.length === 0) return true;
-  return patterns.some((p) => globToRegex(p).test(path));
+  const fileName = path.split("/").pop() ?? path;
+  return patterns.some((p) => {
+    const re = globToRegex(p);
+    return re.test(path) || re.test(fileName);
+  });
 }
 
 /* ── 递归文件收集 ── */
