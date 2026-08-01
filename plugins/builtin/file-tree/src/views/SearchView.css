@@ -18,6 +18,7 @@
   display: flex;
   gap: 4px;
   align-items: center;
+  position: relative;
 }
 
 .search-input {
@@ -232,4 +233,38 @@
   font-size: 12px;
   color: var(--text-secondary);
   text-align: center;
+}
+
+/* ── 搜索历史 ── */
+
+.search-history {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  background: var(--bg-card, var(--bg-primary));
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.search-history-item:hover {
+  background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));
+}
+
+.search-history-item .codicon {
+  font-size: 14px;
+  color: var(--text-secondary);
 }

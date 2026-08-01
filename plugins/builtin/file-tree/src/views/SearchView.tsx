@@ -5,13 +5,14 @@
  * 消费 FileSearcher（src/core/）——纯视图层，不碰搜索逻辑。
  */
 
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { getPluginFor } from "@src/core/FileAssociationService";
 import { showConfirm } from "@src/core/DialogService";
+import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
 import { extension } from "../pathUtils";
 import "./SearchView.css";
 
@@ -42,6 +43,16 @@ const SearchView: React.FC = () => {
   const [totalMatches, setTotalMatches] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
   const [expandedFiles, setExpandedFiles] = useState<Set<string>>(new Set());
+  /** E4V#39b: F4/Shift+F4 导航——当前匹配索引 */
+  const [navIndex, setNavIndex] = useState(-1);
+  /** E4V#39b: 搜索历史——最近 10 条 */
+  const [searchHistory, setSearchHistory] = useState<string[]>(() =>
+    getPluginStateValue<string[]>("file-tree", "searchHistory") ?? [],
+  );
+  const [showHistory, setShowHistory] = useState(false);
+
+  // 展平所有匹配——F4 导航用
+  const flatMatches = useMemo(() => results.flatMap((f) => f.matches), [results]);
 
   /* ── 搜索逻辑 ── */
   const abortRef = useRef<AbortController | null>(null);
@@ -90,6 +101,12 @@ const SearchView: React.FC = () => {
       setResults(found);
       setTotalFiles(files);
       setTotalMatches(matches);
+      setNavIndex(0);
+      // 保存搜索历史
+      const prev = getPluginStateValue<string[]>("file-tree", "searchHistory") ?? [];
+      const next = [q, ...prev.filter((h) => h !== q)].slice(0, 10);
+      setPluginStateValue("file-tree", "searchHistory", next).catch(() => {});
+      setSearchHistory(next);
       // 自动展开第一个文件
       if (found.length > 0) {
         setExpandedFiles(new Set([found[0].filePath]));
@@ -180,17 +197,26 @@ const SearchView: React.FC = () => {
         ? `${totalFiles} ${t("个文件")}, ${totalMatches} ${t("个匹配")}`
         : "";
 
-  /* ── 键盘：Enter 搜索 / Escape 清空 ── */
+  /* ── 键盘：Escape 清空 / F4 导航 ── */
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Escape") {
       setQuery("");
       inputRef.current?.blur();
+      return;
     }
-  }, []);
+    if (e.key === "F4" && flatMatches.length > 0) {
+      e.preventDefault();
+      const next = e.shiftKey
+        ? (navIndex <= 0 ? flatMatches.length - 1 : navIndex - 1)
+        : (navIndex >= flatMatches.length - 1 ? 0 : navIndex + 1);
+      setNavIndex(next);
+      handleOpenMatch(flatMatches[next]);
+    }
+  }, [flatMatches, navIndex, handleOpenMatch]);
 
   return (
-    <div className="search-view">
+    <div className="search-view" onKeyDown={handleKeyDown} tabIndex={-1}>
       {/* 搜索框 */}
       <div className="search-input-row">
         <input
@@ -201,7 +227,19 @@ const SearchView: React.FC = () => {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
+          onFocus={() => setShowHistory(true)}
+          onBlur={() => requestAnimationFrame(() => setShowHistory(false))}
         />
+        {showHistory && searchHistory.length > 0 && !query && (
+          <div className="search-history">
+            {searchHistory.map((h, i) => (
+              <div key={i} className="search-history-item" onMouseDown={() => { setQuery(h); setShowHistory(false); }}>
+                <span className="codicon codicon-history" />
+                <span>{h}</span>
+              </div>
+            ))}
+          </div>
+        )}
         <div className="search-input-actions">
           <button className={`search-option-btn ${caseSensitive ? "search-option-btn--active" : ""}`}
             title={t("区分大小写")} onClick={() => setCaseSensitive((v) => !v)}>Aa</button>
