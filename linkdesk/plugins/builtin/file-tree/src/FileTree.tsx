@@ -13,6 +13,7 @@ import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
+import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
@@ -39,8 +40,10 @@ interface FileTreeProps {
 
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
+  // E4V#34b: explorer.compactFolders 配置开关
+  const compactFolders = getConfigurationValue<boolean>("explorer.compactFolders") ?? true;
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
-    if (item.isDirectory) {
+    if (item.isDirectory && compactFolders) {
       const compacted = model.compactController.getCompactedSegments(item);
       if (compacted) {
         const leaf = findLeaf(item);

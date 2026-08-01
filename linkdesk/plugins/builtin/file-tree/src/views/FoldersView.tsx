@@ -73,7 +73,9 @@ const FoldersView: React.FC = () => {
   /* ── E4V#32: autoReveal——切标签页时文件树自动定位 ── */
   useEffect(() => {
     const unsub = CoreEvents.onDidChangeActiveTab.event(({ filePath }) => {
+      // E4V#34: 尊重 explorer.autoReveal 配置
       if (!filePath) return;
+      if ((getConfigurationValue<boolean>("explorer.autoReveal") ?? true) === false) return;
       fileTreeRef.current?.reveal(filePath);
     });
     return unsub;
