@@ -190,7 +190,6 @@ export class FileTreeModel {
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
-      console.log("[COLLAPSE-DEBUG] model.refresh path:", path.split("/").pop(), "found:", item?.name, "isDir:", item?.isDirectory);
       if (item?.isDirectory) item.children = null;
     } else {
       for (const uri of this._expanded) {
