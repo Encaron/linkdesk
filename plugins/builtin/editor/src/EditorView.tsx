@@ -117,7 +117,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   return (
     <Editor
       height="100%"
-      path={normalizePath(filePath)}
+      path={`file:///${normalizePath(filePath)}`}
       language={language}
       value={value}
       onChange={onChange}
