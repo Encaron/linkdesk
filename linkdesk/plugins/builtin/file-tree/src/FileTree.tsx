@@ -111,8 +111,17 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     setKeybindingCaptureActive(true);
     ContextKeyService.setValue("inputFocus", true);
   }, [selection, focusedUri]);
+  /** 🔥 rename 退出归一出口——finish/cancel/blur 三条路径走同一个 */
+  const exitRename = useCallback(() => {
+    setKeybindingCaptureActive(false);
+    ContextKeyService.setValue("inputFocus", false);
+    // defer focus: 等 React 卸载 input 后再聚焦→不触发 input onBlur
+    requestAnimationFrame(() => containerRef.current?.focus());
+  }, []);
+
   const finishRename = useCallback(async (uri: string, newName: string) => {
     setRenamingUri(null);
+    exitRename();
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
@@ -122,18 +131,14 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     await model.refresh(dir);
     const parent = model.findClosest(dir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
-  }, [model]);
-  const cancelRename = useCallback(() => setRenamingUri(null), []);
+  }, [model, exitRename]);
+  const cancelRename = useCallback(() => {
+    setRenamingUri(null);
+    exitRename();
+  }, [exitRename]);
 
-  // 🔥 rename 退出后恢复全局快捷键 + 重聚焦（useEffect 解耦——避免同步 focus 触发 onBlur 链式反应）
-  useEffect(() => {
-    if (renamingUri === null) {
-      setKeybindingCaptureActive(false);
-      ContextKeyService.setValue("inputFocus", false);
-      // 微任务：等 React 渲染完 input 已卸载再聚焦
-      requestAnimationFrame(() => containerRef.current?.focus());
-    }
-  }, [renamingUri]);
+  // 组件卸载时若仍在 rename→清理
+  useEffect(() => () => { if (renamingUri !== null) exitRename(); }, [renamingUri, exitRename]);
 
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
   useImperativeHandle(ref, () => ({
