@@ -57,20 +57,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
-
-    // 🔥 等待影子 model 扫描完成 → 触发 TS worker 重分析
-    scanWorkspaceForTypeScript(monaco).then(() => {
-      const m = editor.getModel();
-      if (!m || m.isDisposed() || m.getValueLength() === 0) return;
-      // 在文件末尾插入再删除空格——净效果为零，但 TS worker 看到内容变更会重分析
-      const lastLine = m.getLineCount();
-      const lastCol = m.getLineMaxColumn(lastLine);
-      const Range = monaco.Range;
-      // 分批执行——先插入空格，再删除刚插入的空格
-      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol), text: " " }]);
-      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
-      console.log("[editor] TS re-analysis 已触发");
-    });
   }, []);
 
   // keep-alive
