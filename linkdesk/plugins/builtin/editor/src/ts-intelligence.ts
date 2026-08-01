@@ -88,11 +88,11 @@ async function scanDir(
 
 /**
  * 扫描工作区——创建 TS 影子 model。
- * 首次打开 TS 文件时 fire-and-forget——不阻塞编辑器渲染。
- * monaco 全局只跑一次（后续调用直接返回已有 Promise）。
+ * 首次调用启动扫描，后续调用返回已有 Promise（不重复扫描）。
+ * 返回 Promise<void>——调用方可 .then() 在扫描完成后触发 TS re-analysis。
  */
-export function scanWorkspaceForTypeScript(monaco: any): void {
-  if (_scanPromise) return;
+export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
+  if (_scanPromise) return _scanPromise;
   _scanPromise = (async () => {
     const folders = getWorkspaceFolders();
     const count = { n: 0 };
@@ -103,4 +103,5 @@ export function scanWorkspaceForTypeScript(monaco: any): void {
   })().catch((err) => {
     console.warn("[ts-intelligence] 工作区扫描失败:", err);
   });
+  return _scanPromise;
 }

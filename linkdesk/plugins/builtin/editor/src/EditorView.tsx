@@ -15,6 +15,7 @@
  */
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
+import { normalizePath } from "@src/core/pathUtils";
 import { registerLanguageMap } from "./language-map";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
@@ -96,7 +97,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   return (
     <Editor
       height="100%"
-      path={filePath}
+      path={normalizePath(filePath)}
       language={language}
       value={value}
       onChange={onChange}
