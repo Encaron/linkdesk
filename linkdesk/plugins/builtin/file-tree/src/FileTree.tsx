@@ -120,8 +120,11 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     const { copy, deleteEntry } = await import("@src/core/FileService");
     await copy(uri, dest);
     await deleteEntry(uri);
-    model.refresh(dir).then(() => rerender());
-  }, [model, rerender]);
+    // 对标 newFile/delete: refresh + 重新加载展开目录的 children
+    await model.refresh(dir);
+    const parent = model.findClosest(dir);
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+  }, [model]);
   const cancelRename = useCallback(() => setRenamingUri(null), []);
 
   // 🔥 rename 退出后恢复全局快捷键 + 重聚焦（useEffect 解耦——避免同步 focus 触发 onBlur 链式反应）
