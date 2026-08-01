@@ -109,14 +109,17 @@ const FoldersView: React.FC = () => {
       const filter = filterRef.current;
       const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
       filter.configure(excludeCfg);
-      filter.clearGitignore();
-      for (const f of folders) {
-        const gitignorePath = joinPath(f.uri, ".gitignore");
-        if (await exists(gitignorePath)) {
-          try {
-            const content = await readFile(gitignorePath);
-            filter.setGitignore(content);
-          } catch { /* 读取失败静默跳过 */ }
+      // E4V#34g1: explorer.excludeGitIgnore 开关——默认 true
+      if ((getConfigurationValue<boolean>("explorer.excludeGitIgnore") ?? true)) {
+        filter.clearGitignore();
+        for (const f of folders) {
+          const gitignorePath = joinPath(f.uri, ".gitignore");
+          if (await exists(gitignorePath)) {
+            try {
+              const content = await readFile(gitignorePath);
+              filter.setGitignore(content);
+            } catch { /* 读取失败静默跳过 */ }
+          }
         }
       }
       model.setExcludeFilter(filter);
