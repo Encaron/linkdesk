@@ -7,10 +7,10 @@
  */
 
 import React, { useEffect, type MutableRefObject } from "react";
-import { registerCommand } from "@src/core/CommandRegistry";
+import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
-import { getWorkspaceFolders } from "@src/core/WorkspaceService";
+import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -320,6 +320,24 @@ export function activateFileTreeContextMenu(): void {
     h()?.getModel().collapseAll();
   }});
 
+  // ── E4V#xx: removeFolder——关闭文件夹（从工作区移除根目录） ──
+  registerCommand("file-tree", { id: "explorer.removeFolder", title: "关闭文件夹", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (ctx?.uri) {
+      // 右键菜单调用——关闭指定文件夹
+      removeFolder(ctx.uri);
+    } else {
+      // MenuBar 调用——关闭所有工作区文件夹
+      const folders = getWorkspaceFolders();
+      for (const f of folders) removeFolder(f.uri);
+    }
+  }});
+
+  // ── E4V#xx: closeAllEditors——关闭所有编辑器标签页（委托 core.closeAllEditors） ──
+  registerCommand("file-tree", { id: "explorer.closeAllEditors", title: "关闭所有编辑器", handler: async () => {
+    await executeCommand("core.closeAllEditors");
+  }});
+
   // ── 注册菜单项到 MenuId.FileContext ──
   // 5 组：navigation / editing / creation / modify / search
   // when 条件由 ContextMenu 组件调用 ContextKeyService.matches() 求值
@@ -349,15 +367,20 @@ export function activateFileTreeContextMenu(): void {
 
     // 第 5 组：搜索
     { command: "explorer.findInFolder",    group: "5_search", when: "explorerItemIsDir" },
+
+    // 第 6 组：工作区操作
+    { command: "explorer.removeFolder",    group: "6_workspace", when: "explorerItemIsRoot" },
   ]);
 
   // ── E4V#33: MenuBar 菜单栏贡献——[文件] 追加 + 新建 [编辑] 菜单 ──
   // pattern: 父项 command="" label="按钮名" children=[...]——对标 coreCommands.ts
   registerMenuItems(MenuId.MenuBar, "file-tree", [
     // 追加到已有 [文件] 菜单
-    { command: "explorer.newFile",   group: "file", label: "新建文件" },
-    { command: "explorer.newFolder", group: "file", label: "新建文件夹" },
-    { command: "explorer.openFolder",group: "file", label: "打开文件夹…" },
+    { command: "explorer.newFile",        group: "file", label: "新建文件" },
+    { command: "explorer.newFolder",      group: "file", label: "新建文件夹" },
+    { command: "explorer.openFolder",     group: "file", label: "打开文件夹…" },
+    { command: "explorer.closeAllEditors",group: "file", label: "关闭所有编辑器" },
+    { command: "explorer.removeFolder",   group: "file", label: "关闭文件夹" },
     // 新建 [编辑] 菜单——父项 label="编辑" 给按钮名，子项是下拉菜单内容
     {
       command: "",

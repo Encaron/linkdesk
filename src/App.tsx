@@ -175,6 +175,13 @@ function App() {
       const all = allTabs(tabState);
       if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
     },
+    closeAllEditors: () => {
+      for (const g of tabState.groups) {
+        for (const t of g.tabs) {
+          if (t.filePath) closeTab(t.id);
+        }
+      }
+    },
   }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
 
   // 每次渲染更新 callbacks ref
