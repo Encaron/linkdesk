@@ -62,6 +62,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
+    // 🔥 等影子 model 扫描完 → editor.setValue 同值触发 TS 重分析
+    scanWorkspaceForTypeScript(monaco).then(() => {
+      if (!editorRef.current) return;
+      const v = editorRef.current.getValue();
+      editorRef.current.setValue(v);
+      console.log("[editor] TS re-analysis triggered (setValue same)");
+    });
+
     // 🔥 F12 诊断
     const queryDefinition = async () => {
       const m = editor.getModel();

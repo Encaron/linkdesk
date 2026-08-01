@@ -56,7 +56,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const handleChange = useCallback((newValue: string | undefined) => {
     const v = newValue ?? "";
     setValue(v);
-    model?.setValue(v);
+    // 🔥 不调 model.setValue——Editor 的 value prop 已自动同步 model。
+    //    手动调会导致 onChange 循环（尤其扫描后 editor.setValue 触发重分析时）
     const isDirty = model?.isDirty() ?? false;
     if (dirtyRef.current !== isDirty) {
       dirtyRef.current = isDirty;
