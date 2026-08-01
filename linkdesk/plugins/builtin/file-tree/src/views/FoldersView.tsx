@@ -359,6 +359,7 @@ const FoldersView: React.FC = () => {
     }
     tabActions?.createTab(pluginId, {
       filePath,
+      sourceId: filePath,
       label: name,
       pinned: mode === "pin",
     });
