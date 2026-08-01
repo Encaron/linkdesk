@@ -267,12 +267,16 @@ export function activateFileTreeContextMenu(): void {
     const model = hd.getModel();
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
+    // E4V#34j: explorer.incrementalNaming——"smart"=编号（默认），"disabled"=不编号
+    const naming = getConfigurationValue<string>("explorer.incrementalNaming") ?? "smart";
     let name = "新建文件";
     let filePath = joinPath(dirUri, name);
-    for (let i = 1; i < 100; i++) {
-      if (!await exists(filePath)) break;
-      name = `新建文件-${i}`;
-      filePath = joinPath(dirUri, name);
+    if (naming !== "disabled") {
+      for (let i = 1; i < 100; i++) {
+        if (!await exists(filePath)) break;
+        name = `新建文件-${i}`;
+        filePath = joinPath(dirUri, name);
+      }
     }
     await writeFile(filePath, "");
     await model.refresh(dirUri);
@@ -285,12 +289,16 @@ export function activateFileTreeContextMenu(): void {
     const model = hd.getModel();
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
+    // E4V#34j: explorer.incrementalNaming——"smart"=编号（默认），"disabled"=不编号
+    const naming = getConfigurationValue<string>("explorer.incrementalNaming") ?? "smart";
     let name = "新建文件夹";
     let dirPath = joinPath(dirUri, name);
-    for (let i = 1; i < 100; i++) {
-      if (!await exists(dirPath)) break;
-      name = `新建文件夹-${i}`;
-      dirPath = joinPath(dirUri, name);
+    if (naming !== "disabled") {
+      for (let i = 1; i < 100; i++) {
+        if (!await exists(dirPath)) break;
+        name = `新建文件夹-${i}`;
+        dirPath = joinPath(dirUri, name);
+      }
     }
     await mkdir(dirPath);
     await model.refresh(dirUri);

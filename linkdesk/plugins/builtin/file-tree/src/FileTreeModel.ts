@@ -123,10 +123,13 @@ export class FileTreeModel {
         normalizedNesting.set(normalizePath(parentPath), children);
         for (const c of children) nestedPaths.add(normalizePath(c.path));
       }
+      const expandNesting = getConfigurationValue<boolean>("explorer.fileNesting.expand") ?? true;
       for (const item of current.children) {
         const nested = normalizedNesting.get(item.uri);
         if (nested) {
           item.children = nested.map((e) => this._toExplorerItem(e, item));
+          // E4V#34k: explorer.fileNesting.expand——嵌套后默认展开父项
+          if (expandNesting) this.expand(item.uri);
         }
       }
       current.children = current.children.filter((c) => !nestedPaths.has(normalizePath(c.uri)));
