@@ -28,7 +28,9 @@ function cssVar(name: string): string | undefined {
 export function syncMonacoTheme(monaco: any): void {
   const isDark = isDarkTheme();
   const base = isDark ? "vs-dark" : "vs";
-  const colors = {
+
+  // 从 CSS 变量取色——过滤掉 undefined 值（Monaco 不能处理 undefined color）
+  const raw: Record<string, string | undefined> = {
     "editor.background": cssVar("--editor-bg"),
     "editor.foreground": cssVar("--editor-fg"),
     "editorLineNumber.foreground": cssVar("--text-secondary"),
@@ -37,6 +39,11 @@ export function syncMonacoTheme(monaco: any): void {
     "editorWidget.background": cssVar("--panel-bg"),
     "editorWidget.border": cssVar("--border-color"),
   };
+  const colors: Record<string, string> = {};
+  for (const [k, v] of Object.entries(raw)) {
+    if (v) colors[k] = v;
+  }
+
   monaco.editor.defineTheme("linkdesk", { base, inherit: true, colors, rules: [] });
   monaco.editor.setTheme("linkdesk");
 }
