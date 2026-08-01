@@ -63,22 +63,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     );
 
     // 🔥 等影子 model 扫描完 → 末尾插入再删除一个字符触发 TS 重分析
-    //    pushEditOperations 批量执行——只触发一次 onChange，最终值不变
+    //    两次 applyEdits——第二次基于插入后的 model 正确定位 'x'
     scanWorkspaceForTypeScript(monaco).then(() => {
       const m = editor.getModel();
       if (!m || m.isDisposed()) return;
       const lastLine = m.getLineCount();
       const lastCol = m.getLineMaxColumn(lastLine);
       const Range = monaco.Range;
-      m.pushEditOperations(
-        [],
-        [
-          { range: new Range(lastLine, lastCol, lastLine, lastCol), text: "x" },
-          { range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" },
-        ],
-        () => null,
-      );
-      console.log("[editor] TS re-analysis triggered (pushEdit no-op)");
+      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
+      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
+      console.log("[editor] TS re-analysis triggered");
     });
 
     // 🔥 F12 诊断——TS worker 的 getDefinitionAtPosition 要 number 偏移量，不是 IPosition 对象
