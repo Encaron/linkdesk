@@ -173,7 +173,13 @@ html, body, #root {
   background: var(--toggle-knob);
   transition: transform 150ms;
 }
-.toggle.on::after { transform: translateX(16px); }
+.toggle.on::after {
+  transform: translateX(16px);
+  /* toggle-knob-on: ON 态旋钮色，fallback toggle-knob。
+     亮色主题 accent 深 + border 浅 → 同一 knob 色无法同时在两态可见。
+     主题作者可设 toggle-knob: #333 (OFF 态可见) + toggle-knob-on: #FFF (ON 态可见)。 */
+  background: var(--toggle-knob-on, var(--toggle-knob));
+}
 .toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .input {

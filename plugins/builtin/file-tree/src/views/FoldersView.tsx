@@ -334,13 +334,12 @@ const FoldersView: React.FC = () => {
     return unsub;
   }, [t]);
 
-  /** E4V#37b: 注册 SEARCH view——和 FOLDERS 同容器，初始折叠 */
+  /** E4V#37b: 注册 SEARCH view——和 FOLDERS 同容器，始终可见 */
   useEffect(() => {
     ViewContainerService.registerView("file-tree", "explorer", {
       id: "search",
       title: t("搜索"),
       order: 1,
-      collapsed: true,
       render: () => <SearchView />,
     });
   }, [t]);
