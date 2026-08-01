@@ -70,6 +70,15 @@ const FoldersView: React.FC = () => {
     [],
   );
 
+  /* ── E4V#32: autoReveal——切标签页时文件树自动定位 ── */
+  useEffect(() => {
+    const unsub = CoreEvents.onDidChangeActiveTab.event(({ filePath }) => {
+      if (!filePath) return;
+      fileTreeRef.current?.reveal(filePath);
+    });
+    return unsub;
+  }, []);
+
   /* ── E4V#31: 文件装饰器消费——订阅 FileDecorationRegistry → 模型变更时 decorate 节点 ── */
   const decoServiceRef = useRef<FileTreeDecorationService>(new FileTreeDecorationService(model));
   const decoService = decoServiceRef.current;
