@@ -8,6 +8,7 @@
 import React from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import { defaultIconResolver } from "./FileIconResolver";
+import { useClickPreview } from "@src/hooks/useClickPreview";
 
 interface FileTreeNodeProps {
   item: ExplorerItem;
@@ -83,9 +84,13 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     .filter(Boolean)
     .join(" ");
 
-  /* ── 双击检测 ── */
+  /* ── 双击检测——归一化到 useClickPreview hook（E4V#28e）── */
 
-  const timerRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const { handleMouseDown: clickPreviewMouseDown, handleClick: clickPreviewClick } = useClickPreview({
+    onPreview: () => onOpen(item, "preview"),
+    onPin: () => onOpen(item, "pin"),
+    disabled: item.isDirectory,
+  });
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation(); // 阻止冒泡到容器——容器 onClick 负责清空选中
@@ -96,30 +101,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       onTwistieClick(item);
       return;
     }
-    if (e.detail === 2) {
-      onOpen(item, "pin");
-    }
+    clickPreviewClick(e);
   };
-
-  const handleMouseDown = () => {
-    // E4V#28b: 目录不启动"打开文件"计时器——单击整行=toggle，走 handleClick
-    if (item.isDirectory) return;
-    if (timerRef.current) {
-      clearTimeout(timerRef.current);
-      timerRef.current = null;
-    } else {
-      timerRef.current = setTimeout(() => {
-        timerRef.current = null;
-        onOpen(item, "preview");
-      }, 250);
-    }
-  };
-
-  React.useEffect(() => {
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
-  }, []);
 
   /* ── E4V#27: 行内重命名 input ── */
 
@@ -166,7 +149,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       draggable={true}
       onDragStart={onDragStart ? (e: React.DragEvent) => onDragStart(item, e) : undefined}
       onClick={handleClick}
-      onMouseDown={handleMouseDown}
+      onMouseDown={clickPreviewMouseDown}
       onContextMenu={onContextMenu ? (e: React.MouseEvent) => onContextMenu(item, e) : undefined}
     >
       {/* twistie——目录或有嵌套子节点的文件 */}
