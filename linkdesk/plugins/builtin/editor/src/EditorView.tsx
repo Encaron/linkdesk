@@ -51,10 +51,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     monacoNsRef.current = monaco;
     console.log("[editor] beforeMount");
 
-    // 🔥 用 Uri.file 预创建 model（file:/// 协议）——
-    //    @monaco-editor/react 的 path prop 用 Uri.parse(file:///...) 找到此 model，直接复用
+    // 🔥 Uri.parse(file:///...) 预创建 model——Uri.file 把盘符冒号编码成 %3A，TS worker 不认
     const normalized = normalizePath(pathRef.current);
-    const uri = monaco.Uri.file(normalized);
+    const uri = monaco.Uri.parse(`file:///${normalized}`);
     const existing = monaco.editor.getModel(uri);
     if (!existing) {
       monaco.editor.createModel(valueRef.current, langRef.current, uri);
