@@ -59,11 +59,9 @@ export function setupTypeScriptEnv(monaco: any): void {
     noSyntaxValidation: false,
   });
 
-  console.log("[ts-intel] setupTypeScriptEnv——compilerOptions 已设置");
+  // console.log("[ts-intel] setupTypeScriptEnv——compilerOptions 已设置");
 
   // 🔥 立即启动扫描——工作区文件夹已打开，扫描完再开文件时影子 model 已在场
-  const folders = getWorkspaceFolders();
-  console.log("[ts-intel] 工作区文件夹:", folders.length, folders.map(f => f.uri));
   scanWorkspaceForTypeScript(monaco);
 }
 
@@ -95,7 +93,7 @@ async function scanDir(
       //    影子 model 也必须用 file:/// 才能匹配
       const uri = monaco.Uri.parse(`file:///${fullPath}`);
       if (monaco.editor.getModel(uri)) {
-        console.log("[ts-intel] 跳过——已有 model:", fullPath);
+        // console.log("[ts-intel] 跳过——已有 model:", fullPath);
         continue;
       }
 
@@ -104,7 +102,7 @@ async function scanDir(
         const content = EncodingService.decode(buffer, EncodingService.detect(buffer));
         monaco.editor.createModel(content, "typescript", uri);
         count.n++;
-        console.log("[ts-intel] 影子 model #" + count.n + ":", uri.toString());
+        // console.log("[ts-intel] 影子 model #" + count.n + ":", uri.toString());
       } catch (e) {
         console.warn("[ts-intel] 读取失败:", fullPath, e);
       }
@@ -118,10 +116,10 @@ async function scanDir(
  */
 export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
   if (_scanPromise) {
-    console.log("[ts-intel] 扫描已在运行中，复用已有 Promise");
+    // console.log("[ts-intel] 扫描已在运行中，复用已有 Promise");
     return _scanPromise;
   }
-  console.log("[ts-intel] 开始扫描工作区...");
+  // console.log("[ts-intel] 开始扫描工作区...");
   _scanPromise = (async () => {
     const folders = getWorkspaceFolders();
     const count = { n: 0 };
@@ -129,7 +127,7 @@ export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
       if (count.n >= MAX_SHADOW_MODELS) break;
       await scanDir(monaco, normalizePath(folder.uri), count);
     }
-    console.log("[ts-intel] 扫描完成——影子 model 总数:", count.n);
+    // console.log("[ts-intel] 扫描完成——影子 model 总数:", count.n);
   })().catch((err) => {
     console.warn("[ts-intel] 工作区扫描失败:", err);
   });
