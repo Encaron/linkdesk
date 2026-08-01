@@ -320,8 +320,13 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     }
     rawKeyDown(e);
   }, [rawKeyDown]);
+  // E4V#34h2: OS 拖入文件后自动打开——回调传 (filePath, name)，构造最小 item 适配 onOpenFile
+  const onAutoOpenDroppedFile = useCallback((filePath: string, name: string) => {
+    onOpenFile({ uri: filePath, name, isDirectory: false, isSymlink: false, children: null, parent: null } as ExplorerItem, "preview");
+  }, [onOpenFile]);
+
   const { dndState, handleDragStart, handleDragOver, handleDragLeave, handleDrop } = useFileTreeDnD({
-    flatItems, model, rerender, getContainerEl: () => containerRef.current,
+    flatItems, model, rerender, getContainerEl: () => containerRef.current, onAutoOpenDroppedFile,
   });
 
   /* ── context keys ── */
