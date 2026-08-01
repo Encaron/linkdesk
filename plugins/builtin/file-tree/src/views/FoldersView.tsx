@@ -333,6 +333,17 @@ const FoldersView: React.FC = () => {
     return unsub;
   }, [t]);
 
+  /** E4V#37b: 注册 SEARCH view——和 FOLDERS 同容器，初始折叠 */
+  useEffect(() => {
+    ViewContainerService.registerView("file-tree", "explorer", {
+      id: "search",
+      title: t("搜索"),
+      order: 1,
+      collapsed: true,
+      render: () => null, // placeholder——E4V#37c 替换为 <SearchView />
+    });
+  }, [t]);
+
   /* ── 打开文件 ── */
   /** 核心逻辑：扩展名 → FileAssociationService → createTab */
   const doOpenFile = useCallback((filePath: string, name: string, mode: "preview" | "pin") => {
