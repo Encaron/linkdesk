@@ -80,8 +80,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
     });
 
-    // 🔥 F12 → 跳转到定义（对标 VS Code）
-    editor.addCommand(monaco.KeyCode.F12, async () => {
+    // 🔥 跳转到定义（对标 VS Code）——F12、Ctrl+Click 共用
+    const goToDefinition = async () => {
       const m = editor.getModel();
       const pos = editor.getPosition();
       if (!m || !pos) return;
@@ -93,12 +93,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
         const def = defs[0];
         const targetPath = uriToFilePath(def.fileName);
-        // textSpan.start 是 0-based offset → 转为 line/column
         const targetPos = m.getPositionAt(def.textSpan.start);
-
         onOpenDefRef.current?.(targetPath, targetPos.lineNumber, targetPos.column);
       } catch (e) {
-        console.error("[editor] F12 跳转定义失败:", e);
+        console.error("[editor] 跳转定义失败:", e);
+      }
+    };
+    editor.addCommand(monaco.KeyCode.F12, goToDefinition);
+
+    // Ctrl+Click → 也是跳转定义（Monaco 内置是 peek 窗，这里覆盖）
+    editor.onMouseDown((e: any) => {
+      if ((e.event.ctrlKey || e.event.metaKey) && e.event.button === 0 && e.target?.position) {
+        e.event.preventDefault();
+        e.event.stopPropagation();
+        goToDefinition();
       }
     });
   }, []);
