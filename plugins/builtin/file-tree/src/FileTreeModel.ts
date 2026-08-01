@@ -42,6 +42,8 @@ export class FileTreeModel {
   private _expanded = new Set<string>();
   private _sortOrder: SortOrder;
   private _excludeFilter: FileExcludeFilter | null = null;
+  /** 🔥 目录最近刷新时间戳——watcher 短时间内同一目录不重复刷 */
+  private _lastRefresh = new Map<string, number>();
   readonly compactController: CompactController;
   /** E4V#55: 模型变更通知——FileTree 订阅后自动重渲染 */
   readonly onDidChange = new Emitter<void>();
@@ -187,10 +189,17 @@ export class FileTreeModel {
   // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
 
   /** 刷新——path 为空则清空所有已展开节点的缓存。不 fire——调用方重载后统一触发 */
+  /** 目录是否在 threshold ms 内刚被刷新过——watcher 用它跳过冗余 refresh */
+  wasRecentlyRefreshed(dirPath: string, thresholdMs = 500): boolean {
+    const np = normalizePath(dirPath);
+    const last = this._lastRefresh.get(np);
+    return last !== undefined && (Date.now() - last) < thresholdMs;
+  }
+
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
-      if (item?.isDirectory) item.children = null;
+      if (item?.isDirectory) { item.children = null; this._lastRefresh.set(normalizePath(path), Date.now()); }
     } else {
       for (const uri of this._expanded) {
         const item = this.findClosest(uri);
