@@ -269,10 +269,10 @@ const FoldersView: React.FC = () => {
     })();
   }, [excludeGitIgnore, model, rerender]);
 
-  /** E4V#36a: 展开状态持久化——debounce 500ms，F5 恢复 */
+  /** E4V#36a: 展开状态持久化——debounce 500ms + unmount 清 timer */
   const _expandSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    return model.onDidChange.event(() => {
+    const unsub = model.onDidChange.event(() => {
       if (_expandSaveTimerRef.current) clearTimeout(_expandSaveTimerRef.current);
       _expandSaveTimerRef.current = setTimeout(() => {
         _expandSaveTimerRef.current = null;
@@ -282,9 +282,11 @@ const FoldersView: React.FC = () => {
         }
       }, 500);
     });
+    return () => {
+      unsub();
+      if (_expandSaveTimerRef.current) clearTimeout(_expandSaveTimerRef.current);
+    };
   }, [model]);
-  // cleanup timer on unmount
-  useEffect(() => () => { if (_expandSaveTimerRef.current) clearTimeout(_expandSaveTimerRef.current); }, []);
 
   // 首个 effect 触发后翻转标记——后续变更正常响应
   useEffect(() => { isInitialMount.current = false; }, []);
