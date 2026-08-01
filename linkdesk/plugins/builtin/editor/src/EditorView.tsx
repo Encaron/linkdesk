@@ -41,17 +41,21 @@ const EditorView: React.FC<EditorViewProps> = ({
   readOnly,
 }) => {
   const monacoRef = useRef<any>(null);
+  // 🔥 monaco 命名空间——subscribeThemeSync 需要它来调 monaco.editor.defineTheme/setTheme
+  const monacoNsRef = useRef<any>(null);
   // 🔥 ref 桥接——handleEditorMount 只跑一次，Ctrl+S 始终读最新 onSave
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
+    monacoNsRef.current = monaco;
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
   }, []);
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
     monacoRef.current = editor;
+    monacoNsRef.current = monaco;
     // Ctrl+S → onSave（走 ref 避免闭包过期）
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
@@ -70,7 +74,7 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   // 主题订阅：LinkDesk 切换亮/暗色 → Monaco 自动跟随
   useEffect(() => {
-    return subscribeThemeSync(monacoRef);
+    return subscribeThemeSync(monacoNsRef);
   }, []);
 
   // StrictMode 防线：unmount 时 dispose editor
