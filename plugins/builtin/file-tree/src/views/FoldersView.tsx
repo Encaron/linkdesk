@@ -209,6 +209,10 @@ const FoldersView: React.FC = () => {
   /** 核心逻辑：扩展名 → FileAssociationService → createTab */
   const doOpenFile = useCallback((filePath: string, name: string, mode: "preview" | "pin") => {
     const ext = extension(name);
+    if (!ext) {
+      console.warn(`[file-tree] 无法识别文件类型（无扩展名: ${name}）`);
+      return;
+    }
     const pluginId = getPluginFor(ext);
     if (!pluginId) {
       console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
@@ -222,8 +226,18 @@ const FoldersView: React.FC = () => {
   }, [tabActions]);
 
   const handleOpenFile = useCallback((item: ExplorerItem, mode: "preview" | "pin") => {
+    // 目录 → toggle 展开/折叠（对标 VS Code：双击目录行=切换展开）
+    if (item.isDirectory) {
+      if (model.isExpanded(item.uri)) {
+        model.collapse(item.uri);
+      } else {
+        model.expand(item.uri);
+        model.getChildren(item).catch(() => {});
+      }
+      return;
+    }
     doOpenFile(item.uri, item.name, mode);
-  }, [doOpenFile]);
+  }, [doOpenFile, model]);
 
   // 🔥 桥接 openFile 到模块级命令 handler——FileTreeContextMenu 中的命令通过此桥创建标签页
   useEffect(() => {
