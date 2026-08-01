@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { openFolder, addFolder, onDidChangeFolders } from "@src/core/WorkspaceService";
 import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
-import { basename } from "./pathUtils";
+import { basename, normalizePath } from "./pathUtils";
 
 const PLUGIN_ID = "file-tree";
 const RECENT_KEY = "recentFolders";
@@ -32,8 +32,13 @@ const WelcomeView: React.FC = () => {
   /* ── 加载最近文件夹 ── */
 
   useEffect(() => {
-    const stored = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
-    setRecentFolders(stored);
+    const raw = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
+    // E4V#36c: 清理历史残留——去重 + 归一化（防旧数据含 \ 或重复路径如 工具软件/工具软件）
+    const cleaned = [...new Set(raw.map((p) => normalizePath(p)))];
+    if (cleaned.length !== raw.length || cleaned.some((p, i) => p !== raw[i])) {
+      void setPluginStateValue(PLUGIN_ID, RECENT_KEY, cleaned);
+    }
+    setRecentFolders(cleaned);
 
     const unsub = onDidChangeFolders((folders) => {
       if (folders.length > 0) {
