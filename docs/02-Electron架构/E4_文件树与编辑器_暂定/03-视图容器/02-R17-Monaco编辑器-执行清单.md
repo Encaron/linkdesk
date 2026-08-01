@@ -250,7 +250,32 @@
 - [ ] 🔥 快捷修复（灯泡）——Monaco 自带，Ctrl+. 触发。零代码。
 - [ ] **验证：** 写 `const x: number = "hello"` → 红色波浪线 → Ctrl+. → 弹出修复建议
 
-**R17 第 2 组完工后状态：** TypeScript/JavaScript 文件——跨文件补全+跳转定义+类型错误红色波浪线+快捷修复。对标 VS Code 写 TS 的 80% 体验。~65 行。
+### E4V#40i2 🔧 编辑器导航桥——IEditorService.openEditor → 壳标签页 - [ ]
+
+> 🔥 漏项补充。Standalone Monaco 的 F12/Ctrl+Click 只弹 peek 窗，不会开壳标签页。
+> 接线 `monaco-vscode-api` 的 `IEditorService.openEditor()` → 壳的 `TabActions.createTab()`。
+> 一次接线，F12 / Ctrl+Click / peek 窗点链接 / 面包屑点符号——全部自动走壳标签页。
+
+- [ ] **新建** `plugins/builtin/editor/src/navigation-bridge.ts` | ~20 行
+- [ ] 内容：
+  - 从 `@codingame/monaco-vscode-api` import `initialize`
+  - 从 `@codingame/monaco-vscode-editor-service-override` import `getServiceOverride`
+  - `setupNavigationBridge(monaco, tabActions)` 函数
+  - `openEditor` 回调：`modelRef.object.textEditorModel.uri.fsPath` → `tabActions.createTab("editor", { filePath, pinned: false })`
+  - 🔥 只覆盖 `IEditorService`，其他 VS Code 服务不碰——`@monaco-editor/react` 继续管编辑器生命周期
+- [ ] **修改** `plugins/builtin/editor/src/EditorView.tsx` | ~5 行
+- [ ] `beforeMount` 中调用 `setupNavigationBridge(monaco, tabActions)`
+- [ ] 🔥 `tabActions` 通过 useTabActions() 获取，ref 传入 beforeMount 闭包
+- [ ] 🛡️ 无硬编码 editor 字符串——`tabActions.createTab` 的 type 从 tab.pluginId 推导
+- [ ] **验证：**
+  - 打开 `a.ts`（import 了 `b.ts` 的导出）→ F12 在 `greet` 上 → `b.ts` 标签页蹦出并聚焦 ✅
+  - 切回 `a.ts`，再次 F12 → 聚焦已有 `b.ts` 标签页（不新建） ✅
+  - 关闭 `b.ts`，再次 F12 → `b.ts` 标签页重新蹦出 ✅
+  - Ctrl+Click → 同 F12 行为 ✅
+  - 先手动打开 `b.ts`，再 F12 → 聚焦已有 `b.ts`（不蹦第二个） ✅
+  - `npm run check` 零错误 ✅
+
+**R17 第 2 组完工后状态：** TypeScript/JavaScript 文件——跨文件补全+跳转定义+导航桥接线壳标签页+类型错误红色波浪线+快捷修复。对标 VS Code 写 TS 的 80% 体验。~95 行。
 
 ---
 
@@ -499,14 +524,14 @@
 |:--|:--|:--:|:--:|
 | 0 | 插件骨架——目录+plugin.json+index | E4V#40a | ~55 |
 | 1 | 核心编辑器——View+Model+语言+主题+Tab | E4V#40b–40g | ~345 |
-| 2 | TypeScript 智能提示——跨文件解析 | E4V#40h–40i | ~65 |
+| 2 | TypeScript 智能提示——跨文件解析 + 导航桥 | E4V#40h–40i2 | ~95 |
 | 3 | 编辑器镶边——状态栏+面包屑+右键 | E4V#40j–40l | ~120 |
 | 4 | 高级功能——Diff+热退出+自动保存+多标签页 | E4V#40m–40p | ~130 |
 | 5 | 配置项——25 项编辑器配置 | E4V#40q | ~70 |
 | 6 | 语言插件接口——为 C/C++/Python 预留 | E4V#40r–40t | ~80 |
 | 7 | 装饰+快捷键映射 | E4V#40u–40v | ~45 |
 | 🔴 | GBK 编码保存 | E4V#40w | ~10 |
-| **合计** | | **22 任务** | **~920 行** |
+| **合计** | | **23 任务** | **~950 行** |
 
 > 对标原 E4V#40a–E4V#42d（10 任务 ~330 行）→ 现 22 任务 ~920 行。
 > 行数增加 3 倍——但体感从"文本区"变成"类 VS Code 编辑器"。
