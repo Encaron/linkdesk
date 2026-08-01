@@ -112,26 +112,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     ContextKeyService.setValue("inputFocus", true);
   }, [selection, focusedUri]);
   const finishRename = useCallback(async (uri: string, newName: string) => {
-    console.log("[COLLAPSE-DEBUG] finishRename start, uri=", uri.split("/").pop(), "newName=", newName);
     setRenamingUri(null);
-    if (!newName || newName === uri.split("/").pop()) { console.log("[COLLAPSE-DEBUG] no-op, name unchanged"); return; }
+    if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
-    console.log("[COLLAPSE-DEBUG] copy+delete:", uri.split("/").pop(), "→", newName);
     const { copy, deleteEntry } = await import("@src/core/FileService");
     await copy(uri, dest);
     await deleteEntry(uri);
-    console.log("[COLLAPSE-DEBUG] refresh dir:", dir.split("/").pop());
     await model.refresh(dir);
     const parent = model.findClosest(dir);
-    console.log("[COLLAPSE-DEBUG] parent:", parent?.name, "expanded:", parent ? model.isExpanded(parent.uri) : "N/A", "children:", parent?.children?.length);
-    if (parent && model.isExpanded(parent.uri)) {
-      console.log("[COLLAPSE-DEBUG] calling getChildren...");
-      await model.getChildren(parent).catch(() => {});
-      console.log("[COLLAPSE-DEBUG] getChildren done, children:", parent.children?.length);
-    } else {
-      console.log("[COLLAPSE-DEBUG] NOT calling getChildren (not expanded)");
-    }
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
   }, [model]);
   const cancelRename = useCallback(() => setRenamingUri(null), []);
 

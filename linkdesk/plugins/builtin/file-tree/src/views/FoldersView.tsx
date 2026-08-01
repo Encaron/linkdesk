@@ -125,10 +125,25 @@ const FoldersView: React.FC = () => {
       if (_debounceRef.current) clearTimeout(_debounceRef.current);
       _debounceRef.current = setTimeout(async () => {
         _debounceRef.current = null;
-        await model.refresh();
-        for (const uri of model.getExpandedUris()) {
-          const item = model.findClosest(uri);
-          if (item) await model.getChildren(item).catch(() => {});
+        // 🔥 定向 refresh：按变更路径定向清理+重载——避免全局 refresh 扫荡已修好的目录
+        const affectedDirs = new Set<string>();
+        for (const e of events) {
+          const np = normalizePath(e.path);
+          const dir = np.substring(0, np.lastIndexOf("/"));
+          if (dir) affectedDirs.add(dir); else affectedDirs.add(np);
+        }
+        for (const dir of affectedDirs) {
+          await model.refresh(dir);
+          const item = model.findClosest(dir);
+          if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch(() => {});
+        }
+        if (affectedDirs.size === 0) {
+          // 无路径信息时回退到全局 refresh（兼容旧事件）
+          await model.refresh();
+          for (const uri of model.getExpandedUris()) {
+            const item = model.findClosest(uri);
+            if (item) await model.getChildren(item).catch(() => {});
+          }
         }
         rerender();
       }, 300);
