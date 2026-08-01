@@ -11,6 +11,7 @@ import type { FileTreeModel } from "./FileTreeModel";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
 import { copy, deleteEntry } from "@src/core/FileService";
+import { showConfirm } from "@src/core/DialogService";
 import { dirname, joinPath, normalizePath } from "./pathUtils";
 import type { FlatItem } from "./pathUtils";
 
@@ -79,6 +80,13 @@ export async function executeSafeDrop(
 ): Promise<void> {
   // E4V#34e: explorer.enableDragAndDrop 配置开关
   if ((getConfigurationValue<boolean>("explorer.enableDragAndDrop") ?? true) === false) return;
+  // E4V#34h1: explorer.confirmDragAndDrop——移动/复制前弹确认框
+  if (getConfigurationValue<boolean>("explorer.confirmDragAndDrop") ?? true) {
+    const names = sources.map((s) => `"${s.name}"`).join(", ");
+    const targetName = targetDir.split("/").pop() ?? targetDir;
+    const confirmed = await showConfirm(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
+    if (!confirmed) return;
+  }
   const t = normalizePath(targetDir);
   for (const src of sources) {
     const s = normalizePath(src.path);
@@ -105,6 +113,8 @@ export interface DnDCallbacks {
   model: FileTreeModel;
   rerender: () => void;
   getContainerEl: () => HTMLDivElement | null;
+  /** E4V#34h2: OS 拖入文件后自动打开回调 */
+  onAutoOpenDroppedFile?: (filePath: string, name: string) => void;
 }
 
 /**
@@ -183,6 +193,12 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
         }
         await executeSafeDrop(sources, target.targetDir, "copy");
         await refreshDir(target.targetDir);
+        // E4V#34h2: explorer.autoOpenDroppedFile——拖入后自动打开
+        if (getConfigurationValue<boolean>("explorer.autoOpenDroppedFile") ?? false) {
+          for (const src of sources) {
+            callbacks.onAutoOpenDroppedFile?.(src.path, src.name);
+          }
+        }
         callbacks.rerender();
         return;
       }
