@@ -77,6 +77,16 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
   return findLeaf(child);
 }
 
+/* ── E4V#35d 归一化：工作区激活——所有交互入口走此函数 ── */
+
+/** 点击任意节点→激活所属工作区根。handleSelect / handleContextMenu / 键盘等入口统一调用。 */
+function activateWorkspaceForUri(model: FileTreeModel, uri: string): void {
+  const root = model.findClosestRoot(uri);
+  if (root && root.uri !== getActiveWorkspace()) {
+    setActiveWorkspace(root.uri);
+  }
+}
+
 /* ── 组件 ── */
 
 const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
@@ -295,15 +305,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     }
     setFocusedUri(uri);
     setLastClickedUri(uri);
-
-    // E4V#35d: 点击任意节点→激活所属工作区根（编译/下载/搜索以活跃工作区为目标）
-    const root = model.findClosestRoot(uri);
-    if (root) {
-      const currentActive = getActiveWorkspace();
-      if (root.uri !== currentActive) {
-        setActiveWorkspace(root.uri);
-      }
-    }
+    activateWorkspaceForUri(model, uri);
   }, [model]);
   const handleOpen = useCallback((item: ExplorerItem, mode: "preview" | "pin") => { onOpenFile(item, mode); }, [onOpenFile]);
   /** E4V#21: 右键菜单前——右键项不在选中集合则自动切为单选（对标 VS Code）。
@@ -314,11 +316,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     if (!selectionRef.current.has(item.uri)) {
       setSelection(new Set([item.uri]));
     }
-    // E4V#35d: 右键也激活所属工作区
-    const root = model.findClosestRoot(item.uri);
-    if (root && root.uri !== getActiveWorkspace()) {
-      setActiveWorkspace(root.uri);
-    }
+    activateWorkspaceForUri(model, item.uri);
     onContextMenu?.(item, event);
   }, [onContextMenu, model]);
 
