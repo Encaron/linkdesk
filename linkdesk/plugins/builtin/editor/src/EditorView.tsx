@@ -62,34 +62,42 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 等影子 model 扫描完 → editor.setValue 同值触发 TS 重分析
+    // 🔥 等影子 model 扫描完 → 末尾插入再删除一个字符触发 TS 重分析
+    //    pushEditOperations 批量执行——只触发一次 onChange，最终值不变
     scanWorkspaceForTypeScript(monaco).then(() => {
-      if (!editorRef.current) return;
-      const v = editorRef.current.getValue();
-      editorRef.current.setValue(v);
-      console.log("[editor] TS re-analysis triggered (setValue same)");
+      const m = editor.getModel();
+      if (!m || m.isDisposed()) return;
+      const lastLine = m.getLineCount();
+      const lastCol = m.getLineMaxColumn(lastLine);
+      const Range = monaco.Range;
+      m.pushEditOperations(
+        [],
+        [
+          { range: new Range(lastLine, lastCol, lastLine, lastCol), text: "x" },
+          { range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" },
+        ],
+        () => null,
+      );
+      console.log("[editor] TS re-analysis triggered (pushEdit no-op)");
     });
 
-    // 🔥 F12 诊断
+    // 🔥 F12 诊断——TS worker 的 getDefinitionAtPosition 要 number 偏移量，不是 IPosition 对象
     const queryDefinition = async () => {
       const m = editor.getModel();
       const pos = editor.getPosition();
       if (!m || !pos) return;
-      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "URI:", m.uri.toString());
+      const offset = m.getOffsetAt(pos); // 🔥 0-based 字符偏移量
+      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "offset:", offset, "URI:", m.uri.toString());
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
 
-        // 定义尝试
-        const defs = await client.getDefinitionAtPosition(m.uri.toString(), pos);
-        console.log("[editor]   getDefinition(Monaco IPosition):", JSON.stringify(defs));
+        const defs = await client.getDefinitionAtPosition(m.uri.toString(), offset);
+        console.log("[editor]   getDefinition(offset):", JSON.stringify(defs));
 
-        // 诊断内容
         const diags = await client.getSemanticDiagnostics(m.uri.toString());
-        console.log("[editor]   诊断数:", diags?.length, diags?.map((d: any) => d.messageText));
+        console.log("[editor]   诊断数:", diags?.length, diags?.[0]?.messageText);
 
-        // 🔥 用 Monaco 内置 action——如果弹出 peek 窗说明 TS worker 内部是好的
-        console.log("[editor]   尝试内置 revealDefinition...");
         editor.getAction("editor.action.revealDefinition")?.run();
       } catch (e) {
         console.error("[editor] F12——出错:", e);
