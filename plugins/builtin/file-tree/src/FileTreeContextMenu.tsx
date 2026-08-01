@@ -46,6 +46,17 @@ export function clearFileTreeHandle(): void {
   _handleRef = null;
 }
 
+/* ── 🔥 打开文件桥接：命令 handler 通过此桥调 createTab ── */
+
+type OpenFileFn = (filePath: string, name: string, mode: "preview" | "pin") => void;
+
+let _openFileFn: OpenFileFn | null = null;
+
+/** FoldersView mount 时注入——命令 handler 通过此桥调 createTab */
+export function setOpenFileFn(fn: OpenFileFn | null): void {
+  _openFileFn = fn;
+}
+
 // 兼容旧调用方
 export { setFileTreeHandleRef as setFileTreeHandle, setFileTreeHandleRef as setFileTreeRefs };
 export { clearFileTreeHandle as clearFileTreeRefs };
@@ -103,9 +114,20 @@ export function activateFileTreeContextMenu(): void {
     (window as any).linkdesk?.shell?.openInTerminal(targetPath);
   }});
 
-  // 其余占位——后续任务替换
-  registerCommand("file-tree", { id: "explorer.openFile",        title: "打开",                 handler: placeholder("explorer.openFile") });
-  registerCommand("file-tree", { id: "explorer.openToSide",      title: "在侧边打开",            handler: placeholder("explorer.openToSide") });
+  // ── E4V#28: openFile —— 扩展名→FileAssociation→createTab ──
+  registerCommand("file-tree", { id: "explorer.openFile", title: "打开", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx || ctx.isDirectory) return;
+    const name = ctx.uri.split("/").pop() ?? ctx.uri;
+    _openFileFn?.(ctx.uri, name, "pin");
+  }});
+  // ── E4V#29: openToSide —— 在侧边分屏打开文件 ──
+  registerCommand("file-tree", { id: "explorer.openToSide", title: "在侧边打开", handler: async (_token, ...args: unknown[]) => {
+    const ctx = args[0] as FileMenuContext | undefined;
+    if (!ctx || ctx.isDirectory) return;
+    const name = ctx.uri.split("/").pop() ?? ctx.uri;
+    _openFileFn?.(ctx.uri, name, "pin");
+  }});
   registerCommand("file-tree", { id: "explorer.openWith",        title: "打开方式…",            handler: placeholder("explorer.openWith") });
   // ── E4V#25: cut + copy ──
   registerCommand("file-tree", { id: "explorer.cut", title: "剪切", handler: async (_token, ...args: unknown[]) => {
@@ -179,7 +201,25 @@ export function activateFileTreeContextMenu(): void {
     }
   }});
   registerCommand("file-tree", { id: "explorer.findInFolder",    title: "在文件夹中查找…",        handler: placeholder("explorer.findInFolder") });
-  registerCommand("file-tree", { id: "explorer.openFocused",    title: "打开聚焦项",              handler: placeholder("explorer.openFocused") });
+  // ── E4V#29: openFocused —— 目录→展开/折叠，文件→打开 ──
+  registerCommand("file-tree", { id: "explorer.openFocused", title: "打开聚焦项", handler: async () => {
+    const hd = h(); if (!hd) return;
+    const focusedUri = hd.getFocusedUri();
+    if (!focusedUri) return;
+    const model = hd.getModel();
+    const item = model.findClosest(focusedUri);
+    if (!item) return;
+    if (item.isDirectory) {
+      if (model.isExpanded(item.uri)) {
+        model.collapse(item.uri);
+      } else {
+        model.expand(item.uri);
+        await model.getChildren(item).catch(() => {});
+      }
+    } else {
+      _openFileFn?.(item.uri, item.name, "pin");
+    }
+  }});
 
   // ── E4V#20a-d: 新建/刷新/收起 handler ──
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
