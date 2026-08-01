@@ -219,7 +219,7 @@
 
 .keybindings-inline-btn.confirm:hover {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .keybindings-inline-btn.confirm:disabled {
