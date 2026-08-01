@@ -186,15 +186,28 @@ export class FileTreeModel {
    */
   // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
 
+  /** 递归重载已展开的子目录——refresh 后新对象 children=null 需重建 */
+  private async _reloadExpandedDescendants(item: ExplorerItem): Promise<void> {
+    if (!item.children) return;
+    for (const child of item.children) {
+      if (child.isDirectory && this._expanded.has(child.uri)) {
+        child.children = null;
+        await this.getChildren(child).catch(() => {});
+        await this._reloadExpandedDescendants(child);
+      }
+    }
+  }
+
   /** 刷新——path 为空则清空所有已展开节点的缓存。不 fire——调用方重载后统一触发 */
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
       if (!item?.isDirectory) return;
-      // 🔥 已展开→先清再重载。先清保证 getChildren 走慢路径重读磁盘。
+      // 🔥 已展开→先清再重载。getChildren 返回新对象 children=null→递归重载已展开子树
       if (this._expanded.has(item.uri)) {
         item.children = null;
         await this.getChildren(item).catch(() => {});
+        await this._reloadExpandedDescendants(item);
         return;
       }
       item.children = null;
