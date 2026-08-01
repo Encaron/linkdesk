@@ -14,6 +14,7 @@ import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
+import { getActiveWorkspace, setActiveWorkspace } from "@src/core/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
@@ -289,7 +290,16 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     }
     setFocusedUri(uri);
     setLastClickedUri(uri);
-  }, []);
+
+    // E4V#35d: 点击任意节点→激活所属工作区根（编译/下载/搜索以活跃工作区为目标）
+    const root = model.findClosestRoot(uri);
+    if (root) {
+      const currentActive = getActiveWorkspace();
+      if (root.uri !== currentActive) {
+        setActiveWorkspace(root.uri);
+      }
+    }
+  }, [model]);
   const handleOpen = useCallback((item: ExplorerItem, mode: "preview" | "pin") => { onOpenFile(item, mode); }, [onOpenFile]);
   /** E4V#21: 右键菜单前——右键项不在选中集合则自动切为单选（对标 VS Code）。
    *  🛡️ ref 桥接——避免 selection 进 useCallback deps 导致所有 React.memo 节点重渲染 */
@@ -299,8 +309,13 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     if (!selectionRef.current.has(item.uri)) {
       setSelection(new Set([item.uri]));
     }
+    // E4V#35d: 右键也激活所属工作区
+    const root = model.findClosestRoot(item.uri);
+    if (root && root.uri !== getActiveWorkspace()) {
+      setActiveWorkspace(root.uri);
+    }
     onContextMenu?.(item, event);
-  }, [onContextMenu]);
+  }, [onContextMenu, model]);
 
   /* ── 键盘 / 拖放 ── */
   const rawKeyDown = useFileTreeKeyboard(
