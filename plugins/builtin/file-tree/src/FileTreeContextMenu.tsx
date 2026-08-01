@@ -17,6 +17,7 @@ import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "./pathUtils";
 import { writeFile, mkdir, exists, deleteEntry } from "@src/core/FileService";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
+import { openFolder } from "@src/core/WorkspaceService";
 import { showConfirm } from "@src/core/DialogService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 import { executeSafeDrop } from "./FileTreeDnD";
@@ -220,6 +221,10 @@ export function activateFileTreeContextMenu(): void {
     }
   }});
   registerCommand("file-tree", { id: "explorer.findInFolder",    title: "在文件夹中查找…",        handler: placeholder("explorer.findInFolder") });
+  // ── E4V#33: openFolder —— 打开工作区文件夹（MenuBar 文件菜单） ──
+  registerCommand("file-tree", { id: "explorer.openFolder", title: "打开文件夹…", handler: async () => {
+    await openFolder();
+  }});
   // ── E4V#29: openFocused —— 目录→展开/折叠，文件→打开 ──
   registerCommand("file-tree", { id: "explorer.openFocused", title: "打开聚焦项", handler: async () => {
     const hd = h(); if (!hd) return;
@@ -324,6 +329,17 @@ export function activateFileTreeContextMenu(): void {
 
     // 第 5 组：搜索
     { command: "explorer.findInFolder",    group: "5_search", when: "explorerItemIsDir" },
+  ]);
+
+  // ── E4V#33: MenuBar 菜单栏贡献——顶栏 [编辑] 菜单 + 追加 [文件] 菜单项 ──
+  registerMenuItems(MenuId.MenuBar, "file-tree", [
+    // 追加到已有 [文件] 菜单
+    { command: "explorer.newFile",   group: "file", label: "新建文件" },
+    { command: "explorer.openFolder",group: "file", label: "打开文件夹…" },
+    // 新建 [编辑] 菜单
+    { command: "explorer.cut",       group: "edit", label: "剪切" },
+    { command: "explorer.copy",      group: "edit", label: "复制" },
+    { command: "explorer.paste",     group: "edit", label: "粘贴" },
   ]);
 }
 
