@@ -226,18 +226,8 @@ const FoldersView: React.FC = () => {
   }, [tabActions]);
 
   const handleOpenFile = useCallback((item: ExplorerItem, mode: "preview" | "pin") => {
-    // 目录 → toggle 展开/折叠（对标 VS Code：双击目录行=切换展开）
-    if (item.isDirectory) {
-      if (model.isExpanded(item.uri)) {
-        model.collapse(item.uri);
-      } else {
-        model.expand(item.uri);
-        model.getChildren(item).catch(() => {});
-      }
-      return;
-    }
     doOpenFile(item.uri, item.name, mode);
-  }, [doOpenFile, model]);
+  }, [doOpenFile]);
 
   // 🔥 桥接 openFile 到模块级命令 handler——FileTreeContextMenu 中的命令通过此桥创建标签页
   useEffect(() => {
