@@ -87,6 +87,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
+
+    // 🔥 等待 TS 影子 model 扫描完成 → 触发 TS worker 重新分析 import
+    scanWorkspaceForTypeScript(monaco).then(() => {
+      const m = editor.getModel();
+      if (!m || m.isDisposed()) return;
+      // executeEdits 同内容替换——触发 TS re-analysis，用户无感知
+      editor.executeEdits("ts-rescan", [
+        { range: m.getFullModelRange(), text: m.getValue() },
+      ]);
+    });
   }, []);
 
   // 🔥 value 变更 → 同步到 model（EditorTab 不直接操作 model，走 value prop）
