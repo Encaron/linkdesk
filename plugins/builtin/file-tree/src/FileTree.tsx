@@ -25,6 +25,8 @@ export interface FileTreeHandle {
   rerender(): void;
   /** E4V#27: 对 focused item 启动行内重命名 */
   startRename(): void;
+  /** E4V#30: 定位文件——展开目录链 + 选中 + 滚动到可见位置 */
+  reveal(uri: string): Promise<void>;
 }
 
 interface FileTreeProps {
@@ -77,6 +79,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   { model, onOpenFile, onContextMenu }, ref,
 ) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const scrollElRef = useRef<HTMLElement | null>(null);
   const [scrollTop, setScrollTop] = useState(0);
   const scrollTopRef = useRef(0);
   const [containerHeight, setContainerHeight] = useState(0);
@@ -141,12 +144,24 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   useEffect(() => () => { if (renamingUri !== null) exitRename(); }, [renamingUri, exitRename]);
 
   /* ── 🔥 归一化桥接：一个 ref 暴露全部实时状态——替代多个模块级变量 ── */
+  const [revealTarget, setRevealTarget] = useState<string | null>(null);
+
   useImperativeHandle(ref, () => ({
     getSelection: () => Array.from(selection),
     getFocusedUri: () => focusedUri,
     getModel: () => model,
     rerender: () => rerender(),
     startRename,
+    reveal: async (uri: string) => {
+      const item = await model.findAndExpandToBypassExclude(uri);
+      if (!item) return;
+      // 选中 + 聚焦目标
+      setSelection(new Set([uri]));
+      setFocusedUri(uri);
+      setRevealTarget(uri);
+      // rerender 后 scroll——useEffect 监测 revealTarget 变化后执行
+      rerender();
+    },
   }), [selection, focusedUri, model, rerender, startRename]);
 
   /* ── ResizeObserver ── */
@@ -163,7 +178,24 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     return model.onDidChange.event(() => { rerender(); });
   }, [model, rerender]);
 
-  /* ── 虚拟列表 ── */
+  /* ── E4V#30: reveal 滚动——revealTarget 变更后等 React 渲染完再 scroll ── */
+  useEffect(() => {
+    if (!revealTarget) return;
+    const timer = requestAnimationFrame(() => {
+      const items = flatItemsRef.current;
+      const idx = items.findIndex((f) => f.item.uri === revealTarget);
+      if (idx === -1) { setRevealTarget(null); return; }
+      const scrollEl = scrollElRef.current;
+      if (!scrollEl) { setRevealTarget(null); return; }
+      const itemTop = idx * TREE_ITEM_HEIGHT;
+      const viewHalf = scrollEl.clientHeight / 2;
+      // 居中显示——上限不超过 totalHeight（防空白）
+      const target = Math.max(0, itemTop - viewHalf + TREE_ITEM_HEIGHT / 2);
+      scrollEl.scrollTop = target;
+      setRevealTarget(null);
+    });
+    return () => cancelAnimationFrame(timer);
+  }, [revealTarget]);
   /** 🔥 剪切中 URI 集合——render body 直读，FoldersView.rerender 驱动刷新 */
   const cutUris = fileTreeClipboard.isCut ? new Set(fileTreeClipboard.uris) : new Set<string>();
   const flatItems = useMemo(() => { void (version); return flattenTree(model); }, [model, version]);
@@ -184,11 +216,15 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       scrollEl = scrollEl.parentElement;
     }
     if (!scrollEl) return;
+    scrollElRef.current = scrollEl; // E4V#30: reveal 用它定位滚动
     scrollTopRef.current = scrollEl.scrollTop;
     setScrollTop(scrollEl.scrollTop);
     const handler = () => { scrollTopRef.current = scrollEl.scrollTop; setScrollTop(scrollEl.scrollTop); };
     scrollEl.addEventListener("scroll", handler, { passive: true });
-    return () => scrollEl.removeEventListener("scroll", handler);
+    return () => {
+      scrollEl!.removeEventListener("scroll", handler);
+      scrollElRef.current = null;
+    };
   }, []);
 
   /* ── twistie 展开/折叠 ── */
