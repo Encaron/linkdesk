@@ -98,22 +98,22 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         console.error("[editor] 跳转定义失败:", e);
       }
     };
-    // 🔥 F12 + Ctrl+Click：覆盖 Monaco 内置 revealDefinition action 的 run 方法
-    //    Monaco 的 onMouseDown 在我们 listener 之前就处理了 Ctrl+Click→revealDefinition
-    //    所以我们不拦截事件，而是直接替换 action 的行为
-    const revealAction = editor.getAction("editor.action.revealDefinition");
-    if (revealAction) {
-      (revealAction as any).run = () => {
+    // 🔥 F12 + Ctrl+Click 跳转定义
+    //    Monaco 官方 API: gotoLocation.alternativeDefinitionCommand——Ctrl+Click 调此命令
+    editor.addAction({
+      id: "linkdesk.goToDefinition",
+      label: "Go to Definition",
+      keybindings: [monaco.KeyCode.F12],
+      run: () => {
         const pos = editor.getPosition();
         if (pos) goToDefinitionAt(pos);
-        return Promise.resolve();
-      };
-    }
-    // F12 也走覆盖后的 revealDefinition
-    editor.addCommand(monaco.KeyCode.F12, () => {
-      const pos = editor.getPosition();
-      if (pos) goToDefinitionAt(pos);
+      },
     });
+    editor.updateOptions({
+      gotoLocation: {
+        alternativeDefinitionCommand: "linkdesk.goToDefinition",
+      },
+    } as any);
   }, []);
 
   useEffect(() => {
