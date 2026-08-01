@@ -1,5 +1,9 @@
 /**
  * E4V#40b Monaco 编辑器包装器。
+ *
+ * 🔥 URI 策略：beforeMount 中用 Uri.file 预创建 model（file:/// 协议），
+ *    path prop 传 file:/// URI，@monaco-editor/react 发现已有 model 直接复用。
+ *    TS worker 只认 file:/// 协议——E: scheme 返回 undefined。
  */
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
@@ -31,6 +35,12 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const monacoNsRef = useRef<any>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const pathRef = useRef(filePath);
+  pathRef.current = filePath;
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const langRef = useRef(language);
+  langRef.current = language;
 
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
@@ -39,7 +49,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
     monacoNsRef.current = monaco;
-    console.log("[editor] beforeMount——注册语言+主题+TS环境+启动扫描");
+    console.log("[editor] beforeMount");
+
+    // 🔥 用 Uri.file 预创建 model（file:/// 协议）——
+    //    @monaco-editor/react 的 path prop 用 Uri.parse(file:///...) 找到此 model，直接复用
+    const normalized = normalizePath(pathRef.current);
+    const uri = monaco.Uri.file(normalized);
+    const existing = monaco.editor.getModel(uri);
+    if (!existing) {
+      monaco.editor.createModel(valueRef.current, langRef.current, uri);
+      console.log("[editor] 预创建 model:", uri.toString());
+    } else {
+      console.log("[editor] 复用已有 model:", uri.toString());
+    }
+
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
     setupTypeScriptEnv(monaco);
@@ -51,60 +74,55 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     monacoNsRef.current = monaco;
 
     const model = editor.getModel();
-    console.log("[editor] onMount——model URI:", model?.uri?.toString(), "language:", model?.getLanguageId());
+    console.log("[editor] onMount——model URI:", model?.uri?.toString());
 
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 诊断：F12 → 直接问 TS worker 能否找到定义
-    //    用 addCommand（和 Ctrl+S 同模式），不用 addAction（会被内置 revealDefinition 覆盖）
+    // 🔥 F12 诊断——直接问 TS worker
     const queryDefinition = async () => {
-      const model = editor.getModel();
+      const m = editor.getModel();
       const pos = editor.getPosition();
-      if (!model || !pos) return;
-      console.log("[editor] F12——查询定义:", model.uri.toString(), pos.lineNumber, pos.column);
+      if (!m || !pos) return;
+      console.log("[editor] F12——查询:", m.uri.toString(), pos.lineNumber, pos.column);
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
-        const client = await worker(model.uri);
+        const client = await worker(m.uri);
         const defs = await client.getDefinitionAtPosition(
-          model.uri.toString(),
+          m.uri.toString(),
           { line: pos.lineNumber, offset: pos.column - 1 },
         );
-        console.log("[editor] F12——TS worker 返回:", JSON.stringify(defs));
+        console.log("[editor] F12——返回:", JSON.stringify(defs));
       } catch (e) {
-        console.error("[editor] F12——TS worker 出错:", e);
+        console.error("[editor] F12——出错:", e);
       }
     };
     editor.addCommand(monaco.KeyCode.F12, queryDefinition);
   }, []);
 
-  // keep-alive
   useEffect(() => {
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => {
-      editorRef.current?.layout();
-    });
+    const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
-  // 主题订阅
   useEffect(() => {
     return subscribeThemeSync(monacoNsRef);
   }, []);
 
-  // StrictMode 防线
   useEffect(() => {
-    return () => {
-      editorRef.current?.dispose();
-    };
+    return () => { editorRef.current?.dispose(); };
   }, []);
+
+  // 🔥 构造 file:/// URI 给 path prop——@monaco-editor/react 用 Uri.parse 创建，和预创建的 Uri.file model 匹配
+  const fileUri = `file:///${normalizePath(filePath)}`;
 
   return (
     <Editor
       height="100%"
-      path={normalizePath(filePath)}
+      path={fileUri}
       language={language}
       value={value}
       onChange={onChange}
