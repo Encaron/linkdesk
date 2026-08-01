@@ -58,29 +58,26 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 诊断：注册 F12 handler——直接问 TS worker 能否找到定义
-    editor.addAction({
-      id: "linkdesk-go-to-definition",
-      label: "Go to Definition (LinkDesk)",
-      keybindings: [monaco.KeyCode.F12],
-      run: async (ed: any) => {
-        const model = ed.getModel();
-        const pos = ed.getPosition();
-        if (!model || !pos) return;
-        console.log("[editor] F12——查询定义:", model.uri.toString(), pos.lineNumber, pos.column);
-        try {
-          const worker = await monaco.languages.typescript.getTypeScriptWorker();
-          const client = await worker(model.uri);
-          const defs = await client.getDefinitionAtPosition(
-            model.uri.toString(),
-            { line: pos.lineNumber, offset: pos.column - 1 },
-          );
-          console.log("[editor] F12——TS worker 返回:", JSON.stringify(defs));
-        } catch (e) {
-          console.error("[editor] F12——TS worker 出错:", e);
-        }
-      },
-    });
+    // 🔥 诊断：F12 → 直接问 TS worker 能否找到定义
+    //    用 addCommand（和 Ctrl+S 同模式），不用 addAction（会被内置 revealDefinition 覆盖）
+    const queryDefinition = async () => {
+      const model = editor.getModel();
+      const pos = editor.getPosition();
+      if (!model || !pos) return;
+      console.log("[editor] F12——查询定义:", model.uri.toString(), pos.lineNumber, pos.column);
+      try {
+        const worker = await monaco.languages.typescript.getTypeScriptWorker();
+        const client = await worker(model.uri);
+        const defs = await client.getDefinitionAtPosition(
+          model.uri.toString(),
+          { line: pos.lineNumber, offset: pos.column - 1 },
+        );
+        console.log("[editor] F12——TS worker 返回:", JSON.stringify(defs));
+      } catch (e) {
+        console.error("[editor] F12——TS worker 出错:", e);
+      }
+    };
+    editor.addCommand(monaco.KeyCode.F12, queryDefinition);
   }, []);
 
   // keep-alive
