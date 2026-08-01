@@ -59,6 +59,20 @@ function pathApi() {
   } | undefined;
 }
 
+/* ── 🔥 写操作抑制——核心级防抖，所有插件自动受益 ── */
+
+let _suppressUntil = 0;
+const _SUPPRESS_MS = 300;
+
+/** 写操作后设抑制窗口——watcher 事件在此期间丢弃 */
+function suppressWatcher(): void {
+  _suppressUntil = Date.now() + _SUPPRESS_MS;
+}
+
+function isSuppressed(): boolean {
+  return Date.now() < _suppressUntil;
+}
+
 /* ── 公开 API ── */
 
 /** 列出目录内容——返回 FileEntry[]（含 isDirectory/isFile/size/modifiedAt） */
@@ -95,6 +109,7 @@ export async function writeFile(filePath: string, content: string): Promise<void
   const a = api();
   if (!a) return;
   await a.writeTextFile(filePath, content);
+  suppressWatcher();
 }
 
 /** 删除文件或目录（递归） */
@@ -102,6 +117,7 @@ export async function deleteEntry(filePath: string): Promise<void> {
   const a = api();
   if (!a) return;
   await a.remove(filePath);
+  suppressWatcher();
 }
 
 /** 检查路径是否存在 */
@@ -116,6 +132,7 @@ export async function copy(src: string, dest: string): Promise<void> {
   const a = api();
   if (!a) return;
   await a.copy(src, dest);
+  suppressWatcher();
 }
 
 /** 创建目录（递归） */
@@ -123,6 +140,7 @@ export async function mkdir(dirPath: string): Promise<void> {
   const a = api();
   if (!a) return;
   await a.mkdir(dirPath);
+  suppressWatcher();
 }
 
 /**
@@ -142,7 +160,11 @@ export async function watchFile(
 ): Promise<() => void> {
   const a = api();
   if (!a) return () => {};
-  return a.watch(dirPath, onEvent);
+  return a.watch(dirPath, (event) => {
+    // 🔥 核心写操作抑制——writeFile/copy/deleteEntry/mkdir 后 300ms 内事件丢弃
+    if (isSuppressed()) return;
+    onEvent(event);
+  });
 }
 
 /** 路径拼接——对标 Tauri path.join() */
