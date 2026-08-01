@@ -139,6 +139,12 @@ window.linkdesk.filesystem.writeTextFile(path: string, data: string): Promise<vo
 | 其他插件目录 | ❌ | 禁止 |
 | 系统目录 | ❌ | 禁止 |
 
+**🆕 writeFile/copy/deleteEntry/mkdir 自动抑制 watcher 事件（E4V#27 修）：**
+插件调这四个方法后，核心自动对变更目录设 300ms 抑制窗口→watcher 不报该目录的事件。插件不需要手动防抖。
+
+**🆕 watchFile 独立 IPC 通道（E4V#56）：**
+每个 watcher 走 `filesystem:changed:${watcherId}` 独立频道→不同 watcher 物理隔离→不会串扰。
+
 ### 3.3 `config`——配置
 
 ```typescript
