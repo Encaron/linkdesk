@@ -99,6 +99,7 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
     const visibleItems = items.filter((item) => {
       if (!item.configurable) return true;
       const configKey = `${pluginId}.statusBar.${item.id}`;
+      // eslint-disable-next-line linkdesk/no-raw-configuration-read -- filter 闭包非组件
       return getConfigurationValue<boolean>(configKey) ?? true;
     });
     if (visibleItems.length === 0) return null;

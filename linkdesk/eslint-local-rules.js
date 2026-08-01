@@ -504,6 +504,102 @@ const noQuickpickRenderItem = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 7：React 组件内禁止裸调 getConfigurationValue——必须用 useConfigurationValue hook
+// ═══════════════════════════════════════════════════════════
+//
+// excludeGitIgnore 漏订阅 bug 教训：getConfigurationValue + onDidChangeConfiguration 是
+// 两个独立调用——人脑配对，漏了就是死配置（改设置不生效）。
+// useConfigurationValue hook 内部已配对——用 hook 不可能漏。
+//
+// 错误示例（组件函数体内）：
+//   function MyView() {
+//     const val = getConfigurationValue<boolean>("my.config"); // ← 漏订阅
+//     return <div>{val}</div>;
+//   }
+//
+// 正确示例：
+//   function MyView() {
+//     const val = useConfigurationValue<boolean>("my.config"); // ← 自动订阅
+//     return <div>{val}</div>;
+//   }
+//
+// 非 React 代码（.ts 文件、async handler 内）不受限——直调 getConfigurationValue 合法。
+
+const noRawConfigurationRead = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "React 组件内禁止裸调 getConfigurationValue——必须用 useConfigurationValue hook 防漏订阅",
+      recommended: true,
+    },
+    messages: {
+      noRawRead:
+        "🔥 React 组件内禁止裸调 getConfigurationValue('{{key}}')。" +
+        " 只读不订阅 = 改设置不生效（excludeGitIgnore 漏订阅教训）。" +
+        " 修复：改用 useConfigurationValue<{{type}}>('{{key}}')——hook 内部已配 onDidChangeConfiguration。" +
+        " 非组件代码（.ts / 模块级函数 / async handler 内）可忽略此规则。",
+    },
+  },
+
+  create(context) {
+    const filename = context.filename || context.getFilename?.() || "";
+
+    /** 判断函数是否在 React 组件内——查找祖先函数有没有大写开头的（组件惯例） */
+    function isInsideComponent(node) {
+      let cur = node.parent;
+      while (cur) {
+        if (
+          cur.type === "FunctionDeclaration" ||
+          cur.type === "FunctionExpression" ||
+          cur.type === "ArrowFunctionExpression"
+        ) {
+          const name = cur.id?.name || "";
+          // 组件惯例：函数名大写开头（FoldersView/App/SettingsView）
+          if (name && /^[A-Z]/.test(name)) return true;
+        }
+        cur = cur.parent;
+      }
+      return false;
+    }
+
+    return {
+      CallExpression(node) {
+        if (
+          node.callee.type !== "Identifier" ||
+          node.callee.name !== "getConfigurationValue"
+        )
+          return;
+
+        if (!filename.endsWith(".tsx")) return;
+
+        const func = findEnclosingFunction(node);
+        if (!func) return;
+
+        // async 函数 → handler/syncRoots → 允许
+        if (func.async) return;
+
+        // use 开头 → 已在 hook 内 → 允许
+        const funcName = (func.id && func.id.name) || "";
+        if (funcName.startsWith("use")) return;
+
+        // 不在 React 组件内 → 模块级函数 → 允许
+        if (!isInsideComponent(node)) return;
+
+        const keyArg = node.arguments[0];
+        const key = keyArg && keyArg.type === "Literal" ? keyArg.value
+          : context.getSourceCode().getText(keyArg || node);
+
+        context.report({
+          node,
+          messageId: "noRawRead",
+          data: { key, type: "T" },
+        });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -511,4 +607,5 @@ export default {
   "no-ref-current-in-jsx": noRefCurrentInJsx,
   "no-module-level-ipc-listener": noModuleLevelIpcListener,
   "no-quickpick-render-item": noQuickpickRenderItem,
+  "no-raw-configuration-read": noRawConfigurationRead,
 };

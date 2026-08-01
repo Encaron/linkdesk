@@ -72,15 +72,15 @@ const FoldersView: React.FC = () => {
   );
 
   /* ── E4V#32: autoReveal——切标签页时文件树自动定位 ── */
+  const autoReveal = useConfigurationValue<boolean>("explorer.autoReveal") ?? true;
   useEffect(() => {
+    if (!autoReveal) return;
     const unsub = CoreEvents.onDidChangeActiveTab.event(({ filePath }) => {
-      // E4V#34: 尊重 explorer.autoReveal 配置
       if (!filePath) return;
-      if ((getConfigurationValue<boolean>("explorer.autoReveal") ?? true) === false) return;
       fileTreeRef.current?.reveal(filePath);
     });
     return unsub;
-  }, []);
+  }, [autoReveal]);
 
   /* ── E4V#31: 文件装饰器消费——订阅 FileDecorationRegistry → 模型变更时 decorate 节点 ── */
   const decoServiceRef = useRef<FileTreeDecorationService>(new FileTreeDecorationService(model));
@@ -196,65 +196,67 @@ const FoldersView: React.FC = () => {
         rerender();
       }, 300);
     });
-    // 🔥 归一化：useConfigurationValue = 读 + 订阅一行搞定，不再手写 onDidChangeConfiguration 回调
-    const excludeCfg = useConfigurationValue<Record<string, boolean>>("files.exclude");
-    const compactFolders = useConfigurationValue<boolean>("explorer.compactFolders");
-    const excludeGitIgnore = useConfigurationValue<boolean>("explorer.excludeGitIgnore");
-    // 跳过 mount 首次渲染——syncRoots 已做初始化，effect 只响应后续变更
-    const initialRender = useRef(true);
-
-    // files.exclude 变更 → 重配 filter + 刷新
-    useEffect(() => {
-      if (initialRender.current || excludeCfg === undefined) return;
-      const filter = filterRef.current;
-      filter.configure(excludeCfg);
-      model.refresh().then(() => rerender());
-    }, [excludeCfg, model, rerender]);
-
-    // compactFolders 变更 → 触发 useMemo 重算 flattenTree
-    useEffect(() => {
-      if (initialRender.current || compactFolders === undefined) return;
-      model.onDidChange.fire();
-    }, [compactFolders, model]);
-
-    // excludeGitIgnore 变更 → 重新读/清 .gitignore
-    useEffect(() => {
-      if (initialRender.current || excludeGitIgnore === undefined) return;
-      const filter = filterRef.current;
-      filter.clearGitignore();
-      if (excludeGitIgnore) {
-        const folders = getWorkspaceFolders();
-        (async () => {
-          for (const f of folders) {
-            const gitignorePath = joinPath(f.uri, ".gitignore");
-            if (await exists(gitignorePath)) {
-              try {
-                const content = await readFile(gitignorePath);
-                filter.setGitignore(content);
-              } catch { /* skip */ }
-            }
-          }
-          await model.refresh();
-          for (const uri of model.getExpandedUris()) {
-            const item = model.findClosest(uri);
-            if (item) await model.getChildren(item).catch(() => {});
-          }
-          rerender();
-        })();
-      } else {
-        model.refresh().then(() => rerender());
-      }
-    }, [excludeGitIgnore, model, rerender]);
-
-    // 初始渲染标记：在第一个 effect 之后翻转
-    useEffect(() => { initialRender.current = false; }, []);
-
     return () => {
       unsub1(); unsub2();
       if (_debounceRef.current) clearTimeout(_debounceRef.current);
       if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
     };
   }, [syncRoots, model, rerender]);
+
+  /* ── 🔥 归一化配置订阅——useConfigurationValue = 读+订阅一行搞定 ── */
+  const excludeCfg = useConfigurationValue<Record<string, boolean>>("files.exclude");
+  const compactFolders = useConfigurationValue<boolean>("explorer.compactFolders");
+  const excludeGitIgnore = useConfigurationValue<boolean>("explorer.excludeGitIgnore");
+  const isInitialMount = useRef(true);
+
+  // files.exclude 变更 → 重配 filter + 刷新
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    if (excludeCfg === undefined) return;
+    const filter = filterRef.current;
+    filter.configure(excludeCfg);
+    model.refresh().then(() => rerender());
+  }, [excludeCfg, model, rerender]);
+
+  // compactFolders 变更 → 触发 useMemo 重算 flattenTree
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    if (compactFolders === undefined) return;
+    model.onDidChange.fire();
+  }, [compactFolders, model]);
+
+  // excludeGitIgnore 变更 → 重新读/清 .gitignore
+  useEffect(() => {
+    if (isInitialMount.current) return;
+    if (excludeGitIgnore === undefined) return;
+    const filter = filterRef.current;
+    filter.clearGitignore();
+    if (excludeGitIgnore) {
+      const folders = getWorkspaceFolders();
+      (async () => {
+        for (const f of folders) {
+          const gitignorePath = joinPath(f.uri, ".gitignore");
+          if (await exists(gitignorePath)) {
+            try {
+              const content = await readFile(gitignorePath);
+              filter.setGitignore(content);
+            } catch { /* skip */ }
+          }
+        }
+        await model.refresh();
+        for (const uri of model.getExpandedUris()) {
+          const item = model.findClosest(uri);
+          if (item) await model.getChildren(item).catch(() => {});
+        }
+        rerender();
+      })();
+    } else {
+      model.refresh().then(() => rerender());
+    }
+  }, [excludeGitIgnore, model, rerender]);
+
+  // 首个 effect 触发后翻转标记——后续变更正常响应
+  useEffect(() => { isInitialMount.current = false; }, []);
 
   /* ── 🆕 E3.6 TB6：FOLDERS view 动态标题 = 工作区文件夹名 ──
    * E36#ROLE：role 字段保证始终 sectionViews——title 可安全为空，不再需要 " " 占位。
