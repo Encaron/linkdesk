@@ -113,7 +113,8 @@ export class FileTreeModel {
     current.children = filtered.map((e) => this._toExplorerItem(e, current));
     this.onDidChange.fire();
     // E4V#9: 文件嵌套——相关文件折叠为父文件的子节点
-    if (this._excludeFilter) {
+    // E4V#34g2: explorer.fileNesting.enabled 开关——默认 false
+    if (this._excludeFilter && (getConfigurationValue<boolean>("explorer.fileNesting.enabled") ?? false)) {
       const nesting = this._excludeFilter.buildNestingMap(filtered);
       // 归一化 key——FileEntry.path 可能含反斜杠
       const normalizedNesting = new Map<string, typeof filtered>();
