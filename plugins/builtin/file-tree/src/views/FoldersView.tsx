@@ -123,6 +123,20 @@ const FoldersView: React.FC = () => {
         }
       }
       model.setExcludeFilter(filter);
+      // E4V#34i: explorer.expandSingleFolderWorkspaces——单目录工作区自动展开根
+      if ((getConfigurationValue<boolean>("explorer.expandSingleFolderWorkspaces") ?? true)
+          && folders.length === 1) {
+        const root = model.roots[0];
+        if (root) {
+          await model.getChildren(root).catch(() => {});
+          const dirs = root.children?.filter((c) => c.isDirectory) ?? [];
+          if (dirs.length === 1) {
+            model.expand(root.uri);
+            model.expand(dirs[0].uri);
+            await model.getChildren(dirs[0]).catch(() => {});
+          }
+        }
+      }
       // 启动文件监听——外部变更实时刷新
       if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
       if (folders.length > 0) {
