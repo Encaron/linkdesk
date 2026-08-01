@@ -51,11 +51,14 @@ export function syncMonacoTheme(monaco: any): void {
 /**
  * 订阅 LinkDesk 主题变更——回调中调 syncMonacoTheme。
  * 返回 unsubscribe 函数——useEffect cleanup 中调用。
+ *
+ * 🔥 参数是 monaco 命名空间 ref（monaco.editor.defineTheme/setTheme），
+ *   不是 editor 实例 ref（editor.layout/dispose）。
  */
-export function subscribeThemeSync(monacoRef: { current: any }): () => void {
+export function subscribeThemeSync(monacoNsRef: { current: any }): () => void {
   return CoreEvents.onDidChangeTheme.event(() => {
-    if (monacoRef.current) {
-      syncMonacoTheme(monacoRef.current);
+    if (monacoNsRef.current) {
+      syncMonacoTheme(monacoNsRef.current);
     }
   });
 }

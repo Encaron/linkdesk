@@ -3,49 +3,56 @@
  *
  * 参考：plugins/user/serial-monitor/src/index.tsx L1082-1125
  *   - beforeMount：注册常用语言 + 定义 LinkDesk 主题
- *   - onMount：存 monacoRef + 注册 Ctrl+S
+ *   - onMount：存 editorRef + monacoNsRef + 注册 Ctrl+S
  *   - keep-alive：isActive 切换时 requestAnimationFrame → layout()
  *   - StrictMode：unmount cleanup 中 dispose editor
  *
+ * 🔥 E4V#40g1 归一化：useImperativeHandle 暴露 handle，内部 ref 私有。
+ *   对标 FileTreeHandle 模式——外部消费方不碰 ref 内部，只调 handle 方法。
+ *   预防 Bug R17-1：monacoRef/editorRef stale ref 混淆。
+ *
  * Props 由 EditorTab（E4V#40f）传入。
  */
-import React, { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
 import { registerLanguageMap } from "./language-map";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 
 export interface EditorViewProps {
-  /** 文件内容 */
   value: string;
-  /** Monaco 语言 ID——"typescript" | "json" | "plaintext" | ... */
   language: string;
-  /** 文件绝对路径——决定 Monaco model URI（跨文件解析用） */
   filePath: string;
-  /** 标签页是否活跃——用于 keep-alive layout */
   isActive: boolean;
-  /** 内容变更回调 */
   onChange?: (value: string | undefined) => void;
-  /** 保存回调（Ctrl+S 触发） */
   onSave?: () => void;
-  /** 只读模式 */
   readOnly?: boolean;
 }
 
-const EditorView: React.FC<EditorViewProps> = ({
-  value,
-  language,
-  filePath,
-  isActive,
-  onChange,
-  onSave,
-  readOnly,
-}) => {
-  const monacoRef = useRef<any>(null);
-  // 🔥 monaco 命名空间——subscribeThemeSync 需要它来调 monaco.editor.defineTheme/setTheme
+/** 🔥 归一化 handle——外部（EditorTab/快捷键/测试）只调方法，不碰内部 ref */
+export interface EditorViewHandle {
+  /** 刷新 Monaco 布局 */
+  layout(): void;
+  /** 销毁编辑器 */
+  dispose(): void;
+}
+
+const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
+  { value, language, filePath, isActive, onChange, onSave, readOnly },
+  ref,
+) {
+  /** Monaco 编辑器实例——layout()/dispose()/addCommand() */
+  const editorRef = useRef<any>(null);
+  /** Monaco 命名空间——monaco.editor.defineTheme/setTheme */
   const monacoNsRef = useRef<any>(null);
   // 🔥 ref 桥接——handleEditorMount 只跑一次，Ctrl+S 始终读最新 onSave
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+
+  // 🔥 归一化 handle——外部不碰 editorRef/monacoNsRef
+  useImperativeHandle(ref, () => ({
+    layout: () => editorRef.current?.layout(),
+    dispose: () => editorRef.current?.dispose(),
+  }), []);
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
     monacoNsRef.current = monaco;
@@ -54,20 +61,19 @@ const EditorView: React.FC<EditorViewProps> = ({
   }, []);
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
-    monacoRef.current = editor;
+    editorRef.current = editor;
     monacoNsRef.current = monaco;
-    // Ctrl+S → onSave（走 ref 避免闭包过期）
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
   }, []);
 
-  // keep-alive：标签页切回时刷新 Monaco 布局（对标串口监视器 L1118-1125）
+  // keep-alive：标签页切回时刷新 Monaco 布局
   useEffect(() => {
     if (!isActive) return;
     const raf = requestAnimationFrame(() => {
-      monacoRef.current?.layout();
+      editorRef.current?.layout();
     });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
@@ -80,7 +86,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   // StrictMode 防线：unmount 时 dispose editor
   useEffect(() => {
     return () => {
-      monacoRef.current?.dispose();
+      editorRef.current?.dispose();
     };
   }, []);
 
@@ -97,6 +103,6 @@ const EditorView: React.FC<EditorViewProps> = ({
       options={{ readOnly }}
     />
   );
-};
+});
 
 export default EditorView;
