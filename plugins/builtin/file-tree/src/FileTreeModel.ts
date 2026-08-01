@@ -84,9 +84,15 @@ export class FileTreeModel {
 
   /** 设置工作区根 */
   async setRoots(rootPaths: string[]): Promise<void> {
-    this._expanded.clear();
-    this._roots = rootPaths.map((p) => ({
-      uri: normalizePath(p),
+    // E4V#35c: 选择性清除——只清理已移除的根对应的展开项，保留仍存在的根的展开状态
+    const normalizedRoots = rootPaths.map((p) => normalizePath(p));
+    for (const uri of this._expanded) {
+      if (!normalizedRoots.some((r) => uri === r || uri.startsWith(r + "/"))) {
+        this._expanded.delete(uri);
+      }
+    }
+    this._roots = normalizedRoots.map((p) => ({
+      uri: p,
       name: basename(p),
       isDirectory: true,
       isSymlink: false,
