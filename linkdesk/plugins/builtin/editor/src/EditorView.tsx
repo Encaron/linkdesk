@@ -35,12 +35,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const monacoNsRef = useRef<any>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
-  const pathRef = useRef(filePath);
-  pathRef.current = filePath;
-  const valueRef = useRef(value);
-  valueRef.current = value;
-  const langRef = useRef(language);
-  langRef.current = language;
 
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
@@ -50,24 +44,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const beforeMount: BeforeMount = useCallback((monaco) => {
     monacoNsRef.current = monaco;
     console.log("[editor] beforeMount");
-
-    // 🔥 Uri.from 直接构造——Uri.parse/Uri.file 都把盘符冒号编码成 %3A，TS worker 不认
-    const normalized = normalizePath(pathRef.current);
-    const uri = monaco.Uri.from({
-      scheme: "file",
-      authority: "",
-      path: `/${normalized}`,
-      query: "",
-      fragment: "",
-    });
-    const existing = monaco.editor.getModel(uri);
-    if (!existing) {
-      monaco.editor.createModel(valueRef.current, langRef.current, uri);
-      console.log("[editor] 预创建 model:", uri.toString());
-    } else {
-      console.log("[editor] 复用已有 model:", uri.toString());
-    }
-
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
     setupTypeScriptEnv(monaco);
@@ -92,7 +68,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       const pos = editor.getPosition();
       if (!m || !pos) return;
       const uri = m.uri.toString();
-      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "URI:", uri);
+      console.log("[editor] F12——位置:", pos.lineNumber, pos.column,
+        "URI:", uri,
+        "model内容长度:", m.getValueLength(),
+        "model行数:", m.getLineCount());
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
@@ -133,13 +112,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     return () => { editorRef.current?.dispose(); };
   }, []);
 
-  // 🔥 构造 file:/// URI 给 path prop——@monaco-editor/react 用 Uri.parse 创建，和预创建的 Uri.file model 匹配
-  const fileUri = `file:///${normalizePath(filePath)}`;
-
   return (
     <Editor
       height="100%"
-      path={fileUri}
+      path={normalizePath(filePath)}
       language={language}
       value={value}
       onChange={onChange}
