@@ -14,6 +14,7 @@
 import { Emitter, type Event, CoreEvents } from "./CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
 import { normalizePath } from "./pathUtils";
+import { setPluginStateValue, getPluginStateValue } from "./PluginStateService";
 
 /* ── 类型 ── */
 
@@ -50,7 +51,7 @@ export const onDidChangeFolders: Event<WorkspaceFolder[]> = _onDidChangeFolders.
 
 /** 查询当前活跃工作区 URI——对标 VS Code workspace.workspaceFolders 的 active */
 export function getActiveWorkspace(): string | undefined {
-  return _activeWorkspaceUri ?? undefined;
+  return _activeWorkspaceUri ?? _folders[0]?.uri;
 }
 
 /** 设置活跃工作区——下游插件（编译/下载/搜索）以活跃工作区为目标 */
@@ -59,6 +60,8 @@ export function setActiveWorkspace(uri: string): void {
   if (_activeWorkspaceUri === normalized) return;
   _activeWorkspaceUri = normalized;
   _onDidChangeActiveWorkspace.fire(normalized);
+  // 持久化——F5 恢复
+  setPluginStateValue("file-tree", "activeWorkspace", normalized).catch(() => {});
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
@@ -103,8 +106,18 @@ export function addFolder(folderPath: string): void {
   _onDidChangeFolders.fire([..._folders]);
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
-  // 首个文件夹自动设为活跃工作区
-  if (_folders.length === 1) {
+  // 活跃工作区恢复优先级：持久化值 > 首个文件夹自动激活
+  // 每次 addFolder 都检查——后续添加的文件夹可能匹配持久化值
+  const persisted = getPluginStateValue<string>("file-tree", "activeWorkspace");
+  if (persisted) {
+    const normalizedPersisted = normalizePath(persisted);
+    if (_folders.some((f) => f.uri === normalizedPersisted)) {
+      // 持久化值的文件夹已加载→恢复
+      setActiveWorkspace(normalizedPersisted);
+    }
+    // 持久化值存在但文件夹尚未加载→不设活跃，等后续 addFolder
+  } else if (_folders.length === 1) {
+    // 无持久化值→首个文件夹自动激活
     setActiveWorkspace(uri);
   }
 
