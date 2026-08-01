@@ -135,6 +135,8 @@ const FoldersView: React.FC = () => {
           if (dir) affectedDirs.add(dir); else affectedDirs.add(absPath);
         }
         for (const dir of affectedDirs) {
+          // 🔥 治本：目录刚被命令手动刷新过→跳过 watcher 冗余刷新
+          if (model.wasRecentlyRefreshed(dir)) continue;
           await model.refresh(dir);
           const item = model.findClosest(dir);
           if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch(() => {});
