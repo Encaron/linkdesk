@@ -190,9 +190,8 @@ export class FileTreeModel {
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
-      if (item?.isDirectory) { console.log("[COL2] model.refresh({}) clearing:", path.split("/").pop(), "item:", item.name); console.trace("[COL2] refresh caller stack"); item.children = null; }
+      if (item?.isDirectory) item.children = null;
     } else {
-      console.log("[COL2] model.refresh() GLOBAL clearing all expanded + roots");
       for (const uri of this._expanded) {
         const item = this.findClosest(uri);
         if (item) item.children = null;
