@@ -19,6 +19,7 @@ import {
 } from "./splitTree";
 import type { CreateTabOptions } from "../core/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
+import { CoreEvents } from "../core/CoreEvents";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, syncCountersAfterRestore } from "./tabIdentity";
 
@@ -796,42 +797,70 @@ export function useTabManager() {
   const openOrFocusTab = useCallback(
     (type: string, opts?: CreateTabOptions): string | null => {
       let focusedId: string | null = null;
+      let filePath: string | undefined;
       setTabState((prev) => {
         const r = reduceOpenOrFocus(prev, type, lastFocusedByType.current.get(type), opts);
         focusedId = r.focusedId;
-        if (focusedId) lastFocusedByType.current.set(type, focusedId);
+        if (focusedId) {
+          lastFocusedByType.current.set(type, focusedId);
+          const g = findGroup(r.state, focusedId);
+          const t = g?.tabs.find((tab) => tab.id === focusedId);
+          filePath = t?.filePath;
+        }
         return r.state;
       });
+      if (focusedId) {
+        CoreEvents.onDidChangeActiveTab.fire({ tabId: focusedId, pluginId: type, filePath });
+      }
       return focusedId;
     },
     []
   );
 
   const focusTab = useCallback((tabId: string) => {
+    let filePath: string | undefined;
+    let pluginId: string | undefined;
     setTabState((prev) => {
       const next = reduceFocusTab(prev, tabId);
       const group = findGroup(next, tabId);
       const tab = group?.tabs.find((t) => t.id === tabId);
-      if (tab) lastFocusedByType.current.set(tab.pluginId ?? tab.type, tabId);
+      if (tab) {
+        lastFocusedByType.current.set(tab.pluginId ?? tab.type, tabId);
+        filePath = tab.filePath;
+        pluginId = tab.pluginId;
+      }
       return next;
     });
+    // E4V#32: fire 后触发 autoReveal
+    CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
   }, []);
 
   /** 按 sourceId 找标签页并聚焦——通用 API。
    *  插件（终端/file/sqlite 等）通过 sourceId 将自己的数据绑定到标签页。
    *  sourceId 是通用概念（CreateTabOptions.sourceId），不属任何特定插件。 */
   const focusTabBySourceId = useCallback((sourceId: string) => {
+    let focusedId: string | null = null;
+    let filePath: string | undefined;
+    let pluginId: string | undefined;
     setTabState((prev) => {
       const tab = prev.groups.flatMap((g) => g.tabs).find(
         (t) => t.sourceId === sourceId || t.id === sourceId,
       );
       if (!tab) return prev;
+      focusedId = tab.id;
       const next = reduceFocusTab(prev, tab.id);
       const group = findGroup(next, tab.id);
       const focused = group?.tabs.find((t) => t.id === tab.id);
-      if (focused) lastFocusedByType.current.set(focused.pluginId ?? focused.type, tab.id);
+      if (focused) {
+        lastFocusedByType.current.set(focused.pluginId ?? focused.type, tab.id);
+        filePath = focused.filePath;
+        pluginId = focused.pluginId;
+      }
       return next;
     });
+    if (focusedId) {
+      CoreEvents.onDidChangeActiveTab.fire({ tabId: focusedId, pluginId, filePath });
+    }
   }, []);
 
   /** 按 sourceId 找标签页并聚焦或创建——和 focusTabBySourceId 对应。

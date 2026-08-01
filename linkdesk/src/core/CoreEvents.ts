@@ -72,7 +72,7 @@ export const CoreEvents = {
   onDidChangeTheme: new Emitter<{ theme: string }>(),
 
   /** 活跃标签页切换——对标 VS Code onDidChangeActiveEditor */
-  onDidChangeActiveTab: new Emitter<{ tabId: string; pluginId?: string }>(),
+  onDidChangeActiveTab: new Emitter<{ tabId: string; pluginId?: string; filePath?: string }>(),
 
   /** 收到数据源数据——sourceId 标识数据源，raw 为文本。串口/网络/文件等通用。插件间数据走 events 频道 */
   onDidReceiveData: new Emitter<{ sourceId: string; raw: string }>(),
