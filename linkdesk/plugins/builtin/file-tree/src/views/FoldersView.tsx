@@ -15,7 +15,7 @@ import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandle, clearFileTreeHandle } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { FileTreeHandle } from "../FileTree";
@@ -44,8 +44,8 @@ const FoldersView: React.FC = () => {
     return () => { clearFileTreeHandle(); };
   }, []);
 
-  // 每次渲染后同步 handle（useImperativeHandle 在 commit 阶段设置 ref）
-  if (fileTreeRef.current) setFileTreeHandle(fileTreeRef.current);
+  // 🔥 传 ref 对象本身（非 .current 快照）——命令 handler 每次读 .current 拿最新 handle
+  setFileTreeHandleRef(fileTreeRef);
 
   /* ── 右键菜单状态 ── */
   const [contextMenu, setContextMenu] = useState<{
