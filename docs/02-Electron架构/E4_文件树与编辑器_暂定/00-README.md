@@ -40,7 +40,7 @@
 
 ---
 
-## 执行进度——20 轮 88 任务
+## 执行进度——20 轮 130 任务
 
 > **E3.6 已完成：** ViewContainerService 桌子 + SidePanel 渲染循环 + 三插件迁移。
 > R6/R8/R14 的 sidebar 相关任务基于 E3.6 架构，不返工。
@@ -54,21 +54,22 @@
 | R5 | 剪贴板服务 | E4V#14 | 1/1 | ✅ 2026-07-31 |
 | R6 | UI 对齐 VS Code | E4V#15-E4V#16 | 2/2 | ✅ 2026-07-31 🔥 E4V#15b 已放弃 |
 | R7 | 简单命令 handler | E4V#17-E4V#19 | 3/3 | ✅ 2026-07-31 |
-| R8 | 新建文件/文件夹 + sticky scroll（fixed portal→🔄PinnedSlot在Section内） | E4V#20a–h+20+i–viii+20+F0–F5+20+P0–P5 | 21/28 | 🔄 P0-P5待做 |
+| R8 | 新建文件/文件夹 + sticky（❌放弃）| E4V#20a–h | 21/28 | ✅ 功能完成，sticky 7 子项废弃 |
 | R9 | 多选 | E4V#21-E4V#23 | 3/3 | ✅ 2026-08-01 |
 | R10 | 编辑命令 handler | E4V#24-E4V#26 | 3/3 | ✅ 2026-08-01 |
 | R11 | 行内重命名 | E4V#27 | 1/1 | ✅ 2026-08-01 |
 | R12 | 打开文件 + 点击交互归一化 | E4V#28-E4V#29 + E4V#28a-e | 7/7 | ✅ 2026-08-01 |
 | R13 | 定位与装饰 | E4V#30-E4V#31 | 2/2 | ✅ 2026-08-01 |
 | R14 | 集成 | E4V#32-E4V#34k | 8/8 | ✅ 2026-08-01 |
-| R15 | 🔥 活跃工作区 + Multi-root | E4V#35a-h + E4V#36a-c | 8/9 | ✅ 2026-08-01 代码完成，E4V#35h 待 UI 验证 |
+| R15 | 🔥 活跃工作区 + Multi-root | E4V#35a-h + E4V#36a-c | 8/9 | ✅ 代码完成，E4V#35h 待 UI 验证 |
 | R16 | 文件搜索 | E4V#37a-d + E4V#38 + E4V#39a-c | 8/8 | ✅ 2026-08-02 全部完成（含 Encaron UAT） |
-| R17 | Monaco 编辑器 | E4V#40a–d + E4V#41a–b + E4V#42a–d | 0/10 | |
+| R17 | 🔥 Monaco 编辑器（🆕 22 任务）| E4V#40a–40w | 0/22 | ⬜ 准备开始 |
 | R17.5 | 🛡️ vitest 防线 | E4V#Test1–Test5 | 2/5 | Test2 ✅ Test3 ✅ |
 | R18 | ViewContainer 交互对齐 VS Code | E4V#43-E4V#50 | 0/8 | |
 | R19 | 图标主题 | E4V#51-E4V#54 | 0/4 | |
-| R19.5 | 🔧 响应式重构 | E4V#55a-f | 6/6 | ✅ 2026-07-31 |
-| **合计** | | **118** | **74** | R15+R16 完成 |
+| R19.5 | 🔧 响应式重构 + IPC隔离 + 路径归一化 | E4V#55/56/59/60 | 28/28 | ✅ 2026-08-02 |
+| 🆕 | E4V#58 根文件夹列表 | E4V#58a-e | 0/5 | ⬜ |
+| **合计** | | **130** | **95** | R15+R16 完成，R17 22 任务待开工 |
 
 ---
 
@@ -81,6 +82,7 @@
 | `FileService.copy()` | `src/core/FileService.ts` | 🔥 弥补缺口——拖放/剪贴板依赖 ✅ 已修复 `5f0b9c7` |
 | `EncodingService` | `src/core/encoding/EncodingService.ts` | 🔥 多消费方准入——file-tree 搜索 + editor |
 | `closedTabStack` | `src/hooks/useTabManager.ts` | 🔥 Ctrl+Shift+T 恢复 ✅ |
+| `monaco-languageclient` | `node_modules/` npm 依赖 | 🔥 语言插件 LSP 桥接——为 C/C++/Python 预留 ✅ 已安装 |
 
 ---
 
