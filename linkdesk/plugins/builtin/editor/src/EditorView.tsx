@@ -86,20 +86,32 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 F12 诊断——直接问 TS worker
+    // 🔥 F12 诊断——多参数格式试
     const queryDefinition = async () => {
       const m = editor.getModel();
       const pos = editor.getPosition();
       if (!m || !pos) return;
-      console.log("[editor] F12——查询:", m.uri.toString(), pos.lineNumber, pos.column);
+      const uri = m.uri.toString();
+      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "URI:", uri);
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
-        const defs = await client.getDefinitionAtPosition(
-          m.uri.toString(),
-          { line: pos.lineNumber, offset: pos.column - 1 },
-        );
-        console.log("[editor] F12——返回:", JSON.stringify(defs));
+
+        // 试 1: offset = column (1-based)
+        const r1 = await client.getDefinitionAtPosition(uri, { line: pos.lineNumber, offset: pos.column });
+        console.log("[editor]   offset=column(1-based):", JSON.stringify(r1));
+
+        // 试 2: offset = column - 1 (0-based)
+        const r2 = await client.getDefinitionAtPosition(uri, { line: pos.lineNumber, offset: pos.column - 1 });
+        console.log("[editor]   offset=column-1(0-based):", JSON.stringify(r2));
+
+        // 试 3: 用 Monaco IPosition 格式
+        const r3 = await client.getDefinitionAtPosition(uri, { lineNumber: pos.lineNumber, column: pos.column } as any);
+        console.log("[editor]   lineNumber+column:", JSON.stringify(r3));
+
+        // 试 4: 检查 getSemanticDiagnostics 是否工作
+        const diags = await client.getSemanticDiagnostics(uri);
+        console.log("[editor]   诊断数:", diags?.length);
       } catch (e) {
         console.error("[editor] F12——出错:", e);
       }
