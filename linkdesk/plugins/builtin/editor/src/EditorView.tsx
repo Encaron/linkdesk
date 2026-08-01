@@ -6,11 +6,16 @@
  *    TS worker 只认 file:/// 协议——E: scheme 返回 undefined。
  */
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
-import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
+import Editor, { type OnMount, type BeforeMount, loader } from "@monaco-editor/react";
+import * as monacoNs from "monaco-editor";
 import { normalizePath } from "@src/core/pathUtils";
 import { registerLanguageMap } from "./language-map";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
+
+// 🔥 告诉 @monaco-editor/react 用本地 monaco-editor（node_modules），不走 CDN。
+//    CDN 版 TS worker 加载链和本地版不同，本地版配合 main.tsx 的 ?worker 导入才能工作。
+loader.config({ monaco: monacoNs });
 
 export interface EditorViewProps {
   value: string;
