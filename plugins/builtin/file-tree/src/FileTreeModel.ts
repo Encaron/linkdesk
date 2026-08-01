@@ -190,7 +190,13 @@ export class FileTreeModel {
   async refresh(path?: string): Promise<void> {
     if (path) {
       const item = this.findClosest(path);
-      if (item?.isDirectory) item.children = null;
+      if (!item?.isDirectory) return;
+      // 🔥 已展开且有数据→直接重载，不清空。消除中间态 children=null 致 twistie 展开但无内容。
+      if (this._expanded.has(item.uri) && item.children !== null) {
+        await this.getChildren(item).catch(() => {});
+        return;
+      }
+      item.children = null;
     } else {
       for (const uri of this._expanded) {
         const item = this.findClosest(uri);
