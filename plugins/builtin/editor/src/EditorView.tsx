@@ -51,9 +51,15 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     monacoNsRef.current = monaco;
     console.log("[editor] beforeMount");
 
-    // 🔥 Uri.parse(file:///...) 预创建 model——Uri.file 把盘符冒号编码成 %3A，TS worker 不认
+    // 🔥 Uri.from 直接构造——Uri.parse/Uri.file 都把盘符冒号编码成 %3A，TS worker 不认
     const normalized = normalizePath(pathRef.current);
-    const uri = monaco.Uri.parse(`file:///${normalized}`);
+    const uri = monaco.Uri.from({
+      scheme: "file",
+      authority: "",
+      path: `/${normalized}`,
+      query: "",
+      fragment: "",
+    });
     const existing = monaco.editor.getModel(uri);
     if (!existing) {
       monaco.editor.createModel(valueRef.current, langRef.current, uri);

@@ -91,8 +91,11 @@ async function scanDir(
       if (SKIP_DIRS.has(name)) continue;
       await scanDir(monaco, fullPath, count);
     } else if (fullPath.endsWith(".ts") || fullPath.endsWith(".tsx")) {
-      // 🔥 Uri.parse——和 EditorView 预创建的 model 同款，不用 Uri.file（会把盘符冒号编码成 %3A）
-      const uri = monaco.Uri.parse(`file:///${fullPath}`);
+      // 🔥 Uri.from 直接构造——和 EditorView 预创建 model 同款，冒号不编码
+      const uri = monaco.Uri.from({
+        scheme: "file", authority: "",
+        path: `/${fullPath}`, query: "", fragment: "",
+      });
       if (monaco.editor.getModel(uri)) {
         console.log("[ts-intel] 跳过——已有 model:", fullPath);
         continue;
