@@ -42,6 +42,8 @@ export class FileTreeModel {
   private _expanded = new Set<string>();
   private _sortOrder: SortOrder;
   private _excludeFilter: FileExcludeFilter | null = null;
+  /** E4V#31: 装饰器回调——getChildren 创建新节点后调，避免模型层 import 插件层 */
+  private _decorator: ((items: ExplorerItem[]) => void) | null = null;
   readonly compactController: CompactController;
   /** E4V#55: 模型变更通知——FileTree 订阅后自动重渲染 */
   readonly onDidChange = new Emitter<void>();
@@ -54,6 +56,11 @@ export class FileTreeModel {
   /** E4a #95d: 设置排除过滤器 */
   setExcludeFilter(filter: FileExcludeFilter): void {
     this._excludeFilter = filter;
+  }
+
+  /** E4V#31: 设置装饰器回调——getChildren 创建新节点后调用 */
+  setDecorator(fn: ((items: ExplorerItem[]) => void) | null): void {
+    this._decorator = fn;
   }
 
   get roots(): ExplorerItem[] { return this._roots; }
@@ -107,6 +114,7 @@ export class FileTreeModel {
       current.children = current.children.filter((c) => !nestedPaths.has(normalizePath(c.uri)));
     }
     this._sort(current.children);
+    if (this._decorator) this._decorator(current.children);
     return current.children;
   }
 

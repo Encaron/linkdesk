@@ -18,6 +18,7 @@ import { useTabActions } from "@src/core/TabActionsContext";
 import { getPluginFor } from "@src/core/FileAssociationService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
+import { FileTreeDecorationService } from "../FileTreeDecoration";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { FileTreeHandle } from "../FileTree";
@@ -68,6 +69,20 @@ const FoldersView: React.FC = () => {
     },
     [],
   );
+
+  /* ── E4V#31: 文件装饰器消费——订阅 FileDecorationRegistry → 模型变更时 decorate 节点 ── */
+  const decoServiceRef = useRef<FileTreeDecorationService>(new FileTreeDecorationService(model));
+  const decoService = decoServiceRef.current;
+
+  // 装饰器回调——getChildren 创建新节点后应用装饰
+  useEffect(() => {
+    model.setDecorator((items) => items.forEach((i) => decoService.decorate(i)));
+    decoService.attach();
+    return () => {
+      model.setDecorator(null);
+      decoService.detach();
+    };
+  }, [model, decoService]);
 
   /* ── 同步工作区根 ── */
   // 🛡️ _loadingPromise guard——防 StrictMode 双重 effect + onDidChangeFolders 快速触发
