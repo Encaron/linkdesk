@@ -95,6 +95,14 @@ export function addFolder(folderPath: string): void {
   const uri = normalizePath(folderPath);
   // 去重——同一路径不重复添加
   if (_folders.some((f) => f.uri === uri)) return;
+  // E4V#35g: 根间包含检查——禁止祖先/后代互包含（防递归嵌套）
+  if (_folders.some((f) => uri.startsWith(f.uri + "/") || f.uri.startsWith(uri + "/"))) {
+    const name = uri.split("/").pop() ?? uri;
+    import("./toast").then(({ pushToast }) => {
+      pushToast({ message: `无法添加 "${name}"：与已有工作区文件夹存在包含关系`, severity: "warning" });
+    });
+    return;
+  }
 
   const folder: WorkspaceFolder = {
     uri,
