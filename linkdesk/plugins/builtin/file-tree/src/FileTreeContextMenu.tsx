@@ -11,7 +11,6 @@ import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
-import { ViewContainerService } from "@src/core/ViewContainerService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -339,10 +338,9 @@ export function activateFileTreeContextMenu(): void {
     await executeCommand("core.closeAllEditors");
   }});
 
-  // ── E4V#38: search——展开搜索面板 + 聚焦输入框 ──
+  // ── E4V#38: search——聚焦搜索面板输入框 ──
   registerCommand("file-tree", { id: "explorer.search", title: "搜索", handler: async () => {
-    ViewContainerService.setVisible("explorer", "search", true);
-    // 等 React 渲染后聚焦搜索框
+    // 搜索面板始终可见（collapsed: false），只需聚焦
     requestAnimationFrame(() => {
       const input = document.querySelector<HTMLInputElement>(".search-input");
       input?.focus();
