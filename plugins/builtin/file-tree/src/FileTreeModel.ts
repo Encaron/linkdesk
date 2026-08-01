@@ -11,6 +11,7 @@
 import type { FileEntry } from "@src/core/FileService";
 import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
+import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { Emitter } from "@src/core/CoreEvents";
@@ -49,8 +50,24 @@ export class FileTreeModel {
   readonly onDidChange = new Emitter<void>();
 
   constructor(sortOrder?: SortOrder) {
-    this._sortOrder = sortOrder ?? "default";
+    this._sortOrder = sortOrder ?? getConfigurationValue<SortOrder>("explorer.sortOrder") ?? "default";
     this.compactController = new CompactController();
+    // E4V#34a: 订阅 sortOrder 变更→重新排序已加载节点→重渲染
+    onDidChangeConfiguration((key, value) => {
+      if (key !== "explorer.sortOrder") return;
+      this._sortOrder = (value as SortOrder) ?? "default";
+      // 重新排序所有已加载的 children
+      for (const root of this._roots) this._resortLoaded(root);
+      this.onDidChange.fire();
+    });
+  }
+
+  /** 递归重新排序已加载节点（E4V#34a） */
+  private _resortLoaded(item: ExplorerItem): void {
+    if (item.children) this._sort(item.children);
+    if (item.isDirectory && item.children) {
+      for (const child of item.children) this._resortLoaded(child);
+    }
   }
 
   /** E4a #95d: 设置排除过滤器 */

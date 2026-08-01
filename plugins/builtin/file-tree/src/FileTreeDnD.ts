@@ -8,6 +8,7 @@
 import { useState, useCallback, useRef } from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
+import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
 import { copy, deleteEntry } from "@src/core/FileService";
 import { dirname, joinPath, normalizePath } from "./pathUtils";
@@ -76,6 +77,8 @@ export async function executeSafeDrop(
   targetDir: string,
   operation: "copy" | "move",
 ): Promise<void> {
+  // E4V#34e: explorer.enableDragAndDrop 配置开关
+  if ((getConfigurationValue<boolean>("explorer.enableDragAndDrop") ?? true) === false) return;
   const t = normalizePath(targetDir);
   for (const src of sources) {
     const s = normalizePath(src.path);
