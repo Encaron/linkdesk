@@ -12,6 +12,7 @@
 import React, { useRef, useEffect, useCallback } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
 import { registerLanguageMap } from "./language-map";
+import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 
 export interface EditorViewProps {
   /** 文件内容 */
@@ -46,15 +47,7 @@ const EditorView: React.FC<EditorViewProps> = ({
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
     registerLanguageMap(monaco);
-
-    // E4V#40e 提取到 theme-sync.ts——当前用 Monaco 内置暗色 + inherit
-    monaco.editor.defineTheme("linkdesk", {
-      base: "vs-dark",
-      inherit: true,
-      colors: {},
-      rules: [],
-    });
-    monaco.editor.setTheme("linkdesk");
+    syncMonacoTheme(monaco);
   }, []);
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
@@ -74,6 +67,11 @@ const EditorView: React.FC<EditorViewProps> = ({
     });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
+
+  // 主题订阅：LinkDesk 切换亮/暗色 → Monaco 自动跟随
+  useEffect(() => {
+    return subscribeThemeSync(monacoRef);
+  }, []);
 
   // StrictMode 防线：unmount 时 dispose editor
   useEffect(() => {
