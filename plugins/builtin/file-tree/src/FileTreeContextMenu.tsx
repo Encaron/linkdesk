@@ -11,6 +11,7 @@ import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
+import { ViewContainerService } from "@src/core/ViewContainerService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -338,6 +339,16 @@ export function activateFileTreeContextMenu(): void {
     await executeCommand("core.closeAllEditors");
   }});
 
+  // ── E4V#38: search——展开搜索面板 + 聚焦输入框 ──
+  registerCommand("file-tree", { id: "explorer.search", title: "搜索", handler: async () => {
+    ViewContainerService.setVisible("explorer", "search", true);
+    // 等 React 渲染后聚焦搜索框
+    requestAnimationFrame(() => {
+      const input = document.querySelector<HTMLInputElement>(".search-input");
+      input?.focus();
+    });
+  }});
+
   // ── 注册菜单项到 MenuId.FileContext ──
   // 5 组：navigation / editing / creation / modify / search
   // when 条件由 ContextMenu 组件调用 ContextKeyService.matches() 求值
@@ -387,9 +398,10 @@ export function activateFileTreeContextMenu(): void {
       label: "编辑",
       group: "edit",
       children: [
-        { command: "explorer.cut",   group: "edit" },
-        { command: "explorer.copy",  group: "edit" },
-        { command: "explorer.paste", group: "edit" },
+        { command: "explorer.cut",    group: "edit" },
+        { command: "explorer.copy",   group: "edit" },
+        { command: "explorer.paste",  group: "edit" },
+        { command: "explorer.search", group: "edit", label: "搜索" },
       ],
     },
   ]);
