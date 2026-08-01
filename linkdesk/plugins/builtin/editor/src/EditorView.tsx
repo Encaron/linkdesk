@@ -49,6 +49,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   // 🔥 ref 桥接——handleEditorMount 只跑一次，Ctrl+S 始终读最新 onSave
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  // 🔥 value/language/filePath ref——handleEditorMount 创建 model 时需要这些值
+  const valueRef = useRef(value);
+  valueRef.current = value;
+  const langRef = useRef(language);
+  langRef.current = language;
+  const pathRef = useRef(filePath);
+  pathRef.current = filePath;
 
   // 🔥 归一化 handle——外部不碰 editorRef/monacoNsRef
   useImperativeHandle(ref, () => ({
@@ -61,17 +68,36 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
     setupTypeScriptEnv(monaco);
-    scanWorkspaceForTypeScript(monaco); // fire-and-forget——不阻塞渲染
+    scanWorkspaceForTypeScript(monaco);
   }, []);
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
     editorRef.current = editor;
     monacoNsRef.current = monaco;
+
+    // 🔥 手动创建/复用 model——monaco.Uri.file 保证 URI 格式与影子 model 一致
+    const uri = monaco.Uri.file(normalizePath(pathRef.current));
+    let model = monaco.editor.getModel(uri);
+    if (!model) {
+      model = monaco.editor.createModel(valueRef.current, langRef.current, uri);
+    }
+    editor.setModel(model);
+
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
   }, []);
+
+  // 🔥 value 变更 → 同步到 model（EditorTab 不直接操作 model，走 value prop）
+  useEffect(() => {
+    const editor = editorRef.current;
+    if (!editor) return;
+    const model = editor.getModel();
+    if (model && !model.isDisposed() && model.getValue() !== value) {
+      model.setValue(value);
+    }
+  }, [value]);
 
   // keep-alive：标签页切回时刷新 Monaco 布局
   useEffect(() => {
@@ -94,18 +120,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     };
   }, []);
 
-  // 🔥 构造 file:/// URI——monaco.Uri.parse 不认 Windows 盘符，必须加 file:/// 前缀
-  //   "E:/test/app.ts" → Uri.parse 把 "E:" 当 scheme → E://test/app.ts（错）
-  //   "file:///E:/test/app.ts" → Uri.parse 正确解析 → file 协议（和 monaco.Uri.file 一致）
-  const fileUri = (() => {
-    const n = normalizePath(filePath);
-    return n.startsWith("/") ? `file://${n}` : `file:///${n}`;
-  })();
-
   return (
     <Editor
       height="100%"
-      path={fileUri}
       language={language}
       value={value}
       onChange={onChange}
