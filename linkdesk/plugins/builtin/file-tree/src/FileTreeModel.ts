@@ -179,12 +179,99 @@ export class FileTreeModel {
   }
 
   /**
-   * TODO #104 revealInExplorer——绕过排除逐层展开到目标文件。
-   * 与 findClosest 不同：路径链未加载时会自动展开（不受 files.exclude 影响）。
-   * 对标 VS Code IExplorerService.select() —— 逐层 listDir + 绕过 FileExcludeFilter + 展开。
+   * E4V#30: 定位文件——逐段展开目录链，绕过 FileExcludeFilter。
+   * 对标 VS Code IExplorerService.select()。
+   *
+   * 与 findClosest 的区别：路径链未加载时会自动展开。findClosest 需目录已展开，
+   * 此方法逐段确保——先 expand + getChildren，再沿 children 找下一段。
+   *
+   * 🔥 预测 Bug R13-1 防御：展开链中途失败→回滚 _expanded，避免 twistie ▼ 但无内容。
+   *
    * @returns 目标文件的 ExplorerItem，找不到返回 null
    */
-  // findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> { /* TODO #104 */ }
+  async findAndExpandToBypassExclude(uri: string): Promise<ExplorerItem | null> {
+    const normalized = normalizePath(uri);
+    const root = this.findClosestRoot(normalized);
+    if (!root) return null;
+
+    // 目标就是根目录本身
+    if (root.uri === normalized) {
+      if (!this.isExpanded(root.uri)) this.expand(root.uri);
+      if (root.children === null) await this.getChildren(root).catch(() => {});
+      this.onDidChange.fire();
+      return root;
+    }
+
+    const relative = normalized.slice(root.uri.length).replace(/^[/\\]/, "");
+    const parts = splitPath(relative);
+    if (parts.length === 0) return root;
+
+    // 记录已展开的 URI——任一段失败则全部回滚
+    const newlyExpanded: string[] = [];
+    let current: ExplorerItem = root;
+
+    for (let i = 0; i < parts.length; i++) {
+      const segment = parts[i];
+      const isLast = i === parts.length - 1;
+
+      // 确保当前目录展开且 children 已加载
+      if (!this.isExpanded(current.uri)) {
+        this.expand(current.uri);
+        newlyExpanded.push(current.uri);
+      }
+      if (current.children === null) {
+        try {
+          await this.getChildren(current);
+        } catch {
+          this._rollbackExpanded(newlyExpanded);
+          return null;
+        }
+      }
+
+      // 在 children 中查找下一段
+      let child = current.children?.find((c) => c.name === segment) ?? null;
+
+      if (!child && isLast) {
+        // 末段未找到——可能是文件被 exclude 过滤掉了。
+        // 用 listDir 直读磁盘确认文件存在→手动创建临时节点（对标 VS Code reveal 越过 filter）。
+        const entries = await listDir(current.uri).catch(() => []);
+        const entry = entries.find((e) => e.name === segment);
+        if (entry) {
+          child = this._toExplorerItem(entry, current);
+          if (current.children) current.children.push(child);
+        }
+      }
+
+      if (!child) {
+        // 任一段找不到→路径不存在
+        this._rollbackExpanded(newlyExpanded);
+        return null;
+      }
+
+      // 末段→返回目标
+      if (isLast) {
+        this.onDidChange.fire();
+        return child;
+      }
+
+      // 中间段必须是目录
+      if (!child.isDirectory) {
+        this._rollbackExpanded(newlyExpanded);
+        return null;
+      }
+
+      current = child;
+    }
+
+    this.onDidChange.fire();
+    return null; // unreachable
+  }
+
+  /** 回滚展开——故障时清理 _expanded，避免 twistie ▼ children=null */
+  private _rollbackExpanded(uris: string[]): void {
+    for (const u of uris) this._expanded.delete(u);
+    this.onDidChange.fire();
+  }
 
   /** 递归重载已展开的子目录——refresh 后新对象 children=null 需重建 */
   private async _reloadExpandedDescendants(item: ExplorerItem): Promise<void> {

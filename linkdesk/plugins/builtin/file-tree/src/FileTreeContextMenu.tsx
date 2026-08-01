@@ -114,6 +114,25 @@ export function activateFileTreeContextMenu(): void {
     (window as any).linkdesk?.shell?.openInTerminal(targetPath);
   }});
 
+  // ── E4V#30: revealInExplorer——定位文件并展开目录链 ──
+  registerCommand("file-tree", { id: "explorer.revealInExplorer", title: "在资源管理器中显示", handler: async (_token, ...args: unknown[]) => {
+    const hd = h(); if (!hd) return;
+    // 兼容多种 arg 格式：string | { filePath } | { uri } | FileMenuContext
+    let targetUri: string | null = null;
+    const arg = args[0];
+    if (typeof arg === "string") {
+      targetUri = normalizePath(arg);
+    } else if (arg && typeof arg === "object") {
+      const obj = arg as Record<string, unknown>;
+      targetUri = normalizePath((obj.filePath ?? obj.uri ?? "") as string);
+    }
+    if (!targetUri) {
+      // 无参数→回退到 focused item
+      targetUri = hd.getFocusedUri();
+    }
+    if (!targetUri) return;
+    await hd.reveal(targetUri);
+  }});
   // ── E4V#28: openFile —— 扩展名→FileAssociation→createTab ──
   registerCommand("file-tree", { id: "explorer.openFile", title: "打开", handler: async (_token, ...args: unknown[]) => {
     const ctx = args[0] as FileMenuContext | undefined;
