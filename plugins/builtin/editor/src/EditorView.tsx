@@ -1,9 +1,9 @@
 /**
- * E4V#40b Monaco 编辑器包装器。
+ * E4V#40b Monaco 编辑器包装器 + F12 跳转定义。
  *
- * 🔥 URI 策略：beforeMount 中用 Uri.file 预创建 model（file:/// 协议），
- *    path prop 传 file:/// URI，@monaco-editor/react 发现已有 model 直接复用。
- *    TS worker 只认 file:/// 协议——E: scheme 返回 undefined。
+ * F12：调 TS worker getDefinitionAtPosition → 拿到文件路径和位置 → 回调 onOpenDefinition
+ * EditorTab 消费此回调 → createTab 打开目标文件并跳转到定义位置。
+ * 对标 VS Code F12"跳转到定义"。
  */
 import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
@@ -20,6 +20,8 @@ export interface EditorViewProps {
   onChange?: (value: string | undefined) => void;
   onSave?: () => void;
   readOnly?: boolean;
+  /** F12 跳转定义回调——EditorTab 消费，createTab 打开目标文件 */
+  onOpenDefinition?: (filePath: string, line: number, column: number) => void;
 }
 
 export interface EditorViewHandle {
@@ -27,14 +29,23 @@ export interface EditorViewHandle {
   dispose(): void;
 }
 
+/** file:///e%3A/_testfiles/utils.ts → E:/_testfiles/utils.ts */
+function uriToFilePath(uri: string): string {
+  return normalizePath(
+    decodeURIComponent(uri.replace(/^file:\/\/\//, ""))
+  );
+}
+
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language, filePath, isActive, onChange, onSave, readOnly },
+  { value, language, filePath, isActive, onChange, onSave, readOnly, onOpenDefinition },
   ref,
 ) {
   const editorRef = useRef<any>(null);
   const monacoNsRef = useRef<any>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const onOpenDefRef = useRef(onOpenDefinition);
+  onOpenDefRef.current = onOpenDefinition;
 
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
@@ -43,7 +54,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
     monacoNsRef.current = monaco;
-    console.log("[editor] beforeMount");
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
     setupTypeScriptEnv(monaco);
@@ -54,16 +64,12 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     editorRef.current = editor;
     monacoNsRef.current = monaco;
 
-    const model = editor.getModel();
-    console.log("[editor] onMount——model URI:", model?.uri?.toString());
-
     editor.addCommand(
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
 
-    // 🔥 等影子 model 扫描完 → 末尾插入再删除一个字符触发 TS 重分析
-    //    两次 applyEdits——第二次基于插入后的 model 正确定位 'x'
+    // 扫描后触发 TS 重分析（影子 model 创建晚于首次分析）
     scanWorkspaceForTypeScript(monaco).then(() => {
       const m = editor.getModel();
       if (!m || m.isDisposed()) return;
@@ -72,32 +78,29 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       const Range = monaco.Range;
       m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
       m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
-      console.log("[editor] TS re-analysis triggered");
     });
 
-    // 🔥 F12 诊断——TS worker 的 getDefinitionAtPosition 要 number 偏移量，不是 IPosition 对象
-    const queryDefinition = async () => {
+    // 🔥 F12 → 跳转到定义（对标 VS Code）
+    editor.addCommand(monaco.KeyCode.F12, async () => {
       const m = editor.getModel();
       const pos = editor.getPosition();
       if (!m || !pos) return;
-      const offset = m.getOffsetAt(pos); // 🔥 0-based 字符偏移量
-      console.log("[editor] F12——位置:", pos.lineNumber, pos.column, "offset:", offset, "URI:", m.uri.toString());
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
+        const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+        if (!defs || defs.length === 0) return;
 
-        const defs = await client.getDefinitionAtPosition(m.uri.toString(), offset);
-        console.log("[editor]   getDefinition(offset):", JSON.stringify(defs));
+        const def = defs[0];
+        const targetPath = uriToFilePath(def.fileName);
+        // textSpan.start 是 0-based offset → 转为 line/column
+        const targetPos = m.getPositionAt(def.textSpan.start);
 
-        const diags = await client.getSemanticDiagnostics(m.uri.toString());
-        console.log("[editor]   诊断数:", diags?.length, diags?.[0]?.messageText);
-
-        editor.getAction("editor.action.revealDefinition")?.run();
+        onOpenDefRef.current?.(targetPath, targetPos.lineNumber, targetPos.column);
       } catch (e) {
-        console.error("[editor] F12——出错:", e);
+        console.error("[editor] F12 跳转定义失败:", e);
       }
-    };
-    editor.addCommand(monaco.KeyCode.F12, queryDefinition);
+    });
   }, []);
 
   useEffect(() => {
