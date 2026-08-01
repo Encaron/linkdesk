@@ -153,6 +153,12 @@
   outline-offset: -1px;
 }
 
+/* E4V#35e: 活跃工作区根节点——accent 色加粗，区别于蓝底选中态 */
+.file-tree-node--active-root .file-tree-name {
+  color: var(--accent);
+  font-weight: 600;
+}
+
 /* E4b #99: 拖放状态 */
 .file-tree-node--dragging {
   opacity: 0.4;

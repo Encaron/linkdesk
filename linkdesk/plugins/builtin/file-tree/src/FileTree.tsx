@@ -14,7 +14,7 @@ import { useFileTreeDnD } from "./FileTreeDnD";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
-import { getActiveWorkspace, setActiveWorkspace } from "@src/core/WorkspaceService";
+import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
 /* ── 类型 ── */
@@ -105,6 +105,11 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   lastClickedUriRef.current = lastClickedUri;
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
+  /** E4V#35e: 活跃工作区——根节点 accent 色加粗 */
+  const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>(() => getActiveWorkspace() ?? "");
+  useEffect(() => {
+    return onDidChangeActiveWorkspace((uri) => { setActiveWorkspaceUri(uri); rerender(); });
+  }, [rerender]);
 
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
@@ -386,6 +391,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
             isDragHover={dndState.hoverIndex === startIndex + i}
             isCut={cutUris.has(item.uri)}
             isRenaming={item.uri === renamingUri}
+            isActiveRoot={item.parent === null && item.uri === activeWorkspaceUri}
             onRenameConfirm={finishRename}
             onRenameCancel={cancelRename}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
