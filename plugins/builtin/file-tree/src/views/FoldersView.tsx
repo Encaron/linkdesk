@@ -126,13 +126,10 @@ const FoldersView: React.FC = () => {
       _debounceRef.current = setTimeout(async () => {
         _debounceRef.current = null;
         // 🔥 定向 refresh：按变更路径定向清理+重载——避免全局 refresh 扫荡已修好的目录
-        // 事件路径是相对路径→拼接工作区根得到绝对路径
-        const folders = getWorkspaceFolders();
-        const rootUri = folders[0] ? normalizePath(folders[0].uri) : "";
+        // event.path 已是绝对路径（path.join(dirPath, filename)）
         const affectedDirs = new Set<string>();
         for (const e of events) {
-          const relPath = normalizePath(e.path);
-          const absPath = rootUri ? (rootUri + "/" + relPath) : relPath;
+          const absPath = normalizePath(e.path);
           const dir = absPath.substring(0, absPath.lastIndexOf("/"));
           if (dir) affectedDirs.add(dir); else affectedDirs.add(absPath);
         }
