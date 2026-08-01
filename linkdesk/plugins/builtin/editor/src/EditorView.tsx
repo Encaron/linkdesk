@@ -17,6 +17,7 @@ import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from 
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
 import { registerLanguageMap } from "./language-map";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
+import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
 
 export interface EditorViewProps {
   value: string;
@@ -58,6 +59,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     monacoNsRef.current = monaco;
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
+    setupTypeScriptEnv(monaco);
+    scanWorkspaceForTypeScript(monaco); // fire-and-forget——不阻塞渲染
   }, []);
 
   const handleEditorMount: OnMount = useCallback((editor, monaco) => {
