@@ -29,6 +29,8 @@ interface FileTreeNodeProps {
   isDimmed?: boolean;
   /** 🔥 Ctrl+X 剪切后灰显——对标 VS Code cut 标记 */
   isCut?: boolean;
+  /** E4V#35e: 活跃工作区根节点——accent 色加粗 */
+  isActiveRoot?: boolean;
   /** E4V#27: 行内重命名——true 时显示 input 替代文件名 */
   isRenaming?: boolean;
   onRenameConfirm?: (uri: string, newName: string) => void;
@@ -62,6 +64,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   isDragHover,
   isDimmed,
   isCut,
+  isActiveRoot,
   isRenaming,
   onRenameConfirm,
   onRenameCancel,
@@ -80,6 +83,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     guide && "file-tree-node--guide",
     isDimmed && "file-tree-node--dimmed",
     isCut && "file-tree-node--cut",
+    isActiveRoot && "file-tree-node--active-root",
   ]
     .filter(Boolean)
     .join(" ");
