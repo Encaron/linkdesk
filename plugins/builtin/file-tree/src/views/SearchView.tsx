@@ -167,20 +167,28 @@ const SearchView: React.FC = () => {
     const { readBinaryFile, writeFile } = await import("@src/core/FileService");
     const { EncodingService } = await import("@src/core/encoding/EncodingService");
     let replaced = 0;
+    let failed = 0;
 
     for (const file of results) {
       try {
         const buffer = await readBinaryFile(file.filePath);
         const encoding = EncodingService.detect(buffer);
         let content = EncodingService.decode(buffer, encoding);
-        for (const m of file.matches.reverse()) {
+        for (const m of [...file.matches].reverse()) {
           const lineStart = content.split("\n").slice(0, m.lineNumber - 1).join("\n").length;
           const absStart = lineStart + (m.lineNumber === 1 ? 0 : 1) + m.matchStart;
           content = content.slice(0, absStart) + replaceText + content.slice(absStart + (m.matchEnd - m.matchStart));
           replaced++;
         }
         await writeFile(file.filePath, content);
-      } catch { /* 替换失败静默 */ }
+      } catch (err) {
+        failed++;
+        console.error(`[search] 替换失败: ${file.filePath}`, err);
+      }
+    }
+
+    if (failed > 0) {
+      console.warn(`[search] ${replaced} 处已替换，${failed} 个文件失败（权限不足或文件占用）`);
     }
 
     // 重新搜索
