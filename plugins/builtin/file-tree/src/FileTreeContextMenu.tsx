@@ -112,7 +112,6 @@ export function activateFileTreeContextMenu(): void {
     const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
-    console.log("[RENAME-DEBUG] cut: selection=", selection.map((u: string) => u.split("/").pop()), "ctx=", ctx?.uri.split("/").pop());
     const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
@@ -152,9 +151,7 @@ export function activateFileTreeContextMenu(): void {
   }});
   // ── E4V#27: F2 行内重命名 ──
   registerCommand("file-tree", { id: "explorer.rename", title: "重命名", handler: async () => {
-    const hd = h();
-    console.log("[RENAME-DEBUG] rename, sel=", hd?.getSelection().map(u => u.split("/").pop()));
-    hd?.startRename();
+    h()?.startRename();
   }});
   // ── E4V#24: delete ──
   registerCommand("file-tree", { id: "explorer.delete", title: "删除", handler: async (_token, ...args: unknown[]) => {
