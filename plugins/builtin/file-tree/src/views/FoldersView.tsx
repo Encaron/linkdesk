@@ -35,7 +35,8 @@ const FoldersView: React.FC = () => {
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
-  const _unwatchRef = useRef<(() => void) | null>(null);
+  /** E4V#35 R15-1: 多根 watcher——每个根独立监听，E4V#56 已隔离 IPC 频道 */
+  const _watchersRef = useRef<Array<() => void>>([]);
   const _debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [roots, setRoots] = useState<WorkspaceFolder[]>([]);
@@ -154,13 +155,15 @@ const FoldersView: React.FC = () => {
           }
         }
       }
-      // 启动文件监听——外部变更实时刷新
-      if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
-      if (folders.length > 0) {
+      // E4V#35 R15-1: 多根 watcher——每个根独立监听
+      _watchersRef.current.forEach((u) => u());
+      _watchersRef.current = [];
+      for (const f of folders) {
         try {
-          _unwatchRef.current = await watchFile(folders[0].uri, (event) => {
+          const unwatch = await watchFile(f.uri, (event) => {
             CoreEvents.onDidChangeFileSystem.fire([event]);
           });
+          _watchersRef.current.push(unwatch);
         } catch { /* watcher 启动失败静默 */ }
       }
       rerender();
@@ -215,7 +218,8 @@ const FoldersView: React.FC = () => {
     return () => {
       unsub1(); unsub2();
       if (_debounceRef.current) clearTimeout(_debounceRef.current);
-      if (_unwatchRef.current) { _unwatchRef.current(); _unwatchRef.current = null; }
+      _watchersRef.current.forEach((u) => u());
+      _watchersRef.current = [];
     };
   }, [syncRoots, model, rerender]);
 
