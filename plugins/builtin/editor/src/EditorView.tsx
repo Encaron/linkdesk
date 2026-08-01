@@ -62,16 +62,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     scanWorkspaceForTypeScript(monaco).then(() => {
       const m = editor.getModel();
       if (!m || m.isDisposed() || m.getValueLength() === 0) return;
-      // pushEditOperations 批量执行"插入空格→删除"——净效果为零，但 TS worker 看到变更会重分析
+      // 在文件末尾插入再删除空格——净效果为零，但 TS worker 看到内容变更会重分析
+      const lastLine = m.getLineCount();
+      const lastCol = m.getLineMaxColumn(lastLine);
       const Range = monaco.Range;
-      m.pushEditOperations(
-        [],
-        [
-          { range: new Range(1, 1, 1, 1), text: " " },
-          { range: new Range(1, 1, 1, 2), text: "" },
-        ],
-        () => null,
-      );
+      // 分批执行——先插入空格，再删除刚插入的空格
+      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol), text: " " }]);
+      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
       console.log("[editor] TS re-analysis 已触发");
     });
   }, []);
