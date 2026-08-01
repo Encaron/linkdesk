@@ -229,11 +229,11 @@ const FoldersView: React.FC = () => {
   useEffect(() => {
     if (isInitialMount.current) return;
     if (excludeGitIgnore === undefined) return;
-    const filter = filterRef.current;
-    filter.clearGitignore();
-    if (excludeGitIgnore) {
-      const folders = getWorkspaceFolders();
-      (async () => {
+    (async () => {
+      const filter = filterRef.current;
+      filter.clearGitignore();
+      if (excludeGitIgnore) {
+        const folders = getWorkspaceFolders();
         for (const f of folders) {
           const gitignorePath = joinPath(f.uri, ".gitignore");
           if (await exists(gitignorePath)) {
@@ -243,16 +243,14 @@ const FoldersView: React.FC = () => {
             } catch { /* skip */ }
           }
         }
-        await model.refresh();
-        for (const uri of model.getExpandedUris()) {
-          const item = model.findClosest(uri);
-          if (item) await model.getChildren(item).catch(() => {});
-        }
-        rerender();
-      })();
-    } else {
-      model.refresh().then(() => rerender());
-    }
+      }
+      await model.refresh();
+      for (const uri of model.getExpandedUris()) {
+        const item = model.findClosest(uri);
+        if (item) await model.getChildren(item).catch(() => {});
+      }
+      rerender();
+    })();
   }, [excludeGitIgnore, model, rerender]);
 
   // 首个 effect 触发后翻转标记——后续变更正常响应
