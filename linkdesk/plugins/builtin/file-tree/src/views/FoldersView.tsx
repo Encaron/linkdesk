@@ -195,18 +195,39 @@ const FoldersView: React.FC = () => {
         rerender();
       }, 300);
     });
-    // E4V#8a: 订阅 files.exclude 变化→重新配置过滤器+刷新
-    const unsub3 = onDidChangeConfiguration((key, _value) => {
+    // 配置变更订阅——files.exclude / compactFolders / excludeGitIgnore
+    const unsub3 = onDidChangeConfiguration(async (key, _value) => {
       if (key === "files.exclude") {
         const filter = filterRef.current;
         const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
         filter.configure(excludeCfg);
         model.refresh().then(() => rerender());
       }
-      // E4V#34b fix: compactFolders 热更新——useMemo deps 只有 [model,version]，
-      // 配置变了 flattenTree 不会重算→树不变。fire onDidChange 触发 useMemo 重跑。
       if (key === "explorer.compactFolders") {
         model.onDidChange.fire();
+      }
+      // E4V#34g1: excludeGitIgnore 热更新——重新读/清 .gitignore
+      if (key === "explorer.excludeGitIgnore") {
+        const filter = filterRef.current;
+        filter.clearGitignore();
+        if (getConfigurationValue<boolean>("explorer.excludeGitIgnore") ?? true) {
+          const folders = getWorkspaceFolders();
+          for (const f of folders) {
+            const gitignorePath = joinPath(f.uri, ".gitignore");
+            if (await exists(gitignorePath)) {
+              try {
+                const content = await readFile(gitignorePath);
+                filter.setGitignore(content);
+              } catch { /* skip */ }
+            }
+          }
+        }
+        await model.refresh();
+        for (const uri of model.getExpandedUris()) {
+          const item = model.findClosest(uri);
+          if (item) await model.getChildren(item).catch(() => {});
+        }
+        rerender();
       }
     });
     return () => {
