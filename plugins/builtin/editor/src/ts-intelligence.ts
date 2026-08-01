@@ -59,7 +59,11 @@ export function setupTypeScriptEnv(monaco: any): void {
     noSyntaxValidation: false,
   });
 
+  console.log("[ts-intel] setupTypeScriptEnv——compilerOptions 已设置");
+
   // 🔥 立即启动扫描——工作区文件夹已打开，扫描完再开文件时影子 model 已在场
+  const folders = getWorkspaceFolders();
+  console.log("[ts-intel] 工作区文件夹:", folders.length, folders.map(f => f.uri));
   scanWorkspaceForTypeScript(monaco);
 }
 
@@ -87,16 +91,22 @@ async function scanDir(
       if (SKIP_DIRS.has(name)) continue;
       await scanDir(monaco, fullPath, count);
     } else if (fullPath.endsWith(".ts") || fullPath.endsWith(".tsx")) {
-      const uri = monaco.Uri.file(fullPath);
-      if (monaco.editor.getModel(uri)) continue;
+      // 🔥 用 Uri.parse（和 @monaco-editor/react 的 path prop 同款）
+      //   不用 Uri.file——两者 internal format 不一致会导致 getModel 找不到
+      const uri = monaco.Uri.parse(fullPath);
+      if (monaco.editor.getModel(uri)) {
+        console.log("[ts-intel] 跳过——已有 model:", fullPath);
+        continue;
+      }
 
       try {
         const buffer = await readBinaryFile(fullPath);
         const content = EncodingService.decode(buffer, EncodingService.detect(buffer));
         monaco.editor.createModel(content, "typescript", uri);
         count.n++;
-      } catch {
-        // 读不到的文件静默跳过
+        console.log("[ts-intel] 影子 model #" + count.n + ":", uri.toString());
+      } catch (e) {
+        console.warn("[ts-intel] 读取失败:", fullPath, e);
       }
     }
   }
@@ -107,7 +117,11 @@ async function scanDir(
  * 首次调用启动扫描，后续调用返回已有 Promise（不重复扫描）。
  */
 export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
-  if (_scanPromise) return _scanPromise;
+  if (_scanPromise) {
+    console.log("[ts-intel] 扫描已在运行中，复用已有 Promise");
+    return _scanPromise;
+  }
+  console.log("[ts-intel] 开始扫描工作区...");
   _scanPromise = (async () => {
     const folders = getWorkspaceFolders();
     const count = { n: 0 };
@@ -115,8 +129,9 @@ export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
       if (count.n >= MAX_SHADOW_MODELS) break;
       await scanDir(monaco, normalizePath(folder.uri), count);
     }
+    console.log("[ts-intel] 扫描完成——影子 model 总数:", count.n);
   })().catch((err) => {
-    console.warn("[ts-intelligence] 工作区扫描失败:", err);
+    console.warn("[ts-intel] 工作区扫描失败:", err);
   });
   return _scanPromise;
 }
