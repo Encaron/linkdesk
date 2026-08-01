@@ -91,11 +91,9 @@ async function scanDir(
       if (SKIP_DIRS.has(name)) continue;
       await scanDir(monaco, fullPath, count);
     } else if (fullPath.endsWith(".ts") || fullPath.endsWith(".tsx")) {
-      // 🔥 Uri.from 直接构造——和 EditorView 预创建 model 同款，冒号不编码
-      const uri = monaco.Uri.from({
-        scheme: "file", authority: "",
-        path: `/${fullPath}`, query: "", fragment: "",
-      });
+      // 🔥 用 Uri.parse（和 @monaco-editor/react path prop 同款），保证 URI scheme/path 与主 model 一致
+      //    Uri.from/Uri.file 产生 scheme:"file"，但主 model 是 scheme:"E:"→module resolution 失败
+      const uri = monaco.Uri.parse(fullPath);
       if (monaco.editor.getModel(uri)) {
         console.log("[ts-intel] 跳过——已有 model:", fullPath);
         continue;
