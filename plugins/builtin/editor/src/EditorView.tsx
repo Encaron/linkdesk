@@ -57,6 +57,23 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
+
+    // 🔥 等待影子 model 扫描完成 → 触发 TS worker 重分析
+    scanWorkspaceForTypeScript(monaco).then(() => {
+      const m = editor.getModel();
+      if (!m || m.isDisposed() || m.getValueLength() === 0) return;
+      // pushEditOperations 批量执行"插入空格→删除"——净效果为零，但 TS worker 看到变更会重分析
+      const Range = monaco.Range;
+      m.pushEditOperations(
+        [],
+        [
+          { range: new Range(1, 1, 1, 1), text: " " },
+          { range: new Range(1, 1, 1, 2), text: "" },
+        ],
+        () => null,
+      );
+      console.log("[editor] TS re-analysis 已触发");
+    });
   }, []);
 
   // keep-alive
