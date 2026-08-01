@@ -43,8 +43,8 @@ export class EditorModel {
 
   /** Monaco model URI——file:/// 协议，跨文件 TS 解析用 */
   get uri(): string {
-    const normalized = this.filePath.replace(/\\/g, "/");
-    return normalized.startsWith("/") ? `file://${normalized}` : `file:///${normalized}`;
+    const n = normalizePath(this.filePath);
+    return n.startsWith("/") ? `file://${n}` : `file:///${n}`;
   }
 
   getValue(): string {
