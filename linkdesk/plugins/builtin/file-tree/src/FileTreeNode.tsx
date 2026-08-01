@@ -91,9 +91,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     e.stopPropagation(); // 阻止冒泡到容器——容器 onClick 负责清空选中
     // E4V#21: 传 event 给父组件——检测 ctrlKey/metaKey 做多选 toggle
     onSelect(item.uri, e);
-    // E4V#28b: 目录——单击整行=toggle（twistie 效果拓展到整行），双击无额外效果
+    // E4V#28b: 目录——每次单击=toggle，双击=两次翻转。无"双击"语义
     if (item.isDirectory) {
-      if (e.detail !== 2) onTwistieClick(item);
+      onTwistieClick(item);
       return;
     }
     if (e.detail === 2) {
