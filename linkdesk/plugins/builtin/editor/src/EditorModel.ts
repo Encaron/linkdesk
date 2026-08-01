@@ -16,25 +16,7 @@ import { Emitter } from "@src/core/CoreEvents";
 import { readBinaryFile, writeFile } from "@src/core/FileService";
 import { EncodingService } from "@src/core/encoding/EncodingService";
 import { normalizePath } from "@src/core/pathUtils";
-
-/** 文件扩展名 → Monaco 语言 ID——E4V#40d 提取到 language-map.ts */
-function getLanguageFromExtension(ext: string): string {
-  const map: Record<string, string> = {
-    ".ts": "typescript", ".tsx": "typescript", ".js": "javascript", ".jsx": "javascript",
-    ".mjs": "javascript", ".cjs": "javascript", ".json": "json", ".jsonc": "json",
-    ".html": "html", ".htm": "html", ".css": "css", ".scss": "css", ".less": "css",
-    ".md": "markdown", ".mdx": "markdown", ".py": "python", ".pyi": "python",
-    ".pyx": "python", ".rs": "rust", ".c": "c", ".h": "c", ".cpp": "cpp",
-    ".hpp": "cpp", ".cxx": "cpp", ".cc": "cpp", ".go": "go", ".java": "java",
-    ".xml": "xml", ".xsl": "xml", ".xsd": "xml", ".svg": "xml", ".yaml": "yaml",
-    ".yml": "yaml", ".toml": "ini", ".sh": "shell", ".bash": "shell", ".zsh": "shell",
-    ".sql": "sql", ".lua": "lua", ".r": "r", ".php": "php", ".rb": "ruby",
-    ".pl": "perl", ".pm": "perl", ".swift": "swift", ".kt": "kotlin", ".kts": "kotlin",
-    ".dart": "dart", ".diff": "diff", ".patch": "diff", ".bat": "bat", ".cmd": "bat",
-    ".ini": "ini", ".cfg": "ini", ".conf": "ini", ".log": "plaintext",
-  };
-  return map[ext] || "plaintext";
-}
+import { getLanguageFromPath } from "./language-map";
 
 export class EditorModel {
   readonly filePath: string;
@@ -56,9 +38,7 @@ export class EditorModel {
     this._value = content;
     this._savedValue = content;
     this.encoding = encoding;
-    this.language = getLanguageFromExtension(
-      filePath.slice(filePath.lastIndexOf(".")),
-    );
+    this.language = getLanguageFromPath(filePath);
   }
 
   /** Monaco model URI——file:/// 协议，跨文件 TS 解析用 */
