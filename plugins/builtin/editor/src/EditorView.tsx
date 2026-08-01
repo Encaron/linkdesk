@@ -11,6 +11,7 @@
  */
 import React, { useRef, useEffect, useCallback } from "react";
 import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
+import { registerLanguageMap } from "./language-map";
 
 export interface EditorViewProps {
   /** 文件内容 */
@@ -44,16 +45,7 @@ const EditorView: React.FC<EditorViewProps> = ({
   onSaveRef.current = onSave;
 
   const beforeMount: BeforeMount = useCallback((monaco) => {
-    // E4V#40d 提取到 language-map.ts——当前注册常用语言 ID
-    const languages = [
-      "typescript", "javascript", "json", "html", "css", "markdown",
-      "python", "rust", "c", "cpp", "go", "java", "xml", "yaml",
-      "shell", "sql", "lua", "r", "php", "ruby", "perl", "swift",
-      "kotlin", "dart", "diff", "bat", "ini", "plaintext",
-    ];
-    for (const id of languages) {
-      monaco.languages.register({ id });
-    }
+    registerLanguageMap(monaco);
 
     // E4V#40e 提取到 theme-sync.ts——当前用 Monaco 内置暗色 + inherit
     monaco.editor.defineTheme("linkdesk", {
