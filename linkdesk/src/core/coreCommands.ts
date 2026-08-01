@@ -44,6 +44,8 @@ export interface CoreCallbacks {
   toggleSplit: () => void;
   /** E3f #59-F：跳转到第 N 个标签页（全局，1-based） */
   focusNthTab: (n: number) => void;
+  /** E4V#xx: 关闭所有编辑器标签页（带 filePath 的标签页） */
+  closeAllEditors: () => void;
 }
 
 let _callbacks: CoreCallbacks | null = null;
@@ -323,6 +325,14 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: i18n.t("标签页"),
     handler: async () => {
       _callbacks?.toggleSplit();
+    },
+  },
+  {
+    id: "core.closeAllEditors",
+    title: i18n.t("关闭所有编辑器"),
+    category: i18n.t("标签页"),
+    handler: async () => {
+      _callbacks?.closeAllEditors();
     },
   },
   {
