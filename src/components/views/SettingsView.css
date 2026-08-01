@@ -294,7 +294,7 @@
 .settings-json-close {
   padding: 4px 16px;
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 3px;
   font-size: 13px;

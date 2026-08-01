@@ -30,7 +30,9 @@
   /* Phase 4 新增 —— 通知/错误/徽章 */
   --error: #E06C75;
   --warning: #CCA700;
-  --badge-text: #FFFFFF;
+  /* badge-text = text-on-accent 别名 —— 归一化：所有 accent 底上的文字走同一 token。
+     主题覆盖 text-on-accent 即可同时覆盖 badge-text；单独覆盖 badge-text 也生效。 */
+  --badge-text: var(--text-on-accent);
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-titlebar: #252526;
   --bg-icon-bar: #18181B;
@@ -322,7 +324,7 @@ html, body, #root {
 .palette-item:hover,
 .palette-item.selected {
   background: var(--accent);
-  color: white;
+  color: var(--text-on-accent);
 }
 
 /* E3f #53b：对标 VS Code 两排布局——rows(column) > row(flex) */

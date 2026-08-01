@@ -31,5 +31,6 @@
 
 .wc-close:hover {
   background: var(--titlebar-close-hover);
-  color: #fff;
+  color: var(--text-on-accent);
+  /* #fff on #c42b1c = 5.7:1 — 走 token 归一化，非 accent 底但同为浅色文字 */
 }

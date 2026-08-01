@@ -55,8 +55,12 @@
 
 .ctx-item:hover,
 .ctx-item.focused {
-  background: var(--accent);
-  color: var(--badge-text);
+  /* 左 accent 色条 + 半透明底色：不依赖 accent 做纯色背景，
+     确保文字对比度始终 >= 9:1（text-primary on bg-card），
+     任何 accent 色（绿/黄/青/紫）都不会导致文字不可读。 */
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* 图标——E3.5 icon 支持 */
@@ -74,6 +78,7 @@
 .ctx-item:hover .ctx-item-icon,
 .ctx-item.focused .ctx-item-icon {
   opacity: 1;
+  color: var(--accent);
 }
 
 /* 快捷键标注——右对齐，颜色 muted */
@@ -89,7 +94,7 @@
 .ctx-item:hover .ctx-item-shortcut,
 .ctx-item.focused .ctx-item-shortcut {
   opacity: 0.9;
-  color: var(--text-on-accent);
+  color: var(--text-secondary);
 }
 
 /* 菜单项标签——允许文字截断 */
@@ -120,12 +125,13 @@
 
 .ctx-item-danger:hover,
 .ctx-item-danger.focused {
-  background: var(--danger);
-  color: var(--text-on-accent);
+  background: var(--tab-hover-bg);
+  color: var(--danger);
+  box-shadow: inset 2px 0 0 var(--danger);
 }
 
 .ctx-item-danger:hover .ctx-item-shortcut,
 .ctx-item-danger.focused .ctx-item-shortcut {
   opacity: 0.9;
-  color: var(--text-on-accent);
+  color: var(--text-secondary);
 }
