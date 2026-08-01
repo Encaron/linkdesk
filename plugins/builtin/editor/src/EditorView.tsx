@@ -109,11 +109,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         if (pos) goToDefinitionAt(pos);
       },
     });
-    editor.updateOptions({
-      gotoLocation: {
-        alternativeDefinitionCommand: "linkdesk.goToDefinition",
-      },
-    } as any);
   }, []);
 
   useEffect(() => {
@@ -140,7 +135,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       theme="linkdesk"
       beforeMount={beforeMount}
       onMount={handleEditorMount}
-      options={{ readOnly }}
+      options={{
+        readOnly,
+        gotoLocation: { alternativeDefinitionCommand: "linkdesk.goToDefinition" },
+      } as any}
     />
   );
 });
