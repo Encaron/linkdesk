@@ -81,10 +81,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     });
 
     // 🔥 跳转到定义（对标 VS Code）——F12、Ctrl+Click 共用
-    const goToDefinition = async () => {
+    const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
       const m = editor.getModel();
-      const pos = editor.getPosition();
-      if (!m || !pos) return;
+      if (!m) return;
       try {
         const worker = await monaco.languages.typescript.getTypeScriptWorker();
         const client = await worker(m.uri);
@@ -99,14 +98,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         console.error("[editor] 跳转定义失败:", e);
       }
     };
-    editor.addCommand(monaco.KeyCode.F12, goToDefinition);
+    editor.addCommand(monaco.KeyCode.F12, () => {
+      const pos = editor.getPosition();
+      if (pos) goToDefinitionAt(pos);
+    });
 
-    // Ctrl+Click → 也是跳转定义（Monaco 内置是 peek 窗，这里覆盖）
+    // Ctrl+Click → 从事件取点击位置（onMouseDown 时 editor.getPosition 还是旧位置）
     editor.onMouseDown((e: any) => {
       if ((e.event.ctrlKey || e.event.metaKey) && e.event.button === 0 && e.target?.position) {
         e.event.preventDefault();
         e.event.stopPropagation();
-        goToDefinition();
+        goToDefinitionAt(e.target.position);
       }
     });
   }, []);
