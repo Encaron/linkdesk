@@ -186,6 +186,11 @@ const FoldersView: React.FC = () => {
         filter.configure(excludeCfg);
         model.refresh().then(() => rerender());
       }
+      // E4V#34b fix: compactFolders 热更新——useMemo deps 只有 [model,version]，
+      // 配置变了 flattenTree 不会重算→树不变。fire onDidChange 触发 useMemo 重跑。
+      if (key === "explorer.compactFolders") {
+        model.onDidChange.fire();
+      }
     });
     return () => {
       unsub1(); unsub2(); unsub3();
