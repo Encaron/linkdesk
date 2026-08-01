@@ -248,11 +248,24 @@ export function activateFileTreeContextMenu(): void {
   // ── E4V#20a-d: 新建/刷新/收起 handler ──
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
 
+  // E4V#34 fix: 无 context（MenuBar 调用）→回退到 focused item/根目录
+  const _resolveDirUri = (hd: ReturnType<typeof h>, ctx?: FileMenuContext): string => {
+    const model = hd!.getModel();
+    if (ctx?.isDirectory) return ctx.uri;
+    if (ctx) return dirname(ctx.uri);
+    // MenuBar 调用——无右键菜单 context→用 focused/selected item
+    const focusedUri = hd!.getFocusedUri();
+    if (focusedUri) {
+      const focused = model.findClosest(focusedUri);
+      return focused?.isDirectory ? focused.uri : dirname(focusedUri);
+    }
+    return model.roots[0]?.uri ?? "";
+  };
+
   registerCommand("file-tree", { id: "explorer.newFile", title: "新建文件", handler: async (_token, ...args: unknown[]) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
-    const ctx = args[0] as FileMenuContext | undefined;
-    const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
+    const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
     let name = "新建文件";
     let filePath = joinPath(dirUri, name);
@@ -270,8 +283,7 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
-    const ctx = args[0] as FileMenuContext | undefined;
-    const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
+    const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
     let name = "新建文件夹";
     let dirPath = joinPath(dirUri, name);
@@ -336,6 +348,7 @@ export function activateFileTreeContextMenu(): void {
   registerMenuItems(MenuId.MenuBar, "file-tree", [
     // 追加到已有 [文件] 菜单
     { command: "explorer.newFile",   group: "file", label: "新建文件" },
+    { command: "explorer.newFolder", group: "file", label: "新建文件夹" },
     { command: "explorer.openFolder",group: "file", label: "打开文件夹…" },
     // 新建 [编辑] 菜单——父项 label="编辑" 给按钮名，子项是下拉菜单内容
     {

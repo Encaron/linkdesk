@@ -171,10 +171,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
 
   const handleItemClick = useCallback(
     async (commandId: string) => {
-      // 🔥 #53 教训：必须 await——onClose() 同步清理 context key，
-      // 不 await 则 handler 读到的 key 已是 undefined（时序竞态）。
-      await executeCommand(commandId, undefined, context);
+      // 先关菜单再执行命令——避免弹窗（showConfirm 等）与菜单同时显示。
+      // context 对象 { uri, isDirectory } 是直接传参的，不依赖 ContextKeyService。
       onClose();
+      await executeCommand(commandId, undefined, context);
     },
     [context, onClose]
   );
