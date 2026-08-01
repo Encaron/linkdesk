@@ -25,10 +25,10 @@ import {
   type ConfigurationProperty,
 } from "../../core/ConfigurationRegistry";
 import {
-  getConfigurationValue,
   setConfigurationValue,
   inspectConfiguration,
 } from "../../core/ConfigurationService";
+import { useConfigurationValue } from "../../core/useConfiguration";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import { MenuId } from "../../core/MenuRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
@@ -304,7 +304,9 @@ function SettingRow({
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [colorPickerAnchor, setColorPickerAnchor] = useState<{ x: number; y: number } | null>(null);
-  const currentValue = getConfigurationValue(configKey);
+  const currentValue = useConfigurationValue(configKey);
+  // E3f #59d0: dependsOn——声明式条件显隐，hook 必须在 early return 之前
+  const depValue = useConfigurationValue(prop?.dependsOn?.key ?? "");
 
   const handleChange = useCallback(
     async (value: unknown) => {
@@ -335,10 +337,7 @@ function SettingRow({
   if (!prop) return null;
 
   // E3f #59d0：声明式条件显隐——prop.dependsOn.key 的值不等于指定值时整行不渲染
-  if (prop.dependsOn) {
-    const depValue = getConfigurationValue(prop.dependsOn.key);
-    if (depValue !== prop.dependsOn.value) return null;
-  }
+  if (prop.dependsOn && depValue !== prop.dependsOn.value) return null;
 
   return (
     <div className="settings-row" id={`setting-row-${configKey}`}>

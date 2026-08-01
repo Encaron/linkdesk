@@ -33,6 +33,7 @@ import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
+import { useConfigurationValue } from "./core/useConfiguration";
 import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
@@ -810,10 +811,10 @@ function App() {
     closeTab,
   }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, openOrFocusBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
 
-  if (!ready) return null;
-
   // E3f #52g：菜单样式——titlebar / hamburger / both
-  const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+  const menuStyle = useConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+
+  if (!ready) return null;
   const showTitleBar = menuStyle !== "hamburger";
   const showHamburger = menuStyle !== "titlebar";
 

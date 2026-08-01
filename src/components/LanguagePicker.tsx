@@ -10,7 +10,8 @@
 
 import { useState, useEffect } from "react";
 import { LanguageRegistry } from "../core/LanguageRegistry";
-import { setConfigurationValue, getConfigurationValue } from "../core/ConfigurationService";
+import { setConfigurationValue } from "../core/ConfigurationService";
+import { useConfigurationValue } from "../core/useConfiguration";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
 
@@ -21,7 +22,7 @@ interface Props {
 
 export default function LanguagePicker({ open, onClose }: Props) {
   const [langs, setLangs] = useState<Array<{ id: string; label: string }>>([]);
-  const currentLang = getConfigurationValue<string>("app.language") ?? "zh";
+  const currentLang = useConfigurationValue<string>("app.language") ?? "zh";
 
   // #41a：打开时填充列表 + 订阅插件生命周期——安装/卸载语言插件时列表即时刷新
   useEffect(() => {
