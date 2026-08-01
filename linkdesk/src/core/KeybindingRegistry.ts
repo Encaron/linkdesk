@@ -32,6 +32,7 @@
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand } from "./CommandRegistry";
 import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "./FileService";
+import { normalizePath } from "./pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "./CoreEvents";
 
 /* ── 类型 ── */
@@ -242,7 +243,7 @@ async function watchUserKeybindings(): Promise<void> {
   let debounce: ReturnType<typeof setTimeout> | null = null;
   _keybindingsWatcherUnsub = await watchFile(dir, (event) => {
     // 只关心 keybindings.json
-    const name = event.path.replace(/\\/g, "/").split("/").pop();
+    const name = normalizePath(event.path).split("/").pop();
     if (name !== KEYBINDINGS_FILENAME) return;
 
     if (debounce) clearTimeout(debounce);

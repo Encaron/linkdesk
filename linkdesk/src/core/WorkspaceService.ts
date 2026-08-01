@@ -13,6 +13,7 @@
 
 import { Emitter, type Event, CoreEvents } from "./CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
+import { normalizePath } from "./pathUtils";
 
 /* ── 类型 ── */
 
@@ -69,12 +70,14 @@ export async function openFolder(): Promise<void> {
  * 自动更新 workspace root 传递给 ConfigurationService。
  */
 export function addFolder(folderPath: string): void {
+  // 归一化——确保跨平台路径一致
+  const uri = normalizePath(folderPath);
   // 去重——同一路径不重复添加
-  if (_folders.some((f) => f.uri === folderPath)) return;
+  if (_folders.some((f) => f.uri === uri)) return;
 
   const folder: WorkspaceFolder = {
-    uri: folderPath,
-    name: folderPath.split(/[/\\]/).pop() ?? folderPath,
+    uri,
+    name: uri.split("/").pop() ?? uri,
     index: _folders.length,
   };
 
@@ -83,14 +86,15 @@ export function addFolder(folderPath: string): void {
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
   // 联动 ConfigurationService——workspace scope 的 settings.json 路径
-  setWorkspaceRoot(folderPath);
+  setWorkspaceRoot(uri);
 }
 
 /**
  * 移除工作区文件夹。
  */
 export function removeFolder(folderPath: string): void {
-  const idx = _folders.findIndex((f) => f.uri === folderPath);
+  const normalized = normalizePath(folderPath);
+  const idx = _folders.findIndex((f) => f.uri === normalized);
   if (idx === -1) return;
 
   _folders = [..._folders.slice(0, idx), ..._folders.slice(idx + 1)];

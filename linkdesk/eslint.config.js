@@ -79,6 +79,7 @@ export default [
       // ═══ E3j #81 硬约束：禁止模块级 _initialized guard + IPC 监听器 ═══
       "linkdesk/no-module-level-ipc-listener": "error",
       "linkdesk/no-raw-configuration-read": "error",
+      "linkdesk/no-raw-path-replace": "error",
 
       // ═══ E3.5 #CP17 硬约束：QuickPick 禁止 renderItem——新代码走 slot props ═══
       "linkdesk/no-quickpick-render-item": "error",
