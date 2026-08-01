@@ -38,10 +38,6 @@ interface FileTreeProps {
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
-    // 追踪目录 children 状态
-    if (item.isDirectory && item.name === "sub") {
-      console.log("[COL2] flattenTree walk sub: children=", item.children?.length, "expanded=", model.isExpanded(item.uri));
-    }
     if (item.isDirectory) {
       const compacted = model.compactController.getCompactedSegments(item);
       if (compacted) {
@@ -123,14 +119,9 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     const { copy, deleteEntry } = await import("@src/core/FileService");
     await copy(uri, dest);
     await deleteEntry(uri);
-    console.log("[COL2] before refresh, sub children:", (model.findClosest(dir)?.children ?? "N/A"));
     await model.refresh(dir);
     const parent = model.findClosest(dir);
-    console.log("[COL2] after refresh, children:", parent?.children, "expanded:", parent ? model.isExpanded(parent.uri) : "N/A");
-    if (parent && model.isExpanded(parent.uri)) {
-      await model.getChildren(parent).catch(() => {});
-      console.log("[COL2] after getChildren, children:", parent.children?.length, parent.children?.map(c => c.name));
-    }
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
   }, [model]);
   const cancelRename = useCallback(() => setRenamingUri(null), []);
 

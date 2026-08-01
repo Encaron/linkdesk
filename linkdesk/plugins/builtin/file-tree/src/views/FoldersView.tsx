@@ -125,12 +125,13 @@ const FoldersView: React.FC = () => {
       if (_debounceRef.current) clearTimeout(_debounceRef.current);
       _debounceRef.current = setTimeout(async () => {
         _debounceRef.current = null;
-        // 🔥 定向 refresh：按变更路径定向清理+重载——避免全局 refresh 扫荡已修好的目录
-        // event.path 已是绝对路径（path.join(dirPath, filename)）
+        // 🔥 定向 refresh：变更路径是目录→直接刷新，是文件→刷新父目录
+        // Windows fs.watch 即使 recursive=false 也会对子目录变更报目录名
         const affectedDirs = new Set<string>();
         for (const e of events) {
           const absPath = normalizePath(e.path);
-          const dir = absPath.substring(0, absPath.lastIndexOf("/"));
+          const item = model.findClosest(absPath);
+          const dir = (item?.isDirectory) ? absPath : absPath.substring(0, absPath.lastIndexOf("/"));
           if (dir) affectedDirs.add(dir); else affectedDirs.add(absPath);
         }
         for (const dir of affectedDirs) {
