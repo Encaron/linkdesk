@@ -1,0 +1,28 @@
+{
+  "$schema": "../../../public/schemas/plugin.schema.json",
+  "name": "编辑器",
+  "version": "1.0.0",
+  "description": "Monaco 代码编辑器——语法高亮、智能提示、Diff 对比",
+  "author": "官方",
+  "distribution": "builtin",
+  "core": true,
+  "entry": "src/index.tsx",
+  "viewRole": "tabOnly",
+  "tabBehavior": {
+    "singleton": false
+  },
+  "contributes": {
+    "commands": [
+      { "id": "editor.save", "title": "保存" },
+      { "id": "editor.saveAll", "title": "全部保存" },
+      { "id": "editor.closeEditor", "title": "关闭编辑器" },
+      { "id": "editor.closeAllEditors", "title": "关闭所有编辑器" },
+      { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
+      { "id": "editor.compareFiles", "title": "比较文件" }
+    ],
+    "keybindings": [
+      { "key": "Ctrl+S", "command": "editor.save" },
+      { "key": "Ctrl+Shift+T", "command": "editor.reopenClosedEditor" }
+    ]
+  }
+}
