@@ -10,6 +10,16 @@ import { listDir, readBinaryFile, exists } from "./FileService";
 import { EncodingService } from "./encoding/EncodingService";
 import { normalizePath } from "./pathUtils";
 
+/** 二进制/编译产物——搜索时自动跳过。对标 VS Code search.files.exclude 默认值 */
+const BINARY_EXTS = new Set([
+  ".exe", ".dll", ".pdb", ".suo", ".obj", ".o", ".a", ".lib",
+  ".zip", ".rar", ".7z", ".tar", ".gz",
+  ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".ico", ".svg",
+  ".mp3", ".mp4", ".wav", ".avi",
+  ".ttf", ".otf", ".woff", ".woff2",
+  ".pdf", ".doc", ".docx", ".xls", ".xlsx",
+]);
+
 /* ── 类型 ── */
 
 export interface SearchOptions {
@@ -133,7 +143,11 @@ async function collectFiles(
         const children = await collectFiles(fullPath, rootPath, signal);
         result.push(...children);
       } else if (entry.isFile) {
-        result.push(fullPath);
+        // 跳过二进制/编译产物
+        const ext = fullPath.slice(fullPath.lastIndexOf(".")).toLowerCase();
+        if (!BINARY_EXTS.has(ext)) {
+          result.push(fullPath);
+        }
       }
     }
   } catch {
