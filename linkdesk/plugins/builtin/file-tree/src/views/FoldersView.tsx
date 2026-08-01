@@ -14,18 +14,21 @@ import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
+import { useTabActions } from "@src/core/TabActionsContext";
+import { getPluginFor } from "@src/core/FileAssociationService";
 import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle } from "../FileTreeContextMenu";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
 import WelcomeView from "../WelcomeView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { FileTreeHandle } from "../FileTree";
 import type { ExplorerItem } from "../FileTreeModel";
 import { FileExcludeFilter } from "../FileExcludeFilter";
-import { joinPath, normalizePath } from "../pathUtils";
+import { joinPath, normalizePath, extension } from "../pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
+  const tabActions = useTabActions();
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
@@ -203,9 +206,30 @@ const FoldersView: React.FC = () => {
   }, [t]);
 
   /* ── 打开文件 ── */
-  const handleOpenFile = useCallback((_item: ExplorerItem, _mode: "preview" | "pin") => {
-    // TODO E4c #103
-  }, []);
+  /** 核心逻辑：扩展名 → FileAssociationService → createTab */
+  const doOpenFile = useCallback((filePath: string, name: string, mode: "preview" | "pin") => {
+    const ext = extension(name);
+    const pluginId = getPluginFor(ext);
+    if (!pluginId) {
+      console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
+      return;
+    }
+    tabActions?.createTab(pluginId, {
+      filePath,
+      label: name,
+      pinned: mode === "pin",
+    });
+  }, [tabActions]);
+
+  const handleOpenFile = useCallback((item: ExplorerItem, mode: "preview" | "pin") => {
+    doOpenFile(item.uri, item.name, mode);
+  }, [doOpenFile]);
+
+  // 🔥 桥接 openFile 到模块级命令 handler——FileTreeContextMenu 中的命令通过此桥创建标签页
+  useEffect(() => {
+    setOpenFileFn(doOpenFile);
+    return () => { setOpenFileFn(null); };
+  }, [doOpenFile]);
 
   return (
     <div className="file-tree-root">
