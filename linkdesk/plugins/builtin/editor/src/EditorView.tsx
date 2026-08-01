@@ -94,10 +94,18 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     };
   }, []);
 
+  // 🔥 构造 file:/// URI——monaco.Uri.parse 不认 Windows 盘符，必须加 file:/// 前缀
+  //   "E:/test/app.ts" → Uri.parse 把 "E:" 当 scheme → E://test/app.ts（错）
+  //   "file:///E:/test/app.ts" → Uri.parse 正确解析 → file 协议（和 monaco.Uri.file 一致）
+  const fileUri = (() => {
+    const n = normalizePath(filePath);
+    return n.startsWith("/") ? `file://${n}` : `file:///${n}`;
+  })();
+
   return (
     <Editor
       height="100%"
-      path={normalizePath(filePath)}
+      path={fileUri}
       language={language}
       value={value}
       onChange={onChange}
