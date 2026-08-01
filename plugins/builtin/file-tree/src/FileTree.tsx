@@ -104,6 +104,8 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const startRename = useCallback(() => {
     // 优先取 selection 中第一个（右键菜单设了 selection 但未必设了 focusedUri）
     const target = selection.size > 0 ? [...selection][0] : focusedUri;
+    // 🔍 DEBUG
+    console.log("[RENAME-DEBUG] startRename target:", target?.split("/").pop(), "selection:", [...selection].map(u => u.split("/").pop()), "focused:", focusedUri?.split("/").pop());
     if (!target) return;
     setRenamingUri(target);
     setFocusedUri(target);
@@ -220,6 +222,9 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
    * 🛡️ [] deps + ref 桥接——回调稳定，React.memo(FileTreeNode) 不重渲染。
    */
   const handleSelect = useCallback((uri: string, event: React.MouseEvent) => {
+    // 🔍 DEBUG: 点击时记录
+    const parts = uri.split("/");
+    console.log("[RENAME-DEBUG] click:", parts[parts.length - 1], "selection:", selection.size, [...selection].map(u => u.split("/").pop()));
     // E4V#22: Shift+Click 范围选中
     if (event.shiftKey && lastClickedUriRef.current) {
       const items = flatItemsRef.current;

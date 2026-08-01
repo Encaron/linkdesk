@@ -6,7 +6,7 @@
  * 设计文档：docs/02-Electron架构/E4_文件树与编辑器_暂定/02-E4b-文件树交互.md §二 #96
  */
 
-import React, { useEffect } from "react";
+import React, { useEffect, type MutableRefObject } from "react";
 import { registerCommand } from "@src/core/CommandRegistry";
 import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
@@ -27,28 +27,33 @@ interface FileMenuContext {
   isDirectory: boolean;
 }
 
-/* ── 🔥 归一化桥接：一个 FileTreeHandle 替代 _model + _selectedUris + _focusedUri + _onClipboardChange ── */
+/* ── 🔥 归一化桥接：存 ref 对象——每次 .current 拿最新 handle，非快照 ── */
 
-let _handle: FileTreeHandle | null = null;
+let _handleRef: MutableRefObject<FileTreeHandle | null> | null = null;
 
-/** FoldersView mount 时调用——注入 handle 供 command handler 查询实时状态 */
-export function setFileTreeHandle(handle: FileTreeHandle): void {
-  _handle = handle;
+/** 🔥 读最新 handle——解决 FoldersView 不重渲染时 _handle 快照过期的时序 bug */
+function h(): FileTreeHandle | null {
+  return _handleRef?.current ?? null;
 }
 
-/** FoldersView unmount 时调用——清除引用防泄漏 */
+/** FoldersView mount 时调用——注入 ref 本身（非 current 快照） */
+export function setFileTreeHandleRef(ref: MutableRefObject<FileTreeHandle | null>): void {
+  _handleRef = ref;
+}
+
+/** FoldersView unmount 时调用 */
 export function clearFileTreeHandle(): void {
-  _handle = null;
+  _handleRef = null;
 }
 
-/** 兼容旧调用方——FoldersView mount 时注入（别名，逐步迁移后删除） */
-export { setFileTreeHandle as setFileTreeRefs };
+// 兼容旧调用方
+export { setFileTreeHandleRef as setFileTreeHandle, setFileTreeHandleRef as setFileTreeRefs };
 export { clearFileTreeHandle as clearFileTreeRefs };
 
 // ── 已废弃的旧 API（保留导出避免编译错误，后续轮次删除）──
-/** @deprecated 使用 _handle.getSelection() */
+/** @deprecated 使用 h().getSelection() */
 export function setSelectedUris(_uris: string[]): void {}
-/** @deprecated 使用 _handle.getFocusedUri() */
+/** @deprecated 使用 h().getFocusedUri() */
 export function setFocusedUriBridge(_uri: string | null): void {}
 
 /* ── 模块级：注册命令 + 菜单项（对标 marketplace sidebar.tsx pattern） ── */
@@ -104,31 +109,31 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.openWith",        title: "打开方式…",            handler: placeholder("explorer.openWith") });
   // ── E4V#25: cut + copy ──
   registerCommand("file-tree", { id: "explorer.cut", title: "剪切", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
+    const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
-    const selection = _handle.getSelection();
+    const selection = hd.getSelection();
+    console.log("[RENAME-DEBUG] cut: selection=", selection.map((u: string) => u.split("/").pop()), "ctx=", ctx?.uri.split("/").pop());
     const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
-    _handle.rerender(); // 触发重渲染→节点灰显
+    hd.rerender();
   }});
   registerCommand("file-tree", { id: "explorer.copy", title: "复制", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
+    const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
-    const selection = _handle.getSelection();
+    const selection = hd.getSelection();
     const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
   }});
   // ── E4V#26: paste ──
   registerCommand("file-tree", { id: "explorer.paste", title: "粘贴", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
-    const model = _handle.getModel();
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
-    // 目标目录：右键菜单传 ctx → 键盘快捷键从 focusedUri 推断 → 回退到 root
     let targetDir = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : "";
     if (!targetDir) {
-      const focusedUri = _handle.getFocusedUri();
+      const focusedUri = hd.getFocusedUri();
       if (focusedUri) {
         const focused = model.findClosest(focusedUri);
         targetDir = focused?.isDirectory ? focused.uri : dirname(focusedUri);
@@ -140,21 +145,23 @@ export function activateFileTreeContextMenu(): void {
     if (uris.length === 0) return;
     const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
     await executeSafeDrop(sources, targetDir, isCut ? "move" : "copy");
-    _handle.rerender(); // paste 后剪贴板清空→恢复节点样式
+    hd.rerender();
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
   }});
   // ── E4V#27: F2 行内重命名 ──
   registerCommand("file-tree", { id: "explorer.rename", title: "重命名", handler: async () => {
-    _handle?.startRename();
+    const hd = h();
+    console.log("[RENAME-DEBUG] rename, sel=", hd?.getSelection().map(u => u.split("/").pop()));
+    hd?.startRename();
   }});
   // ── E4V#24: delete ──
   registerCommand("file-tree", { id: "explorer.delete", title: "删除", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
-    const model = _handle.getModel();
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
-    const selection = _handle.getSelection();
+    const selection = hd.getSelection();
     const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
     const confirmDelete = getConfigurationValue<boolean>("explorer.confirmDelete") ?? true;
@@ -181,8 +188,8 @@ export function activateFileTreeContextMenu(): void {
   // 覆盖 loader 注册的 placeholder——plugin.json 已声明这些命令，但 handler 是空的
 
   registerCommand("file-tree", { id: "explorer.newFile", title: "新建文件", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
-    const model = _handle.getModel();
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
     const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
     if (!dirUri) return;
@@ -200,8 +207,8 @@ export function activateFileTreeContextMenu(): void {
   }});
 
   registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
-    if (!_handle) return;
-    const model = _handle.getModel();
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
     const dirUri = ctx?.isDirectory ? ctx.uri : ctx ? dirname(ctx.uri) : model.roots[0]?.uri;
     if (!dirUri) return;
@@ -219,8 +226,8 @@ export function activateFileTreeContextMenu(): void {
   }});
 
   registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
-    if (!_handle) return;
-    const model = _handle.getModel();
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     await model.refresh();
     for (const uri of model.getExpandedUris()) {
       const item = model.findClosest(uri);
@@ -229,7 +236,7 @@ export function activateFileTreeContextMenu(): void {
   }});
 
   registerCommand("file-tree", { id: "explorer.collapseAll", title: "收起所有文件夹", handler: async () => {
-    _handle?.getModel().collapseAll();
+    h()?.getModel().collapseAll();
   }});
 
   // ── 注册菜单项到 MenuId.FileContext ──
