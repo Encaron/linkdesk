@@ -81,7 +81,8 @@ export class FileExcludeFilter {
       const line = raw.trim();
       if (!line || line.startsWith("#")) continue;
       const isNegated = line.startsWith("!");
-      const pattern = isNegated ? line.slice(1) : line;
+      // 去尾 / —— gitignore 的 "dist/" 等同于 "dist"，compileGlob 不认尾 /
+      const pattern = (isNegated ? line.slice(1) : line).replace(/\/+$/, "");
       this._gitignore.push({ isNegated, match: compileGlob(pattern) });
     }
   }
