@@ -57,6 +57,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
       () => onSaveRef.current?.(),
     );
+
+    // 🔥 影子 model 扫描在 beforeMount 中启动，但异步，可能晚于 TS worker 首次分析。
+    //    等扫描完成后，modelswitch 触发 TS 重分析——切 plaintext 再切回，零文件改动。
+    scanWorkspaceForTypeScript(monaco).then(() => {
+      const m = editor.getModel();
+      if (!m || m.isDisposed()) return;
+      const lang = m.getLanguageId();
+      monaco.editor.setModelLanguage(m, "plaintext");
+      monaco.editor.setModelLanguage(m, lang);
+      console.log("[editor] TS re-analyze after scan");
+    });
   }, []);
 
   // keep-alive
