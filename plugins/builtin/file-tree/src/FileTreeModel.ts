@@ -106,7 +106,7 @@ export class FileTreeModel {
     const parentLen = current.uri.length;
     const filtered = this._excludeFilter
       ? entries.filter((e) => {
-          const relPath = e.path.replace(/\\/g, "/").slice(parentLen + 1);
+          const relPath = normalizePath(e.path).slice(parentLen + 1);
           return !this._excludeFilter!.matches(relPath);
         })
       : entries;
@@ -169,9 +169,9 @@ export class FileTreeModel {
 
   /** 查找 URI 所属的根节点 */
   findClosestRoot(uri: string): ExplorerItem | null {
-    const normalized = uri.replace(/\\/g, "/");
+    const normalized = normalizePath(uri);
     for (const root of this._roots) {
-      const rn = root.uri.replace(/\\/g, "/");
+      const rn = root.uri; // root.uri 已在 setRoots 中 normalizePath
       if (normalized === rn || normalized.startsWith(rn + "/")) return root;
     }
     return null;

@@ -14,6 +14,7 @@
  *   归一后：所有 fs 操作走 FileService——不存在"A 写 B 不知道"。
  */
 
+import { normalizePath } from "./pathUtils";
 
 /* ── 类型 ── */
 
@@ -66,14 +67,14 @@ const _SUPPRESS_MS = 300;
 
 /** 写操作后抑制该文件父目录的 watcher 事件 */
 function suppressPath(filePath: string): void {
-  const dir = filePath.replace(/\\/g, "/").replace(/\/[^/]*$/, "");
+  const dir = normalizePath(filePath).replace(/\/[^/]*$/, "");
   if (dir) _suppressPaths.set(dir, Date.now() + _SUPPRESS_MS);
 }
 
 /** eventPath 是否被抑制——检查自己及祖先路径 */
 function isSuppressed(eventPath: string): boolean {
   const now = Date.now();
-  let p = eventPath.replace(/\\/g, "/");
+  let p = normalizePath(eventPath);
   while (p) {
     const until = _suppressPaths.get(p);
     if (until && now < until) return true;

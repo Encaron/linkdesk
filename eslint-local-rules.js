@@ -600,6 +600,87 @@ const noRawConfigurationRead = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 8：禁止手写 replace(/\\/g, "/") —— 必须走 normalizePath
+// ═══════════════════════════════════════════════════════════
+//
+// E4V#60 路径归一化。Windows \ vs / 正反斜杠不匹配是反复出现的 bug：
+// WorkspaceService.addFolder/removeFolder → findIndex === → 找不到
+// compileGlob dist/ 尾斜杠 → 不匹配
+// 每次都是不同模块忘了归一化。现在 normalizePath 已提到 core——
+// 手写 replace(/\\/g, "/") 等于绕过唯一正源。
+//
+// 错误示例：
+//   const p = uri.replace(/\\/g, "/");          // ← 绕过 normalizePath
+//   const match = raw.includes(p.replace(/\\/g, "/")); // ← 同上
+//
+// 正确示例：
+//   import { normalizePath } from "@src/core/pathUtils"; // 或 from "./pathUtils"
+//   const p = normalizePath(uri);
+//
+// 例外：src/core/pathUtils.ts 自身（唯一正源定义处）
+
+const noRawPathReplace = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath（E4V#60 归一化）",
+      recommended: true,
+    },
+    messages: {
+      noRawReplace:
+        "🔥 禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath。" +
+        " Windows \\ vs / 不匹配是反复出现的 bug（WorkspaceService/compileGlob/dist尾斜杠）。" +
+        " 修复：import { normalizePath } from '@src/core/pathUtils' 然后 normalizePath(uri)。" +
+        " src/core/pathUtils.ts 自身是唯一正源定义处——此规则不适用。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
+
+    // pathUtils.ts 自身是 normalizePath 正源定义处——放行
+    if (filename.endsWith("/src/core/pathUtils.ts")) return {};
+    // electron/ main 进程独立构建——无法 import src/core/pathUtils
+    if (filename.includes("/electron/")) return {};
+
+    return {
+      Literal(node) {
+        if (!node.regex) return;
+        // 匹配 /\\/g 正则字面量
+        const raw = node.raw || "";
+        if (raw === "/\\\\/g" || raw === "/\\\\/gi") {
+          // 检查是否用于 replace 调用
+          const parent = node.parent;
+          if (
+            parent &&
+            parent.type === "CallExpression" &&
+            parent.callee.type === "MemberExpression" &&
+            parent.callee.property.type === "Identifier" &&
+            parent.callee.property.name === "replace"
+          ) {
+            // 检查 replace 的目标是否是字符串，替换值是否是 "/"
+            const args = parent.arguments;
+            if (args.length >= 2) {
+              const replacement = args[1];
+              if (
+                replacement &&
+                replacement.type === "Literal" &&
+                (replacement.value === "/" || replacement.value === "\\")
+              ) {
+                context.report({
+                  node: parent,
+                  messageId: "noRawReplace",
+                });
+              }
+            }
+          }
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -608,4 +689,5 @@ export default {
   "no-module-level-ipc-listener": noModuleLevelIpcListener,
   "no-quickpick-render-item": noQuickpickRenderItem,
   "no-raw-configuration-read": noRawConfigurationRead,
+  "no-raw-path-replace": noRawPathReplace,
 };
