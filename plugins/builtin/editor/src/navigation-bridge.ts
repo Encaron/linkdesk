@@ -1,37 +1,21 @@
 /**
- * E4V#40i2a 编辑器导航桥——IEditorService.openEditor → 壳标签页。
+ * E4V#40i2a 编辑器导航桥——F12/Ctrl+Click 跳转定义 → 壳标签页。
  *
- * Standalone Monaco 的 F12/Ctrl+Click 只弹 peek 窗。接线 monaco-vscode-api 的
- * IEditorService.openEditor() → 壳 TabActions.createTab()。
- * 一次接线，F12 / Ctrl+Click / peek 窗点链接——全部自动走壳标签页。
+ * Standalone Monaco 没有 IEditorService.openEditor()——F12 走 addAction，
+ * Ctrl+Click 走 gotoLocation.alternativeDefinitionCommand。
+ * 两者汇到同一个 action handler → 调 TS worker 拿定义 → 壳 TabActions.createTab()。
  *
- * 🔥 initialize() 必须在 monaco.editor.create() 之前调用——它是替而非补。
- *    所以 @monaco-editor/react 的 <Editor> 必须换掉（E4V#40i2b）。
+ * 🔥 不使用 monaco-vscode-api 的 initialize()——它替换整个服务层，
+ *    standalone action（revealDefinition 等）全丢失，Ctrl+Click 失效。
+ *    直接在自定义 action 里调 TS worker + tabActions 桥接——已验证可行。
  */
-import { initialize } from "@codingame/monaco-vscode-api";
-import getEditorServiceOverride from "@codingame/monaco-vscode-editor-service-override";
+import { normalizePath } from "@src/core/pathUtils";
 
-/** initialize() 只能全局调一次——模块级守卫 */
-let _navReady = false;
-let _navPromise: Promise<void> | null = null;
+export interface NavigateToFile {
+  (filePath: string): void;
+}
 
-/**
- * 确保导航桥已初始化——幂等，多次调用只执行一次。
- * Monaco 所有"打开文件"操作（F12/Ctrl+Click/peek 窗）汇到 openFile 回调。
- *
- * @param openFile - 壳标签页打开回调：(filePath: string) => void
- */
-export async function ensureNavigationBridge(
-  openFile: (filePath: string) => void,
-): Promise<void> {
-  if (_navReady) return;
-  if (_navPromise) return _navPromise; // 进行中复用
-  _navPromise = initialize(
-    getEditorServiceOverride(async (modelRef, _options, _sideBySide) => {
-      const uri = modelRef.object.textEditorModel.uri;
-      openFile(uri.fsPath);
-      return undefined;
-    }),
-  ).then(() => { _navReady = true; });
-  return _navPromise;
+/** file:///e%3A/_testfiles/utils.ts → E:/_testfiles/utils.ts */
+export function fileUriToPath(uri: string): string {
+  return normalizePath(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
 }
