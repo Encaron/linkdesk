@@ -90,10 +90,10 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
   }, []);
 
   return (
-    <div style={{ height: "100%", position: "relative" }}>
+    <div style={{ display: "flex", flexDirection: "column", height: "100%", position: "relative" }}>
       {loading && <div className="editor-loading">加载对比…</div>}
       {error && <div className="editor-error">{error}</div>}
-      <div ref={containerRef} style={{ height: "100%", display: loading ? "none" : "block" }} />
+      <div ref={containerRef} style={{ flex: 1, minHeight: 0, display: loading ? "none" : "block" }} />
     </div>
   );
 };
