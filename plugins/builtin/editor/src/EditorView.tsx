@@ -1,15 +1,15 @@
 /**
  * E4V#40b Monaco 编辑器包装器。
  *
- * E4V#40t2：用 monaco-languageclient 的 EditorApp 替代 @monaco-editor/react 的 <Editor>。
- * EditorApp 走 VS Code 服务层（IEditorService/ICommandService/ITextModelService），
- * F12/Ctrl+Click 自动路由到壳标签页（openEditorFunc）。
+ * E4V#40t2：monaco-languageclient 全量迁移——MonacoVscodeApiWrapper 初始化 VS Code 服务层
+ * + 手写 monaco.editor.create() 创建编辑器。不依赖 @monaco-editor/react。
  *
- * 🔥 保留 setupTypeScriptEnv + scanWorkspaceForTypeScript——TS compilerOptions + 影子 model
- *    仍需要手动设。语法高亮/主题/worker 由 MonacoVscodeApiWrapper.start() 托管。
+ * 🔥 EditorApp 不能用——它的 buildModelReference() 走 VS Code 的 IFileService.writeFile()，
+ *    在 Electron 壳 WebView 里无写文件权限。手写 createModel+createEditor 绕过文件服务。
+ *
+ * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { EditorApp, type EditorAppConfig } from "monaco-languageclient/editorApp";
 import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
@@ -34,7 +34,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   { value, language: _language, filePath, isActive, onChange, onSave, readOnly },
   ref,
 ) {
-  const editorAppRef = useRef<EditorApp | null>(null);
+  const editorRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
@@ -44,8 +44,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   tabActionsRef.current = tabActions;
 
   useImperativeHandle(ref, () => ({
-    layout: () => editorAppRef.current?.getEditor()?.layout(),
-    dispose: () => editorAppRef.current?.dispose(),
+    layout: () => editorRef.current?.layout(),
+    dispose: () => editorRef.current?.dispose(),
   }), []);
 
   // ── 初始化——每个 filePath 创建一次 editor ──
@@ -76,35 +76,36 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       setupTypeScriptEnv(monaco);
       scanWorkspaceForTypeScript(monaco);
 
-      // 4. 创建 EditorApp（替代 <Editor>）
-      const uri = `file:///${normalizePath(filePath)}`;
-      const appConfig: EditorAppConfig = {
-        codeResources: { modified: { text: value, uri } },
+      // 4. 手写 editor——绕过 EditorApp 的 IFileService 依赖
+      const uri = monaco.Uri.file(normalizePath(filePath));
+      let model = monaco.editor.getModel(uri);
+      if (!model) {
+        model = monaco.editor.createModel(value, undefined, uri);
+      } else if (model.getValue() !== value) {
+        model.setValue(value);
+      }
+      const editor = monaco.editor.create(container, {
+        model,
+        theme: "linkdesk",
         readOnly,
-      };
-      const editorApp = new EditorApp(appConfig);
-      await editorApp.start(container);
-      if (disposed) { editorApp.dispose(); return; }
-      editorAppRef.current = editorApp;
+      });
+      editorRef.current = editor;
 
       // 5. onChange 接线
-      editorApp.registerOnTextChangedCallback((changes: { modified?: string }) => {
-        if (changes.modified != null) onChange?.(changes.modified);
+      model.onDidChangeContent(() => {
+        onChange?.(model!.getValue());
       });
 
       // 6. Ctrl+S
-      const editor = editorApp.getEditor();
-      if (editor) {
-        editor.addCommand(
-          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-          () => onSaveRef.current?.(),
-        );
-      }
+      editor.addCommand(
+        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+        () => onSaveRef.current?.(),
+      );
 
       // 7. 扫描完成后触发 TS 重分析
       scanWorkspaceForTypeScript(monaco).then(() => {
         if (disposed) return;
-        const m = editor?.getModel();
+        const m = editor.getModel();
         if (!m || m.isDisposed()) return;
         const lastLine = m.getLineCount();
         const lastCol = m.getLineMaxColumn(lastLine);
@@ -112,21 +113,19 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
       });
     })().catch((err) => {
-      console.error("[editor] EditorApp 初始化失败:", err);
+      console.error("[editor] 初始化失败:", err);
     });
 
     return () => {
       disposed = true;
-      editorAppRef.current?.dispose();
+      editorRef.current?.dispose();
     };
   }, [filePath]);
 
   // ── keep-alive——标签页切换时 layout ──
   useEffect(() => {
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => {
-      editorAppRef.current?.getEditor()?.layout();
-    });
+    const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
