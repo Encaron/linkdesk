@@ -298,7 +298,9 @@ export class ViewContainerServiceClass extends RegistryBase {
     if (!this._originalOrder.has(containerId)) {
       this._originalOrder.set(containerId, new Map());
     }
-    this._originalOrder.get(containerId)!.set(descriptor.id, descriptor.order ?? 0);
+    const saved = descriptor.order ?? 0;
+    console.log(`[registerView] save _originalOrder: container=${containerId} view=${descriptor.id} order=${saved}`);
+    this._originalOrder.get(containerId)!.set(descriptor.id, saved);
     this._updateActiveViews(containerId);
 
     this.onDidChangeViews.fire({
@@ -389,7 +391,8 @@ export class ViewContainerServiceClass extends RegistryBase {
     for (const [containerId, model] of this._models) {
       const before = model.allViewDescriptors.map(v => `${v.id}:order=${(v as any).order}`);
       const orig = this._originalOrder.get(containerId);
-      console.log(`[resetCollapsedState] ${containerId} before:`, before, "_originalOrder:", orig ? [...orig.entries()] : "MISSING");
+      const origDump = orig ? [...orig.entries()].map(([k,v]) => `${k}=${v}`).join(", ") : "MISSING";
+      console.log(`[resetCollapsedState] ${containerId} before:`, before, `_originalOrder: {${origDump}}`);
       if (orig) {
         model.allViewDescriptors.forEach(v => {
           const o = orig.get(v.id);
