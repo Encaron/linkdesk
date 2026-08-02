@@ -476,7 +476,20 @@
   - [x] 尝试 ViewsService → 跨文件 F12 失效 → 回退 EditorService ✅
   - [x] 手动 handler 标注为"standalone 正确归一化路径"——不是治标 ✅
 
-**R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。F12/Ctrl+Click 走 IEditorService.openEditor → 壳标签页——治本，所有语言通用。LSP 桥框架就绪（`MonacoLanguageClient` 接 clangd/pylsp 等）。~90 行。
+### E4V#40r 🔧 语言插件贡献点——contributes.languages 扩展 - [ ]
+
+- [ ] **文件：** `public/schemas/plugin.schema.json` + `src/core/types.ts` | ~20 行
+  - `contributes.languages` 加新字段：`id`, `extensions`, `aliases`, `monarch?`, `lsp?: { command, args }`
+  - **验证：** schema 校验通过
+
+### E4V#40s 🔧 LSP 桥接线——child_process → MonacoLanguageClient - [ ]
+
+- [ ] **文件：** `plugins/builtin/editor/src/lsp-bridge.ts` | ~30 行
+  - main process `child_process.spawn(clangd)` → IPC 桥 → `MonacoLanguageClient`
+  - `IEditorService.openEditor()` 覆盖（已在 monaco-init.ts 中）自动处理导航
+  - **验证：** C 文件 F12 → clangd 返回定义 → 壳标签页蹦出
+
+**R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。LSP 桥已接——C/C++/Python 跨文件跳转走 IEditorService.openEditor → 壳标签页。~120 行。
 
 ---
 
@@ -547,7 +560,7 @@
 | 3 | 编辑器镶边——状态栏+面包屑+右键 | E4V#40j–40l | ~120 |
 | 4 | 高级功能——Diff+热退出+自动保存+多标签页 | E4V#40m–40p | ~130 |
 | 5 | 配置项——25 项编辑器配置 | E4V#40q | ~70 |
-| 6 | monaco-languageclient 全量迁移——治本 | E4V#40t–t6 | ~105 |
+| 6 | monaco-languageclient 全量 + LSP 桥 | E4V#40t–t6 + 40r–40s | ~105完成 + 50待做 |
 | 7 | 装饰+快捷键映射 | E4V#40u–40v | ~45 |
 | 🔴 | GBK 编码保存 | E4V#40w | ~10 |
 | **合计** | | **24 任务** | **~965 行** |
