@@ -7,7 +7,7 @@
 
 import React from "react";
 import type { ExplorerItem } from "./FileTreeModel";
-import { defaultIconResolver } from "./FileIconResolver";
+import { getIconResolver } from "./FileIconResolver";
 import { useClickPreview } from "@src/hooks/useClickPreview";
 
 interface FileTreeNodeProps {
@@ -45,10 +45,11 @@ interface FileTreeNodeProps {
 }
 
 function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
+  const resolver = getIconResolver();
   if (item.isDirectory) {
-    return expanded ? defaultIconResolver.getFolderIconOpened() : defaultIconResolver.getFolderIcon(item);
+    return expanded ? resolver.getFolderIconOpened() : resolver.getFolderIcon(item);
   }
-  return defaultIconResolver.getIcon(item);
+  return resolver.getIcon(item);
 }
 
 const FileTreeNode: React.FC<FileTreeNodeProps> = ({
