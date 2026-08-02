@@ -336,3 +336,16 @@
 .settings-color-swatch:hover {
   border-color: var(--accent);
 }
+
+/* E4V#46——action 按钮（renderHint: "action"） */
+.settings-action-btn {
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.settings-action-btn:hover { opacity: 0.85; }

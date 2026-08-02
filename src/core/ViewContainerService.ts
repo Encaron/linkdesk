@@ -20,6 +20,7 @@
 import { Emitter } from "./CoreEvents";
 import { RegistryBase } from "./RegistryBase";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
+import { registerOnApply } from "./ConfigurationApplier";
 
 /* ── 类型定义 ── */
 
@@ -356,6 +357,11 @@ export class ViewContainerServiceClass extends RegistryBase {
     return this.loadCollapsedState().has(viewId);
   }
 
+  /** E4V#46——一键清除全部折叠持久化 */
+  resetCollapsedState(): void {
+    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
+  }
+
   /* ═══ 可见性 ═══ */
 
   /** 设置 view 可见性（用户手动切换或 when 条件变化）。
@@ -498,3 +504,8 @@ export class ViewContainerServiceClass extends RegistryBase {
 
 /** 全局单例 */
 export const ViewContainerService = new ViewContainerServiceClass();
+
+// E4V#46——一键重置侧栏布局：清空折叠持久化 → 回到 plugin.json 默认
+registerOnApply("workbench.resetSidebarLayout", () => {
+  ViewContainerService.resetCollapsedState();
+});
