@@ -6,7 +6,7 @@
  * 对标 VS Code：同级 view header 互相顶走，只有父子才层层叠加。
  */
 
-import { type ReactNode, useState, useRef, useCallback } from "react";
+import { type ReactNode, useState, useRef, useCallback, useEffect } from "react";
 import type { ViewDescriptor, ViewContainerDescriptor } from "../../core/ViewContainerService";
 import { ViewContainerService } from "../../core/ViewContainerService";
 // E4V#44——ContextKeyService 用于空状态占位内容的 when 条件
@@ -51,8 +51,29 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
   );
 }
 
-/** E4V#45——view wrapper：flex:1 默认均分，拖拽后固定高度 */
-function ViewPane({ viewId, height, children }: { viewId: string; height?: number; children: ReactNode }) {
+/** E4V#45——view wrapper：flex:1 默认均分，拖拽后固定高度。
+ *  E4V#45-fix：ResizeObserver 自动测内容高度，未声明 minHeight 时用实测值。 */
+function ViewPane({ viewId, height, onContentHeight, children }: {
+  viewId: string;
+  height?: number;
+  onContentHeight?: (id: string, h: number) => void;
+  children: ReactNode;
+}) {
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // E4V#45-fix——ResizeObserver 测内容自然高度
+  useEffect(() => {
+    const el = contentRef.current;
+    if (!el || !onContentHeight) return;
+    const ro = new ResizeObserver(() => {
+      onContentHeight(viewId, el.scrollHeight);
+    });
+    ro.observe(el);
+    // 首次立即报告
+    onContentHeight(viewId, el.scrollHeight);
+    return () => ro.disconnect();
+  }, [viewId, onContentHeight]);
+
   return (
     <div
       data-view-id={viewId}
@@ -61,7 +82,9 @@ function ViewPane({ viewId, height, children }: { viewId: string; height?: numbe
         ? { height, flexShrink: 0, overflowY: "auto" }
         : { flex: 1, minHeight: 0 }}
     >
-      {children}
+      <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
+        {children}
+      </div>
     </div>
   );
 }
@@ -72,8 +95,41 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   // 拖拽时缓存初始高度——避免 setState 异步导致跳变
   const dragBaseRef = useRef<{ upperId: string; baseHeight: number; lowerId: string; lowerBaseHeight: number } | null>(null);
 
-  /** E4V#45——sash 拖拽回调。deltaY > 0 = 向下拖 → 上方 view 增高。
-   *  上下限由各 view 的 minHeight 声明（默认 100px）。 */
+  // E4V#45-fix——ResizeObserver 实测内容高度（未声明 minHeight 的 view）
+  const [measuredContentHeights, setMeasuredContentHeights] = useState<Record<string, number>>({});
+  // E4V#45-fix——容器总高度（窗口缩放时自动更新 cap）
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerHeight, setContainerHeight] = useState(600);
+  useEffect(() => {
+    const el = containerRef.current?.parentElement;
+    if (!el) return;
+    const ro = new ResizeObserver(() => { setContainerHeight(el.clientHeight); });
+    ro.observe(el);
+    setContainerHeight(el.clientHeight);
+    return () => ro.disconnect();
+  }, []);
+
+  const handleContentHeight = useCallback((id: string, h: number) => {
+    setMeasuredContentHeights((prev) => {
+      if (prev[id] === h) return prev;
+      return { ...prev, [id]: h };
+    });
+  }, []);
+
+  /** E4V#45-fix——effective minHeight：声明优先，否则自动测（cap = 容器高 - 其他 view 声明值总和） */
+  const effectiveMinHeight = useCallback((viewId: string): number => {
+    const desc = ViewContainerService.getView(viewId);
+    if (desc?.minHeight !== undefined) return desc.minHeight;
+    // 自动测——上限由其他 view 声明的 minHeight 决定
+    const otherDeclaredSum = views
+      .filter((v) => v.id !== viewId)
+      .reduce((sum, v) => sum + (v.minHeight ?? 0), 0);
+    const cap = Math.max(100, containerHeight - otherDeclaredSum - toolbarHeight);
+    const measured = measuredContentHeights[viewId];
+    return measured !== undefined ? Math.min(measured, cap) : 100;
+  }, [views, containerHeight, toolbarHeight, measuredContentHeights]);
+
+  /** E4V#45——sash 拖拽回调。deltaY > 0 = 向下拖 → 上方 view 增高。 */
   const handleSashDrag = useCallback((upperId: string, lowerId: string, deltaY: number) => {
     const base = dragBaseRef.current;
     if (!base || base.upperId !== upperId) {
@@ -84,12 +140,12 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       dragBaseRef.current = { upperId, baseHeight: upperH, lowerId, lowerBaseHeight: lowerH };
     }
     const b = dragBaseRef.current!;
-    const upperMin = ViewContainerService.getView(upperId)?.minHeight ?? 100;
-    const lowerMin = ViewContainerService.getView(lowerId)?.minHeight ?? 100;
+    const upperMin = effectiveMinHeight(upperId);
+    const lowerMin = effectiveMinHeight(lowerId);
     const newUpper = Math.max(upperMin, b.baseHeight + deltaY);
     const newLower = Math.max(lowerMin, b.lowerBaseHeight - deltaY);
     setViewHeights({ [upperId]: newUpper, [lowerId]: newLower });
-  }, []);
+  }, [effectiveMinHeight]);
 
   const handleSashEnd = useCallback(() => {
     dragBaseRef.current = null;
@@ -152,8 +208,8 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         // 多 view → 每个用 ViewPane 包起来 + sash 隔开
         if (!singleView) {
           return (
-            <div key={view.id} style={{ display: "contents" }}>
-              <ViewPane viewId={view.id} height={viewHeights[view.id]}>
+            <div key={view.id} style={{ display: "contents" }} ref={i === 0 ? containerRef : undefined}>
+              <ViewPane viewId={view.id} height={viewHeights[view.id]} onContentHeight={handleContentHeight}>
                 {section}
               </ViewPane>
               {!isLast && (
@@ -170,7 +226,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         }
 
         // 单 view → 不用 sash
-        return <div key={view.id} style={{ display: "contents" }}>{section}</div>;
+        return <div key={view.id} style={{ display: "contents" }} ref={i === 0 ? containerRef : undefined}>{section}</div>;
       })}
     </>
   );
