@@ -114,14 +114,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monacoRef.current = monaco;
       console.log("[editor] editorRef SET——filePath:", filePath);
 
-      // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
+      // F12 跳转后滚动到目标位置——rAF 确保晚于 model 编辑
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
-        const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
-        editor.setPosition(pos);
-        editor.revealPositionInCenter(pos);
-        editor.focus();
-        clearPendingReveal(filePath);
+        requestAnimationFrame(() => {
+          if (disposed) return;
+          const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
+          editor.setPosition(pos);
+          editor.revealPositionInCenter(pos);
+          editor.focus();
+          clearPendingReveal(filePath);
+        });
       }
 
       // 5. onChange 接线
@@ -228,18 +231,19 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   // ── keep-alive——标签页切换时 layout ──
   useEffect(() => {
-    console.log("[editor] isActive effect FIRED——isActive:", isActive, "filePath:", filePath, "editorRef:", !!editorRef.current);
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
-    const pos = consumePendingReveal(filePath);
-    console.log("[editor] isActive consumePendingReveal:", filePath, "pos:", !!pos);
-    if (pos && editorRef.current) {
-      const p = { lineNumber: pos.line, column: pos.column };
-      editorRef.current.setPosition(p);
-      editorRef.current.revealPositionInCenter(p);
-      clearPendingReveal(filePath);
-      console.log("[editor] isActive reveal DONE");
-    }
+    const raf = requestAnimationFrame(() => {
+      editorRef.current?.layout();
+      // F12 目标文件已开——在 rAF 里 reveal，晚于所有 model 编辑（TS reanalysis 等）
+      const pos = consumePendingReveal(filePath);
+      if (pos && editorRef.current) {
+        const p = { lineNumber: pos.line, column: pos.column };
+        editorRef.current.setPosition(p);
+        editorRef.current.revealPositionInCenter(p);
+        editorRef.current.focus();
+        clearPendingReveal(filePath);
+      }
+    });
     return () => cancelAnimationFrame(raf);
   }, [isActive, filePath]);
 
