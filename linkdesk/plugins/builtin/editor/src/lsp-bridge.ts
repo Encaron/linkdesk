@@ -75,7 +75,7 @@ function createIpcReader(channelId: string): MessageReader {
 
       const body = buffer.slice(bodyStart, bodyStart + contentLength);
       buffer = buffer.slice(bodyStart + contentLength);
-      for (const cb of listeners) cb(body);
+      for (const cb of listeners) cb(JSON.parse(body));
     }
   });
 
