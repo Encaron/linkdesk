@@ -14,7 +14,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
 import { fileUriToPath } from "./navigation-bridge";
-import { getLspClient } from "./lsp-bridge";
+import { getLspClient, startLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
 
@@ -82,6 +82,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // 4. TS compilerOptions + 影子 model 扫描
       setupTypeScriptEnv(monaco);
       scanWorkspaceForTypeScript(monaco);
+
+      // 5. 非 TS 语言——按需启动 LSP 客户端
+      if (filePath.endsWith(".py") && !getLspClient("python")) {
+        startLspClient("python", "node", [
+          "node_modules/pyright/dist/pyright-langserver.js",
+          "--stdio",
+        ]).catch((err) => console.warn("[editor] pyright 启动失败:", err));
+      }
 
       // 4. 手写 editor——绕过 EditorApp 的 IFileService 依赖
       const uri = monaco.Uri.file(normalizePath(filePath));
