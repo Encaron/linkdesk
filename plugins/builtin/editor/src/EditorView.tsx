@@ -15,7 +15,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
-import { fileUriToPath, setPendingReveal, consumePendingReveal, clearPendingReveal } from "./navigation-bridge";
+import { fileUriToPath, setPendingReveal, consumePendingReveal, registerEditor, unregisterEditor, getRegisteredEditor } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
@@ -109,8 +109,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
       editorRef.current = editor;
       monacoRef.current = monaco;
+      registerEditor(filePath, editor);
 
-      // 7. F12 跳转后定位——rAF 确保晚于 model 编辑（TS reanalysis 等）
+      // 7. F12 跳转后定位——兜底 consume（editor 已注册，这里只处理"此文件是新开的"）
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
         requestAnimationFrame(() => {
@@ -119,7 +120,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           editor.setPosition(pos);
           editor.revealPositionInCenter(pos);
           editor.focus();
-          clearPendingReveal(filePath);
         });
       }
 
@@ -181,6 +181,22 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             editor.revealPositionInCenter({ lineNumber: targetLine, column: targetCol });
             return;
           }
+
+          // 跨文件：先查编辑器注册表——editor 已存在则直连，无需 createTab
+          const targetEditor = getRegisteredEditor(targetPath);
+          if (targetEditor) {
+            const p = { lineNumber: targetLine, column: targetCol };
+            targetEditor.setPosition(p);
+            targetEditor.revealPositionInCenter(p);
+            targetEditor.focus();
+            const label = normalizePath(targetPath).split("/").pop() || targetPath;
+            tabActionsRef.current?.createTab("editor", {
+              filePath: targetPath, sourceId: targetPath, label, pinned: false,
+            });
+            return;
+          }
+
+          // 兜底——尚未注册的 editor
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
           setPendingReveal(targetPath, targetLine, targetCol);
           tabActionsRef.current?.createTab("editor", {
@@ -219,26 +235,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
     return () => {
       disposed = true;
+      unregisterEditor(filePath);
       editorRef.current?.dispose();
     };
   }, [filePath]);
 
-  // ── keep-alive——标签页切换时 layout + reveal ──
+  // ── keep-alive——标签页切换时 layout ──
   useEffect(() => {
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => {
-      editorRef.current?.layout();
-      const pos = consumePendingReveal(filePath);
-      if (pos && editorRef.current) {
-        const p = { lineNumber: pos.line, column: pos.column };
-        editorRef.current.setPosition(p);
-        editorRef.current.revealPositionInCenter(p);
-        editorRef.current.focus();
-        clearPendingReveal(filePath);
-      }
-    });
+    const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     return () => cancelAnimationFrame(raf);
-  }, [isActive, filePath]);
+  }, [isActive]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);
