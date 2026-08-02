@@ -363,6 +363,9 @@ export class ViewContainerServiceClass extends RegistryBase {
     // 确保目标容器存在
     this._ensureContainer(toContainerId);
     const toModel = this._models.get(toContainerId)!;
+    // 追加到末尾——order 设为目标容器最大值 + 1（getActiveViews 按 order 排序）
+    const maxOrder = toModel.allViewDescriptors.reduce((max, v) => Math.max(max, v.order ?? 0), 0);
+    (view as any).order = maxOrder + 1;
     const insertAt = newIndex ?? toModel.allViewDescriptors.length;
     toModel.allViewDescriptors.splice(insertAt, 0, view);
     // 更新两个容器的活跃 views
