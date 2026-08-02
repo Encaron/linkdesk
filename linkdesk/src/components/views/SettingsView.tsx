@@ -404,6 +404,17 @@ function renderControl(
       );
 
     case "string":
+      // E4V#46——renderHint "action"：渲染操作按钮。场景：一键重置布局、清空缓存等。点击执行 onApply
+      if (prop.renderHint === "action") {
+        return (
+          <button
+            className="settings-action-btn"
+            onClick={() => { prop.onApply?.(null); }}
+          >
+            {t(prop.description)}
+          </button>
+        );
+      }
       if (prop.enum && prop.enum.length > 0) {
         // E2c #13 16.1：enumDescriptions 优先于 enum 作为 label 来源。
         // prop.enumDescriptions[i] 与 prop.enum[i] 一一对应——值是 "hex" 但显示 "HEX 编码"。

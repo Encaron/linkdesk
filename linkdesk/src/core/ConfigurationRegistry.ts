@@ -27,8 +27,9 @@ export interface ConfigurationProperty {
    *  对标 VS Code package.json `when` 条件。所有配置项通用，一次写完，任意插件复用。 */
   dependsOn?: { key: string; value: unknown };
   /** E3f #59d3：渲染提示——SettingsView 按 hint 决定控件样式。
-   *  "color" → 文本输入框旁显示色块预览（#59e ColorPicker 替换为弹出调色器）。 */
-  renderHint?: "color";
+   *  "color" → 文本输入框旁显示色块预览（#59e ColorPicker 替换为弹出调色器）。
+   *  "action" → 渲染按钮而非输入框，点击执行 onApply。场景：一键重置、清空缓存等操作型配置。 */
+  renderHint?: "color" | "action";
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

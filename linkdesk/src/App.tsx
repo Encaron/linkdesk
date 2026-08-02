@@ -293,6 +293,13 @@ function App() {
               }
             },
           },
+          // E4V#46——一键重置侧栏折叠/排序/位置 → 回到 plugin.json 默认
+          "workbench.resetSidebarLayout": {
+            type: "string",
+            default: "",
+            description: "重置侧栏布局",
+            renderHint: "action",
+          },
           "app.accentMode": {
             type: "string",
             default: "custom",
