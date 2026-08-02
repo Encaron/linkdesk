@@ -43,9 +43,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const monacoRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
-  const renderCountRef = useRef(0);
-  renderCountRef.current++;
-  console.log("[editor] RENDER #" + renderCountRef.current, "filePath:", filePath, "isActive:", isActive, "editorRef:", !!editorRef.current);
   onSaveRef.current = onSave;
 
   const tabActions = useTabActions();
@@ -97,7 +94,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           .catch((err) => console.warn(`[editor] ${langDef.id} LSP 启动失败:`, err));
       }
 
-      // 4. 手写 editor——绕过 EditorApp 的 IFileService 依赖
+      // 6. 手写 editor——绕过 EditorApp 的 IFileService 依赖
       const uri = monaco.Uri.file(normalizePath(filePath));
       let model = monaco.editor.getModel(uri);
       if (!model) {
@@ -112,9 +109,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
       editorRef.current = editor;
       monacoRef.current = monaco;
-      console.log("[editor] editorRef SET——filePath:", filePath);
 
-      // F12 跳转后滚动到目标位置——rAF 确保晚于 model 编辑
+      // 7. F12 跳转后定位——rAF 确保晚于 model 编辑（TS reanalysis 等）
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
         requestAnimationFrame(() => {
@@ -127,19 +123,18 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         });
       }
 
-      // 5. onChange 接线
+      // 8. onChange 接线
       model.onDidChangeContent(() => {
         onChange?.(model!.getValue());
       });
 
-      // 6. Ctrl+S
+      // 9. Ctrl+S
       editor.addCommand(
         monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
         () => onSaveRef.current?.(),
       );
 
-      // 7. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
-      //    语言分派：TS/JS → TS worker / 其他 → LSP client.sendRequest()
+      // 10. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
       const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
         const m = editor.getModel();
         if (!m) return;
@@ -166,7 +161,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           if (!defs || defs.length === 0) return;
           const def = defs[0];
 
-          // 解析定义位置：TS worker 格式 vs LSP 格式
           let targetPath: string;
           let targetLine: number;
           let targetCol: number;
@@ -194,6 +188,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           });
         } catch { /* 无定义则放行 */ }
       };
+
       editor.addAction({
         id: "linkdesk.goToDefinition",
         label: "Go to Definition",
@@ -208,7 +203,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         goToDefinitionAt(pos);
       });
 
-      // 8. 扫描完成后触发 TS 重分析
+      // 11. 扫描完成后触发 TS 重分析
       scanWorkspaceForTypeScript(monaco).then(() => {
         if (disposed) return;
         const m = editor.getModel();
@@ -224,17 +219,15 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
     return () => {
       disposed = true;
-      console.log("[editor] editorRef DISPOSE——filePath:", filePath, "ref:", !!editorRef.current);
       editorRef.current?.dispose();
     };
   }, [filePath]);
 
-  // ── keep-alive——标签页切换时 layout ──
+  // ── keep-alive——标签页切换时 layout + reveal ──
   useEffect(() => {
     if (!isActive) return;
     const raf = requestAnimationFrame(() => {
       editorRef.current?.layout();
-      // F12 目标文件已开——在 rAF 里 reveal，晚于所有 model 编辑（TS reanalysis 等）
       const pos = consumePendingReveal(filePath);
       if (pos && editorRef.current) {
         const p = { lineNumber: pos.line, column: pos.column };
