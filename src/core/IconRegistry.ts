@@ -14,7 +14,7 @@
 
 import { RegistryBase } from "./RegistryBase";
 import { Emitter } from "./CoreEvents";
-import { getConfigurationValue } from "./ConfigurationService";
+import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
 import type { IconThemeContribution, IconContribution, IconThemeMappings } from "./types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
@@ -75,10 +75,11 @@ class IconRegistryImpl extends RegistryBase {
     return this._currentId;
   }
 
-  /** 设置当前图标主题——null = 恢复默认 */
+  /** 设置当前图标主题——null = 恢复默认。持久化到 ConfigurationService。 */
   setCurrent(themeId: string | null): void {
     if (this._currentId === themeId) return;
     this._currentId = themeId;
+    setConfigurationValue("workbench.iconTheme", themeId); // fire-and-forget 持久化
     this.onDidChangeCurrent.fire(themeId);
   }
 
