@@ -456,6 +456,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     (view as any).order = maxOrder + 1;
     const insertAt = newIndex ?? toModel.allViewDescriptors.length;
     toModel.allViewDescriptors.splice(insertAt, 0, view);
+    this._viewIndex.set(viewId, toContainerId); // 🔥 同步 _viewIndex——resetCollapsedState 靠它查当前归属
     // 更新两个容器的活跃 views
     this._updateActiveViews(fromContainerId);
     this._updateActiveViews(toContainerId);
