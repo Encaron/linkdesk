@@ -6,12 +6,6 @@
   "author": "官方",
   "distribution": "user",
   "entry": "src/index.tsx",
-  "iconLocation": "top",
-  "viewRole": "tabOnly",
-  "tabBehavior": {
-    "singleton": false,
-    "identityField": "filePath"
-  },
   "contributes": {
     "langDefs": [
       {
