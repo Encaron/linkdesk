@@ -369,12 +369,17 @@ export class ViewContainerServiceClass extends RegistryBase {
     return this.loadCollapsedState().has(viewId);
   }
 
+  /** 折叠状态版本号——resetCollapsedState 时递增 → SectionStack 用 key={version} 强制 remount SidebarSection */
+  private _collapseVersion = 0;
+
+  get collapseVersion(): number { return this._collapseVersion; }
+
   /** E4V#46——一键清除全部折叠持久化 */
   resetCollapsedState(): void {
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
-    // 通知所有容器重渲染——onDidChangeViews 是更宽的事件，SidePanel 肯定订阅
-    for (const [containerId, model] of this._models) {
-      this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
+    this._collapseVersion++;
+    for (const [containerId] of this._models) {
+      this._updateActiveViews(containerId);
     }
   }
 
