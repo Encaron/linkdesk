@@ -222,7 +222,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
 
     return (
       <SidebarSection
-        key={`${view.id}-v${ViewContainerService.collapseVersion}`}
+        key={view.id}
         title={view.title}
         collapsible
         defaultOpen={defaultOpen}
