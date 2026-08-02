@@ -178,8 +178,9 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const id = dragViewIdRef.current;
-    console.log("[47] drop", { id, dropIndex });
+    console.log("[47] drop", { id, dropIndex, views: views.map(v => v.id) });
     if (!id || dropIndex === null || !containerId) return;
+    // splice 调整：拖到 source 后面 → 移除后 indices 前移
     const draggedIdx = views.findIndex((v) => v.id === id);
     const target = dropIndex > draggedIdx ? dropIndex - 1 : dropIndex;
     console.log("[47] reorder", { draggedIdx, target });
@@ -262,6 +263,17 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
             found = true;
           }
         });
+        // 光标在最后一个 view 下方 → 允许拖到末尾
+        if (!found) {
+          const lastEl = els[els.length - 1];
+          if (lastEl) {
+            const lastRect = lastEl.getBoundingClientRect();
+            if (e.clientY > lastRect.bottom) {
+              setDropIndex(els.length);
+              found = true;
+            }
+          }
+        }
         if (!found) setDropIndex(null);
       }}
       onDropCapture={handleDrop}
