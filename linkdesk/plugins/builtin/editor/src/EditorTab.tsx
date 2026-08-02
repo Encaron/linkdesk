@@ -142,12 +142,10 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       const baseName = normalizePath(filePath).split("/").pop() || filePath;
       const label = isDirty ? `● ${baseName}` : baseName;
       tabActions?.updateTabLabelBySourceId?.(filePath, label);
-      // E4V#40n——Hot Exit：脏→记录，干净→清除
-      if (isDirty) {
-        trackDirtyFile(filePath, v);
-      } else {
-        clearDirtyFile(filePath);
-      }
+    }
+    // E4V#40n——Hot Exit：每次内容变更都更新备份，不在上面的状态守卫里（否则只保存第一次按键的内容）
+    if (isDirty) {
+      trackDirtyFile(filePath, v);
     }
   }, [model, filePath, tabActions]);
 
