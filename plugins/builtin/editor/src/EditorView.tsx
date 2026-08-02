@@ -14,6 +14,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
 import { fileUriToPath } from "./navigation-bridge";
+import { getLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
 
@@ -110,23 +111,52 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       );
 
       // 7. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
-      //    EditorService 模式不注册 revealDefinition——手动 addAction + onMouseDown 拦截。
-      //    🔥 未来语言扩展点：goToDefinitionAt 中按 languageId 分派不同的 worker/LSP。
+      //    语言分派：TS/JS → TS worker / 其他 → LSP client.sendRequest()
       const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
         const m = editor.getModel();
         if (!m) return;
         try {
-          const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
-          const client = await worker(m.uri);
-          const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+          const langId = m.getLanguageId();
+          let defs: any[] | undefined;
+          const isTS = langId === "typescript" || langId === "javascript" || langId === "tsx" || langId === "jsx";
+
+          if (isTS) {
+            const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+            const tsClient = await worker(m.uri);
+            defs = await tsClient.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+          } else {
+            const lspClient = getLspClient(langId);
+            if (lspClient) {
+              const result = await lspClient.sendRequest("textDocument/definition", {
+                textDocument: { uri: m.uri.toString() },
+                position: { line: pos.lineNumber - 1, character: pos.column - 1 },
+              });
+              defs = result ? (Array.isArray(result) ? result : [result]) : undefined;
+            }
+          }
+
           if (!defs || defs.length === 0) return;
           const def = defs[0];
-          const targetPath = fileUriToPath(def.fileName);
+
+          // 解析定义位置：TS worker 格式 vs LSP 格式
+          let targetPath: string;
+          let targetLine: number;
+          let targetCol: number;
+          if (isTS) {
+            targetPath = fileUriToPath(def.fileName);
+            const targetPos = m.getPositionAt(def.textSpan.start);
+            targetLine = targetPos.lineNumber;
+            targetCol = targetPos.column;
+          } else {
+            targetPath = fileUriToPath(def.uri);
+            targetLine = def.range.start.line + 1;
+            targetCol = def.range.start.character + 1;
+          }
+
           const currentPath = fileUriToPath(m.uri.toString());
           if (targetPath === currentPath) {
-            const targetPos = m.getPositionAt(def.textSpan.start);
-            editor.setPosition(targetPos);
-            editor.revealPositionInCenter(targetPos);
+            editor.setPosition({ lineNumber: targetLine, column: targetCol });
+            editor.revealPositionInCenter({ lineNumber: targetLine, column: targetCol });
             return;
           }
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
@@ -145,14 +175,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         if (!e.event.ctrlKey && !e.event.metaKey) return;
         const pos = e.target.position;
         if (!pos) return;
-        try {
-          const m = editor.getModel();
-          if (!m) return;
-          const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
-          const client = await worker(m.uri);
-          const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
-          if (defs && defs.length > 0) { e.event.preventDefault(); goToDefinitionAt(pos); }
-        } catch { /* 放行 */ }
+        e.event.preventDefault();
+        goToDefinitionAt(pos);
       });
 
       // 8. 扫描完成后触发 TS 重分析
