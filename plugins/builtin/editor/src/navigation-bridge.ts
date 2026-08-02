@@ -28,12 +28,15 @@ export function fileUriToPath(uri: string): string {
 const _pendingReveal = new Map<string, { line: number; column: number }>();
 
 export function setPendingReveal(filePath: string, line: number, column: number): void {
-  _pendingReveal.set(normalizePath(filePath), { line, column });
+  const key = normalizePath(filePath);
+  _pendingReveal.set(key, { line, column });
+  console.log("[nav-bridge] setPendingReveal:", key, "line", line, "col", column);
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
   const key = normalizePath(filePath);
   const pos = _pendingReveal.get(key);
+  console.log("[nav-bridge] consumePendingReveal:", key, "found:", !!pos);
   _pendingReveal.delete(key);
   return pos;
 }
