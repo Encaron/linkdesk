@@ -11,5 +11,10 @@
 
 /** 反斜杠 → 正斜杠。幂等——已归一化的路径调用不产生副作用。 */
 export function normalizePath(fullPath: string): string {
-  return fullPath.replace(/\\/g, "/");
+  let normalized = fullPath.replace(/\\/g, "/");
+  // Windows 盘符统一大写——E: 和 e: 是同一路径
+  if (/^[a-z]:/i.test(normalized)) {
+    normalized = normalized[0].toUpperCase() + normalized.slice(1);
+  }
+  return normalized;
 }
