@@ -14,10 +14,6 @@
   },
   "contributes": {
     "commands": [
-      { "id": "editor.save", "title": "保存" },
-      { "id": "editor.saveAll", "title": "全部保存" },
-      { "id": "editor.closeEditor", "title": "关闭编辑器" },
-      { "id": "editor.closeAllEditors", "title": "关闭所有编辑器" },
       { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
       { "id": "editor.compareFiles", "title": "比较文件" }
     ],
