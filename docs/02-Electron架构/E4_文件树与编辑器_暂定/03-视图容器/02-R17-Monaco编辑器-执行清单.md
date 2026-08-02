@@ -411,58 +411,64 @@
 
 ---
 
-## 第 6 组：语言插件接口——为 C/C++/Python 预留
+## 第 6 组：monaco-languageclient 全量迁移——治本
 
-> 🔥 语言插件体系——不是 R17 全做，而是预留接口。C/C++/Python 等语言插件以后只写语言定义文件。
-> **对标 VS Code：** contributes.languages + LanguageProvider API。
+> 🔥 **提前激活。** 原计划 R17 只留 LSP 桥框架（E4V#40t "R17 不启用"），
+> 现提前做全量迁移。原因：E4V#40i2 的手动 TS worker 方案是治标（只覆盖 TS/JS），
+> monaco-languageclient 的 `IEditorService.openEditor()` 覆盖才是治本——所有语言通用。
+>
+> **架构决策：** 换掉 `@monaco-editor/react`，用 `MonacoVscodeApiWrapper.start()` 全局初始化
+> VS Code 服务层 + `EditorApp` 创建编辑器。`ViewsConfig.openEditorFunc` 接壳标签页。
+> $type: "extended" + EditorService——拿到 TextMate 语法高亮 + 主题 + IEditorService 覆盖。
+>
+> **影响：** 做完后 E4V#40i2 的手动 `addAction` + `onMouseDown` 代码可删除。
+> E4V#40r（语言插件贡献点）和 E4V#40s（语言注册表接线）仍保留，等语言插件体系时再做。
 
-### E4V#40r 🔧 语言插件贡献点——contributes.languages 扩展 - [ ]
+### E4V#40t 🔧 monaco-languageclient 全量迁移——替代 @monaco-editor/react - [ ]
 
-- [ ] **文件：** `public/schemas/plugin.schema.json` + `src/core/types.ts` | ~20 行
-- [ ] `contributes.languages` 加新字段：
-  ```typescript
-  {
-    id: "cpp",
-    extensions: [".cpp", ".cxx", ".hpp", ".hxx", ".cc", ".hh", ".c", ".h"],
-    aliases: ["C++", "C"],
-    // 🔥 可选——自定义 Monarch tokenizer
-    monarch?: { tokenizer: { ... } }
-    // 🔥 可选——LSP 配置
-    lsp?: {
-      command: "clangd",          // spawn 进程的命令
-      args: [],                    // 启动参数
-      initializationOptions: {}
-    }
-  }
-  ```
-- [ ] `PluginContributes` 类型加 `languages?: LanguageContribution[]`
-- [ ] **验证：** plugin.schema.json 校验通过——新建 `cpp-plugin/plugin.json` 声明 `contributes.languages` → schema 不报错
+- [ ] **E4V#40t1** — 新建 `monaco-init.ts`——全局一次性初始化 | ~25 行
+  - import `MonacoVscodeApiWrapper`, `MonacoVscodeApiConfig` from `monaco-languageclient/vscodeApiWrapper`
+  - import `configureDefaultWorkerFactory` from `monaco-languageclient/workerFactory`
+  - export `async function initMonacoEnv(openEditorFunc: OpenEditor): Promise<void>`
+  - 配置：`$type: "extended"`, `viewsConfig: { $type: "EditorService", openEditorFunc }`, `monacoWorkerFactory: configureDefaultWorkerFactory`
+  - 🔥 模块级 `_ready` guard——多次调用只初始化一次
+  - 🛡️ `openEditorFunc` 回调：`uri.fsPath` → `tabActions.createTab()`
+  - **验证：** `npx tsc --noEmit` 零错误、`MonacoVscodeApiWrapper` 可实例化
 
-### E4V#40s 🔧 语言注册表接线——loader.ts parseContributions - [ ]
+- [ ] **E4V#40t2** — 重写 `EditorView.tsx`——用 `EditorApp` 替代 `<Editor>` | ~50 行改
+  - 去掉 `import Editor from "@monaco-editor/react"`（彻底告别 @monaco-editor/react）
+  - import `EditorApp`, `EditorAppConfig` from `monaco-languageclient/editorApp`
+  - mount `useEffect` 内：
+    1. 等 `initMonacoEnv()` resolve
+    2. `new EditorApp({ codeResources: { main: { text: value, uri: filePath } }, editorOptions, readOnly })`
+    3. `await editorApp.start(containerRef.current!)`
+    4. 注册 `onTextChanged` → `onChange`
+    5. cleanup：`editorApp.dispose()`
+  - keep-alive：`useEffect` 监听 `isActive` → `editorApp.layout()`
+  - 🔥 不保留 `beforeMount` / `onMount` 回调——EditorApp 自己处理 workers、语言、主题
+  - **验证：** 双击 .ts → Monaco 编辑器正常渲染、语法高亮、Ctrl+S 保存。`npm run check` 零错误
 
-- [ ] **文件：** `loader.ts` 或编辑器插件 | ~20 行
-- [ ] `parseContributions` 阶段：遍历 `contributes.languages` → 调 `monaco.languages.register({ id })` + `setMonarchTokensProvider`（如有 monarch 字段）
-- [ ] 🔥 语言扩展名注册到 FileAssociationService——双击 `.cpp` → 编辑器打开
-- [ ] **验证：** 加载 C++ 插件→`monaco.languages.getLanguages()` 包含 `cpp`→双击 `.cpp` → 编辑器打开、C++ 语法高亮
+- [ ] **E4V#40t3** — 接线 `openEditorFunc` → 壳标签页 | ~10 行
+  - `initMonacoEnv()` 的 `openEditorFunc` 回调内：`modelRef.object.textEditorModel.uri.fsPath` → `tabActions.createTab("editor", { filePath, label, pinned: false })`
+  - 去掉 `EditorView.tsx` 中 E4V#40i2 的手动代码：`addAction` / `onMouseDown` / `goToDefinitionAt`
+  - 🛡️ 同文件跳转由 EditorApp 自带的 `revealDefinition` 处理（不需手动判断）
+  - **验证：** tsc + eslint + vitest 零错误
 
-### E4V#40t 🔧 monaco-languageclient 桥接插槽 - [ ]
+- [ ] **E4V#40t4** — 清理 `navigation-bridge.ts` | ~5 行
+  - 删掉 `fileUriToPath`——不再需要，`openEditorFunc` 直接用 `uri.fsPath`
+  - 或保留为纯工具函数（给其他地方用）
+  - **验证：** grep `fileUriToPath` 确认无残留引用
 
-- [ ] **文件：** `plugins/builtin/editor/src/lsp-bridge.ts` | ~40 行（框架，R17 不启用）
-- [ ] 预留 LSP 桥接函数签名：
-  ```typescript
-  // 🔥 语言插件调用此函数启动 LSP 服务器
-  export function startLspBridge(monaco: Monaco, config: LspConfig): LspBridge {
-    // 1. spawn 语言服务器进程（通过 IPC 调 main process child_process）
-    // 2. 创建 monaco-languageclient 适配器
-    // 3. stdin/stdout ↔ Monaco 双向通信
-    // R17 留空——框架就绪，以后语言插件调用
-  }
-  ```
-- [ ] `LspConfig` 接口：`{ languageId, command, args, initializationOptions }`
-- [ ] 🛡️ 每个语言一个 LSP 进程——不共享（对标 VS Code）
-- [ ] **验证：** `npm run check` 零错误——框架编译通过，无运行时副作用
+- [ ] **E4V#40t5** — 端到端验证 | 0 行
+  - 双击 .ts → Monaco 编辑器渲染、TypeScript 高亮 ✅
+  - F12 同文件 → 光标跳转（不新建标签页） ✅
+  - F12 跨文件 → 蹦目标文件标签页、标签名正确 ✅
+  - Ctrl+Click → 同 F12 ✅
+  - 切回再 F12 → 聚焦已有标签页 ✅
+  - 主题切换 → 编辑器跟随 ✅
+  - `npm run check` 零错误 ✅
 
-**R17 第 6 组完工后状态：** 语言插件接口就绪。第三方只需写 `plugin.json` + Monarch tokenizer 定义文件，即可贡献新语言的语法高亮。LSP 桥框架预留。~80 行。
+**R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。F12/Ctrl+Click 走 IEditorService.openEditor → 壳标签页——治本，所有语言通用。LSP 桥框架就绪（`MonacoLanguageClient` 接 clangd/pylsp 等）。~90 行。
 
 ---
 
@@ -533,7 +539,7 @@
 | 3 | 编辑器镶边——状态栏+面包屑+右键 | E4V#40j–40l | ~120 |
 | 4 | 高级功能——Diff+热退出+自动保存+多标签页 | E4V#40m–40p | ~130 |
 | 5 | 配置项——25 项编辑器配置 | E4V#40q | ~70 |
-| 6 | 语言插件接口——为 C/C++/Python 预留 | E4V#40r–40t | ~80 |
+| 6 | monaco-languageclient 全量迁移——治本 | E4V#40t | ~90 |
 | 7 | 装饰+快捷键映射 | E4V#40u–40v | ~45 |
 | 🔴 | GBK 编码保存 | E4V#40w | ~10 |
 | **合计** | | **23 任务** | **~950 行** |
