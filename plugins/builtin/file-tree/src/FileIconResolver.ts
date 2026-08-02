@@ -3,11 +3,13 @@
  * E4a #93：按扩展名/文件名解析图标，消费 icon-mappings.ts 数据。
  *
  * 🔥 v2 扩展点：customMappings 注入——图标主题插件替换全部映射。
+ * 🔥 R19：响应 IconRegistry——主题切换时自动重建。
  *
  * 对标 VS Code seti 图标主题 + getIconClasses()。
  */
 
 import type { ExplorerItem } from "./FileTreeModel";
+import { IconRegistry } from "@src/core/IconRegistry";
 import {
   FILE_ICON_MAP,
   EXT_ICON_MAP,
@@ -60,5 +62,19 @@ export class FileIconResolver {
   }
 }
 
-/** 全局默认实例 */
-export const defaultIconResolver = new FileIconResolver();
+/** 构建当前主题的 resolver——默认映射 + 图标主题覆盖 */
+function buildResolver(): FileIconResolver {
+  const mappings = IconRegistry.getCurrentMappings();
+  return new FileIconResolver(mappings ?? undefined);
+}
+
+/** 全局实例——图标主题切换时重建 */
+let _resolver = buildResolver();
+IconRegistry.onDidChangeCurrent.event(() => {
+  _resolver = buildResolver();
+});
+
+/** 获取当前生效的图标解析器 */
+export function getIconResolver(): FileIconResolver {
+  return _resolver;
+}

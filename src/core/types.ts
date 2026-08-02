@@ -24,6 +24,15 @@ export interface IconThemeContribution {
   path: string;
 }
 
+/** 图标主题映射表——fileExtensions/fileNames/folderNames → CSS 类名 */
+export interface IconThemeMappings {
+  files?: Record<string, string>;
+  extensions?: Record<string, string>;
+  folders?: Record<string, string>;
+  /** 文件夹打开态——可选，未指定则复用 folders */
+  foldersExpanded?: Record<string, string>;
+}
+
 /** contributes.icons 条目——对标 VS Code icon extension point。插件贡献共享图标供其他插件引用。 */
 export interface IconContribution {
   description: string;
