@@ -53,10 +53,13 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
 
 /** E4V#45——view wrapper：flex:1 默认均分，拖拽后固定高度。
  *  E4V#45-fix：ResizeObserver 自动测内容高度，未声明 minHeight 时用实测值。 */
-function ViewPane({ viewId, height, onContentHeight, children }: {
+function ViewPane({ viewId, height, onContentHeight, onDragOver, onDrop, showDropBefore, children }: {
   viewId: string;
   height?: number;
   onContentHeight?: (id: string, h: number) => void;
+  onDragOver?: (e: React.DragEvent) => void;
+  onDrop?: (e: React.DragEvent) => void;
+  showDropBefore?: boolean;
   children: ReactNode;
 }) {
   const contentRef = useRef<HTMLDivElement>(null);
@@ -77,10 +80,12 @@ function ViewPane({ viewId, height, onContentHeight, children }: {
   return (
     <div
       data-view-id={viewId}
-      className="sidebar-pane-view"
+      className={`sidebar-pane-view${showDropBefore ? " drop-before" : ""}`}
       style={height !== undefined
         ? { height, flexShrink: 0, overflowY: "auto" }
         : { flex: 1, minHeight: 0 }}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
     >
       <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
         {children}
@@ -151,6 +156,37 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     dragBaseRef.current = null;
   }, []);
 
+  // E4V#47——拖拽排序
+  const containerId = views[0] ? (ViewContainerService as any)._viewIndex?.get(views[0].id) : undefined;
+  const [dragViewId, setDragViewId] = useState<string | null>(null);
+  const [dropIndex, setDropIndex] = useState<number | null>(null);
+
+  const handleDragStart = useCallback((e: React.DragEvent, viewId: string) => {
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", viewId);
+    setDragViewId(viewId);
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    if (!dragViewId) return;
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    const mid = rect.top + rect.height / 2;
+    setDropIndex(e.clientY < mid ? index : index + 1);
+  }, [dragViewId]);
+
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    if (!dragViewId || dropIndex === null || !containerId) return;
+    // 调整：若目标在拖动项之后，splice 后 index 需 -1
+    const draggedIdx = views.findIndex((v) => v.id === dragViewId);
+    const target = dropIndex > draggedIdx ? dropIndex - 1 : dropIndex;
+    ViewContainerService.reorderView(containerId, dragViewId, target);
+    setDragViewId(null);
+    setDropIndex(null);
+  }, [dragViewId, dropIndex, containerId, views]);
+
   if (views.length === 0) return null;
 
   const singleView = views.length === 1;
@@ -164,7 +200,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     return ContextKeyService.matches(empty.when) ? empty.content : null;
   };
 
-  const renderSection = (view: ViewDescriptor) => {
+  const renderSection = (view: ViewDescriptor, draggable: boolean, onDragStart?: (e: React.DragEvent) => void) => {
     const emptyContent = getEmptyContent(view.id);
     const body = emptyContent ?? (
       <ErrorBoundary pluginId={pluginId}>
@@ -174,7 +210,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
 
     if (mergeHeader) {
       return (
-        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden>
+        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden draggable={draggable} onDragStart={onDragStart}>
           {body}
         </SidebarSection>
       );
@@ -193,6 +229,8 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         titleTooltip={view.titleTooltip}
         showActions={view.showActions ?? "default"}
         stickyTop={toolbarHeight}
+        draggable={draggable}
+        onDragStart={onDragStart}
       >
         {body}
       </SidebarSection>
@@ -203,13 +241,24 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     <>
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
-        const section = renderSection(view);
+        const multiView = !singleView;
+        const section = renderSection(view, multiView, (e) => handleDragStart(e, view.id));
+
+        // 拖拽指示器样式
+        const showDropBefore = !!(dragViewId && dragViewId !== view.id && dropIndex === i);
 
         // 多 view → 每个用 ViewPane 包起来 + sash 隔开
-        if (!singleView) {
+        if (multiView) {
           return (
             <div key={view.id} style={{ display: "contents" }} ref={i === 0 ? containerRef : undefined}>
-              <ViewPane viewId={view.id} height={viewHeights[view.id]} onContentHeight={handleContentHeight}>
+              <ViewPane
+                viewId={view.id}
+                height={viewHeights[view.id]}
+                onContentHeight={handleContentHeight}
+                onDragOver={(e) => handleDragOver(e, i)}
+                onDrop={handleDrop}
+                showDropBefore={showDropBefore}
+              >
                 {section}
               </ViewPane>
               {!isLast && (

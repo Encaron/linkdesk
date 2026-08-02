@@ -38,6 +38,10 @@ export interface SidebarSectionProps {
   headerHidden?: boolean;
   /** 🆕 E3.6 ST1：sticky header 的 top 偏移（px）——由 SidePanel 根据 toolbar 高度 + section 序号计算 */
   stickyTop?: number;
+  /** E4V#47——header 可拖拽排序 */
+  draggable?: boolean;
+  /** E4V#47——拖拽开始回调 */
+  onDragStart?: (e: React.DragEvent) => void;
 }
 
 function SidebarSection({
@@ -53,6 +57,8 @@ function SidebarSection({
   showActions = "default",
   headerHidden = false,
   stickyTop,
+  draggable = false,
+  onDragStart,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   // E4V#43——actions 溢出检测 + … 下拉
@@ -131,6 +137,8 @@ function SidebarSection({
           aria-expanded={collapsible ? open : undefined}
           tabIndex={collapsible ? 0 : undefined}
           onKeyDown={collapsible ? onKeyDown : undefined}
+          draggable={draggable}
+          onDragStart={onDragStart}
         >
           {collapsible && (
             <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>

@@ -232,3 +232,24 @@
   background: var(--accent);
   opacity: 0.5;
 }
+
+/* ── E4V#47：拖拽排序指示器 ── */
+
+.sidebar-pane-view.drop-before::before {
+  content: "";
+  display: block;
+  height: 2px;
+  background: var(--accent);
+  margin-bottom: -2px;
+  position: relative;
+  z-index: 2;
+}
+
+/* draggable header——拖拽时半透明 */
+.sidebar-section-header[draggable="true"] {
+  cursor: grab;
+}
+
+.sidebar-section-header[draggable="true"]:active {
+  cursor: grabbing;
+}
