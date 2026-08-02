@@ -16,6 +16,7 @@ import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29
+import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
@@ -78,6 +79,8 @@ function createWindow(): void {
   pluginViewRegistry = new PluginViewRegistry(windowManager);
   // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
   registerPluginViewHandlers(pluginViewRegistry, mainWindow);
+  // E4V#40s1：LSP spawn handler——渲染进程启动语言服务器
+  registerLspHandlers(mainWindow);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
   ipcBridge = new IpcBridge(mainWindow, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
