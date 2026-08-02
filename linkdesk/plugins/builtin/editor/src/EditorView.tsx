@@ -229,22 +229,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     // F12 目标文件已开时——EditorView 不会重新 mount，需在 isActive 变化时 reveal
     const pos = consumePendingReveal(filePath);
-    if (pos) {
-      let retries = 0;
-      const tryReveal = () => {
-        if (editorRef.current) {
-          const p = { lineNumber: pos.line, column: pos.column };
-          editorRef.current.setPosition(p);
-          editorRef.current.revealPositionInCenter(p);
-          clearPendingReveal(filePath);
-          console.log("[editor] isActive reveal OK——retry:", retries);
-        } else if (retries++ < 30) {
-          setTimeout(tryReveal, 100);
-        } else {
-          console.log("[editor] isActive reveal FAILED——30 retries exhausted");
-        }
-      };
-      tryReveal();
+    if (pos && editorRef.current) {
+      const p = { lineNumber: pos.line, column: pos.column };
+      editorRef.current.setPosition(p);
+      editorRef.current.revealPositionInCenter(p);
+      clearPendingReveal(filePath);
     }
     return () => cancelAnimationFrame(raf);
   }, [isActive, filePath]);
