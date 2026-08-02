@@ -424,9 +424,9 @@
 > **影响：** 做完后 E4V#40i2 的手动 `addAction` + `onMouseDown` 代码可删除。
 > E4V#40r（语言插件贡献点）和 E4V#40s（语言注册表接线）仍保留，等语言插件体系时再做。
 
-### E4V#40t 🔧 monaco-languageclient 全量迁移——替代 @monaco-editor/react - [ ]
+### E4V#40t 🔧 monaco-languageclient 全量迁移——替代 @monaco-editor/react - [x]
 
-- [ ] **E4V#40t1** — 新建 `monaco-init.ts`——全局一次性初始化 | ~25 行
+- [x] **E4V#40t1** — 新建 `monaco-init.ts`——全局一次性初始化 | ~25 行
   - import `MonacoVscodeApiWrapper`, `MonacoVscodeApiConfig` from `monaco-languageclient/vscodeApiWrapper`
   - import `configureDefaultWorkerFactory` from `monaco-languageclient/workerFactory`
   - export `async function initMonacoEnv(openEditorFunc: OpenEditor): Promise<void>`
@@ -435,7 +435,7 @@
   - 🛡️ `openEditorFunc` 回调：`uri.fsPath` → `tabActions.createTab()`
   - **验证：** `npx tsc --noEmit` 零错误、`MonacoVscodeApiWrapper` 可实例化
 
-- [ ] **E4V#40t2** — 重写 `EditorView.tsx`——用 `EditorApp` 替代 `<Editor>` | ~50 行改
+- [x] **E4V#40t2** — 重写 `EditorView.tsx`——用 `EditorApp` 替代 `<Editor>` | ~50 行改
   - 去掉 `import Editor from "@monaco-editor/react"`（彻底告别 @monaco-editor/react）
   - import `EditorApp`, `EditorAppConfig` from `monaco-languageclient/editorApp`
   - mount `useEffect` 内：
@@ -448,18 +448,18 @@
   - 🔥 不保留 `beforeMount` / `onMount` 回调——EditorApp 自己处理 workers、语言、主题
   - **验证：** 双击 .ts → Monaco 编辑器正常渲染、语法高亮、Ctrl+S 保存。`npm run check` 零错误
 
-- [ ] **E4V#40t3** — 接线 `openEditorFunc` → 壳标签页 | ~10 行
+- [x] **E4V#40t3** — 接线 `openEditorFunc` → 壳标签页 | ~10 行
   - `initMonacoEnv()` 的 `openEditorFunc` 回调内：`modelRef.object.textEditorModel.uri.fsPath` → `tabActions.createTab("editor", { filePath, label, pinned: false })`
   - 去掉 `EditorView.tsx` 中 E4V#40i2 的手动代码：`addAction` / `onMouseDown` / `goToDefinitionAt`
   - 🛡️ 同文件跳转由 EditorApp 自带的 `revealDefinition` 处理（不需手动判断）
   - **验证：** tsc + eslint + vitest 零错误
 
-- [ ] **E4V#40t4** — 清理 `navigation-bridge.ts` | ~5 行
+- [x] **E4V#40t4** — 清理 `navigation-bridge.ts` | ~5 行
   - 删掉 `fileUriToPath`——不再需要，`openEditorFunc` 直接用 `uri.fsPath`
   - 或保留为纯工具函数（给其他地方用）
   - **验证：** grep `fileUriToPath` 确认无残留引用
 
-- [ ] **E4V#40t5** — 端到端验证 | 0 行
+- [x] **E4V#40t5** — 端到端验证 | 0 行
   - 双击 .ts → Monaco 编辑器渲染、TypeScript 高亮 ✅
   - F12 同文件 → 光标跳转（不新建标签页） ✅
   - F12 跨文件 → 蹦目标文件标签页、标签名正确 ✅
