@@ -21,22 +21,35 @@ let _persistTimer: ReturnType<typeof setTimeout> | null = null;
 function schedulePersist(): void {
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => {
+    console.log("[HotExit] persist——保存", Object.keys(dirtyFiles).length, "个脏文件:", Object.keys(dirtyFiles).map(k => `${k}(${dirtyFiles[k].length}字)`));
     setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
   }, 1000);
 }
 
-/** 注册 beforeunload + 恢复 */
-export function initHotExit(): void {
-  restoreFromPrevious();
+let _restored = false;
 
+function ensureRestored(): void {
+  if (_restored) return;
+  _restored = true;
+  const prev = getPluginStateValue<DirtyFiles>("editor", BACKUP_KEY);
+  console.log("[HotExit] ensureRestored——PluginState:", prev);
+  if (prev && Object.keys(prev).length > 0) {
+    console.log("[HotExit] 恢复", Object.keys(prev).length, "个备份文件:", Object.keys(prev));
+    Object.assign(dirtyFiles, prev);
+    setPluginStateValue("editor", BACKUP_KEY, null);
+  } else {
+    console.log("[HotExit] 无备份数据");
+  }
+}
+
+/** 注册 beforeunload */
+export function initHotExit(): void {
   window.addEventListener("beforeunload", () => {
     if (_persistTimer) clearTimeout(_persistTimer);
     if (Object.keys(dirtyFiles).length > 0) {
-      // 同步更新内存缓存，异步持久化（best-effort——页面可能瞬间关闭）
       setPluginStateValueSync("editor", BACKUP_KEY, { ...dirtyFiles });
       setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
     } else {
-      // 无脏文件→清空备份
       setPluginStateValueSync("editor", BACKUP_KEY, null);
     }
   });
@@ -44,31 +57,31 @@ export function initHotExit(): void {
 
 /** 文件变脏时调用——记录并调度持久化 */
 export function trackDirtyFile(filePath: string, content: string): void {
+  console.log("[HotExit] trackDirtyFile:", filePath, "内容长度:", content.length);
   dirtyFiles[filePath] = content;
   schedulePersist();
 }
 
 /** 文件保存后调用——清除并调度持久化 */
 export function clearDirtyFile(filePath: string): void {
+  console.log("[HotExit] clearDirtyFile:", filePath);
   delete dirtyFiles[filePath];
   schedulePersist();
 }
 
 /** 是否有此文件的备份内容 */
 export function hasBackup(filePath: string): boolean {
-  return filePath in dirtyFiles;
+  ensureRestored();
+  const result = filePath in dirtyFiles;
+  console.log("[HotExit] hasBackup:", filePath, "→", result, "dirtyFiles keys:", Object.keys(dirtyFiles));
+  return result;
 }
 
 /** 取备份内容 */
 export function getBackupContent(filePath: string): string | undefined {
-  return dirtyFiles[filePath];
+  ensureRestored();
+  const content = dirtyFiles[filePath];
+  console.log("[HotExit] getBackupContent:", filePath, "内容长度:", content?.length ?? 0);
+  return content;
 }
 
-/** 从 PluginStateService 恢复上次 session 的备份 */
-function restoreFromPrevious(): void {
-  const prev = getPluginStateValue<DirtyFiles>("editor", BACKUP_KEY);
-  if (prev && Object.keys(prev).length > 0) {
-    Object.assign(dirtyFiles, prev);
-    setPluginStateValue("editor", BACKUP_KEY, null);
-  }
-}
