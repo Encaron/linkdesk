@@ -180,7 +180,123 @@ E4 完工后，代码审查和对话中浮现了 14 项待办：
 
 ---
 
-## 五、完工标准
+## 五、API 设计模式——加新能力的决策树
+
+E5 之后，核心 API 形成四种模式。加新能力时不需要做选择题——回答三个问题自动落到正确模式。
+
+### 5.1 四种模式
+
+| 模式 | 适合场景 | 代码形态 | 示例 |
+|------|------|------|------|
+| **事件** | 壳内区域通信——发信号、不期待返回值 | `ShellEvents` 接口 + `emit/on` | `"tab:focused"` / `"file:deleted"` |
+| **注册表** | 多提供方登记、多消费方查询、桌子不知道内容 | `extends RegistryBase` → `register/unregisterAll/resolve` + `onDidChange` Emitter | `ClipboardProviderRegistry` / `CommandRegistry` |
+| **服务** | 核心提供操作能力——IPC 调用、布局计算、错误报告 | 有状态→单例类 / 无状态→纯函数导出 | `LayoutEngine`(类) / `FileService`(纯函数) / `reportError`(纯函数) |
+| **IPC/preload** | 跨进程操作——插件调 Electron 能力 | `ipcMain.handle("ns:camelCase", ...)` + `preload` 暴露 + `LinkDeskAPI` 类型 | `clipboard:readText` / `filesystem:createDir` |
+
+### 5.2 决策树
+
+```
+"我要给核心加一个能力"
+│
+├─ 是壳内四个区域之间的通信吗？（发信号，不期待返回值）
+│   → ShellEvents 接口加一行 → emit/on 消费
+│   → tsc 自动检查所有 emit/on 的签名
+│   → 验证：写错 emit 签名 → tsc 当场报错
+│
+├─ 有多个提供方 + 多个消费方吗？
+│   → 新建 XxxRegistry extends RegistryBase
+│   → register / unregisterAll / resolve 三件套
+│   → onDidChange Emitter——消费方订阅变更
+│   → 验证：register→resolve 返回正确 / unregisterAll→resolve 返回 null
+│
+├─ 是核心提供的操作能力吗？（调用方执行操作、期待返回值）
+│   → 有内部状态？→ 单例类（class + export const instance）
+│   → 无状态？→ 纯函数导出
+│   → 需要 IPC？→ Electron 侧 ipcMain.handle + preload 暴露 + LinkDeskAPI 类型
+│   → 错误用 reportError()——唯一入口
+│   → 验证：import { xxx } from "@src/core/xxx" 编译通过
+│
+└─ 都不匹配？
+    → 重新审视——是不是应该放在插件里而不是核心？
+    → 核心准入标准：多提供方 + 多消费方 + 桌子不知道内容。三条有一条不满足 → 不放核心
+```
+
+### 5.3 Service vs Registry 的区分准则
+
+| | Service | Registry |
+|------|------|------|
+| 提供方数量 | **1 个**（核心自己） | **N 个**（插件登记） |
+| 消费方数量 | N 个（谁都可以调） | N 个（谁都可以查） |
+| 核心知道内容？ | 知道——自己实现的逻辑 | **不知道**——只提供桌子，不关心登记了什么 |
+| 代码形态 | 纯函数 / 单例类 | `extends RegistryBase` |
+| 示例 | `FileService.createDir()` / `LayoutEngine.getBounds()` / `reportError()` | `ClipboardProviderRegistry` / `CommandRegistry` / `ThemeRegistry` |
+
+### 5.4 API 发现入口——`src/core/index.ts` barrel
+
+E5 之后建议加一个 barrel 文件——新 AI 进场 30 秒看清核心全部 API surface：
+
+```typescript
+// src/core/index.ts —— 核心 API 索引入口
+// 不导出实现细节，只导出公开 API surface
+
+// ── 事件 ──
+export { shellEvents } from "./ShellEvents";
+export type { ShellEvents } from "./ShellEvents";
+
+// ── 注册表 ──
+export { clipboardProviders } from "./ClipboardProviderRegistry";
+export type { ClipboardProvider } from "./ClipboardProviderRegistry";
+export { commandRegistry } from "./CommandRegistry";
+export { configurationRegistry } from "./ConfigurationRegistry";
+// ... 其余注册表
+
+// ── 服务 ──
+export { layoutEngine } from "./LayoutEngine";
+export type { ZoneConfig, ZoneBounds } from "./LayoutEngine";
+export { createDir, remove, listDir, readFile, writeFile, watch, exists, copy } from "./FileService";
+export { reportError } from "./ErrorService";
+
+// ── 类型 ──
+export type { FileEntry } from "shared/types";
+```
+
+对标 E5#28 的 AI 友好度验证——新 AI 只读 `src/core/index.ts` 就知道核心全部能力，不用翻 50 个文件。
+
+---
+
+## 🔴 风险与回退
+
+### 不可逆点
+
+| 轮次 | 任务 | 操作 | 回退方案 |
+|:--:|------|------|------|
+| L1 | E5#12b | 删除 `loadThemePlugin()` 函数 | checkpoint：vitest loader.test.ts 全绿 → 再删。未通过 → 不删 |
+| L1 | E5#42 | 50 文件移动 | checkpoint：`npm run check` + 手动全功能回归 → 再 commit。在独立分支做 |
+
+### 回退策略
+
+**每个 L1 轮次在独立分支执行。** 完成一轮 + checkpoint 通过 → merge 到 E5 主线。未通过 → 丢弃分支，回退到上一轮的状态。
+
+```bash
+e5
+├── e5-L1-r1-shell-events      # E5#1–#2
+├── e5-L1-r2-decouple          # E5#3–#8 + #40
+├── e5-L1-r3-layout            # E5#9
+├── e5-L1-r4-fallback           # E5#10–#11
+├── e5-L1-r4bcd-arch+sidebar+tabs  # E5#41–#44 + #48–#54
+├── e5-L2-normalize             # 第 2 层所有（可并行）
+├── e5-L3-features              # E5#21–#22
+└── e5-L4-debt+regression       # E5#23–#28 + #45–#47
+```
+
+### 降级路径
+
+如果 L1 某个轮次阻塞超预期：
+- **E5#41–#44（核心架构债）可降级到第 4 层。** 循环 import 和扁平目录不阻塞后续任务——它们改的是 core 内部组织
+- **E5#48–#49（侧栏行为）可降级到第 3 层。** 折叠竖条和关闭确认是 UI 体验改进——不阻塞架构
+- **不可降级：E5#1–#11。** 壳通信骨架是第 2 层的前置——必须完成
+
+---
 
 - 加新壳区域（底部面板/右侧属性面板）→ 不改已有区域代码
 - 换布局（侧栏换右边）→ 只改布局配置
@@ -194,6 +310,8 @@ E4 完工后，代码审查和对话中浮现了 14 项待办：
 ---
 
 ## 六、涉及文件概览
+
+**插件迁移影响：** `appearsIn` 从旧字段（iconLocation/viewRole/keepSidebarOnFocus）自动推导——现有插件不改 plugin.json 也正常工作。官方插件（file-tree/marketplace/editor/serial-monitor）在 E5#14e-g 中补显式声明作为模板。平台尚未上市——暂无第三方插件，E5 在生态空白期做完，零历史包袱。
 
 | 层级 | 文件 | 改动性质 |
 |------|------|----------|

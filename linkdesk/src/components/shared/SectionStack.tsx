@@ -252,7 +252,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
         const multiView = !singleView;
-        const section = renderSection(view, multiView, (e) => handleDragStart(e, view.id), handleViewDragEnd);
+        const section = renderSection(view, true, (e) => handleDragStart(e, view.id), handleViewDragEnd);
 
         // 拖拽指示器样式
         const showDropBefore = !!(dragViewId && dragViewId !== view.id && dropIndex === i);

@@ -108,10 +108,11 @@ function SidebarSection({
     return () => document.removeEventListener("mousedown", onClick, true);
   }, [moreOpen]);
 
-  // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
+  // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body。
+  // E4V#48：headerHidden 时仍支持拖拽——外容器 draggable。
   if (headerHidden) {
     return (
-      <div className="sidebar-section">
+      <div className="sidebar-section" draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
         {open && pinnedContent && (
           <div className="sidebar-section-pinned" style={{
             position: "sticky",
