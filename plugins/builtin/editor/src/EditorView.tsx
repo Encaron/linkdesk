@@ -273,6 +273,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     return subscribeThemeSync(monacoRef);
   }, []);
 
+  // ── 容器 resize（全屏/分屏/窗口缩放）→ Monaco layout() ──
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      editorRef.current?.layout();
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return <div ref={containerRef} style={{ height: "100%" }} />;
 });
 
