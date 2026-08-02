@@ -21,6 +21,7 @@ import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
+import { pushClosedEditorTab } from "./closed-tabs";
 
 export interface EditorTabProps {
   /** 文件绝对路径——来自 createTab 的 sourceId */
@@ -189,11 +190,14 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   }, [model, filePath, tabActions, handleSave]);
 
   // E4V#40o——卸载时清理自动保存计时器
+  // E4V#40p——unmount 时推入已关闭栈，Ctrl+Shift+T 可恢复
   useEffect(() => {
     return () => {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      const label = normalizePath(filePath).split("/").pop() || filePath;
+      pushClosedEditorTab({ filePath, label });
     };
-  }, []);
+  }, [filePath]);
 
   if (loading) {
     return <div className="editor-loading">加载中…</div>;
