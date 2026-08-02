@@ -21,9 +21,13 @@ export interface EditorTabProps {
   filePath: string;
   /** 标签页是否活跃 */
   isActive: boolean;
+  /** F12 跳转目标行号 */
+  line?: number;
+  /** F12 跳转目标列号 */
+  column?: number;
 }
 
-const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
+const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, line, column }) => {
   const tabActions = useTabActions();
   const [model, setModel] = useState<EditorModel | null>(null);
   const [value, setValue] = useState<string>("");
@@ -101,6 +105,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       isActive={isActive}
       onChange={handleChange}
       onSave={handleSave}
+      initialLine={line}
+      initialColumn={column}
     />
   );
 };

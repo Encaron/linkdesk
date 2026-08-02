@@ -190,7 +190,7 @@ export interface ViewPluginEntry {
   pluginId: string;
   manifest: PluginManifest;
   /** React 组件（懒加载） */
-  component: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
+  component: React.ComponentType<{ isActive: boolean; sourceId?: string; line?: number; column?: number }>;
   /** 可选状态栏组件——插件自己渲染动态状态项，对标 VS Code StatusBarItem */
   statusBarComponent?: React.ComponentType;
 }
@@ -217,6 +217,10 @@ export interface CreateTabOptions {
   pinned?: boolean;
   /** 数据源 ID */
   sourceId?: string;
+  /** 打开后要跳转到的行号（1-based，F12/Ctrl+Click 时传入） */
+  line?: number;
+  /** 打开后要跳转到的列号（1-based） */
+  column?: number;
   /** 目标面板组 ID（分屏时指定落在哪个面板） */
   targetGroupId?: string;
 }
