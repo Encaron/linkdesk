@@ -345,7 +345,7 @@
 - [ ] 🛡️ 持久化走 PluginStateService——禁止 localStorage
 - [ ] **验证：** 编辑文件 → 不保存 → 退出 LinkDesk → 重新打开 → 文件恢复、显示 ● 、内容为未保存版本
 
-### E4V#40o 🔧 自动保存 + 脏状态 - [ ]
+### E4V#40o 🔧 自动保存 + 脏状态 - [x]
 
 - [ ] **文件：** `EditorTab.tsx` | ~25 行
 - [ ] `files.autoSave` 配置消费：
@@ -356,7 +356,7 @@
 - [ ] 🛡️ autoSave guard：`if (!monacoRef.current \|\| editor.getModel()?.isDisposed()) return;`
 - [ ] **验证：** 编辑文字→标签栏 ● 出现。设 `"files.autoSave": "afterDelay"`→1 秒后 ● 自动消失
 
-### E4V#40p 🔧 多标签页——Ctrl+Shift+T 恢复已关闭 - [ ]
+### E4V#40p 🔧 多标签页——Ctrl+Shift+T 恢复已关闭 - [❌ 放弃]
 
 - [ ] **文件：** `plugins/builtin/editor/src/index.tsx` | ~15 行
 - [ ] `closedTabStack`：`Array<{ filePath, label, encoding }>`——最近 20 个关闭的编辑器标签页
@@ -365,7 +365,9 @@
 - [ ] 🔥 清理：`files.autoSave === "off"` 且内容有未保存更改→恢复带脏标记
 - [ ] **验证：** 打开 a.txt + b.txt → 关闭 b.txt → Ctrl+Shift+T → b.txt 恢复
 
-**R17 第 4 组完工后状态：** Diff 比较、热退出恢复（退出不丢未保存内容）、自动保存、多标签页恢复。对标 VS Code 的编辑工作流。~130 行。
+**R17 第 4 组完工后状态：** Diff 比较、热退出恢复（退出不丢未保存内容）、自动保存。Ctrl+Shift+T 放弃——关闭标签页栈是壳的职责，不应在编辑器插件里管。~105 行。
+>
+> ⚠️ **Bug R17-5：TS re-analysis `applyEdits("x")` 尾随字符。** `EditorView.tsx` 用两次分开的 `applyEdits`（插入"x"→删除"x"）各自触发 `onDidChangeContent`，中间态 `handleChange` 收到含"x"的内容。修复：`pushEditOperations` 批量操作+空格替代"x"。见 `83301f0`。
 
 ---
 
