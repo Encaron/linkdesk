@@ -525,7 +525,7 @@
 
 - [x] **E4V#40s6** ✅ Python 插件拆分
 
-- [ ] **E4V#40s7** 🔧 编辑器注册表——巩固地基（不用时序运气） | ~20 行改
+- [x] **E4V#40s7** ✅ 编辑器注册表——巩固地基（不用时序运气） | ~20 行改
   > 🔥 当前 `pendingReveal` 是 fire-and-forget——editor 未就绪时 token 丢失。
   > 治本：`navigation-bridge.ts` 维护 `Map<filePath, editor>` 注册表。
   > F12 handler 直接 `getRegisteredEditor(targetPath)` → 存在就 `setPosition` + `reveal`。
