@@ -32,8 +32,9 @@ export function setPendingReveal(filePath: string, line: number, column: number)
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
-  const key = normalizePath(filePath);
-  const pos = _pendingReveal.get(key);
-  _pendingReveal.delete(key);
-  return pos;
+  return _pendingReveal.get(normalizePath(filePath));
+}
+
+export function clearPendingReveal(filePath: string): void {
+  _pendingReveal.delete(normalizePath(filePath));
 }

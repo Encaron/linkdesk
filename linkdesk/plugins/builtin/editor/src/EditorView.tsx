@@ -15,7 +15,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
-import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
+import { fileUriToPath, setPendingReveal, consumePendingReveal, clearPendingReveal } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
@@ -117,6 +117,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         editor.setPosition(pos);
         editor.revealPositionInCenter(pos);
         editor.focus();
+        clearPendingReveal(filePath);
       }
 
       // 5. onChange 接线
@@ -224,13 +225,21 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   useEffect(() => {
     if (!isActive) return;
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
-    // 目标文件已开 → F12 聚焦已有标签页时也 consume（EditorView 不会重新 mount）
-    const pos = consumePendingReveal(filePath);
-    console.log("[editor] isActive effect——filePath:", filePath, "pos:", pos, "editor:", !!editorRef.current);
-    if (pos && editorRef.current) {
-      editorRef.current.setPosition({ lineNumber: pos.line, column: pos.column });
-      editorRef.current.revealPositionInCenter({ lineNumber: pos.line, column: pos.column });
-    }
+    // F12 目标文件已开时——EditorView 不会重新 mount，需在 isActive 变化时 reveal
+    let retries = 0;
+    const tryReveal = () => {
+      const pos = consumePendingReveal(filePath);
+      if (!pos) return;
+      if (editorRef.current) {
+        const p = { lineNumber: pos.line, column: pos.column };
+        editorRef.current.setPosition(p);
+        editorRef.current.revealPositionInCenter(p);
+        clearPendingReveal(filePath);
+      } else if (retries++ < 10) {
+        requestAnimationFrame(tryReveal);
+      }
+    };
+    tryReveal();
     return () => cancelAnimationFrame(raf);
   }, [isActive, filePath]);
 
