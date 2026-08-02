@@ -82,17 +82,6 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     }
   }, [model, filePath, tabActions]);
 
-  // F12 跳转定义——createTab 打开目标文件
-  const handleOpenDefinition = useCallback((targetPath: string, _line: number, _column: number) => {
-    const name = normalizePath(targetPath).split("/").pop() || targetPath;
-    tabActions?.createTab("editor", {
-      filePath: targetPath,
-      sourceId: targetPath,
-      label: name,
-      pinned: true,
-    });
-  }, [tabActions]);
-
   if (loading) {
     return <div className="editor-loading">加载中…</div>;
   }
@@ -113,7 +102,6 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       isActive={isActive}
       onChange={handleChange}
       onSave={handleSave}
-      onOpenDefinition={handleOpenDefinition}
     />
   );
 };
