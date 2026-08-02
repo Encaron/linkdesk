@@ -298,9 +298,12 @@ export class ViewContainerServiceClass extends RegistryBase {
     if (!this._originalOrder.has(containerId)) {
       this._originalOrder.set(containerId, new Map());
     }
-    const saved = descriptor.order ?? 0;
-    console.log(`[registerView] save _originalOrder: container=${containerId} view=${descriptor.id} order=${saved}`);
-    this._originalOrder.get(containerId)!.set(descriptor.id, saved);
+    // 🔥 只在首次注册时保存原始 order——后续的 registerView 更新（如动态标题）不覆盖
+    const orig = this._originalOrder.get(containerId)!;
+    if (!orig.has(descriptor.id)) {
+      const saved = descriptor.order ?? 0;
+      orig.set(descriptor.id, saved);
+    }
     this._updateActiveViews(containerId);
 
     this.onDidChangeViews.fire({
@@ -374,7 +377,6 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
   resetCollapsedState(): void {
-    console.log("[resetCollapsedState] ====== START ======");
     // 清折叠状态
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
     // 清 view 排序持久化
@@ -386,30 +388,19 @@ export class ViewContainerServiceClass extends RegistryBase {
       model.clearHidden();
     }
     this._collapseVersion++;
-    console.log("[resetCollapsedState] collapseVersion =", this._collapseVersion);
-    // 🔥 恢复 plugin.json 原始 order
+    // 恢复 plugin.json 原始 order——从 _originalOrder 恢复被 reorderView 改过的值
     for (const [containerId, model] of this._models) {
-      const before = model.allViewDescriptors.map(v => `${v.id}:order=${(v as any).order}`);
       const orig = this._originalOrder.get(containerId);
-      const origDump = orig ? [...orig.entries()].map(([k,v]) => `${k}=${v}`).join(", ") : "MISSING";
-      console.log(`[resetCollapsedState] ${containerId} before:`, before, `_originalOrder: {${origDump}}`);
       if (orig) {
         model.allViewDescriptors.forEach(v => {
           const o = orig.get(v.id);
-          if (o !== undefined) { (v as any).order = o; console.log(`  restore ${v.id} order=${o}`); }
-          else console.log(`  ${v.id} NOT in _originalOrder`);
+          if (o !== undefined) (v as any).order = o;
         });
       }
-      const after = model.allViewDescriptors.map(v => `${v.id}:order=${(v as any).order}`);
-      console.log(`[resetCollapsedState] ${containerId} after:`, after);
       this._updateActiveViews(containerId);
     }
   }
 
-  /** 🔥 onDidChangeActiveViews 订阅计数——被谁订阅 */
-  get _activeViewsSubCount(): number {
-    return (this.onDidChangeActiveViews as any)._listeners?.length ?? -1;
-  }
 
   /* ═══ 可见性 ═══ */
 
