@@ -133,6 +133,60 @@
   display: none;
 }
 
+/* E4V#43——溢出时裁切：overflow:hidden 自然裁切超宽按钮 */
+.sidebar-section-actions.overflow {
+  overflow: hidden;
+}
+
+/* E4V#43——… 更多操作按钮 */
+.sidebar-section-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.sidebar-section-more:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg, rgba(255,255,255,0.06));
+}
+
+.sidebar-section-more.show-on-hover {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.sidebar-section-header:hover .sidebar-section-more.show-on-hover {
+  opacity: 1;
+}
+
+/* E4V#43——… 下拉菜单 */
+.sidebar-section-more-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px;
+  background: var(--panel-bg, var(--bg-side-panel));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: var(--z-dropdown, 100);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 24px;
+}
+
 /* ── 🆕 StickyHead —— header + pinned 共用的粘顶容器 ── */
 /* 消除 HEADER_H 硬编码——浏览器处理堆叠，不各自算 top */
 
