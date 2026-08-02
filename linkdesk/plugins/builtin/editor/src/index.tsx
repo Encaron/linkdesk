@@ -8,6 +8,7 @@
  */
 import React from "react";
 import EditorTab from "./EditorTab";
+import DiffEditor from "./DiffEditor";
 import "./editor.css";
 
 export interface EditorPluginProps {
@@ -23,6 +24,13 @@ const EditorPlugin: React.FC<EditorPluginProps> = ({ isActive, sourceId }) => {
       </div>
     );
   }
+
+  // E4V#40m——Diff：sourceId = "originalPath|||modifiedPath"
+  if (sourceId.includes("|||")) {
+    const [originalPath, modifiedPath] = sourceId.split("|||");
+    return <DiffEditor originalPath={originalPath} modifiedPath={modifiedPath} isActive={isActive} />;
+  }
+
   return <EditorTab filePath={sourceId} isActive={isActive} />;
 };
 
