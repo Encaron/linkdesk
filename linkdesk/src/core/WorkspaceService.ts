@@ -116,7 +116,9 @@ export function addFolder(folderPath: string): void {
   };
 
   _folders = [..._folders, folder];
+  console.log("[WorkspaceService] addFolder 准备 fire, _folders.length=", _folders.length, "_listeners.size=", (_onDidChangeFolders as any)._listeners?.size);
   _onDidChangeFolders.fire([..._folders]);
+  console.log("[WorkspaceService] addFolder fire 完成");
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
   // 活跃工作区恢复优先级：持久化值 > 首个文件夹自动激活
