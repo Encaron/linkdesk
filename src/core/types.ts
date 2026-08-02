@@ -40,6 +40,20 @@ export interface LanguageContribution {
   path: string;
 }
 
+/** contributes.langDefs 条目——编程语言定义（对标 VS Code contributes.languages） */
+export interface LangDefContribution {
+  id: string;
+  extensions: string[];
+  aliases?: string[];
+  monarch?: {
+    tokenizer: Record<string, unknown>;
+  };
+  lsp?: {
+    command: string;
+    args?: string[];
+  };
+}
+
 /* ── 标签页行为声明 ── */
 
 export interface TabBehavior {

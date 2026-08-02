@@ -403,6 +403,35 @@
             "additionalProperties": false
           }
         },
+        "langDefs": {
+          "type": "array",
+          "description": "编程语言定义——对标 VS Code contributes.languages。声明新语言的 ID/扩展名/语法高亮/LSP 支持。",
+          "items": {
+            "type": "object",
+            "required": ["id", "extensions"],
+            "properties": {
+              "id": { "type": "string", "description": "语言 ID——如 cpp / python / rust" },
+              "extensions": { "type": "array", "items": { "type": "string" }, "description": "扩展名列表——如 ['.cpp', '.cxx', '.h']" },
+              "aliases": { "type": "array", "items": { "type": "string" }, "description": "别名——如 ['C++', 'C']" },
+              "monarch": {
+                "type": "object",
+                "description": "可选——Monarch tokenizer 定义（Monaco 内建语法高亮）",
+                "properties": {
+                  "tokenizer": { "type": "object" }
+                }
+              },
+              "lsp": {
+                "type": "object",
+                "description": "可选——LSP 语言服务器配置",
+                "properties": {
+                  "command": { "type": "string", "description": "启动命令——如 node_modules/pyright/dist/pyright-langserver.js --stdio" },
+                  "args": { "type": "array", "items": { "type": "string" }, "description": "启动参数" }
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
         "languages": {
           "type": "array",
           "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
