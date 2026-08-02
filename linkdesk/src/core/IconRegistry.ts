@@ -13,9 +13,7 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
-import { Emitter } from "./CoreEvents";
-import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
-import type { IconThemeContribution, IconContribution, IconThemeMappings } from "./types";
+import type { IconThemeContribution, IconContribution } from "./types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;
@@ -30,14 +28,9 @@ class IconRegistryImpl extends RegistryBase {
   private pluginThemeIds = new Map<string, string[]>();
   private icons = new Map<string, RegisteredIcon>();
   private pluginIconIds = new Map<string, string[]>();
-  private _currentId: string | null = null;
-  private _mappings = new Map<string, IconThemeMappings>();
-  readonly onDidChangeCurrent = new Emitter<string | null>();
 
   constructor() {
     super();
-    // 从配置恢复当前图标主题
-    this._currentId = getConfigurationValue<string>("workbench.iconTheme") ?? null;
   }
 
   /** 注册插件贡献的图标主题。同名 ID 后注册者覆盖（warn）。 */
@@ -70,30 +63,6 @@ class IconRegistryImpl extends RegistryBase {
     return this.themes.has(themeId);
   }
 
-  /** 获取当前使用的图标主题 ID——null = 默认 */
-  getCurrent(): string | null {
-    return this._currentId;
-  }
-
-  /** 设置当前图标主题——null = 恢复默认。持久化到 ConfigurationService。 */
-  setCurrent(themeId: string | null): void {
-    if (this._currentId === themeId) return;
-    this._currentId = themeId;
-    setConfigurationValue("workbench.iconTheme", themeId); // fire-and-forget 持久化
-    this.onDidChangeCurrent.fire(themeId);
-  }
-
-  /** 设置图标主题的映射表——loader 加载 JSON 后调用 */
-  setMappings(themeId: string, mappings: IconThemeMappings): void {
-    this._mappings.set(themeId, mappings);
-  }
-
-  /** 获取当前图标主题的映射表——null = 用默认 */
-  getCurrentMappings(): IconThemeMappings | null {
-    if (!this._currentId) return null;
-    return this._mappings.get(this._currentId) ?? null;
-  }
-
   /* ── 共享图标（contributes.icons） ── */
 
   /** 注册插件贡献的共享图标。同名 ID 后注册者覆盖（warn）。 */
@@ -124,13 +93,8 @@ class IconRegistryImpl extends RegistryBase {
   /** 插件卸载时自动清理——由 RegistryBase 调用 */
   protected unregisterAll(pluginId: string): void {
     const ids = this.pluginThemeIds.get(pluginId);
-    let resetCurrent = false;
     if (ids) {
-      for (const id of ids) {
-        if (id === this._currentId) resetCurrent = true;
-        this.themes.delete(id);
-        this._mappings.delete(id);
-      }
+      for (const id of ids) this.themes.delete(id);
       this.pluginThemeIds.delete(pluginId);
     }
     const iconIds = this.pluginIconIds.get(pluginId);
@@ -138,8 +102,6 @@ class IconRegistryImpl extends RegistryBase {
       for (const id of iconIds) this.icons.delete(id);
       this.pluginIconIds.delete(pluginId);
     }
-    // 当前主题被卸载→恢复默认
-    if (resetCurrent) this.setCurrent(null);
   }
 }
 
