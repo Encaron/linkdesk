@@ -183,6 +183,21 @@ try {
       },
     },
 
+    // ── E4V#40s2：LSP 桥——渲染进程 ↔ main process 语言服务器通信 ──
+    lsp: {
+      spawn: (command: string, args: string[] | undefined, pluginId: string) =>
+        ipcRenderer.invoke('lsp:spawn', { command, args, pluginId }),
+      write: (channelId: string, data: string) =>
+        ipcRenderer.send('lsp:write', { channelId, data }),
+      dispose: (channelId: string) =>
+        ipcRenderer.invoke('lsp:dispose', { channelId }),
+      onData: (cb: (channelId: string, data: string) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, { channelId, data }: { channelId: string; data: string }) => cb(channelId, data);
+        ipcRenderer.on('lsp:data', handler);
+        return () => ipcRenderer.removeListener('lsp:data', handler);
+      },
+    },
+
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
     window: {
       minimize:  () => ipcRenderer.send('window:minimize'),
