@@ -1,6 +1,6 @@
 # 壳内低耦合——IconBar 改造
 
-> 2026-08-02。**E5 第 1 层第 2 轮。** IconBar 不再 import Sidebar/MainContent/StatusBar——只 emit ShellEvents。
+> 2026-08-02。**E5 第 1 层第 2 轮。** IconBar 不再 import Sidebar/MainContent/StatusBar——只 emit ShellEvents。**含拖拽排序归一化。**
 > 执行清单任务：E5#3
 
 ---
@@ -135,6 +135,52 @@ useEffect(() => {
   });
   return () => { unsub1(); };  // ← 🔥 忘了就内存泄漏
 }, []);
+```
+
+#### E5#3e 拖拽排序归一化（🆕）
+
+**当前问题（L120-167）：**
+- 拖拽用 `window mousemove/mouseup`——全局监听，IconBar 独占。TabBar 也有自己的拖拽系统——两套独立实现
+- 拖完直接写 `PluginStateService` + `setPluginVersion(v+1)` useMemo hack——没有事件通知
+
+**改造后：**
+
+```typescript
+// 拖拽开始 → emit ShellEvent
+const handleDragStart = (pluginId: string) => {
+  shellEvents.emit("icon:drag-start", pluginId);
+  // 其他区域可以响应——如状态栏显示 "正在拖动图标"
+};
+
+// 拖拽结束 → emit 新排序
+const handleDrop = (newOrder: string[]) => {
+  shellEvents.emit("icon:reordered", newOrder);
+  // PluginStateService 的持久化由订阅者处理——IconBar 不直接写
+};
+
+// 持久化——shell 初始化时订阅
+useEffect(() => {
+  const unsub = shellEvents.on("icon:reordered", (order) => {
+    setPluginStateValue(APP_PLUGIN_ID, "iconOrder", order);
+  });
+  return unsub;
+}, []);
+
+// 刷新——订阅事件，不用 setPluginVersion hack
+const [order, setOrder] = useState<string[]>(loadOrder());
+useEffect(() => {
+  const unsub = shellEvents.on("icon:reordered", setOrder);
+  return unsub;
+}, []);
+```
+
+**ShellEvents 加两个事件：**
+```typescript
+interface ShellEvents {
+  // ... 现有 ...
+  "icon:drag-start": string;       // pluginId——正在拖拽图标
+  "icon:reordered": string[];      // 新排序——pluginId 数组
+}
 ```
 
 ---

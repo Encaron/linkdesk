@@ -288,7 +288,7 @@
 
 > 🔥 让编辑器不是"文本区"，而是"编辑器"。这些是 UI 壳——不碰 Monaco API。
 
-### E4V#40j 🔧 EditorStatusBar——状态栏 - [ ]
+### E4V#40j 🔧 EditorStatusBar——状态栏 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorStatusBar.tsx` | ~50 行
 - [ ] 从 Monaco 读：行号、列号、选中字符数
@@ -299,7 +299,7 @@
 - [ ] 🛡️ 所有颜色走 CSS 变量，所有文字走 t()
 - [ ] **验证：** 打开文件→状态栏显示行:列、编码、语言模式
 
-### E4V#40k 🔧 EditorBreadcrumb——面包屑 - [ ]
+### E4V#40k 🔧 EditorBreadcrumb——面包屑 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorBreadcrumb.tsx` | ~40 行
 - [ ] 显示当前文件在工作区中的路径（相对路径）
@@ -308,7 +308,7 @@
 - [ ] 🛡️ 单根工作区：相对路径；多根：显示根名/路径
 - [ ] **验证：** 打开文件→标签栏下方显示面包屑路径
 
-### E4V#40l 🔧 EditorContextMenu——编辑器右键菜单 - [ ]
+### E4V#40l 🔧 EditorContextMenu——编辑器右键菜单 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorContextMenu.tsx` | ~30 行
 - [ ] 注册 `MenuId.EditorContext`：
@@ -325,7 +325,7 @@
 
 ## 第 4 组：编辑器高级功能——Diff + 热退出 + 自动保存
 
-### E4V#40m 🔧 Diff 编辑器——compareFiles 命令 - [ ]
+### E4V#40m 🔧 Diff 编辑器——compareFiles 命令 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/DiffEditor.tsx` | ~40 行
 - [ ] `monaco.editor.createDiffEditor(container, { ... })` ——Monaco 原生 API
@@ -335,7 +335,7 @@
 - [ ] 🔥 DiffEditor 复用 LinkDesk 主题（`syncMonacoTheme`）
 - [ ] **验证：** 选中 a.txt → 右键"选择以进行比较" → 右键 b.txt → "与已选项比较" → 并排 Diff
 
-### E4V#40n 🔧 热退出恢复——Hot Exit - [ ]
+### E4V#40n 🔧 热退出恢复——Hot Exit - [x]
 
 - [ ] **文件：** `plugins/builtin/editor/src/hot-exit.ts` + `EditorTab.tsx` | ~50 行
 - [ ] 备份：脏文件内容写 `PluginStateService("editor", "dirtyBackups")` → `{ [filePath]: { value, encoding, timestamp } }`
