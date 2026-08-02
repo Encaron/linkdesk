@@ -12,6 +12,7 @@
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { normalizePath } from "@src/core/pathUtils";
+import { getLangDef } from "@src/core/LangDefRegistry";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
 import { fileUriToPath } from "./navigation-bridge";
@@ -84,13 +85,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       setupTypeScriptEnv(monaco);
       scanWorkspaceForTypeScript(monaco);
 
-      // 5. 非 TS 语言——按需启动 LSP 客户端
-      if (filePath.endsWith(".py") && !getLspClient("python")) {
-        const workspaceRoot = getWorkspaceFolders()[0]?.uri || normalizePath(filePath).replace(/\/[^/]+\.py$/, "");
-        startLspClient("python", "node", [
-          "node_modules/pyright/dist/pyright-langserver.js",
-          "--stdio",
-        ], workspaceRoot).catch((err) => console.warn("[editor] pyright 启动失败:", err));
+      // 5. 非 TS 语言——查 LangDefRegistry 自动启动 LSP
+      const ext = "." + (normalizePath(filePath).split(".").pop() ?? "");
+      const langDef = getLangDef(ext);
+      if (langDef?.lsp && !getLspClient(langDef.id)) {
+        const workspaceRoot = getWorkspaceFolders()[0]?.uri || normalizePath(filePath).replace(/\/[^/]+$/, "");
+        startLspClient(langDef.id, langDef.lsp.command, langDef.lsp.args, workspaceRoot)
+          .catch((err) => console.warn(`[editor] ${langDef.id} LSP 启动失败:`, err));
       }
 
       // 4. 手写 editor——绕过 EditorApp 的 IFileService 依赖
