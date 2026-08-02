@@ -20,7 +20,6 @@
 import { Emitter } from "./CoreEvents";
 import { RegistryBase } from "./RegistryBase";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { registerOnApply } from "./ConfigurationApplier";
 
 /* ── 类型定义 ── */
 
@@ -165,9 +164,6 @@ class ViewContainerModel {
     return !this._hidden.has(viewId);
   }
 
-  /** 清除所有隐藏——重置用 */
-  clearHidden(): void { this._hidden.clear(); }
-
   /** 移除指定插件的所有 view */
   removePluginViews(pluginId: string): ViewDescriptor[] {
     const removed: ViewDescriptor[] = [];
@@ -294,16 +290,6 @@ export class ViewContainerServiceClass extends RegistryBase {
     }
 
     this._viewIndex.set(descriptor.id, containerId);
-    // 🔥 立即保存原始 order——不等懒加载。moveView 可能在首次访问前就改变了 view 归属
-    if (!this._originalOrder.has(containerId)) {
-      this._originalOrder.set(containerId, new Map());
-    }
-    // 🔥 只在首次注册时保存原始 order——后续的 registerView 更新（如动态标题）不覆盖
-    const orig = this._originalOrder.get(containerId)!;
-    if (!orig.has(descriptor.id)) {
-      const saved = descriptor.order ?? 0;
-      orig.set(descriptor.id, saved);
-    }
     this._updateActiveViews(containerId);
 
     this.onDidChangeViews.fire({
@@ -314,13 +300,25 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** 获取容器全部已注册 view（含不可见的）。对标 VS Code IViewsRegistry.getViews */
   getViews(containerId: string): ViewDescriptor[] {
+    // 懒加载持久化排序
+    if (!this._restoredOrder.has(containerId)) {
+      this._restoredOrder.add(containerId);
+      this.loadViewOrder(containerId);
+    }
     const model = this._models.get(containerId);
     if (!model) return [];
     return [...model.allViewDescriptors].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
+  private _restoredOrder = new Set<string>();
+
   /** 获取容器当前可见的 view。对标 VS Code ViewContainerModel.activeViewDescriptors */
   getActiveViews(containerId: string): ViewDescriptor[] {
+    // 懒加载持久化排序——首次访问此容器时恢复
+    if (!this._restoredOrder.has(containerId)) {
+      this._restoredOrder.add(containerId);
+      this.loadViewOrder(containerId);
+    }
     // 🔥 Bug 4 防线——空容器返回 [] 不抛错
     const model = this._models.get(containerId);
     if (!model) return [];
@@ -369,32 +367,6 @@ export class ViewContainerServiceClass extends RegistryBase {
   isCollapsed(viewId: string): boolean {
     return this.loadCollapsedState().has(viewId);
   }
-
-  /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
-  resetCollapsedState(): void {
-    // 清折叠状态
-    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
-    // 清 view 排序持久化
-    for (const [containerId] of this._models) {
-      setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, []).catch(() => {});
-    }
-    // 清可见性隐藏
-    for (const [, model] of this._models) {
-      model.clearHidden();
-    }
-    // 恢复 plugin.json 原始 order——从 _originalOrder 恢复被 reorderView 改过的值
-    for (const [containerId, model] of this._models) {
-      const orig = this._originalOrder.get(containerId);
-      if (orig) {
-        model.allViewDescriptors.forEach(v => {
-          const o = orig.get(v.id);
-          if (o !== undefined) (v as any).order = o;
-        });
-      }
-      this._updateActiveViews(containerId);
-    }
-  }
-
 
   /* ═══ 可见性 ═══ */
 
@@ -457,32 +429,24 @@ export class ViewContainerServiceClass extends RegistryBase {
     this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
   }
 
-  /** 每个 container 的原始 plugin.json order——reset 时恢复 */
-  private _originalOrder = new Map<string, Map<string, number>>();
-
   /** 加载持久化的 view 排序——应用到 allViewDescriptors */
   loadViewOrder(containerId: string): void {
     const model = this._models.get(containerId);
     if (!model) return;
     const savedOrder = getPluginStateValue<string[]>(APP_PLUGIN_ID, `viewOrder.${containerId}`);
     if (!savedOrder || savedOrder.length === 0) return;
+    // 按持久化的顺序重排
+    const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
     model.allViewDescriptors.sort((a, b) => {
-      const ao = savedOrder.indexOf(a.id);
-      const bo = savedOrder.indexOf(b.id);
-      if (ao !== -1 && bo !== -1) return ao - bo;
-      if (ao !== -1) return -1;
-      if (bo !== -1) return 1;
+      const ao = orderMap.get(a.id);
+      const bo = orderMap.get(b.id);
+      if (ao !== undefined && bo !== undefined) return ao - bo;
+      if (ao !== undefined) return -1;
+      if (bo !== undefined) return 1;
       return (a.order ?? 0) - (b.order ?? 0);
     });
     model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
     this._updateActiveViews(containerId);
-  }
-
-  /** 恢复所有容器的持久化排序——初始化时调用一次 */
-  restoreAllViewOrders(): void {
-    for (const [containerId] of this._models) {
-      this.loadViewOrder(containerId);
-    }
   }
 
   /* ═══ 清理（RegistryBase 钩子） ═══ */
@@ -569,8 +533,3 @@ export class ViewContainerServiceClass extends RegistryBase {
 
 /** 全局单例 */
 export const ViewContainerService = new ViewContainerServiceClass();
-
-// E4V#46——一键重置侧栏布局：清空折叠持久化 → 回到 plugin.json 默认
-registerOnApply("workbench.resetSidebarLayout", () => {
-  ViewContainerService.resetCollapsedState();
-});

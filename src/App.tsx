@@ -38,7 +38,6 @@ import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
-import { ViewContainerService } from "./core/ViewContainerService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
@@ -294,16 +293,6 @@ function App() {
               }
             },
           },
-          // E4V#46——一键重置侧栏折叠/排序/位置 → 回到 plugin.json 默认
-          "workbench.resetSidebarLayout": {
-            type: "string",
-            default: "",
-            description: "重置侧栏布局",
-            renderHint: "action",
-            onApply: () => {
-              ViewContainerService.resetCollapsedState();
-            },
-          },
           "app.accentMode": {
             type: "string",
             default: "custom",
@@ -362,8 +351,6 @@ function App() {
 
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
-      // 恢复持久化的 view 排序
-      ViewContainerService.restoreAllViewOrders();
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
