@@ -1,1 +1,32 @@
-/* E4 R17 编辑器样式——占位，后续任务逐步填充 */
+/* E4 R17 编辑器样式 */
+
+/* E4V#40j EditorStatusBar——编辑器底部状态栏 */
+.editor-status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--bg-window);
+  border-top: 1px solid var(--separator);
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.editor-status-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.editor-status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-status-item {
+  white-space: nowrap;
+}

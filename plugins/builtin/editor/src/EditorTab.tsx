@@ -9,12 +9,15 @@
  *   - onChange → model.setValue → 检测脏状态 → 更新标签栏标题（● 前缀）
  *   - Ctrl+S → onSave → model.save() → markSaved → 清除 ●
  *   - 保存失败 toast 报错（只读/权限不足/磁盘满）
+ *   - E4V#40j——渲染 EditorStatusBar（行:列/编码/语言/缩进/EOL）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { normalizePath } from "@src/core/pathUtils";
 import { EditorModel } from "./EditorModel";
 import EditorView from "./EditorView";
+import EditorStatusBar from "./EditorStatusBar";
+import type { EditorStatus } from "./EditorStatusBar";
 
 export interface EditorTabProps {
   /** 文件绝对路径——来自 createTab 的 sourceId */
@@ -31,6 +34,33 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const [error, setError] = useState<string | null>(null);
   const dirtyRef = useRef(false);
 
+  // E4V#40j——编辑器状态栏数据
+  const [editorStatus, setEditorStatus] = useState<EditorStatus>({
+    lineNumber: 1,
+    column: 1,
+    encoding: "",
+    language: "",
+    tabSize: 2,
+    insertSpaces: true,
+    eol: "LF",
+  });
+
+  const handleCursorChange = useCallback((lineNumber: number, column: number) => {
+    setEditorStatus((prev) => ({ ...prev, lineNumber, column }));
+  }, []);
+
+  const handleEditorMount = useCallback(
+    (opts: { tabSize: number; insertSpaces: boolean; eol: string }) => {
+      setEditorStatus((prev) => ({
+        ...prev,
+        tabSize: opts.tabSize,
+        insertSpaces: opts.insertSpaces,
+        eol: opts.eol as "LF" | "CRLF",
+      }));
+    },
+    [],
+  );
+
   // 加载文件
   useEffect(() => {
     let cancelled = false;
@@ -41,6 +71,12 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
         if (cancelled) return;
         setModel(m);
         setValue(m.getValue());
+        // E4V#40j——编码和语言来自 EditorModel
+        setEditorStatus((prev) => ({
+          ...prev,
+          encoding: m.encoding,
+          language: m.language,
+        }));
         setLoading(false);
       })
       .catch((err) => {
@@ -94,14 +130,21 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   }
 
   return (
-    <EditorView
-      value={value}
-      language={model.language}
-      filePath={model.filePath}
-      isActive={isActive}
-      onChange={handleChange}
-      onSave={handleSave}
-    />
+    <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <EditorView
+          value={value}
+          language={model.language}
+          filePath={model.filePath}
+          isActive={isActive}
+          onChange={handleChange}
+          onSave={handleSave}
+          onCursorChange={handleCursorChange}
+          onEditorMount={handleEditorMount}
+        />
+      </div>
+      <EditorStatusBar {...editorStatus} />
+    </div>
   );
 };
 
