@@ -42,6 +42,8 @@ export interface SidebarSectionProps {
   draggable?: boolean;
   /** E4V#47——拖拽开始回调 */
   onDragStart?: (e: React.DragEvent) => void;
+  /** E4V#48——拖拽结束回调（清状态） */
+  onDragEnd?: () => void;
 }
 
 function SidebarSection({
@@ -59,6 +61,7 @@ function SidebarSection({
   stickyTop,
   draggable = false,
   onDragStart,
+  onDragEnd,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   // E4V#43——actions 溢出检测 + … 下拉
@@ -139,6 +142,7 @@ function SidebarSection({
           onKeyDown={collapsible ? onKeyDown : undefined}
           draggable={draggable}
           onDragStart={onDragStart}
+          onDragEnd={onDragEnd}
         >
           {collapsible && (
             <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>
