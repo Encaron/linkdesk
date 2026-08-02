@@ -47,6 +47,8 @@ function api() {
     remove(path: string): Promise<void>;
     listDir(path: string): Promise<FileEntry[]>;
     readBinaryFile(path: string): Promise<Uint8Array>;
+    // E4V#40w——GBK 编码保存
+    writeBinaryFile(path: string, data: Uint8Array): Promise<void>;
     // E4V#fix: watch 一步完成——dirPath + callback → 返回 unsubscribe。
     // 内部走 filesystem:changed:${watcherId}，每个 watcher 独立 IPC 通道。
     watch(dirPath: string, onEvent: (e: FileChangeEvent) => void): Promise<() => void>;
@@ -112,6 +114,17 @@ export async function readBinaryFile(filePath: string): Promise<Uint8Array> {
   const a = api();
   if (!a) return new Uint8Array();
   return a.readBinaryFile(filePath);
+}
+
+/**
+ * E4V#40w——写入二进制文件（GBK/UTF-16 编码保存）。
+ * Electron IPC 原生支持 Uint8Array/Buffer 传输。
+ */
+export async function writeBinaryFile(filePath: string, data: Uint8Array): Promise<void> {
+  const a = api();
+  if (!a) return;
+  await a.writeBinaryFile(filePath, data);
+  suppressPath(filePath);
 }
 
 /**

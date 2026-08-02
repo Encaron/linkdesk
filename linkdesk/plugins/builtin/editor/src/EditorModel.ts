@@ -13,7 +13,7 @@
  * 不散落在 EditorView/EditorTab/快捷键 handler 各写各的。
  */
 import { Emitter } from "@src/core/CoreEvents";
-import { readBinaryFile, writeFile } from "@src/core/FileService";
+import { readBinaryFile, writeFile, writeBinaryFile } from "@src/core/FileService";
 import { EncodingService } from "@src/core/encoding/EncodingService";
 import { normalizePath } from "@src/core/pathUtils";
 import { getLanguageFromPath } from "./language-map";
@@ -81,16 +81,14 @@ export class EditorModel {
     return new EditorModel(normalized, content, encoding);
   }
 
-  /** 保存到磁盘 */
+  /** 保存到磁盘——UTF-8 走文本写入，GBK/UTF-16 走二进制写入保持编码 */
   async save(): Promise<void> {
-    // TODO E4V#40w：EncodingService.encode 当前只支持 UTF-8，GBK 等编码以后支持
-    // 对于非 UTF-8 编码，writeFile 写 string 可能导致编码丢失。
-    // 临时方案：非 UTF-8 编码时 console.warn 提示，仍写 string。
-    if (this.encoding !== "utf-8" && this.encoding !== "utf8") {
-      console.warn(
-        `[EditorModel] save: encoding "${this.encoding}" may lose fidelity (E4V#40w pending)`,
-      );
+    if (this.encoding === "utf-8" || this.encoding === "utf8") {
+      await writeFile(this.filePath, this._value);
+    } else {
+      // E4V#40w——iconv-lite 编码 → 二进制写入，保持原编码
+      const data = EncodingService.encode(this._value, this.encoding);
+      await writeBinaryFile(this.filePath, data);
     }
-    await writeFile(this.filePath, this._value);
   }
 }

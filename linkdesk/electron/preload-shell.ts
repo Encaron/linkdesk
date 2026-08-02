@@ -77,6 +77,8 @@ try {
       // E2c #13 新增：listDir / readBinaryFile / watch
       listDir:       (p: string)           => ipcRenderer.invoke('filesystem:listDir', p),
       readBinaryFile:(p: string)           => ipcRenderer.invoke('filesystem:readBinaryFile', p),
+      // E4V#40w——GBK 编码保存
+      writeBinaryFile:(p: string, d: Uint8Array) => ipcRenderer.invoke('filesystem:writeBinaryFile', p, d),
       // E4V#fix: watch 一步完成——内部走 filesystem:changed:${watcherId}，自动隔离
       watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
         return ipcRenderer.invoke('filesystem:watch', dirPath).then((watcherId: number) => {
