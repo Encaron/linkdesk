@@ -19,3 +19,21 @@ export interface NavigateToFile {
 export function fileUriToPath(uri: string): string {
   return normalizePath(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
 }
+
+/**
+ * F12 跳转后目标编辑器需要滚动到的位置。
+ * 模块级暂存——EditorView(A) 写入，EditorView(B) mount 时读取并清除。
+ * 不上壳——编辑器领域内务，核心不碰。
+ */
+const _pendingReveal = new Map<string, { line: number; column: number }>();
+
+export function setPendingReveal(filePath: string, line: number, column: number): void {
+  _pendingReveal.set(normalizePath(filePath), { line, column });
+}
+
+export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
+  const key = normalizePath(filePath);
+  const pos = _pendingReveal.get(key);
+  _pendingReveal.delete(key);
+  return pos;
+}
