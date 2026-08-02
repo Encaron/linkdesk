@@ -523,14 +523,22 @@
   - 🛡️ 归一化——和 FileAssociationService 同模式，不新增新概念
   - **验证：** tsc+eslint+vitest 零错误 / Python F12 仍正常 / 无硬编码
 
-- [x] **E4V#40s6** 🔧 拆分 Python 语言插件 | ~15 行
-  - **新建** `plugins/user/python/plugin.json`——纯声明，零代码
-  - 内容：`langDefs: [{ id: "python", extensions: [".py", ".pyi"], lsp: { command: "node node_modules/pyright/...", args: ["--stdio"] } }]`
-  - `entry: "src/index.tsx"`——空壳占位（`viewRole: "tabOnly"` 不需要，但 schema 要求）
-  - 删 EditorView 中残留 pyright 相关内容（`startLspClient` 参数由 registry 提供）
-  - **验证：** 双击 .py → 自动启动 pyright → F12 跨文件跳转 / tsc+eslint 零错误
+- [x] **E4V#40s6** ✅ Python 插件拆分
 
-**R17 第 6 组完工后状态：** monaco-languageclient + LSP 桥 + 语言插件体系（声明式）全部就绪。新增 C/C++/Rust 只需写 `plugin.json` 声明 `langDefs`，零改编辑器代码。~170 行。
+- [ ] **E4V#40s7** 🔧 编辑器注册表——巩固地基（不用时序运气） | ~20 行改
+  > 🔥 当前 `pendingReveal` 是 fire-and-forget——editor 未就绪时 token 丢失。
+  > 治本：`navigation-bridge.ts` 维护 `Map<filePath, editor>` 注册表。
+  > F12 handler 直接 `getRegisteredEditor(targetPath)` → 存在就 `setPosition` + `reveal`。
+  > 不存在才 `setPendingReveal`（editor create 时自动 consume）。
+  > 删除 isActive effect 里的 reveal 逻辑——init effect 已覆盖全部。
+  - [ ] `navigation-bridge.ts`：加 `registerEditor`/`unregisterEditor`/`getRegisteredEditor`
+  - [ ] EditorView init：`editor.create()` 后 `registerEditor(filePath, editor)`
+  - [ ] EditorView dispose：`unregisterEditor(filePath)`
+  - [ ] `goToDefinitionAt`：先查 `getRegisteredEditor(targetPath)` → 在就 reveal，不在才 `setPendingReveal`
+  - 🛡️ 模块级 registry——不经过 React 生命周期，无竞态
+  - **验证：** tsc+eslint+vitest / 所有 F12 场景（新建/已有/同文件）
+
+**R17 第 6 组完工后状态：** monaco-languageclient + LSP 桥 + 语言插件体系（声明式）+ 编辑器注册表。~190 行。
 
 ---
 
