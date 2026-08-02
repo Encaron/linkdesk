@@ -77,9 +77,35 @@ html, body {
   height: 44px;
   background: var(--bg-sidebar);
   border-bottom: 1px solid var(--border);
-  padding: 0 16px;
+  padding: 0 12px;
   gap: 2px;
   flex-shrink: 0;
+}
+
+/* ── Quick-copy pill in tab bar ── */
+#quick-copy {
+  margin-left: auto;
+  padding: 5px 14px;
+  font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #34d399;
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+#quick-copy:hover {
+  background: rgba(52,211,153,0.22);
+  border-color: #34d399;
+  box-shadow: 0 0 8px rgba(52,211,153,0.2);
+}
+#quick-copy.copied {
+  color: #fff;
+  background: #22C55E;
+  border-color: #22C55E;
 }
 #tab-bar .tab-label {
   font-family: "Inter", "Noto Sans SC", sans-serif;
@@ -414,6 +440,7 @@ mark {
   <span class="tab-label">切换模式</span>
   <button class="tab-btn active" data-tab="new">🆕 新AI对话</button>
   <button class="tab-btn" data-tab="e35">🎨 E3.5对话</button>
+  <button id="quick-copy" title="点击复制 npm run electron:dev">npm run electron:dev</button>
 </div>
 
 <div id="app">
@@ -529,10 +556,10 @@ mark {
     <div class="card-body">
       <button class="copy-btn" data-text="工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
       <pre>工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
     </div>
   </div>
 </section>
@@ -1086,10 +1113,10 @@ full-output-enforcement → 强制完整输出、禁止占位符</pre>
     <div class="card-body">
       <button class="copy-btn" data-text="工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
       <pre>工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
     </div>
   </div>
 </section>
@@ -1162,6 +1189,19 @@ tabBtns.forEach(btn => {
     document.querySelector('.tab-btn[data-tab="e35"]')?.click();
   }
 })();
+
+// ── Quick-copy pill ──
+const quickCopy = document.getElementById('quick-copy');
+quickCopy.addEventListener('click', () => {
+  navigator.clipboard.writeText('npm run electron:dev').then(() => {
+    quickCopy.textContent = '✓ 已复制';
+    quickCopy.classList.add('copied');
+    setTimeout(() => {
+      quickCopy.textContent = 'npm run electron:dev';
+      quickCopy.classList.remove('copied');
+    }, 1200);
+  });
+});
 
 // ── Copy to clipboard ──
 document.querySelectorAll('.copy-btn').forEach(btn => {
