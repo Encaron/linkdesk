@@ -11,10 +11,6 @@
  */
 import { normalizePath } from "@src/core/pathUtils";
 
-export interface NavigateToFile {
-  (filePath: string): void;
-}
-
 /** file:///e%3A/_testfiles/utils.ts → E:/_testfiles/utils.ts */
 export function fileUriToPath(uri: string): string {
   return normalizePath(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
