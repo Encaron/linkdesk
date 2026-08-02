@@ -24,7 +24,7 @@ interface SectionStackProps {
 }
 
 /** E4V#45——可拖拽 view 分隔线 */
-function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?: () => void }) {
+function PaneSash({ onDrag, onEnd, onDragOver }: { onDrag: (deltaY: number) => void; onEnd?: () => void; onDragOver?: (e: React.DragEvent) => void }) {
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -48,6 +48,7 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
     <div
       className="sidebar-pane-sash"
       onMouseDown={handleMouseDown}
+      onDragOver={onDragOver}
     />
   );
 }
@@ -85,8 +86,8 @@ function ViewPane({ viewId, height, onContentHeight, onDragOver, onDrop, showDro
       style={height !== undefined
         ? { height, flexShrink: 0, overflowY: "auto" }
         : { flex: 1, minHeight: 0 }}
-      onDragOver={onDragOver}
-      onDrop={onDrop}
+      onDragOverCapture={onDragOver}
+      onDropCapture={onDrop}
     >
       <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
         {children}
@@ -277,6 +278,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
                     handleSashDrag(view.id, views[i + 1].id, deltaY);
                   }}
                   onEnd={handleSashEnd}
+                  onDragOver={(e) => { e.preventDefault(); setDropIndex(i + 1); }}
                   key={`sash-${view.id}`}
                 />
               )}
