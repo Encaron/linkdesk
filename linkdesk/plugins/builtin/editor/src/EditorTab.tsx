@@ -16,11 +16,49 @@ import { useTabActions } from "@src/core/TabActionsContext";
 import { normalizePath } from "@src/core/pathUtils";
 import { EditorModel } from "./EditorModel";
 import EditorView from "./EditorView";
+import type { EditorViewHandle } from "./EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
+import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
+
+/**
+ * E4V#40q——从 ConfigurationService 读取编辑器配置，构建 Monaco IEditorOptions。
+ * 配置键（editor.fontSize 等）→ Monaco 选项（fontSize 等）。
+ * 嵌套键（editor.minimap.enabled）→ 嵌套对象（minimap: { enabled }）。
+ */
+function buildMonacoOptions(): Record<string, unknown> {
+  return {
+    fontSize: getConfigurationValue<number>("editor.fontSize"),
+    fontFamily: getConfigurationValue<string>("editor.fontFamily"),
+    fontWeight: getConfigurationValue<string>("editor.fontWeight"),
+    lineHeight: getConfigurationValue<number>("editor.lineHeight"),
+    tabSize: getConfigurationValue<number>("editor.tabSize"),
+    insertSpaces: getConfigurationValue<boolean>("editor.insertSpaces"),
+    detectIndentation: getConfigurationValue<boolean>("editor.detectIndentation"),
+    wordWrap: getConfigurationValue<string>("editor.wordWrap"),
+    lineNumbers: getConfigurationValue<string>("editor.lineNumbers"),
+    minimap: { enabled: getConfigurationValue<boolean>("editor.minimap.enabled") },
+    renderWhitespace: getConfigurationValue<string>("editor.renderWhitespace"),
+    cursorStyle: getConfigurationValue<string>("editor.cursorStyle"),
+    cursorBlinking: getConfigurationValue<string>("editor.cursorBlinking"),
+    mouseWheelZoom: getConfigurationValue<boolean>("editor.mouseWheelZoom"),
+    smoothScrolling: getConfigurationValue<boolean>("editor.smoothScrolling"),
+    autoClosingBrackets: getConfigurationValue<string>("editor.autoClosingBrackets"),
+    bracketPairColorization: getConfigurationValue<boolean>("editor.bracketPairColorization"),
+    guides: { indentation: getConfigurationValue<boolean>("editor.guides.indentation") },
+    linkedEditing: getConfigurationValue<boolean>("editor.linkedEditing"),
+    occurrencesHighlight: getConfigurationValue<boolean>("editor.occurrencesHighlight"),
+    selectionHighlight: getConfigurationValue<boolean>("editor.selectionHighlight"),
+    parameterHints: { enabled: getConfigurationValue<boolean>("editor.parameterHints.enabled") },
+    quickSuggestions: getConfigurationValue<boolean>("editor.quickSuggestions"),
+    suggest: {
+      showWords: getConfigurationValue<boolean>("editor.suggest.showWords"),
+      showSnippets: getConfigurationValue<boolean>("editor.suggest.showSnippets"),
+    },
+  };
+}
 
 export interface EditorTabProps {
   /** 文件绝对路径——来自 createTab 的 sourceId */
@@ -40,6 +78,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // E4V#40o——onFocusChange 需要前一帧 isActive 判断切换方向
   const prevActiveRef = useRef(isActive);
+  // E4V#40q——EditorView ref → 运行时 updateOptions
+  const editorViewRef = useRef<EditorViewHandle>(null);
 
   // E4V#40j——编辑器状态栏数据
   const [editorStatus, setEditorStatus] = useState<EditorStatus>({
@@ -195,6 +235,16 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     };
   }, []);
 
+  // E4V#40q——订阅配置变更 → 运行时 updateOptions，无需重建 editor
+  useEffect(() => {
+    const unsubscribe = onDidChangeConfiguration((key) => {
+      if (key.startsWith("editor.")) {
+        editorViewRef.current?.updateOptions(buildMonacoOptions());
+      }
+    });
+    return unsubscribe;
+  }, []);
+
   if (loading) {
     return <div className="editor-loading">加载中…</div>;
   }
@@ -207,11 +257,15 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     return <div className="editor-empty">无法打开文件</div>;
   }
 
+  // E4V#40q——从配置构建 Monaco 初始选项
+  const editorOptions = buildMonacoOptions();
+
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
       <EditorBreadcrumb filePath={model.filePath} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <EditorView
+          ref={editorViewRef}
           value={value}
           language={model.language}
           filePath={model.filePath}
@@ -220,6 +274,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           onSave={handleSave}
           onCursorChange={handleCursorChange}
           onEditorMount={handleEditorMount}
+          options={editorOptions}
         />
       </div>
       <EditorStatusBar {...editorStatus} />

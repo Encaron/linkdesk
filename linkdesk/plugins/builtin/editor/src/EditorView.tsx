@@ -28,6 +28,8 @@ export interface EditorViewProps {
   onChange?: (value: string | undefined) => void;
   onSave?: () => void;
   readOnly?: boolean;
+  /** E4V#40q——Monaco 编辑器选项，从 ConfigurationService 读取后合并到 monaco.editor.create() */
+  options?: Record<string, unknown>;
   /** E4V#40j——光标位置变更，EditorStatusBar 消费 */
   onCursorChange?: (lineNumber: number, column: number) => void;
   /** E4V#40j——editor 创建完成后回传缩进/EOL 设置 */
@@ -37,10 +39,12 @@ export interface EditorViewProps {
 export interface EditorViewHandle {
   layout(): void;
   dispose(): void;
+  /** E4V#40q——运行时更新编辑器选项，无需重建 editor */
+  updateOptions(opts: Record<string, unknown>): void;
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount, options },
   ref,
 ) {
   const editorRef = useRef<any>(null);
@@ -60,6 +64,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
     dispose: () => editorRef.current?.dispose(),
+    updateOptions: (opts: Record<string, unknown>) => editorRef.current?.updateOptions(opts),
   }), []);
 
   // ── 初始化——每个 filePath 创建一次 editor ──
@@ -114,6 +119,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         model,
         theme: "linkdesk",
         readOnly,
+        ...options,
       });
       editorRef.current = editor;
       monacoRef.current = monaco;
