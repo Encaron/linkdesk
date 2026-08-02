@@ -113,7 +113,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
+        console.log("[editor] revealPositionInCenter → line", pendingReveal.line, "col", pendingReveal.column);
         editor.revealPositionInCenter({ lineNumber: pendingReveal.line, column: pendingReveal.column });
+        editor.focus();
       }
 
       // 5. onChange 接线
