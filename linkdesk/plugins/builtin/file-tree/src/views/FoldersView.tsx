@@ -189,9 +189,11 @@ const FoldersView: React.FC = () => {
   }, [roots]);
 
   useEffect(() => {
-    console.log("[FoldersView] syncRoots useEffect 触发");
+    console.log("[FoldersView] syncRoots useEffect 触发, onDidChangeFolders=", typeof onDidChangeFolders, "listeners before sub:", (onDidChangeFolders as any)._listeners?.size ?? "N/A");
     syncRoots();
-    const unsub1 = onDidChangeFolders(() => { console.log("[FoldersView] onDidChangeFolders"); syncRoots(); });
+    const cb = () => { console.log("[FoldersView] onDidChangeFolders CALLBACK FIRED"); syncRoots(); };
+    const unsub1 = onDidChangeFolders(cb);
+    console.log("[FoldersView] sub完成 unsub1=", typeof unsub1, "listeners after sub:", (onDidChangeFolders as any)._listeners?.size ?? "N/A");
     // E4V#fix: 文件变更防抖——300ms 内累积的变更合并为一次 refresh。
     // 背景：onFileChange IPC 监听是全局的（所有 watcher 共享 filesystem:changed 频道），
     // 批量文件操作（npm install / git checkout / appData 写入）会产生数十个事件，
