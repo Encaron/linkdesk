@@ -31,6 +31,8 @@ export interface WorkspaceFolder {
 
 let _folders: WorkspaceFolder[] = [];
 let _activeWorkspaceUri: string | null = null;
+const _MODULE_ID = "WS-" + Math.random().toString(36).slice(2, 6);
+console.log("[WorkspaceService] 模块实例 " + _MODULE_ID);
 const _onDidChangeFolders = new Emitter<WorkspaceFolder[]>();
 const _onDidChangeActiveWorkspace = new Emitter<string>();
 
