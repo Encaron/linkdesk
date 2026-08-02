@@ -19,6 +19,7 @@ import EditorView from "./EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
+import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
 
 export interface EditorTabProps {
@@ -35,6 +36,10 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const dirtyRef = useRef(false);
+  // E4V#40o——自动保存计时器
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // E4V#40o——onFocusChange 需要前一帧 isActive 判断切换方向
+  const prevActiveRef = useRef(isActive);
 
   // E4V#40j——编辑器状态栏数据
   const [editorStatus, setEditorStatus] = useState<EditorStatus>({
@@ -62,6 +67,22 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     },
     [],
   );
+
+  // 保存——放前面，autoSave 逻辑引用它
+  const handleSave = useCallback(async () => {
+    if (!model) return;
+    try {
+      await model.save();
+      model.markSaved();
+      dirtyRef.current = false;
+      clearDirtyFile(filePath);
+      const baseName = normalizePath(filePath).split("/").pop() || filePath;
+      tabActions?.updateTabLabelBySourceId?.(filePath, baseName);
+    } catch (err) {
+      console.error(`[EditorTab] 保存失败: ${filePath}`, err);
+      setError(`保存失败: ${(err as Error).message}`);
+    }
+  }, [model, filePath, tabActions]);
 
   // 加载文件
   useEffect(() => {
@@ -131,6 +152,16 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     return () => { cancelled = true; };
   }, [filePath]);
 
+  // E4V#40o——onFocusChange 自动保存：切走标签页时自动保存
+  useEffect(() => {
+    const wasActive = prevActiveRef.current;
+    prevActiveRef.current = isActive;
+    const autoSave = getConfigurationValue<string>("files.autoSave") ?? "off";
+    if (autoSave === "onFocusChange" && wasActive && !isActive && model && model.isDirty()) {
+      handleSave();
+    }
+  }, [isActive, model, handleSave]);
+
   // 内容变更
   const handleChange = useCallback((newValue: string | undefined) => {
     const v = newValue ?? "";
@@ -147,23 +178,22 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     if (isDirty) {
       trackDirtyFile(filePath, v);
     }
-  }, [model, filePath, tabActions]);
-
-  // 保存
-  const handleSave = useCallback(async () => {
-    if (!model) return;
-    try {
-      await model.save();
-      model.markSaved();
-      dirtyRef.current = false;
-      clearDirtyFile(filePath);
-      const baseName = normalizePath(filePath).split("/").pop() || filePath;
-      tabActions?.updateTabLabelBySourceId?.(filePath, baseName);
-    } catch (err) {
-      console.error(`[EditorTab] 保存失败: ${filePath}`, err);
-      setError(`保存失败: ${(err as Error).message}`);
+    // E4V#40o——afterDelay 自动保存：每次变更重置 1s 计时器
+    const autoSave = getConfigurationValue<string>("files.autoSave") ?? "off";
+    if (autoSave === "afterDelay") {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+      autoSaveTimerRef.current = setTimeout(() => {
+        handleSave();
+      }, 1000);
     }
-  }, [model, filePath, tabActions]);
+  }, [model, filePath, tabActions, handleSave]);
+
+  // E4V#40o——卸载时清理自动保存计时器
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
 
   if (loading) {
     return <div className="editor-loading">加载中…</div>;
