@@ -38,6 +38,7 @@ import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/LayoutService";
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
+import { ViewContainerService } from "./core/ViewContainerService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
@@ -299,6 +300,9 @@ function App() {
             default: "",
             description: "重置侧栏布局",
             renderHint: "action",
+            onApply: () => {
+              ViewContainerService.resetCollapsedState();
+            },
           },
           "app.accentMode": {
             type: "string",
