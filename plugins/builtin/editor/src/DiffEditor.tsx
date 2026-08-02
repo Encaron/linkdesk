@@ -84,10 +84,13 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
     return subscribeThemeSync(monacoRef);
   }, []);
 
-  if (loading) return <div className="editor-loading">加载对比…</div>;
-  if (error) return <div className="editor-error">{error}</div>;
-
-  return <div ref={containerRef} style={{ height: "100%" }} />;
+  return (
+    <div style={{ height: "100%", position: "relative" }}>
+      {loading && <div className="editor-loading">加载对比…</div>}
+      {error && <div className="editor-error">{error}</div>}
+      <div ref={containerRef} style={{ height: "100%", display: loading ? "none" : "block" }} />
+    </div>
+  );
 };
 
 export default DiffEditor;
