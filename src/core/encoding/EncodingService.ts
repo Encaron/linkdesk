@@ -6,8 +6,10 @@
  * 纯逻辑，不涉 UI。状态栏编码切换由 editor 插件负责。
  *
  * VS Code 对标：src/vs/base/common/encoding.ts
- * 底层：TextDecoder/TextEncoder（Chromium 支持 GBK）+ iconv-lite（GBK 编码，未来增强）
+ * 底层：TextDecoder/TextEncoder（Chromium 支持 GBK）+ iconv-lite（GBK 编码）
  */
+
+import * as iconv from "iconv-lite";
 
 /* ── BOM 常量 ── */
 
@@ -165,10 +167,9 @@ export class EncodingService {
     if (enc === "utf-8") {
       return new TextEncoder().encode(text);
     }
-    // GBK/UTF-16 编码暂不支持——Electron renderer 中 TextEncoder 仅 UTF-8。
-    // 🔥 未来增强：iconv-lite.encode(text, 'gbk')
-    console.warn(`[EncodingService] encode("${enc}") not yet supported, using UTF-8`);
-    return new TextEncoder().encode(text);
+    // E4V#40w——iconv-lite 编码 GBK/UTF-16
+    // iconv-lite.encode() 返回 Node Buffer，是 Uint8Array 的子类 → 直接返回
+    return iconv.encode(text, enc) as Uint8Array;
   }
 
   /** 编码名是否为有效编码 */

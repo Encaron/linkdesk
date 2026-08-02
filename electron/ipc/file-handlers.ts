@@ -59,6 +59,11 @@ export function registerFileHandlers(): void {
     return fileService.readBinaryFile(filePath);
   });
 
+  // E4V#40w——GBK 编码保存
+  ipcMain.handle('filesystem:writeBinaryFile', async (_event, filePath: string, data: Buffer) => {
+    await fileService.writeBinaryFile(filePath, data);
+  });
+
   // E4V#fix: 每个 watcher 独立 IPC 通道——文件树和快捷键系统不再共享 filesystem:changed
   ipcMain.handle('filesystem:watch', (event, dirPath: string) => {
     const watcherId = fileService.watchFile(dirPath, (change) => {

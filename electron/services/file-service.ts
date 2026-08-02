@@ -140,6 +140,13 @@ class FileService {
     return fs.readFile(filePath);
   }
 
+  /** E4V#40w——写入二进制文件（GBK/UTF-16 编码保存） */
+  async writeBinaryFile(filePath: string, data: Buffer): Promise<void> {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, data);
+  }
+
   /** 开始监听文件/目录变化——返回 watcherId */
   watchFile(
     dirPath: string,
