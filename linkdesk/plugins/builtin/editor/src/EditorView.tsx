@@ -90,9 +90,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         const def = defs[0];
         const targetPath = fileUriToPath(def.fileName);
         console.log("[editor] 跳转定义 →", targetPath);
+        const label = normalizePath(targetPath).split("/").pop() || targetPath;
         tabActionsRef.current?.createTab("editor", {
           filePath: targetPath,
           sourceId: targetPath,
+          label,
           pinned: false,
         });
       } catch (e) {
@@ -105,10 +107,12 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       label: "Go to Definition",
       keybindings: [monaco.KeyCode.F12],
       run: () => {
+        console.log("[editor] goToDefinition action 触发");
         const pos = editor.getPosition();
         if (pos) goToDefinitionAt(pos);
       },
     });
+    console.log("[editor] action linkdesk.goToDefinition 已注册");
   }, []);
 
   useEffect(() => {
