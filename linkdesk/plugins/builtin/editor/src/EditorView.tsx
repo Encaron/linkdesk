@@ -43,6 +43,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const monacoRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
+  const renderCountRef = useRef(0);
+  renderCountRef.current++;
+  console.log("[editor] RENDER #" + renderCountRef.current, "filePath:", filePath, "isActive:", isActive, "editorRef:", !!editorRef.current);
   onSaveRef.current = onSave;
 
   const tabActions = useTabActions();
@@ -225,15 +228,17 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   // ── keep-alive——标签页切换时 layout ──
   useEffect(() => {
+    console.log("[editor] isActive effect FIRED——isActive:", isActive, "filePath:", filePath, "editorRef:", !!editorRef.current);
     if (!isActive) return;
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
-    // F12 目标文件已开时——EditorView 不会重新 mount，需在 isActive 变化时 reveal
     const pos = consumePendingReveal(filePath);
+    console.log("[editor] isActive consumePendingReveal:", filePath, "pos:", !!pos);
     if (pos && editorRef.current) {
       const p = { lineNumber: pos.line, column: pos.column };
       editorRef.current.setPosition(p);
       editorRef.current.revealPositionInCenter(p);
       clearPendingReveal(filePath);
+      console.log("[editor] isActive reveal DONE");
     }
     return () => cancelAnimationFrame(raf);
   }, [isActive, filePath]);
