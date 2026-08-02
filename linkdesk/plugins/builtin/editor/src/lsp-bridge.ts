@@ -9,6 +9,13 @@ import type { MessageReader, MessageWriter } from "vscode-jsonrpc";
 
 const lsp = (window as any).linkdesk?.lsp;
 
+/** 语言 ID → MonacoLanguageClient 注册表——goToDefinitionAt 查表分派 */
+const _clients = new Map<string, MonacoLanguageClient>();
+
+export function getLspClient(languageId: string): MonacoLanguageClient | undefined {
+  return _clients.get(languageId);
+}
+
 /**
  * 为指定语言启动 LSP 客户端。
  * 语言服务器通过主进程 child_process.spawn 启动，stdin/stdout 经 IPC 桥接。
@@ -38,6 +45,7 @@ export async function startLspClient(
   });
 
   await client.start();
+  _clients.set(languageId, client);
   console.log(`[lsp-bridge] ${languageId} LSP 客户端已启动, channel:`, channelId);
   return client;
 }
