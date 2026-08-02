@@ -70,15 +70,26 @@ interface PluginManifest {
 
 ```typescript
 // loader.ts——加载时自动推导 appearsIn
+/**
+ * 从 PluginManifest 推导 appearsIn。
+ *
+ * 推导规则：
+ * - iconBar:  有 viewsContainers → "top"（出现在图标栏上部）
+ *             无 viewsContainers → undefined（不出现）
+ * - sidePanel: 有 viewsContainers → true（侧栏中有容器）
+ * - tabBar:   有 entry 且无 viewsContainers → true（作为标签页打开）
+ *             有 entry 且有 viewsContainers → false（通过侧栏访问，不做标签页）
+ *             这是对标 VS Code：sidebar webview 和 editor tab 互斥
+ * - statusBar: 有 statusBar 字段且非空 → true
+ *
+ * 显式声明 appearsIn 覆盖推导结果。旧字段 iconLocation/viewRole/keepSidebarOnFocus 不再消费。
+ */
 function deriveAppearsIn(manifest: PluginManifest): Required<PluginManifest["appearsIn"]> {
   return {
-    // 有 viewsContainers → 图标栏 top + 侧栏。对标旧 viewRole: "sidebarPrimary"
     iconBar: manifest.contributes?.viewsContainers ? "top" : undefined,
-    // 有 viewsContainers → 侧栏。对标旧逻辑
     sidePanel: !!manifest.contributes?.viewsContainers,
-    // 没有 viewsContainers 的视图插件 → 标签页。对标旧 viewRole: "tabOnly"
+    // 🔥 前提：有 entry 且有 viewsContainers 的插件通过侧栏访问，不做标签页
     tabBar: !!manifest.entry && !manifest.contributes?.viewsContainers,
-    // 有 statusBar 声明 → 状态栏
     statusBar: !!(manifest.statusBar && manifest.statusBar.length > 0),
   };
 }
@@ -86,15 +97,15 @@ function deriveAppearsIn(manifest: PluginManifest): Required<PluginManifest["app
 
 **自动推导 = 零迁移成本。** 现有插件不改 `plugin.json` 也能正常工作——`appearsIn` 从已有字段推导。想精确控制的插件显式声明 `appearsIn` 覆盖自动推导。
 
-### 旧字段废弃——不删，但不再消费
+### 旧字段——直接删除
 
 | 旧字段 | 替代 |
 |------|------|
 | `iconLocation` | `appearsIn.iconBar` |
 | `viewRole` | `appearsIn.tabBar` / `appearsIn.sidePanel` |
-| `keepSidebarOnFocus` | 侧栏行为统一由 ShellEvents 管理——不再需要这个字段 |
+| `keepSidebarOnFocus` | 侧栏行为统一由 ShellEvents 管理 |
 
-**标记 `@deprecated`。** E5 不删——防止旧插件炸。但所有消费方改为读 `appearsIn`。
+**只有 3 个插件，全部在 E5#14e-g 中迁移。旧字段从类型定义、plugin.json、消费方代码中全部删除。零兼容层。**
 
 ### 各消费方改为读 appearsIn
 
@@ -164,16 +175,9 @@ manifest._appearsIn = {
 - **`TabBar/WelcomeView`**——过滤 `tabBar` 字段。`getTabCreatableViews` 调用改为 `getAppearsIn`
 - **`SidePanel`**——过滤 `sidePanel` 字段。不再判断 `viewsContainers`
 
-#### E5#14d 标记旧字段 @deprecated（~5 行）
+#### E5#14d 删除旧字段（~10 行）
 
-```typescript
-/** @deprecated E5——请用 appearsIn.iconBar */
-iconLocation?: "top" | "bottom";
-/** @deprecated E5——请用 appearsIn.tabBar / appearsIn.sidePanel */
-viewRole?: "sidebarPrimary" | "tabOnly";
-/** @deprecated E5——侧栏行为统一由 ShellEvents 管理 */
-keepSidebarOnFocus?: boolean;
-```
+从 `PluginManifest` 类型定义、`plugin.schema.json`、`viewRegistry.ts` 中全部删除 `iconLocation`、`viewRole`、`keepSidebarOnFocus`。3 个插件已在 E5#14e-g 迁移到 `appearsIn`。
 
 #### E5#14e 🔴 编辑器 plugin.json——补显式声明（~3 行）
 
@@ -216,7 +220,7 @@ Python 插件（E5#13e）：
 - [ ] IconBar 只显示 `appearsIn.iconBar` 的插件——编辑器不出现
 - [ ] TabBar 只创建 `appearsIn.tabBar` 的插件标签页
 - [ ] SidePanel 只显示 `appearsIn.sidePanel` 的插件容器
-- [ ] `iconLocation` / `viewRole` / `keepSidebarOnFocus` 标记 `@deprecated`——不删但不再消费
+- [ ] `iconLocation` / `viewRole` / `keepSidebarOnFocus` 从类型定义、schema、消费方全部删除
 - [ ] `getViewPlugins()` 返回全部插件——过滤由消费方自己的 `appearsIn` 读取决定
 - [ ] 自动推导覆盖 100% 现有插件——不改 plugin.json 也正常工作
 - [ ] `npm run check` 零错误
