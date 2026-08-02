@@ -20,8 +20,6 @@ export interface SidebarSectionProps {
   collapsible?: boolean;
   /** 默认展开/合上，默认 true */
   defaultOpen?: boolean;
-  /** 重置令牌——变化时强制同步 open 到 defaultOpen */
-  resetToken?: number;
   /** 右侧标记（如 "(3)"、3、"新"） */
   badge?: string | number;
   /** 右侧操作按钮 slot——点击不冒泡到折叠 */
@@ -54,7 +52,6 @@ function SidebarSection({
   title,
   collapsible = true,
   defaultOpen = true,
-  resetToken,
   badge,
   actions,
   pinnedContent,
@@ -70,8 +67,6 @@ function SidebarSection({
   onToggleCollapse,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
-  // E4V#46——重置时 prop 敲门：resetToken 变了 → 同步 open 到 defaultOpen
-  useEffect(() => { setOpen(defaultOpen); }, [resetToken, defaultOpen]);
   // E4V#43——actions 溢出检测 + … 下拉
   const actionsRef = useRef<HTMLSpanElement>(null);
   const moreRef = useRef<HTMLSpanElement>(null);
