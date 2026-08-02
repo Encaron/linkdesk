@@ -105,7 +105,7 @@ function deriveAppearsIn(manifest: PluginManifest): Required<PluginManifest["app
 | `viewRole` | `appearsIn.tabBar` / `appearsIn.sidePanel` |
 | `keepSidebarOnFocus` | 侧栏行为统一由 ShellEvents 管理 |
 
-**只有 3 个插件，全部在 E5#14e-g 中迁移。旧字段从类型定义、plugin.json、消费方代码中全部删除。零兼容层。**
+**只有 4 个官方插件（editor/file-tree/marketplace/serial-monitor），全部在 E5#14e-g 中迁移。旧字段从类型定义、plugin.json、消费方代码中全部删除。零兼容层。**
 
 ### 各消费方改为读 appearsIn
 
@@ -177,7 +177,7 @@ manifest._appearsIn = {
 
 #### E5#14d 删除旧字段（~10 行）
 
-从 `PluginManifest` 类型定义、`plugin.schema.json`、`viewRegistry.ts` 中全部删除 `iconLocation`、`viewRole`、`keepSidebarOnFocus`。3 个插件已在 E5#14e-g 迁移到 `appearsIn`。
+从 `PluginManifest` 类型定义、`plugin.schema.json`、`viewRegistry.ts` 中全部删除 `iconLocation`、`viewRole`、`keepSidebarOnFocus`。4 个插件已在 E5#14e-g 迁移到 `appearsIn`。
 
 #### E5#14e 🔴 编辑器 plugin.json——补显式声明（~3 行）
 

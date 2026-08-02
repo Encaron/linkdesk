@@ -81,14 +81,14 @@ style={{
 ### 删什么
 
 ```diff
-// navigation-bridge.ts
+// plugins/builtin/editor/src/navigation-bridge.ts (L24-39)
 - // 编辑器注册表——filePath → editor 实例
-- const editorRegistry = new Map<string, monaco.editor.IStandaloneCodeEditor>();
+- const _editorRegistry = new Map<string, any>();
 - export function registerEditor(filePath, editor) { ... }
 - export function unregisterEditor(filePath) { ... }
 - export function getRegisteredEditor(filePath) { ... }
 
-// EditorView.tsx
+// plugins/builtin/editor/src/EditorView.tsx
 - // handleEditorMount 中：
 - registerEditor(filePath, editor);
 
@@ -125,12 +125,12 @@ tabActionsRef.current?.createTab("editor", {
 ### E5#40a TabPanePositioner 改显隐策略
 
 - [ ] **E5#40a** `TabPanePositioner.tsx` L76——`display:none` → `opacity:0` + `pointerEvents:none` + `zIndex:0` | ~3 行
-- [ ] **E5#40b** 验证——编辑器从 A.tsx F12 跳到 B.tsx → 光标正确 → 切回 A → 切回 B → 光标仍在原行
+- [ ] 验证——编辑器从 A.tsx F12 跳到 B.tsx → 光标正确 → 切回 A → 切回 B → 光标仍在原行
 
 ### E5#40b 编辑器删绕路代码
 
-- [ ] **E5#40b** `navigation-bridge.ts`——删 `editorRegistry` / `registerEditor` / `unregisterEditor` / `getRegisteredEditor` | ~−20 行
-- [ ] **E5#40c** `EditorView.tsx`——删 F12 handler 中直查 registry 分支 + mount 中 `registerEditor` + dispose 中 `unregisterEditor` | ~−30 行
+- [ ] **E5#40b** `plugins/builtin/editor/src/navigation-bridge.ts`——删 `_editorRegistry` / `registerEditor` / `unregisterEditor` / `getRegisteredEditor` | ~−20 行
+- [ ] **E5#40c** `plugins/builtin/editor/src/EditorView.tsx`——删 F12 handler 中直查 registry 分支 + mount 中 `registerEditor` + dispose 中 `unregisterEditor` | ~−30 行
 - [ ] **E5#40d** F12 回归简单模型——`setPendingReveal` → `createTab` → mount 时 consume
 
 ### E5#40c 回归验证
