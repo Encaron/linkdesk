@@ -13,6 +13,7 @@ import { ViewContainerService } from "../../core/ViewContainerService";
 import { ContextKeyService } from "../../core/ContextKeyService";
 import ErrorBoundary from "./ErrorBoundary";
 import SidebarSection from "./SidebarSection";
+import { setDraggingView } from "./viewDragState";
 
 interface SectionStackProps {
   views: ViewDescriptor[];
@@ -165,6 +166,13 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", viewId);
     setDragViewId(viewId);
+    setDraggingView({ viewId, fromContainerId: containerId ?? "" });
+  }, [containerId]);
+
+  const handleViewDragEnd = useCallback(() => {
+    setDragViewId(null);
+    setDropIndex(null);
+    setDraggingView(null);
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
@@ -185,6 +193,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     ViewContainerService.reorderView(containerId, dragViewId, target);
     setDragViewId(null);
     setDropIndex(null);
+    setDraggingView(null);
   }, [dragViewId, dropIndex, containerId, views]);
 
   if (views.length === 0) return null;
@@ -200,7 +209,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     return ContextKeyService.matches(empty.when) ? empty.content : null;
   };
 
-  const renderSection = (view: ViewDescriptor, draggable: boolean, onDragStart?: (e: React.DragEvent) => void) => {
+  const renderSection = (view: ViewDescriptor, draggable: boolean, onDragStart?: (e: React.DragEvent) => void, onDragEnd?: () => void) => {
     const emptyContent = getEmptyContent(view.id);
     const body = emptyContent ?? (
       <ErrorBoundary pluginId={pluginId}>
@@ -210,7 +219,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
 
     if (mergeHeader) {
       return (
-        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden draggable={draggable} onDragStart={onDragStart}>
+        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
           {body}
         </SidebarSection>
       );
@@ -231,6 +240,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         stickyTop={toolbarHeight}
         draggable={draggable}
         onDragStart={onDragStart}
+        onDragEnd={onDragEnd}
       >
         {body}
       </SidebarSection>
@@ -242,7 +252,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
         const multiView = !singleView;
-        const section = renderSection(view, multiView, (e) => handleDragStart(e, view.id));
+        const section = renderSection(view, multiView, (e) => handleDragStart(e, view.id), handleViewDragEnd);
 
         // 拖拽指示器样式
         const showDropBefore = !!(dragViewId && dragViewId !== view.id && dropIndex === i);

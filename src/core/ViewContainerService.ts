@@ -351,6 +351,27 @@ export class ViewContainerServiceClass extends RegistryBase {
     return model.isVisible(viewId);
   }
 
+  /** E4V#48——跨容器迁移 view。对标 VS Code ViewContainerModel.moveView。
+   *  newIndex 可选——不传则追加到末尾。 */
+  moveView(viewId: string, fromContainerId: string, toContainerId: string, newIndex?: number): void {
+    if (fromContainerId === toContainerId) return;
+    const fromModel = this._models.get(fromContainerId);
+    if (!fromModel) return;
+    const idx = fromModel.allViewDescriptors.findIndex((v) => v.id === viewId);
+    if (idx === -1) return;
+    const [view] = fromModel.allViewDescriptors.splice(idx, 1);
+    // 确保目标容器存在
+    this._ensureContainer(toContainerId);
+    const toModel = this._models.get(toContainerId)!;
+    const insertAt = newIndex ?? toModel.allViewDescriptors.length;
+    toModel.allViewDescriptors.splice(insertAt, 0, view);
+    // 更新两个容器的活跃 views
+    this._updateActiveViews(fromContainerId);
+    this._updateActiveViews(toContainerId);
+    this.onDidChangeViews.fire({ containerId: fromContainerId, views: [...fromModel.allViewDescriptors] });
+    this.onDidChangeViews.fire({ containerId: toContainerId, views: [...toModel.allViewDescriptors] });
+  }
+
   /* ═══ E4V#47 View 排序 ═══ */
 
   /** 重排 container 内 view 顺序——拖 header 到新位置。

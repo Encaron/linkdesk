@@ -16,6 +16,9 @@ import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
 import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏第一个位置
+// E4V#48——跨容器拖放
+import { ViewContainerService } from "../core/ViewContainerService";
+import { getDraggingView, setDraggingView } from "./shared/viewDragState";
 import "./IconBar.css";
 
 interface IconBarProps {
@@ -64,6 +67,35 @@ function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
   const dropRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
   const wasDragRef = useRef(false); // 标记本次是否拖拽了——防止 onClick 误触发
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // E4V#48——跨容器拖放（HTML5 drag-and-drop 从 SectionStack 过来）
+  const [viewDropTarget, setViewDropTarget] = useState<string | null>(null);
+
+  const handleIconDragOver = useCallback((e: React.DragEvent, pluginId: string) => {
+    const info = getDraggingView();
+    if (!info) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+    setViewDropTarget(pluginId);
+  }, []);
+
+  const handleIconDragLeave = useCallback((_e: React.DragEvent, targetId: string) => {
+    setViewDropTarget((prev) => prev === targetId ? null : prev);
+  }, []);
+
+  const handleIconDrop = useCallback((e: React.DragEvent, toPluginId: string) => {
+    e.preventDefault();
+    const info = getDraggingView();
+    if (!info) return;
+    // 查目标 plugin 声明的第一个容器 ID
+    const toPlugin = getViewPlugin(toPluginId);
+    const containers = toPlugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+    const toContainerId = containers ? Object.keys(containers)[0] : undefined;
+    if (!toContainerId) return;
+    ViewContainerService.moveView(info.viewId, info.fromContainerId, toContainerId);
+    setDraggingView(null);
+    setViewDropTarget(null);
+  }, []);
 
   // Phase 5h Step 1：订阅 viewRegistry 变更——安装/卸载/禁用/启用即时更新图标栏
   useEffect(() => {
@@ -184,8 +216,11 @@ function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
       <div key={entry.pluginId} className="icon-bar-item-wrapper">
         {showBefore && <div className="icon-drop-indicator" />}
         <button
-          className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}`}
+          className={`icon-btn${isActive(entry.pluginId) ? " active" : ""}${draggedId === entry.pluginId ? " dragging" : ""}${viewDropTarget === entry.pluginId ? " view-drop-target" : ""}`}
           data-plugin-id={entry.pluginId}
+          onDragOver={(e) => handleIconDragOver(e, entry.pluginId)}
+          onDragLeave={(e) => handleIconDragLeave(e, entry.pluginId)}
+          onDrop={(e) => handleIconDrop(e, entry.pluginId)}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
             e.preventDefault(); // 阻止浏览器原生拖拽

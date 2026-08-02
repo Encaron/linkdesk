@@ -43,6 +43,12 @@
   z-index: 1;
 }
 
+/* E4V#48——view 跨容器拖放 drop target */
+.icon-btn.view-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
 /* 拖拽中的图标 */
 .icon-btn.dragging {
   opacity: 0.4;
