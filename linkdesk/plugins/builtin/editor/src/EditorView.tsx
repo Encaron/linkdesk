@@ -28,6 +28,10 @@ export interface EditorViewProps {
   onChange?: (value: string | undefined) => void;
   onSave?: () => void;
   readOnly?: boolean;
+  /** E4V#40j——光标位置变更，EditorStatusBar 消费 */
+  onCursorChange?: (lineNumber: number, column: number) => void;
+  /** E4V#40j——editor 创建完成后回传缩进/EOL 设置 */
+  onEditorMount?: (opts: { tabSize: number; insertSpaces: boolean; eol: string }) => void;
 }
 
 export interface EditorViewHandle {
@@ -36,7 +40,7 @@ export interface EditorViewHandle {
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language: _language, filePath, isActive, onChange, onSave, readOnly },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount },
   ref,
 ) {
   const editorRef = useRef<any>(null);
@@ -44,6 +48,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
+  const onCursorChangeRef = useRef(onCursorChange);
+  onCursorChangeRef.current = onCursorChange;
+  const onEditorMountRef = useRef(onEditorMount);
+  onEditorMountRef.current = onEditorMount;
 
   const tabActions = useTabActions();
   const tabActionsRef = useRef(tabActions);
@@ -111,6 +119,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       monacoRef.current = monaco;
       registerEditor(filePath, editor);
 
+      // E4V#40j——回传编辑器初始选项（缩进/EOL）给 EditorTab → EditorStatusBar
+      const modelOpts = model.getOptions();
+      onEditorMountRef.current?.({
+        tabSize: modelOpts.tabSize,
+        insertSpaces: modelOpts.insertSpaces,
+        eol: model.getEOL() === "\r\n" ? "CRLF" : "LF",
+      });
+
       // 7. F12 跳转后定位——兜底 consume（editor 已注册，这里只处理"此文件是新开的"）
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
@@ -127,6 +143,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       model.onDidChangeContent(() => {
         onChange?.(model!.getValue());
       });
+
+      // 8b. 光标位置跟踪——E4V#40j EditorStatusBar 消费
+      editor.onDidChangeCursorPosition((e: any) => {
+        onCursorChangeRef.current?.(e.position.lineNumber, e.position.column);
+      });
+      // 初始触发一次
+      const initPos = editor.getPosition();
+      if (initPos) {
+        onCursorChangeRef.current?.(initPos.lineNumber, initPos.column);
+      }
 
       // 9. Ctrl+S
       editor.addCommand(
