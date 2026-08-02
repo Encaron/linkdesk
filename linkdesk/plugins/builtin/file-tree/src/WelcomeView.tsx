@@ -16,7 +16,6 @@ const MAX_RECENT = 10;
 /* ── 组件 ── */
 
 const WelcomeView: React.FC = () => {
-  console.log("[WelcomeView] 组件挂载");
   const { t } = useTranslation();
   const [recentFolders, setRecentFolders] = useState<string[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -52,17 +51,10 @@ const WelcomeView: React.FC = () => {
   /* ── 打开文件夹 ── */
 
   const handleOpenFolder = useCallback(async () => {
-    console.log("[WelcomeView] handleOpenFolder 点击");
-    try {
-      await openFolder();
-      console.log("[WelcomeView] openFolder 成功");
-    } catch (e) {
-      console.error("[WelcomeView] openFolder 失败", e);
-    }
+    await openFolder();
   }, []);
 
   const handleOpenRecent = useCallback(async (folderPath: string) => {
-    console.log("[WelcomeView] handleOpenRecent", folderPath);
     addFolder(folderPath);
   }, []);
 
