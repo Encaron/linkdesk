@@ -301,6 +301,7 @@ function App() {
             description: "重置侧栏布局",
             renderHint: "action",
             onApply: () => {
+              console.log("[App] workbench.resetSidebarLayout onApply called");
               ViewContainerService.resetCollapsedState();
             },
           },

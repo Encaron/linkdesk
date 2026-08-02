@@ -376,11 +376,19 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** E4V#46——一键清除全部折叠持久化 */
   resetCollapsedState(): void {
+    console.log("[resetCollapsedState] ★ CALLED");
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
     this._collapseVersion++;
+    console.log("[resetCollapsedState] collapseVersion =", this._collapseVersion, "models:", [...this._models.keys()]);
     for (const [containerId] of this._models) {
+      console.log("[resetCollapsedState] _updateActiveViews for", containerId);
       this._updateActiveViews(containerId);
     }
+  }
+
+  /** 🔥 onDidChangeActiveViews 订阅计数——被谁订阅 */
+  get _activeViewsSubCount(): number {
+    return (this.onDidChangeActiveViews as any)._listeners?.length ?? -1;
   }
 
   /* ═══ 可见性 ═══ */

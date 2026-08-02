@@ -219,6 +219,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     // E4V#46——持久化覆盖初始折叠态
     const isPersistedCollapsed = ViewContainerService.isCollapsed(view.id);
     const defaultOpen = isPersistedCollapsed ? false : !view.collapsed;
+    console.log(`[SectionStack] view=${view.id} v=${ViewContainerService.collapseVersion} persisted=${isPersistedCollapsed} defaultOpen=${defaultOpen}`);
 
     return (
       <SidebarSection
