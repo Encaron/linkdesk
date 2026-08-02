@@ -13,6 +13,7 @@ import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
+import { syncMonacoTheme } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
 
 export interface EditorViewProps {
@@ -72,7 +73,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // 2. 动态 import monaco（initMonacoEnv 已配置好 workers）
       const monaco = await import("monaco-editor");
 
-      // 3. TS compilerOptions + 影子 model 扫描
+      // 3. 主题（用 LinkDesk CSS 变量，不依赖 VS Code 扩展主题）
+      syncMonacoTheme(monaco);
+
+      // 4. TS compilerOptions + 影子 model 扫描
       setupTypeScriptEnv(monaco);
       scanWorkspaceForTypeScript(monaco);
 
