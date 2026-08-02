@@ -1,20 +1,19 @@
 /**
  * E4V#40b Monaco 编辑器包装器。
  *
- * E4V#40i2：F12/Ctrl+Click 跳转定义——调 TS worker 拿定义 → 壳 TabActions.createTab()。
- * Ctrl+Click 走 gotoLocation.alternativeDefinitionCommand——Monaco 原生机制。
+ * E4V#40t2：用 monaco-languageclient 的 EditorApp 替代 @monaco-editor/react 的 <Editor>。
+ * EditorApp 走 VS Code 服务层（IEditorService/ICommandService/ITextModelService），
+ * F12/Ctrl+Click 自动路由到壳标签页（openEditorFunc）。
  *
- * 🔥 不使用 monaco-vscode-api 的 initialize()——standalone action 会丢失。
- *    直接在自定义 action 里 TS worker + tabActions 桥接。
+ * 🔥 保留 setupTypeScriptEnv + scanWorkspaceForTypeScript——TS compilerOptions + 影子 model
+ *    仍需要手动设。语法高亮/主题/worker 由 MonacoVscodeApiWrapper.start() 托管。
  */
-import { useRef, useEffect, useCallback, useImperativeHandle, forwardRef } from "react";
-import Editor, { type OnMount, type BeforeMount } from "@monaco-editor/react";
+import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+import { EditorApp, type EditorAppConfig } from "monaco-languageclient/editorApp";
 import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
-import { registerLanguageMap } from "./language-map";
-import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
+import { initMonacoEnv } from "./monaco-init";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
-import { fileUriToPath } from "./navigation-bridge";
 
 export interface EditorViewProps {
   value: string;
@@ -32,11 +31,11 @@ export interface EditorViewHandle {
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language, filePath, isActive, onChange, onSave, readOnly },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly },
   ref,
 ) {
-  const editorRef = useRef<any>(null);
-  const monacoNsRef = useRef<any>(null);
+  const editorAppRef = useRef<EditorApp | null>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
 
@@ -45,63 +44,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   tabActionsRef.current = tabActions;
 
   useImperativeHandle(ref, () => ({
-    layout: () => editorRef.current?.layout(),
-    dispose: () => editorRef.current?.dispose(),
+    layout: () => editorAppRef.current?.getEditor()?.layout(),
+    dispose: () => editorAppRef.current?.dispose(),
   }), []);
 
-  const beforeMount: BeforeMount = useCallback((monaco) => {
-    monacoNsRef.current = monaco;
-    registerLanguageMap(monaco);
-    syncMonacoTheme(monaco);
-    setupTypeScriptEnv(monaco);
-    scanWorkspaceForTypeScript(monaco);
-  }, []);
+  // ── 初始化——每个 filePath 创建一次 editor ──
+  useEffect(() => {
+    if (!containerRef.current) return;
+    let disposed = false;
+    const container = containerRef.current;
 
-  const handleEditorMount: OnMount = useCallback((editor, monaco) => {
-    editorRef.current = editor;
-    monacoNsRef.current = monaco;
-
-    editor.addCommand(
-      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-      () => onSaveRef.current?.(),
-    );
-
-    // 扫描后 TS 重分析
-    scanWorkspaceForTypeScript(monaco).then(() => {
-      const m = editor.getModel();
-      if (!m || m.isDisposed()) return;
-      const lastLine = m.getLineCount();
-      const lastCol = m.getLineMaxColumn(lastLine);
-      const Range = monaco.Range;
-      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
-      m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
-    });
-
-    // 🔥 跳转定义——F12 + Ctrl+Click 共用
-    const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
-      const m = editor.getModel();
-      if (!m) return;
-      try {
-        const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
-        const client = await worker(m.uri);
-        const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
-        if (!defs || defs.length === 0) return;
-
-        const def = defs[0];
-        const targetPath = fileUriToPath(def.fileName);
-        const currentPath = fileUriToPath(m.uri.toString());
-
-        // 同文件——在当前编辑器内跳转到定义位置
-        if (targetPath === currentPath) {
-          const targetPos = m.getPositionAt(def.textSpan.start);
-          editor.setPosition(targetPos);
-          editor.revealPositionInCenter(targetPos);
-          console.log("[editor] 同文件跳转 → 行", targetPos.lineNumber);
-          return;
-        }
-
-        // 跨文件——创建壳标签页
-        console.log("[editor] 跨文件跳转 →", targetPath);
+    (async () => {
+      // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
+      await initMonacoEnv(async (modelRef: any, _options: unknown) => {
+        const targetPath = modelRef.object.textEditorModel.uri.fsPath;
         const label = normalizePath(targetPath).split("/").pop() || targetPath;
         tabActionsRef.current?.createTab("editor", {
           filePath: targetPath,
@@ -109,72 +65,72 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           label,
           pinned: false,
         });
-      } catch (e) {
-        console.error("[editor] 跳转定义失败:", e);
+        return undefined;
+      });
+      if (disposed) return;
+
+      // 2. 动态 import monaco（initMonacoEnv 已配置好 workers）
+      const monaco = await import("monaco-editor");
+
+      // 3. TS compilerOptions + 影子 model 扫描
+      setupTypeScriptEnv(monaco);
+      scanWorkspaceForTypeScript(monaco);
+
+      // 4. 创建 EditorApp（替代 <Editor>）
+      const uri = `file:///${normalizePath(filePath)}`;
+      const appConfig: EditorAppConfig = {
+        codeResources: { modified: { text: value, uri } },
+        readOnly,
+      };
+      const editorApp = new EditorApp(appConfig);
+      await editorApp.start(container);
+      if (disposed) { editorApp.dispose(); return; }
+      editorAppRef.current = editorApp;
+
+      // 5. onChange 接线
+      editorApp.registerOnTextChangedCallback((changes: { modified?: string }) => {
+        if (changes.modified != null) onChange?.(changes.modified);
+      });
+
+      // 6. Ctrl+S
+      const editor = editorApp.getEditor();
+      if (editor) {
+        editor.addCommand(
+          monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+          () => onSaveRef.current?.(),
+        );
       }
+
+      // 7. 扫描完成后触发 TS 重分析
+      scanWorkspaceForTypeScript(monaco).then(() => {
+        if (disposed) return;
+        const m = editor?.getModel();
+        if (!m || m.isDisposed()) return;
+        const lastLine = m.getLineCount();
+        const lastCol = m.getLineMaxColumn(lastLine);
+        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
+        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
+      });
+    })().catch((err) => {
+      console.error("[editor] EditorApp 初始化失败:", err);
+    });
+
+    return () => {
+      disposed = true;
+      editorAppRef.current?.dispose();
     };
+  }, [filePath]);
 
-    // F12
-    editor.addAction({
-      id: "linkdesk.goToDefinition",
-      label: "Go to Definition",
-      keybindings: [monaco.KeyCode.F12],
-      run: () => {
-        console.log("[editor] goToDefinition action 触发");
-        const pos = editor.getPosition();
-        if (pos) goToDefinitionAt(pos);
-      },
-    });
-
-    // Ctrl+Click——gotoLocation.alternativeDefinitionCommand 未生效，改用 onMouseDown 拦截
-    editor.onMouseDown(async (e) => {
-      if (!e.event.ctrlKey && !e.event.metaKey) return;
-      const pos = e.target.position;
-      if (!pos) return;
-      // 仅当该位置有定义时才拦截（否则放行 Monaco 默认行为）
-      try {
-        const m = editor.getModel();
-        if (!m) return;
-        const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
-        const client = await worker(m.uri);
-        const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
-        if (defs && defs.length > 0) {
-          e.event.preventDefault();
-          goToDefinitionAt(pos);
-        }
-      } catch { /* 无定义则放行 */ }
-    });
-
-    console.log("[editor] F12 + Ctrl+Click 就绪");
-  }, []);
-
+  // ── keep-alive——标签页切换时 layout ──
   useEffect(() => {
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
+    const raf = requestAnimationFrame(() => {
+      editorAppRef.current?.getEditor()?.layout();
+    });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
-  useEffect(() => {
-    return subscribeThemeSync(monacoNsRef);
-  }, []);
-
-  useEffect(() => {
-    return () => { editorRef.current?.dispose(); };
-  }, []);
-
-  return (
-    <Editor
-      height="100%"
-      path={`file:///${normalizePath(filePath)}`}
-      language={language}
-      value={value}
-      onChange={onChange}
-      theme="linkdesk"
-      beforeMount={beforeMount}
-      onMount={handleEditorMount}
-      options={{ readOnly }}
-    />
-  );
+  return <div ref={containerRef} style={{ height: "100%" }} />;
 });
 
 export default EditorView;
