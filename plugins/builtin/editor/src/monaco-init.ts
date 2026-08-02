@@ -38,6 +38,9 @@ export async function initMonacoEnv(
       openEditorFunc,
     },
     monacoWorkerFactory: configureDefaultWorkerFactory,
+    advanced: {
+      loadThemes: false, // 🔥 禁用 VS Code 主题扩展——Vite 不认 extension-file:// 协议
+    },
   };
 
   const wrapper = new MonacoVscodeApiWrapper(config);
