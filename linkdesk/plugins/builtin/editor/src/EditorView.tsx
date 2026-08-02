@@ -224,8 +224,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   useEffect(() => {
     if (!isActive) return;
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
+    // 目标文件已开 → F12 聚焦已有标签页时也 consume（EditorView 不会重新 mount）
+    const pos = consumePendingReveal(filePath);
+    if (pos && editorRef.current) {
+      editorRef.current.setPosition({ lineNumber: pos.line, column: pos.column });
+      editorRef.current.revealPositionInCenter({ lineNumber: pos.line, column: pos.column });
+    }
     return () => cancelAnimationFrame(raf);
-  }, [isActive]);
+  }, [isActive, filePath]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);
