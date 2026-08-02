@@ -54,13 +54,28 @@ export async function startLspClient(
 
 function createIpcReader(channelId: string): MessageReader {
   const listeners: Array<(msg: string) => void> = [];
+  let buffer = "";
+
   const unsub = lsp.onData((cid: string, data: string) => {
     if (cid !== channelId) return;
-    for (const line of data.split("\n")) {
-      const trimmed = line.trim();
-      if (trimmed) {
-        for (const cb of listeners) cb(trimmed);
-      }
+    buffer += data;
+
+    // LSP 协议：Content-Length: N\r\n\r\n{json}
+    while (true) {
+      const headerEnd = buffer.indexOf("\r\n\r\n");
+      if (headerEnd === -1) break;
+
+      const header = buffer.slice(0, headerEnd);
+      const lengthMatch = header.match(/Content-Length:\s*(\d+)/i);
+      if (!lengthMatch) { buffer = ""; break; }
+
+      const contentLength = parseInt(lengthMatch[1]);
+      const bodyStart = headerEnd + 4;
+      if (buffer.length < bodyStart + contentLength) break; // 等完整 body
+
+      const body = buffer.slice(bodyStart, bodyStart + contentLength);
+      buffer = buffer.slice(bodyStart + contentLength);
+      for (const cb of listeners) cb(body);
     }
   });
 
