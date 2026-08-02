@@ -77,7 +77,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       m.applyEdits([{ range: new Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
     });
 
-    // 🔥 跳转定义——F12 + Ctrl+Click 共用（Ctrl+Click 走 gotoLocation.alternativeDefinitionCommand）
+    // 🔥 跳转定义——F12 + Ctrl+Click 共用
     const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
       const m = editor.getModel();
       if (!m) return;
@@ -89,7 +89,19 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
         const def = defs[0];
         const targetPath = fileUriToPath(def.fileName);
-        console.log("[editor] 跳转定义 →", targetPath);
+        const currentPath = fileUriToPath(m.uri.toString());
+
+        // 同文件——在当前编辑器内跳转到定义位置
+        if (targetPath === currentPath) {
+          const targetPos = m.getPositionAt(def.textSpan.start);
+          editor.setPosition(targetPos);
+          editor.revealPositionInCenter(targetPos);
+          console.log("[editor] 同文件跳转 → 行", targetPos.lineNumber);
+          return;
+        }
+
+        // 跨文件——创建壳标签页
+        console.log("[editor] 跨文件跳转 →", targetPath);
         const label = normalizePath(targetPath).split("/").pop() || targetPath;
         tabActionsRef.current?.createTab("editor", {
           filePath: targetPath,
@@ -102,6 +114,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       }
     };
 
+    // F12
     editor.addAction({
       id: "linkdesk.goToDefinition",
       label: "Go to Definition",
@@ -112,7 +125,27 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         if (pos) goToDefinitionAt(pos);
       },
     });
-    console.log("[editor] action linkdesk.goToDefinition 已注册");
+
+    // Ctrl+Click——gotoLocation.alternativeDefinitionCommand 未生效，改用 onMouseDown 拦截
+    editor.onMouseDown(async (e) => {
+      if (!e.event.ctrlKey && !e.event.metaKey) return;
+      const pos = e.target.position;
+      if (!pos) return;
+      // 仅当该位置有定义时才拦截（否则放行 Monaco 默认行为）
+      try {
+        const m = editor.getModel();
+        if (!m) return;
+        const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+        const client = await worker(m.uri);
+        const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+        if (defs && defs.length > 0) {
+          e.event.preventDefault();
+          goToDefinitionAt(pos);
+        }
+      } catch { /* 无定义则放行 */ }
+    });
+
+    console.log("[editor] F12 + Ctrl+Click 就绪");
   }, []);
 
   useEffect(() => {
@@ -139,10 +172,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       theme="linkdesk"
       beforeMount={beforeMount}
       onMount={handleEditorMount}
-      options={{
-        readOnly,
-        gotoLocation: { alternativeDefinitionCommand: "linkdesk.goToDefinition" },
-      } as any}
+      options={{ readOnly }}
     />
   );
 });
