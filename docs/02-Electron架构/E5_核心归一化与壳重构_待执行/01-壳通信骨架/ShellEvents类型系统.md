@@ -79,6 +79,9 @@ export interface ShellEvents {
   // ── 侧栏 ──
   /** 侧栏展开/折叠。payload = 是否正在打开 */
   "sidebar:toggled": boolean;
+  /** 侧栏容器切换。payload = 当前活跃 containerId，null = 无活跃容器。
+   *  IconBar 订阅此事件更新高亮——不需要知道具体是谁触发的切换。 */
+  "sidebar:containerChanged": string | null;
 
   // ── 标签页 ──
   /** 标签页切换。payload = 新聚焦的标签页信息 */
