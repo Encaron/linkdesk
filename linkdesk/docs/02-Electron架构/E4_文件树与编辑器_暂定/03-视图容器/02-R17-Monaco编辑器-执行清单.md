@@ -15,7 +15,7 @@
 
 > 🔥 最小可验证单元——建好目录 + plugin.json 后立即跑 `npm run check` 确认零错误。
 
-### E4V#40a 🔧 编辑器插件目录 + plugin.json - [ ]
+### E4V#40a 🔧 编辑器插件目录 + plugin.json - [x]
 
 - [ ] **新建** `plugins/builtin/editor/plugin.json` | ~40 行
 - [ ] 内容：
@@ -63,7 +63,7 @@
 
 > 🔥 最小可用编辑器。这个做完，双击文件能打开、有语法高亮、Ctrl+S 保存——用户体感从"双击无反应"变成"能用"。
 
-### E4V#40b 🔧 EditorView 组件——Monaco 包装器 - [ ]
+### E4V#40b 🔧 EditorView 组件——Monaco 包装器 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorView.tsx` | ~60 行
 - [ ] 🔥 **参考：** `plugins/user/serial-monitor/src/index.tsx` L1082-1125——`beforeMount` / `handleEditorMount` / `monacoRef.current?.layout()`
@@ -86,7 +86,7 @@
 - [ ] 🛡️ monacoRef 走 ref 对象，不存 .current 快照
 - [ ] **验证：** `<EditorView value="hello" language="typescript" />` → Monaco 渲染 → 输入文字 → onChange 触发 → Ctrl+S → onSave 触发
 
-### E4V#40c 🔧 EditorModel——文件内容唯一真相源 - [ ]
+### E4V#40c 🔧 EditorModel——文件内容唯一真相源 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorModel.ts` | ~50 行
 - [ ] 内容：每个打开的文件一个 EditorModel 实例
@@ -113,7 +113,7 @@
 - [ ] 🛡️ 编码走 EncodingService——读写各检测一次
 - [ ] **验证：** `EditorModel.load("E:/test/main.c")` → model.getValue() 返回文件内容 → model.isDirty() = false → model.setValue("new") → model.isDirty() = true
 
-### E4V#40d 🔧 语言映射——扩展名 → Monaco language ID - [ ]
+### E4V#40d 🔧 语言映射——扩展名 → Monaco language ID - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/language-map.ts` | ~50 行（数据文件——扩展名→语言 ID 映射表）
 - [ ] 🔥 **参考：** `src/languages/v3-protocol.ts`——Monarch tokenizer 模式
@@ -152,7 +152,7 @@
 - [ ] `registerLanguageMap(monaco)` 在 beforeMount 中调——对每个语言 ID：`monaco.languages.register({ id })` + 如果 Monaco 无内置高亮则用 plaintext 兜底
 - [ ] **验证：** 打开 `.tsx`→TypeScript 高亮 / `.rs`→Rust 高亮 / `.xyz`→纯文本不崩溃
 
-### E4V#40e 🔧 主题同步——LinkDesk 主题 → Monaco defineTheme - [ ]
+### E4V#40e 🔧 主题同步——LinkDesk 主题 → Monaco defineTheme - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/theme-sync.ts` | ~45 行
 - [ ] 内容：
@@ -180,7 +180,7 @@
 - [ ] 🛡️ 所有颜色走 CSS 变量——禁止硬编码 hex
 - [ ] **验证：** 切换亮色/暗色主题→编辑器背景+文字跟随。语法 token 色统一切换（Monaco 内置）。
 
-### E4V#40f 🔧 EditorTab——文件打开/保存接线 - [ ]
+### E4V#40f 🔧 EditorTab——文件打开/保存接线 - [x]
 
 - [ ] **新建** `plugins/builtin/editor/src/EditorTab.tsx` | ~80 行
 - [ ] 通过 TabActionsContext 获取 `tab.payload.filePath`
@@ -193,7 +193,7 @@
 - [ ] 🛡️ 保存失败→toast 报错（文件只读/权限不足/磁盘满）——不静默吞错
 - [ ] **验证：** 双击 .tsx → 编辑器标签页打开 → 编辑 → ● 出现 → Ctrl+S → ● 消失 → 关闭标签页 → 重新打开 → 内容已保存
 
-### E4V#40g 🧪 R17 第一段验证——端到端 - [ ]
+### E4V#40g 🧪 R17 第一段验证——端到端 - [x]
 
 - [ ] 双击 `.tsx` → Monaco 编辑器打开、TypeScript 语法高亮
 - [ ] 编辑文字→标签栏出现 ● → Ctrl+S → ● 消失
@@ -211,7 +211,7 @@
 
 > 🔥 Monaco 内置 TypeScript worker。只需：创建影子 model + 设 compilerOptions。
 
-### E4V#40h 🔧 TypeScript 跨文件解析——影子 model - [ ]
+### E4V#40h 🔧 TypeScript 跨文件解析——影子 model - [x]
 
 - [ ] **文件：** `plugins/builtin/editor/src/ts-intelligence.ts` | ~50 行
 - [ ] 内容：
@@ -237,7 +237,7 @@
 - [ ] 🔥 扫描限流：首次打开 TS 文件时触发，最多 500 文件，大项目不卡
 - [ ] **验证：** 打开 `a.ts`（import 了 `b.ts` 的导出）→ Ctrl+Click 跳转到 `b.ts` 的定义
 
-### E4V#40i 🔧 TypeScript 诊断 + 快捷修复 - [ ]
+### E4V#40i 🔧 TypeScript 诊断 + 快捷修复 - [x]
 
 - [ ] **文件：** 同 `ts-intelligence.ts` | ~15 行
 - [ ] Monaco 自带 TypeScript 诊断（红色波浪线）——只需打开：
