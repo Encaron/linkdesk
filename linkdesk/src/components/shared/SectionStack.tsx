@@ -24,7 +24,7 @@ interface SectionStackProps {
 }
 
 /** E4V#45——可拖拽 view 分隔线 */
-function PaneSash({ onDrag, onEnd, onDragOver }: { onDrag: (deltaY: number) => void; onEnd?: () => void; onDragOver?: (e: React.DragEvent) => void }) {
+function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?: () => void }) {
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     const startY = e.clientY;
@@ -48,19 +48,16 @@ function PaneSash({ onDrag, onEnd, onDragOver }: { onDrag: (deltaY: number) => v
     <div
       className="sidebar-pane-sash"
       onMouseDown={handleMouseDown}
-      onDragOver={onDragOver}
     />
   );
 }
 
 /** E4V#45——view wrapper：flex:1 默认均分，拖拽后固定高度。
  *  E4V#45-fix：ResizeObserver 自动测内容高度，未声明 minHeight 时用实测值。 */
-function ViewPane({ viewId, height, onContentHeight, onDragOver, onDrop, showDropBefore, children }: {
+function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }: {
   viewId: string;
   height?: number;
   onContentHeight?: (id: string, h: number) => void;
-  onDragOver?: (e: React.DragEvent) => void;
-  onDrop?: (e: React.DragEvent) => void;
   showDropBefore?: boolean;
   children: ReactNode;
 }) {
@@ -86,8 +83,6 @@ function ViewPane({ viewId, height, onContentHeight, onDragOver, onDrop, showDro
       style={height !== undefined
         ? { height, flexShrink: 0, overflowY: "auto" }
         : { flex: 1, minHeight: 0 }}
-      onDragOverCapture={onDragOver}
-      onDropCapture={onDrop}
     >
       <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
         {children}
@@ -170,6 +165,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     dragViewIdRef.current = viewId;
     setDragViewId(viewId);
     setDraggingView({ viewId, fromContainerId: containerId ?? "" });
+    console.log("[47] dragStart", viewId);
   }, [containerId]);
 
   const handleViewDragEnd = useCallback(() => {
@@ -179,21 +175,14 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     setDraggingView(null);
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    if (!dragViewIdRef.current) return;
-    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    const mid = rect.top + rect.height / 2;
-    setDropIndex(e.clientY < mid ? index : index + 1);
-  }, []);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const id = dragViewIdRef.current;
+    console.log("[47] drop", { id, dropIndex });
     if (!id || dropIndex === null || !containerId) return;
     const draggedIdx = views.findIndex((v) => v.id === id);
     const target = dropIndex > draggedIdx ? dropIndex - 1 : dropIndex;
+    console.log("[47] reorder", { draggedIdx, target });
     ViewContainerService.reorderView(containerId, id, target);
     dragViewIdRef.current = null;
     setDragViewId(null);
@@ -253,36 +242,51 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   };
 
   return (
-    <>
+    <div
+      ref={containerRef}
+      onDragOverCapture={(e) => {
+        e.preventDefault();
+        const id = dragViewIdRef.current;
+        console.log("[47] dragover capture", { id, clientY: e.clientY });
+        if (!id) return;
+        const els = document.querySelectorAll('[data-view-id]');
+        let found = false;
+        els.forEach((el) => {
+          const rect = el.getBoundingClientRect();
+          if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+            const mid = rect.top + rect.height / 2;
+            const idx = Array.from(els).indexOf(el);
+            const di = e.clientY < mid ? idx : idx + 1;
+            console.log("[47] hit view", { viewId: el.getAttribute("data-view-id"), idx, dropIndex: di });
+            setDropIndex(di);
+            found = true;
+          }
+        });
+        if (!found) setDropIndex(null);
+      }}
+      onDropCapture={handleDrop}
+      style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
+    >
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
-        const multiView = !singleView;
-        const section = renderSection(view, true, (e) => handleDragStart(e, view.id), handleViewDragEnd);
-
-        // 拖拽指示器样式
+        const section = renderSection(view, !singleView, (e) => handleDragStart(e, view.id), handleViewDragEnd);
         const showDropBefore = !!(dragViewId && dragViewId !== view.id && dropIndex === i);
 
-        // 多 view → 每个用 ViewPane 包起来 + sash 隔开
-        if (multiView) {
+        if (!singleView) {
           return (
-            <div key={view.id} style={{ display: "contents" }} ref={i === 0 ? containerRef : undefined}>
+            <div key={view.id} style={{ display: "contents" }}>
               <ViewPane
                 viewId={view.id}
                 height={viewHeights[view.id]}
                 onContentHeight={handleContentHeight}
-                onDragOver={(e) => handleDragOver(e, i)}
-                onDrop={handleDrop}
                 showDropBefore={showDropBefore}
               >
                 {section}
               </ViewPane>
               {!isLast && (
                 <PaneSash
-                  onDrag={(deltaY) => {
-                    handleSashDrag(view.id, views[i + 1].id, deltaY);
-                  }}
+                  onDrag={(deltaY) => { handleSashDrag(view.id, views[i + 1].id, deltaY); }}
                   onEnd={handleSashEnd}
-                  onDragOver={(e) => { e.preventDefault(); setDropIndex(i + 1); }}
                   key={`sash-${view.id}`}
                 />
               )}
@@ -290,9 +294,8 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
           );
         }
 
-        // 单 view → 不用 sash
-        return <div key={view.id} style={{ display: "contents" }} ref={i === 0 ? containerRef : undefined}>{section}</div>;
+        return <div key={view.id} style={{ display: "contents" }}>{section}</div>;
       })}
-    </>
+    </div>
   );
 }
