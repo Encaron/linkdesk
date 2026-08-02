@@ -90,6 +90,17 @@ export interface ViewContainerChangeEvent {
   removed: ViewContainerDescriptor[];
 }
 
+/** E4V#44——View 空状态占位内容。对标 VS Code IViewContentDescriptor。
+ *  通用——不限于"欢迎"：搜索无结果/串口未连接/加载失败 等都走此机制。 */
+export interface ViewEmptyContentDescriptor {
+  viewId: string;
+  containerId: string;
+  /** 占位内容——view 无数据/不满足条件时显示 */
+  content: React.ReactNode;
+  /** Context key when 条件。null = 始终显示 */
+  when?: string;
+}
+
 /** View 变更事件 */
 export interface ViewChangeEvent {
   containerId: string;
@@ -177,6 +188,8 @@ export class ViewContainerServiceClass extends RegistryBase {
   private _containerOwner = new Map<string, string>();
   /** 全局 view id → containerId 反向索引 */
   private _viewIndex = new Map<string, string>();
+  /** E4V#44——view 空状态占位内容注册表——viewId → descriptor */
+  private _emptyContents = new Map<string, ViewEmptyContentDescriptor>();
 
   /* ── 事件 ── */
 
@@ -304,6 +317,19 @@ export class ViewContainerServiceClass extends RegistryBase {
     const model = this._models.get(containerId);
     if (!model) return undefined;
     return model.allViewDescriptors.find((v) => v.id === id);
+  }
+
+  /* ═══ E4V#44 View 空状态占位内容 ═══ */
+
+  /** 注册 view 的空状态占位内容。对标 VS Code IViewContentDescriptor。
+   *  view 无数据时（when 条件匹配）→ 壳渲染此 content 替代 view.render()。 */
+  registerViewEmptyContent(containerId: string, viewId: string, content: React.ReactNode, when?: string): void {
+    this._emptyContents.set(viewId, { containerId, viewId, content, when });
+  }
+
+  /** 获取 view 的空状态占位内容，无注册返回 undefined */
+  getViewEmptyContent(viewId: string): ViewEmptyContentDescriptor | undefined {
+    return this._emptyContents.get(viewId);
   }
 
   /* ═══ 可见性 ═══ */

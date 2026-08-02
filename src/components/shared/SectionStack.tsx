@@ -6,6 +6,9 @@
  */
 
 import type { ViewDescriptor, ViewContainerDescriptor } from "../../core/ViewContainerService";
+import { ViewContainerService } from "../../core/ViewContainerService";
+// E4V#44——ContextKeyService 用于空状态占位内容的 when 条件
+import { ContextKeyService } from "../../core/ContextKeyService";
 import ErrorBoundary from "./ErrorBoundary";
 import SidebarSection from "./SidebarSection";
 
@@ -23,9 +26,25 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   const singleView = views.length === 1;
   const mergeHeader = singleView && mergeHeaderWhenSingle === true;
 
+  /** E4V#44——检查 view 是否有注册的欢迎内容且 when 条件匹配 */
+  const getEmptyContent = (viewId: string): React.ReactNode | null => {
+    const empty = ViewContainerService.getViewEmptyContent(viewId);
+    if (!empty) return null;
+    // when 为空 → 始终显示。非空 → ContextKey 求值。
+    if (!empty.when) return empty.content;
+    return ContextKeyService.matches(empty.when) ? empty.content : null;
+  };
+
   return (
     <>
       {views.map((view) => {
+        const emptyContent = getEmptyContent(view.id);
+        const body = emptyContent ?? (
+          <ErrorBoundary pluginId={pluginId}>
+            <view.render />
+          </ErrorBoundary>
+        );
+
         if (mergeHeader) {
           return (
             <SidebarSection
@@ -35,9 +54,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
               defaultOpen
               headerHidden
             >
-              <ErrorBoundary pluginId={pluginId}>
-                <view.render />
-              </ErrorBoundary>
+              {body}
             </SidebarSection>
           );
         }
@@ -56,9 +73,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
             showActions={view.showActions ?? "default"}
             stickyTop={toolbarHeight}
           >
-            <ErrorBoundary pluginId={pluginId}>
-              <view.render />
-            </ErrorBoundary>
+            {body}
           </SidebarSection>
         );
       })}

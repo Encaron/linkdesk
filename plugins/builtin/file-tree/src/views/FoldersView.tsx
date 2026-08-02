@@ -173,6 +173,20 @@ const FoldersView: React.FC = () => {
     return promise;
   }, [model, rerender]);
 
+  // E4V#44——注册空状态占位内容：壳层渲染，不再由 FoldersView 内部硬编码
+  useEffect(() => {
+    ViewContainerService.registerViewEmptyContent(
+      "explorer", "folders",
+      <WelcomeView />,
+      "!explorerView.hasWorkspace",
+    );
+  }, []);
+
+  // E4V#44——设 ContextKey 供空状态占位内容的 when 条件消费
+  useEffect(() => {
+    ContextKeyService.setValue("explorerView.hasWorkspace", roots.length > 0);
+  }, [roots]);
+
   useEffect(() => {
     syncRoots();
     const unsub1 = onDidChangeFolders(() => { syncRoots(); });
@@ -379,9 +393,7 @@ const FoldersView: React.FC = () => {
     <div className="file-tree-root">
       {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
       <div className="file-tree-body">
-        {roots.length === 0 ? (
-          <WelcomeView />
-        ) : (
+        {roots.length > 0 && (
           <FileTree ref={fileTreeRef} model={model} onOpenFile={handleOpenFile} onContextMenu={handleContextMenu} />
         )}
       </div>
