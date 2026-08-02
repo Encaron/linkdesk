@@ -13,6 +13,7 @@ import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { normalizePath } from "@src/core/pathUtils";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
+import { fileUriToPath } from "./navigation-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
 
@@ -108,7 +109,53 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         () => onSaveRef.current?.(),
       );
 
-      // 7. 扫描完成后触发 TS 重分析
+      // 7. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
+      //    EditorService 模式不注册 revealDefinition——手动 addAction + onMouseDown 拦截。
+      //    🔥 未来语言扩展点：goToDefinitionAt 中按 languageId 分派不同的 worker/LSP。
+      const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
+        const m = editor.getModel();
+        if (!m) return;
+        try {
+          const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+          const client = await worker(m.uri);
+          const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+          if (!defs || defs.length === 0) return;
+          const def = defs[0];
+          const targetPath = fileUriToPath(def.fileName);
+          const currentPath = fileUriToPath(m.uri.toString());
+          if (targetPath === currentPath) {
+            const targetPos = m.getPositionAt(def.textSpan.start);
+            editor.setPosition(targetPos);
+            editor.revealPositionInCenter(targetPos);
+            return;
+          }
+          const label = normalizePath(targetPath).split("/").pop() || targetPath;
+          tabActionsRef.current?.createTab("editor", {
+            filePath: targetPath, sourceId: targetPath, label, pinned: false,
+          });
+        } catch { /* 无定义则放行 */ }
+      };
+      editor.addAction({
+        id: "linkdesk.goToDefinition",
+        label: "Go to Definition",
+        keybindings: [monaco.KeyCode.F12],
+        run: () => { const pos = editor.getPosition(); if (pos) goToDefinitionAt(pos); },
+      });
+      editor.onMouseDown(async (e) => {
+        if (!e.event.ctrlKey && !e.event.metaKey) return;
+        const pos = e.target.position;
+        if (!pos) return;
+        try {
+          const m = editor.getModel();
+          if (!m) return;
+          const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+          const client = await worker(m.uri);
+          const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+          if (defs && defs.length > 0) { e.event.preventDefault(); goToDefinitionAt(pos); }
+        } catch { /* 放行 */ }
+      });
+
+      // 8. 扫描完成后触发 TS 重分析
       scanWorkspaceForTypeScript(monaco).then(() => {
         if (disposed) return;
         const m = editor.getModel();
