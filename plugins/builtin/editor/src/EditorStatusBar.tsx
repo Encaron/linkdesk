@@ -38,8 +38,11 @@ const EditorStatusBar: React.FC<EditorStatus> = ({
       </div>
       <div className="editor-status-bar-right">
         <span className="editor-status-item">{indentLabel}</span>
+        <span className="editor-status-sep">│</span>
         <span className="editor-status-item">{encoding.toUpperCase()}</span>
+        <span className="editor-status-sep">│</span>
         <span className="editor-status-item">{language}</span>
+        <span className="editor-status-sep">│</span>
         <span className="editor-status-item">{eol}</span>
       </div>
     </div>
