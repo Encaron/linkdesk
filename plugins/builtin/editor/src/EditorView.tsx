@@ -110,6 +110,12 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       editorRef.current = editor;
       monacoRef.current = monaco;
 
+      // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
+      const pendingReveal = consumePendingReveal(filePath);
+      if (pendingReveal) {
+        editor.revealPositionInCenter({ lineNumber: pendingReveal.line, column: pendingReveal.column });
+      }
+
       // 5. onChange 接线
       model.onDidChangeContent(() => {
         onChange?.(model!.getValue());
@@ -217,14 +223,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
-
-  // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
-  useEffect(() => {
-    const pos = consumePendingReveal(filePath);
-    if (pos && editorRef.current) {
-      editorRef.current.revealPositionInCenter({ lineNumber: pos.line, column: pos.column });
-    }
-  }, [filePath]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);
