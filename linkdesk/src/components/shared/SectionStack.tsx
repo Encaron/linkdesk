@@ -72,7 +72,8 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   // 拖拽时缓存初始高度——避免 setState 异步导致跳变
   const dragBaseRef = useRef<{ upperId: string; baseHeight: number; lowerId: string; lowerBaseHeight: number } | null>(null);
 
-  /** E4V#45——sash 拖拽回调。deltaY > 0 = 向下拖 → 上方 view 增高 */
+  /** E4V#45——sash 拖拽回调。deltaY > 0 = 向下拖 → 上方 view 增高。
+   *  上下限由各 view 的 minHeight 声明（默认 100px）。 */
   const handleSashDrag = useCallback((upperId: string, lowerId: string, deltaY: number) => {
     const base = dragBaseRef.current;
     if (!base || base.upperId !== upperId) {
@@ -83,8 +84,10 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       dragBaseRef.current = { upperId, baseHeight: upperH, lowerId, lowerBaseHeight: lowerH };
     }
     const b = dragBaseRef.current!;
-    const newUpper = Math.max(60, b.baseHeight + deltaY);
-    const newLower = Math.max(60, b.lowerBaseHeight - deltaY);
+    const upperMin = ViewContainerService.getView(upperId)?.minHeight ?? 100;
+    const lowerMin = ViewContainerService.getView(lowerId)?.minHeight ?? 100;
+    const newUpper = Math.max(upperMin, b.baseHeight + deltaY);
+    const newLower = Math.max(lowerMin, b.lowerBaseHeight - deltaY);
     setViewHeights({ [upperId]: newUpper, [lowerId]: newLower });
   }, []);
 

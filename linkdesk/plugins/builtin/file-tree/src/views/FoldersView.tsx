@@ -324,6 +324,7 @@ const FoldersView: React.FC = () => {
         id: "folders",
         title,
         render: existing?.render ?? (() => null),
+        minHeight: 180,
         // E4V#20f: 工具栏迁移到 header actions——对标 VS Code ▶ FOLDERS [+][🔄][⊟]
         actions: (
           <>
