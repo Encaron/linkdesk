@@ -210,9 +210,11 @@
 
 /* ── E4V#45：Pane resize——view 间可拖拽分隔线 ── */
 
-/* view 容器 wrapper——flex:1 均分 + 拖拽后固定高度 */
+/* view 容器 wrapper——flex:1 均分 + 拖拽后固定高度。
+   🔥 不设 overflow——sticky header 在 overflow:hidden 父容器中失效。
+   仅被 sash 拖过固定高度的 view 才由 inline style 设 overflow。 */
 .sidebar-pane-view {
-  overflow: hidden;
+  /* overflow 由 inline style 控制 */
 }
 
 /* 分隔线——4px，hover 变粗变亮 */
