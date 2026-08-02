@@ -67,6 +67,11 @@ export class EditorModel {
     this.onDidSave.fire();
   }
 
+  /** 从内存内容创建（不解码）——E4V#40n Hot Exit 恢复用 */
+  static fromContent(filePath: string, content: string): EditorModel {
+    return new EditorModel(normalizePath(filePath), content, "utf-8");
+  }
+
   /** 从磁盘加载文件 */
   static async load(filePath: string): Promise<EditorModel> {
     const normalized = normalizePath(filePath);

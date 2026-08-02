@@ -19,6 +19,7 @@ import EditorView from "./EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
+import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
 
 export interface EditorTabProps {
   /** 文件绝对路径——来自 createTab 的 sourceId */
@@ -67,25 +68,66 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     let cancelled = false;
     setLoading(true);
     setError(null);
-    EditorModel.load(filePath)
-      .then((m) => {
-        if (cancelled) return;
-        setModel(m);
-        setValue(m.getValue());
-        // E4V#40j——编码和语言来自 EditorModel
-        setEditorStatus((prev) => ({
-          ...prev,
-          encoding: m.encoding,
-          language: m.language,
-        }));
-        setLoading(false);
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        console.error(`[EditorTab] 加载失败: ${filePath}`, err);
-        setError(`无法打开文件: ${(err as Error).message}`);
-        setLoading(false);
-      });
+
+    // E4V#40n——Hot Exit：优先使用备份内容
+    if (hasBackup(filePath)) {
+      const backupContent = getBackupContent(filePath)!;
+      // 从磁盘正常加载（取编码/语言），但内容用备份
+      EditorModel.load(filePath)
+        .then((m) => {
+          if (cancelled) return;
+          m.setValue(backupContent);
+          setModel(m);
+          setValue(backupContent);
+          setEditorStatus((prev) => ({
+            ...prev,
+            encoding: m.encoding,
+            language: m.language,
+          }));
+          // 标记为脏——备份内容未保存
+          dirtyRef.current = true;
+          const baseName = normalizePath(filePath).split("/").pop() || filePath;
+          tabActions?.updateTabLabelBySourceId?.(filePath, `● ${baseName}`);
+          trackDirtyFile(filePath, backupContent);
+          setLoading(false);
+        })
+        .catch((_err) => {
+          if (cancelled) return;
+          // 从磁盘加载失败→只用备份内容
+          const fallback = EditorModel.fromContent(filePath, backupContent);
+          setModel(fallback);
+          setValue(backupContent);
+          setEditorStatus((prev) => ({
+            ...prev,
+            encoding: fallback.encoding,
+            language: fallback.language,
+          }));
+          dirtyRef.current = true;
+          const baseName = normalizePath(filePath).split("/").pop() || filePath;
+          tabActions?.updateTabLabelBySourceId?.(filePath, `● ${baseName}`);
+          trackDirtyFile(filePath, backupContent);
+          setLoading(false);
+        });
+    } else {
+      EditorModel.load(filePath)
+        .then((m) => {
+          if (cancelled) return;
+          setModel(m);
+          setValue(m.getValue());
+          setEditorStatus((prev) => ({
+            ...prev,
+            encoding: m.encoding,
+            language: m.language,
+          }));
+          setLoading(false);
+        })
+        .catch((err) => {
+          if (cancelled) return;
+          console.error(`[EditorTab] 加载失败: ${filePath}`, err);
+          setError(`无法打开文件: ${(err as Error).message}`);
+          setLoading(false);
+        });
+    }
     return () => { cancelled = true; };
   }, [filePath]);
 
@@ -100,6 +142,12 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       const baseName = normalizePath(filePath).split("/").pop() || filePath;
       const label = isDirty ? `● ${baseName}` : baseName;
       tabActions?.updateTabLabelBySourceId?.(filePath, label);
+      // E4V#40n——Hot Exit：脏→记录，干净→清除
+      if (isDirty) {
+        trackDirtyFile(filePath, v);
+      } else {
+        clearDirtyFile(filePath);
+      }
     }
   }, [model, filePath, tabActions]);
 
@@ -110,6 +158,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       await model.save();
       model.markSaved();
       dirtyRef.current = false;
+      clearDirtyFile(filePath);
       const baseName = normalizePath(filePath).split("/").pop() || filePath;
       tabActions?.updateTabLabelBySourceId?.(filePath, baseName);
     } catch (err) {

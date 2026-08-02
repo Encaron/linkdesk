@@ -9,7 +9,11 @@
 import React from "react";
 import EditorTab from "./EditorTab";
 import DiffEditor from "./DiffEditor";
+import { initHotExit } from "./hot-exit";
 import "./editor.css";
+
+// E4V#40n——模块加载时初始化 Hot Exit
+initHotExit();
 
 export interface EditorPluginProps {
   isActive: boolean;
