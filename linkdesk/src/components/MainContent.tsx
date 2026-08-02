@@ -45,7 +45,7 @@ interface MainContentProps {
 }
 
 function renderTabContent(
-  tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
+  tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string; line?: number; column?: number },
   isActive: boolean,
   onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
@@ -89,7 +89,7 @@ function renderTabContent(
     if (plugin) {
       return (
         <ErrorBoundary pluginId={tab.pluginId}>
-          <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
+          <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} line={tab.line} column={tab.column} />
         </ErrorBoundary>
       );
     }

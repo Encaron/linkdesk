@@ -28,6 +28,10 @@ export interface EditorViewProps {
   onChange?: (value: string | undefined) => void;
   onSave?: () => void;
   readOnly?: boolean;
+  /** 初始化后跳转到的行号 */
+  initialLine?: number;
+  /** 初始化后跳转到的列号 */
+  initialColumn?: number;
 }
 
 export interface EditorViewHandle {
@@ -36,7 +40,7 @@ export interface EditorViewHandle {
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language: _language, filePath, isActive, onChange, onSave, readOnly },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, initialLine, initialColumn },
   ref,
 ) {
   const editorRef = useRef<any>(null);
@@ -173,6 +177,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
           tabActionsRef.current?.createTab("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
+            line: targetLine, column: targetCol,
           });
         } catch { /* 无定义则放行 */ }
       };
@@ -216,6 +221,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
+
+  // F12 跳转后滚动到目标位置
+  useEffect(() => {
+    if (initialLine && editorRef.current) {
+      editorRef.current.revealPositionInCenter({ lineNumber: initialLine, column: initialColumn ?? 1 });
+    }
+  }, [initialLine, initialColumn]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);
