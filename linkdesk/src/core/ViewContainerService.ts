@@ -301,13 +301,25 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** 获取容器全部已注册 view（含不可见的）。对标 VS Code IViewsRegistry.getViews */
   getViews(containerId: string): ViewDescriptor[] {
+    // 懒加载持久化排序
+    if (!this._restoredOrder.has(containerId)) {
+      this._restoredOrder.add(containerId);
+      this.loadViewOrder(containerId);
+    }
     const model = this._models.get(containerId);
     if (!model) return [];
     return [...model.allViewDescriptors].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
+  private _restoredOrder = new Set<string>();
+
   /** 获取容器当前可见的 view。对标 VS Code ViewContainerModel.activeViewDescriptors */
   getActiveViews(containerId: string): ViewDescriptor[] {
+    // 懒加载持久化排序——首次访问此容器时恢复
+    if (!this._restoredOrder.has(containerId)) {
+      this._restoredOrder.add(containerId);
+      this.loadViewOrder(containerId);
+    }
     // 🔥 Bug 4 防线——空容器返回 [] 不抛错
     const model = this._models.get(containerId);
     if (!model) return [];
@@ -360,9 +372,9 @@ export class ViewContainerServiceClass extends RegistryBase {
   /** E4V#46——一键清除全部折叠持久化 */
   resetCollapsedState(): void {
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
-    // 通知所有容器：折叠状态已变 → SectionStack 重渲染、读新的 isCollapsed
-    for (const [containerId] of this._models) {
-      this._updateActiveViews(containerId);
+    // 通知所有容器重渲染——onDidChangeViews 是更宽的事件，SidePanel 肯定订阅
+    for (const [containerId, model] of this._models) {
+      this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
     }
   }
 
@@ -420,8 +432,31 @@ export class ViewContainerServiceClass extends RegistryBase {
     model.allViewDescriptors.splice(newIndex, 0, moved);
     // 更新 order 字段
     model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
+    // 持久化——按 container 存 viewOrder
+    const viewOrder = model.allViewDescriptors.map(v => v.id);
+    setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, viewOrder).catch(() => {});
     this._updateActiveViews(containerId);
     this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
+  }
+
+  /** 加载持久化的 view 排序——应用到 allViewDescriptors */
+  loadViewOrder(containerId: string): void {
+    const model = this._models.get(containerId);
+    if (!model) return;
+    const savedOrder = getPluginStateValue<string[]>(APP_PLUGIN_ID, `viewOrder.${containerId}`);
+    if (!savedOrder || savedOrder.length === 0) return;
+    // 按持久化的顺序重排
+    const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
+    model.allViewDescriptors.sort((a, b) => {
+      const ao = orderMap.get(a.id);
+      const bo = orderMap.get(b.id);
+      if (ao !== undefined && bo !== undefined) return ao - bo;
+      if (ao !== undefined) return -1;
+      if (bo !== undefined) return 1;
+      return (a.order ?? 0) - (b.order ?? 0);
+    });
+    model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
+    this._updateActiveViews(containerId);
   }
 
   /* ═══ 清理（RegistryBase 钩子） ═══ */
