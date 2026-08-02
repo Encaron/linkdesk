@@ -73,7 +73,6 @@ export default function SerialSettingsView() {
     ViewContainerService.registerView("serial-monitor", "serial-monitor", {
       id: "settings",
       title,
-      minHeight: 150,
     });
   }, [activeSession?.name, t]);
 

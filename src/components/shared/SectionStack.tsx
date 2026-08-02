@@ -58,7 +58,7 @@ function ViewPane({ viewId, height, children }: { viewId: string; height?: numbe
       data-view-id={viewId}
       className="sidebar-pane-view"
       style={height !== undefined
-        ? { height, flexShrink: 0, overflow: "hidden" }
+        ? { height, flexShrink: 0, overflowY: "auto" }
         : { flex: 1, minHeight: 0 }}
     >
       {children}
