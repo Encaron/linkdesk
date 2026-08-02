@@ -370,11 +370,6 @@ export class ViewContainerServiceClass extends RegistryBase {
     return this.loadCollapsedState().has(viewId);
   }
 
-  /** 折叠状态版本号——resetCollapsedState 时递增 → SectionStack 用 key={version} 强制 remount SidebarSection */
-  private _collapseVersion = 0;
-
-  get collapseVersion(): number { return this._collapseVersion; }
-
   /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
   resetCollapsedState(): void {
     // 清折叠状态
@@ -387,7 +382,6 @@ export class ViewContainerServiceClass extends RegistryBase {
     for (const [, model] of this._models) {
       model.clearHidden();
     }
-    this._collapseVersion++;
     // 恢复 plugin.json 原始 order——从 _originalOrder 恢复被 reorderView 改过的值
     for (const [containerId, model] of this._models) {
       const orig = this._originalOrder.get(containerId);
