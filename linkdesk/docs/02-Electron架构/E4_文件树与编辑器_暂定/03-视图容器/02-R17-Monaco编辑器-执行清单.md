@@ -498,13 +498,17 @@
   - `startLspClient(languageId, serverCommand)` → `MonacoLanguageClient` 连接
   - stdin/stdout 通过 IPC 代理到主进程
 
-- [ ] **E4V#40s3** — EditorView `goToDefinitionAt` 归一化——语言分派 | ~10 行改
-  - 不再写死 `monaco.languages.typescript`——按 `model.getLanguageId()` 分派
-  - TS/JS → TS worker / C++/Python 等 → LSP client → `registerDefinitionProvider`
+- [ ] **E4V#40s3** — EditorView `goToDefinitionAt` 归一化——语言分派 + LSP 直调 | ~20 行改
+  - `getDefinitionAt(model, pos, monaco)`：按 `languageId` 分派
+    - TS/JS → `getTypeScriptWorker().getDefinitionAtPosition()`
+    - 其他 → 从 `lsp-bridge` 取 `MonacoLanguageClient` → `sendRequest('textDocument/definition', ...)`
+  - LSP 响应解析：`{ uri, range: { start: { line, character } } }` → filePath + position
+  - 🔥 不写死 TS worker——语言分派可扩展
 
 - [ ] **E4V#40s4** — 端到端验证 Python F12 | 0 行
   - 打开 `hello.py` → F12 → pyright 返回定义 → 壳标签页蹦出 ✅
-  - npm run check 零错误 ✅
+  - 打开 `app.ts` → F12 → TS worker 仍正常工作 ✅
+  - `npm run check` 零错误 ✅
 
 **R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。LSP 桥已接——C/C++/Python 跨文件跳转走 IEditorService.openEditor → 壳标签页。~120 行。
 
