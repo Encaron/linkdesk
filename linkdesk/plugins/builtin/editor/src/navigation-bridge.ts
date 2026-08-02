@@ -17,20 +17,36 @@ export function fileUriToPath(uri: string): string {
 }
 
 /**
- * F12 跳转后目标编辑器需要滚动到的位置。
- * 模块级暂存——EditorView(A) 写入，EditorView(B) mount 时读取并清除。
+ * 编辑器注册表——filePath → editor 实例。
+ * F12 handler 查本表直连目标 editor，不经过 React 生命周期，无竞态。
  * 不上壳——编辑器领域内务，核心不碰。
  */
+const _editorRegistry = new Map<string, any>();
 const _pendingReveal = new Map<string, { line: number; column: number }>();
+
+/* ── Editor 注册表 ── */
+
+export function registerEditor(filePath: string, editor: any): void {
+  _editorRegistry.set(normalizePath(filePath), editor);
+}
+
+export function unregisterEditor(filePath: string): void {
+  _editorRegistry.delete(normalizePath(filePath));
+}
+
+export function getRegisteredEditor(filePath: string): any | undefined {
+  return _editorRegistry.get(normalizePath(filePath));
+}
+
+/* ── 兜底——editor 尚未注册时暂存位置 ── */
 
 export function setPendingReveal(filePath: string, line: number, column: number): void {
   _pendingReveal.set(normalizePath(filePath), { line, column });
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
-  return _pendingReveal.get(normalizePath(filePath));
-}
-
-export function clearPendingReveal(filePath: string): void {
-  _pendingReveal.delete(normalizePath(filePath));
+  const key = normalizePath(filePath);
+  const pos = _pendingReveal.get(key);
+  _pendingReveal.delete(key);
+  return pos;
 }
