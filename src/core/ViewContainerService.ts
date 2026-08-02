@@ -351,6 +351,23 @@ export class ViewContainerServiceClass extends RegistryBase {
     return model.isVisible(viewId);
   }
 
+  /* ═══ E4V#47 View 排序 ═══ */
+
+  /** 重排 container 内 view 顺序——拖 header 到新位置。
+   *  newIndex 为目标位置（0 = 最前）。对标 VS Code ViewContainerModel.moveView。 */
+  reorderView(containerId: string, viewId: string, newIndex: number): void {
+    const model = this._models.get(containerId);
+    if (!model) return;
+    const idx = model.allViewDescriptors.findIndex((v) => v.id === viewId);
+    if (idx === -1 || idx === newIndex) return;
+    const [moved] = model.allViewDescriptors.splice(idx, 1);
+    model.allViewDescriptors.splice(newIndex, 0, moved);
+    // 更新 order 字段
+    model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
+    this._updateActiveViews(containerId);
+    this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
+  }
+
   /* ═══ 清理（RegistryBase 钩子） ═══ */
 
   /** 清理插件在此桌子上的所有登记项 */
