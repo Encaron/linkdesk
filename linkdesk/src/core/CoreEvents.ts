@@ -33,6 +33,7 @@ export class Emitter<T> {
   /** 内部触发事件——Phase 5 盲区 8（P1）：包 try/catch 做错误隔离 */
   fire(data: T): void {
     for (const fn of this._listeners) {
+      console.log("[Emitter.fire] calling", String(fn).slice(0, 100));
       try { fn(data); } catch (err) {
         console.error("[CoreEvents] 事件监听器出错:", err);
       }
