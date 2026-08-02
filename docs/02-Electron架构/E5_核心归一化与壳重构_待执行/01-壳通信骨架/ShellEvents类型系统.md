@@ -71,6 +71,10 @@ export interface ShellEvents {
   // ── 图标栏 ──
   /** 用户点击图标栏图标。payload = pluginId */
   "icon:selected": string;
+  /** 开始拖拽图标排序。payload = pluginId */
+  "icon:drag-start": string;
+  /** 拖拽排序完成。payload = 新 pluginId 顺序数组 */
+  "icon:reordered": string[];
 
   // ── 侧栏 ──
   /** 侧栏展开/折叠。payload = 是否正在打开 */
