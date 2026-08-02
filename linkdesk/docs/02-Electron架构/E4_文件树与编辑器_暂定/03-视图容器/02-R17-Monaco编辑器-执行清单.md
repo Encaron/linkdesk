@@ -468,16 +468,13 @@
   - 主题切换 → 编辑器跟随 ✅
   - `npm run check` 零错误 ✅
 
-- [ ] **E4V#40t6** 🔧 归一化——ViewsService 模式：让 IEditorService 成为唯一导航通道 | ~15 行改
-  > 🔥 治本。现状 F12/Ctrl+Click 走手动 TS worker——只覆盖 TS/JS，V2.6 模式。
-  > ViewsService 模式注册 workbench command（含 revealDefinition），
-  > 定义结果自动流入 IEditorService.openEditor() → openEditorFunc → 壳标签页。
-  > 所有语言通用——C++/Python 接 LSP 后零改动即用。
-  - [ ] 改 `monaco-init.ts`：`viewsConfig.$type` 从 `"EditorService"` 改 `"ViewsService"`
-  - [ ] 加 `htmlContainer` 参数——`document.getElementById("editor-root")` 或创建临时 div
-  - [ ] CSS 隐藏 workbench 多余的 DOM（status bar 等）
-  - [ ] **验证：** 删掉 EditorView 中手动 F12 addAction + onMouseDown 代码 → F12/Ctrl+Click 仍正常工作 ✅
-  - [ ] `npm run check` 零错误 ✅
+- [x] **E4V#40t6** 🔧 归一化验证——ViewsService 方案否决 | ~55 行改（已回退）
+  > 🔥 尝试了 ViewsService 模式——workbench command 不认 standalone editor（monaco.editor.create()）。
+  > 要全量用 workbench editor 意味着在壳里嵌一个迷你 VS Code——破坏"通用容器"架构。
+  > **最终结论：** EditorService + 手动 handler 是 standalone Monaco 的正确归一化路径，
+  > 不是 V2.6 临时方案。壳管标签页，插件管编辑器——不混合。
+  - [x] 尝试 ViewsService → 跨文件 F12 失效 → 回退 EditorService ✅
+  - [x] 手动 handler 标注为"standalone 正确归一化路径"——不是治标 ✅
 
 **R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。F12/Ctrl+Click 走 IEditorService.openEditor → 壳标签页——治本，所有语言通用。LSP 桥框架就绪（`MonacoLanguageClient` 接 clangd/pylsp 等）。~90 行。
 
