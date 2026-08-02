@@ -58,6 +58,9 @@ export function setOpenFileFn(fn: OpenFileFn | null): void {
   _openFileFn = fn;
 }
 
+// E4V#40m——Diff："选择以比较"存储的基准文件路径
+let _selectedForCompare: string | null = null;
+
 // 兼容旧调用方
 export { setFileTreeHandleRef as setFileTreeHandle, setFileTreeHandleRef as setFileTreeRefs };
 export { clearFileTreeHandle as clearFileTreeRefs };
@@ -347,6 +350,23 @@ export function activateFileTreeContextMenu(): void {
     });
   }});
 
+  // ── E4V#40m: Diff——选择以比较 / 与已选项比较 ──
+  registerCommand("file-tree", { id: "editor.selectForCompare", title: "选择以比较", handler: async (_token, ...args: unknown[]) => {
+    const item = (args[0] as { uri?: string }) ?? {};
+    if (item.uri) _selectedForCompare = item.uri;
+  }});
+  registerCommand("file-tree", { id: "editor.compareWithSelected", title: "与已选项比较", handler: async (_token, ...args: unknown[]) => {
+    const item = (args[0] as { uri?: string }) ?? {};
+    const uri = item.uri;
+    if (!uri || !_selectedForCompare || _selectedForCompare === uri) return;
+    const orig = _selectedForCompare;
+    _selectedForCompare = null;
+    const origName = (orig.split("/").pop() || orig);
+    const modName = (uri.split("/").pop() || uri);
+    const sourceId = `${orig}|||${uri}`;
+    _openFileFn?.(sourceId, `${origName} ↔ ${modName}`, "pin");
+  }});
+
   // ── 注册菜单项到 MenuId.FileContext ──
   // 5 组：navigation / editing / creation / modify / search
   // when 条件由 ContextMenu 组件调用 ContextKeyService.matches() 求值
@@ -355,6 +375,8 @@ export function activateFileTreeContextMenu(): void {
     // 第 1 组：导航/打开
     { command: "explorer.openFile",        group: "1_navigation", when: "explorerItemIsFile" },
     { command: "explorer.openToSide",      group: "1_navigation", when: "explorerItemIsFile" },
+    { command: "editor.selectForCompare",  group: "1_navigation", when: "explorerItemIsFile" },
+    { command: "editor.compareWithSelected", group: "1_navigation", when: "explorerItemIsFile" },
     { command: "explorer.openWith",        group: "1_navigation", when: "explorerItemIsFile" },
     { command: "explorer.revealInOS",      group: "1_navigation" },
     { command: "explorer.openInTerminal",  group: "1_navigation", when: "explorerItemIsDir" },
