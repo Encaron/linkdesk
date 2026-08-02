@@ -20,9 +20,6 @@ export interface TabActions {
   /** 按 sourceId 找标签页并聚焦——通用 API。session/文件/数据库连接等
    *  插件维护自己的数据模型，通过 sourceId 链接到标签页。 */
   focusTabBySourceId: (sourceId: string) => void;
-  /** 按 sourceId 找标签页并聚焦或创建——A4 修复：侧栏点会话→tab 已关时自动重开。
-   *  type 是创建新标签页时的类型（如 "terminal"）。 */
-  openOrFocusBySourceId: (sourceId: string, type: string, opts?: CreateTabOptions) => string | null;
   /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。 */
   updateTabLabelBySourceId: (sourceId: string, label: string) => void;
   /** 按 sourceId 找标签页并关闭——通用 API。和 focusTabBySourceId 对称。

@@ -36,5 +36,5 @@ export function activateSidebarItem(
   pluginId: string,
   opts?: { label?: string; pinned?: boolean },
 ): string | null {
-  return tabActions.openOrFocusBySourceId(sourceId, pluginId, opts);
+  return tabActions.createTab(pluginId, { sourceId, ...opts });
 }

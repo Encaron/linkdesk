@@ -91,7 +91,6 @@ function App() {
     focusTab,
     focusTabBySourceId,
     closeTabBySourceId,
-    openOrFocusBySourceId,
     updateTabLabelBySourceId,
     closeTab,
     forceCloseTab,
@@ -812,11 +811,10 @@ function App() {
     openOrFocusTab,
     focusTab,
     focusTabBySourceId,
-    openOrFocusBySourceId,
     updateTabLabelBySourceId,
     closeTabBySourceId,
     closeTab,
-  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, openOrFocusBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
+  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
 
   // E3f #52g：菜单样式——titlebar / hamburger / both
   const menuStyle = useConfigurationValue<string>("app.menuStyle") ?? "titlebar";
