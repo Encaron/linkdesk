@@ -381,7 +381,7 @@ export class ViewContainerServiceClass extends RegistryBase {
   resetCollapsedState(): void {
     // 清折叠状态
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
-    // 🔥 同时清 view 排序——用户调换位置后重置
+    // 清 view 排序持久化
     for (const [containerId] of this._models) {
       setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, []).catch(() => {});
     }
@@ -390,10 +390,15 @@ export class ViewContainerServiceClass extends RegistryBase {
       model.clearHidden();
     }
     this._collapseVersion++;
-    // 重建——从 plugin.json 默认 order + collapsed 重新加载
+    // 🔥 恢复 plugin.json 原始 order——用 _originalOrder 覆盖被 reorderView 改过的 order
     for (const [containerId, model] of this._models) {
-      // 恢复 plugin.json 默认 order
-      model.allViewDescriptors.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      const orig = this._originalOrder.get(containerId);
+      if (orig) {
+        model.allViewDescriptors.forEach(v => {
+          const o = orig.get(v.id);
+          if (o !== undefined) (v as any).order = o;
+        });
+      }
       this._updateActiveViews(containerId);
     }
   }
@@ -464,10 +469,19 @@ export class ViewContainerServiceClass extends RegistryBase {
     this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
   }
 
+  /** 每个 container 的原始 plugin.json order——reset 时恢复 */
+  private _originalOrder = new Map<string, Map<string, number>>();
+
   /** 加载持久化的 view 排序——应用到 allViewDescriptors */
   loadViewOrder(containerId: string): void {
     const model = this._models.get(containerId);
     if (!model) return;
+    // 🔥 保存 plugin.json 原始 order——只在首次访问时保存
+    if (!this._originalOrder.has(containerId)) {
+      const orig = new Map<string, number>();
+      model.allViewDescriptors.forEach(v => orig.set(v.id, v.order ?? 0));
+      this._originalOrder.set(containerId, orig);
+    }
     const savedOrder = getPluginStateValue<string[]>(APP_PLUGIN_ID, `viewOrder.${containerId}`);
     if (!savedOrder || savedOrder.length === 0) return;
     // 按持久化的顺序重排
