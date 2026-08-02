@@ -232,15 +232,22 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         goToDefinitionAt(pos);
       });
 
-      // 11. 扫描完成后触发 TS 重分析
+      // 11. 扫描完成后触发 TS 重分析——pushEditOperations 批量操作只触发一次 onChange
       scanWorkspaceForTypeScript(monaco).then(() => {
         if (disposed) return;
         const m = editor.getModel();
         if (!m || m.isDisposed()) return;
         const lastLine = m.getLineCount();
         const lastCol = m.getLineMaxColumn(lastLine);
-        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
-        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
+        // pushEditOperations 批量执行——插入空格再删除，只触发一次 onChange，最终值不变
+        m.pushEditOperations(
+          [],
+          [
+            { range: new monaco.Range(lastLine, lastCol, lastLine, lastCol), text: " " },
+            { range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" },
+          ],
+          () => null,
+        );
       });
     })().catch((err) => {
       console.error("[editor] 初始化失败:", err);
