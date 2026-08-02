@@ -298,10 +298,14 @@ export class ViewContainerServiceClass extends RegistryBase {
     if (!this._originalOrder.has(containerId)) {
       this._originalOrder.set(containerId, new Map());
     }
-    // 🔥 只在首次注册时保存原始值——后续的 registerView 更新（如动态标题）不覆盖
+    // 🔥 只在首次注册时保存原始值——后续的 registerView 更新（如动态标题、跨容器移动）不覆盖
     const orig = this._originalOrder.get(containerId)!;
     if (!orig.has(descriptor.id)) {
       orig.set(descriptor.id, descriptor.order ?? 0);
+    }
+    // _originalContainer 独立判断——view 被 moveView 移到新容器时 registerView 会被再调，
+    // 但原始归属不能覆盖
+    if (!this._originalContainer.has(descriptor.id)) {
       this._originalContainer.set(descriptor.id, containerId);
     }
     this._updateActiveViews(containerId);
