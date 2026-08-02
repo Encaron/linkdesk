@@ -505,12 +505,32 @@
   - LSP 响应解析：`{ uri, range: { start: { line, character } } }` → filePath + position
   - 🔥 不写死 TS worker——语言分派可扩展
 
-- [x] **E4V#40s4** — 端到端验证 Python F12 | 0 行
-  - 打开 `hello.py` → F12 → pyright 返回定义 → 壳标签页蹦出 ✅
-  - 打开 `app.ts` → F12 → TS worker 仍正常工作 ✅
-  - `npm run check` 零错误 ✅
+- [x] **E4V#40s4** — 端到端验证 Python F12 | 0 行 ✅
 
-**R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。LSP 桥已接——C/C++/Python 跨文件跳转走 IEditorService.openEditor → 壳标签页。~120 行。
+- [ ] **E4V#40s5** 🔧 语言插件归一化——LanguageRegistry + 自动启动 | ~30 行
+  > 🔥 消灭 EditorView 里 `.py` 硬编码。建 LanguageRegistry 大厅桌——
+  > plugin.json 声明 langDefs → loader 自动注册 → EditorView 自动启动 LSP。
+  > 新增语言只需写 plugin.json，零改编辑器代码。
+  - [ ] **E4V#40s5a** — 新建 `src/core/LanguageRegistry.ts` | ~20 行
+    - `registerLangDef(pluginId, langDef)` ——和 FileAssociationService 同模式
+    - `getLangDef(extension): LangDefContribution | undefined`
+    - 🔥 大厅桌子——核心只知道"有人注册了语言"，不知道语言是什么
+  - [ ] **E4V#40s5b** — `loader.ts` parseContributions 接线 | ~5 行
+    - 遍历 `langDefs` → `LanguageRegistry.registerLangDef(pluginId, def)`
+  - [ ] **E4V#40s5c** — `EditorView.tsx` 查表替代硬编码 | ~5 行改
+    - 删 `filePath.endsWith(".py")`
+    - 改：`const ext = extension(filePath)` → `const langDef = getLangDef(ext)` → 有 lsp 就 `startLspClient`
+  - 🛡️ 归一化——和 FileAssociationService 同模式，不新增新概念
+  - **验证：** tsc+eslint+vitest 零错误 / Python F12 仍正常 / 无硬编码
+
+- [ ] **E4V#40s6** 🔧 拆分 Python 语言插件 | ~15 行
+  - **新建** `plugins/user/python/plugin.json`——纯声明，零代码
+  - 内容：`langDefs: [{ id: "python", extensions: [".py", ".pyi"], lsp: { command: "node node_modules/pyright/...", args: ["--stdio"] } }]`
+  - `entry: "src/index.tsx"`——空壳占位（`viewRole: "tabOnly"` 不需要，但 schema 要求）
+  - 删 EditorView 中残留 pyright 相关内容（`startLspClient` 参数由 registry 提供）
+  - **验证：** 双击 .py → 自动启动 pyright → F12 跨文件跳转 / tsc+eslint 零错误
+
+**R17 第 6 组完工后状态：** monaco-languageclient + LSP 桥 + 语言插件体系（声明式）全部就绪。新增 C/C++/Rust 只需写 `plugin.json` 声明 `langDefs`，零改编辑器代码。~170 行。
 
 ---
 
@@ -581,10 +601,10 @@
 | 3 | 编辑器镶边——状态栏+面包屑+右键 | E4V#40j–40l | ~120 |
 | 4 | 高级功能——Diff+热退出+自动保存+多标签页 | E4V#40m–40p | ~130 |
 | 5 | 配置项——25 项编辑器配置 | E4V#40q | ~70 |
-| 6 | monaco-languageclient 全量 + LSP 桥 | E4V#40t–t6 + 40r–40s | ~105完成 + 50待做 |
+| 6 | monaco-languageclient 全量 + LSP 桥 + 语言插件 | E4V#40t–t6 + 40r–40s + s5–s6 | ~200 |
 | 7 | 装饰+快捷键映射 | E4V#40u–40v | ~45 |
 | 🔴 | GBK 编码保存 | E4V#40w | ~10 |
-| **合计** | | **24 任务** | **~965 行** |
+| **合计** | | **26 任务** | **~1010 行** |
 
 > 对标原 E4V#40a–E4V#42d（10 任务 ~330 行）→ 现 22 任务 ~920 行。
 > 行数增加 3 倍——但体感从"文本区"变成"类 VS Code 编辑器"。
