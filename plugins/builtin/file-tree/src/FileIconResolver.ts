@@ -64,8 +64,8 @@ export class FileIconResolver {
 /** 全局默认实例 */
 let _resolver = new FileIconResolver();
 
-/** 更新图标解析器——图标主题切换时调用 */
-export function updateIconResolver(mappings?: import("./FileIconResolver").IconMappings): void {
+/** 更新图标解析器——图标主题切换时调用（E5 接线） */
+export function updateIconResolver(mappings?: IconMappings): void {
   _resolver = new FileIconResolver(mappings);
 }
 
