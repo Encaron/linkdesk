@@ -1,11 +1,11 @@
 /**
- * E4V#40t1 Monaco VS Code API 全局一次性初始化。
+ * E4V#40t1 + E4V#40t6 Monaco VS Code API 全局一次性初始化。
  *
- * 用 monaco-languageclient 的 MonacoVscodeApiWrapper 替代 @monaco-editor/react——
- * 拿到完整的 VS Code 服务层（TextMate 语法高亮、主题、IEditorService 覆盖）。
- * 模块级守卫——start() 全局只调一次，多次调用复用已有 Promise。
+ * ViewsService 模式：注册 workbench command（含 revealDefinition），
+ * IEditorService.openEditor() 覆盖 → 壳标签页。
+ * F12 / Ctrl+Click 自动走这条通道——所有语言通用，零手动代码。
  *
- * 🔥 做完 E4V#40t 后，E4V#40i2 的手动 TS worker + onMouseDown 代码可删除。
+ * 🔥 模块级守卫——start() 全局只调一次。
  */
 import { MonacoVscodeApiWrapper } from "monaco-languageclient/vscodeApiWrapper";
 import type { MonacoVscodeApiConfig } from "monaco-languageclient/vscodeApiWrapper";
@@ -14,12 +14,22 @@ import { configureDefaultWorkerFactory } from "monaco-languageclient/workerFacto
 let _ready = false;
 let _initPromise: Promise<void> | null = null;
 
+/** ViewsService 模式需要 DOM 容器——创建隐藏元素，不污染壳 UI */
+function getHiddenContainer(): HTMLDivElement {
+  const existing = document.getElementById("linkdesk-vscode-workbench");
+  if (existing) return existing as HTMLDivElement;
+  const el = document.createElement("div");
+  el.id = "linkdesk-vscode-workbench";
+  el.style.cssText = "position:fixed;top:0;left:0;width:0;height:0;overflow:hidden;pointer-events:none;z-index:-1";
+  document.body.appendChild(el);
+  return el;
+}
+
 /**
  * 确保 Monaco VS Code 服务层已初始化——幂等，多次调用安全。
  * 必须在任何 monaco.editor.create() 之前调用。
  *
  * @param openEditorFunc - IEditorService.openEditor() 回调
- *   (modelRef, _options, _sideBySide) => Promise<ICodeEditor | undefined>
  */
 export async function initMonacoEnv(
   openEditorFunc: (
@@ -34,12 +44,13 @@ export async function initMonacoEnv(
   const config: MonacoVscodeApiConfig = {
     $type: "extended",
     viewsConfig: {
-      $type: "EditorService",
+      $type: "ViewsService",
+      htmlContainer: getHiddenContainer(),
       openEditorFunc,
     },
     monacoWorkerFactory: configureDefaultWorkerFactory,
     advanced: {
-      loadThemes: false, // 🔥 禁用 VS Code 主题扩展——Vite 不认 extension-file:// 协议
+      loadThemes: false,
     },
   };
 
