@@ -42,6 +42,7 @@ import type { ManifestMenuItem, TitleBarContribution } from "../core/MenuRegistr
 import { registerMenuItems, registerTitleBarContribution } from "../core/MenuRegistry";
 import { registerCommand } from "../core/CommandRegistry";
 import { registerFileAssociation } from "../core/FileAssociationService";
+import { registerLangDef } from "../core/LangDefRegistry";
 import { registerKeybinding } from "../core/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
@@ -507,6 +508,20 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
         command: fa.command,
         displayName: fa.displayName,
       });
+    }
+  }
+
+  // contributes.langDefs → LangDefRegistry（E4V#40s5b）
+  if (c.langDefs) {
+    const list = c.langDefs as Array<{
+      id: string;
+      extensions: string[];
+      aliases?: string[];
+      monarch?: { tokenizer: Record<string, unknown> };
+      lsp?: { command: string; args?: string[] };
+    }>;
+    for (const def of list) {
+      registerLangDef(pluginId, def);
     }
   }
 }
