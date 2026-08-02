@@ -9,7 +9,6 @@
  */
 
 import type { ExplorerItem } from "./FileTreeModel";
-import { IconRegistry } from "@src/core/IconRegistry";
 import {
   FILE_ICON_MAP,
   EXT_ICON_MAP,
@@ -62,17 +61,13 @@ export class FileIconResolver {
   }
 }
 
-/** 构建当前主题的 resolver——默认映射 + 图标主题覆盖 */
-function buildResolver(): FileIconResolver {
-  const mappings = IconRegistry.getCurrentMappings();
-  return new FileIconResolver(mappings ?? undefined);
-}
+/** 全局默认实例 */
+let _resolver = new FileIconResolver();
 
-/** 全局实例——图标主题切换时重建 */
-let _resolver = buildResolver();
-IconRegistry.onDidChangeCurrent.event(() => {
-  _resolver = buildResolver();
-});
+/** 更新图标解析器——图标主题切换时调用 */
+export function updateIconResolver(mappings?: import("./FileIconResolver").IconMappings): void {
+  _resolver = new FileIconResolver(mappings);
+}
 
 /** 获取当前生效的图标解析器 */
 export function getIconResolver(): FileIconResolver {
