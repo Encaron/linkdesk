@@ -109,6 +109,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
       editorRef.current = editor;
       monacoRef.current = monaco;
+      console.log("[editor] editorRef SET——filePath:", filePath);
 
       // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
       const pendingReveal = consumePendingReveal(filePath);
@@ -217,6 +218,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
     return () => {
       disposed = true;
+      console.log("[editor] editorRef DISPOSE——filePath:", filePath, "ref:", !!editorRef.current);
       editorRef.current?.dispose();
     };
   }, [filePath]);
