@@ -11,22 +11,27 @@
 import { initialize } from "@codingame/monaco-vscode-api";
 import getEditorServiceOverride from "@codingame/monaco-vscode-editor-service-override";
 
+/** initialize() 只能全局调一次——模块级守卫 */
+let _navReady = false;
+let _navPromise: Promise<void> | null = null;
+
 /**
- * 设置导航桥——覆盖 IEditorService.openEditor()。
- * Monaco 所有"打开文件"操作（F12/Ctrl+Click/peek 窗）汇到此回调。
+ * 确保导航桥已初始化——幂等，多次调用只执行一次。
+ * Monaco 所有"打开文件"操作（F12/Ctrl+Click/peek 窗）汇到 openFile 回调。
  *
  * @param openFile - 壳标签页打开回调：(filePath: string) => void
  */
-export async function setupNavigationBridge(
+export async function ensureNavigationBridge(
   openFile: (filePath: string) => void,
 ): Promise<void> {
-  await initialize(
+  if (_navReady) return;
+  if (_navPromise) return _navPromise; // 进行中复用
+  _navPromise = initialize(
     getEditorServiceOverride(async (modelRef, _options, _sideBySide) => {
       const uri = modelRef.object.textEditorModel.uri;
-      const targetPath = uri.fsPath;
-      openFile(targetPath);
-      // 返回 undefined——壳管编辑器生命周期，不返回 ICodeEditor
+      openFile(uri.fsPath);
       return undefined;
     }),
-  );
+  ).then(() => { _navReady = true; });
+  return _navPromise;
 }
