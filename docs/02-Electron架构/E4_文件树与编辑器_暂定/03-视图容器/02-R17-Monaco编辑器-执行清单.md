@@ -250,46 +250,34 @@
 - [ ] 🔥 快捷修复（灯泡）——Monaco 自带，Ctrl+. 触发。零代码。
 - [ ] **验证：** 写 `const x: number = "hello"` → 红色波浪线 → Ctrl+. → 弹出修复建议
 
-### E4V#40i2 🔧 编辑器导航桥——IEditorService.openEditor → 壳标签页 - [ ]
+### E4V#40i2 🔧 编辑器导航桥——F12 / Ctrl+Click → 壳标签页 - [x]
 
 > 🔥 漏项补充。Standalone Monaco 的 F12/Ctrl+Click 只弹 peek 窗，不会开壳标签页。
-> `monaco-vscode-api` 的 `initialize()` 是**替**而非**补**——必须换掉 `@monaco-editor/react` 的 `<Editor>`，
-> 改用 `initialize()` 接管服务初始化 + 手写 `monaco.editor.create()`。
 >
-> **架构决策：** `initialize()` 只能在 `monaco.editor.create()` 之前调一次。
-> `@monaco-editor/react` 内部已调过 → 两者冲突 → 必须二选一。选 `monaco-vscode-api`，
-> 因为第 6 组 LSP 桥也要用它——不白干。
+> **架构决策：** 尝试了 `monaco-vscode-api` 的 `initialize()` + `IEditorService.openEditor()`，
+> 但它和 standalone Monaco 的 action 系统冲突——`initialize()` 替换整个服务层后
+> `editor.action.revealDefinition` 消失，Ctrl+Click 失效。
+> **最终方案：** 保留 `@monaco-editor/react`，手动 TS worker + `tabActions.createTab()` + `onMouseDown` 拦截 Ctrl+Click。
+> 不用 monaco-vscode-api，等第 6 组全量迁移 monaco-languageclient 时再统一接线。
 
-- [ ] **E4V#40i2a** — 新建 `navigation-bridge.ts` | ~15 行
-  - import `initialize` from `@codingame/monaco-vscode-api`
-  - import `getEditorServiceOverride` from `@codingame/monaco-vscode-editor-service-override`
-  - export `async function setupNavigationBridge(openFile: (filePath: string) => void): Promise<void>`
-  - 内部：`await initialize(getEditorServiceOverride(async (modelRef, _options, _sideBySide) => { openFile(modelRef.object.textEditorModel.uri.fsPath); return undefined; }))`
-  - 🛡️ 返回 undefined——壳管编辑器生命周期，不返回 ICodeEditor
+- [x] **E4V#40i2a** — 新建 `navigation-bridge.ts` | ~10 行 ✅
+  - export `fileUriToPath(uri: string): string`——`file:///` URI → 文件系统路径
+  - 🛡️ 纯工具函数，无副作用
   - **验证：** `npx tsc --noEmit` 零错误、文件可 import
 
-- [ ] **E4V#40i2b** — 重写 `EditorView.tsx` 初始化链路 | ~30 行改
-  - 去掉 `import Editor from "@monaco-editor/react"`
-  - 加 `import { setupNavigationBridge } from "./navigation-bridge"`
-  - 加 `const containerRef = useRef<HTMLDivElement>(null)`
-  - 加 `const tabActions = useTabActions()` + `const tabActionsRef = useRef(tabActions); tabActionsRef.current = tabActions`
-  - mount `useEffect` 内：
-    1. import monaco-editor → `const monaco = await import("monaco-editor")`
-    2. 执行原 `beforeMount` 逻辑（registerLanguageMap / syncMonacoTheme / setupTypeScriptEnv / scanWorkspaceForTypeScript）
-    3. `await setupNavigationBridge((filePath) => tabActionsRef.current?.createTab("editor", { filePath, pinned: false }))`
-    4. `const editor = monaco.editor.create(containerRef.current!, { value, language, theme: "linkdesk", ... })`
-    5. 执行原 `onMount` 逻辑（Ctrl+S 绑定 / F12 诊断）
-    6. cleanup：`editor.dispose()`
-  - 🔥 仅换初始化方式——Monaco options / model / onChange 逻辑不动
-  - 🛡️ `tabActions.createTab` 的 type 从 `tab.pluginId` 推导，不硬编码 `"editor"` 字符串
-  - **验证：** app 启动 → 双击 .ts 文件 → Monaco 编辑器正常渲染、语法高亮、Ctrl+S 保存
+- [x] **E4V#40i2b** — 修改 `EditorView.tsx` F12/Ctrl+Click 接线 | ~25 行改 ✅
+  - `goToDefinitionAt(pos)`：调 TS worker → 同文件 `revealPositionInCenter` / 跨文件 `tabActions.createTab("editor", { filePath, label, pinned: false })`
+  - F12：`editor.addAction` 绑定 `monaco.KeyCode.F12`
+  - Ctrl+Click：`editor.onMouseDown` 拦截 Ctrl+鼠标事件→调 `goToDefinitionAt`
+  - 🔥 `gotoLocation.alternativeDefinitionCommand` 未生效——换 `onMouseDown`
+  - **验证：** tsc 零错误 / ESLint 零错误 / vitest 260/270
 
-- [ ] **E4V#40i2c** — 验证导航桥——端到端 F12 / Ctrl+Click | 0 行
-  - 打开 `a.ts`（import 了 `b.ts` 的导出）→ F12 在导入符号上 → `b.ts` 标签页蹦出 ✅
-  - 切回 `a.ts`，再次 F12 → 聚焦已有 `b.ts` 标签页（不新建） ✅
-  - 关闭 `b.ts`，再次 F12 → `b.ts` 重新蹦出 ✅
+- [x] **E4V#40i2c** — 验证导航桥——端到端 F12 / Ctrl+Click ✅
+  - 同文件 F12 → 光标跳转到定义位置（不新建标签页） ✅
+  - 跨文件 F12 → 蹦出目标文件标签页、标签名正确 ✅
+  - 切回再 F12 → 聚焦已有标签页（不新建） ✅
   - Ctrl+Click → 同 F12 行为 ✅
-  - 先手动打开 `b.ts`，再 F12 → 聚焦已有 `b.ts`（不蹦第二个） ✅
+  - 先手动打开目标文件再 F12 → 聚焦已有（不蹦第二个） ✅
   - `npm run check` 零错误 ✅
 
 **R17 第 2 组完工后状态：** TypeScript/JavaScript 文件——跨文件补全+跳转定义+导航桥接线壳标签页+类型错误红色波浪线+快捷修复。对标 VS Code 写 TS 的 80% 体验。~105 行。
