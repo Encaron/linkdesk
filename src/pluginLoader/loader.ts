@@ -458,7 +458,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
 
   // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
   if (c.views) {
-    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string }>>;
+    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string; minHeight?: number }>>;
     void (async () => {
       const { ViewContainerService } = await import("../core/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
@@ -481,6 +481,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
               titleDescription: viewDef.titleDescription,
               showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
               titleTooltip: viewDef.titleTooltip,
+              minHeight: viewDef.minHeight,
             });
           } catch (e) {
             console.error(

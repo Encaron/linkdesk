@@ -76,6 +76,8 @@ export interface ViewDescriptor {
   /** 单 view 且容器 mergeHeaderWhenSingle 时，容器 header 显示此标题替代容器 title。
    *  对标 VS Code singleViewPaneContainerTitle */
   singleViewPaneContainerTitle?: string;
+  /** E4V#45——拖拽 resize 最小高度（px）。不声明默认 100 */
+  minHeight?: number;
   /** 控制 actions 的显隐时机。对标 VS Code ViewPaneShowActions */
   showActions?: "always" | "whenExpanded" | "default";
   /** 标题 hover tooltip——标题截断时显示完整文字。对标 VS Code titleContainerHover */
