@@ -370,6 +370,11 @@ export class ViewContainerServiceClass extends RegistryBase {
     return this.loadCollapsedState().has(viewId);
   }
 
+  /** 重置令牌——resetCollapsedState 时递增 → SectionStack 传 SidebarSection → useEffect 同步 open */
+  private _resetToken = 0;
+
+  get resetToken(): number { return this._resetToken; }
+
   /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
   resetCollapsedState(): void {
     // 清折叠状态
@@ -382,6 +387,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     for (const [, model] of this._models) {
       model.clearHidden();
     }
+    this._resetToken++;
     // 恢复 plugin.json 原始 order——从 _originalOrder 恢复被 reorderView 改过的值
     for (const [containerId, model] of this._models) {
       const orig = this._originalOrder.get(containerId);

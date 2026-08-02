@@ -226,6 +226,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         title={view.title}
         collapsible
         defaultOpen={defaultOpen}
+        resetToken={ViewContainerService.resetToken}
         badge={view.badge}
         actions={view.actions}
         pinnedContent={view.pinnedContent}
