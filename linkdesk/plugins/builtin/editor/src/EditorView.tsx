@@ -113,8 +113,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
-        console.log("[editor] revealPositionInCenter → line", pendingReveal.line, "col", pendingReveal.column);
-        editor.revealPositionInCenter({ lineNumber: pendingReveal.line, column: pendingReveal.column });
+        const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
+        editor.setPosition(pos);
+        editor.revealPositionInCenter(pos);
         editor.focus();
       }
 
@@ -179,7 +180,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             return;
           }
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
-          console.log("[editor] 跨文件跳转:", targetPath, "行", targetLine, "列", targetCol);
           setPendingReveal(targetPath, targetLine, targetCol);
           tabActionsRef.current?.createTab("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
