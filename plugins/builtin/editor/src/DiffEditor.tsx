@@ -40,6 +40,11 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
 
         const origUri = monaco.Uri.file(origModel.filePath);
         const modUri = monaco.Uri.file(modModel.filePath);
+        // 如果已有相同 URI 的 model（如文件已在编辑器标签页中打开），先 dispose 再创建
+        const existingOrig = monaco.editor.getModel(origUri);
+        const existingMod = monaco.editor.getModel(modUri);
+        if (existingOrig) existingOrig.dispose();
+        if (existingMod) existingMod.dispose();
         const origM = monaco.editor.createModel(origModel.getValue(), undefined, origUri);
         const modM = monaco.editor.createModel(modModel.getValue(), undefined, modUri);
 
