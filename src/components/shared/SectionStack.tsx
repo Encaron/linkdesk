@@ -14,6 +14,10 @@ import { ContextKeyService } from "../../core/ContextKeyService";
 import ErrorBoundary from "./ErrorBoundary";
 import SidebarSection from "./SidebarSection";
 import { setDraggingView } from "./viewDragState";
+// E4V#49——view header 右键菜单
+import ContextMenu from "./ContextMenu";
+import { MenuId, registerMenuItems } from "../../core/MenuRegistry";
+import { registerCommand } from "../../core/CommandRegistry";
 
 interface SectionStackProps {
   views: ViewDescriptor[];
@@ -174,6 +178,22 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     setDraggingView(null);
   }, []);
 
+  // E4V#49——view header 右键菜单
+  const [ctxAnchor, setCtxAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [ctxViewId, setCtxViewId] = useState<string | null>(null);
+
+  const handleViewContextMenu = useCallback((e: React.MouseEvent, viewId: string) => {
+    e.preventDefault();
+    ContextKeyService.setValue("viewTitleContextView", viewId);
+    setCtxViewId(viewId);
+    setCtxAnchor({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  const handleCtxClose = useCallback(() => {
+    setCtxAnchor(null);
+    setCtxViewId(null);
+  }, []);
+
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const id = dragViewIdRef.current;
@@ -200,7 +220,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     return ContextKeyService.matches(empty.when) ? empty.content : null;
   };
 
-  const renderSection = (view: ViewDescriptor, draggable: boolean, onDragStart?: (e: React.DragEvent) => void, onDragEnd?: () => void) => {
+  const renderSection = (view: ViewDescriptor, draggable: boolean, onDragStart?: (e: React.DragEvent) => void, onDragEnd?: () => void, onContextMenu?: (e: React.MouseEvent) => void) => {
     const emptyContent = getEmptyContent(view.id);
     const body = emptyContent ?? (
       <ErrorBoundary pluginId={pluginId}>
@@ -210,7 +230,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
 
     if (mergeHeader) {
       return (
-        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd}>
+        <SidebarSection key={view.id} title="" collapsible={false} defaultOpen headerHidden draggable={draggable} onDragStart={onDragStart} onDragEnd={onDragEnd} onContextMenu={onContextMenu}>
           {body}
         </SidebarSection>
       );
@@ -237,6 +257,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onToggleCollapse={(collapsed) => ViewContainerService.setCollapsed(view.id, collapsed)}
+        onContextMenu={onContextMenu}
       >
         {body}
       </SidebarSection>
@@ -244,6 +265,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   };
 
   return (
+    <>
     <div
       ref={containerRef}
       onDragOverCapture={(e) => {
@@ -279,7 +301,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     >
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
-        const section = renderSection(view, !singleView, (e) => handleDragStart(e, view.id), handleViewDragEnd);
+        const section = renderSection(view, !singleView, (e) => handleDragStart(e, view.id), handleViewDragEnd, (e) => handleViewContextMenu(e, view.id));
         const showDropBefore = !!(dragViewId && dragViewId !== view.id && dropIndex === i);
 
         if (!singleView) {
@@ -307,5 +329,36 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         return <div key={view.id} style={{ display: "contents" }}>{section}</div>;
       })}
     </div>
+    {ctxAnchor && ctxViewId && (
+      <ContextMenu
+        menuId={MenuId.ViewTitleContext}
+        anchor={ctxAnchor}
+        context={{ viewId: ctxViewId }}
+        onClose={handleCtxClose}
+      />
+    )}
+    </>
   );
 }
+
+// E4V#49——View header 右键菜单命令
+registerCommand("_core", {
+  id: "view.toggleCollapse",
+  title: "折叠/展开",
+  handler: async (...args: unknown[]) => {
+    ViewContainerService.setCollapsed(args[0] as string, !ViewContainerService.isCollapsed(args[0] as string));
+  },
+});
+registerCommand("_core", {
+  id: "view.hideView",
+  title: "隐藏",
+  handler: async (...args: unknown[]) => {
+    const viewId = args[0] as string;
+    const cid = (ViewContainerService as any)._viewIndex?.get(viewId);
+    if (cid) ViewContainerService.setVisible(cid, viewId, false);
+  },
+});
+registerMenuItems(MenuId.ViewTitleContext, "_core", [
+  { command: "view.toggleCollapse", group: "navigation" },
+  { command: "view.hideView", group: "navigation" },
+]);

@@ -46,6 +46,8 @@ export interface SidebarSectionProps {
   onDragEnd?: () => void;
   /** E4V#46——折叠状态变更回调 */
   onToggleCollapse?: (collapsed: boolean) => void;
+  /** E4V#49——右键 header 回调 */
+  onContextMenu?: (e: React.MouseEvent) => void;
 }
 
 function SidebarSection({
@@ -65,6 +67,7 @@ function SidebarSection({
   onDragStart,
   onDragEnd,
   onToggleCollapse,
+  onContextMenu,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   // E4V#43——actions 溢出检测 + … 下拉
@@ -147,6 +150,7 @@ function SidebarSection({
           draggable={draggable}
           onDragStart={onDragStart}
           onDragEnd={onDragEnd}
+          onContextMenu={onContextMenu}
         >
           {collapsible && (
             <span className={`sidebar-section-arrow${open ? "" : " collapsed"}`}>
