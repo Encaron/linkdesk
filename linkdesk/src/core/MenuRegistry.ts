@@ -37,8 +37,6 @@ export enum MenuId {
   IconBar = "iconBar",
   /** E3f #53：设置项齿轮——Settings Editor 每行 hover 齿轮菜单 */
   SettingItemGear = "settingItemGear",
-  /** E4V#49：view header 右键菜单——折叠/展开/隐藏 */
-  ViewTitleContext = "viewTitleContext",
 }
 
 /* ── 类型 ── */
