@@ -138,6 +138,11 @@ export function executeCommandSync(
 
 /* ── 查询 ── */
 
+/** 命令是否有已注册的 handler */
+export function hasHandler(commandId: string): boolean {
+  return _commands.has(commandId);
+}
+
 /** 获取单个命令 */
 export function getCommand(commandId: string): Command | undefined {
   return _commands.get(commandId);

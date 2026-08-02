@@ -30,7 +30,7 @@
  */
 
 import { ContextKeyService } from "./ContextKeyService";
-import { executeCommand } from "./CommandRegistry";
+import { executeCommand, hasHandler } from "./CommandRegistry";
 import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "./FileService";
 import { normalizePath } from "./pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "./CoreEvents";
@@ -454,7 +454,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     const fullChord = `${firstKey} ${keyString}`;
 
     const winner = keybindingResolver.resolve(fullChord);
-    if (winner) {
+    if (winner && hasHandler(winner.command)) {
       e.preventDefault();
       e.stopImmediatePropagation();
       executeCommand(winner.command, undefined, ...(winner.args ?? []));
@@ -481,7 +481,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 
   // ── 单键匹配——Resolver 仲裁（E2c #17a） ──
   const winner = keybindingResolver.resolve(keyString);
-  if (winner) {
+  if (winner && hasHandler(winner.command)) {
     e.preventDefault();
     e.stopImmediatePropagation();
     executeCommand(winner.command, undefined, ...(winner.args ?? []));
