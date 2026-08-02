@@ -42,10 +42,6 @@ export interface Tab {
   pluginId?: string;
   detailPluginId?: string;
   sourceId?: string;
-  /** 目标行号（F12 跳转定义时传入） */
-  line?: number;
-  /** 目标列号 */
-  column?: number;
   /** 对标 VS Code preview editor：false=预览模式（斜体，下次点别的会替换），true=已固定 */
   pinned?: boolean;
 }
@@ -113,8 +109,6 @@ export function createTabDefaults(
     pluginId,
     detailPluginId: isDetail ? detailPluginId : opts?.detailPluginId,
     sourceId: opts?.sourceId,
-    line: opts?.line,
-    column: opts?.column,
     pinned: opts?.pinned ?? false,  // VS Code: 新标签页默认预览模式
   };
 

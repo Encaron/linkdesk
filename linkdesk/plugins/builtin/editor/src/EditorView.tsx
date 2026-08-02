@@ -15,7 +15,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
-import { fileUriToPath } from "./navigation-bridge";
+import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
@@ -28,10 +28,6 @@ export interface EditorViewProps {
   onChange?: (value: string | undefined) => void;
   onSave?: () => void;
   readOnly?: boolean;
-  /** 初始化后跳转到的行号 */
-  initialLine?: number;
-  /** 初始化后跳转到的列号 */
-  initialColumn?: number;
 }
 
 export interface EditorViewHandle {
@@ -40,7 +36,7 @@ export interface EditorViewHandle {
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
-  { value, language: _language, filePath, isActive, onChange, onSave, readOnly, initialLine, initialColumn },
+  { value, language: _language, filePath, isActive, onChange, onSave, readOnly },
   ref,
 ) {
   const editorRef = useRef<any>(null);
@@ -175,9 +171,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             return;
           }
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
+          setPendingReveal(targetPath, targetLine, targetCol);
           tabActionsRef.current?.createTab("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
-            line: targetLine, column: targetCol,
           });
         } catch { /* 无定义则放行 */ }
       };
@@ -222,12 +218,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
 
-  // F12 跳转后滚动到目标位置
+  // F12 跳转后滚动到目标位置（编辑器内部通信，不经过壳）
   useEffect(() => {
-    if (initialLine && editorRef.current) {
-      editorRef.current.revealPositionInCenter({ lineNumber: initialLine, column: initialColumn ?? 1 });
+    const pos = consumePendingReveal(filePath);
+    if (pos && editorRef.current) {
+      editorRef.current.revealPositionInCenter({ lineNumber: pos.line, column: pos.column });
     }
-  }, [initialLine, initialColumn]);
+  }, [filePath]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);
