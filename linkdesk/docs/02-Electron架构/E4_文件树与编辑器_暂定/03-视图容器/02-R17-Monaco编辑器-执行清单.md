@@ -478,16 +478,33 @@
 
 ### E4V#40r 🔧 语言插件贡献点——contributes.languages 扩展 - [ ]
 
-- [ ] **文件：** `public/schemas/plugin.schema.json` + `src/core/types.ts` | ~20 行
-  - `contributes.languages` 加新字段：`id`, `extensions`, `aliases`, `monarch?`, `lsp?: { command, args }`
+- [ ] **E4V#40r1** — `plugin.schema.json` 加 `contributes.languages` | ~10 行
+  - `languages` 数组：`{ id, extensions, aliases, monarch?, lsp?: { command, args } }`
   - **验证：** schema 校验通过
+
+- [ ] **E4V#40r2** — `src/core/types.ts` 加 `LanguageContribution` 类型 | ~5 行
+  - **验证：** tsc 零错误
 
 ### E4V#40s 🔧 LSP 桥接线——child_process → MonacoLanguageClient - [ ]
 
-- [ ] **文件：** `plugins/builtin/editor/src/lsp-bridge.ts` | ~30 行
-  - main process `child_process.spawn(clangd)` → IPC 桥 → `MonacoLanguageClient`
-  - `IEditorService.openEditor()` 覆盖（已在 monaco-init.ts 中）自动处理导航
-  - **验证：** C 文件 F12 → clangd 返回定义 → 壳标签页蹦出
+> 🔥 pyright 已安装（`npm install -D pyright`）。测试语言 = Python。
+> 做完后 C/C++/Rust 只需换 spawn 命令即可。
+
+- [ ] **E4V#40s1** — main process IPC handler：`lsp:spawn` → `child_process.spawn` | ~20 行
+  - `electron/ipc/lsp-handlers.ts`：`spawn` 创建进程，stdin/stdout 桥 IPC
+  - `electron/main.ts`：注册 handler
+
+- [ ] **E4V#40s2** — render 端 `lsp-bridge.ts`：启动 LSP 客户端 | ~25 行
+  - `startLspClient(languageId, serverCommand)` → `MonacoLanguageClient` 连接
+  - stdin/stdout 通过 IPC 代理到主进程
+
+- [ ] **E4V#40s3** — EditorView `goToDefinitionAt` 归一化——语言分派 | ~10 行改
+  - 不再写死 `monaco.languages.typescript`——按 `model.getLanguageId()` 分派
+  - TS/JS → TS worker / C++/Python 等 → LSP client → `registerDefinitionProvider`
+
+- [ ] **E4V#40s4** — 端到端验证 Python F12 | 0 行
+  - 打开 `hello.py` → F12 → pyright 返回定义 → 壳标签页蹦出 ✅
+  - npm run check 零错误 ✅
 
 **R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。LSP 桥已接——C/C++/Python 跨文件跳转走 IEditorService.openEditor → 壳标签页。~120 行。
 
