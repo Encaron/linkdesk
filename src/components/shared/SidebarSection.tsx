@@ -10,7 +10,7 @@
  * 纯 UI 组件——不 import 任何 core 模块。
  */
 
-import { type ReactNode, useState, useCallback } from "react";
+import { type ReactNode, useState, useCallback, useRef, useEffect } from "react";
 import "./SidebarSection.css";
 
 export interface SidebarSectionProps {
@@ -55,6 +55,11 @@ function SidebarSection({
   stickyTop,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
+  // E4V#43——actions 溢出检测 + … 下拉
+  const actionsRef = useRef<HTMLSpanElement>(null);
+  const moreRef = useRef<HTMLSpanElement>(null);
+  const [actionsOverflow, setActionsOverflow] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
 
   const toggle = useCallback(() => {
     if (collapsible) setOpen((prev) => !prev);
@@ -69,6 +74,30 @@ function SidebarSection({
     },
     [toggle],
   );
+
+  // E4V#43——ResizeObserver 检测 actions 溢出
+  useEffect(() => {
+    const el = actionsRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => {
+      // scrollWidth > clientWidth 说明内容被裁切了
+      setActionsOverflow(el.scrollWidth > el.clientWidth + 2);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // E4V#43——… 下拉打开时，点击外部关闭
+  useEffect(() => {
+    if (!moreOpen) return;
+    const onClick = (e: MouseEvent) => {
+      if (moreRef.current && !moreRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onClick, true);
+    return () => document.removeEventListener("mousedown", onClick, true);
+  }, [moreOpen]);
 
   // 🆕 E36#3A.4：headerHidden——不渲染 header，直接显示 body
   if (headerHidden) {
@@ -117,12 +146,30 @@ function SidebarSection({
           )}
           <span className="sidebar-section-spacer" />
           {actions && (
-            <span
-              className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}`}
-              onClick={(e) => e.stopPropagation()}
-            >
-              {actions}
-            </span>
+            <>
+              <span
+                ref={actionsRef}
+                className={`sidebar-section-actions${showActions === "default" ? " show-on-hover" : ""}${showActions === "whenExpanded" && !open ? " hidden" : ""}${actionsOverflow ? " overflow" : ""}`}
+                onClick={(e) => e.stopPropagation()}
+              >
+                {actions}
+              </span>
+              {actionsOverflow && (
+                <span
+                  ref={moreRef}
+                  className={`sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
+                  onClick={(e) => { e.stopPropagation(); setMoreOpen((p) => !p); }}
+                  title="更多操作…"
+                >
+                  …
+                  {moreOpen && (
+                    <div className="sidebar-section-more-dropdown" onClick={(e) => e.stopPropagation()}>
+                      {actions}
+                    </div>
+                  )}
+                </span>
+              )}
+            </>
           )}
         </div>
         {open && pinnedContent && (
