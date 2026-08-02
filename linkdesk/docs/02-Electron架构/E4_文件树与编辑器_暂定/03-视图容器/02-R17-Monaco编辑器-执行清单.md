@@ -468,6 +468,17 @@
   - 主题切换 → 编辑器跟随 ✅
   - `npm run check` 零错误 ✅
 
+- [ ] **E4V#40t6** 🔧 归一化——ViewsService 模式：让 IEditorService 成为唯一导航通道 | ~15 行改
+  > 🔥 治本。现状 F12/Ctrl+Click 走手动 TS worker——只覆盖 TS/JS，V2.6 模式。
+  > ViewsService 模式注册 workbench command（含 revealDefinition），
+  > 定义结果自动流入 IEditorService.openEditor() → openEditorFunc → 壳标签页。
+  > 所有语言通用——C++/Python 接 LSP 后零改动即用。
+  - [ ] 改 `monaco-init.ts`：`viewsConfig.$type` 从 `"EditorService"` 改 `"ViewsService"`
+  - [ ] 加 `htmlContainer` 参数——`document.getElementById("editor-root")` 或创建临时 div
+  - [ ] CSS 隐藏 workbench 多余的 DOM（status bar 等）
+  - [ ] **验证：** 删掉 EditorView 中手动 F12 addAction + onMouseDown 代码 → F12/Ctrl+Click 仍正常工作 ✅
+  - [ ] `npm run check` 零错误 ✅
+
 **R17 第 6 组完工后状态：** monaco-languageclient 全量替代 @monaco-editor/react。F12/Ctrl+Click 走 IEditorService.openEditor → 壳标签页——治本，所有语言通用。LSP 桥框架就绪（`MonacoLanguageClient` 接 clangd/pylsp 等）。~90 行。
 
 ---
@@ -539,10 +550,10 @@
 | 3 | 编辑器镶边——状态栏+面包屑+右键 | E4V#40j–40l | ~120 |
 | 4 | 高级功能——Diff+热退出+自动保存+多标签页 | E4V#40m–40p | ~130 |
 | 5 | 配置项——25 项编辑器配置 | E4V#40q | ~70 |
-| 6 | monaco-languageclient 全量迁移——治本 | E4V#40t | ~90 |
+| 6 | monaco-languageclient 全量迁移——治本 | E4V#40t–t6 | ~105 |
 | 7 | 装饰+快捷键映射 | E4V#40u–40v | ~45 |
 | 🔴 | GBK 编码保存 | E4V#40w | ~10 |
-| **合计** | | **23 任务** | **~950 行** |
+| **合计** | | **24 任务** | **~965 行** |
 
 > 对标原 E4V#40a–E4V#42d（10 任务 ~330 行）→ 现 22 任务 ~920 行。
 > 行数增加 3 倍——但体感从"文本区"变成"类 VS Code 编辑器"。
