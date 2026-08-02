@@ -21,7 +21,6 @@ import { getPluginFor } from "@src/core/FileAssociationService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
 import { FileTreeDecorationService } from "../FileTreeDecoration";
-import WelcomeView from "../WelcomeView";
 import SearchView from "./SearchView";
 import { FileTreeModel } from "../FileTreeModel";
 import type { FileTreeHandle } from "../FileTree";
@@ -31,7 +30,6 @@ import { joinPath, normalizePath, extension } from "../pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
-  console.log("[FoldersView] 组件挂载");
   const { t } = useTranslation();
   const tabActions = useTabActions();
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
@@ -174,26 +172,9 @@ const FoldersView: React.FC = () => {
     return promise;
   }, [model, rerender]);
 
-  // E4V#44——注册空状态占位内容：壳层渲染，不再由 FoldersView 内部硬编码
   useEffect(() => {
-    ViewContainerService.registerViewEmptyContent(
-      "explorer", "folders",
-      <WelcomeView />,
-      "!explorerView.hasWorkspace",
-    );
-  }, []);
-
-  // E4V#44——设 ContextKey 供空状态占位内容的 when 条件消费
-  useEffect(() => {
-    ContextKeyService.setValue("explorerView.hasWorkspace", roots.length > 0);
-  }, [roots]);
-
-  useEffect(() => {
-    console.log("[FoldersView] syncRoots useEffect 触发, onDidChangeFolders=", typeof onDidChangeFolders, "listeners before sub:", (onDidChangeFolders as any)._listeners?.size ?? "N/A");
     syncRoots();
-    const cb = () => { console.log("[FoldersView] onDidChangeFolders CALLBACK FIRED"); syncRoots(); };
-    const unsub1 = onDidChangeFolders(cb);
-    console.log("[FoldersView] sub完成 unsub1=", typeof unsub1, "listeners after sub:", (onDidChangeFolders as any)._listeners?.size ?? "N/A");
+    const unsub1 = onDidChangeFolders(() => { syncRoots(); });
     // E4V#fix: 文件变更防抖——300ms 内累积的变更合并为一次 refresh。
     // 背景：onFileChange IPC 监听是全局的（所有 watcher 共享 filesystem:changed 频道），
     // 批量文件操作（npm install / git checkout / appData 写入）会产生数十个事件，
@@ -394,7 +375,6 @@ const FoldersView: React.FC = () => {
     return () => { setOpenFileFn(null); };
   }, [doOpenFile]);
 
-  console.log("[FoldersView] render roots.length=", roots.length, "model.roots.length=", model.roots.length);
   return (
     <div className="file-tree-root">
       {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
