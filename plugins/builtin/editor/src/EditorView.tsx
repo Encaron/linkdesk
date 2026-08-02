@@ -226,6 +226,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const raf = requestAnimationFrame(() => { editorRef.current?.layout(); });
     // 目标文件已开 → F12 聚焦已有标签页时也 consume（EditorView 不会重新 mount）
     const pos = consumePendingReveal(filePath);
+    console.log("[editor] isActive effect——filePath:", filePath, "pos:", pos, "editor:", !!editorRef.current);
     if (pos && editorRef.current) {
       editorRef.current.setPosition({ lineNumber: pos.line, column: pos.column });
       editorRef.current.revealPositionInCenter({ lineNumber: pos.line, column: pos.column });
