@@ -17,28 +17,23 @@ interface DirtyFiles {
 const dirtyFiles: DirtyFiles = {};
 
 let _persistTimer: ReturnType<typeof setTimeout> | null = null;
+let _restored = false;
 
 function schedulePersist(): void {
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => {
-    console.log("[HotExit] persist——保存", Object.keys(dirtyFiles).length, "个脏文件:", Object.keys(dirtyFiles).map(k => `${k}(${dirtyFiles[k].length}字)`));
     setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
   }, 1000);
 }
 
-let _restored = false;
-
+/** 懒加载——EditorTab 首次调 hasBackup/getBackupContent 时才从 PluginStateService 恢复 */
 function ensureRestored(): void {
   if (_restored) return;
   _restored = true;
   const prev = getPluginStateValue<DirtyFiles>("editor", BACKUP_KEY);
-  console.log("[HotExit] ensureRestored——PluginState:", prev);
   if (prev && Object.keys(prev).length > 0) {
-    console.log("[HotExit] 恢复", Object.keys(prev).length, "个备份文件:", Object.keys(prev));
     Object.assign(dirtyFiles, prev);
     setPluginStateValue("editor", BACKUP_KEY, null);
-  } else {
-    console.log("[HotExit] 无备份数据");
   }
 }
 
@@ -57,14 +52,12 @@ export function initHotExit(): void {
 
 /** 文件变脏时调用——记录并调度持久化 */
 export function trackDirtyFile(filePath: string, content: string): void {
-  console.log("[HotExit] trackDirtyFile:", filePath, "内容长度:", content.length);
   dirtyFiles[filePath] = content;
   schedulePersist();
 }
 
 /** 文件保存后调用——清除并调度持久化 */
 export function clearDirtyFile(filePath: string): void {
-  console.log("[HotExit] clearDirtyFile:", filePath);
   delete dirtyFiles[filePath];
   schedulePersist();
 }
@@ -72,16 +65,11 @@ export function clearDirtyFile(filePath: string): void {
 /** 是否有此文件的备份内容 */
 export function hasBackup(filePath: string): boolean {
   ensureRestored();
-  const result = filePath in dirtyFiles;
-  console.log("[HotExit] hasBackup:", filePath, "→", result, "dirtyFiles keys:", Object.keys(dirtyFiles));
-  return result;
+  return filePath in dirtyFiles;
 }
 
 /** 取备份内容 */
 export function getBackupContent(filePath: string): string | undefined {
   ensureRestored();
-  const content = dirtyFiles[filePath];
-  console.log("[HotExit] getBackupContent:", filePath, "内容长度:", content?.length ?? 0);
-  return content;
+  return dirtyFiles[filePath];
 }
-
