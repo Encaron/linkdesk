@@ -360,6 +360,10 @@ export class ViewContainerServiceClass extends RegistryBase {
   /** E4V#46——一键清除全部折叠持久化 */
   resetCollapsedState(): void {
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
+    // 通知所有容器：折叠状态已变 → SectionStack 重渲染、读新的 isCollapsed
+    for (const [containerId] of this._models) {
+      this._updateActiveViews(containerId);
+    }
   }
 
   /* ═══ 可见性 ═══ */
