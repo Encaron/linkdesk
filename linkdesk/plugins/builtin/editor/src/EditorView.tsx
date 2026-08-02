@@ -14,7 +14,7 @@ import { useTabActions } from "@src/core/TabActionsContext";
 import { registerLanguageMap } from "./language-map";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
-import { setupNavigationBridge } from "./navigation-bridge";
+import { ensureNavigationBridge } from "./navigation-bridge";
 
 export interface EditorViewProps {
   value: string;
@@ -40,7 +40,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const containerRef = useRef<HTMLDivElement>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
-  const onNavReadyRef = useRef(false);
 
   const tabActions = useTabActions();
   const tabActionsRef = useRef(tabActions);
@@ -53,96 +52,92 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     dispose: () => editorRef.current?.dispose(),
   }), []);
 
-  // 🔥 初始化——monaco ready 后执行一次
+  // ── 一次性：monaco services 初始化 + 导航桥 ──
   useEffect(() => {
     if (!monaco) return;
-    if (!containerRef.current) return;
-    let disposed = false;
-
     monacoRef.current = monaco;
-
-    // 1. 原 beforeMount 逻辑
     registerLanguageMap(monaco);
     syncMonacoTheme(monaco);
     setupTypeScriptEnv(monaco);
-
-    // 2. 导航桥——只在首次 monaco ready 时设一次
-    const setupNav = !onNavReadyRef.current;
-    if (setupNav) onNavReadyRef.current = true;
-
-    (async () => {
-      if (setupNav) {
-        await setupNavigationBridge((targetPath) => {
-          tabActionsRef.current?.createTab("editor", {
-            filePath: targetPath,
-            pinned: false,
-          });
-        });
-      }
-      if (disposed) return;
-
-      // 3. 创建编辑器 model + editor
-      const uri = monaco.Uri.file(normalizePath(filePath));
-      const model = monaco.editor.createModel(value, language, uri);
-      const editor = monaco.editor.create(containerRef.current!, {
-        model,
-        theme: "linkdesk",
-        readOnly,
+    ensureNavigationBridge((targetPath) => {
+      tabActionsRef.current?.createTab("editor", {
+        filePath: targetPath,
+        pinned: false,
       });
-      editorRef.current = editor;
+    });
+  }, [monaco]);
 
-      // 4. onChange 接线
-      model.onDidChangeContent(() => {
-        onChange?.(model.getValue());
-      });
+  // ── 每个 filePath 创建 editor ──
+  useEffect(() => {
+    if (!monaco || !containerRef.current) return;
+    let disposed = false;
 
-      // 5. Ctrl+S
-      editor.addCommand(
-        monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
-        () => onSaveRef.current?.(),
-      );
+    const uri = monaco.Uri.file(normalizePath(filePath));
+    // 🔥 复用已有 model（影子 model 扫描可能已创建）
+    let model = monaco.editor.getModel(uri);
+    if (!model) {
+      model = monaco.editor.createModel(value, language, uri);
+    } else if (model.getValue() !== value) {
+      model.setValue(value);
+    }
 
-      // 6. F12 诊断 + 导航（导航桥接管 IEditorService.openEditor → 壳标签页）
-      editor.addAction({
-        id: "linkdesk.goToDefinition",
-        label: "Go to Definition",
-        keybindings: [monaco.KeyCode.F12],
-        run: async () => {
-          const m = editor.getModel();
-          const pos = editor.getPosition();
-          if (m && pos) {
-            const offset = m.getOffsetAt(pos);
-            try {
-              const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
-              const client = await worker(m.uri);
-              const defs = await client.getDefinitionAtPosition(m.uri.toString(), offset);
-              console.log("[editor] F12 offset:", offset, JSON.stringify(defs));
-            } catch (e) {
-              console.error("[editor] F12 error:", e);
-            }
-          }
-          // 导航——IEditorService.openEditor → 壳标签页
-          editor.getAction("editor.action.revealDefinition")?.run();
-        },
-      });
+    const editor = monaco.editor.create(containerRef.current, {
+      model,
+      theme: "linkdesk",
+      readOnly,
+    });
+    editorRef.current = editor;
 
-      // 7. 扫描后触发 TS 重分析（影子 model 创建晚于首次分析）
-      scanWorkspaceForTypeScript(monaco).then(() => {
-        if (disposed) return;
+    // onChange 接线
+    model.onDidChangeContent(() => {
+      onChange?.(model!.getValue());
+    });
+
+    // Ctrl+S
+    editor.addCommand(
+      monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS,
+      () => onSaveRef.current?.(),
+    );
+
+    // F12 诊断 + 导航（导航桥接管 IEditorService.openEditor → 壳标签页）
+    editor.addAction({
+      id: "linkdesk.goToDefinition",
+      label: "Go to Definition",
+      keybindings: [monaco.KeyCode.F12],
+      run: async () => {
         const m = editor.getModel();
-        if (!m || m.isDisposed()) return;
-        const lastLine = m.getLineCount();
-        const lastCol = m.getLineMaxColumn(lastLine);
-        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
-        m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
-      });
-    })();
+        const pos = editor.getPosition();
+        if (m && pos) {
+          try {
+            const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+            const client = await worker(m.uri);
+            const defs = await client.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+            console.log("[editor] F12 offset:", m.getOffsetAt(pos), JSON.stringify(defs));
+          } catch (e) {
+            console.error("[editor] F12 error:", e);
+          }
+        }
+        editor.getAction("editor.action.revealDefinition")?.run();
+      },
+    });
+
+    // 扫描后触发 TS 重分析（影子 model 创建晚于首次分析）
+    scanWorkspaceForTypeScript(monaco).then(() => {
+      if (disposed) return;
+      const m = editor.getModel();
+      if (!m || m.isDisposed()) return;
+      const lastLine = m.getLineCount();
+      const lastCol = m.getLineMaxColumn(lastLine);
+      m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol), text: "x" }]);
+      m.applyEdits([{ range: new monaco.Range(lastLine, lastCol, lastLine, lastCol + 1), text: "" }]);
+    });
 
     return () => {
       disposed = true;
-      editorRef.current?.dispose();
+      editor.dispose();
     };
-  }, [monaco, filePath, value, language, readOnly]); // 🔥 monaco ready 或 filePath 变化时重建
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- value/language/readOnly/onChange 变化不应重建编辑器
+  }, [monaco, filePath]);
 
   useEffect(() => {
     if (!isActive) return;
