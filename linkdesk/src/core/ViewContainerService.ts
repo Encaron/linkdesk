@@ -294,6 +294,11 @@ export class ViewContainerServiceClass extends RegistryBase {
     }
 
     this._viewIndex.set(descriptor.id, containerId);
+    // 🔥 立即保存原始 order——不等懒加载。moveView 可能在首次访问前就改变了 view 归属
+    if (!this._originalOrder.has(containerId)) {
+      this._originalOrder.set(containerId, new Map());
+    }
+    this._originalOrder.get(containerId)!.set(descriptor.id, descriptor.order ?? 0);
     this._updateActiveViews(containerId);
 
     this.onDidChangeViews.fire({
@@ -304,25 +309,13 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** 获取容器全部已注册 view（含不可见的）。对标 VS Code IViewsRegistry.getViews */
   getViews(containerId: string): ViewDescriptor[] {
-    // 懒加载持久化排序
-    if (!this._restoredOrder.has(containerId)) {
-      this._restoredOrder.add(containerId);
-      this.loadViewOrder(containerId);
-    }
     const model = this._models.get(containerId);
     if (!model) return [];
     return [...model.allViewDescriptors].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
-  private _restoredOrder = new Set<string>();
-
   /** 获取容器当前可见的 view。对标 VS Code ViewContainerModel.activeViewDescriptors */
   getActiveViews(containerId: string): ViewDescriptor[] {
-    // 懒加载持久化排序——首次访问此容器时恢复
-    if (!this._restoredOrder.has(containerId)) {
-      this._restoredOrder.add(containerId);
-      this.loadViewOrder(containerId);
-    }
     // 🔥 Bug 4 防线——空容器返回 [] 不抛错
     const model = this._models.get(containerId);
     if (!model) return [];
@@ -476,26 +469,25 @@ export class ViewContainerServiceClass extends RegistryBase {
   loadViewOrder(containerId: string): void {
     const model = this._models.get(containerId);
     if (!model) return;
-    // 🔥 保存 plugin.json 原始 order——只在首次访问时保存
-    if (!this._originalOrder.has(containerId)) {
-      const orig = new Map<string, number>();
-      model.allViewDescriptors.forEach(v => orig.set(v.id, v.order ?? 0));
-      this._originalOrder.set(containerId, orig);
-    }
     const savedOrder = getPluginStateValue<string[]>(APP_PLUGIN_ID, `viewOrder.${containerId}`);
     if (!savedOrder || savedOrder.length === 0) return;
-    // 按持久化的顺序重排
-    const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
     model.allViewDescriptors.sort((a, b) => {
-      const ao = orderMap.get(a.id);
-      const bo = orderMap.get(b.id);
-      if (ao !== undefined && bo !== undefined) return ao - bo;
-      if (ao !== undefined) return -1;
-      if (bo !== undefined) return 1;
+      const ao = savedOrder.indexOf(a.id);
+      const bo = savedOrder.indexOf(b.id);
+      if (ao !== -1 && bo !== -1) return ao - bo;
+      if (ao !== -1) return -1;
+      if (bo !== -1) return 1;
       return (a.order ?? 0) - (b.order ?? 0);
     });
     model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
     this._updateActiveViews(containerId);
+  }
+
+  /** 恢复所有容器的持久化排序——初始化时调用一次 */
+  restoreAllViewOrders(): void {
+    for (const [containerId] of this._models) {
+      this.loadViewOrder(containerId);
+    }
   }
 
   /* ═══ 清理（RegistryBase 钩子） ═══ */

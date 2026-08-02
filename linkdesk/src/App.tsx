@@ -363,6 +363,8 @@ function App() {
 
       // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
       await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
+      // 恢复持久化的 view 排序
+      ViewContainerService.restoreAllViewOrders();
       // P1-5：启动文件监听（检测新插件目录）
       startPluginWatcher();
 
