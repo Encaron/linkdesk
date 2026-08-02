@@ -372,6 +372,7 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
   resetCollapsedState(): void {
+    console.log("[resetCollapsedState] ====== START ======");
     // 清折叠状态
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
     // 清 view 排序持久化
@@ -383,15 +384,21 @@ export class ViewContainerServiceClass extends RegistryBase {
       model.clearHidden();
     }
     this._collapseVersion++;
-    // 🔥 恢复 plugin.json 原始 order——用 _originalOrder 覆盖被 reorderView 改过的 order
+    console.log("[resetCollapsedState] collapseVersion =", this._collapseVersion);
+    // 🔥 恢复 plugin.json 原始 order
     for (const [containerId, model] of this._models) {
+      const before = model.allViewDescriptors.map(v => `${v.id}:order=${(v as any).order}`);
       const orig = this._originalOrder.get(containerId);
+      console.log(`[resetCollapsedState] ${containerId} before:`, before, "_originalOrder:", orig ? [...orig.entries()] : "MISSING");
       if (orig) {
         model.allViewDescriptors.forEach(v => {
           const o = orig.get(v.id);
-          if (o !== undefined) (v as any).order = o;
+          if (o !== undefined) { (v as any).order = o; console.log(`  restore ${v.id} order=${o}`); }
+          else console.log(`  ${v.id} NOT in _originalOrder`);
         });
       }
+      const after = model.allViewDescriptors.map(v => `${v.id}:order=${(v as any).order}`);
+      console.log(`[resetCollapsedState] ${containerId} after:`, after);
       this._updateActiveViews(containerId);
     }
   }
