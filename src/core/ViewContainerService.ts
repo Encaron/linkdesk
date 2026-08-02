@@ -298,11 +298,11 @@ export class ViewContainerServiceClass extends RegistryBase {
     if (!this._originalOrder.has(containerId)) {
       this._originalOrder.set(containerId, new Map());
     }
-    // 🔥 只在首次注册时保存原始 order——后续的 registerView 更新（如动态标题）不覆盖
+    // 🔥 只在首次注册时保存原始值——后续的 registerView 更新（如动态标题）不覆盖
     const orig = this._originalOrder.get(containerId)!;
     if (!orig.has(descriptor.id)) {
-      const saved = descriptor.order ?? 0;
-      orig.set(descriptor.id, saved);
+      orig.set(descriptor.id, descriptor.order ?? 0);
+      this._originalContainer.set(descriptor.id, containerId);
     }
     this._updateActiveViews(containerId);
 
@@ -375,7 +375,7 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   get resetToken(): number { return this._resetToken; }
 
-  /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
+  /** E4V#46——一键清除全部折叠 + 排序 + 容器归属 + 可见性 */
   resetCollapsedState(): void {
     // 清折叠状态
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
@@ -388,7 +388,23 @@ export class ViewContainerServiceClass extends RegistryBase {
       model.clearHidden();
     }
     this._resetToken++;
-    // 恢复 plugin.json 原始 order——从 _originalOrder 恢复被 reorderView 改过的值
+    // 🔥 先把所有 view 移回原始容器
+    for (const [viewId, originalContainerId] of this._originalContainer) {
+      const currentContainerId = this._viewIndex.get(viewId);
+      if (currentContainerId && currentContainerId !== originalContainerId) {
+        const srcModel = this._models.get(currentContainerId);
+        const dstModel = this._models.get(originalContainerId);
+        if (srcModel && dstModel) {
+          const idx = srcModel.allViewDescriptors.findIndex(v => v.id === viewId);
+          if (idx !== -1) {
+            const [view] = srcModel.allViewDescriptors.splice(idx, 1);
+            dstModel.allViewDescriptors.push(view);
+            this._viewIndex.set(viewId, originalContainerId);
+          }
+        }
+      }
+    }
+    // 恢复 plugin.json 原始 order——每个 view 回到原始 order 值
     for (const [containerId, model] of this._models) {
       const orig = this._originalOrder.get(containerId);
       if (orig) {
@@ -465,6 +481,8 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   /** 每个 container 的原始 plugin.json order——reset 时恢复 */
   private _originalOrder = new Map<string, Map<string, number>>();
+  /** 每个 view 的原始 containerId——reset 时移回 */
+  private _originalContainer = new Map<string, string>();
 
   /** 加载持久化的 view 排序——应用到 allViewDescriptors */
   loadViewOrder(containerId: string): void {
