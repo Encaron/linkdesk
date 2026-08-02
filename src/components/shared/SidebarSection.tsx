@@ -44,6 +44,8 @@ export interface SidebarSectionProps {
   onDragStart?: (e: React.DragEvent) => void;
   /** E4V#48——拖拽结束回调（清状态） */
   onDragEnd?: () => void;
+  /** E4V#46——折叠状态变更回调 */
+  onToggleCollapse?: (collapsed: boolean) => void;
 }
 
 function SidebarSection({
@@ -62,6 +64,7 @@ function SidebarSection({
   draggable = false,
   onDragStart,
   onDragEnd,
+  onToggleCollapse,
 }: SidebarSectionProps) {
   const [open, setOpen] = useState(defaultOpen);
   // E4V#43——actions 溢出检测 + … 下拉
@@ -71,8 +74,8 @@ function SidebarSection({
   const [moreOpen, setMoreOpen] = useState(false);
 
   const toggle = useCallback(() => {
-    if (collapsible) setOpen((prev) => !prev);
-  }, [collapsible]);
+    if (collapsible) setOpen((prev) => { const next = !prev; onToggleCollapse?.(!next); return next; });
+  }, [collapsible, onToggleCollapse]);
 
   const onKeyDown = useCallback(
     (e: React.KeyboardEvent) => {

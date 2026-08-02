@@ -165,7 +165,6 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     dragViewIdRef.current = viewId;
     setDragViewId(viewId);
     setDraggingView({ viewId, fromContainerId: containerId ?? "" });
-    console.log("[47] dragStart", viewId);
   }, [containerId]);
 
   const handleViewDragEnd = useCallback(() => {
@@ -178,12 +177,9 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     const id = dragViewIdRef.current;
-    console.log("[47] drop", { id, dropIndex, views: views.map(v => v.id) });
     if (!id || dropIndex === null || !containerId) return;
-    // splice 调整：拖到 source 后面 → 移除后 indices 前移
     const draggedIdx = views.findIndex((v) => v.id === id);
     const target = dropIndex > draggedIdx ? dropIndex - 1 : dropIndex;
-    console.log("[47] reorder", { draggedIdx, target });
     ViewContainerService.reorderView(containerId, id, target);
     dragViewIdRef.current = null;
     setDragViewId(null);
@@ -220,12 +216,16 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       );
     }
 
+    // E4V#46——持久化覆盖初始折叠态
+    const isPersistedCollapsed = ViewContainerService.isCollapsed(view.id);
+    const defaultOpen = isPersistedCollapsed ? false : !view.collapsed;
+
     return (
       <SidebarSection
         key={view.id}
         title={view.title}
         collapsible
-        defaultOpen={!view.collapsed}
+        defaultOpen={defaultOpen}
         badge={view.badge}
         actions={view.actions}
         pinnedContent={view.pinnedContent}
@@ -236,6 +236,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
+        onToggleCollapse={(collapsed) => ViewContainerService.setCollapsed(view.id, collapsed)}
       >
         {body}
       </SidebarSection>
@@ -248,7 +249,6 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
       onDragOverCapture={(e) => {
         e.preventDefault();
         const id = dragViewIdRef.current;
-        console.log("[47] dragover capture", { id, clientY: e.clientY });
         if (!id) return;
         const els = document.querySelectorAll('[data-view-id]');
         let found = false;
@@ -257,9 +257,7 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
           if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
             const mid = rect.top + rect.height / 2;
             const idx = Array.from(els).indexOf(el);
-            const di = e.clientY < mid ? idx : idx + 1;
-            console.log("[47] hit view", { viewId: el.getAttribute("data-view-id"), idx, dropIndex: di });
-            setDropIndex(di);
+            setDropIndex(e.clientY < mid ? idx : idx + 1);
             found = true;
           }
         });

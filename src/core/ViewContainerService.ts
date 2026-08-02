@@ -19,6 +19,7 @@
 
 import { Emitter } from "./CoreEvents";
 import { RegistryBase } from "./RegistryBase";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 
 /* ── 类型定义 ── */
 
@@ -332,6 +333,27 @@ export class ViewContainerServiceClass extends RegistryBase {
   /** 获取 view 的空状态占位内容，无注册返回 undefined */
   getViewEmptyContent(viewId: string): ViewEmptyContentDescriptor | undefined {
     return this._emptyContents.get(viewId);
+  }
+
+  /* ═══ E4V#46 View 折叠持久化 ═══ */
+
+  /** 加载持久化的折叠状态 */
+  loadCollapsedState(): Set<string> {
+    const saved = getPluginStateValue<string[]>(APP_PLUGIN_ID, "collapsedViews") ?? [];
+    return new Set(saved);
+  }
+
+  /** 保存单个 view 折叠状态 */
+  setCollapsed(viewId: string, collapsed: boolean): void {
+    const saved = this.loadCollapsedState();
+    if (collapsed) saved.add(viewId);
+    else saved.delete(viewId);
+    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", [...saved]).catch(() => {});
+  }
+
+  /** 查询 view 是否持久化为折叠 */
+  isCollapsed(viewId: string): boolean {
+    return this.loadCollapsedState().has(viewId);
   }
 
   /* ═══ 可见性 ═══ */
