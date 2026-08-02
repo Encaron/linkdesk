@@ -1,10 +1,11 @@
 /**
  * E4V#40n Hot Exit——热退出恢复。
  *
- * beforeunload 时保存未保存文件内容到 PluginStateService。
- * 下次启动时恢复——对标 VS Code Hot Exit。
+ * 每次编辑后立即持久化脏文件内容到 PluginStateService（debounce 1s）。
+ * beforeunload 做最终同步刷新。
+ * 下次启动时 EditorTab 检测 → 恢复未保存内容 → 标记 ● 脏。
  */
-import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "@src/core/PluginStateService";
 
 const BACKUP_KEY = "hotExit.dirtyFiles";
 
@@ -12,30 +13,45 @@ interface DirtyFiles {
   [filePath: string]: string;
 }
 
-/** 当前 session 的脏文件内容——内存中 */
+/** 当前 session 的脏文件内容 */
 const dirtyFiles: DirtyFiles = {};
 
-/** 注册 beforeunload——保存脏文件到持久化 */
+let _persistTimer: ReturnType<typeof setTimeout> | null = null;
+
+function schedulePersist(): void {
+  if (_persistTimer) clearTimeout(_persistTimer);
+  _persistTimer = setTimeout(() => {
+    setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
+  }, 1000);
+}
+
+/** 注册 beforeunload + 恢复 */
 export function initHotExit(): void {
-  // 恢复上次 session 的未保存文件
   restoreFromPrevious();
 
-  // 退出前保存
   window.addEventListener("beforeunload", () => {
+    if (_persistTimer) clearTimeout(_persistTimer);
     if (Object.keys(dirtyFiles).length > 0) {
+      // 同步更新内存缓存，异步持久化（best-effort——页面可能瞬间关闭）
+      setPluginStateValueSync("editor", BACKUP_KEY, { ...dirtyFiles });
       setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
+    } else {
+      // 无脏文件→清空备份
+      setPluginStateValueSync("editor", BACKUP_KEY, null);
     }
   });
 }
 
-/** 文件变脏时调用——记录最新内容 */
+/** 文件变脏时调用——记录并调度持久化 */
 export function trackDirtyFile(filePath: string, content: string): void {
   dirtyFiles[filePath] = content;
+  schedulePersist();
 }
 
-/** 文件保存后调用——清除备份 */
+/** 文件保存后调用——清除并调度持久化 */
 export function clearDirtyFile(filePath: string): void {
   delete dirtyFiles[filePath];
+  schedulePersist();
 }
 
 /** 是否有此文件的备份内容 */
@@ -53,7 +69,6 @@ function restoreFromPrevious(): void {
   const prev = getPluginStateValue<DirtyFiles>("editor", BACKUP_KEY);
   if (prev && Object.keys(prev).length > 0) {
     Object.assign(dirtyFiles, prev);
-    // 清空持久化中的备份——已加载到内存
     setPluginStateValue("editor", BACKUP_KEY, null);
   }
 }
