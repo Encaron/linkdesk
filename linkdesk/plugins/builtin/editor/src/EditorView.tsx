@@ -179,6 +179,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             return;
           }
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
+          console.log("[editor] 跨文件跳转:", targetPath, "行", targetLine, "列", targetCol);
           setPendingReveal(targetPath, targetLine, targetCol);
           tabActionsRef.current?.createTab("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
