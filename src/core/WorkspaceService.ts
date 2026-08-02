@@ -74,13 +74,16 @@ export const onDidChangeActiveWorkspace: Event<string> = _onDidChangeActiveWorks
  * 用户选择后自动 addFolder + 设置 workspace root。
  */
 export async function openFolder(): Promise<void> {
+  console.log("[WorkspaceService] openFolder 调用");
   const lk = (window as any).linkdesk;
   if (!lk?.dialog?.open) {
     console.warn("[WorkspaceService] dialog API 不可用——非 Electron 环境");
     return;
   }
 
+  console.log("[WorkspaceService] 调用 dialog.open...");
   const selectedPath: string | null = await lk.dialog.open({ directory: true });
+  console.log("[WorkspaceService] dialog.open 返回:", selectedPath);
   if (!selectedPath) return; // 用户取消
 
   addFolder(selectedPath);
@@ -91,10 +94,12 @@ export async function openFolder(): Promise<void> {
  * 自动更新 workspace root 传递给 ConfigurationService。
  */
 export function addFolder(folderPath: string): void {
+  console.log("[WorkspaceService] addFolder", folderPath);
   // 归一化——确保跨平台路径一致
   const uri = normalizePath(folderPath);
+  console.log("[WorkspaceService] addFolder normalized", uri);
   // 去重——同一路径不重复添加
-  if (_folders.some((f) => f.uri === uri)) return;
+  if (_folders.some((f) => f.uri === uri)) { console.log("[WorkspaceService] addFolder skip 重复"); return; }
   // E4V#35g: 根间包含检查——禁止祖先/后代互包含（防递归嵌套）
   if (_folders.some((f) => uri.startsWith(f.uri + "/") || f.uri.startsWith(uri + "/"))) {
     const name = uri.split("/").pop() ?? uri;

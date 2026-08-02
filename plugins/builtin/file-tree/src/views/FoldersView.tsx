@@ -31,6 +31,7 @@ import { joinPath, normalizePath, extension } from "../pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
+  console.log("[FoldersView] 组件挂载");
   const { t } = useTranslation();
   const tabActions = useTabActions();
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
@@ -188,8 +189,9 @@ const FoldersView: React.FC = () => {
   }, [roots]);
 
   useEffect(() => {
+    console.log("[FoldersView] syncRoots useEffect 触发");
     syncRoots();
-    const unsub1 = onDidChangeFolders(() => { syncRoots(); });
+    const unsub1 = onDidChangeFolders(() => { console.log("[FoldersView] onDidChangeFolders"); syncRoots(); });
     // E4V#fix: 文件变更防抖——300ms 内累积的变更合并为一次 refresh。
     // 背景：onFileChange IPC 监听是全局的（所有 watcher 共享 filesystem:changed 频道），
     // 批量文件操作（npm install / git checkout / appData 写入）会产生数十个事件，
@@ -390,6 +392,7 @@ const FoldersView: React.FC = () => {
     return () => { setOpenFileFn(null); };
   }, [doOpenFile]);
 
+  console.log("[FoldersView] render roots.length=", roots.length, "model.roots.length=", model.roots.length);
   return (
     <div className="file-tree-root">
       {/* 文件树 或 空工作区——工具栏已迁移到 header actions（E4V#20f） */}
