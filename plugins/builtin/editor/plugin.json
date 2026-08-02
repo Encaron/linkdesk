@@ -22,7 +22,6 @@
       { "id": "editor.compareFiles", "title": "比较文件" }
     ],
     "keybindings": [
-      { "key": "Ctrl+S", "command": "editor.save" },
       { "key": "Ctrl+Shift+T", "command": "editor.reopenClosedEditor" }
     ],
     "fileAssociations": [
