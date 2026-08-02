@@ -30,3 +30,37 @@
 .editor-status-item {
   white-space: nowrap;
 }
+
+/* E4V#40k EditorBreadcrumb——编辑器面包屑 */
+.editor-breadcrumb {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--bg-window);
+  border-bottom: 1px solid var(--separator);
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  user-select: none;
+  overflow: hidden;
+}
+
+.editor-breadcrumb-part {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.editor-breadcrumb-sep {
+  margin: 0 4px;
+  opacity: 0.5;
+}
+
+.editor-breadcrumb-segment {
+  cursor: default;
+}
+
+.editor-breadcrumb-segment:hover {
+  color: var(--text-primary);
+}

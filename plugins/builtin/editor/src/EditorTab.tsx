@@ -18,6 +18,7 @@ import { EditorModel } from "./EditorModel";
 import EditorView from "./EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
+import EditorBreadcrumb from "./EditorBreadcrumb";
 
 export interface EditorTabProps {
   /** 文件绝对路径——来自 createTab 的 sourceId */
@@ -131,6 +132,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      <EditorBreadcrumb filePath={model.filePath} />
       <div style={{ flex: 1, minHeight: 0 }}>
         <EditorView
           value={value}
