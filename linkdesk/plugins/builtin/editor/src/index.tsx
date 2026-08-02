@@ -20,18 +20,23 @@ initHotExit();
 
 /* ── E4V#40p：createTab 桥——命令 handler 调 createTab ── */
 let _createEditorTabFn: ((filePath: string, label: string) => void) | null = null;
+let _commandRegistered = false;
 
-// E4V#40p——Ctrl+Shift+T 恢复最近关闭的编辑器标签页
-registerCommand("editor", {
-  id: "editor.reopenClosedEditor",
-  title: "重新打开已关闭的编辑器",
-  handler: async () => {
-    const entry = popClosedEditorTab();
-    if (entry && _createEditorTabFn) {
-      _createEditorTabFn(entry.filePath, entry.label);
-    }
-  },
-});
+/** 注册 editor.reopenClosedEditor 命令——必须在 mount effect 中调用（parseContributions 的 placeholder 之后） */
+function registerReopenCommand(): void {
+  if (_commandRegistered) return;
+  _commandRegistered = true;
+  registerCommand("editor", {
+    id: "editor.reopenClosedEditor",
+    title: "重新打开已关闭的编辑器",
+    handler: async () => {
+      const entry = popClosedEditorTab();
+      if (entry && _createEditorTabFn) {
+        _createEditorTabFn(entry.filePath, entry.label);
+      }
+    },
+  });
+}
 
 export interface EditorPluginProps {
   isActive: boolean;
@@ -41,8 +46,9 @@ export interface EditorPluginProps {
 const EditorPlugin: React.FC<EditorPluginProps> = ({ isActive, sourceId }) => {
   const tabActions = useTabActions();
 
-  // E4V#40p——注入 createTab 桥，供命令 handler 调
+  // E4V#40p——注入 createTab 桥 + 注册 reopen 命令（在 parseContributions placeholder 之后）
   useEffect(() => {
+    registerReopenCommand();
     _createEditorTabFn = (filePath: string, label: string) => {
       tabActions?.createTab("editor", { label, sourceId: filePath });
     };
