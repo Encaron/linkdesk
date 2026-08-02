@@ -63,10 +63,8 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const [, setVersion] = useState(0);
   useEffect(() => {
     if (!effectiveContainerId) return;
-    const sub = ViewContainerService.onDidChangeActiveViews.event(({ containerId, added, removed }) => {
-      console.log("[SidePanel] onDidChangeActiveViews fired, containerId:", containerId, "effective:", effectiveContainerId, "added:", added?.length, "removed:", removed?.length, "subCount:", ViewContainerService._activeViewsSubCount);
-      if (containerId !== effectiveContainerId) { console.log("[SidePanel] — skipped (different container)"); return; }
-      console.log("[SidePanel] — setVersion trigger re-render");
+    const sub = ViewContainerService.onDidChangeActiveViews.event(({ containerId }) => {
+      if (containerId !== effectiveContainerId) return;
       setVersion((v) => v + 1);
     });
     return () => sub();
