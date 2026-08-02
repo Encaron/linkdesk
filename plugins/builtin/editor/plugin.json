@@ -9,7 +9,8 @@
   "entry": "src/index.tsx",
   "viewRole": "tabOnly",
   "tabBehavior": {
-    "singleton": false
+    "singleton": false,
+    "identityField": "filePath"
   },
   "contributes": {
     "commands": [

@@ -863,35 +863,6 @@ export function useTabManager() {
     }
   }, []);
 
-  /** 按 sourceId 找标签页并聚焦或创建——和 focusTabBySourceId 对应。
-   *  有则聚焦、无则创建。A4 修复：侧栏点会话 → 标签页已关时自动重开。
-   *  type 用于创建新标签页时的类型（如 "terminal"）。 */
-  const openOrFocusBySourceId = useCallback(
-    (sourceId: string, type: string, opts?: CreateTabOptions): string | null => {
-      let resultId: string | null = null;
-      setTabState((prev) => {
-        const tab = prev.groups.flatMap((g) => g.tabs).find(
-          (t) => t.sourceId === sourceId || t.id === sourceId,
-        );
-        if (tab) {
-          const group = findGroup(prev, tab.id)!;
-          resultId = tab.id;
-          return {
-            ...prev,
-            activeGroupId: group.id,
-            groups: prev.groups.map((g) => (g.id === group.id ? { ...g, activeTabId: tab.id } : g)),
-          };
-        }
-        // 不存在 → 创建
-        const r = reduceCreateTab(prev, type, { ...opts, sourceId });
-        resultId = r.createdId;
-        return r.state;
-      });
-      return resultId;
-    },
-    []
-  );
-
   /** 按 sourceId 找标签页并关闭——和 focusTabBySourceId 对称的通用 API。
    *  插件删自己的数据模型时用此 API 关闭对应标签页。
    *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接。 */
@@ -1058,7 +1029,6 @@ export function useTabManager() {
     openOrFocusTab,
     focusTab,
     focusTabBySourceId,
-    openOrFocusBySourceId,
     closeTabBySourceId,
     closeTab,
     forceCloseTab,

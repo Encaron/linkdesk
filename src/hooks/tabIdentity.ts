@@ -147,7 +147,7 @@ export function getMeta(type: string): TabIdentityMeta {
   // 3. 插件视图——从 plugin.json tabBehavior 推导
   const plugin = getViewPlugin(type);
   if (plugin) {
-    const identityField = plugin.manifest.tabBehavior?.identityField ?? null;
+    const identityField = plugin.manifest.tabBehavior?.identityField ?? FALLBACK_META[type]?.identityField ?? null;
     return {
       identityField,
       fallbackLabel: plugin.manifest.name,
