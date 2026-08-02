@@ -6,6 +6,7 @@
  */
 import { MonacoLanguageClient } from "monaco-languageclient";
 import type { MessageReader, MessageWriter } from "vscode-jsonrpc";
+import { normalizePath } from "@src/core/pathUtils";
 
 const lsp = (window as any).linkdesk?.lsp;
 
@@ -26,6 +27,7 @@ export async function startLspClient(
   languageId: string,
   command: string,
   args?: string[],
+  workspaceRoot?: string,
 ): Promise<MonacoLanguageClient> {
   if (!lsp) throw new Error("linkdesk.lsp 不可用——非 Electron 环境");
 
@@ -40,6 +42,18 @@ export async function startLspClient(
     name: `${languageId} LSP`,
     clientOptions: {
       documentSelector: [{ language: languageId }],
+      workspaceFolder: workspaceRoot
+        ? {
+            uri: {
+              scheme: "file",
+              authority: "",
+              path: `/${normalizePath(workspaceRoot)}`,
+              toString: () => `file:///${normalizePath(workspaceRoot)}`,
+            } as any,
+            name: "workspace",
+            index: 0,
+          }
+        : undefined,
     },
     messageTransports: { reader, writer },
   });
