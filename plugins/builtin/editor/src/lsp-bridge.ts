@@ -102,7 +102,9 @@ function createIpcWriter(channelId: string): MessageWriter {
   return {
     write: (msg: string) => {
       const content = typeof msg === "string" ? msg : JSON.stringify(msg);
-      lsp.write(channelId, content + "\n");
+      const length = new TextEncoder().encode(content).length;
+      const framed = `Content-Length: ${length}\r\n\r\n${content}`;
+      lsp.write(channelId, framed);
       return Promise.resolve();
     },
     end: () => { lsp.dispose(channelId).catch(() => {}); },
