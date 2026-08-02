@@ -8,6 +8,7 @@
  */
 import React from "react";
 import EditorTab from "./EditorTab";
+import "./editor.css";
 
 export interface EditorPluginProps {
   isActive: boolean;
