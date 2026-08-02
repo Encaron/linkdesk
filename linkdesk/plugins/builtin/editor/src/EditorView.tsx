@@ -134,11 +134,15 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             defs = await tsClient.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
           } else {
             const lspClient = getLspClient(langId);
+            console.log("[editor] LSP client for", langId, ":", !!lspClient);
             if (lspClient) {
-              const result = await lspClient.sendRequest("textDocument/definition", {
+              const params = {
                 textDocument: { uri: m.uri.toString() },
                 position: { line: pos.lineNumber - 1, character: pos.column - 1 },
-              });
+              };
+              console.log("[editor] LSP textDocument/definition params:", JSON.stringify(params));
+              const result = await lspClient.sendRequest("textDocument/definition", params);
+              console.log("[editor] LSP definition result:", JSON.stringify(result));
               defs = result ? (Array.isArray(result) ? result : [result]) : undefined;
             }
           }
