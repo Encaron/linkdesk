@@ -161,16 +161,19 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   // E4V#47——拖拽排序
   const containerId = views[0] ? (ViewContainerService as any)._viewIndex?.get(views[0].id) : undefined;
   const [dragViewId, setDragViewId] = useState<string | null>(null);
+  const dragViewIdRef = useRef<string | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
 
   const handleDragStart = useCallback((e: React.DragEvent, viewId: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", viewId);
+    dragViewIdRef.current = viewId;
     setDragViewId(viewId);
     setDraggingView({ viewId, fromContainerId: containerId ?? "" });
   }, [containerId]);
 
   const handleViewDragEnd = useCallback(() => {
+    dragViewIdRef.current = null;
     setDragViewId(null);
     setDropIndex(null);
     setDraggingView(null);
@@ -179,23 +182,24 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
   const handleDragOver = useCallback((e: React.DragEvent, index: number) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "move";
-    if (!dragViewId) return;
+    if (!dragViewIdRef.current) return;
     const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
     const mid = rect.top + rect.height / 2;
     setDropIndex(e.clientY < mid ? index : index + 1);
-  }, [dragViewId]);
+  }, []);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (!dragViewId || dropIndex === null || !containerId) return;
-    // 调整：若目标在拖动项之后，splice 后 index 需 -1
-    const draggedIdx = views.findIndex((v) => v.id === dragViewId);
+    const id = dragViewIdRef.current;
+    if (!id || dropIndex === null || !containerId) return;
+    const draggedIdx = views.findIndex((v) => v.id === id);
     const target = dropIndex > draggedIdx ? dropIndex - 1 : dropIndex;
-    ViewContainerService.reorderView(containerId, dragViewId, target);
+    ViewContainerService.reorderView(containerId, id, target);
+    dragViewIdRef.current = null;
     setDragViewId(null);
     setDropIndex(null);
     setDraggingView(null);
-  }, [dragViewId, dropIndex, containerId, views]);
+  }, [dropIndex, containerId, views]);
 
   if (views.length === 0) return null;
 
