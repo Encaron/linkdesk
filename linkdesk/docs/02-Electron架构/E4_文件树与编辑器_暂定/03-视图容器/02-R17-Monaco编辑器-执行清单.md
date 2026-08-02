@@ -507,7 +507,7 @@
 
 - [x] **E4V#40s4** — 端到端验证 Python F12 | 0 行 ✅
 
-- [ ] **E4V#40s5** 🔧 语言插件归一化——LanguageRegistry + 自动启动 | ~30 行
+- [x] **E4V#40s5** 🔧 语言插件归一化——LanguageRegistry + 自动启动 | ~30 行
   > 🔥 消灭 EditorView 里 `.py` 硬编码。建 LanguageRegistry 大厅桌——
   > plugin.json 声明 langDefs → loader 自动注册 → EditorView 自动启动 LSP。
   > 新增语言只需写 plugin.json，零改编辑器代码。
@@ -523,7 +523,7 @@
   - 🛡️ 归一化——和 FileAssociationService 同模式，不新增新概念
   - **验证：** tsc+eslint+vitest 零错误 / Python F12 仍正常 / 无硬编码
 
-- [ ] **E4V#40s6** 🔧 拆分 Python 语言插件 | ~15 行
+- [x] **E4V#40s6** 🔧 拆分 Python 语言插件 | ~15 行
   - **新建** `plugins/user/python/plugin.json`——纯声明，零代码
   - 内容：`langDefs: [{ id: "python", extensions: [".py", ".pyi"], lsp: { command: "node node_modules/pyright/...", args: ["--stdio"] } }]`
   - `entry: "src/index.tsx"`——空壳占位（`viewRole: "tabOnly"` 不需要，但 schema 要求）
