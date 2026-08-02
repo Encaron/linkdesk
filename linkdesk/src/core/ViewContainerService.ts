@@ -165,6 +165,9 @@ class ViewContainerModel {
     return !this._hidden.has(viewId);
   }
 
+  /** 清除所有隐藏——重置用 */
+  clearHidden(): void { this._hidden.clear(); }
+
   /** 移除指定插件的所有 view */
   removePluginViews(pluginId: string): ViewDescriptor[] {
     const removed: ViewDescriptor[] = [];
@@ -374,14 +377,23 @@ export class ViewContainerServiceClass extends RegistryBase {
 
   get collapseVersion(): number { return this._collapseVersion; }
 
-  /** E4V#46——一键清除全部折叠持久化 */
+  /** E4V#46——一键清除全部折叠持久化 + view 排序 + 可见性 */
   resetCollapsedState(): void {
-    console.log("[resetCollapsedState] ★ CALLED");
+    // 清折叠状态
     setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", []).catch(() => {});
-    this._collapseVersion++;
-    console.log("[resetCollapsedState] collapseVersion =", this._collapseVersion, "models:", [...this._models.keys()]);
+    // 🔥 同时清 view 排序——用户调换位置后重置
     for (const [containerId] of this._models) {
-      console.log("[resetCollapsedState] _updateActiveViews for", containerId);
+      setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, []).catch(() => {});
+    }
+    // 清可见性隐藏
+    for (const [, model] of this._models) {
+      model.clearHidden();
+    }
+    this._collapseVersion++;
+    // 重建——从 plugin.json 默认 order + collapsed 重新加载
+    for (const [containerId, model] of this._models) {
+      // 恢复 plugin.json 默认 order
+      model.allViewDescriptors.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
       this._updateActiveViews(containerId);
     }
   }
