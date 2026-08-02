@@ -1,0 +1,27 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "Python",
+  "version": "1.0.0",
+  "description": "Python 语言支持——语法高亮、跨文件跳转、智能补全",
+  "author": "官方",
+  "distribution": "user",
+  "entry": "src/index.tsx",
+  "iconLocation": "top",
+  "viewRole": "tabOnly",
+  "tabBehavior": {
+    "singleton": false,
+    "identityField": "filePath"
+  },
+  "contributes": {
+    "langDefs": [
+      {
+        "id": "python",
+        "extensions": [".py", ".pyi"],
+        "lsp": {
+          "command": "node",
+          "args": ["node_modules/pyright/dist/pyright-langserver.js", "--stdio"]
+        }
+      }
+    ]
+  }
+}
