@@ -207,3 +207,26 @@
 .sidebar-section-body {
   /* 内容自己决定布局——不给 padding/margin，让消费者完全控制 */
 }
+
+/* ── E4V#45：Pane resize——view 间可拖拽分隔线 ── */
+
+/* view 容器 wrapper——flex:1 均分 + 拖拽后固定高度 */
+.sidebar-pane-view {
+  overflow: hidden;
+}
+
+/* 分隔线——4px，hover 变粗变亮 */
+.sidebar-pane-sash {
+  height: 4px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-pane-sash:hover {
+  background: var(--accent);
+  opacity: 0.5;
+}
