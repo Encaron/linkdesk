@@ -4,7 +4,7 @@ import { resolve } from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "node",
+    environment: "jsdom",
     include: ["src/**/*.test.ts", "src/**/*.test.tsx", "plugins/**/*.test.ts", "plugins/**/*.test.tsx"],
   },
   resolve: {
