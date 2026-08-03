@@ -76,7 +76,7 @@ export default function SessionListView() {
     (id: string) => (name: string) => {
       updateSession(id, { name });
       // A2+N1：侧栏改名 → 标签栏标题同步
-      tabs?.updateTabLabelBySourceId(id, name);
+      tabs?.updateLabelBySourceId(id, name);
     },
     [updateSession, tabs],
   );
