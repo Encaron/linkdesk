@@ -211,12 +211,11 @@ try {
 
     // ── E5#62：壳→插件请求处理——handle 注册 channel handler，unhandle 注销 ──
     pluginRequest: {
-      _handlers: new Map<string, (payload: unknown) => Promise<unknown>>(),
       handle(channel: string, handler: (payload: unknown) => unknown) {
-        this._handlers.set(channel, async (p) => handler(p));
+        pluginRequestHandlers.set(channel, async (p) => handler(p));
       },
       unhandle(channel: string) {
-        this._handlers.delete(channel);
+        pluginRequestHandlers.delete(channel);
       },
     },
 
@@ -226,14 +225,16 @@ try {
     events,
   });
 
+  // E5#62：模块级 handler 表——contextBridge 隔离世界和 ipcRenderer 共用
+  const pluginRequestHandlers = new Map<string, (payload: unknown) => Promise<unknown>>();
+
   // E5#62：壳→插件请求——收到 plugin:request → 调 handler → 回传 bridge:plugin-response
   ipcRenderer.on('plugin:request', async (_event, { requestId, channel, payload }: {
     requestId: string;
     channel: string;
     payload: unknown;
   }) => {
-    const pluginReq = (window as any).linkdesk?.pluginRequest;
-    const handler = pluginReq?._handlers?.get(channel);
+    const handler = pluginRequestHandlers.get(channel);
     if (!handler) {
       ipcRenderer.send('bridge:plugin-response', {
         requestId,
