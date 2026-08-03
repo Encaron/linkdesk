@@ -125,6 +125,21 @@ export function initIpcBridgeHandler(): void {
           shellEvents.emit("tab:close", { tabId });
           break;
         }
+        case "tabs:focusBySourceId": {
+          const [sourceId] = req.args as [string];
+          shellEvents.emit("tab:focusBySourceId", { sourceId });
+          break;
+        }
+        case "tabs:updateLabelBySourceId": {
+          const [sourceId, label] = req.args as [string, string];
+          shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label });
+          break;
+        }
+        case "tabs:closeBySourceId": {
+          const [sourceId] = req.args as [string];
+          shellEvents.emit("tab:closeBySourceId", { sourceId });
+          break;
+        }
 
         // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
         case "dialog:confirm": {

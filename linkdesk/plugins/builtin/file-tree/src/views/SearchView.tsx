@@ -9,7 +9,6 @@ import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
-import { useTabActions } from "@src/core/TabActionsContext";
 import { getPluginFor } from "@src/core/FileAssociationService";
 import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
 import { extension } from "../pathUtils";
@@ -23,7 +22,7 @@ type SearchState = "idle" | "searching" | "hasResults" | "noResults" | "error";
 
 const SearchView: React.FC = () => {
   const { t } = useTranslation();
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
 
   /* ── 输入 ── */
   const [query, setQuery] = useState("");
@@ -138,12 +137,12 @@ const SearchView: React.FC = () => {
     if (!ext) return;
     const pluginId = getPluginFor(ext);
     if (!pluginId) return;
-    tabActions?.createTab(pluginId, {
+    tabs?.create(pluginId, {
       filePath: match.filePath,
       label: match.filePath.split("/").pop() ?? match.filePath,
       pinned: true,
     });
-  }, [tabActions]);
+  }, [tabs]);
 
   /* ── 折叠展开 ── */
 

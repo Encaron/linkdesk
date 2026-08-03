@@ -5,21 +5,20 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useTabActions } from "@src/core/TabActionsContext";
 import { useMarketplacePlugins, getMarketplaceSearch } from "../marketplaceShared";
 import { ExtensionItem } from "../ExtensionItem";
 import "../MarketplaceSidebar.css";
 
 export default function InstalledListView() {
   const { t } = useTranslation();
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
   const { installed, loading } = useMarketplacePlugins();
 
   const handleOpenDetail = (pluginId: string) => {
-    tabActions?.createTab("plugin-detail", { pluginId, pinned: false });
+    tabs?.create("plugin-detail", { pluginId, pinned: false });
   };
   const handleOpenDetailPinned = (pluginId: string) => {
-    tabActions?.createTab("plugin-detail", { pluginId, pinned: true });
+    tabs?.create("plugin-detail", { pluginId, pinned: true });
   };
 
   if (loading) return <div className="ms-empty">{t("加载中...")}</div>;

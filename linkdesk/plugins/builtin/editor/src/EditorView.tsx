@@ -13,7 +13,6 @@ import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
-import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
@@ -57,9 +56,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const onEditorMountRef = useRef(onEditorMount);
   onEditorMountRef.current = onEditorMount;
 
-  const tabActions = useTabActions();
-  const tabActionsRef = useRef(tabActions);
-  tabActionsRef.current = tabActions;
+  const tabs = (window as any).linkdesk?.tabs;
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
 
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
@@ -78,7 +77,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       await initMonacoEnv(async (modelRef: any, _options: unknown) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
         const label = normalizePath(targetPath).split("/").pop() || targetPath;
-        tabActionsRef.current?.createTab("editor", {
+        tabsRef.current?.create("editor", {
           filePath: targetPath,
           sourceId: targetPath,
           label,
@@ -216,7 +215,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           // 跨文件：暂存位置 → createTab → mount effect consume → reveal
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
           setPendingReveal(targetPath, targetLine, targetCol);
-          tabActionsRef.current?.createTab("editor", {
+          tabsRef.current?.create("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
           });
         } catch { /* 无定义则放行 */ }

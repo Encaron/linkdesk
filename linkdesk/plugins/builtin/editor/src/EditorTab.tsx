@@ -12,7 +12,6 @@
  *   - E4V#40j——渲染 EditorStatusBar（行:列/编码/语言/缩进/EOL）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { useTabActions } from "@src/core/TabActionsContext";
 import { normalizePath } from "@src/core/pathUtils";
 import { EditorModel } from "./EditorModel";
 import EditorView from "./EditorView";
@@ -68,7 +67,7 @@ export interface EditorTabProps {
 }
 
 const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
   const [model, setModel] = useState<EditorModel | null>(null);
   const [value, setValue] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -117,12 +116,12 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       dirtyRef.current = false;
       clearDirtyFile(filePath);
       const baseName = normalizePath(filePath).split("/").pop() || filePath;
-      tabActions?.updateTabLabelBySourceId?.(filePath, baseName);
+      tabs?.updateLabelBySourceId?.(filePath, baseName);
     } catch (err) {
       console.error(`[EditorTab] 保存失败: ${filePath}`, err);
       setError(`保存失败: ${(err as Error).message}`);
     }
-  }, [model, filePath, tabActions]);
+  }, [model, filePath, tabs]);
 
   // 加载文件
   useEffect(() => {
@@ -148,7 +147,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           // 标记为脏——备份内容未保存
           dirtyRef.current = true;
           const baseName = normalizePath(filePath).split("/").pop() || filePath;
-          tabActions?.updateTabLabelBySourceId?.(filePath, `● ${baseName}`);
+          tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
         })
@@ -165,7 +164,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           }));
           dirtyRef.current = true;
           const baseName = normalizePath(filePath).split("/").pop() || filePath;
-          tabActions?.updateTabLabelBySourceId?.(filePath, `● ${baseName}`);
+          tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
         });
@@ -212,7 +211,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       dirtyRef.current = isDirty;
       const baseName = normalizePath(filePath).split("/").pop() || filePath;
       const label = isDirty ? `● ${baseName}` : baseName;
-      tabActions?.updateTabLabelBySourceId?.(filePath, label);
+      tabs?.updateLabelBySourceId?.(filePath, label);
     }
     // E4V#40n——Hot Exit：每次内容变更都更新备份，不在上面的状态守卫里（否则只保存第一次按键的内容）
     if (isDirty) {
@@ -226,7 +225,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
         handleSave();
       }, 1000);
     }
-  }, [model, filePath, tabActions, handleSave]);
+  }, [model, filePath, tabs, handleSave]);
 
   // E4V#40o——卸载时清理自动保存计时器
   useEffect(() => {

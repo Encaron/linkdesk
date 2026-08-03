@@ -129,6 +129,9 @@ export interface LinkDeskAPI {
     openOrFocus(type: string, opts?: Record<string, unknown>): Promise<unknown>;
     focus(tabId: string): Promise<void>;
     close(tabId: string): Promise<void>;
+    focusBySourceId(sourceId: string): Promise<void>;
+    updateLabelBySourceId(sourceId: string, label: string): Promise<void>;
+    closeBySourceId(sourceId: string): Promise<void>;
   };
 
   /** E5#67：弹窗——确认/提示，对标 VS Code vscode.window.showWarningMessage */

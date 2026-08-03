@@ -42,6 +42,9 @@ export class IpcBridge {
     'tabs:openOrFocus',
     'tabs:focus',
     'tabs:close',
+    'tabs:focusBySourceId',
+    'tabs:updateLabelBySourceId',
+    'tabs:closeBySourceId',
     // E5#70：ContextKey——插件 SET 状态供壳 when 子句读
     'contextKey:set',
     // E5#69：菜单——插件声明式读写
