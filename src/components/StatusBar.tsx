@@ -156,7 +156,7 @@ function StatusBar(_props: StatusBarProps) {
           );
           return (
             <Fragment key={item.id}>
-              {i > 0 && <span className="status-divider">|</span>}
+              {i > 0 && <span className="status-divider" />}
               {el}
             </Fragment>
           );
@@ -171,14 +171,14 @@ function StatusBar(_props: StatusBarProps) {
       <div className="status-bar-left">
         {leftPluginIds.map((pid, i) => (
           <Fragment key={pid}>
-            {i > 0 && <span className="status-divider">|</span>}
+            {i > 0 && <span className="status-divider" />}
             {renderPluginStatusBar(pid)}
           </Fragment>
         ))}
         {/* Chord 提示——插件图标后面，对标 VS Code */}
         {chordLabel && (
           <>
-            <span className="status-divider">|</span>
+            <span className="status-divider" />
             <span className="status-text status-chord">{chordLabel}</span>
           </>
         )}
