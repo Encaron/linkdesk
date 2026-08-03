@@ -1,9 +1,17 @@
 /**
  * ShellEvents 类型系统——壳内通信唯一类型定义。
+ *
+ * 🔥 新 AI 必读：这是 LinkDesk 的通信契约，单一真相源。
+ *   新插件需要新通信 → 在这里的 EventPayloadMap 加一行 → tsc 自动检查 emit/on 签名。
+ *   三步流程：
+ *     1. 在此文件的 EventPayloadMap 加类型定义
+ *     2. 发送方调 shellEvents.emit("新事件", payload)
+ *     3. 接收方调 shellEvents.on("新事件", callback)
+ *   不改壳架构，不加分支代码。这是正常开发流程，不是 hack。
+ *   详见 docs/03-插件制造/07-插件间通信.md §九
+ *
  * E5#1a：壳内四个区域（IconBar / SidePanel / MainContent / StatusBar）
  * 只通过这张表通信——不 import 对方。
- *
- * 加新事件 = 在这里加一行。tsc 自动检查所有 emit/on 的签名。
  *
  * 命名约定：`domain:action`——domain 标识事件归属（icon/sidebar/tab/statusbar/zone/workspace/file/plugin）。
  *
