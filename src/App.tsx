@@ -834,7 +834,6 @@ function App() {
       <div className="app-main">
       <div className="app-body">
         <IconBar
-          sidebarView={sidebarView}
           onOpenOrFocus={handleIconClick}
           showHamburger={showHamburger}
         />

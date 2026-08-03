@@ -19,10 +19,11 @@ import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏
 // E4V#48——跨容器拖放
 import { ViewContainerService } from "../core/ViewContainerService";
 import { getDraggingView, setDraggingView } from "./shared/viewDragState";
+// E5#3a：壳内通信——订阅 sidebar:containerChanged 替代 App.tsx props
+import { shellEvents } from "../core/ShellEvents";
 import "./IconBar.css";
 
 interface IconBarProps {
-  sidebarView?: string | null;
   onOpenOrFocus: (type: string) => void;
   /** E3f #52h：控制图标栏汉堡菜单显隐。true=显示，false/undefined=隐藏 */
   showHamburger?: boolean;
@@ -54,8 +55,10 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
+function IconBar({ onOpenOrFocus, showHamburger }: IconBarProps) {
   const { t } = useTranslation();
+  // E5#3a：替代 props.sidebarView——订阅壳事件，IconBar 不需要知道谁触发的容器切换
+  const [activeContainerId, setActiveContainerId] = useState<string | null>(null);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
@@ -102,6 +105,14 @@ function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
     const unsub1 = onDidRegister.event(() => setPluginVersion((v) => v + 1));
     const unsub2 = onDidUnregister.event(() => setPluginVersion((v) => v + 1));
     return () => { unsub1(); unsub2(); };
+  }, []);
+
+  // E5#3a：订阅侧栏容器切换——替代 props.sidebarView。IconBar 不知道谁触发的切换。
+  useEffect(() => {
+    const unsub = shellEvents.on("sidebar:containerChanged", (containerId) => {
+      setActiveContainerId(containerId);
+    });
+    return unsub;
   }, []);
 
   type IconEntry = { pluginId: string; icon: ResolvedIcon; label: string };
@@ -200,13 +211,13 @@ function IconBar({ sidebarView, onOpenOrFocus, showHamburger }: IconBarProps) {
 
   /* ── 高亮 ── */
 
-  // E3.6：sidebarView 现在是 containerId。高亮 = 该插件的 viewsContainers 含 sidebarView。
+  // E5#3a：activeContainerId 来自 shellEvents 订阅——不再读 props.sidebarView
   const isActive = (pluginId: string) => {
-    if (!sidebarView) return false;
+    if (!activeContainerId) return false;
     const plugin = getViewPlugin(pluginId);
     const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
     if (!containers) return false;
-    return Object.keys(containers).some((id) => id === sidebarView);
+    return Object.keys(containers).some((id) => id === activeContainerId);
   };
 
   const renderIcon = (entry: IconEntry) => {
