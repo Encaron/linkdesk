@@ -73,7 +73,9 @@ export default function TabPanePositioner({ groupId, isVisible, children }: Prop
       className="tab-content-pane"
       style={{
         position: "absolute",
-        display: isVisible ? "flex" : "none",
+        opacity: isVisible ? 1 : 0,
+        pointerEvents: isVisible ? "auto" : "none",
+        zIndex: isVisible ? 1 : 0,
         flexDirection: "column",
         overflow: "hidden",
       }}
