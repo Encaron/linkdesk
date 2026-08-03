@@ -209,6 +209,12 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#70：ContextKey——插件 SET 状态供壳 when 子句读 ──
+    contextKey: {
+      set: (key: string, value: unknown) =>
+        ipcRenderer.invoke('contextKey:set', key, value),
+    },
+
     // ── E5#68：标签页操作——插件调壳的 tabs API ──
     tabs: {
       create: (type: string, opts?: Record<string, unknown>) =>
