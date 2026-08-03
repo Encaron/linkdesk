@@ -36,6 +36,7 @@ import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/Plu
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
+import { layoutEngine } from "./core/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
@@ -322,10 +323,29 @@ function App() {
     return unsub;
   }, []);
 
-  /* ---- 侧栏拖拽调整宽度 ---- */
-  const [sidebarWidth, setSidebarWidth] = useState(220);
+  /* ---- E5#9f：LayoutEngine 壳布局——替代硬编码 CSS flex ---- */
+  const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
+
+  useEffect(() => {
+    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight);
+    const unsub = layoutEngine.onDidChangeLayout(() => {
+      const b: Record<string, { x: number; y: number; width: number; height: number }> = {};
+      for (const z of layoutEngine.getAllZones()) {
+        const bounds = layoutEngine.getBounds(z.zone);
+        if (bounds) b[z.zone] = bounds;
+      }
+      setZoneBounds(b);
+    });
+    updateSize();
+    window.addEventListener("resize", updateSize);
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      unsub();
+    };
+  }, []);
+
+  /* ---- 侧栏拖拽调整宽度（走 LayoutEngine.resizeZone） ---- */
   const dragging = useRef(false);
-  const sidebarRef = useRef<HTMLElement>(null);
 
   const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
@@ -334,17 +354,12 @@ function App() {
 
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
-      if (!dragging.current || !sidebarRef.current) return;
-      const w = Math.min(520, Math.max(160, e.clientX - 42));
-      sidebarRef.current.style.width = w + "px";
-    };
-    const onMouseUp = () => {
       if (!dragging.current) return;
-      dragging.current = false;
-      if (sidebarRef.current) {
-        setSidebarWidth(parseInt(sidebarRef.current.style.width) || 220);
-      }
+      const iconbarW = layoutEngine.getBounds("iconbar")?.width ?? 42;
+      const w = Math.min(600, Math.max(170, e.clientX - iconbarW));
+      layoutEngine.resizeZone("sidebar", w);
     };
+    const onMouseUp = () => { dragging.current = false; };
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
     return () => {
@@ -583,33 +598,44 @@ function App() {
       <WindowControls />
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-main">
-      <div className="app-body">
-        <IconBar
-          showHamburger={showHamburger}
-        />
-        <SidePanel
-          ref={sidebarRef}
-          width={sidebarWidth}
-        />
-        <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
-        {/* Phase 3 v4: 编辑器区域——每个面板独立标签栏（在 MainContent 内部渲染） */}
-        <div className="editor-area" ref={editorAreaRef}>
-          <MainContent
-            onDropSplit={handleDropSplit}
-            onDropCopySplit={handleDropCopySplit}
-            dropZone={dragDropZone}
-            editorAreaRef={editorAreaRef}
-            dragDropTargetGroupId={dragDropTargetGroupId}
-            onDragDropZone={(zone, targetGroupId) => {
-              setDragDropZone(zone);
-              setDragDropTargetGroupId(targetGroupId ?? null);
-            }}
-            isDragging={isDragging}
-            onDraggingChange={setIsDragging}
+        {zoneBounds.iconbar && (
+          <div style={{ position: "fixed", left: zoneBounds.iconbar.x, top: zoneBounds.iconbar.y, width: zoneBounds.iconbar.width, height: zoneBounds.iconbar.height, zIndex: 10 }}>
+            <IconBar showHamburger={showHamburger} />
+          </div>
+        )}
+        {zoneBounds.sidebar && (
+          <div style={{ position: "fixed", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
+            <SidePanel width={zoneBounds.sidebar.width} />
+          </div>
+        )}
+        {zoneBounds.sidebar && (
+          <div
+            style={{ position: "fixed", left: zoneBounds.sidebar.x + zoneBounds.sidebar.width, top: 0, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize" }}
+            onMouseDown={onResizeMouseDown}
           />
-        </div>
-      </div>
-      <StatusBar />
+        )}
+        {zoneBounds.main && (
+          <div style={{ position: "fixed", left: zoneBounds.main.x, top: zoneBounds.main.y, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
+            <MainContent
+              onDropSplit={handleDropSplit}
+              onDropCopySplit={handleDropCopySplit}
+              dropZone={dragDropZone}
+              editorAreaRef={editorAreaRef}
+              dragDropTargetGroupId={dragDropTargetGroupId}
+              onDragDropZone={(zone, targetGroupId) => {
+                setDragDropZone(zone);
+                setDragDropTargetGroupId(targetGroupId ?? null);
+              }}
+              isDragging={isDragging}
+              onDraggingChange={setIsDragging}
+            />
+          </div>
+        )}
+        {zoneBounds.statusbar && (
+          <div style={{ position: "fixed", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
+            <StatusBar />
+          </div>
+        )}
       </div>
       <ToastContainer />
       <ProgressBar />
