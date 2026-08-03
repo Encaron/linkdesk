@@ -64,6 +64,17 @@ export function getTabBehavior(pluginId: string): TabBehavior {
   return { ...builtin, ...pluginDeclaration };
 }
 
+/** E5#48：求值 confirmCondition——声明式确认条件。核心不认插件 ID，只认条件名。 */
+async function evaluateConfirmCondition(condition: string): Promise<boolean> {
+  if (condition === "serial:isOpen") {
+    try {
+      const status = await (window as any).linkdesk?.serial?.getStatus?.();
+      return status?.isOpen === true;
+    } catch { /* IPC 失败——保守确认 */ }
+  }
+  return true; // 未知条件或出错——默认弹确认
+}
+
 /**
  * 执行标签页关闭前的检查与副作用——归一化入口。
  * 读取 tabBehavior 声明，依次执行 confirmOnClose 弹窗和 invokeBeforeClose 命令。
@@ -72,14 +83,11 @@ export function getTabBehavior(pluginId: string): TabBehavior {
  */
 export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
-  // E5#48：invokeBeforeClose 为 "close_port" 时，先查端口状态——未开则跳过确认
+  // E5#48：confirmCondition——插件声明式确认条件，满足才弹 confirmOnClose
   if (behavior.confirmOnClose) {
     let shouldConfirm = true;
-    if (behavior.invokeBeforeClose === "close_port") {
-      try {
-        const status = await (window as any).linkdesk?.serial?.getStatus?.();
-        if (status && !status.isOpen) shouldConfirm = false;
-      } catch { /* IPC 失败——回退正常确认 */ }
+    if (behavior.confirmCondition) {
+      shouldConfirm = await evaluateConfirmCondition(behavior.confirmCondition);
     }
     if (shouldConfirm && !await showConfirm(behavior.confirmOnClose)) return false;
   }
