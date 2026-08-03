@@ -183,17 +183,23 @@ function StatusBar(_props: StatusBarProps) {
       {/* 右区：插件贡献项 + eventEntries + 核心固定项——统一 │ + status-bar-btn 样式 */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
-        {/* E5#6e：eventEntries（来自 statusbar:update 事件）+ 壳固定项 走统一渲染 */}
-        {[
-          ...eventEntries.map((e) => ({
-            key: e.id, label: e.text, tooltip: e.tooltip, align: e.alignment as "left" | "right",
-          })),
-          { key: "lang", label: lang === "zh" ? "中" : "EN", tooltip: t("切换语言"), onClick: "workbench.action.selectLanguage", align: "right" as const },
-          { key: "theme", label: theme === "Dark" ? "☀" : "☾", tooltip: t("切换主题"), onClick: "workbench.action.selectTheme", align: "right" as const },
-        ].filter((e) => e.align === "right").map((e, i) => (
-          <Fragment key={e.key}>
-            {rightPluginIds.length > 0 || i > 0 ? <span className="status-divider">│</span> : null}
-            {"onClick" in e && e.onClick ? (
+        {/* E5#6e：eventEntries + 壳固定项 走统一渲染 */}
+        {(() => {
+          const items = [
+            ...eventEntries.map((e) => ({
+              key: e.id, label: e.text, tooltip: e.tooltip, align: e.alignment as "left" | "right",
+            })),
+            { key: "lang", label: lang === "zh" ? "中" : "EN", tooltip: t("切换语言"), onClick: "workbench.action.selectLanguage", align: "right" as const },
+            { key: "theme", label: theme === "Dark" ? "☀" : "☾", tooltip: t("切换主题"), onClick: "workbench.action.selectTheme", align: "right" as const },
+          ].filter((e) => e.align === "right");
+          if (items.length === 0) return null;
+          return (
+            <>
+              {rightPluginIds.length > 0 && <span className="status-divider">│</span>}
+              {items.map((e, i) => (
+                <Fragment key={e.key}>
+                  {i > 0 && <span className="status-divider">│</span>}
+                  {"onClick" in e && e.onClick ? (
               <button className="status-bar-btn" onClick={() => executeCommand(e.onClick!)} title={e.tooltip}>
                 {e.label}
               </button>
@@ -202,6 +208,9 @@ function StatusBar(_props: StatusBarProps) {
             )}
           </Fragment>
         ))}
+          </>
+        );
+        })()}
         <NotificationCenter />
       </div>
     </div>
