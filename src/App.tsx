@@ -40,6 +40,7 @@ import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type W
 import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
+import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
@@ -541,16 +542,15 @@ function App() {
   const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
 
   // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
-  // sidebarPrimary（默认）：toggle 侧栏，对标 VS Code Activity Bar。
-  // tabOnly：直接开标签页，对标 VS Code 设置齿轮。
-  const handleIconClick = useCallback(
-    (pluginId: string) => {
+  // E5#3b：订阅 IconBar 发出的 icon:selected 事件——替代旧 props 回调。
+  // E5#4（SidePanel 自己订阅）后此 useEffect 迁出 App.tsx。
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
       if (plugin?.manifest.viewRole === "tabOnly") {
         createTab(pluginId);
         return;
       }
-      // E3.6：sidebarView 现在存 containerId，不是 pluginId
       const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
       if (!containers) {
         console.warn(`[App] 插件 "${pluginId}" 未声明 viewsContainers——无法打开侧栏`);
@@ -558,10 +558,15 @@ function App() {
       }
       const containerId = Object.keys(containers)[0];
       if (!containerId) return;
-      setSidebarView((prev) => (prev === containerId ? null : containerId));
-    },
-    [createTab]
-  );
+      setSidebarView((prev) => {
+        const next = prev === containerId ? null : containerId;
+        // 🔥 桥接——SidePanel 尚未 emit sidebar:containerChanged（E5#4c），App 先代劳
+        shellEvents.emit("sidebar:containerChanged", next);
+        return next;
+      });
+    });
+    return unsub;
+  }, [createTab]);
 
 
   /* ---- QuickPick 互斥——同时只允许一个浮动面板打开（对标 VS Code） ---- */
@@ -834,7 +839,6 @@ function App() {
       <div className="app-main">
       <div className="app-body">
         <IconBar
-          onOpenOrFocus={handleIconClick}
           showHamburger={showHamburger}
         />
         <SidePanel

@@ -24,7 +24,6 @@ import { shellEvents } from "../core/ShellEvents";
 import "./IconBar.css";
 
 interface IconBarProps {
-  onOpenOrFocus: (type: string) => void;
   /** E3f #52h：控制图标栏汉堡菜单显隐。true=显示，false/undefined=隐藏 */
   showHamburger?: boolean;
 }
@@ -55,7 +54,7 @@ interface DragState {
   moved: boolean;
 }
 
-function IconBar({ onOpenOrFocus, showHamburger }: IconBarProps) {
+function IconBar({ showHamburger }: IconBarProps) {
   const { t } = useTranslation();
   // E5#3a：替代 props.sidebarView——订阅壳事件，IconBar 不需要知道谁触发的容器切换
   const [activeContainerId, setActiveContainerId] = useState<string | null>(null);
@@ -249,13 +248,8 @@ function IconBar({ onOpenOrFocus, showHamburger }: IconBarProps) {
               setGearAnchor({ x: e.clientX, y: e.clientY });
               return;
             }
-            // E2c #19k：viewRole="tabOnly" → 直接开标签页（顶部图标才到这）
-            const plugin = getViewPlugin(entry.pluginId);
-            if (plugin?.manifest.viewRole === "tabOnly") {
-              onOpenOrFocus(entry.pluginId);
-              return;
-            }
-            onOpenOrFocus(entry.pluginId);
+            // E5#3b：emit 事件——IconBar 不知道谁会响应
+            shellEvents.emit("icon:selected", entry.pluginId);
           }}
           onContextMenu={
             getIconLocation(entry.pluginId) === "bottom"
