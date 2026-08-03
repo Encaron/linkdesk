@@ -26,7 +26,6 @@ interface StatusBarProps {
 
 function StatusBar(_props: StatusBarProps) {
   // E5#6a：替代 props.theme / props.lang——直接从 ConfigurationService 读，响应式
-  const theme = useConfigurationValue<string>("app.theme");
   const lang = useConfigurationValue<"zh" | "en">("app.language");
 
   // 动态状态栏项变更 → 重渲染
@@ -65,7 +64,7 @@ function StatusBar(_props: StatusBarProps) {
       pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
     })),
     { pluginId: "__shell_right__", id: "lang", label: lang === "zh" ? "中" : "EN", align: "right", onClick: "workbench.action.selectLanguage" },
-    { pluginId: "__shell_right__", id: "theme", label: theme === "Dark" ? "☀" : "☾", align: "right", onClick: "workbench.action.selectTheme" },
+    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", align: "right", onClick: "workbench.action.selectTheme" },
   ];
 
   // 去重插件 ID（保持顺序）
