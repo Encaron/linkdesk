@@ -34,6 +34,7 @@ import { HexToBytes } from "@src/core/DataConverter";
 import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
+import { showConfirm } from "@src/core/DialogService"; // E5#48：关闭确认
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./SerialMonitorView.css";
 
@@ -745,6 +746,20 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   }, [sourceId]);
 
   useEffect(() => {
+    // E5#48：标签页关闭确认——端口未开时不弹确认，端口开着则确认后断开
+    registerCommand("serial-monitor", {
+      id: "close_port",
+      title: t("关闭串口"),
+      category: t("串口监视器"),
+      when: "false",
+      handler: async () => {
+        if (!portOpenRef.current) return; // 端口未开——直接允许关闭
+        const confirmed = await showConfirm(t("关闭此标签页将断开串口连接"));
+        if (!confirmed) return false;     // 用户取消——阻止关闭
+        const s = (window as any).linkdesk?.serial;
+        await s?.closePort?.();
+      },
+    });
     // E3j #79：发送能力——工作台卡片等插件通过命令系统发数据到串口
     registerCommand("serial-monitor", {
       id: "serial-monitor.send",
