@@ -164,6 +164,19 @@ function MainContent({
     return unsub;
   }, [onCreateTab]);
 
+  // E5#5c：包装 focusTab——emit tab:focused 通知 StatusBar
+  const handleFocusTab = useCallback((tabId: string) => {
+    onFocusTab(tabId);
+    // 查找 tab 信息用于 emit
+    for (const g of tabState.groups) {
+      const tab = g.tabs.find((t) => t.id === tabId);
+      if (tab) {
+        shellEvents.emit("tab:focused", { pluginId: tab.pluginId || tab.type, tabId });
+        break;
+      }
+    }
+  }, [onFocusTab, tabState.groups]);
+
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   useEffect(() => {
@@ -263,7 +276,7 @@ function MainContent({
           <TabBar
             group={group}
             isActiveGroup={group.id === activeGroupId}
-            onFocusTab={onFocusTab}
+            onFocusTab={handleFocusTab}
             onCloseTab={onCloseTab}
             onCreateTab={onCreateTab}
             onMoveTab={(tabId, targetGroupId?) => {
@@ -301,7 +314,7 @@ function MainContent({
       );
     },
     [tabState.root, activeGroupId, dropZone, dragDropTargetGroupId,
-     onFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onPinTab,
+     handleFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onPinTab,
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
 
