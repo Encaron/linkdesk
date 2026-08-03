@@ -95,15 +95,11 @@ function App() {
     closeTab,
     forceCloseTab,
     createTab,
-    moveTab,
     splitTab,
     splitTabAt,
     duplicateTab,
     unsplit,
-    updateSplitSizes,
     restoreLayout,
-    reorderTab,
-    pinTab,
   } = useTabManager();
 
   // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
@@ -774,17 +770,8 @@ function App() {
         {/* Phase 3 v4: 编辑器区域——每个面板独立标签栏（在 MainContent 内部渲染） */}
         <div className="editor-area" ref={editorAreaRef}>
           <MainContent
-            tabState={tabState}
-            onFocusTab={handleFocusTab}
-            onCloseTab={closeTab}
-            onCreateTab={createTab}
-            onSplitTab={splitTab}
-            onMoveTab={moveTab}
-            onReorderTab={reorderTab}
-            onPinTab={pinTab}
             onDropSplit={handleDropSplit}
             onDropCopySplit={handleDropCopySplit}
-            onSplitResize={(anchorId, sizes, branchIndex) => updateSplitSizes(anchorId, sizes, branchIndex)}
             dropZone={dragDropZone}
             editorAreaRef={editorAreaRef}
             dragDropTargetGroupId={dragDropTargetGroupId}

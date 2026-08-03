@@ -9,7 +9,8 @@
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComponentType } from "react";
-import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
+import type { TabGroup, Tab } from "../hooks/useTabManager";
+import { useTabManager } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import SplitPane from "./SplitPane";
@@ -30,17 +31,8 @@ import { saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/La
 import "./MainContent.css";
 
 interface MainContentProps {
-  tabState: TabState;
-  onFocusTab: (tabId: string) => void;
-  onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => string;
-  onSplitTab: (tabId: string, direction?: "horizontal" | "vertical") => void;
-  onMoveTab: (tabId: string, targetGroupId: string) => void;
-  onReorderTab: (tabId: string, toIndex: number) => void;
-  onPinTab?: (tabId: string) => void;
   onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
-  onSplitResize?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
   dropZone?: DropZone | null;
   dragDropTargetGroupId?: string | null;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
@@ -60,7 +52,7 @@ SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
-  onCreateTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
+  createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
 ) {
   // 壳自身的视图——不走插件路由
@@ -75,7 +67,7 @@ function renderTabContent(
             key: tab.id,
             isActive,
             pluginId: tab.detailPluginId,
-            onCreateTab,
+            createTab,
             initialChannelId: tab.sourceId,
           })}
         </ErrorBoundary>
@@ -110,17 +102,8 @@ function renderTabContent(
 }
 
 function MainContent({
-  tabState,
-  onFocusTab,
-  onCloseTab,
-  onCreateTab,
-  onSplitTab,
-  onMoveTab,
-  onReorderTab,
-  onPinTab,
   onDropSplit,
   onDropCopySplit,
-  onSplitResize,
   dropZone,
   dragDropTargetGroupId,
   editorAreaRef,
@@ -128,7 +111,24 @@ function MainContent({
   isDragging,
   onDraggingChange,
 }: MainContentProps) {
-
+  // E5#5e-ii-e：useTabManager 搬到 MainContent——不再通过 App props 中转
+  const {
+    tabState,
+    focusTab,
+    closeTab,
+    forceCloseTab: _forceCloseTab,
+    createTab,
+    moveTab,
+    splitTab,
+    splitTabAt: _splitTabAt,
+    duplicateTab: _duplicateTab,
+    unsplit: _unsplit,
+    updateSplitSizes,
+    reorderTab,
+    pinTab,
+    openOrFocusTab: _openOrFocusTab,
+    restoreLayout: _restoreLayout,
+  } = useTabManager();
   // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
   const flatPanes = useMemo(() => {
     const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
@@ -161,30 +161,29 @@ function MainContent({
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
       if (plugin?.manifest.viewRole === "tabOnly") {
-        onCreateTab(pluginId);
+        createTab(pluginId);
       }
     });
     return unsub;
-  }, [onCreateTab]);
+  }, [createTab]);
 
-  // E5#5e-ii-c：插件卸载时关闭其所有标签页。使用 onCloseTab prop——等 useTabManager 搬家后换 forceCloseTab
+  // E5#5e-ii-c：插件卸载时关闭其所有标签页。使用 closeTab prop——等 useTabManager 搬家后换 forceCloseTab
   useEffect(() => {
     const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
       for (const g of tabState.groups) {
         for (const tab of g.tabs) {
           if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
-            onCloseTab(tab.id);
+            closeTab(tab.id);
           }
         }
       }
     });
     return unsub;
-  }, [tabState.groups, onCloseTab]);
+  }, [tabState.groups, closeTab]);
 
   // E5#5c：包装 focusTab——emit tab:focused 通知 StatusBar
   const handleFocusTab = useCallback((tabId: string) => {
-    onFocusTab(tabId);
-    // 查找 tab 信息用于 emit
+    focusTab(tabId);
     for (const g of tabState.groups) {
       const tab = g.tabs.find((t) => t.id === tabId);
       if (tab) {
@@ -192,7 +191,7 @@ function MainContent({
         break;
       }
     }
-  }, [onFocusTab, tabState.groups]);
+  }, [focusTab, tabState.groups]);
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
@@ -360,19 +359,19 @@ function MainContent({
             group={group}
             isActiveGroup={group.id === tabState.activeGroupId}
             onFocusTab={handleFocusTab}
-            onCloseTab={onCloseTab}
-            onCreateTab={onCreateTab}
+            onCloseTab={closeTab}
+            onCreateTab={createTab}
             onMoveTab={(tabId, targetGroupId?) => {
               if (targetGroupId && targetGroupId !== group.id) {
-                onMoveTab(tabId, targetGroupId);
+                moveTab(tabId, targetGroupId);
               } else if (!targetGroupId) {
                 const allLeafIds = getAllLeafGroupIds(tabState.root);
                 const otherGroupId = allLeafIds.find((id) => id !== group.id);
-                if (otherGroupId) onMoveTab(tabId, otherGroupId);
+                if (otherGroupId) moveTab(tabId, otherGroupId);
               }
             }}
-            onReorderTab={onReorderTab}
-            onPinTab={onPinTab}
+            onReorderTab={reorderTab}
+            onPinTab={pinTab}
             onDropSplit={onDropSplit}
             onDropCopySplit={onDropCopySplit}
             editorAreaRef={editorAreaRef}
@@ -397,8 +396,8 @@ function MainContent({
       );
     },
     [tabState.root, tabState.activeGroupId, dropZone, dragDropTargetGroupId,
-     handleFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onPinTab,
-     onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
+     handleFocusTab, closeTab, createTab, moveTab, reorderTab, pinTab,
+     splitTab, editorAreaRef, isDragging, onDraggingChange]
   );
 
   return (
@@ -407,7 +406,7 @@ function MainContent({
         node={tabState.root}
         groups={tabState.groups}
         renderGroup={renderGroup}
-        onResize={onSplitResize}
+        onResize={updateSplitSizes}
       />
       {/* B33：所有 tab pane 平级渲染，绝对定位填入对应组的 tab-content-pool。
           移动标签页 → groupId 变 → 绝对定位更新 → React 树不变 → 零 unmount。 */}
@@ -417,7 +416,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, onCreateTab, readyWebViewIds)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds)}
         </TabPanePositioner>
       ))}
     </div>
