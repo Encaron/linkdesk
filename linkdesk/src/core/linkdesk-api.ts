@@ -106,6 +106,12 @@ export interface LinkDeskAPI {
     on(channel: string, cb: (data: unknown) => void): () => void;
   };
 
+  /** E5#71：插件持久化存储——集中缓存 + 文件持久化 */
+  pluginState: {
+    get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
+    set(pluginId: string, key: string, value: unknown): Promise<void>;
+  };
+
   /** E5#69：菜单注册——插件声明式注册菜单项 */
   menu: {
     registerItems(menuId: string, pluginId: string, items: unknown[]): Promise<void>;

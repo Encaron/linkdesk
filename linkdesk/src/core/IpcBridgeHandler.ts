@@ -73,6 +73,18 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
+        // ── E5#71：插件持久化存储——集中缓存 + 文件持久化 ──
+        case "pluginState:get": {
+          const [pluginId, key] = req.args as [string, string];
+          result = getPluginStateValue(pluginId, key);
+          break;
+        }
+        case "pluginState:set": {
+          const [pluginId, key, value] = req.args as [string, string, unknown];
+          await setPluginStateValue(pluginId, key, value);
+          break;
+        }
+
         // ── E5#69：菜单注册——插件声明式注册菜单项 ──
         case "menu:registerItems": {
           const [menuId, pluginId, items] = req.args as [string, string, ManifestMenuItem[]];
