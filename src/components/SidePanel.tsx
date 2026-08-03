@@ -153,7 +153,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
         asideRef.current = node;
       }}
       className={cls.join(" ")}
-      style={{ width: collapsed ? 28 : width }}
+      style={{ width: collapsed ? 28 : width, height: "100%" }}
     >
       {collapsed ? (
         <button
