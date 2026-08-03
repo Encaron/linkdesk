@@ -47,6 +47,7 @@ export class IpcBridge {
     this.registerPushListener();
     this.registerBroadcastListener();
     this.registerPluginEmitListener();
+    this.registerRequestToPluginListener();    // E5#62
   }
 
   /**
@@ -274,6 +275,57 @@ export class IpcBridge {
     this.pluginRequestQueues.delete(pluginId);
   }
 
+  // ═══════════════════════════════════════════════════════
+  // E5#62——壳→插件请求-响应管道（bridge:request-to-plugin）
+  // ═══════════════════════════════════════════════════════
+
+  /** 壳→插件请求的待处理 Promise Map——requestId → { resolve, reject, timer } */
+  private pendingPluginRequests = new Map<string, {
+    resolve: (v: unknown) => void;
+    reject: (e: Error) => void;
+    timer: ReturnType<typeof setTimeout>;
+  }>();
+
+  private registerRequestToPluginListener(): void {
+    // 壳 invoke 入口
+    ipcMain.handle('bridge:request-to-plugin', async (_event, pluginId: string, channel: string, payload: unknown) => {
+      const view = this.windowManager.getPluginView(pluginId);
+      if (!view) {
+        throw new Error(`[IpcBridge] 插件 "${pluginId}" 未运行——无法发送请求`);
+      }
+
+      const requestId = `plugin-req-${++this.requestCounter}-${Date.now()}`;
+      const result = await new Promise<unknown>((resolve, reject) => {
+        const timer = setTimeout(() => {
+          this.pendingPluginRequests.delete(requestId);
+          reject(new Error(`[IpcBridge] 插件 "${pluginId}" 请求超时 (10s)，channel="${channel}"`));
+        }, 10000);
+        this.pendingPluginRequests.set(requestId, { resolve, reject, timer });
+        view.webContents.send('plugin:request', { requestId, channel, payload });
+      });
+      return result;
+    });
+
+    // 插件回复入口
+    ipcMain.on('bridge:plugin-response', (_event, { requestId, result, error }: {
+      requestId: string;
+      result?: unknown;
+      error?: string;
+    }) => {
+      const pending = this.pendingPluginRequests.get(requestId);
+      if (!pending) return; // 已超时或已处理
+      clearTimeout(pending.timer);
+      this.pendingPluginRequests.delete(requestId);
+      if (error) {
+        pending.reject(new Error(error));
+      } else {
+        pending.resolve(result);
+      }
+    });
+
+    console.log('[IpcBridge] 已注册 bridge:request-to-plugin 壳→插件请求通道');
+  }
+
   /** 清理所有待处理请求和推送队列——应用退出时调用 */
   dispose(): void {
     for (const [id, pending] of this.pendingRequests) {
@@ -281,6 +333,11 @@ export class IpcBridge {
       pending.reject(new Error('[IpcBridge] 应用退出，请求取消'));
     }
     this.pendingRequests.clear();
+    for (const [id, pending] of this.pendingPluginRequests) {
+      clearTimeout(pending.timer);
+      pending.reject(new Error('[IpcBridge] 应用退出，请求取消'));
+    }
+    this.pendingPluginRequests.clear();
     this.pushQueues.clear();
     this.flushing.clear();
     this.pluginRequestQueues.clear();

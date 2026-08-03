@@ -209,10 +209,47 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#62：壳→插件请求处理——handle 注册 channel handler，unhandle 注销 ──
+    pluginRequest: {
+      _handlers: new Map<string, (payload: unknown) => Promise<unknown>>(),
+      handle(channel: string, handler: (payload: unknown) => unknown) {
+        this._handlers.set(channel, async (p) => handler(p));
+      },
+      unhandle(channel: string) {
+        this._handlers.delete(channel);
+      },
+    },
+
     // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
     events,
+  });
+
+  // E5#62：壳→插件请求——收到 plugin:request → 调 handler → 回传 bridge:plugin-response
+  ipcRenderer.on('plugin:request', async (_event, { requestId, channel, payload }: {
+    requestId: string;
+    channel: string;
+    payload: unknown;
+  }) => {
+    const pluginReq = (window as any).linkdesk?.pluginRequest;
+    const handler = pluginReq?._handlers?.get(channel);
+    if (!handler) {
+      ipcRenderer.send('bridge:plugin-response', {
+        requestId,
+        error: `[pluginRequest] 无 handler 处理 channel "${channel}"`,
+      });
+      return;
+    }
+    try {
+      const result = await handler(payload);
+      ipcRenderer.send('bridge:plugin-response', { requestId, result });
+    } catch (err: any) {
+      ipcRenderer.send('bridge:plugin-response', {
+        requestId,
+        error: err?.message ?? String(err),
+      });
+    }
   });
 
   // 通知主进程 preload 成功

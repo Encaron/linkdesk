@@ -105,6 +105,12 @@ export interface LinkDeskAPI {
     on(channel: string, cb: (payload: unknown) => void): () => void;
     emit(channel: string, payload: unknown): void;
   };
+
+  /** E5#62：壳→插件请求处理——插件注册 channel handler 响应壳的 requestToPlugin */
+  pluginRequest: {
+    handle(channel: string, handler: (payload: unknown) => unknown): void;
+    unhandle(channel: string): void;
+  };
 }
 
 /** 进度通知句柄——progress=true 时 show() 返回 */
