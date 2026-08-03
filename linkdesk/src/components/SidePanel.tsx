@@ -14,6 +14,9 @@ import { useTranslation } from "react-i18next";
 import { ViewContainerService } from "../core/ViewContainerService";
 import ToolbarSlot from "./shared/ToolbarSlot";
 import SectionStack from "./shared/SectionStack";
+// E5#4b：壳内通信——订阅 icon:selected，解析 pluginId → containerId
+import { shellEvents } from "../core/ShellEvents";
+import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./SidePanel.css";
 
 interface SidePanelProps {
@@ -26,8 +29,21 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const [animating, setAnimating] = useState(false);
   const { t } = useTranslation();
   const asideRef = useRef<HTMLElement | null>(null);
-  // E5#4a：替代 props.sidebarView——订阅壳事件填充（E5#4b），初始 null
-  const [containerId] = useState<string | null>(null);
+  // E5#4a+4b：替代 props.sidebarView——订阅 icon:selected 事件解析 pluginId → containerId
+  const [containerId, setContainerId] = useState<string | null>(null);
+
+  // E5#4b：订阅 IconBar 发出的 icon:selected——解析 pluginId → containerId，toggle 逻辑
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:selected", (pluginId) => {
+      const plugin = getViewPlugin(pluginId);
+      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      if (!containers) return;
+      const cid = Object.keys(containers)[0];
+      if (!cid) return;
+      setContainerId((prev) => prev === cid ? null : cid);
+    });
+    return unsub;
+  }, []);
 
   // 🔥 UX03：onTransitionEnd 替代 setTimeout(220)
   const handleTransitionEnd = useCallback(() => {
