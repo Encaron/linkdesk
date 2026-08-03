@@ -55,10 +55,26 @@ const SHELL_VIEWS: Record<string, ComponentType<any>> = {
 SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 
 // E5#10：WebView 就绪插件白名单——只有确认 WebView 可独立工作的插件才关停 React fallback。
-// 不在白名单内的插件（如 editor——需 IPC 接收 filePath）保持 React 渲染。
-// 后续 E5#11 各插件逐一验收 WebView 独立性后移入此集合。
+//
+// 🔥 新 AI 必读：这个白名单是过渡方案，不是硬编码终点。
+//   每个插件的 WebView 独立改造完成后，把 pluginId 加入此 Set。
+//   全部加入后可删除白名单，关停逻辑退化为双条件。
+//
+// 判断标准：插件在 WebView 中能否接收壳指令（打开文件/切换会话等），不依赖 React props。
+// 改造模式：插件 index.tsx 注册 linkdesk.events.on(...) → 壳通过 ShellEvents emit →
+//   bridge:push-to-plugin IPC → 插件 WebView 接收。
+//
+// 详见 docs/02-Electron架构/E5_核心归一化与壳重构_待执行/
+//   01-壳通信骨架/React-Fallback退役.md §六
+//   05-执行清单.md E5#11f–#11l
 const WEBVIEW_READY_PLUGINS = new Set<string>([
-  "serial-monitor",
+  "serial-monitor", // ✅ 用户在自己 UI 操作，无需壳传参
+  // "settings",    // 🟡 待验证——日常用，独立 UI，可能无需改造
+  // "marketplace", // 🟡 待验证——独立 UI，可能无需改造
+  // "file-tree",   // 🟡 待验证——已通过 linkdesk.fileService IPC 操作文件
+  // "editor",      // 🔴 待改造——需 IPC 接收 filePath（当前靠 React props <EditorView sourceId>）
+  // "python",      // 🟡 待验证
+  // "workspace",   // 🟡 待验证
 ]);
 
 function renderTabContent(

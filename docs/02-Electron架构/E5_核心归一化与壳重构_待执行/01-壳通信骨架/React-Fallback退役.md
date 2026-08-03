@@ -274,6 +274,65 @@ useEffect(() => {
 
 ---
 
+## 六、2026-08-04 实施真相——与蓝图有出入
+
+### 6.1 蓝图未发现的坑
+
+1. **rAF 在 WebContentsView 中不触发**——`plugin-shell-main.tsx` 原方案用 `requestAnimationFrame` 延时调用 `notifyReady`，但 WebContentsView 在首帧渲染前不触发 rAF。`notifyReady` 从未执行，`readyWebViewIds` 始终为空，React fallback 从未关停过（包括 #58e 修复也是假的）。
+   - **实际修复：** 同步调用 `notifyReady()` + 100ms `setTimeout` 保底。
+
+2. **单条件关停 → E3f #58d 白屏回归**——`plugin-view:ready` 信号和 WebView bounds 设置之间存在 gap。只靠 `readyWebViewIds` 关停 React 会导致 WebView 未显示时 React 已关 → 白屏。
+   - **实际修复：** 三条件——`WEBVIEW_READY_PLUGINS` 白名单 + `readyWebViewIds`（JS ready）+ `webViewBoundsReady`（bounds IPC `.then()` 确认完成）。
+
+3. **大多数插件不能在纯 WebView 模式下独立工作**——蓝图假设所有插件 WebView 都能独立渲染。实际上：
+   - **serial-monitor** ✅ 可以——用户在自己 UI 操作，不需要壳传参
+   - **editor** ❌ 不行——需要壳通过 IPC 告知 `filePath`，当前靠 React props `<EditorView sourceId="xxx" />`
+   - **settings/marketplace/file-tree** 未验证
+   - **python/workspace** 未验证
+
+### 6.2 WEBVIEW_READY_PLUGINS 白名单机制
+
+当前在 `src/components/MainContent.tsx` 顶部维护：
+```typescript
+const WEBVIEW_READY_PLUGINS = new Set<string>([
+  "serial-monitor",
+]);
+```
+
+**关停条件：** `WEBVIEW_READY_PLUGINS.has(id) && readyWebViewIds.has(id) && webViewBoundsReady.has(id)` 三者同时满足才用空 div 替代 React 渲染。
+
+**白名单是过渡方案——不是硬编码终点。** 每当一个插件完成 WebView 独立改造（见下方验收清单），就把它加进来。最终所有插件都在白名单里时，白名单可以删除，关停逻辑退化为双条件。
+
+### 6.3 插件 WebView 独立化——验收与改造清单
+
+**判断标准：** 插件在 WebView 中渲染时，能接收并响应壳发出的所有必要指令（打开文件、切换会话、参数变更等），不依赖 React props。
+
+**改造模式：**
+1. 在插件 `index.tsx` 中注册 `linkdesk.events.on(...)` 监听壳事件（如 `tab:paramsChanged`）
+2. 壳通过 ShellEvents emit 事件 → `bridge:push-to-plugin` IPC → 插件 WebView 接收
+3. 插件 WebView 根据事件更新自己的渲染状态
+
+**待改造插件：**
+
+| 插件 | 缺失能力 | 优先级 | 改造任务 |
+|:--|:--|:--:|:--|
+| editor | 接收 filePath 打开文件 | 🔴 | **加 IPC 通道**——壳 emit `editor:openFile {filePath}` → editor WebView 监听并打开 |
+| settings | 无外部指令需求（独立 UI） | 🟡 | 验证即可——可能无需改造 |
+| marketplace | 无外部指令需求（独立 UI） | 🟡 | 验证即可——可能无需改造 |
+| file-tree | 已通过 IPC 操作文件（`linkdesk.fileService`） | 🟡 | 验证即可——可能无需改造 |
+| python | 接收执行命令 | 🟡 | 验证+可能需要 `runCode` IPC |
+| workspace | 接收工作区激活事件 | 🟡 | 验证+可能需要 `workspace:activated` IPC |
+
+### 6.4 新 AI 进场注意
+
+**`WEBVIEW_READY_PLUGINS` 是故意留的白名单——不是技术债。** 删掉它会立刻导致 editor 等插件白屏。正确流程：
+1. 先给插件加 IPC 通道（改造插件自身）
+2. 验证纯 WebView 模式正常
+3. 把插件 ID 加入白名单
+4. 全部加入后删除白名单机制
+
+---
+
 > **← E5 索引：** `../00-README.md`
 > **← 执行清单：** `../05-执行清单.md` E5#10–#11
 > **← 前置：** `壳内低耦合-App去胶水化.md`（E5#7）——MainContent 独立管理标签页后做
