@@ -209,6 +209,19 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#65：p2p 插件间定向推流——直连目标插件，不走壳中转 ──
+    p2p: {
+      send: (target: string, channel: string, data: unknown): Promise<void> =>
+        ipcRenderer.invoke('p2p:send', target, channel, data),
+      on: (channel: string, cb: (data: unknown) => void) => {
+        const handler = (_event: any, d: { channel: string; data: unknown; source: string }) => {
+          if (d.channel === channel) cb(d.data);
+        };
+        ipcRenderer.on('p2p:data', handler);
+        return () => { ipcRenderer.removeListener('p2p:data', handler); };
+      },
+    },
+
     // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
     dialog: {
       confirm: (message: string): Promise<boolean> =>
