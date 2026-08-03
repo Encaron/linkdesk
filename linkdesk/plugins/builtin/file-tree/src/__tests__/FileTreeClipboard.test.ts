@@ -7,6 +7,15 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { FileTreeClipboard } from "../FileTreeClipboard";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 
+// E5#70e: 生产代码用 linkdesk.contextKey.set——测试环境 mock 回 ContextKeyService
+function mockContextKey() {
+  (window as any).linkdesk = {
+    ...((window as any).linkdesk ?? {}),
+    contextKey: { set: (k: string, v: unknown) => ContextKeyService.setValue(k, v) },
+  };
+}
+mockContextKey();
+
 describe("FileTreeClipboard", () => {
   let clipboard: FileTreeClipboard;
 
