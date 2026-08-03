@@ -209,10 +209,11 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
-    // ── E5#65：p2p 插件间定向推流——send 走 pushToPlugin（已验证），on 复用 events ──
+    // ── E5#65：p2p 插件间定向推流——fire-and-forget，和 bridge:broadcast 同模式 ──
     p2p: {
-      send: (target: string, channel: string, data: unknown): Promise<void> =>
-        ipcRenderer.invoke('p2p:send', target, channel, data),
+      send: (target: string, channel: string, data: unknown) => {
+        ipcRenderer.send('p2p:send', target, channel, data);
+      },
       on: events.on,
     },
 
