@@ -165,6 +165,20 @@ function MainContent({
     return unsub;
   }, [onCreateTab]);
 
+  // E5#5e-ii-c：插件卸载时关闭其所有标签页。使用 onCloseTab prop——等 useTabManager 搬家后换 forceCloseTab
+  useEffect(() => {
+    const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
+      for (const g of tabState.groups) {
+        for (const tab of g.tabs) {
+          if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
+            onCloseTab(tab.id);
+          }
+        }
+      }
+    });
+    return unsub;
+  }, [tabState.groups, onCloseTab]);
+
   // E5#5c：包装 focusTab——emit tab:focused 通知 StatusBar
   const handleFocusTab = useCallback((tabId: string) => {
     onFocusTab(tabId);
