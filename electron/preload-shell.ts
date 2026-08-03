@@ -135,6 +135,14 @@ try {
         ipcRenderer.invoke('dialog:alert', message),
     },
 
+    // ── E5#71：插件持久化存储 ──
+    pluginState: {
+      get: (pluginId: string, key: string): Promise<unknown> =>
+        ipcRenderer.invoke('pluginState:get', pluginId, key),
+      set: (pluginId: string, key: string, value: unknown): Promise<void> =>
+        ipcRenderer.invoke('pluginState:set', pluginId, key, value),
+    },
+
     // ── E5#69：菜单注册 ──
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>

@@ -209,6 +209,14 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#71：插件持久化存储——集中缓存 + 文件持久化 ──
+    pluginState: {
+      get: (pluginId: string, key: string): Promise<unknown> =>
+        ipcRenderer.invoke('pluginState:get', pluginId, key),
+      set: (pluginId: string, key: string, value: unknown): Promise<void> =>
+        ipcRenderer.invoke('pluginState:set', pluginId, key, value),
+    },
+
     // ── E5#69：菜单注册——插件声明式注册菜单项（纯数据，可 IPC 序列化）──
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
