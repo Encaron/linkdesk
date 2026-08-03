@@ -33,24 +33,11 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   // E5#4a+4b：替代 props.sidebarView——订阅 icon:selected 事件解析 pluginId → containerId
   const [containerId, setContainerId] = useState<string | null>(null);
 
-  // E5#4b：订阅 IconBar 发出的 icon:selected——解析 pluginId → containerId，toggle 逻辑
-  useEffect(() => {
-    const unsub = shellEvents.on("icon:selected", (pluginId) => {
-      const plugin = getViewPlugin(pluginId);
-      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
-      if (!containers) return;
-      const cid = Object.keys(containers)[0];
-      if (!cid) return;
-      setContainerId((prev) => {
-        const next = prev === cid ? null : cid;
-        // E5#4c：emit 事件——IconBar 订阅更新高亮，替代 App.tsx 桥接
-        shellEvents.emit("sidebar:containerChanged", next);
-        shellEvents.emit("sidebar:toggled", next !== null);
-        return next;
-      });
-    });
-    return unsub;
-  }, []);
+  // 🔥 E5#49：ref 桥接——effect 有 [] 依赖，需 ref 读最新值避免闭包过期
+  const collapsedRef = useRef(collapsed);
+  collapsedRef.current = collapsed;
+  const containerIdRef = useRef(containerId);
+  containerIdRef.current = containerId;
 
   // 🔥 UX03：onTransitionEnd 替代 setTimeout(220)
   const handleTransitionEnd = useCallback(() => {
@@ -59,7 +46,8 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
 
   const preCollapseWidth = useRef(280);
 
-  const toggleCollapse = useCallback((collapse: boolean) => {
+  // E5#49：折叠/展开——被图标点击 + ◀/▶ 按钮共用
+  const doCollapse = useCallback((collapse: boolean) => {
     setAnimating(true);
     setCollapsed(collapse);
     // E5#9f：同步 LayoutEngine——collapse 时 zone 缩到 28px，main 自动拓展
@@ -70,6 +58,38 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       layoutEngine.setZoneWidth("sidebar", preCollapseWidth.current);
     }
   }, []);
+
+  // E5#4b：订阅 IconBar 发出的 icon:selected——解析 pluginId → containerId
+  // E5#49：同图标再点击 → toggle 折叠/展开（和 ◀/▶ 按钮行为一致）
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:selected", (pluginId) => {
+      const plugin = getViewPlugin(pluginId);
+      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      if (!containers) return;
+      const cid = Object.keys(containers)[0];
+      if (!cid) return;
+
+      const currentCid = containerIdRef.current;
+
+      if (currentCid === cid) {
+        // E5#49：同图标 → toggle 折叠/展开
+        const shouldCollapse = !collapsedRef.current;
+        doCollapse(shouldCollapse);
+        shellEvents.emit("sidebar:containerChanged", shouldCollapse ? null : cid);
+        shellEvents.emit("sidebar:toggled", !shouldCollapse);
+        return;
+      }
+
+      // 不同图标：切换容器，折叠态则展开
+      if (collapsedRef.current) {
+        doCollapse(false);
+      }
+      setContainerId(cid);
+      shellEvents.emit("sidebar:containerChanged", cid);
+      shellEvents.emit("sidebar:toggled", true);
+    });
+    return unsub;
+  }, [doCollapse]);
 
   useEffect(() => {
     const el = asideRef.current;
@@ -168,7 +188,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       {collapsed ? (
         <button
           className="side-panel-expand"
-          onClick={() => toggleCollapse(false)}
+          onClick={() => doCollapse(false)}
           title={t("展开侧栏")}
         >
           ▶
@@ -179,7 +199,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
             <span className="side-panel-title" title={title}>{title}</span>
             <button
               className="side-panel-collapse"
-              onClick={() => toggleCollapse(true)}
+              onClick={() => doCollapse(true)}
               title={t("折叠侧栏")}
             >
               ◀
