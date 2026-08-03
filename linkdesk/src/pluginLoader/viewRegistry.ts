@@ -65,42 +65,24 @@ export function getTabBehavior(pluginId: string): TabBehavior {
 }
 
 /**
- * E5#48：求值 confirmCondition——插件声明式确认条件。
- * 格式 `"namespace:field"` → 调 `linkdesk[namespace].getStatus()` → 查 `result[field]`。
- * 通用机制——不认插件 ID，不认条件名。如 `"serial:isOpen"` = 串口打开时才确认。
- */
-async function evaluateConfirmCondition(condition: string): Promise<boolean> {
-  const colon = condition.indexOf(":");
-  if (colon === -1) return true; // 格式错误——保守确认
-  const namespace = condition.slice(0, colon);
-  const field = condition.slice(colon + 1);
-  try {
-    const api = (window as any).linkdesk?.[namespace];
-    if (!api?.getStatus) return true;
-    const status = await api.getStatus();
-    return status?.[field] === true;
-  } catch { /* IPC 失败——保守确认 */ }
-  return true;
-}
-
-/**
  * 执行标签页关闭前的检查与副作用——归一化入口。
  * 读取 tabBehavior 声明，依次执行 confirmOnClose 弹窗和 invokeBeforeClose 命令。
  * TabBar [×]/中键/Ctrl+W 三条关闭路径统一调此函数。
+ *
+ * E5#63：invokeBeforeClose 走 requestToPlugin——壳发请求到插件 WebView，插件自己判断+处理。
+ * 壳不知道插件是谁、在干什么。返 false = 阻止关闭。
  * @returns true = 继续关闭，false = 用户取消
  */
 export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
-  // E5#48：confirmCondition——插件声明式确认条件，满足才弹 confirmOnClose
-  if (behavior.confirmOnClose) {
-    let shouldConfirm = true;
-    if (behavior.confirmCondition) {
-      shouldConfirm = await evaluateConfirmCondition(behavior.confirmCondition);
-    }
-    if (shouldConfirm && !await showConfirm(behavior.confirmOnClose)) return false;
-  }
+  // confirmOnClose——静态确认文本（壳弹窗）
+  if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
+  // E5#63：invokeBeforeClose——壳发请求到插件 WebView，插件自己处理
   if (behavior.invokeBeforeClose) {
-    try { await linkdesk().commands.execute(behavior.invokeBeforeClose); } catch {}
+    try {
+      const result = await (window as any).linkdesk?.bridge?.requestToPlugin?.(pluginId, "invokeBeforeClose", {});
+      if (result === false) return false;
+    } catch { /* requestToPlugin 失败不阻塞——允许关闭 */ }
   }
   return true;
 }
