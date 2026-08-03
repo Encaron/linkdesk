@@ -124,6 +124,15 @@ function IconBar({ showHamburger }: IconBarProps) {
     return unsub;
   }, []);
 
+  // E5#3e：订阅拖拽排序结果——持久化 + 触发重渲染。E5#7d 后移到 App.tsx。
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:reordered", (ids) => {
+      saveOrder(ids);
+      setPluginVersion((v) => v + 1);
+    });
+    return unsub;
+  }, []);
+
   type IconEntry = { pluginId: string; icon: ResolvedIcon; label: string };
   const ordered: IconEntry[] = useMemo(() => {
     void pluginVersion; // Phase 5h Step 1：插件变更时重新计算图标列表
@@ -198,8 +207,8 @@ function IconBar({ showHamburger }: IconBarProps) {
       const targetIdx = ids.indexOf(target.id);
       const insertAt = target.pos === "top" ? targetIdx : targetIdx + 1;
       ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
-      saveOrder(ids);
-      setPluginVersion((v) => v + 1); // Phase 5h: 拖拽换位后触发 useMemo 重算
+      // E5#3e：归一化——emit 事件，持久化由订阅方处理（E5#7d）
+      shellEvents.emit("icon:reordered", ids);
     }
 
     dragRef.current = null;
@@ -245,6 +254,7 @@ function IconBar({ showHamburger }: IconBarProps) {
             if (e.button !== 0) return;
             e.preventDefault(); // 阻止浏览器原生拖拽
             dragRef.current = { pluginId: entry.pluginId, startY: e.clientY, moved: false };
+            shellEvents.emit("icon:drag-start", entry.pluginId);
           }}
           onClick={(e) => {
             if (wasDragRef.current) {
