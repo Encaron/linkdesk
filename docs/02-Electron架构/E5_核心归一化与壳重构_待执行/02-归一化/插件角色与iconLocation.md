@@ -227,6 +227,52 @@ Python 插件（E5#13e）：
 
 ---
 
+## 六、🆕 WebView 创建逻辑也应由 appearsIn 决定
+
+> 2026-08-04。**E5#10 诊断中发现：当前 WebView 创建只看"有没有 React 组件"，不看"组件跑在谁的进程里"。**
+
+### 6.1 当前逻辑的缺口
+
+```
+if (Component) {
+  registerViewPlugin(entry)     ← 有组件就注册为视图插件
+  pluginViews.create(pluginId)  ← 有组件就创建 WebView
+}
+```
+
+**问题：** 一个纯状态栏插件（如时钟插件）有 React 组件，组件渲染在壳的状态栏里，不需要独立 WebView。但当前逻辑会为它创建一个空占的 WebView。
+
+`pluginRole` 只能区分"有 UI / 无 UI"，不能区分"UI 跑在壳里 / UI 跑在自己 WebView 里"。
+
+### 6.2 正确逻辑
+
+```
+WebView 是否创建 = pluginRole === "view" && (appearsIn.tabBar || appearsIn.sidePanel)
+```
+
+只有需要**独立渲染面**（标签页或侧栏）的插件才创建 WebView。纯状态栏插件（`appearsIn.statusBar` 但没有 `tabBar`/`sidePanel`）的组件跑在壳进程里，不创建 WebView。
+
+### 6.3 在各插件上的效果
+
+| 插件 | tabBar | sidePanel | 需要 WebView？ |
+|:--|:--:|:--:|:--:|
+| editor | ✅ | - | ✅ 需要 |
+| serial-monitor | ✅ | ✅ | ✅ 需要 |
+| settings | ✅ | - | ✅ 需要 |
+| marketplace | - | ✅ | ✅ 需要 |
+| file-tree | - | ✅ | ✅ 需要 |
+| workspace | ✅ | - | ✅ 需要 |
+| python | - | - | ❌ pluginRole=data, 跳过 |
+| 纯状态栏插件（未来） | - | - | ❌ 只有 statusBar, 壳内渲染 |
+
+### 6.4 执行清单补充
+
+此逻辑在 E5#14（appearsIn 替代旧字段）完成后实施：
+- loader.ts 中 `pluginViews.create()` 调用加 `appearsIn` 判断
+- 依赖 E5#13（pluginRole）+ E5#14（appearsIn）
+
+---
+
 > **← E5 索引：** `../00-README.md`
 > **← 执行清单：** `../05-执行清单.md` E5#13、E5#14
 > **← 关联：** E5#12 插件加载归一化——同轮
