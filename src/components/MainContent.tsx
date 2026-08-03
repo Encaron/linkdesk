@@ -27,7 +27,6 @@ import "./MainContent.css";
 
 interface MainContentProps {
   tabState: TabState;
-  activeGroupId: string;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
   onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => string;
@@ -107,7 +106,6 @@ function renderTabContent(
 
 function MainContent({
   tabState,
-  activeGroupId,
   onFocusTab,
   onCloseTab,
   onCreateTab,
@@ -136,12 +134,12 @@ function MainContent({
           tab,
           groupId: g.id,
           isVisible: isActiveInGroup,
-          isFocused: isActiveInGroup && g.id === activeGroupId,
+          isFocused: isActiveInGroup && g.id === tabState.activeGroupId,
         });
       }
     }
     return panes;
-  }, [tabState.groups, activeGroupId]);
+  }, [tabState.groups, tabState.activeGroupId]);
 
   // ═══════════════════════════════════════════════════════
   // E3a #29：WebContentsView 显隐同步
@@ -204,7 +202,7 @@ function MainContent({
           const isActiveInGroup = tab.id === g.activeTabId;
           currentStates.set(tab.pluginId, {
             groupId: g.id,
-            isFocused: isActiveInGroup && g.id === activeGroupId,
+            isFocused: isActiveInGroup && g.id === tabState.activeGroupId,
           });
         }
       }
@@ -254,14 +252,14 @@ function MainContent({
     });
 
     pluginViewsRef.current = currentStates;
-  }, [tabState.groups, activeGroupId]);
+  }, [tabState.groups, tabState.activeGroupId]);
 
   const renderGroup = useCallback(
     (group: TabGroup) => {
       const isTarget = dragDropTargetGroupId === group.id && dropZone;
       return (
         <div
-          className={`tab-group-pane${group.id === activeGroupId ? " active" : ""}`}
+          className={`tab-group-pane${group.id === tabState.activeGroupId ? " active" : ""}`}
           key={group.id}
           data-group-id={group.id}
           style={{
@@ -275,7 +273,7 @@ function MainContent({
         >
           <TabBar
             group={group}
-            isActiveGroup={group.id === activeGroupId}
+            isActiveGroup={group.id === tabState.activeGroupId}
             onFocusTab={handleFocusTab}
             onCloseTab={onCloseTab}
             onCreateTab={onCreateTab}
@@ -313,7 +311,7 @@ function MainContent({
         </div>
       );
     },
-    [tabState.root, activeGroupId, dropZone, dragDropTargetGroupId,
+    [tabState.root, tabState.activeGroupId, dropZone, dragDropTargetGroupId,
      handleFocusTab, onCloseTab, onCreateTab, onSplitTab, onMoveTab, onReorderTab, onPinTab,
      onDropSplit, onDropCopySplit, editorAreaRef, onDragDropZone, isDragging, onDraggingChange]
   );
