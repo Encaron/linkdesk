@@ -20,6 +20,8 @@ import OutputPanel from "./views/OutputPanel"; // E3f #54
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
+// E5#5a：壳内通信——订阅/emit 事件，逐步替代 App.tsx props
+import { shellEvents } from "../core/ShellEvents";
 import TabPanePositioner from "./TabPanePositioner";
 import "./MainContent.css";
 
@@ -150,6 +152,17 @@ function MainContent({
 
   // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
   const registeredViewIdsRef = useRef<Set<string>>(new Set());
+
+  // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:selected", (pluginId) => {
+      const plugin = getViewPlugin(pluginId);
+      if (plugin?.manifest.viewRole === "tabOnly") {
+        onCreateTab(pluginId);
+      }
+    });
+    return unsub;
+  }, [onCreateTab]);
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
