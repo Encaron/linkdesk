@@ -100,6 +100,12 @@ export interface LinkDeskAPI {
     show(message: string, options?: { type?: "info" | "warning" | "error"; progress?: boolean }): Promise<NotificationHandle | undefined>;
   };
 
+  /** E5#65：p2p 插件间定向推流——直连目标插件，不走壳中转 */
+  p2p: {
+    send(target: string, channel: string, data: unknown): Promise<void>;
+    on(channel: string, cb: (data: unknown) => void): () => void;
+  };
+
   /** E5#67：弹窗——确认/提示，对标 VS Code vscode.window.showWarningMessage */
   dialog: {
     confirm(message: string): Promise<boolean>;

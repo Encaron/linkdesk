@@ -51,6 +51,7 @@ export class IpcBridge {
     this.registerBroadcastListener();
     this.registerPluginEmitListener();
     this.registerRequestToPluginListener();    // E5#62
+    this.registerP2pListener();               // E5#65
   }
 
   /**
@@ -327,6 +328,22 @@ export class IpcBridge {
     });
 
     console.log('[IpcBridge] 已注册 bridge:request-to-plugin 壳→插件请求通道');
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // E5#65——p2p 插件→插件定向推流
+  // ═══════════════════════════════════════════════════════
+
+  private registerP2pListener(): void {
+    ipcMain.handle('p2p:send', (event, target: string, channel: string, data: unknown) => {
+      const targetView = this.windowManager.getPluginView(target);
+      if (!targetView) {
+        throw new Error(`[p2p] 目标插件 "${target}" 未运行——无法发送数据`);
+      }
+      const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
+      targetView.webContents.send('p2p:data', { channel, data, source: sourceId });
+    });
+    console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
 
   /** 清理所有待处理请求和推送队列——应用退出时调用 */
