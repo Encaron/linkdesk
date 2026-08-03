@@ -64,15 +64,23 @@ export function getTabBehavior(pluginId: string): TabBehavior {
   return { ...builtin, ...pluginDeclaration };
 }
 
-/** E5#48：求值 confirmCondition——声明式确认条件。核心不认插件 ID，只认条件名。 */
+/**
+ * E5#48：求值 confirmCondition——插件声明式确认条件。
+ * 格式 `"namespace:field"` → 调 `linkdesk[namespace].getStatus()` → 查 `result[field]`。
+ * 通用机制——不认插件 ID，不认条件名。如 `"serial:isOpen"` = 串口打开时才确认。
+ */
 async function evaluateConfirmCondition(condition: string): Promise<boolean> {
-  if (condition === "serial:isOpen") {
-    try {
-      const status = await (window as any).linkdesk?.serial?.getStatus?.();
-      return status?.isOpen === true;
-    } catch { /* IPC 失败——保守确认 */ }
-  }
-  return true; // 未知条件或出错——默认弹确认
+  const colon = condition.indexOf(":");
+  if (colon === -1) return true; // 格式错误——保守确认
+  const namespace = condition.slice(0, colon);
+  const field = condition.slice(colon + 1);
+  try {
+    const api = (window as any).linkdesk?.[namespace];
+    if (!api?.getStatus) return true;
+    const status = await api.getStatus();
+    return status?.[field] === true;
+  } catch { /* IPC 失败——保守确认 */ }
+  return true;
 }
 
 /**
