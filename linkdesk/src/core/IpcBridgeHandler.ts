@@ -15,6 +15,7 @@ import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "./LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
 import { shellEvents } from "./ShellEvents"; // E5#68
+import { ContextKeyService } from "./ContextKeyService"; // E5#70
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
@@ -67,6 +68,13 @@ export function initIpcBridgeHandler(): void {
         case "plugins:call": {
           const [method, ...methodArgs] = req.args as [string, ...any[]];
           result = await handlePluginsCall(method, methodArgs);
+          break;
+        }
+
+        // ── E5#70：ContextKey——插件 SET 状态 ──
+        case "contextKey:set": {
+          const [key, value] = req.args as [string, unknown];
+          ContextKeyService.setValue(key, value);
           break;
         }
 

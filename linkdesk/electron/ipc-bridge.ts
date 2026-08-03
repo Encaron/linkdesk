@@ -42,6 +42,8 @@ export class IpcBridge {
     'tabs:openOrFocus',
     'tabs:focus',
     'tabs:close',
+    // E5#70：ContextKey——插件 SET 状态供壳 when 子句读
+    'contextKey:set',
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
     'plugins:call',
   ];

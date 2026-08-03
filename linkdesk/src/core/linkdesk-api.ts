@@ -106,6 +106,11 @@ export interface LinkDeskAPI {
     on(channel: string, cb: (data: unknown) => void): () => void;
   };
 
+  /** E5#70：ContextKey——插件 SET 状态供壳 when 子句读 */
+  contextKey: {
+    set(key: string, value: unknown): Promise<void>;
+  };
+
   /** E5#68：标签页操作——对标 VS Code vscode.window.createTerminal() */
   tabs: {
     create(type: string, opts?: Record<string, unknown>): Promise<unknown>;
