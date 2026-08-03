@@ -15,7 +15,7 @@ import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { initMonacoEnv } from "./monaco-init";
-import { fileUriToPath, setPendingReveal, consumePendingReveal, registerEditor, unregisterEditor } from "./navigation-bridge";
+import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
 import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
@@ -123,7 +123,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
       editorRef.current = editor;
       monacoRef.current = monaco;
-      registerEditor(filePath, editor);
 
       // E4V#40j——回传编辑器初始选项（缩进/EOL）给 EditorTab → EditorStatusBar
       const modelOpts = model.getOptions();
@@ -214,8 +213,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             return;
           }
 
-          // 跨文件：暂存位置 → createTab → editor 可见后由 init/isActive 执行 reveal
-          // 🔥 不能直连 targetEditor.setPosition()——keep-alive 下 editor 是隐藏的（display:none）
+          // 跨文件：暂存位置 → createTab → mount effect consume → reveal
           const label = normalizePath(targetPath).split("/").pop() || targetPath;
           setPendingReveal(targetPath, targetLine, targetCol);
           tabActionsRef.current?.createTab("editor", {
@@ -244,7 +242,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
     return () => {
       disposed = true;
-      unregisterEditor(filePath);
       editorRef.current?.dispose();
     };
   }, [filePath]);
