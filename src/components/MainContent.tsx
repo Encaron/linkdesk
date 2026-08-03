@@ -30,8 +30,9 @@ import { isShellRenderedTab } from "../hooks/tabIdentity";
 import { shellEvents } from "../core/ShellEvents";
 // E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
 import TabPanePositioner from "./TabPanePositioner";
-// E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
-import { saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/LayoutService";
+// E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存和恢复
+import { getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/LayoutService";
+import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import "./MainContent.css";
 
 interface MainContentProps {
@@ -131,10 +132,10 @@ function MainContent({
     reorderTab,
     pinTab,
     openOrFocusTab,
-    restoreLayout: _restoreLayout,
-    focusTabBySourceId: _focusTabBySourceId,
-    closeTabBySourceId: _closeTabBySourceId,
-    updateTabLabelBySourceId: _updateTabLabelBySourceId,
+    restoreLayout,
+    focusTabBySourceId,
+    closeTabBySourceId,
+    updateTabLabelBySourceId,
   } = useTabManager();
   // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
   const flatPanes = useMemo(() => {
@@ -174,28 +175,43 @@ function MainContent({
     return unsub;
   }, [createTab]);
 
-  // E5#5e-ii-c：插件卸载时关闭其所有标签页。使用 closeTab prop——等 useTabManager 搬家后换 forceCloseTab
+  // E5#5e-ii-c：插件卸载时关闭其所有标签页——forceCloseTab 跳过 dirty 检查
   useEffect(() => {
     const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
       for (const g of tabState.groups) {
         for (const tab of g.tabs) {
           if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
-            closeTab(tab.id);
+            forceCloseTab(tab.id);
           }
         }
       }
     });
     return unsub;
-  }, [tabState.groups, closeTab]);
+  }, [tabState.groups, forceCloseTab]);
 
-  // E5#5e-ii-f fix：TabActions 桥接——App.tsx 的 Context 通过 ShellEvents 发到 MainContent 执行
+  // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
   useEffect(() => {
     const u1 = shellEvents.on("tab:create", ({ type, opts }) => createTab(type, opts as any));
     const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => openOrFocusTab(type, opts as any));
     const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
     const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
-    return () => { u1(); u2(); u3(); u4(); };
-  }, [createTab, openOrFocusTab, focusTab, closeTab]);
+    const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId }) => focusTabBySourceId(sourceId));
+    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => updateTabLabelBySourceId(sourceId, label));
+    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId }) => closeTabBySourceId(sourceId));
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
+  }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId]);
+
+  // E5#7h3：mount 时恢复上次保存的标签页布局
+  useEffect(() => {
+    try {
+      const savedLayout = getTabLayout();
+      if (savedLayout?.groups?.length > 0) {
+        restoreLayout(savedLayout);
+        const all = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
+        syncCountersAfterRestore(all);
+      }
+    } catch { /* 恢复失败不影响启动 */ }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // E5#5c：包装 focusTab——emit tab:focused 通知 StatusBar
   const handleFocusTab = useCallback((tabId: string) => {

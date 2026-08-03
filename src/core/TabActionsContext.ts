@@ -37,8 +37,11 @@ export function useTabActions(): TabActions | null {
       shellEvents.emit("tab:close", { tabId });
       return STUB_CLOSE_RESULT;
     },
-    focusTabBySourceId: (_sourceId: string) => {},
-    updateTabLabelBySourceId: (_sourceId: string, _label: string) => {},
-    closeTabBySourceId: (_sourceId: string) => STUB_CLOSE_RESULT,
+    focusTabBySourceId: (sourceId: string) => { shellEvents.emit("tab:focusBySourceId", { sourceId }); },
+    updateTabLabelBySourceId: (sourceId: string, label: string) => { shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label }); },
+    closeTabBySourceId: (sourceId: string) => {
+      shellEvents.emit("tab:closeBySourceId", { sourceId });
+      return STUB_CLOSE_RESULT;
+    },
   }), []);
 }

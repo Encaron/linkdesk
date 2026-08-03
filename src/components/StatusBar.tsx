@@ -46,7 +46,7 @@ function StatusBar(_props: StatusBarProps) {
   }, []);
 
   // E5#6c：接收 ShellEvents 推送的动态状态栏条目
-  const [_eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
+  const [eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
   useEffect(() => {
     const unsub = shellEvents.on("statusbar:update", (entries) => {
       setEventEntries(entries);
@@ -176,6 +176,13 @@ function StatusBar(_props: StatusBarProps) {
       {/* 右区：插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
+        {/* E5#7h4：eventEntries——来自 statusbar:update 事件的动态条目 */}
+        {eventEntries.filter((e) => e.alignment === "right").map((e) => (
+          <span key={e.id} className="status-text" title={e.tooltip}>{e.text}</span>
+        ))}
+        {eventEntries.filter((e) => e.alignment !== "right").map((e) => (
+          <span key={e.id} className="status-text" title={e.tooltip}>{e.text}</span>
+        ))}
         {/* 通知铃铛——E3e #49 提取为 NotificationCenter 组件 */}
         <NotificationCenter />
         <button
