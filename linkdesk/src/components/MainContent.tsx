@@ -7,7 +7,8 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { ComponentType } from "react";
 import type { TabState, TabGroup, Tab } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -22,6 +23,7 @@ import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
 // E5#5a：壳内通信——订阅/emit 事件，逐步替代 App.tsx props
 import { shellEvents } from "../core/ShellEvents";
+// E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
 import TabPanePositioner from "./TabPanePositioner";
 import "./MainContent.css";
 
@@ -45,6 +47,14 @@ interface MainContentProps {
   onDraggingChange?: (v: boolean) => void;
 }
 
+// E5#5f：壳内视图注册表——加新壳视图只加一行，不 switch
+const SHELL_VIEWS: Record<string, ComponentType<any>> = {
+  "plugin-detail": PluginDetailView,
+  "output": OutputPanel,
+};
+// FALLBACK_PLUGIN_ID 是运行时值，不能放 Record key 字面量
+SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
+
 function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
@@ -54,25 +64,18 @@ function renderTabContent(
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
   if (isShellRenderedTab(tab.type)) {
-    if (tab.type === "plugin-detail") {
+    // E5#5f：查表替代 switch——加新壳视图只加 SHELL_VIEWS 一行
+    const View = SHELL_VIEWS[tab.type];
+    if (View) {
       return (
-        <ErrorBoundary pluginId={tab.detailPluginId ?? "plugin-detail"}>
-          <PluginDetailView key={tab.id} isActive={isActive} pluginId={tab.detailPluginId} />
-        </ErrorBoundary>
-      );
-    }
-    if (tab.type === FALLBACK_PLUGIN_ID) {
-      return (
-        <ErrorBoundary pluginId="welcome">
-          <WelcomeView key={tab.id} isActive={isActive} onCreateTab={onCreateTab} />
-        </ErrorBoundary>
-      );
-    }
-    // E3f #54：输出面板——壳级视图，消费 LogChannel 数据
-    if (tab.type === "output") {
-      return (
-        <ErrorBoundary pluginId="output">
-          <OutputPanel key={tab.id} isActive={isActive} initialChannelId={tab.sourceId} />
+        <ErrorBoundary pluginId={tab.detailPluginId ?? tab.type}>
+          {createElement(View, {
+            key: tab.id,
+            isActive,
+            pluginId: tab.detailPluginId,
+            onCreateTab,
+            initialChannelId: tab.sourceId,
+          })}
         </ErrorBoundary>
       );
     }
