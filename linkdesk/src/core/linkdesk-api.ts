@@ -106,6 +106,14 @@ export interface LinkDeskAPI {
     on(channel: string, cb: (data: unknown) => void): () => void;
   };
 
+  /** E5#68：标签页操作——对标 VS Code vscode.window.createTerminal() */
+  tabs: {
+    create(type: string, opts?: Record<string, unknown>): Promise<unknown>;
+    openOrFocus(type: string, opts?: Record<string, unknown>): Promise<unknown>;
+    focus(tabId: string): Promise<void>;
+    close(tabId: string): Promise<void>;
+  };
+
   /** E5#67：弹窗——确认/提示，对标 VS Code vscode.window.showWarningMessage */
   dialog: {
     confirm(message: string): Promise<boolean>;

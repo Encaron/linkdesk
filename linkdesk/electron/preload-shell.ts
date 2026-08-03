@@ -134,6 +134,18 @@ try {
       alert: (message: string): Promise<void> =>
         ipcRenderer.invoke('dialog:alert', message),
     },
+
+    // ── E5#68：标签页操作——插件调壳的 tabs API ──
+    tabs: {
+      create: (type: string, opts?: Record<string, unknown>) =>
+        ipcRenderer.invoke('tabs:create', type, opts),
+      openOrFocus: (type: string, opts?: Record<string, unknown>) =>
+        ipcRenderer.invoke('tabs:openOrFocus', type, opts),
+      focus: (tabId: string) =>
+        ipcRenderer.invoke('tabs:focus', tabId),
+      close: (tabId: string) =>
+        ipcRenderer.invoke('tabs:close', tabId),
+    },
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
     shell: {

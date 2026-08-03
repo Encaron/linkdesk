@@ -37,6 +37,11 @@ export class IpcBridge {
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
     'dialog:confirm',
     'dialog:alert',
+    // E5#68：标签页操作——插件调壳的标签页 API
+    'tabs:create',
+    'tabs:openOrFocus',
+    'tabs:focus',
+    'tabs:close',
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
     'plugins:call',
   ];

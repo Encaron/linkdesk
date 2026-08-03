@@ -14,6 +14,7 @@ import { executeCommand, getCommands } from "./CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "./LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
+import { shellEvents } from "./ShellEvents"; // E5#68
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
@@ -66,6 +67,28 @@ export function initIpcBridgeHandler(): void {
         case "plugins:call": {
           const [method, ...methodArgs] = req.args as [string, ...any[]];
           result = await handlePluginsCall(method, methodArgs);
+          break;
+        }
+
+        // ── E5#68：标签页操作——插件调壳的 tabs API ──
+        case "tabs:create": {
+          const [type, opts] = req.args as [string, Record<string, unknown>?];
+          shellEvents.emit("tab:create", { type, opts });
+          break;
+        }
+        case "tabs:openOrFocus": {
+          const [type, opts] = req.args as [string, Record<string, unknown>?];
+          shellEvents.emit("tab:openOrFocus", { type, opts });
+          break;
+        }
+        case "tabs:focus": {
+          const [tabId] = req.args as [string];
+          shellEvents.emit("tab:focus", { tabId });
+          break;
+        }
+        case "tabs:close": {
+          const [tabId] = req.args as [string];
+          shellEvents.emit("tab:close", { tabId });
           break;
         }
 

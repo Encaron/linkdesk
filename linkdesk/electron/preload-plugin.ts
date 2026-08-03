@@ -209,6 +209,18 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#68：标签页操作——插件调壳的 tabs API ──
+    tabs: {
+      create: (type: string, opts?: Record<string, unknown>) =>
+        ipcRenderer.invoke('tabs:create', type, opts),
+      openOrFocus: (type: string, opts?: Record<string, unknown>) =>
+        ipcRenderer.invoke('tabs:openOrFocus', type, opts),
+      focus: (tabId: string) =>
+        ipcRenderer.invoke('tabs:focus', tabId),
+      close: (tabId: string) =>
+        ipcRenderer.invoke('tabs:close', tabId),
+    },
+
     // ── E5#65：p2p 插件间定向推流——⚠️ 受阻于 E5#74，events.on 收不到 plugin:push ──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
