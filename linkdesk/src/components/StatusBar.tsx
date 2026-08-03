@@ -14,18 +14,20 @@ import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/StatusBa
 import { getConfigurationValue } from "../core/ConfigurationService";
 import { executeCommand } from "../core/CommandRegistry";
 import { CUSTOM_EVENTS } from "../core/CoreEvents";
+// E5#6a：响应式读配置——替代 App.tsx 传来的 theme/lang props
+import { useConfigurationValue } from "../core/useConfiguration";
 import NotificationCenter from "./NotificationCenter";
 import "./StatusBar.css";
 
 interface StatusBarProps {
-  error?: string | null;
-  theme?: string;
-  lang?: "zh" | "en";
   onToggleTheme?: () => void;
   onToggleLang?: () => void;
 }
 
-function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBarProps) {
+function StatusBar({ onToggleTheme, onToggleLang }: StatusBarProps) {
+  // E5#6a：替代 props.theme / props.lang——直接从 ConfigurationService 读，响应式
+  const theme = useConfigurationValue<string>("app.theme");
+  const lang = useConfigurationValue<"zh" | "en">("app.language");
   const { t } = useTranslation();
 
   // 动态状态栏项变更 → 重渲染
@@ -144,12 +146,6 @@ function StatusBar({ error, theme, lang, onToggleTheme, onToggleLang }: StatusBa
             {renderPluginStatusBar(pid)}
           </Fragment>
         ))}
-        {error && (
-          <>
-            <span className="status-divider">│</span>
-            <span className="status-error" title={error}>{error}</span>
-          </>
-        )}
         {/* Chord 提示——插件图标后面，对标 VS Code */}
         {chordLabel && (
           <>
