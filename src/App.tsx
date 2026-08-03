@@ -324,10 +324,11 @@ function App() {
   }, []);
 
   /* ---- E5#9f：LayoutEngine 壳布局——替代硬编码 CSS flex ---- */
+  const TITLE_BAR_HEIGHT = 30;
   const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
 
   useEffect(() => {
-    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight);
+    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight - TITLE_BAR_HEIGHT);
     const unsub = layoutEngine.onDidChangeLayout(() => {
       const b: Record<string, { x: number; y: number; width: number; height: number }> = {};
       for (const z of layoutEngine.getAllZones()) {
@@ -599,23 +600,23 @@ function App() {
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-main">
         {zoneBounds.iconbar && (
-          <div style={{ position: "fixed", left: zoneBounds.iconbar.x, top: zoneBounds.iconbar.y, width: zoneBounds.iconbar.width, height: zoneBounds.iconbar.height, zIndex: 10 }}>
+          <div style={{ position: "fixed", left: zoneBounds.iconbar.x, top: zoneBounds.iconbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.iconbar.width, height: zoneBounds.iconbar.height, zIndex: 10 }}>
             <IconBar showHamburger={showHamburger} />
           </div>
         )}
         {zoneBounds.sidebar && (
-          <div style={{ position: "fixed", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
+          <div style={{ position: "fixed", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y + TITLE_BAR_HEIGHT, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
             <SidePanel width={zoneBounds.sidebar.width} />
           </div>
         )}
         {zoneBounds.sidebar && (
           <div
-            style={{ position: "fixed", left: zoneBounds.sidebar.x + zoneBounds.sidebar.width, top: 0, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize" }}
+            style={{ position: "fixed", left: zoneBounds.sidebar.x + zoneBounds.sidebar.width, top: TITLE_BAR_HEIGHT, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize" }}
             onMouseDown={onResizeMouseDown}
           />
         )}
         {zoneBounds.main && (
-          <div style={{ position: "fixed", left: zoneBounds.main.x, top: zoneBounds.main.y, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
+          <div style={{ position: "fixed", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
             <MainContent
               onDropSplit={handleDropSplit}
               onDropCopySplit={handleDropCopySplit}
@@ -632,7 +633,7 @@ function App() {
           </div>
         )}
         {zoneBounds.statusbar && (
-          <div style={{ position: "fixed", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
+          <div style={{ position: "fixed", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
             <StatusBar />
           </div>
         )}
