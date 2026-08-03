@@ -72,7 +72,6 @@ const WEBVIEW_READY_PLUGINS = new Set<string>([
   "settings",       // ✅ E5#11f 验证通过——独立表单 UI
   "marketplace",    // ✅ E5#11g 验证通过——独立 UI
   "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  "workspace",      // 🟡 E5#11k 验证中
   // "editor",      // 🔴 待改造——需 IPC 接收 filePath
   // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
 ]);
