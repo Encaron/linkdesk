@@ -16,6 +16,7 @@ import ToolbarSlot from "./shared/ToolbarSlot";
 import SectionStack from "./shared/SectionStack";
 // E5#4b：壳内通信——订阅 icon:selected，解析 pluginId → containerId
 import { shellEvents } from "../core/ShellEvents";
+import { layoutEngine } from "../core/LayoutEngine"; // E5#9f：collapse/expand 同步 zone 宽度
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./SidePanel.css";
 
@@ -56,9 +57,18 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     setAnimating(false);
   }, []);
 
+  const preCollapseWidth = useRef(280);
+
   const toggleCollapse = useCallback((collapse: boolean) => {
     setAnimating(true);
     setCollapsed(collapse);
+    // E5#9f：同步 LayoutEngine——collapse 时 zone 缩到 28px，main 自动拓展
+    if (collapse) {
+      preCollapseWidth.current = layoutEngine.getBounds("sidebar")?.width ?? 280;
+      layoutEngine.setZoneWidth("sidebar", 28);
+    } else {
+      layoutEngine.setZoneWidth("sidebar", preCollapseWidth.current);
+    }
   }, []);
 
   useEffect(() => {
