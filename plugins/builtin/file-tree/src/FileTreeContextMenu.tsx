@@ -8,7 +8,7 @@
 
 import React, { useEffect, type MutableRefObject } from "react";
 import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
-import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
+import { MenuId } from "@src/core/MenuRegistry";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
@@ -370,7 +370,7 @@ export function activateFileTreeContextMenu(): void {
   // 5 组：navigation / editing / creation / modify / search
   // when 条件由 ContextMenu 组件调用 ContextKeyService.matches() 求值
 
-  registerMenuItems(MenuId.FileContext, "file-tree", [
+  (window as any).linkdesk?.menu?.registerItems(MenuId.FileContext, "file-tree", [
     // 第 1 组：导航/打开
     { command: "explorer.openFile",        group: "1_navigation", when: "explorerItemIsFile" },
     { command: "explorer.openToSide",      group: "1_navigation", when: "explorerItemIsFile" },
@@ -404,7 +404,7 @@ export function activateFileTreeContextMenu(): void {
 
   // ── E4V#33: MenuBar 菜单栏贡献——[文件] 追加 + 新建 [编辑] 菜单 ──
   // pattern: 父项 command="" label="按钮名" children=[...]——对标 coreCommands.ts
-  registerMenuItems(MenuId.MenuBar, "file-tree", [
+  (window as any).linkdesk?.menu?.registerItems(MenuId.MenuBar, "file-tree", [
     // 追加到已有 [文件] 菜单
     { command: "explorer.newFile",        group: "file", label: "新建文件" },
     { command: "explorer.newFolder",      group: "file", label: "新建文件夹" },
