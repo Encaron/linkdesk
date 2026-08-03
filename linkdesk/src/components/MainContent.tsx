@@ -189,6 +189,15 @@ function MainContent({
     return unsub;
   }, [tabState.groups, closeTab]);
 
+  // E5#5e-ii-f fix：TabActions 桥接——App.tsx 的 Context 通过 ShellEvents 发到 MainContent 执行
+  useEffect(() => {
+    const u1 = shellEvents.on("tab:create", ({ type, opts }) => createTab(type, opts as any));
+    const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => openOrFocusTab(type, opts as any));
+    const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
+    const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
+    return () => { u1(); u2(); u3(); u4(); };
+  }, [createTab, openOrFocusTab, focusTab, closeTab]);
+
   // E5#5c：包装 focusTab——emit tab:focused 通知 StatusBar
   const handleFocusTab = useCallback((tabId: string) => {
     focusTab(tabId);
