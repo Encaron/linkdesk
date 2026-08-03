@@ -191,14 +191,6 @@ function App() {
   const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
   const [dragDropTargetGroupId, setDragDropTargetGroupId] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
-
-  // 当前活跃标签页（v4: 从 groups 派生）
-  const activeTab = useMemo(() => {
-    const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-    return group?.tabs.find((t) => t.id === group.activeTabId);
-  }, [tabState.groups, tabState.activeGroupId]);
-  const activePluginId = activeTab?.pluginId;
-
   // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
   // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
   const sidebarViewRef = useRef<string | null>(null);
@@ -429,10 +421,13 @@ function App() {
     ContextKeyService.setValue("sourceName", isOpen ? portName : null);
   }, [isOpen, portName]);
 
-  // activeEditor——标签页切换时更新（pluginId 即 editor 身份）
+  // E5#5e-ii-b：activeEditor——订阅 tab:focused 替代旧的 activePluginId 派生
   useEffect(() => {
-    ContextKeyService.setValue("activeEditor", activePluginId ?? null);
-  }, [activePluginId]);
+    const unsub = shellEvents.on("tab:focused", ({ pluginId }) => {
+      ContextKeyService.setValue("activeEditor", pluginId ?? null);
+    });
+    return unsub;
+  }, []);
 
   // editorCount——标签页开关时更新
   useEffect(() => {
