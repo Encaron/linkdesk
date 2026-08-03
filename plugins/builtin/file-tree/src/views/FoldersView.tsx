@@ -357,7 +357,7 @@ const FoldersView: React.FC = () => {
       console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
       return;
     }
-    tabs?.createTab(pluginId, {
+    tabs?.create(pluginId, {
       filePath,
       sourceId: filePath,
       label: name,
