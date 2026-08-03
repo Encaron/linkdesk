@@ -11,7 +11,6 @@ import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { getPluginFor } from "@src/core/FileAssociationService";
-import { showConfirm } from "@src/core/DialogService";
 import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
 import { extension } from "../pathUtils";
 import "./SearchView.css";
@@ -161,7 +160,7 @@ const SearchView: React.FC = () => {
 
   const handleReplaceAll = useCallback(async () => {
     if (!replaceText || results.length === 0) return;
-    const ok = await showConfirm(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
+    const ok = await (window as any).linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
     if (!ok) return;
 
     const { readBinaryFile, writeFile } = await import("@src/core/FileService");
