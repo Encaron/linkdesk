@@ -13,6 +13,7 @@ import { getMergedSchema } from "./ConfigurationRegistry";
 import { executeCommand, getCommands } from "./CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "./LanguageRegistry";
+import { confirm, alert } from "./DialogService"; // E5#67
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
@@ -65,6 +66,18 @@ export function initIpcBridgeHandler(): void {
         case "plugins:call": {
           const [method, ...methodArgs] = req.args as [string, ...any[]];
           result = await handlePluginsCall(method, methodArgs);
+          break;
+        }
+
+        // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
+        case "dialog:confirm": {
+          const [message] = req.args as [string];
+          result = await confirm({ title: "", message });
+          break;
+        }
+        case "dialog:alert": {
+          const [message] = req.args as [string];
+          await alert({ title: "", message });
           break;
         }
 

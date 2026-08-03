@@ -100,6 +100,12 @@ export interface LinkDeskAPI {
     show(message: string, options?: { type?: "info" | "warning" | "error"; progress?: boolean }): Promise<NotificationHandle | undefined>;
   };
 
+  /** E5#67：弹窗——确认/提示，对标 VS Code vscode.window.showWarningMessage */
+  dialog: {
+    confirm(message: string): Promise<boolean>;
+    alert(message: string): Promise<void>;
+  };
+
   /** 通用事件订阅 + 发布——插件间数据管道 */
   events: {
     on(channel: string, cb: (payload: unknown) => void): () => void;

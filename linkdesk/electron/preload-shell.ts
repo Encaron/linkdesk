@@ -128,6 +128,11 @@ try {
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
     dialog: {
       open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
+      // E5#67：确认/提示弹窗——统一 API，走 PROXY_CHANNELS → IpcBridgeHandler → DialogService
+      confirm: (message: string): Promise<boolean> =>
+        ipcRenderer.invoke('dialog:confirm', message),
+      alert: (message: string): Promise<void> =>
+        ipcRenderer.invoke('dialog:alert', message),
     },
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──

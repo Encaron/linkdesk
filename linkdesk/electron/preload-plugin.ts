@@ -209,6 +209,14 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
+    dialog: {
+      confirm: (message: string): Promise<boolean> =>
+        ipcRenderer.invoke('dialog:confirm', message),
+      alert: (message: string): Promise<void> =>
+        ipcRenderer.invoke('dialog:alert', message),
+    },
+
     // ── E5#62：壳→插件请求处理——handle 注册 channel handler，unhandle 注销 ──
     pluginRequest: {
       handle(channel: string, handler: (payload: unknown) => unknown) {
