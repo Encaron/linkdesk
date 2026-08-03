@@ -7,7 +7,6 @@
  */
 
 import { Fragment, useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/StatusBarService";
@@ -29,7 +28,6 @@ function StatusBar(_props: StatusBarProps) {
   // E5#6a：替代 props.theme / props.lang——直接从 ConfigurationService 读，响应式
   const theme = useConfigurationValue<string>("app.theme");
   const lang = useConfigurationValue<"zh" | "en">("app.language");
-  const { t } = useTranslation();
 
   // 动态状态栏项变更 → 重渲染
   const [, setStatusBarTick] = useState(0);
@@ -54,8 +52,17 @@ function StatusBar(_props: StatusBarProps) {
     return unsub;
   }, []);
 
-  // 合并静态（plugin.json）+ 动态（StatusBarService）两源
-  const allItems = [...getStatusBarContributions(), ...getDynamicStatusBarItems()];
+  // E5#6e：合并三源——插件声明式 + StatusBarService + 壳固定项/eventEntries
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allItems: any[] = [
+    ...getStatusBarContributions(),
+    ...getDynamicStatusBarItems(),
+    ...eventEntries.map((e) => ({
+      pluginId: "__shell__", id: e.id, label: e.text, align: e.alignment === "right" ? "right" : "left",
+    })),
+    { pluginId: "__shell__", id: "lang", label: lang === "zh" ? "中" : "EN", align: "right", onClick: "workbench.action.selectLanguage" },
+    { pluginId: "__shell__", id: "theme", label: theme === "Dark" ? "☀" : "☾", align: "right", onClick: "workbench.action.selectTheme" },
+  ];
 
   // 去重插件 ID（保持顺序）
   const orderedPluginIds = (() => {
@@ -164,13 +171,6 @@ function StatusBar(_props: StatusBarProps) {
             {renderPluginStatusBar(pid)}
           </Fragment>
         ))}
-        {/* E5#6e：left-aligned eventEntries——与插件条目统一的样式 */}
-        {eventEntries.filter((e) => e.alignment !== "right").map((e) => (
-          <Fragment key={e.id}>
-            <span className="status-divider">│</span>
-            <span className="status-text" title={e.tooltip}>{e.text}</span>
-          </Fragment>
-        ))}
         {/* Chord 提示——插件图标后面，对标 VS Code */}
         {chordLabel && (
           <>
@@ -180,25 +180,9 @@ function StatusBar(_props: StatusBarProps) {
         )}
       </div>
 
-      {/* 右区：插件贡献项 + eventEntries + 核心固定项——统一 │ + status-bar-btn 样式 */}
+      {/* 右区：三源归一——统一 renderPluginStatusBar 管线 */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
-        {/* E5#6e：eventEntries + 壳固定项预计算，统一渲染 */}
-        {rightPluginIds.length > 0 && <span className="status-divider">│</span>}
-        {[
-          ...eventEntries.map((e) => ({ key: e.id, label: e.text, tooltip: e.tooltip })),
-          { key: "lang", label: lang === "zh" ? "中" : "EN", tooltip: t("切换语言"), onClick: "workbench.action.selectLanguage" as const },
-          { key: "theme", label: theme === "Dark" ? "☀" : "☾", tooltip: t("切换主题"), onClick: "workbench.action.selectTheme" as const },
-        ].map((e, i) => (
-          <Fragment key={e.key}>
-            {i > 0 && <span className="status-divider">│</span>}
-            {"onClick" in e && e.onClick ? (
-              <button className="status-bar-btn" onClick={() => executeCommand(e.onClick)} title={e.tooltip}>{e.label}</button>
-            ) : (
-              <span className="status-text" title={e.tooltip}>{e.label}</span>
-            )}
-          </Fragment>
-        ))}
         <NotificationCenter />
       </div>
     </div>
