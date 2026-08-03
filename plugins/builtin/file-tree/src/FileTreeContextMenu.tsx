@@ -9,7 +9,7 @@
 import React, { useEffect, type MutableRefObject } from "react";
 import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { MenuId } from "@src/core/MenuRegistry";
-import { ContextKeyService } from "@src/core/ContextKeyService";
+
 import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
@@ -446,16 +446,16 @@ interface FileTreeContextMenuProps {
 const FileTreeContextMenu: React.FC<FileTreeContextMenuProps> = ({ item, anchor, onClose }) => {
   // E4V#12: 瞬态 context key——菜单渲染前注入，关闭时清除
   useEffect(() => {
-    ContextKeyService.setValue("explorerItemIsFile", item?.isDirectory === false);
-    ContextKeyService.setValue("explorerItemIsDir", item?.isDirectory === true);
-    ContextKeyService.setValue("explorerItemIsRoot", item?.parent === null);
-    ContextKeyService.setValue("explorerResourceReadonly", item?.isReadonly === true);
+    (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", item?.isDirectory === false);
+    (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", item?.isDirectory === true);
+    (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", item?.parent === null);
+    (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", item?.isReadonly === true);
 
     return () => {
-      ContextKeyService.setValue("explorerItemIsFile", false);
-      ContextKeyService.setValue("explorerItemIsDir", false);
-      ContextKeyService.setValue("explorerItemIsRoot", false);
-      ContextKeyService.setValue("explorerResourceReadonly", false);
+      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", false);
+      (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", false);
+      (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", false);
+      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", false);
     };
   }, [item]);
 

@@ -6,7 +6,7 @@
  * 剪切是一次性的——paste 后自动清空；复制可多次 paste。
  */
 
-import { ContextKeyService } from "@src/core/ContextKeyService";
+
 
 export class FileTreeClipboard {
   private _uris: string[] = [];
@@ -52,8 +52,8 @@ export class FileTreeClipboard {
   /* ── 私有 ── */
 
   private _syncKeys(): void {
-    ContextKeyService.setValue("explorerResourceCut", this._isCut && !this.isEmpty);
-    ContextKeyService.setValue("explorerClipboardEmpty", this.isEmpty);
+    (window as any).linkdesk?.contextKey?.set("explorerResourceCut", this._isCut && !this.isEmpty);
+    (window as any).linkdesk?.contextKey?.set("explorerClipboardEmpty", this.isEmpty);
   }
 }
 
