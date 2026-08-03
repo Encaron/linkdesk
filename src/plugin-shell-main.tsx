@@ -95,12 +95,10 @@ function bootstrap() {
 
     // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback。
     // E5#10a 诊断结论：rAF 在 WebContentsView 中不触发，改用同步调用。
-    // ReactDOM.createRoot(root).render() 是同步的——此时组件已渲染完成，
-    // ErrorBoundary 已有机会捕获同步错误。
+    console.log(`[plugin-shell] ${pluginId} rendered, calling notifyReady`);
     try {
       (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
     } catch { /* preload 未就绪时静默 */ }
-    // 保底：极少数情况下 preload 在 render 之后才就绪，100ms 重试一次
     setTimeout(() => {
       (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
     }, 100);
