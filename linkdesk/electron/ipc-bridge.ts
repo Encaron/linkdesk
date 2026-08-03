@@ -335,15 +335,14 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
 
   private registerP2pListener(): void {
+    // E5#65：插件间定向推流。⚠️ 受阻于 E5#74——plugin:push 不投递到插件 WebView，events.on 收不到。
     ipcMain.on('p2p:send', (event, { target, channel, data }: {
       target: string; channel: string; data: unknown;
     }) => {
       const targetView = this.windowManager.getPluginView(target);
       if (!targetView) return;
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
-      // 和 bridge:broadcast → broadcast() 完全一致——裸 webContents.send('plugin:push')
       targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
-      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}"`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }

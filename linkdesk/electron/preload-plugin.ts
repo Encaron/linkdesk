@@ -209,7 +209,7 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
-    // ── E5#65：p2p 插件间定向推流——和 bridge:broadcast 同样式：对象参数 ──
+    // ── E5#65：p2p 插件间定向推流——⚠️ 受阻于 E5#74，events.on 收不到 plugin:push ──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
