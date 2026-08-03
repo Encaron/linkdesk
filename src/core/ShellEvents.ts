@@ -55,6 +55,12 @@ export interface ShellEvents {
   "plugin:removed": { pluginId: string };
   /** 工作区文件夹被移除——TabManager 关闭该文件夹下的标签页 */
   "workspace:folderRemoved": { folderUri: string };
+
+  // ── TabActions 桥接（E5#5e-ii-f fix：SidePanel 中插件通过 TabActionsContext 调标签页操作）──
+  "tab:create": { type: string; opts?: Record<string, unknown> };
+  "tab:openOrFocus": { type: string; opts?: Record<string, unknown> };
+  "tab:focus": { tabId: string };
+  "tab:close": { tabId: string };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
