@@ -36,7 +36,6 @@ import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/Plu
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
-import TabActionsContext from "./core/TabActionsContext";
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/KeybindingRegistry";
@@ -568,22 +567,6 @@ function App() {
     actions: { toggleOpen: handleToggleOpen, setSourceName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
-  // E5#5e-ii-f fix：TabActionsContext 包裹 SidePanel（文件树所在），但 useTabManager 在 MainContent。
-  // App 桥接——emit ShellEvents 到 MainContent 执行。
-  const tabActionsBridge = useMemo(() => ({
-    createTab: (type: string, opts?: any) => {
-      shellEvents.emit("tab:create", { type, opts });
-      return "";
-    },
-    openOrFocusTab: (type: string, opts?: any) => {
-      shellEvents.emit("tab:openOrFocus", { type, opts });
-    },
-    focusTab: (tabId: string) => { shellEvents.emit("tab:focus", { tabId }); },
-    focusTabBySourceId: (_sourceId: string) => {},
-    updateTabLabelBySourceId: (_sourceId: string, _label: string) => {},
-    closeTabBySourceId: (_sourceId: string) => {},
-    closeTab: (tabId: string) => { shellEvents.emit("tab:close", { tabId }); },
-  }), []);
 
   // E3f #52g：菜单样式——titlebar / hamburger / both
   const menuStyle = useConfigurationValue<string>("app.menuStyle") ?? "titlebar";
@@ -598,7 +581,6 @@ function App() {
       <TitleBar showMenus={showTitleBar} />
       {/* E3f #52f：窗口控件（─ □ ×）——始终渲染，不受 menuStyle 影响 */}
       <WindowControls />
-      <TabActionsContext.Provider value={tabActionsBridge as any}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-main">
       <div className="app-body">
@@ -669,7 +651,6 @@ function App() {
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>
-      </TabActionsContext.Provider>
     </div>
   );
 }

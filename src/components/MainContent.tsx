@@ -17,7 +17,6 @@ import { getAllLeafGroupIds } from "../hooks/splitTree";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { showConfirm } from "../core/DialogService";
 import { updateCoreCallbacks, type CoreCallbacks } from "../core/coreCommands";
-import TabActionsContext from "../core/TabActionsContext";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
@@ -133,9 +132,9 @@ function MainContent({
     pinTab,
     openOrFocusTab,
     restoreLayout: _restoreLayout,
-    focusTabBySourceId,
-    closeTabBySourceId,
-    updateTabLabelBySourceId,
+    focusTabBySourceId: _focusTabBySourceId,
+    closeTabBySourceId: _closeTabBySourceId,
+    updateTabLabelBySourceId: _updateTabLabelBySourceId,
   } = useTabManager();
   // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
   const flatPanes = useMemo(() => {
@@ -277,17 +276,6 @@ function MainContent({
     },
   }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
   updateCoreCallbacks(coreCallbacks);
-
-  // TabActionsContext——插件调用 createTab/openOrFocusTab 等
-  const tabActionsValue = useMemo(() => ({
-    createTab,
-    openOrFocusTab,
-    focusTab,
-    focusTabBySourceId,
-    updateTabLabelBySourceId,
-    closeTabBySourceId,
-    closeTab,
-  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
@@ -497,7 +485,6 @@ function MainContent({
   );
 
   return (
-    <TabActionsContext.Provider value={tabActionsValue}>
     <div className="main-content">
       <SplitPane
         node={tabState.root}
@@ -517,7 +504,6 @@ function MainContent({
         </TabPanePositioner>
       ))}
     </div>
-    </TabActionsContext.Provider>
   );
 }
 
