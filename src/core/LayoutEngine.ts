@@ -158,7 +158,7 @@ export class LayoutEngine {
     this._recalculate();
   }
 
-  /** 调整 zone 尺寸 */
+  /** 调整 zone 尺寸——clamp 到 minWidth/maxWidth */
   resizeZone(zoneId: string, newWidth: number): void {
     const z = this._zones.find((z) => z.zone === zoneId);
     if (!z || !z.dock) return;
@@ -166,6 +166,14 @@ export class LayoutEngine {
       z.dock.minWidth ?? 0,
       Math.min(z.dock.maxWidth ?? Infinity, Math.round(newWidth)),
     );
+    this._recalculate();
+  }
+
+  /** 直接设 zone 宽度——不 clamp。专用于 collapse/expand 切换。 */
+  setZoneWidth(zoneId: string, width: number): void {
+    const z = this._zones.find((z) => z.zone === zoneId);
+    if (!z || !z.dock) return;
+    z.dock.width = Math.round(width);
     this._recalculate();
   }
 
