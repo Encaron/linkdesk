@@ -22,7 +22,7 @@ import ThemeBrowser from "./components/ThemeBrowser";
 import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
-import { loadTheme, applyTheme, applyAccentColor, getAvailableThemes, registerFallbackThemes, getEffectiveAccentColor } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
@@ -74,7 +74,7 @@ function App() {
   portNameRef.current = portName;
   const baudRateRef = useRef(baudRate);
   baudRateRef.current = baudRate;
-  const [theme, setTheme] = useState<string>("Dark");
+  const [, setTheme] = useState<string>("Dark");
   const [, setLang] = useState<"zh" | "en">("zh");
   const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
@@ -376,21 +376,6 @@ function App() {
     return unsub;
   }, []);
 
-  /* ---- 主题/语言切换 ---- */
-  const handleToggleTheme = useCallback(() => {
-    const themes = getAvailableThemes();
-    if (themes.length === 0) return;
-    const idx = themes.indexOf(theme);
-    const next = themes[(idx + 1) % themes.length];
-    setTheme(next);
-    // Phase 5f：ConfigurationApplier 通过 onApply 自动调 loadTheme+applyTheme
-    setConfigurationValue("app.theme", next, "user").catch(() => {});
-  }, [theme]);
-
-  const handleToggleLang = useCallback(() => {
-    setLangPickerOpen(true);
-  }, []);
-
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
@@ -642,10 +627,7 @@ function App() {
           />
         </div>
       </div>
-      <StatusBar
-        onToggleTheme={handleToggleTheme}
-        onToggleLang={handleToggleLang}
-      />
+      <StatusBar />
       </div>
       <ToastContainer />
       <ProgressBar />
