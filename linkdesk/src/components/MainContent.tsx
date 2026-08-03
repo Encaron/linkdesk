@@ -86,6 +86,8 @@ function renderTabContent(
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
     if (readyWebViewIds?.has(tab.pluginId)) {
+      // E5#10a：诊断——React fallback 已关闭，WebView 应覆盖在此
+      console.log(`[E5#10a] React fallback OFF: ${tab.pluginId} → empty div (WebView should overlay)`);
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
@@ -295,10 +297,15 @@ function MainContent({
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
+  // E5#10a：诊断——追踪 plugin-view:ready → bounds 设置的时序 gap
+  const debugTimers = useRef<Map<string, number>>(new Map());
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
     return pv.onReady((pluginId: string) => {
+      const now = performance.now();
+      debugTimers.current.set(pluginId, now);
+      console.log(`[E5#10a] ready signal: ${pluginId} @ +${now.toFixed(0)}ms`);
       setReadyWebViewIds((prev) => {
         if (prev.has(pluginId)) return prev; // 幂等
         const next = new Set(prev);
@@ -360,6 +367,11 @@ function MainContent({
                   width: Math.round(rect.width),
                   height: Math.round(rect.height),
                 });
+                // E5#10a：诊断——追踪 bounds 设置时间，计算与 ready 信号的 gap
+                const now = performance.now();
+                const readyAt = debugTimers.current.get(pluginId);
+                const gap = readyAt != null ? (now - readyAt).toFixed(0) : "?";
+                console.log(`[E5#10a] bounds set: ${pluginId} @ +${now.toFixed(0)}ms (gap: ${gap}ms${gap !== "?" && Number(gap) > 0 ? " ← 白屏窗口" : ""})`);
               }
             }
           }
