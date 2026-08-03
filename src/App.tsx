@@ -32,7 +32,7 @@ import { useConfigurationValue } from "./core/useConfiguration";
 import { initStorageService } from "./core/StorageService";
 import { registerConfiguration } from "./core/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "./core/LayoutService";
-import { initPluginStates, APP_PLUGIN_ID } from "./core/PluginStateService";
+import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/PluginStateService";
 import { ContextKeyService } from "./core/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
@@ -311,6 +311,14 @@ function App() {
   useEffect(() => {
     const unsub = shellEvents.on("tab:focused", ({ pluginId }) => {
       ContextKeyService.setValue("activeEditor", pluginId ?? null);
+    });
+    return unsub;
+  }, []);
+
+  // E5#7d：订阅 icon:reordered——IconBar 拖拽排序后持久化到 PluginStateService
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:reordered", (ids) => {
+      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", ids);
     });
     return unsub;
   }, []);
