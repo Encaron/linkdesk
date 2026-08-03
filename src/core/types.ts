@@ -72,8 +72,6 @@ export interface TabBehavior {
   singleton?: boolean;
   /** 关闭前弹确认框，值为提示文本。如终端。 */
   confirmOnClose?: string;
-  /** E5#48：确认条件——满足才弹 confirmOnClose。`"serial:isOpen"` = 串口打开时才确认。 */
-  confirmCondition?: string;
   /** 关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后，closeTab 之前）。如终端声明 "close_port"。 */
   invokeBeforeClose?: string;
   /** CreateTabOptions 中用于判断标签页身份的唯一字段。null=允许多实例不去重（默认）。
