@@ -88,6 +88,8 @@ function renderTabContent(
   if (tab.pluginId) {
     // E5#10b：双条件——WebView JS 已加载 + bounds 已设置 → 关 React fallback
     const webViewFullyReady = readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId);
+    // 🔍 临时：诊断白屏——看两个条件各自的状态
+    console.log(`[E5#10b-diag] ${tab.pluginId} ready=${readyWebViewIds?.has(tab.pluginId)} bounds=${webViewBoundsReady?.has(tab.pluginId)} → ${webViewFullyReady ? "空div(React关)" : "React渲染"}`);
     if (webViewFullyReady) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
