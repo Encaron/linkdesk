@@ -8,7 +8,7 @@ import { useRef, useState } from "react";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/MenuRegistry";
-import { ContextKeyService } from "@src/core/ContextKeyService";
+
 import type { ViewPluginEntry } from "@src/core/types";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
@@ -16,22 +16,22 @@ const pm = () => (window as any).linkdesk?.pluginManager;
 /** 齿轮菜单打开时设置 context key（菜单项 when 条件消费） */
 function applyExtensionContextKeys(manifest: any, isDisabled: boolean): void {
   const c = manifest?.contributes ?? {};
-  ContextKeyService.setValue("pluginDisabled", isDisabled);
-  ContextKeyService.setValue("extensionHasThemes", !!c.themes);
-  ContextKeyService.setValue("extensionHasLanguages", !!c.languages);
-  ContextKeyService.setValue("extensionHasIconThemes", !!c.iconThemes);
-  ContextKeyService.setValue("extensionHasConfiguration", !!c.configuration);
-  ContextKeyService.setValue("extensionHasKeybindings", !!c.keybindings);
+  (window as any).linkdesk?.contextKey?.set("pluginDisabled", isDisabled);
+  (window as any).linkdesk?.contextKey?.set("extensionHasThemes", !!c.themes);
+  (window as any).linkdesk?.contextKey?.set("extensionHasLanguages", !!c.languages);
+  (window as any).linkdesk?.contextKey?.set("extensionHasIconThemes", !!c.iconThemes);
+  (window as any).linkdesk?.contextKey?.set("extensionHasConfiguration", !!c.configuration);
+  (window as any).linkdesk?.contextKey?.set("extensionHasKeybindings", !!c.keybindings);
 }
 
 /** 齿轮菜单关闭时清理 context key */
 function clearExtensionContextKeys(): void {
-  ContextKeyService.setValue("pluginDisabled", false);
-  ContextKeyService.setValue("extensionHasThemes", false);
-  ContextKeyService.setValue("extensionHasLanguages", false);
-  ContextKeyService.setValue("extensionHasIconThemes", false);
-  ContextKeyService.setValue("extensionHasConfiguration", false);
-  ContextKeyService.setValue("extensionHasKeybindings", false);
+  (window as any).linkdesk?.contextKey?.set("pluginDisabled", false);
+  (window as any).linkdesk?.contextKey?.set("extensionHasThemes", false);
+  (window as any).linkdesk?.contextKey?.set("extensionHasLanguages", false);
+  (window as any).linkdesk?.contextKey?.set("extensionHasIconThemes", false);
+  (window as any).linkdesk?.contextKey?.set("extensionHasConfiguration", false);
+  (window as any).linkdesk?.contextKey?.set("extensionHasKeybindings", false);
 }
 
 interface ExtensionItemProps {
