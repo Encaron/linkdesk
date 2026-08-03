@@ -58,6 +58,8 @@ function IconBar({ showHamburger }: IconBarProps) {
   const { t } = useTranslation();
   // E5#3a：替代 props.sidebarView——订阅壳事件，IconBar 不需要知道谁触发的容器切换
   const [activeContainerId, setActiveContainerId] = useState<string | null>(null);
+  // E5#3c：侧栏折叠时不亮任何图标——与 containerChanged 形成双重守卫
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
@@ -110,6 +112,14 @@ function IconBar({ showHamburger }: IconBarProps) {
   useEffect(() => {
     const unsub = shellEvents.on("sidebar:containerChanged", (containerId) => {
       setActiveContainerId(containerId);
+    });
+    return unsub;
+  }, []);
+
+  // E5#3c：订阅侧栏折叠——折叠时图标不高亮
+  useEffect(() => {
+    const unsub = shellEvents.on("sidebar:toggled", (open) => {
+      setIsSidebarOpen(open);
     });
     return unsub;
   }, []);
@@ -210,9 +220,9 @@ function IconBar({ showHamburger }: IconBarProps) {
 
   /* ── 高亮 ── */
 
-  // E5#3a：activeContainerId 来自 shellEvents 订阅——不再读 props.sidebarView
+  // E5#3a+3c：activeContainerId + isSidebarOpen 均来自 shellEvents——不再读 props
   const isActive = (pluginId: string) => {
-    if (!activeContainerId) return false;
+    if (!isSidebarOpen || !activeContainerId) return false;
     const plugin = getViewPlugin(pluginId);
     const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
     if (!containers) return false;
