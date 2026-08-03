@@ -24,7 +24,7 @@ export class IpcBridge {
   private pendingRequests = new Map<string, PendingRequest>();
   private requestCounter = 0;
   /** #27：每个插件的待推送事件队列——保证顺序交付 */
-  private pushQueues = new Map<string, Array<{ channel: string; payload: unknown }>>();
+  private pushQueues = new Map<string, Array<{ channel: string; payload: unknown; source?: string }>>();
   private flushing = new Set<string>();
   /** #72：每个插件的请求 Promise 链——保证 FIFO 串行处理 */
   private pluginRequestQueues = new Map<string, Promise<unknown>>();
@@ -134,7 +134,7 @@ export class IpcBridge {
       channel: string;
       payload: unknown;
     }) => {
-      this.pushToPlugin(pluginId, channel, payload);
+      this.pushToPlugin(pluginId, channel, payload, "shell");
     });
 
     console.log('[IpcBridge] 已注册 bridge:push-to-plugin 事件推送通道');
@@ -148,7 +148,7 @@ export class IpcBridge {
    * 使用队列串行化——同一插件的多个推送严格按序交付，
    * 防止 JS 事件乱序（对标主线程单线程语义）。
    */
-  pushToPlugin(pluginId: string, channel: string, payload: unknown): void {
+  pushToPlugin(pluginId: string, channel: string, payload: unknown, source?: string): void {
     const view = this.windowManager.getPluginView(pluginId);
     if (!view) {
       // 插件 WebView 不存在——可能已卸载或尚未创建，静默丢弃
@@ -157,7 +157,7 @@ export class IpcBridge {
 
     // 入队
     const queue = this.pushQueues.get(pluginId) ?? [];
-    queue.push({ channel, payload });
+    queue.push({ channel, payload, source });
     this.pushQueues.set(pluginId, queue);
 
     // 触发冲刷（防重入——同一插件已在冲刷中则跳过）
@@ -195,6 +195,7 @@ export class IpcBridge {
         view.webContents.send('plugin:push', {
           channel: event.channel,
           payload: event.payload,
+          source: event.source,
         });
       }
     } finally {
@@ -208,14 +209,18 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
 
   private registerPluginEmitListener(): void {
-    ipcMain.on('plugin:emit', (_event, { channel, payload }: {
+    ipcMain.on('plugin:emit', (event, { channel, payload }: {
       channel: string;
       payload: unknown;
     }) => {
+      // E5#61b：解析事件来源——壳 emit 标 "shell"，插件 emit 标 pluginId
+      const sourceId = event.sender === this.mainWindow.webContents
+        ? "shell"
+        : this.windowManager.getPluginIdFromWebContents(event.sender) ?? undefined;
       // 广播到所有插件 WebView（含自己——对标 CoreEvents 模式）
-      this.broadcast(channel, payload);
+      this.broadcast(channel, payload, sourceId);
       // 也转发到壳渲染进程——壳侧 components 可订阅插件事件
-      this.mainWindow.webContents.send('plugin:push', { channel, payload });
+      this.mainWindow.webContents.send('plugin:push', { channel, payload, source: sourceId });
     });
     console.log('[IpcBridge] 已注册 plugin:emit 插件间数据管道');
   }
@@ -232,16 +237,17 @@ export class IpcBridge {
       channel: string;
       payload: unknown;
     }) => {
-      this.broadcast(channel, payload);
+      // 壳发起的广播——source 为 "shell"
+      this.broadcast(channel, payload, "shell");
     });
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
   }
 
   /** 广播事件到所有已注册的插件 WebView——并存储 payload 供新 WebView 重放 */
-  broadcast(channel: string, payload: unknown): void {
+  broadcast(channel: string, payload: unknown, source?: string): void {
     this.lastBroadcasts.set(channel, payload);
     for (const pluginId of this.windowManager.getAllPluginIds()) {
-      this.pushToPlugin(pluginId, channel, payload);
+      this.pushToPlugin(pluginId, channel, payload, source);
     }
   }
 
