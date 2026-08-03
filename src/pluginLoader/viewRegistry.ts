@@ -72,10 +72,16 @@ export function getTabBehavior(pluginId: string): TabBehavior {
  */
 export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
-  if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
+  // E5#48：invokeBeforeClose 命令优先——插件自行处理确认+清理，返回 false 阻止关闭
   if (behavior.invokeBeforeClose) {
-    try { await linkdesk().commands.execute(behavior.invokeBeforeClose); } catch {}
+    try {
+      const result = await linkdesk().commands.execute(behavior.invokeBeforeClose);
+      if (result === false) return false;
+    } catch { /* 出错不阻塞用户操作——允许关闭 */ }
+    return true;
   }
+  // fallback：静态 confirmOnClose 文本——插件不需要条件判断时用
+  if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
   return true;
 }
 
