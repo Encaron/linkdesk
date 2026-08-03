@@ -356,8 +356,10 @@ function App() {
   useEffect(() => {
     const onMouseMove = (e: MouseEvent) => {
       if (!dragging.current) return;
-      const iconbarW = layoutEngine.getBounds("iconbar")?.width ?? 42;
-      const w = Math.min(600, Math.max(170, e.clientX - iconbarW));
+      const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
+      const w = edge === "right"
+        ? Math.min(600, Math.max(170, window.innerWidth - e.clientX))  // 右边栏：鼠标越左越宽
+        : Math.min(600, Math.max(170, e.clientX - (layoutEngine.getBounds("iconbar")?.width ?? 42))); // 左边栏
       layoutEngine.resizeZone("sidebar", w);
     };
     const onMouseUp = () => { dragging.current = false; };
@@ -609,12 +611,18 @@ function App() {
             <SidePanel width={zoneBounds.sidebar.width} />
           </div>
         )}
-        {zoneBounds.sidebar && (
-          <div
-            style={{ position: "fixed", left: zoneBounds.sidebar.x + zoneBounds.sidebar.width, top: TITLE_BAR_HEIGHT, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize", background: "var(--separator)" }}
-            onMouseDown={onResizeMouseDown}
-          />
-        )}
+        {zoneBounds.sidebar && (() => {
+          const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
+          const handleLeft = edge === "right"
+            ? zoneBounds.sidebar.x - 4  // 右边栏：handle 在 sidebar 左边缘（main 和 sidebar 之间）
+            : zoneBounds.sidebar.x + zoneBounds.sidebar.width; // 左边栏：handle 在 sidebar 右边缘
+          return (
+            <div
+              style={{ position: "fixed", left: handleLeft, top: TITLE_BAR_HEIGHT, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize", background: "var(--separator)" }}
+              onMouseDown={onResizeMouseDown}
+            />
+          );
+        })()}
         {zoneBounds.main && (
           <div style={{ position: "fixed", display: "flex", flexDirection: "column", overflow: "hidden", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
             <MainContent
