@@ -1,3 +1,4 @@
+
 /**
  * WelcomeView — 欢迎页。对标 VS Code Welcome / chrome://newtab。
  * Phase 4 Step 3：壳的兜底 UI——不是插件，关闭所有标签页后自动显示。
