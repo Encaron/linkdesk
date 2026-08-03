@@ -294,7 +294,10 @@ function MainContent({
   updateCoreCallbacks(coreCallbacks);
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
+  // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
+  // 暂不用于关停 React——渐进增强原则，React 永远做安全网。
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
+  void readyWebViewIds;
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
@@ -516,7 +519,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds)}
+          {renderTabContent(tab, isFocused, createTab)}
         </TabPanePositioner>
       ))}
     </div>
