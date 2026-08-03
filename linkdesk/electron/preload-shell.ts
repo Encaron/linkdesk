@@ -143,10 +143,12 @@ try {
         ipcRenderer.invoke('pluginState:set', pluginId, key, value),
     },
 
-    // ── E5#69：菜单注册 ──
+    // ── E5#69：菜单——
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
+      getItems: (menuId: string): Promise<unknown[]> =>
+        ipcRenderer.invoke('menu:getItems', menuId),
     },
 
     // ── E5#70：ContextKey——插件 SET 状态 ──

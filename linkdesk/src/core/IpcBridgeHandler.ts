@@ -16,7 +16,7 @@ import { LanguageRegistry } from "./LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
 import { shellEvents } from "./ShellEvents"; // E5#68
 import { ContextKeyService } from "./ContextKeyService"; // E5#70
-import { registerMenuItems, type ManifestMenuItem } from "./MenuRegistry"; // E5#69
+import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "./MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
@@ -85,10 +85,15 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5#69：菜单注册——插件声明式注册菜单项 ──
+        // ── E5#69：菜单——插件声明式读写 ──
         case "menu:registerItems": {
           const [menuId, pluginId, items] = req.args as [string, string, ManifestMenuItem[]];
           registerMenuItems(menuId as any, pluginId, items);
+          break;
+        }
+        case "menu:getItems": {
+          const [menuId] = req.args as [string];
+          result = getMenuItems(menuId as any);
           break;
         }
 
