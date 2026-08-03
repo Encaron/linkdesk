@@ -69,7 +69,7 @@ SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 //   05-执行清单.md E5#11f–#11l
 const WEBVIEW_READY_PLUGINS = new Set<string>([
   "serial-monitor", // ✅ 用户在自己 UI 操作，无需壳传参
-  "settings",       // ✅ E5#11f 验证通过——独立表单 UI
+  // "settings",    // 🟡 待验证——日常用，独立 UI，可能无需改造
   // "marketplace", // 🟡 待验证——独立 UI，可能无需改造
   // "file-tree",   // 🟡 待验证——已通过 linkdesk.fileService IPC 操作文件
   // "editor",      // 🔴 待改造——需 IPC 接收 filePath（当前靠 React props <EditorView sourceId>）
