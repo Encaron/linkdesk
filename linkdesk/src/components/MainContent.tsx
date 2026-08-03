@@ -59,6 +59,7 @@ function renderTabContent(
   isActive: boolean,
   createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
+  webViewBoundsReady?: Set<string>, // E5#10b：双条件——bounds 就绪后才关 React fallback
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -85,9 +86,9 @@ function renderTabContent(
   // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
-    if (readyWebViewIds?.has(tab.pluginId)) {
-      // E5#10a：诊断——React fallback 已关闭，WebView 应覆盖在此
-      console.log(`[E5#10a] React fallback OFF: ${tab.pluginId} → empty div (WebView should overlay)`);
+    // E5#10b：双条件——WebView JS 已加载 + bounds 已设置 → 关 React fallback
+    const webViewFullyReady = readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId);
+    if (webViewFullyReady) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
@@ -297,15 +298,12 @@ function MainContent({
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
-  // E5#10a：诊断——追踪 plugin-view:ready → bounds 设置的时序 gap
-  const debugTimers = useRef<Map<string, number>>(new Map());
+  // E5#10b：双条件就绪——bounds 设置完成后标记，和 readyWebViewIds 双重 AND 才关 React fallback
+  const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
     return pv.onReady((pluginId: string) => {
-      const now = performance.now();
-      debugTimers.current.set(pluginId, now);
-      console.log(`[E5#10a] ready signal: ${pluginId} @ +${now.toFixed(0)}ms`);
       setReadyWebViewIds((prev) => {
         if (prev.has(pluginId)) return prev; // 幂等
         const next = new Set(prev);
@@ -367,11 +365,13 @@ function MainContent({
                   width: Math.round(rect.width),
                   height: Math.round(rect.height),
                 });
-                // E5#10a：诊断——追踪 bounds 设置时间，计算与 ready 信号的 gap
-                const now = performance.now();
-                const readyAt = debugTimers.current.get(pluginId);
-                const gap = readyAt != null ? (now - readyAt).toFixed(0) : "?";
-                console.log(`[E5#10a] bounds set: ${pluginId} @ +${now.toFixed(0)}ms (gap: ${gap}ms${gap !== "?" && Number(gap) > 0 ? " ← 白屏窗口" : ""})`);
+                // E5#10b：bounds 设置完成 → 标记就绪，双条件中第二个条件满足
+                setWebViewBoundsReady((prev) => {
+                  if (prev.has(pluginId)) return prev;
+                  const next = new Set(prev);
+                  next.add(pluginId);
+                  return next;
+                });
               }
             }
           }
@@ -528,7 +528,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
         </TabPanePositioner>
       ))}
     </div>

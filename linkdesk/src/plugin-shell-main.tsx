@@ -94,23 +94,15 @@ function bootstrap() {
     );
 
     // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback。
-    // E5#10a：诊断——先同步调用验证 IPC 链，再保底 setTimeout
-    console.log(`[E5#10a-plugin] notifyReady about to call for "${pluginId}"`);
-    console.log(`[E5#10a-plugin] linkdesk=${!!(window as any).linkdesk}, pluginViews=${!!(window as any).linkdesk?.pluginViews}, notifyReady=${!!(window as any).linkdesk?.pluginViews?.notifyReady}`);
+    // E5#10a 诊断结论：rAF 在 WebContentsView 中不触发，改用同步调用。
+    // ReactDOM.createRoot(root).render() 是同步的——此时组件已渲染完成，
+    // ErrorBoundary 已有机会捕获同步错误。
     try {
       (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-      console.log(`[E5#10a-plugin] notifyReady sync OK for "${pluginId}"`);
-    } catch (e) {
-      console.error(`[E5#10a-plugin] notifyReady sync failed for "${pluginId}":`, e);
-    }
-    // 保底：rAF 可能因 WebView 不可见被跳过，加 setTimeout 兜底
-    requestAnimationFrame(() => {
-      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-      console.log(`[E5#10a-plugin] notifyReady rAF for "${pluginId}"`);
-    });
+    } catch { /* preload 未就绪时静默 */ }
+    // 保底：极少数情况下 preload 在 render 之后才就绪，100ms 重试一次
     setTimeout(() => {
       (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-      console.log(`[E5#10a-plugin] notifyReady setTimeout for "${pluginId}"`);
     }, 100);
   }).catch((err: any) => {
     root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
