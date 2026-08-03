@@ -46,7 +46,7 @@ function StatusBar(_props: StatusBarProps) {
   }, []);
 
   // E5#6c：接收 ShellEvents 推送的动态状态栏条目
-  const [_eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
+  const [eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
   useEffect(() => {
     const unsub = shellEvents.on("statusbar:update", (entries) => {
       setEventEntries(entries);
@@ -173,25 +173,29 @@ function StatusBar(_props: StatusBarProps) {
         )}
       </div>
 
-      {/* 右区：插件贡献项 + 核心固定项（通知 + 语言 + 主题） */}
+      {/* 右区：插件贡献项 + eventEntries + 核心固定项——统一 │ + status-bar-btn 样式 */}
       <div className="status-bar-right">
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
-        {/* E5#6e TODO：eventEntries 汇入统一渲染管线——当前暂存，不裸渲染 */}
+        {/* E5#6e：eventEntries（来自 statusbar:update 事件）+ 壳固定项 走统一渲染 */}
+        {[
+          ...eventEntries.map((e) => ({
+            key: e.id, label: e.text, tooltip: e.tooltip, align: e.alignment as "left" | "right",
+          })),
+          { key: "lang", label: lang === "zh" ? "中" : "EN", tooltip: t("切换语言"), onClick: "workbench.action.selectLanguage", align: "right" as const },
+          { key: "theme", label: theme === "Dark" ? "☀" : "☾", tooltip: t("切换主题"), onClick: "workbench.action.selectTheme", align: "right" as const },
+        ].filter((e) => e.align === "right").map((e, i) => (
+          <Fragment key={e.key}>
+            {rightPluginIds.length > 0 || i > 0 ? <span className="status-divider">│</span> : null}
+            {"onClick" in e && e.onClick ? (
+              <button className="status-bar-btn" onClick={() => executeCommand(e.onClick!)} title={e.tooltip}>
+                {e.label}
+              </button>
+            ) : (
+              <span className="status-text" title={e.tooltip}>{e.label}</span>
+            )}
+          </Fragment>
+        ))}
         <NotificationCenter />
-        <button
-          className="status-bar-btn"
-          onClick={() => executeCommand("workbench.action.selectLanguage")}
-          title={t("切换语言")}
-        >
-          {lang === "zh" ? "中" : "EN"}
-        </button>
-        <button
-          className="status-bar-btn"
-          onClick={() => executeCommand("workbench.action.selectTheme")}
-          title={t("切换主题")}
-        >
-          {theme === "Dark" ? "☀" : "☾"}
-        </button>
       </div>
     </div>
   );
