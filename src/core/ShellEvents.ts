@@ -92,10 +92,14 @@ export class ShellEventBus {
   private _emitters = new Map<string, Emitter<any>>();
   /** 🛡️ 防重入——同一事件正在处理中时跳过，防死循环（Bug E5-1c） */
   private _processing = new Set<string>();
+  /** 🛡️ E5#7h5：事件缓冲——emit 早于 on 时缓存，新订阅者回放最近一次 payload */
+  private _buffer = new Map<string, unknown>();
 
   /** 发送事件。tsc 检查 payload 类型。🛡️ 同事件防重入——handler 内 emit 同事件 → 跳过。 */
   emit<K extends keyof ShellEvents>(event: K, payload: ShellEvents[K]): void {
     if (this._processing.has(event)) return;
+    // 始终缓存——即使当前无订阅者，后来的 on 也能回放
+    this._buffer.set(event, payload);
     this._processing.add(event);
     try {
       const emitter = this._emitters.get(event);
@@ -118,6 +122,7 @@ export class ShellEventBus {
   /**
    * 订阅事件。tsc 检查 handler 签名。
    * 返回 unsubscribe 函数——调用方必须在 useEffect cleanup 中调用（Bug E5-1b 防线）。
+   * 🛡️ 订阅时回放缓冲区中该事件的最近一次 payload——防 emit 早于 on 的时序丢失。
    */
   on<K extends keyof ShellEvents>(
     event: K,
@@ -125,6 +130,10 @@ export class ShellEventBus {
   ): () => void {
     if (!this._emitters.has(event)) {
       this._emitters.set(event, new Emitter<any>());
+    }
+    // 回放缓冲——新订阅者立即收到最近一次 emit 的值
+    if (this._buffer.has(event)) {
+      handler(this._buffer.get(event) as ShellEvents[K]);
     }
     return this._emitters.get(event)!.event(handler);
   }
@@ -136,6 +145,7 @@ export class ShellEventBus {
       emitter.dispose();
     }
     this._emitters.delete(event);
+    this._buffer.delete(event);
   }
 }
 

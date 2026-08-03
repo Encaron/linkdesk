@@ -176,4 +176,38 @@ describe("ShellEventBus", () => {
 
     expect(received).toEqual(["shared"]);
   });
+
+  /* ── 9. 事件缓冲——E5#7h5：emit 早于 on 时回放 ── */
+
+  it("emit 在订阅之前——新订阅者收到缓冲区回放", () => {
+    const bus = new ShellEventBus();
+    bus.emit("icon:selected", "before-sub");
+
+    const received: string[] = [];
+    bus.on("icon:selected", (id: string) => received.push(id));
+
+    expect(received).toEqual(["before-sub"]);
+  });
+
+  it("emit 在订阅之前——后续 emit 正常触发", () => {
+    const bus = new ShellEventBus();
+    bus.emit("icon:selected", "before-sub");
+
+    const received: string[] = [];
+    bus.on("icon:selected", (id: string) => received.push(id));
+    bus.emit("icon:selected", "after-sub");
+
+    expect(received).toEqual(["before-sub", "after-sub"]);
+  });
+
+  it("dispose 后缓冲也清空", () => {
+    const bus = new ShellEventBus();
+    bus.emit("icon:selected", "before-dispose");
+    bus.dispose("icon:selected");
+
+    const received: string[] = [];
+    bus.on("icon:selected", (id: string) => received.push(id));
+
+    expect(received).toEqual([]);
+  });
 });
