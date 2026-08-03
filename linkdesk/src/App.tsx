@@ -6,8 +6,7 @@ import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./cor
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
-import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
-import { getAllLeafGroupIds } from "./hooks/splitTree";
+import { syncCountersAfterRestore } from "./hooks/useTabManager";
 import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import TitleBar from "./components/TitleBar"; // E3f #52f
@@ -22,14 +21,11 @@ import QuickPick from "./components/shared/QuickPick"; // E3f #58
 import ThemeBrowser from "./components/ThemeBrowser";
 import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
-import { showConfirm } from "./core/DialogService";
 
 import { loadTheme, applyTheme, applyAccentColor, getAvailableThemes, registerFallbackThemes, getEffectiveAccentColor } from "./core/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
-import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
-import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { useConfigurationValue } from "./core/useConfiguration";
@@ -50,13 +46,12 @@ import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namesp
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）
-import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/coreCommands";
+import { ensureCoreCommands, ensureCoreKeybindings } from "./core/coreCommands";
 import { registerCommand } from "./core/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
 import SourceStateContext from "./core/SourceStateContext";
 import type { SourceInfo } from "./core/SourceStateContext";
-import TabActionsContext from "./core/TabActionsContext";
 import i18n from "./i18n";
 import "./App.css";
 
@@ -84,104 +79,6 @@ function App() {
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
-  // Phase 3 v4: 标签页状态管理
-  const {
-    tabState,
-    openOrFocusTab,
-    focusTab,
-    focusTabBySourceId,
-    closeTabBySourceId,
-    updateTabLabelBySourceId,
-    closeTab,
-    forceCloseTab,
-    createTab,
-    splitTab,
-    splitTabAt,
-    duplicateTab,
-    unsplit,
-    restoreLayout,
-  } = useTabManager();
-
-  // Phase 4.4：侧栏由插件 sidebarComponent 决定，不再特判 plugin-detail/marketplace
-  const handleFocusTab = useCallback((tabId: string) => {
-    const group = tabState.groups.find((g) => g.tabs.some((t) => t.id === tabId));
-    const tab = group?.tabs.find((t) => t.id === tabId);
-    if (tab && !shouldKeepSidebarOnFocus(tab)) {
-      setSidebarView(null);
-    }
-    focusTab(tabId);
-  }, [tabState.groups, focusTab]);
-
-  // Phase 5b：核心命令 callbacks——每次渲染更新模块级 ref（零开销），handler 延迟读取避免闭包过期
-  const coreCallbacks: CoreCallbacks = useMemo(() => ({
-    closeTab,
-    closeOtherTabs: (groupId, exceptTabId) => {
-      const g = tabState.groups.find((g) => g.id === groupId);
-      if (g) g.tabs.filter((t) => t.id !== exceptTabId).forEach((t) => closeTab(t.id));
-    },
-    closeRightTabs: (groupId, tabIndex) => {
-      const g = tabState.groups.find((g) => g.id === groupId);
-      if (g) g.tabs.slice(tabIndex + 1).forEach((t) => closeTab(t.id));
-    },
-    splitTab,
-    findGroupByTabId: (tabId) => {
-      for (const g of tabState.groups) {
-        const found = g.tabs.find((t) => t.id === tabId);
-        if (found) return { groupId: g.id, tabs: g.tabs.map((t) => ({ id: t.id })) };
-      }
-      return null;
-    },
-    openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
-    // E3f #59-F：壳级快捷键迁移到 KeybindingRegistry
-    closeActiveTab: async () => {
-      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-      const tab = group?.tabs.find((t) => t.id === group.activeTabId);
-      if (!tab) return;
-      if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
-      const result = closeTab(tab.id);
-      if (!result.closed && result.reason === "dirty") {
-        if (await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
-          forceCloseTab(tab.id);
-        }
-      }
-    },
-    focusNextTab: (shift) => {
-      const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-      if (!activeGroup) return;
-      const { tabs } = activeGroup;
-      const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-      if (idx === -1) return;
-      const next = shift ? idx - 1 : idx + 1;
-      handleFocusTab(tabs[(next + tabs.length) % tabs.length].id);
-    },
-    toggleSplit: () => {
-      const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
-      if (isSplit) {
-        unsplit(tabState.activeGroupId);
-      } else {
-        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-        if (activeGroup && activeGroup.tabs.length > 1) {
-          const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-          splitTab(activeGroup.tabs[(idx + 1) % activeGroup.tabs.length].id, "horizontal");
-        }
-      }
-    },
-    focusNthTab: (n) => {
-      const all = allTabs(tabState);
-      if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
-    },
-    closeAllEditors: () => {
-      for (const g of tabState.groups) {
-        for (const t of g.tabs) {
-          if (t.filePath) closeTab(t.id);
-        }
-      }
-    },
-  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
-
-  // 每次渲染更新 callbacks ref
-  updateCoreCallbacks(coreCallbacks);
-
   // Phase 3 Step 6: 拖拽分屏
   const editorAreaRef = useRef<HTMLDivElement>(null);
   const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
@@ -208,17 +105,12 @@ function App() {
       const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
       // 🔥 E36#4.5：关闭侧栏在先——需要 ViewContainerService 还有数据时读 manifest
       revertContainerIfCurrent(pluginId);
-      for (const group of tabState.groups) {
-        for (const tab of group.tabs) {
-          if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
-            forceCloseTab(tab.id);
-          }
-        }
-      }
+      // E5#5e-ii：MainContent 订阅此事件关闭标签页
+      shellEvents.emit("plugin:removed", { pluginId });
     };
     window.addEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
     return () => window.removeEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
-  }, [tabState.groups, forceCloseTab, revertContainerIfCurrent]);
+  }, [revertContainerIfCurrent]);
 
 
   /* ---- 启动初始化 ---- */
@@ -379,13 +271,10 @@ function App() {
         }
       } catch { /* 首次启动或串口不可用——保持默认值 */ }
 
-      // Phase 5：布局恢复——LayoutService 优先
+      // E5#5e-ii-f：布局恢复由 MainContent 负责
       try {
         const savedLayout = getTabLayout();
         if (savedLayout?.groups?.length > 0) {
-          restoreLayout(savedLayout);
-          // G3：恢复后同步计数器——扫描所有 tab ID 提取最大值，
-          // 避免 F5 后计数器归零与旧 tab ID 碰撞（syncCountersAfterRestore 泛化处理所有类型）
           const allTabs = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
           syncCountersAfterRestore(allTabs);
         }
@@ -406,7 +295,7 @@ function App() {
       keybindingCleanup?.();
       stopPluginWatcher();
     };
-  }, [restoreLayout]);
+  }, []);
 
   /* ── Phase 5d：运行时 context key 更新 ── */
   // 对标 VS Code setContext——串口/标签页状态变更时同步更新全局 context key 状态机
@@ -424,12 +313,6 @@ function App() {
     });
     return unsub;
   }, []);
-
-  // editorCount——标签页开关时更新
-  useEffect(() => {
-    const count = tabState.groups.reduce((sum, g) => sum + g.tabs.length, 0);
-    ContextKeyService.setValue("editorCount", count);
-  }, [tabState.groups]);
 
   /* ---- 侧栏拖拽调整宽度 ---- */
   const [sidebarWidth, setSidebarWidth] = useState(220);
@@ -463,30 +346,14 @@ function App() {
   }, []);
 
   /* ---- 拖拽分屏回调（Phase 3.x: 用 splitTabAt——在目标面板位置分裂） ---- */
+  // E5#5e-ii-f TODO：拖拽分屏逻辑暂 stub——下一步移到 MainContent 内部
   const handleDropSplit = useCallback(
-    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
-      const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-      splitTabAt(tabId, direction, targetGroupId, zone);
-      setDragDropZone(null);
-      setDragDropTargetGroupId(null);
-      setIsDragging(false);
-    },
-    [splitTabAt]
+    (_tabId: string, _zone: string, _targetGroupId?: string) => {},
+    []
   );
-
-  /** Shift+拖 = 复制标签页到新面板（对标 VS Code） */
   const handleDropCopySplit = useCallback(
-    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
-      const newId = duplicateTab(tabId);
-      if (newId) {
-        const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-        splitTabAt(newId, direction, targetGroupId, zone);
-      }
-      setDragDropZone(null);
-      setDragDropTargetGroupId(null);
-      setIsDragging(false);
-    },
-    [duplicateTab, splitTabAt]
+    (_tabId: string, _zone: string, _targetGroupId?: string) => {},
+    []
   );
 
   // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
@@ -531,33 +398,6 @@ function App() {
   const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
 
   // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
-  // E5#3b：订阅 IconBar 发出的 icon:selected 事件——替代旧 props 回调。
-  // E5#4（SidePanel 自己订阅）后此 useEffect 迁出 App.tsx。
-  useEffect(() => {
-    const unsub = shellEvents.on("icon:selected", (pluginId) => {
-      const plugin = getViewPlugin(pluginId);
-      if (plugin?.manifest.viewRole === "tabOnly") {
-        createTab(pluginId);
-        return;
-      }
-      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
-      if (!containers) {
-        console.warn(`[App] 插件 "${pluginId}" 未声明 viewsContainers——无法打开侧栏`);
-        return;
-      }
-      const containerId = Object.keys(containers)[0];
-      if (!containerId) return;
-      setSidebarView((prev) => {
-        const next = prev === containerId ? null : containerId;
-        // 🔥 桥接——SidePanel 尚未 emit（E5#4c），App 先代劳
-        shellEvents.emit("sidebar:containerChanged", next);
-        shellEvents.emit("sidebar:toggled", next !== null);
-        return next;
-      });
-    });
-    return unsub;
-  }, [createTab]);
-
 
   /* ---- QuickPick 互斥——同时只允许一个浮动面板打开（对标 VS Code） ---- */
   useEffect(() => {
@@ -580,7 +420,8 @@ function App() {
     };
     window.addEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
     // E3f #54：输出面板
-    const onOutput = () => { openOrFocusTab("output", { pinned: true }); };
+    // E5#5e-ii-f：输出面板打开走 ShellEvents，MainContent 内部 openOrFocusTab
+    const onOutput = () => { shellEvents.emit("icon:selected", "output"); };
     window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
     // E3f #58：DevTools picker
     const onDevtoolsPicker = async () => {
@@ -600,8 +441,9 @@ function App() {
         layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
         settings?: Record<string, unknown>;
       };
+      // E5#5e-ii-f TODO：restoreLayout 由 MainContent 处理
       if (detail.layout?.tabs?.groups?.length) {
-        restoreLayout(detail.layout.tabs as Parameters<typeof restoreLayout>[0]);
+        // MainContent 订阅 workspace:restore 事件接管
       }
       if (detail.settings) {
         for (const [key, value] of Object.entries(detail.settings)) {
@@ -613,7 +455,7 @@ function App() {
     // E3f #59-A：外部打开设置标签页——快捷键命令/齿轮跳转
     const onOpenSettings = () => {
       const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
-      openOrFocusTab(settingsId, { pinned: true });
+      shellEvents.emit("icon:selected", settingsId);
     };
     window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
     return () => {
@@ -625,15 +467,16 @@ function App() {
       window.removeEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
     };
-  }, [createTab, openOrFocusTab, restoreLayout]);
+  }, []);
 
   // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
   useEffect(() => {
-    const unsub = onDidRequestShowChannel.event((channelId: string) => {
-      openOrFocusTab("output", { pinned: true, sourceId: channelId });
+    const unsub = onDidRequestShowChannel.event((_channelId: string) => {
+      // E5#5e-ii-f：走 ShellEvents，MainContent 内部处理
+      shellEvents.emit("icon:selected", "output");
     });
     return unsub;
-  }, [openOrFocusTab]);
+  }, []);
 
   /* ---- 串口控制 ---- */
   // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
@@ -731,17 +574,6 @@ function App() {
     actions: { toggleOpen: handleToggleOpen, setSourceName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
-  // TabActionsContext value（Phase 4 P0-1：插件可创建标签页）
-  const tabActionsValue = useMemo(() => ({
-    createTab,
-    openOrFocusTab,
-    focusTab,
-    focusTabBySourceId,
-    updateTabLabelBySourceId,
-    closeTabBySourceId,
-    closeTab,
-  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
-
   // E3f #52g：菜单样式——titlebar / hamburger / both
   const menuStyle = useConfigurationValue<string>("app.menuStyle") ?? "titlebar";
 
@@ -755,7 +587,6 @@ function App() {
       <TitleBar showMenus={showTitleBar} />
       {/* E3f #52f：窗口控件（─ □ ×）——始终渲染，不受 menuStyle 影响 */}
       <WindowControls />
-      <TabActionsContext.Provider value={tabActionsValue}>
       <SourceStateContext.Provider value={sourceStateValue}>
       <div className="app-main">
       <div className="app-body">
@@ -829,7 +660,6 @@ function App() {
       />
       <ConfirmDialog />
       </SourceStateContext.Provider>
-      </TabActionsContext.Provider>
     </div>
   );
 }
