@@ -79,7 +79,7 @@ function App() {
   const baudRateRef = useRef(baudRate);
   baudRateRef.current = baudRate;
   const [theme, setTheme] = useState<string>("Dark");
-  const [lang, setLang] = useState<"zh" | "en">("zh");
+  const [, setLang] = useState<"zh" | "en">("zh");
   const [lastError, setLastError] = useState<string | null>(null);
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
@@ -872,9 +872,6 @@ function App() {
         </div>
       </div>
       <StatusBar
-        error={lastError}
-        theme={theme}
-        lang={lang}
         onToggleTheme={handleToggleTheme}
         onToggleLang={handleToggleLang}
       />
