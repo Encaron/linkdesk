@@ -17,18 +17,17 @@ import SectionStack from "./shared/SectionStack";
 import "./SidePanel.css";
 
 interface SidePanelProps {
-  activeTabType: string;
-  activePluginId?: string;
-  sidebarView?: string | null;
   width: number;
 }
 
 const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
-  function SidePanel({ activePluginId: _activePluginId, sidebarView, width }, ref) {
+  function SidePanel({ width }, ref) {
   const [collapsed, setCollapsed] = useState(false);
   const [animating, setAnimating] = useState(false);
   const { t } = useTranslation();
   const asideRef = useRef<HTMLElement | null>(null);
+  // E5#4a：替代 props.sidebarView——订阅壳事件填充（E5#4b），初始 null
+  const [containerId] = useState<string | null>(null);
 
   // 🔥 UX03：onTransitionEnd 替代 setTimeout(220)
   const handleTransitionEnd = useCallback(() => {
@@ -53,7 +52,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
 
   // lastSidebar 记住上次有效 containerId——切换标签页不关闭侧栏
   const [lastSidebar, setLastSidebar] = useState<string | null>(null);
-  const effectiveContainerId = sidebarView ?? lastSidebar;
+  const effectiveContainerId = containerId ?? lastSidebar;
 
   useEffect(() => {
     if (effectiveContainerId) setLastSidebar(effectiveContainerId);
