@@ -193,8 +193,9 @@ export class LayoutEngine {
   /* ── E5#9b：核心坐标计算（docked 模式）── */
 
   private _recalculate(): void {
-    const W = this._containerWidth;
-    const H = this._containerHeight;
+    // E5#9e：像素对齐——容器尺寸先取整，所有后续计算全整像素
+    const W = Math.round(this._containerWidth);
+    const H = Math.round(this._containerHeight);
     if (W === 0 || H === 0) return;
 
     // E5 只处理 mode === "docked" 的 zone
@@ -213,11 +214,11 @@ export class LayoutEngine {
     const centerZones = docked.filter((z) => z.dock!.edge === "center");
 
     const bottomHeight = bottomZones.reduce((sum, z) => sum + (z.dock!.height ?? 0), 0);
-    const contentHeight = H - bottomHeight;
+    const contentHeight = Math.round(H - bottomHeight);
 
     const leftWidth = leftZones.reduce((sum, z) => sum + (z.dock!.width ?? 0), 0);
     const rightWidth = rightZones.reduce((sum, z) => sum + (z.dock!.width ?? 0), 0);
-    const centerWidth = Math.max(0, W - leftWidth - rightWidth);
+    const centerWidth = Math.max(0, Math.round(W - leftWidth - rightWidth));
 
     // Left zones——从左向右堆叠，order 小的靠左
     let leftX = 0;
