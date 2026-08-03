@@ -560,8 +560,9 @@ function App() {
       if (!containerId) return;
       setSidebarView((prev) => {
         const next = prev === containerId ? null : containerId;
-        // 🔥 桥接——SidePanel 尚未 emit sidebar:containerChanged（E5#4c），App 先代劳
+        // 🔥 桥接——SidePanel 尚未 emit（E5#4c），App 先代劳
         shellEvents.emit("sidebar:containerChanged", next);
+        shellEvents.emit("sidebar:toggled", next !== null);
         return next;
       });
     });
