@@ -59,6 +59,7 @@ function renderTabContent(
   isActive: boolean,
   createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
+  webViewBoundsReady?: Set<string>,
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -85,7 +86,8 @@ function renderTabContent(
   // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
-    if (readyWebViewIds?.has(tab.pluginId)) {
+    // E5#10b：双条件——WebView JS ready + bounds IPC 确认 → 关 React fallback
+    if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
@@ -295,9 +297,9 @@ function MainContent({
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
-  // 暂不用于关停 React——渐进增强原则，React 永远做安全网。
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
-  void readyWebViewIds;
+  // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
+  const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
@@ -362,6 +364,17 @@ function MainContent({
                   y: Math.round(rect.y),
                   width: Math.round(rect.width),
                   height: Math.round(rect.height),
+                }).then(() => {
+                  // E5#10b：bounds IPC 确认完成 → 标记就绪
+                  console.log(`[E5#10b] bounds-ready: ${pluginId}`);
+                  setWebViewBoundsReady((prev) => {
+                    if (prev.has(pluginId)) return prev;
+                    const next = new Set(prev);
+                    next.add(pluginId);
+                    return next;
+                  });
+                }).catch((err: unknown) => {
+                  console.warn(`[E5#10b] setBounds failed for ${pluginId}:`, err);
                 });
               }
             }
@@ -519,7 +532,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
         </TabPanePositioner>
       ))}
     </div>
