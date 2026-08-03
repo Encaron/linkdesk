@@ -135,6 +135,12 @@ try {
         ipcRenderer.invoke('dialog:alert', message),
     },
 
+    // ── E5#69：菜单注册 ──
+    menu: {
+      registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
+        ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
+    },
+
     // ── E5#70：ContextKey——插件 SET 状态 ──
     contextKey: {
       set: (key: string, value: unknown) =>

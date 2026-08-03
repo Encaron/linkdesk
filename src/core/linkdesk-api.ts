@@ -106,6 +106,11 @@ export interface LinkDeskAPI {
     on(channel: string, cb: (data: unknown) => void): () => void;
   };
 
+  /** E5#69：菜单注册——插件声明式注册菜单项 */
+  menu: {
+    registerItems(menuId: string, pluginId: string, items: unknown[]): Promise<void>;
+  };
+
   /** E5#70：ContextKey——插件 SET 状态供壳 when 子句读 */
   contextKey: {
     set(key: string, value: unknown): Promise<void>;
