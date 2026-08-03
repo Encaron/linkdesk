@@ -46,6 +46,15 @@ function StatusBar({ onToggleTheme, onToggleLang }: StatusBarProps) {
     return unsub;
   }, []);
 
+  // E5#6c：接收 ShellEvents 推送的动态状态栏条目
+  const [_eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
+  useEffect(() => {
+    const unsub = shellEvents.on("statusbar:update", (entries) => {
+      setEventEntries(entries);
+    });
+    return unsub;
+  }, []);
+
   // 合并静态（plugin.json）+ 动态（StatusBarService）两源
   const allItems = [...getStatusBarContributions(), ...getDynamicStatusBarItems()];
 
