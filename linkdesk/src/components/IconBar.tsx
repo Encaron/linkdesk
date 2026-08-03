@@ -11,7 +11,7 @@ import { getViewPlugins, getViewPlugin, getIconLocation, onDidRegister, onDidUnr
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5：图标排序迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
+import { getPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5c：齿轮菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/MenuRegistry";
@@ -34,16 +34,8 @@ function getIcon(entry: { pluginId: string; manifest: { icon?: string; iconSourc
 
 function loadOrder(): string[] {
   try {
-    // Phase 5：PluginStateService 是唯一真源，不再回退 PreferenceService
-    // B72 教训：兜底读 PreferenceService → 旧数据永远不清理 → 卸载重装后图标回老位置
     return getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
   } catch { return []; }
-}
-function saveOrder(order: string[]): void {
-  try {
-    // Phase 5：写入 PluginStateService
-    setPluginStateValue(APP_PLUGIN_ID, "iconOrder", order);
-  } catch { /* 静默 */ }
 }
 
 /* ── 拖拽状态 ── */
@@ -124,10 +116,9 @@ function IconBar({ showHamburger }: IconBarProps) {
     return unsub;
   }, []);
 
-  // E5#3e：订阅拖拽排序结果——持久化 + 触发重渲染。E5#7d 后移到 App.tsx。
+  // E5#7d：持久化已移 App.tsx——IconBar 只 emit 事件，不再自己持久化
   useEffect(() => {
-    const unsub = shellEvents.on("icon:reordered", (ids) => {
-      saveOrder(ids);
+    const unsub = shellEvents.on("icon:reordered", (_ids) => {
       setPluginVersion((v) => v + 1);
     });
     return unsub;
