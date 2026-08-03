@@ -164,6 +164,13 @@ function StatusBar(_props: StatusBarProps) {
             {renderPluginStatusBar(pid)}
           </Fragment>
         ))}
+        {/* E5#6e：left-aligned eventEntries——与插件条目统一的样式 */}
+        {eventEntries.filter((e) => e.alignment !== "right").map((e) => (
+          <Fragment key={e.id}>
+            <span className="status-divider">│</span>
+            <span className="status-text" title={e.tooltip}>{e.text}</span>
+          </Fragment>
+        ))}
         {/* Chord 提示——插件图标后面，对标 VS Code */}
         {chordLabel && (
           <>
