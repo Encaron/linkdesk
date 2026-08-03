@@ -75,20 +75,40 @@ import { Emitter } from "./CoreEvents";
  * 基于现有 Emitter 基础设施——不改底层，只加类型层。
  *
  * emit/on 均由 ShellEvents 接口约束——写错签名 → tsc 当场报错。
+ *
+ * E5#1b：类型安全 emit/on。
+ * E5#1c：dev 模式事件追踪 + 防重入 guard（Bug E5-1c）。
  */
 export class ShellEventBus {
   private _emitters = new Map<string, Emitter<any>>();
+  /** 🛡️ 防重入——同一事件正在处理中时跳过，防死循环（Bug E5-1c） */
+  private _processing = new Set<string>();
 
-  /** 发送事件。tsc 检查 payload 类型。 */
+  /** 发送事件。tsc 检查 payload 类型。🛡️ 同事件防重入——handler 内 emit 同事件 → 跳过。 */
   emit<K extends keyof ShellEvents>(event: K, payload: ShellEvents[K]): void {
-    const emitter = this._emitters.get(event);
-    if (!emitter) return;
-    emitter.fire(payload);
+    if (this._processing.has(event)) return;
+    this._processing.add(event);
+    try {
+      const emitter = this._emitters.get(event);
+      if (!emitter) return;
+
+      if (process.env.NODE_ENV === "development") {
+        const start = performance.now();
+        emitter.fire(payload);
+        const elapsed = (performance.now() - start).toFixed(1);
+        const payloadStr = typeof payload === "object" ? JSON.stringify(payload) : String(payload);
+        console.log(`[ShellEvents] emit "${event}" → ${payloadStr} (${elapsed}ms)`);
+      } else {
+        emitter.fire(payload);
+      }
+    } finally {
+      this._processing.delete(event);
+    }
   }
 
   /**
    * 订阅事件。tsc 检查 handler 签名。
-   * 返回 unsubscribe 函数——调用方必须在 useEffect cleanup 中调用。
+   * 返回 unsubscribe 函数——调用方必须在 useEffect cleanup 中调用（Bug E5-1b 防线）。
    */
   on<K extends keyof ShellEvents>(
     event: K,
@@ -98,5 +118,14 @@ export class ShellEventBus {
       this._emitters.set(event, new Emitter<any>());
     }
     return this._emitters.get(event)!.event(handler);
+  }
+
+  /** 移除某个事件的所有订阅者 */
+  dispose(event: keyof ShellEvents): void {
+    const emitter = this._emitters.get(event);
+    if (emitter) {
+      emitter.dispose();
+    }
+    this._emitters.delete(event);
   }
 }
