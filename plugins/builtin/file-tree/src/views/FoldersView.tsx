@@ -16,7 +16,7 @@ import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 import { ContextKeyService } from "@src/core/ContextKeyService";
 import { readFile, exists, watchFile } from "@src/core/FileService";
-import { useTabActions } from "@src/core/TabActionsContext";
+
 import { getPluginFor } from "@src/core/FileAssociationService";
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
@@ -31,7 +31,7 @@ import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
@@ -357,13 +357,13 @@ const FoldersView: React.FC = () => {
       console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
       return;
     }
-    tabActions?.createTab(pluginId, {
+    tabs?.createTab(pluginId, {
       filePath,
       sourceId: filePath,
       label: name,
       pinned: mode === "pin",
     });
-  }, [tabActions]);
+  }, [tabs]);
 
   const handleOpenFile = useCallback((item: ExplorerItem, mode: "preview" | "pin") => {
     doOpenFile(item.uri, item.name, mode);

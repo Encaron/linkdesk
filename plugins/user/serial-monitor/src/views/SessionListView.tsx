@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../useSerialSessions";
 import { useSerialContext } from "../SerialContext";
-import { useTabActions } from "@src/core/TabActionsContext";
+
 import { activateSidebarItem } from "@src/core/SidebarTabSync";
 import { SessionListItem } from "../SessionListItem";
 import "../SerialMonitorSidebar.css";
@@ -29,7 +29,7 @@ export default function SessionListView() {
   const { state: { isOpen, sourceName: portName } } = useSerialContext();
 
   // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
 
   // 新建会话默认名称计数器
   const sessionCountRef = useRef(sessions.length);
@@ -49,15 +49,15 @@ export default function SessionListView() {
 
   const confirmCreate = useCallback(() => {
     const name = newName.trim();
-    if (name && tabActions) {
+    if (name && tabs) {
       // 先 session（数据）→ 再 tab（视图），sourceId 链接两者。
       // sourceId 是通用概念——任何插件可用它将自己的数据模型绑定到标签页。
       const session = createSession(name);
-      tabActions.createTab("serial-monitor", { label: name, pinned: true, sourceId: session.id });
+      tabs?.create("serial-monitor", { label: name, pinned: true, sourceId: session.id });
     }
     setIsCreating(false);
     setNewName("");
-  }, [newName, createSession, tabActions]);
+  }, [newName, createSession, tabs]);
 
   const cancelCreate = useCallback(() => {
     setIsCreating(false);
@@ -76,9 +76,9 @@ export default function SessionListView() {
     (id: string) => (name: string) => {
       updateSession(id, { name });
       // A2+N1：侧栏改名 → 标签栏标题同步
-      tabActions?.updateTabLabelBySourceId(id, name);
+      tabs?.updateTabLabelBySourceId(id, name);
     },
-    [updateSession, tabActions],
+    [updateSession, tabs],
   );
 
   const handleDelete = useCallback(
@@ -94,11 +94,11 @@ export default function SessionListView() {
         // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session。
         // 用 closeTabBySourceId——sourceId 是 session↔tab 的唯一可靠链接。
         // tab.id 和 session.id 可能因布局恢复/计数器漂移不一致。
-        tabActions?.closeTabBySourceId(id);
+        tabs?.closeTabBySourceId(id);
         removeSession(id);
       }
     },
-    [sessions, t, removeSession, tabActions],
+    [sessions, t, removeSession, tabs],
   );
 
   // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
@@ -107,14 +107,14 @@ export default function SessionListView() {
     (sessionId: string) => {
       setActiveSession(sessionId);
       const session = sessions.find((s) => s.id === sessionId);
-      if (tabActions) {
-        activateSidebarItem(tabActions, sessionId, "serial-monitor", {
+      if (tabs) {
+        activateSidebarItem(tabs, sessionId, "serial-monitor", {
           label: session?.name,
           pinned: true,
         });
       }
     },
-    [setActiveSession, tabActions, sessions],
+    [setActiveSession, tabs, sessions],
   );
 
   const sessionList = sessions.map((s) => (

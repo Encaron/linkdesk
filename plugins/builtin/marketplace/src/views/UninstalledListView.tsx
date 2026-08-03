@@ -6,7 +6,7 @@
 import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
-import { useTabActions } from "@src/core/TabActionsContext";
+
 import { useMarketplacePlugins } from "../marketplaceShared";
 import "../MarketplaceSidebar.css";
 
@@ -14,7 +14,7 @@ const pm = () => (window as any).linkdesk?.pluginManager;
 
 export default function UninstalledListView() {
   const { t } = useTranslation();
-  const tabActions = useTabActions();
+  const tabs = (window as any).linkdesk?.tabs;
   const { uninstalled, refresh } = useMarketplacePlugins();
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -23,11 +23,11 @@ export default function UninstalledListView() {
     if (clickTimer.current) {
       clearTimeout(clickTimer.current);
       clickTimer.current = null;
-      tabActions?.createTab("plugin-detail", { pluginId, pinned: true });
+      tabs?.create("plugin-detail", { pluginId, pinned: true });
     } else {
       clickTimer.current = setTimeout(() => {
         clickTimer.current = null;
-        tabActions?.createTab("plugin-detail", { pluginId, pinned: false });
+        tabs?.create("plugin-detail", { pluginId, pinned: false });
       }, 300);
     }
   };

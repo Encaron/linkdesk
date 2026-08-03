@@ -241,6 +241,12 @@ try {
         ipcRenderer.invoke('tabs:focus', tabId),
       close: (tabId: string) =>
         ipcRenderer.invoke('tabs:close', tabId),
+      focusBySourceId: (sourceId: string) =>
+        ipcRenderer.invoke('tabs:focusBySourceId', sourceId),
+      updateLabelBySourceId: (sourceId: string, label: string) =>
+        ipcRenderer.invoke('tabs:updateLabelBySourceId', sourceId, label),
+      closeBySourceId: (sourceId: string) =>
+        ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
 
     // ── E5#65：p2p 插件间定向推流——⚠️ 受阻于 E5#74，events.on 收不到 plugin:push ──

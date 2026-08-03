@@ -167,6 +167,12 @@ try {
         ipcRenderer.invoke('tabs:focus', tabId),
       close: (tabId: string) =>
         ipcRenderer.invoke('tabs:close', tabId),
+      focusBySourceId: (sourceId: string) =>
+        ipcRenderer.invoke('tabs:focusBySourceId', sourceId),
+      updateLabelBySourceId: (sourceId: string, label: string) =>
+        ipcRenderer.invoke('tabs:updateLabelBySourceId', sourceId, label),
+      closeBySourceId: (sourceId: string) =>
+        ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
