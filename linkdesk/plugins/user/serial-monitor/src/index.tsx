@@ -737,6 +737,22 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     });
   }
 
+  // E5#64：壳 invokeBeforeClose → requestToPlugin 回调——插件自己判断是否允许关闭
+  useEffect(() => {
+    const api = (window as any).linkdesk?.pluginRequest;
+    if (!api) return;
+    api.handle("invokeBeforeClose", async () => {
+      // 端口未开——直接允许关闭，不弹确认
+      if (!portOpenRef.current) return;
+      // 端口开着——弹确认（E5#67 改为 linkdesk.dialog.confirm）
+      const ok = window.confirm(t("关闭此标签页将断开串口连接"));
+      if (!ok) return false;
+      // 用户确认——断开串口
+      await (window as any).linkdesk?.serial?.closePort?.();
+    });
+    return () => api.unhandle("invokeBeforeClose");
+  }, [sourceId, t]);
+
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
   useEffect(() => {
     return () => {
