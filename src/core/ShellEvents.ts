@@ -129,3 +129,6 @@ export class ShellEventBus {
     this._emitters.delete(event);
   }
 }
+
+/** 全局单例——壳内通信唯一枢纽（E5#2b） */
+export const shellEvents = new ShellEventBus();
