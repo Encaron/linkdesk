@@ -93,13 +93,11 @@ function bootstrap() {
       </PluginErrorBoundary>,
     );
 
-    // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback。
-    // 延时一帧确保 React commit 完成（ErrorBoundary 有机会捕获错误）。
-    requestAnimationFrame(() => {
-      try {
-        (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-      } catch { /* preload 未就绪时静默 */ }
-    });
+    // #58e 修复：渲染完成后通知壳。
+    // E5#10：rAF 在 WebContentsView 中不触发 → 改用同步调用。
+    try {
+      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+    } catch { /* preload 未就绪时静默 */ }
   }).catch((err: any) => {
     root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
   });
