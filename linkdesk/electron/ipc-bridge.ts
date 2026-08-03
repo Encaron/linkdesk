@@ -335,11 +335,15 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
 
   private registerP2pListener(): void {
-    // E5#65：完全照抄 registerBroadcastListener 模式——ipcMain.on + pushToPlugin
     ipcMain.on('p2p:send', (event, target: string, channel: string, data: unknown) => {
-      if (!this.windowManager.getPluginView(target)) return;
+      const targetView = this.windowManager.getPluginView(target);
+      if (!targetView) return;
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
-      this.pushToPlugin(target, channel, data, sourceId);
+      // 绕过 pushToPlugin 队列——setImmediate 确保离开 ipcMain.on 回调后发送
+      setImmediate(() => {
+        targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
+      });
+      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}"`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
