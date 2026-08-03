@@ -16,6 +16,8 @@ import { executeCommand } from "../core/CommandRegistry";
 import { CUSTOM_EVENTS } from "../core/CoreEvents";
 // E5#6a：响应式读配置——替代 App.tsx 传来的 theme/lang props
 import { useConfigurationValue } from "../core/useConfiguration";
+// E5#6b：壳内通信——订阅 tab:focused，标签页切换时刷新状态栏
+import { shellEvents } from "../core/ShellEvents";
 import NotificationCenter from "./NotificationCenter";
 import "./StatusBar.css";
 
@@ -34,6 +36,14 @@ function StatusBar({ onToggleTheme, onToggleLang }: StatusBarProps) {
   const [, setStatusBarTick] = useState(0);
   useEffect(() => {
     return onDidChangeStatusBar.event(() => setStatusBarTick((n) => n + 1));
+  }, []);
+
+  // E5#6b：标签页切换时刷新状态栏——插件可据此更新自己的条目
+  useEffect(() => {
+    const unsub = shellEvents.on("tab:focused", () => {
+      setStatusBarTick((n) => n + 1);
+    });
+    return unsub;
   }, []);
 
   // 合并静态（plugin.json）+ 动态（StatusBarService）两源
