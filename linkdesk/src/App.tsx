@@ -849,7 +849,6 @@ function App() {
         <div className="editor-area" ref={editorAreaRef}>
           <MainContent
             tabState={tabState}
-            activeGroupId={tabState.activeGroupId}
             onFocusTab={handleFocusTab}
             onCloseTab={closeTab}
             onCreateTab={createTab}
