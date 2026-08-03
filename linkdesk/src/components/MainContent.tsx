@@ -25,6 +25,8 @@ import { isShellRenderedTab } from "../hooks/tabIdentity";
 import { shellEvents } from "../core/ShellEvents";
 // E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
 import TabPanePositioner from "./TabPanePositioner";
+// E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
+import { saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/LayoutService";
 import "./MainContent.css";
 
 interface MainContentProps {
@@ -270,6 +272,72 @@ function MainContent({
 
     pluginViewsRef.current = currentStates;
   }, [tabState.groups, tabState.activeGroupId]);
+
+  // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
+  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layoutInitialized = useRef(false);
+  const tabStateRef = useRef(tabState);
+  tabStateRef.current = tabState;
+
+  // beforeunload——F5 刷新/关闭窗口时同步写入
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      try {
+        const s = tabStateRef.current;
+        const layout: WorkspaceLayout = {
+          tabs: {
+            groups: s.groups.map((g) => ({
+              id: g.id,
+              tabs: g.tabs.map((t) => ({
+                id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+                workspaceName: t.workspaceName, filePath: t.filePath,
+                pluginId: t.pluginId, detailPluginId: t.detailPluginId,
+                sourceId: t.sourceId, pinned: t.pinned,
+              })),
+              activeTabId: g.activeTabId,
+            })),
+            activeGroupId: s.activeGroupId,
+            root: s.root,
+          },
+          cards: [],
+        };
+        syncWriteLayout(layout);
+      } catch { /* 静默 */ }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // 100ms 防抖保存——标签页/分屏变更后自动持久化
+  useEffect(() => {
+    if (!layoutInitialized.current) {
+      layoutInitialized.current = true;
+      return;
+    }
+    const doSave = () => {
+      saveTabLayout({
+        groups: tabState.groups.map((g) => ({
+          id: g.id,
+          tabs: g.tabs.map((t) => ({
+            id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+            workspaceName: t.workspaceName, filePath: t.filePath,
+            pluginId: t.pluginId,
+            detailPluginId: t.detailPluginId,
+            sourceId: t.sourceId,
+            pinned: t.pinned,
+          })),
+          activeTabId: g.activeTabId,
+        })),
+        activeGroupId: tabState.activeGroupId,
+        root: tabState.root,
+      }).catch(() => {});
+    };
+    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+    layoutSaveTimer.current = setTimeout(doSave, 100);
+    return () => {
+      if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+    };
+  }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
   const renderGroup = useCallback(
     (group: TabGroup) => {
