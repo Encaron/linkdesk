@@ -209,11 +209,10 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
-    // ── E5#65：p2p 插件间定向推流——debug 确认 send 被调用 ──
+    // ── E5#65：p2p 插件间定向推流——和 bridge:broadcast 同样式：对象参数 ──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
-        console.log('[preload-plugin] p2p.send 被调用:', target, channel, data);
-        ipcRenderer.send('p2p:send', target, channel, data);
+        ipcRenderer.send('p2p:send', { target, channel, data });
       },
       on: events.on,
     },
