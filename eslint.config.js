@@ -107,4 +107,23 @@ export default [
       "no-restricted-imports": "off",
     },
   },
+
+  // ═══ E5#72：插件禁止 import @src/core（多 WebView 下模块级状态静默隔离）═══
+  // 白名单：纯工具/数据结构（无模块级状态），Vite 打包到每个插件无副作用
+  {
+    files: ["plugins/**/*.ts", "plugins/**/*.tsx"],
+    rules: {
+      "no-restricted-imports": [
+        "warn",
+        {
+          patterns: [
+            {
+              group: ["@src/core/*"],
+              message: "⚠️ 插件应使用 linkdesk.* API 而非直接 import @src/core（多 WebView 下模块级状态静默隔离）。纯工具（RingBuffer/DataConverter/pathUtils/useSendData/formatTimestamp/useIpcEvent/useDebouncedInput/useClickPreview）可忽略此警告。",
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
