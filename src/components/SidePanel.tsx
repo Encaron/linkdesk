@@ -40,7 +40,13 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       if (!containers) return;
       const cid = Object.keys(containers)[0];
       if (!cid) return;
-      setContainerId((prev) => prev === cid ? null : cid);
+      setContainerId((prev) => {
+        const next = prev === cid ? null : cid;
+        // E5#4c：emit 事件——IconBar 订阅更新高亮，替代 App.tsx 桥接
+        shellEvents.emit("sidebar:containerChanged", next);
+        shellEvents.emit("sidebar:toggled", next !== null);
+        return next;
+      });
     });
     return unsub;
   }, []);
