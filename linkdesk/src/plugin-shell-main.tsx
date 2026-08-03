@@ -25,11 +25,26 @@ const pluginModules = {
 };
 
 function bootstrap() {
+  // E5#10：全局错误捕获——WebView 内任何未捕获异常都记录
+  window.addEventListener("error", (e) => {
+    console.error(`[plugin-shell] global error:`, e.message, e.filename, e.lineno);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    console.error(`[plugin-shell] unhandled rejection:`, e.reason);
+  });
+
+  // E5#10：诊断 editor WebView 空白——确认 script 是否执行
+  console.log(`[plugin-shell] bootstrap start, pluginId=${pluginId}`);
+
   const root = document.getElementById("root");
-  if (!root) return;
+  if (!root) {
+    console.error(`[plugin-shell] root element not found`);
+    return;
+  }
 
   if (!pluginId) {
     root.textContent = "缺少参数: ?plugin-view=<插件ID>";
+    console.error(`[plugin-shell] missing plugin-view param`);
     return;
   }
 
@@ -49,9 +64,11 @@ function bootstrap() {
   }
 
   loader().then((mod: any) => {
+    console.log(`[plugin-shell] ${pluginId} module loaded`);
     const Component = mod.default;
     if (!Component) {
       root.textContent = `插件 ${pluginId} 未导出 default 组件`;
+      console.error(`[plugin-shell] ${pluginId} no default export`);
       return;
     }
 
