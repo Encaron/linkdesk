@@ -61,6 +61,9 @@ export interface ShellEvents {
   "tab:openOrFocus": { type: string; opts?: Record<string, unknown> };
   "tab:focus": { tabId: string };
   "tab:close": { tabId: string };
+  "tab:focusBySourceId": { sourceId: string };
+  "tab:updateLabelBySourceId": { sourceId: string; label: string };
+  "tab:closeBySourceId": { sourceId: string };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
