@@ -59,7 +59,6 @@ function renderTabContent(
   isActive: boolean,
   createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
-  webViewBoundsReady?: Set<string>, // E5#10b：双条件——bounds 就绪后才关 React fallback
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -86,11 +85,7 @@ function renderTabContent(
   // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
-    // E5#10b：双条件——WebView JS 已加载 + bounds 已设置 → 关 React fallback
-    const webViewFullyReady = readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId);
-    // 🔍 临时：诊断白屏——看两个条件各自的状态
-    console.log(`[E5#10b-diag] ${tab.pluginId} ready=${readyWebViewIds?.has(tab.pluginId)} bounds=${webViewBoundsReady?.has(tab.pluginId)} → ${webViewFullyReady ? "空div(React关)" : "React渲染"}`);
-    if (webViewFullyReady) {
+    if (readyWebViewIds?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
@@ -300,8 +295,6 @@ function MainContent({
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
-  // E5#10b：双条件就绪——bounds 设置完成后标记，和 readyWebViewIds 双重 AND 才关 React fallback
-  const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
@@ -355,33 +348,21 @@ function MainContent({
 
       // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
       if (ids.length > 0) {
-        requestAnimationFrame(async () => {
-          const boundsPromises: Promise<void>[] = [];
+        requestAnimationFrame(() => {
           for (const [pluginId, state] of currentStates) {
             if (state.isFocused && registeredSet.has(pluginId)) {
               const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
               if (pool) {
                 const rect = pool.getBoundingClientRect();
-                boundsPromises.push(
-                  pv.setBounds(pluginId, {
-                    x: Math.round(rect.x),
-                    y: Math.round(rect.y),
-                    width: Math.round(rect.width),
-                    height: Math.round(rect.height),
-                  }).then(() => {
-                    // E5#10b：bounds IPC 确认完成后才标记就绪
-                    setWebViewBoundsReady((prev) => {
-                      if (prev.has(pluginId)) return prev;
-                      const next = new Set(prev);
-                      next.add(pluginId);
-                      return next;
-                    });
-                  })
-                );
+                pv.setBounds(pluginId, {
+                  x: Math.round(rect.x),
+                  y: Math.round(rect.y),
+                  width: Math.round(rect.width),
+                  height: Math.round(rect.height),
+                });
               }
             }
           }
-          await Promise.all(boundsPromises);
         });
       }
     }).catch((err: unknown) => {
@@ -535,7 +516,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds)}
         </TabPanePositioner>
       ))}
     </div>
