@@ -336,12 +336,14 @@ export class IpcBridge {
 
   private registerP2pListener(): void {
     ipcMain.handle('p2p:send', (event, target: string, channel: string, data: unknown) => {
-      if (!this.windowManager.getPluginView(target)) {
+      const targetView = this.windowManager.getPluginView(target);
+      if (!targetView) {
         throw new Error(`[p2p] 目标插件 "${target}" 未运行——无法发送数据`);
       }
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
-      // 复用已验证的 pushToPlugin（走队列串行化，和 broadcast 同机制）
-      this.pushToPlugin(target, channel, data, sourceId);
+      // E5#65：直连目标插件——绕过 pushToPlugin 队列，直接 send
+      targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
+      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}"`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
