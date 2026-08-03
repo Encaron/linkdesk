@@ -5,7 +5,6 @@
  * beforeunload 做最终同步刷新。
  * 下次启动时 EditorTab 检测 → 恢复未保存内容 → 标记 ● 脏。
  */
-import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "@src/core/PluginStateService";
 
 const BACKUP_KEY = "hotExit.dirtyFiles";
 
@@ -22,18 +21,18 @@ let _restored = false;
 function schedulePersist(): void {
   if (_persistTimer) clearTimeout(_persistTimer);
   _persistTimer = setTimeout(() => {
-    setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
+    (window as any).linkdesk?.pluginState?.set("editor", BACKUP_KEY, { ...dirtyFiles });
   }, 1000);
 }
 
 /** 懒加载——EditorTab 首次调 hasBackup/getBackupContent 时才从 PluginStateService 恢复 */
-function ensureRestored(): void {
+async function ensureRestored(): Promise<void> {
   if (_restored) return;
   _restored = true;
-  const prev = getPluginStateValue<DirtyFiles>("editor", BACKUP_KEY);
+  const prev = (await (window as any).linkdesk?.pluginState?.get("editor", BACKUP_KEY)) as Record<string, unknown> | undefined;
   if (prev && Object.keys(prev).length > 0) {
     Object.assign(dirtyFiles, prev);
-    setPluginStateValue("editor", BACKUP_KEY, null);
+    (window as any).linkdesk?.pluginState?.set("editor", BACKUP_KEY, null);
   }
 }
 
@@ -42,10 +41,10 @@ export function initHotExit(): void {
   window.addEventListener("beforeunload", () => {
     if (_persistTimer) clearTimeout(_persistTimer);
     if (Object.keys(dirtyFiles).length > 0) {
-      setPluginStateValueSync("editor", BACKUP_KEY, { ...dirtyFiles });
-      setPluginStateValue("editor", BACKUP_KEY, { ...dirtyFiles });
+      (window as any).linkdesk?.pluginState?.set("editor", BACKUP_KEY, { ...dirtyFiles });
+      (window as any).linkdesk?.pluginState?.set("editor", BACKUP_KEY, { ...dirtyFiles });
     } else {
-      setPluginStateValueSync("editor", BACKUP_KEY, null);
+      (window as any).linkdesk?.pluginState?.set("editor", BACKUP_KEY, null);
     }
   });
 }

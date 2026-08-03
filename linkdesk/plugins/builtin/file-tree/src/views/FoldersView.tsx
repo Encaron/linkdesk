@@ -11,7 +11,6 @@ import { executeCommand } from "@src/core/CommandRegistry";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { useConfigurationValue } from "@src/core/useConfiguration";
 import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
-import { setPluginStateValue, getPluginStateValue } from "@src/core/PluginStateService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 
@@ -127,7 +126,7 @@ const FoldersView: React.FC = () => {
       }
       model.setExcludeFilter(filter);
       // E4V#36b: 恢复展开状态——逐层重建（浅层先于深层，确保 findClosest 能找到父节点）
-      const savedUris = getPluginStateValue<string[]>("file-tree", "expandedUris");
+      const savedUris = (await (window as any).linkdesk?.pluginState?.get("file-tree", "expandedUris")) as string[] | undefined;
       if (savedUris && savedUris.length > 0) {
         const currentRoots = model.roots;
         const toExpand = savedUris
@@ -282,7 +281,7 @@ const FoldersView: React.FC = () => {
         _expandSaveTimerRef.current = null;
         const uris = model.getExpandedUris();
         if (uris.length > 0) {
-          setPluginStateValue("file-tree", "expandedUris", uris).catch(() => {});
+          (window as any).linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch(() => {});
         }
       }, 500);
     });
