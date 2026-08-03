@@ -34,6 +34,9 @@ export class IpcBridge {
     'config:get',
     'config:set',
     'commands:execute',
+    // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
+    'dialog:confirm',
+    'dialog:alert',
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
     'plugins:call',
   ];

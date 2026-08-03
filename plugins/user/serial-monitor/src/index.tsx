@@ -744,8 +744,8 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     api.handle("invokeBeforeClose", async () => {
       // 端口未开——直接允许关闭，不弹确认
       if (!portOpenRef.current) return;
-      // 端口开着——弹确认（E5#67 改为 linkdesk.dialog.confirm）
-      const ok = window.confirm(t("关闭此标签页将断开串口连接"));
+      // E5#67：端口开着——弹 React 确认框（走 IPC 到壳 ConfirmDialog）
+      const ok = await (window as any).linkdesk?.dialog?.confirm?.(t("关闭此标签页将断开串口连接"));
       if (!ok) return false;
       // 用户确认——断开串口
       await (window as any).linkdesk?.serial?.closePort?.();
