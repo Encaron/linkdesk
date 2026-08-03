@@ -20,7 +20,7 @@
  */
 
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
-import { MenuId, getMenuItems } from "../../core/MenuRegistry";
+import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/CommandRegistry";
 import { ContextKeyService } from "../../core/ContextKeyService";
 import { findKeybindingForCommand } from "../../core/KeybindingRegistry";
@@ -52,9 +52,17 @@ interface ResolvedItem {
 export default function ContextMenu({ menuId, anchor, context, onClose }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
+  // E5#69f：插件 WebView 中菜单项从壳侧取（IPC），壳内直接用本地 Registry
+  const [remoteItems, setRemoteItems] = useState<any[] | null>(null);
+  const isPluginWebView = !!(window as any).linkdesk?.pluginViews?.notifyReady;
+  useEffect(() => {
+    if (!isPluginWebView) return;
+    (window as any).linkdesk?.menu?.getItems?.(menuId).then(setRemoteItems);
+  }, [menuId, isPluginWebView]);
+
   // ── 从 Registry 解析菜单项 ──
   const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
-    const rawItems = getMenuItems(menuId);
+    const rawItems = isPluginWebView ? (remoteItems ?? []) : getLocalMenuItems(menuId);
     // 按 group 分组——保留同 group 内的 order 排序
     const grouped = new Map<string, ResolvedItem[]>();
     const groupOrder: string[] = [];

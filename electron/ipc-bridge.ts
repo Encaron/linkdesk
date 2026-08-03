@@ -44,8 +44,9 @@ export class IpcBridge {
     'tabs:close',
     // E5#70：ContextKey——插件 SET 状态供壳 when 子句读
     'contextKey:set',
-    // E5#69：菜单注册——插件声明式注册菜单项（纯数据，可 IPC 序列化）
+    // E5#69：菜单——插件声明式读写
     'menu:registerItems',
+    'menu:getItems',
     // E5#71：插件持久化存储——集中缓存 + 文件持久化
     'pluginState:get',
     'pluginState:set',
