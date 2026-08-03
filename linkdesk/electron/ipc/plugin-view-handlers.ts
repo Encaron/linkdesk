@@ -49,8 +49,13 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
 
   // #58e 修复：插件 WebView 渲染完成通知——主进程转发到壳窗口
   ipcMain.on('plugin-view:ready', (_event, pluginId: string) => {
+    // E5#10a：诊断——追踪主进程是否收到 ready 信号并成功转发
+    console.log(`[E5#10a-main] received plugin-view:ready for "${pluginId}", _mainWindow=${!!_mainWindow}, destroyed=${_mainWindow?.isDestroyed()}`);
     if (_mainWindow && !_mainWindow.isDestroyed()) {
       _mainWindow.webContents.send('plugin-view:ready', pluginId);
+      console.log(`[E5#10a-main] forwarded to shell window`);
+    } else {
+      console.warn(`[E5#10a-main] ⚠️ NOT forwarded — _mainWindow missing or destroyed`);
     }
   });
 
