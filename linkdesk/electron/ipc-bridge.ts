@@ -46,6 +46,9 @@ export class IpcBridge {
     'contextKey:set',
     // E5#69：菜单注册——插件声明式注册菜单项（纯数据，可 IPC 序列化）
     'menu:registerItems',
+    // E5#71：插件持久化存储——集中缓存 + 文件持久化
+    'pluginState:get',
+    'pluginState:set',
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
     'plugins:call',
   ];
