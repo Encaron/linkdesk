@@ -8,11 +8,16 @@
  */
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
 import type { TabGroup, Tab } from "../hooks/useTabManager";
-import { useTabManager } from "../hooks/useTabManager";
+import { useTabManager, allTabs } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
+import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
+import { showConfirm } from "../core/DialogService";
+import { updateCoreCallbacks, type CoreCallbacks } from "../core/coreCommands";
+import TabActionsContext from "../core/TabActionsContext";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
@@ -116,18 +121,21 @@ function MainContent({
     tabState,
     focusTab,
     closeTab,
-    forceCloseTab: _forceCloseTab,
+    forceCloseTab,
     createTab,
     moveTab,
     splitTab,
     splitTabAt: _splitTabAt,
     duplicateTab: _duplicateTab,
-    unsplit: _unsplit,
+    unsplit,
     updateSplitSizes,
     reorderTab,
     pinTab,
-    openOrFocusTab: _openOrFocusTab,
+    openOrFocusTab,
     restoreLayout: _restoreLayout,
+    focusTabBySourceId,
+    closeTabBySourceId,
+    updateTabLabelBySourceId,
   } = useTabManager();
   // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
   const flatPanes = useMemo(() => {
@@ -192,6 +200,85 @@ function MainContent({
       }
     }
   }, [focusTab, tabState.groups]);
+
+  // E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里
+  const { t } = useTranslation();
+  const coreCallbacks: CoreCallbacks = useMemo(() => ({
+    closeTab,
+    closeOtherTabs: (groupId, exceptTabId) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.filter((t) => t.id !== exceptTabId).forEach((t) => closeTab(t.id));
+    },
+    closeRightTabs: (groupId, tabIndex) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.slice(tabIndex + 1).forEach((t) => closeTab(t.id));
+    },
+    splitTab,
+    findGroupByTabId: (tabId) => {
+      for (const g of tabState.groups) {
+        const found = g.tabs.find((t) => t.id === tabId);
+        if (found) return { groupId: g.id, tabs: g.tabs.map((t) => ({ id: t.id })) };
+      }
+      return null;
+    },
+    openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
+    closeActiveTab: async () => {
+      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      const tab = group?.tabs.find((t) => t.id === group.activeTabId);
+      if (!tab) return;
+      if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+      const result = closeTab(tab.id);
+      if (!result.closed && result.reason === "dirty") {
+        if (await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
+          forceCloseTab(tab.id);
+        }
+      }
+    },
+    focusNextTab: (shift) => {
+      const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      if (!activeGroup) return;
+      const { tabs } = activeGroup;
+      const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+      if (idx === -1) return;
+      const next = shift ? idx - 1 : idx + 1;
+      handleFocusTab(tabs[(next + tabs.length) % tabs.length].id);
+    },
+    toggleSplit: () => {
+      const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
+      if (isSplit) {
+        unsplit(tabState.activeGroupId);
+      } else {
+        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+        if (activeGroup && activeGroup.tabs.length > 1) {
+          const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+          splitTab(activeGroup.tabs[(idx + 1) % activeGroup.tabs.length].id, "horizontal");
+        }
+      }
+    },
+    focusNthTab: (n) => {
+      const all = allTabs(tabState);
+      if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
+    },
+    closeAllEditors: () => {
+      for (const g of tabState.groups) {
+        for (const t of g.tabs) {
+          if (t.filePath) closeTab(t.id);
+        }
+      }
+    },
+  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
+  updateCoreCallbacks(coreCallbacks);
+
+  // TabActionsContext——插件调用 createTab/openOrFocusTab 等
+  const tabActionsValue = useMemo(() => ({
+    createTab,
+    openOrFocusTab,
+    focusTab,
+    focusTabBySourceId,
+    updateTabLabelBySourceId,
+    closeTabBySourceId,
+    closeTab,
+  }), [createTab, openOrFocusTab, focusTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, closeTab]);
 
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
@@ -401,6 +488,7 @@ function MainContent({
   );
 
   return (
+    <TabActionsContext.Provider value={tabActionsValue}>
     <div className="main-content">
       <SplitPane
         node={tabState.root}
@@ -420,6 +508,7 @@ function MainContent({
         </TabPanePositioner>
       ))}
     </div>
+    </TabActionsContext.Provider>
   );
 }
 
