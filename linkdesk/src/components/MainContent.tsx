@@ -60,6 +60,7 @@ function renderTabContent(
   createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
   webViewBoundsReady?: Set<string>,
+  webViewTimeout?: Set<string>,
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -86,6 +87,17 @@ function renderTabContent(
   // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
+    // E5#10c：超时兜底——已超时的插件永久回退 React，不再等 WebView
+    if (webViewTimeout?.has(tab.pluginId)) {
+      const plugin = getViewPlugin(tab.pluginId);
+      if (plugin) {
+        return (
+          <ErrorBoundary pluginId={tab.pluginId}>
+            <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
+          </ErrorBoundary>
+        );
+      }
+    }
     // E5#10b：双条件——WebView JS ready + bounds IPC 确认 → 关 React fallback
     if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
@@ -300,6 +312,9 @@ function MainContent({
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
+  // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
+  const [webViewTimeout, setWebViewTimeout] = useState<Set<string>>(new Set());
+  const webViewTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
@@ -310,8 +325,32 @@ function MainContent({
         next.add(pluginId);
         return next;
       });
+      // E5#10c：JS ready 后启动 5s 超时——等 bounds 就绪
+      if (!webViewTimers.current.has(pluginId)) {
+        const timer = setTimeout(() => {
+          console.warn(`[MainContent] ⚠️ WebView "${pluginId}" 5s 未完全就绪，回退 React fallback`);
+          setWebViewTimeout((prev) => {
+            if (prev.has(pluginId)) return prev;
+            const next = new Set(prev);
+            next.add(pluginId);
+            return next;
+          });
+          webViewTimers.current.delete(pluginId);
+        }, 5000);
+        webViewTimers.current.set(pluginId, timer);
+      }
     });
   }, []);
+  // 清理超时定时器——bounds 就绪时取消对应 timer
+  useEffect(() => {
+    for (const pluginId of webViewBoundsReady) {
+      const timer = webViewTimers.current.get(pluginId);
+      if (timer) {
+        clearTimeout(timer);
+        webViewTimers.current.delete(pluginId);
+      }
+    }
+  }, [webViewBoundsReady]);
 
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
@@ -353,17 +392,12 @@ function MainContent({
 
       // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
       if (ids.length > 0) {
-        console.log(`[E5#10b-diag] scheduling rAF, currentStates size=${currentStates.size}, ids=[${ids.join(",")}]`);
         requestAnimationFrame(() => {
-          console.log(`[E5#10b-diag] rAF fired`);
           for (const [pluginId, state] of currentStates) {
-            console.log(`[E5#10b-diag] checking ${pluginId} isFocused=${state.isFocused} registered=${registeredSet.has(pluginId)}`);
             if (state.isFocused && registeredSet.has(pluginId)) {
               const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
-              console.log(`[E5#10b-diag] pool for ${pluginId}: ${!!pool}`);
               if (pool) {
                 const rect = pool.getBoundingClientRect();
-                console.log(`[E5#10b-diag] calling setBounds for ${pluginId}`);
                 pv.setBounds(pluginId, {
                   x: Math.round(rect.x),
                   y: Math.round(rect.y),
@@ -371,7 +405,6 @@ function MainContent({
                   height: Math.round(rect.height),
                 }).then(() => {
                   // E5#10b：bounds IPC 确认完成 → 标记就绪
-                  console.log(`[E5#10b] bounds-ready: ${pluginId}`);
                   setWebViewBoundsReady((prev) => {
                     if (prev.has(pluginId)) return prev;
                     const next = new Set(prev);
@@ -379,7 +412,7 @@ function MainContent({
                     return next;
                   });
                 }).catch((err: unknown) => {
-                  console.warn(`[E5#10b] setBounds failed for ${pluginId}:`, err);
+                  console.warn(`[MainContent] setBounds failed for ${pluginId}:`, err);
                 });
               }
             }
@@ -537,7 +570,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady, webViewTimeout)}
         </TabPanePositioner>
       ))}
     </div>
