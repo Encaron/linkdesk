@@ -6,7 +6,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { openFolder, addFolder, onDidChangeFolders } from "@src/core/WorkspaceService";
-import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
 import { basename, normalizePath } from "./pathUtils";
 
 const PLUGIN_ID = "file-tree";
@@ -23,23 +22,24 @@ const WelcomeView: React.FC = () => {
   /* ── 最近文件夹更新 ── */
 
   const updateRecent = useCallback(async (uris: string[]) => {
-    const stored = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
+    const stored = await (window as any).linkdesk?.pluginState?.get(PLUGIN_ID, RECENT_KEY) ?? [];
     const merged = [...new Set([...uris, ...stored])].slice(0, MAX_RECENT);
-    await setPluginStateValue(PLUGIN_ID, RECENT_KEY, merged);
+    await (window as any).linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, merged);
     setRecentFolders(merged);
   }, []);
 
   /* ── 加载最近文件夹 ── */
 
   useEffect(() => {
-    const raw = getPluginStateValue<string[]>(PLUGIN_ID, RECENT_KEY) ?? [];
-    // E4V#36c: 清理历史残留——去重 + 归一化（防旧数据含 \ 或重复路径如 工具软件/工具软件）
-    const cleaned = [...new Set(raw.map((p) => normalizePath(p)))];
-    if (cleaned.length !== raw.length || cleaned.some((p, i) => p !== raw[i])) {
-      void setPluginStateValue(PLUGIN_ID, RECENT_KEY, cleaned);
-    }
-    setRecentFolders(cleaned);
-
+    (window as any).linkdesk?.pluginState?.get(PLUGIN_ID, RECENT_KEY).then((raw: unknown) => {
+      const arr = (Array.isArray(raw) ? raw : []) as string[];
+      // E4V#36c: 清理历史残留——去重 + 归一化（防旧数据含 \ 或重复路径如 工具软件/工具软件）
+      const cleaned = [...new Set(arr.map((p: string) => normalizePath(p)))];
+      if (cleaned.length !== arr.length || cleaned.some((p: string, i: number) => p !== arr[i])) {
+        void (window as any).linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, cleaned);
+      }
+      setRecentFolders(cleaned);
+    });
     const unsub = onDidChangeFolders((folders) => {
       if (folders.length > 0) {
         updateRecent(folders.map((f) => f.uri));

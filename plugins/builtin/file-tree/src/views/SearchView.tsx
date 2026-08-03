@@ -10,7 +10,6 @@ import { useTranslation } from "react-i18next";
 import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
 import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { getPluginFor } from "@src/core/FileAssociationService";
-import { getPluginStateValue, setPluginStateValue } from "@src/core/PluginStateService";
 import { extension } from "../pathUtils";
 import "./SearchView.css";
 
@@ -44,9 +43,12 @@ const SearchView: React.FC = () => {
   /** E4V#39b: F4/Shift+F4 导航——当前匹配索引 */
   const [navIndex, setNavIndex] = useState(-1);
   /** E4V#39b: 搜索历史——最近 10 条 */
-  const [searchHistory, setSearchHistory] = useState<string[]>(() =>
-    getPluginStateValue<string[]>("file-tree", "searchHistory") ?? [],
-  );
+  const [searchHistory, setSearchHistory] = useState<string[]>([]);
+  useEffect(() => {
+    (window as any).linkdesk?.pluginState?.get("file-tree", "searchHistory").then((v: unknown) => {
+      if (Array.isArray(v)) setSearchHistory(v as string[]);
+    });
+  }, []);
   const [showHistory, setShowHistory] = useState(false);
 
   // 展平所有匹配——F4 导航用
@@ -101,9 +103,9 @@ const SearchView: React.FC = () => {
       setTotalMatches(matches);
       setNavIndex(0);
       // 保存搜索历史
-      const prev = getPluginStateValue<string[]>("file-tree", "searchHistory") ?? [];
-      const next = [q, ...prev.filter((h) => h !== q)].slice(0, 10);
-      setPluginStateValue("file-tree", "searchHistory", next).catch(() => {});
+      const prev = (await (window as any).linkdesk?.pluginState?.get("file-tree", "searchHistory") ?? []) as string[];
+      const next = [q, ...prev.filter((h: string) => h !== q)].slice(0, 10);
+      (window as any).linkdesk?.pluginState?.set("file-tree", "searchHistory", next).catch(() => {});
       setSearchHistory(next);
       // 自动展开第一个文件
       if (found.length > 0) {

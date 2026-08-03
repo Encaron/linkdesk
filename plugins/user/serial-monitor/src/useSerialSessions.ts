@@ -15,7 +15,6 @@
  */
 
 import { useState, useEffect, useCallback, useRef } from "react";
-import { getPluginStateValue, setPluginStateValue, setPluginStateValueSync } from "@src/core/PluginStateService"; // E3f #57
 
 // ── 类型 ──
 
@@ -136,7 +135,7 @@ function _restoreSessions(): void {
       if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
       // 迁移写入 + 清理旧 key
       const migrated = { sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex };
-      setPluginStateValueSync("serial-monitor", "sessions", migrated);
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", migrated);
       localStorage.removeItem("linkdesk:serial-monitor:sessions");
       localStorage.removeItem("linkdesk:terminal:sessions");
     }
@@ -152,7 +151,7 @@ function _persistSessions(): void {
     colorIndex: _store.colorIndex,
   };
   try {
-    setPluginStateValueSync("serial-monitor", "sessions", data);
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data);
   } catch { /* 静默 */ }
 }
 
@@ -164,7 +163,7 @@ if (typeof window !== "undefined") {
 function notify(): void {
   _persistSessions();
   // 异步写文件——fire-and-forget，不影响 UI 响应
-  setPluginStateValue("serial-monitor", "sessions", {
+  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", {
     sessions: _store.sessions,
     activeSessionId: _store.activeSessionId,
     sessionCounter: _store.sessionCounter,
