@@ -17,6 +17,7 @@ import { confirm, alert } from "./DialogService"; // E5#67
 import { shellEvents } from "./ShellEvents"; // E5#68
 import { ContextKeyService } from "./ContextKeyService"; // E5#70
 import { registerMenuItems, type ManifestMenuItem } from "./MenuRegistry"; // E5#69
+import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
