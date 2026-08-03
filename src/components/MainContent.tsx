@@ -353,12 +353,17 @@ function MainContent({
 
       // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
       if (ids.length > 0) {
+        console.log(`[E5#10b-diag] scheduling rAF, currentStates size=${currentStates.size}, ids=[${ids.join(",")}]`);
         requestAnimationFrame(() => {
+          console.log(`[E5#10b-diag] rAF fired`);
           for (const [pluginId, state] of currentStates) {
+            console.log(`[E5#10b-diag] checking ${pluginId} isFocused=${state.isFocused} registered=${registeredSet.has(pluginId)}`);
             if (state.isFocused && registeredSet.has(pluginId)) {
               const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
+              console.log(`[E5#10b-diag] pool for ${pluginId}: ${!!pool}`);
               if (pool) {
                 const rect = pool.getBoundingClientRect();
+                console.log(`[E5#10b-diag] calling setBounds for ${pluginId}`);
                 pv.setBounds(pluginId, {
                   x: Math.round(rect.x),
                   y: Math.round(rect.y),
