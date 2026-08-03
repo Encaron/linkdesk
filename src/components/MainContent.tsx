@@ -212,7 +212,7 @@ function MainContent({
     return unsub;
   }, [createTab]);
 
-  // E5#5e-ii-c：插件卸载时关闭其所有标签页——forceCloseTab 跳过 dirty 检查
+  // E5#5e-ii-c：插件卸载时关闭其所有标签页 + E5#10 清除 WebView 就绪状态
   useEffect(() => {
     const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
       for (const g of tabState.groups) {
@@ -222,6 +222,12 @@ function MainContent({
           }
         }
       }
+      // E5#10：插件卸载 → 清 WebView 状态 + 取消超时定时器
+      setReadyWebViewIds((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+      setWebViewBoundsReady((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+      setWebViewTimeout((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+      const timer = webViewTimers.current.get(pluginId);
+      if (timer) { clearTimeout(timer); webViewTimers.current.delete(pluginId); }
     });
     return unsub;
   }, [tabState.groups, forceCloseTab]);
