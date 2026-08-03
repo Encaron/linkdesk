@@ -633,7 +633,7 @@ function App() {
           </div>
         )}
         {zoneBounds.statusbar && (
-          <div style={{ position: "fixed", display: "flex", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
+          <div style={{ position: "fixed", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
             <StatusBar />
           </div>
         )}
