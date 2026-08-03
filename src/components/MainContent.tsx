@@ -54,6 +54,13 @@ const SHELL_VIEWS: Record<string, ComponentType<any>> = {
 // FALLBACK_PLUGIN_ID 是运行时值，不能放 Record key 字面量
 SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 
+// E5#10：WebView 就绪插件白名单——只有确认 WebView 可独立工作的插件才关停 React fallback。
+// 不在白名单内的插件（如 editor——需 IPC 接收 filePath）保持 React 渲染。
+// 后续 E5#11 各插件逐一验收 WebView 独立性后移入此集合。
+const WEBVIEW_READY_PLUGINS = new Set<string>([
+  "serial-monitor",
+]);
+
 function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
@@ -98,8 +105,8 @@ function renderTabContent(
         );
       }
     }
-    // E5#10b：双条件——WebView JS ready + bounds IPC 确认 → 关 React fallback
-    if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
+    // E5#10b：三条件——WebView JS ready + bounds IPC 确认 + 在白名单内 → 关 React fallback
+    if (WEBVIEW_READY_PLUGINS.has(tab.pluginId) && readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
