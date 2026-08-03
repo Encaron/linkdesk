@@ -53,15 +53,19 @@ function StatusBar(_props: StatusBarProps) {
   }, []);
 
   // E5#6e：合并三源——插件声明式 + StatusBarService + 壳固定项/eventEntries
+  // eventEntries + 固定项按 alignment 拆分 pluginId——否则 __shell__ 同时进左右列表造成双渲染
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const allItems: any[] = [
     ...getStatusBarContributions(),
     ...getDynamicStatusBarItems(),
-    ...eventEntries.map((e) => ({
-      pluginId: "__shell__", id: e.id, label: e.text, align: e.alignment === "right" ? "right" : "left",
+    ...eventEntries.filter((e) => e.alignment !== "right").map((e) => ({
+      pluginId: "__shell_left__", id: e.id, label: e.text, align: "left",
     })),
-    { pluginId: "__shell__", id: "lang", label: lang === "zh" ? "中" : "EN", align: "right", onClick: "workbench.action.selectLanguage" },
-    { pluginId: "__shell__", id: "theme", label: theme === "Dark" ? "☀" : "☾", align: "right", onClick: "workbench.action.selectTheme" },
+    ...eventEntries.filter((e) => e.alignment === "right").map((e) => ({
+      pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
+    })),
+    { pluginId: "__shell_right__", id: "lang", label: lang === "zh" ? "中" : "EN", align: "right", onClick: "workbench.action.selectLanguage" },
+    { pluginId: "__shell_right__", id: "theme", label: theme === "Dark" ? "☀" : "☾", align: "right", onClick: "workbench.action.selectTheme" },
   ];
 
   // 去重插件 ID（保持顺序）
