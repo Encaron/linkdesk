@@ -72,16 +72,20 @@ export function getTabBehavior(pluginId: string): TabBehavior {
  */
 export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
-  // E5#48：invokeBeforeClose 命令优先——插件自行处理确认+清理，返回 false 阻止关闭
-  if (behavior.invokeBeforeClose) {
-    try {
-      const result = await linkdesk().commands.execute(behavior.invokeBeforeClose);
-      if (result === false) return false;
-    } catch { /* 出错不阻塞用户操作——允许关闭 */ }
-    return true;
+  // E5#48：invokeBeforeClose 为 "close_port" 时，先查端口状态——未开则跳过确认
+  if (behavior.confirmOnClose) {
+    let shouldConfirm = true;
+    if (behavior.invokeBeforeClose === "close_port") {
+      try {
+        const status = await (window as any).linkdesk?.serial?.getStatus?.();
+        if (status && !status.isOpen) shouldConfirm = false;
+      } catch { /* IPC 失败——回退正常确认 */ }
+    }
+    if (shouldConfirm && !await showConfirm(behavior.confirmOnClose)) return false;
   }
-  // fallback：静态 confirmOnClose 文本——插件不需要条件判断时用
-  if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
+  if (behavior.invokeBeforeClose) {
+    try { await linkdesk().commands.execute(behavior.invokeBeforeClose); } catch {}
+  }
   return true;
 }
 
