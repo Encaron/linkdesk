@@ -65,3 +65,38 @@ export interface StatusBarEntry {
   alignment: "left" | "right";
   priority?: number;
 }
+
+/* ── E5#1b：类型安全事件总线 ── */
+
+import { Emitter } from "./CoreEvents";
+
+/**
+ * 类型安全的壳内事件总线。
+ * 基于现有 Emitter 基础设施——不改底层，只加类型层。
+ *
+ * emit/on 均由 ShellEvents 接口约束——写错签名 → tsc 当场报错。
+ */
+export class ShellEventBus {
+  private _emitters = new Map<string, Emitter<any>>();
+
+  /** 发送事件。tsc 检查 payload 类型。 */
+  emit<K extends keyof ShellEvents>(event: K, payload: ShellEvents[K]): void {
+    const emitter = this._emitters.get(event);
+    if (!emitter) return;
+    emitter.fire(payload);
+  }
+
+  /**
+   * 订阅事件。tsc 检查 handler 签名。
+   * 返回 unsubscribe 函数——调用方必须在 useEffect cleanup 中调用。
+   */
+  on<K extends keyof ShellEvents>(
+    event: K,
+    handler: (payload: ShellEvents[K]) => void,
+  ): () => void {
+    if (!this._emitters.has(event)) {
+      this._emitters.set(event, new Emitter<any>());
+    }
+    return this._emitters.get(event)!.event(handler);
+  }
+}
