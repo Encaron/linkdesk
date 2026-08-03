@@ -209,6 +209,12 @@ try {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
     },
 
+    // ── E5#69：菜单注册——插件声明式注册菜单项（纯数据，可 IPC 序列化）──
+    menu: {
+      registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
+        ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
+    },
+
     // ── E5#70：ContextKey——插件 SET 状态供壳 when 子句读 ──
     contextKey: {
       set: (key: string, value: unknown) =>
