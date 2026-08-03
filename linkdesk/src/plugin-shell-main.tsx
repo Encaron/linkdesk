@@ -94,18 +94,24 @@ function bootstrap() {
     );
 
     // #58e 修复：渲染完成后通知壳——壳收到后才关 React fallback。
-    // 延时一帧确保 React commit 完成（ErrorBoundary 有机会捕获错误）。
-    // E5#10a：诊断——追踪 notifyReady 是否被调用
+    // E5#10a：诊断——先同步调用验证 IPC 链，再保底 setTimeout
     console.log(`[E5#10a-plugin] notifyReady about to call for "${pluginId}"`);
     console.log(`[E5#10a-plugin] linkdesk=${!!(window as any).linkdesk}, pluginViews=${!!(window as any).linkdesk?.pluginViews}, notifyReady=${!!(window as any).linkdesk?.pluginViews?.notifyReady}`);
+    try {
+      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+      console.log(`[E5#10a-plugin] notifyReady sync OK for "${pluginId}"`);
+    } catch (e) {
+      console.error(`[E5#10a-plugin] notifyReady sync failed for "${pluginId}":`, e);
+    }
+    // 保底：rAF 可能因 WebView 不可见被跳过，加 setTimeout 兜底
     requestAnimationFrame(() => {
-      try {
-        (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-        console.log(`[E5#10a-plugin] notifyReady called for "${pluginId}"`);
-      } catch (e) { /* preload 未就绪时静默 */
-        console.error(`[E5#10a-plugin] notifyReady failed for "${pluginId}":`, e);
-      }
+      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+      console.log(`[E5#10a-plugin] notifyReady rAF for "${pluginId}"`);
     });
+    setTimeout(() => {
+      (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
+      console.log(`[E5#10a-plugin] notifyReady setTimeout for "${pluginId}"`);
+    }, 100);
   }).catch((err: any) => {
     root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
   });

@@ -137,7 +137,7 @@ Phase 1-5h ✅ 完成
 1. `npm run check` 零错误——一条命令跑完 tsc + ESLint + vitest。ESLint 自动跑硬约束 13/14
 2. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 3. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
-4. **🔥 修了任何 `import`/`export` 路径 → 删 `node_modules/.vite` 清 Vite deps 缓存。** 不手动清 → 缓存了失败模块 → 路径改对也白屏。`tsc` 抓不到这个。（memory `vite-cache-after-import-fix.md`）
+4. **🔥 Vite deps 缓存自动清——`postinstall` 脚本会在每次 `npm install` 后自动 `rmSync node_modules/.vite`。** 极端情况（postinstall 被跳过、缓存仍有问题）→ 手动 `rm -rf node_modules/.vite` 再重启。（memory `vite-cache-after-import-fix.md`）
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 
