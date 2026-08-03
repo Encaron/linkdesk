@@ -30,7 +30,6 @@ import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
 import { shouldKeepSidebarOnFocus } from "./hooks/tabIdentity";
 import { invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
-import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
 import { useConfigurationValue } from "./core/useConfiguration";
@@ -198,7 +197,6 @@ function App() {
     const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
     return group?.tabs.find((t) => t.id === group.activeTabId);
   }, [tabState.groups, tabState.activeGroupId]);
-  const activeTabType = activeTab?.type ?? FALLBACK_PLUGIN_ID;
   const activePluginId = activeTab?.pluginId;
 
   // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
@@ -844,9 +842,6 @@ function App() {
         />
         <SidePanel
           ref={sidebarRef}
-          activeTabType={activeTabType ?? FALLBACK_PLUGIN_ID}
-          activePluginId={activePluginId}
-          sidebarView={sidebarView}
           width={sidebarWidth}
         />
         <div className="sidebar-resize-handle" onMouseDown={onResizeMouseDown} />
