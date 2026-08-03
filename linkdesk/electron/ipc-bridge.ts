@@ -335,11 +335,9 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
 
   private registerP2pListener(): void {
-    // E5#65：fire-and-forget——和 bridge:broadcast 同模式（ipcMain.on + ipcRenderer.send）
-    ipcMain.on('p2p:send', (event, target: string, channel: string, data: unknown) => {
+    ipcMain.handle('p2p:send', (event, target: string, channel: string, data: unknown) => {
       if (!this.windowManager.getPluginView(target)) {
-        console.error(`[p2p] 目标插件 "${target}" 未运行——无法发送数据`);
-        return;
+        throw new Error(`[p2p] 目标插件 "${target}" 未运行——无法发送数据`);
       }
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
       this.pushToPlugin(target, channel, data, sourceId);
