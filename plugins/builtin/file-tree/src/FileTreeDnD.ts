@@ -11,7 +11,7 @@ import type { FileTreeModel } from "./FileTreeModel";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
 import { copy, deleteEntry } from "@src/core/FileService";
-import { showConfirm } from "@src/core/DialogService";
+
 import { dirname, joinPath, normalizePath } from "./pathUtils";
 import type { FlatItem } from "./pathUtils";
 
@@ -84,7 +84,7 @@ export async function executeSafeDrop(
   if (getConfigurationValue<boolean>("explorer.confirmDragAndDrop") ?? true) {
     const names = sources.map((s) => `"${s.name}"`).join(", ");
     const targetName = targetDir.split("/").pop() ?? targetDir;
-    const confirmed = await showConfirm(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
+    const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
     if (!confirmed) return;
   }
   const t = normalizePath(targetDir);

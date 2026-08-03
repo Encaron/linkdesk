@@ -11,7 +11,6 @@ import { useSerialSessions } from "../useSerialSessions";
 import { useSerialContext } from "../SerialContext";
 import { useTabActions } from "@src/core/TabActionsContext";
 import { activateSidebarItem } from "@src/core/SidebarTabSync";
-import { showConfirm } from "@src/components/shared/ConfirmDialog";
 import { SessionListItem } from "../SessionListItem";
 import "../SerialMonitorSidebar.css";
 
@@ -86,7 +85,7 @@ export default function SessionListView() {
     (id: string) => async () => {
       const session = sessions.find((s) => s.id === id);
       if (!session) return;
-      const confirmed = await showConfirm(
+      const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(
         t("关闭会话「{{name}}」？", { name: session.name }) ??
           `关闭会话「${session.name}」？`,
       );

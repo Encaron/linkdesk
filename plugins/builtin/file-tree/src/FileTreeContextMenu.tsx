@@ -18,7 +18,6 @@ import { dirname, normalizePath, joinPath } from "./pathUtils";
 import { writeFile, mkdir, exists, deleteEntry } from "@src/core/FileService";
 import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { openFolder } from "@src/core/WorkspaceService";
-import { showConfirm } from "@src/core/DialogService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 import { executeSafeDrop } from "./FileTreeDnD";
 
@@ -209,7 +208,7 @@ export function activateFileTreeContextMenu(): void {
     const confirmDelete = getConfigurationValue<boolean>("explorer.confirmDelete") ?? true;
     if (confirmDelete) {
       const nameList = uris.map((u) => `"${u.split("/").pop() ?? u}"`).join(", ");
-      const confirmed = await showConfirm(`确定删除 ${nameList}？`);
+      const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定删除 ${nameList}？`);
       if (!confirmed) return;
     }
     const parentUris = new Set<string>();
