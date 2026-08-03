@@ -30,10 +30,10 @@
 
 .status-divider {
   display: inline-block;
-  border-left: 1px solid var(--separator);
+  width: 1px;
   height: 12px;
   margin: 0 6px;
-  vertical-align: middle;
+  background: var(--separator);
 }
 
 .status-traffic {
