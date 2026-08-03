@@ -22,11 +22,10 @@ import NotificationCenter from "./NotificationCenter";
 import "./StatusBar.css";
 
 interface StatusBarProps {
-  onToggleTheme?: () => void;
-  onToggleLang?: () => void;
+  // E5#7f：回调改走命令系统——不再从 App 传 props
 }
 
-function StatusBar({ onToggleTheme, onToggleLang }: StatusBarProps) {
+function StatusBar(_props: StatusBarProps) {
   // E5#6a：替代 props.theme / props.lang——直接从 ConfigurationService 读，响应式
   const theme = useConfigurationValue<string>("app.theme");
   const lang = useConfigurationValue<"zh" | "en">("app.language");
@@ -179,16 +178,20 @@ function StatusBar({ onToggleTheme, onToggleLang }: StatusBarProps) {
         {rightPluginIds.map((pid) => renderPluginStatusBar(pid))}
         {/* 通知铃铛——E3e #49 提取为 NotificationCenter 组件 */}
         <NotificationCenter />
-        {onToggleLang && (
-          <button className="status-bar-btn" onClick={onToggleLang} title={t("切换语言")}>
-            {lang === "zh" ? "中" : "EN"}
-          </button>
-        )}
-        {onToggleTheme && (
-          <button className="status-bar-btn" onClick={onToggleTheme} title={t("切换主题")}>
-            {theme === "Dark" ? "☀" : "☾"}
-          </button>
-        )}
+        <button
+          className="status-bar-btn"
+          onClick={() => executeCommand("workbench.action.selectLanguage")}
+          title={t("切换语言")}
+        >
+          {lang === "zh" ? "中" : "EN"}
+        </button>
+        <button
+          className="status-bar-btn"
+          onClick={() => executeCommand("workbench.action.selectTheme")}
+          title={t("切换主题")}
+        >
+          {theme === "Dark" ? "☀" : "☾"}
+        </button>
       </div>
     </div>
   );
