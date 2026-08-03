@@ -353,28 +353,33 @@ function MainContent({
 
       // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
       if (ids.length > 0) {
-        requestAnimationFrame(() => {
+        requestAnimationFrame(async () => {
+          const boundsPromises: Promise<void>[] = [];
           for (const [pluginId, state] of currentStates) {
             if (state.isFocused && registeredSet.has(pluginId)) {
               const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
               if (pool) {
                 const rect = pool.getBoundingClientRect();
-                pv.setBounds(pluginId, {
-                  x: Math.round(rect.x),
-                  y: Math.round(rect.y),
-                  width: Math.round(rect.width),
-                  height: Math.round(rect.height),
-                });
-                // E5#10b：bounds 设置完成 → 标记就绪，双条件中第二个条件满足
-                setWebViewBoundsReady((prev) => {
-                  if (prev.has(pluginId)) return prev;
-                  const next = new Set(prev);
-                  next.add(pluginId);
-                  return next;
-                });
+                boundsPromises.push(
+                  pv.setBounds(pluginId, {
+                    x: Math.round(rect.x),
+                    y: Math.round(rect.y),
+                    width: Math.round(rect.width),
+                    height: Math.round(rect.height),
+                  }).then(() => {
+                    // E5#10b：bounds IPC 确认完成后才标记就绪
+                    setWebViewBoundsReady((prev) => {
+                      if (prev.has(pluginId)) return prev;
+                      const next = new Set(prev);
+                      next.add(pluginId);
+                      return next;
+                    });
+                  })
+                );
               }
             }
           }
+          await Promise.all(boundsPromises);
         });
       }
     }).catch((err: unknown) => {
