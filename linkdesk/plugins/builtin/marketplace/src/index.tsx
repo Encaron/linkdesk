@@ -13,7 +13,7 @@
 import { useTranslation } from "react-i18next";
 import { getLoadedPluginManifests } from "@src/pluginLoader/loader";
 import { registerCommand } from "@src/core/CommandRegistry";
-import { registerMenuItems, MenuId } from "@src/core/MenuRegistry";
+import { MenuId } from "@src/core/MenuRegistry";
 import "./MarketplaceView.css";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
@@ -53,7 +53,7 @@ function ensureMarketplaceCommands(): void {
     },
   });
 
-  registerMenuItems(MenuId.MarketplaceItemGear, "marketplace", [
+  (window as any).linkdesk?.menu?.registerItems(MenuId.MarketplaceItemGear, "marketplace", [
     { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
     { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
     { command: "workbench.action.selectLanguage", group: "navigation", when: "extensionHasLanguages" },
