@@ -162,6 +162,10 @@ try {
       pushToPlugin: (pluginId: string, channel: string, payload: unknown) => {
         ipcRenderer.send('bridge:push-to-plugin', { pluginId, channel, payload });
       },
+      // E5#62：壳→插件请求-响应——等插件处理完返回结果
+      requestToPlugin: (pluginId: string, channel: string, payload: unknown): Promise<unknown> => {
+        return ipcRenderer.invoke('bridge:request-to-plugin', pluginId, channel, payload);
+      },
       // E3b #35：广播到所有插件 WebView——主题切换、语言切换等全局事件
       broadcast: (channel: string, payload: unknown) => {
         ipcRenderer.send('bridge:broadcast', { channel, payload });
