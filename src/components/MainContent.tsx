@@ -351,7 +351,7 @@ function MainContent({
     if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId) {
       bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch(() => {});
     }
-  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds, webViewBoundsReady]);
+  }, [tabState.groups, tabState.activeGroupId, tabState.groups.find(g => g.id === tabState.activeGroupId)?.activeTabId, readyWebViewIds, webViewBoundsReady]);
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
