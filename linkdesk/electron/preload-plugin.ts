@@ -138,6 +138,8 @@ try {
     filesystem: {
       readTextFile:  (p: string) => ipcRenderer.invoke('filesystem:readTextFile', p),
       writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
+      readBinaryFile: (p: string) => ipcRenderer.invoke('filesystem:readBinaryFile', p),
+      writeBinaryFile: (p: string, d: Uint8Array) => ipcRenderer.invoke('filesystem:writeBinaryFile', p, d),
     },
 
     // ── 剪贴板 ──
