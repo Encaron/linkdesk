@@ -107,12 +107,13 @@ const _listeners = new Set<() => void>();
 // E3i #71：消 localStorage 双路径——统一走 PluginStateService → StorageService → 文件持久化 + beforeunload 保底。
 
 /** 从 PluginStateService 恢复 session，一次性迁移旧 localStorage 数据。E3i #71 */
-function _restoreSessions(): void {
+// E5#71e：async——await linkdesk.pluginState.get
+async function _restoreSessions(): Promise<void> {
   try {
-    const psData = getPluginStateValue<{
+    const psData = await (window as any).linkdesk?.pluginState?.get("serial-monitor", "sessions") as {
       sessions: SerialSession[]; activeSessionId: string | null;
       sessionCounter: number; colorIndex: number;
-    }>("serial-monitor", "sessions");
+    } | undefined;
     if (psData?.sessions) {
       _store.sessions = psData.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
       if (typeof psData.activeSessionId === "string") _store.activeSessionId = psData.activeSessionId;
@@ -157,7 +158,7 @@ function _persistSessions(): void {
 
 // 模块初始化——F5 后恢复 session。不再需要 beforeunload 监听——StorageService 已内置保底。
 if (typeof window !== "undefined") {
-  _restoreSessions();
+  _restoreSessions().then(() => notify()); // E5#71e: async→完成后通知 hooks
 }
 
 function notify(): void {
