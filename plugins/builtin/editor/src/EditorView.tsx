@@ -73,19 +73,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const container = containerRef.current;
 
     (async () => {
-      // E5#76d：插件 WebView 初始 0×0——等容器有尺寸再创建 Monaco
-      console.log("[E5#76d] container size:", container.clientWidth, "x", container.clientHeight);
+      // E5#76d：容器 0×0 时轮询等待——主进程异步 setBounds，ResizeObserver 不触发
       if (container.clientWidth === 0 || container.clientHeight === 0) {
         await new Promise<void>((resolve) => {
-          const ro = new ResizeObserver((entries) => {
-            const e = entries[0];
-            console.log("[E5#76d] ResizeObserver:", e?.contentRect.width, "x", e?.contentRect.height);
-            if (e && e.contentRect.width > 0 && e.contentRect.height > 0) {
-              ro.disconnect();
-              resolve();
-            }
-          });
-          ro.observe(container);
+          let n = 0;
+          const id = setInterval(() => {
+            if (container.clientWidth > 0 && container.clientHeight > 0) { clearInterval(id); resolve(); }
+            if (++n > 200 || disposed) { clearInterval(id); resolve(); } // 10s 超时
+          }, 50);
         });
       }
       if (disposed) return;
