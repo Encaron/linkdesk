@@ -1,8 +1,9 @@
 /**
  * 共享 `<ContextMenu>` —— 统一右键菜单 UI 组件。
- * Phase 5b：归一化——所有右键菜单走这一个组件，四种统一失焦方式。
+ *
+ * E5#44d：支持子菜单——静态 children 或动态 resolveChildren 回调。
+ * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  */
-
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
 import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
@@ -10,11 +11,21 @@ import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import { findKeybindingForCommand } from "../../core/registry/KeybindingRegistry";
 import "./ContextMenu.css";
 
+/* ── 类型 ── */
+
 export interface ContextMenuProps {
   menuId: MenuId;
   anchor: { x: number; y: number };
+  /** 传给命令的上下文（when 过滤 + handler args） */
   context?: Record<string, unknown>;
   onClose: () => void;
+  /**
+   * E5#44d：动态子菜单解析器。
+   * 当 menu item 声明 children: []（空数组）时调用此函数获取子项。
+   * @param parentId 父菜单项的命令 ID（空字符串表示纯标签项）
+   * @param ctx 同 context prop
+   * @returns 子菜单项列表，或 undefined 表示无子项
+   */
   resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
 }
 
@@ -23,12 +34,18 @@ interface ResolvedItem {
   label: string;
   group: string;
   shortcut?: string;
+  /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板 */
   children?: ResolvedItem[];
 }
 
+/* ── 组件 ── */
+
 export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
+  const subRef = useRef<HTMLDivElement>(null);
+  const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* ── 插件 WebView 远程菜单 ── */
   const [remoteItems, setRemoteItems] = useState<any[] | null>(null);
   const isPluginWebView = !!(window as any).linkdesk?.pluginViews?.notifyReady;
   useEffect(() => {
@@ -36,6 +53,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     (window as any).linkdesk?.menu?.getItems?.(menuId).then(setRemoteItems);
   }, [menuId, isPluginWebView]);
 
+  /* ── 菜单项解析 ── */
   const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
     const rawItems = isPluginWebView ? (remoteItems ?? []) : getLocalMenuItems(menuId);
     const grouped = new Map<string, ResolvedItem[]>();
@@ -43,22 +61,29 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
     for (const item of rawItems) {
       const cmd = getCommand(item.command);
-      if (!cmd && !(item as any).children) continue;
+      const rawChildren = (item as any).children as any[] | undefined;
+      // 有 children 的父项放行（即使 command 为空）
+      if (!cmd && !rawChildren) continue;
+
       const whenExpr = item.when ?? cmd?.when;
       if (!ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined)) continue;
 
       const group = item.group ?? "__default";
       if (!grouped.has(group)) { grouped.set(group, []); groupOrder.push(group); }
 
+      // 子菜单：静态 children 透传 / 空 children 调 resolveChildren 动态填充
       let children: ResolvedItem[] | undefined;
-      const rawChildren = (item as any).children;
-      if (rawChildren?.length) {
+      if (rawChildren && rawChildren.length > 0) {
         children = rawChildren.map((c: any) => ({
-          id: c.command, label: getCommand(c.command)?.title ?? c.label ?? c.command, group,
+          id: c.command,
+          label: getCommand(c.command)?.title ?? c.label ?? c.command,
+          group,
         }));
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
-        if (dyn?.length) children = dyn.map((c, i) => ({ id: c.id, label: c.label, group, _kid: i }));
+        if (dyn && dyn.length > 0) {
+          children = dyn.map((c) => ({ id: c.id, label: c.label, group }));
+        }
       }
 
       grouped.get(group)!.push({
@@ -78,12 +103,18 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return result;
   }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
 
+  /* ═══ E5#44d：hover 子菜单状态 ═══ */
+  const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
+
+  /* ── 统一失焦 ── */
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subData) setSubData(null); else onClose(); } };
     const onBlur = () => onClose();
     const onWheel = () => onClose();
     const onMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node) && !subRef.current?.contains(e.target as Node)) onClose();
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) && !subRef.current?.contains(e.target as Node)) {
+        onClose();
+      }
     };
     window.addEventListener("keydown", onKey);
     window.addEventListener("blur", onBlur);
@@ -95,8 +126,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       window.removeEventListener("wheel", onWheel, true);
       window.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [onClose]);
+  }, [onClose, subData]);
 
+  /* ── 键盘导航 ── */
   const [focusIdx, setFocusIdx] = useState(-1);
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const clickableItems = useMemo(() => resolved.filter((r) => !("type" in r)) as ResolvedItem[], [resolved]);
@@ -119,11 +151,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     if (focusIdx >= 0) itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
   }, [focusIdx]);
 
+  /* ── 命令执行 ── */
   const handleItemClick = useCallback(async (commandId: string) => {
     onClose();
     await executeCommand(commandId, undefined, context);
   }, [context, onClose]);
 
+  /* ── 视口自适应 ── */
   const adjustedAnchor = useMemo(() => {
     const estWidth = 180;
     const estHeight = Math.min(resolved.length * 30 + 8, 400);
@@ -133,6 +167,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return { left, top };
   }, [anchor, resolved.length]);
 
+  /* ── 入场动画 ── */
   useEffect(() => {
     const el = menuRef.current;
     if (!el) return;
@@ -140,58 +175,67 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // E5#44d：hover 展开子面板——150ms 延迟防闪烁
-  const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
-  const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const subRef = useRef<HTMLDivElement>(null);
-  const openSub = useCallback((x: number, y: number, items: ResolvedItem[]) => {
+  /* ═══ E5#44d：hover 子菜单 handler ═══ */
+  const openSub = useCallback((el: HTMLElement, items: ResolvedItem[]) => {
     if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
-    setSubData({ x, y, items });
+    const r = el.getBoundingClientRect();
+    setSubData({ x: r.right + 4, y: r.top, items });
   }, []);
+
   const closeSubDelayed = useCallback(() => {
     subTimer.current = setTimeout(() => setSubData(null), 150);
   }, []);
 
+  /* ── 渲染 ── */
   let clickableIdx = 0;
 
   return (
     <>
-    <div ref={menuRef} className="ctx-menu" style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}>
-      {resolved.map((item, i) => {
-        if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
-        const idx = clickableIdx++;
-        const isFocused = idx === focusIdx;
-        const isDanger = item.group === "delete";
-        const hasKids = item.children && item.children.length > 0;
+      {/* 主菜单 */}
+      <div ref={menuRef} className="ctx-menu" style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}>
+        {resolved.map((item, i) => {
+          if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
+          const idx = clickableIdx++;
+          const hasKids = !!(item.children && item.children.length > 0);
+          const isFocused = idx === focusIdx;
+          const isDanger = item.group === "delete";
 
-        return (
-          <div
-            key={item.id}
-            ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
-            className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-            onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
-            onMouseEnter={(e) => {
-              setFocusIdx(idx);
-              if (hasKids) { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openSub(r.right + 4, r.top, item.children!); }
-            }}
-            onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
-          >
-            <span className="ctx-item-label">{item.label}</span>
-            {hasKids && <span className="ctx-item-chevron">›</span>}
-            {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
-          </div>
-        );
-      })}
-    </div>
-    {subData && (
-      <div ref={subRef} className="ctx-menu show" style={{ left: subData.x, top: subData.y }}>
-        {subData.items.map((child, ki) => (
-          <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
-            <span className="ctx-item-label">{child.label}</span>
-          </div>
-        ))}
+          return (
+            <div
+              key={item.id}
+              ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
+              className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
+              onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
+              onMouseEnter={(e) => {
+                setFocusIdx(idx);
+                if (hasKids) openSub(e.currentTarget as HTMLElement, item.children!);
+              }}
+              onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
+            >
+              <span className="ctx-item-label">{item.label}</span>
+              {hasKids && <span className="ctx-item-chevron">›</span>}
+              {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
+            </div>
+          );
+        })}
       </div>
-    )}
+
+      {/* 子面板——独立于主菜单，避免 overflow 裁切 */}
+      {subData && (
+        <div
+          ref={subRef}
+          className="ctx-menu show"
+          style={{ left: subData.x, top: subData.y }}
+          onMouseEnter={() => { if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; } }}
+          onMouseLeave={closeSubDelayed}
+        >
+          {subData.items.map((child, ki) => (
+            <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+              <span className="ctx-item-label">{child.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </>
   );
 }
