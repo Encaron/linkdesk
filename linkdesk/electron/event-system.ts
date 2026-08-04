@@ -60,39 +60,26 @@ export function createEventSystem(
   ipcRenderer: IpcRenderer,
   options: EventSystemOptions,
 ): EventSystemApi {
-  const subscriptions = new Map<string, Set<EventCallback>>();
+  // E5#74e: 用数组替代 Set——contextBridge proxy 引用在 Set 中丢失
+  const subscriptions = new Map<string, EventCallback[]>();
   const { logPrefix, extraHandlers } = options;
 
   ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
     // E5#74e debug
-    const subs = subscriptions.get(data.channel);
-    ipcRenderer.send('plugin-push-test', { type: 'events-dispatch', channel: data.channel, subs: subs?.size ?? 0 });
-    // E5#61c：dev 模式日志
+    const arr = subscriptions.get(data.channel);
+    ipcRenderer.send('plugin-push-test', { type: 'events-dispatch', channel: data.channel, subs: arr?.length ?? 0 });
     if (DEV_LOG) {
-      const count = subs?.size ?? 0;
+      const count = arr?.length ?? 0;
       const source = data.source ? ` ← ${data.source}` : "";
       console.debug(`[events] ${logPrefix} ← "${data.channel}"${source} → ${count} 订阅者`);
     }
-
-    // 额外处理器优先（theme:changed / lang:changed 等）
     if (extraHandlers) {
       const extra = extraHandlers[data.channel];
-      if (extra) {
-        try {
-          extra(data.payload);
-        } catch (e) {
-          console.error(`[${logPrefix}] 额外处理器异常 (channel=${data.channel}):`, e);
-        }
-      }
+      if (extra) { try { extra(data.payload); } catch (e) { console.error(`[${logPrefix}] 额外处理器异常 (channel=${data.channel}):`, e); } }
     }
-
-    // 分发给订阅者
-    const handlers = subs;
-    if (!handlers) return;
-    for (const fn of handlers) {
-      try {
-        fn(data.payload);
-      } catch (e: any) {
+    if (!arr) return;
+    for (const fn of arr) {
+      try { fn(data.payload); } catch (e: any) {
         ipcRenderer.send('plugin-push-test', { type: 'callback-error', channel: data.channel, error: e?.message ?? String(e) });
       }
     }
@@ -100,15 +87,13 @@ export function createEventSystem(
 
   return {
     on(channel: string, cb: EventCallback): () => void {
-      let set = subscriptions.get(channel);
-      if (!set) {
-        set = new Set();
-        subscriptions.set(channel, set);
-      }
-      set.add(cb);
+      let arr = subscriptions.get(channel);
+      if (!arr) { arr = []; subscriptions.set(channel, arr); }
+      arr.push(cb);
       return () => {
-        set?.delete(cb);
-        if (set && set.size === 0) subscriptions.delete(channel);
+        const idx = arr!.indexOf(cb);
+        if (idx !== -1) arr!.splice(idx, 1);
+        if (arr!.length === 0) subscriptions.delete(channel);
       };
     },
 
