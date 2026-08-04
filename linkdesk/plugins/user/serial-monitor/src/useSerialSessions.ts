@@ -159,7 +159,6 @@ if (typeof window !== "undefined") {
   _restoreSync();
   _restoreAsync();
 }
-}
 
 function notify(): void {
   _persistSessions();
