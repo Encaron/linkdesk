@@ -103,27 +103,12 @@ const _store = {
 }
 const _listeners = new Set<() => void>();
 
-// ── 持久化（E5#71e：双路径——localStorage 同步兜底 + pluginState 异步更新）──
+// ── 持久化（E5#71e：useEffect 异步加载 pluginState，零模块 init）──
 
-/** 同步恢复——localStorage 兜底，确保组件 mount 时数据已就绪 */
-function _restoreSync(): void {
-  try {
-    let raw = localStorage.getItem("linkdesk:serial-monitor:sessions");
-    if (!raw) raw = localStorage.getItem("linkdesk:terminal:sessions");
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.sessions)) {
-        _store.sessions = data.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
-      }
-      if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
-      if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
-      if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
-    }
-  } catch { /* 首次启动——静默 */ }
-}
+let _initPromise: Promise<void> | null = null;
 
-/** 异步更新——pluginState 覆盖 localStorage，完成后通知 hooks */
-async function _restoreAsync(): Promise<void> {
+/** 从 pluginState 恢复——首次调 useSerialSessions 时执行一次 */
+async function _restorePluginState(): Promise<void> {
   try {
     const psData = await (window as any).linkdesk?.pluginState?.get("serial-monitor", "sessions") as {
       sessions: SerialSession[]; activeSessionId: string | null;
@@ -134,15 +119,11 @@ async function _restoreAsync(): Promise<void> {
       if (typeof psData.activeSessionId === "string") _store.activeSessionId = psData.activeSessionId;
       if (typeof psData.sessionCounter === "number") _store.sessionCounter = psData.sessionCounter;
       if (typeof psData.colorIndex === "number") _store.colorIndex = psData.colorIndex;
-      // 同步到 localStorage（保底）
-      localStorage.setItem("linkdesk:serial-monitor:sessions", JSON.stringify({ sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex }));
-      localStorage.removeItem("linkdesk:terminal:sessions");
       notify();
     }
   } catch { /* 静默 */ }
 }
 
-/** 持久化——双写（pluginState + localStorage 兜底） */
 function _persistSessions(): void {
   const data = {
     sessions: _store.sessions,
@@ -150,25 +131,11 @@ function _persistSessions(): void {
     sessionCounter: _store.sessionCounter,
     colorIndex: _store.colorIndex,
   };
-  try { (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data); } catch { /* 静默 */ }
-  try { localStorage.setItem("linkdesk:serial-monitor:sessions", JSON.stringify(data)); } catch { /* 静默 */ }
-}
-
-// E5#71e：同步恢复（localStorage 立即就绪）+ 异步更新（pluginState 覆盖）
-if (typeof window !== "undefined") {
-  _restoreSync();
-  _restoreAsync();
+  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data).catch(() => {});
 }
 
 function notify(): void {
   _persistSessions();
-  // 异步写文件——fire-and-forget，不影响 UI 响应
-  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", {
-    sessions: _store.sessions,
-    activeSessionId: _store.activeSessionId,
-    sessionCounter: _store.sessionCounter,
-    colorIndex: _store.colorIndex,
-  }).catch(() => {});
   _listeners.forEach((fn) => fn());
 }
 
@@ -186,6 +153,8 @@ export function useSerialSessions() {
   const [, tick] = useState(0);
 
   useEffect(() => {
+    // E5#71e：首次 mount 异步加载 pluginState——之后所有 hook 实例共享 _store
+    if (!_initPromise) _initPromise = _restorePluginState();
     const rerender = () => tick((n) => n + 1);
     _listeners.add(rerender);
     return () => {
@@ -273,9 +242,12 @@ export function useSession(id: string | undefined) {
   }, []);
 
   // B3：F5 刷新 → 标签页恢复但 session 丢失 → 首次 mount 自动创建。
+  // E5#71e：等 _initPromise 完成后再检查——避免 duplicate
   const didAutoCreate = useRef(false);
   useEffect(() => {
-    if (!didAutoCreate.current && id && !_store.sessions.find((s) => s.id === id)) {
+    const check = () => {
+      if (didAutoCreate.current || !id) return;
+      if (_store.sessions.find((s) => s.id === id)) return;
       didAutoCreate.current = true;
       const session: SerialSession = {
         id,
@@ -286,6 +258,12 @@ export function useSession(id: string | undefined) {
       _store.colorIndex++;
       _store.sessions = [..._store.sessions, session];
       notify();
+    };
+    // 等 restore 完成——避免 duplicate session
+    if (_initPromise) {
+      _initPromise.then(check);
+    } else {
+      check();
     }
   }, [id]);
 
