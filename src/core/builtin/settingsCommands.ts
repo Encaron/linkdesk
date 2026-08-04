@@ -63,5 +63,6 @@ export function registerSettingsCommands(): void {
     { command: "core.openSettings", group: "navigation" },
     { command: "workbench.action.selectTheme", group: "navigation" },
     { command: "workbench.action.selectLanguage", group: "navigation" },
+    { command: "workbench.action.openKeybindingsSettings", group: "navigation" },
   ]);
 }
