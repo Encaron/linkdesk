@@ -137,15 +137,18 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         eol: model.getEOL() === "\r\n" ? "CRLF" : "LF",
       });
 
-      // 7. F12 跳转后定位——兜底 consume（editor 已注册，这里只处理"此文件是新开的"）
+      // 7. F12 跳转后定位——双 rAF 防光标被后续渲染覆盖
       const pendingReveal = consumePendingReveal(filePath);
       if (pendingReveal) {
         requestAnimationFrame(() => {
           if (disposed) return;
-          const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
-          editor.setPosition(pos);
-          editor.revealPositionInCenter(pos);
-          editor.focus();
+          requestAnimationFrame(() => {
+            if (disposed) return;
+            const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
+            editor.setPosition(pos);
+            editor.revealPositionInCenter(pos);
+            editor.focus();
+          });
         });
       }
 
