@@ -79,7 +79,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subAnchor) setSubAnchor(null); else onClose(); } };
     const onBlur = () => onClose();
     const onWheel = () => onClose();
     const onMouseDown = (e: MouseEvent) => {
@@ -164,10 +164,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             onClick={(e) => {
               e.stopPropagation();
               if (hasKids) {
+                if (subAnchor) { setSubAnchor(null); return; }
                 const rect = e.currentTarget.getBoundingClientRect();
-                console.log("[ContextMenu] OPEN sub-panel", { id: item.id, kids: item.children?.length, x: rect.right + 4, y: rect.top });
                 setSubAnchor({ x: rect.right + 4, y: rect.top, items: item.children! });
               } else {
+                setSubAnchor(null);
                 handleItemClick(item.id);
               }
             }}
