@@ -25,12 +25,15 @@ function _norm(p: string): string {
 }
 
 export function setPendingReveal(filePath: string, line: number, column: number): void {
-  _pendingReveal.set(_norm(filePath), { line, column });
+  const key = _norm(filePath);
+  console.log("[pendingReveal] SET", { filePath, key, line, column });
+  _pendingReveal.set(key, { line, column });
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
   const key = _norm(filePath);
   const pos = _pendingReveal.get(key);
-  _pendingReveal.delete(key);
+  console.log("[pendingReveal] CONSUME", { filePath, key, found: !!pos, mapSize: _pendingReveal.size });
+  if (pos) _pendingReveal.delete(key);
   return pos;
 }
