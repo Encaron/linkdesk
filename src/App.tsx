@@ -7,7 +7,6 @@ import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { syncCountersAfterRestore } from "./hooks/useTabManager";
-import { type DropZone } from "./hooks/tabDragTypes";
 import IconBar from "./components/IconBar";
 import TitleBar from "./components/TitleBar"; // E3f #52f
 import WindowControls from "./components/WindowControls"; // E3f #52f
@@ -80,11 +79,8 @@ function App() {
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
-  // Phase 3 Step 6: 拖拽分屏
+  // Phase 3 Step 6: 拖拽分屏（E5#5e-ii-f 已搬进 MainContent 内部管理）
   const editorAreaRef = useRef<HTMLDivElement>(null);
-  const [dragDropZone, setDragDropZone] = useState<DropZone>(null);
-  const [dragDropTargetGroupId, setDragDropTargetGroupId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
   // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
   // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
   const sidebarViewRef = useRef<string | null>(null);
@@ -371,17 +367,6 @@ function App() {
     };
   }, []);
 
-  /* ---- 拖拽分屏回调（Phase 3.x: 用 splitTabAt——在目标面板位置分裂） ---- */
-  // E5#5e-ii-f TODO：拖拽分屏逻辑暂 stub——下一步移到 MainContent 内部
-  const handleDropSplit = useCallback(
-    (_tabId: string, _zone: string, _targetGroupId?: string) => {},
-    []
-  );
-  const handleDropCopySplit = useCallback(
-    (_tabId: string, _zone: string, _targetGroupId?: string) => {},
-    []
-  );
-
   // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
   // 此 listener 只做 React state 同步（theme/language——app shell 需要）。
   // terminal.* 变更由 useConfiguration hook 在终端组件内部响应。
@@ -625,19 +610,7 @@ function App() {
         })()}
         {zoneBounds.main && (
           <div style={{ position: "fixed", display: "flex", flexDirection: "column", overflow: "hidden", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
-            <MainContent
-              onDropSplit={handleDropSplit}
-              onDropCopySplit={handleDropCopySplit}
-              dropZone={dragDropZone}
-              editorAreaRef={editorAreaRef}
-              dragDropTargetGroupId={dragDropTargetGroupId}
-              onDragDropZone={(zone, targetGroupId) => {
-                setDragDropZone(zone);
-                setDragDropTargetGroupId(targetGroupId ?? null);
-              }}
-              isDragging={isDragging}
-              onDraggingChange={setIsDragging}
-            />
+            <MainContent editorAreaRef={editorAreaRef} />
           </div>
         )}
         {zoneBounds.statusbar && (

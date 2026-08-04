@@ -7,7 +7,7 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { createElement, useCallback, useEffect, useMemo, useRef } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
 import type { TabGroup, Tab } from "../hooks/useTabManager";
@@ -37,14 +37,7 @@ import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import "./MainContent.css";
 
 interface MainContentProps {
-  onDropSplit: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
-  onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
-  dropZone?: DropZone | null;
-  dragDropTargetGroupId?: string | null;
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
-  onDragDropZone?: (zone: DropZone | null, targetGroupId?: string) => void;
-  isDragging?: boolean;
-  onDraggingChange?: (v: boolean) => void;
 }
 
 // E5#5f：壳内视图注册表——加新壳视图只加一行，不 switch
@@ -138,15 +131,13 @@ function renderTabContent(
 }
 
 function MainContent({
-  onDropSplit,
-  onDropCopySplit,
-  dropZone,
-  dragDropTargetGroupId,
   editorAreaRef,
-  onDragDropZone,
-  isDragging,
-  onDraggingChange,
 }: MainContentProps) {
+  // E5#5e-ii-f：拖拽分屏状态——从 App.tsx 搬进 MainContent
+  const [dropZone, setDropZone] = useState<DropZone | null>(null);
+  const [dragDropTargetGroupId, setDragDropTargetGroupId] = useState<string | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+
   // E5#5e-ii-e：useTabManager 搬到 MainContent——不再通过 App props 中转
   const {
     tabState,
@@ -168,6 +159,37 @@ function MainContent({
     closeTabBySourceId,
     updateTabLabelBySourceId,
   } = useTabManager();
+
+  // E5#5e-ii-f 恢复：拖拽分屏回调
+  const handleDropSplit = useCallback(
+    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
+      const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
+      _splitTabAt(tabId, direction, targetGroupId, zone);
+      setDropZone(null);
+      setDragDropTargetGroupId(null);
+      setIsDragging(false);
+    },
+    [_splitTabAt],
+  );
+
+  const handleDropCopySplit = useCallback(
+    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
+      const newId = _duplicateTab(tabId);
+      if (newId) {
+        const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
+        _splitTabAt(newId, direction, targetGroupId, zone);
+      }
+      setDropZone(null);
+      setDragDropTargetGroupId(null);
+      setIsDragging(false);
+    },
+    [_duplicateTab, _splitTabAt],
+  );
+
+  const handleDragDropZone = useCallback((zone: DropZone | null, targetGroupId?: string) => {
+    setDropZone(zone);
+    setDragDropTargetGroupId(targetGroupId ?? null);
+  }, []);
   // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
   const flatPanes = useMemo(() => {
     const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
@@ -353,6 +375,26 @@ function MainContent({
     }
   }, [tabState.groups, tabState.activeGroupId, tabState.groups.find(g => g.id === tabState.activeGroupId)?.activeTabId, readyWebViewIds, webViewBoundsReady]);
 
+  // E5#84g：弹窗关闭后恢复 WebView 可见性——DialogService 弹窗前 hide 所有 WebView，
+  //        弹窗后 emit dialog:visibility 通知此处恢复正确的可见性
+  const dialogTabRef = useRef(tabState);
+  dialogTabRef.current = tabState;
+  useEffect(() => {
+    const u1 = shellEvents.on("dialog:visibility", ({ open }) => {
+      if (open || !pv) return; // 只处理 close——hide 已在 DialogService 直接做
+      const ts = dialogTabRef.current;
+      for (const g of ts.groups) {
+        const activeTab = g.tabs.find((t) => t.id === g.activeTabId);
+        if (activeTab?.pluginId && !isShellRenderedTab(activeTab.type)) {
+          // 只恢复有活跃标签页且该组被聚焦的插件 WebView
+          const isFocused = g.id === ts.activeGroupId;
+          pv.setVisible(activeTab.pluginId, isFocused);
+        }
+      }
+    });
+    return () => { u1(); };
+  }, [pv]);
+
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
@@ -453,13 +495,13 @@ function MainContent({
             }}
             onReorderTab={reorderTab}
             onPinTab={pinTab}
-            onDropSplit={onDropSplit}
-            onDropCopySplit={onDropCopySplit}
+            onDropSplit={handleDropSplit}
+            onDropCopySplit={handleDropCopySplit}
             editorAreaRef={editorAreaRef}
             dragDropZone={dropZone}
-            onDragDropZone={onDragDropZone}
+            onDragDropZone={handleDragDropZone}
             isDragging={isDragging}
-            onDraggingChange={onDraggingChange}
+            onDraggingChange={setIsDragging}
           />
           {/* 内容占位区——tab pane 通过绝对定位填充，不做子元素渲染 */}
           <div
@@ -479,7 +521,7 @@ function MainContent({
     },
     [tabState.root, tabState.activeGroupId, dropZone, dragDropTargetGroupId,
      handleFocusTab, closeTab, createTab, moveTab, reorderTab, pinTab,
-     splitTab, editorAreaRef, isDragging, onDraggingChange]
+     splitTab, editorAreaRef, isDragging, setIsDragging]
   );
 
   return (

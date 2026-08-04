@@ -55,6 +55,9 @@ export class IpcBridge {
     'pluginState:set',
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
     'plugins:call',
+    // E5#85：workspace——插件查询工作区信息
+    'workspace:getFolders',
+    'workspace:getActive',
   ];
 
   constructor(

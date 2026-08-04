@@ -11,10 +11,10 @@
  *
  * E4V#40i（诊断+快捷修复）也在此文件——`setDiagnosticsOptions` 打开红波浪线。
  */
-import { getWorkspaceFolders, onDidChangeFolders } from "@src/core/WorkspaceService";
-import { listDir, readBinaryFile } from "@src/core/FileService";
+import { onDidChangeFolders } from "@src/core/WorkspaceService";
 import { EncodingService } from "@src/core/encoding/EncodingService";
-import { normalizePath } from "@src/core/pathUtils";
+
+const lk = (window as any).linkdesk;
 
 /** 最多创建 500 个影子 model——大项目不卡 */
 const MAX_SHADOW_MODELS = 500;
@@ -75,14 +75,14 @@ async function scanDir(
 
   let entries;
   try {
-    entries = await listDir(dirPath);
+    entries = await lk.filesystem.listDir(dirPath);
   } catch {
     return;
   }
 
   for (const entry of entries) {
     if (count.n >= MAX_SHADOW_MODELS) break;
-    const fullPath = normalizePath(entry.path);
+    const fullPath = lk.path.normalize(entry.path);
 
     if (entry.isDirectory) {
       const name = fullPath.split("/").pop() || "";
@@ -98,7 +98,7 @@ async function scanDir(
       }
 
       try {
-        const buffer = await readBinaryFile(fullPath);
+        const buffer = await lk.filesystem.readBinaryFile(fullPath);
         const content = EncodingService.decode(buffer, EncodingService.detect(buffer));
         monaco.editor.createModel(content, "typescript", uri);
         count.n++;
@@ -121,11 +121,11 @@ export function scanWorkspaceForTypeScript(monaco: any): Promise<void> {
   }
   // console.log("[ts-intel] 开始扫描工作区...");
   _scanPromise = (async () => {
-    const folders = getWorkspaceFolders();
+    const folders = await lk.workspace.getFolders();
     const count = { n: 0 };
     for (const folder of folders) {
       if (count.n >= MAX_SHADOW_MODELS) break;
-      await scanDir(monaco, normalizePath(folder.uri), count);
+      await scanDir(monaco, lk.path.normalize(folder.uri), count);
     }
     // console.log("[ts-intel] 扫描完成——影子 model 总数:", count.n);
   })().catch((err) => {

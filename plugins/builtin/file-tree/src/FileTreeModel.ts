@@ -9,13 +9,13 @@
  */
 
 import type { FileEntry } from "@src/core/FileService";
-import { listDir } from "@src/core/FileService";
 import type { FileDecoration } from "@src/core/FileDecorationRegistry";
-import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { Emitter } from "@src/core/CoreEvents";
 import { basename, splitPath, normalizePath, extension } from "./pathUtils";
+
+const lk = (window as any).linkdesk;
 
 /* ── 类型 ── */
 
@@ -44,19 +44,22 @@ export class FileTreeModel {
   private _sortOrder: SortOrder;
   private _excludeFilter: FileExcludeFilter | null = null;
   /** E4V#31: 装饰器回调——getChildren 创建新节点后调，避免模型层 import 插件层 */
-  private _decorator: ((items: ExplorerItem[]) => void) | null = null;
+  private _decorator: ((items: ExplorerItem[]) => void | Promise<void>) | null = null;
   readonly compactController: CompactController;
   /** E4V#55: 模型变更通知——FileTree 订阅后自动重渲染 */
   readonly onDidChange = new Emitter<void>();
 
   constructor(sortOrder?: SortOrder) {
-    this._sortOrder = sortOrder ?? getConfigurationValue<SortOrder>("explorer.sortOrder") ?? "default";
+    this._sortOrder = sortOrder ?? "default";
     this.compactController = new CompactController();
-    // E4V#34a: 订阅 sortOrder 变更→重新排序已加载节点→重渲染
-    onDidChangeConfiguration((key, value) => {
-      if (key !== "explorer.sortOrder") return;
+  }
+
+  /** E4V#34a: 从 lk.configuration API 加载 sortOrder 配置并订阅变更 */
+  async init(): Promise<void> {
+    const saved = await lk.configuration.get("explorer.sortOrder");
+    if (saved) this._sortOrder = saved;
+    lk.configuration.onChange("explorer.sortOrder", (value: any) => {
       this._sortOrder = (value as SortOrder) ?? "default";
-      // 重新排序所有已加载的 children
       for (const root of this._roots) this._resortLoaded(root);
       this.onDidChange.fire();
     });
@@ -76,7 +79,7 @@ export class FileTreeModel {
   }
 
   /** E4V#31: 设置装饰器回调——getChildren 创建新节点后调用 */
-  setDecorator(fn: ((items: ExplorerItem[]) => void) | null): void {
+  setDecorator(fn: ((items: ExplorerItem[]) => void | Promise<void>) | null): void {
     this._decorator = fn;
   }
 
@@ -108,19 +111,19 @@ export class FileTreeModel {
     // 用 URI 查找当前活跃对象，确保 children 写到正确的实例上。
     const current = this.findClosest(parent.uri) ?? parent;
     if (current.children !== null) { this.onDidChange.fire(); return current.children; }
-    const entries = await listDir(current.uri);
+    const entries = await lk.filesystem.listDir(current.uri);
     const parentLen = current.uri.length;
     const filtered = this._excludeFilter
-      ? entries.filter((e) => {
+      ? entries.filter((e: FileEntry) => {
           const relPath = normalizePath(e.path).slice(parentLen + 1);
           return !this._excludeFilter!.matches(relPath);
         })
       : entries;
-    current.children = filtered.map((e) => this._toExplorerItem(e, current));
+    current.children = filtered.map((e: FileEntry) => this._toExplorerItem(e, current));
     this.onDidChange.fire();
     // E4V#9: 文件嵌套——相关文件折叠为父文件的子节点
     // E4V#34g2: explorer.fileNesting.enabled 开关——默认 false
-    if (this._excludeFilter && (getConfigurationValue<boolean>("explorer.fileNesting.enabled") ?? false)) {
+    if (this._excludeFilter && (await lk.configuration.get("explorer.fileNesting.enabled") ?? false)) {
       const nesting = this._excludeFilter.buildNestingMap(filtered);
       // 归一化 key——FileEntry.path 可能含反斜杠
       const normalizedNesting = new Map<string, typeof filtered>();
@@ -129,20 +132,20 @@ export class FileTreeModel {
         normalizedNesting.set(normalizePath(parentPath), children);
         for (const c of children) nestedPaths.add(normalizePath(c.path));
       }
-      const expandNesting = getConfigurationValue<boolean>("explorer.fileNesting.expand") ?? true;
-      for (const item of current.children) {
+      const expandNesting = await lk.configuration.get("explorer.fileNesting.expand") ?? true;
+      for (const item of current.children ?? []) {
         const nested = normalizedNesting.get(item.uri);
         if (nested) {
-          item.children = nested.map((e) => this._toExplorerItem(e, item));
+          item.children = nested.map((e: FileEntry) => this._toExplorerItem(e, item));
           // E4V#34k: explorer.fileNesting.expand——嵌套后默认展开父项
           if (expandNesting) this.expand(item.uri);
         }
       }
-      current.children = current.children.filter((c) => !nestedPaths.has(normalizePath(c.uri)));
+      current.children = current.children!.filter((c) => !nestedPaths.has(normalizePath(c.uri)));
     }
-    this._sort(current.children);
-    if (this._decorator) this._decorator(current.children);
-    return current.children;
+    if (current.children) this._sort(current.children);
+    if (this._decorator && current.children) await this._decorator(current.children);
+    return current.children ?? [];
   }
 
   /**
@@ -269,8 +272,8 @@ export class FileTreeModel {
       if (!child && isLast) {
         // 末段未找到——可能是文件被 exclude 过滤掉了。
         // 用 listDir 直读磁盘确认文件存在→手动创建临时节点（对标 VS Code reveal 越过 filter）。
-        const entries = await listDir(current.uri).catch(() => []);
-        const entry = entries.find((e) => e.name === segment);
+        const entries = await lk.filesystem.listDir(current.uri).catch(() => []);
+        const entry = entries.find((e: { name: string }) => e.name === segment);
         if (entry) {
           child = this._toExplorerItem(entry, current);
           if (current.children) current.children.push(child);

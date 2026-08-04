@@ -12,8 +12,9 @@
  */
 
 import { FileDecorationRegistry } from "@src/core/FileDecorationRegistry";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 import type { FileTreeModel, ExplorerItem } from "./FileTreeModel";
+
+const lk = (window as any).linkdesk;
 
 export class FileTreeDecorationService {
   private _model: FileTreeModel;
@@ -39,13 +40,13 @@ export class FileTreeDecorationService {
   }
 
   /** 查询并应用单个文件的装饰——由 getChildren 调用 */
-  decorate(item: ExplorerItem): void {
+  async decorate(item: ExplorerItem): Promise<void> {
     if (!FileDecorationRegistry.hasProviders()) return;
     const deco = FileDecorationRegistry.getDecoration(item.uri);
     if (!deco) return;
     // E4V#34g3/g4: 尊重 decorations.colors / decorations.badges 开关
-    const colorsOn = getConfigurationValue<boolean>("explorer.decorations.colors") ?? true;
-    const badgesOn = getConfigurationValue<boolean>("explorer.decorations.badges") ?? true;
+    const colorsOn = await lk.configuration.get("explorer.decorations.colors") ?? true;
+    const badgesOn = await lk.configuration.get("explorer.decorations.badges") ?? true;
     item.decoration = {
       ...(colorsOn && deco.color ? { color: deco.color } : {}),
       ...(badgesOn && deco.badge ? { badge: deco.badge } : {}),

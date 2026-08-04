@@ -10,9 +10,9 @@
  * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { getWorkspaceFolders } from "@src/core/WorkspaceService";
-import { normalizePath } from "@src/core/pathUtils";
 import { getLangDef } from "@src/core/LangDefRegistry";
+
+const lk = (window as any).linkdesk;
 import { initMonacoEnv } from "./monaco-init";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
 import { getLspClient, startLspClient } from "./lsp-bridge";
@@ -81,7 +81,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
       await initMonacoEnv(async (modelRef: any, _options: unknown) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
-        const label = normalizePath(targetPath).split("/").pop() || targetPath;
+        const label = lk.path.normalize(targetPath).split("/").pop() || targetPath;
         tabsRef.current?.create("editor", {
           filePath: targetPath,
           sourceId: targetPath,
@@ -103,16 +103,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       scanWorkspaceForTypeScript(monaco);
 
       // 5. 非 TS 语言——查 LangDefRegistry 自动启动 LSP
-      const ext = "." + (normalizePath(filePath).split(".").pop() ?? "");
+      const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
       const langDef = getLangDef(ext);
       if (langDef?.lsp && !getLspClient(langDef.id)) {
-        const workspaceRoot = getWorkspaceFolders()[0]?.uri || normalizePath(filePath).replace(/\/[^/]+$/, "");
+        const workspaceRoot = (await lk.workspace.getFolders())[0]?.uri || lk.path.normalize(filePath).replace(/\/[^/]+$/, "");
         startLspClient(langDef.id, langDef.lsp.command, langDef.lsp.args, workspaceRoot)
           .catch((err) => console.warn(`[editor] ${langDef.id} LSP 启动失败:`, err));
       }
 
       // 6. 手写 editor——绕过 EditorApp 的 IFileService 依赖
-      const uri = monaco.Uri.file(normalizePath(filePath));
+      const uri = monaco.Uri.file(lk.path.normalize(filePath));
       let model = monaco.editor.getModel(uri);
       if (!model) {
         model = monaco.editor.createModel(value, undefined, uri);
@@ -218,7 +218,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           }
 
           // 跨文件：暂存位置 → createTab → mount effect consume → reveal
-          const label = normalizePath(targetPath).split("/").pop() || targetPath;
+          const label = lk.path.normalize(targetPath).split("/").pop() || targetPath;
           setPendingReveal(targetPath, targetLine, targetCol);
           tabsRef.current?.create("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,

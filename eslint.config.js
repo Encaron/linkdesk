@@ -111,18 +111,21 @@ export default [
     },
   },
 
-  // ═══ E5#72：插件禁止 import @src/core（多 WebView 下模块级状态静默隔离）═══
-  // 白名单：纯工具/数据结构（无模块级状态），Vite 打包到每个插件无副作用
+  // ═══ E5#85：插件禁止 import @src/core——走 linkdesk.* API 合同 ═══
+  // 白名单（42 处保留）：Emitter/CoreEvents（事件工具类）、type imports（类型定义）、
+  //   ViewContainerService/useConfiguration/SidebarTabSync/EncodingService（壳内组件/React hooks）、
+  //   RingBuffer/DataConverter/FileSearcher（纯数据结构/壳级服务）、
+  //   KeybindingRegistry/ProtocolRegistry/LangDefRegistry（声明式注册，暂未 linkdesk API 化）
   {
     files: ["plugins/**/*.ts", "plugins/**/*.tsx"],
     rules: {
       "no-restricted-imports": [
-        "warn",
+        "error",
         {
           patterns: [
             {
-              group: ["@src/core/*"],
-              message: "⚠️ 插件应使用 linkdesk.* API 而非直接 import @src/core（多 WebView 下模块级状态静默隔离）。纯工具（RingBuffer/DataConverter/pathUtils/useSendData/formatTimestamp/useIpcEvent/useDebouncedInput/useClickPreview）可忽略此警告。",
+              group: ["@src/core/ConfigurationService", "@src/core/pathUtils"],
+              message: "🚫 禁止 import ConfigurationService/pathUtils——请使用 linkdesk.configuration/linkdesk.path API。",
             },
           ],
         },

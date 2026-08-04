@@ -78,7 +78,7 @@ try {
     getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
     onChange: (key: string, cb: (v: any) => void) => {
       const handler = (_: any, d: { key: string; value: any }) => {
-        if (d.key === key) cb(d.value);
+        if (!key || d.key === key) cb(d.value);
       };
       ipcRenderer.on('config:changed', handler);
       return () => ipcRenderer.removeListener('config:changed', handler);
@@ -140,12 +140,35 @@ try {
       writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
       readBinaryFile: (p: string) => ipcRenderer.invoke('filesystem:readBinaryFile', p),
       writeBinaryFile: (p: string, d: Uint8Array) => ipcRenderer.invoke('filesystem:writeBinaryFile', p, d),
+      // E5#85 扩展
+      listDir: (p: string) => ipcRenderer.invoke('filesystem:listDir', p),
+      exists:  (p: string) => ipcRenderer.invoke('filesystem:exists', p),
+      mkdir:   (p: string) => ipcRenderer.invoke('filesystem:mkdir', p),
+      copy:    (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
+      remove:  (p: string) => ipcRenderer.invoke('filesystem:remove', p),
+      watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
+        return ipcRenderer.invoke('filesystem:watch', dirPath).then((watcherId: number) => {
+          const channel = `filesystem:changed:${watcherId}`;
+          const handler = (_event: any, change: any) => onEvent(change);
+          ipcRenderer.on(channel, handler);
+          return () => {
+            ipcRenderer.removeListener(channel, handler);
+            ipcRenderer.invoke('filesystem:unwatch', watcherId).catch(() => {});
+          };
+        });
+      },
     },
 
     // ── 剪贴板 ──
     clipboard: {
       readText:  () => ipcRenderer.invoke('clipboard:readText'),
       writeText: (text: string) => ipcRenderer.invoke('clipboard:writeText', text),
+    },
+
+    // ── E5#85：workspace——工作区信息查询 ──
+    workspace: {
+      getFolders: (): Promise<any[]> => ipcRenderer.invoke('workspace:getFolders'),
+      getActive: (): Promise<string | undefined> => ipcRenderer.invoke('workspace:getActive'),
     },
 
     // ── 环境信息 ──
@@ -289,6 +312,15 @@ try {
       unhandle(channel: string) {
         pluginRequestHandlers.delete(channel);
       },
+    },
+
+    // ── E5#85：path——纯工具函数，同步无 IPC ──
+    path: {
+      normalize: (p: string) => p.replace(/\\/g, "/"),
+      join: (...parts: string[]) => parts.map(p => p.replace(/\\/g, "/")).join("/").replace(/\/+/g, "/"),
+      basename: (p: string) => { const s = p.replace(/\\/g, "/").split("/"); return s[s.length - 1] || ""; },
+      dirname: (p: string) => { const s = p.replace(/\\/g, "/").split("/"); s.pop(); return s.join("/") || "."; },
+      extname: (p: string) => { const b = p.replace(/\\/g, "/").split("/").pop() || ""; const i = b.lastIndexOf("."); return i > 0 ? b.slice(i) : ""; },
     },
 
     // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──

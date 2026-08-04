@@ -10,14 +10,14 @@ import React, { useEffect, type MutableRefObject } from "react";
 import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { MenuId } from "@src/core/MenuRegistry";
 
-import { getWorkspaceFolders, removeFolder } from "@src/core/WorkspaceService";
+import { removeFolder } from "@src/core/WorkspaceService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "./pathUtils";
-import { writeFile, mkdir, exists, deleteEntry } from "@src/core/FileService";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { openFolder } from "@src/core/WorkspaceService";
+
+const lk = (window as any).linkdesk;
 import { fileTreeClipboard } from "./FileTreeClipboard";
 import { executeSafeDrop } from "./FileTreeDnD";
 
@@ -95,8 +95,8 @@ export function activateFileTreeContextMenu(): void {
   registerCommand("file-tree", { id: "explorer.copyRelativePath", title: "复制相对路径", handler: async (_token, ...args: unknown[]) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
-    const folders = getWorkspaceFolders();
-    const root = folders.find((f) => ctx.uri.startsWith(normalizePath(f.uri)));
+    const folders = await lk.workspace.getFolders();
+    const root = folders.find((f: { uri: string }) => ctx.uri.startsWith(normalizePath(f.uri)));
     if (!root) { await navigator.clipboard.writeText(ctx.uri); return; }
     const relative = ctx.uri.slice(normalizePath(root.uri).length).replace(/^[/\\]/, "");
     await navigator.clipboard.writeText(relative || ctx.uri);
@@ -205,7 +205,7 @@ export function activateFileTreeContextMenu(): void {
     const selection = hd.getSelection();
     const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
     if (uris.length === 0) return;
-    const confirmDelete = getConfigurationValue<boolean>("explorer.confirmDelete") ?? true;
+    const confirmDelete = await lk.configuration.get("explorer.confirmDelete") ?? true;
     if (confirmDelete) {
       const nameList = uris.map((u) => `"${u.split("/").pop() ?? u}"`).join(", ");
       const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定删除 ${nameList}？`);
@@ -213,7 +213,7 @@ export function activateFileTreeContextMenu(): void {
     }
     const parentUris = new Set<string>();
     for (const uri of uris) {
-      await deleteEntry(uri);
+      await lk.filesystem.remove(uri);
       parentUris.add(dirname(uri));
     }
     for (const parentUri of parentUris) {
@@ -270,17 +270,17 @@ export function activateFileTreeContextMenu(): void {
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
     // E4V#34j: explorer.incrementalNaming——"smart"=编号（默认），"disabled"=不编号
-    const naming = getConfigurationValue<string>("explorer.incrementalNaming") ?? "smart";
+    const naming = await lk.configuration.get("explorer.incrementalNaming") ?? "smart";
     let name = "新建文件";
     let filePath = joinPath(dirUri, name);
     if (naming !== "disabled") {
       for (let i = 1; i < 100; i++) {
-        if (!await exists(filePath)) break;
+        if (!await lk.filesystem.exists(filePath)) break;
         name = `新建文件-${i}`;
         filePath = joinPath(dirUri, name);
       }
     }
-    await writeFile(filePath, "");
+    await lk.filesystem.writeTextFile(filePath, "");
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
@@ -292,17 +292,17 @@ export function activateFileTreeContextMenu(): void {
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
     if (!dirUri) return;
     // E4V#34j: explorer.incrementalNaming——"smart"=编号（默认），"disabled"=不编号
-    const naming = getConfigurationValue<string>("explorer.incrementalNaming") ?? "smart";
+    const naming = await lk.configuration.get("explorer.incrementalNaming") ?? "smart";
     let name = "新建文件夹";
     let dirPath = joinPath(dirUri, name);
     if (naming !== "disabled") {
       for (let i = 1; i < 100; i++) {
-        if (!await exists(dirPath)) break;
+        if (!await lk.filesystem.exists(dirPath)) break;
         name = `新建文件夹-${i}`;
         dirPath = joinPath(dirUri, name);
       }
     }
-    await mkdir(dirPath);
+    await lk.filesystem.mkdir(dirPath);
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
@@ -330,7 +330,7 @@ export function activateFileTreeContextMenu(): void {
       removeFolder(ctx.uri);
     } else {
       // MenuBar 调用——关闭所有工作区文件夹
-      const folders = getWorkspaceFolders();
+      const folders = await lk.workspace.getFolders();
       for (const f of folders) removeFolder(f.uri);
     }
   }});

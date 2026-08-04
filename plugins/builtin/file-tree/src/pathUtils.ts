@@ -38,8 +38,12 @@ export function splitPath(fullPath: string): string[] {
  * listDir 经 path.join() 在 Windows 上返 \，前端工具函数产 /——
  * 所有进入 ExplorerItem.uri 的路径必须经此归一化。
  */
-import { normalizePath } from "@src/core/pathUtils";
-export { normalizePath };
+const lk = (window as any).linkdesk;
+
+/** 归一化路径——统一为 / 分隔符，通过 lk.path API */
+export function normalizePath(p: string): string {
+  return lk.path.normalize(p);
+}
 
 /** 获取父目录路径 */
 export function dirname(uri: string): string {

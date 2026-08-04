@@ -8,10 +8,11 @@
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
-import { getWorkspaceFolders } from "@src/core/WorkspaceService";
 import { getPluginFor } from "@src/core/FileAssociationService";
 import { extension } from "../pathUtils";
 import "./SearchView.css";
+
+const lk = (window as any).linkdesk;
 
 /* ── 状态 ── */
 
@@ -73,7 +74,7 @@ const SearchView: React.FC = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const roots = getWorkspaceFolders().map((f) => f.uri);
+    const roots = (await lk.workspace.getFolders()).map((f: any) => f.uri);
     if (roots.length === 0) {
       setState("idle");
       return;
@@ -164,14 +165,13 @@ const SearchView: React.FC = () => {
     const ok = await (window as any).linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
     if (!ok) return;
 
-    const { readBinaryFile, writeFile } = await import("@src/core/FileService");
     const { EncodingService } = await import("@src/core/encoding/EncodingService");
     let replaced = 0;
     let failed = 0;
 
     for (const file of results) {
       try {
-        const buffer = await readBinaryFile(file.filePath);
+        const buffer = await lk.filesystem.readBinaryFile(file.filePath);
         const encoding = EncodingService.detect(buffer);
         let content = EncodingService.decode(buffer, encoding);
         for (const m of [...file.matches].reverse()) {
@@ -180,7 +180,7 @@ const SearchView: React.FC = () => {
           content = content.slice(0, absStart) + replaceText + content.slice(absStart + (m.matchEnd - m.matchStart));
           replaced++;
         }
-        await writeFile(file.filePath, content);
+        await lk.filesystem.writeTextFile(file.filePath, content);
       } catch (err) {
         failed++;
         console.error(`[search] 替换失败: ${file.filePath}`, err);

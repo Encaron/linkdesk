@@ -13,10 +13,10 @@
  * 不散落在 EditorView/EditorTab/快捷键 handler 各写各的。
  */
 import { Emitter } from "@src/core/CoreEvents";
-import { readBinaryFile, writeFile, writeBinaryFile } from "@src/core/FileService";
 import { EncodingService } from "@src/core/encoding/EncodingService";
-import { normalizePath } from "@src/core/pathUtils";
 import { getLanguageFromPath } from "./language-map";
+
+const lk = (window as any).linkdesk;
 
 export class EditorModel {
   readonly filePath: string;
@@ -43,7 +43,7 @@ export class EditorModel {
 
   /** Monaco model URI——file:/// 协议，跨文件 TS 解析用 */
   get uri(): string {
-    const n = normalizePath(this.filePath);
+    const n = lk.path.normalize(this.filePath);
     return n.startsWith("/") ? `file://${n}` : `file:///${n}`;
   }
 
@@ -69,13 +69,13 @@ export class EditorModel {
 
   /** 从内存内容创建（不解码）——E4V#40n Hot Exit 恢复用 */
   static fromContent(filePath: string, content: string): EditorModel {
-    return new EditorModel(normalizePath(filePath), content, "utf-8");
+    return new EditorModel(lk.path.normalize(filePath), content, "utf-8");
   }
 
   /** 从磁盘加载文件 */
   static async load(filePath: string): Promise<EditorModel> {
-    const normalized = normalizePath(filePath);
-    const buffer = await readBinaryFile(normalized);
+    const normalized = lk.path.normalize(filePath);
+    const buffer = await lk.filesystem.readBinaryFile(normalized);
     const encoding = EncodingService.detect(buffer);
     const content = EncodingService.decode(buffer, encoding);
     return new EditorModel(normalized, content, encoding);
@@ -84,11 +84,11 @@ export class EditorModel {
   /** 保存到磁盘——UTF-8 走文本写入，GBK/UTF-16 走二进制写入保持编码 */
   async save(): Promise<void> {
     if (this.encoding === "utf-8" || this.encoding === "utf8") {
-      await writeFile(this.filePath, this._value);
+      await lk.filesystem.writeTextFile(this.filePath, this._value);
     } else {
       // E4V#40w——iconv-lite 编码 → 二进制写入，保持原编码
       const data = EncodingService.encode(this._value, this.encoding);
-      await writeBinaryFile(this.filePath, data);
+      await lk.filesystem.writeBinaryFile(this.filePath, data);
     }
   }
 }

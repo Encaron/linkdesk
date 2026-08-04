@@ -15,7 +15,7 @@
 
 ## 插件能做什么
 
-**没有 API 白名单。** 插件在自己的 WebContentsView 里（E3a 后），能 `import` 任何 JS 库、调用任何 Web API——Canvas、WebGL、WebAssembly、WebRTC、Web Audio……Web 平台的一切，不加限制。
+**没有 API 白名单。** 插件在壳的渲染进程中运行，能 `import` 任何 JS 库、调用任何 Web API——Canvas、WebGL、WebAssembly、WebRTC、Web Audio……Web 平台的一切，不加限制。
 
 系统级能力（串口、文件系统、配置、对话框）通过 `window.linkdesk.*` API 暴露——插件走壳中转，不能直接调 Node.js 原始能力。
 

@@ -9,22 +9,22 @@
  *    standalone action（revealDefinition 等）全丢失，Ctrl+Click 失效。
  *    直接在自定义 action 里调 TS worker + tabActions 桥接——已验证可行。
  */
-import { normalizePath } from "@src/core/pathUtils";
+const lk = (window as any).linkdesk;
 
 /** file:///e%3A/_testfiles/utils.ts → E:/_testfiles/utils.ts */
 export function fileUriToPath(uri: string): string {
-  return normalizePath(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
+  return lk.path.normalize(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
 }
 
 /** 兜底——editor 尚未挂载时暂存 reveal 位置，mount effect 中 consume */
 const _pendingReveal = new Map<string, { line: number; column: number }>();
 
 export function setPendingReveal(filePath: string, line: number, column: number): void {
-  _pendingReveal.set(normalizePath(filePath), { line, column });
+  _pendingReveal.set(lk.path.normalize(filePath), { line, column });
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
-  const key = normalizePath(filePath);
+  const key = lk.path.normalize(filePath);
   const pos = _pendingReveal.get(key);
   _pendingReveal.delete(key);
   return pos;

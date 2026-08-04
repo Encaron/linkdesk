@@ -8,15 +8,14 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { executeCommand } from "@src/core/CommandRegistry";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { useConfigurationValue } from "@src/core/useConfiguration";
-import { getWorkspaceFolders, onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
+import { onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 import { CoreEvents } from "@src/core/CoreEvents";
 
-import { readFile, exists, watchFile } from "@src/core/FileService";
-
 import { getPluginFor } from "@src/core/FileAssociationService";
+
+const lk = (window as any).linkdesk;
 import FileTree from "../FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
 import { FileTreeDecorationService } from "../FileTreeDecoration";
@@ -33,6 +32,7 @@ const FoldersView: React.FC = () => {
   const tabs = (window as any).linkdesk?.tabs;
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
+  model.init(); // E4V#34a: 异步加载 sortOrder 配置
   const filterRef = useRef<FileExcludeFilter>(new FileExcludeFilter());
   /** E4V#35 R15-1: 多根 watcher——每个根独立监听，E4V#56 已隔离 IPC 频道 */
   const _watchersRef = useRef<Array<() => void>>([]);
@@ -104,21 +104,21 @@ const FoldersView: React.FC = () => {
   const syncRoots = useCallback(async () => {
     if (_syncGuardRef.current) return _syncGuardRef.current;
     const promise = (async () => {
-      const folders = getWorkspaceFolders();
+      const folders = await lk.workspace.getFolders();
       setRoots(folders);
-      await model.setRoots(folders.map((f) => f.uri));
+      await model.setRoots(folders.map((f: { uri: string }) => f.uri));
       // E4V#8a: filter 必须在 getChildren 之前设置——否则首次加载不过滤
       const filter = filterRef.current;
-      const excludeCfg = getConfigurationValue<Record<string, boolean>>("files.exclude") ?? {};
+      const excludeCfg = await lk.configuration.get("files.exclude") as Record<string, boolean> ?? {};
       filter.configure(excludeCfg);
       // E4V#34g1: explorer.excludeGitIgnore 开关——默认 true
       filter.clearGitignore();
-      if ((getConfigurationValue<boolean>("explorer.excludeGitIgnore") ?? true)) {
+      if ((await lk.configuration.get("explorer.excludeGitIgnore") ?? true)) {
         for (const f of folders) {
           const gitignorePath = joinPath(f.uri, ".gitignore");
-          if (await exists(gitignorePath)) {
+          if (await lk.filesystem.exists(gitignorePath)) {
             try {
-              const content = await readFile(gitignorePath);
+              const content = await lk.filesystem.readTextFile(gitignorePath);
               filter.setGitignore(content);
             } catch { /* 读取失败静默跳过 */ }
           }
@@ -141,7 +141,7 @@ const FoldersView: React.FC = () => {
         }
       }
       // E4V#34i: explorer.expandSingleFolderWorkspaces——单目录工作区自动展开根
-      if ((getConfigurationValue<boolean>("explorer.expandSingleFolderWorkspaces") ?? true)
+      if ((await lk.configuration.get("explorer.expandSingleFolderWorkspaces") ?? true)
           && folders.length === 1) {
         const root = model.roots[0];
         if (root) {
@@ -159,8 +159,8 @@ const FoldersView: React.FC = () => {
       _watchersRef.current = [];
       for (const f of folders) {
         try {
-          const unwatch = await watchFile(f.uri, (event) => {
-            CoreEvents.onDidChangeFileSystem.fire([event]);
+          const unwatch = await lk.filesystem.watch(f.uri, (event: { path: string; type: string }) => {
+            CoreEvents.onDidChangeFileSystem.fire([event as any]);
           });
           _watchersRef.current.push(unwatch);
         } catch { /* watcher 启动失败静默 */ }
@@ -178,9 +178,9 @@ const FoldersView: React.FC = () => {
     // 背景：onFileChange IPC 监听是全局的（所有 watcher 共享 filesystem:changed 频道），
     // 批量文件操作（npm install / git checkout / appData 写入）会产生数十个事件，
     // 每个都触发 refresh → 并发竞态 → 展开目录缩回（twistie ▼ 但 children 为空）。
-    const unsub2 = CoreEvents.onDidChangeFileSystem.event((events) => {
-      const folders = getWorkspaceFolders();
-      const inWorkspace = events.some(e => folders.some(f => {
+    const unsub2 = CoreEvents.onDidChangeFileSystem.event(async (events) => {
+      const folders = await lk.workspace.getFolders();
+      const inWorkspace = events.some((e: any) => folders.some((f: { uri: string }) => {
         const np = normalizePath(e.path);
         const nr = normalizePath(f.uri);
         return np === nr || np.startsWith(nr + "/");
@@ -252,12 +252,12 @@ const FoldersView: React.FC = () => {
       const filter = filterRef.current;
       filter.clearGitignore();
       if (excludeGitIgnore) {
-        const folders = getWorkspaceFolders();
+        const folders = await lk.workspace.getFolders();
         for (const f of folders) {
           const gitignorePath = joinPath(f.uri, ".gitignore");
-          if (await exists(gitignorePath)) {
+          if (await lk.filesystem.exists(gitignorePath)) {
             try {
-              const content = await readFile(gitignorePath);
+              const content = await lk.filesystem.readTextFile(gitignorePath);
               filter.setGitignore(content);
             } catch { /* skip */ }
           }
@@ -299,8 +299,8 @@ const FoldersView: React.FC = () => {
    * E4V#35：多根时标题走 workspace name。
    * E4V#56+P2：pinnedContent——sticky scroll 已移除（E4V#57 放弃）。 */
   useEffect(() => {
-    const updateTitle = () => {
-      const folders = getWorkspaceFolders();
+    const updateTitle = async () => {
+      const folders = await lk.workspace.getFolders();
       // E4V#35f: 单根→根名，多根→"工作区"（对标 VS Code WORKSPACE）
       const title = folders.length === 1 ? folders[0].name : (folders.length > 1 ? t("工作区") : "");
       const existing = ViewContainerService.getView("folders");

@@ -12,50 +12,62 @@
  *   - E4V#40j——渲染 EditorStatusBar（行:列/编码/语言/缩进/EOL）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { normalizePath } from "@src/core/pathUtils";
 import { EditorModel } from "./EditorModel";
 import EditorView from "./EditorView";
 import type { EditorViewHandle } from "./EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
-import { getConfigurationValue, onDidChangeConfiguration } from "@src/core/ConfigurationService";
 import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
+
+const lk = (window as any).linkdesk;
 
 /**
  * E4V#40q——从 ConfigurationService 读取编辑器配置，构建 Monaco IEditorOptions。
  * 配置键（editor.fontSize 等）→ Monaco 选项（fontSize 等）。
  * 嵌套键（editor.minimap.enabled）→ 嵌套对象（minimap: { enabled }）。
  */
-function buildMonacoOptions(): Record<string, unknown> {
+async function buildMonacoOptions(): Promise<Record<string, unknown>> {
+  const [
+    fontSize, fontFamily, fontWeight, lineHeight, tabSize, insertSpaces, detectIndentation,
+    wordWrap, lineNumbers, minimapEnabled, renderWhitespace, cursorStyle, cursorBlinking,
+    mouseWheelZoom, smoothScrolling, autoClosingBrackets, bracketPairColorization,
+    guidesIndentation, linkedEditing, occurrencesHighlight, selectionHighlight,
+    parameterHintsEnabled, quickSuggestions, showWords, showSnippets,
+  ] = await Promise.all([
+    lk.configuration.get("editor.fontSize"),
+    lk.configuration.get("editor.fontFamily"),
+    lk.configuration.get("editor.fontWeight"),
+    lk.configuration.get("editor.lineHeight"),
+    lk.configuration.get("editor.tabSize"),
+    lk.configuration.get("editor.insertSpaces"),
+    lk.configuration.get("editor.detectIndentation"),
+    lk.configuration.get("editor.wordWrap"),
+    lk.configuration.get("editor.lineNumbers"),
+    lk.configuration.get("editor.minimap.enabled"),
+    lk.configuration.get("editor.renderWhitespace"),
+    lk.configuration.get("editor.cursorStyle"),
+    lk.configuration.get("editor.cursorBlinking"),
+    lk.configuration.get("editor.mouseWheelZoom"),
+    lk.configuration.get("editor.smoothScrolling"),
+    lk.configuration.get("editor.autoClosingBrackets"),
+    lk.configuration.get("editor.bracketPairColorization"),
+    lk.configuration.get("editor.guides.indentation"),
+    lk.configuration.get("editor.linkedEditing"),
+    lk.configuration.get("editor.occurrencesHighlight"),
+    lk.configuration.get("editor.selectionHighlight"),
+    lk.configuration.get("editor.parameterHints.enabled"),
+    lk.configuration.get("editor.quickSuggestions"),
+    lk.configuration.get("editor.suggest.showWords"),
+    lk.configuration.get("editor.suggest.showSnippets"),
+  ]);
   return {
-    fontSize: getConfigurationValue<number>("editor.fontSize"),
-    fontFamily: getConfigurationValue<string>("editor.fontFamily"),
-    fontWeight: getConfigurationValue<string>("editor.fontWeight"),
-    lineHeight: getConfigurationValue<number>("editor.lineHeight"),
-    tabSize: getConfigurationValue<number>("editor.tabSize"),
-    insertSpaces: getConfigurationValue<boolean>("editor.insertSpaces"),
-    detectIndentation: getConfigurationValue<boolean>("editor.detectIndentation"),
-    wordWrap: getConfigurationValue<string>("editor.wordWrap"),
-    lineNumbers: getConfigurationValue<string>("editor.lineNumbers"),
-    minimap: { enabled: getConfigurationValue<boolean>("editor.minimap.enabled") },
-    renderWhitespace: getConfigurationValue<string>("editor.renderWhitespace"),
-    cursorStyle: getConfigurationValue<string>("editor.cursorStyle"),
-    cursorBlinking: getConfigurationValue<string>("editor.cursorBlinking"),
-    mouseWheelZoom: getConfigurationValue<boolean>("editor.mouseWheelZoom"),
-    smoothScrolling: getConfigurationValue<boolean>("editor.smoothScrolling"),
-    autoClosingBrackets: getConfigurationValue<string>("editor.autoClosingBrackets"),
-    bracketPairColorization: getConfigurationValue<boolean>("editor.bracketPairColorization"),
-    guides: { indentation: getConfigurationValue<boolean>("editor.guides.indentation") },
-    linkedEditing: getConfigurationValue<boolean>("editor.linkedEditing"),
-    occurrencesHighlight: getConfigurationValue<boolean>("editor.occurrencesHighlight"),
-    selectionHighlight: getConfigurationValue<boolean>("editor.selectionHighlight"),
-    parameterHints: { enabled: getConfigurationValue<boolean>("editor.parameterHints.enabled") },
-    quickSuggestions: getConfigurationValue<boolean>("editor.quickSuggestions"),
-    suggest: {
-      showWords: getConfigurationValue<boolean>("editor.suggest.showWords"),
-      showSnippets: getConfigurationValue<boolean>("editor.suggest.showSnippets"),
-    },
+    fontSize, fontFamily, fontWeight, lineHeight, tabSize, insertSpaces, detectIndentation,
+    wordWrap, lineNumbers, minimap: { enabled: minimapEnabled }, renderWhitespace, cursorStyle, cursorBlinking,
+    mouseWheelZoom, smoothScrolling, autoClosingBrackets, bracketPairColorization,
+    guides: { indentation: guidesIndentation }, linkedEditing, occurrencesHighlight, selectionHighlight,
+    parameterHints: { enabled: parameterHintsEnabled }, quickSuggestions,
+    suggest: { showWords, showSnippets },
   };
 }
 
@@ -79,6 +91,13 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const prevActiveRef = useRef(isActive);
   // E4V#40q——EditorView ref → 运行时 updateOptions
   const editorViewRef = useRef<EditorViewHandle>(null);
+  // E4V#40q——编辑器选项状态（异步加载配置）
+  const [editorOptions, setEditorOptions] = useState<Record<string, unknown>>();
+
+  // E4V#40q——加载编辑器配置
+  useEffect(() => {
+    buildMonacoOptions().then(setEditorOptions);
+  }, []);
 
   // E4V#40j——编辑器状态栏数据
   const [editorStatus, setEditorStatus] = useState<EditorStatus>({
@@ -115,7 +134,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       model.markSaved();
       dirtyRef.current = false;
       clearDirtyFile(filePath);
-      const baseName = normalizePath(filePath).split("/").pop() || filePath;
+      const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
       tabs?.updateLabelBySourceId?.(filePath, baseName);
     } catch (err) {
       console.error(`[EditorTab] 保存失败: ${filePath}`, err);
@@ -146,7 +165,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           }));
           // 标记为脏——备份内容未保存
           dirtyRef.current = true;
-          const baseName = normalizePath(filePath).split("/").pop() || filePath;
+          const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
           tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
@@ -163,7 +182,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
             language: fallback.language,
           }));
           dirtyRef.current = true;
-          const baseName = normalizePath(filePath).split("/").pop() || filePath;
+          const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
           tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
@@ -195,21 +214,22 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   useEffect(() => {
     const wasActive = prevActiveRef.current;
     prevActiveRef.current = isActive;
-    const autoSave = getConfigurationValue<string>("files.autoSave") ?? "off";
-    if (autoSave === "onFocusChange" && wasActive && !isActive && model && model.isDirty()) {
-      handleSave();
-    }
+    lk.configuration.get("files.autoSave").then((autoSave: string) => {
+      if ((autoSave ?? "off") === "onFocusChange" && wasActive && !isActive && model && model.isDirty()) {
+        handleSave();
+      }
+    });
   }, [isActive, model, handleSave]);
 
   // 内容变更
-  const handleChange = useCallback((newValue: string | undefined) => {
+  const handleChange = useCallback(async (newValue: string | undefined) => {
     const v = newValue ?? "";
     setValue(v);
     model?.setValue(v);
     const isDirty = model?.isDirty() ?? false;
     if (dirtyRef.current !== isDirty) {
       dirtyRef.current = isDirty;
-      const baseName = normalizePath(filePath).split("/").pop() || filePath;
+      const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
       const label = isDirty ? `● ${baseName}` : baseName;
       tabs?.updateLabelBySourceId?.(filePath, label);
     }
@@ -218,7 +238,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       trackDirtyFile(filePath, v);
     }
     // E4V#40o——afterDelay 自动保存：每次变更重置 1s 计时器
-    const autoSave = getConfigurationValue<string>("files.autoSave") ?? "off";
+    const autoSave = await lk.configuration.get("files.autoSave") ?? "off";
     if (autoSave === "afterDelay") {
       if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
       autoSaveTimerRef.current = setTimeout(() => {
@@ -236,10 +256,9 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
 
   // E4V#40q——订阅配置变更 → 运行时 updateOptions，无需重建 editor
   useEffect(() => {
-    const unsubscribe = onDidChangeConfiguration((key) => {
-      if (key.startsWith("editor.")) {
-        editorViewRef.current?.updateOptions(buildMonacoOptions());
-      }
+    const unsubscribe = lk.configuration.onChange("", async () => {
+      const opts = await buildMonacoOptions();
+      editorViewRef.current?.updateOptions(opts);
     });
     return unsubscribe;
   }, []);
@@ -256,8 +275,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     return <div className="editor-empty">无法打开文件</div>;
   }
 
-  // E4V#40q——从配置构建 Monaco 初始选项
-  const editorOptions = buildMonacoOptions();
+  // E4V#40q——编辑器选项（异步加载自 lk.configuration）
 
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>

@@ -4,22 +4,22 @@
  * 对标 VS Code 面包屑导航。相对路径显示：单根→相对路径、多根→根名/路径。
  * 渲染在 EditorTab 内部、EditorView 上方。
  */
-import React from "react";
-import { getWorkspaceFolders } from "@src/core/WorkspaceService";
-import { normalizePath } from "@src/core/pathUtils";
+import React, { useState, useEffect } from "react";
+
+const lk = (window as any).linkdesk;
 
 interface EditorBreadcrumbProps {
   filePath: string;
 }
 
 /** 计算相对于工作区根的显示路径 */
-function getDisplayPath(filePath: string): string {
-  const normalized = normalizePath(filePath);
-  const folders = getWorkspaceFolders();
+async function getDisplayPath(filePath: string): Promise<string> {
+  const normalized = lk.path.normalize(filePath);
+  const folders = await lk.workspace.getFolders();
 
   // 找到包含此文件的工作区根
   const root = folders.find(
-    (f) => normalized === f.uri || normalized.startsWith(f.uri + "/"),
+    (f: any) => normalized === f.uri || normalized.startsWith(f.uri + "/"),
   );
 
   if (!root) {
@@ -40,7 +40,12 @@ function getDisplayPath(filePath: string): string {
 }
 
 const EditorBreadcrumb: React.FC<EditorBreadcrumbProps> = ({ filePath }) => {
-  const displayPath = getDisplayPath(filePath);
+  const [displayPath, setDisplayPath] = useState<string>("");
+
+  useEffect(() => {
+    getDisplayPath(filePath).then(setDisplayPath);
+  }, [filePath]);
+
   const segments = displayPath.split(" / ").filter(Boolean);
 
   return (

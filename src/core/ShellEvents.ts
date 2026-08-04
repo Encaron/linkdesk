@@ -72,6 +72,10 @@ export interface ShellEvents {
   "tab:focusBySourceId": { sourceId: string };
   "tab:updateLabelBySourceId": { sourceId: string; label: string };
   "tab:closeBySourceId": { sourceId: string };
+
+  // ── 弹窗（E5#84g）──
+  /** 弹窗打开/关闭——MainContent 据此隐藏/恢复插件 WebView（原生 WebContentsView z-order 高于 HTML） */
+  "dialog:visibility": { open: boolean };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
