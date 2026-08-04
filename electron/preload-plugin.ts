@@ -29,10 +29,7 @@ try {
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
 
-  // E5#74e: 模块级声明——contextBridge 每次访问创建新 proxy，导致 subscriptions 每次重置
-  // 改法：在 createEventSystem 外声明 subscriptions，createEventSystem 的 on/emit 共用同一份
-  const _sharedSubs = new Map<string, Array<(payload: unknown) => void>>();
-  const events = createEventSystem(ipcRenderer, _sharedSubs, {
+  const events = createEventSystem(ipcRenderer, null, {
     logPrefix: 'preload-plugin',
     extraHandlers: {
       // E3b #35：theme:changed 自动注入 CSS 变量，插件无需手动订阅
@@ -252,12 +249,18 @@ try {
         ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
 
-    // ── E5#65：p2p 插件间定向推流——send 走 pushToPlugin，on 走 events（plugin:push 已修复）──
+    // ── E5#74e: p2p.on 用独立 IPC 通道——和 serial.onData 同模式（已验证通）──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
       },
-      on: events.on,
+      on: (channel: string, cb: (data: unknown) => void) => {
+        const handler = (_event: any, d: { channel: string; data: unknown }) => {
+          if (d.channel === channel) cb(d.data);
+        };
+        ipcRenderer.on('p2p:data', handler);
+        return () => { ipcRenderer.removeListener('p2p:data', handler); };
+      },
     },
 
     // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
