@@ -340,16 +340,14 @@ function MainContent({
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   // E5#76：editor 标签页 sourceId 变更 → IPC 推送到 editor WebView
   useEffect(() => {
-    console.log("[E5#76] useEffect fired, groups:", tabState.groups.length, "readyEditor:", readyWebViewIds.has("editor"));
+    document.title = `E5#76: groups=${tabState.groups.length} editorReady=${readyWebViewIds.has("editor")}`;
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
         if (tab.pluginId === "editor") {
-          console.log("[E5#76] editor tab found, sourceId:", tab.sourceId);
+          document.title = `E5#76: sourceId=${tab.sourceId}`;
           if (tab.sourceId) {
-            (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).then(() => {
-              console.log("[E5#76] openFile 发送成功");
-            }).catch((e: any) => {
-              console.error("[E5#76] openFile 发送失败:", e);
+            (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {
+              document.title = "E5#76: IPC FAILED";
             });
           }
         }
