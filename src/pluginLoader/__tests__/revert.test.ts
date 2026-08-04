@@ -10,8 +10,8 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ThemeRegistry } from "../../core/ThemeRegistry";
-import { LanguageRegistry } from "../../core/LanguageRegistry";
+import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
+import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../../core/ThemeEngine";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──

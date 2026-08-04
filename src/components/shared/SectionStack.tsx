@@ -10,7 +10,7 @@ import { type ReactNode, useState, useRef, useCallback, useEffect } from "react"
 import type { ViewDescriptor, ViewContainerDescriptor } from "../../core/ViewContainerService";
 import { ViewContainerService } from "../../core/ViewContainerService";
 // E4V#44——ContextKeyService 用于空状态占位内容的 when 条件
-import { ContextKeyService } from "../../core/ContextKeyService";
+import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import ErrorBoundary from "./ErrorBoundary";
 import SidebarSection from "./SidebarSection";
 import { setDraggingView } from "./viewDragState";

@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { ContextKeyService } from "../ContextKeyService";
+import { ContextKeyService } from "../registry/ContextKeyService";
 
 describe("ContextKeyService — when clause parser & evaluator", () => {
   beforeEach(() => {

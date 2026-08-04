@@ -23,15 +23,15 @@ import {
   consumeScrollToSetting,
   onRequestScrollToSetting,
   type ConfigurationProperty,
-} from "../../core/ConfigurationRegistry";
+} from "../../core/registry/ConfigurationRegistry";
 import {
   setConfigurationValue,
   inspectConfiguration,
 } from "../../core/ConfigurationService";
 import { useConfigurationValue } from "../../core/useConfiguration";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-import { MenuId } from "../../core/MenuRegistry";
-import { ContextKeyService } from "../../core/ContextKeyService";
+import { MenuId } from "../../core/registry/MenuRegistry";
+import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import ContextMenu from "../shared/ContextMenu";
 import ColorPicker from "../shared/ColorPicker";
 import "./SettingsView.css";

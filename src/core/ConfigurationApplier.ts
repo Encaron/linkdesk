@@ -12,7 +12,7 @@
  *   2. Plugin 级——registerOnApply()（插件代码注册，弥补 plugin.json 不能存函数）
  */
 
-import { getMergedSchema } from "./ConfigurationRegistry";
+import { getMergedSchema } from "./registry/ConfigurationRegistry";
 import { getConfigurationValue, registerConfigApplier } from "./ConfigurationService";
 
 // E5#41：注册 applyConfiguration 回调——消解 ConfigurationService → ConfigurationApplier 循环 import

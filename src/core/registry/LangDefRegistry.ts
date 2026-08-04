@@ -8,7 +8,7 @@
  * 🔥 大厅桌子——核心只知道"有人注册了语言定义"，不知道语言是什么。
  *    三条准入标准全满足：多提供方、多消费方、桌子不知道内容。
  */
-import type { LangDefContribution } from "./types";
+import type { LangDefContribution } from "../types";
 
 /** extension（小写，带点） → LangDefContribution */
 const _extMap = new Map<string, LangDefContribution>();

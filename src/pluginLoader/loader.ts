@@ -25,9 +25,9 @@ const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
-import { ThemeRegistry } from "../core/ThemeRegistry";
-import { IconRegistry } from "../core/IconRegistry";
-import { LanguageRegistry } from "../core/LanguageRegistry";
+import { ThemeRegistry } from "../core/registry/ThemeRegistry";
+import { IconRegistry } from "../core/registry/IconRegistry";
+import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/NotificationService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
@@ -36,14 +36,14 @@ import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
-import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/ConfigurationRegistry";
+import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../core/ConfigurationService";
-import type { ManifestMenuItem, TitleBarContribution } from "../core/MenuRegistry";
-import { registerMenuItems, registerTitleBarContribution } from "../core/MenuRegistry";
-import { registerCommand } from "../core/CommandRegistry";
+import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/MenuRegistry";
+import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
+import { registerCommand } from "../core/registry/CommandRegistry";
 import { registerFileAssociation } from "../core/FileAssociationService";
-import { registerLangDef } from "../core/LangDefRegistry";
-import { registerKeybinding } from "../core/KeybindingRegistry";
+import { registerLangDef } from "../core/registry/LangDefRegistry";
+import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
 import { createLogChannel } from "../core/LogChannel";
@@ -236,7 +236,7 @@ export async function initPluginLoader(): Promise<void> {
 
   // #44：注册命令预激活钩子——CommandRegistry 执行命令前检查是否需要先激活延迟插件
   // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪
-  const { setPreActivateHook } = await import("../core/CommandRegistry");
+  const { setPreActivateHook } = await import("../core/registry/CommandRegistry");
   setPreActivateHook(async (commandId: string) => {
     const pluginId = findDeferredByCommand(commandId);
     if (pluginId) await activatePlugin(pluginId);
@@ -347,7 +347,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
     const config = c.configuration as { title: string; properties: Record<string, unknown> };
     registerConfiguration(pluginId, {
       title: config.title,
-      properties: config.properties as Record<string, import("../core/ConfigurationRegistry").ConfigurationProperty>,
+      properties: config.properties as Record<string, import("../core/registry/ConfigurationRegistry").ConfigurationProperty>,
     });
   }
 

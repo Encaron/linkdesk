@@ -4,7 +4,7 @@
  * 对标 VS Code 编辑器上下文菜单。Monaco 原生菜单保留（剪切/复制/粘贴），
  * 这里注册编辑器专属命令到 MenuId.EditorContext。
  */
-import { MenuId } from "@src/core/MenuRegistry";
+import { MenuId } from "@src/core/registry/MenuRegistry";
 
 /** 在插件加载时调用——注册编辑器上下文菜单项 */
 export function registerEditorContextMenu(): void {

@@ -9,8 +9,8 @@
  * 需要归属到插件以支持自动清理。pluginId 仅用于生命周期管理，不用于渲染决策。
  */
 
-import type { StatusBarItem } from "../core/types";
-import { Emitter } from "../core/CoreEvents";
+import type { StatusBarItem } from "../../core/types";
+import { Emitter } from "../../core/CoreEvents";
 
 /* ── 动态状态栏项——运行时可变字段 ── */
 

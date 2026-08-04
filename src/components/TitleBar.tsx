@@ -9,9 +9,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { getAssetPath } from "../core/assetPath";
-import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from "../core/MenuRegistry";
-import { executeCommand } from "../core/CommandRegistry";
-import { ContextKeyService } from "../core/ContextKeyService";
+import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from "../core/registry/MenuRegistry";
+import { executeCommand } from "../core/registry/CommandRegistry";
+import { ContextKeyService } from "../core/registry/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
 import "./TitleBar.css";
 

@@ -12,9 +12,9 @@
 
 import { useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { getCommands, executeCommand, type Command } from "../../core/CommandRegistry";
-import { ContextKeyService } from "../../core/ContextKeyService";
-import { openKeybindingsSettings, findKeybindingForCommand } from "../../core/KeybindingRegistry"; // E3f #59 + E3.5 #CP05
+import { getCommands, executeCommand, type Command } from "../../core/registry/CommandRegistry";
+import { ContextKeyService } from "../../core/registry/ContextKeyService";
+import { openKeybindingsSettings, findKeybindingForCommand } from "../../core/registry/KeybindingRegistry"; // E3f #59 + E3.5 #CP05
 import QuickPick from "./QuickPick";
 
 interface Props {

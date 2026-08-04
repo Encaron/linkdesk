@@ -9,14 +9,14 @@
  */
 
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
-import { getMergedSchema } from "./ConfigurationRegistry";
-import { executeCommand, getCommands } from "./CommandRegistry";
+import { getMergedSchema } from "./registry/ConfigurationRegistry";
+import { executeCommand, getCommands } from "./registry/CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
-import { LanguageRegistry } from "./LanguageRegistry";
+import { LanguageRegistry } from "./registry/LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
 import { shellEvents } from "./ShellEvents"; // E5#68
-import { ContextKeyService } from "./ContextKeyService"; // E5#70
-import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "./MenuRegistry"; // E5#69
+import { ContextKeyService } from "./registry/ContextKeyService"; // E5#70
+import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "./registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; // E5#85
 import { pushToast, dismissToast, updateToast } from "./toast";

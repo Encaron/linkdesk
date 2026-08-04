@@ -19,10 +19,10 @@
  */
 
 import React from "react";
-import { registerCommand } from "./CommandRegistry";
-import { registerMenuItems } from "./MenuRegistry";
-import { registerKeybinding } from "./KeybindingRegistry";
-import { registerConfiguration, unregisterConfiguration, registerConfigurationDefaults, unregisterConfigurationDefaults } from "./ConfigurationRegistry";
+import { registerCommand } from "./registry/CommandRegistry";
+import { registerMenuItems } from "./registry/MenuRegistry";
+import { registerKeybinding } from "./registry/KeybindingRegistry";
+import { registerConfiguration, unregisterConfiguration, registerConfigurationDefaults, unregisterConfigurationDefaults } from "./registry/ConfigurationRegistry";
 import { useConfiguration, useConfigurationValue } from "./useConfiguration";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
 import { useSendData } from "./useSendData";

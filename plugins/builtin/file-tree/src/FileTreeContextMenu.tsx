@@ -7,8 +7,8 @@
  */
 
 import React, { useEffect, type MutableRefObject } from "react";
-import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
-import { MenuId } from "@src/core/MenuRegistry";
+import { registerCommand, executeCommand } from "@src/core/registry/CommandRegistry";
+import { MenuId } from "@src/core/registry/MenuRegistry";
 
 import { removeFolder } from "@src/core/WorkspaceService";
 import { shellEvents } from "@src/core/ShellEvents";

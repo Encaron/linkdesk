@@ -11,7 +11,7 @@
  *   deco.detach();    // FoldersView unmount
  */
 
-import { FileDecorationRegistry } from "@src/core/FileDecorationRegistry";
+import { FileDecorationRegistry } from "@src/core/registry/FileDecorationRegistry";
 import type { FileTreeModel, ExplorerItem } from "./FileTreeModel";
 
 const lk = (window as any).linkdesk;

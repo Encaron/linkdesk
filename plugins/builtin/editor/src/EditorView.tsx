@@ -10,7 +10,7 @@
  * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { getLangDef } from "@src/core/LangDefRegistry";
+import { getLangDef } from "@src/core/registry/LangDefRegistry";
 
 const lk = (window as any).linkdesk;
 import { initMonacoEnv } from "./monaco-init";

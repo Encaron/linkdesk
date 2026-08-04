@@ -9,7 +9,7 @@
  */
 
 import { useState, useEffect } from "react";
-import { LanguageRegistry } from "../core/LanguageRegistry";
+import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import { setConfigurationValue } from "../core/ConfigurationService";
 import { useConfigurationValue } from "../core/useConfiguration";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";

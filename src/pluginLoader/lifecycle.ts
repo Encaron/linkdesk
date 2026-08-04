@@ -16,17 +16,17 @@
 import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/PluginStateService";
-import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
-import { unregisterPluginCommands } from "../core/CommandRegistry";
-import { unregisterPluginKeybindings } from "../core/KeybindingRegistry";
-import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/MenuRegistry";
-import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
+import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";
+import { unregisterPluginCommands } from "../core/registry/CommandRegistry";
+import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry";
+import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/MenuRegistry";
+import { unregisterPluginProtocols } from "../core/registry/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/CardRegistry";
 import { unregisterPluginChannels } from "../core/LogChannel";
 import { unregisterPluginFileAssociations } from "../core/FileAssociationService";
 import { unregisterPluginThemes } from "../core/ThemeEngine";
-import { ThemeRegistry } from "../core/ThemeRegistry";
-import { unregisterStatusBarPlugin } from "../core/StatusBarService";
+import { ThemeRegistry } from "../core/registry/ThemeRegistry";
+import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
 import i18n from "../i18n";
 import type { PluginManifest } from "../core/types";
 

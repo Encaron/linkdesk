@@ -12,7 +12,7 @@
  * - 命令 ID 就是插件的公共 API——跨插件命令调用走 execute() 不走 hard import
  */
 
-import type { CancellationToken } from "./CancellationToken";
+import type { CancellationToken } from "../CancellationToken";
 
 /* ── 类型 ── */
 
@@ -115,7 +115,7 @@ export async function executeCommand(
     // Phase 5 盲区 8：错误隔离——toast 报告但不崩面板
     const msg = err instanceof Error ? err.message : String(err);
     // 动态 import toast 避免循环依赖
-    import("./toast").then(({ pushToast }) => {
+    import("../toast").then(({ pushToast }) => {
       pushToast({
         message: `命令 "${cmd.title}" 执行出错: ${msg}`,
         severity: "error",

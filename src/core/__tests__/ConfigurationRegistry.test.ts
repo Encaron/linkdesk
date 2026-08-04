@@ -18,8 +18,8 @@ import {
   consumeSettingsGroup,
   onRequestSettingsGroup,
   clearConfigurationRegistrations,
-} from "../ConfigurationRegistry";
-import type { ConfigurationContribution } from "../ConfigurationRegistry";
+} from "../registry/ConfigurationRegistry";
+import type { ConfigurationContribution } from "../registry/ConfigurationRegistry";
 
 const MOCK_CONFIG: ConfigurationContribution = {
   title: "测试设置",
