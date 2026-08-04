@@ -90,10 +90,12 @@ export function createEventSystem(
       let arr = subscriptions.get(channel);
       if (!arr) { arr = []; subscriptions.set(channel, arr); }
       arr.push(cb);
+      ipcRenderer.send('plugin-push-test', { type: 'on-added', channel, count: arr.length });
       return () => {
         const idx = arr!.indexOf(cb);
         if (idx !== -1) arr!.splice(idx, 1);
         if (arr!.length === 0) subscriptions.delete(channel);
+        ipcRenderer.send('plugin-push-test', { type: 'on-removed', channel, count: arr!.length });
       };
     },
 
