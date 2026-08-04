@@ -14,6 +14,7 @@
 import { Emitter, type Event, CoreEvents } from "./CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
 import { normalizePath } from "./pathUtils";
+import { shellEvents } from "./ShellEvents";
 import { setPluginStateValue, getPluginStateValue } from "./PluginStateService";
 
 /* ── 类型 ── */
@@ -147,6 +148,7 @@ export function removeFolder(folderPath: string): void {
 
   _onDidChangeFolders.fire([..._folders]);
   CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
+  shellEvents.emit("workspace:folderRemoved", { folderUri: normalized });
 
   // 若移除的是活跃工作区→自动切到第一个剩余文件夹；无剩余→清空
   if (_activeWorkspaceUri === normalized) {

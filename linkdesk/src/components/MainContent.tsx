@@ -222,21 +222,6 @@ function MainContent({
     return unsub;
   }, [createTab]);
 
-  // E5#5e-ii-c：插件卸载时关闭其所有标签页 + E5#10 清除 WebView 就绪状态
-  useEffect(() => {
-    const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
-      for (const g of tabState.groups) {
-        for (const tab of g.tabs) {
-          if (tab.pluginId === pluginId || tab.detailPluginId === pluginId) {
-            forceCloseTab(tab.id);
-          }
-        }
-      }
-      // E5#81：插件卸载 → 归一化清除 WebView 状态
-      resetWebViewState(pluginId);
-    });
-    return unsub;
-  }, [tabState.groups, forceCloseTab]);
 
   // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
   useEffect(() => {
@@ -346,6 +331,14 @@ function MainContent({
     registerPoolRef,
     resetWebViewState,
   } = useWebViewSync(tabState, isShellRenderedTab, pv);
+
+  // E5#5e-ii-c：插件卸载时清除 WebView 状态（标签页关闭由 useTabManager 集中处理 E5#54）
+  useEffect(() => {
+    const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
+      resetWebViewState(pluginId);
+    });
+    return unsub;
+  }, [resetWebViewState]);
 
   // editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径（不依赖 React props）
   useEffect(() => {

@@ -8,6 +8,8 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/DialogService";
+import { shellEvents } from "../core/ShellEvents";
+import { normalizePath } from "../core/pathUtils";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -1047,6 +1049,52 @@ export function useTabManager() {
       root: prev.root,
     };
   }, []);
+
+  // ── E5#54b：标签页生命周期——集中订阅外部事件，TabManager 唯一权威 ──
+  useEffect(() => {
+    const u1 = shellEvents.on("file:deleted", ({ filePath }) => {
+      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
+      for (const t of tabs) {
+        if (t.sourceId === filePath || t.filePath === filePath) {
+          forceCloseTab(t.id);
+        }
+      }
+    });
+    const u2 = shellEvents.on("file:renamed", ({ oldPath, newPath }) => {
+      setTabState((prev) => {
+        const newGroups = prev.groups.map((g) => ({
+          ...g,
+          tabs: g.tabs.map((t) => {
+            if (t.sourceId === oldPath || t.filePath === oldPath) {
+              const newLabel = normalizePath(newPath).split("/").pop() || newPath;
+              return { ...t, label: newLabel, filePath: newPath, sourceId: newPath };
+            }
+            return t;
+          }),
+        }));
+        return { ...prev, groups: newGroups };
+      });
+    });
+    const u3 = shellEvents.on("plugin:removed", ({ pluginId }) => {
+      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
+      for (const t of tabs) {
+        if (t.pluginId === pluginId || t.type === pluginId) {
+          forceCloseTab(t.id);
+        }
+      }
+    });
+    const u4 = shellEvents.on("workspace:folderRemoved", ({ folderUri }) => {
+      const normalized = normalizePath(folderUri);
+      const tabs = tabStateRef.current.groups.flatMap((g) => g.tabs);
+      for (const t of tabs) {
+        const fp = t.filePath ?? t.sourceId ?? "";
+        if (normalizePath(fp).startsWith(normalized)) {
+          forceCloseTab(t.id);
+        }
+      }
+    });
+    return () => { u1(); u2(); u3(); u4(); };
+  }, [forceCloseTab]);
 
   return {
     tabState,
