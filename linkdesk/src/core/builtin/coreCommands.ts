@@ -7,7 +7,7 @@
  *           docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子1
  *
  * 模式：模块级 callbacks ref——App.tsx 每次渲染更新 ref（零开销），
- * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
+ * handler 延迟读取 getCallbacks() 避免闭包过期。命令只在首次调用时注册一次。
  */
 
 import { registerCommand, type Command } from "../registry/CommandRegistry";
@@ -21,42 +21,10 @@ import i18n from "../../i18n";
 import { getWorkspaceLayout } from "../services/LayoutService"; // E3f #56
 import { getUserSettings } from "../services/ConfigurationService"; // E3f #56
 
-/* ── Callbacks ── */
-
-export interface CoreCallbacks {
-  /** 关闭指定标签页 */
-  closeTab: (tabId: string) => void;
-  /** 关闭组内除指定标签页外的所有标签页 */
-  closeOtherTabs: (groupId: string, exceptTabId: string) => void;
-  /** 关闭组内指定标签页右侧的所有标签页 */
-  closeRightTabs: (groupId: string, tabIndex: number) => void;
-  /** 分屏 */
-  splitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
-  /** 查找标签页所在的组 */
-  findGroupByTabId: (tabId: string) => { groupId: string; tabs: Array<{ id: string }> } | null;
-  /** 打开/聚焦标签页 */
-  openTab: (pluginId: string) => string;
-  /** E3f #59-F：关闭当前活跃标签页 */
-  closeActiveTab: () => void;
-  /** E5#55：恢复最近关闭的标签页——对标 VS Code Ctrl+Shift+T */
-  reopenClosedTab: () => string | null;
-  /** E3f #59-F：切换到组内下一个标签页（shift=true 则上一个） */
-  focusNextTab: (shift: boolean) => void;
-  /** E3f #59-F：切换分屏/合屏 */
-  toggleSplit: () => void;
-  /** E3f #59-F：跳转到第 N 个标签页（全局，1-based） */
-  focusNthTab: (n: number) => void;
-  /** E4V#xx: 关闭所有编辑器标签页（带 filePath 的标签页） */
-  closeAllEditors: () => void;
-}
-
-let _callbacks: CoreCallbacks | null = null;
-let _registered = false;
-
-/** 每次渲染调用——更新 callbacks ref（零开销赋值，无需 deps 管理） */
-export function updateCoreCallbacks(cb: CoreCallbacks): void {
-  _callbacks = cb;
-}
+// E5#44-1：Callbacks 类型 + 注册函数提取到 CoreCallbacks.ts
+export type { CoreCallbacks } from "./CoreCallbacks";
+export { updateCoreCallbacks } from "./CoreCallbacks";
+import { getCallbacks, isRegistered, setRegistered } from "./CoreCallbacks";
 
 /* ── 命令定义 ── */
 
@@ -72,7 +40,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       // E3f #53e：滚动到指定配置项——设置项齿轮"重置"等外部调用消费
       if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
       const settingsId = factorySlots.getPluginId("settings");
-      if (settingsId) _callbacks?.openTab(settingsId);
+      if (settingsId) getCallbacks()?.openTab(settingsId);
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -188,7 +156,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
-      if (ctx?.tabId) _callbacks?.closeTab(ctx.tabId);
+      if (ctx?.tabId) getCallbacks()?.closeTab(ctx.tabId);
     },
     menuId: MenuId.TabContext,
     menuGroup: "navigation",
@@ -200,8 +168,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
-        const group = _callbacks?.findGroupByTabId(ctx.tabId);
-        if (group) _callbacks?.closeOtherTabs(group.groupId, ctx.tabId);
+        const group = getCallbacks()?.findGroupByTabId(ctx.tabId);
+        if (group) getCallbacks()?.closeOtherTabs(group.groupId, ctx.tabId);
       }
     },
     menuId: MenuId.TabContext,
@@ -214,10 +182,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
-        const group = _callbacks?.findGroupByTabId(ctx.tabId);
+        const group = getCallbacks()?.findGroupByTabId(ctx.tabId);
         if (group) {
           const idx = group.tabs.findIndex((t) => t.id === ctx.tabId);
-          if (idx >= 0) _callbacks?.closeRightTabs(group.groupId, idx);
+          if (idx >= 0) getCallbacks()?.closeRightTabs(group.groupId, idx);
         }
       }
     },
@@ -230,7 +198,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
-      if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "vertical");
+      if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
     },
     menuId: MenuId.TabContext,
     menuGroup: "split",
@@ -241,7 +209,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
-      if (ctx?.tabId) _callbacks?.splitTab(ctx.tabId, "horizontal");
+      if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
     },
     menuId: MenuId.TabContext,
     menuGroup: "split",
@@ -310,7 +278,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("关闭标签页"),
     category: i18n.t("标签页"),
     handler: async () => {
-      _callbacks?.closeActiveTab();
+      getCallbacks()?.closeActiveTab();
     },
   },
   {
@@ -318,7 +286,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("重新打开已关闭的编辑器"),
     category: i18n.t("标签页"),
     handler: async () => {
-      _callbacks?.reopenClosedTab();
+      getCallbacks()?.reopenClosedTab();
     },
   },
   {
@@ -326,7 +294,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("下一个标签页"),
     category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
-      _callbacks?.focusNextTab(!!(args[0] as { shift?: boolean } | undefined)?.shift);
+      getCallbacks()?.focusNextTab(!!(args[0] as { shift?: boolean } | undefined)?.shift);
     },
   },
   {
@@ -334,7 +302,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("切换分屏"),
     category: i18n.t("标签页"),
     handler: async () => {
-      _callbacks?.toggleSplit();
+      getCallbacks()?.toggleSplit();
     },
   },
   {
@@ -342,7 +310,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: i18n.t("关闭所有编辑器"),
     category: i18n.t("标签页"),
     handler: async () => {
-      _callbacks?.closeAllEditors();
+      getCallbacks()?.closeAllEditors();
     },
   },
   {
@@ -351,7 +319,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     category: i18n.t("标签页"),
     handler: async (_token, ...args) => {
       const n = (args[0] as { n: number } | undefined)?.n;
-      if (n) _callbacks?.focusNthTab(n);
+      if (n) getCallbacks()?.focusNthTab(n);
     },
   },
 
@@ -361,8 +329,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 
 /** 确保核心命令 + 菜单项已注册（幂等——只执行一次）。 */
 export function ensureCoreCommands(): void {
-  if (_registered) return;
-  _registered = true;
+  if (isRegistered()) return;
+  setRegistered();
 
   // ── 注册核心标签页命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
