@@ -72,7 +72,7 @@ const WEBVIEW_READY_PLUGINS = new Set<string>([
   "settings",       // ✅ E5#11f 验证通过——独立表单 UI
   "marketplace",    // ✅ E5#11g 验证通过——独立 UI
   "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  // "editor",      // 🔴 待改造——需 IPC 接收 filePath
+  "editor",         // ✅ E5#76——IPC 接收 filePath（requestToPlugin openFile）
   // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
 ]);
 
@@ -210,6 +210,17 @@ function MainContent({
     });
     return unsub;
   }, [createTab]);
+
+  // E5#76：editor 标签页 sourceId 变更 → IPC 推送到 editor WebView
+  useEffect(() => {
+    for (const g of tabState.groups) {
+      for (const tab of g.tabs) {
+        if (tab.pluginId === "editor" && tab.sourceId) {
+          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+        }
+      }
+    }
+  }, [tabState.groups]);
 
   // E5#5e-ii-c：插件卸载时关闭其所有标签页 + E5#10 清除 WebView 就绪状态
   useEffect(() => {
