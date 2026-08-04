@@ -1,42 +1,41 @@
 /**
- * 编辑器插件入口。E5#76d：独立 WebView——模块级 handler + pending queue。
+ * 编辑器插件入口。
+ * E4 R17：Monaco 编辑器——tabOnly 视图插件。
+ *
+ * 壳渲染链路：MainContent.tsx L88-94
+ *   getViewPlugin("editor") → <plugin.component isActive={isActive} sourceId={tab.sourceId} />
+ * 约定：sourceId = filePath（文件树 createTab 时传入）
  */
-import React, { useState } from "react";
+import React from "react";
 import EditorTab from "./EditorTab";
 import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
 import "./editor.css";
 
+// E4V#40n——模块加载时初始化 Hot Exit
 initHotExit();
 
-// E5#76d：模块级——linkdesk 可能未就绪，重试注册
-let _setFilePath: ((v: string | null) => void) | null = null;
-let _pending: string | null = null;
-(function _register() {
-  const api = (window as any).linkdesk?.pluginRequest;
-  if (!api) { setTimeout(_register, 10); return; }
-  api.handle("openFile", async (payload: any) => {
-    const fp = payload?.filePath ?? null;
-    if (_setFilePath) { _setFilePath(fp); }
-    else { _pending = fp; }
-  });
-})();
+export interface EditorPluginProps {
+  isActive: boolean;
+  sourceId?: string;
+}
 
-const EditorPlugin: React.FC = () => {
-  const [filePath, setFilePath] = useState<string | null>(_pending);
-  _setFilePath = setFilePath;
-  if (_pending) { _pending = null; if (!filePath) setFilePath(_pending!); }
-
-  if (!filePath) {
-    return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
+const EditorPlugin: React.FC<EditorPluginProps> = ({ isActive, sourceId }) => {
+  if (!sourceId) {
+    return (
+      <div className="editor-container editor-empty">
+        编辑器（无打开文件——sourceId 未设置）
+      </div>
+    );
   }
 
-  if (filePath.includes("|||")) {
-    const [orig, mod] = filePath.split("|||");
-    return <DiffEditor originalPath={orig} modifiedPath={mod} isActive={true} />;
+  // E4V#40m——Diff：sourceId = "originalPath|||modifiedPath"
+  if (sourceId.includes("|||")) {
+    const [originalPath, modifiedPath] = sourceId.split("|||");
+    return <DiffEditor originalPath={originalPath} modifiedPath={modifiedPath} isActive={isActive} />;
   }
 
-  return <EditorTab filePath={filePath} isActive={true} />;
+  return <EditorTab filePath={sourceId} isActive={isActive} />;
 };
 
 export default EditorPlugin;

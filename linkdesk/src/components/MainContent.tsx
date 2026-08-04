@@ -72,7 +72,7 @@ const WEBVIEW_READY_PLUGINS = new Set<string>([
   "settings",       // ✅ E5#11f 验证通过——独立表单 UI
   "marketplace",    // ✅ E5#11g 验证通过——独立 UI
   "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  "editor",         // ✅ E5#76d——ResizeObserver 等容器有尺寸后再创建 Monaco
+  // "editor",      // 🔴 E5#76d——Monaco 初始化问题，React fallback 不工作，待后续
   // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
 ]);
 
@@ -338,22 +338,6 @@ function MainContent({
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
-  // E5#76：editor 标签页 sourceId → IPC 推送到 editor WebView
-  useEffect(() => {
-    const send = () => {
-      for (const g of tabState.groups) {
-        for (const tab of g.tabs) {
-          if (tab.pluginId === "editor" && tab.sourceId) {
-            (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
-          }
-        }
-      }
-    };
-    send();
-    // E5#76d：rAF 确保 React useEffect 已执行（handler 已注册）后再补发一次
-    const raf = requestAnimationFrame(send);
-    return () => cancelAnimationFrame(raf);
-  }, [tabState.groups, readyWebViewIds]);
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
