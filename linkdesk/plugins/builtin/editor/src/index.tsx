@@ -11,18 +11,18 @@ import "./editor.css";
 
 initHotExit();
 
-// E5#76 debug
+// E5#76：延迟注册——模块加载时 window.linkdesk 可能未就绪
 let _setFilePath: ((v: string | null) => void) | null = null;
 let _pendingFile: string | null = null;
-try {
+function _registerHandler() {
   const api = (window as any).linkdesk?.pluginRequest;
-  console.log("[editor] pluginRequest api:", !!api);
-  api?.handle("openFile", async (payload: any) => {
-    console.log("[editor] openFile 收到:", payload);
+  if (!api) { setTimeout(_registerHandler, 10); return; }
+  api.handle("openFile", async (payload: any) => {
     const fp = payload?.filePath ?? null;
-    if (_setFilePath) { _setFilePath(fp); } else { console.log("[editor] _setFilePath null, pending"); _pendingFile = fp; }
+    if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
   });
-} catch (e) { console.error("[editor] pluginRequest 注册失败:", e); }
+}
+_registerHandler();
 
 const EditorPlugin: React.FC = () => {
   const [filePath, setFilePath] = useState<string | null>(_pendingFile);
