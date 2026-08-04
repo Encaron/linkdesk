@@ -12,6 +12,7 @@ import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
 import { getTabCreatableViews, invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
+import { normalizePath } from "../core/pathUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
@@ -127,7 +128,7 @@ export default function TabBar({
         result.set(t.id, t.label);
         continue;
       }
-      const parts = t.filePath.replace(/\\/g, "/").split("/").filter(Boolean);
+      const parts = normalizePath(t.filePath).split("/").filter(Boolean);
       const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
       result.set(t.id, parent ? `${t.label} • ${parent}/` : t.label);
     }

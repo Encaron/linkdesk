@@ -15,7 +15,6 @@ import { useTabManager, allTabs } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
-import { showConfirm } from "../core/DialogService";
 import { updateCoreCallbacks, type CoreCallbacks } from "../core/coreCommands";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
@@ -301,12 +300,7 @@ function MainContent({
       const tab = group?.tabs.find((t) => t.id === group.activeTabId);
       if (!tab) return;
       if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
-      const result = closeTab(tab.id);
-      if (!result.closed && result.reason === "dirty") {
-        if (await showConfirm(t("「{{label}}」有未保存的修改，确定关闭？", { label: t(tab.label) }))) {
-          forceCloseTab(tab.id);
-        }
-      }
+      await closeTab(tab.id);
     },
     focusNextTab: (shift) => {
       const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
