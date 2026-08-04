@@ -28,11 +28,6 @@ try {
   let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
-  // E5#74e 自动化测试：IPC 通知 main process
-  ipcRenderer.send('plugin-push-test', { type: 'registered', time: Date.now() });
-  ipcRenderer.on('plugin:push', (_e: any, d: any) => {
-    ipcRenderer.send('plugin-push-test', { type: 'received', channel: d.channel, time: Date.now() });
-  });
 
   // ── E3j #77a：归一化事件系统——提取到 event-system.ts ──
   const events = createEventSystem(ipcRenderer, {
@@ -255,18 +250,12 @@ try {
         ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
 
-    // ── E5#74e fix：p2p.on 走独立 IPC channel——不再依赖 plugin:push ──
+    // ── E5#65：p2p 插件间定向推流——send 走 pushToPlugin，on 走 events（plugin:push 已修复）──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
       },
-      on: (channel: string, cb: (data: unknown) => void) => {
-        const handler = (_event: any, d: { channel: string; data: unknown }) => {
-          if (d.channel === channel) cb(d.data);
-        };
-        ipcRenderer.on('p2p:data', handler);
-        return () => { ipcRenderer.removeListener('p2p:data', handler); };
-      },
+      on: events.on,
     },
 
     // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
