@@ -38,14 +38,6 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
   // E3f #58：开发者工具——切换插件 DevTools
-  {
-    id: "workbench.action.togglePluginDevTools",
-    title: i18n.t("切换插件 DevTools"),
-    category: i18n.t("开发者"),
-    handler: async () => {
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER));
-    },
-  },
   // E3f #54：输出面板
   {
     id: "workbench.action.showOutput",
@@ -228,6 +220,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 // E5#44-3：设置命令已提取到 settingsCommands.ts
 import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
+import { registerDeveloperCommands } from "./developerCommands";
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
 
@@ -239,6 +232,7 @@ export function ensureCoreCommands(): void {
   // E5#44-2/3：标签页 + 设置命令独立注册
   registerTabCommands();
   registerSettingsCommands();
+  registerDeveloperCommands();
 
   // ── 注册核心命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
