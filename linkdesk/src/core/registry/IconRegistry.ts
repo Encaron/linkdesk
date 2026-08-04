@@ -13,7 +13,7 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
-import type { IconThemeContribution, IconContribution } from "../types";
+import type { IconThemeContribution, IconContribution } from "../api/types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;

@@ -10,7 +10,7 @@
  * 架构：圆形大厅的"主题本"——插件往本子上登记自己提供的主题，谁都可以翻。
  */
 
-import type { ThemeContribution } from "../types";
+import type { ThemeContribution } from "../api/types";
 import { findTheme } from "../ThemeEngine";
 
 interface RegisteredTheme extends ThemeContribution {

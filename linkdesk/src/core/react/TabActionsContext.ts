@@ -7,7 +7,7 @@
  */
 import { useMemo } from "react";
 import { shellEvents } from "./ShellEvents";
-import type { CreateTabOptions } from "../types";
+import type { CreateTabOptions } from "../api/types";
 import type { CloseTabResult } from "../../hooks/useTabManager";
 
 export interface TabActions {

@@ -26,7 +26,7 @@ interface TabBarProps {
   isActiveGroup: boolean;
   onFocusTab: (tabId: string) => void;
   onCloseTab: (tabId: string) => void;
-  onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => string;
+  onCreateTab: (type: string, opts?: import("../core/api/types").CreateTabOptions) => string;
   onMoveTab?: (tabId: string, targetGroupId?: string) => void;
   onReorderTab?: (tabId: string, toIndex: number) => void;
   /** 对标 VS Code：双击标签页 → 固定/取消固定 */
@@ -51,7 +51,7 @@ function PlusMenu({
 }: {
   isOpen: boolean;
   onClose: () => void;
-  onCreateTab: (type: string, opts?: import("../core/types").CreateTabOptions) => void;
+  onCreateTab: (type: string, opts?: import("../core/api/types").CreateTabOptions) => void;
   buttonRef: React.RefObject<HTMLButtonElement | null>;
 }) {
   const { t } = useTranslation();

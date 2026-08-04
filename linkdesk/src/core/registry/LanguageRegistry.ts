@@ -13,7 +13,7 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
-import type { LanguageContribution } from "../types";
+import type { LanguageContribution } from "../api/types";
 
 interface RegisteredLanguage extends LanguageContribution {
   pluginId: string;

@@ -22,13 +22,13 @@
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
-import type { PluginManifest, ViewPluginEntry } from "../core/types";
+import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
-import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/types";
+import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/NotificationService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService

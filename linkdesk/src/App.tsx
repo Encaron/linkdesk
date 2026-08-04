@@ -40,7 +40,7 @@ import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/ConfigurationApplier";
-import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
+import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API namespace
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 

@@ -11,7 +11,7 @@ import { useState, useMemo, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getViewPlugin } from "../../pluginLoader/viewRegistry";
 import { disablePlugin, enablePlugin, reinstallPlugin, isPluginDisabled, getPluginCachedStatus, getPluginCachedMeta, performUninstall, getLoadedPluginManifests } from "../../pluginLoader/loader";
-import type { ViewPluginEntry } from "../../core/types";
+import type { ViewPluginEntry } from "../../core/api/types";
 import "./PluginDetailView.css";
 
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
@@ -389,6 +389,6 @@ function ChangelogTab({ changelog }: { changelog: NonNullable<PluginManifest["ch
 }
 
 /* ── 类型引用 ── */
-import type { PluginManifest } from "../../core/types";
+import type { PluginManifest } from "../../core/api/types";
 
 export default PluginDetailView;

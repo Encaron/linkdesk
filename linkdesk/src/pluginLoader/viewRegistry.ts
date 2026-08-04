@@ -4,7 +4,7 @@
  * 设计依据：[[phase4-design-decisions]] 第 4 条。
  */
 
-import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types";
+import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/api/types";
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
