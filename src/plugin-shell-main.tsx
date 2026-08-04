@@ -13,6 +13,7 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
+import { initPluginStates } from "./core/PluginStateService"; // E5#71e：插件 WebView 也需初始化
 
 const params = new URLSearchParams(window.location.search);
 const pluginId = params.get("plugin-view");
@@ -24,7 +25,7 @@ const pluginModules = {
   ...import.meta.glob("../plugins/user/*/src/index.tsx"),
 };
 
-function bootstrap() {
+async function bootstrap() {
   // E5#10：全局错误捕获——WebView 内任何未捕获异常都记录
   window.addEventListener("error", (e) => {
     console.error(`[plugin-shell] global error:`, e.message, e.filename, e.lineno);
@@ -40,6 +41,9 @@ function bootstrap() {
     root.textContent = "缺少参数: ?plugin-view=<插件ID>";
     return;
   }
+
+  // E5#71e：先加载 pluginState 缓存再渲染组件——确保同步 getPluginStateValue 可用
+  try { await initPluginStates(); } catch (err) { console.error("[plugin-shell] initPluginStates 失败:", err); }
 
   // E4 #86：插件在 builtin/ 或 user/ 下——遍历 glob keys 查找匹配路径
   let modulePath: string | undefined;
