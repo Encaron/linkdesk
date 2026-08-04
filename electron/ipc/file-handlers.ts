@@ -7,8 +7,10 @@
 
 import { ipcMain, BrowserWindow } from 'electron';
 import { fileService } from '../services/file-service.js';
+import type { WindowManager } from '../window-manager.js';
 
-export function registerFileHandlers(): void {
+// E5#80：windowManager 用于广播文件变更到所有插件 WebView
+export function registerFileHandlers(windowManager?: WindowManager): void {
   // ── 路径 ──
 
   ipcMain.handle('path:appDataDir', () => {
@@ -71,6 +73,12 @@ export function registerFileHandlers(): void {
       const win = BrowserWindow.fromWebContents(event.sender);
       if (win && !win.isDestroyed()) {
         win.webContents.send(`filesystem:changed:${watcherId}`, change);
+      }
+      // E5#80：广播文件变更到所有插件 WebView
+      if (windowManager) {
+        for (const pluginId of windowManager.getAllPluginIds()) {
+          windowManager.getPluginView(pluginId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
+        }
       }
     });
     return watcherId;
