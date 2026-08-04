@@ -340,15 +340,18 @@ function MainContent({
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   // E5#76：editor 标签页 sourceId 变更 → IPC 推送到 editor WebView
   useEffect(() => {
+    console.log("[E5#76] useEffect fired, groups:", tabState.groups.length, "readyEditor:", readyWebViewIds.has("editor"));
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
-        if (tab.pluginId === "editor" && tab.sourceId) {
-          console.log("[E5#76] 发送 openFile:", tab.sourceId, "readyWebViewIds:", readyWebViewIds.has("editor"));
-          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).then(() => {
-            console.log("[E5#76] openFile 发送成功");
-          }).catch((e: any) => {
-            console.error("[E5#76] openFile 发送失败:", e);
-          });
+        if (tab.pluginId === "editor") {
+          console.log("[E5#76] editor tab found, sourceId:", tab.sourceId);
+          if (tab.sourceId) {
+            (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).then(() => {
+              console.log("[E5#76] openFile 发送成功");
+            }).catch((e: any) => {
+              console.error("[E5#76] openFile 发送失败:", e);
+            });
+          }
         }
       }
     }
