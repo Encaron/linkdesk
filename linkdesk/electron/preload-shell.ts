@@ -27,7 +27,7 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
 });
 
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
-const events = createEventSystem(ipcRenderer, {
+const events = createEventSystem(ipcRenderer, null, {
   logPrefix: 'preload-shell',
 });
 

@@ -58,15 +58,15 @@ const DEV_LOG = typeof process !== "undefined"
  */
 export function createEventSystem(
   ipcRenderer: IpcRenderer,
+  subscriptions: Map<string, Array<(payload: unknown) => void>> | null,
   options: EventSystemOptions,
 ): EventSystemApi {
-  // E5#74e: 用数组替代 Set——contextBridge proxy 引用在 Set 中丢失
-  const subscriptions = new Map<string, EventCallback[]>();
+  const subs = subscriptions ?? new Map<string, Array<(payload: unknown) => void>>();
   const { logPrefix, extraHandlers } = options;
 
   ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
     // E5#74e debug
-    const arr = subscriptions.get(data.channel);
+    const arr = subs.get(data.channel);
     ipcRenderer.send('plugin-push-test', { type: 'events-dispatch', channel: data.channel, subs: arr?.length ?? 0 });
     if (DEV_LOG) {
       const count = arr?.length ?? 0;
@@ -87,14 +87,14 @@ export function createEventSystem(
 
   return {
     on(channel: string, cb: EventCallback): () => void {
-      let arr = subscriptions.get(channel);
-      if (!arr) { arr = []; subscriptions.set(channel, arr); }
+      let arr = subs.get(channel);
+      if (!arr) { arr = []; subs.set(channel, arr); }
       arr.push(cb);
       ipcRenderer.send('plugin-push-test', { type: 'on-added', channel, count: arr.length });
       return () => {
         const idx = arr!.indexOf(cb);
         if (idx !== -1) arr!.splice(idx, 1);
-        if (arr!.length === 0) subscriptions.delete(channel);
+        if (arr!.length === 0) subs.delete(channel);
         ipcRenderer.send('plugin-push-test', { type: 'on-removed', channel, count: arr!.length });
       };
     },
