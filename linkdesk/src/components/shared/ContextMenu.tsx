@@ -271,7 +271,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         );
       })}
       {hoveredChildren && (
-        <div className="ctx-menu ctx-sub-panel" style={{ left: adjustedAnchor.left + 180, top: adjustedAnchor.top }}>
+        <div
+          className="ctx-menu ctx-sub-panel"
+          style={{ left: adjustedAnchor.left + 180, top: adjustedAnchor.top }}
+          onMouseEnter={() => { /* keep alive */ }}
+          onMouseLeave={() => setHoveredChildren(null)}
+        >
           {hoveredChildren.map((child) => (
             <div key={child.id} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
               <span className="ctx-item-label">{child.label}</span>
