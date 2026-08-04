@@ -249,12 +249,18 @@ try {
         ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
 
-    // ── E5#65：p2p 插件间定向推流——⚠️ 受阻于 E5#74，events.on 收不到 plugin:push ──
+    // ── E5#74e fix：p2p.on 走独立 IPC channel——不再依赖 plugin:push ──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
       },
-      on: events.on,
+      on: (channel: string, cb: (data: unknown) => void) => {
+        const handler = (_event: any, d: { channel: string; data: unknown }) => {
+          if (d.channel === channel) cb(d.data);
+        };
+        ipcRenderer.on('p2p:data', handler);
+        return () => { ipcRenderer.removeListener('p2p:data', handler); };
+      },
     },
 
     // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
