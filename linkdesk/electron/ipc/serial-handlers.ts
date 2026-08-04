@@ -11,27 +11,44 @@
 
 import { BrowserWindow, ipcMain } from 'electron';
 import { serialService, OpenPortConfig } from '../services/serial-service.js';
+import type { WindowManager } from '../window-manager.js';
 
 /**
  * 注册所有串口 IPC 处理器。
- * 在 main.ts 的 app.whenReady() 中调用一次。
+ * E5#74b：windowManager 用于广播串口数据到插件 WebView。
  */
-export function registerSerialHandlers(mainWindow: BrowserWindow): void {
+export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?: WindowManager): void {
   // 将 serial-service 的数据推送到渲染进程
   serialService.setCallbacks({
     onData: (text) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:data', text);
       }
+      // E5#74b：广播到插件 WebView
+      if (windowManager) {
+        for (const pluginId of windowManager.getAllPluginIds()) {
+          windowManager.getPluginView(pluginId)?.webContents.send('serial:data', text);
+        }
+      }
     },
     onStats: (stats) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:stats', stats);
       }
+      if (windowManager) {
+        for (const pluginId of windowManager.getAllPluginIds()) {
+          windowManager.getPluginView(pluginId)?.webContents.send('serial:stats', stats);
+        }
+      }
     },
     onSystem: (msg) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:system', msg);
+      }
+      if (windowManager) {
+        for (const pluginId of windowManager.getAllPluginIds()) {
+          windowManager.getPluginView(pluginId)?.webContents.send('serial:system', msg);
+        }
       }
     },
   });

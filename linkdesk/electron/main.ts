@@ -66,8 +66,7 @@ function createWindow(): void {
     show: false, // ready-to-show 后再显示，避免白屏闪烁
   });
 
-  // ── 注册 IPC 处理器 ──
-  registerSerialHandlers(mainWindow);
+  // ── 注册 IPC 处理器（不依赖 WindowManager 的先注册）──
   registerFileHandlers();
   registerPluginHandlers();
   registerDialogHandlers();
@@ -84,6 +83,9 @@ function createWindow(): void {
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
   ipcBridge = new IpcBridge(mainWindow, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
+
+  // E5#74b：串口数据广播到插件 WebView（依赖 WindowManager + IpcBridge 就绪）
+  registerSerialHandlers(mainWindow, windowManager);
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
