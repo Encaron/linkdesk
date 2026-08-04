@@ -359,9 +359,9 @@ export class IpcBridge {
       if (!targetView) return;
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
       // 原始路径：targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
-      // E5#74e 探路：直接用 serial:data channel（已验证可到壳）
-      targetView.webContents.send('serial:system', `[p2p debug] ${JSON.stringify({ channel, data })}`);
-      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}" sent via serial:system`);
+      // E5#74e 探路：serial:system 不通 → 用 serial:data（CM6 已验证收到）
+      targetView.webContents.send('serial:data', `[p2p debug] ch=${channel} data=${JSON.stringify(data)}`);
+      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}" sent via serial:data`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
