@@ -273,57 +273,10 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 
   // ── E3f #59-F：壳级快捷键命令（原 App.tsx 原始 keydown handler 迁移）──
 
-  {
-    id: "workbench.action.closeActiveTab",
-    title: i18n.t("关闭标签页"),
-    category: i18n.t("标签页"),
-    handler: async () => {
-      getCallbacks()?.closeActiveTab();
-    },
-  },
-  {
-    id: "workbench.action.reopenClosedEditor",
-    title: i18n.t("重新打开已关闭的编辑器"),
-    category: i18n.t("标签页"),
-    handler: async () => {
-      getCallbacks()?.reopenClosedTab();
-    },
-  },
-  {
-    id: "workbench.action.nextTab",
-    title: i18n.t("下一个标签页"),
-    category: i18n.t("标签页"),
-    handler: async (_token, ...args) => {
-      getCallbacks()?.focusNextTab(!!(args[0] as { shift?: boolean } | undefined)?.shift);
-    },
-  },
-  {
-    id: "workbench.action.toggleSplit",
-    title: i18n.t("切换分屏"),
-    category: i18n.t("标签页"),
-    handler: async () => {
-      getCallbacks()?.toggleSplit();
-    },
-  },
-  {
-    id: "core.closeAllEditors",
-    title: i18n.t("关闭所有编辑器"),
-    category: i18n.t("标签页"),
-    handler: async () => {
-      getCallbacks()?.closeAllEditors();
-    },
-  },
-  {
-    id: "workbench.action.focusNthTab",
-    title: i18n.t("跳转到标签页"),
-    category: i18n.t("标签页"),
-    handler: async (_token, ...args) => {
-      const n = (args[0] as { n: number } | undefined)?.n;
-      if (n) getCallbacks()?.focusNthTab(n);
-    },
-  },
-
 ];
+
+// E5#44-2：标签页命令已提取到 tabCommands.ts
+import { registerTabCommands } from "./tabCommands";
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
 
@@ -332,7 +285,10 @@ export function ensureCoreCommands(): void {
   if (isRegistered()) return;
   setRegistered();
 
-  // ── 注册核心标签页命令 ──
+  // E5#44-2：标签页命令独立注册
+  registerTabCommands();
+
+  // ── 注册核心命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
 
   for (const cmd of CORE_COMMANDS) {
