@@ -6,12 +6,12 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
 // Mock FileService——不做真实文件操作
-vi.mock("@src/core/FileService", () => ({
+vi.mock("@src/core/services/FileService", () => ({
   copy: vi.fn(),
   deleteEntry: vi.fn(),
 }));
 
-import { copy, deleteEntry } from "@src/core/FileService";
+import { copy, deleteEntry } from "@src/core/services/FileService";
 import { executeSafeDrop } from "../FileTreeDnD";
 
 const mockedCopy = copy as ReturnType<typeof vi.fn>;

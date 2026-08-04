@@ -31,7 +31,7 @@ import { shellEvents } from "../core/ShellEvents";
 // E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
 import TabPanePositioner from "./TabPanePositioner";
 // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存和恢复
-import { getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/LayoutService";
+import { getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/LayoutService";
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import "./MainContent.css";
 

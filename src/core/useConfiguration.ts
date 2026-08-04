@@ -8,7 +8,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
+import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./services/ConfigurationService";
 
 /**
  * 获取并订阅配置值——对标 VS Code workspace.getConfiguration().get(key)

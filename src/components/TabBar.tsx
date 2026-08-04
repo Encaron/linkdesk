@@ -12,7 +12,7 @@ import { detectDropZone } from "../hooks/tabDragTypes";
 import { useDragReorder } from "../hooks/useDragReorder";
 import { getTabCreatableViews, invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { normalizePath } from "../core/pathUtils";
+import { normalizePath } from "../core/services/pathUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";

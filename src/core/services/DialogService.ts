@@ -6,7 +6,7 @@
  * VS Code 对标：vscode.window.showWarningMessage / showInformationMessage
  */
 
-import { shellEvents } from "./ShellEvents";
+import { shellEvents } from "../ShellEvents";
 
 /* ── 类型 ── */
 

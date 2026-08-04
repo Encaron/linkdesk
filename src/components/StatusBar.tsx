@@ -10,7 +10,7 @@ import { Fragment, useState, useEffect, useRef } from "react";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
-import { getConfigurationValue } from "../core/ConfigurationService";
+import { getConfigurationValue } from "../core/services/ConfigurationService";
 import { executeCommand } from "../core/registry/CommandRegistry";
 import { CUSTOM_EVENTS } from "../core/CoreEvents";
 // E5#6a：响应式读配置——替代 App.tsx 传来的 theme/lang props

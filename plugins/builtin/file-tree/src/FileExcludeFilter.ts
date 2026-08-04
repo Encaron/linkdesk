@@ -6,7 +6,7 @@
  * 🔥 当前版本覆盖常见模式（**、*、! 取反）。后续可升级为 picomatch 做完整 glob。
  */
 
-import type { FileEntry } from "@src/core/FileService";
+import type { FileEntry } from "@src/core/services/FileService";
 
 type MatchFn = (input: string) => boolean;
 

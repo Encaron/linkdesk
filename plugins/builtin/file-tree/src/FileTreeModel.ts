@@ -8,7 +8,7 @@
  * VS Code 对标：src/vs/workbench/contrib/files/common/explorerModel.ts
  */
 
-import type { FileEntry } from "@src/core/FileService";
+import type { FileEntry } from "@src/core/services/FileService";
 import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";

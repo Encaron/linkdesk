@@ -27,7 +27,7 @@ import {
 import {
   setConfigurationValue,
   inspectConfiguration,
-} from "../../core/ConfigurationService";
+} from "../../core/services/ConfigurationService";
 import { useConfigurationValue } from "../../core/useConfiguration";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import { MenuId } from "../../core/registry/MenuRegistry";
@@ -65,7 +65,7 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   // 监听配置值变更
   useEffect(() => {
     let unsubscribe: (() => void) | undefined;
-    import("../../core/ConfigurationService").then(({ onDidChangeConfiguration }) => {
+    import("../../core/services/ConfigurationService").then(({ onDidChangeConfiguration }) => {
       unsubscribe = onDidChangeConfiguration(() => setVersion((v) => v + 1));
     });
     return () => { unsubscribe?.(); };
@@ -215,7 +215,7 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
               onClick={() => {
                 // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
                 // 当前占位——React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互
-                import("../../core/ConfigurationService").then(({ getUserSettings }) => {
+                import("../../core/services/ConfigurationService").then(({ getUserSettings }) => {
                   setJsonDialog(JSON.stringify(getUserSettings(), null, 2));
                 });
               }}

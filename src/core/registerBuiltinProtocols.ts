@@ -9,7 +9,7 @@
 
 import { registerProtocol } from "./registry/ProtocolRegistry";
 import { Parse } from "./ProtocolParser";
-import { APP_PLUGIN_ID } from "./PluginStateService";
+import { APP_PLUGIN_ID } from "./services/PluginStateService";
 
 let _registered = false;
 

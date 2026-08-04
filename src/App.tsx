@@ -2,7 +2,7 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
-import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/NotificationService";
+import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/services/NotificationService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
@@ -26,20 +26,20 @@ import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPlugi
 import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
-import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/ConfigurationService";
+import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
 import { useConfigurationValue } from "./core/useConfiguration";
-import { initStorageService } from "./core/StorageService";
+import { initStorageService } from "./core/services/StorageService";
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
-import { initLayoutService, getTabLayout } from "./core/LayoutService";
-import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/PluginStateService";
+import { initLayoutService, getTabLayout } from "./core/services/LayoutService";
+import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/CoreEvents";
 import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
-import { layoutEngine } from "./core/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
+import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
-import { initIpcBridgeHandler } from "./core/IpcBridgeHandler"; // E3a #26
+import { initIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
-import { applyConfiguration } from "./core/ConfigurationApplier";
+import { applyConfiguration } from "./core/services/ConfigurationApplier";
 import { initV3Api } from "./core/v3Api"; // Phase 5h: runtime plugin API namespace
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */

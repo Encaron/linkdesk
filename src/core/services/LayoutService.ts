@@ -10,10 +10,10 @@
  * beforeunload 调用 syncWrite()——同步写 localStorage，下次启动补齐文件。
  */
 
-import type { LayoutData } from "../hooks/useTabManager";
+import type { LayoutData } from "../../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
 import { exists, readFile, writeFile, mkdir, joinPath, appDataDir } from "./FileService";
-import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "../../utils/fallbackPluginId";
 
 /* ── 类型 ── */
 

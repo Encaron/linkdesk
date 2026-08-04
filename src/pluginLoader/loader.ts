@@ -29,19 +29,19 @@ import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/types";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/NotificationService";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/NotificationService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
-import { getConfigurationValue, setConfigurationValue } from "../core/ConfigurationService";
+import { getConfigurationValue, setConfigurationValue } from "../core/services/ConfigurationService";
 import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
-import { registerFileAssociation } from "../core/FileAssociationService";
+import { registerFileAssociation } from "../core/services/FileAssociationService";
 import { registerLangDef } from "../core/registry/LangDefRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
@@ -1300,7 +1300,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  * 两个 UI 入口（齿轮菜单 + 详情页）都调此函数，确保行为一致。
  */
 export async function performUninstall(pluginId: string): Promise<boolean> {
-  const { showConfirm } = await import("../core/DialogService");
+  const { showConfirm } = await import("../core/services/DialogService");
   const manifest = getLoadedManifest(pluginId);
   const name = manifest?.name ?? pluginId;
   const confirmed = await showConfirm(

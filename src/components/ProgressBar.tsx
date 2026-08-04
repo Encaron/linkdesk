@@ -12,7 +12,7 @@ import {
   subscribeProgress,
   cancelProgress,
   type ProgressItem,
-} from "../core/NotificationService";
+} from "../core/services/NotificationService";
 import "./ProgressBar.css";
 
 function ProgressBar() {

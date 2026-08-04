@@ -16,7 +16,7 @@ import {
   disablePlugin,
   enablePlugin,
   isPluginDisabled,
-} from "../pluginLoader/loader";
+} from "../../pluginLoader/loader";
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "./ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "./NotificationService";
 import {
@@ -30,7 +30,7 @@ import {
   deleteEntry,
 } from "./FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { Emitter } from "./CoreEvents";
+import { Emitter } from "../CoreEvents";
 import { getWorkspaceRoot } from "./WorkspaceService";
 
 /* ── 事件 ── */
@@ -244,7 +244,7 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
   // 维度 4：语言——检查 i18next 实际当前语言
   if (expected.settings["app.language"]) {
     try {
-      const { default: i18n } = await import("../i18n");
+      const { default: i18n } = await import("../../i18n");
       const currentLang = i18n.language;
       const expectedLang = expected.settings["app.language"];
       if (currentLang !== expectedLang) {

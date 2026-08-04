@@ -11,7 +11,7 @@ import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
-import { showConfirm } from "../core/DialogService";
+import { showConfirm } from "../core/services/DialogService";
 
 
 const registry = new Map<string, ViewPluginEntry>();
