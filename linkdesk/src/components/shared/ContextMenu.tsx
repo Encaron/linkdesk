@@ -267,23 +267,15 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             {item.shortcut && (
               <span className="ctx-item-shortcut">{item.shortcut}</span>
             )}
+            {/* E5#44d：子菜单项——始终展开在父项下方，缩进 */}
+            {hasKids && item.children!.map((child) => (
+              <div key={child.id} className="ctx-item ctx-sub-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+                <span className="ctx-item-label" style={{ paddingLeft: 20 }}>{child.label}</span>
+              </div>
+            ))}
           </div>
         );
       })}
-      {hoveredChildren && (
-        <div
-          className="ctx-menu ctx-sub-panel"
-          style={{ left: adjustedAnchor.left + 180, top: adjustedAnchor.top }}
-          onMouseEnter={() => { /* keep alive */ }}
-          onMouseLeave={() => setHoveredChildren(null)}
-        >
-          {hoveredChildren.map((child) => (
-            <div key={child.id} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
-              <span className="ctx-item-label">{child.label}</span>
-            </div>
-          ))}
-        </div>
-      )}
     </div>
   );
 }
