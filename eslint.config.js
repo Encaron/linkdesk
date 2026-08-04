@@ -79,6 +79,9 @@ export default [
 
       // ═══ E3j #81 硬约束：禁止模块级 _initialized guard + IPC 监听器 ═══
       "linkdesk/no-module-level-ipc-listener": "error",
+
+      // ═══ E5#11l Bug 4 硬约束：useEffect 内禁止 IPC 监听器（[ ] deps）═══
+      "linkdesk/no-ipc-listener-in-effect": "error",
       "linkdesk/no-raw-configuration-read": "error",
       "linkdesk/no-raw-path-replace": "error",
 
