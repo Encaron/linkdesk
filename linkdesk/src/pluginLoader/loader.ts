@@ -1356,6 +1356,20 @@ export function isPluginDisabled(pluginId: string): boolean {
   return getDisabledList().includes(pluginId);
 }
 
+// E5#43：接口反转——loader 注册自己到 IpcBridgeHandler，核心不再直接 import loader
+import { setPluginAPI } from "../core/services/IpcBridgeHandler";
+setPluginAPI({
+  enablePlugin,
+  disablePlugin,
+  installPlugin,
+  uninstallPlugin,
+  reinstallPlugin,
+  getDisabledPluginInfo,
+  getUninstalledPluginInfo,
+  isPluginDisabled,
+  getLoadedPluginManifests,
+});
+
 /**
  * 获取插件在元数据缓存中的状态。
  * 返回值优先级高于 isPluginDisabled——缓存 "uninstalled" 的插件即使残留
