@@ -756,14 +756,6 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
       });
     }
   }, []);
-      // E5#64：IPC 查端口状态——不依赖 serial-system 消息
-      const status = await (window as any).linkdesk?.serial?.getStatus?.();
-      if (!status?.isOpen) return;           // 端口未开——直接允许关闭
-      const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
-      if (!ok) return false;                 // 用户取消——阻止关闭
-      await (window as any).linkdesk?.serial?.closePort?.();
-    });
-  }, []);
 
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
   useEffect(() => {
