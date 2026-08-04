@@ -3,7 +3,7 @@
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
 > **Tauri 时代 P1-P6 🎉。E3 🎉。E4 🎉（2026-08-03）。E5 🎉（2026-08-04）。** 壳通信骨架 + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。多 WebView 回退单 WebView（8 bug 不可控），资产保留 ~1,000 行可恢复。**
-> **当前进度：** E5 L1 ✅——ShellEvents + 四区域解耦 + App 去胶水化 + LayoutEngine + E5#10 信号链修复 + 双条件关停 + 白名单 + 超时兜底。E5#11 多 WebView 验收待执行。
+> **当前进度：** E5 🎉。ShellEvents + 四区域解耦 + LayoutEngine + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。多 WebView 回退单 WebView（资产保留 ~1,000 行）。下一步：`05-执行清单.md` 中 198 项 `[ ]`（从 E5#50 标签页去歧义开始）。
 
 ## 架构——圆形大厅模型
 
