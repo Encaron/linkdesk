@@ -15,6 +15,14 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { TabState } from "./useTabManager";
 
+/** 插件 WebView API facade——归一化 window.linkdesk 访问，消硬编码 */
+export interface PluginViewsAPI {
+  onReady(cb: (pluginId: string) => void): () => void;
+  getAllIds(): Promise<string[]>;
+  setVisible(pluginId: string, visible: boolean): void;
+  setBounds(pluginId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
+}
+
 export interface WebViewSyncResult {
   /** JS 已就绪的插件 WebView ID 集合 */
   readyWebViewIds: Set<string>;
@@ -31,6 +39,7 @@ export interface WebViewSyncResult {
 export function useWebViewSync(
   tabState: TabState,
   isShellRenderedTab: (type: string) => boolean,
+  pv: PluginViewsAPI | undefined,
 ): WebViewSyncResult {
   // ── State ──
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
@@ -62,7 +71,6 @@ export function useWebViewSync(
   // ── Effect 1：onReady 监听 + 5s 超时 ──
   // eslint-disable-next-line linkdesk/no-ipc-listener-in-effect -- preload-shell.ts 模块级 _readyBuffer 已缓冲 mount 前事件（Bug ④ 修复），useEffect 内注册安全
   useEffect(() => {
-    const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
     return pv.onReady((pluginId: string) => {
       setReadyWebViewIds((prev) => {
@@ -110,9 +118,7 @@ export function useWebViewSync(
 
   // ── Effect 3：bounds sync + setVisible（Bug ① dep + Bug ⑤ prev 时序 + Bug ⑥ ref）──
   useEffect(() => {
-    const pv = (window as any).linkdesk?.pluginViews;
     if (!pv) return;
-
     const currentStates = new Map<string, { groupId: string; isFocused: boolean }>();
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
@@ -176,16 +182,6 @@ export function useWebViewSync(
 
     pluginViewsRef.current = currentStates;
   }, [tabState.groups, tabState.activeGroupId, readyWebViewIds]); // Bug ①: readyWebViewIds 加入 deps
-
-  // ── Effect 4：editor openFile IPC ──
-  useEffect(() => {
-    for (const g of tabState.groups) for (const t of g.tabs) {
-      if (t.pluginId === "editor" && t.sourceId) {
-        const fp = t.sourceId;
-        (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: fp }).catch(() => {});
-      }
-    }
-  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
 
   return { readyWebViewIds, webViewBoundsReady, webViewTimeout, registerPoolRef, resetWebViewState };
 }
