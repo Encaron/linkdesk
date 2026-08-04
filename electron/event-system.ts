@@ -64,16 +64,15 @@ export function createEventSystem(
   const { logPrefix, extraHandlers } = options;
 
   // E5#74e debug
-  console.log(`[${logPrefix}] createEventSystem subscriptions 初始化, init=${!!subscriptions}`);
+  console.log(`[${logPrefix}] createEventSystem init`);
 
   ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
     // E5#74e debug
-    const handlers = subscriptions.get(data.channel);
-    console.log(`[${logPrefix}] plugin:push → channel="${data.channel}" handlers=${handlers?.size ?? 0}`);
+    const subs = subscriptions.get(data.channel);
+    console.log(`[${logPrefix}] plugin:push → "${data.channel}" subs=${subs?.size ?? 0}`);
     // E5#61c：dev 模式日志
     if (DEV_LOG) {
-      const handlers = subscriptions.get(data.channel);
-      const count = handlers?.size ?? 0;
+      const count = subs?.size ?? 0;
       const source = data.source ? ` ← ${data.source}` : "";
       console.debug(`[events] ${logPrefix} ← "${data.channel}"${source} → ${count} 订阅者`);
     }
@@ -91,7 +90,7 @@ export function createEventSystem(
     }
 
     // 分发给订阅者
-    const handlers = subscriptions.get(data.channel);
+    const handlers = subs;
     if (!handlers) return;
     for (const fn of handlers) {
       try {
