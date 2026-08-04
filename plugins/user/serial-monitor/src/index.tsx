@@ -740,6 +740,11 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // E5#64：handler 注册——不依赖 sourceId，闭包直接访问 portOpenRef
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
+    const p2p = (window as any).linkdesk?.p2p;
+    if (p2p) {
+      p2p.on("test-p2p", (d: any) => console.log("[E5#74e] p2p 收到:", d));
+      console.log("[E5#74e] p2p.on 已注册");
+    }
     if (!api) return;
     api.handle("invokeBeforeClose", async () => {
       // E5#64：IPC 查端口状态——不依赖 serial-system 消息
