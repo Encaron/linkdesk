@@ -73,17 +73,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const container = containerRef.current;
 
     (async () => {
-      // E5#76d：容器 0×0 时轮询等待——主进程异步 setBounds，ResizeObserver 不触发
-      if (container.clientWidth === 0 || container.clientHeight === 0) {
-        await new Promise<void>((resolve) => {
-          let n = 0;
-          const id = setInterval(() => {
-            if (container.clientWidth > 0 && container.clientHeight > 0) { clearInterval(id); resolve(); }
-            if (++n > 200 || disposed) { clearInterval(id); resolve(); } // 10s 超时
-          }, 50);
-        });
-      }
-      if (disposed) return;
 
       // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
       await initMonacoEnv(async (modelRef: any, _options: unknown) => {
