@@ -28,10 +28,10 @@ try {
   let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
-  // E5#74e 自动化测试：监听 plugin:push
-  process.stdout.write('[preload-plugin] TEST: plugin:push listener registered\n');
+  // E5#74e 自动化测试：IPC 通知 main process
+  ipcRenderer.send('plugin-push-test', { type: 'registered', time: Date.now() });
   ipcRenderer.on('plugin:push', (_e: any, d: any) => {
-    process.stdout.write(`[preload-plugin] TEST: plugin:push RECEIVED channel="${d.channel}"\n`);
+    ipcRenderer.send('plugin-push-test', { type: 'received', channel: d.channel, time: Date.now() });
   });
 
   // ── E3j #77a：归一化事件系统——提取到 event-system.ts ──
