@@ -210,7 +210,6 @@ export function findTabByIdentity(
         if (!tabVal) return false;
         const matchTabVal = field === "filePath" ? normalizePath(tabVal).toLowerCase() : tabVal;
         const matched = t.type === type && matchTabVal === matchValue;
-        if (field === "filePath") console.log("[findTabByIdentity] filePath match:", { value, tabVal, matchValue, matchTabVal, matched });
         return matched;
       });
     }

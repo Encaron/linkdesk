@@ -11,6 +11,7 @@
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 import { getLangDef } from "@src/core/registry/LangDefRegistry";
+import { shellEvents } from "@src/core/react/ShellEvents";
 
 const lk = (window as any).linkdesk;
 import { initMonacoEnv } from "./monaco-init";
@@ -217,12 +218,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             return;
           }
 
-          // 跨文件：暂存位置 → createTab → mount effect consume → reveal
+          // 跨文件：暂存位置 → createTab → mount/isActive effect consume → reveal
           const label = lk.path.normalize(targetPath).split("/").pop() || targetPath;
           setPendingReveal(targetPath, targetLine, targetCol);
           tabsRef.current?.create("editor", {
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
           });
+          // 已 active 的 editor 不会触发 isActive effect → 走事件通道
+          shellEvents.emit("editor:revealRequested", { filePath: targetPath });
         } catch { /* 无定义则放行 */ }
       };
 
@@ -253,14 +256,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   // ── keep-alive——标签页切换时 layout + reveal。双 rAF 防光标被后续渲染覆盖 ──
   useEffect(() => {
     if (!isActive) return;
-    console.log("[EditorView] isActive effect TRIGGERED", { filePath, hasEditor: !!editorRef.current });
     const raf1 = requestAnimationFrame(() => {
       editorRef.current?.layout();
       const pos = consumePendingReveal(filePath);
-      console.log("[EditorView] RAF1 after layout", { filePath, found: !!pos });
       if (pos && editorRef.current) {
         requestAnimationFrame(() => {
-          console.log("[EditorView] RAF2 reveal", pos);
           const p = { lineNumber: pos.line, column: pos.column };
           editorRef.current?.setPosition(p);
           editorRef.current?.revealPositionInCenter(p);
@@ -270,6 +270,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     });
     return () => cancelAnimationFrame(raf1);
   }, [isActive, filePath]);
+
+  // ── 跨文件跳转——目标 editor 已 active（分屏）时不触发 isActive effect，走事件 ──
+  useEffect(() => {
+    return shellEvents.on("editor:revealRequested", ({ filePath: fp }) => {
+      if (fp !== filePath) return;
+      const pos = consumePendingReveal(filePath);
+      if (pos && editorRef.current) {
+        const p = { lineNumber: pos.line, column: pos.column };
+        editorRef.current.setPosition(p);
+        editorRef.current.revealPositionInCenter(p);
+        editorRef.current.focus();
+      }
+    });
+  }, [filePath]);
 
   useEffect(() => {
     return subscribeThemeSync(monacoRef);

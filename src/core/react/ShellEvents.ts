@@ -76,6 +76,10 @@ export interface ShellEvents {
   // ── 弹窗（E5#84g）──
   /** 弹窗打开/关闭——MainContent 据此隐藏/恢复插件 WebView（原生 WebContentsView z-order 高于 HTML） */
   "dialog:visibility": { open: boolean };
+
+  // ── 编辑器（跨文件跳转）──
+  /** F12/跨文件跳转——目标编辑器消费 pendingReveal。不依赖 isActive 变化 */
+  "editor:revealRequested": { filePath: string };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
