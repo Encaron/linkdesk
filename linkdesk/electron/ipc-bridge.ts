@@ -361,7 +361,7 @@ export class IpcBridge {
       if (!targetView) return;
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
       // 原始路径：targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
-      targetView.webContents.send('p2p:data', { channel, data, source: sourceId });
+      targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
       console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}"`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
