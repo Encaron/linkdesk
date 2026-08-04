@@ -14,7 +14,7 @@ import { registerCommand, type Command } from "./registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "./registry/MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./services/PluginStateService";
-import { CUSTOM_EVENTS } from "./CoreEvents";
+import { CUSTOM_EVENTS } from "./react/CoreEvents";
 import { openKeybindingsSettings, registerKeybinding } from "./registry/KeybindingRegistry"; // E3f #59-F
 import { requestSettingsGroup, requestScrollToSetting } from "./registry/ConfigurationRegistry";
 import i18n from "../i18n";

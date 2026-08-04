@@ -11,7 +11,7 @@ import { registerCommand, executeCommand } from "@src/core/registry/CommandRegis
 import { MenuId } from "@src/core/registry/MenuRegistry";
 
 import { removeFolder } from "@src/core/services/WorkspaceService";
-import { shellEvents } from "@src/core/ShellEvents";
+import { shellEvents } from "@src/core/react/ShellEvents";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";

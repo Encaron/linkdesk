@@ -20,7 +20,7 @@ import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏
 import { ViewContainerService } from "../core/ViewContainerService";
 import { getDraggingView, setDraggingView } from "./shared/viewDragState";
 // E5#3a：壳内通信——订阅 sidebar:containerChanged 替代 App.tsx props
-import { shellEvents } from "../core/ShellEvents";
+import { shellEvents } from "../core/react/ShellEvents";
 import "./IconBar.css";
 
 interface IconBarProps {

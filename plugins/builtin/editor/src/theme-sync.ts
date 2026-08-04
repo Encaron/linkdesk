@@ -9,7 +9,7 @@
  *   - 外框颜色从 CSS 变量取——禁止硬编码 hex
  *   - 亮色 base="vs" / 暗色 base="vs-dark"
  */
-import { CoreEvents } from "@src/core/CoreEvents";
+import { CoreEvents } from "@src/core/react/CoreEvents";
 
 /** 当前是否暗色主题 */
 function isDarkTheme(): boolean {

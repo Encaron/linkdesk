@@ -15,7 +15,7 @@ import { ViewContainerService } from "../core/ViewContainerService";
 import ToolbarSlot from "./shared/ToolbarSlot";
 import SectionStack from "./shared/SectionStack";
 // E5#4b：壳内通信——订阅 icon:selected，解析 pluginId → containerId
-import { shellEvents } from "../core/ShellEvents";
+import { shellEvents } from "../core/react/ShellEvents";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5#9f：collapse/expand 同步 zone 宽度
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import "./SidePanel.css";

@@ -33,7 +33,7 @@ import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand, hasHandler } from "./CommandRegistry";
 import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "../services/FileService";
 import { normalizePath } from "../services/pathUtils";
-import { CoreEvents, CUSTOM_EVENTS } from "../CoreEvents";
+import { CoreEvents, CUSTOM_EVENTS } from "../react/CoreEvents";
 
 /* ── 类型 ── */
 

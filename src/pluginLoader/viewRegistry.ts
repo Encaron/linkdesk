@@ -6,7 +6,7 @@
 
 import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/types";
 import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
-import { Emitter } from "../core/CoreEvents";
+import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入

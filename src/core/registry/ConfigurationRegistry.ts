@@ -186,7 +186,7 @@ export function clearConfigurationRegistrations(): void {
 
 /* ── 设置页跳转目标——双通道：Emitter（已打开时跳转）+ pending 变量（未打开时 mount 消费）── */
 
-import { Emitter } from "../CoreEvents";
+import { Emitter } from "../react/CoreEvents";
 
 let _pendingSettingsGroup: string | null = null;
 

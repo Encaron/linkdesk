@@ -13,7 +13,7 @@
  * @see loader.ts —— 5 个函数只管触发此总线的事件
  */
 
-import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
+import { Emitter, CUSTOM_EVENTS } from "../core/react/CoreEvents";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";

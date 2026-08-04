@@ -27,14 +27,14 @@ import { factorySlots } from "./core/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
-import { useConfigurationValue } from "./core/useConfiguration";
+import { useConfigurationValue } from "./core/react/useConfiguration";
 import { initStorageService } from "./core/services/StorageService";
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "./core/services/LayoutService";
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
-import { CUSTOM_EVENTS } from "./core/CoreEvents";
-import { shellEvents } from "./core/ShellEvents"; // E5#3b：壳内事件总线
+import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
+import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
 import { onDidRequestShowChannel } from "./core/LogChannel"; // E3f #54
 import { initIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26
@@ -50,8 +50,8 @@ import { ensureCoreCommands, ensureCoreKeybindings } from "./core/coreCommands";
 import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
-import SourceStateContext from "./core/SourceStateContext";
-import type { SourceInfo } from "./core/SourceStateContext";
+import SourceStateContext from "./core/react/SourceStateContext";
+import type { SourceInfo } from "./core/react/SourceStateContext";
 import i18n from "./i18n";
 import "./App.css";
 
