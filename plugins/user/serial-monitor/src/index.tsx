@@ -50,6 +50,7 @@ const HEX_WARNING_MAX_CHARS = 5;
 const HEX_PREVIEW_MAX_LEN = 80;
 const MONACO_MAX_HEIGHT = 80;
 const MONACO_MIN_HEIGHT = 32;
+let _invokeBeforeCloseRegistered = false; // E5#64：幂等——只注册一次
 const MONACO_LINE_HEIGHT = 18;
 const MONACO_PADDING = 16;
 
@@ -737,19 +738,18 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     });
   }
 
-  // E5#64：壳 invokeBeforeClose → requestToPlugin 回调——插件自己判断是否允许关闭
+  // E5#64：模块级注册——跨所有实例共享（portOpenRef 通过闭包访问第一个实例）
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
-    if (!api) return;
-    const handleClose = async () => {
+    if (!api || _invokeBeforeCloseRegistered) return;
+    _invokeBeforeCloseRegistered = true;
+    api.handle("invokeBeforeClose", async () => {
       if (!portOpenRef.current) return;
       const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
       if (!ok) return false;
       await (window as any).linkdesk?.serial?.closePort?.();
-    };
-    api.handle("invokeBeforeClose", handleClose);
-    return () => api.unhandle("invokeBeforeClose");
-  }, [sourceId]);
+    });
+  }, []);
 
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
   useEffect(() => {
