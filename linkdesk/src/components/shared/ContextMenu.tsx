@@ -74,7 +74,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
       // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
       // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
       const whenExpr = item.when ?? cmd.when;
-      if (!ContextKeyService.matches(whenExpr)) continue;
+      if (!ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined)) continue;
 
       const group = item.group ?? "__default";
       if (!grouped.has(group)) {

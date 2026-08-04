@@ -72,6 +72,7 @@ export class IpcBridge {
     // 配置变更通知——SettingsView 直调 setConfigurationValue 绕过 proxy 时走此通道
     ipcMain.on('config:changed-notify', (_event, { key, value }) => {
       this.mainWindow.webContents.send('config:changed', { key, value });
+      this.broadcast('config:changed', { key, value });
     });
     this.registerBroadcastListener();
     this.registerPluginEmitListener();
@@ -146,10 +147,11 @@ export class IpcBridge {
         pending.reject(new Error(error));
       } else {
         pending.resolve(result);
-        // config:set 成功后广播 config:changed——preload 的 onChange 依赖此通道
+        // config:set 成功后广播 config:changed——shell + 所有插件 WebView 的 onChange 依赖此通道
         if (pending.channel === 'config:set') {
           const [key, value] = pending.args as [string, unknown];
           this.mainWindow.webContents.send('config:changed', { key, value });
+          this.broadcast('config:changed', { key, value });
         }
       }
     });

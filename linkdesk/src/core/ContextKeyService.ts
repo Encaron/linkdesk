@@ -335,34 +335,39 @@ class ContextKeyServiceImpl {
    * 返回 false = 条件不满足（菜单项隐藏 / 命令禁用）。
    * 空字符串 → 无条件 = 始终满足。
    */
-  matches(expression: string | undefined): boolean {
+  /**
+   * 求值 when 表达式。
+   * @param overrides 优先于全局 state 的上下文键值——ContextMenu 的 context prop 传入
+   */
+  matches(expression: string | undefined, overrides?: Record<string, unknown>): boolean {
     if (!expression || expression.trim() === "") return true;
 
     try {
       const parser = new WhenParser();
       const ast = parser.parse(expression);
-      return this.evaluate(ast);
+      return this.evaluate(ast, overrides);
     } catch (err) {
       console.warn(`[ContextKeyService] when 表达式解析失败: "${expression}"`, err);
       return false; // 解析失败 → 安全起见，不显示
     }
   }
 
-  /** 递归求值 AST */
-  private evaluate(node: ExprNode): boolean {
+  /** 递归求值 AST——overrides 优先于全局 _state */
+  private evaluate(node: ExprNode, overrides?: Record<string, unknown>): boolean {
     switch (node.type) {
       case "true":
         return true;
       case "false":
         return false;
       case "key":
+        if (overrides && node.value in overrides) return !!overrides[node.value];
         return !!this._state.get(node.value);
       case "not":
-        return !this.evaluate(node.operand);
+        return !this.evaluate(node.operand, overrides);
       case "and":
-        return this.evaluate(node.left) && this.evaluate(node.right);
+        return this.evaluate(node.left, overrides) && this.evaluate(node.right, overrides);
       case "or":
-        return this.evaluate(node.left) || this.evaluate(node.right);
+        return this.evaluate(node.left, overrides) || this.evaluate(node.right, overrides);
       case "eq": {
         const val = this._state.get(node.key);
         return String(val ?? "") === node.value;

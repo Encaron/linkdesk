@@ -12,7 +12,6 @@ import { MenuId } from "@src/core/MenuRegistry";
 
 import { removeFolder } from "@src/core/WorkspaceService";
 import { shellEvents } from "@src/core/ShellEvents";
-import { ContextKeyService } from "@src/core/ContextKeyService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -448,23 +447,30 @@ interface FileTreeContextMenuProps {
  */
 const FileTreeContextMenu: React.FC<FileTreeContextMenuProps> = ({ item, anchor, onClose }) => {
   // E4V#12: 瞬态 context key——菜单渲染前注入，关闭时清除
-  // 直调 ContextKeyService——lk.contextKey.set 走 IPC 异步，菜单渲染时 context key 未到位
   useEffect(() => {
-    ContextKeyService.setValue("explorerItemIsFile", item?.isDirectory === false);
-    ContextKeyService.setValue("explorerItemIsDir", item?.isDirectory === true);
-    ContextKeyService.setValue("explorerItemIsRoot", item?.parent === null);
-    ContextKeyService.setValue("explorerResourceReadonly", item?.isReadonly === true);
-
+    const lk = (window as any).linkdesk;
+    lk?.contextKey?.set("explorerItemIsFile", item?.isDirectory === false);
+    lk?.contextKey?.set("explorerItemIsDir", item?.isDirectory === true);
+    lk?.contextKey?.set("explorerItemIsRoot", item?.parent === null);
+    lk?.contextKey?.set("explorerResourceReadonly", item?.isReadonly === true);
     return () => {
-      ContextKeyService.setValue("explorerItemIsFile", false);
-      ContextKeyService.setValue("explorerItemIsDir", false);
-      ContextKeyService.setValue("explorerItemIsRoot", false);
-      ContextKeyService.setValue("explorerResourceReadonly", false);
+      lk?.contextKey?.set("explorerItemIsFile", false);
+      lk?.contextKey?.set("explorerItemIsDir", false);
+      lk?.contextKey?.set("explorerItemIsRoot", false);
+      lk?.contextKey?.set("explorerResourceReadonly", false);
     };
   }, [item]);
 
   // 传给命令的上下文（handler 通过 args[0] 接收）
-  const context = item ? { uri: item.uri, isDirectory: item.isDirectory } : undefined;
+  // when 条件优先读此上下文——菜单渲染不等 IPC 异步的 contextKey.set
+  const context = item ? {
+    uri: item.uri,
+    isDirectory: item.isDirectory,
+    explorerItemIsFile: item.isDirectory === false,
+    explorerItemIsDir: item.isDirectory === true,
+    explorerItemIsRoot: item.parent === null,
+    explorerResourceReadonly: item.isReadonly === true,
+  } : undefined;
 
   return (
     <ContextMenu
