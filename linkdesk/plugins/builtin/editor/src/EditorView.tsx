@@ -253,11 +253,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   // ── keep-alive——标签页切换时 layout + reveal。双 rAF 防光标被后续渲染覆盖 ──
   useEffect(() => {
     if (!isActive) return;
+    console.log("[EditorView] isActive effect TRIGGERED", { filePath, hasEditor: !!editorRef.current });
     const raf1 = requestAnimationFrame(() => {
       editorRef.current?.layout();
       const pos = consumePendingReveal(filePath);
+      console.log("[EditorView] RAF1 after layout", { filePath, found: !!pos });
       if (pos && editorRef.current) {
         requestAnimationFrame(() => {
+          console.log("[EditorView] RAF2 reveal", pos);
           const p = { lineNumber: pos.line, column: pos.column };
           editorRef.current?.setPosition(p);
           editorRef.current?.revealPositionInCenter(p);
