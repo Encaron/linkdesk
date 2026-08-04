@@ -72,7 +72,7 @@ const WEBVIEW_READY_PLUGINS = new Set<string>([
   "settings",       // ✅ E5#11f 验证通过——独立表单 UI
   "marketplace",    // ✅ E5#11g 验证通过——独立 UI
   "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  // "editor",      // 🔴 E5#76d——WebView bounds 未设，容器始终 0x0
+  "editor",
   // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
 ]);
 
@@ -340,6 +340,16 @@ function MainContent({
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
+  // E5#11i
+  useEffect(() => {
+    for (const g of tabState.groups) for (const t of g.tabs) {
+      if (t.pluginId === "editor" && t.sourceId) {
+        const fp = t.sourceId;
+        (window as any).linkdesk?.bridge?.requestToPlugin?.("editor","openFile",{filePath:fp}).catch(()=>{});
+        console.log("[E5#11i] sent openFile:",fp,"readyEditor:",readyWebViewIds.has("editor"),"boundsEditor:",webViewBoundsReady.has("editor"));
+      }
+    }
+  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
   // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
   const [webViewTimeout, setWebViewTimeout] = useState<Set<string>>(new Set());
   const webViewTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
