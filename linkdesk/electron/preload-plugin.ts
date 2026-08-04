@@ -29,7 +29,7 @@ try {
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
 
-  const events = createEventSystem(ipcRenderer, null, {
+  const events = createEventSystem(ipcRenderer, {
     logPrefix: 'preload-plugin',
     extraHandlers: {
       // E3b #35：theme:changed 自动注入 CSS 变量，插件无需手动订阅
