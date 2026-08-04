@@ -737,15 +737,16 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     });
   }
 
-  // E5#64：幂等注册——handle 是幂等的（同名覆盖）
+  // E5#64：handler 注册——不依赖 sourceId，闭包直接访问 portOpenRef
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
     if (!api) return;
-    const handleClose = async () => {
-      console.log("[E5#64] 注册成功");
-    };
-    api.handle("invokeBeforeClose", handleClose);
-    return () => api.unhandle("invokeBeforeClose");
+    api.handle("invokeBeforeClose", async () => {
+      if (!portOpenRef.current) return;
+      const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
+      if (!ok) return false;
+      await (window as any).linkdesk?.serial?.closePort?.();
+    });
   }, []);
 
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
