@@ -67,7 +67,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
     for (const item of rawItems) {
       const cmd = getCommand(item.command);
-      if (!cmd) continue; // 命令未注册——静默跳过（应对异步加载竞态）
+      // E5#44d：command 为空但有 children → 子菜单父项，放行
+      if (!cmd && !(item as any).children) continue;
 
       // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
       // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
@@ -92,10 +93,10 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       }
 
       grouped.get(group)!.push({
-        id: item.command,
-        label: cmd.title,
+        id: item.command || (item as any).label || "",
+        label: cmd?.title ?? (item as any).label ?? item.command,
         group,
-        shortcut: findKeybindingForCommand(item.command)?.key,
+        shortcut: cmd ? findKeybindingForCommand(item.command)?.key : undefined,
         children,
       });
     }
