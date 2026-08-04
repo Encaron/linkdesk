@@ -29,7 +29,10 @@ try {
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
 
-  const events = createEventSystem(ipcRenderer, {
+  // E5#74e: 模块级声明——contextBridge 每次访问创建新 proxy，导致 subscriptions 每次重置
+  // 改法：在 createEventSystem 外声明 subscriptions，createEventSystem 的 on/emit 共用同一份
+  const _sharedSubs = new Map<string, Array<(payload: unknown) => void>>();
+  const events = createEventSystem(ipcRenderer, _sharedSubs, {
     logPrefix: 'preload-plugin',
     extraHandlers: {
       // E3b #35：theme:changed 自动注入 CSS 变量，插件无需手动订阅
