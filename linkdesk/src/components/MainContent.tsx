@@ -455,7 +455,7 @@ function MainContent({
     });
 
     pluginViewsRef.current = currentStates;
-  }, [tabState.groups, tabState.activeGroupId]);
+  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds]);
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
