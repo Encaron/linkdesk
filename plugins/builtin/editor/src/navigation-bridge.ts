@@ -24,13 +24,18 @@ function _norm(p: string): string {
   return lk.path.normalize(p).toLowerCase();
 }
 
+let _seq = 0;
 export function setPendingReveal(filePath: string, line: number, column: number): void {
-  _pendingReveal.set(_norm(filePath), { line, column });
+  const key = _norm(filePath);
+  _pendingReveal.set(key, { line, column });
+  console.log(`[REVEAL #${++_seq}] SET`, { filePath, key, line, column });
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
   const key = _norm(filePath);
   const pos = _pendingReveal.get(key);
+  const caller = new Error().stack?.split("\n")[2]?.trim() ?? "unknown";
+  console.log(`[REVEAL #${++_seq}] CONSUME`, { filePath, key, found: !!pos, remaining: _pendingReveal.size, caller });
   if (pos) _pendingReveal.delete(key);
   return pos;
 }
