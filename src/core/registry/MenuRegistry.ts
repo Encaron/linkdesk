@@ -98,7 +98,7 @@ export function registerMenuItems(
         pluginId,
       };
       // E3f #52a：递归处理嵌套 children
-      if (item.children?.length) {
+      if (item.children) {
         normalized.children = item.children.map((c): MenuItem & { pluginId: string } => {
           if (typeof c === "string") return { command: c, pluginId };
           return {
@@ -107,7 +107,7 @@ export function registerMenuItems(
             group: c.group,
             when: c.when,
             pluginId,
-            ...(c.children?.length ? {
+            ...(c.children ? {
               children: c.children.map((gc): MenuItem & { pluginId: string } =>
                 typeof gc === "string" ? { command: gc, pluginId } : { command: gc.command, label: gc.label, group: gc.group, when: gc.when, pluginId }
               ),
