@@ -4,6 +4,7 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
+import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 import i18n from "../../i18n";
@@ -23,4 +24,9 @@ export function registerDeveloperCommands(): void {
   for (const c of commands) {
     registerCommand(APP_PLUGIN_ID, c);
   }
+
+  // 齿轮菜单入口
+  registerMenuItems(MenuId.ExtensionGear, APP_PLUGIN_ID, [
+    { command: "workbench.action.togglePluginDevTools", group: "navigation" },
+  ]);
 }
