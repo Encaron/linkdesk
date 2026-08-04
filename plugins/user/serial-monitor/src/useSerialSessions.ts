@@ -132,6 +132,8 @@ function _persistSessions(): void {
     colorIndex: _store.colorIndex,
   };
   (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data).catch(() => {});
+  // sync 兜底——async invoke 可能因时序失败（如 app 退出前）
+  try { localStorage.setItem("linkdesk:serial-monitor:sessions", JSON.stringify(data)); } catch { /* 静默 */ }
 }
 
 function notify(): void {
@@ -257,7 +259,8 @@ export function useSession(id: string | undefined) {
       };
       _store.colorIndex++;
       _store.sessions = [..._store.sessions, session];
-      notify();
+      // E5#71e：不 persist——等 restore 完成后才持久化，避免竞态覆盖
+      _listeners.forEach((fn) => fn());
     };
     // 等 restore 完成——避免 duplicate session
     if (_initPromise) {
