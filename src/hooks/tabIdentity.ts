@@ -20,6 +20,7 @@ import i18n from "../i18n";
 import { getViewPlugin, hasKeepSidebarOnFocus } from "../pluginLoader/viewRegistry";
 import type { Tab } from "./useTabManager";
 import type { CreateTabOptions } from "../core/api/types";
+import { normalizePath } from "../core/services/pathUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 
 /* ── 元数据接口 ── */
@@ -202,10 +203,14 @@ export function findTabByIdentity(
         ?? (field === "detailPluginId" ? (opts as Record<string, unknown>)["pluginId"] as string | undefined : undefined)
       : undefined;
     if (value) {
-      return all.find((t) =>
-        t.type === type &&
-        (t as unknown as Record<string, unknown>)[field] === value
-      );
+      // filePath 大小写不敏感——Windows 驱动器字母 TS 返回 e:/ 文件树是 E:/
+      const matchValue = field === "filePath" ? normalizePath(value).toLowerCase() : value;
+      return all.find((t) => {
+        const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
+        if (!tabVal) return false;
+        const matchTabVal = field === "filePath" ? normalizePath(tabVal).toLowerCase() : tabVal;
+        return t.type === type && matchTabVal === matchValue;
+      });
     }
   }
 

@@ -256,7 +256,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const raf = requestAnimationFrame(() => {
       editorRef.current?.layout();
       const pos = consumePendingReveal(filePath);
-      console.log("[EditorView] isActive reveal", { filePath, found: !!pos, hasEditor: !!editorRef.current });
       if (pos && editorRef.current) {
         const p = { lineNumber: pos.line, column: pos.column };
         editorRef.current.setPosition(p);
