@@ -79,7 +79,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
 
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subAnchor) setSubAnchor(null); else onClose(); } };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subData) setSubData(null); else onClose(); } };
     const onBlur = () => onClose();
     const onWheel = () => onClose();
     const onMouseDown = (e: MouseEvent) => {
@@ -140,9 +140,17 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  // E5#44d：点击展开子面板
-  const [subAnchor, setSubAnchor] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
+  // E5#44d：hover 展开子面板——150ms 延迟防闪烁
+  const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
+  const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const subRef = useRef<HTMLDivElement>(null);
+  const openSub = useCallback((x: number, y: number, items: ResolvedItem[]) => {
+    if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
+    setSubData({ x, y, items });
+  }, []);
+  const closeSubDelayed = useCallback(() => {
+    subTimer.current = setTimeout(() => setSubData(null), 150);
+  }, []);
 
   let clickableIdx = 0;
 
@@ -161,18 +169,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             key={item.id}
             ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
             className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-            onClick={(e) => {
-              e.stopPropagation();
-              if (hasKids) {
-                if (subAnchor) { setSubAnchor(null); return; }
-                const rect = e.currentTarget.getBoundingClientRect();
-                setSubAnchor({ x: rect.right + 4, y: rect.top, items: item.children! });
-              } else {
-                setSubAnchor(null);
-                handleItemClick(item.id);
-              }
+            onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
+            onMouseEnter={(e) => {
+              setFocusIdx(idx);
+              if (hasKids) { const r = (e.currentTarget as HTMLElement).getBoundingClientRect(); openSub(r.right + 4, r.top, item.children!); }
             }}
-            onMouseEnter={() => setFocusIdx(idx)}
+            onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
           >
             <span className="ctx-item-label">{item.label}</span>
             {hasKids && <span className="ctx-item-chevron">›</span>}
@@ -181,9 +183,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         );
       })}
     </div>
-    {subAnchor && (
-      <div ref={subRef} className="ctx-menu show" style={{ left: subAnchor.x, top: subAnchor.y }}>
-        {subAnchor.items.map((child, ki) => (
+    {subData && (
+      <div ref={subRef} className="ctx-menu show" style={{ left: subData.x, top: subData.y }}>
+        {subData.items.map((child, ki) => (
           <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
             <span className="ctx-item-label">{child.label}</span>
           </div>
