@@ -364,8 +364,15 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };
-  // dirty 已由调用方清除，直接走正常关闭
-  return reduceCloseTab({ ...prev }, tabId);
+  // 清除 dirty 标志后走正常关闭——不可变更新到 tab 层级
+  const cleaned: TabState = {
+    ...prev,
+    groups: prev.groups.map((g) => ({
+      ...g,
+      tabs: g.tabs.map((t) => (t.id === tabId ? { ...t, dirty: false } : t)),
+    })),
+  };
+  return reduceCloseTab(cleaned, tabId);
 }
 
 /** 移动标签页到另一个组 */

@@ -184,14 +184,13 @@ export default function TabBar({
     prevTabIds.current = currentIds;
   }, [tabs]);
 
-  // 关闭标签页（带动画）
+  // 关闭标签页（带动画）——E5#51：await onCloseTab 确保 dirty 确认弹窗等完再清动画
   const closeWithAnimation = useCallback(
-    (tabId: string) => {
+    async (tabId: string) => {
       setExitingTabId(tabId);
-      setTimeout(() => {
-        onCloseTab(tabId);
-        setExitingTabId(null);
-      }, 120);
+      await new Promise((r) => setTimeout(r, 120));
+      await onCloseTab(tabId);
+      setExitingTabId(null);
     },
     [tabs, onCloseTab]
   );
