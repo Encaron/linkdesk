@@ -1,0 +1,67 @@
+/**
+ * src/core/index.ts —— 核心 API 索引入口。
+ * E5#42-9：新 AI 进场 30 秒看清核心全部能力。
+ */
+
+// ── 事件 ──
+export { shellEvents } from "./react/ShellEvents";
+export type { ShellEvents, StatusBarEntry } from "./react/ShellEvents";
+export { CoreEvents, Emitter } from "./react/CoreEvents";
+
+// ── 注册表 ──
+export * from "./registry/RegistryBase";
+export * from "./registry/CommandRegistry";
+export * from "./registry/ConfigurationRegistry";
+export * from "./registry/ContextKeyService";
+export * from "./registry/FileDecorationRegistry";
+export * from "./registry/IconRegistry";
+export * from "./registry/KeybindingRegistry";
+export * from "./registry/LangDefRegistry";
+export * from "./registry/LanguageRegistry";
+export * from "./registry/MenuRegistry";
+export * from "./registry/ProtocolRegistry";
+export * from "./registry/StatusBarService";
+export * from "./registry/ThemeRegistry";
+
+// ── 服务 ──
+export * from "./services/ConfigurationApplier";
+export * from "./services/DialogService";
+export * from "./services/FileAssociationService";
+export * from "./services/FileSearcher";
+export * from "./services/LayoutEngine";
+export * from "./services/LayoutService";
+export * from "./services/NotificationService";
+export * from "./services/PluginStateService";
+export * from "./services/ProfileService";
+export * from "./services/StorageService";
+export * from "./services/WorkspaceService";
+export * from "./services/pathUtils";
+export * from "./services/assetPath";
+export * from "./services/IpcBridgeHandler";
+
+// ── React ──
+export * from "./react/useConfiguration";
+export * from "./react/usePluginIpcEvent";
+export * from "./react/useSendData";
+export * from "./react/TabActionsContext";
+
+// ── 数据 ──
+export * from "./data/DataConverter";
+export * from "./data/RingBuffer";
+export * from "./data/CancellationToken";
+export * from "./data/ProtocolParser";
+export * from "./data/FactorySlots";
+export * from "./data/LogChannel";
+// CardRegistry 不在 barrel——标签页系统隔离（硬约束 #3）
+
+// ── API 类型 ──
+export type * from "./api/linkdesk-api";
+export type * from "./api/types";
+
+// ── 内置 ──
+export * from "./builtin/coreCommands";
+export * from "./builtin/registerBuiltinProtocols";
+
+// ── 剩余 ──
+export * from "./ThemeEngine";
+export * from "./ViewContainerService";
