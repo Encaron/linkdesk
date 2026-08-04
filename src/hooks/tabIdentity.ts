@@ -209,7 +209,9 @@ export function findTabByIdentity(
         const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
         if (!tabVal) return false;
         const matchTabVal = field === "filePath" ? normalizePath(tabVal).toLowerCase() : tabVal;
-        return t.type === type && matchTabVal === matchValue;
+        const matched = t.type === type && matchTabVal === matchValue;
+        if (field === "filePath") console.log("[findTabByIdentity] filePath match:", { value, tabVal, matchValue, matchTabVal, matched });
+        return matched;
       });
     }
   }
