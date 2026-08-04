@@ -891,7 +891,7 @@ export function useTabManager() {
       const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
       if (tab?.dirty) {
         const confirmed = await showConfirm(
-          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: tab.label })
+          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(tab.label) })
         );
         if (!confirmed) return { closed: false, tabId, reason: "dirty" };
         let result: CloseTabResult = { closed: false, tabId };
