@@ -92,8 +92,8 @@ export function createEventSystem(
     for (const fn of handlers) {
       try {
         fn(data.payload);
-      } catch (e) {
-        console.error(`[${logPrefix}] 事件回调异常 (channel=${data.channel}):`, e);
+      } catch (e: any) {
+        ipcRenderer.send('plugin-push-test', { type: 'callback-error', channel: data.channel, error: e?.message ?? String(e) });
       }
     }
   });
