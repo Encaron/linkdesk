@@ -58,7 +58,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         }));
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
-        if (dyn?.length) children = dyn.map(c => ({ id: c.id, label: c.label, group }));
+        if (dyn?.length) children = dyn.map((c, i) => ({ id: c.id, label: c.label, group, _kid: i }));
       }
 
       grouped.get(group)!.push({
@@ -181,8 +181,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     </div>
     {subAnchor && (
       <div ref={subRef} className="ctx-menu" style={{ left: subAnchor.x, top: subAnchor.y }}>
-        {subAnchor.items.map((child) => (
-          <div key={child.id} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+        {subAnchor.items.map((child, ki) => (
+          <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
             <span className="ctx-item-label">{child.label}</span>
           </div>
         ))}
