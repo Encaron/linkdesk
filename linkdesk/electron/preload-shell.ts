@@ -174,6 +174,18 @@ try {
       closeBySourceId: (sourceId: string) =>
         ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
     },
+    p2p: {
+      send: (target: string, channel: string, data: unknown) => {
+        ipcRenderer.send('p2p:send', { target, channel, data });
+      },
+      on: (channel: string, cb: (data: unknown) => void) => {
+        const handler = (_event: any, d: { channel: string; data: unknown }) => {
+          if (d.channel === channel) cb(d.data);
+        };
+        ipcRenderer.on('p2p:data', handler);
+        return () => { ipcRenderer.removeListener('p2p:data', handler); };
+      },
+    },
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
     shell: {
