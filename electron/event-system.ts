@@ -63,13 +63,10 @@ export function createEventSystem(
   const subscriptions = new Map<string, Set<EventCallback>>();
   const { logPrefix, extraHandlers } = options;
 
-  // E5#74e debug
-  console.log(`[${logPrefix}] createEventSystem init`);
-
   ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
     // E5#74e debug
     const subs = subscriptions.get(data.channel);
-    console.log(`[${logPrefix}] plugin:push → "${data.channel}" subs=${subs?.size ?? 0}`);
+    ipcRenderer.send('plugin-push-test', { type: 'events-dispatch', channel: data.channel, subs: subs?.size ?? 0 });
     // E5#61c：dev 模式日志
     if (DEV_LOG) {
       const count = subs?.size ?? 0;
