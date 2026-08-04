@@ -340,13 +340,19 @@ function MainContent({
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
   // E5#76：editor 标签页 sourceId → IPC 推送到 editor WebView
   useEffect(() => {
-    for (const g of tabState.groups) {
-      for (const tab of g.tabs) {
-        if (tab.pluginId === "editor" && tab.sourceId) {
-          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+    const send = () => {
+      for (const g of tabState.groups) {
+        for (const tab of g.tabs) {
+          if (tab.pluginId === "editor" && tab.sourceId) {
+            (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+          }
         }
       }
-    }
+    };
+    send();
+    // E5#76d：rAF 确保 React useEffect 已执行（handler 已注册）后再补发一次
+    const raf = requestAnimationFrame(send);
+    return () => cancelAnimationFrame(raf);
   }, [tabState.groups, readyWebViewIds]);
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());

@@ -101,13 +101,8 @@ function bootstrap() {
       </PluginErrorBoundary>,
     );
 
-    // E5#76：setTimeout 确保 React mount + useEffect 执行后再通知壳
-    // notifyReady 过早 → MainContent 发 IPC 到插件 WebView → 插件的 handler 还未注册
-    setTimeout(() => {
-      try {
-        (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId);
-      } catch { /* 静默 */ }
-    }, 100);
+    // #58e 修复：渲染完成后通知壳。
+    try { (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId); } catch {}
   }).catch((err: any) => {
     root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
   });
