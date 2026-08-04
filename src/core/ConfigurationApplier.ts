@@ -13,7 +13,10 @@
  */
 
 import { getMergedSchema } from "./ConfigurationRegistry";
-import { getConfigurationValue } from "./ConfigurationService";
+import { getConfigurationValue, registerConfigApplier } from "./ConfigurationService";
+
+// E5#41：注册 applyConfiguration 回调——消解 ConfigurationService → ConfigurationApplier 循环 import
+registerConfigApplier(applyConfiguration);
 
 /* ── 插件级 onApply 注册表 ── */
 
