@@ -9,7 +9,7 @@ import { PluginIcon } from "@src/components/shared/PluginIcon";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/registry/MenuRegistry";
 
-import type { ViewPluginEntry } from "@src/core/types";
+import type { ViewPluginEntry } from "@src/core/api/types";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 

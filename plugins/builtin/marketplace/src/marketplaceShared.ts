@@ -8,7 +8,7 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import type { ViewPluginEntry } from "@src/core/types";
+import type { ViewPluginEntry } from "@src/core/api/types";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
 import { ViewContainerService } from "@src/core/ViewContainerService";
 

@@ -21,7 +21,7 @@ import {
   migrateLayout,
   updateBranchSizesByIndex,
 } from "./splitTree";
-import type { CreateTabOptions } from "../core/types";
+import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/CoreEvents";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";

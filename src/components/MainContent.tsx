@@ -66,7 +66,7 @@ SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
-  createTab?: (type: string, opts?: import("../core/types").CreateTabOptions) => string,
+  createTab?: (type: string, opts?: import("../core/api/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
   webViewBoundsReady?: Set<string>,
   webViewTimeout?: Set<string>,

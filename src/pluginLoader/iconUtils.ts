@@ -8,7 +8,7 @@
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
 
-import type { PluginManifest } from "../core/types";
+import type { PluginManifest } from "../core/api/types";
 
 export interface ResolvedIcon {
   /** img src——非 codicon 图标时返回 linkdesk:// 协议路径 */

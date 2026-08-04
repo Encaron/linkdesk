@@ -28,7 +28,7 @@ import { unregisterPluginThemes } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
 import i18n from "../i18n";
-import type { PluginManifest } from "../core/types";
+import type { PluginManifest } from "../core/api/types";
 
 /* ── 事件类型 ── */
 
