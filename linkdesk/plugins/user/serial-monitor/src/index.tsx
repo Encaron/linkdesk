@@ -207,8 +207,15 @@ interface SerialMonitorViewProps {
   sourceId?: string;
 }
 
-function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
+function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorViewProps) {
   const { t } = useTranslation();
+
+  // E5#84：双模式 sourceId——IPC 优先，props 兜底（对标 editor const fp = ipcId ?? propId）
+  const [ipcSourceId, setIpcSourceId] = useState<string | null>(null);
+  useEffect(() => {
+    (window as any).linkdesk?.pluginRequest?.handle?.("openSession", (p: any) => setIpcSourceId(p?.sourceId ?? null));
+  }, []);
+  const sourceId = ipcSourceId ?? propSourceId;
 
   // C1 修复：用 sourceId 绑定 per-tab session，而非读全局 activeSession。
   // sourceId = tab.id = session.id（MainContent 传入）。
