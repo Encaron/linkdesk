@@ -741,17 +741,15 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
     if (!api) return;
-    api.handle("invokeBeforeClose", async () => {
-      // 端口未开——直接允许关闭，不弹确认
+    const handleClose = async () => {
       if (!portOpenRef.current) return;
-      // E5#67：端口开着——弹 React 确认框（走 IPC 到壳 ConfirmDialog）
-      const ok = await (window as any).linkdesk?.dialog?.confirm?.(t("关闭此标签页将断开串口连接"));
+      const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
       if (!ok) return false;
-      // 用户确认——断开串口
       await (window as any).linkdesk?.serial?.closePort?.();
-    });
+    };
+    api.handle("invokeBeforeClose", handleClose);
     return () => api.unhandle("invokeBeforeClose");
-  }, [sourceId, t]);
+  }, [sourceId]);
 
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
   useEffect(() => {
