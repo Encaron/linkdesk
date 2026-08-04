@@ -22,17 +22,22 @@ import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; //
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
-import {
-  enablePlugin,
-  disablePlugin,
-  installPlugin,
-  uninstallPlugin,
-  reinstallPlugin,
-  getDisabledPluginInfo,
-  getUninstalledPluginInfo,
-  isPluginDisabled,
-  getLoadedPluginManifests,
-} from "../../pluginLoader/loader";
+// E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
+// 桥不知道加载器的存在，只知道"有人注册了这些能力"。
+export interface PluginManagementAPI {
+  enablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  disablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  installPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
+  getDisabledPluginInfo(): unknown;
+  getUninstalledPluginInfo(): unknown;
+  isPluginDisabled(id: string): boolean;
+  getLoadedPluginManifests(): Array<{ pluginId: string; manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown } }>;
+}
+
+let _pluginAPI: PluginManagementAPI | null = null;
+export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api; }
 
 let _initialized = false;
 
@@ -190,7 +195,7 @@ export function initIpcBridgeHandler(): void {
 async function handlePluginsCall(method: string, args: any[]): Promise<unknown> {
   switch (method) {
     case "list":
-      return getLoadedPluginManifests().map((p) => ({
+      return _pluginAPI!.getLoadedPluginManifests().map((p) => ({
         pluginId: p.pluginId,
         manifest: {
           name: p.manifest.name,
@@ -203,21 +208,21 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
         },
       }));
     case "enable":
-      return enablePlugin(args[0] as string);
+      return _pluginAPI!.enablePlugin(args[0] as string);
     case "disable":
-      return disablePlugin(args[0] as string);
+      return _pluginAPI!.disablePlugin(args[0] as string);
     case "uninstall":
-      return uninstallPlugin(args[0] as string);
+      return _pluginAPI!.uninstallPlugin(args[0] as string);
     case "install":
-      return installPlugin(args[0] as string);
+      return _pluginAPI!.installPlugin(args[0] as string);
     case "reinstall":
-      return reinstallPlugin(args[0] as string);
+      return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "getDisabled":
-      return getDisabledPluginInfo();
+      return _pluginAPI!.getDisabledPluginInfo();
     case "getUninstalled":
-      return getUninstalledPluginInfo();
+      return _pluginAPI!.getUninstalledPluginInfo();
     case "isDisabled":
-      return isPluginDisabled(args[0] as string);
+      return _pluginAPI!.isPluginDisabled(args[0] as string);
     // E3j #74：linkdesk API——跨进程查询壳侧注册表
     case "getCommands":
       return getCommands();
