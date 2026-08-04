@@ -84,6 +84,7 @@ export interface ShellEvents {
   // ── 视图容器（E5#44c shellMenus 提供方 → E5#60 SidePanel 消费方）──
   "view:toggleCollapse": { containerId: string };
   "view:resetPosition": { containerId: string };
+  "view:toggleVisibility": { viewId: string; containerId?: string };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
