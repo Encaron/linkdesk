@@ -63,9 +63,12 @@ export function createEventSystem(
   const subscriptions = new Map<string, Set<EventCallback>>();
   const { logPrefix, extraHandlers } = options;
 
-  // E5#74e debug：原始监听确认 IPC 到达
-  ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
-    console.log(`[${logPrefix}] plugin:push 收到! channel=${data.channel} source=${data.source}`);
+  // E5#74e debug：全 channel 监听——确认什么 IPC 能到插件
+  const origOn = ipcRenderer.on.bind(ipcRenderer);
+  (ipcRenderer as any).on = (ch: string, ...args: any[]) => {
+    console.log(`[${logPrefix}] ipcRenderer.on 注册: "${ch}"`);
+    return origOn(ch as any, ...args);
+  };
     // E5#61c：dev 模式日志
     if (DEV_LOG) {
       const handlers = subscriptions.get(data.channel);
