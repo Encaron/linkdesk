@@ -165,6 +165,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               e.stopPropagation();
               if (hasKids) {
                 const rect = e.currentTarget.getBoundingClientRect();
+                console.log("[ContextMenu] OPEN sub-panel", { id: item.id, kids: item.children?.length, x: rect.right + 4, y: rect.top });
                 setSubAnchor({ x: rect.right + 4, y: rect.top, items: item.children! });
               } else {
                 handleItemClick(item.id);
@@ -180,7 +181,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       })}
     </div>
     {subAnchor && (
-      <div ref={subRef} className="ctx-menu" style={{ left: subAnchor.x, top: subAnchor.y }}>
+      <div ref={subRef} className="ctx-menu show" style={{ left: subAnchor.x, top: subAnchor.y }}>
         {subAnchor.items.map((child, ki) => (
           <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
             <span className="ctx-item-label">{child.label}</span>
