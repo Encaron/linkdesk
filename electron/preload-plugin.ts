@@ -28,9 +28,11 @@ try {
   let _langCache: { lang: string; resources: Record<string, unknown> } | null = null;
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
-  // ── E5#74e 自动化测试：检测 plugin:push 是否到达 ──
-  const testPush = require('./test-push.js');
-  testPush.installTest(ipcRenderer);
+  // E5#74e 自动化测试：监听 plugin:push
+  process.stdout.write('[preload-plugin] TEST: plugin:push listener registered\n');
+  ipcRenderer.on('plugin:push', (_e: any, d: any) => {
+    process.stdout.write(`[preload-plugin] TEST: plugin:push RECEIVED channel="${d.channel}"\n`);
+  });
 
   // ── E3j #77a：归一化事件系统——提取到 event-system.ts ──
   const events = createEventSystem(ipcRenderer, {
