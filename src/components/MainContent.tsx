@@ -67,14 +67,8 @@ SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 // 详见 docs/02-Electron架构/E5_核心归一化与壳重构_待执行/
 //   01-壳通信骨架/React-Fallback退役.md §六
 //   05-执行清单.md E5#11f–#11l
-const WEBVIEW_READY_PLUGINS = new Set<string>([
-  "serial-monitor", // ✅ 用户在自己 UI 操作，无需壳传参
-  "settings",       // ✅ E5#11f 验证通过——独立表单 UI
-  "marketplace",    // ✅ E5#11g 验证通过——独立 UI
-  "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  "editor",
-  // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
-]);
+// E5#11l：白名单已删——所有视图插件 WebView 独立就绪
+// const WEBVIEW_READY_PLUGINS = new Set([...]);
 
 function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
@@ -120,8 +114,8 @@ function renderTabContent(
         );
       }
     }
-    // E5#10b：三条件——WebView JS ready + bounds IPC 确认 + 在白名单内 → 关 React fallback
-    if (WEBVIEW_READY_PLUGINS.has(tab.pluginId) && readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
+    // E5#11l：双条件——WebView JS ready + bounds IPC 确认 → 关 React fallback
+    if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     const plugin = getViewPlugin(tab.pluginId);
