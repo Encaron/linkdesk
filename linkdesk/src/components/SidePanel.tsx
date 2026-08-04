@@ -124,7 +124,10 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
       doCollapse(false);
       layoutEngine.setZoneWidth("sidebar", 280);
     });
-    return () => { u1(); u2(); };
+    const u3 = shellEvents.on("view:toggleVisibility", ({ viewId, containerId: cid }) => {
+      if (cid) ViewContainerService.toggleViewVisibility(cid, viewId);
+    });
+    return () => { u1(); u2(); u3(); };
   }, [effectiveContainerId, doCollapse]);
 
   // 🔥 Bug 3/4 防线——StrictMode remount 旧订阅清理 + 不活跃时不处理事件
@@ -242,6 +245,15 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
           anchor={headerMenu}
           context={{ containerId: effectiveContainerId ?? undefined }}
           onClose={() => setHeaderMenu(null)}
+          resolveChildren={(_parentId, ctx) => {
+            const cid = ctx.containerId as string | undefined;
+            if (!cid) return undefined;
+            const allViews = ViewContainerService.getViews(cid);
+            return allViews.map((v: any) => ({
+              id: "workbench.action.toggleViewVisibility",
+              label: v.title ?? v.id,
+            }));
+          }}
         />
       )}
     </aside>
