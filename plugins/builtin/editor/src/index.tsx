@@ -6,8 +6,6 @@
  * 插件端：useEffect → pluginRequest.handle('openFile', handler) → 更新 state
  */
 import React, { useState } from "react";
-import EditorTab from "./EditorTab";
-import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
 import "./editor.css";
 
@@ -27,8 +25,11 @@ try {
 const EditorPlugin: React.FC = () => {
   const [filePath, setFilePath] = useState<string | null>(_pendingFile);
   _setFilePath = setFilePath;
-  if (_pendingFile) _pendingFile = null;
+  if (_pendingFile) { if (!filePath) setFilePath(_pendingFile); _pendingFile = null; }
 
+  // debug: always render something
+  return <div style={{padding:20,color:'white',background:'#333'}}>EDITOR PLUGIN LOADED<br/>filePath: {filePath ?? '(none)'}</div>;
+  /*
   if (!filePath) {
     return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
   }
@@ -39,6 +40,7 @@ const EditorPlugin: React.FC = () => {
   }
 
   return <EditorTab filePath={filePath} isActive={true} />;
+  */
 };
 
 export default EditorPlugin;
