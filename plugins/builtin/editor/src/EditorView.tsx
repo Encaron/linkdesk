@@ -73,6 +73,21 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const container = containerRef.current;
 
     (async () => {
+      // E5#76d：插件 WebView 初始 0×0——等容器有尺寸再创建 Monaco
+      if (container.clientWidth === 0 || container.clientHeight === 0) {
+        await new Promise<void>((resolve) => {
+          const ro = new ResizeObserver((entries) => {
+            const e = entries[0];
+            if (e && e.contentRect.width > 0 && e.contentRect.height > 0) {
+              ro.disconnect();
+              resolve();
+            }
+          });
+          ro.observe(container);
+        });
+      }
+      if (disposed) return;
+
       // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
       await initMonacoEnv(async (modelRef: any, _options: unknown) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
