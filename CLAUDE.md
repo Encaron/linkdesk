@@ -2,7 +2,7 @@
 
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Tauri 时代 P1-P6 🎉 全部完成。🔥 E3 🎉 架构最后一站全部完成。🔥 E4 🎉 文件树+编辑器全部完成（2026-08-03 收尾，修 2 Bug）。🔥 E5 L1 🎉 壳通信骨架 + 布局引擎 + React Fallback 退役全部完成（2026-08-04）。E5#40 keep-alive ✅。E5#48 串口关闭确认 ✅。E5#49 图标 toggle ✅。🆕 E5#61-#72 全部完成——三通信机制 + 8 个 API 命名空间 + 4 类插件 import 迁移 + ESLint 规则。E5#74 🔴🔴 阻塞。→ 下一步 E5#74。**
+> **Tauri 时代 P1-P6 🎉 全部完成。🔥 E3 🎉 架构最后一站全部完成。🔥 E4 🎉 文件树+编辑器全部完成（2026-08-03 收尾，修 2 Bug）。🔥 E5 L1 🎉 壳通信骨架 + 布局引擎 + React Fallback 退役全部完成（2026-08-04）。E5#40 keep-alive ✅。E5#48 串口关闭确认 ✅。E5#49 图标 toggle ✅。🆕 E5#61-#72 E5#74b-c 全部完成——三通信机制 + 8 API + 4 迁移 + ESLint + 串口/LSP 数据广播。E5#64 ✅ IPC getStatus。→ 下一步 E5#74e。**
 > **当前进度：** E5 L1 ✅——ShellEvents + 四区域解耦 + App 去胶水化 + LayoutEngine + E5#10 信号链修复 + 双条件关停 + 白名单 + 超时兜底。E5#11 多 WebView 验收待执行。
 
 ## 架构——圆形大厅模型
