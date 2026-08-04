@@ -12,7 +12,7 @@
  * E4V#40i（诊断+快捷修复）也在此文件——`setDiagnosticsOptions` 打开红波浪线。
  */
 import { onDidChangeFolders } from "@src/core/services/WorkspaceService";
-import { EncodingService } from "@src/core/encoding/EncodingService";
+import { EncodingService } from "@src/core/services/EncodingService";
 
 const lk = (window as any).linkdesk;
 

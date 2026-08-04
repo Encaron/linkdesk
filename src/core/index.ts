@@ -38,6 +38,9 @@ export * from "./services/WorkspaceService";
 export * from "./services/pathUtils";
 export * from "./services/assetPath";
 export * from "./services/IpcBridgeHandler";
+export * from "./services/EncodingService";
+export * from "./services/ThemeEngine";
+export * from "./services/ViewContainerService";
 
 // ── React ──
 export * from "./react/useConfiguration";
@@ -61,7 +64,3 @@ export type * from "./api/types";
 // ── 内置 ──
 export * from "./builtin/coreCommands";
 export * from "./builtin/registerBuiltinProtocols";
-
-// ── 剩余 ──
-export * from "./ThemeEngine";
-export * from "./ViewContainerService";

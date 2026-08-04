@@ -17,9 +17,9 @@
  * @see E36#1 ViewContainerService 类
  */
 
-import { Emitter } from "./react/CoreEvents";
-import { RegistryBase } from "./registry/RegistryBase";
-import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./services/PluginStateService";
+import { Emitter } from "../react/CoreEvents";
+import { RegistryBase } from "../registry/RegistryBase";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 
 /* ── 类型定义 ── */
 

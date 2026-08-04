@@ -21,7 +21,7 @@ import ThemeBrowser from "./components/ThemeBrowser";
 import LanguagePicker from "./components/LanguagePicker";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
-import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/ThemeEngine";
+import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/data/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";

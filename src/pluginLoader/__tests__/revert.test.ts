@@ -12,7 +12,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
 import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
-import { registerTheme, unregisterTheme, getAvailableThemes } from "../../core/ThemeEngine";
+import { registerTheme, unregisterTheme, getAvailableThemes } from "../../core/services/ThemeEngine";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──
 vi.mock("../../core/services/ConfigurationService", () => {

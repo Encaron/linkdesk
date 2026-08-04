@@ -7,7 +7,7 @@
  */
 
 import { useRef, useLayoutEffect, useState } from "react";
-import type { ViewDescriptor } from "../../core/ViewContainerService";
+import type { ViewDescriptor } from "../../core/services/ViewContainerService";
 import ErrorBoundary from "./ErrorBoundary";
 
 interface ToolbarSlotProps {

@@ -16,15 +16,20 @@ export function fileUriToPath(uri: string): string {
   return lk.path.normalize(decodeURIComponent(uri.replace(/^file:\/\/\//, "")));
 }
 
-/** 兜底——editor 尚未挂载时暂存 reveal 位置，mount effect 中 consume */
+/** 兜底——editor 尚未挂载时暂存 reveal 位置，mount/isActive effect 中 consume */
 const _pendingReveal = new Map<string, { line: number; column: number }>();
 
+/** 归一化路径——反斜杠 + 大小写统一。Windows 驱动器字母可能 TS 返回 e:/ 文件树是 E:/ */
+function _norm(p: string): string {
+  return lk.path.normalize(p).toLowerCase();
+}
+
 export function setPendingReveal(filePath: string, line: number, column: number): void {
-  _pendingReveal.set(lk.path.normalize(filePath), { line, column });
+  _pendingReveal.set(_norm(filePath), { line, column });
 }
 
 export function consumePendingReveal(filePath: string): { line: number; column: number } | undefined {
-  const key = lk.path.normalize(filePath);
+  const key = _norm(filePath);
   const pos = _pendingReveal.get(key);
   _pendingReveal.delete(key);
   return pos;

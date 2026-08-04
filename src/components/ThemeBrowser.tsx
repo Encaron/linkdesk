@@ -18,7 +18,7 @@ import {
   applyAccentColor,
   getCurrentTheme,
   getEffectiveAccentColor,
-} from "../core/ThemeEngine";
+} from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../core/services/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";

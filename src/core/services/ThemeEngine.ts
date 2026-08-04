@@ -3,7 +3,7 @@
  * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
  */
 
-import { CoreEvents } from "./react/CoreEvents";
+import { CoreEvents } from "../react/CoreEvents";
 
 export interface ThemeColors {
   [key: string]: string;
@@ -166,7 +166,7 @@ export function getCurrentTheme(): Theme | null {
 
 /* ── E3f #59d1：强调色归一化——三种路径一条函数 ── */
 
-import { getConfigurationValue } from "./services/ConfigurationService";
+import { getConfigurationValue } from "./ConfigurationService";
 
 /**
  * 获取有效强调色——三种路径归一化：

@@ -13,7 +13,7 @@
  * 不散落在 EditorView/EditorTab/快捷键 handler 各写各的。
  */
 import { Emitter } from "@src/core/react/CoreEvents";
-import { EncodingService } from "@src/core/encoding/EncodingService";
+import { EncodingService } from "@src/core/services/EncodingService";
 import { getLanguageFromPath } from "./language-map";
 
 const lk = (window as any).linkdesk;

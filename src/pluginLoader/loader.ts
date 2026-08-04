@@ -24,7 +24,7 @@
 const linkdesk = () => (window as any).linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, findTheme } from "../core/ThemeEngine";
+import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
@@ -441,7 +441,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   if (c.viewsContainers) {
     const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
     void (async () => {
-      const { ViewContainerService } = await import("../core/ViewContainerService");
+      const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, desc] of Object.entries(containers)) {
         ViewContainerService.registerViewContainer(pluginId, {
           id: containerId,
@@ -460,7 +460,7 @@ function parseContributions(pluginId: string, c: Record<string, unknown>): void 
   if (c.views) {
     const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string; minHeight?: number }>>;
     void (async () => {
-      const { ViewContainerService } = await import("../core/ViewContainerService");
+      const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           try {

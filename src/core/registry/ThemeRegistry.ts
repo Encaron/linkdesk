@@ -11,7 +11,7 @@
  */
 
 import type { ThemeContribution } from "../api/types";
-import { findTheme } from "../ThemeEngine";
+import { findTheme } from "../services/ThemeEngine";
 
 interface RegisteredTheme extends ThemeContribution {
   pluginId: string;

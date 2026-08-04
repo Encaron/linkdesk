@@ -24,7 +24,7 @@ import { unregisterPluginProtocols } from "../core/registry/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/data/CardRegistry";
 import { unregisterPluginChannels } from "../core/data/LogChannel";
 import { unregisterPluginFileAssociations } from "../core/services/FileAssociationService";
-import { unregisterPluginThemes } from "../core/ThemeEngine";
+import { unregisterPluginThemes } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
 import i18n from "../i18n";
@@ -108,7 +108,7 @@ export function initLifecycleConsumers(): void {
     // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 10 个注册表
     // E36#4.7: ViewContainerService 显式清理（RegistryBase 自动处理程序已覆盖，idempotent）
     // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
-    import("../core/ViewContainerService").then(({ ViewContainerService }) => {
+    import("../core/services/ViewContainerService").then(({ ViewContainerService }) => {
       ViewContainerService.unregisterAll(pluginId);
     }).catch(() => {});
     unregisterPluginCommands(pluginId);
