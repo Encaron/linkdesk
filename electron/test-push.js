@@ -4,7 +4,7 @@
  */
 const fs = require('fs');
 const path = require('path');
-const LOG_FILE = path.join(require('electron').app.getPath('userData'), 'plugin-push-test.log');
+const LOG_FILE = path.join(process.cwd(), 'plugin-push-test.log');
 
 module.exports = {
   installTest(ipcRenderer) {
