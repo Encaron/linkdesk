@@ -251,7 +251,9 @@ export function useSerialSessions() {
 export function useSession(id: string | undefined) {
   const [, tick] = useState(0);
 
+  // E5#71e：插件 WebView 中 useSerialSessions 可能未渲染——此处也触发 init
   useEffect(() => {
+    if (!_initPromise) _initPromise = _restorePluginState();
     const rerender = () => tick((n) => n + 1);
     _listeners.add(rerender);
     return () => {
