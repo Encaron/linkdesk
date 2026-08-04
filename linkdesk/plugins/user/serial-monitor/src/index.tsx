@@ -737,11 +737,12 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     });
   }
 
-  // E5#64：幂等注册——handle 是幂等的（同名覆盖），unhandle 只删自己的
+  // E5#64：幂等注册——handle 是幂等的（同名覆盖）
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
     if (!api) return;
     api.handle("invokeBeforeClose", async () => {
+      console.log("[E5#64] invokeBeforeClose 被调用, portOpenRef=", portOpenRef.current);
       if (!portOpenRef.current) return;
       const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
       if (!ok) return false;
