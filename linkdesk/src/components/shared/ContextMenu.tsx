@@ -219,7 +219,6 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   }, [anchor, resolved.length]);
 
   // E5#44d：子菜单 hover
-  const [hoveredChildren, setHoveredChildren] = useState<ResolvedItem[] | null>(null);
 
   /* ── 出现动画——首帧渲染后下一帧加 .show 触发 transition ── */
 
