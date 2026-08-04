@@ -1,8 +1,7 @@
 /**
- * 编辑器插件入口。
- * E5#76d：独立 WebView——接收壳 requestToPlugin('openFile')。Monaco 在容器有尺寸后初始化。
+ * 编辑器插件入口。E5#76d：独立 WebView——模块级 handler + pending queue。
  */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import EditorTab from "./EditorTab";
 import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
@@ -10,16 +9,23 @@ import "./editor.css";
 
 initHotExit();
 
-const EditorPlugin: React.FC = () => {
-  const [filePath, setFilePath] = useState<string | null>(null);
+// E5#76d：模块级——linkdesk 可能未就绪，重试注册
+let _setFilePath: ((v: string | null) => void) | null = null;
+let _pending: string | null = null;
+(function _register() {
+  const api = (window as any).linkdesk?.pluginRequest;
+  if (!api) { setTimeout(_register, 10); return; }
+  api.handle("openFile", async (payload: any) => {
+    const fp = payload?.filePath ?? null;
+    if (_setFilePath) { _setFilePath(fp); }
+    else { _pending = fp; }
+  });
+})();
 
-  useEffect(() => {
-    const api = (window as any).linkdesk?.pluginRequest;
-    if (!api) return;
-    api.handle("openFile", async (payload: any) => {
-      setFilePath(payload?.filePath ?? null);
-    });
-  }, []);
+const EditorPlugin: React.FC = () => {
+  const [filePath, setFilePath] = useState<string | null>(_pending);
+  _setFilePath = setFilePath;
+  if (_pending) { _pending = null; if (!filePath) setFilePath(_pending!); }
 
   if (!filePath) {
     return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
