@@ -6,6 +6,8 @@
  * VS Code 对标：vscode.window.showWarningMessage / showInformationMessage
  */
 
+import { shellEvents } from "./ShellEvents";
+
 /* ── 类型 ── */
 
 export interface DialogOptions {
@@ -62,6 +64,27 @@ export function unregisterDialogRenderers(): void {
   _inputBoxR = null;
 }
 
+/* ── E5#84g：插件 WebView 是原生视图（WebContentsView），z-order 高于所有 HTML 元素。
+ *   弹窗前：移到屏幕外 + setVisible(false)——双重保险确保弹窗不被遮挡。
+ *   弹窗后：emit dialog:visibility → MainContent 重算 bounds 恢复正确位置和可见性。── */
+
+/** 屏幕外坐标——把 WebView 移到用户不可见的位置（比 0×0 更可靠） */
+const OFF_SCREEN = { x: -10000, y: -10000, width: 1, height: 1 };
+
+async function _hideAllPluginViews(): Promise<void> {
+  const pv = (window as any).linkdesk?.pluginViews;
+  if (!pv) return;
+  try {
+    const ids: string[] = await pv.getAllIds();
+    if (ids.length === 0) return;
+    await Promise.all(ids.map((id) => Promise.all([
+      pv.setVisible(id, false).catch(() => {}),
+      pv.setBounds(id, OFF_SCREEN).catch(() => {}),
+    ])));
+    await new Promise((r) => setTimeout(r, 50));
+  } catch { /* pluginViews 不可用 */ }
+}
+
 /* ── 公共 API ── */
 
 /**
@@ -69,23 +92,35 @@ export function unregisterDialogRenderers(): void {
  * 返回 true = 用户点确认，false = 取消/关闭。
  */
 export async function confirm(options: DialogOptions): Promise<boolean> {
-  if (!_confirmR) {
-    console.warn("[DialogService] Confirm 渲染器未注册——fallback 到 window.confirm()");
-    return window.confirm(`${options.title}\n${options.message}`);
+  // E5#84g：隐藏原生 WebContentsView，露出 HTML 弹窗
+  await _hideAllPluginViews();
+  try {
+    if (!_confirmR) {
+      console.warn("[DialogService] Confirm 渲染器未注册——fallback 到 window.confirm()");
+      return window.confirm(`${options.title}\n${options.message}`);
+    }
+    return _confirmR(options);
+  } finally {
+    // 通知 MainContent 重算 bounds/visibility——恢复正确的 WebView 可见性
+    shellEvents.emit("dialog:visibility", { open: false });
   }
-  return _confirmR(options);
 }
 
 /**
  * 提示对话框——纯通知，只有一个"确定"按钮。
  */
 export async function alert(options: DialogOptions): Promise<void> {
-  if (!_alertR) {
-    console.warn("[DialogService] Alert 渲染器未注册——fallback 到 window.alert()");
-    window.alert(`${options.title}\n${options.message}`);
-    return;
+  await _hideAllPluginViews();
+  try {
+    if (!_alertR) {
+      console.warn("[DialogService] Alert 渲染器未注册——fallback 到 window.alert()");
+      window.alert(`${options.title}\n${options.message}`);
+      return;
+    }
+    return _alertR(options);
+  } finally {
+    shellEvents.emit("dialog:visibility", { open: false });
   }
-  return _alertR(options);
 }
 
 /**

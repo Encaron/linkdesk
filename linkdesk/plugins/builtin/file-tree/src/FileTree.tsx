@@ -13,9 +13,19 @@ import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
+
+const lk = (window as any).linkdesk;
+
+/** E4V#34b: explorer.compactFolders 配置缓存——flattenTree 在 useMemo 中同步读取 */
+let _compactFolders = true;
+const compactFoldersRef = { get current() { return _compactFolders; } };
+
+/** 从 lk.configuration 加载 compactFolders 并订阅变更 */
+async function loadCompactFolders(): Promise<void> {
+  _compactFolders = await lk.configuration.get("explorer.compactFolders") ?? true;
+}
 
 /* ── 类型 ── */
 
@@ -42,7 +52,7 @@ interface FileTreeProps {
 function flattenTree(model: FileTreeModel): FlatItem[] {
   const result: FlatItem[] = [];
   // E4V#34b: explorer.compactFolders 配置开关
-  const compactFolders = getConfigurationValue<boolean>("explorer.compactFolders") ?? true;
+  const compactFolders = compactFoldersRef.current;
   function walk(item: ExplorerItem, depth: number, guide: boolean) {
     if (item.isDirectory && compactFolders) {
       const compacted = model.compactController.getCompactedSegments(item);
@@ -116,10 +126,20 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const [version, setVersion] = useState(0);
   const rerender = useCallback(() => setVersion((v) => v + 1), []);
   /** E4V#35e: 活跃工作区——根节点 accent 色加粗 */
-  const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>(() => getActiveWorkspace() ?? "");
+  const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>("");
+  useEffect(() => { lk.workspace.getActive().then((v: string | undefined) => { if (v) setActiveWorkspaceUri(v); }); }, []);
   useEffect(() => {
     return onDidChangeActiveWorkspace((uri) => { setActiveWorkspaceUri(uri); rerender(); });
   }, [rerender]);
+
+  // E4V#34b: 加载 explorer.compactFolders 配置并订阅变更
+  useEffect(() => {
+    loadCompactFolders().then(rerender);
+    return lk.configuration.onChange("explorer.compactFolders", (v: boolean) => {
+      _compactFolders = v ?? true;
+      rerender();
+    });
+  }, []);
 
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
@@ -147,9 +167,8 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
-    const { copy, deleteEntry } = await import("@src/core/FileService");
-    await copy(uri, dest);
-    await deleteEntry(uri);
+    await lk.filesystem.copy(uri, dest);
+    await lk.filesystem.remove(uri);
     await model.refresh(dir);
     const parent = model.findClosest(dir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});

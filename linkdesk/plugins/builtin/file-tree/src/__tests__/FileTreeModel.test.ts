@@ -26,7 +26,7 @@ function makeEntry(overrides: Partial<FileEntry> & { name: string; path: string;
 const { listDir } = vi.hoisted(() => ({ listDir: vi.fn() }));
 vi.mock("@src/core/FileService", () => ({ listDir }));
 
-/* ── mock ConfigurationService ── */
+/* ── mock ConfigurationService（E5#85 迁移后不再使用，保留兼容）── */
 
 const { getConfigurationValue, onDidChangeConfiguration } = vi.hoisted(() => ({
   getConfigurationValue: vi.fn(),
@@ -34,12 +34,20 @@ const { getConfigurationValue, onDidChangeConfiguration } = vi.hoisted(() => ({
 }));
 vi.mock("@src/core/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
 
+/** E5#85 迁移后 FileTreeModel 通过 lk.configuration.get() 读配置——通过 __ldkConfigStore 设值 */
+function setConfig(key: string, value: unknown) {
+  (globalThis as any).__ldkConfigStore?.set(key, value);
+}
+
 describe("FileTreeModel", () => {
   let model: FileTreeModel;
 
   beforeEach(() => {
     vi.clearAllMocks();
-    getConfigurationValue.mockReturnValue(undefined); // default: no config override
+    (globalThis as any).__ldkConfigStore?.clear();
+    setConfig("explorer.sortOrder", "default");
+    // E5#85 迁移桥接——FileTreeModel 用 lk.filesystem.listDir 而非 @src/core/FileService
+    (window as any).linkdesk.filesystem.listDir = listDir;
     model = new FileTreeModel();
   });
 
@@ -218,9 +226,9 @@ describe("FileTreeModel", () => {
   /* ── sortOrder —— 6 种排序 ── */
 
   it("sortOrder default/foldersNestsFiles——目录优先", async () => {
-    // sortOrder 通过 ConfigurationService 读取，mock 返回
-    getConfigurationValue.mockReturnValue("default");
+    setConfig("explorer.sortOrder", "default");
     const m = new FileTreeModel();
+    await m.init();
     await m.setRoots(["/root"]);
     listDir.mockResolvedValue([
       makeEntry({ name: "b.ts", path: "/root/b.ts", isDirectory: false }),
@@ -232,8 +240,9 @@ describe("FileTreeModel", () => {
   });
 
   it("sortOrder filesFirst——文件优先", async () => {
-    getConfigurationValue.mockReturnValue("filesFirst");
+    setConfig("explorer.sortOrder", "filesFirst");
     const m = new FileTreeModel();
+    await m.init();
     await m.setRoots(["/root"]);
     listDir.mockResolvedValue([
       makeEntry({ name: "a", path: "/root/a", isDirectory: true }),
@@ -244,8 +253,9 @@ describe("FileTreeModel", () => {
   });
 
   it("sortOrder type——按扩展名排序", async () => {
-    getConfigurationValue.mockReturnValue("type");
+    setConfig("explorer.sortOrder", "type");
     const m = new FileTreeModel();
+    await m.init();
     await m.setRoots(["/root"]);
     listDir.mockResolvedValue([
       makeEntry({ name: "z.json", path: "/root/z.json", isDirectory: false }),
@@ -258,8 +268,9 @@ describe("FileTreeModel", () => {
   });
 
   it("sortOrder modified——按修改时间倒序", async () => {
-    getConfigurationValue.mockReturnValue("modified");
+    setConfig("explorer.sortOrder", "modified");
     const m = new FileTreeModel();
+    await m.init();
     await m.setRoots(["/root"]);
     listDir.mockResolvedValue([
       makeEntry({ name: "old.ts", path: "/root/old.ts", isDirectory: false, modifiedAt: 100 }),

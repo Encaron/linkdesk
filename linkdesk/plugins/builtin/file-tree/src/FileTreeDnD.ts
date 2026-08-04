@@ -8,11 +8,10 @@
 import { useState, useCallback, useRef } from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { getConfigurationValue } from "@src/core/ConfigurationService";
 import { TREE_ITEM_HEIGHT } from "./layoutTokens";
-import { copy, deleteEntry } from "@src/core/FileService";
-
 import { dirname, joinPath, normalizePath } from "./pathUtils";
+
+const lk = (window as any).linkdesk;
 import type { FlatItem } from "./pathUtils";
 
 /* ── 类型 ── */
@@ -79,9 +78,9 @@ export async function executeSafeDrop(
   operation: "copy" | "move",
 ): Promise<void> {
   // E4V#34e: explorer.enableDragAndDrop 配置开关
-  if ((getConfigurationValue<boolean>("explorer.enableDragAndDrop") ?? true) === false) return;
+  if ((await lk.configuration.get("explorer.enableDragAndDrop") ?? true) === false) return;
   // E4V#34h1: explorer.confirmDragAndDrop——移动/复制前弹确认框
-  if (getConfigurationValue<boolean>("explorer.confirmDragAndDrop") ?? true) {
+  if (await lk.configuration.get("explorer.confirmDragAndDrop") ?? true) {
     const names = sources.map((s) => `"${s.name}"`).join(", ");
     const targetName = targetDir.split("/").pop() ?? targetDir;
     const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
@@ -94,8 +93,8 @@ export async function executeSafeDrop(
     if (t.startsWith(s + "/")) continue;  // 祖先→后代——防递归嵌套
     if (s === t) continue;                // 自己→自己——防 sub→sub/sub
     if (s === dest) continue;             // 同路径——无操作
-    await copy(src.path, dest);
-    if (operation === "move") await deleteEntry(src.path);
+    await lk.filesystem.copy(src.path, dest);
+    if (operation === "move") await lk.filesystem.remove(src.path);
   }
 }
 
@@ -194,7 +193,7 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
         await executeSafeDrop(sources, target.targetDir, "copy");
         await refreshDir(target.targetDir);
         // E4V#34h2: explorer.autoOpenDroppedFile——拖入后自动打开
-        if (getConfigurationValue<boolean>("explorer.autoOpenDroppedFile") ?? false) {
+        if (await lk.configuration.get("explorer.autoOpenDroppedFile") ?? false) {
           for (const src of sources) {
             callbacks.onAutoOpenDroppedFile?.(src.path, src.name);
           }

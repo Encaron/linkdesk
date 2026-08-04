@@ -18,6 +18,7 @@ import { shellEvents } from "./ShellEvents"; // E5#68
 import { ContextKeyService } from "./ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "./MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
+import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; // E5#85
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../i18n";
@@ -84,6 +85,16 @@ export function initIpcBridgeHandler(): void {
           await setPluginStateValue(pluginId, key, value);
           // E5#84f：广播变更到所有 WebView——pluginState.onChange 订阅者收到通知
           try { (window as any).linkdesk?.events?.emit("plugin-state:changed", { pluginId, key, value }); } catch { /* 静默 */ }
+          break;
+        }
+
+        // ── E5#85：workspace——插件查询工作区信息 ──
+        case "workspace:getFolders": {
+          result = getWorkspaceFolders();
+          break;
+        }
+        case "workspace:getActive": {
+          result = getActiveWorkspace();
           break;
         }
 

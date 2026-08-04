@@ -54,6 +54,20 @@ try {
     };
   };
 
+  // E5#85：壳 preload 也暴露配置读写——侧栏组件（file-tree 等）调 lk.configuration.get()
+  const shellConfiguration = {
+    get: (key: string) => ipcRenderer.invoke('config:get', key),
+    set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
+    getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
+    onChange: (key: string, cb: (v: any) => void) => {
+      const handler = (_: any, d: { key: string; value: any }) => {
+        if (!key || d.key === key) cb(d.value);
+      };
+      ipcRenderer.on('config:changed', handler);
+      return () => ipcRenderer.removeListener('config:changed', handler);
+    },
+  };
+
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -102,10 +116,14 @@ try {
       },
     },
 
-    // ── 路径（步 3 接入——对标 @tauri-apps/api/path）──
+    // ── 路径（步 3 接入——对标 @tauri-apps/api/path）+ E5#85 扩展 ──
     path: {
       appDataDir: () => ipcRenderer.invoke('path:appDataDir'),
-      join: (...parts: string[]) => ipcRenderer.invoke('path:join', ...parts),
+      normalize: (p: string) => p.replace(/\\/g, "/"),
+      join: (...parts: string[]) => parts.map(p => String(p).replace(/\\/g, "/")).join("/").replace(/\/+/g, "/"),
+      basename: (p: string) => { const s = p.replace(/\\/g, "/").split("/"); return s[s.length - 1] || ""; },
+      dirname: (p: string) => { const s = p.replace(/\\/g, "/").split("/"); s.pop(); return s.join("/") || "."; },
+      extname: (p: string) => { const b = p.replace(/\\/g, "/").split("/").pop() || ""; const i = b.lastIndexOf("."); return i > 0 ? b.slice(i) : ""; },
     },
 
     // ── 插件管理（步 3 接入——对标 Rust plugins.rs）──
@@ -131,9 +149,16 @@ try {
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
     },
 
-    // ── 以下命名空间在步 4 接入 ──
-    commands: {},
-    config: {},
+    // ── 命令（E5#85 补全——同步 plugin preload）──
+    commands: {
+      execute: (id: string, ...args: any[]) => ipcRenderer.invoke('commands:execute', id, ...args),
+      executeCommand: (id: string, ...args: any[]) => ipcRenderer.invoke('commands:execute', id, ...args),
+      getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
+    },
+
+    // ── 配置（E5#85 补全——同步 plugin preload）──
+    config: shellConfiguration,
+    configuration: shellConfiguration,
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
     dialog: {
       open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
@@ -209,6 +234,12 @@ try {
       showItemInFolder:(p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
       openInTerminal:  (p: string) => ipcRenderer.invoke('shell:openInTerminal', p),
     },
+    // ── E5#85：workspace——工作区信息查询 ──
+    workspace: {
+      getFolders: (): Promise<any[]> => ipcRenderer.invoke('workspace:getFolders'),
+      getActive: (): Promise<string | undefined> => ipcRenderer.invoke('workspace:getActive'),
+    },
+
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke('env:get', pluginId),

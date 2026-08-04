@@ -808,7 +808,8 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     };
     registerViewPlugin(entry);
     // E3f #58a：运行时插件也创建独立 WebView
-    try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron */ }
+    // 🔥 E5#84g 回退：单 WebView 模式——不创建独立 WebContentsView
+    // try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron */ }
     log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
   }
 
@@ -908,7 +909,8 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
   registerViewPlugin(entry);
 
   // E3f #58a：为视图插件创建独立 WebContentsView（占位 HTML，真渲染后续迁移）
-  try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
+  // 🔥 E5#84g 回退：单 WebView 模式——不创建独立 WebContentsView
+  // try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
 
   // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
   // 在 registerViewPlugin 之后、parseContributions 之前调用——
