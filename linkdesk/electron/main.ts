@@ -142,6 +142,11 @@ ipcMain.on('theme-changed', (_event, isDark: boolean) => {
   }
 });
 
+// E5#74e temp test
+ipcMain.on('plugin-push-test', (_e: any, d: any) => {
+  console.log(`[E5#74e TEST] ${d.type} channel="${d.channel}"`);
+});
+
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
 ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
