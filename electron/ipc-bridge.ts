@@ -267,8 +267,10 @@ export class IpcBridge {
   /** 广播事件到所有已注册的插件 WebView——并存储 payload 供新 WebView 重放 */
   broadcast(channel: string, payload: unknown, source?: string): void {
     this.lastBroadcasts.set(channel, payload);
+    // E5#74e debug：绕过 pushToPlugin 队列——直发 webContents.send
     for (const pluginId of this.windowManager.getAllPluginIds()) {
-      this.pushToPlugin(pluginId, channel, payload, source);
+      const view = this.windowManager.getPluginView(pluginId);
+      if (view) view.webContents.send('plugin:push', { channel, payload, source });
     }
   }
 
