@@ -103,16 +103,27 @@ const _store = {
 }
 const _listeners = new Set<() => void>();
 
-// E5#71e：restore 现在 async——组件 mount 前需等待。_ready 供 useSession/useSerialSessions await
-let _ready: Promise<void> | null = null;
-function _markReady(): void { _ready = null; }
+// ── 持久化（E5#71e：双路径——localStorage 同步兜底 + pluginState 异步更新）──
 
-// ── 持久化（PluginStateService 归一化入口——对标 ControlPanel.tsx:58）──
-// E3i #71：消 localStorage 双路径——统一走 PluginStateService → StorageService → 文件持久化 + beforeunload 保底。
+/** 同步恢复——localStorage 兜底，确保组件 mount 时数据已就绪 */
+function _restoreSync(): void {
+  try {
+    let raw = localStorage.getItem("linkdesk:serial-monitor:sessions");
+    if (!raw) raw = localStorage.getItem("linkdesk:terminal:sessions");
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.sessions)) {
+        _store.sessions = data.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
+      }
+      if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
+      if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
+      if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
+    }
+  } catch { /* 首次启动——静默 */ }
+}
 
-/** 从 PluginStateService 恢复 session，一次性迁移旧 localStorage 数据。E3i #71 */
-// E5#71e：async——await linkdesk.pluginState.get
-async function _restoreSessions(): Promise<void> {
+/** 异步更新——pluginState 覆盖 localStorage，完成后通知 hooks */
+async function _restoreAsync(): Promise<void> {
   try {
     const psData = await (window as any).linkdesk?.pluginState?.get("serial-monitor", "sessions") as {
       sessions: SerialSession[]; activeSessionId: string | null;
@@ -123,31 +134,15 @@ async function _restoreSessions(): Promise<void> {
       if (typeof psData.activeSessionId === "string") _store.activeSessionId = psData.activeSessionId;
       if (typeof psData.sessionCounter === "number") _store.sessionCounter = psData.sessionCounter;
       if (typeof psData.colorIndex === "number") _store.colorIndex = psData.colorIndex;
-      return;
-    }
-    // 一次性迁移：localStorage → PluginStateService
-    let raw = localStorage.getItem("linkdesk:serial-monitor:sessions");
-    if (!raw) {
-      raw = localStorage.getItem("linkdesk:terminal:sessions");
-    }
-    if (raw) {
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.sessions)) {
-        _store.sessions = data.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
-      }
-      if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
-      if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
-      if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
-      // 迁移写入 + 清理旧 key
-      const migrated = { sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex };
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", migrated);
-      localStorage.removeItem("linkdesk:serial-monitor:sessions");
+      // 同步到 localStorage（保底）
+      localStorage.setItem("linkdesk:serial-monitor:sessions", JSON.stringify({ sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex }));
       localStorage.removeItem("linkdesk:terminal:sessions");
+      notify();
     }
-  } catch { /* 首次启动或数据损坏——静默忽略 */ }
+  } catch { /* 静默 */ }
 }
 
-/** 持久化——PluginStateService 归一化入口（同步内存 + 异步文件） */
+/** 持久化——双写（pluginState + localStorage 兜底） */
 function _persistSessions(): void {
   const data = {
     sessions: _store.sessions,
@@ -155,14 +150,15 @@ function _persistSessions(): void {
     sessionCounter: _store.sessionCounter,
     colorIndex: _store.colorIndex,
   };
-  try {
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data);
-  } catch { /* 静默 */ }
+  try { (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", data); } catch { /* 静默 */ }
+  try { localStorage.setItem("linkdesk:serial-monitor:sessions", JSON.stringify(data)); } catch { /* 静默 */ }
 }
 
-// 模块初始化——F5 后恢复 session。不再需要 beforeunload 监听——StorageService 已内置保底。
+// E5#71e：同步恢复（localStorage 立即就绪）+ 异步更新（pluginState 覆盖）
 if (typeof window !== "undefined") {
-  _ready = _restoreSessions().then(() => { notify(); _markReady(); }); // E5#71e: async→完成后通知 hooks
+  _restoreSync();
+  _restoreAsync();
+}
 }
 
 function notify(): void {
@@ -278,12 +274,9 @@ export function useSession(id: string | undefined) {
   }, []);
 
   // B3：F5 刷新 → 标签页恢复但 session 丢失 → 首次 mount 自动创建。
-  // E5#71e：等 _ready（restore 完成）后再检查——避免 race condition
   const didAutoCreate = useRef(false);
   useEffect(() => {
-    const check = () => {
-      if (didAutoCreate.current || !id) return;
-      if (_store.sessions.find((s) => s.id === id)) return;
+    if (!didAutoCreate.current && id && !_store.sessions.find((s) => s.id === id)) {
       didAutoCreate.current = true;
       const session: SerialSession = {
         id,
@@ -294,11 +287,6 @@ export function useSession(id: string | undefined) {
       _store.colorIndex++;
       _store.sessions = [..._store.sessions, session];
       notify();
-    };
-    if (_ready) {
-      _ready.then(check);
-    } else {
-      check();
     }
   }, [id]);
 
