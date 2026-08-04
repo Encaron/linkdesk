@@ -250,20 +250,22 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     };
   }, [filePath]);
 
-  // ── keep-alive——标签页切换时 layout + 兜底 reveal（registry 找到的是隐藏 editor）──
+  // ── keep-alive——标签页切换时 layout + reveal。双 rAF 防光标被后续渲染覆盖 ──
   useEffect(() => {
     if (!isActive) return;
-    const raf = requestAnimationFrame(() => {
+    const raf1 = requestAnimationFrame(() => {
       editorRef.current?.layout();
       const pos = consumePendingReveal(filePath);
       if (pos && editorRef.current) {
-        const p = { lineNumber: pos.line, column: pos.column };
-        editorRef.current.setPosition(p);
-        editorRef.current.revealPositionInCenter(p);
-        editorRef.current.focus();
+        requestAnimationFrame(() => {
+          const p = { lineNumber: pos.line, column: pos.column };
+          editorRef.current?.setPosition(p);
+          editorRef.current?.revealPositionInCenter(p);
+          editorRef.current?.focus();
+        });
       }
     });
-    return () => cancelAnimationFrame(raf);
+    return () => cancelAnimationFrame(raf1);
   }, [isActive, filePath]);
 
   useEffect(() => {
