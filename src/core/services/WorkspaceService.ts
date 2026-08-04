@@ -56,13 +56,26 @@ export function getActiveWorkspace(): string | undefined {
 }
 
 /** 设置活跃工作区——下游插件（编译/下载/搜索）以活跃工作区为目标 */
+let _migrated = false;
+
 export function setActiveWorkspace(uri: string): void {
   const normalized = normalizePath(uri);
+
+  // E5#59：一次性迁移——旧 key "file-tree" → 新 key "workspace"
+  if (!_migrated) {
+    _migrated = true;
+    const old = getPluginStateValue<string>("file-tree", "activeWorkspace");
+    if (old) {
+      setPluginStateValue("workspace", "activeWorkspace", old).catch(() => {});
+      setPluginStateValue("file-tree", "activeWorkspace", null).catch(() => {});
+    }
+  }
+
   if (_activeWorkspaceUri === normalized) return;
   _activeWorkspaceUri = normalized;
   _onDidChangeActiveWorkspace.fire(normalized);
   // 持久化——F5 恢复
-  setPluginStateValue("file-tree", "activeWorkspace", normalized).catch(() => {});
+  setPluginStateValue("workspace", "activeWorkspace", normalized).catch(() => {});
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
@@ -117,7 +130,7 @@ export function addFolder(folderPath: string): void {
 
   // 活跃工作区恢复优先级：持久化值 > 首个文件夹自动激活
   // 每次 addFolder 都检查——后续添加的文件夹可能匹配持久化值
-  const persisted = getPluginStateValue<string>("file-tree", "activeWorkspace");
+  const persisted = getPluginStateValue<string>("workspace", "activeWorkspace");
   if (persisted) {
     const normalizedPersisted = normalizePath(persisted);
     if (_folders.some((f) => f.uri === normalizedPersisted)) {
