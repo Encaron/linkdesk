@@ -78,14 +78,13 @@ function createWindow(): void {
   pluginViewRegistry = new PluginViewRegistry(windowManager);
   // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
   registerPluginViewHandlers(pluginViewRegistry, mainWindow);
-  // E4V#40s1：LSP spawn handler——渲染进程启动语言服务器
-  registerLspHandlers(mainWindow);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
   ipcBridge = new IpcBridge(mainWindow, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
 
-  // E5#74b：串口数据广播到插件 WebView（依赖 WindowManager + IpcBridge 就绪）
-  registerSerialHandlers(mainWindow, windowManager);
+  // E5#74：依赖 WindowManager 的 handler 放在此处
+  registerLspHandlers(mainWindow, windowManager);   // E5#74c
+  registerSerialHandlers(mainWindow, windowManager); // E5#74b
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {

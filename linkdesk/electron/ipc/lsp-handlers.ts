@@ -6,6 +6,7 @@
  */
 import { ipcMain, BrowserWindow } from "electron";
 import { spawn, type ChildProcess } from "child_process";
+import type { WindowManager } from "../window-manager.js"; // E5#74c
 
 interface LspChannel {
   process: ChildProcess;
@@ -15,7 +16,7 @@ interface LspChannel {
 const channels = new Map<string, LspChannel>();
 let _channelId = 0;
 
-export function registerLspHandlers(mainWindow: BrowserWindow): void {
+export function registerLspHandlers(mainWindow: BrowserWindow, windowManager?: WindowManager): void {
   ipcMain.handle("lsp:spawn", async (_event, { command, args, pluginId }: {
     command: string;
     args?: string[];
@@ -32,6 +33,13 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
     child.stdout?.on("data", (data: Buffer) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send("lsp:data", { channelId, data: data.toString("utf-8") });
+      }
+      // E5#74c：editor 独立 WebView 后路由 LSP 数据
+      if (windowManager) {
+        const editorView = windowManager.getPluginView(pluginId);
+        if (editorView) {
+          editorView.webContents.send("lsp:data", { channelId, data: data.toString("utf-8") });
+        }
       }
     });
 
