@@ -25,7 +25,7 @@ const pluginModules = {
   ...import.meta.glob("../plugins/user/*/src/index.tsx"),
 };
 
-async function bootstrap() {
+function bootstrap() {
   // E5#10：全局错误捕获——WebView 内任何未捕获异常都记录
   window.addEventListener("error", (e) => {
     console.error(`[plugin-shell] global error:`, e.message, e.filename, e.lineno);
@@ -42,8 +42,8 @@ async function bootstrap() {
     return;
   }
 
-  // E5#71e：先加载 pluginState 缓存再渲染组件——确保同步 getPluginStateValue 可用
-  try { await initPluginStates(); } catch (err) { console.error("[plugin-shell] initPluginStates 失败:", err); }
+  // E5#71e：fire-and-forget——确保 _states 在后续模块加载时已就绪
+  initPluginStates().catch((err) => console.error("[plugin-shell] initPluginStates 失败:", err));
 
   // E4 #86：插件在 builtin/ 或 user/ 下——遍历 glob keys 查找匹配路径
   let modulePath: string | undefined;
