@@ -351,14 +351,17 @@ export class IpcBridge {
   // ═══════════════════════════════════════════════════════
 
   private registerP2pListener(): void {
-    // E5#65：插件间定向推流。⚠️ 受阻于 E5#74——plugin:push 不投递到插件 WebView，events.on 收不到。
+    // E5#74e debug：先直发串口试试——用 serial:system（已验证能到壳）的频道名
     ipcMain.on('p2p:send', (event, { target, channel, data }: {
       target: string; channel: string; data: unknown;
     }) => {
       const targetView = this.windowManager.getPluginView(target);
       if (!targetView) return;
       const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
-      targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
+      // 原始路径：targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
+      // E5#74e 探路：直接用 serial:data channel（已验证可到壳）
+      targetView.webContents.send('serial:system', `[p2p debug] ${JSON.stringify({ channel, data })}`);
+      console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}" sent via serial:system`);
     });
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
