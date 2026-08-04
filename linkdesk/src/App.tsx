@@ -46,10 +46,10 @@ import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API na
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）
-import { ensureCoreCommands, ensureCoreKeybindings } from "./core/coreCommands";
+import { ensureCoreCommands, ensureCoreKeybindings } from "./core/builtin/coreCommands";
 import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
-import { ensureBuiltinProtocols } from "./core/registerBuiltinProtocols";
+import { ensureBuiltinProtocols } from "./core/builtin/registerBuiltinProtocols";
 import SourceStateContext from "./core/react/SourceStateContext";
 import type { SourceInfo } from "./core/react/SourceStateContext";
 import i18n from "./i18n";

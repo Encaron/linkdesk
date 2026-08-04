@@ -7,9 +7,9 @@
  * 模式：对标 coreCommands.ts——模块级 ensure 函数，App.tsx init 时调用一次，幂等。
  */
 
-import { registerProtocol } from "./registry/ProtocolRegistry";
-import { Parse } from "./data/ProtocolParser";
-import { APP_PLUGIN_ID } from "./services/PluginStateService";
+import { registerProtocol } from "../registry/ProtocolRegistry";
+import { Parse } from "../data/ProtocolParser";
+import { APP_PLUGIN_ID } from "../services/PluginStateService";
 
 let _registered = false;
 

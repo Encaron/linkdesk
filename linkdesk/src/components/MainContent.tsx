@@ -15,7 +15,7 @@ import { useTabManager, allTabs } from "../hooks/useTabManager";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
-import { updateCoreCallbacks, type CoreCallbacks } from "../core/coreCommands";
+import { updateCoreCallbacks, type CoreCallbacks } from "../core/builtin/coreCommands";
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
