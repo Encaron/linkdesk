@@ -67,7 +67,6 @@ function createWindow(): void {
   });
 
   // ── 注册 IPC 处理器（不依赖 WindowManager 的先注册）──
-  registerFileHandlers();
   registerPluginHandlers();
   registerDialogHandlers();
   registerEnvHandlers();
@@ -85,6 +84,7 @@ function createWindow(): void {
   // E5#74：依赖 WindowManager 的 handler 放在此处
   registerLspHandlers(mainWindow, windowManager);   // E5#74c
   registerSerialHandlers(mainWindow, windowManager); // E5#74b
+  registerFileHandlers(windowManager);              // E5#80
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
