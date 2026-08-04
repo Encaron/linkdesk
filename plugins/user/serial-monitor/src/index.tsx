@@ -741,14 +741,11 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
     if (!api) return;
-    api.handle("invokeBeforeClose", async () => {
-      console.log("[E5#64] invokeBeforeClose 被调用, portOpenRef=", portOpenRef.current);
-      if (!portOpenRef.current) return;
-      const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
-      if (!ok) return false;
-      await (window as any).linkdesk?.serial?.closePort?.();
-    });
-    // 不 unhandle——模块级，永不注销（handle 本身幂等）
+    const handleClose = async () => {
+      console.log("[E5#64] 注册成功");
+    };
+    api.handle("invokeBeforeClose", handleClose);
+    return () => api.unhandle("invokeBeforeClose");
   }, []);
 
   // E2b #11：卸载时从 _cmdMap 清理——防止 sourceId 复用时的残留
