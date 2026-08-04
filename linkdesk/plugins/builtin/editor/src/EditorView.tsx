@@ -274,17 +274,21 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     return () => cancelAnimationFrame(raf1);
   }, [isActive, filePath]);
 
-  // ── 跨文件跳转——目标 editor 已 active（分屏）时不触发 isActive effect，走事件 ──
+  // ── 跨文件跳转——mount/isActive effect 之外的事件通道（含 ShellEvents buffer 回放）──
   useEffect(() => {
     return shellEvents.on("editor:revealRequested", ({ filePath: fp }) => {
       if (fp !== filePath) return;
-      const pos = consumePendingReveal(filePath);
-      if (pos && editorRef.current) {
-        const p = { lineNumber: pos.line, column: pos.column };
-        editorRef.current.setPosition(p);
-        editorRef.current.revealPositionInCenter(p);
-        editorRef.current.focus();
-      }
+      requestAnimationFrame(() => {
+        const pos = consumePendingReveal(filePath);
+        if (pos && editorRef.current) {
+          requestAnimationFrame(() => {
+            const p = { lineNumber: pos.line, column: pos.column };
+            editorRef.current?.setPosition(p);
+            editorRef.current?.revealPositionInCenter(p);
+            editorRef.current?.focus();
+          });
+        }
+      });
     });
   }, [filePath]);
 
