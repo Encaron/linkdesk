@@ -259,7 +259,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
             }}
             className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
             onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
-            onMouseEnter={() => { setFocusIdx(idx); setHoveredChildren(hasKids ? item.children! : null); }}
+            onMouseEnter={() => setFocusIdx(idx)}
           >
             <span className="ctx-item-label">{item.label}</span>
             {hasKids && <span className="ctx-item-chevron">»</span>}
