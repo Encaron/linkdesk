@@ -13,14 +13,16 @@ import "./editor.css";
 
 initHotExit();
 
-// E5#76：模块级 handler——notifyReady 在 render 之后但 useEffect 之前，加队列缓冲
+// E5#76：模块级 handler
 let _setFilePath: ((v: string | null) => void) | null = null;
 let _pendingFile: string | null = null;
-const api = (window as any).linkdesk?.pluginRequest;
-api?.handle("openFile", async (payload: any) => {
-  const fp = payload?.filePath ?? null;
-  if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
-});
+try {
+  const api = (window as any).linkdesk?.pluginRequest;
+  api?.handle("openFile", async (payload: any) => {
+    const fp = payload?.filePath ?? null;
+    if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
+  });
+} catch (e) { console.error("[editor] pluginRequest 注册失败:", e); }
 
 const EditorPlugin: React.FC = () => {
   const [filePath, setFilePath] = useState<string | null>(_pendingFile);
