@@ -38,6 +38,8 @@ export interface CoreCallbacks {
   openTab: (pluginId: string) => string;
   /** E3f #59-F：关闭当前活跃标签页 */
   closeActiveTab: () => void;
+  /** E5#55：恢复最近关闭的标签页——对标 VS Code Ctrl+Shift+T */
+  reopenClosedTab: () => string | null;
   /** E3f #59-F：切换到组内下一个标签页（shift=true 则上一个） */
   focusNextTab: (shift: boolean) => void;
   /** E3f #59-F：切换分屏/合屏 */
@@ -312,6 +314,14 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
   },
   {
+    id: "workbench.action.reopenClosedEditor",
+    title: i18n.t("重新打开已关闭的编辑器"),
+    category: i18n.t("标签页"),
+    handler: async () => {
+      _callbacks?.reopenClosedTab();
+    },
+  },
+  {
     id: "workbench.action.nextTab",
     title: i18n.t("下一个标签页"),
     category: i18n.t("标签页"),
@@ -427,6 +437,7 @@ export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unkn
   { command: "workbench.action.selectTheme",  key: "ctrl+k ctrl+t" },
   { command: "workbench.action.selectLanguage", key: "ctrl+k ctrl+l" },
   { command: "workbench.action.closeActiveTab", key: "ctrl+w" },
+  { command: "workbench.action.reopenClosedEditor", key: "ctrl+shift+t" },
   { command: "workbench.action.nextTab",      key: "ctrl+tab" },
   { command: "workbench.action.nextTab",      key: "ctrl+shift+tab", args: [{ shift: true }] },
   { command: "workbench.action.toggleSplit",  key: "ctrl+\\" },

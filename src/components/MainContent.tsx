@@ -157,6 +157,7 @@ function MainContent({
     focusTabBySourceId,
     closeTabBySourceId,
     updateTabLabelBySourceId,
+    restoreClosedTab,
   } = useTabManager();
 
   // E5#5e-ii-f 恢复：拖拽分屏回调
@@ -319,7 +320,8 @@ function MainContent({
         }
       }
     },
-  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
+    reopenClosedTab: () => restoreClosedTab(),
+  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t]);
   updateCoreCallbacks(coreCallbacks);
 
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
