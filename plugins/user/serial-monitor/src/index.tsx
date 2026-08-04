@@ -740,13 +740,22 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
   // E5#64：handler 注册——不依赖 sourceId，闭包直接访问 portOpenRef
   useEffect(() => {
     const api = (window as any).linkdesk?.pluginRequest;
+    if (api) {
+      api.handle("invokeBeforeClose", async () => {
+        if (!portOpenRef.current) return;
+        const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
+        if (!ok) return false;
+        await (window as any).linkdesk?.serial?.closePort?.();
+      });
+    }
+    // E5#74e test: p2p 组件级测试——收到就写 CM6
     const p2p = (window as any).linkdesk?.p2p;
     if (p2p) {
-      p2p.on("test-p2p", (d: any) => console.log("[E5#74e] p2p 收到:", d));
-      console.log("[E5#74e] p2p.on 已注册");
+      p2p.on("test-p2p", (d: any) => {
+        appendLine(`[P2P-TEST] ${JSON.stringify(d)}`, "system");
+      });
     }
-    if (!api) return;
-    api.handle("invokeBeforeClose", async () => {
+  }, []);
       // E5#64：IPC 查端口状态——不依赖 serial-system 消息
       const status = await (window as any).linkdesk?.serial?.getStatus?.();
       if (!status?.isOpen) return;           // 端口未开——直接允许关闭
