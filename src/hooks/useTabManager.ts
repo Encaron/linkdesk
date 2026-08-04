@@ -896,9 +896,12 @@ export function useTabManager() {
   const closeTab = useCallback(
     async (tabId: string): Promise<CloseTabResult> => {
       const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
-      if (tab?.dirty) {
+      // E5#52：dirty 可能在 tab.dirty 字段，也可能在 label 的 ● 前缀（EditorTab 只改 label 不改 dirty）
+      const isDirty = tab?.dirty || (tab?.label?.startsWith("● ") ?? false);
+      if (isDirty) {
+        const displayLabel = tab!.label.startsWith("● ") ? tab!.label.slice(2) : tab!.label;
         const confirmed = await showConfirm(
-          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(tab.label) })
+          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) })
         );
         if (!confirmed) return { closed: false, tabId, reason: "dirty" };
         let result: CloseTabResult = { closed: false, tabId };

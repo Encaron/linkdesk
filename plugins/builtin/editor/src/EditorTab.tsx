@@ -85,6 +85,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const dirtyRef = useRef(false);
+  // E5#52：baseLabel 只算一次——脏/净切换只加减 ●，不重新取 baseName
+  const baseLabelRef = useRef(lk.path.normalize(filePath).split("/").pop() || filePath);
   // E4V#40o——自动保存计时器
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // E4V#40o——onFocusChange 需要前一帧 isActive 判断切换方向
@@ -134,8 +136,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       model.markSaved();
       dirtyRef.current = false;
       clearDirtyFile(filePath);
-      const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
-      tabs?.updateLabelBySourceId?.(filePath, baseName);
+      tabs?.updateLabelBySourceId?.(filePath, baseLabelRef.current);
     } catch (err) {
       console.error(`[EditorTab] 保存失败: ${filePath}`, err);
       setError(`保存失败: ${(err as Error).message}`);
@@ -165,8 +166,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           }));
           // 标记为脏——备份内容未保存
           dirtyRef.current = true;
-          const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
-          tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
+          tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
         })
@@ -182,8 +182,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
             language: fallback.language,
           }));
           dirtyRef.current = true;
-          const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
-          tabs?.updateLabelBySourceId?.(filePath, `● ${baseName}`);
+          tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
         });
@@ -229,8 +228,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     const isDirty = model?.isDirty() ?? false;
     if (dirtyRef.current !== isDirty) {
       dirtyRef.current = isDirty;
-      const baseName = lk.path.normalize(filePath).split("/").pop() || filePath;
-      const label = isDirty ? `● ${baseName}` : baseName;
+      // E5#52：只加减 ●，不重取 baseName——保留标签页去歧义后缀
+      const label = isDirty ? `● ${baseLabelRef.current}` : baseLabelRef.current;
       tabs?.updateLabelBySourceId?.(filePath, label);
     }
     // E4V#40n——Hot Exit：每次内容变更都更新备份，不在上面的状态守卫里（否则只保存第一次按键的内容）
