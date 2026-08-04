@@ -9,7 +9,7 @@
  */
 
 import { RegistryBase } from "./RegistryBase";
-import { Emitter, Event } from "../CoreEvents";
+import { Emitter, Event } from "../react/CoreEvents";
 
 /* ── 类型 ── */
 

@@ -12,7 +12,7 @@
  * 设计原则：归一化——编辑器内所有对文件内容的读写走这一个对象。
  * 不散落在 EditorView/EditorTab/快捷键 handler 各写各的。
  */
-import { Emitter } from "@src/core/CoreEvents";
+import { Emitter } from "@src/core/react/CoreEvents";
 import { EncodingService } from "@src/core/encoding/EncodingService";
 import { getLanguageFromPath } from "./language-map";
 

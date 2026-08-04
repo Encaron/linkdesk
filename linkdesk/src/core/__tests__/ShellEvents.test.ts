@@ -19,7 +19,7 @@ import { describe, it, expect } from "vitest";
 
 // ⚠️ ShellEvents.ts 还没创建——这个 import 会报 tsc 错误，故意的。
 //    E5#1 实现 ShellEvents.ts（含 ShellEventBus 类导出）后自动消。
-import { ShellEventBus } from "../../core/ShellEvents";
+import { ShellEventBus } from "../../core/react/ShellEvents";
 
 describe("ShellEventBus", () => {
   /* ── 1. emit/on 基本通信 ── */

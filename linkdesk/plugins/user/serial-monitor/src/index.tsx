@@ -25,7 +25,7 @@ import { RingBuffer } from "@src/core/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId, getActiveSessionId } from "./useSerialSessions";
 import ControlPanel from "./ControlPanel";
-import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/useSendData";
+import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/react/useSendData";
 import SearchBar from "./components/SearchBar";
 import FilterMenu from "./components/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";

@@ -13,7 +13,7 @@ import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/registry/KeybindingRegistry";
-import { shellEvents } from "@src/core/ShellEvents";
+import { shellEvents } from "@src/core/react/ShellEvents";
 import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/services/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 

@@ -7,8 +7,8 @@
  */
 import { useMemo } from "react";
 import { shellEvents } from "./ShellEvents";
-import type { CreateTabOptions } from "./types";
-import type { CloseTabResult } from "../hooks/useTabManager";
+import type { CreateTabOptions } from "../types";
+import type { CloseTabResult } from "../../hooks/useTabManager";
 
 export interface TabActions {
   createTab: (type: string, opts?: CreateTabOptions) => string;

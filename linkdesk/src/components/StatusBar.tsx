@@ -12,11 +12,11 @@ import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
 import { getConfigurationValue } from "../core/services/ConfigurationService";
 import { executeCommand } from "../core/registry/CommandRegistry";
-import { CUSTOM_EVENTS } from "../core/CoreEvents";
+import { CUSTOM_EVENTS } from "../core/react/CoreEvents";
 // E5#6a：响应式读配置——替代 App.tsx 传来的 theme/lang props
-import { useConfigurationValue } from "../core/useConfiguration";
+import { useConfigurationValue } from "../core/react/useConfiguration";
 // E5#6b：壳内通信——订阅 tab:focused，标签页切换时刷新状态栏
-import { shellEvents } from "../core/ShellEvents";
+import { shellEvents } from "../core/react/ShellEvents";
 import NotificationCenter from "./NotificationCenter";
 import "./StatusBar.css";
 
@@ -43,7 +43,7 @@ function StatusBar(_props: StatusBarProps) {
   }, []);
 
   // E5#6c：接收 ShellEvents 推送的动态状态栏条目
-  const [eventEntries, setEventEntries] = useState<import("../core/ShellEvents").StatusBarEntry[]>([]);
+  const [eventEntries, setEventEntries] = useState<import("../core/react/ShellEvents").StatusBarEntry[]>([]);
   useEffect(() => {
     const unsub = shellEvents.on("statusbar:update", (entries) => {
       setEventEntries(entries);

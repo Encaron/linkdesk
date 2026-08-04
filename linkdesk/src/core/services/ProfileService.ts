@@ -30,7 +30,7 @@ import {
   deleteEntry,
 } from "./FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { Emitter } from "../CoreEvents";
+import { Emitter } from "../react/CoreEvents";
 import { getWorkspaceRoot } from "./WorkspaceService";
 
 /* ── 事件 ── */

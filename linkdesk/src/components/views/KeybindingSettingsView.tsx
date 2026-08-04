@@ -20,7 +20,7 @@ import {
 } from "../../core/registry/KeybindingRegistry";
 import { getCommands } from "../../core/registry/CommandRegistry";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-import { CoreEvents } from "../../core/CoreEvents"; // E3f #59-B
+import { CoreEvents } from "../../core/react/CoreEvents"; // E3f #59-B
 import "./KeybindingSettingsView.css";
 
 interface KeybindingRow {

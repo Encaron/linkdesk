@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
 import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
-import { CUSTOM_EVENTS } from "../../core/CoreEvents"; // E3f #59
+import { CUSTOM_EVENTS } from "../../core/react/CoreEvents"; // E3f #59
 import {
   getConfigurationContributions,
   getMergedSchema,
@@ -28,7 +28,7 @@ import {
   setConfigurationValue,
   inspectConfiguration,
 } from "../../core/services/ConfigurationService";
-import { useConfigurationValue } from "../../core/useConfiguration";
+import { useConfigurationValue } from "../../core/react/useConfiguration";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import { MenuId } from "../../core/registry/MenuRegistry";
 import { ContextKeyService } from "../../core/registry/ContextKeyService";

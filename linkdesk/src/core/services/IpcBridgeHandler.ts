@@ -14,7 +14,7 @@ import { executeCommand, getCommands } from "../registry/CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../ThemeEngine";
 import { LanguageRegistry } from "../registry/LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
-import { shellEvents } from "../ShellEvents"; // E5#68
+import { shellEvents } from "../react/ShellEvents"; // E5#68
 import { ContextKeyService } from "../registry/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71

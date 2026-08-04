@@ -51,8 +51,8 @@ export class Emitter<T> {
 
 /* ── 依赖类型（import type——零运行时开销，不产生循环依赖） ── */
 
-import type { FileChangeEvent } from "./services/FileService";
-import type { WorkspaceFolder } from "./services/WorkspaceService";
+import type { FileChangeEvent } from "../services/FileService";
+import type { WorkspaceFolder } from "../services/WorkspaceService";
 
 /* ── 5 个核心事件 ── */
 

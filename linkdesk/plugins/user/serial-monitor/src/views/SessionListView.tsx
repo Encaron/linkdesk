@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../useSerialSessions";
 import { useSerialContext } from "../SerialContext";
 
-import { activateSidebarItem } from "@src/core/SidebarTabSync";
+import { activateSidebarItem } from "@src/core/react/SidebarTabSync";
 import { SessionListItem } from "../SessionListItem";
 import "../SerialMonitorSidebar.css";
 

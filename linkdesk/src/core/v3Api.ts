@@ -23,11 +23,11 @@ import { registerCommand } from "./registry/CommandRegistry";
 import { registerMenuItems } from "./registry/MenuRegistry";
 import { registerKeybinding } from "./registry/KeybindingRegistry";
 import { registerConfiguration, unregisterConfiguration, registerConfigurationDefaults, unregisterConfigurationDefaults } from "./registry/ConfigurationRegistry";
-import { useConfiguration, useConfigurationValue } from "./useConfiguration";
+import { useConfiguration, useConfigurationValue } from "./react/useConfiguration";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./services/ConfigurationService";
-import { useSendData } from "./useSendData";
+import { useSendData } from "./react/useSendData";
 import { useIpcEvent } from "../hooks/useIpcEvent";
-import { useSourceState } from "./SourceStateContext";
+import { useSourceState } from "./react/SourceStateContext";
 
 /** The V3 runtime plugin API surface. Exposed as window.__v3_core__. */
 const v3Api = {

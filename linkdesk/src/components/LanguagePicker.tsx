@@ -11,7 +11,7 @@
 import { useState, useEffect } from "react";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import { setConfigurationValue } from "../core/services/ConfigurationService";
-import { useConfigurationValue } from "../core/useConfiguration";
+import { useConfigurationValue } from "../core/react/useConfiguration";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";
 
