@@ -742,7 +742,7 @@ function SerialMonitorView({ isActive, sourceId }: SerialMonitorViewProps) {
     const api = (window as any).linkdesk?.pluginRequest;
     if (!api) return;
     api.handle("invokeBeforeClose", async () => {
-      if (!portOpenRef.current) return;
+      // E5#74 fixme：portOpenRef 在插件 WebView 中不更新——先探路
       const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
       if (!ok) return false;
       await (window as any).linkdesk?.serial?.closePort?.();
