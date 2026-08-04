@@ -343,6 +343,10 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     });
     cmView.current = view;
 
+    // E5#84d：监听容器尺寸变化（窗口缩放/分屏等）→ CM6 重测
+    const resizeObserver = new ResizeObserver(() => view.requestMeasure());
+    resizeObserver.observe(cmContainer.current);
+
     view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
       setShowBackToBottom(dom.scrollHeight - dom.scrollTop - dom.clientHeight >= BACK_TO_BOTTOM_THRESHOLD);
@@ -354,6 +358,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     });
 
     return () => {
+      resizeObserver.disconnect();
       view.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
