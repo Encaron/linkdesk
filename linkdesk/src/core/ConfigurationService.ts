@@ -17,7 +17,9 @@ import {
   getConfigurationDefaults,
   type InspectResult,
 } from "./ConfigurationRegistry";
-import { applyConfiguration } from "./ConfigurationApplier";
+// E5#41：消循环依赖——applyConfiguration 通过注册模式注入，不再直接 import ConfigurationApplier
+let _configApplier: ((key: string, value: unknown) => void) | null = null;
+export function registerConfigApplier(fn: typeof _configApplier): void { _configApplier = fn; }
 import { read, write } from "./StorageService";
 import { exists, readFile, writeFile, mkdir, joinPath } from "./FileService";
 
@@ -138,7 +140,7 @@ export async function setConfigurationValue(
   }
 
   // Phase 5f：ConfigurationApplier——自动调 onApply，组件无需手动订阅
-  applyConfiguration(key, value);
+  _configApplier?.(key, value);
 }
 
 /**
@@ -166,7 +168,7 @@ export async function resetConfigurationValue(
   }
 
   // ConfigurationApplier——重置后自动调 onApply
-  applyConfiguration(key, effective);
+  _configApplier?.(key, effective);
 }
 
 /* ── 监听变化 ── */
