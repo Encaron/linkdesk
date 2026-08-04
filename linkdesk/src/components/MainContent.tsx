@@ -72,7 +72,7 @@ const WEBVIEW_READY_PLUGINS = new Set<string>([
   "settings",       // ✅ E5#11f 验证通过——独立表单 UI
   "marketplace",    // ✅ E5#11g 验证通过——独立 UI
   "file-tree",      // ✅ E5#11h 验证通过——已通过 linkdesk.fileService IPC 操作
-  // "editor",      // 🔴 待改造——需 IPC 接收 filePath
+  "editor",         // ✅ E5#76——IPC 接收 filePath（events 系统已修）
   // "python",      // ⏭️ return null 空壳，等 E5#13 pluginRole
 ]);
 
@@ -338,6 +338,16 @@ function MainContent({
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
+  // E5#76：editor 标签页 sourceId → IPC 推送到 editor WebView
+  useEffect(() => {
+    for (const g of tabState.groups) {
+      for (const tab of g.tabs) {
+        if (tab.pluginId === "editor" && tab.sourceId) {
+          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+        }
+      }
+    }
+  }, [tabState.groups, readyWebViewIds]);
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
