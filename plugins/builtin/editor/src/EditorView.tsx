@@ -137,20 +137,20 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         eol: model.getEOL() === "\r\n" ? "CRLF" : "LF",
       });
 
-      // 7. F12 跳转后定位——双 rAF 防光标被后续渲染覆盖
-      const pendingReveal = consumePendingReveal(filePath);
-      if (pendingReveal) {
+      // 7. F12 跳转后定位——双 rAF + 延迟 consume 防 StrictMode 双重 mount 竞态
+      requestAnimationFrame(() => {
+        if (disposed) return;
         requestAnimationFrame(() => {
           if (disposed) return;
-          requestAnimationFrame(() => {
-            if (disposed) return;
+          const pendingReveal = consumePendingReveal(filePath);
+          if (pendingReveal) {
             const pos = { lineNumber: pendingReveal.line, column: pendingReveal.column };
             editor.setPosition(pos);
             editor.revealPositionInCenter(pos);
             editor.focus();
-          });
+          }
         });
-      }
+      });
 
       // 8. onChange 接线
       model.onDidChangeContent(() => {
