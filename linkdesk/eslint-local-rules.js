@@ -681,12 +681,114 @@ const noRawPathReplace = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 9：useEffect 内禁止注册 IPC 监听器（E5#11l Bug 4 教训）
+// ═══════════════════════════════════════════════════════════
+//
+// E5#11l 验证发现：useEffect(() => { pv.onReady(cb) }, []) 在 React mount
+// 之后才注册 ipcRenderer.on——插件 WebView 的 notifyReady IPC 事件可能在此
+// 之前到达，事件静默丢失，多 WebView 间歇性失效。
+//
+// 正确模式：preload 脚本模块顶层 ipcRenderer.on + 缓冲 + 回放。
+// 详见 memory [[e5-multi-webview-6-bugs]] Bug 4。
+//
+// 错误示例：
+//   useEffect(() => {
+//     const pv = window.linkdesk.pluginViews;
+//     pv.onReady((pluginId) => { ... });  // ← IPC 监听器在 mount 后才注册
+//   }, []);
+//
+// 正确示例（preload-shell.ts 模块顶层）：
+//   const _readyBuffer: string[] = [];
+//   let _onReadyActive = false;
+//   ipcRenderer.on('plugin-view:ready', (_e, pid) => {
+//     if (!_onReadyActive) _readyBuffer.push(pid);
+//   });
+//   // contextBridge 暴露 onReady: (cb) => { 回放 + 注册 }
+
+const noIpcListenerInEffect = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "useEffect 内禁止注册 IPC 监听器——事件可能在 mount 前到达（E5#11l Bug 4）",
+      recommended: true,
+    },
+    messages: {
+      noEffectIpc:
+        "🔥 useEffect 内注册了 IPC 监听器（{{method}}），依赖数组为 []。" +
+        " IPC 事件可能在 React mount 之前到达——事件静默丢失（E5#11l Bug 4 notifyReady 竞态）。" +
+        " 修复：在 preload 脚本模块顶层用 ipcRenderer.on + 缓冲数组 + onReady 回调回放模式。" +
+        " 详见 memory [[e5-multi-webview-6-bugs]] Bug 4 和 Bug 5 修法。",
+    },
+  },
+
+  create(context) {
+    // IPC 相关的方法名——onReady / onData / onStats / onSystem / ipcRenderer.on
+    const IPC_METHODS = new Set(["onReady", "onData", "onStats", "onSystem"]);
+
+    return {
+      CallExpression(node) {
+        // 只检查 useEffect
+        if (
+          node.callee.type !== "Identifier" ||
+          node.callee.name !== "useEffect"
+        )
+          return;
+
+        const args = node.arguments;
+        if (args.length < 2) return;
+        const depsArg = args[1];
+        // 依赖数组非空 → 可能是有意的条件注册 → 放行（只拦截 [] 这种"只跑一次"的模式）
+        if (
+          !depsArg ||
+          depsArg.type !== "ArrayExpression" ||
+          depsArg.elements.length > 0
+        )
+          return;
+
+        const body = args[0];
+        if (
+          !body ||
+          (body.type !== "ArrowFunctionExpression" &&
+            body.type !== "FunctionExpression")
+        )
+          return;
+
+        const bodyText = context.getSourceCode().getText(body);
+
+        // 检测 pv.onReady / xxx.onReady 调用
+        for (const method of IPC_METHODS) {
+          if (bodyText.includes(`.${method}(`)) {
+            context.report({
+              node,
+              messageId: "noEffectIpc",
+              data: { method: `.${method}` },
+            });
+            return;
+          }
+        }
+
+        // 检测 ipcRenderer.on( 调用
+        if (bodyText.includes("ipcRenderer.on(")) {
+          context.report({
+            node,
+            messageId: "noEffectIpc",
+            data: { method: "ipcRenderer.on" },
+          });
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
   "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
   "no-ref-current-in-jsx": noRefCurrentInJsx,
   "no-module-level-ipc-listener": noModuleLevelIpcListener,
+  "no-ipc-listener-in-effect": noIpcListenerInEffect,
   "no-quickpick-render-item": noQuickpickRenderItem,
   "no-raw-configuration-read": noRawConfigurationRead,
   "no-raw-path-replace": noRawPathReplace,

@@ -60,6 +60,7 @@ export function useWebViewSync(
   }, []);
 
   // ── Effect 1：onReady 监听 + 5s 超时 ──
+  // eslint-disable-next-line linkdesk/no-ipc-listener-in-effect -- preload-shell.ts 模块级 _readyBuffer 已缓冲 mount 前事件（Bug ④ 修复），useEffect 内注册安全
   useEffect(() => {
     const pv = (window as any).linkdesk?.pluginViews;
     if (!pv?.onReady) return;
