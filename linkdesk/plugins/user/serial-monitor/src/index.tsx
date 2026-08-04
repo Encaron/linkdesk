@@ -359,6 +359,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // E5#84d：openSession 后 CM6 容器从 hidden→visible，需强制重测尺寸
+  useEffect(() => {
+    if (!activeSession || !cmView.current) return;
+    requestAnimationFrame(() => cmView.current!.requestMeasure());
+  }, [activeSession]);
+
   // 动态切换行号
   useEffect(() => {
     const view = cmView.current;
