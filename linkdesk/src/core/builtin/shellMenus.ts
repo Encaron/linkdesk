@@ -76,7 +76,6 @@ export function registerShellMenus(): void {
   registerMenuItems(MenuId.ViewTitleContext, APP_PLUGIN_ID, [
     { command: "workbench.action.toggleContainerCollapse", group: "navigation" },
     { command: "workbench.action.resetContainerPosition", group: "navigation" },
-    // E5#44d：Views 子菜单——父项无 command，子项由消费方动态填充
-    { command: "", label: i18n.t("视图"), group: "views", children: [] },
+    // Views 子菜单待动态 children 基础设施就绪后添加
   ]);
 }
