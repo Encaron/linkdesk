@@ -120,6 +120,22 @@ async function _restorePluginState(): Promise<void> {
       if (typeof psData.sessionCounter === "number") _store.sessionCounter = psData.sessionCounter;
       if (typeof psData.colorIndex === "number") _store.colorIndex = psData.colorIndex;
       notify();
+      return;
+    }
+  } catch { /* 静默 */ }
+  // fallback：IPC 不可用（如启动时序）→ 读 localStorage
+  try {
+    let raw = localStorage.getItem("linkdesk:serial-monitor:sessions");
+    if (!raw) raw = localStorage.getItem("linkdesk:terminal:sessions");
+    if (raw) {
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.sessions)) {
+        _store.sessions = data.sessions.map((s: SerialSession) => ({ ...s, connected: false }));
+        if (typeof data.activeSessionId === "string") _store.activeSessionId = data.activeSessionId;
+        if (typeof data.sessionCounter === "number") _store.sessionCounter = data.sessionCounter;
+        if (typeof data.colorIndex === "number") _store.colorIndex = data.colorIndex;
+        notify();
+      }
     }
   } catch { /* 静默 */ }
 }
