@@ -46,7 +46,7 @@ import { registerLangDef } from "../core/registry/LangDefRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
-import { createLogChannel } from "../core/LogChannel";
+import { createLogChannel } from "../core/data/LogChannel";
 
 /* ── B6 fix：pluginLoader 日志频道——替代 console.log（对标 VS Code Output panel） */
 const log = createLogChannel("app", "pluginLoader", "pluginLoader");

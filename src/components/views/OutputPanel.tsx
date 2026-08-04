@@ -13,7 +13,7 @@ import {
   onDidChangeLogChannel,
   onDidRequestShowChannel,
   type LogChannel,
-} from "../../core/LogChannel";
+} from "../../core/data/LogChannel";
 import SelectBox from "../shared/SelectBox";
 import "./OutputPanel.css";
 
