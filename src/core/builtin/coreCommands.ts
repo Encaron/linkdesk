@@ -220,6 +220,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
 import { registerDeveloperCommands } from "./developerCommands";
+import { registerShellMenus } from "./shellMenus";
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
 
@@ -259,38 +260,8 @@ export function ensureCoreCommands(): void {
     registerMenuItems(menuId, APP_PLUGIN_ID, items);
   }
 
-  // E3f #52c：☰ 菜单栏——File（子菜单）/ View（平级），对标 VS Code MenuId.GlobalActivity
-  registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
-    {
-      command: "",
-      label: i18n.t("文件"),
-      group: "file",
-      children: [
-        { command: "workbench.action.exportWorkspace", group: "file" }, // E3f #56
-        { command: "workbench.action.importWorkspace", group: "file" }, // E3f #56
-        { command: "core.openSettings", group: "file" },
-      ],
-    },
-    {
-      command: "",
-      label: i18n.t("查看"),
-      group: "view",
-      children: [
-        { command: "workbench.action.showCommands", group: "view" },
-        { command: "workbench.action.showOutput", group: "view" }, // E3f #54
-        { command: "workbench.action.selectTheme", group: "view" },
-        { command: "workbench.action.selectLanguage", group: "view" },
-        { command: "workbench.action.openKeybindingsSettings", group: "view" },
-      ],
-    },
-  ]);
-
-  // E3f #53b：设置项齿轮菜单——Phase 6 占位（复制为 URL / 同步此设置）
-  // when: "false" → 永不显示；Phase 6 时注册对应命令 + 改 when 条件
-  registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [
-    { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
-    { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
-  ]);
+  // E5#44-6：壳菜单提取到 shellMenus.ts
+  registerShellMenus();
 
 }
 
