@@ -29,12 +29,16 @@ try {
   const _langSubscribers = new Set<(data: { lang: string; resources: Record<string, unknown> }) => void>();
 
 
+  // E5#74e temp：直接在 preload 中测试 events.on 是否工作
+  const testEvents = createEventSystem(ipcRenderer, { logPrefix: 'test' });
+  testEvents.on('ye', (d: any) => {
+    ipcRenderer.send('plugin-push-test', { type: 'test-callback-FIRED', channel: 'ye', data: JSON.stringify(d) });
+  });
+
   // E5#74e temp：对比测试
   ipcRenderer.on('plugin:push', (_e: any, d: any) => {
     ipcRenderer.send('plugin-push-test', { type: 'preload-direct', channel: d.channel });
   });
-
-  // ── E3j #77a：归一化事件系统——提取到 event-system.ts ──
   const events = createEventSystem(ipcRenderer, {
     logPrefix: 'preload-plugin',
     extraHandlers: {
