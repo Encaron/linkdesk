@@ -62,21 +62,9 @@ export function registerShellMenus(): void {
     },
   });
 
-  // E5#44d：view 显隐切换命令
-  registerCommand(APP_PLUGIN_ID, {
-    id: "workbench.action.toggleViewVisibility",
-    title: i18n.t("切换视图可见性"),
-    category: i18n.t("视图"),
-    handler: async (_token: unknown, ...args: unknown[]) => {
-      const ctx = args[0] as { viewId?: string; containerId?: string } | undefined;
-      if (ctx?.viewId) shellEvents.emit("view:toggleVisibility", { viewId: ctx.viewId, containerId: ctx.containerId });
-    },
-  });
-
   registerMenuItems(MenuId.ViewTitleContext, APP_PLUGIN_ID, [
     { command: "workbench.action.toggleContainerCollapse", group: "navigation" },
     { command: "workbench.action.resetContainerPosition", group: "navigation" },
-    // E5#44d：Views 子菜单——父项无 command，子项由消费方动态填充
-    { command: "", label: i18n.t("视图"), group: "views", children: [] },
+    // E5#44d Views 子菜单阻塞于 ContextMenu children 支持——MenuRenderer 有层级但 ContextMenu 用平铺
   ]);
 }
