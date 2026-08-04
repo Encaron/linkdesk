@@ -62,11 +62,12 @@ describe("createTabDefaults", () => {
     expect(createTabDefaults("terminal").dirty).toBe(false);
   });
 
+  // E5#58：label 不再从 FALLBACK_META 硬编码表读——manifest.name 优先，未知类型兜底 type
   it("label 默认值", () => {
-    expect(createTabDefaults("terminal").label).toBe("终端");
-    expect(createTabDefaults("workspace").label).toBe("工作台");
+    expect(createTabDefaults("terminal").label).toBe("terminal");
+    expect(createTabDefaults("workspace").label).toBe("workspace");
     expect(createTabDefaults("workspace", { workspaceName: "PID" }).label).toBe("PID");
-    expect(createTabDefaults("settings").label).toBe("设置");
+    expect(createTabDefaults("settings").label).toBe("settings");
   });
 });
 

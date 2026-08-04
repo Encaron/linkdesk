@@ -118,14 +118,15 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
  *   迁移后本表仅保留 `label`（中文兜底标签），`identityField` 从 manifest 声明读取。
  *   当前仍在此处定义 `identityField`，确保 viewRegistry 不可用时（测试/极端边界）不掉链。
  */
-const FALLBACK_META: Record<string, { label: string; identityField?: string | null }> = {
-  terminal:    { label: "终端",    identityField: null },
-  workspace:   { label: "工作台",  identityField: "workspaceName" },
-  settings:    { label: "设置",    identityField: null },
-  marketplace: { label: "插件市场", identityField: null },
-  oled:        { label: "OLED",   identityField: null },
-  editor:      { label: "编辑器",  identityField: "filePath" },
-  output:      { label: "输出",    identityField: null }, // E3f #54
+/** @deprecated label 已从 manifest.name 自动读取——新插件不需加到此表。仅保留 identityField 兜底。 */
+const FALLBACK_META: Record<string, { identityField?: string | null }> = {
+  terminal:    { identityField: null },
+  workspace:   { identityField: "workspaceName" },
+  settings:    { identityField: null },
+  marketplace: { identityField: null },
+  oled:        { identityField: null },
+  editor:      { identityField: "filePath" },
+  output:      { identityField: null }, // E3f #54
 };
 
 /* ── 核心：getMeta —— 从声明推导，不查表 ── */
@@ -161,7 +162,7 @@ export function getMeta(type: string): TabIdentityMeta {
   const identityField = fb?.identityField ?? null;
   return {
     identityField,
-    fallbackLabel: fb?.label ?? type,
+    fallbackLabel: type,
     generateId: makeGenerateId(type, identityField),
   };
 }
