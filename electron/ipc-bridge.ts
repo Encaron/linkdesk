@@ -69,6 +69,10 @@ export class IpcBridge {
     this.registerProxyHandlers();
     this.registerResponseListener();
     this.registerPushListener();
+    // 配置变更通知——SettingsView 直调 setConfigurationValue 绕过 proxy 时走此通道
+    ipcMain.on('config:changed-notify', (_event, { key, value }) => {
+      this.mainWindow.webContents.send('config:changed', { key, value });
+    });
     this.registerBroadcastListener();
     this.registerPluginEmitListener();
     this.registerRequestToPluginListener();    // E5#62
