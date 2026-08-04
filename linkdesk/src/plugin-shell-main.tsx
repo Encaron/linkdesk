@@ -13,7 +13,6 @@ import { I18nextProvider } from "react-i18next";
 import i18n from "./i18n";
 import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
-import { initPluginStates } from "./core/PluginStateService"; // E5#71e：插件 WebView 也需初始化
 
 const params = new URLSearchParams(window.location.search);
 const pluginId = params.get("plugin-view");
@@ -41,9 +40,6 @@ function bootstrap() {
     root.textContent = "缺少参数: ?plugin-view=<插件ID>";
     return;
   }
-
-  // E5#71e：fire-and-forget——确保 _states 在后续模块加载时已就绪
-  initPluginStates().catch((err) => console.error("[plugin-shell] initPluginStates 失败:", err));
 
   // E4 #86：插件在 builtin/ 或 user/ 下——遍历 glob keys 查找匹配路径
   let modulePath: string | undefined;
