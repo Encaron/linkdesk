@@ -275,6 +275,10 @@ try {
       broadcast: (channel: string, payload: unknown) => {
         ipcRenderer.send('bridge:broadcast', { channel, payload });
       },
+      // 通知主进程配置变更——SettingsView 直调 setConfigurationValue 时绕过了 IPC proxy
+      notifyConfigChanged: (key: string, value: unknown) => {
+        ipcRenderer.send('config:changed-notify', { key, value });
+      },
     },
 
     // ── E3a #29：插件视图管理——壳侧控制插件 WebContentsView 的显隐和位置 ──

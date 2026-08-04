@@ -8,7 +8,7 @@
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
  */
 
-import { getConfigurationValue, setConfigurationValue } from "./ConfigurationService";
+import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
 import { getMergedSchema } from "./ConfigurationRegistry";
 import { executeCommand, getCommands } from "./CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
@@ -177,6 +177,12 @@ export function initIpcBridgeHandler(): void {
   });
 
   console.log("[IpcBridgeHandler] 已注册 bridge 请求处理器（含 plugins:call）");
+
+  // 订阅配置变更 → 通知主进程广播 config:changed → preload onChange 回调触发
+  // SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐
+  onDidChangeConfiguration((key: string, value: unknown) => {
+    linkdesk.bridge.notifyConfigChanged?.(key, value);
+  });
 }
 
 // ── E3a #31：插件管理方法路由 ──
