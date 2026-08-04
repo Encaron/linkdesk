@@ -342,6 +342,17 @@ function MainContent({
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
 
+  // E5#84：serial-monitor openSession IPC——独立 WebView 后，壳通过 IPC 告知会话 sourceId
+  useEffect(() => {
+    const bridge = (window as any).linkdesk?.bridge;
+    if (!bridge) return;
+    for (const g of tabState.groups) for (const t of g.tabs) {
+      if (t.pluginId === "serial-monitor" && t.sourceId) {
+        bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: t.sourceId }).catch(() => {});
+      }
+    }
+  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
+
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
