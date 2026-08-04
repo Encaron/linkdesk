@@ -235,6 +235,11 @@ export function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions)
     ? (opts as Record<string, unknown>)[field] as string | undefined
       ?? (field === "detailPluginId" ? (opts as Record<string, unknown>)["pluginId"] as string | undefined : undefined)
     : undefined;
+  // filePath 大小写不敏感——Windows 驱动器字母
+  if (field === "filePath" && typeof newValue === "string") {
+    const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
+    return normalizePath(tabVal ?? "").toLowerCase() === normalizePath(newValue).toLowerCase();
+  }
   return (t as unknown as Record<string, unknown>)[field] === newValue;
 }
 
