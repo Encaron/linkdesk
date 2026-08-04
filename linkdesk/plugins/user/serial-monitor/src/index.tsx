@@ -21,14 +21,14 @@ import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compart
 import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
-import { RingBuffer } from "@src/core/RingBuffer";
+import { RingBuffer } from "@src/core/data/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId, getActiveSessionId } from "./useSerialSessions";
 import ControlPanel from "./ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/react/useSendData";
 import SearchBar from "./components/SearchBar";
 import FilterMenu from "./components/FilterMenu";
-import { HexToBytes } from "@src/core/DataConverter";
+import { HexToBytes } from "@src/core/data/DataConverter";
 
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 import { registerCommand, unregisterPluginCommands } from "@src/core/registry/CommandRegistry";

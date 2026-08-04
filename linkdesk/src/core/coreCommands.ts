@@ -12,7 +12,7 @@
 
 import { registerCommand, type Command } from "./registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "./registry/MenuRegistry";
-import { factorySlots } from "./FactorySlots";
+import { factorySlots } from "./data/FactorySlots";
 import { APP_PLUGIN_ID } from "./services/PluginStateService";
 import { CUSTOM_EVENTS } from "./react/CoreEvents";
 import { openKeybindingsSettings, registerKeybinding } from "./registry/KeybindingRegistry"; // E3f #59-F
