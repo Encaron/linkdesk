@@ -4,6 +4,7 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
+import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
 import { factorySlots } from "../data/FactorySlots";
 import { getCallbacks } from "./CoreCallbacks";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
@@ -56,4 +57,11 @@ export function registerSettingsCommands(): void {
   for (const c of commands) {
     registerCommand(APP_PLUGIN_ID, c);
   }
+
+  // 齿轮菜单——设置/主题/语言 三个入口
+  registerMenuItems(MenuId.ExtensionGear, APP_PLUGIN_ID, [
+    { command: "core.openSettings", group: "navigation" },
+    { command: "workbench.action.selectTheme", group: "navigation" },
+    { command: "workbench.action.selectLanguage", group: "navigation" },
+  ]);
 }
