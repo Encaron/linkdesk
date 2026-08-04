@@ -80,6 +80,10 @@ export interface ShellEvents {
   // ── 编辑器（跨文件跳转）──
   /** F12/跨文件跳转——目标编辑器消费 pendingReveal。不依赖 isActive 变化 */
   "editor:revealRequested": { filePath: string };
+
+  // ── 视图容器（E5#44c shellMenus 提供方 → E5#60 SidePanel 消费方）──
+  "view:toggleCollapse": { containerId: string };
+  "view:resetPosition": { containerId: string };
 }
 
 /** 状态栏条目类型——对标 VS Code StatusBarItem */
