@@ -4,7 +4,7 @@
  * 设计依据：[V3-Phase3-标签页分屏设计.md §2.2, §4.2]
  */
 
-import { useState, useRef, useEffect, useCallback, Fragment } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo, Fragment } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import type { TabGroup } from "../hooks/useTabManager";
@@ -116,6 +116,24 @@ export default function TabBar({
 }: TabBarProps) {
   const { t } = useTranslation();
   const { tabs, activeTabId } = group;
+
+  // E5#50 标签去歧义——同名标签加父目录后缀。对标 VS Code：/A/main.c + /B/main.c → main.c • A/ + main.c • B/
+  const disambiguatedLabels = useMemo(() => {
+    const result = new Map<string, string>();
+    const countByLabel = new Map<string, number>();
+    for (const t of tabs) countByLabel.set(t.label, (countByLabel.get(t.label) ?? 0) + 1);
+    for (const t of tabs) {
+      if ((countByLabel.get(t.label) ?? 0) <= 1 || !t.filePath) {
+        result.set(t.id, t.label);
+        continue;
+      }
+      const parts = t.filePath.replace(/\\/g, "/").split("/").filter(Boolean);
+      const parent = parts.length >= 2 ? parts[parts.length - 2] : "";
+      result.set(t.id, parent ? `${t.label} • ${parent}/` : t.label);
+    }
+    return result;
+  }, [tabs]);
+
   const [plusOpen, setPlusOpen] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ tabId: string; x: number; y: number } | null>(null);
   const plusRef = useRef<HTMLButtonElement | null>(null);
@@ -311,7 +329,11 @@ export default function TabBar({
                 key={tab.id}
                 data-tab-id={tab.id}
                 className={`tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
-                title={tab.pinned ? t(tab.label) : `${t(tab.label)} — 双击固定`}
+                title={(() => {
+                  const dl = disambiguatedLabels.get(tab.id);
+                  if (dl !== tab.label && tab.filePath) return tab.filePath;
+                  return tab.pinned ? t(tab.label) : `${t(tab.label)} — 双击固定`;
+                })()}
                 onClick={() => onFocusTab(tab.id)}
                 onDoubleClick={() => onPinTab?.(tab.id)}
                 onContextMenu={(e) => {
@@ -332,7 +354,7 @@ export default function TabBar({
               >
                 {tab.dirty && <span className="tab-dirty-dot">●</span>}
                 <PluginIcon pluginId={tab.pluginId ?? tab.type} className="tab-icon" />
-                <span className="tab-label">{t(tab.label)}</span>
+                <span className="tab-label">{t(disambiguatedLabels.get(tab.id) ?? tab.label)}</span>
                 <button
                   className="tab-close"
                   onClick={async (e) => {
