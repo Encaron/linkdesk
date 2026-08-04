@@ -45,7 +45,21 @@ const _listeners = new Set<() => void>();
 let _initDone = false;
 const STORAGE_KEY = "linkdesk:serial-monitor:sessions";
 
-function _notify(): void { _persist(); _listeners.forEach((fn) => fn()); }
+/** E5#84f：跨 WebView 同步——上次本地快照，用于去重（自己 emit 的广播回来时跳过） */
+let _lastLocalSnapshot = "";
+
+function _notify(): void {
+  _persist();
+  _listeners.forEach((fn) => fn());
+
+  // E5#84f：跨 WebView 广播——壳侧栏 ↔ 插件主区状态同步
+  const d = { sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex };
+  const snap = JSON.stringify(d);
+  if (snap !== _lastLocalSnapshot) {
+    _lastLocalSnapshot = snap;
+    try { (window as any).linkdesk?.events?.emit("serial:storeChanged", d); } catch { /* events 不可用（测试环境等） */ }
+  }
+}
 
 // ── 持久化：双重写入——pluginState（权威）+ localStorage（同步兜底）──
 
@@ -84,7 +98,23 @@ async function _restoreAsync(): Promise<void> {
 }
 
 /** E5#71f：幂等——任一 hook 首次 mount 时执行一次 */
-function _ensureInit(): void { if (_initDone) return; _initDone = true; _restoreSync(); _restoreAsync(); }
+function _ensureInit(): void {
+  if (_initDone) return;
+  _initDone = true;
+  _restoreSync();
+  _restoreAsync();
+
+  // E5#84f：订阅跨 WebView 状态变更——壳侧栏和插件主区通过 events 广播保持 _store 同步
+  try {
+    (window as any).linkdesk?.events?.on("serial:storeChanged", (data: Record<string, unknown>) => {
+      const snap = JSON.stringify(data);
+      if (snap === _lastLocalSnapshot) return; // 自己发的广播回来了——跳过
+      _lastLocalSnapshot = snap;
+      _applyStore(data);
+      _listeners.forEach((fn) => fn());
+    });
+  } catch { /* events 不可用 */ }
+}
 
 function cloneDefaults(): typeof DEFAULT_SESSION { return { ...DEFAULT_SESSION, quickSends: { ...DEFAULT_SESSION.quickSends } }; }
 
