@@ -13,16 +13,19 @@ import "./editor.css";
 
 initHotExit();
 
-// E5#76：模块级 handler——notifyReady 比 useEffect 先发，必须组件函数外注册
+// E5#76：模块级 handler——notifyReady 在 render 之后但 useEffect 之前，加队列缓冲
 let _setFilePath: ((v: string | null) => void) | null = null;
+let _pendingFile: string | null = null;
 const api = (window as any).linkdesk?.pluginRequest;
 api?.handle("openFile", async (payload: any) => {
-  _setFilePath?.(payload?.filePath ?? null);
+  const fp = payload?.filePath ?? null;
+  if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
 });
 
 const EditorPlugin: React.FC = () => {
-  const [filePath, setFilePath] = useState<string | null>(null);
+  const [filePath, setFilePath] = useState<string | null>(_pendingFile);
   _setFilePath = setFilePath;
+  if (_pendingFile) _pendingFile = null;
 
   if (!filePath) {
     return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
