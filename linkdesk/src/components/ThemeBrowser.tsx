@@ -19,7 +19,7 @@ import {
   getCurrentTheme,
   getEffectiveAccentColor,
 } from "../core/ThemeEngine";
-import { ThemeRegistry } from "../core/ThemeRegistry"; // E3.5 #CP23
+import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../core/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import QuickPick from "./shared/QuickPick";

@@ -20,10 +20,10 @@
  */
 
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
-import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/MenuRegistry";
-import { getCommand, executeCommand } from "../../core/CommandRegistry";
-import { ContextKeyService } from "../../core/ContextKeyService";
-import { findKeybindingForCommand } from "../../core/KeybindingRegistry";
+import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
+import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
+import { ContextKeyService } from "../../core/registry/ContextKeyService";
+import { findKeybindingForCommand } from "../../core/registry/KeybindingRegistry";
 import "./ContextMenu.css";
 
 /* ── 类型 ── */

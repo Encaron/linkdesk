@@ -7,7 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { executeCommand } from "@src/core/CommandRegistry";
+import { executeCommand } from "@src/core/registry/CommandRegistry";
 import { useConfigurationValue } from "@src/core/useConfiguration";
 import { onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";

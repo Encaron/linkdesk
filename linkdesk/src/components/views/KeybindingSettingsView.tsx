@@ -17,8 +17,8 @@ import {
   keyboardEventToKeyString,
   findKeybindingForCommand,
   setKeybindingCaptureActive,
-} from "../../core/KeybindingRegistry";
-import { getCommands } from "../../core/CommandRegistry";
+} from "../../core/registry/KeybindingRegistry";
+import { getCommands } from "../../core/registry/CommandRegistry";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 import { CoreEvents } from "../../core/CoreEvents"; // E3f #59-B
 import "./KeybindingSettingsView.css";

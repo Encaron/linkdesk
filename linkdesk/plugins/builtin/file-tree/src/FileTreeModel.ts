@@ -9,7 +9,7 @@
  */
 
 import type { FileEntry } from "@src/core/FileService";
-import type { FileDecoration } from "@src/core/FileDecorationRegistry";
+import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { Emitter } from "@src/core/CoreEvents";

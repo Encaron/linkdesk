@@ -12,8 +12,8 @@
  * 无需 lifecycle.ts 手动添加清理逻辑。
  */
 
-import { RegistryBase } from "./registry/RegistryBase";
-import type { IconThemeContribution, IconContribution } from "./types";
+import { RegistryBase } from "./RegistryBase";
+import type { IconThemeContribution, IconContribution } from "../types";
 
 interface RegisteredIconTheme extends IconThemeContribution {
   pluginId: string;

@@ -16,7 +16,7 @@ import { normalizePath } from "../core/pathUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5b：统一右键菜单
 import ContextMenu from "./shared/ContextMenu";
-import { MenuId } from "../core/MenuRegistry";
+import { MenuId } from "../core/registry/MenuRegistry";
 import "./TabBar.css";
 
 /* ── Props ── */

@@ -8,8 +8,8 @@
  * VS Code 对标：src/vs/workbench/services/decorations/browser/fileDecorations.ts
  */
 
-import { RegistryBase } from "./registry/RegistryBase";
-import { Emitter, Event } from "./CoreEvents";
+import { RegistryBase } from "./RegistryBase";
+import { Emitter, Event } from "../CoreEvents";
 
 /* ── 类型 ── */
 

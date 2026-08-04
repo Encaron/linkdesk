@@ -13,7 +13,7 @@ import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
-import { registerCommand } from "../../core/CommandRegistry";
+import { registerCommand } from "../../core/registry/CommandRegistry";
 
 /* ── 模糊搜索（E2c #18）── */
 

@@ -31,9 +31,9 @@
 
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand, hasHandler } from "./CommandRegistry";
-import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "./FileService";
-import { normalizePath } from "./pathUtils";
-import { CoreEvents, CUSTOM_EVENTS } from "./CoreEvents";
+import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "../FileService";
+import { normalizePath } from "../pathUtils";
+import { CoreEvents, CUSTOM_EVENTS } from "../CoreEvents";
 
 /* ── 类型 ── */
 

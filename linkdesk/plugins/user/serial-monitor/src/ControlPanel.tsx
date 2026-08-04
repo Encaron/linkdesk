@@ -18,7 +18,7 @@ import {
   listProtocols,
   getActiveProtocolId,
   setActiveProtocol,
-} from "@src/core/ProtocolRegistry";
+} from "@src/core/registry/ProtocolRegistry";
 import { useSession } from "./useSerialSessions";
 import "./ControlPanel.css";
 

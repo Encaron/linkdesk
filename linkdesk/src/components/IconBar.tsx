@@ -14,7 +14,7 @@ import { PluginIcon } from "./shared/PluginIcon";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
 // Phase 5c：齿轮菜单
 import ContextMenu from "./shared/ContextMenu";
-import { MenuId } from "../core/MenuRegistry";
+import { MenuId } from "../core/registry/MenuRegistry";
 import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏第一个位置
 // E4V#48——跨容器拖放
 import { ViewContainerService } from "../core/ViewContainerService";

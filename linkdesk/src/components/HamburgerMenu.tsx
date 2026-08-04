@@ -9,9 +9,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, MenuId } from "../core/MenuRegistry";
-import { executeCommand } from "../core/CommandRegistry";
-import { ContextKeyService } from "../core/ContextKeyService";
+import { getMenuItems, MenuId } from "../core/registry/MenuRegistry";
+import { executeCommand } from "../core/registry/CommandRegistry";
+import { ContextKeyService } from "../core/registry/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
 import "./HamburgerMenu.css";
 

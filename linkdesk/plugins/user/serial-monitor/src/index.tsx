@@ -31,9 +31,9 @@ import FilterMenu from "./components/FilterMenu";
 import { HexToBytes } from "@src/core/DataConverter";
 
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
-import { registerCommand, unregisterPluginCommands } from "@src/core/CommandRegistry";
+import { registerCommand, unregisterPluginCommands } from "@src/core/registry/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId } from "@src/core/MenuRegistry";
+import { MenuId } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./SerialMonitorView.css";
 

@@ -7,7 +7,7 @@
 import { useRef, useState } from "react";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId } from "@src/core/MenuRegistry";
+import { MenuId } from "@src/core/registry/MenuRegistry";
 
 import type { ViewPluginEntry } from "@src/core/types";
 

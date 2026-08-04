@@ -10,13 +10,13 @@
  * handler 延迟读取 _callbacks 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, type Command } from "./CommandRegistry";
-import { registerMenuItems, MenuId } from "./MenuRegistry";
+import { registerCommand, type Command } from "./registry/CommandRegistry";
+import { registerMenuItems, MenuId } from "./registry/MenuRegistry";
 import { factorySlots } from "./FactorySlots";
 import { APP_PLUGIN_ID } from "./PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
-import { openKeybindingsSettings, registerKeybinding } from "./KeybindingRegistry"; // E3f #59-F
-import { requestSettingsGroup, requestScrollToSetting } from "./ConfigurationRegistry";
+import { openKeybindingsSettings, registerKeybinding } from "./registry/KeybindingRegistry"; // E3f #59-F
+import { requestSettingsGroup, requestScrollToSetting } from "./registry/ConfigurationRegistry";
 import i18n from "../i18n";
 import { getWorkspaceLayout } from "./LayoutService"; // E3f #56
 import { getUserSettings } from "./ConfigurationService"; // E3f #56

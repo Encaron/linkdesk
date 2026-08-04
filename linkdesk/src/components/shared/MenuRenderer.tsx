@@ -9,10 +9,10 @@
  */
 
 import { useState, useRef, useCallback } from "react";
-import { getCommand } from "../../core/CommandRegistry";
-import { getKeybindings } from "../../core/KeybindingRegistry";
-import { ContextKeyService } from "../../core/ContextKeyService";
-import type { MenuItem } from "../../core/MenuRegistry";
+import { getCommand } from "../../core/registry/CommandRegistry";
+import { getKeybindings } from "../../core/registry/KeybindingRegistry";
+import { ContextKeyService } from "../../core/registry/ContextKeyService";
+import type { MenuItem } from "../../core/registry/MenuRegistry";
 
 export interface MenuRendererProps {
   /** 菜单项列表（已由父组件按需分组/展平） */

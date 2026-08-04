@@ -9,16 +9,16 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 /* ── 各注册表导入 ── */
 
-import { registerCommand, unregisterPluginCommands, getCommands } from "../CommandRegistry";
-import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../KeybindingRegistry";
-import { registerMenuItems, MenuId, unregisterPluginMenus } from "../MenuRegistry";
-import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../ProtocolRegistry";
+import { registerCommand, unregisterPluginCommands, getCommands } from "../registry/CommandRegistry";
+import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../registry/KeybindingRegistry";
+import { registerMenuItems, MenuId, unregisterPluginMenus } from "../registry/MenuRegistry";
+import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../registry/ProtocolRegistry";
 import { registerCard, unregisterPluginCards, getCards } from "../CardRegistry";
 import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../LogChannel";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../ThemeEngine";
 import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../FileAssociationService";
-import { registerConfiguration, unregisterConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "../ConfigurationRegistry";
-import { ThemeRegistry } from "../ThemeRegistry";
+import { registerConfiguration, unregisterConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "../registry/ConfigurationRegistry";
+import { ThemeRegistry } from "../registry/ThemeRegistry";
 
 const PLUGIN_ID = "test-plugin";
 
