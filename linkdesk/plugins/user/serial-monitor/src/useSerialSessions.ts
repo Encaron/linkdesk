@@ -103,6 +103,10 @@ const _store = {
 }
 const _listeners = new Set<() => void>();
 
+// E5#71e：restore 现在 async——组件 mount 前需等待。_ready 供 useSession/useSerialSessions await
+let _ready: Promise<void> | null = null;
+function _markReady(): void { _ready = null; }
+
 // ── 持久化（PluginStateService 归一化入口——对标 ControlPanel.tsx:58）──
 // E3i #71：消 localStorage 双路径——统一走 PluginStateService → StorageService → 文件持久化 + beforeunload 保底。
 
@@ -158,7 +162,7 @@ function _persistSessions(): void {
 
 // 模块初始化——F5 后恢复 session。不再需要 beforeunload 监听——StorageService 已内置保底。
 if (typeof window !== "undefined") {
-  _restoreSessions().then(() => notify()); // E5#71e: async→完成后通知 hooks
+  _ready = _restoreSessions().then(() => { notify(); _markReady(); }); // E5#71e: async→完成后通知 hooks
 }
 
 function notify(): void {
@@ -274,10 +278,12 @@ export function useSession(id: string | undefined) {
   }, []);
 
   // B3：F5 刷新 → 标签页恢复但 session 丢失 → 首次 mount 自动创建。
-  // didAutoCreate ref 确保只在组件首次挂载时检查一次，不会在 keep-alive 期间重复创建。
+  // E5#71e：等 _ready（restore 完成）后再检查——避免 race condition
   const didAutoCreate = useRef(false);
   useEffect(() => {
-    if (!didAutoCreate.current && id && !_store.sessions.find((s) => s.id === id)) {
+    const check = () => {
+      if (didAutoCreate.current || !id) return;
+      if (_store.sessions.find((s) => s.id === id)) return;
       didAutoCreate.current = true;
       const session: SerialSession = {
         id,
@@ -288,6 +294,11 @@ export function useSession(id: string | undefined) {
       _store.colorIndex++;
       _store.sessions = [..._store.sessions, session];
       notify();
+    };
+    if (_ready) {
+      _ready.then(check);
+    } else {
+      check();
     }
   }, [id]);
 
