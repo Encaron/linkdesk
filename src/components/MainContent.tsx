@@ -211,17 +211,6 @@ function MainContent({
     return unsub;
   }, [createTab]);
 
-  // E5#76：editor 标签页 sourceId 变更 → IPC 推送到 editor WebView
-  useEffect(() => {
-    for (const g of tabState.groups) {
-      for (const tab of g.tabs) {
-        if (tab.pluginId === "editor" && tab.sourceId) {
-          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
-        }
-      }
-    }
-  }, [tabState.groups]);
-
   // E5#5e-ii-c：插件卸载时关闭其所有标签页 + E5#10 清除 WebView 就绪状态
   useEffect(() => {
     const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
@@ -349,6 +338,16 @@ function MainContent({
   // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
   // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
   const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
+  // E5#76：editor 标签页 sourceId 变更 → IPC 推送到 editor WebView
+  useEffect(() => {
+    for (const g of tabState.groups) {
+      for (const tab of g.tabs) {
+        if (tab.pluginId === "editor" && tab.sourceId) {
+          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+        }
+      }
+    }
+  }, [tabState.groups, readyWebViewIds]);
   // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
   const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
   // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
