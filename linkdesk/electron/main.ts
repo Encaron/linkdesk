@@ -142,6 +142,12 @@ ipcMain.on('theme-changed', (_event, isDark: boolean) => {
   }
 });
 
+// E5#74e 自动化测试：插件 preload 的 plugin:push 监听上报
+ipcMain.on('plugin-push-test', (_event, info: any) => {
+  if (info.type === 'registered') console.log('[E5#74e TEST] 插件 preload 已注册 plugin:push 监听');
+  if (info.type === 'received') console.log(`[E5#74e TEST] ★ 插件收到 plugin:push! channel="${info.channel}"`);
+});
+
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
 ipcMain.on('preload-ready', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
