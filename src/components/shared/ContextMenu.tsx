@@ -1,22 +1,6 @@
 /**
  * 共享 `<ContextMenu>` —— 统一右键菜单 UI 组件。
  * Phase 5b：归一化——所有右键菜单走这一个组件，四种统一失焦方式。
- *
- * 设计依据：docs/phase5_应用基础设施/V3-Phase5-右键菜单系统.md §六
- * VS Code 对标：VS Code context menu block layer + MenuActions
- *
- * 核心保证：
- * - 打开右键菜单 → 点空白处 → 消失 ✅
- * - 打开右键菜单 → Escape → 消失 ✅
- * - 打开右键菜单 → 移动窗口/Alt+Tab → 消失 ✅ (window.blur)
- * - 打开右键菜单 → 鼠标滚轮 → 消失 ✅ (wheel capture——不含 CM6 程序化滚动)
- * - 所有右键菜单渲染实例共享同一套失焦逻辑——修一个 bug 全受益
- *
- * 🔧 5b fix：backdrop div 改为 window mousedown 监听——解决"右键换位置需要点两次"的 bug。
- *    backdrop div 拦截了 contextmenu 事件 → 新目标收不到 → 菜单关但不打开。
- *    mousedown 不拦截事件，只关菜单——contextmenu 正常到达新目标。
- * 🔧 5b fix：scroll → wheel——CM6 接收数据时频繁触发 scroll 事件 → 菜单闪关。
- *    wheel 只对用户主动滚轮输入反应，不受程序化滚动影响。
  */
 
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
@@ -26,14 +10,11 @@ import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import { findKeybindingForCommand } from "../../core/registry/KeybindingRegistry";
 import "./ContextMenu.css";
 
-/* ── 类型 ── */
-
 export interface ContextMenuProps {
   menuId: MenuId;
   anchor: { x: number; y: number };
   context?: Record<string, unknown>;
   onClose: () => void;
-  /** E5#44d：动态子菜单——空 children 时调用 */
   resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
 }
 
@@ -45,12 +26,9 @@ interface ResolvedItem {
   children?: ResolvedItem[];
 }
 
-/* ── 组件 ── */
-
 export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // E5#69f：插件 WebView 中菜单项从壳侧取（IPC），壳内直接用本地 Registry
   const [remoteItems, setRemoteItems] = useState<any[] | null>(null);
   const isPluginWebView = !!(window as any).linkdesk?.pluginViews?.notifyReady;
   useEffect(() => {
@@ -58,29 +36,20 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     (window as any).linkdesk?.menu?.getItems?.(menuId).then(setRemoteItems);
   }, [menuId, isPluginWebView]);
 
-  // ── 从 Registry 解析菜单项 ──
   const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
     const rawItems = isPluginWebView ? (remoteItems ?? []) : getLocalMenuItems(menuId);
-    // 按 group 分组——保留同 group 内的 order 排序
     const grouped = new Map<string, ResolvedItem[]>();
     const groupOrder: string[] = [];
 
     for (const item of rawItems) {
       const cmd = getCommand(item.command);
-      // E5#44d：command 为空但有 children → 子菜单父项，放行
       if (!cmd && !(item as any).children) continue;
-
-      // Phase 5d：when 条件过滤——菜单项 when 优先（更具体），fallback 命令 when
-      // 对标 VS Code：菜单项 when 覆盖命令 when，条件不满足 → 不显示
       const whenExpr = item.when ?? cmd?.when;
       if (!ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined)) continue;
 
       const group = item.group ?? "__default";
-      if (!grouped.has(group)) {
-        grouped.set(group, []);
-        groupOrder.push(group);
-      }
-      // E5#44d：子菜单——静态 children 或动态 resolveChildren
+      if (!grouped.has(group)) { grouped.set(group, []); groupOrder.push(group); }
+
       let children: ResolvedItem[] | undefined;
       const rawChildren = (item as any).children;
       if (rawChildren?.length) {
@@ -101,44 +70,25 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       });
     }
 
-    // 展开为平铺数组，组间插分隔符。"navigation" → 分隔符 → "split" → ...
     const result: Array<ResolvedItem | { type: "divider"; group: string }> = [];
     for (let i = 0; i < groupOrder.length; i++) {
-      const group = groupOrder[i];
-      if (i > 0) {
-        result.push({ type: "divider", group });
-      }
-      result.push(...grouped.get(group)!);
+      if (i > 0) result.push({ type: "divider", group: groupOrder[i] });
+      result.push(...grouped.get(groupOrder[i])!);
     }
     return result;
   }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
 
-  /* ── 统一失焦（四种方式） ── */
-
   useEffect(() => {
-    // 1. Escape
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    // 2. 窗口失焦（移动窗口/Alt+Tab）
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
     const onBlur = () => onClose();
-    // 3. 鼠标滚轮——菜单跟着内容滚动会错位。wheel 而非 scroll：避免 CM6 程序化滚动误关
     const onWheel = () => onClose();
-    // 4. 点击/右键菜单外——mousedown capture，不阻止事件传播
-    //    对标 VS Code context menu block layer，但用 mousedown 替代 backdrop div：
-    //    backdrop div 拦截了 contextmenu 事件 → 新目标收不到右键 → 需要点两次。
-    //    mousedown 只检测位置然后关菜单，不拦截事件 → contextmenu 正常到达新目标。
     const onMouseDown = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        onClose();
-      }
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) && !subRef.current?.contains(e.target as Node)) onClose();
     };
-
     window.addEventListener("keydown", onKey);
     window.addEventListener("blur", onBlur);
-    window.addEventListener("wheel", onWheel, true); // capture——捕获所有滚轮事件
-    window.addEventListener("mousedown", onMouseDown, true); // capture——在目标元素之前检测
-
+    window.addEventListener("wheel", onWheel, true);
+    window.addEventListener("mousedown", onMouseDown, true);
     return () => {
       window.removeEventListener("keydown", onKey);
       window.removeEventListener("blur", onBlur);
@@ -147,80 +97,41 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     };
   }, [onClose]);
 
-  /* ── 键盘导航（ArrowUp/ArrowDown/Enter） ── */
-
   const [focusIdx, setFocusIdx] = useState(-1);
   const itemRefs = useRef<Map<number, HTMLDivElement>>(new Map());
-
-  // 过滤出实际菜单项（非分隔符）
-  const clickableItems = useMemo(
-    () => resolved.filter((r) => !("type" in r)) as ResolvedItem[],
-    [resolved]
-  );
+  const clickableItems = useMemo(() => resolved.filter((r) => !("type" in r)) as ResolvedItem[], [resolved]);
 
   useEffect(() => {
     const onKeyNav = (e: KeyboardEvent) => {
-      if (e.key === "ArrowDown") {
-        e.preventDefault();
-        setFocusIdx((prev) => Math.min(prev + 1, clickableItems.length - 1));
-      } else if (e.key === "ArrowUp") {
-        e.preventDefault();
-        setFocusIdx((prev) => Math.max(prev - 1, 0));
-      } else if (e.key === "Enter" && focusIdx >= 0) {
+      if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((prev) => Math.min(prev + 1, clickableItems.length - 1)); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((prev) => Math.max(prev - 1, 0)); }
+      else if (e.key === "Enter" && focusIdx >= 0) {
         e.preventDefault();
         const item = clickableItems[focusIdx];
-        if (item) {
-          executeCommand(item.id, undefined, context);
-          onClose();
-        }
+        if (item) { executeCommand(item.id, undefined, context); onClose(); }
       }
     };
     window.addEventListener("keydown", onKeyNav);
     return () => window.removeEventListener("keydown", onKeyNav);
   }, [clickableItems, focusIdx, context, onClose]);
 
-  // 聚焦项自动滚动到视野
   useEffect(() => {
-    if (focusIdx >= 0) {
-      itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
-    }
+    if (focusIdx >= 0) itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
   }, [focusIdx]);
 
-  /* ── 点击菜单项 → 执行命令 + 关闭 ── */
-
-  const handleItemClick = useCallback(
-    async (commandId: string) => {
-      // 先关菜单再执行命令——避免弹窗（showConfirm 等）与菜单同时显示。
-      // context 对象 { uri, isDirectory } 是直接传参的，不依赖 ContextKeyService。
-      onClose();
-      await executeCommand(commandId, undefined, context);
-    },
-    [context, onClose]
-  );
-
-  /* ── 自动定位——防止菜单超出视口 ── */
+  const handleItemClick = useCallback(async (commandId: string) => {
+    onClose();
+    await executeCommand(commandId, undefined, context);
+  }, [context, onClose]);
 
   const adjustedAnchor = useMemo(() => {
-    // 估测菜单尺寸（160px 宽，每项 ~30px 高）
     const estWidth = 180;
-    const estHeight = Math.min(resolved.length * 30 + 8, 400); // 8px padding
-
-    let left = anchor.x;
-    let top = anchor.y;
-
-    if (left + estWidth > window.innerWidth) {
-      left = Math.max(0, window.innerWidth - estWidth - 4);
-    }
-    if (top + estHeight > window.innerHeight) {
-      top = Math.max(0, window.innerHeight - estHeight - 4);
-    }
-
+    const estHeight = Math.min(resolved.length * 30 + 8, 400);
+    let left = anchor.x, top = anchor.y;
+    if (left + estWidth > window.innerWidth) left = Math.max(0, window.innerWidth - estWidth - 4);
+    if (top + estHeight > window.innerHeight) top = Math.max(0, window.innerHeight - estHeight - 4);
     return { left, top };
   }, [anchor, resolved.length]);
-
-  // E5#44d：子菜单 hover
-
-  /* ── 出现动画——首帧渲染后下一帧加 .show 触发 transition ── */
 
   useEffect(() => {
     const el = menuRef.current;
@@ -229,52 +140,54 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     return () => cancelAnimationFrame(frame);
   }, []);
 
-  /* ── 渲染 ── */
+  // E5#44d：点击展开子面板
+  const [subAnchor, setSubAnchor] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
+  const subRef = useRef<HTMLDivElement>(null);
 
   let clickableIdx = 0;
 
   return (
-    <div
-      ref={menuRef}
-      className="ctx-menu"
-      style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}
-    >
+    <>
+    <div ref={menuRef} className="ctx-menu" style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}>
       {resolved.map((item, i) => {
-        if ("type" in item) {
-          return <div key={`div-${i}`} className="ctx-divider" />;
-        }
-
+        if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
         const idx = clickableIdx++;
         const isFocused = idx === focusIdx;
-        // "delete" 组的菜单项自动标红（危险操作——对标 VS Code menu item destructive）
         const isDanger = item.group === "delete";
-
         const hasKids = item.children && item.children.length > 0;
+
         return (
           <div
             key={item.id}
-            ref={(el) => {
-              if (el) itemRefs.current.set(idx, el);
-              else itemRefs.current.delete(idx);
-            }}
+            ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
             className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-            onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (hasKids) {
+                const rect = e.currentTarget.getBoundingClientRect();
+                setSubAnchor({ x: rect.right + 4, y: rect.top, items: item.children! });
+              } else {
+                handleItemClick(item.id);
+              }
+            }}
             onMouseEnter={() => setFocusIdx(idx)}
           >
             <span className="ctx-item-label">{item.label}</span>
-            {hasKids && <span className="ctx-item-chevron">»</span>}
-            {item.shortcut && (
-              <span className="ctx-item-shortcut">{item.shortcut}</span>
-            )}
-            {/* E5#44d：子菜单项——始终展开在父项下方，缩进 */}
-            {hasKids && item.children!.map((child) => (
-              <div key={child.id} className="ctx-item ctx-sub-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
-                <span className="ctx-item-label" style={{ paddingLeft: 20 }}>{child.label}</span>
-              </div>
-            ))}
+            {hasKids && <span className="ctx-item-chevron">›</span>}
+            {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
           </div>
         );
       })}
     </div>
+    {subAnchor && (
+      <div ref={subRef} className="ctx-menu" style={{ left: subAnchor.x, top: subAnchor.y }}>
+        {subAnchor.items.map((child) => (
+          <div key={child.id} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+            <span className="ctx-item-label">{child.label}</span>
+          </div>
+        ))}
+      </div>
+    )}
+    </>
   );
 }
