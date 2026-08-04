@@ -10,7 +10,7 @@
  * @see [[hall-architecture-model]] §桌子管理规则
  */
 
-import { PluginLifecycle } from "../pluginLoader/lifecycle";
+import { PluginLifecycle } from "../../pluginLoader/lifecycle";
 
 export abstract class RegistryBase {
   /** 在此 Registry 中登记过的插件 ID 集合 */
