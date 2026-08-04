@@ -33,19 +33,21 @@ export interface ContextMenuProps {
   anchor: { x: number; y: number };
   context?: Record<string, unknown>;
   onClose: () => void;
+  /** E5#44d：动态子菜单——空 children 时调用 */
+  resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
 }
 
-/** 解析后的菜单项（已从 CommandRegistry 补全 title） */
 interface ResolvedItem {
   id: string;
   label: string;
   group: string;
   shortcut?: string;
+  children?: ResolvedItem[];
 }
 
 /* ── 组件 ── */
 
-export default function ContextMenu({ menuId, anchor, context, onClose }: ContextMenuProps) {
+export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // E5#69f：插件 WebView 中菜单项从壳侧取（IPC），壳内直接用本地 Registry
@@ -77,12 +79,24 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
         grouped.set(group, []);
         groupOrder.push(group);
       }
+      // E5#44d：子菜单——静态 children 或动态 resolveChildren
+      let children: ResolvedItem[] | undefined;
+      const rawChildren = (item as any).children;
+      if (rawChildren?.length) {
+        children = rawChildren.map((c: any) => ({
+          id: c.command, label: getCommand(c.command)?.title ?? c.label ?? c.command, group,
+        }));
+      } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
+        const dyn = resolveChildren(item.command, context ?? {});
+        if (dyn?.length) children = dyn.map(c => ({ id: c.id, label: c.label, group }));
+      }
+
       grouped.get(group)!.push({
         id: item.command,
         label: cmd.title,
         group,
-        // E3.5: 接线 KeybindingRegistry——自动查找命令对应的快捷键
         shortcut: findKeybindingForCommand(item.command)?.key,
+        children,
       });
     }
 
@@ -203,6 +217,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
     return { left, top };
   }, [anchor, resolved.length]);
 
+  // E5#44d：子菜单 hover
+  const [hoveredChildren, setHoveredChildren] = useState<ResolvedItem[] | null>(null);
+
   /* ── 出现动画——首帧渲染后下一帧加 .show 触发 transition ── */
 
   useEffect(() => {
@@ -232,6 +249,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
         // "delete" 组的菜单项自动标红（危险操作——对标 VS Code menu item destructive）
         const isDanger = item.group === "delete";
 
+        const hasKids = item.children && item.children.length > 0;
         return (
           <div
             key={item.id}
@@ -240,16 +258,26 @@ export default function ContextMenu({ menuId, anchor, context, onClose }: Contex
               else itemRefs.current.delete(idx);
             }}
             className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-            onClick={(e) => { e.stopPropagation(); handleItemClick(item.id); }}
-            onMouseEnter={() => setFocusIdx(idx)}
+            onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
+            onMouseEnter={() => { setFocusIdx(idx); setHoveredChildren(hasKids ? item.children! : null); }}
           >
             <span className="ctx-item-label">{item.label}</span>
+            {hasKids && <span className="ctx-item-chevron">»</span>}
             {item.shortcut && (
               <span className="ctx-item-shortcut">{item.shortcut}</span>
             )}
           </div>
         );
       })}
+      {hoveredChildren && (
+        <div className="ctx-menu ctx-sub-panel" style={{ left: adjustedAnchor.left + 180, top: adjustedAnchor.top }}>
+          {hoveredChildren.map((child) => (
+            <div key={child.id} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+              <span className="ctx-item-label">{child.label}</span>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

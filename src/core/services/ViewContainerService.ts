@@ -378,6 +378,12 @@ export class ViewContainerServiceClass extends RegistryBase {
     model.setVisible(viewId, visible);
   }
 
+  /** E5#44d：切换 view 可见性——Views 子菜单消费 */
+  toggleViewVisibility(containerId: string, viewId: string): void {
+    const visible = this.isVisible(containerId, viewId);
+    this.setVisible(containerId, viewId, !visible);
+  }
+
   /** 查询 view 可见性。对标 VS Code ViewContainerModel.isVisible */
   isVisible(containerId: string, viewId: string): boolean {
     const model = this._models.get(containerId);
