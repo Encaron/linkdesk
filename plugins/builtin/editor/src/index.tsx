@@ -11,14 +11,16 @@ import "./editor.css";
 
 initHotExit();
 
-// E5#76：模块级 handler
+// E5#76 debug
 let _setFilePath: ((v: string | null) => void) | null = null;
 let _pendingFile: string | null = null;
 try {
   const api = (window as any).linkdesk?.pluginRequest;
+  console.log("[editor] pluginRequest api:", !!api);
   api?.handle("openFile", async (payload: any) => {
+    console.log("[editor] openFile 收到:", payload);
     const fp = payload?.filePath ?? null;
-    if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
+    if (_setFilePath) { _setFilePath(fp); } else { console.log("[editor] _setFilePath null, pending"); _pendingFile = fp; }
   });
 } catch (e) { console.error("[editor] pluginRequest 注册失败:", e); }
 
