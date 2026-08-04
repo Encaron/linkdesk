@@ -6,6 +6,8 @@
  */
 
 import { useState, useCallback, useRef, useEffect } from "react";
+import i18n from "../i18n";
+import { showConfirm } from "../core/DialogService";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -883,8 +885,23 @@ export function useTabManager() {
     []
   );
 
+  // E5#51a：dirty 确认下沉到 closeTab——所有关闭路径统一行为
   const closeTab = useCallback(
-    (tabId: string): CloseTabResult => {
+    async (tabId: string): Promise<CloseTabResult> => {
+      const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
+      if (tab?.dirty) {
+        const confirmed = await showConfirm(
+          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: tab.label })
+        );
+        if (!confirmed) return { closed: false, tabId, reason: "dirty" };
+        let result: CloseTabResult = { closed: false, tabId };
+        setTabState((prev) => {
+          const r = reduceForceCloseTab(prev, tabId);
+          result = { closed: r.closed, tabId, reason: r.reason, newActiveTabId: r.newActiveTabId };
+          return r.state ?? prev;
+        });
+        return result;
+      }
       let result: CloseTabResult = { closed: false, tabId };
       setTabState((prev) => {
         const r = reduceCloseTab(prev, tabId);
