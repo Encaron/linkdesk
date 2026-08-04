@@ -18,6 +18,8 @@ interface PendingRequest {
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  channel: string;
+  args: unknown[];
 }
 
 export class IpcBridge {
@@ -90,7 +92,7 @@ export class IpcBridge {
               reject(new Error(`[IpcBridge] 请求超时: ${channel} (requestId=${requestId})`));
             }, 10_000);
 
-            this.pendingRequests.set(requestId, { resolve, reject, timer });
+            this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args });
 
             this.mainWindow.webContents.send('bridge:request', {
               requestId,
@@ -140,6 +142,11 @@ export class IpcBridge {
         pending.reject(new Error(error));
       } else {
         pending.resolve(result);
+        // config:set 成功后广播 config:changed——preload 的 onChange 依赖此通道
+        if (pending.channel === 'config:set') {
+          const [key, value] = pending.args as [string, unknown];
+          this.mainWindow.webContents.send('config:changed', { key, value });
+        }
       }
     });
   }
