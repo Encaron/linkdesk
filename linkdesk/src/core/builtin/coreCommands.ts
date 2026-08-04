@@ -12,11 +12,9 @@
 
 import { registerCommand, type Command } from "../registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
-import { factorySlots } from "../data/FactorySlots";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
-import { openKeybindingsSettings, registerKeybinding } from "../registry/KeybindingRegistry"; // E3f #59-F
-import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
+import { registerKeybinding } from "../registry/KeybindingRegistry";
 import i18n from "../../i18n";
 import { getWorkspaceLayout } from "../services/LayoutService"; // E3f #56
 import { getUserSettings } from "../services/ConfigurationService"; // E3f #56
@@ -30,22 +28,6 @@ import { getCallbacks, isRegistered, setRegistered } from "./CoreCallbacks";
 
 const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = [
   {
-    id: "core.openSettings",
-    title: i18n.t("设置"),
-    category: i18n.t("视图"),
-    handler: async (_token, ...args) => {
-      const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
-      // 齿轮菜单"设置"——通过系统插槽查找设置插件（对标 VS Code Ctrl+,）
-      if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
-      // E3f #53e：滚动到指定配置项——设置项齿轮"重置"等外部调用消费
-      if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
-      const settingsId = factorySlots.getPluginId("settings");
-      if (settingsId) getCallbacks()?.openTab(settingsId);
-    },
-    menuId: MenuId.ExtensionGear,
-    menuGroup: "navigation",
-  },
-  {
     id: "workbench.action.showCommands",
     title: i18n.t("命令面板"),
     category: i18n.t("视图"),
@@ -54,39 +36,6 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
-  },
-  {
-    id: "workbench.action.selectTheme",
-    title: i18n.t("选择颜色主题"),
-    category: i18n.t("首选项"),
-    handler: async (_token, ...args) => {
-      const ctx = args[0] as { pluginId?: string } | undefined;
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER, {
-        detail: { pluginId: ctx?.pluginId },
-      }));
-    },
-    menuId: MenuId.ExtensionGear,
-    menuGroup: "navigation",
-  },
-  {
-    id: "workbench.action.selectLanguage",
-    title: i18n.t("选择语言"),
-    category: i18n.t("首选项"),
-    handler: async () => {
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER));
-    },
-    menuId: MenuId.ExtensionGear,
-    menuGroup: "navigation",
-  },
-  {
-    id: "workbench.action.openKeybindingsSettings",
-    title: i18n.t("打开键盘快捷方式"),
-    category: i18n.t("首选项"),
-    handler: async () => {
-      await openKeybindingsSettings();
-      // E3f #59：openKeybindingsSettings 现在打开设置页快捷键 tab，
-      // 不再返回文件路径。保留命令入口供外部调用。
-    },
   },
   // E3f #58：开发者工具——切换插件 DevTools
   {
@@ -276,7 +225,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 ];
 
 // E5#44-2：标签页命令已提取到 tabCommands.ts
+// E5#44-3：设置命令已提取到 settingsCommands.ts
 import { registerTabCommands } from "./tabCommands";
+import { registerSettingsCommands } from "./settingsCommands";
 
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
 
@@ -285,8 +236,9 @@ export function ensureCoreCommands(): void {
   if (isRegistered()) return;
   setRegistered();
 
-  // E5#44-2：标签页命令独立注册
+  // E5#44-2/3：标签页 + 设置命令独立注册
   registerTabCommands();
+  registerSettingsCommands();
 
   // ── 注册核心命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
