@@ -29,13 +29,9 @@ import "./ContextMenu.css";
 /* ── 类型 ── */
 
 export interface ContextMenuProps {
-  /** 菜单注册点——决定哪些菜单项出现 */
   menuId: MenuId;
-  /** 菜单锚点（固定定位，clientX/clientY 即 left/top） */
   anchor: { x: number; y: number };
-  /** 传给命令的上下文（when 过滤 + handler args） */
   context?: Record<string, unknown>;
-  /** 关闭回调——调用方 setState(null) */
   onClose: () => void;
 }
 
