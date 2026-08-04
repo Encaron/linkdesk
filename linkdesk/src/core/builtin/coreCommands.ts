@@ -14,7 +14,6 @@ import { registerCommand, type Command } from "../registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
-import { registerKeybinding } from "../registry/KeybindingRegistry";
 import i18n from "../../i18n";
 import { getWorkspaceLayout } from "../services/LayoutService"; // E3f #56
 import { getUserSettings } from "../services/ConfigurationService"; // E3f #56
@@ -295,41 +294,6 @@ export function ensureCoreCommands(): void {
 
 }
 
-/* ── E3f #59-F：壳级快捷键声明——对标 contributes.keybindings，声明式零硬编码 ── */
-
-/** 壳级内置快捷键——对标 VS Code 内置 keybindings。APP_PLUGIN_ID 标识来源。
- *  格式与 plugin.json contributes.keybindings 一致：
- *  { command, key, args? }。args 可选——透传给 executeCommand。
- *  新壳级快捷键只需加一条到这里，表格自动出现。 */
-export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unknown[] }> = [
-  { command: "core.openSettings",             key: "ctrl+," },
-  { command: "workbench.action.showCommands", key: "ctrl+shift+p" },
-  { command: "workbench.action.selectTheme",  key: "ctrl+k ctrl+t" },
-  { command: "workbench.action.selectLanguage", key: "ctrl+k ctrl+l" },
-  { command: "workbench.action.closeActiveTab", key: "ctrl+w" },
-  { command: "workbench.action.reopenClosedEditor", key: "ctrl+shift+t" },
-  { command: "workbench.action.nextTab",      key: "ctrl+tab" },
-  { command: "workbench.action.nextTab",      key: "ctrl+shift+tab", args: [{ shift: true }] },
-  { command: "workbench.action.toggleSplit",  key: "ctrl+\\" },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+1", args: [{ n: 1 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+2", args: [{ n: 2 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+3", args: [{ n: 3 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+4", args: [{ n: 4 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+5", args: [{ n: 5 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+6", args: [{ n: 6 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+7", args: [{ n: 7 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+8", args: [{ n: 8 }] },
-  { command: "workbench.action.focusNthTab",  key: "ctrl+9", args: [{ n: 9 }] },
-];
-
-let _coreKeybindingsRegistered = false;
-
-/** 注册壳级快捷键（幂等——只执行一次）。对标 ensureCoreCommands。 */
-export function ensureCoreKeybindings(): void {
-  if (_coreKeybindingsRegistered) return;
-  _coreKeybindingsRegistered = true;
-  for (const kb of CORE_KEYBINDINGS) {
-    registerKeybinding({ ...kb, source: "builtin" });
-  }
-}
+// E5#44-5：快捷键定义提取到 shellKeybindings.ts
+export { CORE_KEYBINDINGS, ensureCoreKeybindings } from "./shellKeybindings";
 
