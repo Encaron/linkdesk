@@ -346,7 +346,6 @@ function MainContent({
       if (t.pluginId === "editor" && t.sourceId) {
         const fp = t.sourceId;
         (window as any).linkdesk?.bridge?.requestToPlugin?.("editor","openFile",{filePath:fp}).catch(()=>{});
-        console.log("[E5#11i] sent openFile:",fp,"readyEditor:",readyWebViewIds.has("editor"),"boundsEditor:",webViewBoundsReady.has("editor"));
       }
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);

@@ -73,11 +73,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     const container = containerRef.current;
 
     (async () => {
-      // E5#11i：等容器有非零尺寸（WebView 异步 setBounds）
-      if (container.clientWidth===0 || container.clientHeight===0) {
-        await new Promise<void>(r => { let n=0; const id=setInterval(()=>{if(container.clientWidth>0&&container.clientHeight>0||++n>600){clearInterval(id);r();}},50); });
+      // E5#11i：WebView 初始 0×0→等 bounds（resize event 触发 layout）
+      if (container.clientWidth===0||container.clientHeight===0) {
+        await new Promise<void>(r=>{let n=0;const id=setInterval(()=>{if(container.clientWidth>0&&container.clientHeight>0||++n>100){clearInterval(id);r()}},30)});
       }
-      if (disposed) return;
+      if(disposed)return;
       // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
       await initMonacoEnv(async (modelRef: any, _options: unknown) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
