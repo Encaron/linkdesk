@@ -150,6 +150,14 @@ try {
         ipcRenderer.invoke('pluginState:get', pluginId, key),
       set: (pluginId: string, key: string, value: unknown): Promise<void> =>
         ipcRenderer.invoke('pluginState:set', pluginId, key, value),
+      // E5#84f：订阅变更——跨 WebView 状态同步原语
+      onChange: (pluginId: string, key: string, cb: (value: unknown) => void) => {
+        return events.on("plugin-state:changed", (data: any) => {
+          if (data?.pluginId === pluginId && data?.key === key) {
+            cb(data.value);
+          }
+        });
+      },
     },
 
     // ── E5#69：菜单——

@@ -82,6 +82,8 @@ export function initIpcBridgeHandler(): void {
         case "pluginState:set": {
           const [pluginId, key, value] = req.args as [string, string, unknown];
           await setPluginStateValue(pluginId, key, value);
+          // E5#84f：广播变更到所有 WebView——pluginState.onChange 订阅者收到通知
+          try { (window as any).linkdesk?.events?.emit("plugin-state:changed", { pluginId, key, value }); } catch { /* 静默 */ }
           break;
         }
 
