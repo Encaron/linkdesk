@@ -111,7 +111,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       result.push(...grouped.get(group)!);
     }
     return result;
-  }, [menuId]);
+  }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
 
   /* ── 统一失焦（四种方式） ── */
 
