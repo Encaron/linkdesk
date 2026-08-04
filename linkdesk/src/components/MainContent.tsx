@@ -7,7 +7,7 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { ComponentType } from "react";
 import type { TabGroup, Tab } from "../hooks/useTabManager";
@@ -26,6 +26,7 @@ import OutputPanel from "./views/OutputPanel"; // E3f #54
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
+import { useWebViewSync } from "../hooks/useWebViewSync";
 // E5#5a：壳内通信——订阅/emit 事件，逐步替代 App.tsx props
 import { shellEvents } from "../core/ShellEvents";
 // E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
@@ -189,11 +190,6 @@ function MainContent({
   // 插件标签页切换 → 壳侧 sync → main process → WindowManager → WebView 显隐/位置
   // ═══════════════════════════════════════════════════════
 
-  const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
-
-  // 追踪有 WebView 注册的插件——避免无谓的 setVisible/setBounds IPC 调用
-  const registeredViewIdsRef = useRef<Set<string>>(new Set());
-
   // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
   useEffect(() => {
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
@@ -215,12 +211,8 @@ function MainContent({
           }
         }
       }
-      // E5#10：插件卸载 → 清 WebView 状态 + 取消超时定时器
-      setReadyWebViewIds((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
-      setWebViewBoundsReady((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
-      setWebViewTimeout((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
-      const timer = webViewTimers.current.get(pluginId);
-      if (timer) { clearTimeout(timer); webViewTimers.current.delete(pluginId); }
+      // E5#81：插件卸载 → 归一化清除 WebView 状态
+      resetWebViewState(pluginId);
     });
     return unsub;
   }, [tabState.groups, forceCloseTab]);
@@ -329,133 +321,14 @@ function MainContent({
   }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, t]);
   updateCoreCallbacks(coreCallbacks);
 
-  // #58e 修复：只有 WebView 渲染完成（发 ready 信号）的插件才跳 React fallback
-  // E5#10：notifyReady 信号链已修复（rAF→sync），readyWebViewIds 现在正确追踪。
-  const [readyWebViewIds, setReadyWebViewIds] = useState<Set<string>>(new Set());
-  // E5#10b：双条件——bounds IPC 确认完成后才允许关 React
-  const [webViewBoundsReady, setWebViewBoundsReady] = useState<Set<string>>(new Set());
-  // E5#11i
-  useEffect(() => {
-    for (const g of tabState.groups) for (const t of g.tabs) {
-      if (t.pluginId === "editor" && t.sourceId) {
-        const fp = t.sourceId;
-        (window as any).linkdesk?.bridge?.requestToPlugin?.("editor","openFile",{filePath:fp}).catch(()=>{});
-      }
-    }
-  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
-  // E5#10c：超时兜底——插件 WebView 5s 未完全就绪 → 永久回退 React fallback
-  const [webViewTimeout, setWebViewTimeout] = useState<Set<string>>(new Set());
-  const webViewTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  useEffect(() => {
-    const pv = (window as any).linkdesk?.pluginViews;
-    if (!pv?.onReady) return;
-    return pv.onReady((pluginId: string) => {
-      setReadyWebViewIds((prev) => {
-        if (prev.has(pluginId)) return prev; // 幂等
-        const next = new Set(prev);
-        next.add(pluginId);
-        return next;
-      });
-      // E5#10c：JS ready 后启动 5s 超时——等 bounds 就绪
-      if (!webViewTimers.current.has(pluginId)) {
-        const timer = setTimeout(() => {
-          console.warn(`[MainContent] ⚠️ WebView "${pluginId}" 5s 未完全就绪，回退 React fallback`);
-          setWebViewTimeout((prev) => {
-            if (prev.has(pluginId)) return prev;
-            const next = new Set(prev);
-            next.add(pluginId);
-            return next;
-          });
-          webViewTimers.current.delete(pluginId);
-        }, 5000);
-        webViewTimers.current.set(pluginId, timer);
-      }
-    });
-  }, []);
-  // 清理超时定时器——bounds 就绪时取消对应 timer
-  useEffect(() => {
-    for (const pluginId of webViewBoundsReady) {
-      const timer = webViewTimers.current.get(pluginId);
-      if (timer) {
-        clearTimeout(timer);
-        webViewTimers.current.delete(pluginId);
-      }
-    }
-  }, [webViewBoundsReady]);
-
-  useEffect(() => {
-    const pv = (window as any).linkdesk?.pluginViews;
-    if (!pv) return;
-
-    // 收集所有插件标签页的状态
-    const currentStates = new Map<string, { groupId: string; isFocused: boolean }>();
-    for (const g of tabState.groups) {
-      for (const tab of g.tabs) {
-        if (tab.pluginId && !isShellRenderedTab(tab.type)) {
-          const isActiveInGroup = tab.id === g.activeTabId;
-          currentStates.set(tab.pluginId, {
-            groupId: g.id,
-            isFocused: isActiveInGroup && g.id === tabState.activeGroupId,
-          });
-        }
-      }
-    }
-
-    // 异步获取已注册的 WebView 列表，只对已注册的插件做 setVisible/setBounds
-    pv.getAllIds?.()?.then((ids: string[]) => {
-      const registeredSet = new Set(ids);
-      registeredViewIdsRef.current = registeredSet;
-
-      const prev = pluginViewsRef.current;
-      for (const [pluginId, state] of currentStates) {
-        if (!registeredSet.has(pluginId)) continue;
-        const prevState = prev.get(pluginId);
-        if (prevState?.isFocused !== state.isFocused) {
-          pv.setVisible(pluginId, state.isFocused);
-        }
-      }
-
-      for (const pluginId of prev.keys()) {
-        if (!currentStates.has(pluginId) && registeredSet.has(pluginId)) {
-          pv.setVisible(pluginId, false);
-        }
-      }
-
-      // 只在有已注册 WebView 时才更新 bounds（避免无谓的 getBoundingClientRect 回流）
-      if (ids.length > 0) {
-        requestAnimationFrame(() => {
-          for (const [pluginId, state] of currentStates) {
-            if (state.isFocused && registeredSet.has(pluginId)) {
-              const pool = document.querySelector(`[data-group-id="${state.groupId}"]`) as HTMLElement | null;
-              if (pool) {
-                const rect = pool.getBoundingClientRect();
-                pv.setBounds(pluginId, {
-                  x: Math.round(rect.x),
-                  y: Math.round(rect.y),
-                  width: Math.round(rect.width),
-                  height: Math.round(rect.height),
-                }).then(() => {
-                  // E5#10b：bounds IPC 确认完成 → 标记就绪
-                  setWebViewBoundsReady((prev) => {
-                    if (prev.has(pluginId)) return prev;
-                    const next = new Set(prev);
-                    next.add(pluginId);
-                    return next;
-                  });
-                }).catch((err: unknown) => {
-                  console.warn(`[MainContent] setBounds failed for ${pluginId}:`, err);
-                });
-              }
-            }
-          }
-        });
-      }
-    }).catch((err: unknown) => {
-      console.warn('[MainContent] WebView 同步失败:', err);
-    });
-
-    pluginViewsRef.current = currentStates;
-  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds]);
+  // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
+  const {
+    readyWebViewIds,
+    webViewBoundsReady,
+    webViewTimeout,
+    registerPoolRef,
+    resetWebViewState,
+  } = useWebViewSync(tabState, isShellRenderedTab);
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -569,6 +442,7 @@ function MainContent({
           <div
             className="tab-content-pool"
             data-group-id={group.id}
+            ref={registerPoolRef(group.id)}
             style={{ flex: 1, position: "relative", overflow: "hidden" }}
           />
           {isTarget && (

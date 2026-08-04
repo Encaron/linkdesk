@@ -26,6 +26,15 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
   }
 });
 
+// E5#11l fix：模块级缓冲 plugin-view:ready——notifyReady 可能在 React useEffect 之前到达
+const _readyBuffer: string[] = [];
+let _onReadyActive = false;
+ipcRenderer.on('plugin-view:ready', (_event, pluginId: string) => {
+  if (!_onReadyActive) {
+    _readyBuffer.push(pluginId);
+  }
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -239,8 +248,13 @@ try {
       create: (id: string) => ipcRenderer.invoke('plugin-view:create', id), // E3f #58a
       destroy: (id: string) => ipcRenderer.invoke('plugin-view:destroy', id), // E3f #58d
       // #58e 修复：订阅插件 WebView 渲染完成通知——壳收到后才关 React fallback
+      // E5#11l fix：模块级缓冲——notifyReady 可能在 React useEffect 注册 onReady 之前到达
       onReady: (cb: (pluginId: string) => void) => {
+        _onReadyActive = true;
         const handler = (_event: Electron.IpcRendererEvent, pluginId: string) => cb(pluginId);
+        // 回放缓冲的 ready 事件（在 onReady 注册前到达的）
+        for (const pid of _readyBuffer) cb(pid);
+        _readyBuffer.length = 0;
         ipcRenderer.on('plugin-view:ready', handler);
         return () => ipcRenderer.removeListener('plugin-view:ready', handler);
       },
