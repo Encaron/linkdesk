@@ -18,6 +18,9 @@ import SectionStack from "./shared/SectionStack";
 import { shellEvents } from "../core/react/ShellEvents";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5#9f：collapse/expand 同步 zone 宽度
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
+// E5#60：view header 右键菜单消费方
+import ContextMenu from "./shared/ContextMenu";
+import { MenuId } from "../core/registry/MenuRegistry";
 import "./SidePanel.css";
 
 interface SidePanelProps {
@@ -110,6 +113,20 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
     if (effectiveContainerId) setLastSidebar(effectiveContainerId);
   }, [effectiveContainerId]);
 
+  // E5#60：订阅 view header 菜单事件——shellMenus 提供的命令 emit 这些事件
+  useEffect(() => {
+    const u1 = shellEvents.on("view:toggleCollapse", ({ containerId: cid }) => {
+      if (cid !== effectiveContainerId) return;
+      doCollapse(!collapsedRef.current);
+    });
+    const u2 = shellEvents.on("view:resetPosition", ({ containerId: cid }) => {
+      if (cid !== effectiveContainerId) return;
+      doCollapse(false);
+      layoutEngine.setZoneWidth("sidebar", 280);
+    });
+    return () => { u1(); u2(); };
+  }, [effectiveContainerId, doCollapse]);
+
   // 🔥 Bug 3/4 防线——StrictMode remount 旧订阅清理 + 不活跃时不处理事件
   const [, setVersion] = useState(0);
   useEffect(() => {
@@ -136,6 +153,9 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
 
   // toolbarHeight 从 ToolbarSlot 回调接收——状态归 ToolbarSlot 管，SidePanel 只是转交
   const [toolbarHeight, setToolbarHeight] = useState(0);
+
+  // E5#60：view header 右键菜单
+  const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null);
 
   // mergeHeaderWhenSingle——容器 header 标题逻辑
   const singleView = activeViews.length === 1;
@@ -195,7 +215,13 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
         </button>
       ) : (
         <>
-          <div className="side-panel-header">
+          <div
+            className="side-panel-header"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              setHeaderMenu({ x: e.clientX, y: e.clientY });
+            }}
+          >
             <span className="side-panel-title" title={title}>{title}</span>
             <button
               className="side-panel-collapse"
@@ -209,6 +235,14 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
             {renderSidebarContent()}
           </div>
         </>
+      )}
+      {headerMenu && (
+        <ContextMenu
+          menuId={MenuId.ViewTitleContext}
+          anchor={headerMenu}
+          context={{ containerId: effectiveContainerId ?? undefined }}
+          onClose={() => setHeaderMenu(null)}
+        />
       )}
     </aside>
   );
