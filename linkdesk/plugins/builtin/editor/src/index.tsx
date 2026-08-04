@@ -1,41 +1,36 @@
 /**
  * 编辑器插件入口。
- * E4 R17：Monaco 编辑器——tabOnly 视图插件。
- *
- * 壳渲染链路：MainContent.tsx L88-94
- *   getViewPlugin("editor") → <plugin.component isActive={isActive} sourceId={tab.sourceId} />
- * 约定：sourceId = filePath（文件树 createTab 时传入）
+ * E5#76d：独立 WebView——接收壳 requestToPlugin('openFile')。Monaco 在容器有尺寸后初始化。
  */
-import React from "react";
+import React, { useState, useEffect } from "react";
 import EditorTab from "./EditorTab";
 import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
 import "./editor.css";
 
-// E4V#40n——模块加载时初始化 Hot Exit
 initHotExit();
 
-export interface EditorPluginProps {
-  isActive: boolean;
-  sourceId?: string;
-}
+const EditorPlugin: React.FC = () => {
+  const [filePath, setFilePath] = useState<string | null>(null);
 
-const EditorPlugin: React.FC<EditorPluginProps> = ({ isActive, sourceId }) => {
-  if (!sourceId) {
-    return (
-      <div className="editor-container editor-empty">
-        编辑器（无打开文件——sourceId 未设置）
-      </div>
-    );
+  useEffect(() => {
+    const api = (window as any).linkdesk?.pluginRequest;
+    if (!api) return;
+    api.handle("openFile", async (payload: any) => {
+      setFilePath(payload?.filePath ?? null);
+    });
+  }, []);
+
+  if (!filePath) {
+    return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
   }
 
-  // E4V#40m——Diff：sourceId = "originalPath|||modifiedPath"
-  if (sourceId.includes("|||")) {
-    const [originalPath, modifiedPath] = sourceId.split("|||");
-    return <DiffEditor originalPath={originalPath} modifiedPath={modifiedPath} isActive={isActive} />;
+  if (filePath.includes("|||")) {
+    const [orig, mod] = filePath.split("|||");
+    return <DiffEditor originalPath={orig} modifiedPath={mod} isActive={true} />;
   }
 
-  return <EditorTab filePath={sourceId} isActive={isActive} />;
+  return <EditorTab filePath={filePath} isActive={true} />;
 };
 
 export default EditorPlugin;
