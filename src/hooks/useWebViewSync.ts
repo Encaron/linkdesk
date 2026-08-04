@@ -116,6 +116,14 @@ export function useWebViewSync(
     }
   }, [webViewBoundsReady]);
 
+  // ── window resize → 触发 bounds sync（所有插件 WebView 受益）──
+  const [resizeVersion, setResizeVersion] = useState(0);
+  useEffect(() => {
+    const onResize = () => setResizeVersion(v => v + 1);
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
+
   // ── Effect 3：bounds sync + setVisible（Bug ① dep + Bug ⑤ prev 时序 + Bug ⑥ ref）──
   useEffect(() => {
     if (!pv) return;
@@ -181,7 +189,7 @@ export function useWebViewSync(
     });
 
     pluginViewsRef.current = currentStates;
-  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds]); // Bug ①: readyWebViewIds 加入 deps
+  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds, resizeVersion]); // Bug ①: readyWebViewIds + E5#84d: window resize
 
   return { readyWebViewIds, webViewBoundsReady, webViewTimeout, registerPoolRef, resetWebViewState };
 }
