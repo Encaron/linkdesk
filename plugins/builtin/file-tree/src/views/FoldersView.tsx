@@ -8,6 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { executeCommand } from "@src/core/CommandRegistry";
+import { ContextKeyService } from "@src/core/ContextKeyService";
 import { useConfigurationValue } from "@src/core/useConfiguration";
 import { onDidChangeFolders, type WorkspaceFolder } from "@src/core/WorkspaceService";
 import { ViewContainerService } from "@src/core/ViewContainerService";
@@ -63,10 +64,10 @@ const FoldersView: React.FC = () => {
     (item: ExplorerItem, event: React.MouseEvent) => {
       event.preventDefault();
       // E4V#12 fix: setState 前设 context key——确保菜单 when 求值时已生效
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", item.isDirectory === false);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", item.isDirectory === true);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", item.parent === null);
-      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", item.isReadonly === true);
+      ContextKeyService.setValue("explorerItemIsFile", item.isDirectory === false);
+      ContextKeyService.setValue("explorerItemIsDir", item.isDirectory === true);
+      ContextKeyService.setValue("explorerItemIsRoot", item.parent === null);
+      ContextKeyService.setValue("explorerResourceReadonly", item.isReadonly === true);
       setContextMenu({ item, anchor: { x: event.clientX, y: event.clientY } });
     },
     [],

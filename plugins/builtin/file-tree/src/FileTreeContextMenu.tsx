@@ -12,6 +12,7 @@ import { MenuId } from "@src/core/MenuRegistry";
 
 import { removeFolder } from "@src/core/WorkspaceService";
 import { shellEvents } from "@src/core/ShellEvents";
+import { ContextKeyService } from "@src/core/ContextKeyService";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -447,17 +448,18 @@ interface FileTreeContextMenuProps {
  */
 const FileTreeContextMenu: React.FC<FileTreeContextMenuProps> = ({ item, anchor, onClose }) => {
   // E4V#12: 瞬态 context key——菜单渲染前注入，关闭时清除
+  // 直调 ContextKeyService——lk.contextKey.set 走 IPC 异步，菜单渲染时 context key 未到位
   useEffect(() => {
-    (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", item?.isDirectory === false);
-    (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", item?.isDirectory === true);
-    (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", item?.parent === null);
-    (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", item?.isReadonly === true);
+    ContextKeyService.setValue("explorerItemIsFile", item?.isDirectory === false);
+    ContextKeyService.setValue("explorerItemIsDir", item?.isDirectory === true);
+    ContextKeyService.setValue("explorerItemIsRoot", item?.parent === null);
+    ContextKeyService.setValue("explorerResourceReadonly", item?.isReadonly === true);
 
     return () => {
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", false);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", false);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", false);
-      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", false);
+      ContextKeyService.setValue("explorerItemIsFile", false);
+      ContextKeyService.setValue("explorerItemIsDir", false);
+      ContextKeyService.setValue("explorerItemIsRoot", false);
+      ContextKeyService.setValue("explorerResourceReadonly", false);
     };
   }, [item]);
 

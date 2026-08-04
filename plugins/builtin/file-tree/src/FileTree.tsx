@@ -14,6 +14,7 @@ import { useFileTreeDnD } from "./FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
 import { shellEvents } from "@src/core/ShellEvents";
+import { ContextKeyService } from "@src/core/ContextKeyService";
 import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
@@ -152,12 +153,12 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     setSelection(new Set([target]));
     // 🔥 屏蔽全局快捷键——防止 KeybindingRegistry 抢 Enter/Escape
     setKeybindingCaptureActive(true);
-    (window as any).linkdesk?.contextKey?.set("inputFocus", true);
+    ContextKeyService.setValue("inputFocus", true);
   }, [selection, focusedUri]);
   /** 🔥 rename 退出归一出口——finish/cancel/blur 三条路径走同一个 */
   const exitRename = useCallback(() => {
     setKeybindingCaptureActive(false);
-    (window as any).linkdesk?.contextKey?.set("inputFocus", false);
+    ContextKeyService.setValue("inputFocus", false);
     // defer focus: 等 React 卸载 input 后再聚焦→不触发 input onBlur
     requestAnimationFrame(() => containerRef.current?.focus());
   }, []);
@@ -370,24 +371,24 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
 
   /* ── context keys ── */
   useEffect(() => {
-    (window as any).linkdesk?.contextKey?.set("explorerResourceCut", false);
-    (window as any).linkdesk?.contextKey?.set("explorerClipboardEmpty", true);
-    (window as any).linkdesk?.contextKey?.set("explorerResourceMoveableToTrash", navigator.platform.includes("Win"));
+    ContextKeyService.setValue("explorerResourceCut", false);
+    ContextKeyService.setValue("explorerClipboardEmpty", true);
+    ContextKeyService.setValue("explorerResourceMoveableToTrash", navigator.platform.includes("Win"));
   }, []);
-  const handleFocus = useCallback(() => { (window as any).linkdesk?.contextKey?.set("explorerFocus", true); }, []);
-  const handleBlur = useCallback(() => { (window as any).linkdesk?.contextKey?.set("explorerFocus", false); }, []);
+  const handleFocus = useCallback(() => { ContextKeyService.setValue("explorerFocus", true); }, []);
+  const handleBlur = useCallback(() => { ContextKeyService.setValue("explorerFocus", false); }, []);
   useEffect(() => {
     if (focusedUri) {
       const fi = flatItems.find((f) => f.item.uri === focusedUri);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", fi?.item.isDirectory === false);
-      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", fi?.item.isReadonly === true);
-      (window as any).linkdesk?.contextKey?.set("explorerViewletCompressedFocus", (fi?.compactedSegments?.length ?? 0) > 0);
+      ContextKeyService.setValue("explorerItemIsFile", fi?.item.isDirectory === false);
+      ContextKeyService.setValue("explorerResourceReadonly", fi?.item.isReadonly === true);
+      ContextKeyService.setValue("explorerViewletCompressedFocus", (fi?.compactedSegments?.length ?? 0) > 0);
     } else {
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", false);
-      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", false);
-      (window as any).linkdesk?.contextKey?.set("explorerViewletCompressedFocus", false);
+      ContextKeyService.setValue("explorerItemIsFile", false);
+      ContextKeyService.setValue("explorerResourceReadonly", false);
+      ContextKeyService.setValue("explorerViewletCompressedFocus", false);
     }
-    (window as any).linkdesk?.contextKey?.set("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
+    ContextKeyService.setValue("viewHasSomeCollapsibleItem", model.getExpandedUris().length > 0);
   }, [focusedUri, flatItems, model]);
 
   /** 点文件树空白处→清空选中（对标 VS Code）。节点 onClick 已 stopPropagation 不冒泡到这里 */
