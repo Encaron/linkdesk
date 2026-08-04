@@ -342,16 +342,16 @@ function MainContent({
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
 
-  // E5#84：serial-monitor openSession IPC——独立 WebView 后，壳通过 IPC 告知会话 sourceId
+  // E5#84e：serial-monitor openSession——只发当前聚焦 tab（共享 WebView，防覆盖）
   useEffect(() => {
     const bridge = (window as any).linkdesk?.bridge;
     if (!bridge) return;
-    for (const g of tabState.groups) for (const t of g.tabs) {
-      if (t.pluginId === "serial-monitor" && t.sourceId) {
-        bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: t.sourceId }).catch(() => {});
-      }
+    const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
+    const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
+    if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId) {
+      bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch(() => {});
     }
-  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
+  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds, webViewBoundsReady]);
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
