@@ -5,7 +5,7 @@
  * 壳端调用：requestToPlugin('editor', 'openFile', { filePath, label })
  * 插件端：useEffect → pluginRequest.handle('openFile', handler) → 更新 state
  */
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import EditorTab from "./EditorTab";
 import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
@@ -13,16 +13,16 @@ import "./editor.css";
 
 initHotExit();
 
+// E5#76：模块级 handler——notifyReady 比 useEffect 先发，必须组件函数外注册
+let _setFilePath: ((v: string | null) => void) | null = null;
+const api = (window as any).linkdesk?.pluginRequest;
+api?.handle("openFile", async (payload: any) => {
+  _setFilePath?.(payload?.filePath ?? null);
+});
+
 const EditorPlugin: React.FC = () => {
   const [filePath, setFilePath] = useState<string | null>(null);
-
-  useEffect(() => {
-    const api = (window as any).linkdesk?.pluginRequest;
-    if (!api) return;
-    api.handle("openFile", async (payload: any) => {
-      setFilePath(payload?.filePath ?? null);
-    });
-  }, []);
+  _setFilePath = setFilePath;
 
   if (!filePath) {
     return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
