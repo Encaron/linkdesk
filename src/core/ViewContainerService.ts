@@ -18,7 +18,7 @@
  */
 
 import { Emitter } from "./CoreEvents";
-import { RegistryBase } from "./RegistryBase";
+import { RegistryBase } from "./registry/RegistryBase";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 
 /* ── 类型定义 ── */
