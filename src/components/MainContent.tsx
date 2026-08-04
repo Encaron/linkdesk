@@ -343,7 +343,12 @@ function MainContent({
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
         if (tab.pluginId === "editor" && tab.sourceId) {
-          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).catch(() => {});
+          console.log("[E5#76] 发送 openFile:", tab.sourceId, "readyWebViewIds:", readyWebViewIds.has("editor"));
+          (window as any).linkdesk?.bridge?.requestToPlugin?.("editor", "openFile", { filePath: tab.sourceId }).then(() => {
+            console.log("[E5#76] openFile 发送成功");
+          }).catch((e: any) => {
+            console.error("[E5#76] openFile 发送失败:", e);
+          });
         }
       }
     }
