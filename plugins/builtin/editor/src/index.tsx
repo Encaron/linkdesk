@@ -1,48 +1,41 @@
 /**
  * 编辑器插件入口。
- * E5#76：独立 WebView——接收壳 requestToPlugin('openFile') 代替 React props。
+ * E4 R17：Monaco 编辑器——tabOnly 视图插件。
  *
- * 壳端调用：requestToPlugin('editor', 'openFile', { filePath, label })
- * 插件端：useEffect → pluginRequest.handle('openFile', handler) → 更新 state
+ * 壳渲染链路：MainContent.tsx L88-94
+ *   getViewPlugin("editor") → <plugin.component isActive={isActive} sourceId={tab.sourceId} />
+ * 约定：sourceId = filePath（文件树 createTab 时传入）
  */
-import React, { useState } from "react";
+import React from "react";
+import EditorTab from "./EditorTab";
+import DiffEditor from "./DiffEditor";
 import { initHotExit } from "./hot-exit";
 import "./editor.css";
 
+// E4V#40n——模块加载时初始化 Hot Exit
 initHotExit();
 
-// E5#76：延迟注册——模块加载时 window.linkdesk 可能未就绪
-let _setFilePath: ((v: string | null) => void) | null = null;
-let _pendingFile: string | null = null;
-function _registerHandler() {
-  const api = (window as any).linkdesk?.pluginRequest;
-  if (!api) { setTimeout(_registerHandler, 10); return; }
-  api.handle("openFile", async (payload: any) => {
-    const fp = payload?.filePath ?? null;
-    if (_setFilePath) { _setFilePath(fp); } else { _pendingFile = fp; }
-  });
+export interface EditorPluginProps {
+  isActive: boolean;
+  sourceId?: string;
 }
-_registerHandler();
 
-const EditorPlugin: React.FC = () => {
-  const [filePath, setFilePath] = useState<string | null>(_pendingFile);
-  _setFilePath = setFilePath;
-  if (_pendingFile) { if (!filePath) setFilePath(_pendingFile); _pendingFile = null; }
-
-  // debug: always render something
-  return <div style={{padding:20,color:'white',background:'#333'}}>EDITOR PLUGIN LOADED<br/>filePath: {filePath ?? '(none)'}</div>;
-  /*
-  if (!filePath) {
-    return <div className="editor-container editor-empty">编辑器（双击文件树打开文件）</div>;
+const EditorPlugin: React.FC<EditorPluginProps> = ({ isActive, sourceId }) => {
+  if (!sourceId) {
+    return (
+      <div className="editor-container editor-empty">
+        编辑器（无打开文件——sourceId 未设置）
+      </div>
+    );
   }
 
-  if (filePath.includes("|||")) {
-    const [orig, mod] = filePath.split("|||");
-    return <DiffEditor originalPath={orig} modifiedPath={mod} isActive={true} />;
+  // E4V#40m——Diff：sourceId = "originalPath|||modifiedPath"
+  if (sourceId.includes("|||")) {
+    const [originalPath, modifiedPath] = sourceId.split("|||");
+    return <DiffEditor originalPath={originalPath} modifiedPath={modifiedPath} isActive={isActive} />;
   }
 
-  return <EditorTab filePath={filePath} isActive={true} />;
-  */
+  return <EditorTab filePath={sourceId} isActive={isActive} />;
 };
 
 export default EditorPlugin;
