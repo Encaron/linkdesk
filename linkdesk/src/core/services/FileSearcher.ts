@@ -7,7 +7,7 @@
  */
 
 import { listDir, readBinaryFile, exists } from "./FileService";
-import { EncodingService } from "./encoding/EncodingService";
+import { EncodingService } from "../encoding/EncodingService";
 import { normalizePath } from "./pathUtils";
 
 /** 二进制/编译产物——搜索时自动跳过。对标 VS Code search.files.exclude 默认值 */

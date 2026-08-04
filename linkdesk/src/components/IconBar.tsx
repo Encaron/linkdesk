@@ -11,7 +11,7 @@ import { getViewPlugins, getViewPlugin, getIconLocation, onDidRegister, onDidUnr
 import { resolvePluginIcon, type ResolvedIcon } from "../pluginLoader/iconUtils";
 import { PluginIcon } from "./shared/PluginIcon";
 // Phase 5：图标排序迁移到 PluginStateService
-import { getPluginStateValue, APP_PLUGIN_ID } from "../core/PluginStateService";
+import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService";
 // Phase 5c：齿轮菜单
 import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/registry/MenuRegistry";

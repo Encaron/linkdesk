@@ -182,7 +182,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
 
   // E3f #59-G：重置为默认
   const handleResetDefault = useCallback(async (row: KeybindingRow) => {
-    const { showConfirm } = await import("../../core/DialogService");
+    const { showConfirm } = await import("../../core/services/DialogService");
     const confirmed = await showConfirm(t("确定要将「{{key}}」重置为默认值吗？", { key: row.title }));
     if (!confirmed) return;
     resetKeybindingToDefault(row.command);

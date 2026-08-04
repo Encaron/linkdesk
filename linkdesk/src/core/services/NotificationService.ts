@@ -12,7 +12,7 @@
  * VS Code 对标：src/vs/workbench/services/notification/common/notificationService.ts
  */
 
-import { Emitter } from "./CoreEvents";
+import { Emitter } from "../CoreEvents";
 
 /* ── 进度条 ── */
 

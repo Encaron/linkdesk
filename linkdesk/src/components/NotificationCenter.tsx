@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { subscribeToasts, dismissToast, setToastsSuppressed, type Toast } from "../core/toast";
+import { subscribeToasts, dismissToast, setToastsSuppressed, type Toast } from "../core/services/toast";
 
 /* ── 模块级未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 ── */
 

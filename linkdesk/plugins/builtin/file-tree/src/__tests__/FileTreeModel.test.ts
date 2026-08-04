@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { FileTreeModel } from "../FileTreeModel";
 import { FileExcludeFilter } from "../FileExcludeFilter";
 import type { ExplorerItem } from "../FileTreeModel";
-import type { FileEntry } from "@src/core/FileService";
+import type { FileEntry } from "@src/core/services/FileService";
 
 /* ── 辅助工厂 ── */
 
@@ -24,7 +24,7 @@ function makeEntry(overrides: Partial<FileEntry> & { name: string; path: string;
 /* ── mock listDir ── */
 
 const { listDir } = vi.hoisted(() => ({ listDir: vi.fn() }));
-vi.mock("@src/core/FileService", () => ({ listDir }));
+vi.mock("@src/core/services/FileService", () => ({ listDir }));
 
 /* ── mock ConfigurationService（E5#85 迁移后不再使用，保留兼容）── */
 
@@ -32,7 +32,7 @@ const { getConfigurationValue, onDidChangeConfiguration } = vi.hoisted(() => ({
   getConfigurationValue: vi.fn(),
   onDidChangeConfiguration: vi.fn(),
 }));
-vi.mock("@src/core/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
+vi.mock("@src/core/services/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
 
 /** E5#85 迁移后 FileTreeModel 通过 lk.configuration.get() 读配置——通过 __ldkConfigStore 设值 */
 function setConfig(key: string, value: unknown) {

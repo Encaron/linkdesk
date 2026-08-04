@@ -14,7 +14,7 @@ import { useFileTreeDnD } from "./FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/registry/KeybindingRegistry";
 import { shellEvents } from "@src/core/ShellEvents";
-import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/WorkspaceService";
+import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/services/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
 const lk = (window as any).linkdesk;

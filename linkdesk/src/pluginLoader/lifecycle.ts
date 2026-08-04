@@ -14,8 +14,8 @@
  */
 
 import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/NotificationService";
-import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/PluginStateService";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/NotificationService";
+import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";
 import { unregisterPluginCommands } from "../core/registry/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry";
@@ -23,7 +23,7 @@ import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "..
 import { unregisterPluginProtocols } from "../core/registry/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/CardRegistry";
 import { unregisterPluginChannels } from "../core/LogChannel";
-import { unregisterPluginFileAssociations } from "../core/FileAssociationService";
+import { unregisterPluginFileAssociations } from "../core/services/FileAssociationService";
 import { unregisterPluginThemes } from "../core/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
@@ -189,7 +189,7 @@ function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
     if (mode === "append") filtered.push(pluginId);
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
-    import("../core/PluginStateService").then(({ setPluginStateValue }) => {
+    import("../core/services/PluginStateService").then(({ setPluginStateValue }) => {
       setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
     });
   } catch { /* 非关键路径 */ }

@@ -10,13 +10,13 @@ import React, { useEffect, type MutableRefObject } from "react";
 import { registerCommand, executeCommand } from "@src/core/registry/CommandRegistry";
 import { MenuId } from "@src/core/registry/MenuRegistry";
 
-import { removeFolder } from "@src/core/WorkspaceService";
+import { removeFolder } from "@src/core/services/WorkspaceService";
 import { shellEvents } from "@src/core/ShellEvents";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "./pathUtils";
-import { openFolder } from "@src/core/WorkspaceService";
+import { openFolder } from "@src/core/services/WorkspaceService";
 
 const lk = (window as any).linkdesk;
 import { fileTreeClipboard } from "./FileTreeClipboard";

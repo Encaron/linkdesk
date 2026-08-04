@@ -11,10 +11,10 @@
  *   设置   → Workspace scope settings.json 的路径
  */
 
-import { Emitter, type Event, CoreEvents } from "./CoreEvents";
+import { Emitter, type Event, CoreEvents } from "../CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
 import { normalizePath } from "./pathUtils";
-import { shellEvents } from "./ShellEvents";
+import { shellEvents } from "../ShellEvents";
 import { setPluginStateValue, getPluginStateValue } from "./PluginStateService";
 
 /* ── 类型 ── */

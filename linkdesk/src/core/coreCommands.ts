@@ -13,13 +13,13 @@
 import { registerCommand, type Command } from "./registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "./registry/MenuRegistry";
 import { factorySlots } from "./FactorySlots";
-import { APP_PLUGIN_ID } from "./PluginStateService";
+import { APP_PLUGIN_ID } from "./services/PluginStateService";
 import { CUSTOM_EVENTS } from "./CoreEvents";
 import { openKeybindingsSettings, registerKeybinding } from "./registry/KeybindingRegistry"; // E3f #59-F
 import { requestSettingsGroup, requestScrollToSetting } from "./registry/ConfigurationRegistry";
 import i18n from "../i18n";
-import { getWorkspaceLayout } from "./LayoutService"; // E3f #56
-import { getUserSettings } from "./ConfigurationService"; // E3f #56
+import { getWorkspaceLayout } from "./services/LayoutService"; // E3f #56
+import { getUserSettings } from "./services/ConfigurationService"; // E3f #56
 
 /* ── Callbacks ── */
 
@@ -257,12 +257,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { showConfirm } = await import("./DialogService");
+      const { showConfirm } = await import("./services/DialogService");
       const confirmed = await showConfirm(
         i18n.t("确定要将「{{key}}」重置为默认值吗？", { key })
       );
       if (!confirmed) return;
-      const { resetConfigurationValue } = await import("./ConfigurationService");
+      const { resetConfigurationValue } = await import("./services/ConfigurationService");
       await resetConfigurationValue(key);
     },
     menuId: MenuId.SettingItemGear,
@@ -278,7 +278,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const key = ctx?.settingKey;
       if (!key) return;
       await navigator.clipboard.writeText(key);
-      const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("./services/toast");
       pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
     },
     menuId: MenuId.SettingItemGear,
@@ -292,11 +292,11 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { getConfigurationValue } = await import("./ConfigurationService");
+      const { getConfigurationValue } = await import("./services/ConfigurationService");
       const value = getConfigurationValue(key);
       const json = JSON.stringify({ [key]: value }, null, 2);
       await navigator.clipboard.writeText(json);
-      const { pushToast, TOAST_TTL_INFO } = await import("./toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("./services/toast");
       pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
     },
     menuId: MenuId.SettingItemGear,

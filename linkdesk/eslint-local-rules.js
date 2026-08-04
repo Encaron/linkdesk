@@ -640,7 +640,7 @@ const noRawPathReplace = {
     const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
 
     // pathUtils.ts 自身是 normalizePath 正源定义处——放行
-    if (filename.endsWith("/src/core/pathUtils.ts")) return {};
+    if (filename.endsWith("/src/core/pathUtils.ts") || filename.endsWith("/src/core/services/pathUtils.ts")) return {};
     // electron/ main 进程独立构建——无法 import src/core/pathUtils
     if (filename.includes("/electron/")) return {};
 

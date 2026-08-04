@@ -7,8 +7,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/FileSearcher";
-import { getPluginFor } from "@src/core/FileAssociationService";
+import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/services/FileSearcher";
+import { getPluginFor } from "@src/core/services/FileAssociationService";
 import { extension } from "../pathUtils";
 import "./SearchView.css";
 

@@ -166,7 +166,7 @@ export function getCurrentTheme(): Theme | null {
 
 /* ── E3f #59d1：强调色归一化——三种路径一条函数 ── */
 
-import { getConfigurationValue } from "./ConfigurationService";
+import { getConfigurationValue } from "./services/ConfigurationService";
 
 /**
  * 获取有效强调色——三种路径归一化：

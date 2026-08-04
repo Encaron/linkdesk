@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { getAssetPath } from "../core/assetPath";
+import { getAssetPath } from "../core/services/assetPath";
 import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from "../core/registry/MenuRegistry";
 import { executeCommand } from "../core/registry/CommandRegistry";
 import { ContextKeyService } from "../core/registry/ContextKeyService";

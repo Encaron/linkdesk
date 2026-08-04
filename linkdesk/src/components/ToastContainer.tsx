@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
-import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/toast";
+import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/services/toast";
 import "./ToastContainer.css";
 
 /** VS Code 默认通知行高 */

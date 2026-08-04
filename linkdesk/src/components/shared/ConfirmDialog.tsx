@@ -4,7 +4,7 @@
  *
  * 全部颜色走 CSS 变量，暗色/亮色自动适配。
  * 使用方式：
- *   import { confirm, alert } from "../../core/DialogService";
+ *   import { confirm, alert } from "../../core/services/DialogService";
  *   const ok = await confirm({ title: "关闭", message: "确定关闭吗？" });
  */
 
@@ -14,9 +14,9 @@ import {
   registerDialogRenderers,
   unregisterDialogRenderers,
   type DialogOptions,
-} from "../../core/DialogService";
+} from "../../core/services/DialogService";
 // E2c #15：re-export showConfirm 兼容旧 import 路径（terminal sidebar 仍引用此文件）
-export { showConfirm } from "../../core/DialogService";
+export { showConfirm } from "../../core/services/DialogService";
 import "./ConfirmDialog.css";
 
 /* ── 类型 ── */

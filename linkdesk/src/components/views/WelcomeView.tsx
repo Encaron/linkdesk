@@ -14,8 +14,8 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue } from "../../core/PluginStateService";
-import { openFolder, addFolder, onDidChangeFolders } from "../../core/WorkspaceService"; // E3f #55
+import { getPluginStateValue, setPluginStateValue } from "../../core/services/PluginStateService";
+import { openFolder, addFolder, onDidChangeFolders } from "../../core/services/WorkspaceService"; // E3f #55
 import { PluginIcon } from "../shared/PluginIcon";
 import "./WelcomeView.css";
 

@@ -24,7 +24,7 @@ import { registerMenuItems } from "./registry/MenuRegistry";
 import { registerKeybinding } from "./registry/KeybindingRegistry";
 import { registerConfiguration, unregisterConfiguration, registerConfigurationDefaults, unregisterConfigurationDefaults } from "./registry/ConfigurationRegistry";
 import { useConfiguration, useConfigurationValue } from "./useConfiguration";
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
+import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./services/ConfigurationService";
 import { useSendData } from "./useSendData";
 import { useIpcEvent } from "../hooks/useIpcEvent";
 import { useSourceState } from "./SourceStateContext";

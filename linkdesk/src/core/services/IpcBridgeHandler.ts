@@ -9,19 +9,19 @@
  */
 
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
-import { getMergedSchema } from "./registry/ConfigurationRegistry";
-import { executeCommand, getCommands } from "./registry/CommandRegistry";
-import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
-import { LanguageRegistry } from "./registry/LanguageRegistry";
+import { getMergedSchema } from "../registry/ConfigurationRegistry";
+import { executeCommand, getCommands } from "../registry/CommandRegistry";
+import { getAvailableThemes, getCurrentTheme } from "../ThemeEngine";
+import { LanguageRegistry } from "../registry/LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
-import { shellEvents } from "./ShellEvents"; // E5#68
-import { ContextKeyService } from "./registry/ContextKeyService"; // E5#70
-import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "./registry/MenuRegistry"; // E5#69
+import { shellEvents } from "../ShellEvents"; // E5#68
+import { ContextKeyService } from "../registry/ContextKeyService"; // E5#70
+import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; // E5#85
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
-import i18n from "../i18n";
+import i18n from "../../i18n";
 import {
   enablePlugin,
   disablePlugin,
@@ -32,7 +32,7 @@ import {
   getUninstalledPluginInfo,
   isPluginDisabled,
   getLoadedPluginManifests,
-} from "../pluginLoader/loader";
+} from "../../pluginLoader/loader";
 
 let _initialized = false;
 

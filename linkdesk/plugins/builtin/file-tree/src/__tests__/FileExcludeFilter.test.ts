@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { FileExcludeFilter } from "../FileExcludeFilter";
-import type { FileEntry } from "@src/core/FileService";
+import type { FileEntry } from "@src/core/services/FileService";
 
 describe("FileExcludeFilter", () => {
   let filter: FileExcludeFilter;

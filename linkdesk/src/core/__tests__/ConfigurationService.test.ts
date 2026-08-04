@@ -19,7 +19,7 @@ import {
   onDidChangeConfiguration,
   setConfigurationValue,
   clearConfigurationCache,
-} from "../ConfigurationService";
+} from "../services/ConfigurationService";
 import type { ConfigurationContribution } from "../registry/ConfigurationRegistry";
 
 const MOCK_CONFIG: ConfigurationContribution = {
