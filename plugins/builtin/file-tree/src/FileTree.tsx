@@ -13,6 +13,7 @@ import type { FlatItem } from "./FileTreeKeyboard";
 import { useFileTreeDnD } from "./FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/KeybindingRegistry";
+import { shellEvents } from "@src/core/ShellEvents";
 import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/WorkspaceService";
 import { fileTreeClipboard } from "./FileTreeClipboard";
 
@@ -169,6 +170,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     const dest = dir + "/" + newName;
     await lk.filesystem.copy(uri, dest);
     await lk.filesystem.remove(uri);
+    shellEvents.emit("file:renamed", { oldPath: uri, newPath: dest });
     await model.refresh(dir);
     const parent = model.findClosest(dir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});

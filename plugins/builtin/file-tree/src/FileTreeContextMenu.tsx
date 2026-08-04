@@ -11,6 +11,7 @@ import { registerCommand, executeCommand } from "@src/core/CommandRegistry";
 import { MenuId } from "@src/core/MenuRegistry";
 
 import { removeFolder } from "@src/core/WorkspaceService";
+import { shellEvents } from "@src/core/ShellEvents";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
@@ -214,6 +215,7 @@ export function activateFileTreeContextMenu(): void {
     const parentUris = new Set<string>();
     for (const uri of uris) {
       await lk.filesystem.remove(uri);
+      shellEvents.emit("file:deleted", { filePath: uri });
       parentUris.add(dirname(uri));
     }
     for (const parentUri of parentUris) {
