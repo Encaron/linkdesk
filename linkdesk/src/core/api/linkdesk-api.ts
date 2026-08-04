@@ -7,7 +7,7 @@
  *   - 所有方法内部走 ipcRenderer.invoke()——自动经过 #72 的 IPC 消息队列
  *
  * 使用方式：
- *   import { linkdesk } from "@src/core/linkdesk-api";
+ *   import { linkdesk } from "@src/core/api/linkdesk-api";
  *   const themes = await linkdesk.theme.getAvailable();
  *   await linkdesk.commands.executeCommand("myCommand", arg1, arg2);
  *
@@ -177,7 +177,7 @@ export function getLinkDesk(): LinkDeskAPI {
  * 便捷导出：类型安全的 linkdesk API 实例。
  *
  * @example
- *   import { linkdesk } from "@src/core/linkdesk-api";
+ *   import { linkdesk } from "@src/core/api/linkdesk-api";
  *   const themes = await linkdesk.theme.getAvailable();
  *   await linkdesk.commands.executeCommand("editor.action.formatDocument");
  */

@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { executeCommand } from "@src/core/registry/CommandRegistry";
 import { useConfigurationValue } from "@src/core/react/useConfiguration";
 import { onDidChangeFolders, type WorkspaceFolder } from "@src/core/services/WorkspaceService";
-import { ViewContainerService } from "@src/core/ViewContainerService";
+import { ViewContainerService } from "@src/core/services/ViewContainerService";
 import { CoreEvents } from "@src/core/react/CoreEvents";
 
 import { getPluginFor } from "@src/core/services/FileAssociationService";

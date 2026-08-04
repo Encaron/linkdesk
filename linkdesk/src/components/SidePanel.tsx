@@ -11,7 +11,7 @@
 
 import { useState, useEffect, forwardRef, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import { ViewContainerService } from "../core/ViewContainerService";
+import { ViewContainerService } from "../core/services/ViewContainerService";
 import ToolbarSlot from "./shared/ToolbarSlot";
 import SectionStack from "./shared/SectionStack";
 // E5#4b：壳内通信——订阅 icon:selected，解析 pluginId → containerId

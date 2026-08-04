@@ -10,7 +10,7 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ViewPluginEntry } from "@src/core/api/types";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
-import { ViewContainerService } from "@src/core/ViewContainerService";
+import { ViewContainerService } from "@src/core/services/ViewContainerService";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 

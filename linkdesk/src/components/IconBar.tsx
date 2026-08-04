@@ -17,7 +17,7 @@ import ContextMenu from "./shared/ContextMenu";
 import { MenuId } from "../core/registry/MenuRegistry";
 import HamburgerMenu from "./HamburgerMenu"; // E3f #52b：汉堡——图标栏第一个位置
 // E4V#48——跨容器拖放
-import { ViewContainerService } from "../core/ViewContainerService";
+import { ViewContainerService } from "../core/services/ViewContainerService";
 import { getDraggingView, setDraggingView } from "./shared/viewDragState";
 // E5#3a：壳内通信——订阅 sidebar:containerChanged 替代 App.tsx props
 import { shellEvents } from "../core/react/ShellEvents";

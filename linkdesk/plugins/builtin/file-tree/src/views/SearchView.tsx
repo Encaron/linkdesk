@@ -165,7 +165,7 @@ const SearchView: React.FC = () => {
     const ok = await (window as any).linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
     if (!ok) return;
 
-    const { EncodingService } = await import("@src/core/encoding/EncodingService");
+    const { EncodingService } = await import("@src/core/services/EncodingService");
     let replaced = 0;
     let failed = 0;
 

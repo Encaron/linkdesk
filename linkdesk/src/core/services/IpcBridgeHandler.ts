@@ -11,7 +11,7 @@
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
 import { getMergedSchema } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands } from "../registry/CommandRegistry";
-import { getAvailableThemes, getCurrentTheme } from "../ThemeEngine";
+import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "../registry/LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
 import { shellEvents } from "../react/ShellEvents"; // E5#68
