@@ -322,13 +322,25 @@ function MainContent({
   updateCoreCallbacks(coreCallbacks);
 
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
+  const pv = (window as any).linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined;
   const {
     readyWebViewIds,
     webViewBoundsReady,
     webViewTimeout,
     registerPoolRef,
     resetWebViewState,
-  } = useWebViewSync(tabState, isShellRenderedTab);
+  } = useWebViewSync(tabState, isShellRenderedTab, pv);
+
+  // editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径（不依赖 React props）
+  useEffect(() => {
+    const bridge = (window as any).linkdesk?.bridge;
+    if (!bridge) return;
+    for (const g of tabState.groups) for (const t of g.tabs) {
+      if (t.pluginId === "editor" && t.sourceId) {
+        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.sourceId }).catch(() => {});
+      }
+    }
+  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
