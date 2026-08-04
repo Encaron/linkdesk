@@ -65,10 +65,8 @@ export function createEventSystem(
   const { logPrefix, extraHandlers } = options;
 
   ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
-    // E5#74e debug
-    const arr = subs.get(data.channel);
-    ipcRenderer.send('plugin-push-test', { type: 'events-dispatch', channel: data.channel, subs: arr?.length ?? 0 });
     if (DEV_LOG) {
+      const arr = subs.get(data.channel);
       const count = arr?.length ?? 0;
       const source = data.source ? ` ← ${data.source}` : "";
       console.debug(`[events] ${logPrefix} ← "${data.channel}"${source} → ${count} 订阅者`);
@@ -77,11 +75,10 @@ export function createEventSystem(
       const extra = extraHandlers[data.channel];
       if (extra) { try { extra(data.payload); } catch (e) { console.error(`[${logPrefix}] 额外处理器异常 (channel=${data.channel}):`, e); } }
     }
+    const arr = subs.get(data.channel);
     if (!arr) return;
     for (const fn of arr) {
-      try { fn(data.payload); } catch (e: any) {
-        ipcRenderer.send('plugin-push-test', { type: 'callback-error', channel: data.channel, error: e?.message ?? String(e) });
-      }
+      try { fn(data.payload); } catch (e) { /* contextBridge 代理回调可能静默失败 */ }
     }
   });
 
@@ -90,12 +87,10 @@ export function createEventSystem(
       let arr = subs.get(channel);
       if (!arr) { arr = []; subs.set(channel, arr); }
       arr.push(cb);
-      ipcRenderer.send('plugin-push-test', { type: 'on-added', channel, count: arr.length });
       return () => {
         const idx = arr!.indexOf(cb);
         if (idx !== -1) arr!.splice(idx, 1);
         if (arr!.length === 0) subs.delete(channel);
-        ipcRenderer.send('plugin-push-test', { type: 'on-removed', channel, count: arr!.length });
       };
     },
 
