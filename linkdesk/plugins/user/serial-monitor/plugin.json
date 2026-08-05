@@ -28,14 +28,14 @@
         {
           "id": "sessions",
           "title": "串口监视器会话",
-          "render": "../../plugins/user/serial-monitor/src/views/SessionListView.tsx",
+          "render": "src/views/SessionListView.tsx",
           "order": 0,
           "minHeight": 120
         },
         {
           "id": "settings",
           "title": "收发设置",
-          "render": "../../plugins/user/serial-monitor/src/views/SerialSettingsView.tsx",
+          "render": "src/views/SerialSettingsView.tsx",
           "order": 1,
           "minHeight": 500
         }

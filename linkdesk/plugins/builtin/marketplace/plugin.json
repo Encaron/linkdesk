@@ -23,11 +23,11 @@
     },
     "views": {
       "marketplace": [
-        { "id": "search",      "role": "toolbar", "title": "搜索", "render": "../../plugins/builtin/marketplace/src/views/SearchView.tsx",             "order": -1 },
-        { "id": "installed",   "title": "已安装", "render": "../../plugins/builtin/marketplace/src/views/InstalledListView.tsx",   "order": 0 },
-        { "id": "builtin",     "title": "内置",   "render": "../../plugins/builtin/marketplace/src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
-        { "id": "disabled",    "title": "已禁用", "render": "../../plugins/builtin/marketplace/src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
-        { "id": "uninstalled", "title": "待安装", "render": "../../plugins/builtin/marketplace/src/views/UninstalledListView.tsx",  "order": 3, "collapsed": true }
+        { "id": "search",      "role": "toolbar", "title": "搜索", "render": "src/views/SearchView.tsx",             "order": -1 },
+        { "id": "installed",   "title": "已安装", "render": "src/views/InstalledListView.tsx",   "order": 0 },
+        { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
+        { "id": "disabled",    "title": "已禁用", "render": "src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
+        { "id": "uninstalled", "title": "待安装", "render": "src/views/UninstalledListView.tsx",  "order": 3, "collapsed": true }
       ]
     }
   }
