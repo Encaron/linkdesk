@@ -9,6 +9,7 @@
 
 import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import type { ComponentType } from "react";
 import type { TabGroup, Tab } from "../hooks/useTabManager";
 import { useTabManager, allTabs } from "../hooks/useTabManager";
@@ -124,7 +125,7 @@ function renderTabContent(
   // 通用不可用占位——插件未安装/已卸载/已禁用
   return (
     <div key={tab.id} className="plugin-missing-view">
-      <p>{tab.pluginId ? `插件 "${tab.pluginId}" 不可用` : "未知视图类型"}</p>
+      <p>{tab.pluginId ? i18n.t('插件 "{{id}}" 不可用', { id: tab.pluginId }) : i18n.t("未知视图类型")}</p>
     </div>
   );
 }
