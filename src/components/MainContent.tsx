@@ -216,7 +216,7 @@ function MainContent({
   useEffect(() => {
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
-      if (plugin?.manifest.viewRole === "tabOnly") {
+      if (plugin?.manifest.appearsIn?.tabBar && !plugin?.manifest.appearsIn?.sidePanel) {
         createTab(pluginId);
       }
     });
