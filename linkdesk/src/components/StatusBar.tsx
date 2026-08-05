@@ -7,6 +7,7 @@
  */
 
 import { Fragment, useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
@@ -25,6 +26,7 @@ interface StatusBarProps {
 }
 
 function StatusBar(_props: StatusBarProps) {
+  const { t } = useTranslation();
   // E5#6a：替代 props.theme / props.lang——直接从 ConfigurationService 读，响应式
   const lang = useConfigurationValue<"zh" | "en">("app.language");
 
@@ -63,7 +65,7 @@ function StatusBar(_props: StatusBarProps) {
     ...eventEntries.filter((e) => e.alignment === "right").map((e) => ({
       pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
     })),
-    { pluginId: "__shell_right__", id: "lang", label: lang === "zh" ? "中" : "EN", align: "right", onClick: "workbench.action.selectLanguage" },
+    { pluginId: "__shell_right__", id: "lang", label: lang === "zh" ? t("中") : t("EN"), align: "right", onClick: "workbench.action.selectLanguage" },
     { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", align: "right", onClick: "workbench.action.selectTheme" },
   ];
 
