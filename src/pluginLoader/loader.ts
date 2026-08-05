@@ -95,6 +95,14 @@ const pluginStatusBarModules = {
     "../../plugins/user/*/src/statusBar.tsx",
     { eager: false }
   ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/builtin/*/src/components/statusBar.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/src/components/statusBar.tsx",
+    { eager: false }
+  ),
 };
 
 const pluginManifests = {
