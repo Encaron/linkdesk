@@ -157,6 +157,7 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onFocus={handleFocus}
+      onDragStart={(e) => e.preventDefault()}
       placeholder={placeholder}
       min={min}
       max={max}

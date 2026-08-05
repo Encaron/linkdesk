@@ -153,6 +153,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
         <span
           style={{ marginLeft: "var(--tree-icon-gap)", flex: 1, maxWidth: 200 }}
           onMouseDown={(e) => e.stopPropagation()}
+          onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
         >
           <InlineInput
             size="compact"

@@ -55,7 +55,8 @@ clipboardProviders.register("file-tree", {
   when: "explorerFocus",
   onCopy() {
     const hd = h(); if (!hd) return;
-    const uris = hd.getSelection();
+    const selection = hd.getSelection();
+    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
     // 写系统剪贴板——用 textarea + execCommand（navigator.clipboard 在非用户手势上下文中可能被拒）
@@ -69,7 +70,8 @@ clipboardProviders.register("file-tree", {
   },
   onCut() {
     const hd = h(); if (!hd) return;
-    const uris = hd.getSelection();
+    const selection = hd.getSelection();
+    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
     const ta = document.createElement("textarea");
@@ -95,7 +97,9 @@ clipboardProviders.register("file-tree", {
   },
   onDelete() {
     const hd = h(); if (!hd) return;
-    const uris = hd.getSelection();
+    const selection = hd.getSelection();
+    // 无多选时 fallback 到聚焦项——对标右键菜单 explorer.delete
+    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
     if (uris.length === 0) return;
     for (const uri of uris) {
       lk.filesystem.remove(uri).catch(() => {});
