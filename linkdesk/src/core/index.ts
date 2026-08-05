@@ -22,6 +22,7 @@ export * from "./registry/MenuRegistry";
 export * from "./registry/ProtocolRegistry";
 export * from "./registry/StatusBarService";
 export * from "./registry/ThemeRegistry";
+export * from "./ClipboardProviderRegistry";
 
 // ── 服务 ──
 export * from "./services/ConfigurationApplier";
