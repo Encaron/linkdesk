@@ -558,6 +558,55 @@ function normalizeManifest(manifest: PluginManifest): Record<string, unknown> | 
   return c;
 }
 
+/* ── E5#12：加载管线唯一入口——所有插件（view/data/theme/language）走这里 ── */
+
+/**
+ * 插件加载管线——loadPlugin 和 loadPluginRuntime 的唯一入口。
+ *
+ * 流程：normalizeManifest → parseContributions → 推导 pluginRole → loadPluginComponent
+ * 不 import IconBar/SidePanel/TabBar——加载管线不知道 UI 的存在。
+ */
+async function loadPluginLifecycle(
+  pluginId: string,
+  manifest: PluginManifest,
+  opts?: { skipView?: boolean },
+): Promise<void> {
+  // Step 1: 旧格式归一化（纯函数，不 mutate）
+  const contributes = normalizeManifest(manifest);
+
+  // Step 2: 解析 contributes → 分发到各 Registry
+  if (contributes) {
+    await parseContributions(pluginId, contributes);
+  }
+
+  // Step 3: 旧格式 file 字段——异步 fetch JSON，按 type 分配到 themes/languages
+  if (!manifest.contributes?.themes && !manifest.contributes?.languages) {
+    const old = manifest as Partial<OldFormatManifest>;
+    if (typeof old.file === "string") {
+      try {
+        const data = await fetchPluginDataFile(pluginId, old.file);
+        if (data) {
+          const fileCtrb: Record<string, unknown> = {};
+          if (data.type === "dark" || data.type === "light") {
+            fileCtrb.themes = [{ label: manifest.name, path: old.file, uiTheme: data.type }];
+          } else {
+            fileCtrb.languages = [{ label: manifest.name, code: old.file.replace(/\.json$/, ""), path: old.file }];
+          }
+          await parseContributions(pluginId, fileCtrb);
+        }
+      } catch { /* file 加载失败不阻塞 */ }
+    }
+  }
+
+  // Step 4: 推导加载角色——局部变量（第 6 轮加 pluginRole 字段后扩展此逻辑）
+  const role: string | undefined = (!manifest.entry && (contributes || manifest.contributes)) ? "data" : undefined;
+
+  // Step 5: 加载视图组件——仅非 data + 有 entry + 未 skip
+  if (role !== "data" && manifest.entry && !opts?.skipView) {
+    await loadPluginComponent(pluginId, manifest);
+  }
+}
+
 /* ── #45：extensionDependencies 检查 ── */
 
 /**
@@ -632,45 +681,10 @@ async function loadPlugin(
   // #45：extensionDependencies——加载前检查依赖是否已安装且未被禁用
   if (!_checkDependencies(pluginId, manifest)) return;
 
-  // VS Code 对标：不 switch type——检测 manifest 实际声明了什么，每种贡献独立处理。
-  let contributed = false;
+  // E5#12：归一化——所有插件走同一个 loadPluginLifecycle
+  await loadPluginLifecycle(pluginId, manifest, opts);
 
-  if (manifest.entry && !opts?.skipView) {
-    await loadPluginComponent(pluginId, manifest);
-    contributed = true;
-  } else if (manifest.entry && opts?.skipView) {
-    // #44：延迟激活——只标记 contributed，不 import JS
-    contributed = true;
-  }
-
-  // contributes.themes / contributes.languages（parseContributions 中注册——此处仅标记 contributed）
-  if (manifest.contributes?.themes) contributed = true;
-  if (manifest.contributes?.languages) contributed = true;
-
-  // TODO Phase 6: registerProtocol(pluginId, manifest.mode)——当前仅 stub 检测抑制 "未声明贡献" 警告
-  if (manifest.mode) {
-    log.appendLine(`📡 协议插件 "${manifest.name}" (${pluginId}) 已识别——run-time 协议注册 Phase 6`);
-    contributed = true;
-  }
-
-  // TODO Phase 6: ResourceRegistry.register(pluginId, manifest.resources)——当前仅 stub 检测
-  if (manifest.resources && manifest.resources.length > 0) {
-    log.appendLine(`📦 资源插件 "${manifest.name}" (${pluginId}) 已识别——资源注册 Phase 6`);
-    contributed = true;
-  }
-
-  if (manifest.contributes) {
-    try {
-      parseContributions(pluginId, manifest.contributes);
-      contributed = true;
-    } catch (e: any) {
-      console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
-      // 不阻断——插件视图可能已注册成功，只有配置/命令/菜单等声明失效
-    }
-  }
-
-  // contributes.themes / contributes.languages 数据异步加载——parseContributions 仅注册 metadata，此处 fetch 实际 JSON
-  // 🔥 用 fetchPluginDataFile() 而非 getPluginDataFile()——绕开 Vite glob 缓存（#39a）
+  // contributes.themes / contributes.languages 数据异步加载
   if (manifest.contributes?.themes) {
     await loadThemeContributionData(pluginId, manifest);
   }
@@ -678,11 +692,7 @@ async function loadPlugin(
     await loadLanguageContributionData(pluginId, manifest);
   }
 
-  if (!contributed) {
-    log.appendLine(`插件 "${manifest.name}" (${pluginId}) 未声明任何可识别的贡献——跳过`);
-  }
-
-  // B2 fix: 缓存元数据——marketplace 不依赖文件系统，卸载后仍可浏览详情
+  // B2 fix: 缓存元数据
   cachePluginMetadata(pluginId, manifest, "installed");
 
   applyPostLoadSteps(pluginId, manifest, reason);
@@ -806,46 +816,34 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
   }
 
-  // 5. 解析 contributions
-  if (manifest.contributes) {
-    try {
-      parseContributions(pluginId, manifest.contributes as Record<string, unknown>);
-    } catch (e: any) {
-      console.error(`[pluginLoader] 插件 "${pluginId}" contributions 解析失败:`, e);
-    }
+  // 5. E5#12：归一化——解析 contributes + 旧格式兼容（skipView 因 view 加载用动态 import）
+  await loadPluginLifecycle(pluginId, manifest, { skipView: true });
 
-    // contributes.themes / contributes.languages 数据异步加载（parseContributions 仅注册 metadata）
-    if (manifest.contributes.themes) {
-      await loadThemeContributionData(pluginId, manifest);
-    }
-    if (manifest.contributes.languages) {
-      await loadLanguageContributionData(pluginId, manifest);
-    }
+  // contributes.themes / contributes.languages 数据异步加载
+  if (manifest.contributes?.themes) {
+    await loadThemeContributionData(pluginId, manifest);
+  }
+  if (manifest.contributes?.languages) {
+    await loadLanguageContributionData(pluginId, manifest);
+  }
 
-    // Runtime 主题数据补充——parseContributions 中 getPluginDataFile 依赖 import.meta.glob，
-    // runtime 插件不在 glob 中 → ThemeRegistry 有记录但 ThemeEngine 无颜色数据。
-    if (manifest.contributes.themes) {
-      const themeList = manifest.contributes.themes as ThemeContribution[];
-      for (const tc of themeList) {
-        if (findTheme(tc.label)) continue; // glob 插件——parseContributions 已加载
-        try {
-          const absPath = await linkdesk().plugins.resolvePath(pluginId);
-          const url = import.meta.env.DEV
-            ? `/@fs/${absPath}/${tc.path}`
-            : `linkdesk://${pluginId}/${tc.path}`;
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.warn(`[pluginLoader] 主题数据文件缺失 — "${pluginId}/${tc.path}" (HTTP ${response.status})`);
-            continue;
-          }
-          const data = await response.json();
-          const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-          const colors = extractThemeColors(data);
-          registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
-        } catch (e: any) {
-          console.warn(`[pluginLoader] 主题数据加载失败 — "${pluginId}/${tc.path}": ${e?.message || e}`);
-        }
-      }
+  // Runtime 主题数据补充——parseContributions 注册了 metadata，但 glob 外的插件需 fetch 颜色数据
+  if (manifest.contributes?.themes) {
+    const themeList = manifest.contributes.themes as ThemeContribution[];
+    for (const tc of themeList) {
+      if (findTheme(tc.label)) continue; // 已由 parseContributions 加载
+      try {
+        const absPath = await linkdesk().plugins.resolvePath(pluginId);
+        const url = import.meta.env.DEV
+          ? `/@fs/${absPath}/${tc.path}`
+          : `linkdesk://${pluginId}/${tc.path}`;
+        const response = await fetch(url);
+        if (!response.ok) continue;
+        const data = await response.json();
+        const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+        const colors = extractThemeColors(data);
+        registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+      } catch { /* 静默 */ }
     }
   }
 
