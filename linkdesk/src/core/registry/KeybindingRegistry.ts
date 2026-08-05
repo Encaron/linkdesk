@@ -362,9 +362,11 @@ class KeybindingResolver {
       .filter((list) => {
         const whens = list.map((b) => b.when ?? "");
         // 有无条件绑定（无 when）→ 确实冲突——全局绑定与上下文绑定竞争
-        if (whens.some((w) => w === "")) return true;
-        // 有重复 when → 同上下文竞争 → 冲突
-        return new Set(whens).size !== list.length;
+        const globals = whens.filter((w) => w === "").length;
+        const contextuals = whens.filter((w) => w !== "");
+        if (globals > 1) return true;
+        if (globals === 1 && contextuals.length >= 1) return false;
+        return new Set(contextuals).size !== contextuals.length;
       })
       .map((bindings) => ({ key: bindings[0].key, bindings }));
   }
