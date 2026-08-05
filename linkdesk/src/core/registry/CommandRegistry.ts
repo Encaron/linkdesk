@@ -13,6 +13,7 @@
  */
 
 import type { CancellationToken } from "../data/CancellationToken";
+import { reportError } from "../ErrorService";
 
 /* ── 类型 ── */
 
@@ -111,16 +112,10 @@ export async function executeCommand(
   try {
     return await cmd.handler(token, ...args);
   } catch (err) {
-    console.error(`[CommandRegistry] 命令 "${commandId}" 执行出错:`, err);
-    // Phase 5 盲区 8：错误隔离——toast 报告但不崩面板
-    const msg = err instanceof Error ? err.message : String(err);
-    // 动态 import toast 避免循环依赖
-    import("../services/toast").then(({ pushToast }) => {
-      pushToast({
-        message: `命令 "${cmd.title}" 执行出错: ${msg}`,
-        severity: "error",
-        source: cmd.category ?? "命令系统",
-      });
+    reportError({
+      message: `命令 "${cmd.title}" 执行出错: ${err instanceof Error ? err.message : String(err)}`,
+      source: cmd.category ?? "命令系统",
+      error: err,
     });
   }
 }
