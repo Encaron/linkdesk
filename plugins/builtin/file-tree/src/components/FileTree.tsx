@@ -144,6 +144,14 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
 
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);
+  /** E5: 点击目录行是否 toggle 展开/折叠——默认 false，仅 twistie 管展开折叠 */
+  const [expandOnClick, setExpandOnClick] = useState(false);
+  useEffect(() => {
+    const cfg = (window as any).linkdesk?.configuration;
+    if (!cfg) return;
+    cfg.get("explorer.expandOnClick").then((v: unknown) => setExpandOnClick(Boolean(v)));
+    return cfg.onChange("explorer.expandOnClick", (v: unknown) => setExpandOnClick(Boolean(v)));
+  }, []);
   const startRename = useCallback(() => {
     const target = selection.size > 0 ? [...selection][0] : focusedUri;
     if (!target) return;
@@ -415,7 +423,8 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
             onRenameCancel={cancelRename}
             compactedSegments={compactedSegments} guide={guide} isDimmed={isDimmed}
             onDragStart={handleDragStart} onSelect={handleSelect} onOpen={handleOpen}
-            onTwistieClick={handleTwistie} onContextMenu={handleContextMenu} />
+            onTwistieClick={handleTwistie} onContextMenu={handleContextMenu}
+            expandOnClick={expandOnClick} />
         ))}
       </div>
     </div>
