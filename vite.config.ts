@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolve, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readdirSync, readFileSync } from "fs";
+import { PLUGIN_SUBDIRS } from "./src/core/pluginPaths";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
@@ -17,8 +18,8 @@ function scanPluginEntries(): Record<string, string> {
 
   const entries: Record<string, string> = {};
   try {
-    // E4 #86：插件分离到 builtin/ 和 user/ 两个子目录
-    for (const sub of ['builtin', 'user']) {
+    // E5#35d: 子目录从 pluginPaths.ts 导入——PLUGIN_SUBDIRS 为唯一权威来源
+    for (const sub of PLUGIN_SUBDIRS) {
       const subDir = resolve(pluginsDir, sub);
       if (!existsSync(subDir)) continue;
 
