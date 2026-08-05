@@ -25,6 +25,10 @@ export interface ClipboardProvider {
 class ClipboardProviderRegistryImpl extends RegistryBase {
   private _providers: ClipboardProvider[] = [];
 
+  constructor() {
+    super();
+  }
+
   /** 注册剪贴板 Provider。同 when 重复注册 → console.warn + 覆盖。 */
   register(pluginId: string, provider: Omit<ClipboardProvider, "pluginId">): void {
     const existing = this._providers.find((p) => p.when === provider.when);
