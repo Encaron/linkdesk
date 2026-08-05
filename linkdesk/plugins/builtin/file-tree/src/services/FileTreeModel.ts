@@ -311,14 +311,22 @@ export class FileTreeModel {
     this.onDidChange.fire();
   }
 
-  /** 递归重载已展开的子目录——refresh 后新对象 children=null 需重建 */
+  /**
+   * 🔥 原子操作：清空缓存 + 重载磁盘 + 递归重载已展开子树。
+   * 三步合一——调用方不可能忘掉某一步。refresh() 和 _reloadExpandedDescendants 共用。
+   */
+  private async _reloadItem(item: ExplorerItem): Promise<void> {
+    item.children = null;
+    await this.getChildren(item).catch(() => {});
+    await this._reloadExpandedDescendants(item);
+  }
+
+  /** 递归重载已展开的子目录——遍历 children，已展开目录走 _reloadItem 原子重载 */
   private async _reloadExpandedDescendants(item: ExplorerItem): Promise<void> {
     if (!item.children) return;
     for (const child of item.children) {
       if (child.isDirectory && this._expanded.has(child.uri)) {
-        child.children = null;
-        await this.getChildren(child).catch(() => {});
-        await this._reloadExpandedDescendants(child);
+        await this._reloadItem(child);
       }
     }
   }
@@ -328,27 +336,22 @@ export class FileTreeModel {
     if (path) {
       const item = this.findClosest(path);
       if (!item?.isDirectory) return;
-      // 🔥 已展开→先清再重载。getChildren 返回新对象 children=null→递归重载已展开子树
       if (this._expanded.has(item.uri)) {
-        item.children = null;
-        await this.getChildren(item).catch(() => {});
-        await this._reloadExpandedDescendants(item);
+        await this._reloadItem(item);
         return;
       }
       item.children = null;
     } else {
       for (const uri of this._expanded) {
-        const item = this.findClosest(uri);
-        if (item) item.children = null;
+        const node = this.findClosest(uri);
+        if (node) node.children = null;
       }
       for (const root of this._roots) {
         if (root.children !== null) root.children = null;
       }
-      // 🔥 补重载——与 path 分支行为一致：已展开根节点→getChildren→递归重载子树
       for (const root of this._roots) {
         if (this._expanded.has(root.uri)) {
-          await this.getChildren(root).catch(() => {});
-          await this._reloadExpandedDescendants(root);
+          await this._reloadItem(root);
         }
       }
     }
