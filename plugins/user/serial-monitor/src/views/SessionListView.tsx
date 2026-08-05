@@ -11,8 +11,20 @@ import { useSerialSessions } from "../useSerialSessions";
 import { useSerialContext } from "../SerialContext";
 
 import { activateSidebarItem } from "@src/core/react/SidebarTabSync";
+import { ContextKeyService } from "@src/core/registry/ContextKeyService";
+import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
 import { SessionListItem } from "../SessionListItem";
 import "../SerialMonitorSidebar.css";
+
+// ── E5#19b: ClipboardProvider——壳 F2 分发到串口会话重命名 ──
+let _triggerRename: (() => void) | null = null;
+
+clipboardProviders.register("serial-monitor", {
+  when: "serialSessionFocus",
+  onRename() {
+    _triggerRename?.();
+  },
+});
 
 export default function SessionListView() {
   const { t } = useTranslation();
@@ -117,11 +129,27 @@ export default function SessionListView() {
     [setActiveSession, tabs, sessions],
   );
 
+  // ── E5#19b: F2 重命名——壳分发 → provider.onRename → 设置 renamingSessionId ──
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
+
+  useEffect(() => {
+    _triggerRename = () => {
+      if (activeSessionId) setRenamingSessionId(activeSessionId);
+    };
+    return () => { _triggerRename = null; };
+  }, [activeSessionId]);
+
+  useEffect(() => {
+    ContextKeyService.setValue("serialSessionFocus", activeSessionId !== null);
+    return () => { ContextKeyService.setValue("serialSessionFocus", false); };
+  }, [activeSessionId]);
+
   const sessionList = sessions.map((s) => (
     <SessionListItem
       key={s.id}
       session={s}
       isActive={s.id === activeSessionId}
+      isRenaming={s.id === renamingSessionId}
       connected={isOpen && portName === s.port}
       onSelect={() => handleSelectSession(s.id)}
       onRename={handleRename(s.id)}

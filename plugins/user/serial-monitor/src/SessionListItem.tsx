@@ -3,7 +3,7 @@
  * 从 sidebar.tsx L36-154 搬出（E36#8.1）。
  */
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { SerialSession } from "./useSerialSessions";
 import { InlineInput } from "@src/components/shared/InlineInput";
@@ -12,6 +12,8 @@ import type { InlineInputHandle } from "@src/components/shared/InlineInput";
 interface SessionListItemProps {
   session: SerialSession;
   isActive: boolean;
+  /** E5#19b: F2 重命名——外部触发 */
+  isRenaming?: boolean;
   /** Phase 5.5c C4b Bug 3：从 SerialContext 派生，不读 session.connected（该字段始终为 false） */
   connected: boolean;
   onSelect: () => void;
@@ -22,6 +24,7 @@ interface SessionListItemProps {
 export function SessionListItem({
   session,
   isActive,
+  isRenaming,
   connected,
   onSelect,
   onRename,
@@ -30,6 +33,11 @@ export function SessionListItem({
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
   const inlineRef = useRef<InlineInputHandle>(null);
+
+  // E5#19b: F2 → shell dispatch → provider.onRename → 父组件 set isRenaming → 进入编辑
+  useEffect(() => {
+    if (isRenaming) setEditing(true);
+  }, [isRenaming]);
 
   const commitRename = useCallback(() => {
     const newName = inlineRef.current?.getValue()?.trim() ?? "";
