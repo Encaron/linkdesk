@@ -220,7 +220,8 @@ try {
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
     shell: {
       showItemInFolder:(p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
-      openInTerminal:  (p: string) => ipcRenderer.invoke('shell:openInTerminal', p),
+      // E5#22: 第二参数 terminalExe + 第三参数 customCommand 由调用方从 ConfigurationService 读取后传入
+      openInTerminal:  (dirPath: string, terminalExe?: string, customCommand?: string) => ipcRenderer.invoke('shell:openInTerminal', dirPath, terminalExe, customCommand),
     },
     // ── E5#85：workspace——工作区信息查询 ──
     workspace: {
