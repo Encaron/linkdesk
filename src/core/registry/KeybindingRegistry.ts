@@ -444,6 +444,8 @@ export function setKeybindingCaptureActive(active: boolean): void { _captureActi
  */
 export function handleKeyEvent(e: KeyboardEvent): boolean {
   if (_captureActive) return false; // E3f #59-D：行内编辑优先
+  // E5#19a fix: 双防线——inputFocus 也是行内编辑标志，防止 Ctrl+A/C/V 被壳拦截
+  if (ContextKeyService.getValue("inputFocus")) return false;
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 

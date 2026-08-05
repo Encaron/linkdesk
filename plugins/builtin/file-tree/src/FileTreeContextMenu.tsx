@@ -95,7 +95,7 @@ clipboardProviders.register("file-tree", {
       model.refresh(targetDir).catch(() => {});
     });
   },
-  onDelete() {
+  async onDelete() {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
     const selection = hd.getSelection();
@@ -103,7 +103,7 @@ clipboardProviders.register("file-tree", {
     const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
     if (uris.length === 0) return;
     for (const uri of uris) {
-      lk.filesystem.remove(uri).catch(() => {});
+      try { await lk.filesystem.remove(uri); } catch {}
       shellEvents.emit("file:deleted", { filePath: uri });
     }
     // 刷新父目录——对标 explorer.delete 命令
