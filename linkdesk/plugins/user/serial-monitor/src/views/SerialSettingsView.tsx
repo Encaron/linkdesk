@@ -13,7 +13,7 @@ import { ViewContainerService } from "@src/core/services/ViewContainerService";
 import Toggle from "@src/components/shared/Toggle";
 import SelectBox from "@src/components/shared/SelectBox";
 import FormRow from "@src/components/shared/FormRow";
-import "../SerialMonitorSidebar.css";
+import "../styles/SerialMonitorSidebar.css";
 
 const timeFormats = ["HH:mm:ss", "HH:mm:ss:fff", "无"];
 const lineEndings = ["\\r\\n", "\\n", "\\r"];
