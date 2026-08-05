@@ -605,7 +605,7 @@ async function loadPlugin(
   let contributed = false;
 
   if (manifest.entry && !opts?.skipView) {
-    await loadViewPlugin(pluginId, manifest);
+    await loadPluginComponent(pluginId, manifest);
     contributed = true;
   } else if (manifest.entry && opts?.skipView) {
     // #44：延迟激活——只标记 contributed，不 import JS
@@ -735,7 +735,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
         console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
       }
 
-      // Bug 3 fix：运行时插件也加载 statusBar.tsx（对标 loadViewPlugin glob 行为）。
+      // Bug 3 fix：运行时插件也加载 statusBar.tsx（对标 loadPluginComponent glob 行为）。
       // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime。
       const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
       try {
@@ -827,7 +827,7 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
 
 /* ── 视图插件 ── */
 
-async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
+async function loadPluginComponent(pluginId: string, manifest: PluginManifest): Promise<void> {
   const entryKey = Object.keys(pluginModules).find(
     (k) => extractPluginId(k) === pluginId
   );
@@ -1399,7 +1399,7 @@ export async function activatePlugin(pluginId: string): Promise<boolean> {
   if (!manifest) return false; // 不是延迟插件——可能已激活或不存在
 
   try {
-    await loadViewPlugin(pluginId, manifest);
+    await loadPluginComponent(pluginId, manifest);
     _deferredPlugins.delete(pluginId);
     // 不调 applyPostLoadSteps——loadedPluginIds 已有、onDidInstall 已发过（startup 静默）、
     // 图标排序已正确。只需通知 UI 刷新（例如图标从灰变亮）
