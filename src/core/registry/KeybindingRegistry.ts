@@ -437,6 +437,19 @@ let _captureActive = false;
 export function setKeybindingCaptureActive(active: boolean): void { _captureActive = active; }
 
 /**
+ * 🔥 检测当前聚焦元素是否为可编辑元素（input/textarea/select/contentEditable）。
+ * 若是，快捷键分发应放行——让浏览器原生处理 Ctrl+C/V/A/Z 等。
+ * 一劳永逸：新组件加原生 input 不需要手动设任何东西。
+ */
+export function isEditableElementFocused(): boolean {
+  const el = document.activeElement;
+  if (!el) return false;
+  const tag = el.tagName.toLowerCase();
+  return tag === "input" || tag === "textarea" || tag === "select"
+    || (el as HTMLElement).isContentEditable;
+}
+
+/**
  * 全局 keydown 处理器——对标 VS Code 的键盘事件分发。
  * 挂到 window 上，App 启动时调用一次。
  *
@@ -444,8 +457,8 @@ export function setKeybindingCaptureActive(active: boolean): void { _captureActi
  */
 export function handleKeyEvent(e: KeyboardEvent): boolean {
   if (_captureActive) return false; // E3f #59-D：行内编辑优先
-  // E5#19a fix: 双防线——inputFocus 也是行内编辑标志，防止 Ctrl+A/C/V 被壳拦截
-  if (ContextKeyService.getValue("inputFocus")) return false;
+  // 🔥 DOM 直检——不依赖组件手动设 context key，永不遗漏
+  if (isEditableElementFocused()) return false;
   const keyString = keyboardEventToKeyString(e);
   if (!keyString) return false; // modifier 键自己
 

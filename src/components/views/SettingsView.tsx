@@ -436,8 +436,7 @@ function ObjectEditor({ value, onChange }: {
             className="input object-editor-key"
             type="text"
             defaultValue={k}
-            onBlur={(e) => { ContextKeyService.setValue("inputFocus", false); handleKeyChange(k, e.target.value); }}
-            onFocus={() => ContextKeyService.setValue("inputFocus", true)}
+            onBlur={(e) => handleKeyChange(k, e.target.value)}
             spellCheck={false}
           />
           <span className="object-editor-colon">:</span>
@@ -455,8 +454,6 @@ function ObjectEditor({ value, onChange }: {
               type="number"
               value={v}
               onChange={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
-              onFocus={() => ContextKeyService.setValue("inputFocus", true)}
-              onBlur={() => ContextKeyService.setValue("inputFocus", false)}
             />
           ) : (
             <input
@@ -464,8 +461,6 @@ function ObjectEditor({ value, onChange }: {
               type="text"
               value={String(v)}
               onChange={(e) => handleValueChange(k, e.target.value)}
-              onFocus={() => ContextKeyService.setValue("inputFocus", true)}
-              onBlur={() => ContextKeyService.setValue("inputFocus", false)}
               spellCheck={false}
             />
           )}
