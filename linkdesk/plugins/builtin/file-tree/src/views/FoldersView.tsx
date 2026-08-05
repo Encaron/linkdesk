@@ -25,7 +25,7 @@ import type { FileTreeHandle } from "../components/FileTree";
 import type { ExplorerItem } from "../services/FileTreeModel";
 import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import { joinPath, normalizePath, extension } from "../utils/pathUtils";
-import "../file-tree.css";
+import "../styles/file-tree.css";
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
