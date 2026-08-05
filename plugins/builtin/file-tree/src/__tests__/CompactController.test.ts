@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { CompactController } from "../CompactController";
-import type { ExplorerItem } from "../FileTreeModel";
+import { CompactController } from "../services/CompactController";
+import type { ExplorerItem } from "../services/FileTreeModel";
 
 /** 构造 ExplorerItem 的工厂辅助 */
 function dir(

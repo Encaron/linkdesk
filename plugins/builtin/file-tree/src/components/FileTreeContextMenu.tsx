@@ -13,14 +13,14 @@ import { MenuId } from "@src/core/registry/MenuRegistry";
 import { removeFolder } from "@src/core/services/WorkspaceService";
 import { shellEvents } from "@src/core/react/ShellEvents";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import type { ExplorerItem } from "./FileTreeModel";
+import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
-import { dirname, normalizePath, joinPath } from "./pathUtils";
+import { dirname, normalizePath, joinPath } from "../utils/pathUtils";
 import { openFolder } from "@src/core/services/WorkspaceService";
 
 const lk = (window as any).linkdesk;
-import { fileTreeClipboard } from "./FileTreeClipboard";
-import { executeSafeDrop } from "./FileTreeDnD";
+import { fileTreeClipboard } from "../services/FileTreeClipboard";
+import { executeSafeDrop } from "../services/FileTreeDnD";
 
 /** 菜单传入的 command args */
 interface FileMenuContext {

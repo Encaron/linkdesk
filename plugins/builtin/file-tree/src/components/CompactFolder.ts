@@ -6,7 +6,7 @@
  *   "src / components / Button.tsx"
  */
 
-import type { ExplorerItem } from "./FileTreeModel";
+import type { ExplorerItem } from "../services/FileTreeModel";
 
 /**
  * 获取压缩路径段——如果此文件夹满足压缩条件。

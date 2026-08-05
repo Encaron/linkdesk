@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { FileExcludeFilter } from "../FileExcludeFilter";
+import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import type { FileEntry } from "@src/core/services/FileService";
 
 describe("FileExcludeFilter", () => {

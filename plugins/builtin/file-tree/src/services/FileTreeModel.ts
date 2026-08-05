@@ -13,7 +13,7 @@ import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { Emitter } from "@src/core/react/CoreEvents";
-import { basename, splitPath, normalizePath, extension } from "./pathUtils";
+import { basename, splitPath, normalizePath, extension } from "../utils/pathUtils";
 
 const lk = (window as any).linkdesk;
 

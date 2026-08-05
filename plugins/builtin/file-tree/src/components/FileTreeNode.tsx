@@ -6,8 +6,8 @@
  */
 
 import React from "react";
-import type { ExplorerItem } from "./FileTreeModel";
-import { getIconResolver } from "./FileIconResolver";
+import type { ExplorerItem } from "../services/FileTreeModel";
+import { getIconResolver } from "../services/FileIconResolver";
 import { useClickPreview } from "@src/hooks/useClickPreview";
 import { InlineInput } from "@src/components/shared/InlineInput";
 

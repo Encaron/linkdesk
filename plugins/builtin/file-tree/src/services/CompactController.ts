@@ -7,7 +7,7 @@
  */
 
 import type { ExplorerItem } from "./FileTreeModel";
-import { getCompactedPath } from "./CompactFolder";
+import { getCompactedPath } from "../components/CompactFolder";
 
 export class CompactController {
   /** 已手动展开的压缩链——记录起始 item URI */

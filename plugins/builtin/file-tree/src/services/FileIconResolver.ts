@@ -17,7 +17,7 @@ import {
   DEFAULT_FOLDER_ICON,
   DEFAULT_FOLDER_OPEN_ICON,
   DEFAULT_ROOT_ICON,
-} from "./icon-mappings";
+} from "../utils/icon-mappings";
 
 export interface IconMappings {
   files?: Record<string, string>;

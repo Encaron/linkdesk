@@ -8,11 +8,11 @@
 import { useState, useCallback, useRef } from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
-import { TREE_ITEM_HEIGHT } from "./layoutTokens";
-import { dirname, joinPath, normalizePath } from "./pathUtils";
+import { TREE_ITEM_HEIGHT } from "../utils/layoutTokens";
+import { dirname, joinPath, normalizePath } from "../utils/pathUtils";
 
 const lk = (window as any).linkdesk;
-import type { FlatItem } from "./pathUtils";
+import type { FlatItem } from "../utils/pathUtils";
 
 /* ── 类型 ── */
 

@@ -16,15 +16,15 @@ import { CoreEvents } from "@src/core/react/CoreEvents";
 import { getPluginFor } from "@src/core/services/FileAssociationService";
 
 const lk = (window as any).linkdesk;
-import FileTree from "../FileTree";
-import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../FileTreeContextMenu";
-import { FileTreeDecorationService } from "../FileTreeDecoration";
+import FileTree from "../components/FileTree";
+import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../components/FileTreeContextMenu";
+import { FileTreeDecorationService } from "../services/FileTreeDecoration";
 import SearchView from "./SearchView";
-import { FileTreeModel } from "../FileTreeModel";
-import type { FileTreeHandle } from "../FileTree";
-import type { ExplorerItem } from "../FileTreeModel";
-import { FileExcludeFilter } from "../FileExcludeFilter";
-import { joinPath, normalizePath, extension } from "../pathUtils";
+import { FileTreeModel } from "../services/FileTreeModel";
+import type { FileTreeHandle } from "../components/FileTree";
+import type { ExplorerItem } from "../services/FileTreeModel";
+import { FileExcludeFilter } from "../services/FileExcludeFilter";
+import { joinPath, normalizePath, extension } from "../utils/pathUtils";
 import "../file-tree.css";
 
 const FoldersView: React.FC = () => {
