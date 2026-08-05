@@ -225,6 +225,7 @@ import { registerShellMenus } from "./shellMenus";
 // E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
 import { clipboardProviders } from "../ClipboardProviderRegistry";
 import { ContextKeyService } from "../registry/ContextKeyService";
+import { isEditableElementFocused } from "../registry/KeybindingRegistry";
 
 /** 解析当前焦点上下文——遍历已注册 Provider，找第一个 ContextKey 为 true 的 */
 function resolveFocusContext(): string | undefined {
@@ -236,7 +237,7 @@ function resolveFocusContext(): string | undefined {
 
 /** 剪贴板操作——分发给匹配的 Provider，无匹配走浏览器原生 */
 function dispatchClipboard(op: "copy" | "cut" | "paste" | "delete" | "selectAll"): void {
-  if (ContextKeyService.getValue("inputFocus")) return;
+  if (isEditableElementFocused()) return;
   const ctx = resolveFocusContext();
   if (ctx) {
     const provider = clipboardProviders.resolve(ctx);
@@ -253,7 +254,7 @@ function dispatchClipboard(op: "copy" | "cut" | "paste" | "delete" | "selectAll"
 
 /** 重命名——分发给匹配的 Provider */
 function dispatchRename(): void {
-  if (ContextKeyService.getValue("inputFocus")) return;
+  if (isEditableElementFocused()) return;
   const ctx = resolveFocusContext();
   if (ctx) {
     const provider = clipboardProviders.resolve(ctx);
