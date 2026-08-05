@@ -7,8 +7,8 @@
 
 import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useSerialSessions } from "../useSerialSessions";
-import type { SerialSession } from "../useSerialSessions";
+import { useSerialSessions } from "../hooks/useSerialSessions";
+import type { SerialSession } from "../hooks/useSerialSessions";
 import { ViewContainerService } from "@src/core/services/ViewContainerService";
 import Toggle from "@src/components/shared/Toggle";
 import SelectBox from "@src/components/shared/SelectBox";

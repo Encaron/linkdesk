@@ -23,8 +23,8 @@ import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
 import { RingBuffer } from "@src/core/data/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
-import { useSession, setActiveSessionId, getActiveSessionId } from "./useSerialSessions";
-import ControlPanel from "./ControlPanel";
+import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useSerialSessions";
+import ControlPanel from "./components/ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/react/useSendData";
 import SearchBar from "./components/SearchBar";
 import FilterMenu from "./components/FilterMenu";
@@ -35,7 +35,7 @@ import { registerCommand, unregisterPluginCommands } from "@src/core/registry/Co
 import ContextMenu from "@src/components/shared/ContextMenu";
 import { MenuId } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
-import "./SerialMonitorView.css";
+import "./styles/SerialMonitorView.css";
 
 /* ---- 常量 ---- */
 const SCROLL_AT_BOTTOM_TOLERANCE = 5;
