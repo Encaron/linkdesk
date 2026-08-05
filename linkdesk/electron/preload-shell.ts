@@ -275,7 +275,7 @@ try {
       },
       // 壳侧推送事件到插件 WebView（#27）——串口数据、配置变更等
       pushToPlugin: (pluginId: string, channel: string, payload: unknown) => {
-        ipcRenderer.send('bridge:push-to-plugin', { pluginId, channel, payload });
+        ipcRenderer.send('bridge:pushToPlugin', { pluginId, channel, payload });
       },
       // E5#62：壳→插件请求-响应——等插件处理完返回结果
       requestToPlugin: (pluginId: string, channel: string, payload: unknown): Promise<unknown> => {

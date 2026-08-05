@@ -7,7 +7,7 @@
  * 双向流程：
  *   请求：插件 → ipcMain.handle → mainWindow.webContents.send → 壳 preload →
  *         IpcBridgeHandler（React）→ 壳 preload → ipcMain.on → 返回插件
- *   推送：壳 → ipcMain.on('bridge:push-to-plugin') → pluginView.webContents.send →
+ *   推送：壳 → ipcMain.on('bridge:pushToPlugin') → pluginView.webContents.send →
  *         插件 preload → 插件 React 回调
  */
 
@@ -170,10 +170,10 @@ export class IpcBridge {
 
   /**
    * 壳渲染进程通过 IPC 推送事件到指定插件 WebView。
-   * 壳侧调用：ipcRenderer.send('bridge:push-to-plugin', {pluginId, channel, payload})
+   * 壳侧调用：ipcRenderer.send('bridge:pushToPlugin', {pluginId, channel, payload})
    */
   private registerPushListener(): void {
-    ipcMain.on('bridge:push-to-plugin', (_event, { pluginId, channel, payload }: {
+    ipcMain.on('bridge:pushToPlugin', (_event, { pluginId, channel, payload }: {
       pluginId: string;
       channel: string;
       payload: unknown;
@@ -181,13 +181,13 @@ export class IpcBridge {
       this.pushToPlugin(pluginId, channel, payload, "shell");
     });
 
-    console.log('[IpcBridge] 已注册 bridge:push-to-plugin 事件推送通道');
+    console.log('[IpcBridge] 已注册 bridge:pushToPlugin 事件推送通道');
   }
 
   /**
    * 推送事件到插件 WebView。
    * 主进程服务（serial-service 等）可以直接调用此方法，
-   * 壳渲染进程通过 bridge:push-to-plugin IPC 间接调用。
+   * 壳渲染进程通过 bridge:pushToPlugin IPC 间接调用。
    *
    * 使用队列串行化——同一插件的多个推送严格按序交付，
    * 防止 JS 事件乱序（对标主线程单线程语义）。
