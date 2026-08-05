@@ -782,10 +782,12 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
   let statusBarComponent: React.ComponentType | undefined;
-  const isDev = import.meta.env.DEV;
-  const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
+  let runtimePluginRoot: string | undefined;
   if (manifest.entry) {
     try {
+      const isDev = import.meta.env.DEV;
+      const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
+      runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
       const entryUrl = isDev
         ? `/@fs/${absPath}/${manifest.entry}`
         : `linkdesk://${pluginId}/${manifest.entry}`;
@@ -838,8 +840,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   }
 
   // 5. E5#12：归一化——解析 contributes + 旧格式兼容（skipView 因 view 加载用动态 import）
-  // 运行时插件 render path 基路径——dev /@fs/，prod linkdesk://
-  const runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
   await loadPluginLifecycle(pluginId, manifest, { skipView: true, pluginRoot: runtimePluginRoot });
 
   // contributes.themes / contributes.languages 数据异步加载
