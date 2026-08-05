@@ -57,7 +57,6 @@ clipboardProviders.register("file-tree", {
     const hd = h(); if (!hd) return;
     const uris = hd.getSelection();
     if (uris.length === 0) return;
-    console.log("[file-tree] Ctrl+C → onCopy", uris);
     fileTreeClipboard.copy(uris);
     // 写系统剪贴板——用 textarea + execCommand（navigator.clipboard 在非用户手势上下文中可能被拒）
     const ta = document.createElement("textarea");
