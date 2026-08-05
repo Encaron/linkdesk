@@ -575,6 +575,21 @@ function renderControl(
       return <ObjectEditor value={obj} onChange={(newObj) => onChange(newObj)} />;
     }
 
+    case "array": {
+      const arr = Array.isArray(val) ? val : [];
+      const obj: Record<string, unknown> = {};
+      arr.forEach((item, i) => { obj[String(i)] = item; });
+      return (
+        <ObjectEditor
+          value={obj}
+          onChange={(newObj) => {
+            const newArr = Object.values(newObj);
+            onChange(newArr);
+          }}
+        />
+      );
+    }
+
     default:
       return <span className="text-muted">{String(val)}</span>;
   }
