@@ -251,6 +251,16 @@ function dispatchClipboard(op: "copy" | "cut" | "paste" | "delete" | "selectAll"
   document.execCommand(op);
 }
 
+/** 重命名——分发给匹配的 Provider */
+function dispatchRename(): void {
+  if (ContextKeyService.getValue("inputFocus")) return;
+  const ctx = resolveFocusContext();
+  if (ctx) {
+    const provider = clipboardProviders.resolve(ctx);
+    provider?.onRename?.();
+  }
+}
+
 function registerClipboardCommands(): void {
   const cmd = (id: string, title: string, op: "copy" | "cut" | "paste" | "delete" | "selectAll") => ({
     id, title, category: "剪贴板", handler: async () => { dispatchClipboard(op); },
@@ -261,7 +271,7 @@ function registerClipboardCommands(): void {
     cmd("core.clipboardPaste", "粘贴", "paste"),
     cmd("core.selectAll",      "全选", "selectAll"),
     cmd("core.delete",         "删除", "delete"),
-    { id: "core.rename", title: "重命名", category: "编辑", handler: async () => { /* 暂空——Provider 暂不覆盖重命名 */ } },
+    { id: "core.rename", title: "重命名", category: "编辑", handler: async () => { dispatchRename(); } },
   ];
   for (const c of commands) registerCommand(APP_PLUGIN_ID, c);
 }

@@ -102,6 +102,9 @@ clipboardProviders.register("file-tree", {
       shellEvents.emit("file:deleted", { filePath: uri });
     }
   },
+  onRename() {
+    h()?.startRename();
+  },
 });
 
 /* ── 🔥 打开文件桥接：命令 handler 通过此桥调 createTab ── */
