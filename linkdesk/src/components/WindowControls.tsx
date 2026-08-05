@@ -6,11 +6,13 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import "./WindowControls.css";
 
 const win = () => (window as any).linkdesk?.window;
 
 function WindowControls() {
+  const { t } = useTranslation();
   const [maximized, setMaximized] = useState(false);
 
   useEffect(() => {
@@ -21,17 +23,17 @@ function WindowControls() {
 
   return (
     <div className="window-controls">
-      <button className="wc-btn" onClick={() => win()?.minimize()} title="最小化">
+      <button className="wc-btn" onClick={() => win()?.minimize()} title={t("最小化")}>
         <span className="codicon codicon-chrome-minimize" />
       </button>
       <button
         className="wc-btn"
         onClick={() => maximized ? win()?.unmaximize() : win()?.maximize()}
-        title={maximized ? "还原" : "最大化"}
+        title={maximized ? t("还原") : t("最大化")}
       >
         <span className={`codicon ${maximized ? "codicon-chrome-restore" : "codicon-chrome-maximize"}`} />
       </button>
-      <button className="wc-btn wc-close" onClick={() => win()?.close()} title="关闭">
+      <button className="wc-btn wc-close" onClick={() => win()?.close()} title={t("关闭")}>
         <span className="codicon codicon-chrome-close" />
       </button>
     </div>
