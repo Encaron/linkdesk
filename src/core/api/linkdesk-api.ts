@@ -92,6 +92,10 @@ export interface LinkDeskAPI {
     getAvailable(): Promise<LinkDeskLanguage[]>;
     /** 切换语言 */
     set(langId: string): Promise<void>;
+    /** 获取初始语言数据（WebView 加载时壳已推送） */
+    getInitial(): { lang: string; resources: Record<string, unknown> } | null;
+    /** 订阅语言变更——返回 unsubscribe */
+    onChange(cb: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void;
   };
 
   /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
@@ -150,6 +154,37 @@ export interface LinkDeskAPI {
   pluginRequest: {
     handle(channel: string, handler: (payload: unknown) => unknown): void;
     unhandle(channel: string): void;
+  };
+
+  /** 串口——读/写/监听，对标 VS Code SerialPort API */
+  serial: {
+    listPorts(): Promise<unknown[]>;
+    getStatus(): Promise<unknown>;
+    openPort(cfg: unknown): Promise<void>;
+    closePort(): Promise<void>;
+    sendData(data: number[]): Promise<void>;
+    sendText(text: string, enc: string): Promise<void>;
+    setDtr(enable: boolean): Promise<void>;
+    setRts(enable: boolean): Promise<void>;
+    onData(cb: (data: unknown) => void): () => void;
+    onStats(cb: (data: unknown) => void): () => void;
+    onSystem(cb: (data: unknown) => void): () => void;
+  };
+
+  /** 剪贴板——读/写系统剪贴板 */
+  clipboard: {
+    readText(): Promise<string>;
+    writeText(text: string): Promise<void>;
+  };
+
+  /** 环境信息——对标 VS Code ExtensionContext */
+  env: {
+    get(pluginId?: string): Promise<unknown>;
+  };
+
+  /** 插件视图生命周期——通知壳 WebView 渲染完成 */
+  pluginViews: {
+    notifyReady(pluginId: string): void;
   };
 }
 
