@@ -45,6 +45,13 @@ export function initIpcBridgeHandler(): void {
   if (_initialized) return;
   _initialized = true;
 
+  // ── E5#19b fix: ContextKey 注入 preload 同步 store——解决 IPC 延迟致键盘分发竞态 ──
+  if ((window as any).linkdesk?.contextKey?._getValue) {
+    ContextKeyService.registerExternalGetter(
+      (key: string) => (window as any).linkdesk.contextKey._getValue(key),
+    );
+  }
+
   const linkdesk = (window as any).linkdesk;
   if (!linkdesk?.bridge) {
     _initialized = false; // 失败时重置，允许重试
