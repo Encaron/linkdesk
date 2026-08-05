@@ -20,7 +20,7 @@
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
-import { createEventSystem } from './event-system';
+import { createEventSystem, listenDirect } from './event-system';
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -82,13 +82,10 @@ try {
     get:  (key: string) => ipcRenderer.invoke('config:get', key),
     set:  (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
     getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
-    onChange: (key: string, cb: (v: any) => void) => {
-      const handler = (_: any, d: { key: string; value: any }) => {
+    onChange: (key: string, cb: (v: any) => void) =>
+      listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
         if (!key || d.key === key) cb(d.value);
-      };
-      ipcRenderer.on('config:changed', handler);
-      return () => ipcRenderer.removeListener('config:changed', handler);
-    },
+      }),
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
@@ -108,22 +105,10 @@ try {
       sendText:  (text: string, enc: string) => ipcRenderer.invoke('serial:sendText', text, enc),
       setDtr:    (enable: boolean) => ipcRenderer.invoke('serial:setDtr', enable),
       setRts:    (enable: boolean) => ipcRenderer.invoke('serial:setRts', enable),
-      // 直接 IPC 监听（主进程 serial-service → 插件 WebView）
-      onData:   (cb: (d: any) => void) => {
-        const handler = (_: any, d: any) => cb(d);
-        ipcRenderer.on('serial:data', handler);
-        return () => ipcRenderer.removeListener('serial:data', handler);
-      },
-      onStats:  (cb: (d: any) => void) => {
-        const handler = (_: any, d: any) => cb(d);
-        ipcRenderer.on('serial:stats', handler);
-        return () => ipcRenderer.removeListener('serial:stats', handler);
-      },
-      onSystem: (cb: (d: any) => void) => {
-        const handler = (_: any, d: any) => cb(d);
-        ipcRenderer.on('serial:system', handler);
-        return () => ipcRenderer.removeListener('serial:system', handler);
-      },
+      // 直接 IPC 监听——归一化走 listenDirect
+      onData:   (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:data', cb),
+      onStats:  (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:stats', cb),
+      onSystem: (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:system', cb),
     },
 
     // ── 配置（读/写/订阅/schema）──
@@ -296,13 +281,10 @@ try {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
       },
-      on: (channel: string, cb: (data: unknown) => void) => {
-        const handler = (_event: any, d: { channel: string; data: unknown }) => {
+      on: (channel: string, cb: (data: unknown) => void) =>
+        listenDirect(ipcRenderer, 'p2p:data', (d: { channel: string; data: unknown }) => {
           if (d.channel === channel) cb(d.data);
-        };
-        ipcRenderer.on('p2p:data', handler);
-        return () => { ipcRenderer.removeListener('p2p:data', handler); };
-      },
+        }),
     },
 
     // ── E5#67：弹窗——插件 WebView 调壳的 ConfirmDialog，走 IPC ──
