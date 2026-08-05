@@ -9,6 +9,7 @@ import React from "react";
 import type { ExplorerItem } from "./FileTreeModel";
 import { getIconResolver } from "./FileIconResolver";
 import { useClickPreview } from "@src/hooks/useClickPreview";
+import { InlineInput } from "@src/components/shared/InlineInput";
 
 interface FileTreeNodeProps {
   item: ExplorerItem;
@@ -109,34 +110,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     clickPreviewClick(e);
   };
 
-  /* ── E4V#27: 行内重命名 input ── */
-
-  const inputRef = React.useRef<HTMLInputElement>(null);
-  const [renameValue, setRenameValue] = React.useState(item.name);
-
-  // 进入 rename 模式时：auto-focus + 选中文名不含扩展名
-  React.useEffect(() => {
-    if (!isRenaming || !inputRef.current) return;
-    const input = inputRef.current;
-    setRenameValue(item.name);
-    // 微任务：等 React 渲染完 input 再 focus/select
-    requestAnimationFrame(() => {
-      input.focus();
-      if (!item.isDirectory) {
-        const dotIdx = item.name.lastIndexOf(".");
-        if (dotIdx > 0) input.setSelectionRange(0, dotIdx);
-        else input.select();
-      } else {
-        input.select();
-      }
-    });
-  }, [isRenaming, item.name, item.isDirectory]);
-
-  const handleRenameKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter") { e.preventDefault(); onRenameConfirm?.(item.uri, renameValue); }
-    else if (e.key === "Escape") { e.preventDefault(); onRenameCancel?.(); }
-    e.stopPropagation(); // 阻止冒泡到树——键盘 handler 不应在此处理
-  };
+  /* ── E5#19a: 行内重命名 —— InlineInput 归一化 ── */
 
   /* ── twistie ── */
 
@@ -174,17 +148,21 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       {/* 图标 */}
       <span className={`codicon ${getFileIconClass(item, expanded)} file-tree-icon`} />
 
-      {/* 文件名 / E4V#27 行内重命名 input */}
+      {/* 文件名 / E5#19a 行内重命名——InlineInput 归一化 */}
       {isRenaming ? (
-        <input
-          ref={inputRef}
-          className="file-tree-rename-input"
-          value={renameValue}
-          onChange={(e) => setRenameValue(e.target.value)}
-          onKeyDown={handleRenameKeyDown}
-          onBlur={() => onRenameCancel?.()}
-          onClick={(e) => e.stopPropagation()}
-        />
+        <span
+          style={{ marginLeft: "var(--tree-icon-gap)", flex: 1, maxWidth: 200 }}
+          onMouseDown={(e) => e.stopPropagation()}
+        >
+          <InlineInput
+            size="compact"
+            selectMode={item.isDirectory ? "all" : "nameOnly"}
+            value={item.name}
+            onConfirm={(newName) => onRenameConfirm?.(item.uri, newName)}
+            onCancel={() => onRenameCancel?.()}
+            autoFocus
+          />
+        </span>
       ) : (
         <span className="file-tree-name">
           {compactedSegments
