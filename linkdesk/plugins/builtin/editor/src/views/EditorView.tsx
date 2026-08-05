@@ -14,11 +14,11 @@ import { getLangDef } from "@src/core/registry/LangDefRegistry";
 import { shellEvents } from "@src/core/react/ShellEvents";
 
 const lk = (window as any).linkdesk;
-import { initMonacoEnv } from "./monaco-init";
-import { fileUriToPath, setPendingReveal, consumePendingReveal } from "./navigation-bridge";
-import { getLspClient, startLspClient } from "./lsp-bridge";
-import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
-import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "./ts-intelligence";
+import { initMonacoEnv } from "../services/monaco-init";
+import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
+import { getLspClient, startLspClient } from "../services/lsp-bridge";
+import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
+import { setupTypeScriptEnv, scanWorkspaceForTypeScript } from "../services/ts-intelligence";
 
 export interface EditorViewProps {
   value: string;

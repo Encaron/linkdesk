@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { getLanguageFromPath } from "../language-map";
+import { getLanguageFromPath } from "../services/language-map";
 
 describe("getLanguageFromPath", () => {
   /* ── 已知扩展名 ── */

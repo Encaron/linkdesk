@@ -12,13 +12,13 @@
  *   - E4V#40j——渲染 EditorStatusBar（行:列/编码/语言/缩进/EOL）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { EditorModel } from "./EditorModel";
-import EditorView from "./EditorView";
-import type { EditorViewHandle } from "./EditorView";
+import { EditorModel } from "../services/EditorModel";
+import EditorView from "../views/EditorView";
+import type { EditorViewHandle } from "../views/EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
-import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "./hot-exit";
+import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "../services/hot-exit";
 
 const lk = (window as any).linkdesk;
 

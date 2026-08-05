@@ -5,7 +5,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { EditorModel } from "../EditorModel";
+import { EditorModel } from "../services/EditorModel";
 
 describe("EditorModel", () => {
   /* ── fromContent ── */
