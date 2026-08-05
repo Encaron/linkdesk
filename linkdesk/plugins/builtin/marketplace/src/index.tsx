@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import { getLoadedPluginManifests } from "@src/pluginLoader/loader";
 import { registerCommand } from "@src/core/registry/CommandRegistry";
 import { MenuId } from "@src/core/registry/MenuRegistry";
-import "./MarketplaceView.css";
+import "./styles/MarketplaceView.css";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 

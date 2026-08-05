@@ -7,9 +7,9 @@
 
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { setMarketplaceSearch } from "../marketplaceShared";
+import { setMarketplaceSearch } from "../services/marketplaceShared";
 import { useDebouncedInput } from "@src/hooks/useDebouncedInput";
-import "../MarketplaceSidebar.css";
+import "../styles/MarketplaceSidebar.css";
 
 const lk = () => (window as any).linkdesk;
 

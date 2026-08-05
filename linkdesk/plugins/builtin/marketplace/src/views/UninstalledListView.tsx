@@ -7,8 +7,8 @@ import { useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 
-import { useMarketplacePlugins } from "../marketplaceShared";
-import "../MarketplaceSidebar.css";
+import { useMarketplacePlugins } from "../services/marketplaceShared";
+import "../styles/MarketplaceSidebar.css";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 
