@@ -463,8 +463,12 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
       const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
+          // E5#34b: render 路径相对于插件根目录——从 pluginManifests 键推导插件根，拼接完整路径
+          const manifestKey = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
+          const pluginRoot = manifestKey ? manifestKey.replace(/\/plugin\.json$/, "") : "";
+          const renderPath = pluginRoot ? `${pluginRoot}/${viewDef.render}` : viewDef.render;
           try {
-            const renderModule = await import(viewDef.render);
+            const renderModule = await import(/* @vite-ignore */ renderPath);
             const RenderComponent = renderModule.default ?? renderModule;
             ViewContainerService.registerView(pluginId, containerId, {
               id: viewDef.id,
@@ -485,7 +489,7 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
             });
           } catch (e) {
             console.error(
-              `[loader] ❌ 加载 view 失败: plugin="${pluginId}" container="${containerId}" render="${viewDef.render}"`,
+              `[loader] ❌ 加载 view 失败: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
               e
             );
           }
