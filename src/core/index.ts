@@ -24,6 +24,10 @@ export * from "./registry/StatusBarService";
 export * from "./registry/ThemeRegistry";
 export * from "./ClipboardProviderRegistry";
 
+// ── 基础设施 ──
+export { reportError } from "./ErrorService";
+export { PLUGINS_DIR, PLUGIN_SUBDIRS, PLUGIN_ENTRY_FILES } from "./pluginPaths";
+
 // ── 服务 ──
 export * from "./services/ConfigurationApplier";
 export * from "./services/DialogService";
