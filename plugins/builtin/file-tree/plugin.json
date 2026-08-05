@@ -134,6 +134,24 @@
             "**/.git": true
           },
           "description": "glob 模式排除文件/文件夹"
+        },
+        "terminal.external.windowsExec": {
+          "type": "string",
+          "enum": ["powershell", "cmd", "wt", "git-bash", "custom"],
+          "default": "powershell",
+          "enumDescriptions": {
+            "powershell": "PowerShell（Windows 默认）",
+            "cmd": "命令提示符",
+            "wt": "Windows Terminal",
+            "git-bash": "Git Bash",
+            "custom": "自定义命令…"
+          },
+          "description": "右键'在终端中打开'时使用的外部终端。选'自定义'后在下方的命令模板中填写启动命令。"
+        },
+        "terminal.external.customCommand": {
+          "type": "string",
+          "default": "",
+          "description": "自定义终端启动命令。用 {{dirPath}} 表示目标目录。例: wt -d \"{{dirPath}}\""
         }
       }
     }
