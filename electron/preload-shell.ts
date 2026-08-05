@@ -347,7 +347,7 @@ try {
   // 通知主进程 preload 加载成功
   // 为什么：新风险 3——preload 抛异常不进 ErrorBoundary。主进程需要知道
   // window.linkdesk 是否成功暴露，否则所有调用白屏无诊断
-  ipcRenderer.send('preload-ready');
+  ipcRenderer.send('app:preloadReady');
 } catch (err) {
   // preload 失败时暴露诊断信息——比白屏好
   // 渲染进程 App.tsx 最早执行时会检查此字段

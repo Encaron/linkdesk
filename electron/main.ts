@@ -145,7 +145,7 @@ ipcMain.on('theme:changed', (_event, isDark: boolean) => {
 });
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
-ipcMain.on('preload-ready', () => {
+ipcMain.on('app:preloadReady', () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
 });
 
