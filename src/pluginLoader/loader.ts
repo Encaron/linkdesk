@@ -30,6 +30,7 @@ import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/NotificationService";
+import { reportError } from "../core/ErrorService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService";
@@ -1191,7 +1192,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
   } catch (e: any) {
     const msg = e?.message || String(e);
     console.error(`[pluginLoader] 卸载 "${pluginId}" 失败:`, msg);
-    pushToast({ message: `卸载失败：${msg}`, source: pluginId, ttl: TOAST_TTL_ERROR, severity: "error" });
+    reportError({ message: `插件 "${pluginId}" 卸载失败: ${msg}`, source: pluginId, error: e });
     return { success: false, error: msg };
   }
 }
@@ -1487,8 +1488,7 @@ export async function activatePlugin(pluginId: string): Promise<boolean> {
     log.appendLine(`⚡ 延迟激活 "${pluginId}"`);
     return true;
   } catch (e: any) {
-    console.error(`[pluginLoader] 激活 "${pluginId}" 失败:`, e);
-    pushToast({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${e?.message || e}`, severity: "error" });
+    reportError({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${e?.message || e}`, source: pluginId, error: e });
     return false;
   }
 }
