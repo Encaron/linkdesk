@@ -20,6 +20,7 @@ export interface ClipboardProvider {
   onPaste?(): void;
   onDelete?(): void;
   onSelectAll?(): void;
+  onRename?(): void;
 }
 
 class ClipboardProviderRegistryImpl extends RegistryBase {

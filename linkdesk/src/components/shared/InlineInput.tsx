@@ -112,6 +112,8 @@ export function InlineInput({
       setIsActive(false);
       onCancel();
     }
+    // 🔥 阻止冒泡——防止按键穿透到父容器（如文件树 type-ahead 搜索拦截数字键）
+    e.stopPropagation();
   };
 
   const handleBlur = () => {

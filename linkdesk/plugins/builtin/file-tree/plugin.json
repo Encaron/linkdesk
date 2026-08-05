@@ -50,8 +50,7 @@
       { "key": "Ctrl+Shift+N",  "command": "explorer.newFolder",      "when": "explorerFocus" },
       { "key": "Enter",          "command": "explorer.openFocused",    "when": "explorerFocus && !inputFocus" },
       { "key": "Ctrl+Enter",    "command": "explorer.openToSide",     "when": "explorerFocus && explorerItemIsFile" },
-      { "key": "Ctrl+Shift+F", "command": "explorer.search" },
-      { "key": "F2",            "command": "explorer.rename",         "when": "explorerFocus" }
+      { "key": "Ctrl+Shift+F", "command": "explorer.search" }
     ],
     "configuration": {
       "title": "资源管理器",
