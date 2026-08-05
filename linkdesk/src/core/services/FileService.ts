@@ -15,6 +15,7 @@
  */
 
 import { normalizePath } from "./pathUtils";
+import { reportError } from "../ErrorService";
 
 /* ── 类型 ── */
 
@@ -92,8 +93,9 @@ function isSuppressed(eventPath: string): boolean {
 /** 列出目录内容——返回 FileEntry[]（含 isDirectory/isFile/size/modifiedAt） */
 export async function listDir(dirPath: string): Promise<FileEntry[]> {
   const a = api();
-  if (!a) return [];
-  return a.listDir(dirPath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return []; }
+  try { return await a.listDir(dirPath); }
+  catch (e) { reportError({ message: `listDir 失败: ${dirPath}`, source: "core", error: e }); return []; }
 }
 
 /**
@@ -102,8 +104,9 @@ export async function listDir(dirPath: string): Promise<FileEntry[]> {
  */
 export async function readFile(filePath: string): Promise<string> {
   const a = api();
-  if (!a) return "";
-  return a.readTextFile(filePath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return ""; }
+  try { return await a.readTextFile(filePath); }
+  catch (e) { reportError({ message: `readFile 失败: ${filePath}`, source: "core", error: e }); return ""; }
 }
 
 /**
@@ -112,8 +115,9 @@ export async function readFile(filePath: string): Promise<string> {
  */
 export async function readBinaryFile(filePath: string): Promise<Uint8Array> {
   const a = api();
-  if (!a) return new Uint8Array();
-  return a.readBinaryFile(filePath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return new Uint8Array(); }
+  try { return await a.readBinaryFile(filePath); }
+  catch (e) { reportError({ message: `readBinaryFile 失败: ${filePath}`, source: "core", error: e }); return new Uint8Array(); }
 }
 
 /**
@@ -122,8 +126,9 @@ export async function readBinaryFile(filePath: string): Promise<Uint8Array> {
  */
 export async function writeBinaryFile(filePath: string, data: Uint8Array): Promise<void> {
   const a = api();
-  if (!a) return;
-  await a.writeBinaryFile(filePath, data);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
+  try { await a.writeBinaryFile(filePath, data); }
+  catch (e) { reportError({ message: `writeBinaryFile 失败: ${filePath}`, source: "core", error: e }); }
   suppressPath(filePath);
 }
 
@@ -132,39 +137,44 @@ export async function writeBinaryFile(filePath: string, data: Uint8Array): Promi
  */
 export async function writeFile(filePath: string, content: string): Promise<void> {
   const a = api();
-  if (!a) return;
-  await a.writeTextFile(filePath, content);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
+  try { await a.writeTextFile(filePath, content); }
+  catch (e) { reportError({ message: `writeFile 失败: ${filePath}`, source: "core", error: e }); }
   suppressPath(filePath);
 }
 
 /** 删除文件或目录（递归） */
 export async function remove(filePath: string): Promise<void> {
   const a = api();
-  if (!a) return;
-  await a.remove(filePath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
+  try { await a.remove(filePath); }
+  catch (e) { reportError({ message: `remove 失败: ${filePath}`, source: "core", error: e }); }
   suppressPath(filePath);
 }
 
 /** 检查路径是否存在 */
 export async function exists(filePath: string): Promise<boolean> {
   const a = api();
-  if (!a) return false;
-  return a.exists(filePath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return false; }
+  try { return await a.exists(filePath); }
+  catch (e) { reportError({ message: `exists 失败: ${filePath}`, source: "core", error: e }); return false; }
 }
 
 /** 复制文件或目录（递归） */
 export async function copy(src: string, dest: string): Promise<void> {
   const a = api();
-  if (!a) return;
-  await a.copy(src, dest);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
+  try { await a.copy(src, dest); }
+  catch (e) { reportError({ message: `copy 失败: ${src} → ${dest}`, source: "core", error: e }); }
   suppressPath(src); suppressPath(dest);
 }
 
 /** 创建目录（递归） */
 export async function createDir(dirPath: string): Promise<void> {
   const a = api();
-  if (!a) return;
-  await a.createDir(dirPath);
+  if (!a) { reportError({ message: "filesystem API 不可用", source: "core", silent: true }); return; }
+  try { await a.createDir(dirPath); }
+  catch (e) { reportError({ message: `createDir 失败: ${dirPath}`, source: "core", error: e }); }
   suppressPath(dirPath);
 }
 
