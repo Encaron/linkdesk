@@ -47,74 +47,30 @@ export function clearFileTreeHandle(): void {
   _handleRef = null;
 }
 
-/* ── E5#17a：注册 ClipboardProvider——壳 Ctrl+C/V/X/Delete 分发给文件树 ── */
+/* ── 工具函数 ── */
+
+/** 写路径到系统剪贴板——textarea + execCommand。navigator.clipboard 在非用户手势上下文中可能被拒 */
+function writeSystemClipboard(uris: string[]): void {
+  const ta = document.createElement("textarea");
+  ta.value = uris.join("\n");
+  ta.style.position = "fixed"; ta.style.left = "-9999px";
+  document.body.appendChild(ta);
+  ta.select();
+  document.execCommand("copy");
+  document.body.removeChild(ta);
+}
+
+/* ── E5#17a：注册 ClipboardProvider——壳快捷键委托给命令，单一路径杜绝分叉 ── */
 
 import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
 
 clipboardProviders.register("file-tree", {
   when: "explorerFocus",
-  onCopy() {
-    const hd = h(); if (!hd) return;
-    const selection = hd.getSelection();
-    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
-    if (uris.length === 0) return;
-    fileTreeClipboard.copy(uris);
-    // 写系统剪贴板——用 textarea + execCommand（navigator.clipboard 在非用户手势上下文中可能被拒）
-    const ta = document.createElement("textarea");
-    ta.value = uris.join("\n");
-    ta.style.position = "fixed"; ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-  },
-  onCut() {
-    const hd = h(); if (!hd) return;
-    const selection = hd.getSelection();
-    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
-    if (uris.length === 0) return;
-    fileTreeClipboard.cut(uris);
-    const ta = document.createElement("textarea");
-    ta.value = uris.join("\n");
-    ta.style.position = "fixed"; ta.style.left = "-9999px";
-    document.body.appendChild(ta);
-    ta.select();
-    document.execCommand("copy");
-    document.body.removeChild(ta);
-    hd.rerender();
-  },
-  onPaste() {
-    const hd = h(); if (!hd) return;
-    const model = hd.getModel();
-    const { uris, isCut } = fileTreeClipboard.pull();
-    if (uris.length === 0) return;
-    const targetDir = hd.getFocusedUri() ?? model.roots[0]?.uri ?? "";
-    if (!targetDir) return;
-    const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
-    executeSafeDrop(sources, targetDir, isCut ? "move" : "copy").then(() => {
-      model.refresh(targetDir).catch(() => {});
-    });
-  },
-  async onDelete() {
-    const hd = h(); if (!hd) return;
-    const model = hd.getModel();
-    const selection = hd.getSelection();
-    // 无多选时 fallback 到聚焦项——对标右键菜单 explorer.delete
-    const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
-    if (uris.length === 0) return;
-    for (const uri of uris) {
-      try { await lk.filesystem.remove(uri); } catch {}
-      shellEvents.emit("file:deleted", { filePath: uri });
-    }
-    // 刷新父目录——对标 explorer.delete 命令
-    for (const uri of uris) {
-      const parent = uri.split("/").slice(0, -1).join("/");
-      if (parent) model.refresh(parent).catch(() => {});
-    }
-  },
-  onRename() {
-    h()?.startRename();
-  },
+  onCopy:   () => { executeCommand("explorer.copy"); },
+  onCut:    () => { executeCommand("explorer.cut"); },
+  onPaste:  () => { executeCommand("explorer.paste"); },
+  onDelete: () => { executeCommand("explorer.delete"); },
+  onRename: () => { executeCommand("explorer.rename"); },
 });
 
 /* ── 🔥 打开文件桥接：命令 handler 通过此桥调 createTab ── */
@@ -222,23 +178,27 @@ export function activateFileTreeContextMenu(): void {
     _openFileFn?.(ctx.uri, name, "pin");
   }});
   registerCommand("file-tree", { id: "explorer.openWith",        title: "打开方式…",            handler: placeholder("explorer.openWith") });
-  // ── E4V#25: cut + copy ──
+  // ── E4V#25: cut + copy（含系统剪贴板写入——桌面粘贴需要）──
   registerCommand("file-tree", { id: "explorer.cut", title: "剪切", handler: async (_token, ...args: unknown[]) => {
     const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
-    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
+    const focused = hd.getFocusedUri();
+    const uris: string[] = selection.length > 0 ? selection : ctx ? [ctx.uri] : focused ? [focused] : [];
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
+    writeSystemClipboard(uris);
     hd.rerender();
   }});
   registerCommand("file-tree", { id: "explorer.copy", title: "复制", handler: async (_token, ...args: unknown[]) => {
     const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
-    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
+    const focused = hd.getFocusedUri();
+    const uris: string[] = selection.length > 0 ? selection : ctx ? [ctx.uri] : focused ? [focused] : [];
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
+    writeSystemClipboard(uris);
   }});
   // ── E4V#26: paste ──
   registerCommand("file-tree", { id: "explorer.paste", title: "粘贴", handler: async (_token, ...args: unknown[]) => {
@@ -274,7 +234,8 @@ export function activateFileTreeContextMenu(): void {
     const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
-    const uris = selection.length > 0 ? selection : (ctx ? [ctx.uri] : []);
+    const focused = hd.getFocusedUri();
+    const uris: string[] = selection.length > 0 ? selection : ctx ? [ctx.uri] : focused ? [focused] : [];
     if (uris.length === 0) return;
     const confirmDelete = await lk.configuration.get("explorer.confirmDelete") ?? true;
     if (confirmDelete) {
