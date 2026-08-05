@@ -30,6 +30,9 @@ export interface ConfigurationProperty {
    *  "color" → 文本输入框旁显示色块预览（#59e ColorPicker 替换为弹出调色器）。
    *  "action" → 渲染按钮而非输入框，点击执行 onApply。场景：一键重置、清空缓存等操作型配置。 */
   renderHint?: "color" | "action";
+  /** E5#57：声明式编辑控件提示——plugin.json 中声明，SettingsView 按 hint 选择控件。
+   *  优先级高于 type。不认识的 hint 降级回 type 默认渲染——不抛错。 */
+  uiHint?: "fontFamily" | "fontSize" | "color" | "file" | "directory";
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */

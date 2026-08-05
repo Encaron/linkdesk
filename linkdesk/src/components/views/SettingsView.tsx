@@ -13,6 +13,8 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
+import FontFamilySelect from "../shared/FontFamilySelect"; // E5#57c
+import FilePathInput from "../shared/FilePathInput";       // E5#57d
 import { InlineInput } from "../shared/InlineInput";
 import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
 import { CUSTOM_EVENTS } from "../../core/react/CoreEvents"; // E3f #59
@@ -490,6 +492,49 @@ function renderControl(
   onColorSwatchClick?: (e: React.MouseEvent<HTMLDivElement>) => void,
 ): React.ReactNode {
   const val = value ?? prop.default;
+
+  // ── E5#57: uiHint 优先于 type——plugin.json 声明式控件选择 ──
+  switch (prop.uiHint) {
+    case "fontSize":
+      return (
+        <input
+          className="input"
+          type="number"
+          min={8}
+          max={72}
+          step={1}
+          value={Number(val)}
+          onChange={(e) => onChange(Number(e.target.value))}
+          style={{ width: 80 }}
+        />
+      );
+    case "color":
+      // uiHint "color" 复用 renderHint "color" 的色块预览逻辑
+      return (
+        <div className="settings-color-control">
+          <div
+            className="settings-color-swatch"
+            style={{ background: String(val) }}
+            title={String(val)}
+            onClick={onColorSwatchClick}
+          />
+          <input
+            className="input"
+            type="text"
+            value={String(val)}
+            onChange={(e) => onChange(e.target.value)}
+          />
+        </div>
+      );
+    case "fontFamily":
+      return <FontFamilySelect value={String(val)} onChange={(v) => onChange(v)} />;
+    case "file":
+      return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="file" />;
+    case "directory":
+      return <FilePathInput value={String(val)} onChange={(v) => onChange(v)} dialogType="directory" />;
+    default:
+      break;
+  }
 
   switch (prop.type) {
     case "boolean":
