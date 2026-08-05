@@ -71,7 +71,7 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
     setActionError(null);
     const r = await disablePlugin(pluginId);
     setBusy(false);
-    if (!r.success) setActionError(r.error ?? "未知错误");
+    if (!r.success) setActionError(r.error ?? t("未知错误"));
   }, [pluginId, busy]);
 
   const handleEnable = useCallback(async () => {
@@ -80,7 +80,7 @@ function PluginDetailView({ isActive: _isActive, pluginId }: PluginDetailViewPro
     setActionError(null);
     const r = await enablePlugin(pluginId);
     setBusy(false);
-    if (!r.success) setActionError(r.error ?? "未知错误");
+    if (!r.success) setActionError(r.error ?? t("未知错误"));
   }, [pluginId, busy]);
 
   const handleUninstall = useCallback(async () => {
