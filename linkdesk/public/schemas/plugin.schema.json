@@ -25,6 +25,11 @@
       "type": "string",
       "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。"
     },
+    "pluginRole": {
+      "type": "string",
+      "enum": ["view", "data"],
+      "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。"
+    },
     "distribution": {
       "type": "string",
       "enum": ["builtin", "user"],
