@@ -100,7 +100,7 @@ function _initOnce(): void {
   const s = (window as any).linkdesk?.serial;
   if (!s) return;
 
-  const listPorts = s.listPorts ?? s.getPorts;
+  const listPorts = s.listPorts;
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
   });
@@ -241,7 +241,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   // 支线：刷新可用串口列表——USB 热插拔后下拉框即时更新
   const refreshPorts = useCallback(async () => {
     if (!s) return;
-    const listPorts = s.listPorts ?? s.getPorts;
+    const listPorts = s.listPorts;
     const ports = await listPorts?.();
     if (ports) _setState((p) => ({ ...p, ports }));
   }, []);
