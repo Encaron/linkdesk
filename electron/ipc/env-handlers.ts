@@ -11,6 +11,7 @@ export function registerEnvHandlers(): void {
     return {
       appDataDir: envService.appDataDir(),
       pluginsRootDir: envService.pluginsRootDir(),
+      appPluginsDir: envService.appPluginsDir(),
       pluginDataDir: pluginId ? envService.pluginDataDir(pluginId) : undefined,
       pluginCacheDir: pluginId ? envService.pluginCacheDir(pluginId) : undefined,
       pluginExportsDir: pluginId ? envService.pluginExportsDir(pluginId) : undefined,

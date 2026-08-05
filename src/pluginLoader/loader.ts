@@ -1148,7 +1148,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口，不再走 plugins:uninstall 直接 IPC
     const src = await linkdesk().plugins.resolvePath(pluginId);
     const env = await linkdesk().env.get();
-    const disabledDir = `${env.pluginsRootDir}/.disabled`;
+    const disabledDir = `${env.appPluginsDir}/.disabled`;
     const dest = `${disabledDir}/${pluginId}`;
     await linkdesk().filesystem.createDir(disabledDir);
     if (await linkdesk().filesystem.exists(dest)) {
@@ -1219,7 +1219,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     }
     const name = sourcePath.replace(/\\/g, "/").split("/").pop() || sourcePath;
     const env = await linkdesk().env.get();
-    const destDir = `${env.pluginsRootDir}/user/${name}`;
+    const destDir = `${env.appPluginsDir}/user/${name}`;
     if (await linkdesk().filesystem.exists(destDir)) {
       throw new Error(`插件 "${name}" 已存在`);
     }
@@ -1428,8 +1428,8 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
   try {
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
     const env = await linkdesk().env.get();
-    const src = `${env.pluginsRootDir}/.disabled/${pluginId}`;
-    const dest = `${env.pluginsRootDir}/user/${pluginId}`;
+    const src = `${env.appPluginsDir}/.disabled/${pluginId}`;
+    const dest = `${env.appPluginsDir}/user/${pluginId}`;
     if (!(await linkdesk().filesystem.exists(src))) {
       throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
     }
