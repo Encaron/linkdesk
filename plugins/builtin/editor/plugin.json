@@ -55,6 +55,7 @@
         },
         "editor.fontWeight": {
           "type": "string",
+          "enum": ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"],
           "default": "normal",
           "description": "编辑器字重"
         },
