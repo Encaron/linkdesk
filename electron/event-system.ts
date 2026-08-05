@@ -73,3 +73,19 @@ export function createEventSystem(
     },
   };
 }
+
+/**
+ * 🔥 归一化：直接 IPC channel 监听——替代 makeListener + 裸 ipcRenderer.on。
+ * 返回 unsubscribe 函数。所有 preload 脚本共用此入口。
+ * 对标 createEventSystem.on 的模式，但监听直接 IPC channel 而非 plugin:push 分发。
+ */
+export function listenDirect(
+  ipcRenderer: IpcRenderer,
+  channel: string,
+  cb: (...args: any[]) => void,
+): () => void {
+  const handler = (_event: any, ...args: any[]) => cb(...args);
+  if (DEV_LOG) console.debug(`[events] listenDirect("${channel}")`);
+  ipcRenderer.on(channel, handler);
+  return () => { ipcRenderer.removeListener(channel, handler); };
+}
