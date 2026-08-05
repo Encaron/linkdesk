@@ -599,8 +599,8 @@ async function loadPluginLifecycle(
     }
   }
 
-  // Step 4: 推导加载角色——局部变量（第 6 轮加 pluginRole 字段后扩展此逻辑）
-  const role: string | undefined = (!manifest.entry && (contributes || manifest.contributes)) ? "data" : undefined;
+  // Step 4: 推导加载角色——局部变量。pluginRole 显式声明优先，否则自动推导
+  const role = manifest.pluginRole ?? (!manifest.entry && (contributes || manifest.contributes) ? "data" : undefined);
 
   // Step 5: 加载视图组件——仅非 data + 有 entry + 未 skip（出错不阻塞其他插件）
   if (role !== "data" && manifest.entry && !opts?.skipView) {
