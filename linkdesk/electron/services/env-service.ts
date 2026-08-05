@@ -20,6 +20,13 @@ class EnvService {
     return app.getPath('userData');
   }
 
+  /** App 插件源码目录——plugins/builtin/ + plugins/user/ + .disabled/ 所在 */
+  appPluginsDir(): string {
+    return app.isPackaged
+      ? path.join(process.resourcesPath, 'plugins')
+      : path.join(app.getAppPath(), 'plugins');
+  }
+
   /** 插件根目录 */
   pluginsRootDir(): string {
     return path.join(this.appDataDir(), 'linkdesk', 'plugins');
