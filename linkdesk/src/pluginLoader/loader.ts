@@ -796,15 +796,17 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
       // Bug 3 fix：运行时插件也加载 statusBar.tsx（对标 loadPluginComponent glob 行为）。
       // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime。
       const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
-      try {
-        const sbm = await import(/* @vite-ignore */ `${basePath}/statusBar.tsx`);
-        statusBarComponent = sbm.default;
-      } catch { /* 无 statusBar.tsx——正常 */ }
-      if (!statusBarComponent) {
+      const statusBarPaths = [
+        "statusBar.tsx",
+        "src/statusBar.tsx",
+        "src/components/statusBar.tsx", // E5#33d: 目录规范化后可能在此
+      ];
+      for (const p of statusBarPaths) {
         try {
-          const sbm = await import(/* @vite-ignore */ `${basePath}/src/statusBar.tsx`);
+          const sbm = await import(/* @vite-ignore */ `${basePath}/${p}`);
           statusBarComponent = sbm.default;
-        } catch { /* 无 src/statusBar.tsx——正常 */ }
+          break;
+        } catch { /* 路径不存在——继续试下一条 */ }
       }
     } catch (e: any) {
       console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
