@@ -218,7 +218,6 @@ try {
         listenDirect(ipcRenderer, 'p2p:data', (d: { channel: string; data: unknown }) => {
           if (d.channel === channel) cb(d.data);
         }),
-      },
     },
     clipboard: {},
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
