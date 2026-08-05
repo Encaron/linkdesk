@@ -52,13 +52,10 @@ try {
     get: (key: string) => ipcRenderer.invoke('config:get', key),
     set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
     getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
-    onChange: (key: string, cb: (v: any) => void) => {
-      const handler = (_: any, d: { key: string; value: any }) => {
+    onChange: (key: string, cb: (v: any) => void) =>
+      listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
         if (!key || d.key === key) cb(d.value);
-      };
-      ipcRenderer.on('config:changed', handler);
-      return () => ipcRenderer.removeListener('config:changed', handler);
-    },
+      }),
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
@@ -217,12 +214,10 @@ try {
       send: (target: string, channel: string, data: unknown) => {
         ipcRenderer.send('p2p:send', { target, channel, data });
       },
-      on: (channel: string, cb: (data: unknown) => void) => {
-        const handler = (_event: any, d: { channel: string; data: unknown }) => {
+      on: (channel: string, cb: (data: unknown) => void) =>
+        listenDirect(ipcRenderer, 'p2p:data', (d: { channel: string; data: unknown }) => {
           if (d.channel === channel) cb(d.data);
-        };
-        ipcRenderer.on('p2p:data', handler);
-        return () => { ipcRenderer.removeListener('p2p:data', handler); };
+        }),
       },
     },
     clipboard: {},
@@ -308,11 +303,8 @@ try {
         ipcRenderer.send('lsp:write', { channelId, data }),
       dispose: (channelId: string) =>
         ipcRenderer.invoke('lsp:dispose', { channelId }),
-      onData: (cb: (channelId: string, data: string) => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, { channelId, data }: { channelId: string; data: string }) => cb(channelId, data);
-        ipcRenderer.on('lsp:data', handler);
-        return () => ipcRenderer.removeListener('lsp:data', handler);
-      },
+      onData: (cb: (channelId: string, data: string) => void) =>
+        listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
@@ -323,11 +315,8 @@ try {
       close:     () => ipcRenderer.send('window:close'),
       toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'), // E3f #58
       isMaximized:() => ipcRenderer.invoke('window:isMaximized'),
-      onMaximizeChange: (cb: (maximized: boolean) => void) => {
-        const h = (_e: any, m: boolean) => cb(m);
-        ipcRenderer.on('window:maximize-change', h);
-        return () => ipcRenderer.removeListener('window:maximize-change', h);
-      },
+      onMaximizeChange: (cb: (maximized: boolean) => void) =>
+        listenDirect(ipcRenderer, 'window:maximize-change', (m: boolean) => cb(m)),
     },
   });
 
