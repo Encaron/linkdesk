@@ -8,6 +8,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import {
   subscribeProgress,
   cancelProgress,
@@ -34,6 +35,7 @@ function ProgressBar() {
 }
 
 function ProgressItemRow({ item }: { item: ProgressItem }) {
+  const { t } = useTranslation();
   const { id, title, message, percentage, cancellable, done } = item;
   const pct = percentage < 0 ? 0 : percentage;
 
@@ -50,7 +52,7 @@ function ProgressItemRow({ item }: { item: ProgressItem }) {
           <button
             className="progress-card-cancel"
             onClick={() => cancelProgress(id)}
-            title="取消"
+            title={t("取消")}
           >
             <span className="codicon codicon-close" />
           </button>
