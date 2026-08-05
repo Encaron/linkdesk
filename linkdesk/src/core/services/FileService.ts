@@ -174,12 +174,12 @@ export async function createDir(dirPath: string): Promise<void> {
  * 不同 watcher 之间物理隔离——不再共享全局频道。
  *
  * 使用示例：
- *   const unsub = await watchFile("/path/to/dir", (event) => {
+ *   const unsub = await watch("/path/to/dir", (event) => {
  *     if (event.type === "changed") reloadConfig();
  *   });
  *   // 停止监听时调用 unsub()
  */
-export async function watchFile(
+export async function watch(
   dirPath: string,
   onEvent: (event: FileChangeEvent) => void,
 ): Promise<() => void> {

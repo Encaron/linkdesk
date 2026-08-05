@@ -8,7 +8,7 @@
  */
 
 import * as fs from 'fs/promises';
-import { existsSync, watch } from 'fs';
+import { existsSync, watch as fsWatch } from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
 
@@ -148,11 +148,11 @@ class FileService {
   }
 
   /** 开始监听文件/目录变化——返回 watcherId */
-  watchFile(
+  watch(
     dirPath: string,
     onEvent: (event: { path: string; type: "created" | "changed" | "deleted" }) => void,
   ): number {
-    const watcher = watch(dirPath, { recursive: false }, (eventType, filename) => {
+    const watcher = fsWatch(dirPath, { recursive: false }, (eventType, filename) => {
       if (!filename) return;
       const fullPath = path.join(dirPath, filename);
       onEvent({ path: fullPath, type: eventType as "created" | "changed" | "deleted" });
@@ -180,7 +180,7 @@ class FileService {
   }
 
   private _nextWatcherId = 1;
-  private _watchers = new Map<number, ReturnType<typeof watch>>();
+  private _watchers = new Map<number, ReturnType<typeof fsWatch>>();
 }
 
 export const fileService = new FileService();

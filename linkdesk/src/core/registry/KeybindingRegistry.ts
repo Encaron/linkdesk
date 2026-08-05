@@ -31,7 +31,7 @@
 
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand, hasHandler } from "./CommandRegistry";
-import { readFile, writeFile, exists, watchFile, appDataDir, joinPath } from "../services/FileService";
+import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../services/FileService";
 import { normalizePath } from "../services/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../react/CoreEvents";
 
@@ -241,7 +241,7 @@ async function watchUserKeybindings(): Promise<void> {
   if (!filePath) return;
 
   let debounce: ReturnType<typeof setTimeout> | null = null;
-  _keybindingsWatcherUnsub = await watchFile(dir, (event) => {
+  _keybindingsWatcherUnsub = await watch(dir, (event) => {
     // 只关心 keybindings.json
     const name = normalizePath(event.path).split("/").pop();
     if (name !== KEYBINDINGS_FILENAME) return;
