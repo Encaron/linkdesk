@@ -56,15 +56,6 @@ export function SessionListItem({
     setEditing(true);
   }, []);
 
-  // F2 开始编辑
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === "F2") {
-      e.preventDefault();
-      e.stopPropagation();
-      setEditing(true);
-    }
-  }, []);
-
   const subtitle = session.port
     ? `${session.baudRate} · ${session.protocol}`
     : t("未配置");
@@ -96,7 +87,7 @@ export function SessionListItem({
         </>
       ) : (
         <>
-          <div className="session-item-info" onDoubleClick={handleDoubleClick} onKeyDown={handleKeyDown} tabIndex={0}>
+          <div className="session-item-info" onDoubleClick={handleDoubleClick}>
             <span className="session-item-name">{session.name}</span>
             <span className="session-item-subtitle">{subtitle}</span>
           </div>
