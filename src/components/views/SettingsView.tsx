@@ -386,6 +386,101 @@ function SettingRow({
   );
 }
 
+/* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
+
+function ObjectEditor({ value, onChange }: {
+  value: Record<string, unknown>;
+  onChange: (newValue: Record<string, unknown>) => void;
+}) {
+  const { t } = useTranslation();
+  const entries = Object.entries(value);
+
+  const handleToggle = (k: string, v: boolean) => {
+    onChange({ ...value, [k]: v });
+  };
+
+  const handleKeyChange = (oldKey: string, newKey: string) => {
+    if (oldKey === newKey) return;
+    const newObj: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) {
+      newObj[k === oldKey ? newKey : k] = v;
+    }
+    onChange(newObj);
+  };
+
+  const handleValueChange = (k: string, v: string) => {
+    onChange({ ...value, [k]: v });
+  };
+
+  const handleDelete = (k: string) => {
+    const { [k]: _, ...rest } = value;
+    onChange(rest);
+  };
+
+  const handleAdd = () => {
+    const baseKey = t("newPattern");
+    let candidate = baseKey;
+    let i = 1;
+    while (candidate in value) {
+      candidate = `${baseKey}${i}`;
+      i++;
+    }
+    onChange({ ...value, [candidate]: true });
+  };
+
+  return (
+    <div className="object-editor">
+      {entries.map(([k, v]) => (
+        <div key={k} className="object-editor-row">
+          <input
+            className="input object-editor-key"
+            type="text"
+            value={k}
+            onChange={(e) => handleKeyChange(k, e.target.value)}
+            spellCheck={false}
+          />
+          <span className="object-editor-colon">:</span>
+          {typeof v === "boolean" ? (
+            <button
+              className={`object-editor-toggle ${v ? "object-editor-toggle--on" : ""}`}
+              onClick={() => handleToggle(k, !v)}
+              title={v ? t("已启用") : t("已禁用")}
+            >
+              <span className={`codicon ${v ? "codicon-check" : "codicon-close"}`} />
+            </button>
+          ) : typeof v === "number" ? (
+            <input
+              className="input object-editor-value"
+              type="number"
+              value={v}
+              onChange={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
+            />
+          ) : (
+            <input
+              className="input object-editor-value"
+              type="text"
+              value={String(v)}
+              onChange={(e) => handleValueChange(k, e.target.value)}
+              spellCheck={false}
+            />
+          )}
+          <button
+            className="object-editor-delete"
+            onClick={() => handleDelete(k)}
+            title={t("删除")}
+          >
+            <span className="codicon codicon-trash" />
+          </button>
+        </div>
+      ))}
+      <button className="object-editor-add" onClick={handleAdd}>
+        <span className="codicon codicon-add" />
+        <span>{t("添加模式")}</span>
+      </button>
+    </div>
+  );
+}
+
 /** 根据 property type 渲染对应控件——使用共享组件对标终端侧栏样式 */
 function renderControl(
   prop: ConfigurationProperty,
@@ -472,6 +567,13 @@ function renderControl(
           style={{ width: 80 }}
         />
       );
+
+    case "object": {
+      const obj = (typeof val === "object" && val !== null && !Array.isArray(val))
+        ? (val as Record<string, unknown>)
+        : {};
+      return <ObjectEditor value={obj} onChange={(newObj) => onChange(newObj)} />;
+    }
 
     default:
       return <span className="text-muted">{String(val)}</span>;
