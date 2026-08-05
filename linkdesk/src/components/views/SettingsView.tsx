@@ -15,6 +15,7 @@ import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
 import FontFamilySelect from "../shared/FontFamilySelect"; // E5#57c
 import FilePathInput from "../shared/FilePathInput";       // E5#57d
+import NumberInput from "../shared/NumberInput";           // E5#57: 自定义 +/- 步进按钮，替代原生 spinner
 import { InlineInput } from "../shared/InlineInput";
 import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
 import { CUSTOM_EVENTS } from "../../core/react/CoreEvents"; // E3f #59
@@ -497,15 +498,12 @@ function renderControl(
   switch (prop.uiHint) {
     case "fontSize":
       return (
-        <input
-          className="input"
-          type="number"
+        <NumberInput
+          value={Number(val)}
+          onChange={(v) => onChange(v)}
           min={8}
           max={72}
           step={1}
-          value={Number(val)}
-          onChange={(e) => onChange(Number(e.target.value))}
-          style={{ width: 80 }}
         />
       );
     case "color":
@@ -602,14 +600,11 @@ function renderControl(
 
     case "number":
       return (
-        <input
-          className="input"
-          type="number"
+        <NumberInput
+          value={Number(val)}
+          onChange={(v) => onChange(v)}
           min={prop.minimum}
           max={prop.maximum}
-          value={Number(val)}
-          onChange={(e) => onChange(Number(e.target.value))}
-          style={{ width: 80 }}
         />
       );
 
