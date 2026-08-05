@@ -11,6 +11,7 @@
  */
 
 import { type ReactNode, useState, useCallback, useRef, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import "./SidebarSection.css";
 
 export interface SidebarSectionProps {
@@ -66,6 +67,7 @@ function SidebarSection({
   onDragEnd,
   onToggleCollapse,
 }: SidebarSectionProps) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(defaultOpen);
   // E4V#43——actions 溢出检测 + … 下拉
   const actionsRef = useRef<HTMLSpanElement>(null);
@@ -175,7 +177,7 @@ function SidebarSection({
                   ref={moreRef}
                   className={`sidebar-section-more${showActions === "default" ? " show-on-hover" : ""}`}
                   onClick={(e) => { e.stopPropagation(); setMoreOpen((p) => !p); }}
-                  title="更多操作…"
+                  title={t("更多操作…")}
                 >
                   …
                   {moreOpen && (
