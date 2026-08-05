@@ -6,7 +6,7 @@ import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
   {
-    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -36,6 +36,7 @@ export default [
 
       // ═══ 提交前自检 4：禁止插件 ID 硬编码 ═══
       // ⚠️ E3i #68a：暂用 warn——#69 清理完 v3 遗骨后改 error
+      // 🔴 TODO E5 收尾：v3 遗留清理后改 error。当前 warn——存量 v3_ key 还存在
       "no-restricted-syntax": [
         "warn",
         // v3- 遗骨禁止新增（字符串字面量）
