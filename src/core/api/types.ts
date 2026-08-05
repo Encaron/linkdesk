@@ -99,6 +99,8 @@ export interface PluginManifest {
   /** @deprecated 使用 contributes + tabBehavior 等声明字段代替——贡献点由 manifest 的实际声明字段检测（对标 VS Code contributes） */
   type?: PluginType;
   core?: boolean;
+  /** 插件角色——只管加载策略。view=有 UI 组件，data=纯数据。不填自动推导 */
+  pluginRole?: "view" | "data";
   name: string;
   version: string;
   icon?: string;
