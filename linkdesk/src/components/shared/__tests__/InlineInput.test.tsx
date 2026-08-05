@@ -130,6 +130,17 @@ describe("InlineInput", () => {
     expect(onConfirm).toHaveBeenCalledWith("hello.ts");
   });
 
+  it("onChange 即时回调——每次按键通知父组件", () => {
+    const onChange = vi.fn();
+    const { input } = renderInput({ value: "hello.ts", onChange });
+    fireEvent.change(input, { target: { value: "h" } });
+    expect(onChange).toHaveBeenCalledWith("h");
+    fireEvent.change(input, { target: { value: "he" } });
+    expect(onChange).toHaveBeenCalledWith("he");
+    // onConfirm 不受影响
+    fireEvent.keyDown(input, { key: "Enter" });
+  });
+
   // ── 5. 🔥 E5-18a 防线：Enter + Blur 不重复 onConfirm ──
 
   it("Enter 后再 blur——onConfirm 只调一次", () => {
