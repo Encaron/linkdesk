@@ -46,11 +46,6 @@
     ],
     "keybindings": [
       { "key": "Ctrl+Shift+E",   "command": "workbench.view.explorer" },
-      { "key": "F2",             "command": "explorer.rename",         "when": "explorerFocus && !inputFocus" },
-      { "key": "Delete",         "command": "explorer.delete",         "when": "explorerFocus && !inputFocus" },
-      { "key": "Ctrl+X",        "command": "explorer.cut",            "when": "explorerFocus && !inputFocus" },
-      { "key": "Ctrl+C",        "command": "explorer.copy",           "when": "explorerFocus && !inputFocus" },
-      { "key": "Ctrl+V",        "command": "explorer.paste",          "when": "explorerFocus && !inputFocus" },
       { "key": "Ctrl+N",        "command": "explorer.newFile",        "when": "explorerFocus" },
       { "key": "Ctrl+Shift+N",  "command": "explorer.newFolder",      "when": "explorerFocus" },
       { "key": "Enter",          "command": "explorer.openFocused",    "when": "explorerFocus && !inputFocus" },

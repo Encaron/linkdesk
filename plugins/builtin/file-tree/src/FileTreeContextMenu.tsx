@@ -47,6 +47,48 @@ export function clearFileTreeHandle(): void {
   _handleRef = null;
 }
 
+/* ── E5#17a：注册 ClipboardProvider——壳 Ctrl+C/V/X/Delete 分发给文件树 ── */
+
+import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
+
+clipboardProviders.register("file-tree", {
+  when: "explorerFocus",
+  onCopy() {
+    const hd = h(); if (!hd) return;
+    const uris = hd.getSelection();
+    if (uris.length === 0) return;
+    fileTreeClipboard.copy(uris);
+  },
+  onCut() {
+    const hd = h(); if (!hd) return;
+    const uris = hd.getSelection();
+    if (uris.length === 0) return;
+    fileTreeClipboard.cut(uris);
+    hd.rerender();
+  },
+  onPaste() {
+    const hd = h(); if (!hd) return;
+    const model = hd.getModel();
+    const { uris, isCut } = fileTreeClipboard.pull();
+    if (uris.length === 0) return;
+    const targetDir = hd.getFocusedUri() ?? model.roots[0]?.uri ?? "";
+    if (!targetDir) return;
+    const sources = uris.map((u) => ({ path: u, name: u.split("/").pop() ?? "unnamed" }));
+    executeSafeDrop(sources, targetDir, isCut ? "move" : "copy").then(() => {
+      model.refresh(targetDir).catch(() => {});
+    });
+  },
+  onDelete() {
+    const hd = h(); if (!hd) return;
+    const uris = hd.getSelection();
+    if (uris.length === 0) return;
+    for (const uri of uris) {
+      lk.filesystem.remove(uri).catch(() => {});
+      shellEvents.emit("file:deleted", { filePath: uri });
+    }
+  },
+});
+
 /* ── 🔥 打开文件桥接：命令 handler 通过此桥调 createTab ── */
 
 type OpenFileFn = (filePath: string, name: string, mode: "preview" | "pin") => void;
