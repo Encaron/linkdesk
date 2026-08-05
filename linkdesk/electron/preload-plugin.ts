@@ -100,7 +100,7 @@ try {
     // 不经过 events channel。E3a #30 终端迁移后，数据走 bridge:push-to-plugin →
     // plugin:push → events.on('serial:data', ...) 路径。
     serial: {
-      getPorts:  () => ipcRenderer.invoke('serial:listPorts'),
+      listPorts: () => ipcRenderer.invoke('serial:listPorts'),
       getStatus: () => ipcRenderer.invoke('serial:getStatus'),
       openPort:  (cfg: any) => ipcRenderer.invoke('serial:openPort', cfg),
       closePort: () => ipcRenderer.invoke('serial:closePort'),
