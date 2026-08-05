@@ -136,7 +136,7 @@ export async function setConfigurationValue(
 
   // 通知监听器
   for (const fn of _changeListeners) {
-    try { fn(key, value, scope); } catch { /* 监听器异常不阻断 */ }
+    try { fn(key, value, scope); } catch (e) { console.error("[ConfigurationService] 监听器异常:", e); }
   }
 
   // Phase 5f：ConfigurationApplier——自动调 onApply，组件无需手动订阅
@@ -164,7 +164,7 @@ export async function resetConfigurationValue(
 
   // 通知监听器——SettingsView 刷新
   for (const fn of _changeListeners) {
-    try { fn(key, effective, scope); } catch { /* 监听器异常不阻断 */ }
+    try { fn(key, effective, scope); } catch (e) { console.error("[ConfigurationService] 监听器异常:", e); }
   }
 
   // ConfigurationApplier——重置后自动调 onApply
