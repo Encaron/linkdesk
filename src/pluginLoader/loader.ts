@@ -1145,9 +1145,17 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = manifest.name;
 
-    // Rust 端先执行——成功后再做前端变更。
-    // 如果 Rust 失败，前端保持原样不进入撕裂状态；且调用方组件未卸载，能显示错误。
-    await linkdesk().plugins.uninstall(pluginId);
+    // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口，不再走 plugins:uninstall 直接 IPC
+    const src = await linkdesk().plugins.resolvePath(pluginId);
+    const env = await linkdesk().env.get();
+    const disabledDir = `${env.pluginsRootDir}/.disabled`;
+    const dest = `${disabledDir}/${pluginId}`;
+    await linkdesk().filesystem.createDir(disabledDir);
+    if (await linkdesk().filesystem.exists(dest)) {
+      await linkdesk().filesystem.remove(dest);
+    }
+    await linkdesk().filesystem.copy(src, dest);
+    await linkdesk().filesystem.remove(src);
 
     // Rust 成功 → 前端更新
     cachePluginMetadata(pluginId, manifest, "uninstalled");
@@ -1204,7 +1212,28 @@ export async function performUninstall(pluginId: string): Promise<boolean> {
  */
 export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; error?: string; needRestart?: boolean }> {
   try {
-    const pluginId = await linkdesk().plugins.install(sourcePath);
+    // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
+    const manifestPath = `${sourcePath}/plugin.json`;
+    if (!(await linkdesk().filesystem.exists(manifestPath))) {
+      throw new Error(`不是有效插件（缺少 plugin.json）`);
+    }
+    const name = sourcePath.replace(/\\/g, "/").split("/").pop() || sourcePath;
+    const env = await linkdesk().env.get();
+    const destDir = `${env.pluginsRootDir}/user/${name}`;
+    if (await linkdesk().filesystem.exists(destDir)) {
+      throw new Error(`插件 "${name}" 已存在`);
+    }
+    await linkdesk().filesystem.copy(sourcePath, destDir);
+    // 消毒 manifest——安装后强制 distribution=user, core=false
+    const destManifest = `${destDir}/plugin.json`;
+    const raw = await linkdesk().filesystem.readTextFile(destManifest);
+    const manifest = JSON.parse(raw);
+    if (manifest.distribution !== "user" || manifest.core === true) {
+      manifest.distribution = "user";
+      manifest.core = false;
+      await linkdesk().filesystem.writeTextFile(destManifest, JSON.stringify(manifest, null, 2));
+    }
+    const pluginId = name;
 
     // 尝试热加载——主题/语言即时生效，视图插件需要重启
     const manifestKey = Object.keys(pluginManifests).find(
@@ -1397,7 +1426,18 @@ export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: stri
  */
 export async function reinstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    await linkdesk().plugins.reinstall(pluginId);
+    // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
+    const env = await linkdesk().env.get();
+    const src = `${env.pluginsRootDir}/.disabled/${pluginId}`;
+    const dest = `${env.pluginsRootDir}/user/${pluginId}`;
+    if (!(await linkdesk().filesystem.exists(src))) {
+      throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
+    }
+    if (await linkdesk().filesystem.exists(dest)) {
+      throw new Error(`插件 "${pluginId}" 已存在`);
+    }
+    await linkdesk().filesystem.copy(src, dest);
+    await linkdesk().filesystem.remove(src);
 
     // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/builtin/ 或 plugins/user/ 下则 glob 中有
     const manifestKey = Object.keys(pluginManifests).find(
