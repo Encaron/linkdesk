@@ -430,8 +430,8 @@ function ObjectEditor({ value, onChange }: {
 
   return (
     <div className="object-editor">
-      {entries.map(([k, v], index) => (
-        <div key={index} className="object-editor-row">
+      {entries.map(([k, v]) => (
+        <div key={k} className="object-editor-row">
           <input
             className="input object-editor-key"
             type="text"
