@@ -527,6 +527,37 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
   }
 }
 
+/* ── E5#12：旧格式归一化——纯函数，不 mutate 只读 glob manifest ── */
+
+/** E3 旧格式字段——E5#12 迁移到 contributes 后从 PluginManifest 删除 */
+interface OldFormatManifest {
+  themes?: unknown;
+  languages?: unknown;
+  file?: unknown;
+}
+
+/**
+ * 旧格式归一化——纯函数。返回 contributes 对象，不修改原 manifest。
+ *
+ * 只有真正有 themes/languages/file 旧字段的插件才返回新 contributes。
+ * settings 等无旧字段插件走这里返回 undefined——安全通过。
+ */
+function normalizeManifest(manifest: PluginManifest): Record<string, unknown> | undefined {
+  if (manifest.contributes) return manifest.contributes as Record<string, unknown>;
+
+  const old = manifest as Partial<OldFormatManifest>;
+  const hasThemes = Array.isArray(old.themes) && old.themes.length > 0;
+  const hasLanguages = Array.isArray(old.languages) && old.languages.length > 0;
+  const hasFile = typeof old.file === "string" && old.file.length > 0;
+
+  if (!hasThemes && !hasLanguages && !hasFile) return undefined;
+
+  const c: Record<string, unknown> = {};
+  if (hasThemes) c.themes = old.themes;
+  if (hasLanguages) c.languages = old.languages;
+  return c;
+}
+
 /* ── #45：extensionDependencies 检查 ── */
 
 /**
