@@ -136,12 +136,16 @@ export function activateFileTreeContextMenu(): void {
     (window as any).linkdesk?.shell?.showItemInFolder(ctx.uri);
   }});
 
-  // ── E4V#19: openInTerminal ──
+  // ── E4V#19 + E5#22: openInTerminal——从配置读取终端类型，不再硬编码 PowerShell ──
   registerCommand("file-tree", { id: "explorer.openInTerminal", title: "在终端中打开", handler: async (_token, ...args: unknown[]) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
     const targetPath = ctx.isDirectory ? ctx.uri : dirname(ctx.uri);
-    (window as any).linkdesk?.shell?.openInTerminal(targetPath);
+    // 插件走 linkdesk.configuration API——禁止直接 import ConfigurationService
+    const cfg = (window as any).linkdesk?.configuration;
+    const terminalExe = (await cfg?.get("terminal.external.windowsExec")) || "powershell";
+    const customCommand = (await cfg?.get("terminal.external.customCommand")) || "";
+    (window as any).linkdesk?.shell?.openInTerminal(targetPath, terminalExe, customCommand);
   }});
 
   // ── E4V#30: revealInExplorer——定位文件并展开目录链 ──

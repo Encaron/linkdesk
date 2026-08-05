@@ -9,6 +9,7 @@
 
 import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell } from 'electron';
 import { exec } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
@@ -121,14 +122,56 @@ function createWindow(): void {
   // E4V#18: Shell IPC——revealInOS
   ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
 
-  // E4V#19: 在系统终端打开目录——Windows 走 PowerShell，macOS 走 Terminal
-  ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string) => {
-    const cmd = process.platform === 'win32'
-      ? `start powershell -NoExit -Command "cd '${dirPath}'"`
-      : `open -a Terminal "${dirPath}"`;
-    exec(cmd, (err) => {
-      if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
-    });
+  // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
+  ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
+    if (process.platform === 'win32') {
+      const exe = terminalExe || 'powershell';
+      let cmd: string;
+      switch (exe) {
+        case 'cmd':
+          cmd = `start cmd /K "cd /d "${dirPath}""`;
+          break;
+        case 'wt':
+          cmd = `wt -d "${dirPath}"`;
+          break;
+        case 'git-bash': {
+          const gitBashPaths = [
+            'C:\\Program Files\\Git\\git-bash.exe',
+            'C:\\Program Files (x86)\\Git\\git-bash.exe',
+            `${process.env.LOCALAPPDATA}\\Programs\\Git\\git-bash.exe`,
+          ];
+          const gitBash = gitBashPaths.find(p => fs.existsSync(p));
+          if (gitBash) {
+            cmd = `start "" "${gitBash}" --cd="${dirPath}"`;
+          } else {
+            console.error('[shell:openInTerminal] Git Bash 未找到');
+            return;
+          }
+          break;
+        }
+        case 'custom':
+          // 🔥 不硬编码——渲染进程传模板，替换 {{dirPath}} 占位符
+          cmd = (customCommand || '').replace(/\{\{dirPath\}\}/g, dirPath);
+          if (!cmd) { console.error('[shell:openInTerminal] 自定义命令为空'); return; }
+          break;
+        case 'powershell':
+        default:
+          cmd = `start powershell -NoExit -Command "cd '${dirPath}'"`;
+          break;
+      }
+      exec(cmd, (err) => {
+        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+      });
+    } else if (process.platform === 'darwin') {
+      exec(`open -a Terminal "${dirPath}"`, (err) => {
+        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+      });
+    } else {
+      // Linux（E5#22 bug fix——原来无此分支，走 macOS 命令无效）
+      exec(`xdg-open "${dirPath}"`, (err) => {
+        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+      });
+    }
   });
 
   mainWindow.on('closed', () => {
