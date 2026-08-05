@@ -480,6 +480,9 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
             const mk = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
             return mk ? mk.replace(/\/plugin\.json$/, "") : "";
           })();
+          if (!resolvedRoot) {
+            console.warn(`[loader] ⚠️ 无法解析插件 "${pluginId}" 的根目录——view "${viewDef.id}" 可能加载失败。请确保调用方传入了 pluginRoot。`);
+          }
           const renderPath = resolvedRoot ? `${resolvedRoot}/${viewDef.render}` : viewDef.render;
           try {
             const renderModule = await import(/* @vite-ignore */ renderPath);
