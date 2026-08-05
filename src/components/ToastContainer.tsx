@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/services/toast";
 import "./ToastContainer.css";
 
@@ -43,6 +44,7 @@ function ToastContainer() {
 
 /** 单条通知卡片——对标 VS Code `.notification-list-item` */
 function NotificationItem({ toast }: { toast: Toast }) {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const [visible, setVisible] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -87,7 +89,7 @@ function NotificationItem({ toast }: { toast: Toast }) {
             <button
               className="toast-chevron-btn"
               onClick={() => setExpanded(!expanded)}
-              title={expanded ? "收起" : "展开"}
+              title={expanded ? t("收起") : t("展开")}
             >
               <span className={`codicon ${expanded ? "codicon-chevron-down" : "codicon-chevron-up"}`} />
             </button>
@@ -95,7 +97,7 @@ function NotificationItem({ toast }: { toast: Toast }) {
           <button
             className="toast-close-btn"
             onClick={() => dismissToast(toast.id)}
-            title="关闭"
+            title={t("关闭")}
           >
             <span className="codicon codicon-close" />
           </button>
@@ -106,7 +108,7 @@ function NotificationItem({ toast }: { toast: Toast }) {
       {(expanded || mounted) && (
         <div className="toast-details-row">
           {toast.source && (
-            <span className="toast-source">来源: {toast.source}</span>
+            <span className="toast-source">{t("来源: {{source}}", { source: toast.source })}</span>
           )}
           {toast.actions && toast.actions.length > 0 && (
             <div className="toast-actions">
