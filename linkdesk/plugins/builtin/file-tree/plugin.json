@@ -8,7 +8,7 @@
   "distribution": "builtin",
   "core": true,
   "entry": "src/index.tsx",
-  "viewRole": "sidebarPrimary",
+  "appearsIn": { "iconBar": "top", "sidePanel": true },
   "tabBehavior": {
     "singleton": true
   },

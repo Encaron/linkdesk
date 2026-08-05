@@ -7,7 +7,7 @@
   "distribution": "builtin",
   "core": true,
   "entry": "src/index.tsx",
-  "viewRole": "tabOnly",
+  "appearsIn": { "tabBar": true },
   "tabBehavior": {
     "singleton": false,
     "identityField": "filePath"

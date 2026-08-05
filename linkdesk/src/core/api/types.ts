@@ -145,15 +145,21 @@ export interface PluginManifest {
    * 这些字段替代 Phase 3/4 的硬编码特殊判断（isSidebarOnlyView / BOTTOM_ICONS 等）。
    */
 
-  /** 图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区，对标 VS Code Activity Bar 齿轮）。 */
+  /** 插件 UI 出现位置——声明式。替代 iconLocation + viewRole + keepSidebarOnFocus。
+   *  对标 VS Code：viewsContainers + views 的组合推导出 Activity Bar / Sidebar / Panel */
+  appearsIn?: {
+    iconBar?: "top" | "bottom";
+    sidePanel?: boolean;
+    tabBar?: boolean;
+    statusBar?: boolean;
+  };
+  /** @deprecated E5#14——用 appearsIn.iconBar 替代。仅 viewRegistry.ts 向后兼容兜底。 */
   iconLocation?: "top" | "bottom";
-  /** 视图角色——声明此视图在壳中的交互模式。5g 定义字段，5.5 消费。
-   *  - sidebarPrimary（默认）：侧栏为主——点击图标 toggle 侧栏，不自动打开标签页（对标 VS Code Activity Bar）
-   *  - tabOnly：纯标签页视图——点击图标直接打开/聚焦标签页（如设置） */
+  /** @deprecated E5#14——用 appearsIn.tabBar / appearsIn.sidePanel 替代。 */
   viewRole?: "sidebarPrimary" | "tabOnly";
   /** @deprecated E2c #19d 后已无 shellRendered 概念——壳级视图直接写 App.tsx，不走 plugin.json 声明。保留仅用于向后兼容。 */
   shellRendered?: boolean;
-  /** 聚焦此视图时保留当前侧栏不清除。如插件详情页——用户浏览插件时侧栏不变。 */
+  /** @deprecated E5#14——appearsIn 归一化后不再需要。 */
   keepSidebarOnFocus?: boolean;
 
   /**

@@ -25,25 +25,21 @@ function resetRegistries() {
 
 /* ── normalizeManifest 等价逻辑（loader.ts 内部纯函数，不导出——测试等价逻辑） ── */
 
-interface OldFormatManifest {
-  themes?: unknown;
-  languages?: unknown;
-  file?: unknown;
-}
+function normalizeManifest(manifest: Record<string, unknown>): Record<string, unknown> | undefined {
+  if (manifest["contributes"]) return manifest["contributes"] as Record<string, unknown>;
 
-function normalizeManifest(manifest: { contributes?: Record<string, unknown>; file?: string; themes?: unknown; languages?: unknown }): Record<string, unknown> | undefined {
-  if (manifest.contributes) return manifest.contributes;
-
-  const old = manifest as Partial<OldFormatManifest>;
-  const hasThemes = Array.isArray(old.themes) && old.themes.length > 0;
-  const hasLanguages = Array.isArray(old.languages) && old.languages.length > 0;
-  const hasFile = typeof old.file === "string" && old.file.length > 0;
+  const themes = manifest["themes"];
+  const languages = manifest["languages"];
+  const file = manifest["file"];
+  const hasThemes = Array.isArray(themes) && themes.length > 0;
+  const hasLanguages = Array.isArray(languages) && languages.length > 0;
+  const hasFile = typeof file === "string" && file.length > 0;
 
   if (!hasThemes && !hasLanguages && !hasFile) return undefined;
 
   const c: Record<string, unknown> = {};
-  if (hasThemes) c.themes = old.themes;
-  if (hasLanguages) c.languages = old.languages;
+  if (hasThemes) c["themes"] = themes;
+  if (hasLanguages) c["languages"] = languages;
   return c;
 }
 

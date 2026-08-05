@@ -9,8 +9,7 @@
   "core": true,
   "factoryRole": "settings",
   "entry": "src/index.tsx",
-  "iconLocation": "bottom",
-  "viewRole": "tabOnly",
+  "appearsIn": { "iconBar": "bottom", "tabBar": true },
   "tabBehavior": {
     "singleton": true
   }
