@@ -341,7 +341,7 @@ export async function initPluginLoader(): Promise<void> {
  * 按 key 逐项检测，不认识的 key 静默跳过。
  * Phase 6 加 contributes.themes / contributes.languages 时此处只需加一个 if——不崩。
  */
-function parseContributions(pluginId: string, c: Record<string, unknown>): void {
+export function parseContributions(pluginId: string, c: Record<string, unknown>): void {
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
     const config = c.configuration as { title: string; properties: Record<string, unknown> };
