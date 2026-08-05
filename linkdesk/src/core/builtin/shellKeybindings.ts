@@ -25,6 +25,14 @@ export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unkn
   { command: "workbench.action.focusNthTab",  key: "ctrl+7", args: [{ n: 7 }] },
   { command: "workbench.action.focusNthTab",  key: "ctrl+8", args: [{ n: 8 }] },
   { command: "workbench.action.focusNthTab",  key: "ctrl+9", args: [{ n: 9 }] },
+
+  // ── E5#16：剪贴板——壳统一注册，按焦点上下文分发到 Provider ──
+  { command: "core.clipboardCopy",   key: "ctrl+c" },
+  { command: "core.clipboardPaste",  key: "ctrl+v" },
+  { command: "core.clipboardCut",    key: "ctrl+x" },
+  { command: "core.selectAll",       key: "ctrl+a" },
+  { command: "core.delete",          key: "delete" },
+  { command: "core.rename",          key: "f2" },
 ];
 
 let _registered = false;
