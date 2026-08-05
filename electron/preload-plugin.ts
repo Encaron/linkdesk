@@ -143,7 +143,7 @@ try {
       // E5#85 扩展
       listDir: (p: string) => ipcRenderer.invoke('filesystem:listDir', p),
       exists:  (p: string) => ipcRenderer.invoke('filesystem:exists', p),
-      mkdir:   (p: string) => ipcRenderer.invoke('filesystem:mkdir', p),
+      createDir: (p: string) => ipcRenderer.invoke('filesystem:createDir', p),
       copy:    (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
       remove:  (p: string) => ipcRenderer.invoke('filesystem:remove', p),
       watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {

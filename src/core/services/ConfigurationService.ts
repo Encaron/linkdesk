@@ -21,7 +21,7 @@ import {
 let _configApplier: ((key: string, value: unknown) => void) | null = null;
 export function registerConfigApplier(fn: typeof _configApplier): void { _configApplier = fn; }
 import { read, write } from "./StorageService";
-import { exists, readFile, writeFile, mkdir, joinPath } from "./FileService";
+import { exists, readFile, writeFile, createDir, joinPath } from "./FileService";
 
 /* ── 三层缓存 ── */
 
@@ -240,7 +240,7 @@ async function _persistWorkspace(): Promise<void> {
   try {
     const linkdeskDir = await joinPath(_workspaceRoot, ".linkdesk");
     if (!(await exists(linkdeskDir))) {
-      await mkdir(linkdeskDir);
+      await createDir(linkdeskDir);
     }
     const wsSettingsPath = await joinPath(linkdeskDir, "settings.json");
     await writeFile(wsSettingsPath, JSON.stringify(_workspaceSettings, null, 2));

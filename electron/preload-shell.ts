@@ -93,7 +93,7 @@ try {
       readTextFile:  (p: string)           => ipcRenderer.invoke('filesystem:readTextFile', p),
       writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
       exists:        (p: string)           => ipcRenderer.invoke('filesystem:exists', p),
-      mkdir:         (p: string)           => ipcRenderer.invoke('filesystem:mkdir', p),
+      createDir:     (p: string)           => ipcRenderer.invoke('filesystem:createDir', p),
       readdir:       (p: string)           => ipcRenderer.invoke('filesystem:readdir', p),
       copy:          (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
       remove:        (p: string)           => ipcRenderer.invoke('filesystem:remove', p),

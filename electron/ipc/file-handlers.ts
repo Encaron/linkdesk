@@ -35,8 +35,8 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
     return fileService.exists(filePath);
   });
 
-  ipcMain.handle('filesystem:mkdir', async (_event, dirPath: string) => {
-    await fileService.mkdir(dirPath);
+  ipcMain.handle('filesystem:createDir', async (_event, dirPath: string) => {
+    await fileService.createDir(dirPath);
   });
 
   ipcMain.handle('filesystem:readdir', async (_event, dirPath: string) => {

@@ -41,7 +41,7 @@ function api() {
     readTextFile(path: string): Promise<string>;
     writeTextFile(path: string, data: string): Promise<void>;
     exists(path: string): Promise<boolean>;
-    mkdir(path: string): Promise<void>;
+    createDir(path: string): Promise<void>;
     readdir(path: string): Promise<string[]>;
     copy(src: string, dest: string): Promise<void>;
     remove(path: string): Promise<void>;
@@ -161,10 +161,10 @@ export async function copy(src: string, dest: string): Promise<void> {
 }
 
 /** 创建目录（递归） */
-export async function mkdir(dirPath: string): Promise<void> {
+export async function createDir(dirPath: string): Promise<void> {
   const a = api();
   if (!a) return;
-  await a.mkdir(dirPath);
+  await a.createDir(dirPath);
   suppressPath(dirPath);
 }
 
@@ -186,7 +186,7 @@ export async function watchFile(
   const a = api();
   if (!a) return () => {};
   return a.watch(dirPath, (event) => {
-    // 🔥 核心写操作抑制——writeFile/copy/deleteEntry/mkdir 后 300ms 内事件丢弃
+    // 🔥 核心写操作抑制——writeFile/copy/deleteEntry/createDir 后 300ms 内事件丢弃
     if (isSuppressed(event.path)) return;
     onEvent(event);
   });

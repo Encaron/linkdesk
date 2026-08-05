@@ -23,7 +23,7 @@ import {
   appDataDir,
   joinPath,
   exists,
-  mkdir,
+  createDir,
   readFile,
   writeFile,
   listDir,
@@ -71,7 +71,7 @@ async function _profilesDir(): Promise<string> {
 
 async function _ensureDir(): Promise<string> {
   const dir = await _profilesDir();
-  if (!(await exists(dir))) await mkdir(dir);
+  if (!(await exists(dir))) await createDir(dir);
   return dir;
 }
 

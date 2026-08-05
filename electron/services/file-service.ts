@@ -60,7 +60,7 @@ class FileService {
     return existsSync(filePath);
   }
 
-  async mkdir(dirPath: string): Promise<void> {
+  async createDir(dirPath: string): Promise<void> {
     await fs.mkdir(dirPath, { recursive: true });
   }
 
