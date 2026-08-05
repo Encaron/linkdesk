@@ -6,7 +6,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { openFolder, addFolder, onDidChangeFolders } from "@src/core/services/WorkspaceService";
-import { basename, normalizePath } from "./pathUtils";
+import { basename, normalizePath } from "../utils/pathUtils";
 
 const PLUGIN_ID = "file-tree";
 const RECENT_KEY = "recentFolders";

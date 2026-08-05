@@ -5,17 +5,17 @@
 
 import React, { useState, useRef, useCallback, useEffect, useMemo, useImperativeHandle, forwardRef } from "react";
 import FileTreeNode from "./FileTreeNode";
-import type { ExplorerItem } from "./FileTreeModel";
-import type { FileTreeModel } from "./FileTreeModel";
-import { TREE_ITEM_HEIGHT, OVERSCAN } from "./layoutTokens";
-import { useFileTreeKeyboard } from "./FileTreeKeyboard";
-import type { FlatItem } from "./FileTreeKeyboard";
-import { useFileTreeDnD } from "./FileTreeDnD";
+import type { ExplorerItem } from "../services/FileTreeModel";
+import type { FileTreeModel } from "../services/FileTreeModel";
+import { TREE_ITEM_HEIGHT, OVERSCAN } from "../utils/layoutTokens";
+import { useFileTreeKeyboard } from "../services/FileTreeKeyboard";
+import type { FlatItem } from "../services/FileTreeKeyboard";
+import { useFileTreeDnD } from "../services/FileTreeDnD";
 
 import { setKeybindingCaptureActive } from "@src/core/registry/KeybindingRegistry";
 import { shellEvents } from "@src/core/react/ShellEvents";
 import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/services/WorkspaceService";
-import { fileTreeClipboard } from "./FileTreeClipboard";
+import { fileTreeClipboard } from "../services/FileTreeClipboard";
 
 const lk = (window as any).linkdesk;
 

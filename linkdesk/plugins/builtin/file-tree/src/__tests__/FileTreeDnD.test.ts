@@ -12,7 +12,7 @@ vi.mock("@src/core/services/FileService", () => ({
 }));
 
 import { copy, remove } from "@src/core/services/FileService";
-import { executeSafeDrop } from "../FileTreeDnD";
+import { executeSafeDrop } from "../services/FileTreeDnD";
 
 const mockedCopy = copy as ReturnType<typeof vi.fn>;
 const mockedDelete = remove as ReturnType<typeof vi.fn>;

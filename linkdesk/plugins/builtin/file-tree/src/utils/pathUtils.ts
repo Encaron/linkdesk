@@ -4,7 +4,7 @@
  * E4b #99d：dirname / joinPath / FlatItem 归一化收口——全插件从这一个文件导入。
  */
 
-import type { ExplorerItem } from "./FileTreeModel";
+import type { ExplorerItem } from "../services/FileTreeModel";
 
 /* ── 类型 ── */
 

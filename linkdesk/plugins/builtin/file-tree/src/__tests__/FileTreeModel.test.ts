@@ -5,9 +5,9 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { FileTreeModel } from "../FileTreeModel";
-import { FileExcludeFilter } from "../FileExcludeFilter";
-import type { ExplorerItem } from "../FileTreeModel";
+import { FileTreeModel } from "../services/FileTreeModel";
+import { FileExcludeFilter } from "../services/FileExcludeFilter";
+import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileEntry } from "@src/core/services/FileService";
 
 /* ── 辅助工厂 ── */
