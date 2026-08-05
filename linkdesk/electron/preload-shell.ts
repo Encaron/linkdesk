@@ -12,7 +12,7 @@
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
-import { createEventSystem } from './event-system';
+import { createEventSystem, listenDirect } from './event-system';
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -47,19 +47,6 @@ const events = createEventSystem(ipcRenderer, {
 });
 
 try {
-  // ── 事件监听辅助（对标 Tauri listen() / useTauriEvent）──
-  // 每个 on*() 返回 unsubscribe 函数，支持 generation counter 模式
-
-  const makeListener = (channel: string) => {
-    return (cb: (...args: any[]) => void) => {
-      const handler = (_event: Electron.IpcRendererEvent, ...args: any[]) => cb(...args);
-      ipcRenderer.on(channel, handler);
-      return () => {
-        ipcRenderer.removeListener(channel, handler);
-      };
-    };
-  };
-
   // E5#85：壳 preload 也暴露配置读写——侧栏组件（file-tree 等）调 lk.configuration.get()
   const shellConfiguration = {
     get: (key: string) => ipcRenderer.invoke('config:get', key),
@@ -89,9 +76,9 @@ try {
       setDtr:     (enable: boolean)     => ipcRenderer.invoke('serial:setDtr', enable),
       setRts:     (enable: boolean)     => ipcRenderer.invoke('serial:setRts', enable),
       // 数据推送监听——对标 Tauri listen("serial-data/stats/system")
-      onData:     makeListener('serial:data'),
-      onStats:    makeListener('serial:stats'),
-      onSystem:   makeListener('serial:system'),
+      onData:     (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, 'serial:data', cb),
+      onStats:    (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, 'serial:stats', cb),
+      onSystem:   (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, 'serial:system', cb),
     },
 
     // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──
