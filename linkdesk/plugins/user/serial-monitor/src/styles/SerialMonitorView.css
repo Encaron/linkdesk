@@ -202,38 +202,11 @@
   color: var(--text-primary);
 }
 
-/* === 筛选按钮 + 弹出菜单 === */
-
-.filter-btn-wrapper {
-  position: relative;
-}
-
-.filter-popup {
-  position: absolute;
-  min-width: 180px;
-}
-
-.ctx-item-checked {
-  color: var(--accent);
-  font-weight: 600;
-}
-
-.ctx-item-label {
-  padding: 4px 12px 2px;
-  font-size: 10px;
-  color: var(--text-muted);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
-.ctx-item-input {
-  padding: 4px 12px 8px;
-}
+/* === 关键字过滤输入 === */
 
 .filter-keyword-input {
-  width: 100%;
   height: 24px;
-  font-size: 11px;
+  font-size: 12px;
 }
 
 /* === 系统消息区域（对标 V2 lbSystemLog：固定两行 36px + accent 左边框） === */

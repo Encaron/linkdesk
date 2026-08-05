@@ -27,7 +27,7 @@ import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useS
 import ControlPanel from "./components/ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/react/useSendData";
 import SearchBar from "./components/SearchBar";
-import FilterMenu from "./components/FilterMenu";
+import SelectBox from "@src/components/shared/SelectBox";
 import { HexToBytes } from "@src/core/data/DataConverter";
 
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
@@ -311,7 +311,6 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const [ctxMenu, setCtxMenu] = useState<{ x: number; y: number } | null>(null);
   const [filterMode, setFilterMode] = useState<"all" | "protocol" | "plain">("all");
   const [filterKeyword, setFilterKeyword] = useState("");
-  const [filterPopupOpen, setFilterPopupOpen] = useState(false);
   const filterModeRef = useRef(filterMode);
   const filterKeywordRef = useRef(filterKeyword);
   filterModeRef.current = filterMode;
@@ -1183,31 +1182,22 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
           <span className="codicon codicon-clear-all" />
           {t("清空接收区")}
         </button>
-        <div className="filter-btn-wrapper">
-          <button
-            className={`toolbar-btn${(filterMode !== "all" || filterKeyword !== "") ? " active" : ""}`}
-            onClick={() => {
-              if (filterMode !== "all" || filterKeyword !== "") {
-                setFilterMode("all");
-                setFilterKeyword("");
-              } else {
-                setFilterPopupOpen(!filterPopupOpen);
-              }
-            }}
-            title={filterMode !== "all" || filterKeyword !== "" ? t("点击清除筛选") : t("筛选")}
-          >
-            <span className="codicon codicon-filter" />
-            {t("筛选")}
-          </button>
-          <FilterMenu
-            open={filterPopupOpen}
-            filterMode={filterMode}
-            filterKeyword={filterKeyword}
-            onClose={() => setFilterPopupOpen(false)}
-            onModeChange={setFilterMode}
-            onKeywordChange={setFilterKeyword}
-          />
-        </div>
+        <SelectBox
+          value={filterMode}
+          options={[
+            { value: "all", label: t("全部") },
+            { value: "protocol", label: t("仅协议消息") },
+            { value: "plain", label: t("仅普通文本") },
+          ]}
+          onChange={(v) => setFilterMode(v as "all" | "protocol" | "plain")}
+        />
+        <input
+          className="input filter-keyword-input"
+          placeholder={t("关键字过滤…")}
+          value={filterKeyword}
+          onChange={(e) => setFilterKeyword(e.target.value)}
+          style={{ width: 110 }}
+        />
 
         <button className={`toolbar-btn${searchVisible ? " active" : ""}`} onClick={() => searchVisible ? closeSearch() : openSearch()}>
           <span className="codicon codicon-search" />
