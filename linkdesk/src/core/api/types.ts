@@ -114,8 +114,11 @@ export interface PluginManifest {
    *  多个插件声明同一 role → 第一个 core: true 的胜出。 */
   factoryRole?: "settings" | "marketplace";
   statusBar?: StatusBarItem[];
+  /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
   file?: string;
+  /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
   themes?: { id: string; name: string; file: string }[];
+  /** @deprecated E5#12——已迁移到 contributes.languages。仅 normalizeManifest 向后兼容用。 */
   languages?: { code: string; name: string; file: string }[];
   mode?: "text" | "binary";
   resources?: string[];
