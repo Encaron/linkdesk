@@ -24,6 +24,9 @@ export interface InlineInputProps {
   /** 取消回调——Esc 时调用 */
   onCancel: () => void;
 
+  /** 即时回调——每次按键都通知（搜索框等实时过滤场景） */
+  onChange?: (value: string) => void;
+
   /** 选中模式——all=全选 / nameOnly=只选文件名（去扩展名） */
   selectMode?: "all" | "nameOnly";
 
@@ -54,6 +57,7 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   value,
   onConfirm,
   onCancel,
+  onChange,
   selectMode = "all",
   width,
   autoFocus,
@@ -145,9 +149,11 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
       className={`inline-input inline-input--${size}`}
       type={type}
       value={localValue}
-      onChange={(e) =>
-        setLocalValue(type === "number" ? e.target.value.replace(/\D/g, "") : e.target.value)
-      }
+      onChange={(e) => {
+        const v = type === "number" ? e.target.value.replace(/\D/g, "") : e.target.value;
+        setLocalValue(v);
+        onChange?.(v);
+      }}
       onKeyDown={handleKeyDown}
       onBlur={handleBlur}
       onFocus={handleFocus}

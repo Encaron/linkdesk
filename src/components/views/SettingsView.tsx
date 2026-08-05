@@ -13,6 +13,7 @@ import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
+import { InlineInput } from "../shared/InlineInput";
 import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
 import { CUSTOM_EVENTS } from "../../core/react/CoreEvents"; // E3f #59
 import {
@@ -202,12 +203,13 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           {/* 搜索栏 + Open JSON 按钮 */}
           <div className="settings-search-bar">
             <span className="codicon codicon-search settings-search-icon" />
-            <input
-              className="settings-search-input"
-              type="text"
-              placeholder={t("搜索设置")}
+            <InlineInput
+              size="normal"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={setSearch}
+              onConfirm={setSearch}
+              onCancel={() => setSearch("")}
+              placeholder={t("搜索设置")}
             />
             <button
               className="settings-json-btn"
