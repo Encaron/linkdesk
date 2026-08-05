@@ -58,12 +58,14 @@ clipboardProviders.register("file-tree", {
     const uris = hd.getSelection();
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
+    navigator.clipboard.writeText(uris.join("\n")).catch(() => {});
   },
   onCut() {
     const hd = h(); if (!hd) return;
     const uris = hd.getSelection();
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
+    navigator.clipboard.writeText(uris.join("\n")).catch(() => {});
     hd.rerender();
   },
   onPaste() {
