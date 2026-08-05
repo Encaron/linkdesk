@@ -352,7 +352,7 @@ export async function initPluginLoader(): Promise<void> {
  * 按 key 逐项检测，不认识的 key 静默跳过。
  * Phase 6 加 contributes.themes / contributes.languages 时此处只需加一个 if——不崩。
  */
-export function parseContributions(pluginId: string, c: Record<string, unknown>): void {
+export async function parseContributions(pluginId: string, c: Record<string, unknown>): Promise<void> {
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
     const config = c.configuration as { title: string; properties: Record<string, unknown> };
@@ -451,7 +451,7 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
   // E3.6：contributes.viewsContainers → ViewContainerService（同步）
   if (c.viewsContainers) {
     const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
-    void (async () => {
+    try {
       const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, desc] of Object.entries(containers)) {
         ViewContainerService.registerViewContainer(pluginId, {
@@ -464,13 +464,13 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
           mergeHeaderWhenSingle: desc.mergeHeaderWhenSingle,
         });
       }
-    })().catch((e) => console.error("[loader] viewsContainers 注册失败:", e));
+    } catch (e) { console.error("[loader] viewsContainers 注册失败:", e); }
   }
 
   // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
   if (c.views) {
     const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string; minHeight?: number }>>;
-    void (async () => {
+    try {
       const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
@@ -506,7 +506,7 @@ export function parseContributions(pluginId: string, c: Record<string, unknown>)
           }
         }
       }
-    })().catch((e) => console.error("[loader] views 注册失败:", e));
+    } catch (e) { console.error("[loader] views 注册失败:", e); }
   }
 
   // contributes.fileAssociations → FileAssociationService（E2c #13a）
