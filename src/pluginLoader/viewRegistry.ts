@@ -126,20 +126,19 @@ export function clearRegistry(): void {
 
 /* ── Phase 5g：插件元数据查询——替代硬编码特殊判断 ── */
 
-/** 图标在图标栏的位置——默认 top。settings 等管理型图标声明 bottom。 */
-export function getIconLocation(pluginId: string): "top" | "bottom" {
-  return registry.get(pluginId)?.manifest.iconLocation ?? "top";
+/** 图标在图标栏的位置——appearsIn.iconBar 优先，旧字段 iconLocation 兜底。无声明返回 undefined。 */
+export function getIconLocation(pluginId: string): "top" | "bottom" | undefined {
+  const m = registry.get(pluginId)?.manifest;
+  return m?.appearsIn?.iconBar ?? m?.iconLocation;
 }
 
 /**
- * 获取可作为标签页直接创建的视图插件列表。
- * 过滤规则：有 viewsContainers 声明的插件通过图标栏开侧栏访问，
- * 不出现在 WelcomeView 快捷卡片 / TabBar [+] 菜单中。
+ * 获取可创建为标签页的视图插件——appearsIn.tabBar === true。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(
-    (entry) => !entry.manifest.contributes?.viewsContainers
+    (entry) => entry.manifest.appearsIn?.tabBar === true
   );
 }
 

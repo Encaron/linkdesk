@@ -30,6 +30,16 @@
       "enum": ["view", "data"],
       "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。"
     },
+    "appearsIn": {
+      "type": "object",
+      "description": "插件 UI 出现位置——声明式。替代 iconLocation+viewRole+keepSidebarOnFocus。",
+      "properties": {
+        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
+        "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
+        "tabBar": { "type": "boolean", "description": "可作为标签页打开，默认 false" },
+        "statusBar": { "type": "boolean", "description": "有状态栏条目，默认 false" }
+      }
+    },
     "distribution": {
       "type": "string",
       "enum": ["builtin", "user"],

@@ -147,7 +147,7 @@ function IconBar({ showHamburger }: IconBarProps) {
   const orderedRef = useRef(ordered);
   orderedRef.current = ordered;
 
-  const topIcons = ordered.filter((x) => getIconLocation(x.pluginId) !== "bottom");
+  const topIcons = ordered.filter((x) => getIconLocation(x.pluginId) === "top");
   const bottomIcons = ordered.filter((x) => getIconLocation(x.pluginId) === "bottom");
 
   /* ── 查找鼠标下的图标 ── */
