@@ -474,16 +474,26 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
       const { ViewContainerService } = await import("../core/services/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
-          // E5#34b: render 路径相对于插件根目录——从 pluginManifests 键推导插件根，拼接完整路径
-          // 🔥 loadPluginRuntime 传 pluginRoot（glob 外插件），优先使用
+          // E5#34b: render 路径相对于插件根目录。
+          // 优先级：1) 调用方传入 pluginRoot  2) import.meta.glob 推导  3) IPC resolvePath（glob 外插件兜底）
           const resolvedRoot = pluginRoot ?? (() => {
             const mk = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
             return mk ? mk.replace(/\/plugin\.json$/, "") : "";
           })();
-          if (!resolvedRoot) {
-            console.warn(`[loader] ⚠️ 无法解析插件 "${pluginId}" 的根目录——view "${viewDef.id}" 可能加载失败。请确保调用方传入了 pluginRoot。`);
+          let renderPath: string;
+          if (resolvedRoot) {
+            renderPath = `${resolvedRoot}/${viewDef.render}`;
+          } else {
+            // glob 外插件（热安装/重装）——IPC 查询绝对路径兜底，不依赖调用方传参
+            try {
+              const abs = await (window as any).linkdesk?.plugins?.resolvePath?.(pluginId);
+              const isDev = import.meta.env.DEV;
+              renderPath = isDev ? `/@fs/${abs}/${viewDef.render}` : `linkdesk://${pluginId}/${viewDef.render}`;
+            } catch {
+              console.warn(`[loader] ⚠️ 无法解析插件 "${pluginId}" 的根目录——view "${viewDef.id}" 加载失败`);
+              continue;
+            }
           }
-          const renderPath = resolvedRoot ? `${resolvedRoot}/${viewDef.render}` : viewDef.render;
           try {
             const renderModule = await import(/* @vite-ignore */ renderPath);
             const RenderComponent = renderModule.default ?? renderModule;
