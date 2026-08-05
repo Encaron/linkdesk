@@ -9,6 +9,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import { setKeybindingCaptureActive } from "../../core/registry/KeybindingRegistry";
+import "./InlineInput.css";
 
 export interface InlineInputProps {
   /** 尺寸——compact=22px 文件树行内 / normal=32px 设置/串口 */
