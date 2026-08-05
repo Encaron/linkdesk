@@ -4,9 +4,9 @@
  */
 
 
-import { useMarketplacePlugins } from "../marketplaceShared";
-import { ExtensionItem } from "../ExtensionItem";
-import "../MarketplaceSidebar.css";
+import { useMarketplacePlugins } from "../services/marketplaceShared";
+import { ExtensionItem } from "../components/ExtensionItem";
+import "../styles/MarketplaceSidebar.css";
 
 export default function BuiltinListView() {
   const tabs = (window as any).linkdesk?.tabs;

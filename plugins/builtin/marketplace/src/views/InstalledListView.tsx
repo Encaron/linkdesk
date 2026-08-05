@@ -5,9 +5,9 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useMarketplacePlugins, getMarketplaceSearch } from "../marketplaceShared";
-import { ExtensionItem } from "../ExtensionItem";
-import "../MarketplaceSidebar.css";
+import { useMarketplacePlugins, getMarketplaceSearch } from "../services/marketplaceShared";
+import { ExtensionItem } from "../components/ExtensionItem";
+import "../styles/MarketplaceSidebar.css";
 
 export default function InstalledListView() {
   const { t } = useTranslation();
