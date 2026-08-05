@@ -640,10 +640,10 @@ async function loadPlugin(
 
   // contributes.themes / contributes.languages 数据异步加载——parseContributions 仅注册 metadata，此处 fetch 实际 JSON
   // 🔥 用 fetchPluginDataFile() 而非 getPluginDataFile()——绕开 Vite glob 缓存（#39a）
-  if (hasNewThemes) {
+  if (manifest.contributes?.themes) {
     await loadThemeContributionData(pluginId, manifest);
   }
-  if (hasNewLanguages) {
+  if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);
   }
 
@@ -941,7 +941,7 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
 
 /**
  * 加载 contributes.languages 声明的 JSON 翻译文件。
- * 和 loadLanguagePlugin 并行——后者处理旧格式 manifest.languages。
+ * E5#12：旧格式 manifest.languages 由 normalizeManifest + parseContributions 处理。
  * 🔥 用 fetch() 而不用 getPluginDataFile()——后者依赖 import.meta.glob，
  * Vite 在 dev 模式下可能缓存旧快照，新插件目录的 JSON 文件不被实时发现。
  */
@@ -983,55 +983,12 @@ function syncLanguageBroadcast(): void {
 
 /**
  * 注册语言翻译资源到 i18next。
- * 两处调用：loadLanguagePlugin（旧格式 manifest.languages）+
- * parseContributions（新格式 contributes.languages）。
- * 归一化后两处各一行调用——新增语言注册路径不复制粘贴。
+ * E5#12：归一化后仅 parseContributions 一处调用——新增语言注册路径不复制粘贴。
  */
 function registerLanguageBundle(langCode: string, data: Record<string, unknown>, pluginId: string): void {
   const ns = "translation";
   i18n.addResourceBundle(langCode, ns, data, true, true);
   i18n.addResourceBundle(langCode, pluginId, data, true, true);
-}
-
-/* ── 语言插件（P1-4） ── */
-
-async function loadLanguagePlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
-  // 多语言数组
-  if (manifest.languages && manifest.languages.length > 0) {
-    let registered = 0;
-    for (const lang of manifest.languages) {
-      const data = await fetchPluginDataFile(pluginId, lang.file);
-      if (!data) continue;
-      registerLanguageBundle(lang.code, data, pluginId);
-      registered++;
-    }
-    if (registered > 0) {
-      log.appendLine(`✅ 语言插件 "${manifest.name}" — ${registered} 个语言已注册`);
-      pushToast({
-        message: `新增 ${registered} 个语言：${manifest.name}`,
-        ttl: TOAST_TTL_SUCCESS,
-      });
-      syncLanguageBroadcast(); // #42：新翻译注册→即时广播到插件 WebView
-    }
-    return;
-  }
-
-  // 单语言文件——从文件名推导语言代码
-  if (manifest.file) {
-    const data = await fetchPluginDataFile(pluginId, manifest.file);
-    if (!data) return;
-    const code = manifest.file.replace(/\.json$/, "");
-    registerLanguageBundle(code, data, pluginId);
-    log.appendLine(`✅ 语言插件 "${manifest.name}" (${code}) 已注册`);
-    pushToast({
-      message: `新增语言：${manifest.name}`,
-      ttl: TOAST_TTL_SUCCESS,
-    });
-    syncLanguageBroadcast(); // #42：新翻译注册→即时广播到插件 WebView
-    return;
-  }
-
-  console.warn(`[pluginLoader] 语言插件 "${pluginId}" 未声明 file 或 languages 字段`);
 }
 
 /* ── 禁用列表持久化 ── */
