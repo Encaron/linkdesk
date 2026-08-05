@@ -7,7 +7,50 @@
  * 集成测试由 E3 UAT 手动验证覆盖。
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
+import { parseContributions } from "../loader";
+import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
+import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
+import { clearLangDefs, getLangDef } from "../../core/registry/LangDefRegistry";
+
+/* ── 辅助：清空注册表（每个测试前重置） ── */
+
+function resetRegistries() {
+  // 用 clearLangDefs 清理 LangDefRegistry（模块级函数，无 unregisterAll）
+  clearLangDefs();
+  // LanguageRegistry / ThemeRegistry 继承 RegistryBase，有 unregisterAll
+  try { (LanguageRegistry as any).unregisterAll?.("test-plugin"); } catch { /* 无注册项 */ }
+  try { (ThemeRegistry as any).unregisterAll?.("test-plugin"); } catch { /* 无注册项 */ }
+}
+
+/* ── normalizeManifest 等价逻辑（loader.ts 内部纯函数，不导出——测试等价逻辑） ── */
+
+interface OldFormatManifest {
+  themes?: unknown;
+  languages?: unknown;
+  file?: unknown;
+}
+
+function normalizeManifest(manifest: { contributes?: Record<string, unknown>; file?: string; themes?: unknown; languages?: unknown }): Record<string, unknown> | undefined {
+  if (manifest.contributes) return manifest.contributes;
+
+  const old = manifest as Partial<OldFormatManifest>;
+  const hasThemes = Array.isArray(old.themes) && old.themes.length > 0;
+  const hasLanguages = Array.isArray(old.languages) && old.languages.length > 0;
+  const hasFile = typeof old.file === "string" && old.file.length > 0;
+
+  if (!hasThemes && !hasLanguages && !hasFile) return undefined;
+
+  const c: Record<string, unknown> = {};
+  if (hasThemes) c.themes = old.themes;
+  if (hasLanguages) c.languages = old.languages;
+  return c;
+}
+
+/** 推导加载角色——等价 loadPluginLifecycle Step 4 逻辑 */
+function deriveRole(manifest: { pluginRole?: string; entry?: string; contributes?: Record<string, unknown> }, contributes: Record<string, unknown> | undefined): string | undefined {
+  return (manifest.pluginRole ?? (!manifest.entry && (contributes || manifest.contributes) ? "data" : undefined)) as string | undefined;
+}
 
 /* ── extractThemeColors —— loader.ts 内部函数，不导出，直接测试等价逻辑 ── */
 function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
@@ -48,5 +91,85 @@ describe("loader — extractThemeColors", () => {
     expect(colors.count).toBeUndefined();
     expect(colors.flag).toBeUndefined();
     expect(colors.nil).toBeUndefined();
+  });
+});
+
+/* ── E5#27d: normalizeManifest——纯函数，不 mutate 只读 manifest ── */
+
+describe("loader — normalizeManifest（等价逻辑）", () => {
+  it("settings 类插件（无 contributes、无旧字段）→ undefined", () => {
+    const manifest = { name: "settings", entry: "src/index.tsx", factoryRole: "settings" };
+    expect(normalizeManifest(manifest)).toBeUndefined();
+    // 不 mutate 原对象
+    expect((manifest as any).contributes).toBeUndefined();
+  });
+
+  it("新格式插件（有 contributes.themes）→ 返回 contributes", () => {
+    const manifest = { name: "theme", contributes: { themes: [{ id: "dark" }] } };
+    expect(normalizeManifest(manifest)).toBe(manifest.contributes);
+  });
+
+  it("旧格式插件（manifest.themes）→ 返回新 contributes 对象，不改原 manifest", () => {
+    const manifest = { name: "old-theme", themes: [{ id: "vintage", file: "v.json" }] };
+    const result = normalizeManifest(manifest);
+    expect(result).toEqual({ themes: [{ id: "vintage", file: "v.json" }] });
+    expect((manifest as any).contributes).toBeUndefined(); // 不 mutate
+  });
+
+  it("混合——无旧字段且无 contributes → undefined（python 类）", () => {
+    const manifest = { name: "python", entry: "src/index.tsx" };
+    expect(normalizeManifest(manifest)).toBeUndefined();
+  });
+});
+
+/* ── E5#27d: deriveRole——局部变量推导，不写 manifest ── */
+
+describe("loader — deriveRole（等价逻辑）", () => {
+  it("无 entry + 有 contributes → data", () => {
+    expect(deriveRole({}, { themes: [] })).toBe("data");
+  });
+
+  it("有 entry → undefined（view）", () => {
+    expect(deriveRole({ entry: "src/index.tsx" }, undefined)).toBeUndefined();
+  });
+
+  it("pluginRole 显式声明优先于推导", () => {
+    expect(deriveRole({ pluginRole: "view", entry: "x" }, { themes: [] })).toBe("view");
+    expect(deriveRole({ pluginRole: "data", entry: "x" }, {})).toBe("data");
+  });
+});
+
+/* ── E5#27d: parseContributions 公共入口——主题/语言/langDefs 分发 ── */
+
+describe("loader — parseContributions（export function）", () => {
+  beforeEach(() => {
+    resetRegistries();
+  });
+
+  it("contributes.themes → ThemeRegistry 注册", () => {
+    parseContributions("test-plugin", {
+      themes: [{ id: "dark", label: "Dark", uiTheme: "dark", path: "dark.json" }],
+    });
+    const themes = ThemeRegistry.getAll().filter((t) => (t as any).pluginId === "test-plugin");
+    expect(themes.length).toBe(1);
+    expect(themes[0].label).toBe("Dark");
+  });
+
+  it("contributes.languages → LanguageRegistry 注册", () => {
+    parseContributions("test-plugin", {
+      languages: [{ id: "zh", label: "中文", path: "zh.json" }],
+    });
+    const langs = LanguageRegistry.getAll().filter((l: any) => l.pluginId === "test-plugin");
+    expect(langs.length).toBeGreaterThanOrEqual(1);
+    expect(langs.some((l: any) => l.label === "中文")).toBe(true);
+  });
+
+  it("contributes.langDefs → LangDefRegistry 注册", () => {
+    parseContributions("test-plugin", {
+      langDefs: [{ id: "python", extensions: [".py"] }],
+    });
+    const def = getLangDef(".py");
+    expect(def).toBeDefined();
+    expect(def!.id).toBe("python");
   });
 });
