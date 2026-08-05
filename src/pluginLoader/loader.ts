@@ -352,7 +352,7 @@ export async function initPluginLoader(): Promise<void> {
  * 按 key 逐项检测，不认识的 key 静默跳过。
  * Phase 6 加 contributes.themes / contributes.languages 时此处只需加一个 if——不崩。
  */
-export async function parseContributions(pluginId: string, c: Record<string, unknown>): Promise<void> {
+export async function parseContributions(pluginId: string, c: Record<string, unknown>, pluginRoot?: string): Promise<void> {
   // contributes.configuration → ConfigurationRegistry
   if (c.configuration) {
     const config = c.configuration as { title: string; properties: Record<string, unknown> };
@@ -475,9 +475,12 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           // E5#34b: render 路径相对于插件根目录——从 pluginManifests 键推导插件根，拼接完整路径
-          const manifestKey = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
-          const pluginRoot = manifestKey ? manifestKey.replace(/\/plugin\.json$/, "") : "";
-          const renderPath = pluginRoot ? `${pluginRoot}/${viewDef.render}` : viewDef.render;
+          // 🔥 loadPluginRuntime 传 pluginRoot（glob 外插件），优先使用
+          const resolvedRoot = pluginRoot ?? (() => {
+            const mk = Object.keys(pluginManifests).find(k => extractPluginId(k) === pluginId);
+            return mk ? mk.replace(/\/plugin\.json$/, "") : "";
+          })();
+          const renderPath = resolvedRoot ? `${resolvedRoot}/${viewDef.render}` : viewDef.render;
           try {
             const renderModule = await import(/* @vite-ignore */ renderPath);
             const RenderComponent = renderModule.default ?? renderModule;
@@ -584,14 +587,14 @@ function normalizeManifest(manifest: PluginManifest): Record<string, unknown> | 
 async function loadPluginLifecycle(
   pluginId: string,
   manifest: PluginManifest,
-  opts?: { skipView?: boolean },
+  opts?: { skipView?: boolean; pluginRoot?: string },
 ): Promise<void> {
   // Step 1: 旧格式归一化（纯函数，不 mutate）
   const contributes = normalizeManifest(manifest);
 
   // Step 2: 解析 contributes → 分发到各 Registry（出错不阻塞其他插件）
   if (contributes) {
-    try { await parseContributions(pluginId, contributes); }
+    try { await parseContributions(pluginId, contributes, opts?.pluginRoot); }
     catch (e) { console.error(`[loader] parseContributions 失败: ${pluginId}`, e); }
   }
 
@@ -779,11 +782,10 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
   let Component: React.ComponentType<{ isActive: boolean }> | undefined;
   let statusBarComponent: React.ComponentType | undefined;
+  const isDev = import.meta.env.DEV;
+  const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
   if (manifest.entry) {
     try {
-      const isDev = import.meta.env.DEV;
-      // dev：Vite /@fs/ 即时编译 TSX。prod：linkdesk:// 协议加载预构建 JS。
-      const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
       const entryUrl = isDev
         ? `/@fs/${absPath}/${manifest.entry}`
         : `linkdesk://${pluginId}/${manifest.entry}`;
@@ -836,7 +838,9 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
   }
 
   // 5. E5#12：归一化——解析 contributes + 旧格式兼容（skipView 因 view 加载用动态 import）
-  await loadPluginLifecycle(pluginId, manifest, { skipView: true });
+  // 运行时插件 render path 基路径——dev /@fs/，prod linkdesk://
+  const runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
+  await loadPluginLifecycle(pluginId, manifest, { skipView: true, pluginRoot: runtimePluginRoot });
 
   // contributes.themes / contributes.languages 数据异步加载
   if (manifest.contributes?.themes) {
