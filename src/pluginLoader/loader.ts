@@ -612,47 +612,9 @@ async function loadPlugin(
     contributed = true;
   }
 
-  // M4：contributes.themes 优先——旧格式 manifest.themes / manifest.file 仅在新格式缺失时兜底
-  const hasNewThemes = !!manifest.contributes?.themes;
-  if (!hasNewThemes) {
-    if (manifest.themes && manifest.themes.length > 0) {
-      await loadThemePlugin(pluginId, manifest);
-      contributed = true;
-    }
-    if (manifest.file) {
-      const data = await fetchPluginDataFile(pluginId, manifest.file);
-      if (data?.type === "dark" || data?.type === "light") {
-        await loadThemePlugin(pluginId, manifest);
-        contributed = true;
-      }
-    }
-  }
-
-  // contributes.themes（parseContributions 中注册——此处仅标记 contributed）
-  if (hasNewThemes) {
-    contributed = true;
-  }
-
-  // M4：contributes.languages 优先——旧格式 manifest.languages / manifest.file 仅在新格式缺失时兜底
-  const hasNewLanguages = !!manifest.contributes?.languages;
-  if (!hasNewLanguages) {
-    if (manifest.languages && manifest.languages.length > 0) {
-      await loadLanguagePlugin(pluginId, manifest);
-      contributed = true;
-    }
-    if (manifest.file) {
-      const data = await fetchPluginDataFile(pluginId, manifest.file);
-      if (data && !data.type) {
-        await loadLanguagePlugin(pluginId, manifest);
-        contributed = true;
-      }
-    }
-  }
-
-  // contributes.languages（parseContributions 中注册——此处仅标记 contributed）
-  if (hasNewLanguages) {
-    contributed = true;
-  }
+  // contributes.themes / contributes.languages（parseContributions 中注册——此处仅标记 contributed）
+  if (manifest.contributes?.themes) contributed = true;
+  if (manifest.contributes?.languages) contributed = true;
 
   // TODO Phase 6: registerProtocol(pluginId, manifest.mode)——当前仅 stub 检测抑制 "未声明贡献" 警告
   if (manifest.mode) {
@@ -856,15 +818,6 @@ async function loadPluginRuntime(pluginId: string): Promise<void> {
     }
   }
 
-  // 6. 主题/语言（和 loadPlugin 相同的 M4 守卫逻辑）
-  // L5：独立 if（非 else if）——同时声明旧格式 theme+language 的插件两者都加载
-  if (!manifest.contributes?.themes && manifest.themes && manifest.themes.length > 0) {
-    await loadThemePlugin(pluginId, manifest);
-  }
-  if (!manifest.contributes?.languages && manifest.languages && manifest.languages.length > 0) {
-    await loadLanguagePlugin(pluginId, manifest);
-  }
-
   applyPostLoadSteps(pluginId, manifest, "install");
   })();
   _loadingPromises.set(pluginId, promise);
@@ -929,60 +882,6 @@ async function loadViewPlugin(pluginId: string, manifest: PluginManifest): Promi
   }
 
   log.appendLine(`✅ 视图插件 "${manifest.name}" (${pluginId}) 已注册`);
-}
-
-/* ── 主题插件（P1-4） ── */
-
-async function loadThemePlugin(pluginId: string, manifest: PluginManifest): Promise<void> {
-  // 多主题数组
-  if (manifest.themes && manifest.themes.length > 0) {
-    let registered = 0;
-    for (const t of manifest.themes) {
-      const data = await fetchPluginDataFile(pluginId, t.file);
-      if (!data) continue;
-      const themeType = (data.type as "dark" | "light") ?? "dark";
-      const colors = extractThemeColors(data);
-      registerTheme({ name: t.name, type: themeType, colors }, pluginId);
-      // H2：旧格式主题同步写入 ThemeRegistry——卸载时 revertThemeIfCurrent 能找到归属
-      ThemeRegistry.register({ id: t.name, label: t.name, uiTheme: themeType, path: t.file }, pluginId);
-      registered++;
-    }
-    if (registered > 0) {
-      log.appendLine(`✅ 主题插件 "${manifest.name}" — ${registered} 个主题已注册`);
-      pushToast({
-        message: `新增 ${registered} 个主题：${manifest.name}`,
-        ttl: TOAST_TTL_SUCCESS,
-      });
-    }
-    return;
-  }
-
-  // 单主题
-  if (manifest.file) {
-    const data = await fetchPluginDataFile(pluginId, manifest.file);
-    if (!data) {
-      console.warn(`[pluginLoader] 主题文件缺失 — "${pluginId}/${manifest.file}"`);
-      return;
-    }
-    const themeType = (data.type as "dark" | "light") ?? "dark";
-    const colors: Record<string, string> = {};
-    for (const [k, v] of Object.entries(data)) {
-      if (k !== "type" && k !== "name" && typeof v === "string") {
-        colors[k] = v;
-      }
-    }
-    registerTheme({ name: manifest.name, type: themeType, colors }, pluginId);
-    // H2：旧格式主题同步写入 ThemeRegistry——卸载时 revertThemeIfCurrent 能找到归属
-    ThemeRegistry.register({ id: manifest.name, label: manifest.name, uiTheme: themeType, path: manifest.file }, pluginId);
-    log.appendLine(`✅ 主题插件 "${manifest.name}" 已注册`);
-    pushToast({
-      message: `新增主题：${manifest.name}`,
-      ttl: TOAST_TTL_SUCCESS,
-    });
-    return;
-  }
-
-  console.warn(`[pluginLoader] 主题插件 "${pluginId}" 未声明 file 或 themes 字段`);
 }
 
 /* ── 插件数据文件 fetch（#39a：全量迁移——绕开 Vite glob 缓存） ── */
