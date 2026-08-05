@@ -10,6 +10,7 @@
  */
 
 import { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import {
   getAvailableThemes,
   getThemesByPlugin,
@@ -32,6 +33,7 @@ interface Props {
 }
 
 export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
+  const { t } = useTranslation();
   const originalTheme = useRef<string | null>(null);
   const committed = useRef(false);
 
@@ -92,19 +94,19 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
       open={open}
       onClose={handleClose}
       items={themes}
-      placeholder="选择颜色主题…"
+      placeholder={t("选择颜色主题…")}
       getSearchText={(name) => name}
       getKey={(name) => name}
       onSelect={handleSelect}
       onHighlight={handleHighlight}
       // E3.5 #CP19: 切 slot props
       renderLabel={(name) => name}
-      renderCategory={(name) => name === originalTheme.current ? "当前" : undefined}
+      renderCategory={(name) => name === originalTheme.current ? t("当前") : undefined}
       // E3.5 #CP23: 显示主题类型——uiTheme 已在 ThemeRegistry 中
       renderDetail={(name) => {
         const theme = ThemeRegistry.get(name);
         if (!theme) return null;
-        return theme.uiTheme === "dark" ? "暗色主题" : theme.uiTheme === "light" ? "浅色主题" : "高对比度";
+        return theme.uiTheme === "dark" ? t("暗色主题") : theme.uiTheme === "light" ? t("浅色主题") : t("高对比度");
       }}
     />
   );
