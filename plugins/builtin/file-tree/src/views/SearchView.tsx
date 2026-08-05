@@ -10,7 +10,7 @@ import { useTranslation } from "react-i18next";
 import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/services/FileSearcher";
 import { getPluginFor } from "@src/core/services/FileAssociationService";
 import { extension } from "../utils/pathUtils";
-import "./SearchView.css";
+import "../styles/SearchView.css";
 
 const lk = (window as any).linkdesk;
 
