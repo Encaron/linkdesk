@@ -6,7 +6,7 @@
  * 对标 VS Code input — compact 22px / normal 32px 两套尺寸走 CSS 变量。
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { ContextKeyService } from "../../core/registry/ContextKeyService";
 import { setKeybindingCaptureActive } from "../../core/registry/KeybindingRegistry";
 import "./InlineInput.css";
@@ -44,7 +44,12 @@ export interface InlineInputProps {
   max?: number;
 }
 
-export function InlineInput({
+/** 暴露给父组件的 imperative handle——外部按钮读当前值 */
+export interface InlineInputHandle {
+  getValue(): string;
+}
+
+export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(function InlineInput({
   size,
   value,
   onConfirm,
@@ -56,10 +61,15 @@ export function InlineInput({
   type = "text",
   min,
   max,
-}: InlineInputProps) {
+}, ref) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [localValue, setLocalValue] = useState(value);
   const [isActive, setIsActive] = useState(true);
+
+  // 暴露当前值给外部（如 ✓ 按钮）
+  useImperativeHandle(ref, () => ({
+    getValue: () => localValue,
+  }), [localValue]);
 
   // 🔥 E5#18d 两阶段聚焦——对标 E4V#27 模式
   useEffect(() => {
@@ -149,4 +159,4 @@ export function InlineInput({
       spellCheck={false}
     />
   );
-}
+});

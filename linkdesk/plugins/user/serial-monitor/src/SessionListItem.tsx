@@ -3,10 +3,11 @@
  * 从 sidebar.tsx L36-154 搬出（E36#8.1）。
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import type { SerialSession } from "./useSerialSessions";
 import { InlineInput } from "@src/components/shared/InlineInput";
+import type { InlineInputHandle } from "@src/components/shared/InlineInput";
 
 interface SessionListItemProps {
   session: SerialSession;
@@ -28,6 +29,15 @@ export function SessionListItem({
 }: SessionListItemProps) {
   const { t } = useTranslation();
   const [editing, setEditing] = useState(false);
+  const inlineRef = useRef<InlineInputHandle>(null);
+
+  const commitRename = useCallback(() => {
+    const newName = inlineRef.current?.getValue()?.trim() ?? "";
+    if (newName && newName !== session.name) {
+      onRename(newName);
+    }
+    setEditing(false);
+  }, [session.name, onRename]);
 
   const handleRenameConfirm = useCallback((newName: string) => {
     const trimmed = newName.trim();
@@ -39,6 +49,20 @@ export function SessionListItem({
 
   const handleRenameCancel = useCallback(() => {
     setEditing(false);
+  }, []);
+
+  // 双击开始编辑
+  const handleDoubleClick = useCallback(() => {
+    setEditing(true);
+  }, []);
+
+  // F2 开始编辑
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === "F2") {
+      e.preventDefault();
+      e.stopPropagation();
+      setEditing(true);
+    }
   }, []);
 
   const subtitle = session.port
@@ -56,18 +80,23 @@ export function SessionListItem({
 
       {/* 名称 / E5#19b 内联编辑——InlineInput 归一化 */}
       {editing ? (
-        <span onMouseDown={(e) => e.stopPropagation()} style={{ flex: 1 }}>
-          <InlineInput
-            size="compact"
-            value={session.name}
-            onConfirm={handleRenameConfirm}
-            onCancel={handleRenameCancel}
-            autoFocus
-          />
-        </span>
+        <>
+          <span onMouseDown={(e) => e.stopPropagation()} style={{ flex: 1 }}>
+            <InlineInput
+              ref={inlineRef}
+              size="compact"
+              value={session.name}
+              onConfirm={handleRenameConfirm}
+              onCancel={handleRenameCancel}
+              autoFocus
+            />
+          </span>
+          <button className="session-create-ok" onMouseDown={(e) => { e.preventDefault(); commitRename(); }} title={t("确定")}><span className="codicon codicon-check" /></button>
+          <button className="session-create-cancel" onMouseDown={(e) => { e.preventDefault(); handleRenameCancel(); }} title={t("取消")}><span className="codicon codicon-close" /></button>
+        </>
       ) : (
         <>
-          <div className="session-item-info">
+          <div className="session-item-info" onDoubleClick={handleDoubleClick} onKeyDown={handleKeyDown} tabIndex={0}>
             <span className="session-item-name">{session.name}</span>
             <span className="session-item-subtitle">{subtitle}</span>
           </div>
