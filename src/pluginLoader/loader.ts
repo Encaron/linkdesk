@@ -574,9 +574,10 @@ async function loadPluginLifecycle(
   // Step 1: 旧格式归一化（纯函数，不 mutate）
   const contributes = normalizeManifest(manifest);
 
-  // Step 2: 解析 contributes → 分发到各 Registry
+  // Step 2: 解析 contributes → 分发到各 Registry（出错不阻塞其他插件）
   if (contributes) {
-    await parseContributions(pluginId, contributes);
+    try { await parseContributions(pluginId, contributes); }
+    catch (e) { console.error(`[loader] parseContributions 失败: ${pluginId}`, e); }
   }
 
   // Step 3: 旧格式 file 字段——异步 fetch JSON，按 type 分配到 themes/languages
@@ -601,9 +602,10 @@ async function loadPluginLifecycle(
   // Step 4: 推导加载角色——局部变量（第 6 轮加 pluginRole 字段后扩展此逻辑）
   const role: string | undefined = (!manifest.entry && (contributes || manifest.contributes)) ? "data" : undefined;
 
-  // Step 5: 加载视图组件——仅非 data + 有 entry + 未 skip
+  // Step 5: 加载视图组件——仅非 data + 有 entry + 未 skip（出错不阻塞其他插件）
   if (role !== "data" && manifest.entry && !opts?.skipView) {
-    await loadPluginComponent(pluginId, manifest);
+    try { await loadPluginComponent(pluginId, manifest); }
+    catch (e) { console.error(`[loader] 加载视图组件失败: ${pluginId}`, e); }
   }
 }
 
