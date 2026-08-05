@@ -9,7 +9,7 @@
 
 /* ── 类型 ── */
 
-export type ConfigurationType = "string" | "number" | "boolean";
+export type ConfigurationType = "string" | "number" | "boolean" | "object" | "array";
 
 export interface ConfigurationProperty {
   type: ConfigurationType;
