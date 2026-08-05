@@ -364,7 +364,7 @@ export function activateFileTreeContextMenu(): void {
         dirPath = joinPath(dirUri, name);
       }
     }
-    await lk.filesystem.mkdir(dirPath);
+    await lk.filesystem.createDir(dirPath);
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});

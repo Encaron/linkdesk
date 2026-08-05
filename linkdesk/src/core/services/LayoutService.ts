@@ -12,7 +12,7 @@
 
 import type { LayoutData } from "../../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
-import { exists, readFile, writeFile, mkdir, joinPath, appDataDir } from "./FileService";
+import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "./FileService";
 import { FALLBACK_PLUGIN_ID } from "../../utils/fallbackPluginId";
 
 /* ── 类型 ── */
@@ -216,7 +216,7 @@ export async function saveNamedWorkspaceLayout(
   // E2c #19c：统一走 FileService
   try {
     const dir = await joinPath(await appDataDir(), "workspaces");
-    if (!(await exists(dir))) await mkdir(dir);
+    if (!(await exists(dir))) await createDir(dir);
     const filePath = await joinPath(dir, `${name}.json`);
     await writeFile(filePath, JSON.stringify(layout, null, 2));
   } catch { /* 静默 */ }
