@@ -259,7 +259,7 @@ try {
     events: {
       ...events, // on + emit 由 createEventSystem() 提供
       heartbeat: () => ipcRenderer.send('heartbeat'),
-      notifyTheme: (isDark: boolean) => ipcRenderer.send('theme-changed', isDark),
+      notifyTheme: (isDark: boolean) => ipcRenderer.send('theme:changed', isDark),
     },
 
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──

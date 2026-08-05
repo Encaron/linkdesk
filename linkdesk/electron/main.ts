@@ -137,7 +137,7 @@ function createWindow(): void {
 }
 
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
-ipcMain.on('theme-changed', (_event, isDark: boolean) => {
+ipcMain.on('theme:changed', (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
