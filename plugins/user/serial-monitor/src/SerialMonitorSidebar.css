@@ -124,20 +124,7 @@
   outline-offset: -1px;
 }
 
-/* ── 内联编辑输入框 ── */
-
-.session-inline-input {
-  flex: 1;
-  background: var(--bg-input);
-  border: 1px solid var(--accent);
-  border-radius: 3px;
-  padding: 2px 6px;
-  font-size: 13px;
-  color: var(--text-primary);
-  font-family: inherit;
-  outline: none;
-  min-width: 0;
-}
+/* ── E5#19b: 内联编辑已迁移到 InlineInput 共享组件 ── */
 
 /* ── 新建会话按钮 ── */
 
