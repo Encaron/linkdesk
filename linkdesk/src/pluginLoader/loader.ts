@@ -1179,7 +1179,6 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     await linkdesk().filesystem.remove(src);
 
     // Rust 成功 → 前端更新
-    console.log(`[loader] uninstallPlugin: cachePluginMetadata("${pluginId}", "${manifest.name}", "uninstalled")`);
     cachePluginMetadata(pluginId, manifest, "uninstalled");
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
@@ -1432,7 +1431,6 @@ export function getDisabledPluginInfo(): Array<{ pluginId: string; name: string;
 export async function getUninstalledPluginInfo(): Promise<Array<{ pluginId: string; name: string; description?: string; version?: string }>> {
   // B2 fix: 从缓存读——不依赖 Rust 目录扫描（目录已被移走）也不依赖 globally（glob 外的插件不存在于此）
   const cache = getMetadataCache();
-  console.log(`[loader] getUninstalledPluginInfo: 缓存共 ${Object.keys(cache).length} 条, status 分布:`, Object.entries(cache).map(([id, m]) => `${id}=${m.status}`));
   const result: Array<{ pluginId: string; name: string; description?: string; version?: string }> = [];
   for (const [, meta] of Object.entries(cache)) {
     if (meta.status === "uninstalled") {
