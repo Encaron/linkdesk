@@ -136,13 +136,13 @@ function App() {
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
       // Phase 5：注册核心配置（app.theme 暂用占位枚举——插件加载后用真实主题列表覆盖）
       registerConfiguration(APP_PLUGIN_ID, {
-        title: "通用",
+        title: t("通用"),
         properties: {
           "app.theme": {
             type: "string",
             default: "Dark",
             enum: ["Dark", "Light"],
-            description: "配色主题",
+            description: t("配色主题"),
             onApply: async (v) => {
               const t = await loadTheme(v as string);
               applyTheme(t);
@@ -154,7 +154,7 @@ function App() {
             type: "string",
             default: "zh",
             enum: ["zh", "en"],
-            description: "界面语言",
+            description: t("界面语言"),
             onApply: (v) => {
               i18n.changeLanguage(v as string);
               // E3c #40：跨进程广播——壳切语言 → 所有插件 WebView 同步
@@ -173,7 +173,7 @@ function App() {
             type: "string",
             default: "custom",
             enum: ["custom", "followTheme"],
-            description: "强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）",
+            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
             onApply: (v) => {
               if (v === "custom") {
                 // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
@@ -186,7 +186,7 @@ function App() {
           "app.accentColor": {
             type: "string",
             default: "#0078d4",
-            description: "自定义强调色（图标栏高亮、开关、焦点边框）",
+            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
             dependsOn: { key: "app.accentMode", value: "custom" },
             renderHint: "color",
             // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
@@ -197,7 +197,7 @@ function App() {
             type: "string",
             default: "titlebar",
             enum: ["titlebar", "hamburger", "both"],
-            description: "菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示",
+            description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
           },
         },
       });
@@ -210,8 +210,8 @@ function App() {
       // E3f #59e2：color-picker.pick 命令——Promise 桥接，插件调 commands.execute 弹出浮层拿到返回值
       registerCommand(APP_PLUGIN_ID, {
         id: "color-picker.pick",
-        title: "选择颜色…",
-        category: "开发人员",
+        title: t("选择颜色…"),
+        category: t("开发人员"),
         handler: async (_token, ...args: unknown[]) => {
           const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
           const color = await import("./components/shared/ColorPicker").then(m =>
@@ -489,7 +489,7 @@ function App() {
         setIsOpen(true);
       }
     } catch (e: any) {
-      setLastError(`串口操作失败：${e?.message || e}`);
+      setLastError(t("串口操作失败") + "：" + (e?.message || e));
     }
   }, [isOpen]);
 
@@ -500,7 +500,7 @@ function App() {
         await linkdesk().serial.closePort();
         await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
-        setLastError(`波特率切换失败：${e?.message || e}`);
+        setLastError(t("波特率切换失败") + "：" + (e?.message || e));
         setIsOpen(false);
       }
     }
@@ -513,7 +513,7 @@ function App() {
         await linkdesk().serial.closePort();
         await linkdesk().serial.openPort({ portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
-        setLastError(`端口切换失败：${e?.message || e}`);
+        setLastError(t("端口切换失败") + "：" + (e?.message || e));
         setIsOpen(false);
       }
     }
