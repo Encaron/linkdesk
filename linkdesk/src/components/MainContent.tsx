@@ -55,7 +55,7 @@ SHELL_VIEWS[FALLBACK_PLUGIN_ID] = WelcomeView;
 //
 // 判断标准：插件在 WebView 中能否接收壳指令（打开文件/切换会话等），不依赖 React props。
 // 改造模式：插件 index.tsx 注册 linkdesk.events.on(...) → 壳通过 ShellEvents emit →
-//   bridge:push-to-plugin IPC → 插件 WebView 接收。
+//   bridge:pushToPlugin IPC → 插件 WebView 接收。
 //
 // 详见 docs/02-Electron架构/E5_核心归一化与壳重构_待执行/
 //   01-壳通信骨架/React-Fallback退役.md §六
