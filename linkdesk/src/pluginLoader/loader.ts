@@ -153,7 +153,7 @@ function getLoadedManifest(pluginId: string): PluginManifest | undefined {
       return manifest;
     }
   }
-  // 3. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest）
+  // 3. 运行时加载的插件（loadPlugin 缓存了完整 manifest）
   const meta = getMetadataCache()[pluginId];
   if (meta?.status === "installed" && meta.manifest && loadedPluginIds.has(pluginId)) {
     return meta.manifest;
@@ -312,7 +312,7 @@ export async function initPluginLoader(): Promise<void> {
     if (installed.has(pluginId)) continue;  // 已在 glob 中加载
     if (disabled.includes(pluginId)) continue;
     try {
-      await loadPluginRuntime(pluginId);
+      await loadPlugin(pluginId, "startup");
     } catch (e: any) {
       errors.push(`${pluginId} (runtime): ${e?.message || e}`);
     }
@@ -401,7 +401,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     registerConfigurationDefaults(pluginId, c.configurationDefaults as Record<string, unknown>);
   }
 
-  // contributes.themes → ThemeRegistry（metadata only——数据在 loadPlugin/loadPluginRuntime 中异步加载）
+  // contributes.themes → ThemeRegistry（metadata only——数据在 loadPlugin 中异步加载）
   if (c.themes) {
     const themeList = c.themes as ThemeContribution[];
     for (const tc of themeList) {
@@ -425,7 +425,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     }
   }
 
-  // contributes.languages → LanguageRegistry（metadata only——数据在 loadPlugin/loadPluginRuntime 中异步加载）
+  // contributes.languages → LanguageRegistry（metadata only——数据在 loadPlugin 中异步加载）
   if (c.languages) {
     const langList = c.languages as LanguageContribution[];
     for (const lc of langList) {
@@ -592,7 +592,7 @@ function normalizeManifest(manifest: PluginManifest): Record<string, unknown> | 
 /* ── E5#12：加载管线唯一入口——所有插件（view/data/theme/language）走这里 ── */
 
 /**
- * 插件加载管线——loadPlugin 和 loadPluginRuntime 的唯一入口。
+ * 插件加载管线——loadPlugin 唯一入口——glob + IPC 统一。
  *
  * 流程：normalizeManifest → parseContributions → 推导 pluginRole → loadPluginComponent
  * 不 import IconBar/SidePanel/TabBar——加载管线不知道 UI 的存在。
@@ -630,21 +630,16 @@ async function loadPluginLifecycle(
     }
   }
 
-  // Step 4: 推导加载角色——局部变量。pluginRole 显式声明优先，否则自动推导
-  const role = manifest.pluginRole ?? (!manifest.entry && (contributes || manifest.contributes) ? "data" : undefined);
-
-  // Step 5: 加载视图组件——仅非 data + 有 entry + 未 skip（出错不阻塞其他插件）
-  if (role !== "data" && manifest.entry && !opts?.skipView) {
-    try { await loadPluginComponent(pluginId, manifest); }
-    catch (e) { console.error(`[loader] 加载视图组件失败: ${pluginId}`, e); }
-  }
+  // Step 4: 视图组件加载已归一化到 loadPlugin()——此处不再重复。
+  // loadPlugin 根据 isRuntime 决定走 glob loadPluginComponent 或动态 import，
+  // loadPluginLifecycle 只负责 manifest 解析 + contributes 分发。
 }
 
 /* ── #45：extensionDependencies 检查 ── */
 
 /**
  * 检查插件的 extensionDependencies——所有依赖必须已安装且未被禁用。
- * 共享函数——loadPlugin 和 loadPluginRuntime 都走这条路。
+ * 共享函数——loadPlugin 和 loadPlugin 已合并处理。
  * @returns true = 依赖满足或无需依赖，false = 缺失（已 toast）
  */
 function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean {
@@ -670,6 +665,11 @@ function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean
   return false;
 }
 
+/**
+ * 插件加载唯一入口。
+ * 🔥 E5 归一化：合并运行时路径——glob 内走 Vite 模块，glob 外走 IPC 运行时加载。
+ * 调用方不再自己判断"该走哪条路"——一条 loadPlugin 全覆盖。
+ */
 async function loadPlugin(
   pluginId: string,
   reason: PluginInstallEvent["reason"] = "startup",
@@ -682,21 +682,30 @@ async function loadPlugin(
   const manifestKey = Object.keys(pluginManifests).find(
     (k) => extractPluginId(k) === pluginId
   );
-  if (!manifestKey) {
-    throw new Error(`找不到 plugin.json`);
-  }
+  const isRuntime = !manifestKey;
 
   const promise = (async () => {
+  // ═══ Step 1: 加载 manifest ═══
   let manifest: PluginManifest;
-  try {
-    manifest = pluginManifests[manifestKey];
-  } catch {
-    pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
-    console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
-    return;
+  if (isRuntime) {
+    try {
+      const raw = await linkdesk().plugins.readManifest(pluginId);
+      manifest = JSON.parse(raw);
+    } catch (e: any) {
+      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
+      return;
+    }
+  } else {
+    try {
+      manifest = pluginManifests[manifestKey];
+    } catch {
+      pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
+      console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
+      return;
+    }
   }
 
-  // P1-6 #6: minAppVersion 版本检查
+  // ═══ Step 2: 版本 + 依赖检查（共享） ═══
   if (manifest.minAppVersion) {
     const appVer = getAppVersion();
     if (!versionGte(appVer, manifest.minAppVersion)) {
@@ -704,30 +713,114 @@ async function loadPlugin(
         message: `插件 "${manifest.name}" 需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
         ttl: TOAST_TTL_ERROR,
       });
-      console.warn(
-        `[pluginLoader] 版本不兼容 — "${pluginId}" 需要 ≥${manifest.minAppVersion}，当前 ${appVer}`
-      );
       return;
     }
   }
-
-  // #45：extensionDependencies——加载前检查依赖是否已安装且未被禁用
   if (!_checkDependencies(pluginId, manifest)) return;
 
-  // E5#12：归一化——所有插件走同一个 loadPluginLifecycle
-  await loadPluginLifecycle(pluginId, manifest, opts);
+  // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
+  cachePluginMetadata(pluginId, manifest, "installed");
 
-  // contributes.themes / contributes.languages 数据异步加载
+  // ═══ Step 3: 加载 JS 入口 + statusBar ═══
+  let viewComponent: React.ComponentType<{ isActive: boolean }> | undefined;
+  let statusBarComponent: React.ComponentType | undefined;
+  let runtimePluginRoot: string | undefined;
+
+  if (isRuntime) {
+    // ── 运行时：动态 import（/fs/ 或 linkdesk://）──
+    if (manifest.entry) {
+      try {
+        const isDev = import.meta.env.DEV;
+        const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
+        runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
+        const entryUrl = isDev
+          ? `/@fs/${absPath}/${manifest.entry}`
+          : `linkdesk://${pluginId}/${manifest.entry}`;
+        const module = await import(/* @vite-ignore */ entryUrl);
+        viewComponent = module.default;
+        if (!viewComponent) {
+          console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
+        }
+
+        // statusBar——尝试多条路径
+        const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
+        const statusBarPaths = [
+          "statusBar.tsx",
+          "src/statusBar.tsx",
+          "src/components/statusBar.tsx",
+        ];
+        for (const p of statusBarPaths) {
+          try {
+            const sbm = await import(/* @vite-ignore */ `${basePath}/${p}`);
+            statusBarComponent = sbm.default;
+            break;
+          } catch { /* 路径不存在——继续试下一条 */ }
+        }
+      } catch (e: any) {
+        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
+        pushToast({
+          message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
+          source: pluginId,
+          severity: "warning",
+          ttl: TOAST_TTL_ERROR,
+        });
+        // 不阻断——没有视图组件仍可贡献 commands/menus/configuration
+      }
+    }
+  } else {
+    // ── glob 内：走 loadPluginComponent ──
+    const role = manifest.pluginRole ?? (!manifest.entry && (normalizeManifest(manifest) || manifest.contributes) ? "data" : undefined);
+    if (role !== "data" && manifest.entry && !opts?.skipView) {
+      try { await loadPluginComponent(pluginId, manifest); }
+      catch (e) { console.error(`[loader] 加载视图组件失败: ${pluginId}`, e); }
+    }
+  }
+
+  // ═══ Step 4: 注册视图（运行时）/ loadPluginComponent 已注册（glob） ═══
+  if (isRuntime && viewComponent) {
+    registerViewPlugin({
+      pluginId,
+      manifest,
+      component: viewComponent,
+      statusBarComponent,
+    });
+    log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
+  }
+
+  // ═══ Step 5: 解析 contributes → 分发各 Registry ═══
+  await loadPluginLifecycle(pluginId, manifest, {
+    skipView: isRuntime ? true : opts?.skipView,
+    pluginRoot: runtimePluginRoot,
+  });
+
+  // ═══ Step 6: 主题/语言数据异步加载 ═══
   if (manifest.contributes?.themes) {
     await loadThemeContributionData(pluginId, manifest);
+    // 运行时：glob 外的插件需 fetch 主题颜色数据
+    if (isRuntime) {
+      const themeList = manifest.contributes.themes as ThemeContribution[];
+      for (const tc of themeList) {
+        if (findTheme(tc.label)) continue;
+        try {
+          const absPath = await linkdesk().plugins.resolvePath(pluginId);
+          const url = import.meta.env.DEV
+            ? `/@fs/${absPath}/${tc.path}`
+            : `linkdesk://${pluginId}/${tc.path}`;
+          const response = await fetch(url);
+          if (!response.ok) continue;
+          const data = await response.json();
+          const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
+          const colors = extractThemeColors(data);
+          registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
+        } catch { /* 静默 */ }
+      }
+    }
   }
   if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);
   }
 
-  // B2 fix: 缓存元数据
-  cachePluginMetadata(pluginId, manifest, "installed");
-
+  // ═══ Step 7: 收尾 ═══
   applyPostLoadSteps(pluginId, manifest, reason);
   })();
   _loadingPromises.set(pluginId, promise);
@@ -736,10 +829,10 @@ async function loadPlugin(
 }
 
 /**
- * 加载后收敛步骤——loadPlugin 和 loadPluginRuntime 共享。
- * 🔥 这不是消重复——是堵缝。两条独立函数应收敛到相同终态。
- * 历史上每次给 loadPlugin 加能力，loadPluginRuntime 就漏掉。
- * 加此函数后，新增能力只需改一处，两条路径自动受益。
+ * 加载后收敛步骤——loadPlugin 和 loadPlugin 内部统一处理。
+ * 🔥 这不是消重复——是堵缝。已归一化——loadPlugin 同时覆盖 glob 和运行时。
+ * 🔥 E5 归一化：loadPlugin 单一路径，不再有遗漏。
+ * 新增能力只需改 loadPlugin 一处。
  * 同类 bug：Bug 3（runtime 无侧栏）、L6（runtime 无主题颜色）、#34 bug 6（重装不显示）。
  */
 function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: PluginInstallEvent["reason"]): void {
@@ -748,149 +841,6 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
   syncAppLanguageEnum();
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });
 }
-
-/* ── Phase 5h：运行时动态加载（不在 import.meta.glob 中的插件） ── */
-
-/**
- * 加载运行时安装的插件（不在 Vite 构建产物中）。
- * 1. 通过 Rust 命令读取 plugin.json
- * 2. 通过 plugin:// 协议加载 JS bundle
- * 3. 注册到 viewRegistry + 解析 contributions
- *
- * 对标 VS Code：从文件系统热加载扩展，不刷新窗口。
- */
-async function loadPluginRuntime(pluginId: string): Promise<void> {
-  if (loadedPluginIds.has(pluginId)) return;
-  if (_loadingPromises.has(pluginId)) { await _loadingPromises.get(pluginId)!; return; }
-
-  // 1. 读取 manifest
-  const promise = (async () => {
-  let manifest: PluginManifest;
-  try {
-    const raw = await linkdesk().plugins.readManifest(pluginId);
-    manifest = JSON.parse(raw);
-  } catch (e: any) {
-    console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
-    return;
-  }
-
-  // 2. 版本检查
-  if (manifest.minAppVersion) {
-    const appVer = getAppVersion();
-    if (!versionGte(appVer, manifest.minAppVersion)) {
-      pushToast({
-        message: `插件 "${manifest.name}" 需要应用版本 >=${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
-        ttl: TOAST_TTL_ERROR,
-      });
-      return;
-    }
-  }
-
-  // #45：extensionDependencies——加载前检查依赖
-  if (!_checkDependencies(pluginId, manifest)) return;
-
-  // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
-  cachePluginMetadata(pluginId, manifest, "installed");
-
-  // 3. 加载 JS bundle（ES module，core 模块 API 走 window.__v3_core__）
-  let Component: React.ComponentType<{ isActive: boolean }> | undefined;
-  let statusBarComponent: React.ComponentType | undefined;
-  let runtimePluginRoot: string | undefined;
-  if (manifest.entry) {
-    try {
-      const isDev = import.meta.env.DEV;
-      const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
-      runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
-      const entryUrl = isDev
-        ? `/@fs/${absPath}/${manifest.entry}`
-        : `linkdesk://${pluginId}/${manifest.entry}`;
-      const module = await import(/* @vite-ignore */ entryUrl);
-      Component = module.default;
-      if (!Component) {
-        console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 的 JS bundle 未导出 default 组件`);
-      }
-
-      // Bug 3 fix：运行时插件也加载 statusBar.tsx（对标 loadPluginComponent glob 行为）。
-      // 卸载→退出→重进→重装后插件不在 import.meta.glob 中，走 loadPluginRuntime。
-      const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
-      const statusBarPaths = [
-        "statusBar.tsx",
-        "src/statusBar.tsx",
-        "src/components/statusBar.tsx", // E5#33d: 目录规范化后可能在此
-      ];
-      for (const p of statusBarPaths) {
-        try {
-          const sbm = await import(/* @vite-ignore */ `${basePath}/${p}`);
-          statusBarComponent = sbm.default;
-          break;
-        } catch { /* 路径不存在——继续试下一条 */ }
-      }
-    } catch (e: any) {
-      console.warn(`[pluginLoader] glob 外的插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
-      pushToast({
-        message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
-        source: pluginId,
-        severity: "warning",
-        ttl: TOAST_TTL_ERROR,
-      });
-      // 不阻断——没有视图组件仍可贡献 commands/menus/configuration
-    }
-  }
-
-  // 4. 注册视图插件
-  if (Component) {
-    const entry: ViewPluginEntry = {
-      pluginId,
-      manifest,
-      component: Component,
-      statusBarComponent,
-    };
-    registerViewPlugin(entry);
-    // E3f #58a：运行时插件也创建独立 WebView
-    // 🔥 E5#84g 回退：单 WebView 模式——不创建独立 WebContentsView
-    // try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron */ }
-    log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
-  }
-
-  // 5. E5#12：归一化——解析 contributes + 旧格式兼容（skipView 因 view 加载用动态 import）
-  await loadPluginLifecycle(pluginId, manifest, { skipView: true, pluginRoot: runtimePluginRoot });
-
-  // contributes.themes / contributes.languages 数据异步加载
-  if (manifest.contributes?.themes) {
-    await loadThemeContributionData(pluginId, manifest);
-  }
-  if (manifest.contributes?.languages) {
-    await loadLanguageContributionData(pluginId, manifest);
-  }
-
-  // Runtime 主题数据补充——parseContributions 注册了 metadata，但 glob 外的插件需 fetch 颜色数据
-  if (manifest.contributes?.themes) {
-    const themeList = manifest.contributes.themes as ThemeContribution[];
-    for (const tc of themeList) {
-      if (findTheme(tc.label)) continue; // 已由 parseContributions 加载
-      try {
-        const absPath = await linkdesk().plugins.resolvePath(pluginId);
-        const url = import.meta.env.DEV
-          ? `/@fs/${absPath}/${tc.path}`
-          : `linkdesk://${pluginId}/${tc.path}`;
-        const response = await fetch(url);
-        if (!response.ok) continue;
-        const data = await response.json();
-        const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-        const colors = extractThemeColors(data);
-        registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors }, pluginId);
-      } catch { /* 静默 */ }
-    }
-  }
-
-  applyPostLoadSteps(pluginId, manifest, "install");
-  })();
-  _loadingPromises.set(pluginId, promise);
-  try { await promise; }
-  finally { _loadingPromises.delete(pluginId); }
-}
-
-/* ── 视图插件 ── */
 
 async function loadPluginComponent(pluginId: string, manifest: PluginManifest): Promise<void> {
   const entryKey = Object.keys(pluginModules).find(
@@ -954,7 +904,7 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
 /**
  * 🔥 替代 getPluginDataFile——用 fetch() 而非 import.meta.glob。
  * Vite glob 在 dev 模式下只在启动时扫描一次，新插件目录的 JSON 不被实时发现。
- * 对标 loadPluginRuntime 的主题数据加载——从一开始就用 fetch。
+ * 运行时主题数据加载（对标 loadPlugin 主题分支）——从一开始就用 fetch。
  */
 async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<Record<string, unknown> | null> {
   try {
@@ -1269,22 +1219,11 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     }
     const pluginId = name;
 
-    // 尝试热加载——主题/语言即时生效，视图插件需要重启
-    const manifestKey = Object.keys(pluginManifests).find(
-      (k) => extractPluginId(k) === pluginId
-    );
-
-    if (manifestKey) {
-      // 清单在 glob 中 → loadPlugin(reason:'install') → lifecycle 消费端处理 iconOrder + toast
+    // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
+    try {
       await loadPlugin(pluginId, "install");
       return { success: true, pluginId };
-    }
-    // Phase 5h：清单不在 glob 中（运行时安装的插件）——loadPluginRuntime 内部 fire onDidInstall
-    try {
-      await loadPluginRuntime(pluginId);
-      return { success: true, pluginId };
     } catch (e: any) {
-      // 运行时加载失败（可能未构建）
       pushToast({
         message: `已安装：${pluginId}。运行 npm run build:plugins 后生效。`,
         source: pluginId,
@@ -1348,7 +1287,7 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
     }
   }
 
-  // 2. 运行时加载的插件（loadPluginRuntime 缓存了完整 manifest——仅 loadedPluginIds 中有的，防僵尸缓存）
+  // 2. 运行时加载的插件（loadPlugin 缓存了完整 manifest——仅 loadedPluginIds 中有的，防僵尸缓存）
   const cache = getMetadataCache();
   for (const [pluginId, meta] of Object.entries(cache)) {
     if (meta.status === "installed" && meta.manifest && !seen.has(pluginId) && loadedPluginIds.has(pluginId)) {
@@ -1473,20 +1412,8 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
     await linkdesk().filesystem.copy(src, dest);
     await linkdesk().filesystem.remove(src);
 
-    // 检查 Vite glob 中是否有此插件——启动时文件在 plugins/builtin/ 或 plugins/user/ 下则 glob 中有
-    const manifestKey = Object.keys(pluginManifests).find(
-      (k) => extractPluginId(k) === pluginId
-    );
-    if (manifestKey) {
-      // 同 session 重装——模块已加载，Vite 动态 import 直接加载移回的文件，即时生效
-      await loadPlugin(pluginId, "reinstall");
-      return { success: true };
-    }
-
-    // glob 中没有（退出软件后重启 npx tauri dev 导致 Vite 重扫 glob，插件当时在
-    // .disabled/ 中未被纳入）。文件已由 reinstall_plugin 移回——通过 loadPluginRuntime
-    // 用 Vite /@fs/ 端点即时加载，无需再次重启。
-    await loadPluginRuntime(pluginId);
+    // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
+    await loadPlugin(pluginId, "reinstall");
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };
@@ -1544,7 +1471,7 @@ let _watchInterval: ReturnType<typeof setInterval> | null = null;
  * Phase 5h：文件监听——轮询检测新插件目录。
  * 每 2 秒调用 Rust `list_plugin_dirs`。
  * - glob 中的插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
- * - glob 外的插件（不在 glob 中）→ loadPluginRuntime（plugin:// 协议）
+ * - glob 外的插件（不在 glob 中）→ loadPlugin（运行时 IPC 路径）
  */
 export function startPluginWatcher(): void {
   if (_watchInterval) return;
@@ -1564,9 +1491,7 @@ export function startPluginWatcher(): void {
           await loadPlugin(dir, "startup");
           log.appendLine(`文件监听发现新插件 "${dir}"——已即时加载`);
         } else {
-          // 不在 glob 中——通过 Vite /@fs/ 动态 import 加载
-          await loadPluginRuntime(dir);
-          // loadPluginRuntime 内部已 toast（成功或失败）
+          await loadPlugin(dir, "install");
         }
       }
 
