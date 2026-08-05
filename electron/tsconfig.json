@@ -4,7 +4,7 @@
     "module": "CommonJS",
     "moduleResolution": "node",
     "outDir": "../dist-electron",
-    "rootDir": ".",
+    "rootDir": "..",
     "strict": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
@@ -12,5 +12,5 @@
     "sourceMap": true,
     "esModuleInterop": true
   },
-  "include": ["./**/*.ts"]
+  "include": ["./**/*.ts", "../shared/**/*.ts"]
 }
