@@ -7,14 +7,14 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useSerialSessions } from "../useSerialSessions";
-import { useSerialContext } from "../SerialContext";
+import { useSerialSessions } from "../hooks/useSerialSessions";
+import { useSerialContext } from "../services/SerialContext";
 
 import { activateSidebarItem } from "@src/core/react/SidebarTabSync";
 import { ContextKeyService } from "@src/core/registry/ContextKeyService";
 import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
-import { SessionListItem } from "../SessionListItem";
-import "../SerialMonitorSidebar.css";
+import { SessionListItem } from "../components/SessionListItem";
+import "../styles/SerialMonitorSidebar.css";
 
 // ── E5#19b: ClipboardProvider——壳 F2 分发到串口会话重命名 ──
 let _triggerRename: (() => void) | null = null;

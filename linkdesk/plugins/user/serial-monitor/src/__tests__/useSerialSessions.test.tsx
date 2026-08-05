@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useSerialSessions, getActiveSessionId, getSessionById } from "../useSerialSessions";
+import { useSerialSessions, getActiveSessionId, getSessionById } from "../hooks/useSerialSessions";
 
 describe("useSerialSessions", () => {
   beforeEach(() => {

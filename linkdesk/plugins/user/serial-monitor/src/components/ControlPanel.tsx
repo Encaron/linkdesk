@@ -12,15 +12,15 @@
 
 import { useTranslation } from "react-i18next";
 import { useMemo, useCallback, useEffect } from "react";
-import { useSerialContext } from "./SerialContext";
+import { useSerialContext } from "../services/SerialContext";
 import SelectBox from "@src/components/shared/SelectBox";
 import {
   listProtocols,
   getActiveProtocolId,
   setActiveProtocol,
 } from "@src/core/registry/ProtocolRegistry";
-import { useSession } from "./useSerialSessions";
-import "./ControlPanel.css";
+import { useSession } from "../hooks/useSerialSessions";
+import "../styles/ControlPanel.css";
 
 const BAUD_RATES = [
   "9600", "19200", "38400", "57600", "115200",
