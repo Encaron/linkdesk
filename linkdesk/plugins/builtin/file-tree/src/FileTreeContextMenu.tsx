@@ -97,6 +97,7 @@ clipboardProviders.register("file-tree", {
   },
   onDelete() {
     const hd = h(); if (!hd) return;
+    const model = hd.getModel();
     const selection = hd.getSelection();
     // 无多选时 fallback 到聚焦项——对标右键菜单 explorer.delete
     const uris = selection.length > 0 ? selection : (hd.getFocusedUri() ? [hd.getFocusedUri()!] : []);
@@ -104,6 +105,11 @@ clipboardProviders.register("file-tree", {
     for (const uri of uris) {
       lk.filesystem.remove(uri).catch(() => {});
       shellEvents.emit("file:deleted", { filePath: uri });
+    }
+    // 刷新父目录——对标 explorer.delete 命令
+    for (const uri of uris) {
+      const parent = uri.split("/").slice(0, -1).join("/");
+      if (parent) model.refresh(parent).catch(() => {});
     }
   },
   onRename() {
