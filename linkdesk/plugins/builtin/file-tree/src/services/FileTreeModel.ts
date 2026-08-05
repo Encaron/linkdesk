@@ -344,6 +344,13 @@ export class FileTreeModel {
       for (const root of this._roots) {
         if (root.children !== null) root.children = null;
       }
+      // 🔥 补重载——与 path 分支行为一致：已展开根节点→getChildren→递归重载子树
+      for (const root of this._roots) {
+        if (this._expanded.has(root.uri)) {
+          await this.getChildren(root).catch(() => {});
+          await this._reloadExpandedDescendants(root);
+        }
+      }
     }
   }
 
