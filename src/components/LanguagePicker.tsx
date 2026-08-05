@@ -9,6 +9,7 @@
  */
 
 import { useState, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import { setConfigurationValue } from "../core/services/ConfigurationService";
 import { useConfigurationValue } from "../core/react/useConfiguration";
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export default function LanguagePicker({ open, onClose }: Props) {
+  const { t } = useTranslation();
   const [langs, setLangs] = useState<Array<{ id: string; label: string }>>([]);
   const currentLang = useConfigurationValue<string>("app.language") ?? "zh";
 
@@ -47,7 +49,7 @@ export default function LanguagePicker({ open, onClose }: Props) {
       open={open}
       onClose={onClose}
       items={langs.map(l => l.id)}
-      placeholder="选择语言…"
+      placeholder={t("选择语言…")}
       getSearchText={(code) => {
         const entry = langs.find(l => l.id === code);
         return entry ? `${entry.label} ${code}` : code;
@@ -59,7 +61,7 @@ export default function LanguagePicker({ open, onClose }: Props) {
         const entry = langs.find(l => l.id === code);
         return entry?.label ?? code;
       }}
-      renderCategory={(code) => code === currentLang ? "当前" : undefined}
+      renderCategory={(code) => code === currentLang ? t("当前") : undefined}
       renderDetail={(code) => code}
     />
   );
