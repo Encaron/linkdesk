@@ -11,17 +11,9 @@ import * as fs from 'fs/promises';
 import { existsSync, watch as fsWatch } from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import type { FileEntry } from '../../shared/types';
 
-export interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  isFile: boolean;
-  size?: number;
-  modifiedAt?: number;
-  /** E4V#10: 文件是否只读（不可写） */
-  isReadonly?: boolean;
-}
+export type { FileEntry };
 
 class FileService {
   // ── 路径工具（对标 @tauri-apps/api/path）──

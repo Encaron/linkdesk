@@ -19,16 +19,8 @@ import { reportError } from "../ErrorService";
 
 /* ── 类型 ── */
 
-export interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  isFile: boolean;
-  size?: number;
-  modifiedAt?: number;
-  /** E4V#10: 文件是否只读（不可写） */
-  isReadonly?: boolean;
-}
+import type { FileEntry } from "../../../shared/types";
+export type { FileEntry };
 
 export interface FileChangeEvent {
   path: string;
