@@ -258,7 +258,7 @@ try {
     // ── 事件（E2a #5 心跳 + E3j #77a on/emit 归一化）──
     events: {
       ...events, // on + emit 由 createEventSystem() 提供
-      heartbeat: () => ipcRenderer.send('heartbeat'),
+      heartbeat: () => ipcRenderer.send('app:heartbeat'),
       notifyTheme: (isDark: boolean) => ipcRenderer.send('theme:changed', isDark),
     },
 

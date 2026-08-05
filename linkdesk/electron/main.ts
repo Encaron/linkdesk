@@ -157,7 +157,7 @@ let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（渲染进程未就绪�
 const HEARTBEAT_TIMEOUT = 30_000; // 30s 无心跳 → 判定卡死
 const HEARTBEAT_CHECK_INTERVAL = 3000; // 每 3s 检查一次
 
-ipcMain.on('heartbeat', () => {
+ipcMain.on('app:heartbeat', () => {
   lastHeartbeat = Date.now();
 });
 
