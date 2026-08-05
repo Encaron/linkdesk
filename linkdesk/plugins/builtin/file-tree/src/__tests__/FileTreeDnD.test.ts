@@ -8,14 +8,14 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 // Mock FileService——不做真实文件操作
 vi.mock("@src/core/services/FileService", () => ({
   copy: vi.fn(),
-  deleteEntry: vi.fn(),
+  remove: vi.fn(),
 }));
 
-import { copy, deleteEntry } from "@src/core/services/FileService";
+import { copy, remove } from "@src/core/services/FileService";
 import { executeSafeDrop } from "../FileTreeDnD";
 
 const mockedCopy = copy as ReturnType<typeof vi.fn>;
-const mockedDelete = deleteEntry as ReturnType<typeof vi.fn>;
+const mockedDelete = remove as ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
   mockedCopy.mockClear();
@@ -90,7 +90,7 @@ describe("executeSafeDrop", () => {
 
   /* ── 操作类型 ── */
 
-  it("copy 操作——不调 deleteEntry", async () => {
+  it("copy 操作——不调 remove", async () => {
     await executeSafeDrop(
       [{ path: "/other/e.txt", name: "e.txt" }],
       "/root",
@@ -100,7 +100,7 @@ describe("executeSafeDrop", () => {
     expect(mockedDelete).not.toHaveBeenCalled();
   });
 
-  it("move 操作——调 copy + deleteEntry", async () => {
+  it("move 操作——调 copy + remove", async () => {
     await executeSafeDrop(
       [{ path: "/other/f.txt", name: "f.txt" }],
       "/root",

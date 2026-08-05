@@ -27,7 +27,7 @@ import {
   readFile,
   writeFile,
   listDir,
-  deleteEntry,
+  remove,
 } from "./FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 import { Emitter } from "../react/CoreEvents";
@@ -123,7 +123,7 @@ export async function deleteProfile(name: string): Promise<void> {
   const dir = await _profilesDir();
   if (!(await exists(dir))) return;
   const p = await _profilePath(dir, name);
-  if (await exists(p)) await deleteEntry(p);
+  if (await exists(p)) await remove(p);
 }
 
 /* ── 当前 Profile 名持久化 ── */
