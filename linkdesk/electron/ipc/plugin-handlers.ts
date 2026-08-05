@@ -14,21 +14,6 @@ export function registerPluginHandlers(): void {
     return pluginFileService.listPluginDirs();
   });
 
-  // 安装插件
-  ipcMain.handle('plugins:install', async (_event, source: string) => {
-    return pluginFileService.installPlugin(source);
-  });
-
-  // 卸载插件
-  ipcMain.handle('plugins:uninstall', async (_event, pluginId: string) => {
-    await pluginFileService.uninstallPlugin(pluginId);
-  });
-
-  // 重装插件
-  ipcMain.handle('plugins:reinstall', async (_event, pluginId: string) => {
-    await pluginFileService.reinstallPlugin(pluginId);
-  });
-
   // 读取 plugin.json
   ipcMain.handle('plugins:readManifest', async (_event, pluginId: string) => {
     return pluginFileService.readManifest(pluginId);

@@ -119,9 +119,6 @@ try {
     // ── 插件管理（步 3 接入——对标 Rust plugins.rs）──
     plugins: {
       listDirs:     () => ipcRenderer.invoke('plugins:listDirs'),
-      install:      (src: string) => ipcRenderer.invoke('plugins:install', src),
-      uninstall:    (id: string) => ipcRenderer.invoke('plugins:uninstall', id),
-      reinstall:    (id: string) => ipcRenderer.invoke('plugins:reinstall', id),
       readManifest: (id: string) => ipcRenderer.invoke('plugins:readManifest', id),
       resolvePath:  (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
     },
