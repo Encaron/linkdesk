@@ -66,6 +66,11 @@
           "default": true,
           "description": "紧凑文件夹——单子目录压缩为单行路径"
         },
+        "explorer.expandOnClick": {
+          "type": "boolean",
+          "default": false,
+          "description": "点击目录行即可展开/折叠——关闭后只有 twistie 小三角管展开折叠，点目录行仅选中"
+        },
         "explorer.autoReveal": {
           "type": "boolean",
           "default": true,

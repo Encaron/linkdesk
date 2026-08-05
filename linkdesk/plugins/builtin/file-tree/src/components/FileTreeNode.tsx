@@ -43,6 +43,8 @@ interface FileTreeNodeProps {
   onOpen: (item: ExplorerItem, mode: "preview" | "pin") => void;
   onTwistieClick: (item: ExplorerItem) => void;
   onContextMenu?: (item: ExplorerItem, e: React.MouseEvent) => void;
+  /** E5: 开启后点击目录行=toggle 展开/折叠。关闭后只有 twistie 管展开折叠。 */
+  expandOnClick?: boolean;
 }
 
 function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
@@ -75,6 +77,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   onOpen,
   onTwistieClick,
   onContextMenu,
+  expandOnClick,
 }) => {
   const rowClass = [
     "file-tree-node",
@@ -102,9 +105,9 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     e.stopPropagation(); // 阻止冒泡到容器——容器 onClick 负责清空选中
     // E4V#21: 传 event 给父组件——检测 ctrlKey/metaKey 做多选 toggle
     onSelect(item.uri, e);
-    // E4V#28b: 目录——每次单击=toggle，双击=两次翻转。无"双击"语义
     if (item.isDirectory) {
-      onTwistieClick(item);
+      // E5: expandOnClick 控制单击目录行是否 toggle 展开/折叠
+      if (expandOnClick) onTwistieClick(item);
       return;
     }
     clickPreviewClick(e);
