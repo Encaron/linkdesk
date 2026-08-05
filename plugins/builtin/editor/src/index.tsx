@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
-import EditorTab from "./EditorTab";
-import DiffEditor from "./DiffEditor";
-import { initHotExit } from "./hot-exit";
-import "./editor.css"; initHotExit();
+import EditorTab from "./components/EditorTab";
+import DiffEditor from "./views/DiffEditor";
+import { initHotExit } from "./services/hot-exit";
+import "./styles/editor.css"; initHotExit();
 
 const EditorPlugin: React.FC<{ isActive?: boolean; sourceId?: string }> = ({ sourceId: propId }) => {
   const [ipcId, setIpcId] = useState<string | null>(null);

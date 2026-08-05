@@ -5,8 +5,8 @@
  * 入口：index.tsx 中 sourceId 含 "|||" → 拆出双路径 → 渲染 DiffEditor。
  */
 import React, { useState, useEffect, useRef } from "react";
-import { EditorModel } from "./EditorModel";
-import { syncMonacoTheme, subscribeThemeSync } from "./theme-sync";
+import { EditorModel } from "../services/EditorModel";
+import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
 
 interface DiffEditorProps {
   originalPath: string;
