@@ -452,15 +452,15 @@ function ObjectEditor({ value, onChange }: {
             <input
               className="input object-editor-value"
               type="number"
-              value={v}
-              onChange={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
+              defaultValue={v}
+              onBlur={(e) => onChange({ ...value, [k]: Number(e.target.value) })}
             />
           ) : (
             <input
               className="input object-editor-value"
               type="text"
-              value={String(v)}
-              onChange={(e) => handleValueChange(k, e.target.value)}
+              defaultValue={String(v)}
+              onBlur={(e) => handleValueChange(k, e.target.value)}
               spellCheck={false}
             />
           )}
