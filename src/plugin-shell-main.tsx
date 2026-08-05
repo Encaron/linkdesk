@@ -38,7 +38,7 @@ function bootstrap() {
   if (!root) return;
 
   if (!pluginId) {
-    root.textContent = "缺少参数: ?plugin-view=<插件ID>";
+    root.textContent = i18n.t("缺少参数: ?plugin-view=<插件ID>");
     return;
   }
 
@@ -53,14 +53,14 @@ function bootstrap() {
   const loader = modulePath ? pluginModules[modulePath] : undefined;
 
   if (!loader) {
-    root.textContent = `未找到插件: ${pluginId}`;
+    root.textContent = i18n.t("未找到插件: {{id}}", { id: pluginId });
     return;
   }
 
   loader().then((mod: any) => {
     const Component = mod.default;
     if (!Component) {
-      root.textContent = `插件 ${pluginId} 未导出 default 组件`;
+      root.textContent = i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId });
       return;
     }
 
@@ -86,7 +86,7 @@ function bootstrap() {
               fontSize: "13px",
               whiteSpace: "pre-wrap",
             },
-          }, `插件 ${pluginId} 渲染失败:\n${this.state.error.message}\n\n${this.state.error.stack ?? ""}`);
+          }, i18n.t("插件 {{id}} 渲染失败", { id: pluginId }) + ":\n" + this.state.error.message + "\n\n" + (this.state.error.stack ?? ""));
         }
         return this.props.children;
       }
@@ -105,7 +105,7 @@ function bootstrap() {
     // #58e 修复：渲染完成后通知壳。
     try { (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId); } catch {}
   }).catch((err: any) => {
-    root.textContent = `插件 ${pluginId} 加载失败:\n${err?.message ?? String(err)}`;
+    root.textContent = i18n.t("插件 {{id}} 加载失败", { id: pluginId }) + ":\n" + (err?.message ?? String(err));
   });
 }
 
