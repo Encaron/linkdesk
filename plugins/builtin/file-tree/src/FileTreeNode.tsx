@@ -125,8 +125,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     <div
       className={rowClass}
       style={{ paddingLeft: `calc(${indent}px + (${depth} - 1) * var(--tree-indent))` }}
-      draggable={true}
-      onDragStart={onDragStart ? (e: React.DragEvent) => onDragStart(item, e) : undefined}
+      draggable={!isRenaming}
+      onDragStart={isRenaming ? (e) => e.preventDefault() : onDragStart ? (e: React.DragEvent) => onDragStart(item, e) : undefined}
       onClick={handleClick}
       onMouseDown={clickPreviewMouseDown}
       onContextMenu={onContextMenu ? (e: React.MouseEvent) => onContextMenu(item, e) : undefined}
@@ -153,7 +153,6 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
         <span
           style={{ marginLeft: "var(--tree-icon-gap)", flex: 1, maxWidth: 200 }}
           onMouseDown={(e) => e.stopPropagation()}
-          onDragStart={(e) => { e.stopPropagation(); e.preventDefault(); }}
         >
           <InlineInput
             size="compact"
