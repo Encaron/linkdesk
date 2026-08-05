@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../i18n";
 import { subscribeToasts, dismissToast, setToastsSuppressed, type Toast } from "../core/services/toast";
 
 /* ── 模块级未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 ── */
@@ -20,13 +21,13 @@ const _seenIds = new Set<string>();
 
 function formatTimeAgo(ts: number): string {
   const diff = Date.now() - ts;
-  if (diff < 60_000) return "刚刚";
+  if (diff < 60_000) return i18n.t("刚刚");
   const min = Math.floor(diff / 60_000);
-  if (min < 60) return `${min} 分钟前`;
+  if (min < 60) return i18n.t("{{min}} 分钟前", { min });
   const hr = Math.floor(min / 60);
-  if (hr < 24) return `${hr} 小时前`;
+  if (hr < 24) return i18n.t("{{hr}} 小时前", { hr });
   const d = Math.floor(hr / 24);
-  return `${d} 天前`;
+  return i18n.t("{{d}} 天前", { d });
 }
 
 /* ── E3e #50：source 归类 ── */
@@ -54,7 +55,7 @@ function buildSourceGroups(notifications: Toast[]): SourceGroup[] {
     const unread = items.filter((n) => !_seenIds.has(n.id)).length;
     groups.push({
       key,
-      label: key === "__other__" ? "其他" : key,
+      label: key === "__other__" ? i18n.t("其他") : key,
       unread,
       items,
     });
@@ -192,14 +193,14 @@ function renderNotifItem(n: Toast) {
         <button
           className="notif-panel-dismiss"
           onClick={() => dismissToast(n.id)}
-          title="关闭"
+          title={i18n.t("关闭")}
         >
           <span className="codicon codicon-close" />
         </button>
       </div>
       {(n.source || (n.actions && n.actions.length > 0)) && (
         <div className="notif-details-row">
-          {n.source && <span className="notif-source">来源: {n.source}</span>}
+          {n.source && <span className="notif-source">{i18n.t("来源: {{source}}", { source: n.source })}</span>}
           {n.actions && n.actions.length > 0 && (
             <div className="notif-actions-row">
               {n.actions.map((a, i) => (
