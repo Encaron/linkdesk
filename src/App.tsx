@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => (window as any).linkdesk;
 import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/services/NotificationService";
+import { reportError } from "./core/ErrorService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
@@ -490,6 +491,7 @@ function App() {
       }
     } catch (e: any) {
       setLastError(t("串口操作失败") + "：" + (e?.message || e));
+      reportError({ message: t("串口操作失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
     }
   }, [isOpen]);
 
@@ -501,6 +503,7 @@ function App() {
         await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(t("波特率切换失败") + "：" + (e?.message || e));
+        reportError({ message: t("波特率切换失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
         setIsOpen(false);
       }
     }
@@ -514,6 +517,7 @@ function App() {
         await linkdesk().serial.openPort({ portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
       } catch (e: any) {
         setLastError(t("端口切换失败") + "：" + (e?.message || e));
+        reportError({ message: t("端口切换失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
         setIsOpen(false);
       }
     }
