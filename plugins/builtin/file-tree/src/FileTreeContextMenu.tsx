@@ -58,14 +58,27 @@ clipboardProviders.register("file-tree", {
     const uris = hd.getSelection();
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
-    navigator.clipboard.writeText(uris.join("\n")).catch(() => {});
+    // 写系统剪贴板——用 textarea + execCommand（navigator.clipboard 在非用户手势上下文中可能被拒）
+    const ta = document.createElement("textarea");
+    ta.value = uris.join("\n");
+    ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
   },
   onCut() {
     const hd = h(); if (!hd) return;
     const uris = hd.getSelection();
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
-    navigator.clipboard.writeText(uris.join("\n")).catch(() => {});
+    const ta = document.createElement("textarea");
+    ta.value = uris.join("\n");
+    ta.style.position = "fixed"; ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand("copy");
+    document.body.removeChild(ta);
     hd.rerender();
   },
   onPaste() {
