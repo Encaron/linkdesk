@@ -62,11 +62,15 @@
         "editor.lineHeight": {
           "type": "number",
           "default": 0,
+          "minimum": 0,
+          "maximum": 100,
           "description": "行高——0 表示自动计算"
         },
         "editor.tabSize": {
           "type": "number",
           "default": 4,
+          "minimum": 1,
+          "maximum": 16,
           "description": "Tab 缩进空格数"
         },
         "editor.insertSpaces": {

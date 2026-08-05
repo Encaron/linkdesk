@@ -539,6 +539,16 @@ select {
   overflow: hidden;
 }
 
+/* E5#57: 隐藏 number input 原生 spinner——暗色主题下跑色，与 .input 风格不统一 */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+input[type="number"] {
+  -moz-appearance: textfield;
+}
+
 /* 归一化滚动容器——所有可滚动区域默认 hidden-x */
 .scroll-y {
   overflow-y: auto;
