@@ -14,6 +14,12 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem } from './event-system';
 
+// ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
+const _contextKeyStore = new Map<string, unknown>();
+// 监听主进程回传的 context key 变更——其他 WebView 写入后主进程广播
+ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
+  _contextKeyStore.set(key, value);
+});
 
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
 let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
@@ -193,10 +199,14 @@ try {
         ipcRenderer.invoke('menu:getItems', menuId),
     },
 
-    // ── E5#70：ContextKey——插件 SET 状态 ──
+    // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──
     contextKey: {
-      set: (key: string, value: unknown) =>
-        ipcRenderer.invoke('contextKey:set', key, value),
+      set: (key: string, value: unknown) => {
+        _contextKeyStore.set(key, value);
+        ipcRenderer.invoke('contextKey:set', key, value);
+      },
+      // 供 ContextKeyService 同步读取——零延迟，解决键盘分发竞态
+      _getValue: (key: string) => _contextKeyStore.get(key),
     },
 
     // ── E5#68：标签页操作——插件调壳的 tabs API ──

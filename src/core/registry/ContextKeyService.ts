@@ -308,6 +308,14 @@ class ContextKeyServiceImpl {
   private _state = new Map<string, unknown>();
   private _listeners = new Set<ContextKeyChangeListener>();
 
+  /** E5#19b fix: preload 同步 store 的 getter——注入式，不直接耦合 window.linkdesk */
+  private _externalGetter: ((key: string) => unknown) | null = null;
+
+  /** 注册外部 getter——App 初始化时注入 preload 的同步 context key store */
+  registerExternalGetter(fn: (key: string) => unknown): void {
+    this._externalGetter = fn;
+  }
+
   /** 设置 context key 值——对标 VS Code setContext */
   setValue(key: string, value: unknown): void {
     const old = this._state.get(key);
@@ -318,9 +326,9 @@ class ContextKeyServiceImpl {
     }
   }
 
-  /** 获取 context key 值 */
+  /** 获取 context key 值——preload 同步 store 优先，_state 兜底 */
   getValue<T>(key: string): T | undefined {
-    return this._state.get(key) as T | undefined;
+    return this._readValue(key) as T | undefined;
   }
 
   /** 获取所有 context key（调试用） */
@@ -352,6 +360,15 @@ class ContextKeyServiceImpl {
     }
   }
 
+  /** 读取 context key——external getter 优先（preload 同步 store），_state 兜底 */
+  private _readValue(key: string): unknown {
+    if (this._externalGetter) {
+      const v = this._externalGetter(key);
+      if (v !== undefined) return v;
+    }
+    return this._state.get(key);
+  }
+
   /** 递归求值 AST——overrides 优先于全局 _state */
   private evaluate(node: ExprNode, overrides?: Record<string, unknown>): boolean {
     switch (node.type) {
@@ -361,7 +378,7 @@ class ContextKeyServiceImpl {
         return false;
       case "key":
         if (overrides && node.value in overrides) return !!overrides[node.value];
-        return !!this._state.get(node.value);
+        return !!this._readValue(node.value);
       case "not":
         return !this.evaluate(node.operand, overrides);
       case "and":
@@ -369,15 +386,15 @@ class ContextKeyServiceImpl {
       case "or":
         return this.evaluate(node.left, overrides) || this.evaluate(node.right, overrides);
       case "eq": {
-        const val = this._state.get(node.key);
+        const val = this._readValue(node.key);
         return String(val ?? "") === node.value;
       }
       case "neq": {
-        const val = this._state.get(node.key);
+        const val = this._readValue(node.key);
         return String(val ?? "") !== node.value;
       }
       case "regex": {
-        const val = String(this._state.get(node.key) ?? "");
+        const val = String(this._readValue(node.key) ?? "");
         try {
           return new RegExp(node.pattern).test(val);
         } catch {
@@ -385,7 +402,7 @@ class ContextKeyServiceImpl {
         }
       }
       case "in": {
-        const val = String(this._state.get(node.key) ?? "");
+        const val = String(this._readValue(node.key) ?? "");
         return node.values.includes(val);
       }
     }

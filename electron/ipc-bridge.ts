@@ -88,6 +88,13 @@ export class IpcBridge {
   private registerProxyHandlers(): void {
     for (const channel of IpcBridge.PROXY_CHANNELS) {
       ipcMain.handle(channel, async (event, ...args: unknown[]) => {
+        // ── E5#19b fix: contextKey:set → 立即广播到所有渲染进程（多 WebView 火种）──
+        if (channel === 'contextKey:set') {
+          const [key, value] = args as [string, unknown];
+          this.mainWindow.webContents.send('contextKey:changed', { key, value });
+          this.broadcast('contextKey:changed', { key, value });
+        }
+
         const requestId = `bridge-${++this.requestCounter}-${Date.now()}`;
 
         const doRequest = (): Promise<unknown> => {
