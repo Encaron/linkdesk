@@ -54,7 +54,7 @@ function createWindow(): void {
     height: 900,
     minWidth: 800,
     minHeight: 500,
-    icon: path.join(__dirname, '../build/icon.ico'), // 任务栏/窗口图标——dev 用 build/icon.ico
+    icon: path.join(__dirname, '../../build/icon.ico'), // 任务栏/窗口图标——dev 用 build/icon.ico（rootDir=.. 多一层 electron/）
     frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
     backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
