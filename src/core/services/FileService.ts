@@ -138,7 +138,7 @@ export async function writeFile(filePath: string, content: string): Promise<void
 }
 
 /** 删除文件或目录（递归） */
-export async function deleteEntry(filePath: string): Promise<void> {
+export async function remove(filePath: string): Promise<void> {
   const a = api();
   if (!a) return;
   await a.remove(filePath);
@@ -186,7 +186,7 @@ export async function watchFile(
   const a = api();
   if (!a) return () => {};
   return a.watch(dirPath, (event) => {
-    // 🔥 核心写操作抑制——writeFile/copy/deleteEntry/createDir 后 300ms 内事件丢弃
+    // 🔥 核心写操作抑制——writeFile/copy/remove/createDir 后 300ms 内事件丢弃
     if (isSuppressed(event.path)) return;
     onEvent(event);
   });
