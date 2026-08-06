@@ -10,6 +10,9 @@ import { listDir, readBinaryFile, exists } from "./FileService";
 import { EncodingService } from "./EncodingService";
 import { normalizePath } from "./pathUtils";
 
+/** E5#102c: 搜索结果数上限——防内存炸 */
+const DEFAULT_MAX_RESULTS = 2000;
+
 /** 二进制/编译产物——搜索时自动跳过。对标 VS Code search.files.exclude 默认值 */
 const BINARY_EXTS = new Set([
   ".exe", ".dll", ".pdb", ".suo", ".obj", ".o", ".a", ".lib",
@@ -163,7 +166,7 @@ async function collectFiles(
  * @returns 按文件分组的匹配结果。无匹配→空数组 `[]`。
  */
 export async function searchFiles(opts: SearchOptions): Promise<FileSearchResult[]> {
-  const maxResults = opts.maxResults ?? 2000;
+  const maxResults = opts.maxResults ?? DEFAULT_MAX_RESULTS;
   const query = opts.query;
   if (!query) return [];
 

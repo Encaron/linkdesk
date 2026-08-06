@@ -347,7 +347,7 @@ export async function switchProfile(name: string): Promise<boolean> {
     pushToast({
       message: `Profile 切换失败: ${summary}${tail} ${rbMsg}`,
       severity: "warning",
-      ttl: 8000,
+      ttl: TOAST_TTL_ERROR,
     });
     return false;
   }
