@@ -33,19 +33,20 @@ import { HexToBytes } from "@src/core/data/DataConverter";
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 import { registerCommand, unregisterPluginCommands } from "@src/core/registry/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId, registerMenuItems } from "@src/core/registry/MenuRegistry";
+import { MenuId } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./styles/SerialMonitorView.css";
 
-// E5#116: 右键菜单注册——模块顶层立即执行，不依赖 useEffect 时序
-// _menus 是模块级 Map，import 时即写入，任何后续 ContextMenu mount 都能读到
-// TODO: 多 WebView 恢复时切到 window.linkdesk.menu.registerItems (IPC)
-registerMenuItems(MenuId.EditorContext, "serial-monitor", [
+// E5#116: 右键菜单注册——模块顶层 IPC，单/多 WebView 统一通路
+// ipcRenderer.invoke → main → 壳 IpcBridgeHandler → registerMenuItems → 壳的 _menus
+// 模块顶层执行 → 比任何 React mount 早 → 零时序竞态
+// preload 在页面 JS 之前运行 → window.linkdesk 此时已就绪
+window.linkdesk?.menu?.registerItems?.(MenuId.EditorContext, "serial-monitor", [
   { command: "serial-monitor.copy", group: "clipboard" },
   { command: "serial-monitor.selectAll", group: "selection" },
   { command: "serial-monitor.clear", group: "edit" },
 ]);
-registerMenuItems(MenuId.QuickSendContext, "serial-monitor", [
+window.linkdesk?.menu?.registerItems?.(MenuId.QuickSendContext, "serial-monitor", [
   { command: "serial-monitor.quickSendEdit", group: "edit" },
   { command: "serial-monitor.quickSendDelete", group: "danger" },
 ]);
