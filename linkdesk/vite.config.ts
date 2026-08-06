@@ -3,6 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolve, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readdirSync, readFileSync } from "fs";
+import { DEV_SERVER_PORT } from "./shared/constants";
 import { PLUGIN_SUBDIRS } from "./src/core/pluginPaths";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -57,7 +58,7 @@ export default defineConfig(async () => {
     base: './',
     clearScreen: false,
     server: {
-      port: 1420,
+      port: DEV_SERVER_PORT,
       strictPort: true,
       host: host || false,
       hmr: host
