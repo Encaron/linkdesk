@@ -16,7 +16,7 @@
   position: fixed;
   bottom: 30px;              /* 状态栏 22px + 8px gap */
   right: 6px;
-  z-index: 2545;             /* VS Code exactly: above modal (2540), below quick input (2550) */
+  z-index: var(--z-overlay); /* E5#98: above modal (2540), below quick input (2550) */
   display: flex;
   flex-direction: column-reverse;  /* 最新在底部 */
   gap: 4px;                  /* VS Code: margin: 4px around each toast */
