@@ -129,6 +129,11 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         readOnly,
         ...options,
       });
+      // 🔴 安全网：绕过 @codingame/monaco-vscode-api 的 StandaloneWorkbenchThemeService
+      // 异步管道——editor.updateOptions 是 Monaco 实例级 API，不经过 VS Code service override。
+      // 若 create() 的 theme 因竞态未生效，此处直接改写编辑器实例。
+      const currentTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs";
+      editor.updateOptions({ theme: currentTheme });
       editorRef.current = editor;
       monacoRef.current = monaco;
 
