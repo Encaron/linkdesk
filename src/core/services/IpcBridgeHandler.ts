@@ -39,11 +39,12 @@ export interface PluginManagementAPI {
 let _pluginAPI: PluginManagementAPI | null = null;
 export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api; }
 
-let _initialized = false;
+/** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
+let _refCount = 0;
 
 export function initIpcBridgeHandler(): void {
-  if (_initialized) return;
-  _initialized = true;
+  _refCount++;
+  if (_refCount > 1) return; // 已注册——只加引用计数
 
   // ── E5#19b fix: ContextKey 注入 preload 同步 store——解决 IPC 延迟致键盘分发竞态 ──
   if (window.linkdesk?.contextKey?._getValue) {
@@ -54,7 +55,7 @@ export function initIpcBridgeHandler(): void {
 
   const linkdesk = window.linkdesk;
   if (!linkdesk?.bridge) {
-    _initialized = false; // 失败时重置，允许重试
+    _refCount = 0; // 失败时重置，允许重试
     console.warn("[IpcBridgeHandler] window.linkdesk.bridge 不可用——preload 尚未就绪？");
     return;
   }
@@ -196,6 +197,11 @@ export function initIpcBridgeHandler(): void {
   onDidChangeConfiguration((key: string, value: unknown) => {
     linkdesk.bridge.notifyConfigChanged?.(key, value);
   });
+}
+
+/** E5#103: 注销 IPC bridge handler——引用计数归零时调用。bridge.onRequest 无法真正注销，重置状态允下次 mount 重注册。 */
+export function unregisterIpcBridgeHandler(): void {
+  _refCount = Math.max(0, _refCount - 1);
 }
 
 // ── E3a #31：插件管理方法路由 ──

@@ -39,7 +39,7 @@ import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
 import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
 import { onDidRequestShowChannel } from "./core/data/LogChannel"; // E3f #54
-import { initIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26
+import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26 + E5#103
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/ConfigurationApplier";
 import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API namespace
@@ -303,6 +303,7 @@ function App() {
     return () => {
       keybindingCleanup?.();
       stopPluginWatcher();
+      unregisterIpcBridgeHandler(); // E5#103
     };
   }, []);
 
