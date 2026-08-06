@@ -27,10 +27,9 @@ import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPlugi
 import { factorySlots } from "./core/data/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
-// initConfigurationService 已提前到 main.tsx mount 前调用
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
+import { initConfigurationService, getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
 import { useConfigurationValue } from "./core/react/useConfiguration";
-// initStorageService 已提前到 main.tsx mount 前调用
+import { initStorageService } from "./core/services/StorageService";
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "./core/services/LayoutService";
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
@@ -127,8 +126,10 @@ function App() {
     let keybindingCleanup: (() => void) | undefined;
 
     (async () => {
-      // E5#115: initStorageService + initConfigurationService 已提前到 main.tsx mount 前
+      // Phase 5：并行初始化所有服务（B14：PreferenceService 已删除，initPrefs 不再需要）
       await Promise.all([
+        initStorageService(),
+        initConfigurationService(),
         initLayoutService(),
         initPluginStates(),
       ]).catch((e) => console.warn("[App] Phase 5 服务初始化部分失败:", e));
