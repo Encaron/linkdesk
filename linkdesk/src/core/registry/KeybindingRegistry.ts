@@ -35,6 +35,9 @@ import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../ser
 import { normalizePath } from "../services/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../react/CoreEvents";
 
+/** E5#102c: chord 第二键等待超时（ms） */
+const CHORD_TIMEOUT = 2000;
+
 /* ── 类型 ── */
 
 export interface Keybinding {
@@ -488,7 +491,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
   if (isChordPrefix(keyString)) {
     _chordState.isPending = true;
     _chordState.firstKey = keyString;
-    _chordState.timer = setTimeout(resetChord, 2000); // 2s 无第二键 → 取消
+    _chordState.timer = setTimeout(resetChord, CHORD_TIMEOUT); // 2s 无第二键 → 取消
     window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
       detail: { isPending: true, firstKey: keyString },
     }));

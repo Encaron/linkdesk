@@ -57,6 +57,9 @@ import type { SourceInfo } from "./core/react/SourceStateContext";
 import i18n from "./i18n";
 import "./App.css";
 
+/** E5#102c: 串口端口列表刷新间隔（ms） */
+const PORT_REFRESH_INTERVAL = 2000;
+
 function App() {
   const { t } = useTranslation();
   const [ready, setReady] = useState(false);
@@ -546,7 +549,7 @@ function App() {
       } catch { /* 静默 */ }
     };
     refreshPorts();
-    const timer = setInterval(refreshPorts, 2000);
+    const timer = setInterval(refreshPorts, PORT_REFRESH_INTERVAL);
     return () => clearInterval(timer);
   }, []);
 
