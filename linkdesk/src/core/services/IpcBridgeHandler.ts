@@ -132,14 +132,8 @@ export function initIpcBridgeHandler(): void {
         // ── E5#68：标签页操作——插件调壳的 tabs API ──
         case "tabs:create": {
           const [type, opts] = req.args as [string, Record<string, unknown>?];
-          // E5#99a：壳统一守卫——pluginId 为空时弹 toast，不用每个调用方自己写
-          if (!type) {
-            const filePath = opts?.filePath as string | undefined;
-            const ext = filePath ? filePath.split(".").pop()?.toLowerCase() : "";
-            void alert({ title: "无法打开文件", message: `没有为 .${ext ?? "?"} 文件注册编辑器` });
-            break;
-          }
-          shellEvents.emit("tab:create", { type, opts });
+          // E5#99：壳统一守卫——未知类型路由到 editor（对标 VS Code 文本编辑器 fallback）
+          shellEvents.emit("tab:create", { type: type || "editor", opts });
           break;
         }
         case "tabs:openOrFocus": {
