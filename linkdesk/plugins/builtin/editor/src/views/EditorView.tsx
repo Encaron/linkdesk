@@ -57,6 +57,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   onCursorChangeRef.current = onCursorChange;
   const onEditorMountRef = useRef(onEditorMount);
   onEditorMountRef.current = onEditorMount;
+  // 🔴 options 异步加载——EditorTab buildMonacoOptions() 返回前 editor 已创建
+  // ref 桥接：无论谁先完成，editor 创建后都能拿到最新 options
+  const optionsRef = useRef(options);
+  optionsRef.current = options;
 
   const tabs = (window as any).linkdesk?.tabs;
   const tabsRef = useRef(tabs);
@@ -129,11 +133,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         readOnly,
         ...options,
       });
-      // 🔴 安全网：绕过 @codingame/monaco-vscode-api 的 StandaloneWorkbenchThemeService
-      // 异步管道——editor.updateOptions 是 Monaco 实例级 API，不经过 VS Code service override。
-      // 若 create() 的 theme 因竞态未生效，此处直接改写编辑器实例。
-      const currentTheme = document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs";
-      editor.updateOptions({ theme: currentTheme });
+      // 🔴 options 异步加载 + theme 竞态——双安全网：
+      // 1) optionsRef 桥接 EditorTab 的 buildMonacoOptions() 异步结果
+      // 2) theme 从 DOM data-theme 直接取，不依赖 StandaloneWorkbenchThemeService 管道
+      if (optionsRef.current) {
+        editor.updateOptions(optionsRef.current);
+      } else {
+        editor.updateOptions({
+          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs",
+        });
+      }
       editorRef.current = editor;
       monacoRef.current = monaco;
 
