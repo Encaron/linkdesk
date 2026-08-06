@@ -819,6 +819,9 @@ async function loadPlugin(
   if (manifest.contributes?.languages) {
     await loadLanguageContributionData(pluginId, manifest);
   }
+  if (manifest.contributes?.i18n) {
+    await loadPluginI18nData(pluginId, manifest);
+  }
 
   // ═══ Step 7: 收尾 ═══
   applyPostLoadSteps(pluginId, manifest, reason);
@@ -992,6 +995,29 @@ function syncLanguageBroadcast(): void {
     if (bundle) resources[lang] = bundle;
   }
   bridge.broadcast("lang:changed", { lang: currentLang, resources });
+}
+
+/**
+ * 加载 contributes.i18n 声明的插件自带翻译文件。
+ * E5#109——每插件 `i18n/{lang}.json`，key=中文原文，value=译文。
+ * 对标 VS Code extension l10n——注册到 i18next "translation" + pluginId 命名空间。
+ * 🔥 复用 fetchPluginDataFile——和 loadLanguageContributionData 同一管道。
+ */
+async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): Promise<void> {
+  const i18nMap = manifest.contributes?.i18n as Record<string, string> | undefined;
+  if (!i18nMap || typeof i18nMap !== "object") return;
+
+  let registered = 0;
+  for (const [langCode, filePath] of Object.entries(i18nMap)) {
+    if (typeof filePath !== "string") continue;
+    const data = await fetchPluginDataFile(pluginId, filePath);
+    if (data) {
+      registerLanguageBundle(langCode, data, pluginId);
+      registered++;
+    }
+  }
+
+  if (registered > 0) syncLanguageBroadcast();
 }
 
 /* ── 语言资源注册——归一化（#38b：消两处 addResourceBundle 重复） ── */
