@@ -349,11 +349,13 @@ const FoldersView: React.FC = () => {
     const ext = extension(name);
     if (!ext) {
       console.warn(`[file-tree] 无法识别文件类型（无扩展名: ${name}）`);
+      window.linkdesk?.dialog?.alert?.(`无法识别文件类型（无扩展名: ${name}）`);
       return;
     }
     const pluginId = getPluginFor(ext);
     if (!pluginId) {
       console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
+      window.linkdesk?.dialog?.alert?.(`没有为 .${ext} 文件注册编辑器`);
       return;
     }
     tabs?.create(pluginId, {
