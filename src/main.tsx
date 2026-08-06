@@ -4,6 +4,9 @@ import App from "./App";
 import "./i18n";
 import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
+// E5#115: 配置在 React mount 前就位——对标 VS Code (Service 在窗口创建前初始化)
+import { initStorageService } from "./core/services/StorageService";
+import { initConfigurationService } from "./core/services/ConfigurationService";
 
 // 🔥 E4V#40h Monaco 完整配置——照着 @monaco-editor/react 官方 Vite 文档：
 //    1. loader.config({ monaco }) → 告诉 @monaco-editor/react 用本地包而非 CDN
@@ -29,8 +32,14 @@ loader.config({ monaco });
   },
 };
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>,
-);
+// E5#115: 对标 VS Code——配置服务和存储服务在 mount 前就位
+// 解决启动时 menuStyle/editor.ctrlScroll 等配置不生效的竞态
+(async () => {
+  await initStorageService();
+  await initConfigurationService();
+  ReactDOM.createRoot(document.getElementById("root")!).render(
+    <React.StrictMode>
+      <App />
+    </React.StrictMode>,
+  );
+})();
