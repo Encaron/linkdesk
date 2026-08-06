@@ -104,7 +104,7 @@ export interface PluginManifest {
   name: string;
   version: string;
   icon?: string;
-  iconSource?: "codicon" | "svg" | "url";
+  iconSource?: "codicon" | "svg" | "url" | "lucide";
   description?: string;
   author?: string;
   entry?: string;

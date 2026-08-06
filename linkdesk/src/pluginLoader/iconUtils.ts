@@ -11,11 +11,13 @@
 import type { PluginManifest } from "../core/api/types";
 
 export interface ResolvedIcon {
+  /** Lucide 图标名——iconSource: "lucide" 时返回 "Package" / "Folder" 等 */
+  lucide?: string;
   /** img src——非 codicon 图标时返回 linkdesk:// 协议路径 */
   src?: string;
   /** codicon CSS class——codicon 图标时返回 "codicon-xxx" */
   codicon?: string;
-  /** emoji fallback——既无 src 也无 codicon 时用 */
+  /** emoji fallback——无 lucide/src/codicon 时用 */
   emoji?: string;
 }
 
@@ -31,6 +33,11 @@ export interface ResolvedIcon {
 export function resolvePluginIcon(pluginId: string, manifest: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
   const icon = manifest.icon;
   const source = (manifest as PluginManifest).iconSource;
+
+  // E5#100: Lucide 图标优先
+  if (source === "lucide" && icon) {
+    return { lucide: icon };
+  }
 
   if (source === "codicon" && icon) {
     return { codicon: `codicon-${icon}` };
