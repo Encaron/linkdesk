@@ -5,6 +5,7 @@
  */
 
 import { useTranslation } from "react-i18next";
+import { BarChart3 } from "lucide-react"; // E5#100
 
 interface WorkspaceViewProps {
   isActive: boolean;
@@ -17,7 +18,7 @@ function WorkspaceView({ isActive: _isActive, workspaceName }: WorkspaceViewProp
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
       <span style={{ color: "var(--text-muted)", fontSize: 13 }}>
-        {workspaceName ? `📊 ${workspaceName}` : t("暂无卡片，请先连接串口")}
+        {workspaceName ? <><BarChart3 size={14} style={{ verticalAlign: "middle", marginRight: 4 }} /> {workspaceName}</> : t("暂无卡片，请先连接串口")}
       </span>
       <span style={{ color: "var(--text-muted)", fontSize: 11, opacity: 0.7 }}>
         {t("卡片架构将在 Phase 5 实现")}

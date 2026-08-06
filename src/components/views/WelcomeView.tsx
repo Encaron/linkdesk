@@ -14,6 +14,7 @@ import { useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
+import { FolderOpen, Folder, BookOpen } from "lucide-react"; // E5#100
 import { getPluginStateValue, setPluginStateValue } from "../../core/services/PluginStateService";
 import { openFolder, addFolder, onDidChangeFolders } from "../../core/services/WorkspaceService"; // E3f #55
 import { PluginIcon } from "../shared/PluginIcon";
@@ -106,7 +107,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
       <section className="welcome-section">
         <h2 className="welcome-section-title">{t("文件夹")}</h2>
         <button className="welcome-card welcome-open-folder" onClick={handleOpenFolder}>
-          <span className="welcome-card-icon">📂</span>
+          <FolderOpen size={24} className="welcome-card-icon" />
           <span className="welcome-card-label">{t("打开文件夹")}</span>
         </button>
         {recentFolders.length > 0 && (
@@ -119,7 +120,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
                 onClick={() => handleRecentFolderClick(f.path)}
                 title={f.path}
               >
-                <span className="welcome-recent-icon">📁</span>
+                <Folder size={16} className="welcome-recent-icon" />
                 <span className="welcome-recent-label">{f.name}</span>
                 <span className="welcome-recent-workspace">{f.path}</span>
               </button>
@@ -176,7 +177,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
       <section className="welcome-section">
         <h2 className="welcome-section-title">{t("帮助")}</h2>
         <div className="welcome-help-links">
-          <span className="welcome-help-item">📖 {t("使用文档")}</span>
+          <span className="welcome-help-item"><BookOpen size={14} /> {t("使用文档")}</span>
           <span className="welcome-help-item">⌨ {t("键盘快捷键")}</span>
         </div>
       </section>

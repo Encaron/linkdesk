@@ -16,6 +16,7 @@ import "./PluginDetailView.css";
 
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
+import { Package, Lightbulb, Lock } from "lucide-react"; // E5#100
 
 /** 排他分类——一个插件只有一个主类型。优先级：theme > language > protocol > view */
 function deriveType(m: { entry?: string; mode?: string; themes?: unknown[]; languages?: unknown[]; contributes?: Record<string, unknown> }): string {
@@ -282,7 +283,7 @@ function DetailsTab({
         {/* 推荐 */}
         {m.recommends && m.recommends.length > 0 && (
           <div className="pd-recommend-section">
-            <h4>📦 {t("推荐同时安装")}</h4>
+            <h4><Package size={14} /> {t("推荐同时安装")}</h4>
             <ul>
               {m.recommends.map((rec) => (
                 <li key={rec.plugin} className={installedIds.has(rec.plugin) ? "installed" : ""}>
@@ -301,7 +302,7 @@ function DetailsTab({
         {/* 可选 */}
         {m.suggests && m.suggests.length > 0 && (
           <div className="pd-recommend-section">
-            <h4>💡 {t("可选")}</h4>
+            <h4><Lightbulb size={14} /> {t("可选")}</h4>
             <ul>
               {m.suggests.map((sug) => (
                 <li key={sug.plugin} className={installedIds.has(sug.plugin) ? "installed" : ""}>
@@ -317,7 +318,7 @@ function DetailsTab({
         {/* 依赖 */}
         {m.requires && m.requires.length > 0 && (
           <div className="pd-recommend-section">
-            <h4>🔒 {t("依赖")}</h4>
+            <h4><Lock size={14} /> {t("依赖")}</h4>
             <ul>
               {m.requires.map((req) => (
                 <li key={req.plugin}>
