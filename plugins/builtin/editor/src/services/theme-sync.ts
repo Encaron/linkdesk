@@ -11,11 +11,7 @@ function isDarkTheme(): boolean {
 }
 
 export function syncMonacoTheme(monaco: any): void {
-  const theme = isDarkTheme() ? "vs-dark" : "vs";
-  console.log(`[theme-sync] setTheme("${theme}")  hasMonaco=${!!monaco?.editor?.setTheme}`);
-  if (monaco?.editor?.setTheme) {
-    monaco.editor.setTheme(theme);
-  }
+  monaco.editor.setTheme(isDarkTheme() ? "vs-dark" : "vs");
 }
 
 export function subscribeThemeSync(monacoNsRef: { current: any }): () => void {
