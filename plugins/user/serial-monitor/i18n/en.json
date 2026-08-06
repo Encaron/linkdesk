@@ -91,5 +91,13 @@
   "串口操作失败": "Serial operation failed",
   "端口切换失败": "Port switch failed",
   "展开侧栏": "Expand sidebar",
-  "折叠侧栏": "Collapse sidebar"
+  "折叠侧栏": "Collapse sidebar",
+  "+新建": "+ New",
+  "新建": "New",
+  "发送行为": "Send Behavior",
+  "关键词过滤": "Keyword Filter",
+  "无": "None",
+  "显示": "Display",
+  "更多操作": "More actions",
+  "收发设置": "Send/Receive"
 }

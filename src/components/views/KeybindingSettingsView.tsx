@@ -260,12 +260,12 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
                       </span>
                       {/* 冲突提示 */}
                       {(secondConflict?.length ?? 0) > 0 && (
-                        <span className="keybindings-inline-conflict" title={secondConflict?.map(b => b.command).join("、")}>
+                        <span className="keybindings-inline-conflict" title={secondConflict?.map(b => b.command).join(t("、"))}>
                           ⚠
                         </span>
                       )}
                       {(!secondKey || !secondConflict) && firstConflict && firstConflict.length > 0 && (
-                        <span className="keybindings-inline-conflict" title={firstConflict.map(b => b.command).join("、")}>
+                        <span className="keybindings-inline-conflict" title={firstConflict.map(b => b.command).join(t("、"))}>
                           ⚠
                         </span>
                       )}
