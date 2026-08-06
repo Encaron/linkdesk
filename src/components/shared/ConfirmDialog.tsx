@@ -73,18 +73,17 @@ export function ConfirmDialog() {
     // alert 模式没有取消——点 backdrop 关闭不触发任何回调
   }, [state.resolve]);
 
-  /** Enter=确认 / Escape=取消——对标原生 dialog 键盘行为 */
+  // E5#96o: Escape → OverlayPortal onClose 处理。Enter 确认保留。
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.key === "Enter") { e.preventDefault(); handleConfirm(); }
-    else if (e.key === "Escape" && !isAlert) { e.preventDefault(); handleCancel(); }
-  }, [handleConfirm, handleCancel, isAlert]);
+  }, [handleConfirm]);
 
   if (!state.open) return null;
 
   const { options } = state;
 
   return (
-    <OverlayPortal>
+    <OverlayPortal onClose={isAlert ? undefined : handleCancel}>
     <div className="confirm-backdrop" onClick={isAlert ? undefined : handleCancel}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}
         tabIndex={-1} ref={(el) => el?.focus()} onKeyDown={handleKeyDown}>
