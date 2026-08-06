@@ -97,6 +97,15 @@ function App() {
     }
   }, []);
 
+  // E5#88d：全局 unhandledrejection 兜底——防止 init 链等异步流程静默失败
+  useEffect(() => {
+    const handler = (event: PromiseRejectionEvent) => {
+      reportError({ message: "未捕获的 Promise 拒绝", source: "App", error: event.reason, silent: true });
+    };
+    window.addEventListener("unhandledrejection", handler);
+    return () => window.removeEventListener("unhandledrejection", handler);
+  }, []);
+
   // Phase 4.4：监听插件卸载/禁用事件，自动关闭关联标签页
   useEffect(() => {
     const handler = (e: Event) => {
