@@ -21,7 +21,10 @@ function isDarkTheme(): boolean {
  * 调用时机：EditorView mount 时 + 每次 onDidChangeTheme。
  */
 export function syncMonacoTheme(monaco: any): void {
-  monaco.editor.setTheme(isDarkTheme() ? "vs-dark" : "vs");
+  const isDark = isDarkTheme();
+  const theme = isDark ? "vs-dark" : "vs";
+  console.log(`[theme-sync] ${document.documentElement.getAttribute("data-theme")} → setTheme("${theme}")`);
+  monaco.editor.setTheme(theme);
 }
 
 /**
