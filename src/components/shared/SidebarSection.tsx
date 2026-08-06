@@ -155,7 +155,7 @@ function SidebarSection({
               ▼
             </span>
           )}
-          <span className="sidebar-section-title">{title}</span>
+          <span className="sidebar-section-title">{title ? t(title) : title}</span>
           {titleDescription && (
             <span className="sidebar-section-title-description">{titleDescription}</span>
           )}

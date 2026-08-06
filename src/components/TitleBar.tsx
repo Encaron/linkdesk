@@ -8,6 +8,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getAssetPath } from "../core/services/assetPath";
 import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from "../core/registry/MenuRegistry";
 import { executeCommand } from "../core/registry/CommandRegistry";
@@ -17,6 +18,7 @@ import OverlayPortal from "./shared/OverlayPortal";
 import "./TitleBar.css";
 
 function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
+  const { t } = useTranslation();
   const [openGroup, setOpenGroup] = useState<string | null>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const titlebarRef = useRef<HTMLDivElement>(null);
@@ -101,8 +103,8 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
 
   function getGroupLabel(groupName: string): string {
     const items = groups.get(groupName);
-    if (!items?.length) return groupName;
-    return items[0].label ?? groupName;
+    if (!items?.length) return t(groupName);
+    return t(items[0].label ?? groupName);
   }
 
   /** 鼠标划过不同 group 按钮时自动切换下拉 */
