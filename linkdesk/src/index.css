@@ -42,11 +42,13 @@
   --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
   --cm-timestamp: #8A8A8A;
-  /* Phase 3.5 新增 —— z-index 语义层级 */
-  --z-dropdown: 100;
+  /* Phase 3.5 新增 —— z-index 语义层级。
+     🔥 E5#98 重新平衡：对照实际裸数字相对顺序——dropdown 在 overlay 之上，drag 最高。 */
+  --z-dropdown: 650;
   --z-sticky: 200;
   --z-overlay-backdrop: 500;
   --z-overlay: 600;
+  --z-drag-preview: 1000;
   /* 🔥 UX10：侧栏内 z-index 分层 */
   --z-sidebar-content: 0;
   --z-sidebar-sticky-header: 10;
