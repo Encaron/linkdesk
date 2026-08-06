@@ -51,13 +51,14 @@
   --z-sidebar-content: 0;
   --z-sidebar-sticky-header: 10;
   --z-sidebar-context-menu: 100;
-  /* Phase 3.5 新增 —— 间距体系 */
+  /* Phase 3.5 新增 —— 间距体系。4px 节奏：xs/sm/md/lg/xl/2xl/3xl */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
   --space-lg: 16px;
-  --space-xl: 24px;
-  --space-2xl: 32px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
   /* E3.5 新增 —— 串口监视器 UI 整改 */
   --warning-text: #E8AB3E;
   --warning-bg: rgba(255, 200, 0, 0.12);
@@ -156,7 +157,7 @@ html, body, #root {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .toggle {
@@ -259,7 +260,7 @@ html, body, #root {
 
 /* E3.5 #CP11: 前缀——">" 标明命令模式 */
 .palette-prefix {
-  padding-left: 14px;
+  padding-left: 12px;
   font-size: 14px;
   color: var(--text-muted);
   user-select: none;
@@ -270,7 +271,7 @@ html, body, #root {
   flex: 1;
   background: var(--bg-input);
   border: none;
-  padding: 10px 12px 10px 6px;
+  padding: 8px 12px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -322,7 +323,7 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 14px;
+  padding: 8px 12px;
   font-size: 12px;
   color: var(--text-primary);
   cursor: pointer;
@@ -456,7 +457,7 @@ html, body, #root {
 
 /* E3.5 #CP08a: 空态提示——居中、muted 色 */
 .palette-empty {
-  padding: 20px 14px;
+  padding: 20px 16px;
   font-size: 12px;
   color: var(--text-muted);
   text-align: center;
@@ -464,7 +465,7 @@ html, body, #root {
 
 /* E3.5 #CP16: 结果计数 */
 .palette-count {
-  padding: 4px 14px 8px;
+  padding: 4px 12px 8px;
   font-size: 10px;
   color: var(--text-muted);
   opacity: 0.5;
