@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getCommand } from "../../core/registry/CommandRegistry";
 import { getKeybindings } from "../../core/registry/KeybindingRegistry";
 import { ContextKeyService } from "../../core/registry/ContextKeyService";
@@ -37,6 +38,7 @@ export function MenuRenderer({
   showGroups = false,
   checkWhen = false,
 }: MenuRendererProps) {
+  const { t } = useTranslation();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -117,7 +119,7 @@ export function MenuRenderer({
           onCommand(item.command);
         }}
       >
-        <span className={`${cssPrefix}-item-label`}>{getLabel(item)}</span>
+        <span className={`${cssPrefix}-item-label`}>{t(getLabel(item))}</span>
         <span className={`${cssPrefix}-item-right`}>
           {getKeyLabel(item.command) && (
             <span className={`${cssPrefix}-item-key`}>{getKeyLabel(item.command)}</span>
@@ -155,7 +157,7 @@ export function MenuRenderer({
           ? groupedItems.map(([group, groupItems]) => (
               <div key={group} className={`${cssPrefix}-group`}>
                 <div className={`${cssPrefix}-group-label`}>
-                  {groupItems[0]?.label ?? group}
+                  {t(groupItems[0]?.label ?? group)}
                 </div>
                 {groupItems.map(renderSingleItem)}
               </div>
@@ -184,7 +186,7 @@ export function MenuRenderer({
                   if (!childDisabled) onCommand(child.command);
                 }}
               >
-                <span className={`${cssPrefix}-item-label`}>{getLabel(child)}</span>
+                <span className={`${cssPrefix}-item-label`}>{t(getLabel(child))}</span>
                 {getKeyLabel(child.command) && (
                   <span className={`${cssPrefix}-item-key`}>{getKeyLabel(child.command)}</span>
                 )}

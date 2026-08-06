@@ -225,7 +225,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
               setHeaderMenu({ x: e.clientX, y: e.clientY });
             }}
           >
-            <span className="side-panel-title" title={title}>{title}</span>
+            <span className="side-panel-title" title={t(title)}>{t(title)}</span>
             <button
               className="side-panel-collapse"
               onClick={() => doCollapse(true)}
