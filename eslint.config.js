@@ -134,6 +134,8 @@ export default [
       // 🔥 E5#116: 插件 import @src/core/* → warn——多 WebView 火种机械检查
       // whitelist 在 eslint-local-rules.js PLUGIN_IMPORT_WHITELIST
       "linkdesk/no-core-import-in-plugin": "warn",
+      // E5#106: JSX 中文必须走 t() 包裹——warn 级，不阻塞构建
+      "linkdesk/no-hardcoded-chinese": "warn",
     },
   },
 ];

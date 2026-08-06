@@ -865,6 +865,108 @@ const noCoreImportInPlugin = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 11：JSX 文本/属性中的硬编码中文必须走 t() 包裹
+// ═══════════════════════════════════════════════════════════
+//
+// E5#36 已清理 42 处硬编码中文——但人是会忘的。此规则机械拦截。
+// warn 级——不阻塞构建，但提醒开发者包 t()。
+//
+// 错误示例：
+//   <span>你好</span>
+//   <input placeholder="搜索..." />
+//
+// 正确示例：
+//   <span>{t("你好")}</span>
+//   <input placeholder={t("搜索...")} />
+
+const CHINESE_RE = /[一-鿿]/;
+
+function hasChinese(text) {
+  return CHINESE_RE.test(text);
+}
+
+function isInsideTranslationCall(node) {
+  let cur = node.parent;
+  while (cur) {
+    if (cur.type === "CallExpression") {
+      const callee = cur.callee;
+      if (callee.type === "Identifier" && (callee.name === "t" || callee.name === "i18n")) return true;
+      if (callee.type === "MemberExpression" &&
+          callee.object.type === "Identifier" && callee.object.name === "i18n" &&
+          callee.property.type === "Identifier" && callee.property.name === "t") return true;
+    }
+    if (cur.type === "JSXExpressionContainer" || cur.type === "JSXAttribute") break;
+    cur = cur.parent;
+  }
+  return false;
+}
+
+const noHardcodedChinese = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "JSX 中的中文字符必须走 t() 包裹——防 i18n 遗漏",
+      recommended: true,
+    },
+    messages: {
+      noChinese: "🔤 JSX 中的中文字符 \"{{text}}\" 未用 t() 包裹。" +
+        " 修复：<span>{t(\"中文\")}</span> 或 placeholder={t(\"中文\")}。" +
+        " 注释/console/测试文件可忽略。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "");
+
+    return {
+      // JSX 标签间的文本：<span>你好</span>
+      JSXText(node) {
+        const text = node.value.trim();
+        if (!text || !hasChinese(text)) return;
+        context.report({
+          node,
+          messageId: "noChinese",
+          data: { text: text.slice(0, 20) },
+        });
+      },
+
+      // 字符串字面量：placeholder="搜索..." 或 const x = "你好"
+      Literal(node) {
+        if (typeof node.value !== "string" || !hasChinese(node.value)) return;
+
+        // 跳过 t("...") / i18n.t("...") 内的字符串
+        if (isInsideTranslationCall(node)) return;
+
+        // 只报告 JSX 属性中的字符串（非 JSX 属性走下一规则或忽略）
+        const parent = node.parent;
+        if (parent && (parent.type === "JSXAttribute" || parent.type === "JSXExpressionContainer")) {
+          context.report({
+            node,
+            messageId: "noChinese",
+            data: { text: node.value.slice(0, 20) },
+          });
+        }
+      },
+
+      // 模板字符串：`你好 ${name}`
+      TemplateLiteral(node) {
+        if (node.quasis.length === 1 && hasChinese(node.quasis[0].value.raw)) {
+          if (isInsideTranslationCall(node)) return;
+          const parent = node.parent;
+          if (parent && (parent.type === "JSXAttribute" || parent.type === "JSXExpressionContainer")) {
+            context.report({
+              node,
+              messageId: "noChinese",
+              data: { text: node.quasis[0].value.raw.slice(0, 20) },
+            });
+          }
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -876,4 +978,5 @@ export default {
   "no-raw-configuration-read": noRawConfigurationRead,
   "no-raw-path-replace": noRawPathReplace,
   "no-core-import-in-plugin": noCoreImportInPlugin,
+  "no-hardcoded-chinese": noHardcodedChinese,
 };
