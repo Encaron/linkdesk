@@ -41,6 +41,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
   const [search, setSearch] = useState("");
   const [focusIdx, setFocusIdx] = useState(-1);
   const containerRef = useRef<HTMLDivElement>(null);
+  const dropdownRef = useRef<HTMLDivElement>(null); // E5#96f: portal 后 dropdown 不在 container 内
   const searchRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLUListElement>(null);
 
@@ -88,7 +89,10 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
   useEffect(() => {
     if (!open) return;
     const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+      // E5#96f: dropdown portaled to body——需同时检查 container 和 dropdown
+      const outsideContainer = containerRef.current && !containerRef.current.contains(e.target as Node);
+      const outsideDropdown = !dropdownRef.current?.contains(e.target as Node);
+      if (outsideContainer && outsideDropdown) {
         setOpen(false);
       }
     };
@@ -158,7 +162,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
       {/* 下拉面板——E5#96f: Portal 到 body，脱离 zone 层叠上下文 */}
       {open && (
         <OverlayPortal>
-        <div className="selectbox-dropdown" onKeyDown={handleKey}
+        <div ref={dropdownRef} className="selectbox-dropdown" onKeyDown={handleKey}
           style={{
             position: "fixed",
             left: containerRef.current?.getBoundingClientRect().left ?? 0,
