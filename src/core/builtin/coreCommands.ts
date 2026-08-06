@@ -28,8 +28,8 @@ import { getCallbacks, isRegistered, setRegistered } from "./CoreCallbacks";
 const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = [
   {
     id: "workbench.action.showCommands",
-    title: i18n.t("命令面板"),
-    category: i18n.t("视图"),
+    title: "命令面板",
+    category: "视图",
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
     },
@@ -40,8 +40,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   // E3f #54：输出面板
   {
     id: "workbench.action.showOutput",
-    title: i18n.t("输出"),
-    category: i18n.t("视图"),
+    title: "输出",
+    category: "视图",
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_OUTPUT));
     },
@@ -51,8 +51,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   // E3f #56：工作区导入导出
   {
     id: "workbench.action.exportWorkspace",
-    title: i18n.t("导出工作区"),
-    category: i18n.t("文件"),
+    title: "导出工作区",
+    category: "文件",
     handler: async () => {
       const layout = getWorkspaceLayout();
       const settings = getUserSettings();
@@ -68,8 +68,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.importWorkspace",
-    title: i18n.t("导入工作区"),
-    category: i18n.t("文件"),
+    title: "导入工作区",
+    category: "文件",
     handler: async () => {
       const input = document.createElement("input");
       input.type = "file";
@@ -92,8 +92,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeTab",
-    title: i18n.t("关闭"),
-    category: i18n.t("标签页"),
+    title: "关闭",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.closeTab(ctx.tabId);
@@ -103,8 +103,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeOtherTabs",
-    title: i18n.t("关闭其他"),
-    category: i18n.t("标签页"),
+    title: "关闭其他",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -117,8 +117,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.closeRightTabs",
-    title: i18n.t("关闭右侧"),
-    category: i18n.t("标签页"),
+    title: "关闭右侧",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
@@ -134,8 +134,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.splitDown",
-    title: i18n.t("向下分屏"),
-    category: i18n.t("标签页"),
+    title: "向下分屏",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
@@ -145,8 +145,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "core.splitRight",
-    title: i18n.t("向右分屏"),
-    category: i18n.t("标签页"),
+    title: "向右分屏",
+    category: "标签页",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
@@ -159,8 +159,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 
   {
     id: "workbench.action.resetSetting",
-    title: i18n.t("重置此设置"),
-    category: i18n.t("首选项"),
+    title: "重置此设置",
+    category: "首选项",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
@@ -179,8 +179,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.copySettingId",
-    title: i18n.t("复制设置 ID"),
-    category: i18n.t("首选项"),
+    title: "复制设置 ID",
+    category: "首选项",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
@@ -194,8 +194,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
   },
   {
     id: "workbench.action.copySettingAsJson",
-    title: i18n.t("复制为 JSON"),
-    category: i18n.t("首选项"),
+    title: "复制为 JSON",
+    category: "首选项",
     handler: async (_token, ...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;

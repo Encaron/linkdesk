@@ -236,7 +236,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
                 onDoubleClick={isEditing ? undefined : () => { startEdit(row); splitChord(row); }}
               >
                 <div className="keybindings-col-command">
-                  <div>{row.title}</div>
+                  <div>{t(row.title)}</div>
                   <div className="keybindings-col-command-id">{row.command}</div>
                 </div>
                 <div className="keybindings-col-key-cell">

@@ -11,14 +11,13 @@ import { CUSTOM_EVENTS } from "../react/CoreEvents";
 import { openKeybindingsSettings } from "../registry/KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
-import i18n from "../../i18n";
 
 export function registerSettingsCommands(): void {
   const commands = [
     {
       id: "core.openSettings",
-      title: i18n.t("设置"),
-      category: i18n.t("视图"),
+      title: "设置",
+      category: "视图",
       handler: async (_token: unknown, ...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
         if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
@@ -29,8 +28,8 @@ export function registerSettingsCommands(): void {
     },
     {
       id: "workbench.action.selectTheme",
-      title: i18n.t("选择颜色主题"),
-      category: i18n.t("首选项"),
+      title: "选择颜色主题",
+      category: "首选项",
       handler: async (_token: unknown, ...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
         window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER, {
@@ -40,16 +39,16 @@ export function registerSettingsCommands(): void {
     },
     {
       id: "workbench.action.selectLanguage",
-      title: i18n.t("选择语言"),
-      category: i18n.t("首选项"),
+      title: "选择语言",
+      category: "首选项",
       handler: async () => {
         window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER));
       },
     },
     {
       id: "workbench.action.openKeybindingsSettings",
-      title: i18n.t("打开键盘快捷方式"),
-      category: i18n.t("首选项"),
+      title: "打开键盘快捷方式",
+      category: "首选项",
       handler: async () => { await openKeybindingsSettings(); },
     },
   ];
