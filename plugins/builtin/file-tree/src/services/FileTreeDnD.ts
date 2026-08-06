@@ -130,11 +130,16 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
   const [dndState, setDndState] = useState<DnDState>({ sourceUri: null, hoverIndex: -1 });
   const dragItemRef = useRef<ExplorerItem | null>(null);
 
-  /** dragStart——记录被拖拽的项 */
+  /** dragStart——记录被拖拽的项 + E5#108d 原生拖出 */
   const handleDragStart = useCallback((item: ExplorerItem, e: React.DragEvent) => {
     dragItemRef.current = item;
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", item.uri);
+    // E5#108d：对标 VS Code fillEditorsDragData——设 DownloadURL + text/uri-list，
+    // Chromium 自动识别为原生文件拖拽。不用 Electron startDrag（闪退）。
+    const fileName = item.name;
+    e.dataTransfer.setData("DownloadURL", `application/octet-stream:${fileName}:file://${item.uri}`);
+    e.dataTransfer.setData("text/uri-list", `file://${item.uri}`);
     setDndState({ sourceUri: item.uri, hoverIndex: -1 });
   }, []);
 

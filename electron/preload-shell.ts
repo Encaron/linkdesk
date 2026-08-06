@@ -216,12 +216,16 @@ try {
           if (d.channel === channel) cb(d.data);
         }),
     },
-    clipboard: {},
-    // ── Shell（E4V#18-#19——revealInOS / openInTerminal）──
+    clipboard: {
+      writeFileList: (paths: string[]) => ipcRenderer.invoke('clipboard:writeFileList', paths),
+    },
+    // ── Shell（E4V#18-#19——revealInOS / openInTerminal / startDrag）──
     shell: {
       showItemInFolder:(p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
       // E5#22: 第二参数 terminalExe + 第三参数 customCommand 由调用方从 ConfigurationService 读取后传入
       openInTerminal:  (dirPath: string, terminalExe?: string, customCommand?: string) => ipcRenderer.invoke('shell:openInTerminal', dirPath, terminalExe, customCommand),
+      // E5#108c：拖出到桌面
+      startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send('shell:startDrag', filePath, iconPath),
     },
     // ── E5#85：workspace——工作区信息查询 ──
     workspace: {

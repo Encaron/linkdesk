@@ -49,8 +49,11 @@ export function clearFileTreeHandle(): void {
 
 /* ── 工具函数 ── */
 
-/** 写路径到系统剪贴板——textarea + execCommand。navigator.clipboard 在非用户手势上下文中可能被拒 */
+/** E5#108c：写路径到系统剪贴板——原生 CF_HDROP 优先 + 纯文本 fallback */
 function writeSystemClipboard(uris: string[]): void {
+  // 原生：Windows 资源管理器可粘贴
+  (window as any).linkdesk?.clipboard?.writeFileList?.(uris);
+  // 纯文本：编辑器/终端可粘贴
   const ta = document.createElement("textarea");
   ta.value = uris.join("\n");
   ta.style.position = "fixed"; ta.style.left = "-9999px";
