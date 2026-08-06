@@ -10,7 +10,7 @@
 /* ── 面板 ── */
 .colorpicker-panel {
   position: fixed;
-  z-index: 9999;
+  z-index: var(--z-overlay); /* E5#98 */
   background: var(--bg-window);
   border: 1px solid var(--separator);
   border-radius: 6px;
