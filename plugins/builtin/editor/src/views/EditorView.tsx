@@ -123,7 +123,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       }
       const editor = monaco.editor.create(container, {
         model,
-        theme: document.documentElement.getAttribute("data-theme") === "dark" ? "linkdesk-dark" : "linkdesk-light",
+        theme: document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs",
         readOnly,
         ...options,
       });
