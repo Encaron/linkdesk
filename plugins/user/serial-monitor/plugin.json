@@ -16,6 +16,7 @@
     { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
   ],
   "contributes": {
+    "i18n": { "en": "i18n/en.json" },
     "viewsContainers": {
       "serial-monitor": {
         "title": "串口监视器",
