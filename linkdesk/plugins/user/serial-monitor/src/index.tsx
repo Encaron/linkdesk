@@ -37,6 +37,19 @@ import { MenuId, registerMenuItems } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./styles/SerialMonitorView.css";
 
+// E5#116: 右键菜单注册——模块顶层立即执行，不依赖 useEffect 时序
+// _menus 是模块级 Map，import 时即写入，任何后续 ContextMenu mount 都能读到
+// TODO: 多 WebView 恢复时切到 window.linkdesk.menu.registerItems (IPC)
+registerMenuItems(MenuId.EditorContext, "serial-monitor", [
+  { command: "serial-monitor.copy", group: "clipboard" },
+  { command: "serial-monitor.selectAll", group: "selection" },
+  { command: "serial-monitor.clear", group: "edit" },
+]);
+registerMenuItems(MenuId.QuickSendContext, "serial-monitor", [
+  { command: "serial-monitor.quickSendEdit", group: "edit" },
+  { command: "serial-monitor.quickSendDelete", group: "danger" },
+]);
+
 /* ---- 常量 ---- */
 const SCROLL_AT_BOTTOM_TOLERANCE = 5;
 const BACK_TO_BOTTOM_THRESHOLD = 30;
@@ -954,18 +967,6 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
       },
     });
-
-    // E5#116：注册右键菜单项——单 WebView 下直接 import MenuRegistry
-    // TODO: 多 WebView 恢复时切到 window.linkdesk.menu.registerItems (IPC)
-    registerMenuItems(MenuId.EditorContext, "serial-monitor", [
-      { command: "serial-monitor.copy", group: "clipboard" },
-      { command: "serial-monitor.selectAll", group: "selection" },
-      { command: "serial-monitor.clear", group: "edit" },
-    ]);
-    registerMenuItems(MenuId.QuickSendContext, "serial-monitor", [
-      { command: "serial-monitor.quickSendEdit", group: "edit" },
-      { command: "serial-monitor.quickSendDelete", group: "danger" },
-    ]);
 
     // #36k2：最后一个串口监视器标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
     // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
