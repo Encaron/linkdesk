@@ -159,7 +159,7 @@
 /* 拖影——对标 TabBar 的半透明跟随 */
 .icon-drag-preview {
   position: fixed;
-  z-index: 99999;
+  z-index: var(--z-drag-preview); /* E5#98: 拖拽预览线——最高层 */
   width: 48px;
   height: 48px;
   display: flex;
