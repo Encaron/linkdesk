@@ -48,7 +48,7 @@ function CommandPalette({ open, onClose }: Props) {
       onSelect={(cmd) => executeCommand(cmd.id)}
       // E3.5 #CP18: 切 slot props——布局由 QuickPick 锁死，只填内容
       renderLabel={(cmd) => t(cmd.title)}
-      renderCategory={(cmd) => cmd.category || undefined}
+      renderCategory={(cmd) => cmd.category ? t(cmd.category) : undefined}
       renderDetail={(cmd) => cmd.id}
       renderDetailRight={(cmd) => {
         const kb = findKeybindingForCommand(cmd.id);
