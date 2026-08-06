@@ -28,6 +28,7 @@
     "concurrently": "^10.0.3",
     "i18next": "^26.3.6",
     "iconv-lite": "^0.7.3",
+    "lucide-react": "^1.29.0",
     "monaco-editor": "^0.55.1",
     "monaco-languageclient": "^10.7.0",
     "react": "^18.3.1",
