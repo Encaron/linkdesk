@@ -88,7 +88,7 @@ export const onDidChangeActiveWorkspace: Event<string> = _onDidChangeActiveWorks
  * 用户选择后自动 addFolder + 设置 workspace root。
  */
 export async function openFolder(): Promise<void> {
-  const lk = (window as any).linkdesk;
+  const lk = window.linkdesk;
   if (!lk?.dialog?.open) {
     console.warn("[WorkspaceService] dialog API 不可用——非 Electron 环境");
     return;

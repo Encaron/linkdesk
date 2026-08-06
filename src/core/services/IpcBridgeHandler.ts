@@ -46,13 +46,13 @@ export function initIpcBridgeHandler(): void {
   _initialized = true;
 
   // ── E5#19b fix: ContextKey 注入 preload 同步 store——解决 IPC 延迟致键盘分发竞态 ──
-  if ((window as any).linkdesk?.contextKey?._getValue) {
+  if (window.linkdesk?.contextKey?._getValue) {
     ContextKeyService.registerExternalGetter(
-      (key: string) => (window as any).linkdesk.contextKey._getValue(key),
+      (key: string) => window.linkdesk.contextKey._getValue(key),
     );
   }
 
-  const linkdesk = (window as any).linkdesk;
+  const linkdesk = window.linkdesk;
   if (!linkdesk?.bridge) {
     _initialized = false; // 失败时重置，允许重试
     console.warn("[IpcBridgeHandler] window.linkdesk.bridge 不可用——preload 尚未就绪？");
@@ -96,7 +96,7 @@ export function initIpcBridgeHandler(): void {
           const [pluginId, key, value] = req.args as [string, string, unknown];
           await setPluginStateValue(pluginId, key, value);
           // E5#84f：广播变更到所有 WebView——pluginState.onChange 订阅者收到通知
-          try { (window as any).linkdesk?.events?.emit("plugin-state:changed", { pluginId, key, value }); } catch { /* 静默 */ }
+          try { window.linkdesk?.events?.emit("plugin-state:changed", { pluginId, key, value }); } catch { /* 静默 */ }
           break;
         }
 

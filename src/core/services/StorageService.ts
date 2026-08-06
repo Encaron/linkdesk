@@ -13,7 +13,7 @@
 import { exists as fsExists, readFile, writeFile, joinPath, appDataDir } from "./FileService";
 
 function _hasLinkdesk(): boolean {
-  return !!(window as any).linkdesk?.filesystem;
+  return !!window.linkdesk?.filesystem;
 }
 
 /* ── key → localStorage key 映射 ── */

@@ -19,9 +19,9 @@ type IpcEventName = "serial-data" | "serial-stats" | "serial-system";
 
 /** 事件通道 → preload 注册器映射 */
 const EVENT_SUBSCRIBERS: Record<IpcEventName, (cb: (payload: any) => void) => () => void> = {
-  "serial-data":  (cb) => (window as any).linkdesk?.serial?.onData?.(cb) ?? (() => {}),
-  "serial-stats": (cb) => (window as any).linkdesk?.serial?.onStats?.(cb) ?? (() => {}),
-  "serial-system":(cb) => (window as any).linkdesk?.serial?.onSystem?.(cb) ?? (() => {}),
+  "serial-data":  (cb) => window.linkdesk?.serial?.onData?.(cb) ?? (() => {}),
+  "serial-stats": (cb) => window.linkdesk?.serial?.onStats?.(cb) ?? (() => {}),
+  "serial-system":(cb) => window.linkdesk?.serial?.onSystem?.(cb) ?? (() => {}),
 };
 
 /**
@@ -40,7 +40,7 @@ export function useIpcEvent<T = string>(
     const gen = ++genRef.current;
     let unsubscribe: (() => void) | undefined;
 
-    const hasIpc = !!(window as any).linkdesk?.serial;
+    const hasIpc = !!window.linkdesk?.serial;
     const subscribe = EVENT_SUBSCRIBERS[eventName];
     unsubscribe = subscribe((payload: T) => {
       if (genRef.current === gen) callbackRef.current(payload);

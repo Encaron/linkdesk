@@ -72,7 +72,7 @@ export function unregisterDialogRenderers(): void {
 const OFF_SCREEN = { x: -10000, y: -10000, width: 1, height: 1 };
 
 async function _hideAllPluginViews(): Promise<void> {
-  const pv = (window as any).linkdesk?.pluginViews;
+  const pv = window.linkdesk?.pluginViews;
   if (!pv) return;
   try {
     const ids: string[] = await pv.getAllIds();

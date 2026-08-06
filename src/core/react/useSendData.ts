@@ -9,7 +9,7 @@
 
 import { useCallback } from "react";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => (window as any).linkdesk;
+const linkdesk = () => window.linkdesk;
 import { HexToBytes } from "../data/DataConverter";
 
 /* ── 类型 ── */

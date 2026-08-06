@@ -9,7 +9,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import "./WindowControls.css";
 
-const win = () => (window as any).linkdesk?.window;
+const win = () => window.linkdesk?.window;
 
 function WindowControls() {
   const { t } = useTranslation();

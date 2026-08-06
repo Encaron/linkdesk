@@ -14,7 +14,7 @@ i18n.use(initReactI18next).init({
 
 // E3c #40：插件 WebView 语言同步——接收壳广播的翻译资源
 if (typeof window !== "undefined") {
-  const linkdesk = (window as any).linkdesk;
+  const linkdesk = window.linkdesk;
   if (linkdesk?.lang) {
     const applyLang = (data: { lang: string; resources: Record<string, unknown> }) => {
       if (!data?.resources) return;

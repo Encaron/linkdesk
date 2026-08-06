@@ -42,7 +42,7 @@ export function usePluginIpcEvent<T = unknown>(
   callbackRef.current = callback;
 
   useEffect(() => {
-    const linkdesk = (window as any).linkdesk;
+    const linkdesk = window.linkdesk;
     if (!linkdesk?.events?.on) {
       console.warn(`[usePluginIpcEvent] window.linkdesk.events 不可用——preload 未就绪？channel=${channel}`);
       return;
