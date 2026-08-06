@@ -21,7 +21,7 @@
  */
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => (window as any).linkdesk;
+const linkdesk = () => window.linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
@@ -486,7 +486,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
           } else {
             // glob 外插件（热安装/重装）——IPC 查询绝对路径兜底，不依赖调用方传参
             try {
-              const abs = await (window as any).linkdesk?.plugins?.resolvePath?.(pluginId);
+              const abs = await window.linkdesk?.plugins?.resolvePath?.(pluginId);
               const isDev = import.meta.env.DEV;
               renderPath = isDev ? `/@fs/${abs}/${viewDef.render}` : `linkdesk://${pluginId}/${viewDef.render}`;
             } catch {
@@ -878,7 +878,7 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
 
   // E3f #58a：为视图插件创建独立 WebContentsView（占位 HTML，真渲染后续迁移）
   // 🔥 E5#84g 回退：单 WebView 模式——不创建独立 WebContentsView
-  // try { (window as any).linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
+  // try { window.linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
 
   // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
   // 在 registerViewPlugin 之后、parseContributions 之前调用——
@@ -983,7 +983,7 @@ async function loadLanguageContributionData(pluginId: string, manifest: PluginMa
  * 对标 App.tsx onApply 的广播——同一段逻辑，两处触发（语言切换 + 新翻译注册）。
  */
 function syncLanguageBroadcast(): void {
-  const bridge = (window as any).linkdesk?.bridge;
+  const bridge = window.linkdesk?.bridge;
   if (!bridge?.broadcast) return;
   const currentLang = i18n.language;
   const resources: Record<string, unknown> = {};

@@ -103,7 +103,7 @@ function bootstrap() {
     );
 
     // #58e 修复：渲染完成后通知壳。
-    try { (window as any).linkdesk?.pluginViews?.notifyReady?.(pluginId); } catch {} // 非关键操作——多 WebView 已回退，pluginViews 可能不存在
+    try { window.linkdesk?.pluginViews?.notifyReady?.(pluginId); } catch {} // 非关键操作——多 WebView 已回退，pluginViews 可能不存在
   }).catch((err: any) => {
     root.textContent = i18n.t("插件 {{id}} 加载失败", { id: pluginId }) + ":\n" + (err?.message ?? String(err));
   });

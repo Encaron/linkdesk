@@ -326,7 +326,7 @@ function MainContent({
   updateCoreCallbacks(coreCallbacks);
 
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
-  const pv = (window as any).linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined;
+  const pv = window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined;
   const {
     readyWebViewIds,
     webViewBoundsReady,
@@ -345,7 +345,7 @@ function MainContent({
 
   // editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径（不依赖 React props）
   useEffect(() => {
-    const bridge = (window as any).linkdesk?.bridge;
+    const bridge = window.linkdesk?.bridge;
     if (!bridge) return;
     for (const g of tabState.groups) for (const t of g.tabs) {
       if (t.pluginId === "editor" && t.sourceId) {
@@ -356,7 +356,7 @@ function MainContent({
 
   // E5#84e：serial-monitor openSession——只发当前聚焦 tab（共享 WebView，防覆盖）
   useEffect(() => {
-    const bridge = (window as any).linkdesk?.bridge;
+    const bridge = window.linkdesk?.bridge;
     if (!bridge) return;
     const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
     const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);

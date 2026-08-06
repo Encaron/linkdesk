@@ -30,7 +30,7 @@ export interface FileChangeEvent {
 /* ── 底层 API 引用 ── */
 
 function api() {
-  return (window as any).linkdesk?.filesystem as {
+  return window.linkdesk?.filesystem as {
     readTextFile(path: string): Promise<string>;
     writeTextFile(path: string, data: string): Promise<void>;
     exists(path: string): Promise<boolean>;
@@ -49,7 +49,7 @@ function api() {
 }
 
 function pathApi() {
-  return (window as any).linkdesk?.path as {
+  return window.linkdesk?.path as {
     join(...parts: string[]): Promise<string>;
     appDataDir(): Promise<string>;
   } | undefined;

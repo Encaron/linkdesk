@@ -10,7 +10,7 @@ import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => (window as any).linkdesk;
+const linkdesk = () => window.linkdesk;
 import { showConfirm } from "../core/services/DialogService";
 
 
@@ -80,7 +80,7 @@ export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   // E5#63：invokeBeforeClose——壳发请求到插件 WebView，插件自己处理
   if (behavior.invokeBeforeClose) {
     try {
-      const result = await (window as any).linkdesk?.bridge?.requestToPlugin?.(pluginId, "invokeBeforeClose", {});
+      const result = await window.linkdesk?.bridge?.requestToPlugin?.(pluginId, "invokeBeforeClose", {});
       if (result === false) return false;
     } catch { /* requestToPlugin 失败不阻塞——允许关闭 */ }
   }

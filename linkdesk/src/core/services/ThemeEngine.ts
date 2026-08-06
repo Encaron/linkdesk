@@ -86,7 +86,7 @@ export async function loadTheme(themeName: string): Promise<Theme> {
 /** 应用主题：清理旧变量 → 写入新变量 → 标记 data-theme → fire 事件 */
 export function applyTheme(theme: Theme): void {
   // E3f #51：先发 IPC 通知主进程——和 CSS 渲染并行，标题栏不落后
-  const linkdesk = (window as any).linkdesk;
+  const linkdesk = window.linkdesk;
   const isDark = theme.type === "dark";
   linkdesk?.events?.notifyTheme?.(isDark);
 

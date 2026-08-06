@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => (window as any).linkdesk;
+const linkdesk = () => window.linkdesk;
 import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/services/NotificationService";
 import { reportError } from "./core/ErrorService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
@@ -168,7 +168,7 @@ function App() {
             onApply: (v) => {
               i18n.changeLanguage(v as string);
               // E3c #40：跨进程广播——壳切语言 → 所有插件 WebView 同步
-              const bridge = (window as any).linkdesk?.bridge;
+              const bridge = window.linkdesk?.bridge;
               if (bridge?.broadcast) {
                 const resources: Record<string, unknown> = {};
                 for (const lang of i18n.languages ?? []) {
@@ -431,7 +431,7 @@ function App() {
     window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
     // E3f #58：DevTools picker
     const onDevtoolsPicker = async () => {
-      const lk = (window as any).linkdesk;
+      const lk = window.linkdesk;
       const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
       const targets: DevToolsTarget[] = webViewIds.map(id => ({ kind: 'plugin' as const, id }));
       // 始终提供壳窗口入口（不管有没有插件 WebView）
@@ -656,7 +656,7 @@ function App() {
         getSearchText={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
         getKey={(target) => target.kind === 'shell' ? '__shell__' : target.id}
         onSelect={async (target) => {
-          const lk = (window as any).linkdesk;
+          const lk = window.linkdesk;
           if (target.kind === 'shell') {
             await lk?.window?.toggleDevTools?.();
           } else {

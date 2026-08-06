@@ -15,7 +15,7 @@ interface FilePathInputProps {
 
 export default function FilePathInput({ value, onChange, dialogType }: FilePathInputProps) {
   const handleBrowse = async () => {
-    const dialog = (window as any).linkdesk?.dialog;
+    const dialog = window.linkdesk?.dialog;
     if (!dialog) return;
 
     const opts = dialogType === "directory"

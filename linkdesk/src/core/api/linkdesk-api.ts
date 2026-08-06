@@ -39,7 +39,7 @@ export interface LinkDeskLanguage {
 export interface LinkDeskConfigSchema {
   [key: string]: {
     type: string;
-    default?: unknown;
+    default?: any;
     description?: string;
     enum?: string[];
     enumDescriptions?: string[];
@@ -54,9 +54,9 @@ export interface LinkDeskAPI {
   /** 命令——对标 VS Code vscode.commands */
   commands: {
     /** @deprecated E3j #75——向后兼容别名，新代码用 executeCommand */
-    execute<T = void>(commandId: string, ...args: unknown[]): Promise<T>;
+    execute<T = void>(commandId: string, ...args: any[]): Promise<T>;
     /** 执行壳侧命令 */
-    executeCommand<T = void>(commandId: string, ...args: unknown[]): Promise<T>;
+    executeCommand<T = void>(commandId: string, ...args: any[]): Promise<T>;
     /** 获取所有已注册命令列表 */
     getCommands(): Promise<LinkDeskCommand[]>;
   };
@@ -64,13 +64,13 @@ export interface LinkDeskAPI {
   /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */
   configuration: {
     /** 读取配置值 */
-    get<T = unknown>(key: string): Promise<T>;
+    get<T = any>(key: string): Promise<T>;
     /** 写入配置值 */
-    set(key: string, value: unknown): Promise<void>;
+    set(key: string, value: any): Promise<void>;
     /** 获取配置 schema */
     getSchema(key?: string): Promise<LinkDeskConfigSchema>;
     /** 订阅配置变更——返回 unsubscribe 函数 */
-    onChange(key: string, cb: (value: unknown) => void): () => void;
+    onChange(key: string, cb: (value: any) => void): () => void;
   };
 
   /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
@@ -93,9 +93,9 @@ export interface LinkDeskAPI {
     /** 切换语言 */
     set(langId: string): Promise<void>;
     /** 获取初始语言数据（WebView 加载时壳已推送） */
-    getInitial(): { lang: string; resources: Record<string, unknown> } | null;
+    getInitial(): { lang: string; resources: Record<string, any> } | null;
     /** 订阅语言变更——返回 unsubscribe */
-    onChange(cb: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void;
+    onChange(cb: (data: { lang: string; resources: Record<string, any> }) => void): () => void;
   };
 
   /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
@@ -106,31 +106,32 @@ export interface LinkDeskAPI {
 
   /** E5#65：p2p 插件间定向推流——和 bridge.broadcast 同模式（fire-and-forget） */
   p2p: {
-    send(target: string, channel: string, data: unknown): void;
-    on(channel: string, cb: (data: unknown) => void): () => void;
+    send(target: string, channel: string, data: any): void;
+    on(channel: string, cb: (data: any) => void): () => void;
   };
 
   /** E5#71：插件持久化存储——集中缓存 + 文件持久化 */
   pluginState: {
-    get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
-    set(pluginId: string, key: string, value: unknown): Promise<void>;
+    get<T = any>(pluginId: string, key: string): Promise<T | undefined>;
+    set(pluginId: string, key: string, value: any): Promise<void>;
   };
 
   /** E5#69：菜单——插件声明式读写 */
   menu: {
-    registerItems(menuId: string, pluginId: string, items: unknown[]): Promise<void>;
-    getItems(menuId: string): Promise<unknown[]>;
+    registerItems(menuId: string, pluginId: string, items: any[]): Promise<void>;
+    getItems(menuId: string): Promise<any[]>;
   };
 
   /** E5#70：ContextKey——插件 SET 状态供壳 when 子句读 */
   contextKey: {
-    set(key: string, value: unknown): Promise<void>;
+    set(key: string, value: any): Promise<void>;
+    _getValue?(key: string): any;
   };
 
   /** E5#68：标签页操作——对标 VS Code vscode.window.createTerminal() */
   tabs: {
-    create(type: string, opts?: Record<string, unknown>): Promise<unknown>;
-    openOrFocus(type: string, opts?: Record<string, unknown>): Promise<unknown>;
+    create(type: string, opts?: Record<string, any>): Promise<any>;
+    openOrFocus(type: string, opts?: Record<string, any>): Promise<any>;
     focus(tabId: string): Promise<void>;
     close(tabId: string): Promise<void>;
     focusBySourceId(sourceId: string): Promise<void>;
@@ -138,37 +139,38 @@ export interface LinkDeskAPI {
     closeBySourceId(sourceId: string): Promise<void>;
   };
 
-  /** E5#67：弹窗——确认/提示，对标 VS Code vscode.window.showWarningMessage */
+  /** E5#67：弹窗——确认/提示/文件选择 */
   dialog: {
     confirm(message: string): Promise<boolean>;
     alert(message: string): Promise<void>;
+    open?(opts?: any): Promise<any>;
   };
 
   /** 通用事件订阅 + 发布——插件间数据管道 */
   events: {
-    on(channel: string, cb: (payload: unknown) => void): () => void;
-    emit(channel: string, payload: unknown): void;
+    on(channel: string, cb: (payload: any) => void): () => void;
+    emit(channel: string, payload: any): void;
   };
 
   /** E5#62：壳→插件请求处理——插件注册 channel handler 响应壳的 requestToPlugin */
   pluginRequest: {
-    handle(channel: string, handler: (payload: unknown) => unknown): void;
+    handle(channel: string, handler: (payload: any) => any): void;
     unhandle(channel: string): void;
   };
 
   /** 串口——读/写/监听，对标 VS Code SerialPort API */
   serial: {
-    listPorts(): Promise<unknown[]>;
-    getStatus(): Promise<unknown>;
-    openPort(cfg: unknown): Promise<void>;
+    listPorts(): Promise<any[]>;
+    getStatus(): Promise<any>;
+    openPort(cfg: any): Promise<void>;
     closePort(): Promise<void>;
     sendData(data: number[]): Promise<void>;
     sendText(text: string, enc: string): Promise<void>;
     setDtr(enable: boolean): Promise<void>;
     setRts(enable: boolean): Promise<void>;
-    onData(cb: (data: unknown) => void): () => void;
-    onStats(cb: (data: unknown) => void): () => void;
-    onSystem(cb: (data: unknown) => void): () => void;
+    onData(cb: (data: any) => void): () => void;
+    onStats(cb: (data: any) => void): () => void;
+    onSystem(cb: (data: any) => void): () => void;
   };
 
   /** 剪贴板——读/写系统剪贴板 */
@@ -179,13 +181,43 @@ export interface LinkDeskAPI {
 
   /** 环境信息——对标 VS Code ExtensionContext */
   env: {
-    get(pluginId?: string): Promise<unknown>;
+    get(pluginId?: string): Promise<any>;
   };
 
   /** 插件视图生命周期——通知壳 WebView 渲染完成 */
   pluginViews: {
     notifyReady(pluginId: string): void;
+    getAllIds?(): Promise<string[]>;
+    setVisible?(id: string, visible: boolean): Promise<void>;
+    setBounds?(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
+    destroy?(id: string): Promise<void>;
+    toggleDevTools?(): Promise<void>;
   };
+
+  // ── 壳侧扩展（preload-shell.ts 注入）──
+  // 注：以下命名空间类型较为宽泛——壳代码通过 ?. 访问，具体签名见 preload-shell.ts
+
+  /** IPC 桥——壳↔插件通信中继 */
+  bridge?: Record<string, any>;
+
+  /** 文件系统——壳侧完整接口（路径校验由主进程执行） */
+  filesystem?: Record<string, (...args: any[]) => Promise<any>>;
+
+  /** 路径工具——壳侧供 FileService 等核心模块使用 */
+  path?: Record<string, (...args: any[]) => any>;
+
+  /** 插件发现和管理——壳侧 loader 使用 */
+  plugins?: Record<string, (...args: any[]) => Promise<any>>;
+  pluginManager?: Record<string, (...args: any[]) => Promise<any>>;
+
+  /** 窗口控制——TitleBar 按钮映射 */
+  window?: Record<string, (...args: any[]) => Promise<any>>;
+
+  /** 工作区信息 */
+  workspace?: Record<string, (...args: any[]) => Promise<any>>;
+
+  /** OS 拖入文件路径获取 */
+  getFilePath?: (file: File) => string;
 }
 
 /** 进度通知句柄——progress=true 时 show() 返回 */
@@ -205,7 +237,7 @@ export interface NotificationHandle {
  * 运行时 window.linkdesk 由 preload 注入——此函数只加类型标注。
  */
 export function getLinkDesk(): LinkDeskAPI {
-  return (window as unknown as { linkdesk: LinkDeskAPI }).linkdesk;
+  return (window as any as { linkdesk: LinkDeskAPI }).linkdesk;
 }
 
 /**
