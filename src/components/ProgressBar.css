@@ -11,7 +11,7 @@
   position: fixed;
   bottom: 30px;               /* 和 ToastContainer 同层 */
   right: 6px;
-  z-index: 2546;              /* toast 上方 1px */
+  z-index: var(--z-overlay); /* E5#98: toast 上方 */
   display: flex;
   flex-direction: column-reverse; /* 最新在底部 */
   gap: 4px;
