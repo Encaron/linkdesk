@@ -112,6 +112,6 @@
   "保存失败：": "Save failed: ",
   "加载中…": "Loading...",
   "无法打开文件": "Cannot open file",
-  "已按下，正在等待第二键…": "Chord pressed, waiting for second key...",
-  "组合键 (...) 不是命令": "Keybinding (...) is not a command"
+  "({{display}}) 已按下，正在等待第二键…": "({{display}}) Chord pressed, waiting for second key...",
+  "组合键 ({{f1}}, {{f2}}) 不是命令": "Keybinding ({{f1}}, {{f2}}) is not a command"
 }

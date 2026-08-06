@@ -5,6 +5,7 @@
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
+import { useTranslation } from "react-i18next";
 import OverlayPortal from "./OverlayPortal";
 import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
@@ -42,6 +43,7 @@ interface ResolvedItem {
 /* ── 组件 ── */
 
 export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
+  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -227,7 +229,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               }}
               onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
             >
-              <span className="ctx-item-label">{item.label}</span>
+              <span className="ctx-item-label">{t(item.label)}</span>
               {hasKids && <span className="ctx-item-chevron">›</span>}
               {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
             </div>

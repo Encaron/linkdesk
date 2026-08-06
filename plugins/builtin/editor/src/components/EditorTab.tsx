@@ -12,6 +12,7 @@
  *   - E4V#40j——渲染 EditorStatusBar（行:列/编码/语言/缩进/EOL）
  */
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { EditorModel } from "../services/EditorModel";
 import EditorView from "../views/EditorView";
 import type { EditorViewHandle } from "../views/EditorView";
@@ -79,6 +80,7 @@ export interface EditorTabProps {
 }
 
 const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
+  const { t } = useTranslation();
   const tabs = (window as any).linkdesk?.tabs;
   const [model, setModel] = useState<EditorModel | null>(null);
   const [value, setValue] = useState<string>("");
@@ -139,7 +141,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       tabs?.updateLabelBySourceId?.(filePath, baseLabelRef.current);
     } catch (err) {
       console.error(`[EditorTab] 保存失败: ${filePath}`, err);
-      setError(`保存失败: ${(err as Error).message}`);
+      setError(`${t("保存失败：")} ${(err as Error).message}`);
     }
   }, [model, filePath, tabs]);
 
@@ -202,7 +204,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
         .catch((err) => {
           if (cancelled) return;
           console.error(`[EditorTab] 加载失败: ${filePath}`, err);
-          setError(`无法打开文件: ${(err as Error).message}`);
+          setError(`${t("无法打开文件")}: ${(err as Error).message}`);
           setLoading(false);
         });
     }
@@ -263,7 +265,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   }, []);
 
   if (loading) {
-    return <div className="editor-loading">加载中…</div>;
+    return <div className="editor-loading">{t("加载中…")}</div>;
   }
 
   if (error) {
@@ -271,7 +273,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   }
 
   if (!model) {
-    return <div className="editor-empty">无法打开文件</div>;
+    return <div className="editor-empty">{t("无法打开文件")}</div>;
   }
 
   // E4V#40q——编辑器选项（异步加载自 lk.configuration）
