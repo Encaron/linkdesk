@@ -127,6 +127,8 @@
 
 /* E5#100: Lucide SVG 图标——对齐 codicon 尺寸和透明态 */
 .icon-btn .plugin-icon--lucide {
+  width: 24px;
+  height: 24px;
   opacity: 0.55;
   color: var(--text-primary);
   transition: opacity 150ms, color 150ms;
