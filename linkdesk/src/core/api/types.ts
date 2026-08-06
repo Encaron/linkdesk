@@ -135,7 +135,7 @@ export interface PluginManifest {
   extensionDependencies?: string[];
   docs?: string;
   cardDocMap?: Record<string, string>;
-  /** @deprecated 使用 languages + file 字段代替——i18n 资源走统一的 languages 体系 */
+  /** @deprecated E5#109——使用 contributes.i18n 代替。每插件 `i18n/{lang}.json`，key=中文原文。见 [[i18n-round2-leftovers]] */
   i18n?: Record<string, string>;
   cssVars?: Record<string, { dark: string; light: string }>;
   permissions?: ("serial" | "filesystem" | "network")[];

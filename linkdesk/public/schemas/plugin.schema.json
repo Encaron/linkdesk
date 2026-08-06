@@ -251,7 +251,7 @@
     },
     "i18n": {
       "type": "object",
-      "description": "插件自带翻译文件",
+      "description": "@deprecated 使用 contributes.i18n 代替——翻译文件声明已迁移到 contributes 下。保留仅向后兼容。",
       "additionalProperties": { "type": "string" }
     },
     "cssVars": {
@@ -534,6 +534,11 @@
             }
           },
           "additionalProperties": false
+        },
+        "i18n": {
+          "type": "object",
+          "description": "插件自带翻译——key=语言代码, value=相对插件根目录的 JSON 文件路径。如 { \"en\": \"i18n/en.json\" }。不需要 zh.json——中文 key 自带兜底。",
+          "additionalProperties": { "type": "string" }
         }
       },
       "additionalProperties": false
