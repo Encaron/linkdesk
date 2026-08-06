@@ -5,6 +5,7 @@
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  */
 import { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { createPortal } from "react-dom";
 import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
 import { ContextKeyService } from "../../core/registry/ContextKeyService";
@@ -189,7 +190,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   /* ── 渲染 ── */
   let clickableIdx = 0;
 
-  return (
+  return createPortal(
     <>
       {/* 主菜单 */}
       <div ref={menuRef} className="ctx-menu" style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}>
@@ -236,6 +237,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           ))}
         </div>
       )}
-    </>
+    </>,
+    document.body
   );
 }
