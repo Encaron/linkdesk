@@ -32,7 +32,7 @@
   border: 1px solid var(--separator);
   border-left: none;
   box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
-  z-index: 2550;
+  z-index: var(--z-dropdown); /* E5#98: ☰ 下拉菜单 */
 }
 
 /* 主面板（左侧） */
