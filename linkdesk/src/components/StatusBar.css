@@ -2,7 +2,7 @@
   display: flex;
   align-items: center;
   height: 22px;
-  padding: 0 10px;
+  padding: 0 8px;
   background: var(--bg-window);
   border-top: 1px solid var(--separator);
   gap: 6px;
@@ -212,7 +212,7 @@
 .notif-panel-item {
   display: flex;
   flex-direction: column-reverse; /* VS Code: details first for keyboard access */
-  padding: 10px 8px;
+  padding: 8px;
   border-bottom: 1px solid var(--separator);
 }
 

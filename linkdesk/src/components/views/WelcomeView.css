@@ -67,7 +67,7 @@
 .welcome-card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
-  gap: 10px;
+  gap: 8px;
 }
 
 .welcome-card {
@@ -134,7 +134,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 6px 10px;
+  padding: 6px 8px;
   border: none;
   border-radius: 4px;
   background: transparent;

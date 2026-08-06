@@ -73,7 +73,7 @@
 .pd-title-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
 }
 
@@ -134,7 +134,7 @@
 
 .pd-btn {
   font-size: 12px;
-  padding: 5px 14px;
+  padding: 4px 12px;
   border-radius: 4px;
   border: 1px solid var(--separator);
   background: transparent;
@@ -401,7 +401,7 @@
 }
 
 .pd-changelog ul {
-  padding-left: 18px;
+  padding-left: 16px;
   margin: 4px 0;
   font-size: 13px;
   color: var(--text-secondary);
