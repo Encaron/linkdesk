@@ -125,6 +125,20 @@ function createWindow(): void {
   // E4V#18: Shell IPC——revealInOS
   ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
 
+  // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
+  ipcMain.on('shell:startDrag', (event, filePath: string, iconPath?: string) => {
+    if (!filePath) return;
+    const sender = event.sender as any;
+    if (typeof sender.startDrag !== 'function') return;
+    const opts: Record<string, unknown> = { file: filePath };
+    if (iconPath && fs.existsSync(iconPath)) opts.icon = iconPath;
+    else if (process.platform === 'win32') {
+      const defIcon = path.join(__dirname, '../../build/icon.ico');
+      if (fs.existsSync(defIcon)) opts.icon = defIcon;
+    }
+    sender.startDrag(opts);
+  });
+
   // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
   ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
     if (process.platform === 'win32') {

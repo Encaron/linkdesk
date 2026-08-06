@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { initAll, type InitDeps, type InitResult } from "../core/services/AppInitializer";
+import { initAll, type InitDeps } from "../core/services/AppInitializer";
 
 // ── 工具：构建成功的 mock deps ──
 
@@ -23,11 +23,11 @@ function mockDeps(overrides?: Partial<InitDeps>): InitDeps {
     factorySlotsInitialize: vi.fn(),
     mountGlobalKeybindings: vi.fn().mockReturnValue(vi.fn()),
     initUserKeybindings: vi.fn().mockResolvedValue(undefined),
-    getConfigurationValue: vi.fn((key: string) => {
+    getConfigurationValue: vi.fn((key: string): any => {
       if (key === "app.theme") return "Dark";
       if (key === "app.language") return "zh";
       return undefined;
-    }),
+    }) as any,
     applyConfiguration: vi.fn(),
     getSerialStatus: vi.fn().mockResolvedValue({ isOpen: false, portName: "", baudRate: 115200 }),
     getTabLayout: vi.fn().mockReturnValue({
