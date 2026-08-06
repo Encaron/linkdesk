@@ -1,11 +1,17 @@
 /**
- * 插件 WebView 自举入口。
+ * 插件 WebView 自举入口——双模式。
  *
- * E3f #58b：多 WebView 渲染——每个插件独立 HTML 页面，不在 App.tsx 的 React 树内。
- * 读 URL 参数 ?plugin-view=xxx，动态 import 插件模块，渲染为独立 React 根。
+ * 模式 1：多 WebView 渲染（?plugin-view=xxx）
+ *   E3f #58b：每个插件独立 HTML 页面，不在 App.tsx 的 React 树内。
+ *   读 URL 参数 ?plugin-view=xxx，动态 import 插件模块，渲染为独立 React 根。
+ *   dev: http://localhost:1420/plugin-view.html?plugin-view=terminal
+ *   prod: linkdesk://terminal/plugin-view.html?plugin-view=terminal（#58c）
  *
- * dev: http://localhost:1420/plugin-view.html?plugin-view=terminal
- * prod: linkdesk://terminal/plugin-view.html?plugin-view=terminal（#58c）
+ * 模式 2：轻量插件开发（?pluginId=xxx）
+ *   E5#110：插件开发者只加载一个插件——不启动完整 Electron，纯 Vite HMR。
+ *   注入 mock window.linkdesk.* API（返回空值/默认值），防止插件 IPC 调用崩溃。
+ *   用法：npm run dev:plugin file-tree
+ *   → http://localhost:1420/plugin-shell.html?pluginId=file-tree
  */
 import React from "react";
 import ReactDOM from "react-dom/client";
@@ -15,7 +21,8 @@ import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
 
 const params = new URLSearchParams(window.location.search);
-const pluginId = params.get("plugin-view");
+const pluginId = params.get("pluginId") ?? params.get("plugin-view");
+const isDevMode = params.get("pluginId") !== null;
 
 // import.meta.glob：Vite 预扫描插件入口，返回 { path: () => import(path) } 映射。
 // 无需 linkdesk().plugins.resolvePath——Vite 在构建时静态展开 glob。
@@ -24,6 +31,145 @@ const pluginModules = {
   ...import.meta.glob("../plugins/builtin/*/src/index.tsx"),
   ...import.meta.glob("../plugins/user/*/src/index.tsx"),
 };
+
+// E5#110：轻量插件开发模式——注入 mock window.linkdesk.* API。
+// 纯 Vite dev server 没有 Electron 主进程，IPC 调用全部失败。
+// Mock 返回空值/默认值/no-op，插件 UI 能渲染不崩溃。
+// 如需真实文件系统/串口，仍需启动完整 Electron（npm run electron:dev）。
+function injectMockApi() {
+  if (window.linkdesk) return; // 已有真实 API（多 WebView 模式），不覆盖
+
+  const noop = () => {};
+  const emptyArr = () => [];
+  const emptyObj = () => ({});
+  const nullVal = () => null;
+  const falseVal = () => false;
+
+  (window as any).linkdesk = {
+    // 配置
+    configuration: {
+      get: () => undefined,
+      getAll: emptyObj,
+      set: noop,
+      onChange: noop,
+    },
+    // 文件系统
+    filesystem: {
+      listDir: emptyArr,
+      readTextFile: nullVal,
+      writeTextFile: noop,
+      exists: falseVal,
+      createDir: noop,
+      remove: noop,
+      copy: noop,
+      watch: noop,
+      getChildren: emptyArr,
+    },
+    // 路径
+    path: {
+      normalize: (p: string) => p,
+      join: (...parts: string[]) => parts.join("/"),
+      basename: (p: string) => p.split("/").pop() ?? p,
+      dirname: (p: string) => p.split("/").slice(0, -1).join("/") || ".",
+      extname: (p: string) => { const m = p.match(/\.[^./]+$/); return m ? m[0] : ""; },
+    },
+    // 工作区
+    workspace: {
+      getFolders: emptyArr,
+      getActive: nullVal,
+    },
+    // 标签页
+    tabs: {
+      create: noop,
+      openOrFocus: noop,
+      focus: noop,
+      close: noop,
+    },
+    // 菜单
+    menu: {
+      registerItems: noop,
+      getItems: emptyArr,
+    },
+    // 对话框
+    dialog: {
+      alert: noop,
+      confirm: noop,
+      showConfirm: (_msg: string, cb: (ok: boolean) => void) => cb(false),
+      open: noop,
+    },
+    // 上下文键
+    contextKey: {
+      set: noop,
+      get: nullVal,
+      _getValue: falseVal,
+    },
+    // 事件
+    events: {
+      emit: noop,
+      on: noop,
+      off: noop,
+    },
+    // P2P
+    p2p: {
+      send: noop,
+      on: noop,
+    },
+    // 插件视图（多 WebView）
+    pluginViews: {
+      notifyReady: noop,
+      getAllIds: emptyArr,
+      setVisible: noop,
+      setBounds: noop,
+      destroy: noop,
+      toggleDevTools: noop,
+    },
+    // 插件管理
+    plugins: {
+      getAll: emptyArr,
+      get: nullVal,
+    },
+    pluginManager: {
+      install: noop,
+      uninstall: noop,
+      reinstall: noop,
+    },
+    // 状态
+    pluginState: {
+      get: nullVal,
+      set: noop,
+    },
+    // 语言
+    language: {
+      getCurrent: () => "zh-CN",
+    },
+    // 环境
+    env: {
+      isDev: true,
+      pluginsRootDir: "",
+      appPluginsDir: "",
+    },
+    // 剪贴板
+    clipboard: {
+      readText: () => Promise.resolve(""),
+      writeText: noop,
+      writeFileList: noop,
+    },
+    // Shell
+    shell: {
+      startDrag: noop,
+    },
+    // 命令
+    commands: {
+      executeCommand: noop,
+    },
+    // 窗口
+    window: {
+      minimize: noop,
+      maximize: noop,
+      close: noop,
+    },
+  };
+}
 
 function bootstrap() {
   // E5#10：全局错误捕获——WebView 内任何未捕获异常都记录
@@ -37,8 +183,14 @@ function bootstrap() {
   const root = document.getElementById("root");
   if (!root) return;
 
+  // E5#110：轻量插件开发模式——注入 mock API 防 IPC 崩溃
+  if (isDevMode) {
+    injectMockApi();
+    console.log(`[plugin-shell] dev mode: pluginId=${pluginId} — mock linkdesk.* injected`);
+  }
+
   if (!pluginId) {
-    root.textContent = i18n.t("缺少参数: ?plugin-view=<插件ID>");
+    root.textContent = i18n.t("缺少参数: ?pluginId=<插件ID> 或 ?plugin-view=<插件ID>");
     return;
   }
 
@@ -92,6 +244,29 @@ function bootstrap() {
       }
     }
 
+    // E5#110：轻量开发模式——全屏最小壳（无图标栏/侧栏/状态栏/布局引擎）
+    if (isDevMode) {
+      ReactDOM.createRoot(root).render(
+        <PluginErrorBoundary>
+          <React.StrictMode>
+            <I18nextProvider i18n={i18n}>
+              <div style={{
+                width: "100vw",
+                height: "100vh",
+                background: "var(--bg-primary, #1e1e1e)",
+                color: "var(--text-primary, #cccccc)",
+                overflow: "auto",
+              }}>
+                <Component isActive={true} />
+              </div>
+            </I18nextProvider>
+          </React.StrictMode>
+        </PluginErrorBoundary>,
+      );
+      return;
+    }
+
+    // 模式 1：多 WebView 渲染（原有逻辑）
     ReactDOM.createRoot(root).render(
       <PluginErrorBoundary>
         <React.StrictMode>
