@@ -98,6 +98,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
       // 3. 主题（用 LinkDesk CSS 变量，不依赖 VS Code 扩展主题）
       syncMonacoTheme(monaco);
+      monacoRef.current = monaco; // subscribeThemeSync 依赖此 ref 在主题变更时重同步
 
       // 4. TS compilerOptions + 影子 model 扫描
       setupTypeScriptEnv(monaco);
