@@ -50,6 +50,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const editorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const themeSyncUnsubRef = useRef<(() => void) | null>(null);
   const onSaveRef = useRef(onSave);
   onSaveRef.current = onSave;
   const onCursorChangeRef = useRef(onCursorChange);
@@ -96,9 +97,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // 2. 动态 import monaco（initMonacoEnv 已配置好 workers）
       const monaco = await import("monaco-editor");
 
-      // 3. 主题（用 LinkDesk CSS 变量，不依赖 VS Code 扩展主题）
+      // 3. 主题同步——先设 monacoRef，再注册订阅，确保回调中 ref 已就位
       syncMonacoTheme(monaco);
-      monacoRef.current = monaco; // subscribeThemeSync 依赖此 ref 在主题变更时重同步
+      monacoRef.current = monaco;
+      themeSyncUnsubRef.current = subscribeThemeSync(monacoRef);
 
       // 4. TS compilerOptions + 影子 model 扫描
       setupTypeScriptEnv(monaco);
@@ -253,6 +255,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
     return () => {
       disposed = true;
+      themeSyncUnsubRef.current?.();
       editorRef.current?.dispose();
     };
   }, [filePath]);
@@ -292,10 +295,6 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
     });
   }, [filePath]);
-
-  useEffect(() => {
-    return subscribeThemeSync(monacoRef);
-  }, []);
 
   // ── 容器 resize（全屏/分屏/窗口缩放）→ Monaco layout() ──
   useEffect(() => {

@@ -18,6 +18,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
   const containerRef = useRef<HTMLDivElement>(null);
   const diffEditorRef = useRef<any>(null);
   const monacoRef = useRef<any>(null);
+  const themeSyncUnsubRef = useRef<(() => void) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -37,6 +38,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
         const monaco = await import("monaco-editor");
         monacoRef.current = monaco;
         syncMonacoTheme(monaco);
+        themeSyncUnsubRef.current = subscribeThemeSync(monacoRef);
 
         const origUri = monaco.Uri.file(origModel.filePath);
         const modUri = monaco.Uri.file(modModel.filePath);
@@ -65,6 +67,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
 
     return () => {
       disposed = true;
+      themeSyncUnsubRef.current?.();
       diffEditorRef.current?.dispose();
     };
   }, [originalPath, modifiedPath]);
@@ -82,11 +85,6 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
     const ro = new ResizeObserver(() => diffEditorRef.current?.layout?.());
     ro.observe(el);
     return () => ro.disconnect();
-  }, []);
-
-  // 主题同步
-  useEffect(() => {
-    return subscribeThemeSync(monacoRef);
   }, []);
 
   return (
