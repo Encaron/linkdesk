@@ -347,6 +347,8 @@ function MainContent({
   useEffect(() => {
     const bridge = window.linkdesk?.bridge;
     if (!bridge) return;
+    // 🔴 @deprecated E5#26d: 多 WebView IPC 残余——pluginId 硬编码。单 WebView 下不执行（readyWebViewIds 为空）。
+    // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
     for (const g of tabState.groups) for (const t of g.tabs) {
       if (t.pluginId === "editor" && t.sourceId) {
         bridge.requestToPlugin?.("editor", "openFile", { filePath: t.sourceId }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
@@ -360,6 +362,8 @@ function MainContent({
     if (!bridge) return;
     const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
     const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
+    // 🔴 @deprecated E5#26d: 多 WebView IPC 残余——pluginId 硬编码。单 WebView 下不执行。
+    // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
     if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId) {
       bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch((e: any) => { console.error("[MainContent] serial-monitor openSession 失败:", e); });
     }
