@@ -226,7 +226,7 @@ export function activateFileTreeContextMenu(): void {
     hd.rerender();
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
   }});
   // ── E4V#27: F2 行内重命名 ──
   registerCommand("file-tree", { id: "explorer.rename", title: "重命名", handler: async () => {
@@ -256,7 +256,7 @@ export function activateFileTreeContextMenu(): void {
     for (const parentUri of parentUris) {
       await model.refresh(parentUri);
       const parent = model.findClosest(parentUri);
-      if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+      if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
     }
   }});
   registerCommand("file-tree", { id: "explorer.findInFolder",    title: "在文件夹中查找…",        handler: placeholder("explorer.findInFolder") });
@@ -277,7 +277,7 @@ export function activateFileTreeContextMenu(): void {
         model.collapse(item.uri);
       } else {
         model.expand(item.uri);
-        await model.getChildren(item).catch(() => {});
+        await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
       }
     } else {
       _openFileFn?.(item.uri, item.name, "pin");
@@ -320,7 +320,7 @@ export function activateFileTreeContextMenu(): void {
     await lk.filesystem.writeTextFile(filePath, "");
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
   }});
 
   registerCommand("file-tree", { id: "explorer.newFolder", title: "新建文件夹", handler: async (_token, ...args: unknown[]) => {
@@ -342,7 +342,7 @@ export function activateFileTreeContextMenu(): void {
     await lk.filesystem.createDir(dirPath);
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
   }});
 
   registerCommand("file-tree", { id: "explorer.refresh", title: "刷新资源管理器", handler: async () => {
@@ -351,7 +351,7 @@ export function activateFileTreeContextMenu(): void {
     await model.refresh();
     for (const uri of model.getExpandedUris()) {
       const item = model.findClosest(uri);
-      if (item) await model.getChildren(item).catch(() => {});
+      if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
     }
   }});
 

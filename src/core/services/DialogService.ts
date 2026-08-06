@@ -78,8 +78,8 @@ async function _hideAllPluginViews(): Promise<void> {
     const ids: string[] = await pv.getAllIds();
     if (ids.length === 0) return;
     await Promise.all(ids.map((id) => Promise.all([
-      pv.setVisible(id, false).catch(() => {}),
-      pv.setBounds(id, OFF_SCREEN).catch(() => {}),
+      pv.setVisible(id, false).catch(() => {}), // 非关键操作——多 WebView 已回退，失败不阻塞
+      pv.setBounds(id, OFF_SCREEN).catch(() => {}), // 非关键操作——多 WebView 已回退，失败不阻塞
     ])));
     await new Promise((r) => setTimeout(r, 50));
   } catch { /* pluginViews 不可用 */ }

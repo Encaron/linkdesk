@@ -106,7 +106,7 @@ const SearchView: React.FC = () => {
       // 保存搜索历史
       const prev = (await (window as any).linkdesk?.pluginState?.get("file-tree", "searchHistory") ?? []) as string[];
       const next = [q, ...prev.filter((h: string) => h !== q)].slice(0, 10);
-      (window as any).linkdesk?.pluginState?.set("file-tree", "searchHistory", next).catch(() => {});
+      (window as any).linkdesk?.pluginState?.set("file-tree", "searchHistory", next).catch((e: any) => { console.error("[file-tree] 保存搜索历史失败:", e); });
       setSearchHistory(next);
       // 自动展开第一个文件
       if (found.length > 0) {

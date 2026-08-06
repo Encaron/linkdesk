@@ -74,7 +74,7 @@ function _writeLocal(): void {
 }
 function _persist(): void {
   const d = { sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex };
-  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", d).catch(() => {});
+  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", d).catch((e: any) => { console.error("[serial-monitor] 保存会话失败:", e); });
   _writeLocal();
 }
 

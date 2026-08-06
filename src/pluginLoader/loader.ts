@@ -218,7 +218,7 @@ function cachePluginMetadata(
       manifest, // G14 fix v2：存完整 manifest——卸载后详情页仍可展示完整信息
     };
     // 异步落盘——不阻塞
-    setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache).catch(() => {});
+    setPluginStateValue(APP_PLUGIN_ID, "pluginMetadataCache", cache).catch((e) => { console.error("[loader] 保存插件元数据缓存失败:", e); });
   } catch {
     /* 非关键路径 */
   }

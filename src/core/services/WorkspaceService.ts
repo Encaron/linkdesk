@@ -66,8 +66,8 @@ export function setActiveWorkspace(uri: string): void {
     _migrated = true;
     const old = getPluginStateValue<string>("file-tree", "activeWorkspace");
     if (old) {
-      setPluginStateValue("workspace", "activeWorkspace", old).catch(() => {});
-      setPluginStateValue("file-tree", "activeWorkspace", null).catch(() => {});
+      setPluginStateValue("workspace", "activeWorkspace", old).catch((e) => { console.error("[Workspace] 迁移 workspace key 失败:", e); });
+      setPluginStateValue("file-tree", "activeWorkspace", null).catch((e) => { console.error("[Workspace] 清理旧 file-tree key 失败:", e); });
     }
   }
 
@@ -75,7 +75,7 @@ export function setActiveWorkspace(uri: string): void {
   _activeWorkspaceUri = normalized;
   _onDidChangeActiveWorkspace.fire(normalized);
   // 持久化——F5 恢复
-  setPluginStateValue("workspace", "activeWorkspace", normalized).catch(() => {});
+  setPluginStateValue("workspace", "activeWorkspace", normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */

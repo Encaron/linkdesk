@@ -110,7 +110,7 @@ export function initLifecycleConsumers(): void {
     // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
     import("../core/services/ViewContainerService").then(({ ViewContainerService }) => {
       ViewContainerService.unregisterAll(pluginId);
-    }).catch(() => {});
+    }).catch(() => {}); // 非关键操作——清理注册表，失败不阻塞卸载流程
     unregisterPluginCommands(pluginId);
     unregisterPluginKeybindings(pluginId);
     unregisterPluginMenus(pluginId);
@@ -190,7 +190,7 @@ function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
     import("../core/services/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
+      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch((e) => { console.error("[lifecycle] 保存图标排序失败:", e); });
     });
   } catch { /* 非关键路径 */ }
 }

@@ -54,7 +54,9 @@ function createWindow(): void {
     height: 900,
     minWidth: 800,
     minHeight: 500,
-    icon: path.join(__dirname, '../../build/icon.ico'), // 任务栏/窗口图标——dev 用 build/icon.ico（rootDir=.. 多一层 electron/）
+    icon: isDev
+      ? path.join(__dirname, '../../build/icon.ico')
+      : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
     frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
     backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
@@ -93,7 +95,7 @@ function createWindow(): void {
   if (isDev) {
     mainWindow.loadURL('http://localhost:1420');
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   // ready-to-show 后才显示窗口

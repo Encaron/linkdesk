@@ -48,7 +48,7 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
   /** Enter / 点击：提交主题（写配置 → onApply 自动 load+apply） */
   const handleSelect = (themeName: string) => {
     committed.current = true;
-    setConfigurationValue("app.theme", themeName, "user").catch(() => {});
+    setConfigurationValue("app.theme", themeName, "user").catch((e) => { console.error("[ThemeBrowser] 切换主题失败:", e); });
   };
 
   /** ↑↓ / hover：预览主题（即时 apply，不写配置）。
@@ -69,7 +69,7 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
     if (!committed.current && originalTheme.current) {
       loadTheme(originalTheme.current)
         .then(applyTheme)
-        .catch(() => {});
+        .catch((e) => { console.error("[ThemeBrowser] 回退原主题失败:", e); });
     }
     onClose();
   };
