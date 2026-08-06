@@ -13,26 +13,15 @@ import { getMenuItems, MenuId } from "../core/registry/MenuRegistry";
 import { executeCommand } from "../core/registry/CommandRegistry";
 import { ContextKeyService } from "../core/registry/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
+import OverlayPortal from "./shared/OverlayPortal";
 import "./HamburgerMenu.css";
 
 function HamburgerMenu() {
   const { t } = useTranslation();
   const [open, setOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
   const btnRef = useRef<HTMLButtonElement>(null);
 
-  // 点击外部关闭
-  useEffect(() => {
-    if (!open) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (menuRef.current?.contains(target)) return;
-      if (btnRef.current?.contains(target)) return;
-      setOpen(false);
-    };
-    window.addEventListener("mousedown", onMouseDown);
-    return () => window.removeEventListener("mousedown", onMouseDown);
-  }, [open]);
+  // E5#96r: 外部点击检测 + Escape → OverlayPortal 统一处理
 
   // 订阅 context key 变化——when 条件可能随时改变（如串口打开/关闭）
   const [, setCtxTick] = useState(0);
@@ -61,7 +50,8 @@ function HamburgerMenu() {
       </button>
 
       {open && (
-        <div className="hamburger-dropdown" ref={menuRef}>
+        <OverlayPortal onClose={() => setOpen(false)} triggerRef={btnRef as React.RefObject<HTMLElement>}>
+        <div className="hamburger-dropdown">
           <MenuRenderer
             items={items}
             onCommand={handleCommand}
@@ -71,6 +61,7 @@ function HamburgerMenu() {
             checkWhen
           />
         </div>
+        </OverlayPortal>
       )}
     </>
   );

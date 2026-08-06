@@ -13,26 +13,19 @@ import { getMenuItems, MenuId, type MenuItem, getTitleBarContributions } from ".
 import { executeCommand } from "../core/registry/CommandRegistry";
 import { ContextKeyService } from "../core/registry/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
+import OverlayPortal from "./shared/OverlayPortal";
 import "./TitleBar.css";
 
 function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
   const [openGroup, setOpenGroup] = useState<string | null>(null);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   const btnRefs = useRef<Map<string, HTMLButtonElement>>(new Map());
   const titlebarRef = useRef<HTMLDivElement>(null);
 
-  // 点击外部关闭下拉
+  // E5#96s: 外部点击 + Escape → OverlayPortal 统一处理
+  // 多按钮场景——triggerRef 指向当前打开的按钮
+  const triggerRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    if (!openGroup) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (dropdownRef.current?.contains(target)) return;
-      const btn = btnRefs.current.get(openGroup);
-      if (btn?.contains(target)) return;
-      setOpenGroup(null);
-    };
-    window.addEventListener("mousedown", onMouseDown);
-    return () => window.removeEventListener("mousedown", onMouseDown);
+    triggerRef.current = openGroup ? (btnRefs.current.get(openGroup) ?? null) : null;
   }, [openGroup]);
 
   const handleCommand = useCallback((command: string) => {
@@ -152,7 +145,8 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
     const flattened = flattenGroupItems(groupItems);
 
     return (
-      <div className="titlebar-dropdown" ref={dropdownRef} style={getDropdownStyle()}>
+      <OverlayPortal onClose={() => setOpenGroup(null)} triggerRef={triggerRef as React.RefObject<HTMLElement>}>
+      <div className="titlebar-dropdown" style={getDropdownStyle()}>
         <MenuRenderer
           key={openGroup}
           items={flattened}
@@ -162,6 +156,7 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
           checkWhen
         />
       </div>
+      </OverlayPortal>
     );
   }
 
