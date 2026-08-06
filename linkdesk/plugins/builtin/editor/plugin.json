@@ -13,6 +13,7 @@
     "identityField": "filePath"
   },
   "contributes": {
+    "i18n": { "en": "i18n/en.json" },
     "commands": [
       { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
       { "id": "editor.compareFiles", "title": "比较文件" }
