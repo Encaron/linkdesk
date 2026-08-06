@@ -10,6 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
+import OverlayPortal from "./OverlayPortal";
 import "./ColorPicker.css";
 
 /* ── 颜色转换工具（内联——零依赖）── */
@@ -181,7 +182,7 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
   const hueLeft = `${Math.round((hsv.h / 360) * 100)}%`;
 
   return (
-    <>
+    <OverlayPortal>
       {/* 遮罩——点击关闭 */}
       <div className="colorpicker-overlay" onClick={onClose} />
       <div
@@ -259,7 +260,7 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
           </div>
         )}
       </div>
-    </>
+    </OverlayPortal>
   );
 }
 

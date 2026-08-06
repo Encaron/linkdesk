@@ -10,6 +10,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import OverlayPortal from "./OverlayPortal";
 import {
   registerDialogRenderers,
   unregisterDialogRenderers,
@@ -83,6 +84,7 @@ export function ConfirmDialog() {
   const { options } = state;
 
   return (
+    <OverlayPortal>
     <div className="confirm-backdrop" onClick={isAlert ? undefined : handleCancel}>
       <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}
         tabIndex={-1} ref={(el) => el?.focus()} onKeyDown={handleKeyDown}>
@@ -100,5 +102,6 @@ export function ConfirmDialog() {
         </div>
       </div>
     </div>
+    </OverlayPortal>
   );
 }

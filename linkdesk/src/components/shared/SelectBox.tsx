@@ -11,6 +11,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
+import OverlayPortal from "./OverlayPortal";
 import "./SelectBox.css";
 
 export interface SelectBoxOption {
@@ -154,9 +155,17 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
         <span className={`codicon codicon-chevron-down selectbox-arrow ${open ? "selectbox-arrow-up" : ""}`} />
       </button>
 
-      {/* 下拉面板 */}
+      {/* 下拉面板——E5#96f: Portal 到 body，脱离 zone 层叠上下文 */}
       {open && (
-        <div className="selectbox-dropdown" onKeyDown={handleKey}>
+        <OverlayPortal>
+        <div className="selectbox-dropdown" onKeyDown={handleKey}
+          style={{
+            position: "fixed",
+            left: containerRef.current?.getBoundingClientRect().left ?? 0,
+            top: (containerRef.current?.getBoundingClientRect().bottom ?? 0) + 2,
+            minWidth: containerRef.current?.getBoundingClientRect().width,
+          }}
+        >
           {showSearch && (
             <div className="selectbox-search">
               <input
@@ -186,6 +195,7 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
             )}
           </ul>
         </div>
+        </OverlayPortal>
       )}
     </div>
   );
