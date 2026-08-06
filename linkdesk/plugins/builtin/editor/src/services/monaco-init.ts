@@ -38,7 +38,10 @@ export async function initMonacoEnv(
     },
     monacoWorkerFactory: configureDefaultWorkerFactory,
     advanced: {
-      loadThemes: false,
+      /** E5#107 修复：必须 true——否则 VS Code 默认主题未注册，
+       *  StandaloneWorkbenchThemeService.setTheme("vs-dark") 找不到主题，
+       *  setTimeout 异步竞态致暗色模式下 Monaco 字体渲染为黑色。 */
+      loadThemes: true,
     },
   };
 
