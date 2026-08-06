@@ -15,11 +15,12 @@ import SelectBox from "@src/components/shared/SelectBox";
 import FormRow from "@src/components/shared/FormRow";
 import "../styles/SerialMonitorSidebar.css";
 
-const timeFormats = ["HH:mm:ss", "HH:mm:ss:fff", "无"];
+const RAW_TIME_FORMATS = ["HH:mm:ss", "HH:mm:ss:fff", "无"];
 const lineEndings = ["\\r\\n", "\\n", "\\r"];
 
 export default function SerialSettingsView() {
   const { t } = useTranslation();
+  const timeFormats = RAW_TIME_FORMATS.map((f) => f === "无" ? t("无") : f);
   const { activeSession, activeSessionId, updateSession } = useSerialSessions();
 
   // ── 设置辅助：从 activeSession 读 / 通过 updateSession 写 ──

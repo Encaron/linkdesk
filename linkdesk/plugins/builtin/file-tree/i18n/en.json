@@ -41,5 +41,16 @@
   "自定义终端启动命令。用 {{dirPath}} 表示目标目录。例: wt -d \"{{dirPath}}\"": "Custom terminal launch command. Use {{dirPath}} as the target directory. E.g.: wt -d \"{{dirPath}}\"",
   "PowerShell（Windows 默认）": "PowerShell (Windows default)",
   "命令提示符": "Command Prompt",
-  "自定义命令…": "Custom..."
+  "自定义命令…": "Custom...",
+  "搜索": "Search",
+  "替换": "Replace",
+  "全部替换": "Replace All",
+  "要包含的文件": "Files to Include",
+  "要排除的文件": "Files to Exclude",
+  "搜索中…": "Searching...",
+  "确定替换所有 {{totalMatches}} 处？此操作不可撤销。": "Replace all {{totalMatches}} occurrences? This cannot be undone.",
+  "新建文件": "New File",
+  "新建文件夹": "New Folder",
+  "刷新": "Refresh",
+  "收起所有文件夹": "Collapse All Folders"
 }
