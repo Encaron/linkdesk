@@ -782,6 +782,89 @@ const noIpcListenerInEffect = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 10：插件 import 核心模块（多 WebView 火种——机械检查）
+// ═══════════════════════════════════════════════════════════
+//
+// 多 WebView 下插件在独立 JS 堆——import 核心模块有副作用的调用静默失效。
+// 此规则 warn 级——检测到后 AI 必须在 memory/plugin-import-exceptions.md 记录例外。
+//
+// 白名单（允许的 import，不触发 warn）：
+//   - 纯类型/枚举: MenuRegistry 的 MenuId、plugin.json 的 tabBehavior/viewRole 类型
+//   - 纯工具函数: RingBuffer/DataConverter/HexToBytes/DataDispatch/ProtocolParser/EncodingService/FileSearcher
+//   - 已有 API 替代: 无（所有 Registry/Service 都应走 linkdesk.* API）
+
+const PLUGIN_IMPORT_WHITELIST = new Set([
+  // 纯类型 / 枚举
+  "@src/core/registry/MenuRegistry",       // MenuId 枚举
+  // 纯工具函数（无模块级状态，无副作用）
+  "@src/core/data/DataConverter",
+  "@src/core/data/HexToBytes",
+  "@src/core/data/DataDispatch",
+  "@src/core/data/RingBuffer",
+  "@src/core/data/ProtocolParser",
+  "@src/core/data/CancellationToken",
+  "@src/core/services/EncodingService",
+  "@src/core/services/FileSearcher",
+  // 壳内 React 组件（跨 WebView 渲染 DOM——暂无法 IPC 化，火种保留）
+  "@src/components/shared/ContextMenu",
+  "@src/components/shared/MenuRenderer",
+  "@src/components/shared/InlineInput",
+  "@src/components/shared/SelectBox",
+  "@src/components/shared/ConfirmDialog",
+  "@src/components/shared/OverlayPortal",
+  "@src/components/views/PluginDetailView",
+  // React hooks / context（纯渲染逻辑，无服务端状态）
+  "@src/core/react/CoreEvents",
+  "@src/core/react/useSendData",
+  "@src/core/react/usePluginIpcEvent",
+  "@src/core/hooks/useTabManager",
+  "@src/core/hooks/useIpcEvent",
+]);
+
+const noCoreImportInPlugin = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "插件禁止直接 import 核心模块——多 WebView 下静默失效。检查 memory/plugin-import-exceptions.md 记录例外。",
+      recommended: true,
+    },
+    messages: {
+      noCoreImport:
+        "🔥 插件 import 了核心模块 \"{{source}}\"——多 WebView 下 {{reason}}。" +
+        " 请确认 memory/plugin-import-exceptions.md 是否已记录此例外。" +
+        " 若未记录：评估 → 记录原因+替代方案 → 或切到 linkdesk.* API。" +
+        " 见 memory [[plugin-import-iron-law]]。",
+    },
+  },
+
+  create(context) {
+    const filename = context.filename || context.getFilename?.() || "";
+    if (!filename.includes("plugins")) return {};
+
+    // 判断模块类型的辅助函数
+    function classify(source) {
+      if (PLUGIN_IMPORT_WHITELIST.has(source)) return null; // 白名单——不报
+      if (source.includes("/registry/") || source.includes("/services/"))
+        return "有模块级状态（Registry/Service）→ 调用方的修改壳进程看不到";
+      if (source.includes("@src/core"))
+        return "插件和壳不在同一 JS 堆 → 副作用不共享";
+      return null; // 非 @src/core —— 不报
+    }
+
+    return {
+      ImportDeclaration(node) {
+        const source = node.source.value;
+        if (!source.startsWith("@src/core/")) return;
+        const reason = classify(source);
+        if (!reason) return;
+        context.report({ node, messageId: "noCoreImport", data: { source, reason } });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -792,4 +875,5 @@ export default {
   "no-quickpick-render-item": noQuickpickRenderItem,
   "no-raw-configuration-read": noRawConfigurationRead,
   "no-raw-path-replace": noRawPathReplace,
+  "no-core-import-in-plugin": noCoreImportInPlugin,
 };
