@@ -11,7 +11,7 @@ import { getViewPlugin } from "../../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../../pluginLoader/iconUtils";
 import { ComponentType } from "react";
 import {
-  File, Folder, FolderOpen, Package, ShoppingBag,
+  File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
   Monitor, Settings, BookOpen, BarChart3, Lightbulb, Lock,
 } from "lucide-react";
 
@@ -27,6 +27,7 @@ const LUCIDE_MAP: Record<string, ComponentType<any>> = {
   File,
   Folder,
   FolderOpen,
+  FolderTree,
   Package,
   ShoppingBag,
   Monitor,
@@ -48,7 +49,7 @@ export function PluginIcon({ pluginId, className, alt = "" }: PluginIconProps) {
   if (resolved.lucide) {
     const IconComponent = LUCIDE_MAP[resolved.lucide];
     if (IconComponent) {
-      return <IconComponent size={16} className={`plugin-icon plugin-icon--lucide ${className ?? ""}`} />;
+      return <IconComponent className={`plugin-icon plugin-icon--lucide ${className ?? ""}`} />;
     }
   }
   if (resolved.codicon) {
