@@ -125,6 +125,13 @@
   transition: opacity 150ms, color 150ms;
 }
 
+/* E5#100: Lucide SVG 图标——对齐 codicon 尺寸和透明态 */
+.icon-btn .plugin-icon--lucide {
+  opacity: 0.55;
+  color: var(--text-primary);
+  transition: opacity 150ms, color 150ms;
+}
+
 .icon-btn .plugin-icon--emoji {
   font-size: 24px;
   line-height: 1;
@@ -133,7 +140,9 @@
 }
 
 .icon-btn:hover .plugin-icon--codicon,
-.icon-btn.active .plugin-icon--codicon {
+.icon-btn.active .plugin-icon--codicon,
+.icon-btn:hover .plugin-icon--lucide,
+.icon-btn.active .plugin-icon--lucide {
   opacity: 1;
 }
 

@@ -94,8 +94,15 @@
   flex-shrink: 0;
   opacity: 0.8;
 }
+/* E5#100: Lucide SVG 图标——对齐 codicon 尺寸和透明态 */
+.tab-icon.plugin-icon--lucide {
+  flex-shrink: 0;
+  opacity: 0.8;
+  color: var(--text-primary);
+}
 .tab-item.active .tab-icon.plugin-icon--img,
 .tab-item.active .tab-icon.plugin-icon--codicon,
+.tab-item.active .tab-icon.plugin-icon--lucide,
 .tab-item.active .tab-icon.plugin-icon--emoji {
   opacity: 1;
 }
