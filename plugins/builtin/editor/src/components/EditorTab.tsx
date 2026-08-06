@@ -63,6 +63,7 @@ async function buildMonacoOptions(): Promise<Record<string, unknown>> {
     lk.configuration.get("editor.suggest.showSnippets"),
   ]);
   return {
+    theme: document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs",
     fontSize, fontFamily, fontWeight, lineHeight, tabSize, insertSpaces, detectIndentation,
     wordWrap, lineNumbers, minimap: { enabled: minimapEnabled }, renderWhitespace, cursorStyle, cursorBlinking,
     mouseWheelZoom, smoothScrolling, autoClosingBrackets, bracketPairColorization,
@@ -98,9 +99,14 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   // E4V#40q——编辑器选项状态（异步加载配置）
   const [editorOptions, setEditorOptions] = useState<Record<string, unknown>>();
 
-  // E4V#40q——加载编辑器配置
+  // E4V#40q——加载编辑器配置 + 初始 apply（修复异步加载后 editor 未更新）
   useEffect(() => {
-    buildMonacoOptions().then(setEditorOptions);
+    buildMonacoOptions().then((opts) => {
+      setEditorOptions(opts);
+      // 🔴 初始 load 完成——主动推给已创建的 editor 实例
+      // editor 创建时 options={undefined}，之后 useState 更新不触发 editor 重建
+      editorViewRef.current?.updateOptions(opts);
+    });
   }, []);
 
   // E4V#40j——编辑器状态栏数据
