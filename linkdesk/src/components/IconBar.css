@@ -77,7 +77,7 @@
 
 /* 选中态（换位模式）——金色边框提示 */
 .icon-btn.selected {
-  outline: 2px solid #CCA700;
+  outline: 2px solid var(--warning);
   outline-offset: -2px;
   border-radius: 4px;
 }

@@ -169,7 +169,7 @@
 
 .pd-btn-enable {
   border-color: rgba(76, 175, 80, 0.5);
-  color: #4caf50;
+  color: var(--status-connected);
 }
 
 /* 对标 VS Code extensionButton 绿色安装按钮 */

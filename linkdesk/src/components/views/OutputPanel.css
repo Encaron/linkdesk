@@ -111,11 +111,11 @@
 }
 
 .output-sev-warn {
-  color: #cca700;
+  color: var(--warning);
 }
 
 .output-sev-error {
-  color: #f14c4c;
+  color: var(--error);
 }
 
 .output-message {
