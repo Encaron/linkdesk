@@ -8,6 +8,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import OverlayPortal from "./shared/OverlayPortal";
 import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/services/toast";
 import "./ToastContainer.css";
 
@@ -34,11 +35,13 @@ function ToastContainer() {
   if (toasts.length === 0 || suppressed) return null;
 
   return (
+    <OverlayPortal>
     <div className="toast-container">
       {toasts.map((toast) => (
         <NotificationItem key={toast.id} toast={toast} />
       ))}
     </div>
+    </OverlayPortal>
   );
 }
 
