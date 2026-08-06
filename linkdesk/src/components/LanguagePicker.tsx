@@ -40,7 +40,7 @@ export default function LanguagePicker({ open, onClose }: Props) {
 
   /** 选中即切换——setConfigurationValue → onApply → i18n.changeLanguage + IPC 广播 */
   const handleSelect = (langCode: string) => {
-    setConfigurationValue("app.language", langCode, "user").catch(() => {});
+    setConfigurationValue("app.language", langCode, "user").catch((e) => { console.error("[LanguagePicker] 切换语言失败:", e); });
     onClose();
   };
 

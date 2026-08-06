@@ -181,7 +181,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     shellEvents.emit("file:renamed", { oldPath: uri, newPath: dest });
     await model.refresh(dir);
     const parent = model.findClosest(dir);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch(() => {});
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
   }, [model, exitRename]);
   const cancelRename = useCallback(() => {
     setRenamingUri(null);

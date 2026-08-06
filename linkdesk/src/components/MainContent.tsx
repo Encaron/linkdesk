@@ -349,7 +349,7 @@ function MainContent({
     if (!bridge) return;
     for (const g of tabState.groups) for (const t of g.tabs) {
       if (t.pluginId === "editor" && t.sourceId) {
-        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.sourceId }).catch(() => {});
+        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.sourceId }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
       }
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
@@ -361,7 +361,7 @@ function MainContent({
     const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
     const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
     if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId) {
-      bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch(() => {});
+      bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch((e: any) => { console.error("[MainContent] serial-monitor openSession 失败:", e); });
     }
   }, [tabState.groups, tabState.activeGroupId, tabState.groups.find(g => g.id === tabState.activeGroupId)?.activeTabId, readyWebViewIds, webViewBoundsReady]);
 
@@ -442,7 +442,7 @@ function MainContent({
         })),
         activeGroupId: tabState.activeGroupId,
         root: tabState.root,
-      }).catch(() => {});
+      }).catch((e) => { console.error("[MainContent] 保存标签页布局失败:", e); });
     };
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     layoutSaveTimer.current = setTimeout(doSave, 100);

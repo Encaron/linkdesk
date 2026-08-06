@@ -144,7 +144,7 @@ try {
           ipcRenderer.on(channel, handler);
           return () => {
             ipcRenderer.removeListener(channel, handler);
-            ipcRenderer.invoke('filesystem:unwatch', watcherId).catch(() => {});
+            ipcRenderer.invoke('filesystem:unwatch', watcherId).catch(() => {}); // 非关键操作——清理 watcher，窗口关闭时失败不阻塞
           };
         });
       },

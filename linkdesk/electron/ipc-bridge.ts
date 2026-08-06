@@ -120,7 +120,7 @@ export class IpcBridge {
           const prev = this.pluginRequestQueues.get(pluginId) ?? Promise.resolve();
           // prev 可能已拒绝——.catch() 确保链不断，错误隔离
           const current = prev
-            .catch(() => {})
+            .catch(() => {}) // 错误隔离——prev 可能已拒绝，重置以确保链不断
             .then(() => doRequest());
           this.pluginRequestQueues.set(pluginId, current);
           return current;

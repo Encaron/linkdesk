@@ -235,7 +235,7 @@ export class FileTreeModel {
     // 目标就是根目录本身
     if (root.uri === normalized) {
       if (!this.isExpanded(root.uri)) this.expand(root.uri);
-      if (root.children === null) await this.getChildren(root).catch(() => {});
+      if (root.children === null) await this.getChildren(root).catch((e: any) => { console.error("[FileTreeModel] 加载子项失败:", e); });
       this.onDidChange.fire();
       return root;
     }
@@ -317,7 +317,7 @@ export class FileTreeModel {
    */
   private async _reloadItem(item: ExplorerItem): Promise<void> {
     item.children = null;
-    await this.getChildren(item).catch(() => {});
+    await this.getChildren(item).catch((e: any) => { console.error("[FileTreeModel] 加载子项失败:", e); });
     await this._reloadExpandedDescendants(item);
   }
 

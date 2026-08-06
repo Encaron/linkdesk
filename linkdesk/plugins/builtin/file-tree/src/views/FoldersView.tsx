@@ -137,7 +137,7 @@ const FoldersView: React.FC = () => {
         for (const uri of toExpand) {
           model.expand(uri);
           const item = model.findClosest(uri);
-          if (item) await model.getChildren(item).catch(() => {});
+          if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
         }
       }
       // E4V#34i: explorer.expandSingleFolderWorkspaces——单目录工作区自动展开根
@@ -145,12 +145,12 @@ const FoldersView: React.FC = () => {
           && folders.length === 1) {
         const root = model.roots[0];
         if (root) {
-          await model.getChildren(root).catch(() => {});
+          await model.getChildren(root).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
           const dirs = root.children?.filter((c) => c.isDirectory) ?? [];
           if (dirs.length === 1) {
             model.expand(root.uri);
             model.expand(dirs[0].uri);
-            await model.getChildren(dirs[0]).catch(() => {});
+            await model.getChildren(dirs[0]).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
           }
         }
       }
@@ -202,13 +202,13 @@ const FoldersView: React.FC = () => {
         for (const dir of affectedDirs) {
           await model.refresh(dir);
           const item = model.findClosest(dir);
-          if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch(() => {});
+          if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
         }
         if (affectedDirs.size === 0) {
           await model.refresh();
           for (const uri of model.getExpandedUris()) {
             const item = model.findClosest(uri);
-            if (item) await model.getChildren(item).catch(() => {});
+            if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
           }
         }
         rerender();
@@ -266,7 +266,7 @@ const FoldersView: React.FC = () => {
       await model.refresh();
       for (const uri of model.getExpandedUris()) {
         const item = model.findClosest(uri);
-        if (item) await model.getChildren(item).catch(() => {});
+        if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
       }
       rerender();
     })();
@@ -281,7 +281,7 @@ const FoldersView: React.FC = () => {
         _expandSaveTimerRef.current = null;
         const uris = model.getExpandedUris();
         if (uris.length > 0) {
-          (window as any).linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch(() => {});
+          (window as any).linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch((e: any) => { console.error("[file-tree] 保存展开状态失败:", e); });
         }
       }, 500);
     });

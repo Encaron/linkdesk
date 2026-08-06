@@ -360,7 +360,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     const saved = this.loadCollapsedState();
     if (collapsed) saved.add(viewId);
     else saved.delete(viewId);
-    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", [...saved]).catch(() => {});
+    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", [...saved]).catch((e) => { console.error("[ViewContainer] 保存折叠状态失败:", e); });
   }
 
   /** 查询 view 是否持久化为折叠 */
@@ -430,7 +430,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
     // 持久化——按 container 存 viewOrder
     const viewOrder = model.allViewDescriptors.map(v => v.id);
-    setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, viewOrder).catch(() => {});
+    setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, viewOrder).catch((e) => { console.error("[ViewContainer] 保存视图排序失败:", e); });
     this._updateActiveViews(containerId);
     this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
   }

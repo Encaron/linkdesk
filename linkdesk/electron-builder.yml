@@ -33,6 +33,8 @@ extraResources:
     filter:
       - "**/*"
       - "!.disabled/**"
+  - from: build/icon.ico
+    to: icon.ico
 
 win:
   target:

@@ -59,7 +59,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
       setPortName(port, activeSession?.receiveCoding);
       // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch(() => {});
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e: any) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
     },
     [sourceId, updateSession, setPortName, activeSession?.receiveCoding],
   );

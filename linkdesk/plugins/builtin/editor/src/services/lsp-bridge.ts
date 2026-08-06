@@ -120,7 +120,7 @@ function createIpcWriter(channelId: string): MessageWriter {
       lsp.write(channelId, framed);
       return Promise.resolve();
     },
-    end: () => { lsp.dispose(channelId).catch(() => {}); },
+    end: () => { lsp.dispose(channelId).catch(() => {}); }, // 非关键操作——清理 LSP 通道，编辑器关闭时失败不阻塞
     dispose: () => {},
     onClose: (_cb: () => void) => ({ dispose: () => {} }),
     onError: (_cb: (err: Error) => void) => ({ dispose: () => {} }),

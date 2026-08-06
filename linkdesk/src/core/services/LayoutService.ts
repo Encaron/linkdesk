@@ -53,7 +53,7 @@ function migrateLegacyTabIds(layout: WorkspaceLayout): WorkspaceLayout {
   if (!migrated) return layout;
   // 异步回写——下次 saveTabLayout/syncWriteLayout 也会覆盖，但先写一份确保 crash 安全
   const migratedLayout = { ...layout, tabs: { ...layout.tabs, groups: newGroups } };
-  write("layout", migratedLayout).catch(() => {});
+  write("layout", migratedLayout).catch((e) => { console.error("[LayoutService] 迁移布局回写失败:", e); });
   return migratedLayout;
 }
 
@@ -122,7 +122,7 @@ function migratePluginIdRename(
   }
 
   const result = { ...layout, tabs: { ...layout.tabs, groups: newGroups }, [flag]: true };
-  write("layout", result).catch(() => {});
+  write("layout", result).catch((e) => { console.error("[LayoutService] 保存布局失败:", e); });
   return result;
 }
 
