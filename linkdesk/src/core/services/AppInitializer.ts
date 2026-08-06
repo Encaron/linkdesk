@@ -1,8 +1,13 @@
 /**
  * AppInitializer——启动初始化管线
  *
- * 将 App.tsx 的 init 链提取为可测试函数。
+ * 将 App.tsx 的 async init 链提取为可测试函数。
  * 依赖通过参数注入，测试可 mock 任意步骤失败。
+ *
+ * 留在 App.tsx 的部分（需要 React 上下文）：
+ *   initV3Api / initIpcBridgeHandler / registerFallbackThemes
+ *   / registerConfiguration / initCoreKeys / ensureCoreCommands
+ *   / ensureBuiltinProtocols / ensureCoreKeybindings
  *
  * E5#107：App 启动集成测试
  */
@@ -14,24 +19,16 @@ export interface InitDeps {
   initLayoutService: () => Promise<void>;
   /** 初始化插件状态服务 */
   initPluginStates: () => Promise<void>;
-  /** 初始化 IPC 桥接壳侧处理器 */
-  initIpcBridgeHandler: () => void;
-  /** 注册兜底主题 */
-  registerFallbackThemes: () => void;
-  /** 初始化 context key 核心状态 */
-  initCoreKeys: () => void;
   /** 初始化插件加载器 */
   initPluginLoader: () => Promise<void>;
   /** 启动插件文件监听 */
   startPluginWatcher: () => void;
   /** 获取已加载插件清单 */
-  getLoadedPluginManifests: () => Array<{ pluginId: string; manifest: unknown }>;
+  getLoadedPluginManifests: () => Array<{ pluginId: string; manifest: any }>;
   /** 初始化系统插槽 */
-  factorySlotsInitialize: (plugins: Array<{ pluginId: string; manifest: unknown }>) => void;
+  factorySlotsInitialize: (plugins: Array<{ pluginId: string; manifest: any }>) => void;
   /** 挂载全局快捷键，返回 cleanup 函数 */
   mountGlobalKeybindings: () => (() => void);
-  /** 注册壳级快捷键 */
-  ensureCoreKeybindings: () => void;
   /** 加载用户快捷键 */
   initUserKeybindings: () => Promise<void>;
   /** 读配置值 */
@@ -48,6 +45,12 @@ export interface InitDeps {
 
 // ── 返回结果 ──
 
+export interface SerialState {
+  isOpen: boolean;
+  portName: string;
+  baudRate: number;
+}
+
 export interface InitResult {
   /** 所有步骤均成功 */
   success: boolean;
@@ -55,8 +58,8 @@ export interface InitResult {
   layoutRestored: boolean;
   /** 已加载插件数 */
   pluginsLoaded: number;
-  /** 串口状态是否查询成功 */
-  serialReady: boolean;
+  /** 串口状态——null = 查询失败或未打开 */
+  serialState: SerialState | null;
   /** 错误列表（供诊断） */
   errors: Array<{ step: string; message: string }>;
   /** keybinding cleanup 函数——调用方负责在 unmount 时调用 */
@@ -66,7 +69,7 @@ export interface InitResult {
 // ── 启动管线 ──
 
 /**
- * 执行 7 步异步初始化管线。
+ * 执行异步初始化管线（6 步）。
  *
  * 任一步失败不阻塞后续步骤（降级运行），
  * 错误通过 errors[] 返回供调用方诊断。
@@ -75,7 +78,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
   const errors: Array<{ step: string; message: string }> = [];
   let layoutRestored = false;
   let pluginsLoaded = 0;
-  let serialReady = false;
+  let serialState: SerialState | null = null;
   let keybindingCleanup: (() => void) | undefined;
 
   const logStep = (step: string, e: unknown) => {
@@ -94,27 +97,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("initServices", e);
   }
 
-  // ── Step 2: IPC 桥接 ──
-  try {
-    deps.initIpcBridgeHandler();
-  } catch (e) {
-    logStep("ipcBridge", e);
-  }
-
-  // ── Step 3: 主题兜底 + context key ──
-  try {
-    deps.registerFallbackThemes();
-  } catch (e) {
-    logStep("fallbackThemes", e);
-  }
-
-  try {
-    deps.initCoreKeys();
-  } catch (e) {
-    logStep("coreKeys", e);
-  }
-
-  // ── Step 4: 插件加载 ──
+  // ── Step 2: 插件加载 ──
   try {
     await deps.initPluginLoader();
     pluginsLoaded = deps.getLoadedPluginManifests().length;
@@ -122,7 +105,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("pluginLoader", e);
   }
 
-  // ── Step 5: 文件监听 + 系统插槽 ──
+  // ── Step 3: 文件监听 + 系统插槽 ──
   try {
     deps.startPluginWatcher();
   } catch (e) {
@@ -139,17 +122,11 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("factorySlots", e);
   }
 
-  // ── Step 6: 快捷键 ──
+  // ── Step 4: 快捷键 ──
   try {
     keybindingCleanup = deps.mountGlobalKeybindings();
   } catch (e) {
     logStep("globalKeybindings", e);
-  }
-
-  try {
-    deps.ensureCoreKeybindings();
-  } catch (e) {
-    logStep("coreKeybindings", e);
   }
 
   try {
@@ -158,7 +135,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("userKeybindings", e);
   }
 
-  // ── Step 7: 配置应用 ──
+  // ── Step 5: 配置应用 ──
   try {
     const initTheme = deps.getConfigurationValue<string>("app.theme") ?? "Dark";
     const initLang = deps.getConfigurationValue<string>("app.language") ?? "zh";
@@ -169,18 +146,20 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("applyConfig", e);
   }
 
-  // ── Step 8: 串口状态查询 ──
+  // ── Step 6: 串口状态查询 ──
   try {
     const status = await deps.getSerialStatus();
-    if (status.isOpen) {
-      serialReady = true;
-    }
+    serialState = {
+      isOpen: status.isOpen,
+      portName: status.portName,
+      baudRate: status.baudRate,
+    };
   } catch (e) {
     // 首次启动或串口不可用——不视为错误
     logStep("serialStatus", e);
   }
 
-  // ── Step 9: 布局恢复 ──
+  // ── Step 7: 布局恢复 ──
   try {
     const savedLayout = deps.getTabLayout();
     if (savedLayout?.groups?.length) {
@@ -196,7 +175,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     success: errors.length === 0,
     layoutRestored,
     pluginsLoaded,
-    serialReady,
+    serialState,
     errors,
     keybindingCleanup,
   };

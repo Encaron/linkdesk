@@ -40,6 +40,7 @@ import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件�
 import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
 import { onDidRequestShowChannel } from "./core/data/LogChannel"; // E3f #54
 import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26 + E5#103
+import { initAll } from "./core/services/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/ConfigurationApplier";
 import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API namespace
@@ -130,12 +131,7 @@ function App() {
     let keybindingCleanup: (() => void) | undefined;
 
     (async () => {
-      // E5#115: initStorageService + initConfigurationService 已提前到 main.tsx mount 前
-      await Promise.all([
-        initLayoutService(),
-        initPluginStates(),
-      ]).catch((e) => console.warn("[App] Phase 5 服务初始化部分失败:", e));
-
+      // ═══ Pre-init：同步设置（需要 React 上下文 t() / sync-only）═══
       // Phase 5h: expose window.__v3_core__ before plugins load
       initV3Api();
 
@@ -146,7 +142,6 @@ function App() {
       registerFallbackThemes();
 
       // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
-      // Phase 5：注册核心配置（app.theme 暂用占位枚举——插件加载后用真实主题列表覆盖）
       registerConfiguration(APP_PLUGIN_ID, {
         title: t("通用"),
         properties: {
@@ -237,57 +232,43 @@ function App() {
       // Phase 5e：注册内置方括号协议到 ProtocolRegistry（只执行一次，幂等）
       ensureBuiltinProtocols();
 
-      // Phase 4：初始化插件加载器（在 prefs 就绪后，布局恢复前）
-      await initPluginLoader().catch((e) => console.warn("[App] 插件加载器初始化失败:", e));
-      // P1-5：启动文件监听（检测新插件目录）
-      startPluginWatcher();
-
-      // E2c #19e：初始化系统插槽——必须在插件加载后、首次消费前
-      factorySlots.initialize(getLoadedPluginManifests().map((p) => ({ pluginId: p.pluginId, manifest: p.manifest })));
-
-      // 挂载全局快捷键（Phase 5 KeybindingRegistry）——捕获返回值用于 cleanup
-      keybindingCleanup = mountGlobalKeybindings();
-
       // E3f #59-F：注册全部壳级快捷键——声明式 CORE_KEYBINDINGS，幂等
       ensureCoreKeybindings();
 
-      // E2c #17：加载用户快捷键 + 启动文件监听（在 mount 之后——加载前注册的插件绑定优先）
-      initUserKeybindings().catch((e) => console.warn("[App] 用户快捷键初始化失败:", e));
+      // ═══ Async pipeline：委托给 AppInitializer（E5#107） ═══
+      const result = await initAll({
+        initLayoutService,
+        initPluginStates,
+        initPluginLoader,
+        startPluginWatcher,
+        getLoadedPluginManifests,
+        factorySlotsInitialize: (plugins) => factorySlots.initialize(plugins),
+        mountGlobalKeybindings,
+        initUserKeybindings,
+        getConfigurationValue,
+        applyConfiguration,
+        getSerialStatus: () => linkdesk().serial.getStatus(),
+        getTabLayout,
+        syncCountersAfterRestore,
+      });
 
-      // Phase 5f：主题/语言/强调色通过 ConfigurationApplier 框架应用。
-      // onApply 在 registerConfiguration 时声明，框架保证 theme async → accent sync 的时序。
-      // B14：PreferenceService 已删除——ConfigurationService 默认值已注册，无需 prefs fallback。
+      keybindingCleanup = result.keybindingCleanup;
+
+      // ═══ Post-init：React state 同步 ═══
       const initTheme = getConfigurationValue<string>("app.theme") ?? "Dark";
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
-
-      await applyConfiguration("app.theme", initTheme);
-      applyConfiguration("app.language", initLang);
-      applyConfiguration("app.accentColor", getConfigurationValue<string>("app.accentColor"));
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");
 
       // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
       setPortName("");
 
-      // Bug fix (F5 状态不同步)：F5 只重启前端 React state，Rust 后端串口仍在运行。
-      // 启动时查询后端实际状态，同步 isOpen/portName/baudRate。
-      try {
-        const status = await linkdesk().serial.getStatus();
-        if (status.isOpen) {
-          setPortName(status.portName);
-          setBaudRate(String(status.baudRate));
-          setIsOpen(true);
-        }
-      } catch { /* 首次启动或串口不可用——保持默认值 */ }
-
-      // E5#5e-ii-f：布局恢复由 MainContent 负责
-      try {
-        const savedLayout = getTabLayout();
-        if (savedLayout?.groups?.length > 0) {
-          const allTabs = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
-          syncCountersAfterRestore(allTabs);
-        }
-      } catch { /* 布局恢复失败不影响启动 */ }
+      // 串口状态同步（来自 AppInitializer 返回）
+      if (result.serialState?.isOpen) {
+        setPortName(result.serialState.portName);
+        setBaudRate(String(result.serialState.baudRate));
+        setIsOpen(true);
+      }
 
       // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
       (window as any).__showProgress = showProgress;
