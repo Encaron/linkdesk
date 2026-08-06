@@ -344,21 +344,12 @@ const FoldersView: React.FC = () => {
   }, [t]);
 
   /* ── 打开文件 ── */
-  /** 核心逻辑：扩展名 → FileAssociationService → createTab */
+  /** 核心逻辑：扩展名 → FileAssociationService → createTab。
+   *  E5#99：未知类型不拦截——交壳 tabs:create handler 统一 toast。 */
   const doOpenFile = useCallback((filePath: string, name: string, mode: "preview" | "pin") => {
     const ext = extension(name);
-    if (!ext) {
-      console.warn(`[file-tree] 无法识别文件类型（无扩展名: ${name}）`);
-      window.linkdesk?.dialog?.alert?.(`无法识别文件类型（无扩展名: ${name}）`);
-      return;
-    }
-    const pluginId = getPluginFor(ext);
-    if (!pluginId) {
-      console.warn(`[file-tree] 没有注册处理 ".${ext}" 的编辑器（文件: ${name}）`);
-      window.linkdesk?.dialog?.alert?.(`没有为 .${ext} 文件注册编辑器`);
-      return;
-    }
-    tabs?.create(pluginId, {
+    const pluginId = ext ? getPluginFor(ext) : "";
+    tabs?.create(pluginId || "", {
       filePath,
       sourceId: filePath,
       label: name,
