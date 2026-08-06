@@ -41,6 +41,7 @@ export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api;
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
+let _configUnsub: (() => void) | null = null;
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -194,14 +195,18 @@ export function initIpcBridgeHandler(): void {
 
   // 订阅配置变更 → 通知主进程广播 config:changed → preload onChange 回调触发
   // SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐
-  onDidChangeConfiguration((key: string, value: unknown) => {
+  _configUnsub = onDidChangeConfiguration((key: string, value: unknown) => {
     linkdesk.bridge.notifyConfigChanged?.(key, value);
   });
 }
 
-/** E5#103: 注销 IPC bridge handler——引用计数归零时调用。bridge.onRequest 无法真正注销，重置状态允下次 mount 重注册。 */
+/** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
 export function unregisterIpcBridgeHandler(): void {
   _refCount = Math.max(0, _refCount - 1);
+  if (_refCount === 0) {
+    _configUnsub?.();
+    _configUnsub = null;
+  }
 }
 
 // ── E3a #31：插件管理方法路由 ──
