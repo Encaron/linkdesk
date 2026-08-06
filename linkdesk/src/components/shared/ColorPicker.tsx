@@ -164,16 +164,7 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
     };
   }, [open, handleSvMouse, handleHueMouse]);
 
-  // Esc → onClose
-  useEffect(() => {
-    if (!open) return;
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [open, onClose]);
-
+  // E5#96n: Esc 关闭 → OverlayPortal onClose 处理
   if (!open) return null;
 
   const pureHueColor = hsvToHex(hsv.h, 1, 1);
@@ -182,9 +173,9 @@ export default function ColorPicker({ open, value, onChange, onClose, presets, a
   const hueLeft = `${Math.round((hsv.h / 360) * 100)}%`;
 
   return (
-    <OverlayPortal>
-      {/* 遮罩——点击关闭 */}
-      <div className="colorpicker-overlay" onClick={onClose} />
+    <OverlayPortal onClose={onClose}>
+      {/* 遮罩 */}
+      <div className="colorpicker-overlay" />
       <div
         className="colorpicker-panel"
         style={anchor ? { left: anchor.x, top: anchor.y } : undefined}
