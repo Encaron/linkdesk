@@ -48,7 +48,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
   /* ── 插件 WebView 远程菜单 ── */
   const [remoteItems, setRemoteItems] = useState<any[] | null>(null);
-  const isPluginWebView = !!window.linkdesk?.pluginViews?.notifyReady;
+  // E5#117: _getValue 只在插件 preload 注入——壳 preload 没有。正确区分"壳"还是"插件进程"
+  const isPluginWebView = !!window.linkdesk?.contextKey?._getValue;
   useEffect(() => {
     if (!isPluginWebView) return;
     window.linkdesk?.menu?.getItems?.(menuId).then(setRemoteItems);
