@@ -1,13 +1,13 @@
 /**
- * E4V#40e 主题同步——LinkDesk 主题 ↔ Monaco defineTheme。
+ * E4V#40e 主题同步——LinkDesk 主题 ↔ Monaco 内置主题切换。
  *
- * syncMonacoTheme(monaco)：定义 + 应用 "linkdesk" 主题。
- * subscribeThemeSync(monacoRef)：订阅 CoreEvents.onDidChangeTheme → 自动同步。
+ * syncMonacoTheme()：直接切换到 vs-dark / vs 内置主题。
+ * subscribeThemeSync()：订阅 CoreEvents.onDidChangeTheme → 自动同步。
  *
  * 设计原则：
- *   - inherit: true → Monaco 内置语法 token 色全保留，不手动配 token
- *   - 外框颜色从 CSS 变量取——禁止硬编码 hex
- *   - 亮色 base="vs" / 暗色 base="vs-dark"
+ *   - 用 Monaco 内置的 vs-dark / vs——零自定义 token，零 defineTheme
+ *   - defineTheme("linkdesk", inherit:true) 在重复调用时可能不复用 base token 色
+ *     → 导致暗色主题下函数名/标识符 token 变黑（Monaco 已知 issue）
  */
 import { CoreEvents } from "@src/core/react/CoreEvents";
 
@@ -16,36 +16,12 @@ function isDarkTheme(): boolean {
   return document.documentElement.getAttribute("data-theme") === "dark";
 }
 
-/** 从 :root CSS 变量取色——取不到返回 undefined，Monaco 用内置老底 */
-function cssVar(name: string): string | undefined {
-  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || undefined;
-}
-
 /**
  * 同步 Monaco 主题到 LinkDesk 当前主题。
- * 调用时机：beforeMount + 每次 onDidChangeTheme。
+ * 调用时机：EditorView mount 时 + 每次 onDidChangeTheme。
  */
 export function syncMonacoTheme(monaco: any): void {
-  const isDark = isDarkTheme();
-  const base = isDark ? "vs-dark" : "vs";
-
-  // 从 CSS 变量取色——过滤掉 undefined 值（Monaco 不能处理 undefined color）
-  const raw: Record<string, string | undefined> = {
-    "editor.background": cssVar("--editor-bg"),
-    "editor.foreground": cssVar("--editor-fg"),
-    "editorLineNumber.foreground": cssVar("--text-secondary"),
-    "editorCursor.foreground": cssVar("--accent"),
-    "editor.selectionBackground": cssVar("--selection-bg"),
-    "editorWidget.background": cssVar("--panel-bg"),
-    "editorWidget.border": cssVar("--border-color"),
-  };
-  const colors: Record<string, string> = {};
-  for (const [k, v] of Object.entries(raw)) {
-    if (v) colors[k] = v;
-  }
-
-  monaco.editor.defineTheme("linkdesk", { base, inherit: true, colors, rules: [] });
-  monaco.editor.setTheme("linkdesk");
+  monaco.editor.setTheme(isDarkTheme() ? "vs-dark" : "vs");
 }
 
 /**
