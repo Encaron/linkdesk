@@ -49,7 +49,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
         const modM = monaco.editor.createModel(modModel.getValue(), undefined, modUri);
 
         const diffEditor = monaco.editor.createDiffEditor(container, {
-          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs",
+          theme: document.documentElement.getAttribute("data-theme") === "dark" ? "linkdesk-dark" : "linkdesk-light",
           originalEditable: false,
           readOnly: true,
         });
