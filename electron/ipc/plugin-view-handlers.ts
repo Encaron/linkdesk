@@ -7,6 +7,7 @@
 
 import { app, ipcMain, BrowserWindow } from 'electron';
 import type { PluginViewRegistry, ViewBounds } from '../plugin-view-registry.js';
+import { DEV_SERVER_URL } from '../../shared/constants.js'; // E5#102b
 
 let _registry: PluginViewRegistry | null = null;
 let _mainWindow: BrowserWindow | null = null;
@@ -41,7 +42,7 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
   ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
     const isDev = !app.isPackaged;
     const url = isDev
-      ? `http://localhost:1420/plugin-view.html?plugin-view=${pluginId}`
+      ? `${DEV_SERVER_URL}/plugin-view.html?plugin-view=${pluginId}`
       // 生产环境通过 linkdesk:// 协议加载（需确保 dist/plugin-view.html 已构建并部署到协议映射的路径）
       : `linkdesk://${pluginId}/plugin-view.html?plugin-view=${pluginId}`;
     _registry?.registerPlugin(pluginId, url);

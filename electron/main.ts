@@ -20,6 +20,7 @@ import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
 import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './protocol.js';
+import { DEV_SERVER_URL } from '../shared/constants.js'; // E5#102b
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
@@ -93,7 +94,7 @@ function createWindow(): void {
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
-    mainWindow.loadURL('http://localhost:1420');
+    mainWindow.loadURL(DEV_SERVER_URL);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
