@@ -227,7 +227,7 @@ export function reduceCreateTab(
       );
       if (previewTab) {
         // 复用 preview 的 id（保持 keep-alive 的 TabPanePositioner key 不变，避免 React unmount）
-        const newTab = { ...createTabDefaults(type, opts), id: previewTab.id, pinned: false };
+        const newTab = { ...createTabDefaults(type, opts), pinned: false }; // E5#92: 不复用 preview id——防同 ID 双标签页
         const newGroups = prev.groups.map((g) =>
           g.id === targetGroupId
             ? { ...g, tabs: g.tabs.map((t) => (t.id === previewTab.id ? newTab : t)), activeTabId: newTab.id }
@@ -240,6 +240,10 @@ export function reduceCreateTab(
 
   /* ── Step 4: 真正新建（无已有、无显式预览替换请求） ── */
   const newTab = createTabDefaults(type, opts);
+  // E5#92b: ID 碰撞检测——generateId 基于 filePath 生成确定性 ID，旧文件再打开时可能与已存在标签页碰撞
+  if (prev.groups.flatMap(g => g.tabs).some(t => t.id === newTab.id)) {
+    newTab.id = `${newTab.id}-${Date.now()}`;
+  }
   const targetGroup = prev.groups.find((g) => g.id === targetGroupId);
   if (!targetGroup) return { state: prev, createdId: "" };
 
