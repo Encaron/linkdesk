@@ -1,13 +1,13 @@
 /**
- * E4V#40e 主题同步——LinkDesk 主题 ↔ Monaco 内置主题切换。
+ * E4V#40e 主题同步——LinkDesk 背景色 + Monaco 内置 token。
  *
- * syncMonacoTheme()：直接切换到 vs-dark / vs 内置主题。
+ * syncMonacoTheme()：defineTheme("linkdesk-dark"/"linkdesk-light") + setTheme。
  * subscribeThemeSync()：订阅 CoreEvents.onDidChangeTheme → 自动同步。
  *
  * 设计原则：
- *   - 用 Monaco 内置的 vs-dark / vs——零自定义 token，零 defineTheme
- *   - defineTheme("linkdesk", inherit:true) 在重复调用时可能不复用 base token 色
- *     → 导致暗色主题下函数名/标识符 token 变黑（Monaco 已知 issue）
+ *   - 背景色走 LinkDesk CSS 变量（--bg-window）——和 App 主题一致
+ *   - token 色走 Monaco 内置（inherit:true, base:vs-dark/vs）
+ *   - 暗/亮各用独立主题名——避免 defineTheme 同名校验缓存不刷新 (Monaco known issue)
  */
 import { CoreEvents } from "@src/core/react/CoreEvents";
 
@@ -16,20 +16,31 @@ function isDarkTheme(): boolean {
   return document.documentElement.getAttribute("data-theme") === "dark";
 }
 
+function cssVar(name: string, fallback: string): string {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
+}
+
 /**
  * 同步 Monaco 主题到 LinkDesk 当前主题。
  * 调用时机：EditorView mount 时 + 每次 onDidChangeTheme。
  */
 export function syncMonacoTheme(monaco: any): void {
-  monaco.editor.setTheme(isDarkTheme() ? "vs-dark" : "vs");
+  const isDark = isDarkTheme();
+  const bg = isDark ? cssVar("--bg-window", "#1E1E1E") : cssVar("--bg-window", "#FFFFFF");
+  const themeName = isDark ? "linkdesk-dark" : "linkdesk-light";
+
+  monaco.editor.defineTheme(themeName, {
+    base: isDark ? "vs-dark" : "vs",
+    inherit: true,
+    colors: { "editor.background": bg },
+    rules: [],
+  });
+  monaco.editor.setTheme(themeName);
 }
 
 /**
  * 订阅 LinkDesk 主题变更——回调中调 syncMonacoTheme。
  * 返回 unsubscribe 函数——useEffect cleanup 中调用。
- *
- * 🔥 参数是 monaco 命名空间 ref（monaco.editor.defineTheme/setTheme），
- *   不是 editor 实例 ref（editor.layout/dispose）。
  */
 export function subscribeThemeSync(monacoNsRef: { current: any }): () => void {
   return CoreEvents.onDidChangeTheme.event(() => {
