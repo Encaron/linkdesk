@@ -4,7 +4,7 @@
  * E5#44d：支持子菜单——静态 children 或动态 resolveChildren 回调。
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
  */
-import { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
 import { createPortal } from "react-dom";
 import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
 import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
@@ -158,29 +158,42 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     await executeCommand(commandId, undefined, context);
   }, [context, onClose]);
 
-  /* ── 视口自适应 ── */
-  const adjustedAnchor = useMemo(() => {
-    const estWidth = 180;
-    const estHeight = Math.min(resolved.length * 30 + 8, 400);
-    let left = anchor.x, top = anchor.y;
-    if (left + estWidth > window.innerWidth) left = Math.max(0, window.innerWidth - estWidth - 4);
-    if (top + estHeight > window.innerHeight) top = Math.max(0, window.innerHeight - estHeight - 4);
-    return { left, top };
-  }, [anchor, resolved.length]);
+  /* ── 视口自适应（E5#94a：两阶段渲染——先隐藏量测真实 DOM 尺寸再修正位置）── */
+  const [menuPos, setMenuPos] = useState({ left: anchor.x, top: anchor.y });
+  const [menuReady, setMenuReady] = useState(false);
 
-  /* ── 入场动画 ── */
+  useLayoutEffect(() => {
+    setMenuPos({ left: anchor.x, top: anchor.y });
+    setMenuReady(false);
+  }, [anchor.x, anchor.y, resolved.length]);
+
+  /* ── 入场动画 + 定位修正 ── */
   useEffect(() => {
     const el = menuRef.current;
     if (!el) return;
-    const frame = requestAnimationFrame(() => el.classList.add("show"));
+    // 1. 量测真实尺寸 + 修正溢出
+    const rect = el.getBoundingClientRect();
+    let left = anchor.x;
+    let top = anchor.y;
+    if (left + rect.width > window.innerWidth) left = Math.max(0, window.innerWidth - rect.width - 4);
+    if (top + rect.height > window.innerHeight) top = Math.max(0, window.innerHeight - rect.height - 4);
+    setMenuPos({ left, top });
+    // 2. 入场动画
+    const frame = requestAnimationFrame(() => {
+      setMenuReady(true);
+      el.classList.add("show");
+    });
     return () => cancelAnimationFrame(frame);
-  }, []);
+  }, [anchor.x, anchor.y, resolved.length]);
 
   /* ═══ E5#44d：hover 子菜单 handler ═══ */
   const openSub = useCallback((el: HTMLElement, items: ResolvedItem[]) => {
     if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; }
     const r = el.getBoundingClientRect();
-    setSubData({ x: r.right + 4, y: r.top, items });
+    // E5#94b：子菜单方向跟随可用空间——右边放不下就放左边
+    const subEstW = 160;
+    const x = r.right + subEstW > window.innerWidth ? r.left - subEstW - 4 : r.right + 4;
+    setSubData({ x, y: r.top, items });
   }, []);
 
   const closeSubDelayed = useCallback(() => {
@@ -193,7 +206,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   return createPortal(
     <>
       {/* 主菜单 */}
-      <div ref={menuRef} className="ctx-menu" style={{ left: adjustedAnchor.left, top: adjustedAnchor.top }}>
+      <div ref={menuRef} className="ctx-menu" style={{ left: menuPos.left, top: menuPos.top, visibility: menuReady ? undefined : "hidden" }}>
         {resolved.map((item, i) => {
           if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
           const idx = clickableIdx++;
