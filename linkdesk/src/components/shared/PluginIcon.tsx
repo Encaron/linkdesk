@@ -61,6 +61,7 @@ export function PluginIcon({ pluginId, className, alt = "" }: PluginIconProps) {
       <img src={resolved.src} alt={alt} className={`plugin-icon plugin-icon--img ${className ?? ""}`} />
     );
   }
+  // @deprecated E5#100：emoji 回退——保留一个月后删除。新图标优先走 Lucide。
   return (
     <span className={`plugin-icon plugin-icon--emoji ${className ?? ""}`}>{resolved.emoji ?? FALLBACK}</span>
   );
