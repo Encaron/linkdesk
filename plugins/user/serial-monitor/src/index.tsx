@@ -33,7 +33,7 @@ import { HexToBytes } from "@src/core/data/DataConverter";
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 import { registerCommand, unregisterPluginCommands } from "@src/core/registry/CommandRegistry";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId } from "@src/core/registry/MenuRegistry";
+import { MenuId, registerMenuItems } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./styles/SerialMonitorView.css";
 
@@ -955,13 +955,14 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       },
     });
 
-    // E5#116：注册右键菜单项——走 linkdesk.menu API（多 WebView 兼容），不直接 import MenuRegistry
-    window.linkdesk?.menu?.registerItems?.(MenuId.EditorContext, "serial-monitor", [
+    // E5#116：注册右键菜单项——单 WebView 下直接 import MenuRegistry
+    // TODO: 多 WebView 恢复时切到 window.linkdesk.menu.registerItems (IPC)
+    registerMenuItems(MenuId.EditorContext, "serial-monitor", [
       { command: "serial-monitor.copy", group: "clipboard" },
       { command: "serial-monitor.selectAll", group: "selection" },
       { command: "serial-monitor.clear", group: "edit" },
     ]);
-    window.linkdesk?.menu?.registerItems?.(MenuId.QuickSendContext, "serial-monitor", [
+    registerMenuItems(MenuId.QuickSendContext, "serial-monitor", [
       { command: "serial-monitor.quickSendEdit", group: "edit" },
       { command: "serial-monitor.quickSendDelete", group: "danger" },
     ]);
