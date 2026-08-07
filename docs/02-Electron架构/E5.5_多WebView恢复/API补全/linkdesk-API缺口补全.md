@@ -1,12 +1,24 @@
 # linkdesk.* API 缺口补全——E5.5#16-#24
 
 > 📖 **来源：** [[e5-120-audit-plugin-core-imports]]——37 处 ESLint `no-core-import-in-plugin` warn。
-> **结论：** 9 处白名单（`import type` 5 + `__tests__/` 4），1 处可立即切，**27 处缺 API 留 E5.5**。
-> **目标：** 按 8 个 API 命名空间补全 → 逐 import 迁移 → ESLint warn 清零（保留白名单 9 处）。
+> **🔥 去掉向后兼容后：** ESLint `warn` → **`error`**。白名单仅限 `import type`（8 种类型，编译擦除）和 `__tests__/` 目录。**不存在"记录例外"——任何运行时 import `@src/core` 必须消灭。**
+> **结论：** ~41 处运行时 import 需消灭，**11 个 API 命名空间/方法补全**（原 9 个 + `linkdesk.data` + `linkdesk.menu.MenuId`）。
+> **目标：** 11 个命名空间补全 → 逐 import 迁移 → ESLint **零 error**。
 
 ## 现状
 
-ESLint `no-core-import-in-plugin` 拦截所有 `plugins/** → import from @src/core/**`。当前 37 处 warn。多 WebView 恢复后，插件在自己的 JS 堆中运行——直接 import 核心模块 = 读本地副本（静默失效，不报错）。
+ESLint `no-core-import-in-plugin` 拦截所有 `plugins/** → import from @src/core/**`。2026-08-07 全量 grep 审计结果：
+
+| 类别 | 数量 | 处理 |
+|:--|:--:|:--|
+| `import type`（编译擦除） | 8 | 白名单放行 |
+| 服务/注册表调用 | ~30 | 切 `linkdesk.*` API（E5.5#16-#23h） |
+| 纯工具/数据模块 | 5 | 切 `linkdesk.data.*` API（E5.5#23i，新增） |
+| 枚举常量 `MenuId` | 6 | 切 `linkdesk.menu.MenuId`（E5.5#23j，新增） |
+| `__tests__/` 运行时 import | 2 | 切 `linkdesk.*` API |
+| **合计运行时 import** | **~41** | **全部消灭** |
+
+多 WebView 恢复后，插件在自己的 JS 堆中运行——直接 import 核心模块 = 读本地副本（静默失效，不报错）。
 
 ## API 缺口全景
 
@@ -275,17 +287,23 @@ ipcMain.handle('protocol:getDefaultFor', (_e, data: string) => protocolRegistry.
 | `configuration` hook | 封装 `useConfigurationValue` → `get()` + `onDidChange()` | ~10 | serial-monitor/statusBar.tsx + file-tree/FoldersView.tsx |
 | `contextKey.setValue/getValue` | `ipcMain.handle('contextKey:set', ...)` / `ipcMain.handle('contextKey:get', ...)` | ~8 | serial-monitor/SessionListView.tsx |
 
-## ESLint 白名单（E5.5#24a-b）
+## ESLint 白名单（E5.5#24a-c）
+
+> 🔥 **去掉向后兼容后：** `warn` → **`error`**。白名单仅限 `import type`（编译擦除，零运行时影响）和 `__tests__/` 目录。
 
 **`import type`（纯类型，编译擦除，零运行时）：**
 
 ```javascript
 // eslint-local-rules.js no-core-import-in-plugin 规则
 const TYPE_ONLY_IMPORTS = [
-  'FileEntry',        // file-tree/FileExcludeFilter, FileTreeModel
-  'FileDecoration',   // file-tree/FileTreeModel
-  'WorkspaceFolder',  // file-tree/FoldersView
-  'ViewPluginEntry',  // marketplace/marketplaceShared
+  'FileEntry',          // file-tree/FileExcludeFilter, FileTreeModel, 测试文件
+  'FileDecoration',     // file-tree/FileTreeModel
+  'WorkspaceFolder',    // file-tree/FoldersView
+  'ViewPluginEntry',    // marketplace/ExtensionItem, marketplaceShared
+  'FileSearchResult',   // file-tree/SearchView
+  'SearchMatch',        // file-tree/SearchView
+  'SendContext',        // serial-monitor/index
+  'SendCallbacks',      // serial-monitor/index
 ];
 ```
 
@@ -293,20 +311,86 @@ const TYPE_ONLY_IMPORTS = [
 
 ```javascript
 if (filename.includes('__tests__/')) return; // 不检查
+// 但测试内运行时 import（copy/remove from FileService, ContextKeyService）也切 linkdesk.* API（E5.5#24c）
 ```
+
+---
+
+## 新增：linkdesk.data——纯工具/数据模块（E5.5#23i）
+
+> **影响：** serial-monitor/index.tsx（5 处：`RingBuffer`, `useSendData`, `formatTimestamp`, `HexToBytes`, `SendContext`/`SendCallbacks` 类型）
+> **性质：** 纯数据结构 + 纯工具函数——无副作用，不依赖 Registry/Service。但多 WebView 下直接 import = ESLint error。需通过 `window.linkdesk.data.*` 暴露或插件自带副本。
+
+### RingBuffer
+
+```typescript
+// preload-plugin.ts 暴露
+data: {
+  RingBuffer: RingBuffer,  // 类引用——插件 new window.linkdesk.data.RingBuffer(capacity)
+}
+```
+
+### useSendData
+
+> 🔥 **关键：** `useSendData` 是 React hook——在多 WebView 下，每个插件需要自己的实例。hook 内部调 `linkdesk.serial.send()` IPC 做实际数据发送——不能 import 壳 `src/core/react/useSendData`。
+
+```typescript
+// preload-plugin.ts 暴露——hook 工厂
+data: {
+  useSendData: (options) => {
+    // 内部调 linkdesk.serial.send() / linkdesk.serial.onData() IPC
+    // 返回 { send, receivedLines, clearHistory, ... }
+  }
+}
+```
+
+### formatTimestamp / HexToBytes
+
+```typescript
+// preload-plugin.ts 暴露——纯函数，直接引用
+data: {
+  formatTimestamp: formatTimestamp,
+  HexToBytes: HexToBytes,
+}
+```
+
+---
+
+## 新增：linkdesk.menu.MenuId——枚举常量暴露（E5.5#23j）
+
+> **影响：** 6 处——file-tree/FileTreeContextMenu (2), marketplace/ExtensionItem (1), marketplace/index (1), serial-monitor/index (1), editor/EditorContextMenu (1)
+> **性质：** 纯字符串常量枚举，无副作用。方案 A——`window.linkdesk.menu.MenuId` 对象字面量暴露。
+
+```typescript
+// preload-plugin.ts 暴露
+menu: {
+  MenuId: {
+    EditorContext: 'editor.context',
+    FileTreeContext: 'file-tree.context',
+    TabContext: 'tab.context',
+    // ... 全部 MenuId 常量
+  }
+}
+```
+
+**为什么不用方案 B（插件本地副本）：** 6 处分散在 5 个文件。如果某个常量变了（虽然少见），6 处全要改。统一暴露 = 单一真相源。
+
+---
 
 ## 迁移执行顺序
 
 ```
-E5.5#16  workspace     → 7 处 → 文件树 + 编辑器
-E5.5#17  commands       → 4 处 → 所有插件（最高频）
-E5.5#18  fileAssociation → 2 处 → 文件树
-E5.5#19  viewContainer  → 3 处 → 文件树 + 市场 + 串口
-E5.5#20  events         → 3 处 → 编辑器 + 文件树
-E5.5#21  fileDecoration → 1 处 → 文件树
-E5.5#22  protocol       → 1 处 → 串口
-E5.5#23  其余零散       → 8 处 → 逐个
-E5.5#24  ESLint + 收尾  → 验证全量
+E5.5#16  workspace        → 9 处 → 文件树 + 编辑器
+E5.5#17  commands          → 5 处 → 所有插件（最高频）
+E5.5#18  fileAssociation   → 2 处 → 文件树
+E5.5#19  viewContainer     → 3 处 → 文件树 + 市场 + 串口
+E5.5#20  events            → 6 处 → 编辑器 + 文件树
+E5.5#21  fileDecoration    → 1 处 → 文件树
+E5.5#22  protocol          → 1 处 → 串口
+E5.5#23a-h 其余零散        → 8 处 → 逐个
+E5.5#23i data              → 5 处 → 串口（RingBuffer/useSendData/工具函数）
+E5.5#23j menu.MenuId       → 6 处 → 所有插件（枚举常量）
+E5.5#24  ESLint + 收尾     → 验证全量
 ```
 
 **每个 API 做完 → `grep` 此文档对应的 import → 逐文件切 → 插件 WebView console 验证 → 勾掉。**
