@@ -14,6 +14,7 @@ function mockDeps(overrides?: Partial<InitDeps>): InitDeps {
   return {
     initLayoutService: vi.fn().mockResolvedValue(undefined),
     initPluginStates: vi.fn().mockResolvedValue(undefined),
+    initWorkspaceService: vi.fn().mockResolvedValue(undefined), // E5.5#0e
     initPluginLoader: vi.fn().mockResolvedValue(undefined),
     startPluginWatcher: vi.fn(),
     getLoadedPluginManifests: vi.fn().mockReturnValue([

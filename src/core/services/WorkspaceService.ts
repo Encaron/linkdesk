@@ -145,6 +145,9 @@ export function addFolder(folderPath: string): void {
 
   // 联动 ConfigurationService——workspace scope 的 settings.json 路径
   setWorkspaceRoot(uri);
+
+  // E5.5#0e：持久化工作区文件夹列表——退出/重启后恢复
+  _persistFolders();
 }
 
 /**
@@ -175,10 +178,87 @@ export function removeFolder(folderPath: string): void {
 
   // 如果移除的是第一个文件夹，更新 workspace root
   setWorkspaceRoot(_folders[0]?.uri ?? null);
+
+  // E5.5#0e：持久化工作区文件夹列表
+  _persistFolders();
 }
 
 /** 清空缓存（测试用） */
 export function clearWorkspaceFolders(): void {
   _folders = [];
   _onDidChangeFolders.dispose();
+}
+
+/* ── E5.5#0e：持久化 ── */
+
+/** 将 _folders 写入 pluginState——退出/重启后恢复 */
+function _persistFolders(): void {
+  setPluginStateValue("workspace", "folders", JSON.stringify(_folders))
+    .catch((e) => { console.error("[Workspace] 保存工作区文件夹列表失败:", e); });
+}
+
+/**
+ * 初始化——从 pluginState 恢复工作区文件夹列表。
+ * 必须在 initPluginStates() 之后调用（依赖 _states 已加载）。
+ * 对标 VS Code storage.json 中 windowsState.lastActiveWindow.folderUris。
+ */
+export async function initWorkspaceService(): Promise<void> {
+  try {
+    const raw = getPluginStateValue<string>("workspace", "folders");
+    if (!raw) return;
+    const parsed: unknown = JSON.parse(raw);
+    if (!Array.isArray(parsed) || parsed.length === 0) return;
+
+    // 验证磁盘上文件夹仍存在——已删除的跳过
+    const valid: WorkspaceFolder[] = [];
+    for (const item of parsed) {
+      if (typeof item !== "object" || !item || !("uri" in item)) continue;
+      const folder = item as WorkspaceFolder;
+      try {
+        const lk = window.linkdesk;
+        if (lk?.filesystem?.exists) {
+          const ok = await lk.filesystem.exists(folder.uri);
+          if (ok) {
+            valid.push(folder);
+          } else {
+            import("./toast").then(({ pushToast }) => {
+              pushToast({ message: `工作区文件夹 "${folder.name}" 已不存在，已移除`, severity: "warning" });
+            });
+          }
+        } else {
+          // 非 Electron 环境——信任持久化数据
+          valid.push(folder);
+        }
+      } catch {
+        // 磁盘检查失败——保守保留
+        valid.push(folder);
+      }
+    }
+
+    if (valid.length === 0) return;
+    _folders = valid;
+    _onDidChangeFolders.fire([..._folders]);
+    CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
+
+    // 恢复活跃工作区
+    const persistedActive = getPluginStateValue<string>("workspace", "activeWorkspace");
+    if (persistedActive) {
+      const normalized = normalizePath(persistedActive);
+      if (valid.some((f) => f.uri === normalized)) {
+        _activeWorkspaceUri = normalized;
+        _onDidChangeActiveWorkspace.fire(normalized);
+      } else if (valid.length > 0) {
+        _activeWorkspaceUri = valid[0].uri;
+        _onDidChangeActiveWorkspace.fire(valid[0].uri);
+      }
+    } else if (valid.length > 0) {
+      _activeWorkspaceUri = valid[0].uri;
+    }
+
+    // 联动 workspace root
+    setWorkspaceRoot(valid[0].uri);
+  } catch (e) {
+    console.error("[Workspace] 恢复工作区文件夹失败:", e);
+    // 降级：从空开始，不崩启动
+  }
 }
