@@ -122,13 +122,16 @@ export function useWebViewSync(
     }
   }, [webViewBoundsReady]);
 
-  // ── window resize → 触发 bounds sync（所有插件 WebView 受益）──
-  const [resizeVersion, setResizeVersion] = useState(0);
+  // ── ResizeObserver → 触发 bounds sync（侧栏/窗口 resize/分屏 全覆盖）──
+  const [layoutVersion, setLayoutVersion] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
   useEffect(() => {
-    const onResize = () => setResizeVersion(v => v + 1);
-    window.addEventListener("resize", onResize);
-    return () => window.removeEventListener("resize", onResize);
-  }, []);
+    if (!observerRef.current) {
+      observerRef.current = new ResizeObserver(() => setLayoutVersion(v => v + 1));
+    }
+    for (const el of poolRefs.current.values()) observerRef.current.observe(el);
+    return () => observerRef.current?.disconnect();
+  }, [tabState.groups]);
 
   // ── Effect 3：bounds sync + setVisible（Bug ① dep + Bug ⑤ prev 时序 + Bug ⑥ ref）──
   useEffect(() => {
@@ -216,7 +219,7 @@ export function useWebViewSync(
     });
 
     pluginViewsRef.current = currentStates;
-  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds, resizeVersion]); // Bug ①: readyWebViewIds + E5#84d: window resize
+  }, [tabState.groups, tabState.activeGroupId, readyWebViewIds, layoutVersion]); // Bug ①: readyWebViewIds + E5.5#3f: ResizeObserver→layoutVersion 全覆盖
 
   return { readyWebViewIds, webViewBoundsReady, webViewTimeout, registerPoolRef, resetWebViewState };
 }
