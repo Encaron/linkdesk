@@ -74,16 +74,55 @@ export function createEventSystem(
   };
 }
 
+export interface ListenDirectOptions {
+  /** 抑制 plugin:push 通道告警——壳侧直接接收主进程 send 时传 true */
+  skipPushWarning?: boolean;
+}
+
 /**
  * 🔥 归一化：直接 IPC channel 监听——替代 makeListener + 裸 ipcRenderer.on。
  * 返回 unsubscribe 函数。所有 preload 脚本共用此入口。
  * 对标 createEventSystem.on 的模式，但监听直接 IPC channel 而非 plugin:push 分发。
+ *
+ * ⚠️ 仅用于主进程直接 view.webContents.send(channel, data) 的通道（serial/p2p）。
+ * IpcBridge.broadcast() 推送的事件走 plugin:push 分发 → 必须用 events.on()，不能用此函数。
+ * 壳 preload 的 config:changed 走主进程直发 mainWindow.webContents.send → listenDirect 正确，
+ * 传 { skipPushWarning: true } 抑制告警。
+ * 详见 preload-plugin.ts 文件头"IPC 通道铁律"。
  */
 export function listenDirect(
   ipcRenderer: IpcRenderer,
   channel: string,
   cb: (...args: any[]) => void,
+  options?: ListenDirectOptions,
 ): () => void {
+  // ── E5.5#7c: 运行时告警——channel 名匹配已知 plugin:push 分发通道时静默失效 ──
+  // 这些 channel 的壳侧推送走 IpcBridge.broadcast → plugin:push 分发到插件 WebView，
+  // 插件 preload 用 listenDirect 监听的是直接 IPC 通道（不带 plugin:push 包装），永远收不到。
+  // 壳 preload 的 config:changed/contextKey:changed 走主进程直发 mainWindow.webContents.send，
+  // 用 listenDirect 是正确的——传 { skipPushWarning: true } 跳过告警。
+  if (!options?.skipPushWarning) {
+    const PUSH_CHANNELS = [
+      'config:changed',
+      'theme:changed',
+      'lang:changed',
+      'plugin-state:changed',
+      'contextKey:changed',
+      'plugin:installed',
+      'plugin:uninstalled',
+      'window:zoomLevelChanged',
+    ];
+    if (PUSH_CHANNELS.includes(channel)) {
+      console.error(
+        `[event-system] 🔴 listenDirect("${channel}") 错误！` +
+        ` "${channel}" 走 plugin:push 分发，必须用 events.on("${channel}", cb)，不是 listenDirect。` +
+        ` 直接 IPC 通道加 :direct 后缀（如 "mydata:direct"）可跳过此告警。` +
+        ` 壳 preload 确认主进程直发 → 传 {{ skipPushWarning: true }}。` +
+        ` 详见 preload-plugin.ts 文件头"IPC 通道铁律"。`,
+      );
+    }
+  }
+
   const handler = (_event: any, ...args: any[]) => cb(...args);
   if (DEV_LOG) console.debug(`[events] listenDirect("${channel}")`);
   ipcRenderer.on(channel, handler);

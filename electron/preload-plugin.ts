@@ -4,6 +4,57 @@
  * E1 步 5 + E3a #28 细化：比 preload-shell.ts 更窄——核心无知原则：插件不知道壳的存在。
  * E3a 生产使用时，此文件直接作为 PluginWebContentsView 的 preload。
  *
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ * 🔥🔥🔥 IPC 通道铁律——新 AI / 任何人修改此文件前必读（E5.5#7b）
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
+ * 插件 WebView 接收壳推送事件的通道只有两种。选错 = 静默失效（不报错，事件永远收不到）。
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────────┐
+ * │ 铁律 1：IpcBridge.broadcast 推送 → 插件侧 events.on(channel, cb)             │
+ * │                                                                             │
+ * │   壳侧调用链：IpcBridge.broadcast('config:changed', payload)                  │
+ * │            → view.webContents.send('plugin:push', {channel, payload})        │
+ * │                                                                             │
+ * │   插件侧必须：events.on('config:changed', cb)                                 │
+ * │            → 内部注册 ipcRenderer.on('plugin:push', handler)                 │
+ * │            → handler 内匹配 data.channel === 'config:changed' → 调 cb        │
+ * │                                                                             │
+ * │   ✅ 正确：configuration.onChange → events.on('config:changed', cb)           │
+ * │   ✅ 正确：pluginState.onChange  → events.on('plugin-state:changed', cb)     │
+ * │   ✅ 正确：theme.onChange（通过 extraHandlers）                               │
+ * │   ❌ 错误：listenDirect(ipcRenderer, 'config:changed', cb)                   │
+ * │           → 监听直接 IPC 通道 'config:changed'，但事件在 'plugin:push' 上到达  │
+ * │           → 永远收不到。不报错。静默失效。                                    │
+ * └─────────────────────────────────────────────────────────────────────────────┘
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────────┐
+ * │ 铁律 2：主进程直接 send → 插件侧 listenDirect(ipcRenderer, channel, cb)       │
+ * │                                                                             │
+ * │   主进程调用：view.webContents.send('serial:data', payload)                   │
+ * │             （不经过 plugin:push 包装，直发到插件 WebView）                    │
+ * │                                                                             │
+ * │   插件侧必须：listenDirect(ipcRenderer, 'serial:data', cb)                    │
+ * │            → 内部注册 ipcRenderer.on('serial:data', handler)                 │
+ * │                                                                             │
+ * │   ✅ 正确：serial.onData  → listenDirect(ipcRenderer, 'serial:data', cb)     │
+ * │   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, 'serial:stats', cb)    │
+ * │   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, 'p2p:data', cb)        │
+ * └─────────────────────────────────────────────────────────────────────────────┘
+ *
+ * ┌─────────────────────────────────────────────────────────────────────────────┐
+ * │ 铁律 3：event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error   │
+ * │         新加直接通道 → channel 名加 `:direct` 后缀以跳过告警                   │
+ * └─────────────────────────────────────────────────────────────────────────────┘
+ *
+ * 快速自查（新加 IPC 订阅时问自己 3 个问题）：
+ *   Q1: 壳侧谁发这个事件？→ IpcBridge.broadcast() 还是 view.webContents.send()？
+ *   Q2: 经过 plugin:push 分发吗？→ broadcast → 是（用 events.on）；直发 → 否（用 listenDirect）
+ *   Q3: 有模块级缓存防竞态吗？→ React mount 前事件可能已到达 → 需 Map 缓存 + onXxx 时立即回放
+ *
+ * 📖 完整根因分析 + 审计：docs/02-Electron架构/E5.5_多WebView恢复/02-IPC事件推送-插件WebView修复.md
+ * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+ *
  * 🔒 安全边界（contextBridge 白名单审计）：
  *   ✅ serial      — 消费端（读/写/监听，含 DTR/RTS 控制）
  *   ✅ config      — 读/写/订阅配置变更
@@ -26,6 +77,16 @@ import { createEventSystem, listenDirect } from './event-system';
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
   _contextKeyStore.set(key, value);
+});
+
+// ── E5.5#7a: 配置缓存——防 React mount 前事件竞态（同 _langCache 模式）──
+//          ipcRenderer.on 模块顶层常驻 → 事件可在任何时刻安全到达，不依赖 React 生命周期。
+const _configCache = new Map<string, unknown>();
+ipcRenderer.on('plugin:push', (_event, data: any) => {
+  if (data?.channel === 'config:changed') {
+    const { key, value } = data.payload as { key: string; value: any };
+    _configCache.set(key, value);
+  }
 });
 
 
@@ -78,14 +139,64 @@ try {
   };
 
   // E3j #75：configuration 对象——config 为向后兼容别名
+  // E5.5#7：补全设置页所需 API——getConfigurationContributions / inspectConfiguration / getUserSettings / onDidChangeConfiguration / onPluginLifecycleChange
   const configurationObj = {
     get:  (key: string) => ipcRenderer.invoke('config:get', key),
     set:  (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
     getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
-    onChange: (key: string, cb: (v: any) => void) =>
-      listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
-        if (!key || d.key === key) cb(d.value);
-      }),
+    // E5.5#7a：listenDirect → events.on——config:changed 经 IpcBridge.broadcast 走 plugin:push 分发，非直接 IPC 通道
+    onChange: (key: string, cb: (v: any) => void) => {
+      // 模块级缓存已有 → 立即回调解耦 React mount 时序
+      if (key && _configCache.has(key)) {
+        try { cb(_configCache.get(key)); } catch { /* contextBridge 回调静默失败 */ }
+      }
+      return events.on("config:changed", (d: any) => {
+        const { key: k, value } = d as { key: string; value: any };
+        if (!key || k === key) cb(value);
+      });
+    },
+    // ── E5.5#7：设置页 IPC 化——以下 5 个 API 替代 SettingsView 的直接 @src/core import ──
+    /** 获取所有插件的配置贡献（分组列表+属性）。返回 entries 数组，插件侧需 new Map(entries) */
+    getConfigurationContributions: (): Promise<[string, any][]> =>
+      ipcRenderer.invoke('plugins:call', 'getConfigurationContributions'),
+    /** 检视单个配置项——返回 { key, defaultValue, globalValue, workspaceValue, userValue } */
+    inspectConfiguration: (key: string): Promise<any> =>
+      ipcRenderer.invoke('plugins:call', 'inspectConfiguration', key),
+    /** 获取用户设置 JSON——用于 "打开设置 (JSON)" 弹窗 */
+    getUserSettings: (): Promise<Record<string, unknown>> =>
+      ipcRenderer.invoke('plugins:call', 'getUserSettings'),
+    /** 全局配置变更——不传 key 则所有变更都通知 */
+    onDidChangeConfiguration: (cb: (key: string, value: unknown) => void) => {
+      return events.on("config:changed", (d: any) => {
+        const { key: k, value } = d as { key: string; value: any };
+        try { cb(k, value); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
+    /** 插件生命周期变更——插件安装/卸载时通知，设置页等保姆插件刷新分组列表 */
+    onPluginLifecycleChange: (cb: () => void) => {
+      return events.on("plugin-lifecycle:changed", () => {
+        try { cb(); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
+    // ── E5.5#7：壳→设置页导航——M1 双通道（齿轮"设置"跳转到指定分组/配置项）──
+    /** A 通道（mount 消费 pending）——设置未打开时齿轮"设置"跳转到指定分组 */
+    consumeSettingsGroup: (): Promise<string | null> =>
+      ipcRenderer.invoke('plugins:call', 'consumeSettingsGroup'),
+    /** B 通道（Emitter 订阅）——设置已打开时齿轮"设置"实时跳转 */
+    onRequestSettingsGroup: (cb: (pluginId: string) => void) => {
+      return events.on("settings:requestGroup", (d: any) => {
+        try { cb((d as { pluginId: string }).pluginId); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
+    /** A 通道（mount 消费 pending）——命令面板齿轮跳转到指定配置项 */
+    consumeScrollToSetting: (): Promise<string | null> =>
+      ipcRenderer.invoke('plugins:call', 'consumeScrollToSetting'),
+    /** B 通道（Emitter 订阅）——已打开时实时滚动到指定配置项 */
+    onRequestScrollToSetting: (cb: (key: string) => void) => {
+      return events.on("settings:scrollTo", (d: any) => {
+        try { cb((d as { key: string }).key); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
@@ -247,6 +358,21 @@ try {
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
       getItems: (menuId: string): Promise<unknown[]> =>
         ipcRenderer.invoke('menu:getItems', menuId),
+      // E5.5#7：MenuId 枚举常量——插件不再 import { MenuId } from @src/core
+      MenuId: {
+        CommandPalette: "commandPalette",
+        TabContext: "tabContext",
+        EditorContext: "editorContext",
+        ExtensionGear: "extensionGear",
+        MarketplaceItemGear: "marketplaceItemGear",
+        MenuBar: "menuBar",
+        FileContext: "fileContext",
+        CardContext: "cardContext",
+        QuickSendContext: "quickSendContext",
+        IconBar: "iconBar",
+        SettingItemGear: "settingItemGear",
+        ViewTitleContext: "viewTitleContext",
+      },
     },
 
     // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──

@@ -52,10 +52,11 @@ try {
     get: (key: string) => ipcRenderer.invoke('config:get', key),
     set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
     getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
+    // E5.5#7c：壳侧 config:changed 走主进程直发 mainWindow.webContents.send → listenDirect 正确
     onChange: (key: string, cb: (v: any) => void) =>
       listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
         if (!key || d.key === key) cb(d.value);
-      }),
+      }, { skipPushWarning: true }),
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {

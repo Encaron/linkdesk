@@ -7,38 +7,39 @@
  *
  * 结构：顶部搜索栏 + 左侧分组树 + 右侧设置表单。
  * 核心无知原则：Settings Editor 不知道有哪些设置项——全部从 ConfigurationRegistry 派生。
+ *
+ * 🔥 E5.5#7 多 WebView 改造：所有数据访问走 window.linkdesk.configuration.* IPC，
+ *    零 import @src/core（壳/插件 WebView 通用）。设置插件 = 保姆插件——只消费大厅桌子。
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import Toggle from "../shared/Toggle";
 import SelectBox from "../shared/SelectBox";
-import FontFamilySelect from "../shared/FontFamilySelect"; // E5#57c
-import FilePathInput from "../shared/FilePathInput";       // E5#57d
-import NumberInput from "../shared/NumberInput";           // E5#57: 自定义 +/- 步进按钮，替代原生 spinner
+import FontFamilySelect from "../shared/FontFamilySelect";
+import FilePathInput from "../shared/FilePathInput";
+import NumberInput from "../shared/NumberInput";
 import { InlineInput } from "../shared/InlineInput";
-import KeybindingSettingsView from "./KeybindingSettingsView"; // E3f #59
-import { CUSTOM_EVENTS } from "../../core/react/CoreEvents"; // E3f #59
-import {
-  getConfigurationContributions,
-  getMergedSchema,
-  consumeSettingsGroup,
-  onRequestSettingsGroup,
-  consumeScrollToSetting,
-  onRequestScrollToSetting,
-  type ConfigurationProperty,
-} from "../../core/registry/ConfigurationRegistry";
-import {
-  setConfigurationValue,
-  inspectConfiguration,
-} from "../../core/services/ConfigurationService";
-import { useConfigurationValue } from "../../core/react/useConfiguration";
-import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-import { MenuId } from "../../core/registry/MenuRegistry";
-import { ContextKeyService } from "../../core/registry/ContextKeyService";
+import KeybindingSettingsView from "./KeybindingSettingsView";
+import { useConfigurationValueIpc } from "../../core/react/useConfigurationIpc";
 import ContextMenu from "../shared/ContextMenu";
 import ColorPicker from "../shared/ColorPicker";
 import "./SettingsView.css";
+
+/* ── 辅助函数 ── */
+
+function lk() {
+  if (!window.linkdesk?.configuration) {
+    throw new Error("[SettingsView] window.linkdesk.configuration 不可用");
+  }
+  return window.linkdesk.configuration;
+}
+
+const MenuId = {
+  SettingItemGear: "settingItemGear",
+} as const;
+
+const CUSTOM_EVENT_OPEN_KEYBINDINGS = "linkdesk:openKeybindingsSettings";
 
 /* ── 类型 ── */
 
@@ -52,113 +53,153 @@ interface GroupInfo {
   keys: string[];
 }
 
+/** ConfigurationProperty 精简版——IPC 序列化后使用的本地类型 */
+interface ConfigProperty {
+  type?: string;
+  description?: string;
+  default?: unknown;
+  enum?: string[];
+  enumDescriptions?: string[];
+  minimum?: number;
+  maximum?: number;
+  uiHint?: string;
+  renderHint?: string;
+  dependsOn?: { key: string; value: unknown };
+  onApply?: ((v: unknown) => void) | null; // E4V#46 renderHint "action"
+}
+
 /* ── 组件 ── */
 
 function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const { t } = useTranslation();
 
-  // E3f #59：双 tab——设置 / 快捷键
   const [activeTab, setActiveTab] = useState<"settings" | "keybindings">("settings");
-
   const [search, setSearch] = useState("");
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
-  const [keybindingQuery, setKeybindingQuery] = useState<string | undefined>(); // E3f #59
+  const [keybindingQuery, setKeybindingQuery] = useState<string | undefined>();
   const [version, setVersion] = useState(0);
-  const [jsonDialog, setJsonDialog] = useState<string | null>(null); // null=关闭, string=JSON 内容
+  const [jsonDialog, setJsonDialog] = useState<string | null>(null);
 
-  // 监听配置值变更
-  useEffect(() => {
-    let unsubscribe: (() => void) | undefined;
-    import("../../core/services/ConfigurationService").then(({ onDidChangeConfiguration }) => {
-      unsubscribe = onDidChangeConfiguration(() => setVersion((v) => v + 1));
-    });
-    return () => { unsubscribe?.(); };
-  }, []);
+  // ── 异步数据：配置分组 + 合并 schema ──
+  const [groupsRaw, setGroupsRaw] = useState<GroupInfo[]>([]);
+  const [allProps, setAllProps] = useState<Record<string, ConfigProperty>>({});
+  const [dataLoaded, setDataLoaded] = useState(false);
 
-  // 监听插件生命周期——配置分组需要刷新（对标 IconBar 订阅 viewRegistry 的模式）
-  useEffect(() => {
-    return onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
-  }, []);
-
-  // M1 双通道 A：mount 时消费 pending 变量——设置未打开时齿轮"设置"跳转到指定分组
-  useEffect(() => {
-    const target = consumeSettingsGroup();
-    if (target) {
-      setSearch("");
-      setSelectedGroup(target);
-    }
-  }, []);
-
-  // M1 双通道 B：Emitter 订阅——设置已打开时齿轮"设置"实时跳转
-  useEffect(() => {
-    return onRequestSettingsGroup.event((pluginId) => {
-      setSearch("");
-      setSelectedGroup(pluginId);
-    });
-  }, []);
-
-  // 从 Registry 派生分组列表——title/description 走 t() 做 i18n
-  const groups = useMemo(() => {
-    const contributions = getConfigurationContributions();
-    const result: GroupInfo[] = [];
-
-    for (const [pluginId, contrib] of contributions) {
-      const keys = Object.keys(contrib.properties);
-      if (keys.length > 0) {
-        result.push({ pluginId, title: t(contrib.title), keys });
+  const loadData = useCallback(async () => {
+    try {
+      const cfg = lk();
+      // 并行拉取分组和 schema
+      const [entries, schema] = await Promise.all([
+        cfg.getConfigurationContributions(),
+        cfg.getSchema(),
+      ]);
+      // entries 是 [string, ConfigurationContribution][] 数组
+      const contributions = new Map<string, { title: string; properties: Record<string, unknown> }>(entries);
+      const result: GroupInfo[] = [];
+      for (const [pluginId, contrib] of contributions) {
+        const keys = Object.keys(contrib.properties ?? {});
+        if (keys.length > 0) {
+          result.push({ pluginId, title: t(contrib.title ?? pluginId), keys });
+        }
       }
+      setGroupsRaw(result);
+      setAllProps((schema ?? {}) as Record<string, ConfigProperty>);
+      setDataLoaded(true);
+    } catch (e) {
+      console.error("[SettingsView] 加载配置数据失败:", e);
     }
+  }, [t]);
 
-    return result;
-  }, [version, t]);
+  useEffect(() => { loadData(); }, [loadData, version]);
 
-  // E3f #59：监听外部"打开快捷键设置"请求——从命令面板齿轮跳转
+  // ── 订阅配置变更 → 版本号递增触发刷新 ──
+  useEffect(() => {
+    try {
+      const unsub = lk().onDidChangeConfiguration(() => setVersion((v) => v + 1));
+      return unsub;
+    } catch { return; }
+  }, []);
+
+  // ── 订阅插件生命周期 → 刷新分组列表（插件安装/卸载）──
+  useEffect(() => {
+    try {
+      const unsub = lk().onPluginLifecycleChange(() => setVersion((v) => v + 1));
+      return unsub;
+    } catch { return; }
+  }, []);
+
+  // ── M1 双通道 A：mount 时消费 pending——设置未打开时齿轮"设置"跳转到指定分组 ──
+  useEffect(() => {
+    lk().consumeSettingsGroup().then((target: string | null) => {
+      if (target) {
+        setSearch("");
+        setSelectedGroup(target);
+      }
+    }).catch(() => {});
+  }, []);
+
+  // ── M1 双通道 B：实时订阅——设置已打开时齿轮"设置"跳转 ──
+  useEffect(() => {
+    try {
+      const unsub = lk().onRequestSettingsGroup((pluginId: string) => {
+        setSearch("");
+        setSelectedGroup(pluginId);
+      });
+      return unsub;
+    } catch { return; }
+  }, []);
+
+  // ── scrollTo 双通道 A：mount 时消费 pending ──
+  useEffect(() => {
+    lk().consumeScrollToSetting().then((pendingKey: string | null) => {
+      if (pendingKey) {
+        setSearch("");
+        for (const g of groupsRaw) {
+          if (g.keys.includes(pendingKey)) {
+            setSelectedGroup(g.pluginId);
+            break;
+          }
+        }
+        setTimeout(() => {
+          document.getElementById(`setting-row-${pendingKey}`)?.scrollIntoView({ block: "center" });
+        }, 200);
+      }
+    }).catch(() => {});
+  }, [groupsRaw]);
+
+  // ── scrollTo 双通道 B：实时订阅 ──
+  useEffect(() => {
+    try {
+      const unsub = lk().onRequestScrollToSetting((key: string) => {
+        setSearch("");
+        for (const g of groupsRaw) {
+          if (g.keys.includes(key)) {
+            setSelectedGroup(g.pluginId);
+            break;
+          }
+        }
+        setTimeout(() => {
+          document.getElementById(`setting-row-${key}`)?.scrollIntoView({ block: "center" });
+        }, 200);
+      });
+      return unsub;
+    } catch { return; }
+  }, [groupsRaw]);
+
+  // ── 监听外部"打开快捷键设置"请求 ──
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent<{ query?: string }>).detail;
       setActiveTab("keybindings");
       if (detail?.query) setKeybindingQuery(detail.query);
     };
-    window.addEventListener(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, handler);
+    window.addEventListener(CUSTOM_EVENT_OPEN_KEYBINDINGS, handler);
+    return () => window.removeEventListener(CUSTOM_EVENT_OPEN_KEYBINDINGS, handler);
   }, []);
 
-  // E3f #53e：scrollTo 订阅——跳转到设置中指定配置项（#53b 命令面板齿轮"重置选项"消费）
-  useEffect(() => {
-    // mount 时消费 pending 值
-    const pendingKey = consumeScrollToSetting();
-    if (pendingKey) {
-      setSearch("");
-      for (const g of groups) {
-        if (g.keys.includes(pendingKey)) {
-          setSelectedGroup(g.pluginId);
-          break;
-        }
-      }
-      setTimeout(() => {
-        document.getElementById(`setting-row-${pendingKey}`)?.scrollIntoView({ block: "center" });
-      }, 150);
-    }
-    // 已打开时实时滚动
-    return onRequestScrollToSetting.event((key) => {
-      setSearch("");
-      for (const g of groups) {
-        if (g.keys.includes(key)) {
-          setSelectedGroup(g.pluginId);
-          break;
-        }
-      }
-      setTimeout(() => {
-        document.getElementById(`setting-row-${key}`)?.scrollIntoView({ block: "center" });
-      }, 150);
-    });
-  }, [groups]);
-
-  // 所有 properties——必须在 filteredGroups 之前定义（搜索过滤引用 allProps）
-  const allProps = useMemo(() => getMergedSchema(), [version]);
-
-  // 搜索过滤
+  // ── 搜索过滤 ──
   const filteredGroups = useMemo(() => {
+    const groups = groupsRaw;
     if (!search.trim()) return groups;
     const q = search.toLowerCase();
 
@@ -175,15 +216,15 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
         }),
       }))
       .filter((g) => g.keys.length > 0);
-  }, [groups, search, version]);
+  }, [groupsRaw, search, allProps]);
 
-  // 默认选中第一个分组
+  // ── 默认选中第一个分组 ──
   const activeGroup =
     filteredGroups.find((g) => g.pluginId === selectedGroup) ?? filteredGroups[0] ?? null;
 
   return (
     <div className="settings-editor">
-      {/* E3f #59：双 tab——设置 / 快捷键 */}
+      {/* 双 tab——设置 / 快捷键 */}
       <div className="settings-tab-bar">
         <button
           className={`settings-tab ${activeTab === "settings" ? "active" : ""}`}
@@ -217,12 +258,11 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
             <button
               className="settings-json-btn"
               title={t("打开设置 (JSON)")}
-              onClick={() => {
-                // TODO Phase 6 §2.17：Monaco JSON 编辑器标签页，对标 VS Code "Open Settings (JSON)"
-                // 当前占位——React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互
-                import("../../core/services/ConfigurationService").then(({ getUserSettings }) => {
-                  setJsonDialog(JSON.stringify(getUserSettings(), null, 2));
-                });
+              onClick={async () => {
+                try {
+                  const settings = await lk().getUserSettings();
+                  setJsonDialog(JSON.stringify(settings, null, 2));
+                } catch { /* 静默 */ }
               }}
             >
               <span className="codicon codicon-json" />
@@ -233,18 +273,24 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           <div className="settings-body">
             {/* 左侧分组树 */}
             <nav className="settings-nav">
-              {filteredGroups.map((g) => (
-                <button
-                  key={g.pluginId}
-                  className={`settings-nav-item ${activeGroup?.pluginId === g.pluginId ? "active" : ""}`}
-                  onClick={() => setSelectedGroup(g.pluginId)}
-                >
-                  {g.title}
-                  <span className="settings-nav-count">{g.keys.length}</span>
-                </button>
-              ))}
-              {filteredGroups.length === 0 && (
-                <div className="settings-nav-empty">{t("无匹配设置")}</div>
+              {!dataLoaded && groupsRaw.length === 0 ? (
+                <div className="settings-nav-empty">{t("加载中...")}</div>
+              ) : (
+                <>
+                  {filteredGroups.map((g) => (
+                    <button
+                      key={g.pluginId}
+                      className={`settings-nav-item ${activeGroup?.pluginId === g.pluginId ? "active" : ""}`}
+                      onClick={() => setSelectedGroup(g.pluginId)}
+                    >
+                      {g.title}
+                      <span className="settings-nav-count">{g.keys.length}</span>
+                    </button>
+                  ))}
+                  {filteredGroups.length === 0 && (
+                    <div className="settings-nav-empty">{t("无匹配设置")}</div>
+                  )}
+                </>
               )}
             </nav>
 
@@ -270,7 +316,7 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
             </div>
           </div>
 
-          {/* JSON 设置弹窗——用 React 弹窗代替 alert()，避免 Electron 原生对话框焦点不归还导致控件无法交互 */}
+          {/* JSON 设置弹窗 */}
           {jsonDialog !== null && (
             <div className="settings-json-overlay" onClick={() => setJsonDialog(null)}>
               <div className="settings-json-dialog" onClick={(e) => e.stopPropagation()}>
@@ -301,7 +347,7 @@ function SettingRow({
   onChange,
 }: {
   configKey: string;
-  prop: ConfigurationProperty | undefined;
+  prop: ConfigProperty | undefined;
   onChange: () => void;
 }) {
   const { t } = useTranslation();
@@ -309,23 +355,31 @@ function SettingRow({
   const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
   const [colorPickerOpen, setColorPickerOpen] = useState(false);
   const [colorPickerAnchor, setColorPickerAnchor] = useState<{ x: number; y: number } | null>(null);
-  const currentValue = useConfigurationValue(configKey);
-  // E3f #59d0: dependsOn——声明式条件显隐，hook 必须在 early return 之前
-  const depValue = useConfigurationValue(prop?.dependsOn?.key ?? "");
+
+  // IPC 版 hook——替代 useConfigurationValue
+  const currentValue = useConfigurationValueIpc(configKey);
+  const depValue = useConfigurationValueIpc(prop?.dependsOn?.key ?? "");
 
   const handleChange = useCallback(
     async (value: unknown) => {
-      await setConfigurationValue(configKey, value, "user");
-      onChange();
+      try {
+        await lk().set(configKey, value);
+        onChange();
+      } catch (e) {
+        console.error("[SettingsView] 设置失败:", configKey, e);
+      }
     },
-    [configKey, onChange]
+    [configKey, onChange],
   );
 
-  // E3f #53d：齿轮打开前设 context key（settingModified 给 ContextMenu 的 when 过滤用）
-  const handleGearClick = useCallback(() => {
-    const insp = inspectConfiguration(configKey);
-    ContextKeyService.setValue("settingKey", configKey);
-    ContextKeyService.setValue("settingModified", insp.userValue !== undefined);
+  // 齿轮打开前设 context key
+  const handleGearClick = useCallback(async () => {
+    try {
+      window.linkdesk?.contextKey?.set("settingKey", configKey);
+      // inspectConfiguration 异步获取修改状态
+      const insp = await lk().inspectConfiguration(configKey);
+      window.linkdesk?.contextKey?.set("settingModified", insp?.userValue !== undefined);
+    } catch { /* 静默 */ }
     const rect = gearRef.current?.getBoundingClientRect();
     if (rect) {
       setGearAnchor({ x: rect.left, y: rect.bottom + 4 });
@@ -335,20 +389,20 @@ function SettingRow({
   // 齿轮关闭——清理 context key
   const handleGearClose = useCallback(() => {
     setGearAnchor(null);
-    ContextKeyService.setValue("settingKey", undefined);
-    ContextKeyService.setValue("settingModified", false);
+    window.linkdesk?.contextKey?.set("settingKey", undefined);
+    window.linkdesk?.contextKey?.set("settingModified", false);
   }, []);
 
   if (!prop) return null;
 
-  // E3f #59d0：声明式条件显隐——prop.dependsOn.key 的值不等于指定值时整行不渲染
+  // 声明式条件显隐
   if (prop.dependsOn && depValue !== prop.dependsOn.value) return null;
 
   return (
     <div className="settings-row" id={`setting-row-${configKey}`}>
       <div className="settings-row-info">
         <label className="settings-row-label">{configKey}</label>
-        <span className="settings-row-desc">{t(prop.description)}</span>
+        <span className="settings-row-desc">{t(prop.description ?? "")}</span>
       </div>
       <div className="settings-row-control">
         {renderControl(prop, currentValue, handleChange, t, (e) => {
@@ -357,7 +411,7 @@ function SettingRow({
           setColorPickerOpen(true);
         })}
       </div>
-      {/* E3f #53c：hover 齿轮——对标 VS Code Settings Editor per-setting gear */}
+      {/* hover 齿轮 */}
       <button
         ref={gearRef}
         className="settings-row-gear"
@@ -368,17 +422,17 @@ function SettingRow({
       </button>
       {gearAnchor && (
         <ContextMenu
-          menuId={MenuId.SettingItemGear}
+          menuId={MenuId.SettingItemGear as any}
           anchor={gearAnchor}
           context={{ settingKey: configKey }}
           onClose={handleGearClose}
         />
       )}
-      {/* E3f #59e：色块点击 → 弹出 ColorPicker */}
+      {/* 色块点击 → ColorPicker */}
       {prop.renderHint === "color" && (
         <ColorPicker
           open={colorPickerOpen}
-          value={String(currentValue ?? prop.default)}
+          value={String(currentValue ?? prop.default ?? "")}
           onChange={(hex) => handleChange(hex)}
           onClose={() => setColorPickerOpen(false)}
           anchor={colorPickerAnchor}
@@ -484,9 +538,9 @@ function ObjectEditor({ value, onChange }: {
   );
 }
 
-/** 根据 property type 渲染对应控件——使用共享组件对标终端侧栏样式 */
+/** 根据 property type 渲染对应控件 */
 function renderControl(
-  prop: ConfigurationProperty,
+  prop: ConfigProperty,
   value: unknown,
   onChange: (v: unknown) => void,
   t: (key: string) => string,
@@ -494,7 +548,7 @@ function renderControl(
 ): React.ReactNode {
   const val = value ?? prop.default;
 
-  // ── E5#57: uiHint 优先于 type——plugin.json 声明式控件选择 ──
+  // uiHint 优先——plugin.json 声明式控件选择
   switch (prop.uiHint) {
     case "fontSize":
       return (
@@ -507,7 +561,6 @@ function renderControl(
         />
       );
     case "color":
-      // uiHint "color" 复用 renderHint "color" 的色块预览逻辑
       return (
         <div className="settings-color-control">
           <div
@@ -544,20 +597,18 @@ function renderControl(
       );
 
     case "string":
-      // E4V#46——renderHint "action"：渲染操作按钮。场景：一键重置布局、清空缓存等。点击执行 onApply
+      // renderHint "action"：渲染操作按钮
       if (prop.renderHint === "action") {
         return (
           <button
             className="settings-action-btn"
             onClick={() => { prop.onApply?.(null); }}
           >
-            {t(prop.description)}
+            {t(prop.description ?? "")}
           </button>
         );
       }
       if (prop.enum && prop.enum.length > 0) {
-        // E2c #13 16.1：enumDescriptions 优先于 enum 作为 label 来源。
-        // prop.enumDescriptions[i] 与 prop.enum[i] 一一对应——值是 "hex" 但显示 "HEX 编码"。
         const enumOptions = prop.enum.map((v, i) => ({
           value: v,
           label: prop.enumDescriptions?.[i] ? t(prop.enumDescriptions[i]) : t(v),
@@ -570,7 +621,7 @@ function renderControl(
           />
         );
       }
-      // E3f #59d3：renderHint "color" → 色块预览（#59e ColorPicker 替换为弹出调色器）
+      // renderHint "color" → 色块预览
       if (prop.renderHint === "color") {
         return (
           <div className="settings-color-control">
