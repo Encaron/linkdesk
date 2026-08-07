@@ -63,7 +63,8 @@
   position: absolute;
   top: 100%;
   left: 0;
-  right: 0;
+  /* right: 0 已移除——inline style 用 position:fixed 时 right:0 会导致面板拉伸到窗口右边缘。
+     宽度由 inline style 的 minWidth + maxWidth 控制，CSS 只提供 viewport 兜底。 */
   margin-top: 2px;
   background: var(--bg-window, #252526);
   border: 1px solid var(--border-default, #555);
@@ -71,6 +72,7 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
   z-index: var(--z-dropdown); /* E5#98 */
   max-height: 260px;
+  max-width: calc(100vw - 24px); /* 绝对不溢出窗口——viewport 兜底，无硬编码固定值 */
   display: flex;
   flex-direction: column;
   animation: selectbox-in 0.1s ease-out;
