@@ -100,8 +100,7 @@ export function createTabDefaults(
     ? undefined
     : (opts?.pluginId ?? resolveLegacyPluginId(type) ?? type);
 
-  const label = opts?.label
-    ?? getDefaultLabel(type, opts?.workspaceName, opts?.filePath, isDetail ? detailPluginId : undefined);
+  const label = opts?.label ?? getDefaultLabel(type, opts);
 
   const base: Tab = {
     id: getMeta(type).generateId(opts),
@@ -116,8 +115,18 @@ export function createTabDefaults(
     pinned: opts?.pinned ?? false,  // VS Code: 新标签页默认预览模式
   };
 
-  // sourceId 默认 = tab.id——跨组移动时组件用此 ID 恢复状态
-  if (!base.sourceId) base.sourceId = base.id;
+  // sourceId 默认值：跨组移动/事件寻址用此 ID。
+  // 若类型声明了 identityField（如 editor→filePath, workspace→workspaceName），
+  // 则默认取该字段的值——壳不知道具体插件是什么，只知道有 identityField 就用它。
+  if (!base.sourceId) {
+    const idField = getMeta(type).identityField;
+    if (idField && opts) {
+      const idValue = (opts as Record<string, unknown>)[idField] as string | undefined;
+      base.sourceId = idValue ?? base.id;
+    } else {
+      base.sourceId = base.id;
+    }
+  }
 
   return base;
 }

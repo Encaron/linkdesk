@@ -245,26 +245,48 @@ export function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions)
 }
 
 /**
- * 标签名——viewRegistry 优先，无则用 fallback。
+ * 标签名——声明式推导，壳不知道具体插件是什么。
+ *
+ * 优先级：
+ * 1. opts.label（调用方显式指定）
+ * 2. identityField 的值——路径类取最后一段（文件名），非路径类取原值
+ * 3. plugin.manifest.name（viewRegistry 可用时）
+ * 4. fallbackLabel（viewRegistry 不可用时）
+ *
+ * 🔥 新插件声明 tabBehavior.identityField 即可——不需要在此函数加分支。
  */
 export function getDefaultLabel(
   type: string,
-  workspaceName?: string,
-  filePath?: string,
-  targetPluginId?: string,
+  opts?: CreateTabOptions,
 ): string {
+  const targetPluginId = isPluginDetailView(type) ? opts?.detailPluginId : opts?.pluginId;
   const plugin = getViewPlugin(targetPluginId ?? type);
+  const idField = getMeta(type).identityField;
+  const idValue = idField && opts
+    ? (opts as Record<string, unknown>)[idField] as string | undefined
+    : undefined;
+
   if (plugin) {
-    // 特殊标签格式：插件详情页 → "插件名 (介绍)"
+    // 壳内部类型：插件详情页
     if (type === "plugin-detail") return `${plugin.manifest.name} (介绍)`;
-    // 工作台 → 显示 workspaceName 而非插件名
-    if (type === "workspace" && workspaceName) return workspaceName;
+
+    // 声明式：identityField 有值 → 用其值作为标签
+    if (idValue) {
+      // 路径类（含 / 或 \）→ 取最后一段（文件名/目录名），非路径类 → 取原值
+      // 壳不知道"这是文件路径还是工作区名"——只看字符串长什么样
+      if (idValue.includes("/") || idValue.includes("\\")) {
+        const normalized = normalizePath(idValue);
+        const segments = normalized.split("/");
+        return segments[segments.length - 1] || idValue;
+      }
+      return idValue;
+    }
+
     return plugin.manifest.name;
   }
 
-  // fallback：viewRegistry 不可用
-  if (type === "workspace" && workspaceName) return workspaceName;
-  if (type === "editor" && filePath) return filePath;
+  // fallback：viewRegistry 不可用（测试/极端边界）
+  if (idValue) return idValue;
   return i18n.t(getMeta(type).fallbackLabel);
 }
 

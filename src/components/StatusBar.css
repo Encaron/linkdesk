@@ -30,7 +30,7 @@
 
 .status-divider {
   display: inline-block;
-  height: 12px;
+  height: 14px;
   margin: 0 6px;
   border-left: 1px solid var(--separator);
   vertical-align: middle;
@@ -77,7 +77,7 @@
 .status-bar-btn {
   background: none;
   border: none;
-  color: var(--text-muted);
+  color: var(--text-secondary);
   font-size: 12px;
   padding: 0 6px;
   height: 22px;

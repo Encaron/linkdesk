@@ -104,15 +104,18 @@ export default function QuickPick<T>({
   const overlayRef = useRef<HTMLDivElement>(null);
   const paletteRef = useRef<HTMLDivElement>(null);
 
-  // E3.5 #CP03: 退场动画——open→false 时先去 .show，等 transition 150ms 再卸载
+  // E3.5 #CP03: 退场动画——open→false 时先去 .show，等 transition 100ms 再卸载
   const [closing, setClosing] = useState(false);
   const prevOpen = useRef(open);
   useEffect(() => {
     if (prevOpen.current && !open) {
+      // 退场快于入场：缩短 transition-duration 到 100ms
+      overlayRef.current?.style.setProperty("transition-duration", "100ms");
+      paletteRef.current?.style.setProperty("transition-duration", "100ms");
       overlayRef.current?.classList.remove("show");
       paletteRef.current?.classList.remove("show");
       setClosing(true);
-      const timer = setTimeout(() => setClosing(false), 150);
+      const timer = setTimeout(() => setClosing(false), 100);
       return () => clearTimeout(timer);
     }
     prevOpen.current = open;
@@ -172,6 +175,9 @@ export default function QuickPick<T>({
   useEffect(() => {
     if (!open) return;
     const frame = requestAnimationFrame(() => {
+      // 恢复 CSS 定义的 150ms transition（上次退场可能缩成了 100ms）
+      overlayRef.current?.style.removeProperty("transition-duration");
+      paletteRef.current?.style.removeProperty("transition-duration");
       overlayRef.current?.classList.add("show");
       paletteRef.current?.classList.add("show");
     });

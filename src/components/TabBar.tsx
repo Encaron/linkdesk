@@ -310,7 +310,7 @@ export default function TabBar({
   return (
     <div className="tab-bar">
       {overflowLeft && (
-        <button className="tab-scroll-arrow tab-scroll-left" onClick={() => scrollTabs(-200)}>‹</button>
+        <button className="tab-scroll-arrow tab-scroll-left" onClick={() => scrollTabs(-200)}><span className="codicon codicon-chevron-left" /></button>
       )}
       <div className="tab-list" ref={scrollRef} onWheel={onWheel} onScroll={checkOverflow} role="tablist">
         {tabs.map((tab, idx) => {
@@ -348,7 +348,7 @@ export default function TabBar({
                   }
                 }}
               >
-                {tab.dirty && <span className="tab-dirty-dot">●</span>}
+                {tab.dirty && <span className="tab-dirty-dot" />}
                 <PluginIcon pluginId={tab.pluginId ?? tab.type} className="tab-icon" />
                 <span className="tab-label">{t(disambiguatedLabels.get(tab.id) ?? tab.label)}</span>
                 <button
@@ -361,7 +361,7 @@ export default function TabBar({
                   title={t("关闭")}
                   aria-label={t("关闭")}
                 >
-                  ×
+                  <span className="codicon codicon-close" />
                 </button>
               </div>
             </Fragment>
@@ -372,7 +372,7 @@ export default function TabBar({
           <div className="tab-drop-indicator" />
         )}
       {overflowRight && (
-        <button className="tab-scroll-arrow tab-scroll-right" onClick={() => scrollTabs(200)}>›</button>
+        <button className="tab-scroll-arrow tab-scroll-right" onClick={() => scrollTabs(200)}><span className="codicon codicon-chevron-right" /></button>
       )}
 
         <button
