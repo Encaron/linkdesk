@@ -902,9 +902,9 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
 
   registerViewPlugin(entry);
 
-  // E3f #58a：为视图插件创建独立 WebContentsView（占位 HTML，真渲染后续迁移）
-  // 🔥 E5#84g 回退：单 WebView 模式——不创建独立 WebContentsView
-  // try { window.linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
+  // E3f #58a：为视图插件创建独立 WebContentsView
+  // E5.5#1a：恢复多 WebView——取消 E5#84g 回退注释
+  try { window.linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
 
   // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
   // 在 registerViewPlugin 之后、parseContributions 之前调用——
