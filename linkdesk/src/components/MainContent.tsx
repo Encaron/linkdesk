@@ -351,7 +351,8 @@ function MainContent({
     // 🔴 @deprecated E5#26d: 多 WebView IPC 残余——pluginId 硬编码。单 WebView 下不执行（readyWebViewIds 为空）。
     // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
     for (const g of tabState.groups) for (const t of g.tabs) {
-      if (t.pluginId === "editor" && t.sourceId) {
+      // E5.5#3d：加 readyWebViewIds 守卫——防 WebView 销毁后 stale ready 状态导致 IPC 发到不存在的 WebView
+      if (t.pluginId === "editor" && t.sourceId && readyWebViewIds.has("editor")) {
         bridge.requestToPlugin?.("editor", "openFile", { filePath: t.filePath }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
       }
     }

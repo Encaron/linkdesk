@@ -283,6 +283,9 @@ try {
       toggleDevTools: (id: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', id), // E3f #58
       create: (id: string) => ipcRenderer.invoke('plugin-view:create', id), // E3f #58a
       destroy: (id: string) => ipcRenderer.invoke('plugin-view:destroy', id), // E3f #58d
+      // E5.5#3c：保活宽限期——关闭标签页不立即销毁，60s 内重开复用
+      scheduleDestroy: (id: string) => ipcRenderer.invoke('plugin-view:scheduleDestroy', id),
+      cancelDestroy: (id: string) => ipcRenderer.invoke('plugin-view:cancelDestroy', id),
       // #58e 修复：订阅插件 WebView 渲染完成通知——壳收到后才关 React fallback
       // E5#11l fix：模块级缓冲——notifyReady 可能在 React useEffect 注册 onReady 之前到达
       onReady: (cb: (pluginId: string) => void) => {
