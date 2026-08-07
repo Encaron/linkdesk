@@ -35,11 +35,10 @@ function lk() {
   return window.linkdesk.configuration;
 }
 
-const MenuId = {
-  SettingItemGear: "settingItemGear",
-} as const;
-
 const CUSTOM_EVENT_OPEN_KEYBINDINGS = "linkdesk:openKeybindingsSettings";
+
+/** 菜单槽位——字符串 API 契约，不对标 enum（对标 VS Code 的 "editor/context" 字符串） */
+const MENU_SETTING_GEAR = "settingItemGear";
 
 /* ── 类型 ── */
 
@@ -422,7 +421,7 @@ function SettingRow({
       </button>
       {gearAnchor && (
         <ContextMenu
-          menuId={MenuId.SettingItemGear as any}
+          menuId={MENU_SETTING_GEAR as any}
           anchor={gearAnchor}
           context={{ settingKey: configKey }}
           onClose={handleGearClose}
