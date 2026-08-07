@@ -151,6 +151,8 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
             left: containerRef.current?.getBoundingClientRect().left ?? 0,
             top: (containerRef.current?.getBoundingClientRect().bottom ?? 0) + 2,
             minWidth: containerRef.current?.getBoundingClientRect().width,
+            // 动态 maxWidth——面板不超过窗口右边缘 - 24px 呼吸，不硬编码固定值
+            maxWidth: window.innerWidth - (containerRef.current?.getBoundingClientRect().left ?? 0) - 24,
           }}
         >
           {showSearch && (
