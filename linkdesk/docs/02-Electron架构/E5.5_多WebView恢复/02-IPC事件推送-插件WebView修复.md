@@ -160,3 +160,43 @@ const configurationObj = {
 - [ ] 设置页打开后正常显示配置项（不再空白）
 - [ ] 侧栏改字体/行号/主题 → 编辑器实时变化
 - [ ] 编辑器改配置 → 侧栏显示更新
+
+---
+
+## 🔥 E5.5#7 Phase 1.5——设置页全量 IPC 化
+
+> 2026-08-08。Phase 1 修复了 `onChange` 通道，但设置页仍然为空。**更深层根因：** `SettingsView.tsx` 直接 import `@src/core`（ConfigurationRegistry / ConfigurationService / useConfigurationValue / onPluginLifecycleChange / ContextKeyService / MenuId）。在插件 WebView 的独立 JS 堆中，这些 import 创建**空的模块实例**——壳的实例有所有已注册贡献，插件的实例为空。→ 设置页无数据。
+
+### 改动清单
+
+| 文件 | 改动 | 行数 |
+|------|------|:--:|
+| `src/core/services/IpcBridgeHandler.ts` | 补 6 个 `plugins:call` 方法 + 壳侧 Emitter→broadcast 桥接（onRequestSettingsGroup / onRequestScrollToSetting / onPluginLifecycleChange） | +47 |
+| `electron/preload-plugin.ts` | `configurationObj` 补 8 个 API + `menu.MenuId` 11 常量 | +43 |
+| `src/core/react/useConfigurationIpc.ts` | **新建**——IPC 版 `useConfigurationValueIpc` / `useConfigurationIpc` hook（异步 get + onChange 订阅） | +75 |
+| `src/components/views/SettingsView.tsx` | **全量重写**——7 个 `@src/core` import → `window.linkdesk.*` IPC | −69/+150 |
+
+### 消灭的 @src/core import（14 个符号，7 个模块）
+
+| 原 import | 新 IPC 调用 |
+|-----------|------------|
+| `getConfigurationContributions` from ConfigurationRegistry | `window.linkdesk.configuration.getConfigurationContributions()` → `plugins:call getConfigurationContributions` |
+| `getMergedSchema` from ConfigurationRegistry | `window.linkdesk.configuration.getSchema()` → `plugins:call getSchema` |
+| `consumeSettingsGroup` from ConfigurationRegistry | `window.linkdesk.configuration.consumeSettingsGroup()` → `plugins:call consumeSettingsGroup` |
+| `onRequestSettingsGroup` from ConfigurationRegistry | `window.linkdesk.configuration.onRequestSettingsGroup(cb)` → `events.on("settings:requestGroup", cb)` |
+| `consumeScrollToSetting` from ConfigurationRegistry | `window.linkdesk.configuration.consumeScrollToSetting()` → `plugins:call consumeScrollToSetting` |
+| `onRequestScrollToSetting` from ConfigurationRegistry | `window.linkdesk.configuration.onRequestScrollToSetting(cb)` → `events.on("settings:scrollTo", cb)` |
+| `setConfigurationValue` from ConfigurationService | `window.linkdesk.configuration.set(key, value)` → `config:set` |
+| `inspectConfiguration` from ConfigurationService | `window.linkdesk.configuration.inspectConfiguration(key)` → `plugins:call inspectConfiguration` |
+| `getUserSettings` from ConfigurationService | `window.linkdesk.configuration.getUserSettings()` → `plugins:call getUserSettings` |
+| `useConfigurationValue` from useConfiguration | `useConfigurationValueIpc(key)` → `configuration.get(key)` + `onChange` |
+| `onPluginLifecycleChange` from lifecycle | `window.linkdesk.configuration.onPluginLifecycleChange(cb)` → `events.on("plugin-lifecycle:changed", cb)` |
+| `MenuId` from MenuRegistry | `window.linkdesk.menu.MenuId` → 本地常量对象（preload 注入） |
+| `ContextKeyService` from ContextKeyService | `window.linkdesk.contextKey.set(key, value)` → `contextKey:set` |
+| `onDidChangeConfiguration` from ConfigurationService | `window.linkdesk.configuration.onDidChangeConfiguration(cb)` → `events.on("config:changed", cb)` |
+
+### 架构意义
+
+**设置页现在是真正的保姆插件：** 零 `import @src/core`，全走 IPC。任何人写自己的设置 UI 插件，只需调同样的 `window.linkdesk.configuration.*` API → 自动接入大厅的同一张 ConfigurationRegistry 桌子 → 替换原设置插件，所有原有设置项无缝显示。
+
+**API 桌子不变，房间可换。** 这是圆形大厅模型在设置页的首次完整落地。
