@@ -10,10 +10,19 @@
  * 安全：路径穿越检查（.. 拒绝）+ 文件存在检查
  */
 
-import { protocol, net, app } from 'electron';
+import { protocol, app } from 'electron';
 import * as path from 'path';
-import { existsSync } from 'fs';
+import * as fs from 'fs';
 import { APP_SCHEME } from './constants';
+
+/** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
+function diag(msg: string): void {
+  try {
+    const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+    const ts = new Date().toISOString();
+    fs.appendFileSync(logFile, `[${ts}] ${msg}\n`);
+  } catch { /* 诊断日志写失败不致命 */ }
+}
 
 /**
  * 注册 linkdesk:// 协议。
@@ -27,39 +36,85 @@ export function registerProtocol(): void {
     ? path.join(process.resourcesPath, 'plugins')
     : path.join(app.getAppPath(), 'plugins');
 
+  // 🔥 E5#114d：CORS 安全网——file:// 页面 fetch linkdesk:// 是跨域，
+  // Origin 为 null，部分 Chromium 版本 Access-Control-Allow-Origin: * 不匹配 null。
+  function corsHeaders(): Headers {
+    const h = new Headers();
+    h.set('Access-Control-Allow-Origin', '*');
+    h.set('Access-Control-Allow-Methods', 'GET, OPTIONS');
+    h.set('Access-Control-Allow-Headers', '*');
+    h.set('Timing-Allow-Origin', '*');
+    return h;
+  }
+
+  diag(`PROTOCOL REGISTERED — pluginsDir=${pluginsDir}  userData=${app.getPath('userData')}`);
+
   protocol.handle(APP_SCHEME, async (request) => {
+    // OPTIONS preflight——CORS 预检直接返回 204
+    if (request.method === 'OPTIONS') {
+      return new Response(null, { status: 204, headers: corsHeaders() });
+    }
+
     // URI: linkdesk://terminal/dist/bundle.js
     // 提取路径部分（去掉 "linkdesk://"）
     const urlPath = request.url.replace(new RegExp(`^${APP_SCHEME}://`), "");
 
     // 安全检查：拒绝路径穿越（../ 或 ..\）
     if (urlPath.includes('..')) {
+      diag(`403 FORBIDDEN — ${urlPath}`);
       return new Response('Forbidden', { status: 403 });
     }
 
     // 转换为本地文件路径——先试 builtin/ 再试 user/
     let fullPath = path.join(pluginsDir, 'builtin', urlPath);
-    if (!existsSync(fullPath)) {
+    if (!fs.existsSync(fullPath)) {
       fullPath = path.join(pluginsDir, 'user', urlPath);
     }
-    if (!existsSync(fullPath)) {
+    if (!fs.existsSync(fullPath)) {
       fullPath = path.join(pluginsDir, urlPath);  // 兜底：直接查根（兼容 .disabled 等）
     }
 
     // 文件不存在 → 404
-    if (!existsSync(fullPath)) {
-      return new Response('Not Found', { status: 404 });
+    if (!fs.existsSync(fullPath)) {
+      diag(`404 NOT FOUND — ${urlPath}`);
+      return new Response('Not Found', { status: 404, headers: corsHeaders() });
     }
 
-    // 通过 Electron net.fetch 返回文件内容，附加 CORS 头以支持 dev 模式跨域 fetch
-    const fileResponse = await net.fetch(`file:///${fullPath.replace(/\\/g, '/')}`);
-    const body = await fileResponse.arrayBuffer();
-    const headers = new Headers(fileResponse.headers);
-    headers.set('Access-Control-Allow-Origin', '*');
-    return new Response(body, {
-      status: fileResponse.status,
-      statusText: fileResponse.statusText,
-      headers,
-    });
+    // 通过 fs 直接读文件——避免 net.fetch file:// URL 在生产环境可能的权限问题
+    try {
+      const buf = fs.readFileSync(fullPath);
+      const mimeType = getMimeType(fullPath);
+      const headers = corsHeaders();
+      headers.set('Content-Type', mimeType);
+      diag(`200 OK — ${urlPath} → ${mimeType} (${buf.length} bytes)`);
+      return new Response(buf, { status: 200, headers });
+    } catch (err) {
+      diag(`500 ERROR — ${urlPath}: ${String(err)}`);
+      return new Response('Not Found', { status: 404, headers: corsHeaders() });
+    }
   });
+}
+
+// E5#114d: 根据文件扩展名返回 MIME 类型——确保 .js/.json/.wasm 等文件正确加载
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const mimeMap: Record<string, string> = {
+    '.js': 'application/javascript',
+    '.mjs': 'application/javascript',
+    '.json': 'application/json',
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.svg': 'image/svg+xml',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.jpeg': 'image/jpeg',
+    '.gif': 'image/gif',
+    '.ico': 'image/x-icon',
+    '.wasm': 'application/wasm',
+    '.ttf': 'font/ttf',
+    '.woff': 'application/font-woff',
+    '.woff2': 'font/woff2',
+    '.map': 'application/json',
+  };
+  return mimeMap[ext] ?? 'application/octet-stream';
 }

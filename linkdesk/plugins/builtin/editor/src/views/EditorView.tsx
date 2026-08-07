@@ -113,6 +113,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // 5. 非 TS 语言——查 LangDefRegistry 自动启动 LSP
       const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
       const langDef = getLangDef(ext);
+      console.error(`[editor:debug] filePath=${filePath} ext=${ext} langDef=${langDef?.id ?? "null"} hasLsp=${!!langDef?.lsp} hasClient=${!!getLspClient(langDef?.id ?? "")}`);
       if (langDef?.lsp && !getLspClient(langDef.id)) {
         const workspaceRoot = (await lk.workspace.getFolders())[0]?.uri || lk.path.normalize(filePath).replace(/\/[^/]+$/, "");
         startLspClient(langDef.id, langDef.lsp.command, langDef.lsp.args, workspaceRoot)

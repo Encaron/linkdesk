@@ -104,6 +104,15 @@ function createWindow(): void {
     mainWindow?.show();
   });
 
+  // 🔥 E5#114d 诊断：把渲染进程 console 输出转发到文件——生产环境 F12 禁用
+  mainWindow.webContents.on('console-message', (_event, _level, message) => {
+    try {
+      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+      const ts = new Date().toISOString();
+      fs.appendFileSync(logFile, `[${ts}] [renderer] ${message}\n`);
+    } catch { /* ignore */ }
+  });
+
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
@@ -245,7 +254,7 @@ setInterval(() => {
 
 // ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
 protocol.registerSchemesAsPrivileged([
-  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
 ]);
 
 // ── 应用生命周期 ──
