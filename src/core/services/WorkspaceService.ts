@@ -16,6 +16,7 @@ import { setWorkspaceRoot } from "./ConfigurationService";
 import { normalizePath } from "./pathUtils";
 import { shellEvents } from "../react/ShellEvents";
 import { setPluginStateValue, getPluginStateValue } from "./PluginStateService";
+import { read, write } from "./StorageService"; // E5.5#0e
 
 /* ── 类型 ── */
 
@@ -191,29 +192,26 @@ export function clearWorkspaceFolders(): void {
 
 /* ── E5.5#0e：持久化 ── */
 
-/** 将 _folders 写入 pluginState——退出/重启后恢复 */
+/** 将 _folders 写入 StorageService——退出/重启后恢复（与 LayoutService/PluginStateService 同路径） */
 function _persistFolders(): void {
-  setPluginStateValue("workspace", "folders", JSON.stringify(_folders))
-    .catch((e) => { console.error("[Workspace] 保存工作区文件夹列表失败:", e); });
+  write("workspace-folders", _folders)
+    .catch((e) => { console.error("[Workspace] 保存工作区文件夹失败:", e); });
 }
 
 /**
- * 初始化——从 pluginState 恢复工作区文件夹列表。
- * 必须在 initPluginStates() 之后调用（依赖 _states 已加载）。
+ * 初始化——从 StorageService 恢复工作区文件夹列表。
  * 对标 VS Code storage.json 中 windowsState.lastActiveWindow.folderUris。
+ * 与 initLayoutService/initPluginStates 归一化——统一走 StorageService。
  */
 export async function initWorkspaceService(): Promise<void> {
   try {
-    const raw = getPluginStateValue<string>("workspace", "folders");
-    if (!raw) return;
-    const parsed: unknown = JSON.parse(raw);
-    if (!Array.isArray(parsed) || parsed.length === 0) return;
+    const saved = await read<WorkspaceFolder[]>("workspace-folders");
+    if (!saved || !Array.isArray(saved) || saved.length === 0) return;
 
     // 验证磁盘上文件夹仍存在——已删除的跳过
     const valid: WorkspaceFolder[] = [];
-    for (const item of parsed) {
-      if (typeof item !== "object" || !item || !("uri" in item)) continue;
-      const folder = item as WorkspaceFolder;
+    for (const folder of saved) {
+      if (!folder || typeof folder.uri !== "string") continue;
       try {
         const lk = window.linkdesk;
         if (lk?.filesystem?.exists) {
@@ -261,4 +259,15 @@ export async function initWorkspaceService(): Promise<void> {
     console.error("[Workspace] 恢复工作区文件夹失败:", e);
     // 降级：从空开始，不崩启动
   }
+}
+
+/**
+ * E5.5#0e：beforeunload 同步写——与 syncWriteLayout 归一化。
+ * 退出时不能做异步 I/O，用 writeSync 写 localStorage。
+ * 下次启动 initWorkspaceService 再读回。
+ */
+export function syncWriteWorkspaceFolders(): void {
+  import("./StorageService").then(({ writeSync }) => {
+    writeSync("workspace-folders", _folders);
+  }).catch(() => {});
 }

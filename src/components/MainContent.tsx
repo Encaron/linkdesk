@@ -33,6 +33,7 @@ import { shellEvents } from "../core/react/ShellEvents";
 import TabPanePositioner from "./TabPanePositioner";
 // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存和恢复
 import { getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/LayoutService";
+import { syncWriteWorkspaceFolders } from "../core/services/WorkspaceService"; // E5.5#0e
 import { syncCountersAfterRestore } from "../hooks/useTabManager";
 import "./MainContent.css";
 
@@ -418,6 +419,7 @@ function MainContent({
           cards: [],
         };
         syncWriteLayout(layout);
+        syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
       } catch { /* 静默 */ }
     };
     window.addEventListener("beforeunload", onBeforeUnload);
