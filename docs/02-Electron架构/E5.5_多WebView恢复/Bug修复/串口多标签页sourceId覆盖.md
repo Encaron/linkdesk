@@ -1,6 +1,6 @@
-# 串口多标签页 sourceId 覆盖——E5.5#8
+# 串口多标签页 sourceId 覆盖——E5.5#9
 
-> 📖 **来源：** [[e5-multi-webview-abandoned]] Bug 8——E5#85 已解决（ContextKey 广播）。E5.5#8 是重新验证。
+> 📖 **来源：** [[e5-multi-webview-abandoned]] Bug 8——E5#85 已解决（ContextKey 广播）。E5.5#9 是重新验证。
 
 ## Bug 描述
 
@@ -28,7 +28,7 @@
 - 侧栏设置 → `window.linkdesk.pluginState.set('serial-monitor', 'sourceId', 'COM3')`
 - 主区 Tab 1 读取 → `window.linkdesk.pluginState.get('serial-monitor', 'sourceId')` → 'COM3' ✅
 
-**E5.5#8 需要验证：** 多 WebView 恢复后，`pluginState` IPC 通路在跨 WebView 下正常工作。
+**E5.5#9 需要验证：** 多 WebView 恢复后，`pluginState` IPC 通路在跨 WebView 下正常工作。
 
 ## 验证场景
 

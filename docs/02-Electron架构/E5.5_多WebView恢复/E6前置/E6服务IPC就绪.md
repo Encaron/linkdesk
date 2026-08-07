@@ -1,4 +1,4 @@
-# E6 服务 IPC 就绪——E5.5#33-#35
+# E6 服务 IPC 就绪——E5.5#46-#48
 
 > 📖 **背景：** E6（插件生态与发布）需要三个核心服务：PluginInstallService（安装/卸载）、PluginUpdateService（更新检测）、PluginMarketplaceService（商店交互）。这三个服务为了兼容多 WebView，必须在 E5.5 中用 IPC 实现——不要等 E6 发现"import @src/core 静默失效"再返工。
 
@@ -14,14 +14,14 @@ E6 的服务被多个 WebView 消费：
 | **PluginUpdateService** | 壳（状态栏）、插件（plugin 详情页） | 更新检测在壳进程运行 → 插件进程看不到结果 |
 | **PluginMarketplaceService** | 壳（商店页）、插件（搜索面板） | 市场数据在壳缓存 → 插件重新获取一遍（浪费带宽） |
 
-## E5.5#33——PluginInstallService IPC
+## E5.5#46——PluginInstallService IPC
 
 ```typescript
 // ❌ 当前（推测——E6 未开始）：
 import { installPlugin } from '@src/services/PluginInstallService';
 installPlugin(filePath);  // 在哪个进程调，哪个进程的实例工作
 
-// ✅ E5.5#33 后：
+// ✅ E5.5#46 后：
 window.linkdesk.pluginManager.install(filePath);     // IPC → 主进程
 window.linkdesk.pluginManager.uninstall(pluginId);   // IPC → 主进程
 window.linkdesk.pluginManager.enable(pluginId);      // IPC → 主进程
@@ -47,7 +47,7 @@ ipcMain.handle('plugin-manager:install', async (event, filePath) => {
 });
 ```
 
-## E5.5#34——PluginUpdateService IPC
+## E5.5#47——PluginUpdateService IPC
 
 ```typescript
 window.linkdesk.pluginManager.checkUpdates();          // IPC → 主进程（防重复检查）
@@ -68,7 +68,7 @@ ipcMain.handle('plugin-manager:checkUpdates', async () => {
 });
 ```
 
-## E5.5#35——PluginMarketplaceService IPC
+## E5.5#48——PluginMarketplaceService IPC
 
 ```typescript
 window.linkdesk.marketplace.search(keyword, { page, pageSize, category });
@@ -111,13 +111,13 @@ registerPluginManagerHandlers(ipcMain, pluginViewRegistry) {
 }
 ```
 
-**在 E5.5#36（E6 API 收口）中注册这些 handler，但 E6 阶段才实现具体逻辑。**
+**在 E5.5#49（E6 API 收口）中注册这些 handler，但 E6 阶段才实现具体逻辑。**
 
 ## 验证
 
-- [ ] E5.5#33——`plugin-manager:*` handler 全部注册（调用返回 `{ notImplemented: true }` 也算注册）
-- [ ] E5.5#34——`plugin-manager:checkUpdates` 防重复调用
-- [ ] E5.5#35——`marketplace:*` handler 缓存逻辑正确
+- [ ] E5.5#46——`plugin-manager:*` handler 全部注册（调用返回 `{ notImplemented: true }` 也算注册）
+- [ ] E5.5#47——`plugin-manager:checkUpdates` 防重复调用
+- [ ] E5.5#48——`marketplace:*` handler 缓存逻辑正确
 - [ ] 所有 handler 在 preload-shell.ts 中暴露
 - [ ] 所有 handler 在 preload-plugin.ts 中暴露（插件也能调）
 
