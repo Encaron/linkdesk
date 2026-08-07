@@ -91,6 +91,9 @@ export default defineConfig(async () => {
         },
       },
     },
+    worker: {
+      format: "es",
+    },
     resolve: {
       alias: {
         // 插件统一用 @src/ 引用 src/，替代手工数 ../ 的相对路径

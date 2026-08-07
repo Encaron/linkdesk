@@ -10,10 +10,10 @@
  */
 
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { registerCommand } from "../../core/registry/CommandRegistry";
+import OverlayPortal from "./OverlayPortal";
 
 /* ── 模糊搜索（E2c #18）── */
 
@@ -188,8 +188,8 @@ export default function QuickPick<T>({
   // E3.5 #CP17: 任一 slot prop 有值 → 使用新结构化布局（消费者填空，壳提供结构）
   const useSlots = renderLabel != null || renderCategory != null || renderDetail != null || renderDetailRight != null;
 
-  return createPortal(
-    <>
+  return (
+    <OverlayPortal onClose={onClose}>
       <div ref={overlayRef} className="ctx-overlay" onClick={onClose} />
       <div ref={paletteRef} className="palette">
         {/* E3.5 #CP10: input 行——prefix + input + (future: clear) */}
@@ -290,8 +290,7 @@ export default function QuickPick<T>({
           )}
         </div>
       </div>
-    </>,
-    document.body,
+    </OverlayPortal>
   );
 }
 

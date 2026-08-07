@@ -105,6 +105,20 @@ const pluginStatusBarModules = {
   ),
 };
 
+// E5#114d: 视图 render 文件 glob——替代 /* @vite-ignore */ 动态 import。
+// contributes.views 的 render 路径（如 src/views/FoldersView.tsx）在 dev 模式靠 Vite 服务端解析，
+// 但打包后源码路径不存在于 ASAR 中。用 import.meta.glob 让 Vite 构建时映射到正确 chunk。
+const viewRenderModules = {
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/builtin/*/src/views/**/*.tsx",
+    { eager: false }
+  ),
+  ...import.meta.glob<{ default: React.ComponentType }>(
+    "../../plugins/user/*/src/views/**/*.tsx",
+    { eager: false }
+  ),
+};
+
 const pluginManifests = {
   ...import.meta.glob<PluginManifest>(
     "../../plugins/builtin/*/plugin.json",
@@ -495,7 +509,16 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
             }
           }
           try {
-            const renderModule = await import(/* @vite-ignore */ renderPath);
+            // E5#114d: 用 viewRenderModules glob 替代 /* @vite-ignore */——
+            // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
+            const viewLoader = viewRenderModules[renderPath];
+            if (!viewLoader) {
+              console.error(
+                `[loader] ❌ view 未找到匹配模块: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`
+              );
+              continue;
+            }
+            const renderModule = await viewLoader();
             const RenderComponent = renderModule.default ?? renderModule;
             ViewContainerService.registerView(pluginId, containerId, {
               id: viewDef.id,

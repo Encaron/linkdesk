@@ -12,6 +12,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import { subscribeToasts, dismissToast, setToastsSuppressed, type Toast } from "../core/services/toast";
+import OverlayPortal from "./shared/OverlayPortal";
 
 /* ── 模块级未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 ── */
 
@@ -85,7 +86,6 @@ function NotificationCenter() {
 
   const [notifications, setNotifications] = useState<Toast[]>([]);
   const [showPanel, setShowPanel] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
   const bellRef = useRef<HTMLButtonElement>(null);
 
   // 订阅 toast
@@ -102,19 +102,6 @@ function NotificationCenter() {
       for (const n of notifications) _seenIds.add(n.id);
     }
   }, [showPanel, notifications]);
-
-  // 点击外部关闭
-  useEffect(() => {
-    if (!showPanel) return;
-    const onMouseDown = (e: MouseEvent) => {
-      const target = e.target as Node;
-      if (panelRef.current?.contains(target)) return;
-      if (bellRef.current?.contains(target)) return;
-      setShowPanel(false);
-    };
-    window.addEventListener("mousedown", onMouseDown);
-    return () => window.removeEventListener("mousedown", onMouseDown);
-  }, [showPanel]);
 
   // 清空全部
   const clearAll = useCallback(() => {
@@ -144,7 +131,8 @@ function NotificationCenter() {
 
       {/* 面板 */}
       {showPanel && (
-        <div className="status-bar-notif-panel" ref={panelRef}>
+        <OverlayPortal onClose={() => setShowPanel(false)} triggerRef={bellRef}>
+          <div className="status-bar-notif-panel">
           <div className="notif-panel-header">
             <span className="notif-panel-title">{t("通知")}</span>
             <div className="notif-panel-toolbar">
@@ -173,6 +161,7 @@ function NotificationCenter() {
             </div>
           )}
         </div>
+        </OverlayPortal>
       )}
     </>
   );

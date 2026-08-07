@@ -125,4 +125,5 @@ registerPluginManagerHandlers(ipcMain, pluginViewRegistry) {
 
 - [E6 执行清单](../E6_插件生态与发布/E6-执行清单.md)
 - [E6#28 代码签名坑位](../E6_插件生态与发布/E6-执行清单.md)
+- [E6#31e LSP 路径解析——插件自带 LSP 二进制定位](../E6_插件生态与发布/E6-执行清单.md)
 - [IpcBridge.ts](linkdesk/electron/ipc-bridge.ts)

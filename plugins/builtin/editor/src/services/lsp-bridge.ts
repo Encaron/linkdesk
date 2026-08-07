@@ -31,7 +31,9 @@ export async function startLspClient(
   if (!lsp) throw new Error("linkdesk.lsp 不可用——非 Electron 环境");
 
   // 1. main process spawn 语言服务器
+  console.error(`[lsp-bridge:debug] calling lsp.spawn command=${command} args=${JSON.stringify(args)} languageId=${languageId}`);
   const channelId: string = await lsp.spawn(command, args, languageId);
+  console.error(`[lsp-bridge:debug] lsp.spawn returned channelId=${channelId}`);
 
   // 2. 构造 IPC 桥接的 MessageTransports
   const reader = createIpcReader(channelId);
