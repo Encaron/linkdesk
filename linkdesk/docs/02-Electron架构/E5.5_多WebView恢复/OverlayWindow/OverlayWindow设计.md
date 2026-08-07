@@ -1,4 +1,4 @@
-# OverlayWindow 设计——E5.5#14-#28
+# OverlayWindow 设计——E5.5#26-#40
 
 > 📖 **对标：** VS Code 三层窗口模型——MainWindow（编辑器/侧栏/面板）+ OverlayWindow（quick pick/command palette/notifications）+ AuxiliaryWindow（浮动编辑器窗口）。
 > LinkDesk 只需要两层：MainWindow + OverlayWindow。
@@ -55,7 +55,7 @@ WebContentsView 的 z-order 是 OS 级别的位图叠加。插件的任何 CSS z
 | `backgroundColor` | `#00000000` | 完全透明 |
 | `webPreferences` | 同壳 preload | 访问 `window.linkdesk.*` API |
 
-### 位置同步（E5.5#16-#17）
+### 位置同步（E5.5#28-#29）
 
 OverlayWindow 必须和 MainWindow 保持像素级对齐：
 
@@ -75,7 +75,36 @@ mainWindow.on('restore', () => overlayWindow.restore());
 
 **Linux 注意：** `move` 事件在 Wayland 下可能不触发。需要 `setInterval` 轮询补漏。
 
-### 焦点管理（E5.5#19-#20）
+### 坐标换算（E5.5#28）
+
+**问题：** 插件 WebView 中 `getBoundingClientRect()` 返回相对于 WebContentsView edge 的坐标，不是相对于 MainWindow client area。应用层看到的是 WebView 内部坐标系，OverlayWindow 需要的是屏幕坐标系。
+
+**三步换算——写死到代码注释里：**
+
+```
+步骤 1：插件 WebView 中的 getBoundingClientRect()
+  → 坐标原点 = WebContentsView 的左上角 (0,0)
+  → 结果：(rectX, rectY) 相对于 WebView 内部
+
+步骤 2：WebView 内部坐标 → MainWindow client area 坐标
+  → mainX = webViewBounds.x + rectX   // webViewBounds = setBounds 时传入的 x,y
+  → mainY = webViewBounds.y + rectY
+  → 坐标原点 = MainWindow client area 左上角 (0,0)
+
+步骤 3：MainWindow client area → OverlayWindow 内部绝对坐标
+  → OverlayWindow bounds = MainWindow.getPosition() + client area offset
+  → 壳 TitleBar 拖拽区高度 = 30px（`-webkit-app-region: drag`）
+  → overlayX = mainX （MainWindow 和 OverlayWindow 等大等位置——水平直接对应）
+  → overlayY = mainY + 30   // 🔥 关键：OverlayWindow 包含 TitleBar 区域！
+  → 坐标原点 = OverlayWindow HTML body 左上角
+```
+
+**常见错误：**
+- 忘记 TitleBar 30px 偏移 → overlay 整体上移 30px
+- 用 `webView.getBounds()` 而非 `setBounds` 传入的值 → WebContentsView 实际 bounds 可能有 OS 级微调
+- DPI 缩放——`getBoundingClientRect` 返回 CSS 像素，`getPosition` 返回屏幕像素 → 在 devicePixelRatio ≠ 1 时需换算：`screenX = mainX * devicePixelRatio`
+
+### 焦点管理（E5.5#31-#32）
 
 **核心原则：OverlayWindow 只在有悬浮层时获取焦点。**
 
@@ -142,7 +171,7 @@ html, body {
 - ✅ 悬浮层内的点击 → 由 OverlayWindow 处理
 - ✅ 毛玻璃（`.overlay-backdrop`）→ 全屏 `pointer-events: auto` → 点击关闭
 
-### 分屏拖拽毛玻璃（E5.5#23-#24）
+### 分屏拖拽毛玻璃（E5.5#35-#36）
 
 拖拽标签页/分屏时显示的半透明占位：
 
@@ -157,33 +186,60 @@ ipcBridge.sendToOverlay('overlay:dragGhost', {
 
 OverlayWindow 在指定位置绘制半透明矩形。
 
-### 跨平台适配（E5.5#22）
+**60fps 策略——不是每帧发 IPC：**
+Electron IPC 序列化往返 ~1-3ms。`mousemove` 事件 ~60-120Hz。每帧都发 IPC = 主进程积压。
+
+```typescript
+// 壳侧——拖拽时（requestAnimationFrame 节流 + 跳过重复坐标）
+let _lastSentCoord = '';
+let _rafPending = false;
+const onDragMouseMove = (e: MouseEvent) => {
+  const key = `${Math.round(e.clientX)},${Math.round(e.clientY)}`; // 取整——像素级够用
+  if (key === _lastSentCoord) return;          // 跳过重复帧（鼠标静止）
+  _lastSentCoord = key;
+  if (_rafPending) return;                      // 跳过——等上一帧 IPC 返回
+  _rafPending = true;
+  requestAnimationFrame(() => {
+    _rafPending = false;
+    overlayWindow.webContents.send('overlay:dragGhost', {
+      x: Math.round(e.clientX),                 // 整数坐标——减少序列化开销
+      y: Math.round(e.clientY),
+    });
+  });
+};
+```
+
+**效果：** 实际 IPC 频率 ~30-60fps（取决于 rAF 节奏 + 跳过重复帧），视觉流畅不拖尾。
+
+**OverlayWindow 侧——不要用 React setState 每帧重渲染：** 用 DOM 直操作 `style.left/top` 避免 React diff 开销。毛玻璃是纯 `<div>` 定位，不需要 React 生命周期。
+
+### 跨平台适配（E5.5#34）
 
 | 平台 | 注意事项 |
 |:--|:--|
 | **Windows** | 透明窗口性能好。`alwaysOnTop: 'screen-saver'` 级别防止被其他应用覆盖 |
-| **macOS** | `transparent: true` + `frame: false` → 需要 `titleBarStyle: 'hidden'`。`alwaysOnTop: 'floating'` 级别 |
+| **macOS** | `transparent: true` + `frame: false` → 需要 `titleBarStyle: 'hidden'`。`alwaysOnTop: 'floating'` 级别。⚠️ `setIgnoreMouseEvents(true, { forward: true })` 需要 `com.apple.security.cs.disable-library-validation` entitlement + `webPreferences: { sandbox: false }`，否则 `forward: true` 静默失效——鼠标事件不穿透到 MainWindow |
 | **Linux** | 透明窗口在 X11/Wayland 间差异大。Wayland 不支持 `setAlwaysOnTop`。需要降级方案 |
 
 ## E5.5 任务分解
 
 | 任务 | 内容 | 行数 |
 |:--|:--|:--|
-| E5.5#14 | 创建 OverlayWindow + 基础配置 | ~80 |
-| E5.5#15 | OverlayWindow preload 脚本（同壳 preload） | ~30 |
-| E5.5#16 | 位置同步——move/resize 事件监听 | ~40 |
-| E5.5#17 | 最小化/最大化/恢复同步 | ~20 |
-| E5.5#18 | pointer-events CSS 策略（穿透/响应） | ~15 |
-| E5.5#19 | 焦点状态机——OverlayWindowManager | ~80 |
-| E5.5#20 | blur 事件→关闭所有悬浮层 | ~15 |
-| E5.5#21 | OverlayWindow React 渲染入口（壳级组件） | ~40 |
-| E5.5#22 | 跨平台适配——Windows/macOS/Linux | ~30 |
-| E5.5#23 | 分屏拖拽毛玻璃 IPC | ~25 |
-| E5.5#24 | 拖拽坐标换算（OverlayWindow 坐标系 vs MainWindow 坐标系） | ~15 |
-| E5.5#25 | 迁移 ContextMenu → OverlayWindow（从壳 WebView 切到 OverlayWindow） | ~20 |
-| E5.5#26 | 迁移 Dialog → OverlayWindow | ~15 |
-| E5.5#27 | 迁移 Toast → OverlayWindow | ~15 |
-| E5.5#28 | 迁移 SelectBox/OverlayPortal → OverlayWindow | ~20 |
+| E5.5#26 | 创建 OverlayWindow + 基础配置 | ~80 |
+| E5.5#27 | OverlayWindow preload 脚本（同壳 preload） | ~30 |
+| E5.5#28 | 位置同步——move/resize 事件监听 | ~40 |
+| E5.5#29 | 最小化/最大化/恢复同步 | ~20 |
+| E5.5#30 | pointer-events CSS 策略（穿透/响应） | ~15 |
+| E5.5#31 | 焦点状态机——OverlayWindowManager | ~80 |
+| E5.5#32 | blur 事件→关闭所有悬浮层 | ~15 |
+| E5.5#33 | OverlayWindow React 渲染入口（壳级组件） | ~40 |
+| E5.5#34 | 跨平台适配——Windows/macOS/Linux | ~30 |
+| E5.5#35 | 分屏拖拽毛玻璃 IPC | ~25 |
+| E5.5#36 | 拖拽坐标换算（OverlayWindow 坐标系 vs MainWindow 坐标系） | ~15 |
+| E5.5#37 | 迁移 ContextMenu → OverlayWindow（从壳 WebView 切到 OverlayWindow） | ~20 |
+| E5.5#38 | 迁移 Dialog → OverlayWindow | ~15 |
+| E5.5#39 | 迁移 Toast → OverlayWindow | ~15 |
+| E5.5#40 | 迁移 SelectBox/OverlayPortal → OverlayWindow | ~20 |
 
 **总计：~460 行**
 
@@ -205,7 +261,7 @@ OverlayWindow 在指定位置绘制半透明矩形。
 
 ### 风险 4：Linux Wayland
 - Wayland 窗口协议不支持 `setAlwaysOnTop`
-- **降级方案：** 回到 `setVisible(false)` 临时方案（E5.5#4）
+- **降级方案：** 回到 `setVisible(false)` 临时方案（E5.5#5）
 
 ## 相关
 

@@ -1,4 +1,4 @@
-# Z-order 弹窗与毛玻璃——E5.5#4-#5, #11
+# Z-order 弹窗与毛玻璃——E5.5#5-#6
 
 > 📖 **来源：** [[e5-multi-webview-abandoned]] Bug 1 & Bug 2 (z-order) + Bug 7 (毛玻璃)
 > [[ipc-bridge.ts:PROXY_CHANNELS]] 43 个代理通道，ContextMenu/Dialog 已在其中。
@@ -25,7 +25,7 @@
 
 ## 方案：分两阶段
 
-### 第 1 层——临时方案（E5.5#4）
+### 第 1 层——临时方案（E5.5#5）
 
 **hack：** 弹窗打开时，把插件 WebContentsView `setVisible(false)`，让壳的同功能弹窗接管。
 
@@ -41,7 +41,7 @@ window.linkdesk.contextMenu.show(items, anchor);
 // 缺点：切换可见性时有短暂闪烁（插入一帧黑/白）
 ```
 
-### 第 2 层——OverlayWindow 根治（E5.5#14-#28）
+### 第 2 层——OverlayWindow 根治（E5.5#26-#28）
 
 见 [`OverlayWindow/OverlayWindow设计.md`](../OverlayWindow/OverlayWindow设计.md)。
 
@@ -56,7 +56,7 @@ window.linkdesk.contextMenu.show(items, anchor);
 └──────────────────────┘
 ```
 
-## E5.5#11——对号弹窗组件也走 IPC
+## E5.5#13——对号弹窗组件也走 IPC
 
 有些插件的**自身 UI 组件**（非 ContextMenu/Dialog 标准弹窗）需要悬浮在壳之上的场景：
 
@@ -66,9 +66,9 @@ window.linkdesk.contextMenu.show(items, anchor);
 
 **方案：**
 
-E5.5#10-#13 逐步将 ContextMenu → Dialog → Toast → SelectBox → 其他 HTML 悬浮层全部迁移 IPC，由 OverlayWindow 渲染。
+E5.5#14-#15 逐步将 ContextMenu → Dialog → Toast → SelectBox → 其他 HTML 悬浮层全部迁移 IPC，由 OverlayWindow 渲染。
 
-## E5.5#5——毛玻璃问题
+## E5.5#6——毛玻璃问题
 
 毛玻璃是 CSS 特性（`backdrop-filter: blur()`），但只在有背景的 WebContentsView 上生效。OverlayWindow 透明无框→所有弹窗的毛玻璃在 OverlayWindow 中渲染→覆盖整个桌面区域。
 
@@ -79,7 +79,7 @@ E5.5#10-#13 逐步将 ContextMenu → Dialog → Toast → SelectBox → 其他 
 
 ## 验证场景
 
-| 场景 | E5.5#4 临时 | E5.5#14-#28 OverlayWindow |
+| 场景 | E5.5#5 临时 | E5.5#38-#40 OverlayWindow |
 |:--|:--|:--|
 | 文件树右键菜单 | ✅ 工作，有闪烁 | ✅ 无闪烁 |
 | 编辑器右键菜单 | ✅ 工作，有闪烁 | ✅ 无闪烁 |

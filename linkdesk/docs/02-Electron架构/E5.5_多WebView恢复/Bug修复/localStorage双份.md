@@ -1,4 +1,4 @@
-# localStorage 双份——E5.5#7
+# localStorage 双份——E5.5#8
 
 > 📖 **来源：** [[e5-multi-webview-abandoned]] Bug 5——localStorage 是 origin-based。多 WebView 加载同一个 origin（file:// 或 custom protocol）→ 每个 WebView 有独立的 localStorage → 插件在侧栏写的 localStorage 数据，主区打开时读到的是自己的副本。
 
@@ -24,7 +24,7 @@
 
 ## 防范方向
 
-### 临时方案（E5.5#7a）：document storage
+### 临时方案（E5.5#8a）：document storage
 
 如果插件仅少量 key-value 状态，用 Electron 的 `session.defaultSession` 或者用 `window.linkdesk.pluginState` API（已有 E5#71 基础设施）。
 
@@ -39,7 +39,7 @@ window.linkdesk.pluginState.set('myKey', value);       // IPC → 主进程文�
 const data = window.linkdesk.pluginState.get('myKey');  // IPC → 从主进程读
 ```
 
-### 根治方案（E5.5#7b）：pluginState API 增强
+### 根治方案（E5.5#8b）：pluginState API 增强
 
 E5#71 的 `pluginState` API 已在主进程持久化，只需加两条增强：
 
