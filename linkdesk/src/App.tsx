@@ -33,6 +33,7 @@ import { useConfigurationValue } from "./core/react/useConfiguration";
 // initStorageService 已提前到 main.tsx mount 前调用
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout } from "./core/services/LayoutService";
+import { initWorkspaceService } from "./core/services/WorkspaceService"; // E5.5#0e
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
@@ -239,6 +240,7 @@ function App() {
       const result = await initAll({
         initLayoutService,
         initPluginStates,
+        initWorkspaceService, // E5.5#0e
         initPluginLoader,
         startPluginWatcher,
         getLoadedPluginManifests,

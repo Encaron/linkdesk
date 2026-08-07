@@ -19,6 +19,8 @@ export interface InitDeps {
   initLayoutService: () => Promise<void>;
   /** 初始化插件状态服务 */
   initPluginStates: () => Promise<void>;
+  /** E5.5#0e：初始化工作区服务——从 pluginState 恢复文件夹列表 */
+  initWorkspaceService: () => Promise<void>;
   /** 初始化插件加载器 */
   initPluginLoader: () => Promise<void>;
   /** 启动插件文件监听 */
@@ -95,6 +97,13 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     ]);
   } catch (e) {
     logStep("initServices", e);
+  }
+
+  // E5.5#0e：工作区文件夹恢复——依赖 initPluginStates 已加载 _states
+  try {
+    await deps.initWorkspaceService();
+  } catch (e) {
+    logStep("workspaceService", e);
   }
 
   // ── Step 2: 插件加载 ──
