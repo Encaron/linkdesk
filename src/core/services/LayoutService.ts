@@ -13,49 +13,8 @@
 import type { LayoutData } from "../../hooks/useTabManager";
 import { read, write, writeSync } from "./StorageService";
 import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "./FileService";
-import { FALLBACK_PLUGIN_ID } from "../../utils/fallbackPluginId";
 
 /* ── 类型 ── */
-
-/**
- * B78 归一化：旧 tab identity 硬编码 id 集合。
- * 这些类型在 2026-07-21 前 generateId 返回固定字符串（如 "settings"），
- * 归一化后改为 `autoId(prefix)` → `settings-1` / `settings-2` ...。
- * 启动时自动迁移——将布局中的旧 id 映射到新 id（idempotent）。
- *
- * @deprecated 2026-07-21 (B78)。当所有用户的布局 JSON 已自动迁移为新格式后，
- *   此迁移逻辑可安全删除。预计 2026-09 后新用户不再产生旧格式布局。
- */
-const LEGACY_TAB_IDS = new Set(["settings", "marketplace", FALLBACK_PLUGIN_ID, "oled"]);
-
-function migrateLegacyTabIds(layout: WorkspaceLayout): WorkspaceLayout {
-  let migrated = false;
-  const newGroups = layout.tabs.groups.map((group) => {
-    let groupChanged = false;
-    const newTabs = group.tabs.map((tab) => {
-      if (LEGACY_TAB_IDS.has(tab.id)) {
-        groupChanged = true;
-        migrated = true;
-        const newId = `${tab.id}-1`;
-        return {
-          ...tab,
-          id: newId,
-          // sourceId 默认等于 tab.id（createTabDefaults line 114），同步迁移
-          sourceId: tab.sourceId === tab.id ? newId : tab.sourceId,
-        };
-      }
-      return tab;
-    });
-    if (!groupChanged) return group;
-    const newActiveId = LEGACY_TAB_IDS.has(group.activeTabId) ? `${group.activeTabId}-1` : group.activeTabId;
-    return { ...group, tabs: newTabs, activeTabId: newActiveId };
-  });
-  if (!migrated) return layout;
-  // 异步回写——下次 saveTabLayout/syncWriteLayout 也会覆盖，但先写一份确保 crash 安全
-  const migratedLayout = { ...layout, tabs: { ...layout.tabs, groups: newGroups } };
-  write("layout", migratedLayout).catch((e) => { console.error("[LayoutService] 迁移布局回写失败:", e); });
-  return migratedLayout;
-}
 
 export interface CardLayout {
   id: string;        // 卡片实例 ID
@@ -77,65 +36,12 @@ export interface WorkspaceLayout {
 
 let _layoutCache: WorkspaceLayout = { tabs: { groups: [], activeGroupId: "" }, cards: [] };
 
-/* ── E3i #70：插件改名布局迁移 ── */
-
-/**
- * 插件改名后自动迁移布局中的旧 tab id。
- * flag 保证幂等——迁移过一次后不再重复。
- *
- * @param layout  当前布局
- * @param oldId   旧插件 ID（如 "terminal"）
- * @param newId   新插件 ID（如 "serial-monitor"）
- * @param flag    幂等标志——写入 layout 对象的 property name
- */
-function migratePluginIdRename(
-  layout: WorkspaceLayout,
-  oldId: string,
-  newId: string,
-  flag: string
-): WorkspaceLayout {
-  if ((layout as unknown as Record<string, unknown>)[flag]) return layout;
-
-  const oldPrefix = `${oldId}-`;
-  const newPrefix = `${newId}-`;
-  let migrated = false;
-
-  const newGroups = layout.tabs.groups.map((group) => {
-    const newTabs = group.tabs.map((tab) => {
-      if (tab.id.startsWith(oldPrefix)) {
-        migrated = true;
-        const suffix = tab.id.slice(oldPrefix.length);
-        return {
-          ...tab,
-          id: `${newPrefix}${suffix}`,
-          type: tab.type === oldId ? newId : tab.type,
-        };
-      }
-      return tab;
-    });
-    return { ...group, tabs: newTabs };
-  });
-
-  if (!migrated) {
-    // 无需迁移但标记 flag——避免后续启动重复检查
-    return { ...layout, [flag]: true };
-  }
-
-  const result = { ...layout, tabs: { ...layout.tabs, groups: newGroups }, [flag]: true };
-  write("layout", result).catch((e) => { console.error("[LayoutService] 保存布局失败:", e); });
-  return result;
-}
-
 /* ── 初始化 ── */
 
-/** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。
- *  B78 归一化：自动迁移旧硬编码 tab id（"settings"→"settings-1"等），保证 F5 不丢布局。
- *  E3i #70：terminal → serial-monitor 自动迁移。 */
+/** 初始化——App 启动时调一次。StorageService 统一读写，优先 localStorage，文件兜底。 */
 export async function initLayoutService(): Promise<void> {
-  let saved = await read<WorkspaceLayout>("layout");
+  const saved = await read<WorkspaceLayout>("layout");
   if (saved) {
-    saved = migrateLegacyTabIds(saved);
-    saved = migratePluginIdRename(saved, "terminal", "serial-monitor", "_migrated_terminal_to_serial_monitor");
     _layoutCache = saved;
   }
 }

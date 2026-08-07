@@ -15,7 +15,7 @@ import { Emitter, type Event, CoreEvents } from "../react/CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
 import { normalizePath } from "./pathUtils";
 import { shellEvents } from "../react/ShellEvents";
-import { setPluginStateValue, getPluginStateValue } from "./PluginStateService";
+import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 import { read, write } from "./StorageService"; // E5.5#0e
 
 /* ── 类型 ── */
@@ -57,26 +57,13 @@ export function getActiveWorkspace(): string | undefined {
 }
 
 /** 设置活跃工作区——下游插件（编译/下载/搜索）以活跃工作区为目标 */
-let _migrated = false;
-
 export function setActiveWorkspace(uri: string): void {
   const normalized = normalizePath(uri);
-
-  // E5#59：一次性迁移——旧 key "file-tree" → 新 key "workspace"
-  if (!_migrated) {
-    _migrated = true;
-    const old = getPluginStateValue<string>("file-tree", "activeWorkspace");
-    if (old) {
-      setPluginStateValue("workspace", "activeWorkspace", old).catch((e) => { console.error("[Workspace] 迁移 workspace key 失败:", e); });
-      setPluginStateValue("file-tree", "activeWorkspace", null).catch((e) => { console.error("[Workspace] 清理旧 file-tree key 失败:", e); });
-    }
-  }
-
   if (_activeWorkspaceUri === normalized) return;
   _activeWorkspaceUri = normalized;
   _onDidChangeActiveWorkspace.fire(normalized);
-  // 持久化——F5 恢复
-  setPluginStateValue("workspace", "activeWorkspace", normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
+  // 持久化——走 PluginStateService（与 iconOrder/collapsedViews/currentProfile 归一化）
+  setPluginStateValue(APP_PLUGIN_ID, "activeWorkspace", normalized).catch((e) => { console.error("[Workspace] 保存工作区失败:", e); });
 }
 
 /** 订阅活跃工作区变更——对标 VS Code onDidChangeActiveWorkspaceFolder */
@@ -131,7 +118,7 @@ export function addFolder(folderPath: string): void {
 
   // 活跃工作区恢复优先级：持久化值 > 首个文件夹自动激活
   // 每次 addFolder 都检查——后续添加的文件夹可能匹配持久化值
-  const persisted = getPluginStateValue<string>("workspace", "activeWorkspace");
+  const persisted = getPluginStateValue<string>(APP_PLUGIN_ID, "activeWorkspace");
   if (persisted) {
     const normalizedPersisted = normalizePath(persisted);
     if (_folders.some((f) => f.uri === normalizedPersisted)) {
@@ -239,7 +226,7 @@ export async function initWorkspaceService(): Promise<void> {
     CoreEvents.onDidChangeWorkspaceFolders.fire(_folders);
 
     // 恢复活跃工作区
-    const persistedActive = getPluginStateValue<string>("workspace", "activeWorkspace");
+    const persistedActive = getPluginStateValue<string>(APP_PLUGIN_ID, "activeWorkspace");
     if (persistedActive) {
       const normalized = normalizePath(persistedActive);
       if (valid.some((f) => f.uri === normalized)) {

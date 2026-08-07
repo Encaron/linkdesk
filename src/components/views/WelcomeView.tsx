@@ -15,7 +15,7 @@ import { useTranslation } from "react-i18next";
 import { getTabCreatableViews } from "../../pluginLoader/viewRegistry";
 // Phase 5f：PreferenceService 兜底读清理——recentViews 已完全迁移到 PluginStateService
 import { FolderOpen, Folder, BookOpen } from "lucide-react"; // E5#100
-import { getPluginStateValue, setPluginStateValue } from "../../core/services/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../../core/services/PluginStateService";
 import { openFolder, addFolder, onDidChangeFolders } from "../../core/services/WorkspaceService"; // E3f #55
 import { PluginIcon } from "../shared/PluginIcon";
 import "./WelcomeView.css";
@@ -31,7 +31,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   const viewPlugins = getTabCreatableViews();
   const recentViews = (() => {
     try {
-      return getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews") ?? [];
+      return getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>(APP_PLUGIN_ID, "recentViews") ?? [];
     } catch {
       return [];
     }
@@ -40,7 +40,7 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   // E3f #55：最近文件夹——对标 VS Code File > Open Recent
   const recentFolders = (() => {
     try {
-      return getPluginStateValue<Array<{ path: string; name: string }>>("app", "recentFolders") ?? [];
+      return getPluginStateValue<Array<{ path: string; name: string }>>(APP_PLUGIN_ID, "recentFolders") ?? [];
     } catch {
       return [];
     }
@@ -54,11 +54,11 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
   useEffect(() => {
     const unsub = onDidChangeFolders((folders) => {
       if (folders.length === 0) return;
-      const recent = getPluginStateValue<Array<{ path: string; name: string }>>("app", "recentFolders") ?? [];
+      const recent = getPluginStateValue<Array<{ path: string; name: string }>>(APP_PLUGIN_ID, "recentFolders") ?? [];
       for (const f of folders) {
         const filtered = recent.filter((r) => r.path !== f.uri);
         filtered.unshift({ path: f.uri, name: f.name });
-        setPluginStateValue("app", "recentFolders", filtered.slice(0, 10));
+        setPluginStateValue(APP_PLUGIN_ID, "recentFolders", filtered.slice(0, 10));
       }
     });
     return unsub;
@@ -190,13 +190,13 @@ function WelcomeView({ isActive: _isActive, onCreateTab }: WelcomeViewProps) {
 function recordRecentView(pluginId: string, label: string, workspaceName?: string) {
   try {
     // Phase 5：写入 PluginStateService（替代 PreferenceService）
-    const recent = getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>("app", "recentViews") ?? [];
+    const recent = getPluginStateValue<Array<{ pluginId: string; label: string; workspaceName?: string }>>(APP_PLUGIN_ID, "recentViews") ?? [];
     // 去重：同一 pluginId + workspaceName 移到头部
     const filtered = recent.filter(
       (r) => !(r.pluginId === pluginId && r.workspaceName === workspaceName)
     );
     filtered.unshift({ pluginId, label: label || pluginId, workspaceName });
-    setPluginStateValue("app", "recentViews", filtered.slice(0, 10));
+    setPluginStateValue(APP_PLUGIN_ID, "recentViews", filtered.slice(0, 10));
   } catch {
     // 静默
   }

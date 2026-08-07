@@ -29,26 +29,6 @@ function _lsKey(key: string): string {
   return LS_KEY_MAP[key] ?? key;
 }
 
-/** E5#102a: 迁移 v3_ 旧 key → 新 key。读不到新 key 时回退到旧 key 并自动迁移。 */
-function _migrateFromV3(key: string, raw: string): void {
-  try {
-    localStorage.setItem(key, raw);
-  } catch { /* 非关键——下次读取再试 */ }
-}
-
-function _tryV3Fallback(key: string): string | null {
-  const v3key = LS_KEY_MAP[key] ? `v3_${LS_KEY_MAP[key]}` : `v3_${key}`;
-  try {
-    const raw = localStorage.getItem(v3key);
-    if (raw) {
-      // 找到旧数据——迁移到新 key，保留旧 key 不删
-      _migrateFromV3(key, raw);
-      return raw;
-    }
-  } catch { /* ignore */ }
-  return null;
-}
-
 /* ── key → 文件路径 ── */
 
 let _appDataDir: string | null = null;
@@ -91,25 +71,19 @@ export async function initStorageService(): Promise<void> {
 /* ── 读取 ── */
 
 /**
- * 读取持久化数据。Tauri 模式优先读 localStorage（beforeunload 同步写入，永远最新），
+ * 读取持久化数据。优先读 localStorage（beforeunload 同步写入，永远最新），
  * 文件兜底（100ms 防抖异步落盘，可能略旧于 localStorage）。
  */
 export async function read<T>(key: string): Promise<T | null> {
   const lsKey = _lsKey(key);
 
-  // 1. 尝试 localStorage（新 key）
+  // 1. 尝试 localStorage
   try {
     const raw = localStorage.getItem(lsKey);
     if (raw) return JSON.parse(raw) as T;
   } catch { /* ignore */ }
 
-  // 2. E5#102a: 回退 v3_ 旧 key——自动迁移
-  try {
-    const v3raw = _tryV3Fallback(lsKey);
-    if (v3raw) return JSON.parse(v3raw) as T;
-  } catch { /* ignore */ }
-
-  // 3. 尝试文件系统
+  // 2. 尝试文件系统
   if (_hasLinkdesk()) {
     try {
       const path = await _filePath(key);
@@ -127,18 +101,13 @@ export async function read<T>(key: string): Promise<T | null> {
 
 /**
  * 只从 localStorage 读取（同步，不需要 await）。
- * 用于启动早期——Tauri API 未就绪时读取 beforeunload 保存的最后一刻数据。
+ * 用于启动早期——读取 beforeunload 保存的最后一刻数据。
  */
 export function readSync<T>(key: string): T | null {
   const lsKey = _lsKey(key);
   try {
     const raw = localStorage.getItem(lsKey);
     if (raw) return JSON.parse(raw) as T;
-  } catch { /* ignore */ }
-  // E5#102a: 回退 v3_ 旧 key
-  try {
-    const v3raw = _tryV3Fallback(lsKey);
-    if (v3raw) return JSON.parse(v3raw) as T;
   } catch { /* ignore */ }
   return null;
 }
