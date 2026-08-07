@@ -70,9 +70,21 @@ export class WindowManager {
       this.pluginViews.delete(pluginId);
     });
 
+    // 🔥 E5.5#1b 调试：转发插件 WebView console → 主进程终端
+    view.webContents.on('console-message', (_event: any, level: number, message: string, line: number, sourceId: string) => {
+      const tag = `[plugin:${pluginId}]`;
+      if (level >= 3) console.error(`${tag} ${message}`);
+      else console.log(`${tag} ${message}`);
+    });
+
     // ── 新 WebView 创建后重放当前状态（#35 + #40）──
     view.webContents.on('did-finish-load', () => {
+      console.log(`[WindowManager] 插件 "${pluginId}" WebView 加载完成`);
       this.ipcBridge?.replayToPlugin(pluginId);
+    });
+
+    view.webContents.on('did-fail-load', (_event: any, errorCode: number, errorDescription: string, validatedURL: string) => {
+      console.error(`[WindowManager] 插件 "${pluginId}" WebView 加载失败: ${errorDescription} (code ${errorCode}) URL=${validatedURL}`);
     });
 
     // 加载内容
