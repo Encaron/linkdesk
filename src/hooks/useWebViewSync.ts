@@ -21,6 +21,12 @@ export interface PluginViewsAPI {
   getAllIds(): Promise<string[]>;
   setVisible(pluginId: string, visible: boolean): void;
   setBounds(pluginId: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
+  /** E5.5#3c：关闭标签页时进入保活宽限期（60s，超时真销毁） */
+  scheduleDestroy(pluginId: string): void;
+  /** E5.5#3c：重开标签页时尝试从宽限期恢复。返回 true=复用成功 */
+  cancelDestroy(pluginId: string): Promise<boolean>;
+  /** E5.5#3d：宽限期超时后重建 WebView */
+  create(pluginId: string): void;
 }
 
 export interface WebViewSyncResult {
@@ -147,13 +153,34 @@ export function useWebViewSync(
       for (const [pluginId, state] of currentStates) {
         if (!registeredSet.has(pluginId)) continue;
         const prevState = prev.get(pluginId);
+        // E5.5#3c：插件从"无标签页"→"有标签页"——尝试从宽限期恢复 WebView
+        if (!prevState) {
+          pv.cancelDestroy(pluginId).then((reused) => {
+            if (reused) {
+              console.log(`[useWebViewSync] "${pluginId}" 从宽限期恢复——零重建`);
+              // WebView 仍存活——恢复 ready 状态（scheduleDestroy 时清掉了），防 MainContent IPC 守卫误拦
+              setReadyWebViewIds((prev) => { const next = new Set(prev); next.add(pluginId); return next; });
+            } else {
+              // E5.5#3d：宽限期已过 → 重建 WebView
+              console.log(`[useWebViewSync] "${pluginId}" 保活超时——重建 WebView`);
+              // 清掉 stale ready 状态——旧 WebView 已销毁，防 MainContent IPC 效应误发到不存在的 WebView
+              setReadyWebViewIds((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+              setWebViewBoundsReady((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+              pv.create(pluginId);
+            }
+          }).catch(() => {});
+        }
         if (prevState?.isFocused !== state.isFocused) {
           pv.setVisible(pluginId, state.isFocused);
         }
       }
       for (const pluginId of prev.keys()) {
         if (!currentStates.has(pluginId) && registeredSet.has(pluginId)) {
-          pv.setVisible(pluginId, false);
+          // E5.5#3c：标签页关闭 → 不立即销毁，进入 60s 保活宽限期
+          pv.scheduleDestroy(pluginId);
+          // E5.5#3d：立即清 ready 状态——防 MainContent IPC 效应在重开时误发到已销毁的 WebView
+          setReadyWebViewIds((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
+          setWebViewBoundsReady((prev) => { const next = new Set(prev); next.delete(pluginId); return next; });
         }
       }
       if (ids.length > 0) {

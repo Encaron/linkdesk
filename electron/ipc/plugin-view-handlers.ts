@@ -38,6 +38,14 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     _registry?.unregisterPlugin(pluginId);
   });
 
+  // E5.5#3c：保活宽限期——关闭标签页时不立即销毁，60s 内重开可复用
+  ipcMain.handle('plugin-view:scheduleDestroy', (_event, pluginId: string) => {
+    _registry?.scheduleDestroy(pluginId);
+  });
+  ipcMain.handle('plugin-view:cancelDestroy', (_event, pluginId: string) => {
+    return _registry?.cancelDestroy(pluginId) ?? false;
+  });
+
   // E3f #58c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
   ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
     const isDev = !app.isPackaged;

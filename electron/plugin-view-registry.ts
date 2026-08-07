@@ -60,6 +60,22 @@ export class PluginViewRegistry {
   }
 
   /**
+   * E5.5#3c：标签页关闭时调用——不立即销毁，进入 60s 保活宽限期。
+   * 期间重开标签页 → cancelDestroy 复用，零重建延迟。超时 → 真销毁。
+   */
+  scheduleDestroy(pluginId: string): void {
+    this.windowManager.scheduleViewDestroy(pluginId);
+  }
+
+  /**
+   * E5.5#3c：重开标签页时调用——检查是否在宽限期内。
+   * @returns true=复用成功（WebView 恢复可见），false=已销毁需重建
+   */
+  cancelDestroy(pluginId: string): boolean {
+    return this.windowManager.cancelViewDestroy(pluginId);
+  }
+
+  /**
    * 重载插件 WebContentsView 的内容。
    * 对标 VS Code 的"Reload Window"——开发时插件代码改了，重载即可。
    */
