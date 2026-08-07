@@ -352,7 +352,7 @@ function MainContent({
     // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
     for (const g of tabState.groups) for (const t of g.tabs) {
       if (t.pluginId === "editor" && t.sourceId) {
-        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.sourceId }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
+        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.filePath }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
       }
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);

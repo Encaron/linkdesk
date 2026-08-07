@@ -232,7 +232,7 @@ html, body, #root {
   top: 20%;
   left: 50%;
   transform: translateX(-50%) scale(0.95);
-  width: 420px;
+  width: 500px;
   /* E3.5 #CP14: 响应式高度——小屏不溢出，大屏用更多空间 */
   max-height: min(360px, 60vh);
   background: var(--bg-card);
@@ -262,7 +262,7 @@ html, body, #root {
 
 /* E3.5 #CP11: 前缀——">" 标明命令模式 */
 .palette-prefix {
-  padding-left: 12px;
+  padding-left: 14px;
   font-size: 14px;
   color: var(--text-muted);
   user-select: none;
@@ -271,9 +271,9 @@ html, body, #root {
 
 .palette-input {
   flex: 1;
-  background: var(--bg-input);
+  background: transparent;
   border: none;
-  padding: 8px 12px;
+  padding: 12px 12px 8px 12px;
   color: var(--text-primary);
   font-size: 13px;
   outline: none;
@@ -325,8 +325,9 @@ html, body, #root {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 8px 16px;
   font-size: 12px;
+  line-height: 1.4;
   color: var(--text-primary);
   cursor: pointer;
   transition: background 100ms;

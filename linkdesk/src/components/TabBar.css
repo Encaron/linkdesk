@@ -4,7 +4,7 @@
 .tab-bar {
   display: flex;
   align-items: stretch;
-  background: var(--bg-window);
+  background: var(--bg-card);
   height: 35px;
   flex-shrink: 0;
   user-select: none;
@@ -32,8 +32,8 @@
   gap: 4px;
   /* VS Code: fit=120, shrink=80 */
   flex: 0 1 120px;
-  min-width: 80px;
-  max-width: 200px;
+  min-width: 64px;
+  max-width: 240px;
   height: 100%;
   padding: 0 8px;
   background: var(--bg-card);
@@ -49,11 +49,12 @@
   background: var(--tab-hover-bg);
 }
 
-/* 活跃标签页——融入内容区（无底边，和下方 MainContent 同色） */
+/* 活跃标签页——融入内容区（无底边，和下方 MainContent 同色）+ accent 顶线指示 */
 .tab-item.active {
   background: var(--bg-window);
   color: var(--text-primary);
   border-bottom-color: transparent;
+  border-top: 2px solid var(--accent);
 }
 
 /* 分屏中可见但不活跃的标签页 */
@@ -73,10 +74,12 @@
 
 /* ── dirty 圆点 ── */
 
+/* E3.5 #TB02: dirty 圆点——CSS 圆替代文本 ●，跨平台尺寸一致 */
 .tab-dirty-dot {
-  color: var(--dirty-dot);
-  font-size: 14px;
-  line-height: 1;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--dirty-dot);
   flex-shrink: 0;
 }
 
@@ -191,7 +194,7 @@
   min-width: 160px;
   background: var(--bg-card);
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 8px;
   box-shadow: var(--context-menu-shadow);
   padding: 4px 0;
   overflow: hidden;
