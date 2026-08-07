@@ -6,6 +6,8 @@
  * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
  */
 
+import { readSync, writeSync } from "./StorageService";
+
 /** 对标 VS Code Severity */
 export type ToastSeverity = "info" | "warning" | "error";
 
@@ -52,14 +54,14 @@ let _toasts: Toast[] = [];
 let _listeners: Set<ToastListener> = new Set();
 let _counter = 0;
 
-/** "Don't show again" 持久化 key */
-const DISMISSED_KEY = "linkdesk_dismissed_toasts";
+/** "Don't show again" 持久化 key——走 StorageService 归一化 */
+const DISMISSED_KEY = "toast-dismissed";
 
 function isDismissed(toast: { source?: string; message: string; isCloseAffordance?: boolean }): boolean {
   if (!toast.isCloseAffordance) return false;
   try {
     const key = `${toast.source ?? ""}::${toast.message}`;
-    const dismissed = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
+    const dismissed = readSync<string[]>(DISMISSED_KEY) ?? [];
     return dismissed.includes(key);
   } catch { return false; }
 }
@@ -68,12 +70,12 @@ function persistDismiss(toast: { source?: string; message: string; isCloseAfford
   if (!toast.isCloseAffordance) return;
   try {
     const key = `${toast.source ?? ""}::${toast.message}`;
-    const dismissed = JSON.parse(localStorage.getItem(DISMISSED_KEY) ?? "[]") as string[];
+    const dismissed = readSync<string[]>(DISMISSED_KEY) ?? [];
     if (!dismissed.includes(key)) {
       dismissed.push(key);
-      localStorage.setItem(DISMISSED_KEY, JSON.stringify(dismissed));
+      writeSync(DISMISSED_KEY, dismissed);
     }
-  } catch { /* localStorage 不可用时静默 */ }
+  } catch { /* StorageService 不可用时静默 */ }
 }
 
 function notify(): void {
