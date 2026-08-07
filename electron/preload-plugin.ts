@@ -353,26 +353,13 @@ try {
     },
 
     // ── E5#69：菜单——插件声明式读写 ──
+    // 插件直接传字符串 menuId（如 "editorContext"、"settingItemGear"）→ 对标 VS Code 的 "editor/context"。
+    // menuId 是 API 契约的一部分——不提供 enum/常量对象。单一真源：字符串字面量本身。
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
       getItems: (menuId: string): Promise<unknown[]> =>
         ipcRenderer.invoke('menu:getItems', menuId),
-      // E5.5#7：MenuId 枚举常量——插件不再 import { MenuId } from @src/core
-      MenuId: {
-        CommandPalette: "commandPalette",
-        TabContext: "tabContext",
-        EditorContext: "editorContext",
-        ExtensionGear: "extensionGear",
-        MarketplaceItemGear: "marketplaceItemGear",
-        MenuBar: "menuBar",
-        FileContext: "fileContext",
-        CardContext: "cardContext",
-        QuickSendContext: "quickSendContext",
-        IconBar: "iconBar",
-        SettingItemGear: "settingItemGear",
-        ViewTitleContext: "viewTitleContext",
-      },
     },
 
     // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──
