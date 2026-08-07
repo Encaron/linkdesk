@@ -53,7 +53,7 @@ export default function SearchView() {
         />
         {value && (
           <button className="ms-search-clear" onClick={onClear}>
-            ✕
+            <span className="codicon codicon-close" />
           </button>
         )}
       </div>
