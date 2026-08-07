@@ -299,6 +299,8 @@ try {
     pluginRequest: {
       handle(channel: string, handler: (payload: unknown) => unknown) {
         pluginRequestHandlers.set(channel, async (p) => handler(p));
+        // E5.5#1：回放 handler 注册前缓冲的请求
+        _replayPending(channel);
       },
       unhandle(channel: string) {
         pluginRequestHandlers.delete(channel);
@@ -323,23 +325,57 @@ try {
   // E5#62：模块级 handler 表——contextBridge 隔离世界和 ipcRenderer 共用
   const pluginRequestHandlers = new Map<string, (payload: unknown) => Promise<unknown>>();
 
+  // E5.5#1：缓冲 handler 注册前到达的请求——多 WebView 下壳可能比插件模块先发请求
+  // handler 注册后通过 _replayPending 回放。
+  const _pendingRequests: Array<{
+    requestId: string;
+    channel: string;
+    payload: unknown;
+    timestamp: number;
+  }> = [];
+
+  function _replayPending(channel: string): void {
+    const matches = _pendingRequests.filter((r) => r.channel === channel);
+    if (matches.length === 0) return;
+    for (const req of matches) {
+      const h = pluginRequestHandlers.get(req.channel);
+      if (!h) continue;
+      h(req.payload)
+        .then((result) => ipcRenderer.send("bridge:plugin-response", { requestId: req.requestId, result }))
+        .catch((err: any) =>
+          ipcRenderer.send("bridge:plugin-response", {
+            requestId: req.requestId,
+            error: err?.message ?? String(err),
+          }),
+        );
+    }
+    // 清理已回放的
+    const ids = new Set(matches.map((r) => r.requestId));
+    for (let i = _pendingRequests.length - 1; i >= 0; i--) {
+      if (ids.has(_pendingRequests[i].requestId)) _pendingRequests.splice(i, 1);
+    }
+    // 清理过期（>10s 未匹配——主进程侧也已超时）
+    const now = Date.now();
+    for (let i = _pendingRequests.length - 1; i >= 0; i--) {
+      if (now - _pendingRequests[i].timestamp > 10000) _pendingRequests.splice(i, 1);
+    }
+  }
+
   // E5#62：壳→插件请求——收到 plugin:request → 调 handler → 回传 bridge:plugin-response
-  ipcRenderer.on('plugin:request', async (_event, { requestId, channel, payload }: {
+  ipcRenderer.on("plugin:request", async (_event, { requestId, channel, payload }: {
     requestId: string;
     channel: string;
     payload: unknown;
   }) => {
     const handler = pluginRequestHandlers.get(channel);
     if (!handler) {
-      ipcRenderer.send('bridge:plugin-response', {
-        requestId,
-        error: `[pluginRequest] 无 handler 处理 channel "${channel}"`,
-      });
+      // E5.5#1：handler 尚未注册——缓冲等待，由 _replayPending 在 handle() 时回放
+      _pendingRequests.push({ requestId, channel, payload, timestamp: Date.now() });
       return;
     }
     try {
       const result = await handler(payload);
-      ipcRenderer.send('bridge:plugin-response', { requestId, result });
+      ipcRenderer.send("bridge:plugin-response", { requestId, result });
     } catch (err: any) {
       ipcRenderer.send('bridge:plugin-response', {
         requestId,
