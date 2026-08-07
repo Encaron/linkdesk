@@ -20,29 +20,49 @@ return <plugin.component />  // ← 加载中插件在壳侧跑
 
 ## 方案
 
-删掉两处 `<plugin.component />`。`getViewPlugin()` 只取 `manifest.name` 显示插件名，不渲染组件。
+**原则：** 壳侧零插件代码执行。加载中/超时不渲染任何插件组件——直接展示欢迎页。欢迎页是壳视图、零插件代码、Ctrl+Shift+P 可用。
 
-**改后：**
+### 改后三态
+
+```
+状态1：加载中（WebView 未 ready，未超时）
+  → 欢迎页（壳视图）
+
+状态2：就绪（WebView ready + bounds 确认）
+  → 空 div，WebView 覆盖（不变）
+
+状态3：超时（WebView 已超时）
+  → 欢迎页（壳视图）
+```
+
+### 代码改动
+
+**文件：** `src/components/MainContent.tsx:100-123`
 
 ```typescript
 if (tab.pluginId) {
-  const pluginName = getViewPlugin(tab.pluginId)?.manifest?.name ?? tab.pluginId;
-
-  if (webViewTimeout?.has(tab.pluginId)) {
-    return <div key={tab.id} className="plugin-timeout">
-      {i18n.t('插件 "{{name}}" 加载超时', { name: pluginName })}
-    </div>;
+  // WebView ready + bounds 确认 → 空 div（WebView 覆盖在上面）
+  if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
+    return <div key={tab.id} className="plugin-webview-placeholder" />;
   }
 
-  // 加载中 + 就绪 → 统一空 div（WebView 覆盖）
-  return <div key={tab.id} className="plugin-webview-placeholder" />;
+  // 加载中 / 超时 → 欢迎页（壳视图，零插件代码，Ctrl+Shift+P 可用）
+  const WelcomeView = SHELL_VIEWS["welcome"];
+  if (WelcomeView) {
+    return createElement(WelcomeView, { key: tab.id, isActive });
+  }
 }
 ```
 
-**改动量：** `MainContent.tsx:100-123`，删 20 行，写 8 行。不 import `ErrorBoundary`（不再需要）。
+### 删除
+
+- `getViewPlugin(tab.pluginId)` 不再用于获取 `.component`
+- 不再 import `ErrorBoundary` 用于包裹插件组件（壳侧不再渲染插件组件）
+- `webViewTimeout` 不再影响渲染决策（欢迎页本身不区分加载中/超时）
 
 ## 影响
 
-- 壳侧零插件副作用
-- 加载中：空 div（和就绪态一样），没有"插件 UI 闪一下再消失"的错觉
-- 超时：静态文本显示插件名，不再 mount 插件 React 组件
+- **壳侧零插件副作用**：`useEffect`/`ipcRenderer.on`/命令注册只在 WebView 内执行一次
+- **无需用户操作**：不需要切换标签页来恢复——WebView 就绪后自动切换为空 div，WebView 覆盖在上面
+- **欢迎页可用**：加载期间可用 Ctrl+Shift+P 打开命令面板、切换主题等
+- **实现简洁**：~10 行改动，无新技术、无 CSS

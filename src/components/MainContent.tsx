@@ -71,7 +71,6 @@ function renderTabContent(
   createTab?: (type: string, opts?: import("../core/api/types").CreateTabOptions) => string,
   readyWebViewIds?: Set<string>,
   webViewBoundsReady?: Set<string>,
-  webViewTimeout?: Set<string>,
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -98,28 +97,18 @@ function renderTabContent(
   // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
-    // E5#10c：超时兜底——已超时的插件永久回退 React，不再等 WebView
-    if (webViewTimeout?.has(tab.pluginId)) {
-      const plugin = getViewPlugin(tab.pluginId);
-      if (plugin) {
-        return (
-          <ErrorBoundary pluginId={tab.pluginId}>
-            <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
-          </ErrorBoundary>
-        );
-      }
-    }
-    // E5#11l：双条件——WebView JS ready + bounds IPC 确认 → 关 React fallback
+    // E5#11l：WebView JS ready + bounds IPC 确认 → 空 div，WebView 覆盖在上面
     if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
+    // E5.5#5d：加载中 / 超时 → 欢迎页。壳视图，零插件代码在壳侧执行，Ctrl+Shift+P 可用。
+    //          WebView 就绪后自动切到上方空 div，无需用户切换标签页。
     const plugin = getViewPlugin(tab.pluginId);
     if (plugin) {
-      return (
-        <ErrorBoundary pluginId={tab.pluginId}>
-          <plugin.component key={tab.id} isActive={isActive} sourceId={tab.sourceId} />
-        </ErrorBoundary>
-      );
+      const WelcomeView = SHELL_VIEWS["welcome"];
+      if (WelcomeView) {
+        return createElement(WelcomeView, { key: tab.id, isActive });
+      }
     }
   }
 
@@ -331,7 +320,6 @@ function MainContent({
   const {
     readyWebViewIds,
     webViewBoundsReady,
-    webViewTimeout,
     registerPoolRef,
     resetWebViewState,
   } = useWebViewSync(tabState, isShellRenderedTab, pv);
@@ -537,7 +525,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady, webViewTimeout)}
+          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
         </TabPanePositioner>
       ))}
     </div>
