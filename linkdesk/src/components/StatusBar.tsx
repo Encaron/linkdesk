@@ -62,8 +62,8 @@ function StatusBar(_props: StatusBarProps) {
     ...eventEntries.filter((e) => e.alignment === "right").map((e) => ({
       pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
     })),
-    { pluginId: "__shell_right__", id: "lang", icon: "globe", label: "", align: "right", onClick: "workbench.action.selectLanguage" },
-    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", align: "right", onClick: "workbench.action.selectTheme" },
+    { pluginId: "__shell_right__", id: "lang", icon: "globe", label: "", title: "选择语言", align: "right", onClick: "workbench.action.selectLanguage" },
+    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", title: "切换主题", align: "right", onClick: "workbench.action.selectTheme" },
   ];
 
   // 去重插件 ID（保持顺序）
@@ -145,6 +145,7 @@ function StatusBar(_props: StatusBarProps) {
           const el = item.onClick ? (
             <button
               className="status-bar-btn"
+              title={item.title || item.label || item.id}
               onClick={() => executeCommand(item.onClick!)}
             >
               {content}

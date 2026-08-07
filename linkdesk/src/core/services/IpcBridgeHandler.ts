@@ -8,8 +8,8 @@
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
  */
 
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./ConfigurationService";
-import { getMergedSchema } from "../registry/ConfigurationRegistry";
+import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
+import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands } from "../registry/CommandRegistry";
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "../registry/LanguageRegistry";
@@ -22,6 +22,8 @@ import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; //
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
+// E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
+import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 // E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
 // 桥不知道加载器的存在，只知道"有人注册了这些能力"。
 export interface PluginManagementAPI {
@@ -42,6 +44,9 @@ export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api;
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
 let _configUnsub: (() => void) | null = null;
+let _lifecycleUnsub: (() => void) | null = null;
+let _settingsGroupUnsub: (() => void) | null = null;
+let _scrollToUnsub: (() => void) | null = null;
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -198,6 +203,21 @@ export function initIpcBridgeHandler(): void {
   _configUnsub = onDidChangeConfiguration((key: string, value: unknown) => {
     linkdesk.bridge.notifyConfigChanged?.(key, value);
   });
+
+  // ── E5.5#7：插件生命周期变更 → 广播到插件 WebView → 设置页等保姆插件刷新 ──
+  _lifecycleUnsub = onPluginLifecycleChange.event(() => {
+    try { linkdesk.events?.emit("plugin-lifecycle:changed", {}); } catch { /* 静默 */ }
+  });
+
+  // ── E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组 ──
+  // M1 双通道 B 的 IPC 版：壳 onRequestSettingsGroup Emitter → broadcast → 插件 WebView events.on
+  _settingsGroupUnsub = onRequestSettingsGroup.event((pluginId) => {
+    try { linkdesk.events?.emit("settings:requestGroup", { pluginId }); } catch { /* 静默 */ }
+  });
+  // E3f #53e：壳→设置页滚动到指定配置项
+  _scrollToUnsub = onRequestScrollToSetting.event((key) => {
+    try { linkdesk.events?.emit("settings:scrollTo", { key }); } catch { /* 静默 */ }
+  });
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -206,6 +226,12 @@ export function unregisterIpcBridgeHandler(): void {
   if (_refCount === 0) {
     _configUnsub?.();
     _configUnsub = null;
+    _lifecycleUnsub?.();
+    _lifecycleUnsub = null;
+    _settingsGroupUnsub?.();
+    _settingsGroupUnsub = null;
+    _scrollToUnsub?.();
+    _scrollToUnsub = null;
   }
 }
 
@@ -247,6 +273,23 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return getCommands();
     case "getSchema":
       return getMergedSchema();
+    // ── E5.5#7：设置页 IPC 化——跨进程查询配置注册表 ──
+    case "getConfigurationContributions": {
+      // Map 不可序列化 → 转为 entries
+      const contribs = getConfigurationContributions();
+      return Array.from(contribs.entries());
+    }
+    case "inspectConfiguration": {
+      const [key] = args as [string];
+      return inspectConfiguration(key);
+    }
+    case "getUserSettings":
+      return getUserSettings();
+    // ── E5.5#7：壳→设置页导航——M1 双通道（齿轮"设置"跳转到指定分组/配置项）──
+    case "consumeSettingsGroup":
+      return consumeSettingsGroup();
+    case "consumeScrollToSetting":
+      return consumeScrollToSetting();
     case "getAvailableThemes":
       return getAvailableThemes();
     case "getCurrentTheme":
