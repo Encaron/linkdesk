@@ -209,7 +209,14 @@ export function useWebViewSync(
           continue; // E5.5#9g-fix：跳过 setVisible——WebView 尚未注册，下次 Effect 3 会处理
         }
         // 已有实例：需要 WebView 已注册才能 setVisible/setBounds
-        if (!registeredSet.has(instanceId)) continue;
+        if (!registeredSet.has(instanceId)) {
+		// E5.5#9-fix2: WebView destroyed (grace expired) - recreate, not skip
+		console.log(`[useWebViewSync] "${state.pluginId}#${instanceId.slice(-6)}" old WebView destroyed - recreating`);
+		setReadyWebViewIds((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
+		setWebViewBoundsReady((prev) => { const next = new Set(prev); next.delete(instanceId); return next; });
+		pv.create(instanceId, state.pluginId);
+		continue;
+	}
         if (prevState?.isVisible !== state.isVisible) {
           pv.setVisible(instanceId, state.isVisible);
         }
