@@ -3,20 +3,27 @@
  *
  * E5#44d：支持子菜单——静态 children 或动态 resolveChildren 回调。
  * 对标 VS Code：hover 父项右侧弹出子面板，移开自动收回（150ms 延迟防闪烁）。
+ *
+ * 🔥 E5.5#7-p3 多 WebView 改造：零 import @src/core。
+ *    壳侧 IpcBridgeHandler 已做 when 过滤 + 命令标题 + 快捷键解析，
+ *    组件只管分组和渲染。
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
 import { useTranslation } from "react-i18next";
 import OverlayPortal from "./OverlayPortal";
-import { MenuId, getMenuItems as getLocalMenuItems } from "../../core/registry/MenuRegistry";
-import { getCommand, executeCommand } from "../../core/registry/CommandRegistry";
-import { ContextKeyService } from "../../core/registry/ContextKeyService";
-import { findKeybindingForCommand } from "../../core/registry/KeybindingRegistry";
 import "./ContextMenu.css";
+
+/* ── 辅助函数 ── */
+
+function lk() {
+  return window.linkdesk;
+}
 
 /* ── 类型 ── */
 
 export interface ContextMenuProps {
-  menuId: MenuId;
+  /** 菜单槽位——字符串 API 契约 */
+  menuId: string;
   anchor: { x: number; y: number };
   /** 传给命令的上下文（when 过滤 + handler args） */
   context?: Record<string, unknown>;
@@ -29,6 +36,16 @@ export interface ContextMenuProps {
    * @returns 子菜单项列表，或 undefined 表示无子项
    */
   resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
+}
+
+interface EnrichedItem {
+  command: string;
+  group: string;
+  when?: string;
+  title?: string;
+  shortcut?: string;
+  children?: Array<{ command: string; label?: string }>;
+  label?: string;
 }
 
 interface ResolvedItem {
@@ -48,29 +65,31 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   const subRef = useRef<HTMLDivElement>(null);
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  /* ── 插件 WebView 远程菜单 ── */
-  const [remoteItems, setRemoteItems] = useState<any[] | null>(null);
-  // E5#117: _getValue 只在插件 preload 注入——壳 preload 没有。正确区分"壳"还是"插件进程"
-  const isPluginWebView = !!window.linkdesk?.contextKey?._getValue;
-  useEffect(() => {
-    if (!isPluginWebView) return;
-    window.linkdesk?.menu?.getItems?.(menuId).then(setRemoteItems);
-  }, [menuId, isPluginWebView]);
+  /* ── 异步获取菜单项——壳侧已做 when 过滤 + 命令标题 + 快捷键解析 ── */
+  const [rawItems, setRawItems] = useState<EnrichedItem[]>([]);
+  // 稳定 context 引用——避免对象引用变化导致无限重取
+  const contextKey = useMemo(() => JSON.stringify(context ?? {}), [context]);
 
-  /* ── 菜单项解析 ── */
+  useEffect(() => {
+    let cancelled = false;
+    lk().menu?.getItems?.(menuId, context).then((items: EnrichedItem[] | undefined) => {
+      if (!cancelled && items) setRawItems(items);
+    }).catch(() => {
+      // 菜单获取失败 → 不显示项，静默处理
+    });
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [menuId, contextKey]);
+
+  /* ── 菜单项解析（分组 + 分隔线）── */
   const resolved = useMemo((): Array<ResolvedItem | { type: "divider"; group: string }> => {
-    const rawItems = isPluginWebView ? (remoteItems ?? []) : getLocalMenuItems(menuId);
     const grouped = new Map<string, ResolvedItem[]>();
     const groupOrder: string[] = [];
 
     for (const item of rawItems) {
-      const cmd = getCommand(item.command);
-      const rawChildren = (item as any).children as any[] | undefined;
+      const rawChildren = item.children as any[] | undefined;
       // 有 children 的父项放行（即使 command 为空）
-      if (!cmd && !rawChildren) continue;
-
-      const whenExpr = item.when ?? cmd?.when;
-      if (!ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined)) continue;
+      if (!item.command && !rawChildren) continue;
 
       const group = item.group ?? "__default";
       if (!grouped.has(group)) { grouped.set(group, []); groupOrder.push(group); }
@@ -80,7 +99,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       if (rawChildren && rawChildren.length > 0) {
         children = rawChildren.map((c: any) => ({
           id: c.command,
-          label: getCommand(c.command)?.title ?? c.label ?? c.command,
+          label: c.label ?? c.command,
           group,
         }));
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
@@ -92,9 +111,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
       grouped.get(group)!.push({
         id: item.command || (item as any).label || "",
-        label: cmd?.title ?? (item as any).label ?? item.command,
+        label: item.title ?? (item as any).label ?? item.command,
         group,
-        shortcut: cmd ? findKeybindingForCommand(item.command)?.key : undefined,
+        shortcut: item.shortcut,
         children,
       });
     }
@@ -105,7 +124,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       result.push(...grouped.get(groupOrder[i])!);
     }
     return result;
-  }, [menuId, context, resolveChildren, isPluginWebView, remoteItems]);
+  }, [rawItems, context, resolveChildren]);
 
   /* ═══ E5#44d：hover 子菜单状态 ═══ */
   const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
@@ -144,7 +163,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       else if (e.key === "Enter" && focusIdx >= 0) {
         e.preventDefault();
         const item = clickableItems[focusIdx];
-        if (item) { executeCommand(item.id, undefined, context); onClose(); }
+        if (item) { lk().commands?.executeCommand?.(item.id, undefined, context); onClose(); }
       }
     };
     window.addEventListener("keydown", onKeyNav);
@@ -158,7 +177,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   /* ── 命令执行 ── */
   const handleItemClick = useCallback(async (commandId: string) => {
     onClose();
-    await executeCommand(commandId, undefined, context);
+    await lk().commands?.executeCommand?.(commandId, undefined, context);
   }, [context, onClose]);
 
   /* ── 视口自适应（E5#94a：两阶段渲染——先隐藏量测真实 DOM 尺寸再修正位置）── */

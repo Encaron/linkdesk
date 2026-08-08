@@ -31,7 +31,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "命令面板",
     category: "视图",
     handler: async () => {
-      window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_PALETTE));
+      // E5.5#7-p15：showCommandPalette() 由 CommandPalette.tsx 提供工厂函数
+      const { showCommandPalette } = await import("../../components/shared/CommandPalette");
+      showCommandPalette();
     },
     menuId: MenuId.ExtensionGear,
     menuGroup: "navigation",
@@ -185,7 +187,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      await navigator.clipboard.writeText(key);
+      const { writeClipboardText } = await import("../services/ClipboardService");
+      writeClipboardText(key);
       const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
       pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
     },
@@ -203,7 +206,8 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const { getConfigurationValue } = await import("../services/ConfigurationService");
       const value = getConfigurationValue(key);
       const json = JSON.stringify({ [key]: value }, null, 2);
-      await navigator.clipboard.writeText(json);
+      const { writeClipboardText } = await import("../services/ClipboardService");
+      writeClipboardText(json);
       const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
       pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
     },

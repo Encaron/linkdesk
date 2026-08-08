@@ -50,12 +50,12 @@
 }
 
 .titlebar-menu-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
 .titlebar-menu-btn.titlebar-btn-open {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -85,7 +85,7 @@
 }
 
 .titlebar-slot-btn:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: var(--hover-overlay);
   color: var(--text-primary);
 }
 
@@ -97,8 +97,14 @@
   background: var(--bg-card);
   border: 1px solid var(--separator);
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
-  z-index: var(--z-sticky); /* E5#98: TitleBar 固定层 */
+  z-index: var(--z-dropdown); /* 顶部菜单下拉——与 ☰ 同级，DOM 后渲染自然在上 */
   border-radius: 4px;
+  animation: titlebar-dropdown-in 150ms ease-out;
+}
+
+@keyframes titlebar-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* 主面板（左侧） */
@@ -137,8 +143,9 @@
 
 .titlebar-item:hover,
 .titlebar-item.titlebar-item-hovered {
-  background: var(--accent);
-  color: var(--badge-text);
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* 右侧：chevron */
@@ -158,8 +165,8 @@
 
 .titlebar-item:hover .titlebar-chevron,
 .titlebar-item.titlebar-item-hovered .titlebar-chevron {
-  color: var(--badge-text);
-  opacity: 0.8;
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 /* 快捷键提示 */
@@ -172,8 +179,8 @@
 
 .titlebar-item:hover .titlebar-item-key,
 .titlebar-item.titlebar-item-hovered .titlebar-item-key {
-  color: var(--badge-text);
-  opacity: 0.8;
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 /* E3h #67：禁用态——when 条件不满足时灰显不可点击（对标 HamburgerMenu） */

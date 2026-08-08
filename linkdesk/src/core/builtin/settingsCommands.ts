@@ -7,7 +7,7 @@ import { registerCommand } from "../registry/CommandRegistry";
 import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
 import { factorySlots } from "../data/FactorySlots";
 import { getCallbacks } from "./CoreCallbacks";
-import { CUSTOM_EVENTS } from "../react/CoreEvents";
+// E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
 import { openKeybindingsSettings } from "../registry/KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
@@ -32,9 +32,9 @@ export function registerSettingsCommands(): void {
       category: "首选项",
       handler: async (_token: unknown, ...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
-        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_THEME_BROWSER, {
-          detail: { pluginId: ctx?.pluginId },
-        }));
+        // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
+        const { showThemePicker } = await import("../../components/ThemeBrowser");
+        showThemePicker(ctx?.pluginId);
       },
     },
     {
@@ -42,7 +42,9 @@ export function registerSettingsCommands(): void {
       title: "选择语言",
       category: "首选项",
       handler: async () => {
-        window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER));
+        // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_LANGUAGE_PICKER
+        const { showLanguagePicker } = await import("../../components/LanguagePicker");
+        showLanguagePicker();
       },
     },
     {

@@ -2,24 +2,32 @@
  * @vitest-environment jsdom
  * E5#27e：InlineInput 单元测试。
  * 渲染/selectMode/onConfirm/onCancel/自动 focus/清理恢复/Enter+Blur 竞态防线
+ *
+ * 🔥 E5.5#7-p5：零 @src/core import——测试 mock window.linkdesk.* 替代旧 ContextKeyService/setKeybindingCaptureActive
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup } from "@testing-library/react";
 
-// ── vi.mock 拦截——组件实际引用的模块 ──
+// ── mock window.linkdesk —— 替代旧 ContextKeyService / setKeybindingCaptureActive ──
 const { mockSetValue, mockSetCapture } = vi.hoisted(() => ({
   mockSetValue: vi.fn(),
   mockSetCapture: vi.fn(),
 }));
 
-vi.mock("../../../core/registry/ContextKeyService", () => ({
-  ContextKeyService: { setValue: (...args: unknown[]) => mockSetValue(...args) },
-}));
-
-vi.mock("../../../core/registry/KeybindingRegistry", () => ({
-  setKeybindingCaptureActive: (v: boolean) => mockSetCapture(v),
-}));
+// E5.5#7-p5：组件走 window.linkdesk.* IPC，测试 mock linkdesk 对象
+Object.defineProperty(window, "linkdesk", {
+  value: {
+    contextKey: {
+      set: (...args: unknown[]) => mockSetValue(...args),
+    },
+    keybindings: {
+      setKeybindingCaptureActive: (v: boolean) => mockSetCapture(v),
+    },
+  },
+  writable: true,
+  configurable: true,
+});
 
 import { InlineInput } from "../InlineInput";
 

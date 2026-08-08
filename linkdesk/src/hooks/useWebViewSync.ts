@@ -54,7 +54,7 @@ export function useWebViewSync(
 
   // ── Refs ──
   const webViewTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
-  const pluginViewsRef = useRef<Map<string, { groupId: string; isFocused: boolean }>>(new Map());
+  const pluginViewsRef = useRef<Map<string, { groupId: string; isVisible: boolean }>>(new Map());
   const poolRefs = useRef<Map<string, HTMLElement>>(new Map());
   const tabStateRef = useRef(tabState);
   tabStateRef.current = tabState;
@@ -136,14 +136,18 @@ export function useWebViewSync(
   // ── Effect 3：bounds sync + setVisible（Bug ① dep + Bug ⑤ prev 时序 + Bug ⑥ ref）──
   useEffect(() => {
     if (!pv) return;
-    const currentStates = new Map<string, { groupId: string; isFocused: boolean }>();
+    // E5.5#3e-fix：isVisible = 本组的活跃标签页（不绑 activeGroupId）。
+    // 分屏两个 group 时各自独立显示——否则非聚焦 group 的 WebView 被 setVisible(false) 变空白。
+    const isSplit = tabState.groups.length > 1;
+    const currentStates = new Map<string, { groupId: string; isVisible: boolean }>();
     for (const g of tabState.groups) {
       for (const tab of g.tabs) {
         if (tab.pluginId && !isShellRenderedTab(tab.type)) {
           const isActiveInGroup = tab.id === g.activeTabId;
           currentStates.set(tab.pluginId, {
             groupId: g.id,
-            isFocused: isActiveInGroup && g.id === tabState.activeGroupId,
+            // 分屏：每个 group 的活跃标签页都可见。单 group：行为不变。
+            isVisible: isActiveInGroup && (isSplit || g.id === tabState.activeGroupId),
           });
         }
       }
@@ -173,8 +177,8 @@ export function useWebViewSync(
             }
           }).catch(() => {});
         }
-        if (prevState?.isFocused !== state.isFocused) {
-          pv.setVisible(pluginId, state.isFocused);
+        if (prevState?.isVisible !== state.isVisible) {
+          pv.setVisible(pluginId, state.isVisible);
         }
       }
       for (const pluginId of prev.keys()) {
@@ -189,7 +193,7 @@ export function useWebViewSync(
       if (ids.length > 0) {
         requestAnimationFrame(() => {
           for (const [pluginId, state] of currentStates) {
-            if (state.isFocused && registeredSet.has(pluginId)) {
+            if (state.isVisible && registeredSet.has(pluginId)) {
               // 🔥 callback ref 替代 querySelector（Bug ⑥）
               const pool = poolRefs.current.get(state.groupId);
               if (pool) {

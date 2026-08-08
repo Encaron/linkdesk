@@ -126,7 +126,6 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
         position: "fixed",
         top: (rect?.bottom ?? 30),
         left: 0,
-        zIndex: 2548,
       };
     }
     const rect = btn.getBoundingClientRect();
@@ -134,7 +133,6 @@ function TitleBar({ showMenus = true }: { showMenus?: boolean }) {
       position: "fixed",
       top: rect.bottom,
       left: rect.left,
-      zIndex: 2548,
     };
   }
 

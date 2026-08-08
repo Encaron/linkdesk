@@ -31,8 +31,15 @@
   background: var(--bg-card);
   border: 1px solid var(--separator);
   border-left: none;
-  box-shadow: 4px 0 16px rgba(0, 0, 0, 0.2);
+  border-radius: 0 6px 6px 0; /* 左边贴图标栏无圆角，其余三边 6px */
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
   z-index: var(--z-dropdown); /* E5#98: ☰ 下拉菜单 */
+  animation: hamburger-dropdown-in 150ms ease-out;
+}
+
+@keyframes hamburger-dropdown-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 
 /* 主面板（左侧） */
@@ -91,8 +98,9 @@
 
 .hamburger-item:hover,
 .hamburger-item.hamburger-item-hovered {
-  background: var(--accent);
-  color: var(--badge-text);
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 
 /* 右侧：快捷键 + chevron */
@@ -114,8 +122,8 @@
 
 .hamburger-item:hover .hamburger-item-key,
 .hamburger-item.hamburger-item-hovered .hamburger-item-key {
-  color: var(--badge-text);
-  opacity: 0.8;
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 /* 展开箭头 */
@@ -127,8 +135,8 @@
 
 .hamburger-item:hover .hamburger-chevron,
 .hamburger-item.hamburger-item-hovered .hamburger-chevron {
-  color: var(--badge-text);
-  opacity: 0.8;
+  color: var(--text-secondary);
+  opacity: 1;
 }
 
 /* 禁用态——when 条件不满足时灰色不可点击 */

@@ -16,10 +16,9 @@ import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
-import CommandPalette from "./components/shared/CommandPalette";
-import QuickPick from "./components/shared/QuickPick"; // E3f #58
-import ThemeBrowser from "./components/ThemeBrowser";
-import LanguagePicker from "./components/LanguagePicker";
+// E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
+import QuickPick from "./components/shared/QuickPick";
+import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
@@ -380,84 +379,43 @@ function App() {
   const [sidebarView, setSidebarView] = useState<string | null>(null);
   // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
   sidebarViewRef.current = sidebarView;
-  const [paletteOpen, setPaletteOpen] = useState(false);
-  const [themeBrowserOpen, setThemeBrowserOpen] = useState(false);
-  const [themeBrowserPluginId, setThemeBrowserPluginId] = useState<string | undefined>(undefined);
-  const [langPickerOpen, setLangPickerOpen] = useState(false);
-  // E3f #58：开发者工具——DevTools picker
-  const [devtoolsOpen, setDevtoolsOpen] = useState(false);
-  type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' };
-  const [devtoolsTargets, setDevtoolsTargets] = useState<DevToolsTarget[]>([]);
+  // E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件
+  const [quickPickState, setQuickPickState] = useState<QuickPickState | null>(null);
+  useEffect(() => {
+    return QuickPickService.onChange(() => {
+      setQuickPickState(QuickPickService.getState());
+    });
+  }, []);
 
   // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
 
-  /* ---- QuickPick 互斥——同时只允许一个浮动面板打开（对标 VS Code） ---- */
+  /* ---- QuickPick 归一化（E5.5#7-p12）——所有浮层共用一个 QuickPick，QuickPickService 管理状态 ---- */
   useEffect(() => {
-    const onPalette = () => {
-      setThemeBrowserOpen(false);
-      setLangPickerOpen(false);
-      setPaletteOpen((p) => !p);
-    };
-    const onThemeBrowser = (e: Event) => {
-      const { pluginId } = (e as CustomEvent).detail as { pluginId?: string };
-      setPaletteOpen(false);
-      setThemeBrowserPluginId(pluginId);
-      setThemeBrowserOpen(true);
-    };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
-    window.addEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
-    const onLanguagePicker = () => {
-      setPaletteOpen(false);
-      setLangPickerOpen(true);
-    };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
-    // E3f #54：输出面板
-    // E5#5e-ii-f：输出面板打开走 ShellEvents，MainContent 内部 openOrFocusTab
+    // 保留——非 QuickPick 事件（输出面板 / 工作区 / 设置）
     const onOutput = () => { shellEvents.emit("icon:selected", "output"); };
     window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
-    // E3f #58：DevTools picker
-    const onDevtoolsPicker = async () => {
-      const lk = window.linkdesk;
-      const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-      const targets: DevToolsTarget[] = webViewIds.map(id => ({ kind: 'plugin' as const, id }));
-      // 始终提供壳窗口入口（不管有没有插件 WebView）
-      targets.push({ kind: 'shell' });
-      if (targets.length === 0) return;
-      setDevtoolsTargets(targets);
-      setDevtoolsOpen(true);
-    };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
-    // E3f #56：工作区导入——恢复布局 + 设置
     const onRestoreWorkspace = (e: Event) => {
       const detail = (e as CustomEvent).detail as {
         layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
         settings?: Record<string, unknown>;
       };
-      // E5#5e-ii-f TODO：restoreLayout 由 MainContent 处理
-      if (detail.layout?.tabs?.groups?.length) {
-        // MainContent 订阅 workspace:restore 事件接管
-      }
+      if (detail.layout?.tabs?.groups?.length) { /* MainContent 订阅 workspace:restore 事件接管 */ }
       if (detail.settings) {
         for (const [key, value] of Object.entries(detail.settings)) {
-          try { setConfigurationValue(key, value); } catch { /* skip invalid keys */ }
+          try { setConfigurationValue(key, value); } catch { /* skip */ }
         }
       }
     };
     window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
-    // E3f #59-A：外部打开设置标签页——快捷键命令/齿轮跳转
     const onOpenSettings = () => {
       const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
       shellEvents.emit("icon:selected", settingsId);
     };
     window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
     return () => {
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_PALETTE, onPalette);
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_THEME_BROWSER, onThemeBrowser);
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_LANGUAGE_PICKER, onLanguagePicker);
       window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
       window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
       window.removeEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_DEVTOOLS_PICKER, onDevtoolsPicker);
     };
   }, []);
 
@@ -620,42 +578,25 @@ function App() {
       </div>
       <ToastContainer />
       <ProgressBar />
-      <CommandPalette
-        open={paletteOpen}
-        onClose={() => setPaletteOpen(false)}
-      />
-      <ThemeBrowser
-        open={themeBrowserOpen}
-        onClose={() => { setThemeBrowserOpen(false); setThemeBrowserPluginId(undefined); }}
-        pluginId={themeBrowserPluginId}
-      />
-      <LanguagePicker
-        open={langPickerOpen}
-        onClose={() => setLangPickerOpen(false)}
-      />
-      {/* E3f #58：DevTools picker——列出所有运行中的插件 WebView + 壳窗口 */}
-      <QuickPick
-        open={devtoolsOpen}
-        onClose={() => setDevtoolsOpen(false)}
-        items={devtoolsTargets}
-        placeholder={t("选择插件…")}
-        getSearchText={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
-        getKey={(target) => target.kind === 'shell' ? '__shell__' : target.id}
-        onSelect={async (target) => {
-          const lk = window.linkdesk;
-          if (target.kind === 'shell') {
-            await lk?.window?.toggleDevTools?.();
-          } else {
-            await lk?.pluginViews?.toggleDevTools?.(target.id);
-          }
-          setDevtoolsOpen(false);
-        }}
-        // E3.5 #CP21: 切 slot props
-        renderLabel={(target) => target.kind === 'shell' ? `shell ${t("壳窗口")}` : target.id}
-        renderCategory={() => t("切换 DevTools")}
-        // E3.5 #CP24: 显示目标类型
-        renderDetail={(target) => target.kind === 'shell' ? t("壳窗口 DevTools") : t("插件 DevTools")}
-      />
+      {/* E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件 */}
+      {quickPickState && (
+        <QuickPick
+          open={quickPickState.open}
+          onClose={quickPickState.onClose}
+          items={quickPickState.items}
+          placeholder={quickPickState.placeholder}
+          prefix={quickPickState.prefix}
+          getSearchText={quickPickState.getSearchText}
+          getKey={quickPickState.getKey}
+          onSelect={quickPickState.onSelect}
+          onHighlight={quickPickState.onHighlight}
+          renderLabel={quickPickState.renderLabel}
+          renderCategory={quickPickState.renderCategory}
+          renderDetail={quickPickState.renderDetail}
+          renderDetailRight={quickPickState.renderDetailRight}
+          renderItemActions={quickPickState.renderItemActions}
+        />
+      )}
       <ConfirmDialog />
       </SourceStateContext.Provider>
     </div>

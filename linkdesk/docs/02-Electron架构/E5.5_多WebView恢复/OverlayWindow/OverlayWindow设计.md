@@ -219,7 +219,7 @@ const onDragMouseMove = (e: MouseEvent) => {
 |:--|:--|
 | **Windows** | 透明窗口性能好。`alwaysOnTop: 'screen-saver'` 级别防止被其他应用覆盖 |
 | **macOS** | `transparent: true` + `frame: false` → 需要 `titleBarStyle: 'hidden'`。`alwaysOnTop: 'floating'` 级别。⚠️ `setIgnoreMouseEvents(true, { forward: true })` 需要 `com.apple.security.cs.disable-library-validation` entitlement + `webPreferences: { sandbox: false }`，否则 `forward: true` 静默失效——鼠标事件不穿透到 MainWindow |
-| **Linux** | 透明窗口在 X11/Wayland 间差异大。Wayland 不支持 `setAlwaysOnTop`。需要降级方案 |
+| **Linux** | 透明窗口在 X11/Wayland 间差异大。Wayland 不支持 `setAlwaysOnTop`。降级方案：右键菜单回退到 `Menu.buildFromTemplate().popup()`（Electron 原生 API，零额外依赖） |
 
 ## E5.5 任务分解
 

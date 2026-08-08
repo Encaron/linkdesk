@@ -200,3 +200,52 @@ const configurationObj = {
 **设置页现在是真正的保姆插件：** 零 `import @src/core`，全走 IPC。任何人写自己的设置 UI 插件，只需调同样的 `window.linkdesk.configuration.*` API → 自动接入大厅的同一张 ConfigurationRegistry 桌子 → 替换原设置插件，所有原有设置项无缝显示。
 
 **API 桌子不变，房间可换。** 这是圆形大厅模型在设置页的首次完整落地。
+
+---
+
+## 🔥 归一化规则——未来 AI 必读
+
+> **这些规则是枪。** 新增任何推送事件前逐条过。E5.5#7 修了这个 bug，同样的 bug 不允许再出现第二次。
+
+### 通道选型流程
+
+```
+壳→插件推送事件，应该走哪条路？
+
+1. 事件由 IpcBridge.broadcast() 发出？
+   → YES → 插件侧用 events.on() 接收 ✅
+   → NO  → 继续
+
+2. 主进程直接 view.webContents.send(channel, data)？
+   → YES → 插件侧用 listenDirect(channel, cb) ✅
+            channel 名必须加 :direct 后缀（如 serial:data:direct）
+   → NO  → 继续
+
+3. 壳→壳（同一渲染进程内）？
+   → 走 shellEvents.emit() ✅（不走 IPC）
+```
+
+### 预检 3 问——每加一个新推送事件必须回答
+
+```
+□ 1. 发送端——事件从哪发出？
+     IpcBridge.broadcast? / 主进程直接 send? / 壳内 shellEvents?
+
+□ 2. 接收端——插件侧用哪个 API 接收？
+     events.on? / listenDirect? / extraHandlers?
+     必须与发送端匹配——broadcast ↔ events.on, 直接 send ↔ listenDirect
+
+□ 3. 竞态——事件可能在 React mount 前到达吗？
+     YES → 加模块级缓存（_configCache / _langCache / _contextKeyStore 模式）
+           在 ipcRenderer.on('plugin:push', ...) 中填充缓存
+           在 API 中暴露同步读（getCached）
+     NO  → 确认 useEffect 注册时机覆盖所有场景
+```
+
+### 硬约束
+
+1. **`IpcBridge.broadcast` → `events.on`，不允许 `listenDirect`。** 跨了 `plugin:push` 分发层。
+2. **主进程 `view.webContents.send` → `listenDirect` + `:direct` 后缀。** 不经过 `plugin:push` 包装。
+3. **新增推送通道 → 先在这个文档里登记。** 写清发送端/接收端/竞态策略/验证方式。
+4. **`listenDirect` 运行时告警已在 `event-system.ts` 中。** 传了非 `:direct` 后缀的 channel → `console.error`。
+

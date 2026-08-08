@@ -24,6 +24,7 @@ import { DEV_SERVER_URL } from '../shared/constants.js'; // E5#102b
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
+import { initKeyboardRouting, syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc-bridge.js';
 import { APP_SCHEME } from './constants.js';
 // ── 单实例锁 ──
@@ -81,6 +82,12 @@ function createWindow(): void {
   windowManager = new WindowManager(mainWindow);
   // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
   pluginViewRegistry = new PluginViewRegistry(windowManager);
+  // E5.5#7-p6：键盘路由——before-input-event 全局拦截，插件 WebView 聚焦时全局快捷键仍生效
+  initKeyboardRouting(mainWindow, pluginViewRegistry);
+  // E5.5#7-p7：壳同步快捷键表到主进程
+  ipcMain.handle('keyboard:syncShortcuts', (_event, data) => {
+    syncKeybindings(data);
+  });
   // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
   registerPluginViewHandlers(pluginViewRegistry, mainWindow);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道

@@ -49,6 +49,13 @@ export default [
           selector: "Identifier[name=/^(__)?[vV]3[A-Z_]/]",
           message: "🚫 禁止新增 v3 前缀标识符。请改用 linkdesk 或描述性名称。",
         },
+        // ═══ E5.5#10：插件独立铁律——禁止 pluginId 硬编码比较 ═══
+        // if (t.pluginId === "editor") / if (pluginId === "serial-monitor") 等
+        // 🔥 插件 ID 是动态的——新插件 ID 不应触发壳代码修改。应读 plugin.json 声明字段。
+        {
+          selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^[a-z]/]",
+          message: "🚫 疑似 pluginId 硬编码比较。禁止 if (xxx.pluginId === \"字面量\")——请改为读 plugin.json 声明字段或 Registry 查询。如确为壳内部常量，请用大写常量（如 FALLBACK_PLUGIN_ID）代替裸字符串。",
+        },
       ],
 
       // ═══ Phase 3→4 硬约束：标签页系统不持有 CardRegistry ═══

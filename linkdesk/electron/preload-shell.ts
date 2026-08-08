@@ -41,6 +41,12 @@ ipcRenderer.on('plugin-view:ready', (_event, pluginId: string) => {
   }
 });
 
+// E5.5#7-p6：键盘路由——接收主进程 before-input-event 转发的快捷键
+let _keyboardForwardHandler: ((input: any) => void) | null = null;
+ipcRenderer.on('keyboard:executeShortcut', (_event, input: any) => {
+  if (_keyboardForwardHandler) _keyboardForwardHandler(input);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -177,8 +183,8 @@ try {
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
-      getItems: (menuId: string): Promise<unknown[]> =>
-        ipcRenderer.invoke('menu:getItems', menuId),
+      getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
+        ipcRenderer.invoke('menu:getItems', menuId, context),
     },
 
     // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──
@@ -189,6 +195,52 @@ try {
       },
       // 供 ContextKeyService 同步读取——零延迟，解决键盘分发竞态
       _getValue: (key: string) => _contextKeyStore.get(key),
+    },
+
+    // ── E5.5#7-p2：快捷键——壳侧共享组件走 linkdesk.keybindings.*（零 @src/core import）──
+    keybindings: {
+      getKeybindings: () => ipcRenderer.invoke('plugins:call', 'getKeybindings'),
+      getConflicts: () => ipcRenderer.invoke('plugins:call', 'getKeybindingConflicts'),
+      registerKeybinding: (binding: unknown) => ipcRenderer.invoke('plugins:call', 'registerKeybinding', binding),
+      saveUserKeybindings: () => ipcRenderer.invoke('plugins:call', 'saveUserKeybindings'),
+      removeKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'removeKeybindingForCommand', commandId),
+      resetKeybindingToDefault: (commandId: string) => ipcRenderer.invoke('plugins:call', 'resetKeybindingToDefault', commandId),
+      findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'findKeybindingForCommand', commandId),
+      setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke('plugins:call', 'setKeybindingCaptureActive', active),
+      keyboardEventToKeyString: (e: KeyboardEvent): string => {
+        const parts: string[] = [];
+        if (e.ctrlKey) parts.push("ctrl");
+        if (e.shiftKey) parts.push("shift");
+        if (e.altKey) parts.push("alt");
+        if (e.metaKey) parts.push("meta");
+        const keyMap: Record<string, string> = {
+          ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+          Escape: "escape", Enter: "enter", Tab: "tab", Backspace: "backspace",
+          Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
+          " ": "space",
+        };
+        // 🔥 防御：contextBridge 结构化克隆可能丢掉 KeyboardEvent 原生属性，e.key 为 undefined 时直接返回空
+        if (!e?.key) return "";
+        const key = keyMap[e.key] ?? e.key.toLowerCase();
+        if (["control", "shift", "alt", "meta"].includes(key)) return "";
+        parts.push(key);
+        const order = ["ctrl", "shift", "alt", "meta"];
+        return parts.sort((a, b) => {
+          const ai = order.indexOf(a), bi = order.indexOf(b);
+          if (ai !== -1 && bi !== -1) return ai - bi;
+          if (ai !== -1) return -1;
+          if (bi !== -1) return 1;
+          return a.localeCompare(b);
+        }).join("+");
+      },
+      onChange: (cb: () => void) => events.on("keybindings:changed", cb),
+      // E5.5#7-p7：壳→主进程同步快捷键表
+      syncToMainProcess: (data: any) => ipcRenderer.invoke('keyboard:syncShortcuts', data),
+      // E5.5#7-p7：接收主进程转发的 before-input-event 拦截事件
+      onForwardedEvent: (cb: (input: any) => void) => {
+        _keyboardForwardHandler = cb;
+        return () => { _keyboardForwardHandler = null; };
+      },
     },
 
     // ── E5#68：标签页操作——插件调壳的 tabs API ──
@@ -218,6 +270,7 @@ try {
         }),
     },
     clipboard: {
+      writeText: (text: string) => ipcRenderer.invoke('clipboard:writeText', text),
       writeFileList: (paths: string[]) => ipcRenderer.invoke('clipboard:writeFileList', paths),
     },
     // ── Shell（E4V#18-#19——revealInOS / openInTerminal / startDrag）──

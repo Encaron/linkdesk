@@ -7,7 +7,7 @@
  */
 
 import { Fragment, useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
+
 import { getStatusBarContributions } from "../pluginLoader/viewRegistry";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
@@ -25,8 +25,6 @@ interface StatusBarProps {
 }
 
 function StatusBar(_props: StatusBarProps) {
-  const { t } = useTranslation();
-
   // 动态状态栏项变更 → 重渲染
   const [, setStatusBarTick] = useState(0);
   useEffect(() => {
@@ -97,12 +95,13 @@ function StatusBar(_props: StatusBarProps) {
       if (chordTimerRef.current) { clearTimeout(chordTimerRef.current); chordTimerRef.current = null; }
       if (isPending && firstKey) {
         const display = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
-        setChordLabel(t("({{display}}) 已按下，正在等待第二键…", { display }));
+        // E5.5#7-p9：i18next v26 插值缺 → chord 显示不走 i18n（按键名是技术标识符）
+        setChordLabel(`(${display}) 已按下，正在等待第二键…`);
       } else if (failedKey && firstKey) {
         // 对标 VS Code："(Ctrl+K, unknown) is not a command"
         const f1 = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
         const f2 = failedKey.replace(/\b\w/g, (c) => c.toUpperCase());
-        setChordLabel(t("组合键 ({{f1}}, {{f2}}) 不是命令", { f1, f2 }));
+        setChordLabel(`组合键 (${f1}, ${f2}) 不是命令`);
         chordTimerRef.current = setTimeout(() => setChordLabel(null), 3000);
       } else {
         setChordLabel(null);
