@@ -902,9 +902,8 @@ async function loadPluginComponent(pluginId: string, manifest: PluginManifest): 
 
   registerViewPlugin(entry);
 
-  // E3f #58a：为视图插件创建独立 WebContentsView
-  // E5.5#1a：恢复多 WebView——取消 E5#84g 回退注释
-  try { window.linkdesk?.pluginViews?.create?.(pluginId); } catch { /* 非 Electron 环境 */ }
+  // E5.5#9i：移除插件加载时的 eager WebView 创建。Per-tab 模型下 WebView 由
+  // useWebViewSync Effect 3 按需创建（create(instanceId, pluginId)），一 tab 一实例。
 
   // E2c #19g：statusBar 声明 configurable: true → 自动注册配置项 + 注入 visible prop
   // 在 registerViewPlugin 之后、parseContributions 之前调用——
