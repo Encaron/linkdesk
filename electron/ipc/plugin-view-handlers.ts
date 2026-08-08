@@ -2,6 +2,10 @@
  * 插件视图管理 IPC 处理器——壳渲染进程 → 主进程 PluginViewRegistry
  *
  * E3f #58c：多 WebView 渲染——plugin-view:create 加载真实 React 页面（取代 #58a 占位 HTML）。
+ * E5.5#9c：pluginId→instanceId——所有 handler 参数更新，plugin-view:create 多收 pluginId，
+ *         URL query params 从 ?plugin-view= 改为 ?pluginId=&instanceId=，
+ *         plugin-view:ready 转发 (instanceId, pluginId)。
+ *         新增 plugin-view:getInstanceIdsForPlugin。
  * 每个函数对应一个 ipcMain.handle() 通道。
  */
 
@@ -16,62 +20,68 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
   _registry = registry;
   _mainWindow = mainWindow;
 
-  ipcMain.handle('plugin-view:setVisible', (_event, pluginId: string, visible: boolean) => {
-    _registry?.setVisible(pluginId, visible);
+  ipcMain.handle('plugin-view:setVisible', (_event, instanceId: string, visible: boolean) => {
+    _registry?.setVisible(instanceId, visible);
     // E5.5#7 Bug B fix：WebView 变为可见后转移键盘焦点——与 setVisible 同 handler，同步执行无竞态
     if (visible) {
-      _registry?.getView(pluginId)?.webContents.focus();
+      _registry?.getView(instanceId)?.webContents.focus();
     }
   });
 
-  ipcMain.handle('plugin-view:setBounds', (_event, pluginId: string, bounds: ViewBounds) => {
-    _registry?.setBounds(pluginId, bounds);
+  ipcMain.handle('plugin-view:setBounds', (_event, instanceId: string, bounds: ViewBounds) => {
+    _registry?.setBounds(instanceId, bounds);
   });
 
   ipcMain.handle('plugin-view:getAllIds', () => {
-    return _registry?.getAllPluginIds() ?? [];
+    return _registry?.getAllInstanceIds() ?? [];
+  });
+
+  ipcMain.handle('plugin-view:getInstanceIdsForPlugin', (_event, pluginId: string) => {
+    return _registry?.getInstanceIdsForPlugin(pluginId) ?? [];
   });
 
   // E3f #58：切换插件 DevTools
-  ipcMain.handle('plugin-view:toggleDevTools', (_event, pluginId: string) => {
-    _registry?.toggleDevTools?.(pluginId);
+  ipcMain.handle('plugin-view:toggleDevTools', (_event, instanceId: string) => {
+    _registry?.toggleDevTools?.(instanceId);
   });
 
   // E3f #58d：销毁插件 WebView——插件卸载/注销时调用
-  ipcMain.handle('plugin-view:destroy', (_event, pluginId: string) => {
-    _registry?.unregisterPlugin(pluginId);
+  ipcMain.handle('plugin-view:destroy', (_event, instanceId: string) => {
+    _registry?.unregisterPlugin(instanceId);
   });
 
   // E5.5#7 Bug B fix：聚焦插件 WebView——切换标签页后转移键盘焦点
-  ipcMain.handle('plugin-view:focus', (_event, pluginId: string) => {
-    const view = _registry?.getView(pluginId);
+  ipcMain.handle('plugin-view:focus', (_event, instanceId: string) => {
+    const view = _registry?.getView(instanceId);
     view?.webContents.focus();
   });
 
   // E5.5#3c：保活宽限期——关闭标签页时不立即销毁，60s 内重开可复用
-  ipcMain.handle('plugin-view:scheduleDestroy', (_event, pluginId: string) => {
-    _registry?.scheduleDestroy(pluginId);
+  ipcMain.handle('plugin-view:scheduleDestroy', (_event, instanceId: string) => {
+    _registry?.scheduleDestroy(instanceId);
   });
-  ipcMain.handle('plugin-view:cancelDestroy', (_event, pluginId: string) => {
-    return _registry?.cancelDestroy(pluginId) ?? false;
+  ipcMain.handle('plugin-view:cancelDestroy', (_event, instanceId: string) => {
+    return _registry?.cancelDestroy(instanceId) ?? false;
   });
 
-  // E3f #58c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
-  ipcMain.handle('plugin-view:create', (_event, pluginId: string) => {
+  // E3f #58c + E5.5#9c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
+  // signature: (instanceId, pluginId)——每个标签页独立 WebView
+  ipcMain.handle('plugin-view:create', (_event, instanceId: string, pluginId: string) => {
     const isDev = !app.isPackaged;
     const url = isDev
-      ? `${DEV_SERVER_URL}/plugin-view.html?plugin-view=${pluginId}`
+      ? `${DEV_SERVER_URL}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`
       // 生产环境通过 linkdesk:// 协议加载（需确保 dist/plugin-view.html 已构建并部署到协议映射的路径）
-      : `linkdesk://${pluginId}/plugin-view.html?plugin-view=${pluginId}`;
-    _registry?.registerPlugin(pluginId, url);
+      : `linkdesk://${pluginId}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`;
+    _registry?.registerPlugin(instanceId, pluginId, url);
   });
 
-  // #58e 修复：插件 WebView 渲染完成通知——主进程转发到壳窗口
-  ipcMain.on('plugin-view:ready', (_event, pluginId: string) => {
+  // #58e 修复 + E5.5#9c：插件 WebView 渲染完成通知——主进程转发到壳窗口
+  // 现在转发 (instanceId, pluginId)——壳侧 useWebViewSync 用 instanceId 做 ready 判断
+  ipcMain.on('plugin-view:ready', (_event, instanceId: string, pluginId: string) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('plugin-view:ready', pluginId);
+      _mainWindow.webContents.send('plugin-view:ready', instanceId, pluginId);
     }
   });
 
-  console.log('[plugin-view-handlers] 已注册 8 个 IPC handler');
+  console.log('[plugin-view-handlers] 已注册 10 个 IPC handler（9 handle + 1 on）+ getInstanceIdsForPlugin');
 }
