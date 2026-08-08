@@ -358,6 +358,19 @@ export class WindowManager {
     return this.graceTimers.has(instanceId);
   }
 
+  /**
+   * E5.5#9b——在宽限期中按 pluginId 查找待销毁实例。
+   * 用于宽限期恢复：关闭标签页后快速重开（新 tab.id），通过 pluginId 找到旧 instanceId 后 rekey。
+   */
+  findInstanceInGrace(pluginId: string): string | undefined {
+    for (const [instanceId, entry] of this.pluginViews) {
+      if (entry.pluginId === pluginId && this.graceTimers.has(instanceId)) {
+        return instanceId;
+      }
+    }
+    return undefined;
+  }
+
   /** 取消保活定时器（内部使用） */
   private cancelGraceTimer(instanceId: string): void {
     const timer = this.graceTimers.get(instanceId);
