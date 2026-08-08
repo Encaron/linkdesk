@@ -58,27 +58,34 @@ const _listeners = new Map<number, () => void>();
 // E5.5#7 Bug C fix：TX/RX 防抖同步——onStats 高频回调，不在 isOpen 变化守卫内。
 let _txRxSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
+/** E5.5#9l：per-tab 隔离——pluginState key 加 pluginInstance.id 前缀，防多实例互相覆盖 */
+function _scopeKey(key: string): string {
+  const iid = (window as any).linkdesk?.pluginInstance?.id;
+  return iid ? `${iid}:${key}` : key;
+}
+
 function _setState(updater: (p: SerialState) => SerialState): void {
   const next = updater(_sharedState);
 
   // isOpen 变化——立即同步连接状态 + 端口名到 pluginState（壳侧栏/状态栏跨 WebView 读取）
+  // E5.5#9l：key 加 _scopeKey 前缀，per-tab 隔离——多串口标签页不再互相覆盖
   if (next.isOpen !== _sharedState.isOpen) {
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "isOpen", next.isOpen)
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen"), next.isOpen)
       .catch(() => {});
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sourceName", next.sourceName)
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName"), next.sourceName)
       .catch(() => {});
     // 关闭时立即清零 TX/RX——不等到防抖超时
     if (!next.isOpen) {
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", 0)
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes"), 0)
         .catch(() => {});
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", 0)
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes"), 0)
         .catch(() => {});
     }
   }
 
   // sourceName 变化——同步到 pluginState（壳侧栏 session connected 判断需要）
   if (next.sourceName !== _sharedState.sourceName) {
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sourceName", next.sourceName)
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName"), next.sourceName)
       .catch(() => {});
   }
 
@@ -88,9 +95,9 @@ function _setState(updater: (p: SerialState) => SerialState): void {
     if (_txRxSyncTimer) clearTimeout(_txRxSyncTimer);
     const debounced = next;
     _txRxSyncTimer = setTimeout(() => {
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", debounced.txBytes)
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes"), debounced.txBytes)
         .catch(() => {});
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", debounced.rxBytes)
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes"), debounced.rxBytes)
         .catch(() => {});
     }, 250);
   }
