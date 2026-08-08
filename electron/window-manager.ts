@@ -3,6 +3,8 @@
  *
  * E3a #24：底座——创建/销毁/聚焦插件 WebContentsView。
  * #25a 资源休眠 + #25b 保活宽限期在后续任务追加。
+ * E5.5#9a：pluginId→instanceId 架构升级。pluginViews 改为复合值——
+ *         Map<instanceId, { view, pluginId }> 单 Map 同时服务正查 + 反查。
  *
  * 对标 VS Code 的 ExtensionHost management——每个插件独立进程，
  * 崩了不波及壳，卸载时物理清空 JS heap。
@@ -18,9 +20,19 @@ const MEMORY_CHECK_INTERVAL = 30_000; // 每 30s 采样一次
 const GRACE_PERIOD_MS = 60_000;
 
 export class WindowManager {
-  private pluginViews = new Map<string, WebContentsView>();
+  /**
+   * 归一化——单 Map 复合值。三个查询方向一个数据源：
+   *   正查: pluginViews.get(instanceId).view → WebContentsView
+   *   反查: pluginViews.get(instanceId).pluginId → string
+   *   遍历过滤: getInstanceIdsForPlugin(pluginId) → instanceId[]
+   */
+  private pluginViews = new Map<string, {
+    view: WebContentsView;
+    pluginId: string;
+  }>();
+
   private memoryTimer: ReturnType<typeof setInterval> | null = null;
-  /** 保活宽限期定时器——key=pluginId，value=setTimeout handle */
+  /** 保活宽限期定时器——key=instanceId，value=setTimeout handle */
   private graceTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   private ipcBridge: any = null;
@@ -35,19 +47,15 @@ export class WindowManager {
   }
 
   /**
-   * 为指定插件创建独立的 WebContentsView。
+   * 为指定标签页实例创建独立的 WebContentsView。
+   * E5.5#9a：signature 改为 (instanceId, pluginId, url)。
    *
+   * @param instanceId - 标签页 tab.id（唯一标识）
    * @param pluginId - 插件 ID
    * @param url - 要加载的 URL（dev: http://localhost:1420/..., prod: linkdesk://...）
    * @returns 创建的 WebContentsView
    */
-  createPluginView(pluginId: string, url: string): WebContentsView {
-    // 幂等——如果已存在则先销毁旧的
-    if (this.pluginViews.has(pluginId)) {
-      console.warn(`[WindowManager] 插件 "${pluginId}" 已有 WebContentsView，先销毁旧的`);
-      this.destroyPluginView(pluginId);
-    }
-
+  createPluginView(instanceId: string, pluginId: string, url: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'preload-plugin.js'),
@@ -60,31 +68,31 @@ export class WindowManager {
     // ── 崩溃检测（模式 2 预防——插件崩了触发壳侧清理链）──
     // Electron 43+: "crashed" 已废弃，用 "render-process-gone"
     view.webContents.on('render-process-gone', (_event, details) => {
-      console.error(`[WindowManager] 插件 "${pluginId}" WebContentsView 崩溃:`, details.reason);
+      console.error(`[WindowManager] 插件 "${pluginId}" (instance: ${instanceId}) WebContentsView 崩溃:`, details.reason);
       // 清理：从 contentView 移除 + 关闭 + 从 Map 删除
-      this.cleanupCrashedView(pluginId);
+      this.cleanupCrashedView(instanceId);
     });
 
     // WebContentsView 被外部关闭（非崩溃）——同样清理
     view.webContents.on('destroyed', () => {
-      this.pluginViews.delete(pluginId);
+      this.pluginViews.delete(instanceId);
     });
 
     // 🔥 E5.5#1b 调试：转发插件 WebView console → 主进程终端
     view.webContents.on('console-message', (_event: any, level: number, message: string, line: number, sourceId: string) => {
-      const tag = `[plugin:${pluginId}]`;
+      const tag = `[plugin:${pluginId}#${instanceId.slice(-6)}]`;
       if (level >= 3) console.error(`${tag} ${message}`);
       else console.log(`${tag} ${message}`);
     });
 
     // ── 新 WebView 创建后重放当前状态（#35 + #40）──
     view.webContents.on('did-finish-load', () => {
-      console.log(`[WindowManager] 插件 "${pluginId}" WebView 加载完成`);
-      this.ipcBridge?.replayToPlugin(pluginId);
+      console.log(`[WindowManager] 插件 "${pluginId}" (instance: ${instanceId}) WebView 加载完成`);
+      this.ipcBridge?.replayToPlugin(instanceId);
     });
 
     view.webContents.on('did-fail-load', (_event: any, errorCode: number, errorDescription: string, validatedURL: string) => {
-      console.error(`[WindowManager] 插件 "${pluginId}" WebView 加载失败: ${errorDescription} (code ${errorCode}) URL=${validatedURL}`);
+      console.error(`[WindowManager] 插件 "${pluginId}" (instance: ${instanceId}) WebView 加载失败: ${errorDescription} (code ${errorCode}) URL=${validatedURL}`);
     });
 
     // 加载内容
@@ -94,93 +102,127 @@ export class WindowManager {
     // 不隐藏 → 多 WebView 同时全屏覆盖 = 壳 React 内容全部被挡。
     view.setVisible(false);
 
-    // 添加到壳窗口
+    // 添加到壳窗口 + 存入复合值——一次 set 完成正查和反查
     this.mainWindow.contentView.addChildView(view);
-    this.pluginViews.set(pluginId, view);
+    this.pluginViews.set(instanceId, { view, pluginId });
 
-    console.log(`[WindowManager] 插件 "${pluginId}" WebContentsView 已创建`);
+    console.log(`[WindowManager] 插件 "${pluginId}" (instance: ${instanceId}) WebContentsView 已创建`);
     return view;
   }
 
   /**
-   * 销毁指定插件的 WebContentsView。
+   * 销毁指定实例的 WebContentsView。
    * 从 contentView 移除 → 关闭 webContents → 从 Map 删除。
    */
-  destroyPluginView(pluginId: string): void {
-    const view = this.pluginViews.get(pluginId);
-    if (!view) {
-      console.warn(`[WindowManager] 插件 "${pluginId}" 没有 WebContentsView，跳过销毁`);
+  destroyPluginView(instanceId: string): void {
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry) {
+      console.warn(`[WindowManager] instance "${instanceId}" 没有 WebContentsView，跳过销毁`);
       return;
     }
 
     try {
-      this.mainWindow.contentView.removeChildView(view);
+      this.mainWindow.contentView.removeChildView(entry.view);
     } catch (err) {
-      console.error(`[WindowManager] 移除 "${pluginId}" WebContentsView 失败:`, err);
+      console.error(`[WindowManager] 移除 instance "${instanceId}" (plugin: ${entry.pluginId}) WebContentsView 失败:`, err);
     }
 
     // 取消保活定时器（如果处于宽限期）
-    this.cancelGraceTimer(pluginId);
-    // #73：清空该插件的 IPC 请求队列——卸载后重装同一 pluginId 时不继承旧链
-    this.ipcBridge?.clearPluginQueue(pluginId);
-    view.webContents.close();
-    this.pluginViews.delete(pluginId);
-    console.log(`[WindowManager] 插件 "${pluginId}" WebContentsView 已销毁`);
+    this.cancelGraceTimer(instanceId);
+    // #73：清空该实例的 IPC 请求队列
+    this.ipcBridge?.clearPluginQueue?.(instanceId);
+    entry.view.webContents.close();
+    this.pluginViews.delete(instanceId);
+    console.log(`[WindowManager] instance "${instanceId}" (plugin: ${entry.pluginId}) WebContentsView 已销毁`);
   }
 
-  /** 获取指定插件的 WebContentsView */
-  getPluginView(pluginId: string): WebContentsView | undefined {
-    return this.pluginViews.get(pluginId);
+  /** 获取指定实例的 WebContentsView（从复合值取 .view） */
+  getPluginView(instanceId: string): WebContentsView | undefined {
+    return this.pluginViews.get(instanceId)?.view;
   }
 
-  /** 检查插件是否有活跃的 WebContentsView */
-  hasPluginView(pluginId: string): boolean {
-    return this.pluginViews.has(pluginId);
+  /** 检查是否有指定实例的活跃 WebContentsView */
+  hasPluginView(instanceId: string): boolean {
+    return this.pluginViews.has(instanceId);
   }
 
-  /** 返回所有活跃的插件 ID */
-  getAllPluginIds(): string[] {
+  /** 返回所有活跃实例的 instanceId */
+  getAllInstanceIds(): string[] {
     return Array.from(this.pluginViews.keys());
   }
 
   /**
-   * 从 WebContents 反查插件 ID。
+   * 从 WebContents 反查插件信息。
    * E3j #72——IPC 消息队列需识别发起请求的插件。
+   * E5.5#9a：返回结构变更——{ pluginId, instanceId }。
    */
-  getPluginIdFromWebContents(wc: WebContents): string | undefined {
-    for (const [pluginId, view] of this.pluginViews) {
-      if (view.webContents === wc) return pluginId;
+  getPluginIdFromWebContents(wc: WebContents): { pluginId: string; instanceId: string } | undefined {
+    for (const [instanceId, entry] of this.pluginViews) {
+      if (entry.view.webContents === wc) return { pluginId: entry.pluginId, instanceId };
     }
     return undefined;
   }
 
   /**
-   * 聚焦指定插件的 WebContentsView——将其置于最前并聚焦。
-   * 对标 VS Code 标签页切换时的 WebView focus 行为。
+   * 按 pluginId 过滤所有 instanceId。
+   * E5.5#9a 新增——broadcast / 插件卸载清空等场景的反查。
    */
-  focusPluginView(pluginId: string): void {
-    const view = this.pluginViews.get(pluginId);
-    if (!view) return;
-    view.webContents.focus();
+  getInstanceIdsForPlugin(pluginId: string): string[] {
+    const ids: string[] = [];
+    for (const [instanceId, entry] of this.pluginViews) {
+      if (entry.pluginId === pluginId) ids.push(instanceId);
+    }
+    return ids;
   }
 
   /**
-   * 🔧 开发辅助——切换指定插件的 DevTools。
+   * 同一插件的旧 WebView 重分配给新 instanceId（宽限期恢复场景）。
+   * E5.5#9a 新增——新 tab = 新 tab.id ≠ 旧 instanceId，需要重映射。
+   */
+  rekeyInstance(oldInstanceId: string, newInstanceId: string): boolean {
+    const entry = this.pluginViews.get(oldInstanceId);
+    if (!entry) return false;
+    this.pluginViews.delete(oldInstanceId);
+    this.pluginViews.set(newInstanceId, entry);
+
+    // 同步更新 graceTimers
+    const timer = this.graceTimers.get(oldInstanceId);
+    if (timer) {
+      this.graceTimers.delete(oldInstanceId);
+      this.graceTimers.set(newInstanceId, timer);
+    }
+
+    console.log(`[WindowManager] rekey "${oldInstanceId}" → "${newInstanceId}" (plugin: ${entry.pluginId})`);
+    return true;
+  }
+
+  /**
+   * 聚焦指定实例的 WebContentsView——将其置于最前并聚焦。
+   * 对标 VS Code 标签页切换时的 WebView focus 行为。
+   */
+  focusPluginView(instanceId: string): void {
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry) return;
+    entry.view.webContents.focus();
+  }
+
+  /**
+   * 🔧 开发辅助——切换指定实例的 DevTools。
    * 只在非打包模式下生效。
    */
-  toggleDevTools(pluginId: string): void {
+  toggleDevTools(instanceId: string): void {
     if (app.isPackaged) return;
 
-    const view = this.pluginViews.get(pluginId);
-    if (!view) {
-      console.warn(`[WindowManager] 插件 "${pluginId}" 没有 WebContentsView，无法打开 DevTools`);
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry) {
+      console.warn(`[WindowManager] instance "${instanceId}" 没有 WebContentsView，无法打开 DevTools`);
       return;
     }
 
-    if (view.webContents.isDevToolsOpened()) {
-      view.webContents.closeDevTools();
+    if (entry.view.webContents.isDevToolsOpened()) {
+      entry.view.webContents.closeDevTools();
     } else {
-      view.webContents.openDevTools({ mode: 'detach' });
+      entry.view.webContents.openDevTools({ mode: 'detach' });
     }
   }
 
@@ -192,10 +234,10 @@ export class WindowManager {
    * 标签页切换时调用——活跃的解除限流，隐藏的降频。
    * 对标 Chromium 的后台标签页节流行为。
    */
-  setThrottling(pluginId: string, isVisible: boolean): void {
-    const view = this.pluginViews.get(pluginId);
-    if (!view) return;
-    view.webContents.setBackgroundThrottling(!isVisible);
+  setThrottling(instanceId: string, isVisible: boolean): void {
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry) return;
+    entry.view.webContents.setBackgroundThrottling(!isVisible);
   }
 
   /**
@@ -208,9 +250,9 @@ export class WindowManager {
   checkMemoryPressure(): void {
     // 收集所有插件 WebView 的 OS PID
     const pluginPids = new Set<number>();
-    for (const [pluginId, view] of this.pluginViews) {
+    for (const [instanceId, entry] of this.pluginViews) {
       try {
-        pluginPids.add(view.webContents.getOSProcessId());
+        pluginPids.add(entry.view.webContents.getOSProcessId());
       } catch {
         // WebView 可能已销毁但还没从 Map 清理，忽略
       }
@@ -248,57 +290,57 @@ export class WindowManager {
    * 期间重开标签页 → 零重建延迟。超时 → 真正销毁。
    * 对标 VS Code Extension Host 的保活策略。
    */
-  scheduleViewDestroy(pluginId: string): void {
-    const view = this.pluginViews.get(pluginId);
-    if (!view || this.graceTimers.has(pluginId)) return;
+  scheduleViewDestroy(instanceId: string): void {
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry || this.graceTimers.has(instanceId)) return;
 
     // 先隐藏 + 降频（不销毁——保留 JS 状态）
-    view.setVisible(false);
-    view.webContents.setBackgroundThrottling(true);
+    entry.view.setVisible(false);
+    entry.view.webContents.setBackgroundThrottling(true);
 
     const timer = setTimeout(() => {
-      this.destroyPluginView(pluginId);
-      this.graceTimers.delete(pluginId);
+      this.destroyPluginView(instanceId);
+      this.graceTimers.delete(instanceId);
     }, GRACE_PERIOD_MS);
-    this.graceTimers.set(pluginId, timer);
+    this.graceTimers.set(instanceId, timer);
 
-    console.log(`[WindowManager] 插件 "${pluginId}" 进入保活宽限期（${GRACE_PERIOD_MS / 1000}s）`);
+    console.log(`[WindowManager] instance "${instanceId}" (plugin: ${entry.pluginId}) 进入保活宽限期（${GRACE_PERIOD_MS / 1000}s）`);
   }
 
   /**
    * 重开标签页——如果在宽限期内则复用 WebView。
    * @returns true=复用成功，false=已销毁需重建
    */
-  cancelViewDestroy(pluginId: string): boolean {
-    const timer = this.graceTimers.get(pluginId);
+  cancelViewDestroy(instanceId: string): boolean {
+    const timer = this.graceTimers.get(instanceId);
     if (!timer) return false;
 
     clearTimeout(timer);
-    this.graceTimers.delete(pluginId);
+    this.graceTimers.delete(instanceId);
 
-    const view = this.pluginViews.get(pluginId);
-    if (view) {
-      view.setVisible(true);
-      view.webContents.setBackgroundThrottling(false);
-      console.log(`[WindowManager] 插件 "${pluginId}" 从宽限期恢复——零重建`);
+    const entry = this.pluginViews.get(instanceId);
+    if (entry) {
+      entry.view.setVisible(true);
+      entry.view.webContents.setBackgroundThrottling(false);
+      console.log(`[WindowManager] instance "${instanceId}" (plugin: ${entry.pluginId}) 从宽限期恢复——零重建`);
       return true;
     }
     return false;
   }
 
   /**
-   * 检查插件是否处于保活宽限期（隐藏但未销毁）。
+   * 检查实例是否处于保活宽限期（隐藏但未销毁）。
    */
-  isInGracePeriod(pluginId: string): boolean {
-    return this.graceTimers.has(pluginId);
+  isInGracePeriod(instanceId: string): boolean {
+    return this.graceTimers.has(instanceId);
   }
 
   /** 取消保活定时器（内部使用） */
-  private cancelGraceTimer(pluginId: string): void {
-    const timer = this.graceTimers.get(pluginId);
+  private cancelGraceTimer(instanceId: string): void {
+    const timer = this.graceTimers.get(instanceId);
     if (timer) {
       clearTimeout(timer);
-      this.graceTimers.delete(pluginId);
+      this.graceTimers.delete(instanceId);
     }
   }
 
@@ -306,11 +348,12 @@ export class WindowManager {
    * 内存压力时立即销毁所有处于宽限期的 WebView——内存安全优先。
    */
   private flushGracePeriods(): void {
-    for (const pluginId of this.getAllPluginIds()) {
-      if (this.graceTimers.has(pluginId)) {
-        console.warn(`[WindowManager] 内存压力——强制销毁宽限期插件 "${pluginId}"`);
-        this.cancelGraceTimer(pluginId);
-        this.destroyPluginView(pluginId);
+    for (const instanceId of this.getAllInstanceIds()) {
+      if (this.graceTimers.has(instanceId)) {
+        const entry = this.pluginViews.get(instanceId);
+        console.warn(`[WindowManager] 内存压力——强制销毁宽限期 instance "${instanceId}" (plugin: ${entry?.pluginId ?? '?'})`);
+        this.cancelGraceTimer(instanceId);
+        this.destroyPluginView(instanceId);
       }
     }
   }
@@ -335,8 +378,8 @@ export class WindowManager {
       clearTimeout(timer);
     }
     this.graceTimers.clear();
-    for (const pluginId of this.getAllPluginIds()) {
-      this.destroyPluginView(pluginId);
+    for (const instanceId of this.getAllInstanceIds()) {
+      this.destroyPluginView(instanceId);
     }
   }
 
@@ -344,18 +387,18 @@ export class WindowManager {
    * 清理崩溃的 WebContentsView。
    * 不调用 destroyPluginView——崩溃的 webContents 已经不可用。
    */
-  private cleanupCrashedView(pluginId: string): void {
-    const view = this.pluginViews.get(pluginId);
-    if (!view) return;
+  private cleanupCrashedView(instanceId: string): void {
+    const entry = this.pluginViews.get(instanceId);
+    if (!entry) return;
 
     try {
-      this.mainWindow.contentView.removeChildView(view);
+      this.mainWindow.contentView.removeChildView(entry.view);
     } catch {
       // contentView 中可能已不存在，忽略
     }
 
-    this.pluginViews.delete(pluginId);
+    this.pluginViews.delete(instanceId);
     // TODO E3e: 通知壳侧（toast "插件 xxx 已崩溃"）
-    // mainWindow.webContents.send('plugin:crashed', { pluginId })
+    // mainWindow.webContents.send('plugin:crashed', { instanceId, pluginId: entry.pluginId })
   }
 }
