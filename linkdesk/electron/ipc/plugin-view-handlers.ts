@@ -38,6 +38,12 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     _registry?.unregisterPlugin(pluginId);
   });
 
+  // E5.5#7 Bug B fix：聚焦插件 WebView——切换标签页后转移键盘焦点
+  ipcMain.handle('plugin-view:focus', (_event, pluginId: string) => {
+    const view = _registry?.getView(pluginId);
+    view?.webContents.focus();
+  });
+
   // E5.5#3c：保活宽限期——关闭标签页时不立即销毁，60s 内重开可复用
   ipcMain.handle('plugin-view:scheduleDestroy', (_event, pluginId: string) => {
     _registry?.scheduleDestroy(pluginId);
@@ -63,5 +69,5 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     }
   });
 
-  console.log('[plugin-view-handlers] 已注册 7 个 IPC handler');
+  console.log('[plugin-view-handlers] 已注册 8 个 IPC handler');
 }
