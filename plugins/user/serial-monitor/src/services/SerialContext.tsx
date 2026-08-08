@@ -56,7 +56,18 @@ let _listenerId = 0;
 const _listeners = new Map<number, () => void>();
 
 function _setState(updater: (p: SerialState) => SerialState): void {
-  _sharedState = updater(_sharedState);
+  const next = updater(_sharedState);
+  // E5.5#7 Bug A fix：isOpen 变化时同步到 pluginState——壳状态栏跨 WebView 读取
+  if (next.isOpen !== _sharedState.isOpen) {
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "isOpen", next.isOpen)
+      .catch(() => {});
+    // txBytes/rxBytes 同时同步——状态栏 TX/RX 显示需要
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", next.txBytes)
+      .catch(() => {});
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", next.rxBytes)
+      .catch(() => {});
+  }
+  _sharedState = next;
   // 异步通知——让 React 18 自动批处理多个 _setState
   for (const fn of _listeners.values()) fn();
 }
