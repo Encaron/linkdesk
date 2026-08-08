@@ -73,6 +73,12 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 
+// ── E5.5#9j：从 URL query 解析 pluginId + instanceId ——
+// URL 格式：plugin-view.html?pluginId=xxx&instanceId=yyy
+const _urlParams = new URLSearchParams(globalThis.location?.search ?? '');
+const _pluginInstanceId = _urlParams.get('instanceId') ?? '';
+const _urlPluginId = _urlParams.get('pluginId') ?? '';
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
@@ -213,6 +219,15 @@ try {
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
+
+    // ── E5.5#9j：插件实例身份——URL 解析的 instanceId + pluginId
+    // 插件侧：window.linkdesk.pluginInstance.id / .pluginId
+    pluginInstance: {
+      /** 实例 ID = tab.id——每个标签页唯一。用于 pluginState key / IPC 路由。 */
+      id: _pluginInstanceId,
+      /** 插件 ID——从 URL query 解析，与 plugin.json 的 id 一致 */
+      pluginId: _urlPluginId,
+    },
 
     // ── 串口（消费端——读/写/监听，不含管理）──
     // 注意：serial.onData/onStats/onSystem 直接监听主进程推送（与 E1-E2 兼容），
@@ -383,9 +398,10 @@ try {
       onChange: (cb: () => void) => events.on("keybindings:changed", cb),
     },
 
-    // #58e 修复：插件 WebView 渲染完成 → 通知壳，壳收到后才关 React fallback
+    // E5.5#9j：插件 WebView 渲染完成 → 通知壳 (instanceId, pluginId)
+    // instanceId 从 URL 解析，pluginId 可从参数覆盖或也从 URL 解析。
     pluginViews: {
-      notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
+      notifyReady: (pluginId?: string) => ipcRenderer.send('plugin-view:ready', _pluginInstanceId, pluginId ?? _urlPluginId),
     },
 
     // ── E5#71：插件持久化存储——集中缓存 + 文件持久化 ──
