@@ -142,7 +142,7 @@ export class WindowManager {
     // 取消保活定时器（如果处于宽限期）
     this.cancelGraceTimer(instanceId);
     // #73：清空该实例的 IPC 请求队列
-    this.ipcBridge?.clearPluginQueue?.(instanceId);
+    this.ipcBridge?.clearPluginQueue(instanceId);
     entry.view.webContents.close();
     this.pluginViews.delete(instanceId);
     console.log(`[WindowManager] instance "${instanceId}" (plugin: ${entry.pluginId}) WebContentsView 已销毁`);
