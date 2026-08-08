@@ -7,9 +7,12 @@
  */
 
 import React, { useState, useRef, useEffect, forwardRef, useImperativeHandle } from "react";
-import { ContextKeyService } from "../../core/registry/ContextKeyService";
-import { setKeybindingCaptureActive } from "../../core/registry/KeybindingRegistry";
 import "./InlineInput.css";
+
+/** E5.5#7-p5：零 @src/core import——走 window.linkdesk.* IPC */
+function lk() {
+  return window.linkdesk;
+}
 
 export interface InlineInputProps {
   /** 尺寸——compact=22px 文件树行内 / normal=32px 设置/串口 */
@@ -100,9 +103,9 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   // 🔥 E5#18c 退出清理——isActive → false 时恢复全局快捷键 + context key
   useEffect(() => {
     if (!isActive) {
-      ContextKeyService.setValue("inputFocus", false);
+      lk().contextKey?.set?.("inputFocus", false);
       const raf = requestAnimationFrame(() => {
-        setKeybindingCaptureActive(false);
+        lk().keybindings?.setKeybindingCaptureActive?.(false);
       });
       return () => cancelAnimationFrame(raf);
     }
@@ -111,8 +114,8 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   // 组件卸载安全网——确保状态一定恢复（父组件在 isActive 仍为 true 时移除组件）
   useEffect(() => {
     return () => {
-      ContextKeyService.setValue("inputFocus", false);
-      setKeybindingCaptureActive(false);
+      lk().contextKey?.set?.("inputFocus", false);
+      lk().keybindings?.setKeybindingCaptureActive?.(false);
     };
   }, []);
 
@@ -139,8 +142,8 @@ export const InlineInput = forwardRef<InlineInputHandle, InlineInputProps>(funct
   };
 
   const handleFocus = () => {
-    ContextKeyService.setValue("inputFocus", true);
-    setKeybindingCaptureActive(true);
+    lk().contextKey?.set?.("inputFocus", true);
+    lk().keybindings?.setKeybindingCaptureActive?.(true);
   };
 
   return (

@@ -11,6 +11,13 @@
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands } from "../registry/CommandRegistry";
+import {
+  getKeybindings, registerKeybinding, saveUserKeybindings,
+  removeKeybindingForCommand, resetKeybindingToDefault,
+  findKeybindingForCommand, setKeybindingCaptureActive,
+  keybindingResolver,
+} from "../registry/KeybindingRegistry";
+import { CoreEvents } from "../react/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
 import { getAvailableThemes, getCurrentTheme } from "./ThemeEngine";
 import { LanguageRegistry } from "../registry/LanguageRegistry";
 import { confirm, alert } from "./DialogService"; // E5#67
@@ -47,6 +54,7 @@ let _configUnsub: (() => void) | null = null;
 let _lifecycleUnsub: (() => void) | null = null;
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
+let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -82,7 +90,8 @@ export function initIpcBridgeHandler(): void {
         }
         case "commands:execute": {
           const [commandId, ...rest] = req.args;
-          result = await executeCommand(commandId as string, undefined, ...rest);
+          // E5.5#7-fix：去掉多余 undefined——否则 context 被挤到 args[1]，handler 读 args[0] 永远为 undefined
+          result = await executeCommand(commandId as string, ...rest);
           break;
         }
 
@@ -124,8 +133,27 @@ export function initIpcBridgeHandler(): void {
           break;
         }
         case "menu:getItems": {
-          const [menuId] = req.args as [string];
-          result = getMenuItems(menuId as any);
+          // E5.5#7-p3：壳侧一站式过滤——when 匹配 + 命令标题 + 快捷键解析。
+          // ContextMenu/MenuRenderer 不再 import @src/core——零依赖纯渲染。
+          const [menuId, context] = req.args as [string, Record<string, unknown> | undefined];
+          const raw = getMenuItems(menuId as any) as ManifestMenuItem[];
+          const allCmds = getCommands();
+          result = raw
+            .filter((item): item is Exclude<ManifestMenuItem, string> => {
+              if (typeof item === "string") return false; // 分隔符/字符串引用——壳侧不返回
+              const cmd = allCmds.find(c => c.id === item.command);
+              const whenExpr = item.when ?? cmd?.when;
+              return ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined);
+            })
+            .map((item) => {
+              const cmd = allCmds.find(c => c.id === item.command);
+              const kb = findKeybindingForCommand(item.command);
+              return {
+                ...item,
+                title: cmd?.title,
+                shortcut: kb?.key,
+              };
+            });
           break;
         }
 
@@ -218,6 +246,11 @@ export function initIpcBridgeHandler(): void {
   _scrollToUnsub = onRequestScrollToSetting.event((key) => {
     try { linkdesk.events?.emit("settings:scrollTo", { key }); } catch { /* 静默 */ }
   });
+
+  // ── E5.5#7-p2：快捷键变更广播——设置页快捷键子栏实时刷新 ──
+  _keybindingsUnsub = CoreEvents.onDidChangeKeybindings.event(() => {
+    try { linkdesk.events?.emit("keybindings:changed", {}); } catch { /* 静默 */ }
+  });
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -232,6 +265,8 @@ export function unregisterIpcBridgeHandler(): void {
     _settingsGroupUnsub = null;
     _scrollToUnsub?.();
     _scrollToUnsub = null;
+    _keybindingsUnsub?.();
+    _keybindingsUnsub = null;
   }
 }
 
@@ -269,15 +304,64 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
     case "isDisabled":
       return _pluginAPI!.isPluginDisabled(args[0] as string);
     // E3j #74：linkdesk API——跨进程查询壳侧注册表
-    case "getCommands":
-      return getCommands();
-    case "getSchema":
-      return getMergedSchema();
+    case "getCommands": {
+      // 🔥 handler 是函数——结构化克隆拒绝 → 返回前剥去
+      return getCommands().map(({ handler: _h, ...rest }) => rest);
+    }
+    // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import ──
+    case "getKeybindings":
+      return getKeybindings();
+    case "getKeybindingConflicts":
+      return keybindingResolver.detectConflicts();
+    case "registerKeybinding": {
+      const [binding] = args as [import("../registry/KeybindingRegistry").Keybinding];
+      registerKeybinding(binding);
+      break;
+    }
+    case "saveUserKeybindings":
+      return saveUserKeybindings();
+    case "removeKeybindingForCommand": {
+      const [commandId] = args as [string];
+      removeKeybindingForCommand(commandId);
+      break;
+    }
+    case "resetKeybindingToDefault": {
+      const [commandId] = args as [string];
+      resetKeybindingToDefault(commandId);
+      break;
+    }
+    case "findKeybindingForCommand": {
+      const [commandId] = args as [string];
+      return findKeybindingForCommand(commandId);
+    }
+    case "setKeybindingCaptureActive": {
+      const [active] = args as [boolean];
+      setKeybindingCaptureActive(active);
+      break;
+    }
+    case "getSchema": {
+      // 🔥 onApply 是函数——结构化克隆拒绝 → 返回前剥去
+      const raw = getMergedSchema();
+      const safe: Record<string, unknown> = {};
+      for (const [key, prop] of Object.entries(raw)) {
+        const { onApply: _onApply, ...rest } = prop as unknown as Record<string, unknown>;
+        safe[key] = rest;
+      }
+      return safe;
+    }
     // ── E5.5#7：设置页 IPC 化——跨进程查询配置注册表 ──
     case "getConfigurationContributions": {
       // Map 不可序列化 → 转为 entries
+      // 🔥 onApply 是函数——结构化克隆拒绝 → 返回前剥去
       const contribs = getConfigurationContributions();
-      return Array.from(contribs.entries());
+      return Array.from(contribs.entries()).map(([pluginId, contrib]) => {
+        const safeProps: Record<string, unknown> = {};
+        for (const [key, prop] of Object.entries(contrib.properties)) {
+          const { onApply: _onApply, ...rest } = prop as unknown as Record<string, unknown>;
+          safeProps[key] = rest;
+        }
+        return [pluginId, { title: contrib.title, properties: safeProps }];
+      });
     }
     case "inspectConfiguration": {
       const [key] = args as [string];

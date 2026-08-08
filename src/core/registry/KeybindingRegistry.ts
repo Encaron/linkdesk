@@ -85,39 +85,63 @@ function normalizeKey(key: string): string {
     .join("+");
 }
 
-/**
- * KeyboardEvent → 规范化快捷键字符串。
- * 对标 VS Code 的键盘事件到 keybinding 的映射。
- */
-export function keyboardEventToKeyString(e: KeyboardEvent): string {
+/** E5.5#7-p8：主进程↔壳键盘事件纯数据形状——不依赖 KeyboardEvent DOM 对象 */
+export interface KeyboardInput {
+  ctrlKey: boolean;
+  shiftKey: boolean;
+  altKey: boolean;
+  metaKey: boolean;
+  key: string;
+  code: string;
+}
+
+/** 特殊键映射——KeyboardEvent.key → 规范化短名 */
+const KEY_MAP: Record<string, string> = {
+  ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+  Escape: "escape", Enter: "enter", Tab: "tab", Backspace: "backspace",
+  Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
+  " ": "space",
+};
+
+const MODIFIER_KEYS = new Set(["control", "shift", "alt", "meta"]);
+const MODIFIER_ORDER = ["ctrl", "shift", "alt", "meta"];
+
+/** 纯数据 → 规范化快捷键字符串——主进程和壳侧共用 */
+export function keyboardInputToKeyString(input: KeyboardInput): string {
   const parts: string[] = [];
-  if (e.ctrlKey) parts.push("ctrl");
-  if (e.shiftKey) parts.push("shift");
-  if (e.altKey) parts.push("alt");
-  if (e.metaKey) parts.push("meta");
+  if (input.ctrlKey) parts.push("ctrl");
+  if (input.shiftKey) parts.push("shift");
+  if (input.altKey) parts.push("alt");
+  if (input.metaKey) parts.push("meta");
 
-  // 特殊键映射
-  const keyMap: Record<string, string> = {
-    ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
-    Escape: "escape", Enter: "enter", Tab: "tab", Backspace: "backspace",
-    Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
-    " ": "space",
-  };
-
-  const key = keyMap[e.key] ?? e.key.toLowerCase();
-  // 不把 modifier 键自己注册为快捷键
-  if (["control", "shift", "alt", "meta"].includes(key)) return "";
+  if (!input.key) return "";
+  const key = KEY_MAP[input.key] ?? input.key.toLowerCase();
+  if (MODIFIER_KEYS.has(key)) return "";
 
   parts.push(key);
   return parts.sort((a, b) => {
-    const order = ["ctrl", "shift", "alt", "meta"];
-    const ai = order.indexOf(a);
-    const bi = order.indexOf(b);
+    const ai = MODIFIER_ORDER.indexOf(a);
+    const bi = MODIFIER_ORDER.indexOf(b);
     if (ai !== -1 && bi !== -1) return ai - bi;
     if (ai !== -1) return -1;
     if (bi !== -1) return 1;
     return a.localeCompare(b);
   }).join("+");
+}
+
+/**
+ * KeyboardEvent → 规范化快捷键字符串。
+ * 对标 VS Code 的键盘事件到 keybinding 的映射。
+ */
+export function keyboardEventToKeyString(e: KeyboardEvent): string {
+  return keyboardInputToKeyString({
+    ctrlKey: e.ctrlKey,
+    shiftKey: e.shiftKey,
+    altKey: e.altKey,
+    metaKey: e.metaKey,
+    key: e.key,
+    code: e.code,
+  });
 }
 
 /* ── Chord 状态机（E2c #16）── */
@@ -512,6 +536,79 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
 }
 
 /**
+ * E5.5#7-p8：主进程转发的键盘事件处理——纯数据输入，无 DOM event。
+ * 逻辑与 handleKeyEvent 一致，但不调用 preventDefault/stopImmediatePropagation（无 event 对象）。
+ * 返回 true 表示壳消费了此按键（应已 preventDefault 在主进程侧）。
+ */
+export function handleKeyInput(input: KeyboardInput): boolean {
+  if (_captureActive) return false;
+  if (isEditableElementFocused()) return false;
+  const keyString = keyboardInputToKeyString(input);
+  if (!keyString) return false;
+
+  // ── Chord 第二键 ──
+  if (_chordState.isPending) {
+    if (keyString === _chordState.firstKey) return true;
+    const firstKey = _chordState.firstKey;
+    resetChord();
+    const fullChord = `${firstKey} ${keyString}`;
+    const winner = keybindingResolver.resolve(fullChord);
+    if (winner && hasHandler(winner.command)) {
+      executeCommand(winner.command, undefined, ...(winner.args ?? []));
+      return true;
+    }
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
+      detail: { isPending: false, failedKey: keyString, firstKey },
+    }));
+    return false;
+  }
+
+  // ── Chord 第一键 ──
+  if (isChordPrefix(keyString)) {
+    _chordState.isPending = true;
+    _chordState.firstKey = keyString;
+    _chordState.timer = setTimeout(resetChord, CHORD_TIMEOUT);
+    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
+      detail: { isPending: true, firstKey: keyString },
+    }));
+    return true;
+  }
+
+  // ── 单键匹配 ──
+  const winner = keybindingResolver.resolve(keyString);
+  if (winner && hasHandler(winner.command)) {
+    executeCommand(winner.command, undefined, ...(winner.args ?? []));
+    return true;
+  }
+
+  return false;
+}
+
+/** E5.5#7-p7：构建同步到主进程的快捷键数据 */
+export function getKeybindingSyncData(): { shortcuts: string[]; chordPrefixes: string[]; chordCombos: string[] } {
+  const shortcuts: string[] = [];
+  const chordPrefixes = new Set<string>();
+  const chordCombos = new Set<string>();
+
+  for (const b of _bindings) {
+    const spaceIdx = b.key.indexOf(" ");
+    if (spaceIdx === -1) {
+      shortcuts.push(b.key);
+    } else {
+      const first = b.key.slice(0, spaceIdx);
+      chordPrefixes.add(first);
+      chordCombos.add(b.key);
+    }
+  }
+
+  return {
+    shortcuts,
+    chordPrefixes: [...chordPrefixes],
+    chordCombos: [...chordCombos],
+  };
+}
+
+/**
  * 挂载全局键盘监听——App 启动时调用一次（在 App.tsx 壳级 handler 之后注册）。
  *
  * 只处理插件声明的 contributes.keybindings。壳级快捷键由 App.tsx 的
@@ -525,8 +622,31 @@ export function mountGlobalKeybindings(): () => void {
     handleKeyEvent(e);
   };
   window.addEventListener("keydown", handler, true); // capture phase——先于浏览器处理
+
+  // E5.5#7-p7：接收主进程 before-input-event 转发的快捷键
+  const linkdesk = (window as any).linkdesk;
+  let forwardCleanup: (() => void) | null = null;
+  if (linkdesk?.keybindings?.onForwardedEvent) {
+    forwardCleanup = linkdesk.keybindings.onForwardedEvent((input: KeyboardInput) => {
+      handleKeyInput(input);
+    });
+  }
+
+  // E5.5#7-p7：同步快捷键表到主进程（异步——keybindings 可能尚未全部注册）
+  const doSync = () => {
+    if (linkdesk?.keybindings?.syncToMainProcess) {
+      linkdesk.keybindings.syncToMainProcess(getKeybindingSyncData());
+    }
+  };
+  // 首次同步——稍延迟，等插件 keybindings 注册完毕
+  setTimeout(doSync, 0);
+  // 快捷键变更时重同步
+  const _onChangeCleanup = CoreEvents.onDidChangeKeybindings.event(doSync);
+
   return () => {
     window.removeEventListener("keydown", handler, true);
+    if (forwardCleanup) forwardCleanup();
+    if (_onChangeCleanup) _onChangeCleanup();
   };
 }
 

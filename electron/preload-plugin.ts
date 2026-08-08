@@ -100,21 +100,32 @@ try {
     logPrefix: 'preload-plugin',
     extraHandlers: {
       // E3b #35：theme:changed 自动注入 CSS 变量，插件无需手动订阅
+      // E5.5#7-fix：改用 root.style.setProperty——行内样式优先级 > index.css :root 规则。
+      // 旧方案用 <style> 元素会被 index.css 的 :root 覆盖（同优先级，后加载者胜）。
       'theme:changed': (payload) => {
-        const { themeId, themeType, variables } = payload as any;
+        const { themeType, variables } = payload as any;
         try {
-          document.documentElement.setAttribute('data-theme', themeType ?? 'dark');
-          let style = document.getElementById('linkdesk-theme') as HTMLStyleElement | null;
-          if (!style) {
-            style = document.createElement('style');
-            style.id = 'linkdesk-theme';
-            document.head.appendChild(style);
+          const root = document.documentElement;
+          root.setAttribute('data-theme', themeType ?? 'dark');
+          // 直接设行内样式——最高优先，index.css :root 无法覆盖
+          for (const [k, v] of Object.entries(variables as Record<string, string>)) {
+            root.style.setProperty(`--${k}`, v);
           }
-          style.textContent = `:root { ${
-            Object.entries(variables as Record<string, string>).map(([k, v]) => `--${k}:${v};`).join(' ')
-          } }`;
         } catch (e) {
           console.error('[preload-plugin] theme:changed CSS 注入失败:', e);
+        }
+      },
+      // E5.5#7-fix：强调色广播——accent:changed 自动注入 CSS 变量，对标 theme:changed
+      // 同样用 root.style.setProperty——行内样式优先级 > index.css :root 规则
+      'accent:changed': (payload) => {
+        const { variables } = payload as any;
+        try {
+          const root = document.documentElement;
+          for (const [k, v] of Object.entries(variables as Record<string, string>)) {
+            root.style.setProperty(k, v); // variables 的 key 已是 "--accent" 格式
+          }
+        } catch (e) {
+          console.error('[preload-plugin] accent:changed CSS 注入失败:', e);
         }
       },
       // E3c #40：lang:changed 缓存 + 通知订阅者
@@ -331,6 +342,47 @@ try {
       },
     },
 
+    // ── E5.5#7-p2：快捷键——插件零 @src/core import，全走 IPC ──
+    keybindings: {
+      getKeybindings: () => ipcRenderer.invoke('plugins:call', 'getKeybindings'),
+      getConflicts: () => ipcRenderer.invoke('plugins:call', 'getKeybindingConflicts'),
+      registerKeybinding: (binding: unknown) => ipcRenderer.invoke('plugins:call', 'registerKeybinding', binding),
+      saveUserKeybindings: () => ipcRenderer.invoke('plugins:call', 'saveUserKeybindings'),
+      removeKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'removeKeybindingForCommand', commandId),
+      resetKeybindingToDefault: (commandId: string) => ipcRenderer.invoke('plugins:call', 'resetKeybindingToDefault', commandId),
+      findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'findKeybindingForCommand', commandId),
+      setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke('plugins:call', 'setKeybindingCaptureActive', active),
+      /** 纯函数——KeyboardEvent → "ctrl+shift+k"。不需 IPC，preload 本地执行。 */
+      keyboardEventToKeyString: (e: KeyboardEvent): string => {
+        const parts: string[] = [];
+        if (e.ctrlKey) parts.push("ctrl");
+        if (e.shiftKey) parts.push("shift");
+        if (e.altKey) parts.push("alt");
+        if (e.metaKey) parts.push("meta");
+        const keyMap: Record<string, string> = {
+          ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
+          Escape: "escape", Enter: "enter", Tab: "tab", Backspace: "backspace",
+          Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
+          " ": "space",
+        };
+        // 🔥 防御：contextBridge 结构化克隆可能丢掉 KeyboardEvent 原生属性，e.key 为 undefined 时直接返回空
+        if (!e?.key) return "";
+        const key = keyMap[e.key] ?? e.key.toLowerCase();
+        if (["control", "shift", "alt", "meta"].includes(key)) return "";
+        parts.push(key);
+        const order = ["ctrl", "shift", "alt", "meta"];
+        return parts.sort((a, b) => {
+          const ai = order.indexOf(a), bi = order.indexOf(b);
+          if (ai !== -1 && bi !== -1) return ai - bi;
+          if (ai !== -1) return -1;
+          if (bi !== -1) return 1;
+          return a.localeCompare(b);
+        }).join("+");
+      },
+      /** 订阅快捷键变更——设置页快捷键子栏实时刷新 */
+      onChange: (cb: () => void) => events.on("keybindings:changed", cb),
+    },
+
     // #58e 修复：插件 WebView 渲染完成 → 通知壳，壳收到后才关 React fallback
     pluginViews: {
       notifyReady: (pluginId: string) => ipcRenderer.send('plugin-view:ready', pluginId),
@@ -358,8 +410,8 @@ try {
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
-      getItems: (menuId: string): Promise<unknown[]> =>
-        ipcRenderer.invoke('menu:getItems', menuId),
+      getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
+        ipcRenderer.invoke('menu:getItems', menuId, context),
     },
 
     // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──

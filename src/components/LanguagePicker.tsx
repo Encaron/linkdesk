@@ -11,9 +11,10 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
-import { setConfigurationValue } from "../core/services/ConfigurationService";
-import { useConfigurationValue } from "../core/react/useConfiguration";
+import { setConfigurationValue, getConfigurationValue } from "../core/services/ConfigurationService";
+import { useConfigurationValue } from "../core/react/useConfiguration"; // 保留——LanguagePicker 组件仍可独立渲染
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
+import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
 import QuickPick from "./shared/QuickPick";
 
 interface Props {
@@ -65,4 +66,29 @@ export default function LanguagePicker({ open, onClose }: Props) {
       renderDetail={(code) => code}
     />
   );
+}
+
+/**
+ * E5.5#7-p15：命令式调起语言选择器——不再走 CustomEvent → App.tsx useState。
+ */
+export function showLanguagePicker(): void {
+  const all = LanguageRegistry.getAll();
+  const langs = all.map(l => ({ id: l.id, label: l.label }));
+  const currentLang = (getConfigurationValue<string>("app.language") as string) ?? "zh";
+
+  QuickPickService.show<{ id: string; label: string }>({
+    mode: "language",
+    items: langs,
+    placeholder: "选择语言…",
+    getSearchText: (l) => `${l.label} ${l.id}`,
+    getKey: (l) => l.id,
+    onSelect: (l) => {
+      setConfigurationValue("app.language", l.id, "user").catch(() => {});
+      QuickPickService.hide();
+    },
+    renderLabel: (l) => l.label,
+    renderCategory: (l) => l.id === currentLang ? "当前" : undefined,
+    renderDetail: (l) => l.id,
+    onClose: () => QuickPickService.hide(),
+  });
 }

@@ -137,6 +137,20 @@ export function applyAccentColor(hexColor: string): void {
     "--accent-light",
     `rgba(${r},${g},${b},0.15)`
   );
+
+  // E5.5#7-fix：广播强调色到所有插件 WebView——对标 applyTheme 的 broadcast
+  const accentVars = {
+    "--accent": hexColor,
+    "--accent-hover": `rgb(${Math.min(255, r + 30)},${Math.min(255, g + 30)},${Math.min(255, b + 30)})`,
+    "--accent-light": `rgba(${r},${g},${b},0.15)`,
+  };
+  const linkdesk = window.linkdesk;
+  if (linkdesk?.bridge?.broadcast) {
+    linkdesk.bridge.broadcast("accent:changed", {
+      themeId: currentTheme?.name ?? "",
+      variables: accentVars,
+    });
+  }
 }
 
 /**

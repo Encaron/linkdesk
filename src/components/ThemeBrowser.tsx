@@ -23,6 +23,7 @@ import {
 import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../core/services/ConfigurationService";
 import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
+import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
 import QuickPick from "./shared/QuickPick";
 
 interface Props {
@@ -110,4 +111,46 @@ export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
       }}
     />
   );
+}
+
+/**
+ * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。
+ * @param pluginId 可选——仅显示指定插件的主题（齿轮入口）
+ */
+export function showThemePicker(pluginId?: string): void {
+  const themes = pluginId ? getThemesByPlugin(pluginId) : getAvailableThemes();
+  const originalTheme = getCurrentTheme()?.name ?? null;
+  let committed = false;
+
+  QuickPickService.show<string>({
+    mode: "theme",
+    items: themes,
+    placeholder: "选择颜色主题…",
+    getSearchText: (name) => name,
+    getKey: (name) => name,
+    onSelect: (name) => {
+      committed = true;
+      setConfigurationValue("app.theme", name, "user").catch((e) => { console.error("[ThemeBrowser] 切换主题失败:", e); });
+    },
+    onHighlight: async (name) => {
+      try {
+        const theme = await loadTheme(name);
+        applyTheme(theme);
+        applyAccentColor(getEffectiveAccentColor());
+      } catch { /* skip */ }
+    },
+    renderLabel: (name) => name,
+    renderCategory: (name) => name === originalTheme ? "当前" : undefined,
+    renderDetail: (name) => {
+      const theme = ThemeRegistry.get(name);
+      if (!theme) return null;
+      return theme.uiTheme === "dark" ? "暗色主题" : theme.uiTheme === "light" ? "浅色主题" : "高对比度";
+    },
+    onClose: () => {
+      if (!committed && originalTheme) {
+        loadTheme(originalTheme).then(applyTheme).catch(() => {});
+      }
+      QuickPickService.hide();
+    },
+  });
 }

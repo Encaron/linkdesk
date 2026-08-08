@@ -2,26 +2,20 @@
  * Keyboard Shortcuts 设置子栏——对标 VS Code Keyboard Shortcuts 页面。
  * E3f #59：双 tab + 表格视图 + 搜索 + 双击改绑定 + 冲突检测。
  * #59-C：完整命令视图——以 CommandRegistry 为数据源。
- * #59-D：行内编辑——双框 chord 捕获 + ✓✕ + 点击外部取消 + 字体归一化。
+ * #59-D：行内编辑——双框 chord 捕获 + ✕ + 点击外部取消 + 字体归一化。
+ *
+ * 🔥 E5.5#7-p2 多 WebView 改造：零 import @src/core，全走 window.linkdesk.* IPC。
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import {
-  getKeybindings,
-  registerKeybinding,
-  saveUserKeybindings,
-  keybindingResolver,
-  removeKeybindingForCommand,
-  resetKeybindingToDefault,
-  keyboardEventToKeyString,
-  findKeybindingForCommand,
-  setKeybindingCaptureActive,
-} from "../../core/registry/KeybindingRegistry";
-import { getCommands } from "../../core/registry/CommandRegistry";
-import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-import { CoreEvents } from "../../core/react/CoreEvents"; // E3f #59-B
 import "./KeybindingSettingsView.css";
+
+/* ── 辅助函数 ── */
+
+function lk() {
+  return window.linkdesk;
+}
 
 interface KeybindingRow {
   command: string;
@@ -47,12 +41,34 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
   const [activeField, setActiveField] = useState<"first" | "second">("first");
   const editRowRef = useRef<HTMLDivElement>(null);
 
+  // E5.5#7-p2：IPC 异步数据——getCommands / getConflicts 是 Promise
+  const [commands, setCommands] = useState<Array<{ id: string; title?: string }>>([]);
+  const [conflictKeys, setConflictKeys] = useState<Set<string>>(new Set());
+  const [allKeybindings, setAllKeybindings] = useState<Array<{ command: string; key: string; source: string; when?: string; pluginId?: string }>>([]);
+
+  const loadData = useCallback(async () => {
+    const linkdesk = lk();
+    const [cmds, conflicts, kbs] = await Promise.all([
+      linkdesk.commands?.getCommands?.() ?? Promise.resolve([]),
+      linkdesk.keybindings?.getConflicts?.() ?? Promise.resolve([]),
+      linkdesk.keybindings?.getKeybindings?.() ?? Promise.resolve([]),
+    ]);
+    setCommands(cmds as Array<{ id: string; title?: string }>);
+    setConflictKeys(new Set((conflicts as Array<{ key: string }>).map((c: { key: string }) => c.key)));
+    setAllKeybindings(kbs as Array<{ command: string; key: string; source: string; when?: string; pluginId?: string }>);
+  }, []);
+
   // 监听插件生命周期 + 快捷键注册表变更——表格自动刷新（#59-B）
   useEffect(() => {
-    const unsub1 = onPluginLifecycleChange.event(() => setVersion((v) => v + 1));
-    const unsub2 = CoreEvents.onDidChangeKeybindings.event(() => setVersion((v) => v + 1));
-    return () => { unsub1(); unsub2(); };
-  }, []);
+    const linkdesk = lk();
+    loadData();
+    const unsub1 = linkdesk.configuration?.onPluginLifecycleChange?.(() => setVersion((v) => v + 1));
+    const unsub2 = linkdesk.keybindings?.onChange?.(() => setVersion((v) => v + 1));
+    return () => { unsub1?.(); unsub2?.(); };
+  }, [loadData]);
+
+  // version 变更 → 重新拉取数据
+  useEffect(() => { loadData(); }, [version, loadData]);
 
   useEffect(() => {
     if (initialQuery) setSearch(initialQuery);
@@ -60,12 +76,9 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
 
   // E3f #59-C：完整命令视图——以 CommandRegistry 为数据源，合并快捷键绑定
   const rows = useMemo(() => {
-    const commands = getCommands();
-    const conflicts = keybindingResolver.detectConflicts();
-    const conflictKeys = new Set(conflicts.map((c) => c.key));
-
-    const rows = commands.map((cmd): KeybindingRow & { _conflict: boolean } => {
-      const kb = findKeybindingForCommand(cmd.id);
+    const kbMap = new Map(allKeybindings.map((kb) => [kb.command, kb]));
+    const rows: Array<KeybindingRow & { _conflict: boolean }> = commands.map((cmd) => {
+      const kb = kbMap.get(cmd.id);
       return {
         command: cmd.id,
         title: cmd.title ?? cmd.id,
@@ -79,7 +92,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     // 按命令标题字母升序——对标 VS Code Keyboard Shortcuts
     rows.sort((a, b) => a.title.localeCompare(b.title, "zh"));
     return rows;
-  }, [version]);
+  }, [commands, allKeybindings, conflictKeys]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -101,7 +114,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     setFirstKey("");
     setSecondKey("");
     setActiveField("first");
-    setKeybindingCaptureActive(true); // E3f #59-D：阻止全局 chord 状态机
+    lk().keybindings?.setKeybindingCaptureActive?.(true);
   }, []);
 
   const cancelEdit = useCallback(() => {
@@ -109,20 +122,22 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     setFirstKey("");
     setSecondKey("");
     setActiveField("first");
-    setKeybindingCaptureActive(false); // E3f #59-D
+    lk().keybindings?.setKeybindingCaptureActive?.(false);
   }, []);
 
   const confirmEdit = useCallback(async () => {
     if (!editingRow || !firstKey) return;
-    removeKeybindingForCommand(editingRow.command);
+    const kb = lk().keybindings;
+    if (!kb) return;
+    await kb.removeKeybindingForCommand(editingRow.command);
     const key = secondKey ? `${firstKey} ${secondKey}` : firstKey;
-    registerKeybinding({
+    await kb.registerKeybinding({
       command: editingRow.command,
       key,
       when: editingRow.when,
       source: "user",
     });
-    await saveUserKeybindings();
+    await kb.saveUserKeybindings();
     cancelEdit();
   }, [editingRow, firstKey, secondKey, cancelEdit]);
 
@@ -148,7 +163,15 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
       if (e.key === "Escape") { cancelEdit(); return; }
       if (e.key === "Enter" && firstKey) { confirmEdit(); return; }
 
-      const keyString = keyboardEventToKeyString(e);
+      // 🔥 contextBridge 结构化克隆会丢掉 KeyboardEvent 的原生属性（.key/.code 是 C++ getter）。
+      // 必须提取为普通对象再传——否则 e.key 变 undefined → toLowerCase() 炸。
+      const keyString = lk().keybindings?.keyboardEventToKeyString?.({
+        key: e.key,
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        altKey: e.altKey,
+        metaKey: e.metaKey,
+      }) ?? "";
       if (!keyString) return;
 
       if (activeField === "first") {
@@ -165,8 +188,7 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
   // 冲突检测
   const getConflict = (key: string) => {
     if (!key) return null;
-    const bindings = getKeybindings();
-    return bindings.filter((b) => b.key === key && b.command !== editingRow?.command);
+    return allKeybindings.filter((b) => b.key === key && b.command !== editingRow?.command);
   };
 
   const firstConflict = getConflict(firstKey);
@@ -180,13 +202,16 @@ function KeybindingSettingsView({ initialQuery }: KeybindingSettingsViewProps) {
     return "—";
   };
 
-  // E3f #59-G：重置为默认
+  // E3f #59-G + E5.5#7-p2：重置为默认——走 linkdesk.dialog.confirm 替代动态 import DialogService
   const handleResetDefault = useCallback(async (row: KeybindingRow) => {
-    const { showConfirm } = await import("../../core/services/DialogService");
-    const confirmed = await showConfirm(t("确定要将「{{key}}」重置为默认值吗？", { key: row.title }));
+    const confirmed = await lk().dialog?.confirm?.(
+      t("确定要将「{{key}}」重置为默认值吗？", { key: row.title })
+    );
     if (!confirmed) return;
-    resetKeybindingToDefault(row.command);
-    await saveUserKeybindings();
+    const kb = lk().keybindings;
+    if (!kb) return;
+    await kb.resetKeybindingToDefault(row.command);
+    await kb.saveUserKeybindings();
   }, [t]);
 
   // 预填已有键值：将 chord "ctrl+k ctrl+t" 拆分为 first="ctrl+k" second="ctrl+t"

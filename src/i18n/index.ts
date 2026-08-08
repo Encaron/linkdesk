@@ -15,7 +15,9 @@ i18n.use(initReactI18next).init({
 // E3c #40：插件 WebView 语言同步——接收壳广播的翻译资源
 if (typeof window !== "undefined") {
   const linkdesk = window.linkdesk;
-  if (linkdesk?.lang) {
+  // E5.5#7 fix: API 名统一为 language（零兼容——不存在 lang 别名）
+  const langApi = linkdesk?.language;
+  if (langApi) {
     const applyLang = (data: { lang: string; resources: Record<string, unknown> }) => {
       if (!data?.resources) return;
       for (const [lng, bundle] of Object.entries(data.resources)) {
@@ -28,11 +30,11 @@ if (typeof window !== "undefined") {
       }
     };
 
-    const initial = linkdesk.lang.getInitial();
+    const initial = langApi.getInitial();
     if (initial) applyLang(initial);
 
     // 订阅后续语言变更
-    linkdesk.lang.onChange(applyLang);
+    langApi.onChange(applyLang);
   }
 }
 
