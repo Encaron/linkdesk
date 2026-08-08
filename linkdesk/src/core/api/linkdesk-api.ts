@@ -184,9 +184,17 @@ export interface LinkDeskAPI {
     get(pluginId?: string): Promise<any>;
   };
 
+  /** E5.5#9j：插件实例身份——URL 解析的 instanceId + pluginId */
+  pluginInstance: {
+    /** 实例 ID = tab.id——每个标签页唯一 */
+    id: string;
+    /** 插件 ID */
+    pluginId: string;
+  };
+
   /** 插件视图生命周期——通知壳 WebView 渲染完成 */
   pluginViews: {
-    notifyReady(pluginId: string): void;
+    notifyReady(pluginId?: string): void;
     getAllIds?(): Promise<string[]>;
     setVisible?(id: string, visible: boolean): Promise<void>;
     setBounds?(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
