@@ -113,8 +113,18 @@ export function unregisterViewPlugin(pluginId: string): boolean {
   // Phase 5h Step 1：通知消费者（仅在真正删除时——避免空事件导致 UI 无效刷新）
   if (deleted) {
     onDidUnregister.fire(pluginId);
-    // #58d：插件注销→销毁对应 WebContentsView（释放内存）
-    try { linkdesk()?.pluginViews?.destroy?.(pluginId); } catch { /* IPC 不可用时静默 */ }
+    // E5.5#9h-fix：per-tab 模型——一个插件可能有多个 instance，逐个销毁
+    try {
+      const pv = linkdesk()?.pluginViews;
+      if (pv?.getInstanceIdsForPlugin) {
+        pv.getInstanceIdsForPlugin(pluginId).then((iids: string[]) => {
+          for (const iid of iids) pv.destroy?.(iid);
+        }).catch(() => {});
+      } else {
+        // 降级：旧 API（pluginId = instanceId）
+        pv?.destroy?.(pluginId);
+      }
+    } catch { /* IPC 不可用时静默 */ }
   }
   return deleted;
 }
