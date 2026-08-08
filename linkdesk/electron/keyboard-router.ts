@@ -158,7 +158,15 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
     debug(`before-input: key="${input.key}" code="${input.code}" ctrl=${input.control} shift=${input.shift} alt=${input.alt} → modifier-only, skip`);
     return;
   }
-  debug(`before-input: key="${input.key}" code="${input.code}" ctrl=${input.control} shift=${input.shift} alt=${input.alt} → "${keyString}" | inShortcuts=${keyCache.shortcuts.has(keyString)} inChordPrefix=${keyCache.chordPrefixes.has(keyString)} chordPending=${_chordState.isPending}`);
+
+  // 🔥 E5.5#7 Bug D fix：无修饰键的裸按键（Enter/Tab/Escape/F1-12 等）不拦截。
+  // 单 WebView 时代有 isEditableElementFocused() 守卫——Monaco 的 textarea 是 active element → 放行。
+  // 多 WebView 下 before-input-event 在主进程，看不到 DOM，无脑查 keyCache → Enter 被 plugin.json 里
+  // file-tree 的 "key": "Enter" 全局快捷键拦截 → 编辑器永远收不到 Enter。
+  // 正确做法：只拦截带修饰键的组合键。裸键始终放行给 WebView。
+  const hasModifiers = ki.ctrlKey || ki.shiftKey || ki.altKey || ki.metaKey;
+
+  debug(`before-input: key="${input.key}" code="${input.code}" ctrl=${input.control} shift=${input.shift} alt=${input.alt} → "${keyString}" | hasModifiers=${hasModifiers} | inShortcuts=${keyCache.shortcuts.has(keyString)} inChordPrefix=${keyCache.chordPrefixes.has(keyString)} chordPending=${_chordState.isPending}`);
 
   const forward = () => {
     if (shouldDedup(keyString)) {
@@ -189,6 +197,12 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
     // chord 第二键不匹配 → 仍转发壳（壳侧显示错误提示）
     event.preventDefault();
     forward();
+    return;
+  }
+
+  // ── 无修饰键放行——不做快捷键/Chord 第一键匹配。单键留给 WebView（编辑器/输入框等）。
+  if (!hasModifiers) {
+    debug(`  → no modifiers, pass through to WebView`);
     return;
   }
 

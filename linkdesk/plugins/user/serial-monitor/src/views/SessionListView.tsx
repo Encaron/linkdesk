@@ -8,13 +8,44 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../hooks/useSerialSessions";
-import { useSerialContext } from "../services/SerialContext";
 
 import { activateSidebarItem } from "@src/core/react/SidebarTabSync";
 import { ContextKeyService } from "@src/core/registry/ContextKeyService";
 import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
 import { SessionListItem } from "../components/SessionListItem";
 import "../styles/SerialMonitorSidebar.css";
+
+const lk = () => (window as any).linkdesk;
+
+// ── E5.5#7 Bug C fix：侧栏从 pluginState IPC 读取连接状态（多 WebView 下 useSerialContext 是隔离实例）。
+// 模式同 statusBar.tsx——pluginState.get + onChange 订阅。
+
+/** 从 pluginState 读取 isOpen + sourceName */
+function useSerialConnection(): { isOpen: boolean; sourceName: string } {
+  const [isOpen, setIsOpen] = useState(false);
+  const [sourceName, setSourceName] = useState("");
+
+  useEffect(() => {
+    // 初始化读取
+    lk()?.pluginState?.get("serial-monitor", "isOpen").then((v: unknown) => {
+      if (typeof v === "boolean") setIsOpen(v);
+    }).catch(() => {});
+    lk()?.pluginState?.get("serial-monitor", "sourceName").then((v: unknown) => {
+      if (typeof v === "string") setSourceName(v);
+    }).catch(() => {});
+
+    // 订阅变更
+    const unsubOpen = lk()?.pluginState?.onChange("serial-monitor", "isOpen", (v: unknown) => {
+      if (typeof v === "boolean") setIsOpen(v);
+    });
+    const unsubSrc = lk()?.pluginState?.onChange("serial-monitor", "sourceName", (v: unknown) => {
+      if (typeof v === "string") setSourceName(v);
+    });
+    return () => { unsubOpen?.(); unsubSrc?.(); };
+  }, []);
+
+  return { isOpen, sourceName };
+}
 
 // ── E5#19b: ClipboardProvider——壳 F2 分发到串口会话重命名 ──
 let _triggerRename: (() => void) | null = null;
@@ -37,8 +68,9 @@ export default function SessionListView() {
     setActiveSession,
   } = useSerialSessions();
 
-  // Phase 5.5c C4b Bug 3：connected 从 SerialContext 派生——不读 session.connected（始终为 false）
-  const { state: { isOpen, sourceName: portName } } = useSerialContext();
+  // Phase 5.5c C4b Bug 3：connected 从 pluginState IPC 派生——多 WebView 下侧栏在壳 WebView，
+  // useSerialContext 的 _sharedState 是隔离实例，必须走跨 WebView 的 pluginState 通道。
+  const { isOpen, sourceName: portName } = useSerialConnection();
 
   // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
   const tabs = (window as any).linkdesk?.tabs;
