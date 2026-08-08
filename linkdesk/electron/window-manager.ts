@@ -56,6 +56,13 @@ export class WindowManager {
    * @returns 创建的 WebContentsView
    */
   createPluginView(instanceId: string, pluginId: string, url: string): WebContentsView {
+    // 防御——per-tab 模型下 instanceId 不应碰撞，但调用方 bug 可能导致重复创建。
+    // 静默创建第二个 view 会让第一个 view 残留在 contentView 中成为僵尸——不可见也不可销毁。
+    if (this.pluginViews.has(instanceId)) {
+      console.warn(`[WindowManager] instance "${instanceId}" 已有 WebContentsView——重复 create 被拦截。返回已有 view。`);
+      return this.pluginViews.get(instanceId)!.view;
+    }
+
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'preload-plugin.js'),
@@ -67,15 +74,20 @@ export class WindowManager {
 
     // ── 崩溃检测（模式 2 预防——插件崩了触发壳侧清理链）──
     // Electron 43+: "crashed" 已废弃，用 "render-process-gone"
+    // 🔥 不用闭包捕获 instanceId——rekeyInstance 后 instanceId 可能已变（宽限期恢复）。
+    //    改为运行时从 Map 反查当前 key。
     view.webContents.on('render-process-gone', (_event, details) => {
-      console.error(`[WindowManager] 插件 "${pluginId}" (instance: ${instanceId}) WebContentsView 崩溃:`, details.reason);
-      // 清理：从 contentView 移除 + 关闭 + 从 Map 删除
-      this.cleanupCrashedView(instanceId);
+      const currentId = this.findInstanceIdByView(view);
+      if (!currentId) return;
+      const entry = this.pluginViews.get(currentId);
+      console.error(`[WindowManager] 插件 "${entry?.pluginId ?? '?'}" (instance: ${currentId}) WebContentsView 崩溃:`, details.reason);
+      this.cleanupCrashedView(currentId);
     });
 
-    // WebContentsView 被外部关闭（非崩溃）——同样清理
+    // WebContentsView 被外部关闭（非崩溃）——同样清理，运行时反查 key
     view.webContents.on('destroyed', () => {
-      this.pluginViews.delete(instanceId);
+      const currentId = this.findInstanceIdByView(view);
+      if (currentId) this.pluginViews.delete(currentId);
     });
 
     // 🔥 E5.5#1b 调试：转发插件 WebView console → 主进程终端
@@ -159,6 +171,17 @@ export class WindowManager {
   getPluginIdFromWebContents(wc: WebContents): { pluginId: string; instanceId: string } | undefined {
     for (const [instanceId, entry] of this.pluginViews) {
       if (entry.view.webContents === wc) return { pluginId: entry.pluginId, instanceId };
+    }
+    return undefined;
+  }
+
+  /**
+   * 从 WebContentsView 反查当前 instanceId。
+   * E5.5#9a——rekeyInstance 后 instanceId 可能变化，事件处理器用此方法运行时反查。
+   */
+  private findInstanceIdByView(view: WebContentsView): string | undefined {
+    for (const [instanceId, entry] of this.pluginViews) {
+      if (entry.view === view) return instanceId;
     }
     return undefined;
   }
