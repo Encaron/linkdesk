@@ -5,42 +5,46 @@
 // #12b：读 serial-monitor.statusBar.txrx / .connection 配置——Settings Editor 可显隐。
 //
 // E5.5#7 Bug A fix：壳侧渲染走 pluginState IPC（不再依赖 React Context——多 WebView 下 Context 隔离）。
+// E5.5#9l-fix：9l 将 key 改为 <sourceName>:isOpen / <sourceName>:txBytes / <sourceName>:rxBytes 格式——
+// statusBar 用 events.on("plugin-state:changed") 通配订阅，从键名后缀匹配。
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 
 const lk = () => (window as any).linkdesk;
 
-/** 从 pluginState 读连接状态 + 订阅变更 */
+/** E5.5#9l-fix：从 plugin-state:changed 通配事件读连接状态——key 带端口前缀（如 COM3:isOpen） */
 function useIsOpen(): boolean {
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
-    lk()?.pluginState?.get("serial-monitor", "isOpen").then((v: unknown) => {
-      if (typeof v === "boolean") setIsOpen(v);
-    }).catch(() => {});
-    const unsub = lk()?.pluginState?.onChange("serial-monitor", "isOpen", (v: unknown) => {
-      if (typeof v === "boolean") setIsOpen(v);
-    });
+    const handler = (data: any) => {
+      if (data?.pluginId !== "serial-monitor") return;
+      const k: string = data.key ?? "";
+      if (k.endsWith(":isOpen") && typeof data.value === "boolean") {
+        setIsOpen(data.value);
+      }
+    };
+    const unsub = lk()?.events?.on("plugin-state:changed", handler);
     return () => unsub?.();
   }, []);
   return isOpen;
 }
 
-/** 从 pluginState 读 TX/RX 计数 */
+/** E5.5#9l-fix：从 plugin-state:changed 通配事件读 TX/RX 计数 */
 function useSerialStats(): { txBytes: number; rxBytes: number } {
   const [stats, setStats] = useState({ txBytes: 0, rxBytes: 0 });
   useEffect(() => {
-    const get = () => Promise.all([
-      lk()?.pluginState?.get("serial-monitor", "txBytes").catch(() => 0) as Promise<number>,
-      lk()?.pluginState?.get("serial-monitor", "rxBytes").catch(() => 0) as Promise<number>,
-    ]).then(([tx, rx]) => setStats({ txBytes: (tx as number) || 0, rxBytes: (rx as number) || 0 }));
-    get();
-    const unsubTx = lk()?.pluginState?.onChange("serial-monitor", "txBytes", (v: unknown) => {
-      setStats((p) => ({ ...p, txBytes: (v as number) || 0 }));
-    });
-    const unsubRx = lk()?.pluginState?.onChange("serial-monitor", "rxBytes", (v: unknown) => {
-      setStats((p) => ({ ...p, rxBytes: (v as number) || 0 }));
-    });
-    return () => { unsubTx?.(); unsubRx?.(); };
+    const handler = (data: any) => {
+      if (data?.pluginId !== "serial-monitor") return;
+      const k: string = data.key ?? "";
+      if (k.endsWith(":txBytes") && typeof data.value === "number") {
+        setStats((p) => ({ ...p, txBytes: data.value as number }));
+      }
+      if (k.endsWith(":rxBytes") && typeof data.value === "number") {
+        setStats((p) => ({ ...p, rxBytes: data.value as number }));
+      }
+    };
+    const unsub = lk()?.events?.on("plugin-state:changed", handler);
+    return () => unsub?.();
   }, []);
   return stats;
 }

@@ -342,6 +342,12 @@ try {
       // E5.5#3c：保活宽限期——关闭标签页不立即销毁，60s 内重开复用
       scheduleDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:scheduleDestroy', instanceId),
       cancelDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:cancelDestroy', instanceId),
+      // E5.5#9：宽限期恢复——按 pluginId 查找旧 instanceId + rekey 旧→新映射
+      findGraceInstance: (pluginId: string) => ipcRenderer.invoke('plugin-view:findGraceInstance', pluginId),
+      rekeyInstance: (oldInstanceId: string, newInstanceId: string) =>
+        ipcRenderer.invoke('plugin-view:rekeyInstance', oldInstanceId, newInstanceId),
+      // plugin-view:reload——插件重载（预留）
+      reload: (instanceId: string) => ipcRenderer.invoke('plugin-view:reload', instanceId),
       // E5.5#7 Bug B fix：切换标签页后转移键盘焦点到插件 WebView
       focus: (instanceId: string) => ipcRenderer.invoke('plugin-view:focus', instanceId),
       // #58e 修复 + E5.5#9f：订阅插件 WebView 渲染完成——callback 接收 instanceId

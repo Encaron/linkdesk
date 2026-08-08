@@ -64,6 +64,20 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     return _registry?.cancelDestroy(instanceId) ?? false;
   });
 
+  // E5.5#9：宽限期恢复——按 pluginId 查找仍在宽限期内的旧 instanceId
+  ipcMain.handle('plugin-view:findGraceInstance', (_event, pluginId: string) => {
+    return _registry?.findGraceInstance(pluginId) ?? null;
+  });
+  // E5.5#9：宽限期恢复——旧 instanceId → 新 instanceId 重映射（标签页恢复后 ID 可能变化）
+  ipcMain.handle('plugin-view:rekeyInstance', (_event, oldInstanceId: string, newInstanceId: string) => {
+    return _registry?.rekeyInstance(oldInstanceId, newInstanceId) ?? false;
+  });
+
+  // plugin-view:reload——插件重载（预留，当前无调用方）
+  ipcMain.handle('plugin-view:reload', (_event, instanceId: string) => {
+    _registry?.reloadPlugin(instanceId);
+  });
+
   // E3f #58c + E5.5#9c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
   // signature: (instanceId, pluginId)——每个标签页独立 WebView
   ipcMain.handle('plugin-view:create', (_event, instanceId: string, pluginId: string) => {
@@ -83,5 +97,5 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     }
   });
 
-  console.log('[plugin-view-handlers] 已注册 10 个 IPC handler（9 handle + 1 on）+ getInstanceIdsForPlugin');
+  console.log('[plugin-view-handlers] 已注册 14 个 IPC handler（13 handle + 1 on）+ getInstanceIdsForPlugin + findGraceInstance + rekeyInstance + reload');
 }
