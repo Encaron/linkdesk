@@ -58,10 +58,10 @@ const _listeners = new Map<number, () => void>();
 // E5.5#7 Bug C fix：TX/RX 防抖同步——onStats 高频回调，不在 isOpen 变化守卫内。
 let _txRxSyncTimer: ReturnType<typeof setTimeout> | null = null;
 
-/** E5.5#9l：per-tab 隔离——pluginState key 加 pluginInstance.id 前缀，防多实例互相覆盖 */
+/** E5.5#9l：per-tab 隔离——pluginState key 加 sourceName(COM 端口名) 前缀，防多实例互相覆盖 */
 function _scopeKey(key: string): string {
-  const iid = (window as any).linkdesk?.pluginInstance?.id;
-  return iid ? `${iid}:${key}` : key;
+  const port = _sharedState.sourceName;
+  return port ? `${port}:${key}` : key;
 }
 
 function _setState(updater: (p: SerialState) => SerialState): void {

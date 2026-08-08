@@ -18,30 +18,26 @@ import "../styles/SerialMonitorSidebar.css";
 const lk = () => (window as any).linkdesk;
 
 // ── E5.5#7 Bug C fix：侧栏从 pluginState IPC 读取连接状态（多 WebView 下 useSerialContext 是隔离实例）。
-// 模式同 statusBar.tsx——pluginState.get + onChange 订阅。
+// E5.5#9m：9l 将 key 改为 <sourceName>:isOpen 格式——侧栏用 events.on 通配订阅，从键名提取端口。
 
-/** 从 pluginState 读取 isOpen + sourceName */
+/** 从 pluginState 读取 isOpen + sourceName——适配 per-tab 端口前缀键名 */
 function useSerialConnection(): { isOpen: boolean; sourceName: string } {
   const [isOpen, setIsOpen] = useState(false);
   const [sourceName, setSourceName] = useState("");
 
   useEffect(() => {
-    // 初始化读取
-    lk()?.pluginState?.get("serial-monitor", "isOpen").then((v: unknown) => {
-      if (typeof v === "boolean") setIsOpen(v);
-    }).catch(() => {});
-    lk()?.pluginState?.get("serial-monitor", "sourceName").then((v: unknown) => {
-      if (typeof v === "string") setSourceName(v);
-    }).catch(() => {});
-
-    // 订阅变更
-    const unsubOpen = lk()?.pluginState?.onChange("serial-monitor", "isOpen", (v: unknown) => {
-      if (typeof v === "boolean") setIsOpen(v);
-    });
-    const unsubSrc = lk()?.pluginState?.onChange("serial-monitor", "sourceName", (v: unknown) => {
-      if (typeof v === "string") setSourceName(v);
-    });
-    return () => { unsubOpen?.(); unsubSrc?.(); };
+    // E5.5#9m：直接订阅 plugin-state:changed——key 带端口前缀（如 COM3:isOpen），
+    // pluginState.onChange 的精确 key 匹配无法捕获通配键名。
+    const handler = (data: any) => {
+      if (data?.pluginId !== "serial-monitor") return;
+      const k: string = data.key ?? "";
+      if (k.endsWith(":isOpen")) {
+        const port = k.slice(0, -7); // "COM3:isOpen" → "COM3"
+        if (typeof data.value === "boolean") { setIsOpen(data.value); if (data.value) setSourceName(port); }
+      }
+    };
+    const unsub = lk()?.events?.on("plugin-state:changed", handler);
+    return () => { unsub?.(); };
   }, []);
 
   return { isOpen, sourceName };
