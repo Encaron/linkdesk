@@ -14,7 +14,7 @@ import { getLangDef } from "@src/core/registry/LangDefRegistry";
 import { shellEvents } from "@src/core/react/ShellEvents";
 
 const lk = (window as any).linkdesk;
-import { initMonacoEnv } from "../services/monaco-init";
+import { initMonacoEnv, syncLangDefsFromShell } from "../services/monaco-init";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
 import { getLspClient, startLspClient } from "../services/lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
@@ -111,6 +111,9 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       scanWorkspaceForTypeScript(monaco);
 
       // 5. 非 TS 语言——查 LangDefRegistry 自动启动 LSP
+      // E5.5#7 Bug B fix：多 WebView 下 LangDefRegistry 在本地 JS 上下文为空，
+      // 需先通过 IPC 从壳侧同步语言定义（Python/Rust/C++ 等语言插件的注册信息）。
+      await syncLangDefsFromShell();
       const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
       const langDef = getLangDef(ext);
       console.error(`[editor:debug] filePath=${filePath} ext=${ext} langDef=${langDef?.id ?? "null"} hasLsp=${!!langDef?.lsp} hasClient=${!!getLspClient(langDef?.id ?? "")}`);

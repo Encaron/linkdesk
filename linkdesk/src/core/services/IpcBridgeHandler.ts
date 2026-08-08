@@ -8,6 +8,7 @@
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
  */
 
+import { getAllLangDefs } from "../registry/LangDefRegistry";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands } from "../registry/CommandRegistry";
@@ -25,7 +26,7 @@ import { shellEvents } from "../react/ShellEvents"; // E5#68
 import { ContextKeyService } from "../registry/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
-import { getWorkspaceFolders, getActiveWorkspace } from "./WorkspaceService"; // E5#85
+import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders } from "./WorkspaceService"; // E5#85
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
@@ -55,6 +56,7 @@ let _lifecycleUnsub: (() => void) | null = null;
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
 let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
+let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -251,6 +253,11 @@ export function initIpcBridgeHandler(): void {
   _keybindingsUnsub = CoreEvents.onDidChangeKeybindings.event(() => {
     try { linkdesk.events?.emit("keybindings:changed", {}); } catch { /* 静默 */ }
   });
+
+  // ── E5.5#7 Bug B fix：工作区变更广播——编辑器 TS 影子 model 需重扫 ──
+  _workspaceUnsub = onDidChangeFolders(() => {
+    try { linkdesk.events?.emit("workspace:changed", {}); } catch { /* 静默 */ }
+  });
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -267,6 +274,8 @@ export function unregisterIpcBridgeHandler(): void {
     _scrollToUnsub = null;
     _keybindingsUnsub?.();
     _keybindingsUnsub = null;
+    _workspaceUnsub?.();
+    _workspaceUnsub = null;
   }
 }
 
@@ -382,6 +391,12 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return LanguageRegistry.getAll();
     case "getCurrentLanguage":
       return i18n.language;
+    case "getAllLangDefs": {
+      // E5.5#7 Bug B fix：LangDefRegistry 跨 WebView 同步。
+      // 多 WebView 下编辑器在独立 WebView 中运行，LangDefRegistry 为空。
+      // 壳侧 loader.ts 注册的 LangDef 通过 IPC 同步到编辑器 WebView。
+      return Array.from(getAllLangDefs().entries());
+    }
     // E3j #76：插件通知——跨进程触发壳侧 toast
     case "showNotification": {
       const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];

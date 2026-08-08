@@ -8,7 +8,6 @@ import { ipcMain, BrowserWindow, app } from "electron";
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-import type { WindowManager } from "../window-manager.js"; // E5#74c
 
 interface LspChannel {
   process: ChildProcess;
@@ -134,13 +133,16 @@ function copyDirFromAsar(src: string, dest: string): void {
   }
 }
 
-export function registerLspHandlers(mainWindow: BrowserWindow, windowManager?: WindowManager): void {
-  ipcMain.handle("lsp:spawn", async (_event, { command, args, pluginId }: {
+export function registerLspHandlers(mainWindow: BrowserWindow): void {
+  ipcMain.handle("lsp:spawn", async (event, { command, args, pluginId }: {
     command: string;
     args?: string[];
     pluginId: string;
   }) => {
     const channelId = `lsp-${++_channelId}`;
+    // E5.5#7 Bug B fix：用 event.sender 路由 LSP 数据回发起 spawn 的 WebView（编辑器插件 WebView）。
+    // 旧代码用 pluginId（语言 ID "python"）→ windowManager.getPluginView("python") 永远 null。
+    const senderWc = event.sender;
 
     // E5#114d：resolve ASAR 文件路径——外部 node 不认识 app.asar
     const resolvedArgs = (args ?? []).map(resolveLspArg);
@@ -156,17 +158,14 @@ export function registerLspHandlers(mainWindow: BrowserWindow, windowManager?: W
       shell: true,
     });
 
-    // stdout → renderer
+    // stdout → renderer（双路由：壳 + 发起 spawn 的插件 WebView）
     child.stdout?.on("data", (data: Buffer) => {
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send("lsp:data", { channelId, data: data.toString("utf-8") });
       }
-      // E5#74c：editor 独立 WebView 后路由 LSP 数据
-      if (windowManager) {
-        const editorView = windowManager.getPluginView(pluginId);
-        if (editorView) {
-          editorView.webContents.send("lsp:data", { channelId, data: data.toString("utf-8") });
-        }
+      // E5.5#7：用 event.sender 路由——无论编辑器在哪个 WebView，数据能回到正确的那个
+      if (senderWc && !senderWc.isDestroyed()) {
+        senderWc.send("lsp:data", { channelId, data: data.toString("utf-8") });
       }
     });
 

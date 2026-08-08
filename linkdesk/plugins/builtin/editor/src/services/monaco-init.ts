@@ -9,10 +9,87 @@
  */
 import { MonacoVscodeApiWrapper } from "monaco-languageclient/vscodeApiWrapper";
 import type { MonacoVscodeApiConfig } from "monaco-languageclient/vscodeApiWrapper";
-import { configureDefaultWorkerFactory } from "monaco-languageclient/workerFactory";
+import { useWorkerFactory } from "monaco-languageclient/workerFactory";
+
+// E5.5#7 Bug B fix：?url 显式导入 Worker——Vite 一等公民，任何上下文正确解析。
+import editorWorkerUrl from '@codingame/monaco-vscode-editor-api/esm/vs/editor/editor.worker.js?url';
+import extensionHostUrl from '@codingame/monaco-vscode-api/workers/extensionHost.worker?url';
+import textMateUrl from '@codingame/monaco-vscode-textmate-service-override/worker?url';
+
+// E5.5#7 Bug B fix：标准 Monaco Language Worker（?worker）——对标 main.tsx。
+// 🔴 核心问题：main.tsx 设置了 MonacoEnvironment.getWorker，但 plugin-shell-main.tsx 没有。
+// 插件 WebView 中 Monaco 无法创建任何 Worker → TS/HTML 语言服务全挂、Enter 键失效。
+import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
+import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
+import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
+import CssWorker from 'monaco-editor/esm/vs/language/css/css.worker?worker';
+import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
+
+// 🔥 模块加载时设 MonacoEnvironment——对标 main.tsx，必须早于任何 Monaco import。
+// monaco-languageclient 的 useWorkerFactory 会设置 getWorkerUrl/getWorkerOptions，
+// 但 Monaco 内置语言服务走 getWorker——必须同时设置。
+(self as any).MonacoEnvironment = {
+  ...(self as any).MonacoEnvironment,
+  getWorker(_workerId: string, label: string): Worker {
+    if (label === "typescript" || label === "javascript") return new TsWorker();
+    if (label === "json") return new JsonWorker();
+    if (label === "css" || label === "scss" || label === "less") return new CssWorker();
+    if (label === "html" || label === "handlebars" || label === "razor") return new HtmlWorker();
+    return new EditorWorker();
+  },
+};
+
+let _langDefsSynced = false;
+
+/**
+ * E5.5#7 Bug B fix：从壳侧同步 LangDef 到插件 WebView。
+ * 多 WebView 下 LangDefRegistry 在本 WebView 为空——语言插件在壳侧 JS 上下文注册。
+ * 本函数通过 IPC 拉取所有 LangDef 并注册到本地 Registry，使 EditorView 的 getLangDef() 正常工作。
+ * 幂等——多次调用只执行一次。
+ */
+export async function syncLangDefsFromShell(): Promise<void> {
+  if (_langDefsSynced) return;
+  try {
+    const { registerLangDef } = await import("@src/core/registry/LangDefRegistry");
+    const entries: [string, any][] = await (window as any).linkdesk?.langDef?.getAll?.();
+    if (!entries || entries.length === 0) return;
+    for (const [, def] of entries) {
+      registerLangDef((def as any)._pluginId ?? "shell", def as any);
+    }
+    console.error(`[monaco-init] LangDef 同步完成: ${entries.length} 条`);
+  } catch (e) {
+    console.warn("[monaco-init] LangDef 同步失败:", e);
+  } finally {
+    _langDefsSynced = true;
+  }
+}
 
 let _ready = false;
 let _initPromise: Promise<void> | null = null;
+
+/**
+ * E5.5#7 Bug B fix：手动配置 monaco-languageclient VS Code 集成 Worker。
+ * 标准 Monaco 语言 Worker 已在模块顶层通过 MonacoEnvironment.getWorker 配置。
+ * 此处补充 VS Code 集成层需要的 editorWorkerService / extensionHostWorkerMain / TextMateWorker。
+ */
+function configureWorkerFactory(_logger?: unknown): void {
+  useWorkerFactory({
+    workerLoaders: {
+      editorWorkerService: () => ({
+        url: editorWorkerUrl,
+        options: { type: 'module' as const },
+      }),
+      extensionHostWorkerMain: () => ({
+        url: extensionHostUrl,
+        options: { type: 'module' as const },
+      }),
+      TextMateWorker: () => ({
+        url: textMateUrl,
+        options: { type: 'module' as const },
+      }),
+    },
+  });
+}
 
 /**
  * 确保 Monaco VS Code 服务层已初始化——幂等，多次调用安全。
@@ -36,7 +113,7 @@ export async function initMonacoEnv(
       $type: "EditorService",
       openEditorFunc,
     },
-    monacoWorkerFactory: configureDefaultWorkerFactory,
+    monacoWorkerFactory: configureWorkerFactory,
     advanced: {
       /** E5#107 修复：必须 true——否则 VS Code 默认主题未注册，
        *  StandaloneWorkbenchThemeService.setTheme("vs-dark") 找不到主题，

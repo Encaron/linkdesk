@@ -95,7 +95,7 @@ function createWindow(): void {
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
 
   // E5#74：依赖 WindowManager 的 handler 放在此处
-  registerLspHandlers(mainWindow, windowManager);   // E5#74c
+  registerLspHandlers(mainWindow);   // E5#74c
   registerSerialHandlers(mainWindow, windowManager); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
 

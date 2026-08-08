@@ -19,6 +19,9 @@ const _pluginExts = new Map<string, Set<string>>();
 /* ── 注册 ── */
 
 export function registerLangDef(pluginId: string, def: LangDefContribution): void {
+  // E5.5#7 Bug B fix：挂 pluginId 用于跨 WebView 同步。
+  // LangDefContribution 类型无此字段，运行时注入以便 IPC 序列化携带到编辑器 WebView。
+  (def as any)._pluginId = pluginId;
   for (const rawExt of def.extensions) {
     const ext = normalizeLangExt(rawExt);
     if (!ext) continue;
@@ -53,6 +56,10 @@ export function unregisterPluginLangDefs(pluginId: string): void {
   if (!exts) return;
   for (const ext of exts) _extMap.delete(ext);
   _pluginExts.delete(pluginId);
+}
+
+export function getAllLangDefs(): Map<string, LangDefContribution> {
+  return new Map(_extMap);
 }
 
 export function clearLangDefs(): void {
