@@ -22,7 +22,10 @@ import "@vscode/codicons/dist/codicon.css";
 
 const params = new URLSearchParams(window.location.search);
 const pluginId = params.get("pluginId") ?? params.get("plugin-view");
-const isDevMode = params.get("pluginId") !== null;
+// E5.5#9-fix3: isDevMode 判据从 "pluginId 存在" 改为 "instanceId 不存在"。
+// 多 WebView 模式下 URL 为 ?pluginId=xxx&instanceId=yyy，两个参数始终同时存在，
+// 旧判据导致 isDevMode 恒为 true → notifyReady() 永远不调用 → 壳不知道 WebView 就绪 → openFile 永不发送。
+const isDevMode = params.get("instanceId") === null;
 
 // import.meta.glob：Vite 预扫描插件入口，返回 { path: () => import(path) } 映射。
 // 无需 linkdesk().plugins.resolvePath——Vite 在构建时静态展开 glob。
