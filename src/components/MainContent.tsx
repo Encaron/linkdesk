@@ -98,7 +98,8 @@ function renderTabContent(
   // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
   if (tab.pluginId) {
     // E5#11l：WebView JS ready + bounds IPC 确认 → 空 div，WebView 覆盖在上面
-    if (readyWebViewIds?.has(tab.pluginId) && webViewBoundsReady?.has(tab.pluginId)) {
+    // E5.5#9h：instanceId = tab.id——每个标签页独立 WebView
+    if (readyWebViewIds?.has(tab.id) && webViewBoundsReady?.has(tab.id)) {
       return <div key={tab.id} className="plugin-webview-placeholder" />;
     }
     // E5.5#5d：加载中 / 超时 → 欢迎页。壳视图，零插件代码在壳侧执行，Ctrl+Shift+P 可用。
@@ -333,29 +334,27 @@ function MainContent({
   }, [resetWebViewState]);
 
   // editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径（不依赖 React props）
+  // E5.5#9h：IPC 路由 key 从 "editor" 改为 instanceId (= tab.id)
   useEffect(() => {
     const bridge = window.linkdesk?.bridge;
     if (!bridge) return;
-    // 🔴 @deprecated E5#26d: 多 WebView IPC 残余——pluginId 硬编码。单 WebView 下不执行（readyWebViewIds 为空）。
-    // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
     for (const g of tabState.groups) for (const t of g.tabs) {
       // E5.5#3d：加 readyWebViewIds 守卫——防 WebView 销毁后 stale ready 状态导致 IPC 发到不存在的 WebView
-      if (t.pluginId === "editor" && t.sourceId && readyWebViewIds.has("editor")) {
-        bridge.requestToPlugin?.("editor", "openFile", { filePath: t.filePath }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
+      if (t.pluginId === "editor" && t.sourceId && readyWebViewIds.has(t.id)) {
+        bridge.requestToPlugin?.(t.id, "openFile", { filePath: t.filePath }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
       }
     }
   }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
 
   // E5#84e：serial-monitor openSession——只发当前聚焦 tab（共享 WebView，防覆盖）
+  // E5.5#9h：IPC 路由 key 从 "serial-monitor" 改为 instanceId (= tab.id)
   useEffect(() => {
     const bridge = window.linkdesk?.bridge;
     if (!bridge) return;
     const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
     const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
-    // 🔴 @deprecated E5#26d: 多 WebView IPC 残余——pluginId 硬编码。单 WebView 下不执行。
-    // 多 WebView 恢复时改为 plugin.json 声明式 IPC 通道。
-    if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId) {
-      bridge.requestToPlugin?.("serial-monitor", "openSession", { sourceId: activeTab.sourceId }).catch((e: any) => { console.error("[MainContent] serial-monitor openSession 失败:", e); });
+    if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId && readyWebViewIds.has(activeTab.id)) {
+      bridge.requestToPlugin?.(activeTab.id, "openSession", { sourceId: activeTab.sourceId }).catch((e: any) => { console.error("[MainContent] serial-monitor openSession 失败:", e); });
     }
   }, [tabState.groups, tabState.activeGroupId, tabState.groups.find(g => g.id === tabState.activeGroupId)?.activeTabId, readyWebViewIds, webViewBoundsReady]);
 
@@ -370,9 +369,9 @@ function MainContent({
       for (const g of ts.groups) {
         const activeTab = g.tabs.find((t) => t.id === g.activeTabId);
         if (activeTab?.pluginId && !isShellRenderedTab(activeTab.type)) {
-          // 只恢复有活跃标签页且该组被聚焦的插件 WebView
+          // E5.5#9h：恢复 WebView 可见性用 instanceId (= tab.id)
           const isFocused = g.id === ts.activeGroupId;
-          pv.setVisible(activeTab.pluginId, isFocused);
+          pv.setVisible(activeTab.id, isFocused);
         }
       }
     });
