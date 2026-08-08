@@ -171,6 +171,34 @@ function injectMockApi() {
   };
 }
 
+/**
+ * E5.5#7 Bug B fix：渲染前同步核心 Registry。
+ *
+ * 多 WebView 下每个 WebView 有独立 JS 上下文。壳侧 loader.ts 注册的
+ * 模块级单例（LangDefRegistry 等）在本 WebView 为空。
+ *
+ * 本函数通过 IPC 拉取壳侧数据并注入本地 Registry——插件无需感知 sync 机制，
+ * 直接 import { getLangDef } 即可查询。
+ *
+ * 🔥 归一化：所有插件 WebView 启动时自动执行，不依赖特定插件。
+ *    未来新增 Eclipse/JetBrains 编辑器无需任何额外代码。
+ */
+async function syncCoreRegistries(): Promise<void> {
+  // ── LangDefRegistry 同步 ──
+  try {
+    const entries: [string, Record<string, unknown>][] =
+      await (window as any).linkdesk?.langDef?.getAll?.();
+    if (entries && entries.length > 0) {
+      const { registerLangDef } = await import("@src/core/registry/LangDefRegistry");
+      for (const [, def] of entries) {
+        registerLangDef((def._pluginId as string) ?? "shell", def as any);
+      }
+    }
+  } catch {
+    // langDef API 不可用（轻量插件开发模式、或壳侧未注册）——静默跳过
+  }
+}
+
 function bootstrap() {
   // E5#10：全局错误捕获——WebView 内任何未捕获异常都记录
   window.addEventListener("error", (e) => {
@@ -209,7 +237,14 @@ function bootstrap() {
     return;
   }
 
-  loader().then((mod: any) => {
+  loader().then(async (mod: any) => {
+    // ── E5.5#7 Bug B fix：渲染前同步核心 Registry ──
+    // 多 WebView 下每个 WebView 有独立 JS 上下文。壳侧 loader.ts 注册的
+    // LangDef 等模块级数据在本 WebView 为空。通过 IPC 拉取并注入本地 Registry。
+    // 🔥 此处是基础设施，不为任何特定插件服务——任何编辑器插件（Monaco/Eclipse/...）
+    //    只需 import { getLangDef } 即可查询，无需自己写 sync 代码。
+    await syncCoreRegistries();
+
     const Component = mod.default;
     if (!Component) {
       root.textContent = i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId });
