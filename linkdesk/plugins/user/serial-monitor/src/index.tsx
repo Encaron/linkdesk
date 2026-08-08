@@ -356,7 +356,14 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     });
     cmView.current = view;
 
-    view.scrollDOM.addEventListener("scroll", () => {
+	  // E5.5#9-fix：WebView 初始 bounds 为 0×0——CM6 mount 早于 setBounds 导致 auto-height。
+	  // ResizeObserver 监听容器尺寸变化→触发 CM6 重测。也覆盖窗口缩放/分屏等 resize。
+	  const ro = new ResizeObserver(() => {
+	    view.requestMeasure();
+	  });
+	  ro.observe(cmContainer.current);
+
+	  view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
       setShowBackToBottom(dom.scrollHeight - dom.scrollTop - dom.clientHeight >= BACK_TO_BOTTOM_THRESHOLD);
     });
@@ -367,6 +374,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     });
 
     return () => {
+			ro.disconnect();
       view.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
