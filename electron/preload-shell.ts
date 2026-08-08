@@ -33,11 +33,12 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
 });
 
 // E5#11l fix：模块级缓冲 plugin-view:ready——notifyReady 可能在 React useEffect 之前到达
+// E5.5#9f：ready 事件现在携带 (instanceId, pluginId)，缓冲 instanceId
 const _readyBuffer: string[] = [];
 let _onReadyActive = false;
-ipcRenderer.on('plugin-view:ready', (_event, pluginId: string) => {
+ipcRenderer.on('plugin-view:ready', (_event, instanceId: string, _pluginId: string) => {
   if (!_onReadyActive) {
-    _readyBuffer.push(pluginId);
+    _readyBuffer.push(instanceId);
   }
 });
 
@@ -311,12 +312,12 @@ try {
         ipcRenderer.send('bridge:response', { requestId, result, error });
       },
       // 壳侧推送事件到插件 WebView（#27）——串口数据、配置变更等
-      pushToPlugin: (pluginId: string, channel: string, payload: unknown) => {
-        ipcRenderer.send('bridge:pushToPlugin', { pluginId, channel, payload });
+      pushToPlugin: (instanceId: string, channel: string, payload: unknown) => {
+        ipcRenderer.send('bridge:pushToPlugin', { instanceId, channel, payload });
       },
       // E5#62：壳→插件请求-响应——等插件处理完返回结果
-      requestToPlugin: (pluginId: string, channel: string, payload: unknown): Promise<unknown> => {
-        return ipcRenderer.invoke('bridge:request-to-plugin', pluginId, channel, payload);
+      requestToPlugin: (instanceId: string, channel: string, payload: unknown): Promise<unknown> => {
+        return ipcRenderer.invoke('bridge:request-to-plugin', instanceId, channel, payload);
       },
       // E3b #35：广播到所有插件 WebView——主题切换、语言切换等全局事件
       broadcast: (channel: string, payload: unknown) => {
@@ -328,27 +329,28 @@ try {
       },
     },
 
-    // ── E3a #29：插件视图管理——壳侧控制插件 WebContentsView 的显隐和位置 ──
+    // ── E3a #29 + E5.5#9f：插件视图管理——壳侧控制插件 WebContentsView（instanceId 路由）──
     pluginViews: {
-      setVisible: (id: string, v: boolean) => ipcRenderer.invoke('plugin-view:setVisible', id, v),
-      setBounds: (id: string, b: { x: number; y: number; width: number; height: number }) =>
-        ipcRenderer.invoke('plugin-view:setBounds', id, b),
+      setVisible: (instanceId: string, v: boolean) => ipcRenderer.invoke('plugin-view:setVisible', instanceId, v),
+      setBounds: (instanceId: string, b: { x: number; y: number; width: number; height: number }) =>
+        ipcRenderer.invoke('plugin-view:setBounds', instanceId, b),
       getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
-      toggleDevTools: (id: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', id), // E3f #58
-      create: (id: string) => ipcRenderer.invoke('plugin-view:create', id), // E3f #58a
-      destroy: (id: string) => ipcRenderer.invoke('plugin-view:destroy', id), // E3f #58d
+      getInstanceIdsForPlugin: (pluginId: string) => ipcRenderer.invoke('plugin-view:getInstanceIdsForPlugin', pluginId),
+      toggleDevTools: (instanceId: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', instanceId),
+      create: (instanceId: string, pluginId: string) => ipcRenderer.invoke('plugin-view:create', instanceId, pluginId),
+      destroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:destroy', instanceId),
       // E5.5#3c：保活宽限期——关闭标签页不立即销毁，60s 内重开复用
-      scheduleDestroy: (id: string) => ipcRenderer.invoke('plugin-view:scheduleDestroy', id),
-      cancelDestroy: (id: string) => ipcRenderer.invoke('plugin-view:cancelDestroy', id),
+      scheduleDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:scheduleDestroy', instanceId),
+      cancelDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:cancelDestroy', instanceId),
       // E5.5#7 Bug B fix：切换标签页后转移键盘焦点到插件 WebView
-      focus: (id: string) => ipcRenderer.invoke('plugin-view:focus', id),
-      // #58e 修复：订阅插件 WebView 渲染完成通知——壳收到后才关 React fallback
+      focus: (instanceId: string) => ipcRenderer.invoke('plugin-view:focus', instanceId),
+      // #58e 修复 + E5.5#9f：订阅插件 WebView 渲染完成——callback 接收 instanceId
       // E5#11l fix：模块级缓冲——notifyReady 可能在 React useEffect 注册 onReady 之前到达
-      onReady: (cb: (pluginId: string) => void) => {
+      onReady: (cb: (instanceId: string) => void) => {
         _onReadyActive = true;
-        const handler = (_event: Electron.IpcRendererEvent, pluginId: string) => cb(pluginId);
+        const handler = (_event: Electron.IpcRendererEvent, instanceId: string) => cb(instanceId);
         // 回放缓冲的 ready 事件（在 onReady 注册前到达的）
-        for (const pid of _readyBuffer) cb(pid);
+        for (const iid of _readyBuffer) cb(iid);
         _readyBuffer.length = 0;
         ipcRenderer.on('plugin-view:ready', handler);
         return () => ipcRenderer.removeListener('plugin-view:ready', handler);
