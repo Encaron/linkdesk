@@ -24,10 +24,10 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       if (!mainWindow.isDestroyed()) {
         mainWindow.webContents.send('serial:data', text);
       }
-      // E5#74b：广播到插件 WebView
+      // E5#74b + E5.5#9d：广播到所有实例 WebView
       if (windowManager) {
-        for (const pluginId of windowManager.getAllPluginIds()) {
-          windowManager.getPluginView(pluginId)?.webContents.send('serial:data', text);
+        for (const instanceId of windowManager.getAllInstanceIds()) {
+          windowManager.getPluginView(instanceId)?.webContents.send('serial:data', text);
         }
       }
     },
@@ -36,8 +36,8 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         mainWindow.webContents.send('serial:stats', stats);
       }
       if (windowManager) {
-        for (const pluginId of windowManager.getAllPluginIds()) {
-          windowManager.getPluginView(pluginId)?.webContents.send('serial:stats', stats);
+        for (const instanceId of windowManager.getAllInstanceIds()) {
+          windowManager.getPluginView(instanceId)?.webContents.send('serial:stats', stats);
         }
       }
     },
@@ -46,8 +46,8 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         mainWindow.webContents.send('serial:system', msg);
       }
       if (windowManager) {
-        for (const pluginId of windowManager.getAllPluginIds()) {
-          windowManager.getPluginView(pluginId)?.webContents.send('serial:system', msg);
+        for (const instanceId of windowManager.getAllInstanceIds()) {
+          windowManager.getPluginView(instanceId)?.webContents.send('serial:system', msg);
         }
       }
     },

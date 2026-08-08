@@ -3,6 +3,10 @@
  *
  * E3a #26：插件 → 壳（请求-响应）——config:get/set、commands:execute
  * E3a #27：壳 → 插件（事件推送）——串口数据、配置变更等推到插件 WebView
+ * E5.5#9d：pluginId→instanceId——pushToPlugin/requestToPlugin/replayToPlugin 全链路适配。
+ *         pluginRequestQueues/pushQueues/flushing 全部以 instanceId 为 key。
+ *         getPluginIdFromWebContents 返回结构变更（{ pluginId, instanceId }）。
+ *         broadcast 遍历所有 instance。clearPluginQueues(pluginId) 清同插件所有实例。
  *
  * 双向流程：
  *   请求：插件 → ipcMain.handle → mainWindow.webContents.send → 壳 preload →
@@ -25,10 +29,10 @@ interface PendingRequest {
 export class IpcBridge {
   private pendingRequests = new Map<string, PendingRequest>();
   private requestCounter = 0;
-  /** #27：每个插件的待推送事件队列——保证顺序交付 */
+  /** #27：每个实例的待推送事件队列——保证顺序交付（key=instanceId） */
   private pushQueues = new Map<string, Array<{ channel: string; payload: unknown; source?: string }>>();
   private flushing = new Set<string>();
-  /** #72：每个插件的请求 Promise 链——保证 FIFO 串行处理 */
+  /** #72：每个实例的请求 Promise 链——保证 FIFO 串行处理（key=instanceId） */
   private pluginRequestQueues = new Map<string, Promise<unknown>>();
 
   /** 需要从插件 WebView 代理到壳渲染进程的 channel（#26） */
@@ -114,15 +118,16 @@ export class IpcBridge {
           });
         };
 
-        // #72：同插件请求 FIFO 串行——后续请求等前面完成才执行
-        const pluginId = this.windowManager.getPluginIdFromWebContents(event.sender);
-        if (pluginId) {
-          const prev = this.pluginRequestQueues.get(pluginId) ?? Promise.resolve();
+        // #72：同实例请求 FIFO 串行——后续请求等前面完成才执行
+        const info = this.windowManager.getPluginIdFromWebContents(event.sender);
+        if (info) {
+          const { instanceId } = info;
+          const prev = this.pluginRequestQueues.get(instanceId) ?? Promise.resolve();
           // prev 可能已拒绝——.catch() 确保链不断，错误隔离
           const current = prev
             .catch(() => {}) // 错误隔离——prev 可能已拒绝，重置以确保链不断
             .then(() => doRequest());
-          this.pluginRequestQueues.set(pluginId, current);
+          this.pluginRequestQueues.set(instanceId, current);
           return current;
         }
 
@@ -170,65 +175,65 @@ export class IpcBridge {
 
   /**
    * 壳渲染进程通过 IPC 推送事件到指定插件 WebView。
-   * 壳侧调用：ipcRenderer.send('bridge:pushToPlugin', {pluginId, channel, payload})
+   * 壳侧调用：ipcRenderer.send('bridge:pushToPlugin', {instanceId, channel, payload})
    */
   private registerPushListener(): void {
-    ipcMain.on('bridge:pushToPlugin', (_event, { pluginId, channel, payload }: {
-      pluginId: string;
+    ipcMain.on('bridge:pushToPlugin', (_event, { instanceId, channel, payload }: {
+      instanceId: string;
       channel: string;
       payload: unknown;
     }) => {
-      this.pushToPlugin(pluginId, channel, payload, "shell");
+      this.pushToPlugin(instanceId, channel, payload, "shell");
     });
 
     console.log('[IpcBridge] 已注册 bridge:pushToPlugin 事件推送通道');
   }
 
   /**
-   * 推送事件到插件 WebView。
+   * 推送事件到指定实例 WebView。
    * 主进程服务（serial-service 等）可以直接调用此方法，
    * 壳渲染进程通过 bridge:pushToPlugin IPC 间接调用。
    *
-   * 使用队列串行化——同一插件的多个推送严格按序交付，
+   * 使用队列串行化——同一实例的多个推送严格按序交付，
    * 防止 JS 事件乱序（对标主线程单线程语义）。
    */
-  pushToPlugin(pluginId: string, channel: string, payload: unknown, source?: string): void {
-    const view = this.windowManager.getPluginView(pluginId);
+  pushToPlugin(instanceId: string, channel: string, payload: unknown, source?: string): void {
+    const view = this.windowManager.getPluginView(instanceId);
     if (!view) {
-      // 插件 WebView 不存在——可能已卸载或尚未创建，静默丢弃
+      // 实例 WebView 不存在——可能已销毁或尚未创建，静默丢弃
       return;
     }
 
     // 入队
-    const queue = this.pushQueues.get(pluginId) ?? [];
+    const queue = this.pushQueues.get(instanceId) ?? [];
     queue.push({ channel, payload, source });
-    this.pushQueues.set(pluginId, queue);
+    this.pushQueues.set(instanceId, queue);
 
-    // 触发冲刷（防重入——同一插件已在冲刷中则跳过）
-    this.flushPushQueue(pluginId);
+    // 触发冲刷（防重入——同一实例已在冲刷中则跳过）
+    this.flushPushQueue(instanceId);
   }
 
   /**
-   * 冲刷插件的推送队列——保证顺序：前一个 send 完成后再发下一个。
+   * 冲刷实例的推送队列——保证顺序：前一个 send 完成后再发下一个。
    * Electron webContents.send() 本身是同步的（消息入队到 IO 线程），
    * 但队列串行化防止 JS 侧回调乱序——如果多个 send 密集发送，
    * 渲染进程的 ipcRenderer.on 回调可能交错。
    */
-  private flushPushQueue(pluginId: string): void {
-    if (this.flushing.has(pluginId)) return;
-    this.flushing.add(pluginId);
+  private flushPushQueue(instanceId: string): void {
+    if (this.flushing.has(instanceId)) return;
+    this.flushing.add(instanceId);
 
-    const queue = this.pushQueues.get(pluginId);
+    const queue = this.pushQueues.get(instanceId);
     if (!queue || queue.length === 0) {
-      this.flushing.delete(pluginId);
+      this.flushing.delete(instanceId);
       return;
     }
 
-    const view = this.windowManager.getPluginView(pluginId);
+    const view = this.windowManager.getPluginView(instanceId);
     if (!view) {
       // WebView 在排队期间销毁了——清空队列
-      this.pushQueues.delete(pluginId);
-      this.flushing.delete(pluginId);
+      this.pushQueues.delete(instanceId);
+      this.flushing.delete(instanceId);
       return;
     }
 
@@ -243,8 +248,8 @@ export class IpcBridge {
         });
       }
     } finally {
-      this.pushQueues.delete(pluginId);
-      this.flushing.delete(pluginId);
+      this.pushQueues.delete(instanceId);
+      this.flushing.delete(instanceId);
     }
   }
 
@@ -260,7 +265,7 @@ export class IpcBridge {
       // E5#61b：解析事件来源——壳 emit 标 "shell"，插件 emit 标 pluginId
       const sourceId = event.sender === this.mainWindow.webContents
         ? "shell"
-        : this.windowManager.getPluginIdFromWebContents(event.sender) ?? undefined;
+        : this.windowManager.getPluginIdFromWebContents(event.sender)?.pluginId ?? undefined;
       // 广播到所有插件 WebView（含自己——对标 CoreEvents 模式）
       this.broadcast(channel, payload, sourceId);
       // 也转发到壳渲染进程——壳侧 components 可订阅插件事件
@@ -287,37 +292,39 @@ export class IpcBridge {
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
   }
 
-  /** 广播事件到所有已注册的插件 WebView——并存储 payload 供新 WebView 重放 */
+  /** 广播事件到所有已注册的实例 WebView——并存储 payload 供新 WebView 重放 */
   broadcast(channel: string, payload: unknown, source?: string): void {
     this.lastBroadcasts.set(channel, payload);
     // E5#74e debug：绕过 pushToPlugin 队列——直发 webContents.send
-    for (const pluginId of this.windowManager.getAllPluginIds()) {
-      const view = this.windowManager.getPluginView(pluginId);
+    for (const instanceId of this.windowManager.getAllInstanceIds()) {
+      const view = this.windowManager.getPluginView(instanceId);
       if (view) view.webContents.send('plugin:push', { channel, payload, source });
     }
   }
 
   /** 新 WebView 创建后重放所有已存储的广播状态（E3c #40） */
-  replayToPlugin(pluginId: string): void {
+  replayToPlugin(instanceId: string): void {
     for (const [channel, payload] of this.lastBroadcasts) {
-      this.pushToPlugin(pluginId, channel, payload);
+      this.pushToPlugin(instanceId, channel, payload);
     }
   }
 
   /**
-   * #72：清空指定插件的请求队列——插件卸载时调用。
-   * 队列中已入队的请求仍会完成（不中断进行中的请求），
-   * 但后续新请求不再受旧链约束——新链从头开始。
-   *
-   * #73 调用点：WindowManager.destroyPluginView——WebView 销毁时自动清理。
-   * 四条高风险路径覆盖：
-   *   - 插件加载/卸载（plugins:call）→ #72 请求队列（PROXY_CHANNELS）
-   *   - 主题切换（bridge:broadcast）      → #27 push 队列（pushToPlugin）
-   *   - 语言切换（bridge:broadcast）      → #27 push 队列（pushToPlugin）
-   *   - 生命周期事件（onWill/DidUninstall）→ shell 同步 Emitter，不经过 IPC
+   * E5.5#9d：清空指定实例的请求队列——单 instance 销毁时调用。
    */
-  clearPluginQueue(pluginId: string): void {
-    this.pluginRequestQueues.delete(pluginId);
+  clearPluginQueue(instanceId: string): void {
+    this.pluginRequestQueues.delete(instanceId);
+  }
+
+  /**
+   * E5.5#9d：清空指定插件的所有实例请求队列——插件卸载时调用。
+   * 遍历 getInstanceIdsForPlugin 一次性清空同 pluginId 全部 instance 的队列。
+   */
+  clearPluginQueues(pluginId: string): void {
+    const instanceIds = this.windowManager.getInstanceIdsForPlugin(pluginId);
+    for (const iid of instanceIds) {
+      this.pluginRequestQueues.delete(iid);
+    }
   }
 
   // ═══════════════════════════════════════════════════════
@@ -333,17 +340,17 @@ export class IpcBridge {
 
   private registerRequestToPluginListener(): void {
     // 壳 invoke 入口
-    ipcMain.handle('bridge:request-to-plugin', async (_event, pluginId: string, channel: string, payload: unknown) => {
-      const view = this.windowManager.getPluginView(pluginId);
+    ipcMain.handle('bridge:request-to-plugin', async (_event, instanceId: string, channel: string, payload: unknown) => {
+      const view = this.windowManager.getPluginView(instanceId);
       if (!view) {
-        throw new Error(`[IpcBridge] 插件 "${pluginId}" 未运行——无法发送请求`);
+        throw new Error(`[IpcBridge] instance "${instanceId}" 未运行——无法发送请求`);
       }
 
       const requestId = `plugin-req-${++this.requestCounter}-${Date.now()}`;
       const result = await new Promise<unknown>((resolve, reject) => {
         const timer = setTimeout(() => {
           this.pendingPluginRequests.delete(requestId);
-          reject(new Error(`[IpcBridge] 插件 "${pluginId}" 请求超时 (10s)，channel="${channel}"`));
+          reject(new Error(`[IpcBridge] instance "${instanceId}" 请求超时 (10s)，channel="${channel}"`));
         }, 10000);
         this.pendingPluginRequests.set(requestId, { resolve, reject, timer });
         view.webContents.send('plugin:request', { requestId, channel, payload });
@@ -382,7 +389,7 @@ export class IpcBridge {
     }) => {
       const targetView = this.windowManager.getPluginView(target);
       if (!targetView) return;
-      const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender) ?? "unknown";
+      const sourceId = this.windowManager.getPluginIdFromWebContents(event.sender)?.pluginId ?? "unknown";
       // 原始路径：targetView.webContents.send('plugin:push', { channel, payload: data, source: sourceId });
       targetView.webContents.send('p2p:data', { channel, data, source: sourceId });
       console.log(`[p2p] ${sourceId} → ${target}  channel="${channel}"`);

@@ -74,10 +74,10 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
       if (win && !win.isDestroyed()) {
         win.webContents.send(`filesystem:changed:${watcherId}`, change);
       }
-      // E5#80：广播文件变更到所有插件 WebView
+      // E5#80 + E5.5#9d：广播文件变更到所有实例 WebView
       if (windowManager) {
-        for (const pluginId of windowManager.getAllPluginIds()) {
-          windowManager.getPluginView(pluginId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
+        for (const instanceId of windowManager.getAllInstanceIds()) {
+          windowManager.getPluginView(instanceId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
         }
       }
     });
