@@ -246,16 +246,17 @@ export function initKeyboardRouting(
     });
   };
 
-  // 已有插件 WebView
-  for (const pluginId of pluginViewRegistry.getAllPluginIds()) {
-    const view = pluginViewRegistry.getView(pluginId);
+  // 已有插件 WebView——遍历所有 instance
+  for (const instanceId of pluginViewRegistry.getAllInstanceIds()) {
+    const view = pluginViewRegistry.getView(instanceId);
     if (view) registerOnView(view);
   }
 
   // 动态创建的插件 WebView——monkey-patch registerPlugin
+  // E5.5#9e：signature 适配 per-tab——(instanceId, pluginId, url, force?)
   const _origRegister = pluginViewRegistry.registerPlugin.bind(pluginViewRegistry);
-  pluginViewRegistry.registerPlugin = (pluginId: string, url: string, force?: boolean) => {
-    const view = _origRegister(pluginId, url, force);
+  pluginViewRegistry.registerPlugin = (instanceId: string, pluginId: string, url: string, force?: boolean) => {
+    const view = _origRegister(instanceId, pluginId, url, force);
     registerOnView(view);
     return view;
   };
