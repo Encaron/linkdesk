@@ -18,6 +18,10 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
 
   ipcMain.handle('plugin-view:setVisible', (_event, pluginId: string, visible: boolean) => {
     _registry?.setVisible(pluginId, visible);
+    // E5.5#7 Bug B fix：WebView 变为可见后转移键盘焦点——与 setVisible 同 handler，同步执行无竞态
+    if (visible) {
+      _registry?.getView(pluginId)?.webContents.focus();
+    }
   });
 
   ipcMain.handle('plugin-view:setBounds', (_event, pluginId: string, bounds: ViewBounds) => {

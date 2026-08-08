@@ -12,9 +12,11 @@
  *   导致主编辑器 token 颜色错误（缩略图 Canvas 渲染不受影响）。
  *   defineTheme 用 Monaco 原生 API 注册 vs-dark/vs，零外部依赖，
  *   在 setTheme 之前调用——只要定义过，后续 setTheme 就能找到主题。
+ *
+ * 🔥 E5.5#7 Bug B fix：主题变更事件改用 window.linkdesk.events。
+ *   多 WebView 下 CoreEvents.onDidChangeTheme 是隔离实例——壳侧主题变更不会触发编辑器。
+ *   IpcBridge.broadcast("theme:changed") → plugin:push → events.on("theme:changed") 是正确路径。
  */
-import { CoreEvents } from "@src/core/react/CoreEvents";
-
 /** Monaco 暗色 token 颜色——对标 VS Code Dark+ */
 const DARK_TOKEN_RULES: any[] = [
   { token: "comment", foreground: "6A9955" },
@@ -79,9 +81,13 @@ export function syncMonacoTheme(monaco: any): void {
 }
 
 export function subscribeThemeSync(monacoNsRef: { current: any }): () => void {
-  return CoreEvents.onDidChangeTheme.event(() => {
+  // E5.5#7 Bug B fix：用 window.linkdesk.events 替代 CoreEvents.onDidChangeTheme。
+  // 多 WebView 下 CoreEvents 是隔离实例——壳侧主题变更不会触发编辑器回调。
+  // theme:changed 通过 IpcBridge.broadcast → plugin:push → events.on 正确跨越 WebView 边界。
+  const lk = (window as any).linkdesk;
+  return lk?.events?.on?.("theme:changed", () => {
     if (monacoNsRef.current) {
       syncMonacoTheme(monacoNsRef.current);
     }
-  });
+  }) ?? (() => {});
 }

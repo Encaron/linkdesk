@@ -181,8 +181,6 @@ export function useWebViewSync(
         }
         if (prevState?.isVisible !== state.isVisible) {
           pv.setVisible(pluginId, state.isVisible);
-          // E5.5#7 Bug B fix：WebView 变为可见时转移键盘焦点
-          if (state.isVisible) pv.focus(pluginId);
         }
       }
       for (const pluginId of prev.keys()) {

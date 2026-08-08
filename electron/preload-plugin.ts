@@ -481,6 +481,29 @@ try {
       extname: (p: string) => { const b = p.replace(/\\/g, "/").split("/").pop() || ""; const i = b.lastIndexOf("."); return i > 0 ? b.slice(i) : ""; },
     },
 
+    // ── E5.5#7 Bug B fix：LSP 桥——插件 WebView 内编辑器连接语言服务器 ──
+    // E5.5#7 Bug B fix：多 WebView 下编辑器在独立 WebView 中运行，必须通过 IPC 与主进程 LSP 通信。
+    // onData 用 listenDirect——主进程 view.webContents.send("lsp:data") 直发，不经 IpcBridge.broadcast。
+    lsp: {
+      spawn: (command: string, args: string[] | undefined, pluginId: string) =>
+        ipcRenderer.invoke('lsp:spawn', { command, args, pluginId }),
+      write: (channelId: string, data: string) =>
+        ipcRenderer.send('lsp:write', { channelId, data }),
+      dispose: (channelId: string) =>
+        ipcRenderer.invoke('lsp:dispose', { channelId }),
+      onData: (cb: (channelId: string, data: string) => void) =>
+        listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
+    },
+
+    // ── E5.5#7 Bug B fix：LangDefRegistry 跨 WebView 同步 ──
+    // 多 WebView 下编辑器在独立 WebView 中运行，LangDefRegistry 为空。
+    // 语言插件（Python/Rust/C++）的 LangDefContribution 在壳侧 JS 上下文注册，
+    // 编辑器需要这些信息来启动 LSP 客户端。通过 IPC 从壳侧获取全部 LangDef。
+    langDef: {
+      getAll: (): Promise<[string, any][]> =>
+        ipcRenderer.invoke('plugins:call', 'getAllLangDefs'),
+    },
+
     // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──

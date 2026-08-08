@@ -11,7 +11,6 @@
  *
  * E4V#40i（诊断+快捷修复）也在此文件——`setDiagnosticsOptions` 打开红波浪线。
  */
-import { onDidChangeFolders } from "@src/core/services/WorkspaceService";
 import { EncodingService } from "@src/core/services/EncodingService";
 
 const lk = (window as any).linkdesk;
@@ -25,9 +24,10 @@ let _envInitialized = false;
 let _monaco: any = null;
 let _scanPromise: Promise<void> | null = null;
 
-// 🔥 工作区文件夹变更 → 重新扫描（影子 model 过期、新文件夹加入）
-// onDidChangeFolders 本身已是 Event<T>（函数），直接调用，不 .event()
-onDidChangeFolders(() => {
+// E5.5#7 Bug B fix：工作区文件夹变更 → 重新扫描（影子 model 过期、新文件夹加入）。
+// 多 WebView 下 onDidChangeFolders 是隔离实例——壳侧文件夹变更不会触发编辑器。
+// workspace:changed 通过 IpcBridge.broadcast → plugin:push → events.on 正确跨越 WebView 边界。
+lk?.events?.on?.("workspace:changed", () => {
   if (!_monaco) return;
   _scanPromise = null; // 允许重新扫描
   scanWorkspaceForTypeScript(_monaco);
