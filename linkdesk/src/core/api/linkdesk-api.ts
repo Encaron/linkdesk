@@ -196,10 +196,22 @@ export interface LinkDeskAPI {
   pluginViews: {
     notifyReady(pluginId?: string): void;
     getAllIds?(): Promise<string[]>;
+    getInstanceIdsForPlugin?(pluginId: string): Promise<string[]>;
     setVisible?(id: string, visible: boolean): Promise<void>;
     setBounds?(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
     destroy?(id: string): Promise<void>;
     toggleDevTools?(): Promise<void>;
+    scheduleDestroy?(id: string): void;
+    cancelDestroy?(id: string): Promise<boolean>;
+    /** E5.5#9：宽限期恢复——按 pluginId 查找仍在宽限期内的旧 instanceId */
+    findGraceInstance?(pluginId: string): Promise<string | undefined>;
+    /** E5.5#9：宽限期恢复——旧 instanceId → 新 instanceId 重映射 */
+    rekeyInstance?(oldInstanceId: string, newInstanceId: string): Promise<boolean>;
+    /** plugin-view:reload——插件重载（预留） */
+    reload?(instanceId: string): void;
+    create?(instanceId: string, pluginId: string): void;
+    focus?(instanceId: string): void;
+    onReady?(cb: (instanceId: string) => void): () => void;
   };
 
   // ── 壳侧扩展（preload-shell.ts 注入）──

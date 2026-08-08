@@ -31,6 +31,8 @@ export interface PluginViewsAPI {
   findGraceInstance?(pluginId: string): Promise<string | undefined>;
   /** E5.5#9 宽限期恢复——旧 instanceId → 新 instanceId 重映射 */
   rekeyInstance?(oldInstanceId: string, newInstanceId: string): Promise<boolean>;
+  /** plugin-view:reload——插件重载（预留） */
+  reload?(instanceId: string): void;
   /** E5.5#9：创建 WebView——(instanceId, pluginId) */
   create(instanceId: string, pluginId: string): void;
   /** E5.5#7 Bug B fix：切换标签页后转移键盘焦点到插件 WebView */
