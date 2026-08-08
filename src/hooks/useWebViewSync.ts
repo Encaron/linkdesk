@@ -175,9 +175,10 @@ export function useWebViewSync(
     pv.getAllIds?.()?.then((ids: string[]) => {
       const registeredSet = new Set(ids);
       for (const [instanceId, state] of currentStates) {
-        if (!registeredSet.has(instanceId)) continue;
         const prevState = prev.get(instanceId);
-        // E5.5#9g：新标签页（新 instanceId）→ 尝试 findGraceInstance + rekey 宽限期恢复
+        // E5.5#9g-fix：新实例创建不受 registeredSet 约束——首次运行时 getAllIds() 返回空，
+        // 若用 registeredSet.has() 守卫则创建代码永远不可达，形成死锁。
+        // 修复：!prevState 分支提到 registeredSet 检查之前，用 continue 跳过 setVisible。
         if (!prevState) {
           if (pv.findGraceInstance && pv.rekeyInstance) {
             pv.findGraceInstance(state.pluginId).then((oldIid) => {
@@ -196,16 +197,17 @@ export function useWebViewSync(
                   }).catch(() => {});
                 }).catch(() => {});
               } else {
-                // 无旧实例在宽限期——全新创建
                 console.log(`[useWebViewSync] "${state.pluginId}#${instanceId.slice(-6)}" 无宽限期旧实例——创建新 WebView`);
                 pv.create(instanceId, state.pluginId);
               }
             }).catch(() => {});
           } else {
-            // 降级：无 findGraceInstance/rekeyInstance → 直接创建
             pv.create(instanceId, state.pluginId);
           }
+          continue; // E5.5#9g-fix：跳过 setVisible——WebView 尚未注册，下次 Effect 3 会处理
         }
+        // 已有实例：需要 WebView 已注册才能 setVisible/setBounds
+        if (!registeredSet.has(instanceId)) continue;
         if (prevState?.isVisible !== state.isVisible) {
           pv.setVisible(instanceId, state.isVisible);
         }
