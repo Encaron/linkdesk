@@ -55,18 +55,46 @@ let _sharedState: SerialState = {
 let _listenerId = 0;
 const _listeners = new Map<number, () => void>();
 
+// E5.5#7 Bug C fix：TX/RX 防抖同步——onStats 高频回调，不在 isOpen 变化守卫内。
+let _txRxSyncTimer: ReturnType<typeof setTimeout> | null = null;
+
 function _setState(updater: (p: SerialState) => SerialState): void {
   const next = updater(_sharedState);
-  // E5.5#7 Bug A fix：isOpen 变化时同步到 pluginState——壳状态栏跨 WebView 读取
+
+  // isOpen 变化——立即同步连接状态 + 端口名到 pluginState（壳侧栏/状态栏跨 WebView 读取）
   if (next.isOpen !== _sharedState.isOpen) {
     (window as any).linkdesk?.pluginState?.set("serial-monitor", "isOpen", next.isOpen)
       .catch(() => {});
-    // txBytes/rxBytes 同时同步——状态栏 TX/RX 显示需要
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", next.txBytes)
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sourceName", next.sourceName)
       .catch(() => {});
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", next.rxBytes)
+    // 关闭时立即清零 TX/RX——不等到防抖超时
+    if (!next.isOpen) {
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", 0)
+        .catch(() => {});
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", 0)
+        .catch(() => {});
+    }
+  }
+
+  // sourceName 变化——同步到 pluginState（壳侧栏 session connected 判断需要）
+  if (next.sourceName !== _sharedState.sourceName) {
+    (window as any).linkdesk?.pluginState?.set("serial-monitor", "sourceName", next.sourceName)
       .catch(() => {});
   }
+
+  // TX/RX 变化且端口打开——防抖 250ms 同步到 pluginState。
+  // onStats 高频回调累加计数，直接每次 set 会拥塞 IPC。防抖合并为一次 set。
+  if (next.isOpen && (next.txBytes !== _sharedState.txBytes || next.rxBytes !== _sharedState.rxBytes)) {
+    if (_txRxSyncTimer) clearTimeout(_txRxSyncTimer);
+    const debounced = next;
+    _txRxSyncTimer = setTimeout(() => {
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "txBytes", debounced.txBytes)
+        .catch(() => {});
+      (window as any).linkdesk?.pluginState?.set("serial-monitor", "rxBytes", debounced.rxBytes)
+        .catch(() => {});
+    }, 250);
+  }
+
   _sharedState = next;
   // 异步通知——让 React 18 自动批处理多个 _setState
   for (const fn of _listeners.values()) fn();

@@ -249,3 +249,87 @@ const configurationObj = {
 3. **新增推送通道 → 先在这个文档里登记。** 写清发送端/接收端/竞态策略/验证方式。
 4. **`listenDirect` 运行时告警已在 `event-system.ts` 中。** 传了非 `:direct` 后缀的 channel → `console.error`。
 
+---
+
+## 🔥 Bug C 教训——pluginState 跨 WebView 状态同步（2026-08-08）
+
+> **症状：** 串口监视器侧栏指示灯不亮 + TX/RX 计数器不更新 + 状态栏计数器不更新。
+> **根因：** `SerialContext._setState` 只在 `isOpen` 变化时同步到 `pluginState`——`txBytes`/`rxBytes` 锁在守卫内、`sourceName` 从未同步。`SessionListView` 用 `useSerialContext().state.isOpen` 读到壳 WebView 的隔离空副本。
+
+### pluginState 同步模式——插件 WebView 权威状态 → 壳组件消费
+
+```
+插件 WebView（权威数据源）                    壳 WebView（只读消费）
+┌──────────────────────────┐       ┌──────────────────────────┐
+│ SerialContext._setState  │       │ statusBar / SessionList  │
+│                          │       │                          │
+│ if isOpen changed:       │       │ pluginState.get(k)       │
+│   → pluginState.set() ✅ │  IPC  │   .then(v => setState)   │
+│                          │ ────→ │                          │
+│ if sourceName changed:   │       │ pluginState.onChange(k,  │
+│   → pluginState.set() ✅ │       │   v => setState)         │
+│                          │       │                          │
+│ if txBytes/rxBytes       │       │ return () => unsub?.()   │
+│   changed (debounce):    │       │   // mount 注册 unmount  │
+│   → pluginState.set() ✅ │       │   // 注销，零泄漏        │
+└──────────────────────────┘       └──────────────────────────┘
+```
+
+### 铁律
+
+1. **插件 WebView 内的模块级状态变化 → 必须在 setter 中同步到 `pluginState`。** 所有可能被壳组件消费的字段都要覆盖，不漏字段、不锁守卫。
+2. **高频数据（onStats 每 100ms 回调）→ 防抖合并。** 250ms debounce——每次 `pluginState.set` 是跨进程 IPC，不能每次回调都发。
+3. **壳侧组件（侧栏/状态栏/任何壳渲染的 UI）读插件状态 → 只用 `pluginState.get/onChange`。** 永远不用 `useSerialContext` 等模块级 hook——那些在壳 WebView 中是隔离空实例。
+4. **mount 注册 / unmount 注销——`onChange` 返回 unsubscribe，useEffect cleanup 中调用。** 零泄漏。
+
+### 自检——新插件加跨 WebView 状态前回答
+
+```
+□ 1. 这个状态在哪个 WebView 中是权威源？
+     插件 WebView（主区操作）? / 壳 WebView（设置/侧栏）?
+     权威源负责写 pluginState.set()
+
+□ 2. 哪些 WebView 需要读这个状态？
+     壳侧栏? / 状态栏? / 其他插件?
+     消费端用 pluginState.get + onChange 订阅
+
+□ 3. 所有字段都覆盖了吗？
+     isOpen / sourceName / txBytes / rxBytes / ...
+     漏一个 → 消费端读到旧值/空值
+```
+
+---
+
+## 🔥 Bug D 教训——键盘路由器无修饰键规则（2026-08-08）
+
+> **症状：** 编辑器 WebView 中按 Enter 无法换行。Shift+Enter、字母、数字、Tab 均正常。
+> **根因：** `file-tree/plugin.json` 注册了 `"key": "Enter", "command": "explorer.openFocused"`。`keyboard-router.ts` 在主进程 `before-input-event` 中查 `keyCache.shortcuts`——命中 `"enter"` → `event.preventDefault()` 吃掉。单 WebView 时代有 `isEditableElementFocused()` 守卫（Monaco 的 textarea 是 active element → 放行），多 WebView 下主进程看不到 DOM，无差别拦截。
+
+### 键盘路由器规则
+
+```
+before-input-event 到达 → keyboardInputToKeyString(input)
+
+1. modifier-only（只有 ctrl/shift/alt/meta，无实际键）？
+   → return（不处理）
+
+2. Chord 第二键（_chordState.isPending）？
+   → 匹配/不匹配都 preventDefault + forward 到壳
+
+3. 🔥 无修饰键（!ctrlKey && !shiftKey && !altKey && !metaKey）？
+   → return（放行给 WebView）★ 2026-08-08 新增
+   → 原因：任何插件可注册 "key": "Enter" → keyCache 含裸键
+   → 主进程无法判断 WebView 内是否有 editable element
+
+4. 有修饰键 → 常规匹配：
+   → Chord 第一键? / 单键快捷键? → preventDefault + forward
+   → 不匹配 → 放行
+```
+
+### 为什么安全
+
+- **带修饰键的快捷键（Ctrl+S / Ctrl+Shift+P）不会误放行**——步骤 4 正常拦截。
+- **Chord 第二键不受影响**——步骤 2 在步骤 3 之前，`Ctrl+K Enter` 仍生效。
+- **插件 WebView 内 DOM 级 keydown 监听不受影响**——`before-input-event` 不放行 ≠ DOM 事件不触发？→ 不放行 = 不调 `preventDefault` = 事件正常到达 WebView = DOM keydown 正常触发。
+- **file-tree 的 Enter 改走 DOM keydown**——`FileTreeKeyboard.ts` 已在壳侧用 `case "Enter"` 处理，不依赖主进程拦截。
+
