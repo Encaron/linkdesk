@@ -123,6 +123,11 @@ function injectMockApi() {
       destroy: noop,
       toggleDevTools: noop,
     },
+    // E5.5#9k：插件实例身份——dev 模式用 pluginId 做降级标识
+    pluginInstance: {
+      id: pluginId ?? '',
+      pluginId: pluginId ?? '',
+    },
     // 插件管理
     plugins: {
       getAll: emptyArr,
@@ -312,8 +317,8 @@ function bootstrap() {
       </PluginErrorBoundary>,
     );
 
-    // #58e 修复：渲染完成后通知壳。
-    try { window.linkdesk?.pluginViews?.notifyReady?.(pluginId); } catch {} // 非关键操作——多 WebView 已回退，pluginViews 可能不存在
+    // E5.5#9k：notifyReady 不再传参——preload-plugin.ts 从 URL 解析 instanceId+pluginId 自动发送
+    try { window.linkdesk?.pluginViews?.notifyReady?.(); } catch {} // 非关键操作——多 WebView 已回退，pluginViews 可能不存在
   }).catch((err: any) => {
     root.textContent = i18n.t("插件 {{id}} 加载失败", { id: pluginId }) + ":\n" + (err?.message ?? String(err));
   });
