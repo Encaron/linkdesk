@@ -54,6 +54,8 @@ export interface LangDefContribution {
   id: string;
   extensions: string[];
   aliases?: string[];
+  /** 🔒 内部——registerLangDef 运行时注入。插件 author 不应在 plugin.json 中声明此字段。 */
+  _pluginId?: string;
   monarch?: {
     tokenizer: Record<string, unknown>;
   };

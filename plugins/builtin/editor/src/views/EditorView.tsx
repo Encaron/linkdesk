@@ -14,7 +14,8 @@ import { getLangDef } from "@src/core/registry/LangDefRegistry";
 import { shellEvents } from "@src/core/react/ShellEvents";
 
 const lk = (window as any).linkdesk;
-import { initMonacoEnv, syncLangDefsFromShell } from "../services/monaco-init";
+import { initMonacoEnv } from "../services/monaco-init";
+import { syncLangDefsFromShell } from "../services/langdef-sync";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
 import { getLspClient, startLspClient } from "../services/lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";

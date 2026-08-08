@@ -23,15 +23,7 @@ const SKIP_DIRS = new Set(["node_modules", ".git", "dist", ".next", "build"]);
 let _envInitialized = false;
 let _monaco: any = null;
 let _scanPromise: Promise<void> | null = null;
-
-// E5.5#7 Bug B fix：工作区文件夹变更 → 重新扫描（影子 model 过期、新文件夹加入）。
-// 多 WebView 下 onDidChangeFolders 是隔离实例——壳侧文件夹变更不会触发编辑器。
-// workspace:changed 通过 IpcBridge.broadcast → plugin:push → events.on 正确跨越 WebView 边界。
-lk?.events?.on?.("workspace:changed", () => {
-  if (!_monaco) return;
-  _scanPromise = null; // 允许重新扫描
-  scanWorkspaceForTypeScript(_monaco);
-});
+let _workspaceUnsub: (() => void) | null = null;
 
 /**
  * 设置 TypeScript 编译器选项 + 诊断。
@@ -58,6 +50,15 @@ export function setupTypeScriptEnv(monaco: any): void {
     noSemanticValidation: false,
     noSyntaxValidation: false,
   });
+
+  // E5.5#7 Bug B fix：工作区文件夹变更 → 重新扫描（影子 model 过期、新文件夹加入）。
+  // 多 WebView 下 onDidChangeFolders 是隔离实例——壳侧文件夹变更不会触发编辑器。
+  // workspace:changed 通过 IpcBridge.broadcast → plugin:push → events.on 正确跨越 WebView 边界。
+  _workspaceUnsub = lk?.events?.on?.("workspace:changed", () => {
+    if (!_monaco) return;
+    _scanPromise = null; // 允许重新扫描
+    scanWorkspaceForTypeScript(_monaco);
+  }) ?? null;
 
   // console.log("[ts-intel] setupTypeScriptEnv——compilerOptions 已设置");
 
@@ -108,6 +109,15 @@ async function scanDir(
       }
     }
   }
+}
+
+/** 清理工作区变更订阅——编辑器 WebView 销毁时调用。 */
+export function disposeTypeScriptEnv(): void {
+  _workspaceUnsub?.();
+  _workspaceUnsub = null;
+  _envInitialized = false;
+  _monaco = null;
+  _scanPromise = null;
 }
 
 /**

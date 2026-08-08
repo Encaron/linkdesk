@@ -39,31 +39,6 @@ import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
   },
 };
 
-let _langDefsSynced = false;
-
-/**
- * E5.5#7 Bug B fix：从壳侧同步 LangDef 到插件 WebView。
- * 多 WebView 下 LangDefRegistry 在本 WebView 为空——语言插件在壳侧 JS 上下文注册。
- * 本函数通过 IPC 拉取所有 LangDef 并注册到本地 Registry，使 EditorView 的 getLangDef() 正常工作。
- * 幂等——多次调用只执行一次。
- */
-export async function syncLangDefsFromShell(): Promise<void> {
-  if (_langDefsSynced) return;
-  try {
-    const { registerLangDef } = await import("@src/core/registry/LangDefRegistry");
-    const entries: [string, any][] = await (window as any).linkdesk?.langDef?.getAll?.();
-    if (!entries || entries.length === 0) return;
-    for (const [, def] of entries) {
-      registerLangDef((def as any)._pluginId ?? "shell", def as any);
-    }
-    console.error(`[monaco-init] LangDef 同步完成: ${entries.length} 条`);
-  } catch (e) {
-    console.warn("[monaco-init] LangDef 同步失败:", e);
-  } finally {
-    _langDefsSynced = true;
-  }
-}
-
 let _ready = false;
 let _initPromise: Promise<void> | null = null;
 
