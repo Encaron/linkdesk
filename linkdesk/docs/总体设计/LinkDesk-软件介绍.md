@@ -75,7 +75,7 @@ LinkDesk 的壳里什么都没有。不是"还没写"——是**故意不放**�
 
 | 插件类型 | 接口 | 例子 |
 |------|------|------|
-| **视图** | React 组件 `{ tabId, sourceId, isActive }` | 终端、GPS 地图、逻辑分析仪——装上去图标栏多一项，打开就是标签页，享受分屏/keep-alive |
+| **视图** | React 组件 `{ tabId, sourceId, isActive }` | 代码编辑器、地图、MIDI 编辑器、3D 查看器——装上去图标栏多一项，打开就是标签页，享受分屏/keep-alive |
 | **卡片** | `OnData(fields) + OnSend` | FFT 频谱卡、PID 整定卡、虚拟示波器——注册后在工作台网格里拖出来用 |
 | **协议** | `parseLine(line)` 或 Rust 解析器 | 方括号 `[id,val]`、SBQ 心率协议、JSON 行、二进制帧——装上去终端下拉框多一项 |
 | **主题** | 一个 JSON 文件 | Solarized、Dracula、Nord——下载即用，改一个 hex 全局生效 |
@@ -88,7 +88,7 @@ LinkDesk 的壳里什么都没有。不是"还没写"——是**故意不放**�
 
 这四样——settings / marketplace / welcome / file-tree——是"工厂插件"。它们声明 `factoryRole`（系统插槽），出厂预装。**但任何插件都可以声明同一个 factoryRole 来替换它们。** 你写一个更好看的设置插件，声明 `factoryRole: "settings"`，装上去——`Ctrl+,` 打开的就是你的设置。核心不知道设置长什么样——核心只知道有个 `FactorySlots` 表，表里记录"settings 这个槽位当前指向哪个插件 ID"。**核心提供 Registry 和 loader，剩下的全是插件填进去的——包括系统级 UI。**
 
-**每一类插件背后都是一个可以无限细分的子平台。** 协议插件不只是方括号和二进制——CAN 总线、Modbus RTU、TCP 桥接、文件回放，都是协议插件。视图插件不只是终端——Monaco 编辑器、文件树、逻辑分析仪时序图，都是视图插件。卡片插件不只是温度表——FFT 频谱、PID 整定、TinyML 推理，都是卡片插件。
+**每一类插件背后都是一个可以无限细分的子平台。** 协议插件：方括号、JSON 行、MQTT、gRPC、数据库 wire protocol。视图插件：代码编辑器、文件树、地图、CAD、音乐制作、PDF 阅读器。卡片插件：K 线图、论文分析卡、气象热力图、仪表盘——FFT 频谱只是其中一种。**没有哪个领域是"主要用例"——全是插件，平级。**
 
 ### V2 是怎么死的
 
