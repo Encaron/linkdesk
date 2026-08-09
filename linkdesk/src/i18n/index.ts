@@ -26,12 +26,15 @@ if (typeof window !== "undefined") {
         }
       }
       if (data.lang) {
+        // E5.6#10f：池 WebView 初始 lng="zh" 无资源，首渲用 key fallback。
+        // addResourceBundle 不触发 react-i18next 重渲染，changeLanguage 同语言 no-op。
+        // 强制切到临时语言再切回来——两次真正的 languageChanged 事件 → useTranslation 拿到译文。
+        if (i18n.language === data.lang) {
+          const temp = data.lang === "zh" ? "en" : "zh";
+          i18n.changeLanguage(temp);
+        }
         i18n.changeLanguage(data.lang);
       }
-      // E5.6#10f：addResourceBundle 不触发 react-i18next 的 useTranslation 重渲染。
-      // changeLanguage 同语言时 i18next 内部 no-op——也不触发。
-      // 池 WebView 初始无资源 → 首渲用 key fallback → emit languageChanged → 重渲染正确译文。
-      i18n.emit?.("languageChanged", data.lang ?? i18n.language);
     };
 
     const initial = langApi.getInitial();
