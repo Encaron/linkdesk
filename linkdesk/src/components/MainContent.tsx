@@ -28,6 +28,8 @@ import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
 import { useWebViewSync } from "../hooks/useWebViewSync";
+// E5.6#9a：Pool 布局同步——替代 useWebViewSync
+import { usePoolSync } from "../hooks/usePoolSync";
 // E5#5a：壳内通信——订阅/emit 事件，逐步替代 App.tsx props
 import { shellEvents } from "../core/react/ShellEvents";
 // E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
@@ -40,6 +42,12 @@ import "./MainContent.css";
 
 interface MainContentProps {
   editorAreaRef?: React.RefObject<HTMLDivElement | null>;
+  /** E5.6#9d：侧栏当前容器 ID——null = 无活动侧栏视图 */
+  sidebarView?: string | null;
+  /** E5.6#9d：侧栏是否展开（未折叠） */
+  isSidebarVisible?: boolean;
+  /** E5.6#9d：侧栏当前宽度（px） */
+  sidebarWidth?: number;
 }
 
 // E5#5f：壳内视图注册表——加新壳视图只加一行，不 switch
@@ -107,6 +115,9 @@ function renderTabContent(
 
 function MainContent({
   editorAreaRef,
+  sidebarView = null,
+  isSidebarVisible = false,
+  sidebarWidth = 0,
 }: MainContentProps) {
   // E5#5e-ii-f：拖拽分屏状态——从 App.tsx 搬进 MainContent
   const [dropZone, setDropZone] = useState<DropZone | null>(null);
@@ -302,6 +313,9 @@ function MainContent({
 
   // E5.6#2c：Pool 模型——单 WebView 模式，跳过 useWebViewSync
   const ENABLE_POOL_MODEL = true;
+
+  // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
+  usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0 });
 
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
   const pv = ENABLE_POOL_MODEL ? undefined : (window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined);

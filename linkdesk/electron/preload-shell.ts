@@ -430,6 +430,9 @@ try {
         ipcRenderer.on('pool:ready', handler);
         return () => ipcRenderer.removeListener('pool:ready', handler);
       },
+      /** E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize 时壳推送 */
+      setBounds: (zone: string, bounds: { x: number; y: number; width: number; height: number }) =>
+        ipcRenderer.send('pool:set-bounds', zone, bounds),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

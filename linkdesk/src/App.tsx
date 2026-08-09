@@ -327,6 +327,28 @@ function App() {
         if (bounds) b[z.zone] = bounds;
       }
       setZoneBounds(b);
+
+      // E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize / 侧栏拖宽时推送
+      const poolApi = (window as any).linkdesk?.pool;
+      if (poolApi?.setBounds) {
+        // LayoutEngine bounds 相对于 title bar 下方的容器——WebContentsView bounds 需加 TITLE_BAR_HEIGHT 偏移
+        if (b.sidebar) {
+          poolApi.setBounds("sidebar", {
+            x: b.sidebar.x,
+            y: b.sidebar.y + TITLE_BAR_HEIGHT,
+            width: b.sidebar.width,
+            height: b.sidebar.height,
+          });
+        }
+        if (b.main) {
+          poolApi.setBounds("main", {
+            x: b.main.x,
+            y: b.main.y + TITLE_BAR_HEIGHT,
+            width: b.main.width,
+            height: b.main.height,
+          });
+        }
+      }
     });
     updateSize();
     window.addEventListener("resize", updateSize);
@@ -377,6 +399,8 @@ function App() {
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
+  // E5.6#9d：侧栏展开/折叠状态——订阅 SidePanel 发出的 sidebar:toggled
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
   sidebarViewRef.current = sidebarView;
   // E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件
@@ -388,6 +412,17 @@ function App() {
   }, []);
 
   // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
+
+  // E5.6#9d：订阅 SidePanel 发出的侧栏状态变化——用于 pushLayout
+  useEffect(() => {
+    const u1 = shellEvents.on("sidebar:containerChanged", (cid: string | null) => {
+      setSidebarView(cid);
+    });
+    const u2 = shellEvents.on("sidebar:toggled", (visible: boolean) => {
+      setIsSidebarExpanded(visible);
+    });
+    return () => { u1(); u2(); };
+  }, []);
 
   /* ---- QuickPick 归一化（E5.5#7-p12）——所有浮层共用一个 QuickPick，QuickPickService 管理状态 ---- */
   useEffect(() => {
@@ -567,7 +602,7 @@ function App() {
         })()}
         {zoneBounds.main && (
           <div style={{ position: "fixed", display: "flex", flexDirection: "column", overflow: "hidden", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
-            <MainContent editorAreaRef={editorAreaRef} />
+            <MainContent editorAreaRef={editorAreaRef} sidebarView={sidebarView} isSidebarVisible={isSidebarExpanded} sidebarWidth={zoneBounds.sidebar?.width ?? 0} />
           </div>
         )}
         {zoneBounds.statusbar && (
