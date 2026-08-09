@@ -295,13 +295,19 @@ export class IpcBridge {
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
   }
 
-  /** 广播事件到所有已注册的实例 WebView——并存储 payload 供新 WebView 重放 */
+  /** 广播事件到所有已注册的实例 WebView + Pool WebContentsView——并存储 payload 供新 WebView 重放 */
   broadcast(channel: string, payload: unknown, source?: string): void {
     this.lastBroadcasts.set(channel, payload);
     // E5#74e debug：绕过 pushToPlugin 队列——直发 webContents.send
     for (const instanceId of this.windowManager.getAllInstanceIds()) {
       const view = this.windowManager.getPluginView(instanceId);
       if (view) view.webContents.send('plugin:push', { channel, payload, source });
+    }
+    // E5.6#10f：Pool WebContentsView 也需要接收广播（lang:changed / theme:changed 等）
+    for (const poolView of this.windowManager.getAllPoolViews()) {
+      if (!poolView.webContents.isDestroyed()) {
+        poolView.webContents.send('plugin:push', { channel, payload, source });
+      }
     }
   }
 

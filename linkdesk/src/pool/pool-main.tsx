@@ -16,6 +16,8 @@ import ReactDOM from "react-dom/client";
 import SidebarRenderer from "./SidebarRenderer";
 import MainRenderer from "./MainRenderer";
 import type { PoolLayout } from "../core/types/poolLayout";
+// E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
+import "../i18n";
 
 // ── PoolApp ──
 
