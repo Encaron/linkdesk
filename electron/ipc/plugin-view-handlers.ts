@@ -142,16 +142,21 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
 
   // E5.6#9c：壳→Pool：同步 Pool bounds——窗口 resize 时壳推送最新 bounds
   ipcMain.on('pool:set-bounds', (_event, zone: string, bounds: { x: number; y: number; width: number; height: number }) => {
-    if (bounds.width <= 0 || bounds.height <= 0) return;
     const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
-    if (poolView && !poolView.webContents.isDestroyed()) {
-      poolView.setBounds(bounds);
-      // E5.6#10：SidebarPool 首次 setBounds 时设为可见——接管壳 DOM 侧栏区域
-      // 后续 resize 重复调用 setVisible(true) 幂等无害。
-      // MainPool 暂不设为可见（E5.6#11 再迁移主区）。
-      if (zone === 'sidebar') {
-        poolView.setVisible(true);
-      }
+    if (!poolView || poolView.webContents.isDestroyed()) return;
+
+    // 侧栏折叠时 zone width → 0——隐藏 Pool，防止空白 WebContentsView 遮挡主区
+    if (bounds.width <= 0 || bounds.height <= 0) {
+      if (zone === 'sidebar') poolView.setVisible(false);
+      return;
+    }
+
+    poolView.setBounds(bounds);
+    // E5.6#10：SidebarPool 有效 bounds 时设为可见——接管壳 DOM 侧栏区域
+    // 后续 resize 重复调用 setVisible(true) 幂等无害。
+    // MainPool 暂不设为可见（E5.6#11 再迁移主区）。
+    if (zone === 'sidebar') {
+      poolView.setVisible(true);
     }
   });
 

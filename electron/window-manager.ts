@@ -452,6 +452,8 @@ export class WindowManager {
     }
 
     view.setVisible(false);
+    // E5.6#10：Pool 默认背景色——防止 WebContentsView 空内容时显示白色（暗色主题下刺眼）
+    view.setBackgroundColor('#1e1e1e');
     this.mainWindow.contentView.addChildView(view);
 
     console.log(`[WindowManager] Pool "${debugLabel}" WebContentsView 已创建`);
