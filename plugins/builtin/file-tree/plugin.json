@@ -20,7 +20,8 @@
     },
     "views": {
       "explorer": [
-        { "id": "folders", "title": "", "render": "src/views/FoldersView.tsx", "order": 0 }
+        { "id": "folders", "title": "", "render": "src/views/FoldersView.tsx", "order": 0 },
+        { "id": "search", "title": "搜索", "render": "src/views/SearchView.tsx", "order": 1 }
       ]
     },
     "commands": [
