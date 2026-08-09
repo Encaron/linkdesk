@@ -416,6 +416,22 @@ try {
         listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
+    // ── E5.6#8c：pool API——壳推送布局到池、监听池就绪 ──
+    pool: {
+      /** 推送布局到指定 zone 的 Pool */
+      pushLayout: (zone: string, layout: any) => ipcRenderer.send('pool:push-layout', zone, layout),
+      /** 监听指定 zone 的池就绪——zone 过滤，返回 unsubscribe */
+      onReady: (zone: string, cb: () => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, readyZone: string) => {
+          if (readyZone === zone) {
+            try { cb(); } catch { /* contextBridge 回调静默失败 */ }
+          }
+        };
+        ipcRenderer.on('pool:ready', handler);
+        return () => ipcRenderer.removeListener('pool:ready', handler);
+      },
+    },
+
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
     window: {
       minimize:  () => ipcRenderer.send('window:minimize'),

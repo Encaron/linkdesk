@@ -6,7 +6,7 @@
  */
 
 import PluginComponent from "./PluginComponent";
-import type { SidebarLayout } from "./pool-main";
+import type { SidebarLayout } from "../core/types/poolLayout";
 
 interface SidebarRendererProps {
   sidebar?: SidebarLayout;
