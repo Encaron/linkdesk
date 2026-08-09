@@ -10,6 +10,20 @@
 import { useEffect, useRef } from "react";
 import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, PoolGroup } from "../core/types/poolLayout";
+import { ViewContainerService } from "../core/services/ViewContainerService";
+
+/**
+ * E5.6#11：containerId → pluginId 解析。
+ * ViewContainerService 不直接暴露 container→plugin 映射，
+ * 从容器已注册的第一个 view descriptor 的 _pluginId 反查。
+ * 无 views → 返回 null（容器空——不应到达此处，但安全兜底）。
+ */
+function resolvePluginIdForContainer(containerId: string): string | null {
+  const views = ViewContainerService.getViews(containerId);
+  if (views.length === 0) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return ((views[0] as any)._pluginId as string) ?? null;
+}
 
 export interface UsePoolSyncInput {
   tabState: TabState;
@@ -36,11 +50,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     const poolApi = poolApiRef.current;
     if (!poolApi) return;
 
-    // 侧栏布局
+    // 侧栏布局——E5.6#11：containerId → pluginId 解析，PluginComponent 只认 pluginId
     const sidebar: SidebarLayout = {
       visible: isSidebarVisible && sidebarView !== null,
       width: sidebarWidth,
-      viewId: sidebarView,
+      viewId: sidebarView ? resolvePluginIdForContainer(sidebarView) : null,
     };
 
     // 主区分屏组——每个 group 映射为一个 flex 区域
