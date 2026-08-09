@@ -41,7 +41,7 @@ E5.5#9a-#9m 的 Per-Tab 代码不会被"搬"到新模型——会被**删掉**�
 | 🔥 API 变更 + 补全 | [`API补全/API变更清单.md`](API补全/API变更清单.md) — pool.* 新命名空间 + 删 pluginViews |
 | 🔥 Pool API 详情 | [`API补全/Pool模型API设计.md`](API补全/PoolModelAPI设计.md) — pool.* 新命名空间 + 补全 |
 | 🔴 回退方案 | [`审计与回退/Per-Tab回退方案.md`](审计与回退/Per-Tab回退方案.md) — #9 代码哪些改/哪些删 |
-| 🔴 通信链路审计 | [`审计与回退/通信链路审计.md`](审计与回退/通信链路审计.md) — 22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC 通道 + 11 插件 Emitter 订阅，全链路判决 |
+| 🔴 通信链路审计 | [`审计与回退/通信链路审计.md`](审计与回退/通信链路审计.md) — 6 轮自查：22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC + 14 单例方法调用 ~67 断裂点 |
 | 🔴 硬编码清扫 | [`硬编码消灭/硬编码清扫方案.md`](硬编码消灭/硬编码清扫方案.md) — MenuId/schema/enum/plugin-file-service |
 | 📋 插件开发 | [`文档/插件开发指南-Pool版.md`](文档/插件开发指南-Pool版.md) — Pool 模型下的插件 API |
 
@@ -77,7 +77,7 @@ E5.6_Pool模型重构/
 ├── 审计与回退/
 │   ├── Per-Tab回退方案.md              ← E5.6#0a 逐文件回退操作手册
 │   ├── E5.5任务保留对照.md             ← E5.5 58任务→E5.6 映射
-│   └── 通信链路审计.md                 ← E5.6#0b 22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC + 11 插件 Emitter 订阅，全链路判决
+│   └── 通信链路审计.md                 ← E5.6#0b 6 轮自查——22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC + 14 单例 ~67 断裂点
 ├── 硬编码消灭/
 │   └── 硬编码清扫方案.md               ← MenuId/schema/enum/plugin-file-service
 ├── 回归验证/
