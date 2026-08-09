@@ -7,7 +7,7 @@
  * 缓冲回放模式（E5.6#8b）保证 pushLayout 在池 React mount 之前到达不丢失。
  */
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
@@ -60,6 +60,19 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     poolApiRef.current = (window as any).linkdesk?.pool;
   }
 
+  // E5.6#11j fix：layoutVersion——ViewContainerService 写操作后触发重推。
+  // reorderView/setVisible 会 fire onDidChangeActiveViews → bump version。
+  // setCollapsed 不 fire 事件 → handler 内手动 bump。
+  const [layoutVersion, setLayoutVersion] = useState(0);
+
+  // 订阅 ViewContainerService.onDidChangeActiveViews——reorder/setVisible 后触发重推
+  useEffect(() => {
+    const sub = ViewContainerService.onDidChangeActiveViews.event(() => {
+      setLayoutVersion((v) => v + 1);
+    });
+    return () => sub();
+  }, []);
+
   // E5.6#11j：注册池→壳侧栏操作回调。池组件调用 pool.sidebarAction() →
   // 主进程转发 → 壳 preload → 此 handler → ViewContainerService 写方法。
   useEffect(() => {
@@ -72,6 +85,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
           break;
         case "setCollapsed":
           ViewContainerService.setCollapsed(action.viewId, action.collapsed);
+          setLayoutVersion((v) => v + 1);  // setCollapsed 不 fire 事件——手动触发重推
           break;
         case "setVisible":
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
@@ -127,5 +141,5 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
 
     poolApi.pushLayout("sidebar", { sidebar, groups: [] } satisfies PoolLayout);
     poolApi.pushLayout("main", { groups } satisfies PoolLayout);
-  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth]);
+  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
 }
