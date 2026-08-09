@@ -6,13 +6,10 @@
  */
 
 import PluginComponent from "./PluginComponent";
+import type { SidebarLayout } from "./pool-main";
 
 interface SidebarRendererProps {
-  sidebar?: {
-    visible: boolean;
-    width: number;
-    viewId: string | null;
-  };
+  sidebar?: SidebarLayout;
 }
 
 export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
