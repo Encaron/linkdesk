@@ -10,7 +10,9 @@
 
 | 指标 | 数值 |
 |:--|:--|
-| 受影响的源文件 | **11 个** |
+| 受影响的源文件 | **18 个** |
+| 其中需要修改 | 16 个 |
+| 其中整文件删除 | 2 个（useWebViewSync.ts + plugin-view.html） |
 | 核心 `instanceId` 引用 | ~280 处（不含 `node_modules`） |
 | `rekeyInstance` 调用链 | 7 处（window-manager + plugin-view-registry + handlers + preload-shell + useWebViewSync + linkdesk-api） |
 | `findGraceInstance` 调用链 | 7 处 |
@@ -20,7 +22,8 @@
 | `webViewBoundsReady` 引用 | 11 处 |
 | `pluginViews.*` preload 暴露方法 | 14 个 |
 | `useWebViewSync()` 调用点 | 1 处（MainContent.tsx:326） |
-| 整文件删除 | 1 个（useWebViewSync.ts ~270 行） |
+| 插件/测试文件沾染 | **0 个** ✅ |
+| ShellPluginComponent.tsx | **不存在**——从 E5.6#36 移除 |
 
 ---
 
@@ -159,7 +162,21 @@ grep -n "instanceId\|graceInstance\|rekeyInstance\|plugin-view:" electron/ipc/pl
 
 ---
 
-### 1.5 `electron/preload-shell.ts`（~350 行）——`pluginViews` 命名空间替换
+### 1.5 `electron/main.ts`——import 引用更新
+
+| 行 | 内容 | 操作 |
+|:--|:--|:--|
+| 20 | `import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'` | → `import { registerPoolHandlers } from './ipc/pool-handlers.js'` |
+| 26 | `import { PluginViewRegistry } from './plugin-view-registry.js'` | → `import { PoolRegistry } from './pool-registry.js'` |
+
+**验证 grep：**
+```
+grep -n "plugin-view-handlers\|PluginViewRegistry" electron/main.ts  # 零匹配
+```
+
+---
+
+### 1.6 `electron/preload-shell.ts`（~350 行）——`pluginViews` 命名空间替换
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -193,7 +210,7 @@ grep -n "pluginViews\|instanceId\|_readyBuffer" electron/preload-shell.ts  # 零
 
 ---
 
-### 1.6 `electron/preload-plugin.ts`（~600 行）——插件侧 per-tab 清理
+### 1.7 `electron/preload-plugin.ts`（~600 行）——插件侧 per-tab 清理
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -209,7 +226,7 @@ grep -n "_pluginInstanceId\|notifyReady\|pluginInstance" electron/preload-plugin
 
 ---
 
-### 1.7 `electron/ipc/serial-handlers.ts`——`getAllInstanceIds()` 广播
+### 1.8 `electron/ipc/serial-handlers.ts`——`getAllInstanceIds()` 广播
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -224,7 +241,7 @@ grep -n "getAllInstanceIds\|getInstanceIdsForPlugin" electron/ipc/serial-handler
 
 ---
 
-### 1.8 `electron/ipc/file-handlers.ts`——`getAllInstanceIds()` 广播
+### 1.9 `electron/ipc/file-handlers.ts`——`getAllInstanceIds()` 广播
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -237,21 +254,22 @@ grep -n "getAllInstanceIds" electron/ipc/file-handlers.ts  # 零匹配
 
 ---
 
-### 1.9 `electron/keyboard-router.ts`——`getAllInstanceIds()` 键盘分发
+### 1.10 `electron/keyboard-router.ts`——`PluginViewRegistry` import + 键盘分发
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
+| 19 | `import type { PluginViewRegistry } from './plugin-view-registry.js'` | → `import type { PoolRegistry }` |
 | 250-251 | `getAllInstanceIds()` 遍历 → 键盘事件发送 | → 发送到活跃 Pool |
 | 256-259 | `registerPlugin(instanceId, pluginId, url, force?)` patch | **删除** patch |
 
 **验证 grep：**
 ```
-grep -n "getAllInstanceIds\|getInstanceIdsForPlugin" electron/keyboard-router.ts  # 零匹配
+grep -n "PluginViewRegistry\|getAllInstanceIds\|registerPlugin" electron/keyboard-router.ts  # 零匹配（除新 PoolRegistry import）
 ```
 
 ---
 
-### 1.10 `src/hooks/useWebViewSync.ts`（~270 行）——🔴 整文件删除
+### 1.11 `src/hooks/useWebViewSync.ts`（~270 行）——🔴 整文件删除
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -278,7 +296,7 @@ grep -rn "useWebViewSync" src/  # 零匹配
 
 ---
 
-### 1.11 `src/components/MainContent.tsx`——useWebViewSync 集成剥离
+### 1.12 `src/components/MainContent.tsx`——useWebViewSync 集成剥离
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -298,22 +316,27 @@ grep -n "useWebViewSync\|readyWebViewIds\|webViewBoundsReady\|webViewTimeout" sr
 
 ---
 
-### 1.12 `src/plugin-shell-main.tsx`——多 WebView 模式分支
+### 1.13 `src/plugin-shell-main.tsx`——多 WebView 模式分支 + plugin-view 残留
+
+> 此文件处理两种渲染模式。E5.5#9 加了模式 1（多 WebView）分支。E5.6 回退到仅模式 2（壳内渲染）。
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
+| 4-8 | 模式 1 注释——多 WebView 渲染说明 | **删** |
+| 24 | `params.get("pluginId") ?? params.get("plugin-view")` | → 仅保留 `params.get("pluginId")` |
 | 27 | 多 WebView 判据注释 | 删 |
 | 122 | `notifyReady: noop` | **删** |
+| 229 | 错误消息 `缺少参数: ?plugin-view=...` | → 改消息，删 `plugin-view` 提及 |
 | 323-324 | `window.linkdesk?.pluginViews?.notifyReady?.()` | **删** |
 
 **验证 grep：**
 ```
-grep -n "notifyReady\|pluginViews\|isDevMode" src/plugin-shell-main.tsx  # 零匹配（除注释）
+grep -n "plugin-view\|notifyReady\|pluginViews" src/plugin-shell-main.tsx  # 零匹配
 ```
 
 ---
 
-### 1.13 `src/pluginLoader/loader.ts`——useWebViewSync 注释
+### 1.14 `src/pluginLoader/loader.ts`——useWebViewSync 注释
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
@@ -321,27 +344,79 @@ grep -n "notifyReady\|pluginViews\|isDevMode" src/plugin-shell-main.tsx  # 零�
 
 ---
 
-### 1.14 `src/pluginLoader/viewRegistry.ts`——pluginViews 引用
+### 1.15 `src/pluginLoader/viewRegistry.ts`——pluginViews 引用
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
 | 118 | `const pv = linkdesk()?.pluginViews` | → `linkdesk()?.pool` |
+| 119-121 | `pv?.getInstanceIdsForPlugin(pluginId).then(...)` | → pool 级 API |
 | 124 | 降级注释 `pluginId = instanceId` | 删 |
 
 ---
 
-### 1.15 `src/core/api/linkdesk-api.ts`——类型定义
+### 1.16 `src/core/api/linkdesk-api.ts`——pluginViews 类型定义
+
+> 整个 `pluginViews` 接口替换为 `pool` 接口。以下逐行列出所有 per-tab 类型。
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
-| 197 | `notifyReady(pluginId?: string)` | → `pool.ready()` |
-| 207 | `findGraceInstance?(pluginId)` | **删** |
-| 209 | `rekeyInstance?(old, new)` | **删** |
+| 197 | `notifyReady(pluginId?: string): void` | → `pool.ready()` |
+| 199 | `getInstanceIdsForPlugin?(pluginId): Promise<string[]>` | **删** |
+| 204 | `scheduleDestroy?(id: string): void` | **删** |
+| 205 | `cancelDestroy?(id: string): Promise<boolean>` | **删** |
+| 207 | `findGraceInstance?(pluginId): Promise<string \| undefined>` | **删** |
+| 209 | `rekeyInstance?(oldInstanceId, newInstanceId): Promise<boolean>` | **删** |
 
 **验证 grep：**
 ```
-grep -n "notifyReady\|findGraceInstance\|rekeyInstance" src/core/api/linkdesk-api.ts  # 零匹配
+grep -n "notifyReady\|findGraceInstance\|rekeyInstance\|scheduleDestroy\|cancelDestroy\|getInstanceIdsForPlugin" src/core/api/linkdesk-api.ts  # 零匹配
 ```
+
+---
+
+### 1.17 `plugins/user/lang-defaults/en.json`——i18n 字符串
+
+| 行 | 内容 | 操作 |
+|:--|:--|:--|
+| 95 | `"缺少参数: ?plugin-view=<插件ID>"` | → `"缺少参数: ?pluginId=<插件ID>"`（仅保留 pluginId 参数） |
+
+**验证 grep：**
+```
+grep -n "plugin-view" plugins/user/lang-defaults/en.json  # 零匹配
+```
+
+---
+
+### 1.18 `plugin-view.html`（项目根）——🔴 整文件删除
+
+| 行 | 内容 | 操作 |
+|:--|:--|:--|
+| 1-30 | Per-Tab WebView 的 HTML 入口 | `git rm plugin-view.html`（Phase 8） |
+
+> **注意：** `plugin-view.html` 不在 Vite `rollupOptions.input` 中（`vite.config.ts:79-80` 仅 `main: index.html`），所以删除不影响构建。Vite dev server 仅在 dev mode 直接 serve 它。
+
+**验证：**
+```
+test -f plugin-view.html && echo "EXISTS" || echo "DELETED"  # DELETED
+```
+
+---
+
+### 1.19 🟢 ShellPluginComponent.tsx——不存在
+
+> E5.6#36 原计划删除此文件，但 grep 全量结果为 **0 匹配**——此文件从未被创建。从 E5.6#36 中移除。
+
+---
+
+### 1.20 🟢 全量确认——插件代码零沾染
+
+| 检查范围 | 结果 |
+|:--|:--|
+| `plugins/user/*/src/**/*.{ts,tsx}` — per-tab 符号 | **零匹配** ✅ |
+| `src/__tests__/**` — per-tab 符号 | **零匹配** ✅ |
+| `node_modules` | **排除**——第三方代码不受影响 |
+
+> 插件和测试代码完全不引用 `instanceId` / `rekeyInstance` / `findGraceInstance` / `graceTimers` / `notifyReady` / `readyWebViewIds` / `webViewBoundsReady` / `pluginViews`。回退对插件零影响。
 
 ---
 
