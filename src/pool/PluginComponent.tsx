@@ -13,6 +13,7 @@
  */
 
 import React, { Suspense, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import ErrorBoundary from "../components/shared/ErrorBoundary";
 
@@ -31,6 +32,7 @@ interface PluginComponentProps {
 }
 
 export default function PluginComponent({ pluginId, isActive, tabId, sourceId }: PluginComponentProps) {
+  const { t } = useTranslation();
   // React.lazy 必须稳定引用——useMemo 按 pluginId 缓存，防止每次渲染 new → unmount → flicker
   // 查找逻辑内聚在 useMemo 内——rules-of-hooks 要求 hook 在 early return 之前
   const LazyComponent = useMemo(() => {
@@ -56,7 +58,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId }:
   if (!LazyComponent) {
     return (
       <div className="plugin-missing-view">
-        <p>{i18n.t('插件 "{{id}}" 不可用', { id: pluginId })}</p>
+        <p>{t('插件 "{{id}}" 不可用', { id: pluginId })}</p>
       </div>
     );
   }
@@ -77,7 +79,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId }:
               userSelect: "none",
             }}
           >
-            {i18n.t("加载中...")}
+            {t("加载中...")}
           </div>
         }
       >
