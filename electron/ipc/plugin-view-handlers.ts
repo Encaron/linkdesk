@@ -78,15 +78,18 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
     _registry?.reloadPlugin(instanceId);
   });
 
+  // E5.6#1：关闭 per-tab WebView 创建——Phase 1 回退到单 WebView
   // E3f #58c + E5.5#9c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
   // signature: (instanceId, pluginId)——每个标签页独立 WebView
   ipcMain.handle('plugin-view:create', (_event, instanceId: string, pluginId: string) => {
-    const isDev = !app.isPackaged;
-    const url = isDev
-      ? `${DEV_SERVER_URL}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`
-      // 生产环境通过 linkdesk:// 协议加载（需确保 dist/plugin-view.html 已构建并部署到协议映射的路径）
-      : `linkdesk://${pluginId}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`;
-    _registry?.registerPlugin(instanceId, pluginId, url);
+    console.error('[E5.6#1] plugin-view:create 被调用但已禁用——per-tab WebView 已关闭。instanceId:', instanceId, 'pluginId:', pluginId);
+    return undefined;
+    // ---- 以下代码 E5.6 Phase 1 禁用 ----
+    // const isDev = !app.isPackaged;
+    // const url = isDev
+    //   ? `${DEV_SERVER_URL}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`
+    //   : `linkdesk://${pluginId}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`;
+    // _registry?.registerPlugin(instanceId, pluginId, url);
   });
 
   // #58e 修复 + E5.5#9c：插件 WebView 渲染完成通知——主进程转发到壳窗口
