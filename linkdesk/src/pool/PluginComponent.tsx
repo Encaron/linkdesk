@@ -24,36 +24,56 @@ const pluginModules = {
   ...import.meta.glob("../../plugins/user/*/src/index.tsx"),
 };
 
+// E5.6#11e：view 文件 glob——按 renderPath O(1) 查找侧栏 view 组件。
+// loader.ts 用完全相同格式的 key（../../plugins/.../src/views/Xxx.tsx）。
+const viewModules = {
+  ...import.meta.glob("../../plugins/builtin/*/src/views/**/*.tsx"),
+  ...import.meta.glob("../../plugins/user/*/src/views/**/*.tsx"),
+};
+
 interface PluginComponentProps {
   pluginId: string;
   isActive: boolean;
   tabId?: string;
   sourceId?: string;
+  /** E5.6#11e：侧栏 view 的 renderPath——loader.ts 存的 glob key。提供时优先此路径加载组件。 */
+  renderPath?: string;
 }
 
-export default function PluginComponent({ pluginId, isActive, tabId, sourceId }: PluginComponentProps) {
+export default function PluginComponent({ pluginId, isActive, tabId, sourceId, renderPath }: PluginComponentProps) {
   const { t } = useTranslation();
-  // React.lazy 必须稳定引用——useMemo 按 pluginId 缓存，防止每次渲染 new → unmount → flicker
-  // 查找逻辑内聚在 useMemo 内——rules-of-hooks 要求 hook 在 early return 之前
+  // React.lazy 必须稳定引用——useMemo 按 pluginId + renderPath 缓存，防止每次渲染 new → unmount → flicker
+  // E5.6#11e：renderPath 优先——O(1) 直接查找 view 组件；fallback 到 pluginId 匹配 index.tsx（主区用）
   const LazyComponent = useMemo(() => {
-    let modulePath: string | undefined;
-    for (const path of Object.keys(pluginModules)) {
-      if (path.includes(`/${pluginId}/`)) {
-        modulePath = path;
-        break;
-      }
+    let loader: (() => Promise<any>) | undefined;
+
+    if (renderPath) {
+      // 侧栏 view：按 loader.ts 存的 glob key O(1) 查找
+      loader = viewModules[renderPath];
     }
-    const loader = modulePath ? pluginModules[modulePath] : undefined;
+
+    if (!loader) {
+      // 主区 tab / fallback：按 pluginId 匹配 index.tsx
+      let modulePath: string | undefined;
+      for (const path of Object.keys(pluginModules)) {
+        if (path.includes(`/${pluginId}/`)) {
+          modulePath = path;
+          break;
+        }
+      }
+      loader = modulePath ? pluginModules[modulePath] : undefined;
+    }
+
     if (!loader) return null;
 
     return React.lazy<React.ComponentType<{ isActive: boolean; tabId?: string; sourceId?: string }>>(() =>
-      loader().then((mod: any) => ({
+      loader!().then((mod: any) => ({
         default: mod.default || (() => {
           throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
         }),
       })),
     );
-  }, [pluginId]);
+  }, [pluginId, renderPath]);
 
   if (!LazyComponent) {
     return (
