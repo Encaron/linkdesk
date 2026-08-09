@@ -105,6 +105,14 @@ function App() {
   // E5#88d：全局 unhandledrejection 兜底——防止 init 链等异步流程静默失败
   useEffect(() => {
     const handler = (event: PromiseRejectionEvent) => {
+      // E5.6#9h：extension-file:// 主题文件 404 是 @codingame 已知无害错误，
+      // VS Code 1.90+ light_modern.json 不在 monaco-languageclient 的打包中。
+      // defineThemeSafe 已有 vs/vs-dark 兜底，功能不受影响。
+      const msg = event.reason?.message ?? String(event.reason);
+      if (msg.includes("extension-file://") && msg.includes("Not Found")) {
+        event.preventDefault();
+        return;
+      }
       reportError({ message: "未捕获的 Promise 拒绝", source: "App", error: event.reason, silent: true });
     };
     window.addEventListener("unhandledrejection", handler);
@@ -583,8 +591,10 @@ function App() {
             <IconBar showHamburger={showHamburger} />
           </div>
         )}
+        {/* E5.6#10a：SidebarPool WebContentsView 接管侧栏渲染——壳 DOM sidebar div 隐藏，
+            但保留 SidePanel 挂载作为 fallback（pool 崩溃时恢复 display:flex 即可回退）。 */}
         {zoneBounds.sidebar && (
-          <div style={{ position: "fixed", display: "flex", overflow: "hidden", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y + TITLE_BAR_HEIGHT, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
+          <div style={{ position: "fixed", display: "none", overflow: "hidden", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y + TITLE_BAR_HEIGHT, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
             <SidePanel width={zoneBounds.sidebar.width} />
           </div>
         )}

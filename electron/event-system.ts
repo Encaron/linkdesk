@@ -34,9 +34,6 @@ export interface EventSystemApi {
   emit(channel: string, payload: unknown): void;
 }
 
-const DEV_LOG = typeof process !== "undefined"
-  && (process.env.NODE_ENV === "development" || !process.env.NODE_ENV);
-
 export function createEventSystem(
   ipcRenderer: IpcRenderer,
   options: EventSystemOptions,
@@ -68,7 +65,7 @@ export function createEventSystem(
     },
 
     emit(channel: string, payload: unknown): void {
-      if (DEV_LOG) console.debug(`[events] ${logPrefix} → emit "${channel}"`);
+      // E5.6#9e：DEV_LOG 模式 console.debug 洪水——emit 每次调用→启动时 keybindings:changed 等 ~20 次
       ipcRenderer.send('plugin:emit', { channel, payload });
     },
   };
@@ -124,7 +121,7 @@ export function listenDirect(
   }
 
   const handler = (_event: any, ...args: any[]) => cb(...args);
-  if (DEV_LOG) console.debug(`[events] listenDirect("${channel}")`);
+  // E5.6#9e：DEV_LOG 模式 console.debug 洪水——listenDirect 每次调用→启动时 config:changed/settings:* 等 ~30 次
   ipcRenderer.on(channel, handler);
   return () => { ipcRenderer.removeListener(channel, handler); };
 }
