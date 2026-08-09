@@ -16,6 +16,9 @@ import ReactDOM from "react-dom/client";
 import SidebarRenderer from "./SidebarRenderer";
 import MainRenderer from "./MainRenderer";
 import type { PoolLayout } from "../core/types/poolLayout";
+// E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
+import "../index.css";
+import "@vscode/codicons/dist/codicon.css";
 // E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
 import "../i18n";
 

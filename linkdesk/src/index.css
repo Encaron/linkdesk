@@ -118,7 +118,7 @@
   padding: 0;
 }
 
-html, body, #root {
+html, body, #root, #pool-root {
   height: 100%;
   overflow: hidden;
   display: flex;
