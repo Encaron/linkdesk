@@ -2,7 +2,7 @@
 
 > 2026-08-09。**从 Per-Tab WebView（O(N) 进程）重构为双Pool WebView 模型（O(1) 进程）。**
 > SidebarPool + MainPool + OverlayWindow = 4 个 WebContentsView。进程 O(1)。
-> **83 任务，16 Phase，串行执行。**
+> **86 任务，16 Phase，串行执行。**
 
 ---
 
@@ -28,7 +28,7 @@ E5.5#9a-#9m 的 Per-Tab 代码不会被"搬"到新模型——会被**删掉**�
 | 你要做什么 | 读这个 |
 |:--|:--|
 | 🔥 了解双Pool架构 | [`01-Pool模型设计.md`](01-Pool模型设计.md) — 架构全景、职责边界、PoolLayout 协议 |
-| 🔥 执行任务 | [`E5.6-执行清单.md`](E5.6-执行清单.md) — **自包含，不参考E5.5**。82任务，16 Phase |
+| 🔥 执行任务 | [`E5.6-执行清单.md`](E5.6-执行清单.md) — **自包含，不参考E5.5**。86任务，16 Phase |
 | 🔥 MainPool 设计 | [`MainPool/MainPool设计.md`](MainPool/MainPool设计.md) — MainRenderer、keep-alive、分屏、TabBar 插入点 |
 | 🔥 SidebarPool 设计 | [`SidebarPool/SidebarPool设计.md`](SidebarPool/SidebarPool设计.md) — SidebarRenderer、视图切换、折叠展开、图标栏通信 |
 | 🔥 OverlayWindow 设计 | [`OverlayWindow/OverlayWindow设计.md`](OverlayWindow/OverlayWindow设计.md) — 浮层架构、鼠标穿透、z-index、分割线 |
@@ -51,7 +51,7 @@ E5.5#9a-#9m 的 Per-Tab 代码不会被"搬"到新模型——会被**删掉**�
 ```
 E5.6_Pool模型重构/
 ├── README.md                           ← 本文件
-├── E5.6-执行清单.md                    ← 🔥 进度唯一真相源——82任务，16 Phase
+├── E5.6-执行清单.md                    ← 🔥 进度唯一真相源——86任务，16 Phase
 ├── 01-Pool模型设计.md                  ← 架构全景（总览）
 │
 ├── MainPool/
@@ -96,7 +96,7 @@ E5.6_Pool模型重构/
 
 **插件改动：** 0 行。编辑器/串口/文件树/市场/设置——`window.linkdesk.*` 签名完全不变。
 
-**任务数：** 83 个，16 Phase，预估 15-22 天。
+**任务数：** 86 个，16 Phase，预估 15-22 天。
 
 ---
 
