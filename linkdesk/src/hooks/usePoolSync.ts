@@ -9,20 +9,34 @@
 
 import { useEffect, useRef } from "react";
 import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, PoolGroup } from "../core/types/poolLayout";
+import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 
 /**
- * E5.6#11：containerId → pluginId 解析。
- * ViewContainerService 不直接暴露 container→plugin 映射，
- * 从容器已注册的第一个 view descriptor 的 _pluginId 反查。
- * 无 views → 返回 null（容器空——不应到达此处，但安全兜底）。
+ * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
+ * containerId → getViewContainer（title/mergeHeaderWhenSingle）+ getActiveViews → 每条序列化。
+ * renderPath 从 loader.ts 设置的 _renderPath 读——池 PluginComponent 按此 key O(1) 查找组件。
  */
-function resolvePluginIdForContainer(containerId: string): string | null {
-  const views = ViewContainerService.getViews(containerId);
-  if (views.length === 0) return null;
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  return ((views[0] as any)._pluginId as string) ?? null;
+function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
+  const views = ViewContainerService.getActiveViews(containerId);
+  return views.map((v) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const desc = v as any;
+    return {
+      id: v.id,
+      title: v.title,
+      pluginId: desc._pluginId ?? "",
+      renderPath: desc._renderPath ?? "",
+      role: v.role,
+      order: v.order,
+      collapsed: v.collapsed,
+      badge: v.badge,
+      titleDescription: v.titleDescription,
+      titleTooltip: v.titleTooltip,
+      singleViewPaneContainerTitle: v.singleViewPaneContainerTitle,
+      minHeight: v.minHeight,
+    };
+  });
 }
 
 export interface UsePoolSyncInput {
@@ -50,12 +64,31 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     const poolApi = poolApiRef.current;
     if (!poolApi) return;
 
-    // 侧栏布局——E5.6#11：containerId → pluginId 解析，PluginComponent 只认 pluginId
-    const sidebar: SidebarLayout = {
-      visible: isSidebarVisible && sidebarView !== null,
-      width: sidebarWidth,
-      viewId: sidebarView ? resolvePluginIdForContainer(sidebarView) : null,
-    };
+    // 侧栏布局——E5.6#11d：完整容器元数据 + SidebarViewMeta[]
+    let sidebar: SidebarLayout;
+    if (isSidebarVisible && sidebarView) {
+      const container = ViewContainerService.getViewContainer(sidebarView);
+      const views = buildSidebarViewMetas(sidebarView);
+      const collapsedSet = ViewContainerService.loadCollapsedState();
+      sidebar = {
+        visible: true,
+        width: sidebarWidth,
+        containerId: sidebarView,
+        containerTitle: container?.title ?? sidebarView,
+        mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
+        views,
+        collapsedViews: [...collapsedSet],
+        viewId: views[0]?.pluginId ?? null,  // 向后兼容
+      };
+    } else {
+      sidebar = {
+        visible: false,
+        width: sidebarWidth,
+        containerId: null,
+        containerTitle: "",
+        views: [],
+      };
+    }
 
     // 主区分屏组——每个 group 映射为一个 flex 区域
     const groups: PoolGroup[] = tabState.groups.map((g) => ({
