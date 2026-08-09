@@ -37,10 +37,11 @@ E5.5#9a-#9m 的 Per-Tab 代码不会被"搬"到新模型——会被**删掉**�
 | 🔥 通信协议 | [`跨Pool交互/通信协议设计.md`](跨Pool交互/通信协议设计.md) — PoolLayout JSON 协议细节 |
 | 🔥 跨Pool交互 | [`跨Pool交互/跨Pool通信方案.md`](跨Pool交互/跨Pool通信方案.md) — IconBar↔SidebarPool + 文件树↔MainPool + 事件广播 |
 | 🔥 未来扩展预留 | [`可扩展性/多Pool扩展预留.md`](可扩展性/多Pool扩展预留.md) — 六位置三Pool类型 + 底部面板 + 三态互转 |
-| 🔥 E5.5 任务对照 | [`回退与清理/E5.5任务保留对照.md`](回退与清理/E5.5任务保留对照.md) — E5.5 58 个任务→E5.6 映射 |
+| 🔥 E5.5 任务对照 | [`审计与回退/E5.5任务保留对照.md`](审计与回退/E5.5任务保留对照.md) — E5.5 58 个任务→E5.6 映射 |
 | 🔥 API 变更 + 补全 | [`API补全/API变更清单.md`](API补全/API变更清单.md) — pool.* 新命名空间 + 删 pluginViews |
-| 🔥 Pool API 详情 | [`API补全/Pool模型API设计.md`](API补全/Pool模型API设计.md) — pool.* 新命名空间 + 补全 |
-| 🔴 回退方案 | [`回退与清理/Per-Tab回退方案.md`](回退与清理/Per-Tab回退方案.md) — #9 代码哪些改/哪些删 |
+| 🔥 Pool API 详情 | [`API补全/Pool模型API设计.md`](API补全/PoolModelAPI设计.md) — pool.* 新命名空间 + 补全 |
+| 🔴 回退方案 | [`审计与回退/Per-Tab回退方案.md`](审计与回退/Per-Tab回退方案.md) — #9 代码哪些改/哪些删 |
+| 🔴 通信链路审计 | [`审计与回退/通信链路审计.md`](审计与回退/通信链路审计.md) — 22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC 通道 + 11 插件 Emitter 订阅，全链路判决 |
 | 🔴 硬编码清扫 | [`硬编码消灭/硬编码清扫方案.md`](硬编码消灭/硬编码清扫方案.md) — MenuId/schema/enum/plugin-file-service |
 | 📋 插件开发 | [`文档/插件开发指南-Pool版.md`](文档/插件开发指南-Pool版.md) — Pool 模型下的插件 API |
 
@@ -73,9 +74,10 @@ E5.6_Pool模型重构/
 ├── API补全/
 │   ├── API变更清单.md                  ← pool.* 新命名空间 + 删 pluginViews
 │   └── Pool模型API设计.md              ← IPC 通道一览
-├── 回退与清理/
-│   ├── Per-Tab回退方案.md              ← 逐文件回退操作手册
-│   └── E5.5任务保留对照.md             ← E5.5 58任务→E5.6 映射
+├── 审计与回退/
+│   ├── Per-Tab回退方案.md              ← E5.6#0a 逐文件回退操作手册
+│   ├── E5.5任务保留对照.md             ← E5.5 58任务→E5.6 映射
+│   └── 通信链路审计.md                 ← E5.6#0b 22 ShellEvents + 10 CUSTOM_EVENTS + 17 IPC + 11 插件 Emitter 订阅，全链路判决
 ├── 硬编码消灭/
 │   └── 硬编码清扫方案.md               ← MenuId/schema/enum/plugin-file-service
 ├── 回归验证/
