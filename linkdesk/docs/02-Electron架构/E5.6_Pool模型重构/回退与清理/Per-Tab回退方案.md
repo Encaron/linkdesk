@@ -10,7 +10,7 @@
 
 | 指标 | 数值 |
 |:--|:--|
-| 受影响的源文件 | **18 个** |
+| 受影响的源文件 | **18 个** + 1 个仅注释（lsp-handlers.ts，无需修改） |
 | 其中需要修改 | 16 个 |
 | 其中整文件删除 | 2 个（useWebViewSync.ts + plugin-view.html） |
 | 核心 `instanceId` 引用 | ~280 处（不含 `node_modules`） |
@@ -20,8 +20,13 @@
 | `notifyReady` 引用 | 5 处 |
 | `readyWebViewIds` 引用 | 13 处（useWebViewSync + MainContent） |
 | `webViewBoundsReady` 引用 | 11 处 |
+| `getPluginIdFromWebContents` 引用 | 3 处（ipc-bridge.ts:122,268,392——全在 per-tab 路由上下文） |
+| `clearPluginQueues` 复数形式 | 1 处（ipc-bridge.ts:323——遍历 getInstanceIdsForPlugin 清空同插件所有实例队列） |
 | `pluginViews.*` preload 暴露方法 | 14 个 |
 | `useWebViewSync()` 调用点 | 1 处（MainContent.tsx:326） |
+| 硬编码 `requestToPlugin(t.id, ...)` | 2 处（MainContent.tsx:344 openFile + :357 openSession——t.id 即 instanceId） |
+| `requestToPlugin(pluginId, "invokeBeforeClose")` | 1 处（viewRegistry.ts:83——pluginId 作为 instanceId 路由） |
+| `pluginViewRegistry` 外部消费者 | **0 个** ✅（main.ts L303 导出的变量无文件 import） |
 | 插件/测试文件沾染 | **0 个** ✅ |
 | ShellPluginComponent.tsx | **不存在**——从 E5.6#36 移除 |
 
@@ -85,15 +90,18 @@ grep -n "findGrace" electron/window-manager.ts
 | 32 | `pushQueues Map<instanceId, ...>` | → `Map<zone, ...>` |
 | 35 | `pluginRequestQueues Map<instanceId, ...>` | → `Map<zone, ...>` |
 | 36 | （隐含）`flushing Set<instanceId>` | → `Set<zone>` |
+| 122-124 | `getPluginIdFromWebContents(event.sender)` → 解构 `{ instanceId }` 做 FIFO 串行路由 | → pool zone 路由 |
 | 124-130 | `pluginRequestQueues.get(instanceId)` | → pool 路由 |
 | 178-186 | `bridge:pushToPlugin` handler | → `pool:push` |
 | 200-214 | `pushToPlugin(instanceId, channel, payload)` | → `pushToPool(zone, ...)` |
 | 222-252 | `flushPushQueue(instanceId)` | → pool 级 |
+| 268 | `getPluginIdFromWebContents(event.sender)` → `plugin:emit` 来源识别 | → pool zone 路由 |
 | 299-301 | `broadcastToAll` 用 `getAllInstanceIds()` | → 广播到 2 个 Pool |
 | 306-309 | `replayToPlugin(instanceId)` | → pool replay |
-| 315-317 | `clearPluginQueue(instanceId)` | → pool 级 |
-| 324-326 | `getInstanceIdsForPlugin(pluginId)` | **删除** |
+| 315-317 | `clearPluginQueue(instanceId)` **单数**——清空单个实例队列 | → pool 级 |
+| 323-327 | `clearPluginQueues(pluginId)` **复数**——遍历 `getInstanceIdsForPlugin` 清空同插件所有实例队列 | **整方法删除**（Pool 无多实例概念） |
 | 343-346 | `bridge:request-to-plugin` handler | → `pool:request` |
+| 390-392 | `getPluginView(target)` + `getPluginIdFromWebContents(event.sender)`——`p2p:send` 定向推流+来源识别 | → pool zone 路由 |
 
 **验证 grep：**
 ```
@@ -162,17 +170,24 @@ grep -n "instanceId\|graceInstance\|rekeyInstance\|plugin-view:" electron/ipc/pl
 
 ---
 
-### 1.5 `electron/main.ts`——import 引用更新
+### 1.5 `electron/main.ts`——PluginViewRegistry 全部引用更新
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
 | 20 | `import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'` | → `import { registerPoolHandlers } from './ipc/pool-handlers.js'` |
 | 26 | `import { PluginViewRegistry } from './plugin-view-registry.js'` | → `import { PoolRegistry } from './pool-registry.js'` |
+| 41 | `let pluginViewRegistry: PluginViewRegistry \| null = null;` 变量声明 | → `let poolRegistry: PoolRegistry \| null` |
+| 83-84 | `pluginViewRegistry = new PluginViewRegistry(windowManager);` 初始化 | → `poolRegistry = new PoolRegistry(windowManager)` |
+| 86 | `initKeyboardRouting(mainWindow, pluginViewRegistry);` 键盘路由初始化 | → `initKeyboardRouting(mainWindow, poolRegistry)` |
+| 92 | `registerPluginViewHandlers(pluginViewRegistry, mainWindow);` handler 注册 | → `registerPoolHandlers(poolRegistry, mainWindow)` |
+| 303 | `export { mainWindow, windowManager, pluginViewRegistry, ipcBridge };` 导出 | → `export { mainWindow, windowManager, poolRegistry, ipcBridge }` |
 
 **验证 grep：**
 ```
-grep -n "plugin-view-handlers\|PluginViewRegistry" electron/main.ts  # 零匹配
+grep -n "plugin-view-handlers\|PluginViewRegistry\|pluginViewRegistry" electron/main.ts  # 零匹配
 ```
+
+> 🔍 **确认：** `pluginViewRegistry` 导出（L303）**零外部消费者**——无任何文件从 `electron/main.ts` import 此变量。改名不会产生连锁修改。
 
 ---
 
@@ -254,13 +269,18 @@ grep -n "getAllInstanceIds" electron/ipc/file-handlers.ts  # 零匹配
 
 ---
 
-### 1.10 `electron/keyboard-router.ts`——`PluginViewRegistry` import + 键盘分发
+### 1.10 `electron/keyboard-router.ts`——`PluginViewRegistry` import + 键盘分发 + monkey-patch
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
 | 19 | `import type { PluginViewRegistry } from './plugin-view-registry.js'` | → `import type { PoolRegistry }` |
-| 250-251 | `getAllInstanceIds()` 遍历 → 键盘事件发送 | → 发送到活跃 Pool |
-| 256-259 | `registerPlugin(instanceId, pluginId, url, force?)` patch | **删除** patch |
+| 237 | 注释——"Monkey-patch pluginViewRegistry.registerPlugin" | 删注释 |
+| 241 | 函数签名 `pluginViewRegistry: PluginViewRegistry` 参数 | → `poolRegistry: PoolRegistry` |
+| 243-247 | `registerOnView` 回调——`view.webContents.on('before-input-event', ...)` | 保留逻辑，改为 Pool 级别注册 |
+| 250-251 | `getAllInstanceIds()` 遍历 → 键盘事件注册 | → 发送到活跃 Pool |
+| 257 | `const _origRegister = pluginViewRegistry.registerPlugin.bind(pluginViewRegistry);` | **删除** monkey-patch |
+| 258 | Monkey-patched 签名 `(instanceId, pluginId, url, force?)` | **删除** |
+| 259 | `const view = _origRegister(instanceId, pluginId, url, force);` | **删除** |
 
 **验证 grep：**
 ```
@@ -301,17 +321,22 @@ grep -rn "useWebViewSync" src/  # 零匹配
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
 | 29 | `import { useWebViewSync }` | **删 import** |
+| 60 | 注释——"bridge:pushToPlugin IPC → 插件 WebView 接收" | 改注释 |
 | 72-73 | `readyWebViewIds?`, `webViewBoundsReady?` prop | 删 props |
 | 102 | `readyWebViewIds?.has(tab.id) && webViewBoundsReady?.has(...)` 守卫 | → 改为 Pool 就绪检查 |
 | 319-326 | useWebViewSync 调用 + pv 变量 | → `usePoolSync` |
+| 336 | 注释——"editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径" | 改注释 |
 | 342-343 | `if (t.pluginId === "editor" && ...readyWebViewIds.has(...))` | → pool 就绪后 pushLayout |
+| **344** | **`bridge.requestToPlugin?.(t.id, "openFile", ...)` —— `t.id` 是 instanceId 路由 key** | → `pool.pushLayout({ zone: "main", type: "openFile", ... })` |
 | 347 | `readyWebViewIds, webViewBoundsReady` deps | 改 |
-| 356-359 | `if (activeTab?.pluginId === "serial-monitor" && ...readyWebViewIds.has(...))` | → pool 就绪后 pushLayout |
+| 349-350 | 注释——"serial-monitor openSession" + "IPC 路由 key 从 serial-monitor 改为 instanceId (= tab.id)" | 改注释 |
+| **357** | **`bridge.requestToPlugin?.(activeTab.id, "openSession", ...)` —— `activeTab.id` 是 instanceId 路由 key** | → `pool.pushLayout({ zone: "main", type: "openSession", ... })` |
 | 527 | `renderTabContent(...readyWebViewIds, webViewBoundsReady)` | → `renderTabContent(tab, isFocused)` |
 
 **验证 grep：**
 ```
 grep -n "useWebViewSync\|readyWebViewIds\|webViewBoundsReady\|webViewTimeout" src/components/MainContent.tsx  # 零匹配
+grep -n "requestToPlugin.*\.id" src/components/MainContent.tsx  # 零匹配（instanceId 路由全部移除）
 ```
 
 ---
@@ -325,7 +350,9 @@ grep -n "useWebViewSync\|readyWebViewIds\|webViewBoundsReady\|webViewTimeout" sr
 | 4-8 | 模式 1 注释——多 WebView 渲染说明 | **删** |
 | 24 | `params.get("pluginId") ?? params.get("plugin-view")` | → 仅保留 `params.get("pluginId")` |
 | 27 | 多 WebView 判据注释 | 删 |
+| 121-128 | `pluginViews: { notifyReady: noop, getAllIds: emptyArr, setVisible: noop, ... }` 多 WebView mock 对象 | **整块删除** |
 | 122 | `notifyReady: noop` | **删** |
+| 129 | E5.5#9k 注释——插件实例身份 | 删 |
 | 229 | 错误消息 `缺少参数: ?plugin-view=...` | → 改消息，删 `plugin-view` 提及 |
 | 323-324 | `window.linkdesk?.pluginViews?.notifyReady?.()` | **删** |
 
@@ -344,13 +371,17 @@ grep -n "plugin-view\|notifyReady\|pluginViews" src/plugin-shell-main.tsx  # 零
 
 ---
 
-### 1.15 `src/pluginLoader/viewRegistry.ts`——pluginViews 引用
+### 1.15 `src/pluginLoader/viewRegistry.ts`——pluginViews + requestToPlugin 引用
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
-| 118 | `const pv = linkdesk()?.pluginViews` | → `linkdesk()?.pool` |
-| 119-121 | `pv?.getInstanceIdsForPlugin(pluginId).then(...)` | → pool 级 API |
-| 124 | 降级注释 `pluginId = instanceId` | 删 |
+| 69 | JSDoc——"读取 tabBehavior 声明，依次执行 confirmOnClose 弹窗和 invokeBeforeClose 命令" | 保留注释，改"WebView"→"插件" |
+| 72 | 注释——"invokeBeforeClose 走 requestToPlugin——壳发请求到插件 WebView，插件自己判断+处理" | 改注释 |
+| 76 | `invokeBeforeCloseTab(pluginId: string)` 函数签名 | 保留（Pool 模型仍需关闭确认） |
+| 81-85 | `requestToPlugin?.(pluginId, "invokeBeforeClose", {})` —— `pluginId` **作为 instanceId 路由 key** | → `pool.request({ zone: "main", pluginId, method: "invokeBeforeClose" })` |
+| 120 | `const pv = linkdesk()?.pluginViews` | → `linkdesk()?.pool` |
+| 121-123 | `pv?.getInstanceIdsForPlugin(pluginId).then(...)` | → pool 级 API |
+| 126 | 降级注释 `pluginId = instanceId`（E5.5#9 兼容代码） | **删** |
 
 ---
 
@@ -420,6 +451,16 @@ test -f plugin-view.html && echo "EXISTS" || echo "DELETED"  # DELETED
 
 ---
 
+### 1.21 🟢 `electron/ipc/lsp-handlers.ts`——仅历史注释，无需修改
+
+| 行 | 内容 | 原因 |
+|:--|:--|:--|
+| 143-144 | 注释——"旧代码用 pluginId → `getPluginView('python')` 永远 null" | 此 Bug 已在 E5.5#7 修复——改用 `event.sender` 路由。**无 active per-tab 代码**，注释仅作历史记录 |
+
+> `lsp-handlers.ts` 已完成 per-tab 适配——用 `event.sender`（WebContents）路由 LSP 数据，不依赖 `getPluginView(pluginId)`。回退无需修改此文件。
+
+---
+
 ## 2. 不需要回退的文件（保留）
 
 | 文件 | 原因 |
@@ -477,5 +518,5 @@ grep -rn "getAllInstanceIds\|getInstanceIdsForPlugin" src/ electron/ | grep -v n
 
 ---
 
-> **← E5.6#0a 审计完成。** 共 11 个源文件需要修改，1 个整文件删除。所有 instanceId/grace 引用已枚举到行号。
+> **← E5.6#0a 审计完成（三轮自检）。** 共 16 个源文件需要修改 + 2 个整文件删除 + 1 个仅含历史注释（无需修改）。所有 instanceId/grace/rekey/requestToPlugin/getPluginView/getPluginIdFromWebContents/pluginViewRegistry 引用已枚举到行号。零消费者确认。插件零沾染。
 > **→ 下一步：** E5.6#0b 审计通信链路。
