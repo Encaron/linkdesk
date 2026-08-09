@@ -267,6 +267,9 @@ setInterval(() => {
 // ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
 protocol.registerSchemesAsPrivileged([
   { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+  // E5.6#9h：注册 extension-file 协议——@codingame Monaco 内部虚拟文件系统，
+  // 无此注册则 extension-file:// fetch 请求全 404，console 噪音。
+  { scheme: "extension-file", privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 // ── 应用生命周期 ──

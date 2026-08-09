@@ -160,13 +160,19 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
 
     // stdout → renderer（双路由：壳 + 发起 spawn 的插件 WebView）
     child.stdout?.on("data", (data: Buffer) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("lsp:data", { channelId, data: data.toString("utf-8") });
-      }
+      const text = data.toString("utf-8");
       // E5.5#7：用 event.sender 路由——无论编辑器在哪个 WebView，数据能回到正确的那个
-      if (senderWc && !senderWc.isDestroyed()) {
-        senderWc.send("lsp:data", { channelId, data: data.toString("utf-8") });
-      }
+      // E5.6#9g：防重复发送——单 WebView 模式下 senderWc === mainWindow.webContents，
+      // 不加判断会导致同一 WebContents 收两次 lsp:data → buffer 重复 → JSON.parse 炸在 Content-Length header
+      const sentTo = new Set<Electron.WebContents>();
+      const sendOnce = (wc: Electron.WebContents | null | undefined) => {
+        if (wc && !wc.isDestroyed() && !sentTo.has(wc)) {
+          sentTo.add(wc);
+          wc.send("lsp:data", { channelId, data: text });
+        }
+      };
+      sendOnce(mainWindow?.isDestroyed() ? null : mainWindow.webContents);
+      sendOnce(senderWc);
     });
 
     child.stderr?.on("data", (data: Buffer) => {

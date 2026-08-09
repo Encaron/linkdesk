@@ -772,6 +772,14 @@ export function reduceRestoreLayout(saved: LayoutData): TabState {
 
   // G3：恢复布局后同步计数器——防止 F5 后模块级计数器归零导致新建 tab ID 碰撞
   syncCountersAfterRestore(filteredGroups.flatMap((g) => g.tabs));
+  // E5.6#9f：恢复布局后同步 _groupCounter——防止模块级计数器归零导致 group-1 重复 key
+  _groupCounter = Math.max(
+    _groupCounter,
+    ...filteredGroups.map((g) => {
+      const m = g.id.match(/^group-(\d+)$/);
+      return m ? parseInt(m[1]) : 0;
+    }),
+  );
 
   return {
     groups: filteredGroups,

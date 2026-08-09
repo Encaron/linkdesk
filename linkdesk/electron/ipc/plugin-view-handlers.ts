@@ -146,6 +146,12 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
     if (poolView && !poolView.webContents.isDestroyed()) {
       poolView.setBounds(bounds);
+      // E5.6#10：SidebarPool 首次 setBounds 时设为可见——接管壳 DOM 侧栏区域
+      // 后续 resize 重复调用 setVisible(true) 幂等无害。
+      // MainPool 暂不设为可见（E5.6#11 再迁移主区）。
+      if (zone === 'sidebar') {
+        poolView.setVisible(true);
+      }
     }
   });
 
