@@ -60,6 +60,27 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     poolApiRef.current = (window as any).linkdesk?.pool;
   }
 
+  // E5.6#11j：注册池→壳侧栏操作回调。池组件调用 pool.sidebarAction() →
+  // 主进程转发 → 壳 preload → 此 handler → ViewContainerService 写方法。
+  useEffect(() => {
+    const poolApi = poolApiRef.current;
+    if (!poolApi) return;
+    const unsub = poolApi.onSidebarAction?.((action: any) => {
+      switch (action?.action) {
+        case "reorder":
+          ViewContainerService.reorderView(action.containerId, action.viewId, action.newIndex);
+          break;
+        case "setCollapsed":
+          ViewContainerService.setCollapsed(action.viewId, action.collapsed);
+          break;
+        case "setVisible":
+          ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
+          break;
+      }
+    });
+    return unsub;
+  }, []);
+
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi) return;

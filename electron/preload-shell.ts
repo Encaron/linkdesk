@@ -48,6 +48,12 @@ ipcRenderer.on('keyboard:executeShortcut', (_event, input: any) => {
   if (_keyboardForwardHandler) _keyboardForwardHandler(input);
 });
 
+// E5.6#11j：侧栏操作回调——池→主进程→壳，壳侧 React 注册 handler 调 ViewContainerService
+let _sidebarActionHandler: ((action: any) => void) | null = null;
+ipcRenderer.on('pool:sidebar-action', (_event, action: any) => {
+  if (_sidebarActionHandler) _sidebarActionHandler(action);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -435,6 +441,11 @@ try {
         ipcRenderer.send('pool:set-bounds', zone, bounds),
       /** E5.6#9：切换 Pool DevTools——调试用，仅 dev 模式生效 */
       toggleDevTools: (zone: string) => ipcRenderer.send('pool:toggleDevTools', zone),
+      /** E5.6#11j：注册侧栏操作回调——池→壳→ViewContainerService。返回 unsubscribe */
+      onSidebarAction: (cb: (action: any) => void) => {
+        _sidebarActionHandler = cb;
+        return () => { _sidebarActionHandler = null; };
+      },
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

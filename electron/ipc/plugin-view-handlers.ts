@@ -173,5 +173,14 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  console.log('[pool-handlers] 已注册 6 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools）');
+  // E5.6#11i：Pool→壳——侧栏写操作（reorder/setCollapsed/setVisible）。
+  // 池组件通过 pool.sidebarAction() 发送，主进程转发到壳窗口。
+  // 壳侧 preload 接收后调 ViewContainerService 方法。
+  ipcMain.on('pool:sidebar-action', (_event, action: unknown) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pool:sidebar-action', action);
+    }
+  });
+
+  console.log('[pool-handlers] 已注册 7 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action）');
 }

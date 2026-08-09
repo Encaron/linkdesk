@@ -539,6 +539,7 @@ try {
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
     // ── E5.6#8b：pool API——池接收布局、通知壳就绪 ──
+    // ── E5.6#11k：pool.sidebarAction——池→壳侧栏写操作（reorder/setCollapsed/setVisible）──
     pool: {
       /** 注册布局回调——返回 unsubscribe。首次注册时回放缓冲的 layout。 */
       onLayout: (cb: (layout: any) => void) => {
@@ -556,6 +557,8 @@ try {
       },
       /** 池就绪通知——壳收到 pool:ready 后开始 pushLayout */
       ready: () => ipcRenderer.send('pool:ready', _poolZone),
+      /** E5.6#11k：侧栏写操作——池→主进程→壳→ViewContainerService */
+      sidebarAction: (action: unknown) => ipcRenderer.send('pool:sidebar-action', action),
     },
 
     events,
