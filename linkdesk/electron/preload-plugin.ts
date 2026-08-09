@@ -79,6 +79,21 @@ const _urlParams = new URLSearchParams(globalThis.location?.search ?? '');
 const _pluginInstanceId = _urlParams.get('instanceId') ?? '';
 const _urlPluginId = _urlParams.get('pluginId') ?? '';
 
+// ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
+// E5#11l Bug 4 教训：IPC 监听器必须在模块顶层，不是 useEffect 内
+const _poolZone = _urlParams.get('zone') ?? '';
+const _layoutBuffer: any[] = [];
+let _onLayoutCallback: ((layout: any) => void) | null = null;
+let _onLayoutActive = false;
+
+ipcRenderer.on('pool:layout', (_event, layout: any) => {
+  if (!_onLayoutActive || !_onLayoutCallback) {
+    _layoutBuffer.push(layout);
+  } else {
+    try { _onLayoutCallback(layout); } catch { /* contextBridge 回调静默失败 */ }
+  }
+});
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
@@ -523,6 +538,26 @@ try {
     // ── E3a #27-#28：通用事件订阅 + E3j #77 emit——插件间数据管道 ──
     // IPC 回调模板（ref 桥接 + cleanup + 超时）的消费入口。
     // ── E3j #77a：归一化——events 对象由 createEventSystem() 生成 ──
+    // ── E5.6#8b：pool API——池接收布局、通知壳就绪 ──
+    pool: {
+      /** 注册布局回调——返回 unsubscribe。首次注册时回放缓冲的 layout。 */
+      onLayout: (cb: (layout: any) => void) => {
+        _onLayoutCallback = cb;
+        _onLayoutActive = true;
+        // 回放缓冲——preload 就位 ~ React mount 之间到达的 layout
+        for (const layout of _layoutBuffer) {
+          try { cb(layout); } catch { /* contextBridge 回调静默失败 */ }
+        }
+        _layoutBuffer.length = 0;
+        return () => {
+          _onLayoutCallback = null;
+          _onLayoutActive = false;
+        };
+      },
+      /** 池就绪通知——壳收到 pool:ready 后开始 pushLayout */
+      ready: () => ipcRenderer.send('pool:ready', _poolZone),
+    },
+
     events,
   });
 

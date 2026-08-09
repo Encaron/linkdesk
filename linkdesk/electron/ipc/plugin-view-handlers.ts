@@ -11,6 +11,7 @@
 
 import { app, ipcMain, BrowserWindow } from 'electron';
 import type { PluginViewRegistry, ViewBounds } from '../plugin-view-registry.js';
+import type { WindowManager } from '../window-manager.js'; // E5.6#8d
 import { DEV_SERVER_URL } from '../../shared/constants.js'; // E5#102b
 
 let _registry: PluginViewRegistry | null = null;
@@ -101,4 +102,43 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
   });
 
   console.log('[plugin-view-handlers] 已注册 14 个 IPC handler（13 handle + 1 on）+ getInstanceIdsForPlugin + findGraceInstance + rekeyInstance + reload');
+}
+
+/**
+ * E5.6#8d：注册双Pool IPC handler——壳↔池通信通道。
+ * 暂时和 registerPluginViewHandlers 并存，Phase 8 清理 per-tab WebView 时统一处理。
+ */
+export function registerPoolHandlers(windowManager: WindowManager, mainWindow: BrowserWindow): void {
+  // 壳→Pool：推送布局快照
+  ipcMain.on('pool:push-layout', (_event, zone: string, layout: unknown) => {
+    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.webContents.send('pool:layout', layout);
+    } else {
+      console.warn(`[pool-handlers] push-layout 失败——${zone} Pool 不存在或已销毁`);
+    }
+  });
+
+  // Pool→壳：池 React 挂载完成
+  ipcMain.on('pool:ready', (_event, zone: string) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pool:ready', zone);
+    }
+    console.log(`[pool-handlers] ${zone} Pool 就绪`);
+  });
+
+  // 壳→Pool：心跳 ping——E5.6#27 崩溃恢复会用到
+  ipcMain.on('pool:ping', (_event, zone: string) => {
+    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.webContents.send('pool:pong');
+    }
+  });
+
+  // Pool→壳：心跳 pong——预留，E5.6#27 崩溃恢复消费
+  ipcMain.on('pool:pong', (_event, zone: string) => {
+    // 预留——崩溃恢复模块通过监听此事件判断池是否存活
+  });
+
+  console.log('[pool-handlers] 已注册 4 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong）');
 }

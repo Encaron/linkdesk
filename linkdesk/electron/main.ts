@@ -17,7 +17,7 @@ import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
-import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29
+import { registerPluginViewHandlers, registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29 + E5.6#8d
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './protocol.js';
 import { DEV_SERVER_URL } from '../shared/constants.js'; // E5#102b
@@ -98,6 +98,7 @@ function createWindow(): void {
   registerLspHandlers(mainWindow);   // E5#74c
   registerSerialHandlers(mainWindow, windowManager); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
+  registerPoolHandlers(windowManager, mainWindow);  // E5.6#8e
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {

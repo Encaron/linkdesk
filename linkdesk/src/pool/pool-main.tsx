@@ -15,34 +15,7 @@ import { useState, useEffect, StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import SidebarRenderer from "./SidebarRenderer";
 import MainRenderer from "./MainRenderer";
-
-// ── 类型定义——E5.6#8a 后迁移到 src/core/types/poolLayout.ts ──
-
-export interface SidebarLayout {
-  visible: boolean;
-  width: number;
-  viewId: string | null;
-}
-
-export interface PoolTab {
-  id: string;
-  pluginId: string;
-  title: string;
-  sourceId?: string;
-  dirty?: boolean;
-}
-
-export interface PoolGroup {
-  id: string;
-  flex: number;
-  activeTabId: string;
-  tabs: PoolTab[];
-}
-
-export interface PoolLayout {
-  sidebar?: SidebarLayout;
-  groups: PoolGroup[];
-}
+import type { PoolLayout } from "../core/types/poolLayout";
 
 // ── PoolApp ──
 

@@ -8,7 +8,7 @@
 
 import ErrorBoundary from "../components/shared/ErrorBoundary";
 import PluginComponent from "./PluginComponent";
-import type { PoolGroup } from "./pool-main";
+import type { PoolGroup } from "../core/types/poolLayout";
 
 interface MainRendererProps {
   groups: PoolGroup[];
