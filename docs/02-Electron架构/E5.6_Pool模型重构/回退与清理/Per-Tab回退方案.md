@@ -23,6 +23,8 @@
 | `getPluginIdFromWebContents` 引用 | 3 处（ipc-bridge.ts:122,268,392——全在 per-tab 路由上下文） |
 | `clearPluginQueues` 复数形式 | 1 处（ipc-bridge.ts:323——遍历 getInstanceIdsForPlugin 清空同插件所有实例队列） |
 | `pluginViews.*` preload 暴露方法 | 14 个 |
+| `pluginInstance` 命名空间引用 | 3 文件（preload-plugin.ts:223-230 + plugin-shell-main.tsx:129-133 + linkdesk-api.ts:187-193） |
+| `_pluginInstanceId` / `_urlPluginId` 模块级常量 | 2 个（preload-plugin.ts:79-80——URL 解析的 per-tab 身份） |
 | `useWebViewSync()` 调用点 | 1 处（MainContent.tsx:326） |
 | 硬编码 `requestToPlugin(t.id, ...)` | 2 处（MainContent.tsx:344 openFile + :357 openSession——t.id 即 instanceId） |
 | `requestToPlugin(pluginId, "invokeBeforeClose")` | 1 处（viewRegistry.ts:83——pluginId 作为 instanceId 路由） |
@@ -229,14 +231,18 @@ grep -n "pluginViews\|instanceId\|_readyBuffer" electron/preload-shell.ts  # 零
 
 | 行 | 内容 | 操作 |
 |:--|:--|:--|
-| 76-79 | `_pluginInstanceId` + URL 解析注释 | **删除** |
-| 223 | `pluginInstance` 身份对象 | → `pool.zone` |
-| 401-402 | `notifyReady` 注释 | 改 |
-| 404 | `notifyReady(pluginId?)` | → `pool.ready()` |
+| 76-78 | `E5.5#9j` 注释 + `const _urlParams = new URLSearchParams(globalThis.location?.search ?? '')` URL 解析 | **删除**（Pool 不读 URL instanceId） |
+| 79 | `const _pluginInstanceId = _urlParams.get('instanceId') ?? '';` **模块级常量**——从 URL 解析的实例 ID | **整行删除** |
+| 80 | `const _urlPluginId = _urlParams.get('pluginId') ?? '';` 模块级常量——从 URL 解析的插件 ID | 保留（Pool 仍需 pluginId），改为从 pool.html URL 参数获取 |
+| 223-230 | **`pluginInstance` 命名空间**——`{ id: _pluginInstanceId, pluginId: _urlPluginId }`，暴露给插件侧 `window.linkdesk.pluginInstance` | → `pool: { zone: "main" \| "sidebar", pluginId }` |
+| 227 | `id: _pluginInstanceId`——插件代码用 `pluginInstance.id` 做 pluginState key 前缀 | → `pool.zone`（插件代码用 `pool.zone` 识别自己是哪个 Pool） |
+| 229 | `pluginId: _urlPluginId`——插件代码用 `pluginInstance.pluginId` 标识自己 | 保留（Pool 模型仍需 pluginId） |
+| 401-402 | `notifyReady` 注释——E5.5#9k notifyReady 不再传参 | 改注释 |
+| 404 | `notifyReady: (pluginId?) => ipcRenderer.send('plugin-view:ready', _pluginInstanceId, pluginId ?? _urlPluginId)` | → `pool.ready: () => ipcRenderer.send('pool:ready', zone, pluginId)` |
 
 **验证 grep：**
 ```
-grep -n "_pluginInstanceId\|notifyReady\|pluginInstance" electron/preload-plugin.ts  # 零匹配（除 pool.ready）
+grep -n "_pluginInstanceId\|_urlPluginId\|notifyReady\|pluginInstance" electron/preload-plugin.ts  # 零匹配（除 pool.*）
 ```
 
 ---
@@ -353,6 +359,7 @@ grep -n "requestToPlugin.*\.id" src/components/MainContent.tsx  # 零匹配（in
 | 121-128 | `pluginViews: { notifyReady: noop, getAllIds: emptyArr, setVisible: noop, ... }` 多 WebView mock 对象 | **整块删除** |
 | 122 | `notifyReady: noop` | **删** |
 | 129 | E5.5#9k 注释——插件实例身份 | 删 |
+| 129-133 | **`pluginInstance: { id: pluginId ?? '', pluginId: pluginId ?? '' }`** ——壳内渲染的 mock 身份，id 用 pluginId 降级 | → `pool: { zone: "shell", pluginId }`（壳内渲染不再需要 faked instanceId） |
 | 229 | 错误消息 `缺少参数: ?plugin-view=...` | → 改消息，删 `plugin-view` 提及 |
 | 323-324 | `window.linkdesk?.pluginViews?.notifyReady?.()` | **删** |
 
@@ -385,22 +392,26 @@ grep -n "plugin-view\|notifyReady\|pluginViews" src/plugin-shell-main.tsx  # 零
 
 ---
 
-### 1.16 `src/core/api/linkdesk-api.ts`——pluginViews 类型定义
+### 1.16 `src/core/api/linkdesk-api.ts`——pluginInstance + pluginViews 类型定义
 
-> 整个 `pluginViews` 接口替换为 `pool` 接口。以下逐行列出所有 per-tab 类型。
-
-| 行 | 内容 | 操作 |
+| 行 | 符号 | 操作 |
 |:--|:--|:--|
+| 187-193 | **`pluginInstance: { id: string; pluginId: string }`** ——E5.5#9j 类型，`id` 即 instanceId | → `pool: { zone: string; pluginId: string }` |
+| 196-215 | **`pluginViews` 命名空间**（19 行类型） | → `pool` 命名空间 |
 | 197 | `notifyReady(pluginId?: string): void` | → `pool.ready()` |
+| 198 | `getAllIds?(): Promise<string[]>` | **删**（Pool 无多实例概念） |
 | 199 | `getInstanceIdsForPlugin?(pluginId): Promise<string[]>` | **删** |
+| 200-203 | `setVisible?` / `setBounds?` / `destroy?` / `toggleDevTools?`（id 参数） | → pool 级等价（zone 参数取代 id） |
 | 204 | `scheduleDestroy?(id: string): void` | **删** |
 | 205 | `cancelDestroy?(id: string): Promise<boolean>` | **删** |
 | 207 | `findGraceInstance?(pluginId): Promise<string \| undefined>` | **删** |
 | 209 | `rekeyInstance?(oldInstanceId, newInstanceId): Promise<boolean>` | **删** |
+| 210-211 | `reload?` / `create?`（instanceId 参数） | **删**（Pool 管理自己的生命周期） |
+| 212-214 | `focus?` / `onReady?`（instanceId 参数） | → pool 级等价 |
 
 **验证 grep：**
 ```
-grep -n "notifyReady\|findGraceInstance\|rekeyInstance\|scheduleDestroy\|cancelDestroy\|getInstanceIdsForPlugin" src/core/api/linkdesk-api.ts  # 零匹配
+grep -n "pluginInstance\|pluginViews\|notifyReady\|findGraceInstance\|rekeyInstance\|scheduleDestroy\|cancelDestroy\|getInstanceIdsForPlugin\|getAllIds" src/core/api/linkdesk-api.ts  # 零匹配（除 pool）
 ```
 
 ---
