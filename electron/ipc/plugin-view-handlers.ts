@@ -140,5 +140,14 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     // 预留——崩溃恢复模块通过监听此事件判断池是否存活
   });
 
-  console.log('[pool-handlers] 已注册 4 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong）');
+  // E5.6#9c：壳→Pool：同步 Pool bounds——窗口 resize 时壳推送最新 bounds
+  ipcMain.on('pool:set-bounds', (_event, zone: string, bounds: { x: number; y: number; width: number; height: number }) => {
+    if (bounds.width <= 0 || bounds.height <= 0) return;
+    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.setBounds(bounds);
+    }
+  });
+
+  console.log('[pool-handlers] 已注册 5 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds）');
 }

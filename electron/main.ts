@@ -100,6 +100,10 @@ function createWindow(): void {
   registerFileHandlers(windowManager);              // E5#80
   registerPoolHandlers(windowManager, mainWindow);  // E5.6#8e
 
+  // E5.6#9：创建双Pool WebContentsView——SidebarPool + MainPool = O(1) 进程
+  windowManager.createSidebarPool();
+  windowManager.createMainPool();
+
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
     mainWindow.loadURL(DEV_SERVER_URL);
