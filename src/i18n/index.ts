@@ -28,6 +28,10 @@ if (typeof window !== "undefined") {
       if (data.lang) {
         i18n.changeLanguage(data.lang);
       }
+      // E5.6#10f：addResourceBundle 不触发 react-i18next 的 useTranslation 重渲染。
+      // changeLanguage 同语言时 i18next 内部 no-op——也不触发。
+      // 池 WebView 初始无资源 → 首渲用 key fallback → emit languageChanged → 重渲染正确译文。
+      i18n.emit?.("languageChanged", data.lang ?? i18n.language);
     };
 
     const initial = langApi.getInitial();
