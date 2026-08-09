@@ -1,0 +1,98 @@
+/**
+ * Pool React 入口——E5.6#7a。
+ *
+ * pool.html 加载此文件，Shell 负责创建 WebContentsView。
+ * `?zone=sidebar` → SidebarPool，`?zone=main` → MainPool。
+ *
+ * 壳推送 PoolLayout JSON，池被动渲染——池不知道"世界为什么长这样"。
+ * 缓冲回放模式防竞态：preload 就位 ～ React mount 之间到达的布局先入缓冲，
+ * onLayout 回调注册时回放 + 切换为实时推送。
+ *
+ * 🔴 E5.6#8 前 window.linkdesk.pool 不存在——useEffect 安全降级。
+ */
+
+import { useState, useEffect } from "react";
+import ReactDOM from "react-dom/client";
+import SidebarRenderer from "./SidebarRenderer";
+import MainRenderer from "./MainRenderer";
+
+// ── 类型定义——E5.6#8a 后迁移到 src/core/types/poolLayout.ts ──
+
+export interface SidebarLayout {
+  visible: boolean;
+  width: number;
+  viewId: string | null;
+}
+
+export interface PoolTab {
+  id: string;
+  pluginId: string;
+  title: string;
+  sourceId?: string;
+  dirty?: boolean;
+}
+
+export interface PoolGroup {
+  id: string;
+  flex: number;
+  activeTabId: string;
+  tabs: PoolTab[];
+}
+
+export interface PoolLayout {
+  sidebar?: SidebarLayout;
+  groups: PoolGroup[];
+}
+
+// ── PoolApp ──
+
+function PoolApp() {
+  const zone = new URLSearchParams(window.location.search).get("zone");
+  const [layout, setLayout] = useState<PoolLayout>({ groups: [] });
+
+  useEffect(() => {
+    const poolApi = (window as any).linkdesk?.pool;
+    if (!poolApi) {
+      // E5.6#8 前 preload 尚未暴露 pool API——静默等待
+      return;
+    }
+
+    const unsub = poolApi.onLayout((next: PoolLayout) => {
+      setLayout(next);
+    });
+
+    // 池就绪通知壳——壳收到 pool:ready 后开始 pushLayout
+    poolApi.ready();
+
+    return () => {
+      unsub?.();
+    };
+  }, []);
+
+  if (zone === "sidebar") {
+    return <SidebarRenderer sidebar={layout.sidebar} />;
+  }
+  if (zone === "main") {
+    return <MainRenderer groups={layout.groups} />;
+  }
+
+  // zone 参数无效——URL 参数缺失或非法
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        height: "100%",
+        color: "var(--text-muted, #888)",
+        fontSize: 13,
+        userSelect: "none",
+      }}
+    >
+      Pool zone 参数无效: {zone || "(空)"}
+    </div>
+  );
+}
+
+// ── E5.6#7e：挂载到 pool.html 的 pool-root ──
+ReactDOM.createRoot(document.getElementById("pool-root")!).render(<PoolApp />);
