@@ -11,7 +11,7 @@
  * 🔴 E5.6#8 前 window.linkdesk.pool 不存在——useEffect 安全降级。
  */
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, StrictMode } from "react";
 import ReactDOM from "react-dom/client";
 import SidebarRenderer from "./SidebarRenderer";
 import MainRenderer from "./MainRenderer";
@@ -95,4 +95,8 @@ function PoolApp() {
 }
 
 // ── E5.6#7e：挂载到 pool.html 的 pool-root ──
-ReactDOM.createRoot(document.getElementById("pool-root")!).render(<PoolApp />);
+ReactDOM.createRoot(document.getElementById("pool-root")!).render(
+  <StrictMode>
+    <PoolApp />
+  </StrictMode>,
+);
