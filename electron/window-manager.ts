@@ -10,7 +10,7 @@
  * 崩了不波及壳，卸载时物理清空 JS heap。
  */
 
-import { BrowserWindow, WebContentsView, app, WebContents } from 'electron';
+import { BrowserWindow, WebContentsView, app, WebContents, nativeTheme } from 'electron';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../shared/constants.js'; // E5.6#5：Pool URL 构建
 
@@ -452,8 +452,9 @@ export class WindowManager {
     }
 
     view.setVisible(false);
-    // E5.6#10：Pool 默认背景色——防止 WebContentsView 空内容时显示白色（暗色主题下刺眼）
-    view.setBackgroundColor('#1e1e1e');
+    // E5.6#10：Pool 背景色跟随主题——防止空内容时显示白色闪烁
+    // nativeTheme.shouldUseDarkColors 反映当前实际主题（受 main.ts theme:changed IPC 更新）
+    view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f5f5f5');
     this.mainWindow.contentView.addChildView(view);
 
     console.log(`[WindowManager] Pool "${debugLabel}" WebContentsView 已创建`);
