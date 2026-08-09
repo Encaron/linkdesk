@@ -433,6 +433,8 @@ try {
       /** E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize 时壳推送 */
       setBounds: (zone: string, bounds: { x: number; y: number; width: number; height: number }) =>
         ipcRenderer.send('pool:set-bounds', zone, bounds),
+      /** E5.6#9：切换 Pool DevTools——调试用，仅 dev 模式生效 */
+      toggleDevTools: (zone: string) => ipcRenderer.send('pool:toggleDevTools', zone),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

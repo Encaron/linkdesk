@@ -149,5 +149,18 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  console.log('[pool-handlers] 已注册 5 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds）');
+  // E5.6#9：壳→Pool：切换 Pool DevTools——调试用
+  ipcMain.on('pool:toggleDevTools', (_event, zone: string) => {
+    if (app.isPackaged) return;
+    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      if (poolView.webContents.isDevToolsOpened()) {
+        poolView.webContents.closeDevTools();
+      } else {
+        poolView.webContents.openDevTools({ mode: 'detach' });
+      }
+    }
+  });
+
+  console.log('[pool-handlers] 已注册 6 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools）');
 }
