@@ -10,8 +10,8 @@
 
 | 指标 | 数值 |
 |:--|:--|
-| 受影响的源文件 | **18 个** + 1 个仅注释（lsp-handlers.ts，无需修改） |
-| 其中需要修改 | 16 个 |
+| 受影响的源文件 | **20 个** + 1 个仅注释（lsp-handlers.ts，无需修改） |
+| 其中需要修改 | 18 个 |
 | 其中整文件删除 | 2 个（useWebViewSync.ts + plugin-view.html） |
 | 核心 `instanceId` 引用 | ~280 处（不含 `node_modules`） |
 | `rekeyInstance` 调用链 | 7 处（window-manager + plugin-view-registry + handlers + preload-shell + useWebViewSync + linkdesk-api） |
@@ -29,6 +29,7 @@
 | 硬编码 `requestToPlugin(t.id, ...)` | 2 处（MainContent.tsx:344 openFile + :357 openSession——t.id 即 instanceId） |
 | `requestToPlugin(pluginId, "invokeBeforeClose")` | 1 处（viewRegistry.ts:83——pluginId 作为 instanceId 路由） |
 | `pluginViewRegistry` 外部消费者 | **0 个** ✅（main.ts L303 导出的变量无文件 import） |
+| `pluginViews.*` 壳侧消费者 | 5 个（useWebViewSync + MainContent + viewRegistry + **developerCommands** + **DialogService**） |
 | 插件/测试文件沾染 | **0 个** ✅ |
 | ShellPluginComponent.tsx | **不存在**——从 E5.6#36 移除 |
 
@@ -444,13 +445,51 @@ test -f plugin-view.html && echo "EXISTS" || echo "DELETED"  # DELETED
 
 ---
 
-### 1.19 🟢 ShellPluginComponent.tsx——不存在
+### 1.19 🔴 `src/core/builtin/developerCommands.ts`——pluginViews 消费者
+
+> 此文件在 E5#44-4 创建，E5.5#7 添加了 `pluginViews.*` 调用——不在 E5.5#9 commit 中但被动消费 per-tab API。
+
+| 行 | 内容 | 操作 |
+|:--|:--|:--|
+| 19 | `const lk = window.linkdesk;` | 保留（改为访问 `pool`） |
+| 20 | `lk?.pluginViews?.getAllIds?.()` —— 列出所有 instanceId 供 QuickPick 选择 | → `pool.listZones()` |
+| 21-22 | `webViewIds.map(id => ({ kind: 'plugin', id }))` —— id 即 instanceId | → zone 列表 |
+| 30 | `t.kind === 'shell' ? 'shell 壳窗口' : t.id` —— 显示 instanceId | → 显示 zone 名 |
+| 35 | `lk?.pluginViews?.toggleDevTools?.(t.id)` —— `t.id` 即 instanceId | → `pool.toggleDevTools(zone)` |
+
+**验证 grep：**
+```
+grep -n "pluginViews\|getAllIds" src/core/builtin/developerCommands.ts  # 零匹配
+```
+
+---
+
+### 1.20 🔴 `src/core/services/DialogService.ts`——pluginViews 消费者
+
+> 此文件在 E5#85 添加 `_hideAllPluginViews()`——弹窗时将原生 WebContentsView 移到屏幕外防遮挡。
+
+| 行 | 内容 | 操作 |
+|:--|:--|:--|
+| 72 | `const OFF_SCREEN = { x: -10000, y: -10000, width: 1, height: 1 }` | 保留（Pool 仍需屏幕外隐藏） |
+| 74-86 | `_hideAllPluginViews()` —— `getAllIds()` → `setVisible(id, false)` + `setBounds(id, OFF_SCREEN)` 逐个隐藏 | → `_hideAllPools()` —— 隐藏 SidebarPool + MainPool 两个 zone |
+| 78 | `const ids: string[] = await pv.getAllIds()` | → pool zone 列表 |
+| 80-83 | `ids.map(id => Promise.all([pv.setVisible(id, false), pv.setBounds(id, OFF_SCREEN)]))` | → 对 2 个 pool zone 操作 |
+| 85 | `catch { /* pluginViews 不可用 */ }` | 改注释 |
+
+**验证 grep：**
+```
+grep -n "pluginViews\|getAllIds" src/core/services/DialogService.ts  # 零匹配
+```
+
+---
+
+### 1.21 🟢 ShellPluginComponent.tsx——不存在
 
 > E5.6#36 原计划删除此文件，但 grep 全量结果为 **0 匹配**——此文件从未被创建。从 E5.6#36 中移除。
 
 ---
 
-### 1.20 🟢 全量确认——插件代码零沾染
+### 1.22 🟢 全量确认——插件代码零沾染
 
 | 检查范围 | 结果 |
 |:--|:--|
@@ -462,7 +501,7 @@ test -f plugin-view.html && echo "EXISTS" || echo "DELETED"  # DELETED
 
 ---
 
-### 1.21 🟢 `electron/ipc/lsp-handlers.ts`——仅历史注释，无需修改
+### 1.23 🟢 `electron/ipc/lsp-handlers.ts`——仅历史注释，无需修改
 
 | 行 | 内容 | 原因 |
 |:--|:--|:--|
@@ -529,5 +568,5 @@ grep -rn "getAllInstanceIds\|getInstanceIdsForPlugin" src/ electron/ | grep -v n
 
 ---
 
-> **← E5.6#0a 审计完成（三轮自检）。** 共 16 个源文件需要修改 + 2 个整文件删除 + 1 个仅含历史注释（无需修改）。所有 instanceId/grace/rekey/requestToPlugin/getPluginView/getPluginIdFromWebContents/pluginViewRegistry 引用已枚举到行号。零消费者确认。插件零沾染。
+> **← E5.6#0a 审计完成（五轮自检 + git 历史对照）。** 共 18 个源文件需要修改 + 2 个整文件删除 + 1 个仅含历史注释（无需修改）。所有 instanceId/grace/rekey/requestToPlugin/getPluginView/getPluginIdFromWebContents/pluginViewRegistry/pluginInstance/pluginViews 引用已枚举到行号。E5.5#9 全部 commit 逐文件对照无遗漏。插件零沾染。
 > **→ 下一步：** E5.6#0b 审计通信链路。
