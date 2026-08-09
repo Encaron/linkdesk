@@ -18,27 +18,34 @@ export function registerDeveloperCommands(): void {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_DEVTOOLS_PICKER
         const lk = window.linkdesk;
         const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-        type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' };
+        type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' } | { kind: 'pool'; zone: string };
         const targets: DevToolsTarget[] = webViewIds.map(id => ({ kind: 'plugin' as const, id }));
+        // E5.6#9：Pool WebView 也出现在 DevTools picker 中
+        if (lk?.pool) {
+          targets.push({ kind: 'pool', zone: 'sidebar' });
+          targets.push({ kind: 'pool', zone: 'main' });
+        }
         targets.push({ kind: 'shell' });
 
         QuickPickService.show<DevToolsTarget>({
           mode: "devtools",
           items: targets,
-          placeholder: "选择插件…",
-          getSearchText: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.id,
-          getKey: (t) => t.kind === 'shell' ? '__shell__' : t.id,
+          placeholder: "选择 WebView…",
+          getSearchText: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `pool:${t.zone}` : t.id,
+          getKey: (t) => t.kind === 'shell' ? '__shell__' : t.kind === 'pool' ? `__pool_${t.zone}__` : t.id,
           onSelect: async (t) => {
             if (t.kind === 'shell') {
               await lk?.window?.toggleDevTools?.();
+            } else if (t.kind === 'pool') {
+              lk?.pool?.toggleDevTools?.(t.zone);
             } else {
               await lk?.pluginViews?.toggleDevTools?.(t.id);
             }
             QuickPickService.hide();
           },
-          renderLabel: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.id,
+          renderLabel: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `Pool: ${t.zone}` : `插件: ${t.id}`,
           renderCategory: () => "切换 DevTools",
-          renderDetail: (t) => t.kind === 'shell' ? "壳窗口 DevTools" : "插件 DevTools",
+          renderDetail: (t) => t.kind === 'shell' ? '壳窗口 DevTools' : t.kind === 'pool' ? `${t.zone} Pool DevTools` : '插件 DevTools',
           onClose: () => QuickPickService.hide(),
         });
       },
