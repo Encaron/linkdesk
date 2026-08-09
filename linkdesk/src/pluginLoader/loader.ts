@@ -511,14 +511,21 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
           try {
             // E5#114d: 用 viewRenderModules glob 替代 /* @vite-ignore */——
             // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
+            // E5.6#2-fix: glob 外插件（runtime/reinstall）renderPath 是 /@fs/ 绝对路径，
+            // viewRenderModules key 是相对 glob 路径 → 不匹配 → 回退到 /* @vite-ignore */。
+            let renderModule: any;
             const viewLoader = viewRenderModules[renderPath];
-            if (!viewLoader) {
+            if (viewLoader) {
+              renderModule = await viewLoader();
+            } else if (pluginRoot) {
+              // 运行时插件：view 文件不在构建时 glob 中，走动态 import 直读文件
+              renderModule = await import(/* @vite-ignore */ renderPath);
+            } else {
               console.error(
                 `[loader] ❌ view 未找到匹配模块: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`
               );
               continue;
             }
-            const renderModule = await viewLoader();
             const RenderComponent = renderModule.default ?? renderModule;
             ViewContainerService.registerView(pluginId, containerId, {
               id: viewDef.id,

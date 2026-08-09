@@ -8,19 +8,15 @@ import "@vscode/codicons/dist/codicon.css";
 import { initStorageService } from "./core/services/StorageService";
 import { initConfigurationService } from "./core/services/ConfigurationService";
 
-// 🔥 E4V#40h Monaco 完整配置——照着 @monaco-editor/react 官方 Vite 文档：
-//    1. loader.config({ monaco }) → 告诉 @monaco-editor/react 用本地包而非 CDN
-//    2. MonacoEnvironment.getWorker → 告诉 Monaco 如何创建 TS/JSON/CSS/HTML worker
-//    🔥 必须两条都配——只配一条 TypeScript 智能提示不工作。
-import { loader } from "@monaco-editor/react";
-import * as monaco from "monaco-editor";
+// 🔥 E5.6#2 MonacoEnvironment——worker 构造器存全局，Monaco import 时读取。
+//    monaco-init.ts 也会设置同名属性（merge 模式），此处冗余无副作用。
+//    ⚠️ 禁止在此文件静态 import monaco-editor——会在 @codingame 补丁前初始化
+//       原生主题系统，导致 StandaloneWorkbenchThemeService DOM token 颜色错误。
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";
 import TsWorker from "monaco-editor/esm/vs/language/typescript/ts.worker?worker";
 import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import CssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
-
-loader.config({ monaco });
 
 (self as any).MonacoEnvironment = {
   getWorker(_: unknown, label: string): Worker {

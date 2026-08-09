@@ -288,6 +288,9 @@ export class IpcBridge {
     }) => {
       // 壳发起的广播——source 为 "shell"
       this.broadcast(channel, payload, "shell");
+      // E5.6#2：Pool 模型——壳 WebView 内插件需接收广播事件（theme:changed 等）
+      // 对标 registerPluginEmitListener 的双路径模式
+      this.mainWindow.webContents.send('plugin:push', { channel, payload, source: "shell" });
     });
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
   }

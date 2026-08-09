@@ -20,6 +20,7 @@ import { updateCoreCallbacks, type CoreCallbacks } from "../core/builtin/coreCom
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
+import ShellPluginComponent from "./ShellPluginComponent"; // E5.6#2b：插件回壳 React 树渲染
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
 import OutputPanel from "./views/OutputPanel"; // E3f #54
@@ -69,8 +70,7 @@ function renderTabContent(
   tab: { id: string; type: string; pluginId?: string; detailPluginId?: string; workspaceName?: string; filePath?: string; sourceId?: string },
   isActive: boolean,
   createTab?: (type: string, opts?: import("../core/api/types").CreateTabOptions) => string,
-  readyWebViewIds?: Set<string>,
-  webViewBoundsReady?: Set<string>,
+  // E5.6#2：Pool 模型——readyWebViewIds/webViewBoundsReady 不再需要，插件走 ShellPluginComponent 渲染
 ) {
   // 壳自身的视图——不走插件路由
   // E2a #2：壳视图也包 ErrorBoundary——欢迎页/插件详情崩了有兜底
@@ -92,25 +92,9 @@ function renderTabContent(
     }
   }
 
-  // Phase 4.4：视图插件路由
-  // E2a #3：pluginId 传入 ErrorBoundary——崩溃显示 "「终端」已崩溃 [重试]"
-  // #58e 修复：WebView 渲染完成（发 ready 信号）后才跳 React 副本——
-  // 空 <div> 占位 + WebView 覆盖。未 ready 时 React 继续渲染作安全网。
+  // E5.6#2a：Pool 模型——插件回壳 React 树渲染，不再创建独立 WebView
   if (tab.pluginId) {
-    // E5#11l：WebView JS ready + bounds IPC 确认 → 空 div，WebView 覆盖在上面
-    // E5.5#9h：instanceId = tab.id——每个标签页独立 WebView
-    if (readyWebViewIds?.has(tab.id) && webViewBoundsReady?.has(tab.id)) {
-      return <div key={tab.id} className="plugin-webview-placeholder" />;
-    }
-    // E5.5#5d：加载中 / 超时 → 欢迎页。壳视图，零插件代码在壳侧执行，Ctrl+Shift+P 可用。
-    //          WebView 就绪后自动切到上方空 div，无需用户切换标签页。
-    const plugin = getViewPlugin(tab.pluginId);
-    if (plugin) {
-      const WelcomeView = SHELL_VIEWS["welcome"];
-      if (WelcomeView) {
-        return createElement(WelcomeView, { key: tab.id, isActive });
-      }
-    }
+    return <ShellPluginComponent key={tab.id} pluginId={tab.pluginId} isActive={isActive} filePath={tab.filePath} sourceId={tab.sourceId} />;
   }
 
   // 通用不可用占位——插件未安装/已卸载/已禁用
@@ -316,8 +300,11 @@ function MainContent({
   }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t]);
   updateCoreCallbacks(coreCallbacks);
 
+  // E5.6#2c：Pool 模型——单 WebView 模式，跳过 useWebViewSync
+  const ENABLE_POOL_MODEL = true;
+
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
-  const pv = window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined;
+  const pv = ENABLE_POOL_MODEL ? undefined : (window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined);
   const {
     readyWebViewIds,
     webViewBoundsReady,
@@ -524,7 +511,7 @@ function MainContent({
           groupId={groupId}
           isVisible={isVisible}
         >
-          {renderTabContent(tab, isFocused, createTab, readyWebViewIds, webViewBoundsReady)}
+          {renderTabContent(tab, isFocused, createTab)}
         </TabPanePositioner>
       ))}
     </div>

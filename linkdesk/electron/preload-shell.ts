@@ -64,6 +64,47 @@ try {
       listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
         if (!key || d.key === key) cb(d.value);
       }, { skipPushWarning: true }),
+    // ── E5.6#2：Pool 模型——SettingsView 回壳渲染，需要 plugin preload 的全部 configuration API ──
+    // 以下 9 个方法从 preload-plugin.ts configurationObj 同步过来
+    /** 获取所有插件的配置贡献（分组列表+属性）。返回 entries 数组 */
+    getConfigurationContributions: (): Promise<[string, any][]> =>
+      ipcRenderer.invoke('plugins:call', 'getConfigurationContributions'),
+    /** 检视单个配置项——返回 { key, defaultValue, globalValue, workspaceValue, userValue } */
+    inspectConfiguration: (key: string): Promise<any> =>
+      ipcRenderer.invoke('plugins:call', 'inspectConfiguration', key),
+    /** 获取用户设置 JSON——用于 "打开设置 (JSON)" 弹窗 */
+    getUserSettings: (): Promise<Record<string, unknown>> =>
+      ipcRenderer.invoke('plugins:call', 'getUserSettings'),
+    /** 全局配置变更——不传 key 则所有变更都通知 */
+    onDidChangeConfiguration: (cb: (key: string, value: unknown) => void) => {
+      return listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
+        try { cb(d.key, d.value); } catch { /* contextBridge 回调静默失败 */ }
+      }, { skipPushWarning: true });
+    },
+    /** 插件生命周期变更——插件安装/卸载时通知 */
+    onPluginLifecycleChange: (cb: () => void) => {
+      return listenDirect(ipcRenderer, 'plugin-lifecycle:changed', () => {
+        try { cb(); } catch { /* contextBridge 回调静默失败 */ }
+      }, { skipPushWarning: true });
+    },
+    /** A 通道（mount 消费 pending）——设置未打开时齿轮"设置"跳转到指定分组 */
+    consumeSettingsGroup: (): Promise<string | null> =>
+      ipcRenderer.invoke('plugins:call', 'consumeSettingsGroup'),
+    /** B 通道（Emitter 订阅）——设置已打开时齿轮"设置"实时跳转 */
+    onRequestSettingsGroup: (cb: (pluginId: string) => void) => {
+      return listenDirect(ipcRenderer, 'settings:requestGroup', (d: any) => {
+        try { cb((d as { pluginId: string }).pluginId); } catch { /* contextBridge 回调静默失败 */ }
+      }, { skipPushWarning: true });
+    },
+    /** A 通道（mount 消费 pending）——命令面板齿轮跳转到指定配置项 */
+    consumeScrollToSetting: (): Promise<string | null> =>
+      ipcRenderer.invoke('plugins:call', 'consumeScrollToSetting'),
+    /** B 通道（Emitter 订阅）——已打开时实时滚动到指定配置项 */
+    onRequestScrollToSetting: (cb: (key: string) => void) => {
+      return listenDirect(ipcRenderer, 'settings:scrollTo', (d: any) => {
+        try { cb((d as { key: string }).key); } catch { /* contextBridge 回调静默失败 */ }
+      }, { skipPushWarning: true });
+    },
   };
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
