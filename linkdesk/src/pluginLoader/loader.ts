@@ -527,7 +527,9 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
               continue;
             }
             const RenderComponent = renderModule.default ?? renderModule;
-            ViewContainerService.registerView(pluginId, containerId, {
+            // E5.6#11b：_renderPath 存 glob key——池 PluginComponent 按此 key O(1) 查找组件。
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            const desc: any = {
               id: viewDef.id,
               title: viewDef.title ?? "",
               render: RenderComponent,
@@ -543,7 +545,9 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
               showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
               titleTooltip: viewDef.titleTooltip,
               minHeight: viewDef.minHeight,
-            });
+            };
+            desc._renderPath = renderPath;
+            ViewContainerService.registerView(pluginId, containerId, desc);
           } catch (e) {
             console.error(
               `[loader] ❌ 加载 view 失败: plugin="${pluginId}" container="${containerId}" render="${renderPath}"`,
