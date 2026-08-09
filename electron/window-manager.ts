@@ -532,6 +532,18 @@ export class WindowManager {
     return zone === 'sidebar' ? this.sidebarPoolView : this.mainPoolView;
   }
 
+  /** E5.6#10f：返回所有已创建的 Pool WebContentsView（广播/重放用） */
+  getAllPoolViews(): WebContentsView[] {
+    const views: WebContentsView[] = [];
+    if (this.sidebarPoolView && !this.sidebarPoolView.webContents.isDestroyed()) {
+      views.push(this.sidebarPoolView);
+    }
+    if (this.mainPoolView && !this.mainPoolView.webContents.isDestroyed()) {
+      views.push(this.mainPoolView);
+    }
+    return views;
+  }
+
   /**
    * 销毁所有插件 WebContentsView——应用退出时调用。
    */
