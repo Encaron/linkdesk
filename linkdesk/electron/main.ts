@@ -220,8 +220,17 @@ function createWindow(): void {
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
 ipcMain.on('theme:changed', (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
+  const bg = isDark ? '#1e1e1e' : '#f5f5f5';
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
+    mainWindow.setBackgroundColor(bg);
+  }
+  // E5.6#10f：Pool WebContentsView 背景跟随主题——池创建时 nativeTheme 尚未反映用户主题
+  if (windowManager) {
+    for (const poolView of windowManager.getAllPoolViews()) {
+      if (!poolView.webContents.isDestroyed()) {
+        poolView.setBackgroundColor(bg);
+      }
+    }
   }
 });
 
