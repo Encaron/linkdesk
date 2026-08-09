@@ -9,7 +9,16 @@ i18n.use(initReactI18next).init({
   },
   // 第 2 层退路：t(key) → key 不在翻译表 → 返回 key 本身（key = 中文原文）
   // 第 1 层翻译资源由插件系统提供（lang-defaults 工厂插件 → LanguageRegistry）
-  parseMissingKeyHandler: (key) => key,
+  // 🔴 i18next 文档：parseMissingKeyHandler 返回值不经过插值器——{{count}} 等占位符原样输出。
+  // 修复：手动调用 interpolator.interpolate()，让 key 中的 {{var}} 被 t() options 替换。
+  parseMissingKeyHandler: (key, _defaultValue, options) => {
+    if (options && typeof key === "string" && key.includes("{{")) {
+      try {
+        return (i18n as any).services.interpolator.interpolate(key, options, i18n.language, {});
+      } catch { /* interpolator 异常 → 返回原始 key */ }
+    }
+    return key;
+  },
 });
 
 // E3c #40：插件 WebView 语言同步——接收壳广播的翻译资源
