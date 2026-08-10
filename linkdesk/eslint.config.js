@@ -145,4 +145,33 @@ export default [
       "linkdesk/no-hardcoded-chinese": "warn",
     },
   },
+
+  // ═══ E5.6#11.5n：Path B——池核心隔离 ═══
+  // 池是独立 JS 堆——禁止 import @src/core/*（import type 除外）。
+  // 所有核心服务走 window.linkdesk.* → IPC → 壳唯一真相源。
+  // 详见 docs/02-Electron架构/E5.6_Pool模型重构/SidebarPool/E5.6-11.5-池核心隔离-PathB.md
+  {
+    files: ["src/pool/**/*.ts", "src/pool/**/*.tsx"],
+    rules: {
+      "@typescript-eslint/no-restricted-imports": [
+        "error",
+        {
+          paths: [
+            {
+              name: "@src/core",
+              message: "🚫 Path B：池禁止 import @src/core。请使用 window.linkdesk.* API 或内联工具类。type-only import 用 `import type { X } from \"@src/core/...\"` 即可通过。详见 docs/02-Electron架构/E5.6_Pool模型重构/SidebarPool/E5.6-11.5-池核心隔离-PathB.md",
+              allowTypeImports: true,
+            },
+          ],
+          patterns: [
+            {
+              group: ["@src/core/**"],
+              message: "🚫 Path B：池禁止 import @src/core/*。请使用 window.linkdesk.* API 或内联工具类。type-only import 用 `import type { X } from \"@src/core/...\"` 即可通过。详见 docs/02-Electron架构/E5.6_Pool模型重构/SidebarPool/E5.6-11.5-池核心隔离-PathB.md",
+              allowTypeImports: true,
+            },
+          ],
+        },
+      ],
+    },
+  },
 ];
