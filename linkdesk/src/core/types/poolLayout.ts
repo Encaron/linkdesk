@@ -35,6 +35,8 @@ export interface SidebarLayout {
   mergeHeaderWhenSingle?: boolean;
   views: SidebarViewMeta[];
   collapsedViews?: string[];              // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
+  /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
+  collapsed?: boolean;
   // ── 向后兼容 ──
   /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
   viewId?: string | null;

@@ -177,6 +177,18 @@ export function clearWorkspaceFolders(): void {
   _onDidChangeFolders.dispose();
 }
 
+/**
+ * E5.6#11-fix7：跨上下文桥接——池侧 WorkspaceService 是独立实例，本地 emitter 永远不触发。
+ * 壳 IpcBridgeHandler 在文件夹变更时通过 IpcBridge 广播 workspace:changed 事件，
+ * 池侧监听后调用此函数通知本地订阅者（FoldersView 的 onDidChangeFolders → syncRoots）。
+ *
+ * 🔥 watcher 安全：syncRoots 内部通过 _syncGuardRef 防 StrictMode 竞态，
+ *    _watchersRef 先清理旧 watcher 再创建新的——和 git 历史中 c9ca947d/80bc939d 修复一致。
+ */
+export function triggerFoldersChanged(): void {
+  _onDidChangeFolders.fire([..._folders]);
+}
+
 /* ── E5.5#0e：持久化 ── */
 
 /** 将 _folders 写入 StorageService——退出/重启后恢复（与 LayoutService/PluginStateService 同路径） */

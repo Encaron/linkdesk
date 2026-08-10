@@ -19,9 +19,9 @@ import PluginComponent from "./PluginComponent";
 // ── 类型 ──
 
 export interface SidebarAction {
-  action: "reorder" | "setCollapsed" | "setVisible";
+  action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse";
   containerId: string;
-  viewId: string;
+  viewId?: string;
   newIndex?: number;
   collapsed?: boolean;
   visible?: boolean;

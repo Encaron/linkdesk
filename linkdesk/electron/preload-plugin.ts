@@ -162,11 +162,20 @@ try {
   });
 
   // E3j #75：commands 对象——execute（向后兼容别名）+ executeCommand + getCommands
+  // E5.6#11-fix7：池内命令优先本地执行——pool-main.tsx 通过 __registerCommandExecutor 注册本地 CommandRegistry.executeCommand。
+  // 本地无此命令时 fallback 到 IPC（壳侧命令如 core.closeAllEditors）。
+  let _localExecuteCommand: ((id: string, ...args: any[]) => Promise<any>) | null = null;
   const commandsObj = {
-    execute: (id: string, ...args: any[]) =>
-      ipcRenderer.invoke('commands:execute', id, ...args),
-    executeCommand: (id: string, ...args: any[]) =>
-      ipcRenderer.invoke('commands:execute', id, ...args),
+    execute: (id: string, ...args: any[]) => {
+      if (_localExecuteCommand) return _localExecuteCommand(id, ...args).catch(() =>
+        ipcRenderer.invoke('commands:execute', id, ...args));
+      return ipcRenderer.invoke('commands:execute', id, ...args);
+    },
+    executeCommand: (id: string, ...args: any[]) => {
+      if (_localExecuteCommand) return _localExecuteCommand(id, ...args).catch(() =>
+        ipcRenderer.invoke('commands:execute', id, ...args));
+      return ipcRenderer.invoke('commands:execute', id, ...args);
+    },
     getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
   };
 
@@ -562,6 +571,11 @@ try {
     },
 
     events,
+
+    // E5.6#11-fix7：池内命令本地执行——pool-main.tsx 在 useEffect 中注册 CommandRegistry.executeCommand。
+    // contextBridge proxy 不可变（E5.6#11-fix5 教训），此处通过方法参数设置模块级变量，
+    // commandsObj.execute/executeCommand 读取该变量——本地命中则不走 IPC。
+    __registerCommandExecutor: (fn: any) => { _localExecuteCommand = fn; },
   });
 
   // E5#62：模块级 handler 表——contextBridge 隔离世界和 ipcRenderer 共用
