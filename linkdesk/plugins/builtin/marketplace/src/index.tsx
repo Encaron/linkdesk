@@ -65,7 +65,10 @@ function ensureMarketplaceCommands(): void {
   ]);
 }
 
-/* 模块加载时注册——幂等（_marketplaceCommandsRegistered guard） */
+/* 模块加载时注册——幂等（_marketplaceCommandsRegistered guard）。
+ * 🔥 此文件由壳的 loader 加载（glob 插件——isRuntime=false），非池插件。
+ * 因此仍使用 @src/core/registry/CommandRegistry 直接注册，不走 lk.commands.registerCommand。
+ * lk.commands.registerCommand 仅存在于 preload-pool.ts——壳 preload 不支持。 */
 ensureMarketplaceCommands();
 
 function MarketplaceView({ isActive: _isActive }: { isActive: boolean }) {

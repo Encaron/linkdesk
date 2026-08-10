@@ -5,8 +5,9 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { openFolder, addFolder, onDidChangeFolders } from "@src/core/services/WorkspaceService";
 import { basename, normalizePath } from "../utils/pathUtils";
+
+const lk = () => (window as any).linkdesk;
 
 const PLUGIN_ID = "file-tree";
 const RECENT_KEY = "recentFolders";
@@ -40,9 +41,10 @@ const WelcomeView: React.FC = () => {
       }
       setRecentFolders(cleaned);
     });
-    const unsub = onDidChangeFolders((folders) => {
+    const unsub = lk().workspace?.onDidChangeFolders(async () => {
+      const folders = await lk().workspace.getFolders();
       if (folders.length > 0) {
-        updateRecent(folders.map((f) => f.uri));
+        updateRecent(folders.map((f: any) => f.uri));
       }
     });
     return unsub;
@@ -51,11 +53,11 @@ const WelcomeView: React.FC = () => {
   /* ── 打开文件夹 ── */
 
   const handleOpenFolder = useCallback(async () => {
-    await openFolder();
+    await lk().workspace.openFolder();
   }, []);
 
   const handleOpenRecent = useCallback(async (folderPath: string) => {
-    addFolder(folderPath);
+    lk().workspace.addFolder(folderPath);
   }, []);
 
   /* ── 拖放 ── */
@@ -73,7 +75,7 @@ const WelcomeView: React.FC = () => {
     e.preventDefault();
     setDragOver(false);
     const file = e.dataTransfer.files[0] as (File & { path?: string }) | null;
-    if (file?.path) addFolder(file.path);
+    if (file?.path) lk().workspace.addFolder(file.path);
   }, []);
 
   /* ── 渲染 ── */

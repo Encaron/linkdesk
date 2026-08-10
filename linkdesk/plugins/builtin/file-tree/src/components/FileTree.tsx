@@ -12,9 +12,6 @@ import { useFileTreeKeyboard } from "../services/FileTreeKeyboard";
 import type { FlatItem } from "../services/FileTreeKeyboard";
 import { useFileTreeDnD } from "../services/FileTreeDnD";
 
-import { setKeybindingCaptureActive } from "@src/core/registry/KeybindingRegistry";
-import { shellEvents } from "@src/core/react/ShellEvents";
-import { getActiveWorkspace, setActiveWorkspace, onDidChangeActiveWorkspace } from "@src/core/services/WorkspaceService";
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
 
 const lk = (window as any).linkdesk;
@@ -91,10 +88,13 @@ function findLeaf(item: ExplorerItem): ExplorerItem | null {
 /* ── E4V#35d 归一化：工作区激活——所有交互入口走此函数 ── */
 
 /** 点击任意节点→激活所属工作区根。handleSelect / handleContextMenu / 键盘等入口统一调用。 */
-function activateWorkspaceForUri(model: FileTreeModel, uri: string): void {
+async function activateWorkspaceForUri(model: FileTreeModel, uri: string): Promise<void> {
   const root = model.findClosestRoot(uri);
-  if (root && root.uri !== getActiveWorkspace()) {
-    setActiveWorkspace(root.uri);
+  if (root) {
+    const active = await lk.workspace.getActive();
+    if (root.uri !== active) {
+      lk.workspace.setActive(root.uri);
+    }
   }
 }
 
@@ -130,7 +130,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
   const [activeWorkspaceUri, setActiveWorkspaceUri] = useState<string>("");
   useEffect(() => { lk.workspace.getActive().then((v: string | undefined) => { if (v) setActiveWorkspaceUri(v); }); }, []);
   useEffect(() => {
-    return onDidChangeActiveWorkspace((uri) => { setActiveWorkspaceUri(uri); rerender(); });
+    return lk.workspace.onDidChangeActiveWorkspace((uri: string | null) => { setActiveWorkspaceUri(uri ?? ""); rerender(); });
   }, [rerender]);
 
   // E4V#34b: 加载 explorer.compactFolders 配置并订阅变更
@@ -159,12 +159,12 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     setFocusedUri(target);
     setSelection(new Set([target]));
     // 🔥 屏蔽全局快捷键——防止 KeybindingRegistry 抢 Enter/Escape
-    setKeybindingCaptureActive(true);
+    lk.keybindings.setKeybindingCaptureActive(true);
     (window as any).linkdesk?.contextKey?.set("inputFocus", true);
   }, [selection, focusedUri]);
   /** 🔥 rename 退出归一出口——finish/cancel/blur 三条路径走同一个 */
   const exitRename = useCallback(() => {
-    setKeybindingCaptureActive(false);
+    lk.keybindings.setKeybindingCaptureActive(false);
     (window as any).linkdesk?.contextKey?.set("inputFocus", false);
     // defer focus: 等 React 卸载 input 后再聚焦→不触发 input onBlur
     requestAnimationFrame(() => containerRef.current?.focus());
@@ -178,7 +178,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     const dest = dir + "/" + newName;
     await lk.filesystem.copy(uri, dest);
     await lk.filesystem.remove(uri);
-    shellEvents.emit("file:renamed", { oldPath: uri, newPath: dest });
+    lk.events.emit("file:renamed", { oldPath: uri, newPath: dest });
     await model.refresh(dir);
     const parent = model.findClosest(dir);
     if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });

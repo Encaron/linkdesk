@@ -211,6 +211,26 @@ export function useFileTreeKeyboard(
           break;
         }
 
+        /* ── F2——重命名 ── */
+
+        case "F2": {
+          e.preventDefault();
+          if (fi.parent !== null) {
+            (window as any).linkdesk?.commands?.executeCommand?.("explorer.rename");
+          }
+          break;
+        }
+
+        /* ── Delete——删除 ── */
+
+        case "Delete": {
+          e.preventDefault();
+          if (fi.parent !== null) {
+            (window as any).linkdesk?.commands?.executeCommand?.("explorer.delete");
+          }
+          break;
+        }
+
         /* ── type-ahead（单字符且无修饰键） ── */
 
         default: {

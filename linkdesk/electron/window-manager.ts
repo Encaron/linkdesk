@@ -414,7 +414,7 @@ export class WindowManager {
   private createPoolView(zone: 'sidebar' | 'main', debugLabel: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
-        preload: path.join(__dirname, 'preload-plugin.js'),
+        preload: path.join(__dirname, 'preload-pool.js'),
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,

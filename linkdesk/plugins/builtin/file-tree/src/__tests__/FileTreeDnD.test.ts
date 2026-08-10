@@ -5,17 +5,25 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 
-// Mock FileService——不做真实文件操作
-vi.mock("@src/core/services/FileService", () => ({
-  copy: vi.fn(),
-  remove: vi.fn(),
-}));
+// E5.6#11.5: executeSafeDrop 已迁移到 lk.filesystem.*——mock linkdesk 全局
+const mockedCopy = vi.fn();
+const mockedDelete = vi.fn();
 
-import { copy, remove } from "@src/core/services/FileService";
-import { executeSafeDrop } from "../services/FileTreeDnD";
+// ESM import hoisting — 必须在 import 前设好全局 mock
+(window as any).linkdesk = {
+  ...((window as any).linkdesk ?? {}),
+  filesystem: {
+    copy: mockedCopy,
+    remove: mockedDelete,
+  },
+  configuration: {
+    // enableDragAndDrop → true (keep enabled); confirmDragAndDrop → false (skip dialog)
+    get: (key: string) => Promise.resolve(key !== "explorer.confirmDragAndDrop"),
+  },
+};
 
-const mockedCopy = copy as ReturnType<typeof vi.fn>;
-const mockedDelete = remove as ReturnType<typeof vi.fn>;
+// dynamic import——避 ESM hoisting，确保 lk 捕获已 mock 的 window.linkdesk
+const { executeSafeDrop } = await import("../services/FileTreeDnD");
 
 beforeEach(() => {
   mockedCopy.mockClear();

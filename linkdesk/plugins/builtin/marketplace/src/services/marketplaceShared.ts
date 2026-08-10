@@ -9,11 +9,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import type { ViewPluginEntry } from "@src/core/api/types";
-import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
-// E5.6#11-fix：badge 更新走事件 emit→壳 events.on→壳 ViewContainerService→layoutVersion→重推布局。
-// 池内 ViewContainerService 是空实例——直接写不生效。
-// ViewContainerService.onDidChangeViews 在池内仍可用——loader 注册 view 时触发，用于 badge 首次提交。
-import { ViewContainerService } from "@src/core/services/ViewContainerService";
+// E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => (window as any).linkdesk;
 
 const pm = () => (window as any).linkdesk?.pluginManager;
@@ -109,7 +105,7 @@ export function useMarketplacePlugins() {
       updateAllBadges();
 
       /* 订阅插件生命周期变更——安装/卸载/启用/禁用后自动刷新 */
-      const unsubLifecycle = onPluginLifecycleChange.event(() => {
+      const unsubLifecycle = lk()?.events?.on("plugin-lifecycle:changed", () => {
         refreshData().then(() => {
           notifyDataListeners();
           updateAllBadges();
@@ -135,12 +131,12 @@ export function useMarketplacePlugins() {
     return onMarketplaceSearchChange(rerender);
   }, [rerender]);
 
-  /* 🔥 loader 异步 import view 组件后才注册——onDidChangeViews 兜底 */
+  /* 🔥 loader 异步 import view 组件后才注册——viewContainer:changed 兜底 */
   useEffect(() => {
-    const sub = ViewContainerService.onDidChangeViews.event(({ containerId }) => {
+    const sub = lk()?.events?.on("viewContainer:changed", ({ containerId }: any) => {
       if (containerId === "marketplace") updateAllBadges();
     });
-    return () => sub();
+    return () => sub?.();
   }, []);
 
   const search = getMarketplaceSearch().toLowerCase();

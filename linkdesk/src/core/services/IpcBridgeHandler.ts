@@ -26,12 +26,18 @@ import { shellEvents } from "../react/ShellEvents"; // E5#68
 import { ContextKeyService } from "../registry/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
-import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders } from "./WorkspaceService"; // E5#85
+import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders, setActiveWorkspace, openFolder, addFolder, removeFolder, onDidChangeActiveWorkspace } from "./WorkspaceService"; // E5#85 + E5.6#11.5-A
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
+// E5.6#11.5-A：fileAssociation + decorations——池插件跨进程查询
+import { getPluginFor } from "./FileAssociationService";
+import { FileDecorationRegistry } from "../registry/FileDecorationRegistry";
+// E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
+import { searchFiles } from "./FileSearcher";
+import { EncodingService } from "./EncodingService";
 // E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
 // 桥不知道加载器的存在，只知道"有人注册了这些能力"。
 export interface PluginManagementAPI {
@@ -57,6 +63,8 @@ let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
 let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
+let _workspaceActiveUnsub: (() => void) | null = null; // E5.6#11.5-A：活跃工作区变更广播
+let _decorationsUnsub: (() => void) | null = null; // E5.6#11.5-A：文件装饰变更广播
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -125,6 +133,67 @@ export function initIpcBridgeHandler(): void {
         }
         case "workspace:getActive": {
           result = getActiveWorkspace();
+          break;
+        }
+
+        // ── E5.6#11.5-A：扩展 workspace——池插件写工作区操作 ──
+        case "workspace:setActive": {
+          const [uri] = req.args as [string];
+          setActiveWorkspace(uri);
+          // 广播到所有 Pool——池插件订阅 onDidChangeActiveWorkspace
+          try { window.linkdesk?.events?.emit("workspace:activeChanged", { uri }); } catch { /* 静默 */ }
+          break;
+        }
+        case "workspace:openFolder": {
+          await openFolder();
+          break;
+        }
+        case "workspace:addFolder": {
+          const [path] = req.args as [string];
+          addFolder(path);
+          break;
+        }
+        case "workspace:removeFolder": {
+          const [path] = req.args as [string];
+          removeFolder(path);
+          break;
+        }
+
+        // ── E5.6#11.5-A：fileAssociation——池插件查询扩展名→插件ID ──
+        case "fileAssociation:getPluginFor": {
+          const [ext] = req.args as [string];
+          result = getPluginFor(ext);
+          break;
+        }
+
+        // ── E5.6#11.5-A：decorations——池插件查询文件装饰（Git 状态等）──
+        case "decorations:getDecoration": {
+          const [uri] = req.args as [string];
+          result = FileDecorationRegistry.getDecoration(uri);
+          break;
+        }
+
+        // ── E5.6#11.5g5：文件搜索——池插件跨进程全文搜索（对齐 FileSearcher.SearchOptions）──
+        case "search:searchFiles": {
+          const [opts] = req.args as [Parameters<typeof searchFiles>[0]];
+          result = await searchFiles(opts);
+          break;
+        }
+
+        // ── E5.6#11.5g5：编码检测/转换——池插件跨进程使用 EncodingService ──
+        case "encoding:detect": {
+          const [buffer] = req.args as [Uint8Array];
+          result = EncodingService.detect(buffer);
+          break;
+        }
+        case "encoding:decode": {
+          const [buffer, encoding] = req.args as [Uint8Array, string];
+          result = EncodingService.decode(buffer, encoding);
+          break;
+        }
+        case "encoding:encode": {
+          const [text, encoding] = req.args as [string, string];
+          result = EncodingService.encode(text, encoding);
           break;
         }
 
@@ -258,6 +327,17 @@ export function initIpcBridgeHandler(): void {
   _workspaceUnsub = onDidChangeFolders(() => {
     try { linkdesk.events?.emit("workspace:changed", {}); } catch { /* 静默 */ }
   });
+
+  // ── E5.6#11.5-A：活跃工作区变更广播——池插件订阅 onDidChangeActiveWorkspace ──
+  _workspaceActiveUnsub = onDidChangeActiveWorkspace((uri) => {
+    try { linkdesk.events?.emit("workspace:activeChanged", { uri }); } catch { /* 静默 */ }
+  });
+
+  // ── E5.6#11.5-A：文件装饰变更广播——池文件树刷新 Git 状态图标 ──
+  const decoUnsub = FileDecorationRegistry.onDidChange((uris) => {
+    try { linkdesk.events?.emit("decorations:changed", { uris: Array.isArray(uris) ? uris : [] }); } catch { /* 静默 */ }
+  });
+  _decorationsUnsub = decoUnsub;
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -276,6 +356,10 @@ export function unregisterIpcBridgeHandler(): void {
     _keybindingsUnsub = null;
     _workspaceUnsub?.();
     _workspaceUnsub = null;
+    _workspaceActiveUnsub?.();
+    _workspaceActiveUnsub = null;
+    _decorationsUnsub?.();
+    _decorationsUnsub = null;
   }
 }
 
