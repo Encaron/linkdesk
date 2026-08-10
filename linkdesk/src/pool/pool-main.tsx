@@ -21,19 +21,17 @@ import "../index.css";
 import "@vscode/codicons/dist/codicon.css";
 // E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
 import "../i18n";
-// E5.6#11-fix5：池内命令路由——ContextMenu 右键命令（explorer.delete 等）默认走 IPC→壳 CommandRegistry，
-// 壳侧 handler 操作壳侧 model（hidden SidePanel）→ 池内 UI 不更新。
-// 覆盖 lk.commands.executeCommand：池内注册的命令走本地 CommandRegistry，其余回退 IPC。
-import { executeCommand, getCommands } from "../core/registry/CommandRegistry";
-
 // ── PoolApp ──
 
 function PoolApp() {
   const zone = new URLSearchParams(window.location.search).get("zone");
   const [layout, setLayout] = useState<PoolLayout>({ groups: [] });
 
-  // E5.6#11-fix3：SidebarPool 根背景——独立 WebContentsView 需要侧栏色调，
-  // 不能复用 #pool-root { background: var(--bg-window) }。
+  // 🔍 诊断：模块加载成功 + zone
+  console.error("[pool:diag] PoolApp 渲染 zone=%s layout.sidebar=%s layout.groups=%d",
+    zone, layout.sidebar ? `visible=${layout.sidebar.visible} views=${layout.sidebar.views?.length}` : "undefined", layout.groups.length);
+
+  // E5.6#11-fix3：SidebarPool 根背景
   useEffect(() => {
     const root = document.getElementById("pool-root");
     if (root && zone === "sidebar") {
@@ -43,46 +41,21 @@ function PoolApp() {
 
   useEffect(() => {
     const poolApi = (window as any).linkdesk?.pool;
+    console.error("[pool:diag] linkdesk.pool=%s", poolApi ? "found" : "MISSING");
     if (!poolApi) {
-      // E5.6#8 前 preload 尚未暴露 pool API——静默等待
       return;
     }
 
     const unsub = poolApi.onLayout((next: PoolLayout) => {
+      console.error("[pool:diag] onLayout sidebar=%s", next.sidebar ? `visible=${next.sidebar.visible} views=${next.sidebar.views?.length}` : "undefined");
       setLayout(next);
     });
 
-    // 池就绪通知壳——壳收到 pool:ready 后开始 pushLayout
     poolApi.ready();
+    console.error("[pool:diag] pool.ready() 已发送");
 
     return () => {
       unsub?.();
-    };
-  }, []);
-
-  // E5.6#11-fix5：池内命令路由——本地注册的命令（如 explorer.delete/explorer.rename）
-  // 走池内 CommandRegistry → handler 读写池内 FileTreeHandle/model → UI 即时更新。
-  // 未注册命令（如 tabs:create/config:get）回退 IPC→壳。
-  useEffect(() => {
-    const lk = (window as any).linkdesk;
-    if (!lk?.commands) return;
-
-    const origExec = lk.commands.executeCommand;
-
-    lk.commands.executeCommand = async function (this: any, id: string, ...args: any[]) {
-      const localCmds = getCommands();
-      if (localCmds.some((c) => c.id === id)) {
-        try {
-          return await executeCommand(id, ...args);
-        } catch (e) {
-          console.error("[pool] 本地命令执行失败，回退 IPC:", id, e);
-        }
-      }
-      return origExec(id, ...args);
-    };
-
-    return () => {
-      lk.commands.executeCommand = origExec;
     };
   }, []);
 
@@ -93,7 +66,6 @@ function PoolApp() {
     return <MainRenderer groups={layout.groups} />;
   }
 
-  // zone 参数无效——URL 参数缺失或非法
   return (
     <div
       style={{
