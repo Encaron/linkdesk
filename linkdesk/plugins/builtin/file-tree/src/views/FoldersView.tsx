@@ -372,16 +372,16 @@ const FoldersView: React.FC = () => {
       {/* E5.6#11：工具栏从 header actions (ReactNode→不可IPC序列化) 迁移到组件内自渲染 */}
       {roots.length > 0 && (
         <div className="file-tree-toolbar">
-          <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => lk?.commands?.executeCommand?.("explorer.newFile")}>
+          <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => executeCommand("explorer.newFile")}>
             <span className="codicon codicon-new-file" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => lk?.commands?.executeCommand?.("explorer.newFolder")}>
+          <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => executeCommand("explorer.newFolder")}>
             <span className="codicon codicon-new-folder" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => lk?.commands?.executeCommand?.("explorer.refresh")}>
+          <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => executeCommand("explorer.refresh")}>
             <span className="codicon codicon-refresh" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => lk?.commands?.executeCommand?.("explorer.collapseAll")}>
+          <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => executeCommand("explorer.collapseAll")}>
             <span className="codicon codicon-collapse-all" />
           </button>
         </div>
