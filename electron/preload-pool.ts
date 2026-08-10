@@ -508,6 +508,12 @@ try {
       getView: (_viewId: string) => null,
     },
 
+    // ── 🆕 E5.6#11.5i：langDef——语言定义注册表（壳侧 LangDefRegistry）──
+    langDef: {
+      get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
+        ipcRenderer.invoke('langDef:get', extension),
+    },
+
     // ── 🆕 E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
     protocol: {
       listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>

@@ -10,9 +10,7 @@
  * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
-import { getLangDef } from "@src/core/registry/LangDefRegistry";
-import { shellEvents } from "@src/core/react/ShellEvents";
-
+// E5.6#11.5i：getLangDef → lk.langDef.get，shellEvents → lk.events
 const lk = (window as any).linkdesk;
 import { initMonacoEnv } from "../services/monaco-init";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
@@ -114,7 +112,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       // E5.5#7 Bug B fix：LangDefRegistry 已在 plugin-shell-main.tsx 启动时通过
       // syncCoreRegistries() 自动同步——编辑器无需自己 sync。
       const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
-      const langDef = getLangDef(ext);
+      const langDef = await lk.langDef.get(ext);
       console.error(`[editor:debug] filePath=${filePath} ext=${ext} langDef=${langDef?.id ?? "null"} hasLsp=${!!langDef?.lsp} hasClient=${!!getLspClient(langDef?.id ?? "")}`);
       if (langDef?.lsp && !getLspClient(langDef.id)) {
         const workspaceRoot = (await lk.workspace.getFolders())[0]?.uri || lk.path.normalize(filePath).replace(/\/[^/]+$/, "");
@@ -248,7 +246,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
             filePath: targetPath, sourceId: targetPath, label, pinned: false,
           });
           // 已 active 的 editor 不会触发 isActive effect → 走事件通道
-          shellEvents.emit("editor:revealRequested", { filePath: targetPath });
+          lk.events.emit("editor:revealRequested", { filePath: targetPath });
         } catch { /* 无定义则放行 */ }
       };
 
@@ -297,7 +295,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   // ── 跨文件跳转——mount/isActive effect 之外的事件通道（含 ShellEvents buffer 回放）──
   useEffect(() => {
-    return shellEvents.on("editor:revealRequested", ({ filePath: fp }) => {
+    return lk.events.on("editor:revealRequested", ({ filePath: fp }: any) => {
       if (fp !== filePath) return;
       requestAnimationFrame(() => {
         const pos = consumePendingReveal(filePath);
