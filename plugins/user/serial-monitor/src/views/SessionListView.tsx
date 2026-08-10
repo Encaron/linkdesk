@@ -9,9 +9,6 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../hooks/useSerialSessions";
 
-import { activateSidebarItem } from "@src/core/react/SidebarTabSync";
-import { ContextKeyService } from "@src/core/registry/ContextKeyService";
-import { clipboardProviders } from "@src/core/ClipboardProviderRegistry";
 import { SessionListItem } from "../components/SessionListItem";
 import "../styles/SerialMonitorSidebar.css";
 
@@ -43,15 +40,9 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
   return { isOpen, sourceName };
 }
 
-// ── E5#19b: ClipboardProvider——壳 F2 分发到串口会话重命名 ──
+// ── E5.6#11.5h：F2 重命名——池是独立 WCV，壳 F2 全局快捷键到不了池。
+// 改为 DOM keydown 监听 F2 触发 _triggerRename。——
 let _triggerRename: (() => void) | null = null;
-
-clipboardProviders.register("serial-monitor", {
-  when: "serialSessionFocus",
-  onRename() {
-    _triggerRename?.();
-  },
-});
 
 export default function SessionListView() {
   const { t } = useTranslation();
@@ -141,14 +132,15 @@ export default function SessionListView() {
     [sessions, t, removeSession, tabs],
   );
 
-  // C4b Bug 3：从 SerialContext 派生每个 session 的 connected 状态
-  // 🔥 E3a #29a：SidebarTabSync 归一化——侧栏↔标签页走单一入口
+  // 🔥 E3a #29a：侧栏↔标签页走 tabs.create 单一入口
+  // E5.6#11.5h：原 activateSidebarItem 函数体内联——tabs.create(pluginId, { sourceId, ...opts })
   const handleSelectSession = useCallback(
     (sessionId: string) => {
       setActiveSession(sessionId);
       const session = sessions.find((s) => s.id === sessionId);
       if (tabs) {
-        activateSidebarItem(tabs, sessionId, "serial-monitor", {
+        tabs.create("serial-monitor", {
+          sourceId: sessionId,
           label: session?.name,
           pinned: true,
         });
@@ -167,9 +159,21 @@ export default function SessionListView() {
     return () => { _triggerRename = null; };
   }, [activeSessionId]);
 
+  // E5.6#11.5h：池是独立 WCV——壳 F2 全局快捷键到不了池，改 DOM keydown 监听
   useEffect(() => {
-    ContextKeyService.setValue("serialSessionFocus", activeSessionId !== null);
-    return () => { ContextKeyService.setValue("serialSessionFocus", false); };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "F2") {
+        e.preventDefault();
+        _triggerRename?.();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
+  useEffect(() => {
+    lk().contextKey?.set("serialSessionFocus", activeSessionId !== null);
+    return () => { lk().contextKey?.set("serialSessionFocus", false); };
   }, [activeSessionId]);
 
   const sessionList = sessions.map((s) => (
