@@ -15,7 +15,7 @@
  *         插件 preload → 插件 React 回调
  */
 
-import { BrowserWindow, ipcMain } from 'electron';
+import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { WindowManager } from './window-manager.js';
 
 interface PendingRequest {
@@ -327,6 +327,13 @@ export class IpcBridge {
   replayToPlugin(instanceId: string): void {
     for (const [channel, payload] of this.lastBroadcasts) {
       this.pushToPlugin(instanceId, channel, payload);
+    }
+  }
+
+  /** E5.6#14-fix：Pool 创建后重放初始广播状态——theme/language/accent 等 */
+  replayToPool(poolView: WebContentsView): void {
+    for (const [channel, payload] of this.lastBroadcasts) {
+      poolView.webContents.send('plugin:push', { channel, payload, source: 'shell' });
     }
   }
 

@@ -444,6 +444,14 @@ export class WindowManager {
       }
     });
 
+    // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
+    // 对标 per-tab WebView 的 replayToPlugin——池创建晚于初始广播，需补发。
+    view.webContents.on('did-finish-load', () => {
+      if (this.ipcBridge?.replayToPool) {
+        this.ipcBridge.replayToPool(view);
+      }
+    });
+
     // dev 走 Vite dev server（loadURL），prod 走打包产物（loadFile——避免手动构造 file:// URL 的路径分隔符问题）
     if (!app.isPackaged) {
       view.webContents.loadURL(`${DEV_SERVER_URL}/pool.html?zone=${zone}`);
