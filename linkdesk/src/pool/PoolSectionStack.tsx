@@ -169,8 +169,10 @@ export default function PoolSectionStack({
     if (!base || base.upperId !== upperId) {
       const upperEl = document.querySelector(`[data-view-id="${upperId}"]`) as HTMLElement | null;
       const lowerEl = document.querySelector(`[data-view-id="${lowerId}"]`) as HTMLElement | null;
-      const upperH = upperEl?.offsetHeight ?? 200;
-      const lowerH = lowerEl?.offsetHeight ?? 200;
+      const upperH = upperEl?.offsetHeight ?? 0;
+      const lowerH = lowerEl?.offsetHeight ?? 0;
+      // E5.6#11.5-PaneSash：无效高度拒绝使用——offsetHeight=0 时跳过更新，防止 1/4/1/2 跳变
+      if (upperH <= 0 || lowerH <= 0) return;
       dragBaseRef.current = { upperId, baseHeight: upperH, lowerId, lowerBaseHeight: lowerH };
     }
     const b = dragBaseRef.current!;
@@ -178,7 +180,8 @@ export default function PoolSectionStack({
     const lowerMin = effectiveMinHeight(lowerId);
     const newUpper = Math.max(upperMin, b.baseHeight + deltaY);
     const newLower = Math.max(lowerMin, b.lowerBaseHeight - deltaY);
-    setViewHeights({ [upperId]: newUpper, [lowerId]: newLower });
+    // E5.6#11.5-PaneSash：展开前值——不丢其他 view 的高度
+    setViewHeights((prev) => ({ ...prev, [upperId]: newUpper, [lowerId]: newLower }));
   }, [effectiveMinHeight]);
 
   const handleSashEnd = useCallback(() => {
