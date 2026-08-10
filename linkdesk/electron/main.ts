@@ -17,6 +17,7 @@ import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
+import { registerProtocolHandlers } from './ipc/protocol-handlers.js'; // E5.6#11.5h
 import { registerPluginViewHandlers, registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29 + E5.6#8d
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './protocol.js';
@@ -77,6 +78,7 @@ function createWindow(): void {
   registerDialogHandlers();
   registerEnvHandlers();
   registerClipboardHandlers();
+  registerProtocolHandlers(); // E5.6#11.5h
 
   // E3a #24：初始化 WindowManager
   windowManager = new WindowManager(mainWindow);
