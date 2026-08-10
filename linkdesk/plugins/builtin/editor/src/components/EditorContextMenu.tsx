@@ -4,11 +4,11 @@
  * 对标 VS Code 编辑器上下文菜单。Monaco 原生菜单保留（剪切/复制/粘贴），
  * 这里注册编辑器专属命令到 MenuId.EditorContext。
  */
-import { MenuId } from "@src/core/registry/MenuRegistry";
+// E5.6#11.5i：MenuId → 字符串字面量（池独立 WCV 不能 import @src/core）
 
 /** 在插件加载时调用——注册编辑器上下文菜单项 */
 export function registerEditorContextMenu(): void {
-  (window as any).linkdesk?.menu?.registerItems(MenuId.EditorContext, "editor", [
+  (window as any).linkdesk?.menu?.registerItems("editorContext", "editor", [
     {
       command: "editor.goToDefinition",
       group: "navigation",
