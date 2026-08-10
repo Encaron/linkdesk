@@ -20,7 +20,6 @@ import { updateCoreCallbacks, type CoreCallbacks } from "../core/builtin/coreCom
 import SplitPane from "./SplitPane";
 import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
-import ShellPluginComponent from "./ShellPluginComponent"; // E5.6#2b：插件回壳 React 树渲染
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
 import OutputPanel from "./views/OutputPanel"; // E3f #54
@@ -100,9 +99,9 @@ function renderTabContent(
     }
   }
 
-  // E5.6#2a：Pool 模型——插件回壳 React 树渲染，不再创建独立 WebView
+  // E5.6#14a：MainPool 迁移——插件由 MainPool WebContentsView 独立渲染，壳 DOM 不渲染内容
   if (tab.pluginId) {
-    return <ShellPluginComponent key={tab.id} pluginId={tab.pluginId} isActive={isActive} filePath={tab.filePath} sourceId={tab.sourceId} />;
+    return null;
   }
 
   // 通用不可用占位——插件未安装/已卸载/已禁用
