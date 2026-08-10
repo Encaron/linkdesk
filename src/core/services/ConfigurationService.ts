@@ -283,3 +283,18 @@ export function clearConfigurationCache(): void {
   _workspaceRoot = null;
   _initialized = false;
 }
+
+/**
+ * E5.6#11-fix7：跨上下文桥接——池侧 ConfigurationService 是独立实例，本地 cache 为空，listener 永远不触发。
+ * 壳 IpcBridgeHandler 在配置变更时通过 IpcBridge 广播 config:changed 事件（含 key/value），
+ * 池侧 preload 内置 _configCache 回放，此函数供 pool-main.tsx 桥接到本地 ConfigurationService：
+ *   1. 更新 _userSettings[key]——让 getConfigurationValue 读到最新值
+ *   2. 通知所有 _changeListeners——让 useConfigurationValue/subscribeToConfiguration 重渲染
+ */
+export function applyRemoteConfigChange(key: string, value: unknown): void {
+  if (_userSettings[key] === value && key in _userSettings) return;
+  _userSettings[key] = value;
+  _changeListeners.forEach((fn) => {
+    try { fn(key, value, "user"); } catch { /* 静默——避免一个 listener 崩溃阻塞其他 */ }
+  });
+}

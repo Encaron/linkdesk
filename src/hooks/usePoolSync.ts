@@ -11,6 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
+import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 
 /**
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
@@ -90,6 +91,15 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
         case "setVisible":
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
           break;
+        // E5.6#11-fix7：池◀/▶按钮→布局引擎→WebContentsView bounds→重推 layout
+        case "toggleSidebarCollapse": {
+          const zone = layoutEngine.getBounds("sidebar");
+          if (zone) {
+            const targetWidth = zone.width <= 48 ? 280 : 28;
+            layoutEngine.setZoneWidth("sidebar", targetWidth);
+          }
+          break;
+        }
       }
     });
     return unsub;
@@ -132,6 +142,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
         views,
         collapsedViews: [...collapsedSet],
+        collapsed: sidebarWidth <= 48,  // E5.6#11-fix7：宽≤48=折叠态→池渲染▶按钮
         viewId: views[0]?.pluginId ?? null,  // 向后兼容
       };
     } else {

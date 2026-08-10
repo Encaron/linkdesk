@@ -38,7 +38,22 @@ export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
     return null;
   }
 
-  const { views, containerId, containerTitle, mergeHeaderWhenSingle, collapsedViews, width } = sidebar;
+  const { views, containerId, containerTitle, mergeHeaderWhenSingle, collapsedViews, width, collapsed } = sidebar;
+
+  // E5.6#11-fix7：折叠态——只渲染 ▶ 展开按钮（对标壳 SidePanel.tsx:211-218）
+  if (collapsed) {
+    return (
+      <div className="side-panel collapsed" style={{ width, height: "100%", overflow: "hidden" }}>
+        <button
+          className="side-panel-expand"
+          onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
+          title="展开侧栏"
+        >
+          ▶
+        </button>
+      </div>
+    );
+  }
 
   // 侧栏可见但无视图——空状态
   if (!views || views.length === 0) {
@@ -89,6 +104,14 @@ export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
           }}
         >
           <span className="side-panel-header-title">{effectiveTitle}</span>
+          {/* E5.6#11-fix7：◀ 折叠按钮——对标壳 SidePanel.tsx:229-236 */}
+          <button
+            className="side-panel-collapse"
+            onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
+            title="折叠侧栏"
+          >
+            ◀
+          </button>
         </div>
       )}
       {/* E5.6#11-fix4：header 右键菜单——对标壳 SidePanel.tsx */}

@@ -31,6 +31,10 @@ const viewModules = {
   ...import.meta.glob("../../plugins/user/*/src/views/**/*.tsx"),
 };
 
+// E5.6#11-fix7：模块级 lazy 缓存——React.lazy 内部 _payload._status 持久化在组件类型上。
+// 同 renderPath 返回同一组件类型→第二次挂载直接渲染（_status=Resolved），跳过 Suspense。
+const _lazyCache = new Map<string, React.ComponentType<any>>();
+
 interface PluginComponentProps {
   pluginId: string;
   isActive: boolean;
@@ -44,7 +48,13 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
   const { t } = useTranslation();
   // React.lazy 必须稳定引用——useMemo 按 pluginId + renderPath 缓存，防止每次渲染 new → unmount → flicker
   // E5.6#11e：renderPath 优先——O(1) 直接查找 view 组件；fallback 到 pluginId 匹配 index.tsx（主区用）
+  // E5.6#11-fix7：_lazyCache 跨 mount 持久化 lazy 组件类型——React.lazy _payload._status 不随 unmount 丢失。
+  // 切容器回来时同 renderPath 的组件类型直接 Resolved→同步渲染→无 Suspense "加载中..." 闪烁。
+  const cacheKey = renderPath || pluginId;
   const LazyComponent = useMemo(() => {
+    const cached = _lazyCache.get(cacheKey);
+    if (cached) return cached;
+
     let loader: (() => Promise<any>) | undefined;
 
     if (renderPath) {
@@ -66,14 +76,16 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
 
     if (!loader) return null;
 
-    return React.lazy<React.ComponentType<{ isActive: boolean; tabId?: string; sourceId?: string }>>(() =>
+    const component = React.lazy<React.ComponentType<{ isActive: boolean; tabId?: string; sourceId?: string }>>(() =>
       loader!().then((mod: any) => ({
         default: mod.default || (() => {
           throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
         }),
       })),
     );
-  }, [pluginId, renderPath]);
+    _lazyCache.set(cacheKey, component);
+    return component;
+  }, [cacheKey, renderPath, pluginId]);
 
   if (!LazyComponent) {
     return (
