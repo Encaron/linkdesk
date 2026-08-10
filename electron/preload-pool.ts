@@ -508,6 +508,16 @@ try {
       getView: (_viewId: string) => null,
     },
 
+    // ── 🆕 E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
+    protocol: {
+      listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
+        ipcRenderer.invoke('protocol:listProtocols'),
+      getActiveProtocolId: (): Promise<string> =>
+        ipcRenderer.invoke('protocol:getActiveProtocolId'),
+      setActiveProtocolId: (protocolId: string): Promise<void> =>
+        ipcRenderer.invoke('protocol:setActiveProtocolId', protocolId),
+    },
+
     // ── 🔥 E5.6#11.5-bug3a：shell 操作——revealInOS / openInTerminal / startDrag ──
     // 这些是主进程 handler（main.ts ipcMain.handle），非壳渲染进程 handler，
     // 因此不走 PROXY_CHANNELS——直接 ipcRenderer.invoke。

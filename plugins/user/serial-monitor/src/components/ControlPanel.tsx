@@ -11,14 +11,10 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { useMemo, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useSerialContext } from "../services/SerialContext";
 import SelectBox from "@src/components/shared/SelectBox";
-import {
-  listProtocols,
-  getActiveProtocolId,
-  setActiveProtocol,
-} from "@src/core/registry/ProtocolRegistry";
+// E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧 ProtocolRegistry）
 import { useSession } from "../hooks/useSerialSessions";
 import "../styles/ControlPanel.css";
 
@@ -37,8 +33,14 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { session: activeSession, update: updateSession } = useSession(sourceId);
 
   // Phase 5e：协议列表当前是静态的（仅内置 bracket），Phase 7 多协议时加 CoreEvent 通知
-  const protocols = useMemo(() => listProtocols(), []);
-  const activeProtocolId = getActiveProtocolId();
+  // E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧），async → useState + useEffect
+  const [protocols, setProtocols] = useState<Array<{ id: string; name: string; pluginId: string; mode: string }>>([]);
+  const [shellActiveProtocolId, setShellActiveProtocolId] = useState("bracket");
+  useEffect(() => {
+    const lk = (window as any).linkdesk;
+    lk?.protocol?.listProtocols?.().then((p: any) => setProtocols(p ?? []));
+    lk?.protocol?.getActiveProtocolId?.().then((id: any) => setShellActiveProtocolId(id ?? "bracket"));
+  }, []);
 
   // ── session.connected 派生规则（Bug 3 防御） ──
   // 不是独立 set——从 SerialContext 派生。
@@ -75,7 +77,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
   const handleProtocolChange = useCallback(
     (protocolId: string) => {
-      setActiveProtocol(protocolId);
+      (window as any).linkdesk?.protocol?.setActiveProtocolId?.(protocolId);
       updateSession({ protocol: protocolId });
     },
     [updateSession],
@@ -137,7 +139,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
       {/* 协议下拉框 */}
       <SelectBox
-        value={activeSession?.protocol ?? activeProtocolId}
+        value={activeSession?.protocol ?? shellActiveProtocolId}
         options={protocols.length > 0 ? protocols.map((p) => ({ value: p.id, label: p.name })) : []}
         onChange={handleProtocolChange}
         placeholder={t("方括号协议")}
