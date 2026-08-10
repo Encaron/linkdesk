@@ -473,6 +473,8 @@ try {
     pool: {
       /** 推送布局到指定 zone 的 Pool */
       pushLayout: (zone: string, layout: any) => ipcRenderer.send('pool:push-layout', zone, layout),
+      /** E5.6#12：折叠/展开时切换 SidebarPool 可见性——进程保持 */
+      toggleSidebarPool: (visible: boolean) => ipcRenderer.send('pool:toggle-sidebar-pool', visible),
       /** 监听指定 zone 的池就绪——zone 过滤，返回 unsubscribe */
       onReady: (zone: string, cb: () => void) => {
         const handler = (_event: Electron.IpcRendererEvent, readyZone: string) => {

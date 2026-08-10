@@ -471,6 +471,13 @@ export class WindowManager {
     return this.sidebarPoolView;
   }
 
+  /** E5.6#12a：切换 SidebarPool 可见——折叠隐藏、展开即时显示。进程保持不 destroy */
+  toggleSidebarPool(visible: boolean): void {
+    if (this.sidebarPoolView && !this.sidebarPoolView.webContents.isDestroyed()) {
+      this.sidebarPoolView.setVisible(visible);
+    }
+  }
+
   /** E5.6#5c：创建 MainPool WebContentsView */
   createMainPool(): WebContentsView {
     if (this.mainPoolView) {

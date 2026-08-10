@@ -182,5 +182,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  console.log('[pool-handlers] 已注册 7 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action）');
+  // E5.6#12：壳→侧栏折叠/展开→SidebarPool setVisible——进程保持，不 destroy
+  ipcMain.on('pool:toggle-sidebar-pool', (_event, visible: boolean) => {
+    windowManager.toggleSidebarPool(visible);
+  });
+
+  console.log('[pool-handlers] 已注册 8 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:toggle-sidebar-pool）');
 }
