@@ -21,22 +21,17 @@ import "../index.css";
 import "@vscode/codicons/dist/codicon.css";
 // E5.6#10f：池独立 WebContentsView 需初始化 i18n——模块级 init() + 订阅 lang:changed 广播
 import "../i18n";
-// E5.6#11-fix5：池内命令路由——ContextMenu 右键命令（explorer.delete 等）默认走 IPC→壳 CommandRegistry，
-// 壳侧 handler 操作壳侧 model（hidden SidePanel）→ 池内 UI 不更新。
-// 覆盖 lk.commands.executeCommand：池内注册的命令走本地 CommandRegistry，其余回退 IPC。
-import { executeCommand, getCommands } from "../core/registry/CommandRegistry";
-
 // ── PoolApp ──
 
 function PoolApp() {
   const zone = new URLSearchParams(window.location.search).get("zone");
   const [layout, setLayout] = useState<PoolLayout>({ groups: [] });
 
-  // E5.6#11-fix6：闪烁修复——壳切侧栏容器时，初始 push visible=false 导致池渲染 null 一帧。
-  // 保留最后一个 visible layout——切容器时旧内容保持显示，新布局到达后无缝替换。
+  // E5.6#11-fix6：闪烁修复——壳切侧栏容器时初始 push visible=false 导致池渲染 null 一帧。
+  // 保留最后一个可见布局——切容器时旧内容保持显示，新布局到达后无缝替换。
   const lastVisibleLayout = useRef<PoolLayout>({ groups: [] });
 
-  // E5.6#11-fix3：SidebarPool 根背景
+  // E5.6#11-fix3：SidebarPool 根背景——独立 WebContentsView 需要侧栏色调
   useEffect(() => {
     const root = document.getElementById("pool-root");
     if (root && zone === "sidebar") {
@@ -49,7 +44,7 @@ function PoolApp() {
     if (!poolApi) return;
 
     const unsub = poolApi.onLayout((next: PoolLayout) => {
-      // 闪烁修复：visible=false 时保留上次可见布局，避免渲染 null 一帧
+      // 闪烁修复：visible 且有 views 时更新 lastVisibleLayout
       if (next.sidebar?.visible && next.sidebar.views?.length > 0) {
         lastVisibleLayout.current = next;
       }
@@ -59,32 +54,6 @@ function PoolApp() {
     poolApi.ready();
 
     return () => { unsub?.(); };
-  }, []);
-
-  // E5.6#11-fix5：池内命令路由——本地注册的命令（如 explorer.delete/explorer.rename）
-  // 走池内 CommandRegistry → handler 读写池内 FileTreeHandle/model → UI 即时更新。
-  // 未注册命令（如 tabs:create/config:get）回退 IPC→壳。
-  useEffect(() => {
-    const lk = (window as any).linkdesk;
-    if (!lk?.commands) return;
-
-    const origExec = lk.commands.executeCommand;
-
-    lk.commands.executeCommand = async function (this: any, id: string, ...args: any[]) {
-      const localCmds = getCommands();
-      if (localCmds.some((c) => c.id === id)) {
-        try {
-          return await executeCommand(id, ...args);
-        } catch (e) {
-          console.error("[pool] 本地命令执行失败，回退 IPC:", id, e);
-        }
-      }
-      return origExec(id, ...args);
-    };
-
-    return () => {
-      lk.commands.executeCommand = origExec;
-    };
   }, []);
 
   // 决定用哪个 sidebar 渲染——当前布局无内容时 fallback 到上次可见布局
