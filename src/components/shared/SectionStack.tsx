@@ -197,28 +197,6 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     setDraggingView(null);
   }, [dropIndex, containerId, views]);
 
-  // 🔥 DIAGNOSTIC: 运行时检查 DOM computed style
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const panes = container.querySelectorAll('[data-view-id]');
-    panes.forEach((pane) => {
-      const el = pane as HTMLElement;
-      const rect = el.getBoundingClientRect();
-      const inner = el.firstElementChild as HTMLElement | null;
-      // 检查 inner 的子元素（应该是 .sidebar-section）
-      const section = inner?.firstElementChild as HTMLElement | null;
-      const sectionRect = section?.getBoundingClientRect();
-      console.error("[SectionStack] ViewPane", el.dataset.viewId, {
-        rect: { top: rect.top, bottom: rect.bottom, height: rect.height },
-        offsetHeight: el.offsetHeight,
-        sectionRect: sectionRect ? { top: sectionRect.top, bottom: sectionRect.bottom, height: sectionRect.height } : null,
-        inner_firstChild_tag: section?.tagName,
-        inner_firstChild_class: section?.className,
-      });
-    });
-  });
-
   if (views.length === 0) return null;
 
   const singleView = views.length === 1;
