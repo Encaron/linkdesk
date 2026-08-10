@@ -10,7 +10,7 @@
  * 不保留：actions ReactNode / pinnedContent / ContextKey / emptyContent（硬限制——不可序列化）。
  */
 
-import { type ReactNode, useState, useRef, useCallback, useEffect } from "react";
+import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } from "react";
 import type { SidebarViewMeta } from "../core/types/poolLayout";
 import ErrorBoundary from "../components/shared/ErrorBoundary";
 import SidebarSection from "../components/shared/SidebarSection";
@@ -70,9 +70,10 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
 
 // ── ViewPane（flex + ResizeObserver + drop-before——直接从 SectionStack 迁移）──
 
-function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }: {
+function ViewPane({ viewId, height, collapsed, onContentHeight, showDropBefore, children }: {
   viewId: string;
   height?: number;
+  collapsed?: boolean;
   onContentHeight?: (id: string, h: number) => void;
   showDropBefore?: boolean;
   children: ReactNode;
@@ -94,9 +95,9 @@ function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }:
     <div
       data-view-id={viewId}
       className={`sidebar-pane-view${showDropBefore ? " drop-before" : ""}`}
-      style={height !== undefined
-        ? { height, flexShrink: 0, overflowY: "auto" }
-        : { flex: 1, minHeight: 0 }}
+      style={height !== undefined && !collapsed
+        ? { height, overflowY: "auto" }
+        : undefined}
     >
       <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
         {children}
@@ -117,6 +118,15 @@ export default function PoolSectionStack({
 }: PoolSectionStackProps) {
   // ── view 高度（拖拽后固定）──
   const [viewHeights, setViewHeights] = useState<Record<string, number>>({});
+  // 🔥 跟踪每个 view 的折叠状态——折叠的 view 不占 flex 空间，只占 header 高度
+  const [collapsedViewSet, setCollapsedViewSet] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const v of views) {
+      const persisted = collapsedViews?.includes(v.id);
+      if (persisted || v.collapsed) s.add(v.id);
+    }
+    return s;
+  });
   const dragBaseRef = useRef<{ upperId: string; baseHeight: number; lowerId: string; lowerBaseHeight: number } | null>(null);
 
   // ── 实测内容高度 ──
@@ -252,6 +262,20 @@ export default function PoolSectionStack({
         onToggleCollapse={(collapsed) => {
           // IPC → 壳 ViewContainerService.setCollapsed()
           onSidebarAction({ action: "setCollapsed", containerId, viewId: view.id, collapsed });
+          setCollapsedViewSet((prev) => {
+            const next = new Set(prev);
+            if (collapsed) next.add(view.id); else next.delete(view.id);
+            return next;
+          });
+          // 折叠时清除手动拖拽高度——回退到自然内容高度
+          if (collapsed) {
+            setViewHeights((prev) => {
+              if (!(view.id in prev)) return prev;
+              const next = { ...prev };
+              delete next[view.id];
+              return next;
+            });
+          }
         }}
       >
         {body}
@@ -290,7 +314,6 @@ export default function PoolSectionStack({
         if (!found) setDropIndex(null);
       }}
       onDropCapture={handleDrop}
-      style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
     >
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
@@ -299,10 +322,11 @@ export default function PoolSectionStack({
 
         if (!singleView) {
           return (
-            <div key={view.id} style={{ display: "contents" }}>
+            <Fragment key={view.id}>
               <ViewPane
                 viewId={view.id}
                 height={viewHeights[view.id]}
+                collapsed={collapsedViewSet.has(view.id)}
                 onContentHeight={handleContentHeight}
                 showDropBefore={showDropBefore}
               >
@@ -315,11 +339,11 @@ export default function PoolSectionStack({
                   key={`sash-${view.id}`}
                 />
               )}
-            </div>
+            </Fragment>
           );
         }
 
-        return <div key={view.id} style={{ display: "contents" }}>{section}</div>;
+        return <Fragment key={view.id}>{section}</Fragment>;
       })}
     </div>
   );

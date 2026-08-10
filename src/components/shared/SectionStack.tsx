@@ -6,7 +6,7 @@
  * 对标 VS Code：同级 view header 互相顶走，只有父子才层层叠加。
  */
 
-import { type ReactNode, useState, useRef, useCallback, useEffect } from "react";
+import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } from "react";
 import type { ViewDescriptor, ViewContainerDescriptor } from "../../core/services/ViewContainerService";
 import { ViewContainerService } from "../../core/services/ViewContainerService";
 // E4V#44——ContextKeyService 用于空状态占位内容的 when 条件
@@ -52,11 +52,12 @@ function PaneSash({ onDrag, onEnd }: { onDrag: (deltaY: number) => void; onEnd?:
   );
 }
 
-/** E4V#45——view wrapper：flex:1 默认均分，拖拽后固定高度。
+/** E4V#45——view wrapper：展开时 flex:1 均分剩余空间，折叠时仅占 header 高度。
  *  E4V#45-fix：ResizeObserver 自动测内容高度，未声明 minHeight 时用实测值。 */
-function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }: {
+function ViewPane({ viewId, height, collapsed, onContentHeight, showDropBefore, children }: {
   viewId: string;
   height?: number;
+  collapsed?: boolean;
   onContentHeight?: (id: string, h: number) => void;
   showDropBefore?: boolean;
   children: ReactNode;
@@ -80,9 +81,9 @@ function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }:
     <div
       data-view-id={viewId}
       className={`sidebar-pane-view${showDropBefore ? " drop-before" : ""}`}
-      style={height !== undefined
-        ? { height, flexShrink: 0, overflowY: "auto" }
-        : { flex: 1, minHeight: 0 }}
+      style={height !== undefined && !collapsed
+        ? { height, overflowY: "auto" }
+        : undefined}
     >
       <div ref={contentRef} style={height === undefined ? undefined : { display: "contents" }}>
         {children}
@@ -92,8 +93,17 @@ function ViewPane({ viewId, height, onContentHeight, showDropBefore, children }:
 }
 
 export default function SectionStack({ views, pluginId, toolbarHeight, mergeHeaderWhenSingle }: SectionStackProps) {
-  // E4V#45——拖拽后固定的 view 高度（viewId → px）。undefined = flex:1 均分
+  // E4V#45——拖拽后固定的 view 高度（viewId → px）。undefined = flex 自动
   const [viewHeights, setViewHeights] = useState<Record<string, number>>({});
+  // 🔥 跟踪每个 view 的折叠状态——折叠的 view 不占 flex 空间，只占 header 高度
+  const [collapsedViews, setCollapsedViews] = useState<Set<string>>(() => {
+    const s = new Set<string>();
+    for (const v of views) {
+      const persisted = ViewContainerService.isCollapsed(v.id);
+      if (persisted || v.collapsed) s.add(v.id);
+    }
+    return s;
+  });
   // 拖拽时缓存初始高度——避免 setState 异步导致跳变
   const dragBaseRef = useRef<{ upperId: string; baseHeight: number; lowerId: string; lowerBaseHeight: number } | null>(null);
 
@@ -187,6 +197,28 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
     setDraggingView(null);
   }, [dropIndex, containerId, views]);
 
+  // 🔥 DIAGNOSTIC: 运行时检查 DOM computed style
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const panes = container.querySelectorAll('[data-view-id]');
+    panes.forEach((pane) => {
+      const el = pane as HTMLElement;
+      const rect = el.getBoundingClientRect();
+      const inner = el.firstElementChild as HTMLElement | null;
+      // 检查 inner 的子元素（应该是 .sidebar-section）
+      const section = inner?.firstElementChild as HTMLElement | null;
+      const sectionRect = section?.getBoundingClientRect();
+      console.error("[SectionStack] ViewPane", el.dataset.viewId, {
+        rect: { top: rect.top, bottom: rect.bottom, height: rect.height },
+        offsetHeight: el.offsetHeight,
+        sectionRect: sectionRect ? { top: sectionRect.top, bottom: sectionRect.bottom, height: sectionRect.height } : null,
+        inner_firstChild_tag: section?.tagName,
+        inner_firstChild_class: section?.className,
+      });
+    });
+  });
+
   if (views.length === 0) return null;
 
   const singleView = views.length === 1;
@@ -236,7 +268,23 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         draggable={draggable}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
-        onToggleCollapse={(collapsed) => ViewContainerService.setCollapsed(view.id, collapsed)}
+        onToggleCollapse={(collapsed) => {
+          ViewContainerService.setCollapsed(view.id, collapsed);
+          setCollapsedViews((prev) => {
+            const next = new Set(prev);
+            if (collapsed) next.add(view.id); else next.delete(view.id);
+            return next;
+          });
+          // 折叠时清除手动拖拽高度——回退到自然内容高度
+          if (collapsed) {
+            setViewHeights((prev) => {
+              if (!(view.id in prev)) return prev;
+              const next = { ...prev };
+              delete next[view.id];
+              return next;
+            });
+          }
+        }}
       >
         {body}
       </SidebarSection>
@@ -275,7 +323,6 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
         if (!found) setDropIndex(null);
       }}
       onDropCapture={handleDrop}
-      style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}
     >
       {views.map((view, i) => {
         const isLast = i === views.length - 1;
@@ -284,10 +331,11 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
 
         if (!singleView) {
           return (
-            <div key={view.id} style={{ display: "contents" }}>
+            <Fragment key={view.id}>
               <ViewPane
                 viewId={view.id}
                 height={viewHeights[view.id]}
+                collapsed={collapsedViews.has(view.id)}
                 onContentHeight={handleContentHeight}
                 showDropBefore={showDropBefore}
               >
@@ -300,11 +348,11 @@ export default function SectionStack({ views, pluginId, toolbarHeight, mergeHead
                   key={`sash-${view.id}`}
                 />
               )}
-            </div>
+            </Fragment>
           );
         }
 
-        return <div key={view.id} style={{ display: "contents" }}>{section}</div>;
+        return <Fragment key={view.id}>{section}</Fragment>;
       })}
     </div>
   );
