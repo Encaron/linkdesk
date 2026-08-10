@@ -14,6 +14,9 @@ import type { SidebarAction } from "./PoolSectionStack";
 import type { SidebarLayout, SidebarViewMeta } from "../core/types/poolLayout";
 // E5.6#11l：复用壳侧栏 CSS
 import "../components/SidePanel.css";
+// E5.6#11-fix4：header 右键菜单——对标壳 SidePanel.tsx
+import ContextMenu from "../components/shared/ContextMenu";
+import { MenuId } from "../core/registry/MenuRegistry";
 
 interface SidebarRendererProps {
   sidebar?: SidebarLayout;
@@ -21,6 +24,9 @@ interface SidebarRendererProps {
 
 export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
   const [toolbarHeight, setToolbarHeight] = useState(0);
+
+  // E5.6#11-fix4：header 右键菜单状态——对标壳 SidePanel.tsx
+  const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null);
 
   // 池→壳 IPC 回调
   const handleSidebarAction = useCallback((action: SidebarAction) => {
@@ -75,9 +81,32 @@ export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
     <div className="side-panel" style={{ width, height: "100%", overflow: "hidden" }}>
       {/* 容器 header */}
       {effectiveTitle && (
-        <div className="side-panel-header">
+        <div
+          className="side-panel-header"
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setHeaderMenu({ x: e.clientX, y: e.clientY });
+          }}
+        >
           <span className="side-panel-header-title">{effectiveTitle}</span>
         </div>
+      )}
+      {/* E5.6#11-fix4：header 右键菜单——对标壳 SidePanel.tsx */}
+      {headerMenu && (
+        <ContextMenu
+          menuId={MenuId.ViewTitleContext}
+          anchor={headerMenu}
+          context={{ containerId: containerId ?? undefined }}
+          onClose={() => setHeaderMenu(null)}
+          resolveChildren={(_parentId, ctx) => {
+            const cid = ctx.containerId as string | undefined;
+            if (!cid) return undefined;
+            return sectionViews.map((v) => ({
+              id: "workbench.action.toggleViewVisibility",
+              label: v.title ?? v.id,
+            }));
+          }}
+        />
       )}
 
       <div className="side-panel-content" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
