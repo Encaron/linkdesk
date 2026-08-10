@@ -95,6 +95,25 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     return unsub;
   }, []);
 
+  // E5.6#11-fix：接收池侧 marketplace badge 更新事件→写入壳 ViewContainerService。
+  // 池内 ViewContainerService 是空实例——marketplaceShared 的 updateAllBadges 改走 events.emit，
+  // 壳监听到后写入壳 ViewContainerService → onDidChangeActiveViews 触发 layoutVersion bump → 重推布局。
+  useEffect(() => {
+    const unsub = (window as any).linkdesk?.events?.on("marketplace:updateBadge", (data: any) => {
+      const existing = ViewContainerService.getView(data.viewId);
+      if (!existing) return;
+      // 防重推循环——badge 值未变则跳过
+      if (existing.badge === data.count) return;
+      ViewContainerService.registerView("marketplace", "marketplace", {
+        id: data.viewId,
+        title: existing.title,
+        render: existing.render,
+        badge: data.count,
+      });
+    });
+    return () => { unsub?.(); };
+  }, []);
+
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi) return;

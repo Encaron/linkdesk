@@ -10,7 +10,11 @@
 import { useState, useCallback, useEffect } from "react";
 import type { ViewPluginEntry } from "@src/core/api/types";
 import { onPluginLifecycleChange } from "@src/pluginLoader/lifecycle";
+// E5.6#11-fix：badge 更新走事件 emit→壳 events.on→壳 ViewContainerService→layoutVersion→重推布局。
+// 池内 ViewContainerService 是空实例——直接写不生效。
+// ViewContainerService.onDidChangeViews 在池内仍可用——loader 注册 view 时触发，用于 badge 首次提交。
 import { ViewContainerService } from "@src/core/services/ViewContainerService";
+const lk = () => (window as any).linkdesk;
 
 const pm = () => (window as any).linkdesk?.pluginManager;
 
@@ -67,31 +71,22 @@ async function refreshData(): Promise<void> {
     _allPlugins = plugins;
     _disabledPlugins = disabled;
     _uninstalledPlugins = uninstalled;
-  } catch {
-    /* 静默——IPC 失败时保留旧数据 */
+  } catch (e) {
+    console.error("[marketplace] refreshData IPC 失败——插件列表数据可能为空:", e);
   }
 }
 
 /* ═══ badge 更新（模块级——数据加载 effect + 生命周期 + onDidChangeViews 三处调用） ═══ */
 
 function updateAllBadges(): void {
-  const setBadge = (viewId: string, count: number) => {
-    const existing = ViewContainerService.getView(viewId);
-    if (!existing) return;
-    // 🔥 防止死循环：registerView 无条件 fire onDidChangeViews，
-    // 如果 badge 值没变就跳过——否则事件→更新→事件→更新 无限循环
-    if (existing.badge === count) return;
-    ViewContainerService.registerView("marketplace", "marketplace", {
-      id: viewId,
-      title: existing.title,
-      render: existing.render,
-      badge: count,
-    });
-  };
-  setBadge("installed", _allPlugins.filter((p) => !p.manifest.core).length);
-  setBadge("builtin", _allPlugins.filter((p) => p.manifest.core).length);
-  setBadge("disabled", _disabledPlugins.length);
-  setBadge("uninstalled", _uninstalledPlugins.length);
+  // E5.6#11-fix：池内 ViewContainerService 是空实例，badge 走事件 emit→壳监听→壳 ViewContainerService 写入。
+  // 壳 usePoolSync 订阅 "marketplace:updateBadge" → 更新壳侧 ViewContainerService → layoutVersion bump → 重推布局。
+  const emit = lk()?.events?.emit;
+  if (!emit) return;
+  emit("marketplace:updateBadge", { viewId: "installed", count: _allPlugins.filter((p) => !p.manifest.core).length });
+  emit("marketplace:updateBadge", { viewId: "builtin", count: _allPlugins.filter((p) => p.manifest.core).length });
+  emit("marketplace:updateBadge", { viewId: "disabled", count: _disabledPlugins.length });
+  emit("marketplace:updateBadge", { viewId: "uninstalled", count: _uninstalledPlugins.length });
 }
 
 export function useMarketplacePlugins() {
