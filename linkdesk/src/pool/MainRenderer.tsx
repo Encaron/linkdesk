@@ -50,7 +50,10 @@ export default function MainRenderer({ groups }: MainRendererProps) {
             <div
               key={tab.id}
               style={{
-                display: tab.id === group.activeTabId ? "block" : "none",
+                // E5.6#14-fix：flex column——子组件（serial-monitor-view 等）用 flex:1 撑高，
+                // 需要父容器为 flex 容器。display:block 下 flex:1 被忽略→CM6 高度塌成 1 行。
+                display: tab.id === group.activeTabId ? "flex" : "none",
+                flexDirection: "column",
                 height: "100%",
               }}
             >
