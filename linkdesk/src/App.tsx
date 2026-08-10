@@ -428,6 +428,8 @@ function App() {
     });
     const u2 = shellEvents.on("sidebar:toggled", (visible: boolean) => {
       setIsSidebarExpanded(visible);
+      // E5.6#12b：折叠→隐藏 SidebarPool，展开→即时显示（进程保持）
+      (window as any).linkdesk?.pool?.toggleSidebarPool(visible);
     });
     return () => { u1(); u2(); };
   }, []);
