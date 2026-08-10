@@ -12,8 +12,8 @@
  * 设计原则：归一化——编辑器内所有对文件内容的读写走这一个对象。
  * 不散落在 EditorView/EditorTab/快捷键 handler 各写各的。
  */
-import { Emitter } from "@src/core/react/CoreEvents";
-import { EncodingService } from "@src/core/services/EncodingService";
+// E5.6#11.5i：Emitter → 内联 MiniEmitter，EncodingService → lk.encoding.*（async IPC）
+import { MiniEmitter } from "../utils/MiniEmitter";
 import { getLanguageFromPath } from "./language-map";
 
 const lk = (window as any).linkdesk;
@@ -29,9 +29,9 @@ export class EditorModel {
   private _savedValue: string;
 
   /** 内容变更——EditorView onChange → setValue → fire */
-  readonly onDidChangeContent = new Emitter<string>();
+  readonly onDidChangeContent = new MiniEmitter<string>();
   /** 保存成功——EditorTab save → markSaved → fire */
-  readonly onDidSave = new Emitter<void>();
+  readonly onDidSave = new MiniEmitter<void>();
 
   private constructor(filePath: string, content: string, encoding: string) {
     this.filePath = filePath;
@@ -76,8 +76,8 @@ export class EditorModel {
   static async load(filePath: string): Promise<EditorModel> {
     const normalized = lk.path.normalize(filePath);
     const buffer = await lk.filesystem.readBinaryFile(normalized);
-    const encoding = EncodingService.detect(buffer);
-    const content = EncodingService.decode(buffer, encoding);
+    const encoding = await lk.encoding.detect(buffer);
+    const content = await lk.encoding.decode(buffer, encoding);
     return new EditorModel(normalized, content, encoding);
   }
 
@@ -87,7 +87,7 @@ export class EditorModel {
       await lk.filesystem.writeTextFile(this.filePath, this._value);
     } else {
       // E4V#40w——iconv-lite 编码 → 二进制写入，保持原编码
-      const data = EncodingService.encode(this._value, this.encoding);
+      const data = await lk.encoding.encode(this._value, this.encoding);
       await lk.filesystem.writeBinaryFile(this.filePath, data);
     }
   }

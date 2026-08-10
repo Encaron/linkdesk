@@ -11,8 +11,7 @@
  *
  * E4V#40i（诊断+快捷修复）也在此文件——`setDiagnosticsOptions` 打开红波浪线。
  */
-import { EncodingService } from "@src/core/services/EncodingService";
-
+// E5.6#11.5i：EncodingService → lk.encoding.*（async IPC）
 const lk = (window as any).linkdesk;
 
 /** 最多创建 500 个影子 model——大项目不卡 */
@@ -100,7 +99,8 @@ async function scanDir(
 
       try {
         const buffer = await lk.filesystem.readBinaryFile(fullPath);
-        const content = EncodingService.decode(buffer, EncodingService.detect(buffer));
+        const enc = await lk.encoding.detect(buffer);
+        const content = await lk.encoding.decode(buffer, enc);
         monaco.editor.createModel(content, "typescript", uri);
         count.n++;
         // console.log("[ts-intel] 影子 model #" + count.n + ":", uri.toString());
