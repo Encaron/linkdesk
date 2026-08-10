@@ -348,12 +348,13 @@ function App() {
             height: b.sidebar.height,
           });
         }
+        const TAB_BAR_HEIGHT = 35; // TabBar 在壳渲染，MainPool 覆盖其下方区域
         if (b.main) {
           poolApi.setBounds("main", {
             x: b.main.x,
-            y: b.main.y + TITLE_BAR_HEIGHT,
+            y: b.main.y + TITLE_BAR_HEIGHT + TAB_BAR_HEIGHT,
             width: b.main.width,
-            height: b.main.height,
+            height: b.main.height - TAB_BAR_HEIGHT,
           });
         }
       }

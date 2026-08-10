@@ -153,9 +153,12 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
 
     poolView.setBounds(bounds);
     // E5.6#10：SidebarPool 有效 bounds 时设为可见——接管壳 DOM 侧栏区域
-    // 后续 resize 重复调用 setVisible(true) 幂等无害。
-    // MainPool 暂不设为可见（E5.6#11 再迁移主区）。
     if (zone === 'sidebar') {
+      poolView.setVisible(true);
+    }
+    // E5.6#14d：MainPool 有效 bounds 时设为可见——接管主区（TabBar 在壳，MainPool 在其下方）
+    // 🔴 含 #12c：侧栏折叠/展开 → LayoutEngine 重算 → onDidChangeLayout → setBounds → MainPool 自动扩展/缩回
+    if (zone === 'main') {
       poolView.setVisible(true);
     }
   });
