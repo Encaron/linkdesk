@@ -514,6 +514,18 @@ try {
         ipcRenderer.invoke('langDef:get', extension),
     },
 
+    // ── 🆕 E5.6#14-lsp：LSP 桥——编辑器在 MainPool 中需 LSP 通信（自动补全/F12/诊断/重命名）──
+    lsp: {
+      spawn: (command: string, args: string[] | undefined, pluginId: string) =>
+        ipcRenderer.invoke('lsp:spawn', { command, args, pluginId }),
+      write: (channelId: string, data: string) =>
+        ipcRenderer.send('lsp:write', { channelId, data }),
+      dispose: (channelId: string) =>
+        ipcRenderer.invoke('lsp:dispose', { channelId }),
+      onData: (cb: (channelId: string, data: string) => void) =>
+        listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
+    },
+
     // ── 🆕 E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
     protocol: {
       listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
