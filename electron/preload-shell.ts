@@ -422,6 +422,16 @@ try {
         listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
+    // ── E5.6#11.5i：encoding 编码检测/转换——editor 插件在 shell 侧使用 EncodingService ──
+    encoding: {
+      detect: (buffer: Uint8Array): Promise<string> =>
+        ipcRenderer.invoke('encoding:detect', buffer),
+      decode: (buffer: Uint8Array, encoding: string): Promise<string> =>
+        ipcRenderer.invoke('encoding:decode', buffer, encoding),
+      encode: (text: string, encoding: string): Promise<Uint8Array> =>
+        ipcRenderer.invoke('encoding:encode', text, encoding),
+    },
+
     // ── E5.6#8c：pool API——壳推送布局到池、监听池就绪 ──
     pool: {
       /** 推送布局到指定 zone 的 Pool */
