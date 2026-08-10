@@ -191,12 +191,39 @@ try {
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
     },
 
-    // ── 命令（E5#85 补全——同步 plugin preload）──
-    commands: {
-      execute: (id: string, ...args: any[]) => ipcRenderer.invoke('commands:execute', id, ...args),
-      executeCommand: (id: string, ...args: any[]) => ipcRenderer.invoke('commands:execute', id, ...args),
-      getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
-    },
+    // ── 命令（E5#85 补全——同步 plugin preload + E5.6#11.5 临时壳侧 pool API）──
+    commands: (() => {
+      // 🔥 E5.6#11.5 临时——MainPool 建成后移除 registerCommand/unregisterCommands
+      // 见 E5.6-执行清单 #11.5-preload-backfill
+      const _shellCommands = new Map<string, (...args: any[]) => any>();
+      return {
+        registerCommand: (id: string, handler: (...args: any[]) => any) => {
+          _shellCommands.set(id, handler);
+        },
+        unregisterCommands: (pluginId: string) => {
+          for (const [id] of _shellCommands) {
+            if (id.startsWith(pluginId + '.')) _shellCommands.delete(id);
+          }
+        },
+        executeCommand: (id: string, ...args: any[]) => {
+          const handler = _shellCommands.get(id);
+          if (handler) {
+            const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
+            return Promise.resolve(handler(...realArgs));
+          }
+          return ipcRenderer.invoke('commands:execute', id, ...args);
+        },
+        execute: (id: string, ...args: any[]) => {
+          const handler = _shellCommands.get(id);
+          if (handler) {
+            const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
+            return Promise.resolve(handler(...realArgs));
+          }
+          return ipcRenderer.invoke('commands:execute', id, ...args);
+        },
+        getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
+      };
+    })(),
 
     // ── 配置（E5#85 补全——同步 plugin preload）──
     config: shellConfiguration,
@@ -329,10 +356,14 @@ try {
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send('shell:startDrag', filePath, iconPath),
     },
-    // ── E5#85：workspace——工作区信息查询 ──
+    // ── E5#85：workspace——工作区信息查询 + E5.6#11.5 临时壳侧 pool API ──
+    // 🔥 E5.6#11.5 临时——MainPool 建成后移除 onDidChangeFolders/onDidChangeActiveFolder
+    // 见 E5.6-执行清单 #11.5-preload-backfill
     workspace: {
       getFolders: (): Promise<any[]> => ipcRenderer.invoke('workspace:getFolders'),
       getActive: (): Promise<string | undefined> => ipcRenderer.invoke('workspace:getActive'),
+      onDidChangeFolders: (cb: () => void) => events.on('workspace:changed', cb),
+      onDidChangeActiveFolder: (cb: (folder: any) => void) => events.on('workspace:activeChanged', (d: any) => { try { cb(d); } catch { /* 隔离 */ } }),
     },
 
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
