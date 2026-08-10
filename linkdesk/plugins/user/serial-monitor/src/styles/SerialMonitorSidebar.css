@@ -6,7 +6,15 @@
  * - 颜色走 CSS 变量 `var(--session-color)`（per-instance，对标 --card-accent）
  * - 连接状态走串口监视器专属变量 `--serial-monitor-ok` / `--serial-monitor-err`
  * - 少用边框，多用颜色/透明度区分层级
+ *
+ * E5.6#11-fix：--serial-monitor-ok/err 必须本地定义——SidebarPool 独立 WebContentsView，
+ * 不共享 MainPool 的 SerialMonitorView.css / ControlPanel.css 中的 :root 定义。
  */
+
+:root {
+  --serial-monitor-ok: #22C55E;
+  --serial-monitor-err: #EF4444;
+}
 
 /* ── 侧栏容器 ── */
 

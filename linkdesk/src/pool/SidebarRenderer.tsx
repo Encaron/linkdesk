@@ -72,7 +72,7 @@ export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
     : containerTitle;
 
   return (
-    <div style={{ width, height: "100%", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+    <div className="side-panel" style={{ width, height: "100%", overflow: "hidden" }}>
       {/* 容器 header */}
       {effectiveTitle && (
         <div className="side-panel-header">
