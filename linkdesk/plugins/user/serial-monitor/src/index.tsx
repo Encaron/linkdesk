@@ -21,19 +21,18 @@ import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compart
 import { search, RegExpCursor } from "@codemirror/search";
 import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
-import { RingBuffer } from "@src/core/data/RingBuffer";
+// E5.6#11.5h：RingBuffer 内联到 utils/——池插件零 @src/core 依赖
+import { RingBuffer } from "./utils/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useSerialSessions";
 import ControlPanel from "./components/ControlPanel";
-import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "@src/core/react/useSendData";
+import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "./utils/useSendData";
 import SearchBar from "./components/SearchBar";
 import SelectBox from "@src/components/shared/SelectBox";
-import { HexToBytes } from "@src/core/data/DataConverter";
 
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
-import { registerCommand, unregisterPluginCommands } from "@src/core/registry/CommandRegistry";
+// E5.6#11.5h：命令注册走 lk.commands（池侧 registerCommand API），MenuId 用字符串字面量
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId } from "@src/core/registry/MenuRegistry";
 import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./styles/SerialMonitorView.css";
 
@@ -41,12 +40,12 @@ import "./styles/SerialMonitorView.css";
 // ipcRenderer.invoke → main → 壳 IpcBridgeHandler → registerMenuItems → 壳的 _menus
 // 模块顶层执行 → 比任何 React mount 早 → 零时序竞态
 // preload 在页面 JS 之前运行 → window.linkdesk 此时已就绪
-window.linkdesk?.menu?.registerItems?.(MenuId.EditorContext, "serial-monitor", [
+window.linkdesk?.menu?.registerItems?.("editorContext", "serial-monitor", [
   { command: "serial-monitor.copy", group: "clipboard" },
   { command: "serial-monitor.selectAll", group: "selection" },
   { command: "serial-monitor.clear", group: "edit" },
 ]);
-window.linkdesk?.menu?.registerItems?.(MenuId.QuickSendContext, "serial-monitor", [
+window.linkdesk?.menu?.registerItems?.("quickSendContext", "serial-monitor", [
   { command: "serial-monitor.quickSendEdit", group: "edit" },
   { command: "serial-monitor.quickSendDelete", group: "danger" },
 ]);
@@ -793,280 +792,158 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [sourceId]);
 
   useEffect(() => {
+    const lk = (window as any).linkdesk;
+    const reg = lk?.commands?.registerCommand;
+    if (!reg) return;
+
     // E3j #79：发送能力——工作台卡片等插件通过命令系统发数据到串口
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.send",
-      title: t("发送"),
-      category: t("串口监视器"),
-      when: "false", // 纯程序化命令——不显示在命令面板，仅供插件 API 调用
-      handler: async (_token, sendMode: "text" | "hex", data: string) => {
-        if (!data) return;
-        const s = (window as any).linkdesk?.serial;
-        if (!s) return;
-        if (sendMode === "hex") {
-          const bytes = data.split(/[\s,]+/).filter(Boolean).map((h: string) => parseInt(h, 16));
-          await s.sendData(bytes);
-        } else {
-          await s.sendText(data, "utf-8");
-        }
-      },
+    reg("serial-monitor.send", async (sendMode: "text" | "hex", data: string) => {
+      if (!data) return;
+      const s = lk?.serial;
+      if (!s) return;
+      if (sendMode === "hex") {
+        const bytes = data.split(/[\s,]+/).filter(Boolean).map((h: string) => parseInt(h, 16));
+        await s.sendData(bytes);
+      } else {
+        await s.sendText(data, "utf-8");
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.copy",
-      title: t("复制"),
-      category: t("串口监视器"),
-      handler: async () => {
-        const view = getActiveCmd()!.cmView.current;
-        if (!view) return;
-        // Bug fix：右键菜单打开时 CM6 失去焦点 → selection 不渲染 → clipboard 读不到。
-        // 先 focus 恢复焦点，再读 selection。
-        view.focus();
-        const sel = view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
-        if (sel) navigator.clipboard.writeText(sel);
-      },
+    reg("serial-monitor.copy", async () => {
+      const view = getActiveCmd()!.cmView.current;
+      if (!view) return;
+      view.focus();
+      const sel = view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+      if (sel) navigator.clipboard.writeText(sel);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.selectAll",
-      title: t("全选"),
-      category: t("串口监视器"),
-      handler: async () => {
-        const view = getActiveCmd()!.cmView.current;
-        if (!view) return;
-        // Bug fix：右键菜单打开后 CM6 失焦 → dispatch selection 生效但不高亮。
-        // 先 focus 恢复焦点，selection 高亮正常显示。
-        view.focus();
-        view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
-      },
+    reg("serial-monitor.selectAll", async () => {
+      const view = getActiveCmd()!.cmView.current;
+      if (!view) return;
+      view.focus();
+      view.dispatch({ selection: { anchor: 0, head: view.state.doc.length } });
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.clear",
-      title: t("清空接收区"),
-      category: t("串口监视器"),
-      handler: async () => {
-        const view = getActiveCmd()!.cmView.current;
-        if (view) {
-          view.dispatch({
-            changes: { from: 0, to: view.state.doc.length },
-            effects: clearAllDecos.of(null as any),
-          });
-        }
-      },
+    reg("serial-monitor.clear", async () => {
+      const view = getActiveCmd()!.cmView.current;
+      if (view) {
+        view.dispatch({
+          changes: { from: 0, to: view.state.doc.length },
+          effects: clearAllDecos.of(null as any),
+        });
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.togglePause",
-      title: t("暂停接收"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setPaused((p) => !p);
-      },
+    reg("serial-monitor.togglePause", async () => {
+      getActiveCmd()!.setPaused((p) => !p);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.quickSendFill",
-      title: t("回填到发送区"),
-      category: t("串口监视器"),
-      handler: async (_token, ...args) => {
-        const ctx = args[0] as { quickSendName?: string } | undefined;
-        if (ctx?.quickSendName) {
-          getActiveCmd()!.setSendValue(getActiveCmd()!.quickSends[ctx.quickSendName] ?? "");
-        }
-      },
+    reg("serial-monitor.quickSendFill", async (...args: any[]) => {
+      const ctx = args[0] as { quickSendName?: string } | undefined;
+      if (ctx?.quickSendName) {
+        getActiveCmd()!.setSendValue(getActiveCmd()!.quickSends[ctx.quickSendName] ?? "");
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.quickSendEdit",
-      title: t("编辑"),
-      category: t("串口监视器"),
-      handler: async (_token, ...args) => {
-        const ctx = args[0] as { quickSendName?: string } | undefined;
-        if (ctx?.quickSendName) {
-          const key = ctx.quickSendName;
-          getActiveCmd()!.setQsEditing(key);
-          getActiveCmd()!.setQsName(key);
-          getActiveCmd()!.setQsContent(getActiveCmd()!.quickSends[key] ?? "");
-          getActiveCmd()!.setQsAdding(true);
-        }
-      },
+    reg("serial-monitor.quickSendEdit", async (...args: any[]) => {
+      const ctx = args[0] as { quickSendName?: string } | undefined;
+      if (ctx?.quickSendName) {
+        const key = ctx.quickSendName;
+        getActiveCmd()!.setQsEditing(key);
+        getActiveCmd()!.setQsName(key);
+        getActiveCmd()!.setQsContent(getActiveCmd()!.quickSends[key] ?? "");
+        getActiveCmd()!.setQsAdding(true);
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.quickSendDelete",
-      title: t("删除"),
-      category: t("串口监视器"),
-      handler: async (_token, ...args) => {
-        const ctx = args[0] as { quickSendName?: string } | undefined;
-        if (ctx?.quickSendName) {
-          getActiveCmd()!.handleDeleteQuickSend(ctx.quickSendName);
-        }
-      },
+    reg("serial-monitor.quickSendDelete", async (...args: any[]) => {
+      const ctx = args[0] as { quickSendName?: string } | undefined;
+      if (ctx?.quickSendName) {
+        getActiveCmd()!.handleDeleteQuickSend(ctx.quickSendName);
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.clearSend",
-      title: t("清空发送区"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setSendValue("");
-      },
+    reg("serial-monitor.clearSend", async () => {
+      getActiveCmd()!.setSendValue("");
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.exportLog",
-      title: t("导出日志"),
-      category: t("串口监视器"),
-      handler: async () => {
-        const view = getActiveCmd()!.cmView.current;
-        if (!view) return;
-        const text = view.state.doc.toString();
-        const filename = `serial-log-${Date.now()}.txt`;
-        try {
-          const handle = await (window as any).showSaveFilePicker({
-            suggestedName: filename,
-            types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
-          });
-          const writable = await handle.createWritable();
-          await writable.write(text);
-          await writable.close();
-        } catch {
-          // 用户取消保存——静默
-        }
-      },
+    reg("serial-monitor.exportLog", async () => {
+      const view = getActiveCmd()!.cmView.current;
+      if (!view) return;
+      const text = view.state.doc.toString();
+      const filename = `serial-log-${Date.now()}.txt`;
+      try {
+        const handle = await (window as any).showSaveFilePicker({
+          suggestedName: filename,
+          types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
+        });
+        const writable = await handle.createWritable();
+        await writable.write(text);
+        await writable.close();
+      } catch {
+        // 用户取消保存——静默
+      }
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleSendMode",
-      title: t("切换到 HEX 发送"),
-      category: t("串口监视器"),
-      handler: async () => {
-        // Phase 5f：直连 ConfigurationService——通过 ref 读取/写入避免闭包过期
-        getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
-      },
+    reg("serial-monitor.toggleSendMode", async () => {
+      getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleEcho",
-      title: t("关闭消息回显"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
-      },
+    reg("serial-monitor.toggleEcho", async () => {
+      getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleLineNumbers",
-      title: t("隐藏行号"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
-      },
+    reg("serial-monitor.toggleLineNumbers", async () => {
+      getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleSystemLog",
-      title: t("关闭系统消息独立显示"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
-      },
+    reg("serial-monitor.toggleSystemLog", async () => {
+      getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleAutoRepeat",
-      title: t("关闭自动重发"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
-      },
+    reg("serial-monitor.toggleAutoRepeat", async () => {
+      getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
     });
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleAutoClear",
-      title: t("关闭自动清屏"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
-      },
+    reg("serial-monitor.toggleAutoClear", async () => {
+      getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
     });
 
-    // #36k2：最后一个串口监视器标签页关闭时清理命令注册——防止命令面板残留 terminal.* 命令
-    // cleanup 顺序：此 effect 先于 _cmdMap.delete 执行，故判断 <= 1（仅剩自身）
+    // #36k2：最后一个串口监视器标签页关闭时清理命令注册
     return () => {
       if (_cmdMap.size <= 1) {
-        unregisterPluginCommands("serial-monitor");
+        lk?.commands?.unregisterCommands?.("serial-monitor");
       }
     };
   }, []);
 
-  // 动态更新暂停/继续标题（paused 变化时重新注册）
+  // E5.6#11.5h：池侧 registerCommand API 只有 (id, handler)——无 title/category。
+  // 动态更新 title 的 effect 已无意义（池侧不存 title）。保留 handler 重注册以兼容。
+  // 池侧同一 id 重复 registerCommand 会覆盖 handler——无副作用，保留 effect 结构。
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.togglePause",
-      title: paused ? t("继续接收") : t("暂停接收"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setPaused((p) => !p);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.togglePause", async () => {
+      getActiveCmd()!.setPaused((p) => !p);
     });
   }, [paused]);
 
-  // 动态更新发送模式标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleSendMode",
-      title: sendMode === "hex" ? t("切换到文本发送") : t("切换到 HEX 发送"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleSendMode", async () => {
+      getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === "hex" ? "text" : "hex");
     });
   }, [sendMode]);
 
-  // 动态更新回显标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleEcho",
-      title: showEcho ? t("关闭消息回显") : t("开启消息回显"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleEcho", async () => {
+      getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
     });
   }, [showEcho]);
 
-  // 动态更新行号标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleLineNumbers",
-      title: showLineNumbers ? t("隐藏行号") : t("显示行号"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleLineNumbers", async () => {
+      getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
     });
   }, [showLineNumbers]);
 
-  // 动态更新系统消息独立显示标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleSystemLog",
-      title: separateSystemLog ? t("关闭系统消息独立显示") : t("开启系统消息独立显示"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleSystemLog", async () => {
+      getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
     });
   }, [separateSystemLog]);
 
-  // 动态更新自动重发标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleAutoRepeat",
-      title: autoRepeat ? t("关闭自动重发") : t("开启自动重发"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleAutoRepeat", async () => {
+      getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
     });
   }, [autoRepeat]);
 
-  // 动态更新自动清屏标题
   useEffect(() => {
-    registerCommand("serial-monitor", {
-      id: "serial-monitor.toggleAutoClear",
-      title: autoClear ? t("关闭自动清屏") : t("开启自动清屏"),
-      category: t("串口监视器"),
-      handler: async () => {
-        getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
-      },
+    (window as any).linkdesk?.commands?.registerCommand?.("serial-monitor.toggleAutoClear", async () => {
+      getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
     });
   }, [autoClear]);
 
@@ -1271,7 +1148,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       {/* Phase 5b：接收区右键菜单——共享 ContextMenu */}
       {ctxMenu && (
         <ContextMenu
-          menuId={MenuId.EditorContext}
+          menuId={"editorContext"}
           anchor={{ x: ctxMenu.x, y: ctxMenu.y }}
           context={{}}
           onClose={() => setCtxMenu(null)}
@@ -1320,7 +1197,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       {/* Phase 5b：快捷发送右键菜单——共享 ContextMenu */}
       {qsCtxMenu && (
         <ContextMenu
-          menuId={MenuId.QuickSendContext}
+          menuId={"quickSendContext"}
           anchor={{ x: qsCtxMenu.x, y: qsCtxMenu.y }}
           context={{ quickSendName: qsCtxMenu.key }}
           onClose={() => setQsCtxMenu(null)}
