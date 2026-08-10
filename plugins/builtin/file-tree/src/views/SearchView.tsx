@@ -7,8 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import { searchFiles, type FileSearchResult, type SearchMatch } from "@src/core/services/FileSearcher";
-import { getPluginFor } from "@src/core/services/FileAssociationService";
+import type { FileSearchResult, SearchMatch } from "@src/core/services/FileSearcher";
 import { extension } from "../utils/pathUtils";
 import "../styles/SearchView.css";
 
@@ -84,7 +83,7 @@ const SearchView: React.FC = () => {
     setErrorMsg("");
 
     try {
-      const found = await searchFiles({
+      const found = await lk.search.searchFiles({
         roots,
         query: q,
         include: include || undefined,
@@ -92,13 +91,12 @@ const SearchView: React.FC = () => {
         caseSensitive,
         wholeWord,
         useRegex,
-        signal: controller.signal,
       });
 
       if (controller.signal.aborted) return;
 
       const files = found.length;
-      const matches = found.reduce((sum, f) => sum + f.matches.length, 0);
+      const matches = (found as FileSearchResult[]).reduce((sum, f) => sum + f.matches.length, 0);
       setResults(found);
       setTotalFiles(files);
       setTotalMatches(matches);
@@ -135,10 +133,10 @@ const SearchView: React.FC = () => {
 
   /* ── 打开文件 ── */
 
-  const handleOpenMatch = useCallback((match: SearchMatch) => {
+  const handleOpenMatch = useCallback(async (match: SearchMatch) => {
     const ext = extension(match.filePath);
     if (!ext) return;
-    const pluginId = getPluginFor(ext);
+    const pluginId = await lk.fileAssociation.getPluginFor(ext);
     if (!pluginId) return;
     tabs?.create(pluginId, {
       filePath: match.filePath,
@@ -165,15 +163,14 @@ const SearchView: React.FC = () => {
     const ok = await (window as any).linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
     if (!ok) return;
 
-    const { EncodingService } = await import("@src/core/services/EncodingService");
     let replaced = 0;
     let failed = 0;
 
     for (const file of results) {
       try {
         const buffer = await lk.filesystem.readBinaryFile(file.filePath);
-        const encoding = EncodingService.detect(buffer);
-        let content = EncodingService.decode(buffer, encoding);
+        const encoding = await lk.encoding.detect(buffer);
+        let content = await lk.encoding.decode(buffer, encoding);
         for (const m of [...file.matches].reverse()) {
           const lineStart = content.split("\n").slice(0, m.lineNumber - 1).join("\n").length;
           const absStart = lineStart + (m.lineNumber === 1 ? 0 : 1) + m.matchStart;

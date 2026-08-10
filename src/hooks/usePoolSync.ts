@@ -61,6 +61,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     poolApiRef.current = (window as any).linkdesk?.pool;
   }
 
+  // E5.6#11-fix8：跟踪上次非空 sidebarView——图标栏点击坍塌时 emit null → sidebarView=null，
+  // 但池仍需知道渲染哪个容器（collapsed 状态 ▶ 按钮需要 containerId 和 views）。
+  // 宽≤48 时优先 collapsed 而非 hidden——确保图标点击和 ◀ 按钮两条坍塌路径行为一致。
+  const lastSidebarViewRef = useRef<string | null>(null);
+
   // E5.6#11j fix：layoutVersion——ViewContainerService 写操作后触发重推。
   // reorderView/setVisible 会 fire onDidChangeActiveViews → bump version。
   // setCollapsed 不 fire 事件 → handler 内手动 bump。
@@ -125,24 +130,34 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
   }, []);
 
   useEffect(() => {
+    // E5.6#11-fix8：记住上次非空 sidebarView——图标栏坍塌时 emit null，但 collapsed ▶ 仍需知道容器
+    if (sidebarView) {
+      lastSidebarViewRef.current = sidebarView;
+    }
+
     const poolApi = poolApiRef.current;
     if (!poolApi) return;
 
     // 侧栏布局——E5.6#11d：完整容器元数据 + SidebarViewMeta[]
+    // E5.6#11-fix8：isSidebarVisible 只对壳 SidePanel DOM 有意义——池渲染不应依赖它。
+    // 池只要知道是哪个容器（sidebarView 或 lastSidebarViewRef），就应该渲染侧栏。
+    // 宽≤48 → collapsed（▶ 按钮），宽>48 → 展开。两条坍塌路径（图标点击/◀按钮）行为一致。
+    const effectiveSidebarView = sidebarView || lastSidebarViewRef.current;
     let sidebar: SidebarLayout;
-    if (isSidebarVisible && sidebarView) {
-      const container = ViewContainerService.getViewContainer(sidebarView);
-      const views = buildSidebarViewMetas(sidebarView);
+    if (effectiveSidebarView) {
+      const container = ViewContainerService.getViewContainer(effectiveSidebarView);
+      const views = buildSidebarViewMetas(effectiveSidebarView);
       const collapsedSet = ViewContainerService.loadCollapsedState();
+      const isCollapsed = sidebarWidth <= 48;
       sidebar = {
         visible: true,
         width: sidebarWidth,
-        containerId: sidebarView,
-        containerTitle: container?.title ?? sidebarView,
+        containerId: effectiveSidebarView,
+        containerTitle: container?.title ?? effectiveSidebarView,
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
         views,
         collapsedViews: [...collapsedSet],
-        collapsed: sidebarWidth <= 48,  // E5.6#11-fix7：宽≤48=折叠态→池渲染▶按钮
+        collapsed: isCollapsed,
         viewId: views[0]?.pluginId ?? null,  // 向后兼容
       };
     } else {

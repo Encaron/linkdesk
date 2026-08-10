@@ -64,6 +64,18 @@ export class IpcBridge {
     // E5#85：workspace——插件查询工作区信息
     'workspace:getFolders',
     'workspace:getActive',
+    // E5.6#11.5-A：扩展 workspace + fileAssociation + decorations——池插件完整工作区操作
+    'workspace:setActive',
+    'workspace:openFolder',
+    'workspace:addFolder',
+    'workspace:removeFolder',
+    'fileAssociation:getPluginFor',
+    'decorations:getDecoration',
+    // E5.6#11.5g5：文件搜索 + 编码检测——池插件跨进程使用 FileSearcher/EncodingService
+    'search:searchFiles',
+    'encoding:detect',
+    'encoding:decode',
+    'encoding:encode',
   ];
 
   constructor(

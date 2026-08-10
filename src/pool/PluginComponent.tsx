@@ -74,14 +74,55 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
       loader = modulePath ? pluginModules[modulePath] : undefined;
     }
 
+    // 🔥 E5.6#11.5-fix：import.meta.glob 是构建时扫描——运行时安装的插件不在 glob 中。
+    // fallback 到动态 import()。
+    // renderPath 可能有两种格式：
+    //   1. glob key: "../../plugins/user/<id>/src/views/Xxx.tsx"
+    //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/user/<id>/src/views/Xxx.tsx"
+    if (!loader) {
+      const lk = (window as any).linkdesk;
+      const isDev = import.meta.env.DEV;
+      if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
+        // runtime 插件——renderPath 已是完整 URL，直接用
+        loader = (() => import(/* @vite-ignore */ renderPath)) as any;
+      } else if (lk?.plugins?.resolvePath) {
+        loader = (async () => {
+          try {
+            const absPath: string = await lk.plugins.resolvePath(pluginId);
+            if (renderPath) {
+              // glob key 格式：../../plugins/<type>/<id>/<rest> → 提取插件内相对路径
+              const idx = renderPath.indexOf(`/${pluginId}/`);
+              const rel = idx !== -1
+                ? renderPath.slice(idx + pluginId.length + 2)
+                : renderPath.split("/").slice(3).join("/");
+              const url = isDev ? `/@fs/${absPath}/${rel}` : `linkdesk://${pluginId}/${rel}`;
+              const mod = await import(/* @vite-ignore */ url);
+              return mod;
+            } else {
+              // 主区 tab：默认入口 src/index.tsx
+              const url = isDev ? `/@fs/${absPath}/src/index.tsx` : `linkdesk://${pluginId}/src/index.tsx`;
+              const mod = await import(/* @vite-ignore */ url);
+              return mod;
+            }
+          } catch (e) {
+            console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);
+            return null;
+          }
+        }) as any;
+      }
+    }
+
     if (!loader) return null;
 
     const component = React.lazy<React.ComponentType<{ isActive: boolean; tabId?: string; sourceId?: string }>>(() =>
-      loader!().then((mod: any) => ({
-        default: mod.default || (() => {
-          throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
-        }),
-      })),
+      loader!().then((mod: any) => {
+        if (!mod) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
+        return {
+          default: mod.default || (() => {
+            throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
+          }),
+        };
+      }),
     );
     _lazyCache.set(cacheKey, component);
     return component;

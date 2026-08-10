@@ -7,15 +7,9 @@
 
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { executeCommand } from "@src/core/registry/CommandRegistry";
-import { useConfigurationValue } from "@src/core/react/useConfiguration";
-import { onDidChangeFolders, type WorkspaceFolder } from "@src/core/services/WorkspaceService";
+import type { WorkspaceFolder } from "@src/core/services/WorkspaceService";
 import { ViewContainerService } from "@src/core/services/ViewContainerService";
-import { CoreEvents } from "@src/core/react/CoreEvents";
 
-import { getPluginFor } from "@src/core/services/FileAssociationService";
-
-const lk = (window as any).linkdesk;
 import FileTree from "../components/FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../components/FileTreeContextMenu";
 import { FileTreeDecorationService } from "../services/FileTreeDecoration";
@@ -26,6 +20,24 @@ import type { ExplorerItem } from "../services/FileTreeModel";
 import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import { joinPath, normalizePath, extension } from "../utils/pathUtils";
 import "../styles/file-tree.css";
+
+const lk = (window as any).linkdesk;
+
+// E5.6#11.5g3: MiniEmitter——替代 CoreEvents.onDidChangeFileSystem，纯 intra-component 事件
+// file watcher 回调 fire → 同组件内订阅者消费，无需跨 IPC
+class MiniFileSystemEmitter {
+  private _listeners = new Set<(events: any[]) => void>();
+  fire(events: any[]): void {
+    for (const fn of this._listeners) {
+      try { fn(events); } catch { /* 错误隔离 */ }
+    }
+  }
+  event(listener: (events: any[]) => void): () => void {
+    this._listeners.add(listener);
+    return () => { this._listeners.delete(listener); };
+  }
+}
+const _fsEmitter = new MiniFileSystemEmitter();
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
@@ -73,10 +85,12 @@ const FoldersView: React.FC = () => {
   );
 
   /* ── E4V#32: autoReveal——切标签页时文件树自动定位 ── */
-  const autoReveal = useConfigurationValue<boolean>("explorer.autoReveal") ?? true;
+  // E5.6#11.5g3: inline useConfigurationValue + lk.tabs.onDidChangeActiveTab 替代 CoreEvents
+  const [autoReveal, setAutoReveal] = useState<boolean>(true);
+  useEffect(() => { lk.configuration.get("explorer.autoReveal").then((v: unknown) => setAutoReveal(v as boolean ?? true)); return lk.configuration.onChange("explorer.autoReveal", (v: unknown) => setAutoReveal(v as boolean ?? true)); }, []);
   useEffect(() => {
     if (!autoReveal) return;
-    const unsub = CoreEvents.onDidChangeActiveTab.event(({ filePath }) => {
+    const unsub = lk.tabs?.onDidChangeActiveTab?.(({ filePath }: { filePath?: string }) => {
       if (!filePath) return;
       fileTreeRef.current?.reveal(filePath);
     });
@@ -160,7 +174,7 @@ const FoldersView: React.FC = () => {
       for (const f of folders) {
         try {
           const unwatch = await lk.filesystem.watch(f.uri, (event: { path: string; type: string }) => {
-            CoreEvents.onDidChangeFileSystem.fire([event as any]);
+            _fsEmitter.fire([event as any]);
           });
           _watchersRef.current.push(unwatch);
         } catch { /* watcher 启动失败静默 */ }
@@ -173,12 +187,12 @@ const FoldersView: React.FC = () => {
 
   useEffect(() => {
     syncRoots();
-    const unsub1 = onDidChangeFolders(() => { syncRoots(); });
+    const unsub1 = lk.workspace.onDidChangeFolders(() => { syncRoots(); });
     // E4V#fix: 文件变更防抖——300ms 内累积的变更合并为一次 refresh。
     // 背景：onFileChange IPC 监听是全局的（所有 watcher 共享 filesystem:changed 频道），
     // 批量文件操作（npm install / git checkout / appData 写入）会产生数十个事件，
     // 每个都触发 refresh → 并发竞态 → 展开目录缩回（twistie ▼ 但 children 为空）。
-    const unsub2 = CoreEvents.onDidChangeFileSystem.event(async (events) => {
+    const unsub2 = _fsEmitter.event(async (events) => {
       const folders = await lk.workspace.getFolders();
       const inWorkspace = events.some((e: any) => folders.some((f: { uri: string }) => {
         const np = normalizePath(e.path);
@@ -222,10 +236,22 @@ const FoldersView: React.FC = () => {
     };
   }, [syncRoots, model, rerender]);
 
-  /* ── 🔥 归一化配置订阅——useConfigurationValue = 读+订阅一行搞定 ── */
-  const excludeCfg = useConfigurationValue<Record<string, boolean>>("files.exclude");
-  const compactFolders = useConfigurationValue<boolean>("explorer.compactFolders");
-  const excludeGitIgnore = useConfigurationValue<boolean>("explorer.excludeGitIgnore");
+  /* ── 🔥 E5.6#11.5g3: inline useConfigurationValue——useState + useEffect 替代 ── */
+  const [excludeCfg, setExcludeCfg] = useState<Record<string, boolean>>();
+  const [compactFolders, setCompactFolders] = useState<boolean>();
+  const [excludeGitIgnore, setExcludeGitIgnore] = useState<boolean>();
+  useEffect(() => {
+    lk.configuration.get("files.exclude").then((v: unknown) => setExcludeCfg(v as Record<string, boolean>));
+    return lk.configuration.onChange("files.exclude", (v: unknown) => setExcludeCfg(v as Record<string, boolean>));
+  }, []);
+  useEffect(() => {
+    lk.configuration.get("explorer.compactFolders").then((v: unknown) => setCompactFolders(v as boolean ?? true));
+    return lk.configuration.onChange("explorer.compactFolders", (v: unknown) => setCompactFolders(v as boolean ?? true));
+  }, []);
+  useEffect(() => {
+    lk.configuration.get("explorer.excludeGitIgnore").then((v: unknown) => setExcludeGitIgnore(v as boolean ?? true));
+    return lk.configuration.onChange("explorer.excludeGitIgnore", (v: unknown) => setExcludeGitIgnore(v as boolean ?? true));
+  }, []);
   const isInitialMount = useRef(true);
 
   // files.exclude 变更 → 重配 filter + 刷新
@@ -312,16 +338,16 @@ const FoldersView: React.FC = () => {
         // E4V#20f: 工具栏迁移到 header actions——对标 VS Code ▶ FOLDERS [+][🔄][⊟]
         actions: (
           <>
-            <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => executeCommand("explorer.newFile")}>
+            <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => lk.commands.executeCommand("explorer.newFile")}>
               <span className="codicon codicon-new-file" />
             </button>
-            <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => executeCommand("explorer.newFolder")}>
+            <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => lk.commands.executeCommand("explorer.newFolder")}>
               <span className="codicon codicon-new-folder" />
             </button>
-            <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => executeCommand("explorer.refresh")}>
+            <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => lk.commands.executeCommand("explorer.refresh")}>
               <span className="codicon codicon-refresh" />
             </button>
-            <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => executeCommand("explorer.collapseAll")}>
+            <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => lk.commands.executeCommand("explorer.collapseAll")}>
               <span className="codicon codicon-collapse-all" />
             </button>
           </>
@@ -329,7 +355,7 @@ const FoldersView: React.FC = () => {
       });
     };
     updateTitle();
-    const unsub = onDidChangeFolders(updateTitle);
+    const unsub = lk.workspace.onDidChangeFolders(updateTitle);
     return unsub;
   }, [t]);
 
@@ -346,9 +372,9 @@ const FoldersView: React.FC = () => {
   /* ── 打开文件 ── */
   /** 核心逻辑：扩展名 → FileAssociationService → createTab。
    *  E5#99：未知类型不拦截——交壳 tabs:create handler 统一 toast。 */
-  const doOpenFile = useCallback((filePath: string, name: string, mode: "preview" | "pin") => {
+  const doOpenFile = useCallback(async (filePath: string, name: string, mode: "preview" | "pin") => {
     const ext = extension(name);
-    const pluginId = ext ? getPluginFor(ext) : "";
+    const pluginId = ext ? await lk.fileAssociation.getPluginFor(ext) : "";
     tabs?.create(pluginId || "", {
       filePath,
       sourceId: filePath,
@@ -372,16 +398,16 @@ const FoldersView: React.FC = () => {
       {/* E5.6#11：工具栏从 header actions (ReactNode→不可IPC序列化) 迁移到组件内自渲染 */}
       {roots.length > 0 && (
         <div className="file-tree-toolbar">
-          <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => executeCommand("explorer.newFile")}>
+          <button className="file-tree-toolbar-btn" title={t("新建文件")} onClick={() => lk.commands.executeCommand("explorer.newFile")}>
             <span className="codicon codicon-new-file" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => executeCommand("explorer.newFolder")}>
+          <button className="file-tree-toolbar-btn" title={t("新建文件夹")} onClick={() => lk.commands.executeCommand("explorer.newFolder")}>
             <span className="codicon codicon-new-folder" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => executeCommand("explorer.refresh")}>
+          <button className="file-tree-toolbar-btn" title={t("刷新")} onClick={() => lk.commands.executeCommand("explorer.refresh")}>
             <span className="codicon codicon-refresh" />
           </button>
-          <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => executeCommand("explorer.collapseAll")}>
+          <button className="file-tree-toolbar-btn" title={t("收起全部")} onClick={() => lk.commands.executeCommand("explorer.collapseAll")}>
             <span className="codicon codicon-collapse-all" />
           </button>
         </div>

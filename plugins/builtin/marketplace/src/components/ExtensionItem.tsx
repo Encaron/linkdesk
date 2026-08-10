@@ -7,8 +7,6 @@
 import { useRef, useState } from "react";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { MenuId } from "@src/core/registry/MenuRegistry";
-
 import type { ViewPluginEntry } from "@src/core/api/types";
 
 const pm = () => (window as any).linkdesk?.pluginManager;
@@ -100,7 +98,7 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemP
           </button>
           {gearMenuAnchor && (
             <ContextMenu
-              menuId={MenuId.MarketplaceItemGear}
+              menuId={"marketplaceItemGear"}
               anchor={gearMenuAnchor}
               context={{ pluginId: plugin.pluginId }}
               onClose={() => {

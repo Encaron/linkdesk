@@ -12,10 +12,33 @@ import type { FileEntry } from "@src/core/services/FileService";
 import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
-import { Emitter } from "@src/core/react/CoreEvents";
 import { basename, splitPath, normalizePath, extension } from "../utils/pathUtils";
 
 const lk = (window as any).linkdesk;
+
+// E5.6#11.5g1：MiniEmitter——内联替代 @src/core Emitter，纯工具类无全局状态
+class MiniEmitter<T> {
+  private _listeners = new Set<(data: T) => void>();
+  private _event?: (listener: (data: T) => void) => () => void;
+
+  get event(): (listener: (data: T) => void) => () => void {
+    if (!this._event) {
+      this._event = (listener: (data: T) => void): (() => void) => {
+        this._listeners.add(listener);
+        return () => { this._listeners.delete(listener); };
+      };
+    }
+    return this._event;
+  }
+
+  fire(data: T): void {
+    for (const fn of this._listeners) {
+      try { fn(data); } catch { /* 错误隔离——一个监听器崩溃不阻塞其他 */ }
+    }
+  }
+
+  dispose(): void { this._listeners.clear(); }
+}
 
 /* ── 类型 ── */
 
@@ -47,7 +70,7 @@ export class FileTreeModel {
   private _decorator: ((items: ExplorerItem[]) => void | Promise<void>) | null = null;
   readonly compactController: CompactController;
   /** E4V#55: 模型变更通知——FileTree 订阅后自动重渲染 */
-  readonly onDidChange = new Emitter<void>();
+  readonly onDidChange = new MiniEmitter<void>();
 
   constructor(sortOrder?: SortOrder) {
     this._sortOrder = sortOrder ?? "default";

@@ -11,7 +11,6 @@
  *   deco.detach();    // FoldersView unmount
  */
 
-import { FileDecorationRegistry } from "@src/core/registry/FileDecorationRegistry";
 import type { FileTreeModel, ExplorerItem } from "./FileTreeModel";
 
 const lk = (window as any).linkdesk;
@@ -26,11 +25,11 @@ export class FileTreeDecorationService {
 
   /** 激活——订阅注册中心变更，变更时触发模型重渲染 */
   attach(): void {
-    this._unsub = FileDecorationRegistry.onDidChange(() => {
+    this._unsub = lk.decorations?.onDidChange(() => {
       // 清掉已加载节点的 decoration 缓存——下次 getChildren/rerender 重新查询
       this._invalidateRoots();
       this._model.onDidChange.fire();
-    });
+    }) ?? null;
   }
 
   /** 停用——取消订阅 */
@@ -41,8 +40,8 @@ export class FileTreeDecorationService {
 
   /** 查询并应用单个文件的装饰——由 getChildren 调用 */
   async decorate(item: ExplorerItem): Promise<void> {
-    if (!FileDecorationRegistry.hasProviders()) return;
-    const deco = FileDecorationRegistry.getDecoration(item.uri);
+    // E5.6#11.5g7：hasProviders() 优化去掉——IPC 查询无 provider 时自然返回 null
+    const deco = await lk.decorations?.getDecoration(item.uri);
     if (!deco) return;
     // E4V#34g3/g4: 尊重 decorations.colors / decorations.badges 开关
     const colorsOn = await lk.configuration.get("explorer.decorations.colors") ?? true;
