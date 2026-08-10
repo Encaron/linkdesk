@@ -487,12 +487,12 @@ function MainContent({
             isDragging={isDragging}
             onDraggingChange={setIsDragging}
           />
-          {/* 内容占位区——tab pane 通过绝对定位填充，不做子元素渲染 */}
+          {/* E5.6#14b：MainPool WebContentsView 覆盖此区域——壳 DOM 不渲染内容 */}
           <div
             className="tab-content-pool"
             data-group-id={group.id}
             ref={registerPoolRef(group.id)}
-            style={{ flex: 1, position: "relative", overflow: "hidden" }}
+            style={{ display: "none" }}
           />
           {isTarget && (
             <div
