@@ -8,8 +8,7 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import type { WorkspaceFolder } from "@src/core/services/WorkspaceService";
-import { ViewContainerService } from "@src/core/services/ViewContainerService";
-
+// E5.6#11.5i：ViewContainerService → lk.viewContainer（#11.5g3 遗漏）
 import FileTree from "../components/FileTree";
 import FileTreeContextMenu, { activateFileTreeContextMenu, setFileTreeHandleRef, clearFileTreeHandle, setOpenFileFn } from "../components/FileTreeContextMenu";
 import { FileTreeDecorationService } from "../services/FileTreeDecoration";
@@ -329,8 +328,8 @@ const FoldersView: React.FC = () => {
       const folders = await lk.workspace.getFolders();
       // E4V#35f: 单根→根名，多根→"工作区"（对标 VS Code WORKSPACE）
       const title = folders.length === 1 ? folders[0].name : (folders.length > 1 ? t("工作区") : "");
-      const existing = ViewContainerService.getView("folders");
-      ViewContainerService.registerView("file-tree", "explorer", {
+      const existing = (window as any).linkdesk?.viewContainer?.getView("folders");
+      (window as any).linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
         id: "folders",
         title,
         render: existing?.render ?? (() => null),
@@ -361,7 +360,7 @@ const FoldersView: React.FC = () => {
 
   /** E4V#37b: 注册 SEARCH view——和 FOLDERS 同容器，始终可见 */
   useEffect(() => {
-    ViewContainerService.registerView("file-tree", "explorer", {
+    (window as any).linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
       id: "search",
       title: t("搜索"),
       order: 1,
