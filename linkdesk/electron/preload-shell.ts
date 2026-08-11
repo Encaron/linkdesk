@@ -54,6 +54,12 @@ ipcRenderer.on('pool:sidebar-action', (_event, action: any) => {
   if (_sidebarActionHandler) _sidebarActionHandler(action);
 });
 
+// E5.6#16.5：主区 tab 操作回调——池→主进程→壳，壳侧 React 注册 handler 调 useTabManager
+let _tabActionHandler: ((action: any) => void) | null = null;
+ipcRenderer.on('pool:tab-action', (_event, action: any) => {
+  if (_tabActionHandler) _tabActionHandler(action);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -495,6 +501,11 @@ try {
       onSidebarAction: (cb: (action: any) => void) => {
         _sidebarActionHandler = cb;
         return () => { _sidebarActionHandler = null; };
+      },
+      /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager。返回 unsubscribe */
+      onTabAction: (cb: (action: any) => void) => {
+        _tabActionHandler = cb;
+        return () => { _tabActionHandler = null; };
       },
     },
 

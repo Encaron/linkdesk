@@ -13,6 +13,10 @@ import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../c
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
+// E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
+import { getViewPlugin, getTabBehavior } from "../pluginLoader/viewRegistry";
+import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+import { isShellRenderedTab } from "./tabIdentity";
 
 /**
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
@@ -78,15 +82,15 @@ export interface UsePoolSyncInput {
   isSidebarVisible: boolean;
   /** 侧栏当前宽度（px） */
   sidebarWidth: number;
-  /** E5.6#16：MainPool 分隔线拖拽结束 → 壳更新分屏比例 */
-  onSplitSizesChange?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
+  /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
+  onTabAction?: (action: any) => void;
 }
 
 /**
  * 构建 PoolLayout 并推送到 SidebarPool + MainPool。
  * 依赖 tabState / sidebarView / isSidebarVisible / sidebarWidth——任一变化触发全量推送。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onSplitSizesChange }: UsePoolSyncInput): void {
+export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onTabAction }: UsePoolSyncInput): void {
   // 缓存 pool API 引用——window.linkdesk.pool 在 preload 阶段就绪，mount 后不会变
   const poolApiRef = useRef<any>(null);
   if (!poolApiRef.current) {
@@ -137,16 +141,22 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
           }
           break;
         }
-        // E5.6#16：MainPool 分隔线拖拽结束 → 壳更新分屏比例
-        case "updateSplitSizes": {
-          const { anchorGroupId, sizes, branchIndex } = action as { anchorGroupId: string; sizes: [number, number]; branchIndex?: number };
-          onSplitSizesChange?.(anchorGroupId, sizes, branchIndex);
-          break;
-        }
+        // E5.6#16.5：updateSplitSizes 已迁移到 pool.tabAction 通道——此处不再处理
       }
     });
     return unsub;
   }, []);
+
+  // E5.6#16.5：注册池→壳主区 tab 操作回调。池组件调用 pool.tabAction() →
+  // 主进程转发 → 壳 preload → 此 handler → useTabManager 方法（通过 onTabAction 回调）。
+  useEffect(() => {
+    const poolApi = poolApiRef.current;
+    if (!poolApi || !onTabAction) return;
+    const unsub = poolApi.onTabAction?.((action: any) => {
+      onTabAction(action);
+    });
+    return unsub;
+  }, [onTabAction]);
 
   // E5.6#11-fix：接收池侧 marketplace badge 更新事件→写入壳 ViewContainerService。
   // 池内 ViewContainerService 是空实例——marketplaceShared 的 updateAllBadges 改走 events.emit，
@@ -215,16 +225,29 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       id: g.id,
       flex: flexMap.get(g.id) ?? 1,
       activeTabId: g.activeTabId,
-      tabs: g.tabs.map((t) => ({
-        id: t.id,
-        pluginId: t.pluginId ?? t.type,
-        title: t.label,
-        sourceId: t.sourceId,
-        dirty: t.dirty,
-      })),
+      tabs: g.tabs.map((t) => {
+        const pid = t.pluginId ?? t.type;
+        const entry = getViewPlugin(pid);
+        const resolved = entry?.manifest ? resolvePluginIcon(pid, entry.manifest) : null;
+        const behavior = getTabBehavior(pid);
+        return {
+          id: t.id,
+          pluginId: pid,
+          title: t.label,
+          sourceId: t.sourceId,
+          dirty: t.dirty,
+          // E5.6#16.5：TabBar 渲染元数据
+          icon: resolved?.src ?? resolved?.emoji,
+          pinned: t.pinned,
+          closeBehavior: behavior.confirmOnClose ? "confirm" : behavior.isFallback ? "blocked" : "normal",
+          singleton: behavior.singleton,
+          shellRendered: isShellRenderedTab(t.type),
+        };
+      }),
     }));
 
     poolApi.pushLayout("sidebar", { sidebar, groups: [] } satisfies PoolLayout);
-    poolApi.pushLayout("main", { groups } satisfies PoolLayout);
+    // E5.6#16.7：推 root SplitNode 树——MainRenderer 递归渲染
+    poolApi.pushLayout("main", { groups, root: tabState.root } satisfies PoolLayout);
   }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
 }

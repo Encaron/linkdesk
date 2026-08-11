@@ -7,6 +7,8 @@
  * 兼容性：池忽略不认识的字段，壳加字段不破坏旧池。
  */
 
+import type { SplitNode } from "../../hooks/splitTree";
+
 // ── E5.6#11a ──
 
 /** 侧栏 view 元数据——从 ViewContainerService 序列化，经 PoolLayout 推送到 SidebarPool */
@@ -49,6 +51,17 @@ export interface PoolTab {
   title: string;
   sourceId?: string;
   dirty?: boolean;
+  // 🆕 E5.6#16.5：TabBar 渲染所需元数据
+  /** 插件图标 URL——getAssetPath() 解析后的路径 */
+  icon?: string;
+  /** 固定标签页（对标 VS Code pinned tabs） */
+  pinned?: boolean;
+  /** 标签页关闭行为——from plugin.json tabBehavior.closeBehavior */
+  closeBehavior?: "normal" | "confirm" | "blocked";
+  /** 单例插件（settings/marketplace 等）——TabBar 不显示 [×] 关闭按钮 */
+  singleton?: boolean;
+  /** 壳内部视图（欢迎页/插件详情/输出面板）——MainPool 内容区不渲染 PluginComponent */
+  shellRendered?: boolean;
 }
 
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
@@ -63,4 +76,7 @@ export interface PoolGroup {
 export interface PoolLayout {
   sidebar?: SidebarLayout;
   groups: PoolGroup[];
+  /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
+   *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
+  root?: SplitNode;
 }

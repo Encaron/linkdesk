@@ -7,18 +7,14 @@
  *   同步控制对应 WebView 的显隐和位置。
  */
 
-import { createElement, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useMemo, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../i18n";
 import type { ComponentType } from "react";
-import type { TabGroup, Tab } from "../hooks/useTabManager";
-import { useTabManager, allTabs } from "../hooks/useTabManager";
-import type { DropZone } from "../hooks/tabDragTypes";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
+import { useTabManager, allTabs } from "../hooks/useTabManager";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { updateCoreCallbacks, type CoreCallbacks } from "../core/builtin/coreCommands";
-import SplitPane from "./SplitPane";
-import TabBar from "./TabBar";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
@@ -26,13 +22,10 @@ import OutputPanel from "./views/OutputPanel"; // E3f #54
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
 import { isShellRenderedTab } from "../hooks/tabIdentity";
-import { useWebViewSync } from "../hooks/useWebViewSync";
 // E5.6#9a：Pool 布局同步——替代 useWebViewSync
 import { usePoolSync } from "../hooks/usePoolSync";
 // E5#5a：壳内通信——订阅/emit 事件，逐步替代 App.tsx props
 import { shellEvents } from "../core/react/ShellEvents";
-// E5#5f：壳内视图注册表——替代硬编码 switch，加新壳视图只加一行
-import TabPanePositioner from "./TabPanePositioner";
 // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存和恢复
 import { getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/LayoutService";
 import { syncWriteWorkspaceFolders } from "../core/services/WorkspaceService"; // E5.5#0e
@@ -113,17 +106,13 @@ function renderTabContent(
 }
 
 function MainContent({
-  editorAreaRef,
+  editorAreaRef: _editorAreaRef,
   sidebarView = null,
   isSidebarVisible = false,
   sidebarWidth = 0,
 }: MainContentProps) {
-  // E5#5e-ii-f：拖拽分屏状态——从 App.tsx 搬进 MainContent
-  const [dropZone, setDropZone] = useState<DropZone | null>(null);
-  const [dragDropTargetGroupId, setDragDropTargetGroupId] = useState<string | null>(null);
-  const [isDragging, setIsDragging] = useState(false);
-
   // E5#5e-ii-e：useTabManager 搬到 MainContent——不再通过 App props 中转
+  // E5.6#16.5：dropZone/拖拽分屏由 MainPool GroupTabBar + MainRenderer 内部处理——壳不再需要
   const {
     tabState,
     focusTab,
@@ -132,7 +121,6 @@ function MainContent({
     createTab,
     moveTab,
     splitTab,
-    splitTabAt: _splitTabAt,
     duplicateTab: _duplicateTab,
     unsplit,
     updateSplitSizes,
@@ -146,57 +134,20 @@ function MainContent({
     restoreClosedTab,
   } = useTabManager();
 
-  // E5#5e-ii-f 恢复：拖拽分屏回调
-  const handleDropSplit = useCallback(
-    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
-      const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-      _splitTabAt(tabId, direction, targetGroupId, zone);
-      setDropZone(null);
-      setDragDropTargetGroupId(null);
-      setIsDragging(false);
-    },
-    [_splitTabAt],
-  );
+  // E5.6#16.5：拖拽分屏/分屏 drop zone 由 MainPool 内部处理——壳不再需要。
 
-  const handleDropCopySplit = useCallback(
-    (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => {
-      const newId = _duplicateTab(tabId);
-      if (newId) {
-        const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
-        _splitTabAt(newId, direction, targetGroupId, zone);
-      }
-      setDropZone(null);
-      setDragDropTargetGroupId(null);
-      setIsDragging(false);
-    },
-    [_duplicateTab, _splitTabAt],
-  );
+  // ═══════════════════════════════════════════════════════
+  // E5.6#16.5：壳特殊视图 overlay——检测当前活跃标签页是否为壳渲染类型
+  // ═══════════════════════════════════════════════════════
 
-  const handleDragDropZone = useCallback((zone: DropZone | null, targetGroupId?: string) => {
-    setDropZone(zone);
-    setDragDropTargetGroupId(targetGroupId ?? null);
-  }, []);
-  // B33：所有 tab pane 平级收集。React 树中顺序永不变，跨组移动只改 groupId。
-  const flatPanes = useMemo(() => {
-    const panes: Array<{ tab: Tab; groupId: string; isVisible: boolean; isFocused: boolean }> = [];
-    for (const g of tabState.groups) {
-      for (const tab of g.tabs) {
-        const isActiveInGroup = tab.id === g.activeTabId;
-        panes.push({
-          tab,
-          groupId: g.id,
-          isVisible: isActiveInGroup,
-          isFocused: isActiveInGroup && g.id === tabState.activeGroupId,
-        });
-      }
-    }
-    return panes;
+  // 从 tabState 推导当前活跃的 tab（用于判断是否显示壳视图 overlay）
+  const activeTab = useMemo(() => {
+    const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+    return activeGroup?.tabs.find((t) => t.id === activeGroup.activeTabId) ?? null;
   }, [tabState.groups, tabState.activeGroupId]);
 
-  // ═══════════════════════════════════════════════════════
-  // E3a #29：WebContentsView 显隐同步
-  // 插件标签页切换 → 壳侧 sync → main process → WindowManager → WebView 显隐/位置
-  // ═══════════════════════════════════════════════════════
+  // E5.6#16.5：当前活跃 tab 是否为壳渲染类型——需要壳 overlay 渲染内容
+  const showShellOverlay = activeTab != null && isShellRenderedTab(activeTab.type);
 
   // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
   useEffect(() => {
@@ -310,74 +261,79 @@ function MainContent({
   }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t]);
   updateCoreCallbacks(coreCallbacks);
 
-  // E5.6#2c：Pool 模型——单 WebView 模式，跳过 useWebViewSync
-  const ENABLE_POOL_MODEL = true;
+  // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
+  // 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
+  const handleTabAction = useCallback((action: any) => {
+    switch (action?.action) {
+      case "focusTab":
+        focusTab(action.tabId);
+        break;
+      case "closeTab":
+        closeTab(action.tabId);
+        break;
+      case "closeOtherTabs": {
+        // 关闭同 group 内除指定 tab 外的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          for (const t of g.tabs) {
+            if (t.id !== action.tabId) closeTab(t.id);
+          }
+        }
+        break;
+      }
+      case "closeTabsToRight": {
+        // 关闭同 group 内指定 tab 右侧的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          const idx = g.tabs.findIndex((t) => t.id === action.tabId);
+          if (idx >= 0) {
+            for (let i = g.tabs.length - 1; i > idx; i--) {
+              closeTab(g.tabs[i].id);
+            }
+          }
+        }
+        break;
+      }
+      case "closeAllTabs": {
+        // 关闭指定 group 的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          for (const t of [...g.tabs]) {
+            closeTab(t.id);
+          }
+        }
+        break;
+      }
+      case "reorderTab":
+        reorderTab(action.tabId, action.newIndex);
+        break;
+      case "moveTab":
+        moveTab(action.tabId, action.targetGroupId);
+        break;
+      case "splitTab":
+        splitTab(action.tabId, action.direction === "down" ? "vertical" : "horizontal");
+        break;
+      case "duplicateTab":
+        _duplicateTab(action.tabId);
+        break;
+      case "pinTab":
+        pinTab(action.tabId);
+        break;
+      case "createTab":
+        createTab(action.pluginId ?? FALLBACK_PLUGIN_ID, { groupId: action.groupId } as any);
+        break;
+      // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
+      case "updateSplitSizes":
+        updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);
+        break;
+    }
+  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, _duplicateTab, pinTab, createTab, updateSplitSizes]);
 
   // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
-  // E5.6#16：传递 onSplitSizesChange——MainPool 分隔线拖拽结束 → 壳更新分屏比例
-  usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onSplitSizesChange: updateSplitSizes });
+  usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onTabAction: handleTabAction });
 
-  // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
-  const pv = ENABLE_POOL_MODEL ? undefined : (window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined);
-  const {
-    readyWebViewIds,
-    webViewBoundsReady,
-    registerPoolRef,
-    resetWebViewState,
-  } = useWebViewSync(tabState, isShellRenderedTab, pv);
-
-  // E5#5e-ii-c：插件卸载时清除 WebView 状态（标签页关闭由 useTabManager 集中处理 E5#54）
-  useEffect(() => {
-    const unsub = shellEvents.on("plugin:removed", ({ pluginId }) => {
-      resetWebViewState(pluginId);
-    });
-    return unsub;
-  }, [resetWebViewState]);
-
-  // editor openFile IPC——编辑器独立 WebView 后，壳通过 IPC 告知文件路径（不依赖 React props）
-  // E5.5#9h：IPC 路由 key 从 "editor" 改为 instanceId (= tab.id)
-  useEffect(() => {
-    const bridge = window.linkdesk?.bridge;
-    if (!bridge) return;
-    for (const g of tabState.groups) for (const t of g.tabs) {
-      // E5.5#3d：加 readyWebViewIds 守卫——防 WebView 销毁后 stale ready 状态导致 IPC 发到不存在的 WebView
-      if (t.pluginId === "editor" && t.sourceId && readyWebViewIds.has(t.id)) {
-        bridge.requestToPlugin?.(t.id, "openFile", { filePath: t.filePath }).catch((e: any) => { console.error("[MainContent] editor openFile 失败:", e); });
-      }
-    }
-  }, [tabState.groups, readyWebViewIds, webViewBoundsReady]);
-
-  // E5#84e：serial-monitor openSession——只发当前聚焦 tab（共享 WebView，防覆盖）
-  // E5.5#9h：IPC 路由 key 从 "serial-monitor" 改为 instanceId (= tab.id)
-  useEffect(() => {
-    const bridge = window.linkdesk?.bridge;
-    if (!bridge) return;
-    const activeGroup = tabState.groups.find(g => g.id === tabState.activeGroupId);
-    const activeTab = activeGroup?.tabs.find(t => t.id === activeGroup.activeTabId);
-    if (activeTab?.pluginId === "serial-monitor" && activeTab.sourceId && readyWebViewIds.has(activeTab.id)) {
-      bridge.requestToPlugin?.(activeTab.id, "openSession", { sourceId: activeTab.sourceId }).catch((e: any) => { console.error("[MainContent] serial-monitor openSession 失败:", e); });
-    }
-  }, [tabState.groups, tabState.activeGroupId, tabState.groups.find(g => g.id === tabState.activeGroupId)?.activeTabId, readyWebViewIds, webViewBoundsReady]);
-
-  // E5#84g：弹窗关闭后恢复 WebView 可见性——DialogService 弹窗前 hide 所有 WebView，
-  //        弹窗后 emit dialog:visibility 通知此处恢复正确的可见性
-  const dialogTabRef = useRef(tabState);
-  dialogTabRef.current = tabState;
-  useEffect(() => {
-    const u1 = shellEvents.on("dialog:visibility", ({ open }) => {
-      if (open || !pv) return; // 只处理 close——hide 已在 DialogService 直接做
-      const ts = dialogTabRef.current;
-      for (const g of ts.groups) {
-        const activeTab = g.tabs.find((t) => t.id === g.activeTabId);
-        if (activeTab?.pluginId && !isShellRenderedTab(activeTab.type)) {
-          // E5.5#9h：恢复 WebView 可见性用 instanceId (= tab.id)
-          const isFocused = g.id === ts.activeGroupId;
-          pv.setVisible(activeTab.id, isFocused);
-        }
-      }
-    });
-    return () => { u1(); };
-  }, [pv]);
+  // E5.6#16.5：per-tab WebView 已废弃——多 WebView 同步/editor IPC/serial-monitor IPC/DialogService WebView 显隐
+  // 均由 Pool 模型替代。壳不再管理 WebView 生命周期。
 
   // E5#5e-ii-d：布局持久化——MainContent 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -446,88 +402,34 @@ function MainContent({
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
-  const renderGroup = useCallback(
-    (group: TabGroup) => {
-      const isTarget = dragDropTargetGroupId === group.id && dropZone;
-      return (
+  // E5.6#16.5：壳主区现在只做两件事——
+  // 1. 提供 main-content div 作为 MainPool WebContentsView bounds 的锚点
+  // 2. 渲染壳特殊视图 overlay（欢迎页/插件详情/输出面板）在 MainPool 上方
+  return (
+    <div className="main-content" style={{ position: "relative" }}>
+      {/* MainPool WebContentsView 覆盖整个主区——壳不渲染任何 Path B DOM */}
+      <div
+        style={{ position: "absolute", inset: 0, pointerEvents: "none" }}
+      />
+
+      {/* E5.6#16.5 §11 策略B：壳特殊视图 overlay——当活跃 tab 是欢迎页/插件详情/输出面板时，
+          壳渲染对应内容到 overlay 层，覆盖在 MainPool 上方。top: 35px 给 MainPool GroupTabBar 留空间。 */}
+      {showShellOverlay && activeTab && (
         <div
-          className={`tab-group-pane${group.id === tabState.activeGroupId ? " active" : ""}`}
-          key={group.id}
-          data-group-id={group.id}
+          className="shell-view-overlay"
           style={{
-            display: "flex",
-            flexDirection: "column",
-            flex: 1,
-            minWidth: 0,
-            minHeight: 0,
-            position: "relative",
+            position: "absolute",
+            top: 0, // E5.6#16.7：TabBar 迁入 MainPool，不再需要避让
+            left: 0,
+            right: 0,
+            bottom: 0,
+            zIndex: 10,
+            overflow: "hidden",
           }}
         >
-          <TabBar
-            group={group}
-            isActiveGroup={group.id === tabState.activeGroupId}
-            onFocusTab={handleFocusTab}
-            onCloseTab={closeTab}
-            onCreateTab={createTab}
-            onMoveTab={(tabId, targetGroupId?) => {
-              if (targetGroupId && targetGroupId !== group.id) {
-                moveTab(tabId, targetGroupId);
-              } else if (!targetGroupId) {
-                const allLeafIds = getAllLeafGroupIds(tabState.root);
-                const otherGroupId = allLeafIds.find((id) => id !== group.id);
-                if (otherGroupId) moveTab(tabId, otherGroupId);
-              }
-            }}
-            onReorderTab={reorderTab}
-            onPinTab={pinTab}
-            onDropSplit={handleDropSplit}
-            onDropCopySplit={handleDropCopySplit}
-            editorAreaRef={editorAreaRef}
-            dragDropZone={dropZone}
-            onDragDropZone={handleDragDropZone}
-            isDragging={isDragging}
-            onDraggingChange={setIsDragging}
-          />
-          {/* E5.6#14b：MainPool WebContentsView 覆盖此区域——壳 DOM 不渲染内容 */}
-          <div
-            className="tab-content-pool"
-            data-group-id={group.id}
-            ref={registerPoolRef(group.id)}
-            style={{ display: "none" }}
-          />
-          {isTarget && (
-            <div
-              className={`drop-zone-overlay drop-zone-${dropZone}`}
-              style={{ pointerEvents: "none" }}
-            />
-          )}
+          {renderTabContent(activeTab, true, createTab)}
         </div>
-      );
-    },
-    [tabState.root, tabState.activeGroupId, dropZone, dragDropTargetGroupId,
-     handleFocusTab, closeTab, createTab, moveTab, reorderTab, pinTab,
-     splitTab, editorAreaRef, isDragging, setIsDragging]
-  );
-
-  return (
-    <div className="main-content">
-      <SplitPane
-        node={tabState.root}
-        groups={tabState.groups}
-        renderGroup={renderGroup}
-        onResize={updateSplitSizes}
-      />
-      {/* B33：所有 tab pane 平级渲染，绝对定位填入对应组的 tab-content-pool。
-          移动标签页 → groupId 变 → 绝对定位更新 → React 树不变 → 零 unmount。 */}
-      {flatPanes.map(({ tab, groupId, isVisible, isFocused }) => (
-        <TabPanePositioner
-          key={tab.id}
-          groupId={groupId}
-          isVisible={isVisible}
-        >
-          {renderTabContent(tab, isFocused, createTab)}
-        </TabPanePositioner>
-      ))}
+      )}
     </div>
   );
 }
