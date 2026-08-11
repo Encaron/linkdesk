@@ -464,9 +464,10 @@ try {
     },
 
     // ── E5.6#11.5i：langDef——语言定义注册表（壳侧 LangDefRegistry）──
+    // E5.6#14-fix：langDef.get 走 plugins:call 代理到壳渲染进程——主进程 LangDefRegistry 为空
     langDef: {
       get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
-        ipcRenderer.invoke('langDef:get', extension),
+        ipcRenderer.invoke('plugins:call', 'getLangDef', extension),
     },
 
     // ── E5.6#8c：pool API——壳推送布局到池、监听池就绪 ──
