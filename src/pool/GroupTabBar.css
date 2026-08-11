@@ -273,3 +273,29 @@
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
 }
+
+/* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */
+.group-tab-plus-menu {
+  background: var(--bg-dropdown);
+  border: 1px solid var(--border-normal);
+  border-radius: 6px;
+  padding: 4px 0;
+  min-width: 160px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.group-tab-plus-menu-item {
+  display: block;
+  width: 100%;
+  padding: 6px 14px;
+  font-size: 13px;
+  text-align: left;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.group-tab-plus-menu-item:hover {
+  background: var(--bg-hover);
+}

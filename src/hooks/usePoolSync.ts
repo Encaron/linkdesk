@@ -14,7 +14,7 @@ import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
-import { getViewPlugin, getTabBehavior } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 import { isShellRenderedTab } from "./tabIdentity";
 
@@ -249,6 +249,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
 
     poolApi.pushLayout("sidebar", { sidebar, groups: [] } satisfies PoolLayout);
     // E5.6#16.7：推 root SplitNode 树——MainRenderer 递归渲染
-    poolApi.pushLayout("main", { groups, root: tabState.root } satisfies PoolLayout);
+    // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
+    poolApi.pushLayout("main", { groups, root: tabState.root, creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })) } satisfies PoolLayout);
   }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
 }

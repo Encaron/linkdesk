@@ -72,6 +72,12 @@ export interface PoolGroup {
   tabs: PoolTab[];
 }
 
+/** [+] 按钮可创建的视图类型——壳 pushLayout 时从 getTabCreatableViews() 动态计算 */
+export interface CreatableViewMeta {
+  pluginId: string;
+  label: string;
+}
+
 /** PoolLayout——壳推给池的完整布局快照 */
 export interface PoolLayout {
   sidebar?: SidebarLayout;
@@ -79,4 +85,6 @@ export interface PoolLayout {
   /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
    *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
   root?: SplitNode;
+  /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单 */
+  creatableViews?: CreatableViewMeta[];
 }
