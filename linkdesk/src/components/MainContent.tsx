@@ -313,11 +313,14 @@ function MainContent({
         break;
       case "splitTab":
         // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
+        // E5.6#16.7k-2：direction 归一化——右键菜单传 "right"/"down"，拖拽传 zone/horizontal/vertical
         splitTabAt(
           action.tabId,
-          action.direction ?? (action.zone === "left" || action.zone === "right" ? "horizontal" : "vertical"),
+          action.direction === "vertical" || action.direction === "down" || action.direction === "up"
+            ? "vertical"
+            : "horizontal",
           action.targetGroupId,
-          action.zone,
+          action.zone ?? (action.direction === "left" || action.direction === "right" || action.direction === "up" || action.direction === "down" ? action.direction : undefined),
         );
         break;
       case "duplicateTab":
