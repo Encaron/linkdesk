@@ -185,10 +185,19 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.6#16.5：Pool→壳——主区 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）。
+  // 池组件通过 pool.tabAction() 发送，主进程转发到壳窗口。
+  // 壳侧 preload 接收后调 useTabManager 方法。
+  ipcMain.on('pool:tab-action', (_event, action: unknown) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pool:tab-action', action);
+    }
+  });
+
   // E5.6#12：壳→侧栏折叠/展开→SidebarPool setVisible——进程保持，不 destroy
   ipcMain.on('pool:toggle-sidebar-pool', (_event, visible: boolean) => {
     windowManager.toggleSidebarPool(visible);
   });
 
-  console.log('[pool-handlers] 已注册 8 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:toggle-sidebar-pool）');
+  console.log('[pool-handlers] 已注册 9 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:toggle-sidebar-pool）');
 }

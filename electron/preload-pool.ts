@@ -454,6 +454,8 @@ try {
       },
       ready: () => ipcRenderer.send('pool:ready', _poolZone),
       sidebarAction: (action: unknown) => ipcRenderer.send('pool:sidebar-action', action),
+      // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
+      tabAction: (action: unknown) => ipcRenderer.send('pool:tab-action', action),
     },
 
     // ── 🆕 E5.6#11.5a：文件关联——扩展名→插件ID ──
