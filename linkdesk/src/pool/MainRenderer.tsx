@@ -14,7 +14,8 @@
  * MainRenderer 成为全局拖拽协调者——同 group 重排 + 跨 group 移动 + 拖到编辑区分屏。
  */
 
-import { useState, useRef, useCallback, useEffect, useMemo, useReducer, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo, useReducer, type MouseEvent as ReactMouseEvent } from "react";
+import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../components/shared/ErrorBoundary";
 import PluginComponent from "./PluginComponent";
@@ -24,6 +25,7 @@ import type { SplitNode } from "../hooks/splitTree";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import type { DropZone } from "../hooks/tabDragTypes";
 import { detectDropZone } from "../hooks/tabDragTypes";
+import { useDragReorder } from "../hooks/useDragReorder";
 
 // ═══════════════════════════════════════════════════════════
 // Constants
@@ -244,246 +246,176 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
   );
 
   // ═════════════════════════════════════════════════════════
-  // Tab Drag Coordinator（lifted from GroupTabBar → global）
+  // Tab Drag Coordinator——useDragReorder（275 行，15+ 轮 bug 修复验证）
   // ═════════════════════════════════════════════════════════
-
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [dragPhase, setDragPhase] = useState<"reorder" | "split" | null>(null);
-  const [dragInsertIndex, setDragInsertIndex] = useState<number | null>(null);
-  const [dragInsertGroupId, setDragInsertGroupId] = useState<string | null>(null);
-  const [dropZone, setDropZone] = useState<DropZone>(null);
-  const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
-  const [dragLocalTabs, setDragLocalTabs] = useState<Record<string, PoolTab[]>>({});
-
-  const dragRef = useRef<{
-    tabId: string;
-    sourceGroupId: string;
-    sourceIndex: number;
-    startX: number;
-    startY: number;
-    currentIndex: number;
-    currentGroupId: string;
-    phase: "reorder" | "split";
-    dropped: boolean;
-  } | null>(null);
 
   // Stable groups ref——avoid useCallback deps on groups
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
 
-  const onTabDragStart = useCallback((tabId: string, index: number, e: ReactMouseEvent) => {
-    e.preventDefault();
-    const gs = groupsRef.current;
-    const group = gs.find((grp) => grp.tabs.some((tb) => tb.id === tabId));
-    if (!group) return;
+  const totalTabCount = groups.reduce((sum, g) => sum + g.tabs.length, 0);
+  const sourceGroupRef = useRef<string | null>(null);
+  const targetGroupRef = useRef<string | null>(null);
+  const [dragInsertGroupId, setDragInsertGroupId] = useState<string | null>(null);
+  const [dropZoneState, setDropZoneState] = useState<{ zone: DropZone; targetGroupId: string | null } | null>(null);
 
-    dragRef.current = {
-      tabId,
-      sourceGroupId: group.id,
-      sourceIndex: index,
-      startX: e.clientX,
-      startY: e.clientY,
-      currentIndex: index,
-      currentGroupId: group.id,
-      phase: "reorder",
-      dropped: false,
-    };
+  const {
+    draggingId,
+    insertIndex: dragInsertIndex,
+    previewPos,
+    startDrag,
+  } = useDragReorder(containerRef as React.RefObject<HTMLDivElement | null>, {
+    itemCount: totalTabCount,
 
-    setDragLocalTabs({ [group.id]: [...group.tabs] });
-    setDraggingId(tabId);
-    setDragInsertIndex(index);
-    setDragInsertGroupId(group.id);
-    setDragPhase("reorder");
-    setPreviewPos({ x: e.clientX - 60, y: TAB_BAR_HEIGHT + 5 });
-  }, []);
-
-  // Global mousemove / mouseup / Escape for tab drag
-  useEffect(() => {
-    if (!draggingId) return;
-
-    const onMouseMove = (e: MouseEvent) => {
-      const ds = dragRef.current;
-      if (!ds || ds.dropped) return;
-
-      setPreviewPos({ x: e.clientX - 60, y: TAB_BAR_HEIGHT + 5 });
-
-      // Detect which tab bar (if any) the mouse is over
-      let overGroupId: string | null = null;
+    // ── computeInsertIndex：找鼠标落在哪个 GroupTabBar → 计算插入位置（含 scrollLeft 补偿）──
+    computeInsertIndex: (clientX, clientY, _container, fromIndex, _count) => {
       for (const [gid, el] of tabBarRefs.current) {
         const rect = el.getBoundingClientRect();
-        if (
-          e.clientX >= rect.left && e.clientX <= rect.right &&
-          e.clientY >= rect.top && e.clientY <= rect.bottom
-        ) {
-          overGroupId = gid;
-          break;
-        }
-      }
-
-      // Detect if in editor area（not over any tab bar, within container）
-      const containerRect = containerRef.current?.getBoundingClientRect();
-      const inEditorArea =
-        !overGroupId &&
-        containerRect &&
-        e.clientX >= containerRect.left &&
-        e.clientX <= containerRect.right &&
-        e.clientY >= containerRect.top + TAB_BAR_HEIGHT &&
-        e.clientY <= containerRect.bottom;
-
-      if (inEditorArea) {
-        // ── Split phase ──
-        ds.phase = "split";
-        setDragPhase("split");
-        setDragInsertIndex(null);
-        setDragInsertGroupId(null);
-        if (containerRect) {
-          setDropZone(detectDropZone(e.clientX, e.clientY, containerRect));
-        }
-        return;
-      }
-
-      // ── Reorder phase ──
-      ds.phase = "reorder";
-      setDragPhase("reorder");
-      setDropZone(null);
-
-      if (overGroupId) {
-        ds.currentGroupId = overGroupId;
-      }
-
-      const barEl = tabBarRefs.current.get(ds.currentGroupId);
-      if (!barEl) return;
-
-      const barRect = barEl.getBoundingClientRect();
-      const mouseX = e.clientX - barRect.left;
-
-      // Compute insert index from current DOM
-      const tabEls = barEl.querySelectorAll<HTMLElement>(".group-tab-item");
-      const gs = groupsRef.current;
-      const targetGroup = gs.find((grp) => grp.id === ds.currentGroupId);
-      let insertIdx = targetGroup?.tabs.length ?? 0;
-      for (let i = 0; i < tabEls.length; i++) {
-        const rect = tabEls[i].getBoundingClientRect();
-        const midX = rect.left - barRect.left + rect.width / 2;
-        if (mouseX < midX) {
-          insertIdx = i;
-          break;
-        }
-      }
-      // When reordering within source group: adjust for dragged tab removal
-      if (ds.currentGroupId === ds.sourceGroupId && insertIdx > ds.sourceIndex) {
-        insertIdx--;
-      }
-
-      ds.currentIndex = insertIdx;
-      setDragInsertIndex(insertIdx);
-      setDragInsertGroupId(ds.currentGroupId);
-
-      // Build optimistic local tabs
-      const sourceGroup = gs.find((grp) => grp.id === ds.sourceGroupId);
-      const destGroup = gs.find((grp) => grp.id === ds.currentGroupId);
-      if (!sourceGroup) return;
-
-      const newLocal: Record<string, PoolTab[]> = {};
-      if (ds.currentGroupId === ds.sourceGroupId) {
-        // Same-group reorder
-        const tabs = [...sourceGroup.tabs];
-        const [moved] = tabs.splice(ds.sourceIndex, 1);
-        tabs.splice(insertIdx, 0, moved);
-        newLocal[ds.sourceGroupId] = tabs;
-      } else if (destGroup) {
-        // Cross-group move
-        const draggedTab = sourceGroup.tabs[ds.sourceIndex];
-        newLocal[ds.sourceGroupId] = sourceGroup.tabs.filter((tb) => tb.id !== ds.tabId);
-        if (draggedTab) {
-          const targetTabs = [...destGroup.tabs];
-          targetTabs.splice(insertIdx, 0, draggedTab);
-          newLocal[ds.currentGroupId] = targetTabs;
-        }
-      }
-      setDragLocalTabs(newLocal);
-    };
-
-    const onMouseUp = (e: MouseEvent) => {
-      const ds = dragRef.current;
-      if (!ds || ds.dropped) return;
-      ds.dropped = true;
-
-      if (ds.phase === "split") {
-        const containerRect = containerRef.current?.getBoundingClientRect();
-        if (containerRect) {
-          const zone = detectDropZone(e.clientX, e.clientY, containerRect);
-          if (zone && zone !== "center") {
-            const direction = zone === "left" || zone === "right" ? "right" : "down";
-            tabAction({ action: "splitTab", tabId: ds.tabId, direction });
+        if (clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom) {
+          targetGroupRef.current = gid;
+          setDragInsertGroupId(gid);
+          const scrollLeft = el.scrollLeft;
+          const mouseX = clientX - rect.left + scrollLeft;
+          const tabEls = el.querySelectorAll<HTMLElement>(".group-tab-item");
+          let idx = 0;
+          for (let i = 0; i < tabEls.length; i++) {
+            const tr = tabEls[i].getBoundingClientRect();
+            const midX = tr.left - rect.left + tr.width / 2 + scrollLeft;
+            if (mouseX < midX) break;
+            idx = i + 1;
           }
+          // 同组内拖拽：插入位置需补偿被拖走标签页的偏移
+          if (gid === sourceGroupRef.current && idx > fromIndex) idx--;
+          return idx;
         }
-      } else if (ds.currentGroupId === ds.sourceGroupId) {
-        // Same-group reorder
-        if (ds.currentIndex >= 0 && ds.currentIndex !== ds.sourceIndex) {
-          tabAction({
-            action: "reorderTab",
-            groupId: ds.sourceGroupId,
-            tabId: ds.tabId,
-            newIndex: ds.currentIndex,
-            oldIndex: ds.sourceIndex,
-          });
+      }
+      return fromIndex;
+    },
+
+    // ── findOtherContainer：检测鼠标是否在另一个 TabBar 上（跨 group 移动）──
+    findOtherContainer: (clientX, clientY, ownContainer) => {
+      for (const [gid, el] of tabBarRefs.current) {
+        if (el === ownContainer) continue;
+        const rect = el.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom) {
+          return gid;
         }
-      } else {
-        // Cross-group move
-        tabAction({
-          action: "moveTab",
-          tabId: ds.tabId,
-          targetGroupId: ds.currentGroupId,
-          newIndex: ds.currentIndex,
-        });
       }
+      return null;
+    },
 
-      // Reset all drag state
-      dragRef.current = null;
-      setDraggingId(null);
-      setDragInsertIndex(null);
-      setDragInsertGroupId(null);
-      setPreviewPos(null);
-      setDragPhase(null);
-      setDropZone(null);
-      setDragLocalTabs({});
-    };
-
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && dragRef.current && !dragRef.current.dropped) {
-        dragRef.current.dropped = true;
-        dragRef.current = null;
-        setDraggingId(null);
-        setDragInsertIndex(null);
-        setDragInsertGroupId(null);
-        setPreviewPos(null);
-        setDragPhase(null);
-        setDropZone(null);
-        setDragLocalTabs({});
+    // ── computeSplitZone：per-panel 检测（遍历每个绝对定位 panel div 的 rect）──
+    computeSplitZone: (clientX, clientY) => {
+      if (!containerRef.current) return null;
+      const panelEls = containerRef.current.querySelectorAll<HTMLElement>("[data-group-id]");
+      for (const panelEl of panelEls) {
+        const rect = panelEl.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom) {
+          const zone = detectDropZone(clientX, clientY, rect);
+          return { zone, targetGroupId: panelEl.dataset.groupId };
+        }
       }
-    };
+      // Fallback：容器级 rect（鼠标不在任何面板内——如分隔条上）
+      const cr = containerRef.current.getBoundingClientRect();
+      return { zone: detectDropZone(clientX, clientY, cr), targetGroupId: undefined };
+    },
 
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    window.addEventListener("keydown", onKeyDown);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [draggingId, tabAction]);
+    // ── isInPureEditor：鼠标不在任何 TabBar 上 + 在容器编辑器区域 ──
+    isInPureEditor: (clientX, clientY) => {
+      for (const [, el] of tabBarRefs.current) {
+        const rect = el.getBoundingClientRect();
+        if (clientX >= rect.left && clientX <= rect.right &&
+            clientY >= rect.top && clientY <= rect.bottom) {
+          return false;
+        }
+      }
+      if (!containerRef.current) return false;
+      const cr = containerRef.current.getBoundingClientRect();
+      return clientX >= cr.left && clientX <= cr.right &&
+             clientY >= cr.top + TAB_BAR_HEIGHT && clientY <= cr.bottom;
+    },
+
+    // ── 回调 ──
+
+    onReorder: (tabId, toIndex) => {
+      const gid = targetGroupRef.current;
+      if (!gid) return;
+      const sourceGroup = groupsRef.current.find((g) => g.tabs.some((t) => t.id === tabId));
+      if (!sourceGroup) return;
+      const fromIdx = sourceGroup.tabs.findIndex((t) => t.id === tabId);
+      if (fromIdx < 0) return;
+      tabAction({
+        action: "reorderTab",
+        groupId: gid,
+        tabId,
+        newIndex: toIndex,
+        oldIndex: fromIdx,
+      });
+    },
+
+    onMoveToOther: (tabId, targetGroupId) => {
+      tabAction({
+        action: "moveTab",
+        tabId,
+        targetGroupId: targetGroupId ?? targetGroupRef.current,
+      });
+    },
+
+    onDropSplit: (tabId, zone, targetGroupId) => {
+      const direction = zone === "left" || zone === "right" ? "horizontal" : "vertical";
+      tabAction({
+        action: "splitTab",
+        tabId,
+        direction,
+        zone,
+        targetGroupId,
+      });
+    },
+
+    onDragDropZone: (zone, targetGroupId) => {
+      setDropZoneState(zone ? { zone, targetGroupId: targetGroupId ?? null } : null);
+    },
+  });
+
+  // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──
+  const dragLocalTabs = useMemo(() => {
+    if (!draggingId || dragInsertIndex == null) return null;
+    const gs = groupsRef.current;
+    for (const g of gs) {
+      const srcIdx = g.tabs.findIndex((t) => t.id === draggingId);
+      if (srcIdx >= 0) {
+        const tabs = [...g.tabs];
+        const [moved] = tabs.splice(srcIdx, 1);
+        tabs.splice(Math.min(dragInsertIndex, tabs.length), 0, moved);
+        return { [g.id]: tabs };
+      }
+    }
+    return null;
+  }, [draggingId, dragInsertIndex, groups]);
 
   // ── Get effective tabs for a group（drag-local or original）──
   const getEffectiveTabs = useCallback(
     (groupId: string, group: PoolGroup): PoolTab[] => {
-      if (draggingId && dragLocalTabs[groupId]) {
-        return dragLocalTabs[groupId];
-      }
+      if (dragLocalTabs?.[groupId]) return dragLocalTabs[groupId];
       return group.tabs;
     },
-    [draggingId, dragLocalTabs],
+    [dragLocalTabs],
   );
+
+  // ── startDrag wrapper：捕获源 group ──
+  const handleTabDragStart = useCallback((tabId: string, index: number, e: ReactMouseEvent) => {
+    const gs = groupsRef.current;
+    const sourceGroup = gs.find((grp) => grp.tabs.some((t) => t.id === tabId));
+    if (sourceGroup) {
+      sourceGroupRef.current = sourceGroup.id;
+      targetGroupRef.current = sourceGroup.id;
+      setDragInsertGroupId(sourceGroup.id);
+    }
+    startDrag(tabId, index, e);
+  }, [startDrag]);
 
   // ═════════════════════════════════════════════════════════
   // renderGroupPane——单个 group 的内容（TabBar + keep-alive 标签页内容区）
@@ -499,7 +431,7 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
             activeTabId={group.activeTabId}
             draggingId={draggingId ?? undefined}
             dragInsertIndex={dragInsertGroupId === group.id ? dragInsertIndex : null}
-            onTabDragStart={onTabDragStart}
+            onTabDragStart={handleTabDragStart}
             onTabBarMount={(el) => registerTabBar(group.id, el)}
           />
         </ErrorBoundary>
@@ -592,6 +524,7 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
             return (
               <div
                 key={p.groupId}
+                data-group-id={p.groupId}
                 style={{
                   position: "absolute",
                   left: `${p.x}%`,
@@ -655,6 +588,7 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
         groups.map((group) => (
           <div
             key={group.id}
+            data-group-id={group.id}
             style={{
               flex: 1,
               display: "flex",
@@ -669,7 +603,7 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
       )}
 
       {/* ═══ Glass drop zone overlay ═══ */}
-      {dragPhase === "split" && dropZone && dropZone !== "center" && (
+      {dropZoneState && dropZoneState.zone !== "center" && (
         <div
           style={{
             position: "absolute",
@@ -690,11 +624,11 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
           <div
             style={{
               position: "absolute",
-              ...(dropZone === "left"
+              ...(dropZoneState.zone === "left"
                 ? { top: 0, left: 0, width: "50%", height: "100%" }
-                : dropZone === "right"
+                : dropZoneState.zone === "right"
                 ? { top: 0, right: 0, width: "50%", height: "100%" }
-                : dropZone === "up"
+                : dropZoneState.zone === "up"
                 ? { top: 0, left: 0, width: "100%", height: "50%" }
                 : { bottom: 0, left: 0, width: "100%", height: "50%" }),
               background: "rgba(var(--accent-rgb, 0, 120, 212), 0.15)",
@@ -703,47 +637,50 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
         </div>
       )}
 
-      {/* ═══ Drag preview float ═══ */}
+      {/* ═══ Drag preview portal（document.body 避免 B34 裁剪）═══ */}
       {draggingId &&
         previewPos &&
-        (() => {
-          const gs = groupsRef.current;
-          const tab = gs.flatMap((grp) => grp.tabs).find((tb) => tb.id === draggingId);
-          if (!tab) return null;
-          return (
-            <div
-              style={{
-                position: "fixed",
-                left: previewPos.x,
-                top: previewPos.y,
-                display: "flex",
-                alignItems: "center",
-                gap: 4,
-                padding: "4px 12px",
-                background: "var(--bg-card)",
-                border: "1px solid var(--border-normal)",
-                borderRadius: 4,
-                color: "var(--text-primary)",
-                fontSize: 13,
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
-                pointerEvents: "none",
-                zIndex: 99999,
-              }}
-            >
-              {tab.icon &&
-                (tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon) ? (
-                  <span>{tab.icon}</span>
-                ) : (
-                  <img
-                    style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.8 }}
-                    src={tab.icon}
-                    alt=""
-                  />
-                ))}
-              <span>{tab.title}</span>
-            </div>
-          );
-        })()}
+        createPortal(
+          (() => {
+            const gs = groupsRef.current;
+            const tab = gs.flatMap((grp) => grp.tabs).find((tb) => tb.id === draggingId);
+            if (!tab) return null;
+            return (
+              <div
+                style={{
+                  position: "fixed",
+                  left: previewPos.x,
+                  top: previewPos.y,
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 4,
+                  padding: "4px 12px",
+                  background: "var(--bg-card)",
+                  border: "1px solid var(--border-normal)",
+                  borderRadius: 4,
+                  color: "var(--text-primary)",
+                  fontSize: 13,
+                  boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
+                  pointerEvents: "none",
+                  zIndex: 99999,
+                }}
+              >
+                {tab.icon &&
+                  (tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon) ? (
+                    <span>{tab.icon}</span>
+                  ) : (
+                    <img
+                      style={{ width: 14, height: 14, flexShrink: 0, opacity: 0.8 }}
+                      src={tab.icon}
+                      alt=""
+                    />
+                  ))}
+                <span>{tab.title}</span>
+              </div>
+            );
+          })(),
+          document.body,
+        )}
     </div>
   );
 }
