@@ -12,6 +12,7 @@ import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
+import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 
 /**
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
@@ -40,6 +41,35 @@ function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
   });
 }
 
+/**
+ * E5.6#16：从 SplitNode 树计算每个 group 的 flex 比例。
+ * 叶子节点：递归累乘父 branch 的 sizes 比例。
+ * 单 group（root 为 leaf）：flex = 1。
+ */
+function computeGroupFlexes(root: SplitNode): Map<string, number> {
+  if (root.type === "leaf") {
+    return new Map([[root.groupId, 1]]);
+  }
+  const result = new Map<string, number>();
+  function walk(node: SplitNode, parentFlex: number): void {
+    if (node.type === "leaf") {
+      result.set(node.groupId, parentFlex);
+      return;
+    }
+    const total = node.sizes[0] + node.sizes[1];
+    if (total <= 0) {
+      // 防御：sizes 归零 → 均分
+      walk(node.children[0], parentFlex / 2);
+      walk(node.children[1], parentFlex / 2);
+      return;
+    }
+    walk(node.children[0], parentFlex * (node.sizes[0] / total));
+    walk(node.children[1], parentFlex * (node.sizes[1] / total));
+  }
+  walk(root, 1);
+  return result;
+}
+
 export interface UsePoolSyncInput {
   tabState: TabState;
   /** 侧栏当前容器 ID——null = 无活动侧栏视图 */
@@ -48,13 +78,15 @@ export interface UsePoolSyncInput {
   isSidebarVisible: boolean;
   /** 侧栏当前宽度（px） */
   sidebarWidth: number;
+  /** E5.6#16：MainPool 分隔线拖拽结束 → 壳更新分屏比例 */
+  onSplitSizesChange?: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
 }
 
 /**
  * 构建 PoolLayout 并推送到 SidebarPool + MainPool。
  * 依赖 tabState / sidebarView / isSidebarVisible / sidebarWidth——任一变化触发全量推送。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth }: UsePoolSyncInput): void {
+export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onSplitSizesChange }: UsePoolSyncInput): void {
   // 缓存 pool API 引用——window.linkdesk.pool 在 preload 阶段就绪，mount 后不会变
   const poolApiRef = useRef<any>(null);
   if (!poolApiRef.current) {
@@ -103,6 +135,12 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
             const targetWidth = zone.width <= 48 ? 280 : 28;
             layoutEngine.setZoneWidth("sidebar", targetWidth);
           }
+          break;
+        }
+        // E5.6#16：MainPool 分隔线拖拽结束 → 壳更新分屏比例
+        case "updateSplitSizes": {
+          const { anchorGroupId, sizes, branchIndex } = action as { anchorGroupId: string; sizes: [number, number]; branchIndex?: number };
+          onSplitSizesChange?.(anchorGroupId, sizes, branchIndex);
           break;
         }
       }
@@ -171,9 +209,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     }
 
     // 主区分屏组——每个 group 映射为一个 flex 区域
+    // E5.6#16：从 SplitNode 树计算实际 flex 比例（不再硬编码 1）
+    const flexMap = computeGroupFlexes(tabState.root);
     const groups: PoolGroup[] = tabState.groups.map((g) => ({
       id: g.id,
-      flex: 1,
+      flex: flexMap.get(g.id) ?? 1,
       activeTabId: g.activeTabId,
       tabs: g.tabs.map((t) => ({
         id: t.id,

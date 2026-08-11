@@ -314,7 +314,8 @@ function MainContent({
   const ENABLE_POOL_MODEL = true;
 
   // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
-  usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0 });
+  // E5.6#16：传递 onSplitSizesChange——MainPool 分隔线拖拽结束 → 壳更新分屏比例
+  usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onSplitSizesChange: updateSplitSizes });
 
   // E5#81：多 WebView 生命周期归一化——useWebViewSync hook 管理 ready/bounds/visible/timeout
   const pv = ENABLE_POOL_MODEL ? undefined : (window.linkdesk?.pluginViews as import("../hooks/useWebViewSync").PluginViewsAPI | undefined);
