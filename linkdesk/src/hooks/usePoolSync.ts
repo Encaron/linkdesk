@@ -239,7 +239,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
           // E5.6#16.5：TabBar 渲染元数据
           icon: resolved?.src ?? resolved?.emoji,
           pinned: t.pinned,
-          closeBehavior: behavior.confirmOnClose ? "confirm" : behavior.isFallback ? "blocked" : "normal",
+          // E5.6#16.7k-4：欢迎页 closeBehavior 从 blocked → normal——壳 reduceCloseTab 已有 fallback 自动重建
+          closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
           singleton: behavior.singleton,
           shellRendered: isShellRenderedTab(t.type),
         };
