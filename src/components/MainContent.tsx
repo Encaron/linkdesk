@@ -121,6 +121,7 @@ function MainContent({
     createTab,
     moveTab,
     splitTab,
+    splitTabAt,
     duplicateTab: _duplicateTab,
     unsplit,
     updateSplitSizes,
@@ -311,7 +312,13 @@ function MainContent({
         moveTab(action.tabId, action.targetGroupId);
         break;
       case "splitTab":
-        splitTab(action.tabId, action.direction === "down" ? "vertical" : "horizontal");
+        // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
+        splitTabAt(
+          action.tabId,
+          action.direction ?? (action.zone === "left" || action.zone === "right" ? "horizontal" : "vertical"),
+          action.targetGroupId,
+          action.zone,
+        );
         break;
       case "duplicateTab":
         _duplicateTab(action.tabId);
@@ -327,7 +334,7 @@ function MainContent({
         updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);
         break;
     }
-  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, _duplicateTab, pinTab, createTab, updateSplitSizes]);
+  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes]);
 
   // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
   usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onTabAction: handleTabAction });
