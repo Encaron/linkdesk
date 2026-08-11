@@ -602,40 +602,50 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
         ))
       )}
 
-      {/* ═══ Glass drop zone overlay ═══ */}
-      {dropZoneState && dropZoneState.zone !== "center" && (
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 9999,
-            pointerEvents: "none",
-          }}
-        >
-          <div
-            style={{
+      {/* ═══ Glass drop zone overlay——per-panel（非全局 inset:0）═══ */}
+      {dropZoneState && dropZoneState.zone !== "center" && (() => {
+        // 精确到目标 panel 的位置（百分比），单面板/fallback 用 inset:0
+        let bounds: React.CSSProperties = { left: 0, top: 0, width: "100%", height: "100%" };
+        if (useAbsolute && layout && dropZoneState.targetGroupId) {
+          const p = layout.panels.find((pp) => pp.groupId === dropZoneState.targetGroupId);
+          if (p) {
+            bounds = { left: `${p.x}%`, top: `${p.y}%`, width: `${p.w}%`, height: `${p.h}%` };
+          }
+        }
+
+        const zone = dropZoneState.zone;
+        const zoneStyle =
+          zone === "left"   ? { top: 0, left: 0, width: "50%", height: "100%" }
+        : zone === "right"  ? { top: 0, right: 0, width: "50%", height: "100%" }
+        : zone === "up"     ? { top: 0, left: 0, width: "100%", height: "50%" }
+                             : { bottom: 0, left: 0, width: "100%", height: "50%" };
+
+        return (
+          <div style={{ position: "absolute", inset: 0, zIndex: 9999, pointerEvents: "none" }}>
+            {/* 毛玻璃底色——只覆盖目标面板 */}
+            <div style={{
               position: "absolute",
-              inset: 0,
-              backdropFilter: "blur(4px)",
-              WebkitBackdropFilter: "blur(4px)",
-              background: "rgba(var(--accent-rgb, 0, 120, 212), 0.08)",
-            }}
-          />
-          <div
-            style={{
+              ...bounds,
+              background: "var(--drop-indicator)",
+              backdropFilter: "blur(3px)",
+              WebkitBackdropFilter: "blur(3px)",
+              animation: "drop-zone-in 120ms ease-out forwards",
+            }} />
+            {/* 分屏高亮半区 */}
+            <div style={{
               position: "absolute",
-              ...(dropZoneState.zone === "left"
-                ? { top: 0, left: 0, width: "50%", height: "100%" }
-                : dropZoneState.zone === "right"
-                ? { top: 0, right: 0, width: "50%", height: "100%" }
-                : dropZoneState.zone === "up"
-                ? { top: 0, left: 0, width: "100%", height: "50%" }
-                : { bottom: 0, left: 0, width: "100%", height: "50%" }),
-              background: "rgba(var(--accent-rgb, 0, 120, 212), 0.15)",
-            }}
-          />
-        </div>
-      )}
+              ...bounds,
+            }}>
+              <div style={{
+                position: "absolute",
+                ...zoneStyle,
+                background: "var(--drop-indicator)",
+                opacity: 0.6,
+              }} />
+            </div>
+          </div>
+        );
+      })()}
 
       {/* ═══ Drag preview portal（document.body 避免 B34 裁剪）═══ */}
       {draggingId &&

@@ -267,3 +267,9 @@
   from { opacity: 1; max-width: 200px; }
   to   { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
 }
+
+/* ── 拖拽分屏 drop zone 毛玻璃（对标旧 MainContent.css）── */
+@keyframes drop-zone-in {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
