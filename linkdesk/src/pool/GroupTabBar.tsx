@@ -47,6 +47,8 @@ interface GroupTabBarProps {
   onTabDragStart?: (tabId: string, index: number, e: ReactMouseEvent) => void;
   /** E5.6#16.7：TabBar DOM 挂载/卸载 → MainRenderer 记录 bounding rect */
   onTabBarMount?: (el: HTMLDivElement | null) => void;
+  /** E5.6#16.7k-3：可创建为标签页的视图——[+] 按钮下拉菜单 */
+  creatableViews?: { pluginId: string; label: string }[];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -107,7 +109,7 @@ function disambiguateLabels(tabs: PoolTab[]): Map<string, string> {
 // 组件
 // ═══════════════════════════════════════════════════════════════════
 
-export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount }: GroupTabBarProps) {
+export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews }: GroupTabBarProps) {
   // ── i18n ──
   const { t } = useTranslation();
 
@@ -172,6 +174,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
   const [menuFlipY, setMenuFlipY] = useState(false);
 
+  // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [plusMenuPos, setPlusMenuPos] = useState<{ x: number; y: number } | null>(null);
+
   // 点外部 / Escape 关闭菜单
   useEffect(() => {
     if (!contextMenu) return;
@@ -186,6 +192,25 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
       window.removeEventListener("keydown", onKey);
     };
   }, [contextMenu]);
+
+  // PlusMenu 点外部关闭
+  useEffect(() => {
+    if (!showPlusMenu) return;
+    const close = () => setShowPlusMenu(false);
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") close();
+    };
+    // delay——避免同一次 click 既打开又关闭
+    const timer = setTimeout(() => {
+      window.addEventListener("mousedown", close);
+    }, 0);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener("mousedown", close);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [showPlusMenu]);
 
   const onContextMenu = useCallback(
     (tabId: string, e: ReactMouseEvent) => {
@@ -345,15 +370,49 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
           </button>
         )}
 
-        {/* [+] 新建标签页——创建默认欢迎页。完整命令面板需等壳推送 creatableViews 列表（E5.6#16.7+） */}
+        {/* [+] PlusMenu——E5.6#16.7k-3：壳推送 creatableViews 时显示动态列表，否则兜底欢迎页 */}
         <button
           className="group-tab-plus-btn"
-          onClick={() => tabAction({ action: "createTab" })}
+          onClick={(e) => {
+            if (creatableViews && creatableViews.length > 0) {
+              const btnRect = (e.target as HTMLElement).getBoundingClientRect();
+              setPlusMenuPos({ x: btnRect.left, y: btnRect.bottom + 4 });
+              setShowPlusMenu(true);
+            } else {
+              tabAction({ action: "createTab" });
+            }
+          }}
           title={t("新建标签页")}
           aria-label={t("新建标签页")}
         >
           +
         </button>
+
+        {/* PlusMenu 下拉——动态列出可创建视图 */}
+        {showPlusMenu && plusMenuPos && creatableViews && creatableViews.length > 0 && (
+          <div
+            className="group-tab-plus-menu"
+            style={{
+              position: "fixed",
+              left: plusMenuPos.x,
+              top: plusMenuPos.y,
+              zIndex: 1001,
+            }}
+          >
+            {creatableViews.map((v) => (
+              <button
+                key={v.pluginId}
+                className="group-tab-plus-menu-item"
+                onClick={() => {
+                  tabAction({ action: "createTab", pluginId: v.pluginId });
+                  setShowPlusMenu(false);
+                }}
+              >
+                {v.label}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* 右键菜单——池内渲染，自适应翻转 */}

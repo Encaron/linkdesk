@@ -124,13 +124,15 @@ function computeLayout(
 interface MainRendererProps {
   groups: PoolGroup[];
   root?: SplitNode;
+  /** E5.6#16.7k-3：可创建为标签页的视图——GroupTabBar [+] 按钮动态菜单 */
+  creatableViews?: { pluginId: string; label: string }[];
 }
 
 // ═══════════════════════════════════════════════════════════
 // Component
 // ═══════════════════════════════════════════════════════════
 
-export default function MainRenderer({ groups, root }: MainRendererProps) {
+export default function MainRenderer({ groups, root, creatableViews }: MainRendererProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -433,6 +435,7 @@ export default function MainRenderer({ groups, root }: MainRendererProps) {
             dragInsertIndex={dragInsertGroupId === group.id ? dragInsertIndex : null}
             onTabDragStart={handleTabDragStart}
             onTabBarMount={(el) => registerTabBar(group.id, el)}
+            creatableViews={creatableViews}
           />
         </ErrorBoundary>
         <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>

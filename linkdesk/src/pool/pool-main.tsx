@@ -75,7 +75,7 @@ function PoolApp() {
     return <SidebarRenderer sidebar={effectiveSidebar} />;
   }
   if (zone === "main") {
-    return <MainRenderer groups={layout.groups} root={layout.root} />;
+    return <MainRenderer groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} />;
   }
 
   // zone 参数无效
