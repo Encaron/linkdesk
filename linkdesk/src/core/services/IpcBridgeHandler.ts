@@ -8,7 +8,7 @@
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
  */
 
-import { getAllLangDefs } from "../registry/LangDefRegistry";
+import { getLangDef, getAllLangDefs } from "../registry/LangDefRegistry";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands } from "../registry/CommandRegistry";
@@ -475,6 +475,14 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return LanguageRegistry.getAll();
     case "getCurrentLanguage":
       return i18n.language;
+    case "getLangDef": {
+      // E5.6#14-fix：langDef.get 走 plugins:call 代理到壳渲染进程——
+      // 壳 loader.ts 注册的 LangDef 在壳渲染进程内存中，主进程 LangDefRegistry 为空。
+      const [extension] = args as [string];
+      const def = getLangDef(extension);
+      if (!def) return null;
+      return { id: def.id, lsp: def.lsp ?? null };
+    }
     case "getAllLangDefs": {
       // E5.5#7 Bug B fix：LangDefRegistry 跨 WebView 同步。
       // 多 WebView 下编辑器在独立 WebView 中运行，LangDefRegistry 为空。
