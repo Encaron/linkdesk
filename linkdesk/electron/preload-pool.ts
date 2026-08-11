@@ -527,14 +527,16 @@ try {
         listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
-    // ── 🆕 E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
+    // ── E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
+    // 🔴 E5.6#14-fix：走 plugins:call 代理到壳渲染进程——壳 loader.ts 注册的协议
+    // 在壳渲染进程内存中，主进程 ProtocolRegistry 为空（跨进程模块实例隔离）。
     protocol: {
       listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
-        ipcRenderer.invoke('protocol:listProtocols'),
+        ipcRenderer.invoke('plugins:call', 'protocol:listProtocols'),
       getActiveProtocolId: (): Promise<string> =>
-        ipcRenderer.invoke('protocol:getActiveProtocolId'),
+        ipcRenderer.invoke('plugins:call', 'protocol:getActiveProtocolId'),
       setActiveProtocolId: (protocolId: string): Promise<void> =>
-        ipcRenderer.invoke('protocol:setActiveProtocolId', protocolId),
+        ipcRenderer.invoke('plugins:call', 'protocol:setActiveProtocolId', protocolId),
     },
 
     // ── 🔥 E5.6#11.5-bug3a：shell 操作——revealInOS / openInTerminal / startDrag ──
