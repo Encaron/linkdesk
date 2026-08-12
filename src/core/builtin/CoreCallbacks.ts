@@ -19,6 +19,12 @@ export interface CoreCallbacks {
   toggleSplit: () => void;
   focusNthTab: (n: number) => void;
   closeAllEditors: () => void;
+  /** E5.6#16.7k：池 GroupTabBar 右键菜单——关闭全部（指定 group） */
+  closeAllTabs: (groupId: string) => void;
+  /** E5.6#16.7k：池 GroupTabBar 右键菜单——复制标签页 */
+  duplicateTab: (tabId: string) => void;
+  /** E5.6#16.7k：池 GroupTabBar 右键菜单——固定/取消固定 */
+  pinTab: (tabId: string) => void;
 }
 
 let _callbacks: CoreCallbacks | null = null;

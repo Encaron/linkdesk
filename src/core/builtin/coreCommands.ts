@@ -157,6 +157,43 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "split",
   },
 
+  // ── E5.6#16.7k：池 GroupTabBar 右键菜单——补 GroupTabBar buildMenuItems() 中
+  //    缺失的三个命令（关闭全部 / 复制标签页 / 固定切换）。
+  //    已有命令 close/closeOthers/closeRightTabs/splitDown/splitRight 在 coreCommands 上方。
+  {
+    id: "core.closeAllTabs",
+    title: "关闭全部",
+    category: "标签页",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { tabId?: string; groupId?: string } | undefined;
+      if (ctx?.groupId) getCallbacks()?.closeAllTabs(ctx.groupId);
+    },
+    menuId: MenuId.TabContext,
+    menuGroup: "navigation",
+  },
+  {
+    id: "core.duplicateTab",
+    title: "复制标签页",
+    category: "标签页",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { tabId?: string } | undefined;
+      if (ctx?.tabId) getCallbacks()?.duplicateTab(ctx.tabId);
+    },
+    menuId: MenuId.TabContext,
+    menuGroup: "edit",
+  },
+  {
+    id: "core.togglePin",
+    title: "固定/取消固定",
+    category: "标签页",
+    handler: async (_token, ...args) => {
+      const ctx = args[0] as { tabId?: string } | undefined;
+      if (ctx?.tabId) getCallbacks()?.pinTab(ctx.tabId);
+    },
+    menuId: MenuId.TabContext,
+    menuGroup: "pin",
+  },
+
   // ── E3f #53：设置项齿轮命令 ──
 
   {

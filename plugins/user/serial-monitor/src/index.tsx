@@ -1,7 +1,7 @@
 /**
  * 串口监视器视图插件。
  * Phase 4 Step B3+B5：从 src/components/views/TerminalView.tsx 迁移 + 串口工具栏。
- * 串口工具栏（COM/波特率/打开关闭）+ 接收区（CM6）+ 发送栏（Monaco）+ 侧栏设置。
+ * 串口工具栏（COM/波特率/打开关闭）+ 接收区（CM6）+ 发送栏（CM6）+ 侧栏设置。
  *
  * 设计依据：[V3-Phase4-串口监视器插件化设计.md]
  */
@@ -19,7 +19,6 @@ import {
 } from "@codemirror/view";
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
 import { search, RegExpCursor } from "@codemirror/search";
-import Editor from "@monaco-editor/react";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
 // E5.6#11.5h：RingBuffer 内联到 utils/——池插件零 @src/core 依赖
 import { RingBuffer } from "./utils/RingBuffer";
@@ -33,21 +32,21 @@ import SelectBox from "@src/components/shared/SelectBox";
 // Phase 5b：统一右键菜单——串口监视器命令注册 + 共享 ContextMenu
 // E5.6#11.5h：命令注册走 lk.commands（池侧 registerCommand API），MenuId 用字符串字面量
 import ContextMenu from "@src/components/shared/ContextMenu";
-import { v3ProtocolLanguage, v3ProtocolTheme } from "@src/languages/v3-protocol";
 import "./styles/SerialMonitorView.css";
 
-// E5#116: 右键菜单注册——模块顶层 IPC，单/多 WebView 统一通路
-// ipcRenderer.invoke → main → 壳 IpcBridgeHandler → registerMenuItems → 壳的 _menus
-// 模块顶层执行 → 比任何 React mount 早 → 零时序竞态
-// preload 在页面 JS 之前运行 → window.linkdesk 此时已就绪
+// E5#116: 右键菜单注册——模块顶层 IPC，单/多 WebView 统一通路。
+// ipcRenderer.invoke → main → 壳 IpcBridgeHandler → registerMenuItems → 壳的 _menus。
+// 模块顶层执行 → preload 运行在页面 JS 之前 → window.linkdesk 此时已就绪。
+// 🔥 E5.6#16.7k-fix：加 label 属性。壳 IpcBridgeHandler 的 getCommands() 查不到
+// 池侧 _poolCommands 的命令→title=undefined。有 label 时 ContextMenu t(item.label) 正常显示。
 window.linkdesk?.menu?.registerItems?.("editorContext", "serial-monitor", [
-  { command: "serial-monitor.copy", group: "clipboard" },
-  { command: "serial-monitor.selectAll", group: "selection" },
-  { command: "serial-monitor.clear", group: "edit" },
+  { command: "serial-monitor.copy", group: "clipboard", label: "复制" },
+  { command: "serial-monitor.selectAll", group: "selection", label: "全选" },
+  { command: "serial-monitor.clear", group: "edit", label: "清空" },
 ]);
 window.linkdesk?.menu?.registerItems?.("quickSendContext", "serial-monitor", [
-  { command: "serial-monitor.quickSendEdit", group: "edit" },
-  { command: "serial-monitor.quickSendDelete", group: "danger" },
+  { command: "serial-monitor.quickSendEdit", group: "edit", label: "编辑" },
+  { command: "serial-monitor.quickSendDelete", group: "danger", label: "删除" },
 ]);
 
 /* ---- 常量 ---- */
@@ -61,10 +60,8 @@ const PAUSED_BUFFER_MAX = 2000;
 const SEND_HISTORY_MAX = 20;
 const HEX_WARNING_MAX_CHARS = 5;
 const HEX_PREVIEW_MAX_LEN = 80;
-const MONACO_MAX_HEIGHT = 80;
-const MONACO_MIN_HEIGHT = 32;
-const MONACO_LINE_HEIGHT = 18;
-const MONACO_PADDING = 16;
+const SEND_EDITOR_MAX_HEIGHT = 80;
+const SEND_EDITOR_MIN_HEIGHT = 32;
 
 // E2b #11：命令路由用 sourceId → Map 分发。
 // 每个 SerialMonitorView 挂载时注册自己的 ActiveCmd，命令 handler 通过活跃 session ID 查找。
@@ -329,7 +326,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   filterModeRef.current = filterMode;
   filterKeywordRef.current = filterKeyword;
   const [hexWarning, setHexWarning] = useState("");
-  const monacoRef = useRef<any>(null);
+  const sendEditorRef = useRef<EditorView | null>(null);
+  const sendEditorContainer = useRef<HTMLDivElement>(null);
 
   /* ---- CM6 ---- */
   const cmContainer = useRef<HTMLDivElement>(null);
@@ -697,38 +695,50 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     return { formatted, warning };
   }, []);
 
-  const handleSend = useCallback(async () => {
-    if (!sendValue.trim()) return;
-    await performSend(sendValue.trim(), { showHexPreview: true });
-    if (autoClear) setSendValue("");
-  }, [sendValue, performSend, autoClear]);
-
+  /* ---- 发送区 CM6 ref 桥接——避免 updateListener 闭包过期 ---- */
+  const sendModeRef = useRef(sendMode);
+  sendModeRef.current = sendMode;
+  const appendLineRef = useRef(appendLine);
+  appendLineRef.current = appendLine;
+  const autoFormatHexRef = useRef(autoFormatHex);
+  autoFormatHexRef.current = autoFormatHex;
   const prevHexWarningRef = useRef("");
-  const handleSendChange = useCallback((v: string | undefined) => {
-    const raw = v ?? "";
-    if (sendMode === "hex") {
-      const { formatted, warning } = autoFormatHex(raw);
-      setSendValue(formatted);
-      setHexWarning(warning);
-      if (warning && warning !== prevHexWarningRef.current) {
-        appendLine(warning, "system");
-      }
-      prevHexWarningRef.current = warning;
-    } else {
-      setSendValue(raw);
-      setHexWarning("");
-      prevHexWarningRef.current = "";
+  const hexFormattingRef = useRef(false);
+
+  // G7 改进：从 CM6 editor 直接读取，避免 state 延迟导致读到旧值
+  const handleSend = useCallback(async () => {
+    const text = (sendEditorRef.current?.state.doc.toString() ?? "").trim();
+    if (!text) return;
+    await performSend(text, { showHexPreview: true });
+    if (autoClear) {
+      sendEditorRef.current?.dispatch({
+        changes: { from: 0, to: sendEditorRef.current.state.doc.length, insert: "" },
+      });
     }
-  }, [sendMode, autoFormatHex, appendLine]);
+  }, [performSend, autoClear]);
+
+  /** 外部更新发送区文本（清空按钮、历史选择、命令系统）——同步 state + CM6 */
+  const updateSendValue = useCallback((text: string) => {
+    setSendValue(text);
+    const editor = sendEditorRef.current;
+    if (editor) {
+      const cur = editor.state.doc.toString();
+      if (cur !== text) {
+        hexFormattingRef.current = true; // 跳过 updateListener 重复处理
+        editor.dispatch({ changes: { from: 0, to: cur.length, insert: text } });
+        hexFormattingRef.current = false;
+      }
+    }
+  }, []);
 
   const handleQuickSend = async (text: string) => {
     await performSend(text, { ending: "\r\n", prefix: "> " });
   };
 
   const handleHistorySelect = (text: string) => {
-    setSendValue(text);
+    updateSendValue(text);
     setShowHistory(false);
-    monacoRef.current?.focus();
+    sendEditorRef.current?.focus();
   };
 
   /* ---- 定时发送 ---- */
@@ -752,7 +762,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     _cmdMap.set(sourceId, {
       cmView, paused, quickSends,
       sendMode, showEcho, showLineNumbers, separateSystemLog, autoRepeat, autoClear,
-      setPaused, setSendValue,
+      setPaused, setSendValue: updateSendValue,
       setSendMode: (v: string) => { updateSession({ sendMode: v }); },
       setShowEcho: (v: boolean) => { updateSession({ showEcho: v }); },
       setShowLineNumbers: (v: boolean) => { updateSession({ showLineNumbers: v }); },
@@ -1004,47 +1014,123 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     searchMatchesRef.current = [];
   }, []);
 
-  /* ---- Monaco 挂载 ---- */
-  const beforeMount = useCallback((monaco: any) => {
-    monaco.languages.register({ id: "v3-protocol" });
-    monaco.languages.setMonarchTokensProvider("v3-protocol", v3ProtocolLanguage);
-    monaco.editor.defineTheme("v3-protocol-dark", v3ProtocolTheme);
-  }, []);
-
-  // G7：handleSend 依赖 sendValue（每次键入都变），但 Monaco onKeyDown 只在 mount 时注册一次。
-  // ref 桥接——onKeyDown 始终读最新 handleSend，对标 B86 的 ref 模式。
+  /* ---- CM6 发送编辑器 ---- */
   const handleSendRef = useRef(handleSend);
   handleSendRef.current = handleSend;
 
-  const handleEditorMount = useCallback((editor: any) => {
-    monacoRef.current = editor;
-    editor.onKeyDown((e: any) => {
-      if (e.keyCode === 3 /* Enter */) {
-        if (!e.shiftKey) {
-          e.preventDefault();
-          e.stopPropagation();
+  useEffect(() => {
+    if (!sendEditorContainer.current) return;
+
+    const sendKeymap = keymap.of([
+      {
+        key: "Enter",
+        preventDefault: true,
+        run: () => {
+          // preventDefault 阻止插入换行 → handleSend 从 editor doc 读取文本发送
           handleSendRef.current();
+          return true;
+        },
+      },
+      {
+        key: "ArrowUp",
+        run: (view) => {
+          const line = view.state.doc.line(1);
+          if (!line.text.trim()) {
+            setShowHistory(true);
+            return true;
+          }
+          return false;
+        },
+      },
+    ]);
+
+    const sendUpdateListener = EditorView.updateListener.of((update) => {
+      if (!update.docChanged) return;
+      if (hexFormattingRef.current) return; // 格式化事务→跳过
+
+      const newValue = update.state.doc.toString();
+
+      if (sendModeRef.current === "hex") {
+        const { formatted, warning } = autoFormatHexRef.current(newValue);
+        if (warning && warning !== prevHexWarningRef.current) {
+          appendLineRef.current(warning, "system");
         }
-      }
-      if (e.keyCode === 38 /* ArrowUp */) {
-        const model = editor.getModel();
-        if (!model) return;
-        const line = model.getLineContent(1);
-        if (!line.trim()) {
-          e.preventDefault();
-          e.stopPropagation();
-          setShowHistory(true);
+        prevHexWarningRef.current = warning;
+        setHexWarning(warning);
+
+        if (formatted !== newValue) {
+          hexFormattingRef.current = true;
+          update.view.dispatch({
+            changes: { from: 0, to: update.state.doc.length, insert: formatted },
+          });
+          hexFormattingRef.current = false;
+          return;
         }
+      } else {
+        setHexWarning("");
+        prevHexWarningRef.current = "";
       }
+      setSendValue(newValue);
     });
+
+    // 发送区专用主题——与 darkTheme 对齐，关键差异：cursor 用 borderLeft 简写
+    // 确保宽度/样式/颜色齐全；不含 { dark: true } 避免 CM6 内置暗色主题注入冲突。
+    const sendTheme = EditorView.theme({
+      "&": {
+        background: "var(--bg-card)",
+        color: "var(--text-primary)",
+      },
+      ".cm-cursor, .cm-cursor-primary": {
+        borderLeft: "2px solid var(--text-primary)",
+        marginLeft: "-1px",
+      },
+      ".cm-activeLine": {
+        background: "rgba(255,255,255,0.04)",
+      },
+      ".cm-selectionBackground": {
+        background: "rgba(0,120,212,0.3)",
+      },
+    });
+
+    const view = new EditorView({
+      doc: sendValue,
+      extensions: [
+        sendTheme,
+        sendKeymap,
+        sendUpdateListener,
+        EditorView.updateListener.of((update) => {
+          // 自动调节高度
+          if (update.docChanged || update.viewportChanged) {
+            const ch = update.view.contentHeight;
+            const h = Math.min(SEND_EDITOR_MAX_HEIGHT, Math.max(SEND_EDITOR_MIN_HEIGHT, ch));
+            if (sendEditorContainer.current) {
+              sendEditorContainer.current.style.height = `${h}px`;
+            }
+          }
+        }),
+      ],
+      parent: sendEditorContainer.current,
+    });
+
+    sendEditorRef.current = view;
+
+    // 自动调节初始高度
+    requestAnimationFrame(() => {
+      view.requestMeasure();
+    });
+
+    return () => {
+      view.destroy();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Phase 3 keep-alive: 从 display:none 变为 flex 后修复 CM6/Monaco 布局
+  // Phase 3 keep-alive: 从 display:none 变为 flex 后修复 CM6 布局
   useEffect(() => {
     if (!isActive) return;
     const raf = requestAnimationFrame(() => {
       cmView.current?.requestMeasure();
-      monacoRef.current?.layout();
+      sendEditorRef.current?.requestMeasure();
     });
     return () => cancelAnimationFrame(raf);
   }, [isActive]);
@@ -1209,35 +1295,9 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         {hexWarning && (
           <div className="hex-warning">{hexWarning}</div>
         )}
-        <div className="monaco-wrapper">
-          <span className="monaco-prefix">→</span>
-          <Editor
-            height={`${Math.min(MONACO_MAX_HEIGHT, Math.max(MONACO_MIN_HEIGHT, MONACO_PADDING + MONACO_LINE_HEIGHT * (sendValue.split('\n').length)))}px`}
-            language="v3-protocol"
-            value={sendValue}
-            onChange={handleSendChange}
-            theme="v3-protocol-dark"
-            beforeMount={beforeMount}
-            onMount={handleEditorMount}
-            options={{
-              minimap: { enabled: false },
-              lineNumbers: "off",
-              glyphMargin: false,
-              folding: false,
-              lineDecorationsWidth: 0,
-              lineNumbersMinChars: 0,
-              renderLineHighlight: "none",
-              scrollBeyondLastLine: false,
-              overviewRulerBorder: false,
-              overviewRulerLanes: 0,
-              hideCursorInOverviewRuler: true,
-              scrollbar: { vertical: "hidden", horizontal: "hidden" },
-              wordWrap: "off",
-              fontSize: 13,
-              fontFamily: "'Sarasa Mono SC', Consolas, 'Courier New', monospace",
-              padding: { top: 6, bottom: 0 },
-            }}
-          />
+        <div className="send-editor-wrapper">
+          <span className="send-editor-prefix">→</span>
+          <div ref={sendEditorContainer} className="send-editor-cm" />
         </div>
         <div className="sender-actions">
           <div className="history-wrapper">
@@ -1263,7 +1323,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
               </div>
             )}
           </div>
-          <button className="toolbar-btn" onClick={() => setSendValue("")}>
+          <button className="toolbar-btn" onClick={() => updateSendValue("")}>
             {t("清空发送区")}
           </button>
           <button className="send-btn" onClick={handleSend}>
