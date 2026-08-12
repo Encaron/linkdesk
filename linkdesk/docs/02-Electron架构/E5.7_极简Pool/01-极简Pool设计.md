@@ -210,7 +210,7 @@ E5.7 极简Pool
 
 > **壳渲染进程为什么保留：** "壳=唯一真相源"——tabState/syncLayout/pushLayout/Registry/命令执行全部留在壳。壳只是不再渲染 UI DOM（被 WCV 完全覆盖）。壳想，池画。
 >
-> **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（TabBarZone/EditorZone 都在池里），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
+> **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（EditorZone 含 TabBar 都在池里，TabBarZone 已取消——2026-08-13 审计），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
 
 ---
 
@@ -403,10 +403,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
         {/* Main Content Area (Editor + Panel) */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          {/* TabBar */}
-          <TabBarZone tabBar={layout.tabBar} />
-
-          {/* Editor */}
+          {/* Editor——tab bar 在 EditorZone 内（每 panel 自带 GroupTabBar，TabBarZone 已取消——见 Zone分解设计 §2.4 墓碑） */}
           <EditorZone
             groups={layout.groups}
             root={layout.root}
@@ -582,7 +579,6 @@ interface PoolLayout {
   titleBar: TitleBarLayout;
   iconBar: IconBarLayout;
   sidebar: SidebarLayout;
-  tabBar: TabBarLayout;
   rightSidebar?: SidebarLayout;
   topBar?: TopBarLayout;
 
@@ -613,14 +609,6 @@ interface SidebarLayout {
   visible: boolean;
   width: number;
   viewId: string | null;
-}
-
-interface TabBarLayout {
-  groups: Array<{
-    groupId: string;
-    tabs: PoolTab[];
-    activeTabId: string;
-  }>;
 }
 
 interface PanelLayout {
@@ -908,9 +896,8 @@ src/pool/
 ├── zones/                     ← 🆕 每个 zone 一个文件
 │   ├── TitleBarZone.tsx       ← 窗口标题栏
 │   ├── IconBarZone.tsx        ← 图标栏
-│   ├── TabBarZone.tsx         ← 标签栏（从壳迁入）
 │   ├── SidebarZone.tsx        ← 侧栏（从 sidebar/SidebarRenderer.tsx 迁入）
-│   ├── EditorZone.tsx         ← 编辑器（从 main/MainRenderer.tsx 提取）
+│   ├── EditorZone.tsx         ← 编辑器 + 每 panel GroupTabBar（从 main/MainRenderer.tsx 提取，#7 TabBarZone 取消）
 │   ├── PanelZone.tsx          ← 底部面板
 │   ├── StatusBarZone.tsx      ← 状态栏
 │   ├── TopBarZone.tsx         ← 顶部工具栏（面包屑）
@@ -949,7 +936,7 @@ electron/                      ← 主进程——大幅瘦身
 └── shell 渲染相关代码          ← App.tsx 中 TitleBar/IconBar/TabBar/StatusBar 渲染逻辑
 ```
 
-> **splitTree.ts（原 src/hooks/）→ `src/core/utils/`**——分屏树纯操作，壳（tabState 分屏逻辑）与 Pool（EditorZone/TabBarZone）双进程共用，不进 pool 目录（见壳目录规范 §1 utils）。
+> **splitTree.ts（原 src/hooks/）→ `src/core/utils/`**——分屏树纯操作，壳（tabState 分屏逻辑）与 Pool（EditorZone computeLayout）双进程共用，不进 pool 目录（见壳目录规范 §1 utils）。
 
 ---
 
