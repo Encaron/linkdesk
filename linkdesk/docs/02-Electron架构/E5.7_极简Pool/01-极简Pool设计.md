@@ -243,7 +243,6 @@ E5.7 极简Pool
 | MainZone | 主区——标签页内容 + SplitTree 分屏 | `layout.groups`, `layout.root` | flex: 1, minWidth: 0 |
 | PanelZone | 底部面板（终端/输出/问题/端口） | `layout.panel` | flex column, 可变高度 |
 | StatusBarZone | 状态栏信息 | `layout.statusBar` | flex column bottom, 22px |
-| TopBarZone | 顶部工具栏（面包屑） | `layout.topBar` | flex column, 条件渲染 |
 | RightSidebarZone | 右侧面板（大纲/属性/AI Chat） | `layout.rightSidebar` | flex row right, 条件渲染 |
 | FloatingLayer | Toast / ContextMenu / QuickPick / Dialog | 事件触发 | position: fixed, z-index 最高 |
 
@@ -580,7 +579,6 @@ interface PoolLayout {
   iconBar: IconBarLayout;
   sidebar: SidebarLayout;
   rightSidebar?: SidebarLayout;
-  topBar?: TopBarLayout;
 
   // 主区
   groups: PoolGroup[];
@@ -900,7 +898,6 @@ src/pool/
 │   ├── MainZone.tsx         ← 主区 + 每 panel GroupTabBar（从 main/MainRenderer.tsx 提取，#7 TabBarZone 取消）
 │   ├── PanelZone.tsx          ← 底部面板
 │   ├── StatusBarZone.tsx      ← 状态栏
-│   ├── TopBarZone.tsx         ← 顶部工具栏（面包屑）
 │   ├── RightSidebarZone.tsx   ← 右侧面板（大纲/属性/AI Chat）
 │   └── FloatingLayerHost.tsx  ← 浮层宿主（Toast/ContextMenu/QuickPick/Dialog）
 │
