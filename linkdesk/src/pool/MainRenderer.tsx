@@ -605,7 +605,13 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
         ))
       )}
 
-      {/* ═══ Glass drop zone overlay——per-panel（非全局 inset:0）═══ */}
+      {/* ═══ 分屏预览 overlay——Glassmorphism 对标 VS Code editorDropTarget ═══
+           🔥 E5.6#16.7：毛玻璃半区叠加层。
+           设计决策（ui-ux-pro-max Glassmorphism）：
+           - 拒绝 dashed 虚线边框 → 改用内发光 box-shadow 定义区域边界
+           - backdrop-filter: blur(6px) 毛玻璃散射面（不是全屏模糊，只作用于半区）
+           - 固态 hairline 边框（1px solid，低透明度）——轻微可见但不抢眼
+           - pointer-events: none 不拦截拖拽事件 */}
       {dropZoneState && dropZoneState.zone !== "center" && (() => {
         // 精确到目标 panel 的位置（百分比），单面板/fallback 用 inset:0
         let bounds: React.CSSProperties = { left: 0, top: 0, width: "100%", height: "100%" };
@@ -624,28 +630,16 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
                              : { bottom: 0, left: 0, width: "100%", height: "50%" };
 
         return (
-          <div style={{ position: "absolute", inset: 0, zIndex: 9999, pointerEvents: "none" }}>
-            {/* 毛玻璃底色——只覆盖目标面板 */}
-            <div style={{
-              position: "absolute",
-              ...bounds,
-              background: "var(--drop-indicator)",
-              backdropFilter: "blur(3px)",
-              WebkitBackdropFilter: "blur(3px)",
-              animation: "drop-zone-in 120ms ease-out forwards",
-            }} />
-            {/* 分屏高亮半区 */}
-            <div style={{
-              position: "absolute",
-              ...bounds,
-            }}>
-              <div style={{
-                position: "absolute",
-                ...zoneStyle,
-                background: "var(--drop-indicator)",
-                opacity: 0.6,
-              }} />
-            </div>
+          <div style={{
+            position: "absolute",
+            ...bounds,
+            zIndex: 9999,
+            pointerEvents: "none",
+          }}>
+            <div
+              className="drop-glass-zone"
+              style={zoneStyle}
+            />
           </div>
         );
       })()}
