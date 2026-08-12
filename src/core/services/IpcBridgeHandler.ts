@@ -37,6 +37,8 @@ import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation + decorations——池插件跨进程查询
 import { getPluginFor } from "./FileAssociationService";
 import { FileDecorationRegistry } from "../registry/FileDecorationRegistry";
+// E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载
+import { ViewContainerService } from "./ViewContainerService";
 // E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
 import { searchFiles } from "./FileSearcher";
 import { EncodingService } from "./EncodingService";
@@ -67,6 +69,7 @@ let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
 let _workspaceActiveUnsub: (() => void) | null = null; // E5.6#11.5-A：活跃工作区变更广播
 let _decorationsUnsub: (() => void) | null = null; // E5.6#11.5-A：文件装饰变更广播
+let _viewsUnsub: (() => void) | null = null; // E5.6#19e：ViewContainerService 视图变更广播
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -340,6 +343,14 @@ export function initIpcBridgeHandler(): void {
     try { linkdesk.events?.emit("decorations:changed", { uris: Array.isArray(uris) ? uris : [] }); } catch { /* 静默 */ }
   });
   _decorationsUnsub = decoUnsub;
+
+  // ── E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载 ──
+  const viewsUnsub = ViewContainerService.onDidChangeViews.event(({ containerId, views }) => {
+    // 剥离不可序列化的 render 属性（对标 getCommands 剥离 handler）
+    const safe = views.map(({ render: _r, ...rest }) => rest);
+    try { linkdesk.events?.emit("view-container:changed", { containerId, views: safe }); } catch { /* 静默 */ }
+  });
+  _viewsUnsub = viewsUnsub;
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -362,6 +373,8 @@ export function unregisterIpcBridgeHandler(): void {
     _workspaceActiveUnsub = null;
     _decorationsUnsub?.();
     _decorationsUnsub = null;
+    _viewsUnsub?.();
+    _viewsUnsub = null;
   }
 }
 
