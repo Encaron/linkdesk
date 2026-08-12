@@ -1,6 +1,6 @@
 /**
  * useSendData — 发送管道 hook + 时间戳格式化 + HEX 转换。
- * E5.6#11.5h 从 @src/core/react/useSendData + @src/core/data/DataConverter 内联。
+ * E5.6#11.5h 从 @src/core/react/useSendData + @src/core/pipeline/DataConverter 内联。
  *
  * 解码 → 编码 → invoke → 回显 → 历史，五步独立管道。
  * onEcho / onHistory / onError 由调用方注入。
@@ -8,7 +8,7 @@
 
 import { useCallback } from "react";
 
-/* ── HEX 转换（从 @src/core/data/DataConverter 内联）── */
+/* ── HEX 转换（从 @src/core/pipeline/DataConverter 内联）── */
 
 /** HEX 字符串 → 字节数组（过滤非法字符后每两个字符解析一个字节） */
 export function hexToBytes(str: string): Uint8Array {

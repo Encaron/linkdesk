@@ -23,7 +23,7 @@ import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
-import { factorySlots } from "./core/data/FactorySlots";
+import { factorySlots } from "./core/services/FactorySlots";
 import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
@@ -38,7 +38,7 @@ import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
 import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
-import { onDidRequestShowChannel } from "./core/data/LogChannel"; // E3f #54
+import { onDidRequestShowChannel } from "./core/services/LogChannel"; // E3f #54
 import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26 + E5#103
 import { initAll } from "./core/services/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";

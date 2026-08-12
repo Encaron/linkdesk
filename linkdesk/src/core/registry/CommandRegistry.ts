@@ -12,7 +12,7 @@
  * - 命令 ID 就是插件的公共 API——跨插件命令调用走 execute() 不走 hard import
  */
 
-import type { CancellationToken } from "../data/CancellationToken";
+import type { CancellationToken } from "../utils/CancellationToken";
 import { reportError } from "../ErrorService";
 
 /* ── 类型 ── */

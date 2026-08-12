@@ -53,13 +53,15 @@ export * from "./react/usePluginIpcEvent";
 export * from "./react/useSendData";
 export * from "./react/TabActionsContext";
 
-// ── 数据 ──
-export * from "./data/DataConverter";
-export * from "./data/RingBuffer";
-export * from "./data/CancellationToken";
-export * from "./data/ProtocolParser";
-export * from "./data/FactorySlots";
-export * from "./data/LogChannel";
+// ── 数据管道 ──
+export * from "./pipeline/DataConverter";
+export * from "./pipeline/RingBuffer";
+export * from "./pipeline/ProtocolParser";
+// ── 工具 ──
+export * from "./utils/CancellationToken";
+// ── 服务 ──
+export * from "./services/FactorySlots";
+export * from "./services/LogChannel";
 // CardRegistry 不在 barrel——标签页系统隔离（硬约束 #3）
 
 // ── API 类型 ──

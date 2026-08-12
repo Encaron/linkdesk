@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { Parse } from "../data/ProtocolParser";
+import { Parse } from "../pipeline/ProtocolParser";
 
 describe("ProtocolParser", () => {
   describe("Parse", () => {

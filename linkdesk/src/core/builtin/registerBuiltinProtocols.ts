@@ -8,7 +8,7 @@
  */
 
 import { registerProtocol } from "../registry/ProtocolRegistry";
-import { Parse } from "../data/ProtocolParser";
+import { Parse } from "../pipeline/ProtocolParser";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 
 let _registered = false;
