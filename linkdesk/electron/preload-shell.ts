@@ -535,6 +535,9 @@ try {
         ipcRenderer.on('overlay:result', handler);
         return () => { ipcRenderer.removeListener('overlay:result', handler); };
       },
+
+      /** E5.6#22d2：ESC 自救——强制恢复 OverlayWindow 鼠标穿透 */
+      escapeInteraction: () => ipcRenderer.send('overlay:escape-interaction'),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

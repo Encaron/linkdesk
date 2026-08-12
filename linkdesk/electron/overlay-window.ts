@@ -113,10 +113,19 @@ export class OverlayWindow {
     this.window = null;
   }
 
+  // E5.6#22d2：5s watchdog——防止 mouseup 丢失导致永久锁死
+  private _interactionWatchdog: ReturnType<typeof setTimeout> | null = null;
+
   /** 打开鼠标交互——渲染浮层时调用 */
   enableInteraction(): void {
     if (this.window && !this.window.isDestroyed()) {
       this.window.setIgnoreMouseEvents(false);
+      // 启动 5s watchdog——mouseup/blur/ESC 任一触发则清除
+      this._clearWatchdog();
+      this._interactionWatchdog = setTimeout(() => {
+        console.warn('[OverlayWindow] watchdog 触发——5s 无 mouseup/blur/ESC，强制恢复穿透');
+        this.disableInteraction();
+      }, 5000);
     }
   }
 
@@ -124,6 +133,14 @@ export class OverlayWindow {
   disableInteraction(): void {
     if (this.window && !this.window.isDestroyed()) {
       this.window.setIgnoreMouseEvents(true, { forward: true });
+      this._clearWatchdog();
+    }
+  }
+
+  private _clearWatchdog(): void {
+    if (this._interactionWatchdog !== null) {
+      clearTimeout(this._interactionWatchdog);
+      this._interactionWatchdog = null;
     }
   }
 
