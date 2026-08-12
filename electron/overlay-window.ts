@@ -5,7 +5,7 @@
  * 解决的问题：SidebarPool 和 MainPool 是同级 WebContentsView——任一个 Pool 的
  * DOM 元素超出自身矩形边界后，被另一个 Pool 裁剪。z-index 在 Chromium 渲染进程间无效。
  *
- * OverlayWindow 是独立的透明 BrowserWindow，alwaysOnTop，默认鼠标穿透。
+ * OverlayWindow 是独立的透明 BrowserWindow（parent: mainWindow），默认鼠标穿透。
  * 浮层 UI（右键菜单/命令面板/Toast/Dialog）渲染在此窗口内——不被任何 Pool 裁剪。
  *
  * 对标 VS Code 的 overlay 层——但 VS Code 是单 WebView，linkDesk 是多 Pool WebContentsView。

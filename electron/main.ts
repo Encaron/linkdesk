@@ -119,6 +119,16 @@ function createWindow(): void {
   mainWindow.on('resize', () => overlayWindow?.syncBounds());
   mainWindow.on('move', () => overlayWindow?.syncBounds());
 
+  // ── E5.6#21.6c 中继：任何渲染进程 → OverlayWindow ──
+  ipcMain.on('overlay:forward-to-overlay', (_event, msg) => {
+    overlayWindow?.webContents?.send('overlay:render', msg);
+  });
+
+  // ── E5.6#21.6c 中继：OverlayWindow → 壳 ──
+  ipcMain.on('overlay:forward-to-shell', (_event, msg) => {
+    mainWindow?.webContents?.send('overlay:result', msg);
+  });
+
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
     mainWindow.loadURL(DEV_SERVER_URL);
