@@ -409,6 +409,17 @@ function App() {
     return unsub;
   }, []);
 
+  // E5.6#22d2：ESC 自救——强制恢复 OverlayWindow 鼠标穿透
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        (window as any).linkdesk?.overlay?.escapeInteraction?.();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, []);
+
   /* ---- 侧栏拖拽调整宽度（走 LayoutEngine.resizeZone） ---- */
   const dragging = useRef(false);
 
