@@ -798,12 +798,11 @@ const PLUGIN_IMPORT_WHITELIST = new Set([
   // 纯类型 / 枚举
   "@src/core/registry/MenuRegistry",       // MenuId 枚举
   // 纯工具函数（无模块级状态，无副作用）
-  "@src/core/data/DataConverter",
-  "@src/core/data/HexToBytes",
-  "@src/core/data/DataDispatch",
-  "@src/core/data/RingBuffer",
-  "@src/core/data/ProtocolParser",
-  "@src/core/data/CancellationToken",
+  "@src/core/pipeline/DataConverter",
+  "@src/core/pipeline/DataDispatch",
+  "@src/core/pipeline/RingBuffer",
+  "@src/core/pipeline/ProtocolParser",
+  "@src/core/utils/CancellationToken",
   "@src/core/services/EncodingService",
   "@src/core/services/FileSearcher",
   // 壳内 React 组件（跨 WebView 渲染 DOM——暂无法 IPC 化，火种保留）

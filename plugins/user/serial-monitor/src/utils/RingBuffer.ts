@@ -1,5 +1,5 @@
 /**
- * 固定容量环形缓冲区——E5.6#11.5h 从 @src/core/data/RingBuffer 内联。
+ * 固定容量环形缓冲区——E5.6#11.5h 从 @src/core/pipeline/RingBuffer 内联。
  *
  * 单生产者（IPC emit 回调写）、单消费者（rAF 读）。
  * 满则覆盖最老数据。

@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { factorySlots } from "../data/FactorySlots";
-import type { SlotPluginEntry } from "../data/FactorySlots";
+import { factorySlots } from "../services/FactorySlots";
+import type { SlotPluginEntry } from "../services/FactorySlots";
 
 const SETTINGS_PLUGIN: SlotPluginEntry = {
   pluginId: "my-settings",

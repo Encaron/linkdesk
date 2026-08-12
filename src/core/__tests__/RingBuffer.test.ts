@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { RingBuffer } from "../data/RingBuffer";
+import { RingBuffer } from "../pipeline/RingBuffer";
 
 describe("RingBuffer", () => {
   it("初始为空", () => {

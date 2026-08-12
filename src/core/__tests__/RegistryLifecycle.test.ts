@@ -13,8 +13,8 @@ import { registerCommand, unregisterPluginCommands, getCommands } from "../regis
 import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../registry/KeybindingRegistry";
 import { registerMenuItems, MenuId, unregisterPluginMenus } from "../registry/MenuRegistry";
 import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../registry/ProtocolRegistry";
-import { registerCard, unregisterPluginCards, getCards } from "../data/CardRegistry";
-import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../data/LogChannel";
+import { registerCard, unregisterPluginCards, getCards } from "../registry/CardRegistry";
+import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/LogChannel";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ThemeEngine";
 import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../services/FileAssociationService";
 import { registerConfiguration, unregisterConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "../registry/ConfigurationRegistry";
