@@ -268,10 +268,26 @@
   to   { opacity: 0; max-width: 0; padding-left: 0; padding-right: 0; }
 }
 
-/* ── 拖拽分屏 drop zone 毛玻璃（对标旧 MainContent.css）── */
+/* ── 拖拽分屏 drop zone 毛玻璃（Glassmorphism 对标 VS Code editorDropTarget）──
+   设计决策：拒绝 dashed 虚线边框（无美术感），改用内发光 box-shadow 定义区域边界。
+   玻璃物理：半透明散射面 + backdrop-filter 模糊 + 固态 hairline 边框 + 内发光深度。 */
 @keyframes drop-zone-in {
   from { opacity: 0; transform: scale(0.96); }
   to   { opacity: 1; transform: scale(1); }
+}
+
+.drop-glass-zone {
+  position: absolute;
+  pointer-events: none;
+  /* 玻璃表面——半透明散射面叠加 backdrop-filter 毛玻璃 */
+  background: var(--drop-glass-bg);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  /* 固态 hairline 边界（替代虚线 outline）——轻微可见但不抢眼 */
+  border: 1px solid var(--drop-glass-border);
+  /* 内发光——模拟玻璃边缘集光，定义区域边界 */
+  box-shadow: var(--drop-glass-inner);
+  animation: drop-zone-in 120ms ease-out forwards;
 }
 
 /* ── E5.6#16.7k-3：PlusMenu [+] 下拉菜单 ── */

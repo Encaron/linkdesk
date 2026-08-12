@@ -273,8 +273,9 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                     handleClose(tab.id);
                     return;
                   }
-                  // 左键拖拽——E5.6#16.7：交 MainRenderer 全局协调
-                  if (e.button === 0 && !tab.singleton) {
+                  // 左键拖拽——E5.6#16.7：交 MainRenderer 全局协调。
+                  // singleton 只管打开时去重，不阻止拖拽分屏（分屏=移动，不是复制）。
+                  if (e.button === 0) {
                     onTabDragStart?.(tab.id, idx, e);
                   }
                 }}
