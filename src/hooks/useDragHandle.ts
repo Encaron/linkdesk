@@ -21,6 +21,13 @@ export function useDragHandle(zone: string) {
     if (!zoneCfg?.dock) return;
     const edge = zoneCfg.dock.edge;
 
+    // 拖拽期间锁光标 + 禁文字选择——快速拖拽时鼠标脱离 handle 元素也不会跳回箭头
+    const dragCursor = edge === "bottom" ? "row-resize" : "col-resize";
+    const prevCursor = document.body.style.cursor;
+    const prevUserSelect = document.body.style.userSelect;
+    document.body.style.cursor = dragCursor;
+    document.body.style.userSelect = "none";
+
     const onMouseMove = (me: MouseEvent) => {
       if (!dragging.current) return;
       // 鼠标在窗口外释放 → mouseup 不到达此 window
@@ -46,6 +53,8 @@ export function useDragHandle(zone: string) {
 
     const onMouseUp = () => {
       dragging.current = false;
+      document.body.style.cursor = prevCursor;
+      document.body.style.userSelect = prevUserSelect;
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
