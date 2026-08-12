@@ -49,8 +49,10 @@ export class OverlayWindow {
       y,
       width,
       height,
-      // ── 不可聚焦（防止抢主窗口焦点）──
-      focusable: false,
+      // ── 可聚焦——浮层内的输入框/键盘导航/Escape 需要键盘事件 ──
+      //   parent: mainWindow 保证作为子窗口不出现在 Alt+Tab 中
+      //   默认 setIgnoreMouseEvents(true) + 不聚焦——只有 enableInteraction() 时接管焦点
+      focusable: true,
       // ── 不在任务栏显示 ──
       skipTaskbar: true,
       // ── 无背景色——透明区域让下方 Pool 透出 ──
@@ -116,10 +118,13 @@ export class OverlayWindow {
   // E5.6#23h：5s watchdog——防止交互结束后忘记 disableInteraction 导致永久锁死
   private _interactionWatchdog: ReturnType<typeof setTimeout> | null = null;
 
-  /** 打开鼠标交互——渲染浮层时调用 */
+  /** 打开鼠标交互 + 键盘焦点——渲染浮层时调用 */
   enableInteraction(): void {
     if (this.window && !this.window.isDestroyed()) {
       this.window.setIgnoreMouseEvents(false);
+      // 🔥 聚焦 OverlayWindow——否则浮层内的 <input>/键盘导航/Escape 收不到事件
+      //    parent: mainWindow 子窗口聚焦不会令父窗口变灰——实测验证
+      this.window.webContents.focus();
       // 启动 5s watchdog——mouseup/blur/ESC 任一触发则清除
       this._clearWatchdog();
       this._interactionWatchdog = setTimeout(() => {
@@ -129,10 +134,14 @@ export class OverlayWindow {
     }
   }
 
-  /** 关闭鼠标交互——浮层关闭后恢复穿透 */
+  /** 关闭鼠标交互 + 归还焦点给主窗口——浮层关闭后恢复穿透 */
   disableInteraction(): void {
     if (this.window && !this.window.isDestroyed()) {
       this.window.setIgnoreMouseEvents(true);
+      // 归还焦点给主窗口——浮层消失后主窗口恢复正常交互
+      if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+        this.mainWindow.webContents.focus();
+      }
       this._clearWatchdog();
     }
   }
