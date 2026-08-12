@@ -1,0 +1,35 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>LinkDesk Overlay</title>
+    <style>
+      /* ── E5.6#21e：OverlayWindow 内 z-index 层级走 CSS 变量——禁止硬编码数字 ── */
+      :root {
+        --overlay-z-splitter:      1;   /* 分割线（最低——始终可见） */
+        --overlay-z-context-menu:  10;  /* 右键菜单 */
+        --overlay-z-selectbox:     11;  /* SelectBox 下拉 */
+        --overlay-z-colorpicker:   12;  /* 取色器 */
+        --overlay-z-hamburger-menu: 13; /* 汉堡菜单 / TitleBar 下拉 */
+        --overlay-z-command-palette: 20; /* 命令面板 */
+        --overlay-z-toast:         30;  /* Toast 通知 */
+        --overlay-z-dialog:        40;  /* Dialog 弹窗 */
+        --overlay-z-modal:         50;  /* Modal 容器（最高） */
+      }
+
+      /* ── 全屏透明——默认所有区域鼠标穿透 ── */
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body, #overlay-root {
+        width: 100%; height: 100%;
+        overflow: hidden;
+        background: transparent;
+        pointer-events: none;  /* 默认穿透——容器组件按需启用 pointer-events: auto */
+      }
+    </style>
+  </head>
+  <body>
+    <div id="overlay-root"></div>
+    <script type="module" src="/src/overlay/overlay-main.tsx"></script>
+  </body>
+</html>

@@ -79,6 +79,7 @@ export default defineConfig(async () => {
         input: {
           main: resolve(__dirname, "index.html"),
           pool: resolve(__dirname, "pool.html"),
+          overlay: resolve(__dirname, "overlay.html"),
           ...pluginEntries,
         },
         output: {
