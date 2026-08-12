@@ -31,6 +31,15 @@ interface OverlayState {
   payload: unknown;
 }
 
+// ── E5.6#22b：分隔线类型——壳 push split-lines 命令时传入 ──
+interface SplitLine {
+  orientation: "vertical" | "horizontal";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
 // ── OverlayWindow 侧的 window.linkdesk（preload-overlay.ts 通过 contextBridge 注入） ──
 // 类型窄化——不覆写全局 Window 接口（global.d.ts 已有 Record<string, any>）。
 // 使用 const 引用 + 类型断言，保持本文件内类型安全。
@@ -149,17 +158,63 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
   );
 }
 
+// ── E5.6#22b：SplitLines——始终渲染的分隔线，独立于 activeOverlay ──
+
+function SplitLines({ lines }: { lines: SplitLine[] }) {
+  if (!lines || lines.length === 0) return null;
+
+  return (
+    <>
+      {lines.map((line, i) => (
+        <div
+          key={`split-${i}`}
+          style={{
+            position: "absolute",
+            left: `${line.x}px`,
+            top: `${line.y}px`,
+            width: `${line.width}px`,
+            height: `${line.height}px`,
+            cursor: line.orientation === "vertical" ? "col-resize" : "row-resize",
+            pointerEvents: "auto",
+            zIndex: "var(--overlay-z-splitter)",
+            background: "transparent",
+            transition: "background 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLElement).style.background = "transparent";
+          }}
+        />
+      ))}
+    </>
+  );
+}
+
 // ── OverlayApp ──
 
 function OverlayApp() {
+  // ── E5.6#22b：state 按 type 路由到不同 slot ──
+  // splitLines——独立 state，始终渲染（多条分隔线）
+  const [splitLines, setSplitLines] = useState<{ lines: SplitLine[] }>({ lines: [] });
+  // activeOverlay——互斥 state，新命令替换旧（右键菜单/命令面板/dialog）
   const [activeOverlay, setActiveOverlay] = useState<OverlayState>({ requestId: null, type: null, payload: null });
 
-  // ── 接收渲染命令 ──
+  // ── 接收渲染命令——按 type 路由到对应 state slot ──
   const handleCommand = useCallback((cmd: OverlayCommand) => {
-    if (cmd.type === "dismiss") {
-      setActiveOverlay({ requestId: null, type: null, payload: null });
-    } else {
-      setActiveOverlay({ requestId: cmd.requestId, type: cmd.type, payload: cmd.payload });
+    switch (cmd.type) {
+      case "split-lines":
+        // 分隔线——独立更新，不影响 activeOverlay
+        setSplitLines(cmd.payload as { lines: SplitLine[] });
+        break;
+      case "dismiss":
+        setActiveOverlay({ requestId: null, type: null, payload: null });
+        break;
+      default:
+        // 右键菜单 / 命令面板 / dialog——互斥，新开替换旧
+        setActiveOverlay({ requestId: cmd.requestId, type: cmd.type, payload: cmd.payload });
+        break;
     }
   }, []);
 
@@ -183,7 +238,7 @@ function OverlayApp() {
         return <OverlayToastPlaceholder payload={activeOverlay.payload} />;
       case "dialog":
         return <OverlayDialogPlaceholder payload={activeOverlay.payload} />;
-      // selectbox / colorpicker / modal / split-lines → #24/#24.5/#22
+      // selectbox / colorpicker / modal → #24/#24.5
       default:
         return null;
     }
@@ -209,7 +264,7 @@ function OverlayApp() {
     </div>
   );
 
-  return <>{debugBorder}{overlay}</>;
+  return <>{debugBorder}<SplitLines lines={splitLines.lines} />{overlay}</>;
 }
 
 // ── 挂载 ──
