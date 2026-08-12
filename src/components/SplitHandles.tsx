@@ -11,9 +11,7 @@
 import { layoutEngine } from "../core/services/LayoutEngine";
 import type { ZoneBounds } from "../core/services/LayoutEngine";
 import { useDragHandle } from "../hooks/useDragHandle";
-
-const HANDLE_WIDTH = 4;
-const TITLE_BAR_HEIGHT = 30;
+import { TITLE_BAR_HEIGHT, HANDLE_WIDTH } from "../constants";
 
 interface SplitHandlesProps {
   zoneBounds: Record<string, ZoneBounds>;

@@ -21,6 +21,7 @@ import ToastContainer from "./components/ToastContainer";
 import QuickPick from "./components/shared/QuickPick";
 import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
+import { TITLE_BAR_HEIGHT, HANDLE_WIDTH } from "./constants";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
@@ -324,7 +325,6 @@ function App() {
   }, []);
 
   /* ---- E5#9f：LayoutEngine 壳布局——替代硬编码 CSS flex ---- */
-  const TITLE_BAR_HEIGHT = 30;
   const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
 
   useEffect(() => {
@@ -341,35 +341,55 @@ function App() {
       const poolApi = (window as any).linkdesk?.pool;
       if (poolApi?.setBounds) {
         // E5.6#22k：分隔线宽度——resizable zone 的相邻边界留缝，壳 DOM handle 从缝透出
-        const HANDLE_WIDTH = 4;
+        // 泛化：遍历所有 resizable zone → 自动在 zone 和 main 相邻边界留缝。
+        // 加底部面板（dock.edge: "bottom", resizable: true）→ 零改动即可留缝。
         const gap = HANDLE_WIDTH / 2;
 
+        // 计算各 zone 的收缩量——main zone 可能被多个 resizable zone 挤压
+        const zoneShrink: Record<string, { left: number; right: number; top: number; bottom: number }> = {};
+        let mainShiftX = 0;
+        let mainShiftY = 0;
+        let mainShrinkLeft = 0;
+        let mainShrinkRight = 0;
+        let mainShrinkTop = 0;
+        let mainShrinkBottom = 0;
+
+        for (const z of layoutEngine.getAllZones()) {
+          if (!z.dock?.resizable || !b[z.zone]) continue;
+          zoneShrink[z.zone] = { left: 0, right: 0, top: 0, bottom: 0 };
+          const edge = z.dock.edge;
+          if (edge === "left") {
+            zoneShrink[z.zone].right = gap;
+            mainShrinkLeft += gap;
+            mainShiftX += gap;
+          } else if (edge === "right") {
+            zoneShrink[z.zone].left = gap;
+            mainShrinkRight += gap;
+          } else if (edge === "bottom") {
+            zoneShrink[z.zone].top = gap;
+            mainShrinkBottom += gap;
+          }
+        }
+
         // LayoutEngine bounds 相对于 title bar 下方的容器——WebContentsView bounds 需加 TITLE_BAR_HEIGHT 偏移
-        if (b.sidebar) {
-          const sidebarResizable = layoutEngine.getZone("sidebar")?.dock?.resizable;
-          const sidebarEdge = layoutEngine.getZone("sidebar")?.dock?.edge;
-          // resizable 时在相邻边界留缝——sidebar 和 main 各减 gap
-          const shrinkRight = sidebarResizable && sidebarEdge !== "right" ? gap : 0;
-          const shrinkLeft = sidebarResizable && sidebarEdge === "right" ? gap : 0;
-          poolApi.setBounds("sidebar", {
-            x: b.sidebar.x + shrinkLeft,
-            y: b.sidebar.y + TITLE_BAR_HEIGHT,
-            width: b.sidebar.width - shrinkLeft - shrinkRight,
-            height: b.sidebar.height,
+        if (b.main) {
+          poolApi.setBounds("main", {
+            x: b.main.x + mainShiftX,
+            y: b.main.y + TITLE_BAR_HEIGHT + mainShiftY,
+            width: b.main.width - mainShrinkLeft - mainShrinkRight,
+            height: b.main.height - mainShrinkTop - mainShrinkBottom,
           });
         }
         // E5.6#16.7：TabBar 已迁入 MainPool（GroupTabBar 在池内渲染），MainPool 占满 LayoutEngine 分配的全高
-        if (b.main) {
-          const sidebarResizable = layoutEngine.getZone("sidebar")?.dock?.resizable;
-          const sidebarEdge = layoutEngine.getZone("sidebar")?.dock?.edge;
-          // main 在侧栏 resizable 边界对应的那侧留缝
-          const shrinkLeft = sidebarResizable && sidebarEdge !== "right" ? gap : 0;
-          const shrinkRight = sidebarResizable && sidebarEdge === "right" ? gap : 0;
-          poolApi.setBounds("main", {
-            x: b.main.x + shrinkLeft,
-            y: b.main.y + TITLE_BAR_HEIGHT,
-            width: b.main.width - shrinkLeft - shrinkRight,
-            height: b.main.height,
+        for (const zoneId of Object.keys(zoneShrink)) {
+          const bounds = b[zoneId];
+          if (!bounds) continue;
+          const s = zoneShrink[zoneId];
+          poolApi.setBounds(zoneId, {
+            x: bounds.x + s.left,
+            y: bounds.y + TITLE_BAR_HEIGHT + s.top,
+            width: bounds.width - s.left - s.right,
+            height: bounds.height - s.top - s.bottom,
           });
         }
       }
