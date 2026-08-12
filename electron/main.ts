@@ -115,8 +115,9 @@ function createWindow(): void {
   overlayWindow = new OverlayWindow(mainWindow);
   overlayWindow.create();
 
-  // ── 主窗口 resize → OverlayWindow 同步尺寸（位置由 parent 关系自动跟随）──
+  // ── 主窗口 resize/move → OverlayWindow 同步尺寸+位置 ──
   mainWindow.on('resize', () => overlayWindow?.syncBounds());
+  mainWindow.on('move', () => overlayWindow?.syncBounds());
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
