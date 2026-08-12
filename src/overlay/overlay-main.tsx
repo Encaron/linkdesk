@@ -158,16 +158,46 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
   );
 }
 
-// ── E5.6#22b：SplitLines——始终渲染的分隔线，独立于 activeOverlay ──
+// ── E5.6#22b/#22d：SplitLines——始终渲染的分隔线，独立于 activeOverlay ──
 
 function SplitLines({ lines }: { lines: SplitLine[] }) {
   if (!lines || lines.length === 0) return null;
+
+  // E5.6#22d：mousedown → 通知壳开始拖拽（enableInteraction），
+  // mousemove → 发坐标到壳（resizeZone），mouseup → 结束（disableInteraction）。
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const api = getOverlayApi();
+
+    // 拖拽开始——壳 enableInteraction() 防止鼠标事件穿透到 Pool
+    api.overlay.sendResult("", "splitter-drag-start", { zone: "sidebar" });
+
+    const onMouseMove = (me: MouseEvent) => {
+      // clientX/clientY——OverlayWindow 与主窗口同尺寸同位置，坐标可直接使用
+      api.overlay.sendResult("", "splitter-drag", {
+        clientX: me.clientX,
+        clientY: me.clientY,
+        zone: "sidebar",
+      });
+    };
+
+    const onMouseUp = () => {
+      api.overlay.sendResult("", "splitter-drag-end", { zone: "sidebar" });
+      window.removeEventListener("mousemove", onMouseMove);
+      window.removeEventListener("mouseup", onMouseUp);
+    };
+
+    window.addEventListener("mousemove", onMouseMove);
+    window.addEventListener("mouseup", onMouseUp);
+  }, []);
 
   return (
     <>
       {lines.map((line, i) => (
         <div
           key={`split-${i}`}
+          onMouseDown={handleMouseDown}
           style={{
             position: "absolute",
             left: `${line.x}px`,

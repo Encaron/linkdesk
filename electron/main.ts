@@ -124,8 +124,15 @@ function createWindow(): void {
     overlayWindow?.webContents?.send('overlay:render', msg);
   });
 
-  // ── E5.6#21.6c 中继：OverlayWindow → 壳 ──
+  // ── E5.6#21.6c 中继 + #22d 拖拽交互：OverlayWindow → 壳 ──
   ipcMain.on('overlay:forward-to-shell', (_event, msg) => {
+    // E5.6#22d：拖拽开始→吞鼠标事件，拖拽结束→恢复穿透
+    if (msg.type === 'splitter-drag-start') {
+      overlayWindow?.enableInteraction();
+    } else if (msg.type === 'splitter-drag-end') {
+      overlayWindow?.disableInteraction();
+    }
+    // 所有事件都转发到壳（包括 drag 事件——壳侧处理 resizeZone）
     mainWindow?.webContents?.send('overlay:result', msg);
   });
 

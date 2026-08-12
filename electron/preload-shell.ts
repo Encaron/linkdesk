@@ -521,12 +521,20 @@ try {
       },
     },
 
-    // ── E5.6#22a：overlay API——壳推送渲染命令到 OverlayWindow ──
+    // ── E5.6#22a/#22d：overlay API——壳推送渲染命令到 OverlayWindow ──
     overlay: {
       /** fire-and-forget——推渲染命令到 OverlayWindow，不等待结果。
        *  show()（#23h）构建在此之上——加 requestId + Promise + 超时。 */
       push: (type: string, payload: unknown) =>
         ipcRenderer.send('overlay:forward-to-overlay', { requestId: '', type, payload }),
+
+      /** 监听 OverlayWindow 回传的用户交互事件（splitter-drag 等）。
+       *  返回 unsubscribe——配 React useEffect cleanup。 */
+      onResult: (cb: (msg: { requestId: string; type: string; result: unknown }) => void) => {
+        const handler = (_event: Electron.IpcRendererEvent, msg: any) => cb(msg);
+        ipcRenderer.on('overlay:result', handler);
+        return () => { ipcRenderer.removeListener('overlay:result', handler); };
+      },
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──

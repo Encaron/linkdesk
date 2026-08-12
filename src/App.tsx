@@ -391,6 +391,24 @@ function App() {
     };
   }, []);
 
+  // E5.6#22d：监听 OverlayWindow 回传的拖拽事件
+  useEffect(() => {
+    const overlayApi = (window as any).linkdesk?.overlay;
+    if (!overlayApi?.onResult) return;
+
+    const unsub = overlayApi.onResult((msg: { type: string; result: unknown }) => {
+      if (msg.type !== "splitter-drag") return;
+      const data = msg.result as { clientX: number; zone: string } | undefined;
+      if (!data || data.zone !== "sidebar") return;
+      // clientX → LayoutEngine 容器坐标（窗口内容区 x=0 即容器 x=0）
+      const iconbarWidth = layoutEngine.getBounds("iconbar")?.width ?? 42;
+      const newWidth = data.clientX - iconbarWidth;
+      layoutEngine.resizeZone("sidebar", newWidth);
+    });
+
+    return unsub;
+  }, []);
+
   /* ---- 侧栏拖拽调整宽度（走 LayoutEngine.resizeZone） ---- */
   const dragging = useRef(false);
 
