@@ -188,7 +188,7 @@ function setupHeartbeat(wcv: WebContentsView): void {
   Monaco onDidChangeModelContent
     → 脏内容异步写入 %APPDATA%/linkdesk/hot-exit/{workspaceId}/{filePath}.dirty
     → Pool 崩溃
-    → 重建 → EditorZone 重新 mount
+    → 重建 → MainZone 重新 mount
     → PluginComponent(pluginId="editor", sourceId=filePath) mount
     → 编辑器检查 hot-exit 目录 → 有脏文件 → 恢复内容 + 标记 dirty
     → 用户保存 → 删除 hot-exit 文件
