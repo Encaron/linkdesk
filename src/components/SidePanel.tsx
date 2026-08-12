@@ -154,8 +154,8 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
   const toolbarViews = activeViews.filter((v) => v.role === "toolbar");
   const sectionViews = activeViews.filter((v) => v.role !== "toolbar");
 
-  // toolbarHeight 从 ToolbarSlot 回调接收——状态归 ToolbarSlot 管，SidePanel 只是转交
-  const [toolbarHeight, setToolbarHeight] = useState(0);
+  // toolbar height tracked for ToolbarSlot, no longer passed to SectionStack (toolbar outside scroll area)
+  const setToolbarHeight = useState(0)[1];
 
   // E5#60：view header 右键菜单
   const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null);
@@ -183,17 +183,25 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
 
     return (
       <>
-        <ToolbarSlot
-          views={toolbarViews}
-          pluginId={effectiveContainerId}
-          onHeightChange={setToolbarHeight}
-        />
-        <SectionStack
-          views={sectionViews}
-          pluginId={effectiveContainerId}
-          toolbarHeight={toolbarHeight}
-          mergeHeaderWhenSingle={container?.mergeHeaderWhenSingle}
-        />
+        {/* E5.6#16.7k 归一化：toolbar 在滚动容器外——flex-shrink:0 保证永远可见 */}
+        <div style={{ flexShrink: 0 }}>
+          <ToolbarSlot
+            views={toolbarViews}
+            pluginId={effectiveContainerId}
+            onHeightChange={setToolbarHeight}
+          />
+        </div>
+
+        {/* SectionStack——flex:1 + overflow-y:auto → 承揽全部滚动。
+            stickyTop=0——toolbar 已不在滚动区内，无需为其留高度。 */}
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+          <SectionStack
+            views={sectionViews}
+            pluginId={effectiveContainerId}
+            toolbarHeight={0}
+            mergeHeaderWhenSingle={container?.mergeHeaderWhenSingle}
+          />
+        </div>
       </>
     );
   };
@@ -234,7 +242,7 @@ const SidePanel = forwardRef<HTMLElement, SidePanelProps>(
               ◀
             </button>
           </div>
-          <div className="side-panel-content">
+          <div className="side-panel-content" style={{ display: "flex", flexDirection: "column", overflow: "hidden" }}>
             {renderSidebarContent()}
           </div>
         </>

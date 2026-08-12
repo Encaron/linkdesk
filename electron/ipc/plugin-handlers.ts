@@ -19,6 +19,11 @@ export function registerPluginHandlers(): void {
     return pluginFileService.readManifest(pluginId);
   });
 
+  // 列出 .disabled/ 目录中的已卸载插件（E5.6#16.7k——启动时扫描并缓存元数据）
+  ipcMain.handle('plugins:listDisabledDirs', async () => {
+    return pluginFileService.listDisabledPluginDirs();
+  });
+
   // 解析插件目录绝对路径（Vite /@fs/ 兼容）
   ipcMain.handle('plugins:resolvePath', (_event, pluginId: string) => {
     return pluginFileService.resolvePath(pluginId);
