@@ -358,6 +358,30 @@ function App() {
           });
         }
       }
+
+      // E5.6#22c：推送分隔线到 OverlayWindow——跨 Pool 边界不裁切
+      const overlayApi = (window as any).linkdesk?.overlay;
+      if (overlayApi?.push && b.sidebar) {
+        const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
+        const isVisible = b.sidebar.width > 0;
+        if (isVisible && edge) {
+          const handleX = edge === "right"
+            ? b.sidebar.x - 4
+            : b.sidebar.x + b.sidebar.width;
+          overlayApi.push("split-lines", {
+            lines: [{
+              orientation: "vertical" as const,
+              x: handleX,
+              y: TITLE_BAR_HEIGHT,
+              width: 4,
+              height: b.sidebar.height,
+            }],
+          });
+        } else {
+          // 侧栏折叠——推空 lines 隐藏分隔线
+          overlayApi.push("split-lines", { lines: [] });
+        }
+      }
     });
     updateSize();
     window.addEventListener("resize", updateSize);
