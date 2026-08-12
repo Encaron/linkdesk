@@ -31,9 +31,10 @@ interface OverlayState {
   payload: unknown;
 }
 
-// ── E5.6#22b：分隔线类型——壳 push split-lines 命令时传入 ──
+// ── E5.6#22b/#22e：分隔线类型——壳 push split-lines 命令时传入 ──
 interface SplitLine {
   orientation: "vertical" | "horizontal";
+  zone: string;  // E5.6#22e：拖拽时 resize 的目标 zone
   x: number;
   y: number;
   width: number;
@@ -163,27 +164,27 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
 function SplitLines({ lines }: { lines: SplitLine[] }) {
   if (!lines || lines.length === 0) return null;
 
-  // E5.6#22d：mousedown → 通知壳开始拖拽（enableInteraction），
+  // E5.6#22d/#22e：mousedown → 通知壳开始拖拽（enableInteraction），
   // mousemove → 发坐标到壳（resizeZone），mouseup → 结束（disableInteraction）。
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, line: SplitLine) => {
     e.preventDefault();
     e.stopPropagation();
     const api = getOverlayApi();
 
     // 拖拽开始——壳 enableInteraction() 防止鼠标事件穿透到 Pool
-    api.overlay.sendResult("", "splitter-drag-start", { zone: "sidebar" });
+    api.overlay.sendResult("", "splitter-drag-start", { zone: line.zone });
 
     const onMouseMove = (me: MouseEvent) => {
       // clientX/clientY——OverlayWindow 与主窗口同尺寸同位置，坐标可直接使用
       api.overlay.sendResult("", "splitter-drag", {
         clientX: me.clientX,
         clientY: me.clientY,
-        zone: "sidebar",
+        zone: line.zone,
       });
     };
 
     const onMouseUp = () => {
-      api.overlay.sendResult("", "splitter-drag-end", { zone: "sidebar" });
+      api.overlay.sendResult("", "splitter-drag-end", { zone: line.zone });
       window.removeEventListener("mousemove", onMouseMove);
       window.removeEventListener("mouseup", onMouseUp);
     };
@@ -197,7 +198,7 @@ function SplitLines({ lines }: { lines: SplitLine[] }) {
       {lines.map((line, i) => (
         <div
           key={`split-${i}`}
-          onMouseDown={handleMouseDown}
+          onMouseDown={(e) => handleMouseDown(e, line)}
           style={{
             position: "absolute",
             left: `${line.x}px`,
