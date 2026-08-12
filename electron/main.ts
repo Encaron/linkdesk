@@ -119,6 +119,12 @@ function createWindow(): void {
   mainWindow.on('resize', () => overlayWindow?.syncBounds());
   mainWindow.on('move', () => overlayWindow?.syncBounds());
 
+  // ── 主窗口 focus/blur → OverlayWindow 显隐 ——
+  // 无 parent 关系（见 overlay-window.ts 注释），用 focus 控制 z-order：
+  // 聚焦时 show → 浮在所有 Pool 之上；失焦时 hide → 不浮在其他应用上。
+  mainWindow.on('focus', () => overlayWindow?.show());
+  mainWindow.on('blur', () => overlayWindow?.hide());
+
   // ── E5.6#21.6c 中继：任何渲染进程 → OverlayWindow ──
   ipcMain.on('overlay:forward-to-overlay', (_event, msg) => {
     overlayWindow?.webContents?.send('overlay:render', msg);
