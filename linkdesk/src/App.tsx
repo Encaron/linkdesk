@@ -405,13 +405,14 @@ function App() {
       // E5.6#22e：通用 resize——按 zone 计算新尺寸，加 zone 只需加 case
       switch (data.zone) {
         case "sidebar": {
-          const iconbarWidth = layoutEngine.getBounds("iconbar")?.width ?? 42;
-          const newWidth = data.clientX - iconbarWidth;
+          const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
+          const newWidth = edge === "right"
+            ? window.innerWidth - data.clientX
+            : data.clientX - (layoutEngine.getBounds("iconbar")?.width ?? 42);
           layoutEngine.resizeZone("sidebar", newWidth);
           break;
         }
         // 未来：case "bottom" → height = clientY - headerHeight
-        // 未来：case "rightsidebar" → width = windowWidth - clientX
       }
     });
 

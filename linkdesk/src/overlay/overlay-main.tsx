@@ -175,6 +175,12 @@ function SplitLines({ lines }: { lines: SplitLine[] }) {
     api.overlay.sendResult("", "splitter-drag-start", { zone: line.zone });
 
     const onMouseMove = (me: MouseEvent) => {
+      // 鼠标在窗口外释放 → mouseup 事件不到达此 window。
+      // buttons === 0 时当作 mouseup——否则拖拽永久不结束。
+      if (me.buttons === 0) {
+        onMouseUp();
+        return;
+      }
       // clientX/clientY——OverlayWindow 与主窗口同尺寸同位置，坐标可直接使用
       api.overlay.sendResult("", "splitter-drag", {
         clientX: me.clientX,
