@@ -208,7 +208,7 @@ E5.7 极简Pool
 | 浮层方案 | CSS `position: fixed` + `z-index` 层级 |
 | 分隔线方案 | CSS flex 分隔——`cursor: col-resize` + mousedown 拖拽 |
 
-> **壳渲染进程为什么保留：** "壳=唯一真相源"——tabState/syncLayout/pushLayout/Registry/命令执行全部留在壳。壳只是不再渲染 UI DOM（被 WCV 完全覆盖）。壳想，池画。
+> **壳渲染进程为什么保留：** "壳=唯一真相源"——tabState/syncLayout/pushLayout/命令执行留在壳；**静态声明 Registry 数据（LangDef/Protocol/FileAssociation）真源在主进程**（Phase 11 分区——2026-08-13 审计：文件打开路由本就在主进程决策）。壳只是不再渲染 UI DOM（被 WCV 完全覆盖）。壳想，池画。
 >
 > **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（MainZone 含 TabBar 都在池里，TabBarZone 已取消——2026-08-13 审计），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
 

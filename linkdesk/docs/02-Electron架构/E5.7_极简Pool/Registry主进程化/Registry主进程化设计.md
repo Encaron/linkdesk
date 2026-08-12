@@ -26,11 +26,12 @@ TypeScript 模块在 Electron 多进程中各自独立实例化：
 Pool renderer → langDef.get() → IPC langDef:get → 主进程读自己的 Map → 返回 ✅
 ```
 
-**壳渲染进程 Registry 保留**——壳代码（tabState/命令执行/loader.ts）仍直接 import。两个实例并存但数据一致——壳注册时同时 IPC 同步到主进程。
+**🔴 单写入方定死（2026-08-13 审计——原稿双真源：主进程扫盘 + 壳 IPC 同步并写同一张表，违反"壳=唯一真相源"且卸载语义未定义）：** 静态声明三表（LangDef/Protocol/FileAssociation）唯一写入方 = **主进程**：
+- 启动扫盘——plugin-manifest-loader
+- 运行时装/卸插件 → 主进程重扫对应 plugin.json
+- Pool 插件运行时注册 → 直接 IPC 汇入主进程（E5.7#49/#50）
 
-> **E5.7 变化：** "壳内插件"已不存在——插件全部在 Pool 渲染、走 `window.linkdesk.*`，不直接 import @src/core。壳渲染进程里直接 import Registry 的只剩壳自己的代码。同步方向不变：壳注册 → IPC → 主进程镜像。
-
-**主进程 Registry 是"服务端缓存"——不替换壳侧 Registry，而是镜像一份供跨进程查询。**
+壳渲染进程**不写不读**这三张表——E5.7 壳无消费方（文件树/编辑器/串口全在 Pool），壳侧实例随 #49/#50 删除。"壳=唯一真相源"改为分区适用：tabState/命令执行留在壳；静态声明数据真源在主进程（文件打开路由本就在主进程决策，FileAssociation 迁主进程是功能必需）。
 
 ## 3. 迁移范围
 
@@ -39,7 +40,7 @@ Pool renderer → langDef.get() → IPC langDef:get → 主进程读自己的 Ma
 | LangDefRegistry | ✅ 迁 | 跨进程查询（Pool renderer → 主进程） |
 | ProtocolRegistry | ✅ 迁 | 同上 |
 | FileAssociationService | ✅ 迁 | 纯字符串数据，可序列化 |
-| FileDecorationRegistry | ❌ 不迁 | provider 是 JS 函数，不可跨进程序列化——`plugins:call` 对它是永久正确模式 |
+| FileDecorationRegistry | ❌ 不迁 | provider 是 JS 函数，不可跨进程序列化——真源与消费方同进程（E5.7 中 provider 注册与文件树消费都在 Pool），不进 IPC；机制归 #46 矩阵 + Phase 12（🔴 2026-08-13 审计：原稿"plugins:call 永久正确模式"是 E5.6 残影——代理目标是壳，E5.7 壳内已无 provider） |
 | CommandRegistry | ❌ 不迁 | 已有 plugins:call 通路，纯壳内使用 |
 | MenuRegistry | ❌ 不迁 | 同上 |
 | KeybindingRegistry | ❌ 不迁 | 同上 |
