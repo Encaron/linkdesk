@@ -102,11 +102,16 @@ CSS:
 **文件：** `src/pool/zones/SidebarZone.tsx`
 
 ```
-Props: sidebar: { visible: boolean; width: number; viewId: string | null }
-职责：
+Props: sidebar: SidebarLayout（壳推送全量字段）
+职责（🔴 哑渲染 SidebarLayout 全部字段——不只是 PluginComponent 包装器。2026-08-13 审计修正）：
   - visible=false → display: none（零宽度 + overflow: hidden）
-  - visible=true → 渲染 viewId 对应的插件视图
-  - 使用 <PluginComponent>——和 EditorZone 中标签页的加载方式一致
+  - collapsed → 只渲染 ▶ 展开按钮（折叠态）
+  - views 为空 → 空状态文案（壳解析后推送）
+  - 容器结构：
+    · header——containerTitle / mergeHeaderWhenSingle 单视图标题合并 + ◀ 折叠按钮 + 右键菜单
+    · toolbar 粘顶——views.role==="toolbar" 在滚动容器外（flex-shrink: 0）
+    · section stack——其余 views：折叠 / 拖排 / sash resize（组件来自 src/pool/shared/）
+  - section 内容用 <PluginComponent>——和 EditorZone 中标签页的加载方式一致
   - 侧栏内切换视图：viewId 变化 → PluginComponent 卸载旧/挂载新
 
 CSS:
@@ -115,22 +120,22 @@ CSS:
   flex-shrink: 0
   overflow: hidden
   transition: width 150ms ease (折叠动画)
+  复用 SidePanel.css（E5.6#11l 同款，随 zone 迁入 Pool）
 
 组件树:
-  <div className="sidebar-container">
-    {viewId && (
-      <PluginComponent
-        pluginId={viewId}
-        tabId={`sidebar-${viewId}`}
-        isActive={true}
-      />
-    )}
+  <div className="side-panel">
+    {effectiveTitle && <div className="side-panel-header">…</div>}
+    <div className="side-panel-content">
+      <PoolToolbarSlot />            // src/pool/shared/
+      <PoolSectionStack />           // src/pool/shared/
+    </div>
   </div>
 
 与壳关系:
   原 E5 壳 SidePanel → 迁入此
-  原 E5.6 SidebarRenderer（独立 WCV）→ 变成了此 React 组件
-  数据流不变: viewId 由 pushLayout 推送
+  原 E5.6 SidebarRenderer（独立 WCV）→ 变成了此 React 组件——行为零丢失（E5.7#10 验收 6 项对照）
+  数据流: SidebarLayout 全量字段由 pushLayout 推送（含 containerTitle/mergeHeaderWhenSingle/collapsedViews/views[].role）
+  动作路径: 折叠/切换视图 → 暂用 linkdesk.pool.* 过渡 → Phase 12 归位 API 命名
 ```
 
 ### 2.4 TabBarZone
