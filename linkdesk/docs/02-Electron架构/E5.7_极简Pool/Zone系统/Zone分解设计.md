@@ -255,7 +255,8 @@ Props: panel: { visible: boolean; height: number; activeViewId: string; views: P
 🔴 骨架优先——数据生产者归 Phase 12（API 归位）：
   - 壳侧 bottom-panel 贡献路由（contributes.views["bottom-panel"] → panel.views[]）
   - 面板高度持久化（workspace.json）
-  - 插件贡献面板视图动态注册（E5.6 的 registerPanelView——插件独立铁律要求）
+  - 插件贡献面板视图动态注册（ViewContainerService.registerView + contributes.views——插件独立铁律要求；2026-08-13 审计："E5.6 的 registerPanelView"现网零实现，实名如上）
+  三件套由 E5.7#63.7 认领（2026-08-13 审计补任务号——原稿承诺"归 Phase 12"无任务）
   生产者建成前 layout.panel 无数据 → 条件渲染永假，本任务验证 = 骨架渲染零报错
 
 CSS:
@@ -274,15 +275,12 @@ keep-alive:
   所有 views 平级渲染，display: none/flex 切换
   和 MainZone 的 TabContent 模式一致
 
-面板视图注册表（🔴 2026-08-13 审计修正路径——不在 pool/main/，#24 整目录删除）:
-  src/pool/views/panelViews.ts:
-    export const PANEL_VIEWS: Record<string, React.ComponentType<{ isActive: boolean }>>
-    = {
-      "terminal": TerminalView,
-      "output": OutputPanel,
-      "problems": ProblemsView,   // 未来
-      "ports": PortsView,         // 未来
-    }
+面板视图加载（🔴 2026-08-13 审计：删 PANEL_VIEWS 静态表——写死 pluginId 违反插件独立铁律 + 硬约束 10，且是对侧栏已有动态机制的倒退）:
+  动态加载——MainZone 插件标签页同款 PluginComponent 模式：
+  元数据来自 shell pushLayout `panel.views[]`
+    （ViewContainerService `location:"panel"` 枚举已存在——loader.ts 已动态注册所有 contributes.views）
+  按 pluginId + render 动态 import 插件视图组件
+    ——第三方插件加底部面板视图 = 只改自己的 plugin.json，池代码零改动
 
 与壳关系:
   E5.6 设计为独立 BottomPanelPool WCV → E5.7 变 MainPool 内部 zone
