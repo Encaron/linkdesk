@@ -68,7 +68,7 @@ export class OverlayWindow {
     });
 
     // ── 默认鼠标穿透——透明区域事件到达下方 Pool ──
-    this.window.setIgnoreMouseEvents(true, { forward: true });
+    this.window.setIgnoreMouseEvents(true);
 
     // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
     if (isDev) {
@@ -132,7 +132,7 @@ export class OverlayWindow {
   /** 关闭鼠标交互——浮层关闭后恢复穿透 */
   disableInteraction(): void {
     if (this.window && !this.window.isDestroyed()) {
-      this.window.setIgnoreMouseEvents(true, { forward: true });
+      this.window.setIgnoreMouseEvents(true);
       this._clearWatchdog();
     }
   }
