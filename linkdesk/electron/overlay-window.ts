@@ -5,7 +5,7 @@
  * 解决的问题：SidebarPool 和 MainPool 是同级 WebContentsView——任一个 Pool 的
  * DOM 元素超出自身矩形边界后，被另一个 Pool 裁剪。z-index 在 Chromium 渲染进程间无效。
  *
- * OverlayWindow 是独立的透明 BrowserWindow（parent: mainWindow），默认鼠标穿透。
+ * OverlayWindow 是独立的透明 BrowserWindow（无 parent——focus/blur 控制显隐），默认鼠标穿透。
  * 浮层 UI（右键菜单/命令面板/Toast/Dialog）渲染在此窗口内——不被任何 Pool 裁剪。
  *
  * 对标 VS Code 的 overlay 层——但 VS Code 是单 WebView，linkDesk 是多 Pool WebContentsView。
@@ -25,6 +25,7 @@ import { DEV_SERVER_URL } from '../shared/constants.js';
 export class OverlayWindow {
   private window: BrowserWindow | null = null;
   private mainWindow: BrowserWindow;
+  private _ready = false;
 
   constructor(mainWindow: BrowserWindow) {
     this.mainWindow = mainWindow;
@@ -40,11 +41,13 @@ export class OverlayWindow {
     const { x, y, width, height } = this.mainWindow.getBounds();
 
     this.window = new BrowserWindow({
-      // ── 透明 + 无框 + 父子关系（随父最小化/恢复，不浮在其他应用之上）──
+      // ── 透明 + 无框 ──
+      // ❌ 不用 parent——Windows 上 owned 子窗口的 setIgnoreMouseEvents 不转发 WM_SETCURSOR，
+      //    导致光标在 OverlayWindow 默认箭头和下方 Pool 光标之间闪烁。
+      //    改用 focus/blur 显隐控制 z-order——见 main.ts。
       transparent: true,
       frame: false,
-      parent: this.mainWindow,
-      // ── 显式定位到主窗口屏幕坐标——parent 只管 z-order 不管位置 ──
+      // ── 显式定位到主窗口屏幕坐标 ──
       x,
       y,
       width,
@@ -77,9 +80,13 @@ export class OverlayWindow {
       this.window.loadFile(path.join(__dirname, '../../dist/overlay.html'));
     }
 
-    // ── ready-to-show 后显示（跟随主窗口——透明无感）──
+    // ── 加载完成后标记就绪——允许 show()，但不主动 show（由 main.ts focus 控制）──
     this.window.once('ready-to-show', () => {
-      this.window?.show();
+      this._ready = true;
+      // 如果主窗口此时已有焦点——立即显示
+      if (this.mainWindow.isFocused()) {
+        this.show();
+      }
     });
 
     // ── 崩溃恢复日志——#26.5 实施前先记录 ──
@@ -101,12 +108,14 @@ export class OverlayWindow {
 
   /** 重新创建——崩溃恢复（#26.5b 预埋） */
   recreate(): void {
+    this._ready = false;
     this.destroy();
     this.create();
   }
 
   /** 销毁 OverlayWindow */
   destroy(): void {
+    this._ready = false;
     if (this.window && !this.window.isDestroyed()) {
       this.window.close();
     }
@@ -135,6 +144,22 @@ export class OverlayWindow {
     const [cx, cy] = this.window.getPosition();
     if (cw === width && ch === height && cx === x && cy === y) return;
     this.window.setBounds({ x, y, width, height });
+  }
+
+  /** 显示 OverlayWindow——主窗口获得焦点时调用 */
+  show(): void {
+    if (!this._ready) return;
+    if (this.window && !this.window.isDestroyed() && !this.window.isVisible()) {
+      this.syncBounds();
+      this.window.showInactive();
+    }
+  }
+
+  /** 隐藏 OverlayWindow——主窗口失去焦点时调用（防止浮在其他应用之上） */
+  hide(): void {
+    if (this.window && !this.window.isDestroyed()) {
+      this.window.hide();
+    }
   }
 
   /** 获取 WebContents——主进程发 IPC 到 OverlayWindow */
