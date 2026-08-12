@@ -228,6 +228,8 @@ function createWindow(): void {
   });
 
   mainWindow.on('closed', () => {
+    overlayWindow?.destroy();
+    overlayWindow = null;
     mainWindow = null;
   });
 }
