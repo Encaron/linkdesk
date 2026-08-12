@@ -20,11 +20,13 @@ import ReactDOM from "react-dom/client";
 
 // ── 类型 ──
 interface OverlayCommand {
+  requestId: string;
   type: string;
   payload: unknown;
 }
 
 interface OverlayState {
+  requestId: string | null;
   type: string | null;
   payload: unknown;
 }
@@ -146,14 +148,14 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
 // ── OverlayApp ──
 
 function OverlayApp() {
-  const [activeOverlay, setActiveOverlay] = useState<OverlayState>({ type: null, payload: null });
+  const [activeOverlay, setActiveOverlay] = useState<OverlayState>({ requestId: null, type: null, payload: null });
 
   // ── 接收渲染命令 ──
   const handleCommand = useCallback((cmd: OverlayCommand) => {
     if (cmd.type === "dismiss") {
-      setActiveOverlay({ type: null, payload: null });
+      setActiveOverlay({ requestId: null, type: null, payload: null });
     } else {
-      setActiveOverlay({ type: cmd.type, payload: cmd.payload });
+      setActiveOverlay({ requestId: cmd.requestId, type: cmd.type, payload: cmd.payload });
     }
   }, []);
 
