@@ -9,7 +9,7 @@
  * 同 when 重复注册 → console.warn + 覆盖——不静默，让开发者立即看到冲突。
  */
 
-import { RegistryBase } from "./registry/RegistryBase";
+import { RegistryBase } from "./RegistryBase";
 
 export interface ClipboardProvider {
   pluginId: string;

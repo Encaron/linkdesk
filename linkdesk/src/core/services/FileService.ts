@@ -15,7 +15,7 @@
  */
 
 import { normalizePath } from "./pathUtils";
-import { reportError } from "../ErrorService";
+import { reportError } from "./ErrorService";
 
 /* ── 类型 ── */
 

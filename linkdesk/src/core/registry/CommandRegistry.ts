@@ -13,7 +13,7 @@
  */
 
 import type { CancellationToken } from "../utils/CancellationToken";
-import { reportError } from "../ErrorService";
+import { reportError } from "../services/ErrorService";
 
 /* ── 类型 ── */
 

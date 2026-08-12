@@ -22,10 +22,10 @@ export * from "./registry/MenuRegistry";
 export * from "./registry/ProtocolRegistry";
 export * from "./registry/StatusBarService";
 export * from "./registry/ThemeRegistry";
-export * from "./ClipboardProviderRegistry";
+export * from "./registry/ClipboardProviderRegistry";
 
 // ── 基础设施 ──
-export { reportError } from "./ErrorService";
+export { reportError } from "./services/ErrorService";
 export { PLUGINS_DIR, PLUGIN_SUBDIRS, PLUGIN_ENTRY_FILES } from "./pluginPaths";
 
 // ── 服务 ──
@@ -69,5 +69,5 @@ export type * from "./api/linkdesk-api";
 export type * from "./api/types";
 
 // ── 内置 ──
-export * from "./builtin/coreCommands";
-export * from "./builtin/registerBuiltinProtocols";
+export * from "./commands/coreCommands";
+export * from "./commands/registerBuiltinProtocols";
