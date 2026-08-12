@@ -27,8 +27,8 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { PoolTab } from "../core/types/poolLayout";
-import { normalizePath } from "../core/services/pathUtils";
+import type { PoolTab } from "../../core/types/poolLayout";
+import { normalizePath } from "../../core/services/pathUtils";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import "./GroupTabBar.css";
 

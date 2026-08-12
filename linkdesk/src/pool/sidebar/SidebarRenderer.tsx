@@ -11,12 +11,12 @@ import { useState, useCallback } from "react";
 import PoolToolbarSlot from "./PoolToolbarSlot";
 import PoolSectionStack from "./PoolSectionStack";
 import type { SidebarAction } from "./PoolSectionStack";
-import type { SidebarLayout, SidebarViewMeta } from "../core/types/poolLayout";
+import type { SidebarLayout, SidebarViewMeta } from "../../core/types/poolLayout";
 // E5.6#11l：复用壳侧栏 CSS
-import "../components/SidePanel.css";
+import "../../components/SidePanel.css";
 // E5.6#11-fix4：header 右键菜单——对标壳 SidePanel.tsx
-import ContextMenu from "../components/shared/ContextMenu";
-import { MenuId } from "../core/registry/MenuRegistry";
+import ContextMenu from "../../components/shared/ContextMenu";
+import { MenuId } from "../../core/registry/MenuRegistry";
 
 interface SidebarRendererProps {
   sidebar?: SidebarLayout;

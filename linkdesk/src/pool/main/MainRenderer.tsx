@@ -17,16 +17,16 @@
 import { useState, useRef, useCallback, useMemo, useReducer, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import ErrorBoundary from "../components/shared/ErrorBoundary";
-import PluginComponent from "./PluginComponent";
-import GroupTabBar from "./GroupTabBar";
-import ShellViewRenderer from "./views/ShellViewRenderer";
-import type { PoolGroup, PoolTab } from "../core/types/poolLayout";
-import type { SplitNode } from "../hooks/splitTree";
-import { getAllLeafGroupIds } from "../hooks/splitTree";
-import type { DropZone } from "../hooks/tabDragTypes";
-import { detectDropZone } from "../hooks/tabDragTypes";
-import { useDragReorder } from "../hooks/useDragReorder";
+import ErrorBoundary from "../../components/shared/ErrorBoundary";
+import PluginComponent from "../shared/PluginComponent";
+import GroupTabBar from "../shared/GroupTabBar";
+import ShellViewRenderer from "../views/ShellViewRenderer";
+import type { PoolGroup, PoolTab } from "../../core/types/poolLayout";
+import type { SplitNode } from "../../hooks/splitTree";
+import { getAllLeafGroupIds } from "../../hooks/splitTree";
+import type { DropZone } from "../../hooks/tabDragTypes";
+import { detectDropZone } from "../../hooks/tabDragTypes";
+import { useDragReorder } from "../../hooks/useDragReorder";
 
 // ═══════════════════════════════════════════════════════════
 // Constants
