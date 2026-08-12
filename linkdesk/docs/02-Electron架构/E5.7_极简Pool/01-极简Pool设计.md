@@ -929,8 +929,6 @@ src/pool/
 │   ├── useTabDropPreview.ts   ← 分屏拖拽预览
 │   └── useDragDetach.ts       ← 脱出窗口拖拽检测
 │
-├── splitTree.ts               ← 从 src/hooks/splitTree.ts 迁入
-│
 └── views/                     ← 不变
     ├── ShellViewRenderer.tsx
     ├── WelcomePoolView.tsx
@@ -950,6 +948,8 @@ electron/                      ← 主进程——大幅瘦身
 ├── src/components/ (壳 DOM)    ← 迁移入 zones/ 或共享 hooks
 └── shell 渲染相关代码          ← App.tsx 中 TitleBar/IconBar/TabBar/StatusBar 渲染逻辑
 ```
+
+> **splitTree.ts（原 src/hooks/）→ `src/core/utils/`**——分屏树纯操作，壳（tabState 分屏逻辑）与 Pool（EditorZone/TabBarZone）双进程共用，不进 pool 目录（见壳目录规范 §1 utils）。
 
 ---
 
