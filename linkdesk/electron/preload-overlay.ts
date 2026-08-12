@@ -23,8 +23,8 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
 // ── 缓冲回放 ──
-const _commandBuffer: Array<{ type: string; payload: unknown }> = [];
-let _onCommandCallback: ((cmd: { type: string; payload: unknown }) => void) | null = null;
+const _commandBuffer: Array<{ requestId: string; type: string; payload: unknown }> = [];
+let _onCommandCallback: ((cmd: { requestId: string; type: string; payload: unknown }) => void) | null = null;
 let _ready = false;
 
 // ── overlay.ready()——就绪信号 ──
@@ -41,7 +41,7 @@ function ready(): void {
 }
 
 // ── overlay.onCommand(cb)——React mount 时注册回调 ──
-function onCommand(cb: (cmd: { type: string; payload: unknown }) => void): void {
+function onCommand(cb: (cmd: { requestId: string; type: string; payload: unknown }) => void): void {
   _onCommandCallback = cb;
   // 如果 ready() 在 onCommand() 之前被调用——立即回放
   if (_ready && _commandBuffer.length > 0) {
@@ -53,7 +53,7 @@ function onCommand(cb: (cmd: { type: string; payload: unknown }) => void): void 
 }
 
 // ── 监听 overlay:render IPC——来自主进程中继 ──
-ipcRenderer.on('overlay:render', (_event, data: { type: string; payload: unknown }) => {
+ipcRenderer.on('overlay:render', (_event, data: { requestId: string; type: string; payload: unknown }) => {
   if (_ready && _onCommandCallback) {
     // 实时模式——直接推给 React
     try { _onCommandCallback(data); } catch { /* 静默 */ }
