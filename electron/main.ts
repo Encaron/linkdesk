@@ -118,29 +118,15 @@ function createWindow(): void {
   // ── 主窗口 resize/move → OverlayWindow 同步尺寸+位置 ──
   mainWindow.on('resize', () => overlayWindow?.syncBounds());
   mainWindow.on('move', () => overlayWindow?.syncBounds());
-  // E5.6#22d2：主窗口失焦（Alt+Tab）→ 强制恢复穿透——防止交互锁死
-  mainWindow.on('blur', () => overlayWindow?.disableInteraction());
 
   // ── E5.6#21.6c 中继：任何渲染进程 → OverlayWindow ──
   ipcMain.on('overlay:forward-to-overlay', (_event, msg) => {
     overlayWindow?.webContents?.send('overlay:render', msg);
   });
 
-  // ── E5.6#21.6c 中继 + #22d 拖拽交互：OverlayWindow → 壳 ──
+  // ── E5.6#21.6c 中继：OverlayWindow → 壳 ──
   ipcMain.on('overlay:forward-to-shell', (_event, msg) => {
-    // E5.6#22d：拖拽开始→吞鼠标事件，拖拽结束→恢复穿透
-    if (msg.type === 'splitter-drag-start') {
-      overlayWindow?.enableInteraction();
-    } else if (msg.type === 'splitter-drag-end') {
-      overlayWindow?.disableInteraction();
-    }
-    // 所有事件都转发到壳（包括 drag 事件——壳侧处理 resizeZone）
     mainWindow?.webContents?.send('overlay:result', msg);
-  });
-
-  // ── E5.6#22d2：ESC 自救——壳侧 document keydown → 强制恢复穿透 ──
-  ipcMain.on('overlay:escape-interaction', () => {
-    overlayWindow?.disableInteraction();
   });
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──

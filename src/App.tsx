@@ -358,31 +358,6 @@ function App() {
           });
         }
       }
-
-      // E5.6#22c：推送分隔线到 OverlayWindow——跨 Pool 边界不裁切
-      const overlayApi = (window as any).linkdesk?.overlay;
-      if (overlayApi?.push && b.sidebar) {
-        const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
-        const isVisible = b.sidebar.width > 0;
-        if (isVisible && edge) {
-          const handleX = edge === "right"
-            ? b.sidebar.x - 4
-            : b.sidebar.x + b.sidebar.width;
-          overlayApi.push("split-lines", {
-            lines: [{
-              orientation: "vertical" as const,
-              zone: "sidebar",
-              x: handleX,
-              y: TITLE_BAR_HEIGHT,
-              width: 4,
-              height: b.sidebar.height,
-            }],
-          });
-        } else {
-          // 侧栏折叠——推空 lines 隐藏分隔线
-          overlayApi.push("split-lines", { lines: [] });
-        }
-      }
     });
     updateSize();
     window.addEventListener("resize", updateSize);
@@ -390,44 +365,6 @@ function App() {
       window.removeEventListener("resize", updateSize);
       unsub();
     };
-  }, []);
-
-  // E5.6#22d：监听 OverlayWindow 回传的拖拽事件
-  useEffect(() => {
-    const overlayApi = (window as any).linkdesk?.overlay;
-    if (!overlayApi?.onResult) return;
-
-    const unsub = overlayApi.onResult((msg: { type: string; result: unknown }) => {
-      if (msg.type !== "splitter-drag") return;
-      const data = msg.result as { clientX: number; clientY: number; zone: string } | undefined;
-      if (!data) return;
-
-      // E5.6#22e：通用 resize——按 zone 计算新尺寸，加 zone 只需加 case
-      switch (data.zone) {
-        case "sidebar": {
-          const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
-          const newWidth = edge === "right"
-            ? window.innerWidth - data.clientX
-            : data.clientX - (layoutEngine.getBounds("iconbar")?.width ?? 42);
-          layoutEngine.resizeZone("sidebar", newWidth);
-          break;
-        }
-        // 未来：case "bottom" → height = clientY - headerHeight
-      }
-    });
-
-    return unsub;
-  }, []);
-
-  // E5.6#22d2：ESC 自救——强制恢复 OverlayWindow 鼠标穿透
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") {
-        (window as any).linkdesk?.overlay?.escapeInteraction?.();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
   // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
