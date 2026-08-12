@@ -209,6 +209,8 @@ E5.7 极简Pool
 | 分隔线方案 | CSS flex 分隔——`cursor: col-resize` + mousedown 拖拽 |
 
 > **壳渲染进程为什么保留：** "壳=唯一真相源"——tabState/syncLayout/pushLayout/Registry/命令执行全部留在壳。壳只是不再渲染 UI DOM（被 WCV 完全覆盖）。壳想，池画。
+>
+> **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（TabBarZone/EditorZone 都在池里），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
 
 ---
 
@@ -687,6 +689,19 @@ Layer 3: 主进程 handler 权限校验
 
 **LinkDesk 的插件更没有理由需要进程隔离——它们连 Node.js 都访问不了。** `window.linkdesk.*` 是唯一接口，主进程 handler 做权限校验。
 
+### 8.1 filesystem 路径守卫——沙箱唯一故意开口
+
+> 🔴 **现状缺口：** `electron/ipc/file-handlers.ts` 的 11 个 filesystem handler 零路径校验——插件可 `filesystem:remove('C:\\任意路径')`。与"主进程 handler 做权限校验"的安全模型脱节，是对标 VS Code 的 `vscode.workspace.fs`（只能访问 workspace 内文件）必须补的一环。
+
+```
+1. normalizePath 归一化——消除 ../ 穿越与分隔符差异（复用 src/core/pathUtils）
+2. 危险目录写拒绝——系统根目录 / C:\Windows / C:\Program Files 等任何写操作直接拒绝
+3. workspace 外写操作 → 用户确认 dialog（读放行——文件树/打开任意目录是正常用法）
+4. 越界尝试 console.error 记录——便于审计恶意插件
+```
+
+> 写操作 = writeTextFile / writeBinaryFile / createDir / copy / remove；读操作放行。目标：恶意插件无法静默破坏 workspace 之外的系统与用户文件。
+
 ---
 
 ## 9. 崩溃恢复——单点 + 快速重建
@@ -731,7 +746,23 @@ MainPool renderer 崩溃
 
 **和 E5.6 对比：** E5.6 MainPool 崩溃时编辑器同样丢失——区别是 SidebarPool 不受影响。但 2-4s 后全池重建，tabState 恢复后用户回到相同状态。**编辑器的 Hot Exit（未保存内容落盘）是真正的可靠恢复——和进程数无关。**
 
-### 9.3 心跳——简化
+### 9.3 壳渲染进程崩溃——全窗口重建
+
+> 壳渲染进程跑 loader.ts（plugin.json 解析 + glob 构建）+ tabState + 命令分发——它崩了，tabState 随之丢失。E5.6 有"壳崩 → 重建 BrowserWindow"一行，E5.7 必须补上完整恢复路径。
+
+```
+壳 renderer 崩溃
+  → app.on('render-process-gone') 收到 BrowserWindow.webContents
+  → 销毁旧 BrowserWindow（WCV 随窗口销毁）
+  → createMainWindow()——复用应用启动路径（壳 index.html + WCV pool.html）
+  → 壳从 workspace 持久化恢复 tabState → pushLayout
+  → 若壳恢复的 tabState 为空/过期 → 主进程回放 lastLayout 快照兜底
+  → Pool 插件重新 mount → Phase 12 的 IPC 注册通道让插件命令重新登记（闭环）
+```
+
+**与 Pool 崩溃的区别：** Pool 崩 = 壳活，tabState 不丢；壳崩 = 全灭，靠 workspace 持久化 + lastLayout 兜底。壳崩恢复质量依赖两件事：workspace 持久化（已有）和 Phase 12 的 IPC 注册闭环（完成前壳崩后插件命令注册会丢失——边缘场景，接受）。
+
+### 9.4 心跳——简化
 
 E5.6 需要多 Pool 各自心跳（`pool:ping`/`pool:pong` → 超时 10s → 重建该 Pool）。E5.7 只有一个 Pool：
 

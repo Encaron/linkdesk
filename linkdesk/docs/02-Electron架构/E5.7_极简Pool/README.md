@@ -2,7 +2,7 @@
 
 > 2026-08-12。**1 BrowserWindow + 1 WebContentsView（100%×100%）+ preload-pool.ts 沙箱 + 主进程崩溃恢复。**
 > 从 E5.6 双Pool（SidebarPool + MainPool + OverlayWindow）简化而来——进程边界 → 单 DOM，安全靠 preload 沙箱。
-> **93 主任务，16 Phase，串行执行。插件代码零改动。**
+> **94 主任务，16 Phase，串行执行。插件代码零改动。**
 
 ---
 
@@ -19,7 +19,7 @@ E5.6 双Pool 的原始动机是安全——侧栏插件不能带崩编辑器。�
 | 你要做什么 | 读这个 |
 |:--|:--|
 | 🔥 了解极简Pool架构 | [`01-极简Pool设计.md`](01-极简Pool设计.md) — 架构全景、Zone 分解、安全模型、对比表 |
-| 🔥 执行任务 | [`E5.7-执行清单.md`](E5.7-执行清单.md) — **进度唯一真相源**。93 主任务，16 Phase |
+| 🔥 执行任务 | [`E5.7-执行清单.md`](E5.7-执行清单.md) — **进度唯一真相源**。94 主任务，16 Phase |
 | 🔥 Zone 分解 | [`Zone系统/Zone分解设计.md`](Zone系统/Zone分解设计.md) — 每个 Zone 的职责/Props/CSS/与壳关系 |
 | 🔥 浮层归一化 | [`浮层系统/浮层归一化设计.md`](浮层系统/浮层归一化设计.md) — FloatingLayerHost + ContextMenu/QuickPick/Toast/Dialog |
 | 🔥 脱出窗口 | [`脱出窗口/脱出窗口设计.md`](脱出窗口/脱出窗口设计.md) — 拖出主窗口 + 漂移面板 + 新窗口 |

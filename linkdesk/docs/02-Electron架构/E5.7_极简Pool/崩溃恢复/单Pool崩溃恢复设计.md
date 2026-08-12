@@ -7,7 +7,7 @@
 ## 1. 崩溃模型
 
 ```
-场景: Pool renderer 崩溃（OOM/while(true)/GPU crash/插件代码异常）
+场景 A: Pool renderer 崩溃（OOM/while(true)/GPU crash/插件代码异常）
   ↓
 Electron 触发: app.on('render-process-gone')
   ↓
@@ -21,6 +21,15 @@ Electron 触发: app.on('render-process-gone')
   7. pushLayout(lastLayout 快照)
   8. 所有 Zone 重新渲染
   9. 插件重新 mount → 从持久化恢复状态
+
+场景 B: 壳渲染进程崩溃（loader.ts OOM / 壳代码异常）——比 Pool 崩更严重：tabState 随壳而死
+  ↓
+主进程 handler:
+  1. 销毁旧 BrowserWindow（WCV 随窗口销毁）
+  2. createMainWindow()——复用应用启动路径（壳 index.html + WCV pool.html）
+  3. 壳从 workspace 持久化恢复 tabState → pushLayout
+  4. 若壳恢复的 tabState 为空/过期 → 主进程回放 lastLayout 快照兜底
+  5. Pool 插件重新 mount → IPC 重新注册命令（Phase 12 闭环；完成前命令注册会丢失——边缘场景，接受）
 ```
 
 ---
@@ -43,17 +52,32 @@ export function cacheLayoutSnapshot(layout: PoolLayout): void {
 // render-process-gone handler
 export function setupCrashRecovery(mainWindow: BrowserWindow): void {
   app.on('render-process-gone', (event, webContents, details) => {
-    // 只处理 MainPool 的崩溃——不是其他窗口
+    // 分支 1：Pool WCV 崩——重建 WCV（壳存活，tabState 不丢）
     const mainWcv = getMainPoolView();
-    if (!mainWcv || webContents.id !== mainWcv.webContents.id) {
+    if (mainWcv && webContents.id === mainWcv.webContents.id) {
+      console.error('[E5.7] MainPool renderer crashed:', details.reason, details.exitCode);
+      rebuildMainPool(mainWindow);
       return;
     }
 
-    console.error('[E5.7] MainPool renderer crashed:', details.reason, details.exitCode);
+    // 分支 2：壳渲染进程崩——全窗口重建（tabState 随壳丢失，靠持久化 + lastLayout 兜底）
+    if (webContents.id === mainWindow.webContents.id) {
+      console.error('[E5.7] Shell renderer crashed — full window rebuild');
+      rebuildShellAndPool(mainWindow);
+      return;
+    }
 
-    // 1. 重建
-    rebuildMainPool(mainWindow);
+    // 其他窗口（脱出窗口等）——各自处理，不在此处
   });
+}
+
+function rebuildShellAndPool(mainWindow: BrowserWindow): void {
+  // 复用应用启动路径——createMainWindow() 内部：新建 BrowserWindow + 挂 WCV + 加载壳/pool
+  const newWin = createMainWindow();
+  // 壳从 workspace 持久化恢复 tabState；若为空，主进程在 pool:ready 后回放 lastLayout 兜底
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.destroy();  // WCV 随窗口销毁
+  }
 }
 
 function rebuildMainPool(mainWindow: BrowserWindow): void {
@@ -178,9 +202,10 @@ function setupHeartbeat(wcv: WebContentsView): void {
 
 | 维度 | E5.6 双Pool | E5.7 极简Pool |
 |:--|:--|:--|
-| 崩溃点 | 3 个（SidebarPool + MainPool + OverlayWindow） | 1 个（MainPool） |
+| 崩溃点 | 3 个（SidebarPool + MainPool + OverlayWindow） | 2 个（MainPool + 壳渲染进程） |
 | 独立恢复 | ✅ SidebarPool 崩 ≠ MainPool 崩 | ❌ 崩一个 = 全池崩 |
-| 恢复时间 | SidebarPool 1-2s / MainPool 3-5s | 2-4s（全池） |
+| 恢复时间 | SidebarPool 1-2s / MainPool 3-5s | Pool 2-4s / 壳崩 3-5s（全窗口重建） |
+| 壳崩恢复 | 重建 BrowserWindow（无兜底） | workspace 持久化 + lastLayout 兜底 + Phase 12 IPC 重注册闭环 |
 | 编辑器状态保持 | MainPool 崩时编辑器同样丢失 | 同样丢失——依赖 Hot Exit |
 | 心跳 | 每个 Pool 独立心跳 | 1 个心跳 |
 | 代码量 | ~150 行（3 套恢复逻辑） | ~50 行（1 套） |
@@ -210,6 +235,15 @@ Pool 崩溃 → 重建 → 又崩溃 → 又重建 → ...
 Monaco 编辑中 → Pool 崩溃 → 重建
   → Hot Exit 恢复未保存内容
   → 光标位置丢失（Monaco 的 viewState 可持久化——远期优化）
+```
+
+### 5.4 壳崩
+
+```
+壳渲染进程崩 → 全窗口重建 → tabState 从 workspace 持久化恢复
+  → 持久化未覆盖的新建标签页丢失——接受（等同应用重启）
+  → 插件命令注册：Phase 12 完成后插件 mount 时自动 IPC 重注册；未完成前壳崩后命令注册丢失
+  → 未保存编辑器内容：Hot Exit 兜底（同 Pool 崩）
 ```
 
 ---

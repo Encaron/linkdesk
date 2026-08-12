@@ -3,7 +3,7 @@
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
 > **Tauri 时代 P1-P6 🎉。E3 🎉。E4 🎉（2026-08-03）。E5 🎉（2026-08-04）。** 壳通信骨架 + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。Per-Tab WebView 已废弃（E5.5#9，O(N) 进程→E5.7 极简Pool O(1) 取代）。
-> **当前进度：** 🔥 E5.7 极简Pool——1 BrowserWindow + 1 WebContentsView 100%×100%。93 主任务 16 Phase 待执行。进度唯一真相源：`docs/02-Electron架构/E5.7_极简Pool/E5.7-执行清单.md`。E5.6 双Pool 已封存（51%）。
+> **当前进度：** 🔥 E5.7 极简Pool——1 BrowserWindow + 1 WebContentsView 100%×100%。94 主任务 16 Phase 待执行。进度唯一真相源：`docs/02-Electron架构/E5.7_极简Pool/E5.7-执行清单.md`。E5.6 双Pool 已封存（51%）。
 
 ## 架构——圆形大厅模型
 
