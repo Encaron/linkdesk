@@ -62,6 +62,10 @@ export interface PoolTab {
   singleton?: boolean;
   /** 壳内部视图（欢迎页/插件详情/输出面板）——MainPool 内容区不渲染 PluginComponent */
   shellRendered?: boolean;
+  /** 壳内部视图类型——"welcome" | "plugin-detail" | "output"，池侧路由到对应组件 */
+  shellType?: string;
+  /** plugin-detail 视图的目标插件 ID（哪个插件的详情页） */
+  detailPluginId?: string;
 }
 
 /** 分屏组——每个 group 占一个 flex 区域，内含 N 个 keep-alive 标签页 */
