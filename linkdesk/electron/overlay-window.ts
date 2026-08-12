@@ -37,12 +37,15 @@ export class OverlayWindow {
     const isDev = !app.isPackaged;
 
     this.window = new BrowserWindow({
-      // ── 透明 + 无框 + 置顶 ──
+      // ── 透明 + 无框 + 父子关系（随父最小化/恢复，不浮在其他应用之上）──
       transparent: true,
       frame: false,
-      alwaysOnTop: true,
-      // ── 初始尺寸 = 主窗口当前尺寸 ──
-      ...this.getMainBounds(),
+      parent: this.mainWindow,
+      // ── 初始尺寸 = 主窗口当前尺寸（相对坐标——父窗口左上角为原点）──
+      x: 0,
+      y: 0,
+      width: this.mainWindow.getBounds().width,
+      height: this.mainWindow.getBounds().height,
       // ── 不可聚焦（防止抢主窗口焦点）──
       focusable: false,
       // ── 不在任务栏显示 ──
@@ -56,8 +59,6 @@ export class OverlayWindow {
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,
-        // OverlayWindow 离屏渲染——不需要高性能
-        offscreen: false,
         backgroundThrottling: false,
       },
       show: false,
@@ -123,19 +124,13 @@ export class OverlayWindow {
     }
   }
 
-  /** 同步位置/尺寸——主窗口 move/resize 时调用 */
+  /** 同步尺寸——主窗口 resize 时调用。位置由 parent 关系自动跟随，不需要同步 x/y。 */
   syncBounds(): void {
     if (!this.window || this.window.isDestroyed()) return;
-    const bounds = this.getMainBounds();
-    // 只在变化时更新——避免无意义回流
-    const current = this.window.getBounds();
-    if (
-      current.x === bounds.x &&
-      current.y === bounds.y &&
-      current.width === bounds.width &&
-      current.height === bounds.height
-    ) return;
-    this.window.setBounds(bounds);
+    const { width, height } = this.mainWindow.getBounds();
+    const [cw, ch] = this.window.getSize();
+    if (cw === width && ch === height) return;
+    this.window.setSize(width, height);
   }
 
   /** 获取 WebContents——主进程发 IPC 到 OverlayWindow */
@@ -146,12 +141,5 @@ export class OverlayWindow {
   /** OverlayWindow 是否存活 */
   get isAlive(): boolean {
     return this.window !== null && !this.window.isDestroyed();
-  }
-
-  // ── private ──
-
-  private getMainBounds(): { x: number; y: number; width: number; height: number } {
-    const b = this.mainWindow.getBounds();
-    return { x: b.x, y: b.y, width: b.width, height: b.height };
   }
 }

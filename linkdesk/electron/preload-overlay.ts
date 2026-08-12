@@ -64,8 +64,9 @@ ipcRenderer.on('overlay:render', (_event, data: { type: string; payload: unknown
 });
 
 // ── 事件监听——主题/语言被动接收（对标 preload-pool extraHandlers）──
-// 壳通过 broadcast() 广播 theme:changed / lang:changed——OverlayWindow 直接收 IPC。
-// events.on() 走 plugin:push 包装——和 preload-pool.ts 同模式。
+// 🔥 已知限制（E5.6#21 自检）：IpcBridge.broadcast() 当前不覆盖 OverlayWindow——
+// plugin:push 不会到达此进程。#23 实施时壳侧需显式推送 theme:changed/lang:changed
+// 到 OverlayWindow（对标壳 pushLayout 给 Pool 的模式）。
 // 简化实现：直接监听 IPC channel，不引入完整 event-system.ts。
 const _eventCallbacks = new Map<string, Set<(payload: unknown) => void>>();
 
