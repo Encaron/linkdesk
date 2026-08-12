@@ -26,7 +26,7 @@ Electron 触发: app.on('render-process-gone')
   ↓
 主进程 handler:
   1. 销毁旧 BrowserWindow（WCV 随窗口销毁）
-  2. createMainWindow()——复用应用启动路径（壳 index.html + WCV pool.html）
+  2. createMainWindow()——复用应用启动路径（壳 index.html + WCV pool.html）（🔴 不可直接复用——内部无条件 IPC 注册，见 §2.1 验收条）
   3. 壳从 workspace 持久化恢复 tabState → pushLayout
   4. 若壳恢复的 tabState 为空/过期 → 主进程回放 lastLayout 快照兜底
   5. Pool 插件重新 mount → IPC 重新注册命令（Phase 12 闭环；完成前命令注册会丢失——边缘场景，接受）
@@ -52,6 +52,9 @@ export function cacheLayoutSnapshot(layout: PoolLayout): void {
 // render-process-gone handler
 export function setupCrashRecovery(mainWindow: BrowserWindow): void {
   app.on('render-process-gone', (event, webContents, details) => {
+    // 🔴 2026-08-13 审计：clean-exit 守卫——应用退出/窗口销毁也触发本事件，不拦 = 退出过程中建 WCV
+    if (details.reason === 'clean-exit') return;
+
     // 分支 1：Pool WCV 崩——重建 WCV（壳存活，tabState 不丢）
     const mainWcv = getMainPoolView();
     if (mainWcv && webContents.id === mainWcv.webContents.id) {
@@ -67,7 +70,7 @@ export function setupCrashRecovery(mainWindow: BrowserWindow): void {
       return;
     }
 
-    // 其他窗口（脱出窗口等）——各自处理，不在此处
+    // 🔴 2026-08-13：脱出窗口已推迟 v1.3——E5.7 只有 2 个渲染进程，分支到此完备
   });
 }
 
@@ -132,10 +135,12 @@ function setWcvFullBounds(mainWindow: BrowserWindow, wcv: WebContentsView): void
 }
 ```
 
-### 2.2 心跳——可选增强
+### 2.2 心跳——独立任务（与 E2a 壳心跳并行）
+
+> 🔴 2026-08-13 审计：① 与 E2a 壳心跳（`app:heartbeat` 2s 发 / 30s 超时 → 原生对话框）**并行互不替代**——壳持 tabState，壳心跳保留。② preload-pool.ts 需补 `pool.onPing` 注册（现池命名空间只有 onLayout/ready/sidebarAction/tabAction，无人回 pong）。
 
 ```typescript
-// 可选——主动检测无响应的 renderer
+// 主动检测无响应的 renderer
 let lastPong = Date.now();
 
 function setupHeartbeat(wcv: WebContentsView): void {
