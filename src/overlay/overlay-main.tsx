@@ -189,7 +189,27 @@ function OverlayApp() {
     }
   })() : null;
 
-  return <>{overlay}</>;
+  // 🔥 临时——验证 OverlayWindow 存在（E5.6#21 验证，验完删）
+  const debugBorder = (
+    <div style={{
+      position: "fixed", inset: 0,
+      border: "3px solid #ff00ff",
+      pointerEvents: "none",
+      zIndex: 9999,
+    }}>
+      <div style={{
+        position: "absolute", top: 4, right: 8,
+        background: "#ff00ff", color: "#fff",
+        padding: "2px 8px", borderRadius: "0 0 4px 4px",
+        fontSize: "11px", fontFamily: "monospace",
+        pointerEvents: "none",
+      }}>
+        OverlayWindow ✓
+      </div>
+    </div>
+  );
+
+  return <>{debugBorder}{overlay}</>;
 }
 
 // ── 挂载 ──
