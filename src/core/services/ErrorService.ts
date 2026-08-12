@@ -25,7 +25,7 @@ export function reportError(opts: {
   // 2. 非静默 → toast（用户可见）
   if (!opts.silent) {
     // 动态 import 避免反向依赖——toast.ts 是最底层模块
-    import("./services/toast").then(({ pushToast }) => {
+    import("./toast").then(({ pushToast }) => {
       pushToast({
         message: opts.message,
         severity: opts.severity || "error",

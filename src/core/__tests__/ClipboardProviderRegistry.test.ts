@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { clipboardProviders, type ClipboardProvider } from "../ClipboardProviderRegistry";
+import { clipboardProviders, type ClipboardProvider } from "../registry/ClipboardProviderRegistry";
 
 // 每个测试前清空注册表
 beforeEach(() => {

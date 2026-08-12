@@ -264,7 +264,7 @@ import { registerDeveloperCommands } from "./developerCommands";
 import { registerShellMenus } from "./shellMenus";
 
 // E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
-import { clipboardProviders } from "../ClipboardProviderRegistry";
+import { clipboardProviders } from "../registry/ClipboardProviderRegistry";
 import { ContextKeyService } from "../registry/ContextKeyService";
 import { isEditableElementFocused } from "../registry/KeybindingRegistry";
 

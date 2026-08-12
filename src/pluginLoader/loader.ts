@@ -30,7 +30,7 @@ import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/NotificationService";
-import { reportError } from "../core/ErrorService";
+import { reportError } from "../core/services/ErrorService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService";

@@ -14,7 +14,7 @@ import type { ComponentType } from "react";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
 import { useTabManager, allTabs } from "../hooks/useTabManager";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
-import { updateCoreCallbacks, type CoreCallbacks } from "../core/builtin/coreCommands";
+import { updateCoreCallbacks, type CoreCallbacks } from "../core/commands/coreCommands";
 import ErrorBoundary from "./shared/ErrorBoundary";
 import WelcomeView from "./views/WelcomeView";
 import PluginDetailView from "./views/PluginDetailView";
