@@ -339,21 +339,35 @@ function App() {
       // E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize / 侧栏拖宽时推送
       const poolApi = (window as any).linkdesk?.pool;
       if (poolApi?.setBounds) {
+        // E5.6#22k：分隔线宽度——resizable zone 的相邻边界留缝，壳 DOM handle 从缝透出
+        const HANDLE_WIDTH = 4;
+        const gap = HANDLE_WIDTH / 2;
+
         // LayoutEngine bounds 相对于 title bar 下方的容器——WebContentsView bounds 需加 TITLE_BAR_HEIGHT 偏移
         if (b.sidebar) {
+          const sidebarResizable = layoutEngine.getZone("sidebar")?.dock?.resizable;
+          const sidebarEdge = layoutEngine.getZone("sidebar")?.dock?.edge;
+          // resizable 时在相邻边界留缝——sidebar 和 main 各减 gap
+          const shrinkRight = sidebarResizable && sidebarEdge !== "right" ? gap : 0;
+          const shrinkLeft = sidebarResizable && sidebarEdge === "right" ? gap : 0;
           poolApi.setBounds("sidebar", {
-            x: b.sidebar.x,
+            x: b.sidebar.x + shrinkLeft,
             y: b.sidebar.y + TITLE_BAR_HEIGHT,
-            width: b.sidebar.width,
+            width: b.sidebar.width - shrinkLeft - shrinkRight,
             height: b.sidebar.height,
           });
         }
         // E5.6#16.7：TabBar 已迁入 MainPool（GroupTabBar 在池内渲染），MainPool 占满 LayoutEngine 分配的全高
         if (b.main) {
+          const sidebarResizable = layoutEngine.getZone("sidebar")?.dock?.resizable;
+          const sidebarEdge = layoutEngine.getZone("sidebar")?.dock?.edge;
+          // main 在侧栏 resizable 边界对应的那侧留缝
+          const shrinkLeft = sidebarResizable && sidebarEdge !== "right" ? gap : 0;
+          const shrinkRight = sidebarResizable && sidebarEdge === "right" ? gap : 0;
           poolApi.setBounds("main", {
-            x: b.main.x,
+            x: b.main.x + shrinkLeft,
             y: b.main.y + TITLE_BAR_HEIGHT,
-            width: b.main.width,
+            width: b.main.width - shrinkLeft - shrinkRight,
             height: b.main.height,
           });
         }
