@@ -113,7 +113,7 @@ export class OverlayWindow {
     this.window = null;
   }
 
-  // E5.6#22d2：5s watchdog——防止 mouseup 丢失导致永久锁死
+  // E5.6#23h：5s watchdog——防止交互结束后忘记 disableInteraction 导致永久锁死
   private _interactionWatchdog: ReturnType<typeof setTimeout> | null = null;
 
   /** 打开鼠标交互——渲染浮层时调用 */
