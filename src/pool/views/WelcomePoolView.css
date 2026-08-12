@@ -1,0 +1,5 @@
+/**
+ * WelcomePoolView 样式——复用壳 WelcomeView.css。
+ * Pool 侧欢迎页 UI 与壳侧完全一致，CSS 零重复。
+ */
+@import "../../components/views/WelcomeView.css";

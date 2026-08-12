@@ -243,6 +243,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
           closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
           singleton: behavior.singleton,
           shellRendered: isShellRenderedTab(t.type),
+          shellType: isShellRenderedTab(t.type) ? t.type : undefined,
+          detailPluginId: (t as any).detailPluginId,
         };
       }),
     }));

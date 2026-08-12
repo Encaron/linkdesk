@@ -20,6 +20,7 @@ import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../components/shared/ErrorBoundary";
 import PluginComponent from "./PluginComponent";
 import GroupTabBar from "./GroupTabBar";
+import ShellViewRenderer from "./views/ShellViewRenderer";
 import type { PoolGroup, PoolTab } from "../core/types/poolLayout";
 import type { SplitNode } from "../hooks/splitTree";
 import { getAllLeafGroupIds } from "../hooks/splitTree";
@@ -449,17 +450,13 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
               }}
             >
               {tab.shellRendered ? (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    height: "100%",
-                    color: "var(--text-muted, #888)",
-                    fontSize: 12,
-                    userSelect: "none",
-                  }}
-                />
+                <ErrorBoundary pluginId={tab.pluginId}>
+                  <ShellViewRenderer
+                    tab={tab}
+                    isActive={tab.id === group.activeTabId}
+                    creatableViews={creatableViews}
+                  />
+                </ErrorBoundary>
               ) : (
                 <ErrorBoundary pluginId={tab.pluginId}>
                   <PluginComponent
@@ -556,7 +553,9 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
                   height: `${h.h}%`,
                   cursor: isH ? "col-resize" : "row-resize",
                   zIndex: 10,
-                  background: "transparent",
+                  // 分隔线始终可见——对标 VS Code sash，默认 subtle，hover accent
+                  background: "var(--separator)",
+                  transition: "background 150ms ease",
                 }}
                 onMouseDown={(e) => {
                   const cr = containerRef.current?.getBoundingClientRect();
@@ -574,12 +573,12 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
                 }}
                 onMouseEnter={(ev) => {
                   if (!dividerDragRef.current) {
-                    (ev.target as HTMLElement).style.background = "var(--border-normal, #474747)";
+                    (ev.target as HTMLElement).style.background = "var(--accent)";
                   }
                 }}
                 onMouseLeave={(ev) => {
                   if (!dividerDragRef.current) {
-                    (ev.target as HTMLElement).style.background = "transparent";
+                    (ev.target as HTMLElement).style.background = "var(--separator)";
                   }
                 }}
               />
