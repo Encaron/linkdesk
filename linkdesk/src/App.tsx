@@ -371,6 +371,7 @@ function App() {
           overlayApi.push("split-lines", {
             lines: [{
               orientation: "vertical" as const,
+              zone: "sidebar",
               x: handleX,
               y: TITLE_BAR_HEIGHT,
               width: 4,
@@ -398,12 +399,20 @@ function App() {
 
     const unsub = overlayApi.onResult((msg: { type: string; result: unknown }) => {
       if (msg.type !== "splitter-drag") return;
-      const data = msg.result as { clientX: number; zone: string } | undefined;
-      if (!data || data.zone !== "sidebar") return;
-      // clientX → LayoutEngine 容器坐标（窗口内容区 x=0 即容器 x=0）
-      const iconbarWidth = layoutEngine.getBounds("iconbar")?.width ?? 42;
-      const newWidth = data.clientX - iconbarWidth;
-      layoutEngine.resizeZone("sidebar", newWidth);
+      const data = msg.result as { clientX: number; clientY: number; zone: string } | undefined;
+      if (!data) return;
+
+      // E5.6#22e：通用 resize——按 zone 计算新尺寸，加 zone 只需加 case
+      switch (data.zone) {
+        case "sidebar": {
+          const iconbarWidth = layoutEngine.getBounds("iconbar")?.width ?? 42;
+          const newWidth = data.clientX - iconbarWidth;
+          layoutEngine.resizeZone("sidebar", newWidth);
+          break;
+        }
+        // 未来：case "bottom" → height = clientY - headerHeight
+        // 未来：case "rightsidebar" → width = windowWidth - clientX
+      }
     });
 
     return unsub;
