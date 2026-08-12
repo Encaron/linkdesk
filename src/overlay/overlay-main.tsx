@@ -63,6 +63,7 @@ function OverlayContextMenuPlaceholder({ payload }: { payload: unknown }) {
       padding: "8px 0",
       minWidth: "160px",
       zIndex: "var(--overlay-z-context-menu)",
+      cursor: "default",
       pointerEvents: "auto",
     }}>
       <div style={{ padding: "4px 16px", fontSize: "12px", color: "var(--foreground, #ccc)" }}>
@@ -85,6 +86,7 @@ function OverlayCommandPalettePlaceholder() {
       padding: "12px 16px",
       minWidth: "400px",
       zIndex: "var(--overlay-z-command-palette)",
+      cursor: "default",
       pointerEvents: "auto",
     }}>
       <div style={{ fontSize: "13px", color: "var(--foreground, #ccc)" }}>
@@ -106,6 +108,7 @@ function OverlayToastPlaceholder({ payload }: { payload: unknown }) {
       borderRadius: "4px",
       padding: "8px 16px",
       zIndex: "var(--overlay-z-toast)",
+      cursor: "default",
       pointerEvents: "auto",
     }}>
       <span style={{ fontSize: "12px", color: "var(--foreground, #ccc)" }}>
@@ -129,6 +132,7 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
       padding: "20px",
       minWidth: "300px",
       zIndex: "var(--overlay-z-dialog)",
+      cursor: "default",
       pointerEvents: "auto",
     }}>
       <div style={{ fontSize: "14px", fontWeight: "bold", color: "var(--foreground, #ccc)", marginBottom: "8px" }}>
