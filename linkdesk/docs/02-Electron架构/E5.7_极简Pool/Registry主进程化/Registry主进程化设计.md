@@ -45,6 +45,8 @@ Pool renderer → langDef.get() → IPC langDef:get → 主进程读自己的 Ma
 | KeybindingRegistry | ❌ 不迁 | 同上 |
 | ConfigurationRegistry | ❌ 不迁 | 同上 |
 
+> 🔴 2026-08-13 审计：本表为已定部分——registry/ 目录共 16 个文件（CardRegistry/ContextKeyService/ThemeRegistry 等未入表），全量以 E5.7#46 摸底矩阵为准。
+
 ## 4. 文件清单
 
 | 文件 | 动作 |
