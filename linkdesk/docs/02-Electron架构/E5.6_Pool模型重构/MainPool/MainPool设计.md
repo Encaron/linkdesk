@@ -2,6 +2,7 @@
 
 > 📖 架构全景：[01-Pool模型设计.md](../01-Pool模型设计.md)
 > 📖 执行清单：[E5.6#14-#17](../E5.6-执行清单.md)——Phase 4：MainPool 迁移
+> 📖 内部解耦：[MainPool内部解耦-Pool与Zone.md](./MainPool内部解耦-Pool与Zone.md)——Pool vs Zone 决策规则 + 目录树 + zone 分解
 
 ---
 
