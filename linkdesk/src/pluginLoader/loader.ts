@@ -356,6 +356,26 @@ export async function initPluginLoader(): Promise<void> {
       log.appendLine(`🧹 清理 ${staleCount} 条僵尸缓存`);
     } catch { /* 非关键路径 */ }
   }
+
+  // 7. E5.6#16.7k——扫描 .disabled/ 目录，缓存已卸载插件元数据
+  //    .disabled/ 不在 import.meta.glob 和 listPluginDirs() 的扫描范围内，
+  //    必须单独扫描才能让 marketplace 的"待安装"区域显示这些插件。
+  try {
+    const disabledDirs: string[] = await linkdesk().plugins.listDisabledDirs();
+    for (const pluginId of disabledDirs) {
+      // 不覆盖已安装插件的缓存
+      if (loadedPluginIds.has(pluginId)) continue;
+      if (installed.has(pluginId)) continue;
+      try {
+        const raw = await linkdesk().plugins.readManifest(pluginId);
+        const manifest = JSON.parse(raw);
+        cachePluginMetadata(pluginId, manifest, "uninstalled");
+        log.appendLine(`📦 已卸载插件入缓存: ${pluginId}`);
+      } catch (e: any) {
+        log.appendLine(`⚠️ 已卸载插件 "${pluginId}" 元数据读取失败: ${e?.message || e}`);
+      }
+    }
+  } catch { /* 非 Electron 环境（npm run dev 浏览器模式）——listDisabledDirs 不可用 */ }
   })());
 }
 

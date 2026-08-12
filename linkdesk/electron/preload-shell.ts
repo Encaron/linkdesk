@@ -184,9 +184,10 @@ try {
 
     // ── 插件管理（步 3 接入——对标 Rust plugins.rs）──
     plugins: {
-      listDirs:     () => ipcRenderer.invoke('plugins:listDirs'),
-      readManifest: (id: string) => ipcRenderer.invoke('plugins:readManifest', id),
-      resolvePath:  (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
+      listDirs:         () => ipcRenderer.invoke('plugins:listDirs'),
+      listDisabledDirs: () => ipcRenderer.invoke('plugins:listDisabledDirs'),
+      readManifest:     (id: string) => ipcRenderer.invoke('plugins:readManifest', id),
+      resolvePath:      (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
     },
 
     // ── E3a #31：插件管理（桥接——走 IpcBridge → IpcBridgeHandler → loader 函数）──

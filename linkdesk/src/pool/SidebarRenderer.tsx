@@ -23,7 +23,7 @@ interface SidebarRendererProps {
 }
 
 export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
-  const [toolbarHeight, setToolbarHeight] = useState(0);
+  const setToolbarHeight = useState(0)[1]; // toolbar height tracked for PoolToolbarSlot, no longer passed to PoolSectionStack (toolbar outside scroll area)
 
   // E5.6#11-fix4：header 右键菜单状态——对标壳 SidePanel.tsx
   const [headerMenu, setHeaderMenu] = useState<{ x: number; y: number } | null>(null);
@@ -132,19 +132,24 @@ export default function SidebarRenderer({ sidebar }: SidebarRendererProps) {
         />
       )}
 
-      <div className="side-panel-content" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-        {/* ToolbarSlot——粘顶 */}
-        <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
+      <div className="side-panel-content" style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+        {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失 */}
+        <div style={{ flexShrink: 0 }}>
+          <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
+        </div>
 
-        {/* SectionStack——可折叠 / 可拖拽排序 / PaneSash resize */}
-        <PoolSectionStack
-          views={sectionViews}
-          containerId={containerId ?? ""}
-          toolbarHeight={toolbarHeight}
-          mergeHeaderWhenSingle={mergeHeaderWhenSingle}
-          collapsedViews={collapsedViews}
-          onSidebarAction={handleSidebarAction}
-        />
+        {/* SectionStack——可折叠 / 可拖拽排序 / PaneSash resize。
+            🔥 E5.6#16.7k 修复：toolbar 已挪到滚动容器外，stickyTop=0（不再需为 toolbar 留高度）。 */}
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+          <PoolSectionStack
+            views={sectionViews}
+            containerId={containerId ?? ""}
+            toolbarHeight={0}
+            mergeHeaderWhenSingle={mergeHeaderWhenSingle}
+            collapsedViews={collapsedViews}
+            onSidebarAction={handleSidebarAction}
+          />
+        </div>
       </div>
     </div>
   );
