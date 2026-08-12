@@ -1,5 +1,12 @@
 # E5.6 Pool 模型——设计文档（双Pool版）
 
+> ## 🔴 已废弃——2026-08-12 架构切换至极简Pool
+>
+> **双Pool 架构已冻结。** 新架构：1 BrowserWindow + 1 WebContentsView——[01-极简Pool设计.md](../E5.7_极简Pool/01-极简Pool设计.md)。
+> 本文件保留历史价值——SidebarPool/MainPool 的 keep-alive/分屏/PluginErrorBoundary 设计被 E5.7 继承，但进程边界全部取消。
+
+---
+
 > 2026-08-09。**从 Per-Tab WebView（O(N) 进程）重构为双Pool WebView 模型（O(1) 进程）。**
 > SidebarPool + MainPool，并排，各自独立进程。TabBar 留在壳。
 > 对标 VS Code 的侧栏与主区独立进程隔离——但用 WebContentsView 替代 iframe。

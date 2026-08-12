@@ -1,7 +1,15 @@
 # 多Pool扩展预留
 
+> ## 🔴 已废弃——2026-08-12 架构切换至极简Pool
+>
+> **多Pool 概念已随双Pool 冻结。** E5.7 只有一个 Pool——扩展预留全部变成 Zone：
+> SidebarZone / RightSidebarZone / PanelZone / TopBarZone / StatusBarZone（[Zone分解设计.md](../../E5.7_极简Pool/Zone系统/Zone分解设计.md)）。
+> 脱出窗口独立成文：[脱出窗口设计.md](../../E5.7_极简Pool/脱出窗口/脱出窗口设计.md)。
+> 本文件保留历史——六位置全景图的"位置"概念被 E5.7 Zone 继承，但"Pool 类型"全部取消。
+
 > 📖 对应执行清单：[E5.6#37-#42](../E5.6-执行清单.md)
 > 📖 核心设计：[01-Pool模型设计.md](../01-Pool模型设计.md)
+> 🔥 **2026-08-12 修正：** BottomPanelPool 从独立 WCV 改为 MainPool 内部 PanelZone。详见 [MainPool内部解耦-Pool与Zone.md](../MainPool/MainPool内部解耦-Pool与Zone.md)。**本文档 §1-2 的 BottomPanel 独立 Pool 描述已过时——保留"一个 Pool 一个 TabBar"原则对 SidebarPool↔MainPool 正确，对 BottomPanel 不适用。** §5 的 PanelLayout 协议、面板视图注册表、插件贡献声明可复用。
 
 ---
 
