@@ -11,7 +11,6 @@
  *
  * 浮层容器：
  *   - 右键菜单 / 命令面板 / Toast / Dialog / SelectBox / ColorPicker / Modal
- *   - 分割线（SplitLines——始终渲染，由壳 syncLayout 推送位置）
  *   - 每个容器按需显示（display toggle），不是创建/销毁
  */
 
@@ -31,17 +30,7 @@ interface OverlayState {
   payload: unknown;
 }
 
-// ── E5.6#22b/#22e：分隔线类型——壳 push split-lines 命令时传入 ──
-interface SplitLine {
-  orientation: "vertical" | "horizontal";
-  zone: string;  // E5.6#22e：拖拽时 resize 的目标 zone
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-}
-
-// ── OverlayWindow 侧的 window.linkdesk（preload-overlay.ts 通过 contextBridge 注入） ──
+// ── OverlayWindow 侧的 window.linkdesk
 // 类型窄化——不覆写全局 Window 接口（global.d.ts 已有 Record<string, any>）。
 // 使用 const 引用 + 类型断言，保持本文件内类型安全。
 type OverlayApi = {
@@ -159,99 +148,17 @@ function OverlayDialogPlaceholder({ payload }: { payload: unknown }) {
   );
 }
 
-// ── E5.6#22b/#22d：SplitLines——始终渲染的分隔线，独立于 activeOverlay ──
-
-function SplitLines({ lines }: { lines: SplitLine[] }) {
-  if (!lines || lines.length === 0) return null;
-
-  // E5.6#22d/#22e：mousedown → 通知壳开始拖拽（enableInteraction），
-  // mousemove → 发坐标到壳（resizeZone），mouseup → 结束（disableInteraction）。
-  const handleMouseDown = useCallback((e: React.MouseEvent, line: SplitLine) => {
-    e.preventDefault();
-    e.stopPropagation();
-    const api = getOverlayApi();
-
-    // 拖拽开始——壳 enableInteraction() 防止鼠标事件穿透到 Pool
-    api.overlay.sendResult("", "splitter-drag-start", { zone: line.zone });
-
-    const onMouseMove = (me: MouseEvent) => {
-      // 鼠标在窗口外释放 → mouseup 事件不到达此 window。
-      // buttons === 0 时当作 mouseup——否则拖拽永久不结束。
-      if (me.buttons === 0) {
-        onMouseUp();
-        return;
-      }
-      // clientX/clientY——OverlayWindow 与主窗口同尺寸同位置，坐标可直接使用
-      api.overlay.sendResult("", "splitter-drag", {
-        clientX: me.clientX,
-        clientY: me.clientY,
-        zone: line.zone,
-      });
-    };
-
-    const onMouseUp = () => {
-      api.overlay.sendResult("", "splitter-drag-end", { zone: line.zone });
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-  }, []);
-
-  return (
-    <>
-      {lines.map((line, i) => (
-        <div
-          key={`split-${i}`}
-          onMouseDown={(e) => handleMouseDown(e, line)}
-          style={{
-            position: "absolute",
-            left: `${line.x}px`,
-            top: `${line.y}px`,
-            width: `${line.width}px`,
-            height: `${line.height}px`,
-            cursor: line.orientation === "vertical" ? "col-resize" : "row-resize",
-            pointerEvents: "auto",
-            zIndex: "var(--overlay-z-splitter)",
-            background: "transparent",
-            transition: "background 0.15s",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.06)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLElement).style.background = "transparent";
-          }}
-        />
-      ))}
-    </>
-  );
-}
-
 // ── OverlayApp ──
 
 function OverlayApp() {
-  // ── E5.6#22b：state 按 type 路由到不同 slot ──
-  // splitLines——独立 state，始终渲染（多条分隔线）
-  const [splitLines, setSplitLines] = useState<{ lines: SplitLine[] }>({ lines: [] });
-  // activeOverlay——互斥 state，新命令替换旧（右键菜单/命令面板/dialog）
   const [activeOverlay, setActiveOverlay] = useState<OverlayState>({ requestId: null, type: null, payload: null });
 
-  // ── 接收渲染命令——按 type 路由到对应 state slot ──
+  // ── 接收渲染命令 ──
   const handleCommand = useCallback((cmd: OverlayCommand) => {
-    switch (cmd.type) {
-      case "split-lines":
-        // 分隔线——独立更新，不影响 activeOverlay
-        setSplitLines(cmd.payload as { lines: SplitLine[] });
-        break;
-      case "dismiss":
-        setActiveOverlay({ requestId: null, type: null, payload: null });
-        break;
-      default:
-        // 右键菜单 / 命令面板 / dialog——互斥，新开替换旧
-        setActiveOverlay({ requestId: cmd.requestId, type: cmd.type, payload: cmd.payload });
-        break;
+    if (cmd.type === "dismiss") {
+      setActiveOverlay({ requestId: null, type: null, payload: null });
+    } else {
+      setActiveOverlay({ requestId: cmd.requestId, type: cmd.type, payload: cmd.payload });
     }
   }, []);
 
@@ -301,7 +208,7 @@ function OverlayApp() {
     </div>
   );
 
-  return <>{debugBorder}<SplitLines lines={splitLines.lines} />{overlay}</>;
+  return <>{debugBorder}{overlay}</>;
 }
 
 // ── 挂载 ──
