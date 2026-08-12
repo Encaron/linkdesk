@@ -142,7 +142,7 @@ E5.7 极简Pool
   │   └── 跨Pool 崩溃恢复策略
   │
   └── 新增：
-      ├── IconBarZone.tsx / SidebarZone.tsx / EditorZone.tsx / PanelZone.tsx / StatusBarZone.tsx
+      ├── IconBarZone.tsx / SidebarZone.tsx / MainZone.tsx / PanelZone.tsx / StatusBarZone.tsx
       ├── FloatingLayerHost（Toast/ContextMenu/QuickPick/Dialog——position:fixed 容器）
       ├── PoolZoneShell——唯一 React 根组件
       └── 主进程 crash recovery（render-process-gone → 重建 WCV——BrowserWindow + 壳渲染进程存活）
@@ -171,7 +171,7 @@ E5.7 极简Pool
 │  │  │图标│ TabBar                                    │ │ │
 │  │  │栏  │                                           │ │ │
 │  │  │    ├──────────┬──────────────────────────────┤ │ │
-│  │  │    │ Sidebar  │ Editor (SplitTree + 分屏)      │ │ │
+│  │  │    │ Sidebar  │ 主区 (SplitTree + 分屏)        │ │ │
 │  │  │    │                      │                   │ │ │
 │  │  │    │ ┌────────┐ │ ┌──────┐ ┌──────┐         │ │ │
 │  │  │    │ │file-   │ │ │main.c│ │main.h│         │ │ │
@@ -210,7 +210,7 @@ E5.7 极简Pool
 
 > **壳渲染进程为什么保留：** "壳=唯一真相源"——tabState/syncLayout/pushLayout/Registry/命令执行全部留在壳。壳只是不再渲染 UI DOM（被 WCV 完全覆盖）。壳想，池画。
 >
-> **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（EditorZone 含 TabBar 都在池里，TabBarZone 已取消——2026-08-13 审计），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
+> **E5.8+ 候选（不是 E5.7 缺陷）：** E5.7 完成后 tabState 的所有 UI 消费方都已搬入 Pool（MainZone 含 TabBar 都在池里，TabBarZone 已取消——2026-08-13 审计），壳里 tabState 的唯一消费者只剩 syncLayout()——未来 tabState 主进程化（纯数据存储 + 单一消费者）比 E5.6 时代可行得多。省一个零绘制的渲染进程（几十 MB 内存），代价是 useTabManager 状态层重写 + 消费方变异步 IPC——E5.7 的 94 任务不该再装下这个。
 
 ---
 
@@ -224,7 +224,7 @@ E5.7 极简Pool
 极简Pool 内的 Zone：
   IconBarZone      ← 图标栏——flex row 最左侧，40px 宽
   SidebarZone      ← 侧边栏——flex row，可折叠，可拖宽度
-  EditorZone       ← 编辑器——flex row + flex column，SplitTree 分屏
+  MainZone       ← 主区——flex row + flex column，SplitTree 分屏
   PanelZone        ← 底部面板——flex column 底部，可折叠
   StatusBarZone    ← 状态栏——flex column 最底部，22px 高
   FloatingLayer    ← 所有浮层容器——position:fixed，pointer-events 穿透/阻塞按需
@@ -240,7 +240,7 @@ E5.7 极简Pool
 | TitleBarZone | 窗口标题 + 菜单 | `layout.titleBar` | flex column top, 30px |
 | IconBarZone | 图标栏按钮 | `layout.iconBar` | flex row left, 42px |
 | SidebarZone | 侧栏视图（文件树/搜索/插件面板） | `layout.sidebar` | flex row, 可变宽度 |
-| EditorZone | 标签页内容 + SplitTree 分屏 | `layout.groups`, `layout.root` | flex: 1, minWidth: 0 |
+| MainZone | 主区——标签页内容 + SplitTree 分屏 | `layout.groups`, `layout.root` | flex: 1, minWidth: 0 |
 | PanelZone | 底部面板（终端/输出/问题/端口） | `layout.panel` | flex column, 可变高度 |
 | StatusBarZone | 状态栏信息 | `layout.statusBar` | flex column bottom, 22px |
 | TopBarZone | 顶部工具栏（面包屑） | `layout.topBar` | flex column, 条件渲染 |
@@ -269,7 +269,7 @@ E5.7 极简Pool 中 zone 之间**不需要直接通信**。所有变化路径相
     → Pool 收到新 layout → 所有 Zone 根据新 layout 重新渲染
 ```
 
-PanelZone 显隐 = pushLayout 有/没有 `panel` 字段。EditorZone 高度变化 = flex 自动调整。**zone 之间零 import、零 emit。**
+PanelZone 显隐 = pushLayout 有/没有 `panel` 字段。MainZone 高度变化 = flex 自动调整。**zone 之间零 import、零 emit。**
 
 ---
 
@@ -283,7 +283,7 @@ PanelZone 显隐 = pushLayout 有/没有 `panel` 字段。EditorZone 高度变�
 ├────┬────────────────────────────────────┤  ← flex row
 │图标│ TabBar (35px)                       │
 │栏  ├──────────┬─────────────────────────┤  ← flex row
-│42px│ Sidebar  │ EditorZone              │
+│42px│ Sidebar  │ MainZone              │
 │    │ (可折叠) │ ┌─────────────────────┐ │
 │    │          │ │ SplitTree (flex row) │ │  ← flex: 1
 │    │          │ └─────────────────────┘ │
@@ -332,7 +332,7 @@ z-index 层级（从低到高）：
 
 ### 5.3 分隔线——CSS 原地分离
 
-SidebarZone↔EditorZone 分隔线 = 一个 4px `<div>`，`cursor: col-resize`，`mousedown` 启动拖拽：
+SidebarZone↔MainZone 分隔线 = 一个 4px `<div>`，`cursor: col-resize`，`mousedown` 启动拖拽：
 
 ```tsx
 // 分隔线——和 E5 壳的 SidebarResizeHandle 完全相同
@@ -347,13 +347,13 @@ SidebarZone↔EditorZone 分隔线 = 一个 4px `<div>`，`cursor: col-resize`�
 />
 ```
 
-拖拽时 `mousemove` 计算新宽度 → 更新 React state → SidebarZone flex-basis 变化 → EditorZone 自动 fill 剩余空间。
+拖拽时 `mousemove` 计算新宽度 → 更新 React state → SidebarZone flex-basis 变化 → MainZone 自动 fill 剩余空间。
 
 **不需要 OverlayWindow、不需要跨进程 setBounds、不需要 IPC 往返。** 和 E5 壳的拖拽逻辑完全相同。
 
 ### 5.4 分屏分隔线——同进程拖拽
 
-EditorZone 内部 SplitTree 的分隔线同样用 CSS div → mousedown → mousemove：
+MainZone 内部 SplitTree 的分隔线同样用 CSS div → mousedown → mousemove：
 
 ```tsx
 // 分屏分隔线——和当前 MainRenderer.tsx 的 SplitHandle 逻辑相同
@@ -388,7 +388,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
       {/* Row 1: TitleBar */}
       {layout.titleBar && <TitleBarZone titleBar={layout.titleBar} />}
 
-      {/* Row 2: IconBar + Sidebar + Editor + RightSidebar + Panel */}
+      {/* Row 2: IconBar + Sidebar + Main + RightSidebar + Panel */}
       <div className="pool-body">
         {/* IconBar */}
         <IconBarZone iconBar={layout.iconBar} />
@@ -401,10 +401,10 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
           </>
         )}
 
-        {/* Main Content Area (Editor + Panel) */}
+        {/* Main Content Area (Main + Panel) */}
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minWidth: 0 }}>
-          {/* Editor——tab bar 在 EditorZone 内（每 panel 自带 GroupTabBar，TabBarZone 已取消——见 Zone分解设计 §2.4 墓碑） */}
-          <EditorZone
+          {/* 主区——tab bar 在 MainZone 内（每 panel 自带 GroupTabBar，TabBarZone 已取消——见 Zone分解设计 §2.4 墓碑） */}
+          <MainZone
             groups={layout.groups}
             root={layout.root}
             creatableViews={layout.creatableViews}
@@ -439,14 +439,14 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 |:--|:--|
 | Shell DOM 渲染 TitleBar + IconBar + TabBar + StatusBar | React PoolZoneShell 渲染所有 |
 | pool-main.tsx 按 `?zone=` 参数分发到不同 Renderer | 单入口，无 zone 参数 |
-| SidebarRenderer / MainRenderer 在不同 WCV | SidebarZone / EditorZone 在同一 DOM |
+| SidebarRenderer / MainRenderer 在不同 WCV | SidebarZone / MainZone 在同一 DOM |
 
-### 6.2 EditorZone——从 MainRenderer 提取
+### 6.2 MainZone——从 MainRenderer 提取
 
-E5.6 的 [MainRenderer.tsx](../E5.6_Pool模型重构/MainPool/MainPool设计.md)（693 行）承担了 EditorZone + 布局分发 的职责。E5.7 中提取：
+E5.6 的 [MainRenderer.tsx](../E5.6_Pool模型重构/MainPool/MainPool设计.md)（693 行）承担了 MainZone + 布局分发 的职责。E5.7 中提取：
 
 ```tsx
-function EditorZone({ groups, root, creatableViews }: EditorZoneProps) {
+function MainZone({ groups, root, creatableViews }: MainZoneProps) {
   // 从当前 MainRenderer.tsx 的 computeLayout() + 分屏渲染逻辑提取
   // 职责：
   //   接收 groups[] + root SplitNode
@@ -897,7 +897,7 @@ src/pool/
 │   ├── TitleBarZone.tsx       ← 窗口标题栏
 │   ├── IconBarZone.tsx        ← 图标栏
 │   ├── SidebarZone.tsx        ← 侧栏（从 sidebar/SidebarRenderer.tsx 迁入）
-│   ├── EditorZone.tsx         ← 编辑器 + 每 panel GroupTabBar（从 main/MainRenderer.tsx 提取，#7 TabBarZone 取消）
+│   ├── MainZone.tsx         ← 主区 + 每 panel GroupTabBar（从 main/MainRenderer.tsx 提取，#7 TabBarZone 取消）
 │   ├── PanelZone.tsx          ← 底部面板
 │   ├── StatusBarZone.tsx      ← 状态栏
 │   ├── TopBarZone.tsx         ← 顶部工具栏（面包屑）
@@ -931,12 +931,12 @@ electron/                      ← 主进程——大幅瘦身
 
 删除：
 ├── src/pool/sidebar/          ← SidebarRenderer 搬入 zones/SidebarZone.tsx
-├── src/pool/main/             ← MainRenderer 分解入 zones/EditorZone.tsx + ...
+├── src/pool/main/             ← MainRenderer 分解入 zones/MainZone.tsx + ...
 ├── src/components/ (壳 DOM)    ← 迁移入 zones/ 或共享 hooks
 └── shell 渲染相关代码          ← App.tsx 中 TitleBar/IconBar/TabBar/StatusBar 渲染逻辑
 ```
 
-> **splitTree.ts（原 src/hooks/）→ `src/core/utils/`**——分屏树纯操作，壳（tabState 分屏逻辑）与 Pool（EditorZone computeLayout）双进程共用，不进 pool 目录（见壳目录规范 §1 utils）。
+> **splitTree.ts（原 src/hooks/）→ `src/core/utils/`**——分屏树纯操作，壳（tabState 分屏逻辑）与 Pool（MainZone computeLayout）双进程共用，不进 pool 目录（见壳目录规范 §1 utils）。
 
 ---
 
@@ -971,7 +971,7 @@ Phase A: E5.6 归档——标废弃，向前引用 → E5.7
 Phase 1: 壳 DOM 迁入 Pool——TitleBar/IconBar/TabBar/StatusBar 变 React Zone
 Phase 2: SidebarPool 合并——SidebarRenderer → SidebarZone，删 SidebarPool WCV
 Phase 3: OverlayWindow 消除——所有浮层用 position:fixed
-Phase 4: Zone 分解——EditorZone + PanelZone + RightSidebarZone
+Phase 4: Zone 分解——MainZone + PanelZone + RightSidebarZone
 Phase 5: 突破边界的能力——脱出窗口 / 漂移面板 / 新窗口
 Phase 6: 崩溃恢复——render-process-gone → 重建
 Phase 7: 清理死代码——OverlayWindow + WindowManager + Shell DOM
