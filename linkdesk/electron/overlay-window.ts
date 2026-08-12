@@ -151,7 +151,7 @@ export class OverlayWindow {
     if (!this._ready) return;
     if (this.window && !this.window.isDestroyed() && !this.window.isVisible()) {
       this.syncBounds();
-      this.window.showInactive();
+      this.window.show();
     }
   }
 
