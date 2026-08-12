@@ -331,6 +331,8 @@ z-index 层级（从低到高）：
 
 ### 5.3 分隔线——CSS 原地分离
 
+> 🔴 **分隔线不变量（2026-08-13 审计）：分隔线活在区域的可见性条件块内——两个区域都在时自动出现，区域消失分隔线消失。** 侧栏分隔线在 `sidebar?.visible &&` 块内；分屏分隔线只在 branch 节点产出（单面板 flex fallback 零 handle）；面板 handle 在 PanelZone 内部（`panel?.visible` 假则整体不渲染）。不存在"永远渲染的分隔线"。
+
 SidebarZone↔MainZone 分隔线 = 一个 4px `<div>`，`cursor: col-resize`，`mousedown` 启动拖拽：
 
 ```tsx
