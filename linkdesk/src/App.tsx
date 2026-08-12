@@ -14,6 +14,7 @@ import WindowControls from "./components/WindowControls"; // E3f #52f
 import SidePanel from "./components/SidePanel";
 import MainContent from "./components/MainContent";
 import StatusBar from "./components/StatusBar";
+import { SplitHandles } from "./components/SplitHandles";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
 // E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
@@ -582,6 +583,9 @@ function App() {
             <IconBar showHamburger={showHamburger} />
           </div>
         )}
+        {/* E5.6#22l：分隔线——Pool 留缝处壳 DOM 渲染，从缝透出可见+可拖拽 */}
+        <SplitHandles zoneBounds={zoneBounds} />
+
         {/* E5.6#10a：SidebarPool WebContentsView 接管侧栏渲染——壳 DOM sidebar div 隐藏，
             但保留 SidePanel 挂载作为 fallback（pool 崩溃时恢复 display:flex 即可回退）。 */}
         {zoneBounds.sidebar && (
