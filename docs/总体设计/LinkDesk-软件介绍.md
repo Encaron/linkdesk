@@ -563,7 +563,7 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 | OverlayWidget | OverlayWindow 透明窗口——右键菜单/分隔线/浮层 | 🔄 E5.6 |
 | Panel Part（Terminal/Output/Problems） | BottomPanelPool 预留口（E5.6#40 数据结构就绪，v1.2.0 实现） | 📋 远期 |
 | Modal Editor（浮动容器） | Modal 三态预留口（E5.6#41） | 📋 E6 |
-| Auxiliary Editor Part（拖出独立窗口） | DetachedWindow 预留口（E5.6#41） | 📋 E6 |
+| Auxiliary Editor Part（拖出独立窗口） | DetachedWindow 预留口（E5.6#41） | 📋 v1.3（上架后；设计稿：E5.7 脱出窗口设计.md） |
 | `vscode.window.showQuickPick()` | `linkdesk.quickPick.show()` IPC 版 | 📋 E5.6#52 |
 | 插件 API 补全（10 命名空间） | workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick + pool.* 双向 | 📋 E5.6 Phase 10 |
 | 插件市场后端 + 打包格式 | `.linkdesk-plugin` zip + 安装/更新/卸载 + GitHub Releases 后端 | 📋 E6 |

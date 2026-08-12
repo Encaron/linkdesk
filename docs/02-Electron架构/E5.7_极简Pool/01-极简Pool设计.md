@@ -17,7 +17,7 @@
 - [7. PushLayout 协议——减负](#7-pushlayout-协议减负)
 - [8. 安全模型——preload沙箱](#8-安全模型preload沙箱)
 - [9. 崩溃恢复——单点 + 快速重建](#9-崩溃恢复单点--快速重建)
-- [10. 脱出窗口——同一代码，新进程](#10-脱出窗口同一代码新进程)
+- [10. 脱出窗口——同一代码，新进程（🔴 推迟 v1.3）](#10-脱出窗口同一代码新进程)
 - [11. 消除了什么，保留了什么](#11-消除了什么保留了什么)
 - [12. 目录树——E5.6现状 vs E5.7目标](#12-目录树e56现状-vs-e57目标)
 - [13. 对比表——四种架构](#13-对比表四种架构)
@@ -764,6 +764,8 @@ E5.6 需要多 Pool 各自心跳（`pool:ping`/`pool:pong` → 超时 10s → �
 
 ## 10. 脱出窗口——同一代码，新进程
 
+> 🔴 **2026-08-13 推迟到上架后 v1.3——版本更新点（用户决策）。** E5.7 发布 = 单窗口。本节保留为 v1.3 设计稿；开工前必读 [脱出窗口设计.md](脱出窗口/脱出窗口设计.md) 头部审计记录（状态迁移空白 / 壳想池画数据流 / VS Code"释放时判断"机制 / window:* sender 路由）。
+
 ### 10.1 脱出窗口的定义
 
 用户拖标签页脱离主窗口 → 创建独立 BrowserWindow，内部加载同一个 Pool 代码。
@@ -913,7 +915,7 @@ src/pool/
 │   ├── useSplitResize.ts      ← 分屏分隔线拖拽
 │   ├── useDragReorder.ts      ← 标签页拖拽排序
 │   ├── useTabDropPreview.ts   ← 分屏拖拽预览
-│   └── useDragDetach.ts       ← 脱出窗口拖拽检测
+│   └── useDragDetach.ts       ← 脱出窗口拖拽检测（🔴 推迟 v1.3）
 │
 └── views/                     ← 不变
     ├── ShellViewRenderer.tsx
@@ -952,7 +954,7 @@ electron/                      ← 主进程——大幅瘦身
 | **跨区通信** | ShellEvents emit | IPC + ShellEvents | **pushLayout（单向）** | Service + Event |
 | **拖拽分隔线** | CSS div + mousemove | OverlayWindow + IPC setBounds | **CSS div + mousemove** | CSS div + mousemove |
 | **Toast 锚定** | 壳 DOM bottom | ❓（无解——OverlayWindow是二进制） | **窗口 bottom-right** | `.monaco-workbench` bottom |
-| **脱出窗口** | 不支持 | 新 Window + 2 WCV | **新 Window + 1 WCV** | 不支持原生的 |
+| **脱出窗口** | 不支持 | 新 Window + 2 WCV | **新 Window + 1 WCV（🔴 推迟 v1.3）** | 不支持原生的 |
 | **崩溃恢复** | 重建 BrowserWindow | 每个 Pool 独立重建 | **重建 WCV（窗口 + 壳存活）** | 重建 renderer |
 | **O(N)→O(1)** | N/A | ✅ (4 = O(1)) | **✅ (3 = O(1))** | ✅ (3 = O(1)) |
 | **插件改动** | N/A | 0 行 | **0 行** | N/A |
@@ -971,7 +973,7 @@ Phase 1: 壳 DOM 迁入 Pool——TitleBar/IconBar/TabBar/StatusBar 变 React Zo
 Phase 2: SidebarPool 合并——SidebarRenderer → SidebarZone，删 SidebarPool WCV
 Phase 3: OverlayWindow 消除——所有浮层用 position:fixed
 Phase 4: Zone 分解——MainZone + PanelZone + RightSidebarZone
-Phase 5: 突破边界的能力——脱出窗口 / 漂移面板 / 新窗口
+Phase 5: 突破边界的能力——脱出窗口 / 漂移面板 / 新窗口（🔴 推迟 v1.3）
 Phase 6: 崩溃恢复——render-process-gone → 重建
 Phase 7: 清理死代码——OverlayWindow + WindowManager + Shell DOM
 Phase 8: 全量回归——七场景验证
