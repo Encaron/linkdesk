@@ -68,9 +68,9 @@ export class OverlayWindow {
 
     // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
     if (isDev) {
-      this.window.loadURL(`${DEV_SERVER_URL}overlay.html`);
+      this.window.loadURL(`${DEV_SERVER_URL}/overlay.html`);
     } else {
-      this.window.loadFile(path.join(__dirname, '../../dist/overlay/index.html'));
+      this.window.loadFile(path.join(__dirname, '../../dist/overlay.html'));
     }
 
     // ── ready-to-show 后显示（跟随主窗口——透明无感）──
