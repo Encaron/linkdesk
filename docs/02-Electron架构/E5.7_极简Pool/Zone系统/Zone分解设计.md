@@ -17,9 +17,8 @@ flex column (全窗口 100vw × 100vh)
 │   ├── SidebarZone  (可变宽度, flex-shrink: 0, 条件渲染)
 │   ├── 分隔线       (4px, flex-shrink: 0, cursor: col-resize)
 │   ├── flex column (flex: 1, min-width: 0)
-│   │   ├── TabBarZone       (35px, flex-shrink: 0)
 │   │   ├── TopBarZone       (可选, flex-shrink: 0, 条件渲染)
-│   │   ├── EditorZone       (flex: 1, min-height: 0)
+│   │   ├── EditorZone       (flex: 1, min-height: 0——内含每 panel GroupTabBar 35px)
 │   │   └── PanelZone        (可变高度, flex-shrink: 0, 条件渲染)
 │   ├── 分隔线       (4px, flex-shrink: 0, 条件渲染)
 │   └── RightSidebarZone (可变宽度, flex-shrink: 0, 条件渲染)
@@ -34,9 +33,8 @@ flex column (全窗口 100vw × 100vh)
 | TitleBarZone | `layout.titleBar` | `-webkit-app-region: drag`, 窗口控制 |
 | IconBarZone | `layout.iconBar` | 42px 宽, 图标按钮列表 |
 | SidebarZone | `layout.sidebar` | 可折叠, 可拖宽度 |
-| TabBarZone | `layout.tabBar` | 35px 标签栏, 拖拽排序 |
 | TopBarZone | `layout.topBar?` | 条件渲染, 面包屑/工具栏 |
-| EditorZone | `layout.groups`, `layout.root` | SplitTree 分屏, 标签页内容 |
+| EditorZone | `layout.groups`, `layout.root` | SplitTree 分屏, 每 panel 自带 GroupTabBar（35px 标签栏）+ 标签页内容 |
 | PanelZone | `layout.panel?` | 条件渲染, 底部面板 |
 | RightSidebarZone | `layout.rightSidebar?` | 条件渲染, 右侧面板 |
 | StatusBarZone | `layout.statusBar` | 22px, 状态信息 |
@@ -138,30 +136,21 @@ CSS:
   动作路径: 折叠/切换视图 → 暂用 linkdesk.pool.* 过渡 → Phase 12 归位 API 命名
 ```
 
-### 2.4 TabBarZone
+### 2.4 TabBarZone——🔴 已取消（2026-08-13 审计，墓碑）
 
-**文件：** `src/pool/zones/TabBarZone.tsx`
+**不建独立 TabBarZone。** tab bar 留在 EditorZone 内——每个 panel 自带 GroupTabBar（`src/pool/shared/GroupTabBar.tsx` 复用，不变）。
 
-```
-Props: tabBar: { groups: Array<{ groupId: string; tabs: PoolTab[]; activeTabId: string }> }
-职责：
-  - 为每个 group 渲染一行标签栏（35px）
-  - 标签页点击 → window.linkdesk.tabs.setActive(tabId)
-  - 标签页关闭 → window.linkdesk.tabs.close(tabId)
-  - 拖拽排序 → 拖拽预览 portal + drop 位置计算
-  - 拖拽分屏 → 拖到分隔线区域 → 创建新 group
-  - 拖出窗口 → 超出窗口边界 → 触发脱出窗口
-  - 右键标签页 → ContextMenu（Close / Close Others / Split Right / ...）
+**取消论证：**
 
-CSS:
-  height: 35px
-  display: flex, overflow-x: auto
-  scrollbar-width: none
+1. **E5.6#16.5 架构教训**：TabBar 曾因"与内容不在同 DOM"产生三个 bug（拖分隔线 TabBar 不跟着动 / 松手弹回 / 上下分屏不可能），根治方案就是"每个 group 自包含（TabBar+内容+分隔线）"。独立 TabBarZone 横带在左右分屏时与面板几何错位——要画对必须复制 computeLayout，等于把治好的病再种回去。
+2. **拖拽协调不可拆**：MainRenderer 是全局拖拽协调者（tabBarRefs 注册 + computeSplitZone 扫面板 + preview portal + drop zone），依赖 tab bar 和 panel 同组件。拆成两个 zone 必须加跨 zone 共享拖拽状态——重接线 15 轮 bug 验证过的活代码，风险最高、收益为零。
+3. VS Code 同款：EditorPart 的 tab bar 在 group 内部，不存在独立"标签栏 part"。
 
-与壳关系:
-  原 E5.6 壳 DOM 的 TabBar → 迁入此
-  原 E5.6 MainRenderer 的 GroupTabBar → 可复用 shared/GroupTabBar.tsx
-```
+**连带变更：**
+
+- PoolLayout 无 `tabBar` 字段（E5.7#1 已删）——tab bar 数据从 `groups[].tabs` 渲染
+- 拖出窗口检测（useDragDetach，Phase 8 #33）由 EditorZone 接入
+- 标签页点击/关闭/右键菜单等动作仍走 `window.linkdesk.pool.tabAction`（Phase 12 归位命名）
 
 ### 2.5 EditorZone
 
@@ -173,52 +162,79 @@ Props:
   root?: SplitNode
   creatableViews?: CreatableViewMeta[]
 
-职责：
-  - computeLayout(root, groups) → PanelRect[] + HandleRect[]
-  - 渲染分屏面板（绝对定位平铺——B22 防护）
-  - 每个面板渲染激活标签页内容（keep-alive——CSS display 切换）
-  - 分隔线拖拽（mousedown → mousemove → update SplitNode）
-  - 标签页拖拽协调（useDragReorder）
-  - Glassmorphism 分屏预览 overlay（useTabDropPreview）
-  - Drag preview portal（拖拽标签页时的半透明预览）
+职责（🔴 2026-08-13 审计修正——吸收 TabBarZone（§2.4 墓碑），MainRenderer 693 行行为零丢失。
+      验收逐项对照 MainRenderer 现有实现，禁止丢项）：
 
-不 import: PanelZone / SidebarZone / StatusBarZone / TitleBarZone
+  ① 每 panel 自带 GroupTabBar（src/pool/shared/GroupTabBar.tsx 复用——tab bar 留在 panel 内）
+  ② computeLayout(root) → PanelRect[] + HandleRect[]——面板绝对定位平级渲染，
+     B22 防护：key=groupId 永远同级，树变化只改 x/y/w/h，不 unmount（禁改回递归 flex 嵌套）
+  ③ keep-alive——CSS display 切换（不是条件渲染）
+  ④ shellRendered 分支：tab.shellRendered → ShellViewRenderer（welcome/插件详情/输出），
+     否则 PluginComponent——两条分支都保留
+  ⑤ 空态——groups.length === 0 → 居中"没有打开的标签页"（壳解析文案）
+  ⑥ 单面板 flex fallback——叶子数 = 1 时不绝对定位（useAbsolute 条件）
+  ⑦ 分隔线拖拽——🔴 真实机制（不是"update SplitNode"）：
+     乐观本地 sizes（mousedown 起 mousemove 本地算）+ mouseup 一次性
+     commit tabAction({ action: "updateSplitSizes", branchIndex, sizes })（与 #13 同款模式）；
+     双击重置 50/50；hover accent 高亮
+  ⑧ 同组拖拽乐观重排 dragLocalTabs（拖拽期间本地重排，松手 reorderTab commit）
+  ⑨ 跨 group 移动（findOtherContainer）+ 拖到面板边缘分屏（detectDropZone）——
+     Glassmorphism drop zone 内发光 overlay（class drop-glass-zone，pointer-events: none）
+  ⑩ drag preview portal——createPortal 到 document.body（防 B34 裁剪），
+     图标 emoji-vs-img 判断 + 标题
+  ⑪ creatableViews [+] 动态菜单（GroupTabBar 传入）
+  ⑫ ErrorBoundary——🔴 池侧版（现 MainRenderer import components/shared/ErrorBoundary
+     是壳目录；迁 src/pool/shared/ErrorBoundary.tsx）；tab bar 用 pluginId=pool-tabbar:${groupId}，
+     内容用 tab.pluginId
+  ⑬ z-index——drop zone 9999 → Z_INDEX.dropZone，preview 99999 → Z_INDEX.dragPreview
+     （#26 常量表，禁裸数字）
+
+  提取方式：MainRenderer 内联逻辑原样提取（useDragReorder 275 行 15 轮 bug 验证——
+  不重写）；useSplitResize / useTabDropPreview 拆分是可选重构，非本任务。
+  拖出窗口检测：Phase 8 #33 useDragDetach 建成后接入。
+
+不 import: PanelZone / SidebarZone / StatusBarZone / TitleBarZone（及其他任何 zone）
 
 关键算法:
-  computeLayout(root, containerWidth, containerHeight):
+  computeLayout(root, x, y, w, h, branchIndices, localSizes):
     - 递归遍历 SplitNode 树
-    - leaf → 一个 PanelRect（x, y, width, height）
-    - branch → 根据 direction (horizontal|vertical) 分配空间
+    - leaf → 一个 PanelRect（x, y, width, height 百分比）
+    - branch → 根据 direction (horizontal|vertical) 分配空间，中间 HANDLE_PCT=0.4 分隔条
     - 返回: { panels: PanelRect[], handles: HandleRect[] }
     - B22 防护: panels 用 position: absolute, key=groupId 不变
 
 组件树:
-  <div className="editor-zone" style={{ flex: 1, position: 'relative' }}>
+  <div className="editor-zone" style={{ flex: 1, position: 'relative', overflow: 'hidden' }}>
+    {/* 绝对定位模式（多面板）——单面板走 flex fallback */}
     {panels.map(panel => (
-      <div key={panel.groupId} style={{ position: 'absolute', ...panel.rect }}>
-        {group.tabs.map(tab => (
-          <div key={tab.id} style={{ display: tab.id === group.activeTabId ? 'flex' : 'none' }}>
-            <PluginErrorBoundary pluginId={tab.pluginId} tabId={tab.id}>
-              <PluginComponent
-                pluginId={tab.pluginId}
-                tabId={tab.id}
-                sourceId={tab.sourceId}
-                isActive={tab.id === group.activeTabId}
-              />
-            </PluginErrorBoundary>
-          </div>
-        ))}
+      <div key={panel.groupId} data-group-id={panel.groupId} style={{ position: 'absolute', ...rect }}>
+        <ErrorBoundary pluginId={`pool-tabbar:${panel.groupId}`}>
+          <GroupTabBar ... />
+        </ErrorBoundary>
+        <div style={{ flex: 1 }}>
+          {group.tabs.map(tab => (
+            <div key={tab.id} style={{ display: tab.id === activeTabId ? 'flex' : 'none' }}>
+              <ErrorBoundary pluginId={tab.pluginId}>
+                {tab.shellRendered
+                  ? <ShellViewRenderer tab={tab} isActive={...} creatableViews={...} />
+                  : <PluginComponent ... />}
+              </ErrorBoundary>
+            </div>
+          ))}
+        </div>
       </div>
     ))}
-    {/* 分屏预览 overlay */}
-    <DropZoneOverlay />
-    {/* 拖拽预览 portal */}
-    <DragPreviewPortal />
+    {/* 分隔线 handles——onMouseDown 拖拽 + 双击重置 50/50 + hover accent */}
+    {/* Glassmorphism drop zone overlay（拖拽分屏预览） */}
+    {/* drag preview portal → document.body */}
   </div>
 
 与壳关系:
-  从 E5.6 MainRenderer.tsx 的 computeLayout + 分屏渲染逻辑提取
-  SplitTree 数据结构不变（src/hooks/splitTree.ts → src/pool/splitTree.ts）
+  从 E5.6 MainRenderer.tsx 提取（含 #7 取消后吸收的 GroupTabBar）
+  SplitTree 纯操作迁 src/core/utils/splitTree.ts（🔴 2026-08-13 审计修正：
+  壳 tabState 与池 computeLayout 双进程共用——不进 pool 目录，见壳目录规范 §1 utils；
+  原"→ src/pool/splitTree.ts"是错的）
+  computeLayout 现私有在 MainRenderer——提取时随 EditorZone 迁入或拆入 utils
 ```
 
 ### 2.6 PanelZone
@@ -227,12 +243,18 @@ Props:
 
 ```
 Props: panel: { visible: boolean; height: number; activeViewId: string; views: PanelViewMeta[] }
-职责：
+职责（🔴 2026-08-13 审计：greenfield 骨架——无壳侧生产者，本任务只建渲染骨架）：
   - 渲染 PanelTabBar（28px 矮标签栏）
   - 渲染活动面板视图（keep-alive——CSS display 切换）
   - 面板视图注册表查找组件
   - [+] 按钮 → 新建终端/output channel
-  - 拖拽顶部 resize handle → 调整高度
+  - 拖拽顶部 resize handle → 调整高度（🔴 #13 同款模式：乐观本地 + mouseup commit，真相源在壳）
+
+🔴 骨架优先——数据生产者归 Phase 12（API 归位）：
+  - 壳侧 bottom-panel 贡献路由（contributes.views["bottom-panel"] → panel.views[]）
+  - 面板高度持久化（workspace.json）
+  - 插件贡献面板视图动态注册（E5.6 的 registerPanelView——插件独立铁律要求）
+  生产者建成前 layout.panel 无数据 → 条件渲染永假，本任务验证 = 骨架渲染零报错
 
 CSS:
   height: layout.panel.height (px)
@@ -250,8 +272,8 @@ keep-alive:
   所有 views 平级渲染，display: none/flex 切换
   和 EditorZone 的 TabContent 模式一致
 
-面板视图注册表:
-  src/pool/main/panelViews.ts:
+面板视图注册表（🔴 2026-08-13 审计修正路径——不在 pool/main/，#24 整目录删除）:
+  src/pool/views/panelViews.ts:
     export const PANEL_VIEWS: Record<string, React.ComponentType<{ isActive: boolean }>>
     = {
       "terminal": TerminalView,
@@ -271,10 +293,10 @@ keep-alive:
 
 ```
 Props: rightSidebar: { visible: boolean; width: number; viewId: string | null }
-职责：
-  - 和 SidebarZone 结构一致（可复用 shared 逻辑）
+职责（🔴 2026-08-13 审计：greenfield 骨架——数据生产者归 Phase 12）：
+  - 和 SidebarZone 结构一致（复用 pool/shared/ 的 PoolSectionStack / PoolToolbarSlot——#11 已迁入）
   - 默认隐藏——需要时才渲染
-  - 宽度拖拽——左侧 4px resize handle
+  - 宽度拖拽——左侧 4px resize handle（🔴 #13 同款模式：乐观本地 + mouseup commit）
   - 内容：大纲视图、属性面板、AI Chat 等
 
 CSS:
@@ -310,6 +332,17 @@ CSS:
   原 E5 壳 StatusBar div → 迁入此
   插件通过 window.linkdesk.statusBar.setEntry(id, { text, tooltip, command })
      → 主进程 → pushLayout → StatusBarZone 渲染
+```
+
+### 2.9 TopBarZone
+
+**文件：** `src/pool/zones/TopBarZone.tsx`
+
+```
+Props: topBar?: TopBarLayout
+职责（🔴 2026-08-13 审计：greenfield 骨架——可选 zone，条件渲染）：
+  - 面包屑/工具栏——具体内容待定
+  - 无壳侧生产者（topBar 数据填充归 Phase 12）——本任务只建骨架，条件渲染永假
 ```
 
 ---
