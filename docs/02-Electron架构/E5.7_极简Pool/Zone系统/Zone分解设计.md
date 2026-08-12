@@ -17,7 +17,6 @@ flex column (全窗口 100vw × 100vh)
 │   ├── SidebarZone  (可变宽度, flex-shrink: 0, 条件渲染)
 │   ├── 分隔线       (4px, flex-shrink: 0, cursor: col-resize)
 │   ├── flex column (flex: 1, min-width: 0)
-│   │   ├── TopBarZone       (可选, flex-shrink: 0, 条件渲染)
 │   │   ├── MainZone       (flex: 1, min-height: 0——内含每 panel GroupTabBar 35px)
 │   │   └── PanelZone        (可变高度, flex-shrink: 0, 条件渲染)
 │   ├── 分隔线       (4px, flex-shrink: 0, 条件渲染)
@@ -33,7 +32,6 @@ flex column (全窗口 100vw × 100vh)
 | TitleBarZone | `layout.titleBar` | `-webkit-app-region: drag`, 窗口控制 |
 | IconBarZone | `layout.iconBar` | 42px 宽, 图标按钮列表 |
 | SidebarZone | `layout.sidebar` | 可折叠, 可拖宽度 |
-| TopBarZone | `layout.topBar?` | 条件渲染, 面包屑/工具栏 |
 | MainZone | `layout.groups`, `layout.root` | SplitTree 分屏, 每 panel 自带 GroupTabBar（35px 标签栏）+ 标签页内容 |
 | PanelZone | `layout.panel?` | 条件渲染, 底部面板 |
 | RightSidebarZone | `layout.rightSidebar?` | 条件渲染, 右侧面板 |
@@ -338,16 +336,18 @@ CSS:
      → 主进程 → pushLayout → StatusBarZone 渲染
 ```
 
-### 2.9 TopBarZone
+### 2.9 TopBarZone——🔴 已取消（2026-08-13 审计，墓碑）
 
-**文件：** `src/pool/zones/TopBarZone.tsx`
+**不建 TopBarZone。** 论证：
 
-```
-Props: topBar?: TopBarLayout
-职责（🔴 2026-08-13 审计：greenfield 骨架——可选 zone，条件渲染）：
-  - 面包屑/工具栏——具体内容待定
-  - 无壳侧生产者（topBar 数据填充归 Phase 12）——本任务只建骨架，条件渲染永假
-```
+1. **与规范文档死名重名**：V3-部件命名规范 ② 顶栏（TopBar）Phase 4 已移除（串口控制移入插件内部、语言/主题移入状态栏）——捡回死名 = 命名违规。
+2. **不在区域清单**：确认的区域 = 侧栏 / 标签栏+标签页（主区）/ 图标栏 / 底部面板 / 右侧（未来）/ 顶部标题。面包屑没有位置。
+3. **无数据生产者 + 几何同构陷阱**：greenfield 骨架（无壳侧生产者，条件渲染永假）；面包屑若真做，VS Code 里是每编辑器组内部的（同 GroupTabBar per-panel），独立横带会重演 TabBarZone 的几何错位（§2.4 墓碑同款论证）。
+
+**连带：**
+
+- PoolLayout 无 `topBar` 字段（E5.7#1 已删）
+- 面包屑需求 → 未来并入 MainZone 每 panel（不在 E5.7 范围）
 
 ---
 
