@@ -16,6 +16,10 @@ E5.7 只有一个 Pool——`poolId`/`zone` 参数全部消失：
 
   /** 通知壳——池已就绪（ready 前的 layout 会被缓冲回放） */
   ready(): void;
+
+  /** 🔴 意图通道保留（2026-08-13 审计）——池 UI 写操作回壳 tabState 的唯一通道 */
+  sidebarAction(action: unknown): void;   // 侧栏操作
+  tabAction(action: unknown): void;       // 标签/拖拽/分屏（tabs.* 覆盖不了 pinTab/拖拽/分屏）
 }
 ```
 
@@ -49,19 +53,19 @@ window.linkdesk.pluginInstance.notifyReady()
 
 ## 5. 补全：10 个命名空间
 
-| 命名空间 | 新增方法 | 消 import 数 |
+| 命名空间 | 现状（2026-08-13 审计实测） | 剩余工作 |
 |:--|:--|:--|
-| `linkdesk.workspace` | `openFolder`, `addFolder`, `removeFolder`, `onDidChangeFolders`, `onDidChangeActiveWorkspace`, `setActiveWorkspace` | 7 |
-| `linkdesk.commands` | `registerCommand` (IPC版) | 4 |
-| `linkdesk.fileAssociation` | `getPluginFor(ext)` | 2 |
-| `linkdesk.viewContainer` | `getViews`, `getViewContainer` | 3 |
-| `linkdesk.events` | `emit`, `on`, `off` (IPC暴露) | 3 |
-| `linkdesk.fileDecoration` | `registerProvider`, `getDecorations` | 1 |
-| `linkdesk.protocol` | `registerParser`, `getParsers`, `getDefaultFor` | 1 |
-| `linkdesk.quickPick` | `show(opts)` → `Promise<selected>` | — |
-| 零散 6 个 | `keybinding`, `clipboard`, `langDef`, `encoding`, `fileSearch`, `sidebar`, `data`, `contextKey` | 8 |
+| `linkdesk.workspace` | ✅ 6 方法全已在位（E5.6#11.5a） | 验证 + 残余清理（#55） |
+| `linkdesk.commands` | ✅ registerCommand IPC 版已在位 | marketplace 1 处迁移（#56） |
+| `linkdesk.fileAssociation` | ✅ getPluginFor 已在位 | 并入 Phase 11 #50（原 #57 删除） |
+| `linkdesk.viewContainer` | ⚠️ no-op 桩（getView→null） | 桩换真 IPC 查询（#58） |
+| `linkdesk.events` | ✅ on/emit 已在位（off = on 返回值） | 验证 + 残余清理（#59） |
+| `linkdesk.decorations` | ✅ 现网名（插件已调用） | registerProvider 按需补（#60） |
+| `linkdesk.protocol` | ✅ listProtocols 等已在位 | registerParser 类按需（#61） |
+| `linkdesk.quickPick` | ❌ 不存在——真新建 | 池内渲染机制（#63） |
+| 零散 | ✅ 6/8 已在位；sidebar/data 现网无 | 验证（#62） |
 
-> 全部是消灭插件 `import @src/core` 的补全——和 Pool 模型无关，E5.6 未完成部分原样搬入 E5.7。
+> 🔴 2026-08-13 审计：原表"消 X 处 import"数字全部过期——plugins/ 实测运行时 import @src/core 仅 3 处（marketplace×2 + file-tree 测试×1）。E5.6#11.5 已把大部分命名空间补进 preload-pool，本表改为现网实测状态。
 
 ---
 
