@@ -42,6 +42,8 @@ flex column (全窗口 100vw × 100vh)
 | StatusBarZone | `layout.statusBar` | 22px, 状态信息 |
 | FloatingLayerHost | 事件触发 | position:fixed, z-index |
 
+> 🔴 **显示文本铁律（防中英夹杂回归）：** 所有 zone 渲染的文本由壳侧解析（`t()` 在壳），经 pushLayout 推送到池——池侧哑渲染字符串。**池不初始化 i18n、不二次翻译。**（iconBar tooltip / statusBar items / containerTitle 等全部壳侧解析。）
+
 ---
 
 ## 2. 每个 Zone 详细设计
