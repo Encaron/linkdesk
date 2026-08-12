@@ -429,32 +429,6 @@ function App() {
     return () => document.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  /* ---- 侧栏拖拽调整宽度（走 LayoutEngine.resizeZone） ---- */
-  const dragging = useRef(false);
-
-  const onResizeMouseDown = useCallback((e: React.MouseEvent) => {
-    e.preventDefault();
-    dragging.current = true;
-  }, []);
-
-  useEffect(() => {
-    const onMouseMove = (e: MouseEvent) => {
-      if (!dragging.current) return;
-      const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
-      const w = edge === "right"
-        ? Math.min(600, Math.max(170, window.innerWidth - e.clientX))
-        : Math.min(600, Math.max(170, e.clientX - (layoutEngine.getBounds("iconbar")?.width ?? 42)));
-      layoutEngine.resizeZone("sidebar", w);
-    };
-    const onMouseUp = () => { dragging.current = false; };
-    window.addEventListener("mousemove", onMouseMove);
-    window.addEventListener("mouseup", onMouseUp);
-    return () => {
-      window.removeEventListener("mousemove", onMouseMove);
-      window.removeEventListener("mouseup", onMouseUp);
-    };
-  }, []);
-
   // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
   // 此 listener 只做 React state 同步（theme/language——app shell 需要）。
   // terminal.* 变更由 useConfiguration hook 在终端组件内部响应。
@@ -663,18 +637,6 @@ function App() {
             <SidePanel width={zoneBounds.sidebar.width} />
           </div>
         )}
-        {zoneBounds.sidebar && (() => {
-          const edge = layoutEngine.getZone("sidebar")?.dock?.edge;
-          const handleLeft = edge === "right"
-            ? zoneBounds.sidebar.x - 4
-            : zoneBounds.sidebar.x + zoneBounds.sidebar.width;
-          return (
-            <div
-              style={{ position: "fixed", left: handleLeft, top: TITLE_BAR_HEIGHT, width: 4, height: zoneBounds.sidebar.height, zIndex: 15, cursor: "col-resize", background: "var(--separator)" }}
-              onMouseDown={onResizeMouseDown}
-            />
-          );
-        })()}
         {zoneBounds.main && (
           <div style={{ position: "fixed", display: "flex", flexDirection: "column", overflow: "hidden", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
             <MainContent editorAreaRef={editorAreaRef} sidebarView={sidebarView} isSidebarVisible={isSidebarExpanded} sidebarWidth={zoneBounds.sidebar?.width ?? 0} />
