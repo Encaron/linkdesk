@@ -22,13 +22,18 @@ ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; val
 });
 
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
+// E5.6#16.7k-fix：缓冲回放——对标 preload-pool.ts onLayout 模式。
+// module 顶层 IPC（如 serial-monitor 的 registerItems）可能在 React mount 前到达，
+// bridgeRequestHandler 为 null 时静默丢弃 → 菜单项永远丢失。
+// 缓冲+回放保证：handler 就绪前到达的请求排队，handler 就绪后逐条回放。
 let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
+const _bridgeRequestBuffer: Array<{ requestId: string; channel: string; args: any[] }> = [];
 
 ipcRenderer.on('bridge:request', (_event, req: any) => {
   if (bridgeRequestHandler !== null) {
     bridgeRequestHandler(req);
   } else {
-    console.warn('[preload-shell] 收到 bridge:request 但壳侧处理器未注册——IpcBridgeHandler 未初始化？');
+    _bridgeRequestBuffer.push(req);
   }
 });
 
@@ -389,6 +394,12 @@ try {
       // React 侧 IpcBridgeHandler 注册请求处理器（#26）
       onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) => {
         bridgeRequestHandler = cb;
+        // E5.6#16.7k-fix：回放 IpcBridgeHandler 就绪前缓冲的请求。
+        // 对标 preload-pool.ts pool.onLayout 模式——先缓冲后回放，防静默丢弃。
+        const buffer = _bridgeRequestBuffer.splice(0);
+        for (const req of buffer) {
+          try { cb(req); } catch { /* contextBridge 回调静默失败 */ }
+        }
         return () => { bridgeRequestHandler = null; };
       },
       // React 侧 IpcBridgeHandler 响应请求（#26）

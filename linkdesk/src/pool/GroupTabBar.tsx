@@ -9,7 +9,7 @@
  * - 点击切标签页 / [×] 关闭 / 中键关闭
  * - 拖拽排序——乐观更新 + 松手 IPC
  * - overflow 折叠——滚动箭头
- * - 右键菜单——方案 A（池内渲染，自适应翻转）
+ * - 右键菜单——壳 ContextMenu 归一化（menuId="TabContext"），池零菜单逻辑
  * - [+] 新建标签页按钮
  *
  * 🔴 不包含（留在壳 TabBar）：
@@ -29,6 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { PoolTab } from "../core/types/poolLayout";
 import { normalizePath } from "../core/services/pathUtils";
+import ContextMenu from "@src/components/shared/ContextMenu";
 import "./GroupTabBar.css";
 
 // ═══════════════════════════════════════════════════════════════════
@@ -49,39 +50,6 @@ interface GroupTabBarProps {
   onTabBarMount?: (el: HTMLDivElement | null) => void;
   /** E5.6#16.7k-3：可创建为标签页的视图——[+] 按钮下拉菜单 */
   creatableViews?: { pluginId: string; label: string }[];
-}
-
-// ═══════════════════════════════════════════════════════════════════
-// 右键菜单项
-// ═══════════════════════════════════════════════════════════════════
-
-/** 菜单项高度——须与 CSS `.group-tab-context-item { height: 28px }` 一致 */
-const MENU_ITEM_HEIGHT = 28;
-/** 菜单上下 padding——须与 CSS `padding: 4px 0` 一致 */
-const MENU_PADDING_Y = 8;
-/** 菜单最小宽度 */
-const MENU_MIN_WIDTH = 180;
-
-interface ContextMenuState {
-  tabId: string;
-  x: number;
-  y: number;
-}
-
-/** 右键菜单项——i18n 化：label/tooltip 走 t()，在组件内构建 */
-function buildMenuItems(t: (key: string) => string) {
-  return [
-    { id: "close", label: t("关闭"), action: (tabId: string) => ({ action: "closeTab", tabId }) },
-    { id: "closeOthers", label: t("关闭其他"), action: (tabId: string, groupId: string) => ({ action: "closeOtherTabs", groupId, tabId }) },
-    { id: "closeToRight", label: t("关闭右侧"), action: (tabId: string, groupId: string) => ({ action: "closeTabsToRight", groupId, tabId }) },
-    { id: "closeAll", label: t("关闭全部"), action: (_tabId: string, groupId: string) => ({ action: "closeAllTabs", groupId }) },
-    { id: "divider1", label: "", action: null as any, divider: true as const },
-    { id: "splitRight", label: t("向右分屏"), action: (tabId: string) => ({ action: "splitTab", tabId, direction: "right" }) },
-    { id: "splitDown", label: t("向下分屏"), action: (tabId: string) => ({ action: "splitTab", tabId, direction: "down" }) },
-    { id: "duplicate", label: t("复制标签页"), action: (tabId: string) => ({ action: "duplicateTab", tabId }) },
-    { id: "divider2", label: "", action: null as any, divider: true as const },
-    { id: "pin", label: t("固定"), action: (tabId: string) => ({ action: "pinTab", tabId }) },
-  ];
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -127,10 +95,15 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
     [poolApi],
   );
 
-  // ── 右键菜单项（i18n）──
-  const MENU_ITEMS = useMemo(() => buildMenuItems(t), [t]);
+  // ── E5.6#16.7k：右键菜单归一化——壳 ContextMenu，menuId="TabContext" ──
+  // 壳 coreCommands.ts 已注册 TabContext 菜单项（close/closeOthers/closeRight/closeAll/splitDown/splitRight/duplicate/togglePin）。
+  // 池不再硬编码菜单项——ContextMenu 通过 lk.menu.getItems("TabContext") 获取壳 MenuRegistry。
+  const [contextMenuAnchor, setContextMenuAnchor] = useState<{ x: number; y: number; tabId: string } | null>(null);
 
-  // ── 去歧义标签名 ──
+  // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
+  const [showPlusMenu, setShowPlusMenu] = useState(false);
+  const [plusMenuPos, setPlusMenuPos] = useState<{ x: number; y: number } | null>(null);
+  const plusMenuRef = useRef<HTMLDivElement | null>(null);
   const labels = useMemo(() => disambiguateLabels(tabs), [tabs]);
 
   // ── Overflow 检测 ──
@@ -170,35 +143,19 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
     }
   }, []);
 
-  // ── 右键菜单 ──
-  const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
-  const [menuFlipY, setMenuFlipY] = useState(false);
+  // ── 右键菜单——壳 ContextMenu 接管（menuId="TabContext"），池不再硬编码菜单项。
+  // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）——不需要池侧 useEffect 关闭逻辑。
+  // 对标壳 ContextMenu.tsx:137-141。
 
-  // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
-  const [showPlusMenu, setShowPlusMenu] = useState(false);
-  const [plusMenuPos, setPlusMenuPos] = useState<{ x: number; y: number } | null>(null);
-
-  // 点外部 / Escape 关闭菜单
-  useEffect(() => {
-    if (!contextMenu) return;
-    const close = () => setContextMenu(null);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
-    };
-    window.addEventListener("mousedown", close);
-    window.addEventListener("keydown", onKey);
-    return () => {
-      window.removeEventListener("mousedown", close);
-      window.removeEventListener("keydown", onKey);
-    };
-  }, [contextMenu]);
-
-  // PlusMenu 点外部关闭
+  // PlusMenu 点外部关闭——mousedown 竞态修复：contains 守卫防菜单项 onClick 被吞
   useEffect(() => {
     if (!showPlusMenu) return;
-    const close = () => setShowPlusMenu(false);
+    const close = (e: MouseEvent) => {
+      if (e.target instanceof Node && plusMenuRef.current?.contains(e.target)) return;
+      setShowPlusMenu(false);
+    };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") close();
+      if (e.key === "Escape") setShowPlusMenu(false);
     };
     // delay——避免同一次 click 既打开又关闭
     const timer = setTimeout(() => {
@@ -215,11 +172,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   const onContextMenu = useCallback(
     (tabId: string, e: ReactMouseEvent) => {
       e.preventDefault();
-      // 检测菜单是否超出 View 底部——翻转方向
-      const menuHeight = MENU_ITEMS.length * MENU_ITEM_HEIGHT + MENU_PADDING_Y;
-      const viewHeight = window.innerHeight;
-      setMenuFlipY(e.clientY + menuHeight > viewHeight);
-      setContextMenu({ tabId, x: e.clientX, y: e.clientY });
+      setContextMenuAnchor({ tabId, x: e.clientX, y: e.clientY });
     },
     [],
   );
@@ -339,8 +292,8 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {/* 标签文字 */}
                 <span className="group-tab-label">{labels.get(tab.id) ?? tab.title}</span>
 
-                {/* 关闭按钮——singleton/blocked 不显示 */}
-                {tab.closeBehavior !== "blocked" && !tab.singleton && (
+                {/* 关闭按钮——仅 blocked 不显示。singleton 只管打开时去重，不管关闭 */}
+                {tab.closeBehavior !== "blocked" && (
                   <button
                     className="group-tab-close"
                     onClick={(e) => handleClose(tab.id, e)}
@@ -391,6 +344,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         {/* PlusMenu 下拉——动态列出可创建视图 */}
         {showPlusMenu && plusMenuPos && creatableViews && creatableViews.length > 0 && (
           <div
+            ref={plusMenuRef}
             className="group-tab-plus-menu"
             style={{
               position: "fixed",
@@ -415,50 +369,16 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         )}
       </div>
 
-      {/* 右键菜单——池内渲染，自适应翻转 */}
-      {contextMenu && (
-        <>
-          <div className="group-tab-context-backdrop" />
-          <div
-            className="group-tab-context-menu"
-            style={{
-              position: "fixed",
-              left: Math.max(0, Math.min(contextMenu.x, window.innerWidth - MENU_MIN_WIDTH)),
-              top: menuFlipY
-                ? contextMenu.y - MENU_ITEMS.length * MENU_ITEM_HEIGHT - MENU_PADDING_Y
-                : contextMenu.y,
-              zIndex: 1000,
-            }}
-          >
-            {MENU_ITEMS.map((item) => {
-              if (item.divider) {
-                return <div key={item.id} className="group-tab-context-divider" />;
-              }
-              const tab = tabs.find((t) => t.id === contextMenu.tabId);
-              // "固定" → 动态文字
-              let label = item.label;
-              if (item.id === "pin") {
-                label = tab?.pinned ? t("取消固定") : t("固定");
-              }
-              return (
-                <button
-                  key={item.id}
-                  className={`group-tab-context-item${(item as any).disabled ? " disabled" : ""}`}
-                  disabled={(item as any).disabled}
-                  title={(item as any).tooltip ?? ""}
-                  onClick={() => {
-                    if ((item as any).disabled) return;
-                    const act = item.action(contextMenu.tabId, groupId);
-                    tabAction(act);
-                    setContextMenu(null);
-                  }}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-        </>
+      {/* E5.6#16.7k：右键菜单归一化——壳 ContextMenu，menuId="TabContext"。
+           壳 coreCommands.ts 注册菜单项，MenuRegistry 存储，池通过 lk.menu.getItems() 查询。
+           ContextMenu 自带 mousedown contains 守卫、视口自适应、键盘导航——池零菜单逻辑。 */}
+      {contextMenuAnchor && (
+        <ContextMenu
+          menuId={"tabContext"}
+          anchor={contextMenuAnchor}
+          context={{ tabId: contextMenuAnchor.tabId, groupId }}
+          onClose={() => setContextMenuAnchor(null)}
+        />
       )}
 
     </div>

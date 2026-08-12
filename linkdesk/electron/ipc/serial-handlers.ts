@@ -29,6 +29,12 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         for (const instanceId of windowManager.getAllInstanceIds()) {
           windowManager.getPluginView(instanceId)?.webContents.send('serial:data', text);
         }
+        // E5.6 Pool 模型：广播到双 Pool WebView（sidebarPool + mainPool）
+        for (const poolView of windowManager.getAllPoolViews()) {
+          if (!poolView.webContents.isDestroyed()) {
+            poolView.webContents.send('serial:data', text);
+          }
+        }
       }
     },
     onStats: (stats) => {
@@ -39,6 +45,12 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         for (const instanceId of windowManager.getAllInstanceIds()) {
           windowManager.getPluginView(instanceId)?.webContents.send('serial:stats', stats);
         }
+        // E5.6 Pool 模型：广播到双 Pool WebView
+        for (const poolView of windowManager.getAllPoolViews()) {
+          if (!poolView.webContents.isDestroyed()) {
+            poolView.webContents.send('serial:stats', stats);
+          }
+        }
       }
     },
     onSystem: (msg) => {
@@ -48,6 +60,12 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       if (windowManager) {
         for (const instanceId of windowManager.getAllInstanceIds()) {
           windowManager.getPluginView(instanceId)?.webContents.send('serial:system', msg);
+        }
+        // E5.6 Pool 模型：广播到双 Pool WebView
+        for (const poolView of windowManager.getAllPoolViews()) {
+          if (!poolView.webContents.isDestroyed()) {
+            poolView.webContents.send('serial:system', msg);
+          }
         }
       }
     },

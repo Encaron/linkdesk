@@ -431,27 +431,59 @@
   border-bottom: 1px solid rgba(255, 200, 0, 0.2);
 }
 
-.monaco-wrapper {
+.send-editor-wrapper {
   display: flex;
   align-items: stretch;
   border-bottom: 1px solid var(--separator);
 }
 
-.monaco-prefix {
+.send-editor-prefix {
   display: flex;
   align-items: center;
   padding: 0 6px 0 10px;
   color: var(--accent);
-  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
   font-size: 14px;
   font-weight: 600;
   background: var(--bg-card);
   flex-shrink: 0;
 }
 
-/* Monaco 编辑器容器 */
-.monaco-wrapper > section {
+/* CM6 发送编辑器容器 */
+.send-editor-cm {
   flex: 1;
+  min-height: 32px;
+  max-height: 80px;
+}
+
+.send-editor-cm .cm-editor {
+  height: 100%;
+  outline: none;
+}
+
+/* 项目标准焦点环——覆盖 CM6 默认 dotted 虚线 */
+.send-editor-cm .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.send-editor-cm .cm-editor .cm-scroller {
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
+  font-size: 13px;
+}
+
+.send-editor-cm .cm-editor .cm-content {
+  padding: 6px 0;
+}
+
+/* 光标可见——CM6 theme 扩展 (sendTheme) 为主，CSS 为后备 */
+.send-editor-cm .cm-editor .cm-cursor {
+  border-left: 2px solid var(--text-primary);
+}
+
+/* 隐藏发送区 CM6 的 gutter（无需行号） */
+.send-editor-cm .cm-editor .cm-gutters {
+  display: none;
 }
 
 .sender-actions {

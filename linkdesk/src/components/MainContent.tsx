@@ -155,7 +155,9 @@ function MainContent({
     const unsub = shellEvents.on("icon:selected", (pluginId) => {
       const plugin = getViewPlugin(pluginId);
       if (plugin?.manifest.appearsIn?.tabBar && !plugin?.manifest.appearsIn?.sidePanel) {
-        createTab(pluginId);
+        const tabId = createTab(pluginId);
+        // E5.6 fix：icon:selected 直开标签页也不会触发 tab:focused → activeEditor 不更新
+        if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
       }
     });
     return unsub;
@@ -164,8 +166,17 @@ function MainContent({
 
   // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
   useEffect(() => {
-    const u1 = shellEvents.on("tab:create", ({ type, opts }) => createTab(type, opts as any));
-    const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => openOrFocusTab(type, opts as any));
+    // E5.6 fix：tab:create / tab:openOrFocus 后也 emit tab:focused。
+    // 池自动激活的新标签页不会触发 pool→focusTab IPC（那是用户点击才发的），
+    // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
+    const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
+      const tabId = createTab(type, opts as any);
+      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
+    });
+    const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
+      const tabId = openOrFocusTab(type, opts as any);
+      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
+    });
     const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
     const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
     const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId }) => focusTabBySourceId(sourceId));
@@ -259,7 +270,14 @@ function MainContent({
       }
     },
     reopenClosedTab: () => restoreClosedTab(),
-  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t]);
+    // E5.6#16.7k：池 GroupTabBar ContextMenu 归一化——补三个 CoreCallback
+    closeAllTabs: (groupId) => {
+      const g = tabState.groups.find((x) => x.id === groupId);
+      if (g) for (const t of [...g.tabs]) closeTab(t.id);
+    },
+    duplicateTab: (tabId) => _duplicateTab(tabId),
+    pinTab: (tabId) => pinTab(tabId),
+  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t, _duplicateTab, pinTab]);
   updateCoreCallbacks(coreCallbacks);
 
   // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
@@ -267,7 +285,7 @@ function MainContent({
   const handleTabAction = useCallback((action: any) => {
     switch (action?.action) {
       case "focusTab":
-        focusTab(action.tabId);
+        handleFocusTab(action.tabId);
         break;
       case "closeTab":
         closeTab(action.tabId);
@@ -337,7 +355,7 @@ function MainContent({
         updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);
         break;
     }
-  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes]);
+  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
 
   // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
   usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onTabAction: handleTabAction });
