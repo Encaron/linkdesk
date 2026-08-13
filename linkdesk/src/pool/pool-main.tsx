@@ -1,11 +1,11 @@
 /**
- * Pool React 入口——E5.6#7a + E5.6#11.5c。
+ * Pool React 入口——E5.6#7a + E5.6#11.5c + E5.7#2（单 zone 统一入口）。
  *
  * pool.html 加载此文件，Shell 负责创建 WebContentsView。
- * `?zone=sidebar` → SidebarPool，`?zone=main` → MainPool。
+ * E5.7 极简Pool：无 ?zone= 路由——唯一 Pool 直接渲染 <PoolZoneShell layout={layout} />。
  *
  * 壳推送 PoolLayout JSON，池被动渲染——池不知道"世界为什么长这样"。
- * 缓冲回放模式防竞态：preload 就位 ～ React mount 之间到达的布局先入缓冲，
+ * 缓冲回放模式防竞态：preload 就绪 ～ React mount 之间到达的布局先入缓冲，
  * onLayout 回调注册时回放 + 切换为实时推送。
  *
  * 🔴 Path B：池 = 哑渲染器。不 import 任何 @src/core/* 模块（import type 除外）。
@@ -14,8 +14,7 @@
 
 import { useState, useEffect, useRef, StrictMode, useTransition } from "react";
 import ReactDOM from "react-dom/client";
-import SidebarRenderer from "./sidebar/SidebarRenderer";
-import MainRenderer from "./main/MainRenderer";
+import PoolZoneShell from "./PoolZoneShell";
 import type { PoolLayout } from "../core/types/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
 import "../index.css";
@@ -26,7 +25,6 @@ import "../i18n";
 // ── PoolApp ──
 
 function PoolApp() {
-  const zone = new URLSearchParams(window.location.search).get("zone");
   // E5.7#1：PoolLayout v2 全量字段——初始为 null，首个 pushLayout 到达后渲染
   const [layout, setLayout] = useState<PoolLayout | null>(null);
   // E5.6#11-fix7：useTransition——切容器时 React 后台渲染新内容，前台保持旧内容，
@@ -37,15 +35,7 @@ function PoolApp() {
   // 保留最后一个可见布局——切容器时旧内容保持显示，新布局到达后无缝替换。
   const lastVisibleLayout = useRef<PoolLayout | null>(null);
 
-  // E5.6#11-fix3：SidebarPool 根背景——独立 WebContentsView 需要侧栏色调
-  useEffect(() => {
-    const root = document.getElementById("pool-root");
-    if (root && zone === "sidebar") {
-      root.style.background = "var(--bg-side-panel)";
-    }
-  }, [zone]);
-
-  // 接收壳推送的 PoolLayout——preload 缓冲回放 + onLayout 注册
+  // 接收壳推送的 PoolLayout——preload 缓冲回放 + onLayout 注册（E5.6#8b 不变）
   useEffect(() => {
     const poolApi = (window as any).linkdesk?.pool;
     if (!poolApi) return;
@@ -70,34 +60,14 @@ function PoolApp() {
   // 首个布局未到达前渲染 null（E5.7#1——v2 无空对象初始值，缓冲回放保证 ready 后立即到达）
   if (!layout) return null;
 
-  // 决定用哪个 sidebar 渲染——当前布局无内容时 fallback 到上次可见布局
+  // E5.6#11-fix6：侧栏防闪烁——当前 push 的 sidebar 不可见/空时，用上次可见的 sidebar 顶替。
+  // 其余 zone 一律用当前布局。E5.7#2 之前此逻辑分发给 SidebarRenderer，现合并进唯一布局。
   const effectiveSidebar = layout.sidebar.visible && layout.sidebar.views?.length > 0
     ? layout.sidebar
-    : lastVisibleLayout.current?.sidebar;
+    : lastVisibleLayout.current?.sidebar ?? layout.sidebar;
 
-  if (zone === "sidebar") {
-    return <SidebarRenderer sidebar={effectiveSidebar} />;
-  }
-  if (zone === "main") {
-    return <MainRenderer groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} />;
-  }
-
-  // zone 参数无效
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "center",
-        height: "100%",
-        color: "var(--text-muted, #888)",
-        fontSize: 13,
-        userSelect: "none",
-      }}
-    >
-      Pool zone 参数无效: {zone || "(空)"}
-    </div>
-  );
+  // E5.7#2：唯一根组件——无 zone 路由
+  return <PoolZoneShell layout={{ ...layout, sidebar: effectiveSidebar }} />;
 }
 
 // ── E5.6#7e：挂载到 pool.html 的 pool-root ──
