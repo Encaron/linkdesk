@@ -105,68 +105,56 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
 }
 
 /**
- * E5.6#8d：注册双Pool IPC handler——壳↔池通信通道。
- * 暂时和 registerPluginViewHandlers 并存，Phase 8 清理 per-tab WebView 时统一处理。
+ * E5.6#8d → E5.7#4：注册单Pool IPC handler——壳↔池通信通道。
+ * E5.7 极简Pool：唯一 WCV，无 zone 路由——poolId 概念全程不出现。
  */
 export function registerPoolHandlers(windowManager: WindowManager, mainWindow: BrowserWindow): void {
-  // 壳→Pool：推送布局快照
-  ipcMain.on('pool:push-layout', (_event, zone: string, layout: unknown) => {
-    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
-    if (poolView && !poolView.webContents.isDestroyed()) {
-      poolView.webContents.send('pool:layout', layout);
-    } else {
-      console.warn(`[pool-handlers] push-layout 失败——${zone} Pool 不存在或已销毁`);
-    }
+  // 壳→Pool：推送布局快照——单 WCV 直推（E5.7#4）
+  ipcMain.on('pool:push-layout', (_event, layout: unknown) => {
+    windowManager.pushLayout(layout);
   });
 
-  // Pool→壳：池 React 挂载完成
+  // Pool→壳：池 React 挂载完成（preload-pool 仍带 zone='' 发送——inert 参数，链路不变）
   ipcMain.on('pool:ready', (_event, zone: string) => {
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.webContents.send('pool:ready', zone);
     }
-    console.log(`[pool-handlers] ${zone} Pool 就绪`);
+    console.log('[pool-handlers] Pool 就绪');
   });
 
   // 壳→Pool：心跳 ping——E5.6#27 崩溃恢复会用到
-  ipcMain.on('pool:ping', (_event, zone: string) => {
-    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+  ipcMain.on('pool:ping', () => {
+    const poolView = windowManager.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       poolView.webContents.send('pool:pong');
     }
   });
 
   // Pool→壳：心跳 pong——预留，E5.6#27 崩溃恢复消费
-  ipcMain.on('pool:pong', (_event, zone: string) => {
+  ipcMain.on('pool:pong', () => {
     // 预留——崩溃恢复模块通过监听此事件判断池是否存活
   });
 
-  // E5.6#9c：壳→Pool：同步 Pool bounds——窗口 resize 时壳推送最新 bounds
-  ipcMain.on('pool:set-bounds', (_event, zone: string, bounds: { x: number; y: number; width: number; height: number }) => {
-    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+  // E5.6#9c → E5.7#4：壳→Pool：同步 bounds——窗口 resize 时壳推送最新 bounds
+  ipcMain.on('pool:set-bounds', (_event, bounds: { x: number; y: number; width: number; height: number }) => {
+    const poolView = windowManager.getPoolView();
     if (!poolView || poolView.webContents.isDestroyed()) return;
 
-    // 侧栏折叠时 zone width → 0——隐藏 Pool，防止空白 WebContentsView 遮挡主区
+    // 防御：非法 bounds → 隐藏 Pool，防止空白 WebContentsView 遮挡主区
     if (bounds.width <= 0 || bounds.height <= 0) {
-      if (zone === 'sidebar') poolView.setVisible(false);
+      poolView.setVisible(false);
       return;
     }
 
     poolView.setBounds(bounds);
-    // E5.6#10：SidebarPool 有效 bounds 时设为可见——接管壳 DOM 侧栏区域
-    if (zone === 'sidebar') {
-      poolView.setVisible(true);
-    }
-    // E5.6#14d：MainPool 有效 bounds 时设为可见——接管主区（TabBar 在壳，MainPool 在其下方）
-    // 🔴 含 #12c：侧栏折叠/展开 → LayoutEngine 重算 → onDidChangeLayout → setBounds → MainPool 自动扩展/缩回
-    if (zone === 'main') {
-      poolView.setVisible(true);
-    }
+    // 有效 bounds → 设为可见——唯一 Pool 接管壳 DOM 主区域
+    poolView.setVisible(true);
   });
 
-  // E5.6#9：壳→Pool：切换 Pool DevTools——调试用
-  ipcMain.on('pool:toggleDevTools', (_event, zone: string) => {
+  // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
+  ipcMain.on('pool:toggleDevTools', () => {
     if (app.isPackaged) return;
-    const poolView = windowManager.getPoolView(zone as 'sidebar' | 'main');
+    const poolView = windowManager.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       if (poolView.webContents.isDevToolsOpened()) {
         poolView.webContents.closeDevTools();
@@ -194,10 +182,5 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  // E5.6#12：壳→侧栏折叠/展开→SidebarPool setVisible——进程保持，不 destroy
-  ipcMain.on('pool:toggle-sidebar-pool', (_event, visible: boolean) => {
-    windowManager.toggleSidebarPool(visible);
-  });
-
-  console.log('[pool-handlers] 已注册 9 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:toggle-sidebar-pool）');
+  console.log('[pool-handlers] 已注册 8 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:tab-action）');
 }

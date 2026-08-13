@@ -488,13 +488,11 @@ try {
         ipcRenderer.invoke('plugins:call', 'getLangDef', extension),
     },
 
-    // ── E5.6#8c：pool API——壳推送布局到池、监听池就绪 ──
+    // ── E5.6#8c → E5.7#4：pool API——壳推送布局到唯一池、监听池就绪 ──
     pool: {
-      /** 推送布局到指定 zone 的 Pool */
-      pushLayout: (zone: string, layout: any) => ipcRenderer.send('pool:push-layout', zone, layout),
-      /** E5.6#12：折叠/展开时切换 SidebarPool 可见性——进程保持 */
-      toggleSidebarPool: (visible: boolean) => ipcRenderer.send('pool:toggle-sidebar-pool', visible),
-      /** 监听指定 zone 的池就绪——zone 过滤，返回 unsubscribe */
+      /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
+      pushLayout: (layout: any) => ipcRenderer.send('pool:push-layout', layout),
+      /** 监听指定 zone 的池就绪——zone 过滤（preload-pool 发送 zone=''，inert）。返回 unsubscribe */
       onReady: (zone: string, cb: () => void) => {
         const handler = (_event: Electron.IpcRendererEvent, readyZone: string) => {
           if (readyZone === zone) {
@@ -504,11 +502,11 @@ try {
         ipcRenderer.on('pool:ready', handler);
         return () => ipcRenderer.removeListener('pool:ready', handler);
       },
-      /** E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize 时壳推送 */
-      setBounds: (zone: string, bounds: { x: number; y: number; width: number; height: number }) =>
-        ipcRenderer.send('pool:set-bounds', zone, bounds),
-      /** E5.6#9：切换 Pool DevTools——调试用，仅 dev 模式生效 */
-      toggleDevTools: (zone: string) => ipcRenderer.send('pool:toggleDevTools', zone),
+      /** E5.6#9c → E5.7#4：同步唯一 Pool WebContentsView bounds——窗口 resize 时壳推送 */
+      setBounds: (bounds: { x: number; y: number; width: number; height: number }) =>
+        ipcRenderer.send('pool:set-bounds', bounds),
+      /** E5.6#9 → E5.7#4：切换 Pool DevTools——调试用，仅 dev 模式生效 */
+      toggleDevTools: () => ipcRenderer.send('pool:toggleDevTools'),
       /** E5.6#11j：注册侧栏操作回调——池→壳→ViewContainerService。返回 unsubscribe */
       onSidebarAction: (cb: (action: any) => void) => {
         _sidebarActionHandler = cb;
