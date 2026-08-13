@@ -1,0 +1,80 @@
+/**
+ * PoolZoneShell——E5.7#3。Pool 唯一根组件。
+ *
+ * 替代 E5.6 pool-main.tsx 的 RENDERERS zone 分发——单入口，无 ?zone= 路由。
+ * flex column 全窗口布局（设计 §6.1）：
+ *   Row 1: TitleBarZone
+ *   Row 2: IconBarZone + SidebarZone(+ResizeHandle) + Main 列(MainZone + PanelZone) + RightSidebarZone
+ *   Row 3: StatusBarZone
+ *   FloatingLayerHost（#25，Phase 4 接入——portal root 就绪前不 import）
+ *
+ * 🔴 占位策略（E5.7#3）：Phase 1 所有 zone 用占位 div——
+ *   Phase 2 替换 TitleBar(#5)/IconBar(#6)/StatusBar(#8)，
+ *   Phase 3 替换 SidebarZone(#10) + SidebarResizeHandle(#13)，
+ *   Phase 5 替换 MainZone(#20)/PanelZone(#21)/RightSidebarZone(#22)。
+ *   不允许 import 尚不存在的 Zone 组件（每 Phase 结束必须 tsc 零错误 + 应用可启动）。
+ *
+ * 🔴 Path B：池 = 哑渲染器。不 import 任何 @src/core/* 运行时模块（import type 除外）。
+ */
+
+import { useTranslation } from "react-i18next";
+import type { PoolLayout } from "../core/types/poolLayout";
+
+function PoolZoneShell({ layout }: { layout: PoolLayout }) {
+  const { t } = useTranslation();
+
+  return (
+    <div className="pool-root">
+      {/* Row 1: TitleBar——Phase 2 #5 替换 */}
+      <div className="zone-placeholder zone-titlebar">
+        {t("标题栏（占位）")}
+      </div>
+
+      {/* Row 2: IconBar + Sidebar + Main 列 + RightSidebar */}
+      <div className="pool-body">
+        {/* IconBar——Phase 2 #6 替换 */}
+        <div className="zone-placeholder zone-iconbar">
+          {t("图标栏（占位）")}
+        </div>
+
+        {/* Sidebar——Phase 3 #10 替换（SidebarResizeHandle #13 一并接入） */}
+        {layout.sidebar.visible && (
+          <div className="zone-placeholder zone-sidebar" style={{ width: layout.sidebar.width }}>
+            {t("侧栏（占位）")}
+          </div>
+        )}
+
+        {/* 主区列：MainZone + PanelZone */}
+        <div className="pool-main-column">
+          {/* MainZone——Phase 5 #20 替换（tab bar 在 MainZone 内——TabBarZone 已取消） */}
+          <div className="zone-placeholder zone-main">
+            {t("主区（占位）")}
+          </div>
+
+          {/* PanelZone——Phase 5 #21 替换 */}
+          {layout.panel?.visible && (
+            <div className="zone-placeholder zone-panel" style={{ height: layout.panel.height }}>
+              {t("底部面板（占位）")}
+            </div>
+          )}
+        </div>
+
+        {/* RightSidebar——Phase 5 #22 替换 */}
+        {layout.rightSidebar?.visible && (
+          <div className="zone-placeholder zone-right-sidebar" style={{ width: layout.rightSidebar.width }}>
+            {t("右侧栏（占位）")}
+          </div>
+        )}
+      </div>
+
+      {/* Row 3: StatusBar——Phase 2 #8 替换 */}
+      <div className="zone-placeholder zone-statusbar">
+        {t("状态栏（占位）")}
+      </div>
+
+      {/* FloatingLayerHost——#25（Phase 4）接入：始终挂载 + pointer-events: none（设计 §6.5） */}
+    </div>
+  );
+}
+
+export default PoolZoneShell;
