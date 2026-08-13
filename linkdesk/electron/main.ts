@@ -107,8 +107,7 @@ function createWindow(): void {
   registerFileHandlers(windowManager);              // E5#80
   registerPoolHandlers(windowManager, mainWindow);  // E5.6#8e
 
-  // E5.6#9：创建双Pool WebContentsView——SidebarPool + MainPool = O(1) 进程
-  windowManager.createSidebarPool();
+  // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
   windowManager.createMainPool();
 
   // E5.6#21d：创建 OverlayWindow——全屏透明，浮于所有 Pool 之上

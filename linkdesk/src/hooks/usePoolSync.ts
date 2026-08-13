@@ -1,7 +1,7 @@
 /**
  * usePoolSync——E5.6#9a。
  *
- * 替代 useWebViewSync。壳侧任何状态变化 → 全量推送 PoolLayout 到两个 Pool。
+ * 替代 useWebViewSync。壳侧任何状态变化 → 全量推送 PoolLayout 到唯一 Pool。
  * Pool 被动渲染——不知道"世界为什么长这样"，只接收布局快照。
  *
  * 缓冲回放模式（E5.6#8b）保证 pushLayout 在池 React mount 之前到达不丢失。
@@ -95,7 +95,7 @@ export interface UsePoolSyncInput {
 }
 
 /**
- * 构建 PoolLayout 并推送到 SidebarPool + MainPool。
+ * 构建 PoolLayout 并推送到唯一 Pool（E5.7#4 单 WCV 直推）。
  * 依赖 tabState / sidebarView / isSidebarVisible / sidebarWidth——任一变化触发全量推送。
  */
 export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onTabAction }: UsePoolSyncInput): void {
@@ -257,9 +257,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       }),
     }));
 
-    // E5.7#1：PoolLayout v2 全量布局——唯一 Pool 收到完整快照。
-    // 🔴 Phase 1 过渡：仍双推（SidebarPool/MainPool 都存在，各自只读自己 zone 的字段）。
-    //    E5.7#4 合并为单 WCV 直推。
+    // E5.7#1/#4：PoolLayout v2 全量布局——唯一 Pool 单 WCV 直推完整快照。
     // Phase 2 填充：iconBar（#6 IconBarZone）/ statusBar（#8 StatusBarZone）由对应任务序列化真实数据。
     const fullLayout: PoolLayout = {
       version: 2,
@@ -276,7 +274,6 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       statusBar: { items: [] },
     };
 
-    poolApi.pushLayout("sidebar", fullLayout);
-    poolApi.pushLayout("main", fullLayout);
+    poolApi.pushLayout(fullLayout);
   }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
 }

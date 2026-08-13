@@ -38,8 +38,7 @@ export class WindowManager {
 
   private ipcBridge: any = null;
 
-  // ── E5.6#5：双Pool骨架——O(1) 进程 ──
-  private sidebarPoolView: WebContentsView | null = null;
+  // ── E5.6#5 → E5.7#4：单Pool——极简Pool 只有唯一 WebContentsView（#12 提前：SidebarPool 已删）──
   private mainPoolView: WebContentsView | null = null;
 
   constructor(private mainWindow: BrowserWindow) {
@@ -407,11 +406,11 @@ export class WindowManager {
   }
 
   // ═══════════════════════════════════════════════════════════════
-  // E5.6#5：双Pool管理——SidebarPool + MainPool = O(1) 进程
+  // E5.6#5 → E5.7#4：单Pool管理——极简Pool 唯一 WebContentsView
   // ═══════════════════════════════════════════════════════════════
 
-  /** 创建 Pool WebContentsView——Sidebar/Main 共用创建逻辑 */
-  private createPoolView(zone: 'sidebar' | 'main', debugLabel: string): WebContentsView {
+  /** 创建唯一 Pool WebContentsView——pool.html 无 ?zone= 路由（E5.7#2 单入口） */
+  private createPoolView(debugLabel: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
         preload: path.join(__dirname, 'preload-pool.js'),
@@ -437,11 +436,7 @@ export class WindowManager {
 
     // 外部关闭（非 destroyPool 主动调用）→ 清理字段
     view.webContents.on('destroyed', () => {
-      if (zone === 'sidebar') {
-        if (this.sidebarPoolView === view) this.sidebarPoolView = null;
-      } else {
-        if (this.mainPoolView === view) this.mainPoolView = null;
-      }
+      if (this.mainPoolView === view) this.mainPoolView = null;
     });
 
     // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
@@ -454,9 +449,9 @@ export class WindowManager {
 
     // dev 走 Vite dev server（loadURL），prod 走打包产物（loadFile——避免手动构造 file:// URL 的路径分隔符问题）
     if (!app.isPackaged) {
-      view.webContents.loadURL(`${DEV_SERVER_URL}/pool.html?zone=${zone}`);
+      view.webContents.loadURL(`${DEV_SERVER_URL}/pool.html`);
     } else {
-      view.webContents.loadFile(path.join(__dirname, '../../dist/pool.html'), { query: { zone } });
+      view.webContents.loadFile(path.join(__dirname, '../../dist/pool.html'));
     }
 
     view.setVisible(false);
@@ -469,94 +464,59 @@ export class WindowManager {
     return view;
   }
 
-  /** E5.6#5b：创建 SidebarPool WebContentsView */
-  createSidebarPool(): WebContentsView {
-    if (this.sidebarPoolView) {
-      console.warn('[WindowManager] SidebarPool 已存在，返回已有 view');
-      return this.sidebarPoolView;
-    }
-    this.sidebarPoolView = this.createPoolView('sidebar', 'sidebar');
-    return this.sidebarPoolView;
-  }
-
-  /** E5.6#12a：切换 SidebarPool 可见——折叠隐藏、展开即时显示。进程保持不 destroy */
-  toggleSidebarPool(visible: boolean): void {
-    if (this.sidebarPoolView && !this.sidebarPoolView.webContents.isDestroyed()) {
-      this.sidebarPoolView.setVisible(visible);
-    }
-  }
-
-  /** E5.6#5c：创建 MainPool WebContentsView */
+  /** E5.6#5c → E5.7#4：创建唯一 Pool WebContentsView */
   createMainPool(): WebContentsView {
     if (this.mainPoolView) {
       console.warn('[WindowManager] MainPool 已存在，返回已有 view');
       return this.mainPoolView;
     }
-    this.mainPoolView = this.createPoolView('main', 'main');
+    this.mainPoolView = this.createPoolView('pool');
     return this.mainPoolView;
   }
 
-  /** E5.6#5d：resize 时同步两个 Pool 的 bounds */
-  updatePoolBounds(sidebarBounds: { x: number; y: number; width: number; height: number }, mainBounds: { x: number; y: number; width: number; height: number }): void {
-    if (this.sidebarPoolView) {
-      this.sidebarPoolView.setBounds(sidebarBounds);
-    }
-    if (this.mainPoolView) {
-      this.mainPoolView.setBounds(mainBounds);
-    }
-  }
-
-  /** E5.6#5e：销毁指定 zone 的 Pool WebContentsView */
-  destroyPool(zone: 'sidebar' | 'main'): void {
-    const view = this.getPoolView(zone);
+  /** E5.6#5e → E5.7#4：销毁唯一 Pool WebContentsView */
+  destroyPool(): void {
+    const view = this.mainPoolView;
     if (!view) return;
 
     try {
       this.mainWindow.contentView.removeChildView(view);
     } catch (err) {
-      console.error(`[WindowManager] 移除 ${zone} Pool 失败:`, err);
+      console.error(`[WindowManager] 移除 Pool 失败:`, err);
     }
 
     view.webContents.close();
-    if (zone === 'sidebar') {
-      this.sidebarPoolView = null;
-    } else {
-      this.mainPoolView = null;
-    }
-    console.log(`[WindowManager] ${zone} Pool 已销毁`);
+    this.mainPoolView = null;
+    console.log(`[WindowManager] Pool 已销毁`);
   }
 
-  /** E5.6#5f：重建指定 zone 的 Pool——destroy → create */
-  rebuildPool(zone: 'sidebar' | 'main'): WebContentsView {
-    this.destroyPool(zone);
-    return zone === 'sidebar' ? this.createSidebarPool() : this.createMainPool();
+  /** E5.6#5f → E5.7#4：重建 Pool——destroy → create（设计 §9.2 崩溃恢复用） */
+  rebuildPool(): WebContentsView {
+    this.destroyPool();
+    return this.createMainPool();
   }
 
-  /** E5.6#5g：推送布局协议到指定 Pool */
-  pushLayout(zone: 'sidebar' | 'main', layout: unknown): void {
-    const view = this.getPoolView(zone);
-    if (!view) {
-      console.warn(`[WindowManager] pushLayout 失败——${zone} Pool 不存在`);
+  /** E5.6#5g → E5.7#4：推送布局协议——单 WCV 直推（无 zone 路由） */
+  pushLayout(layout: unknown): void {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) {
+      console.warn('[WindowManager] pushLayout 失败——Pool 不存在或已销毁');
       return;
     }
     view.webContents.send('pool:layout', layout);
   }
 
-  /** E5.6#5h：按 zone 名取 Pool WebContentsView */
-  getPoolView(zone: 'sidebar' | 'main'): WebContentsView | null {
-    return zone === 'sidebar' ? this.sidebarPoolView : this.mainPoolView;
+  /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
+  getPoolView(): WebContentsView | null {
+    return this.mainPoolView;
   }
 
-  /** E5.6#10f：返回所有已创建的 Pool WebContentsView（广播/重放用） */
+  /** E5.6#10f：返回已创建的 Pool WebContentsView（广播/重放用） */
   getAllPoolViews(): WebContentsView[] {
-    const views: WebContentsView[] = [];
-    if (this.sidebarPoolView && !this.sidebarPoolView.webContents.isDestroyed()) {
-      views.push(this.sidebarPoolView);
-    }
     if (this.mainPoolView && !this.mainPoolView.webContents.isDestroyed()) {
-      views.push(this.mainPoolView);
+      return [this.mainPoolView];
     }
-    return views;
+    return [];
   }
 
   /**
@@ -572,9 +532,8 @@ export class WindowManager {
       clearTimeout(timer);
     }
     this.graceTimers.clear();
-    // E5.6#5：清理 Pool WebContentsView
-    this.destroyPool('sidebar');
-    this.destroyPool('main');
+    // E5.6#5 → E5.7#4：清理唯一 Pool WebContentsView
+    this.destroyPool();
     for (const instanceId of this.getAllInstanceIds()) {
       this.destroyPluginView(instanceId);
     }

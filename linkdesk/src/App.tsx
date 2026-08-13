@@ -337,59 +337,39 @@ function App() {
       }
       setZoneBounds(b);
 
-      // E5.6#9c：同步 Pool WebContentsView bounds——窗口 resize / 侧栏拖宽时推送
+      // E5.6#9c → E5.7#4：同步唯一 Pool WebContentsView bounds——窗口 resize / 侧栏拖宽时推送
       const poolApi = (window as any).linkdesk?.pool;
       if (poolApi?.setBounds) {
-        // E5.6#22k：分隔线宽度——resizable zone 的相邻边界留缝，壳 DOM handle 从缝透出
-        // 泛化：遍历所有 resizable zone → 自动在 zone 和 main 相邻边界留缝。
-        // 加底部面板（dock.edge: "bottom", resizable: true）→ 零改动即可留缝。
+        // E5.6#22k：分隔线宽度——resizable zone 的相邻边界留缝，壳 DOM handle 从缝透出。
+        // E5.7#4：唯一 Pool 占满主区——各 resizable zone 一律从 main 边界收缩留缝。
         const gap = HANDLE_WIDTH / 2;
 
-        // 计算各 zone 的收缩量——main zone 可能被多个 resizable zone 挤压
-        const zoneShrink: Record<string, { left: number; right: number; top: number; bottom: number }> = {};
+        // 计算 main 的收缩量——main zone 可能被多个 resizable zone 挤压
         let mainShiftX = 0;
-        let mainShiftY = 0;
         let mainShrinkLeft = 0;
         let mainShrinkRight = 0;
-        let mainShrinkTop = 0;
         let mainShrinkBottom = 0;
 
         for (const z of layoutEngine.getAllZones()) {
           if (!z.dock?.resizable || !b[z.zone]) continue;
-          zoneShrink[z.zone] = { left: 0, right: 0, top: 0, bottom: 0 };
           const edge = z.dock.edge;
           if (edge === "left") {
-            zoneShrink[z.zone].right = gap;
             mainShrinkLeft += gap;
             mainShiftX += gap;
           } else if (edge === "right") {
-            zoneShrink[z.zone].left = gap;
             mainShrinkRight += gap;
           } else if (edge === "bottom") {
-            zoneShrink[z.zone].top = gap;
             mainShrinkBottom += gap;
           }
         }
 
         // LayoutEngine bounds 相对于 title bar 下方的容器——WebContentsView bounds 需加 TITLE_BAR_HEIGHT 偏移
         if (b.main) {
-          poolApi.setBounds("main", {
+          poolApi.setBounds({
             x: b.main.x + mainShiftX,
-            y: b.main.y + TITLE_BAR_HEIGHT + mainShiftY,
+            y: b.main.y + TITLE_BAR_HEIGHT,
             width: b.main.width - mainShrinkLeft - mainShrinkRight,
-            height: b.main.height - mainShrinkTop - mainShrinkBottom,
-          });
-        }
-        // E5.6#16.7：TabBar 已迁入 MainPool（GroupTabBar 在池内渲染），MainPool 占满 LayoutEngine 分配的全高
-        for (const zoneId of Object.keys(zoneShrink)) {
-          const bounds = b[zoneId];
-          if (!bounds) continue;
-          const s = zoneShrink[zoneId];
-          poolApi.setBounds(zoneId, {
-            x: bounds.x + s.left,
-            y: bounds.y + TITLE_BAR_HEIGHT + s.top,
-            width: bounds.width - s.left - s.right,
-            height: bounds.height - s.top - s.bottom,
+            height: b.main.height - mainShrinkBottom,
           });
         }
       }
@@ -438,8 +418,7 @@ function App() {
     });
     const u2 = shellEvents.on("sidebar:toggled", (visible: boolean) => {
       setIsSidebarExpanded(visible);
-      // E5.6#12b：折叠→隐藏 SidebarPool，展开→即时显示（进程保持）
-      (window as any).linkdesk?.pool?.toggleSidebarPool(visible);
+      // E5.7#4：#12 提前——SidebarPool WCV 已删，侧栏显隐由 Pool 内 SidebarZone 条件渲染接管（Phase 3 #10）
     });
     return () => { u1(); u2(); };
   }, []);
@@ -606,8 +585,8 @@ function App() {
         {/* E5.6#22l：分隔线——Pool 留缝处壳 DOM 渲染，从缝透出可见+可拖拽 */}
         <SplitHandles zoneBounds={zoneBounds} />
 
-        {/* E5.6#10a：SidebarPool WebContentsView 接管侧栏渲染——壳 DOM sidebar div 隐藏，
-            但保留 SidePanel 挂载作为 fallback（pool 崩溃时恢复 display:flex 即可回退）。 */}
+        {/* E5.7#4：#12 提前——SidebarPool WCV 已删，侧栏将在唯一 Pool 的 SidebarZone 渲染（Phase 3 #10）。
+            保留 SidePanel 隐藏挂载作为 fallback——Pool 崩溃时恢复 display:flex 即可回退（设计 §9.2）。 */}
         {zoneBounds.sidebar && (
           <div style={{ position: "fixed", display: "none", overflow: "hidden", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y + TITLE_BAR_HEIGHT, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
             <SidePanel width={zoneBounds.sidebar.width} />
