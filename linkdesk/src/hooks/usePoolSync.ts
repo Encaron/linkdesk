@@ -12,6 +12,7 @@ import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
+import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
 import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
@@ -73,6 +74,13 @@ function computeGroupFlexes(root: SplitNode): Map<string, number> {
   walk(root, 1);
   return result;
 }
+
+/** E5.7#1：app.menuStyle 枚举 → 菜单栏可见——titleBar 布局（Phase 2 #5 TitleBarZone 消费） */
+const MENU_STYLE_MENUBAR_VISIBLE: Record<string, boolean> = {
+  titlebar: true,
+  hamburger: false,
+  both: true,
+};
 
 export interface UsePoolSyncInput {
   tabState: TabState;
@@ -249,9 +257,26 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       }),
     }));
 
-    poolApi.pushLayout("sidebar", { sidebar, groups: [] } satisfies PoolLayout);
-    // E5.6#16.7：推 root SplitNode 树——MainRenderer 递归渲染
-    // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
-    poolApi.pushLayout("main", { groups, root: tabState.root, creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })) } satisfies PoolLayout);
+    // E5.7#1：PoolLayout v2 全量布局——唯一 Pool 收到完整快照。
+    // 🔴 Phase 1 过渡：仍双推（SidebarPool/MainPool 都存在，各自只读自己 zone 的字段）。
+    //    E5.7#4 合并为单 WCV 直推。
+    // Phase 2 填充：iconBar（#6 IconBarZone）/ statusBar（#8 StatusBarZone）由对应任务序列化真实数据。
+    const fullLayout: PoolLayout = {
+      version: 2,
+      titleBar: {
+        title: document.title,
+        menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
+      },
+      iconBar: { icons: [] },
+      sidebar,
+      groups,
+      root: tabState.root,
+      // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
+      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
+      statusBar: { items: [] },
+    };
+
+    poolApi.pushLayout("sidebar", fullLayout);
+    poolApi.pushLayout("main", fullLayout);
   }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
 }

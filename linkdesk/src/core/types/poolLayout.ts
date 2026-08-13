@@ -1,8 +1,12 @@
 /**
- * PoolLayout 类型定义——E5.6#8a。
+ * PoolLayout 类型定义——E5.6#8a + E5.7#1（version 2 全量唯一布局）。
  *
- * 壳与池共享的布局协议。壳推送 PoolLayout JSON 到池，
- * 池解析后渲染 SidebarRenderer / MainRenderer。
+ * 壳与池共享的布局协议。E5.7 极简Pool：唯一 Pool 收到全量布局快照，
+ * PoolZoneShell 按 zone 字段条件渲染（Phase 1 为占位骨架）。
+ *
+ * 🔴 E5.6 设计草案的 version: 1 / poolId 从未在代码中实现——
+ *   2026-08-13 审计核实：全仓零 poolId，本文件无 version 字段。
+ *   故 E5.7#1 为"新增 version: 2 + zone 字段"，无"删 poolId"可执行。
  *
  * 兼容性：池忽略不认识的字段，壳加字段不破坏旧池。
  */
@@ -82,13 +86,80 @@ export interface CreatableViewMeta {
   label: string;
 }
 
-/** PoolLayout——壳推给池的完整布局快照 */
+// ── E5.7#1：布局 zone 字段 ──
+
+/** 标题栏布局——Phase 2 #5 TitleBarZone 消费 */
+export interface TitleBarLayout {
+  title: string;
+  menuBarVisible: boolean;
+}
+
+/** 图标栏条目——序列化自壳 viewRegistry（pluginId + 图标 + 名称 + 位置） */
+export interface IconBarItem {
+  pluginId: string;
+  /** 图标——resolvePluginIcon 的 src 或 emoji，二选一 */
+  icon?: string;
+  label: string;
+  /** 图标位置——getIconLocation：顶部活动图标 / 底部齿轮 */
+  location: "top" | "bottom";
+}
+
+/** 图标栏布局——Phase 2 #6 IconBarZone 消费 */
+export interface IconBarLayout {
+  icons: IconBarItem[];
+  /** 激活图标——当前侧栏容器所属插件 */
+  activePluginId?: string;
+}
+
+/** 底部面板 view 元数据——面板视图注册序列化 */
+export interface PanelViewMeta {
+  id: string;
+  title: string;
+  pluginId: string;
+}
+
+/** 底部面板布局——Phase 6 PanelZone 消费 */
+export interface PanelLayout {
+  visible: boolean;
+  height: number;
+  activeViewId: string;
+  views: PanelViewMeta[];
+}
+
+/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件） */
+export interface StatusBarItem {
+  id: string;
+  pluginId: string;
+  /** codicon 图标名 */
+  icon?: string;
+  label: string;
+  title?: string;
+  align: "left" | "right";
+  /** 点击执行的命令 ID */
+  onClick?: string;
+}
+
+/** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */
+export interface StatusBarLayout {
+  items: StatusBarItem[];
+}
+
+/**
+ * PoolLayout v2——E5.7 唯一的 Pool 收到全量布局快照。
+ * titleBar/iconBar/sidebar/statusBar 必有；rightSidebar/panel 可选（未启用时不推）。
+ */
 export interface PoolLayout {
-  sidebar?: SidebarLayout;
+  version: 2;
+  titleBar: TitleBarLayout;
+  iconBar: IconBarLayout;
+  sidebar: SidebarLayout;
+  rightSidebar?: SidebarLayout;
   groups: PoolGroup[];
   /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
    *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
   root?: SplitNode;
   /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单 */
   creatableViews?: CreatableViewMeta[];
+  panel?: PanelLayout;
+  statusBar: StatusBarLayout;
 }

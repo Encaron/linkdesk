@@ -27,14 +27,15 @@ import "../i18n";
 
 function PoolApp() {
   const zone = new URLSearchParams(window.location.search).get("zone");
-  const [layout, setLayout] = useState<PoolLayout>({ groups: [] });
+  // E5.7#1：PoolLayout v2 全量字段——初始为 null，首个 pushLayout 到达后渲染
+  const [layout, setLayout] = useState<PoolLayout | null>(null);
   // E5.6#11-fix7：useTransition——切容器时 React 后台渲染新内容，前台保持旧内容，
   // Suspense fallback（"加载中..."）被抑制。新组件 ready 后无缝替换。
   const [, startTransition] = useTransition();
 
   // E5.6#11-fix6：闪烁修复——壳切侧栏容器时初始 push visible=false 导致池渲染 null 一帧。
   // 保留最后一个可见布局——切容器时旧内容保持显示，新布局到达后无缝替换。
-  const lastVisibleLayout = useRef<PoolLayout>({ groups: [] });
+  const lastVisibleLayout = useRef<PoolLayout | null>(null);
 
   // E5.6#11-fix3：SidebarPool 根背景——独立 WebContentsView 需要侧栏色调
   useEffect(() => {
@@ -51,7 +52,7 @@ function PoolApp() {
 
     const unsub = poolApi.onLayout((next: PoolLayout) => {
       // 闪烁修复：visible 且有 views 时更新 lastVisibleLayout
-      if (next.sidebar?.visible && next.sidebar.views?.length > 0) {
+      if (next.sidebar.visible && next.sidebar.views?.length > 0) {
         lastVisibleLayout.current = next;
       }
       // Transition——React 后台渲染新布局，前台保持旧内容。
@@ -66,10 +67,13 @@ function PoolApp() {
     return () => { unsub?.(); };
   }, []);
 
+  // 首个布局未到达前渲染 null（E5.7#1——v2 无空对象初始值，缓冲回放保证 ready 后立即到达）
+  if (!layout) return null;
+
   // 决定用哪个 sidebar 渲染——当前布局无内容时 fallback 到上次可见布局
-  const effectiveSidebar = layout.sidebar?.visible && layout.sidebar.views?.length > 0
+  const effectiveSidebar = layout.sidebar.visible && layout.sidebar.views?.length > 0
     ? layout.sidebar
-    : lastVisibleLayout.current.sidebar;
+    : lastVisibleLayout.current?.sidebar;
 
   if (zone === "sidebar") {
     return <SidebarRenderer sidebar={effectiveSidebar} />;
