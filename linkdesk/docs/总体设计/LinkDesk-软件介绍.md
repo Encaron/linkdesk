@@ -2,8 +2,8 @@
 
 > 一个比 VS Code 更高级的中性容器平台。前身 Serial Monitor V2（WPF 串口调试工具），用 Electron + React 18 + TypeScript 完全重写。
 > **全工程 AI 驱动——代码 95%+ 由 Claude 完成，人类做架构决策和质量把控。**
-> 🔥 **架构模型——圆形大厅。** LinkDesk = Link（连接）+ Desk（桌子）。核心是圆形大厅（提供桌子/电话本），插件是周边小房间（独立进程）。交流走大厅，高频走后门。
-> **当前：E5.6 Pool 模型重构——86 任务 16 Phase。** E5.6 完结后进入 E6 插件生态与发布（47 任务 5 层），然后 04-出厂制造 10 款工厂插件、05-版本更新 v1.1→v1.6。
+> 🔥 **架构模型——圆形大厅。** LinkDesk = Link（连接）+ Desk（桌子）。核心是圆形大厅（提供桌子/电话本），插件是周边小房间（同一 Pool 渲染堆，preload 沙箱隔离）。交流走大厅，高频走后门。
+> **当前：E5.7 极简Pool——1 BrowserWindow + 1 WebContentsView，94 任务 16 Phase，全清单审计完成（2026-08-13），待执行。** E5.7 完结后进入 E6 插件生态与发布（47 任务 5 层），然后 04-出厂制造 10 款工厂插件、05-版本更新 v1.1→v1.6。
 > **阅读时间：** 人类 30 分钟，AI 5 分钟。这份文档是给网页 AI 了解 LinkDesk 的第一门户——没有代码仓库权限的 AI，靠这份文档就能理解项目全貌、参与架构讨论。
 
 ---
@@ -12,15 +12,15 @@
 
 1. [零、项目性质——AI 驱动的圆形大厅](#零先说清楚这个软件的代码是谁写的)
 2. [一、本质——LinkDesk 是什么，以及它不是什么](#一这到底是什么)
-3. [1.5、七纪进化史——从 V2 到 Pool 模型](#15历史进程从-v2-到-pool-模型)
+3. [1.5、七纪进化史——从 V2 到极简Pool](#15历史进程从-v2-到极简pool)
 4. [二、死理——8 条不可动摇的原则](#二我认的几条死理)
 5. [三、技术栈与两层容器架构](#三技术栈)
-6. [四、对标 VS Code——34 项能力对照表](#四对标-vs-code现在的进度2026-08-09)
-7. [五、当前执行——E5.6 Pool 模型重构（86 任务 16 Phase）](#五当前执行e56-pool-模型重构)
+6. [四、对标 VS Code——34 项能力对照表](#四对标-vs-code现在的进度2026-08-13)
+7. [五、当前执行——E5.7 极简Pool（94 任务 16 Phase）](#五当前执行e57-极简pool)
 8. [六、下一站——E6 插件生态与发布（47 任务 5 层）](#六下一站e6-插件生态与发布)
 9. [七、未来愿景——插件市场、出厂制造、Agent 基地](#七插件市场这个软件的真正能量)
 10. [八、人——一个不会写代码的人，做了这个软件](#八说真的一个不会写代码的人做软件)
-11. [九、给 AI 的话——10 条速览](#九写给另一个-ai-看这段话)
+11. [九、给 AI 的话——12 点速览](#九写给另一个-ai-看这段话)
 
 ---
 
@@ -59,7 +59,7 @@ LinkDesk 的壳里什么都没有。不是"还没写"——是**故意不放**�
 
 ### 圆形大厅模型
 
-核心不是"空壳"两个字就能概括的。核心是**圆形大厅**——中央一个大厅，地上摆着各种桌子（Registry/Service）。插件是周边的小房间（独立 WebContentsView 进程）。每个房间有自己的门——开门 = 激活插件。插件之间不直连——想交流？走到大厅中央，在桌子上翻电话本、贴名片、喊话。
+核心不是"空壳"两个字就能概括的。核心是**圆形大厅**——中央一个大厅，地上摆着各种桌子（Registry/Service）。插件是周边的小房间（同一 Pool 渲染进程内，preload 沙箱隔离）。每个房间有自己的门——开门 = 激活插件。插件之间不直连——想交流？走到大厅中央，在桌子上翻电话本、贴名片、喊话。
 
 **大厅通信（Registry-Mediated）：** 松耦合。"谁能处理 `.glsl`？"→ 大厅文件关联本翻一下 → Monaco 登记过 → Monaco 打开。调用方不知道 Monaco 的存在。
 
@@ -131,13 +131,13 @@ LinkDesk 从 Phase 1 就把主题引擎和双语引擎写进了脚手架。不�
 | 测试 | 零 | 151 个核心通过 |
 | 插件市场 | 没有——想装新功能等作者发新版 | 对标 VS Code Extensions 面板——搜索/安装/更新/卸载全 UI 操作 |
 | AI 能不能写插件 | AI 改不动 C# | AI 生成 plugin.json + React 组件 → 零风险，核心一行不动 |
-| 进程隔离 | 单进程——崩了全崩 | E5.6 Pool 模型——每个 Pool 独立进程，侧栏崩 ≠ 编辑器崩 |
+| 进程隔离 | 单进程——崩了全崩 | 极简Pool——3 进程固定；崩溃 2-4s 自动重建，Hot Exit 恢复未保存内容 |
 
 **根本差异：** V2 是你做了一件事，就得换一个东西。LinkDesk 是你装了一个东西，系统自动知道怎么接。
 
 ---
 
-## 1.5、历史进程——从 V2 到 Pool 模型
+## 1.5、历史进程——从 V2 到极简Pool
 
 这个软件不是一天长成这样的。每一次转折下面都有一次"差点死掉"的教训。
 
@@ -175,13 +175,13 @@ P5.5：交互对标 VS Code。三栏布局。48/48 bug 全部修复。
 
 ### 第四纪：圆形大厅 + E3-E4（2026-07-25 → 08-03）
 
-**E3（103 任务，~3,600 行）：** 架构最后一站。多 WebView 进程隔离、主题/语言引擎跨进程广播、Profile 五维切换、通知系统、壳 UI 收尾、API 与 V2 兼容。**当时认为 E3 封板后框架永远不改。**（后来 E5 铁轨、E5.5 Per-Tab、E5.6 Pool 模型均修改了框架。E5.6 是真正的最后一次。）
+**E3（103 任务，~3,600 行）：** 架构最后一站。多 WebView 进程隔离、主题/语言引擎跨进程广播、Profile 五维切换、通知系统、壳 UI 收尾、API 与 V2 兼容。**当时认为 E3 封板后框架永远不改。**（后来 E5 铁轨、E5.5 Per-Tab、E5.6 Pool 模型、E5.7 极简Pool 均修改了框架。E5.7 是真正的最后一次。）
 
-**认知跃迁——圆形大厅：** 在审视 FileDecorationRegistry 要不要放核心时，突然悟到了一个更大的东西。**整个软件不是一个"空壳"——它是一个圆形大厅。** 核心是中央大厅，提供桌子（Registry/Service）给插件用。插件是周边小房间（独立进程），开门 = 激活，交流 = 走到大厅桌子前翻电话本。高频推流走后门（点对点 IPC 通道）。
+**认知跃迁——圆形大厅：** 在审视 FileDecorationRegistry 要不要放核心时，突然悟到了一个更大的东西。**整个软件不是一个"空壳"——它是一个圆形大厅。** 核心是中央大厅，提供桌子（Registry/Service）给插件用。插件是周边小房间（同一 Pool 渲染进程内，preload 沙箱隔离），开门 = 激活，交流 = 走到大厅桌子前翻电话本。高频推流走后门（点对点 IPC 通道）。
 
 **LinkDesk = Link（连接）+ Desk（桌子）。** 这个名字在起名时就写好了——理解了今天才追上。
 
-**E4（67 任务，~2,500 行）——当时认为最后一批 E 编号：** 文件树 + Monaco 编辑器。第一批消费者插件。对标 VS Code Explorer + Search + Editor。**当时信念：E4 之后全是插件，不占 E 编号。**（后来 E5/E5.5/E5.6 延续了 E 编号——见下方第五纪、第六纪。）
+**E4（67 任务，~2,500 行）——当时认为最后一批 E 编号：** 文件树 + Monaco 编辑器。第一批消费者插件。对标 VS Code Explorer + Search + Editor。**当时信念：E4 之后全是插件，不占 E 编号。**（后来 E5/E5.5/E5.6/E5.7 延续了 E 编号——见下方第五纪、第六纪、第七纪。）
 
 ### 第五纪：E5——铁轨（2026-08-04 → 08-05）
 
@@ -194,91 +194,57 @@ P5.5：交互对标 VS Code。三栏布局。48/48 bug 全部修复。
 
 **E5 做完 = 铁轨铺完。** 此后加 zone、加 Pool、加 API——全在铁轨上跑，不挖路基。
 
-### 第六纪：E5.5 → E5.6——从 O(N) 到 O(1)（2026-08-05 → 现在）
+### 第六纪：E5.5 → E5.6——从 O(N) 到 O(1)（2026-08-05 → 08-12）
 
 **E5.5——Per-Tab WebView（已冻结）：** 每个标签页一个独立 WebContentsView。编辑器分屏（左 hello.c / 右 hello.h）、串口多会话（COM3 + COM5）——同插件多标签页同时运行。代价：进程数 O(N)。`useWebViewSync` ~270 行。`rekeyInstance`/`graceTimers`/`notifyReady` 全链。**根本矛盾：用 OS 进程边界解决应用层分屏问题。分屏是 CSS flex 的问题。** E5.5 完成了历史使命——证明多 WebView 路线能走通，然后光荣退役。
 
-**E5.6——Pool 模型重构（当前，86 任务 16 Phase，0/86）：**
+**E5.6——双Pool（已冻结，51%）：** 方案：4 个 WebContentsView（壳 DOM + SidebarPool + MainPool + OverlayWindow），O(1) 进程。执行到 317/644 子任务（51%）时按下暂停键。**为什么暂停：** OverlayWindow 的聪慧组件搬不进哑容器——三件事从同一个函数调用栈拆到三个进程（getItems / executeCommand / resolveChildren 各在一边），审计发现 ContextMenu 不能直接搬进 OverlayWindow，要先铺 9 个数据流基础设施任务。问题不在这 9 个任务——在于**方向**：安全靠进程数、UI 拆在多个窗口里，复杂度随 Pool 数线性增长。E5.6 清单封存（只留历史），剩余 ~327 子任务分流：直接搬 ~110 / 适配搬 ~140 / 删除 ~77。
+
+### 第七纪：E5.7——极简Pool（2026-08-12 → 现在）
+
+**认知跃迁——安全靠沙箱，不靠进程数。** 双Pool 的出发点是"多进程隔离更安全"。停下来细想：VS Code 的 Extension Host 隔离进程，靠的是 API 白名单收自由；LinkDesk 不收白名单，那进程隔离带来的安全本来就有限。真正的安全边界是 preload 沙箱——插件摸不到 Node/require/fs，只能走 `window.linkdesk.*`。想通这一点，双 Pool 立刻变得多余：
 
 ```
-E5.5 Per-Tab:                          E5.6 Pool 模型:
-  1 + N 个 WebContentsView              4 个 WebContentsView
-  O(N) 进程                             O(1) 进程
-  每 tab 一个进程                        Shell + SidebarPool + MainPool + OverlayWindow
-  新标签页 = 创建 WebContentsView        新标签页 = React 组件挂载
-  关闭标签页 = 60s 宽限期 → 销毁          关闭标签页 = display:none（React 不卸载）
+E5.6 双 Pool:                              E5.7 极简 Pool:
+  4 个 WebContentsView                      1 个 WebContentsView（100%×100%）
+  壳 DOM + SidebarPool + MainPool + Overlay  壳 = 不可见状态持有者（零 DOM）
+  安全靠进程数（侧栏崩 ≠ 编辑器崩）           安全靠 preload 沙箱 + 崩溃恢复
+  浮层跨窗口——裁剪/坐标/焦点三座大山         浮层同 DOM——position:fixed，天然不被裁剪
+  跨 Pool 交互走主进程路由                    同 DOM——主题零广播、拖拽零 IPC
+  加 Pool = 加 WCV + 加协议 + 加恢复         加 Zone = zones/ 加一个文件
 ```
 
-**16 Phase 串行执行：** Phase 0 启动前审计 → Phase 1 回退单 WebView → Phase 2 双 Pool 骨架 → Phase 3 SidebarPool 迁移 → Phase 4 MainPool 迁移 → Phase 5 跨 Pool 交互 → Phase 6 OverlayWindow → Phase 7 崩溃恢复 → Phase 8 清理 Per-Tab 遗留 → Phase 9 可扩展性预留口 → Phase 10 API 补全（10 命名空间）→ Phase 11 硬编码消灭 → Phase 12 缩放联动 → Phase 13 ESLint 升级 → Phase 14 全量回归 → Phase 15 文档 → Phase 16 E6 前置。
+**代价想清楚了：** 池崩 = 全 UI 崩。换来：2-4 秒自动重建 + Hot Exit（未保存内容恢复）+ tabState 持久化。VS Code 的 Extension Host 崩了也一样要重建整个渲染层——代价不是新事物，恢复能力才是差距。
 
-**最长串行链：** Phase 0→1→2→3→4→5→6→7→8→9→14（11 步，每步严格等待前一步）。可并行扇出：Phase 10/11/12/16 在 Phase 2 后即可开始。
-
-**架构全景：**
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│ MainWindow (BrowserWindow)                                    │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ TitleBar (Shell DOM)                              _ □ × │ │
-│  ├────┬─────────────────────────────────────────────────────┤ │
-│  │ 图标│ TabBar (Shell DOM)                                  │ │
-│  │ 栏 │      ← 切标签页零 IPC——TabBar 在壳里渲染             │ │
-│  │    ├──────────────────┬───────────────────────────────────┤ │
-│  │    │ SidebarPool      │ MainPool                          │ │
-│  │    │ WebContentsView  │ WebContentsView                   │ │
-│  │    │                  │                                   │ │
-│  │    │ 文件树 / 搜索     │ 编辑器分屏 / 数据视图 / 设置        │ │
-│  │    │ 插件面板          │ keep-alive CSS display 切换       │ │
-│  │    ├──────────────────┴───────────────────────────────────┤ │
-│  │    │ StatusBar (Shell DOM)                                 │ │
-│  └────┴──────────────────────────────────────────────────────┘ │
-│                                                                │
-│  ┌──────────────────────────────────────────────────────────┐ │
-│  │ OverlayWindow (透明置顶 BrowserWindow)                    │ │
-│  │ 右键菜单 / 命令面板 / Toast / Dialog / 分隔线拖拽          │ │
-│  │ alwaysOnTop + 默认鼠标穿透                                │ │
-│  └──────────────────────────────────────────────────────────┘ │
-└──────────────────────────────────────────────────────────────┘
-```
-
-**通信协议——PoolLayout JSON：** 壳不直接操作插件的 React 组件。壳告诉池"世界长什么样"，池自己渲染。`pushLayout({ sidebar: { visible, width, viewId }, groups: [{ tabs: [...] }] })` → IPC → 池渲染。**插件代码零改动。** preload 端 buffer-replay 防竞态（E5#11l Bug 4 教训——layout 先到但插件未注册 → 缓冲，插件注册后回放）。
+**94 任务 16 Phase（2026-08-13 全清单审计完成，待执行）：** Phase 0 E5.6 归档 → Phase 1 统一入口（PoolLayout v2 + PoolZoneShell）→ Phase 2 壳 DOM 迁入 Pool → Phase 3 SidebarPool 合并 → SidebarZone → Phase 4 OverlayWindow 消除 → Phase 5 Zone 分解 → Phase 6 浮层收尾 → Phase 7 分隔线简化 → Phase 8 脱出窗口 + 漂移面板（🔴 推迟 v1.3）→ Phase 9 崩溃恢复 → Phase 10 清理死代码 → Phase 11 Registry 主进程化 → Phase 12 API 补全 → Phase 13 硬编码消灭 → Phase 14 缩放联动 + ESLint → Phase 15 E6 前置 → Phase 16 全量回归。
 
 **关键设计决策：**
 
-- **TabBar 在壳，不在 MainPool。** 切标签页零 IPC 延迟。MainPool 顶部留 tabBarH 空白——TabBar 渲染在壳的 `<div>` 里铺上去
-- **SidebarPool ≠ MainPool 独立进程。** 侧栏插件 `while(true){}` → 只崩侧栏，编辑器不受影响。这是"万物皆插件"模型下的底线隔离
-- **OverlayWindow 永远需要。** 浮层超出自身 Pool bounds → 被另一个 Pool 裁剪。全屏透明 `alwaysOnTop` 窗口，默认鼠标穿透
-- **keep-alive CSS display 切换。** 不活跃时 `return null` 但保持 mount——不 mount/unmount
-- **`RENDERERS` 注册表模式。** `{'sidebar-left': SidebarRenderer, 'main': MainRenderer, ...}` ——加新 zone = 加一行 Record 映射，禁止 switch
+- **壳想，池画。** 壳（不可见状态持有者）持有全部状态——tabState / pushLayout / Registries / 命令执行，零 DOM。Pool 是哑渲染器——收 pushLayout JSON 渲染 zones。聪慧→哑数据流在 E5.6 卡死 OverlayWindow 的教训上显灵：解析/执行在壳，渲染在池
+- **状态与渲染的进程边界。** 池崩 → 重建 WCV + lastLayout 回放；壳崩 → 全窗口重建 + tabState 持久化恢复
+- **插件隔离边界：进程 → 沙箱。** 所有插件共用一个 JS 堆，preload 沙箱隔离。**插件代码零改动**
+- **数据流：单向下行 + 意图上行。** pushLayout 下行，sidebarAction / tabAction 上行。缓冲回放防竞态
+- **PanelZone 内建。** 底部面板不再等 v1.2——终端/输出/问题/端口在 E5.7 就有家
+- **脱出窗口推迟 v1.3。** 设计稿就绪，上架后再做
 
-**消失的概念（净删 ~480 行）：**
+**消失的概念（净删 ~1,400 行）：** OverlayWindow 类 / LayoutEngine / preload-overlay.ts / preload-plugin.ts / useWebViewSync.ts / plugin-view.html / src/overlay/ 目录 / 双 Pool 协议与路由全链。
 
-| 消失的 | 代码量 | 为什么消失 |
-|:--|:--|:--|
-| `useWebViewSync` | ~270 行 | 池只需 bounds sync |
-| `rekeyInstance` / `findGraceInstance` | ~50 行 | tabId 从不变化 |
-| `scheduleDestroy` / `cancelDestroy` | ~40 行 | React 卸载就是卸载 |
-| `graceTimers` / 60s 宽限期 | ~40 行 | 无宽限期 |
-| `notifyReady` per-instance | preload + plugin-shell | 池就绪 = 一次性 |
-| `instanceId` 路由 | ~15 文件 | Pool 里用 tabId |
+**新增：** PoolZoneShell.tsx + zones/（一个 zone 一个文件）+ FloatingLayerHost + crash-recovery + plugin-manifest-loader + channels.ts + constants.ts。**插件改动：0 行。**
 
-**新增（~350 行）：** pool.html + pool-main.tsx + SidebarRenderer.tsx + MainRenderer.tsx + WindowManager 双 Pool 管理 + PoolLayout JSON 协议 + OverlayWindow 拖拽线。**插件改动：0 行。**
+**可扩展性——E5.7 做完后的世界：**
 
-**可扩展性——E5.6 做完后的世界：**
-
-- **加右侧栏 =** `ZoneConfig` 一行 `{ zone: "sidebar-right", dock: { edge: "right", width: 300 } }` + `RENDERERS` 加一行映射
-- **加底部面板 =** `{ zone: "bottom-panel", dock: { edge: "bottom", height: 300 } }` + `BottomPanelRenderer`——LayoutEngine 的 `_recalculate()` **不需要改**（已支持 left/right/center/bottom 四边）
-- **三态互转（main/modal/detached）：** 统一 `moveTab(tabId, fromZone, toZone)`——7 条转换路径，不区分主窗口内/跨窗口
-- **未来六位置全景：** sidebar-left / main / bottom-panel / sidebar-right / modal（OverlayWindow 容器）/ detached（独立 BrowserWindow）
+- **加右侧栏 =** zones/ 加一个 RightSidebarZone 文件 + PoolZoneShell 一行
+- **加底部面板 =** PanelZone 已内建——终端/输出/问题/端口直接搬进去
+- **三态互转（main/modal/detached）：** 设计稿就绪，v1.3 启用
+- **未来六位置全景：** sidebar-left / main / bottom-panel / sidebar-right / modal（FloatingLayerHost）/ detached（脱出窗口）
 
 ### 之后——E6 → 04-出厂制造 → 05-版本更新
 
-**E6——插件生态与发布（蓝图 47 任务 5 层，估 12-16 天）：** SDK 类型审计 + 动态加载改造 + glob 替换 + IPC handler 新建 + 内置插件独立化 + PluginInstallService + 路径解析归一化 + 脚手架 + dev/build 命令 + Mock 自动生成 + marketplace.json + 下载安装 UI + 测试插件全链路 + 开发指南 + CI + Shell 集成 + 多窗口。**E5.6 Phase 16 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。**
+**E6——插件生态与发布（蓝图 47 任务 5 层，估 12-16 天）：** SDK 类型审计 + 动态加载改造 + glob 替换 + IPC handler 新建 + 内置插件独立化 + PluginInstallService + 路径解析归一化 + 脚手架 + dev/build 命令 + Mock 自动生成 + marketplace.json + 下载安装 UI + 测试插件全链路 + 开发指南 + CI + Shell 集成 + 多窗口。**E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。**
 
 **04-出厂制造——10 款工厂插件：** Theme Carousel（主题轮播）、More Themes ×3、FloatingPanel（通用悬浮面板）、ColorPicker（取色器）、Marketplace Store（插件市场）、Plugin Showcase（插件橱窗）、Theme Maker（主题制作器）、dependsOn Accent Mode（强调色联动）、Serial Simulator（串口模拟器）、Snapshot Share（快照分享）。**全是 plugin.json + React 组件，零框架改动。**
 
-**05-版本更新——v1.1→v1.6：** v1.1 插件生态扩展 → v1.2 专业面板（BottomPanelPool：终端/输出/问题/端口）→ v1.3 协作能力 → v1.4 Agent 集成 → v1.5 领域专版 → v1.6 LinkDesk OS（Agent 操作系统）。
+**05-版本更新——v1.1→v1.6：** v1.1 插件生态扩展 → v1.2 面板与浮层增强（PanelZone E5.7 已内建——v1.2 做深度功能）→ v1.3 脱出窗口与漂移面板（E5.7 Phase 8 推迟至此）→ v1.4 Agent 集成 → v1.5 领域专版 → v1.6 LinkDesk OS（Agent 操作系统）。
 
 ---
 
@@ -332,7 +298,7 @@ LinkDesk 的规矩：一个概念一个名字，全代码库一致。所有颜�
 
 **第三方插件作者永远不需要打电话给壳作者。** 和 VS Code 一样——VS Code 不会因为 Python 扩展更新一次 VS Code。LinkDesk 不会因为地图插件、CAD 插件、K 线图插件更新一次 LinkDesk。
 
-代码里有 `if (pluginId === "terminal")`、`isSidebarOnlyView()` 这种东西就是 bug。E5 把 `TabType` 从 8 个枚举值改成了 `string`。E5.6 Phase 11 全量 grep 确认零 pluginId 硬编码。
+代码里有 `if (pluginId === "terminal")`、`isSidebarOnlyView()` 这种东西就是 bug。E5 把 `TabType` 从 8 个枚举值改成了 `string`。E5.7 Phase 13 全量 grep 确认零 pluginId 硬编码。
 
 **禁止模式——以下任何形式出现在壳代码中都是 bug：**
 
@@ -366,7 +332,7 @@ Phase 3 做拖拽分屏。我自己想了一个 closest-edge + 50% 的算法。1
 
 VS Code 的交互模式是千万用户十年验证出来的。Activity Bar / Side Bar / Editor Groups / Preview Editor / Notification Center——每一个都是无数次 A/B 测试和社区反馈打磨的。自己设计 = 重复踩坑。我现在的心态是：**VS Code 怎么做的，先抄。抄完了发现确实不适合我，再自己设计。**
 
-E5.6 的 Pool 模型同样对标 VS Code：SidebarPart → SidebarPool, EditorPart → MainPool, PanelPart → BottomPanelPool, OverlayWidget → OverlayWindow。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part。
+E5.7 的 Zone 模型同样对标 VS Code：SidebarPart → SidebarZone，EditorPart → MainZone，PanelPart → PanelZone，OverlayWidget → FloatingLayerHost。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板设计稿已就绪，推迟上架后 v1.3。
 
 ### 5. AI 必须能改——三层友好，不是一层
 
@@ -394,7 +360,7 @@ AI 友好是三层，不是一层。这源自 STM32CubeMX 的启发和 LabView �
 
 纯文本就是 API。`plugin.json` 是唯一数据源——不需要读 README，不需要爬文档。`PluginManifest` 是完整的 TS 类型，AI 看类型定义就知道能写什么。`workspace.json` 一层平铺数组，AI 能生成和管理。
 
-E5.6 的 PoolLayout JSON 协议标注"AI 一眼看懂"——每个字段有完整 JSON 示例。`RENDERERS` 注册表——加新 zone = 加一行 Record 映射，禁止 switch。终极目标：AI 扫描项目源码，自动识别日志格式、生成协议插件 + 卡片布局 + Profile。用户装上去就能用。
+E5.7 的 PoolLayout v2 协议标注"AI 一眼看懂"——每个字段有完整 JSON 示例。PoolZoneShell 一个 zone 一个文件——加新 zone = 加一个文件，禁止 switch。终极目标：AI 扫描项目源码，自动识别日志格式、生成协议插件 + 卡片布局 + Profile。用户装上去就能用。
 
 **AI 友好的最高境界：** AI 读这份 markdown 文档就能理解整个项目架构、设计哲学、当前进度和未来路线图——不需要翻代码仓库。
 
@@ -402,11 +368,11 @@ E5.6 的 PoolLayout JSON 协议标注"AI 一眼看懂"——每个字段有完�
 
 VS Code 扩展跑在独立进程里，只能调精选过的 API。超出白名单的功能要"Extension API Proposal"排队。
 
-LinkDesk 不是这个模型。**插件不受 API 白名单限制——Pool 模型下依然如此。**
+LinkDesk 不是这个模型。**插件不受 API 白名单限制——极简 Pool 模型下依然如此。**
 
-插件跑在 Pool 进程里——但这不是加限制，是加安全。插件自己的 WebView 里仍然能 `import` 任何 JS 库、调用任何 Web API。访问核心服务（配置、命令、文件系统）走 `window.linkdesk.*` IPC——**但调用方不感知。** Props 契约 `{ tabId, sourceId, isActive }` 完全相同——插件代码不知道自己在 SidebarPool 还是 MainPool。
+插件跑在唯一的 Pool 渲染进程里——同一 JS 堆，preload 沙箱隔离。但这不是加限制，是加安全。插件能 `import` 任何 JS 库、调用任何 Web API。访问核心服务（配置、命令、文件系统）走 `window.linkdesk.*` IPC——**但调用方不感知。** Props 契约 `{ tabId, sourceId, isActive }` 完全相同——插件代码不知道自己在哪个 Zone。
 
-**给你自由，也给你安全。** 插件崩了只崩自己的 Pool 进程，另一个 Pool 不受影响。这是 VS Code Extension Host 做不到的——VS Code 隔离了进程但收了你的 API 白名单。LinkDesk 隔离了进程但保留了你的完整 Web 平台能力。
+**给你自由，也给你安全。** 插件崩了 → 全池崩 → 2-4 秒自动重建 + Hot Exit 恢复未保存内容。安全靠 preload 沙箱，不靠进程数量。这是 VS Code Extension Host 做不到的——VS Code 隔离了进程但收了你的 API 白名单。LinkDesk 用沙箱 + 崩溃恢复保留了你的完整 Web 平台能力。
 
 **如果你发现一个功能"插件做不了"，那是框架的 bug，不是插件的限制。**
 
@@ -416,7 +382,7 @@ LinkDesk 不是这个模型。**插件不受 API 白名单限制——Pool 模�
 
 **E5 铁轨——不改架构，只归一化和消灭硬编码。** 壳通信骨架 + 布局引擎 + `linkdesk.*` 20 命名空间。E5 改的是"同一个东西原来写了三份，现在合并成一份"——不是新建。
 
-**E5.6 Pool 模型——最后一个动 WebView 架构的 Phase。** SidebarPool + MainPool + OverlayWindow = O(1) 进程。插件零改动。做完之后，任何新功能 = 写 plugin.json + React 组件。WebView 数量从 Per-Tab 的 O(N) 降到 O(1)，此后再也不动进程模型。
+**E5.7 极简Pool——最后一个动 WebView 架构的 Phase。** 1 BrowserWindow + 1 WebContentsView，3 进程固定。插件零改动。做完之后，任何新功能 = 写 plugin.json + React 组件。WebView 数量从 Per-Tab 的 O(N) 降到 1，此后再也不动进程模型。（E5.6 双Pool 执行到 51% 冻结——1 个壳 + 3 个 WCV 被证明是过度设计：安全靠沙箱不靠进程数。）
 
 ### 8. 边界不准渗漏
 
@@ -426,8 +392,8 @@ V2 的 Sensors.cs 膨胀到 3570 行——面板和卡片混在一起，没有�
 - `workspace.json` 禁止嵌套——卡片列表必须是一层平铺数组，AI grep 目标字段的难度每多一层嵌套翻一倍
 - 一个字段只有一个写入入口——`ConfigurationService` 是唯一配置读写入口
 - 数据源 I/O 在独立 Worker——UI 线程只消费 RingBuffer，永远不直接调数据源 API
-- **每个 Pool 只管理一种 TabBar。** SidebarPool 管视图列表，MainPool 管标签页，BottomPanelPool 管面板视图。永不出现一个 Pool 渲染两层标签栏
-- **SidebarPool 和 MainPool 不直接通信。** 所有消息走主进程路由
+- **壳想，池画。** 壳持有全部状态，Pool 只做哑渲染——pushLayout 单向下行，意图（sidebarAction/tabAction）上行。Zone 之间不直接互相改状态
+- **写操作不落 Pool。** 所有写操作走意图通道回壳 tabState——池内组件只读渲染，写路径单一
 - **每个持久化文件只有一个 owner service。** PluginStateService 独立文件，不和 ConfigurationService 共用 settings.json。不存在 loader / marketplace / 安装流程三处直读同一个 JSON
 - **插件通信唯一铁律：** 所有通信走 `window.linkdesk.*`，禁止 `import @src/core`。ESLint `no-core-import-in-plugin` 守卫。判断壳/插件用 `contextKey._getValue`——只在插件 preload 注入
 
@@ -464,26 +430,28 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 
 | 层 | 技术 | 为什么 |
 |------|------|------|
-| 桌面框架 | Electron 30+ | WebContentsView per Pool——真正的进程隔离，O(1) 进程 |
+| 桌面框架 | Electron 30+ | 1 BrowserWindow + 1 WebContentsView——3 进程固定，安全靠 preload 沙箱 |
 | 前端 | React 18 + TypeScript | 生态最丰富 |
 | 接收区 | CodeMirror 6 | 只读终端视图，三色行装饰，rAF 批量更新 |
 | 发送栏 | Monaco Editor | VS Code 同款，单行模式 |
 | 串口 | `serialport` npm + Node.js | Electron 主进程直接调 Node.js——不需要 Rust 桥接 |
-| 构建 | Vite 6 | `import.meta.glob` 扫描插件目录（E6 替换为动态加载） |
+| 构建 | Vite 6 | `import.meta.glob` 扫描插件目录（E5.7 Phase 11 主进程扫盘预加载 plugin.json；E6 替换为动态加载） |
 | 测试 | Vitest | 151 个核心通过 |
 | 图标 | `@vscode/codicons` | VS Code 同款，MIT |
 
 ### 两层容器架构
 
 ```
-外层：圆形大厅 + Pool 隔离房间
+外层：圆形大厅 + 极简 Pool
   核心 = 大厅——提供桌子（Registry/Service）
-  Pool = 四个 WebContentsView
-    ├── Shell（TitleBar + 图标栏 + TabBar + StatusBar）
-    ├── SidebarPool（侧栏插件——文件树/搜索/插件面板）
-    ├── MainPool（主区插件——编辑器/数据视图/设置 + 分屏布局）
-    └── OverlayWindow（所有浮层——右键菜单/命令面板/Toast/分隔线）
-  Pool 间通信：PoolLayout JSON 单向推送（壳→池），池被动渲染
+  壳渲染进程（BrowserWindow）——不可见状态持有者：
+    tabState / pushLayout / Registries / 命令执行。零 DOM
+  Pool（1 个 WebContentsView，100%×100%）——唯一可见界面
+    └─ PoolZoneShell + zones：TitleBarZone / IconBarZone / SidebarZone
+        / MainZone / PanelZone / StatusBarZone
+    └─ FloatingLayerHost：右键菜单 / 命令面板 / Toast / Dialog（position:fixed）
+  下行：pushLayout JSON 单向推送（壳→池）——"壳想，池画"
+  上行：意图通道（sidebarAction / tabAction）
   大厅通信：Registry/Command/Event Bus——松耦合
   点对点通道：IPC 数据管道——紧耦合，高频推流
 
@@ -497,7 +465,7 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 ### 插件怎么加载的
 
 ```
-启动 → import.meta.glob 扫 plugins/*/plugin.json
+启动 → 主进程扫盘预加载 plugins/*/plugin.json（E5.7 Phase 11）
   → 逐字段检测：
     有 entry？→ 视图插件 → viewRegistry（图标栏自动出现）
     有 mode？→ 协议插件 → ProtocolRegistry（终端下拉框自动多一项）
@@ -505,7 +473,7 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
     有 contributes.configuration？→ Settings Editor 自动出现
     有 contributes.menus？→ 右键菜单自动出现
     有 contributes.keybindings？→ KeybindingRegistry
-    有 contributes.views["bottom-panel"]？→ 底部面板自动出现（E5.6#40 预留口）
+    有 contributes.views["panel"]？→ PanelZone 自动出现（E5.7#21 内建）
   → 完。viewRole 决定点击图标是切侧栏还是开标签页。
     iconLocation 决定图标在上方还是底部。
 ```
@@ -522,144 +490,150 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 | `ContextKeyService` | 运行时状态 key（`activeEditor`/`portOpen` 等） |
 | `ProtocolRegistry` | 协议插件注册 → 终端下拉框动态渲染 |
 | `viewRegistry` | 视图插件注册 → 图标栏动态列表 |
-| `LayoutEngine` | 多 zone 布局引擎——left/right/center/bottom 四边，任意 zone 动态增删 |
+| `PoolZoneShell` | 单一渲染根——flex 布局 + zones 条件渲染，一个 zone 一个文件（LayoutEngine 已删） |
 | `PluginStateService` | 插件启用/禁用/卸载 |
 | `StorageService` | 持久化——windowState/prefs/workspace |
 | `IpcBridge` | 三通信机制——代理/推送/广播/p2p + 请求队列 + 重放 |
-| `WindowManager` | Pool 生命周期——createPool/destroyPool/rebuildPool + bounds 同步 |
+| `WindowManager` | 单 WCV 生命周期 + pushLayout 缓冲回放 + 崩溃重建 |
+| `CrashRecovery` | 全池崩溃重建 + lastLayout 回放 + Hot Exit + 连续崩溃熔断 |
+| `PluginManifestLoader` | 主进程扫盘预加载 plugin.json——Registry 静态数据唯一真相源（E5.7 Phase 11） |
 | `FileDecorationRegistry` | 文件装饰器——Git/ESLint 注册，文件树/搜索/标签页消费 |
 | `FileAssociationService` | 文件类型→插件路由——`.glsl`→Monaco，未知文件→editor fallback |
 
 ---
 
-## 四、对标 VS Code——现在的进度（2026-08-09）
+## 四、对标 VS Code——现在的进度（2026-08-13）
 
 | VS Code | LinkDesk | 状态 |
 |------|------|:--:|
 | Activity Bar | IconBar——动态列表 + 拖拽 + 底部固定 | ✅ |
 | Side Bar | SidePanel + SidebarSection 通用组件 | ✅ |
-| SidebarPart (独立进程) | SidebarPool WebContentsView——侧栏独立进程 | 🔄 E5.6 |
+| SidebarPart (独立进程) | SidebarZone——同 DOM 组件（SidebarPool WCV 删除） | 🔄 E5.7 |
 | Editor Groups | SplitNode 递归树——分屏/合并/拖拽 | ✅ |
-| EditorPart (独立进程) | MainPool WebContentsView——主区独立进程 | 🔄 E5.6 |
+| EditorPart (独立进程) | MainZone——同 DOM 组件（MainPool WCV 删除） | 🔄 E5.7 |
 | Preview Editor | Tab.pinned——斜体可替换 | ✅ |
 | Extensions 面板 | marketplace 侧栏 | ✅ |
 | Extension Detail | PluginDetailView——header + changelog | ✅ |
 | Notification Center | ToastContainer + 🔔 | ✅ |
 | Welcome Page | WelcomeView | ✅ |
 | Command Palette | Ctrl+Shift+P——模糊搜索 + when 过滤 | ✅ |
-| QuickPick（浮动面板） | OverlayWindow 渲染 | 🔄 E5.6 |
+| QuickPick（浮动面板） | FloatingLayerHost QuickPickHost（池内 position:fixed） | 🔄 E5.7 |
 | `contributes.*` 体系 | plugin.json → Registry 全链路 | ✅ |
 | when 子句引擎 | context key 运行时更新 | ✅ |
 | 协议插件 | 装上去终端下拉框就多一项 | ✅ |
-| 进程隔离（WebView per Extension Host） | 双Pool进程隔离——O(1) 进程 | 🔄 E5.6 |
-| 崩溃隔离 | SidebarPool崩 ≠ MainPool崩 | 🔄 E5.6 |
-| 主题引擎跨进程 | CSS 变量广播到两个 Pool | 🔄 E5.6 |
-| 语言引擎跨进程 | i18n 同步 | ✅ |
+| 进程隔离（WebView per Extension Host） | 单池沙箱隔离——安全靠 preload 沙箱，不靠进程数 | 🔄 E5.7 |
+| 崩溃隔离 | 崩溃 2-4s 自动重建 + Hot Exit + tabState 持久化 | 🔄 E5.7 |
+| 主题引擎跨进程 | 同 DOM CSS 变量自动继承——零广播 | 🔄 E5.7 |
+| 语言引擎跨进程 | 同 DOM 自动继承——标签在壳解析时已 t()，池哑渲染 | ✅ |
 | Profile 五维切换 | 插件/配置/布局/主题/语言一键切换 | ✅ |
 | FileDecorationRegistry | Git/ESLint 注册装饰器，文件树/搜索/标签页消费 | ✅ |
 | Explorer（文件树） | 虚拟滚动 + 懒加载 + revealInExplorer + 右键菜单 | ✅ E4 |
 | 编辑器 | Monaco 编辑器 + 编码检测 + JSON schema + LSP | ✅ E4 |
 | 文件搜索 | Ctrl+Shift+F 跨文件搜索 + 替换 | ✅ E4 |
-| OverlayWidget | OverlayWindow 透明窗口——右键菜单/分隔线/浮层 | 🔄 E5.6 |
-| Panel Part（Terminal/Output/Problems） | BottomPanelPool 预留口（E5.6#40 数据结构就绪，v1.2.0 实现） | 📋 远期 |
-| Modal Editor（浮动容器） | Modal 三态预留口（E5.6#41） | 📋 E6 |
-| Auxiliary Editor Part（拖出独立窗口） | DetachedWindow 预留口（E5.6#41） | 📋 v1.3（上架后；设计稿：E5.7 脱出窗口设计.md） |
-| `vscode.window.showQuickPick()` | `linkdesk.quickPick.show()` IPC 版 | 📋 E5.6#52 |
-| 插件 API 补全（10 命名空间） | workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick + pool.* 双向 | 📋 E5.6 Phase 10 |
+| OverlayWidget | FloatingLayerHost——右键菜单/分隔线/浮层（OverlayWindow 删除） | 🔄 E5.7 |
+| Panel Part（Terminal/Output/Problems） | PanelZone 内建（E5.7#21） | 🔄 E5.7 |
+| Modal Editor（浮动容器） | FloatingLayerHost Dialog + 三态互转设计稿 | 🔴 v1.3 |
+| Auxiliary Editor Part（拖出独立窗口） | 脱出窗口——设计稿就绪（E5.7 脱出窗口设计.md） | 🔴 v1.3 |
+| `vscode.window.showQuickPick()` | `linkdesk.quickPick.show()` IPC 版 | 🔄 E5.7#63 |
+| 插件 API 补全（10 命名空间） | workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick/sidebar + pool.* 单向 | 📋 E5.7 Phase 12 |
 | 插件市场后端 + 打包格式 | `.linkdesk-plugin` zip + 安装/更新/卸载 + GitHub Releases 后端 | 📋 E6 |
 | `yo code` 脚手架 | `npm create linkdesk-plugin`——一键生成模板 | 📋 E6 |
 | `vsce package` | `npm run build`——Vite 打包产出 `.linkdesk-plugin` | 📋 E6 |
-| Extension Host 独立进程 | 单 WebView pre-bundle（多 WebView 零改动复用） | 📋 E6 |
+| Extension Host 独立进程 | 单 Pool 渲染堆 + preload 沙箱（插件零改动复用） | 📋 E6 |
 | Windows 右键菜单 + 文件关联 | Shell 集成——`fileAssociations` + NSIS 注册表 | 📋 E6 |
 | 多窗口（`code C:\projA` + `code C:\projB`） | 同进程多 BrowserWindow + 独立 workspace | 📋 E6 |
 | 卡片工作台 | react-grid-layout + 数据管道 | 插件（E6 后） |
-| 终端系统 | node-pty + xterm.js + BottomPanelPool | v1.2.0 |
+| 终端系统 | node-pty + xterm.js + PanelZone | 🔄 E5.7 内建 + 终端插件声明式入面板 |
 | 专业视图插件（地图/3D/数据可视化等） | 独立插件 | 插件（E6 后） |
 
 ---
 
-## 五、当前执行——E5.6 Pool 模型重构
+## 五、当前执行——E5.7 极简Pool
 
-> **进度：0/86。** e5.6 分支已创建，执行清单就绪。16 Phase 串行执行。
+> **进度：全清单审计完成（2026-08-13），待执行。** 94 主任务 16 Phase，e5.7 分支就绪。E5.6 双Pool 封存在 51%——剩余 ~327 子任务已分流（直接搬 ~110 / 适配搬 ~140 / 删除 ~77）。审计修正了清单中的过期表述（死通道、计数误差、测试豁免缺口、推迟决策），执行开始前清单就是准的。
 
 ### Phase 全览
 
 | Phase | 内容 | 任务 | 依赖 | 策略 |
 |:--:|------|:--:|:--|:--|
-| 0 | 启动前审计——确认回退范围 + 通信链路 + 文件归属 | 3 (#0a-#0c) | — | 🔴 串行——必须先做 |
-| 1 | 回退单WebView——关per-tab，插件回壳渲染 | 4 (#1-#4) | P0 | 🔴 串行——必须先做 |
-| 2 | 双Pool骨架——WindowManager + pool.html + PoolLayout协议 | 5 (#5-#9) | P1 | 🔴 串行 |
-| 3 | SidebarPool迁移——侧栏插件进SidebarPool | 4 (#10-#13) | P2 | 🔴 串行 |
-| 4 | MainPool迁移——主区插件进MainPool + TabBar壳渲染 + 分屏 | 4 (#14-#17) | P3 | 🔴 串行 |
-| 5 | 跨Pool交互——文件树→编辑器 + 事件协调 + 跨Pool拖拽 | 3 (#18-#20) | P3+P4 | 🔴 串行 |
-| 6 | OverlayWindow——类 + 拖拽线 + 右键 + 命令面板 + Toast | 6 (#21-#26) | P3后可开始 | 🔴 串行 |
-| 7 | 崩溃恢复——SidebarPool恢复 + MainPool恢复 + 心跳 + 内存监控 | 4 (#27-#30) | P2后 | 🔴 串行 |
-| 8 | 清理Per-Tab遗留——删useWebViewSync + instanceId路由 + rekey + grace | 6 (#31-#36) | P5后 | 🔴 串行 |
-| 9 | 可扩展性预留口——LayoutEngine多zone + StatusBar/Right/Bottom/Floating | 6 (#37-#42) | P8后 | 🔴 串行 |
-| 10 | API补全——pool.* + workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick | 10 (#43-#52) | P2后 | ⚡ 可并行扇出 |
-| 11 | 硬编码消灭——MenuId→string + schema enum审计 + 全量grep | 14 (#53-#66) | P2后 | ⚡ 可并行扇出 |
-| 12 | 缩放联动——Ctrl+/-双Pool同步 | 4 (#67-#70) | P2后 | ⚡ 可并行扇出 |
-| 13 | ESLint升级——no-core-import-in-plugin warn→error | 1 (#71) | — | ⚡ |
-| 14 | 全量回归——七场景回归测试 | 7 (#72-#78) | P5后 | 🔴 串行——必须最后 |
-| 15 | 文档——架构文档 + 插件开发指南 | 4 (#79-#82) | P8后 | 📝 |
-| 16 | E6前置——PluginInstallService + loader打包分支 + IPC广播 | 3 (#83-#85) | P2后 | ⚡ 可并行扇出 |
+| 0 | E5.6 归档——封存双Pool清单，迁移记录入档 | 3 (#0a-#0c) | — | 🔴 串行——必须先做 |
+| 1 | 统一入口——PoolLayout v2 + PoolZoneShell | 4 (#1-#4) | P0 | 🔴 串行——必须先做 |
+| 2 | 壳 DOM 迁入 Pool | — | P1 | 🔴 串行 |
+| 3 | SidebarPool 合并 → SidebarZone | — | P2 | 🔴 串行 |
+| 4 | OverlayWindow 消除 | — | P3 | 🔴 串行 |
+| 5 | Zone 分解——MainRenderer 瘦身 | — | P4 | 🔴 串行 |
+| 6 | 浮层收尾 | — | P5 | 🔴 串行 |
+| 7 | 分隔线简化 | — | P6 | 🔴 串行 |
+| 8 | 突破边界——脱出窗口 + 漂移面板 | 4 (#32-#35) | — | 🔴 推迟 v1.3 |
+| 9 | 崩溃恢复——单点 + 快速重建 | 4 (#36-#39b) | P7 | 🔴 串行 |
+| 10 | 清理死代码 | 6 (#40-#45.5) | P4 后 | ⚡ 可并行 |
+| 11 | Registry 主进程化——消灭跨进程数据隔离 | 8 (#46-#53) | P1 后 | ⚡ 可并行 |
+| 12 | API 补全 | 10 (#54-#63.7) | P1 后 | ⚡ 可并行 |
+| 13 | 硬编码消灭 | 14 (#64-#77) | P1 后 | ⚡ 可并行 |
+| 14 | 缩放联动 + ESLint | 3 (#78-#80) | P1 后 | ⚡ 可并行 |
+| 15 | E6 前置——插件分发地基（IPC 骨架） | 3 (#81-#83) | P1 后 | ⚡ 可并行 |
+| 16 | 全量回归 | 11 (#84-#94) | 全部前 | 🔴 串行——必须最后 |
+
+> P2–P7 共 24 任务（#5–#31），任务号与细分以执行清单为准。
 
 ### 各 Phase 关键改动
 
-**Phase 2 双Pool骨架（最关键的架构切换）：**
-- `WindowManager` 从 pluginViews Map 裁剪为 `sidebarPoolView` + `mainPoolView`
-- 新建 `pool.html`（项目根）——所有 Pool 加载同一个入口
-- 新建 `src/pool/pool-main.tsx`——读 `?zone=` URL 参数 → `RENDERERS[zone]` 渲染
-- 新建 `src/pool/SidebarRenderer.tsx` + `src/pool/MainRenderer.tsx`
-- 新建 PoolLayout JSON 类型定义——`sidebar` / `groups` / `poolId` / `version`
+**Phase 1 统一入口（最关键的架构切换）：**
+- `WindowManager` 裁剪为单 WCV 管理——删 SidebarPool / MainPool / OverlayWindow 三个 WCV
+- 新建 `PoolZoneShell`——flex 布局 + zones 条件渲染，一个 zone 一个文件（`src/pool/zones/`）
+- `PoolLayout v2`——单池协议，删 poolId；壳 pushLayout → 池哑渲染
+- LayoutEngine 整删——多 zone 布局由 PoolZoneShell 的 zones 文件接管
 
-**Phase 3-4 迁移：** 侧栏插件从壳 DOM 移入 SidebarPool WCV。主区插件从壳 React 树移入 MainPool WCV。图标栏和 TabBar 留在壳 DOM（零 IPC 交互）。
+**Phase 2-3 壳 DOM 迁入：** TitleBar / 图标栏 / TabBar / StatusBar 从壳 DOM 迁入 Pool zones。SidebarPool WCV 删除，侧栏变 SidebarZone 同 DOM 组件——图标栏、文件树与编辑器第一次在同一 DOM。
 
-**Phase 6 OverlayWindow：** 新建 `electron/overlay-window.ts`——透明 `alwaysOnTop` BrowserWindow + 默认鼠标穿透 + resize handle 渲染 + 右键菜单/命令面板/Toast/Dialog 容器。
+**Phase 4 OverlayWindow 消除：** OverlayWindow 类 + preload-overlay.ts + `src/overlay/` 整删。浮层改 FloatingLayerHost 池内 `position:fixed`（z-index 3000+）——菜单 / QuickPick / Toast / Dialog 四个 host。聪慧→哑数据流：壳解析菜单（t() 本地化 + 命令执行），池哑渲染字符串。同 DOM = 主题 CSS 变量自动继承、无坐标同步、无焦点窗口管理、天然不被裁剪。
 
-**Phase 8 清理：** 整文件删除 `useWebViewSync.ts`（~270 行）。从 ~15 文件删除 `instanceId` 路由。删除 rekey/grace/notifyReady 全链。
+**Phase 5-6 浮层收尾：** pointer-events 三段式（容器始终 none / 主体 auto / 退场 none）防穿透；键盘导航（↑↓ Enter）；Dialog 焦点陷阱；快捷菜单 i18n 纯净（标签壳解析时已 t()，池不二次翻译）。
 
-**Phase 9 可扩展性：** BottomPanelPool 完整数据结构（PanelLayout 协议 + PanelTabBar 28px + 5 内置视图 + 插件贡献口）。RightSidebarPool 设计。三态互转（main/modal/detached）7 条路径 + 统一 `moveTab()` API。
+**Phase 7 分隔线简化：** 拖拽线从 OverlayWindow 辅助窗口改为 CSS div + mousemove——遍历 resizable zones，共享常量，不再需要跨窗口坐标同步。
 
-**Phase 10 API 补全：** 壳侧 `pool.pushLayout`/`pool.onTabClick`/`pool.onViewClick`。池侧 `pool.ready`/`pool.onLayout`/`pool.notifyTabClick`。10 个新命名空间补全——workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick。删除 `pluginViews` 命名空间（E5.5 遗留）。删除 `pluginInstance` 命名空间。
+**Phase 8 🔴 推迟：** 脱出窗口（拖 tab 出窗口）+ 漂移面板（PanelZone ⤢）——设计稿就绪，整个 Phase 推迟上架后 v1.3。
 
-**Phase 11 硬编码消灭：** 全量 grep `"pluginId"` → 确认零字面量。`MenuId` enum → `string`。`schema.enum` 审计——确认零 pluginId 硬编码。`plugin-file-service.ts` 开放化——第三方插件可注册文件处理器。
+**Phase 9 崩溃恢复：** 全池 render-process-gone → 重建 WCV + lastLayout 回放。壳崩 → 全窗口重建 + tabState 持久化恢复。Hot Exit（未保存内容恢复）。心跳 + 内存监控。10s 内 3 次崩溃 → 熔断停止重建，显示错误页。
 
-**Phase 14 七场景回归：**
-1. 启动——窗口位置/大小/状态恢复
-2. 侧栏——图标栏点击/折叠/展开/拖拽宽度
-3. 主区标签页——新建/关闭/切换/分屏/拖拽重排
-4. 编辑器——打开文件/保存/关闭/Monaco 功能
-5. 设置——打开/修改/持久化/Ctrl+,
-6. 快捷键——全局/Chord/编辑器内/条件过滤
-7. 崩溃恢复——SidebarPool 崩恢复 + MainPool 崩恢复
+**Phase 10 清理死代码：** 删 useWebViewSync.ts / instanceId 路由 / preload-plugin.ts / plugin-view.html / 壳侧旧浮层渲染 / 多 WebView 分支。
 
-**Phase 16 E6 前置：** 三个任务在 Phase 2 后即可开始——不与 E5.6 主线互斥。
-- E5.6#83：`loader.ts` 建 dev/installed 双分支结构（源码 glob vs 已安装 plugin.js `import()`）
-- E5.6#84：`plugin-install-handlers.ts` IPC 骨架（基本 install/uninstall/enable/disable handler）
-- E5.6#85：将安装/卸载广播改为走 IpcBridge 推送到 SidebarPool + MainPool
+**Phase 11 Registry 主进程化：** plugin-manifest-loader 主进程扫盘预加载 plugin.json。LangDef / Protocol / FileAssociation 静态数据真源主进程——壳/池经 IPC 查询，禁止双写。ESLint no-restricted-imports 机械防线。
+
+**Phase 12 API 补全：** pool.ready() / pool.onLayout()（无 poolId）。workspace / commands / fileAssociation / viewContainer / events / fileDecoration / protocol / quickPick / sidebar 命名空间补全。删 pluginViews / pluginInstance 命名空间。
+
+**Phase 13 硬编码消灭：** 全量 grep `pluginId` 零字面量。MenuId enum → string。schema enum 审计。plugin-file-service 开放化——第三方插件可注册文件处理器。
+
+**Phase 14 缩放联动 + ESLint：** Ctrl+/- 池内直接处理（同进程），zoom 进 pushLayout 持久化。IpcRelay 缓冲回放归一化 3 处（preload-pool / preload-shell ×2）。`no-core-import-in-plugin` warn → error + 测试文件与 import type 豁免。
+
+**Phase 15 E6 前置：** #81 PluginInstallService IPC 骨架（E3a #31 链路已通，补包装）。#82 loader 打包格式分支（dev glob vs 已安装 plugin.js `import()`）。#83 plugin:installed / plugin:uninstalled 广播——主进程 emitter 新建（现全仓零 emit，死通道）。
+
+**Phase 16 全量回归：** 10 场景矩阵——侧栏交互 / 编辑器 / 分屏 / 浮层 / 底部面板 / 串口监视器 / 插件热重载 / 崩溃恢复 / 收尾检查（脱出窗口场景推迟 v1.3）。tsc 零错误 + ESLint 零新增 + vitest 基线 + grep 零残留（OverlayWindow/sidebarPoolView/pluginViews/instanceId/poolId/?zone=）+ 进程数 = 3。
 
 ### 预估
 
 | 指标 | 值 |
 |:--|:--|
-| 净删代码 | ~480 行（E5.5#9 回退） |
-| 新增代码 | ~350 行（pool.html + pool-main + SidebarRenderer + MainRenderer + OverlayWindow 拖拽线） |
-| 改动文件 | ~10 个 |
-| 删除文件 | 1 个（useWebViewSync.ts） |
-| 新增文件 | 4 个（pool.html + pool-main.tsx + SidebarRenderer.tsx + MainRenderer.tsx） |
+| 净删代码 | ~1,400 行（E5.5 Per-Tab 遗留 + 双Pool + OverlayWindow + LayoutEngine 全链） |
+| 新增代码 | PoolZoneShell + zones/（6 个 zone 各一文件）+ FloatingLayerHost + crash-recovery + plugin-manifest-loader + channels.ts + constants.ts |
+| BrowserWindow | 2 → 1 |
+| WebContentsView | 3 → 1（100%×100%） |
+| 渲染进程 | 4 → 2（壳状态 + Pool 渲染） |
+| 进程总数 | 固定 3（主进程 + 壳 + Pool） |
+| 删除文件 | OverlayWindow 类 / LayoutEngine / preload-overlay.ts / preload-plugin.ts / useWebViewSync.ts / plugin-view.html / src/overlay/ 目录 |
+| 新增文件 | PoolZoneShell.tsx + zones/* + FloatingLayerHost + crash-recovery + plugin-manifest-loader + channels.ts + constants.ts |
 | 插件改动 | **0 行** |
-| 工期 | 3.5-5.5 天 |
+| 工期 | 以清单为准 |
 
-### E5.6 做完意味着什么
+### E5.7 做完意味着什么
 
-WebView 数从 O(N) → O(1)。开 30 个文件仍是 4 个进程。SidebarPool 崩溃 ≠ MainPool 崩溃。PoolLayout JSON 声明式推送——壳不碰插件 React 树。插件代码零改动。**此后加新 Pool（右侧栏/底部面板）= 一行 ZoneConfig + RENDERERS 注册表加一行映射。加新命名空间 = Phase 10 已铺好的注册点——不挖路基。**
+WebView 数从 E5.5 的 O(N) 降到 1。开 30 个文件仍是 3 个进程。全部 UI 在一个 DOM——浮层不再被裁剪、拖拽天然跨 zone、主题零广播。崩溃 2-4 秒自动重建 + Hot Exit。安全靠 preload 沙箱不靠进程数。插件代码零改动。**此后加新 zone = zones/ 加一个文件。加新命名空间 = Phase 12 已铺好的注册点——不挖路基。**
 
 ---
 
 ## 六、下一站——E6 插件生态与发布
 
-> **47 任务 5 层，估 12-16 天。** E5.6 全部完成后开始。目标：三个角色各有一条完整链路——插件作者开发→发布、普通用户下载→安装插件、维护者 build→发布软件。
+> **47 任务 5 层，估 12-16 天。** E5.7 全部完成后开始。目标：三个角色各有一条完整链路——插件作者开发→发布、普通用户下载→安装插件、维护者 build→发布软件。
 
 ### 为什么有 E6
 
@@ -678,9 +652,9 @@ WebView 数从 O(N) → O(1)。开 30 个文件仍是 4 个进程。SidebarPool 
 ### 五层架构
 
 ```
-第 1 层：插件独立构建（地基——必须先做，E5.6 串行完成后再开始）
+第 1 层：插件独立构建（地基——必须先做，E5.7 串行完成后再开始）
   第 1.1 轮：plugin-sdk + 类型从 preload 自动生成         E6#1-#5（5 任务）
-  第 1.2 轮：plugin-shell 动态加载 + loader glob 替换      E6#6-#14（9 任务）
+  第 1.2 轮：pool-main 动态加载 + loader glob 替换        E6#6-#14（9 任务）
              + .linkdesk-plugin + IPC handler 新建
              + handler 审计走 IpcBridge + PluginInstallService
   第 1.3 轮：内置插件独立化 → 壳瘦身 → 协议重构           E6#15-#20（6 任务）
@@ -705,19 +679,19 @@ WebView 数从 O(N) → O(1)。开 30 个文件仍是 4 个进程。SidebarPool 
 **第 1.1 轮——@linkdesk/plugin-sdk（对标 `@types/vscode`）：**
 - E6#1：创建 `packages/plugin-sdk/`——npm 包目录
 - E6#2：`window.linkdesk.*` 完整类型定义——从 preload 提取，覆盖所有命名空间 + JSDoc
-- E6#3：🔴 类型从 `preload-plugin.ts` 自动生成——不手抄。审计 preload 中每个 API 的实际返回类型（sync / fire-and-forget / async IPC），按审计结果标注
+- E6#3：🔴 类型从 `preload-pool.ts` 自动生成——不手抄。审计 preload 中每个 API 的实际返回类型（sync / fire-and-forget / async IPC），按审计结果标注
 - E6#4：`defineLinkdeskPluginConfig()`——Vite 插件构建配置，React/react-dom external，产出 `.linkdesk-plugin` zip
 - E6#5：`validatePluginJson()`——plugin.json 格式验证 + JSDoc
 
 **第 1.2 轮——壳侧改造：**
 - E6#6：`loader.ts` 改造——`loadPlugin()` 加 zip 格式分支。检测来源 → 打包文件读 `plugin.json` + `index.bundle.js` → 动态 import
-- E6#7：`plugin-shell-main.tsx` + `pool-main.tsx`——去掉 `import.meta.glob`，改为从 URL 参数 / IPC 读入口路径。源码插件走 `/@fs/` 路径，打包插件走 `file:///` 路径
+- E6#7：`pool-main.tsx`——去掉 `import.meta.glob`，改为从 IPC 读入口路径。源码插件走 `/@fs/` 路径，打包插件走 `file:///` 路径（plugin-shell-main.tsx 已被 E5.7#40 删除）
 - E6#8：`loader.ts` + `pool-main.tsx` 全部 glob 替换——`pluginModules`/`pluginStatusBarModules`/`viewRenderModules`/`pluginManifests` → 主进程 IPC `plugins:listAll`
 - E6#9：`installed-plugins.json`——已安装插件记录。安装时写 / 启动时读 / 卸载时删
 - E6#10：安装/卸载/更新单一路径——下载→解压→写记录→loadPlugin→UI刷新。卸载→关标签页→unloadPlugin→删目录→删记录
 - E6#11：🔴 `PluginInstallService`——`installed-plugins.json` 唯一 owner。loader / marketplace / 安装流程三处不再直读 JSON
-- E6#12：E6 IPC handler 扩展——下载/解压/更新/进度（基于 E5.6#80 的骨架）
-- E6#13：🔴 handler 审计——统一走 `IpcBridge.broadcast` 不直发 mainWindow。grep 所有 `mainWindow.webContents.send` + `getAllPluginIds()` 手动遍历 → 替换
+- E6#12：E6 IPC handler 扩展——下载/解压/更新/进度（基于 E5.7#81 的骨架）
+- E6#13：🔴 handler 审计——统一走 `IpcBridge.broadcast` 不直发 mainWindow。grep 所有 `mainWindow.webContents.send` + 手动遍历 → 替换
 
 **第 1.3 轮——打破特权阶级：**
 - E6#14：内置插件迁移为 pre-bundle——10 个内置插件各加 `package.json` + 独立 `npm run build`。产出放入 `bundled-plugins/`。壳首次启动自动安装
@@ -729,10 +703,10 @@ WebView 数从 O(N) → O(1)。开 30 个文件仍是 4 个进程。SidebarPool 
 
 **第 2 层——工具链：**
 - E6#20-#22：`create-linkdesk-plugin` 脚手架——CLI 入口 + 模板（plugin.json / src/index.tsx / package.json / tsconfig.json / i18n）→ `npm create linkdesk-plugin hello-world`
-- E6#23：`dev` 命令——`linkdesk-plugin-sdk dev` → 读 plugin.json → Vite dev server → 自动打开 `plugin-shell.html?pluginId=<id>&dev=true` + HMR
+- E6#23：`dev` 命令——`linkdesk-plugin-sdk dev` → 读 plugin.json → Vite dev server → 自动打开 `pool.html?pluginId=<id>&dev=true` + HMR
 - E6#24：`build` 命令——validate → Vite build → zip → `.linkdesk-plugin`
 - E6#25：市场"发布"入口——选择本地 `.linkdesk-plugin` → 上传 GitHub Releases → 更新 marketplace.json
-- E6#26：🔴 Mock API 从真实 preload 自动生成——不做两份维护。读 `preload-plugin.ts` → 解析 `contextBridge.exposeInMainWorld` → 生成 mock。sync 方法返回类型默认值，async 返回 `Promise.resolve(默认值)`，fire-and-forget 为空函数。调用不存在的方法时抛错 "该 API 仅在生产环境可用"
+- E6#26：🔴 Mock API 从真实 preload 自动生成——不做两份维护。读 `preload-pool.ts` → 解析 `contextBridge.exposeInMainWorld` → 生成 mock。sync 方法返回类型默认值，async 返回 `Promise.resolve(默认值)`，fire-and-forget 为空函数。调用不存在的方法时抛错 "该 API 仅在生产环境可用"
 - E6#27：Dev 模式可选 Electron——`npm run dev:plugin -- --electron` → 完整 Electron + 真实 IPC + 真实 WebContentsView + HMR。弥合浏览器 vs 生产的鸿沟
 
 **第 3 层——市场：**
@@ -761,7 +735,7 @@ WebView 数从 O(N) → O(1)。开 30 个文件仍是 4 个进程。SidebarPool 
 | `yo code` 脚手架 | `npm create linkdesk-plugin`——一键生成模板 |
 | `vsce package` | `npm run build`——Vite 打包产出 `.linkdesk-plugin` |
 | VS Code Marketplace | GitHub Releases + marketplace.json |
-| Extension Host 独立进程 | 单 WebView pre-bundle（多 WebView 零改动复用） |
+| Extension Host 独立进程 | 单 Pool 渲染堆 + preload 沙箱（插件零改动复用） |
 | `package.nls.json` 本地化 | `i18n/en.json`——每插件自带翻译 |
 | `package.json` contributes | `plugin.json` contributes——已有 ✅ |
 | Shell 集成（右键菜单 + 文件关联） | NSIS 注册表 + `electron-builder.yml` fileAssociations |
@@ -812,20 +786,20 @@ LinkDesk 的数据管道不管来源。一个协议插件 30 行 TypeScript—�
 
 **上限不在卡片类型，而在于：** 任何一个产生结构化数据的场景 = 协议插件 + 卡片工作台 = 即时分析。数据来源可以是串口/CAN/TCP/文件/数据库/HTTP API/WebSocket——同一套卡片。
 
-### 插件嵌入统一模型（E5.6 Pool 模型）
+### 插件嵌入统一模型（E5.7 极简Pool）
 
-**插件代码不知道自己在哪个 Pool。** Props 契约 `{ tabId, sourceId, isActive }` 完全相同。同一插件可同时出现在：
-- 侧栏（SidebarPool）→ 紧凑列表
-- 主区标签页（MainPool）→ 全屏编辑
-- 浮层（OverlayWindow Modal）→ 居中弹窗
-- 底部面板（BottomPanelPool）→ 面板视图
+**插件代码不知道自己在哪个 Zone。** Props 契约 `{ tabId, sourceId, isActive }` 完全相同。同一插件可同时出现在：
+- 侧栏（SidebarZone）→ 紧凑列表
+- 主区标签页（MainZone）→ 全屏编辑
+- 浮层（FloatingLayerHost Dialog）→ 居中弹窗
+- 底部面板（PanelZone）→ 面板视图
 
-壳决定把组件挂载到哪个 Pool——**插件代码零感知。**
+壳决定把组件挂载到哪个 Zone——**插件代码零感知。** 全部 Zone 在同一个 DOM 里——迁移零改动、浮层不被裁剪、主题零广播。
 
 **同一插件"市场"三形态示例：**
-- 侧栏：`sidebar.tsx` → SidebarPool → 紧凑列表（搜索 + 已安装数 + 行列表）
-- 标签页：`index.tsx` → MainPool → 全屏商店（160px 分类栏 + 卡片网格）
-- 浮层：`index.tsx` → OverlayWindow Modal 容器 → 同上但居中浮层 800×600
+- 侧栏：`sidebar.tsx` → SidebarZone → 紧凑列表（搜索 + 已安装数 + 行列表）
+- 标签页：`index.tsx` → MainZone → 全屏商店（160px 分类栏 + 卡片网格）
+- 浮层：`index.tsx` → FloatingLayerHost Dialog 容器 → 同上但居中浮层 800×600
 
 ### 协议 + 视图 + 卡片联动 → 领域闭环
 
@@ -862,14 +836,14 @@ LinkDesk 本身成为 Agent 的操作系统，插件市场是它的技能商店�
 | 愿景 | 依赖的基础设施 | 状态 |
 |------|------|:--:|
 | 插件生态（任何人可发布任何类型的插件） | 插件系统 + marketplace | ✅ 已就绪 |
-| 插件崩溃不影响其他插件 | SidebarPool ≠ MainPool 进程隔离 | 🔄 E5.6 |
+| 插件崩溃快速恢复 | 极简Pool 沙箱隔离 + 崩溃 2-4s 重建 + Hot Exit | 🔄 E5.7 |
 | 文件树 + Monaco 编辑器 | E4 完成 | ✅ |
 | 主题/语言社区贡献 | ThemeRegistry + LanguageRegistry | ✅ |
 | 数据管道——任意数据源 | 数据管道抽象（串口/CAN/TCP/文件/DB/HTTP 同一条 RingBuffer） | ✅ |
 | 卡片工作台——金融K线/科研论文分析/气象数据/任意数据可视化 | CardRegistry + 数据管道 + react-grid-layout | 📋 E6 后 |
-| 浮动窗口 | DetachedWindow (E5.6#41 预留口) | 📋 E6 |
-| 底部面板——终端/输出/问题/端口 | BottomPanelPool (E5.6#40 预留口) | 📋 v1.2.0 |
-| Agent 自动扫描项目生成插件 | 纯文本配置 + PoolLayout JSON 协议 + 六类插件接口 | ✅ 底座就绪 |
+| 脱出窗口 + 漂移面板 | 脱出窗口设计稿（E5.7 Phase 8 推迟） | 🔴 v1.3 |
+| 底部面板——终端/输出/问题/端口 | PanelZone 内建（E5.7#21） | 🔄 E5.7 |
+| Agent 自动扫描项目生成插件 | 纯文本配置 + PoolLayout v2 协议 + 六类插件接口 | ✅ 底座就绪 |
 | 插件市场在线分发 | `.linkdesk-plugin` zip + 安装/更新/卸载 + GitHub Releases | 📋 E6 |
 | 10 款工厂插件 | 全是 plugin.json + React 组件 | 📋 E6 后 |
 | 多窗口 + Shell 集成 | 同进程多 BrowserWindow + NSIS 注册表 | 📋 E6#44-#46 |
@@ -893,7 +867,7 @@ Phase 4 做插件系统。终端变成一个插件——硬编码全部清零。
 
 Phase 5 是最大的硬仗。建了命令系统、配置注册表、右键菜单统一组件、context key + when 条件引擎、协议下拉框、Settings Editor、快捷键系统、StorageService、类型系统去硬编码、运行时动态加载。每一层都是"以后加功能不用改核心"的基础设施。Tauri 时代的 Phase 5 完工后，加一个新功能 = 写一个 plugin.json + 一个 React 组件——核心一行不动。这个承诺今天仍然成立。
 
-E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编码、layout 引擎、API 补全。E5.5 上多 WebView——证明 Per-Tab 路线能走通。E5.6 重构为 Pool 模型——WebView 从 O(N) 降到 O(1)，插件零改动。
+E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编码、layout 引擎、API 补全。E5.5 上多 WebView——证明 Per-Tab 路线能走通。E5.6 双Pool 做了一半，我喊了停——**不对，方向错了。** 停下来重新想，想通了 E5.7 极简Pool：WebView 从 O(N) 降到 1，插件零改动。
 
 整个过程我写了零行代码。但我说的"不对"可能比写的代码更有价值：
 
@@ -902,7 +876,7 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
 - "不对，自创算法不如照抄 VS Code——V2 就是这么死的"
 - "不对，终端设置不是全局的——不同 COM 口不同参数"
 - "不对，Per-Tab WebView O(N) 进程太重了——分屏是 CSS flex 的问题"
-- "不对，SidebarPool 和 MainPool 必须独立进程——侧栏崩不能带崩编辑器"
+- "不对，双 Pool 是过度设计——安全靠 preload 沙箱，不靠进程数"
 - "不对，插件无白名单——给了安全不能收自由，给了自由不能缺安全"
 
 我不是程序员。我是甲方。一个好甲方知道几件事：**自己要什么、什么是对的、什么时候该说不对。** AI 是好乙方——只要甲方方向清楚，它能做出来。问题是大部分甲方的方向是乱的——说不清自己要什么，或者今天要 A 明天要 B。我没这个问题——因为 V2 踩过的每一个坑我都记得。
@@ -922,7 +896,7 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
 1. **这个项目是 AI 写的。** 95%+ 的代码是 Claude 输出的。人类做的是架构决策、质量审判、需求定义。你不是在接管一个人类写的代码库——你是在接管一个 AI 写的代码库。这意味着它的结构比你预期的更干净、更一致、更可预测。
 
 2. **🔥 架构是圆形大厅——两层模型。** 核心 = 大厅（提供桌子/电话本——Registry/Service），插件 = 周边小房间。核心是"空书架"——有很多东西，但全部是空的：CommandRegistry 是空电话簿、ConfigurationRegistry 是空白公告栏、FileService 是空文件柜。**核心只定义"怎么接"，不定义"接什么"。** 往核心加东西前先跑三条准入标准：多提供方 + 多消费方 + 桌子不知道内容。三条全绿 → 核心。缺一条 → 放插件。再加自检：加了这个之后，核心是不是变得更"知道自己是干什么的"了？是 → 别加。
-   **E5.6 当前架构：** Shell + SidebarPool + MainPool + OverlayWindow = 4 个 WebContentsView，O(1) 进程。SidebarPool 和 MainPool 永不直接通信——所有消息走主进程路由。PoolLayout JSON 单向推送（壳→池），池被动渲染，buffer-replay 防竞态。
+   **E5.7 当前架构：** 1 BrowserWindow + 1 WebContentsView（100%×100%）+ preload 沙箱 = 3 进程固定。壳 = 不可见状态持有者（tabState / pushLayout / Registry / 命令执行，零 DOM）。Pool = 哑渲染器（pushLayout JSON → zones）。单向下行 + 意图上行（sidebarAction/tabAction）。池崩 2-4s 重建 + lastLayout 回放；壳崩全窗口重建 + tabState 持久化。**安全靠沙箱不靠进程数。**
 
 3. **核心什么都不知道。** 标签页系统不知道里面是什么。数据管道不知道数据来源。插件系统不知道有哪些插件。这是故意设计的——不是缺失。任何往核心加"它是什么"知识的冲动都要拒绝。
 
@@ -939,13 +913,13 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
    - 一个概念一个名字，全代码库一致
    不需要爬文档，不需要读 wiki。读代码就是读文档。
 
-5. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。E5.6 的 Pool 模型对标 VS Code SidebarPart + EditorPart + PanelPart + OverlayWidget。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part。
+5. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。E5.7 的 Zone 模型对标 VS Code SidebarPart + EditorPart + PanelPart + OverlayWidget。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板推迟 v1.3。
 
-6. **🔥 E5.6 是当前任务——Pool 模型重构。** 86 任务 16 Phase。从 Per-Tab WebView（O(N) 进程）重构为双 Pool（O(1) 进程）。净删 ~480 行 Per-Tab 代码，加 ~350 行 Pool 代码。**插件零改动。** 执行清单见 `docs/02-Electron架构/E5.6_Pool模型重构/E5.6-执行清单.md`。进度唯一真相源在那个文件里。
+6. **🔥 E5.7 是当前任务——极简Pool。** 94 任务 16 Phase（2026-08-13 全清单审计完成，待执行）。从 Per-Tab WebView（O(N) 进程）重构为 1 BrowserWindow + 1 WebContentsView（3 进程固定）。净删 ~1,400 行。**插件零改动。** 执行清单见 `docs/02-Electron架构/E5.7_极简Pool/E5.7-执行清单.md`。进度唯一真相源在那个文件里。
 
-7. **E5.5 是冻结分支——不要在上面改代码。** E5.5 的 Per-Tab WebView 代码完成了历史使命（证明多 WebView 路线能走通），然后光荣退役。所有新工作在 e5.6 分支。
+7. **E5.5 和 E5.6 都是冻结分支——不要在上面改代码。** E5.5 的 Per-Tab WebView 代码完成了历史使命（证明多 WebView 路线能走通），然后光荣退役。E5.6 双Pool 执行到 51% 冻结——清单只留历史，剩余任务已分流进 E5.7。所有新工作在 e5.7 分支。
 
-8. **E6 是下一站——插件生态与发布。** 47 任务 5 层，估 12-16 天。三层角色（插件作者/普通用户/维护者）各一条完整链路。`@linkdesk/plugin-sdk` npm 包（对标 `@types/vscode`）、`create-linkdesk-plugin` 脚手架（对标 `yo code`）、`.linkdesk-plugin` 打包格式（对标 `vsce package`）、GitHub Releases 市场后端 + marketplace.json、内置插件独立化 + 壳瘦身 + 协议重构、Windows Shell 集成 + 多窗口。E5.6 Phase 16 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。
+8. **E6 是下一站——插件生态与发布。** 47 任务 5 层，估 12-16 天。三层角色（插件作者/普通用户/维护者）各一条完整链路。`@linkdesk/plugin-sdk` npm 包（对标 `@types/vscode`）、`create-linkdesk-plugin` 脚手架（对标 `yo code`）、`.linkdesk-plugin` 打包格式（对标 `vsce package`）、GitHub Releases 市场后端 + marketplace.json、内置插件独立化 + 壳瘦身 + 协议重构、Windows Shell 集成 + 多窗口。E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。
 
 9. **插件通信唯一铁律——壳与插件隔离标准。** 对标 VS Code：插件只认 `vscode.*` API。LinkDesk 插件只认 `window.linkdesk.*` API。
    ```
@@ -953,11 +927,11 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
    ✅ 壳 → 插件：window.linkdesk.bridge.xxx()  ← 唯一反向通道
    ❌ 插件代码 = import { anything } from "@src/core/..."  ← 绝对禁止
    ```
-   **为什么：** 多 WebView 下每个插件 = 独立 WebContentsView = 独立 JS 堆。插件 import `MenuRegistry` → 写自己的 Map → 壳的 Map 没有这条 → 静默失效。没有 error，没有 warning——菜单空白、配置不生效。
+   **为什么：** 壳与 Pool 是两个进程。插件 import `MenuRegistry` → 写自己的 Map → 壳的 Map 没有这条 → 静默失效。没有 error，没有 warning——菜单空白、配置不生效。
    **判断壳还是插件：** `window.linkdesk?.contextKey?._getValue` ——只在插件 preload 注入。
    **写 import 前跑检查清单：** ①有模块级状态（Map/Set）？→ 不能用，必须 IPC。②是壳级服务（Registry/Service）？→ 不能用，必须 IPC。③是纯工具函数（无副作用）？→ 可以。④是 TypeScript 类型/枚举？→ 可以。⑤是 UI 组件？→ 暂可，记录例外。⑥ESLint warn？→ 查例外清单。
    通信分类——Registry 操作走 `linkdesk.menu.registerItems`，数据查询走 `linkdesk.configuration.get`，事件走 `linkdesk.events.on/emit`，高频推流走 `linkdesk.p2p.send/on`。
-   ESLint `no-core-import-in-plugin` E5.6#71 从 warn 升为 error。
+   ESLint `no-core-import-in-plugin` E5.7#80 从 warn 升为 error（含测试文件与 import type 豁免）。
 
 10. **这个人不是程序员。** 他不会写 React、TypeScript、Electron 配置。但他知道自己要什么——因为 V2 踩过的每一个坑他都记得。他的"不对"比代码更有价值。听他的。但也要在他说不清楚的时候帮他看清——就像他说的，AI 在他还没想清楚的时候，已经把代码推到了比他思想更远的地方。
 
@@ -970,13 +944,14 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
 
 ---
 
-*最后更新：2026-08-09*
+*最后更新：2026-08-13*
 
-*这个文件见证了 LinkDesk 的四次认知跃迁：*
+*这个文件见证了 LinkDesk 的六次认知跃迁：*
 - *从"串口调试工具"到"通用容器平台"（2026-07-23）*
 - *从"通用容器平台"到"圆形大厅"（2026-07-25）*
 - *从"核心无知"到"两层模型——核心是空书架，不是空无一物"（2026-07-26）*
 - *从"Per-Tab O(N) 进程"到"Pool 模型 O(1) 进程"（2026-08-09）*
 - *从"多 WebView 堆叠"到"PoolLayout 声明式推送——壳不碰插件 React 树"（2026-08-09）*
+- *从"双 Pool"到"极简 Pool——壳退化为不可见状态持有者，安全靠沙箱不靠进程数"（2026-08-12）*
 
 *LinkDesk = Link（连接）+ Desk（桌子）。名字在起名时就写好了，理解到今天还在继续追上。*
