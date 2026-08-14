@@ -109,8 +109,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       scanWorkspaceForTypeScript(monaco);
 
       // 5. 非 TS 语言——查 LangDefRegistry 自动启动 LSP
-      // E5.5#7 Bug B fix：LangDefRegistry 已在 plugin-shell-main.tsx 启动时通过
-      // syncCoreRegistries() 自动同步——编辑器无需自己 sync。
+      // LangDefRegistry 在壳侧注册、经 linkdesk.langDef IPC 查询——编辑器无需自己 sync。
       const ext = "." + (lk.path.normalize(filePath).split(".").pop() ?? "");
       const langDef = await lk.langDef.get(ext);
       console.error(`[editor:debug] filePath=${filePath} ext=${ext} langDef=${langDef?.id ?? "null"} hasLsp=${!!langDef?.lsp} hasClient=${!!getLspClient(langDef?.id ?? "")}`);

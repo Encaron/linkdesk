@@ -6,8 +6,8 @@
  *
  * 🔴 Path B：池不 import 壳 components 目录——池侧消费方
  *    （MainZone/PluginComponent/PoolStatusBarComponent/PoolSectionStack/PoolToolbarSlot）
- *    一律 import 本文件；壳侧消费方（ShellPluginComponent/SectionStack/ToolbarSlot）
- *    继续用壳侧版。
+ *    一律 import 本文件；壳侧版（components/shared/ErrorBoundary.tsx）唯一消费方
+ *    ShellPluginComponent 已随 per-tab 遗留删除（E5.7#40 连带）——本文件是唯一版本。
  *
  * AI 友好：componentDidCatch 输出完整 error stack 到控制台。
  */

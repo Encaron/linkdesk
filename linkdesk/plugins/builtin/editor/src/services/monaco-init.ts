@@ -17,8 +17,9 @@ import extensionHostUrl from '@codingame/monaco-vscode-api/workers/extensionHost
 import textMateUrl from '@codingame/monaco-vscode-textmate-service-override/worker?url';
 
 // E5.5#7 Bug B fix：标准 Monaco Language Worker（?worker）——对标 main.tsx。
-// 🔴 核心问题：main.tsx 设置了 MonacoEnvironment.getWorker，但 plugin-shell-main.tsx 没有。
-// 插件 WebView 中 Monaco 无法创建任何 Worker → TS/HTML 语言服务全挂、Enter 键失效。
+// 🔴 历史根因：main.tsx 设置了 MonacoEnvironment.getWorker，插件 WebView 入口
+//   （plugin-shell-main.tsx，已随 E5.7#40 删除）没有——Monaco 无法创建任何 Worker →
+//   TS/HTML 语言服务全挂、Enter 键失效。本文件即当时的补齐，E5.7 入口合一后仍是唯一装配点。
 import EditorWorker from 'monaco-editor/esm/vs/editor/editor.worker?worker';
 import TsWorker from 'monaco-editor/esm/vs/language/typescript/ts.worker?worker';
 import JsonWorker from 'monaco-editor/esm/vs/language/json/json.worker?worker';
