@@ -11,6 +11,9 @@
  *   1. 壳同步快捷键表到主进程（keyboard:syncShortcuts）
  *   2. 主进程维护 chord 状态机（与壳 CHORD_TIMEOUT 同值）
  *   3. before-input-event 命中 → preventDefault + send('keyboard:executeShortcut')
+ *
+ * E5.7 极简Pool：焦点永远在池 WCV 上——attachKeyboardRouting 由 window-manager
+ * createPoolView 工厂处挂载（初始创建 + rebuildPool 崩溃恢复全覆盖）。
  */
 
 import { BrowserWindow, WebContentsView, app, type Event, type Input } from 'electron';
@@ -232,24 +235,33 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
 }
 
 /**
+ * 在指定 WebContentsView 上注册 before-input-event 路由。
+ *
+ * E5.7：池 WCV 由 window-manager.createPoolView 工厂调用——焦点永远在池上，
+ * 不挂 = 全局快捷键全灭（Ctrl+Shift+P 等壳 keydown 收不到）。挂载在工厂处
+ * 保证 rebuildPool 崩溃恢复后重建的视图也自动带上路由。
+ */
+export function attachKeyboardRouting(view: WebContentsView, mainWindow: BrowserWindow): void {
+  view.webContents.on('before-input-event', (event, input) => {
+    handleBeforeInput(event, input, mainWindow);
+  });
+}
+
+/**
  * 初始化键盘路由——在 WindowManager + PluginViewRegistry 创建后调用。
  * 仅在插件 WebContentsView 上注册 before-input-event（壳自己的 keydown listener 正常工作）。
  * Monkey-patch pluginViewRegistry.registerPlugin 确保动态创建的插件也自动注册。
+ * 🔴 E5.7：插件 WebView 已不存在（极简Pool 单 WCV）——本函数走空路；
+ *    Phase 10 #43 删遍历 → 单 Pool 直推时整体移除。
  */
 export function initKeyboardRouting(
   mainWindow: BrowserWindow,
   pluginViewRegistry: PluginViewRegistry,
 ): void {
-  const registerOnView = (view: WebContentsView): void => {
-    view.webContents.on('before-input-event', (event, input) => {
-      handleBeforeInput(event, input, mainWindow);
-    });
-  };
-
   // 已有插件 WebView——遍历所有 instance
   for (const instanceId of pluginViewRegistry.getAllInstanceIds()) {
     const view = pluginViewRegistry.getView(instanceId);
-    if (view) registerOnView(view);
+    if (view) attachKeyboardRouting(view, mainWindow);
   }
 
   // 动态创建的插件 WebView——monkey-patch registerPlugin
@@ -257,7 +269,7 @@ export function initKeyboardRouting(
   const _origRegister = pluginViewRegistry.registerPlugin.bind(pluginViewRegistry);
   pluginViewRegistry.registerPlugin = (instanceId: string, pluginId: string, url: string, force?: boolean) => {
     const view = _origRegister(instanceId, pluginId, url, force);
-    registerOnView(view);
+    attachKeyboardRouting(view, mainWindow);
     return view;
   };
 }
