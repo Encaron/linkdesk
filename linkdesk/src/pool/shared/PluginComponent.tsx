@@ -15,7 +15,7 @@
 import React, { Suspense, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "../../i18n";
-import ErrorBoundary from "../../components/shared/ErrorBoundary";
+import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
 // ── import.meta.glob：Vite 预扫描插件入口 ──
 // src/pool/ → ../../ = 项目根 → plugins/

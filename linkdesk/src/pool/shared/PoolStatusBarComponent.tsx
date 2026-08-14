@@ -12,7 +12,7 @@
  */
 
 import React, { Suspense, useMemo } from "react";
-import ErrorBoundary from "../../components/shared/ErrorBoundary";
+import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 
 // ── import.meta.glob：Vite 预扫描插件状态栏组件 ──
 // 壳 loader.ts:81-106 pluginStatusBarModules 同款 6 路径（builtin/user × 3 位置）
