@@ -9,8 +9,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout } from "../core/types/poolLayout";
+import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout, StatusBarItem, NotifLayout } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
@@ -21,7 +22,13 @@ import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6�
 import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
-import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews, getStatusBarContributions } from "../pluginLoader/viewRegistry";
+// E5.7#8：状态栏三源合并——动态项 + 变化订阅（壳 StatusBar.tsx 同款）
+import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
+// E5.7#8：Chord 提示（CUSTOM_EVENTS）+ 事件条目（statusbar:update/tab:focused）+ 通知中心（toast 存储）
+import { CUSTOM_EVENTS } from "../core/react/CoreEvents";
+import { shellEvents, type StatusBarEntry } from "../core/react/ShellEvents";
+import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/toast";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { isShellRenderedTab } from "./tabIdentity";
@@ -273,6 +280,182 @@ function buildTitleBarSlots(slot: "left" | "right"): TitleBarSlotButton[] {
     .map((item) => ({ command: item.command, icon: item.icon, title: item.command }));
 }
 
+/** align/alignment 判别——StatusBarEntry 用 alignment，状态栏条目用 align；
+ *  eslint E5.5#10 规则拦 `=== "right"` 字面量比较，switch 判别不误报 */
+function isRightAligned(item: { align?: string; alignment?: string }): boolean {
+  switch (item.align ?? item.alignment) {
+    case "right": return true;
+    default: return false;
+  }
+}
+
+/**
+ * E5.7#8：状态栏条目序列化——壳 StatusBar.tsx 三源合并 + 分隔线语义照搬。
+ * 贡献项 + 动态项 + eventEntries（按 alignment 拆 __shell_left__/__shell_right__）+ 壳固定项（语言/主题）。
+ * 分隔线壳侧算好（dividerBefore）：
+ *   - 左区：组间 + 组内——每项除整区首个都有前导分隔线；
+ *   - 右区：仅组内除首个——组间无分隔线（壳 StatusBar 渲染语义）。
+ * component=true 时池懒加载插件 statusBarComponent（serial-monitor TX/RX 实时计数）。
+ * 壳 StatusBar 固定项 title 硬编码中文——迁移时改 t()（硬约束 #2 顺带修正）。
+ */
+function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]): StatusBarItem[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const allItems: any[] = [
+    ...getStatusBarContributions(),
+    ...getDynamicStatusBarItems(),
+    ...eventEntries.filter((e) => !isRightAligned(e)).map((e) => ({
+      pluginId: "__shell_left__", id: e.id, label: e.text, align: "left",
+    })),
+    ...eventEntries.filter((e) => isRightAligned(e)).map((e) => ({
+      pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
+    })),
+    { pluginId: "__shell_right__", id: "lang", icon: "globe", label: "", title: t("选择语言"), align: "right", onClick: "workbench.action.selectLanguage" },
+    { pluginId: "__shell_right__", id: "theme", icon: "color-mode", label: "", title: t("切换主题"), align: "right", onClick: "workbench.action.selectTheme" },
+  ];
+
+  // 去重插件 ID（保持顺序）——壳 orderedPluginIds 同款
+  const orderedPluginIds = (() => {
+    const seen = new Set<string>();
+    const ids: string[] = [];
+    for (const item of allItems) {
+      if (!seen.has(item.pluginId)) {
+        seen.add(item.pluginId);
+        ids.push(item.pluginId);
+      }
+    }
+    return ids;
+  })();
+
+  const leftPluginIds = orderedPluginIds.filter((pid) =>
+    allItems.some((i) => i.pluginId === pid && !isRightAligned(i))
+  );
+  const rightPluginIds = orderedPluginIds.filter((pid) =>
+    allItems.some((i) => i.pluginId === pid && isRightAligned(i))
+  );
+
+  const result: StatusBarItem[] = [];
+  // isLeft 布尔入参——eslint E5.5#10 规则拦 `side === "left"` 字面量比较
+  const pushSide = (ids: string[], isLeft: boolean) => {
+    const align: "left" | "right" = isLeft ? "left" : "right";
+    let firstInSide = true;
+    for (const pid of ids) {
+      const plugin = pid.startsWith("__shell_") ? undefined : getViewPlugin(pid);
+      // 插件有 statusBarComponent——取代该插件全部静态项（壳 renderPluginStatusBar 同款）
+      if (plugin?.statusBarComponent) {
+        result.push({
+          id: `${pid}:component`, pluginId: pid, label: "", align,
+          component: true,
+          // 左区：组间有分隔线；右区：组间无（壳渲染语义）
+          dividerBefore: isLeft ? !firstInSide : false,
+        });
+        firstInSide = false;
+        continue;
+      }
+      const items = allItems.filter((i) => i.pluginId === pid);
+      // E2c #19g：configurable 条目按配置值过滤显隐
+      const visibleItems = items.filter((item) => {
+        if (!item.configurable) return true;
+        const configKey = `${pid}.statusBar.${item.id}`;
+        return getConfigurationValue<boolean>(configKey) ?? true;
+      });
+      if (visibleItems.length === 0) continue;
+      let firstInGroup = true;
+      for (const item of visibleItems) {
+        result.push({
+          id: item.id,
+          pluginId: pid,
+          ...(item.icon ? { icon: item.icon } : {}),
+          // 壳渲染 {item.label || item.id}——空 label 回退 id（lang/theme 显示 id 文本，同壳行为）
+          label: item.label || item.id,
+          ...(item.title ? { title: item.title } : {}),
+          align,
+          ...(item.onClick ? { onClick: item.onClick } : {}),
+          dividerBefore: isLeft ? !firstInSide : !firstInGroup,
+        });
+        firstInSide = false;
+        firstInGroup = false;
+      }
+    }
+  };
+  pushSide(leftPluginIds, true);
+  pushSide(rightPluginIds, false);
+  return result;
+}
+
+/* ── E5.7#8：通知中心序列化——壳 NotificationCenter 模块级 _seenIds / formatTimeAgo /
+ *    buildSourceGroups / getNotifIconClass 四件套迁入壳侧（池哑渲染 + 事件回传） ── */
+
+/** 未读追踪——跨渲染保留，面板关闭期间到来的通知标记为未读 */
+const _seenIds = new Set<string>();
+
+/** 时间格式化——中文友好，零外部依赖（壳 NotificationCenter 同款） */
+function formatTimeAgo(t: TFunction, ts: number): string {
+  const diff = Date.now() - ts;
+  if (diff < 60_000) return t("刚刚");
+  const min = Math.floor(diff / 60_000);
+  if (min < 60) return t("{{min}} 分钟前", { min });
+  const hr = Math.floor(min / 60);
+  if (hr < 24) return t("{{hr}} 小时前", { hr });
+  const d = Math.floor(hr / 24);
+  return t("{{d}} 天前", { d });
+}
+
+/** 通知图标类——壳 getNotifIconClass 同款 */
+function getNotifIconClass(n: Toast): string {
+  if (n.icon) return n.icon.startsWith("codicon") ? n.icon : `codicon codicon-${n.icon}`;
+  switch (n.severity) {
+    case "error": return "codicon codicon-error notif-severity-error";
+    case "warning": return "codicon codicon-warning notif-severity-warning";
+    case "info":
+    default: return "codicon codicon-info";
+  }
+}
+
+/** 通知面板数据——壳 NotificationCenter（source 分组/未读排序/时间文案）序列化为纯数据 */
+function buildNotif(t: TFunction): NotifLayout {
+  const notifications = getToasts();
+  const unread = notifications.filter((n) => !_seenIds.has(n.id)).length;
+
+  // E3e #50：source 第一段归类（"terminal.portErrors" → "terminal"）
+  const map = new Map<string, Toast[]>();
+  for (const n of notifications) {
+    const src = n.source?.split(".")[0] || "";
+    const key = src || "__other__";
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(n);
+  }
+  const groups: NotifLayout["groups"] = [];
+  for (const [key, items] of map) {
+    items.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+    const groupUnread = items.filter((n) => !_seenIds.has(n.id)).length;
+    groups.push({
+      key,
+      label: key === "__other__" ? t("其他") : key,
+      unread: groupUnread,
+      items: items.map((n) => ({
+        id: n.id,
+        iconClass: getNotifIconClass(n),
+        message: n.message,
+        timeLabel: n.createdAt ? formatTimeAgo(t, n.createdAt) : "",
+        ...(n.source ? { sourceLabel: t("来源: {{source}}", { source: n.source }) } : {}),
+        actions: (n.actions ?? []).map((a) => ({ label: a.label, ...(a.isPrimary ? { isPrimary: true } : {}) })),
+      })),
+    });
+  }
+  // 有未读的组排前面
+  groups.sort((a, b) => b.unread - a.unread);
+
+  return {
+    unread,
+    bellTitle: unread > 0 ? t("{{count}} 条通知", { count: unread }) : t("通知"),
+    panelTitle: t("通知"),
+    clearLabel: t("全部清除"),
+    emptyLabel: t("暂无通知"),
+    dismissTitle: t("关闭"),
+    groups,
+  };
+}
+
 export interface UsePoolSyncInput {
   tabState: TabState;
   /** 侧栏当前容器 ID——null = 无活动侧栏视图 */
@@ -308,6 +491,13 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
   // reorderView/setVisible 会 fire onDidChangeActiveViews → bump version。
   // setCollapsed 不 fire 事件 → handler 内手动 bump。
   const [layoutVersion, setLayoutVersion] = useState(0);
+
+  // E5.7#8：Chord 状态栏提示——壳 StatusBar.tsx:88-115 逻辑迁入（字符串壳侧构建，池哑渲染）
+  const [chordLabel, setChordLabel] = useState<string | null>(null);
+  const chordTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // E5.7#8：ShellEvents 动态状态栏条目——壳 StatusBar eventEntries 迁入
+  const [eventEntries, setEventEntries] = useState<StatusBarEntry[]>([]);
 
   // 订阅 ViewContainerService.onDidChangeActiveViews——reorder/setVisible 后触发重推
   useEffect(() => {
@@ -402,6 +592,72 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     return () => { unsub?.(); };
   }, []);
 
+  // E5.7#8：Chord 状态——壳 StatusBar.tsx:90-115 CHORD_CHANGED 订阅迁入。
+  // 按键名是技术标识符不走 i18n（E5.5#7-p9），字符串壳侧构建 → 池哑渲染。
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const { isPending, firstKey, failedKey } = (e as CustomEvent).detail as {
+        isPending: boolean; firstKey?: string; failedKey?: string;
+      };
+      if (chordTimerRef.current) { clearTimeout(chordTimerRef.current); chordTimerRef.current = null; }
+      if (isPending && firstKey) {
+        const display = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        setChordLabel(`(${display}) 已按下，正在等待第二键…`);
+      } else if (failedKey && firstKey) {
+        // 对标 VS Code："(Ctrl+K, unknown) is not a command"
+        const f1 = firstKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        const f2 = failedKey.replace(/\b\w/g, (c) => c.toUpperCase());
+        setChordLabel(`组合键 (${f1}, ${f2}) 不是命令`);
+        chordTimerRef.current = setTimeout(() => setChordLabel(null), 3000);
+      } else {
+        setChordLabel(null);
+      }
+    };
+    window.addEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
+    return () => {
+      window.removeEventListener(CUSTOM_EVENTS.CHORD_CHANGED, handler);
+      if (chordTimerRef.current) clearTimeout(chordTimerRef.current);
+    };
+  }, []);
+
+  // E5.7#8：动态状态栏项 / 标签页切换 / toast 变更 / 事件条目 → 重推
+  // （壳 StatusBar 的 setStatusBarTick + NotificationCenter 的 setNotifications 订阅迁入）
+  useEffect(() => onDidChangeStatusBar.event(() => setLayoutVersion((v) => v + 1)), []);
+  useEffect(() => shellEvents.on("tab:focused", () => setLayoutVersion((v) => v + 1)), []);
+  useEffect(() => subscribeToasts(() => setLayoutVersion((v) => v + 1)), []);
+  useEffect(() => {
+    const unsub = shellEvents.on("statusbar:update", (entries) => {
+      setEventEntries(entries);
+    });
+    return unsub;
+  }, []);
+
+  // E5.7#8：池通知面板操作回传（events 往返）——壳 NotificationCenter 语义迁入：
+  // 面板开闭 → setToastsSuppressed + 标记已读；单条关闭/全部清除 → dismissToast；
+  // 动作点击 → 壳侧执行 onClick 闭包 + 关闭（闭包不可序列化，只能壳侧跑）。
+  useEffect(() => {
+    const events = window.linkdesk?.events;
+    const offPanel = events?.on("notif:panel", (open: boolean) => {
+      setToastsSuppressed(open);
+      if (open) {
+        for (const n of getToasts()) _seenIds.add(n.id);
+        setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
+      }
+    });
+    const offDismiss = events?.on("notif:dismiss", (id: string) => {
+      dismissToast(id);
+    });
+    const offClearAll = events?.on("notif:clearAll", () => {
+      getToasts().forEach((n) => dismissToast(n.id));
+    });
+    const offAction = events?.on("notif:action", (data: { id: string; index: number }) => {
+      const toast = getToasts().find((n) => n.id === data.id);
+      const action = toast?.actions?.[data.index];
+      if (action) { action.onClick(); dismissToast(data.id); }
+    });
+    return () => { offPanel?.(); offDismiss?.(); offClearAll?.(); offAction?.(); };
+  }, []);
+
   useEffect(() => {
     // E5.6#11-fix8：记住上次非空 sidebarView——图标栏坍塌时 emit null，但 collapsed ▶ 仍需知道容器
     if (sidebarView) {
@@ -493,9 +749,14 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       root: tabState.root,
       // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
-      statusBar: { items: [] },
+      // E5.7#8：状态栏——条目（分隔线/component 标记壳侧算好）+ Chord 字符串 + 通知中心纯数据
+      statusBar: {
+        items: buildStatusBarItems(t, eventEntries),
+        ...(chordLabel ? { chordLabel } : {}),
+        notif: buildNotif(t),
+      },
     };
 
     poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion, t]);
+  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion, t, chordLabel, eventEntries]);
 }
