@@ -13,6 +13,7 @@
 import { BrowserWindow, WebContentsView, app, WebContents, nativeTheme } from 'electron';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../shared/constants.js'; // E5.6#5：Pool URL 构建
+import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
@@ -441,6 +442,11 @@ export class WindowManager {
     view.webContents.on('destroyed', () => {
       if (this.mainPoolView === view) this.mainPoolView = null;
     });
+
+    // E5.7 键盘路由：before-input-event 挂池 WCV——焦点永远在池上，壳 keydown 收不到全局快捷键
+    // （Ctrl+Shift+P 等全灭）。工厂处挂载 = 初始创建 + rebuildPool 崩溃恢复全覆盖
+    // （E5.5#7 只挂了插件 WebView——极简Pool 时代池是唯一视图）。
+    attachKeyboardRouting(view, this.mainWindow);
 
     // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
     // 对标 per-tab WebView 的 replayToPlugin——池创建晚于初始广播，需补发。
