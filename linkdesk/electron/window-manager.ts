@@ -544,6 +544,16 @@ export class WindowManager {
     view.webContents.send('pool:toast', data);
   }
 
+  /** E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染 */
+  pushDialog(data: unknown): void {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) {
+      console.warn('[WindowManager] pushDialog 失败——Pool 不存在或已销毁');
+      return;
+    }
+    view.webContents.send('pool:dialog', data);
+  }
+
   /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
   getPoolView(): WebContentsView | null {
     return this.mainPoolView;

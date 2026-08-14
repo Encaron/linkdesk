@@ -8,14 +8,10 @@
  *   const ok = await confirm({ title: "关闭", message: "确定关闭吗？" });
  */
 
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import OverlayPortal from "./OverlayPortal";
-import {
-  registerDialogRenderers,
-  unregisterDialogRenderers,
-  type DialogOptions,
-} from "../../core/services/DialogService";
+import type { DialogOptions } from "../../core/services/DialogService";
 // E2c #15：re-export showConfirm 兼容旧 import 路径（terminal sidebar 仍引用此文件）
 export { showConfirm } from "../../core/services/DialogService";
 import "./ConfirmDialog.css";
@@ -41,23 +37,8 @@ export function ConfirmDialog() {
     alertResolve: null,
   });
 
-  // 注册到 DialogService——挂载时注册，卸载时清理
-  useEffect(() => {
-    const confirmRenderer = (options: DialogOptions): Promise<boolean> => {
-      return new Promise((resolve) => {
-        setState({ open: true, options, resolve, alertResolve: null });
-      });
-    };
-
-    const alertRenderer = (options: DialogOptions): Promise<void> => {
-      return new Promise((resolve) => {
-        setState({ open: true, options, resolve: null, alertResolve: resolve });
-      });
-    };
-
-    registerDialogRenderers(confirmRenderer, alertRenderer);
-    return () => unregisterDialogRenderers();
-  }, []);
+  // 🔴 E5.7#17：renderer 注册已迁 App.tsx Dialog 聪慧→哑桥（registerDialogRenderers 由桥独占）。
+  // 本组件 state 不再被任何 renderer 驱动——恒 null，仅留壳至 #18 清理。
 
   const isAlert = !!state.alertResolve;
 

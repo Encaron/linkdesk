@@ -81,6 +81,24 @@ ipcRenderer.on('pool:toast', (_event, data: PoolToastDataShape) => {
   }
 });
 
+// ── E5.7#17：pool:dialog 缓冲回放——Dialog 哑渲染数据可能在 DialogHost mount 前到达 ──
+// 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
+// 只保留最后一份（单例态——open/close 全量替换，旧数据回放无意义）。
+// DTO 形状与 src/core/types/poolDialog.ts 对齐——preload 不 import src（构建边界）。
+type PoolDialogDataShape = { open: boolean; title?: string; message?: string; confirmLabel?: string; cancelLabel?: string; isAlert?: boolean };
+const _dialogBuffer: PoolDialogDataShape[] = [];
+let _dialogCallback: ((data: PoolDialogDataShape) => void) | null = null;
+let _dialogActive = false;
+
+ipcRenderer.on('pool:dialog', (_event, data: PoolDialogDataShape) => {
+  if (!_dialogActive || !_dialogCallback) {
+    _dialogBuffer.length = 0;
+    _dialogBuffer.push(data);
+  } else {
+    try { _dialogCallback(data); } catch { /* contextBridge 回调静默失败 */ }
+  }
+});
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
@@ -545,6 +563,30 @@ try {
       /** 行内操作按钮——壳按 id + actionId（位置序号）重解析 onClick */
       action: (id: string, actionId: string) =>
         ipcRenderer.send('pool:toast-action', { type: 'action', id, actionId }),
+    },
+
+    // ── E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费 ──
+    // 命名 dialogHost——dialog 命名空间已是插件侧 dialog.confirm/alert/open API
+    dialogHost: {
+      /** 订阅壳推送的 Dialog 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
+      onShow: (cb: (data: PoolDialogDataShape) => void) => {
+        _dialogCallback = cb;
+        _dialogActive = true;
+        if (_dialogBuffer.length > 0) {
+          for (const data of _dialogBuffer) {
+            try { cb(data); } catch { /* contextBridge 回调静默失败 */ }
+          }
+          _dialogBuffer.length = 0;
+        }
+        return () => {
+          _dialogCallback = null;
+          _dialogActive = false;
+        };
+      },
+      /** 确认（确定按钮 / Enter）——壳侧 settle(true) */
+      confirm: () => ipcRenderer.send('pool:dialog-action', { type: 'confirm' }),
+      /** 取消（取消按钮 / Escape / backdrop）——壳侧 settle(false) */
+      cancel: () => ipcRenderer.send('pool:dialog-action', { type: 'cancel' }),
     },
 
     // ── 🆕 E5.6#11.5a：文件关联——扩展名→插件ID ──

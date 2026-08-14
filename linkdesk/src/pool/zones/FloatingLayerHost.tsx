@@ -15,6 +15,7 @@
 import { Z_INDEX } from "../../constants";
 import QuickPickHost from "../floating/QuickPickHost";
 import ToastHost from "../floating/ToastHost";
+import DialogHost from "../floating/DialogHost";
 
 function FloatingLayerHost() {
   return (
@@ -34,8 +35,10 @@ function FloatingLayerHost() {
         <QuickPickHost />
       </div>
 
-      {/* Dialog / Modal portal——#17 接入 */}
-      <div id="dialog-root" />
+      {/* Dialog / Modal portal——#17 接入：壳 DialogService 桥推 DTO，DialogHost 哑渲染 */}
+      <div id="dialog-root">
+        <DialogHost />
+      </div>
 
       {/* Tooltip portal（如需要） */}
       <div id="tooltip-root" />

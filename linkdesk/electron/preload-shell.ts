@@ -79,6 +79,13 @@ ipcRenderer.on('pool:toast-action', (_event, action: PoolToastAction) => {
   if (_toastActionHandler) _toastActionHandler(action);
 });
 
+// E5.7#17：Dialog 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 DialogService 桥
+type PoolDialogAction = { type: string };
+let _dialogActionHandler: ((action: PoolDialogAction) => void) | null = null;
+ipcRenderer.on('pool:dialog-action', (_event, action: PoolDialogAction) => {
+  if (_dialogActionHandler) _dialogActionHandler(action);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -541,6 +548,13 @@ try {
       onToastAction: (cb: (action: PoolToastAction) => void) => {
         _toastActionHandler = cb;
         return () => { _toastActionHandler = null; };
+      },
+      /** E5.7#17：推送 Dialog 哑渲染数据到池——壳 DialogService 桥序列化后直推（聪慧→哑） */
+      pushDialog: (data: unknown) => ipcRenderer.send('pool:dialog-show', data),
+      /** E5.7#17：注册 Dialog 动作回调——池→壳→DialogService 桥。返回 unsubscribe */
+      onDialogAction: (cb: (action: PoolDialogAction) => void) => {
+        _dialogActionHandler = cb;
+        return () => { _dialogActionHandler = null; };
       },
     },
 
