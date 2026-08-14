@@ -211,6 +211,8 @@ export function initIpcBridgeHandler(): void {
         case "menu:getItems": {
           // E5.5#7-p3：壳侧一站式过滤——when 匹配 + 命令标题 + 快捷键解析。
           // ContextMenu/MenuRenderer 不再 import @src/core——零依赖纯渲染。
+          // E5.7#14：显示文本铁律——标签/标题/子项标签壳侧 t() 解析后推送，
+          // 池哑渲染原文、不初始化 i18n（浮层归一化设计.md §4.4）。
           const [menuId, context] = req.args as [string, Record<string, unknown> | undefined];
           const raw = getMenuItems(menuId as any) as ManifestMenuItem[];
           const allCmds = getCommands();
@@ -226,8 +228,15 @@ export function initIpcBridgeHandler(): void {
               const kb = findKeybindingForCommand(item.command);
               return {
                 ...item,
-                title: cmd?.title,
+                label: item.label ? i18n.t(item.label) : item.label,
+                title: cmd?.title ? i18n.t(cmd.title) : cmd?.title,
                 shortcut: kb?.key,
+                // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label。
+                // （用 instanceof 而非 typeof——ESLint no-restricted-syntax 对"小写字面量比较"
+                //  一律报 pluginId 硬编码误报，typeof x === "string" 是已知误报模式）
+                children: item.children?.map((c) =>
+                  c instanceof Object ? { ...c, label: c.label ? i18n.t(c.label) : c.label } : c
+                ),
               };
             });
           break;

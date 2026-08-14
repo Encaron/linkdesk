@@ -11,7 +11,8 @@
 
 .ctx-menu {
   position: fixed;
-  z-index: var(--z-overlay);
+  /* E5.7#14：z-index 归 inline Z_INDEX.contextMenu（constants.ts 常量表）——
+     CSS 变量不再参与本组件层级（浮层归一化设计.md §3） */
   min-width: 140px;
   max-width: 280px;
   background: var(--bg-card);
