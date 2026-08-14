@@ -19,79 +19,10 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { TitleBarLayout, TitleBarMenuItem } from "../../core/types/poolLayout";
+import type { TitleBarLayout } from "../../core/types/poolLayout";
+import MenuItemList from "../shared/MenuItemList"; // E5.7#6：菜单项列表提取为池共享组件（汉堡复用）
+import { executePoolCommand } from "../shared/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
 import "./TitleBarZone.css";
-
-/** 池内命令执行——池侧注册表优先，fallback 壳 IPC（commands:execute） */
-function executePoolCommand(command: string): void {
-  if (!command) return;
-  const cmd = window.linkdesk?.commands;
-  if (!cmd) return;
-  Promise.resolve(cmd.executeCommand(command)).catch((e) => {
-    console.error(`[TitleBarZone] 命令执行失败: ${command}`, e);
-  });
-}
-
-/* ── 哑菜单项渲染——递归 children 子面板（hover 100ms 进 / 150ms 出，壳 MenuRenderer 同款时序） ── */
-
-function MenuItemList({ items, onCommand }: { items: TitleBarMenuItem[]; onCommand: (c: string) => void }) {
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const scheduleHover = useCallback((key: string | null) => {
-    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-    if (key === null) {
-      hoverTimerRef.current = setTimeout(() => setHoveredKey(null), 150);
-    } else {
-      hoverTimerRef.current = setTimeout(() => setHoveredKey(key), 100);
-    }
-  }, []);
-
-  // 当前 hover 项的 children——右侧子面板
-  const hoveredItem = hoveredKey
-    ? items.find((item) => `${item.command}:${item.label}` === hoveredKey && item.children?.length)
-    : undefined;
-
-  return (
-    <>
-      <div className="titlebar-main-panel" onMouseLeave={() => scheduleHover(null)}>
-        {items.map((item) => {
-          const key = `${item.command}:${item.label}`;
-          const hasChildren = !!item.children?.length;
-          return (
-            <button
-              key={key}
-              className={`titlebar-item${hoveredKey === key ? " titlebar-item-hovered" : ""}`}
-              onMouseEnter={() => scheduleHover(hasChildren ? key : null)}
-              onClick={() => {
-                if (hasChildren) return;
-                onCommand(item.command);
-              }}
-            >
-              <span className="titlebar-item-label">{item.label}</span>
-              <span className="titlebar-item-right">
-                {hasChildren && <span className="codicon codicon-chevron-right titlebar-chevron" />}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      {hoveredItem?.children?.length && (
-        <div
-          className="titlebar-sub-panel"
-          onMouseEnter={() => {
-            // 鼠标移入子面板——保持 hover 状态
-            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
-          }}
-          onMouseLeave={() => scheduleHover(null)}
-        >
-          <MenuItemList items={hoveredItem.children} onCommand={onCommand} />
-        </div>
-      )}
-    </>
-  );
-}
 
 /* ── TitleBarZone ── */
 
@@ -241,7 +172,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       {/* 下拉面板——fixed 定位在按钮下方 */}
       {openGroup && openItems && (
         <div className="titlebar-dropdown" style={dropdownStyle} ref={dropdownRef}>
-          <MenuItemList key={openGroup} items={openItems.items} onCommand={handleCommand} />
+          <MenuItemList key={openGroup} items={openItems.items} onCommand={handleCommand} cssPrefix="titlebar" />
         </div>
       )}
     </div>

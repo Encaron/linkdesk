@@ -597,12 +597,6 @@ select {
   overflow: hidden;
 }
 
-.zone-iconbar {
-  width: 48px;
-  flex-shrink: 0;
-  background: var(--bg-icon-bar);
-}
-
 .zone-sidebar {
   flex-shrink: 0;
   background: var(--bg-side-panel);

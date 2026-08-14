@@ -20,6 +20,7 @@
 import { useTranslation } from "react-i18next";
 import type { PoolLayout } from "../core/types/poolLayout";
 import TitleBarZone from "./zones/TitleBarZone"; // E5.7#5：Phase 2 替换占位
+import IconBarZone from "./zones/IconBarZone"; // E5.7#6：Phase 2 替换占位
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   const { t } = useTranslation();
@@ -31,10 +32,8 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
       {/* Row 2: IconBar + Sidebar + Main 列 + RightSidebar */}
       <div className="pool-body">
-        {/* IconBar——Phase 2 #6 替换 */}
-        <div className="zone-placeholder zone-iconbar">
-          {t("图标栏（占位）")}
-        </div>
+        {/* IconBar——E5.7#6（Phase 2）：42px 图标列 + 激活高亮 + ☰ 汉堡 */}
+        <IconBarZone iconBar={layout.iconBar} />
 
         {/* Sidebar——Phase 3 #10 替换（SidebarResizeHandle #13 一并接入） */}
         {layout.sidebar.visible && (

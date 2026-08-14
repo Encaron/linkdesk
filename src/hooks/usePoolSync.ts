@@ -10,18 +10,20 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, TitleBarMenuGroup, TitleBarMenuItem, TitleBarSlotButton } from "../core/types/poolLayout";
+import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/services/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
-import { getMenuItems, MenuId, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5：菜单栏序列化
+import { getMenuItems, MenuId, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
+import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
 import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
-import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { isShellRenderedTab } from "./tabIdentity";
 
 /**
@@ -87,12 +89,19 @@ const MENU_STYLE_MENUBAR_VISIBLE: Record<string, boolean> = {
   both: true,
 };
 
+/** E5.7#6：app.menuStyle 枚举 → ☰ 汉堡可见——iconBar 布局（Phase 2 #6 IconBarZone 消费） */
+const MENU_STYLE_HAMBURGER_VISIBLE: Record<string, boolean> = {
+  titlebar: false,
+  hamburger: true,
+  both: true,
+};
+
 /**
  * E5.7#5：菜单栏数据序列化——壳 TitleBar 的 group 分组 / flattenGroupItems 展平 /
  * MenuRenderer getLabel 翻译三合一搬入壳侧，池哑渲染（显示文本铁律）。
  * 无 command 父项展平为其 children；command+children 父项保留 children（池子面板）。
  */
-function buildTitleBarMenuGroups(t: (key: string) => string): TitleBarMenuGroup[] {
+function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
   const allItems = getMenuItems(MenuId.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
@@ -105,13 +114,13 @@ function buildTitleBarMenuGroups(t: (key: string) => string): TitleBarMenuGroup[
   );
 
   // label 解析与壳 MenuRenderer 一致：item.label > command.title > command id，再 t()
-  const resolveItem = (item: MenuItem): TitleBarMenuItem => ({
+  const resolveItem = (item: MenuItem): PoolMenuItem => ({
     label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
     command: item.command,
     ...(item.children?.length ? { children: item.children.map(resolveItem) } : {}),
   });
-  const flattenGroupItems = (items: Array<MenuItem & { pluginId: string }>): TitleBarMenuItem[] => {
-    const result: TitleBarMenuItem[] = [];
+  const flattenGroupItems = (items: Array<MenuItem & { pluginId: string }>): PoolMenuItem[] => {
+    const result: PoolMenuItem[] = [];
     for (const item of items) {
       if (item.children?.length) {
         if (!item.command) {
@@ -134,6 +143,127 @@ function buildTitleBarMenuGroups(t: (key: string) => string): TitleBarMenuGroup[
       items: flattenGroupItems(groupItems),
     };
   });
+}
+
+/**
+ * E5.7#6：☰ 汉堡菜单序列化——壳 HamburgerMenu 的 MenuRenderer 语义照搬：
+ * showGroups（组标题）+ showKeybindings（快捷键）+ checkWhen（when 灰显）。
+ * 与 titlebar 关键差异：**不展平**——无 command 父项（"文件"/"查看"）保留为
+ * 带 children 的父项，hover 弹出子面板（壳 titlebar 下拉则展平为平铺列表）。
+ */
+function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
+  const allItems = getMenuItems(MenuId.MenuBar);
+  const allKeybindings = getKeybindings();
+  const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
+  for (const item of allItems) {
+    const group = item.group ?? "other";
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group)!.push(item);
+  }
+  const sortedGroupNames = [...groups.keys()].sort(
+    (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
+  );
+
+  /** 壳 MenuRenderer.formatKeyLabel 同款——chord: "ctrl+k ctrl+t" → "Ctrl+K Ctrl+T" */
+  const formatKeyLabel = (key: string): string =>
+    key
+      .split(" ")
+      .map((chord) =>
+        chord
+          .replace(/ctrl\+/i, "Ctrl+")
+          .replace(/alt\+/i, "Alt+")
+          .replace(/shift\+/i, "Shift+")
+          .replace(/\+\w/g, (m) => m.toUpperCase())
+      )
+      .join(" ");
+
+  const resolveItem = (item: MenuItem): PoolMenuItem => {
+    const kb = allKeybindings.find((k) => k.command === item.command);
+    return {
+      label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
+      command: item.command,
+      // 壳 MenuRenderer.getKeyLabel：showKeybindings + 无绑定 → 不显示
+      ...(kb?.key ? { shortcut: formatKeyLabel(kb.key) } : {}),
+      // 壳 MenuRenderer.isDisabled：checkWhen + when 不满足 → 灰显（when 缺省 = 匹配）
+      ...(!ContextKeyService.matches(item.when) ? { disabled: true } : {}),
+      ...(item.children?.length ? { children: item.children.map(resolveItem) } : {}),
+    };
+  };
+
+  return sortedGroupNames.map((groupName) => {
+    const groupItems = groups.get(groupName)!;
+    return {
+      group: groupName,
+      label: t(groupItems[0]?.label ?? groupName),
+      items: groupItems.map(resolveItem),
+    };
+  });
+}
+
+/** E5.7#6：图标栏序列化——壳 IconBar 的 ordered 计算照搬（iconOrder 优先 + 剩余按注册序）。
+ *  无 iconBar 声明的插件不出现在图标栏（壳 topIcons/bottomIcons filter 同款）。 */
+function buildIconBar(t: (key: string) => string, sidebarView: string | null, isSidebarVisible: boolean): IconBarLayout {
+  const plugins = getViewPlugins();
+  let order: string[] = [];
+  try {
+    order = getPluginStateValue<string[]>(APP_PLUGIN_ID, "iconOrder") ?? [];
+  } catch { order = []; }
+
+  const remaining = new Set(plugins.map((p) => p.pluginId));
+  const ordered: typeof plugins = [];
+  for (const id of order) {
+    if (remaining.has(id)) {
+      remaining.delete(id);
+      const p = plugins.find((v) => v.pluginId === id);
+      if (p) ordered.push(p);
+    }
+  }
+  for (const id of remaining) {
+    const p = plugins.find((v) => v.pluginId === id);
+    if (p) ordered.push(p);
+  }
+
+  const icons: IconBarItem[] = [];
+  for (const p of ordered) {
+    const location = getIconLocation(p.pluginId);
+    if (!location) continue; // 无 iconBar 声明——不渲染（壳 topIcons/bottomIcons filter 同款）
+    const resolved = resolvePluginIcon(p.pluginId, p.manifest);
+    icons.push({
+      pluginId: p.pluginId,
+      icon: resolved.lucide
+        ? { kind: "lucide", name: resolved.lucide }
+        : resolved.codicon
+          ? { kind: "codicon", name: resolved.codicon }
+          : resolved.src
+            ? { kind: "img", src: resolved.src }
+            : { kind: "emoji", text: resolved.emoji ?? "📄" },
+      label: t(p.manifest.name),
+      location,
+    });
+  }
+
+  // 壳 isActive 同款双重守卫：侧栏展开 + 有活动容器 + 容器属于该插件
+  let activePluginId: string | undefined;
+  if (isSidebarVisible && sidebarView) {
+    activePluginId = icons.find((i) => {
+      const plugin = getViewPlugin(i.pluginId);
+      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      return !!containers && Object.keys(containers).some((id) => id === sidebarView);
+    })?.pluginId;
+  }
+
+  const menuStyle = getConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+  const hamburgerVisible = MENU_STYLE_HAMBURGER_VISIBLE[menuStyle] ?? false;
+
+  return {
+    icons,
+    ...(activePluginId ? { activePluginId } : {}),
+    hamburgerVisible,
+    navLabel: t("导航"),
+    ...(hamburgerVisible
+      ? { hamburger: { title: t("菜单"), groups: buildHamburgerMenuGroups(t) } }
+      : {}),
+  };
 }
 
 /** E5.7#5：标题栏槽位按钮序列化——when 过滤在壳（ContextKeyService），池不评估表达式 */
@@ -202,6 +332,13 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       i18n.off("languageChanged", onLangChanged);
     };
   }, [i18n]);
+
+  // E5.7#6：Phase 5h Step 1 同款——插件注册/注销时重推（安装插件后图标栏即时更新）
+  useEffect(() => {
+    const unsub1 = onDidRegister.event(() => setLayoutVersion((v) => v + 1));
+    const unsub2 = onDidUnregister.event(() => setLayoutVersion((v) => v + 1));
+    return () => { unsub1(); unsub2(); };
+  }, []);
 
   // E5.6#11j：注册池→壳侧栏操作回调。池组件调用 pool.sidebarAction() →
   // 主进程转发 → 壳 preload → 此 handler → ViewContainerService 写方法。
@@ -338,7 +475,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     }));
 
     // E5.7#1/#4：PoolLayout v2 全量布局——唯一 Pool 单 WCV 直推完整快照。
-    // Phase 2 填充：titleBar 已由 #5 序列化；iconBar（#6 IconBarZone）/ statusBar（#8 StatusBarZone）待对应任务。
+    // Phase 2 填充：titleBar 已由 #5 序列化；iconBar 已由 #6 序列化；statusBar（#8 StatusBarZone）待对应任务。
     const fullLayout: PoolLayout = {
       version: 2,
       titleBar: {
@@ -350,7 +487,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
         slots: { left: buildTitleBarSlots("left"), right: buildTitleBarSlots("right") },
         windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭") },
       },
-      iconBar: { icons: [] },
+      iconBar: buildIconBar(t, sidebarView, isSidebarVisible),
       sidebar,
       groups,
       root: tabState.root,

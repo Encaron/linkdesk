@@ -324,6 +324,16 @@ function App() {
     return unsub;
   }, []);
 
+  // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
+  // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 MainContent 开标签）。
+  // #9 删 MainContent 时消费逻辑迁 App，此桥接保留。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("icon:selected", (pluginId: string) => {
+      shellEvents.emit("icon:selected", pluginId);
+    });
+    return () => { unsub?.(); };
+  }, []);
+
   /* ---- E5#9f：LayoutEngine 壳布局——替代硬编码 CSS flex ---- */
   const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
 

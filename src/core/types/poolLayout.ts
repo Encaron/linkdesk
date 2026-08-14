@@ -88,23 +88,27 @@ export interface CreatableViewMeta {
 
 // ── E5.7#1：布局 zone 字段 ──
 
-/** 标题栏菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染） */
-export interface TitleBarMenuItem {
+/** 菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染）。titlebar 下拉与 ☰ 汉堡共用。 */
+export interface PoolMenuItem {
   /** 显示标签——壳 t(label ?? command.title ?? command) */
   label: string;
-  /** 点击执行的命令 ID */
+  /** 点击执行的命令 ID——无 command 父项为 ""（汉堡不展平父项，点击 no-op） */
   command: string;
-  /** 子菜单——仅 command+children 父项携带（无 command 父项由壳展平） */
-  children?: TitleBarMenuItem[];
+  /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
+  shortcut?: string;
+  /** when 不满足灰显——仅汉堡（checkWhen）。壳已判定，池哑渲染 */
+  disabled?: boolean;
+  /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
+  children?: PoolMenuItem[];
 }
 
-/** 标题栏菜单组——每个 group = 顶栏一个按钮（如"文件""查看"） */
-export interface TitleBarMenuGroup {
+/** 菜单组——titlebar 每个 group = 顶栏一个按钮（如"文件""查看"）；汉堡 = 分组区块 */
+export interface PoolMenuGroup {
   /** group 名——排序/定位键 */
   group: string;
-  /** 按钮显示标签——壳 t(首项 label ?? group) */
+  /** 组显示标签——壳 t(首项 label ?? group) */
   label: string;
-  items: TitleBarMenuItem[];
+  items: PoolMenuItem[];
 }
 
 /** 标题栏槽位按钮——插件 contributes.titleBar 声明（when 已由壳过滤） */
@@ -123,18 +127,25 @@ export interface TitleBarLayout {
   logoUrl: string;
   menuBarVisible: boolean;
   /** 菜单栏数据——壳分组/展平/翻译后推送 */
-  menuGroups: TitleBarMenuGroup[];
+  menuGroups: PoolMenuGroup[];
   /** 插件贡献槽位按钮（left/right） */
   slots: { left: TitleBarSlotButton[]; right: TitleBarSlotButton[] };
   /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
   windowControls: { minimize: string; maximize: string; restore: string; close: string };
 }
 
+/** 图标栏图标——壳 resolvePluginIcon 序列化（池不 import pluginLoader，Lucide 名由池映射组件渲染） */
+export type IconBarIcon =
+  | { kind: "lucide"; name: string }   // E5#100 Lucide 优先
+  | { kind: "codicon"; name: string }  // codicon CSS 类
+  | { kind: "img"; src: string }       // linkdesk:// 协议 URL
+  | { kind: "emoji"; text: string };   // 回退 emoji
+
 /** 图标栏条目——序列化自壳 viewRegistry（pluginId + 图标 + 名称 + 位置） */
 export interface IconBarItem {
   pluginId: string;
-  /** 图标——resolvePluginIcon 的 src 或 emoji，二选一 */
-  icon?: string;
+  icon: IconBarIcon;
+  /** tooltip / aria-label——壳 t(manifest.name) */
   label: string;
   /** 图标位置——getIconLocation：顶部活动图标 / 底部齿轮 */
   location: "top" | "bottom";
@@ -143,8 +154,18 @@ export interface IconBarItem {
 /** 图标栏布局——Phase 2 #6 IconBarZone 消费 */
 export interface IconBarLayout {
   icons: IconBarItem[];
-  /** 激活图标——当前侧栏容器所属插件 */
+  /** 激活图标——当前侧栏容器所属插件（侧栏折叠/无容器时不亮，壳 isActive 同款双重守卫） */
   activePluginId?: string;
+  /** E3f #52h：☰ 汉堡可见——menuStyle hamburger/both */
+  hamburgerVisible: boolean;
+  /** 导航 aria-label——壳 t("导航")（显示文本铁律） */
+  navLabel: string;
+  /** ☰ 下拉——壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义（不展平父项），仅 hamburgerVisible 时推 */
+  hamburger?: {
+    /** ☰ tooltip——壳 t("菜单") */
+    title: string;
+    groups: PoolMenuGroup[];
+  };
 }
 
 /** 底部面板 view 元数据——面板视图注册序列化 */
