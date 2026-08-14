@@ -19,7 +19,7 @@ import type { EditorViewHandle } from "../views/EditorView";
 import EditorStatusBar from "./EditorStatusBar";
 import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
-import { trackDirtyFile, clearDirtyFile, hasBackup, getBackupContent } from "../services/hot-exit";
+import { trackDirtyFile, clearDirtyFile, loadBackup, scheduleClearOnUnmount, cancelPendingClear } from "../services/hot-exit";
 
 const lk = (window as any).linkdesk;
 
@@ -156,13 +156,18 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     let cancelled = false;
     setLoading(true);
     setError(null);
+    // E5.7#38——取消未决 unmount 清理（跨组移动/StrictMode 的 remount 路径）
+    cancelPendingClear(filePath);
 
-    // E4V#40n——Hot Exit：优先使用备份内容
-    if (hasBackup(filePath)) {
-      const backupContent = getBackupContent(filePath)!;
-      // 从磁盘正常加载（取编码/语言），但内容用备份
-      EditorModel.load(filePath)
-        .then((m) => {
+    (async () => {
+      // E5.7#38——Hot Exit：崩溃重建/跨组移动后优先恢复备份内容（只读——重复读安全）
+      const backupContent = await loadBackup(filePath);
+      if (cancelled) return;
+
+      if (backupContent !== null) {
+        // 从磁盘正常加载（取编码/语言），但内容用备份
+        try {
+          const m = await EditorModel.load(filePath);
           if (cancelled) return;
           m.setValue(backupContent);
           setModel(m);
@@ -177,8 +182,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
-        })
-        .catch((_err) => {
+        } catch {
           if (cancelled) return;
           // 从磁盘加载失败→只用备份内容
           const fallback = EditorModel.fromContent(filePath, backupContent);
@@ -193,10 +197,10 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
           tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
           trackDirtyFile(filePath, backupContent);
           setLoading(false);
-        });
-    } else {
-      EditorModel.load(filePath)
-        .then((m) => {
+        }
+      } else {
+        try {
+          const m = await EditorModel.load(filePath);
           if (cancelled) return;
           setModel(m);
           setValue(m.getValue());
@@ -206,16 +210,25 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
             language: m.language,
           }));
           setLoading(false);
-        })
-        .catch((err) => {
+        } catch (err) {
           if (cancelled) return;
           console.error(`[EditorTab] 加载失败: ${filePath}`, err);
           setError(`${t("无法打开文件")}: ${(err as Error).message}`);
           setLoading(false);
-        });
-    }
+        }
+      }
+    })();
+
     return () => { cancelled = true; };
   }, [filePath]);
+
+  // E5.7#38——标签关闭 = unmount：脏文件延迟清备份（关闭即弃语义）；跨组移动/StrictMode 的
+  // remount 在 mount 侧 cancelPendingClear 取消。池崩 = 进程死亡，此清理不执行 → 备份存活。
+  useEffect(() => {
+    return () => {
+      if (model?.isDirty()) scheduleClearOnUnmount(filePath);
+    };
+  }, [model, filePath]);
 
   // E4V#40o——onFocusChange 自动保存：切走标签页时自动保存
   useEffect(() => {

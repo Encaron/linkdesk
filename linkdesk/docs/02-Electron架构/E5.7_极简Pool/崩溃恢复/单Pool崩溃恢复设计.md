@@ -201,6 +201,12 @@ function setupHeartbeat(wcv: WebContentsView): void {
 
 **如果 Hot Exit 未实现——需要在 E5.7#38 新增。** 不依赖进程数。
 
+> ✅ **E5.7#38 已实现（2026-08-15）。** 与上图一处偏差：文件命名 `<sha256(filePath)>.dirty` 扁平化——
+> LinkDesk 文件路径恒为绝对路径（全局唯一），`{workspaceId}/{filePath}` 分层冗余；sha256 等价且免
+> 路径长度/非法字符/目录穿越问题（对标 VS Code Backups/ 同款 hashing）。其余照图：脏内容 1s
+> debounce 异步落盘（主进程 handler 单源路径约定，池渲染进程零直写）→ 池崩 → 重建 → EditorTab
+> `hotExit.load` 恢复 + dirty 标记 → 保存 `hotExit.clear` 删文件；标签关闭（unmount）延迟清备份。
+
 ---
 
 ## 4. 与 E5.6 双Pool 崩溃恢复的对比

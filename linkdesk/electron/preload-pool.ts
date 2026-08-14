@@ -22,6 +22,7 @@
  *   ✅ menu / contextKey / tabs / p2p / dialog / path / notifications
  *   ✅ window（E5.7#5：TitleBarZone 窗口控制——从 preload-shell 同款搬入）
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
+ *   ✅ hotExit（E5.7#38：Hot Exit 备份——save/load/clear，主进程落盘）
  *   ❌ pluginInstance / pluginViews / pluginRequest / lsp / langDef（per-tab 概念，不适用于池）
  */
 
@@ -437,6 +438,18 @@ try {
           }
         });
       },
+    },
+
+    // ── E5.7#38：Hot Exit 备份——脏内容落盘走主进程（池渲染进程零直写 %APPDATA%，审计约束）。
+    // 路径约定单源在主进程 hot-exit-handlers.ts：<sha256(filePath)>.dirty。
+    // 只读 load（不消费）——StrictMode 双 mount / 跨组移动 remount 都要能重复读。
+    hotExit: {
+      save: (filePath: string, content: string): Promise<void> =>
+        ipcRenderer.invoke('hot-exit:save', filePath, content),
+      load: (filePath: string): Promise<string | null> =>
+        ipcRenderer.invoke('hot-exit:load', filePath),
+      clear: (filePath: string): Promise<void> =>
+        ipcRenderer.invoke('hot-exit:clear', filePath),
     },
 
     // ── 菜单 ──
