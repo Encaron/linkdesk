@@ -1,13 +1,12 @@
 /**
  * QuickPickService — 归一化浮动面板服务
  *
- * E5.5#7 Phase 5。壳侧单例——App.tsx 只渲染一个 QuickPick 组件，
+ * E5.5#7 Phase 5。壳侧单例——E5.7#15 起 App 桥序列化 DTO 推池 QuickPickHost 渲染，
  * 所有浮层内容通过此服务切换 mode + props。
  *
  * 对标 VS Code QuickInputService。
  */
 
-import type { ReactNode } from "react";
 import type { PoolQuickPickItem } from "../types/poolQuickPick";
 
 // ── 类型 ──
@@ -33,12 +32,6 @@ export interface QuickPickState<T = unknown> {
   serialize: (item: T) => PoolQuickPickItem;
   /** E5.7#15：行内按钮动作——池回传 actionId，壳侧重解析 item 后执行 */
   onItemAction?: (item: T, actionId: string) => void;
-  // E3.5 slot props
-  renderLabel?: (item: T) => ReactNode;
-  renderCategory?: (item: T) => ReactNode;
-  renderDetail?: (item: T) => ReactNode;
-  renderDetailRight?: (item: T) => ReactNode;
-  renderItemActions?: (item: T, isSelected: boolean) => ReactNode;
 }
 
 // ── 单例 ──

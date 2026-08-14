@@ -31,8 +31,6 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "命令面板",
     category: "视图",
     handler: async () => {
-      // E5.5#7-p15：showCommandPalette() 由 CommandPalette.tsx 提供工厂函数
-      const { showCommandPalette } = await import("../../components/shared/CommandPalette");
       showCommandPalette();
     },
     menuId: MenuId.ExtensionGear,
@@ -262,6 +260,8 @@ import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
 import { registerDeveloperCommands } from "./developerCommands";
 import { registerShellMenus } from "./shellMenus";
+import { registerQuickPickCommand } from "./quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
+import { showCommandPalette } from "./commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
 
 // E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
 import { clipboardProviders } from "../registry/ClipboardProviderRegistry";
@@ -330,6 +330,7 @@ export function ensureCoreCommands(): void {
   registerSettingsCommands();
   registerDeveloperCommands();
   registerClipboardCommands();
+  registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──
   const menuItemsMap = new Map<MenuId, Array<{ command: string; group?: string }>>();
