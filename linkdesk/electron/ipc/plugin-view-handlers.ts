@@ -135,22 +135,6 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     // 预留——崩溃恢复模块通过监听此事件判断池是否存活
   });
 
-  // E5.6#9c → E5.7#4：壳→Pool：同步 bounds——窗口 resize 时壳推送最新 bounds
-  ipcMain.on('pool:set-bounds', (_event, bounds: { x: number; y: number; width: number; height: number }) => {
-    const poolView = windowManager.getPoolView();
-    if (!poolView || poolView.webContents.isDestroyed()) return;
-
-    // 防御：非法 bounds → 隐藏 Pool，防止空白 WebContentsView 遮挡主区
-    if (bounds.width <= 0 || bounds.height <= 0) {
-      poolView.setVisible(false);
-      return;
-    }
-
-    poolView.setBounds(bounds);
-    // 有效 bounds → 设为可见——唯一 Pool 接管壳 DOM 主区域
-    poolView.setVisible(true);
-  });
-
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
   ipcMain.on('pool:toggleDevTools', () => {
     if (app.isPackaged) return;
@@ -182,5 +166,6 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  console.log('[pool-handlers] 已注册 8 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:set-bounds / pool:toggleDevTools / pool:sidebar-action / pool:tab-action）');
+  // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
+  console.log('[pool-handlers] 已注册 7 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action）');
 }

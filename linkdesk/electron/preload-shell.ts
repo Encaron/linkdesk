@@ -502,9 +502,6 @@ try {
         ipcRenderer.on('pool:ready', handler);
         return () => ipcRenderer.removeListener('pool:ready', handler);
       },
-      /** E5.6#9c → E5.7#4：同步唯一 Pool WebContentsView bounds——窗口 resize 时壳推送 */
-      setBounds: (bounds: { x: number; y: number; width: number; height: number }) =>
-        ipcRenderer.send('pool:set-bounds', bounds),
       /** E5.6#9 → E5.7#4：切换 Pool DevTools——调试用，仅 dev 模式生效 */
       toggleDevTools: () => ipcRenderer.send('pool:toggleDevTools'),
       /** E5.6#11j：注册侧栏操作回调——池→壳→ViewContainerService。返回 unsubscribe */
