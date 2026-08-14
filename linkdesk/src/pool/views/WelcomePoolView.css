@@ -10,6 +10,12 @@
  *     #20 MainZone 挂载首次激活欢迎页渲染链才引爆。
  *     修复：壳 CSS 原样自包含拷入（池不 import 壳 components 目录——
  *     Path B + 壳目录规范 + zone 零跨 zone import 纪律同款）。
+ *
+ * 2026-08-15 审计清理（十条原则复核）：
+ *   - 删 .welcome-card:active——--tab-active-bg 自 883f4fb9（2026-07-20
+ *     phase4 欢迎页诞生）起从未被定义过（全历史零定义），该规则从未生效，
+ *     点击反而回退透明背景。删 = 消除死引用；若要真激活反馈另立任务走 skill 定值。
+ *   - 删 .welcome-card-desc——E5.6#16.7k-1 池移植丢 desc 渲染后零消费方，死规则。
  */
 
 .welcome-page {
@@ -96,10 +102,6 @@
   background: var(--tab-hover-bg);
 }
 
-.welcome-card:active {
-  background: var(--tab-active-bg);
-}
-
 .welcome-card-icon.plugin-icon--img {
   width: 24px;
   height: 24px;
@@ -114,12 +116,6 @@
   font-size: 13px;
   font-weight: 600;
   color: var(--text-primary);
-}
-
-.welcome-card-desc {
-  font-size: 11px;
-  color: var(--text-muted);
-  line-height: 1.3;
 }
 
 /* ── Empty State ── */
