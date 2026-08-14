@@ -3,7 +3,8 @@
    颜色全部走 CSS 变量（硬约束 #1）——壳侧硬编码归一化：
      - active 高亮 rgba(0,120,212,0.12) → color-mix(in srgb, var(--accent) 12%, transparent)
      - 汉堡下拉阴影 rgba(0,0,0,0.3) → var(--context-menu-shadow)
-   拖拽相关样式（drop 指示线/拖影/换位提示）不迁——拖拽换位远期（#6 诚实注记①）。 */
+   拖拽相关样式（drop 指示线/拖影/换位提示）已随 #6 补丁迁入（2026-08-14，零丢失铁律——
+   原"远期"废止）。拖影 48px→42px 与注记③同源修正；阴影归一化 → var(--context-menu-shadow)。 */
 
 /* ── 图标栏——42px 垂直列（Zone分解设计.md:81；壳 icon-btn 48px 溢出已修正为 42px） ── */
 
@@ -274,4 +275,51 @@
 .hamburger-item-disabled .hamburger-chevron {
   color: var(--text-muted);
   opacity: 0.45;
+}
+
+/* ── E5.7#6 补丁：拖拽换位——壳 IconBar.css 拖拽样式迁入 ── */
+
+/* 拖拽 wrapper：包裹图标和 drop 指示线 */
+.icon-bar-item-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* VS Code 风格 drop 指示线 */
+.icon-drop-indicator {
+  width: 28px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+.icon-btn.dragging {
+  opacity: 0.4;
+}
+
+/* 拖影——对标 TabBar 的半透明跟随（壳 48px → 池 42px，注记③同源） */
+.icon-drag-preview {
+  position: fixed;
+  z-index: var(--z-drag-preview); /* E5#98: 拖拽预览线——最高层 */
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px var(--context-menu-shadow);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.icon-drag-preview .plugin-icon--img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.8;
 }
