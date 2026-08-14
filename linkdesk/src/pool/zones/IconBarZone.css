@@ -323,3 +323,10 @@
   height: 24px;
   opacity: 0.8;
 }
+
+/* ── E4V#48：跨容器拖放落点高亮（#10 并入）——数据含 VIEW_DRAG_MIME 时整图标描边 ── */
+
+.icon-btn.view-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

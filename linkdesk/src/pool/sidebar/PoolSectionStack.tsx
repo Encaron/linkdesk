@@ -15,6 +15,7 @@ import type { SidebarViewMeta } from "../../core/types/poolLayout";
 import ErrorBoundary from "../../components/shared/ErrorBoundary";
 import SidebarSection from "../../components/shared/SidebarSection";
 import PluginComponent from "../shared/PluginComponent";
+import { VIEW_DRAG_MIME } from "../shared/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
 
@@ -196,9 +197,12 @@ export default function PoolSectionStack({
   const handleDragStart = useCallback((e: React.DragEvent, viewId: string) => {
     e.dataTransfer.effectAllowed = "move";
     e.dataTransfer.setData("text/plain", viewId);
+    // E4V#48：跨容器拖放——dataTransfer 自定义 MIME 同步携带 {viewId, fromContainerId}
+    // （壳版 getDraggingView/setDraggingView 共享状态在池内无意义——dataTransfer 是唯一同步通道）
+    e.dataTransfer.setData(VIEW_DRAG_MIME, JSON.stringify({ viewId, fromContainerId: containerId }));
     dragViewIdRef.current = viewId;
     setDragViewId(viewId);
-  }, []);
+  }, [containerId]);
 
   const handleViewDragEnd = useCallback(() => {
     dragViewIdRef.current = null;

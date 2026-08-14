@@ -10,7 +10,7 @@
  *
  * 🔴 占位策略（E5.7#3）：Phase 1 所有 zone 用占位 div——
  *   Phase 2 替换 TitleBar(#5 ✅)/IconBar(#6 ✅)/StatusBar(#8 ✅)，
- *   Phase 3 替换 SidebarZone(#10) + SidebarResizeHandle(#13)，
+ *   Phase 3 替换 SidebarZone(#10 ✅) + SidebarResizeHandle(#13)，
  *   Phase 5 替换 MainZone(#20)/PanelZone(#21)/RightSidebarZone(#22)。
  *   不允许 import 尚不存在的 Zone 组件（每 Phase 结束必须 tsc 零错误 + 应用可启动）。
  *
@@ -22,6 +22,7 @@ import type { PoolLayout } from "../core/types/poolLayout";
 import TitleBarZone from "./zones/TitleBarZone"; // E5.7#5：Phase 2 替换占位
 import IconBarZone from "./zones/IconBarZone"; // E5.7#6：Phase 2 替换占位
 import StatusBarZone from "./zones/StatusBarZone"; // E5.7#8：Phase 2 替换占位
+import SidebarZone from "./zones/SidebarZone"; // E5.7#10：Phase 3 替换占位
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   const { t } = useTranslation();
@@ -36,12 +37,9 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
         {/* IconBar——E5.7#6（Phase 2）：42px 图标列 + 激活高亮 + ☰ 汉堡 */}
         <IconBarZone iconBar={layout.iconBar} />
 
-        {/* Sidebar——Phase 3 #10 替换（SidebarResizeHandle #13 一并接入） */}
-        {layout.sidebar.visible && (
-          <div className="zone-placeholder zone-sidebar" style={{ width: layout.sidebar.width }}>
-            {t("侧栏（占位）")}
-          </div>
-        )}
+        {/* Sidebar——E5.7#10（Phase 3）：全量哑渲染 zone。
+            visible=false → zone 内 display:none（保持挂载，视图状态不丢）。#13 分隔线随其后接入 */}
+        <SidebarZone sidebar={layout.sidebar} />
 
         {/* 主区列：MainZone + PanelZone */}
         <div className="pool-main-column">
