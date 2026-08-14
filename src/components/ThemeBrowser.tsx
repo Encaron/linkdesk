@@ -1,16 +1,12 @@
 /**
- * 主题浏览器——QuickPick 浮动面板，↑↓ 预览 / Enter 切换 / Esc 回退。
- * E3b #36c：基于 QuickPick 归一化组件——~50 行。
+ * 主题选择器——QuickPick 浮动面板，↑↓ 预览 / Enter 切换 / Esc 回退。
+ * E3b #36c → E5.5#7-p15 命令式入口 → E5.7#18：组件部分已删（#15 起走池 QuickPickHost），
+ * 本文件只剩命令式入口 showThemePicker（settingsCommands 动态 import 调用）。
  *
  * 对标 VS Code `Preferences: Color Theme`（Ctrl+K Ctrl+T）。
  * 交互：打开→↑↓即时预览→Enter提交→Esc回退原始主题。
- *
- * 设计依据：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md #36c
- * VS Code 对标：src/vs/workbench/contrib/themes/browser/themes.contribution.ts
  */
 
-import { useState, useEffect, useRef } from "react";
-import { useTranslation } from "react-i18next";
 import i18n from "../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
 import {
   getAvailableThemes,
@@ -23,96 +19,7 @@ import {
 } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../core/services/ConfigurationService";
-import { onPluginLifecycleChange } from "../pluginLoader/lifecycle";
 import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
-import QuickPick from "./shared/QuickPick";
-
-interface Props {
-  open: boolean;
-  onClose: () => void;
-  /** 插件卡片齿轮传入——只显示该插件的主题，否则全部 */
-  pluginId?: string;
-}
-
-export default function ThemeBrowser({ open, onClose, pluginId }: Props) {
-  const { t } = useTranslation();
-  const originalTheme = useRef<string | null>(null);
-  const committed = useRef(false);
-
-  // 打开时记录当前主题——用于 Esc 回退
-  useEffect(() => {
-    if (open) {
-      originalTheme.current = getCurrentTheme()?.name ?? null;
-      committed.current = false;
-    }
-  }, [open]);
-
-  /** Enter / 点击：提交主题（写配置 → onApply 自动 load+apply） */
-  const handleSelect = (themeName: string) => {
-    committed.current = true;
-    setConfigurationValue("app.theme", themeName, "user").catch((e) => { console.error("[ThemeBrowser] 切换主题失败:", e); });
-  };
-
-  /** ↑↓ / hover：预览主题（即时 apply，不写配置）。
-   *  主题自带 accent → 预览后必须恢复用户自定义强调色，否则用户看到的是主题硬编码的 accent。 */
-  const handleHighlight = async (themeName: string) => {
-    try {
-      const theme = await loadTheme(themeName);
-      applyTheme(theme);
-      // E3f #59d2：强调色走归一化函数——followTheme 模式走主题色，custom 模式走自定义
-      applyAccentColor(getEffectiveAccentColor());
-    } catch {
-      // 加载失败——静默，keep current
-    }
-  };
-
-  /** Esc / 点遮罩 / 失焦：回退到打开前的主题 */
-  const handleClose = () => {
-    if (!committed.current && originalTheme.current) {
-      loadTheme(originalTheme.current)
-        .then(applyTheme)
-        .catch((e) => { console.error("[ThemeBrowser] 回退原主题失败:", e); });
-    }
-    onClose();
-  };
-
-  /** 齿轮=只该插件，全局=全部——对标 VS Code getQuickPickEntries(this.extension) */
-  const [themes, setThemes] = useState<string[]>([]);
-
-  // #36f12：打开时填充列表 + 订阅插件生命周期——卸载/安装主题插件时列表即时刷新
-  useEffect(() => {
-    if (!open) return;
-    const refresh = () => {
-      const list = pluginId ? getThemesByPlugin(pluginId) : getAvailableThemes();
-      setThemes(list);
-    };
-    refresh();
-    const unsub = onPluginLifecycleChange.event(refresh);
-    return unsub;
-  }, [open, pluginId]);
-
-  return (
-    <QuickPick
-      open={open}
-      onClose={handleClose}
-      items={themes}
-      placeholder={t("选择颜色主题…")}
-      getSearchText={(name) => name}
-      getKey={(name) => name}
-      onSelect={handleSelect}
-      onHighlight={handleHighlight}
-      // E3.5 #CP19: 切 slot props
-      renderLabel={(name) => name}
-      renderCategory={(name) => name === originalTheme.current ? t("当前") : undefined}
-      // E3.5 #CP23: 显示主题类型——uiTheme 已在 ThemeRegistry 中
-      renderDetail={(name) => {
-        const theme = ThemeRegistry.get(name);
-        if (!theme) return null;
-        return theme.uiTheme === "dark" ? t("暗色主题") : theme.uiTheme === "light" ? t("浅色主题") : t("高对比度");
-      }}
-    />
-  );
-}
 
 /**
  * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。
@@ -123,8 +30,8 @@ export function showThemePicker(pluginId?: string): void {
   const originalTheme = getCurrentTheme()?.name ?? null;
   let committed = false;
 
-  // E5.7#15：uiTheme → 显示文本查表——renderDetail 与 serialize 共用
-  // （显示文本铁律：壳侧 t() 解析；查表绕开 no-restricted-syntax lowercase 字面量比较误报）
+  // E5.7#15：uiTheme → 显示文本查表（显示文本铁律：壳侧 t() 解析；
+  // 查表绕开 no-restricted-syntax lowercase 字面量比较误报）
   const detailLabelOf = (name: string): string | undefined => {
     const theme = ThemeRegistry.get(name);
     if (!theme) return undefined;
@@ -152,10 +59,6 @@ export function showThemePicker(pluginId?: string): void {
         applyAccentColor(getEffectiveAccentColor());
       } catch { /* skip */ }
     },
-    renderLabel: (name) => name,
-    renderCategory: (name) => name === originalTheme ? "当前" : undefined,
-    // E5.7#15：renderDetail 与 serialize 共用 detailLabelOf（一处定义，壳侧 t() 解析）
-    renderDetail: (name) => detailLabelOf(name),
     // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
     serialize: (name) => ({
       key: name,

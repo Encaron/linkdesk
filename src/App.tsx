@@ -10,15 +10,11 @@ import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import ProgressBar from "./components/ProgressBar";
-import ToastContainer from "./components/ToastContainer";
-// E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
-import QuickPick from "./components/shared/QuickPick";
-import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
+import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast } from "./core/services/toast";
 // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）
 import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "./core/services/DialogService";
-import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
@@ -373,17 +369,8 @@ function App() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
   sidebarViewRef.current = sidebarView;
-  // E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件
-  const [quickPickState, setQuickPickState] = useState<QuickPickState | null>(null);
-  useEffect(() => {
-    return QuickPickService.onChange(() => {
-      setQuickPickState(QuickPickService.getState());
-    });
-  }, []);
-
   // E5.7#15：QuickPick 聪慧→哑桥——壳状态序列化成 DTO 推池 QuickPickHost 哑渲染，
   // 池动作（select/highlight/close/itemAction）按 key 回传，壳重解析原始 item 执行回调。
-  // 旧订阅（上方）+ 壳渲染（下方）保留至 #18 清理——本桥与旧路径并存，互不干扰。
   useEffect(() => {
     const poolApi = window.linkdesk?.pool;
     if (!poolApi?.pushQuickPick || !poolApi?.onQuickPickAction) return;
@@ -442,7 +429,6 @@ function App() {
 
   // E5.7#16：Toast 聪慧→哑桥——壳 toast 服务序列化全量快照推池 ToastHost 哑渲染，
   // 池动作（dismiss/action）按 id + actionId 回传，壳重解析 onClick 闭包执行。
-  // 旧壳渲染（ToastContainer）保留至 #18 清理——本桥与旧路径并存，互不干扰。
   useEffect(() => {
     const poolApi = window.linkdesk?.pool;
     if (!poolApi?.pushToast || !poolApi?.onToastAction) return;
@@ -476,7 +462,7 @@ function App() {
 
   // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册到 DialogService（服务零改动），
   // 池 DialogHost 哑渲染，动作回传 settle Promise。
-  // 🔴 注册独占：ConfirmDialog 的注册已卸（#17）——双注册会互相覆盖。
+  // #18：壳 ConfirmDialog 组件已删——本桥是 DialogService renderer 的唯一注册方。
   useEffect(() => {
     const poolApi = window.linkdesk?.pool;
     if (!poolApi?.pushDialog || !poolApi?.onDialogAction) return;
@@ -1081,28 +1067,7 @@ function App() {
         {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
             MainContent/WindowControls/SplitHandles 删除。壳 = 纯状态持有者
             （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
-        <ToastContainer />
         <ProgressBar />
-        {/* E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件 */}
-        {quickPickState && (
-          <QuickPick
-            open={quickPickState.open}
-            onClose={quickPickState.onClose}
-            items={quickPickState.items}
-            placeholder={quickPickState.placeholder}
-            prefix={quickPickState.prefix}
-            getSearchText={quickPickState.getSearchText}
-            getKey={quickPickState.getKey}
-            onSelect={quickPickState.onSelect}
-            onHighlight={quickPickState.onHighlight}
-            renderLabel={quickPickState.renderLabel}
-            renderCategory={quickPickState.renderCategory}
-            renderDetail={quickPickState.renderDetail}
-            renderDetailRight={quickPickState.renderDetailRight}
-            renderItemActions={quickPickState.renderItemActions}
-          />
-        )}
-        <ConfirmDialog />
       </SourceStateContext.Provider>
     </div>
   );
