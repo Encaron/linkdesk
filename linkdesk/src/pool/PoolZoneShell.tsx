@@ -12,6 +12,7 @@
  *   Phase 2 替换 TitleBar(#5 ✅)/IconBar(#6 ✅)/StatusBar(#8 ✅)，
  *   Phase 3 替换 SidebarZone(#10 ✅) + 侧栏分隔线(#13 ✅——4px handle 收在 SidebarZone 内，
  *   非 PoolZoneShell 独立兄弟组件——可见性不变量：visible=false 随 zone 整体 display:none)，
+ *   Phase 4 接入 FloatingLayerHost(#25 ✅——#14 前置 portal root 就绪)，
  *   Phase 5 替换 MainZone(#20)/PanelZone(#21)/RightSidebarZone(#22)。
  *   不允许 import 尚不存在的 Zone 组件（每 Phase 结束必须 tsc 零错误 + 应用可启动）。
  *
@@ -24,6 +25,7 @@ import TitleBarZone from "./zones/TitleBarZone"; // E5.7#5：Phase 2 替换占�
 import IconBarZone from "./zones/IconBarZone"; // E5.7#6：Phase 2 替换占位
 import StatusBarZone from "./zones/StatusBarZone"; // E5.7#8：Phase 2 替换占位
 import SidebarZone from "./zones/SidebarZone"; // E5.7#10：Phase 3 替换占位
+import FloatingLayerHost from "./zones/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   const { t } = useTranslation();
@@ -69,7 +71,8 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
       {/* Row 3: StatusBar——E5.7#8（Phase 2）：条目 + Chord + 通知中心 */}
       <StatusBarZone statusBar={layout.statusBar} />
 
-      {/* FloatingLayerHost——#25（Phase 4）接入：始终挂载 + pointer-events: none（设计 §6.5） */}
+      {/* FloatingLayerHost——#25（Phase 4）：浮层统一容器——始终挂载 + pointer-events: none 默认穿透 */}
+      <FloatingLayerHost />
     </div>
   );
 }
