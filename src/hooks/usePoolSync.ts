@@ -556,6 +556,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
         case "setVisible":
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
           break;
+        // E5.7#13：分隔线拖拽 commit——resizeZone 钳制（与 E5 壳 useDragHandle 同款语义）
+        // → onDidChangeLayout → layoutVersion bump → pushLayout 回执（真相源在壳）
+        case "setSidebarWidth":
+          layoutEngine.resizeZone("sidebar", action.width);
+          break;
         // E5.6#11-fix7 + E5.7#10：池◀/▶按钮——转发 App 侧栏宿主状态机 doCollapse
         // （图标点击/池按钮/view 菜单三条折叠路径共用一个真相源 + preCollapseWidth 恢复）。
         // zone 宽变化 → onDidChangeLayout → 重推 layout → 池 collapsed 派生。
@@ -720,6 +725,9 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
         emptyHint: t("安装插件以添加视图"),
         expandTooltip: t("展开侧栏"),
         collapseTooltip: t("折叠侧栏"),
+        // E5.7#13：拖拽钳制界——LayoutEngine dock 声明推池（池本地钳制对齐壳 resizeZone，零硬编码）
+        minWidth: layoutEngine.getZone("sidebar")?.dock?.minWidth,
+        maxWidth: layoutEngine.getZone("sidebar")?.dock?.maxWidth,
       };
     } else {
       sidebar = {

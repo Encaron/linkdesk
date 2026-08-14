@@ -14,6 +14,8 @@
  *     GroupTabBar 同款池内用法：菜单项 lk.menu.getItems 壳侧解析、命令壳侧执行）
  *   - toolbar 粘顶（role==="toolbar" 在滚动容器外）+ section stack（折叠/拖排/PaneSash）
  *   - section 内容 <PluginComponent>——与 MainZone 标签页同加载方式
+ *   - E5.7#13：右侧 4px 分隔线——mousedown 拖拽调宽（乐观本地 + mouseup commit，真相源在壳；
+ *     分隔线活在可见性条件块内——visible=false 时随 zone display:none 消失（审计不变量））
  *
  * 与 E5.6 SidebarRenderer 差异（诚实注记）：
  *   ① visible=false 由 null 卸载改 display:none——保持插件视图组件挂载（状态不丢）；
@@ -23,9 +25,14 @@
  *   ③ 空状态两行文案（视图 + 提示）——壳 SidePanel 有两行，E5.6 渲染器只有一行硬编码中文；
  *     按壳语义补全 + 铁律化（emptyText/emptyHint 壳 t() 推送）。
  *   ④ E5.6 的 (window as any).linkdesk 显式 any → window.linkdesk 直用（global.d.ts 已声明）。
+ *   ⑤ E5.7#13 拖拽：E5.6 跨 WCV setBounds 老路消失——池内本地宽 + mouseup 一次性 commit
+ *     （sidebarAction "setSidebarWidth" → 壳 resizeZone 钳制 → pushLayout 回执）。
+ *     钳制界 minWidth/maxWidth 壳推（LayoutEngine dock 声明）——池零硬编码。
+ *     E5.6#22m 防护传承：body cursor/userSelect 锁 + buttons===0 窗口外释放。
  */
 
-import { useState, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { ReactNode } from "react";
 import PoolToolbarSlot from "../shared/PoolToolbarSlot"; // E5.7#11：随侧栏组件迁 shared/
 import PoolSectionStack from "../shared/PoolSectionStack"; // E5.7#11：随侧栏组件迁 shared/
 import type { SidebarAction } from "../shared/PoolSectionStack";
@@ -53,12 +60,125 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     window.linkdesk?.pool?.sidebarAction?.(action);
   }, []);
 
-  const { views, containerId, containerTitle, mergeHeaderWhenSingle, collapsedViews, width, collapsed } = sidebar;
+  /* ── E5.7#13：分隔线拖拽——乐观本地 + mouseup commit（#6 同款模式，真相源在壳） ── */
+
+  const [localWidth, setLocalWidth] = useState<number | null>(null); // 拖拽期间/待回执的本地宽覆盖
+  const draggingRef = useRef(false);                       // isDragging guard——拖拽期间忽略推送
+  const dragStartRef = useRef<{ x: number; width: number } | null>(null); // 拖拽几何（mousedown→mouseup）
+  const preDragWidthRef = useRef(0);                       // 拖前宽——回执期跳过迟到旧推送
+  const dragWidthRef = useRef(0);                          // 最近一次本地宽（mouseup commit 用）
+  const rafRef = useRef<number | null>(null);              // rAF 节流
+  const commitPendingRef = useRef(false);                  // commit 已发待回执
+  const bodyStylePrevRef = useRef<{ cursor: string; userSelect: string } | null>(null); // E5.6#22m ① 恢复
+
+  const { views, containerId, containerTitle, mergeHeaderWhenSingle, collapsedViews } = sidebar;
+
+  // 显示宽——本地覆盖优先（拖拽期间/待回执），否则壳权威宽
+  const width = localWidth ?? sidebar.width;
+  const widthRef = useRef(width);
+  widthRef.current = width;
+  // 折叠态派生——拖拽期间本地宽实时判定（壳 collapsed 只在重推时更新，拖拽中途会滞后）
+  const collapsed = localWidth !== null ? width <= 48 : sidebar.collapsed === true;
+
+  // 钳制——界由壳推（LayoutEngine dock.minWidth/maxWidth），与壳 resizeZone 公式一致（无硬编码）
+  const clampWidth = useCallback((w: number) => {
+    const min = sidebar.minWidth ?? 0;
+    const max = sidebar.maxWidth ?? Infinity;
+    return Math.max(min, Math.min(max, Math.round(w)));
+  }, [sidebar.minWidth, sidebar.maxWidth]);
+
+  // mouseup / buttons===0 释放——一次性 commit 到壳 → resizeZone 钳制 → pushLayout 回执
+  const finishDrag = useCallback(() => {
+    draggingRef.current = false;
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    // E5.6#22m ①：恢复 body 光标/选择锁
+    if (bodyStylePrevRef.current) {
+      document.body.style.cursor = bodyStylePrevRef.current.cursor;
+      document.body.style.userSelect = bodyStylePrevRef.current.userSelect;
+      bodyStylePrevRef.current = null;
+    }
+    if (dragStartRef.current) {
+      commitPendingRef.current = true;
+      dragStartRef.current = null;
+      window.linkdesk?.pool?.sidebarAction?.({ action: "setSidebarWidth", width: dragWidthRef.current });
+    }
+  }, []);
+
+  // 窗口级 mousemove/mouseup——IconBarZone #6 同款模式
+  // E5.6#22m ②：窗口外释放时 mouseup 到不了本 window——buttons===0 视为 mouseup
+  useEffect(() => {
+    const onMove = (me: MouseEvent) => {
+      if (!draggingRef.current) return;
+      if (me.buttons === 0) { finishDrag(); return; }
+      const start = dragStartRef.current;
+      if (!start) return;
+      if (rafRef.current !== null) return; // rAF 节流——每帧最多一次 setState
+      rafRef.current = requestAnimationFrame(() => {
+        rafRef.current = null;
+        const w = clampWidth(start.width + me.clientX - start.x);
+        dragWidthRef.current = w;
+        setLocalWidth(w);
+      });
+    };
+    const onUp = () => {
+      if (draggingRef.current) finishDrag();
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [finishDrag, clampWidth]);
+
+  // pushLayout 对齐（isDragging guard）——拖拽期间忽略 sidebar.width 旧值防闪跳；
+  // 回执 = commit 后第一条非拖前宽的推送（壳钳制后值可能 ≠ 本地宽——以壳权威为准）
+  useEffect(() => {
+    if (draggingRef.current) return;
+    if (!commitPendingRef.current) {
+      setLocalWidth(null);
+      return;
+    }
+    if (sidebar.width !== preDragWidthRef.current || sidebar.width === dragWidthRef.current) {
+      commitPendingRef.current = false;
+      setLocalWidth(null); // 回执对齐——本地覆盖释放
+    }
+  }, [sidebar.width]);
+
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    draggingRef.current = true;
+    const startWidth = widthRef.current;
+    dragStartRef.current = { x: e.clientX, width: startWidth };
+    preDragWidthRef.current = startWidth;
+    dragWidthRef.current = startWidth;
+    // E5.6#22m ①：拖拽期间锁 body cursor + userSelect（快速拖拽脱离 handle 不跳回箭头）
+    bodyStylePrevRef.current = { cursor: document.body.style.cursor, userSelect: document.body.style.userSelect };
+    document.body.style.cursor = "col-resize";
+    document.body.style.userSelect = "none";
+  }, []);
+
+  // zone 包装——分隔线活在可见性条件块内（visible=false → 整体 display:none，分隔线随之消失）
+  const renderZone = (inner: ReactNode) => (
+    <div className="side-panel-zone" style={sidebar.visible ? undefined : { display: "none" }}>
+      {inner}
+      {/* E5.7#13：4px 分隔线——hover --separator → --separator-hover（HandleLine 行为传承） */}
+      <div
+        className="sidebar-resize-handle"
+        onMouseDown={handleResizeStart}
+        aria-hidden="true"
+      />
+    </div>
+  );
 
   // 折叠态——只渲染 ▶ 展开按钮（壳 SidePanel.tsx:211-218 对标）
   if (collapsed) {
-    return (
-      <div className="side-panel collapsed" style={{ width, height: "100%" }}>
+    return renderZone(
+      <div className={`side-panel collapsed${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
         <button
           className="side-panel-expand"
           onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
@@ -72,8 +192,8 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
 
   // 侧栏可见但无视图——空状态（文案壳侧 t() 推送——显示文本铁律）
   if (!views || views.length === 0) {
-    return (
-      <div className="side-panel" style={{ width, height: "100%" }}>
+    return renderZone(
+      <div className={`side-panel${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
         <div className="side-panel-placeholder">
           <p>{sidebar.emptyText}</p>
           {sidebar.emptyHint && <p className="side-panel-placeholder-hint">{sidebar.emptyHint}</p>}
@@ -98,11 +218,11 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     ? sectionViews[0].singleViewPaneContainerTitle
     : containerTitle;
 
-  return (
+  return renderZone(
     /* visible=false → display:none（设计 §2.3——保持挂载，视图状态不丢）。实际推送路径上
        pool-main lastVisibleLayout 顶替已保证侧栏不闪，此守卫兜冷启动（从未显示过侧栏）。 */
-    <div className="side-panel-zone" style={sidebar.visible ? undefined : { display: "none" }}>
-      <div className="side-panel" style={{ width, height: "100%" }}>
+    <>
+      <div className={`side-panel${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
         {/* 容器 header */}
         {effectiveTitle && (
           <div
@@ -162,6 +282,6 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }
