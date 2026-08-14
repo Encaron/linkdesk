@@ -10,16 +10,17 @@
  *   - portal 渲染：ReactDOM.createPortal——浮层逻辑和调用方解耦
  *   - 单宿主：一个 FloatingLayerHost——不分散到多个组件
  *
- * 🔴 容器 zIndex 2000 为设计 §2 骨架值（toast 级基准）——#26 建 Z_INDEX 常量表后换 Z_INDEX.toast
- *   引用（含全仓裸数字替换，本文件是替换点之一）。
+ * 容器 z-index = Z_INDEX.toast（浮层层级基准）——#26 常量表。
  */
+import { Z_INDEX } from "../../constants";
+
 function FloatingLayerHost() {
   return (
     <div
       style={{
         position: "fixed",
         inset: 0,
-        zIndex: 2000,
+        zIndex: Z_INDEX.toast,
         pointerEvents: "none", // 默认穿透——浮层显示时各自设 pointer-events: auto
       }}
     >
