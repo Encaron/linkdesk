@@ -1042,8 +1042,11 @@ function App() {
     return () => window.removeEventListener("beforeunload", onBeforeUnload);
   }, []);
 
-  // 100ms 防抖保存——标签页/分屏变更后自动持久化
+  // 100ms 防抖保存——标签页/分屏变更后自动持久化。
+  // E5.7 迁移补：ready 前不保存——迁入 App 后此 effect 首轮 mount 就跑（StrictMode 双跑），
+  // 恢复（ready）之前 tabState 为空，保存空布局会覆盖磁盘上的持久化 → 重启后标签页全丢。
   useEffect(() => {
+    if (!ready) return;
     if (!layoutInitialized.current) {
       layoutInitialized.current = true;
       return;
@@ -1071,7 +1074,7 @@ function App() {
     return () => {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };
-  }, [tabState.groups, tabState.activeGroupId, tabState.root]);
+  }, [tabState.groups, tabState.activeGroupId, tabState.root, ready]);
 
   if (!ready) return null;
 
