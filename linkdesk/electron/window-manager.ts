@@ -273,37 +273,29 @@ export class WindowManager {
   }
 
   /**
-   * 每 30s 采样所有插件 WebView 的内存。
-   * 通过 app.getAppMetrics() + PID 匹配——Electron 43 的 getProcessMemoryInfo()
+   * E5.7#39：每 30s 采样池渲染进程内存（单 Pool 版——原多 WebView PID 集合在 E5.7 恒空，监控失效）。
+   * app.getAppMetrics() + PID 匹配——Electron 43 的 getProcessMemoryInfo()
    * 在 Process 上（Node 进程自身），不在 WebContents 上。
    *
-   * RSS 总和 > 1GB → 通知壳渲染进程（toast 提示用户）。
+   * Working Set > 1GB → 通知壳渲染进程 → toast 服务 → 池 ToastHost 哑渲染（#16 桥）。
    */
   checkMemoryPressure(): void {
-    // 收集所有插件 WebView 的 OS PID
-    const pluginPids = new Set<number>();
-    for (const [instanceId, entry] of this.pluginViews) {
-      try {
-        pluginPids.add(entry.view.webContents.getOSProcessId());
-      } catch {
-        // WebView 可能已销毁但还没从 Map 清理，忽略
-      }
+    const poolView = this.getPoolView();
+    if (!poolView || poolView.webContents.isDestroyed()) return;
+    let poolPid = 0;
+    try {
+      poolPid = poolView.webContents.getOSProcessId();
+    } catch {
+      return; // 池视图存在但渲染进程尚未生成——下次采样再试
     }
 
-    if (pluginPids.size === 0) return;
+    const metric = app.getAppMetrics().find((m) => m.pid === poolPid);
+    if (!metric) return;
 
-    // 获取所有进程指标，按 PID 匹配插件 WebView
-    const metrics = app.getAppMetrics();
-    let totalRSS = 0;
-    for (const m of metrics) {
-      if (pluginPids.has(m.pid)) {
-        totalRSS += m.memory.workingSetSize;
-      }
-    }
-
+    const totalRSS = metric.memory.workingSetSize;
     if (totalRSS > MEMORY_PRESSURE_THRESHOLD) {
-      console.warn(`[WindowManager] 内存压力——插件 WebView 总 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
-      // 内存安全优先——无视宽限期立即销毁
+      console.warn(`[WindowManager] 内存压力——Pool 渲染进程 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
+      // E5.7 极简Pool 无插件 WebView 可冲刷（pluginViews 恒空）——grace 集群 Phase 10 整删时此处一并
       this.flushGracePeriods();
       // 通知壳渲染进程显示 toast
       this.mainWindow.webContents.send('system:memory-pressure', {

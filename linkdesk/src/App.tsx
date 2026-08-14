@@ -11,7 +11,7 @@ import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTab
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
-import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast } from "./core/services/toast";
+import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "./core/services/toast";
 // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）
 import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "./core/services/DialogService";
 
@@ -456,6 +456,22 @@ function App() {
       unsubSuppressed();
       unsubAction();
     };
+  }, []);
+
+  // E5.7#39：内存压力通知——主进程单 Pool 采样超 1GB → toast 服务 → 池 ToastHost 哑渲染（#16 桥）。
+  // 注册/清理（硬约束 19）——壳崩重建后新窗口重新注册。
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi?.onMemoryPressure) return;
+    const unsub = poolApi.onMemoryPressure((data: { totalRSS: number; threshold: number }) => {
+      const mb = Math.round(data.totalRSS / 1024);
+      pushToast({
+        message: i18n.t("内存压力：界面进程内存占用过高（{{mb}} MB）", { mb }),
+        severity: "warning",
+        ttl: TOAST_TTL_INFO,
+      });
+    });
+    return unsub;
   }, []);
 
   // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册到 DialogService（服务零改动），
