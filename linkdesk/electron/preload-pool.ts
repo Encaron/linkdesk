@@ -20,6 +20,7 @@
  *   ✅ serial / config / commands / filesystem / clipboard / env
  *   ✅ events / pluginManager / theme / language / keybindings / pluginState
  *   ✅ menu / contextKey / tabs / p2p / dialog / path / notifications
+ *   ✅ window（E5.7#5：TitleBarZone 窗口控制——从 preload-shell 同款搬入）
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
  *   ❌ pluginInstance / pluginViews / pluginRequest / lsp / langDef（per-tab 概念，不适用于池）
  */
@@ -556,6 +557,19 @@ try {
     // 被 FileTreeDnD.ts 的 handleDrop 用于解析外部拖入文件的真实路径。
     // 设计文档误将其归类为"per-tab 概念"——实际是通用工具，非 per-tab。
     getFilePath: (file: File) => webUtils.getPathForFile(file),
+
+    // ── E5.7#5：窗口控制——TitleBarZone 的自定义 ─ □ × 按钮（preload-shell 同款搬入）──
+    // 通道是主进程 handler（window:minimize 等）——非壳渲染进程 handler，不走 PROXY_CHANNELS。
+    window: {
+      minimize:  () => ipcRenderer.send('window:minimize'),
+      maximize:  () => ipcRenderer.send('window:maximize'),
+      unmaximize:() => ipcRenderer.send('window:unmaximize'),
+      close:     () => ipcRenderer.send('window:close'),
+      toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'),
+      isMaximized:() => ipcRenderer.invoke('window:isMaximized'),
+      onMaximizeChange: (cb: (maximized: boolean) => void) =>
+        listenDirect(ipcRenderer, 'window:maximize-change', (m: boolean) => cb(m)),
+    },
 
     events,
   });
