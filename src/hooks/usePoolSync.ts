@@ -556,7 +556,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
         case "setVisible":
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
           break;
-        // E5.7#13：分隔线拖拽 commit——resizeZone 钳制（与 E5 壳 useDragHandle 同款语义）
+        // E5.7#13：分隔线拖拽 commit——resizeZone 钳制（与 E5.6 壳分隔线拖拽语义同款）
         // → onDidChangeLayout → layoutVersion bump → pushLayout 回执（真相源在壳）
         case "setSidebarWidth":
           layoutEngine.resizeZone("sidebar", action.width);

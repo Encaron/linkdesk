@@ -1,5 +1,5 @@
 /**
- * 壳布局常量——App.tsx + SplitHandles 共用。
+ * 壳布局常量——App.tsx 使用（SplitHandles 已随 E5.7#31 整删）。
  * E5.6#22——消除 TITLE_BAR_HEIGHT/HANDLE_WIDTH 重复定义。
  */
 
