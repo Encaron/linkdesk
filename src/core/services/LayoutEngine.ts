@@ -1,13 +1,18 @@
 /**
- * 壳布局引擎——区域 dock 与 float。
+ * 壳布局引擎——E5#9 区域 dock 坐标权威（E5.7 极简Pool 时代 = 侧栏宽度权威）。
  * E5#9：壳内四个区域通过 LayoutEngine 获取 bounds，不再依赖硬编码 CSS flex。
  *
- * 换布局（侧栏换右边）= 改一行配置。四个组件代码一行不改。
+ * E5.7#12.5 起 bounds 推流删除——池内 zone 布局由 flex 接管，LayoutEngine 剩余职责：
+ *   1. 侧栏折叠真相源——App.tsx getBounds ≤48 判折叠（:531）
+ *   2. 拖拽钳制——usePoolSync resizeZone clamp（:562，#13 拖拽 commit 的钳制点）
+ *   3. 钳制界推送——usePoolSync getZone dock.minWidth/maxWidth（:729-730）
  *
- * E5 只实现 mode === "docked"。v1.4 实现 floating——数据结构已留口子。
+ * E5.7#31.5 死肉整删（2026-08-15）：setLayout / addZone / removeZone / dockTo / getAllZones +
+ * floating 模式分支 + ZoneConfig 的 float / undockable / visible 字段——E5.6 多池时代残肢，
+ * 全仓库零调用方（v1.4 浮窗实现载体 = 主进程 WindowManager 新 BrowserWindow，不走壳渲染
+ * 进程几何；恢复成本 = git history）。
  *
  * 对标 Visual Studio 工具窗口系统（IVsWindowFrame / dock target / floating）。
- *
  * 设计依据：docs/02-Electron架构/E5_核心归一化与壳重构_待执行/01-壳通信骨架/壳布局引擎.md
  */
 
@@ -15,19 +20,10 @@ import { Emitter, type Event } from "../react/CoreEvents";
 
 /* ── 类型定义 ── */
 
-/**
- * 壳区域配置。
- * E5 只实现 mode === "docked"。
- * v1.4 实现 mode === "floating"——不改这个接口。
- */
+/** 壳区域配置——纯 docked（E5 只实现 docked；floating 分支已随 E5.7#31.5 整删） */
 export interface ZoneConfig {
   /** 区域唯一标识 */
   zone: string;
-
-  /** 当前模式——E5 总是 "docked"，v1.4 加 "floating" */
-  mode: "docked" | "floating";
-
-  // ── Docked 属性（mode === "docked" 时生效，E5 实现）──
 
   dock?: {
     /** 贴哪条边 */
@@ -50,30 +46,9 @@ export interface ZoneConfig {
     /** 🆕 E5#49a：折叠时的最小宽度（侧栏折叠后留 4px 竖条手柄） */
     collapsedWidth?: number;
   };
-
-  // ── Floating 属性（mode === "floating" 时生效，v1.4 实现）──
-
-  float?: {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    /** z-index——floating zone 之间可层叠 */
-    zIndex?: number;
-    /** 最小尺寸——float 时重置尺寸的底线 */
-    minWidth?: number;
-    minHeight?: number;
-  };
-
-  // ── 控制（E5 声明，v1.4 消费）──
-
-  /** 是否可以拖出 dock——侧栏=true，图标栏=false，主区=false */
-  undockable?: boolean;
-  /** 显示/隐藏 */
-  visible?: boolean;
 }
 
-/** 区域边界——布局引擎输出给组件。docked 和 floating 都用同一个。 */
+/** 区域边界——布局引擎输出给组件。 */
 export interface ZoneBounds {
   x: number;
   y: number;
@@ -98,27 +73,19 @@ export class LayoutEngine {
     this._zones = [
       {
         zone: "iconbar",
-        mode: "docked",
         dock: { edge: "left", width: 42, minWidth: 42, maxWidth: 42 },
-        undockable: false,
       },
       {
         zone: "sidebar",
-        mode: "docked",
         dock: { edge: "left", width: 280, minWidth: 170, maxWidth: 600, resizable: true, collapsedWidth: 4 },
-        undockable: true,
       },
       {
         zone: "main",
-        mode: "docked",
         dock: { edge: "center", flex: 1 },
-        undockable: false,
       },
       {
         zone: "statusbar",
-        mode: "docked",
         dock: { edge: "bottom", height: 24, minHeight: 24, maxHeight: 24 },
-        undockable: false,
       },
     ];
   }
@@ -128,33 +95,6 @@ export class LayoutEngine {
     if (width <= 0 || height <= 0) return;
     this._containerWidth = width;
     this._containerHeight = height;
-    this._recalculate();
-  }
-
-  /** 设置布局——替换全部 zone 配置 */
-  setLayout(zones: ZoneConfig[]): void {
-    this._zones = [...zones];
-    this._recalculate();
-  }
-
-  /** 添加一个 zone（v1.4 浮窗 dock 回来时用） */
-  addZone(zone: ZoneConfig): void {
-    this._zones.push(zone);
-    this._recalculate();
-  }
-
-  /** 移除一个 zone（v1.4 undock 时用） */
-  removeZone(zoneId: string): void {
-    this._zones = this._zones.filter((z) => z.zone !== zoneId);
-    this._bounds.delete(zoneId);
-    this._onDidChangeLayout.fire();
-  }
-
-  /** 移动 zone 的 dock 边（侧栏从左换到右） */
-  dockTo(zoneId: string, edge: "left" | "right" | "center" | "bottom"): void {
-    const z = this._zones.find((z) => z.zone === zoneId);
-    if (!z || !z.dock) return;
-    z.dock.edge = edge;
     this._recalculate();
   }
 
@@ -177,20 +117,9 @@ export class LayoutEngine {
     this._recalculate();
   }
 
-  /** 获取某个 zone 的当前 bounds——不管 docked 还是 floating */
+  /** 获取某个 zone 的当前 bounds */
   getBounds(zoneId: string): ZoneBounds | undefined {
-    // 先查浮动坐标
-    const zone = this._zones.find((z) => z.zone === zoneId);
-    if (zone?.mode === "floating" && zone.float) {
-      return { x: zone.float.x, y: zone.float.y, width: zone.float.width, height: zone.float.height };
-    }
-    // 查 dock 坐标
     return this._bounds.get(zoneId);
-  }
-
-  /** 获取全部 zone 配置（只读） */
-  getAllZones(): readonly ZoneConfig[] {
-    return this._zones;
   }
 
   /** 获取某个 zone 配置 */
@@ -206,9 +135,7 @@ export class LayoutEngine {
     const H = Math.round(this._containerHeight);
     if (W === 0 || H === 0) return;
 
-    // E5 只处理 mode === "docked" 的 zone
-    const docked = this._zones.filter((z) => z.mode === "docked" && z.dock);
-    // floating zone 的坐标由 float 字段直接返回——不经过 _recalculate
+    const docked = this._zones.filter((z) => z.dock);
 
     const bottomZones = docked
       .filter((z) => z.dock!.edge === "bottom")
