@@ -10,6 +10,7 @@
 
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import { setConfigurationValue, getConfigurationValue } from "../core/services/ConfigurationService";
 import { useConfigurationValue } from "../core/react/useConfiguration"; // 保留——LanguagePicker 组件仍可独立渲染
@@ -89,6 +90,14 @@ export function showLanguagePicker(): void {
     renderLabel: (l) => l.label,
     renderCategory: (l) => l.id === currentLang ? "当前" : undefined,
     renderDetail: (l) => l.id,
+    // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
+    serialize: (l) => ({
+      key: l.id,
+      searchText: `${l.label} ${l.id}`,
+      label: l.label,
+      category: l.id === currentLang ? i18n.t("当前") : undefined,
+      detail: l.id,
+    }),
     onClose: () => QuickPickService.hide(),
   });
 }

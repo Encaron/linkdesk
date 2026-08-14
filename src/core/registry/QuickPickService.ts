@@ -8,6 +8,7 @@
  */
 
 import type { ReactNode } from "react";
+import type { PoolQuickPickItem } from "../types/poolQuickPick";
 
 // ── 类型 ──
 
@@ -27,6 +28,11 @@ export interface QuickPickState<T = unknown> {
   onSelect: (item: T) => void;
   onHighlight?: (item: T) => void;
   onClose: () => void;
+  /** E5.7#15：聪慧→哑桥——壳侧把 item 序列化成池可渲染的纯数据 DTO（显示文本铁律：壳侧 t() 解析）。
+   *  必填——池 QuickPickHost 只认识 DTO，函数/ReactNode 无法过 IPC。 */
+  serialize: (item: T) => PoolQuickPickItem;
+  /** E5.7#15：行内按钮动作——池回传 actionId，壳侧重解析 item 后执行 */
+  onItemAction?: (item: T, actionId: string) => void;
   // E3.5 slot props
   renderLabel?: (item: T) => ReactNode;
   renderCategory?: (item: T) => ReactNode;

@@ -524,6 +524,16 @@ export class WindowManager {
     view.webContents.send('pool:layout', layout);
   }
 
+  /** E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染 */
+  pushQuickPick(data: unknown): void {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) {
+      console.warn('[WindowManager] pushQuickPick 失败——Pool 不存在或已销毁');
+      return;
+    }
+    view.webContents.send('pool:quickpick', data);
+  }
+
   /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
   getPoolView(): WebContentsView | null {
     return this.mainPoolView;

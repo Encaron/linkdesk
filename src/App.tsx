@@ -377,6 +377,65 @@ function App() {
     });
   }, []);
 
+  // E5.7#15：QuickPick 聪慧→哑桥——壳状态序列化成 DTO 推池 QuickPickHost 哑渲染，
+  // 池动作（select/highlight/close/itemAction）按 key 回传，壳重解析原始 item 执行回调。
+  // 旧订阅（上方）+ 壳渲染（下方）保留至 #18 清理——本桥与旧路径并存，互不干扰。
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi?.pushQuickPick || !poolApi?.onQuickPickAction) return;
+
+    const push = () => {
+      const st = QuickPickService.getState<unknown>();
+      if (!st || !st.open) {
+        poolApi.pushQuickPick({ open: false, placeholder: "", items: [] });
+        return;
+      }
+      poolApi.pushQuickPick({
+        open: true,
+        placeholder: st.placeholder,
+        prefix: st.prefix,
+        items: st.items.map((it) => st.serialize(it)),
+      });
+    };
+
+    const unsubChange = QuickPickService.onChange(push);
+
+    // 池动作回传——按 key 重解析原始 item（函数无法过 IPC，壳侧执行）。
+    // 动作用查表分发——避免 lowercase 字面量比较（no-restricted-syntax 误报规则）
+    const unsubAction = poolApi.onQuickPickAction((action: { type: string; key?: string; actionId?: string }) => {
+      const st = QuickPickService.getState<unknown>();
+      if (!st || !st.open) return;
+      const item = action.key !== undefined
+        ? st.items.find((it) => st.getKey(it) === action.key)
+        : undefined;
+      const handlers: Record<string, () => void> = {
+        // 对标壳 QuickPick handleSelect——先 onSelect 再 onClose
+        select: () => {
+          if (item !== undefined) {
+            st.onSelect(item);
+            st.onClose();
+          }
+        },
+        highlight: () => {
+          if (item !== undefined) st.onHighlight?.(item);
+        },
+        close: () => st.onClose(),
+        itemAction: () => {
+          if (item !== undefined && action.actionId !== undefined) st.onItemAction?.(item, action.actionId);
+        },
+      };
+      handlers[action.type]?.();
+    });
+
+    // 挂载时同步当前状态——防桥接前已打开的面板
+    push();
+
+    return () => {
+      unsubChange();
+      unsubAction();
+    };
+  }, []);
+
   // E5.7#10：侧栏宿主状态机——原隐藏挂载 SidePanel 的语义迁入 App（池 SidebarZone 哑渲染，壳持状态）。
   // 三条入口：icon:selected（图标点击切换/折叠）、sidebar:toggleFromPool（池 ◀/▶ 按钮转发）、
   // view:toggleCollapse/resetPosition/toggleVisibility（view header 右键菜单，shellMenus emit）。
