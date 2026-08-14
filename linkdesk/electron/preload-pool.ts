@@ -99,6 +99,16 @@ ipcRenderer.on('pool:dialog', (_event, data: PoolDialogDataShape) => {
   }
 });
 
+// ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
+// 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
+// 刻意不经 React/命名空间 API：pong 必须在 React mount 前就存在——池加载窗口（主进程
+// 10s 超时）内 preload 一旦执行即可回复，否则加载中的池被心跳误判卡死误杀。
+// 主线程阻塞时事件循环停转，pong 自然停发 = 卡死信号（这正是心跳要检测的）。
+// 池命名空间不暴露 onPing 消费 API——零消费方即死代码（无死代码原则），需要时再加。
+ipcRenderer.on('pool:ping', () => {
+  ipcRenderer.send('pool:pong');
+});
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
