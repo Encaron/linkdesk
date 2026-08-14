@@ -19,7 +19,7 @@ import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/services/FactorySlots";
-import { getViewPlugin, invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins, invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
@@ -27,7 +27,7 @@ import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration 
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/services/LayoutService";
 import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/WorkspaceService"; // E5.5#0e
-import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
+import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
 import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
@@ -422,6 +422,9 @@ function App() {
       if (zoneCollapsed()) doCollapse(false);
       s.containerId = cid;
       s.lastSidebar = cid;
+      // E5.7#13.5：持久化上次侧栏选择——启动恢复（对标 VS Code 记住 Activity Bar；
+      // iconOrder 同款机制 PluginStateService，归一化不新发明）
+      setPluginStateValue(APP_PLUGIN_ID, "activeSidebarPlugin", pluginId);
       shellEvents.emit("sidebar:containerChanged", cid);
       shellEvents.emit("sidebar:toggled", true);
     });
@@ -459,6 +462,20 @@ function App() {
     });
     return () => { u1(); u2(); };
   }, []);
+
+  // E5.7#13.5：启动恢复上次侧栏容器——对标 VS Code 恢复上次 Activity Bar 选择（用户选 B）。
+  // 归一化：恢复 = 重放 icon:selected——与点击图标同一路径（u1 容器校验/折叠展开全走状态机，
+  // 零第二套选择逻辑）。守卫：插件须仍在 getViewPlugins()（图标栏同源）——已卸载/禁用
+  // 则静默无侧栏（回退旧行为）。一次性 ref 防 StrictMode 双跑重放（u1 同图标会当 toggle 处理）。
+  const sidebarRestoreDoneRef = useRef(false);
+  useEffect(() => {
+    if (!ready || sidebarRestoreDoneRef.current) return;
+    sidebarRestoreDoneRef.current = true;
+    const persisted = getPluginStateValue<string>(APP_PLUGIN_ID, "activeSidebarPlugin");
+    if (!persisted) return;
+    if (!getViewPlugins().some((p) => p.pluginId === persisted)) return;
+    shellEvents.emit("icon:selected", persisted);
+  }, [ready]);
 
   /* ---- QuickPick 归一化（E5.5#7-p12）——所有浮层共用一个 QuickPick，QuickPickService 管理状态 ---- */
   useEffect(() => {
