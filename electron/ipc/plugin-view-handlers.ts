@@ -1,114 +1,19 @@
 /**
- * 插件视图管理 IPC 处理器——壳渲染进程 → 主进程 PluginViewRegistry
+ * Pool 视图管理 IPC 处理器——壳渲染进程 ↔ 主进程 WindowManager（E5.7 极简Pool）
  *
- * E3f #58c：多 WebView 渲染——plugin-view:create 加载真实 React 页面（取代 #58a 占位 HTML）。
- * E5.5#9c：pluginId→instanceId——所有 handler 参数更新，plugin-view:create 多收 pluginId，
- *         URL query params 从 ?plugin-view= 改为 ?pluginId=&instanceId=，
- *         plugin-view:ready 转发 (instanceId, pluginId)。
- *         新增 plugin-view:getInstanceIdsForPlugin。
- * 每个函数对应一个 ipcMain.handle() 通道。
+ * E5.6#8d → E5.7#4：注册单Pool IPC handler——壳↔池通信通道。
+ * E5.7#43（Phase 10）：registerPluginViewHandlers 整删——per-tab 插件视图 IPC
+ * （plugin-view:create/destroy/setVisible 等 14 通道）随 PluginViewRegistry 消亡。
+ * 唯一 WCV，无 zone 路由——poolId 概念全程不出现。
  */
 
 import { app, ipcMain, BrowserWindow } from 'electron';
-import type { PluginViewRegistry, ViewBounds } from '../plugin-view-registry.js';
 import type { WindowManager } from '../window-manager.js'; // E5.6#8d
-import { DEV_SERVER_URL } from '../../shared/constants.js'; // E5#102b
 
-let _registry: PluginViewRegistry | null = null;
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;
-// E5.7#36：壳崩重建复用本文件两个 register——引用始终刷新（handler 闭包运行时读），IPC 通道只注册一次
-let _pluginViewRegistered = false;
+// E5.7#36：壳崩重建复用本函数——引用始终刷新（handler 闭包运行时读），IPC 通道只注册一次
 let _poolHandlersRegistered = false;
-
-export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWindow: BrowserWindow): void {
-  _registry = registry;
-  _mainWindow = mainWindow;
-  if (_pluginViewRegistered) return;
-  _pluginViewRegistered = true;
-
-  ipcMain.handle('plugin-view:setVisible', (_event, instanceId: string, visible: boolean) => {
-    _registry?.setVisible(instanceId, visible);
-    // E5.5#7 Bug B fix：WebView 变为可见后转移键盘焦点——与 setVisible 同 handler，同步执行无竞态
-    if (visible) {
-      _registry?.getView(instanceId)?.webContents.focus();
-    }
-  });
-
-  ipcMain.handle('plugin-view:setBounds', (_event, instanceId: string, bounds: ViewBounds) => {
-    _registry?.setBounds(instanceId, bounds);
-  });
-
-  ipcMain.handle('plugin-view:getAllIds', () => {
-    return _registry?.getAllInstanceIds() ?? [];
-  });
-
-  ipcMain.handle('plugin-view:getInstanceIdsForPlugin', (_event, pluginId: string) => {
-    return _registry?.getInstanceIdsForPlugin(pluginId) ?? [];
-  });
-
-  // E3f #58：切换插件 DevTools
-  ipcMain.handle('plugin-view:toggleDevTools', (_event, instanceId: string) => {
-    _registry?.toggleDevTools?.(instanceId);
-  });
-
-  // E3f #58d：销毁插件 WebView——插件卸载/注销时调用
-  ipcMain.handle('plugin-view:destroy', (_event, instanceId: string) => {
-    _registry?.unregisterPlugin(instanceId);
-  });
-
-  // E5.5#7 Bug B fix：聚焦插件 WebView——切换标签页后转移键盘焦点
-  ipcMain.handle('plugin-view:focus', (_event, instanceId: string) => {
-    const view = _registry?.getView(instanceId);
-    view?.webContents.focus();
-  });
-
-  // E5.5#3c：保活宽限期——关闭标签页时不立即销毁，60s 内重开可复用
-  ipcMain.handle('plugin-view:scheduleDestroy', (_event, instanceId: string) => {
-    _registry?.scheduleDestroy(instanceId);
-  });
-  ipcMain.handle('plugin-view:cancelDestroy', (_event, instanceId: string) => {
-    return _registry?.cancelDestroy(instanceId) ?? false;
-  });
-
-  // E5.5#9：宽限期恢复——按 pluginId 查找仍在宽限期内的旧 instanceId
-  ipcMain.handle('plugin-view:findGraceInstance', (_event, pluginId: string) => {
-    return _registry?.findGraceInstance(pluginId) ?? null;
-  });
-  // E5.5#9：宽限期恢复——旧 instanceId → 新 instanceId 重映射（标签页恢复后 ID 可能变化）
-  ipcMain.handle('plugin-view:rekeyInstance', (_event, oldInstanceId: string, newInstanceId: string) => {
-    return _registry?.rekeyInstance(oldInstanceId, newInstanceId) ?? false;
-  });
-
-  // plugin-view:reload——插件重载（预留，当前无调用方）
-  ipcMain.handle('plugin-view:reload', (_event, instanceId: string) => {
-    _registry?.reloadPlugin(instanceId);
-  });
-
-  // E5.6#1：关闭 per-tab WebView 创建——Phase 1 回退到单 WebView
-  // E3f #58c + E5.5#9c：创建插件 WebView——加载 plugin-view.html（React 自举页面）
-  // signature: (instanceId, pluginId)——每个标签页独立 WebView
-  ipcMain.handle('plugin-view:create', (_event, instanceId: string, pluginId: string) => {
-    console.error('[E5.6#1] plugin-view:create 被调用但已禁用——per-tab WebView 已关闭。instanceId:', instanceId, 'pluginId:', pluginId);
-    return undefined;
-    // ---- 以下代码 E5.6 Phase 1 禁用 ----
-    // const isDev = !app.isPackaged;
-    // const url = isDev
-    //   ? `${DEV_SERVER_URL}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`
-    //   : `linkdesk://${pluginId}/plugin-view.html?pluginId=${pluginId}&instanceId=${instanceId}`;
-    // _registry?.registerPlugin(instanceId, pluginId, url);
-  });
-
-  // #58e 修复 + E5.5#9c：插件 WebView 渲染完成通知——主进程转发到壳窗口
-  // 现在转发 (instanceId, pluginId)——壳侧 useWebViewSync 用 instanceId 做 ready 判断
-  ipcMain.on('plugin-view:ready', (_event, instanceId: string, pluginId: string) => {
-    if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('plugin-view:ready', instanceId, pluginId);
-    }
-  });
-
-  console.log('[plugin-view-handlers] 已注册 14 个 IPC handler（13 handle + 1 on）+ getInstanceIdsForPlugin + findGraceInstance + rekeyInstance + reload');
-}
 
 /**
  * E5.6#8d → E5.7#4：注册单Pool IPC handler——壳↔池通信通道。

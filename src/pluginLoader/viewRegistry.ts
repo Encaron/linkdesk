@@ -69,21 +69,16 @@ export function getTabBehavior(pluginId: string): TabBehavior {
  * 读取 tabBehavior 声明，依次执行 confirmOnClose 弹窗和 invokeBeforeClose 命令。
  * TabBar [×]/中键/Ctrl+W 三条关闭路径统一调此函数。
  *
- * E5#63：invokeBeforeClose 走 requestToPlugin——壳发请求到插件 WebView，插件自己判断+处理。
- * 壳不知道插件是谁、在干什么。返 false = 阻止关闭。
+ * E5#63 → E5.7#43：invokeBeforeClose 否决回路已停用（requestToPlugin 链删除）——声明保留待未来池侧 requests 命名空间。
+ * confirmOnClose 弹窗仍生效。返 false = 阻止关闭。
  * @returns true = 继续关闭，false = 用户取消
  */
 export async function invokeBeforeCloseTab(pluginId: string): Promise<boolean> {
   const behavior = getTabBehavior(pluginId);
   // confirmOnClose——静态确认文本（壳弹窗）
   if (behavior.confirmOnClose && !await showConfirm(behavior.confirmOnClose)) return false;
-  // E5#63：invokeBeforeClose——壳发请求到插件 WebView，插件自己处理
-  if (behavior.invokeBeforeClose) {
-    try {
-      const result = await window.linkdesk?.bridge?.requestToPlugin?.(pluginId, "invokeBeforeClose", {});
-      if (result === false) return false;
-    } catch { /* requestToPlugin 失败不阻塞——允许关闭 */ }
-  }
+  // E5#63 → E5.7#43：invokeBeforeClose 否决回路停用——requestToPlugin 链已删
+  // （池侧无 plugin:request 接收端；声明保留在 TabBehavior/schema，恢复需未来池侧 requests 命名空间任务）
   return true;
 }
 

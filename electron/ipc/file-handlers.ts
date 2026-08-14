@@ -81,10 +81,13 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
       if (win && !win.isDestroyed()) {
         win.webContents.send(`filesystem:changed:${watcherId}`, change);
       }
-      // E5#80 + E5.5#9d：广播文件变更到所有实例 WebView
+      // E5#80 + E5.7#43：广播文件变更到唯一 Pool WebView（per-tab 实例循环已删——
+      // 修复潜伏 bug：池内文件树 watcher 此前收不到任何变更）
       if (_windowManager) {
-        for (const instanceId of _windowManager.getAllInstanceIds()) {
-          _windowManager.getPluginView(instanceId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
+        for (const poolView of _windowManager.getAllPoolViews()) {
+          if (!poolView.webContents.isDestroyed()) {
+            poolView.webContents.send(`filesystem:changed:${watcherId}`, change);
+          }
         }
       }
     });

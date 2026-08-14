@@ -2,7 +2,7 @@
  * keyboard-router.ts — 主进程全局键盘拦截
  *
  * E5.5#7 Phase 4。多 WebView 下，Electron 键盘事件只发给聚焦的 WebContentsView。
- * 插件 WebView 聚焦时壳 keydown 监听收不到 → 全局快捷键全部失效。
+ * 池 WCV 聚焦时壳 keydown 监听收不到 → 全局快捷键全部失效（E5.7#43：initKeyboardRouting 已删）。
  *
  * 方案：主进程 before-input-event 在所有 WebContents 上拦截
  * → 同步查表（壳同步的 keyCache）→ 命中则 preventDefault + 转发壳执行。
@@ -19,7 +19,6 @@
 import { BrowserWindow, WebContentsView, app, type Event, type Input } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import type { PluginViewRegistry } from './plugin-view-registry.js';
 
 // ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
 
@@ -245,31 +244,4 @@ export function attachKeyboardRouting(view: WebContentsView, mainWindow: Browser
   view.webContents.on('before-input-event', (event, input) => {
     handleBeforeInput(event, input, mainWindow);
   });
-}
-
-/**
- * 初始化键盘路由——在 WindowManager + PluginViewRegistry 创建后调用。
- * 仅在插件 WebContentsView 上注册 before-input-event（壳自己的 keydown listener 正常工作）。
- * Monkey-patch pluginViewRegistry.registerPlugin 确保动态创建的插件也自动注册。
- * 🔴 E5.7：插件 WebView 已不存在（极简Pool 单 WCV）——本函数走空路；
- *    Phase 10 #43 删遍历 → 单 Pool 直推时整体移除。
- */
-export function initKeyboardRouting(
-  mainWindow: BrowserWindow,
-  pluginViewRegistry: PluginViewRegistry,
-): void {
-  // 已有插件 WebView——遍历所有 instance
-  for (const instanceId of pluginViewRegistry.getAllInstanceIds()) {
-    const view = pluginViewRegistry.getView(instanceId);
-    if (view) attachKeyboardRouting(view, mainWindow);
-  }
-
-  // 动态创建的插件 WebView——monkey-patch registerPlugin
-  // E5.5#9e：signature 适配 per-tab——(instanceId, pluginId, url, force?)
-  const _origRegister = pluginViewRegistry.registerPlugin.bind(pluginViewRegistry);
-  pluginViewRegistry.registerPlugin = (instanceId: string, pluginId: string, url: string, force?: boolean) => {
-    const view = _origRegister(instanceId, pluginId, url, force);
-    attachKeyboardRouting(view, mainWindow);
-    return view;
-  };
 }
