@@ -5,6 +5,7 @@
  *   - 居中 50%/50% translate(-50%,-50%)
  *   - minWidth 300 / maxWidth 80vw / maxHeight 80vh（壳旧值 320px/420px——设计规格为准）
  * z-index 不在本文件——inline Z_INDEX.dialog / dialog-1（#26 常量表）。
+ * pointer-events 不在此写——由 FloatingLayerHost #dialog-root 根级提供（§2 根级 opt-in，补丁 2026-08-14）。
  * 全部颜色走 CSS 变量，零硬编码 hex。
  */
 
@@ -12,9 +13,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.5);
-  /* E5.7#17 补丁 2026-08-14：pointer-events: auto——FloatingLayerHost 容器
-     pointer-events: none 沿 DOM 继承 → backdrop 吞不到点击（设计 §2 漏实现）。 */
-  pointer-events: auto;
 }
 
 .dialog-host-panel {
@@ -22,8 +20,6 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  /* E5.7#17 补丁 2026-08-14：同 backdrop——none 继承 → 面板/按钮点不动（设计 §2 漏实现）。 */
-  pointer-events: auto;
   min-width: 300px;
   max-width: 80vw;
   max-height: 80vh;
