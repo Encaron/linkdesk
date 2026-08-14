@@ -26,6 +26,7 @@ import type { SplitNode } from "../../hooks/splitTree";
 import { getAllLeafGroupIds } from "../../hooks/splitTree";
 import type { DropZone } from "../../hooks/tabDragTypes";
 import { detectDropZone } from "../../hooks/tabDragTypes";
+import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { useDragReorder } from "../../hooks/useDragReorder";
 
 // ═══════════════════════════════════════════════════════════
@@ -552,7 +553,7 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
                   width: `${h.w}%`,
                   height: `${h.h}%`,
                   cursor: isH ? "col-resize" : "row-resize",
-                  zIndex: 10,
+                  zIndex: Z_INDEX.splitHandle,
                   // 分隔线始终可见——对标 VS Code sash，默认 subtle，hover accent
                   background: "var(--separator)",
                   transition: "background 150ms ease",
@@ -632,7 +633,7 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
           <div style={{
             position: "absolute",
             ...bounds,
-            zIndex: 9999,
+            zIndex: Z_INDEX.dropZone,
             pointerEvents: "none",
           }}>
             <div
@@ -668,7 +669,7 @@ export default function MainRenderer({ groups, root, creatableViews }: MainRende
                   fontSize: 13,
                   boxShadow: "0 4px 12px rgba(0, 0, 0, 0.4)",
                   pointerEvents: "none",
-                  zIndex: 99999,
+                  zIndex: Z_INDEX.dragPreview,
                 }}
               >
                 {tab.icon &&
