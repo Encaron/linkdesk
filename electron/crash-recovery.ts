@@ -19,6 +19,10 @@
  *      render-process-gone，不拦 = 退出过程中建 WCV
  *   ③ pool:ready 等待挂 did-fail-load / 超时 → 重试（单次崩溃事件最多 3 次）
  *      🔴 #39b 在此接续：10s 内 3 次崩溃 → 停止重建 + 静态错误页
+ *
+ * E5.7#37：池心跳同在本模块——5s ping / 10s 超时 → forcefullyCrashRenderer → 走分支 1 重建链。
+ *   pong 由 preload-pool 模块顶层自动回复（React mount 前即存活——池加载窗口也有 pong，
+ *   加载中的池不被误杀）。与 E2a 壳心跳（main.ts app:heartbeat 30s → 原生对话框）并行互不替代。
  */
 
 import { app, ipcMain } from 'electron';
@@ -34,6 +38,14 @@ const MAX_REBUILD_ATTEMPTS = 3;
 /** 两次重建尝试之间的间隔——避免对持续崩溃的池疯狂重建 */
 const RETRY_DELAY_MS = 500;
 
+// ── E5.7#37：池心跳参数（设计 §2.2）──
+/** 主进程每 5s 向池发一次 ping */
+const HEARTBEAT_PING_MS = 5_000;
+/** 主进程每 3s 检查一次 pong 新鲜度 */
+const HEARTBEAT_CHECK_MS = 3_000;
+/** 10s 未收到 pong → 判定渲染进程无响应（主线程阻塞/假死） */
+const HEARTBEAT_TIMEOUT_MS = 10_000;
+
 export interface CrashRecoveryDeps {
   /** 当前主窗口——重建期间主进程引用会切换，调用时读取 */
   getMainWindow: () => BrowserWindow | null;
@@ -45,6 +57,9 @@ export interface CrashRecoveryDeps {
 
 /** 每次 pushLayout 时缓存——Pool 崩溃后不依赖壳即时响应即可回放 */
 let lastLayout: unknown = null;
+
+/** 最后一次 pong 时间戳。0 = 尚未收到（池加载中）——不判超时（同 E2a 壳心跳语义） */
+let lastPoolPong = 0;
 
 /** 应用退出中——render-process-gone 全部忽略（审计②） */
 let quitting = false;
@@ -80,6 +95,7 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
     // 分支 1：Pool WCV 崩——重建 WCV（壳渲染进程存活，tabState 不丢）
     if (poolView && !poolView.webContents.isDestroyed() && webContents.id === poolView.webContents.id) {
       console.error('[E5.7] MainPool renderer 崩溃:', details.reason, 'exitCode:', details.exitCode);
+      lastPoolPong = 0; // 新池首 pong 前保持加载宽限——旧 pong 时间戳对新池无意义
       rebuildPoolWithRetry(deps, 1);
       return;
     }
@@ -93,6 +109,35 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
 
     // E5.7 只有 2 个渲染进程——分支到此完备（脱出窗口推迟 v1.3）
   });
+
+  // ── E5.7#37：池心跳——5s ping / 10s 超时 → forcefullyCrashRenderer → 走分支 1 重建链 ──
+  // pong 由 preload-pool 模块顶层自动回复（不经 React——池加载窗口也有 pong，加载中的池不被误杀）。
+
+  // Pool→主进程：pong——sender 校验（只认当前池，忽略壳/其他渲染进程）
+  ipcMain.on('pool:pong', (event) => {
+    const pool = deps.getWindowManager()?.getPoolView();
+    if (pool && !pool.webContents.isDestroyed() && event.sender === pool.webContents) {
+      lastPoolPong = Date.now();
+    }
+  });
+
+  setInterval(() => {
+    if (rebuilding) return; // 重建期间 waitPoolReady 全权接管——心跳不干扰
+    const pool = deps.getWindowManager()?.getPoolView();
+    if (!pool || pool.webContents.isDestroyed()) return;
+    pool.webContents.send('pool:ping');
+  }, HEARTBEAT_PING_MS);
+
+  setInterval(() => {
+    if (rebuilding || lastPoolPong === 0) return;
+    const pool = deps.getWindowManager()?.getPoolView();
+    if (!pool || pool.webContents.isDestroyed()) return;
+    if (Date.now() - lastPoolPong > HEARTBEAT_TIMEOUT_MS) {
+      console.error('[E5.7] Pool 心跳超时（渲染进程无响应）——强制崩溃触发重建');
+      lastPoolPong = 0; // 崩溃事件到达前不重复触发（新池首 pong 前保持加载宽限）
+      pool.webContents.forcefullyCrashRenderer();
+    }
+  }, HEARTBEAT_CHECK_MS);
 }
 
 /** 壳崩重建后调用——新窗口已建好，等新池就绪后回放 lastLayout 兜底（壳随后 pushLayout 自然对齐覆盖） */
@@ -101,6 +146,7 @@ export function replayAfterShellRebuild(deps: CrashRecoveryDeps): void {
     console.error('[E5.7] 已有重建等待进行中——忽略重复兜底回放');
     return;
   }
+  lastPoolPong = 0; // 新池首 pong 前保持加载宽限
   const wm = deps.getWindowManager();
   const wc = wm?.getPoolView()?.webContents;
   if (!wm || !wc) return;

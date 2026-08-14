@@ -133,19 +133,6 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     console.log('[pool-handlers] Pool 就绪');
   });
 
-  // 壳→Pool：心跳 ping——E5.6#27 崩溃恢复会用到
-  ipcMain.on('pool:ping', () => {
-    const poolView = _windowManager?.getPoolView();
-    if (poolView && !poolView.webContents.isDestroyed()) {
-      poolView.webContents.send('pool:pong');
-    }
-  });
-
-  // Pool→壳：心跳 pong——预留，E5.6#27 崩溃恢复消费
-  ipcMain.on('pool:pong', () => {
-    // 预留——崩溃恢复模块通过监听此事件判断池是否存活
-  });
-
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
   ipcMain.on('pool:toggleDevTools', () => {
     if (app.isPackaged) return;
@@ -214,5 +201,5 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 13 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action）');
+  console.log('[pool-handlers] 已注册 11 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action）');
 }
