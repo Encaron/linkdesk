@@ -6,7 +6,12 @@
 
 import { ipcMain, clipboard } from 'electron';
 
+// E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
+let _registered = false;
+
 export function registerClipboardHandlers(): void {
+  if (_registered) return;
+  _registered = true;
   ipcMain.handle('clipboard:readText', () => {
     return clipboard.readText();
   });

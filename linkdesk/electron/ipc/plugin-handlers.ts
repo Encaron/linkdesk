@@ -8,7 +8,12 @@
 import { ipcMain } from 'electron';
 import { pluginFileService } from '../services/plugin-file-service.js';
 
+// E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
+let _registered = false;
+
 export function registerPluginHandlers(): void {
+  if (_registered) return;
+  _registered = true;
   // 列出插件目录
   ipcMain.handle('plugins:listDirs', async () => {
     return pluginFileService.listPluginDirs();

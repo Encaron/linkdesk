@@ -16,7 +16,12 @@ import {
   setActiveProtocol,
 } from '../../src/core/registry/ProtocolRegistry.js';
 
+// E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
+let _registered = false;
+
 export function registerProtocolHandlers(): void {
+  if (_registered) return;
+  _registered = true;
   ipcMain.handle('protocol:listProtocols', () => {
     return listProtocols().map((p) => ({
       id: p.id,

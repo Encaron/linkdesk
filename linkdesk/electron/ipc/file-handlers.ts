@@ -9,8 +9,15 @@ import { ipcMain, BrowserWindow } from 'electron';
 import { fileService } from '../services/file-service.js';
 import type { WindowManager } from '../window-manager.js';
 
+// E5.7#36：壳崩重建复用本函数——引用始终刷新（watcher 广播回调读模块引用），IPC 通道只注册一次
+let _windowManager: WindowManager | undefined;
+let _registered = false;
+
 // E5#80：windowManager 用于广播文件变更到所有插件 WebView
 export function registerFileHandlers(windowManager?: WindowManager): void {
+  _windowManager = windowManager;
+  if (_registered) return;
+  _registered = true;
   // ── 路径 ──
 
   ipcMain.handle('path:appDataDir', () => {
@@ -75,9 +82,9 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
         win.webContents.send(`filesystem:changed:${watcherId}`, change);
       }
       // E5#80 + E5.5#9d：广播文件变更到所有实例 WebView
-      if (windowManager) {
-        for (const instanceId of windowManager.getAllInstanceIds()) {
-          windowManager.getPluginView(instanceId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
+      if (_windowManager) {
+        for (const instanceId of _windowManager.getAllInstanceIds()) {
+          _windowManager.getPluginView(instanceId)?.webContents.send(`filesystem:changed:${watcherId}`, change);
         }
       }
     });

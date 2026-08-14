@@ -7,7 +7,12 @@
 
 import { dialog, ipcMain } from 'electron';
 
+// E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
+let _registered = false;
+
 export function registerDialogHandlers(): void {
+  if (_registered) return;
+  _registered = true;
   // 打开选择对话框（文件或目录）——对标 Tauri dialog.open()
   ipcMain.handle('dialog:open', async (_event, options?: {
     title?: string;

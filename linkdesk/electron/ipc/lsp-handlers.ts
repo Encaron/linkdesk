@@ -133,7 +133,15 @@ function copyDirFromAsar(src: string, dest: string): void {
   }
 }
 
+// E5.7#36：壳崩重建复用本函数——引用始终刷新（lsp:data 推送读模块引用），IPC 通道只注册一次
+let _mainWindow: BrowserWindow | null = null;
+let _registered = false;
+
 export function registerLspHandlers(mainWindow: BrowserWindow): void {
+  _mainWindow = mainWindow;
+  if (_registered) return;
+  _registered = true;
+
   ipcMain.handle("lsp:spawn", async (event, { command, args, pluginId }: {
     command: string;
     args?: string[];
@@ -171,7 +179,7 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
           wc.send("lsp:data", { channelId, data: text });
         }
       };
-      sendOnce(mainWindow?.isDestroyed() ? null : mainWindow.webContents);
+      sendOnce(_mainWindow && !_mainWindow.isDestroyed() ? _mainWindow.webContents : null);
       sendOnce(senderWc);
     });
 

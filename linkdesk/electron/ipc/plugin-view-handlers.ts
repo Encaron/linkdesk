@@ -16,10 +16,16 @@ import { DEV_SERVER_URL } from '../../shared/constants.js'; // E5#102b
 
 let _registry: PluginViewRegistry | null = null;
 let _mainWindow: BrowserWindow | null = null;
+let _windowManager: WindowManager | null = null;
+// E5.7#36：壳崩重建复用本文件两个 register——引用始终刷新（handler 闭包运行时读），IPC 通道只注册一次
+let _pluginViewRegistered = false;
+let _poolHandlersRegistered = false;
 
 export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWindow: BrowserWindow): void {
   _registry = registry;
   _mainWindow = mainWindow;
+  if (_pluginViewRegistered) return;
+  _pluginViewRegistered = true;
 
   ipcMain.handle('plugin-view:setVisible', (_event, instanceId: string, visible: boolean) => {
     _registry?.setVisible(instanceId, visible);
@@ -109,22 +115,27 @@ export function registerPluginViewHandlers(registry: PluginViewRegistry, mainWin
  * E5.7 极简Pool：唯一 WCV，无 zone 路由——poolId 概念全程不出现。
  */
 export function registerPoolHandlers(windowManager: WindowManager, mainWindow: BrowserWindow): void {
+  _windowManager = windowManager;
+  _mainWindow = mainWindow;
+  if (_poolHandlersRegistered) return;
+  _poolHandlersRegistered = true;
+
   // 壳→Pool：推送布局快照——单 WCV 直推（E5.7#4）
   ipcMain.on('pool:push-layout', (_event, layout: unknown) => {
-    windowManager.pushLayout(layout);
+    _windowManager?.pushLayout(layout);
   });
 
   // Pool→壳：池 React 挂载完成（preload-pool 仍带 zone='' 发送——inert 参数，链路不变）
   ipcMain.on('pool:ready', (_event, zone: string) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:ready', zone);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:ready', zone);
     }
     console.log('[pool-handlers] Pool 就绪');
   });
 
   // 壳→Pool：心跳 ping——E5.6#27 崩溃恢复会用到
   ipcMain.on('pool:ping', () => {
-    const poolView = windowManager.getPoolView();
+    const poolView = _windowManager?.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       poolView.webContents.send('pool:pong');
     }
@@ -138,7 +149,7 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
   ipcMain.on('pool:toggleDevTools', () => {
     if (app.isPackaged) return;
-    const poolView = windowManager.getPoolView();
+    const poolView = _windowManager?.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
       if (poolView.webContents.isDevToolsOpened()) {
         poolView.webContents.closeDevTools();
@@ -152,8 +163,8 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // 池组件通过 pool.sidebarAction() 发送，主进程转发到壳窗口。
   // 壳侧 preload 接收后调 ViewContainerService 方法。
   ipcMain.on('pool:sidebar-action', (_event, action: unknown) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:sidebar-action', action);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:sidebar-action', action);
     }
   });
 
@@ -161,44 +172,44 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // 池组件通过 pool.tabAction() 发送，主进程转发到壳窗口。
   // 壳侧 preload 接收后调 useTabManager 方法。
   ipcMain.on('pool:tab-action', (_event, action: unknown) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:tab-action', action);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:tab-action', action);
     }
   });
 
   // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
   ipcMain.on('pool:quickpick-show', (_event, data: unknown) => {
-    windowManager.pushQuickPick(data);
+    _windowManager?.pushQuickPick(data);
   });
 
   // E5.7#15：Pool→壳——QuickPick 动作（select/highlight/close/itemAction），按 key 回传
   ipcMain.on('pool:quickpick-action', (_event, action: unknown) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:quickpick-action', action);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:quickpick-action', action);
     }
   });
 
   // E5.7#16：壳→Pool——Toast 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
   ipcMain.on('pool:toast-show', (_event, data: unknown) => {
-    windowManager.pushToast(data);
+    _windowManager?.pushToast(data);
   });
 
   // E5.7#16：Pool→壳——Toast 动作（dismiss/action），按 id + actionId 回传
   ipcMain.on('pool:toast-action', (_event, action: unknown) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:toast-action', action);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:toast-action', action);
     }
   });
 
   // E5.7#17：壳→Pool——Dialog 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
   ipcMain.on('pool:dialog-show', (_event, data: unknown) => {
-    windowManager.pushDialog(data);
+    _windowManager?.pushDialog(data);
   });
 
   // E5.7#17：Pool→壳——Dialog 动作（confirm/cancel），壳侧 settle Promise
   ipcMain.on('pool:dialog-action', (_event, action: unknown) => {
-    if (mainWindow && !mainWindow.isDestroyed()) {
-      mainWindow.webContents.send('pool:dialog-action', action);
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send('pool:dialog-action', action);
     }
   });
 

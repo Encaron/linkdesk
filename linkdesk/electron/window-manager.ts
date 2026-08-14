@@ -14,6 +14,7 @@ import { BrowserWindow, WebContentsView, app, WebContents, nativeTheme } from 'e
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../shared/constants.js'; // E5.6#5：Pool URL 构建
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
+import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
@@ -522,6 +523,8 @@ export class WindowManager {
 
   /** E5.6#5g → E5.7#4：推送布局协议——单 WCV 直推（无 zone 路由） */
   pushLayout(layout: unknown): void {
+    // E5.7#36：缓存布局快照——Pool 崩溃后主进程不依赖壳即时响应即可回放
+    cacheLayoutSnapshot(layout);
     const view = this.mainPoolView;
     if (!view || view.webContents.isDestroyed()) {
       console.warn('[WindowManager] pushLayout 失败——Pool 不存在或已销毁');
