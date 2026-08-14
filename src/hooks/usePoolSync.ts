@@ -462,17 +462,16 @@ export interface UsePoolSyncInput {
   sidebarView: string | null;
   /** 侧栏是否展开（未折叠） */
   isSidebarVisible: boolean;
-  /** 侧栏当前宽度（px） */
-  sidebarWidth: number;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
   onTabAction?: (action: any) => void;
 }
 
 /**
  * 构建 PoolLayout 并推送到唯一 Pool（E5.7#4 单 WCV 直推）。
- * 依赖 tabState / sidebarView / isSidebarVisible / sidebarWidth——任一变化触发全量推送。
+ * 依赖 tabState / sidebarView / isSidebarVisible——任一变化触发全量推送。
+ * E5.7#9：侧栏宽度不再经 props——LayoutEngine getBounds 内部直读 + onDidChangeLayout 重推。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onTabAction }: UsePoolSyncInput): void {
+export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabAction }: UsePoolSyncInput): void {
   // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
   const { t, i18n } = useTranslation();
 
@@ -505,6 +504,16 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
       setLayoutVersion((v) => v + 1);
     });
     return () => sub();
+  }, []);
+
+  // E5.7#9：侧栏宽度真相源改读 LayoutEngine（zoneBounds→props 链已随壳 DOM 删除）。
+  // onDidChangeLayout → layoutVersion bump——setZoneWidth 折叠/展开、窗口 resize、
+  // Phase 3 #13 拖拽 commit 后重推布局。App 侧只喂 setContainerSize。
+  useEffect(() => {
+    const unsub = layoutEngine.onDidChangeLayout(() => {
+      setLayoutVersion((v) => v + 1);
+    });
+    return unsub;
   }, []);
 
   // E5.7#5：context key 变化（槽位按钮 when / 菜单 when 语义）与语言切换（t() 文案）→ 重推布局。
@@ -672,6 +681,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     // 池只要知道是哪个容器（sidebarView 或 lastSidebarViewRef），就应该渲染侧栏。
     // 宽≤48 → collapsed（▶ 按钮），宽>48 → 展开。两条坍塌路径（图标点击/◀按钮）行为一致。
     const effectiveSidebarView = sidebarView || lastSidebarViewRef.current;
+    // E5.7#9：侧栏宽度从 LayoutEngine 读（zone 几何真相源在壳；App 喂容器尺寸）
+    const sidebarWidth = layoutEngine.getBounds("sidebar")?.width ?? 0;
     let sidebar: SidebarLayout;
     if (effectiveSidebarView) {
       const container = ViewContainerService.getViewContainer(effectiveSidebarView);
@@ -758,5 +769,5 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     };
 
     poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion, t, chordLabel, eventEntries]);
+  }, [tabState, sidebarView, isSidebarVisible, layoutVersion, t, chordLabel, eventEntries]);
 }
