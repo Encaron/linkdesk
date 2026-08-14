@@ -1,14 +1,18 @@
 /**
- * OverlayWindow——全屏透明 BrowserWindow，浮在所有 Pool 之上。
+ * OverlayWindow——全屏透明 BrowserWindow，浮在壳窗口与 Pool WCV 之上。
  * E5.6#21a。
  *
- * 解决的问题：SidebarPool 和 MainPool 是同级 WebContentsView——任一个 Pool 的
+ * 解决的问题（E5.6 起源）：SidebarPool 和 MainPool 曾是同级 WebContentsView——任一个 Pool 的
  * DOM 元素超出自身矩形边界后，被另一个 Pool 裁剪。z-index 在 Chromium 渲染进程间无效。
+ * E5.7（#12 提前后）：双Pool已合并为唯一 WCV，同类问题仍在——Pool WCV 永远压在壳渲染
+ * 进程 DOM 之上，壳侧浮层会被盖住。浮层最终归宿是池内 FloatingLayerHost（#25，Phase 4），
+ * 到位前 OverlayWindow 继续承载 QuickPick/右键菜单/Toast/Dialog。
  *
  * OverlayWindow 是独立的透明 BrowserWindow（parent: mainWindow），默认鼠标穿透。
  * 浮层 UI（右键菜单/命令面板/Toast/Dialog）渲染在此窗口内——不被任何 Pool 裁剪。
  *
- * 对标 VS Code 的 overlay 层——但 VS Code 是单 WebView，linkDesk 是多 Pool WebContentsView。
+ * 对标 VS Code 的 overlay 层——VS Code 是单 WebView 同进程 z-index；linkDesk 池 WCV 与壳
+ * 是不同渲染进程，z-index 不通，故需独立窗口承载浮层。
  *
  * ── 关键设计 ──
  * - 默认 setIgnoreMouseEvents(true)——鼠标事件穿过透明区域到达下方 Pool
