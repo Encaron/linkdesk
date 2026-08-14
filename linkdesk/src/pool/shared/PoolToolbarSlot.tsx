@@ -11,7 +11,7 @@
 import { useRef, useLayoutEffect, useState } from "react";
 import type { SidebarViewMeta } from "../../core/types/poolLayout";
 import ErrorBoundary from "../../components/shared/ErrorBoundary";
-import PluginComponent from "../shared/PluginComponent";
+import PluginComponent from "./PluginComponent";
 
 interface PoolToolbarSlotProps {
   views: SidebarViewMeta[];

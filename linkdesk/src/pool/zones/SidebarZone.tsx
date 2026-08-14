@@ -26,9 +26,9 @@
  */
 
 import { useState, useCallback } from "react";
-import PoolToolbarSlot from "../sidebar/PoolToolbarSlot"; // E5.7#11：迁 shared/ 后改 import
-import PoolSectionStack from "../sidebar/PoolSectionStack"; // E5.7#11：迁 shared/ 后改 import
-import type { SidebarAction } from "../sidebar/PoolSectionStack";
+import PoolToolbarSlot from "../shared/PoolToolbarSlot"; // E5.7#11：随侧栏组件迁 shared/
+import PoolSectionStack from "../shared/PoolSectionStack"; // E5.7#11：随侧栏组件迁 shared/
+import type { SidebarAction } from "../shared/PoolSectionStack";
 import type { SidebarLayout, SidebarViewMeta } from "../../core/types/poolLayout";
 // E5.6#11-fix4：header 右键菜单——壳 ContextMenu 聪慧组件（池内用法同 GroupTabBar）
 import ContextMenu from "../../components/shared/ContextMenu";

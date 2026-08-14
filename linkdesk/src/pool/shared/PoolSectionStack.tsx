@@ -14,8 +14,8 @@ import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } fr
 import type { SidebarViewMeta } from "../../core/types/poolLayout";
 import ErrorBoundary from "../../components/shared/ErrorBoundary";
 import SidebarSection from "../../components/shared/SidebarSection";
-import PluginComponent from "../shared/PluginComponent";
-import { VIEW_DRAG_MIME } from "../shared/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
+import PluginComponent from "./PluginComponent";
+import { VIEW_DRAG_MIME } from "./viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
 
