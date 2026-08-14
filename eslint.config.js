@@ -96,6 +96,14 @@ export default [
       // ═══ E3.5 #CP17 硬约束：QuickPick 禁止 renderItem——新代码走 slot props ═══
       "linkdesk/no-quickpick-render-item": "error",
 
+      // ═══ E5.7#45：Phase 10 死代码防线——已删概念字面量禁止复活（error 级） ═══
+      // OverlayWindow / sidebarPoolView / pluginViews / instanceId 随 per-tab 多实例
+      // 与多Pool 模型消亡（E5.7#12/#19/#41-#44）——新代码出现即死代码回潮。
+      // 设计出处：清理方案 §5。⚠️ 实现用独立本地规则而非 no-restricted-syntax 的第二个
+      // 条目——flat config 同规则跨块合并时高 severity 胜出且低 severity 的 options 被丢弃，
+      // 实测会静默吞掉上方 warn 级 v3-/pluginId 硬编码选择器（859→537 警告消失）。
+      "linkdesk/no-deleted-e5.7-concepts": "error",
+
       // ═══ 防止副作用写在 setState 内部（B25 教训） ═══
       // 此规则在 TypeScript 层面无法精确检测，由 code review 辅助。
       // 原则：setState((prev) => { ... return newState }) 内不放 appendLine/emit/invoke。
