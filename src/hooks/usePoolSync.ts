@@ -633,6 +633,9 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
   // （壳 StatusBar 的 setStatusBarTick + NotificationCenter 的 setNotifications 订阅迁入）
   useEffect(() => onDidChangeStatusBar.event(() => setLayoutVersion((v) => v + 1)), []);
   useEffect(() => shellEvents.on("tab:focused", () => setLayoutVersion((v) => v + 1)), []);
+  // E5.7#6 补丁：图标拖拽换位 commit 回环——壳收到 icon:reordered 持久化后重推权威序，
+  // 池 localIcons 对齐（真相源在壳；IconBarZone 拖拽期间忽略推送防闪跳）。
+  useEffect(() => shellEvents.on("icon:reordered", () => setLayoutVersion((v) => v + 1)), []);
   useEffect(() => subscribeToasts(() => setLayoutVersion((v) => v + 1)), []);
   useEffect(() => {
     const unsub = shellEvents.on("statusbar:update", (entries) => {

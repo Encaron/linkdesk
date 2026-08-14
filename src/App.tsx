@@ -326,6 +326,16 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
+  // E5.7#6 补丁：桥接池图标拖拽换位——池 events.emit("icon:reordered") → 主进程 plugin:emit →
+  // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents → 上方 E5#7d 订阅持久化 iconOrder，
+  // usePoolSync 订阅重推 → 池收到壳确认的权威序（真相源在壳——#13 乐观本地 + commit 同款）。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("icon:reordered", (ids: string[]) => {
+      shellEvents.emit("icon:reordered", ids);
+    });
+    return () => { unsub?.(); };
+  }, []);
+
   /* ---- E5#9f：LayoutEngine 壳布局——E5.7#9 起只喂容器尺寸 ---- */
   // E5.7#12.5：Pool bounds 推流已删（主进程 syncPoolBounds 接管，WCV 满窗零偏移）。
   // LayoutEngine 仍需喂容器尺寸——zone 几何真相源在壳（usePoolSync 读 sidebar 宽度、
