@@ -14,6 +14,8 @@ import ToastContainer from "./components/ToastContainer";
 // E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
 import QuickPick from "./components/shared/QuickPick";
 import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
+// E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
+import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast } from "./core/services/toast";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
@@ -432,6 +434,40 @@ function App() {
 
     return () => {
       unsubChange();
+      unsubAction();
+    };
+  }, []);
+
+  // E5.7#16：Toast 聪慧→哑桥——壳 toast 服务序列化全量快照推池 ToastHost 哑渲染，
+  // 池动作（dismiss/action）按 id + actionId 回传，壳重解析 onClick 闭包执行。
+  // 旧壳渲染（ToastContainer）保留至 #18 清理——本桥与旧路径并存，互不干扰。
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi?.pushToast || !poolApi?.onToastAction) return;
+
+    const push = () => poolApi.pushToast(serializeToasts());
+
+    const unsubToasts = subscribeToasts(push);
+    const unsubSuppressed = subscribeToastSuppressed(push);
+
+    // 池动作回传——按 id + actionId 重解析（onClick 闭包不过 IPC，壳侧执行）。
+    // 动作用查表分发——避免 lowercase 字面量比较（no-restricted-syntax 误报规则）
+    const unsubAction = poolApi.onToastAction((action: { type: string; id: string; actionId?: string }) => {
+      const handlers: Record<string, () => void> = {
+        dismiss: () => dismissToast(action.id),
+        action: () => {
+          if (action.actionId !== undefined) runToastAction(action.id, action.actionId);
+        },
+      };
+      handlers[action.type]?.();
+    });
+
+    // 挂载时同步当前状态——防桥接前已弹出的 toast
+    push();
+
+    return () => {
+      unsubToasts();
+      unsubSuppressed();
       unsubAction();
     };
   }, []);

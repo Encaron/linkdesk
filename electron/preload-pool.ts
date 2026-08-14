@@ -63,6 +63,24 @@ ipcRenderer.on('pool:quickpick', (_event, data: PoolQuickPickDataShape) => {
   }
 });
 
+// ── E5.7#16：pool:toast 缓冲回放——Toast 哑渲染数据可能在 ToastHost mount 前到达 ──
+// 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
+// 只保留最后一份（全量快照语义——新快照整体取代旧快照，回放旧数据无意义）。
+// DTO 形状与 src/core/types/poolToast.ts 对齐——preload 不 import src（构建边界）。
+type PoolToastDataShape = { toasts: unknown[]; suppressed: boolean };
+const _toastBuffer: PoolToastDataShape[] = [];
+let _toastCallback: ((data: PoolToastDataShape) => void) | null = null;
+let _toastActive = false;
+
+ipcRenderer.on('pool:toast', (_event, data: PoolToastDataShape) => {
+  if (!_toastActive || !_toastCallback) {
+    _toastBuffer.length = 0;
+    _toastBuffer.push(data);
+  } else {
+    try { _toastCallback(data); } catch { /* contextBridge 回调静默失败 */ }
+  }
+});
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
@@ -503,6 +521,30 @@ try {
       /** 行内按钮——壳按 key 重解析 item 执行 onItemAction(item, actionId) */
       itemAction: (key: string, actionId: string) =>
         ipcRenderer.send('pool:quickpick-action', { type: 'itemAction', key, actionId }),
+    },
+
+    // ── E5.7#16：Toast 哑渲染订阅——池 ToastHost 消费 ──
+    toast: {
+      /** 订阅壳推送的 Toast 全量快照（缓冲+回放，只保留最后一份）。返回 unsubscribe */
+      onShow: (cb: (data: PoolToastDataShape) => void) => {
+        _toastCallback = cb;
+        _toastActive = true;
+        if (_toastBuffer.length > 0) {
+          for (const data of _toastBuffer) {
+            try { cb(data); } catch { /* contextBridge 回调静默失败 */ }
+          }
+          _toastBuffer.length = 0;
+        }
+        return () => {
+          _toastCallback = null;
+          _toastActive = false;
+        };
+      },
+      /** 关闭单条——壳按 id 重解析执行 dismissToast */
+      dismiss: (id: string) => ipcRenderer.send('pool:toast-action', { type: 'dismiss', id }),
+      /** 行内操作按钮——壳按 id + actionId（位置序号）重解析 onClick */
+      action: (id: string, actionId: string) =>
+        ipcRenderer.send('pool:toast-action', { type: 'action', id, actionId }),
     },
 
     // ── 🆕 E5.6#11.5a：文件关联——扩展名→插件ID ──
