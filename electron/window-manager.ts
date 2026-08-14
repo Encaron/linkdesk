@@ -482,7 +482,7 @@ export class WindowManager {
 
   /**
    * E5.7#12.5：Pool 满窗零偏移——bounds 换主。
-   * 主进程 = bounds 唯一真相源：窗口内容区即 Pool bounds，resize 时跟随（模式同 overlay-window.ts syncBounds）。
+   * 主进程 = bounds 唯一真相源：窗口内容区即 Pool bounds，resize 时跟随。
    * E5.6 时代壳推流（pool:set-bounds）已死链删除——titlebar 是池内 zone，无需 TITLE_BAR_HEIGHT 偏移。
    */
   private syncPoolBounds = (): void => {
