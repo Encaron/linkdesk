@@ -65,6 +65,13 @@ ipcRenderer.on('pool:tab-action', (_event, action: any) => {
   if (_tabActionHandler) _tabActionHandler(action);
 });
 
+// E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
+type PoolQuickPickAction = { type: string; key?: string; actionId?: string };
+let _quickPickActionHandler: ((action: PoolQuickPickAction) => void) | null = null;
+ipcRenderer.on('pool:quickpick-action', (_event, action: PoolQuickPickAction) => {
+  if (_quickPickActionHandler) _quickPickActionHandler(action);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -513,6 +520,13 @@ try {
       onTabAction: (cb: (action: any) => void) => {
         _tabActionHandler = cb;
         return () => { _tabActionHandler = null; };
+      },
+      /** E5.7#15：推送 QuickPick 哑渲染数据到池——壳 QuickPickService 序列化后直推（聪慧→哑） */
+      pushQuickPick: (data: unknown) => ipcRenderer.send('pool:quickpick-show', data),
+      /** E5.7#15：注册 QuickPick 动作回调——池→壳→QuickPickService。返回 unsubscribe */
+      onQuickPickAction: (cb: (action: PoolQuickPickAction) => void) => {
+        _quickPickActionHandler = cb;
+        return () => { _quickPickActionHandler = null; };
       },
     },
 

@@ -11,6 +11,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
 import {
   getAvailableThemes,
   getThemesByPlugin,
@@ -122,6 +123,18 @@ export function showThemePicker(pluginId?: string): void {
   const originalTheme = getCurrentTheme()?.name ?? null;
   let committed = false;
 
+  // E5.7#15：uiTheme → 显示文本查表——renderDetail 与 serialize 共用
+  // （显示文本铁律：壳侧 t() 解析；查表绕开 no-restricted-syntax lowercase 字面量比较误报）
+  const detailLabelOf = (name: string): string | undefined => {
+    const theme = ThemeRegistry.get(name);
+    if (!theme) return undefined;
+    const labels: Record<string, string> = {
+      dark: i18n.t("暗色主题"),
+      light: i18n.t("浅色主题"),
+    };
+    return labels[theme.uiTheme] ?? i18n.t("高对比度");
+  };
+
   QuickPickService.show<string>({
     mode: "theme",
     items: themes,
@@ -141,11 +154,16 @@ export function showThemePicker(pluginId?: string): void {
     },
     renderLabel: (name) => name,
     renderCategory: (name) => name === originalTheme ? "当前" : undefined,
-    renderDetail: (name) => {
-      const theme = ThemeRegistry.get(name);
-      if (!theme) return null;
-      return theme.uiTheme === "dark" ? "暗色主题" : theme.uiTheme === "light" ? "浅色主题" : "高对比度";
-    },
+    // E5.7#15：renderDetail 与 serialize 共用 detailLabelOf（一处定义，壳侧 t() 解析）
+    renderDetail: (name) => detailLabelOf(name),
+    // E5.7#15：聪慧→哑——池 DTO 序列化（显示文本铁律：壳侧 t() 解析后推送，池原样渲染）
+    serialize: (name) => ({
+      key: name,
+      searchText: name,
+      label: name,
+      category: name === originalTheme ? i18n.t("当前") : undefined,
+      detail: detailLabelOf(name),
+    }),
     onClose: () => {
       if (!committed && originalTheme) {
         loadTheme(originalTheme).then(applyTheme).catch(() => {});

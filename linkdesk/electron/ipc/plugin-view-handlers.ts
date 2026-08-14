@@ -166,6 +166,18 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
+  ipcMain.on('pool:quickpick-show', (_event, data: unknown) => {
+    windowManager.pushQuickPick(data);
+  });
+
+  // E5.7#15：Pool→壳——QuickPick 动作（select/highlight/close/itemAction），按 key 回传
+  ipcMain.on('pool:quickpick-action', (_event, action: unknown) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pool:quickpick-action', action);
+    }
+  });
+
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 7 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action）');
+  console.log('[pool-handlers] 已注册 9 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action）');
 }

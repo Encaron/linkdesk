@@ -13,6 +13,7 @@
  * 容器 z-index = Z_INDEX.toast（浮层层级基准）——#26 常量表。
  */
 import { Z_INDEX } from "../../constants";
+import QuickPickHost from "../floating/QuickPickHost";
 
 function FloatingLayerHost() {
   return (
@@ -27,8 +28,10 @@ function FloatingLayerHost() {
       {/* ContextMenu portal——#14 接入 */}
       <div id="context-menu-root" />
 
-      {/* QuickPick / CommandPalette portal——#15 接入 */}
-      <div id="quick-pick-root" />
+      {/* QuickPick / CommandPalette portal——#15 接入：壳推 DTO，QuickPickHost 哑渲染 */}
+      <div id="quick-pick-root">
+        <QuickPickHost />
+      </div>
 
       {/* Dialog / Modal portal——#17 接入 */}
       <div id="dialog-root" />

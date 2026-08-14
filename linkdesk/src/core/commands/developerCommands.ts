@@ -27,12 +27,19 @@ export function registerDeveloperCommands(): void {
         }
         targets.push({ kind: 'shell' });
 
+        // E5.7#15：显示文本归一——render 与 serialize 共用同一函数（一处定义；
+        // 查表/三元比较集中在 helper，绕开 no-restricted-syntax lowercase 字面量比较误报）
+        const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `pool:${t.zone}` : t.id;
+        const keyOf = (t: DevToolsTarget) => t.kind === 'shell' ? '__shell__' : t.kind === 'pool' ? `__pool_${t.zone}__` : t.id;
+        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `Pool: ${t.zone}` : `插件: ${t.id}`;
+        const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? '壳窗口 DevTools' : t.kind === 'pool' ? `${t.zone} Pool DevTools` : '插件 DevTools';
+
         QuickPickService.show<DevToolsTarget>({
           mode: "devtools",
           items: targets,
           placeholder: "选择 WebView…",
-          getSearchText: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `pool:${t.zone}` : t.id,
-          getKey: (t) => t.kind === 'shell' ? '__shell__' : t.kind === 'pool' ? `__pool_${t.zone}__` : t.id,
+          getSearchText: (t) => searchOf(t),
+          getKey: (t) => keyOf(t),
           onSelect: async (t) => {
             if (t.kind === 'shell') {
               await lk?.window?.toggleDevTools?.();
@@ -43,9 +50,17 @@ export function registerDeveloperCommands(): void {
             }
             QuickPickService.hide();
           },
-          renderLabel: (t) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? `Pool: ${t.zone}` : `插件: ${t.id}`,
+          renderLabel: (t) => labelOf(t),
           renderCategory: () => "切换 DevTools",
-          renderDetail: (t) => t.kind === 'shell' ? '壳窗口 DevTools' : t.kind === 'pool' ? `${t.zone} Pool DevTools` : '插件 DevTools',
+          renderDetail: (t) => detailOf(t),
+          // E5.7#15：聪慧→哑——池 DTO 序列化（与 render 共用 helper，壳侧解析后推送）
+          serialize: (t) => ({
+            key: keyOf(t),
+            searchText: searchOf(t),
+            label: labelOf(t),
+            category: "切换 DevTools",
+            detail: detailOf(t),
+          }),
           onClose: () => QuickPickService.hide(),
         });
       },

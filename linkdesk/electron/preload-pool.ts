@@ -45,6 +45,24 @@ ipcRenderer.on('pool:layout', (_event, layout: any) => {
   }
 });
 
+// ── E5.7#15：pool:quickpick 缓冲回放——QuickPick 哑渲染数据可能在 QuickPickHost mount 前到达 ──
+// 对标 pool:layout 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
+// 只保留最后一份（浮动层是单例态——open/close 全量替换，旧数据回放无意义）。
+// DTO 形状与 src/core/types/poolQuickPick.ts 对齐——preload 不 import src（构建边界）。
+type PoolQuickPickDataShape = { open: boolean; placeholder?: string; prefix?: string; items?: unknown[] };
+const _quickPickBuffer: PoolQuickPickDataShape[] = [];
+let _quickPickCallback: ((data: PoolQuickPickDataShape) => void) | null = null;
+let _quickPickActive = false;
+
+ipcRenderer.on('pool:quickpick', (_event, data: PoolQuickPickDataShape) => {
+  if (!_quickPickActive || !_quickPickCallback) {
+    _quickPickBuffer.length = 0;
+    _quickPickBuffer.push(data);
+  } else {
+    try { _quickPickCallback(data); } catch { /* contextBridge 回调静默失败 */ }
+  }
+});
+
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
 ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
@@ -457,6 +475,34 @@ try {
       sidebarAction: (action: unknown) => ipcRenderer.send('pool:sidebar-action', action),
       // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
       tabAction: (action: unknown) => ipcRenderer.send('pool:tab-action', action),
+    },
+
+    // ── E5.7#15：QuickPick 哑渲染订阅——池 QuickPickHost 消费 ──
+    quickPick: {
+      /** 订阅壳推送的 QuickPick 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
+      onShow: (cb: (data: PoolQuickPickDataShape) => void) => {
+        _quickPickCallback = cb;
+        _quickPickActive = true;
+        if (_quickPickBuffer.length > 0) {
+          for (const data of _quickPickBuffer) {
+            try { cb(data); } catch { /* contextBridge 回调静默失败 */ }
+          }
+          _quickPickBuffer.length = 0;
+        }
+        return () => {
+          _quickPickCallback = null;
+          _quickPickActive = false;
+        };
+      },
+      /** 选中条目——壳按 key 重解析 item 执行 onSelect */
+      select: (key: string) => ipcRenderer.send('pool:quickpick-action', { type: 'select', key }),
+      /** 高亮条目——壳按 key 重解析 item 执行 onHighlight */
+      highlight: (key: string) => ipcRenderer.send('pool:quickpick-action', { type: 'highlight', key }),
+      /** 关闭（Escape / 点击 backdrop）——壳执行 onClose */
+      close: () => ipcRenderer.send('pool:quickpick-action', { type: 'close' }),
+      /** 行内按钮——壳按 key 重解析 item 执行 onItemAction(item, actionId) */
+      itemAction: (key: string, actionId: string) =>
+        ipcRenderer.send('pool:quickpick-action', { type: 'itemAction', key, actionId }),
     },
 
     // ── 🆕 E5.6#11.5a：文件关联——扩展名→插件ID ──

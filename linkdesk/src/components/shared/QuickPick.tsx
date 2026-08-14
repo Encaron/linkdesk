@@ -10,9 +10,9 @@
  */
 
 import { useState, useRef, useEffect, useMemo, type ReactNode } from "react";
-import { createRoot } from "react-dom/client";
 import { useTranslation } from "react-i18next";
 import { registerCommand } from "../../core/registry/CommandRegistry";
+import { QuickPickService } from "../../core/registry/QuickPickService"; // E5.7#15：命令式入口归一——走服务桥到池
 import OverlayPortal from "./OverlayPortal";
 
 /* ── 模糊搜索（E2c #18）── */
@@ -315,34 +315,43 @@ interface ShowQuickPickOptions {
 /**
  * 命令式弹出 QuickPick——对标 VS Code vscode.window.showQuickPick()。
  * 插件调 `linkdesk.commands.executeCommand('quickpick.show', { title, items })`
- * → 浮动列表 → 用户选一项 / Esc → 返回结果 / undefined → 自动清理 DOM。
+ * → 浮动列表 → 用户选一项 / Esc → 返回结果 / undefined。
+ *
+ * E5.7#15：归一走 QuickPickService——壳侧序列化 DTO 推池 QuickPickHost 渲染，
+ * 不再自建 DOM root（旧壳 DOM 在 WCV 后面不可见，插件 API 必须经桥才能在池显示）。
  */
 export function showQuickPick(options: ShowQuickPickOptions): Promise<QuickPickItem | undefined> {
   return new Promise((resolve) => {
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-
-    const cleanup = (result?: QuickPickItem) => {
-      root.unmount();
-      container.remove();
-      resolve(result);
+    // settle 守卫——select 与 close 都会触发（对标壳 QuickPick handleSelect：onSelect 后必 onClose）
+    let settled = false;
+    const settle = (v?: QuickPickItem) => {
+      if (!settled) {
+        settled = true;
+        resolve(v);
+      }
     };
-
-    root.render(
-      <QuickPick<QuickPickItem>
-        open={true}
-        onClose={() => cleanup(undefined)}
-        items={options.items}
-        placeholder={options.title ?? ""}
-        onSelect={(item) => cleanup(item)}
-        getSearchText={(item) => item.label}
-        getKey={(item) => item.label}
-        // E3.5 #CP22: 切 slot props——description 从第一行移到第二行 detail
-        renderLabel={(item) => item.label}
-        renderDetail={(item) => item.description}
-      />,
-    );
+    QuickPickService.show<QuickPickItem>({
+      mode: "custom",
+      items: options.items,
+      placeholder: options.title ?? "",
+      getSearchText: (item) => item.label,
+      getKey: (item) => item.label,
+      serialize: (item) => ({
+        key: item.label,
+        searchText: item.label,
+        label: item.label,
+        // E3.5 #CP22: description 从第一行移到第二行 detail
+        detail: item.description,
+      }),
+      onSelect: (item) => {
+        settle(item);
+        QuickPickService.hide();
+      },
+      onClose: () => {
+        settle(undefined);
+        QuickPickService.hide();
+      },
+    });
   });
 }
 
