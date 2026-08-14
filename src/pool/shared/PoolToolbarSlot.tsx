@@ -10,7 +10,7 @@
 
 import { useRef, useLayoutEffect, useState } from "react";
 import type { SidebarViewMeta } from "../../core/types/poolLayout";
-import ErrorBoundary from "../../components/shared/ErrorBoundary";
+import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import PluginComponent from "./PluginComponent";
 
 interface PoolToolbarSlotProps {

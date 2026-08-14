@@ -340,11 +340,7 @@ select {
   border-right: 1px solid var(--separator);
 }
 
-.zone-main {
-  flex: 1;
-  min-height: 0;
-  background: var(--bg-window);
-}
+/* E5.7#20：.zone-main 已删——主区占位被 MainZone 替换（flex 由组件内联 style 自理） */
 
 /* 高度由组件内联 style 读 layout.panel.height */
 .zone-panel {
