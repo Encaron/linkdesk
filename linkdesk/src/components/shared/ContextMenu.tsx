@@ -245,13 +245,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     <OverlayPortal rootId="context-menu-root" zIndex={String(Z_INDEX.contextMenu)}>
       {/* E5.7#14：透明 backdrop——吞掉第一击（VS Code 行为）：点击即关且不激活下层内容。
           层级 = contextMenu-1，与菜单本体同 wrapper stacking context 内比较。
-          窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。 */}
+          窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。
+          pointer-events 不在此写——池侧由 #context-menu-root 根级提供（补丁 2026-08-14）。 */}
       <div
         style={{
           position: "fixed",
           inset: 0,
           zIndex: Z_INDEX.contextMenu - 1,
-          pointerEvents: "auto",
         }}
       />
 

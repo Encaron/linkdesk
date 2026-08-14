@@ -6,6 +6,7 @@
  *   - max-height min(360px, 60vh) → 60vh
  * 约束：所有颜色走 CSS 变量——禁止硬编码 hex（backdrop 黑遮罩为设计 §5.1 指定值）。
  * z-index 不写死——inline Z_INDEX.quickPick / quickPick-1（constants.ts 常量表，#26）。
+ * pointer-events 不在此写——由 FloatingLayerHost #quick-pick-root 根级提供（§2 根级 opt-in，补丁 2026-08-14）。
  */
 
 /* ── Backdrop ── */
@@ -14,7 +15,6 @@
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.3); /* 设计 §5.1 */
-  pointer-events: auto;
   /* E3.5 #CP02: 遮罩 fade 动画 */
   opacity: 0;
   transition: opacity 150ms ease-out;
@@ -42,7 +42,6 @@
   border: 1px solid var(--border);
   border-radius: 8px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  pointer-events: auto;
   display: flex;
   flex-direction: column;
   overflow: hidden;
