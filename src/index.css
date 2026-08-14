@@ -294,9 +294,9 @@ select {
   overflow-x: hidden;
 }
 
-/* === E5.7#3 PoolZoneShell——Phase 1 占位骨架 ===
-   zone 尺寸对齐壳常量：标题栏 30px / 图标栏 48px / 状态栏 22px。
-   占位 div 在 Phase 2/3/5 逐个替换为真实 Zone 组件后删除。 */
+/* === E5.7#3 PoolZoneShell 布局骨架——.pool-root/.pool-body/.pool-main-column。
+   占位样式（.zone-placeholder/.zone-sidebar/.zone-panel/.zone-right-sidebar）已随
+   Phase 2/3/5 zone 组件替换全部删除（E5.7#20/#21/#22 收官）。 */
 
 .pool-root {
   display: flex;
@@ -324,33 +324,3 @@ select {
   overflow: hidden;
 }
 
-.zone-placeholder {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--text-muted);
-  font-size: 11px;
-  user-select: none;
-  overflow: hidden;
-}
-
-.zone-sidebar {
-  flex-shrink: 0;
-  background: var(--bg-side-panel);
-  border-right: 1px solid var(--separator);
-}
-
-/* E5.7#20：.zone-main 已删——主区占位被 MainZone 替换（flex 由组件内联 style 自理） */
-
-/* 高度由组件内联 style 读 layout.panel.height */
-.zone-panel {
-  flex-shrink: 0;
-  border-top: 1px solid var(--separator);
-  background: var(--bg-window);
-}
-
-.zone-right-sidebar {
-  flex-shrink: 0;
-  border-left: 1px solid var(--separator);
-  background: var(--bg-side-panel);
-}
