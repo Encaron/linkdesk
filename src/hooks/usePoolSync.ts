@@ -556,13 +556,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
         case "setVisible":
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
           break;
-        // E5.6#11-fix7：池◀/▶按钮→布局引擎→WebContentsView bounds→重推 layout
+        // E5.6#11-fix7 + E5.7#10：池◀/▶按钮——转发 App 侧栏宿主状态机 doCollapse
+        // （图标点击/池按钮/view 菜单三条折叠路径共用一个真相源 + preCollapseWidth 恢复）。
+        // zone 宽变化 → onDidChangeLayout → 重推 layout → 池 collapsed 派生。
         case "toggleSidebarCollapse": {
-          const zone = layoutEngine.getBounds("sidebar");
-          if (zone) {
-            const targetWidth = zone.width <= 48 ? 280 : 28;
-            layoutEngine.setZoneWidth("sidebar", targetWidth);
-          }
+          shellEvents.emit("sidebar:toggleFromPool", undefined);
           break;
         }
         // E5.6#16.5：updateSplitSizes 已迁移到 pool.tabAction 通道——此处不再处理
@@ -670,6 +668,21 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
     return () => { offPanel?.(); offDismiss?.(); offClearAll?.(); offAction?.(); };
   }, []);
 
+  // E5.7#10：E4V#48 视图跨容器拖放 commit——池 IconBarZone drop → 壳 moveView。
+  // 壳 IconBar handleIconDrop 语义迁入（toPluginId 解析目标插件首个容器；无 viewsContainers
+  // 声明则无动作）。moveView 更新双容器活跃 views + 手动 bump 重推确认（真相源在壳）。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("view:droppedOnIcon", (data: { viewId: string; fromContainerId: string; toPluginId: string }) => {
+      const toPlugin = getViewPlugin(data.toPluginId);
+      const containers = toPlugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      const toContainerId = containers ? Object.keys(containers)[0] : undefined;
+      if (!toContainerId) return;
+      ViewContainerService.moveView(data.viewId, data.fromContainerId, toContainerId);
+      setLayoutVersion((v) => v + 1);
+    });
+    return () => { unsub?.(); };
+  }, []);
+
   useEffect(() => {
     // E5.6#11-fix8：记住上次非空 sidebarView——图标栏坍塌时 emit null，但 collapsed ▶ 仍需知道容器
     if (sidebarView) {
@@ -702,6 +715,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
         collapsedViews: [...collapsedSet],
         collapsed: isCollapsed,
         viewId: views[0]?.pluginId ?? null,  // 向后兼容
+        // E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本）
+        emptyText: t("此容器没有已注册的视图"),
+        emptyHint: t("安装插件以添加视图"),
+        expandTooltip: t("展开侧栏"),
+        collapseTooltip: t("折叠侧栏"),
       };
     } else {
       sidebar = {

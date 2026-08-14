@@ -19,9 +19,11 @@
  *   ④ 壳汉堡子面板仅 2 层——池共享 MenuItemList 递归支持 N 层（实际菜单数据 ≤2 层，无感）。
  *   ⑤ 拖拽落点范围：壳只把 icon-bar-top 作目标容器（底部图标不可作落点——壳实现遗漏），
  *      池整列可作落点。换位语义不变（全序 splice），只是落点检测完整化。
- *   ⑥ E4V#48 跨容器拖放（文件树条目拖到图标栏 → 视图移入目标插件容器）未迁——drop 源是
- *      SectionStack（文件树，Phase 3 #10 SidebarZone 才迁池），池内无源无从触发；E5.7
- *      清单无此任务（与拖拽换位同类的静默丢失）。建议并入 #10 迁移——待用户定夺。
+ *   ⑥ E4V#48 跨容器拖放（视图拖到图标栏 → 视图移入目标插件容器）——并入 #10 迁移
+ *      （用户定夺 2026-08-14）：drop 源 PoolSectionStack handleDragStart 写 dataTransfer
+ *      自定义 MIME（application/x-linkdesk-view），图标落点 onDrop 读 MIME → emit
+ *      view:droppedOnIcon → 壳 usePoolSync 解析目标插件首个容器 → moveView + 重推确认。
+ *      替代壳 getDraggingView/setDraggingView 共享状态——dataTransfer 是唯一同步通道。
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -30,6 +32,7 @@ import type { IconBarLayout, IconBarItem } from "../../core/types/poolLayout";
 import MenuItemList from "../shared/MenuItemList";
 import PoolPluginIcon from "../shared/PoolPluginIcon";
 import { executePoolCommand } from "../shared/executePoolCommand";
+import { VIEW_DRAG_MIME } from "../shared/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）
 import "./IconBarZone.css";
 
 /* ── 拖拽状态（壳 IconBar DragState 同款） ── */
@@ -88,6 +91,8 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<{ id: string; pos: "top" | "bottom" } | null>(null);
   const [previewPos, setPreviewPos] = useState<{ x: number; y: number } | null>(null);
+  // E4V#48：跨容器拖放悬停目标——数据含 VIEW_DRAG_MIME 的 HTML5 拖拽（换位拖拽走 mousedown，不触发）
+  const [viewDropTarget, setViewDropTarget] = useState<string | null>(null);
   const dragRef = useRef<DragState | null>(null);
   const dropRef = useRef<{ id: string; pos: "top" | "bottom" } | null>(null);
   const wasDragRef = useRef(false); // 标记本次是否拖拽了——防止 onClick 误触发
@@ -182,7 +187,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
       <div key={item.pluginId} className="icon-bar-item-wrapper">
         {showBefore && <div className="icon-drop-indicator" />}
         <button
-          className={`icon-btn${iconBar.activePluginId === item.pluginId ? " active" : ""}${draggedId === item.pluginId ? " dragging" : ""}`}
+          className={`icon-btn${iconBar.activePluginId === item.pluginId ? " active" : ""}${draggedId === item.pluginId ? " dragging" : ""}${viewDropTarget === item.pluginId ? " view-drop-target" : ""}`}
           data-plugin-id={item.pluginId}
           onMouseDown={(e) => {
             if (e.button !== 0) return;
@@ -197,6 +202,35 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
             }
             // 壳侧消费方：壳 App 桥接 linkdesk.events.on → shellEvents → App 开标签（E5.7#6）
             window.linkdesk?.events?.emit("icon:selected", item.pluginId);
+          }}
+          // E4V#48：视图拖放落点——仅响应携带自定义 MIME 的 HTML5 拖拽（换位拖拽走 mousedown 不触发）
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(VIEW_DRAG_MIME)) return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = "move";
+            setViewDropTarget(item.pluginId);
+          }}
+          onDragLeave={() => {
+            setViewDropTarget((cur) => (cur === item.pluginId ? null : cur));
+          }}
+          onDrop={(e) => {
+            const raw = e.dataTransfer.getData(VIEW_DRAG_MIME);
+            setViewDropTarget(null);
+            if (!raw) return;
+            e.preventDefault();
+            try {
+              const payload = JSON.parse(raw) as { viewId?: string; fromContainerId?: string };
+              if (payload.viewId && payload.fromContainerId) {
+                // 壳 usePoolSync 解析目标插件首个容器（无 viewsContainers 声明则无动作）→ moveView + 重推
+                window.linkdesk?.events?.emit("view:droppedOnIcon", {
+                  viewId: payload.viewId,
+                  fromContainerId: payload.fromContainerId,
+                  toPluginId: item.pluginId,
+                });
+              }
+            } catch {
+              // 数据损坏忽略——壳侧无动作
+            }
           }}
           title={item.label}
           aria-label={item.label}

@@ -9,7 +9,6 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
-import SidePanel from "./components/SidePanel";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
 // E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
@@ -33,6 +32,7 @@ import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
 import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
+import { ViewContainerService } from "./core/services/ViewContainerService"; // E5.7#10：侧栏宿主状态机（view:toggleVisibility）
 import { onDidRequestShowChannel } from "./core/services/LogChannel"; // E3f #54
 import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26 + E5#103
 import { initAll } from "./core/services/AppInitializer"; // E5#107：启动管线——可测试
@@ -365,7 +365,7 @@ function App() {
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
-  // E5.6#9d：侧栏展开/折叠状态——订阅 SidePanel 发出的 sidebar:toggled
+  // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
   sidebarViewRef.current = sidebarView;
@@ -377,16 +377,85 @@ function App() {
     });
   }, []);
 
-  // E3.6：图标栏点击——读 contributes.viewsContainers 取 containerId。
+  // E5.7#10：侧栏宿主状态机——原隐藏挂载 SidePanel 的语义迁入 App（池 SidebarZone 哑渲染，壳持状态）。
+  // 三条入口：icon:selected（图标点击切换/折叠）、sidebar:toggleFromPool（池 ◀/▶ 按钮转发）、
+  // view:toggleCollapse/resetPosition/toggleVisibility（view header 右键菜单，shellMenus emit）。
+  // 折叠真相源 = LayoutEngine zone 宽（≤48 = 折叠）——池 ◀ 按钮只改 zone 宽，此机从 zone 宽
+  // 派生折叠态（不持 collapsedRef，避免池按钮改宽后状态脱节）。
+  const sidebarCollapseState = useRef({
+    containerId: null as string | null,   // SidePanel 的 containerId state——当前侧栏容器
+    lastSidebar: null as string | null,   // SidePanel 的 lastSidebar——折叠后仍知容器（▶ 展开用）
+    preCollapseWidth: 280,                // SidePanel 的 preCollapseWidth——展开恢复目标宽（#13 拖拽后为最后展开宽）
+  });
+  useEffect(() => {
+    const s = sidebarCollapseState.current;
+    const zoneCollapsed = () => (layoutEngine.getBounds("sidebar")?.width ?? 0) <= 48;
+    // E5#49：折叠/展开——被图标点击 + 池◀/▶按钮 + view 菜单共用
+    const doCollapse = (collapse: boolean) => {
+      if (collapse) {
+        const w = layoutEngine.getBounds("sidebar")?.width;
+        if (w && w > 48) s.preCollapseWidth = w;
+        layoutEngine.setZoneWidth("sidebar", 28);
+      } else {
+        layoutEngine.setZoneWidth("sidebar", s.preCollapseWidth);
+      }
+    };
 
-  // E5.6#9d：订阅 SidePanel 发出的侧栏状态变化——用于 pushLayout
+    // E3.6/E5#4b：图标栏点击——读 contributes.viewsContainers 取 containerId
+    const u1 = shellEvents.on("icon:selected", (pluginId) => {
+      const plugin = getViewPlugin(pluginId);
+      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
+      if (!containers) return;
+      const cid = Object.keys(containers)[0];
+      if (!cid) return;
+
+      if (s.containerId === cid) {
+        // E5#49：同图标 → toggle 折叠/展开（与 ◀/▶ 按钮行为一致）
+        const shouldCollapse = !zoneCollapsed();
+        doCollapse(shouldCollapse);
+        shellEvents.emit("sidebar:containerChanged", shouldCollapse ? null : cid);
+        shellEvents.emit("sidebar:toggled", !shouldCollapse);
+        return;
+      }
+
+      // 不同图标：切换容器，折叠态则展开
+      if (zoneCollapsed()) doCollapse(false);
+      s.containerId = cid;
+      s.lastSidebar = cid;
+      shellEvents.emit("sidebar:containerChanged", cid);
+      shellEvents.emit("sidebar:toggled", true);
+    });
+
+    // 池 ◀/▶ 按钮——usePoolSync toggleSidebarCollapse 转发（折展真相在 zone 宽，池零状态）
+    const u2 = shellEvents.on("sidebar:toggleFromPool", () => {
+      doCollapse(!zoneCollapsed());
+    });
+
+    const effectiveContainerId = () => s.containerId ?? s.lastSidebar;
+
+    // E5#60：view header 右键菜单——shellMenus 提供的命令 emit 这些事件
+    const u3 = shellEvents.on("view:toggleCollapse", ({ containerId: cid }) => {
+      if (cid !== effectiveContainerId()) return;
+      doCollapse(!zoneCollapsed());
+    });
+    const u4 = shellEvents.on("view:resetPosition", ({ containerId: cid }) => {
+      if (cid !== effectiveContainerId()) return;
+      doCollapse(false);
+      layoutEngine.setZoneWidth("sidebar", 280);
+    });
+    const u5 = shellEvents.on("view:toggleVisibility", ({ viewId, containerId: cid }) => {
+      if (cid) ViewContainerService.toggleViewVisibility(cid, viewId);
+    });
+    return () => { u1(); u2(); u3(); u4(); u5(); };
+  }, []);
+
+  // E5.6#9d：订阅宿主状态机发出的侧栏状态变化——用于 pushLayout
   useEffect(() => {
     const u1 = shellEvents.on("sidebar:containerChanged", (cid: string | null) => {
       setSidebarView(cid);
     });
     const u2 = shellEvents.on("sidebar:toggled", (visible: boolean) => {
       setIsSidebarExpanded(visible);
-      // E5.7#4：#12 提前——SidebarPool WCV 已删，侧栏显隐由 Pool 内 SidebarZone 条件渲染接管（Phase 3 #10）
     });
     return () => { u1(); u2(); };
   }, []);
@@ -839,16 +908,9 @@ function App() {
   return (
     <div className="app-shell">
       <SourceStateContext.Provider value={sourceStateValue}>
-        {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8) 已迁池内 zone，
+        {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
             MainContent/WindowControls/SplitHandles 删除。壳 = 纯状态持有者
-            （tabState/Registry/命令执行），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
-        {/* E5.7#4：#12 提前——SidePanel 保留隐藏挂载：icon:selected →
-            sidebar:containerChanged/sidebar:toggled 事件管线是壳侧栏状态的唯一入口
-            （Phase 3 #10 SidebarZone 接管后删除）。width 只影响不可见内部——
-            280 兜底 = LayoutEngine 侧栏 zone 默认宽（首帧喂尺寸前 getBounds 为 undefined）。 */}
-        <div style={{ display: "none" }}>
-          <SidePanel width={layoutEngine.getBounds("sidebar")?.width ?? 280} />
-        </div>
+            （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
         <ToastContainer />
         <ProgressBar />
         {/* E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件 */}

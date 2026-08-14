@@ -43,6 +43,11 @@ export interface SidebarLayout {
   collapsedViews?: string[];              // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
   /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
   collapsed?: boolean;
+  // ── E5.7#10：侧栏 UI 文本壳侧 t() 推送（显示文本铁律——池渲染零自产文本） ──
+  emptyText?: string;      // 空状态主文案——"此容器没有已注册的视图"
+  emptyHint?: string;      // 空状态提示——"安装插件以添加视图"
+  expandTooltip?: string;  // ▶ 展开按钮 tooltip
+  collapseTooltip?: string;// ◀ 折叠按钮 tooltip
   // ── 向后兼容 ──
   /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
   viewId?: string | null;
