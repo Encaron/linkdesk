@@ -17,8 +17,12 @@
  *      引用刷新（各 register* 重复调用只刷新引用不重注册，IpcBridge 换实例摘旧挂新）
  *   ② details.reason === 'clean-exit' 跳过 + before-quit 守卫——应用退出也触发
  *      render-process-gone，不拦 = 退出过程中建 WCV
- *   ③ pool:ready 等待挂 did-fail-load / 超时 → 重试（单次崩溃事件最多 3 次）
- *      🔴 #39b 在此接续：10s 内 3 次崩溃 → 停止重建 + 静态错误页
+ *   ③ pool:ready 等待挂 did-fail-load / 超时 → 重试（单次崩溃事件最多 3 次）；
+ *      重试耗尽 → 静态错误页
+ *
+ * E5.7#39b：连续崩溃防护（设计 §5.1）——10s 内 3 次崩溃 → 停止自动重建 → 静态错误页常驻。
+ *   错误页经 loadURL 加载到崩溃的池 wc（loadURL 重生 renderer）；心跳在 rebuildStopped 后停摆
+ *   （不再 ping/检查——错误页崩溃不再触发重建链）；壳崩全窗口重建 = 新机会，计数与停止标志重置。
  *
  * E5.7#37：池心跳同在本模块——5s ping / 10s 超时 → forcefullyCrashRenderer → 走分支 1 重建链。
  *   pong 由 preload-pool 模块顶层自动回复（React mount 前即存活——池加载窗口也有 pong，
@@ -33,10 +37,34 @@ import type { WindowManager } from './window-manager.js';
 const READY_TIMEOUT_MS = 10_000;
 /** render-process-gone 的 reason 固定值——正常退出（窗口关闭/应用退出），非崩溃，跳过重建 */
 const EXIT_REASON_CLEAN = 'clean-exit';
-/** 单次崩溃事件的重建尝试上限——#39b 崩溃计数在此接续（10s 内 3 次 → 停止重建） */
+/** 单次崩溃事件的重建尝试上限 */
 const MAX_REBUILD_ATTEMPTS = 3;
+
+// ── E5.7#39b：连续崩溃防护（设计 §5.1）──
+/** 崩溃计数滑动窗口——窗口内崩溃达到上限即停止自动重建 */
+const CRASH_WINDOW_MS = 10_000;
+/** 窗口内崩溃次数上限 */
+const MAX_CRASHES_IN_WINDOW = 3;
 /** 两次重建尝试之间的间隔——避免对持续崩溃的池疯狂重建 */
 const RETRY_DELAY_MS = 500;
+
+/**
+ * 静态错误页——data: URL 内联 HTML（loadURL 到崩溃的池 wc 即重生 renderer，无需磁盘文件）。
+ * 紧急页例外声明：此页渲染于裸 renderer（无 React / 主题 / i18n）——
+ *   ① 硬约束「颜色走主题 token」不适用：inline 深色写死，任何主题下保证可读；
+ *   ② 硬约束「文案走 t()」不适用：renderer 无 i18n，中文文案直书。
+ */
+const ERROR_PAGE_URL = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTYPE html>
+<html lang="zh-CN">
+<head><meta charset="utf-8" /><title>LinkDesk 遇到问题</title></head>
+<body style="margin:0;height:100vh;display:flex;align-items:center;justify-content:center;background:#1e1e1e;font-family:system-ui,-apple-system,'Segoe UI',sans-serif">
+  <main style="text-align:center">
+    <h1 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#ffffff">LinkDesk 遇到问题</h1>
+    <p style="margin:0 0 6px;font-size:14px;color:#9d9d9d">界面渲染进程连续崩溃，已停止自动重建。</p>
+    <p style="margin:0;font-size:14px;color:#9d9d9d">请重启应用以继续。</p>
+  </main>
+</body>
+</html>`)}`;
 
 // ── E5.7#37：池心跳参数（设计 §2.2）──
 /** 主进程每 5s 向池发一次 ping */
@@ -60,6 +88,12 @@ let lastLayout: unknown = null;
 
 /** 最后一次 pong 时间戳。0 = 尚未收到（池加载中）——不判超时（同 E2a 壳心跳语义） */
 let lastPoolPong = 0;
+
+/** 池崩溃时间戳（滑动窗口计数） */
+const recentPoolCrashes: number[] = [];
+
+/** 已停止自动重建——静态错误页常驻（应用重启或壳崩全窗口重建才重置） */
+let rebuildStopped = false;
 
 /** 应用退出中——render-process-gone 全部忽略（审计②） */
 let quitting = false;
@@ -96,6 +130,12 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
     if (poolView && !poolView.webContents.isDestroyed() && webContents.id === poolView.webContents.id) {
       console.error('[E5.7] MainPool renderer 崩溃:', details.reason, 'exitCode:', details.exitCode);
       lastPoolPong = 0; // 新池首 pong 前保持加载宽限——旧 pong 时间戳对新池无意义
+      if (rebuildStopped) return; // 错误页常驻后不再重建（错误页 renderer 崩溃也走到这里）
+      // E5.7#39b：10s 内 3 次崩溃 → 停止自动重建 + 静态错误页（设计 §5.1）
+      if (recordPoolCrash() >= MAX_CRASHES_IN_WINDOW) {
+        showStaticErrorPage(poolView.webContents);
+        return;
+      }
       rebuildPoolWithRetry(deps, 1);
       return;
     }
@@ -122,14 +162,14 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
   });
 
   setInterval(() => {
-    if (rebuilding) return; // 重建期间 waitPoolReady 全权接管——心跳不干扰
+    if (rebuilding || rebuildStopped) return; // 重建期间 waitPoolReady 全权接管；错误页常驻后停摆
     const pool = deps.getWindowManager()?.getPoolView();
     if (!pool || pool.webContents.isDestroyed()) return;
     pool.webContents.send('pool:ping');
   }, HEARTBEAT_PING_MS);
 
   setInterval(() => {
-    if (rebuilding || lastPoolPong === 0) return;
+    if (rebuilding || rebuildStopped || lastPoolPong === 0) return;
     const pool = deps.getWindowManager()?.getPoolView();
     if (!pool || pool.webContents.isDestroyed()) return;
     if (Date.now() - lastPoolPong > HEARTBEAT_TIMEOUT_MS) {
@@ -147,10 +187,34 @@ export function replayAfterShellRebuild(deps: CrashRecoveryDeps): void {
     return;
   }
   lastPoolPong = 0; // 新池首 pong 前保持加载宽限
+  // 壳崩全窗口重建 = 新机会——崩溃计数与停止标志重置（新窗口全新开始）
+  recentPoolCrashes.length = 0;
+  rebuildStopped = false;
   const wm = deps.getWindowManager();
   const wc = wm?.getPoolView()?.webContents;
   if (!wm || !wc) return;
   waitPoolReady(deps, wc, 1);
+}
+
+/** E5.7#39b：记录一次池崩溃，返回滑动窗口内当前次数（窗口外旧记录随记随清） */
+function recordPoolCrash(): number {
+  const now = Date.now();
+  recentPoolCrashes.push(now);
+  while (now - recentPoolCrashes[0] > CRASH_WINDOW_MS) {
+    recentPoolCrashes.shift();
+  }
+  return recentPoolCrashes.length;
+}
+
+/** E5.7#39b：停止自动重建 + 静态错误页常驻。心跳/重建链此后停摆——重启应用或壳崩全窗口重建才恢复 */
+function showStaticErrorPage(wc: WebContents): void {
+  rebuildStopped = true;
+  console.error('[E5.7] 停止自动重建——静态错误页常驻（重启应用或壳崩全窗口重建才恢复）');
+  try {
+    wc.loadURL(ERROR_PAGE_URL);
+  } catch (err) {
+    console.error('[E5.7] 静态错误页加载失败:', err);
+  }
 }
 
 /** Pool 分支入口——重建 WCV 后等待就绪。rebuilding 守卫：新池立即再崩时由等待者超时重试接管 */
@@ -198,7 +262,9 @@ function waitPoolReady(deps: CrashRecoveryDeps, wc: WebContents, attempt: number
     cleanup();
     console.warn(`[E5.7] Pool 重建等待失败（${why}）——尝试 ${attempt}/${MAX_REBUILD_ATTEMPTS}`);
     if (attempt >= MAX_REBUILD_ATTEMPTS) {
-      console.error('[E5.7] 放弃自动重建。🔴 #39b：此处接入 10s 内 3 次崩溃停止重建 + 静态错误页');
+      // E5.7#39b：重试耗尽 → 静态错误页常驻（池起不来 = 空白 WCV 无意义）
+      console.error('[E5.7] 放弃自动重建——显示静态错误页');
+      showStaticErrorPage(wc);
       return;
     }
     setTimeout(() => rebuildPoolWithRetry(deps, attempt + 1), RETRY_DELAY_MS);
