@@ -64,6 +64,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
 
   const [localWidth, setLocalWidth] = useState<number | null>(null); // 拖拽期间/待回执的本地宽覆盖
   const draggingRef = useRef(false);                       // isDragging guard——拖拽期间忽略推送
+  const didMoveRef = useRef(false);                        // 本次拖拽是否有 mousemove——无位移点击不 commit（对齐 E5 壳 no-op 语义）
   const dragStartRef = useRef<{ x: number; width: number } | null>(null); // 拖拽几何（mousedown→mouseup）
   const preDragWidthRef = useRef(0);                       // 拖前宽——回执期跳过迟到旧推送
   const dragWidthRef = useRef(0);                          // 最近一次本地宽（mouseup commit 用）
@@ -101,9 +102,13 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
       bodyStylePrevRef.current = null;
     }
     if (dragStartRef.current) {
-      commitPendingRef.current = true;
+      // 无位移点击（mousedown+mouseup 未动）不 commit——E5 壳同款 no-op
+      //（否则折叠态 28px 误点分隔线会被 resizeZone 钳到 170，侧栏意外展开）
+      if (didMoveRef.current) {
+        commitPendingRef.current = true;
+        window.linkdesk?.pool?.sidebarAction?.({ action: "setSidebarWidth", width: dragWidthRef.current });
+      }
       dragStartRef.current = null;
-      window.linkdesk?.pool?.sidebarAction?.({ action: "setSidebarWidth", width: dragWidthRef.current });
     }
   }, []);
 
@@ -113,6 +118,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     const onMove = (me: MouseEvent) => {
       if (!draggingRef.current) return;
       if (me.buttons === 0) { finishDrag(); return; }
+      didMoveRef.current = true;
       const start = dragStartRef.current;
       if (!start) return;
       if (rafRef.current !== null) return; // rAF 节流——每帧最多一次 setState
@@ -152,6 +158,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     if (e.button !== 0) return;
     e.preventDefault();
     draggingRef.current = true;
+    didMoveRef.current = false;
     const startWidth = widthRef.current;
     dragStartRef.current = { x: e.clientX, width: startWidth };
     preDragWidthRef.current = startWidth;
