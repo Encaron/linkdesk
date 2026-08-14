@@ -2,14 +2,13 @@ import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => window.linkdesk;
-import { showProgress, setDoNotDisturb, setSourceFilter, pushToast } from "./core/services/NotificationService";
+import { pushToast } from "./core/services/NotificationService";
 import { reportError } from "./core/services/ErrorService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import { getAllLeafGroupIds } from "./hooks/splitTree";
-import ProgressBar from "./components/ProgressBar";
 import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast } from "./core/services/toast";
@@ -275,9 +274,8 @@ function App() {
       }
 
       // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
-      (window as any).__showProgress = showProgress;
-      (window as any).__setDoNotDisturb = setDoNotDisturb;
-      (window as any).__setSourceFilter = setSourceFilter;
+      // （__showProgress/__setDoNotDisturb/__setSourceFilter 已随 E5.7#27.5 死链整删——
+      //   进度条/DND/来源过滤零消费者，Debug 钩子也是死链）
       (window as any).__pushToast = pushToast;
       (window as any).__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
 
@@ -1067,7 +1065,6 @@ function App() {
         {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
             MainContent/WindowControls 删除（#9），SplitHandles 删除（#31）。壳 = 纯状态持有者
             （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
-        <ProgressBar />
       </SourceStateContext.Provider>
     </div>
   );
