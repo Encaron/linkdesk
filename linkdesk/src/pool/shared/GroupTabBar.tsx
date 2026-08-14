@@ -144,8 +144,8 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   }, []);
 
   // ── 右键菜单——壳 ContextMenu 接管（menuId="TabContext"），池不再硬编码菜单项。
-  // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）——不需要池侧 useEffect 关闭逻辑。
-  // 对标壳 ContextMenu.tsx:137-141。
+  // ContextMenu 自带 mousedown 外部点击检测（contains 守卫）+ E5.7#14 backdrop 吞第一击
+  // ——不需要池侧 useEffect 关闭逻辑。对标壳 ContextMenu.tsx:152。
 
   // PlusMenu 点外部关闭——mousedown 竞态修复：contains 守卫防菜单项 onClick 被吞
   useEffect(() => {

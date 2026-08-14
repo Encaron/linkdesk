@@ -7,9 +7,17 @@
  * 🔥 E5.5#7-p3 多 WebView 改造：零 import @src/core。
  *    壳侧 IpcBridgeHandler 已做 when 过滤 + 命令标题 + 快捷键解析，
  *    组件只管分组和渲染。
+ *
+ * 🔥 E5.7#14 浮层归一化（浮层归一化设计.md §4）：
+ *    - portal 到 `#context-menu-root`（OverlayPortal rootId——FloatingLayerHost 内），
+ *      壳 DOM 无此 root 时自动回退 body（SettingsView 等壳侧消费者迁移期兼容）
+ *    - 透明 backdrop（contextMenu-1 层级）——吞掉第一击：点击即关且不激活下层内容
+ *    - 显示文本铁律：标签壳侧 t() 解析后推送——池哑渲染，本组件不再调用 t()
+ *    - 翻转钳制 menuTop ≥ 30——TitleBarZone drag 区（硬约束 18，设计 §4.3）
+ *    - 打开后聚焦菜单容器——键盘导航（设计 §4.2，防 focusable:false 回归）
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
-import { useTranslation } from "react-i18next";
+import { Z_INDEX } from "../../constants";
 import OverlayPortal from "./OverlayPortal";
 import "./ContextMenu.css";
 
@@ -60,7 +68,6 @@ interface ResolvedItem {
 /* ── 组件 ── */
 
 export default function ContextMenu({ menuId, anchor, context, onClose, resolveChildren }: ContextMenuProps) {
-  const { t } = useTranslation();
   const menuRef = useRef<HTMLDivElement>(null);
   const subRef = useRef<HTMLDivElement>(null);
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -185,7 +192,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   const [menuReady, setMenuReady] = useState(false);
 
   useLayoutEffect(() => {
-    setMenuPos({ left: anchor.x, top: anchor.y });
+    // E5.7#14：初始定位即钳制 menuTop ≥ 30（TitleBarZone drag 区下沿——硬约束 18）
+    setMenuPos({ left: anchor.x, top: Math.max(30, anchor.y) });
     setMenuReady(false);
   }, [anchor.x, anchor.y, resolved.length]);
 
@@ -196,9 +204,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     // 1. 量测真实尺寸 + 修正溢出
     const rect = el.getBoundingClientRect();
     let left = anchor.x;
-    let top = anchor.y;
+    // E5.7#14：翻转钳制 menuTop ≥ 30——菜单顶部进入 TitleBarZone drag 区
+    // → OS 截鼠标事件 → 顶部菜单项点不动（设计 §4.3，硬约束 18）
+    let top = Math.max(30, anchor.y);
     if (left + rect.width > window.innerWidth) left = Math.max(0, window.innerWidth - rect.width - 4);
-    if (top + rect.height > window.innerHeight) top = Math.max(0, window.innerHeight - rect.height - 4);
+    if (top + rect.height > window.innerHeight) top = Math.max(30, window.innerHeight - rect.height - 4);
     setMenuPos({ left, top });
     // 2. 入场动画
     const frame = requestAnimationFrame(() => {
@@ -207,6 +217,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     });
     return () => cancelAnimationFrame(frame);
   }, [anchor.x, anchor.y, resolved.length]);
+
+  /* ── E5.7#14：打开后聚焦菜单容器——键盘导航（visibility 转可见后再 focus，
+      否则 focus() 静默失败；menuReady 已在入场动画 rAF 内置 true）── */
+  useEffect(() => {
+    if (menuReady) menuRef.current?.focus();
+  }, [menuReady]);
 
   /* ═══ E5#44d：hover 子菜单 handler ═══ */
   const openSub = useCallback((el: HTMLElement, items: ResolvedItem[]) => {
@@ -226,9 +242,31 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   let clickableIdx = 0;
 
   return (
-    <OverlayPortal>
+    <OverlayPortal rootId="context-menu-root" zIndex={String(Z_INDEX.contextMenu)}>
+      {/* E5.7#14：透明 backdrop——吞掉第一击（VS Code 行为）：点击即关且不激活下层内容。
+          层级 = contextMenu-1，与菜单本体同 wrapper stacking context 内比较。
+          窗口级 mousedown 监听（下方"统一失焦"）已处理 backdrop 点击关闭。 */}
+      <div
+        style={{
+          position: "fixed",
+          inset: 0,
+          zIndex: Z_INDEX.contextMenu - 1,
+          pointerEvents: "auto",
+        }}
+      />
+
       {/* 主菜单 */}
-      <div ref={menuRef} className="ctx-menu" style={{ left: menuPos.left, top: menuPos.top, visibility: menuReady ? undefined : "hidden" }}>
+      <div
+        ref={menuRef}
+        className="ctx-menu"
+        tabIndex={-1}
+        style={{
+          left: menuPos.left,
+          top: menuPos.top,
+          zIndex: Z_INDEX.contextMenu,
+          visibility: menuReady ? undefined : "hidden",
+        }}
+      >
         {resolved.map((item, i) => {
           if ("type" in item) return <div key={`div-${i}`} className="ctx-divider" />;
           const idx = clickableIdx++;
@@ -248,7 +286,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               }}
               onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
             >
-              <span className="ctx-item-label">{t(item.label)}</span>
+              {/* E5.7#14：显示文本铁律——壳侧 t() 解析后推送，池哑渲染原文（不初始化 i18n） */}
+              <span className="ctx-item-label">{item.label}</span>
               {hasKids && <span className="ctx-item-chevron">›</span>}
               {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
             </div>
@@ -261,7 +300,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         <div
           ref={subRef}
           className="ctx-menu show"
-          style={{ left: subData.x, top: subData.y }}
+          style={{ left: subData.x, top: subData.y, zIndex: Z_INDEX.contextMenu }}
           onMouseEnter={() => { if (subTimer.current) { clearTimeout(subTimer.current); subTimer.current = null; } }}
           onMouseLeave={closeSubDelayed}
         >

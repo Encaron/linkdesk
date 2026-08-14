@@ -193,59 +193,10 @@
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
-/* ── 右键菜单 ── */
-
-.group-tab-context-backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 999;
-  /* 透明遮罩——点击关闭菜单。
-     🔒 WebContentsView 的 position:fixed 视口 = Pool 的 bounds 原点（WindowManager
-     setBounds 定位在 TitleBar 下方），不覆盖壳 TitleBar drag 区。硬约束 #18 不适用。 */
-}
-
-.group-tab-context-menu {
-  display: flex;
-  flex-direction: column;
-  min-width: 150px;
-  padding: 4px 0;
-  background: var(--bg-dropdown, var(--bg-card));
-  border: 1px solid var(--border-normal);
-  border-radius: 6px;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-  overflow: hidden;
-}
-
-.group-tab-context-item {
-  display: flex;
-  align-items: center;
-  padding: 4px 16px;
-  height: 28px;
-  border: none;
-  background: transparent;
-  color: var(--text-primary);
-  font-size: 13px;
-  cursor: pointer;
-  text-align: left;
-  white-space: nowrap;
-  transition: background 80ms;
-}
-.group-tab-context-item:hover:not(.disabled) {
-  background: var(--accent);
-  color: #fff;
-}
-.group-tab-context-item.disabled {
-  color: var(--text-muted);
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-
-.group-tab-context-divider {
-  height: 1px;
-  margin: 4px 8px;
-  background: var(--border-normal);
-  flex-shrink: 0;
-}
+/* ── E5.7#14：右键菜单归一化——池侧 group-tab-context-* 死代码已删（E5.6#16.7k 前身）。
+   ContextMenu 现自备 backdrop（contextMenu-1）+ portal 到 #context-menu-root，
+   且 menuTop ≥ 30 钳制（硬约束 18）——旧注释"WCV 视口在 TitleBar 下方"在 E5.7 不成立：
+   Pool 是 100%×100% WCV，TitleBarZone 在池内渲染 drag 区。 ── */
 
 /* ── Enter / Exit 动画（对标旧 TabBar）── */
 

@@ -21,12 +21,15 @@ interface OverlayPortalProps {
   trapFocus?: boolean;
   /** 叠层 token——透传到 wrapper 的 z-index */
   zIndex?: string;
+  /** E5.7#14：portal 目标 root id——归一化到 FloatingLayerHost 的 portal root。
+   *  默认 document.body；root 不存在（壳 DOM 场景）自动回退 body。 */
+  rootId?: string;
 }
 
 /** 可聚焦元素选择器——对标 VS Code focusable selectors */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-export default function OverlayPortal({ children, onClose, triggerRef, trapFocus, zIndex }: OverlayPortalProps) {
+export default function OverlayPortal({ children, onClose, triggerRef, trapFocus, zIndex, rootId }: OverlayPortalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   /* ── E5#96i: mousedown 外部点击检测（捕获阶段——早于 React 合成事件）── */
@@ -91,6 +94,6 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     <div ref={contentRef} style={Object.keys(style).length > 1 ? style : {}}>
       {children}
     </div>,
-    document.body
+    (rootId ? document.getElementById(rootId) : null) ?? document.body
   );
 }
