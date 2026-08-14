@@ -534,6 +534,16 @@ export class WindowManager {
     view.webContents.send('pool:quickpick', data);
   }
 
+  /** E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染 */
+  pushToast(data: unknown): void {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) {
+      console.warn('[WindowManager] pushToast 失败——Pool 不存在或已销毁');
+      return;
+    }
+    view.webContents.send('pool:toast', data);
+  }
+
   /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
   getPoolView(): WebContentsView | null {
     return this.mainPoolView;

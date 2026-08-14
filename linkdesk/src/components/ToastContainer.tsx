@@ -9,7 +9,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import OverlayPortal from "./shared/OverlayPortal";
-import { subscribeToasts, subscribeToastSuppressed, dismissToast, type Toast } from "../core/services/toast";
+import { subscribeToasts, subscribeToastSuppressed, dismissToast, getToastIconClass, type Toast } from "../core/services/toast";
 import "./ToastContainer.css";
 
 /** VS Code 默认通知行高 */
@@ -103,7 +103,7 @@ function NotificationItem({ toast, exiting, onExited }: { toast: Toast; exiting?
     }
   }, [exiting, visible]);
 
-  const iconClass = getIconClass(toast);
+  const iconClass = getToastIconClass(toast); // E5.7#16：图标解析迁入 toast 服务归一（serialize 与渲染共用）
 
   return (
     <div
@@ -180,26 +180,6 @@ function NotificationItem({ toast, exiting, onExited }: { toast: Toast; exiting?
       )}
     </div>
   );
-}
-
-/** 图标映射——对标 VS Code Severity codicons */
-function getIconClass(toast: Toast): string {
-  if (toast.icon) {
-    // 如果直接传了 codicon 类名
-    if (toast.icon.startsWith("codicon")) return `codicon ${toast.icon}`;
-    // 如果传了自定义类名
-    return toast.icon;
-  }
-  // 根据 severity 默认
-  switch (toast.severity) {
-    case "error":
-      return "codicon codicon-error toast-severity-error";
-    case "warning":
-      return "codicon codicon-warning toast-severity-warning";
-    case "info":
-    default:
-      return "codicon codicon-info toast-severity-info";
-  }
 }
 
 function hasPrimaryActions(toast: Toast): boolean {

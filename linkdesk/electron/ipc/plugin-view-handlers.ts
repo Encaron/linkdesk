@@ -178,6 +178,18 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.7#16：壳→Pool——Toast 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
+  ipcMain.on('pool:toast-show', (_event, data: unknown) => {
+    windowManager.pushToast(data);
+  });
+
+  // E5.7#16：Pool→壳——Toast 动作（dismiss/action），按 id + actionId 回传
+  ipcMain.on('pool:toast-action', (_event, action: unknown) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('pool:toast-action', action);
+    }
+  });
+
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 9 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action）');
+  console.log('[pool-handlers] 已注册 11 个 pool IPC handler（pool:push-layout / pool:ready / pool:ping / pool:pong / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action）');
 }

@@ -72,6 +72,13 @@ ipcRenderer.on('pool:quickpick-action', (_event, action: PoolQuickPickAction) =>
   if (_quickPickActionHandler) _quickPickActionHandler(action);
 });
 
+// E5.7#16：Toast 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 toast 服务
+type PoolToastAction = { type: string; id: string; actionId?: string };
+let _toastActionHandler: ((action: PoolToastAction) => void) | null = null;
+ipcRenderer.on('pool:toast-action', (_event, action: PoolToastAction) => {
+  if (_toastActionHandler) _toastActionHandler(action);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -527,6 +534,13 @@ try {
       onQuickPickAction: (cb: (action: PoolQuickPickAction) => void) => {
         _quickPickActionHandler = cb;
         return () => { _quickPickActionHandler = null; };
+      },
+      /** E5.7#16：推送 Toast 哑渲染数据到池——壳 toast 服务序列化后直推（聪慧→哑） */
+      pushToast: (data: unknown) => ipcRenderer.send('pool:toast-show', data),
+      /** E5.7#16：注册 Toast 动作回调——池→壳→toast 服务。返回 unsubscribe */
+      onToastAction: (cb: (action: PoolToastAction) => void) => {
+        _toastActionHandler = cb;
+        return () => { _toastActionHandler = null; };
       },
     },
 

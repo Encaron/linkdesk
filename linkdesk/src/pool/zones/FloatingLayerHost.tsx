@@ -14,6 +14,7 @@
  */
 import { Z_INDEX } from "../../constants";
 import QuickPickHost from "../floating/QuickPickHost";
+import ToastHost from "../floating/ToastHost";
 
 function FloatingLayerHost() {
   return (
@@ -39,7 +40,8 @@ function FloatingLayerHost() {
       {/* Tooltip portal（如需要） */}
       <div id="tooltip-root" />
 
-      {/* ToastHost——#16 接入（设计 §2：Toast 始终在此，按需显示） */}
+      {/* ToastHost——#16 接入（设计 §2：Toast 始终在此，按需显示——空栈/null 自隐藏） */}
+      <ToastHost />
     </div>
   );
 }
