@@ -13,6 +13,10 @@
   position: fixed;
   /* E5.7#14：z-index 归 inline Z_INDEX.contextMenu（constants.ts 常量表）——
      CSS 变量不再参与本组件层级（浮层归一化设计.md §3） */
+  /* E5.7#14 补丁 2026-08-14：pointer-events: auto——池侧 portal 进 FloatingLayerHost
+     容器（pointer-events: none）时，none 沿 DOM 继承到菜单本体 → 点不动 + 无 hover。
+     设计 §2 铁律：浮层显示时各自设 auto（backdrop inline 已设，本体此前漏设）。 */
+  pointer-events: auto;
   min-width: 140px;
   max-width: 280px;
   background: var(--bg-card);
