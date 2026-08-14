@@ -7,51 +7,46 @@ import { reportError } from "./core/services/ErrorService";
 import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
-import { syncCountersAfterRestore } from "./hooks/useTabManager";
-import IconBar from "./components/IconBar";
-import TitleBar from "./components/TitleBar"; // E3f #52f
-import WindowControls from "./components/WindowControls"; // E3f #52f
+import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
+import { getAllLeafGroupIds } from "./hooks/splitTree";
 import SidePanel from "./components/SidePanel";
-import MainContent from "./components/MainContent";
-import StatusBar from "./components/StatusBar";
-import { SplitHandles } from "./components/SplitHandles";
 import ProgressBar from "./components/ProgressBar";
 import ToastContainer from "./components/ToastContainer";
 // E5.5#7-p12：CommandPalette/ThemeBrowser/LanguagePicker 不再在 App.tsx 渲染——走 QuickPickService
 import QuickPick from "./components/shared/QuickPick";
 import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
-import { TITLE_BAR_HEIGHT } from "./constants"; // E5.7#12.5：HANDLE_WIDTH 随 bounds 推流删除——#9 删壳 DOM 时 TITLE_BAR_HEIGHT 一并删
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/services/FactorySlots";
-import { getViewPlugin } from "./pluginLoader/viewRegistry";
+import { getViewPlugin, invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
-import { useConfigurationValue } from "./core/react/useConfiguration";
 // initStorageService 已提前到 main.tsx mount 前调用
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
-import { initLayoutService, getTabLayout } from "./core/services/LayoutService";
-import { initWorkspaceService } from "./core/services/WorkspaceService"; // E5.5#0e
+import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/services/LayoutService";
+import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/WorkspaceService"; // E5.5#0e
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
 import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
-import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——替代硬编码 CSS flex
+import { layoutEngine } from "./core/services/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
 import { onDidRequestShowChannel } from "./core/services/LogChannel"; // E3f #54
 import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/IpcBridgeHandler"; // E3a #26 + E5#103
 import { initAll } from "./core/services/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/ConfigurationApplier";
 import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API namespace
+import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
+import { usePoolSync } from "./hooks/usePoolSync";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
-// Phase 5b：核心命令注册（右键菜单归一化）
-import { ensureCoreCommands, ensureCoreKeybindings } from "./core/commands/coreCommands";
+// Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
+import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/coreCommands";
 import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/commands/registerBuiltinProtocols";
@@ -87,8 +82,6 @@ function App() {
   const [txBytes, setTxBytes] = useState(0);
   const [rxBytes, setRxBytes] = useState(0);
 
-  // Phase 3 Step 6: 拖拽分屏（E5#5e-ii-f 已搬进 MainContent 内部管理）
-  const editorAreaRef = useRef<HTMLDivElement>(null);
   // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
   // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
   const sidebarViewRef = useRef<string | null>(null);
@@ -127,7 +120,7 @@ function App() {
       const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
       // 🔥 E36#4.5：关闭侧栏在先——需要 ViewContainerService 还有数据时读 manifest
       revertContainerIfCurrent(pluginId);
-      // E5#5e-ii：MainContent 订阅此事件关闭标签页
+      // E5#5e-ii：useTabManager 订阅此事件关闭标签页
       shellEvents.emit("plugin:removed", { pluginId });
     };
     window.addEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
@@ -325,8 +318,7 @@ function App() {
   }, []);
 
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
-  // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 MainContent 开标签）。
-  // #9 删 MainContent 时消费逻辑迁 App，此桥接保留。
+  // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
   useEffect(() => {
     const unsub = window.linkdesk?.events?.on("icon:selected", (pluginId: string) => {
       shellEvents.emit("icon:selected", pluginId);
@@ -334,26 +326,17 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
-  /* ---- E5#9f：LayoutEngine 壳布局——替代硬编码 CSS flex ---- */
-  const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
-
+  /* ---- E5#9f：LayoutEngine 壳布局——E5.7#9 起只喂容器尺寸 ---- */
+  // E5.7#12.5：Pool bounds 推流已删（主进程 syncPoolBounds 接管，WCV 满窗零偏移）。
+  // LayoutEngine 仍需喂容器尺寸——zone 几何真相源在壳（usePoolSync 读 sidebar 宽度、
+  // SidePanel setZoneWidth 折叠、Phase 3 #13 拖拽 commit）。零偏移——无 TITLE_BAR_HEIGHT。
+  // Phase 7 #31 LayoutEngine 整删时此 effect 一并删除。
   useEffect(() => {
-    // E5.7#12.5：Pool bounds 推流已删——主进程 syncPoolBounds 接管（WCV 满窗零偏移）。
-    // LayoutEngine 订阅仍保留——zoneBounds 供壳 DOM 定位（#9 删壳 DOM 时一并删除）。
-    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight - TITLE_BAR_HEIGHT);
-    const unsub = layoutEngine.onDidChangeLayout(() => {
-      const b: Record<string, { x: number; y: number; width: number; height: number }> = {};
-      for (const z of layoutEngine.getAllZones()) {
-        const bounds = layoutEngine.getBounds(z.zone);
-        if (bounds) b[z.zone] = bounds;
-      }
-      setZoneBounds(b);
-    });
+    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight);
     updateSize();
     window.addEventListener("resize", updateSize);
     return () => {
       window.removeEventListener("resize", updateSize);
-      unsub();
     };
   }, []);
 
@@ -408,7 +391,7 @@ function App() {
         layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
         settings?: Record<string, unknown>;
       };
-      if (detail.layout?.tabs?.groups?.length) { /* MainContent 订阅 workspace:restore 事件接管 */ }
+      if (detail.layout?.tabs?.groups?.length) { /* workspace:restore 事件由 useTabManager 接管 */ }
       if (detail.settings) {
         for (const [key, value] of Object.entries(detail.settings)) {
           try { setConfigurationValue(key, value); } catch { /* skip */ }
@@ -431,7 +414,6 @@ function App() {
   // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
   useEffect(() => {
     const unsub = onDidRequestShowChannel.event((_channelId: string) => {
-      // E5#5e-ii-f：走 ShellEvents，MainContent 内部处理
       shellEvents.emit("icon:selected", "output");
     });
     return unsub;
@@ -536,70 +518,349 @@ function App() {
     actions: { toggleOpen: handleToggleOpen, setSourceName: handlePortChange, setBaudRate: handleBaudChange },
   }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
+  /* ═══════════════════════════════════════════════════════════
+   * E5.7#9：标签页状态机——原 MainContent.tsx 状态逻辑整体迁入 App。
+   * 壳 = 纯状态持有者：tabState 真相源 + 布局持久化 + 池 tabAction 回环处理。
+   * DOM 渲染（tab bar/分屏面板/壳视图 overlay）已随 MainContent 删除——
+   * Phase 5 #20 MainZone 池内重建（池 ShellViewRenderer 路由 welcome/plugin-detail/output）。
+   * ═══════════════════════════════════════════════════════════ */
+  const {
+    tabState,
+    focusTab,
+    closeTab,
+    forceCloseTab,
+    createTab,
+    moveTab,
+    splitTab,
+    splitTabAt,
+    duplicateTab: _duplicateTab,
+    unsplit,
+    updateSplitSizes,
+    reorderTab,
+    pinTab,
+    openOrFocusTab,
+    restoreLayout,
+    focusTabBySourceId,
+    closeTabBySourceId,
+    updateTabLabelBySourceId,
+    restoreClosedTab,
+  } = useTabManager();
 
-  // E3f #52g：菜单样式——titlebar / hamburger / both
-  const menuStyle = useConfigurationValue<string>("app.menuStyle") ?? "titlebar";
+  // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
+  useEffect(() => {
+    const unsub = shellEvents.on("icon:selected", (pluginId) => {
+      const plugin = getViewPlugin(pluginId);
+      if (plugin?.manifest.appearsIn?.tabBar && !plugin?.manifest.appearsIn?.sidePanel) {
+        const tabId = createTab(pluginId);
+        // E5.6 fix：icon:selected 直开标签页也不会触发 tab:focused → activeEditor 不更新
+        if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
+      }
+    });
+    return unsub;
+  }, [createTab]);
+
+  // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
+  useEffect(() => {
+    // E5.6 fix：tab:create / tab:openOrFocus 后也 emit tab:focused。
+    // 池自动激活的新标签页不会触发 pool→focusTab IPC（那是用户点击才发的），
+    // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
+    const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
+      const tabId = createTab(type, opts as any);
+      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
+    });
+    const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
+      const tabId = openOrFocusTab(type, opts as any);
+      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
+    });
+    const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
+    const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
+    const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId }) => focusTabBySourceId(sourceId));
+    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => updateTabLabelBySourceId(sourceId, label));
+    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId }) => closeTabBySourceId(sourceId));
+    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
+  }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId]);
+
+  // E5#7h3：mount 时恢复上次保存的标签页布局——ready 守卫：
+  // 原 MainContent 在 ready 门控的 JSX 内 mount（initAll 完成后才挂载）；
+  // 迁入 App 后此 effect 首轮 mount 就跑，必须等 LayoutService 初始化完成（ready=true）。
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const savedLayout = getTabLayout();
+      if (savedLayout?.groups?.length > 0) {
+        restoreLayout(savedLayout);
+        const all = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
+        syncCountersAfterRestore(all);
+      }
+    } catch { /* 恢复失败不影响启动 */ }
+  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
+  const handleFocusTab = useCallback((tabId: string) => {
+    focusTab(tabId);
+    for (const g of tabState.groups) {
+      const tab = g.tabs.find((t) => t.id === tabId);
+      if (tab) {
+        shellEvents.emit("tab:focused", { pluginId: tab.pluginId || tab.type, tabId });
+        break;
+      }
+    }
+  }, [focusTab, tabState.groups]);
+
+  // E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里
+  const coreCallbacks: CoreCallbacks = useMemo(() => ({
+    closeTab,
+    closeOtherTabs: (groupId, exceptTabId) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.filter((t) => t.id !== exceptTabId).forEach((t) => closeTab(t.id));
+    },
+    closeRightTabs: (groupId, tabIndex) => {
+      const g = tabState.groups.find((g) => g.id === groupId);
+      if (g) g.tabs.slice(tabIndex + 1).forEach((t) => closeTab(t.id));
+    },
+    splitTab,
+    findGroupByTabId: (tabId) => {
+      for (const g of tabState.groups) {
+        const found = g.tabs.find((t) => t.id === tabId);
+        if (found) return { groupId: g.id, tabs: g.tabs.map((t) => ({ id: t.id })) };
+      }
+      return null;
+    },
+    openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
+    closeActiveTab: async () => {
+      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      const tab = group?.tabs.find((t) => t.id === group.activeTabId);
+      if (!tab) return;
+      if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+      await closeTab(tab.id);
+    },
+    focusNextTab: (shift) => {
+      const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+      if (!activeGroup) return;
+      const { tabs } = activeGroup;
+      const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+      if (idx === -1) return;
+      const next = shift ? idx - 1 : idx + 1;
+      handleFocusTab(tabs[(next + tabs.length) % tabs.length].id);
+    },
+    toggleSplit: () => {
+      const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
+      if (isSplit) {
+        unsplit(tabState.activeGroupId);
+      } else {
+        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
+        if (activeGroup && activeGroup.tabs.length > 1) {
+          const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
+          splitTab(activeGroup.tabs[(idx + 1) % activeGroup.tabs.length].id, "horizontal");
+        }
+      }
+    },
+    focusNthTab: (n) => {
+      const all = allTabs(tabState);
+      if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
+    },
+    closeAllEditors: () => {
+      for (const g of tabState.groups) {
+        for (const t of g.tabs) {
+          if (t.filePath) closeTab(t.id);
+        }
+      }
+    },
+    reopenClosedTab: () => restoreClosedTab(),
+    // E5.6#16.7k：池 GroupTabBar ContextMenu 归一化——补三个 CoreCallback
+    closeAllTabs: (groupId) => {
+      const g = tabState.groups.find((x) => x.id === groupId);
+      if (g) for (const t of [...g.tabs]) closeTab(t.id);
+    },
+    duplicateTab: (tabId) => _duplicateTab(tabId),
+    pinTab: (tabId) => pinTab(tabId),
+  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t, _duplicateTab, pinTab]);
+  updateCoreCallbacks(coreCallbacks);
+
+  // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
+  // 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
+  const handleTabAction = useCallback((action: any) => {
+    switch (action?.action) {
+      case "focusTab":
+        handleFocusTab(action.tabId);
+        break;
+      case "closeTab":
+        closeTab(action.tabId);
+        break;
+      case "closeOtherTabs": {
+        // 关闭同 group 内除指定 tab 外的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          for (const t of g.tabs) {
+            if (t.id !== action.tabId) closeTab(t.id);
+          }
+        }
+        break;
+      }
+      case "closeTabsToRight": {
+        // 关闭同 group 内指定 tab 右侧的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          const idx = g.tabs.findIndex((t) => t.id === action.tabId);
+          if (idx >= 0) {
+            for (let i = g.tabs.length - 1; i > idx; i--) {
+              closeTab(g.tabs[i].id);
+            }
+          }
+        }
+        break;
+      }
+      case "closeAllTabs": {
+        // 关闭指定 group 的所有 tab
+        const g = tabState.groups.find((x) => x.id === action.groupId);
+        if (g) {
+          for (const t of [...g.tabs]) {
+            closeTab(t.id);
+          }
+        }
+        break;
+      }
+      case "reorderTab":
+        reorderTab(action.tabId, action.newIndex);
+        break;
+      case "moveTab":
+        moveTab(action.tabId, action.targetGroupId);
+        break;
+      case "splitTab":
+        // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
+        // E5.6#16.7k-2：direction 归一化——右键菜单传 "right"/"down"，拖拽传 zone/horizontal/vertical
+        splitTabAt(
+          action.tabId,
+          action.direction === "vertical" || action.direction === "down" || action.direction === "up"
+            ? "vertical"
+            : "horizontal",
+          action.targetGroupId,
+          action.zone ?? (action.direction === "left" || action.direction === "right" || action.direction === "up" || action.direction === "down" ? action.direction : undefined),
+        );
+        break;
+      case "duplicateTab":
+        _duplicateTab(action.tabId);
+        break;
+      case "pinTab":
+        pinTab(action.tabId);
+        break;
+      case "createTab":
+        createTab(action.pluginId ?? FALLBACK_PLUGIN_ID, { groupId: action.groupId } as any);
+        break;
+      // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
+      case "updateSplitSizes":
+        updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);
+        break;
+    }
+  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
+
+  // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到唯一 Pool
+  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, onTabAction: handleTabAction });
+
+  // E5#5e-ii-d：布局持久化——App 拥有 tabState，自己负责保存
+  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const layoutInitialized = useRef(false);
+  const tabStateRef = useRef(tabState);
+  tabStateRef.current = tabState;
+
+  // beforeunload——F5 刷新/关闭窗口时同步写入
+  useEffect(() => {
+    const onBeforeUnload = () => {
+      try {
+        const s = tabStateRef.current;
+        const layout: WorkspaceLayout = {
+          tabs: {
+            groups: s.groups.map((g) => ({
+              id: g.id,
+              tabs: g.tabs.map((t) => ({
+                id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+                workspaceName: t.workspaceName, filePath: t.filePath,
+                pluginId: t.pluginId, detailPluginId: t.detailPluginId,
+                sourceId: t.sourceId, pinned: t.pinned,
+              })),
+              activeTabId: g.activeTabId,
+            })),
+            activeGroupId: s.activeGroupId,
+            root: s.root,
+          },
+          cards: [],
+        };
+        syncWriteLayout(layout);
+        syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
+      } catch { /* 静默 */ }
+    };
+    window.addEventListener("beforeunload", onBeforeUnload);
+    return () => window.removeEventListener("beforeunload", onBeforeUnload);
+  }, []);
+
+  // 100ms 防抖保存——标签页/分屏变更后自动持久化
+  useEffect(() => {
+    if (!layoutInitialized.current) {
+      layoutInitialized.current = true;
+      return;
+    }
+    const doSave = () => {
+      saveTabLayout({
+        groups: tabState.groups.map((g) => ({
+          id: g.id,
+          tabs: g.tabs.map((t) => ({
+            id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+            workspaceName: t.workspaceName, filePath: t.filePath,
+            pluginId: t.pluginId,
+            detailPluginId: t.detailPluginId,
+            sourceId: t.sourceId,
+            pinned: t.pinned,
+          })),
+          activeTabId: g.activeTabId,
+        })),
+        activeGroupId: tabState.activeGroupId,
+        root: tabState.root,
+      }).catch((e) => { console.error("[App] 保存标签页布局失败:", e); });
+    };
+    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+    layoutSaveTimer.current = setTimeout(doSave, 100);
+    return () => {
+      if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
+    };
+  }, [tabState.groups, tabState.activeGroupId, tabState.root]);
 
   if (!ready) return null;
-  const showTitleBar = menuStyle !== "hamburger";
-  const showHamburger = menuStyle !== "titlebar";
 
   return (
     <div className="app-shell">
-      {/* E3f #52g：TitleBar 始终渲染——hamburger 时只隐藏菜单按钮，Logo+拖拽区保留 */}
-      <TitleBar showMenus={showTitleBar} />
-      {/* E3f #52f：窗口控件（─ □ ×）——始终渲染，不受 menuStyle 影响 */}
-      <WindowControls />
       <SourceStateContext.Provider value={sourceStateValue}>
-      <div className="app-main">
-        {zoneBounds.iconbar && (
-          <div style={{ position: "fixed", display: "flex", left: zoneBounds.iconbar.x, top: zoneBounds.iconbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.iconbar.width, height: zoneBounds.iconbar.height, zIndex: 10 }}>
-            <IconBar showHamburger={showHamburger} />
-          </div>
+        {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8) 已迁池内 zone，
+            MainContent/WindowControls/SplitHandles 删除。壳 = 纯状态持有者
+            （tabState/Registry/命令执行），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
+        {/* E5.7#4：#12 提前——SidePanel 保留隐藏挂载：icon:selected →
+            sidebar:containerChanged/sidebar:toggled 事件管线是壳侧栏状态的唯一入口
+            （Phase 3 #10 SidebarZone 接管后删除）。width 只影响不可见内部——
+            280 兜底 = LayoutEngine 侧栏 zone 默认宽（首帧喂尺寸前 getBounds 为 undefined）。 */}
+        <div style={{ display: "none" }}>
+          <SidePanel width={layoutEngine.getBounds("sidebar")?.width ?? 280} />
+        </div>
+        <ToastContainer />
+        <ProgressBar />
+        {/* E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件 */}
+        {quickPickState && (
+          <QuickPick
+            open={quickPickState.open}
+            onClose={quickPickState.onClose}
+            items={quickPickState.items}
+            placeholder={quickPickState.placeholder}
+            prefix={quickPickState.prefix}
+            getSearchText={quickPickState.getSearchText}
+            getKey={quickPickState.getKey}
+            onSelect={quickPickState.onSelect}
+            onHighlight={quickPickState.onHighlight}
+            renderLabel={quickPickState.renderLabel}
+            renderCategory={quickPickState.renderCategory}
+            renderDetail={quickPickState.renderDetail}
+            renderDetailRight={quickPickState.renderDetailRight}
+            renderItemActions={quickPickState.renderItemActions}
+          />
         )}
-        {/* E5.6#22l：分隔线——Pool 留缝处壳 DOM 渲染，从缝透出可见+可拖拽 */}
-        <SplitHandles zoneBounds={zoneBounds} />
-
-        {/* E5.7#4：#12 提前——SidebarPool WCV 已删，侧栏将在唯一 Pool 的 SidebarZone 渲染（Phase 3 #10）。
-            保留 SidePanel 隐藏挂载作为 fallback——Pool 崩溃时恢复 display:flex 即可回退（设计 §9.2）。 */}
-        {zoneBounds.sidebar && (
-          <div style={{ position: "fixed", display: "none", overflow: "hidden", left: zoneBounds.sidebar.x, top: zoneBounds.sidebar.y + TITLE_BAR_HEIGHT, width: zoneBounds.sidebar.width, height: zoneBounds.sidebar.height, zIndex: 5 }}>
-            <SidePanel width={zoneBounds.sidebar.width} />
-          </div>
-        )}
-        {zoneBounds.main && (
-          <div style={{ position: "fixed", display: "flex", flexDirection: "column", overflow: "hidden", left: zoneBounds.main.x, top: zoneBounds.main.y + TITLE_BAR_HEIGHT, width: zoneBounds.main.width, height: zoneBounds.main.height, zIndex: 1 }} ref={editorAreaRef}>
-            <MainContent editorAreaRef={editorAreaRef} sidebarView={sidebarView} isSidebarVisible={isSidebarExpanded} sidebarWidth={zoneBounds.sidebar?.width ?? 0} />
-          </div>
-        )}
-        {zoneBounds.statusbar && (
-          <div style={{ position: "fixed", left: zoneBounds.statusbar.x, top: zoneBounds.statusbar.y + TITLE_BAR_HEIGHT, width: zoneBounds.statusbar.width, height: zoneBounds.statusbar.height, zIndex: 10 }}>
-            <StatusBar />
-          </div>
-        )}
-      </div>
-      <ToastContainer />
-      <ProgressBar />
-      {/* E5.5#7-p12：归一化——所有 QuickPick 浮层共用一个组件 */}
-      {quickPickState && (
-        <QuickPick
-          open={quickPickState.open}
-          onClose={quickPickState.onClose}
-          items={quickPickState.items}
-          placeholder={quickPickState.placeholder}
-          prefix={quickPickState.prefix}
-          getSearchText={quickPickState.getSearchText}
-          getKey={quickPickState.getKey}
-          onSelect={quickPickState.onSelect}
-          onHighlight={quickPickState.onHighlight}
-          renderLabel={quickPickState.renderLabel}
-          renderCategory={quickPickState.renderCategory}
-          renderDetail={quickPickState.renderDetail}
-          renderDetailRight={quickPickState.renderDetailRight}
-          renderItemActions={quickPickState.renderItemActions}
-        />
-      )}
-      <ConfirmDialog />
+        <ConfirmDialog />
       </SourceStateContext.Provider>
     </div>
   );
