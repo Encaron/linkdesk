@@ -1,9 +1,9 @@
 /**
  * 插件目录约定——唯一定义位置。
  *
- * E5#35：glob 模式常量化。当前 glob 字面量散落在 loader.ts（10 处）
- * 和 plugin-shell-main.tsx（2 处），改目录结构需改所有文件。
- * 收束为三个工厂函数——改 PLUGIN_SUBDIRS 或 PLUGIN_ENTRY_FILES
+ * E5#35：glob 模式常量化。glob 字面量曾散落 loader.ts（10 处）
+ * 与 per-tab 入口 plugin-shell-main.tsx（2 处，已随 E5.7#40 删除）。
+ * 收束为工厂函数——改 PLUGIN_SUBDIRS 或 PLUGIN_ENTRY_FILES
  * 则所有 glob 自动覆盖，不需改任何消费方。
  */
 
@@ -24,7 +24,7 @@ const PLUGIN_STATUSBAR_FILES = ["statusBar.tsx", "src/statusBar.tsx"] as const;
 /**
  * 生成 plugin.json glob 模式。
  * @param eager true=构建时加载（用于 manifest），false=懒加载
- * @param basePrefix glob 路径前缀——loader.ts 用 "../../"、plugin-shell-main.tsx 用 "../"
+ * @param basePrefix glob 路径前缀——消费方按自身相对项目根位置传入（loader.ts 用 "../../"）
  */
 export function pluginJsonGlobPatterns(
   eager: boolean,
