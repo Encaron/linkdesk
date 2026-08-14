@@ -10,7 +10,8 @@
  *
  * 🔴 占位策略（E5.7#3）：Phase 1 所有 zone 用占位 div——
  *   Phase 2 替换 TitleBar(#5 ✅)/IconBar(#6 ✅)/StatusBar(#8 ✅)，
- *   Phase 3 替换 SidebarZone(#10 ✅) + SidebarResizeHandle(#13)，
+ *   Phase 3 替换 SidebarZone(#10 ✅) + 侧栏分隔线(#13 ✅——4px handle 收在 SidebarZone 内，
+ *   非 PoolZoneShell 独立兄弟组件——可见性不变量：visible=false 随 zone 整体 display:none)，
  *   Phase 5 替换 MainZone(#20)/PanelZone(#21)/RightSidebarZone(#22)。
  *   不允许 import 尚不存在的 Zone 组件（每 Phase 结束必须 tsc 零错误 + 应用可启动）。
  *
@@ -38,7 +39,8 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
         <IconBarZone iconBar={layout.iconBar} />
 
         {/* Sidebar——E5.7#10（Phase 3）：全量哑渲染 zone。
-            visible=false → zone 内 display:none（保持挂载，视图状态不丢）。#13 分隔线随其后接入 */}
+            visible=false → zone 内 display:none（保持挂载，视图状态不丢）。
+            #13 分隔线已接入——zone 内 4px handle（乐观本地 + mouseup commit，真相源在壳） */}
         <SidebarZone sidebar={layout.sidebar} />
 
         {/* 主区列：MainZone + PanelZone */}
