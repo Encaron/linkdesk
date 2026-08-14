@@ -13,7 +13,7 @@
 
 import { Emitter, type Event, CoreEvents } from "../react/CoreEvents";
 import { setWorkspaceRoot } from "./ConfigurationService";
-import { normalizePath } from "./pathUtils";
+import { normalizePath } from "../utils/pathUtils";
 import { shellEvents } from "../react/ShellEvents";
 import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
 import { read, write } from "./StorageService"; // E5.5#0e

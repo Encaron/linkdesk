@@ -6,7 +6,7 @@ import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
   {
-    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts"],
+    files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -140,7 +140,7 @@ export default [
         {
           patterns: [
             {
-              group: ["@src/core/services/ConfigurationService", "@src/core/services/pathUtils"],
+              group: ["@src/core/services/ConfigurationService", "@src/core/utils/pathUtils"],
               message: "🚫 禁止 import ConfigurationService/pathUtils——请使用 linkdesk.configuration/linkdesk.path API。",
             },
           ],

@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/services/DialogService";
 import { shellEvents } from "../core/react/ShellEvents";
-import { normalizePath } from "../core/services/pathUtils";
+import { normalizePath } from "../core/utils/pathUtils";
 import {
   type SplitNode,
   getAllLeafGroupIds,

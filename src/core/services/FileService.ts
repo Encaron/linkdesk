@@ -14,12 +14,12 @@
  *   归一后：所有 fs 操作走 FileService——不存在"A 写 B 不知道"。
  */
 
-import { normalizePath } from "./pathUtils";
+import { normalizePath } from "../utils/pathUtils";
 import { reportError } from "./ErrorService";
 
 /* ── 类型 ── */
 
-import type { FileEntry } from "../../../shared/types";
+import type { FileEntry } from "../types/fileEntry"; // E5.7#45.5：shared/types.ts 迁入 core/types/
 export type { FileEntry };
 
 export interface FileChangeEvent {

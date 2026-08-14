@@ -9,7 +9,7 @@
 
 import { BrowserWindow, WebContentsView, app, nativeTheme } from 'electron';
 import * as path from 'path';
-import { DEV_SERVER_URL } from '../shared/constants.js'; // E5.6#5：Pool URL 构建
+import { DEV_SERVER_URL } from './constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from './ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）

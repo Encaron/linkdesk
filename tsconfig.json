@@ -20,6 +20,6 @@
       "@src/*": ["./src/*"]
     }
   },
-  "include": ["src", "plugins/builtin", "shared"],
+  "include": ["src", "plugins/builtin"],
   "exclude": []
 }

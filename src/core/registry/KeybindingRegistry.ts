@@ -32,7 +32,7 @@
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand, hasHandler } from "./CommandRegistry";
 import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../services/FileService";
-import { normalizePath } from "../services/pathUtils";
+import { normalizePath } from "../utils/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../react/CoreEvents";
 
 /** E5#102c: chord 第二键等待超时（ms） */
