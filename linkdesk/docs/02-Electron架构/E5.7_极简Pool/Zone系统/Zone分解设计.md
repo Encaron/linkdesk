@@ -82,7 +82,7 @@ Props: iconBar: { icons: IconBarItem[]; activePluginId?: string }
   - 高亮当前激活图标（activePluginId）
   - 点击 → window.linkdesk.events.emit('icon:selected', pluginId)
   - 右键图标 → 图标上下文菜单
-  - 拖拽重排（可选——远期）
+  - 拖拽重排——🔴 2026-08-14 补回（零丢失铁律：壳已验证功能不得静默砍——原"可选——远期"废止，commit 9848333a）
 
 CSS:
   width: 42px
