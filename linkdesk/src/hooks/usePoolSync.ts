@@ -15,7 +15,7 @@ import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, PoolMenuGro
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
-import { getAssetPath } from "../core/services/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
+import { getAssetPath } from "../core/utils/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getMenuItems, MenuId, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
 import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示

@@ -3,7 +3,7 @@ import react from "@vitejs/plugin-react";
 import { resolve, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readdirSync, readFileSync } from "fs";
-import { DEV_SERVER_PORT } from "./shared/constants";
+import { DEV_SERVER_PORT } from "./electron/constants"; // E5.7#45.5：shared/ 并入 electron/constants.ts
 import { PLUGIN_SUBDIRS } from "./src/core/pluginPaths";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));

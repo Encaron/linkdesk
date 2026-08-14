@@ -631,7 +631,7 @@ const noRawPathReplace = {
       noRawReplace:
         "🔥 禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath。" +
         " Windows \\ vs / 不匹配是反复出现的 bug（WorkspaceService/compileGlob/dist尾斜杠）。" +
-        " 修复：import { normalizePath } from '@src/core/pathUtils' 然后 normalizePath(uri)。" +
+        " 修复：import { normalizePath } from '@src/core/utils/pathUtils' 然后 normalizePath(uri)。" +
         " src/core/pathUtils.ts 自身是唯一正源定义处——此规则不适用。",
     },
   },
@@ -640,7 +640,7 @@ const noRawPathReplace = {
     const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
 
     // pathUtils.ts 自身是 normalizePath 正源定义处——放行
-    if (filename.endsWith("/src/core/pathUtils.ts") || filename.endsWith("/src/core/services/pathUtils.ts")) return {};
+    if (filename.endsWith("/src/core/utils/pathUtils.ts")) return {};
     // electron/ main 进程独立构建——无法 import src/core/pathUtils
     if (filename.includes("/electron/")) return {};
 
