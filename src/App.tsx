@@ -16,6 +16,8 @@ import QuickPick from "./components/shared/QuickPick";
 import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast } from "./core/services/toast";
+// E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）
+import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "./core/services/DialogService";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
@@ -469,6 +471,62 @@ function App() {
       unsubToasts();
       unsubSuppressed();
       unsubAction();
+    };
+  }, []);
+
+  // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册到 DialogService（服务零改动），
+  // 池 DialogHost 哑渲染，动作回传 settle Promise。
+  // 🔴 注册独占：ConfirmDialog 的注册已卸（#17）——双注册会互相覆盖。
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi?.pushDialog || !poolApi?.onDialogAction) return;
+
+    // 单一待决对话框（对标壳 ConfirmDialog 单 state——后开覆盖先开，行为零差异）
+    let pending: { settle: (v: boolean) => void } | null = null;
+
+    const pushOpen = (options: DialogOptions, isAlert: boolean) => {
+      poolApi.pushDialog({
+        open: true,
+        title: options.title,
+        message: options.message,
+        // 显示文本铁律——按钮文案壳侧 t() 解析（池原样渲染）
+        confirmLabel: options.confirmLabel ?? i18n.t("确定"),
+        cancelLabel: options.cancelLabel ?? i18n.t("取消"),
+        isAlert,
+      });
+    };
+
+    const confirmRenderer = (options: DialogOptions): Promise<boolean> =>
+      new Promise<boolean>((resolve) => {
+        pending = { settle: resolve };
+        pushOpen(options, false);
+      });
+
+    const alertRenderer = (options: DialogOptions): Promise<void> =>
+      new Promise<void>((resolve) => {
+        pending = { settle: () => resolve() };
+        pushOpen(options, true);
+      });
+
+    registerDialogRenderers(confirmRenderer, alertRenderer);
+
+    // 池动作回传——先推关闭再 settle（settle 后消费方可能立即再开——
+    // 若关闭推在 settle 之后，stale close 会覆盖新开对话框）。
+    // 动作用查表分发——避免 lowercase 字面量比较（no-restricted-syntax 误报规则）
+    const unsubAction = poolApi.onDialogAction((action: { type: string }) => {
+      poolApi.pushDialog({ open: false });
+      const p = pending;
+      pending = null;
+      const handlers: Record<string, () => void> = {
+        confirm: () => p?.settle(true),
+        cancel: () => p?.settle(false),
+      };
+      handlers[action.type]?.();
+    });
+
+    return () => {
+      unsubAction();
+      unregisterDialogRenderers();
     };
   }, []);
 
