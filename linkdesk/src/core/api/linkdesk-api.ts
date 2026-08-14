@@ -11,7 +11,7 @@
  *   const themes = await linkdesk.theme.getAvailable();
  *   await linkdesk.commands.executeCommand("myCommand", arg1, arg2);
  *
- * 运行时实现：window.linkdesk（由 preload-plugin.ts 通过 contextBridge 注入）。
+ * 运行时实现：window.linkdesk（由 preload-pool.ts / preload-shell.ts 通过 contextBridge 注入）。
  * 本文件是纯类型层——不包含运行时逻辑，只是给 window.linkdesk 加类型。
  */
 
@@ -152,12 +152,6 @@ export interface LinkDeskAPI {
     emit(channel: string, payload: any): void;
   };
 
-  /** E5#62：壳→插件请求处理——插件注册 channel handler 响应壳的 requestToPlugin */
-  pluginRequest: {
-    handle(channel: string, handler: (payload: any) => any): void;
-    unhandle(channel: string): void;
-  };
-
   /** 串口——读/写/监听，对标 VS Code SerialPort API */
   serial: {
     listPorts(): Promise<any[]>;
@@ -184,36 +178,8 @@ export interface LinkDeskAPI {
     get(pluginId?: string): Promise<any>;
   };
 
-  /** E5.5#9j：插件实例身份——URL 解析的 instanceId + pluginId */
-  pluginInstance: {
-    /** 实例 ID = tab.id——每个标签页唯一 */
-    id: string;
-    /** 插件 ID */
-    pluginId: string;
-  };
-
-  /** 插件视图生命周期——通知壳 WebView 渲染完成 */
-  pluginViews: {
-    notifyReady(pluginId?: string): void;
-    getAllIds?(): Promise<string[]>;
-    getInstanceIdsForPlugin?(pluginId: string): Promise<string[]>;
-    setVisible?(id: string, visible: boolean): Promise<void>;
-    setBounds?(id: string, bounds: { x: number; y: number; width: number; height: number }): Promise<void>;
-    destroy?(id: string): Promise<void>;
-    toggleDevTools?(): Promise<void>;
-    scheduleDestroy?(id: string): void;
-    cancelDestroy?(id: string): Promise<boolean>;
-    /** E5.5#9：宽限期恢复——按 pluginId 查找仍在宽限期内的旧 instanceId */
-    findGraceInstance?(pluginId: string): Promise<string | undefined>;
-    /** E5.5#9：宽限期恢复——旧 instanceId → 新 instanceId 重映射 */
-    rekeyInstance?(oldInstanceId: string, newInstanceId: string): Promise<boolean>;
-    /** plugin-view:reload——插件重载（预留） */
-    reload?(instanceId: string): void;
-    create?(instanceId: string, pluginId: string): void;
-    focus?(instanceId: string): void;
-    onReady?(cb: (instanceId: string) => void): () => void;
-  };
-
+  // E5.7#43/#44：pluginRequest / pluginInstance / pluginViews 命名空间已删——per-tab 多实例模型消亡
+  // （恢复需未来池侧 requests 命名空间任务——见 E5.7-执行清单 #43 执行注）
   // ── 壳侧扩展（preload-shell.ts 注入）──
   // 注：以下命名空间类型较为宽泛——壳代码通过 ?. 访问，具体签名见 preload-shell.ts
 

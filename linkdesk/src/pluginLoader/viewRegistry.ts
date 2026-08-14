@@ -9,8 +9,6 @@ import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-// Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => window.linkdesk;
 import { showConfirm } from "../core/services/DialogService";
 
 
@@ -107,19 +105,9 @@ export function unregisterViewPlugin(pluginId: string): boolean {
   const deleted = registry.delete(pluginId);
   // Phase 5h Step 1：通知消费者（仅在真正删除时——避免空事件导致 UI 无效刷新）
   if (deleted) {
+    // E5.7#44：per-tab 实例销毁调用已删——pluginViews 命名空间随插件 WebView 消亡。
+    // 池内插件 React 树由 tabState/viewRegistry 驱动渲染，注销即卸载，无需额外销毁。
     onDidUnregister.fire(pluginId);
-    // E5.5#9h-fix：per-tab 模型——一个插件可能有多个 instance，逐个销毁
-    try {
-      const pv = linkdesk()?.pluginViews;
-      if (pv?.getInstanceIdsForPlugin) {
-        pv.getInstanceIdsForPlugin(pluginId).then((iids: string[]) => {
-          for (const iid of iids) pv.destroy?.(iid);
-        }).catch(() => {});
-      } else {
-        // 降级：旧 API（pluginId = instanceId）
-        pv?.destroy?.(pluginId);
-      }
-    } catch { /* IPC 不可用时静默 */ }
   }
   return deleted;
 }

@@ -1,5 +1,5 @@
 /**
- * 🔥 events 共享模块——preload-plugin.ts + preload-shell.ts 共用
+ * 🔥 events 共享模块——preload-pool.ts + preload-shell.ts 共用
  *
  * E5#79 重写：去 subscriptions Map dispatch，改 serial.onData 模式——
  * 每个 events.on(channel, cb) 注册独立 ipcRenderer.on('plugin:push', handler)。
@@ -8,7 +8,7 @@
  * 使用：
  *   import { createEventSystem } from './event-system';
  *   const { on, emit } = createEventSystem(ipcRenderer, {
- *     logPrefix: 'preload-plugin',
+ *     logPrefix: 'preload-pool',
  *     extraHandlers: { 'theme:changed': (payload) => { ... } },
  *   });
  */
@@ -85,7 +85,7 @@ export interface ListenDirectOptions {
  * IpcBridge.broadcast() 推送的事件走 plugin:push 分发 → 必须用 events.on()，不能用此函数。
  * 壳 preload 的 config:changed 走主进程直发 mainWindow.webContents.send → listenDirect 正确，
  * 传 { skipPushWarning: true } 抑制告警。
- * 详见 preload-plugin.ts 文件头"IPC 通道铁律"。
+ * 详见 preload-pool.ts 文件头"IPC 通道铁律"。
  */
 export function listenDirect(
   ipcRenderer: IpcRenderer,
@@ -94,8 +94,8 @@ export function listenDirect(
   options?: ListenDirectOptions,
 ): () => void {
   // ── E5.5#7c: 运行时告警——channel 名匹配已知 plugin:push 分发通道时静默失效 ──
-  // 这些 channel 的壳侧推送走 IpcBridge.broadcast → plugin:push 分发到插件 WebView，
-  // 插件 preload 用 listenDirect 监听的是直接 IPC 通道（不带 plugin:push 包装），永远收不到。
+  // 这些 channel 的壳侧推送走 IpcBridge.broadcast → plugin:push 分发到池渲染进程，
+  // 池 preload 用 listenDirect 监听的是直接 IPC 通道（不带 plugin:push 包装），永远收不到。
   // 壳 preload 的 config:changed/contextKey:changed 走主进程直发 mainWindow.webContents.send，
   // 用 listenDirect 是正确的——传 { skipPushWarning: true } 跳过告警。
   if (!options?.skipPushWarning) {
@@ -115,7 +115,7 @@ export function listenDirect(
         ` "${channel}" 走 plugin:push 分发，必须用 events.on("${channel}", cb)，不是 listenDirect。` +
         ` 直接 IPC 通道加 :direct 后缀（如 "mydata:direct"）可跳过此告警。` +
         ` 壳 preload 确认主进程直发 → 传 {{ skipPushWarning: true }}。` +
-        ` 详见 preload-plugin.ts 文件头"IPC 通道铁律"。`,
+        ` 详见 preload-pool.ts 文件头"IPC 通道铁律"。`,
       );
     }
   }
