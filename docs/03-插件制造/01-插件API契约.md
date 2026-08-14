@@ -35,6 +35,7 @@
 | `menu.*` | 菜单注册 | ✅ | **E5#69** |
 | `contextKey.*` | 上下文键值 | ✅ | **E5#70** |
 | `pluginState.*` | 持久化存储 | ✅ | **E5#71** |
+| `hotExit.*` | Hot Exit 备份 | ✅ | **E5.7#38**——崩溃恢复脏内容落盘 |
 | `dialog.*` | 弹窗 | ✅ | **E5#67**——confirm/alert |
 | `events.*` | 发布/订阅 | ✅ | |
 | `p2p.*` | 插件间推流 | ✅ | **E5#65** |
@@ -289,6 +290,16 @@ window.linkdesk.pluginManager.isDisabled(id: string): Promise<boolean>
 ```typescript
 window.linkdesk.pluginRequest.handle(channel: string, handler: (payload: unknown) => unknown): void
 window.linkdesk.pluginRequest.unhandle(channel: string): void
+```
+
+### 3.21 `hotExit`——Hot Exit 备份 🆕 E5.7#38
+
+崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）。保存或关闭标签页后应调用 `clear` 删除备份。
+
+```typescript
+window.linkdesk.hotExit.save(filePath: string, content: string): Promise<void>
+window.linkdesk.hotExit.load(filePath: string): Promise<string | null>  // null = 无备份
+window.linkdesk.hotExit.clear(filePath: string): Promise<void>
 ```
 
 ---
