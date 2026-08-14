@@ -88,10 +88,46 @@ export interface CreatableViewMeta {
 
 // ── E5.7#1：布局 zone 字段 ──
 
+/** 标题栏菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染） */
+export interface TitleBarMenuItem {
+  /** 显示标签——壳 t(label ?? command.title ?? command) */
+  label: string;
+  /** 点击执行的命令 ID */
+  command: string;
+  /** 子菜单——仅 command+children 父项携带（无 command 父项由壳展平） */
+  children?: TitleBarMenuItem[];
+}
+
+/** 标题栏菜单组——每个 group = 顶栏一个按钮（如"文件""查看"） */
+export interface TitleBarMenuGroup {
+  /** group 名——排序/定位键 */
+  group: string;
+  /** 按钮显示标签——壳 t(首项 label ?? group) */
+  label: string;
+  items: TitleBarMenuItem[];
+}
+
+/** 标题栏槽位按钮——插件 contributes.titleBar 声明（when 已由壳过滤） */
+export interface TitleBarSlotButton {
+  command: string;
+  /** codicon 类名或图片路径 */
+  icon?: string;
+  /** tooltip——与壳 TitleBar title={item.command} 行为一致 */
+  title: string;
+}
+
 /** 标题栏布局——Phase 2 #5 TitleBarZone 消费 */
 export interface TitleBarLayout {
   title: string;
+  /** Logo 资源 URL——壳 getAssetPath 解析（Path B：池不 import core） */
+  logoUrl: string;
   menuBarVisible: boolean;
+  /** 菜单栏数据——壳分组/展平/翻译后推送 */
+  menuGroups: TitleBarMenuGroup[];
+  /** 插件贡献槽位按钮（left/right） */
+  slots: { left: TitleBarSlotButton[]; right: TitleBarSlotButton[] };
+  /** 窗口控件 tooltip——显示文本铁律：壳 t() 解析后推送 */
+  windowControls: { minimize: string; maximize: string; restore: string; close: string };
 }
 
 /** 图标栏条目——序列化自壳 viewRegistry（pluginId + 图标 + 名称 + 位置） */

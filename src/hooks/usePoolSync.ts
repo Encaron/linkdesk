@@ -8,11 +8,16 @@
  */
 
 import { useEffect, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup } from "../core/types/poolLayout";
+import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, TitleBarMenuGroup, TitleBarMenuItem, TitleBarSlotButton } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
+import { getAssetPath } from "../core/services/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
+import { getMenuItems, MenuId, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5：菜单栏序列化
+import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
+import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
 import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
@@ -82,6 +87,62 @@ const MENU_STYLE_MENUBAR_VISIBLE: Record<string, boolean> = {
   both: true,
 };
 
+/**
+ * E5.7#5：菜单栏数据序列化——壳 TitleBar 的 group 分组 / flattenGroupItems 展平 /
+ * MenuRenderer getLabel 翻译三合一搬入壳侧，池哑渲染（显示文本铁律）。
+ * 无 command 父项展平为其 children；command+children 父项保留 children（池子面板）。
+ */
+function buildTitleBarMenuGroups(t: (key: string) => string): TitleBarMenuGroup[] {
+  const allItems = getMenuItems(MenuId.MenuBar);
+  const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
+  for (const item of allItems) {
+    const group = item.group ?? "other";
+    if (!groups.has(group)) groups.set(group, []);
+    groups.get(group)!.push(item);
+  }
+  const sortedGroupNames = [...groups.keys()].sort(
+    (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
+  );
+
+  // label 解析与壳 MenuRenderer 一致：item.label > command.title > command id，再 t()
+  const resolveItem = (item: MenuItem): TitleBarMenuItem => ({
+    label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
+    command: item.command,
+    ...(item.children?.length ? { children: item.children.map(resolveItem) } : {}),
+  });
+  const flattenGroupItems = (items: Array<MenuItem & { pluginId: string }>): TitleBarMenuItem[] => {
+    const result: TitleBarMenuItem[] = [];
+    for (const item of items) {
+      if (item.children?.length) {
+        if (!item.command) {
+          for (const child of item.children) result.push(resolveItem(child));
+        } else {
+          result.push(resolveItem(item));
+        }
+      } else if (item.command) {
+        result.push(resolveItem(item));
+      }
+    }
+    return result;
+  };
+
+  return sortedGroupNames.map((groupName) => {
+    const groupItems = groups.get(groupName)!;
+    return {
+      group: groupName,
+      label: t(groupItems[0]?.label ?? groupName),
+      items: flattenGroupItems(groupItems),
+    };
+  });
+}
+
+/** E5.7#5：标题栏槽位按钮序列化——when 过滤在壳（ContextKeyService），池不评估表达式 */
+function buildTitleBarSlots(slot: "left" | "right"): TitleBarSlotButton[] {
+  return getTitleBarContributions(slot)
+    .filter((item) => !item.when || ContextKeyService.matches(item.when))
+    .map((item) => ({ command: item.command, icon: item.icon, title: item.command }));
+}
+
 export interface UsePoolSyncInput {
   tabState: TabState;
   /** 侧栏当前容器 ID——null = 无活动侧栏视图 */
@@ -99,6 +160,9 @@ export interface UsePoolSyncInput {
  * 依赖 tabState / sidebarView / isSidebarVisible / sidebarWidth——任一变化触发全量推送。
  */
 export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWidth, onTabAction }: UsePoolSyncInput): void {
+  // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
+  const { t, i18n } = useTranslation();
+
   // 缓存 pool API 引用——window.linkdesk.pool 在 preload 阶段就绪，mount 后不会变
   const poolApiRef = useRef<any>(null);
   if (!poolApiRef.current) {
@@ -122,6 +186,22 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     });
     return () => sub();
   }, []);
+
+  // E5.7#5：context key 变化（槽位按钮 when / 菜单 when 语义）与语言切换（t() 文案）→ 重推布局。
+  // 壳 TitleBar 用 onDidChangeContext 触发重渲染——池版等价物是 layoutVersion bump。
+  useEffect(() => {
+    const unsub = ContextKeyService.onDidChangeContext(() => {
+      setLayoutVersion((v) => v + 1);
+    });
+    const onLangChanged = () => {
+      setLayoutVersion((v) => v + 1);
+    };
+    i18n.on("languageChanged", onLangChanged);
+    return () => {
+      unsub();
+      i18n.off("languageChanged", onLangChanged);
+    };
+  }, [i18n]);
 
   // E5.6#11j：注册池→壳侧栏操作回调。池组件调用 pool.sidebarAction() →
   // 主进程转发 → 壳 preload → 此 handler → ViewContainerService 写方法。
@@ -258,12 +338,17 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     }));
 
     // E5.7#1/#4：PoolLayout v2 全量布局——唯一 Pool 单 WCV 直推完整快照。
-    // Phase 2 填充：iconBar（#6 IconBarZone）/ statusBar（#8 StatusBarZone）由对应任务序列化真实数据。
+    // Phase 2 填充：titleBar 已由 #5 序列化；iconBar（#6 IconBarZone）/ statusBar（#8 StatusBarZone）待对应任务。
     const fullLayout: PoolLayout = {
       version: 2,
       titleBar: {
         title: document.title,
+        // 壳 getAssetPath 解析——Path B：池不 import core，logo 以同源相对 URL 推送
+        logoUrl: getAssetPath("assets/logo.svg"),
         menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
+        menuGroups: buildTitleBarMenuGroups(t),
+        slots: { left: buildTitleBarSlots("left"), right: buildTitleBarSlots("right") },
+        windowControls: { minimize: t("最小化"), maximize: t("最大化"), restore: t("还原"), close: t("关闭") },
       },
       iconBar: { icons: [] },
       sidebar,
@@ -275,5 +360,5 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, sidebarWi
     };
 
     poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion]);
+  }, [tabState, sidebarView, isSidebarVisible, sidebarWidth, layoutVersion, t]);
 }
