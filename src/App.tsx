@@ -21,7 +21,7 @@ import ToastContainer from "./components/ToastContainer";
 import QuickPick from "./components/shared/QuickPick";
 import { QuickPickService, type QuickPickState } from "./core/registry/QuickPickService";
 import { ConfirmDialog } from "./components/shared/ConfirmDialog";
-import { TITLE_BAR_HEIGHT, HANDLE_WIDTH } from "./constants";
+import { TITLE_BAR_HEIGHT } from "./constants"; // E5.7#12.5：HANDLE_WIDTH 随 bounds 推流删除——#9 删壳 DOM 时 TITLE_BAR_HEIGHT 一并删
 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
@@ -328,6 +328,8 @@ function App() {
   const [zoneBounds, setZoneBounds] = useState<Record<string, { x: number; y: number; width: number; height: number }>>({});
 
   useEffect(() => {
+    // E5.7#12.5：Pool bounds 推流已删——主进程 syncPoolBounds 接管（WCV 满窗零偏移）。
+    // LayoutEngine 订阅仍保留——zoneBounds 供壳 DOM 定位（#9 删壳 DOM 时一并删除）。
     const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight - TITLE_BAR_HEIGHT);
     const unsub = layoutEngine.onDidChangeLayout(() => {
       const b: Record<string, { x: number; y: number; width: number; height: number }> = {};
@@ -336,43 +338,6 @@ function App() {
         if (bounds) b[z.zone] = bounds;
       }
       setZoneBounds(b);
-
-      // E5.6#9c → E5.7#4：同步唯一 Pool WebContentsView bounds——窗口 resize / 侧栏拖宽时推送
-      const poolApi = (window as any).linkdesk?.pool;
-      if (poolApi?.setBounds) {
-        // E5.6#22k：分隔线宽度——resizable zone 的相邻边界留缝，壳 DOM handle 从缝透出。
-        // E5.7#4：唯一 Pool 占满主区——各 resizable zone 一律从 main 边界收缩留缝。
-        const gap = HANDLE_WIDTH / 2;
-
-        // 计算 main 的收缩量——main zone 可能被多个 resizable zone 挤压
-        let mainShiftX = 0;
-        let mainShrinkLeft = 0;
-        let mainShrinkRight = 0;
-        let mainShrinkBottom = 0;
-
-        for (const z of layoutEngine.getAllZones()) {
-          if (!z.dock?.resizable || !b[z.zone]) continue;
-          const edge = z.dock.edge;
-          if (edge === "left") {
-            mainShrinkLeft += gap;
-            mainShiftX += gap;
-          } else if (edge === "right") {
-            mainShrinkRight += gap;
-          } else if (edge === "bottom") {
-            mainShrinkBottom += gap;
-          }
-        }
-
-        // LayoutEngine bounds 相对于 title bar 下方的容器——WebContentsView bounds 需加 TITLE_BAR_HEIGHT 偏移
-        if (b.main) {
-          poolApi.setBounds({
-            x: b.main.x + mainShiftX,
-            y: b.main.y + TITLE_BAR_HEIGHT,
-            width: b.main.width - mainShrinkLeft - mainShrinkRight,
-            height: b.main.height - mainShrinkBottom,
-          });
-        }
-      }
     });
     updateSize();
     window.addEventListener("resize", updateSize);

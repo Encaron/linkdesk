@@ -43,6 +43,9 @@ export class WindowManager {
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
+    // E5.7#12.5：Pool bounds 换主——主进程跟随窗口 resize 满窗（壳不再推流）。
+    // 注册在构造函数而非 createMainPool——rebuildPool 会重复注册。
+    this.mainWindow.on('resize', this.syncPoolBounds);
   }
 
   /** E3c #40：setter——IpcBridge 晚于 WindowManager 创建 */
@@ -471,8 +474,23 @@ export class WindowManager {
       return this.mainPoolView;
     }
     this.mainPoolView = this.createPoolView('pool');
+    // E5.7#12.5：创建即满窗接管——bounds 由主进程算（窗口内容区），不再等壳推流
+    this.syncPoolBounds();
+    this.mainPoolView.setVisible(true);
     return this.mainPoolView;
   }
+
+  /**
+   * E5.7#12.5：Pool 满窗零偏移——bounds 换主。
+   * 主进程 = bounds 唯一真相源：窗口内容区即 Pool bounds，resize 时跟随（模式同 overlay-window.ts syncBounds）。
+   * E5.6 时代壳推流（pool:set-bounds）已死链删除——titlebar 是池内 zone，无需 TITLE_BAR_HEIGHT 偏移。
+   */
+  private syncPoolBounds = (): void => {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) return;
+    const { width, height } = this.mainWindow.getContentBounds();
+    view.setBounds({ x: 0, y: 0, width, height });
+  };
 
   /** E5.6#5e → E5.7#4：销毁唯一 Pool WebContentsView */
   destroyPool(): void {
@@ -527,6 +545,8 @@ export class WindowManager {
       clearInterval(this.memoryTimer);
       this.memoryTimer = null;
     }
+    // E5.7#12.5：注销 resize 跟随监听——与构造函数注册成对
+    this.mainWindow.removeListener('resize', this.syncPoolBounds);
     // 清理所有保活定时器
     for (const timer of this.graceTimers.values()) {
       clearTimeout(timer);
