@@ -558,14 +558,6 @@ try {
       },
     },
 
-    // ── E5.6#22a：overlay API——壳推送渲染命令到 OverlayWindow ──
-    overlay: {
-      /** fire-and-forget——推渲染命令到 OverlayWindow，不等待结果。
-       *  show()（#23h）构建在此之上——加 requestId + Promise + 超时。 */
-      push: (type: string, payload: unknown) =>
-        ipcRenderer.send('overlay:forward-to-overlay', { requestId: '', type, payload }),
-    },
-
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
     window: {
       minimize:  () => ipcRenderer.send('window:minimize'),

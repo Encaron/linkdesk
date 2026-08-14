@@ -28,7 +28,6 @@ import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
 import { initKeyboardRouting, syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc-bridge.js';
-import { OverlayWindow } from './overlay-window.js';
 import { APP_SCHEME } from './constants.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -44,8 +43,6 @@ let windowManager: WindowManager | null = null;
 let pluginViewRegistry: PluginViewRegistry | null = null;
 // E3a #26：插件 WebView ↔ 壳渲染进程 IPC 中继
 let ipcBridge: IpcBridge | null = null;
-// E5.6#21d：OverlayWindow——全屏透明 BrowserWindow，浮于所有 Pool 之上
-let overlayWindow: OverlayWindow | null = null;
 
 const isDev = !app.isPackaged;
 let _windowIpcRegistered = false; // E3f #52f：窗口控制 IPC handler 只注册一次
@@ -109,24 +106,6 @@ function createWindow(): void {
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
   windowManager.createMainPool();
-
-  // E5.6#21d：创建 OverlayWindow——全屏透明，浮于所有 Pool 之上
-  overlayWindow = new OverlayWindow(mainWindow);
-  overlayWindow.create();
-
-  // ── 主窗口 resize/move → OverlayWindow 同步尺寸+位置 ──
-  mainWindow.on('resize', () => overlayWindow?.syncBounds());
-  mainWindow.on('move', () => overlayWindow?.syncBounds());
-
-  // ── E5.6#21.6c 中继：任何渲染进程 → OverlayWindow ──
-  ipcMain.on('overlay:forward-to-overlay', (_event, msg) => {
-    overlayWindow?.webContents?.send('overlay:render', msg);
-  });
-
-  // ── E5.6#21.6c 中继：OverlayWindow → 壳 ──
-  ipcMain.on('overlay:forward-to-shell', (_event, msg) => {
-    mainWindow?.webContents?.send('overlay:result', msg);
-  });
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
@@ -237,8 +216,6 @@ function createWindow(): void {
   });
 
   mainWindow.on('closed', () => {
-    overlayWindow?.destroy();
-    overlayWindow = null;
     mainWindow = null;
   });
 }
