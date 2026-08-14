@@ -621,10 +621,3 @@ select {
   border-left: 1px solid var(--separator);
   background: var(--bg-side-panel);
 }
-
-.zone-statusbar {
-  height: 22px;
-  flex-shrink: 0;
-  background: var(--bg-window);
-  border-top: 1px solid var(--separator);
-}

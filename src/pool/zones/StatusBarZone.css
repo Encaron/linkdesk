@@ -1,0 +1,347 @@
+/**
+ * StatusBarZone.css——E5.7#8。壳 StatusBar.css 迁入（仅保留使用中的类）。
+ *
+ * 未迁入的死类（壳 StatusBar.tsx 与插件均不渲染，grep 零消费）：
+ *   .status-dot / .status-traffic / .status-error / @keyframes statusFadeIn / .status-bar-notif-wrapper
+ *
+ * 阴影注记：面板 box-shadow 0 8px 32px rgba(0,0,0,0.35) 为壳 StatusBar.css:151 原值——
+ * --context-menu-shadow（4px 12px）层级太浅，420px 大面板需更高层级。现有 token 无匹配，
+ * 保留原值（Phase 6 #26 Z_INDEX/常量表可补面板级阴影 token）。
+ */
+
+.status-bar {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  background: var(--bg-window);
+  border-top: 1px solid var(--separator);
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  line-height: 22px;
+}
+
+.status-text {
+  color: var(--text-secondary);
+}
+
+.status-divider {
+  display: inline-block;
+  height: 14px;
+  margin: 0 6px;
+  border-left: 1px solid var(--separator);
+  vertical-align: middle;
+}
+
+.status-chord {
+  font-size: 11px;
+  color: var(--accent);
+  max-width: 320px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.status-bar-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+}
+
+.status-bar-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-bar-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 0 6px;
+  height: 22px;
+  line-height: 22px;
+  border-radius: 0;
+  cursor: pointer;
+  transition: background 120ms, color 120ms;
+}
+
+.status-bar-btn:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+/* ── P3-9：通知面板 —— 对标 VS Code notificationsCenter.css ── */
+
+.status-bar-notif-btn {
+  position: relative;
+}
+
+.status-bar-notif-btn .codicon-bell {
+  font-size: 14px;
+}
+
+.status-bar-notif-btn.has-notifications {
+  color: var(--accent);
+}
+
+.status-bar-notif-badge {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  font-size: 9px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--badge-text);
+  border-radius: 50%;
+  min-width: 12px;
+  height: 12px;
+  line-height: 12px;
+  text-align: center;
+  padding: 0 2px;
+}
+
+/*
+ * 对标 VS Code .notifications-center：right: 7px; bottom: 29px; max-width: 450px
+ */
+.status-bar-notif-panel {
+  position: fixed;
+  right: 7px;
+  bottom: 29px; /* 22px status bar + 7px */
+  width: 420px;
+  max-height: 400px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.35); /* 见文件头阴影注记——壳原值，无匹配 token */
+  overflow: hidden;
+  z-index: var(--z-overlay); /* E5#98: above modal backdrop, below quick input */
+  display: flex;
+  flex-direction: column;
+}
+
+/*
+ * 对标 VS Code .notifications-center-header：height: 35px; title 11px uppercase
+ */
+.notif-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 8px 0 12px;
+  height: 35px;
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.notif-panel-header .notif-panel-title {
+  text-transform: uppercase;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+}
+
+.notif-panel-header .notif-panel-toolbar {
+  display: flex;
+  gap: 2px;
+}
+
+.notif-panel-clear {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  font-family: inherit;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.notif-panel-clear:hover {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+}
+
+.notif-panel-empty {
+  padding: 32px 16px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.notif-panel-list {
+  overflow-y: auto;
+  flex: 1;
+}
+
+.notif-panel-item {
+  display: flex;
+  flex-direction: column-reverse; /* VS Code: details first for keyboard access */
+  padding: 8px;
+  border-bottom: 1px solid var(--separator);
+}
+
+.notif-panel-item:last-child {
+  border-bottom: none;
+}
+
+/* Main row: icon + message + dismiss */
+.notif-panel-item .notif-main-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+/* VS Code: icon 16px, margin 4px, font-size 18px */
+.notif-panel-item .notif-icon {
+  flex: 0 0 16px;
+  width: 16px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  margin: 0 2px;
+}
+
+.notif-panel-item .notif-icon.info { color: var(--accent); }
+.notif-panel-item .notif-icon.warning { color: var(--warning); }
+.notif-panel-item .notif-icon.error { color: var(--error); }
+
+/* VS Code: message flex:1, line-height 22px, text-overflow ellipsis */
+.notif-panel-msg {
+  flex: 1;
+  font-size: 12px;
+  color: var(--text-primary);
+  line-height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+/* VS Code: toolbar hidden until hover/focus */
+.notif-panel-dismiss {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  padding: 0 4px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  opacity: 0;
+  transition: opacity 100ms;
+}
+
+.notif-panel-item:hover .notif-panel-dismiss {
+  opacity: 1;
+}
+
+.notif-panel-dismiss:hover {
+  color: var(--text-primary);
+  background: var(--tab-hover-bg);
+  border-radius: 3px;
+}
+
+/* VS Code: details row below message——source + action buttons */
+.notif-panel-item .notif-details-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 24px; /* align with message after icon */
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-wrap: wrap;
+}
+
+.notif-source {
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.notif-actions-row {
+  display: flex;
+  gap: 4px;
+}
+
+.notif-action-btn {
+  background: none;
+  border: none;
+  font-size: 11px;
+  font-family: inherit;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.notif-action-btn.primary {
+  background: var(--accent);
+  color: var(--badge-text);
+}
+
+.notif-action-btn.primary:hover {
+  opacity: 0.85;
+}
+
+.notif-action-btn.secondary {
+  color: var(--text-muted);
+  border: 1px solid var(--separator);
+}
+
+.notif-action-btn.secondary:hover {
+  color: var(--text-primary);
+  border-color: var(--text-muted);
+}
+
+/* Severity icons in notification panel */
+.notif-severity-error { color: var(--danger) !important; }
+.notif-severity-warning { color: var(--warning) !important; }
+
+/* ── E3e #49/#50：NotificationCenter 增强 —— source 分组标题 + 未读徽章 + 时间标签 ── */
+
+/* 分组标题——插件名 + 未读数 */
+.notif-panel-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px 2px;
+}
+
+.notif-source-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-secondary);
+}
+
+.notif-source-group-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: var(--accent);
+  color: var(--badge-text);
+  border-radius: 8px;
+  padding: 0 5px;
+  min-width: 14px;
+  height: 14px;
+  line-height: 14px;
+  text-align: center;
+}
+
+/* 时间标签 */
+.notif-panel-time {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+}

@@ -183,22 +183,70 @@ export interface PanelLayout {
   views: PanelViewMeta[];
 }
 
-/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件） */
+/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析） */
 export interface StatusBarItem {
   id: string;
   pluginId: string;
-  /** codicon 图标名 */
+  /** codicon 图标名（不带 codicon- 前缀——池补） */
   icon?: string;
   label: string;
   title?: string;
   align: "left" | "right";
   /** 点击执行的命令 ID */
   onClick?: string;
+  /** 插件有 statusBarComponent——池侧懒加载渲染（serial-monitor TX/RX 实时计数） */
+  component?: boolean;
+  /** 前导分隔线——壳 StatusBar 渲染语义（左区每项除首个；右区组内除首个） */
+  dividerBefore?: boolean;
+}
+
+/** 通知动作——壳 ToastAction 序列化（onClick 是壳侧闭包——池点击回传壳执行） */
+export interface NotifAction {
+  label: string;
+  isPrimary?: boolean;
+}
+
+/** 通知条目——壳侧已解析（icon 类/时间/来源标签/动作全部壳侧完成） */
+export interface NotifItem {
+  id: string;
+  /** 完整 codicon 类串（如 "codicon codicon-error notif-severity-error"） */
+  iconClass: string;
+  message: string;
+  /** 壳 formatTimeAgo（i18n t()） */
+  timeLabel: string;
+  /** 壳 t("来源: {{source}}")——无 source 则缺省 */
+  sourceLabel?: string;
+  actions: NotifAction[];
+}
+
+/** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
+export interface NotifGroup {
+  key: string;
+  /** source 第一段或 t("其他") */
+  label: string;
+  unread: number;
+  items: NotifItem[];
+}
+
+/** 通知中心数据——壳侧序列化（未读计数/文案/分组全壳侧完成） */
+export interface NotifLayout {
+  unread: number;
+  /** 铃铛 tooltip——t("{{count}} 条通知") / t("通知") */
+  bellTitle: string;
+  panelTitle: string;
+  clearLabel: string;
+  emptyLabel: string;
+  dismissTitle: string;
+  groups: NotifGroup[];
 }
 
 /** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */
 export interface StatusBarLayout {
   items: StatusBarItem[];
+  /** Chord 提示——壳 CHORD_CHANGED 构建的完整字符串（按键名是技术标识符，不走 i18n） */
+  chordLabel?: string;
+  /** 通知中心——壳 toast 存储序列化（面板开闭/清除/动作回传壳执行） */
+  notif: NotifLayout;
 }
 
 /**
