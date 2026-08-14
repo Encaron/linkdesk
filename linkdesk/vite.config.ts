@@ -49,8 +49,13 @@ function scanPluginEntries(): Record<string, string> {
   return entries;
 }
 
-export default defineConfig(async () => {
+export default defineConfig(async ({ command }) => {
   const pluginEntries = scanPluginEntries();
+  // E5.7#31.7：池开发预览入口——仅 vite dev（浏览器 mock 模式，Codex UI 设计通道）。
+  // 生产构建（npm run build）零污染：preview.html + mock fixture 不进 dist。
+  const devEntries = command === "serve"
+    ? { preview: resolve(__dirname, "preview.html") }
+    : {};
 
   return {
     plugins: [react()],
@@ -79,6 +84,7 @@ export default defineConfig(async () => {
         input: {
           main: resolve(__dirname, "index.html"),
           pool: resolve(__dirname, "pool.html"),
+          ...devEntries,
           ...pluginEntries,
         },
         output: {
