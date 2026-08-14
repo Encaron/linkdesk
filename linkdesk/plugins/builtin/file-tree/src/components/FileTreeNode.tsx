@@ -105,6 +105,8 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
     e.stopPropagation(); // 阻止冒泡到容器——容器 onClick 负责清空选中
     // E4V#21: 传 event 给父组件——检测 ctrlKey/metaKey 做多选 toggle
     onSelect(item.uri, e);
+    // 右键/中键只选中不打开/不展开——打开归左键，菜单归 contextmenu（对标 VS Code）
+    if (e.button !== 0) return;
     if (item.isDirectory) {
       // E5: expandOnClick 控制单击目录行是否 toggle 展开/折叠
       if (expandOnClick) onTwistieClick(item);
@@ -141,6 +143,7 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             e.stopPropagation();
+            if (e.button !== 0) return; // 右键归 contextmenu——不展开/折叠
             onTwistieClick(item);
           }}
         />

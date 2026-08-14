@@ -33,8 +33,10 @@ export function useClickPreview({ onPreview, onPin, disabled, delay = 250 }: Use
     };
   }, []);
 
-  const handleMouseDown = useCallback(() => {
+  const handleMouseDown = useCallback((e: { button?: number }) => {
     if (disabled) return;
+    // 右键/中键不启动预览——打开归左键，菜单归 contextmenu（对标 VS Code）
+    if (e.button !== undefined && e.button !== 0) return;
     if (timerRef.current) {
       // 第二次 mousedown（双击的第二击）→ 清定时器，不触发预览
       clearTimeout(timerRef.current);
@@ -48,8 +50,10 @@ export function useClickPreview({ onPreview, onPin, disabled, delay = 250 }: Use
     }
   }, [disabled, delay, onPreview]);
 
-  const handleClick = useCallback((e: { detail: number }) => {
+  const handleClick = useCallback((e: { detail: number; button?: number }) => {
     if (disabled) return;
+    // 非左键点击不锁定（右键归 contextmenu）
+    if (e.button !== undefined && e.button !== 0) return;
     if (e.detail === 2) {
       // 双击：清掉可能还在的预览定时器 → 锁定
       if (timerRef.current) {
