@@ -148,8 +148,8 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
     pluginId: string;
   }) => {
     const channelId = `lsp-${++_channelId}`;
-    // E5.5#7 Bug B fix：用 event.sender 路由 LSP 数据回发起 spawn 的 WebView（编辑器插件 WebView）。
-    // 旧代码用 pluginId（语言 ID "python"）→ windowManager.getPluginView("python") 永远 null。
+    // E5.5#7 Bug B fix：用 event.sender 路由 LSP 数据回发起 spawn 的 WebView（池内编辑器插件）。
+    // 旧代码用 pluginId（语言 ID "python"）查 View 映射——永远 null（E5.7#43 该 API 已删）。
     const senderWc = event.sender;
 
     // E5#114d：resolve ASAR 文件路径——外部 node 不认识 app.asar

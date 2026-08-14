@@ -435,15 +435,7 @@ try {
       respond: (requestId: string, result?: unknown, error?: string) => {
         ipcRenderer.send('bridge:response', { requestId, result, error });
       },
-      // 壳侧推送事件到插件 WebView（#27）——串口数据、配置变更等
-      pushToPlugin: (instanceId: string, channel: string, payload: unknown) => {
-        ipcRenderer.send('bridge:pushToPlugin', { instanceId, channel, payload });
-      },
-      // E5#62：壳→插件请求-响应——等插件处理完返回结果
-      requestToPlugin: (instanceId: string, channel: string, payload: unknown): Promise<unknown> => {
-        return ipcRenderer.invoke('bridge:request-to-plugin', instanceId, channel, payload);
-      },
-      // E3b #35：广播到所有插件 WebView——主题切换、语言切换等全局事件
+      // E3b #35 → E5.7#43：广播到唯一 Pool——主题切换、语言切换等全局事件
       broadcast: (channel: string, payload: unknown) => {
         ipcRenderer.send('bridge:broadcast', { channel, payload });
       },

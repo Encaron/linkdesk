@@ -33,12 +33,8 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       if (_mainWindow && !_mainWindow.isDestroyed()) {
         _mainWindow.webContents.send('serial:data', text);
       }
-      // E5#74b + E5.5#9d：广播到所有实例 WebView
+      // E5#74b + E5.7#43：广播到唯一 Pool WebView（per-tab 实例循环已删）
       if (_windowManager) {
-        for (const instanceId of _windowManager.getAllInstanceIds()) {
-          _windowManager.getPluginView(instanceId)?.webContents.send('serial:data', text);
-        }
-        // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView（#12 提前——SidebarPool 已删）
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:data', text);
@@ -51,10 +47,6 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         _mainWindow.webContents.send('serial:stats', stats);
       }
       if (_windowManager) {
-        for (const instanceId of _windowManager.getAllInstanceIds()) {
-          _windowManager.getPluginView(instanceId)?.webContents.send('serial:stats', stats);
-        }
-        // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:stats', stats);
@@ -67,10 +59,6 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
         _mainWindow.webContents.send('serial:system', msg);
       }
       if (_windowManager) {
-        for (const instanceId of _windowManager.getAllInstanceIds()) {
-          _windowManager.getPluginView(instanceId)?.webContents.send('serial:system', msg);
-        }
-        // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:system', msg);

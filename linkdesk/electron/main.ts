@@ -20,14 +20,13 @@ import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
 import { registerProtocolHandlers } from './ipc/protocol-handlers.js'; // E5.6#11.5h
 import { registerLangDefHandlers } from './ipc/lang-def-handlers.js'; // E5.6#11.5i
 import { registerHotExitHandlers } from './ipc/hot-exit-handlers.js'; // E5.7#38
-import { registerPluginViewHandlers, registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29 + E5.6#8d
+import { registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './protocol.js';
 import { DEV_SERVER_URL } from '../shared/constants.js'; // E5#102b
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
-import { PluginViewRegistry } from './plugin-view-registry.js';
-import { initKeyboardRouting, syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
+import { syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './crash-recovery.js'; // E5.7#36
 import { APP_SCHEME } from './constants.js';
@@ -41,9 +40,7 @@ if (!gotLock) {
 let mainWindow: BrowserWindow | null = null;
 // E3a #24：插件 WebContentsView 生命周期管理
 let windowManager: WindowManager | null = null;
-// E3a #25：插件 ID→View 映射 + bounds 管理 + 重载
-let pluginViewRegistry: PluginViewRegistry | null = null;
-// E3a #26：插件 WebView ↔ 壳渲染进程 IPC 中继
+// E3a #26：池渲染进程 ↔ 壳渲染进程 IPC 中继（E5.7#43）
 let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
@@ -90,12 +87,8 @@ function createWindow(): void {
   registerLangDefHandlers();   // E5.6#11.5i
   registerHotExitHandlers();   // E5.7#38
 
-  // E3a #24：初始化 WindowManager
+  // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
   windowManager = new WindowManager(win);
-  // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
-  pluginViewRegistry = new PluginViewRegistry(windowManager);
-  // E5.5#7-p6：键盘路由——before-input-event 全局拦截，插件 WebView 聚焦时全局快捷键仍生效
-  initKeyboardRouting(win, pluginViewRegistry);
   // E5.5#7-p7：壳同步快捷键表到主进程（无窗口引用——只注册一次）
   if (!_keyboardSyncRegistered) {
     _keyboardSyncRegistered = true;
@@ -103,8 +96,6 @@ function createWindow(): void {
       syncKeybindings(data);
     });
   }
-  // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
-  registerPluginViewHandlers(pluginViewRegistry, win);
   // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道（换实例摘旧挂新）
   ipcBridge = new IpcBridge(win, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
@@ -361,5 +352,5 @@ app.on('second-instance', () => {
 });
 
 // 导出窗口引用——后续步 2-4 的 SerialService 等服务需要它推送数据到渲染进程
-// E3a #24-#26：导出 WindowManager + PluginViewRegistry + IpcBridge——MainContent 等需要它们
-export { mainWindow, windowManager, pluginViewRegistry, ipcBridge };
+// E3a #24-#26：导出 WindowManager + IpcBridge（E5.7#43：PluginViewRegistry 已删）
+export { mainWindow, windowManager, ipcBridge };
