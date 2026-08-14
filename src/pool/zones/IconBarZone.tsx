@@ -7,19 +7,19 @@
  *   - 图标按钮（垂直排列，42px 宽；top/bottom 分列——壳 getIconLocation 序列化为 location 字段）
  *   - 激活高亮（activePluginId——壳侧已算好：侧栏展开 + 活动容器属于该插件）
  *   - 点击 → window.linkdesk.events.emit("icon:selected", pluginId) → 主进程转发 → 壳开标签
+ *   - 底部图标（齿轮）例外——左键/右键弹 ExtensionGear 菜单（壳 IconBar 同款：
+ *     location=bottom 即齿轮，零 pluginId 硬编码；菜单项壳 MenuRegistry 解析推送，池哑渲染）
  *   - 拖拽换位（#6 补丁 2026-08-14）——壳 IconBar 状态机迁入：乐观本地序 + mouseup
  *     emit icon:reordered → 壳持久化 iconOrder + 重推确认（#13 同款"乐观本地 + commit"模式，
  *     真相源在壳）。设计 §2.2"可选——远期"废止——零丢失铁律：壳已验证功能不得静默砍。
  *   - ☰ 汉堡（hamburgerVisible）——下拉分组菜单（壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义）
  *
  * 与壳行为差异（诚实注记）：
- *   ② 底部齿轮左键/右键菜单（MenuId.ExtensionGear）——推迟 Phase 4 #14（ContextMenu 浮层门户）。
- *      过渡期点击齿轮无动作；设置视图仍可从 文件 → 打开设置 或命令面板到达。
- *   ③ 壳 icon-btn 48×48 在 42px 列内横向溢出——池按设计修正为 42×42（Zone分解设计.md:81）。
- *   ④ 壳汉堡子面板仅 2 层——池共享 MenuItemList 递归支持 N 层（实际菜单数据 ≤2 层，无感）。
- *   ⑤ 拖拽落点范围：壳只把 icon-bar-top 作目标容器（底部图标不可作落点——壳实现遗漏），
+ *   ② 壳 icon-btn 48×48 在 42px 列内横向溢出——池按设计修正为 42×42（Zone分解设计.md:81）。
+ *   ③ 壳汉堡子面板仅 2 层——池共享 MenuItemList 递归支持 N 层（实际菜单数据 ≤2 层，无感）。
+ *   ④ 拖拽落点范围：壳只把 icon-bar-top 作目标容器（底部图标不可作落点——壳实现遗漏），
  *      池整列可作落点。换位语义不变（全序 splice），只是落点检测完整化。
- *   ⑥ E4V#48 跨容器拖放（视图拖到图标栏 → 视图移入目标插件容器）——并入 #10 迁移
+ *   ⑤ E4V#48 跨容器拖放（视图拖到图标栏 → 视图移入目标插件容器）——并入 #10 迁移
  *      （用户定夺 2026-08-14）：drop 源 PoolSectionStack handleDragStart 写 dataTransfer
  *      自定义 MIME（application/x-linkdesk-view），图标落点 onDrop 读 MIME → emit
  *      view:droppedOnIcon → 壳 usePoolSync 解析目标插件首个容器 → moveView + 重推确认。
@@ -32,6 +32,7 @@ import type { IconBarLayout, IconBarItem } from "../../core/types/poolLayout";
 import MenuItemList from "../shared/MenuItemList";
 import PoolPluginIcon from "../shared/PoolPluginIcon";
 import { executePoolCommand } from "../shared/executePoolCommand";
+import ContextMenu from "@src/components/shared/ContextMenu"; // 齿轮菜单——#14 门户（壳 IconBar 同款消费者）
 import { VIEW_DRAG_MIME } from "../shared/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）
 import "./IconBarZone.css";
 
@@ -52,6 +53,9 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // 齿轮菜单锚点（壳 IconBar gearAnchor 同款）——底部图标左键/右键 → ExtensionGear 菜单
+  const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
 
   const handleCommand = useCallback((command: string) => {
     setHamburgerOpen(false);
@@ -180,7 +184,7 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
 
   const draggedIcon = draggedId ? localIcons.find((x) => x.pluginId === draggedId) : null;
 
-  const renderIcon = (item: IconBarItem) => {
+  const renderIcon = (item: IconBarItem, isBottom: boolean) => {
     const showBefore = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_TOP;
     const showAfter = dropTarget?.id === item.pluginId && dropTarget.pos === DROP_POS_BOTTOM;
     return (
@@ -194,15 +198,27 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
             e.preventDefault(); // 阻止浏览器原生拖拽
             dragRef.current = { pluginId: item.pluginId, startY: e.clientY, moved: false };
           }}
-          onClick={() => {
+          onClick={(e) => {
             if (wasDragRef.current) {
               wasDragRef.current = false;
               dragRef.current = null;
               return;
             }
+            if (isBottom) {
+              // 底部图标（齿轮）：对标 VS Code 左下齿轮——左键弹 ExtensionGear 菜单，不开标签
+              // （壳 IconBar 同款语义；菜单含"打开设置"入口）
+              e.preventDefault();
+              setGearAnchor({ x: e.clientX, y: e.clientY });
+              return;
+            }
             // 壳侧消费方：壳 App 桥接 linkdesk.events.on → shellEvents → App 开标签（E5.7#6）
             window.linkdesk?.events?.emit("icon:selected", item.pluginId);
           }}
+          onContextMenu={isBottom ? (e) => {
+            // 右键同弹齿轮菜单（壳同款——顶部图标右键无菜单）
+            e.preventDefault();
+            setGearAnchor({ x: e.clientX, y: e.clientY });
+          } : undefined}
           // E4V#48：视图拖放落点——仅响应携带自定义 MIME 的 HTML5 拖拽（换位拖拽走 mousedown 不触发）
           onDragOver={(e) => {
             if (!e.dataTransfer.types.includes(VIEW_DRAG_MIME)) return;
@@ -266,9 +282,19 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
             )}
           </>
         )}
-        {topIcons.map(renderIcon)}
+        {topIcons.map((item) => renderIcon(item, false))}
       </div>
-      <div className="icon-bar-bottom">{bottomIcons.map(renderIcon)}</div>
+      <div className="icon-bar-bottom">{bottomIcons.map((item) => renderIcon(item, true))}</div>
+
+      {/* 齿轮菜单——底部图标左键/右键 → ExtensionGear（壳 IconBar 同款；#14 ContextMenu 门户） */}
+      {gearAnchor && (
+        <ContextMenu
+          menuId={"extensionGear"}
+          anchor={gearAnchor}
+          context={{}}
+          onClose={() => { setGearAnchor(null); (document.activeElement as HTMLElement)?.blur(); }}
+        />
+      )}
 
       {/* 拖影——壳 IconBar 同款半透明跟随 */}
       {previewPos && draggedIcon && createPortal(
