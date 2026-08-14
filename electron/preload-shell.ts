@@ -86,6 +86,13 @@ ipcRenderer.on('pool:dialog-action', (_event, action: PoolDialogAction) => {
   if (_dialogActionHandler) _dialogActionHandler(action);
 });
 
+// E5.7#39：内存压力通知——主进程 window-manager 单 Pool 采样超阈值 → 壳 toast 服务
+type MemoryPressureData = { totalRSS: number; threshold: number };
+let _memoryPressureHandler: ((data: MemoryPressureData) => void) | null = null;
+ipcRenderer.on('system:memory-pressure', (_event, data: MemoryPressureData) => {
+  if (_memoryPressureHandler) _memoryPressureHandler(data);
+});
+
 // ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
@@ -555,6 +562,11 @@ try {
       onDialogAction: (cb: (action: PoolDialogAction) => void) => {
         _dialogActionHandler = cb;
         return () => { _dialogActionHandler = null; };
+      },
+      /** E5.7#39：注册内存压力回调——主进程→壳→toast 服务。返回 unsubscribe */
+      onMemoryPressure: (cb: (data: MemoryPressureData) => void) => {
+        _memoryPressureHandler = cb;
+        return () => { _memoryPressureHandler = null; };
       },
     },
 
