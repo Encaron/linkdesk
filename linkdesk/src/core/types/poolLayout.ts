@@ -48,6 +48,9 @@ export interface SidebarLayout {
   emptyHint?: string;      // 空状态提示——"安装插件以添加视图"
   expandTooltip?: string;  // ▶ 展开按钮 tooltip
   collapseTooltip?: string;// ◀ 折叠按钮 tooltip
+  // ── E5.7#13：拖拽钳制界——壳 LayoutEngine dock 声明推送（池本地钳制对齐壳 resizeZone，零硬编码） ──
+  minWidth?: number;       // 拖拽最小宽——壳 dock.minWidth（170）
+  maxWidth?: number;       // 拖拽最大宽——壳 dock.maxWidth（600）
   // ── 向后兼容 ──
   /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
   viewId?: string | null;
