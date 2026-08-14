@@ -13,13 +13,13 @@
  *   Phase 3 替换 SidebarZone(#10 ✅) + 侧栏分隔线(#13 ✅——4px handle 收在 SidebarZone 内，
  *   非 PoolZoneShell 独立兄弟组件——可见性不变量：visible=false 随 zone 整体 display:none)，
  *   Phase 4 接入 FloatingLayerHost(#25 ✅——#14 前置 portal root 就绪)，
- *   Phase 5 替换 MainZone(#20 ✅)/PanelZone(#21)/RightSidebarZone(#22)。
+ *   Phase 5 替换 MainZone(#20 ✅)/PanelZone(#21 ✅)/RightSidebarZone(#22 ✅)。
+ *   占位时代终结——Phase 5 收官后所有 zone 均为真实组件（占位 CSS 随 index.css 删除）。
  *   不允许 import 尚不存在的 Zone 组件（每 Phase 结束必须 tsc 零错误 + 应用可启动）。
  *
  * 🔴 Path B：池 = 哑渲染器。不 import 任何 @src/core/* 运行时模块（import type 除外）。
  */
 
-import { useTranslation } from "react-i18next";
 import type { PoolLayout } from "../core/types/poolLayout";
 import TitleBarZone from "./zones/TitleBarZone"; // E5.7#5：Phase 2 替换占位
 import IconBarZone from "./zones/IconBarZone"; // E5.7#6：Phase 2 替换占位
@@ -27,10 +27,10 @@ import StatusBarZone from "./zones/StatusBarZone"; // E5.7#8：Phase 2 替换占
 import SidebarZone from "./zones/SidebarZone"; // E5.7#10：Phase 3 替换占位
 import FloatingLayerHost from "./zones/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
 import MainZone from "./zones/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
+import PanelZone from "./zones/PanelZone"; // E5.7#21：Phase 5 底部面板骨架（数据生产者归 Phase 12 #63.7）
+import RightSidebarZone from "./zones/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
-  const { t } = useTranslation();
-
   return (
     <div className="pool-root">
       {/* Row 1: TitleBar——E5.7#5（Phase 2） */}
@@ -53,20 +53,13 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
               数据 = PoolLayout v2 的 groups / root / creatableViews 切片。 */}
           <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} />
 
-          {/* PanelZone——Phase 5 #21 替换 */}
-          {layout.panel?.visible && (
-            <div className="zone-placeholder zone-panel" style={{ height: layout.panel.height }}>
-              {t("底部面板（占位）")}
-            </div>
-          )}
+          {/* PanelZone——E5.7#21（Phase 5）：底部面板骨架（greenfield——数据生产者归 Phase 12 #63.7，
+              无数据时条件渲染永假 = 零 DOM） */}
+          {layout.panel?.visible && <PanelZone panel={layout.panel} />}
         </div>
 
-        {/* RightSidebar——Phase 5 #22 替换 */}
-        {layout.rightSidebar?.visible && (
-          <div className="zone-placeholder zone-right-sidebar" style={{ width: layout.rightSidebar.width }}>
-            {t("右侧栏（占位）")}
-          </div>
-        )}
+        {/* RightSidebarZone——E5.7#22（Phase 5）：右侧栏骨架（greenfield——数据生产者归 Phase 12） */}
+        {layout.rightSidebar?.visible && <RightSidebarZone rightSidebar={layout.rightSidebar} />}
       </div>
 
       {/* Row 3: StatusBar——E5.7#8（Phase 2）：条目 + Chord + 通知中心 */}

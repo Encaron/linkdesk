@@ -183,12 +183,16 @@ export interface PanelViewMeta {
   pluginId: string;
 }
 
-/** 底部面板布局——Phase 6 PanelZone 消费 */
+/** 底部面板布局——Phase 5 #21 PanelZone 消费 */
 export interface PanelLayout {
   visible: boolean;
   height: number;
   activeViewId: string;
   views: PanelViewMeta[];
+  // ── E5.7#21：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
+  //    Phase 12 #63.7 推送前缺省 = 无界（0..∞）。 ──
+  minHeight?: number;
+  maxHeight?: number;
 }
 
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析） */
