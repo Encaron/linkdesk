@@ -357,7 +357,7 @@ function MainContent({
     }
   }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
 
-  // E5.6#9a：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到双 Pool
+  // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到唯一 Pool
   usePoolSync({ tabState, sidebarView: sidebarView ?? null, isSidebarVisible: isSidebarVisible ?? false, sidebarWidth: sidebarWidth ?? 0, onTabAction: handleTabAction });
 
   // E5.6#16.5：per-tab WebView 已废弃——多 WebView 同步/editor IPC/serial-monitor IPC/DialogService WebView 显隐
