@@ -966,6 +966,50 @@ const noHardcodedChinese = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 12：E5.7 Phase 10 已删概念字面量禁止复活（E5.7#45）
+// ═══════════════════════════════════════════════════════════
+//
+// OverlayWindow / sidebarPoolView / pluginViews / instanceId 随 per-tab 多实例
+// 与多Pool 模型消亡（E5.7#12/#19/#41-#44）。设计出处：
+// docs/02-Electron架构/E5.7_极简Pool/清理/清理方案.md §5。
+//
+// ⚠️ 为什么不用 no-restricted-syntax 的第二个条目：flat config 同规则跨块合并时
+// 高 severity 胜出且低 severity 的 options 被丢弃——实测会静默吞掉
+// warn 级 v3-/pluginId 硬编码选择器（警告 859→537）。独立规则 = 独立 severity。
+//
+// 拦截字符串字面量（channel 名 / 日志标签 / 命名空间键）。注释不拦截（ESLint 语义）。
+
+const noDeletedE57Concepts = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "E5.7 Phase 10 已删概念（OverlayWindow/sidebarPoolView/pluginViews/instanceId）字面量禁止复活",
+      recommended: true,
+    },
+    messages: {
+      deletedConcept:
+        "🚫 E5.7 极简Pool 已删除此概念（{{value}}）——per-tab 多实例与多Pool 模型随 E5.7#12/#19/#41-#44 消亡。" +
+        " 新代码不得出现这些字面量。详见 docs/02-Electron架构/E5.7_极简Pool/清理/清理方案.md §5。",
+    },
+  },
+
+  create(context) {
+    return {
+      Literal(node) {
+        if (typeof node.value !== "string") return;
+        if (/OverlayWindow|sidebarPoolView|pluginViews|instanceId/.test(node.value)) {
+          context.report({
+            node,
+            messageId: "deletedConcept",
+            data: { value: node.value },
+          });
+        }
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -978,4 +1022,5 @@ export default {
   "no-raw-path-replace": noRawPathReplace,
   "no-core-import-in-plugin": noCoreImportInPlugin,
   "no-hardcoded-chinese": noHardcodedChinese,
+  "no-deleted-e5.7-concepts": noDeletedE57Concepts,
 };
