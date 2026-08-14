@@ -338,9 +338,9 @@ function App() {
 
   /* ---- E5#9f：LayoutEngine 壳布局——E5.7#9 起只喂容器尺寸 ---- */
   // E5.7#12.5：Pool bounds 推流已删（主进程 syncPoolBounds 接管，WCV 满窗零偏移）。
-  // LayoutEngine 仍需喂容器尺寸——zone 几何真相源在壳（usePoolSync 读 sidebar 宽度、
-  // SidePanel setZoneWidth 折叠、Phase 3 #13 拖拽 commit）。零偏移——无 TITLE_BAR_HEIGHT。
-  // Phase 7 #31 LayoutEngine 整删时此 effect 一并删除。
+  // LayoutEngine 仍需喂容器尺寸——侧栏几何真相源（usePoolSync 读 sidebar 宽度、
+  // App 侧栏宿主状态机 setZoneWidth 折叠、#13 拖拽 commit resizeZone）。零偏移——无 TITLE_BAR_HEIGHT。
+  // E5.7#31：LayoutEngine 保留（清单"整删"前提过时——折叠真相源 + 钳制双活链），此 effect 不删。
   useEffect(() => {
     const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight);
     updateSize();
@@ -1065,7 +1065,7 @@ function App() {
     <div className="app-shell">
       <SourceStateContext.Provider value={sourceStateValue}>
         {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
-            MainContent/WindowControls/SplitHandles 删除。壳 = 纯状态持有者
+            MainContent/WindowControls 删除（#9），SplitHandles 删除（#31）。壳 = 纯状态持有者
             （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
         <ProgressBar />
       </SourceStateContext.Provider>

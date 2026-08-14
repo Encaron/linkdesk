@@ -29,6 +29,7 @@
  *     （sidebarAction "setSidebarWidth" → 壳 resizeZone 钳制 → pushLayout 回执）。
  *     钳制界 minWidth/maxWidth 壳推（LayoutEngine dock 声明）——池零硬编码。
  *     E5.6#22m 防护传承：body cursor/userSelect 锁 + buttons===0 窗口外释放。
+ *   ⑥ 壳 SidePanel.tsx/.css 已随 E5.7#31 整删——下文"壳 SidePanel"均为 E5.6 历史对标注记。
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
@@ -182,7 +183,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     </div>
   );
 
-  // 折叠态——只渲染 ▶ 展开按钮（壳 SidePanel.tsx:211-218 对标）
+  // 折叠态——只渲染 ▶ 展开按钮（对标壳 SidePanel 折叠态）
   if (collapsed) {
     return renderZone(
       <div className={`side-panel collapsed${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
@@ -240,7 +241,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
             }}
           >
             <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
-            {/* ◀ 折叠按钮——对标壳 SidePanel.tsx:229-236 */}
+            {/* ◀ 折叠按钮——对标壳 SidePanel */}
             <button
               className="side-panel-collapse"
               onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
@@ -251,7 +252,7 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
           </div>
         )}
         {/* header 右键菜单——壳 ContextMenu（聪慧→哑数据流：lk.menu.getItems 壳侧解析，
-            resolveChildren 填"视图"子菜单动态项——壳 SidePanel.tsx:256-264 同款） */}
+            resolveChildren 填"视图"子菜单动态项——壳 SidePanel 同款） */}
         {headerMenu && (
           <ContextMenu
             menuId="viewTitleContext"

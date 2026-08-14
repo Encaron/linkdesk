@@ -5,9 +5,4 @@
   overflow: hidden;
 }
 
-/* 主内容区——TitleBar 下方。子元素均为 position:fixed（LayoutEngine 驱动），不依赖 flex 排列。 */
-.app-main {
-  flex: 1;
-  position: relative;
-  overflow: hidden;
-}
+/* .app-main 死 CSS 已随 E5.7#31 删除——E5.7#9 壳 DOM 全删后零渲染方（App 仅渲染 .app-shell） */

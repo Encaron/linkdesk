@@ -37,7 +37,7 @@ export interface SidebarSectionProps {
   showActions?: "always" | "whenExpanded" | "default";
   /** 🆕 E3.6：隐藏 header——mergeHeaderWhenSingle 时使用 */
   headerHidden?: boolean;
-  /** 🆕 E3.6 ST1：sticky header 的 top 偏移（px）——由 SidePanel 根据 toolbar 高度 + section 序号计算 */
+  /** 🆕 E3.6 ST1：sticky header 的 top 偏移（px）——由侧栏宿主根据 toolbar 高度 + section 序号计算 */
   stickyTop?: number;
   /** E4V#47——header 可拖拽排序 */
   draggable?: boolean;
