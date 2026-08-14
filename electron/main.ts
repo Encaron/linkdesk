@@ -28,6 +28,7 @@ import { WindowManager } from './window-manager.js';
 import { PluginViewRegistry } from './plugin-view-registry.js';
 import { initKeyboardRouting, syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc-bridge.js';
+import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './crash-recovery.js'; // E5.7#36
 import { APP_SCHEME } from './constants.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
@@ -46,6 +47,9 @@ let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
 let _windowIpcRegistered = false; // E3f #52f：窗口控制 IPC handler 只注册一次
+// E5.7#36：无状态 shell IPC 只注册一次（壳崩重建 createWindow 会再次经过——不 guard 则重复注册抛异常）
+let _keyboardSyncRegistered = false;
+let _shellIpcRegistered = false;
 
 function createWindow(): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
@@ -53,7 +57,8 @@ function createWindow(): void {
   // E3f #52：去掉 Electron 默认菜单栏（File/Edit/View/Window）——LinkDesk 用自己的
   Menu.setApplicationMenu(null);
 
-  mainWindow = new BrowserWindow({
+  // E5.7#36：local win——closed 处理器需身份校验（旧窗销毁不得清掉重建后的新引用）
+  const win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
@@ -73,8 +78,9 @@ function createWindow(): void {
     title: 'LinkDesk',
     show: false, // ready-to-show 后再显示，避免白屏闪烁
   });
+  mainWindow = win; // E5.7#36：壳崩重建复用 createWindow——模块引用先指向新窗
 
-  // ── 注册 IPC 处理器（不依赖 WindowManager 的先注册）──
+  // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
   registerDialogHandlers();
   registerEnvHandlers();
@@ -83,44 +89,47 @@ function createWindow(): void {
   registerLangDefHandlers();   // E5.6#11.5i
 
   // E3a #24：初始化 WindowManager
-  windowManager = new WindowManager(mainWindow);
+  windowManager = new WindowManager(win);
   // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
   pluginViewRegistry = new PluginViewRegistry(windowManager);
   // E5.5#7-p6：键盘路由——before-input-event 全局拦截，插件 WebView 聚焦时全局快捷键仍生效
-  initKeyboardRouting(mainWindow, pluginViewRegistry);
-  // E5.5#7-p7：壳同步快捷键表到主进程
-  ipcMain.handle('keyboard:syncShortcuts', (_event, data) => {
-    syncKeybindings(data);
-  });
+  initKeyboardRouting(win, pluginViewRegistry);
+  // E5.5#7-p7：壳同步快捷键表到主进程（无窗口引用——只注册一次）
+  if (!_keyboardSyncRegistered) {
+    _keyboardSyncRegistered = true;
+    ipcMain.handle('keyboard:syncShortcuts', (_event, data) => {
+      syncKeybindings(data);
+    });
+  }
   // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
-  registerPluginViewHandlers(pluginViewRegistry, mainWindow);
-  // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
-  ipcBridge = new IpcBridge(mainWindow, windowManager);
+  registerPluginViewHandlers(pluginViewRegistry, win);
+  // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道（换实例摘旧挂新）
+  ipcBridge = new IpcBridge(win, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
 
   // E5#74：依赖 WindowManager 的 handler 放在此处
-  registerLspHandlers(mainWindow);   // E5#74c
-  registerSerialHandlers(mainWindow, windowManager); // E5#74b
+  registerLspHandlers(win);   // E5#74c
+  registerSerialHandlers(win, windowManager); // E5#74b
   registerFileHandlers(windowManager);              // E5#80
-  registerPoolHandlers(windowManager, mainWindow);  // E5.6#8e
+  registerPoolHandlers(windowManager, win);  // E5.6#8e
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
   windowManager.createMainPool();
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
-    mainWindow.loadURL(DEV_SERVER_URL);
+    win.loadURL(DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
+    win.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   // ready-to-show 后才显示窗口
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+  win.once('ready-to-show', () => {
+    if (win && !win.isDestroyed()) win.show();
   });
 
   // 🔥 E5#114d 诊断：把渲染进程 console 输出转发到文件——生产环境 F12 禁用
-  mainWindow.webContents.on('console-message', (_event, _level, message) => {
+  win.webContents.on('console-message', (_event, _level, message) => {
     try {
       const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
       const ts = new Date().toISOString();
@@ -143,82 +152,113 @@ function createWindow(): void {
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });
   }
-  mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
-  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
+  win.on('maximize', () => win.webContents.send('window:maximize-change', true));
+  win.on('unmaximize', () => win.webContents.send('window:maximize-change', false));
 
-  // E4V#18: Shell IPC——revealInOS
-  ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
+  // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
+  if (!_shellIpcRegistered) {
+    _shellIpcRegistered = true;
 
-  // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
-  ipcMain.on('shell:startDrag', (event, filePath: string, iconPath?: string) => {
-    if (!filePath) return;
-    const sender = event.sender as any;
-    if (typeof sender.startDrag !== 'function') return;
-    const opts: Record<string, unknown> = { file: filePath };
-    if (iconPath && fs.existsSync(iconPath)) opts.icon = iconPath;
-    else if (process.platform === 'win32') {
-      const defIcon = path.join(__dirname, '../../build/icon.ico');
-      if (fs.existsSync(defIcon)) opts.icon = defIcon;
-    }
-    sender.startDrag(opts);
-  });
+    // E4V#18: Shell IPC——revealInOS
+    ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
 
-  // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
-  ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
-    if (process.platform === 'win32') {
-      const exe = terminalExe || 'powershell';
-      let cmd: string;
-      switch (exe) {
-        case 'cmd':
-          cmd = `start cmd /K "cd /d "${dirPath}""`;
-          break;
-        case 'wt':
-          cmd = `wt -d "${dirPath}"`;
-          break;
-        case 'git-bash': {
-          const gitBashPaths = [
-            'C:\\Program Files\\Git\\git-bash.exe',
-            'C:\\Program Files (x86)\\Git\\git-bash.exe',
-            `${process.env.LOCALAPPDATA}\\Programs\\Git\\git-bash.exe`,
-          ];
-          const gitBash = gitBashPaths.find(p => fs.existsSync(p));
-          if (gitBash) {
-            cmd = `start "" "${gitBash}" --cd="${dirPath}"`;
-          } else {
-            console.error('[shell:openInTerminal] Git Bash 未找到');
-            return;
-          }
-          break;
-        }
-        case 'custom':
-          // 🔥 不硬编码——渲染进程传模板，替换 {{dirPath}} 占位符
-          cmd = (customCommand || '').replace(/\{\{dirPath\}\}/g, dirPath);
-          if (!cmd) { console.error('[shell:openInTerminal] 自定义命令为空'); return; }
-          break;
-        case 'powershell':
-        default:
-          cmd = `start powershell -NoExit -Command "cd '${dirPath}'"`;
-          break;
+    // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
+    ipcMain.on('shell:startDrag', (event, filePath: string, iconPath?: string) => {
+      if (!filePath) return;
+      const sender = event.sender as any;
+      if (typeof sender.startDrag !== 'function') return;
+      const opts: Record<string, unknown> = { file: filePath };
+      if (iconPath && fs.existsSync(iconPath)) opts.icon = iconPath;
+      else if (process.platform === 'win32') {
+        const defIcon = path.join(__dirname, '../../build/icon.ico');
+        if (fs.existsSync(defIcon)) opts.icon = defIcon;
       }
-      exec(cmd, (err) => {
-        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
-      });
-    } else if (process.platform === 'darwin') {
-      exec(`open -a Terminal "${dirPath}"`, (err) => {
-        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
-      });
-    } else {
-      // Linux（E5#22 bug fix——原来无此分支，走 macOS 命令无效）
-      exec(`xdg-open "${dirPath}"`, (err) => {
-        if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+      sender.startDrag(opts);
+    });
+
+    // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
+    ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
+      if (process.platform === 'win32') {
+        const exe = terminalExe || 'powershell';
+        let cmd: string;
+        switch (exe) {
+          case 'cmd':
+            cmd = `start cmd /K "cd /d "${dirPath}""`;
+            break;
+          case 'wt':
+            cmd = `wt -d "${dirPath}"`;
+            break;
+          case 'git-bash': {
+            const gitBashPaths = [
+              'C:\\Program Files\\Git\\git-bash.exe',
+              'C:\\Program Files (x86)\\Git\\git-bash.exe',
+              `${process.env.LOCALAPPDATA}\\Programs\\Git\\git-bash.exe`,
+            ];
+            const gitBash = gitBashPaths.find(p => fs.existsSync(p));
+            if (gitBash) {
+              cmd = `start "" "${gitBash}" --cd="${dirPath}"`;
+            } else {
+              console.error('[shell:openInTerminal] Git Bash 未找到');
+              return;
+            }
+            break;
+          }
+          case 'custom':
+            // 🔥 不硬编码——渲染进程传模板，替换 {{dirPath}} 占位符
+            cmd = (customCommand || '').replace(/\{\{dirPath\}\}/g, dirPath);
+            if (!cmd) { console.error('[shell:openInTerminal] 自定义命令为空'); return; }
+            break;
+          case 'powershell':
+          default:
+            cmd = `start powershell -NoExit -Command "cd '${dirPath}'"`;
+            break;
+        }
+        exec(cmd, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      } else if (process.platform === 'darwin') {
+        exec(`open -a Terminal "${dirPath}"`, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      } else {
+        // Linux（E5#22 bug fix——原来无此分支，走 macOS 命令无效）
+        exec(`xdg-open "${dirPath}"`, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      }
       });
     }
-  });
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  win.on('closed', () => {
+    // E5.7#36：身份校验——壳崩重建先建新窗后毁旧窗，旧窗的 closed 不得清掉新引用
+    if (mainWindow === win) mainWindow = null;
   });
 }
+
+/**
+ * E5.7#36：壳渲染进程崩溃——全窗口重建（设计 §2.1 场景 B）。
+ * createWindow 内全部 ipcMain 注册已 once-guard（审计①）——重复调用只刷新引用，不重注册；
+ * IpcBridge 换实例摘旧挂新。先建后毁：窗口数不为零，window-all-closed 不触发退出。
+ */
+function rebuildShell(): void {
+  const oldWin = mainWindow;
+  const oldWm = windowManager;
+  const oldBridge = ipcBridge;
+  oldBridge?.dispose(); // 拒绝旧壳未决请求
+  oldWm?.dispose();     // 清内存定时器 + 注销 resize 监听 + 销毁旧池
+  createWindow();
+  replayAfterShellRebuild(crashRecoveryDeps); // 新池就绪后回放 lastLayout 兜底
+  if (oldWin && !oldWin.isDestroyed()) oldWin.destroy();
+}
+
+// E5.7#36：崩溃恢复接线——getter 闭包运行时读最新引用（重建后自动指向新实例）
+const crashRecoveryDeps: CrashRecoveryDeps = {
+  getMainWindow: () => mainWindow,
+  getWindowManager: () => windowManager,
+  rebuildShell,
+};
+
+setupCrashRecovery(crashRecoveryDeps);
 
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
 ipcMain.on('theme:changed', (_event, isDark: boolean) => {

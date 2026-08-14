@@ -6,7 +6,12 @@
 import { ipcMain } from 'electron';
 import { envService } from '../services/env-service.js';
 
+// E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
+let _registered = false;
+
 export function registerEnvHandlers(): void {
+  if (_registered) return;
+  _registered = true;
   ipcMain.handle('env:get', (_event, pluginId?: string) => {
     return {
       appDataDir: envService.appDataDir(),

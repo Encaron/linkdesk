@@ -13,24 +13,33 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { serialService, OpenPortConfig } from '../services/serial-service.js';
 import type { WindowManager } from '../window-manager.js';
 
+// E5.7#36：壳崩重建复用本函数——引用始终刷新（推送回调读模块引用），IPC 通道只注册一次
+let _mainWindow: BrowserWindow | null = null;
+let _windowManager: WindowManager | undefined;
+let _registered = false;
+
 /**
  * 注册所有串口 IPC 处理器。
  * E5#74b：windowManager 用于广播串口数据到插件 WebView。
  */
 export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?: WindowManager): void {
-  // 将 serial-service 的数据推送到渲染进程
+  _mainWindow = mainWindow;
+  _windowManager = windowManager;
+
+  // 将 serial-service 的数据推送到渲染进程。
+  // setCallbacks 是覆盖式设置——必须在 guard 之前，重建后回调需指向新窗口/新 WM。
   serialService.setCallbacks({
     onData: (text) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('serial:data', text);
+      if (_mainWindow && !_mainWindow.isDestroyed()) {
+        _mainWindow.webContents.send('serial:data', text);
       }
       // E5#74b + E5.5#9d：广播到所有实例 WebView
-      if (windowManager) {
-        for (const instanceId of windowManager.getAllInstanceIds()) {
-          windowManager.getPluginView(instanceId)?.webContents.send('serial:data', text);
+      if (_windowManager) {
+        for (const instanceId of _windowManager.getAllInstanceIds()) {
+          _windowManager.getPluginView(instanceId)?.webContents.send('serial:data', text);
         }
         // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView（#12 提前——SidebarPool 已删）
-        for (const poolView of windowManager.getAllPoolViews()) {
+        for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:data', text);
           }
@@ -38,15 +47,15 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       }
     },
     onStats: (stats) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('serial:stats', stats);
+      if (_mainWindow && !_mainWindow.isDestroyed()) {
+        _mainWindow.webContents.send('serial:stats', stats);
       }
-      if (windowManager) {
-        for (const instanceId of windowManager.getAllInstanceIds()) {
-          windowManager.getPluginView(instanceId)?.webContents.send('serial:stats', stats);
+      if (_windowManager) {
+        for (const instanceId of _windowManager.getAllInstanceIds()) {
+          _windowManager.getPluginView(instanceId)?.webContents.send('serial:stats', stats);
         }
         // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView
-        for (const poolView of windowManager.getAllPoolViews()) {
+        for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:stats', stats);
           }
@@ -54,15 +63,15 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       }
     },
     onSystem: (msg) => {
-      if (!mainWindow.isDestroyed()) {
-        mainWindow.webContents.send('serial:system', msg);
+      if (_mainWindow && !_mainWindow.isDestroyed()) {
+        _mainWindow.webContents.send('serial:system', msg);
       }
-      if (windowManager) {
-        for (const instanceId of windowManager.getAllInstanceIds()) {
-          windowManager.getPluginView(instanceId)?.webContents.send('serial:system', msg);
+      if (_windowManager) {
+        for (const instanceId of _windowManager.getAllInstanceIds()) {
+          _windowManager.getPluginView(instanceId)?.webContents.send('serial:system', msg);
         }
         // E5.6 Pool 模型 → E5.7#4：广播到唯一 Pool WebView
-        for (const poolView of windowManager.getAllPoolViews()) {
+        for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
             poolView.webContents.send('serial:system', msg);
           }
@@ -70,6 +79,9 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
       }
     },
   });
+
+  if (_registered) return;
+  _registered = true;
 
   // ── 请求-响应处理器（对标 Tauri #[tauri::command]）──
 
