@@ -16,12 +16,11 @@ export function registerDeveloperCommands(): void {
       category: "开发者",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_DEVTOOLS_PICKER
+        // E5.7#44：插件 DevTools 入口已删（per-tab 插件 WebView 消亡）——插件在池渲染进程内，
+        // 池 DevTools 已覆盖。picker 只剩池 + 壳两个入口。
         const lk = window.linkdesk;
-        const webViewIds: string[] = await lk?.pluginViews?.getAllIds?.() ?? [];
-        type DevToolsTarget = { kind: 'plugin'; id: string } | { kind: 'shell' } | { kind: 'pool' };
-        const targets: DevToolsTarget[] = webViewIds.map(id => ({ kind: 'plugin' as const, id }));
-        // E5.7：池 DevTools 也出现在 picker 中——单 Pool 一个入口
-        // （E5.6 双Pool 的 sidebar/main zone 已随 #12 SidebarPool 删除——池是唯一 WCV，无 zone 之分）
+        type DevToolsTarget = { kind: 'shell' } | { kind: 'pool' };
+        const targets: DevToolsTarget[] = [];
         if (lk?.pool) {
           targets.push({ kind: 'pool' });
         }
@@ -29,10 +28,10 @@ export function registerDeveloperCommands(): void {
 
         // E5.7#15：显示文本归一——查表/三元比较集中在 helper（一处定义），
         // 绕开 no-restricted-syntax lowercase 字面量比较误报
-        const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? 'pool 池窗口' : t.id;
-        const keyOf = (t: DevToolsTarget) => t.kind === 'shell' ? '__shell__' : t.kind === 'pool' ? '__pool__' : t.id;
-        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : t.kind === 'pool' ? 'Pool 池窗口' : `插件: ${t.id}`;
-        const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? '壳窗口 DevTools' : t.kind === 'pool' ? '池窗口 DevTools' : '插件 DevTools';
+        const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : 'pool 池窗口';
+        const keyOf = (t: DevToolsTarget) => t.kind === 'shell' ? '__shell__' : '__pool__';
+        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : 'Pool 池窗口';
+        const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? '壳窗口 DevTools' : '池窗口 DevTools';
 
         QuickPickService.show<DevToolsTarget>({
           mode: "devtools",
@@ -43,10 +42,8 @@ export function registerDeveloperCommands(): void {
           onSelect: async (t) => {
             if (t.kind === 'shell') {
               await lk?.window?.toggleDevTools?.();
-            } else if (t.kind === 'pool') {
-              lk?.pool?.toggleDevTools?.();
             } else {
-              await lk?.pluginViews?.toggleDevTools?.(t.id);
+              lk?.pool?.toggleDevTools?.();
             }
             QuickPickService.hide();
           },

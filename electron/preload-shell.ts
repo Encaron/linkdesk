@@ -7,7 +7,7 @@
  * 安全模型：
  *   - contextIsolation: true → 渲染进程无法直接访问 Node.js/Electron API
  *   - contextBridge → 精确控制暴露哪些 API
- *   - 插件 WebView 用独立的 preload-plugin.ts（E3a），API 子集更小
+ *   - 插件在池渲染进程内运行——插件侧 API 由 preload-pool.ts 注入（E5.7 极简Pool）
  */
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
@@ -34,16 +34,6 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
     bridgeRequestHandler(req);
   } else {
     _bridgeRequestBuffer.push(req);
-  }
-});
-
-// E5#11l fix：模块级缓冲 plugin-view:ready——notifyReady 可能在 React useEffect 之前到达
-// E5.5#9f：ready 事件现在携带 (instanceId, pluginId)，缓冲 instanceId
-const _readyBuffer: string[] = [];
-let _onReadyActive = false;
-ipcRenderer.on('plugin-view:ready', (_event, instanceId: string, _pluginId: string) => {
-  if (!_onReadyActive) {
-    _readyBuffer.push(instanceId);
   }
 });
 
@@ -99,59 +89,6 @@ const events = createEventSystem(ipcRenderer, {
 });
 
 try {
-  // E5#85：壳 preload 也暴露配置读写——侧栏组件（file-tree 等）调 lk.configuration.get()
-  const shellConfiguration = {
-    get: (key: string) => ipcRenderer.invoke('config:get', key),
-    set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
-    getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
-    // E5.5#7c：壳侧 config:changed 走主进程直发 mainWindow.webContents.send → listenDirect 正确
-    onChange: (key: string, cb: (v: any) => void) =>
-      listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
-        if (!key || d.key === key) cb(d.value);
-      }, { skipPushWarning: true }),
-    // ── E5.6#2：Pool 模型——SettingsView 回壳渲染，需要 plugin preload 的全部 configuration API ──
-    // 以下 9 个方法从 preload-plugin.ts configurationObj 同步过来
-    /** 获取所有插件的配置贡献（分组列表+属性）。返回 entries 数组 */
-    getConfigurationContributions: (): Promise<[string, any][]> =>
-      ipcRenderer.invoke('plugins:call', 'getConfigurationContributions'),
-    /** 检视单个配置项——返回 { key, defaultValue, globalValue, workspaceValue, userValue } */
-    inspectConfiguration: (key: string): Promise<any> =>
-      ipcRenderer.invoke('plugins:call', 'inspectConfiguration', key),
-    /** 获取用户设置 JSON——用于 "打开设置 (JSON)" 弹窗 */
-    getUserSettings: (): Promise<Record<string, unknown>> =>
-      ipcRenderer.invoke('plugins:call', 'getUserSettings'),
-    /** 全局配置变更——不传 key 则所有变更都通知 */
-    onDidChangeConfiguration: (cb: (key: string, value: unknown) => void) => {
-      return listenDirect(ipcRenderer, 'config:changed', (d: { key: string; value: any }) => {
-        try { cb(d.key, d.value); } catch { /* contextBridge 回调静默失败 */ }
-      }, { skipPushWarning: true });
-    },
-    /** 插件生命周期变更——插件安装/卸载时通知 */
-    onPluginLifecycleChange: (cb: () => void) => {
-      return listenDirect(ipcRenderer, 'plugin-lifecycle:changed', () => {
-        try { cb(); } catch { /* contextBridge 回调静默失败 */ }
-      }, { skipPushWarning: true });
-    },
-    /** A 通道（mount 消费 pending）——设置未打开时齿轮"设置"跳转到指定分组 */
-    consumeSettingsGroup: (): Promise<string | null> =>
-      ipcRenderer.invoke('plugins:call', 'consumeSettingsGroup'),
-    /** B 通道（Emitter 订阅）——设置已打开时齿轮"设置"实时跳转 */
-    onRequestSettingsGroup: (cb: (pluginId: string) => void) => {
-      return listenDirect(ipcRenderer, 'settings:requestGroup', (d: any) => {
-        try { cb((d as { pluginId: string }).pluginId); } catch { /* contextBridge 回调静默失败 */ }
-      }, { skipPushWarning: true });
-    },
-    /** A 通道（mount 消费 pending）——命令面板齿轮跳转到指定配置项 */
-    consumeScrollToSetting: (): Promise<string | null> =>
-      ipcRenderer.invoke('plugins:call', 'consumeScrollToSetting'),
-    /** B 通道（Emitter 订阅）——已打开时实时滚动到指定配置项 */
-    onRequestScrollToSetting: (cb: (key: string) => void) => {
-      return listenDirect(ipcRenderer, 'settings:scrollTo', (d: any) => {
-        try { cb((d as { key: string }).key); } catch { /* contextBridge 回调静默失败 */ }
-      }, { skipPushWarning: true });
-    },
-  };
-
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
@@ -231,43 +168,6 @@ try {
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
     },
 
-    // ── 命令（E5#85 补全——同步 plugin preload + E5.6#11.5 临时壳侧 pool API）──
-    commands: (() => {
-      // 🔥 E5.6#11.5 临时——MainPool 建成后移除 registerCommand/unregisterCommands
-      // 见 E5.6-执行清单 #11.5-preload-backfill
-      const _shellCommands = new Map<string, (...args: any[]) => any>();
-      return {
-        registerCommand: (id: string, handler: (...args: any[]) => any) => {
-          _shellCommands.set(id, handler);
-        },
-        unregisterCommands: (pluginId: string) => {
-          for (const [id] of _shellCommands) {
-            if (id.startsWith(pluginId + '.')) _shellCommands.delete(id);
-          }
-        },
-        executeCommand: (id: string, ...args: any[]) => {
-          const handler = _shellCommands.get(id);
-          if (handler) {
-            const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-            return Promise.resolve(handler(...realArgs));
-          }
-          return ipcRenderer.invoke('commands:execute', id, ...args);
-        },
-        execute: (id: string, ...args: any[]) => {
-          const handler = _shellCommands.get(id);
-          if (handler) {
-            const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-            return Promise.resolve(handler(...realArgs));
-          }
-          return ipcRenderer.invoke('commands:execute', id, ...args);
-        },
-        getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
-      };
-    })(),
-
-    // ── 配置（E5#85 补全——同步 plugin preload）──
-    config: shellConfiguration,
-    configuration: shellConfiguration,
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
     dialog: {
       open: (opts?: any) => ipcRenderer.invoke('dialog:open', opts),
@@ -396,16 +296,6 @@ try {
       // E5#108c：拖出到桌面
       startDrag: (filePath: string, iconPath?: string) => ipcRenderer.send('shell:startDrag', filePath, iconPath),
     },
-    // ── E5#85：workspace——工作区信息查询 + E5.6#11.5 临时壳侧 pool API ──
-    // 🔥 E5.6#11.5 临时——MainPool 建成后移除 onDidChangeFolders/onDidChangeActiveFolder
-    // 见 E5.6-执行清单 #11.5-preload-backfill
-    workspace: {
-      getFolders: (): Promise<any[]> => ipcRenderer.invoke('workspace:getFolders'),
-      getActive: (): Promise<string | undefined> => ipcRenderer.invoke('workspace:getActive'),
-      onDidChangeFolders: (cb: () => void) => events.on('workspace:changed', cb),
-      onDidChangeActiveFolder: (cb: (folder: any) => void) => events.on('workspace:activeChanged', (d: any) => { try { cb(d); } catch { /* 隔离 */ } }),
-    },
-
     // ── 环境信息（E2c #13b——对标 VS Code ExtensionContext）──
     env: {
       get: (pluginId?: string) => ipcRenderer.invoke('env:get', pluginId),
@@ -443,69 +333,6 @@ try {
       notifyConfigChanged: (key: string, value: unknown) => {
         ipcRenderer.send('config:changed-notify', { key, value });
       },
-    },
-
-    // ── E3a #29 + E5.5#9f：插件视图管理——壳侧控制插件 WebContentsView（instanceId 路由）──
-    pluginViews: {
-      setVisible: (instanceId: string, v: boolean) => ipcRenderer.invoke('plugin-view:setVisible', instanceId, v),
-      setBounds: (instanceId: string, b: { x: number; y: number; width: number; height: number }) =>
-        ipcRenderer.invoke('plugin-view:setBounds', instanceId, b),
-      getAllIds: () => ipcRenderer.invoke('plugin-view:getAllIds'),
-      getInstanceIdsForPlugin: (pluginId: string) => ipcRenderer.invoke('plugin-view:getInstanceIdsForPlugin', pluginId),
-      toggleDevTools: (instanceId: string) => ipcRenderer.invoke('plugin-view:toggleDevTools', instanceId),
-      create: (instanceId: string, pluginId: string) => ipcRenderer.invoke('plugin-view:create', instanceId, pluginId),
-      destroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:destroy', instanceId),
-      // E5.5#3c：保活宽限期——关闭标签页不立即销毁，60s 内重开复用
-      scheduleDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:scheduleDestroy', instanceId),
-      cancelDestroy: (instanceId: string) => ipcRenderer.invoke('plugin-view:cancelDestroy', instanceId),
-      // E5.5#9：宽限期恢复——按 pluginId 查找旧 instanceId + rekey 旧→新映射
-      findGraceInstance: (pluginId: string) => ipcRenderer.invoke('plugin-view:findGraceInstance', pluginId),
-      rekeyInstance: (oldInstanceId: string, newInstanceId: string) =>
-        ipcRenderer.invoke('plugin-view:rekeyInstance', oldInstanceId, newInstanceId),
-      // plugin-view:reload——插件重载（预留）
-      reload: (instanceId: string) => ipcRenderer.invoke('plugin-view:reload', instanceId),
-      // E5.5#7 Bug B fix：切换标签页后转移键盘焦点到插件 WebView
-      focus: (instanceId: string) => ipcRenderer.invoke('plugin-view:focus', instanceId),
-      // #58e 修复 + E5.5#9f：订阅插件 WebView 渲染完成——callback 接收 instanceId
-      // E5#11l fix：模块级缓冲——notifyReady 可能在 React useEffect 注册 onReady 之前到达
-      onReady: (cb: (instanceId: string) => void) => {
-        _onReadyActive = true;
-        const handler = (_event: Electron.IpcRendererEvent, instanceId: string) => cb(instanceId);
-        // 回放缓冲的 ready 事件（在 onReady 注册前到达的）
-        for (const iid of _readyBuffer) cb(iid);
-        _readyBuffer.length = 0;
-        ipcRenderer.on('plugin-view:ready', handler);
-        return () => ipcRenderer.removeListener('plugin-view:ready', handler);
-      },
-    },
-
-    // ── E4V#40s2：LSP 桥——渲染进程 ↔ main process 语言服务器通信 ──
-    lsp: {
-      spawn: (command: string, args: string[] | undefined, pluginId: string) =>
-        ipcRenderer.invoke('lsp:spawn', { command, args, pluginId }),
-      write: (channelId: string, data: string) =>
-        ipcRenderer.send('lsp:write', { channelId, data }),
-      dispose: (channelId: string) =>
-        ipcRenderer.invoke('lsp:dispose', { channelId }),
-      onData: (cb: (channelId: string, data: string) => void) =>
-        listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
-    },
-
-    // ── E5.6#11.5i：encoding 编码检测/转换——editor 插件在 shell 侧使用 EncodingService ──
-    encoding: {
-      detect: (buffer: Uint8Array): Promise<string> =>
-        ipcRenderer.invoke('encoding:detect', buffer),
-      decode: (buffer: Uint8Array, encoding: string): Promise<string> =>
-        ipcRenderer.invoke('encoding:decode', buffer, encoding),
-      encode: (text: string, encoding: string): Promise<Uint8Array> =>
-        ipcRenderer.invoke('encoding:encode', text, encoding),
-    },
-
-    // ── E5.6#11.5i：langDef——语言定义注册表（壳侧 LangDefRegistry）──
-    // E5.6#14-fix：langDef.get 走 plugins:call 代理到壳渲染进程——主进程 LangDefRegistry 为空
-    langDef: {
-      get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
-        ipcRenderer.invoke('plugins:call', 'getLangDef', extension),
     },
 
     // ── E5.6#8c → E5.7#4：pool API——壳推送布局到唯一池、监听池就绪 ──

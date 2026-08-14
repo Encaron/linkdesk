@@ -4,17 +4,43 @@
  * Path B：池 = 哑渲染器，壳 = 唯一真相源。池不 import 任何 @src/core/* 模块。
  * 所有核心服务走 window.linkdesk.* → IPC → 壳唯一真相源。
  *
- * API 表面 = preload-plugin.ts 减 per-tab 概念（pluginInstance/pluginViews/pluginRequest/lsp/langDef）
+ * API 表面 = 插件侧唯一 preload（E5.7#44：preload-plugin.ts 已删——本文即插件 API 规范载体）
  *         + 池侧命令注册表（registerCommand/unregisterCommands）
  *         + 扩展 workspace API + fileAssociation + search + decorations + encoding + viewContainer
  *
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
- * 🔥🔥🔥 IPC 通道铁律——同 preload-plugin.ts
+ * 🔥🔥🔥 IPC 通道铁律——新 AI / 任何人修改此文件前必读（E5.5#7b）
+ *       E5.7#44：preload-plugin.ts 已删——其文件头铁律原文本迁入此处，本文即唯一载体
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  *
- * 铁律 1：IpcBridge.broadcast 推送 → events.on(channel, cb)
- * 铁律 2：主进程直接 send → listenDirect(ipcRenderer, channel, cb)
+ * 池渲染进程（插件）接收壳推送事件的通道只有两种。选错 = 静默失效（不报错，事件永远收不到）。
+ *
+ * 铁律 1：IpcBridge.broadcast 推送 → 池侧 events.on(channel, cb)
+ *   壳侧：IpcBridge.broadcast('config:changed', payload)
+ *        → view.webContents.send('plugin:push', {channel, payload})
+ *   池侧必须：events.on('config:changed', cb)——内部注册 ipcRenderer.on('plugin:push', handler)
+ *        → handler 匹配 data.channel → 调 cb
+ *   ✅ 正确：configuration.onChange → events.on('config:changed', cb)
+ *   ✅ 正确：pluginState.onChange  → events.on('plugin-state:changed', cb)
+ *   ✅ 正确：theme.onChange（通过 extraHandlers）
+ *   ❌ 错误：listenDirect(ipcRenderer, 'config:changed', cb)
+ *           → 监听直接 IPC 通道，但事件在 'plugin:push' 上到达 → 永远收不到。不报错。静默失效。
+ *
+ * 铁律 2：主进程直接 send → 池侧 listenDirect(ipcRenderer, channel, cb)
+ *   主进程：view.webContents.send('serial:data', payload)（不经 plugin:push 包装，直发池 WebView）
+ *   ✅ 正确：serial.onData  → listenDirect(ipcRenderer, 'serial:data', cb)
+ *   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, 'serial:stats', cb)
+ *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, 'p2p:data', cb)
+ *
  * 铁律 3：event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error
+ *   新加直接通道 → channel 名加 `:direct` 后缀以跳过告警
+ *
+ * 快速自查（新加 IPC 订阅时问自己 3 个问题）：
+ *   Q1: 壳侧谁发这个事件？→ IpcBridge.broadcast() 还是 view.webContents.send()？
+ *   Q2: 经过 plugin:push 分发吗？→ broadcast → 是（用 events.on）；直发 → 否（用 listenDirect）
+ *   Q3: 有模块级缓存防竞态吗？→ React mount 前事件可能已到达 → 需缓冲 + onXxx 时立即回放
+ *
+ * 📖 完整根因分析 + 审计：docs/02-Electron架构/E5.5_多WebView恢复/02-IPC事件推送-插件WebView修复.md
  *
  * 🔒 安全边界（contextBridge 白名单）：
  *   ✅ serial / config / commands / filesystem / clipboard / env
@@ -23,7 +49,8 @@
  *   ✅ window（E5.7#5：TitleBarZone 窗口控制——从 preload-shell 同款搬入）
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
  *   ✅ hotExit（E5.7#38：Hot Exit 备份——save/load/clear，主进程落盘）
- *   ❌ pluginInstance / pluginViews / pluginRequest / lsp / langDef（per-tab 概念，不适用于池）
+ *   ✅ lsp / langDef（E5.6#14-fix/#14-lsp：编辑器在池内渲染——preload-shell 同款面迁入）
+ *   ❌ pluginInstance / pluginViews / pluginRequest（per-tab 概念，不适用于池）
  */
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
@@ -210,7 +237,7 @@ try {
     getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
   };
 
-  // ── 配置对象——和 preload-plugin.ts 相同 ──
+  // ── 配置对象——settings 在池内渲染（E5.7#44：壳侧 configuration 面已删），全量经此面走 IPC ──
   const configurationObj = {
     get: (key: string) => ipcRenderer.invoke('config:get', key),
     set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
