@@ -20,6 +20,8 @@
 
 import { SerialPort } from 'serialport';
 import * as iconv from 'iconv-lite';
+// E5.7#97：OpenPortConfig/SerialStatus 归口 src/core/types/ipc/serial.ts（preload/API 三端同源）
+import type { OpenPortConfig, SerialStatus } from '../../src/core/types/ipc/serial';
 
 // ── 类型 ──
 
@@ -28,20 +30,7 @@ export interface PortInfo {
   description: string;
 }
 
-export interface SerialStatus {
-  isOpen: boolean;
-  portName: string;
-  baudRate: number;
-}
-
-export interface OpenPortConfig {
-  portName: string;
-  baudRate: number;
-  dataBits?: number;
-  stopBits?: number;
-  parity?: string;
-  encoding?: string;
-}
+export type { SerialStatus };
 
 export interface SerialCallbacks {
   onData: (text: string) => void;

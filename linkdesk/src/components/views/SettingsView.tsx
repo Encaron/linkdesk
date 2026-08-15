@@ -90,8 +90,11 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
         cfg.getConfigurationContributions(),
         cfg.getSchema(),
       ]);
-      // entries 是 [string, ConfigurationContribution][] 数组
-      const contributions = new Map<string, { title: string; properties: Record<string, unknown> }>(entries);
+      // E5.7#97：getConfigurationContributions wire 面是 [string, unknown][]——IPC 边界收窄为
+      // 主进程 ConfigurationRegistry 组装的 [pluginId, { title, properties }] 形状（一处 cast，边界即守卫）
+      const contributions = new Map(
+        entries as Array<[string, { title: string; properties: Record<string, unknown> }]>,
+      );
       const result: GroupInfo[] = [];
       for (const [pluginId, contrib] of contributions) {
         const keys = Object.keys(contrib.properties ?? {});
@@ -373,8 +376,8 @@ function SettingRow({
   const handleGearClick = useCallback(async () => {
     try {
       window.linkdesk?.contextKey?.set("settingKey", configKey);
-      // inspectConfiguration 异步获取修改状态
-      const insp = await lk().inspectConfiguration(configKey);
+      // inspectConfiguration 异步获取修改状态——wire 面 unknown，IPC 边界收窄（主进程组装 { userValue, ... }）
+      const insp = await lk().inspectConfiguration(configKey) as { userValue?: unknown } | undefined;
       window.linkdesk?.contextKey?.set("settingModified", insp?.userValue !== undefined);
     } catch { /* 静默 */ }
     const rect = gearRef.current?.getBoundingClientRect();

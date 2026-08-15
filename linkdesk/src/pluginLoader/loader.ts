@@ -22,6 +22,23 @@
 
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 const linkdesk = () => window.linkdesk;
+
+// E5.7#97：loader 只在壳进程运行——壳 preload 注入全量 plugins 面（resolvePath + listDirs/
+// listDisabledDirs/readManifest），池 preload 仅 resolvePath。类型面上读面三法标 `?` 壳独有——
+// 此处一处守卫断言替代全文件 6 处 ?. 噪音（运行时失败 = loader 跑错了进程，响亮报错正确）。
+const pluginsApi = () => {
+  const plugins = window.linkdesk.plugins;
+  if (!plugins?.listDirs || !plugins?.listDisabledDirs || !plugins?.readManifest) {
+    throw new Error("[pluginLoader] 壳 preload plugins 面缺失——loader 只能在壳进程运行");
+  }
+  // 守卫后逐成员重建——窄化进返回值类型（plugins 对象上的 ? 成员不随局部守卫传播）
+  return {
+    resolvePath: plugins.resolvePath,
+    listDirs: plugins.listDirs,
+    listDisabledDirs: plugins.listDisabledDirs,
+    readManifest: plugins.readManifest,
+  };
+};
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
@@ -281,7 +298,7 @@ export async function initPluginLoader(): Promise<void> {
   //    VS Code 的做法是启动时 scan extensions 目录，目录里没有的自然不加载。
   let fsInstalled = new Set<string>();
   try {
-    const dirs = await linkdesk().plugins.listDirs();
+    const dirs = await pluginsApi().listDirs();
     fsInstalled = new Set(dirs);
   } catch {
     // 非 Tauri 环境（npm run dev 浏览器模式）——无 invoke，回退到 glob 全量加载
@@ -361,13 +378,13 @@ export async function initPluginLoader(): Promise<void> {
   //    .disabled/ 不在 import.meta.glob 和 listPluginDirs() 的扫描范围内，
   //    必须单独扫描才能让 marketplace 的"待安装"区域显示这些插件。
   try {
-    const disabledDirs: string[] = await linkdesk().plugins.listDisabledDirs();
+    const disabledDirs: string[] = await pluginsApi().listDisabledDirs();
     for (const pluginId of disabledDirs) {
       // 不覆盖已安装插件的缓存
       if (loadedPluginIds.has(pluginId)) continue;
       if (installed.has(pluginId)) continue;
       try {
-        const raw = await linkdesk().plugins.readManifest(pluginId);
+        const raw = await pluginsApi().readManifest(pluginId);
         const manifest = JSON.parse(raw);
         cachePluginMetadata(pluginId, manifest, "uninstalled");
         log.appendLine(`📦 已卸载插件入缓存: ${pluginId}`);
@@ -737,7 +754,7 @@ async function loadPlugin(
   let manifest: PluginManifest;
   if (isRuntime) {
     try {
-      const raw = await linkdesk().plugins.readManifest(pluginId);
+      const raw = await pluginsApi().readManifest(pluginId);
       manifest = JSON.parse(raw);
     } catch (e: any) {
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
@@ -1199,7 +1216,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     const displayName = manifest.name;
 
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口，不再走 plugins:uninstall 直接 IPC
-    const src = await linkdesk().plugins.resolvePath(pluginId);
+    const src = await pluginsApi().resolvePath(pluginId);
     const env = await linkdesk().env.get();
     const disabledDir = `${env.appPluginsDir}/.disabled`;
     const dest = `${disabledDir}/${pluginId}`;
@@ -1554,7 +1571,7 @@ export function startPluginWatcher(): void {
 
   _watchInterval = setInterval(async () => {
     try {
-      const dirs = await linkdesk().plugins.listDirs();
+      const dirs = await pluginsApi().listDirs();
       for (const dir of dirs) {
         if (loadedPluginIds.has(dir)) continue;
         if (getDisabledList().includes(dir)) continue;

@@ -679,20 +679,24 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   // 动作点击 → 壳侧执行 onClick 闭包 + 关闭（闭包不可序列化，只能壳侧跑）。
   useEffect(() => {
     const events = window.linkdesk?.events;
-    const offPanel = events?.on("notif:panel", (open: boolean) => {
-      setToastsSuppressed(open);
-      if (open) {
+    const offPanel = events?.on("notif:panel", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 boolean（面板开闭态）
+      if (typeof payload !== "boolean") return;
+      setToastsSuppressed(payload);
+      if (payload) {
         for (const n of getToasts()) _seenIds.add(n.id);
         setLayoutVersion((v) => v + 1);  // 标记已读不 fire toast 事件——手动重推
       }
     });
-    const offDismiss = events?.on("notif:dismiss", (id: string) => {
-      dismissToast(id);
+    const offDismiss = events?.on("notif:dismiss", (payload) => {
+      if (typeof payload === "string") dismissToast(payload);
     });
     const offClearAll = events?.on("notif:clearAll", () => {
       getToasts().forEach((n) => dismissToast(n.id));
     });
-    const offAction = events?.on("notif:action", (data: { id: string; index: number }) => {
+    const offAction = events?.on("notif:action", (payload) => {
+      const data = payload as { id?: unknown; index?: unknown } | null | undefined;
+      if (!data || typeof data.id !== "string" || typeof data.index !== "number") return;
       const toast = getToasts().find((n) => n.id === data.id);
       const action = toast?.actions?.[data.index];
       if (action) { action.onClick(); dismissToast(data.id); }
@@ -704,7 +708,10 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   // 壳 IconBar handleIconDrop 语义迁入（toPluginId 解析目标插件首个容器；无 viewsContainers
   // 声明则无动作）。moveView 更新双容器活跃 views + 手动 bump 重推确认（真相源在壳）。
   useEffect(() => {
-    const unsub = window.linkdesk?.events?.on("view:droppedOnIcon", (data: { viewId: string; fromContainerId: string; toPluginId: string }) => {
+    const unsub = window.linkdesk?.events?.on("view:droppedOnIcon", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 { viewId, fromContainerId, toPluginId } 三字符串
+      const data = payload as { viewId?: unknown; fromContainerId?: unknown; toPluginId?: unknown } | null | undefined;
+      if (!data || typeof data.viewId !== "string" || typeof data.fromContainerId !== "string" || typeof data.toPluginId !== "string") return;
       const toPlugin = getViewPlugin(data.toPluginId);
       const containers = toPlugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
       const toContainerId = containers ? Object.keys(containers)[0] : undefined;

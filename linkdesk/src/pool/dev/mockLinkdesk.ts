@@ -31,6 +31,8 @@
 import type { PoolToastData } from "../../core/types/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/poolDialog";
+import type { PoolLayout } from "../../core/types/poolLayout";
+import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
 import {
   buildSampleLayout,
   buildSampleToasts,
@@ -96,6 +98,11 @@ function makeLogger(label: string) {
   return (...args: unknown[]) => console.info(`[mockLinkdesk] ${label}（壳侧动作，预览 no-op）`, ...args);
 }
 
+/** Promise 版留壳动作——契约面 Promise<void>/Promise<unknown> 的桩（window.openFolder 等） */
+function makeAsyncLogger(label: string) {
+  return async (...args: unknown[]) => console.info(`[mockLinkdesk] ${label}（壳侧动作，预览 no-op）`, ...args);
+}
+
 /**
  * 安装 mock linkdesk。幂等：真实 preload 已注入则跳过（Electron 打开
  * preview.html 时真 API 优先）。
@@ -104,7 +111,7 @@ export function installMockLinkdesk(): void {
   if (window.linkdesk) return;
 
   const events = createMiniBus();
-  const layoutReplay = createReplay<unknown>();
+  const layoutReplay = createReplay<PoolLayout>();
   const toastReplay = createReplay<PoolToastData>();
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
@@ -121,30 +128,48 @@ export function installMockLinkdesk(): void {
 
   // 池侧命令注册表——preload-pool 同款语义（池注册优先，壳侧 fallback 无壳 → 日志）
   const poolCommands = new Map<string, (...args: unknown[]) => unknown>();
-  const executeCommand = (id: string, ...args: unknown[]) => {
+  // E5.7#97：泛型签名对齐 LinkDeskAPI（execute<T>/executeCommand<T>）——mock 无壳侧实现恒返回 undefined
+  const executeCommand = <T = void>(id: string, ...args: unknown[]): Promise<T> => {
     const handler = poolCommands.get(id);
     if (handler) {
       // E5.7#63.8 全仓归一：token 占位剥离——壳 CommandRegistry / 池 preload / 本 mock 三处同语义，handler 只收 realArgs
       const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-      return Promise.resolve(handler(...realArgs));
+      return Promise.resolve(handler(...realArgs) as T);
     }
     console.info(`[mockLinkdesk] commands.executeCommand("${id}")——无壳侧实现，预览 no-op`);
-    return Promise.resolve(undefined);
+    return Promise.resolve(undefined as T);
   };
 
-  window.linkdesk = {
+  // E5.7#97：satisfies Partial<LinkDeskAPI>——逐命名空间契约检查保留（桩与真实面形状失配
+  // 当场报错），整体残缺面是刻意设计（无壳侧消费面 + 插件命名空间故意不镜像 →
+  // undefined 调用响亮失败）。边界一处断言，全文件零 any。
+  const mockLinkdesk = {
     pool: {
       onLayout: layoutReplay.subscribe,
       ready: makeLogger("pool.ready"),
       sidebarAction: makeLogger("pool.sidebarAction"),
       tabAction: makeLogger("pool.tabAction"),
+      // ── 壳侧面（preview 无壳侧消费——留壳日志 + no-op 订阅）──
+      pushLayout: makeLogger("pool.pushLayout"),
+      onReady: () => () => {},
+      toggleDevTools: makeLogger("pool.toggleDevTools"),
+      onSidebarAction: () => () => {},
+      onTabAction: () => () => {},
+      pushQuickPick: makeLogger("pool.pushQuickPick"),
+      onQuickPickAction: () => () => {},
+      pushToast: makeLogger("pool.pushToast"),
+      onToastAction: () => () => {},
+      pushDialog: makeLogger("pool.pushDialog"),
+      onDialogAction: () => () => {},
+      onMemoryPressure: () => () => {},
     },
     window: {
       minimize: makeLogger("window.minimize"),
       maximize: makeLogger("window.maximize"),
       unmaximize: makeLogger("window.unmaximize"),
       close: makeLogger("window.close"),
-      toggleDevTools: makeLogger("window.toggleDevTools"),
+      setZoom: makeLogger("window.setZoom"),
+      toggleDevTools: makeAsyncLogger("window.toggleDevTools"),
       isMaximized: async () => false,
       onMaximizeChange: () => () => {},
     },
@@ -205,6 +230,9 @@ export function installMockLinkdesk(): void {
     events,
     language: {
       // i18n 无语言资源 → key 回退（中文原文直显）——getInitial null + onChange no-op
+      getCurrent: async () => "zh-CN",
+      getAvailable: async () => [],
+      set: makeAsyncLogger("language.set"),
       getInitial: () => null,
       onChange: () => () => {},
     },
@@ -212,18 +240,32 @@ export function installMockLinkdesk(): void {
     // ── 欢迎页最小补丁（WelcomePoolView 消费面——零插件视图场景足够） ──
     workspace: {
       getFolders: async () => [],
+      getActive: async () => undefined,
+      setActive: makeAsyncLogger("workspace.setActive"),
+      openFolder: makeAsyncLogger("workspace.openFolder"),
+      addFolder: makeAsyncLogger("workspace.addFolder"),
+      removeFolder: makeAsyncLogger("workspace.removeFolder"),
       onDidChangeFolders: () => () => {},
-      openFolder: makeLogger("workspace.openFolder"),
-      addFolder: makeLogger("workspace.addFolder"),
+      onDidChangeActiveWorkspace: () => () => {},
     },
     pluginState: {
-      get: async () => null,
-      set: makeLogger("pluginState.set"),
+      get: async () => undefined,
+      set: makeAsyncLogger("pluginState.set"),
     },
     pluginManager: {
       list: async () => [],
+      enable: makeAsyncLogger("pluginManager.enable"),
+      disable: makeAsyncLogger("pluginManager.disable"),
+      uninstall: makeAsyncLogger("pluginManager.uninstall"),
+      install: makeAsyncLogger("pluginManager.install"),
+      reinstall: makeAsyncLogger("pluginManager.reinstall"),
+      getDisabled: async () => [],
+      getUninstalled: async () => [],
+      isDisabled: async () => false,
     },
-  };
+  } satisfies Partial<LinkDeskAPI>;
+
+  window.linkdesk = mockLinkdesk as unknown as LinkDeskAPI;
 
   // 控制台浮层调样式入口——Codex 改浮层 UI 时：__mockPool.showQuickPick() 等
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

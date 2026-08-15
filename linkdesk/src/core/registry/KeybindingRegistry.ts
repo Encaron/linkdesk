@@ -85,15 +85,12 @@ function normalizeKey(key: string): string {
     .join("+");
 }
 
-/** E5.5#7-p8：主进程↔壳键盘事件纯数据形状——不依赖 KeyboardEvent DOM 对象 */
-export interface KeyboardInput {
-  ctrlKey: boolean;
-  shiftKey: boolean;
-  altKey: boolean;
-  metaKey: boolean;
-  key: string;
-  code: string;
-}
+/** E5.5#7-p8：主进程↔壳键盘事件纯数据形状——不依赖 KeyboardEvent DOM 对象。
+ *  E5.7#97：归口 src/core/types/ipc/keyboard.ts（与 keyboard-router 同源）——此处 re-export 保持既有 import 路径 */
+// E5.7#97：键盘输入 wire 契约归口。re-export 保既有 import 路径；import type 供本文件内部消费
+// （re-export 不把名字带入本地作用域——两行缺一不可）。
+import type { KeyboardInput } from "../types/ipc/keyboard";
+export type { KeyboardInput } from "../types/ipc/keyboard";
 
 /** 特殊键映射——KeyboardEvent.key → 规范化短名 */
 const KEY_MAP: Record<string, string> = {

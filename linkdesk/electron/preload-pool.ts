@@ -60,14 +60,31 @@ import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
 import { IpcRelay } from './ipc-relay';
+// ── E5.7#97：wire 契约归口——type import 放行（Path B 只禁 value import，决策点 1）──
+import type { PoolLayout } from '../src/core/types/poolLayout';
+import type {
+  ConfigurationChangedPayload,
+  ThemeChangedPayload,
+  AccentChangedPayload,
+  PluginStateChangedPayload,
+  TabActivatedPayload,
+  WorkspaceActiveChangedPayload,
+  SettingsRequestGroupPayload,
+  SettingsScrollToPayload,
+  PluginPushEnvelope,
+} from '../src/core/types/ipc/events';
+import type { OpenPortConfig, SerialStats } from '../src/core/types/ipc/serial';
+import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
+import type { WorkspaceFolder } from '../src/core/services/WorkspaceService';
+import type { FileChangeEvent } from '../src/core/services/FileService';
 
 // E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
 // E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc-relay.ts）
-const _layoutRelay = new IpcRelay<any>();
+const _layoutRelay = new IpcRelay<PoolLayout>();
 
-ipcRenderer.on(IPC.pool.layout, (_event, layout: any) => {
+ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
   _layoutRelay.push(layout);
 });
 
@@ -244,9 +261,9 @@ ipcRenderer.on(IPC.contextKey.changed, (_event, { key, value }: { key: string; v
 
 // ── E5.5#7a: 配置缓存——防 React mount 前事件竞态 ──
 const _configCache = new Map<string, unknown>();
-ipcRenderer.on(IPC.plugin.push, (_event, data: any) => {
+ipcRenderer.on(IPC.plugin.push, (_event, data: PluginPushEnvelope) => {
   if (data?.channel === IPC.config.changed) {
-    const { key, value } = data.payload as { key: string; value: any };
+    const { key, value } = data.payload as ConfigurationChangedPayload;
     _configCache.set(key, value);
   }
 });
@@ -271,7 +288,7 @@ try {
     logPrefix: 'preload-pool',
     extraHandlers: {
       [IPC.theme.changed]: (payload) => {
-        const { themeType, variables } = payload as any;
+        const { themeType, variables } = payload as ThemeChangedPayload;
         try {
           const root = document.documentElement;
           root.setAttribute('data-theme', themeType ?? 'dark');
@@ -283,7 +300,7 @@ try {
         }
       },
       'accent:changed': (payload) => {
-        const { variables } = payload as any;
+        const { variables } = payload as AccentChangedPayload;
         try {
           const root = document.documentElement;
           for (const [k, v] of Object.entries(variables as Record<string, string>)) {
@@ -312,6 +329,7 @@ try {
      * when 过滤全由壳侧 getCommands 消费，池内注册必须回传才可见（含动态 toggle 标题重注册）。
      * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
      */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
     registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string }) => {
       _poolCommands.set(id, handler);
       ipcRenderer.invoke(IPC.commands.register, id, meta ?? null).catch((e) => {
@@ -328,6 +346,7 @@ try {
       });
     },
     /** 执行命令——先查池侧注册表，未找到则 IPC 到壳 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定，对标 VS Code executeCommand 的 ...args: any[]
     executeCommand: (id: string, ...args: any[]) => {
       const handler = _poolCommands.get(id);
       if (handler) {
@@ -341,6 +360,7 @@ try {
       return ipcRenderer.invoke(IPC.commands.execute, id, ...args);
     },
     /** 向后兼容别名 */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定（executeCommand 同款）
     execute: (id: string, ...args: any[]) => {
       const handler = _poolCommands.get(id);
       if (handler) {
@@ -387,29 +407,29 @@ try {
   // 通用面 get/set/getSchema/onChange；设置页专用 9 方法见下方 E5.7#76 分隔标注。
   const configurationObj = {
     get: (key: string) => ipcRenderer.invoke(IPC.config.get, key),
-    set: (key: string, v: any) => ipcRenderer.invoke(IPC.config.set, key, v),
+    set: (key: string, v: unknown) => ipcRenderer.invoke(IPC.config.set, key, v),
     getSchema: (key?: string) => ipcRenderer.invoke(IPC.plugins.call, 'getSchema', key),
-    onChange: (key: string, cb: (v: any) => void) => {
+    onChange: (key: string, cb: (v: unknown) => void) => {
       if (key && _configCache.has(key)) {
         try { cb(_configCache.get(key)); } catch { /* contextBridge 回调静默失败 */ }
       }
-      return events.on(IPC.config.changed, (d: any) => {
-        const { key: k, value } = d as { key: string; value: any };
+      return events.on(IPC.config.changed, (d: ConfigurationChangedPayload) => {
+        const { key: k, value } = d;
         if (!key || k === key) cb(value);
       });
     },
     // ══ E5.7#76（E5.5#10r/E5.6#65 迁入）：以下 9 个方法为设置页专用
     // （SettingsView 渲染/实时刷新/插件生命周期联动/跳转到分组/跳转到具体配置项）。
     // 通用插件请用上面的 get/set/getSchema/onChange。 ══
-    getConfigurationContributions: (): Promise<[string, any][]> =>
+    getConfigurationContributions: (): Promise<[string, unknown][]> =>
       ipcRenderer.invoke(IPC.plugins.call, 'getConfigurationContributions'),
-    inspectConfiguration: (key: string): Promise<any> =>
+    inspectConfiguration: (key: string): Promise<unknown> =>
       ipcRenderer.invoke(IPC.plugins.call, 'inspectConfiguration', key),
     getUserSettings: (): Promise<Record<string, unknown>> =>
       ipcRenderer.invoke(IPC.plugins.call, 'getUserSettings'),
     onDidChangeConfiguration: (cb: (key: string, value: unknown) => void) => {
-      return events.on(IPC.config.changed, (d: any) => {
-        const { key: k, value } = d as { key: string; value: any };
+      return events.on(IPC.config.changed, (d: ConfigurationChangedPayload) => {
+        const { key: k, value } = d;
         try { cb(k, value); } catch { /* contextBridge 回调静默失败 */ }
       });
     },
@@ -421,15 +441,15 @@ try {
     consumeSettingsGroup: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC.plugins.call, 'consumeSettingsGroup'),
     onRequestSettingsGroup: (cb: (pluginId: string) => void) => {
-      return events.on('settings:requestGroup', (d: any) => {
-        try { cb((d as { pluginId: string }).pluginId); } catch { /* contextBridge 回调静默失败 */ }
+      return events.on('settings:requestGroup', (d: SettingsRequestGroupPayload) => {
+        try { cb(d.pluginId); } catch { /* contextBridge 回调静默失败 */ }
       });
     },
     consumeScrollToSetting: (): Promise<string | null> =>
       ipcRenderer.invoke(IPC.plugins.call, 'consumeScrollToSetting'),
     onRequestScrollToSetting: (cb: (key: string) => void) => {
-      return events.on('settings:scrollTo', (d: any) => {
-        try { cb((d as { key: string }).key); } catch { /* contextBridge 回调静默失败 */ }
+      return events.on('settings:scrollTo', (d: SettingsScrollToPayload) => {
+        try { cb(d.key); } catch { /* contextBridge 回调静默失败 */ }
       });
     },
   };
@@ -439,15 +459,15 @@ try {
     serial: {
       listPorts: () => ipcRenderer.invoke(IPC.serial.listPorts),
       getStatus: () => ipcRenderer.invoke(IPC.serial.getStatus),
-      openPort: (cfg: any) => ipcRenderer.invoke(IPC.serial.openPort, cfg),
+      openPort: (cfg: OpenPortConfig) => ipcRenderer.invoke(IPC.serial.openPort, cfg),
       closePort: () => ipcRenderer.invoke(IPC.serial.closePort),
       sendData: (data: number[]) => ipcRenderer.invoke(IPC.serial.sendData, data),
       sendText: (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
       setDtr: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setDtr, enable),
       setRts: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setRts, enable),
-      onData: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.data, cb),
-      onStats: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
-      onSystem: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
+      onData: (cb: (text: string) => void) => listenDirect(ipcRenderer, IPC.serial.data, cb),
+      onStats: (cb: (stats: SerialStats) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
+      onSystem: (cb: (message: string) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
     },
 
     // ── 配置（读/写/订阅/schema）──
@@ -468,10 +488,10 @@ try {
       createDir: (p: string) => ipcRenderer.invoke(IPC.filesystem.createDir, p),
       copy: (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.copy, src, dest),
       remove: (p: string) => ipcRenderer.invoke(IPC.filesystem.remove, p),
-      watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
+      watch: (dirPath: string, onEvent: (e: FileChangeEvent) => void) => {
         return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
           const channel = filesystemChanged(watcherId);
-          const handler = (_event: any, change: any) => onEvent(change);
+          const handler = (_event: Electron.IpcRendererEvent, change: FileChangeEvent) => onEvent(change);
           ipcRenderer.on(channel, handler);
           return () => {
             ipcRenderer.removeListener(channel, handler);
@@ -490,7 +510,7 @@ try {
 
     // ── E5.6#11.5a：扩展 workspace——池插件完整工作区操作 ──
     workspace: {
-      getFolders: (): Promise<any[]> => ipcRenderer.invoke(IPC.workspace.getFolders),
+      getFolders: (): Promise<WorkspaceFolder[]> => ipcRenderer.invoke(IPC.workspace.getFolders),
       getActive: (): Promise<string | undefined> => ipcRenderer.invoke(IPC.workspace.getActive),
       setActive: (uri: string) => ipcRenderer.invoke(IPC.workspace.setActive, uri),
       openFolder: () => ipcRenderer.invoke(IPC.workspace.openFolder),
@@ -498,8 +518,8 @@ try {
       removeFolder: (path: string) => ipcRenderer.invoke(IPC.workspace.removeFolder, path),
       onDidChangeFolders: (cb: () => void) => events.on('workspace:changed', cb),
       onDidChangeActiveWorkspace: (cb: (uri: string | null) => void) => {
-        return events.on('workspace:activeChanged', (d: any) => {
-          try { cb((d as { uri: string | null })?.uri ?? null); } catch { /* contextBridge 回调静默失败 */ }
+        return events.on('workspace:activeChanged', (d: WorkspaceActiveChangedPayload) => {
+          try { cb(d?.uri ?? null); } catch { /* contextBridge 回调静默失败 */ }
         });
       },
     },
@@ -608,7 +628,7 @@ try {
       set: (pluginId: string, key: string, value: unknown): Promise<void> =>
         ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
       onChange: (pluginId: string, key: string, cb: (value: unknown) => void) => {
-        return events.on('plugin-state:changed', (data: any) => {
+        return events.on('plugin-state:changed', (data: PluginStateChangedPayload) => {
           if (data?.pluginId === pluginId && data?.key === key) {
             cb(data.value);
           }
@@ -659,7 +679,7 @@ try {
       closeBySourceId: (sourceId: string) => ipcRenderer.invoke(IPC.tabs.closeBySourceId, sourceId),
       // E5.6#11.5g3: autoReveal——文件树随标签页切换自动定位
       onDidChangeActiveTab: (cb: (data: { tabId: string; pluginId?: string; filePath?: string }) => void) => {
-        return events.on('tab:activated', (d: any) => {
+        return events.on('tab:activated', (d: TabActivatedPayload) => {
           try { cb(d as { tabId: string; pluginId?: string; filePath?: string }); } catch { /* contextBridge 回调静默失败 */ }
         });
       },
@@ -683,7 +703,7 @@ try {
     dialog: {
       confirm: (message: string): Promise<boolean> => ipcRenderer.invoke(IPC.dialog.confirm, message),
       alert: (message: string): Promise<void> => ipcRenderer.invoke(IPC.dialog.alert, message),
-      open: (opts: any): Promise<any> => ipcRenderer.invoke(IPC.dialog.open, opts),
+      open: (opts?: DialogOpenOptions): Promise<string | null> => ipcRenderer.invoke(IPC.dialog.open, opts),
       openFile: (opts?: {
         title?: string;
         filters?: { name: string; extensions: string[] }[];
@@ -702,7 +722,7 @@ try {
 
     // ── Pool 专属 API ──
     pool: {
-      onLayout: (cb: (layout: any) => void) => _layoutRelay.onReady(cb),
+      onLayout: (cb: (layout: PoolLayout) => void) => _layoutRelay.onReady(cb),
       ready: () => ipcRenderer.send(IPC.pool.ready), // E5.7#54：不再带 zone——单 Pool 无路由
       sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),
       // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
