@@ -49,13 +49,8 @@ import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type Co
 import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import { ensureBuiltinProtocols } from "./core/commands/registerBuiltinProtocols";
-import SourceStateContext from "./core/react/SourceStateContext";
-import type { SourceInfo } from "./core/react/SourceStateContext";
 import i18n from "./i18n";
 import "./App.css";
-
-/** E5#102c: 串口端口列表刷新间隔（ms） */
-const PORT_REFRESH_INTERVAL = 2000;
 
 function App() {
   const { t } = useTranslation();
@@ -66,20 +61,8 @@ function App() {
   // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
   useMemoryMonitor();
   const [isOpen, setIsOpen] = useState(false);
-  const [ports, setPorts] = useState<SourceInfo[]>([]);
-  const [portName, setPortName] = useState("");
-  const [baudRate, setBaudRate] = useState("115200");
-  // B86 fix：handleToggleOpen 用 ref 读最新值——ControlPanel 先 setPortName（React 异步）
-  // 紧接着调 toggleOpen，闭包里的 portName 还是旧值（""），传给 Rust → ERROR_INVALID_NAME
-  const portNameRef = useRef(portName);
-  portNameRef.current = portName;
-  const baudRateRef = useRef(baudRate);
-  baudRateRef.current = baudRate;
   const [, setTheme] = useState<string>("Dark");
   const [, setLang] = useState<"zh" | "en">("zh");
-  const [lastError, setLastError] = useState<string | null>(null);
-  const [txBytes, setTxBytes] = useState(0);
-  const [rxBytes, setRxBytes] = useState(0);
 
   // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
   // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
@@ -263,13 +246,8 @@ function App() {
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");
 
-      // B14：lastPort 已迁移到 PluginStateService——终端插件自行管理
-      setPortName("");
-
-      // 串口状态同步（来自 AppInitializer 返回）
+      // 串口状态同步（来自 AppInitializer 返回）——壳只认 isOpen 一个 bit（E5.7#45.6）
       if (result.serialState?.isOpen) {
-        setPortName(result.serialState.portName);
-        setBaudRate(String(result.serialState.baudRate));
         setIsOpen(true);
       }
 
@@ -293,11 +271,12 @@ function App() {
   /* ── Phase 5d：运行时 context key 更新 ── */
   // 对标 VS Code setContext——串口/标签页状态变更时同步更新全局 context key 状态机
 
-  // sourceOpen / sourceName——数据源开关时更新
+  // sourceOpen——数据源开关时更新
+  // （sourceName contextKey 已随 E5.7#45.6 删除——池化后壳不再知道端口名，
+  //   且全仓无 when 子句消费它；插件侧 session 连接态走 pluginState 自管）
   useEffect(() => {
     ContextKeyService.setValue("sourceOpen", isOpen);
-    ContextKeyService.setValue("sourceName", isOpen ? portName : null);
-  }, [isOpen, portName]);
+  }, [isOpen]);
 
   // E5#5e-ii-b：activeEditor——订阅 tab:focused 替代旧的 activePluginId 派生
   useEffect(() => {
@@ -668,78 +647,12 @@ function App() {
     return unsub;
   }, []);
 
-  /* ---- 串口控制 ---- */
-  // E8：receiveCoding 从 session 传入——不再读旧 ConfigurationService（那个已没值了）
-
-  const handleToggleOpen = useCallback(async (encoding?: string) => {
-    try {
-      if (isOpen) {
-        await linkdesk().serial.closePort();
-        setIsOpen(false);
-      } else {
-        // B86 fix：用 ref 读最新值——ControlPanel 在同一次事件循环里先 setPortName
-        // （React 异步 setState）再调 toggleOpen，闭包 portName 还是旧值 → 打开失败
-        await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
-        setIsOpen(true);
-      }
-    } catch (e: any) {
-      setLastError(t("串口操作失败") + "：" + (e?.message || e));
-      reportError({ message: t("串口操作失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
-    }
-  }, [isOpen]);
-
-  const handleBaudChange = useCallback(async (newBaud: string, encoding?: string) => {
-    setBaudRate(newBaud);
-    if (isOpen) {
-      try {
-        await linkdesk().serial.closePort();
-        await linkdesk().serial.openPort({ portName: portNameRef.current, baudRate: parseInt(newBaud), encoding: encoding ?? "UTF-8" });
-      } catch (e: any) {
-        setLastError(t("波特率切换失败") + "：" + (e?.message || e));
-        reportError({ message: t("波特率切换失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
-        setIsOpen(false);
-      }
-    }
-  }, [isOpen]);
-
-  const handlePortChange = useCallback(async (newPort: string, encoding?: string) => {
-    setPortName(newPort);
-    if (isOpen) {
-      try {
-        await linkdesk().serial.closePort();
-        await linkdesk().serial.openPort({ portName: newPort, baudRate: parseInt(baudRateRef.current), encoding: encoding ?? "UTF-8" });
-      } catch (e: any) {
-        setLastError(t("端口切换失败") + "：" + (e?.message || e));
-        reportError({ message: t("端口切换失败") + "：" + (e?.message || e), source: "serial-monitor", error: e });
-        setIsOpen(false);
-      }
-    }
-  }, [isOpen]);
-
-  // Phase 5f：终端设置已迁移到 useConfiguration 直连——终端组件内部 setConfigurationValue。
-  // App 壳不再需要逐 key 同步 terminalPrefs → ConfigurationService 双写。
-  // 见 plugins/user/serial-monitor/index.tsx + sidebar.tsx——每个设置项独立 useConfiguration("serial-monitor.xxx")
-
-  // E2c #19f：lastPort 持久化已搬到终端插件 ControlPanel.handlePortChange——壳不再知道 terminal
-
-  // COM 口枚举 + 热插拔
-  useEffect(() => {
-    const refreshPorts = async () => {
-      try {
-        const list = await linkdesk().serial.listPorts();
-        setPorts(list);
-      } catch { /* 静默 */ }
-    };
-    refreshPorts();
-    const timer = setInterval(refreshPorts, PORT_REFRESH_INTERVAL);
-    return () => clearInterval(timer);
-  }, []);
-
-  // TX/RX 字节计数——useIpcEvent 内置 generation counter，防 StrictMode 泄漏
-  useIpcEvent<{ tx?: number; rx?: number }>("serial-stats", (payload) => {
-    if (payload.tx) setTxBytes((prev) => prev + payload.tx!);
-    if (payload.rx) setRxBytes((prev) => prev + payload.rx!);
-  });
+  /* ---- 串口状态（E5.7#45.6 死簇整删后） ---- */
+  // 壳串口控制簇（handleToggleOpen/handleBaudChange/handlePortChange + COM 轮询 + TX/RX 计数
+  // + SourceStateContext）已整删——池化后串口开关/端口/波特率全由池内插件自管
+  // （plugins/user/serial-monitor/src/services/SerialContext.tsx 直连 lk.serial）。
+  // 壳只保留一个 isOpen bit：下方 serial-system 监听器 + AppInitializer 恢复
+  // → sourceOpen contextKey（plugin.json when 子句显示条件——Bug C 补全·症状 4 修通的链）。
 
   // E5：监听 serial-system 事件补刀同步 isOpen 状态。
   // E5.7 Bug C 补全·症状 4：池化后插件直接调 lk.serial.openPort（绕开壳 handleToggleOpen），
@@ -754,23 +667,9 @@ function App() {
     }
   });
 
-  // 串口关闭时重置计数
-  useEffect(() => {
-    if (!isOpen) {
-      setTxBytes(0);
-      setRxBytes(0);
-    }
-  }, [isOpen]);
-
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
   // （Ctrl+W / Ctrl+Tab / Ctrl+\ / Ctrl+1~9）已删除。执行走 coreCommands.ts 的 CoreCallbacks 模式。
-
-  // E2b #7：SourceStateContext——替代 SerialContext（核心只知道"数据源"，不知道"串口"）
-  const sourceStateValue = useMemo(() => ({
-    state: { ports, sourceName: portName, baudRate, isOpen, txBytes, rxBytes, lastError },
-    actions: { toggleOpen: handleToggleOpen, setSourceName: handlePortChange, setBaudRate: handleBaudChange },
-  }), [ports, portName, baudRate, isOpen, txBytes, rxBytes, lastError, handleToggleOpen, handlePortChange, handleBaudChange]);
 
   /* ═══════════════════════════════════════════════════════════
    * E5.7#9：标签页状态机——原 MainContent.tsx 状态逻辑整体迁入 App。
@@ -1095,11 +994,9 @@ function App() {
 
   return (
     <div className="app-shell">
-      <SourceStateContext.Provider value={sourceStateValue}>
-        {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
-            MainContent/WindowControls 删除（#9），SplitHandles 删除（#31）。壳 = 纯状态持有者
-            （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
-      </SourceStateContext.Provider>
+      {/* E5.7#9：壳 DOM 全删——TitleBar(#5)/IconBar(#6)/StatusBar(#8)/SidePanel(#10) 已迁池内 zone，
+          MainContent/WindowControls 删除（#9），SplitHandles 删除（#31）。壳 = 纯状态持有者
+          （tabState/Registry/命令执行/侧栏宿主状态机），WCV 满窗覆盖壳渲染进程（#12.5），无可见 DOM。 */}
     </div>
   );
 }
