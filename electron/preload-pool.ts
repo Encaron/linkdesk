@@ -677,10 +677,18 @@ try {
     },
 
     // ── 弹窗 ──
+    // E5.7#73：openFile——插件文件选择器（E5.5#10q/E5.6#62 迁入）。
+    // 与 open 同通道（主进程 dialog-handlers.ts IPC.dialog.open）；安全由主进程控制
+    // （原生对话框 + 文件存在校验），返回用户选中路径，取消 → null。
     dialog: {
       confirm: (message: string): Promise<boolean> => ipcRenderer.invoke(IPC.dialog.confirm, message),
       alert: (message: string): Promise<void> => ipcRenderer.invoke(IPC.dialog.alert, message),
       open: (opts: any): Promise<any> => ipcRenderer.invoke(IPC.dialog.open, opts),
+      openFile: (opts?: {
+        title?: string;
+        filters?: { name: string; extensions: string[] }[];
+        directory?: boolean;
+      }): Promise<string | null> => ipcRenderer.invoke(IPC.dialog.open, opts),
     },
 
     // ── path 工具函数 ──
