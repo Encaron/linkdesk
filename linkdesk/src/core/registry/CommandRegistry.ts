@@ -90,6 +90,13 @@ export function unregisterPluginCommands(pluginId: string): void {
 
 /* ── 池侧命令元数据同步（E5.7 Bug C 补全——命令面板/菜单可见性）── */
 
+// 🔥 真相源分工（跨进程双注册表的唯一权威声明）：
+//   壳 CommandRegistry（本模块）= 显示真相源——title/category/when/命令面板/右键菜单
+//   全部只读壳这份注册表；池 _poolCommands（electron/preload-pool.ts）= 执行真相源——
+//   handler 闭包引用池侧 React state/DOM，壳进程无法持有也无法执行。
+//   meta 单向同步：池 → 壳（"commands:register" IPC），只更新显示面，永不覆盖 handler/placeholder。
+//   壳侧执行池命令走 executeInPool 转发桥（Bug C 桥），不是"把 handler 搬过来"。
+
 /** 池内运行时注册的命令——经 "commands:register" IPC 创建，随视图 unmount 的 unregister 注销 */
 const _poolRuntimeCommands = new Set<string>();
 
