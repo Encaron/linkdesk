@@ -63,6 +63,8 @@ export interface LinkDeskAPI {
      * toggle 命令标题随状态翻转）、category 命令面板分组、when context key 过滤
      * （传 "false" = 纯程序化命令，不进命令面板，仅供插件 API 调用）。
      * plugin.json contributes.commands 未声明的命令经 meta 注册后同样可见/可执行。
+     * 真相源分工：壳 CommandRegistry = 显示真相源（title/category/when 唯一权威），
+     * 池 = 执行真相源（handler 唯一权威，永不跨进程）——meta 只同步显示面。
      */
     registerCommand(
       commandId: string,

@@ -157,6 +157,10 @@ ipcRenderer.on('plugin:push', (_event, data: any) => {
 // handler 是函数闭包——引用池侧 React state/DOM，壳无法执行。
 // 因此池 preload 在 contextBridge 隔离世界内维护 Map<string, Function>。
 // executeCommand 先查池侧注册表，未找到则 fallback 到壳侧 IPC。
+// 🔥 真相源分工（与壳 CommandRegistry 的唯一权威声明一致）：
+//   _poolCommands（本表）= 执行真相源——handler 永不离开本进程；
+//   壳 CommandRegistry = 显示真相源——title/category/when 只读壳那份。
+//   meta 单向同步（commands:register IPC）只回传显示面，壳侧执行走 executeInPool 转发桥。
 const _poolCommands = new Map<string, Function>();
 
 try {
