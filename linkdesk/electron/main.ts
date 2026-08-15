@@ -13,6 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
+import { loadAllPluginManifests, registerManifestRescanHandler } from './plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
 import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
@@ -319,6 +320,12 @@ protocol.registerSchemesAsPrivileged([
 // ── 应用生命周期 ──
 app.whenReady().then(() => {
   registerProtocol();
+  // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
+  // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。
+  // 装/卸/重装重扫通道注册一次；壳崩重建走 rebuildShell→createWindow，不经过 whenReady，
+  // 主进程三表数据天然存活、无需重扫。
+  registerManifestRescanHandler();
+  loadAllPluginManifests();
   createWindow();
 });
 

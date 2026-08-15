@@ -166,6 +166,8 @@ try {
       getDisabled:    () => ipcRenderer.invoke('plugins:call', 'getDisabled'),
       getUninstalled: () => ipcRenderer.invoke('plugins:call', 'getUninstalled'),
       isDisabled:     (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
+      // E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表（plugin-manifest-loader）
+      notifyManifestChanged: () => ipcRenderer.send('plugins:rescanManifests'),
     },
 
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
