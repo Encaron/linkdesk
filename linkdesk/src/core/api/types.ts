@@ -113,8 +113,9 @@ export interface PluginManifest {
   sidebar?: string;
   tabBehavior?: TabBehavior;
   /** 系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页，marketplace=插件市场。
-   *  多个插件声明同一 role → 第一个 core: true 的胜出。 */
-  factoryRole?: "settings" | "marketplace";
+   *  多个插件声明同一 role → 第一个 core: true 的胜出。
+   *  E5.7#65：开放 string——第三方可声明新角色名，壳零改动（FactorySlots 按字符串查表）。 */
+  factoryRole?: string;
   statusBar?: StatusBarItem[];
   /** @deprecated E5#12——已迁移到 contributes.themes。仅 normalizeManifest 向后兼容用。 */
   file?: string;

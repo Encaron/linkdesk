@@ -7,6 +7,9 @@
  * E2c #19d：TAB_IDENTITY 硬编码表消灭——identityField 从 plugin.json tabBehavior 声明，
  *           generateId 自动推导，fallbackLabel 从 manifest.name 读取。
  *           壳内部类型（plugin-detail / welcome）保留最小特殊处理。
+ * E5.7#67：FALLBACK_META 兜底表整删（terminal/workspace/editor 等插件 ID 硬编码表，
+ *           硬约束 10 违例）——identityField 唯一来源 = plugin.json tabBehavior.identityField，
+ *           viewRegistry 不可用时走通用兜底 null。测试模拟插件声明（useTabManager.test.ts beforeEach）。
  *
  * 新插件不需要在此加任何代码——getMeta() 从 viewRegistry 自动推导。
  *
@@ -110,26 +113,6 @@ const SHELL_META: Record<string, TabIdentityMeta> = {
   },
 };
 
-/**
- * viewRegistry 不可用时的兜底元数据——仅测试/极端边界用到。
- * 插件正常运行时所有信息从 manifest 推导。
- * 此处只保留无法从代码推导的信息：中文标签名 + identityField（身份匹配策略）。
- *
- * @deprecated `identityField` 计划迁入 `plugin.json` `tabBehavior.identityField`。
- *   迁移后本表仅保留 `label`（中文兜底标签），`identityField` 从 manifest 声明读取。
- *   当前仍在此处定义 `identityField`，确保 viewRegistry 不可用时（测试/极端边界）不掉链。
- */
-/** @deprecated label 已从 manifest.name 自动读取——新插件不需加到此表。仅保留 identityField 兜底。 */
-const FALLBACK_META: Record<string, { identityField?: string | null }> = {
-  terminal:    { identityField: null },
-  workspace:   { identityField: "workspaceName" },
-  settings:    { identityField: null },
-  marketplace: { identityField: null },
-  oled:        { identityField: null },
-  editor:      { identityField: "filePath" },
-  output:      { identityField: null }, // E3f #54
-};
-
 /* ── 核心：getMeta —— 从声明推导，不查表 ── */
 
 export function getMeta(type: string): TabIdentityMeta {
@@ -149,7 +132,7 @@ export function getMeta(type: string): TabIdentityMeta {
   // 3. 插件视图——从 plugin.json tabBehavior 推导
   const plugin = getViewPlugin(type);
   if (plugin) {
-    const identityField = plugin.manifest.tabBehavior?.identityField ?? FALLBACK_META[type]?.identityField ?? null;
+    const identityField = plugin.manifest.tabBehavior?.identityField ?? null;
     return {
       identityField,
       fallbackLabel: plugin.manifest.name,
@@ -159,8 +142,9 @@ export function getMeta(type: string): TabIdentityMeta {
   }
 
   // 4. 未知类型——合理默认值（新插件不需要在本模块加代码）
-  const fb = FALLBACK_META[type];
-  const identityField = fb?.identityField ?? null;
+  //    E5.7#67：FALLBACK_META 硬编码表整删——identityField 唯一来源是
+  //    plugin.json tabBehavior.identityField（editor 早已声明 filePath），未知类型走 null。
+  const identityField = null;
   return {
     identityField,
     fallbackLabel: type,
