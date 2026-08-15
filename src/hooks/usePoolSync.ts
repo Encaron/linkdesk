@@ -12,6 +12,7 @@ import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PanelViewMeta, PanelLayout, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout, StatusBarItem, NotifLayout } from "../core/types/poolLayout";
+import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
@@ -488,7 +489,7 @@ export interface UsePoolSyncInput {
   /** E5.7#63.7：底部面板激活视图 ID——null = 尚未选择（回退 views[0]）。真相源在壳 App state */
   panelActiveViewId: string | null;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
-  onTabAction?: (action: any) => void;
+  onTabAction?: (action: PoolTabAction) => void; // E5.7#96：wire 契约定型
 }
 
 /**
@@ -605,7 +606,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi || !onTabAction) return;
-    const unsub = poolApi.onTabAction?.((action: any) => {
+    const unsub = poolApi.onTabAction?.((action: PoolTabAction) => {
       onTabAction(action);
     });
     return unsub;

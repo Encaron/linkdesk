@@ -8,6 +8,7 @@ import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
+import type { PoolTabAction } from "./core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
@@ -894,8 +895,9 @@ function App() {
 
   // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
   // 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
-  const handleTabAction = useCallback((action: any) => {
-    switch (action?.action) {
+  // E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
+  const handleTabAction = useCallback((action: PoolTabAction) => {
+    switch (action.action) {
       case "focusTab":
         handleFocusTab(action.tabId);
         break;
@@ -943,14 +945,14 @@ function App() {
         break;
       case "splitTab":
         // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
-        // E5.6#16.7k-2：direction 归一化——右键菜单传 "right"/"down"，拖拽传 zone/horizontal/vertical
+        // E5.7#96：direction 归一化已在池侧完成（onDropSplit 传 horizontal/vertical 两值）——
+        // 旧 "right"/"down" 六值分支是 E5.6 遗留（右键菜单现走壳命令 core.splitRight 不经过本通道），
+        // 契约类型收窄后死分支随 tsc 移除。zone 过滤 center/null（拖拽状态值，非分屏语义）。
         splitTabAt(
           action.tabId,
-          action.direction === "vertical" || action.direction === "down" || action.direction === "up"
-            ? "vertical"
-            : "horizontal",
+          action.direction,
           action.targetGroupId,
-          action.zone ?? (action.direction === "left" || action.direction === "right" || action.direction === "up" || action.direction === "down" ? action.direction : undefined),
+          action.zone && action.zone !== "center" ? action.zone : undefined,
         );
         break;
       case "duplicateTab":
@@ -962,13 +964,16 @@ function App() {
       case "createTab": {
         // E5.7 Bug A 修复：同 u1/u2——池发起的开标签页也要 emit tab:focused，
         // 否则 activeEditor 不更新 → when:"activeEditor == 'xxx'" 过滤掉菜单项/命令。
-        const tabId = createTab(action.pluginId ?? FALLBACK_PLUGIN_ID, { groupId: action.groupId } as any);
-        if (tabId) shellEvents.emit("tab:focused", { pluginId: action.pluginId ?? FALLBACK_PLUGIN_ID, tabId });
+        // E5.7#96：workspaceName 透传——旧 { groupId } as any 是死字段（CreateTabOptions 无 groupId），
+        // 欢迎页最近视图发的 workspaceName 被静默丢弃（wire 缝，契约定型时 tsc 逼出）。
+        const pluginId = action.pluginId ?? FALLBACK_PLUGIN_ID;
+        const tabId = createTab(pluginId, { workspaceName: action.workspaceName });
+        if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
         break;
       }
       // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
       case "updateSplitSizes":
-        updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);
+        updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
         break;
     }
   }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);

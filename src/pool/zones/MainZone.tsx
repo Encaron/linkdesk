@@ -34,6 +34,7 @@ import type { PoolGroup, PoolTab } from "../../core/types/poolLayout";
 import type { SplitNode } from "../../hooks/splitTree";
 import { getAllLeafGroupIds } from "../../hooks/splitTree";
 import type { DropZone } from "../../hooks/tabDragTypes";
+import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import { detectDropZone } from "../../hooks/tabDragTypes";
 import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { useDragReorder } from "../../hooks/useDragReorder";
@@ -152,7 +153,7 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   if (!poolApiRef.current) {
     poolApiRef.current = (window as any).linkdesk?.pool;
   }
-  const tabAction = useCallback((action: any) => {
+  const tabAction = useCallback((action: PoolTabAction) => {
     poolApiRef.current?.tabAction?.(action);
   }, []);
 
@@ -371,10 +372,14 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     },
 
     onMoveToOther: (tabId, targetGroupId) => {
+      // E5.7#96：契约 targetGroupId: string——ref 可为 null（any 时代 null 会透传，
+      // 壳 find 不到组静默 no-op），提前空守卫
+      const gid = targetGroupId ?? targetGroupRef.current;
+      if (!gid) return;
       tabAction({
         action: "moveTab",
         tabId,
-        targetGroupId: targetGroupId ?? targetGroupRef.current,
+        targetGroupId: gid,
       });
     },
 
