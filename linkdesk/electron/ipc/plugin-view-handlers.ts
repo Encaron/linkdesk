@@ -30,10 +30,10 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     _windowManager?.pushLayout(layout);
   });
 
-  // Pool→壳：池 React 挂载完成（preload-pool 仍带 zone='' 发送——inert 参数，链路不变）
-  ipcMain.on('pool:ready', (_event, zone: string) => {
+  // Pool→壳：池 React 挂载完成（E5.7#54：zone 参数已删——单 Pool 无路由）
+  ipcMain.on('pool:ready', (_event) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:ready', zone);
+      _mainWindow.webContents.send('pool:ready');
     }
     console.log('[pool-handlers] Pool 就绪');
   });
