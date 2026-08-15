@@ -46,6 +46,14 @@ export interface LinkDeskConfigSchema {
   };
 }
 
+/** 文件选择器选项——与主进程 dialog-handlers.ts IPC.dialog.open 对齐（E5.7#73） */
+export interface DialogOpenOptions {
+  title?: string;
+  /** true = 选目录，默认选文件 */
+  directory?: boolean;
+  filters?: { name: string; extensions: string[] }[];
+}
+
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
@@ -160,7 +168,10 @@ export interface LinkDeskAPI {
   dialog: {
     confirm(message: string): Promise<boolean>;
     alert(message: string): Promise<void>;
-    open?(opts?: any): Promise<any>;
+    /** 文件/目录选择器——对标 Tauri dialog.open（E5.7#73：openFile 为插件侧规范名，本方法保留给既有消费方） */
+    open(opts?: DialogOpenOptions): Promise<string | null>;
+    /** 打开文件选择器——返回用户选中路径，取消 → null。安全由主进程控制 */
+    openFile(opts?: DialogOpenOptions): Promise<string | null>;
   };
 
   /** 通用事件订阅 + 发布——插件间数据管道 */
