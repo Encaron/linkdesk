@@ -13,7 +13,8 @@ export * from "./registry/RegistryBase";
 export * from "./registry/CommandRegistry";
 export * from "./registry/ConfigurationRegistry";
 export * from "./registry/ContextKeyService";
-export * from "./registry/FileDecorationRegistry";
+// FileDecorationRegistry 桶行已随 E5.7#60 整删——注册表池内化（provider 是 JS 函数不可跨进程，
+// 真源与消费方同在池；壳侧恒空实例 = 死重。文件连同桶导出一起 git rm）
 export * from "./registry/IconRegistry";
 export * from "./registry/KeybindingRegistry";
 export * from "./registry/LangDefRegistry";

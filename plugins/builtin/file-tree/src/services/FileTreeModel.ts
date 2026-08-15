@@ -10,10 +10,18 @@
 
 // E5.7#62：FileEntry 直指 types/fileEntry 正源（#45.5 迁入；原 services/FileService re-export 已摘）——#97 契约类型落地后换 ambient DTO
 import type { FileEntry } from "@src/core/types/fileEntry";
-import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { basename, splitPath, normalizePath, extension } from "../utils/pathUtils";
+
+// E5.7#60：本地装饰契约类型——原 @src/core/registry/FileDecorationRegistry 已整删（注册表池内化，
+// 经 linkdesk.decorations 消费）；形状与 01-插件API契约 §3.24 的 FileDecoration 对齐
+interface FileDecoration {
+  badge?: string;
+  tooltip?: string;
+  color?: string;
+  propagate?: boolean;
+}
 
 const lk = (window as any).linkdesk;
 
