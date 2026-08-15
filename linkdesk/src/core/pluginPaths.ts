@@ -10,7 +10,12 @@
 /** 插件根目录名（相对于项目根） */
 export const PLUGINS_DIR = "plugins";
 
-/** 插件子目录——按来源分类 */
+/**
+ * 插件子目录——静态 glob 扫描范围（import.meta.glob 构建时展开，仅 builtin/user）。
+ * E5.7#69：运行时插件发现不再限此表——主进程 scanPluginSubdirs（electron/services/plugin-file-service.ts）
+ * 扫描全部子目录（builtin > user > 其他字母序）；glob 外的插件走 resolvePath 动态 import。
+ * 本表只描述构建期静态打包范围，不是运行期白名单。
+ */
 export const PLUGIN_SUBDIRS = ["builtin", "user"] as const;
 
 /** 插件入口文件约定——loader 按此顺序查找 */

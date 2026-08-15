@@ -14,6 +14,7 @@ import { protocol, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
 import { APP_SCHEME } from './constants';
+import { scanPluginSubdirs } from './services/plugin-file-service.js';
 
 /** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
 function diag(msg: string): void {
@@ -65,13 +66,16 @@ export function registerProtocol(): void {
       return new Response('Forbidden', { status: 403 });
     }
 
-    // 转换为本地文件路径——先试 builtin/ 再试 user/
-    let fullPath = path.join(pluginsDir, 'builtin', urlPath);
-    if (!fs.existsSync(fullPath)) {
-      fullPath = path.join(pluginsDir, 'user', urlPath);
-    }
-    if (!fs.existsSync(fullPath)) {
-      fullPath = path.join(pluginsDir, urlPath);  // 兜底：直接查根（兼容 .disabled 等）
+    // 转换为本地文件路径——E5.7#69：扫描全部插件子目录（builtin > user > 其他字母序，
+    // 与 plugin-file-service scanPluginSubdirs 同源），不再写死 builtin/user 两分支；
+    // 最后兜底直接查根（兼容 .disabled 等特殊路径）
+    let fullPath = path.join(pluginsDir, urlPath);
+    for (const sub of scanPluginSubdirs(pluginsDir)) {
+      const candidate = path.join(pluginsDir, sub, urlPath);
+      if (fs.existsSync(candidate)) {
+        fullPath = candidate;
+        break;
+      }
     }
 
     // 文件不存在 → 404

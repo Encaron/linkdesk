@@ -11,9 +11,36 @@
  */
 
 import * as fs from 'fs/promises';
-import { existsSync, readFileSync } from 'fs';
+import { existsSync, readFileSync, readdirSync } from 'fs';
 import * as path from 'path';
 import { fileService } from './file-service.js';
+
+/**
+ * E5.7#69：插件子目录白名单消灭——运行时扫描全部子目录，不再写死 ['builtin', 'user']。
+ * 唯一保留的政策常量（政策 ≠ 能力限制）：
+ *   - SUBDIR_PRIORITY：同名插件冲突时的优先级——builtin > user > 其他（字母序）
+ *   - INSTALL_SUBDIR：安装/重装目标永远 user/（分发政策，消毒写 distribution 同源）
+ */
+const SUBDIR_PRIORITY = ['builtin', 'user'] as const;
+const INSTALL_SUBDIR = 'user';
+
+/**
+ * 扫描 plugins/ 下所有插件子目录。
+ * 排除 . 开头（.disabled 卸载坟场等）；顺序 = SUBDIR_PRIORITY 在前 + 其余字母序。
+ * protocol.ts 同源复用——协议解析与文件服务一致（新子目录插件两端同时可见）。
+ */
+export function scanPluginSubdirs(pluginsDir: string): string[] {
+  if (!existsSync(pluginsDir)) return [];
+  const priority: string[] = [];
+  const others: string[] = [];
+  for (const entry of readdirSync(pluginsDir, { withFileTypes: true })) {
+    if (!entry.isDirectory() || entry.name.startsWith('.')) continue;
+    if ((SUBDIR_PRIORITY as readonly string[]).includes(entry.name)) priority.push(entry.name);
+    else others.push(entry.name);
+  }
+  others.sort();
+  return [...priority, ...others];
+}
 
 class PluginFileService {
   // ── 工具 ──
@@ -40,10 +67,10 @@ class PluginFileService {
     return manifest?.core === true;
   }
 
-  /** 查找插件所在的子目录——"builtin" | "user" | null */
+  /** 查找插件所在的子目录——E5.7#69 扫描全部子目录，未找到返回 null */
   private _findPluginDir(pluginId: string): string | null {
     const dir = this.pluginsDir();
-    for (const sub of ['builtin', 'user']) {
+    for (const sub of scanPluginSubdirs(dir)) {
       if (existsSync(path.join(dir, sub, pluginId))) return sub;
     }
     return null;
@@ -56,9 +83,9 @@ class PluginFileService {
     if (!existsSync(dir)) return [];
 
     const names: string[] = [];
-    for (const sub of ['builtin', 'user']) {
+    // E5.7#69：扫描全部子目录（新子目录插件自动可见，无需改代码）
+    for (const sub of scanPluginSubdirs(dir)) {
       const subDir = path.join(dir, sub);
-      if (!existsSync(subDir)) continue;
 
       const entries = await fs.readdir(subDir, { withFileTypes: true });
       for (const entry of entries) {
@@ -115,7 +142,7 @@ class PluginFileService {
       throw new Error(`plugin.json 格式错误: ${e.message}`);
     }
 
-    const destDir = path.join(this.pluginsDir(), 'user', name);
+    const destDir = path.join(this.pluginsDir(), INSTALL_SUBDIR, name);
     if (existsSync(destDir)) {
       throw new Error(`插件 "${name}" 已存在。请先卸载旧版本。`);
     }
@@ -127,8 +154,8 @@ class PluginFileService {
     try {
       const raw = await fs.readFile(destManifestPath, 'utf-8');
       const manifest = JSON.parse(raw);
-      if (manifest.distribution !== 'user' || manifest.core === true) {
-        manifest.distribution = 'user';
+      if (manifest.distribution !== INSTALL_SUBDIR || manifest.core === true) {
+        manifest.distribution = INSTALL_SUBDIR;
         manifest.core = false;
         await fs.writeFile(destManifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
       }
@@ -178,8 +205,8 @@ class PluginFileService {
       throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
     }
 
-    // 重装到 user/——用户主动操作，变更为用户管理
-    const dest = path.join(dir, 'user', pluginId);
+    // 重装到 INSTALL_SUBDIR（user/）——用户主动操作，变更为用户管理
+    const dest = path.join(dir, INSTALL_SUBDIR, pluginId);
     if (existsSync(dest)) {
       throw new Error(`插件 "${pluginId}" 已存在`);
     }
