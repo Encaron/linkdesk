@@ -37,6 +37,12 @@ ipcRenderer.on('bridge:request', (_event, req: any) => {
   }
 });
 
+// ── E5.7#56：壳侧命令 handler 地图——插件入口模块双进程执行（壳 glob loader + 池视图渲染）──
+// 壳进程执行时 registerCommand 传入的 handler 是页面世界函数（contextBridge 双向代理，
+// 隔离世界可调用——preload-pool _poolCommands 同款机制）。壳 CommandRegistry 条目执行时
+// 经 window.linkdesk.commands._executeShellLocal 桥回此处。
+const _shellCommands = new Map<string, (...args: unknown[]) => unknown>();
+
 // E5.5#7-p6：键盘路由——接收主进程 before-input-event 转发的快捷键
 let _keyboardForwardHandler: ((input: any) => void) | null = null;
 ipcRenderer.on('keyboard:executeShortcut', (_event, input: any) => {
@@ -202,6 +208,26 @@ try {
         ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
       getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
         ipcRenderer.invoke('menu:getItems', menuId, context),
+    },
+
+    // ── E5.7#56：命令——壳侧插件入口模块级注册（双进程执行的壳侧半程）──
+    // 插件入口模块在壳进程（glob loader）执行时经此注册：handler 存 _shellCommands 地图，
+    // meta 走 commands:registerShell IPC（PROXY_CHANNELS 回壳）写入壳 CommandRegistry 真实条目，
+    // 条目 handler = (token, ...args) => linkdesk.commands._executeShellLocal(id, ...args)。
+    // 池侧半程走 preload-pool.commands（Bug C 补全）——两半程在壳注册表自然汇合（幂等）。
+    commands: {
+      registerCommand: (id: string, handler: (...args: unknown[]) => unknown, meta?: { title?: string; category?: string; when?: string }) => {
+        _shellCommands.set(id, handler);
+        ipcRenderer.invoke('commands:registerShell', id, meta ?? null).catch((e) => {
+          console.error(`[preload-shell] commands:registerShell 回传失败 (${id}):`, e);
+        });
+      },
+      /** 壳 CommandRegistry 条目的真实执行入口——registerShellLocalCommand 注册的 handler 桥 */
+      _executeShellLocal: (id: string, ...args: unknown[]) => {
+        const handler = _shellCommands.get(id);
+        if (!handler) return Promise.reject(new Error(`命令 "${id}" 未在壳侧注册`));
+        return Promise.resolve(handler(...args));
+      },
     },
 
     // ── E5#70：ContextKey——本地同步 store + IPC 广播（多 WebView 火种）──
