@@ -25,13 +25,10 @@ export default function FilePathInput({ value, onChange, dialogType }: FilePathI
         };
 
     try {
+      // E5.7#97：dialog.open 契约 = Promise<string | null>（主进程 dialog-handlers 直接返回路径）。
+      // 原 { path } 对象分支是 any 时代的防御代码——契约不再允许该形状，死分支整删。
       const result = await dialog.open(opts);
-      if (result && typeof result === "string") {
-        onChange(result);
-      } else if (result && typeof result === "object" && result.path) {
-        // dialog.open 可能返回 { path: string } 或直接返回 string
-        onChange(result.path);
-      }
+      if (result) onChange(result);
     } catch {
       // 用户取消对话框——什么都不做
     }

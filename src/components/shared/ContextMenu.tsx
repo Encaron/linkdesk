@@ -17,6 +17,7 @@
  *    - 打开后聚焦菜单容器——键盘导航（设计 §4.2，防 focusable:false 回归）
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
+import type { MenuItemDescriptor } from "@src/core/api/linkdesk-api";
 import { Z_INDEX } from "../../constants";
 import OverlayPortal from "./OverlayPortal";
 import "./ContextMenu.css";
@@ -46,15 +47,9 @@ export interface ContextMenuProps {
   resolveChildren?: (parentId: string, ctx: Record<string, unknown>) => Array<{ id: string; label: string }> | undefined;
 }
 
-interface EnrichedItem {
-  command: string;
-  group: string;
-  when?: string;
-  title?: string;
-  shortcut?: string;
-  children?: Array<{ command: string; label?: string }>;
-  label?: string;
-}
+// E5.7#97：原 EnrichedItem 本地类型整删——menu.getItems() 已按 LinkDeskAPI 契约定型
+// （MenuItemDescriptor——壳侧已 when 过滤 + 标题翻译 + 快捷键解析后的最终形态），
+// 直接消费，不再本地二次包装。
 
 interface ResolvedItem {
   id: string;
@@ -73,13 +68,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   const subTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   /* ── 异步获取菜单项——壳侧已做 when 过滤 + 命令标题 + 快捷键解析 ── */
-  const [rawItems, setRawItems] = useState<EnrichedItem[]>([]);
+  const [rawItems, setRawItems] = useState<MenuItemDescriptor[]>([]);
   // 稳定 context 引用——避免对象引用变化导致无限重取
   const contextKey = useMemo(() => JSON.stringify(context ?? {}), [context]);
 
   useEffect(() => {
     let cancelled = false;
-    lk().menu?.getItems?.(menuId, context).then((items: EnrichedItem[] | undefined) => {
+    lk().menu?.getItems?.(menuId, context).then((items) => {
       if (!cancelled && items) setRawItems(items);
     }).catch(() => {
       // 菜单获取失败 → 不显示项，静默处理

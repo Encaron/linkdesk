@@ -48,9 +48,11 @@ export function usePluginIpcEvent<T = unknown>(
       return;
     }
 
-    // 订阅——on() 内部做 channel 过滤
-    const unsubscribe = linkdesk.events.on(channel, (payload: T) => {
-      callbackRef.current(payload);
+    // 订阅——on() 内部做 channel 过滤。
+    // E5.7#97：events.on 载荷面是 unknown（自由字符串通道）——本 hook 泛型 T 是通道契约的具型层，
+    // 边界一处 cast：真载荷形状由订阅通道的双方约定保证。
+    const unsubscribe = linkdesk.events.on(channel, (payload) => {
+      callbackRef.current(payload as T);
     });
 
     let timer: ReturnType<typeof setTimeout> | undefined;

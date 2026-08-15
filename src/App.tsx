@@ -314,8 +314,9 @@ function App() {
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
   useEffect(() => {
-    const unsub = window.linkdesk?.events?.on("icon:selected", (pluginId: string) => {
-      shellEvents.emit("icon:selected", pluginId);
+    const unsub = window.linkdesk?.events?.on("icon:selected", (payload) => {
+      // E5.7#97：events 载荷面 unknown——通道契约：池 emit 只传 pluginId 字符串
+      if (typeof payload === "string") shellEvents.emit("icon:selected", payload);
     });
     return () => { unsub?.(); };
   }, []);
@@ -324,8 +325,9 @@ function App() {
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents → 上方 E5#7d 订阅持久化 iconOrder，
   // usePoolSync 订阅重推 → 池收到壳确认的权威序（真相源在壳——#13 乐观本地 + commit 同款）。
   useEffect(() => {
-    const unsub = window.linkdesk?.events?.on("icon:reordered", (ids: string[]) => {
-      shellEvents.emit("icon:reordered", ids);
+    const unsub = window.linkdesk?.events?.on("icon:reordered", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 string[]（重排后的 iconOrder 全量）
+      if (Array.isArray(payload)) shellEvents.emit("icon:reordered", payload as string[]);
     });
     return () => { unsub?.(); };
   }, []);
@@ -336,13 +338,16 @@ function App() {
   //   panel:createView  → Phase 12 面板创建消费——三件套范围外，暂无人监听（池 emit 零订阅 = no-op）
   useEffect(() => {
     const events = window.linkdesk?.events;
-    const offSelect = events?.on("panel:viewSelected", (viewId: string) => {
-      setPanelActiveViewId(viewId);
+    const offSelect = events?.on("panel:viewSelected", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 viewId 字符串
+      if (typeof payload === "string") setPanelActiveViewId(payload);
     });
-    const offResize = events?.on("panel:resize", (data: { height: number }) => {
-      // Number.isFinite 单守卫即排除 undefined/NaN/字符串——池 emit 只传数字，双保险防坏值
-      if (Number.isFinite(data?.height)) {
-        layoutEngine.resizeZoneHeight("panel", data.height);
+    const offResize = events?.on("panel:resize", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 { height: number }。Number.isFinite 单守卫即排除
+      // undefined/NaN/字符串——双保险防坏值
+      const height = (payload as { height?: unknown } | null | undefined)?.height;
+      if (typeof height === "number" && Number.isFinite(height)) {
+        layoutEngine.resizeZoneHeight("panel", height);
       }
     });
     return () => { offSelect?.(); offResize?.(); };

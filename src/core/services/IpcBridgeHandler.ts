@@ -13,6 +13,7 @@
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../registry/CommandRegistry";
+import type { CancellationToken } from "../utils/CancellationToken"; // E5.7#97：commands:execute 槽位窄化
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
@@ -88,10 +89,9 @@ export function initIpcBridgeHandler(): void {
   if (_refCount > 1) return; // 已注册——只加引用计数
 
   // ── E5#19b fix: ContextKey 注入 preload 同步 store——解决 IPC 延迟致键盘分发竞态 ──
-  if (window.linkdesk?.contextKey?._getValue) {
-    ContextKeyService.registerExternalGetter(
-      (key: string) => window.linkdesk.contextKey._getValue(key),
-    );
+  const contextKeyGetter = window.linkdesk?.contextKey?._getValue;
+  if (contextKeyGetter) {
+    ContextKeyService.registerExternalGetter((key: string) => contextKeyGetter(key));
   }
 
   const linkdesk = window.linkdesk;
@@ -100,8 +100,10 @@ export function initIpcBridgeHandler(): void {
     console.warn("[IpcBridgeHandler] window.linkdesk.bridge 不可用——preload 尚未就绪？");
     return;
   }
+  // E5.7#97：闭包内窄化失效（bridge 非 readonly 属性）——守卫后捕获局部引用，回调内直用
+  const bridge = linkdesk.bridge;
 
-  linkdesk.bridge.onRequest(async (req: { requestId: string; channel: string; args: any[] }) => {
+  bridge.onRequest(async (req: { requestId: string; channel: string; args: unknown[] }) => {
     try {
       let result: unknown;
 
@@ -116,9 +118,10 @@ export function initIpcBridgeHandler(): void {
           break;
         }
         case "commands:execute": {
-          const [commandId, ...rest] = req.args;
-          // E5.5#7-fix：去掉多余 undefined——否则 context 被挤到 args[1]，handler 读 args[0] 永远为 undefined
-          result = await executeCommand(commandId as string, ...rest);
+          // 池侧固定按旧槽位传 undefined 占位（E5.7#63.8 token 剥离后 handler 合同只剩 realArgs——
+          // 壳侧 executeCommand(id, token, ...realArgs) 的 token 槽位保留为未来取消语义入口）
+          const [commandId, token, ...rest] = req.args;
+          result = await executeCommand(commandId as string, token as CancellationToken | undefined, ...rest);
           break;
         }
         case "commands:executeResult": {
@@ -358,9 +361,9 @@ export function initIpcBridgeHandler(): void {
           throw new Error(`未知的 bridge channel: ${req.channel}`);
       }
 
-      linkdesk.bridge.respond(req.requestId, result);
+      bridge.respond(req.requestId, result);
     } catch (e: any) {
-      linkdesk.bridge.respond(req.requestId, undefined, e?.message ?? String(e));
+      bridge.respond(req.requestId, undefined, e?.message ?? String(e));
     }
   });
 
@@ -369,7 +372,7 @@ export function initIpcBridgeHandler(): void {
   // 订阅配置变更 → 通知主进程广播 config:changed → preload onChange 回调触发
   // SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐
   _configUnsub = onDidChangeConfiguration((key: string, value: unknown) => {
-    linkdesk.bridge.notifyConfigChanged?.(key, value);
+    bridge.notifyConfigChanged(key, value);
   });
 
   // ── E5.5#7：插件生命周期变更 → 广播到插件 WebView → 设置页等保姆插件刷新 ──

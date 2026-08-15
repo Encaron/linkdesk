@@ -56,10 +56,12 @@ export default function PoolStatusBarComponent({ pluginId }: PoolStatusBarCompon
     if (!loader) {
       const lk = window.linkdesk;
       const isDev = import.meta.env.DEV;
-      if (lk?.plugins?.resolvePath) {
+      // E5.7#97：守卫窄化不进 async 闭包——捕获局部引用（resolvePath 双端 required）
+      const resolvePath = lk?.plugins?.resolvePath;
+      if (resolvePath) {
         loader = (async () => {
           try {
-            const absPath: string = await lk.plugins.resolvePath(pluginId);
+            const absPath: string = await resolvePath(pluginId);
             for (const p of STATUS_BAR_PATHS) {
               try {
                 const url = isDev ? `/@fs/${absPath}/${p}` : `linkdesk://${pluginId}/${p}`;

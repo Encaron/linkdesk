@@ -169,7 +169,8 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           title={panel.createTooltip}
           aria-label={panel.createTooltip}
           onClick={() => {
-            window.linkdesk?.events?.emit("panel:createView");
+            // E5.7#97：events.emit 载荷参数 required——无载荷信号显式传 undefined（wire 契约对齐）
+            window.linkdesk?.events?.emit("panel:createView", undefined);
           }}
         >
           +

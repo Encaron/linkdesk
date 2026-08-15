@@ -15,6 +15,17 @@ import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
 import { IpcRelay } from './ipc-relay';
+// ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
+import type { PoolLayout } from '../src/core/types/poolLayout';
+import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
+import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
+import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
+import type { OpenPortConfig, SerialStats } from '../src/core/types/ipc/serial';
+import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
+import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
+import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
+import type { FileChangeEvent } from '../src/core/services/FileService';
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -29,9 +40,9 @@ ipcRenderer.on(IPC.contextKey.changed, (_event, { key, value }: { key: string; v
 // 处理器未注册时静默丢弃 → 菜单项永远丢失。
 // 缓冲+回放保证：handler 就绪前到达的请求排队，handler 就绪后逐条回放。
 // E5.7#78：手写 buffer+handler 双件套 → IpcRelay<T>（electron/ipc-relay.ts）
-const _bridgeRequestRelay = new IpcRelay<{ requestId: string; channel: string; args: any[] }>();
+const _bridgeRequestRelay = new IpcRelay<BridgeRequestPayload>();
 
-ipcRenderer.on(IPC.bridge.request, (_event, req: { requestId: string; channel: string; args: any[] }) => {
+ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
   _bridgeRequestRelay.push(req);
 });
 
@@ -42,46 +53,42 @@ ipcRenderer.on(IPC.bridge.request, (_event, req: { requestId: string; channel: s
 const _shellCommands = new Map<string, (...args: unknown[]) => unknown>();
 
 // E5.5#7-p6：键盘路由——接收主进程 before-input-event 转发的快捷键
-let _keyboardForwardHandler: ((input: any) => void) | null = null;
-ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: any) => {
+let _keyboardForwardHandler: ((input: KeyboardInput) => void) | null = null;
+ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: KeyboardInput) => {
   if (_keyboardForwardHandler) _keyboardForwardHandler(input);
 });
 
 // E5.6#11j：侧栏操作回调——池→主进程→壳，壳侧 React 注册 handler 调 ViewContainerService
-let _sidebarActionHandler: ((action: any) => void) | null = null;
-ipcRenderer.on(IPC.pool.sidebarAction, (_event, action: any) => {
+let _sidebarActionHandler: ((action: SidebarAction) => void) | null = null;
+ipcRenderer.on(IPC.pool.sidebarAction, (_event, action: SidebarAction) => {
   if (_sidebarActionHandler) _sidebarActionHandler(action);
 });
 
 // E5.6#16.5：主区 tab 操作回调——池→主进程→壳，壳侧 React 注册 handler 调 useTabManager
-let _tabActionHandler: ((action: any) => void) | null = null;
-ipcRenderer.on(IPC.pool.tabAction, (_event, action: any) => {
+let _tabActionHandler: ((action: PoolTabAction) => void) | null = null;
+ipcRenderer.on(IPC.pool.tabAction, (_event, action: PoolTabAction) => {
   if (_tabActionHandler) _tabActionHandler(action);
 });
 
 // E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
-type PoolQuickPickAction = { type: string; key?: string; actionId?: string };
 let _quickPickActionHandler: ((action: PoolQuickPickAction) => void) | null = null;
 ipcRenderer.on(IPC.pool.quickpickAction, (_event, action: PoolQuickPickAction) => {
   if (_quickPickActionHandler) _quickPickActionHandler(action);
 });
 
 // E5.7#16：Toast 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 toast 服务
-type PoolToastAction = { type: string; id: string; actionId?: string };
 let _toastActionHandler: ((action: PoolToastAction) => void) | null = null;
 ipcRenderer.on(IPC.pool.toastAction, (_event, action: PoolToastAction) => {
   if (_toastActionHandler) _toastActionHandler(action);
 });
 
 // E5.7#17：Dialog 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 DialogService 桥
-type PoolDialogAction = { type: string };
 let _dialogActionHandler: ((action: PoolDialogAction) => void) | null = null;
 ipcRenderer.on(IPC.pool.dialogAction, (_event, action: PoolDialogAction) => {
   if (_dialogActionHandler) _dialogActionHandler(action);
 });
 
 // E5.7#39：内存压力通知——主进程 window-manager 单 Pool 采样超阈值 → 壳 toast 服务
-type MemoryPressureData = { totalRSS: number; threshold: number };
 let _memoryPressureHandler: ((data: MemoryPressureData) => void) | null = null;
 ipcRenderer.on(IPC.system.memoryPressure, (_event, data: MemoryPressureData) => {
   if (_memoryPressureHandler) _memoryPressureHandler(data);
@@ -101,16 +108,16 @@ try {
     serial: {
       listPorts:  ()                    => ipcRenderer.invoke(IPC.serial.listPorts),
       getStatus:  ()                    => ipcRenderer.invoke(IPC.serial.getStatus),
-      openPort:   (cfg: any)            => ipcRenderer.invoke(IPC.serial.openPort, cfg),
+      openPort:   (cfg: OpenPortConfig)  => ipcRenderer.invoke(IPC.serial.openPort, cfg),
       closePort:  ()                    => ipcRenderer.invoke(IPC.serial.closePort),
       sendData:   (data: number[])      => ipcRenderer.invoke(IPC.serial.sendData, data),
       sendText:   (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
       setDtr:     (enable: boolean)     => ipcRenderer.invoke(IPC.serial.setDtr, enable),
       setRts:     (enable: boolean)     => ipcRenderer.invoke(IPC.serial.setRts, enable),
       // 数据推送监听——对标 Tauri listen("serial-data/stats/system")
-      onData:     (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, IPC.serial.data, cb),
-      onStats:    (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
-      onSystem:   (cb: (...args: any[]) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
+      onData:     (cb: (text: string) => void)      => listenDirect(ipcRenderer, IPC.serial.data, cb),
+      onStats:    (cb: (stats: SerialStats) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
+      onSystem:   (cb: (message: string) => void)    => listenDirect(ipcRenderer, IPC.serial.system, cb),
     },
 
     // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──
@@ -131,7 +138,7 @@ try {
       watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
         return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
           const channel = filesystemChanged(watcherId);
-          const handler = (_event: Electron.IpcRendererEvent, change: any) => onEvent(change);
+          const handler = (_event: Electron.IpcRendererEvent, change: FileChangeEvent) => onEvent(change);
           ipcRenderer.on(channel, handler);
           return () => {
             ipcRenderer.removeListener(channel, handler);
@@ -176,7 +183,7 @@ try {
 
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
     dialog: {
-      open: (opts?: any) => ipcRenderer.invoke(IPC.dialog.open, opts),
+      open: (opts?: DialogOpenOptions) => ipcRenderer.invoke(IPC.dialog.open, opts),
       // E5#67：确认/提示弹窗——统一 API，走 PROXY_CHANNELS → IpcBridgeHandler → DialogService
       confirm: (message: string): Promise<boolean> =>
         ipcRenderer.invoke(IPC.dialog.confirm, message),
@@ -192,7 +199,7 @@ try {
         ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
       // E5#84f：订阅变更——跨 WebView 状态同步原语
       onChange: (pluginId: string, key: string, cb: (value: unknown) => void) => {
-        return events.on("plugin-state:changed", (data: any) => {
+        return events.on("plugin-state:changed", (data: PluginStateChangedPayload) => {
           if (data?.pluginId === pluginId && data?.key === key) {
             cb(data.value);
           }
@@ -276,9 +283,9 @@ try {
       },
       onChange: (cb: () => void) => events.on("keybindings:changed", cb),
       // E5.5#7-p7：壳→主进程同步快捷键表
-      syncToMainProcess: (data: any) => ipcRenderer.invoke(IPC.keyboard.syncShortcuts, data),
+      syncToMainProcess: (data: KeybindingSyncData) => ipcRenderer.invoke(IPC.keyboard.syncShortcuts, data),
       // E5.5#7-p7：接收主进程转发的 before-input-event 拦截事件
-      onForwardedEvent: (cb: (input: any) => void) => {
+      onForwardedEvent: (cb: (input: KeyboardInput) => void) => {
         _keyboardForwardHandler = cb;
         return () => { _keyboardForwardHandler = null; };
       },
@@ -337,7 +344,7 @@ try {
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──
     bridge: {
       // React 侧 IpcBridgeHandler 注册请求处理器（#26）——缓冲回放由 IpcRelay 承担（E5.7#78）
-      onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) =>
+      onRequest: (cb: (req: BridgeRequestPayload) => void) =>
         _bridgeRequestRelay.onReady(cb),
       // React 侧 IpcBridgeHandler 响应请求（#26）
       respond: (requestId: string, result?: unknown, error?: string) => {
@@ -356,7 +363,7 @@ try {
     // ── E5.6#8c → E5.7#4：pool API——壳推送布局到唯一池、监听池就绪 ──
     pool: {
       /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
-      pushLayout: (layout: any) => ipcRenderer.send(IPC.pool.pushLayout, layout),
+      pushLayout: (layout: PoolLayout) => ipcRenderer.send(IPC.pool.pushLayout, layout),
       /** 监听池就绪（E5.7#54：zone 过滤已删——单 Pool）。返回 unsubscribe */
       onReady: (cb: () => void) => {
         const handler = () => {
@@ -368,12 +375,12 @@ try {
       /** E5.6#9 → E5.7#4：切换 Pool DevTools——调试用，仅 dev 模式生效 */
       toggleDevTools: () => ipcRenderer.send(IPC.pool.toggleDevTools),
       /** E5.6#11j：注册侧栏操作回调——池→壳→ViewContainerService。返回 unsubscribe */
-      onSidebarAction: (cb: (action: any) => void) => {
+      onSidebarAction: (cb: (action: SidebarAction) => void) => {
         _sidebarActionHandler = cb;
         return () => { _sidebarActionHandler = null; };
       },
       /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager。返回 unsubscribe */
-      onTabAction: (cb: (action: any) => void) => {
+      onTabAction: (cb: (action: PoolTabAction) => void) => {
         _tabActionHandler = cb;
         return () => { _tabActionHandler = null; };
       },

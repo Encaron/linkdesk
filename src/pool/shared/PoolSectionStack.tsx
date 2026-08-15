@@ -12,21 +12,13 @@
 
 import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } from "react";
 import type { SidebarViewMeta } from "../../core/types/poolLayout";
+import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口（原本地定义移走）
 import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import SidebarSection from "../../components/shared/SidebarSection";
 import PluginComponent from "./PluginComponent";
 import { VIEW_DRAG_MIME } from "./viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
-
-export interface SidebarAction {
-  action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse";
-  containerId: string;
-  viewId?: string;
-  newIndex?: number;
-  collapsed?: boolean;
-  visible?: boolean;
-}
 
 interface PoolSectionStackProps {
   views: SidebarViewMeta[];

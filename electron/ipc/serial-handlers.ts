@@ -10,7 +10,9 @@
  */
 
 import { BrowserWindow, ipcMain } from 'electron';
-import { serialService, OpenPortConfig } from '../services/serial-service.js';
+import { serialService } from '../services/serial-service.js';
+// E5.7#97：OpenPortConfig 归口 wire 契约（serial-service 只 import 不 re-export——原双份定义已删）
+import type { OpenPortConfig } from '../../src/core/types/ipc/serial';
 import type { WindowManager } from '../window-manager.js';
 import { IPC } from './channels.js';
 
