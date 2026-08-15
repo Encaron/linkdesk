@@ -837,7 +837,13 @@ function App() {
     try {
       const savedLayout = getTabLayout();
       if (savedLayout?.groups?.length > 0) {
-        restoreLayout(savedLayout);
+        // E5.7 Bug D：恢复后 emit tab:focused——否则重启后 activeEditor 为 null，
+        // when:"activeEditor == ..." 过滤会杀掉右键菜单 + 命令面板（关闭重开标签页才恢复）。
+        // 直接用 restoreLayout 返回值（eager）——此刻 setTabState 未提交，不能读 tabState（Bug A 教训）。
+        const focused = restoreLayout(savedLayout);
+        if (focused) {
+          shellEvents.emit("tab:focused", focused);
+        }
         const all = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
         syncCountersAfterRestore(all);
       }

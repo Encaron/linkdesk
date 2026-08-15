@@ -1056,14 +1056,19 @@ export function useTabManager() {
     setTabState((prev) => reducePinTab(prev, tabId));
   }, []);
 
-  const restoreLayout = useCallback((saved: LayoutData) => {
-    setTabState(() => {
-      const next = reduceRestoreLayout(saved);
-      for (const tab of next.groups.flatMap((g) => g.tabs)) {
-        lastFocusedByType.current.set(tab.pluginId ?? tab.type, tab.id);
-      }
-      return next;
-    });
+  /**
+   * 恢复布局并返回恢复后的聚焦标签——E5.7 Bug D：重启后 activeEditor 未设置，
+   * App 恢复 effect 用返回值 emit tab:focused（eager 计算——不读 setState 结果，Bug A 教训）。
+   */
+  const restoreLayout = useCallback((saved: LayoutData): { pluginId: string; tabId: string } | null => {
+    const next = reduceRestoreLayout(saved);
+    for (const tab of next.groups.flatMap((g) => g.tabs)) {
+      lastFocusedByType.current.set(tab.pluginId ?? tab.type, tab.id);
+    }
+    setTabState(() => next);
+    const group = next.groups.find((g) => g.id === next.activeGroupId);
+    const tab = group?.tabs.find((t) => t.id === group.activeTabId) ?? group?.tabs[0];
+    return tab ? { pluginId: tab.pluginId ?? tab.type, tabId: tab.id } : null;
   }, []);
 
   /** E4 #87：恢复最近关闭的标签页——Ctrl+Shift+T */
