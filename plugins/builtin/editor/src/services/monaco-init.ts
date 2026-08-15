@@ -9,7 +9,9 @@
  */
 import { MonacoVscodeApiWrapper } from "monaco-languageclient/vscodeApiWrapper";
 import type { MonacoVscodeApiConfig } from "monaco-languageclient/vscodeApiWrapper";
-import { useWorkerFactory } from "monaco-languageclient/workerFactory";
+// E5.7#94：别名改名——原函数名 use* 前缀触发 react-hooks/rules-of-hooks 假阳性
+// （它是挂 MonacoEnvironment 的普通函数，非 React hook——方案 §2 已读源码取证）。
+import { useWorkerFactory as configureWorkerFactory } from "monaco-languageclient/workerFactory";
 
 // E5.5#7 Bug B fix：?url 显式导入 Worker——Vite 一等公民，任何上下文正确解析。
 import editorWorkerUrl from '@codingame/monaco-vscode-editor-api/esm/vs/editor/editor.worker.js?url';
@@ -48,8 +50,8 @@ let _initPromise: Promise<void> | null = null;
  * 标准 Monaco 语言 Worker 已在模块顶层通过 MonacoEnvironment.getWorker 配置。
  * 此处补充 VS Code 集成层需要的 editorWorkerService / extensionHostWorkerMain / TextMateWorker。
  */
-function configureWorkerFactory(_logger?: unknown): void {
-  useWorkerFactory({
+function setupWorkerFactory(_logger?: unknown): void {
+  configureWorkerFactory({
     workerLoaders: {
       editorWorkerService: () => ({
         url: editorWorkerUrl,
@@ -89,7 +91,7 @@ export async function initMonacoEnv(
       $type: "EditorService",
       openEditorFunc,
     },
-    monacoWorkerFactory: configureWorkerFactory,
+    monacoWorkerFactory: setupWorkerFactory,
     advanced: {
       /** E5#107 修复：必须 true——否则 VS Code 默认主题未注册，
        *  StandaloneWorkbenchThemeService.setTheme("vs-dark") 找不到主题，
