@@ -37,6 +37,7 @@
 | `pluginState.*` | 持久化存储 | ✅ | **E5#71** |
 | `hotExit.*` | Hot Exit 备份 | ✅ | **E5.7#38**——崩溃恢复脏内容落盘 |
 | `dialog.*` | 弹窗 | ✅ | **E5#67**——confirm/alert |
+| `quickPick.*` | 选择器 | ✅ | **E5.7#63**——show()，池内本地桥 |
 | `events.*` | 发布/订阅 | ✅ | |
 | `p2p.*` | 插件间推流 | ✅ | **E5#65** |
 | `theme.*` | 主题查询 | ✅ | |
@@ -301,6 +302,34 @@ window.linkdesk.hotExit.save(filePath: string, content: string): Promise<void>
 window.linkdesk.hotExit.load(filePath: string): Promise<string | null>  // null = 无备份
 window.linkdesk.hotExit.clear(filePath: string): Promise<void>
 ```
+
+### 3.22 `quickPick`——选择器 🆕 E5.7#63
+
+对标 VS Code `window.showQuickPick()`。**池内本地桥（零 IPC）**——Promise resolve 的正是 `items` 里的原对象（身份保持，非序列化副本）。
+
+```typescript
+window.linkdesk.quickPick.show(opts: {
+  items: Array<{
+    label: string;        // 第一行左
+    description?: string; // 第一行右
+    detail?: string;      // 第二行左
+  }>;
+  placeholder?: string;   // 输入框占位
+  prefix?: string;        // 输入框前缀
+}): Promise<{ label: string; description?: string; detail?: string } | undefined>
+```
+
+语义约定（VS Code 同款）：
+
+| 情况 | 结果 |
+|---|---|
+| 用户点击条目 / Enter | resolve 该条目原对象 |
+| Escape / 点击遮罩 / 窗口失焦 | resolve `undefined` |
+| 新 `show()` 顶掉旧请求 | 旧 Promise resolve `undefined`（last-wins） |
+| 壳打开命令面板等 | 同上——壳浮层优先级更高 |
+| `opts.items` 非数组 | reject `Error` |
+
+**注意：** 条目 `label` 等文案由插件自带（插件作者自翻译，壳不 t() 插件数据）。插件在壳进程的执行半程（双进程入口执行）调 `show` 会因壳侧无此 API 而 no-op——选择器只在池内渲染，调用应放在组件 effect 内。
 
 ---
 

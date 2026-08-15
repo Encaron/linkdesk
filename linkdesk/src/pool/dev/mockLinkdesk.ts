@@ -11,7 +11,8 @@
  *   改 UI 天然顺利（这是本工具的成立理由）。
  *
  * 面（2026-08-15 grep 全量核实 src/pool 消费）：
- *   pool / window / toast / quickPick / dialogHost / events / commands / language
+ *   pool / window / toast / quickPick（插件 API show——E5.7#63）/ quickPickHost / dialogHost
+ *   / events / commands / language
  *   + 欢迎页最小补丁：workspace / pluginState / pluginManager（welcome 视图消费——
  *     getFolders 空数组、pluginState.get → null——零插件视图场景足够）
  * 故意不镜像插件命名空间（serial/filesystem/search/...）——样本布局不含插件视图；
@@ -28,7 +29,7 @@
  */
 
 import type { PoolToastData } from "../../core/types/poolToast";
-import type { PoolQuickPickData } from "../../core/types/poolQuickPick";
+import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/poolDialog";
 import {
   buildSampleLayout,
@@ -108,6 +109,11 @@ export function installMockLinkdesk(): void {
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
 
+  // E5.7#63：插件 quickPick.show 本地桥——preload-pool 同款语义（hostFn 存储 + 缓冲回放）。
+  // 预览模式下 QuickPickHost 一样调 registerHost 注册渲染入口，show() 转交渲染后 resolve 原对象。
+  let quickPickHostFn: ((req: { opts: PluginQuickPickOptions }, resolve: (item: unknown) => void) => void) | null = null;
+  const quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptions }; resolve: (item: unknown) => void; reject: (e: Error) => void }> = [];
+
   // 初始数据先入缓冲——池 onLayout/onShow 订阅时回放（preload-pool 缓冲语义）
   layoutReplay.push(buildSampleLayout());
   toastReplay.push({ toasts: buildSampleToasts(), suppressed: false });
@@ -146,12 +152,34 @@ export function installMockLinkdesk(): void {
       dismiss: makeLogger("toast.dismiss"),
       action: makeLogger("toast.action"),
     },
+    // E5.7#63：插件 API（quickPick）与池渲染桥（quickPickHost）分命名空间——dialog/dialogHost 同款归一
     quickPick: {
+      show: (opts: PluginQuickPickOptions) => new Promise((resolve, reject) => {
+        if (!opts || !Array.isArray(opts.items)) {
+          reject(new Error("quickPick.show(opts)：opts.items 必须为数组"));
+          return;
+        }
+        const req = { opts };
+        if (quickPickHostFn) {
+          try { quickPickHostFn(req, resolve); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
+        } else {
+          quickPickShowBuffer.push({ req, resolve, reject });
+        }
+      }),
+    },
+    quickPickHost: {
+      registerHost: (fn: (req: { opts: PluginQuickPickOptions }, resolve: (item: unknown) => void) => void) => {
+        quickPickHostFn = fn;
+        for (const p of quickPickShowBuffer.splice(0)) {
+          try { quickPickHostFn(p.req, p.resolve); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
+        }
+        return () => { quickPickHostFn = null; };
+      },
       onShow: quickPickReplay.subscribe,
-      select: makeLogger("quickPick.select"),
-      highlight: makeLogger("quickPick.highlight"),
-      close: makeLogger("quickPick.close"),
-      itemAction: makeLogger("quickPick.itemAction"),
+      select: makeLogger("quickPickHost.select"),
+      highlight: makeLogger("quickPickHost.highlight"),
+      close: makeLogger("quickPickHost.close"),
+      itemAction: makeLogger("quickPickHost.itemAction"),
     },
     dialogHost: {
       onShow: dialogReplay.subscribe,

@@ -7,6 +7,7 @@
  * API 表面 = 插件侧唯一 preload（E5.7#44：preload-plugin.ts 已删——本文即插件 API 规范载体）
  *         + 池侧命令注册表（registerCommand/unregisterCommands）
  *         + 扩展 workspace API + fileAssociation + search + decorations + encoding + viewContainer
+ *         + quickPick.show 插件选择器（E5.7#63 池内本地桥）+ quickPickHost 池渲染桥（E5.7#15 更名）
  *
  * ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
  * 🔥🔥🔥 IPC 通道铁律——新 AI / 任何人修改此文件前必读（E5.5#7b）
@@ -47,6 +48,7 @@
  *   ✅ events / pluginManager / theme / language / keybindings / pluginState
  *   ✅ menu / contextKey / tabs / p2p / dialog / path / notifications
  *   ✅ window（E5.7#5：TitleBarZone 窗口控制——从 preload-shell 同款搬入）
+ *   ✅ quickPick（E5.7#63：插件选择器 show——池内本地桥，零 IPC 零新通道）
  *   ✅ workspace（扩展）/ fileAssociation / search / decorations / encoding / viewContainer
  *   ✅ hotExit（E5.7#38：Hot Exit 备份——save/load/clear，主进程落盘）
  *   ✅ lsp / langDef（E5.6#14-fix/#14-lsp：编辑器在池内渲染——preload-shell 同款面迁入）
@@ -125,6 +127,19 @@ ipcRenderer.on('pool:dialog', (_event, data: PoolDialogDataShape) => {
     try { _dialogCallback(data); } catch { /* contextBridge 回调静默失败 */ }
   }
 });
+
+// ── E5.7#63：插件 quickPick.show 池内本地桥（零 IPC）──
+// 机制（清单 #63 🔴 规定）：contextBridge 函数代理——池主世界 QuickPickHost mount 时调
+// linkdesk.quickPickHost.registerHost(fn)（主世界函数经代理进隔离世界存储，onShow(cb) 同款
+// 已证模式）；插件调 show() 时隔离世界调已存 fn(req, resolve)——resolve 作为参数代理进主世界，
+// 主世界在选择/取消时调用，Promise 全程在隔离世界（返回值只过一道代理）。
+// 缓冲回放（硬约束 20）：show() 先于 QuickPickHost mount（插件入口模块早执行）→ 入缓冲，
+// registerHost 时按序回放（last-wins 语义在池侧仲裁——旧请求被顶掉 resolve(undefined)）。
+// 形状与 src/core/types/poolQuickPick.ts 的 PluginQuickPickOptions 对齐——preload 不 import src。
+type PluginQuickPickOptionsShape = { items: unknown[]; placeholder?: string; prefix?: string };
+type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, resolve: (item: unknown) => void) => void;
+let _quickPickHostFn: PluginQuickPickHostFn | null = null;
+const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; resolve: (item: unknown) => void; reject: (e: Error) => void }> = [];
 
 // ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
 // 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
@@ -609,8 +624,44 @@ try {
       tabAction: (action: unknown) => ipcRenderer.send('pool:tab-action', action),
     },
 
-    // ── E5.7#15：QuickPick 哑渲染订阅——池 QuickPickHost 消费 ──
+    // ── E5.7#63：插件 quickPick API——show(opts) → Promise<item | undefined>（池内本地桥，零 IPC）──
+    // resolve 值 = opts.items 里的原对象（身份保持）；取消（Escape/backdrop/失焦/被顶替）→ undefined。
     quickPick: {
+      /**
+       * 展示选择器——对标 VS Code window.showQuickPick()。
+       * 调用在隔离世界执行：校验后转交 QuickPickHost 注册的 hostFn 渲染（未注册则缓冲）。
+       */
+      show: (opts: unknown) => new Promise<unknown>((resolve, reject) => {
+        const o = opts as PluginQuickPickOptionsShape | null;
+        if (!o || !Array.isArray(o.items)) {
+          reject(new Error("quickPick.show(opts)：opts.items 必须为数组"));
+          return;
+        }
+        const req = { opts: o };
+        if (_quickPickHostFn) {
+          try { _quickPickHostFn(req, resolve); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
+        } else {
+          _quickPickShowBuffer.push({ req, resolve, reject });
+        }
+      }),
+    },
+
+    // ── E5.7#15 → E5.7#63 更名 quickPickHost：池 QuickPickHost 渲染桥（dialogHost 同款命名归一——
+    // quickPick 命名空间归插件 API，宿主桥独占 quickPickHost，插件读 API 表面零混淆）──
+    quickPickHost: {
+      /**
+       * E5.7#63：池 QuickPickHost mount 时注册插件请求渲染入口（主世界函数经 contextBridge
+       * 代理进隔离世界存储——onShow(cb) 同款模式）。缓冲请求按序回放。返回 unsubscribe。
+       */
+      registerHost: (fn: PluginQuickPickHostFn) => {
+        _quickPickHostFn = fn;
+        for (const p of _quickPickShowBuffer.splice(0)) {
+          try { _quickPickHostFn(p.req, p.resolve); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
+        }
+        return () => {
+          _quickPickHostFn = null;
+        };
+      },
       /** 订阅壳推送的 QuickPick 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
       onShow: (cb: (data: PoolQuickPickDataShape) => void) => {
         _quickPickCallback = cb;
