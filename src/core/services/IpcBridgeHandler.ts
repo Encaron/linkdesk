@@ -34,7 +34,6 @@ import i18n from "../../i18n";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation + decorations——池插件跨进程查询
-import { getPluginFor } from "./FileAssociationService";
 import { FileDecorationRegistry } from "../registry/FileDecorationRegistry";
 // E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载
 import { ViewContainerService } from "./ViewContainerService";
@@ -182,12 +181,8 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5.6#11.5-A：fileAssociation——池插件查询扩展名→插件ID ──
-        case "fileAssociation:getPluginFor": {
-          const [ext] = req.args as [string];
-          result = getPluginFor(ext);
-          break;
-        }
+        // E5.7#50：fileAssociation:getPluginFor case 已删——主进程 registry-handlers 直答
+        // （plugin-manifest-loader 预加载进主进程实例，不再经壳中转）
 
         // ── E5.6#11.5-A：decorations——池插件查询文件装饰（Git 状态等）──
         case "decorations:getDecoration": {

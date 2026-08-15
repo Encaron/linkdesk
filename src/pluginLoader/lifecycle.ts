@@ -22,7 +22,6 @@ import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry
 import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/MenuRegistry";
 import { unregisterPluginCards } from "../core/registry/CardRegistry";
 import { unregisterPluginChannels } from "../core/services/LogChannel";
-import { unregisterPluginFileAssociations } from "../core/services/FileAssociationService";
 import { unregisterPluginThemes } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
@@ -118,7 +117,8 @@ export function initLifecycleConsumers(): void {
     // 卸载清理由 loader 的 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
     unregisterPluginCards(pluginId);
     unregisterPluginChannels(pluginId);
-    unregisterPluginFileAssociations(pluginId);
+    // E5.7#50：unregisterPluginFileAssociations 已删——FileAssociationService 唯一实例在主进程，
+    // 卸载清理由 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
     unregisterPluginThemes(pluginId);
     ThemeRegistry.unregisterPlugin(pluginId);
     unregisterStatusBarPlugin(pluginId);
