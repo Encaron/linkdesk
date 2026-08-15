@@ -250,6 +250,39 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuGroup: "navigation",
   },
 
+  // ── E5.7#79：窗口缩放——真值源 = 配置 window.zoomLevel（onApply 推主进程 setZoomFactor）。──
+  // 命令只管读写配置，缩放应用/持久化全走 ConfigurationApplier——单一路径不重复。
+  // 键位在 shellKeybindings.ts：ctrl+= / ctrl+shift+=（同物理键）/ ctrl+- / ctrl+0。
+  {
+    id: "view.zoomIn",
+    title: "放大",
+    category: "视图",
+    handler: async () => {
+      const { getConfigurationValue, setConfigurationValue } = await import("../services/ConfigurationService");
+      const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
+      await setConfigurationValue("window.zoomLevel", Math.min(8, current + 1), "user");
+    },
+  },
+  {
+    id: "view.zoomOut",
+    title: "缩小",
+    category: "视图",
+    handler: async () => {
+      const { getConfigurationValue, setConfigurationValue } = await import("../services/ConfigurationService");
+      const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
+      await setConfigurationValue("window.zoomLevel", Math.max(-8, current - 1), "user");
+    },
+  },
+  {
+    id: "view.zoomReset",
+    title: "重置缩放",
+    category: "视图",
+    handler: async () => {
+      const { setConfigurationValue } = await import("../services/ConfigurationService");
+      await setConfigurationValue("window.zoomLevel", 0, "user");
+    },
+  },
+
   // ── E3f #59-F：壳级快捷键命令（原 App.tsx 原始 keydown handler 迁移）──
 
 ];

@@ -45,6 +45,9 @@ let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
 let _windowIpcRegistered = false; // E3f #52f：窗口控制 IPC handler 只注册一次
+// E5.7#79：最后应用的缩放因子——壳崩重建/池重建（createWindow → createMainPool）后重放。
+// 主进程模块级变量在 rebuildShell 中存活（进程不重启），壳侧配置 onApply 在渲染进程加载后才推来。
+let _lastZoomFactor = 1;
 // E5.7#36：无状态 shell IPC 只注册一次（壳崩重建 createWindow 会再次经过——不 guard 则重复注册抛异常）
 let _keyboardSyncRegistered = false;
 let _shellIpcRegistered = false;
@@ -108,6 +111,15 @@ function createWindow(): void {
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
   windowManager.createMainPool();
 
+  // E5.7#79：重放最后缩放因子——壳崩重建时壳配置 onApply 尚未跑（渲染进程加载后才有），
+  // 新池默认 100% 会闪一下。首次启动 _lastZoomFactor=1 → no-op。
+  if (_lastZoomFactor !== 1) {
+    const poolView = windowManager.getPoolView();
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.webContents.setZoomFactor(_lastZoomFactor);
+    }
+  }
+
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
     win.loadURL(DEV_SERVER_URL);
@@ -137,6 +149,17 @@ function createWindow(): void {
     ipcMain.on(IPC.window.unmaximize, () => mainWindow?.unmaximize());
     ipcMain.on(IPC.window.close, () => mainWindow?.close());
     ipcMain.handle(IPC.window.isMaximized, () => mainWindow?.isMaximized() ?? false);
+    // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
+    // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
+    ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {
+      // Number.isFinite 而非 typeof === "number"——no-restricted-syntax 字符串比较启发式误报
+      const n = Number(factor);
+      _lastZoomFactor = Number.isFinite(n) ? n : 1;
+      const poolView = windowManager?.getPoolView();
+      if (poolView && !poolView.webContents.isDestroyed()) {
+        poolView.webContents.setZoomFactor(_lastZoomFactor);
+      }
+    });
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
     ipcMain.handle(IPC.window.toggleDevTools, () => {
       if (!mainWindow || app.isPackaged) return;

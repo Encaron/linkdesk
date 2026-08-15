@@ -190,6 +190,23 @@ function App() {
             enum: ["titlebar", "hamburger", "both"],
             description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
           },
+          // E5.7#79：窗口缩放级别——view.zoomIn/Out/Reset 命令的真值源（VS Code window.zoomLevel 同款）。
+          // onApply 换算 factor=1.2^level 推主进程 setZoomFactor(池 WCV)；启动 applyAllConfigurations
+          // 自动执行 onApply → 持久化缩放开机即恢复（StorageService 现成）。
+          "window.zoomLevel": {
+            type: "number",
+            default: 0,
+            minimum: -8,
+            maximum: 8,
+            description: t("窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%"),
+            onApply: (v) => {
+              // Number.isFinite 而非 typeof === "number"——后者触发 no-restricted-syntax 的
+              // 字符串比较启发式误报（规则 selector 泛化，Phase 14.5 收窄时处理）
+              const n = Number(v);
+              const level = Number.isFinite(n) ? Math.min(8, Math.max(-8, n)) : 0;
+              window.linkdesk?.window?.setZoom?.(Math.pow(1.2, level));
+            },
+          },
         },
       });
 

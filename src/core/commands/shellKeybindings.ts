@@ -33,6 +33,14 @@ export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unkn
   { command: "core.selectAll",       key: "ctrl+a" },
   { command: "core.delete",          key: "delete" },
   { command: "core.rename",          key: "f2" },
+
+  // ── E5.7#79：窗口缩放——用户可改绑/冲突检测可见（快捷键面板全套现成）──
+  // ctrl+shift+= 与 ctrl+= 同物理键（US 布局 "=" 上档为 "+"——Ctrl+加号），
+  // "+" 在键位串中是分隔符无法表达，按键侧归一化 "+"→"="（KeybindingRegistry + keyboard-router）。
+  { command: "view.zoomIn",    key: "ctrl+=" },
+  { command: "view.zoomIn",    key: "ctrl+shift+=" },
+  { command: "view.zoomOut",   key: "ctrl+-" },
+  { command: "view.zoomReset", key: "ctrl+0" },
 ];
 
 let _registered = false;

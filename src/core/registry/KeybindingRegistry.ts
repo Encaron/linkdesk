@@ -115,7 +115,10 @@ export function keyboardInputToKeyString(input: KeyboardInput): string {
   if (input.metaKey) parts.push("meta");
 
   if (!input.key) return "";
-  const key = KEY_MAP[input.key] ?? input.key.toLowerCase();
+  let key = KEY_MAP[input.key] ?? input.key.toLowerCase();
+  // E5.7#79：物理键归一化——"+" 是 "=" 的上档字符（US 布局），Ctrl+Shift+=（= Ctrl+加号）
+  // 与 Ctrl+= 同物理键。"+" 在键位串中是分隔符（normalizeKey 无法表达）——按键侧归一化为 "="。
+  if (key === "+") key = "=";
   if (MODIFIER_KEYS.has(key)) return "";
 
   parts.push(key);
