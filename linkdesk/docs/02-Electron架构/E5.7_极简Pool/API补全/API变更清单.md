@@ -60,7 +60,7 @@ window.linkdesk.pluginInstance.notifyReady()
 | `linkdesk.fileAssociation` | ✅ getPluginFor 已在位 | 并入 Phase 11 #50（原 #57 删除） |
 | `linkdesk.viewContainer` | ⚠️ no-op 桩（getView→null） | 桩换真 IPC 查询（#58） |
 | `linkdesk.events` | ✅ on/emit 已在位（off = on 返回值） | 验证 + 残余清理（#59） |
-| `linkdesk.decorations` | ✅ 现网名（插件已调用） | registerProvider 按需补（#60） |
+| `linkdesk.decorations` | ✅ 2026-08-16 完成（#60）——池内本地注册表（零 IPC）：registerProvider/unregisterProvider/getDecoration/onDidChange 四方法；壳侧恒空注册表 + 代理通道 + 广播整删 | ✅ 完成 |
 | `linkdesk.protocol` | ✅ listProtocols 等已在位 | registerParser 类按需（#61） |
 | `linkdesk.quickPick` | ❌ 不存在——真新建 | 池内渲染机制（#63） |
 | `linkdesk.hotExit` | ✅ 2026-08-15 新增（#38） | save/load/clear 三方法——崩溃恢复备份，主进程落盘 |

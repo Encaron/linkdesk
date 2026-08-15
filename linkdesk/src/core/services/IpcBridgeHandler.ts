@@ -33,8 +33,8 @@ import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
-// E5.6#11.5-A：fileAssociation + decorations——池插件跨进程查询
-import { FileDecorationRegistry } from "../registry/FileDecorationRegistry";
+// E5.6#11.5-A：fileAssociation——池插件跨进程查询
+// （decorations 的壳侧代理已随 E5.7#60 整删——注册表池内化，见 preload-pool 模块级注释）
 // E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载
 import { ViewContainerService, type ViewDescriptor } from "./ViewContainerService";
 // E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
@@ -66,7 +66,6 @@ let _scrollToUnsub: (() => void) | null = null;
 let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
 let _workspaceActiveUnsub: (() => void) | null = null; // E5.6#11.5-A：活跃工作区变更广播
-let _decorationsUnsub: (() => void) | null = null; // E5.6#11.5-A：文件装饰变更广播
 let _viewsUnsub: (() => void) | null = null; // E5.6#19e：ViewContainerService 视图变更广播
 
 /**
@@ -202,12 +201,7 @@ export function initIpcBridgeHandler(): void {
         // E5.7#50：fileAssociation:getPluginFor case 已删——主进程 registry-handlers 直答
         // （plugin-manifest-loader 预加载进主进程实例，不再经壳中转）
 
-        // ── E5.6#11.5-A：decorations——池插件查询文件装饰（Git 状态等）──
-        case "decorations:getDecoration": {
-          const [uri] = req.args as [string];
-          result = FileDecorationRegistry.getDecoration(uri);
-          break;
-        }
+        // ── E5.7#60：decorations:getDecoration case 已删——注册表池内化（池内直答零 IPC）──
 
         // ── E5.6#11.5g5：文件搜索——池插件跨进程全文搜索（对齐 FileSearcher.SearchOptions）──
         case "search:searchFiles": {
@@ -404,11 +398,7 @@ export function initIpcBridgeHandler(): void {
     try { linkdesk.events?.emit("workspace:activeChanged", { uri }); } catch { /* 静默 */ }
   });
 
-  // ── E5.6#11.5-A：文件装饰变更广播——池文件树刷新 Git 状态图标 ──
-  const decoUnsub = FileDecorationRegistry.onDidChange((uris) => {
-    try { linkdesk.events?.emit("decorations:changed", { uris: Array.isArray(uris) ? uris : [] }); } catch { /* 静默 */ }
-  });
-  _decorationsUnsub = decoUnsub;
+  // ── E5.7#60：文件装饰变更广播已删——注册表池内化（池内本地通知，不经壳广播）──
 
   // ── E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载 ──
   // E5.7#58 修复：① 通道名改 camelCase——与 marketplace 订阅 "viewContainer:changed" 对齐
@@ -439,8 +429,6 @@ export function unregisterIpcBridgeHandler(): void {
     _workspaceUnsub = null;
     _workspaceActiveUnsub?.();
     _workspaceActiveUnsub = null;
-    _decorationsUnsub?.();
-    _decorationsUnsub = null;
     _viewsUnsub?.();
     _viewsUnsub = null;
   }

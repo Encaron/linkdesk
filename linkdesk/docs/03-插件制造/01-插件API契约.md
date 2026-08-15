@@ -39,6 +39,7 @@
 | `dialog.*` | 弹窗 | ✅ | **E5#67**——confirm/alert |
 | `quickPick.*` | 选择器 | ✅ | **E5.7#63**——show()，池内本地桥 |
 | `viewContainer.*` | 视图容器 | ✅ | **E5.7#58**——注册表查询 + 元数据更新 |
+| `decorations.*` | 文件装饰 | ✅ | **E5.7#60**——池内本地注册表（零 IPC） |
 | `events.*` | 发布/订阅 | ✅ | |
 | `p2p.*` | 插件间推流 | ✅ | **E5#65** |
 | `theme.*` | 主题查询 | ✅ | |
@@ -360,6 +361,36 @@ window.linkdesk.viewContainer.registerView(pluginId: string, containerId: string
 | `descriptor` 传 `render`/`actions`/`pinnedContent` | 池侧白名单剥掉（不可跨 IPC），其余字段照常更新 |
 
 **典型用法：** 视图标题随运行时状态变化（如串口会话名）——effect 里 `registerView(pluginId, containerId, { id, title })`，壳注册表更新 → 布局重推 → 池侧栏标题实时刷新。
+
+### 3.24 `decorations`——文件装饰 🆕 E5.7#60
+
+provider 与消费方（文件树）同在池进程，且 provider 是 JS 函数不可跨进程 → **池内本地注册表，零 IPC**。原壳侧 FileDecorationRegistry（恒空代理目标）及其代理通道/广播已整删。
+
+```typescript
+window.linkdesk.decorations.registerProvider(pluginId: string, provider: {
+  provideDecoration(uri: string): FileDecoration | null | Promise<FileDecoration | null>;
+  onDidChangeFileDecorations?(cb: (uris: string[] | void) => void): () => void;
+}): void
+
+window.linkdesk.decorations.unregisterProvider(pluginId: string): void
+window.linkdesk.decorations.getDecoration(uri: string): Promise<FileDecoration | null>
+window.linkdesk.decorations.onDidChange(cb: (uris: string[]) => void): () => void
+```
+
+`FileDecoration = { badge?, tooltip?, color?, propagate? }`——徽章文字（如 Git 的 M/U/A）/ 悬浮提示 / 颜色 / 父目录传播。
+
+语义约定：
+
+| 情况 | 结果 |
+|---|---|
+| 同 pluginId 重复 `registerProvider` | 覆盖旧条目（幂等——插件入口重跑/重装安全） |
+| 注册/注销 provider | 自动全量刷新通知（`onDidChange([])`）——文件树重查询拾取徽标（VS Code 同款） |
+| `getDecoration` 查询 | 按注册顺序返回第一个非空装饰；**同步契约**——跳过返回 Promise 的提供方（async 提供方按需再补） |
+| provider 抛异常（插件已卸载、模块销毁） | 自愈剔除该条目，返回 null |
+| 池重建（崩溃恢复） | 注册表随 preload 重置，插件入口重跑时重新注册 |
+| 壳侧执行半程调 `registerProvider` | 壳 preload 无此 API——注册只在池内生效（调用请可选链守卫，quickPick §3.22 注意同款） |
+
+**典型用法：** Git 插件注册徽标提供方——文件树自动显示 M/U/A 徽标，零 IPC 往返；文件变更后调 `onDidChangeFileDecorations` 通知文件树增量刷新。
 
 ---
 

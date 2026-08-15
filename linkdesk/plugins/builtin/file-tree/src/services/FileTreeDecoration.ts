@@ -1,6 +1,6 @@
 /**
  * FileTreeDecoration——文件装饰器消费。
- * E4V#31：订阅 FileDecorationRegistry.onDidChange→触发模型重渲染→FileTreeNode 渲染 badge。
+ * E4V#31：订阅 linkdesk.decorations.onDidChange（E5.7#60 池内本地注册表）→触发模型重渲染→FileTreeNode 渲染 badge。
  *
  * 对标 VS Code fileDecorations.ts 的消费端。
  * 插件注册 FileDecorationProvider（如 Git 的 M/U/A），文件树通过此模块消费。

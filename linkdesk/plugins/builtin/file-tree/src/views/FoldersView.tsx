@@ -103,7 +103,7 @@ const FoldersView: React.FC = () => {
     return unsub;
   }, [autoReveal]);
 
-  /* ── E4V#31: 文件装饰器消费——订阅 FileDecorationRegistry → 模型变更时 decorate 节点 ── */
+  /* ── E4V#31: 文件装饰器消费——订阅 linkdesk.decorations.onDidChange（E5.7#60 池内注册表）→ 模型变更时 decorate 节点 ── */
   const decoServiceRef = useRef<FileTreeDecorationService>(new FileTreeDecorationService(model));
   const decoService = decoServiceRef.current;
 
