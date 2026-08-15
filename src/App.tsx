@@ -48,7 +48,6 @@ import { usePoolSync } from "./hooks/usePoolSync";
 import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/coreCommands";
 import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
-import { ensureBuiltinProtocols } from "./core/commands/registerBuiltinProtocols";
 import i18n from "./i18n";
 import "./App.css";
 
@@ -214,8 +213,8 @@ function App() {
         },
       });
 
-      // Phase 5e：注册内置方括号协议到 ProtocolRegistry（只执行一次，幂等）
-      ensureBuiltinProtocols();
+      // E5.7#49：ensureBuiltinProtocols() 调用已删——ProtocolRegistry 唯一写入方收敛到
+      // 主进程 plugin-manifest-loader（内置方括号协议汇入主进程实例）
 
       // E3f #59-F：注册全部壳级快捷键——声明式 CORE_KEYBINDINGS，幂等
       ensureCoreKeybindings();

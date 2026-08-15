@@ -135,7 +135,7 @@ describe("loader — deriveRole（等价逻辑）", () => {
   });
 });
 
-/* ── E5#27d: parseContributions 公共入口——主题/语言/langDefs 分发 ── */
+/* ── E5#27d: parseContributions 公共入口——主题/语言分发（langDefs 随 E5.7#49 移主进程） ── */
 
 describe("loader — parseContributions（export function）", () => {
   beforeEach(() => {
@@ -160,12 +160,12 @@ describe("loader — parseContributions（export function）", () => {
     expect(langs.some((l: any) => l.label === "中文")).toBe(true);
   });
 
-  it("contributes.langDefs → LangDefRegistry 注册", () => {
+  it("contributes.langDefs 不注册壳侧 LangDefRegistry（E5.7#49 Registry 主进程化）", () => {
+    // 迁移后写入方唯一 = 主进程 plugin-manifest-loader（启动扫盘 + 装/卸重扫），
+    // 壳侧 parseContributions 不写本表——本测试钉住"壳不写"的新契约
     parseContributions("test-plugin", {
       langDefs: [{ id: "python", extensions: [".py"] }],
     });
-    const def = getLangDef(".py");
-    expect(def).toBeDefined();
-    expect(def!.id).toBe("python");
+    expect(getLangDef(".py")).toBeUndefined();
   });
 });

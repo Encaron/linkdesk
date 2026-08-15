@@ -20,7 +20,6 @@ import { unregisterConfiguration, unregisterConfigurationDefaults } from "../cor
 import { unregisterPluginCommands } from "../core/registry/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry";
 import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/MenuRegistry";
-import { unregisterPluginProtocols } from "../core/registry/ProtocolRegistry";
 import { unregisterPluginCards } from "../core/registry/CardRegistry";
 import { unregisterPluginChannels } from "../core/services/LogChannel";
 import { unregisterPluginFileAssociations } from "../core/services/FileAssociationService";
@@ -115,7 +114,8 @@ export function initLifecycleConsumers(): void {
     unregisterPluginKeybindings(pluginId);
     unregisterPluginMenus(pluginId);
     unregisterPluginTitleBarContributions(pluginId);
-    unregisterPluginProtocols(pluginId);
+    // E5.7#49：unregisterPluginProtocols 已删——ProtocolRegistry 唯一实例在主进程，
+    // 卸载清理由 loader 的 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
     unregisterPluginCards(pluginId);
     unregisterPluginChannels(pluginId);
     unregisterPluginFileAssociations(pluginId);
