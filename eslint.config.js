@@ -168,9 +168,11 @@ export default [
           ],
         },
       ],
-      // 🔥 E5#116: 插件 import @src/core/* → warn——多 WebView 火种机械检查
+      // 🔥 E5#116: 插件 import @src/core/* → 多 WebView 火种机械检查。
+      // E5.7#80 升级 error：测试文件豁免（vitest 单进程，多 WebView 理由不成立）
+      // + 纯类型 import 豁免（类型擦除后零运行时耦合）——豁免后现存违规清零。
       // whitelist 在 eslint-local-rules.js PLUGIN_IMPORT_WHITELIST
-      "linkdesk/no-core-import-in-plugin": "warn",
+      "linkdesk/no-core-import-in-plugin": "error",
       // E5#106: JSX 中文必须走 t() 包裹——warn 级，不阻塞构建
       "linkdesk/no-hardcoded-chinese": "warn",
     },
