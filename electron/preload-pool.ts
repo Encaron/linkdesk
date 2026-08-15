@@ -234,6 +234,7 @@ try {
         // 壳侧 executeCommand(id, token, ...realArgs) 的 token 是 CancellationToken。
         // 调用方（ContextMenu/CommandPalette）固定传 undefined 占位。
         // 池 handler 不消费 token——剥离后传 realArgs 给 handler。
+        // E5.7#63.8 后壳侧 handler 合同同样只收 args（CommandRegistry 进 handler 前统一剥）——两进程约定归一。
         const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
         return Promise.resolve(handler(...realArgs));
       }

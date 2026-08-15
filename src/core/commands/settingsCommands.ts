@@ -18,7 +18,7 @@ export function registerSettingsCommands(): void {
       id: "core.openSettings",
       title: "设置",
       category: "视图",
-      handler: async (_token: unknown, ...args: unknown[]) => {
+      handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
         if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
         if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
@@ -30,7 +30,7 @@ export function registerSettingsCommands(): void {
       id: "workbench.action.selectTheme",
       title: "选择颜色主题",
       category: "首选项",
-      handler: async (_token: unknown, ...args: unknown[]) => {
+      handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
         const { showThemePicker } = await import("../../components/ThemeBrowser");

@@ -63,7 +63,7 @@ export function registerQuickPickCommand(): void {
     id: "quickpick.show",
     title: "QuickPick",
     when: "false",
-    handler: async (_token: unknown, ...args: unknown[]) => {
+    handler: async (...args: unknown[]) => {
       return showQuickPick(args[0] as ShowQuickPickOptions);
     },
   });

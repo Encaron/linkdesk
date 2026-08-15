@@ -25,7 +25,7 @@ export function registerTabCommands(): void {
       id: "workbench.action.nextTab",
       title: "下一个标签页",
       category: "标签页",
-      handler: async (_token: unknown, ...args: unknown[]) => {
+      handler: async (...args: unknown[]) => {
         getCallbacks()?.focusNextTab(!!(args[0] as { shift?: boolean } | undefined)?.shift);
       },
     },
@@ -45,7 +45,7 @@ export function registerTabCommands(): void {
       id: "workbench.action.focusNthTab",
       title: "跳转到标签页",
       category: "标签页",
-      handler: async (_token: unknown, ...args: unknown[]) => {
+      handler: async (...args: unknown[]) => {
         const n = (args[0] as { n: number } | undefined)?.n;
         if (n) getCallbacks()?.focusNthTab(n);
       },

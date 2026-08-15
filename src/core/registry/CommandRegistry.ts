@@ -7,8 +7,10 @@
  * VS Code 源码：src/vs/platform/commands/common/commands.ts — ICommandService
  *
  * 关键设计决策：
- * - handler 签名从第一天就用 async (token?: CancellationToken) => Promise<void>
+ * - handler 签名从第一天就用 async (...) => Promise<unknown>（异步执行）
  *   不等 Phase 7 任务系统——同步改异步签名的代价是改所有插件（V2.6 模式）
+ * - E5.7#63.8：token 从 handler 合同删除——executeCommand 进 handler 前统一剥 token
+ *   （壳直注册与跨进程路径约定归一，全仓 handler 样板唯一：(...args)）
  * - 命令 ID 就是插件的公共 API——跨插件命令调用走 execute() 不走 hard import
  */
 
@@ -32,8 +34,8 @@ export interface Command {
    * （preload-pool 的 _poolCommands）。执行时走壳→池转发（executeInPool），不调本 handler。
    */
   placeholder?: boolean;
-  /** 异步处理器——从第一天就用 async 签名 */
-  handler: (token?: CancellationToken, ...args: unknown[]) => Promise<unknown>;
+  /** 异步处理器——E5.7#63.8：不接收 token（executeCommand 进 handler 前统一剥），只收 args */
+  handler: (...args: unknown[]) => Promise<unknown>;
 }
 
 const _commands = new Map<string, Command>();
@@ -160,7 +162,7 @@ export function registerShellLocalCommand(
     category: meta.category,
     when: meta.when,
     placeholder: false,
-    handler: (_token, ...args) => {
+    handler: (...args) => {
       const bridge = window.linkdesk?.commands?._executeShellLocal;
       if (!bridge) return Promise.reject(new Error(`命令 "${commandId}" 壳侧执行桥不可用`));
       return bridge(commandId, ...args);
@@ -200,7 +202,9 @@ export function setPreActivateHook(hook: (commandId: string) => Promise<void>): 
 
 export async function executeCommand(
   commandId: string,
-  token?: CancellationToken,
+  // E5.7#63.8：占位参数——handler 合同已删 token，但调用方仍按旧槽位传 undefined
+  // （如 IpcBridgeHandler commands:execute 透传）。槽位保留 = 未来取消语义入口。
+  _token?: CancellationToken,
   ...args: unknown[]
 ): Promise<unknown> {
   // #44：执行前激活延迟插件——onCommand 触发源
@@ -219,7 +223,10 @@ export async function executeCommand(
       // → 池 preload 订阅执行 → invoke("commands:executeResult") → IpcBridgeHandler 回传。
       return await executeInPool(cmd, args);
     }
-    return await cmd.handler(token, ...args);
+    // E5.7#63.8：token 在此统一剥除——handler 合同只收 args。
+    // 外层 token 参数保留（未来取消语义入口），与池 preload executeCommand
+    // 剥 undefined 占位同语义——全仓 handler 样板唯一：(...args)。
+    return await cmd.handler(...args);
   } catch (err) {
     reportError({
       message: `命令 "${cmd.title}" 执行出错: ${err instanceof Error ? err.message : String(err)}`,
