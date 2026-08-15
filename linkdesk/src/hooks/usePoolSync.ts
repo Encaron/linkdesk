@@ -16,7 +16,7 @@ import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/utils/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
-import { getMenuItems, MenuId, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
+import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
 import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
 import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
@@ -132,7 +132,7 @@ const MENU_STYLE_HAMBURGER_VISIBLE: Record<string, boolean> = {
  * 无 command 父项展平为其 children；command+children 父项保留 children（池子面板）。
  */
 function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
-  const allItems = getMenuItems(MenuId.MenuBar);
+  const allItems = getMenuItems(MENU_SLOTS.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
     const group = item.group ?? "other";
@@ -182,7 +182,7 @@ function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
  * 带 children 的父项，hover 弹出子面板（壳 titlebar 下拉则展平为平铺列表）。
  */
 function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
-  const allItems = getMenuItems(MenuId.MenuBar);
+  const allItems = getMenuItems(MENU_SLOTS.MenuBar);
   const allKeybindings = getKeybindings();
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {

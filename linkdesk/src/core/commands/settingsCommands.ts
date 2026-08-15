@@ -4,7 +4,7 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
-import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
 import { factorySlots } from "../services/FactorySlots";
 import { getCallbacks } from "./CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
@@ -60,7 +60,7 @@ export function registerSettingsCommands(): void {
   }
 
   // 齿轮菜单——设置/主题/语言 三个入口
-  registerMenuItems(MenuId.ExtensionGear, APP_PLUGIN_ID, [
+  registerMenuItems(MENU_SLOTS.ExtensionGear, APP_PLUGIN_ID, [
     { command: "core.openSettings", group: "navigation" },
     { command: "workbench.action.selectTheme", group: "navigation" },
     { command: "workbench.action.selectLanguage", group: "navigation" },

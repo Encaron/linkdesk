@@ -4,7 +4,7 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
-import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 import { QuickPickService } from "../registry/QuickPickService"; // E5.5#7-p15
 
@@ -66,7 +66,7 @@ export function registerDeveloperCommands(): void {
   }
 
   // 齿轮菜单入口
-  registerMenuItems(MenuId.ExtensionGear, APP_PLUGIN_ID, [
+  registerMenuItems(MENU_SLOTS.ExtensionGear, APP_PLUGIN_ID, [
     { command: "workbench.action.togglePluginDevTools", group: "navigation" },
   ]);
 }

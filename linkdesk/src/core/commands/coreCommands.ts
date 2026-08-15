@@ -11,7 +11,7 @@
  */
 
 import { registerCommand, type Command } from "../registry/CommandRegistry";
-import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
+import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
 import i18n from "../../i18n";
@@ -33,7 +33,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async () => {
       showCommandPalette();
     },
-    menuId: MenuId.ExtensionGear,
+    menuId: MENU_SLOTS.ExtensionGear,
     menuGroup: "navigation",
   },
   // E3f #58：开发者工具——切换插件 DevTools
@@ -45,7 +45,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     handler: async () => {
       window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.SHOW_OUTPUT));
     },
-    menuId: MenuId.ExtensionGear,
+    menuId: MENU_SLOTS.ExtensionGear,
     menuGroup: "navigation",
   },
   // E3f #56：工作区导入导出
@@ -98,7 +98,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.closeTab(ctx.tabId);
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "navigation",
   },
   {
@@ -112,7 +112,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
         if (group) getCallbacks()?.closeOtherTabs(group.groupId, ctx.tabId);
       }
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "navigation",
   },
   {
@@ -129,7 +129,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
         }
       }
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "navigation",
   },
   {
@@ -140,7 +140,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "split",
   },
   {
@@ -151,7 +151,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "split",
   },
 
@@ -166,7 +166,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string; groupId?: string } | undefined;
       if (ctx?.groupId) getCallbacks()?.closeAllTabs(ctx.groupId);
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "navigation",
   },
   {
@@ -177,7 +177,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.duplicateTab(ctx.tabId);
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "edit",
   },
   {
@@ -188,7 +188,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.pinTab(ctx.tabId);
     },
-    menuId: MenuId.TabContext,
+    menuId: MENU_SLOTS.TabContext,
     menuGroup: "pin",
   },
 
@@ -210,7 +210,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const { resetConfigurationValue } = await import("../services/ConfigurationService");
       await resetConfigurationValue(key);
     },
-    menuId: MenuId.SettingItemGear,
+    menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
     when: "settingModified",
   },
@@ -227,7 +227,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
       pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
     },
-    menuId: MenuId.SettingItemGear,
+    menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
   },
   {
@@ -246,7 +246,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
       pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
     },
-    menuId: MenuId.SettingItemGear,
+    menuId: MENU_SLOTS.SettingItemGear,
     menuGroup: "navigation",
   },
 

@@ -11,35 +11,40 @@
 /* ── MenuId：唯一权威定义 ── */
 
 /**
- * 菜单注册点——对标 VS Code MenuId。
- * Phase 5 定义全集，Phase 6/7 只消费不修改。
+ * 菜单注册点 ID——对标 VS Code MenuId。
+ * E5.7#64：闭合 enum → 开放 string——第三方作者可声明新注册点（任意字符串），
+ * 壳零改动即可消费（插件独立铁律：壳不因新菜单点改代码）；壳内置注册点走 MENU_SLOTS 常量表。
+ * 插件 manifest 声明的是同名字符串数据（不 import 壳模块——字符串即契约），与常量表天然同源。
  */
-export enum MenuId {
+export type MenuId = string;
+
+/** 壳内置菜单注册点常量表——壳代码唯一引用面（拼写错 = tsc 报错，字符串数据面不变） */
+export const MENU_SLOTS = {
   /** Ctrl+Shift+P 命令面板 */
-  CommandPalette = "commandPalette",
+  CommandPalette: "commandPalette",
   /** 标签栏标签右键 */
-  TabContext = "tabContext",
+  TabContext: "tabContext",
   /** 标签页主内容区右键（终端接收区、编辑器等） */
-  EditorContext = "editorContext",
+  EditorContext: "editorContext",
   /** 底部齿轮菜单——全局操作入口（设置、命令面板、主题选择器）。IconBar 消费。 */
-  ExtensionGear = "extensionGear",
+  ExtensionGear: "extensionGear",
   /** 插件市场条目齿轮——per-plugin 操作（启用/禁用/卸载）。marketplace sidebar 消费。 */
-  MarketplaceItemGear = "marketplaceItemGear",
-  /** ☰ 汉堡菜单栏（Phase 6 消费） */
-  MenuBar = "menuBar",
-  /** 文件树右键（Phase 6 消费） */
-  FileContext = "fileContext",
-  /** 卡片右键（Phase 7 消费） */
-  CardContext = "cardContext",
+  MarketplaceItemGear: "marketplaceItemGear",
+  /** ☰ 汉堡菜单栏 */
+  MenuBar: "menuBar",
+  /** 文件树右键 */
+  FileContext: "fileContext",
+  /** 卡片右键 */
+  CardContext: "cardContext",
   /** 快捷发送药丸右键 */
-  QuickSendContext = "quickSendContext",
+  QuickSendContext: "quickSendContext",
   /** 图标栏右键 */
-  IconBar = "iconBar",
+  IconBar: "iconBar",
   /** E3f #53：设置项齿轮——Settings Editor 每行 hover 齿轮菜单 */
-  SettingItemGear = "settingItemGear",
+  SettingItemGear: "settingItemGear",
   /** view header 右键——SidePanel 容器标题右键菜单（折叠/展开/隐藏/重置位置） */
-  ViewTitleContext = "viewTitleContext",
-}
+  ViewTitleContext: "viewTitleContext",
+} as const;
 
 /* ── 类型 ── */
 

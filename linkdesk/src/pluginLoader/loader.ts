@@ -420,7 +420,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   if (c.menus) {
     const menus = c.menus as Record<string, ManifestMenuItem[]>;
     for (const [menuId, items] of Object.entries(menus)) {
-      registerMenuItems(menuId as any, pluginId, items);
+      registerMenuItems(menuId, pluginId, items);
     }
   }
 

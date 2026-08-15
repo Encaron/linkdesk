@@ -1,7 +1,7 @@
 /**
  * HamburgerMenu —— ☰ 菜单按钮 + 下拉面板。
  * E3f #52：对标 VS Code 浏览器版 GlobalActivityActionViewItem。
- * 数据源：MenuRegistry → MenuId.MenuBar → 按 group 分组。
+ * 数据源：MenuRegistry → MENU_SLOTS.MenuBar → 按 group 分组。
  * 交互：hover 展开子菜单（右侧弹出），点击叶子项执行命令。
  *
  * 设计文档：docs/02-Electron架构/E3_多WebView与壳收尾_暂定/06-E3f-壳UI收尾.md §二
@@ -9,7 +9,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, MenuId } from "../core/registry/MenuRegistry";
+import { getMenuItems, MENU_SLOTS } from "../core/registry/MenuRegistry";
 import { executeCommand } from "../core/registry/CommandRegistry";
 import { ContextKeyService } from "../core/registry/ContextKeyService";
 import { MenuRenderer } from "./shared/MenuRenderer";
@@ -36,7 +36,7 @@ function HamburgerMenu() {
   }, []);
 
   // 菜单数据
-  const items = getMenuItems(MenuId.MenuBar);
+  const items = getMenuItems(MENU_SLOTS.MenuBar);
 
   return (
     <>
