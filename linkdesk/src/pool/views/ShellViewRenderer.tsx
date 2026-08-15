@@ -13,6 +13,21 @@ import WelcomePoolView from "./WelcomePoolView";
 import PluginDetailPoolView from "./PluginDetailPoolView";
 import OutputPoolView from "./OutputPoolView";
 
+/**
+ * E5.7#71：壳视图类型常量表——路由契约字符串集中此表。
+ * 契约上游：core/types/poolLayout.ts shellType 字段（壳侧 isShellRenderedTab 判壳视图，推送 shellRendered 标志）。
+ * 池侧 Path B 不得 value-import @src/core，故契约在池内本地声明——字符串即契约。
+ * 壳侧同义集合见 hooks/tabIdentity.ts SHELL_RENDERED_TYPES（两侧独立声明，新增壳视图需同步）。
+ */
+const SHELL_VIEWS = {
+  /** 欢迎页——壳保底 UI */
+  Welcome: "welcome",
+  /** 插件详情页 */
+  PluginDetail: "plugin-detail",
+  /** 输出面板 */
+  Output: "output",
+} as const;
+
 interface ShellViewRendererProps {
   tab: PoolTab;
   isActive: boolean;
@@ -23,11 +38,11 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
   const shellType = tab.shellType ?? tab.pluginId;
 
   switch (shellType) {
-    case "welcome":
+    case SHELL_VIEWS.Welcome:
       return <WelcomePoolView isActive={isActive} creatableViews={creatableViews} />;
-    case "plugin-detail":
+    case SHELL_VIEWS.PluginDetail:
       return <PluginDetailPoolView pluginId={tab.detailPluginId} />;
-    case "output":
+    case SHELL_VIEWS.Output:
       return <OutputPoolView />;
     default:
       return (
