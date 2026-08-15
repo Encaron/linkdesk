@@ -519,11 +519,9 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
           if (resolvedRoot) {
             renderPath = `${resolvedRoot}/${viewDef.render}`;
           } else {
-            // glob 外插件（热安装/重装）——IPC 查询绝对路径兜底，不依赖调用方传参
+            // glob 外插件（热安装/重装）——根 URL 归一化兜底（resolveRuntimePluginRoot），不依赖调用方传参
             try {
-              const abs = await window.linkdesk?.plugins?.resolvePath?.(pluginId);
-              const isDev = import.meta.env.DEV;
-              renderPath = isDev ? `/@fs/${abs}/${viewDef.render}` : `linkdesk://${pluginId}/${viewDef.render}`;
+              renderPath = `${await resolveRuntimePluginRoot(pluginId)}/${viewDef.render}`;
             } catch {
               console.warn(`[loader] ⚠️ 无法解析插件 "${pluginId}" 的根目录——view "${viewDef.id}" 加载失败`);
               continue;
@@ -695,6 +693,25 @@ function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean
 }
 
 /**
+ * 运行时插件根 URL 归一化入口。
+ *
+ * E5.7 生命周期契约「可卸载 ⇒ 可重装」修复：同一句 `isDev ? /@fs/{abs} : linkdesk://{id}`
+ * 曾写了 5 处（entry 根/entryUrl/statusBar 根/views 兜底/themes fetch），且 pluginRoot
+ * 赋值绑死在 `manifest.entry` 上——entryless 插件
+ * （纯 views/commands 贡献）重装后 views 注册兜底链断裂（❌ view 未找到匹配模块）。
+ * 契约：任何插件，只要能被卸载，重装就必须同 session 立即恢复全部贡献——
+ * 与插件形状无关（glob 内/外、entry 有无、core 标志全不豁免，core:true 只是默认值）。
+ * dev: resolvePath IPC 拼 /@fs/{abs}；prod: linkdesk://{pluginId} 协议（无需查盘）。
+ * 失败 reject——各调用点保留自己的错误语义（toast / warn+continue / 静默跳过）。
+ */
+async function resolveRuntimePluginRoot(pluginId: string): Promise<string> {
+  if (!import.meta.env.DEV) return `linkdesk://${pluginId}`;
+  const abs = await window.linkdesk?.plugins?.resolvePath?.(pluginId);
+  if (!abs) throw new Error(`无法解析插件 "${pluginId}" 的根目录`);
+  return `/@fs/${abs}`;
+}
+
+/**
  * 插件加载唯一入口。
  * 🔥 E5 归一化：合并运行时路径——glob 内走 Vite 模块，glob 外走 IPC 运行时加载。
  * 调用方不再自己判断"该走哪条路"——一条 loadPlugin 全覆盖。
@@ -757,14 +774,18 @@ async function loadPlugin(
 
   if (isRuntime) {
     // ── 运行时：动态 import（/fs/ 或 linkdesk://）──
+    // E5.7 生命周期契约：pluginRoot 不绑 entry——entryless 插件（纯 views/commands 贡献）
+    // 重装后 views 注册兜底（parseContributions）同样依赖它做动态 import。
+    try {
+      runtimePluginRoot = await resolveRuntimePluginRoot(pluginId);
+    } catch (e) {
+      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
+      // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
+    }
     if (manifest.entry) {
       try {
-        const isDev = import.meta.env.DEV;
-        const absPath = isDev ? await linkdesk().plugins.resolvePath(pluginId) : "";
-        runtimePluginRoot = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
-        const entryUrl = isDev
-          ? `/@fs/${absPath}/${manifest.entry}`
-          : `linkdesk://${pluginId}/${manifest.entry}`;
+        if (!runtimePluginRoot) throw new Error("根目录解析失败");
+        const entryUrl = `${runtimePluginRoot}/${manifest.entry}`;
         const module = await import(/* @vite-ignore */ entryUrl);
         viewComponent = module.default;
         if (!viewComponent) {
@@ -772,7 +793,6 @@ async function loadPlugin(
         }
 
         // statusBar——尝试多条路径
-        const basePath = isDev ? `/@fs/${absPath}` : `linkdesk://${pluginId}`;
         const statusBarPaths = [
           "statusBar.tsx",
           "src/statusBar.tsx",
@@ -780,7 +800,7 @@ async function loadPlugin(
         ];
         for (const p of statusBarPaths) {
           try {
-            const sbm = await import(/* @vite-ignore */ `${basePath}/${p}`);
+            const sbm = await import(/* @vite-ignore */ `${runtimePluginRoot}/${p}`);
             statusBarComponent = sbm.default;
             break;
           } catch { /* 路径不存在——继续试下一条 */ }
@@ -831,10 +851,7 @@ async function loadPlugin(
       for (const tc of themeList) {
         if (findTheme(tc.label)) continue;
         try {
-          const absPath = await linkdesk().plugins.resolvePath(pluginId);
-          const url = import.meta.env.DEV
-            ? `/@fs/${absPath}/${tc.path}`
-            : `linkdesk://${pluginId}/${tc.path}`;
+          const url = `${await resolveRuntimePluginRoot(pluginId)}/${tc.path}`;
           const response = await fetch(url);
           if (!response.ok) continue;
           const data = await response.json();
