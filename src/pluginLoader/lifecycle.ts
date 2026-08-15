@@ -24,7 +24,7 @@ import { unregisterPluginChannels } from "../core/services/LogChannel";
 import { unregisterPluginThemes } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
-import i18n from "../i18n";
+import { unregisterPluginLanguageBundles } from "./i18nResources";
 import type { PluginManifest } from "../core/api/types";
 
 /* ── 事件类型 ── */
@@ -122,10 +122,9 @@ export function initLifecycleConsumers(): void {
     unregisterPluginThemes(pluginId);
     ThemeRegistry.unregisterPlugin(pluginId);
     unregisterStatusBarPlugin(pluginId);
-    // H6：清理语言插件注册的 i18n 资源（按 pluginId 命名空间追踪）
-    for (const lang of i18n.languages ?? []) {
-      i18n.removeResourceBundle(lang, pluginId);
-    }
+    // H6 升级（重装契约修复）：语言资源清理收敛于 i18nResources 单一实现——
+    // 原只删 pluginId 命名空间 → translation 命名空间死键残留；现按剩余插件整份重建。
+    unregisterPluginLanguageBundles(pluginId);
   });
 
   /* ─── 消费端 3：toast 通知 ─── */

@@ -44,6 +44,7 @@ import { registerMenuItems, registerTitleBarContribution } from "../core/registr
 import { registerCommand } from "../core/registry/CommandRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
+import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../i18n";
 import { createLogChannel } from "../core/services/LogChannel";
 
@@ -1016,7 +1017,7 @@ async function loadLanguageContributionData(pluginId: string, manifest: PluginMa
   for (const lc of langList) {
     const data = await fetchPluginDataFile(pluginId, lc.path);
     if (data) {
-      registerLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
+      registerPluginLanguageBundle(lc.id, data as Record<string, unknown>, pluginId);
       registered++;
     }
   }
@@ -1057,7 +1058,7 @@ async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): P
     if (typeof filePath !== "string") continue;
     const data = await fetchPluginDataFile(pluginId, filePath);
     if (data) {
-      registerLanguageBundle(langCode, data, pluginId);
+      registerPluginLanguageBundle(langCode, data, pluginId);
       registered++;
     }
   }
@@ -1070,12 +1071,8 @@ async function loadPluginI18nData(pluginId: string, manifest: PluginManifest): P
 /**
  * 注册语言翻译资源到 i18next。
  * E5#12：归一化后仅 parseContributions 一处调用——新增语言注册路径不复制粘贴。
+ * 实现收敛于 i18nResources.ts（重装契约修复：卸载时 translation 命名空间整份重建）。
  */
-function registerLanguageBundle(langCode: string, data: Record<string, unknown>, pluginId: string): void {
-  const ns = "translation";
-  i18n.addResourceBundle(langCode, ns, data, true, true);
-  i18n.addResourceBundle(langCode, pluginId, data, true, true);
-}
 
 /* ── 禁用列表持久化 ── */
 
