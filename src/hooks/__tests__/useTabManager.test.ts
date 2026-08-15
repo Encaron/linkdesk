@@ -25,6 +25,8 @@ import {
 } from "../useTabManager";
 import { getAllLeafGroupIds } from "../splitTree";
 import { detectDropZone } from "../tabDragTypes";
+import { registerViewPlugin, clearRegistry } from "../../pluginLoader/viewRegistry";
+import type { ViewPluginEntry } from "../../core/api/types";
 
 /* ── 辅助函数 ── */
 
@@ -44,6 +46,18 @@ beforeEach(() => {
   resetPluginCounter("terminal", 0);
   resetPluginCounter("workspace", 0);
   resetFallbackCounter(0);
+  // E5.7#67：FALLBACK_META 硬编码表已删——workspace 的 identityField 走生产契约
+  // （plugin.json tabBehavior.identityField），测试用 mock 注册表模拟插件声明。
+  clearRegistry();
+  registerViewPlugin({
+    pluginId: "workspace",
+    manifest: {
+      name: "workspace",
+      version: "1.0.0",
+      tabBehavior: { identityField: "workspaceName" },
+    },
+    component: (() => null) as unknown as ViewPluginEntry["component"],
+  });
 });
 
 /* ── 工厂函数 ── */
@@ -62,7 +76,7 @@ describe("createTabDefaults", () => {
     expect(createTabDefaults("terminal").dirty).toBe(false);
   });
 
-  // E5#58：label 不再从 FALLBACK_META 硬编码表读——manifest.name 优先，未知类型兜底 type
+  // E5#58：label 不查壳内硬编码表——manifest.name 优先，未知类型兜底 type（E5.7#67 表已整删）
   it("label 默认值", () => {
     expect(createTabDefaults("terminal").label).toBe("terminal");
     expect(createTabDefaults("workspace").label).toBe("workspace");
