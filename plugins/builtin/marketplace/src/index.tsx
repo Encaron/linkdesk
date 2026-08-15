@@ -34,9 +34,12 @@ function ensureMarketplaceCommands(): void {
   const reg = lk().commands?.registerCommand;
   if (!reg) return; // 双进程执行——壳/池 preload 均含 commands 命名空间（#56 后），守卫防旧环境
 
+  // handler 不声明 _token——两半程 infra 均已剥离 token 占位后才调 handler：
+  // 池侧 executeCommand 剥 undefined 占位；壳侧 registerShellLocalCommand 桥剥 _token。
+  // handler 直接收 realArgs（file-tree E5.6 池侧注册同款约定）。
   reg(
     "marketplace.enable",
-    async (_token: unknown, ...args: unknown[]) => {
+    async (...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().enable(ctx.pluginId);
     },
@@ -45,7 +48,7 @@ function ensureMarketplaceCommands(): void {
 
   reg(
     "marketplace.disable",
-    async (_token: unknown, ...args: unknown[]) => {
+    async (...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().disable(ctx.pluginId);
     },
@@ -54,7 +57,7 @@ function ensureMarketplaceCommands(): void {
 
   reg(
     "marketplace.uninstall",
-    async (_token: unknown, ...args: unknown[]) => {
+    async (...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().uninstall(ctx.pluginId);
     },
