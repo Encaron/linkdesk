@@ -997,9 +997,13 @@ function App() {
       case "pinTab":
         pinTab(action.tabId);
         break;
-      case "createTab":
-        createTab(action.pluginId ?? FALLBACK_PLUGIN_ID, { groupId: action.groupId } as any);
+      case "createTab": {
+        // E5.7 Bug A 修复：同 u1/u2——池发起的开标签页也要 emit tab:focused，
+        // 否则 activeEditor 不更新 → when:"activeEditor == 'xxx'" 过滤掉菜单项/命令。
+        const tabId = createTab(action.pluginId ?? FALLBACK_PLUGIN_ID, { groupId: action.groupId } as any);
+        if (tabId) shellEvents.emit("tab:focused", { pluginId: action.pluginId ?? FALLBACK_PLUGIN_ID, tabId });
         break;
+      }
       // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
       case "updateSplitSizes":
         updateSplitSizes(action.anchorGroupId, action.sizes as [number, number], action.branchIndex);

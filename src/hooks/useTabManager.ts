@@ -811,90 +811,91 @@ export function useTabManager() {
 
   const createTab = useCallback(
     (type: string, opts?: CreateTabOptions): string => {
-      let createdId = "";
+      // 🔥 E5.7 Bug A 修复：返回值不能从 setTabState updater 里读——
+      // React 18 仅在 fiber 无 pending lane 时才 eager 执行 updater，否则 createdId 恒为空串
+      // （实测：池 tabs.create 首次调用返回 "" → u1 不发 tab:focused → activeEditor 不更新 →
+      //  when:"activeEditor == 'xxx'" 过滤掉全部菜单项/命令）。
+      // 返回值用 tabStateRef 同步预计算（G6 ref 桥接）；state 转换仍走函数式 updater（队列语义不变）。
+      const eager = reduceCreateTab(tabStateRef.current, type, opts);
       setTabState((prev) => {
         const r = reduceCreateTab(prev, type, opts);
-        createdId = r.createdId;
-        if (createdId) {
-          const tab = findGroup(r.state, createdId)?.tabs.find((t) => t.id === createdId);
-          if (tab) lastFocusedByType.current.set(tab.pluginId ?? tab.type, createdId);
+        if (r.createdId) {
+          const tab = findGroup(r.state, r.createdId)?.tabs.find((t) => t.id === r.createdId);
+          if (tab) lastFocusedByType.current.set(tab.pluginId ?? tab.type, r.createdId);
         }
         return r.state;
       });
-      return createdId;
+      return eager.createdId;
     },
     []
   );
 
   const openOrFocusTab = useCallback(
     (type: string, opts?: CreateTabOptions): string | null => {
-      let focusedId: string | null = null;
-      let filePath: string | undefined;
+      // 🔥 E5.7 Bug A 修复：focusedId/filePath 同 createTab——不能从 updater 里读（eager state 不保证执行）。
+      const eager = reduceOpenOrFocus(tabStateRef.current, type, lastFocusedByType.current.get(type), opts);
       setTabState((prev) => {
         const r = reduceOpenOrFocus(prev, type, lastFocusedByType.current.get(type), opts);
-        focusedId = r.focusedId;
-        if (focusedId) {
-          lastFocusedByType.current.set(type, focusedId);
-          const g = findGroup(r.state, focusedId);
-          const t = g?.tabs.find((tab) => tab.id === focusedId);
-          filePath = t?.filePath;
+        if (r.focusedId) {
+          lastFocusedByType.current.set(type, r.focusedId);
         }
         return r.state;
       });
-      if (focusedId) {
-        CoreEvents.onDidChangeActiveTab.fire({ tabId: focusedId, pluginId: type, filePath });
-        try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: focusedId, pluginId: type, filePath }); } catch { /* 静默 */ }
+      if (eager.focusedId) {
+        const g = findGroup(eager.state, eager.focusedId);
+        const t = g?.tabs.find((tab) => tab.id === eager.focusedId);
+        const filePath = t?.filePath;
+        CoreEvents.onDidChangeActiveTab.fire({ tabId: eager.focusedId, pluginId: type, filePath });
+        try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: eager.focusedId, pluginId: type, filePath }); } catch { /* 静默 */ }
       }
-      return focusedId;
+      return eager.focusedId;
     },
     []
   );
 
   const focusTab = useCallback((tabId: string) => {
-    let filePath: string | undefined;
-    let pluginId: string | undefined;
+    // 🔥 E5.7 Bug A 修复：事件数据同 createTab——不能从 updater 里读。
+    // reduceFocusTab 不改 tab 字段，事件数据直接取提交态里的 tab（与 updater 结果等价）。
+    const tab = findGroup(tabStateRef.current, tabId)?.tabs.find((t) => t.id === tabId);
     setTabState((prev) => {
       const next = reduceFocusTab(prev, tabId);
       const group = findGroup(next, tabId);
-      const tab = group?.tabs.find((t) => t.id === tabId);
-      if (tab) {
-        lastFocusedByType.current.set(tab.pluginId ?? tab.type, tabId);
-        filePath = tab.filePath;
-        pluginId = tab.pluginId;
+      const focused = group?.tabs.find((t) => t.id === tabId);
+      if (focused) {
+        lastFocusedByType.current.set(focused.pluginId ?? focused.type, tabId);
       }
       return next;
     });
     // E4V#32: fire 后触发 autoReveal
-    CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
-    try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId, pluginId, filePath }); } catch { /* 静默 */ }
+    CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId: tab?.pluginId, filePath: tab?.filePath });
+    try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId, pluginId: tab?.pluginId, filePath: tab?.filePath }); } catch { /* 静默 */ }
   }, []);
 
   /** 按 sourceId 找标签页并聚焦——通用 API。
    *  插件（终端/file/sqlite 等）通过 sourceId 将自己的数据绑定到标签页。
    *  sourceId 是通用概念（CreateTabOptions.sourceId），不属任何特定插件。 */
   const focusTabBySourceId = useCallback((sourceId: string) => {
-    let focusedId: string | null = null;
-    let filePath: string | undefined;
-    let pluginId: string | undefined;
+    // 🔥 E5.7 Bug A 修复：focusedId 守卫 + 事件数据同 createTab——不能从 updater 里读。
+    // 预计算只做"提交态里找到 tab 与否"——聚焦不改 tab 字段，事件数据即找到的 tab 本身。
+    const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find(
+      (t) => t.sourceId === sourceId || t.id === sourceId,
+    );
     setTabState((prev) => {
-      const tab = prev.groups.flatMap((g) => g.tabs).find(
+      const found = prev.groups.flatMap((g) => g.tabs).find(
         (t) => t.sourceId === sourceId || t.id === sourceId,
       );
-      if (!tab) return prev;
-      focusedId = tab.id;
-      const next = reduceFocusTab(prev, tab.id);
-      const group = findGroup(next, tab.id);
-      const focused = group?.tabs.find((t) => t.id === tab.id);
+      if (!found) return prev;
+      const next = reduceFocusTab(prev, found.id);
+      const group = findGroup(next, found.id);
+      const focused = group?.tabs.find((t) => t.id === found.id);
       if (focused) {
-        lastFocusedByType.current.set(focused.pluginId ?? focused.type, tab.id);
-        filePath = focused.filePath;
-        pluginId = focused.pluginId;
+        lastFocusedByType.current.set(focused.pluginId ?? focused.type, found.id);
       }
       return next;
     });
-    if (focusedId) {
-      CoreEvents.onDidChangeActiveTab.fire({ tabId: focusedId, pluginId, filePath });
-      try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: focusedId, pluginId, filePath }); } catch { /* 静默 */ }
+    if (tab) {
+      CoreEvents.onDidChangeActiveTab.fire({ tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath });
+      try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath }); } catch { /* 静默 */ }
     }
   }, []);
 
@@ -903,17 +904,24 @@ export function useTabManager() {
    *  不依赖 tab.id === session.id 的假设——只用 sourceId 链接。 */
   const closeTabBySourceId = useCallback(
     (sourceId: string): CloseTabResult => {
-      let result: CloseTabResult = { closed: false, tabId: sourceId };
-      setTabState((prev) => {
-        const tab = prev.groups.flatMap((g) => g.tabs).find(
+      // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+      const prev = tabStateRef.current;
+      const tab = prev.groups.flatMap((g) => g.tabs).find(
+        (t) => t.sourceId === sourceId || t.id === sourceId,
+      );
+      const eager = tab ? reduceCloseTab(prev, tab.id) : null;
+      setTabState((prev2) => {
+        const found = prev2.groups.flatMap((g) => g.tabs).find(
           (t) => t.sourceId === sourceId || t.id === sourceId,
         );
-        if (!tab) return prev;
-        const r = reduceCloseTab(prev, tab.id);
-        result = { closed: r.closed, tabId: tab.id, reason: r.reason, newActiveTabId: r.newActiveTabId };
-        return r.state ?? prev;
+        if (!found) return prev2;
+        const r = reduceCloseTab(prev2, found.id);
+        return r.state ?? prev2;
       });
-      return result;
+      if (tab && eager) {
+        return { closed: eager.closed, tabId: tab.id, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
+      }
+      return { closed: false, tabId: sourceId };
     },
     []
   );
@@ -930,18 +938,19 @@ export function useTabManager() {
           i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) })
         );
         if (!confirmed) return { closed: false, tabId, reason: "dirty" };
-        let result: CloseTabResult = { closed: false, tabId };
+        // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+        // 确认弹窗 await 之后重新读提交态（期间状态可能已变）。
+        const eager = reduceForceCloseTab(tabStateRef.current, tabId);
         setTabState((prev) => {
           const r = reduceForceCloseTab(prev, tabId);
-          result = { closed: r.closed, tabId, reason: r.reason, newActiveTabId: r.newActiveTabId };
           return r.state ?? prev;
         });
-        return result;
+        return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
       }
-      let result: CloseTabResult = { closed: false, tabId };
+      // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+      const eager = reduceCloseTab(tabStateRef.current, tabId);
       setTabState((prev) => {
         const r = reduceCloseTab(prev, tabId);
-        result = { closed: r.closed, tabId, reason: r.reason, newActiveTabId: r.newActiveTabId };
         if (r.closed) {
           const closedTab = prev.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
           if (closedTab && !getTabBehavior(closedTab.type).isFallback) {
@@ -954,20 +963,20 @@ export function useTabManager() {
         }
         return r.state ?? prev;
       });
-      return result;
+      return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
     },
     []
   );
 
   const forceCloseTab = useCallback(
     (tabId: string): CloseTabResult => {
-      let result: CloseTabResult = { closed: false, tabId };
+      // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+      const eager = reduceForceCloseTab(tabStateRef.current, tabId);
       setTabState((prev) => {
         const r = reduceForceCloseTab(prev, tabId);
-        result = { closed: r.closed, tabId, reason: r.reason, newActiveTabId: r.newActiveTabId };
         return r.state ?? prev;
       });
-      return result;
+      return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
     },
     []
   );
