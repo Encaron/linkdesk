@@ -8,7 +8,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { FileTreeModel } from "../services/FileTreeModel";
 import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import type { ExplorerItem } from "../services/FileTreeModel";
-import type { FileEntry } from "@src/core/services/FileService";
+import type { FileEntry } from "@src/core/types/fileEntry";
 
 /* ── 辅助工厂 ── */
 

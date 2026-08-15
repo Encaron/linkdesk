@@ -6,7 +6,8 @@
  * 🔥 当前版本覆盖常见模式（**、*、! 取反）。后续可升级为 picomatch 做完整 glob。
  */
 
-import type { FileEntry } from "@src/core/services/FileService";
+// E5.7#62：FileEntry 直指 types/fileEntry 正源（#45.5 迁入；原 services/FileService re-export 已摘）——#97 契约类型落地后换 ambient DTO
+import type { FileEntry } from "@src/core/types/fileEntry";
 
 type MatchFn = (input: string) => boolean;
 

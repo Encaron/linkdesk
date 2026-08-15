@@ -64,7 +64,7 @@ window.linkdesk.pluginInstance.notifyReady()
 | `linkdesk.protocol` | ✅ listProtocols 等已在位 | registerParser 类按需（#61） |
 | `linkdesk.quickPick` | ❌ 不存在——真新建 | 池内渲染机制（#63） |
 | `linkdesk.hotExit` | ✅ 2026-08-15 新增（#38） | save/load/clear 三方法——崩溃恢复备份，主进程落盘 |
-| 零散 | ✅ 6/8 已在位；sidebar/data 现网无 | 验证（#62） |
+| 零散 | ✅ 6/6 验证在位（clipboard/keybindings/contextKey/search/encoding/langDef）；sidebar/data 现网无——零插件消费，按需跳过 | ✅ 完成（#62，2026-08-15） |
 
 > 🔴 2026-08-13 审计：原表"消 X 处 import"数字全部过期——plugins/ 实测运行时 import @src/core 仅 3 处（marketplace×2 + file-tree 测试×1）。E5.6#11.5 已把大部分命名空间补进 preload-pool，本表改为现网实测状态。
 
