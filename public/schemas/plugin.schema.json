@@ -13,8 +13,7 @@
     },
     "type": {
       "type": "string",
-      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。",
-      "enum": ["view", "card", "theme", "language", "protocol", "resource", "datasource"]
+      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。E5.7#66：enum 开放为任意字符串。"
     },
     "core": {
       "type": "boolean",
@@ -27,8 +26,7 @@
     },
     "pluginRole": {
       "type": "string",
-      "enum": ["view", "data"],
-      "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。"
+      "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。E5.7#66：enum 开放——第三方可声明新加载策略名。"
     },
     "appearsIn": {
       "type": "object",
@@ -63,7 +61,7 @@
     "iconSource": {
       "type": "string",
       "description": "图标来源",
-      "enum": ["codicon", "svg", "url"],
+      "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "description": {
@@ -269,10 +267,9 @@
     "permissions": {
       "type": "array",
       "description": "权限声明",
-      "$comment": "Phase 6 启用——serial/filesystem/network 权限白名单",
+      "$comment": "Phase 6 启用——serial/filesystem/network 为第一批白名单值。E5.7#66：enum 开放——第三方可声明新权限名（主进程解释）。",
       "items": {
-        "type": "string",
-        "enum": ["serial", "filesystem", "network"]
+        "type": "string"
       }
     },
     "iconLocation": {
@@ -318,10 +315,7 @@
         },
         "menus": {
           "type": "object",
-          "description": "菜单项声明——按 MenuId 分组",
-          "propertyNames": {
-            "enum": ["commandPalette", "tabContext", "editorContext", "extensionGear", "marketplaceItemGear", "menuBar", "fileContext", "cardContext", "quickSendContext", "iconBar", "settingItemGear"]
-          },
+          "description": "菜单项声明——按 MenuId 分组。壳内置注册点见 MenuRegistry MENU_SLOTS 常量表；E5.7#64 起 MenuId 开放字符串，第三方可声明任意新注册点（propertyNames enum 已删）。",
           "additionalProperties": {
             "type": "array",
             "items": {
@@ -373,7 +367,7 @@
                   "enum": { "type": "array" },
                   "enumDescriptions": { "type": "object", "description": "enum 值 → 显示名映射" },
                   "description": { "type": "string" },
-                  "uiHint": { "type": "string", "enum": ["fontFamily", "fontSize", "color", "file", "directory"], "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。" }
+                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" }
                 },
                 "additionalProperties": false
               }
