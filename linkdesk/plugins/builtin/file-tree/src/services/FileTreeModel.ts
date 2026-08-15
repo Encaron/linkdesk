@@ -8,7 +8,8 @@
  * VS Code 对标：src/vs/workbench/contrib/files/common/explorerModel.ts
  */
 
-import type { FileEntry } from "@src/core/services/FileService";
+// E5.7#62：FileEntry 直指 types/fileEntry 正源（#45.5 迁入；原 services/FileService re-export 已摘）——#97 契约类型落地后换 ambient DTO
+import type { FileEntry } from "@src/core/types/fileEntry";
 import type { FileDecoration } from "@src/core/registry/FileDecorationRegistry";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";

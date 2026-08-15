@@ -19,8 +19,7 @@ import { reportError } from "./ErrorService";
 
 /* ── 类型 ── */
 
-import type { FileEntry } from "../types/fileEntry"; // E5.7#45.5：shared/types.ts 迁入 core/types/
-export type { FileEntry };
+import type { FileEntry } from "../types/fileEntry"; // E5.7#45.5：shared/types.ts 迁入 core/types/。E5.7#62：不再 re-export——唯一消费方是 file-tree 插件 4 处 type import，已直指正源；re-export 保留会诱插件走服务路径（#53 桶陷阱同款）
 
 export interface FileChangeEvent {
   path: string;
