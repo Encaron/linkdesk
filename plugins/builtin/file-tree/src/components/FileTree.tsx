@@ -411,7 +411,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       <div style={{ height: totalHeight, position: "relative" }}>
         <div style={{ height: startIndex * TREE_ITEM_HEIGHT }} />
         {renderedItems.map(({ item, depth, compactedSegments, guide, isDimmed }, i) => (
-          <FileTreeNode key={item.uri} item={item} depth={depth} indent={0}
+          <FileTreeNode key={item.uri} item={item} decoration={item.decoration} depth={depth} indent={0}
             expanded={item.isDirectory && model.isExpanded(item.uri)}
             isSelected={selection.has(item.uri)} isFocused={item.uri === focusedUri}
             isDragSource={dndState.sourceUri === item.uri}

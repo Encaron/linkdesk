@@ -6,13 +6,16 @@
  */
 
 import React from "react";
-import type { ExplorerItem } from "../services/FileTreeModel";
+import type { ExplorerItem, FileDecoration } from "../services/FileTreeModel";
 import { getIconResolver } from "../services/FileIconResolver";
 import { useClickPreview } from "@src/hooks/useClickPreview";
 import { InlineInput } from "@src/components/shared/InlineInput";
 
 interface FileTreeNodeProps {
   item: ExplorerItem;
+  /** E5.7#60：装饰单独走 prop——item 是引用传递，装饰变更后 memo 浅比较全等会跳过重渲染（徽标永不出现）。
+   *  装饰对象每次重查都是新引用 → 有装饰的行随重查重渲染，无装饰的行保持 memo 跳过。 */
+  decoration?: FileDecoration;
   depth: number;
   isSelected: boolean;
   /** E4b #97: 键盘焦点——与选中分离，聚焦时有 outline */
@@ -57,6 +60,7 @@ function getFileIconClass(item: ExplorerItem, expanded: boolean): string {
 
 const FileTreeNode: React.FC<FileTreeNodeProps> = ({
   item,
+  decoration,
   depth,
   isSelected,
   isFocused,
@@ -183,13 +187,13 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       )}
 
       {/* 装饰器 badge */}
-      {item.decoration?.badge && (
+      {decoration?.badge && (
         <span
           className="file-tree-badge"
-          title={item.decoration.tooltip}
-          style={{ color: item.decoration.color ?? undefined }}
+          title={decoration.tooltip}
+          style={{ color: decoration.color ?? undefined }}
         >
-          {item.decoration.badge}
+          {decoration.badge}
         </span>
       )}
     </div>
