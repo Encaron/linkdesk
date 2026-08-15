@@ -13,14 +13,17 @@ import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
 import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
 import { clearLangDefs, getLangDef } from "../../core/registry/LangDefRegistry";
 
+// E5.7#95：测试夹具插件 ID——大写常量（linkdesk/no-plugin-id-hardcode 批准的常量通道）
+const TEST_PLUGIN_ID = "test-plugin";
+
 /* ── 辅助：清空注册表（每个测试前重置） ── */
 
 function resetRegistries() {
   // 用 clearLangDefs 清理 LangDefRegistry（模块级函数，无 unregisterAll）
   clearLangDefs();
   // LanguageRegistry / ThemeRegistry 继承 RegistryBase，有 unregisterAll
-  try { (LanguageRegistry as any).unregisterAll?.("test-plugin"); } catch { /* 无注册项 */ }
-  try { (ThemeRegistry as any).unregisterAll?.("test-plugin"); } catch { /* 无注册项 */ }
+  try { (LanguageRegistry as any).unregisterAll?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
+  try { (ThemeRegistry as any).unregisterAll?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
 }
 
 /* ── normalizeManifest 等价逻辑（loader.ts 内部纯函数，不导出——测试等价逻辑） ── */
@@ -143,19 +146,19 @@ describe("loader — parseContributions（export function）", () => {
   });
 
   it("contributes.themes → ThemeRegistry 注册", () => {
-    parseContributions("test-plugin", {
+    parseContributions(TEST_PLUGIN_ID, {
       themes: [{ id: "dark", label: "Dark", uiTheme: "dark", path: "dark.json" }],
     });
-    const themes = ThemeRegistry.getAll().filter((t) => (t as any).pluginId === "test-plugin");
+    const themes = ThemeRegistry.getAll().filter((t) => (t as any).pluginId === TEST_PLUGIN_ID);
     expect(themes.length).toBe(1);
     expect(themes[0].label).toBe("Dark");
   });
 
   it("contributes.languages → LanguageRegistry 注册", () => {
-    parseContributions("test-plugin", {
+    parseContributions(TEST_PLUGIN_ID, {
       languages: [{ id: "zh", label: "中文", path: "zh.json" }],
     });
-    const langs = LanguageRegistry.getAll().filter((l: any) => l.pluginId === "test-plugin");
+    const langs = LanguageRegistry.getAll().filter((l: any) => l.pluginId === TEST_PLUGIN_ID);
     expect(langs.length).toBeGreaterThanOrEqual(1);
     expect(langs.some((l: any) => l.label === "中文")).toBe(true);
   });
@@ -163,7 +166,7 @@ describe("loader — parseContributions（export function）", () => {
   it("contributes.langDefs 不注册壳侧 LangDefRegistry（E5.7#49 Registry 主进程化）", () => {
     // 迁移后写入方唯一 = 主进程 plugin-manifest-loader（启动扫盘 + 装/卸重扫），
     // 壳侧 parseContributions 不写本表——本测试钉住"壳不写"的新契约
-    parseContributions("test-plugin", {
+    parseContributions(TEST_PLUGIN_ID, {
       langDefs: [{ id: "python", extensions: [".py"] }],
     });
     expect(getLangDef(".py")).toBeUndefined();

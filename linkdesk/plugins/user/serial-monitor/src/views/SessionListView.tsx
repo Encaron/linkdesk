@@ -10,6 +10,7 @@ import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../hooks/useSerialSessions";
 
 import { SessionListItem } from "../components/SessionListItem";
+import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
 import "../styles/SerialMonitorSidebar.css";
 
 const lk = () => (window as any).linkdesk;
@@ -26,7 +27,7 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
     // E5.5#9m：直接订阅 plugin-state:changed——key 带端口前缀（如 COM3:isOpen），
     // pluginState.onChange 的精确 key 匹配无法捕获通配键名。
     const handler = (data: any) => {
-      if (data?.pluginId !== "serial-monitor") return;
+      if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":isOpen")) {
         const port = k.slice(0, -7); // "COM3:isOpen" → "COM3"

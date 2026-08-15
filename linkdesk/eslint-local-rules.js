@@ -1022,6 +1022,74 @@ const noDeletedE57Concepts = {
   },
 };
 
+// ═══ E5.7#95：pluginId 硬编码比较——no-restricted-syntax 原 pluginId selector 收窄 + 补盲点 ═══
+// 原 selector（no-restricted-syntax warn 级）：BinaryExpression > Literal[/^[a-z]/]——匹配任何
+// 与小写字符串字面量的比较，误伤率极高（label === "typescript" 等合法 tag 判别，294 处）。
+// #95 收窄到 pluginId 语境（左操作数名字含 plugin/pluginId）+ 补 switch/includes 两种同危害类盲点。
+// 独立成局原因同 no-deleted-e5.7-concepts（#45 实测：flat config 同规则跨块合并高 severity 胜出、
+// 低 severity options 被丢弃）——本规则 error 级 + v3- selector 保留 warn 级在 no-restricted-syntax，两防线共存。
+
+const noPluginIdHardcode = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "E5.7#95 禁止 pluginId 语境下的硬编码比较（含 switch/includes 盲点 + 可选链形态）",
+      recommended: true,
+    },
+    messages: {
+      noPluginIdHardcode:
+        "🚫 禁止 pluginId 硬编码比较。插件 ID 是动态的——新插件不应触发壳代码修改。请读 plugin.json 声明字段或 Registry 查询；" +
+        "确为壳内部已知插件请用大写常量（如 FALLBACK_PLUGIN_ID）代替裸字符串。",
+    },
+  },
+
+  create(context) {
+    // 解开可选链包裹（data?.pluginId → ChainExpression.expression）
+    const unwrap = (node) => (node?.type === "ChainExpression" ? node.expression : node);
+
+    // 语境判定：名字含 plugin 的 Identifier / MemberExpression 属性（pluginId/activePlugin/pluginIds……）
+    const pluginishName = (node) => {
+      const u = unwrap(node);
+      if (!u) return null;
+      if (u.type === "Identifier") return u.name;
+      if (u.type === "MemberExpression") return u.property?.name ?? null;
+      return null;
+    };
+
+    const isLowerLiteral = (node) =>
+      node?.type === "Literal" && typeof node.value === "string" && /^[a-z]/.test(node.value);
+
+    return {
+      // pluginId === "editor" / data?.pluginId !== "serial-monitor"
+      BinaryExpression(node) {
+        if (!/^[!=]==?$/.test(node.operator)) return;
+        if (!isLowerLiteral(node.right)) return;
+        if (!/plugin/i.test(pluginishName(node.left) ?? "")) return;
+        context.report({ node, messageId: "noPluginIdHardcode" });
+      },
+      // 盲点 1：switch (pluginId) { case "literal" }——原 selector 拦不住
+      // （node.cases 自带 case 列表，无需父节点查找——ESLint 9 sourceCode 无 getParent）
+      SwitchStatement(node) {
+        if (!/plugin/i.test(pluginishName(node.discriminant) ?? "")) return;
+        for (const c of node.cases) {
+          if (isLowerLiteral(c.test)) {
+            context.report({ node: c.test ?? c, messageId: "noPluginIdHardcode" });
+          }
+        }
+      },
+      // 盲点 2：pluginIds.includes("literal")——同危害类归一化
+      CallExpression(node) {
+        if (node.callee?.type !== "MemberExpression") return;
+        const callee = node.callee;
+        if (!callee.property || callee.property.name !== "includes") return;
+        if (!node.arguments.some(isLowerLiteral)) return;
+        if (!/plugin/i.test(pluginishName(callee.object) ?? "")) return;
+        context.report({ node, messageId: "noPluginIdHardcode" });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
@@ -1035,4 +1103,5 @@ export default {
   "no-core-import-in-plugin": noCoreImportInPlugin,
   "no-hardcoded-chinese": noHardcodedChinese,
   "no-deleted-e5.7-concepts": noDeletedE57Concepts,
+  "no-plugin-id-hardcode": noPluginIdHardcode,
 };
