@@ -9,6 +9,7 @@
 // statusBar 用 events.on("plugin-state:changed") 通配订阅，从键名后缀匹配。
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
 
 const lk = () => (window as any).linkdesk;
 
@@ -17,7 +18,7 @@ function useIsOpen(): boolean {
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
     const handler = (data: any) => {
-      if (data?.pluginId !== "serial-monitor") return;
+      if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":isOpen") && typeof data.value === "boolean") {
         setIsOpen(data.value);
@@ -34,7 +35,7 @@ function useSerialStats(): { txBytes: number; rxBytes: number } {
   const [stats, setStats] = useState({ txBytes: 0, rxBytes: 0 });
   useEffect(() => {
     const handler = (data: any) => {
-      if (data?.pluginId !== "serial-monitor") return;
+      if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":txBytes") && typeof data.value === "number") {
         setStats((p) => ({ ...p, txBytes: data.value as number }));

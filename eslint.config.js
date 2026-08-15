@@ -49,13 +49,10 @@ export default [
           selector: "Identifier[name=/^(__)?[vV]3[A-Z_]/]",
           message: "🚫 禁止新增 v3 前缀标识符。请改用 linkdesk 或描述性名称。",
         },
-        // ═══ E5.5#10：插件独立铁律——禁止 pluginId 硬编码比较 ═══
-        // if (t.pluginId === "editor") / if (pluginId === "serial-monitor") 等
-        // 🔥 插件 ID 是动态的——新插件 ID 不应触发壳代码修改。应读 plugin.json 声明字段。
-        {
-          selector: "BinaryExpression[operator=/^[!=]==?$/] > Literal[value=/^[a-z]/]",
-          message: "🚫 疑似 pluginId 硬编码比较。禁止 if (xxx.pluginId === \"字面量\")——请改为读 plugin.json 声明字段或 Registry 查询。如确为壳内部常量，请用大写常量（如 FALLBACK_PLUGIN_ID）代替裸字符串。",
-        },
+        // ═══ E5.5#10 → E5.7#95：pluginId 硬编码比较已收窄 + 补盲点后独立成局 ═══
+        // 原宽 selector（任何与小写字符串字面量的比较，294 处误伤）已由
+        // linkdesk/no-plugin-id-hardcode（error 级）取代——selector 收窄到 pluginId 语境
+        // + 补 switch(pluginId)/arr.includes 盲点。详见 eslint-local-rules.js noPluginIdHardcode。
       ],
 
       // ═══ #59c 硬约束 13：async init 竞态 ═══
@@ -88,6 +85,10 @@ export default [
       // 条目——flat config 同规则跨块合并时高 severity 胜出且低 severity 的 options 被丢弃，
       // 实测会静默吞掉上方 warn 级 v3-/pluginId 硬编码选择器（859→537 警告消失）。
       "linkdesk/no-deleted-e5.7-concepts": "error",
+
+      // ═══ E5.7#95：pluginId 硬编码比较（error）——原 no-restricted-syntax pluginId selector
+      // 收窄 + switch/includes 盲点后的独立规则（#45 实测：同规则跨块合并会吞低 severity options）═══
+      "linkdesk/no-plugin-id-hardcode": "error",
 
       // ═══ 防止副作用写在 setState 内部（B25 教训） ═══
       // 此规则在 TypeScript 层面无法精确检测，由 code review 辅助。
