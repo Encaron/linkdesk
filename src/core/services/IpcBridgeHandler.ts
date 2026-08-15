@@ -31,6 +31,10 @@ import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders, setActiveW
 import { pushToast, dismissToast, updateToast } from "./toast";
 import type { ToastSeverity } from "./toast";
 import i18n from "../../i18n";
+// E5.7#70：tabs:create 未知类型兜底——对标 VS Code 文本编辑器 fallback。
+// 壳政策常量（硬约束 10 白名单例外）：未声明类型的开标签请求路由到编辑器插件。
+// 为什么是编辑器：tabs:create 语义 = "打开点什么"——编辑器是唯一无参数可开的通用内容容器。
+const DEFAULT_TAB_TYPE = "editor";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation——池插件跨进程查询
@@ -303,8 +307,8 @@ export function initIpcBridgeHandler(): void {
         // ── E5#68：标签页操作——插件调壳的 tabs API ──
         case "tabs:create": {
           const [type, opts] = req.args as [string, Record<string, unknown>?];
-          // E5#99：壳统一守卫——未知类型路由到 editor（对标 VS Code 文本编辑器 fallback）
-          shellEvents.emit("tab:create", { type: type || "editor", opts });
+          // E5#99：壳统一守卫——未知类型路由到编辑器（对标 VS Code 文本编辑器 fallback）
+          shellEvents.emit("tab:create", { type: type || DEFAULT_TAB_TYPE, opts });
           break;
         }
         case "tabs:openOrFocus": {
