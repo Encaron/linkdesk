@@ -20,7 +20,7 @@
 | Registry | 模块级状态 | 写入方（进程） | 读取方（进程） | 跨进程通路 | 状态 |
 |:--|:--|:--|:--|:--|:--|
 | **LangDefRegistry** | `_extMap` | loader.ts:613（壳） | 池编辑器 EditorView → `lk.langDef.get` → `plugins:call 'getLangDef'` → 壳 IpcBridgeHandler:521 | ✅ 已代理（2 跳）。主进程 lang-def-handlers `langDef:get` **零调用死 handler**（读主进程空实例，头注释与事实相反） |
-| **ProtocolRegistry** | `_protocols` / `_activeProtocolId` | loader + App.tsx:217 ensureBuiltinProtocols（壳） | 池 ControlPanel → `lk.protocol.*` → `plugins:call` → 壳:537-552；壳 DataDispatch/CardRegistry（遗留） | ✅ 已代理。主进程 protocol-handlers **自封废弃 fallback**（3 handler 读主进程空实例，零直调） |
+| **ProtocolRegistry** | `_protocols` / `_activeProtocolId` | App.tsx:218 ensureBuiltinProtocols（壳）——**勘误：矩阵初版记"loader 写入"有误，loader 零协议注册（grep 实证）；协议唯一注册方是内置方括号协议，无插件 plugin.json 注册协议** | 池 ControlPanel → `lk.protocol.*` → `plugins:call` → 壳:537-552；壳 DataDispatch/CardRegistry（遗留） | ✅ 已代理。主进程 protocol-handlers **自封废弃 fallback**（3 handler 读主进程空实例，零直调） |
 | **FileAssociationService** | `_associations` | loader.ts:594（壳） | 池 FoldersView:376 / SearchView:139 → `lk.fileAssociation` → `fileAssociation:getPluginFor` 代理（PROXY_CHANNELS:79）→ 壳:187 | ✅ 已代理。主进程无实例（设计稿"文件打开路由主进程决策"与现状不符——路由在壳 tabs:create） |
 | **CommandRegistry** | `_commands` / `_pluginCommands` / `_poolRuntimeCommands` / `_poolPending` | loader + 壳命令模块 + 池 meta 回传（commands:register，Bug C 补全） | 壳（面板/菜单/执行）+ 池执行（Bug C 转发桥 executeInPool） | ✅ 已代理 + 转发桥（真相源声明已写入三处注释）。**漏网：marketplace/index.tsx:15 池内直 import registerCommand → 写池空实例（活 bug，#56 修）** |
 | **MenuRegistry** | `_menus` / `_titleBar` | loader + 壳 coreCommands/shellMenus 等 | 壳 MenuRenderer/pushLayout；池经 `menu:getItems` 代理（壳侧 when+翻译一站式） | ✅ 已代理（#14 聪慧→哑桥） |
