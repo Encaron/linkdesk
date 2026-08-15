@@ -85,6 +85,11 @@ export class IpcBridge {
     'encoding:detect',
     'encoding:decode',
     'encoding:encode',
+    // E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（render 等函数字段池侧 preload 已白名单剥壳）
+    'viewContainer:getContainer',
+    'viewContainer:getViews',
+    'viewContainer:getView',
+    'viewContainer:registerView',
   ];
 
   constructor(

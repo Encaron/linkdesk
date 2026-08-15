@@ -36,7 +36,7 @@ import { onPluginLifecycleChange } from "../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation + decorations——池插件跨进程查询
 import { FileDecorationRegistry } from "../registry/FileDecorationRegistry";
 // E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载
-import { ViewContainerService } from "./ViewContainerService";
+import { ViewContainerService, type ViewDescriptor } from "./ViewContainerService";
 // E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
 import { searchFiles } from "./FileSearcher";
 import { EncodingService } from "./EncodingService";
@@ -68,6 +68,17 @@ let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区
 let _workspaceActiveUnsub: (() => void) | null = null; // E5.6#11.5-A：活跃工作区变更广播
 let _decorationsUnsub: (() => void) | null = null; // E5.6#11.5-A：文件装饰变更广播
 let _viewsUnsub: (() => void) | null = null; // E5.6#19e：ViewContainerService 视图变更广播
+
+/**
+ * E5.7#58：ViewDescriptor → 可序列化 DTO——剥 render/actions/pinnedContent（函数/React 节点，
+ * IPC 结构化克隆拒绝）+ _pluginId/_renderPath（注册表内部标记，非插件 API 面）。
+ * 与 preload-pool 的 viewContainer 写方向白名单同一套公开字段对齐（读方向）。
+ */
+function toViewDto(v: ViewDescriptor): Record<string, unknown> {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段剥壳
+  const { render: _render, actions: _actions, pinnedContent: _pinned, _pluginId: _pid, _renderPath: _rp, ...pub } = v as any;
+  return pub;
+}
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -219,6 +230,32 @@ export function initIpcBridgeHandler(): void {
         case "encoding:encode": {
           const [text, encoding] = req.args as [string, string];
           result = EncodingService.encode(text, encoding);
+          break;
+        }
+
+        // ── E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（元数据 DTO）──
+        case "viewContainer:getContainer": {
+          const [id] = req.args as [string];
+          result = ViewContainerService.getViewContainer(id);
+          break;
+        }
+        case "viewContainer:getViews": {
+          const [containerId] = req.args as [string];
+          result = ViewContainerService.getViews(containerId).map(toViewDto);
+          break;
+        }
+        case "viewContainer:getView": {
+          const [viewId] = req.args as [string];
+          const view = ViewContainerService.getView(viewId);
+          result = view ? toViewDto(view) : undefined;
+          break;
+        }
+        case "viewContainer:registerView": {
+          // 池侧 preload 已白名单剥壳（render/actions/pinnedContent 不可过 invoke）——
+          // 到达此处的 DTO 只有公开元数据。壳侧注册表对缺 render 的更新保留原 render
+          // （ViewContainerService.registerView 内置逻辑）——元数据更新语义，渲染组件不受影响。
+          const [pluginId, containerId, descriptor] = req.args as [string, string, Record<string, unknown>];
+          ViewContainerService.registerView(pluginId, containerId, descriptor as unknown as ViewDescriptor);
           break;
         }
 
@@ -374,10 +411,12 @@ export function initIpcBridgeHandler(): void {
   _decorationsUnsub = decoUnsub;
 
   // ── E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载 ──
+  // E5.7#58 修复：① 通道名改 camelCase——与 marketplace 订阅 "viewContainer:changed" 对齐
+  // （连字符版自 #19e 落地起订阅方零触发）；② payload 走 toViewDto——剥 render/actions/
+  // pinnedContent + 内部标记（原实现只剥 render，未来 actions 含 React 节点时 events.emit
+  // 的 IPC 结构化克隆会抛 DataCloneError）
   const viewsUnsub = ViewContainerService.onDidChangeViews.event(({ containerId, views }) => {
-    // 剥离不可序列化的 render 属性（对标 getCommands 剥离 handler）
-    const safe = views.map(({ render: _r, ...rest }) => rest);
-    try { linkdesk.events?.emit("view-container:changed", { containerId, views: safe }); } catch { /* 静默 */ }
+    try { linkdesk.events?.emit("viewContainer:changed", { containerId, views: views.map(toViewDto) }); } catch { /* 静默 */ }
   });
   _viewsUnsub = viewsUnsub;
 }

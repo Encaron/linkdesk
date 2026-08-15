@@ -145,6 +145,66 @@ type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, settle
 let _quickPickHostFn: PluginQuickPickHostFn | null = null;
 const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; settle: PluginQuickPickSettle; reject: (e: Error) => void }> = [];
 
+// ── E5.7#58：viewContainer——池侧真 IPC（问壳侧 ViewContainerService 注册表）──
+// 元数据单向流：壳注册表 = 真相源 → pushLayout 推池渲染；插件查询/更新走代理通道问壳。
+// 跨进程边界：contextBridge 虽代理嵌套函数（2026-08-15 最小 Electron 实验实证——对象内
+// 函数不抛错、Symbol 被消化），但下一步 ipcRenderer.invoke 走真结构化克隆——render/
+// actions/pinnedContent 函数字段会抛 DataCloneError → 写方向必须白名单剥壳再 invoke。
+// 壳侧注册表对缺 render 的更新保留原 render（ViewContainerService.registerView 内置
+// 逻辑）——元数据更新语义成立，渲染组件不受影响。
+// DTO 形状与 src/core/services/ViewContainerService.ts 的可序列化子集对齐
+// ——preload 不 import src（构建边界）。字段清单与 IpcBridgeHandler.toViewDto（读方向）同一套。
+
+type ViewContainerDtoShape = {
+  id: string;
+  title: string;
+  icon?: string;
+  location?: string;
+  hideIfEmpty?: boolean;
+  order?: number;
+  mergeHeaderWhenSingle?: boolean;
+};
+
+type ViewDtoShape = {
+  id: string;
+  title: string;
+  role?: string;
+  when?: string;
+  order?: number;
+  collapsed?: boolean;
+  canToggleVisibility?: boolean;
+  canMoveView?: boolean;
+  hideByDefault?: boolean;
+  titleDescription?: string;
+  singleViewPaneContainerTitle?: string;
+  minHeight?: number;
+  showActions?: string;
+  titleTooltip?: string;
+  badge?: string | number;
+};
+
+/** 写方向白名单——插件 descriptor 中可跨 IPC 的公开元数据字段（render/actions/pinnedContent
+ *  是函数/React 节点——invoke 结构化克隆抛错，池侧剥掉；壳侧更新保留原 render）。 */
+function toViewMetaDto(descriptor: Record<string, unknown>): Record<string, unknown> {
+  return {
+    id: descriptor.id,
+    title: descriptor.title,
+    role: descriptor.role,
+    when: descriptor.when,
+    order: descriptor.order,
+    collapsed: descriptor.collapsed,
+    canToggleVisibility: descriptor.canToggleVisibility,
+    canMoveView: descriptor.canMoveView,
+    hideByDefault: descriptor.hideByDefault,
+    titleDescription: descriptor.titleDescription,
+    singleViewPaneContainerTitle: descriptor.singleViewPaneContainerTitle,
+    minHeight: descriptor.minHeight,
+    showActions: descriptor.showActions,
+    titleTooltip: descriptor.titleTooltip,
+    badge: descriptor.badge,
+  };
+}
+
 // ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
 // 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
 // 刻意不经 React/命名空间 API：pong 必须在 React mount 前就存在——池加载窗口（主进程
@@ -788,12 +848,16 @@ try {
         ipcRenderer.invoke('encoding:encode', text, encoding),
     },
 
-    // ── 🆕 E5.6#11.5a：viewContainer——池侧 no-op（壳的 loader.ts 已注册视图）──
+    // ── E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表，见模块级白名单注释）──
     viewContainer: {
-      registerView: (_pluginId: string, _containerId: string, _descriptor: any) => {
-        // 池侧 no-op——壳的 loader.ts 已经在壳进程注册了所有视图
-      },
-      getView: (_viewId: string) => null,
+      getViewContainer: (id: string): Promise<ViewContainerDtoShape | undefined> =>
+        ipcRenderer.invoke('viewContainer:getContainer', id),
+      getViews: (containerId: string): Promise<ViewDtoShape[]> =>
+        ipcRenderer.invoke('viewContainer:getViews', containerId),
+      getView: (viewId: string): Promise<ViewDtoShape | undefined> =>
+        ipcRenderer.invoke('viewContainer:getView', viewId),
+      registerView: (pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void> =>
+        ipcRenderer.invoke('viewContainer:registerView', pluginId, containerId, toViewMetaDto(descriptor)),
     },
 
     // ── E5.6#11.5i → E5.7#49：langDef——语言定义注册表（主进程 LangDefRegistry）──
