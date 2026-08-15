@@ -58,21 +58,6 @@ export default [
         },
       ],
 
-      // ═══ Phase 3→4 硬约束：标签页系统不持有 CardRegistry ═══
-      // lifecycle.ts 是插件卸载清理——不是标签页系统，是合法的。
-      "no-restricted-imports": [
-        "error",
-        {
-          patterns: [
-            {
-              group: ["**/CardRegistry*", "**/cardRegistry*", "**/card-registry*"],
-              message:
-                "🚫 硬约束：标签页系统不持有/访问/导入 CardRegistry。唯一接触点 = Tab.workspaceName: string。",
-            },
-          ],
-        },
-      ],
-
       // ═══ #59c 硬约束 13：async init 竞态 ═══
       "linkdesk/no-async-init-guard-only": "error",
 
@@ -161,16 +146,6 @@ export default [
     files: ["electron/plugin-manifest-loader.ts", "electron/ipc/registry-handlers.ts"],
     rules: {
       "@typescript-eslint/no-restricted-imports": "off",
-    },
-  },
-
-  // ═══ CardRegistry 硬约束例外 ═══
-  // lifecycle.ts = 插件卸载清理——不是标签页系统
-  // RegistryLifecycle.test.ts = 测试插件卸载清理路径
-  {
-    files: ["src/pluginLoader/lifecycle.ts", "src/core/__tests__/RegistryLifecycle.test.ts"],
-    rules: {
-      "no-restricted-imports": "off",
     },
   },
 

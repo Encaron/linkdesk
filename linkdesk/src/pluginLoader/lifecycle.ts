@@ -20,7 +20,6 @@ import { unregisterConfiguration, unregisterConfigurationDefaults } from "../cor
 import { unregisterPluginCommands } from "../core/registry/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry";
 import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/MenuRegistry";
-import { unregisterPluginCards } from "../core/registry/CardRegistry";
 import { unregisterPluginChannels } from "../core/services/LogChannel";
 import { unregisterPluginThemes } from "../core/services/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
@@ -103,7 +102,7 @@ export function initLifecycleConsumers(): void {
   /* ─── 消费端 2b：注册表全量清理（Phase 5 验收 B2——6 个 unregister* 从未被调用） ─── */
 
   PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 10 个注册表
+    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
     // E36#4.7: ViewContainerService 显式清理（RegistryBase 自动处理程序已覆盖，idempotent）
     // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
     import("../core/services/ViewContainerService").then(({ ViewContainerService }) => {
@@ -115,7 +114,8 @@ export function initLifecycleConsumers(): void {
     unregisterPluginTitleBarContributions(pluginId);
     // E5.7#49：unregisterPluginProtocols 已删——ProtocolRegistry 唯一实例在主进程，
     // 卸载清理由 loader 的 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
-    unregisterPluginCards(pluginId);
+    // E5.7#45.7：unregisterPluginCards 已删——CardRegistry 整删（Phase 5 柱子 5 骨架，
+    // registerCard 全仓零调用，卡片工作台插件从未存在于此树；未来重建走插件自持注册表）
     unregisterPluginChannels(pluginId);
     // E5.7#50：unregisterPluginFileAssociations 已删——FileAssociationService 唯一实例在主进程，
     // 卸载清理由 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
