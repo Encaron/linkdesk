@@ -136,6 +136,8 @@ export default function SessionListView() {
   // E5.6#11.5h：原 activateSidebarItem 函数体内联——tabs.create(pluginId, { sourceId, ...opts })
   const handleSelectSession = useCallback(
     (sessionId: string) => {
+      // [BUG-A-P1] 临时埋点——诊断右键菜单空：会话点击 → tabs.create 是否到达池 preload
+      console.error("[BUG-A-P1] handleSelectSession", JSON.stringify({ sessionId, hasTabs: !!tabs }));
       setActiveSession(sessionId);
       const session = sessions.find((s) => s.id === sessionId);
       if (tabs) {
