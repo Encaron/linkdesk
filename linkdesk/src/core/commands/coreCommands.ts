@@ -94,7 +94,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeTab",
     title: "关闭",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.closeTab(ctx.tabId);
     },
@@ -105,7 +105,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeOtherTabs",
     title: "关闭其他",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
         const group = getCallbacks()?.findGroupByTabId(ctx.tabId);
@@ -119,7 +119,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeRightTabs",
     title: "关闭右侧",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) {
         const group = getCallbacks()?.findGroupByTabId(ctx.tabId);
@@ -136,7 +136,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.splitDown",
     title: "向下分屏",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "vertical");
     },
@@ -147,7 +147,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.splitRight",
     title: "向右分屏",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.splitTab(ctx.tabId, "horizontal");
     },
@@ -162,7 +162,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.closeAllTabs",
     title: "关闭全部",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string; groupId?: string } | undefined;
       if (ctx?.groupId) getCallbacks()?.closeAllTabs(ctx.groupId);
     },
@@ -173,7 +173,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.duplicateTab",
     title: "复制标签页",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.duplicateTab(ctx.tabId);
     },
@@ -184,7 +184,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "core.togglePin",
     title: "固定/取消固定",
     category: "标签页",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { tabId?: string } | undefined;
       if (ctx?.tabId) getCallbacks()?.pinTab(ctx.tabId);
     },
@@ -198,7 +198,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.resetSetting",
     title: "重置此设置",
     category: "首选项",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
@@ -218,7 +218,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingId",
     title: "复制设置 ID",
     category: "首选项",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
@@ -234,7 +234,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     id: "workbench.action.copySettingAsJson",
     title: "复制为 JSON",
     category: "首选项",
-    handler: async (_token, ...args) => {
+    handler: async (...args) => {
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;

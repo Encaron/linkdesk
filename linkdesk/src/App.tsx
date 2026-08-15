@@ -203,7 +203,7 @@ function App() {
         id: "color-picker.pick",
         title: t("选择颜色…"),
         category: t("开发人员"),
-        handler: async (_token, ...args: unknown[]) => {
+        handler: async (...args: unknown[]) => {
           const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
           const color = await import("./components/shared/ColorPicker").then(m =>
             m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets })

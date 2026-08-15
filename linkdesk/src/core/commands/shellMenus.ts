@@ -46,7 +46,7 @@ export function registerShellMenus(): void {
     id: "workbench.action.toggleContainerCollapse",
     title: "折叠",
     category: "视图",
-    handler: async (_token: unknown, ...args: unknown[]) => {
+    handler: async (...args: unknown[]) => {
       const ctx = args[0] as { containerId?: string } | undefined;
       if (ctx?.containerId) shellEvents.emit("view:toggleCollapse", { containerId: ctx.containerId });
     },
@@ -55,7 +55,7 @@ export function registerShellMenus(): void {
     id: "workbench.action.resetContainerPosition",
     title: "重置位置",
     category: "视图",
-    handler: async (_token: unknown, ...args: unknown[]) => {
+    handler: async (...args: unknown[]) => {
       const ctx = args[0] as { containerId?: string } | undefined;
       if (ctx?.containerId) shellEvents.emit("view:resetPosition", { containerId: ctx.containerId });
     },
@@ -66,7 +66,7 @@ export function registerShellMenus(): void {
     id: "workbench.action.toggleViewVisibility",
     title: "切换视图可见性",
     category: "视图",
-    handler: async (_token: unknown, ...args: unknown[]) => {
+    handler: async (...args: unknown[]) => {
       const ctx = args[0] as { viewId?: string; containerId?: string } | undefined;
       if (ctx?.viewId) shellEvents.emit("view:toggleVisibility", { viewId: ctx.viewId, containerId: ctx.containerId });
     },

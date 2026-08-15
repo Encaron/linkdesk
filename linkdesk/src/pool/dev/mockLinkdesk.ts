@@ -117,7 +117,7 @@ export function installMockLinkdesk(): void {
   const executeCommand = (id: string, ...args: unknown[]) => {
     const handler = poolCommands.get(id);
     if (handler) {
-      // 壳侧 executeCommand(id, token, ...realArgs) 的 token 占位剥离（preload-pool 同款）
+      // E5.7#63.8 全仓归一：token 占位剥离——壳 CommandRegistry / 池 preload / 本 mock 三处同语义，handler 只收 realArgs
       const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
       return Promise.resolve(handler(...realArgs));
     }
