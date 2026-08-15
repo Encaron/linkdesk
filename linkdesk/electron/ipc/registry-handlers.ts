@@ -17,6 +17,7 @@ import {
   getActiveProtocolId,
   setActiveProtocol,
 } from '../../src/core/registry/ProtocolRegistry.js';
+import { getPluginFor } from '../../src/core/services/FileAssociationService.js';
 
 let _registered = false;
 
@@ -47,4 +48,9 @@ export function registerRegistryHandlers(): void {
   ipcMain.handle('protocol:setActiveProtocolId', (_event, protocolId: string) => {
     setActiveProtocol(protocolId);
   });
+
+  // E5.7#50：FileAssociation 直连——原 PROXY_CHANNELS 代理（主进程→壳）拉直为主进程直答
+  ipcMain.handle('fileAssociation:getPluginFor', (_event, extension: string) =>
+    getPluginFor(extension)
+  );
 }

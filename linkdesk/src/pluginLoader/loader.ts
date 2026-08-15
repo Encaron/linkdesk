@@ -42,7 +42,6 @@ import { getConfigurationValue, setConfigurationValue } from "../core/services/C
 import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
-import { registerFileAssociation } from "../core/services/FileAssociationService";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
@@ -581,23 +580,8 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     } catch (e) { console.error("[loader] views 注册失败:", e); }
   }
 
-  // contributes.fileAssociations → FileAssociationService（E2c #13a）
-  if (c.fileAssociations) {
-    const list = c.fileAssociations as Array<{
-      extension: string;
-      pluginId: string;
-      command?: string;
-      displayName?: string;
-    }>;
-    for (const fa of list) {
-      registerFileAssociation({
-        extension: fa.extension,
-        pluginId: pluginId,
-        command: fa.command,
-        displayName: fa.displayName,
-      });
-    }
-  }
+  // E5.7#50：contributes.fileAssociations 壳侧注册已删——唯一写入方是主进程
+  // plugin-manifest-loader（启动扫盘 + 装/卸重扫）
 
   // E5.7#49：contributes.langDefs 壳侧注册已删——Registry 主进程化后唯一写入方是
   // 主进程 plugin-manifest-loader（启动扫盘 + 装/卸重扫）

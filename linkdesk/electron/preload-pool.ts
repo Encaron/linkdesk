@@ -685,7 +685,9 @@ try {
       cancel: () => ipcRenderer.send('pool:dialog-action', { type: 'cancel' }),
     },
 
-    // ── 🆕 E5.6#11.5a：文件关联——扩展名→插件ID ──
+    // ── E5.6#11.5a → E5.7#50：文件关联——扩展名→插件ID（主进程 FileAssociationService）──
+    // Registry 主进程化：plugin-manifest-loader 预加载进主进程实例，registry-handlers 直答
+    // （通道名不变，原"主进程→壳代理"拉直为主进程直答，池侧零改动）
     fileAssociation: {
       getPluginFor: (ext: string): Promise<string | undefined> =>
         ipcRenderer.invoke('fileAssociation:getPluginFor', ext),
