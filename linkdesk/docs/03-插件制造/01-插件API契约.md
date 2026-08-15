@@ -38,6 +38,7 @@
 | `hotExit.*` | Hot Exit 备份 | ✅ | **E5.7#38**——崩溃恢复脏内容落盘 |
 | `dialog.*` | 弹窗 | ✅ | **E5#67**——confirm/alert |
 | `quickPick.*` | 选择器 | ✅ | **E5.7#63**——show()，池内本地桥 |
+| `viewContainer.*` | 视图容器 | ✅ | **E5.7#58**——注册表查询 + 元数据更新 |
 | `events.*` | 发布/订阅 | ✅ | |
 | `p2p.*` | 插件间推流 | ✅ | **E5#65** |
 | `theme.*` | 主题查询 | ✅ | |
@@ -330,6 +331,35 @@ window.linkdesk.quickPick.show(opts: {
 | `opts.items` 非数组 | reject `Error` |
 
 **注意：** 条目 `label` 等文案由插件自带（插件作者自翻译，壳不 t() 插件数据）。插件在壳进程的执行半程（双进程入口执行）调 `show` 会因壳侧无此 API 而 no-op——选择器只在池内渲染，调用应放在组件 effect 内。
+
+### 3.23 `viewContainer`——视图容器 🆕 E5.7#58
+
+壳侧 ViewContainerService 注册表的跨进程查询/更新面。**元数据单向流**：视图注册以 plugin.json 的 `contributes.views` 为准（壳 loader 加载并分配组件路径），本命名空间只查询元数据 / 更新既有视图的元数据（标题、徽标等）——壳注册表变化会触发布局重推，池内标题实时刷新。
+
+```typescript
+window.linkdesk.viewContainer.getViewContainer(id: string): Promise<ViewContainerDto | undefined>
+  // ViewContainerDto = { id, title, icon?, location?, hideIfEmpty?, order?, mergeHeaderWhenSingle? }
+
+window.linkdesk.viewContainer.getViews(containerId: string): Promise<ViewDto[]>
+window.linkdesk.viewContainer.getView(viewId: string): Promise<ViewDto | undefined>
+  // ViewDto = { id, title, role?, when?, order?, collapsed?, canToggleVisibility?,
+  //            canMoveView?, hideByDefault?, titleDescription?, singleViewPaneContainerTitle?,
+  //            minHeight?, showActions?, titleTooltip?, badge? }
+  // 🔥 render/actions/pinnedContent 是函数/React 节点，不可跨进程——查询结果不含这些字段
+
+window.linkdesk.viewContainer.registerView(pluginId: string, containerId: string, descriptor: ViewDto): Promise<void>
+```
+
+语义约定：
+
+| 情况 | 结果 |
+|---|---|
+| `registerView` 更新已有视图（同 pluginId+id） | 元数据覆盖，`render` 保留原组件（渲染不受影响） |
+| `registerView` 的 id 未在 plugin.json 声明 | 壳侧创建元数据条目——但池无组件路径可渲染，视图空白（请在 plugin.json 声明视图） |
+| 查询不存在的容器/视图 | `undefined` / `[]` |
+| `descriptor` 传 `render`/`actions`/`pinnedContent` | 池侧白名单剥掉（不可跨 IPC），其余字段照常更新 |
+
+**典型用法：** 视图标题随运行时状态变化（如串口会话名）——effect 里 `registerView(pluginId, containerId, { id, title })`，壳注册表更新 → 布局重推 → 池侧栏标题实时刷新。
 
 ---
 
