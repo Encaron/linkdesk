@@ -12,7 +12,7 @@
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
-import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, unregisterPoolCommands } from "../registry/CommandRegistry";
+import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../registry/CommandRegistry";
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
@@ -118,6 +118,13 @@ export function initIpcBridgeHandler(): void {
           // （命令面板可见性 + 动态 toggle 标题）；runtime 命令以占位条目登记，执行走转发桥。
           const [commandId, meta] = req.args as [string, { title?: string; category?: string; when?: string } | null];
           registerPoolCommandMetadata(commandId, meta ?? {});
+          break;
+        }
+        case "commands:registerShell": {
+          // E5.7#56：壳侧插件入口注册命令（双进程执行——壳 glob loader 侧半程真注册，
+          // handler 存壳 preload 页面世界代理，执行走 _executeShellLocal 桥）
+          const [commandId, meta] = req.args as [string, { title?: string; category?: string; when?: string } | null];
+          registerShellLocalCommand(commandId, meta ?? {});
           break;
         }
         case "commands:unregister": {

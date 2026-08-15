@@ -46,6 +46,8 @@ export class IpcBridge {
     'commands:executeResult',
     // E5.7 Bug C 补全：池侧命令元数据同步——registerCommand 的 title/category/when 回传壳注册表
     'commands:register',
+    // E5.7#56：壳侧插件入口模块级注册（双进程执行的壳侧半程）——壳 preload 经主进程回壳
+    'commands:registerShell',
     'commands:unregister',
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
     'dialog:confirm',

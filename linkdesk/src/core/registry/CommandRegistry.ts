@@ -138,6 +138,37 @@ export function registerPoolCommandMetadata(
 }
 
 /**
+ * 壳侧插件入口注册命令——E5.7#56 双进程执行归一化（插件入口模块壳/池各执行一次）。
+ * 壳进程执行时注册真实条目：handler 存壳 preload 的 _shellCommands（contextBridge
+ * 页面世界函数代理，隔离世界可调用），条目 handler 经
+ * window.linkdesk.commands._executeShellLocal 桥回。
+ *
+ * 与 registerPoolCommandMetadata 协同（两半程在壳注册表自然汇合）：
+ *   - 壳启动注册在先（glob loader 执行入口模块）→ 池侧后到只更新 meta（已有条目分支，
+ *     不动 handler）——壳侧 handler 保留；
+ *   - 池侧注册在先的极端情形——本函数把占位条目升级为真实条目（清 placeholder，
+ *     执行改走壳桥，不再走 executeInPool 转发）。
+ */
+export function registerShellLocalCommand(
+  commandId: string,
+  meta: { title?: string; category?: string; when?: string },
+): void {
+  const pluginId = commandId.split(".")[0];
+  registerCommand(pluginId, {
+    id: commandId,
+    title: meta.title ?? commandId,
+    category: meta.category,
+    when: meta.when,
+    placeholder: false,
+    handler: (_token, ...args) => {
+      const bridge = window.linkdesk?.commands?._executeShellLocal;
+      if (!bridge) return Promise.reject(new Error(`命令 "${commandId}" 壳侧执行桥不可用`));
+      return bridge(commandId, ...args);
+    },
+  });
+}
+
+/**
  * 池侧 unregisterCommands 的回传——移除该插件的运行时命令条目。
  * loader 元数据条目保留——插件仍加载，plugin.json 静态声明仍在。
  */

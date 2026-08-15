@@ -11,11 +11,10 @@
  */
 
 import { useTranslation } from "react-i18next";
-import { getLoadedPluginManifests } from "@src/pluginLoader/loader";
-import { registerCommand } from "@src/core/registry/CommandRegistry";
-import { MenuId } from "@src/core/registry/MenuRegistry";
+import { useMarketplacePlugins } from "./services/marketplaceShared";
 import "./styles/MarketplaceView.css";
 
+const lk = () => (window as any).linkdesk;
 const pm = () => (window as any).linkdesk?.pluginManager;
 
 /* ── 模块级：注册 marketplace 命令（Phase 5f 归一化——替代手写 gear 菜单） ── */
@@ -26,34 +25,43 @@ function ensureMarketplaceCommands(): void {
   if (_marketplaceCommandsRegistered) return;
   _marketplaceCommandsRegistered = true;
 
-  registerCommand("marketplace", {
-    id: "marketplace.enable",
-    title: "启用",
-    handler: async (_token, ...args) => {
+  // E5.7#56：零 @src/core import——插件入口模块双进程执行（壳 glob loader + 池视图渲染）。
+  // 注册走 window.linkdesk.commands：壳侧半程 → commands:registerShell → 壳注册表真实条目
+  // （handler 存壳 preload 页面世界代理，执行 _executeShellLocal 桥回）；池侧半程 →
+  // commands:register → 元数据同步 + 池 _poolCommands 存 handler。两半程幂等汇合
+  // （registerShellLocalCommand / registerPoolCommandMetadata 各有已有条目分支）。
+  // 菜单 slot ID 用字符串字面量（serial-monitor E5.6#11.5h 同款——MenuId 不再 import）。
+  const reg = lk().commands?.registerCommand;
+  if (!reg) return; // 双进程执行——壳/池 preload 均含 commands 命名空间（#56 后），守卫防旧环境
+
+  reg(
+    "marketplace.enable",
+    async (_token: unknown, ...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().enable(ctx.pluginId);
     },
-  });
+    { title: "启用" },
+  );
 
-  registerCommand("marketplace", {
-    id: "marketplace.disable",
-    title: "禁用",
-    handler: async (_token, ...args) => {
+  reg(
+    "marketplace.disable",
+    async (_token: unknown, ...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().disable(ctx.pluginId);
     },
-  });
+    { title: "禁用" },
+  );
 
-  registerCommand("marketplace", {
-    id: "marketplace.uninstall",
-    title: "卸载",
-    handler: async (_token, ...args) => {
+  reg(
+    "marketplace.uninstall",
+    async (_token: unknown, ...args: unknown[]) => {
       const ctx = args[0] as { pluginId?: string } | undefined;
       if (ctx?.pluginId) await pm().uninstall(ctx.pluginId);
     },
-  });
+    { title: "卸载" },
+  );
 
-  (window as any).linkdesk?.menu?.registerItems(MenuId.MarketplaceItemGear, "marketplace", [
+  lk().menu?.registerItems?.("marketplaceItemGear", "marketplace", [
     { command: "core.openSettings", group: "navigation", when: "extensionHasConfiguration" },
     { command: "workbench.action.selectTheme", group: "navigation", when: "extensionHasThemes" },
     { command: "workbench.action.selectLanguage", group: "navigation", when: "extensionHasLanguages" },
@@ -66,14 +74,17 @@ function ensureMarketplaceCommands(): void {
 }
 
 /* 模块加载时注册——幂等（_marketplaceCommandsRegistered guard）。
- * 🔥 此文件由壳的 loader 加载（glob 插件——isRuntime=false），非池插件。
- * 因此仍使用 @src/core/registry/CommandRegistry 直接注册，不走 lk.commands.registerCommand。
- * lk.commands.registerCommand 仅存在于 preload-pool.ts——壳 preload 不支持。 */
+ * 🔥 双进程执行：壳进程经 glob loader 在启动时执行（命令实时可用的保障），
+ * 池进程在插件市场标签页渲染时执行（handler 进池 _poolCommands）。
+ * 两半程都走 window.linkdesk.* —— 零 @src/core import（E5.7#56）。 */
 ensureMarketplaceCommands();
 
 function MarketplaceView({ isActive: _isActive }: { isActive: boolean }) {
   const { t } = useTranslation();
-  const count = getLoadedPluginManifests().length;
+  // E5.7#56：count 改走 useMarketplacePlugins（与 InstalledListView 同款数据源）。
+  // 原 getLoadedPluginManifests import 在池进程解析到空 loader 实例 → 恒 0 的隐性 bug。
+  const { installed, loading } = useMarketplacePlugins();
+  const count = installed.length;
 
   return (
     <div className="marketplace-view">
@@ -81,7 +92,7 @@ function MarketplaceView({ isActive: _isActive }: { isActive: boolean }) {
         <span className="marketplace-hero-icon">🧩</span>
         <h2 className="marketplace-hero-title">{t("插件管理")}</h2>
         <p className="marketplace-hero-desc">
-          {t("已安装 {{count}} 个插件", { count })}
+          {loading ? t("加载中...") : t("已安装 {{count}} 个插件", { count })}
         </p>
         <p className="marketplace-hero-hint">
           {t("在左侧侧栏中浏览和管理插件。点击插件可查看详情。")}
