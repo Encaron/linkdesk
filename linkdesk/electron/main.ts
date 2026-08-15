@@ -29,6 +29,7 @@ import { syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
 import { IpcBridge } from './ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './crash-recovery.js'; // E5.7#36
 import { APP_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
+import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -90,7 +91,7 @@ function createWindow(): void {
   // E5.5#7-p7：壳同步快捷键表到主进程（无窗口引用——只注册一次）
   if (!_keyboardSyncRegistered) {
     _keyboardSyncRegistered = true;
-    ipcMain.handle('keyboard:syncShortcuts', (_event, data) => {
+    ipcMain.handle(IPC.keyboard.syncShortcuts, (_event, data) => {
       syncKeybindings(data);
     });
   }
@@ -131,30 +132,30 @@ function createWindow(): void {
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
-    ipcMain.on('window:minimize', () => mainWindow?.minimize());
-    ipcMain.on('window:maximize', () => mainWindow?.maximize());
-    ipcMain.on('window:unmaximize', () => mainWindow?.unmaximize());
-    ipcMain.on('window:close', () => mainWindow?.close());
-    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+    ipcMain.on(IPC.window.minimize, () => mainWindow?.minimize());
+    ipcMain.on(IPC.window.maximize, () => mainWindow?.maximize());
+    ipcMain.on(IPC.window.unmaximize, () => mainWindow?.unmaximize());
+    ipcMain.on(IPC.window.close, () => mainWindow?.close());
+    ipcMain.handle(IPC.window.isMaximized, () => mainWindow?.isMaximized() ?? false);
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
-    ipcMain.handle('window:toggleDevTools', () => {
+    ipcMain.handle(IPC.window.toggleDevTools, () => {
       if (!mainWindow || app.isPackaged) return;
       const wc = mainWindow.webContents;
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });
   }
-  win.on('maximize', () => win.webContents.send('window:maximize-change', true));
-  win.on('unmaximize', () => win.webContents.send('window:maximize-change', false));
+  win.on('maximize', () => win.webContents.send(IPC.window.maximizeChange, true));
+  win.on('unmaximize', () => win.webContents.send(IPC.window.maximizeChange, false));
 
   // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
   if (!_shellIpcRegistered) {
     _shellIpcRegistered = true;
 
     // E4V#18: Shell IPC——revealInOS
-    ipcMain.handle('shell:showItemInFolder', async (_e, p: string) => shell.showItemInFolder(p));
+    ipcMain.handle(IPC.shell.showItemInFolder, async (_e, p: string) => shell.showItemInFolder(p));
 
     // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
-    ipcMain.on('shell:startDrag', (event, filePath: string, iconPath?: string) => {
+    ipcMain.on(IPC.shell.startDrag, (event, filePath: string, iconPath?: string) => {
       if (!filePath) return;
       const sender = event.sender as any;
       if (typeof sender.startDrag !== 'function') return;
@@ -168,7 +169,7 @@ function createWindow(): void {
     });
 
     // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
-    ipcMain.handle('shell:openInTerminal', async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
+    ipcMain.handle(IPC.shell.openInTerminal, async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
       if (process.platform === 'win32') {
         const exe = terminalExe || 'powershell';
         let cmd: string;
@@ -252,7 +253,7 @@ const crashRecoveryDeps: CrashRecoveryDeps = {
 setupCrashRecovery(crashRecoveryDeps);
 
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
-ipcMain.on('theme:changed', (_event, isDark: boolean) => {
+ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
   const bg = isDark ? '#1e1e1e' : '#f5f5f5';
   if (mainWindow && !mainWindow.isDestroyed()) {
@@ -269,7 +270,7 @@ ipcMain.on('theme:changed', (_event, isDark: boolean) => {
 });
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
-ipcMain.on('app:preloadReady', () => {
+ipcMain.on(IPC.app.preloadReady, () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
 });
 
@@ -281,7 +282,7 @@ let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（渲染进程未就绪�
 const HEARTBEAT_TIMEOUT = 30_000; // 30s 无心跳 → 判定卡死
 const HEARTBEAT_CHECK_INTERVAL = 3000; // 每 3s 检查一次
 
-ipcMain.on('app:heartbeat', () => {
+ipcMain.on(IPC.app.heartbeat, () => {
   lastHeartbeat = Date.now();
 });
 

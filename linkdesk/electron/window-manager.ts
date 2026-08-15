@@ -13,6 +13,7 @@ import { DEV_SERVER_URL } from './constants.js'; // E5.6#5：Pool URL 构建（E
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from './ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）
+import { IPC } from './ipc/channels.js';
 
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
@@ -61,7 +62,7 @@ export class WindowManager {
     if (totalRSS > MEMORY_PRESSURE_THRESHOLD) {
       console.warn(`[WindowManager] 内存压力——Pool 渲染进程 Working Set: ${(totalRSS / 1024).toFixed(0)} MB`);
       // 通知壳渲染进程显示 toast
-      this.mainWindow.webContents.send('system:memory-pressure', {
+      this.mainWindow.webContents.send(IPC.system.memoryPressure, {
         totalRSS,
         threshold: MEMORY_PRESSURE_THRESHOLD,
       });
@@ -195,7 +196,7 @@ export class WindowManager {
       console.warn('[WindowManager] pushLayout 失败——Pool 不存在或已销毁');
       return;
     }
-    view.webContents.send('pool:layout', layout);
+    view.webContents.send(IPC.pool.layout, layout);
   }
 
   /** E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染 */
@@ -205,7 +206,7 @@ export class WindowManager {
       console.warn('[WindowManager] pushQuickPick 失败——Pool 不存在或已销毁');
       return;
     }
-    view.webContents.send('pool:quickpick', data);
+    view.webContents.send(IPC.pool.quickpick, data);
   }
 
   /** E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染 */
@@ -215,7 +216,7 @@ export class WindowManager {
       console.warn('[WindowManager] pushToast 失败——Pool 不存在或已销毁');
       return;
     }
-    view.webContents.send('pool:toast', data);
+    view.webContents.send(IPC.pool.toast, data);
   }
 
   /** E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染 */
@@ -225,7 +226,7 @@ export class WindowManager {
       console.warn('[WindowManager] pushDialog 失败——Pool 不存在或已销毁');
       return;
     }
-    view.webContents.send('pool:dialog', data);
+    view.webContents.send(IPC.pool.dialog, data);
   }
 
   /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */

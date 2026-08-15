@@ -13,6 +13,7 @@ import { ipcMain, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
+import { IPC } from './channels.js';
 
 // E5.7#36：无状态 handler——IPC 通道只注册一次（壳崩重建 createWindow 会再次经过）
 let _registered = false;
@@ -21,7 +22,7 @@ export function registerHotExitHandlers(): void {
   if (_registered) return;
   _registered = true;
 
-  ipcMain.handle('hot-exit:save', async (_event, filePath: string, content: string) => {
+  ipcMain.handle(IPC.hotExit.save, async (_event, filePath: string, content: string) => {
     // 防御守卫：filePath 拒绝空/null；content 只拒绝 null/undefined——'' 合法（清空内容也要备份）
     if (!filePath) return;
     if (content == null) return;
@@ -29,7 +30,7 @@ export function registerHotExitHandlers(): void {
     await fs.promises.writeFile(hotExitPath(filePath), content, 'utf-8');
   });
 
-  ipcMain.handle('hot-exit:load', async (_event, filePath: string) => {
+  ipcMain.handle(IPC.hotExit.load, async (_event, filePath: string) => {
     if (!filePath) return null;
     try {
       return await fs.promises.readFile(hotExitPath(filePath), 'utf-8');
@@ -38,7 +39,7 @@ export function registerHotExitHandlers(): void {
     }
   });
 
-  ipcMain.handle('hot-exit:clear', async (_event, filePath: string) => {
+  ipcMain.handle(IPC.hotExit.clear, async (_event, filePath: string) => {
     if (!filePath) return;
     try {
       await fs.promises.unlink(hotExitPath(filePath));

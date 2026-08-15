@@ -10,7 +10,7 @@
  * 架构：
  *   1. 壳同步快捷键表到主进程（keyboard:syncShortcuts）
  *   2. 主进程维护 chord 状态机（与壳 CHORD_TIMEOUT 同值）
- *   3. before-input-event 命中 → preventDefault + send('keyboard:executeShortcut')
+ *   3. before-input-event 命中 → preventDefault + send(IPC.keyboard.executeShortcut)
  *
  * E5.7 极简Pool：焦点永远在池 WCV 上——attachKeyboardRouting 由 window-manager
  * createPoolView 工厂处挂载（初始创建 + rebuildPool 崩溃恢复全覆盖）。
@@ -19,6 +19,7 @@
 import { BrowserWindow, WebContentsView, app, type Event, type Input } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
+import { IPC } from './ipc/channels.js';
 
 // ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
 
@@ -176,7 +177,7 @@ function handleBeforeInput(event: Event, input: Input, mainWindow: BrowserWindow
       return;
     }
     debug(`  → SEND keyboard:executeShortcut to shell`);
-    mainWindow.webContents.send('keyboard:executeShortcut', ki);
+    mainWindow.webContents.send(IPC.keyboard.executeShortcut, ki);
   };
 
   // ── Chord 第二键 ──

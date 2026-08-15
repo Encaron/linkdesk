@@ -5,6 +5,7 @@
  */
 
 import { ipcMain, clipboard } from 'electron';
+import { IPC } from './channels.js';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
 let _registered = false;
@@ -12,16 +13,16 @@ let _registered = false;
 export function registerClipboardHandlers(): void {
   if (_registered) return;
   _registered = true;
-  ipcMain.handle('clipboard:readText', () => {
+  ipcMain.handle(IPC.clipboard.readText, () => {
     return clipboard.readText();
   });
 
-  ipcMain.handle('clipboard:writeText', (_event, text: string) => {
+  ipcMain.handle(IPC.clipboard.writeText, (_event, text: string) => {
     clipboard.writeText(text);
   });
 
   // E5#108a：文件列表写入系统剪贴板
-  ipcMain.handle('clipboard:writeFileList', (_event, paths: string[]) => {
+  ipcMain.handle(IPC.clipboard.writeFileList, (_event, paths: string[]) => {
     if (!paths || paths.length === 0) return;
     try {
       if (process.platform === 'win32') {
