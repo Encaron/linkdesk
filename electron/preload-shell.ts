@@ -14,6 +14,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
+import { IpcRelay } from './ipc-relay';
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -25,17 +26,13 @@ ipcRenderer.on(IPC.contextKey.changed, (_event, { key, value }: { key: string; v
 // ── E3a #26：bridge 请求处理器——主进程转发插件 IPC 到壳侧服务 ──
 // E5.6#16.7k-fix：缓冲回放——对标 preload-pool.ts onLayout 模式。
 // module 顶层 IPC（如 serial-monitor 的 registerItems）可能在 React mount 前到达，
-// bridgeRequestHandler 为 null 时静默丢弃 → 菜单项永远丢失。
+// 处理器未注册时静默丢弃 → 菜单项永远丢失。
 // 缓冲+回放保证：handler 就绪前到达的请求排队，handler 就绪后逐条回放。
-let bridgeRequestHandler: ((req: { requestId: string; channel: string; args: any[] }) => void) | null = null;
-const _bridgeRequestBuffer: Array<{ requestId: string; channel: string; args: any[] }> = [];
+// E5.7#78：手写 buffer+handler 双件套 → IpcRelay<T>（electron/ipc-relay.ts）
+const _bridgeRequestRelay = new IpcRelay<{ requestId: string; channel: string; args: any[] }>();
 
-ipcRenderer.on(IPC.bridge.request, (_event, req: any) => {
-  if (bridgeRequestHandler !== null) {
-    bridgeRequestHandler(req);
-  } else {
-    _bridgeRequestBuffer.push(req);
-  }
+ipcRenderer.on(IPC.bridge.request, (_event, req: { requestId: string; channel: string; args: any[] }) => {
+  _bridgeRequestRelay.push(req);
 });
 
 // ── E5.7#56：壳侧命令 handler 地图——插件入口模块双进程执行（壳 glob loader + 池视图渲染）──
@@ -339,17 +336,9 @@ try {
 
     // ── E3a #26-#27：bridge——壳侧处理插件 IPC 请求/推送的中继 API ──
     bridge: {
-      // React 侧 IpcBridgeHandler 注册请求处理器（#26）
-      onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) => {
-        bridgeRequestHandler = cb;
-        // E5.6#16.7k-fix：回放 IpcBridgeHandler 就绪前缓冲的请求。
-        // 对标 preload-pool.ts pool.onLayout 模式——先缓冲后回放，防静默丢弃。
-        const buffer = _bridgeRequestBuffer.splice(0);
-        for (const req of buffer) {
-          try { cb(req); } catch { /* contextBridge 回调静默失败 */ }
-        }
-        return () => { bridgeRequestHandler = null; };
-      },
+      // React 侧 IpcBridgeHandler 注册请求处理器（#26）——缓冲回放由 IpcRelay 承担（E5.7#78）
+      onRequest: (cb: (req: { requestId: string; channel: string; args: any[] }) => void) =>
+        _bridgeRequestRelay.onReady(cb),
       // React 侧 IpcBridgeHandler 响应请求（#26）
       respond: (requestId: string, result?: unknown, error?: string) => {
         ipcRenderer.send(IPC.bridge.response, { requestId, result, error });

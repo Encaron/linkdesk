@@ -59,20 +59,16 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
+import { IpcRelay } from './ipc-relay';
 
 // E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
-const _layoutBuffer: any[] = [];
-let _onLayoutCallback: ((layout: any) => void) | null = null;
-let _onLayoutActive = false;
+// E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc-relay.ts）
+const _layoutRelay = new IpcRelay<any>();
 
 ipcRenderer.on(IPC.pool.layout, (_event, layout: any) => {
-  if (!_onLayoutActive || !_onLayoutCallback) {
-    _layoutBuffer.push(layout);
-  } else {
-    try { _onLayoutCallback(layout); } catch { /* contextBridge 回调静默失败 */ }
-  }
+  _layoutRelay.push(layout);
 });
 
 // ── E5.7#15：pool:quickpick 缓冲回放——QuickPick 哑渲染数据可能在 QuickPickHost mount 前到达 ──
@@ -706,18 +702,7 @@ try {
 
     // ── Pool 专属 API ──
     pool: {
-      onLayout: (cb: (layout: any) => void) => {
-        _onLayoutCallback = cb;
-        _onLayoutActive = true;
-        for (const layout of _layoutBuffer) {
-          try { cb(layout); } catch { /* contextBridge 回调静默失败 */ }
-        }
-        _layoutBuffer.length = 0;
-        return () => {
-          _onLayoutCallback = null;
-          _onLayoutActive = false;
-        };
-      },
+      onLayout: (cb: (layout: any) => void) => _layoutRelay.onReady(cb),
       ready: () => ipcRenderer.send(IPC.pool.ready), // E5.7#54：不再带 zone——单 Pool 无路由
       sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),
       // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
