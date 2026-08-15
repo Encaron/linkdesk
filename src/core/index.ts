@@ -70,4 +70,5 @@ export type * from "./api/types";
 
 // ── 内置 ──
 export * from "./commands/coreCommands";
-export * from "./commands/registerBuiltinProtocols";
+// E5.7#53：registerBuiltinProtocols 不再从桶导出——ensureBuiltinProtocols 唯一写入方已收敛
+// 主进程（plugin-manifest-loader 直连 import）。桶导出会诱惑壳侧 import → 壳进程空实例回潮。
