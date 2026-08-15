@@ -32,6 +32,7 @@
 import { app, ipcMain } from 'electron';
 import type { BrowserWindow, IpcMainEvent, WebContents } from 'electron';
 import type { WindowManager } from './window-manager.js';
+import { IPC } from './ipc/channels.js';
 
 /** pool:ready 等待超时——超时视为重建失败（pool.html 本地加载正常 < 2s） */
 const READY_TIMEOUT_MS = 10_000;
@@ -154,7 +155,7 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
   // pong 由 preload-pool 模块顶层自动回复（不经 React——池加载窗口也有 pong，加载中的池不被误杀）。
 
   // Pool→主进程：pong——sender 校验（只认当前池，忽略壳/其他渲染进程）
-  ipcMain.on('pool:pong', (event) => {
+  ipcMain.on(IPC.pool.pong, (event) => {
     const pool = deps.getWindowManager()?.getPoolView();
     if (pool && !pool.webContents.isDestroyed() && event.sender === pool.webContents) {
       lastPoolPong = Date.now();
@@ -165,7 +166,7 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
     if (rebuilding || rebuildStopped) return; // 重建期间 waitPoolReady 全权接管；错误页常驻后停摆
     const pool = deps.getWindowManager()?.getPoolView();
     if (!pool || pool.webContents.isDestroyed()) return;
-    pool.webContents.send('pool:ping');
+    pool.webContents.send(IPC.pool.ping);
   }, HEARTBEAT_PING_MS);
 
   setInterval(() => {
@@ -252,7 +253,7 @@ function waitPoolReady(deps: CrashRecoveryDeps, wc: WebContents, attempt: number
   const cleanup = (): void => {
     if (timer !== null) clearTimeout(timer);
     wc.removeListener('did-fail-load', onFailLoad);
-    ipcMain.removeListener('pool:ready', onReady);
+    ipcMain.removeListener(IPC.pool.ready, onReady);
     rebuilding = false;
   };
 
@@ -284,7 +285,7 @@ function waitPoolReady(deps: CrashRecoveryDeps, wc: WebContents, attempt: number
     fail('did-fail-load');
   };
 
-  ipcMain.on('pool:ready', onReady);
+  ipcMain.on(IPC.pool.ready, onReady);
   wc.on('did-fail-load', onFailLoad);
   timer = setTimeout(() => fail(`pool:ready 超时 ${READY_TIMEOUT_MS}ms`), READY_TIMEOUT_MS);
 }

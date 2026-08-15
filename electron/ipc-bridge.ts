@@ -11,12 +11,13 @@
  * 双向流程：
  *   请求：池 → ipcMain.handle → mainWindow.webContents.send → 壳 preload →
  *         IpcBridgeHandler（React）→ 壳 preload → ipcMain.on → 返回池
- *   推送：壳 → ipcMain.on('bridge:broadcast') → 唯一 Pool webContents.send →
+ *   推送：壳 → ipcMain.on(IPC.bridge.broadcast) → 唯一 Pool webContents.send →
  *         池 preload → 池内插件 React 回调
  */
 
 import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
 import type { WindowManager } from './window-manager.js';
+import { IPC } from './ipc/channels.js';
 
 interface PendingRequest {
   resolve: (value: unknown) => void;
@@ -39,57 +40,57 @@ export class IpcBridge {
 
   /** 需要从插件 WebView 代理到壳渲染进程的 channel（#26） */
   private static PROXY_CHANNELS = [
-    'config:get',
-    'config:set',
-    'commands:execute',
+    IPC.config.get,
+    IPC.config.set,
+    IPC.commands.execute,
     // E5.7 Bug C：池执行回传——壳→池占位命令转发的结果通道（resolvePoolExecution）
-    'commands:executeResult',
+    IPC.commands.executeResult,
     // E5.7 Bug C 补全：池侧命令元数据同步——registerCommand 的 title/category/when 回传壳注册表
-    'commands:register',
+    IPC.commands.register,
     // E5.7#56：壳侧插件入口模块级注册（双进程执行的壳侧半程）——壳 preload 经主进程回壳
-    'commands:registerShell',
-    'commands:unregister',
+    IPC.commands.registerShell,
+    IPC.commands.unregister,
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
-    'dialog:confirm',
-    'dialog:alert',
+    IPC.dialog.confirm,
+    IPC.dialog.alert,
     // E5#68：标签页操作——插件调壳的标签页 API
-    'tabs:create',
-    'tabs:openOrFocus',
-    'tabs:focus',
-    'tabs:close',
-    'tabs:focusBySourceId',
-    'tabs:updateLabelBySourceId',
-    'tabs:closeBySourceId',
+    IPC.tabs.create,
+    IPC.tabs.openOrFocus,
+    IPC.tabs.focus,
+    IPC.tabs.close,
+    IPC.tabs.focusBySourceId,
+    IPC.tabs.updateLabelBySourceId,
+    IPC.tabs.closeBySourceId,
     // E5#70：ContextKey——插件 SET 状态供壳 when 子句读
-    'contextKey:set',
+    IPC.contextKey.set,
     // E5#69：菜单——插件声明式读写
-    'menu:registerItems',
-    'menu:getItems',
+    IPC.menu.registerItems,
+    IPC.menu.getItems,
     // E5#71：插件持久化存储——集中缓存 + 文件持久化
-    'pluginState:get',
-    'pluginState:set',
+    IPC.pluginState.get,
+    IPC.pluginState.set,
     // E3a #31：插件管理——marketplace 数据路径 IPC 化
-    'plugins:call',
+    IPC.plugins.call,
     // E5#85：workspace——插件查询工作区信息
-    'workspace:getFolders',
-    'workspace:getActive',
+    IPC.workspace.getFolders,
+    IPC.workspace.getActive,
     // E5.6#11.5-A：扩展 workspace——池插件完整工作区操作
     // （fileAssociation:getPluginFor 已随 E5.7#50 移 registry-handlers 主进程直答——不再代理到壳；
     //  decorations:getDecoration 已随 E5.7#60 整删——注册表池内化，池内直答零 IPC）
-    'workspace:setActive',
-    'workspace:openFolder',
-    'workspace:addFolder',
-    'workspace:removeFolder',
+    IPC.workspace.setActive,
+    IPC.workspace.openFolder,
+    IPC.workspace.addFolder,
+    IPC.workspace.removeFolder,
     // E5.6#11.5g5：文件搜索 + 编码检测——池插件跨进程使用 FileSearcher/EncodingService
-    'search:searchFiles',
-    'encoding:detect',
-    'encoding:decode',
-    'encoding:encode',
+    IPC.search.searchFiles,
+    IPC.encoding.detect,
+    IPC.encoding.decode,
+    IPC.encoding.encode,
     // E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（render 等函数字段池侧 preload 已白名单剥壳）
-    'viewContainer:getContainer',
-    'viewContainer:getViews',
-    'viewContainer:getView',
-    'viewContainer:registerView',
+    IPC.viewContainer.getContainer,
+    IPC.viewContainer.getViews,
+    IPC.viewContainer.getView,
+    IPC.viewContainer.registerView,
   ];
 
   constructor(
@@ -101,15 +102,15 @@ export class IpcBridge {
     IpcBridge._active = this;
 
     this.registerProxyHandlers();
-    ipcMain.on('bridge:response', this.onBridgeResponse);
+    ipcMain.on(IPC.bridge.response, this.onBridgeResponse);
     console.log('[IpcBridge] 已注册 bridge:response 壳响应通道');
     // 配置变更通知——SettingsView 直调 setConfigurationValue 绕过 proxy 时走此通道
-    ipcMain.on('config:changed-notify', this.onConfigChangedNotify);
-    ipcMain.on('bridge:broadcast', this.onBridgeBroadcast);
+    ipcMain.on(IPC.config.changedNotify, this.onConfigChangedNotify);
+    ipcMain.on(IPC.bridge.broadcast, this.onBridgeBroadcast);
     console.log('[IpcBridge] 已注册 bridge:broadcast 广播通道');
-    ipcMain.on('plugin:emit', this.onPluginEmit);
+    ipcMain.on(IPC.plugin.emit, this.onPluginEmit);
     console.log('[IpcBridge] 已注册 plugin:emit 插件间数据管道');
-    ipcMain.on('p2p:send', this.onP2pSend);    // E5#65
+    ipcMain.on(IPC.p2p.send, this.onP2pSend);    // E5#65
     console.log('[IpcBridge] 已注册 p2p:send 插件间定向推流通道');
   }
 
@@ -118,17 +119,17 @@ export class IpcBridge {
     for (const channel of IpcBridge.PROXY_CHANNELS) {
       ipcMain.removeHandler(channel);
     }
-    ipcMain.removeListener('bridge:response', this.onBridgeResponse);
-    ipcMain.removeListener('config:changed-notify', this.onConfigChangedNotify);
-    ipcMain.removeListener('bridge:broadcast', this.onBridgeBroadcast);
-    ipcMain.removeListener('plugin:emit', this.onPluginEmit);
-    ipcMain.removeListener('p2p:send', this.onP2pSend);
+    ipcMain.removeListener(IPC.bridge.response, this.onBridgeResponse);
+    ipcMain.removeListener(IPC.config.changedNotify, this.onConfigChangedNotify);
+    ipcMain.removeListener(IPC.bridge.broadcast, this.onBridgeBroadcast);
+    ipcMain.removeListener(IPC.plugin.emit, this.onPluginEmit);
+    ipcMain.removeListener(IPC.p2p.send, this.onP2pSend);
   }
 
   /** 配置变更通知——SettingsView 直调 setConfigurationValue 绕过 proxy 时走此通道 */
   private onConfigChangedNotify = (_event: Electron.IpcMainEvent, { key, value }: { key: string; value: unknown }) => {
-    this.mainWindow.webContents.send('config:changed', { key, value });
-    this.broadcast('config:changed', { key, value });
+    this.mainWindow.webContents.send(IPC.config.changed, { key, value });
+    this.broadcast(IPC.config.changed, { key, value });
   };
 
   /**
@@ -140,10 +141,10 @@ export class IpcBridge {
     for (const channel of IpcBridge.PROXY_CHANNELS) {
       ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
         // ── E5#19b fix: contextKey:set → 立即广播到壳 + 池（双渲染进程火种）──
-        if (channel === 'contextKey:set') {
+        if (channel === IPC.contextKey.set) {
           const [key, value] = args as [string, unknown];
-          this.mainWindow.webContents.send('contextKey:changed', { key, value });
-          this.broadcast('contextKey:changed', { key, value });
+          this.mainWindow.webContents.send(IPC.contextKey.changed, { key, value });
+          this.broadcast(IPC.contextKey.changed, { key, value });
         }
 
         const requestId = `bridge-${++this.requestCounter}-${Date.now()}`;
@@ -157,7 +158,7 @@ export class IpcBridge {
 
             this.pendingRequests.set(requestId, { resolve, reject, timer, channel, args });
 
-            this.mainWindow.webContents.send('bridge:request', {
+            this.mainWindow.webContents.send(IPC.bridge.request, {
               requestId,
               channel,
               args,
@@ -177,7 +178,7 @@ export class IpcBridge {
 
   /**
    * 监听壳渲染进程的响应——壳侧 IpcBridgeHandler 处理后通过
-   * ipcRenderer.send('bridge:response', ...) 发回。
+   * ipcRenderer.send(IPC.bridge.response, ...) 发回。
    */
   private onBridgeResponse = (_event: Electron.IpcMainEvent, { requestId, result, error }: {
     requestId: string;
@@ -195,10 +196,10 @@ export class IpcBridge {
     } else {
       pending.resolve(result);
       // config:set 成功后广播 config:changed——shell + 所有插件 WebView 的 onChange 依赖此通道
-      if (pending.channel === 'config:set') {
+      if (pending.channel === IPC.config.set) {
         const [key, value] = pending.args as [string, unknown];
-        this.mainWindow.webContents.send('config:changed', { key, value });
-        this.broadcast('config:changed', { key, value });
+        this.mainWindow.webContents.send(IPC.config.changed, { key, value });
+        this.broadcast(IPC.config.changed, { key, value });
       }
     }
   };
@@ -216,7 +217,7 @@ export class IpcBridge {
     // 广播到唯一 Pool WebView + 壳（含自己——对标 CoreEvents 模式）
     this.broadcast(channel, payload, sourceId);
     // 也转发到壳渲染进程——壳侧 components 可订阅插件事件
-    this.mainWindow.webContents.send('plugin:push', { channel, payload, source: sourceId });
+    this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source: sourceId });
   };
 
   // ═══════════════════════════════════════════════════════
@@ -233,7 +234,7 @@ export class IpcBridge {
     // 壳发起的广播——source 为 "shell"
     this.broadcast(channel, payload, "shell");
     // E5.6#2 → E5.7#43：壳侧组件也订阅广播事件（theme:changed 等）——双路径：池 + 壳
-    this.mainWindow.webContents.send('plugin:push', { channel, payload, source: "shell" });
+    this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source: "shell" });
   };
 
   /** E5.7#43：广播事件到唯一 Pool WebContentsView——并存储 payload 供新池重放（per-tab 实例循环已删） */
@@ -242,7 +243,7 @@ export class IpcBridge {
     // E5.6#10f → E5.7#43：Pool WebContentsView 是唯一接收方（lang:changed / theme:changed 等）
     for (const poolView of this.windowManager.getAllPoolViews()) {
       if (!poolView.webContents.isDestroyed()) {
-        poolView.webContents.send('plugin:push', { channel, payload, source });
+        poolView.webContents.send(IPC.plugin.push, { channel, payload, source });
       }
     }
   }
@@ -250,7 +251,7 @@ export class IpcBridge {
   /** E5.6#14-fix：Pool 创建后重放初始广播状态——theme/language/accent 等 */
   replayToPool(poolView: WebContentsView): void {
     for (const [channel, payload] of this.lastBroadcasts) {
-      poolView.webContents.send('plugin:push', { channel, payload, source: 'shell' });
+      poolView.webContents.send(IPC.plugin.push, { channel, payload, source: 'shell' });
     }
   }
 
@@ -264,7 +265,7 @@ export class IpcBridge {
     // E5.7#43：target 路由删除——唯一接收方是池（per-tab 实例 WebView 已不存在）
     const poolView = this.windowManager.getPoolView();
     if (!poolView || poolView.webContents.isDestroyed()) return;
-    poolView.webContents.send('p2p:data', { channel, data, source: 'pool' });
+    poolView.webContents.send(IPC.p2p.data, { channel, data, source: 'pool' });
     console.log(`[p2p] pool → ${target}  channel="${channel}"`);
   };
 

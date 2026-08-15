@@ -18,6 +18,7 @@ import {
   setActiveProtocol,
 } from '../../src/core/registry/ProtocolRegistry.js';
 import { getPluginFor } from '../../src/core/services/FileAssociationService.js';
+import { IPC } from './channels.js';
 
 let _registered = false;
 
@@ -25,7 +26,7 @@ export function registerRegistryHandlers(): void {
   if (_registered) return;
   _registered = true;
 
-  ipcMain.handle('langDef:get', (_event, extension: string) => {
+  ipcMain.handle(IPC.langDef.get, (_event, extension: string) => {
     const def = getLangDef(extension);
     if (!def) return null;
     return {
@@ -34,7 +35,7 @@ export function registerRegistryHandlers(): void {
     };
   });
 
-  ipcMain.handle('protocol:listProtocols', () =>
+  ipcMain.handle(IPC.protocol.listProtocols, () =>
     listProtocols().map((p) => ({
       id: p.id,
       name: p.name,
@@ -43,14 +44,14 @@ export function registerRegistryHandlers(): void {
     }))
   );
 
-  ipcMain.handle('protocol:getActiveProtocolId', () => getActiveProtocolId());
+  ipcMain.handle(IPC.protocol.getActiveProtocolId, () => getActiveProtocolId());
 
-  ipcMain.handle('protocol:setActiveProtocolId', (_event, protocolId: string) => {
+  ipcMain.handle(IPC.protocol.setActiveProtocolId, (_event, protocolId: string) => {
     setActiveProtocol(protocolId);
   });
 
   // E5.7#50：FileAssociation 直连——原 PROXY_CHANNELS 代理（主进程→壳）拉直为主进程直答
-  ipcMain.handle('fileAssociation:getPluginFor', (_event, extension: string) =>
+  ipcMain.handle(IPC.fileAssociation.getPluginFor, (_event, extension: string) =>
     getPluginFor(extension)
   );
 }

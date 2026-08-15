@@ -25,6 +25,7 @@ import { registerLangDef, clearLangDefs } from "../src/core/registry/LangDefRegi
 import { clearProtocols } from "../src/core/registry/ProtocolRegistry.js";
 import { registerFileAssociation, clearFileAssociations } from "../src/core/services/FileAssociationService.js";
 import { ensureBuiltinProtocols } from "../src/core/commands/registerBuiltinProtocols.js";
+import { IPC } from './ipc/channels.js';
 
 /** 插件根目录——dev 用项目根，packaged 用 extraResources 落点 */
 function getPluginsRoot(): string {
@@ -100,14 +101,14 @@ export function loadAllPluginManifests(): void {
 let _rescanRegistered = false;
 
 /**
- * 装/卸/重装插件 → 壳 loader 成功路径发 "plugins:rescanManifests" → 全清 + 全重扫。
+ * 装/卸/重装插件 → 壳 loader 成功路径发 IPC.plugins.rescanManifests → 全清 + 全重扫。
  * 全清后重扫语义干净（等价逐插件 unregister 再 register）；_activeProtocolId 回退
  * "bracket" 与现状 unregisterProtocol 的卸载回退行为一致，行为中性。
  */
 export function registerManifestRescanHandler(): void {
   if (_rescanRegistered) return;
   _rescanRegistered = true;
-  ipcMain.on("plugins:rescanManifests", () => {
+  ipcMain.on(IPC.plugins.rescanManifests, () => {
     clearLangDefs();
     clearProtocols();
     clearFileAssociations();

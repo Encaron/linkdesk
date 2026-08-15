@@ -17,21 +17,21 @@
  * 池渲染进程（插件）接收壳推送事件的通道只有两种。选错 = 静默失效（不报错，事件永远收不到）。
  *
  * 铁律 1：IpcBridge.broadcast 推送 → 池侧 events.on(channel, cb)
- *   壳侧：IpcBridge.broadcast('config:changed', payload)
- *        → view.webContents.send('plugin:push', {channel, payload})
- *   池侧必须：events.on('config:changed', cb)——内部注册 ipcRenderer.on('plugin:push', handler)
+ *   壳侧：IpcBridge.broadcast(IPC.config.changed, payload)
+ *        → view.webContents.send(IPC.plugin.push, {channel, payload})
+ *   池侧必须：events.on(IPC.config.changed, cb)——内部注册 ipcRenderer.on(IPC.plugin.push, handler)
  *        → handler 匹配 data.channel → 调 cb
- *   ✅ 正确：configuration.onChange → events.on('config:changed', cb)
+ *   ✅ 正确：configuration.onChange → events.on(IPC.config.changed, cb)
  *   ✅ 正确：pluginState.onChange  → events.on('plugin-state:changed', cb)
  *   ✅ 正确：theme.onChange（通过 extraHandlers）
- *   ❌ 错误：listenDirect(ipcRenderer, 'config:changed', cb)
- *           → 监听直接 IPC 通道，但事件在 'plugin:push' 上到达 → 永远收不到。不报错。静默失效。
+ *   ❌ 错误：listenDirect(ipcRenderer, IPC.config.changed, cb)
+ *           → 监听直接 IPC 通道，但事件在 IPC.plugin.push 上到达 → 永远收不到。不报错。静默失效。
  *
  * 铁律 2：主进程直接 send → 池侧 listenDirect(ipcRenderer, channel, cb)
- *   主进程：view.webContents.send('serial:data', payload)（不经 plugin:push 包装，直发池 WebView）
- *   ✅ 正确：serial.onData  → listenDirect(ipcRenderer, 'serial:data', cb)
- *   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, 'serial:stats', cb)
- *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, 'p2p:data', cb)
+ *   主进程：view.webContents.send(IPC.serial.data, payload)（不经 plugin:push 包装，直发池 WebView）
+ *   ✅ 正确：serial.onData  → listenDirect(ipcRenderer, IPC.serial.data, cb)
+ *   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, IPC.serial.stats, cb)
+ *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, IPC.p2p.data, cb)
  *
  * 铁律 3：event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error
  *   新加直接通道 → channel 名加 `:direct` 后缀以跳过告警
@@ -58,6 +58,7 @@
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
+import { IPC, filesystemChanged } from './ipc/channels';
 
 // E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
@@ -66,7 +67,7 @@ const _layoutBuffer: any[] = [];
 let _onLayoutCallback: ((layout: any) => void) | null = null;
 let _onLayoutActive = false;
 
-ipcRenderer.on('pool:layout', (_event, layout: any) => {
+ipcRenderer.on(IPC.pool.layout, (_event, layout: any) => {
   if (!_onLayoutActive || !_onLayoutCallback) {
     _layoutBuffer.push(layout);
   } else {
@@ -83,7 +84,7 @@ const _quickPickBuffer: PoolQuickPickDataShape[] = [];
 let _quickPickCallback: ((data: PoolQuickPickDataShape) => void) | null = null;
 let _quickPickActive = false;
 
-ipcRenderer.on('pool:quickpick', (_event, data: PoolQuickPickDataShape) => {
+ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickDataShape) => {
   if (!_quickPickActive || !_quickPickCallback) {
     _quickPickBuffer.length = 0;
     _quickPickBuffer.push(data);
@@ -101,7 +102,7 @@ const _toastBuffer: PoolToastDataShape[] = [];
 let _toastCallback: ((data: PoolToastDataShape) => void) | null = null;
 let _toastActive = false;
 
-ipcRenderer.on('pool:toast', (_event, data: PoolToastDataShape) => {
+ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastDataShape) => {
   if (!_toastActive || !_toastCallback) {
     _toastBuffer.length = 0;
     _toastBuffer.push(data);
@@ -119,7 +120,7 @@ const _dialogBuffer: PoolDialogDataShape[] = [];
 let _dialogCallback: ((data: PoolDialogDataShape) => void) | null = null;
 let _dialogActive = false;
 
-ipcRenderer.on('pool:dialog', (_event, data: PoolDialogDataShape) => {
+ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogDataShape) => {
   if (!_dialogActive || !_dialogCallback) {
     _dialogBuffer.length = 0;
     _dialogBuffer.push(data);
@@ -235,20 +236,20 @@ function _fireDecoChange(uris: string[]): void {
 // 10s 超时）内 preload 一旦执行即可回复，否则加载中的池被心跳误判卡死误杀。
 // 主线程阻塞时事件循环停转，pong 自然停发 = 卡死信号（这正是心跳要检测的）。
 // 池命名空间不暴露 onPing 消费 API——零消费方即死代码（无死代码原则），需要时再加。
-ipcRenderer.on('pool:ping', () => {
-  ipcRenderer.send('pool:pong');
+ipcRenderer.on(IPC.pool.ping, () => {
+  ipcRenderer.send(IPC.pool.pong);
 });
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
-ipcRenderer.on('contextKey:changed', (_event, { key, value }: { key: string; value: unknown }) => {
+ipcRenderer.on(IPC.contextKey.changed, (_event, { key, value }: { key: string; value: unknown }) => {
   _contextKeyStore.set(key, value);
 });
 
 // ── E5.5#7a: 配置缓存——防 React mount 前事件竞态 ──
 const _configCache = new Map<string, unknown>();
-ipcRenderer.on('plugin:push', (_event, data: any) => {
-  if (data?.channel === 'config:changed') {
+ipcRenderer.on(IPC.plugin.push, (_event, data: any) => {
+  if (data?.channel === IPC.config.changed) {
     const { key, value } = data.payload as { key: string; value: any };
     _configCache.set(key, value);
   }
@@ -273,7 +274,7 @@ try {
   const events = createEventSystem(ipcRenderer, {
     logPrefix: 'preload-pool',
     extraHandlers: {
-      'theme:changed': (payload) => {
+      [IPC.theme.changed]: (payload) => {
         const { themeType, variables } = payload as any;
         try {
           const root = document.documentElement;
@@ -311,13 +312,13 @@ try {
   const commandsObj = {
     /**
      * 注册池侧命令——handler 来自 renderer（React 代码），contextBridge 自动代理函数引用。
-     * meta 同步到壳注册表（"commands:register" IPC）——命令面板/右键菜单的标题、分类、
+     * meta 同步到壳注册表（IPC.commands.register IPC）——命令面板/右键菜单的标题、分类、
      * when 过滤全由壳侧 getCommands 消费，池内注册必须回传才可见（含动态 toggle 标题重注册）。
      * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
      */
     registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string }) => {
       _poolCommands.set(id, handler);
-      ipcRenderer.invoke('commands:register', id, meta ?? null).catch((e) => {
+      ipcRenderer.invoke(IPC.commands.register, id, meta ?? null).catch((e) => {
         console.error(`[preload-pool] commands:register 回传失败 (${id}):`, e);
       });
     },
@@ -326,7 +327,7 @@ try {
       for (const [id] of _poolCommands) {
         if (id.startsWith(pluginId + '.')) _poolCommands.delete(id);
       }
-      ipcRenderer.invoke('commands:unregister', pluginId).catch((e) => {
+      ipcRenderer.invoke(IPC.commands.unregister, pluginId).catch((e) => {
         console.error(`[preload-pool] commands:unregister 回传失败 (${pluginId}):`, e);
       });
     },
@@ -341,7 +342,7 @@ try {
         const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
         return Promise.resolve(handler(...realArgs));
       }
-      return ipcRenderer.invoke('commands:execute', id, ...args);
+      return ipcRenderer.invoke(IPC.commands.execute, id, ...args);
     },
     /** 向后兼容别名 */
     execute: (id: string, ...args: any[]) => {
@@ -350,15 +351,15 @@ try {
         const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
         return Promise.resolve(handler(...realArgs));
       }
-      return ipcRenderer.invoke('commands:execute', id, ...args);
+      return ipcRenderer.invoke(IPC.commands.execute, id, ...args);
     },
-    getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
+    getCommands: () => ipcRenderer.invoke(IPC.plugins.call, 'getCommands'),
   };
 
   // ── E5.7 Bug C：壳→池 命令执行请求桥——占位命令的壳侧执行转发到池真实 handler ──
   // 壳 CommandRegistry.executeCommand 遇 placeholder 命令（loader 元数据注册）→
   // events.emit("commands:executeRequest") → 主进程 plugin:push 广播 → 本订阅执行 →
-  // invoke("commands:executeResult") → 壳 IpcBridgeHandler resolvePoolExecution 回传。
+  // invoke(IPC.commands.executeResult) → 壳 IpcBridgeHandler resolvePoolExecution 回传。
   // 订阅放 preload 模块级（对标 extraHandlers）：_poolCommands 就在本隔离世界，无 contextBridge 往返。
   // executeLocal 不 fallback 壳——壳侧该命令就是占位元数据，fallback 只会死循环。
   const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> => {
@@ -367,7 +368,7 @@ try {
     return Promise.resolve(handler(...args));
   };
   const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string }): void => {
-    ipcRenderer.invoke('commands:executeResult', requestId, result).catch((e) => {
+    ipcRenderer.invoke(IPC.commands.executeResult, requestId, result).catch((e) => {
       console.error(`[preload-pool] commands:executeResult 回传失败 (${requestId}):`, e);
     });
   };
@@ -388,26 +389,26 @@ try {
 
   // ── 配置对象——settings 在池内渲染（E5.7#44：壳侧 configuration 面已删），全量经此面走 IPC ──
   const configurationObj = {
-    get: (key: string) => ipcRenderer.invoke('config:get', key),
-    set: (key: string, v: any) => ipcRenderer.invoke('config:set', key, v),
-    getSchema: (key?: string) => ipcRenderer.invoke('plugins:call', 'getSchema', key),
+    get: (key: string) => ipcRenderer.invoke(IPC.config.get, key),
+    set: (key: string, v: any) => ipcRenderer.invoke(IPC.config.set, key, v),
+    getSchema: (key?: string) => ipcRenderer.invoke(IPC.plugins.call, 'getSchema', key),
     onChange: (key: string, cb: (v: any) => void) => {
       if (key && _configCache.has(key)) {
         try { cb(_configCache.get(key)); } catch { /* contextBridge 回调静默失败 */ }
       }
-      return events.on('config:changed', (d: any) => {
+      return events.on(IPC.config.changed, (d: any) => {
         const { key: k, value } = d as { key: string; value: any };
         if (!key || k === key) cb(value);
       });
     },
     getConfigurationContributions: (): Promise<[string, any][]> =>
-      ipcRenderer.invoke('plugins:call', 'getConfigurationContributions'),
+      ipcRenderer.invoke(IPC.plugins.call, 'getConfigurationContributions'),
     inspectConfiguration: (key: string): Promise<any> =>
-      ipcRenderer.invoke('plugins:call', 'inspectConfiguration', key),
+      ipcRenderer.invoke(IPC.plugins.call, 'inspectConfiguration', key),
     getUserSettings: (): Promise<Record<string, unknown>> =>
-      ipcRenderer.invoke('plugins:call', 'getUserSettings'),
+      ipcRenderer.invoke(IPC.plugins.call, 'getUserSettings'),
     onDidChangeConfiguration: (cb: (key: string, value: unknown) => void) => {
-      return events.on('config:changed', (d: any) => {
+      return events.on(IPC.config.changed, (d: any) => {
         const { key: k, value } = d as { key: string; value: any };
         try { cb(k, value); } catch { /* contextBridge 回调静默失败 */ }
       });
@@ -418,14 +419,14 @@ try {
       });
     },
     consumeSettingsGroup: (): Promise<string | null> =>
-      ipcRenderer.invoke('plugins:call', 'consumeSettingsGroup'),
+      ipcRenderer.invoke(IPC.plugins.call, 'consumeSettingsGroup'),
     onRequestSettingsGroup: (cb: (pluginId: string) => void) => {
       return events.on('settings:requestGroup', (d: any) => {
         try { cb((d as { pluginId: string }).pluginId); } catch { /* contextBridge 回调静默失败 */ }
       });
     },
     consumeScrollToSetting: (): Promise<string | null> =>
-      ipcRenderer.invoke('plugins:call', 'consumeScrollToSetting'),
+      ipcRenderer.invoke(IPC.plugins.call, 'consumeScrollToSetting'),
     onRequestScrollToSetting: (cb: (key: string) => void) => {
       return events.on('settings:scrollTo', (d: any) => {
         try { cb((d as { key: string }).key); } catch { /* contextBridge 回调静默失败 */ }
@@ -436,17 +437,17 @@ try {
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     // ── 串口（消费端——读/写/监听）──
     serial: {
-      listPorts: () => ipcRenderer.invoke('serial:listPorts'),
-      getStatus: () => ipcRenderer.invoke('serial:getStatus'),
-      openPort: (cfg: any) => ipcRenderer.invoke('serial:openPort', cfg),
-      closePort: () => ipcRenderer.invoke('serial:closePort'),
-      sendData: (data: number[]) => ipcRenderer.invoke('serial:sendData', data),
-      sendText: (text: string, enc: string) => ipcRenderer.invoke('serial:sendText', text, enc),
-      setDtr: (enable: boolean) => ipcRenderer.invoke('serial:setDtr', enable),
-      setRts: (enable: boolean) => ipcRenderer.invoke('serial:setRts', enable),
-      onData: (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:data', cb),
-      onStats: (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:stats', cb),
-      onSystem: (cb: (d: any) => void) => listenDirect(ipcRenderer, 'serial:system', cb),
+      listPorts: () => ipcRenderer.invoke(IPC.serial.listPorts),
+      getStatus: () => ipcRenderer.invoke(IPC.serial.getStatus),
+      openPort: (cfg: any) => ipcRenderer.invoke(IPC.serial.openPort, cfg),
+      closePort: () => ipcRenderer.invoke(IPC.serial.closePort),
+      sendData: (data: number[]) => ipcRenderer.invoke(IPC.serial.sendData, data),
+      sendText: (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
+      setDtr: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setDtr, enable),
+      setRts: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setRts, enable),
+      onData: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.data, cb),
+      onStats: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
+      onSystem: (cb: (d: any) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
     },
 
     // ── 配置（读/写/订阅/schema）──
@@ -458,24 +459,23 @@ try {
 
     // ── 文件系统（E5.7#63.5 路径守卫——池来源写操作经主进程校验：归一化 + 危险目录拒绝 + workspace 外用户确认，读放行）──
     filesystem: {
-      readTextFile: (p: string) => ipcRenderer.invoke('filesystem:readTextFile', p),
-      writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
-      readBinaryFile: (p: string) => ipcRenderer.invoke('filesystem:readBinaryFile', p),
-      writeBinaryFile: (p: string, d: Uint8Array) => ipcRenderer.invoke('filesystem:writeBinaryFile', p, d),
-      listDir: (p: string) => ipcRenderer.invoke('filesystem:listDir', p),
-      exists: (p: string) => ipcRenderer.invoke('filesystem:exists', p),
-      createDir: (p: string) => ipcRenderer.invoke('filesystem:createDir', p),
-      copy: (src: string, dest: string) => ipcRenderer.invoke('filesystem:copy', src, dest),
-      remove: (p: string) => ipcRenderer.invoke('filesystem:remove', p),
-      stat: (p: string) => ipcRenderer.invoke('filesystem:stat', p),
+      readTextFile: (p: string) => ipcRenderer.invoke(IPC.filesystem.readTextFile, p),
+      writeTextFile: (p: string, d: string) => ipcRenderer.invoke(IPC.filesystem.writeTextFile, p, d),
+      readBinaryFile: (p: string) => ipcRenderer.invoke(IPC.filesystem.readBinaryFile, p),
+      writeBinaryFile: (p: string, d: Uint8Array) => ipcRenderer.invoke(IPC.filesystem.writeBinaryFile, p, d),
+      listDir: (p: string) => ipcRenderer.invoke(IPC.filesystem.listDir, p),
+      exists: (p: string) => ipcRenderer.invoke(IPC.filesystem.exists, p),
+      createDir: (p: string) => ipcRenderer.invoke(IPC.filesystem.createDir, p),
+      copy: (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.copy, src, dest),
+      remove: (p: string) => ipcRenderer.invoke(IPC.filesystem.remove, p),
       watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
-        return ipcRenderer.invoke('filesystem:watch', dirPath).then((watcherId: number) => {
-          const channel = `filesystem:changed:${watcherId}`;
+        return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
+          const channel = filesystemChanged(watcherId);
           const handler = (_event: any, change: any) => onEvent(change);
           ipcRenderer.on(channel, handler);
           return () => {
             ipcRenderer.removeListener(channel, handler);
-            ipcRenderer.invoke('filesystem:unwatch', watcherId).catch(() => {});
+            ipcRenderer.invoke(IPC.filesystem.unwatch, watcherId).catch(() => {});
           };
         });
       },
@@ -483,19 +483,19 @@ try {
 
     // ── 剪贴板 ──
     clipboard: {
-      readText: () => ipcRenderer.invoke('clipboard:readText'),
-      writeText: (text: string) => ipcRenderer.invoke('clipboard:writeText', text),
-      writeFileList: (paths: string[]) => ipcRenderer.invoke('clipboard:writeFileList', paths),
+      readText: () => ipcRenderer.invoke(IPC.clipboard.readText),
+      writeText: (text: string) => ipcRenderer.invoke(IPC.clipboard.writeText, text),
+      writeFileList: (paths: string[]) => ipcRenderer.invoke(IPC.clipboard.writeFileList, paths),
     },
 
     // ── E5.6#11.5a：扩展 workspace——池插件完整工作区操作 ──
     workspace: {
-      getFolders: (): Promise<any[]> => ipcRenderer.invoke('workspace:getFolders'),
-      getActive: (): Promise<string | undefined> => ipcRenderer.invoke('workspace:getActive'),
-      setActive: (uri: string) => ipcRenderer.invoke('workspace:setActive', uri),
-      openFolder: () => ipcRenderer.invoke('workspace:openFolder'),
-      addFolder: (path: string) => ipcRenderer.invoke('workspace:addFolder', path),
-      removeFolder: (path: string) => ipcRenderer.invoke('workspace:removeFolder', path),
+      getFolders: (): Promise<any[]> => ipcRenderer.invoke(IPC.workspace.getFolders),
+      getActive: (): Promise<string | undefined> => ipcRenderer.invoke(IPC.workspace.getActive),
+      setActive: (uri: string) => ipcRenderer.invoke(IPC.workspace.setActive, uri),
+      openFolder: () => ipcRenderer.invoke(IPC.workspace.openFolder),
+      addFolder: (path: string) => ipcRenderer.invoke(IPC.workspace.addFolder, path),
+      removeFolder: (path: string) => ipcRenderer.invoke(IPC.workspace.removeFolder, path),
       onDidChangeFolders: (cb: () => void) => events.on('workspace:changed', cb),
       onDidChangeActiveWorkspace: (cb: (uri: string | null) => void) => {
         return events.on('workspace:activeChanged', (d: any) => {
@@ -506,19 +506,19 @@ try {
 
     // ── 环境信息 ──
     env: {
-      get: () => ipcRenderer.invoke('env:get'),
+      get: () => ipcRenderer.invoke(IPC.env.get),
     },
 
     // ── 通知 ──
     notifications: {
       show: (message: string, options?: { type?: string; progress?: boolean }) => {
-        return ipcRenderer.invoke('plugins:call', 'showNotification', message, options)
+        return ipcRenderer.invoke(IPC.plugins.call, 'showNotification', message, options)
           .then((handleId: string | undefined) => {
             if (!handleId) return undefined;
             return {
-              update: (msg: string) => ipcRenderer.invoke('plugins:call', 'updateNotification', handleId, msg),
-              finish: (msg?: string) => ipcRenderer.invoke('plugins:call', 'finishNotification', handleId, msg),
-              cancel: () => ipcRenderer.invoke('plugins:call', 'cancelNotification', handleId),
+              update: (msg: string) => ipcRenderer.invoke(IPC.plugins.call, 'updateNotification', handleId, msg),
+              finish: (msg?: string) => ipcRenderer.invoke(IPC.plugins.call, 'finishNotification', handleId, msg),
+              cancel: () => ipcRenderer.invoke(IPC.plugins.call, 'cancelNotification', handleId),
             };
           });
       },
@@ -526,36 +526,36 @@ try {
 
     // ── 插件管理 ──
     pluginManager: {
-      list: () => ipcRenderer.invoke('plugins:call', 'list'),
-      enable: (id: string) => ipcRenderer.invoke('plugins:call', 'enable', id),
-      disable: (id: string) => ipcRenderer.invoke('plugins:call', 'disable', id),
-      uninstall: (id: string) => ipcRenderer.invoke('plugins:call', 'uninstall', id),
-      install: (path: string) => ipcRenderer.invoke('plugins:call', 'install', path),
-      reinstall: (id: string) => ipcRenderer.invoke('plugins:call', 'reinstall', id),
-      getDisabled: () => ipcRenderer.invoke('plugins:call', 'getDisabled'),
-      getUninstalled: () => ipcRenderer.invoke('plugins:call', 'getUninstalled'),
-      isDisabled: (id: string) => ipcRenderer.invoke('plugins:call', 'isDisabled', id),
+      list: () => ipcRenderer.invoke(IPC.plugins.call, 'list'),
+      enable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'enable', id),
+      disable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'disable', id),
+      uninstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'uninstall', id),
+      install: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
+      reinstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
+      getDisabled: () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
+      getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),
+      isDisabled: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'isDisabled', id),
     },
 
     // ── 🔥 E5.6#11.5-fix：plugins 辅助——池侧动态 import 运行时安装的插件 ──
     // PluginComponent.tsx 的 import.meta.glob 是构建时扫描，运行时安装的插件不在 glob 中。
     // 提供 resolvePath 让 PluginComponent 在 glob 查找失败时 fallback 到动态 import()。
     plugins: {
-      resolvePath: (id: string) => ipcRenderer.invoke('plugins:resolvePath', id),
+      resolvePath: (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
     },
 
     // ── 主题查询 ──
     theme: {
-      getCurrent: () => ipcRenderer.invoke('plugins:call', 'getCurrentTheme'),
-      getAvailable: () => ipcRenderer.invoke('plugins:call', 'getAvailableThemes'),
-      apply: (themeId: string) => ipcRenderer.invoke('config:set', 'app.theme', themeId),
+      getCurrent: () => ipcRenderer.invoke(IPC.plugins.call, 'getCurrentTheme'),
+      getAvailable: () => ipcRenderer.invoke(IPC.plugins.call, 'getAvailableThemes'),
+      apply: (themeId: string) => ipcRenderer.invoke(IPC.config.set, 'app.theme', themeId),
     },
 
     // ── 语言查询 ──
     language: {
-      getCurrent: () => ipcRenderer.invoke('plugins:call', 'getCurrentLanguage'),
-      getAvailable: () => ipcRenderer.invoke('plugins:call', 'getAvailableLanguages'),
-      set: (langId: string) => ipcRenderer.invoke('config:set', 'app.language', langId),
+      getCurrent: () => ipcRenderer.invoke(IPC.plugins.call, 'getCurrentLanguage'),
+      getAvailable: () => ipcRenderer.invoke(IPC.plugins.call, 'getAvailableLanguages'),
+      set: (langId: string) => ipcRenderer.invoke(IPC.config.set, 'app.language', langId),
       getInitial: () => _langCache,
       onChange: (cb: (data: { lang: string; resources: Record<string, unknown> }) => void) => {
         _langSubscribers.add(cb);
@@ -565,14 +565,14 @@ try {
 
     // ── 快捷键 ──
     keybindings: {
-      getKeybindings: () => ipcRenderer.invoke('plugins:call', 'getKeybindings'),
-      getConflicts: () => ipcRenderer.invoke('plugins:call', 'getKeybindingConflicts'),
-      registerKeybinding: (binding: unknown) => ipcRenderer.invoke('plugins:call', 'registerKeybinding', binding),
-      saveUserKeybindings: () => ipcRenderer.invoke('plugins:call', 'saveUserKeybindings'),
-      removeKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'removeKeybindingForCommand', commandId),
-      resetKeybindingToDefault: (commandId: string) => ipcRenderer.invoke('plugins:call', 'resetKeybindingToDefault', commandId),
-      findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke('plugins:call', 'findKeybindingForCommand', commandId),
-      setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke('plugins:call', 'setKeybindingCaptureActive', active),
+      getKeybindings: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindings'),
+      getConflicts: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindingConflicts'),
+      registerKeybinding: (binding: unknown) => ipcRenderer.invoke(IPC.plugins.call, 'registerKeybinding', binding),
+      saveUserKeybindings: () => ipcRenderer.invoke(IPC.plugins.call, 'saveUserKeybindings'),
+      removeKeybindingForCommand: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'removeKeybindingForCommand', commandId),
+      resetKeybindingToDefault: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'resetKeybindingToDefault', commandId),
+      findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'findKeybindingForCommand', commandId),
+      setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke(IPC.plugins.call, 'setKeybindingCaptureActive', active),
       keyboardEventToKeyString: (e: KeyboardEvent): string => {
         const parts: string[] = [];
         if (e.ctrlKey) parts.push('ctrl');
@@ -604,9 +604,9 @@ try {
     // ── 插件持久化存储 ──
     pluginState: {
       get: (pluginId: string, key: string): Promise<unknown> =>
-        ipcRenderer.invoke('pluginState:get', pluginId, key),
+        ipcRenderer.invoke(IPC.pluginState.get, pluginId, key),
       set: (pluginId: string, key: string, value: unknown): Promise<void> =>
-        ipcRenderer.invoke('pluginState:set', pluginId, key, value),
+        ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
       onChange: (pluginId: string, key: string, cb: (value: unknown) => void) => {
         return events.on('plugin-state:changed', (data: any) => {
           if (data?.pluginId === pluginId && data?.key === key) {
@@ -621,26 +621,26 @@ try {
     // 只读 load（不消费）——StrictMode 双 mount / 跨组移动 remount 都要能重复读。
     hotExit: {
       save: (filePath: string, content: string): Promise<void> =>
-        ipcRenderer.invoke('hot-exit:save', filePath, content),
+        ipcRenderer.invoke(IPC.hotExit.save, filePath, content),
       load: (filePath: string): Promise<string | null> =>
-        ipcRenderer.invoke('hot-exit:load', filePath),
+        ipcRenderer.invoke(IPC.hotExit.load, filePath),
       clear: (filePath: string): Promise<void> =>
-        ipcRenderer.invoke('hot-exit:clear', filePath),
+        ipcRenderer.invoke(IPC.hotExit.clear, filePath),
     },
 
     // ── 菜单 ──
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
-        ipcRenderer.invoke('menu:registerItems', menuId, pluginId, items),
+        ipcRenderer.invoke(IPC.menu.registerItems, menuId, pluginId, items),
       getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
-        ipcRenderer.invoke('menu:getItems', menuId, context),
+        ipcRenderer.invoke(IPC.menu.getItems, menuId, context),
     },
 
     // ── ContextKey ──
     contextKey: {
       set: (key: string, value: unknown) => {
         _contextKeyStore.set(key, value);
-        ipcRenderer.invoke('contextKey:set', key, value);
+        ipcRenderer.invoke(IPC.contextKey.set, key, value);
       },
       _getValue: (key: string) => _contextKeyStore.get(key),
     },
@@ -648,15 +648,15 @@ try {
     // ── 标签页操作 ──
     tabs: {
       create: (type: string, opts?: Record<string, unknown>) =>
-        ipcRenderer.invoke('tabs:create', type, opts),
+        ipcRenderer.invoke(IPC.tabs.create, type, opts),
       openOrFocus: (type: string, opts?: Record<string, unknown>) =>
-        ipcRenderer.invoke('tabs:openOrFocus', type, opts),
-      focus: (tabId: string) => ipcRenderer.invoke('tabs:focus', tabId),
-      close: (tabId: string) => ipcRenderer.invoke('tabs:close', tabId),
-      focusBySourceId: (sourceId: string) => ipcRenderer.invoke('tabs:focusBySourceId', sourceId),
+        ipcRenderer.invoke(IPC.tabs.openOrFocus, type, opts),
+      focus: (tabId: string) => ipcRenderer.invoke(IPC.tabs.focus, tabId),
+      close: (tabId: string) => ipcRenderer.invoke(IPC.tabs.close, tabId),
+      focusBySourceId: (sourceId: string) => ipcRenderer.invoke(IPC.tabs.focusBySourceId, sourceId),
       updateLabelBySourceId: (sourceId: string, label: string) =>
-        ipcRenderer.invoke('tabs:updateLabelBySourceId', sourceId, label),
-      closeBySourceId: (sourceId: string) => ipcRenderer.invoke('tabs:closeBySourceId', sourceId),
+        ipcRenderer.invoke(IPC.tabs.updateLabelBySourceId, sourceId, label),
+      closeBySourceId: (sourceId: string) => ipcRenderer.invoke(IPC.tabs.closeBySourceId, sourceId),
       // E5.6#11.5g3: autoReveal——文件树随标签页切换自动定位
       onDidChangeActiveTab: (cb: (data: { tabId: string; pluginId?: string; filePath?: string }) => void) => {
         return events.on('tab:activated', (d: any) => {
@@ -668,19 +668,19 @@ try {
     // ── p2p ──
     p2p: {
       send: (target: string, channel: string, data: unknown) => {
-        ipcRenderer.send('p2p:send', { target, channel, data });
+        ipcRenderer.send(IPC.p2p.send, { target, channel, data });
       },
       on: (channel: string, cb: (data: unknown) => void) =>
-        listenDirect(ipcRenderer, 'p2p:data', (d: { channel: string; data: unknown }) => {
+        listenDirect(ipcRenderer, IPC.p2p.data, (d: { channel: string; data: unknown }) => {
           if (d.channel === channel) cb(d.data);
         }),
     },
 
     // ── 弹窗 ──
     dialog: {
-      confirm: (message: string): Promise<boolean> => ipcRenderer.invoke('dialog:confirm', message),
-      alert: (message: string): Promise<void> => ipcRenderer.invoke('dialog:alert', message),
-      open: (opts: any): Promise<any> => ipcRenderer.invoke('dialog:open', opts),
+      confirm: (message: string): Promise<boolean> => ipcRenderer.invoke(IPC.dialog.confirm, message),
+      alert: (message: string): Promise<void> => ipcRenderer.invoke(IPC.dialog.alert, message),
+      open: (opts: any): Promise<any> => ipcRenderer.invoke(IPC.dialog.open, opts),
     },
 
     // ── path 工具函数 ──
@@ -706,10 +706,10 @@ try {
           _onLayoutActive = false;
         };
       },
-      ready: () => ipcRenderer.send('pool:ready'), // E5.7#54：不再带 zone——单 Pool 无路由
-      sidebarAction: (action: unknown) => ipcRenderer.send('pool:sidebar-action', action),
+      ready: () => ipcRenderer.send(IPC.pool.ready), // E5.7#54：不再带 zone——单 Pool 无路由
+      sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),
       // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
-      tabAction: (action: unknown) => ipcRenderer.send('pool:tab-action', action),
+      tabAction: (action: unknown) => ipcRenderer.send(IPC.pool.tabAction, action),
     },
 
     // ── E5.7#63：插件 quickPick API——show(opts) → Promise<item | undefined>（池内本地桥，零 IPC）──
@@ -768,14 +768,14 @@ try {
         };
       },
       /** 选中条目——壳按 key 重解析 item 执行 onSelect */
-      select: (key: string) => ipcRenderer.send('pool:quickpick-action', { type: 'select', key }),
+      select: (key: string) => ipcRenderer.send(IPC.pool.quickpickAction, { type: 'select', key }),
       /** 高亮条目——壳按 key 重解析 item 执行 onHighlight */
-      highlight: (key: string) => ipcRenderer.send('pool:quickpick-action', { type: 'highlight', key }),
+      highlight: (key: string) => ipcRenderer.send(IPC.pool.quickpickAction, { type: 'highlight', key }),
       /** 关闭（Escape / 点击 backdrop）——壳执行 onClose */
-      close: () => ipcRenderer.send('pool:quickpick-action', { type: 'close' }),
+      close: () => ipcRenderer.send(IPC.pool.quickpickAction, { type: 'close' }),
       /** 行内按钮——壳按 key 重解析 item 执行 onItemAction(item, actionId) */
       itemAction: (key: string, actionId: string) =>
-        ipcRenderer.send('pool:quickpick-action', { type: 'itemAction', key, actionId }),
+        ipcRenderer.send(IPC.pool.quickpickAction, { type: 'itemAction', key, actionId }),
     },
 
     // ── E5.7#16：Toast 哑渲染订阅——池 ToastHost 消费 ──
@@ -796,10 +796,10 @@ try {
         };
       },
       /** 关闭单条——壳按 id 重解析执行 dismissToast */
-      dismiss: (id: string) => ipcRenderer.send('pool:toast-action', { type: 'dismiss', id }),
+      dismiss: (id: string) => ipcRenderer.send(IPC.pool.toastAction, { type: 'dismiss', id }),
       /** 行内操作按钮——壳按 id + actionId（位置序号）重解析 onClick */
       action: (id: string, actionId: string) =>
-        ipcRenderer.send('pool:toast-action', { type: 'action', id, actionId }),
+        ipcRenderer.send(IPC.pool.toastAction, { type: 'action', id, actionId }),
     },
 
     // ── E5.7#17：Dialog 哑渲染订阅——池 DialogHost 消费 ──
@@ -821,9 +821,9 @@ try {
         };
       },
       /** 确认（确定按钮 / Enter）——壳侧 settle(true) */
-      confirm: () => ipcRenderer.send('pool:dialog-action', { type: 'confirm' }),
+      confirm: () => ipcRenderer.send(IPC.pool.dialogAction, { type: 'confirm' }),
       /** 取消（取消按钮 / Escape / backdrop）——壳侧 settle(false) */
-      cancel: () => ipcRenderer.send('pool:dialog-action', { type: 'cancel' }),
+      cancel: () => ipcRenderer.send(IPC.pool.dialogAction, { type: 'cancel' }),
     },
 
     // ── E5.6#11.5a → E5.7#50：文件关联——扩展名→插件ID（主进程 FileAssociationService）──
@@ -831,7 +831,7 @@ try {
     // （通道名不变，原"主进程→壳代理"拉直为主进程直答，池侧零改动）
     fileAssociation: {
       getPluginFor: (ext: string): Promise<string | undefined> =>
-        ipcRenderer.invoke('fileAssociation:getPluginFor', ext),
+        ipcRenderer.invoke(IPC.fileAssociation.getPluginFor, ext),
     },
 
     // ── 🆕 E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行）──
@@ -848,7 +848,7 @@ try {
         maxResults?: number;
         // signal 本地消费——IPC 不传，调用方拿到结果后检查 AbortSignal.aborted 自行丢弃
       }): Promise<Array<{ filePath: string; matches: Array<{ filePath: string; lineNumber: number; lineText: string; matchStart: number; matchEnd: number }> }>> =>
-        ipcRenderer.invoke('search:searchFiles', opts),
+        ipcRenderer.invoke(IPC.search.searchFiles, opts),
     },
 
     // ── E5.7#60：文件装饰——池内本地注册表（零 IPC，机制见模块级注释）──
@@ -902,23 +902,23 @@ try {
     // ── 🆕 E5.6#11.5a：编码检测/转换 ──
     encoding: {
       detect: (buffer: Uint8Array): Promise<string> =>
-        ipcRenderer.invoke('encoding:detect', buffer),
+        ipcRenderer.invoke(IPC.encoding.detect, buffer),
       decode: (buffer: Uint8Array, encoding: string): Promise<string> =>
-        ipcRenderer.invoke('encoding:decode', buffer, encoding),
+        ipcRenderer.invoke(IPC.encoding.decode, buffer, encoding),
       encode: (text: string, encoding: string): Promise<Uint8Array> =>
-        ipcRenderer.invoke('encoding:encode', text, encoding),
+        ipcRenderer.invoke(IPC.encoding.encode, text, encoding),
     },
 
     // ── E5.7#58：viewContainer——真 IPC 查询/更新（问壳侧注册表，见模块级白名单注释）──
     viewContainer: {
       getViewContainer: (id: string): Promise<ViewContainerDtoShape | undefined> =>
-        ipcRenderer.invoke('viewContainer:getContainer', id),
+        ipcRenderer.invoke(IPC.viewContainer.getContainer, id),
       getViews: (containerId: string): Promise<ViewDtoShape[]> =>
-        ipcRenderer.invoke('viewContainer:getViews', containerId),
+        ipcRenderer.invoke(IPC.viewContainer.getViews, containerId),
       getView: (viewId: string): Promise<ViewDtoShape | undefined> =>
-        ipcRenderer.invoke('viewContainer:getView', viewId),
+        ipcRenderer.invoke(IPC.viewContainer.getView, viewId),
       registerView: (pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void> =>
-        ipcRenderer.invoke('viewContainer:registerView', pluginId, containerId, toViewMetaDto(descriptor)),
+        ipcRenderer.invoke(IPC.viewContainer.registerView, pluginId, containerId, toViewMetaDto(descriptor)),
     },
 
     // ── E5.6#11.5i → E5.7#49：langDef——语言定义注册表（主进程 LangDefRegistry）──
@@ -926,19 +926,19 @@ try {
     // 只返回可序列化字段 { id, lsp }——monarch tokenizer 函数不可跨进程（主进程侧剥壳）。
     langDef: {
       get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
-        ipcRenderer.invoke('langDef:get', extension),
+        ipcRenderer.invoke(IPC.langDef.get, extension),
     },
 
     // ── 🆕 E5.6#14-lsp：LSP 桥——编辑器在 MainPool 中需 LSP 通信（自动补全/F12/诊断/重命名）──
     lsp: {
       spawn: (command: string, args: string[] | undefined, pluginId: string) =>
-        ipcRenderer.invoke('lsp:spawn', { command, args, pluginId }),
+        ipcRenderer.invoke(IPC.lsp.spawn, { command, args, pluginId }),
       write: (channelId: string, data: string) =>
-        ipcRenderer.send('lsp:write', { channelId, data }),
+        ipcRenderer.send(IPC.lsp.write, { channelId, data }),
       dispose: (channelId: string) =>
-        ipcRenderer.invoke('lsp:dispose', { channelId }),
+        ipcRenderer.invoke(IPC.lsp.dispose, { channelId }),
       onData: (cb: (channelId: string, data: string) => void) =>
-        listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
+        listenDirect(ipcRenderer, IPC.lsp.data, ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
     // ── E5.6#11.5h → E5.7#49：protocol——协议注册表（主进程 ProtocolRegistry）──
@@ -946,22 +946,22 @@ try {
     // 直连 protocol:* 通道（1 跳）；返回前主进程剥 parseLine/detect（JS 函数不可跨进程）。
     protocol: {
       listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
-        ipcRenderer.invoke('protocol:listProtocols'),
+        ipcRenderer.invoke(IPC.protocol.listProtocols),
       getActiveProtocolId: (): Promise<string> =>
-        ipcRenderer.invoke('protocol:getActiveProtocolId'),
+        ipcRenderer.invoke(IPC.protocol.getActiveProtocolId),
       setActiveProtocolId: (protocolId: string): Promise<void> =>
-        ipcRenderer.invoke('protocol:setActiveProtocolId', protocolId),
+        ipcRenderer.invoke(IPC.protocol.setActiveProtocolId, protocolId),
     },
 
     // ── 🔥 E5.6#11.5-bug3a：shell 操作——revealInOS / openInTerminal / startDrag ──
     // 这些是主进程 handler（main.ts ipcMain.handle），非壳渲染进程 handler，
     // 因此不走 PROXY_CHANNELS——直接 ipcRenderer.invoke。
     shell: {
-      showItemInFolder: (p: string) => ipcRenderer.invoke('shell:showItemInFolder', p),
+      showItemInFolder: (p: string) => ipcRenderer.invoke(IPC.shell.showItemInFolder, p),
       openInTerminal: (dirPath: string, terminalExe?: string, customCommand?: string) =>
-        ipcRenderer.invoke('shell:openInTerminal', dirPath, terminalExe, customCommand),
+        ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
       startDrag: (filePath: string, iconPath?: string) =>
-        ipcRenderer.send('shell:startDrag', filePath, iconPath),
+        ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
     },
 
     // ── 🔥 E5.6#11.5-bug4：getFilePath——桥接 Chromium File API 与沙箱文件系统 ──
@@ -972,21 +972,18 @@ try {
     // ── E5.7#5：窗口控制——TitleBarZone 的自定义 ─ □ × 按钮（preload-shell 同款搬入）──
     // 通道是主进程 handler（window:minimize 等）——非壳渲染进程 handler，不走 PROXY_CHANNELS。
     window: {
-      minimize:  () => ipcRenderer.send('window:minimize'),
-      maximize:  () => ipcRenderer.send('window:maximize'),
-      unmaximize:() => ipcRenderer.send('window:unmaximize'),
-      close:     () => ipcRenderer.send('window:close'),
-      toggleDevTools: () => ipcRenderer.invoke('window:toggleDevTools'),
-      isMaximized:() => ipcRenderer.invoke('window:isMaximized'),
+      minimize:  () => ipcRenderer.send(IPC.window.minimize),
+      maximize:  () => ipcRenderer.send(IPC.window.maximize),
+      unmaximize:() => ipcRenderer.send(IPC.window.unmaximize),
+      close:     () => ipcRenderer.send(IPC.window.close),
+      toggleDevTools: () => ipcRenderer.invoke(IPC.window.toggleDevTools),
+      isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
       onMaximizeChange: (cb: (maximized: boolean) => void) =>
-        listenDirect(ipcRenderer, 'window:maximize-change', (m: boolean) => cb(m)),
+        listenDirect(ipcRenderer, IPC.window.maximizeChange, (m: boolean) => cb(m)),
     },
 
     events,
   });
-
-  // 通知主进程 preload 成功
-  ipcRenderer.send('preload-pool-ready');
 } catch (err) {
   contextBridge.exposeInMainWorld('__linkdesk_preload_error__', {
     message: String(err),

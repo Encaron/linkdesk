@@ -12,6 +12,7 @@
 import { BrowserWindow, ipcMain } from 'electron';
 import { serialService, OpenPortConfig } from '../services/serial-service.js';
 import type { WindowManager } from '../window-manager.js';
+import { IPC } from './channels.js';
 
 // E5.7#36：壳崩重建复用本函数——引用始终刷新（推送回调读模块引用），IPC 通道只注册一次
 let _mainWindow: BrowserWindow | null = null;
@@ -31,37 +32,37 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
   serialService.setCallbacks({
     onData: (text) => {
       if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send('serial:data', text);
+        _mainWindow.webContents.send(IPC.serial.data, text);
       }
       // E5#74b + E5.7#43：广播到唯一 Pool WebView（per-tab 实例循环已删）
       if (_windowManager) {
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send('serial:data', text);
+            poolView.webContents.send(IPC.serial.data, text);
           }
         }
       }
     },
     onStats: (stats) => {
       if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send('serial:stats', stats);
+        _mainWindow.webContents.send(IPC.serial.stats, stats);
       }
       if (_windowManager) {
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send('serial:stats', stats);
+            poolView.webContents.send(IPC.serial.stats, stats);
           }
         }
       }
     },
     onSystem: (msg) => {
       if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send('serial:system', msg);
+        _mainWindow.webContents.send(IPC.serial.system, msg);
       }
       if (_windowManager) {
         for (const poolView of _windowManager.getAllPoolViews()) {
           if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send('serial:system', msg);
+            poolView.webContents.send(IPC.serial.system, msg);
           }
         }
       }
@@ -74,41 +75,41 @@ export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?
   // ── 请求-响应处理器（对标 Tauri #[tauri::command]）──
 
   // 枚举可用串口
-  ipcMain.handle('serial:listPorts', async () => {
+  ipcMain.handle(IPC.serial.listPorts, async () => {
     return serialService.listPorts();
   });
 
   // 查询当前状态（F5 刷新恢复）
-  ipcMain.handle('serial:getStatus', () => {
+  ipcMain.handle(IPC.serial.getStatus, () => {
     return serialService.getStatus();
   });
 
   // 打开串口
-  ipcMain.handle('serial:openPort', async (_event, cfg: OpenPortConfig) => {
+  ipcMain.handle(IPC.serial.openPort, async (_event, cfg: OpenPortConfig) => {
     await serialService.openPort(cfg);
   });
 
   // 关闭串口
-  ipcMain.handle('serial:closePort', async () => {
+  ipcMain.handle(IPC.serial.closePort, async () => {
     await serialService.closePort();
   });
 
   // 发送字节数据
-  ipcMain.handle('serial:sendData', (_event, data: number[]) => {
+  ipcMain.handle(IPC.serial.sendData, (_event, data: number[]) => {
     return serialService.sendData(data);
   });
 
   // 发送文本（支持编码）
-  ipcMain.handle('serial:sendText', (_event, text: string, encoding: string) => {
+  ipcMain.handle(IPC.serial.sendText, (_event, text: string, encoding: string) => {
     return serialService.sendText(text, encoding);
   });
 
   // DTR / RTS 控制信号
-  ipcMain.handle('serial:setDtr', async (_event, enable: boolean) => {
+  ipcMain.handle(IPC.serial.setDtr, async (_event, enable: boolean) => {
     await serialService.setDtr(enable);
   });
 
-  ipcMain.handle('serial:setRts', async (_event, enable: boolean) => {
+  ipcMain.handle(IPC.serial.setRts, async (_event, enable: boolean) => {
     await serialService.setRts(enable);
   });
 }

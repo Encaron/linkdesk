@@ -8,6 +8,7 @@ import { ipcMain, BrowserWindow, app } from "electron";
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
+import { IPC } from './channels.js';
 
 interface LspChannel {
   process: ChildProcess;
@@ -142,7 +143,7 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
   if (_registered) return;
   _registered = true;
 
-  ipcMain.handle("lsp:spawn", async (event, { command, args, pluginId }: {
+  ipcMain.handle(IPC.lsp.spawn, async (event, { command, args, pluginId }: {
     command: string;
     args?: string[];
     pluginId: string;
@@ -176,7 +177,7 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
       const sendOnce = (wc: Electron.WebContents | null | undefined) => {
         if (wc && !wc.isDestroyed() && !sentTo.has(wc)) {
           sentTo.add(wc);
-          wc.send("lsp:data", { channelId, data: text });
+          wc.send(IPC.lsp.data, { channelId, data: text });
         }
       };
       sendOnce(_mainWindow && !_mainWindow.isDestroyed() ? _mainWindow.webContents : null);
@@ -203,14 +204,14 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
   });
 
   // renderer → stdin
-  ipcMain.on("lsp:write", (_event, { channelId, data }: { channelId: string; data: string }) => {
+  ipcMain.on(IPC.lsp.write, (_event, { channelId, data }: { channelId: string; data: string }) => {
     const channel = channels.get(channelId);
     if (channel && !channel.process.stdin?.destroyed) {
       channel.process.stdin?.write(data);
     }
   });
 
-  ipcMain.handle("lsp:dispose", async (_event, { channelId }: { channelId: string }) => {
+  ipcMain.handle(IPC.lsp.dispose, async (_event, { channelId }: { channelId: string }) => {
     const channel = channels.get(channelId);
     if (channel) {
       channel.process.stdin?.end();

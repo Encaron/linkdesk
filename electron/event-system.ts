@@ -2,17 +2,18 @@
  * 🔥 events 共享模块——preload-pool.ts + preload-shell.ts 共用
  *
  * E5#79 重写：去 subscriptions Map dispatch，改 serial.onData 模式——
- * 每个 events.on(channel, cb) 注册独立 ipcRenderer.on('plugin:push', handler)。
+ * 每个 events.on(channel, cb) 注册独立 ipcRenderer.on(IPC.plugin.push, handler)。
  * contextBridge 代理回调不复存在 subscriptions 中——直接在 ipcRenderer 监听器里调用。
  *
  * 使用：
  *   import { createEventSystem } from './event-system';
  *   const { on, emit } = createEventSystem(ipcRenderer, {
  *     logPrefix: 'preload-pool',
- *     extraHandlers: { 'theme:changed': (payload) => { ... } },
+ *     extraHandlers: { [IPC.theme.changed]: (payload) => { ... } },
  *   });
  */
 import type { IpcRenderer } from 'electron';
+import { IPC } from './ipc/channels';
 
 type EventCallback = (payload: unknown) => void;
 
@@ -42,7 +43,7 @@ export function createEventSystem(
 
   // 额外处理器（theme:changed CSS 注入等）——独立于 per-callback 监听器
   if (extraHandlers) {
-    ipcRenderer.on('plugin:push', (_event, data: PluginPushData) => {
+    ipcRenderer.on(IPC.plugin.push, (_event, data: PluginPushData) => {
       const extra = extraHandlers[data.channel];
       if (extra) {
         try { extra(data.payload); } catch (e) {
@@ -60,13 +61,13 @@ export function createEventSystem(
           try { cb(data.payload); } catch { /* contextBridge 回调静默失败 */ }
         }
       };
-      ipcRenderer.on('plugin:push', handler);
-      return () => { ipcRenderer.removeListener('plugin:push', handler); };
+      ipcRenderer.on(IPC.plugin.push, handler);
+      return () => { ipcRenderer.removeListener(IPC.plugin.push, handler); };
     },
 
     emit(channel: string, payload: unknown): void {
       // E5.6#9e：DEV_LOG 模式 console.debug 洪水——emit 每次调用→启动时 keybindings:changed 等 ~20 次
-      ipcRenderer.send('plugin:emit', { channel, payload });
+      ipcRenderer.send(IPC.plugin.emit, { channel, payload });
     },
   };
 }
@@ -100,11 +101,11 @@ export function listenDirect(
   // 用 listenDirect 是正确的——传 { skipPushWarning: true } 跳过告警。
   if (!options?.skipPushWarning) {
     const PUSH_CHANNELS = [
-      'config:changed',
-      'theme:changed',
+      IPC.config.changed,
+      IPC.theme.changed,
       'lang:changed',
       'plugin-state:changed',
-      'contextKey:changed',
+      IPC.contextKey.changed,
       'plugin:installed',
       'plugin:uninstalled',
       'window:zoomLevelChanged',

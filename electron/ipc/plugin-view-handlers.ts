@@ -9,6 +9,7 @@
 
 import { app, ipcMain, BrowserWindow } from 'electron';
 import type { WindowManager } from '../window-manager.js'; // E5.6#8d
+import { IPC } from './channels.js';
 
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;
@@ -26,20 +27,20 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   _poolHandlersRegistered = true;
 
   // 壳→Pool：推送布局快照——单 WCV 直推（E5.7#4）
-  ipcMain.on('pool:push-layout', (_event, layout: unknown) => {
+  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown) => {
     _windowManager?.pushLayout(layout);
   });
 
   // Pool→壳：池 React 挂载完成（E5.7#54：zone 参数已删——单 Pool 无路由）
-  ipcMain.on('pool:ready', (_event) => {
+  ipcMain.on(IPC.pool.ready, (_event) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:ready');
+      _mainWindow.webContents.send(IPC.pool.ready);
     }
     console.log('[pool-handlers] Pool 就绪');
   });
 
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用
-  ipcMain.on('pool:toggleDevTools', () => {
+  ipcMain.on(IPC.pool.toggleDevTools, () => {
     if (app.isPackaged) return;
     const poolView = _windowManager?.getPoolView();
     if (poolView && !poolView.webContents.isDestroyed()) {
@@ -54,54 +55,54 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   // E5.6#11i：Pool→壳——侧栏写操作（reorder/setCollapsed/setVisible）。
   // 池组件通过 pool.sidebarAction() 发送，主进程转发到壳窗口。
   // 壳侧 preload 接收后调 ViewContainerService 方法。
-  ipcMain.on('pool:sidebar-action', (_event, action: unknown) => {
+  ipcMain.on(IPC.pool.sidebarAction, (_event, action: unknown) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:sidebar-action', action);
+      _mainWindow.webContents.send(IPC.pool.sidebarAction, action);
     }
   });
 
   // E5.6#16.5：Pool→壳——主区 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）。
   // 池组件通过 pool.tabAction() 发送，主进程转发到壳窗口。
   // 壳侧 preload 接收后调 useTabManager 方法。
-  ipcMain.on('pool:tab-action', (_event, action: unknown) => {
+  ipcMain.on(IPC.pool.tabAction, (_event, action: unknown) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:tab-action', action);
+      _mainWindow.webContents.send(IPC.pool.tabAction, action);
     }
   });
 
   // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
-  ipcMain.on('pool:quickpick-show', (_event, data: unknown) => {
+  ipcMain.on(IPC.pool.quickpickShow, (_event, data: unknown) => {
     _windowManager?.pushQuickPick(data);
   });
 
   // E5.7#15：Pool→壳——QuickPick 动作（select/highlight/close/itemAction），按 key 回传
-  ipcMain.on('pool:quickpick-action', (_event, action: unknown) => {
+  ipcMain.on(IPC.pool.quickpickAction, (_event, action: unknown) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:quickpick-action', action);
+      _mainWindow.webContents.send(IPC.pool.quickpickAction, action);
     }
   });
 
   // E5.7#16：壳→Pool——Toast 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
-  ipcMain.on('pool:toast-show', (_event, data: unknown) => {
+  ipcMain.on(IPC.pool.toastShow, (_event, data: unknown) => {
     _windowManager?.pushToast(data);
   });
 
   // E5.7#16：Pool→壳——Toast 动作（dismiss/action），按 id + actionId 回传
-  ipcMain.on('pool:toast-action', (_event, action: unknown) => {
+  ipcMain.on(IPC.pool.toastAction, (_event, action: unknown) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:toast-action', action);
+      _mainWindow.webContents.send(IPC.pool.toastAction, action);
     }
   });
 
   // E5.7#17：壳→Pool——Dialog 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
-  ipcMain.on('pool:dialog-show', (_event, data: unknown) => {
+  ipcMain.on(IPC.pool.dialogShow, (_event, data: unknown) => {
     _windowManager?.pushDialog(data);
   });
 
   // E5.7#17：Pool→壳——Dialog 动作（confirm/cancel），壳侧 settle Promise
-  ipcMain.on('pool:dialog-action', (_event, action: unknown) => {
+  ipcMain.on(IPC.pool.dialogAction, (_event, action: unknown) => {
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send('pool:dialog-action', action);
+      _mainWindow.webContents.send(IPC.pool.dialogAction, action);
     }
   });
 
