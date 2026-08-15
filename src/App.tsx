@@ -302,6 +302,8 @@ function App() {
   // E5#5e-ii-b：activeEditor——订阅 tab:focused 替代旧的 activePluginId 派生
   useEffect(() => {
     const unsub = shellEvents.on("tab:focused", ({ pluginId }) => {
+      // [BUG-A-S3] 临时埋点——诊断右键菜单空：activeEditor 是否被 setValue
+      console.error("[BUG-A-S3] tab:focused → setValue activeEditor=", JSON.stringify(pluginId ?? null));
       ContextKeyService.setValue("activeEditor", pluginId ?? null);
     });
     return unsub;
@@ -815,6 +817,8 @@ function App() {
     // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
     const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
       const tabId = createTab(type, opts as any);
+      // [BUG-A-S2] 临时埋点——诊断右键菜单空：createTab 返回值是否为真（React 18 eager state 依赖）
+      console.error("[BUG-A-S2] u1 createTab 返回 tabId=", JSON.stringify(tabId), "type=", JSON.stringify(type));
       if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
     });
     const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
