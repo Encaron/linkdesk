@@ -216,14 +216,6 @@ export function initIpcBridgeHandler(): void {
           const [menuId, context] = req.args as [string, Record<string, unknown> | undefined];
           const raw = getMenuItems(menuId as any) as ManifestMenuItem[];
           const allCmds = getCommands();
-          // [BUG-A-S4] 临时埋点——诊断右键菜单空：过滤时 activeEditor 值（内部 store / preload 外部 store）+ 每项 when
-          console.error("[BUG-A-S4] menu:getItems", JSON.stringify({
-            menuId,
-            activeEditorInternal: ContextKeyService.getState().get("activeEditor"),
-            activeEditorExternal: window.linkdesk?.contextKey?._getValue?.("activeEditor"),
-            rawCount: raw.length,
-            rawWhens: raw.map((it) => (it instanceof Object ? (it as Exclude<ManifestMenuItem, string>).when ?? null : null)),
-          }));
           result = raw
             .filter((item): item is Exclude<ManifestMenuItem, string> => {
               if (typeof item === "string") return false; // 分隔符/字符串引用——壳侧不返回
@@ -260,8 +252,6 @@ export function initIpcBridgeHandler(): void {
         // ── E5#68：标签页操作——插件调壳的 tabs API ──
         case "tabs:create": {
           const [type, opts] = req.args as [string, Record<string, unknown>?];
-          // [BUG-A-S1] 临时埋点——诊断右键菜单空：tabs:create 桥是否到达壳
-          console.error("[BUG-A-S1] tabs:create 桥达壳，emit tab:create", JSON.stringify({ type: type || "editor", opts }));
           // E5#99：壳统一守卫——未知类型路由到 editor（对标 VS Code 文本编辑器 fallback）
           shellEvents.emit("tab:create", { type: type || "editor", opts });
           break;
