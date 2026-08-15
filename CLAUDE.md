@@ -43,7 +43,7 @@
 
 三条有一条不满足 → 不放核心，放插件里。详见 memory `core-admission-criteria`。
 
-标签页系统永不 import CardRegistry。卡片工作台是插件，不是架构第二层。
+标签页系统永不持有卡片注册表。卡片工作台是插件，不是架构第二层。
 
 ## 当前阶段——E4 收尾 → E5 铁轨
 
@@ -145,7 +145,7 @@ Phase 1-5h ✅ 完成
 
 1. **所有颜色走 CSS 变量 `var(--xxx)`**，禁止硬编码 hex
 2. **所有 UI 文字走 `t()`**，禁止硬编码中文（i18n key = 中文原文）
-3. **标签页系统不 import CardRegistry**（Phase 3→4 硬边界）
+3. **标签页系统不持有卡片注册表**（Phase 3→4 硬边界——卡片工作台是插件，卡片状态归插件自持；原 CardRegistry 骨架已随 E5.7#45.7 整删，未来重建亦不得进标签页系统）
 4. **workspace.json 禁止嵌套**，必须是一层平铺数组
 5. **IPC 事件订阅必须用 generation counter 模式**（B11 教训，`useIpcEvent` 已内置）
 6. **`setState` 函数式更新器内部不写副作用**（B25 教训）

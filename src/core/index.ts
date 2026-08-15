@@ -62,7 +62,7 @@ export * from "./utils/CancellationToken";
 // ── 服务 ──
 export * from "./services/FactorySlots";
 export * from "./services/LogChannel";
-// CardRegistry 不在 barrel——标签页系统隔离（硬约束 #3）
+// 卡片注册表不在 barrel——卡片工作台是插件（硬约束 #3）。CardRegistry 骨架已随 E5.7#45.7 整删
 
 // ── API 类型 ──
 export type * from "./api/linkdesk-api";

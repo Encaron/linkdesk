@@ -13,7 +13,6 @@ import { registerCommand, unregisterPluginCommands, getCommands } from "../regis
 import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../registry/KeybindingRegistry";
 import { registerMenuItems, MenuId, unregisterPluginMenus } from "../registry/MenuRegistry";
 import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../registry/ProtocolRegistry";
-import { registerCard, unregisterPluginCards, getCards } from "../registry/CardRegistry";
 import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/LogChannel";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ThemeEngine";
 import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../services/FileAssociationService";
@@ -29,7 +28,6 @@ describe("RegistryLifecycle — 安装→卸载对称性", () => {
     unregisterPluginKeybindings(PLUGIN_ID);
     unregisterPluginMenus(PLUGIN_ID);
     unregisterPluginProtocols(PLUGIN_ID);
-    unregisterPluginCards(PLUGIN_ID);
     unregisterPluginChannels(PLUGIN_ID);
     unregisterPluginFileAssociations(PLUGIN_ID);
     ThemeRegistry.unregisterPlugin(PLUGIN_ID);
@@ -73,15 +71,6 @@ describe("RegistryLifecycle — 安装→卸载对称性", () => {
     expect(listProtocols().some((p) => p.id === "test-proto")).toBe(true);
     unregisterPluginProtocols(PLUGIN_ID);
     expect(listProtocols().some((p) => p.id === "test-proto")).toBe(false);
-  });
-
-  /* ── 5. CardRegistry ── */
-
-  it("CardRegistry — register→unregister→getCards 不含该插件", () => {
-    registerCard({ id: "test-card", pluginId: PLUGIN_ID, name: "Test Card", component: () => null as any } as any);
-    expect(getCards().some((c) => c.id === "test-card")).toBe(true);
-    unregisterPluginCards(PLUGIN_ID);
-    expect(getCards().some((c) => c.id === "test-card")).toBe(false);
   });
 
   /* ── 6. LogChannel ── */
