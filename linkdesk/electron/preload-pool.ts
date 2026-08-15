@@ -388,6 +388,7 @@ try {
   });
 
   // ── 配置对象——settings 在池内渲染（E5.7#44：壳侧 configuration 面已删），全量经此面走 IPC ──
+  // 通用面 get/set/getSchema/onChange；设置页专用 9 方法见下方 E5.7#76 分隔标注。
   const configurationObj = {
     get: (key: string) => ipcRenderer.invoke(IPC.config.get, key),
     set: (key: string, v: any) => ipcRenderer.invoke(IPC.config.set, key, v),
@@ -401,6 +402,9 @@ try {
         if (!key || k === key) cb(value);
       });
     },
+    // ══ E5.7#76（E5.5#10r/E5.6#65 迁入）：以下 9 个方法为设置页专用
+    // （SettingsView 渲染/实时刷新/插件生命周期联动/跳转到分组/跳转到具体配置项）。
+    // 通用插件请用上面的 get/set/getSchema/onChange。 ══
     getConfigurationContributions: (): Promise<[string, any][]> =>
       ipcRenderer.invoke(IPC.plugins.call, 'getConfigurationContributions'),
     inspectConfiguration: (key: string): Promise<any> =>
