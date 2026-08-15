@@ -203,15 +203,26 @@ try {
 
   // ── 命令对象——池侧注册 + 壳侧 fallback ──
   const commandsObj = {
-    /** 注册池侧命令——handler 来自 renderer（React 代码），contextBridge 自动代理函数引用 */
-    registerCommand: (id: string, handler: (...args: any[]) => any) => {
+    /**
+     * 注册池侧命令——handler 来自 renderer（React 代码），contextBridge 自动代理函数引用。
+     * meta 同步到壳注册表（"commands:register" IPC）——命令面板/右键菜单的标题、分类、
+     * when 过滤全由壳侧 getCommands 消费，池内注册必须回传才可见（含动态 toggle 标题重注册）。
+     * 不传 meta 的旧调用向后兼容（纯池内命令，壳侧不可见）。
+     */
+    registerCommand: (id: string, handler: (...args: any[]) => any, meta?: { title?: string; category?: string; when?: string }) => {
       _poolCommands.set(id, handler);
+      ipcRenderer.invoke('commands:register', id, meta ?? null).catch((e) => {
+        console.error(`[preload-pool] commands:register 回传失败 (${id}):`, e);
+      });
     },
-    /** 注销某插件的全部命令（约定：命令 ID 格式为 "pluginId.commandName"） */
+    /** 注销某插件的全部命令（约定：命令 ID 格式为 "pluginId.commandName"）——池侧 handler + 壳侧运行时条目同步注销 */
     unregisterCommands: (pluginId: string) => {
       for (const [id] of _poolCommands) {
         if (id.startsWith(pluginId + '.')) _poolCommands.delete(id);
       }
+      ipcRenderer.invoke('commands:unregister', pluginId).catch((e) => {
+        console.error(`[preload-pool] commands:unregister 回传失败 (${pluginId}):`, e);
+      });
     },
     /** 执行命令——先查池侧注册表，未找到则 IPC 到壳 */
     executeCommand: (id: string, ...args: any[]) => {

@@ -57,6 +57,21 @@ export interface LinkDeskAPI {
     execute<T = void>(commandId: string, ...args: any[]): Promise<T>;
     /** 执行壳侧命令 */
     executeCommand<T = void>(commandId: string, ...args: any[]): Promise<T>;
+    /**
+     * 注册池内命令——handler 只存在于池渲染进程（视图 mount 时注册）。
+     * meta 同步到壳注册表：title 显示名（命令面板/右键菜单，重注册即动态更新——
+     * toggle 命令标题随状态翻转）、category 命令面板分组、when context key 过滤
+     * （传 "false" = 纯程序化命令，不进命令面板，仅供插件 API 调用）。
+     * plugin.json contributes.commands 未声明的命令经 meta 注册后同样可见/可执行。
+     */
+    registerCommand(
+      commandId: string,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令 handler 入参类型由插件调用方决定，对标 VS Code registerCommand 的 (...args: any[]) => any
+      handler: (...args: any[]) => Promise<unknown> | unknown,
+      meta?: { title?: string; category?: string; when?: string },
+    ): void;
+    /** 注销插件的池内命令（约定：命令 ID 格式为 "pluginId.commandName"）——随视图 unmount 调用 */
+    unregisterCommands(pluginId: string): void;
     /** 获取所有已注册命令列表 */
     getCommands(): Promise<LinkDeskCommand[]>;
   };

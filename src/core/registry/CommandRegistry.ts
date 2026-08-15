@@ -82,8 +82,65 @@ export function unregisterPluginCommands(pluginId: string): void {
   if (pluginSet) {
     for (const cmdId of pluginSet) {
       _commands.delete(cmdId);
+      _poolRuntimeCommands.delete(cmdId);
     }
     _pluginCommands.delete(pluginId);
+  }
+}
+
+/* ── 池侧命令元数据同步（E5.7 Bug C 补全——命令面板/菜单可见性）── */
+
+/** 池内运行时注册的命令——经 "commands:register" IPC 创建，随视图 unmount 的 unregister 注销 */
+const _poolRuntimeCommands = new Set<string>();
+
+/**
+ * 池侧 registerCommand 的元数据回传——preload-pool 经 "commands:register" IPC 调用。
+ *
+ * 命令面板/右键菜单的标题、分类、when 过滤全部由壳侧 getCommands 消费——
+ * 池内注册必须回传元数据才可见（含动态 toggle 标题的重注册更新）。
+ *
+ * 已存在条目：只更新 title/category/when——不动 handler/placeholder。
+ *   loader 元数据条目保持转发语义（Bug C 桥），壳原生命令保持壳侧执行。
+ * 不存在条目：plugin.json 未声明的池内运行时命令——以占位条目登记入壳注册表
+ *   （命令面板可见，执行走 executeInPool 转发到池）。
+ */
+export function registerPoolCommandMetadata(
+  commandId: string,
+  meta: { title?: string; category?: string; when?: string },
+): void {
+  const existing = _commands.get(commandId);
+  if (existing) {
+    if (meta.title !== undefined) existing.title = meta.title;
+    if (meta.category !== undefined) existing.category = meta.category;
+    if (meta.when !== undefined) existing.when = meta.when;
+    return;
+  }
+  // 命令 ID 约定 "pluginId.commandName"——pluginId 取前缀（preload-pool unregister 同约定）
+  const pluginId = commandId.split(".")[0];
+  registerCommand(pluginId, {
+    id: commandId,
+    title: meta.title ?? commandId,
+    category: meta.category,
+    when: meta.when,
+    placeholder: true,
+    handler: async () => {
+      console.warn(`[CommandRegistry] 命令 "${commandId}" 尚未绑定 handler——池内视图未挂载`);
+    },
+  });
+  _poolRuntimeCommands.add(commandId);
+}
+
+/**
+ * 池侧 unregisterCommands 的回传——移除该插件的运行时命令条目。
+ * loader 元数据条目保留——插件仍加载，plugin.json 静态声明仍在。
+ */
+export function unregisterPoolCommands(pluginId: string): void {
+  const prefix = `${pluginId}.`;
+  for (const id of [..._poolRuntimeCommands]) {
+    if (!id.startsWith(prefix)) continue;
+    _poolRuntimeCommands.delete(id);
+    _commands.delete(id);
+    _pluginCommands.get(pluginId)?.delete(id);
   }
 }
 

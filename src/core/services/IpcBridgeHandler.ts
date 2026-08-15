@@ -13,7 +13,7 @@ import { getLangDef, getAllLangDefs } from "../registry/LangDefRegistry";
 import { listProtocols, getActiveProtocolId, setActiveProtocol } from "../registry/ProtocolRegistry";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
-import { executeCommand, getCommands, resolvePoolExecution } from "../registry/CommandRegistry";
+import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, unregisterPoolCommands } from "../registry/CommandRegistry";
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
@@ -113,6 +113,19 @@ export function initIpcBridgeHandler(): void {
           // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
           const [requestId, payload] = req.args as [string, { result?: unknown; error?: string }];
           resolvePoolExecution(requestId, payload);
+          break;
+        }
+        case "commands:register": {
+          // E5.7 Bug C 补全：池侧 registerCommand 元数据回传——title/category/when 同步进壳注册表
+          // （命令面板可见性 + 动态 toggle 标题）；runtime 命令以占位条目登记，执行走转发桥。
+          const [commandId, meta] = req.args as [string, { title?: string; category?: string; when?: string } | null];
+          registerPoolCommandMetadata(commandId, meta ?? {});
+          break;
+        }
+        case "commands:unregister": {
+          // E5.7 Bug C 补全：池侧 unregisterCommands 回传——移除运行时命令条目（loader 元数据保留）
+          const [pluginId] = req.args as [string];
+          unregisterPoolCommands(pluginId);
           break;
         }
 

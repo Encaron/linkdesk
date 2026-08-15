@@ -44,6 +44,9 @@ export class IpcBridge {
     'commands:execute',
     // E5.7 Bug C：池执行回传——壳→池占位命令转发的结果通道（resolvePoolExecution）
     'commands:executeResult',
+    // E5.7 Bug C 补全：池侧命令元数据同步——registerCommand 的 title/category/when 回传壳注册表
+    'commands:register',
+    'commands:unregister',
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
     'dialog:confirm',
     'dialog:alert',
