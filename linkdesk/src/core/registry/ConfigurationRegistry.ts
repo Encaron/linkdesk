@@ -28,11 +28,15 @@ export interface ConfigurationProperty {
   dependsOn?: { key: string; value: unknown };
   /** E3f #59d3：渲染提示——SettingsView 按 hint 决定控件样式。
    *  "color" → 文本输入框旁显示色块预览（#59e ColorPicker 替换为弹出调色器）。
-   *  "action" → 渲染按钮而非输入框，点击执行 onApply。场景：一键重置、清空缓存等操作型配置。 */
-  renderHint?: "color" | "action";
+   *  "action" → 渲染按钮而非输入框，点击执行 onApply。场景：一键重置、清空缓存等操作型配置。
+   *  E5.7#74：闭合 union → string——插件独立铁律：第三方声明新 hint 不被壳 TS 类型拒绝
+   *  （SettingsView 已有降级逻辑，未知 hint 回退 type 默认渲染）。 */
+  renderHint?: string;
   /** E5#57：声明式编辑控件提示——plugin.json 中声明，SettingsView 按 hint 选择控件。
-   *  优先级高于 type。不认识的 hint 降级回 type 默认渲染——不抛错。 */
-  uiHint?: "fontFamily" | "fontSize" | "color" | "file" | "directory";
+   *  优先级高于 type。不认识的 hint 降级回 type 默认渲染——不抛错。
+   *  E5.7#74：闭合 union → string（同上——已知值 "fontFamily"/"fontSize"/"color"/"file"/"directory"
+   *  仅文档化，不构成类型白名单）。 */
+  uiHint?: string;
 }
 
 /** 插件贡献的 configuration 分组——对标 VS Code package.json contributes.configuration */
