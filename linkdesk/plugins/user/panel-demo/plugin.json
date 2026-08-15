@@ -1,0 +1,18 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "面板演示",
+  "version": "1.0.0",
+  "description": "E5.7#63.7 验证用演示插件——声明 location:\"panel\" 视图容器：输出 + 待办。可安全卸载。",
+  "author": "官方",
+  "contributes": {
+    "viewsContainers": {
+      "panel-demo": { "title": "面板演示", "location": "panel" }
+    },
+    "views": {
+      "panel-demo": [
+        { "id": "demo-output", "title": "输出", "render": "src/views/DemoOutputView.tsx", "order": 0 },
+        { "id": "demo-todo", "title": "待办", "render": "src/views/DemoTodoView.tsx", "order": 1 }
+      ]
+    }
+  }
+}
