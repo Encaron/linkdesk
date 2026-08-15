@@ -2,8 +2,9 @@
  * @vitest-environment jsdom
  *
  * E5.7#63：QuickPickHost 插件 quickPick 本地桥 + 壳推送回归。
- * 覆盖：pluginItemToDto 映射 / 插件请求渲染 + Enter resolve 原对象（身份保持）/
- * Escape resolve(undefined) / last-wins 顶替 / 壳推送顶掉插件 / 壳模式动作回传回归。
+ * 覆盖：pluginItemToDto 映射 / 插件请求渲染 + Enter 结算条目（preload 同款 key 映射）/
+ * Escape settle(null) / last-wins 顶替（含同步批无渲染回归）/ 壳推送顶掉插件 /
+ * 窗口重聚焦 / 壳模式动作回传回归。
  *
  * mock window.linkdesk.quickPickHost（preload 同款形状）——组件只消费此命名空间。
  */
@@ -15,7 +16,7 @@ import type { PluginQuickPickRequest } from "../../../core/types/poolQuickPick";
 
 /* ── mock window.linkdesk.quickPickHost —— preload-pool 同款形状 ── */
 
-type HostFn = (req: PluginQuickPickRequest, resolve: (item: unknown) => void) => void;
+type HostFn = (req: PluginQuickPickRequest, settle: (key: string | null) => void) => void;
 type ShowCb = (data: { open: boolean; placeholder?: string; prefix?: string; items: Array<{ key: string; searchText: string; label: string }> }) => void;
 
 const { mockSelect, mockClose } = vi.hoisted(() => ({
@@ -51,11 +52,14 @@ function installQuickPickHostApi(): void {
   });
 }
 
+/** preload-pool 同款结算——settle(key) 映射 opts.items[Number(key)]，null → undefined */
 function showPlugin(opts: PluginQuickPickRequest["opts"]): Promise<unknown> {
-  let resolveFn!: (item: unknown) => void;
-  const result = new Promise<unknown>((res) => { resolveFn = res; });
+  let settleFn!: (key: string | null) => void;
+  const result = new Promise<unknown>((res) => {
+    settleFn = (key) => res(key === null ? undefined : opts.items[Number(key)]);
+  });
   act(() => {
-    hostFn!({ opts }, resolveFn);
+    hostFn!({ opts }, settleFn);
   });
   return result;
 }
@@ -119,7 +123,7 @@ describe("pluginItemToDto", () => {
 /* ── 插件请求本地桥 ── */
 
 describe("插件 quickPick 本地桥", () => {
-  it("show → 渲染条目 + placeholder，Enter resolve 原对象（身份保持，非序列化副本）", async () => {
+  it("show → 渲染条目 + placeholder，Enter 结算条目（内容等于 items[0]——生产契约是结构化副本）", async () => {
     const items = [
       { label: "选项A", description: "描述A" },
       { label: "选项B" },
@@ -132,7 +136,7 @@ describe("插件 quickPick 本地桥", () => {
     expect(getInput(container).placeholder).toBe("选一个");
 
     fireEvent.keyDown(getInput(container), { key: "Enter" });
-    expect(await result).toBe(items[0]); // 原对象身份
+    expect(await result).toEqual(items[0]); // contextBridge 每跳克隆——生产为结构化副本，内容一致
     // 插件选择器关闭——面板消失
     expect(container.querySelector(".quick-pick-panel")).toBeNull();
   });
@@ -145,7 +149,7 @@ describe("插件 quickPick 本地桥", () => {
     expect(container.querySelector(".quick-pick-panel")).toBeNull();
   });
 
-  it("last-wins——新 show() 顶掉旧请求：旧 resolve(undefined)，新请求照常解析", async () => {
+  it("last-wins——新 show() 顶掉旧请求：旧 settle(null)，新请求照常解析", async () => {
     render(<QuickPickHost />);
     const itemsA = [{ label: "旧请求" }];
     const itemsB = [{ label: "新请求" }];
@@ -158,7 +162,39 @@ describe("插件 quickPick 本地桥", () => {
 
     const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Enter" });
-    expect(await resultB).toBe(itemsB[0]);
+    expect(await resultB).toEqual(itemsB[0]);
+  });
+
+  it("同一同步块连续两个 show（无中间渲染）——旧请求仍被顶掉（生产粘贴实测回归 2026-08-15）", async () => {
+    render(<QuickPickHost />);
+    const itemsA = [{ label: "旧" }];
+    const itemsB = [{ label: "新" }];
+    let settleA!: (key: string | null) => void;
+    let settleB!: (key: string | null) => void;
+    const resultA = new Promise<unknown>((res) => { settleA = (key) => res(key === null ? undefined : itemsA[Number(key)]); });
+    const resultB = new Promise<unknown>((res) => { settleB = (key) => res(key === null ? undefined : itemsB[Number(key)]); });
+    act(() => {
+      // React 批处理——两次 hostFn 调用之间无渲染冲刷（插件同步连调 show 同款）
+      hostFn!({ opts: { items: itemsA } }, settleA);
+      hostFn!({ opts: { items: itemsB } }, settleB);
+    });
+
+    expect(await resultA).toBeUndefined();
+    expect(screen.getByText("新")).toBeTruthy();
+    expect(screen.queryByText("旧")).toBeNull();
+
+    const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(await resultB).toEqual(itemsB[0]);
+  });
+
+  it("窗口重获焦点 → 输入框重聚焦（窗口失焦时 show 的键盘动作补齐）", () => {
+    const { container } = render(<QuickPickHost />);
+    showPlugin({ items: [{ label: "选项A" }] });
+
+    const input = getInput(container);
+    fireEvent(window, new Event("focus"));
+    expect(document.activeElement).toBe(input);
   });
 
   it("壳推送 open:true 顶掉插件请求（resolve undefined + 渲染壳数据）", async () => {

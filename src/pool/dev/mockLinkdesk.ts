@@ -109,10 +109,11 @@ export function installMockLinkdesk(): void {
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
 
-  // E5.7#63：插件 quickPick.show 本地桥——preload-pool 同款语义（hostFn 存储 + 缓冲回放）。
-  // 预览模式下 QuickPickHost 一样调 registerHost 注册渲染入口，show() 转交渲染后 resolve 原对象。
-  let quickPickHostFn: ((req: { opts: PluginQuickPickOptions }, resolve: (item: unknown) => void) => void) | null = null;
-  const quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptions }; resolve: (item: unknown) => void; reject: (e: Error) => void }> = [];
+  // E5.7#63：插件 quickPick.show 本地桥——preload-pool 同款语义（hostFn 存储 + 缓冲回放 +
+  // 结算契约：池侧回传 key → 本侧映射条目，null → undefined——插件收到结构化副本同款约定）。
+  // 预览模式下 QuickPickHost 一样调 registerHost 注册渲染入口，show() 转交渲染。
+  let quickPickHostFn: ((req: { opts: PluginQuickPickOptions }, settle: (key: string | null) => void) => void) | null = null;
+  const quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptions }; settle: (key: string | null) => void; reject: (e: Error) => void }> = [];
 
   // 初始数据先入缓冲——池 onLayout/onShow 订阅时回放（preload-pool 缓冲语义）
   layoutReplay.push(buildSampleLayout());
@@ -160,18 +161,20 @@ export function installMockLinkdesk(): void {
           return;
         }
         const req = { opts };
+        // preload-pool 同款结算——key → opts.items[Number(key)]，null → undefined
+        const settle = (key: string | null) => resolve(key === null ? undefined : opts.items[Number(key)]);
         if (quickPickHostFn) {
-          try { quickPickHostFn(req, resolve); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
+          try { quickPickHostFn(req, settle); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
         } else {
-          quickPickShowBuffer.push({ req, resolve, reject });
+          quickPickShowBuffer.push({ req, settle, reject });
         }
       }),
     },
     quickPickHost: {
-      registerHost: (fn: (req: { opts: PluginQuickPickOptions }, resolve: (item: unknown) => void) => void) => {
+      registerHost: (fn: (req: { opts: PluginQuickPickOptions }, settle: (key: string | null) => void) => void) => {
         quickPickHostFn = fn;
         for (const p of quickPickShowBuffer.splice(0)) {
-          try { quickPickHostFn(p.req, p.resolve); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
+          try { quickPickHostFn(p.req, p.settle); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
         }
         return () => { quickPickHostFn = null; };
       },
