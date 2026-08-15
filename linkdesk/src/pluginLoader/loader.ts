@@ -25,6 +25,7 @@ const linkdesk = () => window.linkdesk;
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
+import { normalizePath } from "../core/utils/pathUtils";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
@@ -1271,7 +1272,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     if (!(await linkdesk().filesystem.exists(manifestPath))) {
       throw new Error(`不是有效插件（缺少 plugin.json）`);
     }
-    const name = sourcePath.replace(/\\/g, "/").split("/").pop() || sourcePath;
+    const name = normalizePath(sourcePath).split("/").pop() || sourcePath;
     const env = await linkdesk().env.get();
     const destDir = `${env.appPluginsDir}/user/${name}`;
     if (await linkdesk().filesystem.exists(destDir)) {
