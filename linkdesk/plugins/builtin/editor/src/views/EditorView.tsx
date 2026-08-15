@@ -190,6 +190,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         () => onSaveRef.current?.(),
       );
 
+      // E5.7#79：摘除 Monaco 内置字体缩放键位——全局缩放已由壳 view.zoomIn/Out 接管
+      // （快捷键注册表 + 主进程 before-input-event 拦截）。主进程对 autoRepeat 放行，
+      // 长按 Ctrl+=/- 的重复帧会到达编辑器——不摘除则全局缩放与编辑器字体缩放双 handler 打架。
+      // 同 id 的 addAction 替换原 action（含键位表）——VS Code workbench 同款手法。
+      editor.addAction({ id: "editor.action.fontZoomIn", label: "Zoom In", keybindings: [], run: () => {} });
+      editor.addAction({ id: "editor.action.fontZoomOut", label: "Zoom Out", keybindings: [], run: () => {} });
+      editor.addAction({ id: "editor.action.fontZoomReset", label: "Zoom Reset", keybindings: [], run: () => {} });
+
       // 10. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
       const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
         const m = editor.getModel();

@@ -411,6 +411,8 @@ try {
       maximize:  () => ipcRenderer.send(IPC.window.maximize),
       unmaximize:() => ipcRenderer.send(IPC.window.unmaximize),
       close:     () => ipcRenderer.send(IPC.window.close),
+      // E5.7#79：缩放因子 → 主进程 setZoomFactor(池 WCV)。壳配置 window.zoomLevel onApply 调用
+      setZoom:   (factor: number) => ipcRenderer.send(IPC.window.setZoom, factor),
       toggleDevTools: () => ipcRenderer.invoke(IPC.window.toggleDevTools), // E3f #58
       isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
       onMaximizeChange: (cb: (maximized: boolean) => void) =>
