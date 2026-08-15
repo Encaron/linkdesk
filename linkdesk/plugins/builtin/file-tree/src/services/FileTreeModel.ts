@@ -16,7 +16,7 @@ import { basename, splitPath, normalizePath, extension } from "../utils/pathUtil
 
 // E5.7#60：本地装饰契约类型——原 @src/core/registry/FileDecorationRegistry 已整删（注册表池内化，
 // 经 linkdesk.decorations 消费）；形状与 01-插件API契约 §3.24 的 FileDecoration 对齐
-interface FileDecoration {
+export interface FileDecoration {
   badge?: string;
   tooltip?: string;
   color?: string;
