@@ -26,6 +26,12 @@ export interface Command {
   category?: string;
   /** context key when 条件——Phase 5 实现（见 ContextKeyService） */
   when?: string;
+  /**
+   * 占位标记——loader.ts 按 plugin.json contributes.commands 注册的元数据命令。
+   * handler 只是诊断 warn；真实 handler 由插件视图在池内 mount 时注册到池侧注册表
+   * （preload-pool 的 _poolCommands）。执行时走壳→池转发（executeInPool），不调本 handler。
+   */
+  placeholder?: boolean;
   /** 异步处理器——从第一天就用 async 签名 */
   handler: (token?: CancellationToken, ...args: unknown[]) => Promise<unknown>;
 }
@@ -56,6 +62,8 @@ export function registerCommand(pluginId: string, command: Command): void {
     }
     existing.handler = command.handler;
     existing.title = command.title;
+    // 组件重注册真实 handler 时清 placeholder——否则真实实现永远被转发分支拦截
+    existing.placeholder = command.placeholder;
     return;
   }
   _commands.set(command.id, command);
@@ -110,6 +118,12 @@ export async function executeCommand(
   }
 
   try {
+    if (cmd.placeholder) {
+      // E5.7 Bug C：占位命令的真实 handler 注册在池 preload 的 _poolCommands。
+      // 壳→池转发：events.emit("commands:executeRequest") → 主进程 plugin:push 广播
+      // → 池 preload 订阅执行 → invoke("commands:executeResult") → IpcBridgeHandler 回传。
+      return await executeInPool(cmd, args);
+    }
     return await cmd.handler(token, ...args);
   } catch (err) {
     reportError({
@@ -118,6 +132,60 @@ export async function executeCommand(
       error: err,
     });
   }
+}
+
+/* ── 壳→池 命令执行转发（E5.7 Bug C）── */
+
+/** 池执行回传等待超时——10 秒无回传视为池侧 handler 卡死/池崩溃 */
+const POOL_EXEC_TIMEOUT_MS = 10_000;
+
+interface PoolPendingEntry {
+  resolve: (value: unknown) => void;
+  reject: (err: Error) => void;
+  timer: ReturnType<typeof setTimeout>;
+}
+
+const _poolPending = new Map<string, PoolPendingEntry>();
+let _poolRequestSeq = 0;
+
+/**
+ * 占位命令转发到池执行。
+ * 壳 emit("commands:executeRequest") → 主进程 plugin:push 广播 → 池 preload 订阅执行
+ * → invoke("commands:executeResult") → IpcBridgeHandler 调 resolvePoolExecution 回传。
+ *
+ * token 不转发——池 handler 不消费 CancellationToken（与 preload-pool 剥离 token 占位同约定）。
+ * 无 preload 桥（dev 预览/单测）时回退占位 handler 的诊断 warn——与 E5.7 前行为一致。
+ */
+async function executeInPool(cmd: Command, args: unknown[]): Promise<unknown> {
+  const events = window.linkdesk?.events;
+  if (!events?.emit) {
+    return cmd.handler(undefined, ...args);
+  }
+  const requestId = `pool-cmd:${++_poolRequestSeq}`;
+  return new Promise<unknown>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      _poolPending.delete(requestId);
+      reject(new Error(`命令 "${cmd.id}" 池内执行超时（${POOL_EXEC_TIMEOUT_MS / 1000} 秒）`));
+    }, POOL_EXEC_TIMEOUT_MS);
+    _poolPending.set(requestId, { resolve, reject, timer });
+    events.emit("commands:executeRequest", { requestId, commandId: cmd.id, args });
+  });
+}
+
+/**
+ * 池执行结果回传入口——IpcBridgeHandler 的 "commands:executeResult" 通道调用。
+ * 已超时清理的迟到结果直接丢弃（pending 已删）。
+ */
+export function resolvePoolExecution(
+  requestId: string,
+  payload: { result?: unknown; error?: string },
+): void {
+  const pending = _poolPending.get(requestId);
+  if (!pending) return;
+  clearTimeout(pending.timer);
+  _poolPending.delete(requestId);
+  if (payload.error) pending.reject(new Error(payload.error));
+  else pending.resolve(payload.result);
 }
 
 /** 同步执行（fire-and-forget）——不需要等待结果时用 */

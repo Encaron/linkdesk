@@ -13,7 +13,7 @@ import { getLangDef, getAllLangDefs } from "../registry/LangDefRegistry";
 import { listProtocols, getActiveProtocolId, setActiveProtocol } from "../registry/ProtocolRegistry";
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
-import { executeCommand, getCommands } from "../registry/CommandRegistry";
+import { executeCommand, getCommands, resolvePoolExecution } from "../registry/CommandRegistry";
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
@@ -107,6 +107,12 @@ export function initIpcBridgeHandler(): void {
           const [commandId, ...rest] = req.args;
           // E5.5#7-fix：去掉多余 undefined——否则 context 被挤到 args[1]，handler 读 args[0] 永远为 undefined
           result = await executeCommand(commandId as string, ...rest);
+          break;
+        }
+        case "commands:executeResult": {
+          // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
+          const [requestId, payload] = req.args as [string, { result?: unknown; error?: string }];
+          resolvePoolExecution(requestId, payload);
           break;
         }
 

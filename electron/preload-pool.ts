@@ -237,6 +237,37 @@ try {
     getCommands: () => ipcRenderer.invoke('plugins:call', 'getCommands'),
   };
 
+  // ── E5.7 Bug C：壳→池 命令执行请求桥——占位命令的壳侧执行转发到池真实 handler ──
+  // 壳 CommandRegistry.executeCommand 遇 placeholder 命令（loader 元数据注册）→
+  // events.emit("commands:executeRequest") → 主进程 plugin:push 广播 → 本订阅执行 →
+  // invoke("commands:executeResult") → 壳 IpcBridgeHandler resolvePoolExecution 回传。
+  // 订阅放 preload 模块级（对标 extraHandlers）：_poolCommands 就在本隔离世界，无 contextBridge 往返。
+  // executeLocal 不 fallback 壳——壳侧该命令就是占位元数据，fallback 只会死循环。
+  const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> => {
+    const handler = _poolCommands.get(id);
+    if (!handler) return Promise.reject(new Error(`命令 "${id}" 未在池内注册`));
+    return Promise.resolve(handler(...args));
+  };
+  const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string }): void => {
+    ipcRenderer.invoke('commands:executeResult', requestId, result).catch((e) => {
+      console.error(`[preload-pool] commands:executeResult 回传失败 (${requestId}):`, e);
+    });
+  };
+  events.on('commands:executeRequest', async (payload) => {
+    const { requestId, commandId, args } = (payload ?? {}) as {
+      requestId?: string;
+      commandId?: string;
+      args?: unknown[];
+    };
+    if (!requestId || !commandId) return;
+    try {
+      const result = await executeLocal(commandId, ...(Array.isArray(args) ? args : []));
+      sendExecuteResult(requestId, { result });
+    } catch (e) {
+      sendExecuteResult(requestId, { error: e instanceof Error ? e.message : String(e) });
+    }
+  });
+
   // ── 配置对象——settings 在池内渲染（E5.7#44：壳侧 configuration 面已删），全量经此面走 IPC ──
   const configurationObj = {
     get: (key: string) => ipcRenderer.invoke('config:get', key),

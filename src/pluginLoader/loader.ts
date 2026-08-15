@@ -407,6 +407,9 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
         title: cmd.title,
         category: cmd.category,
         when: cmd.when,
+        // E5.7 Bug C：元数据注册标 placeholder——真实 handler 注册在池侧（preload-pool _poolCommands）。
+        // 壳执行时走 CommandRegistry.executeInPool 转发到池，不再调下面的诊断 warn。
+        placeholder: true,
         handler: async () => {
           console.warn(`[pluginLoader] 命令 "${cmd.id}" 尚未绑定 handler——请在组件 mount 时注册`);
         },
