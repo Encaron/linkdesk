@@ -305,7 +305,7 @@ window.linkdesk.hotExit.clear(filePath: string): Promise<void>
 
 ### 3.22 `quickPick`——选择器 🆕 E5.7#63
 
-对标 VS Code `window.showQuickPick()`。**池内本地桥（零 IPC）**——Promise resolve 的正是 `items` 里的原对象（身份保持，非序列化副本）。
+对标 VS Code `window.showQuickPick()`。**池内本地桥（零 IPC）**——Promise resolve 的是 `items` 中对应条目的**结构化副本**（contextBridge 每次跨世界都是结构化克隆，`===` 原对象架构不可行——VS Code IPC 同款语义；带函数/类实例等不可克隆字段的条目请在 items 外自持映射）。
 
 ```typescript
 window.linkdesk.quickPick.show(opts: {
@@ -323,7 +323,7 @@ window.linkdesk.quickPick.show(opts: {
 
 | 情况 | 结果 |
 |---|---|
-| 用户点击条目 / Enter | resolve 该条目原对象 |
+| 用户点击条目 / Enter | resolve 该条目结构化副本 |
 | Escape / 点击遮罩 / 窗口失焦 | resolve `undefined` |
 | 新 `show()` 顶掉旧请求 | 旧 Promise resolve `undefined`（last-wins） |
 | 壳打开命令面板等 | 同上——壳浮层优先级更高 |

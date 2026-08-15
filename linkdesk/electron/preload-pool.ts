@@ -131,15 +131,19 @@ ipcRenderer.on('pool:dialog', (_event, data: PoolDialogDataShape) => {
 // ── E5.7#63：插件 quickPick.show 池内本地桥（零 IPC）──
 // 机制（清单 #63 🔴 规定）：contextBridge 函数代理——池主世界 QuickPickHost mount 时调
 // linkdesk.quickPickHost.registerHost(fn)（主世界函数经代理进隔离世界存储，onShow(cb) 同款
-// 已证模式）；插件调 show() 时隔离世界调已存 fn(req, resolve)——resolve 作为参数代理进主世界，
+// 已证模式）；插件调 show() 时隔离世界调已存 fn(req, settle)——settle 作为参数代理进主世界，
 // 主世界在选择/取消时调用，Promise 全程在隔离世界（返回值只过一道代理）。
+// 结算契约：池侧回传 key（条目原数组 index 字符串，null = 取消）——条目对象由本侧（Promise
+// 所在地）映射。contextBridge 每次跨世界都是结构化克隆，"resolve 原对象身份"架构不可行
+// （2026-08-15 用户验收实证）——插件最终收到结构化副本（VS Code IPC 同款语义）。
 // 缓冲回放（硬约束 20）：show() 先于 QuickPickHost mount（插件入口模块早执行）→ 入缓冲，
-// registerHost 时按序回放（last-wins 语义在池侧仲裁——旧请求被顶掉 resolve(undefined)）。
+// registerHost 时按序回放（last-wins 语义在池侧仲裁——旧请求被顶掉 settle(null)）。
 // 形状与 src/core/types/poolQuickPick.ts 的 PluginQuickPickOptions 对齐——preload 不 import src。
 type PluginQuickPickOptionsShape = { items: unknown[]; placeholder?: string; prefix?: string };
-type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, resolve: (item: unknown) => void) => void;
+type PluginQuickPickSettle = (key: string | null) => void;
+type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, settle: PluginQuickPickSettle) => void;
 let _quickPickHostFn: PluginQuickPickHostFn | null = null;
-const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; resolve: (item: unknown) => void; reject: (e: Error) => void }> = [];
+const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; settle: PluginQuickPickSettle; reject: (e: Error) => void }> = [];
 
 // ── E5.7#37：心跳 pong——主进程 5s ping，模块顶层自动回复 ──
 // 硬约束 20：模块顶层注册（contextBridge.exposeInMainWorld 之前）。
@@ -625,7 +629,8 @@ try {
     },
 
     // ── E5.7#63：插件 quickPick API——show(opts) → Promise<item | undefined>（池内本地桥，零 IPC）──
-    // resolve 值 = opts.items 里的原对象（身份保持）；取消（Escape/backdrop/失焦/被顶替）→ undefined。
+    // 结算：池侧回传 key → 本侧映射 opts.items[Number(key)]；null（取消/被顶替）→ undefined。
+    // 条目对象为本侧克隆（opts 入本侧时已克隆一次）——插件收到结构化副本，非 === 原对象。
     quickPick: {
       /**
        * 展示选择器——对标 VS Code window.showQuickPick()。
@@ -638,10 +643,11 @@ try {
           return;
         }
         const req = { opts: o };
+        const settle: PluginQuickPickSettle = (key) => resolve(key === null ? undefined : o.items[Number(key)]);
         if (_quickPickHostFn) {
-          try { _quickPickHostFn(req, resolve); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
+          try { _quickPickHostFn(req, settle); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
         } else {
-          _quickPickShowBuffer.push({ req, resolve, reject });
+          _quickPickShowBuffer.push({ req, settle, reject });
         }
       }),
     },
@@ -656,7 +662,7 @@ try {
       registerHost: (fn: PluginQuickPickHostFn) => {
         _quickPickHostFn = fn;
         for (const p of _quickPickShowBuffer.splice(0)) {
-          try { _quickPickHostFn(p.req, p.resolve); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
+          try { _quickPickHostFn(p.req, p.settle); } catch (e) { p.reject(e instanceof Error ? e : new Error(String(e))); }
         }
         return () => {
           _quickPickHostFn = null;
