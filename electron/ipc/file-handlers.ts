@@ -3,15 +3,25 @@
  *
  * E1 步 3：对标 Tauri @tauri-apps/plugin-fs + @tauri-apps/api/path。
  * 所有文件 I/O 走此入口——E2c 归一化后成为唯一入口。
+ * E5.7#63.5：写操作接 filesystem-guard 路径守卫——池来源（插件）归一化 +
+ * 危险目录拒绝 + workspace 外用户确认；壳来源（受信）直通。读操作放行。
  */
 
 import { ipcMain, BrowserWindow } from 'electron';
+import type { WebContents } from 'electron';
 import { fileService } from '../services/file-service.js';
+import { guardPoolWrite } from '../services/filesystem-guard.js';
 import type { WindowManager } from '../window-manager.js';
 
 // E5.7#36：壳崩重建复用本函数——引用始终刷新（watcher 广播回调读模块引用），IPC 通道只注册一次
 let _windowManager: WindowManager | undefined;
 let _registered = false;
+
+/** E5.7#63.5：sender 是否池渲染进程——守卫只对插件沙箱边界生效；windowManager 缺失按不受信处理（安全方向） */
+function isPoolSender(sender: WebContents): boolean {
+  if (!_windowManager) return true;
+  return _windowManager.getAllPoolViews().some((v) => !v.webContents.isDestroyed() && v.webContents === sender);
+}
 
 // E5#80：windowManager 用于广播文件变更到所有插件 WebView
 export function registerFileHandlers(windowManager?: WindowManager): void {
@@ -34,7 +44,8 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
     return fileService.readTextFile(filePath);
   });
 
-  ipcMain.handle('filesystem:writeTextFile', async (_event, filePath: string, data: string) => {
+  ipcMain.handle('filesystem:writeTextFile', async (event, filePath: string, data: string) => {
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), filePath, 'writeTextFile');
     await fileService.writeTextFile(filePath, data);
   });
 
@@ -42,7 +53,8 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
     return fileService.exists(filePath);
   });
 
-  ipcMain.handle('filesystem:createDir', async (_event, dirPath: string) => {
+  ipcMain.handle('filesystem:createDir', async (event, dirPath: string) => {
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), dirPath, 'createDir', true);
     await fileService.createDir(dirPath);
   });
 
@@ -50,11 +62,14 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
     return fileService.readdir(dirPath);
   });
 
-  ipcMain.handle('filesystem:copy', async (_event, src: string, dest: string) => {
+  ipcMain.handle('filesystem:copy', async (event, src: string, dest: string) => {
+    // src 是读侧放行——守卫只查写侧 dest
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), dest, 'copy');
     await fileService.copy(src, dest);
   });
 
-  ipcMain.handle('filesystem:remove', async (_event, dirPath: string) => {
+  ipcMain.handle('filesystem:remove', async (event, dirPath: string) => {
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), dirPath, 'remove');
     await fileService.remove(dirPath);
   });
 
@@ -69,7 +84,8 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
   });
 
   // E4V#40w——GBK 编码保存
-  ipcMain.handle('filesystem:writeBinaryFile', async (_event, filePath: string, data: Buffer) => {
+  ipcMain.handle('filesystem:writeBinaryFile', async (event, filePath: string, data: Buffer) => {
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), filePath, 'writeBinaryFile');
     await fileService.writeBinaryFile(filePath, data);
   });
 

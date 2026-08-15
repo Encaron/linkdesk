@@ -353,7 +353,7 @@ try {
     // ── 命令（池侧注册 + 壳侧 fallback）──
     commands: commandsObj,
 
-    // ── 文件系统（受限——主进程校验路径）──
+    // ── 文件系统（E5.7#63.5 路径守卫——池来源写操作经主进程校验：归一化 + 危险目录拒绝 + workspace 外用户确认，读放行）──
     filesystem: {
       readTextFile: (p: string) => ipcRenderer.invoke('filesystem:readTextFile', p),
       writeTextFile: (p: string, d: string) => ipcRenderer.invoke('filesystem:writeTextFile', p, d),
