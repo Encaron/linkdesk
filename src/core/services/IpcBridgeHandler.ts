@@ -256,7 +256,7 @@ export function initIpcBridgeHandler(): void {
         // ── E5#69：菜单——插件声明式读写 ──
         case "menu:registerItems": {
           const [menuId, pluginId, items] = req.args as [string, string, ManifestMenuItem[]];
-          registerMenuItems(menuId as any, pluginId, items);
+          registerMenuItems(menuId, pluginId, items);
           break;
         }
         case "menu:getItems": {
@@ -265,7 +265,7 @@ export function initIpcBridgeHandler(): void {
           // E5.7#14：显示文本铁律——标签/标题/子项标签壳侧 t() 解析后推送，
           // 池哑渲染原文、不初始化 i18n（浮层归一化设计.md §4.4）。
           const [menuId, context] = req.args as [string, Record<string, unknown> | undefined];
-          const raw = getMenuItems(menuId as any) as ManifestMenuItem[];
+          const raw = getMenuItems(menuId) as ManifestMenuItem[];
           const allCmds = getCommands();
           result = raw
             .filter((item): item is Exclude<ManifestMenuItem, string> => {

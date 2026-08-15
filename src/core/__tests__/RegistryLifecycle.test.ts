@@ -11,7 +11,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 import { registerCommand, unregisterPluginCommands, getCommands } from "../registry/CommandRegistry";
 import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../registry/KeybindingRegistry";
-import { registerMenuItems, MenuId, unregisterPluginMenus } from "../registry/MenuRegistry";
+import { registerMenuItems, MENU_SLOTS, unregisterPluginMenus } from "../registry/MenuRegistry";
 import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../registry/ProtocolRegistry";
 import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/LogChannel";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ThemeEngine";
@@ -59,7 +59,7 @@ describe("RegistryLifecycle — 安装→卸载对称性", () => {
   /* ── 3. MenuRegistry ── */
 
   it("MenuRegistry — register→unregister→菜单项清理", () => {
-    registerMenuItems(MenuId.EditorContext, PLUGIN_ID, [{ command: "test.cmd", group: "navigation" }]);
+    registerMenuItems(MENU_SLOTS.EditorContext, PLUGIN_ID, [{ command: "test.cmd", group: "navigation" }]);
     // 验证注册不抛异常
     expect(() => unregisterPluginMenus(PLUGIN_ID)).not.toThrow();
   });

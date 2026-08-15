@@ -4,13 +4,13 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
-import { registerMenuItems, MenuId } from "../registry/MenuRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
 import { shellEvents } from "../react/ShellEvents";
 import { APP_PLUGIN_ID } from "../services/PluginStateService";
 
 export function registerShellMenus(): void {
   // ── ☰ 菜单栏 ──
-  registerMenuItems(MenuId.MenuBar, APP_PLUGIN_ID, [
+  registerMenuItems(MENU_SLOTS.MenuBar, APP_PLUGIN_ID, [
     {
       command: "",
       label: "文件",
@@ -36,7 +36,7 @@ export function registerShellMenus(): void {
   ]);
 
   // ── 设置项齿轮 ──
-  registerMenuItems(MenuId.SettingItemGear, APP_PLUGIN_ID, [
+  registerMenuItems(MENU_SLOTS.SettingItemGear, APP_PLUGIN_ID, [
     { command: "workbench.action.copySettingAsUrl", group: "phase6", when: "false" },
     { command: "workbench.action.toggleSettingSync", group: "phase6", when: "false" },
   ]);
@@ -72,7 +72,7 @@ export function registerShellMenus(): void {
     },
   });
 
-  registerMenuItems(MenuId.ViewTitleContext, APP_PLUGIN_ID, [
+  registerMenuItems(MENU_SLOTS.ViewTitleContext, APP_PLUGIN_ID, [
     { command: "workbench.action.toggleContainerCollapse", group: "navigation" },
     { command: "workbench.action.resetContainerPosition", group: "navigation" },
     // E5#44d：Views 子菜单——空 children 触发 ContextMenu.resolveChildren 回调
