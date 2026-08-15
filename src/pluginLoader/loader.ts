@@ -1247,6 +1247,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     syncAppLanguageEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);
     pushToast({ message: `已卸载：${displayName}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
+    // E5.7#48：主进程静态声明三表（LangDef/Protocol/FileAssociation）重扫——唯一写入方在主进程
+    window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     return { success: true };
   } catch (e: any) {
     const msg = e?.message || String(e);
@@ -1300,6 +1302,9 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       await linkdesk().filesystem.writeTextFile(destManifest, JSON.stringify(manifest, null, 2));
     }
     const pluginId = name;
+
+    // E5.7#48：文件已落盘——通知主进程重扫三表（无论下方 loadPlugin 是否成功）
+    window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
     // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
     try {
@@ -1496,6 +1501,8 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
 
     // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
     await loadPlugin(pluginId, "reinstall");
+    // E5.7#48：主进程三表重扫
+    window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     return { success: true };
   } catch (e: any) {
     return { success: false, error: e?.message || String(e) };

@@ -54,7 +54,7 @@ app.whenReady()
 | 表 | 数据来源 | 主进程注册方式 |
 |:--|:--|:--|
 | LangDefRegistry | plugin.json `contributes.langDefs`（纯 JSON，可序列化——LangDefRegistry.ts 实证） | 逐条 `registerLangDef(pluginId, def)` |
-| ProtocolRegistry | **特例**：现有唯一注册方是壳 `App.tsx:218 ensureBuiltinProtocols()`（方括号协议，含 parseLine JS 函数）——没有任何插件 plugin.json 注册协议（grep 实证，矩阵原记"loader 写入"有误，见勘误）。`parseLine` 从不跨 IPC（壳代理 IpcBridgeHandler:538-543 返回前剥函数，池只见过 `{id,name,pluginId,mode}`） | plugin-manifest-loader 直接调 `ensureBuiltinProtocols()` 汇入**主进程**实例 + 扫 `contributes.protocols`（schema 有则注册，现状为零插件） |
+| ProtocolRegistry | **特例**：现有唯一注册方是壳 `App.tsx:218 ensureBuiltinProtocols()`（方括号协议，含 parseLine JS 函数）——没有任何插件 plugin.json 注册协议（grep 实证，矩阵原记"loader 写入"有误，见勘误）。`parseLine` 从不跨 IPC（壳代理 IpcBridgeHandler:538-543 返回前剥函数，池只见过 `{id,name,pluginId,mode}`） | plugin-manifest-loader 直接调 `ensureBuiltinProtocols()` 汇入**主进程**实例。实证订正（#48）：无 `contributes.protocols` schema key，top-level `mode` 字段全仓零消费——Phase 11 行为中性，只汇 builtin；插件协议贡献的注册路径留给首个贡献方落地时按 schema 定义 |
 | FileAssociationService | plugin.json `contributes.fileAssociations`（纯字符串） | 逐条 `registerFileAssociation(...)` |
 
 - **壳侧对称移除（#49/#50）**：App.tsx:218 `ensureBuiltinProtocols()` 调用删除；loader.ts:594 registerFileAssociation / loader.ts:613 registerLangDef 两块删除 → 壳三表实例变空实例，且壳侧零消费者（代理 case 同任务删除）→ 壳 bundle 中三模块成死代码，随 tree-shake 出包。
