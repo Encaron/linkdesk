@@ -28,6 +28,7 @@ import {
 } from "react";
 import { useTranslation } from "react-i18next";
 import type { PoolTab } from "../../core/types/poolLayout";
+import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import { normalizePath } from "../../core/utils/pathUtils";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import "./GroupTabBar.css";
@@ -89,7 +90,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   const poolApi = poolApiRef.current;
 
   const tabAction = useCallback(
-    (action: any) => {
+    (action: PoolTabAction) => {
       poolApi?.tabAction?.(action);
     },
     [poolApi],
