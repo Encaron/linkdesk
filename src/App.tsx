@@ -741,10 +741,15 @@ function App() {
     if (payload.rx) setRxBytes((prev) => prev + payload.rx!);
   });
 
-  // E5：监听 Rust serial-system 事件——invokeBeforeClose 直接调 close_port，
-  // 不走 handleToggleOpen → setIsOpen(false)。此处补刀同步 isOpen 状态。
+  // E5：监听 serial-system 事件补刀同步 isOpen 状态。
+  // E5.7 Bug C 补全·症状 4：池化后插件直接调 lk.serial.openPort（绕开壳 handleToggleOpen），
+  // 原实现只补 invokeBeforeClose 的关闭路径 → 打开后壳 isOpen 恒 false → sourceOpen 恒 false
+  // → togglePause 的 when:"... && sourceOpen" 过滤全灭（串口已打开，面板里也没有"暂停接收"）。
+  // 开/关双分支都补（消息原文：serial-service.ts "---- 已打开串行端口 X ----" / "---- 关闭串行端口 X ----"）。
   useIpcEvent<string>("serial-system", (payload) => {
-    if (/Port closed|关闭/.test(payload)) {
+    if (/已打开/.test(payload)) {
+      setIsOpen(true);
+    } else if (/Port closed|关闭/.test(payload)) {
       setIsOpen(false);
     }
   });
