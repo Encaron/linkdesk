@@ -6,6 +6,8 @@
  *   1. 侧栏折叠真相源——App.tsx getBounds ≤48 判折叠（:531）
  *   2. 拖拽钳制——usePoolSync resizeZone clamp（:562，#13 拖拽 commit 的钳制点）
  *   3. 钳制界推送——usePoolSync getZone dock.minWidth/maxWidth（:729-730）
+ *   4. 面板高度真相源——E5.7#63.7：panel zone（底部 dock）+ resizeZoneHeight clamp（:130），
+ *      App.tsx panel:resize 事件桥钳制后经 layoutVersion 重推回池
  *
  * E5.7#31.5 死肉整删（2026-08-15）：setLayout / addZone / removeZone / dockTo / getAllZones +
  * floating 模式分支 + ZoneConfig 的 float / undockable / visible 字段——E5.6 多池时代残肢，
@@ -69,7 +71,8 @@ export class LayoutEngine {
   readonly onDidChangeLayout: Event<void> = this._onDidChangeLayout.event;
 
   constructor() {
-    // E5 默认布局——4 个 docked zone，和 E5 执行前视觉完全一致
+    // E5 默认布局——5 个 docked zone（E5.7#63.7 加 panel：底部面板，默认高 220，
+    // 钳制界 120-600；order 小的贴窗口底边——statusbar 0 最贴边，panel 1 在其上）
     this._zones = [
       {
         zone: "iconbar",
@@ -84,8 +87,12 @@ export class LayoutEngine {
         dock: { edge: "center", flex: 1 },
       },
       {
+        zone: "panel",
+        dock: { edge: "bottom", height: 220, minHeight: 120, maxHeight: 600, resizable: true, order: 1 },
+      },
+      {
         zone: "statusbar",
-        dock: { edge: "bottom", height: 24, minHeight: 24, maxHeight: 24 },
+        dock: { edge: "bottom", height: 24, minHeight: 24, maxHeight: 24, order: 0 },
       },
     ];
   }
@@ -114,6 +121,18 @@ export class LayoutEngine {
     const z = this._zones.find((z) => z.zone === zoneId);
     if (!z || !z.dock) return;
     z.dock.width = Math.round(width);
+    this._recalculate();
+  }
+
+  /** 调整 zone 高度——clamp 到 minHeight/maxHeight（E5.7#63.7：面板拖拽 + 启动恢复都走这里，
+   *  恢复值越界也被钳回合法区间，无需无钳制直设的对应物） */
+  resizeZoneHeight(zoneId: string, newHeight: number): void {
+    const z = this._zones.find((z) => z.zone === zoneId);
+    if (!z || !z.dock) return;
+    z.dock.height = Math.max(
+      z.dock.minHeight ?? 0,
+      Math.min(z.dock.maxHeight ?? Infinity, Math.round(newHeight)),
+    );
     this._recalculate();
   }
 
@@ -191,17 +210,19 @@ export class LayoutEngine {
       });
     }
 
-    // Bottom zones——底部从左向右
-    let bottomX = 0;
+    // Bottom zones——从窗口底边向上堆叠，order 小的贴底边（statusbar 0 最底，panel 1 其上）。
+    // E5.7#63.7 前只有 statusbar 单 zone，堆叠循环恒等原逻辑（y = contentHeight）；panel 加入后
+    // 多 bottom zone 必须逐层上移，否则重叠在同一 y。
+    let bottomY = H;
     for (const z of bottomZones) {
       const h = z.dock!.height!;
+      bottomY -= h;
       this._bounds.set(z.zone, {
-        x: Math.round(bottomX),
-        y: contentHeight,
+        x: 0,
+        y: Math.round(bottomY),
         width: W,
         height: h,
       });
-      bottomX += z.dock!.width ?? W;
     }
 
     // E5#9d：总宽度验证

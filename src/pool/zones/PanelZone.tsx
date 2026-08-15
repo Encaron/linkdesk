@@ -1,26 +1,23 @@
 /**
- * PanelZone——E5.7#21。底部面板 Zone（greenfield 骨架——设计 Zone分解设计.md §2.6）。
+ * PanelZone——E5.7#21 骨架 + #63.7 数据生产者落地。
  *
  * 职责：
  *   - PanelTabBar 28px 矮标签栏（views 来自 layout.panel.views——PanelViewMeta[]，标题壳 t() 推送）
- *   - keep-alive 内容区——所有 views 平级渲染 display 切换（MainZone TabContent 同模式）
+ *   - keep-alive 内容区——所有 views 平级渲染 display 切换（MainZone TabContent 同模式）；
+ *     E5.7#63.7：每 view 经 PluginComponent 按 renderPath 动态加载（侧栏同款 O(1) glob 查找，
+ *     零静态表——写死 pluginId 违反插件独立铁律 + 硬约束 10）
  *   - 顶部 4px resize handle——#13 同款模式（乐观本地高度 + mouseup commit，真相源在壳）
  *
- * 🔴 骨架优先（设计 §2.6）：数据生产者归 Phase 12 #63.7——
- *   contributes.views bottom-panel 路由 / 高度持久化 / 动态注册三件套。
- *   生产者建成前 layout.panel 无数据 → 条件渲染永假，本任务验证 = 骨架渲染零报错。
- *   面板视图动态加载（PluginComponent 同款）也归 #63.7——禁止建 PANEL_VIEWS 静态表
- *   （写死 pluginId 违反插件独立铁律 + 硬约束 10）。
- *
  * 池→壳通道：window.linkdesk.events.emit（IconBarZone #6 同款）——
- *   "panel:viewSelected" / "panel:createView" / "panel:resize" 由 Phase 12 #63.7
- *   壳侧消费（现无监听者——安全 no-op，骨架期点击/拖拽无副作用）。
- * 钳制界 minHeight/maxHeight 壳推（#13 同款——池零硬编码）；Phase 12 推送前默认无界。
+ *   "panel:viewSelected" / "panel:resize" 由 #63.7 壳侧消费（App.tsx 事件桥）；
+ *   "panel:createView" 归 Phase 12 面板创建（现无监听者——安全 no-op）。
+ * 钳制界 minHeight/maxHeight 壳推（#13 同款——池零硬编码）。
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { PanelLayout } from "../../core/types/poolLayout";
 import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
+import PluginComponent from "../shared/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import "./PanelZone.css";
 
 interface PanelZoneProps {
@@ -47,7 +44,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
   const heightRef = useRef(height);
   heightRef.current = height;
 
-  // 钳制——界由壳推（#13 同款；Phase 12 #63.7 推送前默认无界）
+  // 钳制——界由壳推（#13 同款；#63.7 生产者已推送，缺省兜底 0..∞ 仅防旧布局）
   const clampHeight = useCallback((h: number) => {
     const min = panel.minHeight ?? 0;
     const max = panel.maxHeight ?? Infinity;
@@ -70,7 +67,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       // 无位移点击（mousedown+mouseup 未动）不 commit——#13 同款 no-op
       if (didMoveRef.current) {
         commitPendingRef.current = true;
-        // 真相源在壳——Phase 12 #63.7 壳侧消费（resizeZone 钳制 → pushLayout 回执）
+        // 真相源在壳——#63.7 App.tsx resizeZoneHeight 钳制 → pushLayout 回执
         window.linkdesk?.events?.emit("panel:resize", { height: dragHeightRef.current });
       }
       dragStartRef.current = null;
@@ -157,7 +154,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
               className={`panel-tab${v.id === activeViewId ? " active" : ""}`}
               title={v.title}
               onClick={() => {
-                // 壳侧消费方：Phase 12 #63.7（现无监听者——安全 no-op）
+                // #63.7 App.tsx 消费——setPanelActiveViewId → usePoolSync 重推
                 window.linkdesk?.events?.emit("panel:viewSelected", v.id);
               }}
             >
@@ -165,9 +162,12 @@ export default function PanelZone({ panel }: PanelZoneProps) {
             </div>
           ))}
         </div>
-        {/* [+] 新建面板视图——Phase 12 #63.7 壳侧消费（tooltip 亦由壳推——显示文本铁律，池零自产文本） */}
+        {/* [+] 新建面板视图——panel:createView 归 Phase 12（现无监听者 no-op）；
+            tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
         <button
           className="panel-tab-create"
+          title={panel.createTooltip}
+          aria-label={panel.createTooltip}
           onClick={() => {
             window.linkdesk?.events?.emit("panel:createView");
           }}
@@ -177,14 +177,21 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       </div>
 
       {/* keep-alive——所有 views 平级渲染，display 切换（MainZone TabContent 同模式）。
-          🔴 视图动态加载归 Phase 12 #63.7（PluginComponent 同款）——此处空壳占位。 */}
+          E5.7#63.7：每 view 经 PluginComponent 按 renderPath 动态加载（侧栏 PoolSectionStack 同款；
+          PluginComponent 自带 ErrorBoundary + Suspense 兜底）。 */}
       <div className="panel-content">
         {views.map((v) => (
           <div
             key={v.id}
             className="panel-view"
             style={{ display: v.id === activeViewId ? "flex" : "none" }}
-          />
+          >
+            <PluginComponent
+              pluginId={v.pluginId}
+              renderPath={v.renderPath}
+              isActive={v.id === activeViewId}
+            />
+          </div>
         ))}
       </div>
     </div>

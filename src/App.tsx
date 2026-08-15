@@ -24,7 +24,7 @@ import { getViewPlugin, getViewPlugins, invokeBeforeCloseTab } from "./pluginLoa
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/ConfigurationService";
 // initStorageService 已提前到 main.tsx mount 前调用
 import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
-import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, type WorkspaceLayout } from "./core/services/LayoutService";
+import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/LayoutService";
 import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/WorkspaceService"; // E5.5#0e
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
@@ -312,6 +312,24 @@ function App() {
     return () => { unsub?.(); };
   }, []);
 
+  // E5.7#63.7：桥接池面板事件（icon:selected 同款通道）——
+  //   panel:viewSelected → App state（usePoolSync 重推 activeViewId，真相源在壳）
+  //   panel:resize      → LayoutEngine resizeZoneHeight 钳制 → onDidChangeLayout → 重推回执（#13 同款）
+  //   panel:createView  → Phase 12 面板创建消费——三件套范围外，暂无人监听（池 emit 零订阅 = no-op）
+  useEffect(() => {
+    const events = window.linkdesk?.events;
+    const offSelect = events?.on("panel:viewSelected", (viewId: string) => {
+      setPanelActiveViewId(viewId);
+    });
+    const offResize = events?.on("panel:resize", (data: { height: number }) => {
+      // Number.isFinite 单守卫即排除 undefined/NaN/字符串——池 emit 只传数字，双保险防坏值
+      if (Number.isFinite(data?.height)) {
+        layoutEngine.resizeZoneHeight("panel", data.height);
+      }
+    });
+    return () => { offSelect?.(); offResize?.(); };
+  }, []);
+
   /* ---- E5#9f：LayoutEngine 壳布局——E5.7#9 起只喂容器尺寸 ---- */
   // E5.7#12.5：Pool bounds 推流已删（主进程 syncPoolBounds 接管，WCV 满窗零偏移）。
   // LayoutEngine 仍需喂容器尺寸——侧栏几何真相源（usePoolSync 读 sidebar 宽度、
@@ -341,6 +359,11 @@ function App() {
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
+  // E5.7#63.7：底部面板激活视图——真相源在壳（池只被动渲染）。null = 尚未选择 → usePoolSync 回退 views[0]
+  const [panelActiveViewId, setPanelActiveViewId] = useState<string | null>(null);
+  // beforeunload 读最新激活视图（handler 注册一次 deps []——闭包会过期，ref 同步）
+  const panelActiveViewIdRef = useRef(panelActiveViewId);
+  panelActiveViewIdRef.current = panelActiveViewId;
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
@@ -753,6 +776,23 @@ function App() {
     } catch { /* 恢复失败不影响启动 */ }
   }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // E5.7#63.7：mount 时恢复面板布局状态——高度直设 LayoutEngine（resizeZoneHeight 钳制，防坏值越界；
+  // onDidChangeLayout → usePoolSync 重推恢复后的高度），激活视图设 App state（usePoolSync 校验存在性后回退 views[0]）。
+  // ready 守卫同标签页恢复（LayoutService 初始化完成后才能读）。
+  useEffect(() => {
+    if (!ready) return;
+    try {
+      const savedPanel = getPanelLayout();
+      if (!savedPanel) return;
+      if (Number.isFinite(savedPanel.height)) {
+        layoutEngine.resizeZoneHeight("panel", savedPanel.height);
+      }
+      if (savedPanel.activeViewId) {
+        setPanelActiveViewId(savedPanel.activeViewId);
+      }
+    } catch { /* 恢复失败不影响启动 */ }
+  }, [ready]);
+
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useCallback((tabId: string) => {
     focusTab(tabId);
@@ -916,8 +956,8 @@ function App() {
     }
   }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
 
-  // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView 变化 → 全量推送到唯一 Pool
-  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, onTabAction: handleTabAction });
+  // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
+  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, onTabAction: handleTabAction });
 
   // E5#5e-ii-d：布局持久化——App 拥有 tabState，自己负责保存
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -947,6 +987,16 @@ function App() {
           },
           cards: [],
         };
+        // E5.7#63.7：面板状态同样读活值（防抖保存可能未落盘）——syncWriteLayout 整体替换缓存，
+        // 不带上 panel 会在退出时冲掉面板状态。仅面板被用过（有激活视图/有历史状态）时写入。
+        const panelActive = panelActiveViewIdRef.current;
+        const panelHeight = layoutEngine.getBounds("panel")?.height;
+        if (panelActive || getPanelLayout()) {
+          layout.panel = {
+            height: panelHeight ?? 220,
+            ...(panelActive ? { activeViewId: panelActive } : {}),
+          };
+        }
         syncWriteLayout(layout);
         syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
       } catch { /* 静默 */ }
@@ -988,6 +1038,41 @@ function App() {
       if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     };
   }, [tabState.groups, tabState.activeGroupId, tabState.root, ready]);
+
+  // E5.7#63.7：面板布局状态持久化——100ms 防抖（标签页保存同款）。
+  // 高度真相源 = LayoutEngine（App 不镜像 height state）；激活视图 = App state。
+  // 两路触发：panelActiveViewId 变化（effect 重跑）/ onDidChangeLayout（拖拽 resizeZoneHeight 后）。
+  // 与上次落盘值比对——窗口 resize/sidebar 变化也 fire onDidChangeLayout，不变不写盘。
+  const panelSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const panelSaveInitialized = useRef(false);
+  const lastSavedPanelRef = useRef<{ height: number; activeViewId?: string } | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    if (!panelSaveInitialized.current) {
+      // 首轮跳过——恢复（resizeZoneHeight 直设 + activeViewId 恢复）不该立刻写回盘。
+      // 恢复后 activeViewId 变化会触发本 effect 重跑进入正常保存。
+      panelSaveInitialized.current = true;
+      return;
+    }
+    const doSave = () => {
+      const height = layoutEngine.getBounds("panel")?.height ?? 220;
+      const state = { height, ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}) };
+      const last = lastSavedPanelRef.current;
+      if (last && last.height === height && last.activeViewId === panelActiveViewId) return;
+      lastSavedPanelRef.current = state;
+      void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
+    };
+    const schedule = () => {
+      if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);
+      panelSaveTimer.current = setTimeout(doSave, 100);
+    };
+    schedule();
+    const unsub = layoutEngine.onDidChangeLayout(schedule);
+    return () => {
+      unsub();
+      if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);
+    };
+  }, [ready, panelActiveViewId]);
 
   if (!ready) return null;
 

@@ -252,12 +252,17 @@ Props: panel: { visible: boolean; height: number; activeViewId: string; views: P
   - [+] 按钮 → 新建终端/output channel
   - 拖拽顶部 resize handle → 调整高度（🔴 #13 同款模式：乐观本地 + mouseup commit，真相源在壳）
 
-🔴 骨架优先——数据生产者归 Phase 12（API 归位）：
-  - 壳侧 bottom-panel 贡献路由（contributes.views["bottom-panel"] → panel.views[]）
-  - 面板高度持久化（workspace.json）
-  - 插件贡献面板视图动态注册（ViewContainerService.registerView + contributes.views——插件独立铁律要求；2026-08-13 审计："E5.6 的 registerPanelView"现网零实现，实名如上）
-  三件套由 E5.7#63.7 认领（2026-08-13 审计补任务号——原稿承诺"归 Phase 12"无任务）
-  生产者建成前 layout.panel 无数据 → 条件渲染永假，本任务验证 = 骨架渲染零报错
+✅ 数据生产者已落地（E5.7#63.7，2026-08-16）——骨架期"归 Phase 12"承诺兑现：
+  - 壳侧 bottom-panel 贡献路由——usePoolSync buildPanelViewMetas：
+    ViewContainerService getViewContainers("panel")（容器按 order）× getActiveViews（视图按 order）两级展平
+    → panel.views[]（PanelViewMeta 含 renderPath，与侧栏同源 loader._renderPath）；views 非空才推 panel 字段
+    （无面板贡献 → layout.panel 缺省 → 条件渲染永假零 DOM，与骨架期行为一致）
+  - 面板视图动态加载——PanelZone 每 view 经 PluginComponent 按 renderPath 动态 import（侧栏同款；
+    自带 ErrorBoundary + Suspense）——第三方插件加底部面板视图 = 只改自己的 plugin.json，池代码零改动
+  - 面板高度持久化——LayoutEngine panel zone（bottom dock：默认 220，钳制 120-600，order 1 在 statusbar 上）
+    + resizeZoneHeight（拖拽/恢复同路钳制）+ LayoutService panel {height, activeViewId}（layout.json——
+    与标签页布局同文件，非 workspace.json）+ App 事件桥（panel:viewSelected/panel:resize）
+  - 未落地（不在三件套范围）：panel:createView 消费——[+] 新建面板视图归 Phase 12 面板创建（现 no-op）
 
 CSS:
   height: layout.panel.height (px)
@@ -275,11 +280,12 @@ keep-alive:
   所有 views 平级渲染，display: none/flex 切换
   和 MainZone 的 TabContent 模式一致
 
-面板视图加载（🔴 2026-08-13 审计：删 PANEL_VIEWS 静态表——写死 pluginId 违反插件独立铁律 + 硬约束 10，且是对侧栏已有动态机制的倒退）:
-  动态加载——MainZone 插件标签页同款 PluginComponent 模式：
+面板视图加载（✅ E5.7#63.7 已落地——2026-08-13 审计删 PANEL_VIEWS 静态表：写死 pluginId 违反
+  插件独立铁律 + 硬约束 10，且是对侧栏已有动态机制的倒退）:
+  动态加载——MainZone 插件标签页同款 PluginComponent 模式（已实现）：
   元数据来自 shell pushLayout `panel.views[]`
     （ViewContainerService `location:"panel"` 枚举已存在——loader.ts 已动态注册所有 contributes.views）
-  按 pluginId + render 动态 import 插件视图组件
+  按 renderPath 动态 import 插件视图组件（PluginComponent O(1) glob 查找，loader._renderPath 同源）
     ——第三方插件加底部面板视图 = 只改自己的 plugin.json，池代码零改动
 
 与壳关系:

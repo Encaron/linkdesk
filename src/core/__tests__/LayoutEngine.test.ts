@@ -4,9 +4,10 @@
  * 📌 锁定到 E5#9：LayoutEngine.ts 实现完后立刻写，写完后才接入 App.tsx。
  *
  * 覆盖：
- *   1. 默认布局——4 个 zone 坐标正确
+ *   1. 默认布局——5 个 zone 坐标正确（E5.7#63.7 加 panel 底部 zone）
  *   2. getZone——单个 zone 配置（钳制界来源）
  *   3. resizeZone——clamp min/max
+ *   3b. resizeZoneHeight——panel 高度 clamp min/max + 多 bottom zone 堆叠不错位
  *   4. 像素对齐——所有坐标 Math.round()
  *   5. onDidChangeLayout——resizeZone 时触发
  *   6. 容器尺寸为 0 / 负值 → 不计算
@@ -31,22 +32,26 @@ function with800x600(engine: LayoutEngine): void {
 describe("LayoutEngine", () => {
   /* ── 1. 默认布局 ── */
 
-  it("默认布局——4 个 zone 坐标正确", () => {
+  it("默认布局——5 个 zone 坐标正确", () => {
     const engine = new LayoutEngine();
     with800x600(engine);
 
     const iconbar = engine.getBounds("iconbar");
     const sidebar = engine.getBounds("sidebar");
     const main = engine.getBounds("main");
+    const panel = engine.getBounds("panel");
     const statusbar = engine.getBounds("statusbar");
 
-    // iconbar: 左 42px，全高（600 - statusbar 24）
-    expect(iconbar).toEqual({ x: 0, y: 0, width: 42, height: 576 });
+    // E5.7#63.7：panel 底部 zone 220px + statusbar 24px → contentHeight = 600 - 244 = 356
+    // iconbar: 左 42px，内容区全高
+    expect(iconbar).toEqual({ x: 0, y: 0, width: 42, height: 356 });
     // sidebar: iconbar 右边，280px 宽
-    expect(sidebar).toEqual({ x: 42, y: 0, width: 280, height: 576 });
+    expect(sidebar).toEqual({ x: 42, y: 0, width: 280, height: 356 });
     // main: 填满剩余（800 - 42 - 280 = 478）
-    expect(main).toEqual({ x: 322, y: 0, width: 478, height: 576 });
-    // statusbar: 底部全宽 24px
+    expect(main).toEqual({ x: 322, y: 0, width: 478, height: 356 });
+    // panel: 内容区之下全宽 220px（order 1，statusbar 之上）
+    expect(panel).toEqual({ x: 0, y: 356, width: 800, height: 220 });
+    // statusbar: 最底全宽 24px（order 0，贴窗口底边）
     expect(statusbar).toEqual({ x: 0, y: 576, width: 800, height: 24 });
   });
 
@@ -82,6 +87,28 @@ describe("LayoutEngine", () => {
     expect(engine.getBounds("sidebar")?.width).toBe(600);
   });
 
+  it("resizeZoneHeight——panel 高度 clamp + 多 bottom zone 堆叠不错位", () => {
+    const engine = new LayoutEngine();
+    with800x600(engine);
+
+    // panel 默认 minHeight=120, maxHeight=600
+    engine.resizeZoneHeight("panel", 300);
+    expect(engine.getBounds("panel")?.height).toBe(300);
+    // panel 变高后 statusbar 仍贴窗口底边，panel 紧贴其上——堆叠从底边向上逐层
+    expect(engine.getBounds("panel")).toEqual({ x: 0, y: 276, width: 800, height: 300 });
+    expect(engine.getBounds("statusbar")).toEqual({ x: 0, y: 576, width: 800, height: 24 });
+    // 内容区高度随 panel 收缩（600 - 300 - 24 = 276）
+    expect(engine.getBounds("main")?.height).toBe(276);
+
+    // 低于 min → clamp 到 120
+    engine.resizeZoneHeight("panel", 50);
+    expect(engine.getBounds("panel")?.height).toBe(120);
+
+    // 高于 max → clamp 到 600
+    engine.resizeZoneHeight("panel", 999);
+    expect(engine.getBounds("panel")?.height).toBe(600);
+  });
+
   /* ── 4. 像素对齐 ── */
 
   it("所有坐标是整数——Math.round() 消除 sub-pixel", () => {
@@ -89,7 +116,7 @@ describe("LayoutEngine", () => {
     // 使用非整数容器尺寸测整数化
     engine.setContainerSize(1024.7, 768.3);
 
-    for (const zoneId of ["iconbar", "sidebar", "main", "statusbar"]) {
+    for (const zoneId of ["iconbar", "sidebar", "main", "panel", "statusbar"]) {
       const bounds = engine.getBounds(zoneId);
       if (!bounds) continue;
       expect(Number.isInteger(bounds.x), `${zoneId} x 应为整数`).toBe(true);

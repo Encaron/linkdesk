@@ -27,9 +27,17 @@ export interface CardLayout {
   minH?: number;
 }
 
+/** E5.7#63.7：底部面板布局状态——高度 + 激活视图（views 列表来自 contributes 注册，不持久化） */
+export interface PanelLayoutState {
+  height: number;
+  activeViewId?: string;
+}
+
 export interface WorkspaceLayout {
   tabs: LayoutData;
   cards: CardLayout[];
+  /** 底部面板状态——未启用过面板则缺省 */
+  panel?: PanelLayoutState;
 }
 
 /* ── 缓存 ── */
@@ -63,6 +71,11 @@ export function getWorkspaceLayout(): WorkspaceLayout {
   return { ..._layoutCache, cards: [..._layoutCache.cards] };
 }
 
+/** E5.7#63.7：读取底部面板布局状态 */
+export function getPanelLayout(): PanelLayoutState | undefined {
+  return _layoutCache.panel;
+}
+
 /* ── 保存 ── */
 
 /** 保存标签页布局 */
@@ -77,12 +90,18 @@ export async function saveCardLayout(cards: CardLayout[]): Promise<void> {
   await write("layout", _layoutCache);
 }
 
-/** 保存工作区完整布局——Phase 7 workspace 导入导出用 */
+/** 保存工作区完整布局——Phase 7 workspace 导入导出用（panel 状态保留，不被整体替换冲掉） */
 export async function saveWorkspaceLayout(
   tabs: LayoutData,
   cards: CardLayout[]
 ): Promise<void> {
-  _layoutCache = { tabs, cards };
+  _layoutCache = { tabs, cards, ...(_layoutCache.panel ? { panel: _layoutCache.panel } : {}) };
+  await write("layout", _layoutCache);
+}
+
+/** E5.7#63.7：保存底部面板布局状态 */
+export async function savePanelLayout(panel: PanelLayoutState): Promise<void> {
+  _layoutCache.panel = panel;
   await write("layout", _layoutCache);
 }
 
