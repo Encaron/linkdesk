@@ -138,6 +138,20 @@ export class IpcBridge {
    * 主进程接收 → 转发给壳渲染进程 → 等待响应 → 返回给插件。
    */
   private registerProxyHandlers(): void {
+    // E5.7#75：注册门诊断（E5.5#10p/E5.6#64 迁入）——原稿"收到的 invoke 不在 PROXY_CHANNELS
+    // → 静默 undefined"前提已过期：E5.7 按通道独立 ipcMain.handle，登记即门。漏登记的两侧后果均
+    // 非静默——池 invoke 未登记通道 → Electron "No handler registered" 拒绝（调用方可见）；
+    // 已登记但壳 IpcBridgeHandler switch 无 case → 壳抛"未知的 bridge channel"（调用方可见）。
+    // 本自检堵最后一个静默面：重复登记在 ipcMain.handle 处只抛原生 "second handler" 错，
+    // 先在入口给出可定位错误（加新 API 方法的复制粘贴漂移场景）。
+    const seen = new Set<string>();
+    for (const channel of IpcBridge.PROXY_CHANNELS) {
+      if (seen.has(channel)) {
+        throw new Error(`[IpcBridge] PROXY_CHANNELS 重复登记代理通道: ${channel}`);
+      }
+      seen.add(channel);
+    }
+
     for (const channel of IpcBridge.PROXY_CHANNELS) {
       ipcMain.handle(channel, async (_event, ...args: unknown[]) => {
         // ── E5#19b fix: contextKey:set → 立即广播到壳 + 池（双渲染进程火种）──
