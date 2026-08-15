@@ -11,7 +11,7 @@ import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, SidebarViewMeta, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout, StatusBarItem, NotifLayout } from "../core/types/poolLayout";
+import type { PoolLayout, SidebarLayout, SidebarViewMeta, PanelViewMeta, PanelLayout, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout, StatusBarItem, NotifLayout } from "../core/types/poolLayout";
 import { ViewContainerService } from "../core/services/ViewContainerService";
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
@@ -58,6 +58,29 @@ function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
       minHeight: v.minHeight,
     };
   });
+}
+
+/**
+ * E5.7#63.7：从 ViewContainerService 构建底部面板 PanelViewMeta[]。
+ * location:"panel" 的全部容器 → getActiveViews 展平（getViewContainers 已按容器 order 排序，
+ * getActiveViews 按 view order 排序——两级排序对齐 VS Code panel 语义）。
+ * renderPath 与侧栏同源（loader _renderPath）——池 PluginComponent 按此 key 动态 import。
+ */
+function buildPanelViewMetas(): PanelViewMeta[] {
+  const metas: PanelViewMeta[] = [];
+  for (const container of ViewContainerService.getViewContainers("panel")) {
+    for (const v of ViewContainerService.getActiveViews(container.id)) {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const desc = v as any;
+      metas.push({
+        id: v.id,
+        title: v.title,
+        pluginId: desc._pluginId ?? "",
+        renderPath: desc._renderPath ?? "",
+      });
+    }
+  }
+  return metas;
 }
 
 /**
@@ -462,16 +485,19 @@ export interface UsePoolSyncInput {
   sidebarView: string | null;
   /** 侧栏是否展开（未折叠） */
   isSidebarVisible: boolean;
+  /** E5.7#63.7：底部面板激活视图 ID——null = 尚未选择（回退 views[0]）。真相源在壳 App state */
+  panelActiveViewId: string | null;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
   onTabAction?: (action: any) => void;
 }
 
 /**
  * 构建 PoolLayout 并推送到唯一 Pool（E5.7#4 单 WCV 直推）。
- * 依赖 tabState / sidebarView / isSidebarVisible——任一变化触发全量推送。
+ * 依赖 tabState / sidebarView / isSidebarVisible / panelActiveViewId——任一变化触发全量推送。
  * E5.7#9：侧栏宽度不再经 props——LayoutEngine getBounds 内部直读 + onDidChangeLayout 重推。
+ * E5.7#63.7：面板高度同理——getBounds("panel") 内部直读，resizeZoneHeight → onDidChangeLayout 重推。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabAction }: UsePoolSyncInput): void {
+export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActiveViewId, onTabAction }: UsePoolSyncInput): void {
   // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
   const { t, i18n } = useTranslation();
 
@@ -739,6 +765,27 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
       };
     }
 
+    // E5.7#63.7：底部面板——location:"panel" 容器全部活跃视图展平为 views[]。
+    // 无面板贡献 → 不推 panel 字段（池维持 Phase 5 骨架的无面板空态）。高度真相源 =
+    // LayoutEngine panel zone（resizeZoneHeight 钳制后经 onDidChangeLayout → 本 effect 重推回执）。
+    const panelViews = buildPanelViewMetas();
+    let panel: PanelLayout | undefined;
+    if (panelViews.length > 0) {
+      const panelZone = layoutEngine.getZone("panel");
+      const validActiveId = panelActiveViewId && panelViews.some((v) => v.id === panelActiveViewId)
+        ? panelActiveViewId
+        : panelViews[0]?.id ?? "";
+      panel = {
+        visible: true,
+        height: layoutEngine.getBounds("panel")?.height ?? panelZone?.dock?.height ?? 220,
+        activeViewId: validActiveId,
+        views: panelViews,
+        minHeight: panelZone?.dock?.minHeight,
+        maxHeight: panelZone?.dock?.maxHeight,
+        createTooltip: t("新建面板视图"),
+      };
+    }
+
     // 主区分屏组——每个 group 映射为一个 flex 区域
     // E5.6#16：从 SplitNode 树计算实际 flex 比例（不再硬编码 1）
     const flexMap = computeGroupFlexes(tabState.root);
@@ -789,6 +836,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
       root: tabState.root,
       // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
+      // E5.7#63.7：底部面板——无贡献不推（undefined 字段不序列化进快照）
+      ...(panel ? { panel } : {}),
       // E5.7#8：状态栏——条目（分隔线/component 标记壳侧算好）+ Chord 字符串 + 通知中心纯数据
       statusBar: {
         items: buildStatusBarItems(t, eventEntries),
@@ -798,5 +847,5 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, onTabActi
     };
 
     poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, layoutVersion, t, chordLabel, eventEntries]);
+  }, [tabState, sidebarView, isSidebarVisible, panelActiveViewId, layoutVersion, t, chordLabel, eventEntries]);
 }

@@ -181,6 +181,9 @@ export interface PanelViewMeta {
   id: string;
   title: string;
   pluginId: string;
+  /** E5.7#63.7：视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
+   *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
+  renderPath: string;
 }
 
 /** 底部面板布局——Phase 5 #21 PanelZone 消费 */
@@ -189,10 +192,11 @@ export interface PanelLayout {
   height: number;
   activeViewId: string;
   views: PanelViewMeta[];
-  // ── E5.7#21：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
-  //    Phase 12 #63.7 推送前缺省 = 无界（0..∞）。 ──
+  // ── E5.7#21：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。 ──
   minHeight?: number;
   maxHeight?: number;
+  /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
+  createTooltip?: string;
 }
 
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析） */

@@ -27,7 +27,7 @@ import StatusBarZone from "./zones/StatusBarZone"; // E5.7#8：Phase 2 替换占
 import SidebarZone from "./zones/SidebarZone"; // E5.7#10：Phase 3 替换占位
 import FloatingLayerHost from "./zones/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
 import MainZone from "./zones/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
-import PanelZone from "./zones/PanelZone"; // E5.7#21：Phase 5 底部面板骨架（数据生产者归 Phase 12 #63.7）
+import PanelZone from "./zones/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
 import RightSidebarZone from "./zones/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
@@ -53,8 +53,8 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
               数据 = PoolLayout v2 的 groups / root / creatableViews 切片。 */}
           <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} />
 
-          {/* PanelZone——E5.7#21（Phase 5）：底部面板骨架（greenfield——数据生产者归 Phase 12 #63.7，
-              无数据时条件渲染永假 = 零 DOM） */}
+          {/* PanelZone——E5.7#21 骨架 + #63.7 数据生产者：无面板贡献的插件时 layout.panel 缺省
+              → 条件渲染永假 = 零 DOM（生产者建好前与建好后行为一致） */}
           {layout.panel?.visible && <PanelZone panel={layout.panel} />}
         </div>
 
