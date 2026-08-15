@@ -27,7 +27,7 @@ import { useConfiguration, useConfigurationValue } from "../react/useConfigurati
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "../services/ConfigurationService";
 import { useSendData } from "../react/useSendData";
 import { useIpcEvent } from "../../hooks/useIpcEvent";
-import { useSourceState } from "../react/SourceStateContext";
+// E5.7#45.6：useSourceState 已摘除——SourceStateContext 死簇整删（壳侧零消费者，池插件走 lk.serial 自管）
 
 /** The V3 runtime plugin API surface. Exposed as window.__v3_core__. */
 const v3Api = {
@@ -48,7 +48,6 @@ const v3Api = {
   useConfigurationValue,
   useSendData,
   useIpcEvent,
-  useSourceState,
 
   // --- Configuration service (singleton state) ---
   getConfigurationValue,
