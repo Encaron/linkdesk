@@ -842,6 +842,11 @@ const noCoreImportInPlugin = {
     const filename = context.filename || context.getFilename?.() || "";
     if (!filename.includes("plugins")) return {};
 
+    // E5.7#80：测试文件豁免——filename 含 __tests__/.test./.spec. 跳过。
+    // vitest 单进程跑（测试与壳同一 JS 堆），"多 WebView 静默失效"理由不成立。
+    // （FileTreeClipboard.test.ts 运行时 import ContextKeyService——已记录 B 类例外。）
+    if (/__tests__|\.test\.|\.spec\./.test(filename)) return {};
+
     // 判断模块类型的辅助函数
     function classify(source) {
       if (PLUGIN_IMPORT_WHITELIST.has(source)) return null; // 白名单——不报
@@ -854,6 +859,13 @@ const noCoreImportInPlugin = {
 
     return {
       ImportDeclaration(node) {
+        // E5.7#80：纯类型 import 豁免——importKind === "type"（或全部 specifier 内联 type）
+        // 类型擦除后零运行时耦合，"多 WebView 静默失效"前提不存在。
+        const allSpecifiersTypeOnly =
+          node.specifiers.length > 0 &&
+          node.specifiers.every((s) => s.importKind === "type");
+        if (node.importKind === "type" || allSpecifiersTypeOnly) return;
+
         const source = node.source.value;
         if (!source.startsWith("@src/core/")) return;
         const reason = classify(source);
