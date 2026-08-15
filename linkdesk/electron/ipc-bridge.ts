@@ -42,6 +42,8 @@ export class IpcBridge {
     'config:get',
     'config:set',
     'commands:execute',
+    // E5.7 Bug C：池执行回传——壳→池占位命令转发的结果通道（resolvePoolExecution）
+    'commands:executeResult',
     // E5#67：弹窗归一化——插件调壳的 ConfirmDialog
     'dialog:confirm',
     'dialog:alert',
