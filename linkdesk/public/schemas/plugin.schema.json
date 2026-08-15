@@ -564,5 +564,5 @@
       }
     }
   ],
-  "additionalProperties": false
+  "additionalProperties": true
 }
