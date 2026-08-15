@@ -737,11 +737,12 @@ try {
       getView: (_viewId: string) => null,
     },
 
-    // ── 🆕 E5.6#11.5i：langDef——语言定义注册表（壳侧 LangDefRegistry）──
-    // E5.6#14-fix：langDef.get 走 plugins:call 代理到壳渲染进程——主进程 LangDefRegistry 为空
+    // ── E5.6#11.5i → E5.7#49：langDef——语言定义注册表（主进程 LangDefRegistry）──
+    // Registry 主进程化：plugin-manifest-loader 预加载进主进程实例，直连 langDef:get（1 跳）。
+    // 只返回可序列化字段 { id, lsp }——monarch tokenizer 函数不可跨进程（主进程侧剥壳）。
     langDef: {
       get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
-        ipcRenderer.invoke('plugins:call', 'getLangDef', extension),
+        ipcRenderer.invoke('langDef:get', extension),
     },
 
     // ── 🆕 E5.6#14-lsp：LSP 桥——编辑器在 MainPool 中需 LSP 通信（自动补全/F12/诊断/重命名）──
@@ -756,16 +757,16 @@ try {
         listenDirect(ipcRenderer, 'lsp:data', ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
     },
 
-    // ── E5.6#11.5h：protocol——协议注册表（壳侧 ProtocolRegistry）──
-    // 🔴 E5.6#14-fix：走 plugins:call 代理到壳渲染进程——壳 loader.ts 注册的协议
-    // 在壳渲染进程内存中，主进程 ProtocolRegistry 为空（跨进程模块实例隔离）。
+    // ── E5.6#11.5h → E5.7#49：protocol——协议注册表（主进程 ProtocolRegistry）──
+    // Registry 主进程化：内置方括号协议由 plugin-manifest-loader 汇入主进程实例，
+    // 直连 protocol:* 通道（1 跳）；返回前主进程剥 parseLine/detect（JS 函数不可跨进程）。
     protocol: {
       listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
-        ipcRenderer.invoke('plugins:call', 'protocol:listProtocols'),
+        ipcRenderer.invoke('protocol:listProtocols'),
       getActiveProtocolId: (): Promise<string> =>
-        ipcRenderer.invoke('plugins:call', 'protocol:getActiveProtocolId'),
+        ipcRenderer.invoke('protocol:getActiveProtocolId'),
       setActiveProtocolId: (protocolId: string): Promise<void> =>
-        ipcRenderer.invoke('plugins:call', 'protocol:setActiveProtocolId', protocolId),
+        ipcRenderer.invoke('protocol:setActiveProtocolId', protocolId),
     },
 
     // ── 🔥 E5.6#11.5-bug3a：shell 操作——revealInOS / openInTerminal / startDrag ──

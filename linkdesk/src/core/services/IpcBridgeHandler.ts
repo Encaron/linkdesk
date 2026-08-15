@@ -8,9 +8,8 @@
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
  */
 
-import { getLangDef, getAllLangDefs } from "../registry/LangDefRegistry";
-// E5.6#14-fix：protocol 走 plugins:call 代理到壳渲染进程——主进程 ProtocolRegistry 为空
-import { listProtocols, getActiveProtocolId, setActiveProtocol } from "../registry/ProtocolRegistry";
+// E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
+// （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "./ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../registry/ConfigurationRegistry";
 import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, unregisterPoolCommands } from "../registry/CommandRegistry";
@@ -518,38 +517,8 @@ async function handlePluginsCall(method: string, args: any[]): Promise<unknown> 
       return LanguageRegistry.getAll();
     case "getCurrentLanguage":
       return i18n.language;
-    case "getLangDef": {
-      // E5.6#14-fix：langDef.get 走 plugins:call 代理到壳渲染进程——
-      // 壳 loader.ts 注册的 LangDef 在壳渲染进程内存中，主进程 LangDefRegistry 为空。
-      const [extension] = args as [string];
-      const def = getLangDef(extension);
-      if (!def) return null;
-      return { id: def.id, lsp: def.lsp ?? null };
-    }
-    case "getAllLangDefs": {
-      // E5.5#7 Bug B fix：LangDefRegistry 跨 WebView 同步。
-      // 多 WebView 下编辑器在独立 WebView 中运行，LangDefRegistry 为空。
-      // 壳侧 loader.ts 注册的 LangDef 通过 IPC 同步到编辑器 WebView。
-      return Array.from(getAllLangDefs().entries());
-    }
-    // ── E5.6#14-fix：protocol.* 走 plugins:call 代理到壳渲染进程 ──
-    // 壳 loader.ts / 插件代码注册的协议在壳渲染进程内存中，主进程 ProtocolRegistry 为空。
-    case "protocol:listProtocols": {
-      return listProtocols().map((p) => ({
-        id: p.id,
-        name: p.name,
-        pluginId: p.pluginId,
-        mode: p.mode,
-      }));
-    }
-    case "protocol:getActiveProtocolId": {
-      return getActiveProtocolId();
-    }
-    case "protocol:setActiveProtocolId": {
-      const [protocolId] = args as [string];
-      setActiveProtocol(protocolId);
-      break;
-    }
+    // E5.7#49：getLangDef/getAllLangDefs/protocol:* 五个代理 case 已删——Registry 主进程化后
+    // 池经直连 IPC 读主进程实例（electron/ipc/registry-handlers.ts），不再经壳中转。
     // E3j #76：插件通知——跨进程触发壳侧 toast
     case "showNotification": {
       const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];

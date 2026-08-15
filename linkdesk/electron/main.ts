@@ -18,8 +18,7 @@ import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
 import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
-import { registerProtocolHandlers } from './ipc/protocol-handlers.js'; // E5.6#11.5h
-import { registerLangDefHandlers } from './ipc/lang-def-handlers.js'; // E5.6#11.5i
+import { registerRegistryHandlers } from './ipc/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
 import { registerHotExitHandlers } from './ipc/hot-exit-handlers.js'; // E5.7#38
 import { registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
@@ -83,8 +82,7 @@ function createWindow(): void {
   registerDialogHandlers();
   registerEnvHandlers();
   registerClipboardHandlers();
-  registerProtocolHandlers(); // E5.6#11.5h
-  registerLangDefHandlers();   // E5.6#11.5i
+  registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
   registerHotExitHandlers();   // E5.7#38
 
   // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）

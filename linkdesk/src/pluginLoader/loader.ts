@@ -43,7 +43,6 @@ import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/Me
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
 import { registerFileAssociation } from "../core/services/FileAssociationService";
-import { registerLangDef } from "../core/registry/LangDefRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { versionGte } from "./semverUtils";
 import i18n from "../i18n";
@@ -600,19 +599,8 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
     }
   }
 
-  // contributes.langDefs → LangDefRegistry（E4V#40s5b）
-  if (c.langDefs) {
-    const list = c.langDefs as Array<{
-      id: string;
-      extensions: string[];
-      aliases?: string[];
-      monarch?: { tokenizer: Record<string, unknown> };
-      lsp?: { command: string; args?: string[] };
-    }>;
-    for (const def of list) {
-      registerLangDef(pluginId, def);
-    }
-  }
+  // E5.7#49：contributes.langDefs 壳侧注册已删——Registry 主进程化后唯一写入方是
+  // 主进程 plugin-manifest-loader（启动扫盘 + 装/卸重扫）
 }
 
 /* ── E5#12：旧格式归一化——纯函数，不 mutate 只读 glob manifest ── */

@@ -4,7 +4,9 @@
  *
  * 设计依据：docs/phase5_应用基础设施/V3-Phase5-设计.md §柱子4 + §9.2 5e
  *
- * 模式：对标 coreCommands.ts——模块级 ensure 函数，App.tsx init 时调用一次，幂等。
+ * 模式：对标 coreCommands.ts——模块级 ensure 函数，幂等。
+ * E5.7#49：调用方从壳 App.tsx 迁到主进程 plugin-manifest-loader——ProtocolRegistry
+ * 唯一写入方收敛主进程（Registry 主进程化），parseLine/detect 随实例留在主进程（跨 IPC 剥壳）。
  */
 
 import { registerProtocol } from "../registry/ProtocolRegistry";
@@ -35,7 +37,7 @@ function bracketParseLine(line: string): { cardId?: string; value?: unknown; fie
   });
 }
 
-/** 注册内置方括号协议——幂等，App.tsx init 时调用。 */
+/** 注册内置方括号协议——幂等，主进程 plugin-manifest-loader 启动时调用（E5.7#49）。 */
 export function ensureBuiltinProtocols(): void {
   if (_registered) return;
   _registered = true;

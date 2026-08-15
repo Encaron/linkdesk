@@ -7,7 +7,8 @@
  * 留在 App.tsx 的部分（需要 React 上下文）：
  *   initV3Api / initIpcBridgeHandler / registerFallbackThemes
  *   / registerConfiguration / initCoreKeys / ensureCoreCommands
- *   / ensureBuiltinProtocols / ensureCoreKeybindings
+ *   / ensureCoreKeybindings（ensureBuiltinProtocols 已随 E5.7#49 移主进程
+ *   plugin-manifest-loader——Registry 主进程化）
  *
  * E5#107：App 启动集成测试
  */
