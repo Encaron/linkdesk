@@ -38,3 +38,29 @@ export interface PoolQuickPickData {
   prefix?: string;
   items: PoolQuickPickItem[];
 }
+
+/* ── E5.7#63：插件 quickPick API——linkdesk.quickPick.show(opts) → Promise<item | undefined> ── */
+
+/** 插件侧条目——对标 VS Code QuickPickItem 三字段（label 第一行左 / description 第一行右 / detail 第二行左） */
+export interface PluginQuickPickItem {
+  label: string;
+  /** 第一行右 */
+  description?: string;
+  /** 第二行左 */
+  detail?: string;
+}
+
+/** 插件侧 show() 选项——v1 最小面：items + 输入框占位/前缀（buttons/onHighlight 留待消费方出现） */
+export interface PluginQuickPickOptions {
+  items: PluginQuickPickItem[];
+  placeholder?: string;
+  prefix?: string;
+}
+
+/**
+ * 插件 quickPick 请求——preload show() 经 contextBridge 函数代理桥接给池 QuickPickHost 的形状。
+ * 池内本地桥（零 IPC）：Promise resolve 的正是 opts.items 里的原对象（身份保持，非序列化副本）。
+ */
+export interface PluginQuickPickRequest {
+  opts: PluginQuickPickOptions;
+}
