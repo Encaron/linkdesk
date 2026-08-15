@@ -341,12 +341,10 @@ try {
     pool: {
       /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
       pushLayout: (layout: any) => ipcRenderer.send('pool:push-layout', layout),
-      /** 监听指定 zone 的池就绪——zone 过滤（preload-pool 发送 zone=''，inert）。返回 unsubscribe */
-      onReady: (zone: string, cb: () => void) => {
-        const handler = (_event: Electron.IpcRendererEvent, readyZone: string) => {
-          if (readyZone === zone) {
-            try { cb(); } catch { /* contextBridge 回调静默失败 */ }
-          }
+      /** 监听池就绪（E5.7#54：zone 过滤已删——单 Pool）。返回 unsubscribe */
+      onReady: (cb: () => void) => {
+        const handler = () => {
+          try { cb(); } catch { /* contextBridge 回调静默失败 */ }
         };
         ipcRenderer.on('pool:ready', handler);
         return () => ipcRenderer.removeListener('pool:ready', handler);

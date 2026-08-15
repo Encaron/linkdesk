@@ -57,8 +57,7 @@ import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './event-system';
 
-// ── 池 zone 识别——URL query ?zone=sidebar|main ──
-const _poolZone = new URLSearchParams(globalThis.location?.search ?? '').get('zone') ?? '';
+// E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
 const _layoutBuffer: any[] = [];
@@ -603,7 +602,7 @@ try {
           _onLayoutActive = false;
         };
       },
-      ready: () => ipcRenderer.send('pool:ready', _poolZone),
+      ready: () => ipcRenderer.send('pool:ready'), // E5.7#54：不再带 zone——单 Pool 无路由
       sidebarAction: (action: unknown) => ipcRenderer.send('pool:sidebar-action', action),
       // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
       tabAction: (action: unknown) => ipcRenderer.send('pool:tab-action', action),
