@@ -608,7 +608,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         // （图标点击/池按钮/view 菜单三条折叠路径共用一个真相源 + preCollapseWidth 恢复）。
         // zone 宽变化 → onDidChangeLayout → 重推 layout → 池 collapsed 派生。
         case "toggleSidebarCollapse": {
-          shellEvents.emit("sidebar:toggleFromPool", undefined);
+          shellEvents.emit("sidebar:toggle", undefined);
           break;
         }
         // E5.6#16.5：updateSplitSizes 已迁移到 pool.tabAction 通道——此处不再处理

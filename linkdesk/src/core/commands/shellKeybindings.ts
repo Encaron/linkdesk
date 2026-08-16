@@ -16,6 +16,8 @@ export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unkn
   { command: "workbench.action.nextTab",      key: "ctrl+tab" },
   { command: "workbench.action.nextTab",      key: "ctrl+shift+tab", args: [{ shift: true }] },
   { command: "workbench.action.toggleSplit",  key: "ctrl+\\" },
+  // E5.7#84：侧栏显隐——VS Code 标准 Ctrl+B（矩阵场景 1 验证点）
+  { command: "workbench.action.toggleSidebarVisibility", key: "ctrl+b" },
   { command: "workbench.action.focusNthTab",  key: "ctrl+1", args: [{ n: 1 }] },
   { command: "workbench.action.focusNthTab",  key: "ctrl+2", args: [{ n: 2 }] },
   { command: "workbench.action.focusNthTab",  key: "ctrl+3", args: [{ n: 3 }] },
