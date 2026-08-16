@@ -24,6 +24,10 @@
  *   错误页经 loadURL 加载到崩溃的池 wc（loadURL 重生 renderer）；心跳在 rebuildStopped 后停摆
  *   （不再 ping/检查——错误页崩溃不再触发重建链）；壳崩全窗口重建 = 新机会，计数与停止标志重置。
  *
+ * E5.7#103：错误页"重试"按钮——裸 renderer（data: URL，无 preload/IPC）点击重试 =
+ *   页面导航到 linkdesk-retry:// 当信号，主进程 will-navigate 拦截。重试只清 rebuildStopped
+ *   （恢复保护机制），熔断窗口计数不清零——重试后立刻再崩仍落回错误页，不无限循环。
+ *
  * E5.7#37：池心跳同在本模块——5s ping / 10s 超时 → forcefullyCrashRenderer → 走分支 1 重建链。
  *   pong 由 preload-pool 模块顶层自动回复（React mount 前即存活——池加载窗口也有 pong，
  *   加载中的池不被误杀）。与 E2a 壳心跳（main.ts app:heartbeat 30s → 原生对话框）并行互不替代。
@@ -62,10 +66,14 @@ const ERROR_PAGE_URL = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOC
   <main style="text-align:center">
     <h1 style="margin:0 0 12px;font-size:20px;font-weight:600;color:#ffffff">LinkDesk 遇到问题</h1>
     <p style="margin:0 0 6px;font-size:14px;color:#9d9d9d">界面渲染进程连续崩溃，已停止自动重建。</p>
-    <p style="margin:0;font-size:14px;color:#9d9d9d">请重启应用以继续。</p>
+    <a href="linkdesk-retry://rebuild" style="display:inline-block;margin:16px 0 0;padding:6px 16px;font-size:13px;font-weight:500;color:#ffffff;background:#0e639c;border:1px solid #007acc;border-radius:2px;text-decoration:none;cursor:pointer">重试</a>
+    <p style="margin:16px 0 0;font-size:12px;color:#6f6f6f">重试仍失败：请重启应用以继续。</p>
   </main>
 </body>
 </html>`)}`;
+
+/** E5.7#103：错误页重试按钮的导航信号前缀——裸 renderer 无 preload/IPC，导航当信号 */
+const RETRY_NAV_PREFIX = 'linkdesk-retry://';
 
 // ── E5.7#37：池心跳参数（设计 §2.2）──
 /** 主进程每 5s 向池发一次 ping */
@@ -93,7 +101,7 @@ let lastPoolPong = 0;
 /** 池崩溃时间戳（滑动窗口计数） */
 const recentPoolCrashes: number[] = [];
 
-/** 已停止自动重建——静态错误页常驻（应用重启或壳崩全窗口重建才重置） */
+/** 已停止自动重建——静态错误页常驻（错误页重试 / 应用重启 / 壳崩全窗口重建才重置） */
 let rebuildStopped = false;
 
 /** 应用退出中——render-process-gone 全部忽略（审计②） */
@@ -179,6 +187,20 @@ export function setupCrashRecovery(deps: CrashRecoveryDeps): void {
       pool.webContents.forcefullyCrashRenderer();
     }
   }, HEARTBEAT_CHECK_MS);
+
+  // E5.7#103：错误页"重试"按钮——点击 = 导航到 linkdesk-retry:// 当信号。
+  // web-contents-created 全局挂一次，覆盖每次 rebuildPool 新建的池 wc（含错误页 loadURL
+  // 重生的 renderer）——比在错误页 wc 上挂监听更稳（不随重建丢绑定）。守卫：只认当前池
+  // wc + rebuildStopped（重试按钮只在错误页上，但导航事件任何 wc 都可能来）。
+  app.on('web-contents-created', (_event, contents) => {
+    contents.on('will-navigate', (event, url) => {
+      if (!url.startsWith(RETRY_NAV_PREFIX)) return; // 非重试导航——放行
+      event.preventDefault(); // URL 只当信号，不真导航（未注册协议，导航必失败）
+      const pool = deps.getWindowManager()?.getPoolView();
+      if (!pool || pool.webContents !== contents) return; // 非当前池 wc（壳等）——忽略
+      retryFromErrorPage(deps);
+    });
+  });
 }
 
 /** 壳崩重建后调用——新窗口已建好，等新池就绪后回放 lastLayout 兜底（壳随后 pushLayout 自然对齐覆盖） */
@@ -207,15 +229,28 @@ function recordPoolCrash(): number {
   return recentPoolCrashes.length;
 }
 
-/** E5.7#39b：停止自动重建 + 静态错误页常驻。心跳/重建链此后停摆——重启应用或壳崩全窗口重建才恢复 */
+/** E5.7#39b：停止自动重建 + 静态错误页常驻。心跳/重建链此后停摆——恢复途径：错误页重试 / 重启应用 / 壳崩全窗口重建 */
 function showStaticErrorPage(wc: WebContents): void {
   rebuildStopped = true;
-  console.error('[E5.7] 停止自动重建——静态错误页常驻（重启应用或壳崩全窗口重建才恢复）');
+  console.error('[E5.7] 停止自动重建——静态错误页常驻（错误页重试 / 重启应用 / 壳崩全窗口重建才恢复）');
   try {
     wc.loadURL(ERROR_PAGE_URL);
   } catch (err) {
     console.error('[E5.7] 静态错误页加载失败:', err);
   }
+}
+
+/**
+ * E5.7#103：错误页"重试"——恢复重建链。只清 rebuildStopped（恢复心跳/崩溃分支保护机制），
+ * 熔断窗口计数（recentPoolCrashes）不清零——重试后立刻再崩仍 ≥3 落回错误页，不无限循环。
+ * 重建失败路径自带兜底：rebuildPoolWithRetry 重试耗尽 → showStaticErrorPage → rebuildStopped 复位。
+ */
+function retryFromErrorPage(deps: CrashRecoveryDeps): void {
+  if (!rebuildStopped || rebuilding) return;
+  rebuildStopped = false;
+  lastPoolPong = 0; // 新池首 pong 前保持加载宽限——旧 pong 时间戳对新池无意义
+  console.error('[E5.7] 错误页重试——恢复重建链（熔断窗口计数保留）');
+  rebuildPoolWithRetry(deps, 1);
 }
 
 /** Pool 分支入口——重建 WCV 后等待就绪。rebuilding 守卫：新池立即再崩时由等待者超时重试接管 */
