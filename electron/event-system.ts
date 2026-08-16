@@ -109,6 +109,8 @@ export function listenDirect<T extends unknown[]>(
       IPC.contextKey.changed,
       'plugin:installed',
       'plugin:uninstalled',
+      // E5.7#81：安装进度——壳 loader emit → 主进程 → 池广播（走 plugin:push 分发）
+      'plugin:installProgress',
       'window:zoomLevelChanged',
     ];
     if (PUSH_CHANNELS.includes(channel)) {

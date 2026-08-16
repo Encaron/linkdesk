@@ -5,7 +5,7 @@
  * SidePanel 对 title 为空串的 view 不包 SidebarSection，直接渲染。
  */
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { setMarketplaceSearch } from "../services/marketplaceShared";
 import { useDebouncedInput } from "@src/hooks/useDebouncedInput";
@@ -13,22 +13,47 @@ import "../styles/MarketplaceSidebar.css";
 
 const lk = () => window.linkdesk;
 
+// E5.7#81：安装阶段 → 按钮文案（stage 经 plugin:installProgress 从壳 loader 广播而来）
+const STAGE_LABELS: Record<string, string> = {
+  validating: "校验中...",
+  copying: "复制中...",
+  loading: "加载中...",
+};
+
 export default function SearchView() {
   const { t } = useTranslation();
   const [installing, setInstalling] = useState(false);
+  const [stage, setStage] = useState<string | null>(null);
   const { value, onChange, onClear } = useDebouncedInput(setMarketplaceSearch);
+
+  // E5.7#81：订阅安装进度——壳 loader 事件经主进程广播到池（marketplaceShared 同款模式）
+  useEffect(() => {
+    const sub = lk()?.events?.on<{ stage?: string }>("plugin:installProgress", (p) => {
+      setStage(p?.stage ?? null);
+    });
+    return () => sub?.();
+  }, []);
 
   const handleInstall = useCallback(async () => {
     setInstalling(true);
     try {
       const selected = await lk().dialog.open({ directory: true, title: "选择插件目录" });
-      if (selected) await lk().pluginManager.install(selected as string);
-    } catch {
-      /* 静默 */
+      if (selected) {
+        // E5.7#81：校验/版本冲突失败要可见——不再静默吞错
+        const r = await lk().pluginManager.install(selected as string);
+        if (r && !r.success) {
+          await lk().dialog.alert(r.error || t("安装失败"));
+        }
+      }
+    } catch (e) {
+      await lk().dialog.alert(e instanceof Error ? e.message : String(e));
     } finally {
       setInstalling(false);
+      setStage(null);
     }
-  }, []);
+  }, [t]);
+
+  const stageText = installing && stage ? STAGE_LABELS[stage] : null;
 
   return (
     <div className="ms-header">
@@ -40,7 +65,7 @@ export default function SearchView() {
           title={t("从本地安装插件")}
         >
           <span className="codicon codicon-add" />
-          {installing ? t("安装中...") : t("安装")}
+          {installing ? (stageText ? t(stageText) : t("安装中...")) : t("安装")}
         </button>
       </div>
       <div className="ms-search-container">

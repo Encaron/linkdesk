@@ -42,7 +42,6 @@ const pluginsApi = () => {
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
-import { normalizePath } from "../core/utils/pathUtils";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
@@ -61,7 +60,7 @@ import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/Me
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
-import { versionGte } from "./semverUtils";
+import { compareVersions, versionGte } from "./semverUtils";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../i18n";
 import { createLogChannel } from "../core/services/LogChannel";
@@ -1285,22 +1284,106 @@ export async function performUninstall(pluginId: string): Promise<boolean> {
 }
 
 /**
+ * E5.7#81：安装源 manifest 校验——纯函数（测试覆盖）。
+ * 返回规范化三元组（pluginId/version/name），不合法即抛错。
+ *
+ * 校验规则：
+ *   - pluginId 必填且只允许字母/数字/._-（禁止路径字符——安装目录名 = pluginId，
+ *     路径穿越字符会直通文件系统）
+ *   - version 必填（版本处理的前置）
+ *   - name 缺省回退 pluginId
+ */
+export function validateInstallManifest(manifest: unknown): { pluginId: string; version: string; name: string } {
+  if (typeof manifest !== "object" || manifest === null) {
+    throw new Error(`plugin.json 内容不是对象`);
+  }
+  const m = manifest as Record<string, unknown>;
+  const pluginId = m.pluginId;
+  if (typeof pluginId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(pluginId)) {
+    throw new Error(`plugin.json 缺少合法的 pluginId（只允许字母/数字/._-，开头须为字母或数字）`);
+  }
+  const version = m.version;
+  if (typeof version !== "string" || version.trim() === "") {
+    throw new Error(`插件 "${pluginId}" 缺少 version 字段`);
+  }
+  const name = typeof m.name === "string" && m.name.trim() !== "" ? m.name : pluginId;
+  return { pluginId, version, name };
+}
+
+/**
+ * E5.7#81：版本冲突裁决——纯函数（测试覆盖）。
+ * installed 为 null = 目标不存在（可装）；version 为 null = 目标存在但读不到版本。
+ * 返回 null = 放行；返回字符串 = 拒绝理由（含双方版本号）。
+ */
+export function resolveVersionConflict(
+  installed: { version: string | null } | null,
+  sourceVersion: string,
+): string | null {
+  if (!installed) return null;
+  const iv = installed.version;
+  if (!iv) {
+    return `已安装版本信息读取失败——请先卸载旧版本再安装。`;
+  }
+  const c = compareVersions(sourceVersion, iv);
+  if (c === 0) {
+    return `已安装版本 ${iv} 与本次提供的 ${sourceVersion} 相同——无需重复安装。`;
+  }
+  if (c < 0) {
+    return `本次提供的 ${sourceVersion} 低于已安装的 ${iv}——已跳过（如需降级请先卸载旧版本）。`;
+  }
+  return `已安装 ${iv}，本次提供 ${sourceVersion}——如需升级请先卸载旧版本再安装。`;
+}
+
+/**
  * 安装插件：Electron 端复制到 plugins/user/ → 热加载。
  * 仅对 theme/language 插件即时生效；view 插件提示重启。
+ *
+ * E5.7#81 包装（校验 / 版本处理 / 进度）：
+ *   - 校验前置：manifest 先读先验，不合法在复制前失败（原实现只在消毒时 parse——
+ *     malformed JSON 会先复制出半装目录再报错）；安装目录名 = manifest.pluginId
+ *     （不再用源目录 basename——目录名 ≠ pluginId 是潜伏错位，resolvePath 按 id 找目录）；
+ *   - 版本处理：目标已存在时读盘比对版本——同版/旧版拒绝并给出双方版本号，新版提示
+ *     先卸载再装（不覆盖：Windows 文件锁，卸载 cp+rm 教训；真升级流程归 E6 PluginUpdateService）；
+ *   - 进度事件：plugin:installProgress { stage: validating/copying/loading/done/error } 广播到池
+ *     （marketplace 安装按钮实时阶段文案）。
  */
-export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; error?: string; needRestart?: boolean }> {
+export async function installPlugin(sourcePath: string): Promise<{ success: boolean; pluginId?: string; version?: string; needRestart?: boolean; error?: string }> {
+  // 进度广播——壳 events.emit → 主进程 → 池（见 IpcBridge.onPluginEmit 广播）
+  const emitProgress = (stage: string, pluginId?: string, message?: string) => {
+    window.linkdesk?.events?.emit("plugin:installProgress", { stage, pluginId, message });
+  };
+
+  emitProgress("validating");
   try {
     // E5#32：文件操作走 linkdesk.filesystem——bridge 为唯一入口
     const manifestPath = `${sourcePath}/plugin.json`;
     if (!(await linkdesk().filesystem.exists(manifestPath))) {
       throw new Error(`不是有效插件（缺少 plugin.json）`);
     }
-    const name = normalizePath(sourcePath).split("/").pop() || sourcePath;
-    const env = await linkdesk().env.get();
-    const destDir = `${env.appPluginsDir}/user/${name}`;
-    if (await linkdesk().filesystem.exists(destDir)) {
-      throw new Error(`插件 "${name}" 已存在`);
+    let parsedManifest: unknown;
+    try {
+      parsedManifest = JSON.parse(await linkdesk().filesystem.readTextFile(manifestPath));
+    } catch (e) {
+      throw new Error(`plugin.json 格式错误: ${errMsg(e)}`);
     }
+    const { pluginId, version, name } = validateInstallManifest(parsedManifest);
+
+    const env = await linkdesk().env.get();
+    const destDir = `${env.appPluginsDir}/user/${pluginId}`;
+
+    // E5.7#81 版本处理：目标已存在 → 读盘比对（未安装则跳过）
+    let installed: { version: string | null } | null = null;
+    if (await linkdesk().filesystem.exists(destDir)) {
+      installed = { version: null };
+      try {
+        const iv = JSON.parse(await linkdesk().filesystem.readTextFile(`${destDir}/plugin.json`));
+        if (typeof iv?.version === "string") installed = { version: iv.version };
+      } catch { /* 读不到版本信息 → 保守拒绝（见 resolveVersionConflict null 分支） */ }
+      const conflict = resolveVersionConflict(installed, version);
+      if (conflict) throw new Error(`${name}: ${conflict}`);
+    }
+
+    emitProgress("copying", pluginId);
     await linkdesk().filesystem.copy(sourcePath, destDir);
     // 消毒 manifest——安装后强制 distribution=user, core=false
     const destManifest = `${destDir}/plugin.json`;
@@ -1311,18 +1394,20 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       manifest.core = false;
       await linkdesk().filesystem.writeTextFile(destManifest, JSON.stringify(manifest, null, 2));
     }
-    const pluginId = name;
 
     // E5.7#48：文件已落盘——通知主进程重扫三表（无论下方 loadPlugin 是否成功）
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
 
     // E5 归一化：loadPlugin 统一处理 glob 内/外——不再分支判断
+    emitProgress("loading", pluginId);
     try {
       await loadPlugin(pluginId, "install");
-      return { success: true, pluginId };
+      pushToast({ message: `已安装：${name} v${version}`, source: pluginId, ttl: TOAST_TTL_SUCCESS, severity: "info" });
+      emitProgress("done", pluginId);
+      return { success: true, pluginId, version };
     } catch {
       pushToast({
-        message: `已安装：${pluginId}。运行 npm run build:plugins 后生效。`,
+        message: `已安装：${name}。运行 npm run build:plugins 后生效。`,
         source: pluginId,
         severity: "info",
         ttl: 0,
@@ -1330,10 +1415,13 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
           { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
         ],
       });
-      return { success: true, pluginId, needRestart: true };
+      emitProgress("done", pluginId);
+      return { success: true, pluginId, version, needRestart: true };
     }
   } catch (e) {
-    return { success: false, error: errMsg(e) };
+    const msg = errMsg(e);
+    emitProgress("error", undefined, msg);
+    return { success: false, error: msg };
   }
 }
 
