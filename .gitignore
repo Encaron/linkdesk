@@ -8,3 +8,7 @@ tsconfig.tsbuildinfo
 *.log
 .DS_Store
 Thumbs.db
+
+# Codex CLI persona/profile（Codex 用，保留在磁盘但不入库）
+SOUL.md
+USER.md
