@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { parseContributions } from "../loader";
+import { parseContributions, validateInstallManifest, resolveVersionConflict } from "../loader";
 import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
 import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
 import { clearLangDefs, getLangDef } from "../../core/registry/LangDefRegistry";
@@ -174,5 +174,73 @@ describe("loader — parseContributions（export function）", () => {
       langDefs: [{ id: "python", extensions: [".py"] }],
     });
     expect(getLangDef(".py")).toBeUndefined();
+  });
+});
+
+/* ── E5.7#81：安装包装纯函数——validateInstallManifest / resolveVersionConflict ── */
+
+describe("E5.7#81 安装包装", () => {
+  describe("validateInstallManifest", () => {
+    it("合法 manifest 返回三元组", () => {
+      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" });
+      expect(r).toEqual({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" });
+    });
+
+    it("name 缺失回退 pluginId", () => {
+      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0" });
+      expect(r.name).toBe("my-plugin");
+    });
+
+    it("非对象 manifest 抛错", () => {
+      expect(() => validateInstallManifest(null)).toThrow(/内容不是对象/);
+      expect(() => validateInstallManifest("str")).toThrow(/内容不是对象/);
+    });
+
+    it("缺少 pluginId 抛错", () => {
+      expect(() => validateInstallManifest({ version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+    });
+
+    it("路径穿越 pluginId 抛错（安装目录名 = pluginId——直通文件系统）", () => {
+      expect(() => validateInstallManifest({ pluginId: "../evil", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+      expect(() => validateInstallManifest({ pluginId: "a/b", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+      expect(() => validateInstallManifest({ pluginId: "a\\b", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+      expect(() => validateInstallManifest({ pluginId: "..", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+      expect(() => validateInstallManifest({ pluginId: "-abc", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+    });
+
+    it("缺少 version 抛错", () => {
+      expect(() => validateInstallManifest({ pluginId: "my-plugin" })).toThrow(/缺少 version/);
+      expect(() => validateInstallManifest({ pluginId: "my-plugin", version: "  " })).toThrow(/缺少 version/);
+    });
+  });
+
+  describe("resolveVersionConflict", () => {
+    it("目标不存在（null）→ 放行", () => {
+      expect(resolveVersionConflict(null, "1.0.0")).toBeNull();
+    });
+
+    it("目标存在但版本读不到 → 保守拒绝", () => {
+      expect(resolveVersionConflict({ version: null }, "1.0.0")).toMatch(/版本信息读取失败/);
+    });
+
+    it("同版本 → 拒绝并含双方版本号", () => {
+      const msg = resolveVersionConflict({ version: "1.2.0" }, "1.2.0")!;
+      expect(msg).toContain("1.2.0");
+      expect(msg).toMatch(/无需重复安装/);
+    });
+
+    it("源较旧 → 拒绝（提示降级需先卸载）", () => {
+      const msg = resolveVersionConflict({ version: "1.2.0" }, "1.0.0")!;
+      expect(msg).toContain("1.0.0");
+      expect(msg).toContain("1.2.0");
+      expect(msg).toMatch(/低于/);
+    });
+
+    it("源较新 → 拒绝升级（提示先卸载再装）", () => {
+      const msg = resolveVersionConflict({ version: "1.2.0" }, "1.3.0")!;
+      expect(msg).toContain("1.2.0");
+      expect(msg).toContain("1.3.0");
+      expect(msg).toMatch(/升级请先卸载/);
+    });
   });
 });

@@ -79,6 +79,17 @@ export interface PluginListEntry {
   manifest: PluginListSubset;
 }
 
+/** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
+ *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
+ *  stage: validating | copying | loading | done | error */
+export interface PluginInstallResult {
+  success: boolean;
+  pluginId?: string;
+  version?: string;
+  needRestart?: boolean;
+  error?: string;
+}
+
 /** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集） */
 export interface PluginInfoEntry {
   pluginId: string;
@@ -398,7 +409,7 @@ export interface LinkDeskAPI {
     enable(id: string): Promise<unknown>;
     disable(id: string): Promise<unknown>;
     uninstall(id: string): Promise<unknown>;
-    install(path: string): Promise<unknown>;
+    install(path: string): Promise<PluginInstallResult>;
     reinstall(id: string): Promise<unknown>;
     getDisabled(): Promise<PluginInfoEntry[]>;
     getUninstalled(): Promise<PluginInfoEntry[]>;

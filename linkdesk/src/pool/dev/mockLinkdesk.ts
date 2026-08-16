@@ -257,7 +257,11 @@ export function installMockLinkdesk(): void {
       enable: makeAsyncLogger("pluginManager.enable"),
       disable: makeAsyncLogger("pluginManager.disable"),
       uninstall: makeAsyncLogger("pluginManager.uninstall"),
-      install: makeAsyncLogger("pluginManager.install"),
+      // E5.7#81：返回契约形状（预览 no-op 恒成功）
+      install: async (path: string) => {
+        console.info(`[mockLinkdesk] pluginManager.install（壳侧动作，预览 no-op）`, path);
+        return { success: true, pluginId: path, version: "0.0.0-dev" };
+      },
       reinstall: makeAsyncLogger("pluginManager.reinstall"),
       getDisabled: async () => [],
       getUninstalled: async () => [],

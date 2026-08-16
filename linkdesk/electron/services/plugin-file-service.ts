@@ -1,17 +1,16 @@
 /**
- * 插件文件服务——插件目录扫描/安装/卸载/重装
+ * 插件文件服务——插件目录扫描 / manifest 读取 / 路径解析
  *
  * E1 步 3：逐函数映射 Rust `src-tauri/src/plugins.rs`。
  *
- * 关键行为：
- *   - 卸载走 cp+rm（不用 rename）——Windows 文件锁根因修复（卸载 9 轮反复）
- *   - core: true 插件不可卸载
- *   - 安装前校验 plugin.json 存在且 JSON 合法
- *   - 正斜杠路径（Windows 兼容 Vite /@fs/ URL）
+ * E5.7#81：安装/卸载/重装三方法整删——全仓零调用方死代码（装/卸/重装唯一实现
+ *   = 壳 loader（src/pluginLoader/loader.ts），文件操作走 linkdesk.filesystem bridge，
+ *   壳侧统一处理注册/热加载/toast）。本文件只保留主进程直答面：
+ *   目录扫描 / manifest 读取 / 路径解析（正斜杠——Windows 反斜杠在 Vite /@fs/ URL 中不兼容）。
  */
 
 import * as fs from 'fs/promises';
-import { existsSync, readFileSync, readdirSync } from 'fs';
+import { existsSync, readdirSync } from 'fs';
 import * as path from 'path';
 import { fileService } from './file-service.js';
 
@@ -19,10 +18,8 @@ import { fileService } from './file-service.js';
  * E5.7#69：插件子目录白名单消灭——运行时扫描全部子目录，不再写死 ['builtin', 'user']。
  * 唯一保留的政策常量（政策 ≠ 能力限制）：
  *   - SUBDIR_PRIORITY：同名插件冲突时的优先级——builtin > user > 其他（字母序）
- *   - INSTALL_SUBDIR：安装/重装目标永远 user/（分发政策，消毒写 distribution 同源）
  */
 const SUBDIR_PRIORITY = ['builtin', 'user'] as const;
-const INSTALL_SUBDIR = 'user';
 
 /**
  * 扫描 plugins/ 下所有插件子目录。
@@ -48,23 +45,6 @@ class PluginFileService {
   /** 解析 plugins/ 目录路径 */
   private pluginsDir(): string {
     return fileService.pluginsDir();
-  }
-
-  /** 读取 plugin.json 并校验 JSON 合法性 */
-  private readManifestSync(dirPath: string): Record<string, unknown> | null {
-    const manifestPath = path.join(dirPath, 'plugin.json');
-    if (!existsSync(manifestPath)) return null;
-    try {
-      return JSON.parse(readFileSync(manifestPath, 'utf-8'));
-    } catch {
-      return null;
-    }
-  }
-
-  /** 检查是否为 core 插件（不可卸载） */
-  private isCorePlugin(dirPath: string): boolean {
-    const manifest = this.readManifestSync(dirPath);
-    return manifest?.core === true;
   }
 
   /** 查找插件所在的子目录——E5.7#69 扫描全部子目录，未找到返回 null */
@@ -120,99 +100,6 @@ class PluginFileService {
 
     names.sort();
     return names;
-  }
-
-  // ── 安装（对标 Rust install_plugin）──
-
-  async installPlugin(source: string): Promise<string> {
-    if (!existsSync(source)) {
-      throw new Error(`源路径不存在: ${source}`);
-    }
-
-    const name = path.basename(source);
-
-    // 校验 plugin.json
-    const manifestPath = path.join(source, 'plugin.json');
-    if (!existsSync(manifestPath)) {
-      throw new Error(`不是有效插件（缺少 plugin.json）: ${source}`);
-    }
-    try {
-      JSON.parse(await fs.readFile(manifestPath, 'utf-8'));
-    } catch (e) {
-      throw new Error(`plugin.json 格式错误: ${e instanceof Error ? e.message : String(e)}`);
-    }
-
-    const destDir = path.join(this.pluginsDir(), INSTALL_SUBDIR, name);
-    if (existsSync(destDir)) {
-      throw new Error(`插件 "${name}" 已存在。请先卸载旧版本。`);
-    }
-
-    await fileService.copyDir(source, destDir);
-
-    // 安装后强制消毒——市场下载的插件永远不是 builtin/core
-    const destManifestPath = path.join(destDir, 'plugin.json');
-    try {
-      const raw = await fs.readFile(destManifestPath, 'utf-8');
-      const manifest = JSON.parse(raw);
-      if (manifest.distribution !== INSTALL_SUBDIR || manifest.core === true) {
-        manifest.distribution = INSTALL_SUBDIR;
-        manifest.core = false;
-        await fs.writeFile(destManifestPath, JSON.stringify(manifest, null, 2), 'utf-8');
-      }
-    } catch { /* 消毒失败不阻断安装 */ }
-
-    return name;
-  }
-
-  // ── 卸载（对标 Rust uninstall_plugin——cp+rm，不用 rename）──
-
-  async uninstallPlugin(pluginId: string): Promise<void> {
-    const dir = this.pluginsDir();
-    const subdir = this._findPluginDir(pluginId);
-    if (!subdir) {
-      throw new Error(`插件 "${pluginId}" 不存在`);
-    }
-    const src = path.join(dir, subdir, pluginId);
-
-    // 检查是否 core 插件
-    if (this.isCorePlugin(src)) {
-      throw new Error(`核心插件 "${pluginId}" 不可卸载`);
-    }
-
-    const disabledDir = path.join(dir, '.disabled');
-    await fs.mkdir(disabledDir, { recursive: true });
-
-    const dest = path.join(disabledDir, pluginId);
-    if (existsSync(dest)) {
-      await fs.rm(dest, { recursive: true, force: true });
-    }
-
-    // 先复制到 .disabled/——文件拷贝不触发 Windows 跨目录 rename 的权限错误
-    await fileService.copyDir(src, dest);
-
-    // 再删原目录——Vite 可能锁住部分文件，删不掉的忽略
-    await fileService.remove(src);
-  }
-
-  // ── 重装（对标 Rust reinstall_plugin——从 .disabled/ 移回）──
-
-  async reinstallPlugin(pluginId: string): Promise<void> {
-    const dir = this.pluginsDir();
-    const disabledDir = path.join(dir, '.disabled');
-    const src = path.join(disabledDir, pluginId);
-
-    if (!existsSync(src)) {
-      throw new Error(`已卸载的插件 "${pluginId}" 未找到`);
-    }
-
-    // 重装到 INSTALL_SUBDIR（user/）——用户主动操作，变更为用户管理
-    const dest = path.join(dir, INSTALL_SUBDIR, pluginId);
-    if (existsSync(dest)) {
-      throw new Error(`插件 "${pluginId}" 已存在`);
-    }
-
-    // 从 .disabled/ 移回 plugins/user/——同级目录 rename 不受跨目录限制
-    await fs.rename(src, dest);
   }
 
   // ── 读取 manifest（对标 Rust read_plugin_manifest）──
