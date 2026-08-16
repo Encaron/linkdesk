@@ -736,6 +736,46 @@ async function resolveRuntimePluginRoot(pluginId: string): Promise<string> {
 }
 
 /**
+ * 运行时插件入口文件路径——E5.7#82：E6 打包格式分支点（纯函数，单测覆盖）。
+ *
+ * dev：manifest.entry 源码路径（/@fs 下由 Vite 即时编译）；entryless 插件返回 null
+ *   （纯 views/commands 贡献——生命周期契约不绑 entry）。
+ * prod（E6 打包格式）：一律返回预构建 chunk 名 `<pluginId>.js`——
+ *   vite.config 多入口产物名 = 插件目录名（dist/plugins/<sub>/<id>.js），
+ *   entry 字段是源码路径，在打包格式中不参与入口解析。
+ */
+export function runtimeEntryPath(
+  manifest: PluginManifest,
+  pluginId: string,
+  isDev: boolean,
+): string | null {
+  if (isDev) return manifest.entry || null;
+  return `${pluginId}.js`;
+}
+
+/**
+ * 插件视图入口模块解析——E5.7#82：两套入口映射合一。
+ *
+ * dev：构建时 glob（pluginModules，Vite 展开）∪ 运行时 /@fs 源码（Vite 即时编译）
+ * E6 打包（prod）：构建时插件仍走同一张 glob 表（chunk 随池 bundle 分发）；
+ *   运行时安装的插件 = 预构建 chunk `<pluginId>.js`，经 linkdesk:// 动态 import——
+ *   协议对子目录透明扫描（electron/protocol.ts scanPluginSubdirs），
+ *   解析方无需知道 builtin/user。pluginId → 模块的语义全局唯一，只有 URL 形状随环境变。
+ */
+async function resolveViewModule(
+  pluginId: string,
+  entryPath: string,
+  runtimePluginRoot?: string,
+): Promise<{ default: React.ComponentType<{ isActive: boolean }> } | null> {
+  // 1) 构建时映射（dev 与打包产物同一张表）
+  const entryKey = Object.keys(pluginModules).find((k) => extractPluginId(k) === pluginId);
+  if (entryKey) return pluginModules[entryKey]();
+  // 2) 运行时映射——dev /@fs 源码，prod linkdesk:// 预构建 chunk
+  if (!runtimePluginRoot) return null;
+  return import(/* @vite-ignore */ `${runtimePluginRoot}/${entryPath}`);
+}
+
+/**
  * 插件加载唯一入口。
  * 🔥 E5 归一化：合并运行时路径——glob 内走 Vite 模块，glob 外走 IPC 运行时加载。
  * 调用方不再自己判断"该走哪条路"——一条 loadPlugin 全覆盖。
@@ -806,12 +846,12 @@ async function loadPlugin(
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 根目录解析失败:`, e);
       // pluginRoot 保持 undefined——views 注册走 ❌ 分支诚实降级
     }
-    if (manifest.entry) {
+    const entryPath = runtimeEntryPath(manifest, pluginId, import.meta.env.DEV);
+    if (entryPath) {
       try {
         if (!runtimePluginRoot) throw new Error("根目录解析失败");
-        const entryUrl = `${runtimePluginRoot}/${manifest.entry}`;
-        const module = await import(/* @vite-ignore */ entryUrl);
-        viewComponent = module.default;
+        const module = await resolveViewModule(pluginId, entryPath, runtimePluginRoot);
+        viewComponent = module?.default;
         if (!viewComponent) {
           console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 未导出 default 组件`);
         }
@@ -916,15 +956,12 @@ function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: 
 }
 
 async function loadPluginComponent(pluginId: string, manifest: PluginManifest): Promise<void> {
-  const entryKey = Object.keys(pluginModules).find(
-    (k) => extractPluginId(k) === pluginId
-  );
-  if (!entryKey) {
+  // E5.7#82：入口解析归一到 resolveViewModule——glob 命中 → chunk，否则诚实报缺。
+  const module = await resolveViewModule(pluginId, manifest.entry ?? "index.tsx");
+  if (!module) {
     pushToast({ message: `插件 "${manifest.name}" 缺少入口文件（${manifest.entry ?? "index.tsx"}）` });
     throw new Error(`找不到入口文件（${manifest.entry ?? "index.tsx"}）`);
   }
-
-  const module = await pluginModules[entryKey]();
   const Component = module.default;
 
   if (!Component) {
