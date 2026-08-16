@@ -25,7 +25,7 @@ import type { KeyboardInput } from '../src/core/types/ipc/keyboard';
 
 // ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
 
-let _debugLog = true; // 生产静默，排查问题时改 true（E5.7#84 排查 Ctrl+B——定位后回 false）
+let _debugLog = false; // 生产静默，排查问题时改 true
 function debug(msg: string): void {
   if (!_debugLog) return;
   const ts = new Date().toISOString();
@@ -144,8 +144,6 @@ export function syncKeybindings(data: KeybindingSyncData): void {
   debug(`syncKeybindings: ${data.shortcuts.length} shortcuts, ${data.chordPrefixes.length} chordPrefixes, ${data.chordCombos.length} chordCombos`);
   debug(`  shortcuts sample: ${data.shortcuts.slice(0, 5).join(', ')}`);
   debug(`  chordPrefixes: ${data.chordPrefixes.join(', ')}`);
-  // E5.7#84 排查 Ctrl+B——临时诊断
-  debug(`  [dbg84] ctrl+b in table: ${data.shortcuts.includes('ctrl+b')}`);
 }
 
 /** 处理单个 before-input-event——同步查表 + chord 状态机 */
