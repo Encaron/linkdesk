@@ -5,7 +5,7 @@
  * 依赖通过参数注入，测试可 mock 任意步骤失败。
  *
  * 留在 App.tsx 的部分（需要 React 上下文）：
- *   initV3Api / initIpcBridgeHandler / registerFallbackThemes
+ *   initIpcBridgeHandler / registerFallbackThemes
  *   / registerConfiguration / initCoreKeys / ensureCoreCommands
  *   / ensureCoreKeybindings（ensureBuiltinProtocols 已随 E5.7#49 移主进程
  *   plugin-manifest-loader——Registry 主进程化）

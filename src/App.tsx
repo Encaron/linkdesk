@@ -39,7 +39,6 @@ import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/service
 import { initAll } from "./core/services/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/ConfigurationApplier";
-import { initV3Api } from "./core/api/v3Api"; // Phase 5h: runtime plugin API namespace
 import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
 import { usePoolSync } from "./hooks/usePoolSync";
 
@@ -118,8 +117,8 @@ function App() {
 
     (async () => {
       // ═══ Pre-init：同步设置（需要 React 上下文 t() / sync-only）═══
-      // Phase 5h: expose window.__v3_core__ before plugins load
-      initV3Api();
+      // E5.7#101：initV3Api 已随 v3Api.ts 整删——__v3_core__ SDK 零消费方
+      // （池插件不可达壳 window 全局；E6#3 已定未来插件 SDK 走 linkdesk.*）
 
       // E3a #26：初始化 IpcBridge 壳侧处理器——监听主进程转发的插件 IPC 请求
       initIpcBridgeHandler();

@@ -35,10 +35,10 @@ export default [
       "react-hooks/exhaustive-deps": "warn",
 
       // ═══ 提交前自检 4：禁止插件 ID 硬编码 ═══
-      // ⚠️ E3i #68a：暂用 warn——#69 清理完 v3 遗骨后改 error
-      // 🔴 TODO E5 收尾：v3 遗留清理后改 error。当前 warn——存量 v3_ key 还存在
+      // E3i #68a 兑现（E5.7#101 2026-08-16）：v3 遗骨已清零——v3Api.ts 整删、
+      // v3_ 存储 key 早已迁移（linted 代码 grep 零残留）——两 selector 升 error
       "no-restricted-syntax": [
-        "warn",
+        "error",
         // v3- 遗骨禁止新增（字符串字面量）
         {
           selector: "Literal[value=/^v3[-_]/]",
