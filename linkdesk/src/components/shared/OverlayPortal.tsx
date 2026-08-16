@@ -13,6 +13,9 @@ import { createPortal } from "react-dom";
 
 interface OverlayPortalProps {
   children: React.ReactNode;
+  /** E5.7#100：活跃守卫——false 时所有窗口级监听器挂起（防"挂载但隐藏"态回调泄漏，
+   *  硬约束 14）。条件挂载（{open && <OverlayPortal/>}）的消费方可省略——默认 true */
+  open?: boolean;
   /** 外部点击 / Escape → 关闭回调。不传则无外部关闭行为（如 ToastContainer） */
   onClose?: () => void;
   /** 点击此 ref 指向的元素不算"外部"（如触发按钮）。每次事件回调内实时读，不缓存 */
@@ -29,11 +32,12 @@ interface OverlayPortalProps {
 /** 可聚焦元素选择器——对标 VS Code focusable selectors */
 const FOCUSABLE = 'a[href],button:not([disabled]),input:not([disabled]),textarea:not([disabled]),select:not([disabled]),[tabindex]:not([tabindex="-1"])';
 
-export default function OverlayPortal({ children, onClose, triggerRef, trapFocus, zIndex, rootId }: OverlayPortalProps) {
+export default function OverlayPortal({ children, onClose, triggerRef, trapFocus, zIndex, rootId, open = true }: OverlayPortalProps) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   /* ── E5#96i: mousedown 外部点击检测（捕获阶段——早于 React 合成事件）── */
   useEffect(() => {
+    if (!open) return; // 活跃守卫——overlay 关闭态不挂监听（硬约束 14）
     if (!onClose) return;
     const handler = (e: MouseEvent) => {
       const target = e.target as Node;
@@ -43,20 +47,22 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     };
     window.addEventListener("mousedown", handler, true);
     return () => window.removeEventListener("mousedown", handler, true);
-  }, [onClose, triggerRef]);
+  }, [open, onClose, triggerRef]);
 
   /* ── E5#96j: keydown Escape ── */
   useEffect(() => {
+    if (!open) return; // 活跃守卫——overlay 关闭态不挂监听（硬约束 14）
     if (!onClose) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [onClose]);
+  }, [open, onClose]);
 
   /* ── E5#96k: trapFocus——焦点循环 ── */
   useEffect(() => {
+    if (!open) return; // 活跃守卫——同组件其余 effect（硬约束 14 grep 原则）
     if (!trapFocus) return;
     const el = contentRef.current;
     if (!el) return;
@@ -82,7 +88,7 @@ export default function OverlayPortal({ children, onClose, triggerRef, trapFocus
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [trapFocus]);
+  }, [open, trapFocus]);
 
   /* ── E5#96l: wrapper inline style ── */
   const style: React.CSSProperties = {

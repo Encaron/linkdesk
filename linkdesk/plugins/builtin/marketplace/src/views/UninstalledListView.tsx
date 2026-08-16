@@ -66,7 +66,7 @@ export default function UninstalledListView() {
             onClick={(e) => handleInstall(p.pluginId, e)}
             title={t("安装插件")}
           >
-            <span className="codicon codicon-cloud-download" /> 安装
+            <span className="codicon codicon-cloud-download" /> {t("安装")}
           </button>
         </div>
       ))}

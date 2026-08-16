@@ -5,6 +5,7 @@
  * 入口：index.tsx 中 sourceId 含 "|||" → 拆出双路径 → 渲染 DiffEditor。
  */
 import React, { useState, useEffect, useRef } from "react";
+import { useTranslation } from "react-i18next";
 import { EditorModel } from "../services/EditorModel";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
 // E5.7#98：diff editor/monaco ref 具体类型——替代 useRef<any>
@@ -18,6 +19,7 @@ interface DiffEditorProps {
 }
 
 const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isActive }) => {
+  const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
   const diffEditorRef = useRef<MonacoEditorApi.IDiffEditor | null>(null);
   const monacoRef = useRef<MonacoNs | null>(null);
@@ -95,7 +97,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
       <div ref={containerRef} style={{ flex: 1, minHeight: 0 }} />
       {loading && (
         <div className="editor-loading" style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "var(--bg-window)" }}>
-          加载对比…
+          {t("加载对比…")}
         </div>
       )}
       {error && (
