@@ -760,6 +760,15 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       const views = buildSidebarViewMetas(effectiveSidebarView);
       const collapsedSet = ViewContainerService.loadCollapsedState();
       const isCollapsed = sidebarWidth <= 48;
+      // E5.7#84：keep-alive——全部侧栏容器序列化（非仅活动）。池按 containerId 常驻挂载、
+      // display:none 切换——切容器不卸载视图（矩阵场景 1 ④：文件树折叠态保持）。
+      // 真相源在壳：插件卸载 → 容器从清单消失 → 池自然卸载对应视图。
+      const containers = ViewContainerService.getViewContainers("sidebar").map((c) => ({
+        containerId: c.id,
+        containerTitle: c.title,
+        mergeHeaderWhenSingle: c.mergeHeaderWhenSingle,
+        views: buildSidebarViewMetas(c.id),
+      }));
       sidebar = {
         visible: true,
         width: sidebarWidth,
@@ -767,6 +776,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         containerTitle: container?.title ?? effectiveSidebarView,
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
         views,
+        containers,
         collapsedViews: [...collapsedSet],
         collapsed: isCollapsed,
         viewId: views[0]?.pluginId ?? null,  // 向后兼容

@@ -32,7 +32,7 @@
  *   ⑥ 壳 SidePanel.tsx/.css 已随 E5.7#31 整删——下文"壳 SidePanel"均为 E5.6 历史对标注记。
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
+import { Fragment, useState, useEffect, useRef, useCallback } from "react";
 import type { ReactNode } from "react";
 import PoolToolbarSlot from "../shared/PoolToolbarSlot"; // E5.7#11：随侧栏组件迁 shared/
 import PoolSectionStack from "../shared/PoolSectionStack"; // E5.7#11：随侧栏组件迁 shared/
@@ -183,113 +183,134 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
     </div>
   );
 
-  // 折叠态——只渲染 ▶ 展开按钮（对标壳 SidePanel 折叠态）
-  if (collapsed) {
-    return renderZone(
-      <div className={`side-panel collapsed${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
-        <button
-          className="side-panel-expand"
-          onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
-          title={sidebar.expandTooltip}
-        >
-          ▶
-        </button>
+  // E5.7#84：keep-alive 容器清单——全部容器常驻挂载（display:none 切换视图，不卸载组件）。
+  // 旧布局（无 containers 字段）回退单容器渲染。真相源在壳：插件卸载 → 容器从清单消失 → 池自然卸载。
+  const containers = sidebar.containers
+    ?? (containerId ? [{ containerId, containerTitle, mergeHeaderWhenSingle, views }] : []);
+  const activeEntry = containers.find((c) => c.containerId === containerId);
+
+  // 活动容器的 section 视图——header 右键菜单"视图"子菜单动态项（菜单只能从活动容器 header 打开）
+  const activeSectionViews = (activeEntry?.views ?? []).filter((v) => v.role !== ROLE_TOOLBAR);
+
+  // 空状态占位（文案壳侧 t() 推送——显示文本铁律）
+  const renderPlaceholder = () => (
+    <div className={`side-panel${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
+      <div className="side-panel-placeholder">
+        <p>{sidebar.emptyText}</p>
+        {sidebar.emptyHint && <p className="side-panel-placeholder-hint">{sidebar.emptyHint}</p>}
       </div>
-    );
-  }
-
-  // 侧栏可见但无视图——空状态（文案壳侧 t() 推送——显示文本铁律）
-  if (!views || views.length === 0) {
-    return renderZone(
-      <div className={`side-panel${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
-        <div className="side-panel-placeholder">
-          <p>{sidebar.emptyText}</p>
-          {sidebar.emptyHint && <p className="side-panel-placeholder-hint">{sidebar.emptyHint}</p>}
-        </div>
-      </div>
-    );
-  }
-
-  // 分离 toolbar / section 角色
-  const toolbarViews: SidebarViewMeta[] = [];
-  const sectionViews: SidebarViewMeta[] = [];
-  for (const v of views) {
-    if (v.role === ROLE_TOOLBAR) {
-      toolbarViews.push(v);
-    } else {
-      sectionViews.push(v);
-    }
-  }
-
-  // mergeHeaderWhenSingle：只有一个 section view 时，view 的 singleViewPaneContainerTitle 替代容器标题
-  const effectiveTitle = (mergeHeaderWhenSingle && sectionViews.length === 1 && sectionViews[0].singleViewPaneContainerTitle)
-    ? sectionViews[0].singleViewPaneContainerTitle
-    : containerTitle;
+    </div>
+  );
 
   return renderZone(
     /* visible=false → display:none（设计 §2.3——保持挂载，视图状态不丢）。实际推送路径上
        pool-main lastVisibleLayout 顶替已保证侧栏不闪，此守卫兜冷启动（从未显示过侧栏）。 */
     <>
-      <div className={`side-panel${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
-        {/* 容器 header */}
-        {effectiveTitle && (
-          <div
-            className="side-panel-header"
-            onContextMenu={(e) => {
-              e.preventDefault();
-              setHeaderMenu({ x: e.clientX, y: e.clientY });
-            }}
+      {/* 折叠态——▶ 展开按钮（E5.7#84：不再提前 return——容器视图常驻挂载，折叠不丢状态） */}
+      {collapsed && (
+        <div className={`side-panel collapsed${localWidth !== null ? " resizing" : ""}`} style={{ width, height: "100%" }}>
+          <button
+            className="side-panel-expand"
+            onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
+            title={sidebar.expandTooltip}
           >
-            <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
-            {/* ◀ 折叠按钮——对标壳 SidePanel */}
-            <button
-              className="side-panel-collapse"
-              onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: containerId ?? "" })}
-              title={sidebar.collapseTooltip}
-            >
-              ◀
-            </button>
-          </div>
-        )}
-        {/* header 右键菜单——壳 ContextMenu（聪慧→哑数据流：lk.menu.getItems 壳侧解析，
-            resolveChildren 填"视图"子菜单动态项——壳 SidePanel 同款） */}
-        {headerMenu && (
-          <ContextMenu
-            menuId="viewTitleContext"
-            anchor={headerMenu}
-            context={{ containerId: containerId ?? undefined }}
-            onClose={() => setHeaderMenu(null)}
-            resolveChildren={(_parentId, ctx) => {
-              const cid = ctx.containerId as string | undefined;
-              if (!cid) return undefined;
-              return sectionViews.map((v) => ({
-                id: "workbench.action.toggleViewVisibility",
-                label: v.title ?? v.id,
-              }));
-            }}
-          />
-        )}
-
-        <div className="side-panel-content">
-          {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（E5.6#16.7k） */}
-          <div style={{ flexShrink: 0 }}>
-            <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
-          </div>
-
-          {/* SectionStack——可折叠 / 可拖排 / PaneSash resize。
-              toolbar 已挪到滚动容器外，stickyTop=0（不再需为 toolbar 留高度） */}
-          <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
-            <PoolSectionStack
-              views={sectionViews}
-              containerId={containerId ?? ""}
-              toolbarHeight={0}
-              mergeHeaderWhenSingle={mergeHeaderWhenSingle}
-              collapsedViews={collapsedViews}
-              onSidebarAction={handleSidebarAction}
-            />
-          </div>
+            ▶
+          </button>
         </div>
-      </div>
+      )}
+      {containers.map((c) => {
+        // 无视图容器：活动 → 空态占位；非活动 → 不渲染（无组件可保持）
+        if (c.views.length === 0) {
+          return c.containerId === containerId && !collapsed
+            ? <Fragment key={c.containerId}>{renderPlaceholder()}</Fragment>
+            : null;
+        }
+        const isActive = c.containerId === containerId;
+        const toolbarViews: SidebarViewMeta[] = [];
+        const sectionViews: SidebarViewMeta[] = [];
+        for (const v of c.views) {
+          if (v.role === ROLE_TOOLBAR) {
+            toolbarViews.push(v);
+          } else {
+            sectionViews.push(v);
+          }
+        }
+        // mergeHeaderWhenSingle：只有一个 section view 时，view 的 singleViewPaneContainerTitle 替代容器标题
+        const effectiveTitle = (c.mergeHeaderWhenSingle && sectionViews.length === 1 && sectionViews[0].singleViewPaneContainerTitle)
+          ? sectionViews[0].singleViewPaneContainerTitle
+          : c.containerTitle;
+        return (
+          /* E5.7#84：keep-alive——display:none 切换（含折叠态），组件常驻不卸载。
+             .side-panel CSS 已含 display:flex + flex-direction:column——活动态不覆盖。 */
+          <div
+            key={c.containerId}
+            className={`side-panel${localWidth !== null ? " resizing" : ""}`}
+            style={{ width, height: "100%", display: isActive && !collapsed ? undefined : "none" }}
+          >
+            {/* 容器 header——display:none 容器不可交互（仅活动容器可见） */}
+            {effectiveTitle && (
+              <div
+                className="side-panel-header"
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setHeaderMenu({ x: e.clientX, y: e.clientY });
+                }}
+              >
+                <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+                {/* ◀ 折叠按钮——对标壳 SidePanel */}
+                <button
+                  className="side-panel-collapse"
+                  onClick={() => handleSidebarAction({ action: "toggleSidebarCollapse", containerId: c.containerId })}
+                  title={sidebar.collapseTooltip}
+                >
+                  ◀
+                </button>
+              </div>
+            )}
+
+            <div className="side-panel-content">
+              {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（E5.6#16.7k） */}
+              <div style={{ flexShrink: 0 }}>
+                <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
+              </div>
+
+              {/* SectionStack——可折叠 / 可拖排 / PaneSash resize。
+                  toolbar 已挪到滚动容器外，stickyTop=0（不再需为 toolbar 留高度） */}
+              <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+                <PoolSectionStack
+                  views={sectionViews}
+                  containerId={c.containerId}
+                  toolbarHeight={0}
+                  mergeHeaderWhenSingle={c.mergeHeaderWhenSingle}
+                  collapsedViews={collapsedViews}
+                  onSidebarAction={handleSidebarAction}
+                />
+              </div>
+            </div>
+          </div>
+        );
+      })}
+      {/* 无任何侧栏容器——空态占位 */}
+      {!collapsed && containers.length === 0 && renderPlaceholder()}
+
+      {/* header 右键菜单——壳 ContextMenu（聪慧→哑数据流：lk.menu.getItems 壳侧解析，
+          resolveChildren 填"视图"子菜单动态项——壳 SidePanel 同款） */}
+      {headerMenu && (
+        <ContextMenu
+          menuId="viewTitleContext"
+          anchor={headerMenu}
+          context={{ containerId: containerId ?? undefined }}
+          onClose={() => setHeaderMenu(null)}
+          resolveChildren={(_parentId, ctx) => {
+            const cid = ctx.containerId as string | undefined;
+            if (!cid) return undefined;
+            return activeSectionViews.map((v) => ({
+              id: "workbench.action.toggleViewVisibility",
+              label: v.title ?? v.id,
+            }));
+          }}
+        />
+      )}
     </>
   );
 }

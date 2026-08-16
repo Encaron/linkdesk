@@ -59,6 +59,8 @@ export function registerShellMenus(): void {
     title: "切换侧栏可见性",
     category: "视图",
     handler: async () => {
+      // E5.7#84 排查 Ctrl+B——临时埋点（定位后删）
+      console.error("[dbg84] toggleSidebarVisibility handler hit");
       shellEvents.emit("sidebar:toggle", undefined);
     },
   });

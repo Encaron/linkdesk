@@ -31,6 +31,14 @@ export interface SidebarViewMeta {
   minHeight?: number;                     // 声明最小高度——PaneSash effectiveMinHeight
 }
 
+/** E5.7#84：单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
+export interface SidebarContainerLayout {
+  containerId: string;
+  containerTitle: string;
+  mergeHeaderWhenSingle?: boolean;
+  views: SidebarViewMeta[];
+}
+
 /** 侧栏布局——仅 SidebarPool 接收 */
 export interface SidebarLayout {
   visible: boolean;
@@ -40,6 +48,10 @@ export interface SidebarLayout {
   containerTitle: string;                  // "资源管理器" / "插件市场" / "串口监视器"
   mergeHeaderWhenSingle?: boolean;
   views: SidebarViewMeta[];
+  /** E5.7#84：keep-alive 容器清单——全部侧栏容器（非仅活动）序列化。
+   *  池按 containerId 常驻挂载、display:none 切换——切容器不卸载视图，插件组件状态不丢。
+   *  容器随插件卸载从清单消失 → 池自然卸载（真相源在壳，池零缓存）。旧布局（无此字段）回退单容器渲染。 */
+  containers?: SidebarContainerLayout[];
   collapsedViews?: string[];              // 持久化折叠的 view ID 集合——壳 loadCollapsedState()
   /** E5.6#11-fix7：壳通知池侧栏是否折叠——width ≤ 48 时池渲染 ▶ 展开按钮而非裁剪内容 */
   collapsed?: boolean;
