@@ -289,6 +289,8 @@ function App() {
       stopPluginWatcher();
       unregisterIpcBridgeHandler(); // E5#103
     };
+    // E5.7#99：mount-once 初始化管线——t 变化（语言切换）重跑会重注册配置/重复 initAll，
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 注册文案取首语言即可（硬约束 13 竞态面）
   }, []);
 
   /* ── Phase 5d：运行时 context key 更新 ── */
@@ -732,7 +734,6 @@ function App() {
     tabState,
     focusTab,
     closeTab,
-    forceCloseTab,
     createTab,
     moveTab,
     splitTab,
@@ -902,7 +903,7 @@ function App() {
     },
     duplicateTab: (tabId) => _duplicateTab(tabId),
     pinTab: (tabId) => pinTab(tabId),
-  }), [closeTab, forceCloseTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, t, _duplicateTab, pinTab]);
+  }), [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab]);
   updateCoreCallbacks(coreCallbacks);
 
   // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
@@ -988,7 +989,7 @@ function App() {
         updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
         break;
     }
-  }, [focusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
+  }, [closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
 
   // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
   usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, onTabAction: handleTabAction });

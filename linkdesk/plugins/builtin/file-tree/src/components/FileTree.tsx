@@ -140,7 +140,7 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
       _compactFolders = v ?? true;
       rerender();
     });
-  }, []);
+  }, [rerender]); // rerender 稳定（useCallback []）——零重跑，满足规则
 
   /** E4V#27: 行内重命名——F2 或右键重命名 */
   const [renamingUri, setRenamingUri] = useState<string | null>(null);

@@ -403,7 +403,7 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──
   const dragLocalTabs = useMemo(() => {
     if (!draggingId || dragInsertIndex == null) return null;
-    const gs = groupsRef.current;
+    const gs = groups; // E5.7#99：memo 直接读 groups（270 行同 render 已同步 ref）——render 期读 ref 有并发撕裂隐患
     for (const g of gs) {
       const srcIdx = g.tabs.findIndex((t) => t.id === draggingId);
       if (srcIdx >= 0) {

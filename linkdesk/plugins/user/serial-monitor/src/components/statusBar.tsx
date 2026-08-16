@@ -64,7 +64,7 @@ function useStatusBarConfig(key: string, defaultValue: boolean): boolean {
       if (k === fullKey && typeof v === "boolean") setValue(v);
     });
     return () => unsub?.();
-  }, []);
+  }, [key]);
   return value;
 }
 

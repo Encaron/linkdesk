@@ -57,6 +57,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   onCursorChangeRef.current = onCursorChange;
   const onEditorMountRef = useRef(onEditorMount);
   onEditorMountRef.current = onEditorMount;
+  // E5.7#99：onChange ref 桥——init effect per filePath 只建一次编辑器，
+  // 入 deps 会在回调身份变化时重建编辑器（丢 undo/光标）
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
   // 🔴 options 异步加载——EditorTab buildMonacoOptions() 返回前 editor 已创建
   // ref 桥接：无论谁先完成，editor 创建后都能拿到最新 options
   const optionsRef = useRef(options);
@@ -173,7 +177,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
       // 8. onChange 接线
       model.onDidChangeContent(() => {
-        onChange?.(model!.getValue());
+        onChangeRef.current?.(model!.getValue());
       });
 
       // 8b. 光标位置跟踪——E4V#40j EditorStatusBar 消费
@@ -290,6 +294,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       themeSyncUnsubRef.current?.();
       editorRef.current?.dispose();
     };
+    // E5.7#99：编辑器创建即定型——value/readOnly 仅初始创建读取；options 走 optionsRef+updateOptions
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 同步（62/141）。入 deps 会在 options 身份变化时重建编辑器——丢 undo/光标
   }, [filePath]);
 
   // ── keep-alive——标签页切换时 layout + reveal。双 rAF 防光标被后续渲染覆盖 ──

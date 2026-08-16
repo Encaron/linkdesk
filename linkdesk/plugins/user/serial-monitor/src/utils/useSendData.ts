@@ -109,7 +109,7 @@ export function useSendData(
         cb.onError(`发送失败：${e instanceof Error ? e.message : String(e)}`);
       }
     }
-  }, []);
+  }, [ctxRef, callbacksRef]); // E5.7#99：refs 稳定——零重跑，满足规则
 
   return { performSend };
 }
