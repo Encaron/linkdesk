@@ -19,11 +19,12 @@ const lk = () => window.linkdesk;
 
 // ── E5.5#7 Bug C fix：侧栏从 pluginState IPC 读取连接状态（多 WebView 下 useSerialContext 是隔离实例）。
 // E5.5#9m：9l 将 key 改为 <sourceName>:isOpen 格式——侧栏用 events.on 通配订阅，从键名提取端口。
+// E5.7#89-fix：换端口顶替（会话2 开新端口，串口服务自动关会话1）时 isOpen 恒 true——
+// SerialContext._setState 不产生 :isOpen 事件，唯一信号是 :sourceName 变更。补订阅该键换灯。
 
 /** 从 pluginState 读取 isOpen + sourceName——适配 per-tab 端口前缀键名 */
 function useSerialConnection(): { isOpen: boolean; sourceName: string } {
-  const [isOpen, setIsOpen] = useState(false);
-  const [sourceName, setSourceName] = useState("");
+  const [conn, setConn] = useState({ isOpen: false, sourceName: "" });
 
   useEffect(() => {
     // E5.5#9m：直接订阅 plugin-state:changed——key 带端口前缀（如 COM3:isOpen），
@@ -31,16 +32,23 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
     const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
-      if (k.endsWith(":isOpen")) {
-        const port = k.slice(0, -7); // "COM3:isOpen" → "COM3"
-        if (typeof data.value === "boolean") { setIsOpen(data.value); if (data.value) setSourceName(port); }
+      if (k.endsWith(":isOpen") && typeof data.value === "boolean") {
+        if (data.value) {
+          const port = k.slice(0, -7); // "COM3:isOpen" → "COM3"
+          setConn({ isOpen: true, sourceName: port });
+        } else {
+          setConn((p) => ({ ...p, isOpen: false }));
+        }
+      } else if (k.endsWith(":sourceName") && typeof data.value === "string" && data.value) {
+        // E5.7#89-fix：换端口顶替时唯一信号——只换端口名，isOpen 保持（连接仍开，灯不灭只换位）。
+        setConn((p) => ({ isOpen: p.isOpen, sourceName: data.value as string }));
       }
     };
     const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => { unsub?.(); };
   }, []);
 
-  return { isOpen, sourceName };
+  return { isOpen: conn.isOpen, sourceName: conn.sourceName };
 }
 
 // ── E5.6#11.5h：F2 重命名——池是独立 WCV，壳 F2 全局快捷键到不了池。
