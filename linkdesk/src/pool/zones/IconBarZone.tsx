@@ -12,6 +12,8 @@
  *   - 拖拽换位（#6 补丁 2026-08-14）——壳 IconBar 状态机迁入：乐观本地序 + mouseup
  *     emit icon:reordered → 壳持久化 iconOrder + 重推确认（#13 同款"乐观本地 + commit"模式，
  *     真相源在壳）。设计 §2.2"可选——远期"废止——零丢失铁律：壳已验证功能不得静默砍。
+ *     2026-08-16 闪修复：补 #13 同款回执对齐 guard（commitPendingRef + preDragOrderRef）——
+ *     commit 后回执到达前的旧序在途推送不再覆盖本地新序（详见组件内两段 guard 注释）。
  *   - ☰ 汉堡（hamburgerVisible）——下拉分组菜单（壳 MenuRenderer showGroups+showKeybindings+checkWhen 语义）
  *
  * 与壳行为差异（诚实注记）：
@@ -49,6 +51,11 @@ interface DragState {
 const DROP_POS_TOP = "top" as const;
 const DROP_POS_BOTTOM = "bottom" as const;
 
+/** 序比较——回执对齐基准比对（长度 + 逐位 pluginId） */
+function sameOrder(a: string[], b: string[]): boolean {
+  return a.length === b.length && a.every((id, i) => id === b[i]);
+}
+
 function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
   const [hamburgerOpen, setHamburgerOpen] = useState(false);
   const hamburgerBtnRef = useRef<HTMLButtonElement>(null);
@@ -83,13 +90,30 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
 
   /* ── E5.7#6 补丁：拖拽换位——壳 IconBar.tsx 状态机迁入 ── */
 
-  // 乐观本地序——壳是真相源：layout 推送到达时对齐壳序（拖拽期间忽略推送防闪跳——#13 isDragging 同款防护）
+  // 乐观本地序——壳是真相源：layout 推送到达时对齐壳序。
+  // 防闪两段 guard（#13 侧栏拖宽同款）：
+  //   ① 拖拽期间 draggingRef 忽略推送（isDragging guard）；
+  //   ② commit 后回执对齐（2026-08-16 闪修复）——旧序推送（= 拖前序：壳尚未处理 commit 的
+  //      在途推送）忽略，回执 = 首条序 ≠ 拖前序的推送（壳已持久化重推权威序，或序另有
+  //      变化——壳是真相源，接受）。
   const [localIcons, setLocalIcons] = useState<IconBarItem[]>(iconBar.icons);
   const localIconsRef = useRef(localIcons);
   localIconsRef.current = localIcons;
   const draggingRef = useRef(false);
+  const commitPendingRef = useRef(false); // commit 已发待回执——回执期忽略旧序推送
+  const preDragOrderRef = useRef<string[]>([]); // 拖前序——回执对齐基准
   useEffect(() => {
-    if (!draggingRef.current) setLocalIcons(iconBar.icons);
+    if (draggingRef.current) return;
+    if (!commitPendingRef.current) {
+      setLocalIcons(iconBar.icons);
+      return;
+    }
+    // 回执对齐——迟到旧序推送忽略（防闪）；序变了（回执或壳侧另有变化）→ 释放并接受
+    const pushedOrder = iconBar.icons.map((x) => x.pluginId);
+    if (!sameOrder(pushedOrder, preDragOrderRef.current)) {
+      commitPendingRef.current = false;
+      setLocalIcons(iconBar.icons);
+    }
   }, [iconBar.icons]);
 
   const [draggedId, setDraggedId] = useState<string | null>(null);
@@ -151,8 +175,10 @@ function IconBarZone({ iconBar }: { iconBar: IconBarLayout }) {
       const insertAt = target.pos === DROP_POS_TOP ? targetIdx : targetIdx + 1;
       ids.splice(Math.max(0, insertAt), 0, drag.pluginId);
       // 乐观本地——立即渲染新序；events 回环壳持久化 + 重推确认（真相源在壳）
+      preDragOrderRef.current = localIconsRef.current.map((x) => x.pluginId); // 拖前序——回执对齐基准
       const byId = new Map<string, IconBarItem>(localIconsRef.current.map((x) => [x.pluginId, x]));
       setLocalIcons(ids.map((id) => byId.get(id)!));
+      commitPendingRef.current = true; // 待回执——回执期忽略旧序推送（#13 同款）
       window.linkdesk?.events?.emit("icon:reordered", ids);
     }
 
