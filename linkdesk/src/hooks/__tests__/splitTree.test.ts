@@ -19,6 +19,10 @@ import {
 
 /* ── 测试夹具 ── */
 
+// E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
+type BranchNode = Extract<SplitNode, { type: "branch" }>;
+type LeafNode = Extract<SplitNode, { type: "leaf" }>;
+
 const singleLeaf: SplitNode = { type: "leaf", groupId: "main" };
 
 const twoPane: SplitNode = {
@@ -146,9 +150,9 @@ describe("replaceLeafWithBranch", () => {
     const result = replaceLeafWithBranch(singleLeaf, "main", "horizontal", "new");
     expect(result).not.toBeNull();
     expect(result!.type).toBe("branch");
-    expect((result as any).direction).toBe("horizontal");
+    expect((result as BranchNode).direction).toBe("horizontal");
     expect(getAllLeafGroupIds(result!)).toEqual(["main", "new"]);
-    expect((result as any).sizes).toEqual([50, 50]);
+    expect((result as BranchNode).sizes).toEqual([50, 50]);
   });
 
   it("two-pane: split g2 vertically", () => {
@@ -157,11 +161,11 @@ describe("replaceLeafWithBranch", () => {
     expect(getAllLeafGroupIds(result!)).toEqual(["g1", "g2", "new"]);
     expect(treeDepth(result!)).toBe(3);
     // g2 and new should be vertical children
-    const inner = (result! as any).children[1];
+    const inner = (result as BranchNode).children[1] as BranchNode;
     expect(inner.type).toBe("branch");
     expect(inner.direction).toBe("vertical");
-    expect(inner.children[0].groupId).toBe("g2");
-    expect(inner.children[1].groupId).toBe("new");
+    expect((inner.children[0] as LeafNode).groupId).toBe("g2");
+    expect((inner.children[1] as LeafNode).groupId).toBe("new");
   });
 
   it("non-existent targetGroupId returns null", () => {
@@ -201,14 +205,14 @@ describe("removeLeafFromTree", () => {
     const result = removeLeafFromTree(twoPane, "g1");
     expect(result).not.toBeNull();
     expect(result!.tree.type).toBe("leaf");
-    expect((result!.tree as any).groupId).toBe("g2");
+    expect((result!.tree as LeafNode).groupId).toBe("g2");
     expect(result!.survivingSiblingGroupId).toBe("g2");
   });
 
   it("remove g2 from two-pane → g1 survives", () => {
     const result = removeLeafFromTree(twoPane, "g2");
     expect(result).not.toBeNull();
-    expect((result!.tree as any).groupId).toBe("g1");
+    expect((result!.tree as LeafNode).groupId).toBe("g1");
     expect(result!.survivingSiblingGroupId).toBe("g1");
   });
 
@@ -242,9 +246,9 @@ describe("migrateLayout", () => {
       split: { direction: "vertical", groupIds: ["a", "b"], sizes: [30, 70] },
     });
     expect(result.type).toBe("branch");
-    expect((result as any).direction).toBe("vertical");
-    expect(getAllLeafGroupIds(result as any)).toEqual(["a", "b"]);
-    expect((result as any).sizes).toEqual([30, 70]);
+    expect((result as BranchNode).direction).toBe("vertical");
+    expect(getAllLeafGroupIds(result)).toEqual(["a", "b"]);
+    expect((result as BranchNode).sizes).toEqual([30, 70]);
   });
 
   it("no split no root → single leaf from groups[0]", () => {

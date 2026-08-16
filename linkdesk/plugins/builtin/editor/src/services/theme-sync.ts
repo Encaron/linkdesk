@@ -17,8 +17,12 @@
  *   多 WebView 下 CoreEvents.onDidChangeTheme 是隔离实例——壳侧主题变更不会触发编辑器。
  *   IpcBridge.broadcast("theme:changed") → plugin:push → events.on("theme:changed") 是正确路径。
  */
+// E5.7#98：Monaco 具体类型——替代 any（monaco: any / rules: any[] / { current: any }）
+import type { editor as MonacoEditorApi } from "monaco-editor";
+type MonacoNs = typeof import("monaco-editor");
+
 /** Monaco 暗色 token 颜色——对标 VS Code Dark+ */
-const DARK_TOKEN_RULES: any[] = [
+const DARK_TOKEN_RULES: MonacoEditorApi.ITokenThemeRule[] = [
   { token: "comment", foreground: "6A9955" },
   { token: "keyword", foreground: "569CD6" },
   { token: "string", foreground: "CE9178" },
@@ -33,7 +37,7 @@ const DARK_TOKEN_RULES: any[] = [
 ];
 
 /** Monaco 亮色 token 颜色——对标 VS Code Light+ */
-const LIGHT_TOKEN_RULES: any[] = [
+const LIGHT_TOKEN_RULES: MonacoEditorApi.ITokenThemeRule[] = [
   { token: "comment", foreground: "008000" },
   { token: "keyword", foreground: "0000FF" },
   { token: "string", foreground: "A31515" },
@@ -48,7 +52,7 @@ const LIGHT_TOKEN_RULES: any[] = [
 ];
 
 /** E5#114d：注册 Monaco 原生主题——纯兜底，不依赖 VS Code 主题扩展文件加载 */
-function defineThemeSafe(monaco: any, themeName: "vs-dark" | "vs", rules: any[]): void {
+function defineThemeSafe(monaco: MonacoNs, themeName: "vs-dark" | "vs", rules: MonacoEditorApi.ITokenThemeRule[]): void {
   try {
     // 只定义一次——重复定义抛异常
     monaco.editor.defineTheme(themeName, {
@@ -66,7 +70,7 @@ function getTheme(): string {
   return document.documentElement.getAttribute("data-theme") === "dark" ? "vs-dark" : "vs";
 }
 
-export function syncMonacoTheme(monaco: any): void {
+export function syncMonacoTheme(monaco: MonacoNs): void {
   const theme = getTheme();
   // E5#114d：setTheme 之前确保主题已定义——生产环境兜底
   defineThemeSafe(monaco, "vs-dark", DARK_TOKEN_RULES);
@@ -76,15 +80,16 @@ export function syncMonacoTheme(monaco: any): void {
   // 路径 2：实例级 updateOptions——绕过 StandaloneWorkbenchThemeService 异步管道
   const editors = monaco.editor.getEditors?.() ?? [];
   for (const ed of editors) {
-    try { ed.updateOptions({ theme }); } catch { /* 编辑器已销毁 */ }
+    // theme 在 IGlobalEditorOptions 不在 IEditorOptions——getEditors 只返回 ICodeEditor——窄接口 cast（E5.7#98）
+    try { (ed as MonacoEditorApi.IStandaloneCodeEditor).updateOptions({ theme }); } catch { /* 编辑器已销毁 */ }
   }
 }
 
-export function subscribeThemeSync(monacoNsRef: { current: any }): () => void {
+export function subscribeThemeSync(monacoNsRef: { readonly current: MonacoNs | null }): () => void {
   // E5.5#7 Bug B fix：用 window.linkdesk.events 替代 CoreEvents.onDidChangeTheme。
   // 多 WebView 下 CoreEvents 是隔离实例——壳侧主题变更不会触发编辑器回调。
   // theme:changed 通过 IpcBridge.broadcast → plugin:push → events.on 正确跨越 WebView 边界。
-  const lk = (window as any).linkdesk;
+  const lk = window.linkdesk;
   return lk?.events?.on?.("theme:changed", () => {
     if (monacoNsRef.current) {
       syncMonacoTheme(monacoNsRef.current);

@@ -23,7 +23,7 @@ export interface FileDecoration {
   propagate?: boolean;
 }
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 // E5.6#11.5g1：MiniEmitter——内联替代 @src/core Emitter，纯工具类无全局状态
 class MiniEmitter<T> {
@@ -88,10 +88,10 @@ export class FileTreeModel {
 
   /** E4V#34a: 从 lk.configuration API 加载 sortOrder 配置并订阅变更 */
   async init(): Promise<void> {
-    const saved = await lk.configuration.get("explorer.sortOrder");
+    const saved = await lk.configuration.get<SortOrder>("explorer.sortOrder");
     if (saved) this._sortOrder = saved;
-    lk.configuration.onChange("explorer.sortOrder", (value: any) => {
-      this._sortOrder = (value as SortOrder) ?? "default";
+    lk.configuration.onChange<SortOrder>("explorer.sortOrder", (value) => {
+      this._sortOrder = value ?? "default";
       for (const root of this._roots) this._resortLoaded(root);
       this.onDidChange.fire();
     });
@@ -105,8 +105,8 @@ export class FileTreeModel {
     }
   }
 
-  /** E4a #95d: 设置排除过滤器 */
-  setExcludeFilter(filter: FileExcludeFilter): void {
+  /** E4a #95d: 设置排除过滤器——null 清除（内部字段本就 FileExcludeFilter | null，签名补齐契约） */
+  setExcludeFilter(filter: FileExcludeFilter | null): void {
     this._excludeFilter = filter;
   }
 
@@ -267,7 +267,7 @@ export class FileTreeModel {
     // 目标就是根目录本身
     if (root.uri === normalized) {
       if (!this.isExpanded(root.uri)) this.expand(root.uri);
-      if (root.children === null) await this.getChildren(root).catch((e: any) => { console.error("[FileTreeModel] 加载子项失败:", e); });
+      if (root.children === null) await this.getChildren(root).catch((e: unknown) => { console.error("[FileTreeModel] 加载子项失败:", e); });
       this.onDidChange.fire();
       return root;
     }
@@ -349,7 +349,7 @@ export class FileTreeModel {
    */
   private async _reloadItem(item: ExplorerItem): Promise<void> {
     item.children = null;
-    await this.getChildren(item).catch((e: any) => { console.error("[FileTreeModel] 加载子项失败:", e); });
+    await this.getChildren(item).catch((e: unknown) => { console.error("[FileTreeModel] 加载子项失败:", e); });
     await this._reloadExpandedDescendants(item);
   }
 

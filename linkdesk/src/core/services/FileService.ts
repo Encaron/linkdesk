@@ -47,11 +47,10 @@ function api() {
   } | undefined;
 }
 
+// E5.7#98：契约 path 面直接消费——join 等为同步函数（preload 本地实现），
+// 原局部 cast 误标 join 为 Promise（await 同步值无害但类型不诚实）。appDataDir 壳侧独有（?）。
 function pathApi() {
-  return window.linkdesk?.path as {
-    join(...parts: string[]): Promise<string>;
-    appDataDir(): Promise<string>;
-  } | undefined;
+  return window.linkdesk?.path;
 }
 
 /* ── 🔥 写操作路径抑制——定向静音，非全局 ── */
@@ -203,6 +202,6 @@ export async function joinPath(...parts: string[]): Promise<string> {
 /** 应用数据目录——对标 Tauri appDataDir() */
 export async function appDataDir(): Promise<string> {
   const p = pathApi();
-  if (!p) return "";
+  if (!p?.appDataDir) return "";
   return p.appDataDir();
 }

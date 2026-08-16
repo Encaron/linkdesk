@@ -104,9 +104,9 @@ export function useSendData(
           `${formatTimestamp(ctx.timestampFormat)} ---- 已发送 ${ctx.sendCoding.toLowerCase()} 编码消息: "${displayText}" ----`
         );
       }
-    } catch (e: any) {
+    } catch (e) {
       if (!opts?.silent) {
-        cb.onError(`发送失败：${e?.message || String(e)}`);
+        cb.onError(`发送失败：${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }, []); // 稳定引用——ctx/callbacks 通过 ref 读取

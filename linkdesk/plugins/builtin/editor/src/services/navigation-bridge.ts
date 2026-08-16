@@ -9,7 +9,7 @@
  *    standalone action（revealDefinition 等）全丢失，Ctrl+Click 失效。
  *    直接在自定义 action 里调 TS worker + tabActions 桥接——已验证可行。
  */
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 /** file:///e%3A/_testfiles/utils.ts → E:/_testfiles/utils.ts */
 export function fileUriToPath(uri: string): string {

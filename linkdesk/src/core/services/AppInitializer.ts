@@ -13,6 +13,9 @@
  * E5#107：App 启动集成测试
  */
 
+// E5.7#98：InitDeps manifest 字段归口 PluginManifest（原 any——契约收紧，测试替身补 name/version）
+import type { PluginManifest } from "../api/types";
+
 // ── 依赖注入接口 ──
 
 export interface InitDeps {
@@ -27,9 +30,9 @@ export interface InitDeps {
   /** 启动插件文件监听 */
   startPluginWatcher: () => void;
   /** 获取已加载插件清单 */
-  getLoadedPluginManifests: () => Array<{ pluginId: string; manifest: any }>;
+  getLoadedPluginManifests: () => Array<{ pluginId: string; manifest: PluginManifest }>;
   /** 初始化系统插槽 */
-  factorySlotsInitialize: (plugins: Array<{ pluginId: string; manifest: any }>) => void;
+  factorySlotsInitialize: (plugins: Array<{ pluginId: string; manifest: PluginManifest }>) => void;
   /** 挂载全局快捷键，返回 cleanup 函数 */
   mountGlobalKeybindings: () => (() => void);
   /** 加载用户快捷键 */

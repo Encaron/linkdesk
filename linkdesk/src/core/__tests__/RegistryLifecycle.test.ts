@@ -67,7 +67,7 @@ describe("RegistryLifecycle — 安装→卸载对称性", () => {
   /* ── 4. ProtocolRegistry ── */
 
   it("ProtocolRegistry — register→unregister→listProtocols 不含该插件", () => {
-    registerProtocol({ id: "test-proto", name: "Test", pluginId: PLUGIN_ID, mode: "text" as any });
+    registerProtocol({ id: "test-proto", name: "Test", pluginId: PLUGIN_ID, mode: "text" });
     expect(listProtocols().some((p) => p.id === "test-proto")).toBe(true);
     unregisterPluginProtocols(PLUGIN_ID);
     expect(listProtocols().some((p) => p.id === "test-proto")).toBe(false);

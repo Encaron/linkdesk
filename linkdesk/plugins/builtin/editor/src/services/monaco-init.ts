@@ -9,6 +9,8 @@
  */
 import { MonacoVscodeApiWrapper } from "monaco-languageclient/vscodeApiWrapper";
 import type { MonacoVscodeApiConfig } from "monaco-languageclient/vscodeApiWrapper";
+// E5.7#98：openEditorFunc 契约类型取库正源（OpenEditor）——替代 modelRef: any / Promise<any>
+import type { OpenEditor } from "@codingame/monaco-vscode-editor-service-override";
 // E5.7#94：别名改名——原函数名 use* 前缀触发 react-hooks/rules-of-hooks 假阳性
 // （它是挂 MonacoEnvironment 的普通函数，非 React hook——方案 §2 已读源码取证）。
 import { useWorkerFactory as configureWorkerFactory } from "monaco-languageclient/workerFactory";
@@ -31,8 +33,9 @@ import HtmlWorker from 'monaco-editor/esm/vs/language/html/html.worker?worker';
 // 🔥 模块加载时设 MonacoEnvironment——对标 main.tsx，必须早于任何 Monaco import。
 // monaco-languageclient 的 useWorkerFactory 会设置 getWorkerUrl/getWorkerOptions，
 // 但 Monaco 内置语言服务走 getWorker——必须同时设置。
-(self as any).MonacoEnvironment = {
-  ...(self as any).MonacoEnvironment,
+// E5.7#98：globalThis.MonacoEnvironment 类型由 monaco.d.ts 的 declare global 提供——免 self as any
+globalThis.MonacoEnvironment = {
+  ...globalThis.MonacoEnvironment,
   getWorker(_workerId: string, label: string): Worker {
     if (label === "typescript" || label === "javascript") return new TsWorker();
     if (label === "json") return new JsonWorker();
@@ -76,11 +79,7 @@ function setupWorkerFactory(_logger?: unknown): void {
  * @param openEditorFunc - IEditorService.openEditor() 回调
  */
 export async function initMonacoEnv(
-  openEditorFunc: (
-    modelRef: any,
-    _options: unknown,
-    _sideBySide?: boolean,
-  ) => Promise<any>,
+  openEditorFunc: OpenEditor,
 ): Promise<void> {
   if (_ready) return;
   if (_initPromise) return _initPromise;

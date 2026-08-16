@@ -27,18 +27,23 @@ import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import { joinPath, normalizePath, extension } from "../utils/pathUtils";
 import "../styles/file-tree.css";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 // E5.6#11.5g3: MiniEmitter——替代 CoreEvents.onDidChangeFileSystem，纯 intra-component 事件
 // file watcher 回调 fire → 同组件内订阅者消费，无需跨 IPC
+// E5.7#98：events 定型为 FsChangeEvent——与 lk.filesystem.watch 回调参数同形状（零 any）
+interface FsChangeEvent {
+  path: string;
+  type: string;
+}
 class MiniFileSystemEmitter {
-  private _listeners = new Set<(events: any[]) => void>();
-  fire(events: any[]): void {
+  private _listeners = new Set<(events: FsChangeEvent[]) => void>();
+  fire(events: FsChangeEvent[]): void {
     for (const fn of this._listeners) {
       try { fn(events); } catch { /* 错误隔离 */ }
     }
   }
-  event(listener: (events: any[]) => void): () => void {
+  event(listener: (events: FsChangeEvent[]) => void): () => void {
     this._listeners.add(listener);
     return () => { this._listeners.delete(listener); };
   }
@@ -47,7 +52,7 @@ const _fsEmitter = new MiniFileSystemEmitter();
 
 const FoldersView: React.FC = () => {
   const { t } = useTranslation();
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const modelRef = useRef<FileTreeModel>(new FileTreeModel());
   const model = modelRef.current;
   model.init(); // E4V#34a: 异步加载 sortOrder 配置
@@ -81,10 +86,10 @@ const FoldersView: React.FC = () => {
     (item: ExplorerItem, event: React.MouseEvent) => {
       event.preventDefault();
       // E4V#12 fix: setState 前设 context key——确保菜单 when 求值时已生效
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsFile", item.isDirectory === false);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsDir", item.isDirectory === true);
-      (window as any).linkdesk?.contextKey?.set("explorerItemIsRoot", item.parent === null);
-      (window as any).linkdesk?.contextKey?.set("explorerResourceReadonly", item.isReadonly === true);
+      window.linkdesk?.contextKey?.set("explorerItemIsFile", item.isDirectory === false);
+      window.linkdesk?.contextKey?.set("explorerItemIsDir", item.isDirectory === true);
+      window.linkdesk?.contextKey?.set("explorerItemIsRoot", item.parent === null);
+      window.linkdesk?.contextKey?.set("explorerResourceReadonly", item.isReadonly === true);
       setContextMenu({ item, anchor: { x: event.clientX, y: event.clientY } });
     },
     [],
@@ -146,7 +151,7 @@ const FoldersView: React.FC = () => {
       }
       model.setExcludeFilter(filter);
       // E4V#36b: 恢复展开状态——逐层重建（浅层先于深层，确保 findClosest 能找到父节点）
-      const savedUris = (await (window as any).linkdesk?.pluginState?.get("file-tree", "expandedUris")) as string[] | undefined;
+      const savedUris = (await window.linkdesk?.pluginState?.get("file-tree", "expandedUris")) as string[] | undefined;
       if (savedUris && savedUris.length > 0) {
         const currentRoots = model.roots;
         const toExpand = savedUris
@@ -157,7 +162,7 @@ const FoldersView: React.FC = () => {
         for (const uri of toExpand) {
           model.expand(uri);
           const item = model.findClosest(uri);
-          if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+          if (item) await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
         }
       }
       // E4V#34i: explorer.expandSingleFolderWorkspaces——单目录工作区自动展开根
@@ -165,12 +170,12 @@ const FoldersView: React.FC = () => {
           && folders.length === 1) {
         const root = model.roots[0];
         if (root) {
-          await model.getChildren(root).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+          await model.getChildren(root).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
           const dirs = root.children?.filter((c) => c.isDirectory) ?? [];
           if (dirs.length === 1) {
             model.expand(root.uri);
             model.expand(dirs[0].uri);
-            await model.getChildren(dirs[0]).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+            await model.getChildren(dirs[0]).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
           }
         }
       }
@@ -180,7 +185,7 @@ const FoldersView: React.FC = () => {
       for (const f of folders) {
         try {
           const unwatch = await lk.filesystem.watch(f.uri, (event: { path: string; type: string }) => {
-            _fsEmitter.fire([event as any]);
+            _fsEmitter.fire([event]);
           });
           _watchersRef.current.push(unwatch);
         } catch { /* watcher 启动失败静默 */ }
@@ -200,7 +205,7 @@ const FoldersView: React.FC = () => {
     // 每个都触发 refresh → 并发竞态 → 展开目录缩回（twistie ▼ 但 children 为空）。
     const unsub2 = _fsEmitter.event(async (events) => {
       const folders = await lk.workspace.getFolders();
-      const inWorkspace = events.some((e: any) => folders.some((f: { uri: string }) => {
+      const inWorkspace = events.some((e) => folders.some((f: { uri: string }) => {
         const np = normalizePath(e.path);
         const nr = normalizePath(f.uri);
         return np === nr || np.startsWith(nr + "/");
@@ -222,13 +227,13 @@ const FoldersView: React.FC = () => {
         for (const dir of affectedDirs) {
           await model.refresh(dir);
           const item = model.findClosest(dir);
-          if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+          if (item && model.isExpanded(item.uri)) await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
         }
         if (affectedDirs.size === 0) {
           await model.refresh();
           for (const uri of model.getExpandedUris()) {
             const item = model.findClosest(uri);
-            if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+            if (item) await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
           }
         }
         rerender();
@@ -298,7 +303,7 @@ const FoldersView: React.FC = () => {
       await model.refresh();
       for (const uri of model.getExpandedUris()) {
         const item = model.findClosest(uri);
-        if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+        if (item) await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
       }
       rerender();
     })();
@@ -313,7 +318,7 @@ const FoldersView: React.FC = () => {
         _expandSaveTimerRef.current = null;
         const uris = model.getExpandedUris();
         if (uris.length > 0) {
-          (window as any).linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch((e: any) => { console.error("[file-tree] 保存展开状态失败:", e); });
+          window.linkdesk?.pluginState?.set("file-tree", "expandedUris", uris).catch((e) => { console.error("[file-tree] 保存展开状态失败:", e); });
         }
       }, 500);
     });
@@ -335,8 +340,10 @@ const FoldersView: React.FC = () => {
       const folders = await lk.workspace.getFolders();
       // E4V#35f: 单根→根名，多根→"工作区"（对标 VS Code WORKSPACE）
       const title = folders.length === 1 ? folders[0].name : (folders.length > 1 ? t("工作区") : "");
-      const existing = (window as any).linkdesk?.viewContainer?.getView("folders");
-      (window as any).linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
+      // E5.7#98：getView 是 IPC invoke（异步）——补 await。定向前为 undefined 恒真（同步用异步 API），
+      // render 恒 ()=>null；await 后 existing.render 仍随 IPC 序列化剥函数 → 兜底行为不变，仅类型诚实
+      const existing = await window.linkdesk?.viewContainer?.getView("folders");
+      window.linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
         id: "folders",
         title,
         render: existing?.render ?? (() => null),
@@ -367,7 +374,7 @@ const FoldersView: React.FC = () => {
 
   /** E4V#37b: 注册 SEARCH view——和 FOLDERS 同容器，始终可见 */
   useEffect(() => {
-    (window as any).linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
+    window.linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
       id: "search",
       title: t("搜索"),
       order: 1,

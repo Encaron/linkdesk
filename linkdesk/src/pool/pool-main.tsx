@@ -37,7 +37,7 @@ function PoolApp() {
 
   // 接收壳推送的 PoolLayout——preload 缓冲回放 + onLayout 注册（E5.6#8b 不变）
   useEffect(() => {
-    const poolApi = (window as any).linkdesk?.pool;
+    const poolApi = window.linkdesk?.pool;
     if (!poolApi) return;
 
     const unsub = poolApi.onLayout((next: PoolLayout) => {

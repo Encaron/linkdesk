@@ -138,8 +138,8 @@ class PluginFileService {
     }
     try {
       JSON.parse(await fs.readFile(manifestPath, 'utf-8'));
-    } catch (e: any) {
-      throw new Error(`plugin.json 格式错误: ${e.message}`);
+    } catch (e) {
+      throw new Error(`plugin.json 格式错误: ${e instanceof Error ? e.message : String(e)}`);
     }
 
     const destDir = path.join(this.pluginsDir(), INSTALL_SUBDIR, name);

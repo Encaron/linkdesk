@@ -216,7 +216,7 @@ export function useFileTreeKeyboard(
         case "F2": {
           e.preventDefault();
           if (fi.parent !== null) {
-            (window as any).linkdesk?.commands?.executeCommand?.("explorer.rename");
+            window.linkdesk?.commands?.executeCommand?.("explorer.rename");
           }
           break;
         }
@@ -226,7 +226,7 @@ export function useFileTreeKeyboard(
         case "Delete": {
           e.preventDefault();
           if (fi.parent !== null) {
-            (window as any).linkdesk?.commands?.executeCommand?.("explorer.delete");
+            window.linkdesk?.commands?.executeCommand?.("explorer.delete");
           }
           break;
         }

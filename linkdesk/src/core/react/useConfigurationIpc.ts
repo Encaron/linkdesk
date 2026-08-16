@@ -9,17 +9,15 @@
  */
 
 import { useState, useEffect, useCallback } from "react";
+// E5.7#98：契约正源——get<T>/onChange<T> 泛型在 linkdesk-api 已归口（替代手写 any 形状）
+import type { LinkDeskAPI } from "../api/linkdesk-api";
 
-function lk() {
-  const cfg = (window.linkdesk as any)?.configuration;
+function lk(): NonNullable<LinkDeskAPI["configuration"]> {
+  const cfg = window.linkdesk?.configuration;
   if (!cfg) {
     throw new Error("[useConfigurationIpc] window.linkdesk.configuration 不可用——preload 未就绪？");
   }
-  return cfg as {
-    get(key: string): Promise<any>;
-    set(key: string, value: any): Promise<void>;
-    onChange(key: string, cb: (value: any) => void): () => void;
-  };
+  return cfg;
 }
 
 /**

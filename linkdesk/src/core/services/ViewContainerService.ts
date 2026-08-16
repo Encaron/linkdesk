@@ -405,7 +405,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     const toModel = this._models.get(toContainerId)!;
     // 追加到末尾——order 设为目标容器最大值 + 1（getActiveViews 按 order 排序）
     const maxOrder = toModel.allViewDescriptors.reduce((max, v) => Math.max(max, v.order ?? 0), 0);
-    (view as any).order = maxOrder + 1;
+    view.order = maxOrder + 1;
     const insertAt = newIndex ?? toModel.allViewDescriptors.length;
     toModel.allViewDescriptors.splice(insertAt, 0, view);
     // 更新两个容器的活跃 views
@@ -427,7 +427,7 @@ export class ViewContainerServiceClass extends RegistryBase {
     const [moved] = model.allViewDescriptors.splice(idx, 1);
     model.allViewDescriptors.splice(newIndex, 0, moved);
     // 更新 order 字段
-    model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
+    model.allViewDescriptors.forEach((v, i) => { v.order = i; });
     // 持久化——按 container 存 viewOrder
     const viewOrder = model.allViewDescriptors.map(v => v.id);
     setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, viewOrder).catch((e) => { console.error("[ViewContainer] 保存视图排序失败:", e); });
@@ -451,7 +451,7 @@ export class ViewContainerServiceClass extends RegistryBase {
       if (bo !== undefined) return 1;
       return (a.order ?? 0) - (b.order ?? 0);
     });
-    model.allViewDescriptors.forEach((v, i) => { (v as any).order = i; });
+    model.allViewDescriptors.forEach((v, i) => { v.order = i; });
     this._updateActiveViews(containerId);
   }
 

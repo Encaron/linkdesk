@@ -6,8 +6,8 @@
  */
 import { MonacoLanguageClient } from "monaco-languageclient";
 import type { MessageReader, MessageWriter } from "vscode-jsonrpc";
-const lsp = (window as any).linkdesk?.lsp;
-const lk = (window as any).linkdesk;
+const lsp = window.linkdesk?.lsp;
+const lk = window.linkdesk;
 
 /** 语言 ID → MonacoLanguageClient 注册表——goToDefinitionAt 查表分派 */
 const _clients = new Map<string, MonacoLanguageClient>();
@@ -45,12 +45,13 @@ export async function startLspClient(
       documentSelector: [{ language: languageId }],
       workspaceFolder: workspaceRoot
         ? {
+            // E5.7#98：运行时只需 toString()（initialize 序列化），手写轻量 URI——窄接口 cast 替代 as any
             uri: {
               scheme: "file",
               authority: "",
               path: `/${lk.path.normalize(workspaceRoot)}`,
               toString: () => `file:///${lk.path.normalize(workspaceRoot)}`,
-            } as any,
+            } as unknown as import("vscode").Uri,
             name: "workspace",
             index: 0,
           }

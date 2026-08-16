@@ -14,7 +14,7 @@ i18n.use(initReactI18next).init({
   parseMissingKeyHandler: (key, _defaultValue, options) => {
     if (options && typeof key === "string" && key.includes("{{")) {
       try {
-        return (i18n as any).services.interpolator.interpolate(key, options, i18n.language, {});
+        return i18n.services.interpolator.interpolate(key, options, i18n.language, {});
       } catch { /* interpolator 异常 → 返回原始 key */ }
     }
     return key;

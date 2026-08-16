@@ -38,7 +38,9 @@ export interface QuickPickState<T = unknown> {
 
 type Listener = () => void;
 
-let _state: QuickPickState<any> | null = null;
+// E5.7#98：异质状态单例——存 unknown 兜底（QuickPickState 默认参数即 unknown），
+// 读侧 getState<T> 按消费方类型窄化
+let _state: QuickPickState<unknown> | null = null;
 const _listeners = new Set<Listener>();
 
 function notify(): void {
@@ -48,7 +50,8 @@ function notify(): void {
 export const QuickPickService = {
   /** 展示浮层——替换当前状态 */
   show<T>(state: Omit<QuickPickState<T>, "open">): void {
-    _state = { ...state, open: true } as QuickPickState<any>;
+    // 函数字段 T→unknown 协变缺口——窄化到存储类型（E5.7#98）
+    _state = { ...state, open: true } as QuickPickState<unknown>;
     notify();
   },
 

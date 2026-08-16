@@ -29,6 +29,7 @@ import {
 import { useTranslation } from "react-i18next";
 import type { PoolTab } from "../../core/types/poolLayout";
 import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { LinkDeskAPI } from "../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { normalizePath } from "../../core/utils/pathUtils";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import "./GroupTabBar.css";
@@ -82,10 +83,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ── i18n ──
   const { t } = useTranslation();
 
-  // ── 池 API 引用 ──
-  const poolApiRef = useRef<any>(null);
+  // ── 池 API 引用（E5.7#98：LinkDeskAPI["pool"] 契约类型替代 any）──
+  const poolApiRef = useRef<NonNullable<LinkDeskAPI["pool"]> | null>(null);
   if (!poolApiRef.current) {
-    poolApiRef.current = (window as any).linkdesk?.pool;
+    poolApiRef.current = window.linkdesk?.pool ?? null;
   }
   const poolApi = poolApiRef.current;
 

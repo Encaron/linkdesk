@@ -70,7 +70,7 @@ export default function SerialSettingsView() {
     const title = activeSession?.name
       ? `${t("收发设置")} — ${activeSession.name}`
       : t("收发设置");
-    (window as any).linkdesk?.viewContainer?.registerView?.("serial-monitor", "serial-monitor", {
+    window.linkdesk?.viewContainer?.registerView?.("serial-monitor", "serial-monitor", {
       id: "settings",
       title,
     });

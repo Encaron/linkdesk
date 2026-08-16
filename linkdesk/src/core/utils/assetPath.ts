@@ -6,7 +6,8 @@
  *
  * 使用此函数替代任何手写路径拼接。插件作者的自定义图标也走这条路。
  */
-const BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.BASE_URL) || '/';
+// E5.7#98：import.meta.env 已由 vite/client 类型定型——as any 删除
+const BASE = (typeof import.meta !== 'undefined' && import.meta.env?.BASE_URL) || '/';
 
 /** 获取应用资产的完整路径（兼容 dev http:// 和打包后 file://） */
 export function getAssetPath(relativePath: string): string {

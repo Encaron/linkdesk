@@ -6,13 +6,22 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { clipboardProviders, type ClipboardProvider } from "../registry/ClipboardProviderRegistry";
 
+// E5.7#98：测试直捣私有内部——窄接口替代 as any（公共面不暴露 reset/unregisterAll）。
+// 不与 typeof clipboardProviders 相交——私有 _providers 会让交集坍缩成 never
+type InternalRegistry = {
+  unregisterAll?: (pluginId: string) => void;
+  _providers?: ClipboardProvider[];
+};
+// protected unregisterAll → public 测试访问——两步 cast 穿刺（E5.7#98 替代 as any）
+const internal = clipboardProviders as unknown as InternalRegistry;
+
 // 每个测试前清空注册表
 beforeEach(() => {
   // RegistryBase 不支持 reset——直接操作内部
-  (clipboardProviders as any).unregisterAll?.("p1");
-  (clipboardProviders as any).unregisterAll?.("p2");
+  internal.unregisterAll?.("p1");
+  internal.unregisterAll?.("p2");
   // 暴力清空
-  const arr = (clipboardProviders as any)._providers as ClipboardProvider[];
+  const arr = internal._providers;
   if (arr) arr.length = 0;
 });
 
@@ -45,7 +54,7 @@ describe("ClipboardProviderRegistry", () => {
 
   it("unregisterAll → resolve 返回 undefined", () => {
     clipboardProviders.register("p1", { when: "explorerFocus", onCopy: () => {} });
-    (clipboardProviders as any).unregisterAll("p1");
+    internal.unregisterAll?.("p1");
     expect(clipboardProviders.resolve("explorerFocus")).toBeUndefined();
   });
 

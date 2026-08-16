@@ -33,7 +33,10 @@ const viewModules = {
 
 // E5.6#11-fix7：模块级 lazy 缓存——React.lazy 内部 _payload._status 持久化在组件类型上。
 // 同 renderPath 返回同一组件类型→第二次挂载直接渲染（_status=Resolved），跳过 Suspense。
-const _lazyCache = new Map<string, React.ComponentType<any>>();
+// E5.7#98：插件视图 props 契约 + 动态 import 模块形状——替代 ComponentType<any> / Promise<any>
+type PluginViewProps = { isActive: boolean; tabId?: string; sourceId?: string };
+type PluginModule = { default?: React.ComponentType<PluginViewProps> };
+const _lazyCache = new Map<string, React.ComponentType<PluginViewProps>>();
 
 interface PluginComponentProps {
   pluginId: string;
@@ -55,7 +58,7 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     const cached = _lazyCache.get(cacheKey);
     if (cached) return cached;
 
-    let loader: (() => Promise<any>) | undefined;
+    let loader: (() => Promise<unknown>) | undefined;
 
     if (renderPath) {
       // 侧栏 view：按 loader.ts 存的 glob key O(1) 查找
@@ -80,11 +83,11 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
     //   1. glob key: "../../plugins/user/<id>/src/views/Xxx.tsx"
     //   2. /@fs/ URL（runtime 插件无 pluginRoot 时）: "/@fs/E:/.../plugins/user/<id>/src/views/Xxx.tsx"
     if (!loader) {
-      const lk = (window as any).linkdesk;
+      const lk = window.linkdesk;
       const isDev = import.meta.env.DEV;
       if (renderPath && (renderPath.startsWith("/@fs/") || renderPath.startsWith("linkdesk://"))) {
         // runtime 插件——renderPath 已是完整 URL，直接用
-        loader = (() => import(/* @vite-ignore */ renderPath)) as any;
+        loader = () => import(/* @vite-ignore */ renderPath);
       } else if (lk?.plugins?.resolvePath) {
         loader = (async () => {
           try {
@@ -108,17 +111,19 @@ export default function PluginComponent({ pluginId, isActive, tabId, sourceId, r
             console.error(`[PluginComponent] 动态加载插件 "${pluginId}" 失败:`, e);
             return null;
           }
-        }) as any;
+        });
       }
     }
 
     if (!loader) return null;
 
-    const component = React.lazy<React.ComponentType<{ isActive: boolean; tabId?: string; sourceId?: string }>>(() =>
-      loader!().then((mod: any) => {
-        if (!mod) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
+    const component = React.lazy<React.ComponentType<PluginViewProps>>(() =>
+      loader!().then((mod) => {
+        // glob/动态 import 模块命名空间——按 PluginModule 形状窄化（E5.7#98 替代 mod: any）
+        const m = mod as PluginModule | null;
+        if (!m) throw new Error(i18n.t("插件 {{id}} 加载失败", { id: pluginId }));
         return {
-          default: mod.default || (() => {
+          default: m.default || (() => {
             throw new Error(i18n.t("插件 {{id}} 未导出 default 组件", { id: pluginId }));
           }),
         };

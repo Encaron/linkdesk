@@ -11,7 +11,7 @@ import { setMarketplaceSearch } from "../services/marketplaceShared";
 import { useDebouncedInput } from "@src/hooks/useDebouncedInput";
 import "../styles/MarketplaceSidebar.css";
 
-const lk = () => (window as any).linkdesk;
+const lk = () => window.linkdesk;
 
 export default function SearchView() {
   const { t } = useTranslation();

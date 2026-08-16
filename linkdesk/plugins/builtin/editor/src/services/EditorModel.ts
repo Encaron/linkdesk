@@ -16,7 +16,7 @@
 import { MiniEmitter } from "../utils/MiniEmitter";
 import { getLanguageFromPath } from "./language-map";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 export class EditorModel {
   readonly filePath: string;

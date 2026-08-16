@@ -153,7 +153,8 @@ export function initIpcBridgeHandler(): void {
 
         // ── E3a #31：插件管理 IPC ──
         case "plugins:call": {
-          const [method, ...methodArgs] = req.args as [string, ...any[]];
+          // E5.7#98：wire args 未知元素——unknown 兜底（各 case 内窄化）
+          const [method, ...methodArgs] = req.args as [string, ...unknown[]];
           result = await handlePluginsCall(method, methodArgs);
           break;
         }
@@ -362,8 +363,8 @@ export function initIpcBridgeHandler(): void {
       }
 
       bridge.respond(req.requestId, result);
-    } catch (e: any) {
-      bridge.respond(req.requestId, undefined, e?.message ?? String(e));
+    } catch (e) {
+      bridge.respond(req.requestId, undefined, e instanceof Error ? e.message : String(e));
     }
   });
 
@@ -443,7 +444,7 @@ export function unregisterIpcBridgeHandler(): void {
 
 // ── E3a #31：插件管理方法路由 ──
 
-async function handlePluginsCall(method: string, args: any[]): Promise<unknown> {
+async function handlePluginsCall(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
     case "list":
       return _pluginAPI!.getLoadedPluginManifests().map((p) => ({

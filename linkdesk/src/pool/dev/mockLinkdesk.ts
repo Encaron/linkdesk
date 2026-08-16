@@ -41,22 +41,22 @@ import {
 } from "./sampleLayout";
 
 /* ── 迷你事件总线——events.on/emit 语义（unsubscribe 返回，同 event-system） ── */
-
+/* E5.7#98：on 泛型化对齐契约（载荷按订阅方 cb 推断）——T 运行时擦除，存储走 unknown 边界 */
 function createMiniBus() {
-  const handlers = new Map<string, Set<(...args: unknown[]) => void>>();
+  const handlers = new Map<string, Set<(payload: unknown) => void>>();
   return {
-    on: (channel: string, cb: (...args: unknown[]) => void) => {
+    on: <T = unknown>(channel: string, cb: (payload: T) => void) => {
       let set = handlers.get(channel);
       if (!set) {
         set = new Set();
         handlers.set(channel, set);
       }
-      set.add(cb);
-      return () => { set.delete(cb); };
+      set.add(cb as (payload: unknown) => void);
+      return () => { set.delete(cb as (payload: unknown) => void); };
     },
-    emit: (channel: string, ...args: unknown[]) => {
+    emit: (channel: string, payload: unknown) => {
       for (const cb of handlers.get(channel) ?? []) {
-        try { cb(...args); } catch (e) {
+        try { cb(payload); } catch (e) {
           console.error(`[mockLinkdesk] events.emit("${channel}") 回调异常:`, e);
         }
       }

@@ -11,7 +11,7 @@ import type { FileTreeModel } from "./FileTreeModel";
 import { TREE_ITEM_HEIGHT } from "../utils/layoutTokens";
 import { dirname, joinPath, normalizePath } from "../utils/pathUtils";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 import type { FlatItem } from "../utils/pathUtils";
 
 /* ── 类型 ── */
@@ -83,7 +83,7 @@ export async function executeSafeDrop(
   if (await lk.configuration.get("explorer.confirmDragAndDrop") ?? true) {
     const names = sources.map((s) => `"${s.name}"`).join(", ");
     const targetName = targetDir.split("/").pop() ?? targetDir;
-    const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
+    const confirmed = await window.linkdesk?.dialog?.confirm?.(`确定${operation === "move" ? "移动" : "复制"} ${names} 到 "${targetName}"？`);
     if (!confirmed) return;
   }
   const t = normalizePath(targetDir);
@@ -188,11 +188,12 @@ export function useFileTreeDnD(callbacks: DnDCallbacks): {
 
       // OS 拖入——e.dataTransfer.files
       if (e.dataTransfer.files.length > 0) {
-        const gfp = (window as any).linkdesk?.getFilePath as ((f: File) => string) | undefined;
+        const gfp = window.linkdesk?.getFilePath as ((f: File) => string) | undefined;
         const sources: { path: string; name: string }[] = [];
         for (let i = 0; i < e.dataTransfer.files.length; i++) {
           const file = e.dataTransfer.files[i];
-          const srcPath = gfp?.(file) || (file as any).path as string;
+          // E5.7#98：旧 Electron File 有 .path（webkit 私有字段）——窄化访问，getFilePath 缺失时回退
+          const srcPath = gfp?.(file) || (file as { path?: string }).path;
           if (srcPath) sources.push({ path: srcPath, name: file.name });
         }
         await executeSafeDrop(sources, target.targetDir, "copy");

@@ -11,6 +11,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import "../../components/views/PluginDetailView.css";
+// E5.7#98：list() 返回 PluginListEntry[]——state/回调全程有型（import type 只引入类型，Path B 合规）
+import type { PluginListEntry } from "@src/core/api/linkdesk-api";
 
 interface PluginDetailPoolViewProps {
   pluginId?: string;
@@ -18,9 +20,9 @@ interface PluginDetailPoolViewProps {
 
 export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewProps) {
   const { t } = useTranslation();
-  const api = (window as any).linkdesk;
+  const api = window.linkdesk;
 
-  const [plugin, setPlugin] = useState<any>(null);
+  const [plugin, setPlugin] = useState<PluginListEntry | null>(null);
   const [disabled, setDisabled] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -30,8 +32,8 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
     if (!pluginId || !api) return;
     (async () => {
       try {
-        const plugins: any[] = await api.pluginManager?.list?.();
-        const found = plugins?.find((p: any) => p.pluginId === pluginId);
+        const plugins = await api.pluginManager?.list?.();
+        const found = plugins?.find((p) => p.pluginId === pluginId);
         setPlugin(found ?? null);
       } catch { setPlugin(null); }
     })();
@@ -50,7 +52,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
     if (!pluginId || busy) return;
     setBusy(true); setError(null);
     try { await api.pluginManager?.enable?.(pluginId); setDisabled(false); }
-    catch (e: any) { setError(e?.message ?? String(e)); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setBusy(false);
   }, [pluginId, busy, api]);
 
@@ -58,7 +60,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
     if (!pluginId || busy) return;
     setBusy(true); setError(null);
     try { await api.pluginManager?.disable?.(pluginId); setDisabled(true); }
-    catch (e: any) { setError(e?.message ?? String(e)); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setBusy(false);
   }, [pluginId, busy, api]);
 
@@ -66,7 +68,7 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
     if (!pluginId || busy) return;
     setBusy(true); setError(null);
     try { await api.pluginManager?.uninstall?.(pluginId); }
-    catch (e: any) { setError(e?.message ?? String(e)); }
+    catch (e) { setError(e instanceof Error ? e.message : String(e)); }
     setBusy(false);
   }, [pluginId, busy, api]);
 
@@ -91,22 +93,16 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
       {/* ═══ Header — 对标壳 PluginDetailView ═══ */}
       <header className="pd-header">
         <div className="pd-icon-container">
-          {m.icon ? (
-            <img src={m.icon} alt="" className="pd-icon-img" />
-          ) : (
-            <span className="codicon codicon-symbol-misc pd-icon-codicon" />
-          )}
+          {/* list() IPC 只序列化 7 字段（无 icon）——占位 codicon 兜底（E5.7#98） */}
+          <span className="codicon codicon-symbol-misc pd-icon-codicon" />
           {isCore && <span className="pd-icon-badge codicon codicon-star-full" />}
         </div>
 
         <div className="pd-header-details">
           <div className="pd-title-row">
-            <h1 className="pd-name">{t(m.name ?? pluginId)}</h1>
+            <h1 className="pd-name">{t(m.name ?? pluginId ?? "")}</h1>
             {m.version && <span className="pd-version">v{m.version}</span>}
             {isCore && <span className="pd-badge pd-badge-core">{t("内置")}</span>}
-            {m.tabBehavior?.singleton && (
-              <span className="pd-badge pd-badge-singleton">{t("单例")}</span>
-            )}
           </div>
           {m.author && (
             <p className="pd-subtitle"><span>{m.author}</span></p>
@@ -159,28 +155,13 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
               </div>
             )}
 
-            {m.entry && (
-              <div className="pd-section">
-                <h3>{t("入口")}</h3>
-                <code className="pd-code">{m.entry}</code>
-              </div>
-            )}
-
-            {m.homepage && (
-              <div className="pd-section">
-                <h3>{t("主页")}</h3>
-                <a href={m.homepage} target="_blank" rel="noopener noreferrer" className="pd-link">
-                  {m.homepage}
-                </a>
-              </div>
-            )}
+            {/* E5.7#98：entry/homepage/license 不在 list() 的 7 字段序列化内——死代码删除 */}
           </div>
 
           {/* Info Sidebar */}
           <aside className="pd-info-sidebar">
             <InfoItem label={t("标识符")} value={plugin.pluginId} mono />
             {m.version && <InfoItem label={t("版本")} value={`v${m.version}`} />}
-            {m.license && <InfoItem label={t("许可证")} value={m.license} />}
           </aside>
         </div>
       </div>

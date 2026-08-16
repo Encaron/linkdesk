@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect } from "react";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 interface EditorBreadcrumbProps {
   filePath: string;
@@ -17,9 +17,9 @@ async function getDisplayPath(filePath: string): Promise<string> {
   const normalized = lk.path.normalize(filePath);
   const folders = await lk.workspace.getFolders();
 
-  // 找到包含此文件的工作区根
+  // 找到包含此文件的工作区根（f 由 getFolders() 返回类型上下文推断）
   const root = folders.find(
-    (f: any) => normalized === f.uri || normalized.startsWith(f.uri + "/"),
+    (f) => normalized === f.uri || normalized.startsWith(f.uri + "/"),
   );
 
   if (!root) {

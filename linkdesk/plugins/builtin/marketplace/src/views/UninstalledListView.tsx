@@ -10,11 +10,11 @@ import { PluginIcon } from "@src/components/shared/PluginIcon";
 import { useMarketplacePlugins } from "../services/marketplaceShared";
 import "../styles/MarketplaceSidebar.css";
 
-const pm = () => (window as any).linkdesk?.pluginManager;
+const pm = () => window.linkdesk?.pluginManager;
 
 export default function UninstalledListView() {
   const { t } = useTranslation();
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const { uninstalled, refresh } = useMarketplacePlugins();
 
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);

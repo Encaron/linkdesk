@@ -8,23 +8,25 @@
 // E5.5#9l-fix：9l 将 key 改为 <sourceName>:isOpen / <sourceName>:txBytes / <sourceName>:rxBytes 格式——
 // statusBar 用 events.on("plugin-state:changed") 通配订阅，从键名后缀匹配。
 import { useState, useEffect } from "react";
+// E5.7#98：plugin-state:changed 载荷走 events.on 泛型——wire 契约类型归口 src/core/types/ipc/events
+import type { PluginStateChangedPayload } from "@src/core/types/ipc/events";
 import { useTranslation } from "react-i18next";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
 
-const lk = () => (window as any).linkdesk;
+const lk = () => window.linkdesk;
 
 /** E5.5#9l-fix：从 plugin-state:changed 通配事件读连接状态——key 带端口前缀（如 COM3:isOpen） */
 function useIsOpen(): boolean {
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
-    const handler = (data: any) => {
+    const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":isOpen") && typeof data.value === "boolean") {
         setIsOpen(data.value);
       }
     };
-    const unsub = lk()?.events?.on("plugin-state:changed", handler);
+    const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => unsub?.();
   }, []);
   return isOpen;
@@ -34,7 +36,7 @@ function useIsOpen(): boolean {
 function useSerialStats(): { txBytes: number; rxBytes: number } {
   const [stats, setStats] = useState({ txBytes: 0, rxBytes: 0 });
   useEffect(() => {
-    const handler = (data: any) => {
+    const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":txBytes") && typeof data.value === "number") {
@@ -44,7 +46,7 @@ function useSerialStats(): { txBytes: number; rxBytes: number } {
         setStats((p) => ({ ...p, rxBytes: data.value as number }));
       }
     };
-    const unsub = lk()?.events?.on("plugin-state:changed", handler);
+    const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => unsub?.();
   }, []);
   return stats;

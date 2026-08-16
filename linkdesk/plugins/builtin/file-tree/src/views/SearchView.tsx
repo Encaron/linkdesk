@@ -11,7 +11,7 @@ import type { FileSearchResult, SearchMatch } from "@src/core/services/FileSearc
 import { extension } from "../utils/pathUtils";
 import "../styles/SearchView.css";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 /* ── 状态 ── */
 
@@ -21,7 +21,7 @@ type SearchState = "idle" | "searching" | "hasResults" | "noResults" | "error";
 
 const SearchView: React.FC = () => {
   const { t } = useTranslation();
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
 
   /* ── 输入 ── */
   const [query, setQuery] = useState("");
@@ -45,7 +45,7 @@ const SearchView: React.FC = () => {
   /** E4V#39b: 搜索历史——最近 10 条 */
   const [searchHistory, setSearchHistory] = useState<string[]>([]);
   useEffect(() => {
-    (window as any).linkdesk?.pluginState?.get("file-tree", "searchHistory").then((v: unknown) => {
+    window.linkdesk?.pluginState?.get("file-tree", "searchHistory").then((v: unknown) => {
       if (Array.isArray(v)) setSearchHistory(v as string[]);
     });
   }, []);
@@ -73,7 +73,7 @@ const SearchView: React.FC = () => {
     const controller = new AbortController();
     abortRef.current = controller;
 
-    const roots = (await lk.workspace.getFolders()).map((f: any) => f.uri);
+    const roots = (await lk.workspace.getFolders()).map((f) => f.uri);
     if (roots.length === 0) {
       setState("idle");
       return;
@@ -102,9 +102,9 @@ const SearchView: React.FC = () => {
       setTotalMatches(matches);
       setNavIndex(0);
       // 保存搜索历史
-      const prev = (await (window as any).linkdesk?.pluginState?.get("file-tree", "searchHistory") ?? []) as string[];
+      const prev = (await window.linkdesk?.pluginState?.get("file-tree", "searchHistory") ?? []) as string[];
       const next = [q, ...prev.filter((h: string) => h !== q)].slice(0, 10);
-      (window as any).linkdesk?.pluginState?.set("file-tree", "searchHistory", next).catch((e: any) => { console.error("[file-tree] 保存搜索历史失败:", e); });
+      window.linkdesk?.pluginState?.set("file-tree", "searchHistory", next).catch((e: unknown) => { console.error("[file-tree] 保存搜索历史失败:", e); });
       setSearchHistory(next);
       // 自动展开第一个文件
       if (found.length > 0) {
@@ -160,7 +160,7 @@ const SearchView: React.FC = () => {
 
   const handleReplaceAll = useCallback(async () => {
     if (!replaceText || results.length === 0) return;
-    const ok = await (window as any).linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
+    const ok = await window.linkdesk?.dialog?.confirm?.(t(`确定替换所有 ${totalMatches} 处？此操作不可撤销。`));
     if (!ok) return;
 
     let replaced = 0;

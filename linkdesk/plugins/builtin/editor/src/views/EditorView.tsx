@@ -10,8 +10,10 @@
  * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
+// E5.7#98：编辑器/monaco ref 具体类型——替代 useRef<any>
+import type { editor as MonacoEditorApi } from "monaco-editor";
 // E5.6#11.5i：getLangDef → lk.langDef.get，shellEvents → lk.events
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 import { initMonacoEnv } from "../services/monaco-init";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
 import { getLspClient, startLspClient } from "../services/lsp-bridge";
@@ -45,8 +47,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   { value, language: _language, filePath, isActive, onChange, onSave, readOnly, onCursorChange, onEditorMount, options },
   ref,
 ) {
-  const editorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
+  const editorRef = useRef<MonacoEditorApi.IStandaloneCodeEditor | null>(null);
+  const monacoRef = useRef<typeof import("monaco-editor") | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const themeSyncUnsubRef = useRef<(() => void) | null>(null);
   const onSaveRef = useRef(onSave);
@@ -60,7 +62,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
   const optionsRef = useRef(options);
   optionsRef.current = options;
 
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
 
@@ -83,7 +85,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       }
       if(disposed)return;
       // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
-      await initMonacoEnv(async (modelRef: any, _options: unknown) => {
+      await initMonacoEnv(async (modelRef, _options) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
         const label = lk.path.normalize(targetPath).split("/").pop() || targetPath;
         tabsRef.current?.create("editor", {
@@ -175,7 +177,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
 
       // 8b. 光标位置跟踪——E4V#40j EditorStatusBar 消费
-      editor.onDidChangeCursorPosition((e: any) => {
+      editor.onDidChangeCursorPosition((e) => {
         onCursorChangeRef.current?.(e.position.lineNumber, e.position.column);
       });
       // 初始触发一次
@@ -199,18 +201,24 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       editor.addAction({ id: "editor.action.fontZoomReset", label: "Zoom Reset", keybindings: [], run: () => {} });
 
       // 10. F12 + Ctrl+Click——standalone Monaco 归一化导航通道
+      // E5.7#98：TS worker（fileName/textSpan）与 LSP（uri/range）两套形状——联合类型 + 分支 cast。
+      // monaco 0.55 TS 语言服务正源 = 顶层 monaco.typescript 命名空间（languages.typescript 是 deprecated 类型墓碑，
+      // 运行时 editor.main.js 仍挂别名——同一对象）。顶层路径有完整类型，免 cast。
+      interface TsDef { fileName: string; textSpan: { start: number } }
+      interface LspDef { uri: string; range: { start: { line: number; character: number } } }
       const goToDefinitionAt = async (pos: { lineNumber: number; column: number }) => {
         const m = editor.getModel();
         if (!m) return;
         try {
           const langId = m.getLanguageId();
-          let defs: any[] | undefined;
+          let defs: (TsDef | LspDef)[] | undefined;
           const isTS = langId === "typescript" || langId === "javascript" || langId === "tsx" || langId === "jsx";
 
           if (isTS) {
-            const worker = await (monaco.languages.typescript as any).getTypeScriptWorker();
+            const worker = await monaco.typescript.getTypeScriptWorker();
             const tsClient = await worker(m.uri);
-            defs = await tsClient.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos));
+            // 库签名此处丢失精度（DefinitionInfo 解析成 any）——按 TsDef 结构窄化（E5.7#98）
+            defs = (await tsClient.getDefinitionAtPosition(m.uri.toString(), m.getOffsetAt(pos))) as TsDef[] | undefined;
           } else {
             const lspClient = getLspClient(langId);
             if (lspClient) {
@@ -218,7 +226,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
                 textDocument: { uri: m.uri.toString() },
                 position: { line: pos.lineNumber - 1, character: pos.column - 1 },
               });
-              defs = result ? (Array.isArray(result) ? result : [result]) : undefined;
+              defs = result ? ((Array.isArray(result) ? result : [result]) as LspDef[]) : undefined;
             }
           }
 
@@ -229,14 +237,16 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           let targetLine: number;
           let targetCol: number;
           if (isTS) {
-            targetPath = fileUriToPath(def.fileName);
-            const targetPos = m.getPositionAt(def.textSpan.start);
+            const tsDef = def as TsDef;
+            targetPath = fileUriToPath(tsDef.fileName);
+            const targetPos = m.getPositionAt(tsDef.textSpan.start);
             targetLine = targetPos.lineNumber;
             targetCol = targetPos.column;
           } else {
-            targetPath = fileUriToPath(def.uri);
-            targetLine = def.range.start.line + 1;
-            targetCol = def.range.start.character + 1;
+            const lspDef = def as LspDef;
+            targetPath = fileUriToPath(lspDef.uri);
+            targetLine = lspDef.range.start.line + 1;
+            targetCol = lspDef.range.start.character + 1;
           }
 
           const currentPath = fileUriToPath(m.uri.toString());
@@ -302,7 +312,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   // ── 跨文件跳转——mount/isActive effect 之外的事件通道（含 ShellEvents buffer 回放）──
   useEffect(() => {
-    return lk.events.on("editor:revealRequested", ({ filePath: fp }: any) => {
+    return lk.events.on<{ filePath: string }>("editor:revealRequested", ({ filePath: fp }) => {
       if (fp !== filePath) return;
       requestAnimationFrame(() => {
         const pos = consumePendingReveal(filePath);

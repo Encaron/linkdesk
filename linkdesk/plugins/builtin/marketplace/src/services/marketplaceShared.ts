@@ -8,11 +8,13 @@
  */
 
 import { useState, useCallback, useEffect } from "react";
-import type { ViewPluginEntry } from "@src/core/api/types";
+// E5.7#98：_allPlugins 数据源是 pluginManager.list()（IPC 序列化子集）——消费 PluginListEntry，
+// 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
+import type { PluginListEntry } from "@src/core/api/linkdesk-api";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
-const lk = () => (window as any).linkdesk;
+const lk = () => window.linkdesk;
 
-const pm = () => (window as any).linkdesk?.pluginManager;
+const pm = () => window.linkdesk?.pluginManager;
 
 /* ═══ 模块级搜索状态 ═══ */
 
@@ -38,7 +40,7 @@ export function onMarketplaceSearchChange(fn: () => void): () => void {
 /* ═══ 共享数据 hook ═══ */
 
 let _loadingPromise: Promise<void> | null = null;
-let _allPlugins: ViewPluginEntry[] = [];
+let _allPlugins: PluginListEntry[] = [];
 let _disabledPlugins: Array<{
   pluginId: string;
   name: string;
@@ -133,7 +135,7 @@ export function useMarketplacePlugins() {
 
   /* 🔥 loader 异步 import view 组件后才注册——viewContainer:changed 兜底 */
   useEffect(() => {
-    const sub = lk()?.events?.on("viewContainer:changed", ({ containerId }: any) => {
+    const sub = lk()?.events?.on<{ containerId: string }>("viewContainer:changed", ({ containerId }) => {
       if (containerId === "marketplace") updateAllBadges();
     });
     return () => sub?.();
@@ -142,10 +144,10 @@ export function useMarketplacePlugins() {
   const search = getMarketplaceSearch().toLowerCase();
 
   /* 过滤辅助——两套数据形状不同：ViewPluginEntry.manifest.name vs { name } */
-  const matchSearch = (name: string, pluginId: string, description?: string): boolean => {
+  const matchSearch = (name: string | undefined, pluginId: string, description?: string): boolean => {
     if (!search) return true;
     return (
-      name.toLowerCase().includes(search) ||
+      (name ?? "").toLowerCase().includes(search) ||
       pluginId.toLowerCase().includes(search) ||
       (description ?? "").toLowerCase().includes(search)
     );

@@ -42,7 +42,10 @@ export function getLanguageFromPath(filePath: string): string {
  * Monaco 对已知语言（TS/JS/CSS/HTML/JSON）自带语法高亮，
  * 对未知语言（如 Rust/Go/Python）plaintext 兜底——不崩溃。
  */
-export function registerLanguageMap(monaco: any): void {
+// E5.7#98：Monaco 命名空间具体类型——替代 monaco: any
+type MonacoNs = typeof import("monaco-editor");
+
+export function registerLanguageMap(monaco: MonacoNs): void {
   for (const id of REGISTERED_LANGUAGES) {
     monaco.languages.register({ id });
   }

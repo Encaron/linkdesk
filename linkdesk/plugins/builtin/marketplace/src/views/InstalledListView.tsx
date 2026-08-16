@@ -11,7 +11,7 @@ import "../styles/MarketplaceSidebar.css";
 
 export default function InstalledListView() {
   const { t } = useTranslation();
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const { installed, loading } = useMarketplacePlugins();
 
   const handleOpenDetail = (pluginId: string) => {

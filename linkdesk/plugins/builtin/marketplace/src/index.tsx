@@ -14,8 +14,8 @@ import { useTranslation } from "react-i18next";
 import { useMarketplacePlugins } from "./services/marketplaceShared";
 import "./styles/MarketplaceView.css";
 
-const lk = () => (window as any).linkdesk;
-const pm = () => (window as any).linkdesk?.pluginManager;
+const lk = () => window.linkdesk;
+const pm = () => window.linkdesk?.pluginManager;
 
 /* ── 模块级：注册 marketplace 命令（Phase 5f 归一化——替代手写 gear 菜单） ── */
 

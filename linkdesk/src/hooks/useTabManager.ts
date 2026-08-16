@@ -846,7 +846,7 @@ export function useTabManager() {
         const t = g?.tabs.find((tab) => tab.id === eager.focusedId);
         const filePath = t?.filePath;
         CoreEvents.onDidChangeActiveTab.fire({ tabId: eager.focusedId, pluginId: type, filePath });
-        try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: eager.focusedId, pluginId: type, filePath }); } catch { /* 静默 */ }
+        try { window.linkdesk?.events?.emit("tab:activated", { tabId: eager.focusedId, pluginId: type, filePath }); } catch { /* 静默 */ }
       }
       return eager.focusedId;
     },
@@ -868,7 +868,7 @@ export function useTabManager() {
     });
     // E4V#32: fire 后触发 autoReveal
     CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId: tab?.pluginId, filePath: tab?.filePath });
-    try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId, pluginId: tab?.pluginId, filePath: tab?.filePath }); } catch { /* 静默 */ }
+    try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId: tab?.pluginId, filePath: tab?.filePath }); } catch { /* 静默 */ }
   }, []);
 
   /** 按 sourceId 找标签页并聚焦——通用 API。
@@ -895,7 +895,7 @@ export function useTabManager() {
     });
     if (tab) {
       CoreEvents.onDidChangeActiveTab.fire({ tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath });
-      try { (window as any).linkdesk?.events?.emit("tab:activated", { tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath }); } catch { /* 静默 */ }
+      try { window.linkdesk?.events?.emit("tab:activated", { tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath }); } catch { /* 静默 */ }
     }
   }, []);
 

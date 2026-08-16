@@ -80,7 +80,7 @@ export function useSendData(
     try {
       if (ctx.sendMode === "hex") {
         const bytes = Array.from(hexToBytes(text));
-        await (window as any).linkdesk.serial.sendData(bytes);
+        await window.linkdesk.serial.sendData(bytes);
         cb.onEcho(
           `${formatTimestamp(ctx.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`
         );
@@ -94,7 +94,7 @@ export function useSendData(
         const ending = (opts?.ending ?? ctx.lineEnding)
           .replace(/\\r/g, "\r")
           .replace(/\\n/g, "\n");
-        await (window as any).linkdesk.serial.sendText(text + ending, ctx.sendCoding);
+        await window.linkdesk.serial.sendText(text + ending, ctx.sendCoding);
         const safeText = text
           .replace(/\r\n/g, "\\r\\n")
           .replace(/\n/g, "\\n")
@@ -104,9 +104,9 @@ export function useSendData(
           `${formatTimestamp(ctx.timestampFormat)} ---- 已发送 ${ctx.sendCoding.toLowerCase()} 编码消息: "${displayText}" ----`
         );
       }
-    } catch (e: any) {
+    } catch (e) {
       if (!opts?.silent) {
-        cb.onError(`发送失败：${e?.message || String(e)}`);
+        cb.onError(`发送失败：${e instanceof Error ? e.message : String(e)}`);
       }
     }
   }, []);

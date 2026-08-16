@@ -91,7 +91,7 @@ export class WindowManager {
       },
     });
 
-    view.webContents.on('console-message', (_event: any, level: number, message: string, line: number, sourceId: string) => {
+    view.webContents.on('console-message', (_event: unknown, level: number, message: string, line: number, sourceId: string) => {
       const tag = `[pool:${debugLabel}]`;
       if (level >= 3) console.error(`${tag} ${message}`);
       else console.log(`${tag} ${message}`);
@@ -101,7 +101,7 @@ export class WindowManager {
       console.error(`[WindowManager] Pool "${debugLabel}" 崩溃:`, details.reason);
     });
 
-    view.webContents.on('did-fail-load', (_event: any, errorCode: number, errorDescription: string, validatedURL: string) => {
+    view.webContents.on('did-fail-load', (_event: unknown, errorCode: number, errorDescription: string, validatedURL: string) => {
       console.error(`[WindowManager] Pool "${debugLabel}" 加载失败: ${errorDescription} (code ${errorCode}) URL=${validatedURL}`);
     });
 
