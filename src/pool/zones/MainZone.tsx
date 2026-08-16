@@ -204,6 +204,8 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   // SidebarZone E5.7#13 同款回执对齐：过早释放 = 下一帧渲染壳侧旧尺寸 → 分隔线回闪
   //（实机验证发现：拖完松手瞬间闪回拖前位置再跳回）。
   const pendingSplitsRef = useRef<Map<number, { preDrag: [number, number]; committed: [number, number] }>>(new Map());
+  // E5.7#86：同组标签排序的待回执记录——乐观提交序保留到壳 pushLayout 回执（分隔线同款回执对齐）
+  const pendingReordersRef = useRef<Map<string, { preDragIds: string[]; committedIds: string[]; tabs: PoolTab[] }>>(new Map());
 
   const onDividerMouseDown = useCallback(
     (
@@ -299,6 +301,30 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     }
   }, [root, branchNodesByIndex]);
 
+  // E5.7#86：标签排序回执对齐——推送序 == 提交序（壳原样回存）或 ≠ 拖前序（壳已变）→ 释放覆盖。
+  // 仍带拖前序的推送 = 迟到的旧推送（拖拽期间无关 tabState 变化触发）→ 保留覆盖。
+  useEffect(() => {
+    if (pendingReordersRef.current.size === 0) return;
+    for (const [gid, pending] of pendingReordersRef.current) {
+      const pushed = groups.find((g) => g.id === gid);
+      // 组已消失（等待期间被合屏/关闭）→ 覆盖无意义，直接释放
+      if (!pushed) {
+        pendingReordersRef.current.delete(gid);
+        forceUpdate();
+        continue;
+      }
+      const pushedIds = pushed.tabs.map((t) => t.id);
+      const sameAsPreDrag = pushedIds.length === pending.preDragIds.length
+        && pushedIds.every((id, i) => id === pending.preDragIds[i]);
+      const sameAsCommitted = pushedIds.length === pending.committedIds.length
+        && pushedIds.every((id, i) => id === pending.committedIds[i]);
+      if (!sameAsPreDrag || sameAsCommitted) {
+        pendingReordersRef.current.delete(gid);
+        forceUpdate();
+      }
+    }
+  }, [groups]);
+
   // ═════════════════════════════════════════════════════════
   // Tab Drag Coordinator——useDragReorder（275 行，15+ 轮 bug 修复验证）
   // 🔴 拖出窗口检测接入点：useDragDetach（#33）已推迟 v1.3（脱出窗口设计.md）——届时在此接入。
@@ -352,6 +378,10 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     findOtherContainer: (clientX, clientY, ownContainer) => {
       for (const [gid, el] of tabBarRefs.current) {
         if (el === ownContainer) continue;
+        // E5.7#86：排除源组——本组标签栏不算"其他容器"，松手在本组 = 重排（onReorder 提交）。
+        // 原 el===ownContainer 是死判断（ownContainer 是区根元素非标签栏）——同组松手被误判为
+        // "移到本组" → moveTab 同组 no-op → 排序从未提交（探针日志证实 onReorder 零触发）。
+        if (gid === sourceGroupRef.current) continue;
         const rect = el.getBoundingClientRect();
         if (clientX >= rect.left && clientX <= rect.right &&
             clientY >= rect.top && clientY <= rect.bottom) {
@@ -402,6 +432,17 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
       if (!sourceGroup) return;
       const fromIdx = sourceGroup.tabs.findIndex((t) => t.id === tabId);
       if (fromIdx < 0) return;
+      // E5.7#86：回执对齐——记录拖前序 + 提交序。松手后 draggingId 置空、dragLocalTabs 释放，
+      // 无覆盖则回执前渲染壳侧旧序一帧（回闪——分隔线同款提前释放）。pendingReordersRef.tabs
+      // 在 getEffectiveTabs 顶替壳推送，回执 effect 对齐壳推流后才释放。
+      const committedTabs = [...sourceGroup.tabs];
+      const [movedTab] = committedTabs.splice(fromIdx, 1);
+      committedTabs.splice(Math.min(toIndex, committedTabs.length), 0, movedTab);
+      pendingReordersRef.current.set(gid, {
+        preDragIds: sourceGroup.tabs.map((t) => t.id),
+        committedIds: committedTabs.map((t) => t.id),
+        tabs: committedTabs,
+      });
       tabAction({
         action: "reorderTab",
         groupId: gid,
@@ -459,6 +500,9 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   const getEffectiveTabs = useCallback(
     (groupId: string, group: PoolGroup): PoolTab[] => {
       if (dragLocalTabs?.[groupId]) return dragLocalTabs[groupId];
+      // E5.7#86：回执对齐——pending 覆盖优先于壳推送（松手后、回执前保持提交序不闪）
+      const pending = pendingReordersRef.current.get(groupId);
+      if (pending) return pending.tabs;
       return group.tabs;
     },
     [dragLocalTabs],

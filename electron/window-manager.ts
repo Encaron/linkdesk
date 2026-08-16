@@ -8,6 +8,7 @@
  */
 
 import { BrowserWindow, WebContentsView, app, nativeTheme } from 'electron';
+import * as fs from 'fs';
 import * as path from 'path';
 import { DEV_SERVER_URL } from './constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
@@ -95,6 +96,12 @@ export class WindowManager {
       const tag = `[pool:${debugLabel}]`;
       if (level >= 3) console.error(`${tag} ${message}`);
       else console.log(`${tag} ${message}`);
+      // E5.7#86 诊断：池渲染进程 console 也写 protocol-debug.log——与壳 [renderer] 同文件。
+      // 此前池侧只打主进程终端——安装版 F12 禁用，池侧错误永远落不了盘（调试缺口）。
+      try {
+        const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+        fs.appendFileSync(logFile, `[${new Date().toISOString()}] [pool] ${message}\n`);
+      } catch { /* ignore */ }
     });
 
     view.webContents.on('render-process-gone', (_event, details) => {
