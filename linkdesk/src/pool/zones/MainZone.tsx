@@ -23,7 +23,7 @@
  *   动作回传走 window.linkdesk.pool.tabAction（聪慧→哑：壳是唯一真相源）。
  */
 
-import { useState, useRef, useCallback, useMemo, useReducer, type MouseEvent as ReactMouseEvent } from "react";
+import { useState, useRef, useCallback, useMemo, useReducer, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../shared/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
@@ -162,18 +162,22 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   const groupMap = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
 
   // ── Branch indices (pre-order, matches updateBranchSizesByIndex) ──
-  const branchIndices = useMemo(() => {
-    const map = new Map<string, number>();
+  // E5.7#86：同时建 index→branch 反查表——回执对齐 effect 用（读推送分支的当前 sizes）
+  const { branchIndices, branchNodesByIndex } = useMemo(() => {
+    const keyMap = new Map<string, number>();
+    const nodeMap = new Map<number, SplitNode & { type: "branch" }>();
     let counter = 1;
     function walk(node: SplitNode): void {
       if (node.type === "branch") {
-        map.set(getBranchKey(node), counter++);
+        keyMap.set(getBranchKey(node), counter);
+        nodeMap.set(counter, node);
+        counter++;
         walk(node.children[0]);
         walk(node.children[1]);
       }
     }
     if (root) walk(root);
-    return map;
+    return { branchIndices: keyMap, branchNodesByIndex: nodeMap };
   }, [root]);
 
   // ── Tab bar DOM refs (MainZone reads bounding rects during drag) ──
@@ -196,6 +200,10 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     startSizes: [number, number];
     containerSize: number;
   } | null>(null);
+  // E5.7#86：松手后待回执的分支——本地覆盖保留到壳 pushLayout 回执携带已提交尺寸为止。
+  // SidebarZone E5.7#13 同款回执对齐：过早释放 = 下一帧渲染壳侧旧尺寸 → 分隔线回闪
+  //（实机验证发现：拖完松手瞬间闪回拖前位置再跳回）。
+  const pendingSplitsRef = useRef<Map<number, { preDrag: [number, number]; committed: [number, number] }>>(new Map());
 
   const onDividerMouseDown = useCallback(
     (
@@ -205,6 +213,8 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
       sizes: [number, number],
       containerSize: number,
     ) => {
+      // 仅左键拖拽——右键/中键不触发 resize（SidebarZone handleResizeStart 同款守卫）
+      if (e.button !== 0) return;
       e.preventDefault();
       const startPos = direction === "horizontal" ? e.clientX : e.clientY;
       dividerDragRef.current = {
@@ -242,9 +252,12 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
         const leftPct = Math.round((local[0] / combined) * 100);
         const rightPct = 100 - leftPct;
 
-        // Clear local size so next pushLayout takes effect
-        localSizesRef.current.delete(ds.branchIndex);
-        forceUpdate();
+        // E5.7#86：保留本地覆盖直到回执（不立刻删）——立刻删会让下一帧回退渲染壳侧
+        // 旧尺寸（松手回闪）。壳提交 → pushLayout 回执到达后由回执对齐 effect 释放。
+        pendingSplitsRef.current.set(ds.branchIndex, {
+          preDrag: ds.startSizes,
+          committed: [leftPct, rightPct],
+        });
 
         tabAction({
           action: "updateSplitSizes",
@@ -259,6 +272,32 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     },
     [tabAction],
   );
+
+  // E5.7#86：回执对齐——壳 pushLayout 到达后，对每个待回执分支：
+  //   推送尺寸 ≠ 拖前尺寸（壳已采纳新值）或 == 提交值（壳原样回存）→ 释放本地覆盖。
+  // 仍带拖前尺寸的推送 = 迟到的旧推送（拖拽期间无关 tabState 变化触发）→ 保留覆盖。
+  useEffect(() => {
+    if (pendingSplitsRef.current.size === 0 || !root) return;
+    for (const [branchIdx, pending] of pendingSplitsRef.current) {
+      const branch = branchNodesByIndex.get(branchIdx);
+      // 分支已从树中消失（等待期间被合屏）→ 覆盖无意义，直接释放
+      if (!branch) {
+        localSizesRef.current.delete(branchIdx);
+        pendingSplitsRef.current.delete(branchIdx);
+        forceUpdate();
+        continue;
+      }
+      const pushed = branch.sizes;
+      const released =
+        pushed[0] !== pending.preDrag[0] || pushed[1] !== pending.preDrag[1] ||
+        (pushed[0] === pending.committed[0] && pushed[1] === pending.committed[1]);
+      if (released) {
+        localSizesRef.current.delete(branchIdx);
+        pendingSplitsRef.current.delete(branchIdx);
+        forceUpdate();
+      }
+    }
+  }, [root, branchNodesByIndex]);
 
   // ═════════════════════════════════════════════════════════
   // Tab Drag Coordinator——useDragReorder（275 行，15+ 轮 bug 修复验证）
