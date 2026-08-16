@@ -8,7 +8,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { parseContributions, validateInstallManifest, resolveVersionConflict } from "../loader";
+import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath } from "../loader";
+import type { PluginManifest } from "../../core/api/types";
 import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
 import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
 import { clearLangDefs, getLangDef } from "../../core/registry/LangDefRegistry";
@@ -252,6 +253,28 @@ describe("E5.7#81 安装包装", () => {
       expect(msg).toContain("1.2.0");
       expect(msg).toContain("1.3.0");
       expect(msg).toMatch(/升级请先卸载/);
+    });
+  });
+
+  describe("E5.7#82 runtimeEntryPath（E6 打包格式分支点）", () => {
+    const manifestWith = (entry?: string) => ({ entry }) as unknown as PluginManifest;
+
+    it("dev + entry → 源码路径原样返回（Vite 即时编译）", () => {
+      expect(runtimeEntryPath(manifestWith("src/index.tsx"), TEST_PLUGIN_ID, true))
+        .toBe("src/index.tsx");
+    });
+
+    it("dev + entryless → null（生命周期契约不绑 entry）", () => {
+      expect(runtimeEntryPath(manifestWith(), TEST_PLUGIN_ID, true)).toBeNull();
+    });
+
+    it("prod → 预构建 chunk 名 <pluginId>.js（entry 源码路径不参与解析）", () => {
+      expect(runtimeEntryPath(manifestWith("src/index.tsx"), TEST_PLUGIN_ID, false))
+        .toBe("test-plugin.js");
+    });
+
+    it("prod + entryless → 仍按 chunk 约定（打包格式不看 entry 字段）", () => {
+      expect(runtimeEntryPath(manifestWith(), TEST_PLUGIN_ID, false)).toBe("test-plugin.js");
     });
   });
 });
