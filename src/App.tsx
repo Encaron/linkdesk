@@ -562,7 +562,7 @@ function App() {
   }, []);
 
   // E5.7#10：侧栏宿主状态机——原隐藏挂载 SidePanel 的语义迁入 App（池 SidebarZone 哑渲染，壳持状态）。
-  // 三条入口：icon:selected（图标点击切换/折叠）、sidebar:toggleFromPool（池 ◀/▶ 按钮转发）、
+  // 三条入口：icon:selected（图标点击切换/折叠）、sidebar:toggle（池 ◀/▶ 按钮 + Ctrl+B 命令转发）、
   // view:toggleCollapse/resetPosition/toggleVisibility（view header 右键菜单，shellMenus emit）。
   // 折叠真相源 = LayoutEngine zone 宽（≤48 = 折叠）——池 ◀ 按钮只改 zone 宽，此机从 zone 宽
   // 派生折叠态（不持 collapsedRef，避免池按钮改宽后状态脱节）。
@@ -614,7 +614,7 @@ function App() {
     });
 
     // 池 ◀/▶ 按钮——usePoolSync toggleSidebarCollapse 转发（折展真相在 zone 宽，池零状态）
-    const u2 = shellEvents.on("sidebar:toggleFromPool", () => {
+    const u2 = shellEvents.on("sidebar:toggle", () => {
       doCollapse(!zoneCollapsed());
     });
 

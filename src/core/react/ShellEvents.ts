@@ -37,9 +37,10 @@ export interface ShellEvents {
   /** 侧栏容器切换。payload = 当前活跃 containerId，null = 无活跃容器。
    *  IconBar 订阅此事件更新高亮——不需要知道具体是谁触发的切换。 */
   "sidebar:containerChanged": string | null;
-  /** 池 ◀/▶ 按钮折叠请求——usePoolSync 转发，App 侧栏宿主状态机 doCollapse 执行。
-   *  E5.7#10：三条折叠路径（图标点击/池按钮/view 菜单）归一到一个真相源。无 payload。 */
-  "sidebar:toggleFromPool": void;
+  /** 侧栏折叠/展开请求——两个生产者归一到一个真相源：
+   *  ① 池 ◀/▶ 按钮（usePoolSync 转发）② 壳命令 workbench.action.toggleSidebarVisibility（Ctrl+B）。
+   *  App 侧栏宿主状态机 doCollapse 执行（E5.7#10 三条折叠路径之一）。无 payload。 */
+  "sidebar:toggle": void;
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */

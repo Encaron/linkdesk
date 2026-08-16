@@ -51,6 +51,18 @@ export function registerShellMenus(): void {
       if (ctx?.containerId) shellEvents.emit("view:toggleCollapse", { containerId: ctx.containerId });
     },
   });
+  // E5.7#84：侧栏显隐切换（VS Code 标准 Ctrl+B）——矩阵场景 1 验证点「折叠/展开」。
+  // 归一化：emit sidebar:toggle 复用池 ◀/▶ 按钮同一转发链（App 侧栏宿主状态机 doCollapse），
+  // 零第二套状态——命令只做入口，真相源仍在 zone 宽。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.toggleSidebarVisibility",
+    title: "切换侧栏可见性",
+    category: "视图",
+    handler: async () => {
+      shellEvents.emit("sidebar:toggle", undefined);
+    },
+  });
+
   registerCommand(APP_PLUGIN_ID, {
     id: "workbench.action.resetContainerPosition",
     title: "重置位置",
