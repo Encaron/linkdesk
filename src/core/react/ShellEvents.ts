@@ -109,7 +109,8 @@ import { Emitter } from "./CoreEvents";
  * E5#1c：dev 模式事件追踪 + 防重入 guard（Bug E5-1c）。
  */
 export class ShellEventBus {
-  private _emitters = new Map<string, Emitter<any>>();
+  // E5.7#98：异质事件表——每键 payload 类型不同，存 unknown 兜底（订阅处按事件键窄化）
+  private _emitters = new Map<string, Emitter<unknown>>();
   /** 🛡️ 防重入——同一事件正在处理中时跳过，防死循环（Bug E5-1c） */
   private _processing = new Set<string>();
   /** 🛡️ E5#7h5：事件缓冲——emit 早于 on 时缓存，新订阅者回放最近一次 payload */
@@ -149,13 +150,14 @@ export class ShellEventBus {
     handler: (payload: ShellEvents[K]) => void,
   ): () => void {
     if (!this._emitters.has(event)) {
-      this._emitters.set(event, new Emitter<any>());
+      this._emitters.set(event, new Emitter<unknown>());
     }
     // 回放缓冲——新订阅者立即收到最近一次 emit 的值
     if (this._buffer.has(event)) {
       handler(this._buffer.get(event) as ShellEvents[K]);
     }
-    return this._emitters.get(event)!.event(handler);
+    // 表存 unknown 而订阅方是 ShellEvents[K]——协变缺口在唯一注册点窄化（E5.7#98）
+    return this._emitters.get(event)!.event(handler as (data: unknown) => void);
   }
 
   /** 移除某个事件的所有订阅者 */

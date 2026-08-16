@@ -4,22 +4,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import type { LinkDeskAPI } from "@src/core/api/linkdesk-api";
 
 // E5.6#11.5: executeSafeDrop 已迁移到 lk.filesystem.*——mock linkdesk 全局
 const mockedCopy = vi.fn();
 const mockedDelete = vi.fn();
 
+// E5.7#98：配置改走 vitest.setup __ldkConfigStore（setup 的 configurationMock.get 读它）——
+// 原自定义 get 返回 Promise<boolean> 与契约 get<T = unknown> 泛型签名不符。
+// 语义不变：enableDragAndDrop → true (keep enabled); confirmDragAndDrop → false (skip dialog)
+const ldkStore = () => (globalThis as { __ldkConfigStore?: Map<string, unknown> }).__ldkConfigStore;
+
 // ESM import hoisting — 必须在 import 前设好全局 mock
-(window as any).linkdesk = {
-  ...((window as any).linkdesk ?? {}),
+window.linkdesk = {
+  ...(window.linkdesk ?? {}),
+  // 只覆盖被测路径用到的方法——cast 到契约面（最小 stub，非完整实现）
   filesystem: {
     copy: mockedCopy,
     remove: mockedDelete,
-  },
-  configuration: {
-    // enableDragAndDrop → true (keep enabled); confirmDragAndDrop → false (skip dialog)
-    get: (key: string) => Promise.resolve(key !== "explorer.confirmDragAndDrop"),
-  },
+  } as unknown as LinkDeskAPI["filesystem"],
 };
 
 // dynamic import——避 ESM hoisting，确保 lk 捕获已 mock 的 window.linkdesk
@@ -28,6 +31,8 @@ const { executeSafeDrop } = await import("../services/FileTreeDnD");
 beforeEach(() => {
   mockedCopy.mockClear();
   mockedDelete.mockClear();
+  ldkStore()?.set("explorer.enableDragAndDrop", true);
+  ldkStore()?.set("explorer.confirmDragAndDrop", false);
 });
 
 describe("executeSafeDrop", () => {

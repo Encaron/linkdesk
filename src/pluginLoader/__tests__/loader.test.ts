@@ -21,9 +21,12 @@ const TEST_PLUGIN_ID = "test-plugin";
 function resetRegistries() {
   // 用 clearLangDefs 清理 LangDefRegistry（模块级函数，无 unregisterAll）
   clearLangDefs();
-  // LanguageRegistry / ThemeRegistry 继承 RegistryBase，有 unregisterAll
-  try { (LanguageRegistry as any).unregisterAll?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
-  try { (ThemeRegistry as any).unregisterAll?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
+  // LanguageRegistry / ThemeRegistry 继承 RegistryBase，unregisterAll 是 protected——
+  // 测试经窄接口 cast 直调（E5.7#98 替代 as any）
+  const withUnregister = (r: unknown) =>
+    (r as { unregisterAll?: (pluginId: string) => void }).unregisterAll;
+  try { withUnregister(LanguageRegistry)?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
+  try { withUnregister(ThemeRegistry)?.(TEST_PLUGIN_ID); } catch { /* 无注册项 */ }
 }
 
 /* ── normalizeManifest 等价逻辑（loader.ts 内部纯函数，不导出——测试等价逻辑） ── */
@@ -74,7 +77,7 @@ describe("loader — extractThemeColors", () => {
 
   it("无 colors 字段返回空对象", () => {
     expect(extractThemeColors({})).toEqual({});
-    expect(extractThemeColors({ type: "dark" } as any)).toEqual({});
+    expect(extractThemeColors({ type: "dark" })).toEqual({});
   });
 
   it("colors 为空对象返回空对象", () => {
@@ -82,8 +85,9 @@ describe("loader — extractThemeColors", () => {
   });
 
   it("过滤非字符串值（数字/布尔/null）", () => {
+    // 故意混入非字符串值——extractThemeColors 参数是 Record<string, unknown>，运行时过滤（E5.7#98 免 as any）
     const data = {
-      colors: { bg: "#000", count: 42 as any, flag: true as any, nil: null as any },
+      colors: { bg: "#000", count: 42, flag: true, nil: null },
     };
     const colors = extractThemeColors(data);
     expect(colors).toEqual({ bg: "#000" });
@@ -100,7 +104,7 @@ describe("loader — normalizeManifest（等价逻辑）", () => {
     const manifest = { name: "settings", entry: "src/index.tsx", factoryRole: "settings" };
     expect(normalizeManifest(manifest)).toBeUndefined();
     // 不 mutate 原对象
-    expect((manifest as any).contributes).toBeUndefined();
+    expect((manifest as { contributes?: unknown }).contributes).toBeUndefined();
   });
 
   it("新格式插件（有 contributes.themes）→ 返回 contributes", () => {
@@ -112,7 +116,7 @@ describe("loader — normalizeManifest（等价逻辑）", () => {
     const manifest = { name: "old-theme", themes: [{ id: "vintage", file: "v.json" }] };
     const result = normalizeManifest(manifest);
     expect(result).toEqual({ themes: [{ id: "vintage", file: "v.json" }] });
-    expect((manifest as any).contributes).toBeUndefined(); // 不 mutate
+    expect((manifest as { contributes?: unknown }).contributes).toBeUndefined(); // 不 mutate
   });
 
   it("混合——无旧字段且无 contributes → undefined（python 类）", () => {
@@ -149,7 +153,7 @@ describe("loader — parseContributions（export function）", () => {
     parseContributions(TEST_PLUGIN_ID, {
       themes: [{ id: "dark", label: "Dark", uiTheme: "dark", path: "dark.json" }],
     });
-    const themes = ThemeRegistry.getAll().filter((t) => (t as any).pluginId === TEST_PLUGIN_ID);
+    const themes = ThemeRegistry.getAll().filter((t) => t.pluginId === TEST_PLUGIN_ID);
     expect(themes.length).toBe(1);
     expect(themes[0].label).toBe("Dark");
   });
@@ -158,9 +162,9 @@ describe("loader — parseContributions（export function）", () => {
     parseContributions(TEST_PLUGIN_ID, {
       languages: [{ id: "zh", label: "中文", path: "zh.json" }],
     });
-    const langs = LanguageRegistry.getAll().filter((l: any) => l.pluginId === TEST_PLUGIN_ID);
+    const langs = LanguageRegistry.getAll().filter((l) => l.pluginId === TEST_PLUGIN_ID);
     expect(langs.length).toBeGreaterThanOrEqual(1);
-    expect(langs.some((l: any) => l.label === "中文")).toBe(true);
+    expect(langs.some((l) => l.label === "中文")).toBe(true);
   });
 
   it("contributes.langDefs 不注册壳侧 LangDefRegistry（E5.7#49 Registry 主进程化）", () => {

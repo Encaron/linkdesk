@@ -69,6 +69,11 @@ import { createLogChannel } from "../core/services/LogChannel";
 /* ── B6 fix：pluginLoader 日志频道——替代 console.log（对标 VS Code Output panel） */
 const log = createLogChannel("app", "pluginLoader", "pluginLoader");
 
+/** catch 变量统一转消息——strict 模式下 catch 参数为 unknown（E5.7#98 清零 : any 后） */
+function errMsg(e: unknown): string {
+  return e instanceof Error ? e.message : String(e);
+}
+
 /* ── 插件入口文件映射（Vite import.meta.glob） ── */
 
 // Vite 在构建时展开 glob，生成所有插件的入口映射。
@@ -333,8 +338,8 @@ export async function initPluginLoader(): Promise<void> {
         && !manifest.activationEvents.includes("*");
       await loadPlugin(pluginId, "startup", { skipView: !!defer });
       if (defer && manifest) _deferredPlugins.set(pluginId, manifest);
-    } catch (e: any) {
-      errors.push(`${pluginId}: ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`${pluginId}: ${errMsg(e)}`);
     }
   }
 
@@ -344,8 +349,8 @@ export async function initPluginLoader(): Promise<void> {
     if (disabled.includes(pluginId)) continue;
     try {
       await loadPlugin(pluginId, "startup");
-    } catch (e: any) {
-      errors.push(`${pluginId} (runtime): ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`${pluginId} (runtime): ${errMsg(e)}`);
     }
   }
 
@@ -388,8 +393,8 @@ export async function initPluginLoader(): Promise<void> {
         const manifest = JSON.parse(raw);
         cachePluginMetadata(pluginId, manifest, "uninstalled");
         log.appendLine(`📦 已卸载插件入缓存: ${pluginId}`);
-      } catch (e: any) {
-        log.appendLine(`⚠️ 已卸载插件 "${pluginId}" 元数据读取失败: ${e?.message || e}`);
+      } catch (e) {
+        log.appendLine(`⚠️ 已卸载插件 "${pluginId}" 元数据读取失败: ${errMsg(e)}`);
       }
     }
   } catch { /* 非 Electron 环境（npm run dev 浏览器模式）——listDisabledDirs 不可用 */ }
@@ -551,7 +556,8 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
             // 打包后 Vite 已将 glob key→构建 chunk 映射，不用源码路径。
             // E5.6#2-fix: glob 外插件（runtime/reinstall）renderPath 是 /@fs/ 绝对路径，
             // viewRenderModules key 是相对 glob 路径 → 不匹配 → 回退到 /* @vite-ignore */。
-            let renderModule: any;
+            // E5.7#98：glob loader 已带类型（{ default: ComponentType }）；动态 import 回退按 TS 内建 any（非源码）——声明收窄
+            let renderModule: { default?: React.ComponentType } | undefined;
             const viewLoader = viewRenderModules[renderPath];
             if (viewLoader) {
               renderModule = await viewLoader();
@@ -564,7 +570,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
               );
               continue;
             }
-            const RenderComponent = renderModule.default ?? renderModule;
+            const RenderComponent = renderModule?.default ?? renderModule;
             // E5.6#11b：_renderPath 存 glob key——池 PluginComponent 按此 key O(1) 查找组件。
             // eslint-disable-next-line @typescript-eslint/no-explicit-any
             const desc: any = {
@@ -756,8 +762,8 @@ async function loadPlugin(
     try {
       const raw = await pluginsApi().readManifest(pluginId);
       manifest = JSON.parse(raw);
-    } catch (e: any) {
-      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${e?.message || e}`);
+    } catch (e) {
+      console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
       return;
     }
   } else {
@@ -824,8 +830,8 @@ async function loadPlugin(
             break;
           } catch { /* 路径不存在——继续试下一条 */ }
         }
-      } catch (e: any) {
-        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${e?.message || e}`);
+      } catch (e) {
+        console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 加载 JS 失败: ${errMsg(e)}`);
         pushToast({
           message: `插件 "${manifest.name}" 加载失败——可能未构建。运行 npm run build:plugins`,
           source: pluginId,
@@ -997,8 +1003,8 @@ async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<
       return null;
     }
     return await response.json() as Record<string, unknown>;
-  } catch (e: any) {
-    console.warn(`[pluginLoader] 数据文件加载异常 — "${pluginId}/${filePath}": ${e?.message || e}`);
+  } catch (e) {
+    console.warn(`[pluginLoader] 数据文件加载异常 — "${pluginId}/${filePath}": ${errMsg(e)}`);
     return null;
   }
 }
@@ -1151,8 +1157,8 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     syncAppLanguageEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message || String(e) };
+  } catch (e) {
+    return { success: false, error: errMsg(e) };
   }
 }
 
@@ -1192,8 +1198,8 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
     }
 
     return { success: true, needRestart: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message || String(e) };
+  } catch (e) {
+    return { success: false, error: errMsg(e) };
   }
 }
 
@@ -1254,8 +1260,8 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // E5.7#48：主进程静态声明三表（LangDef/Protocol/FileAssociation）重扫——唯一写入方在主进程
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     return { success: true };
-  } catch (e: any) {
-    const msg = e?.message || String(e);
+  } catch (e) {
+    const msg = errMsg(e);
     console.error(`[pluginLoader] 卸载 "${pluginId}" 失败:`, msg);
     reportError({ message: `插件 "${pluginId}" 卸载失败: ${msg}`, source: pluginId, error: e });
     return { success: false, error: msg };
@@ -1314,7 +1320,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     try {
       await loadPlugin(pluginId, "install");
       return { success: true, pluginId };
-    } catch (e: any) {
+    } catch {
       pushToast({
         message: `已安装：${pluginId}。运行 npm run build:plugins 后生效。`,
         source: pluginId,
@@ -1326,8 +1332,8 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       });
       return { success: true, pluginId, needRestart: true };
     }
-  } catch (e: any) {
-    return { success: false, error: e?.message || String(e) };
+  } catch (e) {
+    return { success: false, error: errMsg(e) };
   }
 }
 
@@ -1508,8 +1514,8 @@ export async function reinstallPlugin(pluginId: string): Promise<{ success: bool
     // E5.7#48：主进程三表重扫
     window.linkdesk?.pluginManager?.notifyManifestChanged?.();
     return { success: true };
-  } catch (e: any) {
-    return { success: false, error: e?.message || String(e) };
+  } catch (e) {
+    return { success: false, error: errMsg(e) };
   }
 }
 
@@ -1534,8 +1540,8 @@ export async function activatePlugin(pluginId: string): Promise<boolean> {
     console.log(`[pluginLoader] ⚡ 延迟激活 "${pluginId}"`);
     log.appendLine(`⚡ 延迟激活 "${pluginId}"`);
     return true;
-  } catch (e: any) {
-    reportError({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${e?.message || e}`, source: pluginId, error: e });
+  } catch (e) {
+    reportError({ message: `插件 "${manifest.name ?? pluginId}" 激活失败: ${errMsg(e)}`, source: pluginId, error: e });
     return false;
   }
 }

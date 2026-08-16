@@ -26,6 +26,16 @@ interface SerialState {
   lastError: string | null;
 }
 
+/** wire getStatus() 返回面（portName/baudRate/isOpen）+ 历史 DTO 防御性字段（E5.6 前曾带 tx/rx/lastError） */
+interface SerialStatusDto {
+  portName?: string;
+  baudRate?: number;
+  isOpen?: boolean;
+  txBytes?: number;
+  rxBytes?: number;
+  lastError?: string | null;
+}
+
 interface SerialActions {
   toggleOpen: (encoding?: string) => Promise<void>;
   /** 明确打开指定端口——多标签页场景：ControlPanel 按 per-tab connected 决策，不盲翻转 */
@@ -71,22 +81,22 @@ function _setState(updater: (p: SerialState) => SerialState): void {
   // isOpen 变化——立即同步连接状态 + 端口名到 pluginState（壳侧栏/状态栏跨 WebView 读取）
   // E5.5#9l：key 加 _scopeKey 前缀，per-tab 隔离——多串口标签页不再互相覆盖
   if (next.isOpen !== _sharedState.isOpen) {
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", next.sourceName), next.isOpen)
+    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", next.sourceName), next.isOpen)
       .catch(() => {});
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
+    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
       .catch(() => {});
     // 关闭时立即清零 TX/RX——不等到防抖超时
     if (!next.isOpen) {
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", next.sourceName), 0)
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", next.sourceName), 0)
         .catch(() => {});
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", next.sourceName), 0)
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", next.sourceName), 0)
         .catch(() => {});
     }
   }
 
   // sourceName 变化——同步到 pluginState（壳侧栏 session connected 判断需要）
   if (next.sourceName !== _sharedState.sourceName) {
-    (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
+    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
       .catch(() => {});
   }
 
@@ -96,9 +106,9 @@ function _setState(updater: (p: SerialState) => SerialState): void {
     if (_txRxSyncTimer) clearTimeout(_txRxSyncTimer);
     const debounced = next;
     _txRxSyncTimer = setTimeout(() => {
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", debounced.sourceName), debounced.txBytes)
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", debounced.sourceName), debounced.txBytes)
         .catch(() => {});
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", debounced.sourceName), debounced.rxBytes)
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", debounced.sourceName), debounced.rxBytes)
         .catch(() => {});
     }, 250);
   }
@@ -114,7 +124,8 @@ function _subscribe(cb: () => void): () => void {
   return () => { _listeners.delete(id); };
 }
 
-function mergeStatus(p: SerialState, status: any): SerialState {
+// E5.7#98：merge 入参 = wire SerialStatus（portName/baudRate/isOpen）+ 历史 DTO 防御性字段（tx/rx/lastError），零 any
+function mergeStatus(p: SerialState, status: SerialStatusDto): SerialState {
   return {
     ...p,
     sourceName: status.portName ?? p.sourceName,
@@ -144,14 +155,14 @@ function _initOnce(): void {
   if (_oneTimeFetched) return;
   _oneTimeFetched = true;
 
-  const s = (window as any).linkdesk?.serial;
+  const s = window.linkdesk?.serial;
   if (!s) return;
 
   const listPorts = s.listPorts;
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
   });
-  s.getStatus?.()?.then((status: any) => {
+  s.getStatus?.()?.then((status) => {
     if (status) _setState((p) => mergeStatus(p, status));
   });
 }
@@ -165,24 +176,24 @@ function _registerIPCListeners(): void {
   _refCount++;
   if (_refCount > 1) return;
 
-  const s = (window as any).linkdesk?.serial;
+  const s = window.linkdesk?.serial;
   if (!s) return;
 
   _ipcCleanups = [
     // 高频 stats 回调——累加而非覆盖
-    s.onStats?.((stats: any) => {
+    s.onStats?.((stats) => {
       _setState((p) => ({
         ...p,
         txBytes: p.txBytes + (stats.tx ?? 0),
         rxBytes: p.rxBytes + (stats.rx ?? 0),
       }));
     }),
-    s.onSystem?.((msg: any) => {
+    s.onSystem?.((msg) => {
       _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
     }),
     // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
     s.onData?.((text: string) => {
-      (window as any).linkdesk?.events?.emit("serial:rawData", {
+      window.linkdesk?.events?.emit("serial:rawData", {
         sourceName: _sharedState.sourceName,
         text,
       });
@@ -203,7 +214,7 @@ function _unregisterIPCListeners(): void {
 // ═══════════════════════════════════════════════════════
 
 export function useSerialContext(): { state: SerialState; actions: SerialActions } {
-  const s = (window as any).linkdesk?.serial;
+  const s = window.linkdesk?.serial;
 
   // 一次性数据拉取——端口列表 + 状态（模块级 guard，只跑一次）
   _initOnce();

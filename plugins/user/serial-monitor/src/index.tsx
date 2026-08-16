@@ -34,6 +34,19 @@ import SelectBox from "@src/components/shared/SelectBox";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import "./styles/SerialMonitorView.css";
 
+// E5.7#98：浏览器原生 File System Access API 最小面定型（TS DOM lib 未收录，实验性）——
+// 替代 (window as any).showSaveFilePicker。API 缺失时返回 undefined → 调用方抛错 → catch 走 Blob 兜底。
+interface SaveFilePickerHandle {
+  createWritable(): Promise<{ write(data: string | Blob): Promise<void>; close(): Promise<void> }>;
+}
+type SaveFilePickerWindow = Window & {
+  showSaveFilePicker?: (opts: {
+    suggestedName?: string;
+    types?: Array<{ description: string; accept: Record<string, string[]> }>;
+  }) => Promise<SaveFilePickerHandle>;
+};
+const _saveFilePicker = (window as SaveFilePickerWindow).showSaveFilePicker?.bind(window);
+
 // E5#116: 右键菜单注册——模块顶层 IPC，单/多 WebView 统一通路。
 // ipcRenderer.invoke → main → 壳 IpcBridgeHandler → registerMenuItems → 壳的 _menus。
 // 模块顶层执行 → preload 运行在页面 JS 之前 → window.linkdesk 此时已就绪。
@@ -224,12 +237,10 @@ interface SerialMonitorViewProps {
 function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorViewProps) {
   const { t } = useTranslation();
 
-  // E5#84：双模式 sourceId——IPC 优先，props 兜底（对标 editor const fp = ipcId ?? propId）
-  const [ipcSourceId, setIpcSourceId] = useState<string | null>(null);
-  useEffect(() => {
-    (window as any).linkdesk?.pluginRequest?.handle?.("openSession", (p: any) => setIpcSourceId(p?.sourceId ?? null));
-  }, []);
-  const sourceId = ipcSourceId ?? propSourceId;
+  // E5#84 → E5.7#98：sourceId 单通道——pool 经 props 传入（PluginComponent sourceId）。
+  // 原 IPC 优先通道（pluginRequest.handle("openSession")）随 E5.7#43 整删（preload-pool
+  // 不再暴露 pluginRequest），死 no-op 代码摘除。
+  const sourceId = propSourceId;
 
   // C1 修复：用 sourceId 绑定 per-tab session，而非读全局 activeSession。
   // sourceId = tab.id = session.id（MainContent 传入）。
@@ -412,7 +423,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     const from = doc.length;
     const pre = doc.length > 0 ? "\n" : "";
     const lineStart = from + pre.length;
-    const effects: any[] = [addLineDeco.of({ from: lineStart, cls: `cm-line-${color}` })];
+    const effects = [addLineDeco.of({ from: lineStart, cls: `cm-line-${color}` })];
 
     if (color === "received") {
       const arrowIdx = text.indexOf(" -> ");
@@ -534,10 +545,10 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       setPausedCount(0);
       setPaused(false);
       // E3j #78：连接状态推到大厅 events 频道——结构化数据、消费者无需解析
-      (window as any).linkdesk?.serial?.getStatus?.()?.then((status: any) => {
+      window.linkdesk?.serial?.getStatus?.()?.then((status) => {
         if (status) {
           lastPortInfoRef.current = { portName: status.portName, baudRate: status.baudRate };
-          (window as any).linkdesk?.events?.emit("serial:connected", lastPortInfoRef.current);
+          window.linkdesk?.events?.emit("serial:connected", lastPortInfoRef.current);
         }
       });
     }
@@ -552,7 +563,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       portOpenRef.current = false;
       ringBuffer.current.drainAll();
       // E3j #78：断开用缓存的信息（端口已关无法查）
-      (window as any).linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
+      window.linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
     }
     ringBuffer.current.write({
       text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
@@ -615,7 +626,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     if (!view) return;
     view.dispatch({
       changes: { from: 0, to: view.state.doc.length },
-      effects: clearAllDecos.of(null as any),
+      effects: clearAllDecos.of(undefined),
     });
   };
 
@@ -625,11 +636,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     const text = view.state.doc.toString();
     const filename = `serial-log-${Date.now()}.txt`;
     try {
-      const handle = await (window as any).showSaveFilePicker({
+      const handle = await _saveFilePicker?.({
         suggestedName: filename,
         types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
       });
-      const writable = await handle.createWritable();
+      if (!handle) throw new Error("File System Access API 不可用");
+const writable = await handle.createWritable();
       await writable.write(text);
       await writable.close();
       appendLine(t("---- 日志已导出至 {{filename}} ----", { filename }), "system");
@@ -780,19 +792,13 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
 
   // E5#64：handler 注册——不依赖 sourceId，闭包直接访问 portOpenRef
   useEffect(() => {
-    const api = (window as any).linkdesk?.pluginRequest;
-    if (api) {
-      api.handle("invokeBeforeClose", async () => {
-        if (!portOpenRef.current) return;
-        const ok = await (window as any).linkdesk?.dialog?.confirm?.("关闭此标签页将断开串口连接");
-        if (!ok) return false;
-        await (window as any).linkdesk?.serial?.closePort?.();
-      });
-    }
+    // E5#64 → E5.7#98：invokeBeforeClose 否决回路随 E5.7#43 停用（requestToPlugin 链已删，
+    // preload-pool 不再暴露 pluginRequest）——原 api.handle 注册是死 no-op，摘除。
+    // 恢复时走未来池侧 requests 命名空间任务（viewRegistry.ts:79 同注）。
     // E5#74e test: p2p 组件级测试——收到就写 CM6
-    const p2p = (window as any).linkdesk?.p2p;
+    const p2p = window.linkdesk?.p2p;
     if (p2p) {
-      p2p.on("test-p2p", (d: any) => {
+      p2p.on("test-p2p", (d) => {
         appendLine(`[P2P-TEST] ${JSON.stringify(d)}`, "system");
       });
     }
@@ -806,7 +812,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [sourceId]);
 
   useEffect(() => {
-    const lk = (window as any).linkdesk;
+    const lk = window.linkdesk;
     const reg = lk?.commands?.registerCommand;
     if (!reg) return;
 
@@ -845,20 +851,20 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       if (view) {
         view.dispatch({
           changes: { from: 0, to: view.state.doc.length },
-          effects: clearAllDecos.of(null as any),
+          effects: clearAllDecos.of(undefined),
         });
       }
     }, { title: t("清空接收区"), category: cat });
     reg("serial-monitor.togglePause", async () => {
       getActiveCmd()!.setPaused((p) => !p);
     }, { title: t("暂停接收"), category: cat });
-    reg("serial-monitor.quickSendFill", async (...args: any[]) => {
+    reg("serial-monitor.quickSendFill", async (...args) => {
       const ctx = args[0] as { quickSendName?: string } | undefined;
       if (ctx?.quickSendName) {
         getActiveCmd()!.setSendValue(getActiveCmd()!.quickSends[ctx.quickSendName] ?? "");
       }
     }, { title: t("回填到发送区"), category: cat });
-    reg("serial-monitor.quickSendEdit", async (...args: any[]) => {
+    reg("serial-monitor.quickSendEdit", async (...args) => {
       const ctx = args[0] as { quickSendName?: string } | undefined;
       if (ctx?.quickSendName) {
         const key = ctx.quickSendName;
@@ -868,7 +874,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         getActiveCmd()!.setQsAdding(true);
       }
     }, { title: t("编辑"), category: cat });
-    reg("serial-monitor.quickSendDelete", async (...args: any[]) => {
+    reg("serial-monitor.quickSendDelete", async (...args) => {
       const ctx = args[0] as { quickSendName?: string } | undefined;
       if (ctx?.quickSendName) {
         getActiveCmd()!.handleDeleteQuickSend(ctx.quickSendName);
@@ -883,11 +889,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       const text = view.state.doc.toString();
       const filename = `serial-log-${Date.now()}.txt`;
       try {
-        const handle = await (window as any).showSaveFilePicker({
+        const handle = await _saveFilePicker?.({
           suggestedName: filename,
           types: [{ description: "Text", accept: { "text/plain": [".txt"] } }],
         });
-        const writable = await handle.createWritable();
+        if (!handle) throw new Error("File System Access API 不可用");
+const writable = await handle.createWritable();
         await writable.write(text);
         await writable.close();
       } catch {
@@ -925,7 +932,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // 重注册覆盖壳注册表 title，命令面板标题随状态翻转（暂停/继续、开启/关闭）。
   // handler 重注册保留：状态变化后闭包仍经 getActiveCmd() 现取，无过期闭包风险。
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.togglePause",
       async () => {
         getActiveCmd()!.setPaused((p) => !p);
@@ -935,7 +942,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [paused, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleSendMode",
       async () => {
         getActiveCmd()!.setSendMode(getActiveCmd()!.sendMode === SEND_MODE_HEX ? SEND_MODE_TEXT : SEND_MODE_HEX);
@@ -945,7 +952,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [sendMode, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleEcho",
       async () => {
         getActiveCmd()!.setShowEcho(!getActiveCmd()!.showEcho);
@@ -955,7 +962,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [showEcho, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleLineNumbers",
       async () => {
         getActiveCmd()!.setShowLineNumbers(!getActiveCmd()!.showLineNumbers);
@@ -965,7 +972,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [showLineNumbers, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleSystemLog",
       async () => {
         getActiveCmd()!.setSeparateSystemLog(!getActiveCmd()!.separateSystemLog);
@@ -975,7 +982,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [separateSystemLog, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleAutoRepeat",
       async () => {
         getActiveCmd()!.setAutoRepeat(!getActiveCmd()!.autoRepeat);
@@ -985,7 +992,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [autoRepeat, t]);
 
   useEffect(() => {
-    (window as any).linkdesk?.commands?.registerCommand?.(
+    window.linkdesk?.commands?.registerCommand?.(
       "serial-monitor.toggleAutoClear",
       async () => {
         getActiveCmd()!.setAutoClear(!getActiveCmd()!.autoClear);
@@ -999,7 +1006,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     const view = cmView.current;
     if (!view) return;
     if (!query) {
-      view.dispatch({ effects: clearSearchDecos.of(null as any) });
+      view.dispatch({ effects: clearSearchDecos.of(undefined) });
       setSearchCount(0);
       setSearchIdx(0);
       searchMatchesRef.current = [];
@@ -1045,7 +1052,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const closeSearch = useCallback(() => {
     setSearchVisible(false);
     setSearchText("");
-    cmView.current?.dispatch({ effects: clearSearchDecos.of(null as any) });
+    cmView.current?.dispatch({ effects: clearSearchDecos.of(undefined) });
     setSearchCount(0);
     setSearchIdx(0);
     searchMatchesRef.current = [];

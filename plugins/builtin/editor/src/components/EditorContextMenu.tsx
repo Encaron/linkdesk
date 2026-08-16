@@ -8,7 +8,7 @@
 
 /** 在插件加载时调用——注册编辑器上下文菜单项 */
 export function registerEditorContextMenu(): void {
-  (window as any).linkdesk?.menu?.registerItems("editorContext", "editor", [
+  window.linkdesk?.menu?.registerItems("editorContext", "editor", [
     {
       command: "editor.goToDefinition",
       group: "navigation",

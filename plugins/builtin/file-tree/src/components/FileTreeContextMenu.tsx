@@ -12,7 +12,7 @@ import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "../utils/pathUtils";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 import { fileTreeClipboard } from "../services/FileTreeClipboard";
 import { executeSafeDrop } from "../services/FileTreeDnD";
 
@@ -46,7 +46,7 @@ export function clearFileTreeHandle(): void {
 /** E5#108c：写路径到系统剪贴板——原生 CF_HDROP 优先 + 纯文本 fallback */
 function writeSystemClipboard(uris: string[]): void {
   // 原生：Windows 资源管理器可粘贴
-  (window as any).linkdesk?.clipboard?.writeFileList?.(uris);
+  window.linkdesk?.clipboard?.writeFileList?.(uris);
   // 纯文本：编辑器/终端可粘贴
   const ta = document.createElement("textarea");
   ta.value = uris.join("\n");
@@ -101,12 +101,12 @@ export function activateFileTreeContextMenu(): void {
 
   // 新增命令（不在 plugin.json contributes.commands 中——此处是唯一注册点）
   // ── E4V#17: copyPath + copyRelativePath ──
-  lk.commands.registerCommand("explorer.copyPath", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.copyPath", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
     await navigator.clipboard.writeText(ctx.uri);
   });
-  lk.commands.registerCommand("explorer.copyRelativePath", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.copyRelativePath", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
     const folders = await lk.workspace.getFolders();
@@ -117,26 +117,26 @@ export function activateFileTreeContextMenu(): void {
   });
 
   // ── E4V#18: revealInOS ──
-  lk.commands.registerCommand("explorer.revealInOS", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.revealInOS", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
-    (window as any).linkdesk?.shell?.showItemInFolder(ctx.uri);
+    window.linkdesk?.shell?.showItemInFolder(ctx.uri);
   });
 
   // ── E4V#19 + E5#22: openInTerminal——从配置读取终端类型，不再硬编码 PowerShell ──
-  lk.commands.registerCommand("explorer.openInTerminal", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.openInTerminal", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx) return;
     const targetPath = ctx.isDirectory ? ctx.uri : dirname(ctx.uri);
     // 插件走 linkdesk.configuration API——禁止直接 import ConfigurationService
-    const cfg = (window as any).linkdesk?.configuration;
-    const terminalExe = (await cfg?.get("terminal.external.windowsExec")) || "powershell";
-    const customCommand = (await cfg?.get("terminal.external.customCommand")) || "";
-    (window as any).linkdesk?.shell?.openInTerminal(targetPath, terminalExe, customCommand);
+    const cfg = window.linkdesk?.configuration;
+    const terminalExe = (await cfg?.get<string>("terminal.external.windowsExec")) || "powershell";
+    const customCommand = (await cfg?.get<string>("terminal.external.customCommand")) || "";
+    window.linkdesk?.shell?.openInTerminal(targetPath, terminalExe, customCommand);
   });
 
   // ── E4V#30: revealInExplorer——定位文件并展开目录链 ──
-  lk.commands.registerCommand("explorer.revealInExplorer", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.revealInExplorer", async (...args) => {
     const hd = h(); if (!hd) return;
     // 兼容多种 arg 格式：string | { filePath } | { uri } | FileMenuContext
     let targetUri: string | null = null;
@@ -155,14 +155,14 @@ export function activateFileTreeContextMenu(): void {
     await hd.reveal(targetUri);
   });
   // ── E4V#28: openFile —— 扩展名→FileAssociation→createTab ──
-  lk.commands.registerCommand("explorer.openFile", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.openFile", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx || ctx.isDirectory) return;
     const name = ctx.uri.split("/").pop() ?? ctx.uri;
     _openFileFn?.(ctx.uri, name, "pin");
   });
   // ── E4V#29: openToSide —— 在侧边分屏打开文件 ──
-  lk.commands.registerCommand("explorer.openToSide", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.openToSide", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (!ctx || ctx.isDirectory) return;
     const name = ctx.uri.split("/").pop() ?? ctx.uri;
@@ -170,7 +170,7 @@ export function activateFileTreeContextMenu(): void {
   });
   lk.commands.registerCommand("explorer.openWith", placeholder("explorer.openWith"));
   // ── E4V#25: cut + copy（含系统剪贴板写入——桌面粘贴需要）──
-  lk.commands.registerCommand("explorer.cut", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.cut", async (...args) => {
     const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
@@ -181,7 +181,7 @@ export function activateFileTreeContextMenu(): void {
     writeSystemClipboard(uris);
     hd.rerender();
   });
-  lk.commands.registerCommand("explorer.copy", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.copy", async (...args) => {
     const hd = h(); if (!hd) return;
     const ctx = args[0] as FileMenuContext | undefined;
     const selection = hd.getSelection();
@@ -192,7 +192,7 @@ export function activateFileTreeContextMenu(): void {
     writeSystemClipboard(uris);
   });
   // ── E4V#26: paste ──
-  lk.commands.registerCommand("explorer.paste", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.paste", async (...args) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
@@ -213,14 +213,14 @@ export function activateFileTreeContextMenu(): void {
     hd.rerender();
     await model.refresh(targetDir);
     const parent = model.findClosest(targetDir);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
   });
   // ── E4V#27: F2 行内重命名 ──
   lk.commands.registerCommand("explorer.rename", async () => {
     h()?.startRename();
   });
   // ── E4V#24: delete ──
-  lk.commands.registerCommand("explorer.delete", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.delete", async (...args) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
     const ctx = args[0] as FileMenuContext | undefined;
@@ -231,7 +231,7 @@ export function activateFileTreeContextMenu(): void {
     const confirmDelete = await lk.configuration.get("explorer.confirmDelete") ?? true;
     if (confirmDelete) {
       const nameList = uris.map((u) => `"${u.split("/").pop() ?? u}"`).join(", ");
-      const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(`确定删除 ${nameList}？`);
+      const confirmed = await window.linkdesk?.dialog?.confirm?.(`确定删除 ${nameList}？`);
       if (!confirmed) return;
     }
     const parentUris = new Set<string>();
@@ -243,7 +243,7 @@ export function activateFileTreeContextMenu(): void {
     for (const parentUri of parentUris) {
       await model.refresh(parentUri);
       const parent = model.findClosest(parentUri);
-      if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+      if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
     }
   });
   lk.commands.registerCommand("explorer.findInFolder", placeholder("explorer.findInFolder"));
@@ -264,7 +264,7 @@ export function activateFileTreeContextMenu(): void {
         model.collapse(item.uri);
       } else {
         model.expand(item.uri);
-        await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+        await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
       }
     } else {
       _openFileFn?.(item.uri, item.name, "pin");
@@ -288,7 +288,7 @@ export function activateFileTreeContextMenu(): void {
     return model.roots[0]?.uri ?? "";
   };
 
-  lk.commands.registerCommand("explorer.newFile", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.newFile", async (...args) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
@@ -307,10 +307,10 @@ export function activateFileTreeContextMenu(): void {
     await lk.filesystem.writeTextFile(filePath, "");
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
   });
 
-  lk.commands.registerCommand("explorer.newFolder", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.newFolder", async (...args) => {
     const hd = h(); if (!hd) return;
     const model = hd.getModel();
     const dirUri = _resolveDirUri(hd, args[0] as FileMenuContext | undefined);
@@ -329,7 +329,7 @@ export function activateFileTreeContextMenu(): void {
     await lk.filesystem.createDir(dirPath);
     await model.refresh(dirUri);
     const parent = model.findClosest(dirUri);
-    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+    if (parent && model.isExpanded(parent.uri)) await model.getChildren(parent).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
   });
 
   lk.commands.registerCommand("explorer.refresh", async () => {
@@ -338,7 +338,7 @@ export function activateFileTreeContextMenu(): void {
     await model.refresh();
     for (const uri of model.getExpandedUris()) {
       const item = model.findClosest(uri);
-      if (item) await model.getChildren(item).catch((e: any) => { console.error("[file-tree] 刷新目录失败:", e); });
+      if (item) await model.getChildren(item).catch((e) => { console.error("[file-tree] 刷新目录失败:", e); });
     }
   });
 
@@ -347,7 +347,7 @@ export function activateFileTreeContextMenu(): void {
   });
 
   // ── E4V#xx: removeFolder——关闭文件夹（从工作区移除根目录） ──
-  lk.commands.registerCommand("explorer.removeFolder", async (...args: any[]) => {
+  lk.commands.registerCommand("explorer.removeFolder", async (...args) => {
     const ctx = args[0] as FileMenuContext | undefined;
     if (ctx?.uri) {
       // 右键菜单调用——关闭指定文件夹
@@ -374,11 +374,11 @@ export function activateFileTreeContextMenu(): void {
   });
 
   // ── E4V#40m: Diff——选择以比较 / 与已选项比较 ──
-  lk.commands.registerCommand("editor.selectForCompare", async (...args: any[]) => {
+  lk.commands.registerCommand("editor.selectForCompare", async (...args) => {
     const item = (args[0] as { uri?: string }) ?? {};
     if (item.uri) _selectedForCompare = item.uri;
   });
-  lk.commands.registerCommand("editor.compareWithSelected", async (...args: any[]) => {
+  lk.commands.registerCommand("editor.compareWithSelected", async (...args) => {
     const item = (args[0] as { uri?: string }) ?? {};
     const uri = item.uri;
     if (!uri || !_selectedForCompare || _selectedForCompare === uri) return;
@@ -394,7 +394,7 @@ export function activateFileTreeContextMenu(): void {
   // 5 组：navigation / editing / creation / modify / search
   // when 条件由 ContextMenu 组件调用 ContextKeyService.matches() 求值
 
-  (window as any).linkdesk?.menu?.registerItems("FileContext", "file-tree", [
+  window.linkdesk?.menu?.registerItems("FileContext", "file-tree", [
     // 第 1 组：导航/打开
     { command: "explorer.openFile",        group: "1_navigation", when: "explorerItemIsFile" },
     { command: "explorer.openToSide",      group: "1_navigation", when: "explorerItemIsFile" },
@@ -431,7 +431,7 @@ export function activateFileTreeContextMenu(): void {
 
   // ── E4V#33: MenuBar 菜单栏贡献——[文件] 追加 + 新建 [编辑] 菜单 ──
   // pattern: 父项 command="" label="按钮名" children=[...]——对标 coreCommands.ts
-  (window as any).linkdesk?.menu?.registerItems("MenuBar", "file-tree", [
+  window.linkdesk?.menu?.registerItems("MenuBar", "file-tree", [
     // 追加到已有 [文件] 菜单
     { command: "explorer.newFile",        group: "file", label: "新建文件" },
     { command: "explorer.newFolder",      group: "file", label: "新建文件夹" },
@@ -473,7 +473,7 @@ interface FileTreeContextMenuProps {
 const FileTreeContextMenu: React.FC<FileTreeContextMenuProps> = ({ item, anchor, onClose }) => {
   // E4V#12: 瞬态 context key——菜单渲染前注入，关闭时清除
   useEffect(() => {
-    const lk = (window as any).linkdesk;
+    const lk = window.linkdesk;
     lk?.contextKey?.set("explorerItemIsFile", item?.isDirectory === false);
     lk?.contextKey?.set("explorerItemIsDir", item?.isDirectory === true);
     lk?.contextKey?.set("explorerItemIsRoot", item?.parent === null);

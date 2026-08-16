@@ -71,10 +71,31 @@ export interface LinkDeskConfigSchema {
   };
 }
 
-/** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集） */
+/** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
+ *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
+ *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。 */
 export interface PluginListEntry {
   pluginId: string;
-  manifest: Partial<PluginManifest>;
+  manifest: PluginListSubset;
+}
+
+/** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集） */
+export interface PluginInfoEntry {
+  pluginId: string;
+  name: string;
+  description?: string;
+  version?: string;
+}
+
+/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
+export interface PluginListSubset {
+  name?: string;
+  description?: string;
+  version?: string;
+  core?: boolean;
+  author?: string;
+  statusBar?: PluginManifest["statusBar"];
+  contributes?: PluginManifest["contributes"];
 }
 
 /** 环境信息——env.get() 返回（主进程 env-handlers 组装） */
@@ -155,15 +176,14 @@ export interface LinkDeskAPI {
 
   /** 配置—新名——对标 VS Code vscode.workspace.getConfiguration */
   configuration: {
-    /** 读取配置值——运行时动态值，调用方显式指定 T 或收窄 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 配置值类型由键决定，get<number>("k") 显式窄化；无参默认 any 与 VS Code getConfiguration 同宽
-    get<T = any>(key: string): Promise<T>;
+    /** 读取配置值——运行时动态值，无类型参数默认 unknown；调用方显式 get<number>("k") 窄化或自行收窄 */
+    get<T = unknown>(key: string): Promise<T>;
     /** 写入配置值 */
     set(key: string, value: unknown): Promise<void>;
     /** 获取配置 schema */
     getSchema(key?: string): Promise<LinkDeskConfigSchema>;
-    /** 订阅配置变更——返回 unsubscribe 函数。值运行时动态，收窄后使用 */
-    onChange(key: string, cb: (value: unknown) => void): () => void;
+    /** 订阅配置变更——返回 unsubscribe 函数。值运行时动态，T 由订阅方 cb 推断（events.on 同款泛型，防逆变报错） */
+    onChange<T = unknown>(key: string, cb: (value: T) => void): () => void;
     // ══ E5.7#76：以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
     // 池 preload 注入（SettingsView 在池渲染）——required，壳 preload 无此面。
     // 通用插件请用上面的 get/set/getSchema/onChange。 ══
@@ -217,8 +237,8 @@ export interface LinkDeskAPI {
 
   /** E5#71：插件持久化存储——集中缓存 + 文件持久化 */
   pluginState: {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 状态值类型由键决定，get<string>("k") 显式窄化；默认 any 与配置 get 同宽
-    get<T = any>(pluginId: string, key: string): Promise<T | undefined>;
+    /** 读取持久化状态——运行时动态值，默认 unknown；调用方显式 get<string>(...) 窄化或自行收窄 */
+    get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
     set(pluginId: string, key: string, value: unknown): Promise<void>;
   };
 
@@ -243,6 +263,8 @@ export interface LinkDeskAPI {
     focusBySourceId(sourceId: string): Promise<void>;
     updateLabelBySourceId(sourceId: string, label: string): Promise<void>;
     closeBySourceId(sourceId: string): Promise<void>;
+    /** E5.6#11.5g3：标签页激活订阅——文件树 autoReveal 消费（preload-pool 实有面，#98 补录契约） */
+    onDidChangeActiveTab(cb: (data: { tabId: string; pluginId?: string; filePath?: string }) => void): () => void;
   };
 
   /** E5#67：弹窗——确认/提示/文件选择 */
@@ -257,7 +279,8 @@ export interface LinkDeskAPI {
 
   /** 通用事件订阅 + 发布——插件间数据管道。channel 为自由字符串，载荷按通道分型——订阅方收窄 */
   events: {
-    on(channel: string, cb: (payload: unknown) => void): () => void;
+    /** E5.7#98：on 泛型化——载荷类型按订阅方 cb 推断（event-system EventSystemApi 同款，#97 已泛型化 impl），通道契约类型（ConfigurationChangedPayload 等）可直传 */
+    on<T = unknown>(channel: string, cb: (payload: T) => void): () => void;
     emit(channel: string, payload: unknown): void;
     heartbeat?(): void;
     notifyTheme?(isDark: boolean): void;
@@ -308,8 +331,8 @@ export interface LinkDeskAPI {
     readdir?(p: string): Promise<string[]>;
   };
 
-  /** 工作区——池 preload 注入（壳侧经 WorkspaceService 直用） */
-  workspace?: {
+  /** 工作区——池 preload 注入（壳侧经 WorkspaceService 直用）。池权威命名空间——插件必用面（file-tree），必选 */
+  workspace: {
     getFolders(): Promise<WorkspaceFolder[]>;
     getActive(): Promise<string | undefined>;
     setActive(uri: string): Promise<void>;
@@ -320,8 +343,8 @@ export interface LinkDeskAPI {
     onDidChangeActiveWorkspace(cb: (uri: string | null) => void): () => void;
   };
 
-  /** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有） */
-  keybindings?: {
+  /** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
+  keybindings: {
     getKeybindings(): Promise<Keybinding[]>;
     getConflicts(): Promise<unknown>;
     registerKeybinding(binding: unknown): Promise<void>;
@@ -350,9 +373,9 @@ export interface LinkDeskAPI {
   /** OS 拖入文件路径获取 */
   getFilePath?: (file: File) => string;
 
-  /** 路径工具——壳侧 preload 注入 */
-  path?: {
-    appDataDir(): Promise<string>;
+  /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 壳侧独有 */
+  path: {
+    appDataDir?(): Promise<string>;
     normalize(p: string): string;
     join(...parts: string[]): string;
     basename(p: string): string;
@@ -369,16 +392,16 @@ export interface LinkDeskAPI {
     readManifest?(id: string): Promise<string>;
   };
 
-  /** 插件管理——桥接 IpcBridgeHandler → loader 函数 */
-  pluginManager?: {
+  /** 插件管理——桥接 IpcBridgeHandler → loader 函数。池权威（marketplace 插件消费），必选 */
+  pluginManager: {
     list(): Promise<PluginListEntry[]>;
     enable(id: string): Promise<unknown>;
     disable(id: string): Promise<unknown>;
     uninstall(id: string): Promise<unknown>;
     install(path: string): Promise<unknown>;
     reinstall(id: string): Promise<unknown>;
-    getDisabled(): Promise<unknown>;
-    getUninstalled(): Promise<unknown>;
+    getDisabled(): Promise<PluginInfoEntry[]>;
+    getUninstalled(): Promise<PluginInfoEntry[]>;
     isDisabled(id: string): Promise<boolean>;
     /** E5.7#48：装/卸/重装成功 → 通知主进程全量重扫三表 */
     notifyManifestChanged?(): void;
@@ -496,7 +519,7 @@ export interface LinkDeskAPI {
 
   /** E5.6#14-lsp：LSP 桥——自动补全/F12/诊断/重命名 */
   lsp: {
-    spawn(command: string, args: string[] | undefined, pluginId: string): Promise<unknown>;
+    spawn(command: string, args: string[] | undefined, pluginId: string): Promise<string>;
     write(channelId: string, data: string): void;
     dispose(channelId: string): Promise<unknown>;
     onData(cb: (channelId: string, data: string) => void): () => void;

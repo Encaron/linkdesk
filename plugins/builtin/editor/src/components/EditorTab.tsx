@@ -21,7 +21,7 @@ import type { EditorStatus } from "./EditorStatusBar";
 import EditorBreadcrumb from "./EditorBreadcrumb";
 import { trackDirtyFile, clearDirtyFile, loadBackup, scheduleClearOnUnmount, cancelPendingClear } from "../services/hot-exit";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 /**
  * E4V#40q——从 ConfigurationService 读取编辑器配置，构建 Monaco IEditorOptions。
@@ -82,7 +82,7 @@ export interface EditorTabProps {
 
 const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   const { t } = useTranslation();
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const [model, setModel] = useState<EditorModel | null>(null);
   const [value, setValue] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -234,7 +234,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
   useEffect(() => {
     const wasActive = prevActiveRef.current;
     prevActiveRef.current = isActive;
-    lk.configuration.get("files.autoSave").then((autoSave: string) => {
+    lk.configuration.get("files.autoSave").then((autoSave) => {
       if ((autoSave ?? "off") === "onFocusChange" && wasActive && !isActive && model && model.isDirty()) {
         handleSave();
       }

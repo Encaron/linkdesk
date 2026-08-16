@@ -25,9 +25,13 @@ const pathMock = {
   },
 };
 
+// E5.7#98：测试全局窄类型 cast——替代 (globalThis as any)（__ldkConfigStore 由本文件声明、测试文件消费）
+type TestGlobal = { window?: Window; __ldkConfigStore?: Map<string, unknown> };
+const _g = globalThis as TestGlobal;
+
 // configuration——默认返回 null，测试中按需 mock。
 // __ldkConfigStore 暴露给测试——测试可直接设置值控制 get() 返回。
-const _configStore = (globalThis as any).__ldkConfigStore = new Map<string, unknown>();
+const _configStore = (_g.__ldkConfigStore = new Map<string, unknown>());
 const configurationMock = {
   get: async (key: string) => _configStore.get(key) ?? null,
   set: async (key: string, v: unknown) => { _configStore.set(key, v); },
@@ -69,8 +73,9 @@ const tabsMock = {
   closeBySourceId: async (_sourceId: string) => {},
 };
 
-(globalThis as any).window = (globalThis as any).window || {};
-(globalThis.window as any).linkdesk = {
+// 最小 mock——故意不满足 LinkDeskAPI 全契约（测试按需覆盖），经 linkdesk?: object 窄口赋值
+_g.window = _g.window ?? ({} as Window);
+(_g.window as Window & { linkdesk?: object }).linkdesk = {
   path: pathMock,
   configuration: configurationMock,
   config: configurationMock,

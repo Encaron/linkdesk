@@ -9,9 +9,14 @@ import { ContextKeyService } from "@src/core/registry/ContextKeyService";
 
 // E5#70e: 生产代码用 linkdesk.contextKey.set——测试环境 mock 回 ContextKeyService
 function mockContextKey() {
-  (window as any).linkdesk = {
-    ...((window as any).linkdesk ?? {}),
-    contextKey: { set: (k: string, v: unknown) => ContextKeyService.setValue(k, v) },
+  window.linkdesk = {
+    ...(window.linkdesk ?? {}),
+    contextKey: {
+      set: (k: string, v: unknown) => {
+        ContextKeyService.setValue(k, v);
+        return Promise.resolve();
+      },
+    },
   };
 }
 mockContextKey();

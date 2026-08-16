@@ -37,9 +37,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const [protocols, setProtocols] = useState<Array<{ id: string; name: string; pluginId: string; mode: string }>>([]);
   const [shellActiveProtocolId, setShellActiveProtocolId] = useState("bracket");
   useEffect(() => {
-    const lk = (window as any).linkdesk;
-    lk?.protocol?.listProtocols?.().then((p: any) => setProtocols(p ?? []));
-    lk?.protocol?.getActiveProtocolId?.().then((id: any) => setShellActiveProtocolId(id ?? "bracket"));
+    const lk = window.linkdesk;
+    lk?.protocol?.listProtocols?.().then((p) => setProtocols(p ?? []));
+    lk?.protocol?.getActiveProtocolId?.().then((id) => setShellActiveProtocolId(id ?? "bracket"));
   }, []);
 
   // ── session.connected 派生规则（Bug 3 防御） ──
@@ -61,7 +61,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
       setPortName(port, activeSession?.receiveCoding);
       // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
-      (window as any).linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e: any) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
+      window.linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
     },
     [sourceId, updateSession, setPortName, activeSession?.receiveCoding],
   );
@@ -77,7 +77,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
   const handleProtocolChange = useCallback(
     (protocolId: string) => {
-      (window as any).linkdesk?.protocol?.setActiveProtocolId?.(protocolId);
+      window.linkdesk?.protocol?.setActiveProtocolId?.(protocolId);
       updateSession({ protocol: protocolId });
     },
     [updateSession],

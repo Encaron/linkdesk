@@ -23,10 +23,14 @@ import {
   type TabState,
   type LayoutData,
 } from "../useTabManager";
-import { getAllLeafGroupIds } from "../splitTree";
+import { getAllLeafGroupIds, type SplitNode } from "../splitTree";
 import { detectDropZone } from "../tabDragTypes";
 import { registerViewPlugin, clearRegistry } from "../../pluginLoader/viewRegistry";
 import type { ViewPluginEntry } from "../../core/api/types";
+
+// E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
+type BranchNode = Extract<SplitNode, { type: "branch" }>;
+type LeafNode = Extract<SplitNode, { type: "leaf" }>;
 
 /* ── 辅助函数 ── */
 
@@ -95,7 +99,7 @@ describe("createInitialTabState", () => {
     expect(state.groups[0].tabs[0].type).toBe(FALLBACK_PLUGIN_ID);
     expect(state.groups[0].activeTabId).toBe(state.groups[0].tabs[0].id);
     expect(state.root.type).toBe("leaf");
-    expect((state.root as any).groupId).toBe("main");
+    expect((state.root as LeafNode).groupId).toBe("main");
   });
 });
 
@@ -255,8 +259,8 @@ describe("reduceSplitTab", () => {
     const leafIds = getAllLeafGroupIds(next.root);
     expect(leafIds).toHaveLength(2);
     expect(next.root.type).toBe("branch");
-    expect((next.root as any).direction).toBe("horizontal");
-    expect((next.root as any).sizes).toEqual([50, 50]);
+    expect((next.root as BranchNode).direction).toBe("horizontal");
+    expect((next.root as BranchNode).sizes).toEqual([50, 50]);
     expect(next.groups).toHaveLength(2);
   });
 

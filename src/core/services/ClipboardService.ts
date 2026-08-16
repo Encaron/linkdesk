@@ -12,7 +12,7 @@
 /** 写入文本到剪贴板——主路径走 Electron 主进程 API，fallback 走 execCommand('copy') */
 export function writeClipboardText(text: string): void {
   // 主路径：Electron 主进程 clipboard.writeText()——OS 级，不检查焦点/手势
-  const linkdesk = (window as any).linkdesk;
+  const linkdesk = window.linkdesk;
   if (linkdesk?.clipboard?.writeText) {
     linkdesk.clipboard.writeText(text);
     return;

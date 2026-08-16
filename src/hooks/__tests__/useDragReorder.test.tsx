@@ -6,6 +6,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useDragReorder } from "../useDragReorder";
+import type { UseDragReorderOptions } from "../useDragReorder";
 
 /* ── Helpers ── */
 
@@ -20,7 +21,8 @@ function fireWindowKeyDown(key: string) {
 }
 
 function createMockMouseEvent(x: number, y: number): React.MouseEvent {
-  return { clientX: x, clientY: y, preventDefault: vi.fn(), stopPropagation: vi.fn() } as any;
+  // E5.7#98：轻量事件桩——只填 hook 用到的字段，unknown 桥接替代 as any
+  return { clientX: x, clientY: y, preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.MouseEvent;
 }
 
 describe("useDragReorder", () => {
@@ -31,7 +33,7 @@ describe("useDragReorder", () => {
     document.body.appendChild(container);
     // jsdom 缺以下 API——mock
     if (!document.elementFromPoint) {
-      (document as any).elementFromPoint = () => null;
+      document.elementFromPoint = () => null;
     }
     if (!HTMLElement.prototype.closest) {
       HTMLElement.prototype.closest = () => null;
@@ -50,11 +52,12 @@ describe("useDragReorder", () => {
     const onDraggingChange = vi.fn();
     const computeInsertIndex = vi.fn((_x, _y, _el, _from, _count) => 0);
     const isInPureEditor = vi.fn(() => false);
-    const computeSplitZone = vi.fn(() => null) as any;
+    // E5.7#98：mock 类型取 hook 正源——mockReturnValue 才能收 zone 对象
+    const computeSplitZone = vi.fn<NonNullable<UseDragReorderOptions["computeSplitZone"]>>(() => null);
 
     const ref = { current: container };
     const { result } = renderHook(() =>
-      useDragReorder(ref as any, {
+      useDragReorder(ref, {
         itemCount: 5,
         onReorder,
         onDropSplit,
@@ -112,7 +115,7 @@ describe("useDragReorder", () => {
 
     const ref = { current: container };
     const { result } = renderHook(() =>
-      useDragReorder(ref as any, {
+      useDragReorder(ref, {
         itemCount: 5, threshold: 5, splitThreshold: 15,
         onReorder: vi.fn(), onDraggingChange, onDragDropZone,
         isInPureEditor,

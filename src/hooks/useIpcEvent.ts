@@ -17,8 +17,9 @@ import { useEffect, useRef, useState } from "react";
 
 type IpcEventName = "serial-data" | "serial-stats" | "serial-system";
 
-/** 事件通道 → preload 注册器映射 */
-const EVENT_SUBSCRIBERS: Record<IpcEventName, (cb: (payload: any) => void) => () => void> = {
+/** 事件通道 → preload 注册器映射。E5.7#98：unknown 兜底——各通道 payload 形状不同，
+ *  消费方 useIpcEvent<T> 泛型自行窄化 */
+const EVENT_SUBSCRIBERS: Record<IpcEventName, (cb: (payload: unknown) => void) => () => void> = {
   "serial-data":  (cb) => window.linkdesk?.serial?.onData?.(cb) ?? (() => {}),
   "serial-stats": (cb) => window.linkdesk?.serial?.onStats?.(cb) ?? (() => {}),
   "serial-system":(cb) => window.linkdesk?.serial?.onSystem?.(cb) ?? (() => {}),
@@ -42,8 +43,9 @@ export function useIpcEvent<T = string>(
 
     const hasIpc = !!window.linkdesk?.serial;
     const subscribe = EVENT_SUBSCRIBERS[eventName];
-    unsubscribe = subscribe((payload: T) => {
-      if (genRef.current === gen) callbackRef.current(payload);
+    // wire 是 unknown——消费方声明的 T 在此边界窄化（E5.7#98）
+    unsubscribe = subscribe((payload: unknown) => {
+      if (genRef.current === gen) callbackRef.current(payload as T);
     });
     if (hasIpc) {
       setIsReady(true);

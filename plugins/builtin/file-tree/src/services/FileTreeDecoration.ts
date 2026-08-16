@@ -14,7 +14,7 @@
 
 import type { FileTreeModel, ExplorerItem } from "./FileTreeModel";
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 export class FileTreeDecorationService {
   private _model: FileTreeModel;
@@ -46,8 +46,8 @@ export class FileTreeDecorationService {
   /** 查询并应用单个文件的装饰——由 getChildren 调用（新节点懒加载路径） */
   async decorate(item: ExplorerItem): Promise<void> {
     // 新节点路径配置逐项读（批量小、调用简单）；全量刷新路径走 _redecorateLoaded 批量读
-    const colorsOn = (await lk.configuration.get("explorer.decorations.colors")) ?? true;
-    const badgesOn = (await lk.configuration.get("explorer.decorations.badges")) ?? true;
+    const colorsOn = (await lk.configuration.get<boolean>("explorer.decorations.colors")) ?? true;
+    const badgesOn = (await lk.configuration.get<boolean>("explorer.decorations.badges")) ?? true;
     await this._applyDecoration(item, colorsOn, badgesOn);
   }
 
@@ -59,8 +59,8 @@ export class FileTreeDecorationService {
   private async _redecorateLoaded(): Promise<void> {
     // E4V#34g3/g4: 尊重 decorations.colors / decorations.badges 开关——每批只读一次
     //（decorate 的逐项 2×IPC 在树大时太慢）
-    const colorsOn = (await lk.configuration.get("explorer.decorations.colors")) ?? true;
-    const badgesOn = (await lk.configuration.get("explorer.decorations.badges")) ?? true;
+    const colorsOn = (await lk.configuration.get<boolean>("explorer.decorations.colors")) ?? true;
+    const badgesOn = (await lk.configuration.get<boolean>("explorer.decorations.badges")) ?? true;
     const visit = async (item: ExplorerItem): Promise<void> => {
       await this._applyDecoration(item, colorsOn, badgesOn);
       if (item.children) {

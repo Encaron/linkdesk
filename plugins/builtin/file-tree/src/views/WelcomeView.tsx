@@ -7,7 +7,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { basename, normalizePath } from "../utils/pathUtils";
 
-const lk = () => (window as any).linkdesk;
+const lk = () => window.linkdesk;
 
 const PLUGIN_ID = "file-tree";
 const RECENT_KEY = "recentFolders";
@@ -23,28 +23,28 @@ const WelcomeView: React.FC = () => {
   /* ── 最近文件夹更新 ── */
 
   const updateRecent = useCallback(async (uris: string[]) => {
-    const stored = await (window as any).linkdesk?.pluginState?.get(PLUGIN_ID, RECENT_KEY) ?? [];
+    const stored = (await window.linkdesk?.pluginState?.get<string[]>(PLUGIN_ID, RECENT_KEY)) ?? [];
     const merged = [...new Set([...uris, ...stored])].slice(0, MAX_RECENT);
-    await (window as any).linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, merged);
+    await window.linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, merged);
     setRecentFolders(merged);
   }, []);
 
   /* ── 加载最近文件夹 ── */
 
   useEffect(() => {
-    (window as any).linkdesk?.pluginState?.get(PLUGIN_ID, RECENT_KEY).then((raw: unknown) => {
+    window.linkdesk?.pluginState?.get(PLUGIN_ID, RECENT_KEY).then((raw: unknown) => {
       const arr = (Array.isArray(raw) ? raw : []) as string[];
       // E4V#36c: 清理历史残留——去重 + 归一化（防旧数据含 \ 或重复路径如 工具软件/工具软件）
       const cleaned = [...new Set(arr.map((p: string) => normalizePath(p)))];
       if (cleaned.length !== arr.length || cleaned.some((p: string, i: number) => p !== arr[i])) {
-        void (window as any).linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, cleaned);
+        void window.linkdesk?.pluginState?.set(PLUGIN_ID, RECENT_KEY, cleaned);
       }
       setRecentFolders(cleaned);
     });
     const unsub = lk().workspace?.onDidChangeFolders(async () => {
       const folders = await lk().workspace.getFolders();
       if (folders.length > 0) {
-        updateRecent(folders.map((f: any) => f.uri));
+        updateRecent(folders.map((f) => f.uri));
       }
     });
     return unsub;

@@ -18,17 +18,18 @@ function mockDeps(overrides?: Partial<InitDeps>): InitDeps {
     initPluginLoader: vi.fn().mockResolvedValue(undefined),
     startPluginWatcher: vi.fn(),
     getLoadedPluginManifests: vi.fn().mockReturnValue([
-      { pluginId: "editor", manifest: {} },
-      { pluginId: "file-tree", manifest: {} },
+      { pluginId: "editor", manifest: { name: "Editor", version: "1.0" } },
+      { pluginId: "file-tree", manifest: { name: "File Tree", version: "1.0" } },
     ]),
     factorySlotsInitialize: vi.fn(),
     mountGlobalKeybindings: vi.fn().mockReturnValue(vi.fn()),
     initUserKeybindings: vi.fn().mockResolvedValue(undefined),
-    getConfigurationValue: vi.fn((key: string): any => {
+    // E5.7#98：泛型契约 <T>(key) => T | undefined 的 mock——实现 unknown 兜底 + 契约边界窄化（as any 删除）
+    getConfigurationValue: vi.fn((key: string): unknown => {
       if (key === "app.theme") return "Dark";
       if (key === "app.language") return "zh";
       return undefined;
-    }) as any,
+    }) as InitDeps["getConfigurationValue"],
     applyConfiguration: vi.fn(),
     getSerialStatus: vi.fn().mockResolvedValue({ isOpen: false, portName: "", baudRate: 115200 }),
     getTabLayout: vi.fn().mockReturnValue({

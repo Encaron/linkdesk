@@ -185,8 +185,8 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
   for (const [key, value] of Object.entries(prev.settings)) {
     try {
       await setConfigurationValue(key, value, "user");
-    } catch (e: any) {
-      errors.push(`回退——设置 "${key}" 失败: ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`回退——设置 "${key}" 失败: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -195,8 +195,8 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
     try {
       const { addFolder } = await import("./WorkspaceService");
       addFolder(prev.workspaceRoot);
-    } catch (e: any) {
-      errors.push(`回退——工作区恢复失败: ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`回退——工作区恢复失败: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -315,8 +315,8 @@ export async function switchProfile(name: string): Promise<boolean> {
   for (const [key, value] of Object.entries(profile.settings)) {
     try {
       await setConfigurationValue(key, value, "user");
-    } catch (e: any) {
-      errors.push(`设置 "${key}" 失败: ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`设置 "${key}" 失败: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 
@@ -325,8 +325,8 @@ export async function switchProfile(name: string): Promise<boolean> {
     try {
       const { addFolder } = await import("./WorkspaceService");
       addFolder(profile.workspace);
-    } catch (e: any) {
-      errors.push(`工作区 "${profile.workspace}" 失败: ${e?.message || e}`);
+    } catch (e) {
+      errors.push(`工作区 "${profile.workspace}" 失败: ${e instanceof Error ? e.message : String(e)}`);
     }
   }
 

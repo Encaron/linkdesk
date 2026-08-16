@@ -9,7 +9,7 @@ import { ExtensionItem } from "../components/ExtensionItem";
 import "../styles/MarketplaceSidebar.css";
 
 export default function BuiltinListView() {
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
   const { builtin, loading } = useMarketplacePlugins();
 
   if (loading || builtin.length === 0) return null;

@@ -10,9 +10,11 @@ import { describe, it, expect } from "vitest";
 import { factorySlots } from "../services/FactorySlots";
 import type { SlotPluginEntry } from "../services/FactorySlots";
 
+// E5.7#98：测试替身只喂 FactorySlots 消费的字段——窄化为 SlotPluginEntry["manifest"]
+// （完整 PluginManifest 字段几十个，测试不需要）
 const SETTINGS_PLUGIN: SlotPluginEntry = {
   pluginId: "my-settings",
-  manifest: { name: "My Settings", version: "1.0", factoryRole: "settings" } as any,
+  manifest: { name: "My Settings", version: "1.0", factoryRole: "settings" } as SlotPluginEntry["manifest"],
 };
 
 describe("FactorySlots — initialize / getPluginId / hasSlot", () => {
@@ -29,7 +31,7 @@ describe("FactorySlots — initialize / getPluginId / hasSlot", () => {
 
   it("initialize — 先注册者优先，后注册者不覆盖", () => {
     factorySlots.initialize([
-      { pluginId: "other-settings", manifest: { name: "Other", version: "1.0", factoryRole: "settings" } as any },
+      { pluginId: "other-settings", manifest: { name: "Other", version: "1.0", factoryRole: "settings" } as SlotPluginEntry["manifest"] },
     ]);
     // 先注册者优先级高（settings 已在第一测试登记为 my-settings）
     expect(factorySlots.getPluginId("settings")).toBe("my-settings");
@@ -38,7 +40,7 @@ describe("FactorySlots — initialize / getPluginId / hasSlot", () => {
   it("initialize — 无 factoryRole 声明的插件不影响已登记的 slot", () => {
     const before = factorySlots.getPluginId("settings");
     factorySlots.initialize([
-      { pluginId: "no-role", manifest: { name: "No Role", version: "1.0" } as any },
+      { pluginId: "no-role", manifest: { name: "No Role", version: "1.0" } as SlotPluginEntry["manifest"] },
     ]);
     // 无 factoryRole 的插件不影响已登记 slot
     expect(factorySlots.getPluginId("settings")).toBe(before);
@@ -50,7 +52,7 @@ describe("FactorySlots — initialize / getPluginId / hasSlot", () => {
 
   it("initialize — 多个角色同时登记", () => {
     factorySlots.initialize([
-      { pluginId: "my-terminal", manifest: { name: "Terminal", version: "1.0", factoryRole: "terminal" } as any },
+      { pluginId: "my-terminal", manifest: { name: "Terminal", version: "1.0", factoryRole: "terminal" } as SlotPluginEntry["manifest"] },
     ]);
     expect(factorySlots.getPluginId("settings")).toBe("my-settings");
     expect(factorySlots.getPluginId("terminal")).toBe("my-terminal");

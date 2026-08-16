@@ -62,12 +62,13 @@ function useSystemMonospaceFonts(): string[] {
     async function load() {
       let familyNames: string[] = [];
 
-      // queryLocalFonts——Chromium 103+ / Electron 28+ 原生 API，返回所有本地字体
+      // queryLocalFonts——Chromium 103+ / Electron 28+ 原生 Local Font Access API，返回所有本地字体。
+      // E5.7#98：Chromium 专有 API——窄声明替代 as any（顺带删掉下游冗余 cast）
       if ("queryLocalFonts" in window) {
         try {
-          const localFonts = await (window as any).queryLocalFonts();
+          const localFonts = await (window as Window & { queryLocalFonts?: () => Promise<Array<{ family: string }>> }).queryLocalFonts?.();
           if (!cancelled) {
-            familyNames = (localFonts as Array<{ family: string }>)
+            familyNames = (localFonts ?? [])
               .map((f) => f.family)
               .filter((name, i, arr) => arr.indexOf(name) === i); // 去重
           }

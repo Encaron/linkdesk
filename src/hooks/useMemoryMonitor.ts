@@ -22,17 +22,30 @@ const POLL_INTERVAL = 10_000;
 // 模块级基线注册表——插件 mount → 记录基线，unmount → 对比
 const baselines = new Map<string, number>();
 
+// E5.7#98：Chromium 专有 performance.memory——非标准 API，窄类型声明替代 as any
+interface ChromiumMemory {
+  usedJSHeapSize: number;
+  jsHeapSizeLimit: number;
+  totalJSHeapSize?: number;
+}
+
+function getChromiumMemory(): ChromiumMemory | undefined {
+  return (performance as Performance & { memory?: ChromiumMemory }).memory;
+}
+
 export function recordMount(pluginId: string): void {
-  if (!(performance as any).memory) return;
-  baselines.set(pluginId, (performance as any).memory.usedJSHeapSize);
+  const mem = getChromiumMemory();
+  if (!mem) return;
+  baselines.set(pluginId, mem.usedJSHeapSize);
 }
 
 export function recordUnmount(pluginId: string): { delta: number } {
-  if (!(performance as any).memory) return { delta: 0 };
+  const mem = getChromiumMemory();
+  if (!mem) return { delta: 0 };
   const baseline = baselines.get(pluginId);
   baselines.delete(pluginId);
   if (baseline === undefined) return { delta: 0 };
-  return { delta: (performance as any).memory.usedJSHeapSize - baseline };
+  return { delta: mem.usedJSHeapSize - baseline };
 }
 
 /**
@@ -43,9 +56,7 @@ export function useMemoryMonitor(): void {
   const lastWarnedRef = useRef(false);
 
   useEffect(() => {
-    const mem = (performance as any).memory as
-      | { usedJSHeapSize: number; jsHeapSizeLimit: number }
-      | undefined;
+    const mem = getChromiumMemory();
     if (!mem) return; // 非 Chromium 内核——静默
 
     const interval = setInterval(() => {

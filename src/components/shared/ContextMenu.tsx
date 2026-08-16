@@ -89,7 +89,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     const groupOrder: string[] = [];
 
     for (const item of rawItems) {
-      const rawChildren = item.children as any[] | undefined;
+      const rawChildren = item.children;
       // 有 children 的父项放行（即使 command 为空）
       if (!item.command && !rawChildren) continue;
 
@@ -99,11 +99,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       // 子菜单：静态 children 透传 / 空 children 调 resolveChildren 动态填充
       let children: ResolvedItem[] | undefined;
       if (rawChildren && rawChildren.length > 0) {
-        children = rawChildren.map((c: any) => ({
-          id: c.command,
-          label: c.label ?? c.command,
-          group,
-        }));
+        // E5.7#98：wire 契约 children 是 string | MenuItemDescriptor 联合——
+        // 字符串 = 命令引用原样透传（IpcBridgeHandler 序列化注释同义）
+        children = rawChildren.map((c) =>
+          typeof c === "string"
+            ? { id: c, label: c, group }
+            : { id: c.command, label: c.label ?? c.command, group },
+        );
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
         if (dyn && dyn.length > 0) {
@@ -112,8 +114,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       }
 
       grouped.get(group)!.push({
-        id: item.command || (item as any).label || "",
-        label: item.title ?? (item as any).label ?? item.command,
+        id: item.command || item.label || "",
+        label: item.title ?? item.label ?? item.command,
         group,
         shortcut: item.shortcut,
         children,

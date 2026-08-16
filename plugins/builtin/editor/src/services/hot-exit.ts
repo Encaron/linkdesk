@@ -11,7 +11,7 @@
  *   - loadBackup 只读不消费——StrictMode 双 mount / 跨组移动 remount 都要能重复读同一份备份
  */
 
-const lk = (window as any).linkdesk;
+const lk = window.linkdesk;
 
 /** 变更后 1s 内无新变更才落盘（异步写入） */
 const SAVE_DEBOUNCE_MS = 1_000;

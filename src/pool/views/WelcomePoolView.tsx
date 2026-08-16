@@ -33,7 +33,7 @@ interface RecentFolder {
 
 export default function WelcomePoolView({ isActive: _isActive, creatableViews }: WelcomePoolViewProps) {
   const { t } = useTranslation();
-  const api = (window as any).linkdesk;
+  const api = window.linkdesk;
 
   const [recentFolders, setRecentFolders] = useState<RecentFolder[]>([]);
   const [recentViews, setRecentViews] = useState<RecentEntry[]>([]);

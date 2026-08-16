@@ -624,7 +624,7 @@ export function mountGlobalKeybindings(): () => void {
   window.addEventListener("keydown", handler, true); // capture phase——先于浏览器处理
 
   // E5.5#7-p7：接收主进程 before-input-event 转发的快捷键
-  const linkdesk = (window as any).linkdesk;
+  const linkdesk = window.linkdesk;
   let forwardCleanup: (() => void) | null = null;
   if (linkdesk?.keybindings?.onForwardedEvent) {
     forwardCleanup = linkdesk.keybindings.onForwardedEvent((input: KeyboardInput) => {

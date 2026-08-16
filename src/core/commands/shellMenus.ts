@@ -76,6 +76,6 @@ export function registerShellMenus(): void {
     { command: "workbench.action.toggleContainerCollapse", group: "navigation" },
     { command: "workbench.action.resetContainerPosition", group: "navigation" },
     // E5#44d：Views 子菜单——空 children 触发 ContextMenu.resolveChildren 回调
-    { command: "", label: "视图", group: "views", children: [] as any },
+    { command: "", label: "视图", group: "views", children: [] },
   ]);
 }

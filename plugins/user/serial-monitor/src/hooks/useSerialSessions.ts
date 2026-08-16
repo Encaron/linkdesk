@@ -57,7 +57,7 @@ function _notify(): void {
   const snap = JSON.stringify(d);
   if (snap !== _lastLocalSnapshot) {
     _lastLocalSnapshot = snap;
-    try { (window as any).linkdesk?.events?.emit("serial:storeChanged", d); } catch { /* events 不可用（测试环境等） */ }
+    try { window.linkdesk?.events?.emit("serial:storeChanged", d); } catch { /* events 不可用（测试环境等） */ }
   }
 }
 
@@ -74,7 +74,7 @@ function _writeLocal(): void {
 }
 function _persist(): void {
   const d = { sessions: _store.sessions, activeSessionId: _store.activeSessionId, sessionCounter: _store.sessionCounter, colorIndex: _store.colorIndex };
-  (window as any).linkdesk?.pluginState?.set("serial-monitor", "sessions", d).catch((e: any) => { console.error("[serial-monitor] 保存会话失败:", e); });
+  window.linkdesk?.pluginState?.set("serial-monitor", "sessions", d).catch((e) => { console.error("[serial-monitor] 保存会话失败:", e); });
   _writeLocal();
 }
 
@@ -92,7 +92,7 @@ function _restoreSync(): void { const d = _readLocal(); if (d) _applyStore(d); }
 /** 异步更新——pluginState 覆盖 */
 async function _restoreAsync(): Promise<void> {
   try {
-    const psData = await (window as any).linkdesk?.pluginState?.get("serial-monitor", "sessions") as Record<string, unknown> | undefined;
+    const psData = await window.linkdesk?.pluginState?.get("serial-monitor", "sessions") as Record<string, unknown> | undefined;
     if (psData?.sessions) { _applyStore(psData); _writeLocal(); _listeners.forEach((fn) => fn()); }
   } catch { /* 静默 */ }
 }
@@ -106,7 +106,7 @@ function _ensureInit(): void {
 
   // E5#84f：订阅跨 WebView 状态变更——壳侧栏和插件主区通过 events 广播保持 _store 同步
   try {
-    (window as any).linkdesk?.events?.on("serial:storeChanged", (data: Record<string, unknown>) => {
+    window.linkdesk?.events?.on("serial:storeChanged", (data: Record<string, unknown>) => {
       const snap = JSON.stringify(data);
       if (snap === _lastLocalSnapshot) return; // 自己发的广播回来了——跳过
       _lastLocalSnapshot = snap;

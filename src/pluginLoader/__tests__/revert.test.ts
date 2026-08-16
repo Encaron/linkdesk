@@ -41,8 +41,8 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
       unregisterTheme(name);
     }
     ThemeRegistry.unregisterPlugin(PLUGIN_ID);
-    // 重置 mock store
-    (getConfigurationValue as any).mockClear?.();
+    // 注：getConfigurationValue mock 是普通函数（vi.mock 工厂返回箭头函数）——
+    // 原 (as any).mockClear?.() 恒为 no-op（mockClear 不存在，?. 吞掉），已随 E5.7#98 整删
   });
 
   /* ── 1. 主题 revert ── */
@@ -113,8 +113,8 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     const { setConfigurationValue: setCfg } = await import("../../core/services/ConfigurationService");
     await setCfg("app.language", "zh", "user");
 
-    // 重置 mock——清除之前的调用记录
-    (setCfg as any).mockClear();
+    // 重置 mock——清除之前的调用记录（vi.mocked 窄化——setConfigurationValue 已由 vi.mock 替换为 vi.fn）
+    vi.mocked(setCfg).mockClear();
 
     await revertLanguageIfCurrent(PLUGIN_ID);
 

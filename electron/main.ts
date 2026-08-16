@@ -180,7 +180,9 @@ function createWindow(): void {
     // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
     ipcMain.on(IPC.shell.startDrag, (event, filePath: string, iconPath?: string) => {
       if (!filePath) return;
-      const sender = event.sender as any;
+      // E5.7#98：startDrag 是 WebContents 类型化 API——as any 删除，typeof 守卫保留（低版本运行时无此方法）。
+      // 本版 typings Item.icon 必填而运行时可选——按需装配后调用点窄化
+      const sender = event.sender;
       if (typeof sender.startDrag !== 'function') return;
       const opts: Record<string, unknown> = { file: filePath };
       if (iconPath && fs.existsSync(iconPath)) opts.icon = iconPath;
@@ -188,7 +190,7 @@ function createWindow(): void {
         const defIcon = path.join(__dirname, '../../build/icon.ico');
         if (fs.existsSync(defIcon)) opts.icon = defIcon;
       }
-      sender.startDrag(opts);
+      sender.startDrag(opts as unknown as Electron.Item);
     });
 
     // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell

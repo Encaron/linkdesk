@@ -35,6 +35,7 @@ import type { SplitNode } from "../../hooks/splitTree";
 import { getAllLeafGroupIds } from "../../hooks/splitTree";
 import type { DropZone } from "../../hooks/tabDragTypes";
 import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { LinkDeskAPI } from "../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { detectDropZone } from "../../hooks/tabDragTypes";
 import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { useDragReorder } from "../../hooks/useDragReorder";
@@ -148,10 +149,10 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // ── Pool API ──
-  const poolApiRef = useRef<any>(null);
+  // ── Pool API（E5.7#98：LinkDeskAPI["pool"] 契约类型替代 any）──
+  const poolApiRef = useRef<NonNullable<LinkDeskAPI["pool"]> | null>(null);
   if (!poolApiRef.current) {
-    poolApiRef.current = (window as any).linkdesk?.pool;
+    poolApiRef.current = window.linkdesk?.pool ?? null;
   }
   const tabAction = useCallback((action: PoolTabAction) => {
     poolApiRef.current?.tabAction?.(action);

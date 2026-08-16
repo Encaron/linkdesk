@@ -18,7 +18,8 @@ import JsonWorker from "monaco-editor/esm/vs/language/json/json.worker?worker";
 import CssWorker from "monaco-editor/esm/vs/language/css/css.worker?worker";
 import HtmlWorker from "monaco-editor/esm/vs/language/html/html.worker?worker";
 
-(self as any).MonacoEnvironment = {
+// E5.7#98：MonacoEnvironment 已由 monaco.d.ts declare global 定型——as any 删除
+globalThis.MonacoEnvironment = {
   getWorker(_: unknown, label: string): Worker {
     if (label === "typescript" || label === "javascript") return new TsWorker();
     if (label === "json") return new JsonWorker();

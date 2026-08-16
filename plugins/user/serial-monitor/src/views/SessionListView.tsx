@@ -11,9 +11,11 @@ import { useSerialSessions } from "../hooks/useSerialSessions";
 
 import { SessionListItem } from "../components/SessionListItem";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
+// E5.7#98：plugin-state:changed 载荷走 events.on 泛型——wire 契约类型归口 src/core/types/ipc/events
+import type { PluginStateChangedPayload } from "@src/core/types/ipc/events";
 import "../styles/SerialMonitorSidebar.css";
 
-const lk = () => (window as any).linkdesk;
+const lk = () => window.linkdesk;
 
 // ── E5.5#7 Bug C fix：侧栏从 pluginState IPC 读取连接状态（多 WebView 下 useSerialContext 是隔离实例）。
 // E5.5#9m：9l 将 key 改为 <sourceName>:isOpen 格式——侧栏用 events.on 通配订阅，从键名提取端口。
@@ -26,7 +28,7 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
   useEffect(() => {
     // E5.5#9m：直接订阅 plugin-state:changed——key 带端口前缀（如 COM3:isOpen），
     // pluginState.onChange 的精确 key 匹配无法捕获通配键名。
-    const handler = (data: any) => {
+    const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
       if (k.endsWith(":isOpen")) {
@@ -34,7 +36,7 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
         if (typeof data.value === "boolean") { setIsOpen(data.value); if (data.value) setSourceName(port); }
       }
     };
-    const unsub = lk()?.events?.on("plugin-state:changed", handler);
+    const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => { unsub?.(); };
   }, []);
 
@@ -61,7 +63,7 @@ export default function SessionListView() {
   const { isOpen, sourceName: portName } = useSerialConnection();
 
   // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
-  const tabs = (window as any).linkdesk?.tabs;
+  const tabs = window.linkdesk?.tabs;
 
   // 新建会话默认名称计数器
   const sessionCountRef = useRef(sessions.length);
@@ -117,7 +119,7 @@ export default function SessionListView() {
     (id: string) => async () => {
       const session = sessions.find((s) => s.id === id);
       if (!session) return;
-      const confirmed = await (window as any).linkdesk?.dialog?.confirm?.(
+      const confirmed = await window.linkdesk?.dialog?.confirm?.(
         t("关闭会话「{{name}}」？", { name: session.name }) ??
           `关闭会话「${session.name}」？`,
       );

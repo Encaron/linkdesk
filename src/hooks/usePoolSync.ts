@@ -13,7 +13,11 @@ import type { TFunction } from "i18next";
 import type { TabState } from "./useTabManager";
 import type { PoolLayout, SidebarLayout, SidebarViewMeta, PanelViewMeta, PanelLayout, PoolGroup, PoolMenuGroup, PoolMenuItem, TitleBarSlotButton, IconBarItem, IconBarLayout, StatusBarItem, NotifLayout } from "../core/types/poolLayout";
 import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { SidebarAction } from "../core/types/ipc/sidebarActions"; // E5.7#98：onSidebarAction 回调参数正源
+import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
+import type { StatusBarItem as ApiStatusBarItem } from "../core/api/types"; // E5.7#98：状态栏三源条目共型
 import { ViewContainerService } from "../core/services/ViewContainerService";
+import type { ViewDescriptor } from "../core/services/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
 import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/utils/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
@@ -42,8 +46,8 @@ import { isShellRenderedTab } from "./tabIdentity";
 function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
   const views = ViewContainerService.getActiveViews(containerId);
   return views.map((v) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const desc = v as any;
+    // E5.7#98：loader.ts 运行时附挂 _pluginId/_renderPath（registerView 契约外字段）——窄接口取型
+    const desc = v as ViewDescriptor & { _pluginId?: string; _renderPath?: string };
     return {
       id: v.id,
       title: v.title,
@@ -71,8 +75,8 @@ function buildPanelViewMetas(): PanelViewMeta[] {
   const metas: PanelViewMeta[] = [];
   for (const container of ViewContainerService.getViewContainers("panel")) {
     for (const v of ViewContainerService.getActiveViews(container.id)) {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const desc = v as any;
+      // E5.7#98：同 buildSidebarViewMetas——loader 附挂字段窄接口取型
+      const desc = v as ViewDescriptor & { _pluginId?: string; _renderPath?: string };
       metas.push({
         id: v.id,
         title: v.title,
@@ -322,15 +326,17 @@ function isRightAligned(item: { align?: string; alignment?: string }): boolean {
  * component=true 时池懒加载插件 statusBarComponent（serial-monitor TX/RX 实时计数）。
  * 壳 StatusBar 固定项 title 硬编码中文——迁移时改 t()（硬约束 #2 顺带修正）。
  */
+// E5.7#98：三源条目共型——api StatusBarItem + pluginId + title（贡献项/动态项/event 条目/壳固定项均满足）
+type StatusBarSourceItem = ApiStatusBarItem & { pluginId: string; title?: string };
+
 function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]): StatusBarItem[] {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const allItems: any[] = [
+  const allItems: StatusBarSourceItem[] = [
     ...getStatusBarContributions(),
     ...getDynamicStatusBarItems(),
-    ...eventEntries.filter((e) => !isRightAligned(e)).map((e) => ({
+    ...eventEntries.filter((e) => !isRightAligned(e)).map((e): StatusBarSourceItem => ({
       pluginId: "__shell_left__", id: e.id, label: e.text, align: "left",
     })),
-    ...eventEntries.filter((e) => isRightAligned(e)).map((e) => ({
+    ...eventEntries.filter((e) => isRightAligned(e)).map((e): StatusBarSourceItem => ({
       pluginId: "__shell_right__", id: e.id, label: e.text, align: "right",
     })),
     { pluginId: "__shell_right__", id: "lang", icon: "globe", label: "", title: t("选择语言"), align: "right", onClick: "workbench.action.selectLanguage" },
@@ -503,9 +509,9 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   const { t, i18n } = useTranslation();
 
   // 缓存 pool API 引用——window.linkdesk.pool 在 preload 阶段就绪，mount 后不会变
-  const poolApiRef = useRef<any>(null);
+  const poolApiRef = useRef<NonNullable<LinkDeskAPI["pool"]> | null>(null);
   if (!poolApiRef.current) {
-    poolApiRef.current = (window as any).linkdesk?.pool;
+    poolApiRef.current = window.linkdesk?.pool ?? null;
   }
 
   // E5.6#11-fix8：跟踪上次非空 sidebarView——图标栏点击坍塌时 emit null → sidebarView=null，
@@ -571,23 +577,33 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi) return;
-    const unsub = poolApi.onSidebarAction?.((action: any) => {
+    const unsub = poolApi.onSidebarAction?.((action: SidebarAction) => {
       switch (action?.action) {
-        case "reorder":
-          ViewContainerService.reorderView(action.containerId, action.viewId, action.newIndex);
+        case "reorder": {
+          // E5.7#98：契约字段全可选——守卫缺字段载荷（原 any 直传会炸在服务内部）
+          const { containerId, viewId, newIndex } = action;
+          if (!containerId || viewId === undefined || newIndex === undefined) break;
+          ViewContainerService.reorderView(containerId, viewId, newIndex);
           break;
-        case "setCollapsed":
+        }
+        case "setCollapsed": {
+          if (action.viewId === undefined || action.collapsed === undefined) break;
           ViewContainerService.setCollapsed(action.viewId, action.collapsed);
           setLayoutVersion((v) => v + 1);  // setCollapsed 不 fire 事件——手动触发重推
           break;
-        case "setVisible":
+        }
+        case "setVisible": {
+          if (!action.containerId || action.viewId === undefined || action.visible === undefined) break;
           ViewContainerService.setVisible(action.containerId, action.viewId, action.visible);
           break;
+        }
         // E5.7#13：分隔线拖拽 commit——resizeZone 钳制（与 E5.6 壳分隔线拖拽语义同款）
         // → onDidChangeLayout → layoutVersion bump → pushLayout 回执（真相源在壳）
-        case "setSidebarWidth":
+        case "setSidebarWidth": {
+          if (action.width === undefined) break;
           layoutEngine.resizeZone("sidebar", action.width);
           break;
+        }
         // E5.6#11-fix7 + E5.7#10：池◀/▶按钮——转发 App 侧栏宿主状态机 doCollapse
         // （图标点击/池按钮/view 菜单三条折叠路径共用一个真相源 + preCollapseWidth 恢复）。
         // zone 宽变化 → onDidChangeLayout → 重推 layout → 池 collapsed 派生。
@@ -616,7 +632,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   // 池内 ViewContainerService 是空实例——marketplaceShared 的 updateAllBadges 改走 events.emit，
   // 壳监听到后写入壳 ViewContainerService → onDidChangeActiveViews 触发 layoutVersion bump → 重推布局。
   useEffect(() => {
-    const unsub = (window as any).linkdesk?.events?.on("marketplace:updateBadge", (data: any) => {
+    const unsub = window.linkdesk?.events?.on("marketplace:updateBadge", (data: { viewId: string; count: number }) => {
       const existing = ViewContainerService.getView(data.viewId);
       if (!existing) return;
       // 防重推循环——badge 值未变则跳过
@@ -820,7 +836,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
           singleton: behavior.singleton,
           shellRendered: isShellRenderedTab(t.type),
           shellType: isShellRenderedTab(t.type) ? t.type : undefined,
-          detailPluginId: (t as any).detailPluginId,
+          detailPluginId: t.detailPluginId,
         };
       }),
     }));

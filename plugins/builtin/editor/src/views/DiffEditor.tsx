@@ -7,6 +7,9 @@
 import React, { useState, useEffect, useRef } from "react";
 import { EditorModel } from "../services/EditorModel";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
+// E5.7#98：diff editor/monaco ref 具体类型——替代 useRef<any>
+import type { editor as MonacoEditorApi } from "monaco-editor";
+type MonacoNs = typeof import("monaco-editor");
 
 interface DiffEditorProps {
   originalPath: string;
@@ -16,8 +19,8 @@ interface DiffEditorProps {
 
 const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isActive }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const diffEditorRef = useRef<any>(null);
-  const monacoRef = useRef<any>(null);
+  const diffEditorRef = useRef<MonacoEditorApi.IDiffEditor | null>(null);
+  const monacoRef = useRef<MonacoNs | null>(null);
   const themeSyncUnsubRef = useRef<(() => void) | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

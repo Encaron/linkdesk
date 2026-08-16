@@ -9,6 +9,7 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import type { PoolTabAction } from "./core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
 import { getAllLeafGroupIds } from "./hooks/splitTree";
 import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
@@ -271,8 +272,13 @@ function App() {
       // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
       // （__showProgress/__setDoNotDisturb/__setSourceFilter 已随 E5.7#27.5 死链整删——
       //   进度条/DND/来源过滤零消费者，Debug 钩子也是死链）
-      (window as any).__pushToast = pushToast;
-      (window as any).__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
+      // E5.7#98：E3e debug 钩子——窄 window 接口声明替代 as any
+      const debugWindow = window as Window & {
+        __pushToast?: typeof pushToast;
+        __clearDismissed?: () => void;
+      };
+      debugWindow.__pushToast = pushToast;
+      debugWindow.__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
 
       setReady(true);
     })();
@@ -763,11 +769,12 @@ function App() {
     // 池自动激活的新标签页不会触发 pool→focusTab IPC（那是用户点击才发的），
     // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
     const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
-      const tabId = createTab(type, opts as any);
+      // E5.7#98：wire 载荷 opts 是 Record<string, unknown>——窄化为 CreateTabOptions 契约（全可选字段）
+      const tabId = createTab(type, opts as CreateTabOptions | undefined);
       if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
     });
     const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
-      const tabId = openOrFocusTab(type, opts as any);
+      const tabId = openOrFocusTab(type, opts as CreateTabOptions | undefined);
       if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
     });
     const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));

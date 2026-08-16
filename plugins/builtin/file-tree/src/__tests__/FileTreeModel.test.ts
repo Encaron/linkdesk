@@ -36,7 +36,7 @@ vi.mock("@src/core/services/ConfigurationService", () => ({ getConfigurationValu
 
 /** E5#85 迁移后 FileTreeModel 通过 lk.configuration.get() 读配置——通过 __ldkConfigStore 设值 */
 function setConfig(key: string, value: unknown) {
-  (globalThis as any).__ldkConfigStore?.set(key, value);
+  (globalThis as { __ldkConfigStore?: Map<string, unknown> }).__ldkConfigStore?.set(key, value);
 }
 
 describe("FileTreeModel", () => {
@@ -44,10 +44,10 @@ describe("FileTreeModel", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    (globalThis as any).__ldkConfigStore?.clear();
+    (globalThis as { __ldkConfigStore?: Map<string, unknown> }).__ldkConfigStore?.clear();
     setConfig("explorer.sortOrder", "default");
     // E5#85 迁移桥接——FileTreeModel 用 lk.filesystem.listDir 而非 @src/core/FileService
-    (window as any).linkdesk.filesystem.listDir = listDir;
+    window.linkdesk.filesystem.listDir = listDir;
     model = new FileTreeModel();
   });
 
@@ -219,7 +219,7 @@ describe("FileTreeModel", () => {
     const fn = (_: ExplorerItem[]) => {};
     model.setDecorator(fn);
     model.setDecorator(null);
-    model.setExcludeFilter(null as unknown as any);
+    model.setExcludeFilter(null);
     // 不抛错即为通过
   });
 
