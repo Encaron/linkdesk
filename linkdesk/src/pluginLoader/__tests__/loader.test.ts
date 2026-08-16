@@ -181,36 +181,47 @@ describe("loader — parseContributions（export function）", () => {
 
 describe("E5.7#81 安装包装", () => {
   describe("validateInstallManifest", () => {
-    it("合法 manifest 返回三元组", () => {
-      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" });
+    it("合法 manifest 返回三元组（manifest.pluginId 优先于目录名）", () => {
+      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" }, "picked-dir");
       expect(r).toEqual({ pluginId: "my-plugin", version: "1.0.0", name: "我的插件" });
     });
 
+    it("manifest 缺 pluginId → 目录名兜底（loader 惯例——lang-defaults/panel-demo 无此字段）", () => {
+      const r = validateInstallManifest({ version: "1.0.0" }, "my-dir");
+      expect(r.pluginId).toBe("my-dir");
+      expect(r.name).toBe("my-dir");
+    });
+
     it("name 缺失回退 pluginId", () => {
-      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0" });
+      const r = validateInstallManifest({ pluginId: "my-plugin", version: "1.0.0" }, "picked-dir");
       expect(r.name).toBe("my-plugin");
     });
 
     it("非对象 manifest 抛错", () => {
-      expect(() => validateInstallManifest(null)).toThrow(/内容不是对象/);
-      expect(() => validateInstallManifest("str")).toThrow(/内容不是对象/);
+      expect(() => validateInstallManifest(null, "dir")).toThrow(/内容不是对象/);
+      expect(() => validateInstallManifest("str", "dir")).toThrow(/内容不是对象/);
     });
 
-    it("缺少 pluginId 抛错", () => {
-      expect(() => validateInstallManifest({ version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+    it("pluginId 非字符串抛错", () => {
+      expect(() => validateInstallManifest({ pluginId: 123, version: "1.0.0" }, "dir")).toThrow(/必须是字符串/);
     });
 
-    it("路径穿越 pluginId 抛错（安装目录名 = pluginId——直通文件系统）", () => {
-      expect(() => validateInstallManifest({ pluginId: "../evil", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
-      expect(() => validateInstallManifest({ pluginId: "a/b", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
-      expect(() => validateInstallManifest({ pluginId: "a\\b", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
-      expect(() => validateInstallManifest({ pluginId: "..", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
-      expect(() => validateInstallManifest({ pluginId: "-abc", version: "1.0.0" })).toThrow(/缺少合法的 pluginId/);
+    it("路径穿越/非法 pluginId 抛错（安装目录名 = pluginId——直通文件系统）", () => {
+      expect(() => validateInstallManifest({ pluginId: "../evil", version: "1.0.0" }, "dir")).toThrow(/不合法/);
+      expect(() => validateInstallManifest({ pluginId: "a/b", version: "1.0.0" }, "dir")).toThrow(/不合法/);
+      expect(() => validateInstallManifest({ pluginId: "a\\b", version: "1.0.0" }, "dir")).toThrow(/不合法/);
+      expect(() => validateInstallManifest({ pluginId: "..", version: "1.0.0" }, "dir")).toThrow(/不合法/);
+      expect(() => validateInstallManifest({ pluginId: "-abc", version: "1.0.0" }, "dir")).toThrow(/不合法/);
+    });
+
+    it("目录名兜底同样过安全校验（含中文/空白目录名）", () => {
+      expect(() => validateInstallManifest({ version: "1.0.0" }, "../evil")).toThrow(/不合法/);
+      expect(() => validateInstallManifest({ version: "1.0.0" }, "我的插件")).toThrow(/不合法/);
     });
 
     it("缺少 version 抛错", () => {
-      expect(() => validateInstallManifest({ pluginId: "my-plugin" })).toThrow(/缺少 version/);
-      expect(() => validateInstallManifest({ pluginId: "my-plugin", version: "  " })).toThrow(/缺少 version/);
+      expect(() => validateInstallManifest({ pluginId: "my-plugin" }, "dir")).toThrow(/缺少 version/);
+      expect(() => validateInstallManifest({ pluginId: "my-plugin", version: "  " }, "dir")).toThrow(/缺少 version/);
     });
   });
 
