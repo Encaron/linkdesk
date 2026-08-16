@@ -298,7 +298,10 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     // eslint-disable-next-line react-hooks/exhaustive-deps -- 同步（62/141）。入 deps 会在 options 身份变化时重建编辑器——丢 undo/光标
   }, [filePath]);
 
-  // ── keep-alive——标签页切换时 layout + reveal。双 rAF 防光标被后续渲染覆盖 ──
+  // ── keep-alive——标签页切换时 layout + focus + reveal。双 rAF 防光标被后续渲染覆盖 ──
+  // E5.7 fix（2026-08-16）：激活时 focus()——Ctrl+S 是 Monaco 局部键位，只打到持有 DOM 焦点的
+  // 实例。切标签页不搬焦点时：分屏下 Ctrl+S 打到另一组的编辑器（保存错文件），单组下焦点
+  // 已随 display:none 落到 body（Ctrl+S 失效）。对标 VS Code：点击标签 = 该编辑器获焦。
   useEffect(() => {
     if (!isActive) return;
     const raf1 = requestAnimationFrame(() => {
@@ -311,6 +314,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           editorRef.current?.revealPositionInCenter(p);
           editorRef.current?.focus();
         });
+      } else {
+        editorRef.current?.focus();
       }
     });
     return () => cancelAnimationFrame(raf1);
