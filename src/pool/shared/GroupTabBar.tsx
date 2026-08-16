@@ -265,7 +265,16 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 data-tab-id={tab.id}
                 className={`group-tab-item${isActive ? " active" : ""}${isDragging ? " dragging" : ""}${isEntering ? " entering" : ""}${isExiting ? " exiting" : ""}${!tab.pinned ? " preview" : ""}`}
                 title={tab.sourceId ?? (tab.pinned ? tab.title : `${tab.title} — ${t("双击固定")}`)}
-                onClick={() => tabAction({ action: "focusTab", tabId: tab.id })}
+                onClick={() => {
+                  tabAction({ action: "focusTab", tabId: tab.id });
+                  // E5.7 fix（2026-08-16）：点击标签 → 该编辑器获焦（VS Code 语义）。
+                  // 点已激活标签不翻转 isActive → EditorView 激活 focus effect 不触发，
+                  // 分屏下焦点留在另一组编辑器里，Ctrl+S（Monaco 局部键位）打到错实例
+                  // ——保存错文件。池内事件直达编辑器插件（EditorTab 订阅，匹配 tabId）。
+                  // 点未激活标签时此事件早于 pushLayout 到达（display:none 中 focus 无害
+                  // no-op），随后 isActive 翻转的 effect 兜底。
+                  window.linkdesk?.events?.emit("tab:focusRequested", { tabId: tab.id });
+                }}
                 onDoubleClick={() => tabAction({ action: "pinTab", tabId: tab.id })}
                 onContextMenu={(e) => onContextMenu(tab.id, e)}
                 onMouseDown={(e) => {

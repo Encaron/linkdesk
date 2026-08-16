@@ -38,6 +38,8 @@ export interface EditorViewProps {
 
 export interface EditorViewHandle {
   layout(): void;
+  /** E5.7 fix（2026-08-16）：点击标签补焦——EditorTab tab:focusRequested 订阅调用 */
+  focus(): void;
   dispose(): void;
   /** E4V#40q——运行时更新编辑器选项，无需重建 editor */
   updateOptions(opts: Record<string, unknown>): void;
@@ -72,6 +74,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
 
   useImperativeHandle(ref, () => ({
     layout: () => editorRef.current?.layout(),
+    focus: () => editorRef.current?.focus(),
     dispose: () => editorRef.current?.dispose(),
     updateOptions: (opts: Record<string, unknown>) => editorRef.current?.updateOptions(opts),
   }), []);
