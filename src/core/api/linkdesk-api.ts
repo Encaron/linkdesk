@@ -81,7 +81,10 @@ export interface PluginListEntry {
 
 /** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
  *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
- *  stage: validating | copying | loading | done | error */
+ *  stage: validating | copying | loading | done | error
+ *  E5.7#83：装卸广播（壳 loader → 唯一 Pool）：
+ *  events.on("plugin:installed", ({ pluginId, version, reason }) => ...) reason: install | reinstall
+ *  events.on("plugin:uninstalled", ({ pluginId, reason }) => ...) reason: uninstall */
 export interface PluginInstallResult {
   success: boolean;
   pluginId?: string;
