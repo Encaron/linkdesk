@@ -56,7 +56,7 @@ describe("DataConverter", () => {
   describe("TextToBytes", () => {
     it("UTF-8 编码", () => {
       const bytes = TextToBytes("A", "UTF-8");
-      expect(bytes).toEqual(new Uint8Array([0x41]));
+      expect(Array.from(bytes)).toEqual([0x41]); // E5.7#102：Uint8Array 比引用不比内容——展开后比内容
     });
   });
 

@@ -134,7 +134,7 @@ Phase 1-5h ✅ 完成
 
 **🔥 机械操作，不是建议。** 每步必须执行，少一步不提交。
 
-1. `npm run check` 零错误——一条命令跑完 tsc + ESLint + vitest。ESLint 自动跑硬约束 13/14
+1. `npm run check` 全绿——一条命令 = 双工程 tsc 零错误（壳 + electron/）+ ESLint `--max-warnings 0`（硬约束 13/14 全绿，零警告才过）+ vitest 全绿 + 间距网格 + pool-css。**无"基线接受"——红灯必须修到绿灯才提交。**
 2. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 3. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
 4. **🔥 Vite deps 缓存自动清——`postinstall` 脚本会在每次 `npm install` 后自动 `rmSync node_modules/.vite`。** 极端情况（postinstall 被跳过、缓存仍有问题）→ 手动 `rm -rf node_modules/.vite` 再重启。（memory `vite-cache-after-import-fix.md`）
@@ -199,7 +199,7 @@ Phase 1-5h ✅ 完成
 ## 开发命令
 
 ```bash
-# 🔥 提交前必跑——一条命令 = tsc + ESLint + vitest
+# 🔥 提交前必跑——一条命令 = 双工程 tsc + ESLint --max-warnings 0 + vitest + 网格/pool-css
 npm run check
 
 npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
