@@ -43,9 +43,9 @@
 | 5 | pushLayout 两条规则——whole-value checkpoint（状态事件必须带完整 post-change 值）+ delta 必须带稳定 id、不得依赖 live-only 内存 | 归一化 / 健壮性 |
 | 6 | 决策记录义务——"非平凡改动必须落一篇决策记录"（Agent Notes 缩水版） | AI 友好 / 整洁 |
 
-### 第二梯队：E6 设计约束（不立案，只记录）
+### 第二梯队：已立案——E6#48-#52（2026-08-16 衔接审计拍板）
 
-子进程沙箱缝 / 审批层审计对（保留我们的 remember 模式）/ 崩溃补闭环 append-only 日志 / 凭据隔离四件套 / 用户 patch 层。→ 详见 memory `deepseek-harness-reference` B 档。
+子进程沙箱缝 / 审批层审计对（保留我们的 remember 模式）/ 崩溃补闭环 append-only 日志 / 凭据隔离四件套 / 用户 patch 层——E6 蓝图新增第 6 层安全加固 5 任务（[../E6_插件生态与发布/E6-执行清单.md](../E6_插件生态与发布/E6-执行清单.md) #48-#52）。→ 详见 memory `deepseek-harness-reference`。
 
 ### 明确不抄（与准则 1"插件自由化"冲突或成本过重）
 
