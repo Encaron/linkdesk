@@ -267,7 +267,7 @@ export function useDragReorder(
     };
   }, [
     containerRef, threshold, splitThreshold, editorAreaRef, itemCount,
-    onReorder, onDropSplit, onMoveToOther, onDraggingChange, onDragDropZone,
+    onReorder, onDropSplit, onDropCopySplit, onMoveToOther, onDraggingChange, onDragDropZone,
     computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone,
   ]);
 

@@ -442,7 +442,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       const line = view.state.doc.line(CM6_TRIM_KEEP_LINES);
       view.dispatch({ changes: { from: 0, to: line.from } });
     }
-  }, [timestampFormat, showEcho, separateSystemLog]);
+  }, [showEcho, separateSystemLog]);
 
   // C4a 迁移恢复：设置变更时打印系统消息。
   // 旧代码通过 onDidChangeConfiguration 订阅实现，C4a 切到 session 后删除。
@@ -601,7 +601,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     };
     rafId = requestAnimationFrame(drain);
     return () => { cancelAnimationFrame(rafId); };
-  }, [appendLine, paused]);
+  }, [appendLine, paused, t]);
 
   /* ---- 工具栏 ---- */
   const handlePause = () => {
@@ -709,7 +709,7 @@ const writable = await handle.createWritable();
       : "";
 
     return { formatted, warning };
-  }, []);
+  }, [t]);
 
   /* ---- 发送区 CM6 ref 桥接——避免 updateListener 闭包过期 ---- */
   const sendModeRef = useRef(sendMode);
@@ -799,7 +799,8 @@ const writable = await handle.createWritable();
     const p2p = window.linkdesk?.p2p;
     if (p2p) {
       p2p.on("test-p2p", (d) => {
-        appendLine(`[P2P-TEST] ${JSON.stringify(d)}`, "system");
+        // E5.7#99：appendLineRef 桥——appendLine 入 deps 会重复注册 p2p.on（API 无 unsubscribe）
+        appendLineRef.current(`[P2P-TEST] ${JSON.stringify(d)}`, "system");
       });
     }
   }, []);

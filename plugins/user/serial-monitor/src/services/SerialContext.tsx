@@ -254,7 +254,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       const fresh = await s.getStatus();
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
-  }, []);
+  }, [s]);
 
   // 支线：明确打开/关闭——多标签页场景 ControlPanel 按 per-tab connected 决策
   const openPort = useCallback(async (portName: string, baudRate: number, encoding?: string) => {
@@ -264,13 +264,13 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     await s.openPort({ portName, baudRate, encoding });
     const fresh = await s.getStatus();
     if (fresh) _setState((p) => mergeStatus(p, fresh));
-  }, []);
+  }, [s]);
 
   const closePort = useCallback(async () => {
     if (!s) return;
     await s.closePort();
     _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
-  }, []);
+  }, [s]);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
@@ -282,7 +282,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       const fresh = await s.getStatus();
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
-  }, []);
+  }, [s]);
 
   const setBaudRate = useCallback(async (baud: string, encoding?: string) => {
     if (!s) return;
@@ -294,7 +294,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       const fresh = await s.getStatus();
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
-  }, []);
+  }, [s]);
 
   // 支线：刷新可用串口列表——USB 热插拔后下拉框即时更新
   const refreshPorts = useCallback(async () => {
@@ -302,7 +302,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const listPorts = s.listPorts;
     const ports = await listPorts?.();
     if (ports) _setState((p) => ({ ...p, ports }));
-  }, []);
+  }, [s]);
 
   return { state, actions: { toggleOpen, openPort, closePort, setSourceName, setBaudRate, refreshPorts } };
 }

@@ -149,7 +149,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
       console.error(`[EditorTab] 保存失败: ${filePath}`, err);
       setError(`${t("保存失败：")} ${(err as Error).message}`);
     }
-  }, [model, filePath, tabs]);
+  }, [model, filePath, tabs, t]);
 
   // 加载文件
   useEffect(() => {
@@ -220,6 +220,8 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive }) => {
     })();
 
     return () => { cancelled = true; };
+    // E5.7#99：per-tab 一次性加载管线（filePath 恒定）——tabs=window.linkdesk?.tabs 稳定对象；
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- t 入 deps 会语言切换时重载文件 → 新建 model 丢 undo/光标
   }, [filePath]);
 
   // E5.7#38——标签关闭 = unmount：脏文件延迟清备份（关闭即弃语义）；跨组移动/StrictMode 的
