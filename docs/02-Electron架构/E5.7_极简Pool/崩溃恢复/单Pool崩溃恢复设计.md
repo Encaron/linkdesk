@@ -232,6 +232,8 @@ Pool 崩溃 → 重建 → 又崩溃 → 又重建 → ...
   防护: 10s 内崩溃 3 次 → 停止自动重建 → 显示 "LinkDesk 遇到问题" 静态 HTML
 ```
 
+> **E5.7#103（2026-08-16）：** 错误页加"重试"按钮。裸 renderer（data: URL，无 preload/IPC）点击重试 = 导航到 `linkdesk-retry://` 当信号——主进程 `will-navigate` 拦截（`web-contents-created` 全局挂一次，覆盖每次重建的新池 wc）→ 清 `rebuildStopped` 恢复重建链。**熔断窗口计数不清零**——重试后立刻再崩仍落回错误页，不无限循环。
+
 ### 5.2 崩溃时正在拖拽
 
 ```
