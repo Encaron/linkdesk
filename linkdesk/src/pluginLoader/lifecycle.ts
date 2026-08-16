@@ -173,6 +173,30 @@ export function initLifecycleConsumers(): void {
 
   PluginLifecycle.onDidUninstall.event(() => { notifyPluginViews(); });
   PluginLifecycle.onDidInstall.event(() => { notifyPluginViews(); });
+
+  /* ─── 消费端 6：IPC 广播——安装/卸载通知到唯一 Pool（E5.7#83） ─── */
+
+  // plugin:installed / plugin:uninstalled 带 pluginId 载荷——池侧按插件精确反应
+  // （全量刷新走泛化 nudge plugin-lifecycle:changed；本通道供按插件消费方）。
+  // 链：壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on（同 plugin:installProgress）。
+  // 只在 install/reinstall/uninstall 触发——enable/disable/startup 是状态切换非装卸，不进。
+  PluginLifecycle.onDidInstall.event(({ pluginId, manifest, reason }) => {
+    if (reason !== "install" && reason !== "reinstall") return;
+    try {
+      window.linkdesk?.events?.emit("plugin:installed", {
+        pluginId,
+        version: manifest?.version,
+        reason,
+      });
+    } catch { /* 广播失败不阻塞生命周期 */ }
+  });
+
+  PluginLifecycle.onDidUninstall.event(({ pluginId, reason }) => {
+    if (reason !== "uninstall") return;
+    try {
+      window.linkdesk?.events?.emit("plugin:uninstalled", { pluginId, reason });
+    } catch { /* 广播失败不阻塞生命周期 */ }
+  });
 }
 
 /* ── 图标排序辅助（和 loader.ts 共享——放在这里归一化） ── */
