@@ -1283,24 +1283,40 @@ export async function performUninstall(pluginId: string): Promise<boolean> {
   return r.success;
 }
 
+/** E5.7#81：合法 pluginId 形状——安装目录名 = pluginId，路径穿越字符直通文件系统 */
+const SAFE_PLUGIN_ID = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
 /**
  * E5.7#81：安装源 manifest 校验——纯函数（测试覆盖）。
  * 返回规范化三元组（pluginId/version/name），不合法即抛错。
  *
  * 校验规则：
- *   - pluginId 必填且只允许字母/数字/._-（禁止路径字符——安装目录名 = pluginId，
- *     路径穿越字符会直通文件系统）
+ *   - pluginId 裁决：manifest.pluginId 优先（支持目录名 ≠ pluginId 的正确安装）；
+ *     缺省回退源目录名——loader 惯例 pluginId = 目录名（lang-defaults/panel-demo
+ *     等 manifest 无 pluginId 字段，强制要求会误拒合法插件）
+ *   - 两条路径的 id 都必须过 SAFE_PLUGIN_ID（禁止路径字符/空白/中文目录名兜底）
  *   - version 必填（版本处理的前置）
  *   - name 缺省回退 pluginId
  */
-export function validateInstallManifest(manifest: unknown): { pluginId: string; version: string; name: string } {
+export function validateInstallManifest(manifest: unknown, sourceDirName: string): { pluginId: string; version: string; name: string } {
   if (typeof manifest !== "object" || manifest === null) {
     throw new Error(`plugin.json 内容不是对象`);
   }
   const m = manifest as Record<string, unknown>;
-  const pluginId = m.pluginId;
-  if (typeof pluginId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(pluginId)) {
-    throw new Error(`plugin.json 缺少合法的 pluginId（只允许字母/数字/._-，开头须为字母或数字）`);
+  const rawId = m.pluginId;
+  let pluginId: string;
+  if (rawId === undefined || rawId === null) {
+    pluginId = sourceDirName;
+  } else if (typeof rawId !== "string") {
+    throw new Error(`plugin.json 的 pluginId 必须是字符串`);
+  } else {
+    pluginId = rawId;
+  }
+  if (!SAFE_PLUGIN_ID.test(pluginId)) {
+    throw new Error(
+      `pluginId "${pluginId}" 不合法（只允许字母/数字/._-，开头须为字母或数字）` +
+      `——manifest 未声明 pluginId 时以源目录名兜底，请改名目录或在 plugin.json 声明 pluginId`,
+    );
   }
   const version = m.version;
   if (typeof version !== "string" || version.trim() === "") {
@@ -1366,7 +1382,8 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
     } catch (e) {
       throw new Error(`plugin.json 格式错误: ${errMsg(e)}`);
     }
-    const { pluginId, version, name } = validateInstallManifest(parsedManifest);
+    const sourceDirName = sourcePath.split(/[\\/]/).pop() || sourcePath;
+    const { pluginId, version, name } = validateInstallManifest(parsedManifest, sourceDirName);
 
     const env = await linkdesk().env.get();
     const destDir = `${env.appPluginsDir}/user/${pluginId}`;
