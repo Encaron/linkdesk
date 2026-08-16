@@ -5,6 +5,7 @@
  */
 
 import { useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import { PluginIcon } from "@src/components/shared/PluginIcon";
 import ContextMenu from "@src/components/shared/ContextMenu";
 import type { PluginListEntry, PluginListSubset } from "@src/core/api/linkdesk-api";
@@ -39,6 +40,7 @@ interface ExtensionItemProps {
 }
 
 export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemProps) {
+  const { t } = useTranslation();
   const m = plugin.manifest;
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const gearBtnRef = useRef<HTMLButtonElement>(null);
@@ -93,7 +95,7 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemP
       {/* ⚙ 齿轮——core 插件无齿轮菜单 */}
       {!m.core && (
         <div className="ms-item-gear-wrapper">
-          <button ref={gearBtnRef} className="ms-item-gear-btn" onClick={handleGear} title="管理">
+          <button ref={gearBtnRef} className="ms-item-gear-btn" onClick={handleGear} title={t("管理")}>
             <span className="codicon codicon-gear" />
           </button>
           {gearMenuAnchor && (

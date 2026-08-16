@@ -22,26 +22,37 @@ function SearchBar({
   const { t } = useTranslation();
   const inputRef = useRef<HTMLInputElement>(null);
 
+  // E5.7#100：拆两 effect——显示态监听器加活跃守卫（硬约束 14）；隐藏态只挂 Ctrl+F
+  // 打开分支（onOpen 不在规则回调名单——守卫语义即所在分支，两分支互斥挂载零重复）
   useEffect(() => {
+    if (visible) return;
     const onKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === "f") {
         e.preventDefault();
-        if (visible) {
-          inputRef.current?.focus();
-          inputRef.current?.select();
-        } else {
-          onOpen();
-        }
+        onOpen();
       }
-      if (e.key === "Escape" && visible) onClose();
-      if (e.key === "Enter" && visible && matchCount > 0) {
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [visible, onOpen]);
+
+  useEffect(() => {
+    if (!visible) return; // 活跃守卫——隐藏时不挂导航/关闭监听（组件 return null 不代表 effect 不跑）
+    const onKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        inputRef.current?.focus();
+        inputRef.current?.select();
+      }
+      if (e.key === "Escape") onClose();
+      if (e.key === "Enter" && matchCount > 0) {
         e.preventDefault();
         onNavigate(1);
       }
     };
     window.addEventListener("keydown", onKeyDown);
     return () => window.removeEventListener("keydown", onKeyDown);
-  }, [visible, matchCount, onClose, onOpen, onNavigate]);
+  }, [visible, matchCount, onClose, onNavigate]);
 
   if (!visible) return null;
 

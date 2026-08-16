@@ -133,8 +133,17 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   /* ═══ E5#44d：hover 子菜单状态 ═══ */
   const [subData, setSubData] = useState<{ x: number; y: number; items: ResolvedItem[] } | null>(null);
 
+  /* ── E5#94a：两阶段渲染状态（声明提前——活跃守卫 visible 依赖）── */
+  const [menuPos, setMenuPos] = useState({ left: anchor.x, top: anchor.y });
+  const [menuReady, setMenuReady] = useState(false);
+
+  /* ── E5.7#100：活跃守卫——入场动画完成前菜单 visibility:hidden 不可交互，
+        窗口级监听器同态挂载，防"隐藏但挂载"态回调泄漏（硬约束 14，#59c Bug 2）── */
+  const visible = menuReady;
+
   /* ── 统一失焦 ── */
   useEffect(() => {
+    if (!visible) return; // 活跃守卫——菜单未显示时不挂失焦监听
     const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { if (subData) setSubData(null); else onClose(); } };
     const onBlur = () => onClose();
     const onWheel = () => onClose();
@@ -153,7 +162,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       window.removeEventListener("wheel", onWheel, true);
       window.removeEventListener("mousedown", onMouseDown, true);
     };
-  }, [onClose, subData]);
+  }, [onClose, subData, visible]);
 
   /* ── 键盘导航 ── */
   const [focusIdx, setFocusIdx] = useState(-1);
@@ -161,6 +170,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   const clickableItems = useMemo(() => resolved.filter((r) => !("type" in r)) as ResolvedItem[], [resolved]);
 
   useEffect(() => {
+    if (!visible) return; // 活跃守卫——菜单未显示时不挂键盘导航
     const onKeyNav = (e: KeyboardEvent) => {
       if (e.key === "ArrowDown") { e.preventDefault(); setFocusIdx((prev) => Math.min(prev + 1, clickableItems.length - 1)); }
       else if (e.key === "ArrowUp") { e.preventDefault(); setFocusIdx((prev) => Math.max(prev - 1, 0)); }
@@ -172,7 +182,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
     };
     window.addEventListener("keydown", onKeyNav);
     return () => window.removeEventListener("keydown", onKeyNav);
-  }, [clickableItems, focusIdx, context, onClose]);
+  }, [clickableItems, focusIdx, context, onClose, visible]);
 
   useEffect(() => {
     if (focusIdx >= 0) itemRefs.current.get(focusIdx)?.scrollIntoView({ block: "nearest" });
@@ -185,9 +195,6 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   }, [context, onClose]);
 
   /* ── 视口自适应（E5#94a：两阶段渲染——先隐藏量测真实 DOM 尺寸再修正位置）── */
-  const [menuPos, setMenuPos] = useState({ left: anchor.x, top: anchor.y });
-  const [menuReady, setMenuReady] = useState(false);
-
   useLayoutEffect(() => {
     // E5.7#14：初始定位即钳制 menuTop ≥ 30（TitleBarZone drag 区下沿——硬约束 18）
     setMenuPos({ left: anchor.x, top: Math.max(30, anchor.y) });
