@@ -41,8 +41,6 @@ export interface InitDeps {
   getConfigurationValue: <T>(key: string) => T | undefined;
   /** 应用配置（调 onApply） */
   applyConfiguration: (key: string, value: unknown) => void;
-  /** 查询串口状态 */
-  getSerialStatus: () => Promise<{ isOpen: boolean; portName: string; baudRate: number }>;
   /** 获取标签页布局 */
   getTabLayout: () => { groups?: Array<{ tabs: Array<{ id: string; type: string }> }> } | null;
   /** 恢复后同步标签页计数器 */
@@ -51,12 +49,6 @@ export interface InitDeps {
 
 // ── 返回结果 ──
 
-export interface SerialState {
-  isOpen: boolean;
-  portName: string;
-  baudRate: number;
-}
-
 export interface InitResult {
   /** 所有步骤均成功 */
   success: boolean;
@@ -64,8 +56,6 @@ export interface InitResult {
   layoutRestored: boolean;
   /** 已加载插件数 */
   pluginsLoaded: number;
-  /** 串口状态——null = 查询失败或未打开 */
-  serialState: SerialState | null;
   /** 错误列表（供诊断） */
   errors: Array<{ step: string; message: string }>;
   /** keybinding cleanup 函数——调用方负责在 unmount 时调用 */
@@ -84,7 +74,6 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
   const errors: Array<{ step: string; message: string }> = [];
   let layoutRestored = false;
   let pluginsLoaded = 0;
-  let serialState: SerialState | null = null;
   let keybindingCleanup: (() => void) | undefined;
 
   const logStep = (step: string, e: unknown) => {
@@ -159,20 +148,7 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     logStep("applyConfig", e);
   }
 
-  // ── Step 6: 串口状态查询 ──
-  try {
-    const status = await deps.getSerialStatus();
-    serialState = {
-      isOpen: status.isOpen,
-      portName: status.portName,
-      baudRate: status.baudRate,
-    };
-  } catch (e) {
-    // 首次启动或串口不可用——不视为错误
-    logStep("serialStatus", e);
-  }
-
-  // ── Step 7: 布局恢复 ──
+  // ── Step 6: 布局恢复 ──
   try {
     const savedLayout = deps.getTabLayout();
     if (savedLayout?.groups?.length) {
@@ -188,7 +164,6 @@ export async function initAll(deps: InitDeps): Promise<InitResult> {
     success: errors.length === 0,
     layoutRestored,
     pluginsLoaded,
-    serialState,
     errors,
     keybindingCleanup,
   };

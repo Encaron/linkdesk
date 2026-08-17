@@ -31,7 +31,6 @@ function mockDeps(overrides?: Partial<InitDeps>): InitDeps {
       return undefined;
     }) as InitDeps["getConfigurationValue"],
     applyConfiguration: vi.fn(),
-    getSerialStatus: vi.fn().mockResolvedValue({ isOpen: false, portName: "", baudRate: 115200 }),
     getTabLayout: vi.fn().mockReturnValue({
       groups: [{ tabs: [{ id: "tab1", type: "editor" }] }],
     }),
@@ -77,10 +76,9 @@ describe("App 启动管线 initAll", () => {
 
     expect(result.pluginsLoaded).toBe(0);
     expect(result.errors.some((e) => e.step === "pluginLoader")).toBe(true);
-    // 快捷键、配置、串口、布局仍跑完
+    // 快捷键、配置、布局仍跑完
     expect(deps.mountGlobalKeybindings).toHaveBeenCalled();
     expect(deps.applyConfiguration).toHaveBeenCalled();
-    expect(deps.getSerialStatus).toHaveBeenCalled();
     expect(deps.getTabLayout).toHaveBeenCalled();
   });
 
@@ -93,21 +91,8 @@ describe("App 启动管线 initAll", () => {
     const result = await initAll(deps);
 
     expect(result.errors.some((e) => e.step === "applyConfig")).toBe(true);
-    // 串口、布局仍继续
-    expect(deps.getSerialStatus).toHaveBeenCalled();
+    // 布局仍继续
     expect(deps.getTabLayout).toHaveBeenCalled();
-  });
-
-  it("getSerialStatus 失败 → serialState=null + 不崩溃", async () => {
-    const deps = mockDeps({
-      getSerialStatus: vi.fn().mockRejectedValue(new Error("port not available")),
-    });
-    const result = await initAll(deps);
-
-    expect(result.serialState).toBeNull();
-    expect(result.errors.some((e) => e.step === "serialStatus")).toBe(true);
-    // 布局恢复不受影响
-    expect(result.layoutRestored).toBe(true);
   });
 
   it("getTabLayout 抛异常 → layoutRestored=false + syncCountersAfterRestore 不被调用", async () => {
@@ -133,7 +118,6 @@ describe("App 启动管线 initAll", () => {
       mountGlobalKeybindings: vi.fn().mockImplementation(() => { throw new Error("e6"); }),
       initUserKeybindings: vi.fn().mockRejectedValue(new Error("e7")),
       applyConfiguration: vi.fn().mockImplementation(() => { throw new Error("e8"); }),
-      getSerialStatus: vi.fn().mockRejectedValue(new Error("e9")),
       getTabLayout: vi.fn().mockImplementation(() => { throw new Error("e10"); }),
     });
 
@@ -143,7 +127,6 @@ describe("App 启动管线 initAll", () => {
     expect(result.success).toBe(false);
     expect(result.layoutRestored).toBe(false);
     expect(result.pluginsLoaded).toBe(0);
-    expect(result.serialState).toBeNull();
     // 每个步骤的错误都被记录
     expect(result.errors.length).toBeGreaterThanOrEqual(7);
   });

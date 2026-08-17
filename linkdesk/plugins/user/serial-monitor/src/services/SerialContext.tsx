@@ -81,6 +81,9 @@ function _setState(updater: (p: SerialState) => SerialState): void {
   // isOpen 变化——立即同步连接状态 + 端口名到 pluginState（壳侧栏/状态栏跨 WebView 读取）
   // E5.5#9l：key 加 _scopeKey 前缀，per-tab 隔离——多串口标签页不再互相覆盖
   if (next.isOpen !== _sharedState.isOpen) {
+    // E5.8#47：sourceOpen contextKey 归插件自管——壳不再镜像串口 bit（硬约束 #9 核心无知）
+    // 真值经此咽喉单点写入，覆盖 toggleOpen/closePort/换端口/F5 恢复全部路径
+    window.linkdesk?.contextKey?.set("sourceOpen", next.isOpen).catch(() => {});
     window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", next.sourceName), next.isOpen)
       .catch(() => {});
     window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
