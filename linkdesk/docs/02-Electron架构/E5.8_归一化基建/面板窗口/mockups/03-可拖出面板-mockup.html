@@ -1,0 +1,772 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 Phase 9 可拖出面板（类型 A 脱出窗口）——五帧 mockup（#42-#46 拍板素材）</title>
+<style>
+  /* ============================================================
+     LinkDesk 设计 token（复制自 src/index.css :root 暗色主题）
+     与 01-底部面板 / 02-壳内悬浮面板 mockup 同源
+     布局铁律（ui-ux-pro-max ux 域）：多窗口场景 = 固定尺寸窗口
+     并排 + 大 gap，禁止 flex 挤压 / 跨窗口绝对定位（重叠根因）
+     ============================================================ */
+  :root {
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-status: #0078D4;
+    --bg-input: #3C3C3C;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --border: #3C3C3C;
+    --separator: #474747;
+    --icon-active: #FFFFFF;
+    --icon-inactive: #858585;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --bg-toolbar: #1E1E22;
+    --bg-dropdown: #3C3C3C;
+    --hover-overlay: rgba(255,255,255,0.06);
+    --tab-hover-bg: #353535;
+    --dirty-dot: #CCA700;
+    --sent-echo: #0078D4;
+    --error: #E06C75;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #101013;
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    max-width: 1900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.6; }
+
+  /* ---------- 帧容器 ---------- */
+  .frame {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 200ms ease;
+  }
+  .frame:hover { border-color: var(--separator); }
+  .frame-caption {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .frame-caption b { font-size: 14px; }
+  .frame-caption .tag {
+    font-size: 11px;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 3px;
+    padding: 1px 8px;
+    font-weight: 600;
+  }
+  .frame-caption .tag.b { background: #5f5f6e; }
+  .frame-caption span { color: var(--text-secondary); font-size: 12px; }
+  .frame-note {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.7;
+    background: #26262a;
+  }
+  .frame-note b { color: var(--text-secondary); }
+  .frame-note code {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    color: var(--sent-echo);
+  }
+
+  /* ---------- 场景看板：多窗口并排，固定尺寸 + 大 gap ---------- */
+  .stage {
+    flex: 1;
+    min-height: 430px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 24px 20px;
+    background: #131318;
+    overflow: hidden;
+  }
+  .stage .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .stage .col .lbl { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; }
+
+  /* 窗口间拖拽流箭头（flex 项，不绝对定位） */
+  .flow {
+    display: flex; flex-direction: column; align-items: center; gap: 6px;
+    color: var(--accent-hover); font-size: 11px; flex: none;
+  }
+  .flow svg { width: 26px; height: 26px; }
+  .flow .t { color: var(--text-muted); font-size: 11px; }
+
+  /* ---------- 主窗口骨架（固定尺寸） ---------- */
+  .app {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 480px; height: 400px;
+    background: var(--bg-window);
+    font-size: 12px;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    flex: none;
+  }
+  .titlebar {
+    height: 28px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: center;
+    padding: 0 10px 0 12px;
+    gap: 8px;
+    user-select: none;
+  }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .drag { flex: 1; }
+  .win-btns { display: flex; gap: 2px; }
+  .win-btn {
+    width: 34px; height: 22px; border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+  .mid { flex: 1; display: flex; min-height: 0; }
+
+  .icon-bar {
+    width: 40px; flex: none;
+    background: var(--bg-icon-bar);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 6px; gap: 2px;
+  }
+  .icon-btn {
+    width: 40px; height: 38px; border: none; background: transparent;
+    color: var(--icon-inactive);
+    display: flex; align-items: center; justify-content: center;
+    border-left: 2px solid transparent;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .sidebar {
+    width: 150px; flex: none;
+    background: var(--bg-side-panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    font-size: 12px;
+  }
+  .sidebar-header {
+    padding: 8px 12px; color: var(--text-secondary);
+    letter-spacing: 0.06em; font-size: 11px;
+    text-transform: uppercase;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 12px; color: var(--text-primary);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px;
+    transition: background 150ms ease;
+  }
+  .tree-row:hover { background: var(--hover-overlay); }
+  .tree-row svg { width: 12px; height: 12px; flex: none; color: var(--text-muted); }
+  .tree-row.selected { background: rgba(0,120,212,0.18); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .tabbar {
+    height: 30px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 11px;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+    border-top: 2px solid transparent;
+    background: transparent;
+    font-size: 12px;
+    transition: background 150ms ease;
+  }
+  .tab:hover { background: var(--tab-hover-bg); }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+  .tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+  .tab.dragging { opacity: 0.35; }
+
+  .editor {
+    flex: 1; min-height: 0;
+    background: var(--bg-window);
+    padding: 10px 16px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; line-height: 1.6;
+    overflow: hidden;
+  }
+  .code .kw { color: #569CD6; }
+  .code .fn { color: #DCDCAA; }
+  .code .str { color: #CE9178; }
+  .code .cm { color: #6A9955; }
+  .code .ln { color: #464648; user-select: none; display: inline-block; width: 26px; text-align: right; margin-right: 12px; }
+
+  .statusbar {
+    height: 22px; flex: none;
+    background: var(--bg-status);
+    color: #fff;
+    display: flex; align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+  .statusbar .right { margin-left: auto; opacity: 0.9; }
+
+  /* ---------- 脱出窗口（固定尺寸） ---------- */
+  .dwin {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 300px; height: 400px;
+    background: var(--bg-window);
+    border: 1px solid var(--separator);
+    border-radius: 6px;
+    box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+    font-size: 12px;
+    overflow: hidden;
+    flex: none;
+  }
+  .dwin.lg { width: 420px; }
+  .dwin.sm { width: 240px; height: 360px; }
+  .dwin.dim { opacity: 0.9; }
+  .dwin-titlebar {
+    height: 28px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: center;
+    padding: 0 6px 0 12px;
+    gap: 6px;
+    user-select: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .dwin-titlebar .wtitle { font-size: 12px; color: var(--text-secondary); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dwin-titlebar .wtitle b { color: var(--text-primary); font-weight: 500; }
+  .dwin-titlebar .wtitle .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); display: inline-block; margin-left: 6px; }
+
+  .dwin-main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* 空窗口占位（I9-8 拖空自灭） */
+  .empty-zone {
+    flex: 1;
+    display: flex; align-items: center; justify-content: center;
+    border: 1px dashed rgba(0,120,212,0.45);
+    border-radius: 4px;
+    margin: 8px;
+    color: var(--text-muted); font-size: 11px;
+    gap: 8px;
+    text-align: center; padding: 10px;
+  }
+  .empty-zone svg { width: 14px; height: 14px; flex: none; }
+  .empty-zone .self-destruct { color: var(--error); }
+
+  /* ---------- 拖影（I9-18：独立 flex 项，不绝对定位） ---------- */
+  .ghost {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-toolbar);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    padding: 7px 12px;
+    font-size: 12px; color: var(--text-primary);
+    opacity: 0.9;
+    flex: none;
+  }
+  .ghost svg { width: 13px; height: 13px; color: var(--accent); }
+  .ghost .hint { margin-left: 4px; color: var(--text-muted); font-size: 10px; }
+
+  /* 吸附提示（I9-4——锚定目标窗口 TabBar 正下方，不越界） */
+  .snap-hint {
+    position: absolute;
+    top: 30px; left: 4px; right: 4px;
+    height: 28px;
+    background: rgba(0,120,212,0.08);
+    box-shadow: inset 0 0 0 1px var(--accent), 0 0 18px rgba(0,120,212,0.45);
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    color: var(--accent-hover); font-size: 11px;
+    gap: 6px;
+    pointer-events: none;
+    z-index: 5;
+  }
+  .snap-hint svg { width: 11px; height: 11px; }
+
+  /* ---------- 右键菜单（I9-19，锚定窗口内） ---------- */
+  .ctx {
+    position: absolute; z-index: 10;
+    width: 190px;
+    background: var(--bg-dropdown);
+    border: 1px solid var(--separator);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    padding: 4px;
+    font-size: 12px;
+  }
+  .ctx-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    color: var(--text-primary);
+    border-radius: 4px;
+    transition: background 150ms ease;
+  }
+  .ctx-item:hover { background: var(--hover-overlay); }
+  .ctx-item .sub { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+  .ctx-sep { height: 1px; background: var(--separator); margin: 4px 6px; }
+  .ctx-item.rule { color: var(--text-muted); font-size: 11px; }
+  .ctx-item.rule:hover { background: transparent; }
+  .ctx-item.off { color: var(--text-secondary); }
+
+  /* ---------- 窗口内分屏（I9-5） ---------- */
+  .split { flex: 1; display: flex; min-height: 0; }
+  .split .pane { flex: 1; min-width: 0; border-right: 1px solid var(--border); display: flex; flex-direction: column; }
+  .split .pane:last-child { border-right: none; }
+  .split .pane .subbar {
+    height: 24px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: center;
+    border-bottom: 1px solid var(--border);
+    font-size: 11px; color: var(--text-secondary);
+    padding: 0 10px;
+    gap: 6px;
+  }
+  .split .pane .subbar .active-mark { color: var(--accent); font-size: 9px; }
+  .split .pane .pane-editor { flex: 1; min-height: 0; padding: 10px 12px; font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; line-height: 1.6; overflow: hidden; }
+</style>
+</head>
+<body>
+
+<h1>E5.8 Phase 9 可拖出面板（类型 A 脱出窗口）——五帧 mockup
+  <small><b style="color:#4EC9B0">v1.3 版本槽位设计稿拍板素材。</b>拖标签页出主窗口 → 独立 BrowserWindow 只渲染那 1 个 tab（同 pool.html + preload，同代码不同 layout）。交互全矩阵 → <code>02-交互细节设计.md §4 I9-1..I9-20</code>。布局 = ui-ux-pro-max ux 域——固定尺寸窗口并排 + 大 gap，无跨窗口绝对定位（不重叠）。</small>
+</h1>
+
+<!-- ============ 帧 1：拖出手势（释放时判断 + 拖影跟随） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">拖出手势</span>
+    <b>拖 tab 出主窗口边界 → 释放生成独立窗口</b>
+    <span>I9-1 释放时判断 · I9-18 拖影半透明 · I9-2 空 group 塌缩</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="app">
+        <div class="titlebar">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+          </div>
+          <div class="main">
+            <div class="tabbar">
+              <div class="tab active">main.ts</div>
+              <div class="tab">serial-monitor.tsx</div>
+              <div class="tab dragging">设置</div>
+            </div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——主窗口</span></div>
+              <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+              <div><span class="ln">3</span>&nbsp;</div>
+              <div><span class="ln">4</span><span class="cm">// 「设置」tab 被拖出中（半透明占位）——</span></div>
+              <div><span class="ln">5</span><span class="cm">// 释放时判断：窗口 bounds 内释放 = 取消</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span>就绪</span>
+          <span class="right">拖出中 · 释放时判断</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="flow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span class="t">鼠标拖出窗口边界<br>松开 = 释放</span>
+    </div>
+
+    <div class="col">
+      <div class="ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+        设置
+        <span class="hint">拖影 · 半透明跟随</span>
+      </div>
+      <span class="lbl">portal 拖影</span>
+    </div>
+
+    <div class="flow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span class="t">释放<br>→ detach</span>
+    </div>
+
+    <div class="col">
+      <div class="dwin">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>设置</b> — 新窗口</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">设置</div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// 独立 BrowserWindow——只渲染这 1 个 tab</span></div>
+            <div><span class="ln">2</span><span class="cm">// 同 pool.html + 同 preload，不同 layout</span></div>
+            <div><span class="ln">3</span>&nbsp;</div>
+            <div><span class="ln">4</span><span class="cm">// 主窗口空 group 塌缩（I9-2）</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">脱出窗口 W1</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>拖出手势要点：</b>① <b>释放时判断</b>（照抄 VS Code——dragover 置标志 + dragend 判断）：释放在当前聚焦窗口 bounds 内 = <b>拒绝</b>；拖出再拖回 = 完全取消（I9-1）；② 拖影 = portal + 半透明跟随（I9-18）；③ 被拖 tab 从主窗口消失 + <b>空 group 塌缩</b>（复用现有逻辑，不新造 I9-2）；④ 数据流：手势 → 主进程 → 壳 tabState 更新 → pushLayout 两窗口（审计 2，主进程不得直接操作 tabState）。</div>
+</div>
+
+<!-- ============ 帧 2：脱出窗口形态（chrome 拍板项） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">窗口形态</span>
+    <b>脱出窗口 chrome——自绘标题栏 ×/─/□，无菜单栏/图标栏/状态栏</b>
+    <span>I9-11 已拍板 · I9-12 标题随活动 tab · I9-6 无 [+] · I9-3 拖出者自担</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="dwin lg">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>设置</b><span class="dirty"></span></span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">设置</div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// 脱出窗口 = 纯 MainZone：TabBar + 内容</span></div>
+            <div><span class="ln">2</span><span class="cm">// 无图标栏 / 无侧栏 / 无状态栏（I9-11）</span></div>
+            <div><span class="ln">3</span>&nbsp;</div>
+            <div><span class="ln">4</span><span class="cm">// layout: titleBar + groups[1 tab]</span></div>
+            <div><span class="ln">5</span><span class="cm">// iconBar 空 / sidebar 无 / statusBar 空</span></div>
+            <div><span class="ln">6</span>&nbsp;</div>
+            <div><span class="ln">7</span><span class="cm">// 窗口内无 [+]（新 tab 只从拖入/window.open 来）</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>窗口 chrome（拍板 7——I9-11）：</b>① 独立窗口有 <b>×/最小化/最大化</b>（自绘标题栏复用 PoolZoneShell titleBar 区——layout 已含 <code>titleBar:{title}</code>，无边框方案维持，与主窗口视觉一致）；② <b>无菜单栏/图标栏/状态栏</b>——纯工作区窗口；③ 窗口标题 = 活动 tab 的 title（多 tab 时跟随活动 tab，I9-12）；④ 窗口内 <b>不提供 [+]</b>（I9-6 已拍板——无侧栏无 iconBar 无新建入口）；⑤ 拖出状态丢失<b>拖出者自担</b>（I9-3 拍板 5——不限制可拖出类型，Hot Exit/pluginState 顺带兜底）。</div>
+</div>
+
+<!-- ============ 帧 3：跨窗口拖入吸附（用户点名） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">吸附并窗</span>
+    <b>拖 tab 靠近另一窗口标签栏 → 吸附提示 → 放手并窗</b>
+    <span>I9-4 光语言指示 · 提示由目标窗口渲染 · I9-5 并窗后同代码分屏</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="dwin">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>main.ts</b> — W2 源窗口</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">main.ts</div>
+            <div class="tab dragging">设置</div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// W2：正在拖出「设置」tab（半透明）</span></div>
+            <div><span class="ln">2</span><span class="cm">// 拖向 W1 标签栏 → 靠近后 W1 亮提示</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">W2 源窗口</span>
+    </div>
+
+    <div class="flow">
+      <div class="ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+        设置
+        <span class="hint">拖入 W1</span>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span class="t">靠近目标窗口<br>标签栏</span>
+    </div>
+
+    <div class="col">
+      <div class="dwin">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>main.ts</b> — W1 目标窗口</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">main.ts</div>
+            <!-- 吸附提示：锚定目标窗口 TabBar 正下方 -->
+            <div class="snap-hint">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
+              松手并入此窗口
+            </div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// W1：TabBar 显示吸附提示</span></div>
+            <div><span class="ln">2</span><span class="cm">// 命中检测 = 屏幕坐标 vs 窗口 bounds + TabBar 区域</span></div>
+            <div><span class="ln">3</span><span class="cm">// 提示由目标窗口渲染（壳通知目标池显隐）</span></div>
+            <div><span class="ln">4</span>&nbsp;</div>
+            <div><span class="ln">5</span><span class="cm">// 放手 → tab 移入 W1，W2 空 → 自灭（I9-8）</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">W1 目标窗口（吸附提示亮起）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>吸附并窗（用户点名 I9-4）：</b>① 拖 tab 靠近另一窗口<b>标签栏</b> → 目标窗口 TabBar 显示<b>吸附提示</b>（视觉 = 分屏 drop 指示同款光语言——毛玻璃内发光 8% 透明度，E5.6#16.7 落地方案）；② 命中检测 = 屏幕坐标 vs 各窗口 bounds + TabBar 区域；③ 提示由<b>目标窗口</b>渲染（壳通知目标池显隐）；④ 放手 → tab 移入目标窗口，源窗口空 → 自灭（I9-8）；⑤ 并窗后窗口内分屏 = 同代码 PoolZoneShell groups 变 branch，零新渲染（I9-5）。</div>
+</div>
+
+<!-- ============ 帧 4：并窗后分屏（同代码 branch） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">窗口内分屏</span>
+    <b>W1 = 两 tab 一窗；B 拖到 A 右侧 → branch 分屏</b>
+    <span>I9-5 同代码零新渲染 · TabBar 全套交互免费</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="dwin lg">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>main.ts</b> + 设置 — 并窗后（标题随活动 tab）</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">main.ts</div>
+            <div class="tab">设置</div>
+          </div>
+          <div class="split">
+            <div class="pane">
+              <div class="subbar"><span class="active-mark">●</span> main.ts</div>
+              <div class="pane-editor">
+                <span class="cm">// main.ts — 左 pane</span>
+                <br><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;
+              </div>
+            </div>
+            <div class="pane">
+              <div class="subbar"><span class="active-mark">●</span> 设置</div>
+              <div class="pane-editor">
+                <span class="cm">// 设置 — 右 pane</span>
+                <br><span class="cm">// B 拖到 A 右侧 → branch</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">W1 并窗 + 分屏（branch）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>窗口内分屏（I9-5）：</b>① 同一份 PoolZoneShell 代码——groups 从单叶子变 <code>branch(direction, [child,child])</code> 即支持，<b>零新渲染代码</b>（E5 分屏 SPLIT_THRESHOLD 机械免费复用）；② TabBar 全套交互（切换/关闭/排序/预览模式）同代码免费；③ 窗口内 branch 里拖走一个 tab → 该 branch 塌缩（剩一个叶子时并平，I9-7 边界）；④ 多 tab 窗口标题 = 活动 tab（I9-12）。</div>
+</div>
+
+<!-- ============ 帧 5：逐个拖回 + 拖空自灭 + 关窗回归 ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">回程</span>
+    <b>逐个拖回只回一个 · 拖空自灭 · 关窗 mergeAllTabs 全部回归</b>
+    <span>I9-7 逐个拖回 · I9-8 拖空自灭 · I9-9 关窗回归 · I9-19 右键菜单</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="app">
+        <div class="titlebar">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+          </div>
+          <div class="main">
+            <div class="tabbar">
+              <div class="tab active">main.ts</div>
+              <div class="tab">串口监视器</div>
+            </div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// 逐个拖回：D 窗口 tab 拖回主窗口 → 只回那一个</span></div>
+              <div><span class="ln">2</span><span class="cm">// 关窗 × → mergeAllTabs 全部回归（I9-9）</span></div>
+              <div><span class="ln">3</span><span class="cm">// Ctrl+W 关最后 tab → 窗口随 tab 关闭 + tab 回归（I9-10）</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span>就绪</span>
+          <span class="right">回程：逐个拖回 / 关窗回归</span>
+        </div>
+      </div>
+      <span class="lbl">主窗口</span>
+    </div>
+
+    <div class="flow">
+      <div class="ghost">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+        设置
+        <span class="hint">← 拖回主窗口</span>
+      </div>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 12H5M10 18l-6-6 6-6"/></svg>
+      <span class="t">逐个拖回<br>只回一个</span>
+    </div>
+
+    <div class="col">
+      <div class="dwin">
+        <div class="dwin-titlebar">
+          <span class="wtitle"><b>设置</b> — W1 脱出窗口</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar">
+            <div class="tab active">设置</div>
+            <!-- 脱出窗口内 tab 右键菜单（I9-19） -->
+            <div class="ctx" style="top:30px; left:60px;">
+              <div class="ctx-item rule">设置 tab · 右键</div>
+              <div class="ctx-sep"></div>
+              <div class="ctx-item off">在新窗口中打开</div>
+              <div class="ctx-item">并回主窗口</div>
+              <div class="ctx-sep"></div>
+              <div class="ctx-item">关闭</div>
+            </div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// W1：被拖走一个 tab 后，此 tab 也正被拖回</span></div>
+            <div><span class="ln">2</span><span class="cm">// 最后一个 tab 移出 → 窗口自灭（I9-8）</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">W1 脱出窗口（tab 正拖回主窗口）</span>
+    </div>
+
+    <div class="flow">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span class="t">拖空<br>→ 自灭</span>
+    </div>
+
+    <div class="col">
+      <div class="dwin sm dim">
+        <div class="dwin-titlebar">
+          <span class="wtitle">已拖空</span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+        <div class="empty-zone">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3L5 13h5l-1 8 8-10h-5l1-8z"/></svg>
+          <span>W2 已空 → <span class="self-destruct">窗口自动销毁</span><br>（tab 已回归，不丢）</span>
+        </div>
+      </div>
+      <span class="lbl">W2 空窗 → 自灭（I9-8）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>回程三路径：</b>① <b>逐个拖回</b>（I9-7）——从 D 窗口拖 tab 回主窗口 → 只回被拖的那一个（moveTab 语义不区分窗口内外）；② <b>拖空自灭</b>（I9-8）——最后一个 tab 移出/关闭 → 窗口自动销毁（VS Code 同款：窗口没有 tab 就没了）；③ <b>关窗 ×</b>（I9-9）——<code>mergeAllTabs</code> 窗口内全部 tab 回归主窗口；④ 右键菜单（I9-19）——主窗口 tab「在新窗口中打开」/ 脱出窗口 tab「并回主窗口」（该 tab 回归，最后一个则窗口自灭）；⑤ 崩溃恢复（I9-16）——脱出窗口崩 → 关窗 + tab 回归主窗口。</div>
+</div>
+
+</body>
+</html>
