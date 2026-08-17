@@ -19,6 +19,7 @@ import {
   onDidChangeConfiguration,
   setConfigurationValue,
   clearConfigurationCache,
+  diffUserSettings,
 } from "../services/ConfigurationService";
 import type { ConfigurationContribution } from "../registry/ConfigurationRegistry";
 
@@ -130,5 +131,44 @@ describe("ConfigurationService — onDidChangeConfiguration 订阅", () => {
     expect(typeof unsub).toBe("function");
     unsub();
     expect(typeof unsub).toBe("function"); // 取消订阅不抛异常
+  });
+});
+
+describe("ConfigurationService — diffUserSettings（E5.8#0d.5 settings.json 重读 diff）", () => {
+  it("无变更 → 空数组", () => {
+    const current = { "app.theme": "Dark", "app.language": "zh" };
+    expect(diffUserSettings(current, { ...current })).toEqual([]);
+  });
+
+  it("新增 key → 报告变更", () => {
+    expect(diffUserSettings({}, { "app.theme": "Light" })).toEqual([
+      { key: "app.theme", value: "Light" },
+    ]);
+  });
+
+  it("修改值 → 报告变更", () => {
+    expect(diffUserSettings({ "app.theme": "Dark" }, { "app.theme": "Light" })).toEqual([
+      { key: "app.theme", value: "Light" },
+    ]);
+  });
+
+  it("删除 key → 报告 value=undefined", () => {
+    expect(
+      diffUserSettings({ "app.theme": "Dark", "app.language": "zh" }, { "app.theme": "Dark" }),
+    ).toEqual([{ key: "app.language", value: undefined }]);
+  });
+
+  it("混合变更 → 全部报告（顺序无关）", () => {
+    const result = diffUserSettings({ a: 1, b: 2 }, { b: 3, c: 4 });
+    expect(result).toHaveLength(3);
+    expect(result).toEqual(expect.arrayContaining([
+      { key: "a", value: undefined },
+      { key: "b", value: 3 },
+      { key: "c", value: 4 },
+    ]));
+  });
+
+  it("嵌套对象整体替换即视为变更（JSON 重新解析引用不同）——保守上报不遗漏", () => {
+    expect(diffUserSettings({ app: { x: 1 } }, { app: { x: 1 } })).toHaveLength(1);
   });
 });

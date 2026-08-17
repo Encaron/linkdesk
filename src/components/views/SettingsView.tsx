@@ -23,6 +23,7 @@ import { InlineInput } from "../shared/InlineInput";
 import KeybindingSettingsView from "./KeybindingSettingsView";
 import { useConfigurationValueIpc } from "../../core/react/useConfigurationIpc";
 import { MENU_SLOTS } from "../../core/registry/MenuRegistry";
+import { getFilePath } from "../../core/services/StorageService"; // E5.8#0d.5："以 JSON 打开"→ 打开 settings.json 真实落盘路径
 import ContextMenu from "../shared/ContextMenu";
 import ColorPicker from "../shared/ColorPicker";
 import "./SettingsView.css";
@@ -75,7 +76,6 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const [selectedGroup, setSelectedGroup] = useState<string | null>(null);
   const [keybindingQuery, setKeybindingQuery] = useState<string | undefined>();
   const [version, setVersion] = useState(0);
-  const [jsonDialog, setJsonDialog] = useState<string | null>(null);
 
   // ── 异步数据：配置分组 + 合并 schema ──
   const [groupsRaw, setGroupsRaw] = useState<GroupInfo[]>([]);
@@ -260,8 +260,15 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
               title={t("打开设置 (JSON)")}
               onClick={async () => {
                 try {
-                  const settings = await lk().getUserSettings();
-                  setJsonDialog(JSON.stringify(settings, null, 2));
+                  const filePath = await getFilePath("settings");
+                  const pluginId = await window.linkdesk.fileAssociation.getPluginFor("json");
+                  // E5.8#0d.5：与 file-tree 打开文件同一条链——显式查关联不写死编辑器插件 ID（硬约束 #10）
+                  await window.linkdesk.tabs.create(pluginId || "", {
+                    filePath,
+                    sourceId: filePath,
+                    label: "settings.json",
+                    pinned: true,
+                  });
                 } catch { /* 静默 */ }
               }}
             >
@@ -316,23 +323,6 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
             </div>
           </div>
 
-          {/* JSON 设置弹窗 */}
-          {jsonDialog !== null && (
-            <div className="settings-json-overlay" onClick={() => setJsonDialog(null)}>
-              <div className="settings-json-dialog" onClick={(e) => e.stopPropagation()}>
-                <div className="settings-json-header">
-                  <span className="settings-json-title">settings.json</span>
-                  <button
-                    className="settings-json-close"
-                    onClick={() => setJsonDialog(null)}
-                  >
-                    {t("确定")}
-                  </button>
-                </div>
-                <pre className="settings-json-content">{jsonDialog}</pre>
-              </div>
-            </div>
-          )}
         </>
       )}
     </div>

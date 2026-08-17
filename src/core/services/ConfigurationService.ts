@@ -20,8 +20,8 @@ import {
 // E5#41：消循环依赖——applyConfiguration 通过注册模式注入，不再直接 import ConfigurationApplier
 let _configApplier: ((key: string, value: unknown) => void) | null = null;
 export function registerConfigApplier(fn: typeof _configApplier): void { _configApplier = fn; }
-import { read, write } from "./StorageService";
-import { exists, readFile, writeFile, createDir, joinPath } from "./FileService";
+import { read, write, getFilePath } from "./StorageService";
+import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "./FileService";
 
 /* ── 三层缓存 ── */
 
@@ -53,6 +53,95 @@ export async function initConfigurationService(): Promise<void> {
   const saved = await read<Record<string, unknown>>("settings");
   if (saved) _userSettings = saved;
   })());
+}
+
+/* ── settings.json 文件变更生效闭环（E5.8#0d.5）── */
+
+/** 纯函数——计算 next 相对 current 的变更 key 列表（value = next[key]；被删 key 的 value 为 undefined）。可单测。 */
+export function diffUserSettings(
+  current: Record<string, unknown>,
+  next: Record<string, unknown>,
+): Array<{ key: string; value: unknown }> {
+  const changed: Array<{ key: string; value: unknown }> = [];
+  const allKeys = new Set([...Object.keys(current), ...Object.keys(next)]);
+  for (const key of allKeys) {
+    if (key in current && key in next && current[key] === next[key]) continue;
+    changed.push({ key, value: key in next ? next[key] : undefined });
+  }
+  return changed;
+}
+
+/**
+ * 重读 settings.json 文件并应用到内存——外部编辑（编辑器标签页保存）后即时生效。
+ * 直读文件不走 StorageService.read（其优先 localStorage——外部写入后壳侧 localStorage 陈旧）。
+ * 零变更则零通知（防自写自触发循环）；非法 JSON 不覆盖内存（等下一次保存）。
+ */
+export async function reloadUserSettings(): Promise<void> {
+  const filePath = await getFilePath("settings");
+  if (!filePath) return; // 非 Electron 环境（npm run dev 浏览器模式）
+
+  let raw: string;
+  try {
+    raw = await readFile(filePath);
+  } catch {
+    return; // 文件不存在/读失败——保持内存现状
+  }
+
+  let next: Record<string, unknown>;
+  try {
+    const parsed: unknown = JSON.parse(raw);
+    if (typeof parsed !== "object" || parsed === null) return; // 非法 JSON——不覆盖内存
+    next = parsed as Record<string, unknown>;
+  } catch {
+    return;
+  }
+
+  const changed = diffUserSettings(_userSettings, next);
+  if (changed.length === 0) return; // 零变更零通知——防自写自触发循环
+
+  for (const { key, value } of changed) {
+    if (key in next) _userSettings[key] = value;
+    else delete _userSettings[key];
+  }
+
+  for (const { key } of changed) {
+    // 被删 key 广播生效值（回落到 default/workspace）——消费方收到可直接用
+    const value = key in next ? next[key] : getConfigurationValue<unknown>(key);
+    for (const fn of _changeListeners) {
+      try { fn(key, value, "user"); } catch { /* 静默——避免一个 listener 崩溃阻塞其他 */ }
+    }
+    _configApplier?.(key, value);
+  }
+
+  // 双写同步 localStorage——StorageService.write 同时写文件 + localStorage（F5/重启安全，防读到旧配置）
+  await write("settings", _userSettings);
+}
+
+let _settingsWatcherStarted = false;
+
+/**
+ * 挂 settings.json 文件监听——外部编辑（编辑器标签页保存）→ 重读生效。App mount 前调用一次。
+ * 幂等（防 StrictMode 双重调用）；非 Electron 环境静默跳过。
+ */
+export async function initUserSettingsWatcher(): Promise<void> {
+  if (_settingsWatcherStarted) return;
+  _settingsWatcherStarted = true;
+
+  const watcher = window.linkdesk?.filesystem?.watch;
+  if (!watcher) return; // 非 Electron 环境——无 window.linkdesk
+
+  try {
+    const dir = await appDataDir();
+    await watcher(dir, async (e: { path: string; type: string }) => {
+      if (e.type === "deleted") return;
+      const basename = String(e.path).split(/[\\/]/).pop();
+      if (basename !== "settings.json") return;
+      await reloadUserSettings();
+    });
+  } catch (e) {
+    // watcher 启动失败不阻塞 mount——降级为"保存后重启生效"（现状）
+    console.warn("[ConfigurationService] settings.json watcher 启动失败:", e);
+  }
 }
 
 /* ── 读取：三层合并 ── */

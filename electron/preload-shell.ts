@@ -166,6 +166,13 @@ try {
       resolvePath:      (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
     },
 
+    // ── 文件关联——扩展名→插件 ID（主进程 FileAssociationService 直答）──
+    // E5.8#0d.5：壳侧补上——preload-pool 同款；设置页"以 JSON 打开"需查关联，不写死编辑器插件 ID
+    fileAssociation: {
+      getPluginFor: (ext: string): Promise<string | undefined> =>
+        ipcRenderer.invoke(IPC.fileAssociation.getPluginFor, ext),
+    },
+
     // ── E3a #31：插件管理（桥接——走 IpcBridge → IpcBridgeHandler → loader 函数）──
     pluginManager: {
       list:           () => ipcRenderer.invoke(IPC.plugins.call, 'list'),

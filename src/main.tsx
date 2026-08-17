@@ -6,7 +6,7 @@ import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
 // E5#115: 配置在 React mount 前就位——对标 VS Code (Service 在窗口创建前初始化)
 import { initStorageService } from "./core/services/StorageService";
-import { initConfigurationService } from "./core/services/ConfigurationService";
+import { initConfigurationService, initUserSettingsWatcher } from "./core/services/ConfigurationService";
 
 // 🔥 E5.6#2 MonacoEnvironment——worker 构造器存全局，Monaco import 时读取。
 //    monaco-init.ts 也会设置同名属性（merge 模式），此处冗余无副作用。
@@ -33,6 +33,8 @@ globalThis.MonacoEnvironment = {
 (async () => {
   await initStorageService();
   await initConfigurationService();
+  // E5.8#0d.5：挂 settings.json 文件监听——外部编辑保存后即时生效（幂等；非 Electron 环境静默跳过）
+  await initUserSettingsWatcher();
   ReactDOM.createRoot(document.getElementById("root")!).render(
     <React.StrictMode>
       <App />
