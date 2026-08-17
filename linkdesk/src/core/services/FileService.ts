@@ -48,7 +48,7 @@ function api() {
 }
 
 // E5.7#98：契约 path 面直接消费——join 等为同步函数（preload 本地实现），
-// 原局部 cast 误标 join 为 Promise（await 同步值无害但类型不诚实）。appDataDir 壳侧独有（?）。
+// 原局部 cast 误标 join 为 Promise（await 同步值无害但类型不诚实）。appDataDir 双端注入（E5.8#0d.5：池侧已补——settings 插件需 userData 路径）。
 function pathApi() {
   return window.linkdesk?.path;
 }

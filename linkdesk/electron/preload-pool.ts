@@ -713,6 +713,9 @@ try {
 
     // ── path 工具函数 ──
     path: {
+      // E5.8#0d.5：池侧补 appDataDir（preload-shell 同款）——settings 插件在池内解析 userData 真实路径。
+      // 缺它则 FileService.appDataDir() 池侧返回 "" → getFilePath 得 /settings.json → Windows 解析 E:\settings.json 打不开。
+      appDataDir: () => ipcRenderer.invoke(IPC.path.appDataDir),
       normalize: (p: string) => p.replace(/\\/g, '/'),
       join: (...parts: string[]) => parts.map(p => p.replace(/\\/g, '/')).join('/').replace(/\/+/g, '/'),
       basename: (p: string) => { const s = p.replace(/\\/g, '/').split('/'); return s[s.length - 1] || ''; },
