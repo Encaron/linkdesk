@@ -387,7 +387,7 @@ export interface LinkDeskAPI {
   /** OS 拖入文件路径获取 */
   getFilePath?: (file: File) => string;
 
-  /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 壳侧独有 */
+  /** 路径工具——壳/池双端注入（editor/file-tree 池插件消费 normalize/join 等）；appDataDir 双端同款（E5.8#0d.5：池侧补上——settings 插件池内解析 userData 路径） */
   path: {
     appDataDir?(): Promise<string>;
     normalize(p: string): string;
