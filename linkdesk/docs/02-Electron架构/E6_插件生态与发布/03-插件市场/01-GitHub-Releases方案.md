@@ -132,5 +132,66 @@ npm run publish
 
 ---
 
+## 六、多市场源（2026-08-17 用户拍板）
+
+> **单中心目录 → 多源。** 让第三方作者发布到**自己的**仓库，无需进入中心目录；用户/AI 添加任意 GitHub 仓库为市场源即可发现安装。改动只在 marketplace 插件内部，壳零改动。
+
+### 6.1 为什么
+
+单中心目录（`encaron/linkdesk-marketplace`）有个瓶颈：第三方作者 agentA 发布插件需要中心写权限/PR——「别人怎么知道」这一环卡在审批上。AI 一站式场景（agentA 制作上传 → 另一台电脑 agentB 主动下载使用）要求：**发布即可见，无需中间人**。
+
+多源化 = 对标 VS Code 多 marketplace / npm 多 registry——索引开放，人人可发布，人人可发现。
+
+### 6.2 模型
+
+```
+默认源        encaron/linkdesk-marketplace     （官方目录）
+作者源 A      agentA/linkdesk-marketplace      （任意 GitHub 仓库，根目录有 marketplace.json）
+作者源 B      agentB/plugins                    （同上）
+
+用户/AI 在设置里「添加市场源」填仓库 URL
+  → marketplace 插件 fetch 全部源 → 合并去重（同 id 取版本高者）→ 商店统一展示
+```
+
+### 6.3 源列表数据结构（marketplace.json 格式零改动——纯增量）
+
+源列表独立存（settings.json 或 marketplace 插件专用配置）：
+
+```json
+{
+  "marketplaceSources": [
+    { "id": "official", "default": true,
+      "url": "https://raw.githubusercontent.com/encaron/linkdesk-marketplace/main/marketplace.json" },
+    { "id": "agent-a",
+      "url": "https://raw.githubusercontent.com/agentA/linkdesk-marketplace/main/marketplace.json" }
+  ]
+}
+```
+
+每个源都是同一个 marketplace.json schema——现有格式、现有字段，加新字段不破坏。
+
+### 6.4 行为
+
+| 场景 | 行为 |
+|:--|:--|
+| 启动 | fetch 全部源 → 合并 → 展示 |
+| 同 id 冲突 | 取版本高者（semver） |
+| 单源失败 | 跳过不阻塞其他源，用该源缓存兜底 |
+| 来源标注 | 商店卡片/列表显示来源仓库名——用户知道装的是谁的 |
+| 发布 | 作者 `npm run publish` → 自己仓库 Releases + 自己的 marketplace.json → 完成（无需中心审批） |
+
+### 6.5 人 vs AI
+
+- **人**：商店 UI 照旧（多源合并成卡片网格），多一个「添加市场源」入口
+- **AI**：agentA 上传到自己的仓库 = 自己说了算；agentB 拿到源 URL 即可添加 + 安装（URL 直装）
+
+### 6.6 任务归属
+
+- **读取侧** → E6#30c：marketplace 插件多源支持（源列表配置化 + 合并去重 + 来源标注）
+- **发布侧** → E6#26b：作者发布到自己的仓库（Releases + 自己的 marketplace.json）
+- 壳零改动——全部在 marketplace 插件内部
+
+---
+
 > **← 上一层：** `../02-插件开发工具链/`
 > **→ 下一文档：** `02-壳内下载安装.md`
