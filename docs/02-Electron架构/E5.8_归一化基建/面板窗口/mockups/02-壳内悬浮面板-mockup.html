@@ -1052,8 +1052,8 @@
 <div class="frame">
   <div class="frame-caption">
     <span class="tag">互转回程</span>
-    <b>标签页右键「在悬浮面板中打开」（声明制）</b>
-    <span>I8-3 · 无「在主窗口中打开」——那是悬浮面板标题栏的专属动作</span>
+    <b>标签页右键「在悬浮面板中打开」——仅无悬浮窗口时出现（声明制）</b>
+    <span>I8-3 · 前提：此刻没有悬浮窗口（身份开关键 I8-15 无面板→开）· 无「在主窗口中打开」</span>
   </div>
 
   <div class="app">
@@ -1086,9 +1086,9 @@
           <div class="tab">设置<span class="decl-mark">·</span></div>
           <div class="tab">串口监视器</div>
 
-          <!-- T→B 回程右键菜单（I8-3：条目按声明出现；无「在主窗口中打开」） -->
+          <!-- T→B 回程右键菜单（I8-3：仅无悬浮窗口时出现 · 仅声明标签页有 · 无「在主窗口中打开」） -->
           <div class="ctx" style="top:34px; left:120px;">
-            <div class="ctx-item rule">设置标签页 · 右键</div>
+            <div class="ctx-item rule">设置标签页 · 右键（此刻无悬浮窗口）</div>
             <div class="ctx-sep"></div>
             <div class="ctx-item">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:13px;height:13px;color:var(--accent)"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/></svg>
@@ -1100,71 +1100,22 @@
           </div>
         </div>
         <div class="editor code">
-          <div><span class="ln">1</span><span class="cm">// 回程：设置已是标签页时按 Ctrl+, → 聚焦该标签页（I8-3 单实例）</span></div>
-          <div><span class="ln">2</span><span class="cm">// 标签页右键「在悬浮面板中打开」→ T → B（条目按声明出现，零硬编码）</span></div>
+          <div><span class="ln">1</span><span class="cm">// 前提：此刻没有悬浮窗口——此条目才出现（身份开关键 I8-15 无面板→开）</span></div>
+          <div><span class="ln">2</span><span class="cm">// 面板已开（同视图已浮着）→ 此条目不出现（= 同视图再按 toggle 关面板）</span></div>
           <div><span class="ln">3</span>&nbsp;</div>
-          <div><span class="ln">4</span><span class="cm">// 「在主窗口中打开」只属于悬浮面板标题栏（B → T），两者不共存</span></div>
+          <div><span class="ln">4</span><span class="cm">// 仅声明了 floatingPanel 的标签页有此条目（main.ts/串口监视器不声明 → 右键无）</span></div>
+          <div><span class="ln">5</span>&nbsp;</div>
+          <div><span class="ln">6</span><span class="cm">// 「在主窗口中打开」只属于悬浮面板标题栏（B → T），两者不共存</span></div>
         </div>
       </div>
     </div>
     <div class="statusbar">
       <span>就绪</span>
-      <span class="right">右键条目按声明出现 · Ctrl+, 单实例聚焦</span>
-    </div>
-
-    <!-- 悬浮面板正常停靠（右侧）——与右键菜单场景共存 -->
-    <div class="fp-layer">
-      <div class="fp-backdrop"></div>
-      <div class="fp" style="width:380px;">
-        <div class="fp-handle"></div>
-        <div class="fp-title">
-          <span class="label">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
-            设置
-          </span>
-          <div class="fp-actions">
-            <button class="fp-act open-in" title="在主窗口中打开">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
-              <span class="lbl">在主窗口中打开</span>
-            </button>
-            <button class="fp-act tip" data-tip="最大化 / 还原"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
-            <button class="fp-act close tip" data-tip="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
-          </div>
-        </div>
-        <div class="fp-body">
-          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
-            <div class="set-search">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
-              <input placeholder="搜索设置…">
-            </div>
-            <div style="flex:1; display:flex; min-height:0;">
-              <div class="set-cats" style="width:110px;">
-                <div class="set-cat">常用</div>
-                <div class="set-cat active">外观</div>
-                <div class="set-cat">编辑器</div>
-              </div>
-              <div class="set-pane">
-                <div>
-                  <div class="set-group-title">外观</div>
-                  <div class="set-row">
-                    <span class="name">主题</span>
-                    <span class="ctrl select">深色 <span class="chev">⌄</span></span>
-                  </div>
-                  <div class="set-row">
-                    <span class="name">强调色</span>
-                    <span class="ctrl swatch"></span>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div class="fp-resize"></div>
-      </div>
+      <span class="right">此刻无悬浮窗口 → 右键条目才出现 · 仅声明标签页有 · Ctrl+, 单实例聚焦</span>
     </div>
   </div>
 
-  <div class="frame-note"><b>互转语义（2026-08-17 用户纠正后）：</b>「在主窗口中打开」与「在悬浮面板中打开」<b>不可能共存</b>——前者是悬浮面板标题栏专属动作（B→T：面板转标签页），后者是标签页右键动作（T→B 回程，按插件声明出现）。标签页右键菜单只有「在悬浮面板中打开」+ 关闭类命令，不含「在主窗口中打开」。</div>
+  <div class="frame-note"><b>互转语义（2026-08-17 用户两轮纠正后）：</b>①「在主窗口中打开」与「在悬浮面板中打开」<b>不可能共存</b>——前者是悬浮面板标题栏专属动作（B→T：面板转标签页），后者是标签页右键动作（T→B 回程），两者属于不同表面。② 标签页右键的「在悬浮面板中打开」<b>只在没有悬浮窗口时出现</b>（身份开关键 I8-15：无面板→开；同视图已浮着 → 此条目不出现，此时再触发 = toggle 关面板）；③ 此条目<b>仅声明了 floatingPanel 的标签页</b>才有（main.ts/串口监视器不声明 → 右键无此条目）。</div>
 </div>
 
 </body>
