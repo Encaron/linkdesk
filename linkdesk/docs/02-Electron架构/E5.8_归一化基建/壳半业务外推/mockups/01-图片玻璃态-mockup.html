@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 Phase 10 外观玻璃态——图片配液态玻璃（#50.5-#50.12）五帧 mockup</title>
+<style>
+  /* ============================================================
+     LinkDesk 设计 token + 外观玻璃态（E5.8#50.5-#50.12）
+     设计真相源 → 壳半业务外推/02-外观玻璃态设计.md（用户拍板 5 点）
+     视觉模型 = macOS/VisionOS（图全窗含主区 + 表面液态玻璃漂浮），
+     非 VS Code（VS Code 无原生背景图，用户否决「主区实心」折衷）
+     🔥 2026-08-17 形态拍板 = 悬浮圆角玻璃（VisionOS 灵魂）：
+       各表面从「直角贴边块」→「圆角悬浮面板」——留缝 + 投影 + 发丝光边，
+       图从面板缝隙透出。根因：直角贴边无缝无投影 → 玻璃与图无边界
+       → 图被糊一块而非玻璃盖图（用户实测反馈）。
+     玻璃参数来自 ui-ux-pro-max（硬约束 #16 已调用）：
+       Glassmorphism  blur(10-20px)  rgba(255,255,255,0.15-0.3)  border 1px rgba(255,255,255,0.2)
+       VisionOS       blur(15-40px) saturate(180%)  rgba(255,255,255,0.15-0.3)
+     布局 = 固定尺寸窗口并排 + gap（无跨窗口绝对定位）
+     ============================================================ */
+  :root {
+    /* 单色 token（玻璃化的基准半透明值由此派生） */
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-status: #0078D4;
+    --bg-input: #3C3C3C;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --border: #3C3C3C;
+    --separator: #474747;
+    --icon-active: #FFFFFF;
+    --icon-inactive: #858585;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --bg-toolbar: #1E1E22;
+    --bg-dropdown: #3C3C3C;
+    --hover-overlay: rgba(255,255,255,0.06);
+    --tab-hover-bg: #353535;
+    --dirty-dot: #CCA700;
+    --sent-echo: #0078D4;
+    --error: #E06C75;
+
+    /* 玻璃变量面（ThemeEngine applyTheme 写——默认零值 = 现状） */
+    --glass-blur: 18px;         /* mockup 验证效果用——真实 blur 值 */
+    --glass-saturate: 1.5;
+    --glass-tint: transparent;
+    --bg-image: url('sailor-moon.jpg');  /* mockup 引用真实壁纸（设计默认 none = 无图零变化） */
+    --bg-opacity: 1;
+    /* 🔥 mockup 演示值 0.62——让整窗图透出看清玻璃效果。
+       真实设计默认 0.88 深罩（可读性生命线，dsh mask-photo），帧 3 滑杆可调。 */
+    --bg-mask: 0.62;
+    /* 🔥 表面玻璃要够透——否则图被双重压暗只剩主区浮岛露出 → 用户误判「图只盖主区」 */
+    --glass-surface-bg: rgba(15,17,20,0.28);
+    --glass-light: rgba(255,255,255,0.12);
+
+    /* 🔥 悬浮圆角面板（2026-08-17 形态拍板——VisionOS 灵魂）：
+       零值 = 现状直角贴边无缝（旧主题零变化），玻璃主题声明 = 圆角悬浮面板 */
+    --surface-radius: 0px;      /* 圆角 0 = 现状直角 */
+    --surface-inset: 0px;       /* 留缝 0 = 现状贴边 */
+    --surface-shadow: none;     /* 投影 none = 现状无浮起 */
+    --surface-border: 1px solid rgba(255,255,255,0.14);  /* 发丝光边（玻璃面板恒定有） */
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #101013;
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    max-width: 1900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.6; }
+
+  /* ---------- 帧容器 ---------- */
+  .frame {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 200ms ease;
+  }
+  .frame:hover { border-color: var(--separator); }
+  .frame-caption {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .frame-caption b { font-size: 14px; }
+  .frame-caption .tag {
+    font-size: 11px;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 3px;
+    padding: 1px 8px;
+    font-weight: 600;
+  }
+  .frame-caption .tag.g { background: #6b5b95; }
+  .frame-caption .tag.y { background: #5f5f6e; }
+  .frame-caption span { color: var(--text-secondary); font-size: 12px; }
+  .frame-note {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.7;
+    background: #26262a;
+  }
+  .frame-note b { color: var(--text-secondary); }
+  .frame-note code {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    color: var(--sent-echo);
+  }
+
+  /* ---------- 场景看板 ---------- */
+  .stage {
+    flex: 1;
+    min-height: 460px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 28px;
+    padding: 24px 20px;
+    background: #131318;
+    overflow: hidden;
+    position: relative;
+  }
+  .stage .col { display: flex; flex-direction: column; align-items: center; gap: 10px; }
+  .stage .col .lbl { font-size: 11px; color: var(--text-muted); letter-spacing: 0.04em; }
+
+  /* ---------- 玻璃表面（统一 backdrop-filter） ---------- */
+  .glass {
+    background: var(--glass-surface-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    border-color: var(--glass-light);
+  }
+
+  /* ---------- 悬浮面板（#50.7 悬浮圆角——圆角 + 留缝 + 投影 + 发丝光边） ---------- */
+  .surf {
+    border: var(--surface-border);
+    border-radius: var(--surface-radius);
+    margin: var(--surface-inset);
+    box-shadow: var(--surface-shadow);
+  }
+  /* 悬浮面板的顶部高光（VisionOS 玻璃顶部受光）——面板圆角 > 0 时叠加 */
+  .surf::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    box-shadow: inset 0 1px 0 rgba(255,255,255,0.10);
+    pointer-events: none;
+  }
+
+  /* ============================================================
+     窗口骨架——玻璃版：背景透明（图透出），表面 glass + surf 化
+     ============================================================ */
+  .app {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    width: 500px; height: 420px;
+    font-size: 12px;
+    overflow: hidden;
+    border-radius: 6px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.45);
+    flex: none;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+  .app.wide { width: 760px; height: 480px; }
+
+  /* 图片层（#50.8 BackgroundLayer：全窗 fixed inset0 + 遮罩） */
+  .bg-layer {
+    position: absolute; inset: 0; z-index: 0;
+    background-image: var(--bg-image);
+    background-size: cover;
+    background-position: center;
+    opacity: var(--bg-opacity);
+    pointer-events: none;
+  }
+  .bg-layer::after {
+    content: '';
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,var(--bg-mask));
+  }
+
+  /* 悬浮面板布局：表面 = 圆角悬浮面板，四周留缝，图从缝隙透出 */
+  .app .titlebar { position: relative; z-index: 2; }
+  .app .mid { position: relative; z-index: 2; flex: 1; display: flex; min-height: 0; }
+  .app .statusbar { position: relative; z-index: 2; }
+
+  .titlebar {
+    height: 28px; flex: none;
+    display: flex; align-items: center;
+    padding: 0 10px 0 12px;
+    gap: 8px;
+    user-select: none;
+  }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .drag { flex: 1; }
+  .win-btns { display: flex; gap: 2px; }
+  .win-btn {
+    width: 34px; height: 22px; border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+  .icon-bar {
+    width: 40px; flex: none;
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 6px; gap: 2px;
+  }
+  .icon-btn {
+    width: 40px; height: 38px; border: none; background: transparent;
+    color: var(--icon-inactive);
+    display: flex; align-items: center; justify-content: center;
+    border-left: 2px solid transparent;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .sidebar {
+    width: 150px; flex: none;
+    display: flex; flex-direction: column;
+    font-size: 12px;
+  }
+  .sidebar-header {
+    padding: 8px 12px; color: var(--text-secondary);
+    letter-spacing: 0.06em; font-size: 11px;
+    text-transform: uppercase;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 12px; color: var(--text-primary);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px;
+    transition: background 150ms ease;
+  }
+  .tree-row:hover { background: var(--hover-overlay); }
+  .tree-row svg { width: 12px; height: 12px; flex: none; color: var(--text-muted); }
+  .tree-row.selected { background: rgba(0,120,212,0.25); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .tabbar {
+    height: 30px; flex: none;
+    display: flex; align-items: stretch;
+    position: relative;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 11px;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--glass-light);
+    border-top: 2px solid transparent;
+    background: transparent;
+    font-size: 12px;
+    transition: background 150ms ease;
+  }
+  .tab:hover { background: var(--hover-overlay); }
+  .tab.active { background: rgba(255,255,255,0.08); color: var(--text-primary); border-top-color: var(--accent); }
+  .tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+
+  .editor {
+    flex: 1; min-height: 0;
+    padding: 10px 16px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; line-height: 1.6;
+    overflow: hidden;
+  }
+  .code .kw { color: #569CD6; }
+  .code .fn { color: #DCDCAA; }
+  .code .str { color: #CE9178; }
+  .code .cm { color: #8BC89B; }
+  .code .ln { color: rgba(255,255,255,0.35); user-select: none; display: inline-block; width: 26px; text-align: right; margin-right: 12px; }
+
+  .statusbar {
+    height: 22px; flex: none;
+    display: flex; align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    font-size: 11px;
+    color: #fff;
+  }
+  .statusbar .right { margin-left: auto; opacity: 0.9; }
+
+  /* ---------- 悬浮面板（盖在图上） ---------- */
+  .fp {
+    position: absolute;
+    z-index: 20;
+    top: 46px; right: 12px; bottom: 34px;
+    width: 300px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .fp .fp-title {
+    height: 34px; flex: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 8px 0 12px;
+    border-bottom: 1px solid var(--glass-light);
+    font-size: 12px; color: var(--text-primary);
+  }
+  .fp .fp-title svg { width: 14px; height: 14px; color: var(--accent-hover); }
+  .fp .fp-actions { margin-left: auto; display: flex; gap: 2px; }
+  .fp .fp-act {
+    width: 26px; height: 24px; border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .fp .fp-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .fp .fp-act.close:hover { background: #c42b1c; color: #fff; }
+  .fp .fp-act svg { width: 13px; height: 13px; }
+  .fp .fp-body { flex: 1; min-height: 0; padding: 10px 12px; display: flex; flex-direction: column; gap: 10px; overflow: hidden; }
+  .fp .row { display: flex; align-items: center; gap: 8px; min-height: 24px; }
+  .fp .row .name { flex: 1; font-size: 11.5px; color: var(--text-primary); }
+  .fp .row .switch { width: 30px; height: 16px; border-radius: 8px; background: var(--accent); border: 1px solid rgba(255,255,255,0.2); position: relative; }
+  .fp .row .switch::after { content: ''; position: absolute; top: 2px; right: 2px; width: 10px; height: 10px; border-radius: 50%; background: #fff; }
+
+  /* ---------- 对比帧：单色 vs 玻璃（单色保持直角贴边现状） ---------- */
+  .app.solid { background: var(--bg-window); border-color: var(--border); }
+  .app.solid .bg-layer { display: none; }
+  .app.solid .titlebar { background: var(--bg-titlebar); }
+  .app.solid .icon-bar { background: var(--bg-icon-bar); }
+  .app.solid .sidebar { background: var(--bg-side-panel); }
+  .app.solid .tabbar { background: var(--bg-titlebar); }
+  .app.solid .tab.active { background: var(--bg-window); }
+  .app.solid .editor { background: var(--bg-window); }
+  .app.solid .statusbar { background: var(--bg-status); }
+
+  /* ---------- 设置面板（玻璃控制：Slider + 选图） ---------- */
+  .set-pane {
+    position: relative; z-index: 3;
+    width: 320px;
+    display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .set-pane .hd {
+    height: 32px; flex: none;
+    display: flex; align-items: center; gap: 8px;
+    padding: 0 12px;
+    border-bottom: 1px solid var(--glass-light);
+    font-size: 12px; color: var(--text-primary);
+  }
+  .set-pane .bd { padding: 12px 14px; display: flex; flex-direction: column; gap: 12px; }
+  .set-row { display: flex; align-items: center; gap: 10px; min-height: 24px; }
+  .set-row .name { flex: 1; font-size: 12px; color: var(--text-primary); }
+  .set-row .val { flex: none; font-size: 11px; color: var(--text-secondary); min-width: 34px; text-align: right; }
+
+  /* Slider（#50.9 通用控件） */
+  .slider { flex: none; width: 130px; height: 4px; border-radius: 2px; background: rgba(255,255,255,0.2); position: relative; }
+  .slider .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; background: var(--accent); }
+  .slider .thumb { position: absolute; top: 50%; width: 12px; height: 12px; border-radius: 50%; background: #fff; transform: translate(-50%,-50%); box-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+
+  .btn {
+    border: 1px solid rgba(255,255,255,0.25);
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 11.5px;
+    cursor: pointer;
+    transition: background 150ms ease;
+  }
+  .btn:hover { background: rgba(255,255,255,0.18); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover { background: var(--accent-hover); }
+
+  /* ---------- theme JSON 展示 ---------- */
+  .json {
+    position: relative; z-index: 3;
+    width: 420px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,0.2);
+    padding: 14px 16px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px; line-height: 1.7;
+    overflow: hidden;
+  }
+  .json .k { color: #9CDCFE; }
+  .json .v { color: #CE9178; }
+  .json .c { color: #6A9955; }
+  .json .n { color: #B5CEA8; }
+  .json .p { color: var(--text-primary); }
+
+  /* ---------- 脱出窗口（per-window 继承：图 cover 该窗口视口） ---------- */
+  .dwin {
+    position: relative;
+    display: flex; flex-direction: column;
+    width: 300px; height: 400px;
+    font-size: 12px;
+    overflow: hidden;
+    border-radius: 6px;
+    border: 1px solid rgba(255,255,255,0.15);
+    box-shadow: 0 14px 44px rgba(0,0,0,0.55);
+    flex: none;
+    background: transparent;
+  }
+  .dwin-titlebar {
+    position: relative; z-index: 2;
+    height: 28px; flex: none;
+    display: flex; align-items: center;
+    padding: 0 6px 0 12px; gap: 6px;
+  }
+  .dwin-titlebar .wtitle { font-size: 12px; color: var(--text-secondary); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .dwin-titlebar .wtitle b { color: var(--text-primary); font-weight: 500; }
+  .dwin-main { position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ============================================================
+     悬浮圆角参数（mockup 演示值——玻璃主题声明，旧主题零值）
+     ============================================================ */
+  .glass-app .titlebar { margin: 8px 8px 4px 8px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .mid { padding: 4px 8px; }
+  .glass-app .icon-bar { margin: 4px 4px 4px 0; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .sidebar { margin: 4px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .main { margin: 4px 4px 4px 0; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .statusbar { margin: 4px 8px 8px 8px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .fp { border-radius: 12px; box-shadow: 0 12px 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.10); }
+  .glass-app .dwin-titlebar { margin: 8px 8px 4px 8px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+  .glass-app .dwin-main { margin: 4px 8px 8px 8px; border-radius: 10px; box-shadow: 0 4px 18px rgba(0,0,0,0.45); }
+</style>
+</head>
+<body>
+
+<h1>E5.8 Phase 10 外观玻璃态——图片配液态玻璃（#50.5-#50.12）五帧 mockup
+  <small><b style="color:#4EC9B0">2026-08-17 用户拍板：图全窗铺底（含主区）+ 表面液态玻璃漂浮 + 悬浮圆角面板。</b>视觉模型 = macOS/VisionOS（非 VS Code——VS Code 无原生背景图，用户否决「主区实心」折衷）。图片 = 用户提供壁纸（美少女战士 1920×1080）。机制全部走 <code>--glass-*</code>/<code>--bg-*</code>/<code>--surface-*</code> 变量（ThemeEngine 写，默认零值 = 现状零开销）。玻璃参数 = ui-ux-pro-max Glassmorphism/VisionOS。</small>
+</h1>
+
+<!-- ============ 帧 1：完整主视觉——图全窗 + 悬浮圆角液态玻璃 ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag g">主视觉</span>
+    <b>图全窗铺底 + 悬浮圆角液态玻璃（真实效果）</b>
+    <span>#50.7 悬浮面板 · 遮罩 0.62 演示（默认 0.88）· blur 侧栏8/主区18 · 留缝+投影+光边</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="app wide glass-app">
+        <!-- 图片层 + 遮罩 -->
+        <div class="bg-layer"></div>
+
+        <div class="titlebar glass">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns">
+            <button class="win-btn">─</button>
+            <button class="win-btn">□</button>
+            <button class="win-btn close">✕</button>
+          </div>
+        </div>
+
+        <div class="mid">
+          <div class="icon-bar glass">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+          </div>
+          <div class="sidebar glass">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+            <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor.tsx</div>
+          </div>
+          <div class="main glass">
+            <div class="tabbar">
+              <div class="tab active"><span class="dirty"></span>main.ts</div>
+              <div class="tab">serial-monitor.tsx</div>
+            </div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// 图全窗铺底（含主区）——每块表面都是悬浮圆角玻璃面板</span></div>
+              <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+              <div><span class="ln">3</span>&nbsp;</div>
+              <div><span class="ln">4</span><span class="cm">// 留缝 8px + 投影 → 玻璃浮在图上，图从面板缝隙透出</span></div>
+              <div><span class="ln">5</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; <span class="fn">initShell</span>();</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="statusbar glass">
+          <span>就绪</span>
+          <span class="right">玻璃主题：Aurora Glass · 悬浮圆角 + 液态玻璃</span>
+        </div>
+
+        <!-- 悬浮面板（玻璃化，盖在图上） -->
+        <div class="fp glass">
+          <div class="fp-title">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+            设置
+            <div class="fp-actions">
+              <button class="fp-act" title="最大化"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+              <button class="fp-act close" title="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+            </div>
+          </div>
+          <div class="fp-body">
+            <div class="row"><span class="name">底部面板</span><span class="switch"></span></div>
+            <div class="row"><span class="name">主题</span><span style="font-size:11px;color:var(--text-secondary)">Aurora Glass ▾</span></div>
+            <div class="row"><span class="name">强调色</span><span style="width:24px;height:15px;border-radius:3px;background:conic-gradient(#0078D4 0 90deg,#1A8CE8 0 180deg,#4EC9B0 0 270deg,#CCA700 0);border:1px solid rgba(255,255,255,0.2)"></span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">帧 1 —— 悬浮圆角玻璃（blur 侧栏8/主区18 / saturate 1.5 / 遮罩 0.62 演示）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>帧 1 = 形态拍板「悬浮圆角玻璃」实物化：</b>① 图片层 <code>.bg-layer</code> 全窗 <code>position:fixed inset:0 z-index:0</code> + <code>cover</code>（含主区，非 VS Code 只挖主区透明洞）；② 每块表面 = <b>圆角悬浮面板</b>——留缝 8px + 投影 + 发丝光边 + 顶部高光（VisionOS 受光），图从面板缝隙透出；③ 直角贴边会令玻璃与图无边界 → 图被糊一块而非玻璃盖图（2026-08-17 用户实测反馈根因）；④ 遮罩演示 0.62（设计默认 <code>--bg-mask 0.88</code> 生命线）；⑤ 侧栏等窄表面 blur 小（8px 图可辨）、主区氛围 blur 大（18px）——per-surface 覆盖。</div>
+</div>
+
+<!-- ============ 帧 2：对比——不删单色（新增风格） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag g">对比</span>
+    <b>单色主题 vs 悬浮圆角玻璃主题——新增不替代（拍板 ①）</b>
+    <span>正交组合 · type 管对比度 · surface/background 管质感</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="app solid">
+        <div class="titlebar">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+          </div>
+          <div class="sidebar">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+            <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+          </div>
+          <div class="main">
+            <div class="tabbar">
+              <div class="tab active">main.ts</div>
+            </div>
+            <div class="editor">
+              <div><span class="ln">1</span><span class="cm">// 现有 Dark 单色主题——保持原样</span></div>
+              <div><span class="ln">2</span><span class="cm">// 不声明 surface/background → 零变化</span></div>
+              <div><span class="ln">3</span><span class="cm">// 玻璃+悬浮变量默认零值 = 现状（#50.6 验收）</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar">
+          <span>就绪</span><span class="right">Dark 单色 · 现状</span>
+        </div>
+      </div>
+      <span class="lbl">Dark 单色（现状，直角贴边，不删）</span>
+    </div>
+
+    <div class="flow" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:22px;height:22px;color:var(--accent-hover)"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span>正交组合</span>
+    </div>
+
+    <div class="col">
+      <div class="app glass-app">
+        <div class="bg-layer"></div>
+        <div class="titlebar glass">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar glass">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+          </div>
+          <div class="sidebar glass">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+            <div class="tree-row selected"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+          </div>
+          <div class="main glass">
+            <div class="tabbar"><div class="tab active">main.ts</div></div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// Dark + glass + 悬浮 + 图 —— 同一 type 管对比度</span></div>
+              <div><span class="ln">2</span><span class="cm">// surface(玻璃+悬浮) + background(图) 两根正交质感轴</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar glass"><span>就绪</span><span class="right">Aurora Glass</span></div>
+      </div>
+      <span class="lbl">Dark + 悬浮圆角玻璃 + 图（新增风格）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>正交组合（拍板 ① + 技术方案「C 组合式」）：</b>① <code>type</code> 保持 <code>dark/light</code> 二值——只管明暗对比度，现有 CSS 选择器零改动；② <code>surface</code>（玻璃+悬浮圆角）+ <code>background</code>（图片）是两根<b>正交质感轴</b>——dark 玻璃+图 / light 玻璃+图 / 玻璃无图 任意组合乘出来；③ 不声明这两个字段的旧主题 → <b>零变化</b>（左侧对照 = 现状直角贴边，右侧悬浮圆角）；④ <code>--surface-radius/inset/shadow</code> 默认零值 = 现状，玻璃主题声明 = 悬浮面板。</div>
+</div>
+
+<!-- ============ 帧 3：设置玻璃控制（Slider + 选图，来源两路） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag g">控制</span>
+    <b>设置玻璃控制——Slider 滑杆 + 选图按键（来源两路）</b>
+    <span>#50.9 Slider 通用控件 · #50.10 用户配置覆盖 · #50.11 选图入库</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="set-pane glass">
+        <div class="hd">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" style="width:14px;height:14px;color:var(--accent-hover)"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+          设置 · 外观 · 玻璃
+        </div>
+        <div class="bd">
+          <div class="set-row">
+            <span class="name">玻璃模糊</span>
+            <div class="slider"><div class="fill" style="width:60%;"></div><div class="thumb" style="left:60%;"></div></div>
+            <span class="val">18</span>
+          </div>
+          <div class="set-row">
+            <span class="name">玻璃不透明度</span>
+            <div class="slider"><div class="fill" style="width:28%;"></div><div class="thumb" style="left:28%;"></div></div>
+            <span class="val">28%</span>
+          </div>
+          <div class="set-row">
+            <span class="name">饱和度增强</span>
+            <div class="slider"><div class="fill" style="width:50%;"></div><div class="thumb" style="left:50%;"></div></div>
+            <span class="val">1.5×</span>
+          </div>
+          <div class="set-row">
+            <span class="name">图片遮罩</span>
+            <div class="slider"><div class="fill" style="width:62%;"></div><div class="thumb" style="left:62%;"></div></div>
+            <span class="val">0.62</span>
+          </div>
+          <div class="set-row">
+            <span class="name">面板圆角</span>
+            <div class="slider"><div class="fill" style="width:50%;"></div><div class="thumb" style="left:50%;"></div></div>
+            <span class="val">10</span>
+          </div>
+          <div class="set-row" style="border-top:1px solid var(--glass-light); padding-top:10px;">
+            <span class="name">背景图片</span>
+            <span class="val" style="min-width:0;font-size:10px;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;">美少女战士…jpg</span>
+          </div>
+          <div class="set-row">
+            <span class="name" style="font-size:11px;color:var(--text-muted)">来源：主题打包 / 本地选图</span>
+            <button class="btn primary">选择图片…</button>
+            <button class="btn">清除</button>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">设置外观玻璃控制（Slider 声明式渲染）</span>
+    </div>
+
+    <div class="flow" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:22px;height:22px;color:var(--accent-hover)"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span>即时生效</span>
+    </div>
+
+    <div class="col">
+      <div class="app glass-app" style="width:380px;height:420px;">
+        <div class="bg-layer"></div>
+        <div class="titlebar glass">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar glass">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+          </div>
+          <div class="sidebar glass">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+          </div>
+          <div class="main glass">
+            <div class="tabbar"><div class="tab active">main.ts</div></div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// 调滑杆即时生效（onApply 覆盖主题基线）</span></div>
+              <div><span class="ln">2</span><span class="cm">// 选图 → 拷贝入库 userData → 重启还在（A 定案）</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar glass"><span>就绪</span><span class="right">用户配置覆盖中</span></div>
+      </div>
+      <span class="lbl">即时生效的悬浮玻璃窗</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>控制面（拍板 ②③）：</b>① <b>全局默认</b>：Slider 一个值管全部表面（<code>uiHint:"slider"</code> 声明式渲染，#50.9），新增「面板圆角」滑杆管悬浮形态；② <b>per-surface 覆盖</b>：theme JSON 可精细控制单格表面（主题作者用）；③ <b>来源两路</b>：主题打包图（getAssetPath）+ 设置「选择图片…」本地选图（拷贝入库 userData appearance 目录，受控路径持久化，A 定案 #50.11）；④ <b>覆盖优先级</b>：用户配置覆盖主题基线，清空 = 还原（对标 app.accentColor 模式 #50.10）。</div>
+</div>
+
+<!-- ============ 帧 4：机制面——theme JSON 声明（正交轴 + 悬浮面板） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag y">机制</span>
+    <b>theme JSON 声明 surface + background（主题类型 C 组合式）</b>
+    <span>壳给机制 · 玻璃主题做插件（拍板 ④）· ThemeEngine 写变量</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="json glass">
+        <span class="c">// Aurora Glass — 示例玻璃主题插件（#50.12）</span><br>
+        <span class="p">{</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="k">"name"</span><span class="p">:</span> <span class="v">"Aurora Glass"</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="k">"type"</span><span class="p">:</span> <span class="v">"dark"</span><span class="p">,</span> <span class="c">// 管对比度——照旧</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="k">"colors"</span><span class="p">:</span> <span class="p">{</span> <span class="k">"--bg-window"</span><span class="p">:</span> <span class="v">"rgba(30,30,30,0.28)"</span><span class="p">,</span> <span class="p">...</span> <span class="p">},</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="k">"surface"</span><span class="p">:</span> <span class="p">{</span> <span class="c">// 质感轴 1：玻璃 + 悬浮圆角面板</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"type"</span><span class="p">:</span> <span class="v">"glass"</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"blur"</span><span class="p">:</span> <span class="n">18</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"saturate"</span><span class="p">:</span> <span class="n">1.5</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"tint"</span><span class="p">:</span> <span class="n">null</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"radius"</span><span class="p">:</span> <span class="n">10</span><span class="p">,</span> <span class="c">// 悬浮圆角</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"inset"</span><span class="p">:</span> <span class="n">8</span><span class="p">,</span> <span class="c">// 留缝</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"shadow"</span><span class="p">:</span> <span class="n">true</span> <span class="c">// 投影浮起</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="p">},</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="k">"background"</span><span class="p">:</span> <span class="p">{</span> <span class="c">// 质感轴 2：图片</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"image"</span><span class="p">:</span> <span class="v">"assets/aurora.jpg"</span><span class="p">,</span> <span class="c">// getAssetPath 解析</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"opacity"</span><span class="p">:</span> <span class="n">1</span><span class="p">,</span><br>
+        <span class="p">&nbsp;&nbsp;&nbsp;&nbsp;</span><span class="k">"mask"</span><span class="p">:</span> <span class="n">0.88</span> <span class="c">// 深罩——可读性生命线</span><br>
+        <span class="p">&nbsp;&nbsp;</span><span class="p">}</span><br>
+        <span class="p">}</span>
+      </div>
+      <span class="lbl">主题 JSON 声明（插件打包，getAssetPath 受控路径）</span>
+    </div>
+
+    <div class="flow" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:22px;height:22px;color:var(--accent-hover)"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span>ThemeEngine<br>写变量</span>
+    </div>
+
+    <div class="col">
+      <div class="json glass" style="width:280px;">
+        <span class="c">// ThemeEngine applyTheme 写 CSS 变量面</span><br>
+        <span class="p">--glass-blur:</span> <span class="n">18px</span><span class="p">;</span><br>
+        <span class="p">--glass-saturate:</span> <span class="n">1.5</span><span class="p">;</span><br>
+        <span class="p">--glass-tint:</span> <span class="v">transparent</span><span class="p">;</span><br>
+        <span class="p">--bg-image:</span> <span class="v">url(file:///...aurora.jpg)</span><span class="p">;</span><br>
+        <span class="p">--bg-opacity:</span> <span class="n">1</span><span class="p">;</span><br>
+        <span class="p">--bg-mask:</span> <span class="n">0.88</span><span class="p">;</span><br>
+        <span class="p">--surface-radius:</span> <span class="n">10px</span><span class="p">;</span><br>
+        <span class="p">--surface-inset:</span> <span class="n">8px</span><span class="p">;</span><br>
+        <span class="p">--surface-shadow:</span> <span class="v">0 4px 18px rgba(0,0,0,0.45)</span><span class="p">;</span><br>
+        <span class="c">&nbsp;</span><br>
+        <span class="c">// 旧主题不声明 → 变量默认零值</span><br>
+        <span class="c">// radius/inset/shadow 0 = 直角贴边无缝 = 现状</span>
+      </div>
+      <span class="lbl">壳机制（#50.6 ThemeEngine 扩展）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>机制切分（拍板 ④——壳给机制，插件给业务）：</b>① 壳机制 = ThemeEngine <code>surface/background</code> 扩展（#50.6 写变量 + 广播）+ BackgroundLayer（#50.8）+ Slider/UIHint（#50.9）+ 配置接线（#50.10）+ 选图入库（#50.11）；② 业务插件 = 玻璃主题（#50.12，第一个消费者，getAssetPath 打包图）；③ <b>壳不新增「知道」</b>——壳只认识 surface/background 是可选质感字段 + 三个悬浮变量，不认识任何具体玻璃主题长什么样；④ 玻璃主题插件卸载 → 壳机制零残留（registerFallbackThemes 兜底）。</div>
+</div>
+
+<!-- ============ 帧 5：可拖出继承（per-window 重应用） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag y">继承</span>
+    <b>脱出窗口继承——per-window 重应用主题 + BackgroundLayer</b>
+    <span>拍板 ⑤ · Phase 9 #42 联注 · 图片 cover 当前窗口视口（OS 壁纸模型）</span>
+  </div>
+
+  <div class="stage">
+    <div class="col">
+      <div class="app glass-app">
+        <div class="bg-layer"></div>
+        <div class="titlebar glass">
+          <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+          <span class="app-name">LinkDesk</span>
+          <span class="drag"></span>
+          <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+        </div>
+        <div class="mid">
+          <div class="icon-bar glass">
+            <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+            <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+          </div>
+          <div class="sidebar glass">
+            <div class="sidebar-header">资源管理器</div>
+            <div class="tree-row"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+          </div>
+          <div class="main glass">
+            <div class="tabbar"><div class="tab active"><span class="dirty"></span>main.ts</div></div>
+            <div class="editor code">
+              <div><span class="ln">1</span><span class="cm">// 主窗口：玻璃主题完整生效</span></div>
+              <div><span class="ln">2</span><span class="cm">// 拖出「串口监视器」tab → 新 document</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="statusbar glass"><span>就绪</span><span class="right">主窗口 · per-window 主题</span></div>
+      </div>
+      <span class="lbl">主窗口</span>
+    </div>
+
+    <div class="flow" style="display:flex;flex-direction:column;align-items:center;gap:6px;color:var(--text-muted);font-size:11px;">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" style="width:22px;height:22px;color:var(--accent-hover)"><path d="M4 12h15M14 6l6 6-6 6"/></svg>
+      <span>脱出窗口 = 新 document<br>重应用主题 + BackgroundLayer</span>
+    </div>
+
+    <div class="col">
+      <div class="dwin glass-app">
+        <div class="bg-layer"></div>
+        <div class="dwin-titlebar glass">
+          <span class="wtitle"><b>串口监视器</b></span>
+          <div class="win-btns"><button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button></div>
+        </div>
+        <div class="dwin-main">
+          <div class="tabbar"><div class="tab active"><span class="dirty"></span>串口监视器</div></div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// 脱出窗口也玻璃——per-window 重应用</span></div>
+            <div><span class="ln">2</span><span class="cm">// 图片 cover 本窗口视口（OS 多显示器壁纸模型）</span></div>
+            <div><span class="ln">3</span><span class="cm">// 拖出大 = 大裁剪，小 = 小裁剪</span></div>
+          </div>
+        </div>
+      </div>
+      <span class="lbl">脱出窗口（同样悬浮圆角玻璃 + 图）</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>可拖出继承（拍板 ⑤，Phase 9 #42 联注——v1.3 槽位）：</b>① 脱出窗口是<b>新 document</b> → 图片层与玻璃是 <b>per-window</b> 的，不是主窗专属；② 新窗口创建时：ThemeEngine <code>applyTheme</code> 对其 document 执行 + BackgroundLayer 在其 root 渲染；③ 图片大小 = <code>cover</code> 相对<b>该窗口</b>视口——OS 多显示器壁纸模型，不钉死主窗尺寸；④ 悬浮圆角同样 per-window 继承（脱出窗口的标题栏/主区也是悬浮面板）。</div>
+</div>
+
+</body>
+</html>
