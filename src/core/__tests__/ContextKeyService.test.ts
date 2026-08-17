@@ -228,12 +228,10 @@ describe("ContextKeyService — setValue / getValue / onDidChangeContext", () =>
     expect(count).toBe(1); // 取消订阅后不再递增
   });
 
-  it("initCoreKeys 初始化 5 个核心 key", () => {
+  it("initCoreKeys 初始化 3 个核心 key（sourceOpen/sourceName 已随 E5.8#47 外推）", () => {
     ContextKeyService.initCoreKeys();
     expect(ContextKeyService.getValue("activeEditor")).toBeNull();
     expect(ContextKeyService.getValue("editorHasSelection")).toBe(false);
     expect(ContextKeyService.getValue("editorCount")).toBe(0);
-    expect(ContextKeyService.getValue("sourceOpen")).toBe(false);
-    expect(ContextKeyService.getValue("sourceName")).toBeNull();
   });
 });

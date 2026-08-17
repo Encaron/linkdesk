@@ -8,9 +8,9 @@
  *
  * 合法 token：&& || ! == != =~ in true false
  * 表达式示例：
- *   "sourceOpen"                       — truthy check
- *   "!sourceOpen"                      — negation
- *   "sourceOpen && editorHasSelection" — AND
+ *   "activeEditor"                     — truthy check
+ *   "!activeEditor"                    — negation
+ *   "activeEditor && editorCount"      — AND
  *   "activeEditor == 'terminal'"     — equality
  *   "editorCount != 0"               — inequality
  *   "langId =~ /^markdown/"          — regex match (Phase 5 parser 支持，Phase 6 消费)
@@ -408,13 +408,11 @@ class ContextKeyServiceImpl {
     }
   }
 
-  /** Phase 5 初始化 5 个核心 context key */
+  /** Phase 5 初始化核心 context key——串口键已随 E5.8#47 外推（插件自设 sourceOpen） */
   initCoreKeys(): void {
     this._state.set("activeEditor", null);
     this._state.set("editorHasSelection", false);
     this._state.set("editorCount", 0);
-    this._state.set("sourceOpen", false);
-    this._state.set("sourceName", null);
   }
 
   /** 订阅 context key 变化——对标 VS Code onDidChangeContext */

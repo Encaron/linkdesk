@@ -1,10 +1,8 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
-const linkdesk = () => window.linkdesk;
 import { pushToast } from "./core/services/NotificationService";
 import { reportError } from "./core/services/ErrorService";
-import { useIpcEvent } from "./hooks/useIpcEvent";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
@@ -60,7 +58,6 @@ function App() {
   useHeartbeat();
   // E2a #6：内存监控——每 10s 采样，JS heap > 80% → toast 告警
   useMemoryMonitor();
-  const [isOpen, setIsOpen] = useState(false);
   const [, setTheme] = useState<string>("Dark");
   const [, setLang] = useState<"zh" | "en">("zh");
 
@@ -250,7 +247,6 @@ function App() {
         initUserKeybindings,
         getConfigurationValue,
         applyConfiguration,
-        getSerialStatus: () => linkdesk().serial.getStatus(),
         getTabLayout,
         syncCountersAfterRestore,
       });
@@ -262,11 +258,6 @@ function App() {
       const initLang = getConfigurationValue<string>("app.language") ?? "zh";
       setTheme(initTheme);
       setLang(initLang as "zh" | "en");
-
-      // 串口状态同步（来自 AppInitializer 返回）——壳只认 isOpen 一个 bit（E5.7#45.6）
-      if (result.serialState?.isOpen) {
-        setIsOpen(true);
-      }
 
       // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
       // （__showProgress/__setDoNotDisturb/__setSourceFilter 已随 E5.7#27.5 死链整删——
@@ -293,14 +284,7 @@ function App() {
   }, []);
 
   /* ── Phase 5d：运行时 context key 更新 ── */
-  // 对标 VS Code setContext——串口/标签页状态变更时同步更新全局 context key 状态机
-
-  // sourceOpen——数据源开关时更新
-  // （sourceName contextKey 已随 E5.7#45.6 删除——池化后壳不再知道端口名，
-  //   且全仓无 when 子句消费它；插件侧 session 连接态走 pluginState 自管）
-  useEffect(() => {
-    ContextKeyService.setValue("sourceOpen", isOpen);
-  }, [isOpen]);
+  // 对标 VS Code setContext——标签页状态变更时同步更新全局 context key 状态机
 
   // E5#5e-ii-b：activeEditor——订阅 tab:focused 替代旧的 activePluginId 派生
   useEffect(() => {
@@ -698,26 +682,6 @@ function App() {
     });
     return unsub;
   }, []);
-
-  /* ---- 串口状态（E5.7#45.6 死簇整删后） ---- */
-  // 壳串口控制簇（handleToggleOpen/handleBaudChange/handlePortChange + COM 轮询 + TX/RX 计数
-  // + SourceStateContext）已整删——池化后串口开关/端口/波特率全由池内插件自管
-  // （plugins/user/serial-monitor/src/services/SerialContext.tsx 直连 lk.serial）。
-  // 壳只保留一个 isOpen bit：下方 serial-system 监听器 + AppInitializer 恢复
-  // → sourceOpen contextKey（plugin.json when 子句显示条件——Bug C 补全·症状 4 修通的链）。
-
-  // E5：监听 serial-system 事件补刀同步 isOpen 状态。
-  // E5.7 Bug C 补全·症状 4：池化后插件直接调 lk.serial.openPort（绕开壳 handleToggleOpen），
-  // 原实现只补 invokeBeforeClose 的关闭路径 → 打开后壳 isOpen 恒 false → sourceOpen 恒 false
-  // → togglePause 的 when:"... && sourceOpen" 过滤全灭（串口已打开，面板里也没有"暂停接收"）。
-  // 开/关双分支都补（消息原文：serial-service.ts "---- 已打开串行端口 X ----" / "---- 关闭串行端口 X ----"）。
-  useIpcEvent<string>("serial-system", (payload) => {
-    if (/已打开/.test(payload)) {
-      setIsOpen(true);
-    } else if (/Port closed|关闭/.test(payload)) {
-      setIsOpen(false);
-    }
-  });
 
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
