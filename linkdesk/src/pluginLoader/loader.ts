@@ -39,7 +39,6 @@ import {
 export { validateInstallManifest, resolveVersionConflict } from "./manifest";
 export { runtimeEntryPath, parseContributions } from "./contributions";
 import { loadPlugin, activatePlugin, findDeferredByCommand } from "./runtime";
-export { activatePlugin, findDeferredByCommand } from "./runtime";
 import {
   disablePlugin,
   enablePlugin,
@@ -55,12 +54,9 @@ export {
   disablePlugin,
   enablePlugin,
   uninstallPlugin,
-  performUninstall,
   installPlugin,
   reinstallPlugin,
   isPluginDisabled,
-  getPluginCachedStatus,
-  getPluginCachedMeta,
   getLoadedPluginManifests,
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
