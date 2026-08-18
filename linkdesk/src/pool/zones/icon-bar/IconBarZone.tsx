@@ -31,8 +31,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
 import type { IconBarLayout, IconBarItem } from "../../../core/types/poolLayout";
-import MenuItemList from "../../shared/MenuItemList";
-import PoolPluginIcon from "../../shared/PoolPluginIcon";
+import MenuItemList from "../../shared/menu-item-list/MenuItemList";
+import PoolPluginIcon from "../../shared/pool-plugin-icon/PoolPluginIcon";
 import { executePoolCommand } from "../../commands/executePoolCommand";
 import ContextMenu from "@src/components/shared/context-menu/ContextMenu"; // 齿轮菜单——#14 门户（壳 IconBar 同款消费者）
 import { VIEW_DRAG_MIME } from "../../protocol/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）

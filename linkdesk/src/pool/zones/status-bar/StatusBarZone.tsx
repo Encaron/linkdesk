@@ -18,7 +18,7 @@
 
 import { Fragment, useState, useRef, useEffect } from "react";
 import type { StatusBarLayout, StatusBarItem } from "../../../core/types/poolLayout";
-import PoolStatusBarComponent from "../../shared/PoolStatusBarComponent";
+import PoolStatusBarComponent from "../../shared/pool-status-bar/PoolStatusBarComponent";
 import { executePoolCommand } from "../../commands/executePoolCommand";
 import "./StatusBarZone.css";
 
