@@ -4,7 +4,7 @@
  * load/save 依赖 FileService→需 mock。
  */
 
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import { EditorModel } from "../services/EditorModel";
 
 describe("EditorModel", () => {
@@ -103,5 +103,45 @@ describe("EditorModel", () => {
     expect(EditorModel.fromContent("/a.py", "").language).toBe("python");
     expect(EditorModel.fromContent("/a.cpp", "").language).toBe("cpp");
     expect(EditorModel.fromContent("/a.xyz", "").language).toBe("plaintext");
+  });
+
+  /* ── reloadFromDisk（E5.8#0d.9）── */
+
+  describe("reloadFromDisk", () => {
+    // load 依赖 lk.filesystem.readBinaryFile + lk.encoding.*——全局 mock 无 encoding 面，测试内注入
+    const linkdesk = window.linkdesk as unknown as {
+      filesystem: { readBinaryFile: ReturnType<typeof vi.fn> };
+      encoding: { detect: ReturnType<typeof vi.fn>; decode: ReturnType<typeof vi.fn> };
+    };
+
+    beforeEach(() => {
+      linkdesk.encoding = {
+        detect: vi.fn().mockResolvedValue("utf-8"),
+        decode: vi.fn().mockResolvedValue(""),
+      };
+    });
+
+    it("磁盘内容 = 内存内容 → null（自己 Ctrl+S 场景）", async () => {
+      const m = EditorModel.fromContent("/a.ts", "hello");
+      linkdesk.filesystem.readBinaryFile = vi.fn().mockResolvedValue(new Uint8Array());
+      linkdesk.encoding.decode.mockResolvedValue("hello");
+      await expect(m.reloadFromDisk()).resolves.toBeNull();
+    });
+
+    it("磁盘内容 ≠ 内存内容 → 返回磁盘新值（不动 model）", async () => {
+      const m = EditorModel.fromContent("/a.ts", "hello");
+      linkdesk.filesystem.readBinaryFile = vi.fn().mockResolvedValue(new Uint8Array());
+      linkdesk.encoding.decode.mockResolvedValue("world");
+      await expect(m.reloadFromDisk()).resolves.toBe("world");
+      // 只比较不落盘——model 内容与脏状态不变
+      expect(m.getValue()).toBe("hello");
+      expect(m.isDirty()).toBe(false);
+    });
+
+    it("读失败 → null（保守 no-op）", async () => {
+      const m = EditorModel.fromContent("/a.ts", "hello");
+      linkdesk.filesystem.readBinaryFile = vi.fn().mockRejectedValue(new Error("ENOENT"));
+      await expect(m.reloadFromDisk()).resolves.toBeNull();
+    });
   });
 });

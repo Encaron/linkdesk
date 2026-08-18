@@ -43,6 +43,9 @@ export interface EditorViewHandle {
   dispose(): void;
   /** E4V#40q——运行时更新编辑器选项，无需重建 editor */
   updateOptions(opts: Record<string, unknown>): void;
+  /** E5.8#0d.9——外部文件变更重载：整体替换 Monaco model 内容（setValue 重置 undo 栈，VS Code reload 同款语义）。
+   *  React `value` prop 仅 init 读取——重载必须经此通道推给 Monaco。 */
+  setValue(v: string): void;
 }
 
 const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function EditorView(
@@ -77,6 +80,7 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
     focus: () => editorRef.current?.focus(),
     dispose: () => editorRef.current?.dispose(),
     updateOptions: (opts: Record<string, unknown>) => editorRef.current?.updateOptions(opts),
+    setValue: (v: string) => editorRef.current?.getModel()?.setValue(v),
   }), []);
 
   // ── 初始化——每个 filePath 创建一次 editor ──
