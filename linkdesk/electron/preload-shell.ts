@@ -12,9 +12,9 @@
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
-import { createEventSystem, listenDirect } from './event-system';
+import { createEventSystem, listenDirect } from './ipc/event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
-import { IpcRelay } from './ipc-relay';
+import { IpcRelay } from './ipc/ipc-relay';
 // ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
@@ -39,7 +39,7 @@ ipcRenderer.on(IPC.contextKey.changed, (_event, { key, value }: { key: string; v
 // module 顶层 IPC（如 serial-monitor 的 registerItems）可能在 React mount 前到达，
 // 处理器未注册时静默丢弃 → 菜单项永远丢失。
 // 缓冲+回放保证：handler 就绪前到达的请求排队，handler 就绪后逐条回放。
-// E5.7#78：手写 buffer+handler 双件套 → IpcRelay<T>（electron/ipc-relay.ts）
+// E5.7#78：手写 buffer+handler 双件套 → IpcRelay<T>（electron/ipc/ipc-relay.ts）
 const _bridgeRequestRelay = new IpcRelay<BridgeRequestPayload>();
 
 ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
@@ -94,7 +94,7 @@ ipcRenderer.on(IPC.system.memoryPressure, (_event, data: MemoryPressureData) => 
   if (_memoryPressureHandler) _memoryPressureHandler(data);
 });
 
-// ── E3j #77a：归一化事件系统——由 event-system.ts 提供 ──
+// ── E3j #77a：归一化事件系统——由 ipc/event-system.ts 提供 ──
 const events = createEventSystem(ipcRenderer, {
   logPrefix: 'preload-shell',
 });

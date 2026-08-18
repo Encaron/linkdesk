@@ -33,7 +33,7 @@
  *   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, IPC.serial.stats, cb)
  *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, IPC.p2p.data, cb)
  *
- * 铁律 3：event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error
+ * 铁律 3：ipc/event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error
  *   新加直接通道 → channel 名加 `:direct` 后缀以跳过告警
  *
  * 快速自查（新加 IPC 订阅时问自己 3 个问题）：
@@ -57,9 +57,9 @@
 
 import { contextBridge, ipcRenderer, webUtils } from 'electron';
 import { APP_NAMESPACE } from './constants';
-import { createEventSystem, listenDirect } from './event-system';
+import { createEventSystem, listenDirect } from './ipc/event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
-import { IpcRelay } from './ipc-relay';
+import { IpcRelay } from './ipc/ipc-relay';
 // ── E5.7#97：wire 契约归口——type import 放行（Path B 只禁 value import，决策点 1）──
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type {
@@ -81,7 +81,7 @@ import type { FileChangeEvent } from '../src/core/services/files/FileService';
 // E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
-// E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc-relay.ts）
+// E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc/ipc-relay.ts）
 const _layoutRelay = new IpcRelay<PoolLayout>();
 
 ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
