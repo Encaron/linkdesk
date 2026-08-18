@@ -9,10 +9,10 @@
 
 import { ipcMain, BrowserWindow } from 'electron';
 import type { WebContents } from 'electron';
-import { fileService } from '../services/file-service.js';
-import { guardPoolWrite } from '../services/filesystem-guard.js';
-import type { WindowManager } from '../windows/window-manager.js';
-import { IPC, filesystemChanged } from './channels.js';
+import { fileService } from '../../services/file-service.js';
+import { guardPoolWrite } from '../../services/filesystem-guard.js';
+import type { WindowManager } from '../../windows/window-manager.js';
+import { IPC, filesystemChanged } from '../channels.js';
 
 // E5.7#36：壳崩重建复用本函数——引用始终刷新（watcher 广播回调读模块引用），IPC 通道只注册一次
 let _windowManager: WindowManager | undefined;

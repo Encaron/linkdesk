@@ -8,7 +8,7 @@ import { ipcMain, BrowserWindow, app } from "electron";
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
-import { IPC } from './channels.js';
+import { IPC } from '../channels.js';
 
 interface LspChannel {
   process: ChildProcess;

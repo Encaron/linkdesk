@@ -107,7 +107,7 @@ export default [
   // 跨进程模块实例隔离：TS 模块每进程一份实例。主进程 import 壳侧 Registry =
   // 拿到主进程自己的空实例（壳写入的数据不可见，数据在壳进程的模块副本里）。
   // 静态声明三表（LangDef/Protocol/FileAssociation）唯一写入方 = electron/plugins/plugin-manifest-loader.ts
-  // （启动扫盘 + plugins:rescanManifests 全清全重扫），唯一读取方 = electron/ipc/registry-handlers.ts
+  // （启动扫盘 + plugins:rescanManifests 全清全重扫），唯一读取方 = electron/ipc/handlers/registry-handlers.ts
   // （IPC 直答）——两文件白名单放行（见下方例外块）。
   // 其余注册表（Command/Menu/Keybinding/Configuration 等）不迁——主进程经 IPC 收取，禁止直 import。
   // import type 不受限（纯类型，不携带模块级状态）。
@@ -122,7 +122,7 @@ export default [
             {
               group: ["**/src/core/registry/*"],
               message:
-                "🚫 E5.7#52：主进程禁止 import 壳侧注册表模块——跨进程模块实例隔离，主进程拿到的是自己的空实例。LangDef/Protocol/FileAssociation 唯一写入方 = electron/plugins/plugin-manifest-loader.ts，读取走 electron/ipc/registry-handlers.ts IPC；其余注册表经 IPC 收取，禁止主进程直 import。type-only import 用 `import type` 即可通过。",
+                "🚫 E5.7#52：主进程禁止 import 壳侧注册表模块——跨进程模块实例隔离，主进程拿到的是自己的空实例。LangDef/Protocol/FileAssociation 唯一写入方 = electron/plugins/plugin-manifest-loader.ts，读取走 electron/ipc/handlers/registry-handlers.ts IPC；其余注册表经 IPC 收取，禁止主进程直 import。type-only import 用 `import type` 即可通过。",
               allowTypeImports: true,
             },
             {
@@ -131,7 +131,7 @@ export default [
                 "**/src/core/services/ViewContainerService*",
               ],
               message:
-                "🚫 E5.7#52：主进程禁止 import 壳侧注册表服务——跨进程模块实例隔离，主进程拿到的是自己的空实例。FileAssociation 唯一写入方 = electron/plugins/plugin-manifest-loader.ts，读取走 electron/ipc/registry-handlers.ts IPC；ViewContainerService 经 IPC 收取，禁止主进程直 import。type-only import 用 `import type` 即可通过。",
+                "🚫 E5.7#52：主进程禁止 import 壳侧注册表服务——跨进程模块实例隔离，主进程拿到的是自己的空实例。FileAssociation 唯一写入方 = electron/plugins/plugin-manifest-loader.ts，读取走 electron/ipc/handlers/registry-handlers.ts IPC；ViewContainerService 经 IPC 收取，禁止主进程直 import。type-only import 用 `import type` 即可通过。",
               allowTypeImports: true,
             },
           ],
@@ -144,7 +144,7 @@ export default [
   // plugin-manifest-loader = 启动扫盘 + plugins:rescanManifests 全清全重扫（唯一写入方）
   // registry-handlers = IPC 直答（唯一读取方）——两文件之外出现 import 即空实例 bug 回潮
   {
-    files: ["electron/plugins/plugin-manifest-loader.ts", "electron/ipc/registry-handlers.ts"],
+    files: ["electron/plugins/plugin-manifest-loader.ts", "electron/ipc/handlers/registry-handlers.ts"],
     rules: {
       "@typescript-eslint/no-restricted-imports": "off",
     },

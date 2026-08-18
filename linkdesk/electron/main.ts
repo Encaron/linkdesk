@@ -11,17 +11,17 @@ import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell
 import { exec } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { registerSerialHandlers } from './ipc/serial-handlers.js';
-import { registerFileHandlers } from './ipc/file-handlers.js';
+import { registerSerialHandlers } from './ipc/handlers/serial-handlers.js';
+import { registerFileHandlers } from './ipc/handlers/file-handlers.js';
 import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
-import { registerPluginHandlers } from './ipc/plugin-handlers.js';
-import { registerDialogHandlers } from './ipc/dialog-handlers.js';
-import { registerEnvHandlers } from './ipc/env-handlers.js';
-import { registerClipboardHandlers } from './ipc/clipboard-handlers.js';
-import { registerRegistryHandlers } from './ipc/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
-import { registerHotExitHandlers } from './ipc/hot-exit-handlers.js'; // E5.7#38
-import { registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E5.6#8d
-import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
+import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
+import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
+import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
+import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
+import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
+import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
+import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
+import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
 import { registerProtocol } from './plugins/protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './windows/window-manager.js';
