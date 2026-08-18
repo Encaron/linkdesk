@@ -11,12 +11,12 @@
  */
 
 import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } from "react";
-import type { SidebarViewMeta } from "../../core/types/poolLayout";
-import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口（原本地定义移走）
-import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
-import SidebarSection from "../../components/shared/sidebar-section/SidebarSection";
-import PluginComponent from "./PluginComponent";
-import { VIEW_DRAG_MIME } from "../protocol/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
+import type { SidebarViewMeta } from "../../../core/types/poolLayout";
+import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口（原本地定义移走）
+import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
+import SidebarSection from "../../../components/shared/sidebar-section/SidebarSection";
+import PluginComponent from "../plugin-component/PluginComponent";
+import { VIEW_DRAG_MIME } from "../../protocol/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
 

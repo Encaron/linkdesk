@@ -11,7 +11,7 @@
  */
 
 import { useState, useRef, useCallback } from "react";
-import type { PoolMenuItem, PoolMenuGroup } from "../../core/types/poolLayout";
+import type { PoolMenuItem, PoolMenuGroup } from "../../../core/types/poolLayout";
 
 export interface MenuItemListProps {
   /** 单列表模式（titlebar 下拉） */

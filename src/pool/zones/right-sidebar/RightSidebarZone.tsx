@@ -21,8 +21,8 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import PoolToolbarSlot from "../../shared/PoolToolbarSlot";
-import PoolSectionStack from "../../shared/PoolSectionStack";
+import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot";
+import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
 import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/poolLayout";
 import "./RightSidebarZone.css";
