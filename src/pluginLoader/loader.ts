@@ -41,21 +41,21 @@ const pluginsApi = () => {
 };
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
-import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ThemeEngine";
+import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { IconRegistry } from "../core/registry/IconRegistry";
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/NotificationService";
-import { reportError } from "../core/services/ErrorService";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
+import { reportError } from "../core/services/bootstrap/ErrorService";
 // Phase 5f：PreferenceService 双写已清除——PluginStateService/ConfigurationService 是唯一真源
 // Phase 5：插件状态管理迁移到 PluginStateService
-import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService";
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
-import { getConfigurationValue, setConfigurationValue } from "../core/services/ConfigurationService";
+import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
@@ -63,7 +63,7 @@ import { registerKeybinding } from "../core/registry/KeybindingRegistry";
 import { compareVersions, versionGte } from "./semverUtils";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../i18n";
-import { createLogChannel } from "../core/services/LogChannel";
+import { createLogChannel } from "../core/services/ui/LogChannel";
 
 /* ── B6 fix：pluginLoader 日志频道——替代 console.log（对标 VS Code Output panel） */
 const log = createLogChannel("app", "pluginLoader", "pluginLoader");
@@ -510,7 +510,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   if (c.viewsContainers) {
     const containers = c.viewsContainers as Record<string, { title: string; icon?: string; location?: string; hideIfEmpty?: boolean; order?: number; mergeHeaderWhenSingle?: boolean }>;
     try {
-      const { ViewContainerService } = await import("../core/services/ViewContainerService");
+      const { ViewContainerService } = await import("../core/services/layout/ViewContainerService");
       for (const [containerId, desc] of Object.entries(containers)) {
         ViewContainerService.registerViewContainer(pluginId, {
           id: containerId,
@@ -529,7 +529,7 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
   if (c.views) {
     const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string; minHeight?: number }>>;
     try {
-      const { ViewContainerService } = await import("../core/services/ViewContainerService");
+      const { ViewContainerService } = await import("../core/services/layout/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {
         for (const viewDef of viewDefs) {
           // E5#34b: render 路径相对于插件根目录。
@@ -1309,7 +1309,7 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
  * 两个 UI 入口（齿轮菜单 + 详情页）都调此函数，确保行为一致。
  */
 export async function performUninstall(pluginId: string): Promise<boolean> {
-  const { showConfirm } = await import("../core/services/DialogService");
+  const { showConfirm } = await import("../core/services/ui/DialogService");
   const manifest = getLoadedManifest(pluginId);
   const name = manifest?.name ?? pluginId;
   const confirmed = await showConfirm(
@@ -1485,7 +1485,7 @@ export function isPluginDisabled(pluginId: string): boolean {
 }
 
 // E5#43：接口反转——loader 注册自己到 IpcBridgeHandler，核心不再直接 import loader
-import { setPluginAPI } from "../core/services/IpcBridgeHandler";
+import { setPluginAPI } from "../core/services/plugins/IpcBridgeHandler";
 setPluginAPI({
   enablePlugin,
   disablePlugin,

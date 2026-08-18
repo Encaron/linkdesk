@@ -9,7 +9,7 @@ import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
 import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { showConfirm } from "../core/services/DialogService";
+import { showConfirm } from "../core/services/ui/DialogService";
 
 
 const registry = new Map<string, ViewPluginEntry>();

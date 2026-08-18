@@ -5,7 +5,7 @@
 
 import { registerCommand } from "../registry/CommandRegistry";
 import { getCallbacks } from "./CoreCallbacks";
-import { APP_PLUGIN_ID } from "../services/PluginStateService";
+import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 
 export function registerTabCommands(): void {
   const commands = [

@@ -9,7 +9,7 @@
 
 import i18n from "../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
 import { LanguageRegistry } from "../core/registry/LanguageRegistry";
-import { setConfigurationValue, getConfigurationValue } from "../core/services/ConfigurationService";
+import { setConfigurationValue, getConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
 
 /**

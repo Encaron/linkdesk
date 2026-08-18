@@ -13,9 +13,9 @@ import { registerCommand, unregisterPluginCommands, getCommands } from "../regis
 import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "../registry/KeybindingRegistry";
 import { registerMenuItems, MENU_SLOTS, unregisterPluginMenus } from "../registry/MenuRegistry";
 import { registerProtocol, unregisterPluginProtocols, listProtocols } from "../registry/ProtocolRegistry";
-import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/LogChannel";
-import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ThemeEngine";
-import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../services/FileAssociationService";
+import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/ui/LogChannel";
+import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ui/ThemeEngine";
+import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../services/files/FileAssociationService";
 import { registerConfiguration, unregisterConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "../registry/ConfigurationRegistry";
 import { ThemeRegistry } from "../registry/ThemeRegistry";
 

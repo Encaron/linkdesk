@@ -11,12 +11,12 @@
  *   设置   → Workspace scope settings.json 的路径
  */
 
-import { Emitter, type Event, CoreEvents } from "../react/CoreEvents";
-import { setWorkspaceRoot } from "./ConfigurationService";
-import { normalizePath } from "../utils/pathUtils";
-import { shellEvents } from "../react/ShellEvents";
-import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { read, write } from "./StorageService"; // E5.5#0e
+import { Emitter, type Event, CoreEvents } from "../../react/CoreEvents";
+import { setWorkspaceRoot } from "../configuration/ConfigurationService";
+import { normalizePath } from "../../utils/pathUtils";
+import { shellEvents } from "../../react/ShellEvents";
+import { setPluginStateValue, getPluginStateValue, APP_PLUGIN_ID } from "../plugins/PluginStateService";
+import { read, write } from "../configuration/StorageService"; // E5.5#0e
 
 /* ── 类型 ── */
 
@@ -100,7 +100,7 @@ export function addFolder(folderPath: string): void {
   // E4V#35g: 根间包含检查——禁止祖先/后代互包含（防递归嵌套）
   if (_folders.some((f) => uri.startsWith(f.uri + "/") || f.uri.startsWith(uri + "/"))) {
     const name = uri.split("/").pop() ?? uri;
-    import("./toast").then(({ pushToast }) => {
+    import("../ui/toast").then(({ pushToast }) => {
       pushToast({ message: `无法添加 "${name}"：与已有工作区文件夹存在包含关系`, severity: "warning" });
     });
     return;
@@ -218,7 +218,7 @@ export async function initWorkspaceService(): Promise<void> {
           if (ok) {
             valid.push(folder);
           } else {
-            import("./toast").then(({ pushToast }) => {
+            import("../ui/toast").then(({ pushToast }) => {
               pushToast({ message: `工作区文件夹 "${folder.name}" 已不存在，已移除`, severity: "warning" });
             });
           }
@@ -266,7 +266,7 @@ export async function initWorkspaceService(): Promise<void> {
  * 下次启动 initWorkspaceService 再读回。
  */
 export function syncWriteWorkspaceFolders(): void {
-  import("./StorageService").then(({ writeSync }) => {
+  import("../configuration/StorageService").then(({ writeSync }) => {
     writeSync("workspace-folders", _folders);
   }).catch(() => {});
 }

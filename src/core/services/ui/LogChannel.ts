@@ -9,7 +9,7 @@
  * Phase 5 建数据通道（appendLine / show），Phase 6 建 Output 查看器 UI。
  */
 
-import { Emitter } from "../react/CoreEvents";
+import { Emitter } from "../../react/CoreEvents";
 
 /* ── 类型 ── */
 

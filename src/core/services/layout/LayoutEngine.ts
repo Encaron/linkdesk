@@ -18,7 +18,7 @@
  * 设计依据：docs/02-Electron架构/E5_核心归一化与壳重构_待执行/01-壳通信骨架/壳布局引擎.md
  */
 
-import { Emitter, type Event } from "../react/CoreEvents";
+import { Emitter, type Event } from "../../react/CoreEvents";
 
 /* ── 类型定义 ── */
 

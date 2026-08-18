@@ -17,7 +17,7 @@ import {
   getActiveProtocolId,
   setActiveProtocol,
 } from '../../src/core/registry/ProtocolRegistry.js';
-import { getPluginFor } from '../../src/core/services/FileAssociationService.js';
+import { getPluginFor } from '../../src/core/services/files/FileAssociationService.js';
 import { IPC } from './channels.js';
 
 let _registered = false;

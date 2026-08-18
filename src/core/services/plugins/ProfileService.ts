@@ -16,9 +16,9 @@ import {
   disablePlugin,
   enablePlugin,
   isPluginDisabled,
-} from "../../pluginLoader/loader";
-import { setConfigurationValue, getConfigurationValue, getUserSettings } from "./ConfigurationService";
-import { pushToast, TOAST_TTL_ERROR } from "./NotificationService";
+} from "../../../pluginLoader/loader";
+import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
+import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
 import {
   appDataDir,
   joinPath,
@@ -28,10 +28,10 @@ import {
   writeFile,
   listDir,
   remove,
-} from "./FileService";
+} from "../files/FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { Emitter } from "../react/CoreEvents";
-import { getWorkspaceRoot } from "./WorkspaceService";
+import { Emitter } from "../../react/CoreEvents";
+import { getWorkspaceRoot } from "../layout/WorkspaceService";
 
 /* ── 事件 ── */
 
@@ -193,7 +193,7 @@ async function _restoreSnapshot(prev: RuntimeSnapshot): Promise<string[]> {
   // 恢复 workspace——如果 Profile 切换改了工作区，回退到旧路径
   if (prev.workspaceRoot && getWorkspaceRoot() !== prev.workspaceRoot) {
     try {
-      const { addFolder } = await import("./WorkspaceService");
+      const { addFolder } = await import("../layout/WorkspaceService");
       addFolder(prev.workspaceRoot);
     } catch (e) {
       errors.push(`回退——工作区恢复失败: ${e instanceof Error ? e.message : String(e)}`);
@@ -244,7 +244,7 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
   // 维度 4：语言——检查 i18next 实际当前语言
   if (expected.settings["app.language"]) {
     try {
-      const { default: i18n } = await import("../../i18n");
+      const { default: i18n } = await import("../../../i18n");
       const currentLang = i18n.language;
       const expectedLang = expected.settings["app.language"];
       if (currentLang !== expectedLang) {
@@ -323,7 +323,7 @@ export async function switchProfile(name: string): Promise<boolean> {
   // 5. 应用 workspace（如果有指定路径）
   if (profile.workspace) {
     try {
-      const { addFolder } = await import("./WorkspaceService");
+      const { addFolder } = await import("../layout/WorkspaceService");
       addFolder(profile.workspace);
     } catch (e) {
       errors.push(`工作区 "${profile.workspace}" 失败: ${e instanceof Error ? e.message : String(e)}`);

@@ -16,10 +16,10 @@ import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：
 import type { SidebarAction } from "../core/types/ipc/sidebarActions"; // E5.7#98：onSidebarAction 回调参数正源
 import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
 import type { StatusBarItem as ApiStatusBarItem } from "../core/api/types"; // E5.7#98：状态栏三源条目共型
-import { ViewContainerService } from "../core/services/ViewContainerService";
-import type { ViewDescriptor } from "../core/services/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
-import { layoutEngine } from "../core/services/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
-import { getConfigurationValue } from "../core/services/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
+import { ViewContainerService } from "../core/services/layout/ViewContainerService";
+import type { ViewDescriptor } from "../core/services/layout/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
+import { layoutEngine } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
+import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/utils/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
@@ -33,9 +33,9 @@ import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry
 // E5.7#8：Chord 提示（CUSTOM_EVENTS）+ 事件条目（statusbar:update/tab:focused）+ 通知中心（toast 存储）
 import { CUSTOM_EVENTS } from "../core/react/CoreEvents";
 import { shellEvents, type StatusBarEntry } from "../core/react/ShellEvents";
-import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/toast";
+import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/ui/toast";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
-import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
+import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { isShellRenderedTab } from "./tabIdentity";
 
 /**

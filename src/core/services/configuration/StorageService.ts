@@ -10,7 +10,7 @@
 
 /* ── 文件系统依赖（统一走 FileService——E2c #19c 归一化）── */
 
-import { exists as fsExists, readFile, writeFile, joinPath, appDataDir } from "./FileService";
+import { exists as fsExists, readFile, writeFile, joinPath, appDataDir } from "../files/FileService";
 
 function _hasLinkdesk(): boolean {
   return !!window.linkdesk?.filesystem;

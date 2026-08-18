@@ -32,11 +32,11 @@ import type { PoolToastData } from "../types/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../types/poolQuickPick";
 import type { PoolDialogData } from "../types/poolDialog";
 import type { FileEntry } from "../types/fileEntry";
-import type { FileChangeEvent } from "../services/FileService";
+import type { FileChangeEvent } from "../services/files/FileService";
 import type { PluginManifest } from "./types";
 import type { ManifestMenuItem } from "../registry/MenuRegistry";
 import type { Keybinding } from "../registry/KeybindingRegistry";
-import type { WorkspaceFolder } from "../services/WorkspaceService";
+import type { WorkspaceFolder } from "../services/layout/WorkspaceService";
 
 // ── 类型定义 ──
 

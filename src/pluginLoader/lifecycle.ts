@@ -14,14 +14,14 @@
  */
 
 import { Emitter, CUSTOM_EVENTS } from "../core/react/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/NotificationService";
-import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/PluginStateService";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
+import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";
 import { unregisterPluginCommands } from "../core/registry/CommandRegistry";
 import { unregisterPluginKeybindings } from "../core/registry/KeybindingRegistry";
 import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/MenuRegistry";
-import { unregisterPluginChannels } from "../core/services/LogChannel";
-import { unregisterPluginThemes } from "../core/services/ThemeEngine";
+import { unregisterPluginChannels } from "../core/services/ui/LogChannel";
+import { unregisterPluginThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
 import { unregisterPluginLanguageBundles } from "./i18nResources";
@@ -105,7 +105,7 @@ export function initLifecycleConsumers(): void {
     // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
     // E36#4.7: ViewContainerService 显式清理（RegistryBase 自动处理程序已覆盖，idempotent）
     // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
-    import("../core/services/ViewContainerService").then(({ ViewContainerService }) => {
+    import("../core/services/layout/ViewContainerService").then(({ ViewContainerService }) => {
       ViewContainerService.unregisterAll(pluginId);
     }).catch(() => {}); // 非关键操作——清理注册表，失败不阻塞卸载流程
     unregisterPluginCommands(pluginId);
@@ -212,7 +212,7 @@ function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
     if (mode === "append") filtered.push(pluginId);
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
-    import("../core/services/PluginStateService").then(({ setPluginStateValue }) => {
+    import("../core/services/plugins/PluginStateService").then(({ setPluginStateValue }) => {
       setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch((e) => { console.error("[lifecycle] 保存图标排序失败:", e); });
     });
   } catch { /* 非关键路径 */ }

@@ -23,7 +23,7 @@ import { PLUGINS_DIR, PLUGIN_SUBDIRS } from "../src/core/pluginPaths.js";
 import type { PluginManifest, LangDefContribution } from "../src/core/api/types.js";
 import { registerLangDef, clearLangDefs } from "../src/core/registry/LangDefRegistry.js";
 import { clearProtocols } from "../src/core/registry/ProtocolRegistry.js";
-import { registerFileAssociation, clearFileAssociations } from "../src/core/services/FileAssociationService.js";
+import { registerFileAssociation, clearFileAssociations } from "../src/core/services/files/FileAssociationService.js";
 import { ensureBuiltinProtocols } from "../src/core/commands/registerBuiltinProtocols.js";
 import { IPC } from './ipc/channels.js';
 

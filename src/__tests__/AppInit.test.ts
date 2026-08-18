@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from "vitest";
-import { initAll, type InitDeps } from "../core/services/AppInitializer";
+import { initAll, type InitDeps } from "../core/services/bootstrap/AppInitializer";
 
 // ── 工具：构建成功的 mock deps ──
 

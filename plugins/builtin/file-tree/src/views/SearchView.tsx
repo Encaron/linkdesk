@@ -7,7 +7,7 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { FileSearchResult, SearchMatch } from "@src/core/services/FileSearcher";
+import type { FileSearchResult, SearchMatch } from "@src/core/services/files/FileSearcher";
 import { extension } from "../utils/pathUtils";
 import "../styles/SearchView.css";
 

@@ -16,12 +16,12 @@ import {
   getMergedSchema,
   getConfigurationDefaults,
   type InspectResult,
-} from "../registry/ConfigurationRegistry";
+} from "../../registry/ConfigurationRegistry";
 // E5#41：消循环依赖——applyConfiguration 通过注册模式注入，不再直接 import ConfigurationApplier
 let _configApplier: ((key: string, value: unknown) => void) | null = null;
 export function registerConfigApplier(fn: typeof _configApplier): void { _configApplier = fn; }
 import { read, write, getFilePath } from "./StorageService";
-import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "./FileService";
+import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "../files/FileService";
 
 /* ── 三层缓存 ── */
 

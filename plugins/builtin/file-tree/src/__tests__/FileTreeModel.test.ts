@@ -24,7 +24,7 @@ function makeEntry(overrides: Partial<FileEntry> & { name: string; path: string;
 /* ── mock listDir ── */
 
 const { listDir } = vi.hoisted(() => ({ listDir: vi.fn() }));
-vi.mock("@src/core/services/FileService", () => ({ listDir }));
+vi.mock("@src/core/services/files/FileService", () => ({ listDir }));
 
 /* ── mock ConfigurationService（E5#85 迁移后不再使用，保留兼容）── */
 
@@ -32,7 +32,7 @@ const { getConfigurationValue, onDidChangeConfiguration } = vi.hoisted(() => ({
   getConfigurationValue: vi.fn(),
   onDidChangeConfiguration: vi.fn(),
 }));
-vi.mock("@src/core/services/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
+vi.mock("@src/core/services/configuration/ConfigurationService", () => ({ getConfigurationValue, onDidChangeConfiguration }));
 
 /** E5#85 迁移后 FileTreeModel 通过 lk.configuration.get() 读配置——通过 __ldkConfigStore 设值 */
 function setConfig(key: string, value: unknown) {

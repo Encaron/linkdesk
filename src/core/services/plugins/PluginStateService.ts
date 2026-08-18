@@ -11,7 +11,7 @@
  *   { "terminal": { "lastBaudRate": "115200" }, "app": { "iconOrder": [...] }, ... }
  */
 
-import { read, write } from "./StorageService";
+import { read, write } from "../configuration/StorageService";
 
 /** 壳级 pluginId——对标 VS Code 内置命令来源。B7 fix：统一常量替代 10+ 处 "app" 硬编码 */
 export const APP_PLUGIN_ID = "app";

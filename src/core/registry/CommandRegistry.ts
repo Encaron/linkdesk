@@ -15,7 +15,7 @@
  */
 
 import type { CancellationToken } from "../utils/CancellationToken";
-import { reportError } from "../services/ErrorService";
+import { reportError } from "../services/bootstrap/ErrorService";
 
 /* ── 类型 ── */
 
