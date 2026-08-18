@@ -19,6 +19,7 @@ import {
 } from "../../../pluginLoader/loader";
 import { setConfigurationValue, getConfigurationValue, getUserSettings } from "../configuration/ConfigurationService";
 import { pushToast, TOAST_TTL_ERROR } from "../ui/NotificationService";
+import { deepEqual } from "../../utils/deepEqual"; // E5.8 归一化：JSON.stringify 深比较捷径统一走共享工具
 import {
   appDataDir,
   joinPath,
@@ -225,7 +226,7 @@ async function _validateSwitch(expected: Profile): Promise<ValidationError[]> {
   // 维度 2：settings 值——关键配置必须和 Profile 一致
   for (const [key, expectedVal] of Object.entries(expected.settings)) {
     const actual = getConfigurationValue(key);
-    if (JSON.stringify(actual) !== JSON.stringify(expectedVal)) {
+    if (!deepEqual(actual, expectedVal)) {
       errors.push({
         dimension: 2,
         message: `设置 "${key}" 期望=${JSON.stringify(expectedVal)} 实际=${JSON.stringify(actual)}`,
