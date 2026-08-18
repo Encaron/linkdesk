@@ -21,14 +21,14 @@
  */
 
 import type { PoolLayout } from "../core/types/poolLayout";
-import TitleBarZone from "./zones/TitleBarZone"; // E5.7#5：Phase 2 替换占位
-import IconBarZone from "./zones/IconBarZone"; // E5.7#6：Phase 2 替换占位
-import StatusBarZone from "./zones/StatusBarZone"; // E5.7#8：Phase 2 替换占位
-import SidebarZone from "./zones/SidebarZone"; // E5.7#10：Phase 3 替换占位
-import FloatingLayerHost from "./zones/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
-import MainZone from "./zones/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
-import PanelZone from "./zones/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
-import RightSidebarZone from "./zones/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
+import TitleBarZone from "./zones/title-bar/TitleBarZone"; // E5.7#5：Phase 2 替换占位
+import IconBarZone from "./zones/icon-bar/IconBarZone"; // E5.7#6：Phase 2 替换占位
+import StatusBarZone from "./zones/status-bar/StatusBarZone"; // E5.7#8：Phase 2 替换占位
+import SidebarZone from "./zones/sidebar/SidebarZone"; // E5.7#10：Phase 3 替换占位
+import FloatingLayerHost from "./zones/floating-layer/FloatingLayerHost"; // E5.7#25：Phase 4 浮层 portal 容器（#14 前置）
+import MainZone from "./zones/main/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
+import PanelZone from "./zones/panel/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
+import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   return (

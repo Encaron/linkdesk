@@ -19,9 +19,9 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { TitleBarLayout } from "../../core/types/poolLayout";
-import MenuItemList from "../shared/MenuItemList"; // E5.7#6：菜单项列表提取为池共享组件（汉堡复用）
-import { executePoolCommand } from "../commands/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
+import type { TitleBarLayout } from "../../../core/types/poolLayout";
+import MenuItemList from "../../shared/MenuItemList"; // E5.7#6：菜单项列表提取为池共享组件（汉堡复用）
+import { executePoolCommand } from "../../commands/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
 import "./TitleBarZone.css";
 
 /* ── TitleBarZone ── */

@@ -15,9 +15,9 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { PanelLayout } from "../../core/types/poolLayout";
-import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
-import PluginComponent from "../shared/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
+import type { PanelLayout } from "../../../core/types/poolLayout";
+import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
+import PluginComponent from "../../shared/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import "./PanelZone.css";
 
 interface PanelZoneProps {
