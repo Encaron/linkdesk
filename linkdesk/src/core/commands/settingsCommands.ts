@@ -5,12 +5,12 @@
 
 import { registerCommand } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
-import { factorySlots } from "../services/FactorySlots";
+import { factorySlots } from "../services/bootstrap/FactorySlots";
 import { getCallbacks } from "./CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
 import { openKeybindingsSettings } from "../registry/KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
-import { APP_PLUGIN_ID } from "../services/PluginStateService";
+import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 
 export function registerSettingsCommands(): void {
   const commands = [

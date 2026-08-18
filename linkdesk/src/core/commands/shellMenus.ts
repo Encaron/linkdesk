@@ -6,7 +6,7 @@
 import { registerCommand } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
 import { shellEvents } from "../react/ShellEvents";
-import { APP_PLUGIN_ID } from "../services/PluginStateService";
+import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 
 export function registerShellMenus(): void {
   // ── ☰ 菜单栏 ──

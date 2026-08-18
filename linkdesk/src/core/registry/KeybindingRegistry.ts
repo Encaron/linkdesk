@@ -31,7 +31,7 @@
 
 import { ContextKeyService } from "./ContextKeyService";
 import { executeCommand, hasHandler } from "./CommandRegistry";
-import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../services/FileService";
+import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../services/files/FileService";
 import { normalizePath } from "../utils/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../react/CoreEvents";
 

@@ -16,9 +16,9 @@ import {
   applyAccentColor,
   getCurrentTheme,
   getEffectiveAccentColor,
-} from "../core/services/ThemeEngine";
+} from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
-import { setConfigurationValue } from "../core/services/ConfigurationService";
+import { setConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
 
 /**

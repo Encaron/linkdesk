@@ -8,9 +8,9 @@
  * E2c #19e。
  */
 
-import type { PluginManifest } from "../api/types";
-import { PluginLifecycle } from "../../pluginLoader/lifecycle";
-import { getLoadedPluginManifests } from "../../pluginLoader/loader";
+import type { PluginManifest } from "../../api/types";
+import { PluginLifecycle } from "../../../pluginLoader/lifecycle";
+import { getLoadedPluginManifests } from "../../../pluginLoader/loader";
 
 /* ── 类型 ── */
 

@@ -8,7 +8,7 @@
  */
 
 import { registerCommand } from "../registry/CommandRegistry";
-import { APP_PLUGIN_ID } from "../services/PluginStateService";
+import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 import { QuickPickService } from "../registry/QuickPickService";
 
 export interface QuickPickItem {

@@ -6,9 +6,9 @@
  * 设计文档：docs/phase4_插件系统/V3-Phase4-通知系统设计.md
  */
 
-import { readSync, writeSync } from "./StorageService";
-import i18n from "../../i18n"; // E5.7#16：serializeToasts 壳侧解析来源文本（显示文本铁律）
-import type { PoolToastData, PoolToastItem } from "../types/poolToast";
+import { readSync, writeSync } from "../configuration/StorageService";
+import i18n from "../../../i18n"; // E5.7#16：serializeToasts 壳侧解析来源文本（显示文本铁律）
+import type { PoolToastData, PoolToastItem } from "../../types/poolToast";
 
 /** 对标 VS Code Severity */
 export type ToastSeverity = "info" | "warning" | "error";

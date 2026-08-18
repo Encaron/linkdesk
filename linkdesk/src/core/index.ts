@@ -26,27 +26,27 @@ export * from "./registry/ThemeRegistry";
 export * from "./registry/ClipboardProviderRegistry";
 
 // ── 基础设施 ──
-export { reportError } from "./services/ErrorService";
+export { reportError } from "./services/bootstrap/ErrorService";
 export { PLUGINS_DIR, PLUGIN_SUBDIRS, PLUGIN_ENTRY_FILES } from "./pluginPaths";
 
 // ── 服务 ──
-export * from "./services/ConfigurationApplier";
-export * from "./services/DialogService";
-export * from "./services/FileAssociationService";
-export * from "./services/FileSearcher";
-export * from "./services/LayoutEngine";
-export * from "./services/LayoutService";
-export * from "./services/NotificationService";
-export * from "./services/PluginStateService";
-export * from "./services/ProfileService";
-export * from "./services/StorageService";
-export * from "./services/WorkspaceService";
+export * from "./services/configuration/ConfigurationApplier";
+export * from "./services/ui/DialogService";
+export * from "./services/files/FileAssociationService";
+export * from "./services/files/FileSearcher";
+export * from "./services/layout/LayoutEngine";
+export * from "./services/layout/LayoutService";
+export * from "./services/ui/NotificationService";
+export * from "./services/plugins/PluginStateService";
+export * from "./services/plugins/ProfileService";
+export * from "./services/configuration/StorageService";
+export * from "./services/layout/WorkspaceService";
 export * from "./utils/pathUtils";
 export * from "./utils/assetPath";
-export * from "./services/IpcBridgeHandler";
-export * from "./services/EncodingService";
-export * from "./services/ThemeEngine";
-export * from "./services/ViewContainerService";
+export * from "./services/plugins/IpcBridgeHandler";
+export * from "./services/files/EncodingService";
+export * from "./services/ui/ThemeEngine";
+export * from "./services/layout/ViewContainerService";
 
 // ── React ──
 export * from "./react/useConfiguration";
@@ -61,8 +61,8 @@ export * from "./pipeline/ProtocolParser";
 // ── 工具 ──
 export * from "./utils/CancellationToken";
 // ── 服务 ──
-export * from "./services/FactorySlots";
-export * from "./services/LogChannel";
+export * from "./services/bootstrap/FactorySlots";
+export * from "./services/ui/LogChannel";
 // 卡片注册表不在 barrel——卡片工作台是插件（硬约束 #3）。CardRegistry 骨架已随 E5.7#45.7 整删
 
 // ── API 类型 ──

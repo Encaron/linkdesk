@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
-import { showConfirm } from "../core/services/DialogService";
+import { showConfirm } from "../core/services/ui/DialogService";
 import { shellEvents } from "../core/react/ShellEvents";
 import { normalizePath } from "../core/utils/pathUtils";
 import {

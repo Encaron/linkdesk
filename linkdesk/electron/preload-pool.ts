@@ -75,8 +75,8 @@ import type {
 } from '../src/core/types/ipc/events';
 import type { OpenPortConfig, SerialStats } from '../src/core/types/ipc/serial';
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
-import type { WorkspaceFolder } from '../src/core/services/WorkspaceService';
-import type { FileChangeEvent } from '../src/core/services/FileService';
+import type { WorkspaceFolder } from '../src/core/services/layout/WorkspaceService';
+import type { FileChangeEvent } from '../src/core/services/files/FileService';
 
 // E5.7#54：_poolZone 已删——pool.html 无 ?zone= 路由（E5.7#2 单入口），zone 参数链路全摘
 
@@ -166,7 +166,7 @@ const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; 
 // actions/pinnedContent 函数字段会抛 DataCloneError → 写方向必须白名单剥壳再 invoke。
 // 壳侧注册表对缺 render 的更新保留原 render（ViewContainerService.registerView 内置
 // 逻辑）——元数据更新语义成立，渲染组件不受影响。
-// DTO 形状与 src/core/services/ViewContainerService.ts 的可序列化子集对齐
+// DTO 形状与 src/core/services/layout/ViewContainerService.ts 的可序列化子集对齐
 // ——preload 不 import src（构建边界）。字段清单与 IpcBridgeHandler.toViewDto（读方向）同一套。
 
 type ViewContainerDtoShape = {

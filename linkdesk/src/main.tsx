@@ -5,8 +5,8 @@ import "./i18n";
 import "./index.css";
 import "@vscode/codicons/dist/codicon.css";
 // E5#115: 配置在 React mount 前就位——对标 VS Code (Service 在窗口创建前初始化)
-import { initStorageService } from "./core/services/StorageService";
-import { initConfigurationService, initUserSettingsWatcher } from "./core/services/ConfigurationService";
+import { initStorageService } from "./core/services/configuration/StorageService";
+import { initConfigurationService, initUserSettingsWatcher } from "./core/services/configuration/ConfigurationService";
 
 // 🔥 E5.6#2 MonacoEnvironment——worker 构造器存全局，Monaco import 时读取。
 //    monaco-init.ts 也会设置同名属性（merge 模式），此处冗余无副作用。

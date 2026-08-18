@@ -14,7 +14,7 @@
  */
 
 // E5.7#98：InitDeps manifest 字段归口 PluginManifest（原 any——契约收紧，测试替身补 name/version）
-import type { PluginManifest } from "../api/types";
+import type { PluginManifest } from "../../api/types";
 
 // ── 依赖注入接口 ──
 

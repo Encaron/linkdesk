@@ -12,11 +12,11 @@
 
 import { registerCommand, type Command } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/MenuRegistry";
-import { APP_PLUGIN_ID } from "../services/PluginStateService";
+import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 import { CUSTOM_EVENTS } from "../react/CoreEvents";
 import i18n from "../../i18n";
-import { getWorkspaceLayout } from "../services/LayoutService"; // E3f #56
-import { getUserSettings } from "../services/ConfigurationService"; // E3f #56
+import { getWorkspaceLayout } from "../services/layout/LayoutService"; // E3f #56
+import { getUserSettings } from "../services/configuration/ConfigurationService"; // E3f #56
 
 // E5#44-1：Callbacks 类型 + 注册函数提取到 CoreCallbacks.ts
 export type { CoreCallbacks } from "./CoreCallbacks";
@@ -202,12 +202,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { showConfirm } = await import("../services/DialogService");
+      const { showConfirm } = await import("../services/ui/DialogService");
       const confirmed = await showConfirm(
         i18n.t("确定要将「{{key}}」重置为默认值吗？", { key })
       );
       if (!confirmed) return;
-      const { resetConfigurationValue } = await import("../services/ConfigurationService");
+      const { resetConfigurationValue } = await import("../services/configuration/ConfigurationService");
       await resetConfigurationValue(key);
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -222,9 +222,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { writeClipboardText } = await import("../services/ClipboardService");
+      const { writeClipboardText } = await import("../services/ui/ClipboardService");
       writeClipboardText(key);
-      const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("../services/ui/toast");
       pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -238,12 +238,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { getConfigurationValue } = await import("../services/ConfigurationService");
+      const { getConfigurationValue } = await import("../services/configuration/ConfigurationService");
       const value = getConfigurationValue(key);
       const json = JSON.stringify({ [key]: value }, null, 2);
-      const { writeClipboardText } = await import("../services/ClipboardService");
+      const { writeClipboardText } = await import("../services/ui/ClipboardService");
       writeClipboardText(json);
-      const { pushToast, TOAST_TTL_INFO } = await import("../services/toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("../services/ui/toast");
       pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -258,7 +258,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "放大",
     category: "视图",
     handler: async () => {
-      const { getConfigurationValue, setConfigurationValue } = await import("../services/ConfigurationService");
+      const { getConfigurationValue, setConfigurationValue } = await import("../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
       await setConfigurationValue("window.zoomLevel", Math.min(8, current + 1), "user");
     },
@@ -268,7 +268,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "缩小",
     category: "视图",
     handler: async () => {
-      const { getConfigurationValue, setConfigurationValue } = await import("../services/ConfigurationService");
+      const { getConfigurationValue, setConfigurationValue } = await import("../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
       await setConfigurationValue("window.zoomLevel", Math.max(-8, current - 1), "user");
     },
@@ -278,7 +278,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "重置缩放",
     category: "视图",
     handler: async () => {
-      const { setConfigurationValue } = await import("../services/ConfigurationService");
+      const { setConfigurationValue } = await import("../services/configuration/ConfigurationService");
       await setConfigurationValue("window.zoomLevel", 0, "user");
     },
   },
