@@ -1,7 +1,10 @@
 /**
- * useTabManager — 标签页状态管理 hook。
+ * useTabManager — 标签页状态管理 hook（聚合器门面）。
  * Phase 3 v4：VS Code 模型——每个面板独立标签栏，TabGroup 管理标签页归属。
- *
+ * E5.8#0d.10-2：拆 useTabManager/ 子模块后，本文件 = 聚合器——全量 re-export 子模块公共符号，
+ * 外部消费方 import 路径零变更（"./useTabManager" 命中文件，"./useTabManager/types" 命中子模块）。
+ * 分层依赖：types（模型+派生）→ defaults（工厂+计数器）→ reducers-tab/reducers-layout（纯 reducer）；
+ * 本文件仅保留 React Hook 层（useState/useCallback + CoreEvents/shellEvents 副作用）。
  * 设计依据：[V3-Phase3-标签页分屏设计.md §3]
  */
 
