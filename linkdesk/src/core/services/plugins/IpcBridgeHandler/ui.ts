@@ -1,0 +1,174 @@
+/**
+ * IpcBridgeHandler UI 浮层域——自 IpcBridgeHandler.ts 拆出（E5.8#0d.10-10e）。
+ * dialog:confirm/alert channel + menu:registerItems/getItems/contextKey:set channel
+ * + toast 四方法（showNotification/updateNotification/finishNotification/cancelNotification）
+ * + 设置导航/外观 六方法（consumeSettingsGroup/consumeScrollToSetting/getAvailableThemes/
+ * getCurrentTheme/getAvailableLanguages/getCurrentLanguage）+ 二订阅（_settingsGroupUnsub/_scrollToUnsub 属主）verbatim。
+ * 依赖方向：ui → DialogService/toast/MenuRegistry/ContextKeyService/CommandRegistry/KeybindingRegistry/
+ * ConfigurationRegistry/ThemeEngine/LanguageRegistry/i18n + linkdesk-api（LinkDeskAPI 订阅类型）；被聚合器委派。
+ */
+
+import { confirm, alert } from "../../ui/DialogService"; // E5#67
+import { pushToast, dismissToast, updateToast, type ToastSeverity } from "../../ui/toast";
+import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
+import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
+import { getCommands } from "../../../registry/commands/CommandRegistry";
+import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
+import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../../registry/ConfigurationRegistry";
+import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
+import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
+import i18n from "../../../../i18n";
+import type { LinkDeskAPI } from "../../../api/linkdesk-api";
+
+let _settingsGroupUnsub: (() => void) | null = null;
+let _scrollToUnsub: (() => void) | null = null;
+
+// ── 壳→设置页导航订阅──
+
+export function subscribeUi(linkdesk: LinkDeskAPI): void {
+  // E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组
+  // M1 双通道 B 的 IPC 版：壳 onRequestSettingsGroup Emitter → broadcast → 插件 WebView events.on
+  _settingsGroupUnsub = onRequestSettingsGroup.event((pluginId) => {
+    try { linkdesk.events?.emit("settings:requestGroup", { pluginId }); } catch { /* 静默 */ }
+  });
+  // E3f #53e：壳→设置页滚动到指定配置项
+  _scrollToUnsub = onRequestScrollToSetting.event((key) => {
+    try { linkdesk.events?.emit("settings:scrollTo", { key }); } catch { /* 静默 */ }
+  });
+}
+
+export function unsubscribeUi(): void {
+  _settingsGroupUnsub?.();
+  _settingsGroupUnsub = null;
+  _scrollToUnsub?.();
+  _scrollToUnsub = null;
+}
+
+/** dialog:* 二 channel 处理器——插件调壳的 ConfirmDialog */
+export async function handleDialogChannel(channel: string, args: unknown[]): Promise<unknown> {
+  switch (channel) {
+    // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
+    case "dialog:confirm": {
+      const [message] = args as [string];
+      return confirm({ title: "", message });
+    }
+    case "dialog:alert": {
+      const [message] = args as [string];
+      await alert({ title: "", message });
+      break;
+    }
+    default:
+      throw new Error(`未知的 bridge channel: ${channel}`);
+  }
+}
+
+/** menu:* / contextKey:* 三 channel 处理器——插件声明式读写菜单 + SET 上下文 */
+export async function handleSettingsChannel(channel: string, args: unknown[]): Promise<unknown> {
+  switch (channel) {
+    // ── E5#69：菜单——插件声明式读写 ──
+    case "menu:registerItems": {
+      const [menuId, pluginId, items] = args as [string, string, ManifestMenuItem[]];
+      registerMenuItems(menuId, pluginId, items);
+      break;
+    }
+    case "menu:getItems": {
+      // E5.5#7-p3：壳侧一站式过滤——when 匹配 + 命令标题 + 快捷键解析。
+      // ContextMenu/MenuRenderer 不再 import @src/core——零依赖纯渲染。
+      // E5.7#14：显示文本铁律——标签/标题/子项标签壳侧 t() 解析后推送，
+      // 池哑渲染原文、不初始化 i18n（浮层归一化设计.md §4.4）。
+      const [menuId, context] = args as [string, Record<string, unknown> | undefined];
+      const raw = getMenuItems(menuId) as ManifestMenuItem[];
+      const allCmds = getCommands();
+      return raw
+        .filter((item): item is Exclude<ManifestMenuItem, string> => {
+          if (typeof item === "string") return false; // 分隔符/字符串引用——壳侧不返回
+          const cmd = allCmds.find(c => c.id === item.command);
+          const whenExpr = item.when ?? cmd?.when;
+          return ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined);
+        })
+        .map((item) => {
+          const cmd = allCmds.find(c => c.id === item.command);
+          const kb = findKeybindingForCommand(item.command);
+          return {
+            ...item,
+            label: item.label ? i18n.t(item.label) : item.label,
+            title: cmd?.title ? i18n.t(cmd.title) : cmd?.title,
+            shortcut: kb?.key,
+            // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label。
+            // （用 instanceof 而非 typeof——ESLint no-restricted-syntax 对"小写字面量比较"
+            //  一律报 pluginId 硬编码误报，typeof x === "string" 是已知误报模式）
+            children: item.children?.map((c) =>
+              c instanceof Object ? { ...c, label: c.label ? i18n.t(c.label) : c.label } : c
+            ),
+          };
+        });
+    }
+    // ── E5#70：ContextKey——插件 SET 状态 ──
+    case "contextKey:set": {
+      const [key, value] = args as [string, unknown];
+      ContextKeyService.setValue(key, value);
+      break;
+    }
+    default:
+      throw new Error(`未知的 bridge channel: ${channel}`);
+  }
+}
+
+/** 设置导航/外观 六方法处理器 */
+export async function handleSettingsMethod(method: string, args: unknown[]): Promise<unknown> {
+  void args; // 六方法均无参
+  switch (method) {
+    // ── E5.5#7：壳→设置页导航——M1 双通道（齿轮"设置"跳转到指定分组/配置项）──
+    case "consumeSettingsGroup":
+      return consumeSettingsGroup();
+    case "consumeScrollToSetting":
+      return consumeScrollToSetting();
+    case "getAvailableThemes":
+      return getAvailableThemes();
+    case "getCurrentTheme":
+      return getCurrentTheme()?.name ?? null;
+    case "getAvailableLanguages":
+      return LanguageRegistry.getAll();
+    case "getCurrentLanguage":
+      return i18n.language;
+    default:
+      throw new Error(`未知的 plugins 方法: ${method}`);
+  }
+}
+
+/** toast 四方法处理器——插件通知跨进程触发壳侧 toast */
+export async function handleUiMethod(method: string, args: unknown[]): Promise<unknown> {
+  switch (method) {
+    // E3j #76：插件通知——跨进程触发壳侧 toast
+    case "showNotification": {
+      const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];
+      const severity: ToastSeverity =
+        options?.type === "error" ? "error" :
+        options?.type === "warning" ? "warning" : "info";
+      const id = pushToast({
+        message,
+        severity,
+        ttl: options?.progress ? 0 : undefined, // 进度条：不自动消失
+      });
+      return options?.progress ? id : undefined;
+    }
+    case "updateNotification": {
+      const [handleId, message] = args as [string, string];
+      updateToast(handleId, message);
+      break;
+    }
+    case "finishNotification": {
+      const [handleId, message] = args as [string, string | undefined];
+      dismissToast(handleId);
+      if (message) pushToast({ message, severity: "info" });
+      break;
+    }
+    case "cancelNotification": {
+      const [handleId] = args as [string];
+      dismissToast(handleId);
+      break;
+    }
+    default:
+      throw new Error(`未知的 plugins 方法: ${method}`);
+  }
+}

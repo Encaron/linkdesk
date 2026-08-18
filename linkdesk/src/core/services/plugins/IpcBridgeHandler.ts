@@ -10,24 +10,15 @@
 
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
-import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../registry/ConfigurationRegistry";
-import { getCommands } from "../../registry/commands/CommandRegistry"; // E5.8#0d.10-10c：execute/register 等五命令符号随 commands 域迁出，仅 menu:getItems 保留 getCommands
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
   findKeybindingForCommand, setKeybindingCaptureActive,
   keybindingResolver,
-} from "../../registry/commands/KeybindingRegistry";
+} from "../../registry/commands/KeybindingRegistry"; // E5.8#0d.10-10f：findKeybindingForCommand 随 keybindings 域迁出
 import { CoreEvents } from "../../react/events/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
-import { getAvailableThemes, getCurrentTheme } from "../ui/ThemeEngine";
-import { LanguageRegistry } from "../../registry/languages/LanguageRegistry";
-import { confirm, alert } from "../ui/DialogService"; // E5#67
-import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70
-import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/commands/MenuRegistry"; // E5#69
+import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70（仅 init 的 registerExternalGetter 保留）
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
-import { pushToast, dismissToast, updateToast } from "../ui/toast";
-import type { ToastSeverity } from "../ui/toast";
-import i18n from "../../../i18n";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation——池插件跨进程查询
@@ -40,14 +31,13 @@ import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration,
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
 import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域
 import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace, unsubscribeWorkspace, subscribeViews, unsubscribeViews } from "./IpcBridgeHandler/workspace"; // E5.8#0d.10-10d：工作区/视图容器域
+import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handleUiMethod, subscribeUi, unsubscribeUi } from "./IpcBridgeHandler/ui"; // E5.8#0d.10-10e：UI 浮层域
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
 let _lifecycleUnsub: (() => void) | null = null;
-let _settingsGroupUnsub: (() => void) | null = null;
-let _scrollToUnsub: (() => void) | null = null;
 let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 
 export function initIpcBridgeHandler(): void {
@@ -155,52 +145,12 @@ export function initIpcBridgeHandler(): void {
           result = await handleViewContainerChannel(req.channel, req.args);
           break;
 
-        // ── E5#69：菜单——插件声明式读写 ──
-        case "menu:registerItems": {
-          const [menuId, pluginId, items] = req.args as [string, string, ManifestMenuItem[]];
-          registerMenuItems(menuId, pluginId, items);
+        // ── E5#69 + E5#70：菜单 + ContextKey——插件声明式读写菜单 / SET 状态（IpcBridgeHandler/ui 域委派）──
+        case "menu:registerItems":
+        case "menu:getItems":
+        case "contextKey:set":
+          result = await handleSettingsChannel(req.channel, req.args);
           break;
-        }
-        case "menu:getItems": {
-          // E5.5#7-p3：壳侧一站式过滤——when 匹配 + 命令标题 + 快捷键解析。
-          // ContextMenu/MenuRenderer 不再 import @src/core——零依赖纯渲染。
-          // E5.7#14：显示文本铁律——标签/标题/子项标签壳侧 t() 解析后推送，
-          // 池哑渲染原文、不初始化 i18n（浮层归一化设计.md §4.4）。
-          const [menuId, context] = req.args as [string, Record<string, unknown> | undefined];
-          const raw = getMenuItems(menuId) as ManifestMenuItem[];
-          const allCmds = getCommands();
-          result = raw
-            .filter((item): item is Exclude<ManifestMenuItem, string> => {
-              if (typeof item === "string") return false; // 分隔符/字符串引用——壳侧不返回
-              const cmd = allCmds.find(c => c.id === item.command);
-              const whenExpr = item.when ?? cmd?.when;
-              return ContextKeyService.matches(whenExpr, context as Record<string, unknown> | undefined);
-            })
-            .map((item) => {
-              const cmd = allCmds.find(c => c.id === item.command);
-              const kb = findKeybindingForCommand(item.command);
-              return {
-                ...item,
-                label: item.label ? i18n.t(item.label) : item.label,
-                title: cmd?.title ? i18n.t(cmd.title) : cmd?.title,
-                shortcut: kb?.key,
-                // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label。
-                // （用 instanceof 而非 typeof——ESLint no-restricted-syntax 对"小写字面量比较"
-                //  一律报 pluginId 硬编码误报，typeof x === "string" 是已知误报模式）
-                children: item.children?.map((c) =>
-                  c instanceof Object ? { ...c, label: c.label ? i18n.t(c.label) : c.label } : c
-                ),
-              };
-            });
-          break;
-        }
-
-        // ── E5#70：ContextKey——插件 SET 状态 ──
-        case "contextKey:set": {
-          const [key, value] = req.args as [string, unknown];
-          ContextKeyService.setValue(key, value);
-          break;
-        }
 
         // ── E5#68：标签页操作——插件调壳的 tabs API（IpcBridgeHandler/tabs 域）──
         case "tabs:create":
@@ -213,17 +163,11 @@ export function initIpcBridgeHandler(): void {
           result = await handleTabsChannel(req.channel, req.args);
           break;
 
-        // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
-        case "dialog:confirm": {
-          const [message] = req.args as [string];
-          result = await confirm({ title: "", message });
+        // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog（IpcBridgeHandler/ui 域委派）──
+        case "dialog:confirm":
+        case "dialog:alert":
+          result = await handleDialogChannel(req.channel, req.args);
           break;
-        }
-        case "dialog:alert": {
-          const [message] = req.args as [string];
-          await alert({ title: "", message });
-          break;
-        }
 
         default:
           throw new Error(`未知的 bridge channel: ${req.channel}`);
@@ -246,15 +190,8 @@ export function initIpcBridgeHandler(): void {
     try { linkdesk.events?.emit("plugin-lifecycle:changed", {}); } catch { /* 静默 */ }
   });
 
-  // ── E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组 ──
-  // M1 双通道 B 的 IPC 版：壳 onRequestSettingsGroup Emitter → broadcast → 插件 WebView events.on
-  _settingsGroupUnsub = onRequestSettingsGroup.event((pluginId) => {
-    try { linkdesk.events?.emit("settings:requestGroup", { pluginId }); } catch { /* 静默 */ }
-  });
-  // E3f #53e：壳→设置页滚动到指定配置项
-  _scrollToUnsub = onRequestScrollToSetting.event((key) => {
-    try { linkdesk.events?.emit("settings:scrollTo", { key }); } catch { /* 静默 */ }
-  });
+  // ── E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组/配置项（IpcBridgeHandler/ui 域）──
+  subscribeUi(linkdesk);
 
   // ── E5.5#7-p2：快捷键变更广播——设置页快捷键子栏实时刷新 ──
   _keybindingsUnsub = CoreEvents.onDidChangeKeybindings.event(() => {
@@ -273,14 +210,11 @@ export function unregisterIpcBridgeHandler(): void {
     unsubscribeConfiguration();
     _lifecycleUnsub?.();
     _lifecycleUnsub = null;
-    _settingsGroupUnsub?.();
-    _settingsGroupUnsub = null;
-    _scrollToUnsub?.();
-    _scrollToUnsub = null;
     _keybindingsUnsub?.();
     _keybindingsUnsub = null;
     unsubscribeWorkspace();
     unsubscribeViews();
+    unsubscribeUi();
   }
 }
 
@@ -337,50 +271,22 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "inspectConfiguration":
     case "getUserSettings":
       return handleConfigurationMethod(method, args);
-    // ── E5.5#7：壳→设置页导航——M1 双通道（齿轮"设置"跳转到指定分组/配置项）──
+    // ── E5.5#7：壳→设置页导航 + 外观查询（IpcBridgeHandler/ui 域委派）──
     case "consumeSettingsGroup":
-      return consumeSettingsGroup();
     case "consumeScrollToSetting":
-      return consumeScrollToSetting();
     case "getAvailableThemes":
-      return getAvailableThemes();
     case "getCurrentTheme":
-      return getCurrentTheme()?.name ?? null;
     case "getAvailableLanguages":
-      return LanguageRegistry.getAll();
     case "getCurrentLanguage":
-      return i18n.language;
+      return handleSettingsMethod(method, args);
     // E5.7#49：getLangDef/getAllLangDefs/protocol:* 五个代理 case 已删——Registry 主进程化后
     // 池经直连 IPC 读主进程实例（electron/ipc/registry-handlers.ts），不再经壳中转。
-    // E3j #76：插件通知——跨进程触发壳侧 toast
-    case "showNotification": {
-      const [message, options] = args as [string, { type?: string; progress?: boolean } | undefined];
-      const severity: ToastSeverity =
-        options?.type === "error" ? "error" :
-        options?.type === "warning" ? "warning" : "info";
-      const id = pushToast({
-        message,
-        severity,
-        ttl: options?.progress ? 0 : undefined, // 进度条：不自动消失
-      });
-      return options?.progress ? id : undefined;
-    }
-    case "updateNotification": {
-      const [handleId, message] = args as [string, string];
-      updateToast(handleId, message);
-      break;
-    }
-    case "finishNotification": {
-      const [handleId, message] = args as [string, string | undefined];
-      dismissToast(handleId);
-      if (message) pushToast({ message, severity: "info" });
-      break;
-    }
-    case "cancelNotification": {
-      const [handleId] = args as [string];
-      dismissToast(handleId);
-      break;
-    }
+    // E3j #76：插件通知——跨进程触发壳侧 toast（IpcBridgeHandler/ui 域委派）
+    case "showNotification":
+    case "updateNotification":
+    case "finishNotification":
+    case "cancelNotification":
+      return handleUiMethod(method, args);
     default:
       throw new Error(`未知的 plugins 方法: ${method}`);
   }
