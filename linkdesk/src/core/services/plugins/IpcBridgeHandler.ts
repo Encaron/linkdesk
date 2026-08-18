@@ -45,22 +45,9 @@ import { ViewContainerService, type ViewDescriptor } from "../layout/ViewContain
 // E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
 import { searchFiles } from "../files/FileSearcher";
 import { EncodingService } from "../files/EncodingService";
-// E5#43：接口反转——核心定义 PluginManagementAPI，loader 注册自己。
-// 桥不知道加载器的存在，只知道"有人注册了这些能力"。
-export interface PluginManagementAPI {
-  enablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  disablePlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  installPlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  uninstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  reinstallPlugin(id: string): Promise<{ success: boolean; error?: string }>;
-  getDisabledPluginInfo(): unknown;
-  getUninstalledPluginInfo(): unknown;
-  isPluginDisabled(id: string): boolean;
-  getLoadedPluginManifests(): Array<{ pluginId: string; manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown } }>;
-}
-
-let _pluginAPI: PluginManagementAPI | null = null;
-export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api; }
+import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
+export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
+export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
@@ -446,40 +433,18 @@ export function unregisterIpcBridgeHandler(): void {
 
 async function handlePluginsCall(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
+    // ── 插件管理（E3a #31）——IpcBridgeHandler/pluginManager 域委派（10 方法 verbatim 迁入）──
     case "list":
-      return _pluginAPI!.getLoadedPluginManifests().map((p) => ({
-        pluginId: p.pluginId,
-        manifest: {
-          name: p.manifest.name,
-          description: p.manifest.description,
-          version: p.manifest.version,
-          core: p.manifest.core,
-          author: p.manifest.author,
-          statusBar: p.manifest.statusBar,
-          contributes: p.manifest.contributes,
-        },
-      }));
     case "enable":
-      return _pluginAPI!.enablePlugin(args[0] as string);
     case "disable":
-      return _pluginAPI!.disablePlugin(args[0] as string);
     case "uninstall":
-      return _pluginAPI!.uninstallPlugin(args[0] as string);
     case "install":
-      return _pluginAPI!.installPlugin(args[0] as string);
     case "reinstall":
-      return _pluginAPI!.reinstallPlugin(args[0] as string);
     case "getDisabled":
-      return _pluginAPI!.getDisabledPluginInfo();
     case "getUninstalled":
-      return _pluginAPI!.getUninstalledPluginInfo();
     case "isDisabled":
-      return _pluginAPI!.isPluginDisabled(args[0] as string);
-    // E3j #74：linkdesk API——跨进程查询壳侧注册表
-    case "getCommands": {
-      // 🔥 handler 是函数——结构化克隆拒绝 → 返回前剥去
-      return getCommands().map(({ handler: _h, ...rest }) => rest);
-    }
+    case "getCommands":
+      return handlePluginManagerMethod(method, args);
     // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import ──
     case "getKeybindings":
       return getKeybindings();
