@@ -246,7 +246,9 @@ try {
     contextKey: {
       set: (key: string, value: unknown) => {
         _contextKeyStore.set(key, value);
-        ipcRenderer.invoke(IPC.contextKey.set, key, value);
+        // E5.8 回归 bug 修复：必须 return invoke Promise——合同 linkdesk-api.ts 声明 set(): Promise<void>，
+        // 与 preload-pool 同款合同违反，预埋补齐（当前无调用方挂 .catch，但合同一致性防未来炸）。
+        return ipcRenderer.invoke(IPC.contextKey.set, key, value);
       },
       // 供 ContextKeyService 同步读取——零延迟，解决键盘分发竞态
       _getValue: (key: string) => _contextKeyStore.get(key),

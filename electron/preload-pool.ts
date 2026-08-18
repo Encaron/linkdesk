@@ -660,7 +660,9 @@ try {
     contextKey: {
       set: (key: string, value: unknown) => {
         _contextKeyStore.set(key, value);
-        ipcRenderer.invoke(IPC.contextKey.set, key, value);
+        // E5.8 回归 bug 修复：必须 return invoke Promise——合同 linkdesk-api.ts 声明 set(): Promise<void>，
+        // 不 return 则插件 `contextKey.set(...).catch()` 抛 reading 'catch'（E5.8#47 串口 sourceOpen 触发）。
+        return ipcRenderer.invoke(IPC.contextKey.set, key, value);
       },
       _getValue: (key: string) => _contextKeyStore.get(key),
     },
