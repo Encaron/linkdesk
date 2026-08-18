@@ -13,7 +13,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { registerSerialHandlers } from './ipc/serial-handlers.js';
 import { registerFileHandlers } from './ipc/file-handlers.js';
-import { loadAllPluginManifests, registerManifestRescanHandler } from './plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
+import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
 import { registerPluginHandlers } from './ipc/plugin-handlers.js';
 import { registerDialogHandlers } from './ipc/dialog-handlers.js';
 import { registerEnvHandlers } from './ipc/env-handlers.js';
@@ -22,7 +22,7 @@ import { registerRegistryHandlers } from './ipc/registry-handlers.js'; // E5.7#4
 import { registerHotExitHandlers } from './ipc/hot-exit-handlers.js'; // E5.7#38
 import { registerPoolHandlers } from './ipc/plugin-view-handlers.js'; // E5.6#8d
 import { registerLspHandlers } from './ipc/lsp-handlers.js'; // E4V#40s1
-import { registerProtocol } from './protocol.js';
+import { registerProtocol } from './plugins/protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './windows/window-manager.js';
 import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
