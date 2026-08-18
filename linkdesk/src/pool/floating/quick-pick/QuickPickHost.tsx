@@ -23,8 +23,8 @@
 
 import { useState, useRef, useEffect, useMemo, useCallback, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { useTranslation } from "react-i18next";
-import { Z_INDEX } from "../../constants";
-import type { PoolQuickPickData, PoolQuickPickItem, PluginQuickPickItem, PluginQuickPickRequest } from "../../core/types/poolQuickPick";
+import { Z_INDEX } from "../../../constants";
+import type { PoolQuickPickData, PoolQuickPickItem, PluginQuickPickItem, PluginQuickPickRequest } from "../../../core/types/poolQuickPick";
 import "./QuickPickHost.css";
 
 /* ── 模糊搜索（E2c #18 同款——壳 QuickPick.tsx 副本；#18 删壳组件后此处归一为唯一实现） ── */

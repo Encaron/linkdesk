@@ -16,7 +16,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import type { PoolToastData, PoolToastItem } from "../../core/types/poolToast";
+import type { PoolToastData, PoolToastItem } from "../../../core/types/poolToast";
 import "./ToastHost.css";
 
 /* ── 池 API 形状——global.d.ts 的 window.linkdesk 是宽松类型，此处收窄到精确形状 ── */

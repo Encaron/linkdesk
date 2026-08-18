@@ -22,9 +22,9 @@
  * 容器 z-index = Z_INDEX.toast（浮层层级基准）——#26 常量表。
  */
 import { Z_INDEX } from "../../../constants";
-import QuickPickHost from "../../floating/QuickPickHost";
-import ToastHost from "../../floating/ToastHost";
-import DialogHost from "../../floating/DialogHost";
+import QuickPickHost from "../../floating/quick-pick/QuickPickHost";
+import ToastHost from "../../floating/toast/ToastHost";
+import DialogHost from "../../floating/dialog/DialogHost";
 
 function FloatingLayerHost() {
   return (
