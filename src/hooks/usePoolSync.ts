@@ -31,8 +31,8 @@ import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnr
 // E5.7#8：状态栏三源合并——动态项 + 变化订阅（壳 StatusBar.tsx 同款）
 import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/services/ui/StatusBarService";
 // E5.7#8：Chord 提示（CUSTOM_EVENTS）+ 事件条目（statusbar:update/tab:focused）+ 通知中心（toast 存储）
-import { CUSTOM_EVENTS } from "../core/react/CoreEvents";
-import { shellEvents, type StatusBarEntry } from "../core/react/ShellEvents";
+import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
+import { shellEvents, type StatusBarEntry } from "../core/react/events/ShellEvents";
 import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/ui/toast";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）

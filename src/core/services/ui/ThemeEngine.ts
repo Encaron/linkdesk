@@ -3,7 +3,7 @@
  * JSON 是源，CSS 变量是渲染层。用户和 AI 都改 JSON。
  */
 
-import { CoreEvents } from "../../react/CoreEvents";
+import { CoreEvents } from "../../react/events/CoreEvents";
 
 export interface ThemeColors {
   [key: string]: string;

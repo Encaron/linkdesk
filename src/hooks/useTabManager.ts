@@ -8,7 +8,7 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/services/ui/DialogService";
-import { shellEvents } from "../core/react/ShellEvents";
+import { shellEvents } from "../core/react/events/ShellEvents";
 import { normalizePath } from "../core/utils/pathUtils";
 import {
   type SplitNode,
@@ -23,7 +23,7 @@ import {
 } from "../core/utils/splitTree";
 import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
-import { CoreEvents } from "../core/react/CoreEvents";
+import { CoreEvents } from "../core/react/events/CoreEvents";
 import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, syncCountersAfterRestore } from "../core/utils/tabIdentity";
 

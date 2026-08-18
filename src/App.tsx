@@ -28,8 +28,8 @@ import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, getPan
 import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
 import { ContextKeyService } from "./core/registry/ContextKeyService";
-import { CUSTOM_EVENTS } from "./core/react/CoreEvents";
-import { shellEvents } from "./core/react/ShellEvents"; // E5#3b：壳内事件总线
+import { CUSTOM_EVENTS } from "./core/react/events/CoreEvents";
+import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
 import { ViewContainerService } from "./core/services/layout/ViewContainerService"; // E5.7#10：侧栏宿主状态机（view:toggleVisibility）
 import { onDidRequestShowChannel } from "./core/services/ui/LogChannel"; // E3f #54

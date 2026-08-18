@@ -10,7 +10,7 @@
  */
 
 import type { StatusBarItem } from "../../api/types";
-import { Emitter } from "../../react/CoreEvents";
+import { Emitter } from "../../react/events/CoreEvents";
 
 /* ── 动态状态栏项——运行时可变字段 ── */
 

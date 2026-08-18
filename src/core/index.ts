@@ -4,9 +4,9 @@
  */
 
 // ── 事件 ──
-export { shellEvents } from "./react/ShellEvents";
-export type { ShellEvents, StatusBarEntry } from "./react/ShellEvents";
-export { CoreEvents, Emitter } from "./react/CoreEvents";
+export { shellEvents } from "./react/events/ShellEvents";
+export type { ShellEvents, StatusBarEntry } from "./react/events/ShellEvents";
+export { CoreEvents, Emitter } from "./react/events/CoreEvents";
 
 // ── 注册表 ──
 export * from "./registry/RegistryBase";
@@ -52,7 +52,6 @@ export * from "./services/layout/ViewContainerService";
 export * from "./react/useConfiguration";
 export * from "./react/usePluginIpcEvent";
 export * from "./react/useSendData";
-export * from "./react/TabActionsContext";
 
 // ── 数据管道 ──
 export * from "./pipeline/DataConverter";
