@@ -13,9 +13,9 @@
 import { protocol, app } from 'electron';
 import * as path from 'path';
 import * as fs from 'fs';
-import { APP_SCHEME } from './constants';
-import { scanPluginSubdirs } from './services/plugin-file-service.js';
-import { resolveLinkdeskPath } from '../src/core/utils/path/linkdeskProtocolPath.js';
+import { APP_SCHEME } from '../constants';
+import { scanPluginSubdirs } from '../services/plugin-file-service.js';
+import { resolveLinkdeskPath } from '../../src/core/utils/path/linkdeskProtocolPath.js';
 
 /** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
 function diag(msg: string): void {
