@@ -5,7 +5,7 @@
 
 import { registerCommand } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
-import { shellEvents } from "../react/ShellEvents";
+import { shellEvents } from "../react/events/ShellEvents";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 
 export function registerShellMenus(): void {

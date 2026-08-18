@@ -20,11 +20,11 @@ import {
   findKeybindingForCommand, setKeybindingCaptureActive,
   keybindingResolver,
 } from "../../registry/KeybindingRegistry";
-import { CoreEvents } from "../../react/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
+import { CoreEvents } from "../../react/events/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
 import { getAvailableThemes, getCurrentTheme } from "../ui/ThemeEngine";
 import { LanguageRegistry } from "../../registry/LanguageRegistry";
 import { confirm, alert } from "../ui/DialogService"; // E5#67
-import { shellEvents } from "../../react/ShellEvents"; // E5#68
+import { shellEvents } from "../../react/events/ShellEvents"; // E5#68
 import { ContextKeyService } from "../../registry/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71

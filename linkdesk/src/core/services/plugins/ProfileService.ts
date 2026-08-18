@@ -31,7 +31,7 @@ import {
   remove,
 } from "../files/FileService";
 import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "./PluginStateService";
-import { Emitter } from "../../react/CoreEvents";
+import { Emitter } from "../../react/events/CoreEvents";
 import { getWorkspaceRoot } from "../layout/WorkspaceService";
 
 /* ── 事件 ── */

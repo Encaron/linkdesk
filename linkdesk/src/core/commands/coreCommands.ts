@@ -13,7 +13,7 @@
 import { registerCommand, type Command } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
-import { CUSTOM_EVENTS } from "../react/CoreEvents";
+import { CUSTOM_EVENTS } from "../react/events/CoreEvents";
 import i18n from "../../i18n";
 import { getWorkspaceLayout } from "../services/layout/LayoutService"; // E3f #56
 import { getUserSettings } from "../services/configuration/ConfigurationService"; // E3f #56
