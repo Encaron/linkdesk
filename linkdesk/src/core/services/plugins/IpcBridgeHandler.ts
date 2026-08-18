@@ -25,7 +25,6 @@ import { confirm, alert } from "../ui/DialogService"; // E5#67
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/commands/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
-import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders, setActiveWorkspace, openFolder, addFolder, removeFolder, onDidChangeActiveWorkspace } from "../layout/WorkspaceService"; // E5#85 + E5.6#11.5-A
 import { pushToast, dismissToast, updateToast } from "../ui/toast";
 import type { ToastSeverity } from "../ui/toast";
 import i18n from "../../../i18n";
@@ -33,8 +32,6 @@ import i18n from "../../../i18n";
 import { onPluginLifecycleChange } from "../../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation——池插件跨进程查询
 // （decorations 的壳侧代理已随 E5.7#60 整删——注册表池内化，见 preload-pool 模块级注释）
-// E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载
-import { ViewContainerService, type ViewDescriptor } from "../layout/ViewContainerService";
 // E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
 import { searchFiles } from "../files/FileSearcher";
 import { EncodingService } from "../files/EncodingService";
@@ -42,6 +39,7 @@ import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; //
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
 import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域
+import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace, unsubscribeWorkspace, subscribeViews, unsubscribeViews } from "./IpcBridgeHandler/workspace"; // E5.8#0d.10-10d：工作区/视图容器域
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
@@ -51,20 +49,6 @@ let _lifecycleUnsub: (() => void) | null = null;
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
 let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
-let _workspaceUnsub: (() => void) | null = null; // E5.5#7 Bug B fix：工作区变更广播
-let _workspaceActiveUnsub: (() => void) | null = null; // E5.6#11.5-A：活跃工作区变更广播
-let _viewsUnsub: (() => void) | null = null; // E5.6#19e：ViewContainerService 视图变更广播
-
-/**
- * E5.7#58：ViewDescriptor → 可序列化 DTO——剥 render/actions/pinnedContent（函数/React 节点，
- * IPC 结构化克隆拒绝）+ _pluginId/_renderPath（注册表内部标记，非插件 API 面）。
- * 与 preload-pool 的 viewContainer 写方向白名单同一套公开字段对齐（读方向）。
- */
-function toViewDto(v: ViewDescriptor): Record<string, unknown> {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段剥壳
-  const { render: _render, actions: _actions, pinnedContent: _pinned, _pluginId: _pid, _renderPath: _rp, ...pub } = v as any;
-  return pub;
-}
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -124,38 +108,15 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5#85：workspace——插件查询工作区信息 ──
-        case "workspace:getFolders": {
-          result = getWorkspaceFolders();
+        // ── E5#85 + E5.6#11.5-A：workspace——插件查询/写工作区信息（IpcBridgeHandler/workspace 域）──
+        case "workspace:getFolders":
+        case "workspace:getActive":
+        case "workspace:setActive":
+        case "workspace:openFolder":
+        case "workspace:addFolder":
+        case "workspace:removeFolder":
+          result = await handleWorkspaceChannel(req.channel, req.args);
           break;
-        }
-        case "workspace:getActive": {
-          result = getActiveWorkspace();
-          break;
-        }
-
-        // ── E5.6#11.5-A：扩展 workspace——池插件写工作区操作 ──
-        case "workspace:setActive": {
-          const [uri] = req.args as [string];
-          setActiveWorkspace(uri);
-          // 广播到所有 Pool——池插件订阅 onDidChangeActiveWorkspace
-          try { window.linkdesk?.events?.emit("workspace:activeChanged", { uri }); } catch { /* 静默 */ }
-          break;
-        }
-        case "workspace:openFolder": {
-          await openFolder();
-          break;
-        }
-        case "workspace:addFolder": {
-          const [path] = req.args as [string];
-          addFolder(path);
-          break;
-        }
-        case "workspace:removeFolder": {
-          const [path] = req.args as [string];
-          removeFolder(path);
-          break;
-        }
 
         // E5.7#50：fileAssociation:getPluginFor case 已删——主进程 registry-handlers 直答
         // （plugin-manifest-loader 预加载进主进程实例，不再经壳中转）
@@ -186,31 +147,13 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（元数据 DTO）──
-        case "viewContainer:getContainer": {
-          const [id] = req.args as [string];
-          result = ViewContainerService.getViewContainer(id);
+        // ── E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（IpcBridgeHandler/workspace 域，元数据 DTO）──
+        case "viewContainer:getContainer":
+        case "viewContainer:getViews":
+        case "viewContainer:getView":
+        case "viewContainer:registerView":
+          result = await handleViewContainerChannel(req.channel, req.args);
           break;
-        }
-        case "viewContainer:getViews": {
-          const [containerId] = req.args as [string];
-          result = ViewContainerService.getViews(containerId).map(toViewDto);
-          break;
-        }
-        case "viewContainer:getView": {
-          const [viewId] = req.args as [string];
-          const view = ViewContainerService.getView(viewId);
-          result = view ? toViewDto(view) : undefined;
-          break;
-        }
-        case "viewContainer:registerView": {
-          // 池侧 preload 已白名单剥壳（render/actions/pinnedContent 不可过 invoke）——
-          // 到达此处的 DTO 只有公开元数据。壳侧注册表对缺 render 的更新保留原 render
-          // （ViewContainerService.registerView 内置逻辑）——元数据更新语义，渲染组件不受影响。
-          const [pluginId, containerId, descriptor] = req.args as [string, string, Record<string, unknown>];
-          ViewContainerService.registerView(pluginId, containerId, descriptor as unknown as ViewDescriptor);
-          break;
-        }
 
         // ── E5#69：菜单——插件声明式读写 ──
         case "menu:registerItems": {
@@ -318,27 +261,9 @@ export function initIpcBridgeHandler(): void {
     try { linkdesk.events?.emit("keybindings:changed", {}); } catch { /* 静默 */ }
   });
 
-  // ── E5.5#7 Bug B fix：工作区变更广播——编辑器 TS 影子 model 需重扫 ──
-  _workspaceUnsub = onDidChangeFolders(() => {
-    try { linkdesk.events?.emit("workspace:changed", {}); } catch { /* 静默 */ }
-  });
-
-  // ── E5.6#11.5-A：活跃工作区变更广播——池插件订阅 onDidChangeActiveWorkspace ──
-  _workspaceActiveUnsub = onDidChangeActiveWorkspace((uri) => {
-    try { linkdesk.events?.emit("workspace:activeChanged", { uri }); } catch { /* 静默 */ }
-  });
-
-  // ── E5.7#60：文件装饰变更广播已删——注册表池内化（池内本地通知，不经壳广播）──
-
-  // ── E5.6#19e：ViewContainerService 视图变更广播——池侧市场/文件树感知视图注册/卸载 ──
-  // E5.7#58 修复：① 通道名改 camelCase——与 marketplace 订阅 "viewContainer:changed" 对齐
-  // （连字符版自 #19e 落地起订阅方零触发）；② payload 走 toViewDto——剥 render/actions/
-  // pinnedContent + 内部标记（原实现只剥 render，未来 actions 含 React 节点时 events.emit
-  // 的 IPC 结构化克隆会抛 DataCloneError）
-  const viewsUnsub = ViewContainerService.onDidChangeViews.event(({ containerId, views }) => {
-    try { linkdesk.events?.emit("viewContainer:changed", { containerId, views: views.map(toViewDto) }); } catch { /* 静默 */ }
-  });
-  _viewsUnsub = viewsUnsub;
+  // ── E5.5#7 Bug B fix + E5.6#11.5-A + E5.6#19e：工作区/活跃工作区/视图变更广播（IpcBridgeHandler/workspace 域）──
+  subscribeWorkspace(linkdesk);
+  subscribeViews(linkdesk);
 }
 
 /** E5#103: 注销 IPC bridge handler——引用计数归零时清理订阅。 */
@@ -354,12 +279,8 @@ export function unregisterIpcBridgeHandler(): void {
     _scrollToUnsub = null;
     _keybindingsUnsub?.();
     _keybindingsUnsub = null;
-    _workspaceUnsub?.();
-    _workspaceUnsub = null;
-    _workspaceActiveUnsub?.();
-    _workspaceActiveUnsub = null;
-    _viewsUnsub?.();
-    _viewsUnsub = null;
+    unsubscribeWorkspace();
+    unsubscribeViews();
   }
 }
 
