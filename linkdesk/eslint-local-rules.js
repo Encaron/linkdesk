@@ -615,10 +615,10 @@ const noRawConfigurationRead = {
 //   const match = raw.includes(p.replace(/\\/g, "/")); // ← 同上
 //
 // 正确示例：
-//   import { normalizePath } from "@src/core/pathUtils"; // 或 from "./pathUtils"
+//   import { normalizePath } from "@src/core/utils/path/pathUtils"; // 或 from "./path/pathUtils"
 //   const p = normalizePath(uri);
 //
-// 例外：src/core/pathUtils.ts 自身（唯一正源定义处）
+// 例外：src/core/utils/path/pathUtils.ts 自身（唯一正源定义处）
 
 const noRawPathReplace = {
   meta: {
@@ -631,8 +631,8 @@ const noRawPathReplace = {
       noRawReplace:
         "🔥 禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath。" +
         " Windows \\ vs / 不匹配是反复出现的 bug（WorkspaceService/compileGlob/dist尾斜杠）。" +
-        " 修复：import { normalizePath } from '@src/core/utils/pathUtils' 然后 normalizePath(uri)。" +
-        " src/core/pathUtils.ts 自身是唯一正源定义处——此规则不适用。",
+        " 修复：import { normalizePath } from '@src/core/utils/path/pathUtils' 然后 normalizePath(uri)。" +
+        " src/core/utils/path/pathUtils.ts 自身是唯一正源定义处——此规则不适用。",
     },
   },
 
@@ -640,8 +640,8 @@ const noRawPathReplace = {
     const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
 
     // pathUtils.ts 自身是 normalizePath 正源定义处——放行
-    if (filename.endsWith("/src/core/utils/pathUtils.ts")) return {};
-    // electron/ main 进程独立构建——无法 import src/core/pathUtils
+    if (filename.endsWith("/src/core/utils/path/pathUtils.ts")) return {};
+    // electron/ main 进程独立构建——无法 import src/core/utils/path/pathUtils
     if (filename.includes("/electron/")) return {};
 
     return {

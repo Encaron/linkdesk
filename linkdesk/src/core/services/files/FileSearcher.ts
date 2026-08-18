@@ -8,7 +8,7 @@
 
 import { listDir, readBinaryFile, exists } from "./FileService";
 import { EncodingService } from "./EncodingService";
-import { normalizePath } from "../../utils/pathUtils";
+import { normalizePath } from "../../utils/path/pathUtils";
 
 /** E5#102c: 搜索结果数上限——防内存炸 */
 const DEFAULT_MAX_RESULTS = 2000;

@@ -23,8 +23,8 @@ import i18n from "../../i18n";
 import { getViewPlugin, hasKeepSidebarOnFocus } from "../../pluginLoader/viewRegistry";
 import type { Tab } from "../../hooks/useTabManager";
 import type { CreateTabOptions } from "../api/types";
-import { normalizePath } from "./pathUtils";
-import { FALLBACK_PLUGIN_ID } from "./fallbackPluginId";
+import { normalizePath } from "./path/pathUtils";
+import { FALLBACK_PLUGIN_ID } from "./plugin/fallbackPluginId";
 
 /* ── 元数据接口 ── */
 

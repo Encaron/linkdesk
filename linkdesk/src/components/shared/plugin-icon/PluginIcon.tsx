@@ -8,7 +8,7 @@
  *   组件自动查 viewRegistry → resolvePluginIcon → 渲染 Lucide / codicon / img / emoji
  */
 import { getViewPlugin } from "../../../pluginLoader/viewRegistry";
-import { resolvePluginIcon } from "../../../core/utils/iconUtils";
+import { resolvePluginIcon } from "../../../core/utils/plugin/iconUtils";
 import { ComponentType } from "react";
 import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
