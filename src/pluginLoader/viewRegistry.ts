@@ -5,10 +5,10 @@
  */
 
 import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/api/types";
-import { getBuiltinTabBehavior } from "../hooks/tabIdentity";
+import { getBuiltinTabBehavior } from "../core/utils/tabIdentity";
 import { Emitter } from "../core/react/CoreEvents";
 import { compareVersions } from "./semverUtils";
-import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
 import { showConfirm } from "../core/services/ui/DialogService";
 
 

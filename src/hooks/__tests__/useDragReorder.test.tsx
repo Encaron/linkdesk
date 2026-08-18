@@ -5,8 +5,8 @@
  */
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useDragReorder } from "../useDragReorder";
-import type { UseDragReorderOptions } from "../useDragReorder";
+import { useDragReorder } from "../../pool/hooks/useDragReorder";
+import type { UseDragReorderOptions } from "../../pool/hooks/useDragReorder";
 
 /* ── Helpers ── */
 

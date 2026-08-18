@@ -5,7 +5,7 @@
  * 设计依据：[V3-Phase3-补充-递归分屏.md]
  */
 
-import type { Tab } from "./useTabManager";
+import type { Tab } from "../../hooks/useTabManager";
 
 /* ── 类型 ── */
 

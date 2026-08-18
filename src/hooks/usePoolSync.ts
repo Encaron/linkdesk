@@ -25,7 +25,7 @@ import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } fro
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
 import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
 import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
-import type { SplitNode } from "./splitTree"; // E5.6#16：从分屏树计算 flex 比例
+import type { SplitNode } from "../core/utils/splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
 import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews, getStatusBarContributions } from "../pluginLoader/viewRegistry";
 // E5.7#8：状态栏三源合并——动态项 + 变化订阅（壳 StatusBar.tsx 同款）
@@ -36,7 +36,7 @@ import { shellEvents, type StatusBarEntry } from "../core/react/ShellEvents";
 import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/ui/toast";
 import { resolvePluginIcon } from "../pluginLoader/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
-import { isShellRenderedTab } from "./tabIdentity";
+import { isShellRenderedTab } from "../core/utils/tabIdentity";
 
 /**
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
