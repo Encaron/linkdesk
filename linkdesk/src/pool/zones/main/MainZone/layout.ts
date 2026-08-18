@@ -17,12 +17,12 @@ function getBranchKey(node: SplitNode & { type: "branch" }): string {
   return `${firstLeafId(node.children[0])}|${firstLeafId(node.children[1])}`;
 }
 
-interface PanelRect {
+export interface PanelRect {
   groupId: string;
   x: number; y: number; w: number; h: number;
 }
 
-interface HandleRect {
+export interface HandleRect {
   branchIndex: number;
   direction: "horizontal" | "vertical";
   x: number; y: number; w: number; h: number;
