@@ -85,7 +85,9 @@ export class WindowManager {
   private createPoolView(debugLabel: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
-        preload: path.join(__dirname, 'preload-pool.js'),
+        // E5.8#0d.8-2 回归修复：preload-pool 留根，window-manager 已入 windows/——__dirname 变化后需 ../ 回根。
+        // （#0d.8-2 教训：path.join(__dirname,...) 字符串引用同样受__dirname 变化影响——"preload 字符串引用零改动"假设错了，补入档案 §8.3）
+        preload: path.join(__dirname, '../preload-pool.js'),
         contextIsolation: true,
         nodeIntegration: false,
         sandbox: false,
@@ -134,7 +136,9 @@ export class WindowManager {
     if (!app.isPackaged) {
       view.webContents.loadURL(`${DEV_SERVER_URL}/pool.html`);
     } else {
-      view.webContents.loadFile(path.join(__dirname, '../../dist/pool.html'));
+      // E5.8#0d.8-2 回归修复：window-manager 入 windows/ 后 __dirname 少一层——../../dist 变 dist-electron/dist（生产黑屏）。
+      // 三级 .. 回根：windows → electron → dist-electron → 根 → dist/pool.html。dev 走 loadURL（137 行）不受影响。
+      view.webContents.loadFile(path.join(__dirname, '../../../dist/pool.html'));
     }
 
     view.setVisible(false);
