@@ -17,9 +17,9 @@
  */
 
 import { Fragment, useState, useRef, useEffect } from "react";
-import type { StatusBarLayout, StatusBarItem } from "../../core/types/poolLayout";
-import PoolStatusBarComponent from "../shared/PoolStatusBarComponent";
-import { executePoolCommand } from "../commands/executePoolCommand";
+import type { StatusBarLayout, StatusBarItem } from "../../../core/types/poolLayout";
+import PoolStatusBarComponent from "../../shared/PoolStatusBarComponent";
+import { executePoolCommand } from "../../commands/executePoolCommand";
 import "./StatusBarZone.css";
 
 /** 池 → 壳通知事件——usePoolSync 订阅（壳侧 dismissToast/setToastsSuppressed/action.onClick） */

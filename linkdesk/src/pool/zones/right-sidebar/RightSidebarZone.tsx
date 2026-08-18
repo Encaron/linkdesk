@@ -21,10 +21,10 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import PoolToolbarSlot from "../shared/PoolToolbarSlot";
-import PoolSectionStack from "../shared/PoolSectionStack";
-import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
-import type { SidebarLayout, SidebarViewMeta } from "../../core/types/poolLayout";
+import PoolToolbarSlot from "../../shared/PoolToolbarSlot";
+import PoolSectionStack from "../../shared/PoolSectionStack";
+import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
+import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/poolLayout";
 import "./RightSidebarZone.css";
 
 /** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（SidebarZone #10 同款提大写常量） */

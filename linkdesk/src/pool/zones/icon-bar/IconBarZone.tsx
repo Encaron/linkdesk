@@ -30,12 +30,12 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { IconBarLayout, IconBarItem } from "../../core/types/poolLayout";
-import MenuItemList from "../shared/MenuItemList";
-import PoolPluginIcon from "../shared/PoolPluginIcon";
-import { executePoolCommand } from "../commands/executePoolCommand";
+import type { IconBarLayout, IconBarItem } from "../../../core/types/poolLayout";
+import MenuItemList from "../../shared/MenuItemList";
+import PoolPluginIcon from "../../shared/PoolPluginIcon";
+import { executePoolCommand } from "../../commands/executePoolCommand";
 import ContextMenu from "@src/components/shared/ContextMenu"; // 齿轮菜单——#14 门户（壳 IconBar 同款消费者）
-import { VIEW_DRAG_MIME } from "../protocol/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）
+import { VIEW_DRAG_MIME } from "../../protocol/viewDragProtocol"; // E4V#48：跨容器拖放入口（drop 目标判别）
 import "./IconBarZone.css";
 
 /* ── 拖拽状态（壳 IconBar DragState 同款） ── */

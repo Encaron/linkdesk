@@ -26,19 +26,19 @@
 import { useState, useRef, useCallback, useMemo, useReducer, useEffect, type MouseEvent as ReactMouseEvent } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
-import ErrorBoundary from "../shared/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
-import PluginComponent from "../shared/PluginComponent";
-import GroupTabBar from "../shared/GroupTabBar";
-import ShellViewRenderer from "../views/ShellViewRenderer";
-import type { PoolGroup, PoolTab } from "../../core/types/poolLayout";
-import type { SplitNode } from "../../hooks/splitTree";
-import { getAllLeafGroupIds } from "../../hooks/splitTree";
-import type { DropZone } from "../../hooks/tabDragTypes";
-import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
-import type { LinkDeskAPI } from "../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
-import { detectDropZone } from "../../hooks/tabDragTypes";
-import { Z_INDEX } from "../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
-import { useDragReorder } from "../../hooks/useDragReorder";
+import ErrorBoundary from "../../shared/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
+import PluginComponent from "../../shared/PluginComponent";
+import GroupTabBar from "../../shared/GroupTabBar";
+import ShellViewRenderer from "../../views/ShellViewRenderer";
+import type { PoolGroup, PoolTab } from "../../../core/types/poolLayout";
+import type { SplitNode } from "../../../hooks/splitTree";
+import { getAllLeafGroupIds } from "../../../hooks/splitTree";
+import type { DropZone } from "../../../hooks/tabDragTypes";
+import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
+import { detectDropZone } from "../../../hooks/tabDragTypes";
+import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
+import { useDragReorder } from "../../../hooks/useDragReorder";
 
 // ═══════════════════════════════════════════════════════════
 // Constants
