@@ -1,7 +1,6 @@
-import { useState, useCallback, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 import { pushToast } from "./core/services/ui/NotificationService";
-import { reportError } from "./core/services/bootstrap/ErrorService";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
@@ -12,32 +11,25 @@ import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppres
 // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）
 import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "./core/services/ui/DialogService";
 
-import { factorySlots } from "./core/services/bootstrap/FactorySlots";
 import { getViewPlugin, getViewPlugins } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
-import { setConfigurationValue, onDidChangeConfiguration } from "./core/services/configuration/ConfigurationService";
 // initStorageService 已提前到 main.tsx mount 前调用
 import { getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
 import { APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
-import { ContextKeyService } from "./core/registry/commands/ContextKeyService";
-import { CUSTOM_EVENTS } from "./core/react/events/CoreEvents";
 import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
 import { ViewContainerService } from "./core/services/layout/ViewContainerService"; // E5.7#10：侧栏宿主状态机（view:toggleVisibility）
-import { onDidRequestShowChannel } from "./core/services/ui/LogChannel"; // E3f #54
 import { usePoolSync } from "./hooks/usePoolSync";
 
-/* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
-
-/** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import i18n from "./i18n";
 import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler } from "./App/tabCallbacks";
 import { useAppStartup } from "./App/startup";
+import { useAppLifecycle } from "./App/lifecycle";
 import "./App.css";
 
 function App() {
@@ -50,73 +42,8 @@ function App() {
   const [, setTheme] = useState<string>("Dark");
   const [, setLang] = useState<"zh" | "en">("zh");
 
-  // E3.6 Bug 2/7 防线：revertContainerIfCurrent 先于 forceCloseTab
-  // 用 ref 桥接——sidebarView 声明在后面，闭包读 ref 避免 TDZ
-  const sidebarViewRef = useRef<string | null>(null);
-  const revertContainerIfCurrent = useCallback((pluginId: string) => {
-    const current = sidebarViewRef.current;
-    if (!current) return;
-    const plugin = getViewPlugin(pluginId);
-    const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
-    if (!containers) return;
-    const containerIds = Object.keys(containers);
-    if (containerIds.includes(current)) {
-      setSidebarView(null);
-    }
-  }, []);
-
-  // E5#88d：全局 unhandledrejection 兜底——防止 init 链等异步流程静默失败
-  useEffect(() => {
-    const handler = (event: PromiseRejectionEvent) => {
-      // E5.6#9h：extension-file:// 主题文件 404 是 @codingame 已知无害错误，
-      // VS Code 1.90+ light_modern.json 不在 monaco-languageclient 的打包中。
-      // defineThemeSafe 已有 vs/vs-dark 兜底，功能不受影响。
-      const msg = event.reason?.message ?? String(event.reason);
-      if (msg.includes("extension-file://") && msg.includes("Not Found")) {
-        event.preventDefault();
-        return;
-      }
-      reportError({ message: "未捕获的 Promise 拒绝", source: "App", error: event.reason, silent: true });
-    };
-    window.addEventListener("unhandledrejection", handler);
-    return () => window.removeEventListener("unhandledrejection", handler);
-  }, []);
-
-  // Phase 4.4：监听插件卸载/禁用事件，自动关闭关联标签页
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const { pluginId } = (e as CustomEvent).detail as { pluginId: string };
-      // 🔥 E36#4.5：关闭侧栏在先——需要 ViewContainerService 还有数据时读 manifest
-      revertContainerIfCurrent(pluginId);
-      // E5#5e-ii：useTabManager 订阅此事件关闭标签页
-      shellEvents.emit("plugin:removed", { pluginId });
-    };
-    window.addEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
-    return () => window.removeEventListener(CUSTOM_EVENTS.PLUGIN_REMOVED, handler);
-  }, [revertContainerIfCurrent]);
-
-
   // E5.8#0d.10-3b：启动初始化管线（mount-once 注册 + initAll + post-init state 同步）迁入 src/App/startup.ts
   useAppStartup({ setTheme, setLang, setReady });
-
-  /* ── Phase 5d：运行时 context key 更新 ── */
-  // 对标 VS Code setContext——标签页状态变更时同步更新全局 context key 状态机
-
-  // E5#5e-ii-b：activeEditor——订阅 tab:focused 替代旧的 activePluginId 派生
-  useEffect(() => {
-    const unsub = shellEvents.on("tab:focused", ({ pluginId }) => {
-      ContextKeyService.setValue("activeEditor", pluginId ?? null);
-    });
-    return unsub;
-  }, []);
-
-  // E5#7d：订阅 icon:reordered——IconBar 拖拽排序后持久化到 PluginStateService
-  useEffect(() => {
-    const unsub = shellEvents.on("icon:reordered", (ids) => {
-      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", ids);
-    });
-    return unsub;
-  }, []);
 
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
@@ -160,35 +87,12 @@ function App() {
     return () => { offSelect?.(); offResize?.(); };
   }, []);
 
-  /* ---- E5#9f：LayoutEngine 壳布局——E5.7#9 起只喂容器尺寸 ---- */
-  // E5.7#12.5：Pool bounds 推流已删（主进程 syncPoolBounds 接管，WCV 满窗零偏移）。
-  // LayoutEngine 仍需喂容器尺寸——侧栏几何真相源（usePoolSync 读 sidebar 宽度、
-  // App 侧栏宿主状态机 setZoneWidth 折叠、#13 拖拽 commit resizeZone）。零偏移——无 TITLE_BAR_HEIGHT。
-  // E5.7#31：LayoutEngine 保留（清单"整删"前提过时——折叠真相源 + 钳制双活链），此 effect 不删。
-  useEffect(() => {
-    const updateSize = () => layoutEngine.setContainerSize(window.innerWidth, window.innerHeight);
-    updateSize();
-    window.addEventListener("resize", updateSize);
-    return () => {
-      window.removeEventListener("resize", updateSize);
-    };
-  }, []);
-
-  // Phase 5f：ConfigurationApplier 归一化——setConfigurationValue 自动调 onApply。
-  // 此 listener 只做 React state 同步（theme/language——app shell 需要）。
-  // terminal.* 变更由 useConfiguration hook 在终端组件内部响应。
-  useEffect(() => {
-    const unsub = onDidChangeConfiguration((key, value) => {
-      if (key === "app.theme") setTheme(value as string);
-      if (key === "app.language") setLang(value as "zh" | "en");
-    });
-    return unsub;
-  }, []);
-
   /* ---- 图标栏 → 打开/聚焦标签页（Phase 3 §6.2） ---- */
   // Phase 4 UX：sidebarView 解耦侧栏和主区——对标 VS Code Activity Bar
   // 对标 VS Code：Extensions 侧栏打开时，切换编辑器不会关闭侧栏
   const [sidebarView, setSidebarView] = useState<string | null>(null);
+  // E5.8#0d.10-3c：杂项生命周期（unhandledrejection/插件卸载防侧栏/context key/图标排序/LayoutEngine 尺寸/配置同步/自定义事件/频道显示）迁入 src/App/lifecycle.ts
+  useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView });
   // E5.7#63.7：底部面板激活视图——真相源在壳（池只被动渲染）。null = 尚未选择 → usePoolSync 回退 views[0]
   const [panelActiveViewId, setPanelActiveViewId] = useState<string | null>(null);
   // beforeunload 读最新激活视图（handler 注册一次 deps []——闭包会过期，ref 同步）
@@ -196,8 +100,6 @@ function App() {
   panelActiveViewIdRef.current = panelActiveViewId;
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  // E3.6: ref 同步——revertContainerIfCurrent 读最新值（ref 赋值在 render 阶段合法）
-  sidebarViewRef.current = sidebarView;
   // E5.7#15：QuickPick 聪慧→哑桥——壳状态序列化成 DTO 推池 QuickPickHost 哑渲染，
   // 池动作（select/highlight/close/itemAction）按 key 回传，壳重解析原始 item 执行回调。
   useEffect(() => {
@@ -460,44 +362,6 @@ function App() {
     if (!getViewPlugins().some((p) => p.pluginId === persisted)) return;
     shellEvents.emit("icon:selected", persisted);
   }, [ready]);
-
-  /* ---- QuickPick 归一化（E5.5#7-p12）——所有浮层共用一个 QuickPick，QuickPickService 管理状态 ---- */
-  useEffect(() => {
-    // 保留——非 QuickPick 事件（输出面板 / 工作区 / 设置）
-    const onOutput = () => { shellEvents.emit("icon:selected", "output"); };
-    window.addEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
-    const onRestoreWorkspace = (e: Event) => {
-      const detail = (e as CustomEvent).detail as {
-        layout?: { tabs?: { groups: unknown[]; activeGroupId: string }; cards?: unknown[] };
-        settings?: Record<string, unknown>;
-      };
-      if (detail.layout?.tabs?.groups?.length) { /* workspace:restore 事件由 useTabManager 接管 */ }
-      if (detail.settings) {
-        for (const [key, value] of Object.entries(detail.settings)) {
-          try { setConfigurationValue(key, value); } catch { /* skip */ }
-        }
-      }
-    };
-    window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
-    const onOpenSettings = () => {
-      const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
-      shellEvents.emit("icon:selected", settingsId);
-    };
-    window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
-    return () => {
-      window.removeEventListener(CUSTOM_EVENTS.SHOW_OUTPUT, onOutput);
-      window.removeEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
-      window.removeEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);
-    };
-  }, []);
-
-  // E3f #54：插件调 channel.show() → 自动打开输出面板并切换到该频道
-  useEffect(() => {
-    const unsub = onDidRequestShowChannel.event((_channelId: string) => {
-      shellEvents.emit("icon:selected", "output");
-    });
-    return unsub;
-  }, []);
 
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
