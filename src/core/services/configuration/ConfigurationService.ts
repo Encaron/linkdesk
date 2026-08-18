@@ -53,6 +53,15 @@ export async function initConfigurationService(): Promise<void> {
   // Phase 5f：统一走 StorageService（不再自研 ensureTauri + fsApi + pathApi）
   const saved = await read<Record<string, unknown>>("settings");
   if (saved) _userSettings = saved;
+
+  // 🔥 自愈（E5.8 bug 修复配套）：崩溃残留空 settings.json——localStorage 有数据但文件空/损坏 → 写回文件。
+  // 否则编辑器"以 JSON 打开"看到空白文件，误以为设置丢失（write 双写 localStorage 幂等同数据，无害）。
+  if (_userSettings && Object.keys(_userSettings).length > 0) {
+    const filePath = await getFilePath("settings");
+    if (!filePath) return; // 非 Electron 环境——无文件路径
+    const raw = await readFile(filePath);
+    if (!raw.trim()) await write("settings", _userSettings);
+  }
   })());
 }
 
