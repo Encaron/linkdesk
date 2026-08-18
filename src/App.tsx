@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect, useMemo } from "react";
-import { useTranslation } from "react-i18next";
 // Electron IPC——window.linkdesk 由 preload-shell.ts 注入
 import { pushToast } from "./core/services/ui/NotificationService";
 import { reportError } from "./core/services/bootstrap/ErrorService";
@@ -13,43 +12,35 @@ import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppres
 // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）
 import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "./core/services/ui/DialogService";
 
-import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ui/ThemeEngine";
-import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/services/bootstrap/FactorySlots";
 import { getViewPlugin, getViewPlugins } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/configuration/ConfigurationService";
+import { setConfigurationValue, onDidChangeConfiguration } from "./core/services/configuration/ConfigurationService";
 // initStorageService 已提前到 main.tsx mount 前调用
-import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
-import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
-import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
-import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
+import { getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
+import { syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
+import { APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
 import { ContextKeyService } from "./core/registry/commands/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/events/CoreEvents";
 import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
 import { ViewContainerService } from "./core/services/layout/ViewContainerService"; // E5.7#10：侧栏宿主状态机（view:toggleVisibility）
 import { onDidRequestShowChannel } from "./core/services/ui/LogChannel"; // E3f #54
-import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/plugins/IpcBridgeHandler"; // E3a #26 + E5#103
-import { initAll } from "./core/services/bootstrap/AppInitializer"; // E5#107：启动管线——可测试
-import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/commands/KeybindingRegistry";
-import { applyConfiguration } from "./core/services/configuration/ConfigurationApplier";
 import { usePoolSync } from "./hooks/usePoolSync";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
-import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
-import { registerCommand } from "./core/registry/commands/CommandRegistry"; // E3f #59e
+import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import i18n from "./i18n";
 import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler } from "./App/tabCallbacks";
+import { useAppStartup } from "./App/startup";
 import "./App.css";
 
 function App() {
-  const { t } = useTranslation();
   const [ready, setReady] = useState(false);
 
   // E2a #5：心跳看门狗——App mount 即开始发送，主进程 2s 未收到 → 弹窗 "应用无响应"
@@ -105,181 +96,8 @@ function App() {
   }, [revertContainerIfCurrent]);
 
 
-  /* ---- 启动初始化 ---- */
-  useEffect(() => {
-    // B12+B13 fix：捕获 cleanup 函数——HMR/StrictMode 下避免重复注册
-    let keybindingCleanup: (() => void) | undefined;
-
-    (async () => {
-      // ═══ Pre-init：同步设置（需要 React 上下文 t() / sync-only）═══
-      // E5.7#101：initV3Api 已随 v3Api.ts 整删——__v3_core__ SDK 零消费方
-      // （池插件不可达壳 window 全局；E6#3 已定未来插件 SDK 走 linkdesk.*）
-
-      // E3a #26：初始化 IpcBridge 壳侧处理器——监听主进程转发的插件 IPC 请求
-      initIpcBridgeHandler();
-
-      // M2：注册内置兜底主题——插件主题后注册同名覆盖。确保卸载全部主题插件后下拉框不为空
-      registerFallbackThemes();
-
-      // Phase 5：注册核心配置（对标 VS Code 内置 settings）——Settings Editor "通用"分组
-      registerConfiguration(APP_PLUGIN_ID, {
-        title: t("通用"),
-        properties: {
-          "app.theme": {
-            type: "string",
-            default: "Dark",
-            enum: ["Dark", "Light"],
-            description: t("配色主题"),
-            onApply: async (v) => {
-              const t = await loadTheme(v as string);
-              applyTheme(t);
-              // E3f #59d2：强调色走归一化函数——三种路径一条函数，不手写 if/else
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
-          "app.language": {
-            type: "string",
-            default: "zh",
-            enum: ["zh", "en"],
-            description: t("界面语言"),
-            onApply: (v) => {
-              i18n.changeLanguage(v as string);
-              // E3c #40：跨进程广播——壳切语言 → 所有插件 WebView 同步
-              const bridge = window.linkdesk?.bridge;
-              if (bridge?.broadcast) {
-                const resources: Record<string, unknown> = {};
-                for (const lang of i18n.languages ?? []) {
-                  const bundle = i18n.getResourceBundle(lang, "translation");
-                  if (bundle) resources[lang] = bundle;
-                }
-                bridge.broadcast("lang:changed", { lang: v, resources });
-              }
-            },
-          },
-          "app.accentMode": {
-            type: "string",
-            default: "custom",
-            enum: ["custom", "followTheme"],
-            description: t("强调色模式——自定义固定色 / 跟随主题（主题无强调色时用自定义兜底）"),
-            onApply: (v) => {
-              if (v === "custom") {
-                // 读当前 DOM 上实际显示的强调色——切模式前可能跟着主题走，不是 app.accentColor 的旧值
-                const current = document.documentElement.style.getPropertyValue("--accent").trim();
-                if (current) setConfigurationValue("app.accentColor", current, "user");
-              }
-              applyAccentColor(getEffectiveAccentColor());
-            },
-          },
-          "app.accentColor": {
-            type: "string",
-            default: "#0078d4",
-            description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
-            dependsOn: { key: "app.accentMode", value: "custom" },
-            renderHint: "color",
-            // E3.5 fix: dependsOn 只控制 UI 显隐，不阻止 applyConfiguration 在启动时调用。
-            // accentMode="followTheme" 时，app.accentColor 的 onApply 不应覆盖主题的 accent。
-            onApply: () => applyAccentColor(getEffectiveAccentColor()),
-          },
-          "app.menuStyle": {
-            type: "string",
-            default: "titlebar",
-            enum: ["titlebar", "hamburger", "both"],
-            description: t("菜单栏样式——标题栏 / 汉堡菜单 / 两者都显示"),
-          },
-          // E5.7#79：窗口缩放级别——view.zoomIn/Out/Reset 命令的真值源（VS Code window.zoomLevel 同款）。
-          // onApply 换算 factor=1.2^level 推主进程 setZoomFactor(池 WCV)；启动 applyAllConfigurations
-          // 自动执行 onApply → 持久化缩放开机即恢复（StorageService 现成）。
-          "window.zoomLevel": {
-            type: "number",
-            default: 0,
-            minimum: -8,
-            maximum: 8,
-            description: t("窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%"),
-            onApply: (v) => {
-              // Number.isFinite 而非 typeof === "number"——后者触发 no-restricted-syntax 的
-              // 字符串比较启发式误报（规则 selector 泛化，Phase 14.5 收窄时处理）
-              const n = Number(v);
-              const level = Number.isFinite(n) ? Math.min(8, Math.max(-8, n)) : 0;
-              window.linkdesk?.window?.setZoom?.(Math.pow(1.2, level));
-            },
-          },
-        },
-      });
-
-      // Phase 5：初始化 context key 核心状态
-      ContextKeyService.initCoreKeys();
-
-      // Phase 5b：注册核心命令 + TabContext 菜单项（只执行一次，幂等）
-      ensureCoreCommands();
-      // E3f #59e2：color-picker.pick 命令——Promise 桥接，插件调 commands.execute 弹出浮层拿到返回值
-      registerCommand(APP_PLUGIN_ID, {
-        id: "color-picker.pick",
-        title: t("选择颜色…"),
-        category: t("开发人员"),
-        handler: async (...args: unknown[]) => {
-          const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
-          const color = await import("./components/shared/color-picker/ColorPicker").then(m =>
-            m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets })
-          );
-          // 返回值通过 executeCommand 的 Promise 传回调用方——对标 VS Code commands.executeCommand
-          return color as unknown as void;
-        },
-      });
-
-      // E5.7#49：ensureBuiltinProtocols() 调用已删——ProtocolRegistry 唯一写入方收敛到
-      // 主进程 plugin-manifest-loader（内置方括号协议汇入主进程实例）
-
-      // E3f #59-F：注册全部壳级快捷键——声明式 CORE_KEYBINDINGS，幂等
-      ensureCoreKeybindings();
-
-      // ═══ Async pipeline：委托给 AppInitializer（E5#107） ═══
-      const result = await initAll({
-        initLayoutService,
-        initPluginStates,
-        initWorkspaceService, // E5.5#0e
-        initPluginLoader,
-        startPluginWatcher,
-        getLoadedPluginManifests,
-        factorySlotsInitialize: (plugins) => factorySlots.initialize(plugins),
-        mountGlobalKeybindings,
-        initUserKeybindings,
-        getConfigurationValue,
-        applyConfiguration,
-        getTabLayout,
-        syncCountersAfterRestore,
-      });
-
-      keybindingCleanup = result.keybindingCleanup;
-
-      // ═══ Post-init：React state 同步 ═══
-      const initTheme = getConfigurationValue<string>("app.theme") ?? "Dark";
-      const initLang = getConfigurationValue<string>("app.language") ?? "zh";
-      setTheme(initTheme);
-      setLang(initLang as "zh" | "en");
-
-      // E3e debug：暴露通知 API 到 window——DevTools 控制台可调试验证
-      // （__showProgress/__setDoNotDisturb/__setSourceFilter 已随 E5.7#27.5 死链整删——
-      //   进度条/DND/来源过滤零消费者，Debug 钩子也是死链）
-      // E5.7#98：E3e debug 钩子——窄 window 接口声明替代 as any
-      const debugWindow = window as Window & {
-        __pushToast?: typeof pushToast;
-        __clearDismissed?: () => void;
-      };
-      debugWindow.__pushToast = pushToast;
-      debugWindow.__clearDismissed = () => localStorage.removeItem("linkdesk_dismissed_toasts");
-
-      setReady(true);
-    })();
-
-    // B12+B13 fix：cleanup——HMR/StrictMode double-mount 时不泄漏
-    return () => {
-      keybindingCleanup?.();
-      stopPluginWatcher();
-      unregisterIpcBridgeHandler(); // E5#103
-    };
-    // E5.7#99：mount-once 初始化管线——t 变化（语言切换）重跑会重注册配置/重复 initAll，
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- 注册文案取首语言即可（硬约束 13 竞态面）
-  }, []);
+  // E5.8#0d.10-3b：启动初始化管线（mount-once 注册 + initAll + post-init state 同步）迁入 src/App/startup.ts
+  useAppStartup({ setTheme, setLang, setReady });
 
   /* ── Phase 5d：运行时 context key 更新 ── */
   // 对标 VS Code setContext——标签页状态变更时同步更新全局 context key 状态机
