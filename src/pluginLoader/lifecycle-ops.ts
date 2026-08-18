@@ -14,7 +14,6 @@ import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationSe
 import { reportError } from "../core/services/bootstrap/ErrorService";
 import { PluginLifecycle } from "./lifecycle";
 import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import i18n from "../i18n";
 import {
   linkdesk,
   pluginsApi,
@@ -30,7 +29,6 @@ import {
   saveDisabledList,
   getLoadedManifest,
 } from "./state";
-import type { CachedPluginMeta } from "./state";
 import { validateInstallManifest, resolveVersionConflict } from "./manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum } from "./contributions";
 import { loadPlugin } from "./runtime";
@@ -188,22 +186,6 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
 }
 
 /**
- * 卸载插件的唯一入口——带确认弹窗 + 错误反馈。
- * 两个 UI 入口（齿轮菜单 + 详情页）都调此函数，确保行为一致。
- */
-export async function performUninstall(pluginId: string): Promise<boolean> {
-  const { showConfirm } = await import("../core/services/ui/DialogService");
-  const manifest = getLoadedManifest(pluginId);
-  const name = manifest?.name ?? pluginId;
-  const confirmed = await showConfirm(
-    i18n.t("确定要卸载") + ` "${name}"？` + i18n.t("此操作可撤销（文件保留在 .disabled/ 目录）。")
-  );
-  if (!confirmed) return false;
-  const r = await uninstallPlugin(pluginId);
-  return r.success;
-}
-
-/**
  * 安装插件：Electron 端复制到 plugins/user/ → 热加载。
  * 仅对 theme/language 插件即时生效；view 插件提示重启。
  *
@@ -298,20 +280,6 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
 /** 判断插件是否被禁用 */
 export function isPluginDisabled(pluginId: string): boolean {
   return getDisabledList().includes(pluginId);
-}
-
-/**
- * 获取插件在元数据缓存中的状态。
- * 返回值优先级高于 isPluginDisabled——缓存 "uninstalled" 的插件即使残留
- * 在禁用列表中，也应视为已卸载（可重新安装，而非启用）。
- */
-export function getPluginCachedStatus(pluginId: string): CachedPluginMeta["status"] | undefined {
-  return getMetadataCache()[pluginId]?.status;
-}
-
-/** 获取插件完整缓存元数据——PluginDetailPoolView 卸载后重建详情页用（G14 fix v2） */
-export function getPluginCachedMeta(pluginId: string): CachedPluginMeta | undefined {
-  return getMetadataCache()[pluginId];
 }
 
 /** 获取所有已加载插件的 manifest（含非视图插件 + 运行时加载的插件） */
