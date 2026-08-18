@@ -5,10 +5,8 @@ import { pushToast } from "./core/services/ui/NotificationService";
 import { reportError } from "./core/services/bootstrap/ErrorService";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
-import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
-import type { PoolTabAction } from "./core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
 import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
-import { getAllLeafGroupIds } from "./core/utils/splitTree";
 import { QuickPickService } from "./core/services/ui/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "./core/services/ui/toast";
@@ -18,7 +16,7 @@ import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions 
 import { loadTheme, applyTheme, applyAccentColor, registerFallbackThemes, getEffectiveAccentColor } from "./core/services/ui/ThemeEngine";
 import { initPluginLoader, startPluginWatcher, stopPluginWatcher, getLoadedPluginManifests } from "./pluginLoader/loader";
 import { factorySlots } from "./core/services/bootstrap/FactorySlots";
-import { getViewPlugin, getViewPlugins, invokeBeforeCloseTab } from "./pluginLoader/viewRegistry";
+import { getViewPlugin, getViewPlugins } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration } from "./core/services/configuration/ConfigurationService";
@@ -37,7 +35,6 @@ import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/service
 import { initAll } from "./core/services/bootstrap/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/commands/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/configuration/ConfigurationApplier";
-import { FALLBACK_PLUGIN_ID } from "./core/utils/plugin/fallbackPluginId";
 import { usePoolSync } from "./hooks/usePoolSync";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */
@@ -48,6 +45,7 @@ import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type Co
 import { registerCommand } from "./core/registry/commands/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import i18n from "./i18n";
+import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler } from "./App/tabCallbacks";
 import "./App.css";
 
 function App() {
@@ -788,171 +786,25 @@ function App() {
   }, [ready]);
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
-  const handleFocusTab = useCallback((tabId: string) => {
-    focusTab(tabId);
-    for (const g of tabState.groups) {
-      const tab = g.tabs.find((t) => t.id === tabId);
-      if (tab) {
-        shellEvents.emit("tab:focused", { pluginId: tab.pluginId || tab.type, tabId });
-        break;
-      }
-    }
-  }, [focusTab, tabState.groups]);
+  const handleFocusTab = useMemo(
+    () => createFocusTabHandler({ focusTab, groups: tabState.groups }),
+    [focusTab, tabState.groups],
+  );
 
   // E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里
-  const coreCallbacks: CoreCallbacks = useMemo(() => ({
-    closeTab,
-    closeOtherTabs: (groupId, exceptTabId) => {
-      const g = tabState.groups.find((g) => g.id === groupId);
-      if (g) g.tabs.filter((t) => t.id !== exceptTabId).forEach((t) => closeTab(t.id));
-    },
-    closeRightTabs: (groupId, tabIndex) => {
-      const g = tabState.groups.find((g) => g.id === groupId);
-      if (g) g.tabs.slice(tabIndex + 1).forEach((t) => closeTab(t.id));
-    },
-    splitTab,
-    findGroupByTabId: (tabId) => {
-      for (const g of tabState.groups) {
-        const found = g.tabs.find((t) => t.id === tabId);
-        if (found) return { groupId: g.id, tabs: g.tabs.map((t) => ({ id: t.id })) };
-      }
-      return null;
-    },
-    openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
-    closeActiveTab: async () => {
-      const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-      const tab = group?.tabs.find((t) => t.id === group.activeTabId);
-      if (!tab) return;
-      if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
-      await closeTab(tab.id);
-    },
-    focusNextTab: (shift) => {
-      const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-      if (!activeGroup) return;
-      const { tabs } = activeGroup;
-      const idx = tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-      if (idx === -1) return;
-      const next = shift ? idx - 1 : idx + 1;
-      handleFocusTab(tabs[(next + tabs.length) % tabs.length].id);
-    },
-    toggleSplit: () => {
-      const isSplit = tabState.root.type === "branch" || getAllLeafGroupIds(tabState.root).length > 1;
-      if (isSplit) {
-        unsplit(tabState.activeGroupId);
-      } else {
-        const activeGroup = tabState.groups.find((g) => g.id === tabState.activeGroupId);
-        if (activeGroup && activeGroup.tabs.length > 1) {
-          const idx = activeGroup.tabs.findIndex((t) => t.id === activeGroup.activeTabId);
-          splitTab(activeGroup.tabs[(idx + 1) % activeGroup.tabs.length].id, "horizontal");
-        }
-      }
-    },
-    focusNthTab: (n) => {
-      const all = allTabs(tabState);
-      if (n >= 1 && n <= all.length) handleFocusTab(all[n - 1].id);
-    },
-    closeAllEditors: () => {
-      for (const g of tabState.groups) {
-        for (const t of g.tabs) {
-          if (t.filePath) closeTab(t.id);
-        }
-      }
-    },
-    reopenClosedTab: () => restoreClosedTab(),
-    // E5.6#16.7k：池 GroupTabBar ContextMenu 归一化——补三个 CoreCallback
-    closeAllTabs: (groupId) => {
-      const g = tabState.groups.find((x) => x.id === groupId);
-      if (g) for (const t of [...g.tabs]) closeTab(t.id);
-    },
-    duplicateTab: (tabId) => _duplicateTab(tabId),
-    pinTab: (tabId) => pinTab(tabId),
-  }), [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab]);
+  const coreCallbacks: CoreCallbacks = useMemo(
+    () => createCoreCallbacks({ closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab: _duplicateTab, pinTab }),
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab],
+  );
   updateCoreCallbacks(coreCallbacks);
 
   // E5.6#16.5：MainPool tab 操作→壳 useTabManager。
   // 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
   // E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
-  const handleTabAction = useCallback((action: PoolTabAction) => {
-    switch (action.action) {
-      case "focusTab":
-        handleFocusTab(action.tabId);
-        break;
-      case "closeTab":
-        closeTab(action.tabId);
-        break;
-      case "closeOtherTabs": {
-        // 关闭同 group 内除指定 tab 外的所有 tab
-        const g = tabState.groups.find((x) => x.id === action.groupId);
-        if (g) {
-          for (const t of g.tabs) {
-            if (t.id !== action.tabId) closeTab(t.id);
-          }
-        }
-        break;
-      }
-      case "closeTabsToRight": {
-        // 关闭同 group 内指定 tab 右侧的所有 tab
-        const g = tabState.groups.find((x) => x.id === action.groupId);
-        if (g) {
-          const idx = g.tabs.findIndex((t) => t.id === action.tabId);
-          if (idx >= 0) {
-            for (let i = g.tabs.length - 1; i > idx; i--) {
-              closeTab(g.tabs[i].id);
-            }
-          }
-        }
-        break;
-      }
-      case "closeAllTabs": {
-        // 关闭指定 group 的所有 tab
-        const g = tabState.groups.find((x) => x.id === action.groupId);
-        if (g) {
-          for (const t of [...g.tabs]) {
-            closeTab(t.id);
-          }
-        }
-        break;
-      }
-      case "reorderTab":
-        reorderTab(action.tabId, action.newIndex);
-        break;
-      case "moveTab":
-        moveTab(action.tabId, action.targetGroupId);
-        break;
-      case "splitTab":
-        // E5.6#16.7j-3：splitTabAt 无 solo guard + 支持 zone 精确定位——修复分屏后无法改方向 (d)
-        // E5.7#96：direction 归一化已在池侧完成（onDropSplit 传 horizontal/vertical 两值）——
-        // 旧 "right"/"down" 六值分支是 E5.6 遗留（右键菜单现走壳命令 core.splitRight 不经过本通道），
-        // 契约类型收窄后死分支随 tsc 移除。zone 过滤 center/null（拖拽状态值，非分屏语义）。
-        splitTabAt(
-          action.tabId,
-          action.direction,
-          action.targetGroupId,
-          action.zone && action.zone !== "center" ? action.zone : undefined,
-        );
-        break;
-      case "duplicateTab":
-        _duplicateTab(action.tabId);
-        break;
-      case "pinTab":
-        pinTab(action.tabId);
-        break;
-      case "createTab": {
-        // E5.7 Bug A 修复：同 u1/u2——池发起的开标签页也要 emit tab:focused，
-        // 否则 activeEditor 不更新 → when:"activeEditor == 'xxx'" 过滤掉菜单项/命令。
-        // E5.7#96：workspaceName 透传——旧 { groupId } as any 是死字段（CreateTabOptions 无 groupId），
-        // 欢迎页最近视图发的 workspaceName 被静默丢弃（wire 缝，契约定型时 tsc 逼出）。
-        const pluginId = action.pluginId ?? FALLBACK_PLUGIN_ID;
-        const tabId = createTab(pluginId, { workspaceName: action.workspaceName });
-        if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
-        break;
-      }
-      // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
-      case "updateSplitSizes":
-        updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
-        break;
-    }
-  }, [closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, handleFocusTab]);
+  const handleTabAction = useMemo(
+    () => createTabActionHandler({ handleFocusTab, closeTab, groups: tabState.groups, reorderTab, moveTab, splitTabAt, duplicateTab: _duplicateTab, pinTab, createTab, updateSplitSizes }),
+    [handleFocusTab, closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes],
+  );
 
   // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
   usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, onTabAction: handleTabAction });
