@@ -1,6 +1,6 @@
 /**
  * 插件图标解析 —— 单一真相来源。
- * IconBar / PluginDetailView / PluginIcon / TabBar / WelcomeView 全部引用此文件。
+ * IconBar / PluginDetailPoolView / PluginIcon / TabBar / WelcomeView 全部引用此文件。
  *
  * E2c #19j-icon：图标路径相对插件目录（对标 VS Code），通过 linkdesk:// 协议访问。
  * 插件作者只需把 icon 文件放在自己插件目录下，plugin.json 声明文件名即可。

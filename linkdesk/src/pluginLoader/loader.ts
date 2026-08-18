@@ -1507,7 +1507,7 @@ export function getPluginCachedStatus(pluginId: string): CachedPluginMeta["statu
   return getMetadataCache()[pluginId]?.status;
 }
 
-/** 获取插件完整缓存元数据——PluginDetailView 卸载后重建详情页用（G14 fix v2） */
+/** 获取插件完整缓存元数据——PluginDetailPoolView 卸载后重建详情页用（G14 fix v2） */
 export function getPluginCachedMeta(pluginId: string): CachedPluginMeta | undefined {
   return getMetadataCache()[pluginId];
 }
