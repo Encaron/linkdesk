@@ -29,7 +29,7 @@ Object.defineProperty(window, "linkdesk", {
   configurable: true,
 });
 
-import { InlineInput } from "../inline-input/InlineInput"; // E5.8#0d.7-4：InlineInput 迁 shared/inline-input/，测试本体留 __tests__/（归位 #0d.7-8）
+import { InlineInput } from "./InlineInput"; // E5.8#0d.7-4：InlineInput 迁 shared/inline-input/，测试随 #0d.7-8 同夹
 
 // ── 模拟 rAF —— 同步执行回调，方便断言 ──
 const rafCallbacks: Array<(t: number) => void> = [];

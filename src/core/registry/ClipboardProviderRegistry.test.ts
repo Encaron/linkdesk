@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { clipboardProviders, type ClipboardProvider } from "../registry/ClipboardProviderRegistry";
+import { clipboardProviders, type ClipboardProvider } from "./ClipboardProviderRegistry";
 
 // E5.7#98：测试直捣私有内部——窄接口替代 as any（公共面不暴露 reset/unregisterAll）。
 // 不与 typeof clipboardProviders 相交——私有 _providers 会让交集坍缩成 never

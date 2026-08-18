@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { FALLBACK_PLUGIN_ID } from "../../core/utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
 import {
   resetPluginCounter,
   resetFallbackCounter,
@@ -22,11 +22,11 @@ import {
   type Tab,
   type TabState,
   type LayoutData,
-} from "../useTabManager";
-import { getAllLeafGroupIds, type SplitNode } from "../../core/utils/splitTree";
-import { detectDropZone } from "../../pool/hooks/tabDragTypes";
-import { registerViewPlugin, clearRegistry } from "../../pluginLoader/viewRegistry";
-import type { ViewPluginEntry } from "../../core/api/types";
+} from "./useTabManager";
+import { getAllLeafGroupIds, type SplitNode } from "../core/utils/splitTree";
+import { detectDropZone } from "../pool/hooks/tabDragTypes";
+import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
+import type { ViewPluginEntry } from "../core/api/types";
 
 // E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
 type BranchNode = Extract<SplitNode, { type: "branch" }>;

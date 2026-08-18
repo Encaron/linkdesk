@@ -12,7 +12,7 @@ import {
   registerConfigurationDefaults,
   unregisterConfigurationDefaults,
   clearConfigurationRegistrations,
-} from "../registry/ConfigurationRegistry";
+} from "../../registry/ConfigurationRegistry";
 import {
   getConfigurationValue,
   inspectConfiguration,
@@ -20,8 +20,8 @@ import {
   setConfigurationValue,
   clearConfigurationCache,
   diffUserSettings,
-} from "../services/configuration/ConfigurationService";
-import type { ConfigurationContribution } from "../registry/ConfigurationRegistry";
+} from "./ConfigurationService";
+import type { ConfigurationContribution } from "../../registry/ConfigurationRegistry";
 
 const MOCK_CONFIG: ConfigurationContribution = {
   title: "测试",
