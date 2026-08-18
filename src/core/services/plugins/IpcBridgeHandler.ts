@@ -10,8 +10,7 @@
 
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
-import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "../configuration/ConfigurationService";
-import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../registry/ConfigurationRegistry";
+import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../registry/ConfigurationRegistry";
 import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../../registry/commands/CommandRegistry";
 import type { CancellationToken } from "../../utils/CancellationToken"; // E5.7#97：commands:execute 槽位窄化
 import {
@@ -46,12 +45,12 @@ import { ViewContainerService, type ViewDescriptor } from "../layout/ViewContain
 import { searchFiles } from "../files/FileSearcher";
 import { EncodingService } from "../files/EncodingService";
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
+import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
-let _configUnsub: (() => void) | null = null;
 let _lifecycleUnsub: (() => void) | null = null;
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -95,15 +94,10 @@ export function initIpcBridgeHandler(): void {
       let result: unknown;
 
       switch (req.channel) {
-        case "config:get": {
-          result = getConfigurationValue(req.args[0] as string);
+        case "config:get":
+        case "config:set":
+          result = await handleConfigChannel(req.channel, req.args);
           break;
-        }
-        case "config:set": {
-          const [key, value] = req.args;
-          await setConfigurationValue(key as string, value, "user");
-          break;
-        }
         case "commands:execute": {
           // 池侧固定按旧槽位传 undefined 占位（E5.7#63.8 token 剥离后 handler 合同只剩 realArgs——
           // 壳侧 executeCommand(id, token, ...realArgs) 的 token 槽位保留为未来取消语义入口）
@@ -359,9 +353,7 @@ export function initIpcBridgeHandler(): void {
 
   // 订阅配置变更 → 通知主进程广播 config:changed → preload onChange 回调触发
   // SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐
-  _configUnsub = onDidChangeConfiguration((key: string, value: unknown) => {
-    bridge.notifyConfigChanged(key, value);
-  });
+  subscribeConfiguration(bridge);
 
   // ── E5.5#7：插件生命周期变更 → 广播到插件 WebView → 设置页等保姆插件刷新 ──
   _lifecycleUnsub = onPluginLifecycleChange.event(() => {
@@ -410,8 +402,7 @@ export function initIpcBridgeHandler(): void {
 export function unregisterIpcBridgeHandler(): void {
   _refCount = Math.max(0, _refCount - 1);
   if (_refCount === 0) {
-    _configUnsub?.();
-    _configUnsub = null;
+    unsubscribeConfiguration();
     _lifecycleUnsub?.();
     _lifecycleUnsub = null;
     _settingsGroupUnsub?.();
@@ -476,36 +467,12 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
       setKeybindingCaptureActive(active);
       break;
     }
-    case "getSchema": {
-      // 🔥 onApply 是函数——结构化克隆拒绝 → 返回前剥去
-      const raw = getMergedSchema();
-      const safe: Record<string, unknown> = {};
-      for (const [key, prop] of Object.entries(raw)) {
-        const { onApply: _onApply, ...rest } = prop as unknown as Record<string, unknown>;
-        safe[key] = rest;
-      }
-      return safe;
-    }
-    // ── E5.5#7：设置页 IPC 化——跨进程查询配置注册表 ──
-    case "getConfigurationContributions": {
-      // Map 不可序列化 → 转为 entries
-      // 🔥 onApply 是函数——结构化克隆拒绝 → 返回前剥去
-      const contribs = getConfigurationContributions();
-      return Array.from(contribs.entries()).map(([pluginId, contrib]) => {
-        const safeProps: Record<string, unknown> = {};
-        for (const [key, prop] of Object.entries(contrib.properties)) {
-          const { onApply: _onApply, ...rest } = prop as unknown as Record<string, unknown>;
-          safeProps[key] = rest;
-        }
-        return [pluginId, { title: contrib.title, properties: safeProps }];
-      });
-    }
-    case "inspectConfiguration": {
-      const [key] = args as [string];
-      return inspectConfiguration(key);
-    }
+    // ── 配置（E5.5#7：设置页 IPC 化）——IpcBridgeHandler/configuration 域委派 ──
+    case "getSchema":
+    case "getConfigurationContributions":
+    case "inspectConfiguration":
     case "getUserSettings":
-      return getUserSettings();
+      return handleConfigurationMethod(method, args);
     // ── E5.5#7：壳→设置页导航——M1 双通道（齿轮"设置"跳转到指定分组/配置项）──
     case "consumeSettingsGroup":
       return consumeSettingsGroup();
