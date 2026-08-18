@@ -29,7 +29,7 @@ import { useTranslation } from "react-i18next";
 import ErrorBoundary from "../../shared/error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import PluginComponent from "../../shared/plugin-component/PluginComponent";
 import GroupTabBar from "../../shared/group-tab-bar/GroupTabBar";
-import ShellViewRenderer from "../../views/ShellViewRenderer";
+import ShellViewRenderer from "../../views/shell-renderer/ShellViewRenderer";
 import type { PoolGroup, PoolTab } from "../../../core/types/poolLayout";
 import type { SplitNode } from "../../../core/utils/splitTree";
 import { getAllLeafGroupIds } from "../../../core/utils/splitTree";

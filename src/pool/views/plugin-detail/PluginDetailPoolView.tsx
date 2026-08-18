@@ -10,7 +10,7 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import "../../components/views/PluginDetailView.css";
+import "./PluginDetailView.css";
 // E5.7#98：list() 返回 PluginListEntry[]——state/回调全程有型（import type 只引入类型，Path B 合规）
 import type { PluginListEntry } from "@src/core/api/linkdesk-api";
 

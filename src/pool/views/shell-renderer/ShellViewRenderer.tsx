@@ -7,11 +7,11 @@
  * 所有数据走 window.linkdesk.* IPC（不 import @src/core——Path B 合规）。
  */
 
-import type { PoolTab } from "../../core/types/poolLayout";
-import type { CreatableViewMeta } from "../../core/types/poolLayout";
-import WelcomePoolView from "./WelcomePoolView";
-import PluginDetailPoolView from "./PluginDetailPoolView";
-import OutputPoolView from "./OutputPoolView";
+import type { PoolTab } from "../../../core/types/poolLayout";
+import type { CreatableViewMeta } from "../../../core/types/poolLayout";
+import WelcomePoolView from "../welcome/WelcomePoolView";
+import PluginDetailPoolView from "../plugin-detail/PluginDetailPoolView";
+import OutputPoolView from "../output/OutputPoolView";
 
 /**
  * E5.7#71：壳视图类型常量表——路由契约字符串集中此表。
