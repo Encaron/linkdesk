@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { deepEqual } from "../utils/deepEqual";
+import { deepEqual } from "./deepEqual";
 
 describe("deepEqual — JSON 可序列化值深比较", () => {
   it("原始值——值相等", () => {

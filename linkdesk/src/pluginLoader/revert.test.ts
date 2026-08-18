@@ -10,12 +10,12 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
-import { ThemeRegistry } from "../../core/registry/ThemeRegistry";
-import { LanguageRegistry } from "../../core/registry/LanguageRegistry";
-import { registerTheme, unregisterTheme, getAvailableThemes } from "../../core/services/ui/ThemeEngine";
+import { ThemeRegistry } from "../core/registry/ThemeRegistry";
+import { LanguageRegistry } from "../core/registry/LanguageRegistry";
+import { registerTheme, unregisterTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──
-vi.mock("../../core/services/configuration/ConfigurationService", () => {
+vi.mock("../core/services/configuration/ConfigurationService", () => {
   const store: Record<string, unknown> = {
     "app.theme": "Dark",
     "app.language": "zh",
@@ -29,8 +29,8 @@ vi.mock("../../core/services/configuration/ConfigurationService", () => {
   };
 });
 
-import { revertThemeIfCurrent, revertLanguageIfCurrent } from "../loader";
-import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService";
+import { revertThemeIfCurrent, revertLanguageIfCurrent } from "./loader";
+import { getConfigurationValue } from "../core/services/configuration/ConfigurationService";
 
 const PLUGIN_ID = "test-revert-plugin";
 
@@ -70,7 +70,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     ThemeRegistry.register({ id: "builtin-dark", label: "Builtin Dark", uiTheme: "dark", path: "dark.json" }, "builtin");
     registerTheme({ name: "Builtin Dark", type: "dark", colors: { bg: "#111" } }, "builtin");
 
-    const { setConfigurationValue } = await import("../../core/services/configuration/ConfigurationService");
+    const { setConfigurationValue } = await import("../core/services/configuration/ConfigurationService");
     await revertThemeIfCurrent(PLUGIN_ID);
 
     // builtin-dark 不属于 PLUGIN_ID → setConfigurationValue 不应被调用
@@ -84,7 +84,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     LanguageRegistry.register({ id: "zh", label: "中文", path: "zh.json" }, "builtin");
 
     // 设置当前语言为 ja（mock store）
-    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.language", "ja", "user");
 
     await revertLanguageIfCurrent(PLUGIN_ID);
@@ -97,7 +97,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     LanguageRegistry.register({ id: "ja", label: "日本語", path: "ja.json" }, PLUGIN_ID);
     // 没有注册其他语言
 
-    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.language", "ja", "user");
 
     await revertLanguageIfCurrent(PLUGIN_ID);
@@ -110,7 +110,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     LanguageRegistry.register({ id: "zh", label: "中文", path: "zh.json" }, "builtin");
     LanguageRegistry.register({ id: "ja", label: "日本語", path: "ja.json" }, PLUGIN_ID);
 
-    const { setConfigurationValue: setCfg } = await import("../../core/services/configuration/ConfigurationService");
+    const { setConfigurationValue: setCfg } = await import("../core/services/configuration/ConfigurationService");
     await setCfg("app.language", "zh", "user");
 
     // 重置 mock——清除之前的调用记录（vi.mocked 窄化——setConfigurationValue 已由 vi.mock 替换为 vi.fn）

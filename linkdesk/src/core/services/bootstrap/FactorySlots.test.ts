@@ -7,8 +7,8 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { factorySlots } from "../services/bootstrap/FactorySlots";
-import type { SlotPluginEntry } from "../services/bootstrap/FactorySlots";
+import { factorySlots } from "./FactorySlots";
+import type { SlotPluginEntry } from "./FactorySlots";
 
 // E5.7#98：测试替身只喂 FactorySlots 消费的字段——窄化为 SlotPluginEntry["manifest"]
 // （完整 PluginManifest 字段几十个，测试不需要）

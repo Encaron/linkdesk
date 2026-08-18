@@ -22,7 +22,7 @@
 import { describe, it, expect, vi } from "vitest";
 
 /* ── LayoutEngine 直接构造——不依赖单例状态 ── */
-import { LayoutEngine } from "../../core/services/layout/LayoutEngine";
+import { LayoutEngine } from "./LayoutEngine";
 
 /** 辅助：设置 800×600 容器 */
 function with800x600(engine: LayoutEngine): void {

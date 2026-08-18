@@ -16,8 +16,8 @@ import {
   findTheme,
   getCurrentTheme,
   registerFallbackThemes,
-} from "../services/ui/ThemeEngine";
-import type { Theme } from "../services/ui/ThemeEngine";
+} from "./ThemeEngine";
+import type { Theme } from "./ThemeEngine";
 
 const MOCK_THEME: Theme = {
   name: "Test Dark",

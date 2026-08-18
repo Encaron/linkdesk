@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BytesToHex, HexToBytes, BytesToText, TextToBytes, ValidateHexString } from "../pipeline/DataConverter";
+import { BytesToHex, HexToBytes, BytesToText, TextToBytes, ValidateHexString } from "./DataConverter";
 
 describe("DataConverter", () => {
   describe("BytesToHex", () => {

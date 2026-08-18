@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { ViewContainerService } from "../services/layout/ViewContainerService";
-import type { ViewDescriptor } from "../services/layout/ViewContainerService";
+import { ViewContainerService } from "./ViewContainerService";
+import type { ViewDescriptor } from "./ViewContainerService";
 
 const PLUGIN_ID = "test-plugin";
 const PLUGIN_ID_2 = "test-plugin-2";
