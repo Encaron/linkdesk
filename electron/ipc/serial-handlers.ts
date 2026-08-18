@@ -13,7 +13,7 @@ import { BrowserWindow, ipcMain } from 'electron';
 import { serialService } from '../services/serial-service.js';
 // E5.7#97：OpenPortConfig 归口 wire 契约（serial-service 只 import 不 re-export——原双份定义已删）
 import type { OpenPortConfig } from '../../src/core/types/ipc/serial';
-import type { WindowManager } from '../window-manager.js';
+import type { WindowManager } from '../windows/window-manager.js';
 import { IPC } from './channels.js';
 
 // E5.7#36：壳崩重建复用本函数——引用始终刷新（推送回调读模块引用），IPC 通道只注册一次

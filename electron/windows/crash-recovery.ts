@@ -36,7 +36,7 @@
 import { app, ipcMain } from 'electron';
 import type { BrowserWindow, IpcMainEvent, WebContents } from 'electron';
 import type { WindowManager } from './window-manager.js';
-import { IPC } from './ipc/channels.js';
+import { IPC } from '../ipc/channels.js';
 
 /** pool:ready 等待超时——超时视为重建失败（pool.html 本地加载正常 < 2s） */
 const READY_TIMEOUT_MS = 10_000;
