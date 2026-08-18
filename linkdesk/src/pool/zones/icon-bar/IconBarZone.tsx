@@ -30,7 +30,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createPortal } from "react-dom";
-import type { IconBarLayout, IconBarItem } from "../../../core/types/poolLayout";
+import type { IconBarLayout, IconBarItem } from "../../../core/types/pool/poolLayout";
 import MenuItemList from "../../shared/menu-item-list/MenuItemList";
 import PoolPluginIcon from "../../shared/pool-plugin-icon/PoolPluginIcon";
 import { executePoolCommand } from "../../commands/executePoolCommand";

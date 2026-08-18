@@ -12,7 +12,7 @@ import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { FolderOpen, Folder, BookOpen } from "lucide-react";
 import { PluginIcon } from "../../../components/shared/plugin-icon/PluginIcon";
-import type { CreatableViewMeta } from "../../../core/types/poolLayout";
+import type { CreatableViewMeta } from "../../../core/types/pool/poolLayout";
 import "./WelcomePoolView.css";
 
 interface WelcomePoolViewProps {

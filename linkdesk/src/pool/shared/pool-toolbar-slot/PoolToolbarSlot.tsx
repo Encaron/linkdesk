@@ -9,7 +9,7 @@
  */
 
 import { useRef, useLayoutEffect, useState } from "react";
-import type { SidebarViewMeta } from "../../../core/types/poolLayout";
+import type { SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import PluginComponent from "../plugin-component/PluginComponent";
 

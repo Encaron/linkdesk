@@ -27,7 +27,7 @@ import {
   type MouseEvent as ReactMouseEvent,
 } from "react";
 import { useTranslation } from "react-i18next";
-import type { PoolTab } from "../../../core/types/poolLayout";
+import type { PoolTab } from "../../../core/types/pool/poolLayout";
 import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { normalizePath } from "../../../core/utils/pathUtils";

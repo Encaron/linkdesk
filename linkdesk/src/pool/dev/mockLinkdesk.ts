@@ -28,10 +28,10 @@
  * hideDialog() / emit(channel, payload)。
  */
 
-import type { PoolToastData } from "../../core/types/poolToast";
-import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/poolQuickPick";
-import type { PoolDialogData } from "../../core/types/poolDialog";
-import type { PoolLayout } from "../../core/types/poolLayout";
+import type { PoolToastData } from "../../core/types/pool/poolToast";
+import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/pool/poolQuickPick";
+import type { PoolDialogData } from "../../core/types/pool/poolDialog";
+import type { PoolLayout } from "../../core/types/pool/poolLayout";
 import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
 import {
   buildSampleLayout,

@@ -20,7 +20,7 @@
  * 🔴 Path B：池 = 哑渲染器。不 import 任何 @src/core/* 运行时模块（import type 除外）。
  */
 
-import type { PoolLayout } from "../core/types/poolLayout";
+import type { PoolLayout } from "../core/types/pool/poolLayout";
 import TitleBarZone from "./zones/title-bar/TitleBarZone"; // E5.7#5：Phase 2 替换占位
 import IconBarZone from "./zones/icon-bar/IconBarZone"; // E5.7#6：Phase 2 替换占位
 import StatusBarZone from "./zones/status-bar/StatusBarZone"; // E5.7#8：Phase 2 替换占位

@@ -19,7 +19,7 @@
 
 import { useState, useRef, useEffect, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import { Z_INDEX } from "../../../constants";
-import type { PoolDialogData } from "../../../core/types/poolDialog";
+import type { PoolDialogData } from "../../../core/types/pool/poolDialog";
 import "./DialogHost.css";
 
 /* ── 池 API 形状——global.d.ts 的 window.linkdesk 是宽松类型，此处收窄到精确形状 ── */

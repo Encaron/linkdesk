@@ -8,7 +8,7 @@
 
 import { readSync, writeSync } from "../configuration/StorageService";
 import i18n from "../../../i18n"; // E5.7#16：serializeToasts 壳侧解析来源文本（显示文本铁律）
-import type { PoolToastData, PoolToastItem } from "../../types/poolToast";
+import type { PoolToastData, PoolToastItem } from "../../types/pool/poolToast";
 
 /** 对标 VS Code Severity */
 export type ToastSeverity = "info" | "warning" | "error";

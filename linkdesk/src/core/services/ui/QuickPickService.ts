@@ -7,7 +7,7 @@
  * 对标 VS Code QuickInputService。
  */
 
-import type { PoolQuickPickItem } from "../../types/poolQuickPick";
+import type { PoolQuickPickItem } from "../../types/pool/poolQuickPick";
 
 // ── 类型 ──
 

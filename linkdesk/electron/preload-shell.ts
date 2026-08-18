@@ -16,7 +16,7 @@ import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
 import { IpcRelay } from './ipc-relay';
 // ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
-import type { PoolLayout } from '../src/core/types/poolLayout';
+import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';

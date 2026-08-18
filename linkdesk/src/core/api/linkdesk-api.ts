@@ -20,7 +20,7 @@
  * 本文件是纯类型层——不包含运行时逻辑，只是给 window.linkdesk 加类型。
  */
 
-import type { PoolLayout } from "../types/poolLayout";
+import type { PoolLayout } from "../types/pool/poolLayout";
 import type { PoolTabAction } from "../types/ipc/tabActions";
 import type { SidebarAction } from "../types/ipc/sidebarActions";
 import type { KeyboardInput, KeybindingSyncData } from "../types/ipc/keyboard";
@@ -28,9 +28,9 @@ import type { OpenPortConfig, SerialStatus, SerialStats, SerialPortInfo } from "
 import type { DialogOpenOptions } from "../types/ipc/dialogs";
 import type { BridgeRequestPayload } from "../types/ipc/bridge";
 import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from "../types/ipc/poolActions";
-import type { PoolToastData } from "../types/poolToast";
-import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../types/poolQuickPick";
-import type { PoolDialogData } from "../types/poolDialog";
+import type { PoolToastData } from "../types/pool/poolToast";
+import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../types/pool/poolQuickPick";
+import type { PoolDialogData } from "../types/pool/poolDialog";
 import type { FileEntry } from "../types/fileEntry";
 import type { FileChangeEvent } from "../services/files/FileService";
 import type { PluginManifest } from "./types";
