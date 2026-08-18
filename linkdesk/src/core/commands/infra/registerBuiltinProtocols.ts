@@ -9,9 +9,9 @@
  * 唯一写入方收敛主进程（Registry 主进程化），parseLine/detect 随实例留在主进程（跨 IPC 剥壳）。
  */
 
-import { registerProtocol } from "../registry/ProtocolRegistry";
-import { Parse } from "../pipeline/ProtocolParser";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
+import { registerProtocol } from "../../registry/ProtocolRegistry";
+import { Parse } from "../../pipeline/ProtocolParser";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 
 let _registered = false;
 

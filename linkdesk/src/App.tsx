@@ -44,7 +44,7 @@ import { usePoolSync } from "./hooks/usePoolSync";
 
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
-import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/coreCommands";
+import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
 import { registerCommand } from "./core/registry/commands/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import i18n from "./i18n";
