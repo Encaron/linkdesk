@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
@@ -8,8 +8,7 @@ import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
 // initStorageService 已提前到 main.tsx mount 前调用
-import { getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
-import { syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
+import { getTabLayout, getPanelLayout } from "./core/services/layout/LayoutService";
 import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
 import { usePoolSync } from "./hooks/usePoolSync";
@@ -21,6 +20,7 @@ import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
 import { useSidebarHost } from "./App/sidebarHost";
+import { useLayoutPersistence } from "./App/persistence";
 import "./App.css";
 
 function App() {
@@ -44,9 +44,6 @@ function App() {
   useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView });
   // E5.7#63.7：底部面板激活视图——真相源在壳（池只被动渲染）。null = 尚未选择 → usePoolSync 回退 views[0]
   const [panelActiveViewId, setPanelActiveViewId] = useState<string | null>(null);
-  // beforeunload 读最新激活视图（handler 注册一次 deps []——闭包会过期，ref 同步）
-  const panelActiveViewIdRef = useRef(panelActiveViewId);
-  panelActiveViewIdRef.current = panelActiveViewId;
   // E5.8#0d.10-3d：壳↔池 UI 桥接器（池 events 转发 + QuickPick/Toast/Dialog 哑桥 + 内存压力）迁入 src/App/bridges.ts
   useUiBridges({ setPanelActiveViewId });
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
@@ -182,120 +179,8 @@ function App() {
   // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
   usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, onTabAction: handleTabAction });
 
-  // E5#5e-ii-d：布局持久化——App 拥有 tabState，自己负责保存
-  const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const layoutInitialized = useRef(false);
-  const tabStateRef = useRef(tabState);
-  tabStateRef.current = tabState;
-
-  // beforeunload——F5 刷新/关闭窗口时同步写入
-  useEffect(() => {
-    const onBeforeUnload = () => {
-      try {
-        const s = tabStateRef.current;
-        const layout: WorkspaceLayout = {
-          tabs: {
-            groups: s.groups.map((g) => ({
-              id: g.id,
-              tabs: g.tabs.map((t) => ({
-                id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-                workspaceName: t.workspaceName, filePath: t.filePath,
-                pluginId: t.pluginId, detailPluginId: t.detailPluginId,
-                sourceId: t.sourceId, pinned: t.pinned,
-              })),
-              activeTabId: g.activeTabId,
-            })),
-            activeGroupId: s.activeGroupId,
-            root: s.root,
-          },
-          cards: [],
-        };
-        // E5.7#63.7：面板状态同样读活值（防抖保存可能未落盘）——syncWriteLayout 整体替换缓存，
-        // 不带上 panel 会在退出时冲掉面板状态。仅面板被用过（有激活视图/有历史状态）时写入。
-        const panelActive = panelActiveViewIdRef.current;
-        const panelHeight = layoutEngine.getBounds("panel")?.height;
-        if (panelActive || getPanelLayout()) {
-          layout.panel = {
-            height: panelHeight ?? 220,
-            ...(panelActive ? { activeViewId: panelActive } : {}),
-          };
-        }
-        syncWriteLayout(layout);
-        syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
-      } catch { /* 静默 */ }
-    };
-    window.addEventListener("beforeunload", onBeforeUnload);
-    return () => window.removeEventListener("beforeunload", onBeforeUnload);
-  }, []);
-
-  // 100ms 防抖保存——标签页/分屏变更后自动持久化。
-  // E5.7 迁移补：ready 前不保存——迁入 App 后此 effect 首轮 mount 就跑（StrictMode 双跑），
-  // 恢复（ready）之前 tabState 为空，保存空布局会覆盖磁盘上的持久化 → 重启后标签页全丢。
-  useEffect(() => {
-    if (!ready) return;
-    if (!layoutInitialized.current) {
-      layoutInitialized.current = true;
-      return;
-    }
-    const doSave = () => {
-      saveTabLayout({
-        groups: tabState.groups.map((g) => ({
-          id: g.id,
-          tabs: g.tabs.map((t) => ({
-            id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-            workspaceName: t.workspaceName, filePath: t.filePath,
-            pluginId: t.pluginId,
-            detailPluginId: t.detailPluginId,
-            sourceId: t.sourceId,
-            pinned: t.pinned,
-          })),
-          activeTabId: g.activeTabId,
-        })),
-        activeGroupId: tabState.activeGroupId,
-        root: tabState.root,
-      }).catch((e) => { console.error("[App] 保存标签页布局失败:", e); });
-    };
-    if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
-    layoutSaveTimer.current = setTimeout(doSave, 100);
-    return () => {
-      if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
-    };
-  }, [tabState.groups, tabState.activeGroupId, tabState.root, ready]);
-
-  // E5.7#63.7：面板布局状态持久化——100ms 防抖（标签页保存同款）。
-  // 高度真相源 = LayoutEngine（App 不镜像 height state）；激活视图 = App state。
-  // 两路触发：panelActiveViewId 变化（effect 重跑）/ onDidChangeLayout（拖拽 resizeZoneHeight 后）。
-  // 与上次落盘值比对——窗口 resize/sidebar 变化也 fire onDidChangeLayout，不变不写盘。
-  const panelSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const panelSaveInitialized = useRef(false);
-  const lastSavedPanelRef = useRef<{ height: number; activeViewId?: string } | null>(null);
-  useEffect(() => {
-    if (!ready) return;
-    if (!panelSaveInitialized.current) {
-      // 首轮跳过——恢复（resizeZoneHeight 直设 + activeViewId 恢复）不该立刻写回盘。
-      // 恢复后 activeViewId 变化会触发本 effect 重跑进入正常保存。
-      panelSaveInitialized.current = true;
-      return;
-    }
-    const doSave = () => {
-      const height = layoutEngine.getBounds("panel")?.height ?? 220;
-      const state = { height, ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}) };
-      const last = lastSavedPanelRef.current;
-      if (last && last.height === height && last.activeViewId === panelActiveViewId) return;
-      lastSavedPanelRef.current = state;
-      void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
-    };
-    const schedule = () => {
-      if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);
-      panelSaveTimer.current = setTimeout(doSave, 100);
-    };
-    schedule();
-    const unsub = layoutEngine.onDidChangeLayout(schedule);
-    return () => {
-      unsub();
-      if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);
-    };
-  }, [ready, panelActiveViewId]);
+  // E5.8#0d.10-3f：布局持久化（beforeunload 同步写入 + 标签页/面板 100ms 防抖保存）迁入 src/App/persistence.ts
+  useLayoutPersistence({ ready, tabState, panelActiveViewId });
 
   if (!ready) return null;
 
