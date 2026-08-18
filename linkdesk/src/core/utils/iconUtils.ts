@@ -59,9 +59,3 @@ export function resolvePluginIcon(pluginId: string, manifest: PluginManifest | {
 
   return { emoji: "📄" };
 }
-
-/** 从 pluginId + manifest 生成默认图标（插件未声明 icon 时使用） */
-export function resolvePluginIconById(pluginId: string, manifest?: PluginManifest | { icon?: string; iconSource?: string }): ResolvedIcon {
-  if (manifest) return resolvePluginIcon(pluginId, manifest);
-  return { src: `linkdesk://${pluginId}/icon.png`, emoji: "📄" };
-}
