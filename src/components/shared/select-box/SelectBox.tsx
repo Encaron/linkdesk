@@ -6,12 +6,12 @@
  * 异步 onApply 时态时序错乱。自定义组件走 React 状态，完全可控。
  *
  * 归一化：全局一个 SelectBox——不同页面/插件传不同的 options/value/onChange。
- * 新插件用下拉 → import SelectBox from "@src/components/shared/SelectBox"。
+ * 新插件用下拉 → import SelectBox from "@src/components/shared/select-box/SelectBox"。
  */
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import OverlayPortal from "./OverlayPortal";
+import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./SelectBox.css";
 
 export interface SelectBoxOption {

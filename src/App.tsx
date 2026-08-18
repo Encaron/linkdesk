@@ -220,7 +220,7 @@ function App() {
         category: t("开发人员"),
         handler: async (...args: unknown[]) => {
           const opts = (args[0] as { initialColor?: string; presets?: string[] }) ?? {};
-          const color = await import("./components/shared/ColorPicker").then(m =>
+          const color = await import("./components/shared/color-picker/ColorPicker").then(m =>
             m.showColorPicker({ initialColor: opts.initialColor, presets: opts.presets })
           );
           // 返回值通过 executeCommand 的 Promise 传回调用方——对标 VS Code commands.executeCommand

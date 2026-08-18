@@ -9,11 +9,11 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, MENU_SLOTS } from "../core/registry/MenuRegistry";
-import { executeCommand } from "../core/registry/CommandRegistry";
-import { ContextKeyService } from "../core/registry/ContextKeyService";
-import { MenuRenderer } from "./shared/MenuRenderer";
-import OverlayPortal from "./shared/OverlayPortal";
+import { getMenuItems, MENU_SLOTS } from "../../../core/registry/MenuRegistry";
+import { executeCommand } from "../../../core/registry/CommandRegistry";
+import { ContextKeyService } from "../../../core/registry/ContextKeyService";
+import { MenuRenderer } from "../menu-renderer/MenuRenderer";
+import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./HamburgerMenu.css";
 
 function HamburgerMenu() {

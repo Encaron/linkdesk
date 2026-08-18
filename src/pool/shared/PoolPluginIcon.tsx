@@ -1,7 +1,7 @@
 /**
  * PoolPluginIcon——池侧统一图标渲染。E5.7#6。
  *
- * 壳侧等价物：components/shared/PluginIcon.tsx（查 viewRegistry → resolvePluginIcon 后渲染）。
+ * 壳侧等价物：components/shared/plugin-icon/PluginIcon.tsx（查 viewRegistry → resolvePluginIcon 后渲染）。
  * Path B：池不 import pluginLoader——壳在 pushLayout 时把 resolvePluginIcon 结果序列化为
  * IconBarIcon 判别联合（lucide/codicon/img/emoji），本组件哑渲染。
  *

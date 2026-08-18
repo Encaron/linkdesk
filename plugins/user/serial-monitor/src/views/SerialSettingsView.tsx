@@ -9,9 +9,9 @@ import { useCallback, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../hooks/useSerialSessions";
 import type { SerialSession } from "../hooks/useSerialSessions";
-import Toggle from "@src/components/shared/Toggle";
-import SelectBox from "@src/components/shared/SelectBox";
-import FormRow from "@src/components/shared/FormRow";
+import Toggle from "@src/components/shared/toggle/Toggle";
+import SelectBox from "@src/components/shared/select-box/SelectBox";
+import FormRow from "@src/components/shared/form-row/FormRow";
 import "../styles/SerialMonitorSidebar.css";
 
 const RAW_TIME_FORMATS = ["HH:mm:ss", "HH:mm:ss:fff", "无"];

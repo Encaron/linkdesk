@@ -10,7 +10,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { createRoot } from "react-dom/client";
-import OverlayPortal from "./OverlayPortal";
+import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./ColorPicker.css";
 
 /* ── 颜色转换工具（内联——零依赖）── */

@@ -13,7 +13,7 @@
 import { useTranslation } from "react-i18next";
 import { useState, useCallback, useEffect } from "react";
 import { useSerialContext } from "../services/SerialContext";
-import SelectBox from "@src/components/shared/SelectBox";
+import SelectBox from "@src/components/shared/select-box/SelectBox";
 // E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧 ProtocolRegistry）
 import { useSession } from "../hooks/useSerialSessions";
 import "../styles/ControlPanel.css";

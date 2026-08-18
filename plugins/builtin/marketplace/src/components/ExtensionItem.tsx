@@ -6,8 +6,8 @@
 
 import { useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import { PluginIcon } from "@src/components/shared/PluginIcon";
-import ContextMenu from "@src/components/shared/ContextMenu";
+import { PluginIcon } from "@src/components/shared/plugin-icon/PluginIcon";
+import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
 import type { PluginListEntry, PluginListSubset } from "@src/core/api/linkdesk-api";
 
 const pm = () => window.linkdesk?.pluginManager;

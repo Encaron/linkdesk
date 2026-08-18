@@ -7,7 +7,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
-import SelectBox from "./SelectBox";
+import SelectBox from "../select-box/SelectBox";
 
 interface FontFamilySelectProps {
   value: string;

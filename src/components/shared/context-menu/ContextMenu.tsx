@@ -18,8 +18,8 @@
  */
 import { useEffect, useMemo, useRef, useCallback, useState, useLayoutEffect } from "react";
 import type { MenuItemDescriptor } from "@src/core/api/linkdesk-api";
-import { Z_INDEX } from "../../constants";
-import OverlayPortal from "./OverlayPortal";
+import { Z_INDEX } from "../../../constants";
+import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./ContextMenu.css";
 
 /* ── 辅助函数 ── */
