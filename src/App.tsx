@@ -1,16 +1,20 @@
-import { useState, useEffect, useMemo } from "react";
+/**
+ * App 聚合器——壳根组件：mount-once 状态 + 子模块 hook 编排。
+ * E5.8#0d.10-3g 收官：全部副作用逻辑拆入 src/App/ 同名夹子模块（聚合器门面模式，壳目录规范 §4）——
+ *   tabCallbacks.ts  createCoreCallbacks/createTabActionHandler/createFocusTabHandler 纯工厂（#0d.10-3a）
+ *   startup.ts       useAppStartup          启动初始化管线（#0d.10-3b）
+ *   lifecycle.ts     useAppLifecycle        杂项生命周期（#0d.10-3c）
+ *   bridges.ts       useUiBridges           壳↔池 UI 桥（#0d.10-3d）
+ *   sidebarHost.ts   useSidebarHost         侧栏宿主状态机（#0d.10-3e）
+ *   persistence.ts   useLayoutPersistence   布局持久化（#0d.10-3f）
+ *   tabActions.ts    useTabActions          标签页动作 + 启动恢复（#0d.10-3g）
+ * App.tsx 本身 = 聚合器（零 effect 零业务逻辑）：state 声明 → 子 hook 编排 → usePoolSync 推池。
+ * 消费方零变更（main.tsx 仍 import App 默认导出）。
+ */
+import { useState, useMemo } from "react";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
-import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
-import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
-
-import { getViewPlugin } from "./pluginLoader/viewRegistry";
-// Phase 5：新基础设施服务
-// initConfigurationService 已提前到 main.tsx mount 前调用
-// initStorageService 已提前到 main.tsx mount 前调用
-import { getTabLayout, getPanelLayout } from "./core/services/layout/LayoutService";
-import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
-import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
+import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
@@ -21,6 +25,7 @@ import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
 import { useSidebarHost } from "./App/sidebarHost";
 import { useLayoutPersistence } from "./App/persistence";
+import { useTabActions } from "./App/tabActions";
 import "./App.css";
 
 function App() {
@@ -82,78 +87,8 @@ function App() {
     restoreClosedTab,
   } = useTabManager();
 
-  // E5#5b：订阅 icon:selected——tabOnly 插件直接开标签页（不再经 App 中转）
-  useEffect(() => {
-    const unsub = shellEvents.on("icon:selected", (pluginId) => {
-      const plugin = getViewPlugin(pluginId);
-      if (plugin?.manifest.appearsIn?.tabBar && !plugin?.manifest.appearsIn?.sidePanel) {
-        const tabId = createTab(pluginId);
-        // E5.6 fix：icon:selected 直开标签页也不会触发 tab:focused → activeEditor 不更新
-        if (tabId) shellEvents.emit("tab:focused", { pluginId, tabId });
-      }
-    });
-    return unsub;
-  }, [createTab]);
-
-  // E5#5e-ii-f：TabActions 桥接——ShellEvents → useTabManager
-  useEffect(() => {
-    // E5.6 fix：tab:create / tab:openOrFocus 后也 emit tab:focused。
-    // 池自动激活的新标签页不会触发 pool→focusTab IPC（那是用户点击才发的），
-    // 导致 activeEditor context key 永远不更新 → when:"activeEditor == 'xxx'" 过滤掉所有菜单项。
-    const u1 = shellEvents.on("tab:create", ({ type, opts }) => {
-      // E5.7#98：wire 载荷 opts 是 Record<string, unknown>——窄化为 CreateTabOptions 契约（全可选字段）
-      const tabId = createTab(type, opts as CreateTabOptions | undefined);
-      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
-    });
-    const u2 = shellEvents.on("tab:openOrFocus", ({ type, opts }) => {
-      const tabId = openOrFocusTab(type, opts as CreateTabOptions | undefined);
-      if (tabId) shellEvents.emit("tab:focused", { pluginId: type, tabId });
-    });
-    const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
-    const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
-    const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId }) => focusTabBySourceId(sourceId));
-    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => updateTabLabelBySourceId(sourceId, label));
-    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId }) => closeTabBySourceId(sourceId));
-    return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
-  }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId]);
-
-  // E5#7h3：mount 时恢复上次保存的标签页布局——ready 守卫：
-  // 原 MainContent 在 ready 门控的 JSX 内 mount（initAll 完成后才挂载）；
-  // 迁入 App 后此 effect 首轮 mount 就跑，必须等 LayoutService 初始化完成（ready=true）。
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      const savedLayout = getTabLayout();
-      if (savedLayout?.groups?.length > 0) {
-        // E5.7 Bug D：恢复后 emit tab:focused——否则重启后 activeEditor 为 null，
-        // when:"activeEditor == ..." 过滤会杀掉右键菜单 + 命令面板（关闭重开标签页才恢复）。
-        // 直接用 restoreLayout 返回值（eager）——此刻 setTabState 未提交，不能读 tabState（Bug A 教训）。
-        const focused = restoreLayout(savedLayout);
-        if (focused) {
-          shellEvents.emit("tab:focused", focused);
-        }
-        const all = savedLayout.groups.flatMap((g: { tabs: { id: string; type: string }[] }) => g.tabs);
-        syncCountersAfterRestore(all);
-      }
-    } catch { /* 恢复失败不影响启动 */ }
-  }, [ready]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // E5.7#63.7：mount 时恢复面板布局状态——高度直设 LayoutEngine（resizeZoneHeight 钳制，防坏值越界；
-  // onDidChangeLayout → usePoolSync 重推恢复后的高度），激活视图设 App state（usePoolSync 校验存在性后回退 views[0]）。
-  // ready 守卫同标签页恢复（LayoutService 初始化完成后才能读）。
-  useEffect(() => {
-    if (!ready) return;
-    try {
-      const savedPanel = getPanelLayout();
-      if (!savedPanel) return;
-      if (Number.isFinite(savedPanel.height)) {
-        layoutEngine.resizeZoneHeight("panel", savedPanel.height);
-      }
-      if (savedPanel.activeViewId) {
-        setPanelActiveViewId(savedPanel.activeViewId);
-      }
-    } catch { /* 恢复失败不影响启动 */ }
-  }, [ready]);
+  // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
+  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useMemo(
