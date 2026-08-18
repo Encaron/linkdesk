@@ -34,7 +34,7 @@ import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/services
 import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import { shellEvents, type StatusBarEntry } from "../core/react/events/ShellEvents";
 import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/ui/toast";
-import { resolvePluginIcon } from "../pluginLoader/iconUtils";
+import { resolvePluginIcon } from "../core/utils/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { isShellRenderedTab } from "../core/utils/tabIdentity";
 
