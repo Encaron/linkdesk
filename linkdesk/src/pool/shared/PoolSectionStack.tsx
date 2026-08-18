@@ -16,7 +16,7 @@ import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.
 import ErrorBoundary from "./ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import SidebarSection from "../../components/shared/SidebarSection";
 import PluginComponent from "./PluginComponent";
-import { VIEW_DRAG_MIME } from "./viewDragProtocol"; // E4V#48：跨容器拖放 MIME
+import { VIEW_DRAG_MIME } from "../protocol/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
 
