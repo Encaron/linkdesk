@@ -1,0 +1,210 @@
+/**
+ * Pool preload 插件服务域命名空间集合——pluginManager/plugins/theme/keybindings/pluginState/
+ * hotExit/menu/langDef/lsp/protocol/shell/getFilePath/window。
+ * E5.8#0d.10-4d：自 preload-pool.ts 拆出——无模块级状态的薄转发面（invoke/send/listenDirect/events.on）。
+ * 依赖方向：namespaces-plugin → electron/ipc（channels/event-system）+ src/core/types（type）；无反向。
+ */
+
+import { ipcRenderer, webUtils } from 'electron';
+import { IPC } from '../ipc/channels';
+import { listenDirect, type EventSystemApi } from '../ipc/event-system';
+import type { PluginStateChangedPayload } from '../../src/core/types/ipc/events';
+
+/** pluginManager 命名空间——插件生命周期管理 */
+export function buildPluginManager() {
+  return {
+    list: () => ipcRenderer.invoke(IPC.plugins.call, 'list'),
+    enable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'enable', id),
+    disable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'disable', id),
+    uninstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'uninstall', id),
+    install: (path: string) => ipcRenderer.invoke(IPC.plugins.call, 'install', path),
+    reinstall: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'reinstall', id),
+    getDisabled: () => ipcRenderer.invoke(IPC.plugins.call, 'getDisabled'),
+    getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),
+    isDisabled: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'isDisabled', id),
+  };
+}
+
+/**
+ * plugins 命名空间——池侧动态 import 运行时安装的插件（E5.6#11.5-fix）。
+ * PluginComponent.tsx 的 import.meta.glob 是构建时扫描，运行时安装的插件不在 glob 中。
+ * 提供 resolvePath 让 PluginComponent 在 glob 查找失败时 fallback 到动态 import()。
+ */
+export function buildPlugins() {
+  return {
+    resolvePath: (id: string) => ipcRenderer.invoke(IPC.plugins.resolvePath, id),
+  };
+}
+
+/** theme 命名空间——主题查询/应用 */
+export function buildTheme() {
+  return {
+    getCurrent: () => ipcRenderer.invoke(IPC.plugins.call, 'getCurrentTheme'),
+    getAvailable: () => ipcRenderer.invoke(IPC.plugins.call, 'getAvailableThemes'),
+    apply: (themeId: string) => ipcRenderer.invoke(IPC.config.set, 'app.theme', themeId),
+  };
+}
+
+/** keybindings 命名空间——快捷键查询/注册/捕获 */
+export function buildKeybindings(events: EventSystemApi) {
+  return {
+    getKeybindings: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindings'),
+    getConflicts: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindingConflicts'),
+    registerKeybinding: (binding: unknown) => ipcRenderer.invoke(IPC.plugins.call, 'registerKeybinding', binding),
+    saveUserKeybindings: () => ipcRenderer.invoke(IPC.plugins.call, 'saveUserKeybindings'),
+    removeKeybindingForCommand: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'removeKeybindingForCommand', commandId),
+    resetKeybindingToDefault: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'resetKeybindingToDefault', commandId),
+    findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'findKeybindingForCommand', commandId),
+    setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke(IPC.plugins.call, 'setKeybindingCaptureActive', active),
+    keyboardEventToKeyString: (e: KeyboardEvent): string => {
+      const parts: string[] = [];
+      if (e.ctrlKey) parts.push('ctrl');
+      if (e.shiftKey) parts.push('shift');
+      if (e.altKey) parts.push('alt');
+      if (e.metaKey) parts.push('meta');
+      const keyMap: Record<string, string> = {
+        ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
+        Escape: 'escape', Enter: 'enter', Tab: 'tab', Backspace: 'backspace',
+        Delete: 'delete', Home: 'home', End: 'end', PageUp: 'pageup', PageDown: 'pagedown',
+        ' ': 'space',
+      };
+      if (!e?.key) return '';
+      const key = keyMap[e.key] ?? e.key.toLowerCase();
+      if (['control', 'shift', 'alt', 'meta'].includes(key)) return '';
+      parts.push(key);
+      const order = ['ctrl', 'shift', 'alt', 'meta'];
+      return parts.sort((a, b) => {
+        const ai = order.indexOf(a), bi = order.indexOf(b);
+        if (ai !== -1 && bi !== -1) return ai - bi;
+        if (ai !== -1) return -1;
+        if (bi !== -1) return 1;
+        return a.localeCompare(b);
+      }).join('+');
+    },
+    onChange: (cb: () => void) => events.on('keybindings:changed', cb),
+  };
+}
+
+/** pluginState 命名空间——插件持久化存储 */
+export function buildPluginState(events: EventSystemApi) {
+  return {
+    get: (pluginId: string, key: string): Promise<unknown> =>
+      ipcRenderer.invoke(IPC.pluginState.get, pluginId, key),
+    set: (pluginId: string, key: string, value: unknown): Promise<void> =>
+      ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
+    onChange: (pluginId: string, key: string, cb: (value: unknown) => void) => {
+      return events.on('plugin-state:changed', (data: PluginStateChangedPayload) => {
+        if (data?.pluginId === pluginId && data?.key === key) {
+          cb(data.value);
+        }
+      });
+    },
+  };
+}
+
+/**
+ * hotExit 命名空间——Hot Exit 备份（E5.7#38：脏内容落盘走主进程，池渲染进程零直写 %APPDATA%）。
+ * 路径约定单源在主进程 hot-exit-handlers.ts：<sha256(filePath)>.dirty。
+ * 只读 load（不消费）——StrictMode 双 mount / 跨组移动 remount 都要能重复读。
+ */
+export function buildHotExit() {
+  return {
+    save: (filePath: string, content: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.hotExit.save, filePath, content),
+    load: (filePath: string): Promise<string | null> =>
+      ipcRenderer.invoke(IPC.hotExit.load, filePath),
+    clear: (filePath: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.hotExit.clear, filePath),
+  };
+}
+
+/** menu 命名空间——菜单项注册/查询 */
+export function buildMenu() {
+  return {
+    registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
+      ipcRenderer.invoke(IPC.menu.registerItems, menuId, pluginId, items),
+    getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
+      ipcRenderer.invoke(IPC.menu.getItems, menuId, context),
+  };
+}
+
+/**
+ * langDef 命名空间——语言定义注册表（主进程 LangDefRegistry）。
+ * Registry 主进程化：plugin-manifest-loader 预加载进主进程实例，直连 langDef:get（1 跳）。
+ * 只返回可序列化字段 { id, lsp }——monarch tokenizer 函数不可跨进程（主进程侧剥壳）。
+ */
+export function buildLangDef() {
+  return {
+    get: (extension: string): Promise<{ id: string; lsp?: { command: string; args?: string[] } } | null> =>
+      ipcRenderer.invoke(IPC.langDef.get, extension),
+  };
+}
+
+/** lsp 命名空间——LSP 桥（编辑器在池内渲染需 LSP 通信：自动补全/F12/诊断/重命名） */
+export function buildLsp() {
+  return {
+    spawn: (command: string, args: string[] | undefined, pluginId: string) =>
+      ipcRenderer.invoke(IPC.lsp.spawn, { command, args, pluginId }),
+    write: (channelId: string, data: string) =>
+      ipcRenderer.send(IPC.lsp.write, { channelId, data }),
+    dispose: (channelId: string) =>
+      ipcRenderer.invoke(IPC.lsp.dispose, { channelId }),
+    onData: (cb: (channelId: string, data: string) => void) =>
+      listenDirect(ipcRenderer, IPC.lsp.data, ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
+  };
+}
+
+/**
+ * protocol 命名空间——协议注册表（主进程 ProtocolRegistry）。
+ * Registry 主进程化：内置方括号协议由 plugin-manifest-loader 汇入主进程实例，
+ * 直连 protocol:* 通道（1 跳）；返回前主进程剥 parseLine/detect（JS 函数不可跨进程）。
+ */
+export function buildProtocol() {
+  return {
+    listProtocols: (): Promise<Array<{ id: string; name: string; pluginId: string; mode: string }>> =>
+      ipcRenderer.invoke(IPC.protocol.listProtocols),
+    getActiveProtocolId: (): Promise<string> =>
+      ipcRenderer.invoke(IPC.protocol.getActiveProtocolId),
+    setActiveProtocolId: (protocolId: string): Promise<void> =>
+      ipcRenderer.invoke(IPC.protocol.setActiveProtocolId, protocolId),
+  };
+}
+
+/**
+ * shell 命名空间——revealInOS / openInTerminal / startDrag。
+ * 这些是主进程 handler（main.ts ipcMain.handle），非壳渲染进程 handler，
+ * 因此不走 PROXY_CHANNELS——直接 ipcRenderer.invoke。
+ */
+export function buildShell() {
+  return {
+    showItemInFolder: (p: string) => ipcRenderer.invoke(IPC.shell.showItemInFolder, p),
+    openInTerminal: (dirPath: string, terminalExe?: string, customCommand?: string) =>
+      ipcRenderer.invoke(IPC.shell.openInTerminal, dirPath, terminalExe, customCommand),
+    startDrag: (filePath: string, iconPath?: string) =>
+      ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
+  };
+}
+
+/** getFilePath——桥接 Chromium File API 与沙箱文件系统（E5.6#11.5-bug4：FileTreeDnD handleDrop 解外部拖入文件真实路径） */
+export function buildGetFilePath() {
+  return {
+    getFilePath: (file: File) => webUtils.getPathForFile(file),
+  };
+}
+
+/**
+ * window 命名空间——TitleBarZone 自定义 ─ □ × 按钮（preload-shell 同款搬入）。
+ * 通道是主进程 handler（window:minimize 等）——非壳渲染进程 handler，不走 PROXY_CHANNELS。
+ */
+export function buildWindow() {
+  return {
+    minimize:  () => ipcRenderer.send(IPC.window.minimize),
+    maximize:  () => ipcRenderer.send(IPC.window.maximize),
+    unmaximize:() => ipcRenderer.send(IPC.window.unmaximize),
+    close:     () => ipcRenderer.send(IPC.window.close),
+    toggleDevTools: () => ipcRenderer.invoke(IPC.window.toggleDevTools),
+    isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
+    onMaximizeChange: (cb: (maximized: boolean) => void) =>
+      listenDirect(ipcRenderer, IPC.window.maximizeChange, (m: boolean) => cb(m)),
+  };
+}
