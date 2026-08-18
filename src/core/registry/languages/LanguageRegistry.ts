@@ -12,8 +12,8 @@
  * 无需 lifecycle.ts 手动添加清理逻辑。
  */
 
-import { RegistryBase } from "./RegistryBase";
-import type { LanguageContribution } from "../api/types";
+import { RegistryBase } from "../../registry/RegistryBase";
+import type { LanguageContribution } from "../../api/types";
 
 interface RegisteredLanguage extends LanguageContribution {
   pluginId: string;

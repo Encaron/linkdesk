@@ -27,7 +27,7 @@ import { registerConfiguration } from "./core/registry/ConfigurationRegistry";
 import { initLayoutService, getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
 import { initWorkspaceService, syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
 import { initPluginStates, APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
-import { ContextKeyService } from "./core/registry/ContextKeyService";
+import { ContextKeyService } from "./core/registry/commands/ContextKeyService";
 import { CUSTOM_EVENTS } from "./core/react/events/CoreEvents";
 import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
@@ -35,7 +35,7 @@ import { ViewContainerService } from "./core/services/layout/ViewContainerServic
 import { onDidRequestShowChannel } from "./core/services/ui/LogChannel"; // E3f #54
 import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/services/plugins/IpcBridgeHandler"; // E3a #26 + E5#103
 import { initAll } from "./core/services/bootstrap/AppInitializer"; // E5#107：启动管线——可测试
-import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
+import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/commands/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/configuration/ConfigurationApplier";
 import { FALLBACK_PLUGIN_ID } from "./core/utils/plugin/fallbackPluginId";
 import { usePoolSync } from "./hooks/usePoolSync";
@@ -45,7 +45,7 @@ import { usePoolSync } from "./hooks/usePoolSync";
 /** 将 hex 强调色写到 --accent / --accent-hover / --accent-light CSS 变量 */
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { ensureCoreCommands, ensureCoreKeybindings, updateCoreCallbacks, type CoreCallbacks } from "./core/commands/coreCommands";
-import { registerCommand } from "./core/registry/CommandRegistry"; // E3f #59e
+import { registerCommand } from "./core/registry/commands/CommandRegistry"; // E3f #59e
 // Phase 5e：内置协议注册（方括号解析器迁移到 ProtocolRegistry）
 import i18n from "./i18n";
 import "./App.css";

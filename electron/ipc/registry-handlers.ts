@@ -11,7 +11,7 @@
  */
 
 import { ipcMain } from 'electron';
-import { getLangDef } from '../../src/core/registry/LangDefRegistry.js';
+import { getLangDef } from '../../src/core/registry/languages/LangDefRegistry.js';
 import {
   listProtocols,
   getActiveProtocolId,

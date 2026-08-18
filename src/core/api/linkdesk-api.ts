@@ -34,8 +34,8 @@ import type { PoolDialogData } from "../types/pool/poolDialog";
 import type { FileEntry } from "../types/fileEntry";
 import type { FileChangeEvent } from "../services/files/FileService";
 import type { PluginManifest } from "./types";
-import type { ManifestMenuItem } from "../registry/MenuRegistry";
-import type { Keybinding } from "../registry/KeybindingRegistry";
+import type { ManifestMenuItem } from "../registry/commands/MenuRegistry";
+import type { Keybinding } from "../registry/commands/KeybindingRegistry";
 import type { WorkspaceFolder } from "../services/layout/WorkspaceService";
 
 // ── 类型定义 ──

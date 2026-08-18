@@ -10,8 +10,8 @@
  * handler 延迟读取 getCallbacks() 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, type Command } from "../registry/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/MenuRegistry";
+import { registerCommand, type Command } from "../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/commands/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 import { CUSTOM_EVENTS } from "../react/events/CoreEvents";
 import i18n from "../../i18n";
@@ -298,8 +298,8 @@ import { showCommandPalette } from "./commandPalette"; // E5.7#18：命令面板
 
 // E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
 import { clipboardProviders } from "../registry/ClipboardProviderRegistry";
-import { ContextKeyService } from "../registry/ContextKeyService";
-import { isEditableElementFocused } from "../registry/KeybindingRegistry";
+import { ContextKeyService } from "../registry/commands/ContextKeyService";
+import { isEditableElementFocused } from "../registry/commands/KeybindingRegistry";
 
 /** 解析当前焦点上下文——遍历已注册 Provider，找第一个 ContextKey 为 true 的 */
 function resolveFocusContext(): string | undefined {

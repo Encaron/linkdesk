@@ -3,12 +3,12 @@
  * E5#44-3：从 coreCommands.ts 提取。
  */
 
-import { registerCommand } from "../registry/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
+import { registerCommand } from "../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../registry/commands/MenuRegistry";
 import { factorySlots } from "../services/bootstrap/FactorySlots";
 import { getCallbacks } from "./CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
-import { openKeybindingsSettings } from "../registry/KeybindingRegistry";
+import { openKeybindingsSettings } from "../registry/commands/KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 

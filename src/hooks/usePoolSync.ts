@@ -21,10 +21,10 @@ import type { ViewDescriptor } from "../core/services/layout/ViewContainerServic
 import { layoutEngine } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
-import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
-import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
-import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
-import { ContextKeyService } from "../core/registry/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
+import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } from "../core/registry/commands/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
+import { getCommand } from "../core/registry/commands/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
+import { getKeybindings } from "../core/registry/commands/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
+import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.7#5：槽位按钮 when 过滤 + context 变化重推
 import type { SplitNode } from "../core/utils/splitTree"; // E5.6#16：从分屏树计算 flex 比例
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
 import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews, getStatusBarContributions } from "../pluginLoader/viewRegistry";

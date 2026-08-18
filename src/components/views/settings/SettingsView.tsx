@@ -24,7 +24,7 @@ import NumberInput from "../../shared/number-input/NumberInput";
 import { InlineInput } from "../../shared/inline-input/InlineInput";
 import KeybindingSettingsView from "../keybinding-settings/KeybindingSettingsView";
 import { useConfigurationValueIpc } from "../../../core/react/useConfigurationIpc";
-import { MENU_SLOTS } from "../../../core/registry/MenuRegistry";
+import { MENU_SLOTS } from "../../../core/registry/commands/MenuRegistry";
 import { getFilePath } from "../../../core/services/configuration/StorageService"; // E5.8#0d.5："以 JSON 打开"→ 打开 settings.json 真实落盘路径
 import ContextMenu from "../../shared/context-menu/ContextMenu";
 import ColorPicker from "../../shared/color-picker/ColorPicker";

@@ -7,7 +7,7 @@
  * → 浮动列表 → 用户选一项 / Esc → 返回结果 / undefined。
  */
 
-import { registerCommand } from "../registry/CommandRegistry";
+import { registerCommand } from "../registry/commands/CommandRegistry";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
 import { QuickPickService } from "../services/ui/QuickPickService";
 

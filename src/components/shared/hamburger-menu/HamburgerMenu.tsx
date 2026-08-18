@@ -9,9 +9,9 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { getMenuItems, MENU_SLOTS } from "../../../core/registry/MenuRegistry";
-import { executeCommand } from "../../../core/registry/CommandRegistry";
-import { ContextKeyService } from "../../../core/registry/ContextKeyService";
+import { getMenuItems, MENU_SLOTS } from "../../../core/registry/commands/MenuRegistry";
+import { executeCommand } from "../../../core/registry/commands/CommandRegistry";
+import { ContextKeyService } from "../../../core/registry/commands/ContextKeyService";
 import { MenuRenderer } from "../menu-renderer/MenuRenderer";
 import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./HamburgerMenu.css";

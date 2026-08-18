@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { FileTreeClipboard } from "../services/FileTreeClipboard";
-import { ContextKeyService } from "@src/core/registry/ContextKeyService";
+import { ContextKeyService } from "@src/core/registry/commands/ContextKeyService";
 
 // E5#70e: 生产代码用 linkdesk.contextKey.set——测试环境 mock 回 ContextKeyService
 function mockContextKey() {
