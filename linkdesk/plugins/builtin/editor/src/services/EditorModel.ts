@@ -67,6 +67,18 @@ export class EditorModel {
     this.onDidSave.fire();
   }
 
+  /** E5.8#0d.9——从磁盘重载：磁盘内容 ≠ 当前内容 → 返回新内容；无差异（含自己 Ctrl+S）或读失败 → null。
+   *  调用方据此决定是否应用/弹确认框——本方法只比较不落盘。 */
+  async reloadFromDisk(): Promise<string | null> {
+    try {
+      const fresh = await EditorModel.load(this.filePath);
+      return fresh.getValue() === this._value ? null : fresh.getValue();
+    } catch {
+      // 读失败保守 no-op——文件被占用/瞬时删除，等下一次事件再比
+      return null;
+    }
+  }
+
   /** 从内存内容创建（不解码）——E4V#40n Hot Exit 恢复用 */
   static fromContent(filePath: string, content: string): EditorModel {
     return new EditorModel(lk.path.normalize(filePath), content, "utf-8");
