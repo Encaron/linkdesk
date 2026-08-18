@@ -4,16 +4,14 @@ import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监
 import { useTabManager, syncCountersAfterRestore } from "./hooks/useTabManager";
 import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
 
-import { getViewPlugin, getViewPlugins } from "./pluginLoader/viewRegistry";
+import { getViewPlugin } from "./pluginLoader/viewRegistry";
 // Phase 5：新基础设施服务
 // initConfigurationService 已提前到 main.tsx mount 前调用
 // initStorageService 已提前到 main.tsx mount 前调用
 import { getTabLayout, saveTabLayout, syncWriteLayout, getPanelLayout, savePanelLayout, type WorkspaceLayout } from "./core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "./core/services/layout/WorkspaceService"; // E5.5#0e
-import { APP_PLUGIN_ID, setPluginStateValue, getPluginStateValue } from "./core/services/plugins/PluginStateService";
 import { shellEvents } from "./core/react/events/ShellEvents"; // E5#3b：壳内事件总线
 import { layoutEngine } from "./core/services/layout/LayoutEngine"; // E5#9f：壳布局引擎——E5.7#9 起只喂容器尺寸（zone 几何真相源）
-import { ViewContainerService } from "./core/services/layout/ViewContainerService"; // E5.7#10：侧栏宿主状态机（view:toggleVisibility）
 import { usePoolSync } from "./hooks/usePoolSync";
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
@@ -22,6 +20,7 @@ import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler } fr
 import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
+import { useSidebarHost } from "./App/sidebarHost";
 import "./App.css";
 
 function App() {
@@ -52,105 +51,8 @@ function App() {
   useUiBridges({ setPanelActiveViewId });
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
-  // E5.7#10：侧栏宿主状态机——原隐藏挂载 SidePanel 的语义迁入 App（池 SidebarZone 哑渲染，壳持状态）。
-  // 三条入口：icon:selected（图标点击切换/折叠）、sidebar:toggle（池 ◀/▶ 按钮 + Ctrl+B 命令转发）、
-  // view:toggleCollapse/resetPosition/toggleVisibility（view header 右键菜单，shellMenus emit）。
-  // 折叠真相源 = LayoutEngine zone 宽（≤48 = 折叠）——池 ◀ 按钮只改 zone 宽，此机从 zone 宽
-  // 派生折叠态（不持 collapsedRef，避免池按钮改宽后状态脱节）。
-  const sidebarCollapseState = useRef({
-    containerId: null as string | null,   // SidePanel 的 containerId state——当前侧栏容器
-    lastSidebar: null as string | null,   // SidePanel 的 lastSidebar——折叠后仍知容器（▶ 展开用）
-    preCollapseWidth: 280,                // SidePanel 的 preCollapseWidth——展开恢复目标宽（#13 拖拽后为最后展开宽）
-  });
-  useEffect(() => {
-    const s = sidebarCollapseState.current;
-    const zoneCollapsed = () => (layoutEngine.getBounds("sidebar")?.width ?? 0) <= 48;
-    // E5#49：折叠/展开——被图标点击 + 池◀/▶按钮 + view 菜单共用
-    const doCollapse = (collapse: boolean) => {
-      if (collapse) {
-        const w = layoutEngine.getBounds("sidebar")?.width;
-        if (w && w > 48) s.preCollapseWidth = w;
-        layoutEngine.setZoneWidth("sidebar", 28);
-      } else {
-        layoutEngine.setZoneWidth("sidebar", s.preCollapseWidth);
-      }
-    };
-
-    // E3.6/E5#4b：图标栏点击——读 contributes.viewsContainers 取 containerId
-    const u1 = shellEvents.on("icon:selected", (pluginId) => {
-      const plugin = getViewPlugin(pluginId);
-      const containers = plugin?.manifest.contributes?.viewsContainers as Record<string, unknown> | undefined;
-      if (!containers) return;
-      const cid = Object.keys(containers)[0];
-      if (!cid) return;
-
-      if (s.containerId === cid) {
-        // E5#49：同图标 → toggle 折叠/展开（与 ◀/▶ 按钮行为一致）
-        const shouldCollapse = !zoneCollapsed();
-        doCollapse(shouldCollapse);
-        shellEvents.emit("sidebar:containerChanged", shouldCollapse ? null : cid);
-        shellEvents.emit("sidebar:toggled", !shouldCollapse);
-        return;
-      }
-
-      // 不同图标：切换容器，折叠态则展开
-      if (zoneCollapsed()) doCollapse(false);
-      s.containerId = cid;
-      s.lastSidebar = cid;
-      // E5.7#13.5：持久化上次侧栏选择——启动恢复（对标 VS Code 记住 Activity Bar；
-      // iconOrder 同款机制 PluginStateService，归一化不新发明）
-      setPluginStateValue(APP_PLUGIN_ID, "activeSidebarPlugin", pluginId);
-      shellEvents.emit("sidebar:containerChanged", cid);
-      shellEvents.emit("sidebar:toggled", true);
-    });
-
-    // 池 ◀/▶ 按钮——usePoolSync toggleSidebarCollapse 转发（折展真相在 zone 宽，池零状态）
-    const u2 = shellEvents.on("sidebar:toggle", () => {
-      doCollapse(!zoneCollapsed());
-    });
-
-    const effectiveContainerId = () => s.containerId ?? s.lastSidebar;
-
-    // E5#60：view header 右键菜单——shellMenus 提供的命令 emit 这些事件
-    const u3 = shellEvents.on("view:toggleCollapse", ({ containerId: cid }) => {
-      if (cid !== effectiveContainerId()) return;
-      doCollapse(!zoneCollapsed());
-    });
-    const u4 = shellEvents.on("view:resetPosition", ({ containerId: cid }) => {
-      if (cid !== effectiveContainerId()) return;
-      doCollapse(false);
-      layoutEngine.setZoneWidth("sidebar", 280);
-    });
-    const u5 = shellEvents.on("view:toggleVisibility", ({ viewId, containerId: cid }) => {
-      if (cid) ViewContainerService.toggleViewVisibility(cid, viewId);
-    });
-    return () => { u1(); u2(); u3(); u4(); u5(); };
-  }, []);
-
-  // E5.6#9d：订阅宿主状态机发出的侧栏状态变化——用于 pushLayout
-  useEffect(() => {
-    const u1 = shellEvents.on("sidebar:containerChanged", (cid: string | null) => {
-      setSidebarView(cid);
-    });
-    const u2 = shellEvents.on("sidebar:toggled", (visible: boolean) => {
-      setIsSidebarExpanded(visible);
-    });
-    return () => { u1(); u2(); };
-  }, []);
-
-  // E5.7#13.5：启动恢复上次侧栏容器——对标 VS Code 恢复上次 Activity Bar 选择（用户选 B）。
-  // 归一化：恢复 = 重放 icon:selected——与点击图标同一路径（u1 容器校验/折叠展开全走状态机，
-  // 零第二套选择逻辑）。守卫：插件须仍在 getViewPlugins()（图标栏同源）——已卸载/禁用
-  // 则静默无侧栏（回退旧行为）。一次性 ref 防 StrictMode 双跑重放（u1 同图标会当 toggle 处理）。
-  const sidebarRestoreDoneRef = useRef(false);
-  useEffect(() => {
-    if (!ready || sidebarRestoreDoneRef.current) return;
-    sidebarRestoreDoneRef.current = true;
-    const persisted = getPluginStateValue<string>(APP_PLUGIN_ID, "activeSidebarPlugin");
-    if (!persisted) return;
-    if (!getViewPlugins().some((p) => p.pluginId === persisted)) return;
-    shellEvents.emit("icon:selected", persisted);
-  }, [ready]);
+  // E5.8#0d.10-3e：侧栏宿主状态机（折叠状态机 + 状态同步 + 启动恢复）迁入 src/App/sidebarHost.ts
+  useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready });
 
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
