@@ -19,9 +19,9 @@
 import { BrowserWindow, WebContentsView, app, type Event, type Input } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { IPC } from './ipc/channels.js';
+import { IPC } from '../ipc/channels.js';
 // E5.7#97：KeyboardInput 归口 src/core/types/ipc/keyboard.ts——与壳 KeybindingRegistry 同源（原本地双份定义）
-import type { KeyboardInput } from '../src/core/types/ipc/keyboard';
+import type { KeyboardInput } from '../../src/core/types/ipc/keyboard';
 
 // ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
 

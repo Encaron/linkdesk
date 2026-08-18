@@ -16,7 +16,7 @@
  */
 
 import { BrowserWindow, ipcMain, WebContentsView } from 'electron';
-import type { WindowManager } from '../window-manager.js';
+import type { WindowManager } from '../windows/window-manager.js';
 import { IPC } from './channels.js';
 
 interface PendingRequest {

@@ -12,7 +12,7 @@ export const APP_NAMESPACE = "linkdesk";
 
 /**
  * dev server 端口——唯一真源（E5#102b 硬编码端口归一化）。
- * 消费方：vite.config.ts（server.port）+ main.ts / window-manager.ts（DEV_SERVER_URL）。
+ * 消费方：vite.config.ts（server.port）+ main.ts / windows/window-manager.ts（DEV_SERVER_URL）。
  */
 export const DEV_SERVER_PORT = 1420;
 export const DEV_SERVER_URL = `http://localhost:${DEV_SERVER_PORT}`;
