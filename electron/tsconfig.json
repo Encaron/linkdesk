@@ -12,5 +12,6 @@
     "sourceMap": true,
     "esModuleInterop": true
   },
-  "include": ["./**/*.ts", "../src/types/global.d.ts"]
+  "include": ["./**/*.ts", "../src/types/global.d.ts"],
+  "exclude": ["**/*.test.ts"]
 }

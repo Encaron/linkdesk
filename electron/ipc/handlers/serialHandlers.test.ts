@@ -4,7 +4,7 @@
  * B24/B25/B26 回归防护。
  */
 import { describe, it, expect } from "vitest";
-import { RingBuffer } from "../../../core/pipeline/RingBuffer";
+import { RingBuffer } from "../../../src/core/pipeline/RingBuffer";
 
 /* ── 模拟 handler 逻辑（与 TerminalView.tsx 一致） ── */
 
