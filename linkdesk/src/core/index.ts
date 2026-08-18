@@ -10,19 +10,19 @@ export { CoreEvents, Emitter } from "./react/events/CoreEvents";
 
 // ── 注册表 ──
 export * from "./registry/RegistryBase";
-export * from "./registry/CommandRegistry";
+export * from "./registry/commands/CommandRegistry";
 export * from "./registry/ConfigurationRegistry";
-export * from "./registry/ContextKeyService";
+export * from "./registry/commands/ContextKeyService";
 // FileDecorationRegistry 桶行已随 E5.7#60 整删——注册表池内化（provider 是 JS 函数不可跨进程，
 // 真源与消费方同在池；壳侧恒空实例 = 死重。文件连同桶导出一起 git rm）
-export * from "./registry/IconRegistry";
-export * from "./registry/KeybindingRegistry";
-export * from "./registry/LangDefRegistry";
-export * from "./registry/LanguageRegistry";
-export * from "./registry/MenuRegistry";
+export * from "./registry/appearance/IconRegistry";
+export * from "./registry/commands/KeybindingRegistry";
+export * from "./registry/languages/LangDefRegistry";
+export * from "./registry/languages/LanguageRegistry";
+export * from "./registry/commands/MenuRegistry";
 export * from "./registry/ProtocolRegistry";
 export * from "./services/ui/StatusBarService";
-export * from "./registry/ThemeRegistry";
+export * from "./registry/appearance/ThemeRegistry";
 export * from "./registry/ClipboardProviderRegistry";
 
 // ── 基础设施 ──

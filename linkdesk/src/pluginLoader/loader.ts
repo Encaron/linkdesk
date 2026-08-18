@@ -42,9 +42,9 @@ const pluginsApi = () => {
 import type { PluginManifest, ViewPluginEntry } from "../core/api/types";
 import { registerViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes, findTheme } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/ThemeRegistry";
-import { IconRegistry } from "../core/registry/IconRegistry";
-import { LanguageRegistry } from "../core/registry/LanguageRegistry";
+import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
+import { IconRegistry } from "../core/registry/appearance/IconRegistry";
+import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import type { ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
 import { reportError } from "../core/services/bootstrap/ErrorService";
@@ -56,10 +56,10 @@ import { PluginLifecycle, initLifecycleConsumers, onPluginLifecycleChange, type 
 // Phase 5：contributes 解析——静态导入，确保同步注册（异步 import 会晚于组件 mount → placeholder 覆盖真实 handler）
 import { registerConfiguration, registerConfigurationDefaults, updateConfigurationEnum } from "../core/registry/ConfigurationRegistry";
 import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/MenuRegistry";
-import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
-import { registerCommand } from "../core/registry/CommandRegistry";
-import { registerKeybinding } from "../core/registry/KeybindingRegistry";
+import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/commands/MenuRegistry";
+import { registerMenuItems, registerTitleBarContribution } from "../core/registry/commands/MenuRegistry";
+import { registerCommand } from "../core/registry/commands/CommandRegistry";
+import { registerKeybinding } from "../core/registry/commands/KeybindingRegistry";
 import { compareVersions, versionGte } from "../core/utils/plugin/semverUtils";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../i18n";
@@ -282,7 +282,7 @@ export async function initPluginLoader(): Promise<void> {
 
   // #44：注册命令预激活钩子——CommandRegistry 执行命令前检查是否需要先激活延迟插件
   // 🔥 必须 await——否则钩子在 initPluginLoader 返回后才挂上，用户首次命令执行时钩子未就绪
-  const { setPreActivateHook } = await import("../core/registry/CommandRegistry");
+  const { setPreActivateHook } = await import("../core/registry/commands/CommandRegistry");
   setPreActivateHook(async (commandId: string) => {
     const pluginId = findDeferredByCommand(commandId);
     if (pluginId) await activatePlugin(pluginId);

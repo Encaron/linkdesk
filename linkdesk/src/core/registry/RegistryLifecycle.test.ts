@@ -9,15 +9,15 @@ import { describe, it, expect, beforeEach } from "vitest";
 
 /* ── 各注册表导入 ── */
 
-import { registerCommand, unregisterPluginCommands, getCommands } from "./CommandRegistry";
-import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "./KeybindingRegistry";
-import { registerMenuItems, MENU_SLOTS, unregisterPluginMenus } from "./MenuRegistry";
+import { registerCommand, unregisterPluginCommands, getCommands } from "./commands/CommandRegistry";
+import { registerKeybinding, unregisterPluginKeybindings, getKeybindings } from "./commands/KeybindingRegistry";
+import { registerMenuItems, MENU_SLOTS, unregisterPluginMenus } from "./commands/MenuRegistry";
 import { registerProtocol, unregisterPluginProtocols, listProtocols } from "./ProtocolRegistry";
 import { createLogChannel, unregisterPluginChannels, getLogChannels } from "../services/ui/LogChannel";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../services/ui/ThemeEngine";
 import { registerFileAssociation, unregisterPluginFileAssociations, getAssociationsForPlugin } from "../services/files/FileAssociationService";
 import { registerConfiguration, unregisterConfiguration, getPluginConfiguration, clearConfigurationRegistrations } from "./ConfigurationRegistry";
-import { ThemeRegistry } from "./ThemeRegistry";
+import { ThemeRegistry } from "./appearance/ThemeRegistry";
 
 const PLUGIN_ID = "test-plugin";
 

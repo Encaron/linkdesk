@@ -8,9 +8,9 @@
  */
 
 import i18n from "../../i18n";
-import { getCommands, executeCommand, type Command } from "../registry/CommandRegistry";
-import { ContextKeyService } from "../registry/ContextKeyService";
-import { openKeybindingsSettings, findKeybindingForCommand } from "../registry/KeybindingRegistry";
+import { getCommands, executeCommand, type Command } from "../registry/commands/CommandRegistry";
+import { ContextKeyService } from "../registry/commands/ContextKeyService";
+import { openKeybindingsSettings, findKeybindingForCommand } from "../registry/commands/KeybindingRegistry";
 import { QuickPickService } from "../services/ui/QuickPickService";
 
 export function showCommandPalette(): void {

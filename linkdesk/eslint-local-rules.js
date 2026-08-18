@@ -796,7 +796,7 @@ const noIpcListenerInEffect = {
 
 const PLUGIN_IMPORT_WHITELIST = new Set([
   // 纯类型 / 枚举
-  "@src/core/registry/MenuRegistry",       // MenuId 枚举
+  "@src/core/registry/commands/MenuRegistry",  // MenuId 枚举
   // 纯工具函数（无模块级状态，无副作用）
   "@src/core/pipeline/DataConverter",
   "@src/core/pipeline/DataDispatch",

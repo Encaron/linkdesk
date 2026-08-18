@@ -12,21 +12,21 @@
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration, inspectConfiguration, getUserSettings } from "../configuration/ConfigurationService";
 import { getMergedSchema, getConfigurationContributions, onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../registry/ConfigurationRegistry";
-import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../../registry/CommandRegistry";
+import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../../registry/commands/CommandRegistry";
 import type { CancellationToken } from "../../utils/CancellationToken"; // E5.7#97：commands:execute 槽位窄化
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
   findKeybindingForCommand, setKeybindingCaptureActive,
   keybindingResolver,
-} from "../../registry/KeybindingRegistry";
+} from "../../registry/commands/KeybindingRegistry";
 import { CoreEvents } from "../../react/events/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
 import { getAvailableThemes, getCurrentTheme } from "../ui/ThemeEngine";
-import { LanguageRegistry } from "../../registry/LanguageRegistry";
+import { LanguageRegistry } from "../../registry/languages/LanguageRegistry";
 import { confirm, alert } from "../ui/DialogService"; // E5#67
 import { shellEvents } from "../../react/events/ShellEvents"; // E5#68
-import { ContextKeyService } from "../../registry/ContextKeyService"; // E5#70
-import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/MenuRegistry"; // E5#69
+import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70
+import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/commands/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders, setActiveWorkspace, openFolder, addFolder, removeFolder, onDidChangeActiveWorkspace } from "../layout/WorkspaceService"; // E5#85 + E5.6#11.5-A
 import { pushToast, dismissToast, updateToast } from "../ui/toast";
@@ -486,7 +486,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "getKeybindingConflicts":
       return keybindingResolver.detectConflicts();
     case "registerKeybinding": {
-      const [binding] = args as [import("../../registry/KeybindingRegistry").Keybinding];
+      const [binding] = args as [import("../../registry/commands/KeybindingRegistry").Keybinding];
       registerKeybinding(binding);
       break;
     }

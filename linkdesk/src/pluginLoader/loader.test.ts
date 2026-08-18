@@ -10,9 +10,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath } from "./loader";
 import type { PluginManifest } from "../core/api/types";
-import { ThemeRegistry } from "../core/registry/ThemeRegistry";
-import { LanguageRegistry } from "../core/registry/LanguageRegistry";
-import { clearLangDefs, getLangDef } from "../core/registry/LangDefRegistry";
+import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
+import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
+import { clearLangDefs, getLangDef } from "../core/registry/languages/LangDefRegistry";
 
 // E5.7#95：测试夹具插件 ID——大写常量（linkdesk/no-plugin-id-hardcode 批准的常量通道）
 const TEST_PLUGIN_ID = "test-plugin";
