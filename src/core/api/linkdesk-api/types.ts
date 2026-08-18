@@ -1,0 +1,128 @@
+/**
+ * linkdesk-api 类型域——自 linkdesk-api.ts 拆出（E5.8#0d.10-9a）。
+ * 独立类型接口（非 LinkDeskAPI 成员）：LinkDeskCommand/LinkDeskTheme/LinkDeskLanguage/LinkDeskConfigSchema/
+ * PluginListEntry/PluginInstallResult/PluginInfoEntry/PluginListSubset/EnvInfo/FileDecoration/
+ * FileDecorationProvider/MenuItemDescriptor/NotificationHandle 13 接口 verbatim。
+ * DialogOpenOptions 保路径 re-export 留在聚合器（../../types/ipc/dialogs）。
+ * 依赖方向：types → ../types（PluginManifest）；被 10 个命名空间域文件 import（依赖基座，无反向）。
+ */
+
+import type { PluginManifest } from "../types";
+
+export interface LinkDeskCommand {
+  id: string;
+  title: string;
+  category?: string;
+}
+
+export interface LinkDeskTheme {
+  name: string;
+  type: "dark" | "light";
+  pluginId?: string;
+}
+
+export interface LinkDeskLanguage {
+  id: string;
+  label: string;
+  pluginId: string;
+}
+
+/** 配置 schema 中的单个属性定义 */
+export interface LinkDeskConfigSchema {
+  [key: string]: {
+    type: string;
+    default?: unknown;
+    description?: string;
+    enum?: string[];
+    enumDescriptions?: string[];
+  };
+}
+
+/** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
+ *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
+ *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。 */
+export interface PluginListEntry {
+  pluginId: string;
+  manifest: PluginListSubset;
+}
+
+/** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。
+ *  安装进度事件：events.on("plugin:installProgress", ({ stage, pluginId, message }) => ...)
+ *  stage: validating | copying | loading | done | error
+ *  E5.7#83：装卸广播（壳 loader → 唯一 Pool）：
+ *  events.on("plugin:installed", ({ pluginId, version, reason }) => ...) reason: install | reinstall
+ *  events.on("plugin:uninstalled", ({ pluginId, reason }) => ...) reason: uninstall */
+export interface PluginInstallResult {
+  success: boolean;
+  pluginId?: string;
+  version?: string;
+  needRestart?: boolean;
+  error?: string;
+}
+
+/** 禁用/卸载列表条目——loader getDisabledPluginInfo/getUninstalledPluginInfo 序列化形状（PluginListSubset 的再子集） */
+export interface PluginInfoEntry {
+  pluginId: string;
+  name: string;
+  description?: string;
+  version?: string;
+}
+
+/** list() 的 manifest 序列化子集——与 handlePluginsCall "list" 7 字段对齐 */
+export interface PluginListSubset {
+  name?: string;
+  description?: string;
+  version?: string;
+  core?: boolean;
+  author?: string;
+  statusBar?: PluginManifest["statusBar"];
+  contributes?: PluginManifest["contributes"];
+}
+
+/** 环境信息——env.get() 返回（主进程 env-handlers 组装） */
+export interface EnvInfo {
+  appDataDir: string;
+  pluginsRootDir: string;
+  appPluginsDir: string;
+  pluginDataDir?: string;
+  pluginCacheDir?: string;
+  pluginExportsDir?: string;
+}
+
+/** 文件装饰——E5.7#60 池内本地注册表。形状对标插件 API 契约 §3.24 */
+export interface FileDecoration {
+  badge?: string;
+  tooltip?: string;
+  color?: string;
+  propagate?: boolean;
+}
+
+/** 文件装饰提供方——插件注册（registerProvider）。同步查询契约：跳过返回 Promise 的 provideDecoration */
+export interface FileDecorationProvider {
+  provideDecoration(uri: string): FileDecoration | null | undefined;
+  onDidChangeFileDecorations?(cb: (uris: string[]) => void): () => void;
+}
+
+/** 菜单项描述——menu.getItems() 返回（壳侧 when 过滤 + t() 翻译 + 快捷键解析后） */
+export interface MenuItemDescriptor {
+  command: string;
+  label?: string;
+  group?: string;
+  order?: number;
+  when?: string;
+  /** 壳侧解析后的命令标题（E5.7#14 显示文本铁律） */
+  title?: string;
+  /** 已解析快捷键 "ctrl+shift+p" 形式 */
+  shortcut?: string;
+  children?: Array<string | MenuItemDescriptor>;
+}
+
+/** 进度通知句柄——progress=true 时 show() 返回 */
+export interface NotificationHandle {
+  /** 更新进度消息 */
+  update(message: string): Promise<void>;
+  /** 完成——关闭进度通知，可选弹完成 toast */
+  finish(message?: string): Promise<void>;
+  /** 取消——直接关闭，不弹完成 toast */
+  cancel(): Promise<void>;
+}
