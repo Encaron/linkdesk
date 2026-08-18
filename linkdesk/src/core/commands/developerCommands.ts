@@ -6,7 +6,7 @@
 import { registerCommand } from "../registry/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../registry/MenuRegistry";
 import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
-import { QuickPickService } from "../registry/QuickPickService"; // E5.5#7-p15
+import { QuickPickService } from "../services/ui/QuickPickService"; // E5.5#7-p15
 
 export function registerDeveloperCommands(): void {
   const commands = [

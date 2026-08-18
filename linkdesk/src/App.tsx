@@ -9,7 +9,7 @@ import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTab
 import type { PoolTabAction } from "./core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
 import { getAllLeafGroupIds } from "./core/utils/splitTree";
-import { QuickPickService } from "./core/registry/QuickPickService";
+import { QuickPickService } from "./core/services/ui/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "./core/services/ui/toast";
 // E5.7#17：Dialog 聪慧→哑桥——桥接 renderer 注册（DialogService 零改动）

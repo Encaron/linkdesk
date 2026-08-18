@@ -29,7 +29,7 @@ import type { SplitNode } from "../core/utils/splitTree"; // E5.6#16：从分屏
 // E5.6#16.5：填充 PoolTab 新字段——图标/固定/关闭行为/单例
 import { getViewPlugin, getViewPlugins, getIconLocation, onDidRegister, onDidUnregister, getTabBehavior, getTabCreatableViews, getStatusBarContributions } from "../pluginLoader/viewRegistry";
 // E5.7#8：状态栏三源合并——动态项 + 变化订阅（壳 StatusBar.tsx 同款）
-import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/registry/StatusBarService";
+import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/services/ui/StatusBarService";
 // E5.7#8：Chord 提示（CUSTOM_EVENTS）+ 事件条目（statusbar:update/tab:focused）+ 通知中心（toast 存储）
 import { CUSTOM_EVENTS } from "../core/react/CoreEvents";
 import { shellEvents, type StatusBarEntry } from "../core/react/ShellEvents";

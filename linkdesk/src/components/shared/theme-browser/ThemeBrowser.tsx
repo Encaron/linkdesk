@@ -19,7 +19,7 @@ import {
 } from "../../../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../../../core/registry/ThemeRegistry"; // E3.5 #CP23
 import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
-import { QuickPickService } from "../../../core/registry/QuickPickService"; // E5.5#7-p15
+import { QuickPickService } from "../../../core/services/ui/QuickPickService"; // E5.5#7-p15
 
 /**
  * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。

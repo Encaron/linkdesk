@@ -21,7 +21,7 @@ export * from "./registry/LangDefRegistry";
 export * from "./registry/LanguageRegistry";
 export * from "./registry/MenuRegistry";
 export * from "./registry/ProtocolRegistry";
-export * from "./registry/StatusBarService";
+export * from "./services/ui/StatusBarService";
 export * from "./registry/ThemeRegistry";
 export * from "./registry/ClipboardProviderRegistry";
 
