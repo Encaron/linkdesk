@@ -26,7 +26,7 @@ import { registerProtocol } from './protocol.js';
 import { fileService } from './services/file-service.js';
 import { WindowManager } from './window-manager.js';
 import { syncKeybindings } from './keyboard-router.js'; // E5.5#7-p6
-import { IpcBridge } from './ipc-bridge.js';
+import { IpcBridge } from './ipc/ipc-bridge.js';
 import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './crash-recovery.js'; // E5.7#36
 import { APP_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
 import { IPC } from './ipc/channels.js';

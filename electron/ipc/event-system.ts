@@ -6,16 +6,16 @@
  * contextBridge 代理回调不复存在 subscriptions 中——直接在 ipcRenderer 监听器里调用。
  *
  * 使用：
- *   import { createEventSystem } from './event-system';
+ *   import { createEventSystem } from './ipc/event-system';
  *   const { on, emit } = createEventSystem(ipcRenderer, {
  *     logPrefix: 'preload-pool',
  *     extraHandlers: { [IPC.theme.changed]: (payload) => { ... } },
  *   });
  */
 import type { IpcRenderer, IpcRendererEvent } from 'electron';
-import { IPC } from './ipc/channels';
+import { IPC } from './channels';
 // E5.7#97：plugin:push 信封归口 src/core/types/ipc/events.ts（原本地 PluginPushData 移走）
-import type { PluginPushEnvelope } from '../src/core/types/ipc/events';
+import type { PluginPushEnvelope } from '../../src/core/types/ipc/events';
 
 type EventCallback = (payload: unknown) => void;
 
