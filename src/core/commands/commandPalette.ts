@@ -11,7 +11,7 @@ import i18n from "../../i18n";
 import { getCommands, executeCommand, type Command } from "../registry/CommandRegistry";
 import { ContextKeyService } from "../registry/ContextKeyService";
 import { openKeybindingsSettings, findKeybindingForCommand } from "../registry/KeybindingRegistry";
-import { QuickPickService } from "../registry/QuickPickService";
+import { QuickPickService } from "../services/ui/QuickPickService";
 
 export function showCommandPalette(): void {
   const cmds = getCommands().filter((cmd) => ContextKeyService.matches(cmd.when));

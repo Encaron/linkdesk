@@ -23,7 +23,7 @@ import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "..
 import { unregisterPluginChannels } from "../core/services/ui/LogChannel";
 import { unregisterPluginThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/ThemeRegistry";
-import { unregisterStatusBarPlugin } from "../core/registry/StatusBarService";
+import { unregisterStatusBarPlugin } from "../core/services/ui/StatusBarService";
 import { unregisterPluginLanguageBundles } from "./i18nResources";
 import type { PluginManifest } from "../core/api/types";
 
