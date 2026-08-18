@@ -12,7 +12,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, fireEvent, cleanup, act, screen } from "@testing-library/react";
 import QuickPickHost, { pluginItemToDto } from "./QuickPickHost";
-import type { PluginQuickPickRequest } from "../../../core/types/poolQuickPick";
+import type { PluginQuickPickRequest } from "../../../core/types/pool/poolQuickPick";
 
 /* ── mock window.linkdesk.quickPickHost —— preload-pool 同款形状 ── */
 

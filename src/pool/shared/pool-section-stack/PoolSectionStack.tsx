@@ -11,7 +11,7 @@
  */
 
 import { type ReactNode, Fragment, useState, useRef, useCallback, useEffect } from "react";
-import type { SidebarViewMeta } from "../../../core/types/poolLayout";
+import type { SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口（原本地定义移走）
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import SidebarSection from "../../../components/shared/sidebar-section/SidebarSection";

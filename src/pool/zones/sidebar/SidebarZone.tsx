@@ -37,7 +37,7 @@ import type { ReactNode } from "react";
 import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot"; // E5.7#11：随侧栏组件迁 shared/
 import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack"; // E5.7#11：随侧栏组件迁 shared/
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
-import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/poolLayout";
+import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 // E5.6#11-fix4：header 右键菜单——壳 ContextMenu 聪慧组件（池内用法同 GroupTabBar）
 import ContextMenu from "../../../components/shared/context-menu/ContextMenu";
 import "./SidebarZone.css";

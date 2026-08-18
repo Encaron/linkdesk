@@ -61,7 +61,7 @@ import { createEventSystem, listenDirect } from './event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
 import { IpcRelay } from './ipc-relay';
 // ── E5.7#97：wire 契约归口——type import 放行（Path B 只禁 value import，决策点 1）──
-import type { PoolLayout } from '../src/core/types/poolLayout';
+import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type {
   ConfigurationChangedPayload,
   ThemeChangedPayload,
@@ -91,7 +91,7 @@ ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
 // ── E5.7#15：pool:quickpick 缓冲回放——QuickPick 哑渲染数据可能在 QuickPickHost mount 前到达 ──
 // 对标 pool:layout 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（浮动层是单例态——open/close 全量替换，旧数据回放无意义）。
-// DTO 形状与 src/core/types/poolQuickPick.ts 对齐——preload 不 import src（构建边界）。
+// DTO 形状与 src/core/types/pool/poolQuickPick.ts 对齐——preload 不 import src（构建边界）。
 type PoolQuickPickDataShape = { open: boolean; placeholder?: string; prefix?: string; items?: unknown[] };
 const _quickPickBuffer: PoolQuickPickDataShape[] = [];
 let _quickPickCallback: ((data: PoolQuickPickDataShape) => void) | null = null;
@@ -109,7 +109,7 @@ ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickDataShape) => {
 // ── E5.7#16：pool:toast 缓冲回放——Toast 哑渲染数据可能在 ToastHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（全量快照语义——新快照整体取代旧快照，回放旧数据无意义）。
-// DTO 形状与 src/core/types/poolToast.ts 对齐——preload 不 import src（构建边界）。
+// DTO 形状与 src/core/types/pool/poolToast.ts 对齐——preload 不 import src（构建边界）。
 type PoolToastDataShape = { toasts: unknown[]; suppressed: boolean };
 const _toastBuffer: PoolToastDataShape[] = [];
 let _toastCallback: ((data: PoolToastDataShape) => void) | null = null;
@@ -127,7 +127,7 @@ ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastDataShape) => {
 // ── E5.7#17：pool:dialog 缓冲回放——Dialog 哑渲染数据可能在 DialogHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（单例态——open/close 全量替换，旧数据回放无意义）。
-// DTO 形状与 src/core/types/poolDialog.ts 对齐——preload 不 import src（构建边界）。
+// DTO 形状与 src/core/types/pool/poolDialog.ts 对齐——preload 不 import src（构建边界）。
 type PoolDialogDataShape = { open: boolean; title?: string; message?: string; confirmLabel?: string; cancelLabel?: string; isAlert?: boolean };
 const _dialogBuffer: PoolDialogDataShape[] = [];
 let _dialogCallback: ((data: PoolDialogDataShape) => void) | null = null;
@@ -152,7 +152,7 @@ ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogDataShape) => {
 // （2026-08-15 用户验收实证）——插件最终收到结构化副本（VS Code IPC 同款语义）。
 // 缓冲回放（硬约束 20）：show() 先于 QuickPickHost mount（插件入口模块早执行）→ 入缓冲，
 // registerHost 时按序回放（last-wins 语义在池侧仲裁——旧请求被顶掉 settle(null)）。
-// 形状与 src/core/types/poolQuickPick.ts 的 PluginQuickPickOptions 对齐——preload 不 import src。
+// 形状与 src/core/types/pool/poolQuickPick.ts 的 PluginQuickPickOptions 对齐——preload 不 import src。
 type PluginQuickPickOptionsShape = { items: unknown[]; placeholder?: string; prefix?: string };
 type PluginQuickPickSettle = (key: string | null) => void;
 type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, settle: PluginQuickPickSettle) => void;

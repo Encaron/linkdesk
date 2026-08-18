@@ -15,7 +15,7 @@
 import { useState, useEffect, useRef, StrictMode, useTransition } from "react";
 import ReactDOM from "react-dom/client";
 import PoolZoneShell from "./PoolZoneShell";
-import type { PoolLayout } from "../core/types/poolLayout";
+import type { PoolLayout } from "../core/types/pool/poolLayout";
 // E5.6#11 fix：池独立 WebContentsView——需加载基础 CSS（变量/字体/图标/间距）
 import "../index.css";
 import "@vscode/codicons/dist/codicon.css";

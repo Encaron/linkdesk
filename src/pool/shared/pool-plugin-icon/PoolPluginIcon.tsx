@@ -14,7 +14,7 @@ import {
   File, Folder, FolderOpen, FolderTree, Package, ShoppingBag,
   Monitor, Settings, BookOpen, BarChart3, Lightbulb, Lock,
 } from "lucide-react";
-import type { IconBarIcon } from "../../../core/types/poolLayout";
+import type { IconBarIcon } from "../../../core/types/pool/poolLayout";
 
 /** E5#100: Lucide 图标名 → 组件映射（与壳 PluginIcon LUCIDE_MAP 同步）。tree-shakeable。 */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any

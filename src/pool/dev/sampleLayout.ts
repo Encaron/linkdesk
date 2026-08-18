@@ -15,10 +15,10 @@
  * iconClass 格式照 usePoolSync getNotifIconClass。
  */
 
-import type { PoolLayout } from "../../core/types/poolLayout";
-import type { PoolToastItem } from "../../core/types/poolToast";
-import type { PoolQuickPickData } from "../../core/types/poolQuickPick";
-import type { PoolDialogData } from "../../core/types/poolDialog";
+import type { PoolLayout } from "../../core/types/pool/poolLayout";
+import type { PoolToastItem } from "../../core/types/pool/poolToast";
+import type { PoolQuickPickData } from "../../core/types/pool/poolQuickPick";
+import type { PoolDialogData } from "../../core/types/pool/poolDialog";
 
 /** 菜单组样例——titlebar 下拉与 ☰ 汉堡共用（titlebar 忽略 shortcut，汉堡显示） */
 function buildSampleMenuGroups() {
