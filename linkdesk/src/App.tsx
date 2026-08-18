@@ -8,7 +8,7 @@ import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监
 import { useTabManager, allTabs, syncCountersAfterRestore } from "./hooks/useTabManager";
 import type { PoolTabAction } from "./core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import type { CreateTabOptions } from "./core/api/types"; // E5.7#98：tab:create wire 载荷窄化目标类型
-import { getAllLeafGroupIds } from "./hooks/splitTree";
+import { getAllLeafGroupIds } from "./core/utils/splitTree";
 import { QuickPickService } from "./core/registry/QuickPickService";
 // E5.7#16：Toast 聪慧→哑桥——序列化推池 + 动作重解析
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "./core/services/ui/toast";
@@ -37,7 +37,7 @@ import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/service
 import { initAll } from "./core/services/bootstrap/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/configuration/ConfigurationApplier";
-import { FALLBACK_PLUGIN_ID } from "./utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "./core/utils/fallbackPluginId";
 import { usePoolSync } from "./hooks/usePoolSync";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */

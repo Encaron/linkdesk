@@ -11,7 +11,7 @@
  * 兼容性：池忽略不认识的字段，壳加字段不破坏旧池。
  */
 
-import type { SplitNode } from "../../hooks/splitTree";
+import type { SplitNode } from "../../core/utils/splitTree";
 
 // ── E5.6#11a ──
 

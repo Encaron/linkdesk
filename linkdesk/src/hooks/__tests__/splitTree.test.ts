@@ -15,7 +15,7 @@ import {
   migrateLayout,
   validateTree,
   type SplitNode,
-} from "../splitTree";
+} from "../../core/utils/splitTree";
 
 /* ── 测试夹具 ── */
 

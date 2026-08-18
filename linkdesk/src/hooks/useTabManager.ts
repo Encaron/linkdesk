@@ -20,12 +20,12 @@ import {
   removeLeafFromTree,
   migrateLayout,
   updateBranchSizesByIndex,
-} from "./splitTree";
+} from "../core/utils/splitTree";
 import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/CoreEvents";
-import { FALLBACK_PLUGIN_ID } from "../utils/fallbackPluginId";
-import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, syncCountersAfterRestore } from "./tabIdentity";
+import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
+import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, syncCountersAfterRestore } from "../core/utils/tabIdentity";
 
 /* ── 类型 ── */
 
@@ -86,7 +86,7 @@ export function findGroup(state: TabState, tabId: string): TabGroup | undefined 
 /* ── 默认值工厂 ── */
 
 /** 重新导出 tabIdentity 的计数器工具（测试兼容） */
-export { resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./tabIdentity";
+export { resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "../core/utils/tabIdentity";
 
 /** type 可能是内置 TabType 或自定义 pluginId——创建 Tab 时统一对待 */
 export function createTabDefaults(

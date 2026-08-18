@@ -8,7 +8,7 @@
 import React from "react";
 import type { ExplorerItem, FileDecoration } from "../services/FileTreeModel";
 import { getIconResolver } from "../services/FileIconResolver";
-import { useClickPreview } from "@src/hooks/useClickPreview";
+import { useClickPreview } from "@src/pool/hooks/useClickPreview";
 import { InlineInput } from "@src/components/shared/inline-input/InlineInput";
 
 interface FileTreeNodeProps {

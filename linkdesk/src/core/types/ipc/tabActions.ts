@@ -14,7 +14,7 @@
  * 不经本通道——splitTab.direction 只有池侧拖拽归一化后的 horizontal/vertical 两值。
  */
 
-import type { DropZone } from "../../../hooks/tabDragTypes";
+import type { DropZone } from "../../../pool/hooks/tabDragTypes";
 
 /** 分屏方向——池侧 onDropSplit 已从 drop zone 归一化（MainZone:382） */
 export type TabSplitDirection = "horizontal" | "vertical";
