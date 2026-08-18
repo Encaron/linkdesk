@@ -3,14 +3,14 @@
  * E5#44-3：从 coreCommands.ts 提取。
  */
 
-import { registerCommand } from "../registry/commands/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS } from "../registry/commands/MenuRegistry";
-import { factorySlots } from "../services/bootstrap/FactorySlots";
-import { getCallbacks } from "./CoreCallbacks";
+import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
+import { factorySlots } from "../../services/bootstrap/FactorySlots";
+import { getCallbacks } from "../infra/CoreCallbacks";
 // E5.5#7-p15：CUSTOM_EVENTS.SHOW_THEME_BROWSER / SHOW_LANGUAGE_PICKER 不再使用——走 QuickPickService
-import { openKeybindingsSettings } from "../registry/commands/KeybindingRegistry";
-import { requestSettingsGroup, requestScrollToSetting } from "../registry/ConfigurationRegistry";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
+import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegistry";
+import { requestSettingsGroup, requestScrollToSetting } from "../../registry/ConfigurationRegistry";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 
 export function registerSettingsCommands(): void {
   const commands = [
@@ -33,7 +33,7 @@ export function registerSettingsCommands(): void {
       handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
-        const { showThemePicker } = await import("../../components/shared/theme-browser/ThemeBrowser");
+        const { showThemePicker } = await import("../../../components/shared/theme-browser/ThemeBrowser");
         showThemePicker(ctx?.pluginId);
       },
     },
@@ -43,7 +43,7 @@ export function registerSettingsCommands(): void {
       category: "首选项",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_LANGUAGE_PICKER
-        const { showLanguagePicker } = await import("../../components/shared/language-picker/LanguagePicker");
+        const { showLanguagePicker } = await import("../../../components/shared/language-picker/LanguagePicker");
         showLanguagePicker();
       },
     },

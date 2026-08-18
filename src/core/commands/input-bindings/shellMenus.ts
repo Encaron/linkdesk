@@ -3,10 +3,10 @@
  * E5#44-6：从 coreCommands.ts 提取。菜单项通过命令 ID 引用命令——命令由各自模块注册。
  */
 
-import { registerCommand } from "../registry/commands/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS } from "../registry/commands/MenuRegistry";
-import { shellEvents } from "../react/events/ShellEvents";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
+import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
+import { shellEvents } from "../../react/events/ShellEvents";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 
 export function registerShellMenus(): void {
   // ── ☰ 菜单栏 ──

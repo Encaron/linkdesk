@@ -7,11 +7,11 @@
  * 快捷键 capital 化也在壳侧完成——池 renderKeybinding 零变换）。
  */
 
-import i18n from "../../i18n";
-import { getCommands, executeCommand, type Command } from "../registry/commands/CommandRegistry";
-import { ContextKeyService } from "../registry/commands/ContextKeyService";
-import { openKeybindingsSettings, findKeybindingForCommand } from "../registry/commands/KeybindingRegistry";
-import { QuickPickService } from "../services/ui/QuickPickService";
+import i18n from "../../../i18n";
+import { getCommands, executeCommand, type Command } from "../../registry/commands/CommandRegistry";
+import { ContextKeyService } from "../../registry/commands/ContextKeyService";
+import { openKeybindingsSettings, findKeybindingForCommand } from "../../registry/commands/KeybindingRegistry";
+import { QuickPickService } from "../../services/ui/QuickPickService";
 
 export function showCommandPalette(): void {
   const cmds = getCommands().filter((cmd) => ContextKeyService.matches(cmd.when));

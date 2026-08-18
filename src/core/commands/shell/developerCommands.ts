@@ -3,10 +3,10 @@
  * E5#44-4：从 coreCommands.ts 提取。
  */
 
-import { registerCommand } from "../registry/commands/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS } from "../registry/commands/MenuRegistry";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
-import { QuickPickService } from "../services/ui/QuickPickService"; // E5.5#7-p15
+import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import { QuickPickService } from "../../services/ui/QuickPickService"; // E5.5#7-p15
 
 export function registerDeveloperCommands(): void {
   const commands = [

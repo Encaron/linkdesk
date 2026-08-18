@@ -3,9 +3,9 @@
  * E5#44-2：从 coreCommands.ts 提取。
  */
 
-import { registerCommand } from "../registry/commands/CommandRegistry";
-import { getCallbacks } from "./CoreCallbacks";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
+import { registerCommand } from "../../registry/commands/CommandRegistry";
+import { getCallbacks } from "../infra/CoreCallbacks";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 
 export function registerTabCommands(): void {
   const commands = [

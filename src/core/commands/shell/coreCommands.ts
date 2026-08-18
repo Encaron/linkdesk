@@ -10,18 +10,18 @@
  * handler 延迟读取 getCallbacks() 避免闭包过期。命令只在首次调用时注册一次。
  */
 
-import { registerCommand, type Command } from "../registry/commands/CommandRegistry";
-import { registerMenuItems, MENU_SLOTS, type MenuId } from "../registry/commands/MenuRegistry";
-import { APP_PLUGIN_ID } from "../services/plugins/PluginStateService";
-import { CUSTOM_EVENTS } from "../react/events/CoreEvents";
-import i18n from "../../i18n";
-import { getWorkspaceLayout } from "../services/layout/LayoutService"; // E3f #56
-import { getUserSettings } from "../services/configuration/ConfigurationService"; // E3f #56
+import { registerCommand, type Command } from "../../registry/commands/CommandRegistry";
+import { registerMenuItems, MENU_SLOTS, type MenuId } from "../../registry/commands/MenuRegistry";
+import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import { CUSTOM_EVENTS } from "../../react/events/CoreEvents";
+import i18n from "../../../i18n";
+import { getWorkspaceLayout } from "../../services/layout/LayoutService"; // E3f #56
+import { getUserSettings } from "../../services/configuration/ConfigurationService"; // E3f #56
 
 // E5#44-1：Callbacks 类型 + 注册函数提取到 CoreCallbacks.ts
-export type { CoreCallbacks } from "./CoreCallbacks";
-export { updateCoreCallbacks } from "./CoreCallbacks";
-import { getCallbacks, isRegistered, setRegistered } from "./CoreCallbacks";
+export type { CoreCallbacks } from "../infra/CoreCallbacks";
+export { updateCoreCallbacks } from "../infra/CoreCallbacks";
+import { getCallbacks, isRegistered, setRegistered } from "../infra/CoreCallbacks";
 
 /* ── 命令定义 ── */
 
@@ -202,12 +202,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { showConfirm } = await import("../services/ui/DialogService");
+      const { showConfirm } = await import("../../services/ui/DialogService");
       const confirmed = await showConfirm(
         i18n.t("确定要将「{{key}}」重置为默认值吗？", { key })
       );
       if (!confirmed) return;
-      const { resetConfigurationValue } = await import("../services/configuration/ConfigurationService");
+      const { resetConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       await resetConfigurationValue(key);
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -222,9 +222,9 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { writeClipboardText } = await import("../services/ui/ClipboardService");
+      const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(key);
-      const { pushToast, TOAST_TTL_INFO } = await import("../services/ui/toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
       pushToast({ message: i18n.t("已复制：") + key, ttl: TOAST_TTL_INFO });
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -238,12 +238,12 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
       const ctx = args[0] as { settingKey?: string } | undefined;
       const key = ctx?.settingKey;
       if (!key) return;
-      const { getConfigurationValue } = await import("../services/configuration/ConfigurationService");
+      const { getConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const value = getConfigurationValue(key);
       const json = JSON.stringify({ [key]: value }, null, 2);
-      const { writeClipboardText } = await import("../services/ui/ClipboardService");
+      const { writeClipboardText } = await import("../../services/ui/ClipboardService");
       writeClipboardText(json);
-      const { pushToast, TOAST_TTL_INFO } = await import("../services/ui/toast");
+      const { pushToast, TOAST_TTL_INFO } = await import("../../services/ui/toast");
       pushToast({ message: i18n.t("已复制为 JSON"), ttl: TOAST_TTL_INFO });
     },
     menuId: MENU_SLOTS.SettingItemGear,
@@ -258,7 +258,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "放大",
     category: "视图",
     handler: async () => {
-      const { getConfigurationValue, setConfigurationValue } = await import("../services/configuration/ConfigurationService");
+      const { getConfigurationValue, setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
       await setConfigurationValue("window.zoomLevel", Math.min(8, current + 1), "user");
     },
@@ -268,7 +268,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "缩小",
     category: "视图",
     handler: async () => {
-      const { getConfigurationValue, setConfigurationValue } = await import("../services/configuration/ConfigurationService");
+      const { getConfigurationValue, setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       const current = Number(getConfigurationValue<number>("window.zoomLevel")) || 0;
       await setConfigurationValue("window.zoomLevel", Math.max(-8, current - 1), "user");
     },
@@ -278,7 +278,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     title: "重置缩放",
     category: "视图",
     handler: async () => {
-      const { setConfigurationValue } = await import("../services/configuration/ConfigurationService");
+      const { setConfigurationValue } = await import("../../services/configuration/ConfigurationService");
       await setConfigurationValue("window.zoomLevel", 0, "user");
     },
   },
@@ -292,14 +292,14 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
 import { registerDeveloperCommands } from "./developerCommands";
-import { registerShellMenus } from "./shellMenus";
-import { registerQuickPickCommand } from "./quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
-import { showCommandPalette } from "./commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
+import { registerShellMenus } from "../input-bindings/shellMenus";
+import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
+import { showCommandPalette } from "../palette/commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
 
 // E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
-import { clipboardProviders } from "../registry/ClipboardProviderRegistry";
-import { ContextKeyService } from "../registry/commands/ContextKeyService";
-import { isEditableElementFocused } from "../registry/commands/KeybindingRegistry";
+import { clipboardProviders } from "../../registry/ClipboardProviderRegistry";
+import { ContextKeyService } from "../../registry/commands/ContextKeyService";
+import { isEditableElementFocused } from "../../registry/commands/KeybindingRegistry";
 
 /** 解析当前焦点上下文——遍历已注册 Provider，找第一个 ContextKey 为 true 的 */
 function resolveFocusContext(): string | undefined {
@@ -397,5 +397,5 @@ export function ensureCoreCommands(): void {
 }
 
 // E5#44-5：快捷键定义提取到 shellKeybindings.ts
-export { CORE_KEYBINDINGS, ensureCoreKeybindings } from "./shellKeybindings";
+export { CORE_KEYBINDINGS, ensureCoreKeybindings } from "../input-bindings/shellKeybindings";
 

@@ -24,7 +24,7 @@ import type { PluginManifest, LangDefContribution } from "../src/core/api/types.
 import { registerLangDef, clearLangDefs } from "../src/core/registry/languages/LangDefRegistry.js";
 import { clearProtocols } from "../src/core/registry/ProtocolRegistry.js";
 import { registerFileAssociation, clearFileAssociations } from "../src/core/services/files/FileAssociationService.js";
-import { ensureBuiltinProtocols } from "../src/core/commands/registerBuiltinProtocols.js";
+import { ensureBuiltinProtocols } from "../src/core/commands/infra/registerBuiltinProtocols.js";
 import { IPC } from './ipc/channels.js';
 
 /** 插件根目录——dev 用项目根，packaged 用 extraResources 落点 */

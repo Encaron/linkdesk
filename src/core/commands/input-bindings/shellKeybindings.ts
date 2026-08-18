@@ -3,7 +3,7 @@
  * E5#44-5：从 coreCommands.ts 提取。
  */
 
-import { registerKeybinding } from "../registry/commands/KeybindingRegistry";
+import { registerKeybinding } from "../../registry/commands/KeybindingRegistry";
 
 /** 壳级内置快捷键——新快捷键只需加一条到这里。 */
 export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unknown[] }> = [
