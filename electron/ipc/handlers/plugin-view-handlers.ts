@@ -8,8 +8,8 @@
  */
 
 import { app, ipcMain, BrowserWindow } from 'electron';
-import type { WindowManager } from '../windows/window-manager.js'; // E5.6#8d
-import { IPC } from './channels.js';
+import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
+import { IPC } from '../channels.js';
 
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;

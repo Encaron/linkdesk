@@ -11,14 +11,14 @@
  */
 
 import { ipcMain } from 'electron';
-import { getLangDef } from '../../src/core/registry/languages/LangDefRegistry.js';
+import { getLangDef } from '../../../src/core/registry/languages/LangDefRegistry.js';
 import {
   listProtocols,
   getActiveProtocolId,
   setActiveProtocol,
-} from '../../src/core/registry/ProtocolRegistry.js';
-import { getPluginFor } from '../../src/core/services/files/FileAssociationService.js';
-import { IPC } from './channels.js';
+} from '../../../src/core/registry/ProtocolRegistry.js';
+import { getPluginFor } from '../../../src/core/services/files/FileAssociationService.js';
+import { IPC } from '../channels.js';
 
 let _registered = false;
 

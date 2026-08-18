@@ -6,9 +6,9 @@
  */
 
 import { dialog, ipcMain } from 'electron';
-import { IPC } from './channels.js';
+import { IPC } from '../channels.js';
 // E5.7#97：DialogOpenOptions 归口 src/core/types/ipc/dialogs.ts（与 linkdesk-api 同源——原双份手工对齐）
-import type { DialogOpenOptions } from '../../src/core/types/ipc/dialogs';
+import type { DialogOpenOptions } from '../../../src/core/types/ipc/dialogs';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
 let _registered = false;

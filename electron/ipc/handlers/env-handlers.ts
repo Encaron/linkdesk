@@ -4,8 +4,8 @@
  */
 
 import { ipcMain } from 'electron';
-import { envService } from '../services/env-service.js';
-import { IPC } from './channels.js';
+import { envService } from '../../services/env-service.js';
+import { IPC } from '../channels.js';
 
 // E5.7#36：壳崩重建复用本函数——无状态 handler，IPC 通道只注册一次
 let _registered = false;

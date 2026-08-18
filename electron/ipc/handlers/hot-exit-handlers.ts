@@ -13,7 +13,7 @@ import { ipcMain, app } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { IPC } from './channels.js';
+import { IPC } from '../channels.js';
 
 // E5.7#36：无状态 handler——IPC 通道只注册一次（壳崩重建 createWindow 会再次经过）
 let _registered = false;
