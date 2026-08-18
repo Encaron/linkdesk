@@ -8,8 +8,10 @@
  * 结构：顶部搜索栏 + 左侧分组树 + 右侧设置表单。
  * 核心无知原则：Settings Editor 不知道有哪些设置项——全部从 ConfigurationRegistry 派生。
  *
- * 🔥 E5.5#7 多 WebView 改造：所有数据访问走 window.linkdesk.configuration.* IPC，
- *    零 import @src/core（壳/插件 WebView 通用）。设置插件 = 保姆插件——只消费大厅桌子。
+ * 🔥 E5.5#7 多 WebView 改造：数据访问走 window.linkdesk.configuration.* IPC（壳/插件 WebView 通用）。
+ *    校正（E5.8#0d.5）：非零 import @src/core——窄引用例外：useConfigurationValueIpc（IPC 响应式取值）、
+ *    MENU_SLOTS（菜单槽常量）、getFilePath（"以 JSON 打开"需解析 settings.json 真实路径）。
+ *    设置插件 = 保姆插件——配置读写只消费大厅桌子，不直连核心服务。
  */
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
