@@ -14,7 +14,7 @@
  *   归一后：所有 fs 操作走 FileService——不存在"A 写 B 不知道"。
  */
 
-import { normalizePath } from "../../utils/pathUtils";
+import { normalizePath } from "../../utils/path/pathUtils";
 import { reportError } from "../bootstrap/ErrorService";
 
 /* ── 类型 ── */

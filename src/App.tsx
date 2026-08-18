@@ -37,7 +37,7 @@ import { initIpcBridgeHandler, unregisterIpcBridgeHandler } from "./core/service
 import { initAll } from "./core/services/bootstrap/AppInitializer"; // E5#107：启动管线——可测试
 import { mountGlobalKeybindings, initUserKeybindings } from "./core/registry/KeybindingRegistry";
 import { applyConfiguration } from "./core/services/configuration/ConfigurationApplier";
-import { FALLBACK_PLUGIN_ID } from "./core/utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "./core/utils/plugin/fallbackPluginId";
 import { usePoolSync } from "./hooks/usePoolSync";
 
 /* ── 强调色应用（模块级 helper——init + onDidChangeConfiguration 共用） ── */

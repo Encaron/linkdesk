@@ -15,7 +15,7 @@ import * as path from 'path';
 import * as fs from 'fs';
 import { APP_SCHEME } from './constants';
 import { scanPluginSubdirs } from './services/plugin-file-service.js';
-import { resolveLinkdeskPath } from '../src/core/utils/linkdeskProtocolPath.js';
+import { resolveLinkdeskPath } from '../src/core/utils/path/linkdeskProtocolPath.js';
 
 /** E5#114d 诊断：写入文件而非 console.log（生产环境 stdout 不可见） */
 function diag(msg: string): void {
@@ -61,7 +61,7 @@ export function registerProtocol(): void {
     // 提取路径部分（去掉 "linkdesk://"）
     const urlPath = request.url.replace(new RegExp(`^${APP_SCHEME}://`), "");
 
-    // 路径解析——E5.7#82：抽到 src/core/utils/linkdeskProtocolPath.ts 纯函数
+    // 路径解析——E5.7#82：抽到 src/core/utils/path/linkdeskProtocolPath.ts 纯函数
     // （穿越检查 + 子目录扫描 + 存在检查，vitest 实证 E6 打包格式的 chunk 命中）
     const resolved = resolveLinkdeskPath(pluginsDir, scanPluginSubdirs(pluginsDir), urlPath);
     if (!resolved.ok) {

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import {
   resetPluginCounter,
   resetFallbackCounter,

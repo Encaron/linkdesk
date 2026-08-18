@@ -20,7 +20,7 @@ import { ViewContainerService } from "../core/services/layout/ViewContainerServi
 import type { ViewDescriptor } from "../core/services/layout/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
 import { layoutEngine } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
-import { getAssetPath } from "../core/utils/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
+import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getMenuItems, MENU_SLOTS, getTitleBarContributions, type MenuItem } from "../core/registry/MenuRegistry"; // E5.7#5/#6：菜单栏序列化（titlebar + 汉堡）
 import { getCommand } from "../core/registry/CommandRegistry"; // E5.7#5：菜单项 label 回退 command.title
 import { getKeybindings } from "../core/registry/KeybindingRegistry"; // E5.7#6：汉堡菜单快捷键显示
@@ -34,7 +34,7 @@ import { getDynamicStatusBarItems, onDidChangeStatusBar } from "../core/services
 import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import { shellEvents, type StatusBarEntry } from "../core/react/events/ShellEvents";
 import { subscribeToasts, dismissToast, getToasts, setToastsSuppressed, type Toast } from "../core/services/ui/toast";
-import { resolvePluginIcon } from "../core/utils/iconUtils";
+import { resolvePluginIcon } from "../core/utils/plugin/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
 import { isShellRenderedTab } from "../core/utils/tabIdentity";
 

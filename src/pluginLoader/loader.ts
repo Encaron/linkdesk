@@ -60,7 +60,7 @@ import type { ManifestMenuItem, TitleBarContribution } from "../core/registry/Me
 import { registerMenuItems, registerTitleBarContribution } from "../core/registry/MenuRegistry";
 import { registerCommand } from "../core/registry/CommandRegistry";
 import { registerKeybinding } from "../core/registry/KeybindingRegistry";
-import { compareVersions, versionGte } from "../core/utils/semverUtils";
+import { compareVersions, versionGte } from "../core/utils/plugin/semverUtils";
 import { registerPluginLanguageBundle } from "./i18nResources";
 import i18n from "../i18n";
 import { createLogChannel } from "../core/services/ui/LogChannel";

@@ -17,7 +17,7 @@ import { readFile } from 'node:fs/promises';
 import * as path from 'node:path';
 import { app, BrowserWindow, dialog } from 'electron';
 import type { WebContents } from 'electron';
-import { normalizePath } from '../../src/core/utils/pathUtils.js';
+import { normalizePath } from '../../src/core/utils/path/pathUtils.js';
 
 export type GuardWriteOp = 'writeTextFile' | 'writeBinaryFile' | 'createDir' | 'copy' | 'remove';
 

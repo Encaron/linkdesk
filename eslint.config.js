@@ -163,7 +163,7 @@ export default [
         {
           patterns: [
             {
-              group: ["@src/core/services/ConfigurationService", "@src/core/utils/pathUtils"],
+              group: ["@src/core/services/ConfigurationService", "@src/core/utils/path/pathUtils"],
               message: "🚫 禁止 import ConfigurationService/pathUtils——请使用 linkdesk.configuration/linkdesk.path API。",
             },
           ],

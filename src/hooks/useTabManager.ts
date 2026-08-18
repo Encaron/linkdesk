@@ -9,7 +9,7 @@ import { useState, useCallback, useRef, useEffect } from "react";
 import i18n from "../i18n";
 import { showConfirm } from "../core/services/ui/DialogService";
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { normalizePath } from "../core/utils/pathUtils";
+import { normalizePath } from "../core/utils/path/pathUtils";
 import {
   type SplitNode,
   getAllLeafGroupIds,
@@ -24,7 +24,7 @@ import {
 import type { CreateTabOptions } from "../core/api/types";
 import { getTabBehavior, findFallbackPlugin } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/events/CoreEvents";
-import { FALLBACK_PLUGIN_ID } from "../core/utils/fallbackPluginId";
+import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity, getDefaultLabel, resolveLegacyPluginId, getMeta, isPluginDetailView, syncCountersAfterRestore } from "../core/utils/tabIdentity";
 
 /* ── 类型 ── */

@@ -8,7 +8,7 @@
  * 设计依据：[[phase4-design-decisions]] §16 + VS Code extension icon 解析（manifest.icon + galleryBanner）
  */
 
-import type { PluginManifest } from "../api/types";
+import type { PluginManifest } from "../../api/types";
 
 export interface ResolvedIcon {
   /** Lucide 图标名——iconSource: "lucide" 时返回 "Package" / "Folder" 等 */
