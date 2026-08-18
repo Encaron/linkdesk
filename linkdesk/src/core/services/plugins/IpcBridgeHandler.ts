@@ -11,8 +11,7 @@
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../registry/ConfigurationRegistry";
-import { executeCommand, getCommands, resolvePoolExecution, registerPoolCommandMetadata, registerShellLocalCommand, unregisterPoolCommands } from "../../registry/commands/CommandRegistry";
-import type { CancellationToken } from "../../utils/CancellationToken"; // E5.7#97：commands:execute 槽位窄化
+import { getCommands } from "../../registry/commands/CommandRegistry"; // E5.8#0d.10-10c：execute/register 等五命令符号随 commands 域迁出，仅 menu:getItems 保留 getCommands
 import {
   getKeybindings, registerKeybinding, saveUserKeybindings,
   removeKeybindingForCommand, resetKeybindingToDefault,
@@ -23,7 +22,6 @@ import { CoreEvents } from "../../react/events/CoreEvents"; // E5.5#7-p2: 快捷
 import { getAvailableThemes, getCurrentTheme } from "../ui/ThemeEngine";
 import { LanguageRegistry } from "../../registry/languages/LanguageRegistry";
 import { confirm, alert } from "../ui/DialogService"; // E5#67
-import { shellEvents } from "../../react/events/ShellEvents"; // E5#68
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70
 import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../registry/commands/MenuRegistry"; // E5#69
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
@@ -31,10 +29,6 @@ import { getWorkspaceFolders, getActiveWorkspace, onDidChangeFolders, setActiveW
 import { pushToast, dismissToast, updateToast } from "../ui/toast";
 import type { ToastSeverity } from "../ui/toast";
 import i18n from "../../../i18n";
-// E5.7#70：tabs:create 未知类型兜底——对标 VS Code 文本编辑器 fallback。
-// 壳政策常量（硬约束 10 白名单例外）：未声明类型的开标签请求路由到编辑器插件。
-// 为什么是编辑器：tabs:create 语义 = "打开点什么"——编辑器是唯一无参数可开的通用内容容器。
-const DEFAULT_TAB_TYPE = "editor";
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
 import { onPluginLifecycleChange } from "../../../pluginLoader/lifecycle";
 // E5.6#11.5-A：fileAssociation——池插件跨进程查询
@@ -46,6 +40,8 @@ import { searchFiles } from "../files/FileSearcher";
 import { EncodingService } from "../files/EncodingService";
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
+import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
+import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
@@ -98,39 +94,13 @@ export function initIpcBridgeHandler(): void {
         case "config:set":
           result = await handleConfigChannel(req.channel, req.args);
           break;
-        case "commands:execute": {
-          // 池侧固定按旧槽位传 undefined 占位（E5.7#63.8 token 剥离后 handler 合同只剩 realArgs——
-          // 壳侧 executeCommand(id, token, ...realArgs) 的 token 槽位保留为未来取消语义入口）
-          const [commandId, token, ...rest] = req.args;
-          result = await executeCommand(commandId as string, token as CancellationToken | undefined, ...rest);
+        case "commands:execute":
+        case "commands:executeResult":
+        case "commands:register":
+        case "commands:registerShell":
+        case "commands:unregister":
+          result = await handleCommandsChannel(req.channel, req.args);
           break;
-        }
-        case "commands:executeResult": {
-          // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
-          const [requestId, payload] = req.args as [string, { result?: unknown; error?: string }];
-          resolvePoolExecution(requestId, payload);
-          break;
-        }
-        case "commands:register": {
-          // E5.7 Bug C 补全：池侧 registerCommand 元数据回传——title/category/when 同步进壳注册表
-          // （命令面板可见性 + 动态 toggle 标题）；runtime 命令以占位条目登记，执行走转发桥。
-          const [commandId, meta] = req.args as [string, { title?: string; category?: string; when?: string } | null];
-          registerPoolCommandMetadata(commandId, meta ?? {});
-          break;
-        }
-        case "commands:registerShell": {
-          // E5.7#56：壳侧插件入口注册命令（双进程执行——壳 glob loader 侧半程真注册，
-          // handler 存壳 preload 页面世界代理，执行走 _executeShellLocal 桥）
-          const [commandId, meta] = req.args as [string, { title?: string; category?: string; when?: string } | null];
-          registerShellLocalCommand(commandId, meta ?? {});
-          break;
-        }
-        case "commands:unregister": {
-          // E5.7 Bug C 补全：池侧 unregisterCommands 回传——移除运行时命令条目（loader 元数据保留）
-          const [pluginId] = req.args as [string];
-          unregisterPoolCommands(pluginId);
-          break;
-        }
 
         // ── E3a #31：插件管理 IPC ──
         case "plugins:call": {
@@ -289,43 +259,16 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5#68：标签页操作——插件调壳的 tabs API ──
-        case "tabs:create": {
-          const [type, opts] = req.args as [string, Record<string, unknown>?];
-          // E5#99：壳统一守卫——未知类型路由到编辑器（对标 VS Code 文本编辑器 fallback）
-          shellEvents.emit("tab:create", { type: type || DEFAULT_TAB_TYPE, opts });
+        // ── E5#68：标签页操作——插件调壳的 tabs API（IpcBridgeHandler/tabs 域）──
+        case "tabs:create":
+        case "tabs:openOrFocus":
+        case "tabs:focus":
+        case "tabs:close":
+        case "tabs:focusBySourceId":
+        case "tabs:updateLabelBySourceId":
+        case "tabs:closeBySourceId":
+          result = await handleTabsChannel(req.channel, req.args);
           break;
-        }
-        case "tabs:openOrFocus": {
-          const [type, opts] = req.args as [string, Record<string, unknown>?];
-          shellEvents.emit("tab:openOrFocus", { type, opts });
-          break;
-        }
-        case "tabs:focus": {
-          const [tabId] = req.args as [string];
-          shellEvents.emit("tab:focus", { tabId });
-          break;
-        }
-        case "tabs:close": {
-          const [tabId] = req.args as [string];
-          shellEvents.emit("tab:close", { tabId });
-          break;
-        }
-        case "tabs:focusBySourceId": {
-          const [sourceId] = req.args as [string];
-          shellEvents.emit("tab:focusBySourceId", { sourceId });
-          break;
-        }
-        case "tabs:updateLabelBySourceId": {
-          const [sourceId, label] = req.args as [string, string];
-          shellEvents.emit("tab:updateLabelBySourceId", { sourceId, label });
-          break;
-        }
-        case "tabs:closeBySourceId": {
-          const [sourceId] = req.args as [string];
-          shellEvents.emit("tab:closeBySourceId", { sourceId });
-          break;
-        }
 
         // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog ──
         case "dialog:confirm": {
