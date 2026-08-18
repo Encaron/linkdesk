@@ -33,7 +33,7 @@ export function registerSettingsCommands(): void {
       handler: async (...args: unknown[]) => {
         const ctx = args[0] as { pluginId?: string } | undefined;
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_THEME_BROWSER
-        const { showThemePicker } = await import("../../components/ThemeBrowser");
+        const { showThemePicker } = await import("../../components/shared/theme-browser/ThemeBrowser");
         showThemePicker(ctx?.pluginId);
       },
     },
@@ -43,7 +43,7 @@ export function registerSettingsCommands(): void {
       category: "首选项",
       handler: async () => {
         // E5.5#7-p15：直调 QuickPickService——不再 dispatch SHOW_LANGUAGE_PICKER
-        const { showLanguagePicker } = await import("../../components/LanguagePicker");
+        const { showLanguagePicker } = await import("../../components/shared/language-picker/LanguagePicker");
         showLanguagePicker();
       },
     },

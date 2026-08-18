@@ -39,7 +39,7 @@ import PoolSectionStack from "../../shared/PoolSectionStack"; // E5.7#11：随�
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
 import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/poolLayout";
 // E5.6#11-fix4：header 右键菜单——壳 ContextMenu 聪慧组件（池内用法同 GroupTabBar）
-import ContextMenu from "../../../components/shared/ContextMenu";
+import ContextMenu from "../../../components/shared/context-menu/ContextMenu";
 import "./SidebarZone.css";
 
 /** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（防 pluginId 硬编码，

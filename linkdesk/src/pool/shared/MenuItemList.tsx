@@ -1,7 +1,7 @@
 /**
  * MenuItemList——池侧归一化菜单项渲染器。E5.7#6 从 TitleBarZone 提取（#5 建，供汉堡复用）。
  *
- * 壳侧等价物：components/shared/MenuRenderer.tsx（TitleBar + HamburgerMenu 共用）。
+ * 壳侧等价物：components/shared/menu-renderer/MenuRenderer.tsx（TitleBar + HamburgerMenu 共用）。
  * 池 = 哑渲染器：label/shortcut/disabled 全部壳侧解析后推送（显示文本铁律），
  * 池只做 hover 时序（100ms 进 / 150ms 出——壳同款）与子面板弹出。
  *

@@ -7,7 +7,7 @@
  * 交互：打开→↑↓即时预览→Enter提交→Esc回退原始主题。
  */
 
-import i18n from "../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
+import i18n from "../../../i18n"; // E5.7#15：serialize 在非 React 上下文解析显示文本（显示文本铁律）
 import {
   getAvailableThemes,
   getThemesByPlugin,
@@ -16,10 +16,10 @@ import {
   applyAccentColor,
   getCurrentTheme,
   getEffectiveAccentColor,
-} from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/ThemeRegistry"; // E3.5 #CP23
-import { setConfigurationValue } from "../core/services/configuration/ConfigurationService";
-import { QuickPickService } from "../core/registry/QuickPickService"; // E5.5#7-p15
+} from "../../../core/services/ui/ThemeEngine";
+import { ThemeRegistry } from "../../../core/registry/ThemeRegistry"; // E3.5 #CP23
+import { setConfigurationValue } from "../../../core/services/configuration/ConfigurationService";
+import { QuickPickService } from "../../../core/registry/QuickPickService"; // E5.5#7-p15
 
 /**
  * E5.5#7-p15：命令式调起主题选择器——不再走 CustomEvent → App.tsx useState。

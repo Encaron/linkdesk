@@ -7,7 +7,7 @@
  */
 
 import React, { useEffect, type MutableRefObject } from "react";
-import ContextMenu from "@src/components/shared/ContextMenu";
+import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
 import type { ExplorerItem } from "../services/FileTreeModel";
 import type { FileTreeHandle } from "./FileTree";
 import { dirname, normalizePath, joinPath } from "../utils/pathUtils";
