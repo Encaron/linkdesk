@@ -168,7 +168,22 @@ describe("ConfigurationService — diffUserSettings（E5.8#0d.5 settings.json �
     ]));
   });
 
-  it("嵌套对象整体替换即视为变更（JSON 重新解析引用不同）——保守上报不遗漏", () => {
-    expect(diffUserSettings({ app: { x: 1 } }, { app: { x: 1 } })).toHaveLength(1);
+  it("嵌套对象同内容 → 无变更（E5.8 bug 修复——浅比较曾恒判变更 → 回写无限循环）", () => {
+    expect(diffUserSettings({ app: { x: 1 } }, { app: { x: 1 } })).toEqual([]);
+  });
+
+  it("嵌套对象真变更 → 报告变更（保守上报不遗漏意图保留）", () => {
+    expect(diffUserSettings({ app: { x: 1 } }, { app: { x: 2 } })).toEqual([
+      { key: "app", value: { x: 2 } },
+    ]);
+  });
+
+  it("对象值 key（files.exclude 同款）同内容 → 无变更——防回写死循环", () => {
+    const current = {
+      "app.theme": "Light",
+      "files.exclude": { "**/node_modules": true, "**/.git": true },
+    };
+    const next = JSON.parse(JSON.stringify(current)); // 模拟 reloadUserSettings 的 file→parse 新引用
+    expect(diffUserSettings(current, next)).toEqual([]);
   });
 });

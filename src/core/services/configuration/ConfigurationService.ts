@@ -22,6 +22,7 @@ let _configApplier: ((key: string, value: unknown) => void) | null = null;
 export function registerConfigApplier(fn: typeof _configApplier): void { _configApplier = fn; }
 import { read, write, getFilePath } from "./StorageService";
 import { exists, readFile, writeFile, createDir, joinPath, appDataDir } from "../files/FileService";
+import { deepEqual } from "../../utils/deepEqual"; // E5.8 bug 修复：diff 浅比较→深比较（settings.json 回写循环）
 
 /* ── 三层缓存 ── */
 
@@ -65,7 +66,8 @@ export function diffUserSettings(
   const changed: Array<{ key: string; value: unknown }> = [];
   const allKeys = new Set([...Object.keys(current), ...Object.keys(next)]);
   for (const key of allKeys) {
-    if (key in current && key in next && current[key] === next[key]) continue;
+    // 🔥 深比较——对象/数组值每次 JSON 重新解析引用不同，浅比较 `===` 恒判"变更"→回写无限循环（800MB 冻结）
+    if (key in current && key in next && deepEqual(current[key], next[key])) continue;
     changed.push({ key, value: key in next ? next[key] : undefined });
   }
   return changed;
