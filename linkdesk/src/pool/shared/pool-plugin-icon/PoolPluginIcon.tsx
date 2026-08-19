@@ -41,7 +41,8 @@ interface PoolPluginIconProps {
 }
 
 /** 哑渲染 IconBarIcon 判别联合。类名与壳 PluginIcon 输出一致（池是独立文档，无冲突）。 */
-export function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps) {
+// E5.8#2：仅保留 default 导出——消费方（IconBarZone）default import，具名导出零消费（死面）
+function PoolPluginIcon({ icon, className = "", alt = "" }: PoolPluginIconProps) {
   // switch 判别——eslint E5.5#10 自定义规则拦 `=== "小写字面量"`（防 pluginId 硬编码），
   // 判别联合 tag 用 switch 语义相同且不误报。
   switch (icon.kind) {

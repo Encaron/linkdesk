@@ -25,14 +25,13 @@ import type { OpenPortConfig, SerialStatus } from '../../src/core/types/ipc/seri
 
 // ── 类型 ──
 
-export interface PortInfo {
+interface PortInfo {
   name: string;
   description: string;
 }
 
-export type { SerialStatus };
-
-export interface SerialCallbacks {
+// E5.8#2：SerialStatus re-export 已删（消费方直引 src/core/types/ipc/serial 正源）
+interface SerialCallbacks {
   onData: (text: string) => void;
   onStats: (stats: { tx?: number; rx?: number }) => void;
   onSystem: (message: string) => void;

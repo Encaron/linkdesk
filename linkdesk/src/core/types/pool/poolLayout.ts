@@ -32,7 +32,7 @@ export interface SidebarViewMeta {
 }
 
 /** E5.7#84：单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
-export interface SidebarContainerLayout {
+interface SidebarContainerLayout {
   containerId: string;
   containerTitle: string;
   mergeHeaderWhenSingle?: boolean;
@@ -229,13 +229,13 @@ export interface StatusBarItem {
 }
 
 /** 通知动作——壳 ToastAction 序列化（onClick 是壳侧闭包——池点击回传壳执行） */
-export interface NotifAction {
+interface NotifAction {
   label: string;
   isPrimary?: boolean;
 }
 
 /** 通知条目——壳侧已解析（icon 类/时间/来源标签/动作全部壳侧完成） */
-export interface NotifItem {
+interface NotifItem {
   id: string;
   /** 完整 codicon 类串（如 "codicon codicon-error notif-severity-error"） */
   iconClass: string;
@@ -248,7 +248,7 @@ export interface NotifItem {
 }
 
 /** 通知分组——壳 NotificationCenter buildSourceGroups（source 第一段归类 + 未读排序） */
-export interface NotifGroup {
+interface NotifGroup {
   key: string;
   /** source 第一段或 t("其他") */
   label: string;

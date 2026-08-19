@@ -12,7 +12,7 @@ import type { PoolQuickPickItem } from "../../types/pool/poolQuickPick";
 // ── 类型 ──
 
 /** QuickPick 展示模式 */
-export type QuickPickMode = "commands" | "theme" | "language" | "devtools" | "custom";
+type QuickPickMode = "commands" | "theme" | "language" | "devtools" | "custom";
 
 export interface QuickPickState<T = unknown> {
   open: boolean;

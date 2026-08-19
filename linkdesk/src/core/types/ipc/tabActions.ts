@@ -17,7 +17,7 @@
 import type { DropZone } from "../../../pool/hooks/tabDragTypes";
 
 /** 分屏方向——池侧 onDropSplit 已从 drop zone 归一化（MainZone:382） */
-export type TabSplitDirection = "horizontal" | "vertical";
+type TabSplitDirection = "horizontal" | "vertical";
 
 /** 池→壳 tab 动作——union literal 即 wire 枚举 */
 export type PoolTabAction =

@@ -135,7 +135,5 @@ export function getTabCreatableViews(): ViewPluginEntry[] {
   );
 }
 
-/** 聚焦此视图时是否保留当前侧栏不清除。从 plugin.json 读取。 */
-export function hasKeepSidebarOnFocus(pluginId: string): boolean {
-  return registry.get(pluginId)?.manifest.keepSidebarOnFocus === true;
-}
+// E5.8#2：hasKeepSidebarOnFocus 已删——零消费（唯一消费方 shouldKeepSidebarOnFocus 同批删除，
+// 侧栏保持判定由消费方直读 manifest.keepSidebarOnFocus）

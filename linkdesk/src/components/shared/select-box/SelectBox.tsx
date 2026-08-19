@@ -14,7 +14,7 @@ import { useTranslation } from "react-i18next";
 import OverlayPortal from "../overlay-portal/OverlayPortal";
 import "./SelectBox.css";
 
-export interface SelectBoxOption {
+interface SelectBoxOption {
   value: string;
   label: string;
 }

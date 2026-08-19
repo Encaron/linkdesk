@@ -19,7 +19,7 @@ import type { PluginPushEnvelope } from '../../src/core/types/ipc/events';
 
 type EventCallback = (payload: unknown) => void;
 
-export type ExtraHandlers = Record<string, (payload: unknown) => void>;
+type ExtraHandlers = Record<string, (payload: unknown) => void>;
 
 export interface EventSystemOptions {
   logPrefix: string;

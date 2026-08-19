@@ -120,7 +120,7 @@
   opacity: 1;
 }
 
-/* ── ☰ 汉堡菜单（壳 HamburgerMenu.css 迁入） ── */
+/* ── ☰ 汉堡菜单（壳 HamburgerMenu.css 迁入——E5.8#2 壳组件已删，本块为唯一实现） ── */
 /* E5.8#1d EXEMPT：pool-css gate（禁池 CSS @import）→ 池 zone CSS 自包含壳同款块，结构性重复 */
 /* jscpd:ignore-start */
 

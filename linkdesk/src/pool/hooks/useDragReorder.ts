@@ -11,7 +11,7 @@ import type { DropZone } from "./tabDragTypes";
 
 /* ── 类型 ── */
 
-export type DragPhase = "idle" | "reorder" | "split";
+type DragPhase = "idle" | "reorder" | "split";
 
 interface DragState {
   tabId: string;

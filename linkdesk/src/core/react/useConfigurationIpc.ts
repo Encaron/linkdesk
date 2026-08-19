@@ -8,7 +8,7 @@
  * 插件侧：ipcRenderer.invoke → 主进程 → shell IpcBridgeHandler → ConfigurationService（同路径）
  */
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 // E5.7#98：契约正源——get<T>/onChange<T> 泛型在 linkdesk-api 已归口（替代手写 any 形状）
 import type { LinkDeskAPI } from "../api/linkdesk-api";
 
@@ -41,25 +41,8 @@ function useSubscribedConfigValueIpc<T>(key: string): T | undefined {
 }
 
 /**
- * 获取并订阅配置值——对标 VS Code workspace.getConfiguration().get(key)
- * IPC 版：异步初始化 + 订阅 onChange 保持同步
- */
-export function useConfigurationIpc<T>(key: string): [T | undefined, (value: T) => Promise<void>] {
-  const value = useSubscribedConfigValueIpc<T>(key);
-
-  const setter = useCallback(
-    async (newValue: T) => {
-      await lk().set(key, newValue);
-    },
-    [key],
-  );
-
-  return [value, setter];
-}
-
-/**
- * 只读配置值——不需要 setter 时用。
- * 对标 useConfigurationValue 的 IPC 版。
+ * 只读配置值——对标 useConfigurationValue 的 IPC 版（当前唯一消费面 SettingsView）。
+ * E5.8#2：useConfigurationIpc（带 setter 变体）已删——零消费方（SettingRow 只用 Value 版）。
  */
 export function useConfigurationValueIpc<T>(key: string): T | undefined {
   return useSubscribedConfigValueIpc<T>(key);

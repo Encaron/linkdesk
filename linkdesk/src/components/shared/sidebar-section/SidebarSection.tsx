@@ -14,7 +14,7 @@ import { type ReactNode, useState, useCallback, useRef, useEffect } from "react"
 import { useTranslation } from "react-i18next";
 import "./SidebarSection.css";
 
-export interface SidebarSectionProps {
+interface SidebarSectionProps {
   /** 区块标题（如 "终端会话"、"收发设置"） */
   title: string;
   /** 是否可折叠，默认 true */

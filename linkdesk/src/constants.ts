@@ -1,16 +1,7 @@
 /**
- * 壳布局常量——App.tsx 使用（SplitHandles 已随 E5.7#31 整删）。
- * E5.6#22——消除 TITLE_BAR_HEIGHT/HANDLE_WIDTH 重复定义。
- */
-
-/** Electron 窗口标题栏高度——所有 Pool WebContentsView + fixed 定位元素需偏移此值 */
-export const TITLE_BAR_HEIGHT = 30;
-
-/** Pool 之间分隔线宽度——WebContentsView 留缝 = 壳 DOM handle 宽度 */
-export const HANDLE_WIDTH = 4;
-
-/**
  * 全局浮层 z-index 层级表——E5.7#26（浮层归一化设计.md §3）。
+ * E5.8#2：TITLE_BAR_HEIGHT/HANDLE_WIDTH 已删——E5.7 后 titlebar 是池内 zone，
+ * 壳无需高度/分隔线偏移（SplitHandles 随 E5.7#31 整删，仅剩注释残留）。
  * 全部代码用 Z_INDEX.xxx 常量引用，禁止裸数字。
  * 层级：拖拽 UI（100-1000）< 浮层（2000-6000）——浮层永远盖住池内容。
  */

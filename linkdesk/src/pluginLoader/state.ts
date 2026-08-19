@@ -153,7 +153,7 @@ function extractPluginId(path: string): string {
  *
  * 缓存键：app.pluginMetadataCache → Record<pluginId, CachedPluginMeta>
  */
-export interface CachedPluginMeta {
+interface CachedPluginMeta {
   pluginId: string;
   name: string;
   description?: string;
