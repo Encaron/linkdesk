@@ -113,6 +113,14 @@ export default function PluginDetailPoolView({ pluginId }: PluginDetailPoolViewP
         </div>
       </header>
 
+      {/* ═══ E5.8#15.5：缺依赖挂起（PENDING）提示条——原因可读，等待恢复后自动启用 ═══ */}
+      {plugin.pendingReason && (
+        <div className="pd-pending-notice">
+          <span className="codicon codicon-info" />
+          <span>{plugin.pendingReason}</span>
+        </div>
+      )}
+
       {/* ═══ Action Bar ═══ */}
       <div className="pd-action-bar">
         {isCore ? (

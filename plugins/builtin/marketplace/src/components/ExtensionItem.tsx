@@ -81,6 +81,10 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemP
       <div className="ms-item-details">
         <div className="ms-item-header">
           <span className="ms-item-name">{m.name}</span>
+          {/* E5.8#15.5：缺依赖挂起（PENDING）徽标——tooltip 显完整原因（"等待依赖: xxx"） */}
+          {plugin.pendingReason && (
+            <span className="ms-item-badge-pending" title={plugin.pendingReason}>{t("等待依赖")}</span>
+          )}
           <span className="ms-item-version">v{m.version}</span>
         </div>
         {m.description && <span className="ms-item-desc">{m.description}</span>}
