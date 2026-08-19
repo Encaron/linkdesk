@@ -26,6 +26,8 @@ import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
+// E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
+import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
 
 // ── E5#19b fix: ContextKey 本地同步 store——IPC 回路延迟致键盘分发读不到最新值 ──
 const _contextKeyStore = new Map<string, unknown>();
@@ -265,30 +267,17 @@ try {
       findKeybindingForCommand: (commandId: string) => ipcRenderer.invoke(IPC.plugins.call, 'findKeybindingForCommand', commandId),
       setKeybindingCaptureActive: (active: boolean) => ipcRenderer.invoke(IPC.plugins.call, 'setKeybindingCaptureActive', active),
       keyboardEventToKeyString: (e: KeyboardEvent): string => {
-        const parts: string[] = [];
-        if (e.ctrlKey) parts.push("ctrl");
-        if (e.shiftKey) parts.push("shift");
-        if (e.altKey) parts.push("alt");
-        if (e.metaKey) parts.push("meta");
-        const keyMap: Record<string, string> = {
-          ArrowUp: "up", ArrowDown: "down", ArrowLeft: "left", ArrowRight: "right",
-          Escape: "escape", Enter: "enter", Tab: "tab", Backspace: "backspace",
-          Delete: "delete", Home: "home", End: "end", PageUp: "pageup", PageDown: "pagedown",
-          " ": "space",
-        };
         // 🔥 防御：contextBridge 结构化克隆可能丢掉 KeyboardEvent 原生属性，e.key 为 undefined 时直接返回空
         if (!e?.key) return "";
-        const key = keyMap[e.key] ?? e.key.toLowerCase();
-        if (["control", "shift", "alt", "meta"].includes(key)) return "";
-        parts.push(key);
-        const order = ["ctrl", "shift", "alt", "meta"];
-        return parts.sort((a, b) => {
-          const ai = order.indexOf(a), bi = order.indexOf(b);
-          if (ai !== -1 && bi !== -1) return ai - bi;
-          if (ai !== -1) return -1;
-          if (bi !== -1) return 1;
-          return a.localeCompare(b);
-        }).join("+");
+        // E5.8#1b：归一化委托单一权威源（keyboardInputToKeyString 含 E5.7#79 +→= 修复）
+        return keyboardInputToKeyString({
+          ctrlKey: e.ctrlKey,
+          shiftKey: e.shiftKey,
+          altKey: e.altKey,
+          metaKey: e.metaKey,
+          key: e.key,
+          code: e.code,
+        });
       },
       onChange: (cb: () => void) => events.on("keybindings:changed", cb),
       // E5.5#7-p7：壳→主进程同步快捷键表

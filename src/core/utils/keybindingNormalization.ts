@@ -1,10 +1,15 @@
 /**
- * KeybindingRegistry 归一化层——自 KeybindingRegistry.ts 拆出（E5.8#0d.10-8a）。
+ * Keybinding 归一化层——自 KeybindingRegistry.ts 拆出（E5.8#0d.10-8a）后归位 utils/（E5.8#1b）。
  * 键盘输入/快捷键字符串 → 规范化键位串纯函数，零模块态零 React。
- * 依赖方向：normalization → types（KeyboardInput type）；无反向。
+ * 跨进程共享（壳 renderer/主进程/池 preload 三端 import 同一权威源，防 E5.7#79 +→= 修复漂移复发）：
+ *   - 壳侧：src/core/registry/commands/KeybindingRegistry（dispatch/registry）+ 对外 re-export
+ *   - 主进程：electron/windows/keyboard-router.ts（before-input-event 归一化）
+ *   - 池 preload：electron/preload-pool/namespaces-plugin.ts（window.linkdesk.keybindings 镜像）
+ *   - 壳 preload：electron/preload-shell.ts（window.linkdesk.keybindings 镜像）
+ * 依赖方向：本模块 → types（KeyboardInput type）；无反向。electron 侧运行时 import 需 .js 扩展（CommonJS）。
  */
 
-import type { KeyboardInput } from "../../../types/ipc/keyboard";
+import type { KeyboardInput } from "../types/ipc/keyboard";
 
 /**
  * 规范化快捷键字符串 → 可比较的形式。

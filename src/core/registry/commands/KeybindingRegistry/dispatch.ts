@@ -8,7 +8,7 @@
 import { executeCommand, hasHandler } from "../CommandRegistry";
 import { CoreEvents, CUSTOM_EVENTS } from "../../../react/events/CoreEvents";
 import type { KeyboardInput } from "../../../types/ipc/keyboard";
-import { keyboardInputToKeyString, keyboardEventToKeyString } from "./normalization";
+import { keyboardInputToKeyString, keyboardEventToKeyString } from "../../../utils/keybindingNormalization";
 import { isChordPrefix, keybindingResolver, clearBindings, getKeybindingSyncData } from "./registry";
 import { _chordState, resetChord, CHORD_TIMEOUT } from "./chord";
 import { clearPersistence } from "./persistence";

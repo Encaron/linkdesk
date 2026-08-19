@@ -7,9 +7,10 @@
  *
  * E5.8#0d.10-8e：拆 KeybindingRegistry/ 子模块后，本文件 = 聚合器——全量 re-export 22 公开符号，
  * 外部消费方 import 路径零变更（"./KeybindingRegistry" 命中文件，"./KeybindingRegistry/types" 命中子模块）。
- * 分层依赖（单向无环）：normalization（纯函数，零依赖）→ registry（注册表/_bindings 属主）→
+ * 分层依赖（单向无环）：utils/keybindingNormalization（纯函数，零依赖——E5.8#1b 归位 utils/
+ * 跨进程共享，壳/主进程/池 preload 三端单一权威源）→ registry（注册表/_bindings 属主）→
  * persistence（keybindings.json 读写）→ dispatch（全局键盘事件分发，总入口层）。
- * 6 子模块：types · normalization · chord（双键状态机）· registry · persistence · dispatch。
+ * 6 子模块：types · chord（双键状态机）· registry · persistence · dispatch（normalization 已归位 utils/）。
  */
 
 /* ── 类型 ── */
@@ -17,7 +18,8 @@ export type { Keybinding, KeybindingConflict } from "./KeybindingRegistry/types"
 export type { KeyboardInput } from "../../types/ipc/keyboard"; // 保既有 import 路径（E5.7#97 归口 src/core/types/ipc/keyboard）
 
 /* ── 规范化 ── */
-export { keyboardInputToKeyString, keyboardEventToKeyString } from "./KeybindingRegistry/normalization";
+// E5.8#1b：归一化层归位 src/core/utils/ 共享纯逻辑——壳/主进程/池 preload 三端共用单一权威源
+export { keyboardInputToKeyString, keyboardEventToKeyString } from "../../utils/keybindingNormalization";
 
 /* ── Registry 注册表 ── */
 export {
