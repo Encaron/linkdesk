@@ -1,11 +1,18 @@
 /**
- * IpcBridgeHandler——壳渲染进程侧的桥接处理器
+ * IpcBridgeHandler——壳渲染进程侧的桥接处理器（聚合器门面）
  *
  * E3a #26：监听主进程转发的插件 IPC 请求，路由到壳侧核心服务，返回结果。
  * 在 App 启动时调用 initIpcBridgeHandler() 注册。
  *
  * 流程：主进程 bridge:request → preload → 本模块 → ConfigurationService/CommandRegistry
  *      → preload.respond → 主进程 bridge:response → 返回插件 WebView
+ *
+ * E5.8#0d.10-10：聚合器角色——channel/method case 全量委派到 IpcBridgeHandler/ 同名夹 8 领域子模块
+ * （pluginManager/configuration/commands+tabs/workspace/ui/keybindings/data），本文件零内联业务逻辑：
+ * 仅保留 init 装配（bridge guard + ContextKey 注入 + onRequest switch 委派 + subscription assembly）、
+ * 复合 unregister（_refCount 归零聚合全部 unsubscribe）、薄 handlePluginsCall。
+ * 模块级可变状态仅 _refCount 属主聚合器；订阅属主按域各归子模块（unsubscribe 复合在 unregister 汇聚）。
+ * 分层依赖：聚合器 → IpcBridgeHandler/* 领域模块 → 各 Service/Registry。外部消费方（startup/loader/core）导入路径零变更。
  */
 
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
