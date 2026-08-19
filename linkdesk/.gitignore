@@ -2,3 +2,7 @@ __pycache__/
 dist-electron/
 # E5.7#81：插件卸载坟场——运行时产物，不入库
 plugins/.disabled/
+# E5.8#22.6：@linkdesk/contracts 验收示例——本地安装产物，不入库
+contracts-example/node_modules/
+contracts-example/package-lock.json
+contracts/*.tgz

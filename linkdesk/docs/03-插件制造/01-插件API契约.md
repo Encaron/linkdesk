@@ -63,6 +63,8 @@ async function list(): Promise<FileEntry[]> {
 
 **路径 B——独立 npm 包（第三方插件，#22.6）：** `npm i -D @linkdesk/contracts` 后同款 `import type { ... } from "@linkdesk/contracts"`。
 
+> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** 当前仅 `npm pack` 本地验收闭环；真实 npm publish 已立案 [E6#2.5](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)。
+
 **路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（86 声明，零 import 依赖），拷贝即用。
 
 > **三个路径任选其一，禁止 `import type { ... } from "@src/core"`**——那是偷壳源码类型（见 §五）。
