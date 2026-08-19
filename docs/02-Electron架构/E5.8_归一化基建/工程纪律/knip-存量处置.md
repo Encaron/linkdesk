@@ -54,14 +54,14 @@
 | `src/core/types/ipc/tabActions.ts` | TabSplitDirection | 仅被 TabAction.direction 字段引用 |
 | `src/pool/shared/pool-plugin-icon/PoolPluginIcon.tsx` | 具名导出 `PoolPluginIcon` | default 导出保留（IconBarZone default import），具名零消费 |
 
-### 1.4 死依赖（删 4——npm install 后 lock 同步）
+### 1.4 死依赖（删 3 + 误删 1 已回滚——npm install 后 lock 同步）
 
-| 依赖 | 类型 | 理由 |
-|:--|:--|:--|
-| `pyright` | devDep | 手动 CLI 工具，门禁走 tsc 双工程，无脚本引用 |
-| `@codemirror/language` | dep | serial-monitor 不消费（CodeMirror 6 包按需只留 state/view/search） |
-| `@monaco-editor/react` | dep | Monaco 走 @codingame 补丁直引，React 封装层零消费 |
-| `@types/iconv-lite` | devDep | iconv-lite 自带 `types: ./lib/index.d.ts`，@types 多余类型包（删后 tsc 验证 EncodingService 类型通过） |
+| 依赖 | 类型 | 处置 | 理由 |
+|:--|:--|:--|:--|
+| `pyright` | devDep | 🔥 **误删已回滚（#24）** | 非死依赖——`lsp-handlers.ts` 以 **spawn 字符串路径**运行时调用（`node_modules/pyright/dist/pyright-langserver.js`），非 import 引用，knip 静态图看不见 → 误删导致 `.py` LSP 跳转回归。**已装回 + knip.json `ignoreDependencies` 豁免防复发**。教训：删依赖前须 grep spawn/exec 字符串引用 |
+| `@codemirror/language` | dep | 删（真死） | serial-monitor 不消费（CodeMirror 6 包按需只留 state/view/search） |
+| `@monaco-editor/react` | dep | 删（真死） | Monaco 走 @codingame 补丁直引，React 封装层零消费 |
+| `@types/iconv-lite` | devDep | 删（真死） | iconv-lite 自带 `types: ./lib/index.d.ts`，@types 多余类型包（删后 tsc 验证 EncodingService 类型通过） |
 
 ## 二、豁免（knip.json ignore——带理由）
 
