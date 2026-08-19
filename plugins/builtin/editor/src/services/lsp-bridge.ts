@@ -32,7 +32,16 @@ export async function startLspClient(
 
   // 1. main process spawn 语言服务器
   console.error(`[lsp-bridge:debug] calling lsp.spawn command=${command} args=${JSON.stringify(args)} languageId=${languageId}`);
-  const channelId: string = await lsp.spawn(command, args, languageId);
+  let channelId: string;
+  try {
+    channelId = await lsp.spawn(command, args, languageId);
+  } catch (err) {
+    // E5.8#24.6：spawn 失败（缺依赖/命令不可用）→ 显性抛错——调用方 catch 弹 toast，杜绝静默
+    // （回归 #24：pyright 被删 → spawn ENOENT → invoke 仍返 channelId → client.start() 挂死）
+    const msg = `${languageId} LSP 启动失败（spawn）: ${(err as Error).message ?? String(err)}`;
+    console.error(`[lsp-bridge] ${msg}`);
+    throw new Error(msg);
+  }
   console.error(`[lsp-bridge:debug] lsp.spawn returned channelId=${channelId}`);
 
   // 2. 构造 IPC 桥接的 MessageTransports
@@ -60,7 +69,33 @@ export async function startLspClient(
     messageTransports: { reader, writer },
   });
 
-  await client.start();
+  // 3. E5.8#24.6：initialize 超时护栏——spawn 成功但服务器不响应（进程没起来/握手卡死/脚本内部报错退出）
+  //    → 显性报错而非 client.start() 永久挂起（回归 #24 静默链第二环）。失败后 `_clients` 不入半启动态，
+  //    getLspClient 恒 undefined → 后续跳转不会用死客户端。
+  const LSP_INIT_TIMEOUT_MS = 15000;
+  const startPromise = client.start();
+  // 超时赢后 start 迟到 reject 变 unhandled rejection——先挂 sink 消费
+  startPromise.catch(() => {});
+  let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+  try {
+    await Promise.race([
+      startPromise,
+      new Promise((_resolve, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(new Error(`${languageId} LSP initialize 超时（${LSP_INIT_TIMEOUT_MS / 1000}s 无响应）——语言服务器未就绪，请检查依赖与配置`));
+        }, LSP_INIT_TIMEOUT_MS);
+      }),
+    ]);
+  } catch (err) {
+    const msg = `${languageId} LSP 启动失败（initialize）: ${(err as Error).message ?? String(err)}`;
+    console.error(`[lsp-bridge] ${msg}`);
+    client.stop().catch(() => {});
+    lsp.dispose(channelId).catch(() => {});
+    throw new Error(msg);
+  } finally {
+    if (timeoutHandle) clearTimeout(timeoutHandle);
+  }
+
   _clients.set(languageId, client);
   console.log(`[lsp-bridge] ${languageId} LSP 客户端已启动, channel:`, channelId);
   return client;

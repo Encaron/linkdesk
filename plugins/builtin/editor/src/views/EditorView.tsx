@@ -129,7 +129,13 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       if (langDef?.lsp && !getLspClient(langDef.id)) {
         const workspaceRoot = (await lk.workspace.getFolders())[0]?.uri || lk.path.normalize(filePath).replace(/\/[^/]+$/, "");
         startLspClient(langDef.id, langDef.lsp.command, langDef.lsp.args, workspaceRoot)
-          .catch((err) => console.warn(`[editor] ${langDef.id} LSP 启动失败:`, err));
+          .catch((err) => {
+            // E5.8#24.6：LSP 启动失败不再静默 console.warn——用户可见 toast
+            // （回归 #24：pyright 被删 → 跳转静默消失，用户无感。现在打开 .py 即报错，F12 不灵有因可循）
+            const msg = `${langDef.id} 语言支持启动失败: ${(err as Error).message ?? String(err)}`;
+            console.error(`[editor] ${msg}`);
+            lk.notifications.show(msg, { type: "error" }).catch(() => {});
+          });
       }
 
       // 6. 手写 editor——绕过 EditorApp 的 IFileService 依赖
@@ -284,7 +290,14 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
           });
           // 已 active 的 editor 不会触发 isActive effect → 走事件通道
           lk.events.emit("editor:revealRequested", { filePath: targetPath });
-        } catch { /* 无定义则放行 */ }
+        } catch (err) {
+          // E5.8#24.6：不再静默吞错（原 `catch {}`）——跳转链路任何异常显性报错：
+          // 协议诊断面 console.error + 用户可见 toast。杜绝「跳转没了却毫无动静」。
+          // 无定义路径在 defs 空时正常 return（行 253），不落此 catch——此分支只接真异常。
+          const msg = `跳转到定义失败: ${(err as Error).message ?? String(err)}`;
+          console.error(`[editor] ${msg}`);
+          lk.notifications.show(msg, { type: "error" }).catch(() => {});
+        }
       };
 
       editor.addAction({
