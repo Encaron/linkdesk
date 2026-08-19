@@ -296,61 +296,6 @@ import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
 import { showCommandPalette } from "../palette/commandPalette"; // E5.7#18：命令面板入口从 components/shared/CommandPalette.tsx 迁入
 
-// E5#16：剪贴板 Provider——壳统一快捷键，按焦点上下文分发
-import { clipboardProviders } from "../../registry/ClipboardProviderRegistry";
-import { ContextKeyService } from "../../registry/commands/ContextKeyService";
-import { isEditableElementFocused } from "../../registry/commands/KeybindingRegistry";
-
-/** 解析当前焦点上下文——遍历已注册 Provider，找第一个 ContextKey 为 true 的 */
-function resolveFocusContext(): string | undefined {
-  for (const p of clipboardProviders.getAll()) {
-    if (ContextKeyService.getValue(p.when)) return p.when;
-  }
-  return undefined;
-}
-
-/** 剪贴板操作——分发给匹配的 Provider，无匹配走浏览器原生 */
-function dispatchClipboard(op: "copy" | "cut" | "paste" | "delete" | "selectAll"): void {
-  if (isEditableElementFocused()) return;
-  const ctx = resolveFocusContext();
-  if (ctx) {
-    const provider = clipboardProviders.resolve(ctx);
-    if (provider) {
-      if (op === "copy" && provider.onCopy) { provider.onCopy(); return; }
-      if (op === "cut" && provider.onCut) { provider.onCut(); return; }
-      if (op === "paste" && provider.onPaste) { provider.onPaste(); return; }
-      if (op === "delete" && provider.onDelete) { provider.onDelete(); return; }
-      if (op === "selectAll" && provider.onSelectAll) { provider.onSelectAll(); return; }
-    }
-  }
-  document.execCommand(op);
-}
-
-/** 重命名——分发给匹配的 Provider */
-function dispatchRename(): void {
-  if (isEditableElementFocused()) return;
-  const ctx = resolveFocusContext();
-  if (ctx) {
-    const provider = clipboardProviders.resolve(ctx);
-    provider?.onRename?.();
-  }
-}
-
-function registerClipboardCommands(): void {
-  const cmd = (id: string, title: string, op: "copy" | "cut" | "paste" | "delete" | "selectAll") => ({
-    id, title, category: "剪贴板", handler: async () => { dispatchClipboard(op); },
-  });
-  const commands = [
-    cmd("core.clipboardCopy",  "复制", "copy"),
-    cmd("core.clipboardCut",   "剪切", "cut"),
-    cmd("core.clipboardPaste", "粘贴", "paste"),
-    cmd("core.selectAll",      "全选", "selectAll"),
-    cmd("core.delete",         "删除", "delete"),
-    { id: "core.rename", title: "重命名", category: "编辑", handler: async () => { dispatchRename(); } },
-  ];
-  for (const c of commands) registerCommand(APP_PLUGIN_ID, c);
-}
-
 /* ── 注册入口（App.tsx useEffect 调用一次） ── */
 
 /** 确保核心命令 + 菜单项已注册（幂等——只执行一次）。 */
@@ -362,7 +307,6 @@ export function ensureCoreCommands(): void {
   registerTabCommands();
   registerSettingsCommands();
   registerDeveloperCommands();
-  registerClipboardCommands();
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 
   // ── 注册核心命令 ──
