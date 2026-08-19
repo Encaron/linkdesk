@@ -42,6 +42,27 @@ export function useUiBridges({ setPanelActiveViewId }: UiBridgesDeps): void {
     return () => { unsub?.(); };
   }, []);
 
+  // E5.8#25.1：桥接池文件资源事件——文件树 emit file:deleted/file:renamed → 主进程 broadcast
+  // （plugin:push 发壳+发池）→ 本桥 → shellEvents → 壳 TabManager 集中联动（E5#54b 订阅：
+  // deleted→forceCloseTab 关标签、renamed→迁移 label+sourceId+filePath）。模式级通用——
+  // 未来任何插件 emit 资源事件走同款桥加一行即联动（零专一化命名；tabs 不需新 API，壳已内置 sourceId 迁移）。
+  useEffect(() => {
+    const events = window.linkdesk?.events;
+    const offDeleted = events?.on("file:deleted", (payload) => {
+      const filePath = (payload as { filePath?: unknown } | null | undefined)?.filePath;
+      if (typeof filePath !== "string") return;
+      shellEvents.emit("file:deleted", { filePath });
+      // 删除联动 toast——对标串口侧栏关闭会话即删标签的即时反馈
+      pushToast({ message: i18n.t("文件已删除，标签已关闭"), severity: "info", ttl: TOAST_TTL_INFO });
+    });
+    const offRenamed = events?.on("file:renamed", (payload) => {
+      const d = payload as { oldPath?: unknown; newPath?: unknown } | null | undefined;
+      if (!d || typeof d.oldPath !== "string" || typeof d.newPath !== "string") return;
+      shellEvents.emit("file:renamed", { oldPath: d.oldPath, newPath: d.newPath });
+    });
+    return () => { offDeleted?.(); offRenamed?.(); };
+  }, []);
+
   // E5.7#63.7：桥接池面板事件（icon:selected 同款通道）——
   //   panel:viewSelected → App state（usePoolSync 重推 activeViewId，真相源在壳）
   //   panel:resize      → LayoutEngine resizeZoneHeight 钳制 → onDidChangeLayout → 重推回执（#13 同款）
