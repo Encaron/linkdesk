@@ -13,6 +13,9 @@
  *   - #15.5 PENDING 用户可见面：list 数据源含挂起插件 + pendingReason（marketplace 列表/详情
  *     数据源）/ getLoadedPluginManifests 保持只含已加载（AppInitializer 计数语义不回归）/
  *     连带卸载 → 后果 toast（一次连带一次通知，深层聚合）+ 池刷新信号
+ *   - #16 适配 + 五态测试：零改动兼容（无 requires 插件 ACTIVE + 零挂起足迹）/ 重载全景
+ *     （挂起 → ACTIVE 清原因清登记 → 连带再挂起 → 回归再 ACTIVE）。有依赖/缺依赖/循环
+ *     已由 #14 钉序/缺依赖永挂起/传递环/自环盖住，此处补独缺两态。
  *
  * 运行时插件 mock 面：readManifest 按插件 ID 返回 manifest（glob 外 → isRuntime 路径）。
  */
@@ -47,6 +50,7 @@ const CONSUMER_ID = "dep-consumer";
 const DEP_A_ID = "dep-a";
 const DEP_B_ID = "dep-b";
 const GRANDCHILD_ID = "dep-grandchild";
+const LEGACY_ID = "dep-legacy";  // #16 零改动兼容——无 requires 的老插件
 const LONELY_ID = "dep-lonely";
 const MISSING_DEP = "never-exists";
 const TOPO_A_ID = "topo-a";
@@ -472,6 +476,41 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
       expect(msg).toContain("孙消费");
       expect(msg).toContain("消费者");
       expect(msg).toContain(DEP_A_ID);
+    });
+  });
+
+  /* ── E5.8#16：适配 + 五态测试——无依赖/有依赖/缺依赖/循环/重载（#14/#15 已盖大半，这里补零改动兼容 + 重载全景） ── */
+
+  describe("#16 适配 + 五态测试", () => {
+    it("零改动兼容：无 requires 插件加载 ACTIVE——零挂起足迹，行为与依赖编排前一致", async () => {
+      manifests.set(LEGACY_ID, manifestOf("老插件"));
+      await loadPlugin(LEGACY_ID, "startup");
+      expect(loadedPluginIds.has(LEGACY_ID)).toBe(true);
+      expect(getLoadDiagnostics(LEGACY_ID)).toMatchObject({ loadState: "active", pendingReason: undefined });
+      expect(_pendingPlugins.has(LEGACY_ID)).toBe(false);
+      expect(getListPluginManifests().find((p) => p.pluginId === LEGACY_ID)?.pendingReason).toBeUndefined();
+    });
+
+    it("重载五态全景：挂起 → 依赖出现 ACTIVE（清原因+清登记）→ 依赖消失连带再挂起 → 回归再 ACTIVE", async () => {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+
+      await loadPlugin(CONSUMER_ID, "startup");
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("pending");
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(true);
+
+      await loadPlugin(DEP_A_ID, "startup");
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("active");
+      expect(getLoadDiagnostics(CONSUMER_ID).pendingReason).toBeUndefined();  // 重载清原因
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(false);                   // sweep 清登记
+
+      unloadPlugin(DEP_A_ID, "uninstall");
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("pending");
+      expect(getLoadDiagnostics(CONSUMER_ID).pendingReason).toContain(DEP_A_ID);
+
+      await loadPlugin(DEP_A_ID, "reinstall");
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("active");
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(true);
     });
   });
 });
