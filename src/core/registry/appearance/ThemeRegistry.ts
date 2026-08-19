@@ -12,6 +12,7 @@
 
 import type { ThemeContribution } from "../../api/types";
 import { findTheme } from "../../services/ui/ThemeEngine";
+import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 
 interface RegisteredTheme extends ThemeContribution {
   pluginId: string;
@@ -21,8 +22,10 @@ const themes = new Map<string, RegisteredTheme>();
 const pluginThemeIds = new Map<string, string[]>();
 
 export const ThemeRegistry = {
-  /** 注册插件贡献的主题。同名 ID 后注册者覆盖（warn）。 */
-  register(contribution: ThemeContribution, pluginId: string): void {
+  /** 注册插件贡献的主题。同名 ID 后注册者覆盖（warn）。
+   *  E5.8#10 返 disposer：删"这一条"——仅当仍是当前占位者（防删后注册者的覆盖）；
+   *  同步从插件 id 列表摘除自身。 */
+  register(contribution: ThemeContribution, pluginId: string): () => void {
     const theme: RegisteredTheme = { ...contribution, pluginId };
     if (themes.has(theme.id)) {
       console.warn(
@@ -33,6 +36,20 @@ export const ThemeRegistry = {
     const ids = pluginThemeIds.get(pluginId) ?? [];
     ids.push(theme.id);
     pluginThemeIds.set(pluginId, ids);
+
+    return trackRegistration(pluginId, () => {
+      if (themes.get(theme.id) === theme) {
+        themes.delete(theme.id);
+      }
+      const owned = pluginThemeIds.get(pluginId);
+      if (owned) {
+        const kept = owned.filter((id) => id !== theme.id);
+        if (kept.length !== owned.length) {
+          if (kept.length === 0) pluginThemeIds.delete(pluginId);
+          else pluginThemeIds.set(pluginId, kept);
+        }
+      }
+    });
   },
 
   /** 注销单个主题 */

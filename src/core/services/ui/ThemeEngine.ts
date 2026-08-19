@@ -4,6 +4,7 @@
  */
 
 import { CoreEvents } from "../../react/events/CoreEvents";
+import { trackRegistration } from "../../registry/registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 
 export interface ThemeColors {
   [key: string]: string;
@@ -30,7 +31,7 @@ const _pluginThemeNames = new Map<string, string[]>();
  * 插件加载器扫描到 type: "theme" 插件后调用此函数。
  * 注册后的主题和内置主题在同一个列表中，不区分来源。
  */
-export function registerTheme(theme: Theme, pluginId?: string): void {
+export function registerTheme(theme: Theme, pluginId?: string): () => void {
   // 覆盖 fallback 主题（无 pluginId）不告警——插件主题上位是预期行为
   if (pluginThemes.has(theme.name)) {
     const existing = pluginThemes.get(theme.name)!;
@@ -50,6 +51,25 @@ export function registerTheme(theme: Theme, pluginId?: string): void {
     }
     _pluginThemeNames.set(pluginId, names);
   }
+
+  // E5.8#10：disposer = 删"这一条"——仅当仍是当前占位者（防删后注册者的覆盖）；
+  // 无 pluginId（fallback 主题——非插件域）→ 不追踪，返裸 disposer。
+  const dispose = (): void => {
+    if (pluginThemes.get(theme.name) === theme) {
+      pluginThemes.delete(theme.name);
+    }
+    if (pluginId) {
+      const names = _pluginThemeNames.get(pluginId);
+      if (names) {
+        const kept = names.filter((n) => n !== theme.name);
+        if (kept.length !== names.length) {
+          if (kept.length === 0) _pluginThemeNames.delete(pluginId);
+          else _pluginThemeNames.set(pluginId, kept);
+        }
+      }
+    }
+  };
+  return pluginId ? trackRegistration(pluginId, dispose) : dispose;
 }
 
 /** E2c #19h A3：注销单个主题 */

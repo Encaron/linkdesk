@@ -1,26 +1,22 @@
 /**
  * E5#27c：ClipboardProviderRegistry 单元测试。
- * register/resolve/覆盖检测/unregisterAll
+ * register/resolve/覆盖检测/dispose（E5.8#10：per-entry track——unregisterAll 已摘除）。
  */
 
 import { describe, it, expect, beforeEach, vi } from "vitest";
+import { clearRegistrationLayers } from "./registrationTracker";
 import { clipboardProviders, type ClipboardProvider } from "./ClipboardProviderRegistry";
 
-// E5.7#98：测试直捣私有内部——窄接口替代 as any（公共面不暴露 reset/unregisterAll）。
+// E5.7#98：测试直捣私有内部——窄接口替代 as any（公共面不暴露 reset/_providers）。
 // 不与 typeof clipboardProviders 相交——私有 _providers 会让交集坍缩成 never
 type InternalRegistry = {
-  unregisterAll?: (pluginId: string) => void;
   _providers?: ClipboardProvider[];
 };
-// protected unregisterAll → public 测试访问——两步 cast 穿刺（E5.7#98 替代 as any）
 const internal = clipboardProviders as unknown as InternalRegistry;
 
-// 每个测试前清空注册表
+// 每个测试前清空注册表 + 追踪器层
 beforeEach(() => {
-  // RegistryBase 不支持 reset——直接操作内部
-  internal.unregisterAll?.("p1");
-  internal.unregisterAll?.("p2");
-  // 暴力清空
+  clearRegistrationLayers();
   const arr = internal._providers;
   if (arr) arr.length = 0;
 });
@@ -52,9 +48,9 @@ describe("ClipboardProviderRegistry", () => {
     warn.mockRestore();
   });
 
-  it("unregisterAll → resolve 返回 undefined", () => {
-    clipboardProviders.register("p1", { when: "explorerFocus", onCopy: () => {} });
-    internal.unregisterAll?.("p1");
+  it("register 返 disposer → dispose 后 resolve 返回 undefined（E5.8#10）", () => {
+    const dispose = clipboardProviders.register("p1", { when: "explorerFocus", onCopy: () => {} });
+    dispose();
     expect(clipboardProviders.resolve("explorerFocus")).toBeUndefined();
   });
 

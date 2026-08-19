@@ -4,6 +4,8 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
+import { PluginLifecycle } from "../../pluginLoader/lifecycle-events";
+import { clearRegistrationLayers } from "./registrationTracker";
 import {
   registerConfiguration,
   unregisterConfiguration,
@@ -135,6 +137,57 @@ describe("ConfigurationRegistry — configurationDefaults", () => {
     const merged = getConfigurationDefaults();
     expect(merged.a).toBe(1);
     expect(merged.b).toBe(2);
+  });
+});
+
+describe("ConfigurationRegistry — register 返 disposer（E5.8#10）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearConfigurationRegistrations();
+  });
+
+  it("registerConfiguration 注册→dispose→getPluginConfiguration 为空", () => {
+    // 深拷贝——disposer 从 contribution.properties 删键（merge 语义），不污染共享 MOCK_CONFIG
+    const dispose = registerConfiguration("disposer-test", JSON.parse(JSON.stringify(MOCK_CONFIG)));
+    expect(getPluginConfiguration("disposer-test")).toBeDefined();
+
+    dispose();
+
+    expect(getPluginConfiguration("disposer-test")).toBeUndefined();
+    expect(getMergedSchema()["app.theme"]).toBeUndefined();
+  });
+
+  it("merge 部分——dispose 只删本次 contribution 的属性，先前保留", () => {
+    registerConfiguration("disposer-test", JSON.parse(JSON.stringify(MOCK_CONFIG))); // app.theme + app.fontSize
+    const dispose = registerConfiguration("disposer-test", {
+      title: "测试设置",
+      properties: { "app.extra": { type: "boolean", default: true, description: "额外" } },
+    });
+
+    dispose();
+
+    const contrib = getPluginConfiguration("disposer-test")!;
+    expect(contrib.properties["app.theme"]).toBeDefined();  // 先前注册的属性保留
+    expect(contrib.properties["app.extra"]).toBeUndefined(); // 本次新增的属性已删
+  });
+
+  it("registerConfigurationDefaults 注册→dispose→查询为空", () => {
+    const dispose = registerConfigurationDefaults("disposer-test", { "editor.fontSize": 12 });
+    expect(getConfigurationDefaults()["editor.fontSize"]).toBe(12);
+
+    dispose();
+
+    expect(getConfigurationDefaults()["editor.fontSize"]).toBeUndefined();
+  });
+
+  it("fire onWillUninstall → 配置 + 弱默认值自动逆序回滚（机械保障）", () => {
+    registerConfiguration("disposer-test", MOCK_CONFIG);
+    registerConfigurationDefaults("disposer-test", { "editor.fontSize": 12 });
+
+    PluginLifecycle.onWillUninstall.fire({ pluginId: "disposer-test", reason: "uninstall" });
+
+    expect(getPluginConfiguration("disposer-test")).toBeUndefined();
+    expect(getConfigurationDefaults()["editor.fontSize"]).toBeUndefined();
   });
 });
 

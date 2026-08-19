@@ -8,8 +8,8 @@
  * LanguageRegistry 只管登记和查询。加载 JSON、注册到 i18next 是 loader.ts 的事。
  * 架构：圆形大厅的"语言本"——插件往本子上登记自己提供的语言，谁都可以翻。
  *
- * 自动注销：继承 RegistryBase——插件卸载时 unregisterAll 自动被调用，
- * 无需 lifecycle.ts 手动添加清理逻辑。
+ * 自动注销：继承 RegistryBase——插件卸载时 tracker 逆序回滚每个 per-entry disposer
+ *（E5.8#10：register 逐条 track，卸载无需 lifecycle.ts 手动清理）。
  */
 
 import { RegistryBase } from "../../registry/RegistryBase";
@@ -27,8 +27,9 @@ class LanguageRegistryImpl extends RegistryBase {
     super();
   }
 
-  /** 注册插件贡献的语言包。同名 ID 后注册者覆盖（warn）。 */
-  register(contribution: LanguageContribution, pluginId: string): void {
+  /** 注册插件贡献的语言包。同名 ID 后注册者覆盖（warn）。
+   *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
+  register(contribution: LanguageContribution, pluginId: string): () => void {
     const lang: RegisteredLanguage = { ...contribution, pluginId };
     if (this.languages.has(lang.id)) {
       console.warn(
@@ -39,7 +40,19 @@ class LanguageRegistryImpl extends RegistryBase {
     const ids = this.pluginLanguageIds.get(pluginId) ?? [];
     ids.push(lang.id);
     this.pluginLanguageIds.set(pluginId, ids);
-    this.markPlugin(pluginId);
+    return this.track(pluginId, () => {
+      if (this.languages.get(lang.id) === lang) {
+        this.languages.delete(lang.id);
+      }
+      const owned = this.pluginLanguageIds.get(pluginId);
+      if (owned) {
+        const kept = owned.filter((id) => id !== lang.id);
+        if (kept.length !== owned.length) {
+          if (kept.length === 0) this.pluginLanguageIds.delete(pluginId);
+          else this.pluginLanguageIds.set(pluginId, kept);
+        }
+      }
+    });
   }
 
   /** 按语言代码查找 */
@@ -57,14 +70,6 @@ class LanguageRegistryImpl extends RegistryBase {
     return this.languages.has(langCode);
   }
 
-  /** 插件卸载时自动清理——由 RegistryBase 调用 */
-  protected unregisterAll(pluginId: string): void {
-    const ids = this.pluginLanguageIds.get(pluginId);
-    if (ids) {
-      for (const id of ids) this.languages.delete(id);
-      this.pluginLanguageIds.delete(pluginId);
-    }
-  }
 }
 
 export const LanguageRegistry = new LanguageRegistryImpl();
