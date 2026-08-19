@@ -40,7 +40,8 @@ import type { ShellAPI } from "./linkdesk-api/shell";
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
- * 壳 preload 独有面（bridge/pool/window/path/…）为 `?` 可选——池内不存在。
+ * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
+ * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
  * E5.8#0d.10-9e：由 10 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */

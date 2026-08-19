@@ -30,8 +30,8 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "viewContainer" | "plugins" | "pluginManager" | "window"
   | "shell" | "hotExit" | "getFilePath"> & {
   /** pool 命名空间——分裂面方法级子集：池侧 = 收布局 + 发动作（壳侧 pushLayout/onReady/… 11 方法为壳→池推送面，池内不存在）。
-   *  NonNullable 必要——契约 pool 为 `?` 可选（keyof (T | undefined) = never，直接 Pick 约束炸） */
-  pool: Pick<NonNullable<LinkDeskAPI["pool"]>, "onLayout" | "ready" | "sidebarAction" | "tabAction">;
+   *  pool 契约必选（E5.8#22 审视 N1 修正后）——直接 Pick，无需 NonNullable */
+  pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction">;
 };
 
 /** 壳 preload 必暴露面（22；bridge 真壳独有）。commands/tabs/pool 三命名空间方法级子集：
@@ -45,5 +45,5 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "clipboard" | "shell" | "env" | "events" | "bridge" | "window"> & {
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
-  pool: Omit<NonNullable<LinkDeskAPI["pool"]>, "onLayout" | "ready" | "sidebarAction" | "tabAction">;
+  pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction">;
 };
