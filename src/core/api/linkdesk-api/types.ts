@@ -40,10 +40,14 @@ export interface LinkDeskConfigSchema {
 
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
  *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为
- *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。 */
+ *  IpcBridgeHandler.handlePluginsCall "list" 分支实际序列化的 7 字段，marketplace 消费。
+ *  E5.8#15.5：pendingReason——缺依赖挂起原因（"等待依赖: xxx"）；无挂起 = undefined。
+ *  有值 = 插件已安装但依赖未就绪（PENDING），列表/详情显示等待状态。 */
 export interface PluginListEntry {
   pluginId: string;
   manifest: PluginListSubset;
+  /** 缺依赖挂起原因——marketplace 显示 PENDING 徽标 + 详情提示条（E5.8#15.5） */
+  pendingReason?: string;
 }
 
 /** E5.7#81：安装结果——success:false 时 error 为中文失败原因（校验 / 版本冲突 / 复制失败）。

@@ -22,7 +22,7 @@ import {
   getLoadDiagnosticsSummary,
   clearLoadStates,
 } from "./loadState";
-import { PluginLifecycle } from "./lifecycle-events";
+import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
 import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import {
   trackRegistration,
@@ -224,6 +224,35 @@ describe("loadState 连带卸载——orphanPlugin", () => {
     } finally {
       unsub();
     }
+  });
+
+  it("fire onPluginLifecycleChange（E5.8#15.5：挂起后 marketplace 列表即时变——连带不发 onDidUninstall，刷新信号由 orphan 补发）", () => {
+    const fired = vi.fn();
+    const unsub = onPluginLifecycleChange.event(fired);
+    try {
+      markLoadStarted(PID);
+      markLoadSuccess(PID);
+      orphanPlugin(PID, ["dep-plugin"]);
+      expect(fired).toHaveBeenCalledTimes(1);
+    } finally {
+      unsub();
+    }
+  });
+
+  it("返回连带结果（自身——顶层 unloadPlugin 聚合后果 toast 数据源）", () => {
+    markLoadStarted(PID);
+    markLoadSuccess(PID);
+    const orphans = orphanPlugin(PID, ["dep-plugin"]);
+    // loadState 测试面无 loadedPluginIds manifest → displayName 回退 pluginId
+    expect(orphans).toEqual([{ pluginId: PID, displayName: PID }]);
+  });
+
+  it("守卫跳过时返回空数组（不参与聚合 toast）", () => {
+    markLoadStarted(PID);
+    markLoadSuccess(PID);
+    orphanPlugin(PID, ["dep-plugin"]);  // 首次连带 → pending
+    const second = orphanPlugin(PID, ["dep-plugin"]);  // 已 pending → 守卫
+    expect(second).toEqual([]);
   });
 });
 

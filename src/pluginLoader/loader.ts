@@ -49,7 +49,7 @@ import {
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
   isPluginDisabled,
-  getLoadedPluginManifests,
+  getListPluginManifests,
 } from "./lifecycle-ops";
 export {
   disablePlugin,
@@ -228,7 +228,8 @@ setPluginAPI({
   getDisabledPluginInfo,
   getUninstalledPluginInfo,
   isPluginDisabled,
-  getLoadedPluginManifests,
+  // E5.8#15.5：IPC list 数据源换成含挂起插件的合并面——getLoadedPluginManifests 只供内部消费方
+  getListPluginManifests,
 });
 
 /** 是否已初始化 */

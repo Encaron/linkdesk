@@ -36,11 +36,13 @@
  *   非法迁移 console.warn 不 throw——状态机是诊断面不是看门狗，禁止把加载流程带崩。
  */
 
-import { PluginLifecycle, notifyPluginRemoved } from "./lifecycle";
+import { PluginLifecycle, notifyPluginRemoved, onPluginLifecycleChange } from "./lifecycle";
 import type { PluginUninstallEvent } from "./lifecycle-events";
 import { loadedPluginIds, _deferredPlugins, _pendingPlugins, getLoadedManifest } from "./state";
 import { registrationCount } from "../core/registry/registrationTracker";
 import { findActiveConsumers, formatPendingReason } from "./dependencies";
+// E5.8#15.5：连带挂起后果 toast（对标 lifecycle 消费端 3 的 pushToast 机制——用户主动卸载依赖时知道后果）
+import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 
 /** 加载状态——三方边界之"LoadState"，见模块头注释。
  *  不 export——零外部消费方（knip 实锤）；消费方（dev 面板等）出现时再开。 */
@@ -122,42 +124,58 @@ export function parkPending(pluginId: string, reason: string): void {
 
 /* ── E5.8#15：依赖消失连带卸载——逆拓扑序 + 落 PENDING（消费方先退，依赖后退） ── */
 
+/** 连带卸载结果——顶层 unloadPlugin 聚合 toast 用（E5.8#15.5：一次连带一次后果通知） */
+interface OrphanResult {
+  pluginId: string;
+  /** 显示名（连带前从 getLoadedManifest 取——落 PENDING 后清单已移） */
+  displayName: string;
+}
+
 /**
  * 连带卸载消费方（逆拓扑序）——卸载/禁用/目录删除任一途径触发时，先连带卸载依赖本插件的活跃插件。
  * 递归收敛：orphanPlugin 先连带卸载它自己的消费方（深层消费方先退），再退自身。
  * 幂等：orphanPlugin 守卫跳过已 pending/unloading/disposed 的插件——双重连带不双滚。
+ * 返回本次连带实际卸载的插件（含深层）——聚合后果 toast（空 = 无连带，静默）。
  */
-function cascadeDependents(depId: string): void {
+function cascadeDependents(depId: string): OrphanResult[] {
   const consumers = findActiveConsumers(depId); // 快照——连带卸载会改 loadedPluginIds
+  const orphans: OrphanResult[] = [];
   for (const consumer of consumers) {
-    orphanPlugin(consumer, [depId]);
+    orphans.push(...orphanPlugin(consumer, [depId]));
   }
+  return orphans;
 }
 
 /**
  * 依赖消失连带卸载——消费插件 rollback 全量生效 + 落 PENDING（等待依赖回归，非卸载）。
  * 与 unloadPlugin 同序（unloading → notifyPluginRemoved → onWillUninstall[tracker 回滚] → 集合清理），
  * 但落点 = pending + pendingReason + _pendingPlugins（依赖回归 sweep 自动补载），且不发 onDidUninstall
- * （非用户卸载——静默；toast 归 #15.5）。onWillUninstall reason = "disable"——iconOrder 保留原位（可回归）。
+ * （非用户卸载——静默；后果 toast 归 #15.5 顶层 unloadPlugin 聚合）。onWillUninstall reason = "disable"——
+ * iconOrder 保留原位（可回归）。
  * 逆拓扑序：先连带卸载本插件的消费方，再退自身——消费方回滚期可能查询本插件注册表贡献，本插件须最后退。
- * 守卫跳过 unloading/disposed/pending——双重连带不双滚（pending = 已连带过或从未加载）。
+ * 守卫跳过 unloading/disposed/pending——双重连带不双滚（pending = 已连带过或从未加载），返回 []。
+ * 返回 [自身 + 深层连带]——顶层聚合；同时 fire onPluginLifecycleChange（E5.8#15.5：挂起后 marketplace
+ * 列表即时变——连带不发 onDidUninstall，池刷新信号由这里补发）。
  */
-export function orphanPlugin(pluginId: string, missing: string[]): void {
+export function orphanPlugin(pluginId: string, missing: string[]): OrphanResult[] {
   const current = _states.get(pluginId)?.state ?? "pending";
   if (current === "unloading" || current === "disposed" || current === "pending") {
     console.warn(`[loadState] 连带卸载 "${pluginId}" 跳过（当前 ${current}）`);
-    return;
+    return [];
   }
-  cascadeDependents(pluginId);
+  const manifest = getLoadedManifest(pluginId);
+  const displayName = manifest?.name ?? pluginId;
+  const nested = cascadeDependents(pluginId);
   transition(pluginId, "unloading");
   notifyPluginRemoved(pluginId);
-  const manifest = getLoadedManifest(pluginId);
-  PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName: manifest?.name ?? pluginId });
+  PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
   loadedPluginIds.delete(pluginId);
   _deferredPlugins.delete(pluginId);
   if (manifest) _pendingPlugins.set(pluginId, manifest); // sweep 重查依赖需要 manifest 留存
   parkPending(pluginId, formatPendingReason(missing));
   console.warn(`[loadState] 插件 "${pluginId}" 依赖消失连带卸载——${formatPendingReason(missing)}`);
+  onPluginLifecycleChange.fire(); // 池刷新——marketplace 列表即时反映 PENDING（#15.5）
+  return [{ pluginId, displayName }, ...nested];
 }
 
 /**
@@ -181,7 +199,7 @@ export function unloadPlugin(
     console.warn(`[loadState] 重复卸载 "${pluginId}"（当前 ${current}）——跳过`);
     return;
   }
-  cascadeDependents(pluginId);
+  const orphans = cascadeDependents(pluginId);
   _pendingPlugins.delete(pluginId);
   transition(pluginId, "unloading");
   notifyPluginRemoved(pluginId);
@@ -190,6 +208,18 @@ export function unloadPlugin(
   _deferredPlugins.delete(pluginId);
   transition(pluginId, "disposed");
   PluginLifecycle.onDidUninstall.fire({ pluginId, reason, displayName });
+  // E5.8#15.5：连带后果 toast——一次连带一次通知（有连带才弹）。用户主动卸载/禁用依赖时知道
+  // 哪些消费插件转入等待；目录删除（watcher）无既有 toast，此通知独立承担告知。依赖恢复后 sweep 自动补载。
+  if (orphans.length > 0) {
+    const names = orphans.map((o) => `"${o.displayName}"`).join("、");
+    const depLabel = displayName ?? pluginId;
+    pushToast({
+      message: `插件 ${names} 因依赖 "${depLabel}" 消失转入等待——依赖恢复后自动启用`,
+      source: pluginId,
+      severity: "warning",
+      ttl: TOAST_TTL_ERROR,
+    });
+  }
 }
 
 /** 诊断面载荷——设计文档 §3.3 */

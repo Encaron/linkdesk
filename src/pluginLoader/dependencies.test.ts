@@ -10,11 +10,14 @@
  *   - #15 依赖消失连带卸载 + 自动重载：卸载链（消费方逆拓扑序先退 + 重装自动 ACTIVE）/
  *     禁用链（连带挂起 + 启用自动 ACTIVE）/ 传递连带（深层先退）/ 禁用优先（不复活）/
  *     挂起消费方可禁用（操作层回退）/ 卸载清挂起登记
+ *   - #15.5 PENDING 用户可见面：list 数据源含挂起插件 + pendingReason（marketplace 列表/详情
+ *     数据源）/ getLoadedPluginManifests 保持只含已加载（AppInitializer 计数语义不回归）/
+ *     连带卸载 → 后果 toast（一次连带一次通知，深层聚合）+ 池刷新信号
  *
  * 运行时插件 mock 面：readManifest 按插件 ID 返回 manifest（glob 外 → isRuntime 路径）。
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import {
   getDependencyIds,
   findMissingDeps,
@@ -26,10 +29,18 @@ import { loadedPluginIds, _deferredPlugins, _pendingPlugins, _loadingPromises } 
 import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary, unloadPlugin } from "./loadState";
 import { clearRegistrationLayers } from "../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
-import { disablePlugin } from "./lifecycle-ops";
-import { PluginLifecycle } from "./lifecycle-events";
+import { disablePlugin, getLoadedPluginManifests, getListPluginManifests } from "./lifecycle-ops";
+import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
 import { clearPluginStates } from "../core/services/plugins/PluginStateService";
 import type { PluginManifest } from "../core/api/types";
+
+// E5.8#15.5：连带后果 toast——mock pushToast 观察连带通知（loadState.unloadPlugin 直接 import，
+// vi.mock 模块级替换才能拦截）。vi.hoisted 保证 mock 工厂引用同一实例。
+const { pushToast } = vi.hoisted(() => ({ pushToast: vi.fn() }));
+vi.mock("../core/services/ui/NotificationService", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../core/services/ui/NotificationService")>();
+  return { ...actual, pushToast };
+});
 
 // E5.7#95：测试夹具插件 ID——大写常量（linkdesk/no-plugin-id-hardcode 批准的常量通道）
 const CONSUMER_ID = "dep-consumer";
@@ -376,6 +387,91 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
       unloadPlugin(CONSUMER_ID, "uninstall");
       expect(_pendingPlugins.has(CONSUMER_ID)).toBe(false);
       expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("disposed");
+    });
+  });
+
+  /* ── E5.8#15.5：PENDING 用户可见面——list 数据源 + 连带后果 toast ── */
+
+  describe("#15.5 PENDING 用户可见面——list 数据源 + 连带后果 toast", () => {
+    /** 种子：消费者 requires 依赖A——消费者先挂起，依赖加载后 sweep 补载成 ACTIVE */
+    async function seedPair(): Promise<void> {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+      await loadPlugin(CONSUMER_ID, "startup");
+      await loadPlugin(DEP_A_ID, "startup");
+    }
+
+    beforeEach(() => {
+      pushToast.mockClear();
+    });
+
+    it("list 数据源含挂起插件 + pendingReason（缺依赖启动 → marketplace 可见 PENDING + 原因可读）", async () => {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      await loadPlugin(CONSUMER_ID, "startup");  // 缺依赖挂起
+
+      const list = getListPluginManifests();
+      const mine = list.find((p) => p.pluginId === CONSUMER_ID);
+      expect(mine?.pendingReason).toBe(`等待依赖: "${DEP_A_ID}"`);
+      expect(mine?.manifest.name).toBe("消费者");
+    });
+
+    it("list 数据源含已加载插件（无 pendingReason）；未知插件不进", async () => {
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+      await loadPlugin(DEP_A_ID, "startup");
+
+      const list = getListPluginManifests();
+      expect(list.find((p) => p.pluginId === DEP_A_ID)?.pendingReason).toBeUndefined();
+      expect(list.some((p) => p.pluginId === MISSING_DEP)).toBe(false);
+    });
+
+    it("getLoadedPluginManifests 保持只含已加载（挂起不混入——AppInitializer 计数语义）", async () => {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      await loadPlugin(CONSUMER_ID, "startup");  // 挂起
+
+      expect(getListPluginManifests().some((p) => p.pluginId === CONSUMER_ID)).toBe(true);
+      expect(getLoadedPluginManifests().some((p) => p.pluginId === CONSUMER_ID)).toBe(false);
+    });
+
+    it("连带卸载 → 挂起插件进 list + 后果 toast（一次连带一次通知）+ 池刷新信号", async () => {
+      await seedPair();
+      const fired = vi.fn();
+      const unsub = onPluginLifecycleChange.event(fired);
+      try {
+        unloadPlugin(DEP_A_ID, "uninstall");
+
+        const list = getListPluginManifests();
+        expect(list.find((p) => p.pluginId === CONSUMER_ID)?.pendingReason).toContain(DEP_A_ID);
+        expect(pushToast).toHaveBeenCalledWith(expect.objectContaining({
+          message: expect.stringContaining("消费者"),
+          severity: "warning",
+        }));
+        expect(fired).toHaveBeenCalledTimes(1);  // orphan 补发池刷新（连带不发 onDidUninstall）
+      } finally {
+        unsub();
+      }
+    });
+
+    it("无连带卸载不弹后果 toast（叶插件只有自身装卸通知）", async () => {
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+      await loadPlugin(DEP_A_ID, "startup");
+      pushToast.mockClear();
+
+      unloadPlugin(DEP_A_ID, "uninstall");
+      expect(pushToast).not.toHaveBeenCalled();
+    });
+
+    it("传递连带 toast 列出全部消费方（深层聚合——一次通知带全名单）", async () => {
+      await seedPair();  // 消费者 + 依赖A 均 ACTIVE
+      manifests.set(GRANDCHILD_ID, manifestOf("孙消费", [CONSUMER_ID]));
+      await loadPlugin(GRANDCHILD_ID, "startup");  // 消费者已就绪 → 直接 ACTIVE
+      pushToast.mockClear();
+
+      unloadPlugin(DEP_A_ID, "uninstall");
+      expect(pushToast).toHaveBeenCalledTimes(1);  // 聚合——不按消费方逐个弹
+      const msg = (pushToast.mock.calls[0][0] as { message: string }).message;
+      expect(msg).toContain("孙消费");
+      expect(msg).toContain("消费者");
+      expect(msg).toContain(DEP_A_ID);
     });
   });
 });
