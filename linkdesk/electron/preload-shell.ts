@@ -116,10 +116,10 @@ try {
       sendText:   (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
       setDtr:     (enable: boolean)     => ipcRenderer.invoke(IPC.serial.setDtr, enable),
       setRts:     (enable: boolean)     => ipcRenderer.invoke(IPC.serial.setRts, enable),
-      // 数据推送监听——对标 Tauri listen("serial-data/stats/system")
-      onData:     (cb: (text: string) => void)      => listenDirect(ipcRenderer, IPC.serial.data, cb),
-      onStats:    (cb: (stats: SerialStats) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
-      onSystem:   (cb: (message: string) => void)    => listenDirect(ipcRenderer, IPC.serial.system, cb),
+      // 数据推送监听——E5.8#6.5：走 broadcast → plugin:push 分发 → events.on（原 listenDirect direct 已删）
+      onData:     (cb: (text: string) => void)      => events.on(IPC.serial.data, cb),
+      onStats:    (cb: (stats: SerialStats) => void) => events.on(IPC.serial.stats, cb),
+      onSystem:   (cb: (message: string) => void)    => events.on(IPC.serial.system, cb),
     },
 
     // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──
@@ -140,10 +140,10 @@ try {
       watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
         return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
           const channel = filesystemChanged(watcherId);
-          const handler = (_event: Electron.IpcRendererEvent, change: FileChangeEvent) => onEvent(change);
-          ipcRenderer.on(channel, handler);
+          // E5.8#6.5：文件变更走 broadcast → plugin:push 分发 → events.on（原 ipcRenderer.on direct 已删）
+          const unsubscribe = events.on<FileChangeEvent>(channel, (change) => onEvent(change));
           return () => {
-            ipcRenderer.removeListener(channel, handler);
+            unsubscribe();
             ipcRenderer.invoke(IPC.filesystem.unwatch, watcherId).catch(() => {}); // 非关键操作——清理 watcher，窗口关闭时失败不阻塞
           };
         });

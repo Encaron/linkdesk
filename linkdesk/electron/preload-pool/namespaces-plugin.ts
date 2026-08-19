@@ -139,7 +139,7 @@ export function buildLangDef() {
 }
 
 /** lsp 命名空间——LSP 桥（编辑器在池内渲染需 LSP 通信：自动补全/F12/诊断/重命名） */
-export function buildLsp() {
+export function buildLsp(events: EventSystemApi) {
   return {
     spawn: (command: string, args: string[] | undefined, pluginId: string) =>
       ipcRenderer.invoke(IPC.lsp.spawn, { command, args, pluginId }),
@@ -147,8 +147,9 @@ export function buildLsp() {
       ipcRenderer.send(IPC.lsp.write, { channelId, data }),
     dispose: (channelId: string) =>
       ipcRenderer.invoke(IPC.lsp.dispose, { channelId }),
+    // E5.8#6.5：lsp:data 走 broadcast → plugin:push 分发 → events.on（原 listenDirect direct 已删）
     onData: (cb: (channelId: string, data: string) => void) =>
-      listenDirect(ipcRenderer, IPC.lsp.data, ({ channelId, data }: { channelId: string; data: string }) => cb(channelId, data)),
+      events.on<{ channelId: string; data: string }>(IPC.lsp.data, ({ channelId, data }) => cb(channelId, data)),
   };
 }
 

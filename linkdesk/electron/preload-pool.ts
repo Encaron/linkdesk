@@ -46,10 +46,11 @@
  *           → 监听直接 IPC 通道，但事件在 IPC.plugin.push 上到达 → 永远收不到。不报错。静默失效。
  *
  * 铁律 2：主进程直接 send → 池侧 listenDirect(ipcRenderer, channel, cb)
- *   主进程：view.webContents.send(IPC.serial.data, payload)（不经 plugin:push 包装，直发池 WebView）
- *   ✅ 正确：serial.onData  → listenDirect(ipcRenderer, IPC.serial.data, cb)
- *   ✅ 正确：serial.onStats → listenDirect(ipcRenderer, IPC.serial.stats, cb)
- *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, IPC.p2p.data, cb)
+ *   ✅ 正确：p2p.on         → listenDirect(ipcRenderer, IPC.p2p.data, cb)（p2p 定向推流，不经 broadcast）
+ *
+ * 铁律 2.5（E5.8#6.5 起）：数据推流（serial.*、lsp.data、filesystem:changed:*）已归一化走 broadcast →
+ *   serial.onData → events.on(IPC.serial.data, cb)（原 listenDirect direct 通道已删）
+ *   ❌ 错误：listenDirect(ipcRenderer, IPC.serial.data, cb)——广播走 plugin:push，永远收不到
  *
  * 铁律 3：ipc/event-system.ts 的 listenDirect 会对已知 plugin:push 通道打印 error
  *   新加直接通道 → channel 名加 `:direct` 后缀以跳过告警
@@ -120,8 +121,8 @@ try {
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, {
     // ── 数据域（4d）──
-    serial: buildSerial(),
-    filesystem: buildFilesystem(),
+    serial: buildSerial(events),
+    filesystem: buildFilesystem(events),
     clipboard: buildClipboard(),
     path: buildPath(),
     env: buildEnv(),
@@ -145,7 +146,7 @@ try {
     hotExit: buildHotExit(),
     menu: buildMenu(),
     langDef: buildLangDef(),
-    lsp: buildLsp(),
+    lsp: buildLsp(events),
     protocol: buildProtocol(),
     shell: buildShell(),
     getFilePath: buildGetFilePath().getFilePath,

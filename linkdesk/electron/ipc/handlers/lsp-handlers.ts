@@ -4,11 +4,12 @@
  * 渲染进程通过 lsp:spawn 请求启动语言服务器（如 pyright、clangd）。
  * 返回 channelId，后续通过 lsp:write / lsp:data 通道双向通信。
  */
-import { ipcMain, BrowserWindow, app } from "electron";
+import { ipcMain, app } from "electron";
 import { spawn, type ChildProcess } from "child_process";
 import * as path from "path";
 import * as fs from "fs";
 import { IPC } from '../channels.js';
+import { IpcBridge } from '../ipc-bridge.js';
 
 interface LspChannel {
   process: ChildProcess;
@@ -134,24 +135,20 @@ function copyDirFromAsar(src: string, dest: string): void {
   }
 }
 
-// E5.7#36：壳崩重建复用本函数——引用始终刷新（lsp:data 推送读模块引用），IPC 通道只注册一次
-let _mainWindow: BrowserWindow | null = null;
+// E5.7#36 + E5.8#6.5：壳崩重建复用本函数——lsp:data 推送走 IpcBridge.active（恒指最新实例），
+// IPC 通道只注册一次
 let _registered = false;
 
-export function registerLspHandlers(mainWindow: BrowserWindow): void {
-  _mainWindow = mainWindow;
+export function registerLspHandlers(): void {
   if (_registered) return;
   _registered = true;
 
-  ipcMain.handle(IPC.lsp.spawn, async (event, { command, args, pluginId }: {
+  ipcMain.handle(IPC.lsp.spawn, async (_event, { command, args, pluginId }: {
     command: string;
     args?: string[];
     pluginId: string;
   }) => {
     const channelId = `lsp-${++_channelId}`;
-    // E5.5#7 Bug B fix：用 event.sender 路由 LSP 数据回发起 spawn 的 WebView（池内编辑器插件）。
-    // 旧代码用 pluginId（语言 ID "python"）查 View 映射——永远 null（E5.7#43 该 API 已删）。
-    const senderWc = event.sender;
 
     // E5#114d：resolve ASAR 文件路径——外部 node 不认识 app.asar
     const resolvedArgs = (args ?? []).map(resolveLspArg);
@@ -167,21 +164,12 @@ export function registerLspHandlers(mainWindow: BrowserWindow): void {
       shell: true,
     });
 
-    // stdout → renderer（双路由：壳 + 发起 spawn 的插件 WebView）
+    // stdout → renderer（E5.8#6.5：唯一路径 = IpcBridge.broadcast——plugin:push 发壳+发池；
+    // 原 sendOnce 壳+sender 双路由删除：E5.5#7 的 event.sender 路由在唯一 Pool 下恒等于池，
+    // 由 broadcast 统一分发（不再有同一 WebContents 收两次的 E5.6#9g 隐患））
     child.stdout?.on("data", (data: Buffer) => {
       const text = data.toString("utf-8");
-      // E5.5#7：用 event.sender 路由——无论编辑器在哪个 WebView，数据能回到正确的那个
-      // E5.6#9g：防重复发送——单 WebView 模式下 senderWc === mainWindow.webContents，
-      // 不加判断会导致同一 WebContents 收两次 lsp:data → buffer 重复 → JSON.parse 炸在 Content-Length header
-      const sentTo = new Set<Electron.WebContents>();
-      const sendOnce = (wc: Electron.WebContents | null | undefined) => {
-        if (wc && !wc.isDestroyed() && !sentTo.has(wc)) {
-          sentTo.add(wc);
-          wc.send(IPC.lsp.data, { channelId, data: text });
-        }
-      };
-      sendOnce(_mainWindow && !_mainWindow.isDestroyed() ? _mainWindow.webContents : null);
-      sendOnce(senderWc);
+      IpcBridge.active?.broadcast(IPC.lsp.data, { channelId, data: text });
     });
 
     child.stderr?.on("data", (data: Buffer) => {
