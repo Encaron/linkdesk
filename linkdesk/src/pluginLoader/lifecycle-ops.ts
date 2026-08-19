@@ -12,7 +12,8 @@ import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
 import { reportError } from "../core/services/bootstrap/ErrorService";
 // E5.8#11：卸载路径全部收口到状态机 unloadPlugin——lifecycle 事件顺序由迁移图机械保障（L6b）
-import { unloadPlugin } from "./loadState";
+// E5.8#15.5：getLoadDiagnostics——挂起插件的 pendingReason（list() 数据源合并读取）
+import { unloadPlugin, getLoadDiagnostics } from "./loadState";
 import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import {
   linkdesk,
@@ -304,6 +305,25 @@ export function getLoadedPluginManifests(): Array<{ pluginId: string; manifest: 
     }
   }
 
+  return result;
+}
+
+/**
+ * marketplace list() 数据源——已加载 + 缺依赖挂起（pending）插件。
+ * 🔥 与 getLoadedPluginManifests 的分工（E5.8#15.5）：后者只含已加载——AppInitializer 的
+ *   pluginsLoaded 计数 / ProfileService 插件清单 / FactorySlots 必须只见 active 插件，
+ *   挂起插件混入 = 语义回归（pending ≠ loaded）；本函数仅供 IPC list 展示——挂起插件带
+ *   pendingReason（"等待依赖: xxx"，读状态机诊断面），marketplace 列表/详情可见。
+ *   禁用/未安装插件不进本函数——走 getDisabledPluginInfo / getUninstalledPluginInfo 各自 API。
+ *   不变式：_pendingPlugins ∩ loadedPluginIds = ∅（sweep 清僵尸）——防御性 skip 保留。
+ */
+export function getListPluginManifests(): Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string }> {
+  const result: Array<{ pluginId: string; manifest: PluginManifest; pendingReason?: string }> =
+    getLoadedPluginManifests().map((p) => ({ ...p }));
+  for (const [pluginId, manifest] of _pendingPlugins) {
+    if (loadedPluginIds.has(pluginId)) continue; // 僵尸挂起登记——防御（sweep 已清）
+    result.push({ pluginId, manifest, pendingReason: getLoadDiagnostics(pluginId).pendingReason });
+  }
   return result;
 }
 

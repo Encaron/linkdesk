@@ -17,7 +17,12 @@ export interface PluginManagementAPI {
   getDisabledPluginInfo(): unknown;
   getUninstalledPluginInfo(): unknown;
   isPluginDisabled(id: string): boolean;
-  getLoadedPluginManifests(): Array<{ pluginId: string; manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown } }>;
+  // E5.8#15.5：list() 数据源 = 已加载 + 缺依赖挂起（pendingReason 随行）——marketplace 可见 PENDING 状态
+  getListPluginManifests(): Array<{
+    pluginId: string;
+    manifest: { name: string; description?: string; version?: string; core?: boolean; author?: string; statusBar?: unknown; contributes?: unknown };
+    pendingReason?: string;
+  }>;
 }
 
 let _pluginAPI: PluginManagementAPI | null = null;
@@ -27,7 +32,7 @@ export function setPluginAPI(api: PluginManagementAPI): void { _pluginAPI = api;
 export async function handlePluginManagerMethod(method: string, args: unknown[]): Promise<unknown> {
   switch (method) {
     case "list":
-      return _pluginAPI!.getLoadedPluginManifests().map((p) => ({
+      return _pluginAPI!.getListPluginManifests().map((p) => ({
         pluginId: p.pluginId,
         manifest: {
           name: p.manifest.name,
@@ -38,6 +43,8 @@ export async function handlePluginManagerMethod(method: string, args: unknown[])
           statusBar: p.manifest.statusBar,
           contributes: p.manifest.contributes,
         },
+        // E5.8#15.5：缺依赖挂起原因——marketplace 显示 "等待依赖: xxx"（无挂起 = undefined）
+        pendingReason: p.pendingReason,
       }));
     case "enable":
       return _pluginAPI!.enablePlugin(args[0] as string);
