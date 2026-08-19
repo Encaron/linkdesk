@@ -127,14 +127,18 @@ export interface PluginManifest {
   resources?: string[];
   recommends?: { plugin: string; reason: string }[];
   suggests?: { plugin: string; reason: string }[];
-  requires?: { plugin: string; version: string }[];
+  /** 插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，loader 先加载依赖再加载本插件。
+   *  纯声明：无版本约束（版本语义属 E6 市场范畴，激活顺序不承载）；缺依赖 → loader 状态机挂 PENDING。
+   *  与 ConfigurationRegistry 的配置项级 dependsOn（同一 manifest 内某配置项依赖另一配置项）不同域。 */
+  requires?: string[];
   changelog?: { version: string; date: string; changes?: string[] }[];
   screenshots?: string[];
   minAppVersion?: string;
   /** 激活事件——对标 VS Code activationEvents。空或含 "*" = 启动时立即加载。
    *  具体事件：onCommand:id / onFileOpen:.ext / onPortOpen / onLanguage:id / onView:id */
   activationEvents?: string[];
-  /** 扩展依赖——加载前检查。缺失 → toast + 跳过（#45 实现） */
+  /** @deprecated E5.8#14——归并到 requires（插件级激活依赖统一由 requires 声明）。
+   *  零插件使用；loader 兼容读取直到 #14 落地迁移。 */
   extensionDependencies?: string[];
   docs?: string;
   cardDocMap?: Record<string, string>;

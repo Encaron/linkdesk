@@ -237,7 +237,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `resources` | `string[]` | 资源文件列表——HTML/图片等。仅 `resource` 类型 |
 | `recommends` | `array` | 推荐同时安装的插件 `[{ plugin: string, reason: string }]` |
 | `suggests` | `array` | 可选相关插件 `[{ plugin: string, reason: string }]` |
-| `requires` | `array` | 硬依赖 `[{ plugin: string, version: string }]`——未满足则安装按钮禁用 |
+| `requires` | `string[]` | 插件级激活依赖——按 pluginId 声明，加载时先加载依赖再加载本插件（E5.8#13）。无版本约束。详见下方「`requires` 字段详解」 |
 | `changelog` | `array` | 更新日志 `[{ version: string, date: string, changes: string[] }]` |
 | `screenshots` | `string[]` | 截图 URL 数组（Phase 5+ 启用） |
 | `minAppVersion` | `string` | 最低软件版本要求 |
@@ -246,6 +246,38 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `i18n` | `object` | 插件自带翻译 `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }`——key=中文原文。放在 `contributes.i18n` 下，非顶层 |
 | `cssVars` | `object` | 插件自定义 CSS 变量 `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | 权限声明 `["serial", "filesystem", "network"]`（Phase 5+ 启用） |
+
+### `requires` 字段详解
+
+插件级激活顺序依赖——声明本插件激活前必须先激活哪些插件（E5.8#13）。
+
+**对标 VS Code `extensionDependencies`**：同族机制，本字段是其归一化收口（见下「命名边界」）。
+
+**语义：**
+- 值 = 依赖插件的 `pluginId` 数组（无版本约束——激活顺序不承载版本语义，版本匹配属 E6 市场范畴）
+- loader 按拓扑序加载：`requires` 里的插件先激活，本插件再激活——扫描顺序不再影响激活顺序
+- 依赖缺失 → 本插件挂起（PENDING），依赖装好/启用后自动加载
+- 依赖被卸载/禁用 → 本插件连带卸载（消费者优先，逆拓扑序）
+- 依赖关系成环（A→B→A）→ 加载时检测到即报错，插件不激活
+
+**示例：**
+
+```json
+{
+  "name": "串口增强",
+  "version": "1.0.0",
+  "icon": "package",
+  "requires": ["serial-core"]
+}
+```
+
+**命名边界（三个「依赖」不混淆）：**
+
+| 字段 | 层级 | 语义 |
+|---|---|---|
+| `requires` | 插件级（plugin.json 顶层） | 激活顺序依赖——先依赖后本插件（E5.8#13） |
+| `dependsOn` | 配置项级（`contributes.configuration` 项内） | 某配置项依赖另一配置项的值 |
+| `extensionDependencies` | 插件级（历史字段） | 已废弃——归并到 `requires`（E5.8#14 落地） |
 
 ### `icon` 字段详解
 
