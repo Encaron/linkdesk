@@ -16,6 +16,8 @@ import type { IpcRenderer, IpcRendererEvent } from 'electron';
 import { IPC } from './channels';
 // E5.7#97：plugin:push 信封归口 src/core/types/ipc/events.ts（原本地 PluginPushData 移走）
 import type { PluginPushEnvelope } from '../../src/core/types/ipc/events';
+// E5.8#22.5：接收边界运行期契约校验——guard 只记录不阻断（透传载荷）
+import { guardPush } from './wire-guard';
 
 type EventCallback = (payload: unknown) => void;
 
@@ -44,6 +46,8 @@ export function createEventSystem(
     ipcRenderer.on(IPC.plugin.push, (_event, data: PluginPushEnvelope) => {
       const extra = extraHandlers[data.channel];
       if (extra) {
+        // E5.8#22.5：extraHandlers 载荷过边界断言——guard 只记录不阻断，透传 extra(data.payload)
+        guardPush(data.channel, data.payload);
         try { extra(data.payload); } catch (e) {
           console.error(`[${logPrefix}] 额外处理器异常 (channel=${data.channel}):`, e);
         }
@@ -56,6 +60,8 @@ export function createEventSystem(
     on<T = unknown>(channel: string, cb: (payload: T) => void): () => void {
       const handler = (_event: IpcRendererEvent, data: PluginPushEnvelope) => {
         if (data.channel === channel) {
+          // E5.8#22.5：push 载荷过边界断言（events.on 统一入口）——guard 只记录不阻断，透传 cb
+          guardPush(data.channel, data.payload);
           // wire 载荷面 unknown——通道契约类型由订阅方 cb 泛型收窄，边界一处 cast
           try { cb(data.payload as T); } catch { /* contextBridge 回调静默失败 */ }
         }
