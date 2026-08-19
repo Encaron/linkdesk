@@ -23,7 +23,6 @@ export * from "./registry/commands/MenuRegistry";
 export * from "./registry/ProtocolRegistry";
 export * from "./services/ui/StatusBarService";
 export * from "./registry/appearance/ThemeRegistry";
-export * from "./registry/ClipboardProviderRegistry";
 
 // ── 基础设施 ──
 export { reportError } from "./services/bootstrap/ErrorService";
