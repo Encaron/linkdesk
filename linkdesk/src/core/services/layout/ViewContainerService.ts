@@ -43,6 +43,12 @@ export type {
 };
 // E5.8#0d.10-11b：内部模型类 verbatim 迁出到 ViewContainerService/model.ts（_hidden 属主 + active 计算）
 import { ViewContainerModel } from "./ViewContainerService/model";
+// E5.8#0d.10-11c：折叠持久化域（唯一不碰实例私有状态的独立域）→ 委派式拆分，Core 后缀区分模块函数
+import {
+  loadCollapsedState as loadCollapsedStateCore,
+  setCollapsed as setCollapsedCore,
+  isCollapsed as isCollapsedCore,
+} from "./ViewContainerService/collapsed";
 
 /* ── ViewContainerService ── */
 
@@ -211,25 +217,21 @@ export class ViewContainerServiceClass extends RegistryBase {
     return this._emptyContents.get(viewId);
   }
 
-  /* ═══ E4V#46 View 折叠持久化 ═══ */
+  /* ═══ E4V#46 View 折叠持久化（委派 ViewContainerService/collapsed 域） ═══ */
 
   /** 加载持久化的折叠状态 */
   loadCollapsedState(): Set<string> {
-    const saved = getPluginStateValue<string[]>(APP_PLUGIN_ID, "collapsedViews") ?? [];
-    return new Set(saved);
+    return loadCollapsedStateCore();
   }
 
   /** 保存单个 view 折叠状态 */
   setCollapsed(viewId: string, collapsed: boolean): void {
-    const saved = this.loadCollapsedState();
-    if (collapsed) saved.add(viewId);
-    else saved.delete(viewId);
-    setPluginStateValue(APP_PLUGIN_ID, "collapsedViews", [...saved]).catch((e) => { console.error("[ViewContainer] 保存折叠状态失败:", e); });
+    setCollapsedCore(viewId, collapsed);
   }
 
   /** 查询 view 是否持久化为折叠 */
   isCollapsed(viewId: string): boolean {
-    return this.loadCollapsedState().has(viewId);
+    return isCollapsedCore(viewId);
   }
 
   /* ═══ 可见性 ═══ */
