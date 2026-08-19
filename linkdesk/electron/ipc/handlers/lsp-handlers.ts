@@ -10,6 +10,8 @@ import * as path from "path";
 import * as fs from "fs";
 import { IPC } from '../channels.js';
 import { IpcBridge } from '../ipc-bridge.js';
+// E5.8#24.6：spawn 前哨兵——纯函数模块（无 electron import，可直接 vitest）
+import { checkLspDependency } from '../lsp-dependency.js';
 
 interface LspChannel {
   process: ChildProcess;
@@ -139,6 +141,15 @@ function copyDirFromAsar(src: string, dest: string): void {
 // IPC 通道只注册一次
 let _registered = false;
 
+/** E5.8#24.6：写主进程诊断日志——console.error 不进 protocol-debug.log（%APPDATA%/linkdesk/），必须直接写文件 */
+function appendLspLog(tag: string, line: string): void {
+  try {
+    const logFile = path.join(app.getPath("userData"), "protocol-debug.log");
+    const ts = new Date().toISOString();
+    fs.appendFileSync(logFile, `[${ts}] [main] [${tag}] ${line}\n`);
+  } catch { /* ignore */ }
+}
+
 export function registerLspHandlers(): void {
   if (_registered) return;
   _registered = true;
@@ -152,16 +163,25 @@ export function registerLspHandlers(): void {
 
     // E5#114d：resolve ASAR 文件路径——外部 node 不认识 app.asar
     const resolvedArgs = (args ?? []).map(resolveLspArg);
-    // 写诊断日志（主进程 console.error 不进 protocol-debug.log，直接写文件）
-    try {
-      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
-      const ts = new Date().toISOString();
-      fs.appendFileSync(logFile, `[${ts}] [main] [lsp:debug] spawn: command=${command} originalArgs=${JSON.stringify(args)} resolvedArgs=${JSON.stringify(resolvedArgs)} pluginId=${pluginId}\n`);
-    } catch { /* ignore */ }
+    appendLspLog("lsp:debug", `spawn: command=${command} originalArgs=${JSON.stringify(args)} resolvedArgs=${JSON.stringify(resolvedArgs)} pluginId=${pluginId}`);
+
+    // E5.8#24.6：spawn 前哨兵——运行时依赖物理存在检查。缺失 → 抛错（invoke reject），
+    // 渲染进程 lsp.spawn() 即抛 → startLspClient 显性报错 → 编辑器 toast。
+    // 修复回归 #24 静默链：pyright 被删 → spawn ENOENT → invoke 仍返 channelId → client.start() 挂死。
+    const missing = checkLspDependency(command, resolvedArgs, app.getAppPath());
+    if (missing) {
+      const msg = `LSP 运行时依赖缺失: "${missing}"（命令 "${command}" 无法启动）——检查插件 langDef.lsp 配置与 node_modules 完整性`;
+      console.error(`[lsp:${channelId}] ${msg}`);
+      appendLspLog("lsp:error", `channel=${channelId} ${msg}`);
+      throw new Error(msg);
+    }
 
     const child = spawn(command, resolvedArgs, {
       stdio: ["pipe", "pipe", "pipe"],
       shell: true,
+      // E5.8#24.6：显式 cwd = app 根——dev 态相对 args（node_modules/pyright/...）确定性解析，
+      // 与 checkLspDependency 的 path.resolve(app.getAppPath(), arg) 基准一致
+      cwd: app.getAppPath(),
     });
 
     // stdout → renderer（E5.8#6.5：唯一路径 = IpcBridge.broadcast——plugin:push 发壳+发池；
@@ -183,7 +203,9 @@ export function registerLspHandlers(): void {
     });
 
     child.on("error", (err) => {
+      // E5.8#24.6：spawn 失败显性化——console + 协议诊断日志双落盘（前置哨兵后此路径罕见：非 ENOENT 的 exec 失败/权限等）
       console.error(`[lsp:${channelId}] spawn 失败:`, err.message);
+      appendLspLog("lsp:error", `channel=${channelId} spawn 失败: ${err.message}`);
       channels.delete(channelId);
     });
 
