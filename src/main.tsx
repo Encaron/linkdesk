@@ -9,7 +9,7 @@ import { initStorageService } from "./core/services/configuration/StorageService
 import { initConfigurationService, initUserSettingsWatcher } from "./core/services/configuration/ConfigurationService";
 
 // 🔥 E5.6#2 MonacoEnvironment——worker 构造器存全局，Monaco import 时读取。
-//    monaco-init.ts 也会设置同名属性（merge 模式），此处冗余无副作用。
+//    monaco-bootstrap.ts（E5.8#24.8）也会设置同名属性（merge 模式），此处冗余无副作用。
 //    ⚠️ 禁止在此文件静态 import monaco-editor——会在 @codingame 补丁前初始化
 //       原生主题系统，导致 StandaloneWorkbenchThemeService DOM token 颜色错误。
 import EditorWorker from "monaco-editor/esm/vs/editor/editor.worker?worker";

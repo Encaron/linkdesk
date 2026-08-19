@@ -9,7 +9,8 @@
  *    当前 glob 在 dev + 内置插件全在源码树时够用。
  *
  * ⚠️ 禁止在此文件静态 import monaco-editor——会在 @codingame 补丁前初始化
- *    原生主题系统（E5.6#2 教训）。Monaco 由编辑器插件的 initMonacoEnv() 首次加载。
+ *    原生主题系统（E5.6#2 教训）。Monaco 由编辑器插件的 bootstrapMonaco() 首次加载
+ *    （E5.8#24.8 护栏统一——取 monaco 只能走 getMonaco()）。
  */
 
 import React, { Suspense, useMemo } from "react";
