@@ -11,7 +11,8 @@ import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
 import { reportError } from "../core/services/bootstrap/ErrorService";
-import { PluginLifecycle, notifyPluginRemoved } from "./lifecycle";
+// E5.8#11：卸载路径全部收口到状态机 unloadPlugin——lifecycle 事件顺序由迁移图机械保障（L6b）
+import { unloadPlugin } from "./loadState";
 import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import {
   linkdesk,
@@ -20,7 +21,6 @@ import {
   errMsg,
   pluginManifests,
   loadedPluginIds,
-  _deferredPlugins,
   extractPluginId,
   getMetadataCache,
   cachePluginMetadata,
@@ -72,13 +72,9 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
-    // E5.8#12：PLUGIN_REMOVED 先于 fire——viewRegistry 还在（App/lifecycle.ts 侧栏回退读 manifest）；
-    // 注册表清理由 tracker 在 fire 内逆序回滚自动完成（消费端 2/2b 已删）
-    notifyPluginRemoved(pluginId);
-    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
-    loadedPluginIds.delete(pluginId);
-    _deferredPlugins.delete(pluginId);
-    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
+    // E5.8#11：唯一卸载路径——unloadPlugin 状态机（unloading → notifyPluginRemoved → fire →
+    // 集合清理 → disposed → onDidUninstall），L6b 顺序由迁移图机械保障（设计文档 §3.1）
+    unloadPlugin(pluginId, "disable", displayName);
     syncAppThemeEnum();
     syncAppLanguageEnum();
     log.appendLine(`🔒 已禁用 "${pluginId}"`);
@@ -158,12 +154,12 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
-    // E5.8#12：PLUGIN_REMOVED 先于 fire——viewRegistry 还在（App/lifecycle.ts 侧栏回退读 manifest）；
-    // 注册表清理由 tracker 在 fire 内逆序回滚自动完成（消费端 2/2b 已删）
-    notifyPluginRemoved(pluginId);
-    PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
+    // E5.8#11：唯一卸载路径——unloadPlugin 状态机（unloading → notifyPluginRemoved → fire →
+    // 集合清理 → disposed → onDidUninstall），L6b 顺序由迁移图机械保障（设计文档 §3.1）
+    unloadPlugin(pluginId, "uninstall", displayName);
 
-    // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
+    // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用。
+    // onDidUninstall 消费端不读 disabledPlugins——移到 unloadPlugin 之后顺序安全
     const list = getDisabledList();
     const idx = list.indexOf(pluginId);
     if (idx !== -1) {
@@ -171,9 +167,6 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       await saveDisabledList(list);
     }
 
-    loadedPluginIds.delete(pluginId);
-    _deferredPlugins.delete(pluginId);
-    PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });
     syncAppThemeEnum();
     syncAppLanguageEnum();
     log.appendLine(`🗑 已卸载 "${pluginId}"`);

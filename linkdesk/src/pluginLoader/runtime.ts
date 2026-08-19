@@ -13,6 +13,8 @@ import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationServ
 import { reportError } from "../core/services/bootstrap/ErrorService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
+// E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
+import { markLoadStarted, markLoadSuccess, markLoadFailed } from "./loadState";
 import { versionGte } from "../core/utils/plugin/semverUtils";
 import {
   pluginsApi,
@@ -101,10 +103,10 @@ async function loadPluginLifecycle(
 /**
  * 检查插件的 extensionDependencies——所有依赖必须已安装且未被禁用。
  * 共享函数——loadPlugin 和 loadPlugin 已合并处理。
- * @returns true = 依赖满足或无需依赖，false = 缺失（已 toast）
+ * @returns null = 依赖满足或无需依赖；string = 缺失依赖清单（已 toast + #11 记录为 failureReason）
  */
-function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean {
-  if (!manifest.extensionDependencies?.length) return true;
+function _checkDependencies(pluginId: string, manifest: PluginManifest): string | null {
+  if (!manifest.extensionDependencies?.length) return null;
 
   const disabled = getDisabledList();
   const installed = new Set<string>();
@@ -115,7 +117,7 @@ function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean
   const missing = manifest.extensionDependencies.filter(
     (dep) => dep !== pluginId && (!installed.has(dep) || disabled.includes(dep)),
   );
-  if (missing.length === 0) return true;
+  if (missing.length === 0) return null;
 
   const reason = missing.map((d) => `"${d}"`).join("、");
   pushToast({
@@ -123,7 +125,7 @@ function _checkDependencies(pluginId: string, manifest: PluginManifest): boolean
     ttl: TOAST_TTL_ERROR,
   });
   console.warn(`[pluginLoader] 依赖缺失 — "${pluginId}" 需要 ${reason}`);
-  return false;
+  return reason;
 }
 
 /**
@@ -146,6 +148,8 @@ async function loadPlugin(
   const isRuntime = !manifestKey;
 
   const promise = (async () => {
+  // E5.8#11：状态机——loading（加载开始）
+  markLoadStarted(pluginId);
   // ═══ Step 1: 加载 manifest ═══
   let manifest: PluginManifest;
   if (isRuntime) {
@@ -154,6 +158,7 @@ async function loadPlugin(
       manifest = JSON.parse(raw);
     } catch (e) {
       console.warn(`[pluginLoader] 运行时插件 "${pluginId}" 读取 plugin.json 失败: ${errMsg(e)}`);
+      markLoadFailed(pluginId, `plugin.json 读取失败: ${errMsg(e)}`);
       return;
     }
   } else {
@@ -162,6 +167,7 @@ async function loadPlugin(
     } catch {
       pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
       console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
+      markLoadFailed(pluginId, "plugin.json 格式错误");
       return;
     }
   }
@@ -174,10 +180,15 @@ async function loadPlugin(
         message: `插件 "${manifest.name}" 需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}），已跳过`,
         ttl: TOAST_TTL_ERROR,
       });
+      markLoadFailed(pluginId, `需要应用版本 ≥${manifest.minAppVersion}（当前 ${appVer}）`);
       return;
     }
   }
-  if (!_checkDependencies(pluginId, manifest)) return;
+  const depReason = _checkDependencies(pluginId, manifest);
+  if (depReason !== null) {
+    markLoadFailed(pluginId, `缺少依赖: ${depReason}`);
+    return;
+  }
 
   // B2 fix: 缓存元数据——glob 外的插件也入缓存，卸载后仍可浏览详情
   cachePluginMetadata(pluginId, manifest, "installed");
@@ -301,6 +312,8 @@ async function loadPlugin(
  */
 function applyPostLoadSteps(pluginId: string, manifest: PluginManifest, reason: PluginInstallEvent["reason"]): void {
   loadedPluginIds.add(pluginId);
+  // E5.8#11：状态机——active（注册全量生效）在 onDidInstall 之前迁移（L6b：事件只在合法迁移后发）
+  markLoadSuccess(pluginId);
   syncAppThemeEnum();
   syncAppLanguageEnum();
   PluginLifecycle.onDidInstall.fire({ pluginId, manifest, reason });

@@ -77,6 +77,11 @@ export function hasRegistrations(pluginId: string): boolean {
   return _layers.has(pluginId);
 }
 
+/** 插件在追踪器中的登记条目数——#11 状态机诊断面 registeredEffects 数据源 */
+export function registrationCount(pluginId: string): number {
+  return _layers.get(pluginId)?.length ?? 0;
+}
+
 /** 测试用——清空全部登记（不执行 disposer） */
 export function clearRegistrationLayers(): void {
   _layers.clear();

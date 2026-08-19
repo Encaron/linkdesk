@@ -59,6 +59,9 @@ export function initLifecycleConsumers(): void {
 
   // E5.8#12：消费端 2/2b 已删——所有 register() 的 per-entry disposer 经 registrationTracker
   // （模块加载时订阅 onWillUninstall）在 fire 内自动逆序回滚，卸载清理全机械，无手动 unregister*。
+  // E5.8#11：卸载路径全部收口到 loadState.unloadPlugin（唯一 fire 生产方）——onWillUninstall/
+  // onDidUninstall 只在合法状态迁移上发，顺序由迁移图机械保障（L6b）；notifyPluginRemoved
+  // 被 unloadPlugin 调用（本模块定义，loadState 消费）。
 
   /* ─── 消费端 3：toast 通知 ─── */
 
