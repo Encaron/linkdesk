@@ -176,8 +176,8 @@ const FileTree = forwardRef<FileTreeHandle, FileTreeProps>(function FileTree(
     if (!newName || newName === uri.split("/").pop()) return;
     const dir = uri.substring(0, uri.lastIndexOf("/"));
     const dest = dir + "/" + newName;
-    await lk.filesystem.copy(uri, dest);
-    await lk.filesystem.remove(uri);
+    // E5.8#25.2：原生原子重命名（替代 copy+remove 模拟——非原子 + 大文件全量复制慢）
+    await lk.filesystem.rename(uri, dest);
     lk.events.emit("file:renamed", { oldPath: uri, newPath: dest });
     await model.refresh(dir);
     const parent = model.findClosest(dir);

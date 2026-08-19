@@ -84,6 +84,11 @@ class FileService {
     }
   }
 
+  /** E5.8#25.2：重命名/移动文件或目录——fs.rename 原子操作（同盘内；对标 POSIX rename / VS Code fs.rename） */
+  async rename(src: string, dest: string): Promise<void> {
+    await fs.rename(src, dest);
+  }
+
   async remove(dirPath: string): Promise<void> {
     // 忽略不存在的路径（对标 Rust remove_dir_all + 容忍失败）
     try {

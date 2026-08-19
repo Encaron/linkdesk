@@ -75,6 +75,7 @@ export const IPC = {
     exists: 'filesystem:exists',
     createDir: 'filesystem:createDir',
     copy: 'filesystem:copy',
+    rename: 'filesystem:rename',
     remove: 'filesystem:remove',
     watch: 'filesystem:watch',
     unwatch: 'filesystem:unwatch',

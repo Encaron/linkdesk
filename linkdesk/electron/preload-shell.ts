@@ -136,6 +136,7 @@ try {
       createDir:     (p: string)           => ipcRenderer.invoke(IPC.filesystem.createDir, p),
       readdir:       (p: string)           => ipcRenderer.invoke(IPC.filesystem.readdir, p),
       copy:          (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.copy, src, dest),
+      rename:        (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.rename, src, dest),
       remove:        (p: string)           => ipcRenderer.invoke(IPC.filesystem.remove, p),
       // E2c #13 新增：listDir / readBinaryFile / watch
       listDir:       (p: string)           => ipcRenderer.invoke(IPC.filesystem.listDir, p),

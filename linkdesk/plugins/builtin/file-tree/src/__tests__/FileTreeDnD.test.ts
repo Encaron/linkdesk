@@ -22,6 +22,7 @@ window.linkdesk = {
   // 只覆盖被测路径用到的方法——cast 到契约面（最小 stub，非完整实现）
   filesystem: {
     copy: mockedCopy,
+    rename: vi.fn(), // E5.8#25.2：契约必选面——测试路径未用到 rename，补最小 stub
     remove: mockedDelete,
   } as unknown as LinkDeskAPI["filesystem"],
 };

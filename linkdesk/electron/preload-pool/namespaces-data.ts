@@ -33,6 +33,9 @@ export function buildSerial(events: EventSystemApi) {
 
 /** filesystem 命名空间——路径守卫：池来源写操作经主进程校验（归一化 + 危险目录拒绝 + workspace 外用户确认，读放行） */
 export function buildFilesystem(events: EventSystemApi) {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（filesystem 命名空间），无法共享。
+  // jscpd 整段 ignore——镜像面为刻意设计，rename（E5.8#25.2）加入后过克隆阈值，包段消除
+  /* jscpd:ignore-start */
   return {
     readTextFile: (p: string) => ipcRenderer.invoke(IPC.filesystem.readTextFile, p),
     writeTextFile: (p: string, d: string) => ipcRenderer.invoke(IPC.filesystem.writeTextFile, p, d),
@@ -42,9 +45,9 @@ export function buildFilesystem(events: EventSystemApi) {
     exists: (p: string) => ipcRenderer.invoke(IPC.filesystem.exists, p),
     createDir: (p: string) => ipcRenderer.invoke(IPC.filesystem.createDir, p),
     copy: (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.copy, src, dest),
+    // E5.8#25.2：rename 通用 API——原子重命名（对齐 POSIX rename / VS Code fs.rename，零专一化命名）
+    rename: (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.rename, src, dest),
     remove: (p: string) => ipcRenderer.invoke(IPC.filesystem.remove, p),
-    // E5.8#1d EXEMPT：壳 preload-shell 镜像（filesystem.watch 同一监听→退订模式）
-    /* jscpd:ignore-start */
     watch: (dirPath: string, onEvent: (e: FileChangeEvent) => void) => {
       return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
         const channel = filesystemChanged(watcherId);
@@ -56,8 +59,8 @@ export function buildFilesystem(events: EventSystemApi) {
         };
       });
     },
-    /* jscpd:ignore-end */
   };
+  /* jscpd:ignore-end */
 }
 
 /** clipboard 命名空间 */

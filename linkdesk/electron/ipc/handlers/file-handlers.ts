@@ -70,6 +70,13 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
     await fileService.copy(src, dest);
   });
 
+  // E5.8#25.2：rename 通用 API——原子重命名（文件树 copy+remove 模拟 → 原生 fs.rename）
+  ipcMain.handle(IPC.filesystem.rename, async (event, src: string, dest: string) => {
+    // src 是读侧放行（同 copy）——守卫只查写侧 dest
+    await guardPoolWrite(event.sender, isPoolSender(event.sender), dest, 'rename');
+    await fileService.rename(src, dest);
+  });
+
   ipcMain.handle(IPC.filesystem.remove, async (event, dirPath: string) => {
     await guardPoolWrite(event.sender, isPoolSender(event.sender), dirPath, 'remove');
     await fileService.remove(dirPath);
