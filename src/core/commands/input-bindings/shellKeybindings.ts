@@ -28,13 +28,15 @@ export const CORE_KEYBINDINGS: Array<{ command: string; key: string; args?: unkn
   { command: "workbench.action.focusNthTab",  key: "ctrl+8", args: [{ n: 8 }] },
   { command: "workbench.action.focusNthTab",  key: "ctrl+9", args: [{ n: 9 }] },
 
-  // ── E5#16：剪贴板——壳统一注册，按焦点上下文分发到 Provider ──
-  { command: "core.clipboardCopy",   key: "ctrl+c" },
-  { command: "core.clipboardPaste",  key: "ctrl+v" },
-  { command: "core.clipboardCut",    key: "ctrl+x" },
-  { command: "core.selectAll",       key: "ctrl+a" },
-  { command: "core.delete",          key: "delete" },
-  { command: "core.rename",          key: "f2" },
+  // ── E5.8#24.8：剪贴板键不再壳级注册（原 E5#16 四键 + delete/f2 已删）──
+  // ctrl+c/v/x/a 曾注册为壳全局快捷键 → 主进程 before-input-event 无条件 preventDefault 吞键 →
+  // Monaco（池 WCV 文档）原生剪贴板永远收不到。壳侧 isEditableElementFocused() 查的是壳文档
+  // activeElement，看不到池内 Monaco textarea（E5.5#7 Bug D 同款守卫盲区）。且这些键的 Provider
+  // 已于 E5.6#11.5g2 删除（file-tree 复制改走右键菜单 navigator.clipboard / writeFileList）——
+  // dispatchClipboard 只剩对壳文档的空 execCommand，纯遗留死链。core.clipboardCopy/Paste/Cut/
+  // SelectAll/Delete/Rename 命令族已同删（全仓库零消费方）。删除后键直通池 WCV → Monaco 原生处理。
+  // 若未来要为池内控件加剪贴板快捷键，必须让池上报焦点（池→主进程 editableFocused 信号），
+  // 而非在壳注册——壳抢不了池的键。
 
   // ── E5.7#79：窗口缩放——用户可改绑/冲突检测可见（快捷键面板全套现成）──
   // ctrl+shift+= 与 ctrl+= 同物理键（US 布局 "=" 上档为 "+"——Ctrl+加号），
