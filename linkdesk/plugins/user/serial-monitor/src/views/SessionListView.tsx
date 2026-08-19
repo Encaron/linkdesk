@@ -52,10 +52,6 @@ function useSerialConnection(): { isOpen: boolean; sourceName: string } {
   return { isOpen: conn.isOpen, sourceName: conn.sourceName };
 }
 
-// ── E5.6#11.5h：F2 重命名——池是独立 WCV，壳 F2 全局快捷键到不了池。
-// 改为 DOM keydown 监听 F2 触发 _triggerRename。——
-let _triggerRename: (() => void) | null = null;
-
 export default function SessionListView() {
   const { t } = useTranslation();
   const {
@@ -161,27 +157,8 @@ export default function SessionListView() {
     [setActiveSession, tabs, sessions],
   );
 
-  // ── E5#19b: F2 重命名——壳分发 → provider.onRename → 设置 renamingSessionId ──
+  // ── E5#19b: F2 重命名——设置 renamingSessionId → SessionListItem isRenaming 进入编辑 ──
   const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null);
-
-  useEffect(() => {
-    _triggerRename = () => {
-      if (activeSessionId) setRenamingSessionId(activeSessionId);
-    };
-    return () => { _triggerRename = null; };
-  }, [activeSessionId]);
-
-  // E5.6#11.5h：池是独立 WCV——壳 F2 全局快捷键到不了池，改 DOM keydown 监听
-  useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "F2") {
-        e.preventDefault();
-        _triggerRename?.();
-      }
-    };
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   useEffect(() => {
     lk().contextKey?.set("serialSessionFocus", activeSessionId !== null);
@@ -246,7 +223,24 @@ export default function SessionListView() {
           </button>
         </div>
       ) : (
-        sessionList
+        /* ── E5.8#24.8.4：F2 重命名——容器 onKeyDown + tabIndex（对齐池侧自处理）──
+         * 原 document 级 keydown 监听无焦点守卫——串口有活动会话时劫持全池 F2
+         * （文件树聚焦按 F2 会同时触发串口重命名）。改容器 tabIndex=0 + onKeyDown：
+         * DOM 焦点天然分区——点击列表项浏览器把焦点给最近可聚焦祖先（本容器），
+         * 只有本列表聚焦才收到 F2；Monaco/文件树聚焦时收不到，互不打扰。
+         * 新建输入框在容器外（聚焦按 F2 不触发）；重命名 InlineInput 已 stopPropagation。 */
+        <div
+          className="session-list"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "F2") {
+              e.preventDefault();
+              if (activeSessionId) setRenamingSessionId(activeSessionId);
+            }
+          }}
+        >
+          {sessionList}
+        </div>
       )}
     </>
   );
