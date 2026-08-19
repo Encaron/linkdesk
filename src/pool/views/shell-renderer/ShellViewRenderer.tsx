@@ -57,7 +57,7 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
           fontSize: 12,
           userSelect: "none",
         }}>
-          {shellType ? t("未知壳视图: {{shellType}}", { shellType }) : t("壳视图")}
+          {shellType ? t("未知壳视图 {{shellType}}", { shellType }) : t("壳视图")}
         </div>
       );
   }
