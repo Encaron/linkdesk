@@ -66,6 +66,10 @@ export type {
 
 export type { DialogOpenOptions } from "../types/ipc/dialogs"; // E5.7#97：归口 src/core/types/ipc/dialogs.ts——此 re-export 保持既有插件 import 路径
 
+// E5.8#20：PluginStateChangedPayload 补导出——插件经 events.on("plugin-state:changed") 通配订阅
+// （pluginState.onChange 精确 key 匹配捕获不了通配键名），载荷类型属契约面必给消费类型。
+export type { PluginStateChangedPayload } from "../types/ipc/events";
+
 // ── 获取 typed API 实例 ──
 
 /**
