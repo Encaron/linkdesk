@@ -169,7 +169,8 @@ export function registerLspHandlers(): void {
     // 由 broadcast 统一分发（不再有同一 WebContents 收两次的 E5.6#9g 隐患））
     child.stdout?.on("data", (data: Buffer) => {
       const text = data.toString("utf-8");
-      IpcBridge.active?.broadcast(IPC.lsp.data, { channelId, data: text });
+      // E5.8#6.5-regress-2：流数据 storeForReplay=false——lsp 输出不入 lastBroadcasts 重放（原直发不重放）
+      IpcBridge.active?.broadcast(IPC.lsp.data, { channelId, data: text }, undefined, false);
     });
 
     child.stderr?.on("data", (data: Buffer) => {

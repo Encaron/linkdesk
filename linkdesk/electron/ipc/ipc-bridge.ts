@@ -255,10 +255,14 @@ export class IpcBridge {
 
   /** E5.7#43 + E5.8#6.5：广播事件到壳 + 唯一 Pool WebContentsView（plugin:push 包装）——
    *  数据推流唯一路径：serial/lsp/file 推送一律走本方法；壳/池双侧 events.on 订阅。
-   *  存储 payload 供新池重放（per-tab 实例循环已删）；onPluginEmit/onBridgeBroadcast
-   *  的壳补发行随 #6.5 归一化进本方法——不再任何地方手动双发。 */
-  broadcast(channel: string, payload: unknown, source?: string): void {
-    this.lastBroadcasts.set(channel, payload);
+   *  默认存储 payload 供新池重放（E3c #40 状态重放——config/theme/lang/contextKey 等幂等快照）；
+   *  #6.5-regress-2：流数据（serial.*、lsp:data、filesystem:changed:&lt;watcherId&gt;）传 storeForReplay=false
+   *  ——#6.5 前直发从不重放，误入 lastBroadcasts 后 watcherId 动态通道 Map 永久涨 + 新池收到陈旧流数据。
+   *  onPluginEmit/onBridgeBroadcast 的壳补发行随 #6.5 归一化进本方法——不再任何地方手动双发。 */
+  broadcast(channel: string, payload: unknown, source?: string, storeForReplay = true): void {
+    if (storeForReplay) {
+      this.lastBroadcasts.set(channel, payload);
+    }
     // 壳渲染进程（plugin:push）——壳侧 events.on 订阅（E5.6#2 双路径归一化进 broadcast）
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source });
