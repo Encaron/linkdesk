@@ -30,8 +30,10 @@ class ClipboardProviderRegistryImpl extends RegistryBase {
     super();
   }
 
-  /** 注册剪贴板 Provider。同 when 重复注册 → console.warn + 覆盖。 */
-  register(pluginId: string, provider: Omit<ClipboardProvider, "pluginId">): void {
+  /** 注册剪贴板 Provider。同 when 重复注册 → console.warn + 覆盖。
+   *  E5.8#10：per-entry track——返 disposer（引用级删除；被覆盖者已在注册时被滤除，
+   *  dispose 自然 no-op）。 */
+  register(pluginId: string, provider: Omit<ClipboardProvider, "pluginId">): () => void {
     const existing = this._providers.find((p) => p.when === provider.when);
     if (existing) {
       console.warn(
@@ -40,18 +42,16 @@ class ClipboardProviderRegistryImpl extends RegistryBase {
       );
       this._providers = this._providers.filter((p) => p.when !== provider.when);
     }
-    this._providers.push({ pluginId, ...provider });
-    this.markPlugin(pluginId);
+    const entry = { pluginId, ...provider };
+    this._providers.push(entry);
+    return this.track(pluginId, () => {
+      this._providers = this._providers.filter((p) => p !== entry);
+    });
   }
 
   /** 根据焦点上下文找到合适的 Provider */
   resolve(when: string): ClipboardProvider | undefined {
     return this._providers.find((p) => p.when === when);
-  }
-
-  /** 卸载插件时清理——由 RegistryBase 自动调用 */
-  protected unregisterAll(pluginId: string): void {
-    this._providers = this._providers.filter((p) => p.pluginId !== pluginId);
   }
 
   /** 获取全部注册的 Provider（调试用） */

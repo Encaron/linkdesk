@@ -8,8 +8,8 @@
  * IconRegistry 只管登记和查询。加载 JSON、应用图标是调用方的事。
  * 架构：圆形大厅的"图标本"——插件往本子上登记图标集，谁都可以翻。
  *
- * 自动注销：继承 RegistryBase——插件卸载时 unregisterAll 自动被调用，
- * 无需 lifecycle.ts 手动添加清理逻辑。
+ * 自动注销：继承 RegistryBase——插件卸载时 tracker 逆序回滚每个 per-entry disposer
+ *（E5.8#10：register/registerIcon 逐条 track，卸载无需 lifecycle.ts 手动清理）。
  */
 
 import { RegistryBase } from "../../registry/RegistryBase";
@@ -33,8 +33,9 @@ class IconRegistryImpl extends RegistryBase {
     super();
   }
 
-  /** 注册插件贡献的图标主题。同名 ID 后注册者覆盖（warn）。 */
-  register(contribution: IconThemeContribution, pluginId: string): void {
+  /** 注册插件贡献的图标主题。同名 ID 后注册者覆盖（warn）。
+   *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
+  register(contribution: IconThemeContribution, pluginId: string): () => void {
     const theme: RegisteredIconTheme = { ...contribution, pluginId };
     if (this.themes.has(theme.id)) {
       console.warn(
@@ -45,7 +46,19 @@ class IconRegistryImpl extends RegistryBase {
     const ids = this.pluginThemeIds.get(pluginId) ?? [];
     ids.push(theme.id);
     this.pluginThemeIds.set(pluginId, ids);
-    this.markPlugin(pluginId);
+    return this.track(pluginId, () => {
+      if (this.themes.get(theme.id) === theme) {
+        this.themes.delete(theme.id);
+      }
+      const owned = this.pluginThemeIds.get(pluginId);
+      if (owned) {
+        const kept = owned.filter((id) => id !== theme.id);
+        if (kept.length !== owned.length) {
+          if (kept.length === 0) this.pluginThemeIds.delete(pluginId);
+          else this.pluginThemeIds.set(pluginId, kept);
+        }
+      }
+    });
   }
 
   /** 按 ID 查找图标主题 */
@@ -65,8 +78,9 @@ class IconRegistryImpl extends RegistryBase {
 
   /* ── 共享图标（contributes.icons） ── */
 
-  /** 注册插件贡献的共享图标。同名 ID 后注册者覆盖（warn）。 */
-  registerIcon(iconId: string, contribution: IconContribution, pluginId: string): void {
+  /** 注册插件贡献的共享图标。同名 ID 后注册者覆盖（warn）。
+   *  E5.8#10：per-entry track——返 disposer（仅当仍是当前占位者才删，防覆盖误删）。 */
+  registerIcon(iconId: string, contribution: IconContribution, pluginId: string): () => void {
     const icon: RegisteredIcon = { ...contribution, pluginId };
     if (this.icons.has(iconId)) {
       console.warn(
@@ -77,7 +91,19 @@ class IconRegistryImpl extends RegistryBase {
     const ids = this.pluginIconIds.get(pluginId) ?? [];
     ids.push(iconId);
     this.pluginIconIds.set(pluginId, ids);
-    this.markPlugin(pluginId);
+    return this.track(pluginId, () => {
+      if (this.icons.get(iconId) === icon) {
+        this.icons.delete(iconId);
+      }
+      const owned = this.pluginIconIds.get(pluginId);
+      if (owned) {
+        const kept = owned.filter((id) => id !== iconId);
+        if (kept.length !== owned.length) {
+          if (kept.length === 0) this.pluginIconIds.delete(pluginId);
+          else this.pluginIconIds.set(pluginId, kept);
+        }
+      }
+    });
   }
 
   /** 按 ID 查找共享图标 */
@@ -90,19 +116,6 @@ class IconRegistryImpl extends RegistryBase {
     return this.icons.has(iconId);
   }
 
-  /** 插件卸载时自动清理——由 RegistryBase 调用 */
-  protected unregisterAll(pluginId: string): void {
-    const ids = this.pluginThemeIds.get(pluginId);
-    if (ids) {
-      for (const id of ids) this.themes.delete(id);
-      this.pluginThemeIds.delete(pluginId);
-    }
-    const iconIds = this.pluginIconIds.get(pluginId);
-    if (iconIds) {
-      for (const id of iconIds) this.icons.delete(id);
-      this.pluginIconIds.delete(pluginId);
-    }
-  }
 }
 
 export const IconRegistry = new IconRegistryImpl();

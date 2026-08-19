@@ -7,6 +7,8 @@
  * VS Code 源码：src/vs/platform/configuration/common/configurationRegistry.ts
  */
 
+import { trackRegistration } from "./registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
+
 /* ── 类型 ── */
 
 export type ConfigurationType = "string" | "number" | "boolean" | "object" | "array";
@@ -59,11 +61,15 @@ export interface InspectResult<T> {
 const _contributions = new Map<string, ConfigurationContribution>(); // pluginId → contribution
 const _configKeyOwner = new Map<string, string>();                      // configKey → pluginId（冲突检测）
 
-/** 注册插件的配置贡献——loader 在 parseContributions 阶段调用 */
+/** 注册插件的配置贡献——loader 在 parseContributions 阶段调用。
+ *  E5.8#10 返 disposer：删"本次 contribution 的属性" + 该批 _configKeyOwner——
+ *  merge 语义对称（同插件多次注册合并进同一对象）：合并后空 → 删整个插件条目，
+ *  最后一次注册的 disposer 负责收尾；异插件同 key 冲突时 _configKeyOwner 归后注册者，
+ *  dispose 只在仍归本插件时摘（防删他人所有权）。 */
 export function registerConfiguration(
   pluginId: string,
   contribution: ConfigurationContribution
-): void {
+): () => void {
   // E2c #13 16.2：检测重复 key → console.warn（暂不抛硬错误——parseContributions 没有 try/catch，
   // 抛错会导致整个插件加载失败。待 E2c #19b 审计后改 fail-fast。）
   for (const key of Object.keys(contribution.properties)) {
@@ -83,6 +89,21 @@ export function registerConfiguration(
   } else {
     _contributions.set(pluginId, contribution);
   }
+
+  return trackRegistration(pluginId, () => {
+    const current = _contributions.get(pluginId);
+    if (!current) return;
+    for (const key of Object.keys(contribution.properties)) {
+      delete current.properties[key];
+      if (_configKeyOwner.get(key) === pluginId) {
+        _configKeyOwner.delete(key);
+      }
+    }
+    // merge 后已空 → 删整个插件条目
+    if (Object.keys(current.properties).length === 0) {
+      _contributions.delete(pluginId);
+    }
+  });
 }
 
 /** 注销插件的配置贡献——卸载时调用 */
@@ -162,12 +183,16 @@ export function getDefaults(): Record<string, unknown> {
  */
 const _configurationDefaults = new Map<string, Record<string, unknown>>();
 
-/** 注册弱默认值——插件建议其他配置项的值，但用户手动设置优先 */
+/** 注册弱默认值——插件建议其他配置项的值，但用户手动设置优先。
+ *  E5.8#10 返 disposer：删本插件条目。 */
 export function registerConfigurationDefaults(
   pluginId: string,
   defaults: Record<string, unknown>
-): void {
+): () => void {
   _configurationDefaults.set(pluginId, defaults);
+  return trackRegistration(pluginId, () => {
+    _configurationDefaults.delete(pluginId);
+  });
 }
 
 /** 注销弱默认值 */
