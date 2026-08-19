@@ -8,6 +8,7 @@ import type { EnvInfo } from "./types";
 import type { FileEntry } from "../../types/fileEntry";
 import type { FileChangeEvent } from "../../services/files/FileService";
 import type { WorkspaceFolder } from "../../services/layout/WorkspaceService";
+import type { SearchWireOptions, SearchWireResult } from "../../types/ipc/search";
 
 /** 工作区/文件系统/路径/环境/搜索/编码命名空间面——对标 VS Code vscode.workspace + env + ExtensionContext */
 export interface WorkspaceAPI {
@@ -57,19 +58,8 @@ export interface WorkspaceAPI {
 
   /** E5.6#11.5a：文件搜索——全文搜索/替换（IPC 到壳/主进程执行） */
   search: {
-    searchFiles(opts: {
-      roots: string[];
-      query: string;
-      include?: string;
-      exclude?: string;
-      caseSensitive?: boolean;
-      wholeWord?: boolean;
-      useRegex?: boolean;
-      maxResults?: number;
-    }): Promise<Array<{
-      filePath: string;
-      matches: Array<{ filePath: string; lineNumber: number; lineText: string; matchStart: number; matchEnd: number }>;
-    }>>;
+    // E5.8#1c：wire 契约归口 src/core/types/ipc/search.ts——与 preload-pool buildSearch 双端同源
+    searchFiles(opts: SearchWireOptions): Promise<SearchWireResult>;
   };
 
   /** E5.6#11.5a：编码检测/转换（主进程 EncodingService） */

@@ -14,6 +14,8 @@ import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormali
 
 /** pluginManager 命名空间——插件生命周期管理 */
 export function buildPluginManager() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（pluginManager 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     list: () => ipcRenderer.invoke(IPC.plugins.call, 'list'),
     enable: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'enable', id),
@@ -25,6 +27,7 @@ export function buildPluginManager() {
     getUninstalled: () => ipcRenderer.invoke(IPC.plugins.call, 'getUninstalled'),
     isDisabled: (id: string) => ipcRenderer.invoke(IPC.plugins.call, 'isDisabled', id),
   };
+  /* jscpd:ignore-end */
 }
 
 /**
@@ -49,6 +52,8 @@ export function buildTheme() {
 
 /** keybindings 命名空间——快捷键查询/注册/捕获 */
 export function buildKeybindings(events: EventSystemApi) {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（keybindings 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     getKeybindings: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindings'),
     getConflicts: () => ipcRenderer.invoke(IPC.plugins.call, 'getKeybindingConflicts'),
@@ -72,10 +77,13 @@ export function buildKeybindings(events: EventSystemApi) {
     },
     onChange: (cb: () => void) => events.on('keybindings:changed', cb),
   };
+  /* jscpd:ignore-end */
 }
 
 /** pluginState 命名空间——插件持久化存储 */
 export function buildPluginState(events: EventSystemApi) {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（pluginState 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     get: (pluginId: string, key: string): Promise<unknown> =>
       ipcRenderer.invoke(IPC.pluginState.get, pluginId, key),
@@ -89,6 +97,7 @@ export function buildPluginState(events: EventSystemApi) {
       });
     },
   };
+  /* jscpd:ignore-end */
 }
 
 /**
@@ -165,6 +174,8 @@ export function buildProtocol() {
  * 因此不走 PROXY_CHANNELS——直接 ipcRenderer.invoke。
  */
 export function buildShell() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（shell 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     showItemInFolder: (p: string) => ipcRenderer.invoke(IPC.shell.showItemInFolder, p),
     openInTerminal: (dirPath: string, terminalExe?: string, customCommand?: string) =>
@@ -172,6 +183,7 @@ export function buildShell() {
     startDrag: (filePath: string, iconPath?: string) =>
       ipcRenderer.send(IPC.shell.startDrag, filePath, iconPath),
   };
+  /* jscpd:ignore-end */
 }
 
 /** getFilePath——桥接 Chromium File API 与沙箱文件系统（E5.6#11.5-bug4：FileTreeDnD handleDrop 解外部拖入文件真实路径） */

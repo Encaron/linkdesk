@@ -19,7 +19,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import type { TitleBarLayout } from "../../../core/types/pool/poolLayout";
+import type { TitleBarLayout, TitleBarSlotButton } from "../../../core/types/pool/poolLayout";
 import MenuItemList from "../../shared/menu-item-list/MenuItemList"; // E5.7#6：菜单项列表提取为池共享组件（汉堡复用）
 import { executePoolCommand } from "../../commands/executePoolCommand"; // E5.7#6：命令执行提取为池共享（IconBarZone 复用）
 import "./TitleBarZone.css";
@@ -77,6 +77,23 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
   const wc = titleBar.windowControls;
   const openItems = openGroup ? titleBar.menuGroups.find((g) => g.group === openGroup) : undefined;
 
+  /** 槽位按钮渲染——left/right 共用（E5.8#1c 去重） */
+  const renderSlotButton = (item: TitleBarSlotButton) => (
+    <button
+      key={item.command}
+      className="titlebar-btn titlebar-slot-btn"
+      onClick={() => executePoolCommand(item.command)}
+      title={item.title}
+      style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
+    >
+      {item.icon ? (
+        <span className={`codicon ${item.icon}`} />
+      ) : (
+        <span className="codicon codicon-circle-outline" />
+      )}
+    </button>
+  );
+
   /** 下拉定位——按钮 rect 下方（池 WCV 满窗，rect 即窗口坐标） */
   const dropdownStyle = (() => {
     if (!openGroup) return { display: "none" as const };
@@ -92,21 +109,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       <img className="titlebar-logo" src={titleBar.logoUrl} alt="LinkDesk" />
 
       {/* 左槽位——插件 contributes.titleBar.left（when 已壳侧过滤） */}
-      {titleBar.slots.left.map((item) => (
-        <button
-          key={item.command}
-          className="titlebar-btn titlebar-slot-btn"
-          onClick={() => executePoolCommand(item.command)}
-          title={item.title}
-          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-        >
-          {item.icon ? (
-            <span className={`codicon ${item.icon}`} />
-          ) : (
-            <span className="codicon codicon-circle-outline" />
-          )}
-        </button>
-      ))}
+      {titleBar.slots.left.map(renderSlotButton)}
 
       {/* 菜单按钮——hamburger 模式下隐藏（☰ 在 IconBarZone） */}
       {titleBar.menuBarVisible && titleBar.menuGroups.length > 0 && (
@@ -129,21 +132,7 @@ function TitleBarZone({ titleBar }: { titleBar: TitleBarLayout }) {
       )}
 
       {/* 右槽位——插件 contributes.titleBar.right */}
-      {titleBar.slots.right.map((item) => (
-        <button
-          key={item.command}
-          className="titlebar-btn titlebar-slot-btn"
-          onClick={() => executePoolCommand(item.command)}
-          title={item.title}
-          style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
-        >
-          {item.icon ? (
-            <span className={`codicon ${item.icon}`} />
-          ) : (
-            <span className="codicon codicon-circle-outline" />
-          )}
-        </button>
-      ))}
+      {titleBar.slots.right.map(renderSlotButton)}
 
       {/* 拖拽区——填充剩余空间 */}
       <div className="titlebar-drag-area" />

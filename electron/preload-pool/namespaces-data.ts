@@ -9,9 +9,12 @@ import { IPC, filesystemChanged } from '../ipc/channels';
 import { listenDirect } from '../ipc/event-system';
 import type { OpenPortConfig, SerialStats } from '../../src/core/types/ipc/serial';
 import type { FileChangeEvent } from '../../src/core/services/files/FileService';
+import type { SearchWireOptions, SearchWireResult } from '../../src/core/types/ipc/search';
 
 /** serial 命名空间——串口消费端（读/写/监听） */
 export function buildSerial() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（serial 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     listPorts: () => ipcRenderer.invoke(IPC.serial.listPorts),
     getStatus: () => ipcRenderer.invoke(IPC.serial.getStatus),
@@ -25,6 +28,7 @@ export function buildSerial() {
     onStats: (cb: (stats: SerialStats) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
     onSystem: (cb: (message: string) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
   };
+  /* jscpd:ignore-end */
 }
 
 /** filesystem 命名空间——路径守卫：池来源写操作经主进程校验（归一化 + 危险目录拒绝 + workspace 外用户确认，读放行） */
@@ -39,6 +43,8 @@ export function buildFilesystem() {
     createDir: (p: string) => ipcRenderer.invoke(IPC.filesystem.createDir, p),
     copy: (src: string, dest: string) => ipcRenderer.invoke(IPC.filesystem.copy, src, dest),
     remove: (p: string) => ipcRenderer.invoke(IPC.filesystem.remove, p),
+    // E5.8#1d EXEMPT：壳 preload-shell 镜像（filesystem.watch 同一监听→退订模式）
+    /* jscpd:ignore-start */
     watch: (dirPath: string, onEvent: (e: FileChangeEvent) => void) => {
       return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
         const channel = filesystemChanged(watcherId);
@@ -50,6 +56,7 @@ export function buildFilesystem() {
         };
       });
     },
+    /* jscpd:ignore-end */
   };
 }
 
@@ -95,20 +102,11 @@ export function buildEncoding() {
   };
 }
 
-/** search 命名空间——全文搜索/替换（IPC 到壳/主进程执行，E5.6#11.5a/11.5g5 对齐 FileSearcher.SearchOptions） */
+/** search 命名空间——全文搜索/替换（IPC 到壳/主进程执行，E5.8#1c wire 契约归口 src/core/types/ipc/search.ts） */
 export function buildSearch() {
   return {
-    searchFiles: (opts: {
-      roots: string[];
-      query: string;
-      include?: string;
-      exclude?: string;
-      caseSensitive?: boolean;
-      wholeWord?: boolean;
-      useRegex?: boolean;
-      maxResults?: number;
-      // signal 本地消费——IPC 不传，调用方拿到结果后检查 AbortSignal.aborted 自行丢弃
-    }): Promise<Array<{ filePath: string; matches: Array<{ filePath: string; lineNumber: number; lineText: string; matchStart: number; matchEnd: number }> }>> =>
+    // signal 本地消费——IPC 不传，调用方拿到结果后检查 AbortSignal.aborted 自行丢弃
+    searchFiles: (opts: SearchWireOptions): Promise<SearchWireResult> =>
       ipcRenderer.invoke(IPC.search.searchFiles, opts),
   };
 }

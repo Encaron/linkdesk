@@ -174,29 +174,30 @@ export class ViewContainerServiceClass extends RegistryBase {
     });
   }
 
-  /** 获取容器全部已注册 view（含不可见的）。对标 VS Code IViewsRegistry.getViews */
-  getViews(containerId: string): ViewDescriptor[] {
-    // 懒加载持久化排序
+  private _restoredOrder = new Set<string>();
+
+  /** 懒加载持久化排序 + 取模型——getViews/getActiveViews 共用（E5.8#1c 去重）。空容器返回 undefined */
+  private restoreOrder(containerId: string): ViewContainerModel | undefined {
     if (!this._restoredOrder.has(containerId)) {
       this._restoredOrder.add(containerId);
       this.loadViewOrder(containerId);
     }
     const model = this._models.get(containerId);
+    if (!model) return undefined;
+    return model;
+  }
+
+  /** 获取容器全部已注册 view（含不可见的）。对标 VS Code IViewsRegistry.getViews */
+  getViews(containerId: string): ViewDescriptor[] {
+    const model = this.restoreOrder(containerId);
     if (!model) return [];
     return [...model.allViewDescriptors].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }
 
-  private _restoredOrder = new Set<string>();
-
   /** 获取容器当前可见的 view。对标 VS Code ViewContainerModel.activeViewDescriptors */
   getActiveViews(containerId: string): ViewDescriptor[] {
-    // 懒加载持久化排序——首次访问此容器时恢复
-    if (!this._restoredOrder.has(containerId)) {
-      this._restoredOrder.add(containerId);
-      this.loadViewOrder(containerId);
-    }
     // 🔥 Bug 4 防线——空容器返回 [] 不抛错
-    const model = this._models.get(containerId);
+    const model = this.restoreOrder(containerId);
     if (!model) return [];
     return model.activeViewDescriptors;
   }

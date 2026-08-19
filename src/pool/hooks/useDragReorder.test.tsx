@@ -164,6 +164,8 @@ describe("useDragReorder", () => {
   /* ── mouseup: split ── */
 
   it("split 模式 mouseup 触发 onDropSplit", () => {
+    // E5.8#1d EXEMPT：测试叙述重复——split/Shift 用例共享拖拽序列样板
+    /* jscpd:ignore-start */
     const { result, onDropSplit, isInPureEditor, computeSplitZone } = setup();
     isInPureEditor.mockReturnValue(true);
     computeSplitZone.mockReturnValue({ zone: "right", targetGroupId: "g2" });
@@ -172,6 +174,7 @@ describe("useDragReorder", () => {
     fireWindowMouseMove(110, 100); // 拎起
     fireWindowMouseMove(110, 120); // → split
     fireWindowMouseUp(110, 120);
+    /* jscpd:ignore-end */
 
     expect(onDropSplit).toHaveBeenCalledWith("tab-1", "right", "g2");
   });

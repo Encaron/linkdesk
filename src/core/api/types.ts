@@ -204,6 +204,8 @@ export interface ContributesViews {
     titleDescription?: string;
     showActions?: "always" | "whenExpanded" | "default";
     titleTooltip?: string;
+    /** 面板区 dock 最小高度（E5.7#63.7：ViewContainerService 消费）——E5.8#1c 补录 schema */
+    minHeight?: number;
   }>;
 }
 

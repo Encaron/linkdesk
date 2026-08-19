@@ -20,6 +20,13 @@ import type { EventSystemApi } from '../ipc/event-system';
 //   meta 单向同步（commands:register IPC）只回传显示面，壳侧执行走 executeInPool 转发桥。
 const _poolCommands = new Map<string, Function>();
 
+/** 查池侧 handler 并执行——handler 存在返回 Promise，不存在返回 null（调用方决定 fallback 壳 / reject）。E5.8#1c 去重 */
+function callPoolHandler(id: string, args: unknown[]): Promise<unknown> | null {
+  const handler = _poolCommands.get(id);
+  if (!handler) return null;
+  return Promise.resolve(handler(...args));
+}
+
 /** commands 命名空间——池侧注册 + 壳侧 fallback + executeRequest 转发桥注册 */
 export function buildCommands(events: EventSystemApi) {
   // ── 命令对象——池侧注册 + 壳侧 fallback ──
@@ -49,27 +56,15 @@ export function buildCommands(events: EventSystemApi) {
     /** 执行命令——先查池侧注册表，未找到则 IPC 到壳 */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定，对标 VS Code executeCommand 的 ...args: any[]
     executeCommand: (id: string, ...args: any[]) => {
-      const handler = _poolCommands.get(id);
-      if (handler) {
-        // 壳侧 executeCommand(id, token, ...realArgs) 的 token 是 CancellationToken。
-        // 调用方（ContextMenu/CommandPalette）固定传 undefined 占位。
-        // 池 handler 不消费 token——剥离后传 realArgs 给 handler。
-        // E5.7#63.8 后壳侧 handler 合同同样只收 args（CommandRegistry 进 handler 前统一剥）——两进程约定归一。
-        const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-        return Promise.resolve(handler(...realArgs));
-      }
-      return ipcRenderer.invoke(IPC.commands.execute, id, ...args);
+      // 壳侧 executeCommand(id, token, ...realArgs) 的 token 是 CancellationToken。
+      // 调用方（ContextMenu/CommandPalette）固定传 undefined 占位。池 handler 不消费 token——
+      // 剥离后传 realArgs。E5.7#63.8 后壳侧 handler 合同同样只收 args——两进程约定归一。
+      const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
+      return callPoolHandler(id, realArgs) ?? ipcRenderer.invoke(IPC.commands.execute, id, ...args);
     },
-    /** 向后兼容别名 */
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定（executeCommand 同款）
-    execute: (id: string, ...args: any[]) => {
-      const handler = _poolCommands.get(id);
-      if (handler) {
-        const realArgs = args.length > 0 && args[0] === undefined ? args.slice(1) : args;
-        return Promise.resolve(handler(...realArgs));
-      }
-      return ipcRenderer.invoke(IPC.commands.execute, id, ...args);
-    },
+    /** 向后兼容别名——委托 executeCommand（E5.8#1c 去重） */
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 命令入参类型由插件命令调用方决定（委托 executeCommand，同型豁免）
+    execute: (id: string, ...args: any[]) => commandsObj.executeCommand(id, ...args),
     getCommands: () => ipcRenderer.invoke(IPC.plugins.call, 'getCommands'),
   };
 
@@ -79,11 +74,8 @@ export function buildCommands(events: EventSystemApi) {
   // invoke(IPC.commands.executeResult) → 壳 IpcBridgeHandler resolvePoolExecution 回传。
   // 订阅放 preload 模块级（对标 extraHandlers）：_poolCommands 就在本隔离世界，无 contextBridge 往返。
   // executeLocal 不 fallback 壳——壳侧该命令就是占位元数据，fallback 只会死循环。
-  const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> => {
-    const handler = _poolCommands.get(id);
-    if (!handler) return Promise.reject(new Error(`命令 "${id}" 未在池内注册`));
-    return Promise.resolve(handler(...args));
-  };
+  const executeLocal = (id: string, ...args: unknown[]): Promise<unknown> =>
+    callPoolHandler(id, args) ?? Promise.reject(new Error(`命令 "${id}" 未在池内注册`));
   const sendExecuteResult = (requestId: string, result: { result?: unknown; error?: string }): void => {
     ipcRenderer.invoke(IPC.commands.executeResult, requestId, result).catch((e) => {
       console.error(`[preload-pool] commands:executeResult 回传失败 (${requestId}):`, e);

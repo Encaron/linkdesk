@@ -21,7 +21,8 @@ import { getConfigurationValue, setConfigurationValue, onDidChangeConfiguration 
  *   // format = "HH:mm:ss:fff"
  *   // setFormat("无") → 更新 settings.json + 通知所有消费者
  */
-export function useConfiguration<T>(key: string): [T, (value: T) => Promise<void>] {
+/** 订阅配置值变更并驱动重渲染——useConfiguration/useConfigurationValue 共用（E5.8#1c 去重） */
+function useSubscribedConfigValue<T>(key: string): T {
   const [value, setValue] = useState<T>(() => getConfigurationValue<T>(key));
 
   useEffect(() => {
@@ -32,6 +33,12 @@ export function useConfiguration<T>(key: string): [T, (value: T) => Promise<void
     });
     return unsubscribe;
   }, [key]);
+
+  return value;
+}
+
+export function useConfiguration<T>(key: string): [T, (value: T) => Promise<void>] {
+  const value = useSubscribedConfigValue<T>(key);
 
   const setter = useCallback(
     async (newValue: T) => {
@@ -48,16 +55,5 @@ export function useConfiguration<T>(key: string): [T, (value: T) => Promise<void
  * 对标 VS Code workspace.getConfiguration().get(key) 的只读用法。
  */
 export function useConfigurationValue<T>(key: string): T {
-  const [value, setValue] = useState<T>(() => getConfigurationValue<T>(key));
-
-  useEffect(() => {
-    const unsubscribe = onDidChangeConfiguration((changedKey, newValue) => {
-      if (changedKey === key) {
-        setValue(newValue as T);
-      }
-    });
-    return unsubscribe;
-  }, [key]);
-
-  return value;
+  return useSubscribedConfigValue<T>(key);
 }

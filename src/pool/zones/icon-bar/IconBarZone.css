@@ -121,6 +121,8 @@
 }
 
 /* ── ☰ 汉堡菜单（壳 HamburgerMenu.css 迁入） ── */
+/* E5.8#1d EXEMPT：pool-css gate（禁池 CSS @import）→ 池 zone CSS 自包含壳同款块，结构性重复 */
+/* jscpd:ignore-start */
 
 /* 按钮——和图标栏按钮同尺寸，颜色更淡区分于视图图标 */
 .hamburger-btn {
@@ -276,6 +278,7 @@
   color: var(--text-muted);
   opacity: 0.45;
 }
+/* jscpd:ignore-end */
 
 /* ── E5.7#6 补丁：拖拽换位——壳 IconBar.css 拖拽样式迁入 ── */
 

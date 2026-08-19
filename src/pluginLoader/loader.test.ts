@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath } from "./loader";
+import { extractThemeColors } from "./contributions"; // E5.8#1c：真源导入，替代本地等价重实现
 import type { PluginManifest } from "../core/api/types";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
@@ -53,17 +54,6 @@ function normalizeManifest(manifest: Record<string, unknown>): Record<string, un
 /** 推导加载角色——等价 loadPluginLifecycle Step 4 逻辑 */
 function deriveRole(manifest: { pluginRole?: string; entry?: string; contributes?: Record<string, unknown> }, contributes: Record<string, unknown> | undefined): string | undefined {
   return (manifest.pluginRole ?? (!manifest.entry && (contributes || manifest.contributes) ? "data" : undefined)) as string | undefined;
-}
-
-/* ── extractThemeColors —— loader.ts 内部函数，不导出，直接测试等价逻辑 ── */
-function extractThemeColors(data: Record<string, unknown>): Record<string, string> {
-  const raw = data.colors;
-  if (!raw || typeof raw !== "object") return {};
-  const colors: Record<string, string> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (typeof v === "string") colors[k] = v;
-  }
-  return colors;
 }
 
 describe("loader — extractThemeColors", () => {

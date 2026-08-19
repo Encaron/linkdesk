@@ -38,19 +38,28 @@ import { loadPlugin } from "./runtime";
    ═══════════════════════════════════════════════════════════ */
 
 /**
+ * 取可变更插件 manifest——未找到/core 插件抛错（disable/uninstall 共用前置守卫，E5.8#1c 去重）。
+ * action 用于错误文案（"禁用"/"卸载"）。
+ */
+function getMutableManifest(pluginId: string, action: string): PluginManifest {
+  const manifest = getLoadedManifest(pluginId);
+  if (!manifest) {
+    throw new Error(`插件 "${pluginId}" 未找到`);
+  }
+  if (manifest.core) {
+    throw new Error(`核心插件 "${pluginId}" 不可${action}`);
+  }
+  return manifest;
+}
+
+/**
  * 禁用插件：标记到 prefs.disabledPlugins + 从 viewRegistry 移除。
  * 插件文件保留在 plugins/ 目录，下次启动跳过。
  * 对标 VS Code "Disable Extension"。
  */
 export async function disablePlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const manifest = getLoadedManifest(pluginId);
-    if (!manifest) {
-      return { success: false, error: `插件 "${pluginId}" 未找到` };
-    }
-    if (manifest.core) {
-      return { success: false, error: `核心插件 "${pluginId}" 不可禁用` };
-    }
+    const manifest = getMutableManifest(pluginId, "禁用");
 
     const list = getDisabledList();
     if (!list.includes(pluginId)) {
@@ -127,13 +136,7 @@ export async function enablePlugin(pluginId: string): Promise<{ success: boolean
  */
 export async function uninstallPlugin(pluginId: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const manifest = getLoadedManifest(pluginId);
-    if (!manifest) {
-      return { success: false, error: `插件 "${pluginId}" 未找到` };
-    }
-    if (manifest.core) {
-      return { success: false, error: `核心插件 "${pluginId}" 不可卸载` };
-    }
+    const manifest = getMutableManifest(pluginId, "卸载");
 
     // Phase 5h 行为归一化：lifecycle 消费端处理 config 清理 + iconOrder(移除) + tab 关闭
     const displayName = manifest.name;

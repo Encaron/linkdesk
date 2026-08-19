@@ -28,7 +28,8 @@
 }
 
 /* ── 基础面板（SidebarZone.css 同源拷贝） ── */
-
+/* E5.8#1d EXEMPT：pool-css gate → RightSidebarZone 基础面板类自包含 SidebarZone 同款（.side-panel* 全套），结构性重复 */
+/* jscpd:ignore-start */
 .side-panel {
   background: var(--bg-side-panel);
   display: flex;
@@ -101,3 +102,4 @@
   outline: 2px solid var(--accent);
   outline-offset: 2px;
 }
+/* jscpd:ignore-end */
