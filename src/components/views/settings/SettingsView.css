@@ -260,7 +260,7 @@
 /* E4V#46——action 按钮（renderHint: "action"） */
 .settings-action-btn {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
   border: none;
   border-radius: 3px;
   padding: 4px 12px;

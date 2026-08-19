@@ -7,6 +7,7 @@
  * 所有数据走 window.linkdesk.* IPC（不 import @src/core——Path B 合规）。
  */
 
+import { useTranslation } from "react-i18next";
 import type { PoolTab } from "../../../core/types/pool/poolLayout";
 import type { CreatableViewMeta } from "../../../core/types/pool/poolLayout";
 import WelcomePoolView from "../welcome/WelcomePoolView";
@@ -35,6 +36,7 @@ interface ShellViewRendererProps {
 }
 
 export default function ShellViewRenderer({ tab, isActive, creatableViews }: ShellViewRendererProps) {
+  const { t } = useTranslation();
   const shellType = tab.shellType ?? tab.pluginId;
 
   switch (shellType) {
@@ -55,7 +57,7 @@ export default function ShellViewRenderer({ tab, isActive, creatableViews }: She
           fontSize: 12,
           userSelect: "none",
         }}>
-          {shellType ? `未知壳视图: ${shellType}` : "壳视图"}
+          {shellType ? t("未知壳视图: {{shellType}}", { shellType }) : t("壳视图")}
         </div>
       );
   }

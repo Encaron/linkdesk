@@ -7,6 +7,7 @@ import { registerCommand } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { QuickPickService } from "../../services/ui/QuickPickService"; // E5.5#7-p15
+import i18n from "../../../i18n"; // E5.7#15：serialize 非 React 上下文解析显示文本（显示文本铁律）
 
 export function registerDeveloperCommands(): void {
   const commands = [
@@ -27,16 +28,17 @@ export function registerDeveloperCommands(): void {
         targets.push({ kind: 'shell' });
 
         // E5.7#15：显示文本归一——查表/三元比较集中在 helper（一处定义），
-        // 绕开 no-restricted-syntax lowercase 字面量比较误报
-        const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : 'pool 池窗口';
+        // 绕开 no-restricted-syntax lowercase 字面量比较误报；
+        // E5.8#6.6：显示文本铁律全覆盖——label/category/detail 全部 i18n.t() 解析后推池（池原样渲染）
+        const searchOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('shell 壳窗口') : i18n.t('pool 池窗口');
         const keyOf = (t: DevToolsTarget) => t.kind === 'shell' ? '__shell__' : '__pool__';
-        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? 'shell 壳窗口' : 'Pool 池窗口';
-        const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? '壳窗口 DevTools' : '池窗口 DevTools';
+        const labelOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('shell 壳窗口') : i18n.t('Pool 池窗口');
+        const detailOf = (t: DevToolsTarget) => t.kind === 'shell' ? i18n.t('壳窗口 DevTools') : i18n.t('池窗口 DevTools');
 
         QuickPickService.show<DevToolsTarget>({
           mode: "devtools",
           items: targets,
-          placeholder: "选择 WebView…",
+          placeholder: i18n.t("选择 WebView…"),
           getSearchText: (t) => searchOf(t),
           getKey: (t) => keyOf(t),
           onSelect: async (t) => {
@@ -52,7 +54,7 @@ export function registerDeveloperCommands(): void {
             key: keyOf(t),
             searchText: searchOf(t),
             label: labelOf(t),
-            category: "切换 DevTools",
+            category: i18n.t("切换 DevTools"),
             detail: detailOf(t),
           }),
           onClose: () => QuickPickService.hide(),

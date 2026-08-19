@@ -42,7 +42,7 @@
 
 .number-input-btn:active:not(:disabled) {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent);
 }
 
 .number-input-btn:disabled {

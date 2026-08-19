@@ -281,7 +281,7 @@
   background: none;
   border: 1px solid var(--separator);
   border-radius: 4px;
-  color: #4caf50;
+  color: var(--status-connected, #4caf50);
   cursor: pointer;
   padding: 3px 8px;
   font-size: 14px;

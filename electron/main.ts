@@ -68,6 +68,8 @@ function createWindow(): void {
       ? path.join(__dirname, '../../build/icon.ico')
       : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
     frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
+    // E5.8#6.6 hex 豁免：主进程窗口初始背景色（OS 层，渲染进程 CSS 变量不可达；E3f #51 防启动白屏）
+    // eslint-disable-next-line linkdesk/no-hardcoded-hex
     backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
       preload: path.join(__dirname, 'preload-shell.js'),
@@ -281,6 +283,8 @@ setupCrashRecovery(crashRecoveryDeps);
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
 ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
+  // E5.8#6.6 hex 豁免：窗口背景色随主题（OS 层 setBackgroundColor，CSS 变量不可达）
+  // eslint-disable-next-line linkdesk/no-hardcoded-hex
   const bg = isDark ? '#1e1e1e' : '#f5f5f5';
   if (mainWindow && !mainWindow.isDestroyed()) {
     mainWindow.setBackgroundColor(bg);

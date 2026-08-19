@@ -36,6 +36,8 @@ const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
   quickSends: { "AT": "AT\\r\\n" },
 };
 
+// E5.8#6.6 hex 豁免：会话标签色板（颜色即数据——多会话轮换标签色）
+// eslint-disable-next-line linkdesk/no-hardcoded-hex
 const SESSION_COLORS = ["#22C55E","#3B82F6","#F59E0B","#A855F7","#06B6D4","#EC4899"];
 
 // ── 模块级——跨组件共享缓存（E5#71f：不再 import PluginStateService）──

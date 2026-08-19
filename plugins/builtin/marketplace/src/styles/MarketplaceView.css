@@ -186,7 +186,7 @@
 
 .marketplace-badge-core {
   background: var(--accent);
-  color: #fff;
+  color: var(--text-on-accent, #fff);
   opacity: 0.85;
 }
 

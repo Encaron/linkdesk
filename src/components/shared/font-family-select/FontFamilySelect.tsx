@@ -7,6 +7,7 @@
  */
 
 import { useState, useEffect, useMemo } from "react";
+import { useTranslation } from "react-i18next";
 import SelectBox from "../select-box/SelectBox";
 
 interface FontFamilySelectProps {
@@ -97,6 +98,7 @@ function useSystemMonospaceFonts(): string[] {
 }
 
 export default function FontFamilySelect({ value, onChange }: FontFamilySelectProps) {
+  const { t } = useTranslation();
   const monoFonts = useSystemMonospaceFonts();
 
   const options = useMemo(() => {
@@ -113,7 +115,7 @@ export default function FontFamilySelect({ value, onChange }: FontFamilySelectPr
       value={value}
       options={options}
       onChange={onChange}
-      placeholder="选择等宽字体…"
+      placeholder={t("选择等宽字体…")}
     />
   );
 }

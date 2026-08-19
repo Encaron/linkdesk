@@ -78,6 +78,11 @@ export default [
       // ═══ E3.5 #CP17 硬约束：QuickPick 禁止 renderItem——新代码走 slot props ═══
       "linkdesk/no-quickpick-render-item": "error",
 
+      // ═══ E5.8#6.6 硬约束 1：颜色禁止硬编码 hex——走 CSS 变量 var(--xxx) ═══
+      // 豁免（规则内建 path 白名单）：主题定义/i18n/取色器/canvas/测试文件；
+      // var(--x, #hex) 回退值合规；默认色数据 inline eslint-disable 带理由。
+      "linkdesk/no-hardcoded-hex": "error",
+
       // ═══ E5.7#45：Phase 10 死代码防线——已删概念字面量禁止复活（error 级） ═══
       // OverlayWindow / sidebarPoolView / pluginViews / instanceId 随 per-tab 多实例
       // 与多Pool 模型消亡（E5.7#12/#19/#41-#44）——新代码出现即死代码回潮。
@@ -174,8 +179,19 @@ export default [
       // + 纯类型 import 豁免（类型擦除后零运行时耦合）——豁免后现存违规清零。
       // whitelist 在 eslint-local-rules.js PLUGIN_IMPORT_WHITELIST
       "linkdesk/no-core-import-in-plugin": "error",
-      // E5#106: JSX 中文必须走 t() 包裹——warn 级，不阻塞构建
-      "linkdesk/no-hardcoded-chinese": "warn",
+      // E5#106 → E5.8#6.6 升级 error：JSX 中文必须走 t()（硬约束 2；覆盖 plugins/**）
+      "linkdesk/no-hardcoded-chinese": "error",
+    },
+  },
+
+  // ═══ E5.8#6.6：JSX 中文必须走 t()——扩覆盖壳+池（硬约束 2；原仅 plugins/**，src/** 裸奔）
+  // 2026-08-19 实证修正：no-hardcoded-chinese 原只查 plugins/**，src/** 中文从未被查。
+  // plugins 块 error（上方）+ src 块 error（此块）——#6.6 清零后升 error 收官。
+  // 规则盲区已修（isInJsxContext 穿透三元/逻辑链——FilePathInput 教训）。
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    rules: {
+      "linkdesk/no-hardcoded-chinese": "error",
     },
   },
 

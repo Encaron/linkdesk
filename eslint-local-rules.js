@@ -913,6 +913,24 @@ function isInsideTranslationCall(node) {
   return false;
 }
 
+// E5.8#6.6：字面量是否落在 JSX 表达式上下文——向上穿透三元/逻辑链。
+// 盲区修复前 `placeholder={cond ? "选择目录…" : "选择文件…"}` 的 Literal 父级是
+// ConditionalExpression 非 JSXExpressionContainer，规则漏报（FilePathInput 教训）。
+// 只允许穿透 ConditionalExpression / LogicalExpression——遇到函数参数（CallExpression）
+// 等非 JSX 容器立即 break，不扩大误报面。
+function isInJsxContext(node) {
+  let cur = node.parent;
+  while (cur) {
+    if (cur.type === "JSXExpressionContainer" || cur.type === "JSXAttribute") return true;
+    if (cur.type === "ConditionalExpression" || cur.type === "LogicalExpression") {
+      cur = cur.parent;
+      continue;
+    }
+    break;
+  }
+  return false;
+}
+
 const noHardcodedChinese = {
   meta: {
     type: "suggestion",
@@ -949,9 +967,9 @@ const noHardcodedChinese = {
         // 跳过 t("...") / i18n.t("...") 内的字符串
         if (isInsideTranslationCall(node)) return;
 
-        // 只报告 JSX 属性中的字符串（非 JSX 属性走下一规则或忽略）
-        const parent = node.parent;
-        if (parent && (parent.type === "JSXAttribute" || parent.type === "JSXExpressionContainer")) {
+        // 只报告 JSX 属性/表达式中的字符串（非 JSX 上下文走下一规则或忽略）。
+        // E5.8#6.6：向上穿透三元/逻辑链（isInJsxContext），补 FilePathInput 盲区。
+        if (isInJsxContext(node)) {
           context.report({
             node,
             messageId: "noChinese",
@@ -964,8 +982,8 @@ const noHardcodedChinese = {
       TemplateLiteral(node) {
         if (node.quasis.length === 1 && hasChinese(node.quasis[0].value.raw)) {
           if (isInsideTranslationCall(node)) return;
-          const parent = node.parent;
-          if (parent && (parent.type === "JSXAttribute" || parent.type === "JSXExpressionContainer")) {
+          // E5.8#6.6：向上穿透三元/逻辑链（isInJsxContext），与 Literal 同判据
+          if (isInJsxContext(node)) {
             context.report({
               node,
               messageId: "noChinese",
@@ -973,6 +991,67 @@ const noHardcodedChinese = {
             });
           }
         }
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 11.5：E5.8#6.6 硬约束 1——颜色禁止硬编码 hex，走 CSS 变量 var(--xxx)
+// ═══════════════════════════════════════════════════════════
+//
+// 拦截字符串字面量中的 `#hex`（3/4/6/8 位）。豁免策略：
+//   1. var(--x, #hex) 回退值——本身就是合规形态（var() 主值 + hex 兜底）
+//   2. 主题引擎默认色数据（ThemeEngine.ts / startup.ts `#0078d4`）——不是 UI 硬编码，
+//      是主题未定义 token 时的兜底值；含 `#0078d4` 魔数本身来自主题契约（见文件注释）
+//   3. 取色器（color-picker/）与预设色板（SettingRow presets / serial SESSION_COLORS）——
+//      色板是"颜色即数据"（用户可选值），非样式硬编码
+//   4. 测试文件 / Canvas 绘图（canvas 颜色必然硬编码，无 CSS 变量）
+//
+// 规则形态参照 no-hardcoded-chinese：只拦引号内字面量（注释/非字符串不拦），
+// 豁免文件用 path 白名单（flat config 块级 options 传给自定义规则参数）。
+const HEX_RE = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
+
+// var(--x, #hex) 回退——整串里出现 var( 即视为回退形态（跳过 hex 单独匹配）
+const CSS_VAR_FALLBACK_RE = /var\(/;
+
+const noHardcodedHex = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "颜色禁止硬编码 hex——走 CSS 变量 var(--xxx)。硬约束 1（E5.8#6.6 机械哨兵）",
+      recommended: true,
+    },
+    messages: {
+      noHex:
+        "🎨 颜色硬编码 hex \"{{text}}\" 未走 CSS 变量。硬约束 1：所有颜色走 var(--xxx)。" +
+        " 若这是默认色数据/取色器色板/canvas 绘图，加 `// eslint-disable-next-line linkdesk/no-hardcoded-hex -- 理由` 并注明豁免类别。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
+
+    // 豁免文件类别（path 白名单——按审计账本五类证据）
+    const isExemptFile =
+      /\.(test|spec)\.(ts|tsx)$/.test(filename) ||
+      /\/themes?\//.test(filename) || // 主题定义文件（主题即数据）
+      /\/i18n\//.test(filename) || // i18n 资源（文案数据）
+      /\/color-picker\//.test(filename) || // 取色器组件（色板数据）
+      /canvas/i.test(filename); // Canvas 绘图（无 CSS 变量可用）
+
+    return {
+      Literal(node) {
+        if (typeof node.value !== "string") return;
+        if (isExemptFile) return;
+        if (!HEX_RE.test(node.value)) return;
+        // var(--x, #hex) 回退值——合规形态
+        if (CSS_VAR_FALLBACK_RE.test(node.value)) return;
+        context.report({
+          node,
+          messageId: "noHex",
+          data: { text: node.value.slice(0, 20) },
+        });
       },
     };
   },
@@ -1102,6 +1181,7 @@ export default {
   "no-raw-path-replace": noRawPathReplace,
   "no-core-import-in-plugin": noCoreImportInPlugin,
   "no-hardcoded-chinese": noHardcodedChinese,
+  "no-hardcoded-hex": noHardcodedHex,
   "no-deleted-e5.7-concepts": noDeletedE57Concepts,
   "no-plugin-id-hardcode": noPluginIdHardcode,
 };

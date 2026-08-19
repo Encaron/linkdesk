@@ -15,6 +15,10 @@ import renderControl from "./renderControl";
 import { lk } from "./helpers";
 import type { ConfigProperty } from "./types";
 
+// E5.8#6.6 hex 豁免：取色器预设色板（颜色即数据——用户可选值，非样式硬编码）
+// eslint-disable-next-line linkdesk/no-hardcoded-hex
+const COLOR_PICKER_PRESETS = ["#0078d4", "#e81123", "#10893e", "#ff8c00", "#6b69d6", "#0099bc"];
+
 function SettingRow({
   configKey,
   prop,
@@ -110,7 +114,7 @@ function SettingRow({
           onChange={(hex) => handleChange(hex)}
           onClose={() => setColorPickerOpen(false)}
           anchor={colorPickerAnchor}
-          presets={["#0078d4", "#e81123", "#10893e", "#ff8c00", "#6b69d6", "#0099bc"]}
+          presets={COLOR_PICKER_PRESETS}
         />
       )}
     </div>

@@ -18,7 +18,7 @@ export function showCommandPalette(): void {
   QuickPickService.show<Command>({
     mode: "commands",
     items: cmds,
-    placeholder: "输入命令…",
+    placeholder: i18n.t("输入命令…"),
     prefix: ">",
     getSearchText: (cmd) => `${cmd.title} ${cmd.category ?? ""} ${cmd.id}`,
     getKey: (cmd) => cmd.id,
