@@ -13,6 +13,7 @@
  */
 
 import { useRef, useCallback } from "react";
+import { useClipboardKeys } from "@src/pool/hooks/useClipboardKeys";
 import type { ExplorerItem } from "./FileTreeModel";
 import type { FileTreeModel } from "./FileTreeModel";
 import { TREE_ITEM_HEIGHT } from "../utils/layoutTokens";
@@ -65,6 +66,20 @@ export function useFileTreeKeyboard(
   const typeBuffer = useRef("");
   const typeTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  /* ── E5.8#24.8.3：Ctrl+C/V/X——文件树剪贴板（机制归一共享 hook）──
+   * 壳级剪贴板键已删（E5.8#24.8.1，主进程无条件 preventDefault 吞键修因）——
+   * 文件树按「插件自己的键」自监听（对标 VS Code explorer 键盘复制/粘贴）。
+   * 焦点感知天然成立：本 hook 挂在容器 onKeyDown + tabIndex=0——只有文件树
+   * 容器聚焦才收到事件；Monaco/其他池内控件聚焦时本组件不接收，原生键不受影响。
+   * 重命名输入框 InlineInput 已 stopPropagation——打字时 Ctrl+C/V/X 不冒泡到容器。
+   * 语义回调复用右键命令（explorer.copy/cut/paste）——无参时自动回退 selection/focused，
+   * 内置系统剪贴板写入（writeFileList CF_HDROP + 纯文本 fallback）+ cut 灰显标记。 */
+  const handleClipboard = useClipboardKeys({
+    onCopy: () => window.linkdesk?.commands?.executeCommand?.("explorer.copy"),
+    onCut: () => window.linkdesk?.commands?.executeCommand?.("explorer.cut"),
+    onPaste: () => window.linkdesk?.commands?.executeCommand?.("explorer.paste"),
+  });
+
   /** type-ahead：在当前 buffer 匹配的文件名中搜索 */
   const handleTypeAhead = useCallback(
     (char: string) => {
@@ -107,23 +122,8 @@ export function useFileTreeKeyboard(
       const idx = currentIdx === -1 ? 0 : currentIdx;
       const fi = flatItems[idx].item;
 
-      /* ── E5.8#24.8.3：Ctrl+C/V/X——文件树剪贴板（池侧自处理）──
-       * 壳级剪贴板键已删（E5.8#24.8.1，主进程无条件 preventDefault 吞键修因）——
-       * 文件树按「插件自己的键」自监听（对标 VS Code explorer 键盘复制/粘贴）。
-       * 焦点感知天然成立：本 hook 挂在容器 onKeyDown + tabIndex=0——只有文件树
-       * 容器聚焦才收到事件；Monaco/其他池内控件聚焦时本组件不接收，原生键不受影响。
-       * 重命名输入框 InlineInput 已 stopPropagation——打字时 Ctrl+C/V/X 不冒泡到容器。
-       * 复用右键菜单命令（explorer.copy/cut/paste）——无参时自动回退 selection/focused，
-       * 内置系统剪贴板写入（writeFileList CF_HDROP + 纯文本 fallback）+ cut 灰显标记。 */
-      if (e.ctrlKey || e.metaKey) {
-        const key = e.key.toLowerCase();
-        if (key === "c" || key === "x" || key === "v") {
-          e.preventDefault();
-          const cmd = key === "c" ? "explorer.copy" : key === "x" ? "explorer.cut" : "explorer.paste";
-          window.linkdesk?.commands?.executeCommand?.(cmd);
-          return;
-        }
-      }
+      // E5.8#24.8.3：剪贴板键——机制归一在 useClipboardKeys（命中 → 已消费，不继续走导航）
+      if (handleClipboard(e)) return;
 
       switch (e.key) {
         /* ── 导航 ── */
@@ -260,7 +260,7 @@ export function useFileTreeKeyboard(
         }
       }
     },
-    [state, callbacks, handleTypeAhead],
+    [state, callbacks, handleTypeAhead, handleClipboard],
   );
 
   return handleKeyDown;
