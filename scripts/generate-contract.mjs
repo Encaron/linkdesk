@@ -36,7 +36,17 @@ const OUT_FILE = resolve(root, 'contracts/linkdesk.d.ts');
 const OUT_RUNTIME = resolve(root, 'contracts/runtime-shapes.ts');
 const REGISTRY_FILE = resolve(root, 'electron/ipc/runtime-dto-registry.ts');
 const CHANNELS_FILE = resolve(root, 'electron/ipc/channels.ts');
+const PKG_FILE = resolve(root, 'package.json');
+const CONTRACTS_PKG_FILE = resolve(root, 'contracts/package.json');
 const CHECK = process.argv.includes('--check');
+
+// E5.8#22.6：@linkdesk/contracts 包 version 与壳版本联动——生成时从主 package.json 读入
+// 写入 contracts/package.json（同版本发布，升级壳即换契约）。--check 校验磁盘一致。
+const SHELL_VERSION = JSON.parse(readFileSync(PKG_FILE, 'utf8')).version;
+if (typeof SHELL_VERSION !== 'string' || !SHELL_VERSION) {
+  console.error(`[contracts] ✗ 主 package.json 缺 version——无法联动 @linkdesk/contracts`);
+  process.exit(1);
+}
 
 // ── 1. Program + checker ────────────────────────────────────────────────
 // 根文件 = 契约入口 + 运行期注册表 + 通道常量（linkdesk.d.ts 收集不受影响——emitType 只从
@@ -617,7 +627,20 @@ ${channelCases.join('\n')}
 
 const runtimeContent = buildRuntimeShapes();
 
-// ── 5. 写盘 / 比对（双产物）─────────────────────────────────────────────
+// ── 4.5 版本联动──@linkdesk/contracts package.json 的 version 同步壳版本 ──
+// 只改 version 字段，其余字段（name/files/types 等）静态维护于仓库——生成器不覆盖手工配置。
+function syncContractsVersion() {
+  if (!existsSync(CONTRACTS_PKG_FILE)) {
+    throw new Error(`contracts/package.json 缺失——@linkdesk/contracts 包未建（E5.8#22.6）`);
+  }
+  const pkg = JSON.parse(readFileSync(CONTRACTS_PKG_FILE, 'utf8'));
+  if (pkg.version === SHELL_VERSION) return pkg; // 已同步——不触碰文件（保持磁盘稳定）
+  pkg.version = SHELL_VERSION;
+  writeFileSync(CONTRACTS_PKG_FILE, `${JSON.stringify(pkg, null, 2)}\n`, 'utf8');
+  return pkg;
+}
+
+// ── 5. 写盘 / 比对（双产物 + 包版本）────────────────────────────────────
 
 if (CHECK) {
   let fail = false;
@@ -635,12 +658,27 @@ if (CHECK) {
   } else {
     console.log('[contracts] ✓ runtime-shapes.ts 最新');
   }
+  // 包版本联动校验——壳 version 变了而包没同步 = 红
+  if (!existsSync(CONTRACTS_PKG_FILE)) {
+    console.error('[contracts] ✗ contracts/package.json 缺失——@linkdesk/contracts 包未建（E5.8#22.6）');
+    fail = true;
+  } else {
+    const pkg = JSON.parse(readFileSync(CONTRACTS_PKG_FILE, 'utf8'));
+    if (pkg.version !== SHELL_VERSION) {
+      console.error(`[contracts] ✗ contracts/package.json version=${pkg.version} 与壳 ${SHELL_VERSION} 不一致——请运行 node scripts/generate-contract.mjs`);
+      fail = true;
+    } else {
+      console.log(`[contracts] ✓ @linkdesk/contracts version=${SHELL_VERSION} 与壳同步`);
+    }
+  }
   process.exit(fail ? 1 : 0);
 }
 
 mkdirSync(dirname(OUT_FILE), { recursive: true });
 writeFileSync(OUT_FILE, content, 'utf8');
 writeFileSync(OUT_RUNTIME, runtimeContent, 'utf8');
+const pkg = syncContractsVersion();
 console.log(`[contracts] 已生成 ${OUT_FILE}（${blocks.length} 个类型声明，${content.length} 字符）`);
 const helperCount = (runtimeContent.match(/^function chk/gm) || []).length;
 console.log(`[contracts] 已生成 ${OUT_RUNTIME}（${helperCount} 个校验函数，${runtimeContent.length} 字符）`);
+console.log(`[contracts] @linkdesk/contracts version=${pkg.version}（壳 ${SHELL_VERSION} 联动）`);

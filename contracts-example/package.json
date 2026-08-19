@@ -1,0 +1,11 @@
+{
+  "name": "linkdesk-contracts-example",
+  "version": "0.0.0",
+  "private": true,
+  "description": "@linkdesk/contracts 消费形态验收示例——第三方插件作者只依赖 npm 包类型，零 @src/core。tsc 零错误验收：npx tsc --noEmit",
+  "type": "module",
+  "devDependencies": {
+    "@linkdesk/contracts": "file:../contracts",
+    "typescript": "^5.9.0"
+  }
+}
