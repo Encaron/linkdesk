@@ -1,5 +1,5 @@
 /**
- * ViewContainerService —— 侧栏容器桌子。
+ * ViewContainerService —— 侧栏容器桌子（聚合器门面）。
  * 对标 VS Code IViewContainersRegistry + IViewsRegistry + IViewDescriptor。
  *
  * 核心准入三条全满足：
@@ -12,6 +12,12 @@
  * 因此自动 unregisterAll 在 PLUGIN_REMOVED dispatch 之前执行。
  * revertContainerIfCurrent 从 getViewPlugin().manifest 读数据（非 ViewContainerService），
  * 且 E36#4.7 的显式处理程序作为安全网——第二次 unregisterAll 调用是幂等的。
+ *
+ * E5.8#0d.10-11：聚合器角色——类型层/内部模型/折叠持久化迁到 ViewContainerService/ 同名夹
+ * 3 子模块（types.ts 7 接口 + 1 类型 / model.ts ViewContainerModel _hidden 属主 / collapsed.ts 折叠持久化）。
+ * 聚合器保留 ViewContainerServiceClass 主类全部方法——共享私有状态（_containers/_models/_viewIndex/
+ * _containerOwner/_emptyContents + 3 Emitter + RegistryBase 钩子）是类的本质组织，非人为堆叠；
+ * 折叠三方法薄委派 *Core。外部消费方（SidePanel/workspace.ts 等）导入路径零变更。
  *
  * @see [[hall-architecture-model]] §桌子管理规则
  * @see E36#1 ViewContainerService 类
