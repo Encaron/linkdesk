@@ -5,6 +5,8 @@ import importX from "eslint-plugin-import-x";
 import linkdeskRules from "./eslint-local-rules.js";
 
 export default [
+  // E5.8#19：契约生成物（contracts/linkdesk.d.ts）不 lint——纯类型自动生成，机器输出
+  { ignores: ["contracts/**"] },
   {
     files: ["src/**/*.ts", "src/**/*.tsx", "plugins/**/*.ts", "plugins/**/*.tsx", "electron/**/*.ts"],
     languageOptions: {
