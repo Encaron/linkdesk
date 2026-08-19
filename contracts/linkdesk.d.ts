@@ -1297,6 +1297,12 @@ export interface ShellAPI {
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
 export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI;
+/** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
+export interface PluginStateChangedPayload {
+    pluginId: string;
+    key: string;
+    value: unknown;
+}
 
 declare global {
   interface Window {
