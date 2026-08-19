@@ -12,3 +12,6 @@ Thumbs.db
 # Codex CLI persona/profile（Codex 用，保留在磁盘但不入库）
 SOUL.md
 USER.md
+
+# AI 会话记忆工具产物（本机工具状态，不入库）
+memory/
