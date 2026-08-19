@@ -6,13 +6,12 @@
  */
 
 import type { PluginManifest } from "../core/api/types";
-import { getViewPlugin, unregisterViewPlugin } from "./viewRegistry";
 import { getAvailableThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { pushToast, TOAST_TTL_SUCCESS } from "../core/services/ui/NotificationService";
 import { reportError } from "../core/services/bootstrap/ErrorService";
-import { PluginLifecycle } from "./lifecycle";
+import { PluginLifecycle, notifyPluginRemoved } from "./lifecycle";
 import { getConfigurationValue, setConfigurationValue } from "../core/services/configuration/ConfigurationService";
 import {
   linkdesk,
@@ -73,9 +72,10 @@ export async function disablePlugin(pluginId: string): Promise<{ success: boolea
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
+    // E5.8#12：PLUGIN_REMOVED 先于 fire——viewRegistry 还在（App/lifecycle.ts 侧栏回退读 manifest）；
+    // 注册表清理由 tracker 在 fire 内逆序回滚自动完成（消费端 2/2b 已删）
+    notifyPluginRemoved(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName });
-    // 仅视图插件需要注销组件注册
-    if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     _deferredPlugins.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "disable", displayName });
@@ -158,6 +158,9 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
     // revert 必须在 onWillUninstall 之前——onWillUninstall 注销主题/语言后 revert 找不到归属
     await revertThemeIfCurrent(pluginId);
     await revertLanguageIfCurrent(pluginId);
+    // E5.8#12：PLUGIN_REMOVED 先于 fire——viewRegistry 还在（App/lifecycle.ts 侧栏回退读 manifest）；
+    // 注册表清理由 tracker 在 fire 内逆序回滚自动完成（消费端 2/2b 已删）
+    notifyPluginRemoved(pluginId);
     PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "uninstall", displayName });
 
     // 如果插件之前被禁用过，清理禁用列表——卸载优先级高于禁用
@@ -168,8 +171,6 @@ export async function uninstallPlugin(pluginId: string): Promise<{ success: bool
       await saveDisabledList(list);
     }
 
-    // 前端：移除注册（仅视图插件需要）
-    if (getViewPlugin(pluginId)) unregisterViewPlugin(pluginId);
     loadedPluginIds.delete(pluginId);
     _deferredPlugins.delete(pluginId);
     PluginLifecycle.onDidUninstall.fire({ pluginId, reason: "uninstall", displayName });

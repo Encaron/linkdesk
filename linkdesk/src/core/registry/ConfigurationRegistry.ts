@@ -106,20 +106,6 @@ export function registerConfiguration(
   });
 }
 
-/** 注销插件的配置贡献——卸载时调用 */
-export function unregisterConfiguration(pluginId: string): boolean {
-  // 清理 configKey → owner 映射
-  const contrib = _contributions.get(pluginId);
-  if (contrib) {
-    for (const key of Object.keys(contrib.properties)) {
-      if (_configKeyOwner.get(key) === pluginId) {
-        _configKeyOwner.delete(key);
-      }
-    }
-  }
-  return _contributions.delete(pluginId);
-}
-
 /** 动态更新配置项的 enum + default——不影响 onApply。用于主题列表/语言列表等运行时变化。 */
 export function updateConfigurationEnum(key: string, enumValues: string[], defaultValue?: string): void {
   for (const [, contrib] of _contributions) {
@@ -193,11 +179,6 @@ export function registerConfigurationDefaults(
   return trackRegistration(pluginId, () => {
     _configurationDefaults.delete(pluginId);
   });
-}
-
-/** 注销弱默认值 */
-export function unregisterConfigurationDefaults(pluginId: string): boolean {
-  return _configurationDefaults.delete(pluginId);
 }
 
 /** 获取所有弱默认值合并结果 */

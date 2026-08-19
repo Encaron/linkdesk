@@ -7,11 +7,11 @@
  * 2. 多消费方——SidePanel + 未来底部面板 + 未来辅助侧栏都可以 getViews(containerId)
  * 3. 桌子不知道内容——不知道 FOLDERS 是文件树、不知道"收发设置"是串口的
  *
- * 🔴 RegistryBase 自动处理程序排序说明：
- * ES 模块提升意味着 ViewContainerService 构造函数在 lifecycle.ts 主体代码之前运行。
- * 因此自动 unregisterAll 在 PLUGIN_REMOVED dispatch 之前执行。
- * revertContainerIfCurrent 从 getViewPlugin().manifest 读数据（非 ViewContainerService），
- * 且 E36#4.7 的显式处理程序作为安全网——第二次 unregisterAll 调用是幂等的。
+ * 🔴 RegistryBase 自动处理程序排序说明（E5.8#12 更新）：
+ * unregisterAll 经 markPlugin disposer 在 onWillUninstall.fire 的 tracker 逆序回滚时执行；
+ * PLUGIN_REMOVED（标签页/侧栏关闭通知）由 loader 在 fire 之前分发（notifyPluginRemoved）——
+ * 故 dispatch 时 viewRegistry/ViewContainerService 数据均在。revertContainerIfCurrent 读
+ * getViewPlugin().manifest（非 ViewContainerService）——双路径均无顺序依赖。
  *
  * E5.8#0d.10-11：聚合器角色——类型层/内部模型/折叠持久化迁到 ViewContainerService/ 同名夹
  * 3 子模块（types.ts 7 接口 + 1 类型 / model.ts ViewContainerModel _hidden 属主 / collapsed.ts 折叠持久化）。
@@ -38,15 +38,11 @@ import type {
   ViewChangeEvent,
   ActiveViewChangeEvent,
 } from "./ViewContainerService/types";
-export type {
-  ViewContainerLocation,
-  ViewContainerDescriptor,
-  ViewDescriptor,
-  ViewContainerChangeEvent,
-  ViewEmptyContentDescriptor,
-  ViewChangeEvent,
-  ActiveViewChangeEvent,
-};
+// E5.8#12：re-export 收窄——仅 ViewDescriptor 有外部消费方（sidebar-panel.ts 直引）。
+// 其余 6 型（ViewContainerLocation/Descriptor/ChangeEvent/EmptyContent/ViewChangeEvent/
+// ActiveViewChangeEvent）零显式消费方（消费方靠单例方法签名结构推断类型，不按名 import）——
+// 死代码当场删；需要时直引 ./ViewContainerService/types。
+export type { ViewDescriptor };
 // E5.8#0d.10-11b：内部模型类 verbatim 迁出到 ViewContainerService/model.ts（_hidden 属主 + active 计算）
 import { ViewContainerModel } from "./ViewContainerService/model";
 // E5.8#0d.10-11c：折叠持久化域（唯一不碰实例私有状态的独立域）→ 委派式拆分，Core 后缀区分模块函数
@@ -58,7 +54,10 @@ import {
 
 /* ── ViewContainerService ── */
 
-export class ViewContainerServiceClass extends RegistryBase {
+// E5.8#12：消费端 2b（ViewContainerServiceClass.unregisterAll 显式调用）已删——unregisterAll 现在
+// 经 markPlugin disposer 在 tracker 逆序回滚时自动执行（单例内部自触发）。类本身零外部消费者——
+// 取消 export（死代码当场删），仅保留单例 ViewContainerService 出口。
+class ViewContainerServiceClass extends RegistryBase {
   /** 容器注册表——containerId → descriptor */
   private _containers = new Map<string, ViewContainerDescriptor>();
   /** 容器 model 注册表——containerId → model */

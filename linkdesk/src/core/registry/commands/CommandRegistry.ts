@@ -90,18 +90,6 @@ export function registerCommand(pluginId: string, command: Command): () => void 
   });
 }
 
-/** 注销插件的所有命令——插件卸载时调用 */
-export function unregisterPluginCommands(pluginId: string): void {
-  const pluginSet = _pluginCommands.get(pluginId);
-  if (pluginSet) {
-    for (const cmdId of pluginSet) {
-      _commands.delete(cmdId);
-      _poolRuntimeCommands.delete(cmdId);
-    }
-    _pluginCommands.delete(pluginId);
-  }
-}
-
 /* ── 池侧命令元数据同步（E5.7 Bug C 补全——命令面板/菜单可见性）── */
 
 // 🔥 真相源分工（跨进程双注册表的唯一权威声明）：

@@ -125,28 +125,6 @@ export function getAssociationsForPlugin(pluginId: string): FileAssociation[] {
   return result;
 }
 
-/* ── 注销 ── */
-
-/** 注销插件的全部文件关联——卸载时调用 */
-export function unregisterPluginFileAssociations(pluginId: string): void {
-  const exts = _pluginExtensions.get(pluginId);
-  if (!exts) return;
-
-  for (const ext of exts) {
-    const list = _associations.get(ext);
-    if (list) {
-      const filtered = list.filter((a) => a.pluginId !== pluginId);
-      if (filtered.length === 0) {
-        _associations.delete(ext);
-      } else {
-        _associations.set(ext, filtered);
-      }
-    }
-  }
-
-  _pluginExtensions.delete(pluginId);
-}
-
 /* ── 工具 ── */
 
 /** 归一化扩展名：去点、去空白、转小写 */

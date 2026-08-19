@@ -13,6 +13,7 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { registerTheme, unregisterTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
+import { rollback } from "../core/registry/registrationTracker";
 
 // ── Mock ConfigurationService 的 setConfigurationValue（避免 FS 依赖）──
 vi.mock("../core/services/configuration/ConfigurationService", () => {
@@ -40,7 +41,7 @@ describe("revertIfCurrent——卸载当前贡献时自动回退", () => {
     for (const name of getAvailableThemes()) {
       unregisterTheme(name);
     }
-    ThemeRegistry.unregisterPlugin(PLUGIN_ID);
+    rollback(PLUGIN_ID); // E5.8#12：ThemeRegistry.unregisterPlugin 已删——tracker 回滚同语义
     // 注：getConfigurationValue mock 是普通函数（vi.mock 工厂返回箭头函数）——
     // 原 (as any).mockClear?.() 恒为 no-op（mockClear 不存在，?. 吞掉），已随 E5.7#98 整删
   });

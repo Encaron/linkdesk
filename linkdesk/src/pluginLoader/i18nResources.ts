@@ -35,8 +35,7 @@ export function registerPluginLanguageBundle(
   rec.push(record);
 
   // E5.8#10：per-entry disposer——只撤本次 bundle，该语言 translation 命名空间按剩余记录整份重建
-  // （碰撞正确 + 注册序保持，同 unregisterPluginLanguageBundles 语义）。幂等：记录已不在 → 早退
-  // （兼容旧 unregisterPluginLanguageBundles 先行整插件清理后 tracker 重放）。
+  // （碰撞正确 + 注册序保持）。幂等：记录已不在 → 早退。
   return trackRegistration(pluginId, () => {
     const list = _pluginI18nData.get(pluginId);
     if (!list) return;
@@ -59,31 +58,4 @@ export function registerPluginLanguageBundle(
       i18n.removeResourceBundle(langCode, pluginId);
     }
   });
-}
-
-/**
- * 卸载/禁用语言清理——translation 命名空间整份重建（只留其余插件）+ pluginId 命名空间整删。
- * 由 lifecycle 消费端 2b 调用。
- * 已知边界：i18next add/removeResourceBundle 不触发 react-i18next 重渲染（src/i18n/index.ts:39
- * 同款注释）——当前语言下已渲染界面的旧译文保持到下次语言切换；资源层已即时干净。
- */
-export function unregisterPluginLanguageBundles(pluginId: string): void {
-  const rec = _pluginI18nData.get(pluginId);
-  if (rec) {
-    _pluginI18nData.delete(pluginId);
-    for (const { lang } of rec) {
-      i18n.removeResourceBundle(lang, "translation");
-      for (const [, entries] of _pluginI18nData) {
-        for (const e of entries) {
-          if (e.lang === lang) {
-            i18n.addResourceBundle(lang, "translation", e.data, true, true);
-          }
-        }
-      }
-    }
-  }
-  // pluginId 命名空间整份删除（原 H6 循环语义搬移至此——两份命名空间一处收敛）
-  for (const lang of i18n.languages ?? []) {
-    i18n.removeResourceBundle(lang, pluginId);
-  }
 }

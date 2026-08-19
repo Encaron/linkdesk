@@ -20,10 +20,9 @@
  *   主进程自动排队，loader 代码无需感知队列存在。
  */
 
-import { unregisterViewPlugin } from "./viewRegistry";
 import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
-import { PluginLifecycle, initLifecycleConsumers } from "./lifecycle";
+import { PluginLifecycle, initLifecycleConsumers, notifyPluginRemoved } from "./lifecycle";
 import {
   pluginsApi,
   log,
@@ -255,7 +254,9 @@ export function startPluginWatcher(): void {
       for (const id of [...loadedPluginIds]) {
         if (!fsSet.has(id) && !getDisabledList().includes(id)) {
           log.appendLine(`插件 "${id}" 目录已手动删除——自动移除注册`);
-          unregisterViewPlugin(id);
+          // E5.8#12：PLUGIN_REMOVED 先于 fire（viewRegistry 还在——App 侧栏回退读 manifest）；
+          // 注册表清理由 tracker 在 fire 内逆序回滚自动完成
+          notifyPluginRemoved(id);
           loadedPluginIds.delete(id);
           PluginLifecycle.onWillUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
           PluginLifecycle.onDidUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
