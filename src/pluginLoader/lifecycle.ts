@@ -13,7 +13,7 @@
  * @see loader.ts —— 5 个函数只管触发此总线的事件
  */
 
-import { Emitter, CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
+import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";
@@ -25,41 +25,16 @@ import { unregisterPluginThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
 import { unregisterStatusBarPlugin } from "../core/services/ui/StatusBarService";
 import { unregisterPluginLanguageBundles } from "./i18nResources";
-import type { PluginManifest } from "../core/api/types";
 
-/* ── 事件类型 ── */
-
-export interface PluginInstallEvent {
-  pluginId: string;
-  manifest: PluginManifest;
-  /** 'install' | 'reinstall' = 新装/重装 → 追加到图标末尾；'enable' = 恢复 → 保持原位；'startup' = 启动加载 → 保持原位 */
-  reason: "install" | "reinstall" | "enable" | "startup";
-}
-
-export interface PluginUninstallEvent {
-  pluginId: string;
-  /** 'uninstall' = 卸载 → 从 iconOrder 移除；'disable' = 禁用 → 保留 iconOrder 位置 */
-  reason: "uninstall" | "disable";
-  /** 显示名称——onDidUninstall 触发时 viewRegistry 已注销，提前传入避免 toast 显示 pluginId */
-  displayName?: string;
-}
-
-/* ── 事件定义 ── */
-
-export const PluginLifecycle = {
-  /** 插件已安装并注册完成（install/reinstall/enable/startup）*/
-  onDidInstall: new Emitter<PluginInstallEvent>(),
-
-  /** 插件即将卸载/禁用——在 viewRegistry 注销之前 */
-  onWillUninstall: new Emitter<PluginUninstallEvent>(),
-
-  /** 插件已卸载/禁用完成——在 viewRegistry 注销之后 */
-  onDidUninstall: new Emitter<PluginUninstallEvent>(),
-};
+// E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
+// 避免 CommandRegistry → tracker → lifecycle → CommandRegistry 循环依赖。
+// 本地 import（notifyPluginViews 引用 onPluginLifecycleChange）+ 重导出（既有调用面零改动）。
+import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
+export { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
+// 只重导出有消费方的类型——PluginUninstallEvent 全仓零 import（knip 实锤），不重导出
+export type { PluginInstallEvent } from "./lifecycle-events";
 
 /* ── 视图刷新——Emitter 模式（对标 viewRegistry 的 onDidRegister） ── */
-
-export const onPluginLifecycleChange = new Emitter<void>();
 
 function notifyPluginViews(): void {
   onPluginLifecycleChange.fire();
