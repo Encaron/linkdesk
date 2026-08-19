@@ -7,6 +7,7 @@
 import { CoreEvents } from "../../../react/events/CoreEvents";
 import { ContextKeyService } from "../ContextKeyService";
 import { normalizeKey } from "../../../utils/keybindingNormalization";
+import { trackRegistration } from "../../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 import type { Keybinding, KeybindingConflict } from "./types";
 
 export const _bindings: Keybinding[] = [];
@@ -32,12 +33,27 @@ export function clearBindings(): void {
 
 /** 注册快捷键——插件加载时 / 用户 keybindings.json 加载时调用。
  *  E2c #17a：允许多个 binding 映射到同一个 key（冲突由 Resolver 在 dispatch 时仲裁）。
- *  E3f #59：同命令同 key 去重——防止 builtin+user 重复注册导致冲突红字。 */
-export function registerKeybinding(binding: Keybinding): void {
+ *  E3f #59：同命令同 key 去重——防止 builtin+user 重复注册导致冲突红字。
+ *
+ *  E5.8#10 返 disposer：删除"这一条"（按引用 splice）+ 重发刷新事件。
+ *  去重分支（同命令同 key）→ 未新增条目，返 no-op。
+ *  有 pluginId（插件声明）→ 登记进追踪器（卸载自动逆序回滚）；
+ *  无 pluginId（builtin/user 快捷键——非插件域）→ 不追踪，返回裸 disposer。 */
+export function registerKeybinding(binding: Keybinding): () => void {
   const normKey = normalizeKey(binding.key);
-  if (_bindings.some((b) => b.command === binding.command && b.key === normKey)) return;
-  _bindings.push({ ...binding, key: normKey });
+  if (_bindings.some((b) => b.command === binding.command && b.key === normKey)) return () => {};
+  const entry = { ...binding, key: normKey };
+  _bindings.push(entry);
   CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B：通知 UI 刷新
+
+  const dispose = (): void => {
+    const idx = _bindings.indexOf(entry);
+    if (idx !== -1) {
+      _bindings.splice(idx, 1);
+      CoreEvents.onDidChangeKeybindings.fire(); // E3f #59-B
+    }
+  };
+  return binding.pluginId ? trackRegistration(binding.pluginId, dispose) : dispose;
 }
 
 /** 移除指定命令的全部快捷键绑定——不限 source。E3f #59-E 归一化：改绑时先清再建。 */

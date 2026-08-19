@@ -16,6 +16,7 @@
 
 import type { CancellationToken } from "../../utils/CancellationToken";
 import { reportError } from "../../services/bootstrap/ErrorService";
+import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 
 /* ── 类型 ── */
 
@@ -49,8 +50,11 @@ const _pluginCommands = new Map<string, Set<string>>(); // pluginId → commandI
  * Phase 5d 关键设计：loader 先注册元数据（title/category/when），组件 mount 时重注册 handler。
  * 重注册时只替换 handler——不覆盖元数据。对标 VS Code：package.json 是元数据源头，
  * 运行时 extension activate 只提供实现。
+ *
+ * E5.8#10 返 disposer：新增条目 → 登记"删这一条"disposer（卸载自动逆序回滚）；
+ * 重注册分支 → 原条目由首注册者持有，返回 no-op（防误删他人命令）。
  */
-export function registerCommand(pluginId: string, command: Command): void {
+export function registerCommand(pluginId: string, command: Command): () => void {
   if (_commands.has(command.id)) {
     // 重注册：更新 handler + title（toggle 命令的 title 随状态变化动态更新）。
     // loader 先注册元数据 → 组件 mount 时重注册覆盖 handler → useEffect 按状态更新 title。
@@ -66,7 +70,8 @@ export function registerCommand(pluginId: string, command: Command): void {
     existing.title = command.title;
     // 组件重注册真实 handler 时清 placeholder——否则真实实现永远被转发分支拦截
     existing.placeholder = command.placeholder;
-    return;
+    // 重注册未新增条目——首注册者的 disposer 持有删除权，返回 no-op
+    return () => {};
   }
   _commands.set(command.id, command);
 
@@ -76,6 +81,13 @@ export function registerCommand(pluginId: string, command: Command): void {
     _pluginCommands.set(pluginId, pluginSet);
   }
   pluginSet.add(command.id);
+
+  // E5.8#10：登记"删这一条"disposer——卸载自动逆序回滚（含池运行时命令同步清）
+  return trackRegistration(pluginId, () => {
+    _commands.delete(command.id);
+    _pluginCommands.get(pluginId)?.delete(command.id);
+    _poolRuntimeCommands.delete(command.id);
+  });
 }
 
 /** 注销插件的所有命令——插件卸载时调用 */
