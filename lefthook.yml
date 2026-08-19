@@ -12,7 +12,8 @@ pre-commit:
     - name: eslint (staged)
       root: linkdesk
       glob: '*.{ts,tsx}'
-      run: npx eslint --fix --max-warnings 0 {staged_files}
+      # E5.8#19：--no-warn-ignored——契约生成物 contracts/ 已被 ignores 忽略，显式传入时不再 warn
+      run: npx eslint --fix --max-warnings 0 --no-warn-ignored {staged_files}
       stage_fixed: true
 
     - name: whitespace (staged)
