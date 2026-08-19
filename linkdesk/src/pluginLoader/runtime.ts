@@ -1,7 +1,9 @@
 /**
- * 插件加载运行时层——加载管线 + 依赖检查 + 延迟激活。
+ * 插件加载运行时层——加载管线 + 依赖编排 + 延迟激活。
  * E5.8#0d.10-1d：自 loader.ts 拆出——loadPlugin 中枢（glob/IPC 统一入口）。
- * 依赖方向：runtime → contributions（模块解析/数据加载/枚举同步），反向不成立——防环。
+ * 依赖方向：runtime → contributions/dependencies（纯函数，反向不成立）——防环。
+ * E5.8#14：依赖编排——dep-check（环 fail / 缺 park）+ 挂起注册表 + sweep 补载（拓扑序激活）；
+ *   纯逻辑在 dependencies.ts，本模块持可变编排（_pendingPlugins 由 state.ts 共享真源）。
  * 生命周期操作（disable/enable/uninstall/install）不在此——见 lifecycle-ops.ts。
  */
 
@@ -14,7 +16,10 @@ import { reportError } from "../core/services/bootstrap/ErrorService";
 // Phase 5h 行为归一化：副作用（iconOrder/toast/config/tab）集中到 lifecycle.ts 消费端
 import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
-import { markLoadStarted, markLoadSuccess, markLoadFailed } from "./loadState";
+// E5.8#14：parkPending——缺依赖挂起（loading→pending + pendingReason）
+import { markLoadStarted, markLoadSuccess, markLoadFailed, parkPending } from "./loadState";
+// E5.8#14：依赖编排纯函数（requires 解析 / 缺失判定 / 图级环检测）
+import { findMissingDeps, detectDependencyCycle } from "./dependencies";
 import { versionGte } from "../core/utils/plugin/semverUtils";
 import {
   pluginsApi,
@@ -24,9 +29,9 @@ import {
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,
+  _pendingPlugins,
   extractPluginId,
   cachePluginMetadata,
-  getDisabledList,
 } from "./state";
 import { normalizeManifest, type OldFormatManifest } from "./manifest";
 import {
@@ -98,34 +103,45 @@ async function loadPluginLifecycle(
   // loadPluginLifecycle 只负责 manifest 解析 + contributes 分发。
 }
 
-/* ── #45：extensionDependencies 检查 ── */
+/* ── E5.8#14：依赖编排——环 fail / 缺 park / 就绪 sweep（拓扑序激活） ── */
+
+/** 已知 manifest 面——环检测走闭包的数据源（glob + 延迟 + 挂起）。
+ *  runtime 插件已加载的（不在以上三面）不可能在环中（环 = 相互依赖未就绪，必有挂起方），#14 分析成文。 */
+function getKnownManifest(pluginId: string): PluginManifest | undefined {
+  const key = Object.keys(pluginManifests).find((k) => extractPluginId(k) === pluginId);
+  if (key) return pluginManifests[key];
+  return _deferredPlugins.get(pluginId) ?? _pendingPlugins.get(pluginId);
+}
+
+/** 缺依赖挂起——PENDING + pendingReason + 挂起注册表（manifest 留存供 sweep 重查）。
+ *  不弹 toast——瞬态等待（#15.5 marketplace PENDING 面 + 启动挂起诊断日志负责用户可见）。 */
+function parkForDependencies(pluginId: string, manifest: PluginManifest, missing: string[]): void {
+  const reason = `等待依赖: ${missing.map((d) => `"${d}"`).join("、")}`;
+  _pendingPlugins.set(pluginId, manifest);
+  parkPending(pluginId, reason);
+  log.appendLine(`⏸ 插件 "${manifest.name ?? pluginId}" 缺依赖挂起——${reason}`);
+}
 
 /**
- * 检查插件的 extensionDependencies——所有依赖必须已安装且未被禁用。
- * 共享函数——loadPlugin 和 loadPlugin 已合并处理。
- * @returns null = 依赖满足或无需依赖；string = 缺失依赖清单（已 toast + #11 记录为 failureReason）
+ * 扫描挂起队列——依赖就绪的插件补载（拓扑序激活的引擎：扫描序不再影响激活顺序）。
+ * 触发点 = 每次 loadPlugin 完成（install/enable/reinstall 都走 loadPlugin → 自动覆盖）。
+ * 不 export——零外部消费方（knip 实锤）；内部 loadPlugin 完成点自动触发。
+ * 收敛：每轮 while 至少激活一个挂起插件才继续；环已在 dep-check fail-loud → 挂起互锁不会发生。
+ * guard 兜底（1000）防极端竞态（sweep await 期间依赖被卸载）死循环。
  */
-function _checkDependencies(pluginId: string, manifest: PluginManifest): string | null {
-  if (!manifest.extensionDependencies?.length) return null;
-
-  const disabled = getDisabledList();
-  const installed = new Set<string>();
-  for (const k of Object.keys(pluginManifests)) installed.add(extractPluginId(k));
-  for (const [id] of _deferredPlugins) installed.add(id);
-  for (const id of loadedPluginIds) installed.add(id);
-
-  const missing = manifest.extensionDependencies.filter(
-    (dep) => dep !== pluginId && (!installed.has(dep) || disabled.includes(dep)),
-  );
-  if (missing.length === 0) return null;
-
-  const reason = missing.map((d) => `"${d}"`).join("、");
-  pushToast({
-    message: `插件 "${manifest.name}" 缺少依赖: ${reason}——已跳过`,
-    ttl: TOAST_TTL_ERROR,
-  });
-  console.warn(`[pluginLoader] 依赖缺失 — "${pluginId}" 需要 ${reason}`);
-  return reason;
+async function sweepPendingDependencies(): Promise<void> {
+  let progressed = true;
+  let guard = 0;
+  while (progressed && guard++ < 1000) {
+    progressed = false;
+    for (const [id, manifest] of [..._pendingPlugins]) {
+      if (loadedPluginIds.has(id)) { _pendingPlugins.delete(id); continue; } // 已激活——清理僵尸登记
+      if (findMissingDeps(id, manifest).length > 0) continue; // 依赖仍未就绪
+      _pendingPlugins.delete(id);
+      await loadPlugin(id, "startup");
+      progressed = true;
+    }
+  }
 }
 
 /**
@@ -184,9 +200,20 @@ async function loadPlugin(
       return;
     }
   }
-  const depReason = _checkDependencies(pluginId, manifest);
-  if (depReason !== null) {
-    markLoadFailed(pluginId, `缺少依赖: ${depReason}`);
+  // E5.8#14：依赖编排——环检测 fail-loud（自环 + 传递环）；缺依赖挂起 PENDING（等待，非失败）
+  const cycle = detectDependencyCycle(pluginId, manifest, getKnownManifest);
+  if (cycle !== null) {
+    pushToast({
+      message: `插件 "${manifest.name}" 依赖环: ${cycle}——已跳过`,
+      ttl: TOAST_TTL_ERROR,
+    });
+    console.warn(`[pluginLoader] 依赖环 — "${pluginId}" ${cycle}`);
+    markLoadFailed(pluginId, `依赖环: ${cycle}`);
+    return;
+  }
+  const missing = findMissingDeps(pluginId, manifest);
+  if (missing.length > 0) {
+    parkForDependencies(pluginId, manifest, missing);
     return;
   }
 
@@ -301,6 +328,8 @@ async function loadPlugin(
   _loadingPromises.set(pluginId, promise);
   try { await promise; }
   finally { _loadingPromises.delete(pluginId); }
+  // E5.8#14：依赖编排——每加载完成一个插件，扫描挂起队列，依赖就绪者补载（拓扑序激活，扫描序不再影响激活）
+  await sweepPendingDependencies();
 }
 
 /**
