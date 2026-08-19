@@ -27,7 +27,7 @@ export * from "./registry/ClipboardProviderRegistry";
 
 // ── 基础设施 ──
 export { reportError } from "./services/bootstrap/ErrorService";
-export { PLUGINS_DIR, PLUGIN_SUBDIRS, PLUGIN_ENTRY_FILES } from "./pluginPaths";
+export { PLUGINS_DIR, PLUGIN_SUBDIRS, PLUGIN_ENTRY_FILES } from "./utils/plugin/pluginPaths"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
 
 // ── 服务 ──
 export * from "./services/configuration/ConfigurationApplier";
