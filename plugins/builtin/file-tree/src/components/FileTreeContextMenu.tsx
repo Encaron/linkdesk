@@ -43,18 +43,21 @@ export function clearFileTreeHandle(): void {
 
 /* ── 工具函数 ── */
 
-/** E5#108c：写路径到系统剪贴板——原生 CF_HDROP 优先 + 纯文本 fallback */
-function writeSystemClipboard(uris: string[]): void {
-  // 原生：Windows 资源管理器可粘贴
-  window.linkdesk?.clipboard?.writeFileList?.(uris);
-  // 纯文本：编辑器/终端可粘贴
-  const ta = document.createElement("textarea");
-  ta.value = uris.join("\n");
-  ta.style.position = "fixed"; ta.style.left = "-9999px";
-  document.body.appendChild(ta);
-  ta.select();
-  document.execCommand("copy");
-  document.body.removeChild(ta);
+/**
+ * E5#108c：写路径到系统剪贴板——原生 CF_HDROP 优先 + 纯文本 fallback。
+ * E5.8#24.8.6：纯文本 fallback 从废弃 document.execCommand("copy") → linkdesk.clipboard.writeText——
+ * Electron clipboard 多格式共存（writeText 只写 text/plain，不影响 CF_HDROP）；await 双写消除
+ * 「text 先写、CF_HDROP 后到」的理论竞态；失败 console.error 出声（#24.6 静默链文化）。零新机制。
+ */
+async function writeSystemClipboard(uris: string[]): Promise<void> {
+  try {
+    // 原生：Windows 资源管理器可粘贴（CF_HDROP）
+    await window.linkdesk?.clipboard?.writeFileList?.(uris);
+    // 纯文本：编辑器/终端可粘贴
+    await window.linkdesk?.clipboard?.writeText?.(uris.join("\n"));
+  } catch (e) {
+    console.error("[file-tree] 写系统剪贴板失败:", e);
+  }
 }
 
 // E5.6#11.5g2：clipboardProviders 已删除——池是独立 WCV，壳 Ctrl+C/X/V 不到池。
@@ -178,7 +181,7 @@ export function activateFileTreeContextMenu(): void {
     const uris: string[] = selection.length > 0 ? selection : ctx ? [ctx.uri] : focused ? [focused] : [];
     if (uris.length === 0) return;
     fileTreeClipboard.cut(uris);
-    writeSystemClipboard(uris);
+    await writeSystemClipboard(uris);
     hd.rerender();
   });
   lk.commands.registerCommand("explorer.copy", async (...args) => {
@@ -189,7 +192,7 @@ export function activateFileTreeContextMenu(): void {
     const uris: string[] = selection.length > 0 ? selection : ctx ? [ctx.uri] : focused ? [focused] : [];
     if (uris.length === 0) return;
     fileTreeClipboard.copy(uris);
-    writeSystemClipboard(uris);
+    await writeSystemClipboard(uris);
   });
   // ── E4V#26: paste ──
   lk.commands.registerCommand("explorer.paste", async (...args) => {
