@@ -9,6 +9,17 @@
 // Key constraints:
 //   - react/react-dom/react-i18next/i18next/@tauri-apps/api -> external
 //   - Output: plugins/<id>/dist/index.js + style.css
+//
+// 🔥 E5.8#24.8.7 定位声明（用户拍板：保守处置——保留 E6 改造资产，勿删除）：
+//   E6#3 独立插件构建（defineLinkdeskPluginConfig）基于本脚本改造——E6 文档 00-AI执行守则 +
+//   01-plugin-sdk设计 共 7 处定位。当前生产 builtin 走主 vite.config scanPluginEntries
+//   （dist/plugins/<sub>/<id>.js，electron 实际加载路径），本脚本 E6 前不运行。
+//   ⚠️ 过时清单（E6#3 整体改造时一并处理，勿单独修——修好扫描会让 @src/core 被 inline
+//   打包 = 静默双实例 bug，比空跑更危险）：
+//     1. scanPlugins 只扫 plugins/ 单层——builtin/ + user/ 双层（E5.7 目录演化）扫不到 → 空跑
+//     2. CORE_SHARED_PATHS 相对路径（../../src/core/...）拦截失效——插件 core import 已全走 @src/...
+//     3. resolve.alias 只有 "@" 缺 "@src"——插件源码用 @src/ 引用壳
+//   E6#3 方向：插件构建所有依赖（除 React/react-dom）inline 打包完全自包含，去 v3CoreExternalPlugin。
 
 import { build } from "vite";
 import react from "@vitejs/plugin-react";

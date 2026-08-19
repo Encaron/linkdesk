@@ -260,7 +260,9 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
       return { success: true, pluginId, version };
     } catch {
       pushToast({
-        message: `已安装：${name}。运行 npm run build:plugins 后生效。`,
+        // E5.8#24.8.7：原「npm run build:plugins」指向空跑死脚本（build-plugins.mjs E6 前不运行）——
+        // 改指准确主构建命令 npm run build（主 vite.config 多入口产出 dist/plugins/<sub>/<id>.js）
+        message: `已安装：${name}。运行 npm run build 后生效。`,
         source: pluginId,
         severity: "info",
         ttl: 0,
