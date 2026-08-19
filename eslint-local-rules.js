@@ -844,11 +844,8 @@ const noCoreImportInPlugin = {
     const filename = context.filename || context.getFilename?.() || "";
     if (!filename.includes("plugins")) return {};
 
-    // E5.7#80：测试文件豁免——filename 含 __tests__/.test./.spec. 跳过。
-    // vitest 单进程跑（测试与壳同一 JS 堆），"多 WebView 静默失效"理由不成立。
-    // （FileTreeClipboard.test.ts 运行时 import ContextKeyService——已记录 B 类例外。）
-    if (/__tests__|\.test\.|\.spec\./.test(filename)) return {};
-
+    // E5.8#20-d：测试豁免已取消（原 E5.7#80）——测试文件同样检查 @src/core import。
+    // #20-c 迁移后插件零 @src/core 类型 import，唯一运行时例外 ContextKeyService 走白名单。
     // 判断模块类型的辅助函数
     function classify(source) {
       if (PLUGIN_IMPORT_WHITELIST.has(source)) return null; // 白名单——不报
@@ -861,13 +858,8 @@ const noCoreImportInPlugin = {
 
     return {
       ImportDeclaration(node) {
-        // E5.7#80：纯类型 import 豁免——importKind === "type"（或全部 specifier 内联 type）
-        // 类型擦除后零运行时耦合，"多 WebView 静默失效"前提不存在。
-        const allSpecifiersTypeOnly =
-          node.specifiers.length > 0 &&
-          node.specifiers.every((s) => s.importKind === "type");
-        if (node.importKind === "type" || allSpecifiersTypeOnly) return;
-
+        // E5.8#20-d：类型 import 豁免已取消（原 E5.7#80）——类型擦除后虽零运行时耦合，
+        // 但 #18 拍板"类型也禁"：插件类型消费唯一合法路径 = @linkdesk/contracts（契约产物）。
         const source = node.source.value;
         if (!source.startsWith("@src/core/")) return;
         const reason = classify(source);
