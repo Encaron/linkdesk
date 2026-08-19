@@ -163,11 +163,20 @@ export async function initPluginLoader(): Promise<void> {
   // E5.8#11 诊断面：启动收尾把失败插件 + 原因落日志——此前 loadPlugin 内部吞错，失败原因不可见。
   // 挂载点定案：日志面（含控制台 + pluginLoader LogChannel），不做 UI（壳零改动）；
   // getLoadDiagnostics 导出——未来 dev 面板/marketplace 插件详情可挂（设计文档 §3.3 候选）
-  const failedDiag = getLoadDiagnosticsSummary().filter((d) => d.loadState === "failed");
+  const diags = getLoadDiagnosticsSummary();
+  const failedDiag = diags.filter((d) => d.loadState === "failed");
   if (failedDiag.length > 0) {
     const detail = failedDiag.map((d) => `"${d.pluginId}": ${d.failureReason ?? "未知原因"}`).join("；");
     console.warn(`[pluginLoader] 加载失败诊断: ${detail}`);
     log.appendLine(`❌ 加载失败诊断: ${detail}`);
+  }
+  // E5.8#14：挂起诊断——缺依赖待就绪的插件（pending + pendingReason）启动收尾一并落日志
+  // （启动期已 sweep 补载的挂起插件此刻是 active，pendingReason 已被 markLoadStarted 清——只显示真等待）
+  const parkedDiag = diags.filter((d) => d.pendingReason !== undefined);
+  if (parkedDiag.length > 0) {
+    const detail = parkedDiag.map((d) => `"${d.pluginId}": ${d.pendingReason}`).join("；");
+    console.warn(`[pluginLoader] 挂起诊断（缺依赖待就绪）: ${detail}`);
+    log.appendLine(`⏸ 挂起诊断（缺依赖待就绪）: ${detail}`);
   }
 
   // 6. 清理僵尸缓存——status="installed" 但未真正加载的条目（插件目录已删除）

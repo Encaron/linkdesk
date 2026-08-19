@@ -124,6 +124,9 @@ const loadedPluginIds = new Set<string>();
 const _loadingPromises = new Map<string, Promise<void>>();
 /** 延迟激活的插件——有 activationEvents（非 "*"），manifest 已注册但 JS 未 import */
 const _deferredPlugins = new Map<string, PluginManifest>();
+/** E5.8#14：缺依赖挂起的插件——pluginId → manifest（依赖就绪后 sweep 补载需要 manifest 重查）。
+ *  park 在 runtime.loadPlugin dep-check，sweep 在 runtime.sweepPendingDependencies——共享状态单一真源。 */
+const _pendingPlugins = new Map<string, PluginManifest>();
 
 /* ── 辅助：从路径提取 pluginId ── */
 
@@ -245,6 +248,7 @@ export {
   loadedPluginIds,
   _loadingPromises,
   _deferredPlugins,
+  _pendingPlugins,
   extractPluginId,
   getMetadataCache,
   cachePluginMetadata,
