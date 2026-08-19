@@ -10,6 +10,7 @@ import { Emitter } from "../core/react/events/CoreEvents";
 import { compareVersions } from "../core/utils/plugin/semverUtils";
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import { showConfirm } from "../core/services/ui/DialogService";
+import { trackRegistration } from "../core/registry/registrationTracker";
 
 
 const registry = new Map<string, ViewPluginEntry>();
@@ -22,8 +23,10 @@ export const onDidRegister = new Emitter<ViewPluginEntry>();
 /** 插件注销事件——IconBar 等消费者订阅以移除图标 */
 export const onDidUnregister = new Emitter<string>();
 
-/** 注册视图插件。同名插件优先高版本（P1-6 #7）。 */
-export function registerViewPlugin(entry: ViewPluginEntry): void {
+/** 注册视图插件。同名插件优先高版本（P1-6 #7）。
+ *  E5.8#10：返 disposer + track——引用级删除；低/等版本被忽略时返 no-op（首注册者持删除权）；
+ *  高版本覆盖后旧 disposer 不删新 entry（registry.get 守卫）。 */
+export function registerViewPlugin(entry: ViewPluginEntry): () => void {
   const existing = registry.get(entry.pluginId);
   if (existing) {
     const newVer = entry.manifest.version;
@@ -36,12 +39,19 @@ export function registerViewPlugin(entry: ViewPluginEntry): void {
       console.warn(
         `[viewRegistry] 插件 "${entry.pluginId}" 重复——保留已有 v${oldVer}，忽略 v${newVer}`
       );
-      return;
+      return () => {}; // 未新增条目——首注册者的 disposer 持有删除权
     }
   }
   registry.set(entry.pluginId, entry);
   // Phase 5h Step 1：通知所有消费者（IconBar/StatusBar 等）插件已注册
   onDidRegister.fire(entry);
+
+  return trackRegistration(entry.pluginId, () => {
+    if (registry.get(entry.pluginId) === entry) {
+      registry.delete(entry.pluginId);
+      onDidUnregister.fire(entry.pluginId);
+    }
+  });
 }
 
 

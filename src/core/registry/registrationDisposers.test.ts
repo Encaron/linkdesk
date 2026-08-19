@@ -21,6 +21,17 @@ import { createStatusBarItem, getDynamicStatusBarItems, clearStatusBarItems } fr
 import { registerFileAssociation, getPluginsFor, getAssociationsForPlugin, clearFileAssociations } from "../services/files/FileAssociationService";
 import { registerDialogRenderers, confirm } from "../services/ui/DialogService";
 import { ContextKeyService } from "./commands/ContextKeyService";
+import { registerViewPlugin, getViewPlugin, clearRegistry } from "../../pluginLoader/viewRegistry";
+import { registerPluginLanguageBundle } from "../../pluginLoader/i18nResources";
+import i18n from "../../i18n";
+import type { ViewPluginEntry } from "../api/types";
+
+/** viewRegistry 测试用最小 entry——component 空组件（无 JSX） */
+const makeViewEntry = (version: string): ViewPluginEntry => ({
+  pluginId: PID,
+  manifest: { name: "Test View", version },
+  component: () => null,
+});
 
 const PID = "registry-disposer-test";
 const PID_OTHER = "registry-disposer-test-other";
@@ -378,5 +389,107 @@ describe("ContextKeyService — registerExternalGetter() 返 disposer 不 track�
     expect(ContextKeyService.getValue("anything")).toBe("survived");
 
     dispose();
+  });
+});
+
+describe("viewRegistry — registerViewPlugin() 返 disposer（E5.8#10-4）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearRegistry();
+  });
+
+  it("注册→dispose→getViewPlugin 为空", () => {
+    const dispose = registerViewPlugin(makeViewEntry("1.0.0"));
+    expect(getViewPlugin(PID)).toBeDefined();
+
+    dispose();
+
+    expect(getViewPlugin(PID)).toBeUndefined();
+  });
+
+  it("低/等版本忽略返 no-op disposer——首注册者持删除权", () => {
+    const disposeA = registerViewPlugin(makeViewEntry("2.0.0"));
+    const disposeIgnored = registerViewPlugin(makeViewEntry("1.0.0")); // 低版本忽略
+
+    disposeIgnored(); // no-op
+
+    expect(getViewPlugin(PID)).toBeDefined();
+    expect(getViewPlugin(PID)!.manifest.version).toBe("2.0.0");
+
+    disposeA();
+    expect(getViewPlugin(PID)).toBeUndefined();
+  });
+
+  it("高版本覆盖——旧 disposer 不删新 entry", () => {
+    const disposeA = registerViewPlugin(makeViewEntry("1.0.0"));
+    registerViewPlugin(makeViewEntry("2.0.0")); // 高版本覆盖
+
+    disposeA(); // 旧 disposer——不得删新 entry
+
+    expect(getViewPlugin(PID)).toBeDefined();
+    expect(getViewPlugin(PID)!.manifest.version).toBe("2.0.0");
+  });
+
+  it("fire onWillUninstall → 视图插件自动逆序回滚", () => {
+    registerViewPlugin(makeViewEntry("1.0.0"));
+
+    PluginLifecycle.onWillUninstall.fire({ pluginId: PID, reason: "uninstall" });
+
+    expect(getViewPlugin(PID)).toBeUndefined();
+  });
+});
+
+describe("i18nResources — registerPluginLanguageBundle() 返 disposer（E5.8#10-4）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+  });
+
+  it("注册→dispose→translation 键消失 + pluginId 命名空间删除", () => {
+    const dispose = registerPluginLanguageBundle("zh", { "hi": "你好" }, PID);
+    expect(i18n.getResourceBundle("zh", "translation")).toMatchObject({ "hi": "你好" });
+
+    dispose();
+
+    expect(i18n.getResourceBundle("zh", "translation")).toBeUndefined();
+    expect(i18n.getResourceBundle("zh", PID)).toBeUndefined();
+  });
+
+  it("整份重建——dispose 一插件不误删另一插件同顶层键子键", () => {
+    const disposeA = registerPluginLanguageBundle("zh", { menu: { file: "文件" } }, PID);
+    const disposeB = registerPluginLanguageBundle("zh", { menu: { edit: "编辑" } }, PID_OTHER);
+
+    disposeB();
+
+    const bundle = i18n.getResourceBundle("zh", "translation") as Record<string, unknown>;
+    expect(bundle).toMatchObject({ menu: { file: "文件" } });
+    expect(bundle.menu).not.toHaveProperty("edit");
+
+    disposeA(); // 清理——恢复干净 i18n 态
+    expect(i18n.getResourceBundle("zh", "translation")).toBeUndefined();
+  });
+
+  it("同插件多份同语言——dispose 一份保留另一份，pluginId 命名空间保留", () => {
+    const dispose1 = registerPluginLanguageBundle("zh", { "k1": "一" }, PID);
+    const dispose2 = registerPluginLanguageBundle("zh", { "k2": "二" }, PID);
+
+    dispose1();
+
+    const bundle = i18n.getResourceBundle("zh", "translation") as Record<string, unknown>;
+    expect(bundle["k1"]).toBeUndefined();
+    expect(bundle["k2"]).toBe("二");
+    expect(i18n.getResourceBundle("zh", PID)).toBeDefined(); // 仍有同语言 bundle → 保留
+
+    dispose2(); // 最后一份同语言 bundle → pluginId 命名空间整删
+    expect(i18n.getResourceBundle("zh", "translation")).toBeUndefined();
+    expect(i18n.getResourceBundle("zh", PID)).toBeUndefined();
+  });
+
+  it("fire onWillUninstall → 语言包自动逆序回滚", () => {
+    registerPluginLanguageBundle("zh", { "x": "X" }, PID);
+
+    PluginLifecycle.onWillUninstall.fire({ pluginId: PID, reason: "uninstall" });
+
+    expect(i18n.getResourceBundle("zh", "translation")).toBeUndefined();
+    expect(i18n.getResourceBundle("zh", PID)).toBeUndefined();
   });
 });
