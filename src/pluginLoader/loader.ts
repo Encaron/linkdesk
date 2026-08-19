@@ -22,7 +22,9 @@
 
 import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationService";
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
-import { PluginLifecycle, initLifecycleConsumers, notifyPluginRemoved } from "./lifecycle";
+import { initLifecycleConsumers } from "./lifecycle";
+// E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
+import { unloadPlugin, getLoadDiagnosticsSummary } from "./loadState";
 import {
   pluginsApi,
   log,
@@ -158,6 +160,16 @@ export async function initPluginLoader(): Promise<void> {
     });
   }
 
+  // E5.8#11 诊断面：启动收尾把失败插件 + 原因落日志——此前 loadPlugin 内部吞错，失败原因不可见。
+  // 挂载点定案：日志面（含控制台 + pluginLoader LogChannel），不做 UI（壳零改动）；
+  // getLoadDiagnostics 导出——未来 dev 面板/marketplace 插件详情可挂（设计文档 §3.3 候选）
+  const failedDiag = getLoadDiagnosticsSummary().filter((d) => d.loadState === "failed");
+  if (failedDiag.length > 0) {
+    const detail = failedDiag.map((d) => `"${d.pluginId}": ${d.failureReason ?? "未知原因"}`).join("；");
+    console.warn(`[pluginLoader] 加载失败诊断: ${detail}`);
+    log.appendLine(`❌ 加载失败诊断: ${detail}`);
+  }
+
   // 6. 清理僵尸缓存——status="installed" 但未真正加载的条目（插件目录已删除）
   const cache = getMetadataCache();
   let staleCount = 0;
@@ -250,16 +262,13 @@ export function startPluginWatcher(): void {
       }
 
       // G16：反向检测——已加载但文件系统已删除 → 自动卸载
+      // E5.8#11：走唯一卸载路径 unloadPlugin（unloading → notifyPluginRemoved → fire →
+      // 集合清理 → disposed → onDidUninstall）——L6b 顺序由状态机迁移图机械保障
       const fsSet = new Set(dirs);
       for (const id of [...loadedPluginIds]) {
         if (!fsSet.has(id) && !getDisabledList().includes(id)) {
           log.appendLine(`插件 "${id}" 目录已手动删除——自动移除注册`);
-          // E5.8#12：PLUGIN_REMOVED 先于 fire（viewRegistry 还在——App 侧栏回退读 manifest）；
-          // 注册表清理由 tracker 在 fire 内逆序回滚自动完成
-          notifyPluginRemoved(id);
-          loadedPluginIds.delete(id);
-          PluginLifecycle.onWillUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
-          PluginLifecycle.onDidUninstall.fire({ pluginId: id, reason: "uninstall", displayName: id });
+          unloadPlugin(id, "uninstall", id);
         }
       }
     } catch {
