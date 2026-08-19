@@ -11,14 +11,6 @@
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70（仅 init 的 registerExternalGetter 保留）
-import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
-// E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
-import { onPluginLifecycleChange } from "../../../pluginLoader/lifecycle";
-// E5.6#11.5-A：fileAssociation——池插件跨进程查询
-// （decorations 的壳侧代理已随 E5.7#60 整删——注册表池内化，见 preload-pool 模块级注释）
-// E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher + EncodingService
-import { searchFiles } from "../files/FileSearcher";
-import { EncodingService } from "../files/EncodingService";
 import { handlePluginManagerMethod } from "./IpcBridgeHandler/pluginManager"; // E5.8#0d.10-10a：插件管理域（PluginManagementAPI/setPluginAPI 属主迁入）
 import { handleConfigChannel, handleConfigurationMethod, subscribeConfiguration, unsubscribeConfiguration } from "./IpcBridgeHandler/configuration"; // E5.8#0d.10-10b：配置域
 import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.10-10c：命令域
@@ -26,12 +18,12 @@ import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c�
 import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace, unsubscribeWorkspace, subscribeViews, unsubscribeViews } from "./IpcBridgeHandler/workspace"; // E5.8#0d.10-10d：工作区/视图容器域
 import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handleUiMethod, subscribeUi, unsubscribeUi } from "./IpcBridgeHandler/ui"; // E5.8#0d.10-10e：UI 浮层域
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
+import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
-let _lifecycleUnsub: (() => void) | null = null;
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -77,19 +69,11 @@ export function initIpcBridgeHandler(): void {
           break;
         }
 
-        // ── E5#71：插件持久化存储——集中缓存 + 文件持久化 ──
-        case "pluginState:get": {
-          const [pluginId, key] = req.args as [string, string];
-          result = getPluginStateValue(pluginId, key);
+        // ── E5#71：插件持久化存储——集中缓存 + 文件持久化（IpcBridgeHandler/data 域委派）──
+        case "pluginState:get":
+        case "pluginState:set":
+          result = await handleDataChannel(req.channel, req.args);
           break;
-        }
-        case "pluginState:set": {
-          const [pluginId, key, value] = req.args as [string, string, unknown];
-          await setPluginStateValue(pluginId, key, value);
-          // E5#84f：广播变更到所有 WebView——pluginState.onChange 订阅者收到通知
-          try { window.linkdesk?.events?.emit("plugin-state:changed", { pluginId, key, value }); } catch { /* 静默 */ }
-          break;
-        }
 
         // ── E5#85 + E5.6#11.5-A：workspace——插件查询/写工作区信息（IpcBridgeHandler/workspace 域）──
         case "workspace:getFolders":
@@ -106,29 +90,13 @@ export function initIpcBridgeHandler(): void {
 
         // ── E5.7#60：decorations:getDecoration case 已删——注册表池内化（池内直答零 IPC）──
 
-        // ── E5.6#11.5g5：文件搜索——池插件跨进程全文搜索（对齐 FileSearcher.SearchOptions）──
-        case "search:searchFiles": {
-          const [opts] = req.args as [Parameters<typeof searchFiles>[0]];
-          result = await searchFiles(opts);
+        // ── E5.6#11.5g5：文件搜索 + 编码——池插件跨进程使用 FileSearcher/EncodingService（IpcBridgeHandler/data 域委派）──
+        case "search:searchFiles":
+        case "encoding:detect":
+        case "encoding:decode":
+        case "encoding:encode":
+          result = await handleDataChannel(req.channel, req.args);
           break;
-        }
-
-        // ── E5.6#11.5g5：编码检测/转换——池插件跨进程使用 EncodingService ──
-        case "encoding:detect": {
-          const [buffer] = req.args as [Uint8Array];
-          result = EncodingService.detect(buffer);
-          break;
-        }
-        case "encoding:decode": {
-          const [buffer, encoding] = req.args as [Uint8Array, string];
-          result = EncodingService.decode(buffer, encoding);
-          break;
-        }
-        case "encoding:encode": {
-          const [text, encoding] = req.args as [string, string];
-          result = EncodingService.encode(text, encoding);
-          break;
-        }
 
         // ── E5.7#58：viewContainer——池插件查询/更新壳侧视图注册表（IpcBridgeHandler/workspace 域，元数据 DTO）──
         case "viewContainer:getContainer":
@@ -178,10 +146,8 @@ export function initIpcBridgeHandler(): void {
   // SettingsView 直调 setConfigurationValue 绕过 IPC proxy，需要此通道补齐
   subscribeConfiguration(bridge);
 
-  // ── E5.5#7：插件生命周期变更 → 广播到插件 WebView → 设置页等保姆插件刷新 ──
-  _lifecycleUnsub = onPluginLifecycleChange.event(() => {
-    try { linkdesk.events?.emit("plugin-lifecycle:changed", {}); } catch { /* 静默 */ }
-  });
+  // ── E5.5#7：插件生命周期变更 → 广播到插件 WebView → 设置页等保姆插件刷新（IpcBridgeHandler/data 域）──
+  subscribeData(linkdesk);
 
   // ── E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组/配置项（IpcBridgeHandler/ui 域）──
   subscribeUi(linkdesk);
@@ -199,12 +165,11 @@ export function unregisterIpcBridgeHandler(): void {
   _refCount = Math.max(0, _refCount - 1);
   if (_refCount === 0) {
     unsubscribeConfiguration();
-    _lifecycleUnsub?.();
-    _lifecycleUnsub = null;
     unsubscribeWorkspace();
     unsubscribeViews();
     unsubscribeUi();
     unsubscribeKeybindings();
+    unsubscribeData();
   }
 }
 
