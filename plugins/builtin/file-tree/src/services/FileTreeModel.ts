@@ -8,8 +8,8 @@
  * VS Code 对标：src/vs/workbench/contrib/files/common/explorerModel.ts
  */
 
-// E5.7#62：FileEntry 直指 types/fileEntry 正源（#45.5 迁入；原 services/files/FileService re-export 已摘）——#97 契约类型落地后换 ambient DTO
-import type { FileEntry } from "@src/core/types/fileEntry";
+// E5.8#20-c：FileEntry 契约化——types/fileEntry 已打入 linkdesk.d.ts，插件走 @linkdesk/contracts（零 @src/core）
+import type { FileEntry } from "@linkdesk/contracts";
 import type { FileExcludeFilter } from "./FileExcludeFilter";
 import { CompactController } from "./CompactController";
 import { basename, splitPath, normalizePath, extension } from "../utils/pathUtils";

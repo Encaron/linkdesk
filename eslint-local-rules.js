@@ -819,6 +819,8 @@ const PLUGIN_IMPORT_WHITELIST = new Set([
   "@src/core/react/usePluginIpcEvent",
   "@src/core/hooks/useTabManager",
   "@src/core/hooks/useIpcEvent",
+  // E5.8#20-c：测试专用运行时 import——FileTreeClipboard.test.ts 需真实 ContextKeyService 实例（唯一测试运行时例外，白名单收口）
+  "@src/core/registry/commands/ContextKeyService",
 ]);
 
 const noCoreImportInPlugin = {

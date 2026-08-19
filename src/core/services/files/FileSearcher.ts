@@ -46,7 +46,9 @@ export interface SearchOptions {
   signal?: AbortSignal;
 }
 
-export interface SearchMatch {
+/** E5.8#20-c：SearchMatch 摘 export——唯一外部消费者 SearchView 已改走契约 wire 型
+ *  （SearchWireMatch），语义型退化为 FileSearcher 内部细节（IPC 边界形状 = src/core/types/ipc/search.ts） */
+interface SearchMatch {
   filePath: string;
   /** 1-based 行号 */
   lineNumber: number;

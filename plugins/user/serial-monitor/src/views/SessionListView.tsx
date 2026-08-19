@@ -12,7 +12,8 @@ import { useSerialSessions } from "../hooks/useSerialSessions";
 import { SessionListItem } from "../components/SessionListItem";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
 // E5.7#98：plugin-state:changed 载荷走 events.on 泛型——wire 契约类型归口 src/core/types/ipc/events
-import type { PluginStateChangedPayload } from "@src/core/types/ipc/events";
+// E5.8#20-c：契约化——events 载荷类型走 @linkdesk/contracts（零 @src/core）
+import type { PluginStateChangedPayload } from "@linkdesk/contracts";
 import "../styles/SerialMonitorSidebar.css";
 
 const lk = () => window.linkdesk;

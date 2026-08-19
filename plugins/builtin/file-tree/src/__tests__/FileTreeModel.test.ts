@@ -8,7 +8,8 @@ import { describe, it, expect, beforeEach, vi } from "vitest";
 import { FileTreeModel } from "../services/FileTreeModel";
 import { FileExcludeFilter } from "../services/FileExcludeFilter";
 import type { ExplorerItem } from "../services/FileTreeModel";
-import type { FileEntry } from "@src/core/types/fileEntry";
+// E5.8#20-c：契约化——FileEntry 走 @linkdesk/contracts（零 @src/core）
+import type { FileEntry } from "@linkdesk/contracts";
 
 /* ── 辅助工厂 ── */
 

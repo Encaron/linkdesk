@@ -17,7 +17,7 @@
  */
 
 import { Fragment, useState, useRef, useEffect } from "react";
-import type { StatusBarLayout, StatusBarItem } from "../../../core/types/pool/poolLayout";
+import type { StatusBarLayout, PoolStatusBarItem } from "../../../core/types/pool/poolLayout";
 import PoolStatusBarComponent from "../../shared/pool-status-bar/PoolStatusBarComponent";
 import { executePoolCommand } from "../../commands/executePoolCommand";
 import "./StatusBarZone.css";
@@ -59,8 +59,8 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
   }, [panelOpen]);
 
   // 左/右分列——switch 判别（eslint E5.5#10 规则拦 `=== "小写字面量"`，tag 判别用 switch 不误报）
-  const leftItems: StatusBarItem[] = [];
-  const rightItems: StatusBarItem[] = [];
+  const leftItems: PoolStatusBarItem[] = [];
+  const rightItems: PoolStatusBarItem[] = [];
   for (const item of statusBar.items) {
     switch (item.align) {
       case "left": leftItems.push(item); break;
@@ -68,7 +68,7 @@ function StatusBarZone({ statusBar }: { statusBar: StatusBarLayout }) {
     }
   }
 
-  const renderItem = (item: StatusBarItem) => {
+  const renderItem = (item: PoolStatusBarItem) => {
     const content = (
       <>
         {item.icon && <span className={`codicon codicon-${item.icon}`} />}

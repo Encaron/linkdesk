@@ -17,7 +17,9 @@
     "noFallthroughCasesInSwitch": true,
     "forceConsistentCasingInFileNames": true,
     "paths": {
-      "@src/*": ["./src/*"]
+      "@src/*": ["./src/*"],
+      // E5.8#20-c：插件类型消费路径——@linkdesk/contracts 直指仓库契约产物（#22.6 npm 包落位后切 "./contracts" 目录映射）
+      "@linkdesk/contracts": ["./contracts/linkdesk.d.ts"]
     }
   },
   "include": ["src", "plugins/builtin"],

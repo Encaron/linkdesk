@@ -217,8 +217,10 @@ export interface PanelLayout {
   createTooltip?: string;
 }
 
-/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析） */
-export interface StatusBarItem {
+/** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
+ *  E5.8#20-c：改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，
+ *  契约平铺进单文件会声明合并成幽灵复合型（pluginId 变必选）；池线用 Pool 前缀消歧。 */
+export interface PoolStatusBarItem {
   id: string;
   pluginId: string;
   /** codicon 图标名（不带 codicon- 前缀——池补） */
@@ -276,7 +278,7 @@ export interface NotifLayout {
 
 /** 状态栏布局——Phase 2 #8 StatusBarZone 消费 */
 export interface StatusBarLayout {
-  items: StatusBarItem[];
+  items: PoolStatusBarItem[];
   /** Chord 提示——壳 CHORD_CHANGED 构建的完整字符串（按键名是技术标识符，不走 i18n） */
   chordLabel?: string;
   /** 通知中心——壳 toast 存储序列化（面板开闭/清除/动作回传壳执行） */
