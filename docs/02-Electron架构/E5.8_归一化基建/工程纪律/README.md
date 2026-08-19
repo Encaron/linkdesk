@@ -20,6 +20,7 @@
 | knip ignore 带理由 | 写在 `knip.json` 注释里——#2 |
 | pushLayout 两条规则 | 代码落点：`poolLayout.ts` 头注释 + `preload-pool.ts` + E5.7 设计文档 §7.2 补注——#5（规则全文见 [01-归一化基建设计.md §支柱4](../01-归一化基建设计.md)） |
 | 决策记录 | `docs/decisions/`（全工程共用目录，不在本目录）——#6 |
+| lefthook 配置与脚本 | `linkdesk/lefthook.yml` + `linkdesk/scripts/install-lefthook.mjs`——monorepo 方案（LEFTHOOK_CONFIG 注入 + `root: linkdesk`）写在两文件头注释——#3 |
 
 ## dsh 对标参数（开工时照抄，源码 `E:\deepseek-harness`）
 
@@ -27,7 +28,7 @@
 |:--|:--|:--|
 | jscpd | minTokens 60 / minLines 6 / mode mild | `.jscpd.json` + `npm run duplication` 入 check 链 |
 | knip | 双工程 entry | `knip.json` src/ + electron/ 双工程（预计 30 行内） |
-| lefthook | postinstall 自动装 + "local checkpoints fast; CI owns the full matrix" | postinstall 自动 install；pre-commit staged lint --fix + whitespace；pre-push typecheck（无 CI，最后防线） |
+| lefthook | postinstall 自动装 + "local checkpoints fast; CI owns the full matrix" | ✅ 2026-08-19：postinstall 自动 install（`scripts/install-lefthook.mjs`）+ pre-commit staged lint --fix + whitespace + pre-push typecheck（无 CI，最后防线）。**monorepo 要点**：lefthook 从 git root 加载 lefthook.yml、job 强制在 git root 跑——真实配置在 `linkdesk/`，install 与 hook 触发都靠 `LEFTHOOK_CONFIG`（install 脚本把它注入 hook 脚本）+ job 全部 `root: linkdesk`，缺一即静默空跑 |
 | allowBuilds | pnpm 10+ 专属 | **不切包管理器**——npm 等价物：`engines` + `.npmrc` `engine-strict=true` + package-lock 钉死 |
 
 ## 完成标准
