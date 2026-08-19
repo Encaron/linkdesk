@@ -60,8 +60,9 @@
     "src/core/utils/CancellationToken.ts",
     "src/core/utils/plugin/pluginPaths.ts",
     // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+
-    //   useClickPreview（file-tree 插件直引 @src/pool）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
+    //   useClickPreview / useClipboardKeys（file-tree 插件直引 @src/pool）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
     "src/pool/dev/mockLinkdesk.ts",
+    "src/pool/hooks/useClipboardKeys.ts",
     "src/pool/hooks/useClickPreview.ts",
     "src/hooks/useTabManager.ts",
     // E5.8#2：手动开发工具（非门禁链，node scripts/audit-i18n.mjs 手动跑）
