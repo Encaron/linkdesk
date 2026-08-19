@@ -6,8 +6,10 @@
  * 动作（dismiss/action）按 id + actionId 回传，壳侧重解析原始 Toast 执行 onClick 回调。
  */
 
-/** 行内操作按钮——onClick 闭包留在壳，池只回传 actionId（位置序号） */
-interface PoolToastAction {
+/** 行内操作按钮——onClick 闭包留在壳，池只回传 actionId（位置序号）。
+ *  E5.8#20-c：改名 PoolToastButton——与 poolActions.ts PoolToastAction（IPC 回传动作）同名，
+ *  契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧。 */
+interface PoolToastButton {
   /** 位置序号字符串——壳按 actions[Number(actionId)] 重解析 onClick */
   actionId: string;
   label: string;
@@ -21,7 +23,7 @@ export interface PoolToastItem {
   iconClass: string;
   /** 壳侧已 t() 解析的 "来源: xxx"——池原样渲染 */
   sourceText?: string;
-  actions?: PoolToastAction[];
+  actions?: PoolToastButton[];
 }
 
 export interface PoolToastData {

@@ -7,7 +7,8 @@
 
 import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import type { FileSearchResult, SearchMatch } from "@src/core/services/files/FileSearcher";
+// E5.8#20-c：契约化——搜索走 lk.search.searchFiles，返回面 = 契约 wire 形状（FileSearcher 语义型是壳内泄漏）
+import type { SearchWireResult, SearchWireMatch } from "@linkdesk/contracts";
 import { extension } from "../utils/pathUtils";
 import "../styles/SearchView.css";
 
@@ -35,7 +36,7 @@ const SearchView: React.FC = () => {
 
   /* ── 结果 ── */
   const [state, setState] = useState<SearchState>("idle");
-  const [results, setResults] = useState<FileSearchResult[]>([]);
+  const [results, setResults] = useState<SearchWireResult>([]);
   const [totalFiles, setTotalFiles] = useState(0);
   const [totalMatches, setTotalMatches] = useState(0);
   const [errorMsg, setErrorMsg] = useState("");
@@ -96,7 +97,7 @@ const SearchView: React.FC = () => {
       if (controller.signal.aborted) return;
 
       const files = found.length;
-      const matches = (found as FileSearchResult[]).reduce((sum, f) => sum + f.matches.length, 0);
+      const matches = found.reduce((sum, f) => sum + f.matches.length, 0);
       setResults(found);
       setTotalFiles(files);
       setTotalMatches(matches);
@@ -133,7 +134,7 @@ const SearchView: React.FC = () => {
 
   /* ── 打开文件 ── */
 
-  const handleOpenMatch = useCallback(async (match: SearchMatch) => {
+  const handleOpenMatch = useCallback(async (match: SearchWireMatch) => {
     const ext = extension(match.filePath);
     if (!ext) return;
     const pluginId = await lk.fileAssociation.getPluginFor(ext);

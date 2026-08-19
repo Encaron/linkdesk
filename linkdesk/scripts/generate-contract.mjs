@@ -128,6 +128,25 @@ const blocks = order.map((decl) => {
   return text;
 });
 
+// ── 3.5 类型名唯一性校验（E5.8#20-c）────────────────────────────────────
+// 契约平铺进单文件：两个同名类型声明会被 TS 声明合并成幽灵复合型（字段并集、必选性被强并），
+// 消费方拿到既不是甲也不是乙的错型——静默错型。源图里不同模块可同名（模块作用域合法），
+// 但打进单文件必须全局唯一。命中 = 契约产物缺陷，直接失败（防未来加类型再踩坑）。
+const nameCount = new Map();
+for (const d of order) {
+  const n = d.name?.text; // interface / type alias / enum 都有 .name
+  if (!n) continue;
+  nameCount.set(n, (nameCount.get(n) ?? 0) + 1);
+}
+const dups = [...nameCount.entries()].filter(([, c]) => c > 1);
+if (dups.length > 0) {
+  console.error(
+    `[contracts] ✗ 契约类型名冲突（平铺单文件要求源类型全局唯一）：${dups.map(([n, c]) => `${n}×${c}`).join(', ')}`,
+  );
+  console.error('   同名声明会合并成幽灵复合型——请给其中一处改唯一名（如池线 Pool 前缀 / 按钮型 Btn 后缀）');
+  process.exit(1);
+}
+
 const banner = `/**
  * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
  *

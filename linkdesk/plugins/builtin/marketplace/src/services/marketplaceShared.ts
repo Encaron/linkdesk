@@ -10,7 +10,8 @@
 import { useState, useCallback, useEffect } from "react";
 // E5.7#98：_allPlugins 数据源是 pluginManager.list()（IPC 序列化子集）——消费 PluginListEntry，
 // 非 ViewPluginEntry（后者带 component 字段，IPC 不可达）
-import type { PluginListEntry } from "@src/core/api/linkdesk-api";
+// E5.8#20-c：契约化——插件列表类型走 @linkdesk/contracts（零 @src/core）
+import type { PluginListEntry } from "@linkdesk/contracts";
 // E5.6#11.5e：@src/core 清零——onPluginLifecycleChange/ViewContainerService → lk.events.on
 const lk = () => window.linkdesk;
 

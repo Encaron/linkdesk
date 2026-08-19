@@ -4,7 +4,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import type { LinkDeskAPI } from "@src/core/api/linkdesk-api";
+// E5.8#20-c：契约化——LinkDeskAPI 聚合类型走 @linkdesk/contracts（零 @src/core）
+import type { LinkDeskAPI } from "@linkdesk/contracts";
 
 // E5.6#11.5: executeSafeDrop 已迁移到 lk.filesystem.*——mock linkdesk 全局
 const mockedCopy = vi.fn();

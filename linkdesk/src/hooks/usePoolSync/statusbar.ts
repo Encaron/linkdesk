@@ -5,7 +5,7 @@
  */
 
 import type { TFunction } from "i18next";
-import type { StatusBarItem } from "../../core/types/pool/poolLayout";
+import type { PoolStatusBarItem } from "../../core/types/pool/poolLayout";
 import type { StatusBarEntry } from "../../core/react/events/ShellEvents";
 import type { StatusBarItem as ApiStatusBarItem } from "../../core/api/types"; // E5.7#98：状态栏三源条目共型
 import { getStatusBarContributions, getViewPlugin } from "../../pluginLoader/viewRegistry";
@@ -33,7 +33,7 @@ function isRightAligned(item: { align?: string; alignment?: string }): boolean {
 // E5.7#98：三源条目共型——api StatusBarItem + pluginId + title（贡献项/动态项/event 条目/壳固定项均满足）
 type StatusBarSourceItem = ApiStatusBarItem & { pluginId: string; title?: string };
 
-export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]): StatusBarItem[] {
+export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]): PoolStatusBarItem[] {
   const allItems: StatusBarSourceItem[] = [
     ...getStatusBarContributions(),
     ...getDynamicStatusBarItems(),
@@ -67,7 +67,7 @@ export function buildStatusBarItems(t: TFunction, eventEntries: StatusBarEntry[]
     allItems.some((i) => i.pluginId === pid && isRightAligned(i))
   );
 
-  const result: StatusBarItem[] = [];
+  const result: PoolStatusBarItem[] = [];
   // isLeft 布尔入参——eslint E5.5#10 规则拦 `side === "left"` 字面量比较
   const pushSide = (ids: string[], isLeft: boolean) => {
     const align: "left" | "right" = isLeft ? "left" : "right";
