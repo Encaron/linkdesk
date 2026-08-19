@@ -186,16 +186,9 @@
     },
     "requires": {
       "type": "array",
-      "description": "硬依赖——未满足则安装按钮禁用",
-      "items": {
-        "type": "object",
-        "required": ["plugin", "version"],
-        "properties": {
-          "plugin": { "type": "string" },
-          "version": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+      "description": "插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。缺依赖 → 插件挂起（PENDING），依赖就绪自动加载。",
+      "items": { "type": "string" },
+      "uniqueItems": true
     },
     "changelog": {
       "type": "array",
