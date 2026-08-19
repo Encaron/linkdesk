@@ -9,6 +9,12 @@
  *   故 E5.7#1 为"新增 version: 2 + zone 字段"，无"删 poolId"可执行。
  *
  * 兼容性：池忽略不认识的字段，壳加字段不破坏旧池。
+ *
+ * 🔥 E5.8#5 pushLayout 两条协议铁律（壳→池唯一布局通道，违规即跨进程状态撕裂）：
+ *   1. whole-value checkpoint——每次推送必须带完整 post-change 布局快照，禁止裸 delta；
+ *      池不缓存旧值做增量合并（合并错位 = 布局与真相源分叉，无法自愈）。
+ *   2. delta（若未来确有增量需求）必须带稳定 id + 升序重放确定性——不得依赖 live-only
+ *      内存；池崩溃重建后只能拿到主进程重放的最后快照，live-only 增量会静默丢更新。
  */
 
 import type { SplitNode } from "../../../core/utils/splitTree";

@@ -570,6 +570,10 @@ interface PoolLayout {
 
 ### 7.2 E5.7 的 PoolLayout——全量、唯一
 
+> **E5.8#5 补注——pushLayout 两条协议铁律（2026-08-19，全文落 src/core/types/pool/poolLayout.ts 头注释）：**
+> 1. **whole-value checkpoint**：每次推送必须带完整 post-change 布局快照，禁止裸 delta——池不缓存旧值增量合并（合并错位 = 布局与壳真相源分叉，无法自愈）。
+> 2. **delta 必须带稳定 id + 升序重放确定性**：若未来确需增量，delta 必须可脱离 live-only 内存重放——池崩溃重建后只能从主进程拿到最后快照，live-only 增量会静默丢更新。
+
 ```typescript
 // E5.7: 唯一的 Pool 收到完整的 layout
 // 不再需要 poolId——只有一个 Pool
