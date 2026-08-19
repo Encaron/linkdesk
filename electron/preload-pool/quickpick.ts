@@ -3,26 +3,25 @@
  * E5.8#0d.10-4a：自 preload-pool.ts 拆出——quickPick 命名空间（插件选择器，池内本地桥零 IPC）
  * + quickPickHost 命名空间（QuickPickHost 渲染桥）。二者共享同一批缓冲状态：
  *   哑渲染数据缓冲（pool:quickpick，壳→池）+ 插件请求缓冲（quickPick.show 先于 Host mount）。
- * 依赖方向：quickpick → electron/ipc（channels）；无 src import（构建边界，DTO 形状对齐 type）。
+ * 依赖方向：quickpick → electron/ipc（channels）+ src/core/types/pool（type-only，E5.8#20 契约对齐——
+ * 原手抄 *Shape 与语义类型漂移，satisfies 实证后改直接 import type；构建期擦除零运行时依赖）。
  */
 
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
+import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from '../../src/core/types/pool/poolQuickPick';
 
-// DTO 形状与 src/core/types/pool/poolQuickPick.ts 对齐——preload 不 import src（构建边界）
-type PoolQuickPickDataShape = { open: boolean; placeholder?: string; prefix?: string; items?: unknown[] };
-type PluginQuickPickOptionsShape = { items: unknown[]; placeholder?: string; prefix?: string };
 type PluginQuickPickSettle = (key: string | null) => void;
-type PluginQuickPickHostFn = (req: { opts: PluginQuickPickOptionsShape }, settle: PluginQuickPickSettle) => void;
+type PluginQuickPickHostFn = (req: PluginQuickPickRequest, settle: PluginQuickPickSettle) => void;
 
 // ── E5.7#15：pool:quickpick 缓冲回放——QuickPick 哑渲染数据可能在 QuickPickHost mount 前到达 ──
 // 对标 pool:layout 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（浮动层是单例态——open/close 全量替换，旧数据回放无意义）。
-const _quickPickBuffer: PoolQuickPickDataShape[] = [];
-let _quickPickCallback: ((data: PoolQuickPickDataShape) => void) | null = null;
+const _quickPickBuffer: PoolQuickPickData[] = [];
+let _quickPickCallback: ((data: PoolQuickPickData) => void) | null = null;
 let _quickPickActive = false;
 
-ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickDataShape) => {
+ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickData) => {
   if (!_quickPickActive || !_quickPickCallback) {
     _quickPickBuffer.length = 0;
     _quickPickBuffer.push(data);
@@ -42,7 +41,7 @@ ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickDataShape) => {
 // 缓冲回放（硬约束 20）：show() 先于 QuickPickHost mount（插件入口模块早执行）→ 入缓冲，
 // registerHost 时按序回放（last-wins 语义在池侧仲裁——旧请求被顶掉 settle(null)）。
 let _quickPickHostFn: PluginQuickPickHostFn | null = null;
-const _quickPickShowBuffer: Array<{ req: { opts: PluginQuickPickOptionsShape }; settle: PluginQuickPickSettle; reject: (e: Error) => void }> = [];
+const _quickPickShowBuffer: Array<{ req: PluginQuickPickRequest; settle: PluginQuickPickSettle; reject: (e: Error) => void }> = [];
 
 /** 插件 quickPick API——show(opts) → Promise<item | undefined>（池内本地桥，零 IPC） */
 export function buildQuickPick() {
@@ -51,14 +50,13 @@ export function buildQuickPick() {
      * 展示选择器——对标 VS Code window.showQuickPick()。
      * 调用在隔离世界执行：校验后转交 QuickPickHost 注册的 hostFn 渲染（未注册则缓冲）。
      */
-    show: (opts: unknown) => new Promise<unknown>((resolve, reject) => {
-      const o = opts as PluginQuickPickOptionsShape | null;
-      if (!o || !Array.isArray(o.items)) {
+    show: (opts: PluginQuickPickOptions) => new Promise<unknown>((resolve, reject) => {
+      if (!opts || !Array.isArray(opts.items)) {
         reject(new Error("quickPick.show(opts)：opts.items 必须为数组"));
         return;
       }
-      const req = { opts: o };
-      const settle: PluginQuickPickSettle = (key) => resolve(key === null ? undefined : o.items[Number(key)]);
+      const req: PluginQuickPickRequest = { opts };
+      const settle: PluginQuickPickSettle = (key) => resolve(key === null ? undefined : opts.items[Number(key)]);
       if (_quickPickHostFn) {
         try { _quickPickHostFn(req, settle); } catch (e) { reject(e instanceof Error ? e : new Error(String(e))); }
       } else {
@@ -85,7 +83,7 @@ export function buildQuickPickHost() {
       };
     },
     /** 订阅壳推送的 QuickPick 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
-    onShow: (cb: (data: PoolQuickPickDataShape) => void) => {
+    onShow: (cb: (data: PoolQuickPickData) => void) => {
       _quickPickCallback = cb;
       _quickPickActive = true;
       if (_quickPickBuffer.length > 0) {

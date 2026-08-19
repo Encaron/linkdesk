@@ -251,6 +251,8 @@ export function installMockLinkdesk(): void {
     pluginState: {
       get: async () => undefined,
       set: makeAsyncLogger("pluginState.set"),
+      // E5.8#20：契约 onChange 补面——预览 mock 无状态，no-op 订阅
+      onChange: () => () => {},
     },
     pluginManager: {
       list: async () => [],

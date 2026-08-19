@@ -2,23 +2,23 @@
  * Pool preload Toast/Dialog 域——哑渲染缓冲回放 + toast/dialogHost 命名空间。
  * E5.8#0d.10-4a：自 preload-pool.ts 拆出——两组同构哑渲染订阅（壳全量快照推池 ToastHost/
  * DialogHost 哑渲染，池动作按 id/type 回传壳重解析）。缓冲+回放（硬约束 20），只保留最后一份。
- * 依赖方向：toast-dialog → electron/ipc（channels）；无 src import（构建边界，DTO 形状对齐 type）。
+ * 依赖方向：toast-dialog → electron/ipc（channels）+ src/core/types/pool（type-only，E5.8#20 契约对齐——
+ * 原手抄 *Shape 的 unknown[]/open:boolean 与语义类型漂移，satisfies 实证后改直接 import type；构建期擦除零运行时依赖）。
  */
 
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
-
-// DTO 形状与 src/core/types/pool/poolToast.ts 对齐——preload 不 import src（构建边界）
-type PoolToastDataShape = { toasts: unknown[]; suppressed: boolean };
+import type { PoolToastData } from '../../src/core/types/pool/poolToast';
+import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
 
 // ── E5.7#16：pool:toast 缓冲回放——Toast 哑渲染数据可能在 ToastHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（全量快照语义——新快照整体取代旧快照，回放旧数据无意义）。
-const _toastBuffer: PoolToastDataShape[] = [];
-let _toastCallback: ((data: PoolToastDataShape) => void) | null = null;
+const _toastBuffer: PoolToastData[] = [];
+let _toastCallback: ((data: PoolToastData) => void) | null = null;
 let _toastActive = false;
 
-ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastDataShape) => {
+ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastData) => {
   if (!_toastActive || !_toastCallback) {
     _toastBuffer.length = 0;
     _toastBuffer.push(data);
@@ -27,17 +27,14 @@ ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastDataShape) => {
   }
 });
 
-// DTO 形状与 src/core/types/pool/poolDialog.ts 对齐——preload 不 import src（构建边界）
-type PoolDialogDataShape = { open: boolean; title?: string; message?: string; confirmLabel?: string; cancelLabel?: string; isAlert?: boolean };
-
 // ── E5.7#17：pool:dialog 缓冲回放——Dialog 哑渲染数据可能在 DialogHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
 // 只保留最后一份（单例态——open/close 全量替换，旧数据回放无意义）。
-const _dialogBuffer: PoolDialogDataShape[] = [];
-let _dialogCallback: ((data: PoolDialogDataShape) => void) | null = null;
+const _dialogBuffer: PoolDialogData[] = [];
+let _dialogCallback: ((data: PoolDialogData) => void) | null = null;
 let _dialogActive = false;
 
-ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogDataShape) => {
+ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogData) => {
   if (!_dialogActive || !_dialogCallback) {
     _dialogBuffer.length = 0;
     _dialogBuffer.push(data);
@@ -50,7 +47,7 @@ ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogDataShape) => {
 export function buildToast() {
   return {
     /** 订阅壳推送的 Toast 全量快照（缓冲+回放，只保留最后一份）。返回 unsubscribe */
-    onShow: (cb: (data: PoolToastDataShape) => void) => {
+    onShow: (cb: (data: PoolToastData) => void) => {
       _toastCallback = cb;
       _toastActive = true;
       if (_toastBuffer.length > 0) {
@@ -76,7 +73,7 @@ export function buildToast() {
 export function buildDialogHost() {
   return {
     /** 订阅壳推送的 Dialog 数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
-    onShow: (cb: (data: PoolDialogDataShape) => void) => {
+    onShow: (cb: (data: PoolDialogData) => void) => {
       _dialogCallback = cb;
       _dialogActive = true;
       if (_dialogBuffer.length > 0) {

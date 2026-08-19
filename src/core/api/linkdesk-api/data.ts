@@ -51,5 +51,7 @@ export interface DataAPI {
     /** 读取持久化状态——运行时动态值，默认 unknown；调用方显式 get<string>(...) 窄化或自行收窄 */
     get<T = unknown>(pluginId: string, key: string): Promise<T | undefined>;
     set(pluginId: string, key: string, value: unknown): Promise<void>;
+    /** 订阅持久化状态变更——按 pluginId+key 精确匹配（通配键名订阅走 events.on("plugin-state:changed")，见 E5.8#20 补导出 PluginStateChangedPayload）。返回 unsubscribe */
+    onChange(pluginId: string, key: string, cb: (value: unknown) => void): () => void;
   };
 }

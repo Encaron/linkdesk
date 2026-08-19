@@ -86,7 +86,9 @@ export function buildPath() {
 /** env 命名空间——环境信息 */
 export function buildEnv() {
   return {
-    get: () => ipcRenderer.invoke(IPC.env.get),
+    // E5.8#20 D1 修复：补 pluginId 转发（对齐壳侧 preload-shell + 主进程 env-handlers 正确消费）——
+    // 缺它池插件 env.get("my-plugin") 恒拿不到 pluginDataDir/cacheDir/exportsDir（契约承诺与池行为不一致）
+    get: (pluginId?: string) => ipcRenderer.invoke(IPC.env.get, pluginId),
   };
 }
 
