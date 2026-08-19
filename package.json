@@ -11,7 +11,7 @@
     "lint": "eslint src/ plugins/ electron/",
     "fix": "eslint src/ plugins/ electron/ shared/ --fix",
     "duplication": "jscpd --config .jscpd.json src electron scripts",
-    "check": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit && node scripts/check-spacing-grid.mjs && node scripts/check-pool-css-imports.mjs && eslint src/ plugins/ electron/ --max-warnings 0 && vitest run",
+    "check": "tsc --noEmit && tsc -p electron/tsconfig.json --noEmit && node scripts/check-spacing-grid.mjs && node scripts/check-pool-css-imports.mjs && eslint src/ plugins/ electron/ --max-warnings 0 && npm run duplication && vitest run",
     "electron:dev": "concurrently -k -n vite,electron \"vite\" \"wait-on http://localhost:1420 && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron .\"",
     "electron:build": "npm run build && tsc -p electron/tsconfig.json && node scripts/electron-commonjs-fix.cjs && electron-builder",
     "build:plugins": "node scripts/build-plugins.mjs",
