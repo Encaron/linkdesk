@@ -18,7 +18,7 @@ export interface SearchWireOptions {
 }
 
 /** 单个匹配——1-based lineNumber；matchStart/matchEnd 为该行内 0-based 列区间（不含 end） */
-export interface SearchWireMatch {
+interface SearchWireMatch {
   filePath: string;
   lineNumber: number;
   lineText: string;

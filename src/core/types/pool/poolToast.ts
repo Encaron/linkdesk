@@ -7,7 +7,7 @@
  */
 
 /** 行内操作按钮——onClick 闭包留在壳，池只回传 actionId（位置序号） */
-export interface PoolToastAction {
+interface PoolToastAction {
   /** 位置序号字符串——壳按 actions[Number(actionId)] 重解析 onClick */
   actionId: string;
   label: string;

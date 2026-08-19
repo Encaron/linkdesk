@@ -4,11 +4,8 @@
  * 每 10s 采样 `performance.memory`（Chromium 专有 API），
  * JS heap > 80% 限制 → toast 告警。
  *
- * `recordMount(pluginId)` / `recordUnmount(pluginId)` ——
- * 插件 mount 记录基线，unmount 对比——检测是否泄漏。
- * 注意：GC 运行时机影响精度——仅趋势检测，不能定位泄漏源。
- *
  * 对标 VS Code 的 memory watch 机制，但更轻量。
+ * E5.8#2：recordMount/recordUnmount（插件基线泄漏检测）已删——零消费方（E2a #6 预留未接线）。
  */
 
 import { useEffect, useRef } from "react";
@@ -19,9 +16,6 @@ const HEAP_WARNING_RATIO = 0.8;
 /** 采样间隔 ms */
 const POLL_INTERVAL = 10_000;
 
-// 模块级基线注册表——插件 mount → 记录基线，unmount → 对比
-const baselines = new Map<string, number>();
-
 // E5.7#98：Chromium 专有 performance.memory——非标准 API，窄类型声明替代 as any
 interface ChromiumMemory {
   usedJSHeapSize: number;
@@ -31,21 +25,6 @@ interface ChromiumMemory {
 
 function getChromiumMemory(): ChromiumMemory | undefined {
   return (performance as Performance & { memory?: ChromiumMemory }).memory;
-}
-
-export function recordMount(pluginId: string): void {
-  const mem = getChromiumMemory();
-  if (!mem) return;
-  baselines.set(pluginId, mem.usedJSHeapSize);
-}
-
-export function recordUnmount(pluginId: string): { delta: number } {
-  const mem = getChromiumMemory();
-  if (!mem) return { delta: 0 };
-  const baseline = baselines.get(pluginId);
-  baselines.delete(pluginId);
-  if (baseline === undefined) return { delta: 0 };
-  return { delta: mem.usedJSHeapSize - baseline };
 }
 
 /**

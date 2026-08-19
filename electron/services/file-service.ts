@@ -13,7 +13,6 @@ import * as path from 'path';
 import { app } from 'electron';
 import type { FileEntry } from '../../src/core/types/fileEntry'; // E5.7#45.5：shared/types.ts 迁入 src/core/types/
 
-export type { FileEntry };
 
 class FileService {
   // ── 路径工具（对标 @tauri-apps/api/path）──

@@ -61,11 +61,3 @@ export function useIpcEvent<T = string>(
   return { isReady };
 }
 
-/**
- * state 模式——只保留最新 payload。
- */
-export function useIpcEventState<T = string>(eventName: IpcEventName) {
-  const [data, setData] = useState<T | null>(null);
-  const { isReady } = useIpcEvent<T>(eventName, (payload) => setData(payload));
-  return { data, isReady };
-}

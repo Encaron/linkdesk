@@ -5,18 +5,7 @@
 
 export type DropZone = "left" | "right" | "up" | "down" | "center" | null;
 
-export interface DragSplitState {
-  tabId: string;
-  phase: "idle" | "reorder" | "split";
-  previewX: number;
-  previewY: number;
-  dropZone: DropZone;
-  /** 拖拽开始时的鼠标位置 */
-  startX: number;
-  startY: number;
-  /** 拖拽开始时的标签页索引 */
-  fromIndex: number;
-}
+// E5.8#2：DragSplitState 已删——零消费（useDragReorder 自含 DragState 同款内部结构）
 
 /**
  * Drop zone 检测——照抄 VS Code editorGroupView.ts onDragOver。
@@ -48,14 +37,4 @@ export function detectDropZone(
   return "center";
 }
 
-/** drop zone → 分屏方向映射 */
-export function zoneToDirection(
-  zone: Exclude<DropZone, null | "center">
-): "horizontal" | "vertical" {
-  return zone === "left" || zone === "right" ? "horizontal" : "vertical";
-}
-
-/** drop zone → 标签页放左边/上边还是右边/下边 */
-export function zoneToSide(zone: Exclude<DropZone, null | "center">): 0 | 1 {
-  return zone === "left" || zone === "up" ? 0 : 1;
-}
+// E5.8#2：zoneToDirection/zoneToSide 已删——零消费（分屏方向由消费方内联判定）

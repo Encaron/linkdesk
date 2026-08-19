@@ -7,7 +7,7 @@
  */
 
 /** 行内操作按钮——池哑渲染，点击回传 actionId */
-export interface PoolQuickPickButton {
+interface PoolQuickPickButton {
   /** 动作 ID——壳 onItemAction(item, actionId) 执行 */
   actionId: string;
   /** codicon 图标名（不含 "codicon-" 前缀） */

@@ -1,7 +1,7 @@
 /**
  * MenuItemList——池侧归一化菜单项渲染器。E5.7#6 从 TitleBarZone 提取（#5 建，供汉堡复用）。
  *
- * 壳侧等价物：components/shared/menu-renderer/MenuRenderer.tsx（TitleBar + HamburgerMenu 共用）。
+ * E5.8#2：壳 MenuRenderer.tsx 已删（零消费）——本组件为菜单项渲染唯一实现。
  * 池 = 哑渲染器：label/shortcut/disabled 全部壳侧解析后推送（显示文本铁律），
  * 池只做 hover 时序（100ms 进 / 150ms 出——壳同款）与子面板弹出。
  *
@@ -13,7 +13,7 @@
 import { useState, useRef, useCallback } from "react";
 import type { PoolMenuItem, PoolMenuGroup } from "../../../core/types/pool/poolLayout";
 
-export interface MenuItemListProps {
+interface MenuItemListProps {
   /** 单列表模式（titlebar 下拉） */
   items?: PoolMenuItem[];
   /** 分组模式（☰ 汉堡下拉） */

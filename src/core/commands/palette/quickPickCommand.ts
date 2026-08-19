@@ -11,7 +11,7 @@ import { registerCommand } from "../../registry/commands/CommandRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { QuickPickService } from "../../services/ui/QuickPickService";
 
-export interface QuickPickItem {
+interface QuickPickItem {
   label: string;
   description?: string;
 }
@@ -21,7 +21,7 @@ interface ShowQuickPickOptions {
   items: QuickPickItem[];
 }
 
-export function showQuickPick(options: ShowQuickPickOptions): Promise<QuickPickItem | undefined> {
+function showQuickPick(options: ShowQuickPickOptions): Promise<QuickPickItem | undefined> {
   return new Promise((resolve) => {
     // settle 守卫——select 与 close 都会触发（对标壳 QuickPick handleSelect：onSelect 后必 onClose）
     let settled = false;

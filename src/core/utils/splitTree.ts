@@ -5,8 +5,6 @@
  * 设计依据：[V3-Phase3-补充-递归分屏.md]
  */
 
-import type { Tab } from "../../hooks/useTabManager";
-
 /* ── 类型 ── */
 
 /** 递归分裂树节点——要么是叶子（含一个 TabGroup），要么是分叉（含两个子树） */
@@ -19,12 +17,7 @@ export type SplitNode =
       sizes: [number, number]; // 百分比，如 [50, 50]
     };
 
-/** 布局持久化格式——SplitNode 可直接 JSON 序列化 */
-export interface LayoutDataV2 {
-  groups: { id: string; tabs: Tab[]; activeTabId: string }[];
-  activeGroupId: string;
-  root: SplitNode;
-}
+// E5.8#2：LayoutDataV2 已删——零消费（migrateLayout 接受内联结构，树自身即持久化格式）
 
 /* ── 常量 ── */
 
@@ -191,46 +184,7 @@ export function removeLeafFromTree(
   return null;
 }
 
-/**
- * 根据 sizes 计算实际像素分配——满足最小尺寸约束。
- * containerPx: 容器在该方向上的像素
- * minPx: 每个 leaf 的最小像素（默认 200 水平 / 100 垂直）
- * 返回 clamped 的像素数组。
- */
-export function clampSizes(
-  sizes: [number, number],
-  containerPx: number,
-  minPx: number
-): [number, number] {
-  const p0 = (sizes[0] / 100) * containerPx;
-  const p1 = (sizes[1] / 100) * containerPx;
-
-  if (p0 < minPx && p1 < minPx) {
-    // 两个都小于最小 → 均分
-    return [50, 50];
-  }
-  if (p0 < minPx) {
-    const clamped = (minPx / containerPx) * 100;
-    return [clamped, 100 - clamped];
-  }
-  if (p1 < minPx) {
-    const clamped = (minPx / containerPx) * 100;
-    return [100 - clamped, clamped];
-  }
-  return sizes;
-}
-
-/**
- * 克隆整棵树——用于不可变更新前的快照。
- * SplitNode 是纯值类型，结构赋值足够，但显式函数更清晰。
- */
-export function cloneTree(node: SplitNode): SplitNode {
-  if (node.type === "leaf") return { ...node };
-  return {
-    ...node,
-    children: [cloneTree(node.children[0]), cloneTree(node.children[1])],
-  };
-}
+// E5.8#2：clampSizes/cloneTree/updateSizesInTree 已删——壳+池零消费（splitTree 纯函数工具，仅保留在用面）
 
 /**
  * 替换树中某个 leaf 的 groupId——不改变树结构。
@@ -251,30 +205,6 @@ export function replaceLeafGroupId(
   const right = replaceLeafGroupId(node.children[1], oldGroupId, newGroupId);
   if (right) return { ...node, children: [node.children[0], right] };
   return null;
-}
-
-/**
- * 更新树中某个 branch 的 sizes。
- * 在树中查找第一个 children 匹配的 branch 并更新 sizes。
- */
-export function updateSizesInTree(
-  node: SplitNode,
-  child0: SplitNode,
-  child1: SplitNode,
-  newSizes: [number, number]
-): SplitNode {
-  if (node.type === "leaf") return node;
-  // 用引用相等判断（未 clone 的场景下）或用结构相等
-  if (node.children[0] === child0 && node.children[1] === child1) {
-    return { ...node, sizes: newSizes };
-  }
-  return {
-    ...node,
-    children: [
-      updateSizesInTree(node.children[0], child0, child1, newSizes),
-      updateSizesInTree(node.children[1], child0, child1, newSizes),
-    ],
-  };
 }
 
 /* ── 旧格式迁移 ── */
@@ -363,27 +293,7 @@ export function validateTree(
 
 let _findCounter = 0;
 
-/** 按索引查找分支节点——用于 resize 时精确定位 */
-export function findBranchByIndex(
-  node: SplitNode,
-  targetIndex: number
-): (SplitNode & { type: "branch" }) | null {
-  _findCounter = 0;
-  return _findBranchByIndex(node, targetIndex);
-}
-
-function _findBranchByIndex(
-  node: SplitNode,
-  targetIndex: number
-): (SplitNode & { type: "branch" }) | null {
-  if (node.type === "leaf") return null;
-  _findCounter++;
-  if (_findCounter === targetIndex) return node;
-  return (
-    _findBranchByIndex(node.children[0], targetIndex) ??
-    _findBranchByIndex(node.children[1], targetIndex)
-  );
-}
+// E5.8#2：findBranchByIndex 已删——壳+池零消费（updateBranchSizesByIndex 自含 _findBranchByIndex 同款内部递归）
 
 /** 按索引更新分支 sizes——返回新树（不可变） */
 export function updateBranchSizesByIndex(

@@ -11,7 +11,4 @@
 /** 自定义 MIME 标记——HTML5 拖放跨元素传递结构化载荷（与 reorder 的 text/plain 并存） */
 export const VIEW_DRAG_MIME = "application/x-linkdesk-view";
 
-export interface ViewDragPayload {
-  viewId: string;
-  fromContainerId: string;
-}
+// E5.8#2：ViewDragPayload 已删——零消费（载荷按 dataTransfer 协议在读写方各自解析）

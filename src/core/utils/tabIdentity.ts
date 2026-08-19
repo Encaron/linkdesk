@@ -20,7 +20,7 @@
  */
 
 import i18n from "../../i18n";
-import { getViewPlugin, hasKeepSidebarOnFocus } from "../../pluginLoader/viewRegistry";
+import { getViewPlugin } from "../../pluginLoader/viewRegistry";
 import type { Tab } from "../../hooks/useTabManager";
 import type { CreateTabOptions } from "../api/types";
 import { normalizePath } from "./path/pathUtils";
@@ -286,13 +286,7 @@ export function isPluginDetailView(type: string): boolean {
   return type === "plugin-detail";
 }
 
-/** 聚焦此标签页时是否保留当前侧栏（不清除 sidebarView）。
- *  Phase 5g：优先读 plugin.json keepSidebarOnFocus，shell 内部类型兜底。 */
-export function shouldKeepSidebarOnFocus(tab: { type: string; pluginId?: string }): boolean {
-  if (tab.pluginId && hasKeepSidebarOnFocus(tab.pluginId)) return true;
-  // plugin-detail 是壳内部类型——它的侧栏展示的是被查看插件的侧栏，不应清除
-  return tab.type === "plugin-detail";
-}
+// E5.8#2：shouldKeepSidebarOnFocus 已删——零消费（判定逻辑已内联 viewRegistry.hasKeepSidebarOnFocus）
 
 /**
  * 旧 type→pluginId 映射（Phase 4 过渡期——旧布局 JSON 不含 pluginId）。
