@@ -27,6 +27,7 @@ import {
   getDisabledList,
   saveDisabledList,
   getLoadedManifest,
+  _pendingPlugins,
 } from "./state";
 import { validateInstallManifest, resolveVersionConflict } from "./manifest";
 import { syncAppThemeEnum, syncAppLanguageEnum } from "./contributions";
@@ -39,9 +40,11 @@ import { loadPlugin } from "./runtime";
 /**
  * 取可变更插件 manifest——未找到/core 插件抛错（disable/uninstall 共用前置守卫，E5.8#1c 去重）。
  * action 用于错误文案（"禁用"/"卸载"）。
+ * E5.8#15：回退 _pendingPlugins——缺依赖挂起（连带卸载等依赖回归）的插件也可禁用/卸载
+ * （禁用优先语义在操作层闭环：连带的消费方被显式禁用 → 不被依赖出现事件自动激活）。
  */
 function getMutableManifest(pluginId: string, action: string): PluginManifest {
-  const manifest = getLoadedManifest(pluginId);
+  const manifest = getLoadedManifest(pluginId) ?? _pendingPlugins.get(pluginId);
   if (!manifest) {
     throw new Error(`插件 "${pluginId}" 未找到`);
   }

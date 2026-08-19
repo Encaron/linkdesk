@@ -17,9 +17,11 @@ import { reportError } from "../core/services/bootstrap/ErrorService";
 import { PluginLifecycle, onPluginLifecycleChange, type PluginInstallEvent } from "./lifecycle";
 // E5.8#11：状态机——loading/failed/active 迁移 + 失败原因记录（诊断面）
 // E5.8#14：parkPending——缺依赖挂起（loading→pending + pendingReason）
-import { markLoadStarted, markLoadSuccess, markLoadFailed, parkPending } from "./loadState";
-// E5.8#14：依赖编排纯函数（requires 解析 / 缺失判定 / 图级环检测）
-import { findMissingDeps, detectDependencyCycle } from "./dependencies";
+// E5.8#15：orphanPlugin——依赖消失连带卸载（加载完成复核用）
+import { markLoadStarted, markLoadSuccess, markLoadFailed, parkPending, orphanPlugin } from "./loadState";
+// E5.8#14：#14 依赖编排纯函数（requires 解析 / 缺失判定 / 图级环检测）
+// E5.8#15：formatPendingReason——挂起原因文案单源（park + orphan 共用）
+import { findMissingDeps, detectDependencyCycle, formatPendingReason } from "./dependencies";
 import { versionGte } from "../core/utils/plugin/semverUtils";
 import {
   pluginsApi,
@@ -32,6 +34,8 @@ import {
   _pendingPlugins,
   extractPluginId,
   cachePluginMetadata,
+  getDisabledList,
+  getLoadedManifest,
 } from "./state";
 import { normalizeManifest, type OldFormatManifest } from "./manifest";
 import {
@@ -116,7 +120,7 @@ function getKnownManifest(pluginId: string): PluginManifest | undefined {
 /** 缺依赖挂起——PENDING + pendingReason + 挂起注册表（manifest 留存供 sweep 重查）。
  *  不弹 toast——瞬态等待（#15.5 marketplace PENDING 面 + 启动挂起诊断日志负责用户可见）。 */
 function parkForDependencies(pluginId: string, manifest: PluginManifest, missing: string[]): void {
-  const reason = `等待依赖: ${missing.map((d) => `"${d}"`).join("、")}`;
+  const reason = formatPendingReason(missing);
   _pendingPlugins.set(pluginId, manifest);
   parkPending(pluginId, reason);
   log.appendLine(`⏸ 插件 "${manifest.name ?? pluginId}" 缺依赖挂起——${reason}`);
@@ -128,6 +132,8 @@ function parkForDependencies(pluginId: string, manifest: PluginManifest, missing
  * 不 export——零外部消费方（knip 实锤）；内部 loadPlugin 完成点自动触发。
  * 收敛：每轮 while 至少激活一个挂起插件才继续；环已在 dep-check fail-loud → 挂起互锁不会发生。
  * guard 兜底（1000）防极端竞态（sweep await 期间依赖被卸载）死循环。
+ * E5.8#15：用户显式禁用优先——被禁用的消费插件不被依赖出现事件自动激活（禁用意图优先于依赖编排，
+ * 否则被禁用插件"复活" = 体感无差破坏）。删除其挂起登记——重新启用时 enablePlugin 走 loadPlugin 重查。
  */
 async function sweepPendingDependencies(): Promise<void> {
   let progressed = true;
@@ -136,6 +142,7 @@ async function sweepPendingDependencies(): Promise<void> {
     progressed = false;
     for (const [id, manifest] of [..._pendingPlugins]) {
       if (loadedPluginIds.has(id)) { _pendingPlugins.delete(id); continue; } // 已激活——清理僵尸登记
+      if (getDisabledList().includes(id)) { _pendingPlugins.delete(id); continue; } // 禁用优先——不自动激活
       if (findMissingDeps(id, manifest).length > 0) continue; // 依赖仍未就绪
       _pendingPlugins.delete(id);
       await loadPlugin(id, "startup");
@@ -328,6 +335,16 @@ async function loadPlugin(
   _loadingPromises.set(pluginId, promise);
   try { await promise; }
   finally { _loadingPromises.delete(pluginId); }
+  // E5.8#15：加载完成复核——依赖在加载期间被卸载的竞态收敛（unloadPlugin 连带只查 loadedPluginIds，
+  // 加载中插件不在其内 → 错过）。插件已激活但依赖已消失 → 连带降级挂起（等依赖回归自动补载），
+  // 维持"ACTIVE 插件依赖必全"不变式——对齐状态机"卸载必须总能完成"的收敛精神。
+  const loadedManifest = getLoadedManifest(pluginId);
+  const raceMissing = loadedManifest && loadedPluginIds.has(pluginId)
+    ? findMissingDeps(pluginId, loadedManifest)
+    : [];
+  if (raceMissing.length > 0) {
+    orphanPlugin(pluginId, raceMissing);
+  }
   // E5.8#14：依赖编排——每加载完成一个插件，扫描挂起队列，依赖就绪者补载（拓扑序激活，扫描序不再影响激活）
   await sweepPendingDependencies();
 }

@@ -22,6 +22,14 @@
  *     诊断面/#15.5 marketplace 据此显示 "等待依赖: xxx"；
  *   - 重新加载（markLoadStarted）/ 卸载 / 失败 → pendingReason 自动清。
  *
+ * E5.8#15：依赖消失连带卸载——卸载/禁用/目录删除三途径同走 unloadPlugin（唯一卸载路径），
+ *   unloadPlugin 先连带卸载消费方（orphanPlugin，逆拓扑序），再退自身：
+ *   - orphanPlugin = 消费插件 rollback 全量生效 + 落 PENDING（等待依赖回归，非卸载）——
+ *     与 unloadPlugin 同序（unloading → notifyPluginRemoved → onWillUninstall[tracker 回滚] →
+ *     集合清理），但落点 = pending + pendingReason + _pendingPlugins，且不发 onDidUninstall；
+ *   - 逆拓扑序：消费方先退（回滚期可能查询依赖注册表贡献）、依赖后退；
+ *   - 卸载迁移图加 unloading → pending——连带卸载落点（合法迁移，非错误路径）。
+ *
  * 🔥 L6b 机械保障：生命周期事件只在合法状态迁移上发（unloadPlugin 是唯一卸载路径），
  *   顺序由迁移图定义——事件三次静默跳过（revert 在 theme 注销后 / toast 在 viewRegistry
  *   注销后 / marketplace 刷新在文件移动前）的根治方案。
@@ -30,8 +38,9 @@
 
 import { PluginLifecycle, notifyPluginRemoved } from "./lifecycle";
 import type { PluginUninstallEvent } from "./lifecycle-events";
-import { loadedPluginIds, _deferredPlugins } from "./state";
+import { loadedPluginIds, _deferredPlugins, _pendingPlugins, getLoadedManifest } from "./state";
 import { registrationCount } from "../core/registry/registrationTracker";
+import { findActiveConsumers, formatPendingReason } from "./dependencies";
 
 /** 加载状态——三方边界之"LoadState"，见模块头注释。
  *  不 export——零外部消费方（knip 实锤）；消费方（dev 面板等）出现时再开。 */
@@ -52,7 +61,7 @@ const ALLOWED: Record<LoadState, LoadState[]> = {
   pending:   ["loading", "unloading"],
   loading:   ["active", "failed", "unloading", "pending"],
   active:    ["unloading"],
-  unloading: ["disposed"],
+  unloading: ["disposed", "pending"],  // E5.8#15：连带卸载落点（orphanPlugin）——卸载完成可改挂起等依赖
   disposed:  ["loading"],   // 重装/启用
   failed:    ["loading", "unloading"],  // 重试 / 失败态卸载
 };
@@ -111,6 +120,46 @@ export function parkPending(pluginId: string, reason: string): void {
   transition(pluginId, "pending", undefined, reason);
 }
 
+/* ── E5.8#15：依赖消失连带卸载——逆拓扑序 + 落 PENDING（消费方先退，依赖后退） ── */
+
+/**
+ * 连带卸载消费方（逆拓扑序）——卸载/禁用/目录删除任一途径触发时，先连带卸载依赖本插件的活跃插件。
+ * 递归收敛：orphanPlugin 先连带卸载它自己的消费方（深层消费方先退），再退自身。
+ * 幂等：orphanPlugin 守卫跳过已 pending/unloading/disposed 的插件——双重连带不双滚。
+ */
+function cascadeDependents(depId: string): void {
+  const consumers = findActiveConsumers(depId); // 快照——连带卸载会改 loadedPluginIds
+  for (const consumer of consumers) {
+    orphanPlugin(consumer, [depId]);
+  }
+}
+
+/**
+ * 依赖消失连带卸载——消费插件 rollback 全量生效 + 落 PENDING（等待依赖回归，非卸载）。
+ * 与 unloadPlugin 同序（unloading → notifyPluginRemoved → onWillUninstall[tracker 回滚] → 集合清理），
+ * 但落点 = pending + pendingReason + _pendingPlugins（依赖回归 sweep 自动补载），且不发 onDidUninstall
+ * （非用户卸载——静默；toast 归 #15.5）。onWillUninstall reason = "disable"——iconOrder 保留原位（可回归）。
+ * 逆拓扑序：先连带卸载本插件的消费方，再退自身——消费方回滚期可能查询本插件注册表贡献，本插件须最后退。
+ * 守卫跳过 unloading/disposed/pending——双重连带不双滚（pending = 已连带过或从未加载）。
+ */
+export function orphanPlugin(pluginId: string, missing: string[]): void {
+  const current = _states.get(pluginId)?.state ?? "pending";
+  if (current === "unloading" || current === "disposed" || current === "pending") {
+    console.warn(`[loadState] 连带卸载 "${pluginId}" 跳过（当前 ${current}）`);
+    return;
+  }
+  cascadeDependents(pluginId);
+  transition(pluginId, "unloading");
+  notifyPluginRemoved(pluginId);
+  const manifest = getLoadedManifest(pluginId);
+  PluginLifecycle.onWillUninstall.fire({ pluginId, reason: "disable", displayName: manifest?.name ?? pluginId });
+  loadedPluginIds.delete(pluginId);
+  _deferredPlugins.delete(pluginId);
+  if (manifest) _pendingPlugins.set(pluginId, manifest); // sweep 重查依赖需要 manifest 留存
+  parkPending(pluginId, formatPendingReason(missing));
+  console.warn(`[loadState] 插件 "${pluginId}" 依赖消失连带卸载——${formatPendingReason(missing)}`);
+}
+
 /**
  * 卸载插件全过程——L6b 顺序机械保障（唯一卸载路径，3 生产流共用：disable/uninstall/watcher）。
  * 顺序（迁移图定）：unloading → notifyPluginRemoved → onWillUninstall.fire（tracker 逆序回滚在
@@ -118,6 +167,8 @@ export function parkPending(pluginId: string, reason: string): void {
  * 🔥 notifyPluginRemoved 必须先于 fire——App/lifecycle.ts revertContainerIfCurrent 读
  * viewRegistry 的 manifest，tracker 回滚后 viewRegistry 条目已删。
  * 重复卸载（已在 unloading/disposed）→ console.warn + 跳过（幂等）。
+ * E5.8#15：依赖消失连带卸载钩子——先连带卸载消费方（逆拓扑序：消费方回滚期可能查询本插件
+ * 注册表贡献，本插件须最后退），再退自身；顺带清本插件的挂起登记（挂起后被正式卸载 = 清场）。
  */
 export function unloadPlugin(
   pluginId: string,
@@ -130,6 +181,8 @@ export function unloadPlugin(
     console.warn(`[loadState] 重复卸载 "${pluginId}"（当前 ${current}）——跳过`);
     return;
   }
+  cascadeDependents(pluginId);
+  _pendingPlugins.delete(pluginId);
   transition(pluginId, "unloading");
   notifyPluginRemoved(pluginId);
   PluginLifecycle.onWillUninstall.fire({ pluginId, reason, displayName });

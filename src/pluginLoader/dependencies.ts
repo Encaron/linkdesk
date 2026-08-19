@@ -1,20 +1,22 @@
 /**
  * 插件依赖编排——纯函数层（E5.8#14）。
  *
- * 职责：requires 解析（合并 extensionDependencies 兼容）、依赖缺失判定、图级环检测。
+ * 职责：requires 解析（合并 extensionDependencies 兼容）、依赖缺失判定、图级环检测、
+ *       活跃消费方发现、挂起原因文案（E5.8#15）。
  * 纯函数原则：不持有可变状态、不 import runtime.ts（防环）——只依赖 state.ts 只读面
- * （loadedPluginIds——"依赖已激活"是唯一就绪判定源）。
- * 可变编排（挂起注册表 _pendingPlugins + sweep 补载）在 runtime.ts——本模块可独立单测。
+ * （loadedPluginIds——"依赖已激活"是唯一就绪判定源；getLoadedManifest——已加载插件的 manifest 面）。
+ * 可变编排（挂起注册表 _pendingPlugins + sweep 补载 + 连带卸载）在 runtime.ts/loadState.ts——本模块可独立单测。
  *
  * 语义（设计支柱 3 + 审视立案）：
  *   - requires = 插件级激活顺序依赖（string[] 按 pluginId），依赖须先激活本插件再激活；
  *   - 就绪 = 依赖在 loadedPluginIds（ACTIVE）；禁用/未装/加载失败 → 未就绪 → 缺失；
  *   - 环 = 自环 + 传递环（A→B→C→A）图级检测 fail-loud，非两两对；
  *   - 命名边界：requires（插件级）vs ConfigurationRegistry dependsOn（配置项级）——#13 成文。
+ *   - 连带卸载（#15）：依赖消失 → 消费方连带降级 PENDING——findActiveConsumers 是发现源。
  */
 
 import type { PluginManifest } from "../core/api/types";
-import { loadedPluginIds } from "./state";
+import { loadedPluginIds, getLoadedManifest } from "./state";
 
 /** 依赖声明——requires 为主，extensionDependencies 向后兼容（@deprecated #13，归并 requires）。
  *  两源并集 + 去重，顺序稳定（requires 在前）——一个依赖只有 requires 一种声明（设计支柱 3）。 */
@@ -62,4 +64,25 @@ export function detectDependencyCycle(
     if (r) return r;
   }
   return null;
+}
+
+/** 挂起原因文案——缺依赖挂起的统一格式（E5.8#15，parkForDependencies + orphanPlugin 共用单源）。
+ *  "等待依赖: " + 引号分隔 pluginId 列表——marketplace/#15.5 直接展示。 */
+export function formatPendingReason(missing: string[]): string {
+  return `等待依赖: ${missing.map((d) => `"${d}"`).join("、")}`;
+}
+
+/** 活跃消费方——loadedPluginIds 中依赖声明含 depId 的插件（连带卸载发现源，#15）。
+ *  只查活跃集：挂起中的消费方已在 PENDING 等依赖回归，无需连带动作（卸载也动不了它们）。
+ *  getLoadedManifest 覆盖 view/glob 非视图/运行时三类已加载插件——loadedPluginIds 全量可查。
+ *  排除自依赖：自环已在加载时 fail-loud，loadedPluginIds 中不可能存在 requires 自身的插件。 */
+export function findActiveConsumers(depId: string): string[] {
+  const result: string[] = [];
+  for (const id of loadedPluginIds) {
+    const manifest = getLoadedManifest(id);
+    if (manifest && getDependencyIds(manifest).includes(depId)) {
+      result.push(id);
+    }
+  }
+  return result;
 }

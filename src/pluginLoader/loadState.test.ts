@@ -17,6 +17,7 @@ import {
   markLoadFailed,
   parkPending,
   unloadPlugin,
+  orphanPlugin,
   getLoadDiagnostics,
   getLoadDiagnosticsSummary,
   clearLoadStates,
@@ -179,6 +180,50 @@ describe("loadState 缺依赖挂起——parkPending + pendingReason", () => {
     const diag = getLoadDiagnostics(PID);
     expect(diag.loadState).toBe("disposed");
     expect(diag.pendingReason).toBeUndefined();
+  });
+});
+
+/* ── E5.8#15：连带卸载落点——orphanPlugin（active → unloading → pending） ── */
+
+describe("loadState 连带卸载——orphanPlugin", () => {
+  beforeEach(() => {
+    resetStateMachine();
+  });
+
+  it("active → 连带卸载 → pending + pendingReason（卸载迁移图加 unloading → pending）", () => {
+    markLoadStarted(PID);
+    markLoadSuccess(PID);
+    orphanPlugin(PID, ["dep-plugin"]);
+    const diag = getLoadDiagnostics(PID);
+    expect(diag.loadState).toBe("pending");
+    expect(diag.pendingReason).toContain("dep-plugin");
+  });
+
+  it("重复连带卸载幂等——已 pending 跳过不双滚", () => {
+    markLoadStarted(PID);
+    markLoadSuccess(PID);
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      orphanPlugin(PID, ["dep-plugin"]);
+      orphanPlugin(PID, ["dep-plugin"]);  // 第二次——守卫跳过
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining("跳过"));
+      expect(getLoadDiagnostics(PID).loadState).toBe("pending");
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  it("不 fire onDidUninstall（连带卸载非用户卸载）", () => {
+    const didUninstallSpy = vi.fn();
+    const unsub = PluginLifecycle.onDidUninstall.event(didUninstallSpy);
+    try {
+      markLoadStarted(PID);
+      markLoadSuccess(PID);
+      orphanPlugin(PID, ["dep-plugin"]);
+      expect(didUninstallSpy).not.toHaveBeenCalled();
+    } finally {
+      unsub();
+    }
   });
 });
 

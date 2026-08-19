@@ -1,11 +1,15 @@
 /**
- * dependencies.ts 依赖编排测试——E5.8#14。
+ * dependencies.ts 依赖编排测试——E5.8#14 + #15。
  *
  * 覆盖：
  *   - 纯函数：getDependencyIds（requires 主 + extensionDependencies 兼容并集）/ findMissingDeps
  *     （就绪 = loadedPluginIds）/ detectDependencyCycle（自环 + 传递环 + 未知节点死胡同）
+ *     / formatPendingReason（挂起文案单源）/ findActiveConsumers（活跃消费方发现）
  *   - 集成（真实 loadPlugin 运行时路径）：钉序（依赖后加载也正确编排）/ 缺依赖永挂起 /
  *     传递链拓扑序 / 传递环 fail-loud / 自环 fail-loud
+ *   - #15 依赖消失连带卸载 + 自动重载：卸载链（消费方逆拓扑序先退 + 重装自动 ACTIVE）/
+ *     禁用链（连带挂起 + 启用自动 ACTIVE）/ 传递连带（深层先退）/ 禁用优先（不复活）/
+ *     挂起消费方可禁用（操作层回退）/ 卸载清挂起登记
  *
  * 运行时插件 mock 面：readManifest 按插件 ID 返回 manifest（glob 外 → isRuntime 路径）。
  */
@@ -15,17 +19,23 @@ import {
   getDependencyIds,
   findMissingDeps,
   detectDependencyCycle,
+  formatPendingReason,
+  findActiveConsumers,
 } from "./dependencies";
 import { loadedPluginIds, _deferredPlugins, _pendingPlugins, _loadingPromises } from "./state";
-import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary } from "./loadState";
+import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary, unloadPlugin } from "./loadState";
 import { clearRegistrationLayers } from "../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
+import { disablePlugin } from "./lifecycle-ops";
+import { PluginLifecycle } from "./lifecycle-events";
+import { clearPluginStates } from "../core/services/plugins/PluginStateService";
 import type { PluginManifest } from "../core/api/types";
 
 // E5.7#95：测试夹具插件 ID——大写常量（linkdesk/no-plugin-id-hardcode 批准的常量通道）
 const CONSUMER_ID = "dep-consumer";
 const DEP_A_ID = "dep-a";
 const DEP_B_ID = "dep-b";
+const GRANDCHILD_ID = "dep-grandchild";
 const LONELY_ID = "dep-lonely";
 const MISSING_DEP = "never-exists";
 const TOPO_A_ID = "topo-a";
@@ -118,6 +128,17 @@ describe("dependencies 纯函数——detectDependencyCycle", () => {
   });
 });
 
+describe("dependencies 纯函数——formatPendingReason", () => {
+  it("引号分隔 pluginId 列表（单源文案，park + orphan 共用）", () => {
+    expect(formatPendingReason([DEP_A_ID, DEP_B_ID]))
+      .toBe(`等待依赖: "${DEP_A_ID}"、"${DEP_B_ID}"`);
+  });
+
+  it("空列表 → 前缀空串（防御性）", () => {
+    expect(formatPendingReason([])).toBe("等待依赖: ");
+  });
+});
+
 /* ── 集成——真实 loadPlugin 运行时路径（readManifest mock） ── */
 
 describe("dependencies 集成——loadPlugin 依赖编排", () => {
@@ -131,6 +152,7 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
     _loadingPromises.clear();
     clearLoadStates();
     clearRegistrationLayers();
+    clearPluginStates(); // #15 禁用优先测试写 disabledPlugins——测试间互不泄漏
     manifests = new Map();
   }
 
@@ -250,5 +272,110 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
     await loadPlugin(CONSUMER_ID, "startup");  // 但 MISSING_DEP 永不出现 → 消费者仍挂起
     expect(loadedPluginIds.has(CONSUMER_ID)).toBe(false);
     expect(getLoadDiagnostics(CONSUMER_ID).pendingReason).toContain(MISSING_DEP);
+  });
+
+  /* ── E5.8#15：依赖消失连带卸载 + 自动重载 ── */
+
+  describe("#15 依赖消失连带卸载 + 自动重载", () => {
+    /** 标准两条链种子——消费者 requires 依赖A，均加载为 ACTIVE */
+    async function seedConsumerChain(): Promise<void> {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+      await loadPlugin(CONSUMER_ID, "startup");  // 依赖未就绪 → 挂起
+      await loadPlugin(DEP_A_ID, "startup");     // 依赖加载 → sweep 补载消费方
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(true);
+      expect(loadedPluginIds.has(DEP_A_ID)).toBe(true);
+    }
+
+    /** 记录 onWillUninstall 触发顺序（逆拓扑序断言用） */
+    function trackUninstallOrder(): { order: string[]; unsub: () => void } {
+      const order: string[] = [];
+      const unsub = PluginLifecycle.onWillUninstall.event(({ pluginId }) => { order.push(pluginId); });
+      return { order, unsub };
+    }
+
+    it("卸载链：依赖卸载 → 消费方连带降级 PENDING（逆拓扑序先退）；重装 → 自动 ACTIVE", async () => {
+      await seedConsumerChain();
+      // findActiveConsumers——连带发现源（消费方被找到，非消费方不被误报）
+      expect(findActiveConsumers(DEP_A_ID)).toContain(CONSUMER_ID);
+      expect(findActiveConsumers(CONSUMER_ID)).toEqual([]);
+
+      // 逆拓扑序：消费方先退（回滚期可查询依赖注册表贡献）、依赖后退
+      const { order, unsub } = trackUninstallOrder();
+      unloadPlugin(DEP_A_ID, "uninstall");
+      unsub();
+      expect(order).toEqual([CONSUMER_ID, DEP_A_ID]);
+      expect(getLoadDiagnostics(CONSUMER_ID)).toMatchObject({
+        loadState: "pending",
+        pendingReason: expect.stringContaining(DEP_A_ID),
+      });
+      expect(getLoadDiagnostics(DEP_A_ID).loadState).toBe("disposed");
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(false);
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(true); // 挂起登记留存——重装可补载
+
+      // 依赖重装 → 消费方自动 ACTIVE（sweep 在 loadPlugin 完成点触发）
+      await loadPlugin(DEP_A_ID, "reinstall");
+      expect(getLoadDiagnostics(DEP_A_ID).loadState).toBe("active");
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("active");
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(true);
+    });
+
+    it("禁用/启用同链：依赖禁用 → 消费方连带挂起；启用 → 自动 ACTIVE", async () => {
+      await seedConsumerChain();
+      unloadPlugin(DEP_A_ID, "disable");   // 禁用 = 等价卸载 → 连带
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("pending");
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(false);
+
+      await loadPlugin(DEP_A_ID, "enable");  // 启用 = 等价重装 → sweep 补载
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("active");
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(true);
+    });
+
+    it("传递连带：深层消费方先退（逆拓扑序），全部落 PENDING", async () => {
+      manifests.set(GRANDCHILD_ID, manifestOf("孙消费", [CONSUMER_ID]));
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [DEP_A_ID]));
+      manifests.set(DEP_A_ID, manifestOf("依赖A"));
+
+      await loadPlugin(CONSUMER_ID, "startup");   // 挂起
+      await loadPlugin(GRANDCHILD_ID, "startup"); // 挂起（等 C）
+      await loadPlugin(DEP_A_ID, "startup");      // sweep 级联补载 C → 孙
+      expect(loadedPluginIds.has(GRANDCHILD_ID)).toBe(true);
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(true);
+
+      const { order, unsub } = trackUninstallOrder();
+      unloadPlugin(DEP_A_ID, "uninstall");
+      unsub();
+      expect(order).toEqual([GRANDCHILD_ID, CONSUMER_ID, DEP_A_ID]);  // 深层消费方先退
+      expect(loadedPluginIds.has(GRANDCHILD_ID)).toBe(false);
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(false);
+      expect(getLoadDiagnostics(GRANDCHILD_ID).pendingReason).toContain(CONSUMER_ID);
+      expect(getLoadDiagnostics(CONSUMER_ID).pendingReason).toContain(DEP_A_ID);
+    });
+
+    it("禁用优先端到端：连带挂起 → 显式禁用（操作层回退）→ 依赖回归不自动激活（不复活）", async () => {
+      await seedConsumerChain();
+      unloadPlugin(DEP_A_ID, "disable");   // 依赖禁用 → 连带挂起
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("pending");
+
+      const res = await disablePlugin(CONSUMER_ID);  // 显式禁用挂起消费方（getMutableManifest 回退 _pendingPlugins）
+      expect(res.success).toBe(true);
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(false);
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("disposed");
+
+      await loadPlugin(DEP_A_ID, "enable");  // 依赖回归 → sweep：消费方禁用优先 → 不复活
+      expect(loadedPluginIds.has(CONSUMER_ID)).toBe(false);
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("disposed");
+    });
+
+    it("卸载清挂起登记：缺依赖挂起后被正式卸载 → 清挂起 + 收敛到 disposed", async () => {
+      manifests.set(CONSUMER_ID, manifestOf("消费者", [MISSING_DEP]));
+      await loadPlugin(CONSUMER_ID, "startup");  // 缺依赖挂起
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("pending");
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(true);
+
+      unloadPlugin(CONSUMER_ID, "uninstall");
+      expect(_pendingPlugins.has(CONSUMER_ID)).toBe(false);
+      expect(getLoadDiagnostics(CONSUMER_ID).loadState).toBe("disposed");
+    });
   });
 });
