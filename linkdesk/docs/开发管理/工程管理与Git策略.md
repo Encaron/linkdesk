@@ -35,6 +35,7 @@ E:\linkdesk\                         ← Git 仓库根目录
 │   │   ├── 04-出厂制造/             ←      UI 设计优先排序
 │   │   ├── 05-版本更新/             ←      版本规划 + 未来插件设计
 │   │   ├── 开发管理/                 ←      项目管理（本文件）
+│   │   ├── decisions/                ←      🔥 决策记录——非平凡改动落一篇（规则见 decisions/README.md）
 │   │   └── 总体设计/                 ←      软件介绍 + 部件命名规范
 ```
 
@@ -109,6 +110,14 @@ npm run check            # tsc + ESLint + vitest——commit 前必过
 4. git diff --stat   → 确认只动了该动的文件
 5. git commit         → 一条 commit 只修一个概念
 ```
+
+### 决策记录义务（E5.8#6）
+
+> 🔥 **非平凡改动必须落一篇决策记录**——规则全文见 [`docs/decisions/README.md`](../../decisions/README.md)。
+
+- **什么算非平凡**：架构/方向性取舍、跨文件行为契约、未来维护者会困惑的"为什么"、推翻/修订已有决策。纯实现细节/格式/机械重构不算。
+- **落点**：`docs/decisions/{proposed,implemented,rejected,archived}/`——**路径即状态**（目录编码）；被取代 → 移 `archived/` + `Superseded by` 链接。
+- **为什么**：决策轨迹给未来 AI 当上下文（对标 AI 友好第 3 层）；E5.8 执行清单任务收口时，执行注引用对应决策记录。
 
 ### 插件开发
 
