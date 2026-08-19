@@ -146,6 +146,8 @@
   to   { opacity: 1; transform: translateY(0); }
 }
 
+/* E5.8#1d EXEMPT：pool-css gate → TitleBarZone 下拉菜单自包含壳同款（main/sub-panel + item/right/chevron），结构性重复 */
+/* jscpd:ignore-start */
 /* 主面板（左侧） */
 .titlebar-main-panel {
   width: 200px;
@@ -207,3 +209,4 @@
   color: var(--text-secondary);
   opacity: 1;
 }
+/* jscpd:ignore-end */

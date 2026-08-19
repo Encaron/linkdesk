@@ -29,7 +29,8 @@ export const MENU_STYLE_HAMBURGER_VISIBLE: Record<string, boolean> = {
  * MenuRenderer getLabel 翻译三合一搬入壳侧，池哑渲染（显示文本铁律）。
  * 无 command 父项展平为其 children；command+children 父项保留 children（池子面板）。
  */
-export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
+/** 收集 MenuBar 插槽菜单并按 group 分组排序——titlebar/汉堡共用（E5.8#1c 去重） */
+function collectMenuBarGroups(): { groups: Map<string, Array<MenuItem & { pluginId: string }>>; sortedGroupNames: string[] } {
   const allItems = getMenuItems(MENU_SLOTS.MenuBar);
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
@@ -40,6 +41,11 @@ export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGro
   const sortedGroupNames = [...groups.keys()].sort(
     (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
   );
+  return { groups, sortedGroupNames };
+}
+
+export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
+  const { groups, sortedGroupNames } = collectMenuBarGroups();
 
   // label 解析与壳 MenuRenderer 一致：item.label > command.title > command id，再 t()
   const resolveItem = (item: MenuItem): PoolMenuItem => ({
@@ -80,17 +86,8 @@ export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGro
  * 带 children 的父项，hover 弹出子面板（壳 titlebar 下拉则展平为平铺列表）。
  */
 export function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
-  const allItems = getMenuItems(MENU_SLOTS.MenuBar);
+  const { groups, sortedGroupNames } = collectMenuBarGroups();
   const allKeybindings = getKeybindings();
-  const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
-  for (const item of allItems) {
-    const group = item.group ?? "other";
-    if (!groups.has(group)) groups.set(group, []);
-    groups.get(group)!.push(item);
-  }
-  const sortedGroupNames = [...groups.keys()].sort(
-    (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
-  );
 
   /** 壳 MenuRenderer.formatKeyLabel 同款——chord: "ctrl+k ctrl+t" → "Ctrl+K Ctrl+T" */
   const formatKeyLabel = (key: string): string =>

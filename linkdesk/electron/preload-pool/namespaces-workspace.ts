@@ -48,6 +48,8 @@ export function buildNotifications() {
 
 /** tabs 命名空间——标签页操作 */
 export function buildTabs(events: EventSystemApi) {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（tabs 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     create: (type: string, opts?: Record<string, unknown>) =>
       ipcRenderer.invoke(IPC.tabs.create, type, opts),
@@ -66,10 +68,13 @@ export function buildTabs(events: EventSystemApi) {
       });
     },
   };
+  /* jscpd:ignore-end */
 }
 
 /** p2p 命名空间——插件间点对点 */
 export function buildP2p() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（p2p 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     send: (target: string, channel: string, data: unknown) => {
       ipcRenderer.send(IPC.p2p.send, { target, channel, data });
@@ -79,6 +84,7 @@ export function buildP2p() {
         if (d.channel === channel) cb(d.data);
       }),
   };
+  /* jscpd:ignore-end */
 }
 
 /**

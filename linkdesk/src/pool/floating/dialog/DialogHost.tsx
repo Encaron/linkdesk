@@ -59,6 +59,8 @@ export default function DialogHost() {
   // ── 键盘：Escape 关闭（alert 除外）+ Tab 焦点陷阱（设计 §7.2） ──
   useEffect(() => {
     if (!data || !data.open) return;
+    // E5.8#1d EXEMPT：Path B（池不 import 壳组件）→ OverlayPortal↔DialogHost focus trap 孪生
+    /* jscpd:ignore-start */
     const handler = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         if (!data.isAlert) api?.cancel();
@@ -82,6 +84,7 @@ export default function DialogHost() {
         firstEl.focus();
       }
     };
+    /* jscpd:ignore-end */
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [data, api]);

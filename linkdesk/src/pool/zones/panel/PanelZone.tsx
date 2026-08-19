@@ -45,6 +45,8 @@ export default function PanelZone({ panel }: PanelZoneProps) {
   heightRef.current = height;
 
   // 钳制——界由壳推（#13 同款；#63.7 生产者已推送，缺省兜底 0..∞ 仅防旧布局）
+  // E5.8#1d EXEMPT：池内 zone 孪生（PanelZone↔RightSidebarZone resize 骨架——clamp/finishDrag/onMove/onUp），结构性重复
+  /* jscpd:ignore-start */
   const clampHeight = useCallback((h: number) => {
     const min = panel.minHeight ?? 0;
     const max = panel.maxHeight ?? Infinity;
@@ -101,6 +103,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       window.removeEventListener("mouseup", onUp);
     };
   }, [finishDrag, clampHeight]);
+  /* jscpd:ignore-end */
 
   // pushLayout 对齐（isDragging guard）——#13 同款：拖拽期间忽略旧高度防闪跳；
   // 回执 = commit 后第一条非拖前高度的推送（壳钳制后值可能 ≠ 本地高——以壳权威为准）

@@ -10,12 +10,34 @@ import { useEffect, useRef } from "react";
 import { saveTabLayout, savePanelLayout, getPanelLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "../core/services/layout/WorkspaceService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
-import type { TabState } from "../hooks/useTabManager";
+import type { TabState, LayoutData } from "../hooks/useTabManager";
 
 export interface LayoutPersistenceDeps {
   ready: boolean;
   tabState: TabState;
   panelActiveViewId: string | null;
+}
+
+/** 标签页组序列化——beforeunload 与 100ms 防抖保存共用同一形状（E5.8#1c 去重） */
+function serializeGroups(
+  groups: TabState["groups"],
+  activeGroupId: LayoutData["activeGroupId"],
+  root: LayoutData["root"],
+): LayoutData {
+  return {
+    groups: groups.map((g) => ({
+      id: g.id,
+      tabs: g.tabs.map((t) => ({
+        id: t.id, type: t.type, label: t.label, dirty: t.dirty,
+        workspaceName: t.workspaceName, filePath: t.filePath,
+        pluginId: t.pluginId, detailPluginId: t.detailPluginId,
+        sourceId: t.sourceId, pinned: t.pinned,
+      })),
+      activeTabId: g.activeTabId,
+    })),
+    activeGroupId,
+    root,
+  };
 }
 
 /** 布局持久化——tabState/panel 全真相源在壳，App 自己负责保存。三个独立 effect（beforeunload 注册一次，闭包经 ref 读活值） */
@@ -35,20 +57,7 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
       try {
         const s = tabStateRef.current;
         const layout: WorkspaceLayout = {
-          tabs: {
-            groups: s.groups.map((g) => ({
-              id: g.id,
-              tabs: g.tabs.map((t) => ({
-                id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-                workspaceName: t.workspaceName, filePath: t.filePath,
-                pluginId: t.pluginId, detailPluginId: t.detailPluginId,
-                sourceId: t.sourceId, pinned: t.pinned,
-              })),
-              activeTabId: g.activeTabId,
-            })),
-            activeGroupId: s.activeGroupId,
-            root: s.root,
-          },
+          tabs: serializeGroups(s.groups, s.activeGroupId, s.root),
           cards: [],
         };
         // E5.7#63.7：面板状态同样读活值（防抖保存可能未落盘）——syncWriteLayout 整体替换缓存，
@@ -79,22 +88,7 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
       return;
     }
     const doSave = () => {
-      saveTabLayout({
-        groups: tabState.groups.map((g) => ({
-          id: g.id,
-          tabs: g.tabs.map((t) => ({
-            id: t.id, type: t.type, label: t.label, dirty: t.dirty,
-            workspaceName: t.workspaceName, filePath: t.filePath,
-            pluginId: t.pluginId,
-            detailPluginId: t.detailPluginId,
-            sourceId: t.sourceId,
-            pinned: t.pinned,
-          })),
-          activeTabId: g.activeTabId,
-        })),
-        activeGroupId: tabState.activeGroupId,
-        root: tabState.root,
-      }).catch((e) => { console.error("[App] 保存标签页布局失败:", e); });
+      saveTabLayout(serializeGroups(tabState.groups, tabState.activeGroupId, tabState.root)).catch((e) => { console.error("[App] 保存标签页布局失败:", e); });
     };
     if (layoutSaveTimer.current) clearTimeout(layoutSaveTimer.current);
     layoutSaveTimer.current = setTimeout(doSave, 100);

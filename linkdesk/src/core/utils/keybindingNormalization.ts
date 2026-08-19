@@ -20,16 +20,7 @@ function normalizeKey(key: string): string {
     .toLowerCase()
     .split("+")
     .map((k) => k.trim())
-    .sort((a, b) => {
-      // modifiers first: ctrl > shift > alt > meta
-      const order = ["ctrl", "shift", "alt", "meta"];
-      const ai = order.indexOf(a);
-      const bi = order.indexOf(b);
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
-      return a.localeCompare(b);
-    })
+    .sort(compareModifiers)
     .join("+");
 }
 
@@ -43,6 +34,16 @@ const KEY_MAP: Record<string, string> = {
 
 const MODIFIER_KEYS = new Set(["control", "shift", "alt", "meta"]);
 const MODIFIER_ORDER = ["ctrl", "shift", "alt", "meta"];
+
+/** 修饰键优先排序器——ctrl > shift > alt > meta，非修饰键按 localeCompare（normalizeKey 与 keyboardInputToKeyString 共用，E5.8#1c 去重） */
+function compareModifiers(a: string, b: string): number {
+  const ai = MODIFIER_ORDER.indexOf(a);
+  const bi = MODIFIER_ORDER.indexOf(b);
+  if (ai !== -1 && bi !== -1) return ai - bi;
+  if (ai !== -1) return -1;
+  if (bi !== -1) return 1;
+  return a.localeCompare(b);
+}
 
 /** 纯数据 → 规范化快捷键字符串——主进程和壳侧共用 */
 export function keyboardInputToKeyString(input: KeyboardInput): string {
@@ -60,14 +61,7 @@ export function keyboardInputToKeyString(input: KeyboardInput): string {
   if (MODIFIER_KEYS.has(key)) return "";
 
   parts.push(key);
-  return parts.sort((a, b) => {
-    const ai = MODIFIER_ORDER.indexOf(a);
-    const bi = MODIFIER_ORDER.indexOf(b);
-    if (ai !== -1 && bi !== -1) return ai - bi;
-    if (ai !== -1) return -1;
-    if (bi !== -1) return 1;
-    return a.localeCompare(b);
-  }).join("+");
+  return parts.sort(compareModifiers).join("+");
 }
 
 /**

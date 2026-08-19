@@ -28,6 +28,8 @@ function MenuItemList({ items, groups, onCommand, cssPrefix }: MenuItemListProps
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // E5.8#1d EXEMPT：Path B（池不 import 壳组件）→ MenuRenderer↔MenuItemList 孪生（hover 子面板时序）
+  /* jscpd:ignore-start */
   const scheduleHover = useCallback((key: string | null) => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     if (key === null) {
@@ -36,6 +38,7 @@ function MenuItemList({ items, groups, onCommand, cssPrefix }: MenuItemListProps
       hoverTimerRef.current = setTimeout(() => setHoveredKey(key), 100);
     }
   }, []);
+  /* jscpd:ignore-end */
 
   const flatItems = items ?? (groups?.flatMap((g) => g.items) ?? []);
 

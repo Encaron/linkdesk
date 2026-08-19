@@ -10,7 +10,7 @@
  * lifecycle-ops 双端消费，放此处防 runtime↔lifecycle-ops 成环）。
  */
 
-import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution } from "../core/api/types";
+import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
@@ -164,7 +164,8 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
 
   // E3.6：contributes.views → ViewContainerService（异步——动态 import view 组件）
   if (c.views) {
-    const views = c.views as Record<string, Array<{ id: string; title?: string; render: string; role?: "toolbar" | "section"; when?: string; order?: number; collapsed?: boolean; canToggleVisibility?: boolean; canMoveView?: boolean; hideByDefault?: boolean; singleViewPaneContainerTitle?: string; titleDescription?: string; showActions?: string; titleTooltip?: string; minHeight?: number }>>;
+    // E5.8#1c：schema 归口 ContributesViews（types.ts 权威定义）——替代手写内联类型
+    const views = c.views as ContributesViews;
     try {
       const { ViewContainerService } = await import("../core/services/layout/ViewContainerService");
       for (const [containerId, viewDefs] of Object.entries(views)) {

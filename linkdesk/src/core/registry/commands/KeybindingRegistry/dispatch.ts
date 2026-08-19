@@ -30,17 +30,31 @@ export function isEditableElementFocused(): boolean {
     || (el as HTMLElement).isContentEditable;
 }
 
-/**
- * 全局 keydown 处理器——对标 VS Code 的键盘事件分发。
- * 挂到 window 上，App 启动时调用一次。
- *
- * E2c #16：支持 chord（双键序列）——如 Ctrl+K Ctrl+S。
- */
-export function handleKeyEvent(e: KeyboardEvent): boolean {
+/** 可编辑/捕获守卫——handleKeyEvent/handleKeyInput 共用（E5.8#1c 去重） */
+function shouldDispatchKey(): boolean {
   if (_captureActive) return false; // E3f #59-D：行内编辑优先
-  // 🔥 DOM 直检——不依赖组件手动设 context key，永不遗漏
-  if (isEditableElementFocused()) return false;
-  const keyString = keyboardEventToKeyString(e);
+  if (isEditableElementFocused()) return false; // 🔥 DOM 直检——不依赖组件手动设 context key，永不遗漏
+  return true;
+}
+
+/** Resolver 仲裁 winner + 执行——chord-2nd/单键共用（E5.8#1c 去重）。执行成功返回 true */
+function runWinner(seq: string, e?: KeyboardEvent): boolean {
+  const winner = keybindingResolver.resolve(seq);
+  if (winner && hasHandler(winner.command)) {
+    e?.preventDefault();
+    e?.stopImmediatePropagation();
+    executeCommand(winner.command, undefined, ...(winner.args ?? []));
+    return true;
+  }
+  return false;
+}
+
+/**
+ * 统一分发状态机——handleKeyEvent/handleKeyInput 共用（E5.8#1c 去重）。
+ * keyString 归一化后进入 chord 状态机 + 单键匹配；e 存在（DOM keydown 路径）时命中后
+ * preventDefault + stopImmediatePropagation，主进程转发路径（无 e）跳过。
+ */
+function tryExecute(keyString: string, e?: KeyboardEvent): boolean {
   if (!keyString) return false; // modifier 键自己
 
   // ── Chord 第二键 ──
@@ -51,13 +65,7 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     resetChord(); // 清除 timer + 清除状态栏提示
     const fullChord = `${firstKey} ${keyString}`;
 
-    const winner = keybindingResolver.resolve(fullChord);
-    if (winner && hasHandler(winner.command)) {
-      e.preventDefault();
-      e.stopImmediatePropagation();
-      executeCommand(winner.command, undefined, ...(winner.args ?? []));
-      return true;
-    }
+    if (runWinner(fullChord, e)) return true;
     // chord 第二键不匹配 → 通知状态栏显示错误提示（对标 VS Code）
     window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
       detail: { isPending: false, failedKey: keyString, firstKey },
@@ -73,20 +81,23 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
     window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
       detail: { isPending: true, firstKey: keyString },
     }));
-    e.preventDefault();
+    e?.preventDefault();
     return true; // 消费了事件——等待第二键
   }
 
   // ── 单键匹配——Resolver 仲裁（E2c #17a） ──
-  const winner = keybindingResolver.resolve(keyString);
-  if (winner && hasHandler(winner.command)) {
-    e.preventDefault();
-    e.stopImmediatePropagation();
-    executeCommand(winner.command, undefined, ...(winner.args ?? []));
-    return true;
-  }
+  return runWinner(keyString, e);
+}
 
-  return false;
+/**
+ * 全局 keydown 处理器——对标 VS Code 的键盘事件分发。
+ * 挂到 window 上，App 启动时调用一次。
+ *
+ * E2c #16：支持 chord（双键序列）——如 Ctrl+K Ctrl+S。
+ */
+export function handleKeyEvent(e: KeyboardEvent): boolean {
+  if (!shouldDispatchKey()) return false;
+  return tryExecute(keyboardEventToKeyString(e), e);
 }
 
 /**
@@ -95,47 +106,8 @@ export function handleKeyEvent(e: KeyboardEvent): boolean {
  * 返回 true 表示壳消费了此按键（应已 preventDefault 在主进程侧）。
  */
 export function handleKeyInput(input: KeyboardInput): boolean {
-  if (_captureActive) return false;
-  if (isEditableElementFocused()) return false;
-  const keyString = keyboardInputToKeyString(input);
-  if (!keyString) return false;
-
-  // ── Chord 第二键 ──
-  if (_chordState.isPending) {
-    if (keyString === _chordState.firstKey) return true;
-    const firstKey = _chordState.firstKey;
-    resetChord();
-    const fullChord = `${firstKey} ${keyString}`;
-    const winner = keybindingResolver.resolve(fullChord);
-    if (winner && hasHandler(winner.command)) {
-      executeCommand(winner.command, undefined, ...(winner.args ?? []));
-      return true;
-    }
-    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
-      detail: { isPending: false, failedKey: keyString, firstKey },
-    }));
-    return false;
-  }
-
-  // ── Chord 第一键 ──
-  if (isChordPrefix(keyString)) {
-    _chordState.isPending = true;
-    _chordState.firstKey = keyString;
-    _chordState.timer = setTimeout(resetChord, CHORD_TIMEOUT);
-    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.CHORD_CHANGED, {
-      detail: { isPending: true, firstKey: keyString },
-    }));
-    return true;
-  }
-
-  // ── 单键匹配 ──
-  const winner = keybindingResolver.resolve(keyString);
-  if (winner && hasHandler(winner.command)) {
-    executeCommand(winner.command, undefined, ...(winner.args ?? []));
-    return true;
-  }
-
-  return false;
+  if (!shouldDispatchKey()) return false;
+  return tryExecute(keyboardInputToKeyString(input));
 }
 
 /**

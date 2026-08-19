@@ -35,6 +35,8 @@ interface RightSidebarZoneProps {
 }
 
 export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps) {
+  // E5.8#1d EXEMPT：池内 zone 孪生（RightSidebarZone↔SidebarZone resize 骨架——handleSidebarAction/clamp/finishDrag/onMove/handleResizeStart），结构性重复
+  /* jscpd:ignore-start */
   // toolbar height tracked for PoolToolbarSlot（SidebarZone #10 同款）
   const setToolbarHeight = useState(0)[1];
 
@@ -145,6 +147,7 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
     document.body.style.cursor = "col-resize";
     document.body.style.userSelect = "none";
   }, []);
+  /* jscpd:ignore-end */
 
   // 分离 toolbar / section 角色（SidebarZone #10 同款）
   const toolbarViews: SidebarViewMeta[] = [];

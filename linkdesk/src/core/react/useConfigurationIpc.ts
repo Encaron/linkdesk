@@ -20,11 +20,8 @@ function lk(): NonNullable<LinkDeskAPI["configuration"]> {
   return cfg;
 }
 
-/**
- * 获取并订阅配置值——对标 VS Code workspace.getConfiguration().get(key)
- * IPC 版：异步初始化 + 订阅 onChange 保持同步
- */
-export function useConfigurationIpc<T>(key: string): [T | undefined, (value: T) => Promise<void>] {
+/** 异步拉取初始值 + 订阅 onChange 驱动重渲染——useConfigurationIpc/useConfigurationValueIpc 共用（E5.8#1c 去重） */
+function useSubscribedConfigValueIpc<T>(key: string): T | undefined {
   const [value, setValue] = useState<T | undefined>(undefined);
 
   useEffect(() => {
@@ -39,6 +36,16 @@ export function useConfigurationIpc<T>(key: string): [T | undefined, (value: T) 
     });
     return () => { cancelled = true; unsub(); };
   }, [key]);
+
+  return value;
+}
+
+/**
+ * 获取并订阅配置值——对标 VS Code workspace.getConfiguration().get(key)
+ * IPC 版：异步初始化 + 订阅 onChange 保持同步
+ */
+export function useConfigurationIpc<T>(key: string): [T | undefined, (value: T) => Promise<void>] {
+  const value = useSubscribedConfigValueIpc<T>(key);
 
   const setter = useCallback(
     async (newValue: T) => {
@@ -55,18 +62,5 @@ export function useConfigurationIpc<T>(key: string): [T | undefined, (value: T) 
  * 对标 useConfigurationValue 的 IPC 版。
  */
 export function useConfigurationValueIpc<T>(key: string): T | undefined {
-  const [value, setValue] = useState<T | undefined>(undefined);
-
-  useEffect(() => {
-    let cancelled = false;
-    lk().get(key).then((v) => {
-      if (!cancelled) setValue(v as T);
-    }).catch(() => {});
-    const unsub = lk().onChange(key, (v: unknown) => {
-      if (!cancelled) setValue(v as T);
-    });
-    return () => { cancelled = true; unsub(); };
-  }, [key]);
-
-  return value;
+  return useSubscribedConfigValueIpc<T>(key);
 }

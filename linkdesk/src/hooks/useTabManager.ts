@@ -205,6 +205,17 @@ export function useTabManager() {
     []
   );
 
+  // 🔥 E5.7 Bug A 修复：返回值不能从 updater 里读——提交态在 updater 外算，updater 内只应用。
+  // E5.8#1c：closeTab dirty 路径与 forceCloseTab 共用此提交（去重）。
+  const commitForceClose = (tabId: string): CloseTabResult => {
+    const eager = reduceForceCloseTab(tabStateRef.current, tabId);
+    setTabState((prev) => {
+      const r = reduceForceCloseTab(prev, tabId);
+      return r.state ?? prev;
+    });
+    return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
+  };
+
   // E5#51a：dirty 确认下沉到 closeTab——所有关闭路径统一行为
   const closeTab = useCallback(
     async (tabId: string): Promise<CloseTabResult> => {
@@ -217,14 +228,8 @@ export function useTabManager() {
           i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) })
         );
         if (!confirmed) return { closed: false, tabId, reason: "dirty" };
-        // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
-        // 确认弹窗 await 之后重新读提交态（期间状态可能已变）。
-        const eager = reduceForceCloseTab(tabStateRef.current, tabId);
-        setTabState((prev) => {
-          const r = reduceForceCloseTab(prev, tabId);
-          return r.state ?? prev;
-        });
-        return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
+        // 确认弹窗 await 之后重新读提交态（期间状态可能已变）
+        return commitForceClose(tabId);
       }
       // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
       const eager = reduceCloseTab(tabStateRef.current, tabId);
@@ -248,15 +253,7 @@ export function useTabManager() {
   );
 
   const forceCloseTab = useCallback(
-    (tabId: string): CloseTabResult => {
-      // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
-      const eager = reduceForceCloseTab(tabStateRef.current, tabId);
-      setTabState((prev) => {
-        const r = reduceForceCloseTab(prev, tabId);
-        return r.state ?? prev;
-      });
-      return { closed: eager.closed, tabId, reason: eager.reason, newActiveTabId: eager.newActiveTabId };
-    },
+    (tabId: string): CloseTabResult => commitForceClose(tabId),
     []
   );
 
