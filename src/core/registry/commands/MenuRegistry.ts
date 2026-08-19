@@ -8,6 +8,8 @@
  * VS Code 源码：src/vs/platform/actions/common/actions.ts — MenuId, MenuRegistry
  */
 
+import { trackRegistration } from "../registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
+
 /* ── MenuId：唯一权威定义 ── */
 
 /**
@@ -82,13 +84,15 @@ export type ManifestMenuItem =
 
 const _menus = new Map<MenuId, Array<MenuItem & { pluginId: string }>>();
 
-/** 注册菜单项——loader 在 parseContributions 阶段调用。幂等：同 pluginId + command 不会重复。 */
+/** 注册菜单项——loader 在 parseContributions 阶段调用。幂等：同 pluginId + command 不会重复。
+ *  E5.8#10 返 disposer：只删本次调用新增的条目（引用级精确）——去重跳过的条目不碰。 */
 export function registerMenuItems(
   menuId: MenuId,
   pluginId: string,
   items: ManifestMenuItem[]
-): void {
+): () => void {
   const existing = _menus.get(menuId) ?? [];
+  const added: Array<MenuItem & { pluginId: string }> = [];
   for (const item of items) {
     let normalized: MenuItem & { pluginId: string };
 
@@ -129,9 +133,20 @@ export function registerMenuItems(
       : false;
     if (!duplicate) {
       existing.push(normalized);
+      added.push(normalized);
     }
   }
   _menus.set(menuId, existing);
+
+  // E5.8#10：disposer = 从当前列表滤掉本次新增的引用。unregisterMenuItems 换过数组也幂等
+  // （引用不在新数组里 → filter 自然保留）。无新增（全去重）→ 不登记追踪，返 no-op。
+  const dispose = (): void => {
+    if (added.length === 0) return;
+    const list = _menus.get(menuId);
+    if (!list) return;
+    _menus.set(menuId, list.filter((item) => !added.includes(item)));
+  };
+  return added.length > 0 ? trackRegistration(pluginId, dispose) : () => {};
 }
 
 /** 注销插件在指定 MenuId 下的所有菜单项 */
@@ -186,16 +201,27 @@ export interface TitleBarContribution {
 
 const _titleBar = new Map<string, Array<TitleBarContribution & { pluginId: string }>>();
 
-/** 插件声明 contributes.titleBar → 注册按钮到指定槽位 */
+/** 插件声明 contributes.titleBar → 注册按钮到指定槽位。
+ *  E5.8#10 返 disposer：删"这一条"（按引用滤除）。 */
 export function registerTitleBarContribution(
   pluginId: string,
   slot: "left" | "right",
   item: TitleBarContribution
-): void {
+): () => void {
   const list = _titleBar.get(slot) ?? [];
-  list.push({ ...item, pluginId });
+  const entry = { ...item, pluginId };
+  list.push(entry);
   list.sort((a, b) => (a.order ?? 100) - (b.order ?? 100));
   _titleBar.set(slot, list);
+
+  return trackRegistration(pluginId, () => {
+    const cur = _titleBar.get(slot);
+    if (!cur) return;
+    const kept = cur.filter((i) => i !== entry);
+    if (kept.length !== cur.length) {
+      _titleBar.set(slot, kept);
+    }
+  });
 }
 
 /** 获取指定槽位的所有按钮（已按 order 排序） */
