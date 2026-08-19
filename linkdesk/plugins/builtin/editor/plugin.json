@@ -18,21 +18,6 @@
       { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
       { "id": "editor.compareFiles", "title": "比较文件" }
     ],
-    "keybindings": [
-      { "key": "Ctrl+Shift+T", "command": "editor.reopenClosedEditor" },
-      { "key": "Ctrl+Z", "command": "monaco.action.undo" },
-      { "key": "Ctrl+Y", "command": "monaco.action.redo" },
-      { "key": "Ctrl+/", "command": "monaco.action.commentLine" },
-      { "key": "Ctrl+F", "command": "monaco.action.find" },
-      { "key": "Ctrl+H", "command": "monaco.action.replace" },
-      { "key": "Ctrl+G", "command": "monaco.action.gotoLine" },
-      { "key": "Ctrl+D", "command": "monaco.action.addSelectionToNextFindMatch" },
-      { "key": "F12", "command": "monaco.action.revealDefinition" },
-      { "key": "Ctrl+F12", "command": "monaco.action.goToImplementation" },
-      { "key": "Shift+F12", "command": "monaco.action.referenceSearch" },
-      { "key": "Ctrl+.", "command": "monaco.action.quickFix" },
-      { "key": "Ctrl+Shift+O", "command": "monaco.action.goToSymbol" }
-    ],
     "configuration": {
       "title": "编辑器",
       "properties": {
