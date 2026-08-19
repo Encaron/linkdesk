@@ -8,7 +8,6 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   registerTheme,
   unregisterTheme,
-  unregisterPluginThemes,
   getAvailableThemes,
   getThemesByPlugin,
   loadTheme,
@@ -17,6 +16,7 @@ import {
   getCurrentTheme,
   registerFallbackThemes,
 } from "./ThemeEngine";
+import { rollback } from "../../registry/registrationTracker";
 import type { Theme } from "./ThemeEngine";
 
 const MOCK_THEME: Theme = {
@@ -70,19 +70,20 @@ describe("ThemeEngine — registerTheme / unregisterTheme", () => {
     expect(getAvailableThemes()).not.toContain("Test Dark");
   });
 
-  it("unregisterPluginThemes — 注销插件的全部主题", () => {
+  // E5.8#12：unregisterPluginThemes 已删——插件主题经 tracker 逆序回滚（rollback 同语义）
+  it("卸载回滚 — 插件主题经 rollback 清空（getThemesByPlugin 同步摘除）", () => {
     registerTheme(MOCK_THEME, "my-plugin");
     registerTheme(MOCK_THEME2, "my-plugin");
-    unregisterPluginThemes("my-plugin");
+    rollback("my-plugin");
     expect(getAvailableThemes()).not.toContain("Test Dark");
     expect(getAvailableThemes()).not.toContain("Test Light");
     expect(getThemesByPlugin("my-plugin")).toEqual([]);
   });
 
-  it("unregisterPluginThemes — 不影响其他插件的主题", () => {
+  it("卸载回滚 — 不影响其他插件的主题", () => {
     registerTheme(MOCK_THEME, "plugin-a");
     registerTheme(MOCK_THEME2, "plugin-b");
-    unregisterPluginThemes("plugin-a");
+    rollback("plugin-a");
     expect(getAvailableThemes()).toContain("Test Light");
     expect(getAvailableThemes()).not.toContain("Test Dark");
   });

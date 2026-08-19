@@ -65,15 +65,6 @@ export function hasLspFor(extension: string): boolean {
   return !!def?.lsp;
 }
 
-/* ── 注销 ── */
-
-export function unregisterPluginLangDefs(pluginId: string): void {
-  const exts = _pluginExts.get(pluginId);
-  if (!exts) return;
-  for (const ext of exts) _extMap.delete(ext);
-  _pluginExts.delete(pluginId);
-}
-
 export function getAllLangDefs(): Map<string, LangDefContribution> {
   return new Map(_extMap);
 }

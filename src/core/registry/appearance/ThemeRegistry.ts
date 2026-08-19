@@ -57,15 +57,6 @@ export const ThemeRegistry = {
     themes.delete(themeId);
   },
 
-  /** 注销插件的全部主题——插件卸载时调用 */
-  unregisterPlugin(pluginId: string): void {
-    const ids = pluginThemeIds.get(pluginId);
-    if (ids) {
-      for (const id of ids) themes.delete(id);
-      pluginThemeIds.delete(pluginId);
-    }
-  },
-
   /**
    * 三层退路查找。
    * 找到 → 返回 RegisteredTheme（第 1/2 层命中）

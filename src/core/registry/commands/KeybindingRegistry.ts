@@ -27,7 +27,6 @@ export {
   registerKeybinding,
   removeKeybindingForCommand,
   resetKeybindingToDefault,
-  unregisterPluginKeybindings,
   getKeybindings,
   findKeybindingForCommand,
   getKeybindingSyncData,

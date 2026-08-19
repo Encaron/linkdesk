@@ -152,15 +152,6 @@ class KeybindingResolver {
 
 export const keybindingResolver = new KeybindingResolver();
 
-/** 注销插件的全部快捷键——卸载时调用 */
-export function unregisterPluginKeybindings(pluginId: string): void {
-  for (let i = _bindings.length - 1; i >= 0; i--) {
-    if (_bindings[i].pluginId === pluginId) {
-      _bindings.splice(i, 1);
-    }
-  }
-}
-
 /** 获取所有快捷键 */
 export function getKeybindings(): Keybinding[] {
   return [..._bindings];

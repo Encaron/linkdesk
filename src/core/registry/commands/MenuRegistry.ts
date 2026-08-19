@@ -149,23 +149,6 @@ export function registerMenuItems(
   return added.length > 0 ? trackRegistration(pluginId, dispose) : () => {};
 }
 
-/** 注销插件在指定 MenuId 下的所有菜单项 */
-export function unregisterMenuItems(menuId: MenuId, pluginId: string): void {
-  const existing = _menus.get(menuId);
-  if (!existing) return;
-  _menus.set(
-    menuId,
-    existing.filter((item) => item.pluginId !== pluginId)
-  );
-}
-
-/** 注销插件的全部菜单项——卸载时调用 */
-export function unregisterPluginMenus(pluginId: string): void {
-  for (const [menuId] of _menus) {
-    unregisterMenuItems(menuId, pluginId);
-  }
-}
-
 /** 获取指定位置的菜单项（不含 when 过滤——过滤由 ContextMenu 组件调用 ContextKeyService 完成） */
 export function getMenuItems(
   menuId: MenuId
@@ -229,11 +212,4 @@ export function getTitleBarContributions(
   slot: "left" | "right"
 ): Array<TitleBarContribution & { pluginId: string }> {
   return _titleBar.get(slot) ?? [];
-}
-
-/** 注销插件在 TitleBar 的所有按钮——卸载时调用 */
-export function unregisterPluginTitleBarContributions(pluginId: string): void {
-  for (const [slot, items] of _titleBar) {
-    _titleBar.set(slot, items.filter((i) => i.pluginId !== pluginId));
-  }
 }

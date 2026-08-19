@@ -77,15 +77,6 @@ export function unregisterTheme(name: string): void {
   pluginThemes.delete(name);
 }
 
-/** E2c #19h A3：注销插件的全部主题——插件卸载时 lifecycle 调用 */
-export function unregisterPluginThemes(pluginId: string): void {
-  const names = _pluginThemeNames.get(pluginId);
-  if (names) {
-    for (const name of names) pluginThemes.delete(name);
-    _pluginThemeNames.delete(pluginId);
-  }
-}
-
 /** 获取所有已注册主题的名称（仅插件提供——主题全走 contributes.themes） */
 export function getAvailableThemes(): string[] {
   return Array.from(pluginThemes.keys());

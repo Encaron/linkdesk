@@ -51,26 +51,6 @@ export function registerProtocol(entry: ProtocolEntry): () => void {
   });
 }
 
-/** 注销协议——卸载时调用 */
-export function unregisterProtocol(protocolId: string): boolean {
-  if (_activeProtocolId === protocolId) {
-    _activeProtocolId = "bracket"; // 回退到内置方括号协议
-  }
-  return _protocols.delete(protocolId);
-}
-
-/** 注销插件的全部协议 */
-export function unregisterPluginProtocols(pluginId: string): void {
-  for (const [id, entry] of _protocols) {
-    if (entry.pluginId === pluginId) {
-      _protocols.delete(id);
-      if (_activeProtocolId === id) {
-        _activeProtocolId = "bracket";
-      }
-    }
-  }
-}
-
 /** 获取所有已注册协议——终端下拉框消费 */
 export function listProtocols(): ProtocolEntry[] {
   return Array.from(_protocols.values());

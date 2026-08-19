@@ -8,13 +8,11 @@ import { PluginLifecycle } from "../../pluginLoader/lifecycle-events";
 import { clearRegistrationLayers } from "./registrationTracker";
 import {
   registerConfiguration,
-  unregisterConfiguration,
   updateConfigurationEnum,
   getPluginConfiguration,
   getMergedSchema,
   getDefaults,
   registerConfigurationDefaults,
-  unregisterConfigurationDefaults,
   getConfigurationDefaults,
   requestSettingsGroup,
   consumeSettingsGroup,
@@ -42,25 +40,26 @@ const MOCK_CONFIG: ConfigurationContribution = {
 
 describe("ConfigurationRegistry — register / unregister", () => {
   beforeEach(() => {
+    clearRegistrationLayers();
     clearConfigurationRegistrations();
   });
 
   it("registerConfiguration — 注册后 getPluginConfiguration 返回", () => {
-    registerConfiguration("test-plugin", MOCK_CONFIG);
+    registerConfiguration("test-plugin", JSON.parse(JSON.stringify(MOCK_CONFIG)));
     const contrib = getPluginConfiguration("test-plugin");
     expect(contrib).toBeDefined();
     expect(contrib!.title).toBe("测试设置");
   });
 
   it("registerConfiguration — 注册后 getMergedSchema 含配置项", () => {
-    registerConfiguration("test-plugin", MOCK_CONFIG);
+    registerConfiguration("test-plugin", JSON.parse(JSON.stringify(MOCK_CONFIG)));
     const merged = getMergedSchema();
     expect(merged["app.theme"]).toBeDefined();
     expect(merged["app.theme"].default).toBe("Dark");
   });
 
   it("registerConfiguration — 同一 pluginId 合并属性", () => {
-    registerConfiguration("test-plugin", MOCK_CONFIG);
+    registerConfiguration("test-plugin", JSON.parse(JSON.stringify(MOCK_CONFIG)));
     registerConfiguration("test-plugin", {
       title: "测试设置",
       properties: { "app.extra": { type: "boolean", default: true, description: "额外" } },
@@ -70,18 +69,21 @@ describe("ConfigurationRegistry — register / unregister", () => {
     expect(Object.keys(contrib!.properties)).toContain("app.extra");
   });
 
-  it("unregisterConfiguration — 注销后返回 true", () => {
-    registerConfiguration("test-plugin", MOCK_CONFIG);
-    expect(unregisterConfiguration("test-plugin")).toBe(true);
+  // E5.8#12：unregisterConfiguration 已删——卸载清理由 fire onWillUninstall → tracker 逆序回滚
+  // 深拷贝——回滚 disposer 从 contribution.properties 原地删键，不污染共享 MOCK_CONFIG
+  it("卸载回滚 — fire onWillUninstall → getPluginConfiguration 返回 undefined", () => {
+    registerConfiguration("test-plugin", JSON.parse(JSON.stringify(MOCK_CONFIG)));
+    PluginLifecycle.onWillUninstall.fire({ pluginId: "test-plugin", reason: "uninstall" });
+    expect(getPluginConfiguration("test-plugin")).toBeUndefined();
   });
 
-  it("unregisterConfiguration — 未注册返回 false", () => {
-    expect(unregisterConfiguration("nonexistent")).toBe(false);
+  it("卸载回滚 — fire 未注册 pluginId → 不抛错", () => {
+    expect(() => PluginLifecycle.onWillUninstall.fire({ pluginId: "nonexistent", reason: "uninstall" })).not.toThrow();
   });
 
-  it("unregisterConfiguration — 注销后 getMergedSchema 不含该配置项", () => {
-    registerConfiguration("test-plugin", MOCK_CONFIG);
-    unregisterConfiguration("test-plugin");
+  it("卸载回滚 — getMergedSchema 不含该配置项", () => {
+    registerConfiguration("test-plugin", JSON.parse(JSON.stringify(MOCK_CONFIG)));
+    PluginLifecycle.onWillUninstall.fire({ pluginId: "test-plugin", reason: "uninstall" });
     const merged = getMergedSchema();
     expect(merged["app.theme"]).toBeUndefined();
   });
@@ -122,13 +124,6 @@ describe("ConfigurationRegistry — configurationDefaults", () => {
     registerConfigurationDefaults("test-plugin", { "editor.fontSize": 12 });
     const merged = getConfigurationDefaults();
     expect(merged["editor.fontSize"]).toBe(12);
-  });
-
-  it("unregisterConfigurationDefaults — 注销后 getConfigurationDefaults 不含", () => {
-    registerConfigurationDefaults("test-plugin", { "editor.fontSize": 12 });
-    unregisterConfigurationDefaults("test-plugin");
-    const merged = getConfigurationDefaults();
-    expect(merged["editor.fontSize"]).toBeUndefined();
   });
 
   it("getConfigurationDefaults — 合并多个插件的弱默认值", () => {
@@ -181,7 +176,7 @@ describe("ConfigurationRegistry — register 返 disposer（E5.8#10）", () => {
   });
 
   it("fire onWillUninstall → 配置 + 弱默认值自动逆序回滚（机械保障）", () => {
-    registerConfiguration("disposer-test", MOCK_CONFIG);
+    registerConfiguration("disposer-test", JSON.parse(JSON.stringify(MOCK_CONFIG)));
     registerConfigurationDefaults("disposer-test", { "editor.fontSize": 12 });
 
     PluginLifecycle.onWillUninstall.fire({ pluginId: "disposer-test", reason: "uninstall" });

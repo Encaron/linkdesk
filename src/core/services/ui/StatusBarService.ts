@@ -100,12 +100,6 @@ export function getDynamicStatusBarItems(): DynamicStatusBarItem[] {
   return result;
 }
 
-/** 注销某插件的全部动态项——lifecycle.ts 在卸载时调用 */
-export function unregisterStatusBarPlugin(pluginId: string): void {
-  const deleted = _items.delete(pluginId);
-  if (deleted) onDidChangeStatusBar.fire();
-}
-
 /** 清空全部（测试用） */
 export function clearStatusBarItems(): void {
   _items.clear();

@@ -16,15 +16,6 @@
 import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
 import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
 import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
-import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/registry/ConfigurationRegistry";
-import { unregisterPluginCommands } from "../core/registry/commands/CommandRegistry";
-import { unregisterPluginKeybindings } from "../core/registry/commands/KeybindingRegistry";
-import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/registry/commands/MenuRegistry";
-import { unregisterPluginChannels } from "../core/services/ui/LogChannel";
-import { unregisterPluginThemes } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
-import { unregisterStatusBarPlugin } from "../core/services/ui/StatusBarService";
-import { unregisterPluginLanguageBundles } from "./i18nResources";
 
 // E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
 // 避免 CommandRegistry → tracker → lifecycle → CommandRegistry 循环依赖。
@@ -66,41 +57,8 @@ export function initLifecycleConsumers(): void {
     // 'disable' → 保留 iconOrder 位置（下次启用时恢复原位）
   });
 
-  /* ─── 消费端 2：配置注册清理 ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // B70 教训：卸载/禁用时必须清理配置注册——不管 reason
-    unregisterConfiguration(pluginId);
-    unregisterConfigurationDefaults(pluginId);
-  });
-
-  /* ─── 消费端 2b：注册表全量清理（Phase 5 验收 B2——6 个 unregister* 从未被调用） ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
-    // E36#4.7: ViewContainerService 显式清理（RegistryBase 自动处理程序已覆盖，idempotent）
-    // 动态 import——避免静态 import 形成 lifecycle ↔ RegistryBase 循环依赖
-    import("../core/services/layout/ViewContainerService").then(({ ViewContainerService }) => {
-      ViewContainerService.unregisterAll(pluginId);
-    }).catch(() => {}); // 非关键操作——清理注册表，失败不阻塞卸载流程
-    unregisterPluginCommands(pluginId);
-    unregisterPluginKeybindings(pluginId);
-    unregisterPluginMenus(pluginId);
-    unregisterPluginTitleBarContributions(pluginId);
-    // E5.7#49：unregisterPluginProtocols 已删——ProtocolRegistry 唯一实例在主进程，
-    // 卸载清理由 loader 的 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
-    // E5.7#45.7：unregisterPluginCards 已删——CardRegistry 整删（Phase 5 柱子 5 骨架，
-    // registerCard 全仓零调用，卡片工作台插件从未存在于此树；未来重建走插件自持注册表）
-    unregisterPluginChannels(pluginId);
-    // E5.7#50：unregisterPluginFileAssociations 已删——FileAssociationService 唯一实例在主进程，
-    // 卸载清理由 plugins:rescanManifests → 主进程全清全重扫覆盖（壳实例已空，此处成死写）
-    unregisterPluginThemes(pluginId);
-    ThemeRegistry.unregisterPlugin(pluginId);
-    unregisterStatusBarPlugin(pluginId);
-    // H6 升级（重装契约修复）：语言资源清理收敛于 i18nResources 单一实现——
-    // 原只删 pluginId 命名空间 → translation 命名空间死键残留；现按剩余插件整份重建。
-    unregisterPluginLanguageBundles(pluginId);
-  });
+  // E5.8#12：消费端 2/2b 已删——所有 register() 的 per-entry disposer 经 registrationTracker
+  // （模块加载时订阅 onWillUninstall）在 fire 内自动逆序回滚，卸载清理全机械，无手动 unregister*。
 
   /* ─── 消费端 3：toast 通知 ─── */
 
@@ -137,13 +95,6 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  /* ─── 消费端 4：标签页清理 ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 通知壳关闭使用此插件的标签页——必须在 unregisterViewPlugin 之前
-    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.PLUGIN_REMOVED, { detail: { pluginId } }));
-  });
-
   /* ─── 消费端 5：视图刷新通知（CustomEvent + 版本标记双保险） ─── */
 
   PluginLifecycle.onDidUninstall.event(() => { notifyPluginViews(); });
@@ -172,6 +123,16 @@ export function initLifecycleConsumers(): void {
       window.linkdesk?.events?.emit("plugin:uninstalled", { pluginId, reason });
     } catch { /* 广播失败不阻塞生命周期 */ }
   });
+}
+
+/**
+ * 卸载/禁用前通知壳关闭相关标签页 + 侧栏视图（E5.8#12 移自消费端 4）。
+ * 🔥 必须在本插件的 onWillUninstall.fire() 之前调用——App/lifecycle.ts 的
+ * revertContainerIfCurrent 要读 getViewPlugin(pluginId).manifest（viewRegistry 还在）。
+ * tracker 回滚在 fire 内自动删除 viewRegistry 条目——若先 fire 再通知，侧栏回退会静默失效。
+ */
+export function notifyPluginRemoved(pluginId: string): void {
+  window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.PLUGIN_REMOVED, { detail: { pluginId } }));
 }
 
 /* ── 图标排序辅助（和 loader.ts 共享——放在这里归一化） ── */

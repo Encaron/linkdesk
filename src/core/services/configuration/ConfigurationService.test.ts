@@ -10,9 +10,9 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   registerConfiguration,
   registerConfigurationDefaults,
-  unregisterConfigurationDefaults,
   clearConfigurationRegistrations,
 } from "../../registry/ConfigurationRegistry";
+import { rollback } from "../../registry/registrationTracker";
 import {
   getConfigurationValue,
   inspectConfiguration,
@@ -87,12 +87,12 @@ describe("ConfigurationService — configurationDefaults 弱默认值", () => {
     registerConfigurationDefaults("other-plugin", { "app.theme": "Light" });
     // configurationDefaults > schema default
     expect(getConfigurationValue("app.theme")).toBe("Light");
-    unregisterConfigurationDefaults("other-plugin");
+    rollback("other-plugin");
   });
 
   it("getConfigurationValue — 注销 configurationDefaults 后退回 schema default", () => {
     registerConfigurationDefaults("other-plugin", { "app.theme": "Light" });
-    unregisterConfigurationDefaults("other-plugin");
+    rollback("other-plugin");
     expect(getConfigurationValue("app.theme")).toBe("Dark");
   });
 });

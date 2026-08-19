@@ -111,15 +111,6 @@ export function getLogChannels(): LogChannel[] {
   return Array.from(_channels.values());
 }
 
-/** 注销插件的全部日志频道——卸载时调用 */
-export function unregisterPluginChannels(pluginId: string): void {
-  for (const [id, channel] of _channels) {
-    if (channel.pluginId === pluginId) {
-      _channels.delete(id);
-    }
-  }
-}
-
 /* ── 事件（UI 层订阅） ── */
 
 /** 日志频道内容变更——Output 面板实时更新 */
