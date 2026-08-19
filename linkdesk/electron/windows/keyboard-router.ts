@@ -21,7 +21,9 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { IPC } from '../ipc/channels.js';
 // E5.7#97：KeyboardInput 归口 src/core/types/ipc/keyboard.ts——与壳 KeybindingRegistry 同源（原本地双份定义）
-import type { KeyboardInput } from '../../src/core/types/ipc/keyboard';
+import type { KeyboardInput, KeybindingSyncData } from '../../src/core/types/ipc/keyboard';
+// E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
+import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
 // ── 诊断日志（写 protocol-debug.log——与 renderer console-message 同文件）──
 
@@ -37,29 +39,9 @@ function debug(msg: string): void {
   } catch { /* ignore */ }
 }
 
-// ── 类型（主进程侧——键盘输入快照）──
-
-interface KeybindingSyncData {
-  shortcuts: string[];
-  chordPrefixes: string[];
-  chordCombos: string[];
-}
-
 // ── 常量——与 KeybindingRegistry.CHORD_TIMEOUT 同值 ──
 
 const CHORD_TIMEOUT = 2000;
-
-// ── 特殊键映射——与壳 KeybindingRegistry.KEY_MAP 一致 ──
-
-const KEY_MAP: Record<string, string> = {
-  ArrowUp: 'up', ArrowDown: 'down', ArrowLeft: 'left', ArrowRight: 'right',
-  Escape: 'escape', Enter: 'enter', Tab: 'tab', Backspace: 'backspace',
-  Delete: 'delete', Home: 'home', End: 'end', PageUp: 'pageup', PageDown: 'pagedown',
-  ' ': 'space',
-};
-
-const MODIFIER_KEYS = new Set(['control', 'shift', 'alt', 'meta']);
-const MODIFIER_ORDER = ['ctrl', 'shift', 'alt', 'meta'];
 
 // ── 快捷键表（IPC 同步）──
 
@@ -104,34 +86,6 @@ function inputToKeyboardInput(input: Input): KeyboardInput {
     key: input.key,
     code: input.code,
   };
-}
-
-/** 纯数据 → 规范化快捷键字符串——与壳 keyboardInputToKeyString 逻辑一致 */
-function keyboardInputToKeyString(input: KeyboardInput): string {
-  const parts: string[] = [];
-  if (input.ctrlKey) parts.push('ctrl');
-  if (input.shiftKey) parts.push('shift');
-  if (input.altKey) parts.push('alt');
-  if (input.metaKey) parts.push('meta');
-
-  if (!input.key) return '';
-  let key = KEY_MAP[input.key] ?? input.key.toLowerCase();
-  // E5.7#79：物理键归一化——"+" 是 "=" 的上档字符（US 布局），Ctrl+Shift+=（= Ctrl+加号）
-  // 与 Ctrl+= 同物理键。必须与壳 KeybindingRegistry.keyboardInputToKeyString 保持一致。
-  if (key === '+') key = '=';
-  if (MODIFIER_KEYS.has(key)) return '';
-
-  parts.push(key);
-  return parts
-    .sort((a, b) => {
-      const ai = MODIFIER_ORDER.indexOf(a);
-      const bi = MODIFIER_ORDER.indexOf(b);
-      if (ai !== -1 && bi !== -1) return ai - bi;
-      if (ai !== -1) return -1;
-      if (bi !== -1) return 1;
-      return a.localeCompare(b);
-    })
-    .join('+');
 }
 
 // ── 公开 API ──

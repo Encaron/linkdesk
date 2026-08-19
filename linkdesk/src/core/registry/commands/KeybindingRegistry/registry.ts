@@ -6,7 +6,7 @@
 
 import { CoreEvents } from "../../../react/events/CoreEvents";
 import { ContextKeyService } from "../ContextKeyService";
-import { normalizeKey } from "./normalization";
+import { normalizeKey } from "../../../utils/keybindingNormalization";
 import type { Keybinding, KeybindingConflict } from "./types";
 
 export const _bindings: Keybinding[] = [];
