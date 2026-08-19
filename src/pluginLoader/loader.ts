@@ -24,7 +24,8 @@ import { pushToast, TOAST_TTL_ERROR } from "../core/services/ui/NotificationServ
 import { setPluginStateValue, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 import { initLifecycleConsumers } from "./lifecycle";
 // E5.8#11：状态机——watcher 卸载走 unloadPlugin（唯一卸载路径）+ 启动收尾失败诊断日志
-import { unloadPlugin, getLoadDiagnosticsSummary } from "./loadState";
+// E5.8#24 回归：watcher 跳过已失败/已挂起插件需要 getLoadDiagnostics 读状态机
+import { unloadPlugin, getLoadDiagnosticsSummary, getLoadDiagnostics } from "./loadState";
 import {
   pluginsApi,
   log,
@@ -244,6 +245,19 @@ export function isPluginLoaderReady(): boolean {
 let _watchInterval: ReturnType<typeof setInterval> | null = null;
 
 /**
+ * E5.8#24 回归修复：watcher 是否应跳过该插件（防止 2s 轮询反复重入 loadPlugin）。
+ *   - failed（依赖环/加载失败）：不进 loadedPluginIds → 每 2s 被重载 → 环 toast 反复刷屏（回归实况）。
+ *     重试走显式 enable/reinstall（markLoadStarted 清 failureReason 后再走管线），不靠轮询。
+ *   - pending（缺依赖挂起）：sweepPendingDependencies 在依赖就绪时自动补载，轮询重试无意义。
+ *   - 未尝试过的插件 getLoadDiagnostics 返回 "pending" 但 pendingReason 为 undefined——不跳过，正常加载。
+ *   独立纯函数——可单测（dependencies.test.ts 走真实 loadPlugin 状态机验证）。
+ */
+export function shouldWatcherSkip(pluginId: string): boolean {
+  const diag = getLoadDiagnostics(pluginId);
+  return diag.loadState === "failed" || diag.pendingReason !== undefined;
+}
+
+/**
  * Phase 5h：文件监听——轮询检测新插件目录。
  * 每 2 秒调用 Rust `list_plugin_dirs`。
  * - glob 中的插件（在 import.meta.glob 中）→ loadPlugin（Vite chunk）
@@ -258,6 +272,7 @@ export function startPluginWatcher(): void {
       for (const dir of dirs) {
         if (loadedPluginIds.has(dir)) continue;
         if (getDisabledList().includes(dir)) continue;
+        if (shouldWatcherSkip(dir)) continue;
 
         const manifestKey = Object.keys(pluginManifests).find(
           (k) => extractPluginId(k) === dir

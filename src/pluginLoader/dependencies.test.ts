@@ -32,6 +32,7 @@ import { loadedPluginIds, _deferredPlugins, _pendingPlugins, _loadingPromises } 
 import { clearLoadStates, getLoadDiagnostics, getLoadDiagnosticsSummary, unloadPlugin } from "./loadState";
 import { clearRegistrationLayers } from "../core/registry/registrationTracker";
 import { loadPlugin } from "./runtime";
+import { shouldWatcherSkip } from "./loader";  // E5.8#24 回归：watcher 跳过已失败/已挂起插件
 import { disablePlugin, getLoadedPluginManifests, getListPluginManifests } from "./lifecycle-ops";
 import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
 import { clearPluginStates } from "../core/services/plugins/PluginStateService";
@@ -257,6 +258,26 @@ describe("dependencies 集成——loadPlugin 依赖编排", () => {
     await loadPlugin(SELF_ID, "startup");
     expect(getLoadDiagnostics(SELF_ID).loadState).toBe("failed");
     expect(getLoadDiagnostics(SELF_ID).failureReason).toBe(`依赖环: ${SELF_ID} → ${SELF_ID}`);
+  });
+
+  it("E5.8#24 回归：watcher 跳过已失败/已挂起插件（防 2s 轮询反复重入弹 toast）", async () => {
+    // 复现路径：依赖环 fail-loud 后插件不进 loadedPluginIds → 若 watcher 每 2s 重载则反复弹环 toast。
+    manifests.set(CYCLE_A_ID, manifestOf("环A", [CYCLE_B_ID]));
+    manifests.set(CYCLE_B_ID, manifestOf("环B", [CYCLE_A_ID]));
+    manifests.set(LONELY_ID, manifestOf("孤独插件", [MISSING_DEP]));  // 缺依赖永挂起
+
+    await loadPlugin(CYCLE_A_ID, "startup");
+    await loadPlugin(CYCLE_B_ID, "startup");  // 环 fail-loud
+    await loadPlugin(LONELY_ID, "startup");   // 缺依赖挂起
+
+    // 已失败（环）——watcher 跳过，不再重载
+    expect(getLoadDiagnostics(CYCLE_B_ID).loadState).toBe("failed");
+    expect(shouldWatcherSkip(CYCLE_B_ID)).toBe(true);
+    // 已挂起（缺依赖）——跳过；sweep 依赖就绪自动补载，不需轮询
+    expect(getLoadDiagnostics(LONELY_ID).pendingReason).toContain(MISSING_DEP);
+    expect(shouldWatcherSkip(LONELY_ID)).toBe(true);
+    // 未尝试过的插件——loadState "pending" 但无 pendingReason → 不跳过，正常加载
+    expect(shouldWatcherSkip("never-attempted")).toBe(false);
   });
 
   it("extensionDependencies 兼容路径也参与编排（零插件使用，向后兼容钉住）", async () => {
