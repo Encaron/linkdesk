@@ -9,6 +9,7 @@
  *    三条准入标准全满足：多提供方、多消费方、桌子不知道内容。
  */
 import type { LangDefContribution } from "../../api/types";
+import { trackRegistration } from "../registrationTracker";
 
 /** extension（小写，带点） → LangDefContribution */
 const _extMap = new Map<string, LangDefContribution>();
@@ -18,9 +19,10 @@ const _pluginExts = new Map<string, Set<string>>();
 
 /* ── 注册 ── */
 
-export function registerLangDef(pluginId: string, def: LangDefContribution): void {
+export function registerLangDef(pluginId: string, def: LangDefContribution): () => void {
   // E5.5#7 Bug B fix：标记注册来源——用于跨 WebView IPC 同步。
   def._pluginId = pluginId;
+  const added: string[] = [];
   for (const rawExt of def.extensions) {
     const ext = normalizeLangExt(rawExt);
     if (!ext) continue;
@@ -30,10 +32,25 @@ export function registerLangDef(pluginId: string, def: LangDefContribution): voi
       );
     }
     _extMap.set(ext, def);
+    added.push(ext);
     const exts = _pluginExts.get(pluginId) ?? new Set();
     exts.add(ext);
     _pluginExts.set(pluginId, exts);
   }
+  // E5.8#10：引用级删除——只删自己这条，不误删后来注册者覆盖的条目。
+  // 反向索引仅在实删时移除——被覆盖的 ext 仍属本插件（经第二份 def），须保留。
+  return trackRegistration(pluginId, () => {
+    for (const ext of added) {
+      if (_extMap.get(ext) === def) {
+        _extMap.delete(ext);
+        const exts = _pluginExts.get(pluginId);
+        if (exts) {
+          exts.delete(ext);
+          if (exts.size === 0) _pluginExts.delete(pluginId);
+        }
+      }
+    }
+  });
 }
 
 /* ── 查询 ── */

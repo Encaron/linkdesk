@@ -29,15 +29,26 @@ export interface ProtocolEntry {
 
 /* ── Registry ── */
 
+import { trackRegistration } from "./registrationTracker";
+
 const _protocols = new Map<string, ProtocolEntry>();
 let _activeProtocolId = "bracket"; // 默认方括号协议——Phase 5 迁移后从 Prefs 读
 
-/** 注册协议——loader 在检测到 mode 为 "text" 或 "binary" 时调用 */
-export function registerProtocol(entry: ProtocolEntry): void {
+/** 注册协议——loader 在检测到 mode 为 "text" 或 "binary" 时调用。
+ *  E5.8#10：返 disposer + track——引用级删除，dispose 不误删后来者覆盖的条目。 */
+export function registerProtocol(entry: ProtocolEntry): () => void {
   if (_protocols.has(entry.id)) {
     console.warn(`[ProtocolRegistry] 协议 "${entry.id}" 重复注册——覆盖旧解析器`);
   }
   _protocols.set(entry.id, entry);
+  return trackRegistration(entry.pluginId, () => {
+    if (_protocols.get(entry.id) === entry) {
+      _protocols.delete(entry.id);
+      if (_activeProtocolId === entry.id) {
+        _activeProtocolId = "bracket"; // 回退到内置方括号协议
+      }
+    }
+  });
 }
 
 /** 注销协议——卸载时调用 */
