@@ -19,7 +19,7 @@ import { app, BrowserWindow, dialog } from 'electron';
 import type { WebContents } from 'electron';
 import { normalizePath } from '../../src/core/utils/path/pathUtils.js';
 
-export type GuardWriteOp = 'writeTextFile' | 'writeBinaryFile' | 'createDir' | 'copy' | 'remove';
+export type GuardWriteOp = 'writeTextFile' | 'writeBinaryFile' | 'createDir' | 'copy' | 'rename' | 'remove';
 
 /** Windows 系统目录——写操作无条件拒绝（归一化正斜杠形态） */
 const WINDOWS_DANGEROUS_DIRS = ['C:/Windows', 'C:/Program Files', 'C:/Program Files (x86)'];
@@ -33,6 +33,7 @@ const OP_LABELS: Record<GuardWriteOp, string> = {
   writeBinaryFile: '写入二进制文件',
   createDir: '创建目录',
   copy: '复制到',
+  rename: '重命名到', // E5.8#25.2：rename 通用 API 守卫标签
   remove: '删除',
 };
 

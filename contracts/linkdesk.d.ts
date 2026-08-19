@@ -540,6 +540,8 @@ export interface WorkspaceAPI {
         exists(p: string): Promise<boolean>;
         createDir(p: string): Promise<void>;
         copy(src: string, dest: string): Promise<void>;
+        /** E5.8#25.2：重命名/移动文件或目录（主进程 fs.rename 原子；对标 POSIX rename / VS Code fs.rename） */
+        rename(src: string, dest: string): Promise<void>;
         remove(p: string): Promise<void>;
         listDir(p: string): Promise<FileEntry[]>;
         readBinaryFile(p: string): Promise<Uint8Array>;
