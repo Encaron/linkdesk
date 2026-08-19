@@ -265,6 +265,18 @@
   border-radius: 3px;
 }
 
+/* E5.8#15.5：缺依赖挂起（PENDING）徽标——琥珀信息态（等待非错误，ui-ux-pro-max dark/muted chip） */
+.ms-item-badge-pending {
+  font-size: 9px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  padding: 1px 4px;
+  border-radius: 3px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  cursor: default;
+}
+
 /* ── Disabled extension item ── */
 
 .ms-extension-item.disabled {
