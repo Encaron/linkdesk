@@ -7,14 +7,15 @@
  * 🔥 EditorApp 不能用——它的 buildModelReference() 走 VS Code 的 IFileService.writeFile()，
  *    在 Electron 壳 WebView 里无写文件权限。手写 createModel+createEditor 绕过文件服务。
  *
- * 🔥 initMonacoEnv() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
+ * 🔥 bootstrapMonaco() 覆盖 IEditorService.openEditor() → F12/Ctrl+Click 自动走壳标签页。
  */
 import { useRef, useEffect, useImperativeHandle, forwardRef } from "react";
 // E5.7#98：编辑器/monaco ref 具体类型——替代 useRef<any>
 import type { editor as MonacoEditorApi } from "monaco-editor";
 // E5.6#11.5i：getLangDef → lk.langDef.get，shellEvents → lk.events
 const lk = window.linkdesk;
-import { initMonacoEnv } from "../services/monaco-init";
+// E5.8#24.8：初始化护栏统一——bootstrapMonaco（@codingame 补丁）+ getMonaco（补丁后才加载）
+import { bootstrapMonaco, getMonaco } from "../services/monaco-bootstrap";
 import { fileUriToPath, setPendingReveal, consumePendingReveal } from "../services/navigation-bridge";
 import { getLspClient, startLspClient } from "../services/lsp-bridge";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
@@ -95,8 +96,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
         await new Promise<void>(r=>{let n=0;const id=setInterval(()=>{if(container.clientWidth>0&&container.clientHeight>0||++n>100){clearInterval(id);r()}},30)});
       }
       if(disposed)return;
-      // 1. 全局一次性初始化 VS Code 服务层 + 导航桥
-      await initMonacoEnv(async (modelRef, _options) => {
+      // 1. 全局一次性补丁 VS Code 服务层 + 导航桥（幂等，并发共享同一 promise）
+      await bootstrapMonaco(async (modelRef, _options) => {
         const targetPath = modelRef.object.textEditorModel.uri.fsPath;
         const label = lk.path.normalize(targetPath).split("/").pop() || targetPath;
         tabsRef.current?.create("editor", {
@@ -109,8 +110,8 @@ const EditorView = forwardRef<EditorViewHandle, EditorViewProps>(function Editor
       });
       if (disposed) return;
 
-      // 2. 动态 import monaco（initMonacoEnv 已配置好 workers）
-      const monaco = await import("monaco-editor");
+      // 2. 取 monaco（E5.8#24.8 护栏：getMonaco 保证补丁完成 + 已配置好 workers）
+      const monaco = await getMonaco();
 
       // 3. 主题同步——先设 monacoRef，再注册订阅，确保回调中 ref 已就位
       syncMonacoTheme(monaco);

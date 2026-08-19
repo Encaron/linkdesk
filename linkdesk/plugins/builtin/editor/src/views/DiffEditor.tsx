@@ -8,6 +8,9 @@ import React, { useState, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { EditorModel } from "../services/EditorModel";
 import { syncMonacoTheme, subscribeThemeSync } from "../services/theme-sync";
+// E5.8#24.8：护栏统一——DiffEditor 先前直接 import("monaco-editor") 绕过补丁：
+// 若先于任何编辑器标签 mount → @codingame 补丁前加载 → E5.6#2 暗色字体黑竞态复现。
+import { bootstrapMonaco, getMonaco } from "../services/monaco-bootstrap";
 // E5.7#98：diff editor/monaco ref 具体类型——替代 useRef<any>
 import type { editor as MonacoEditorApi } from "monaco-editor";
 type MonacoNs = typeof import("monaco-editor");
@@ -40,7 +43,14 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ originalPath, modifiedPath, isA
         ]);
         if (disposed) return;
 
-        const monaco = await import("monaco-editor");
+        // E5.8#24.8：先补丁服务层（幂等——编辑器标签已 bootstrap 则直接复用），再取 monaco
+        await bootstrapMonaco(async (modelRef) => {
+          const targetPath = modelRef.object.textEditorModel.uri.fsPath;
+          const label = targetPath.split(/[\\/]/).pop() || targetPath;
+          window.linkdesk?.tabs?.create("editor", { filePath: targetPath, sourceId: targetPath, label, pinned: false });
+          return undefined;
+        });
+        const monaco = await getMonaco();
         monacoRef.current = monaco;
         syncMonacoTheme(monaco);
         themeSyncUnsubRef.current = subscribeThemeSync(monacoRef);
