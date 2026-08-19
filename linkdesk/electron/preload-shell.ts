@@ -15,6 +15,10 @@ import { APP_NAMESPACE } from './constants';
 import { createEventSystem, listenDirect } from './ipc/event-system';
 import { IPC, filesystemChanged } from './ipc/channels';
 import { IpcRelay } from './ipc/ipc-relay';
+// E5.8#20：壳暴露面契约——expose 对象 satisfies ShellExposed（tsc 即门禁，漂移编译期死）
+import type { ShellExposed } from '../src/core/api/linkdesk-api/surfaces';
+// E5.8#20：window 双端口径完全一致 → 抽共享模块（消 jscpd 克隆 + setZoom 漂移结构性消失）
+import { buildWindow } from './window-namespace';
 // ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
@@ -26,6 +30,7 @@ import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
 import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
+import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../src/core/utils/keybindingNormalization.js';
 
@@ -102,7 +107,8 @@ const events = createEventSystem(ipcRenderer, {
 });
 
 try {
-  contextBridge.exposeInMainWorld(APP_NAMESPACE, {
+  // E5.8#20：契约面机械对齐——expose 对象 satisfies ShellExposed（22 命名空间，缺面/形状失配即编译红）
+  const shellExposed = {
     /** OS 拖入——从 File 对象取真实路径。Electron 43 contextIsolation 下 File.path 为空，必须走 webUtils。 */
     getFilePath: (file: File) => webUtils.getPathForFile(file),
 
@@ -137,7 +143,8 @@ try {
       // E4V#40w——GBK 编码保存
       writeBinaryFile:(p: string, d: Uint8Array) => ipcRenderer.invoke(IPC.filesystem.writeBinaryFile, p, d),
       // E4V#fix: watch 一步完成——内部走 filesystem:changed:${watcherId}，自动隔离
-      watch: (dirPath: string, onEvent: (e: { path: string; type: string }) => void) => {
+      // E5.8#20：onEvent 参数改用契约 FileChangeEvent（原内联 { path; type: string } 漏掉 type 判别联合）
+      watch: (dirPath: string, onEvent: (e: FileChangeEvent) => void) => {
         return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
           const channel = filesystemChanged(watcherId);
           // E5.8#6.5：文件变更走 broadcast → plugin:push 分发 → events.on（原 ipcRenderer.on direct 已删）
@@ -193,6 +200,9 @@ try {
     // ── 对话框（步 4 接入——对标 @tauri-apps/plugin-dialog）──
     dialog: {
       open: (opts?: DialogOpenOptions) => ipcRenderer.invoke(IPC.dialog.open, opts),
+      // E5.8#20 D3 修复：补 openFile（对齐池 namespaces-workspace.ts:101，同通道 IPC.dialog.open）——契约必选面壳侧缺失的潜伏漂移
+      openFile: (opts?: DialogOpenOptions): Promise<string | null> =>
+        ipcRenderer.invoke(IPC.dialog.open, opts),
       // E5#67：确认/提示弹窗——统一 API，走 PROXY_CHANNELS → IpcBridgeHandler → DialogService
       confirm: (message: string): Promise<boolean> =>
         ipcRenderer.invoke(IPC.dialog.confirm, message),
@@ -202,7 +212,8 @@ try {
 
     // ── E5#71：插件持久化存储 ──
     pluginState: {
-      get: (pluginId: string, key: string): Promise<unknown> =>
+      // E5.8#20：补泛型 + `| undefined`（契约 get<T = unknown>(pluginId, key): Promise<T | undefined>）
+      get: <T = unknown>(pluginId: string, key: string): Promise<T | undefined> =>
         ipcRenderer.invoke(IPC.pluginState.get, pluginId, key),
       set: (pluginId: string, key: string, value: unknown): Promise<void> =>
         ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
@@ -220,7 +231,8 @@ try {
     menu: {
       registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
         ipcRenderer.invoke(IPC.menu.registerItems, menuId, pluginId, items),
-      getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
+      // E5.8#20：补返回类型（契约 getItems(): Promise<MenuItemDescriptor[]>）
+      getItems: (menuId: string, context?: Record<string, unknown>): Promise<MenuItemDescriptor[]> =>
         ipcRenderer.invoke(IPC.menu.getItems, menuId, context),
     },
 
@@ -316,6 +328,8 @@ try {
         }),
     },
     clipboard: {
+      // E5.8#20 D2 修复：补 readText（对齐池 namespaces-data.ts：66）——契约必选面壳侧缺失，调用即崩的潜伏漂移
+      readText: () => ipcRenderer.invoke(IPC.clipboard.readText),
       writeText: (text: string) => ipcRenderer.invoke(IPC.clipboard.writeText, text),
       writeFileList: (paths: string[]) => ipcRenderer.invoke(IPC.clipboard.writeFileList, paths),
     },
@@ -410,20 +424,11 @@ try {
       },
     },
 
-    // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮 ──
-    window: {
-      minimize:  () => ipcRenderer.send(IPC.window.minimize),
-      maximize:  () => ipcRenderer.send(IPC.window.maximize),
-      unmaximize:() => ipcRenderer.send(IPC.window.unmaximize),
-      close:     () => ipcRenderer.send(IPC.window.close),
-      // E5.7#79：缩放因子 → 主进程 setZoomFactor(池 WCV)。壳配置 window.zoomLevel onApply 调用
-      setZoom:   (factor: number) => ipcRenderer.send(IPC.window.setZoom, factor),
-      toggleDevTools: () => ipcRenderer.invoke(IPC.window.toggleDevTools), // E3f #58
-      isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
-      onMaximizeChange: (cb: (maximized: boolean) => void) =>
-        listenDirect(ipcRenderer, IPC.window.maximizeChange, (m: boolean) => cb(m)),
-    },
-  });
+    // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮（E5.8#20 共享模块——双端同版，防 setZoom 类漂移）──
+    window: buildWindow(),
+  } satisfies ShellExposed;
+
+  contextBridge.exposeInMainWorld(APP_NAMESPACE, shellExposed);
 
   // 通知主进程 preload 加载成功
   // 为什么：新风险 3——preload 抛异常不进 ErrorBoundary。主进程需要知道

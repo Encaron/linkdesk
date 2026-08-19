@@ -27,13 +27,14 @@ export function buildConfiguration(events: EventSystemApi) {
     get: (key: string) => ipcRenderer.invoke(IPC.config.get, key),
     set: (key: string, v: unknown) => ipcRenderer.invoke(IPC.config.set, key, v),
     getSchema: (key?: string) => ipcRenderer.invoke(IPC.plugins.call, 'getSchema', key),
-    onChange: (key: string, cb: (v: unknown) => void) => {
+    // E5.8#20：补泛型（契约 onChange<T = unknown>(key, cb: (value: T) => void)）——值运行时动态，cb 推断 T，缓存/载荷以 as T 交付
+    onChange: <T = unknown>(key: string, cb: (value: T) => void) => {
       if (key && _configCache.has(key)) {
-        try { cb(_configCache.get(key)); } catch { /* contextBridge 回调静默失败 */ }
+        try { cb(_configCache.get(key) as T); } catch { /* contextBridge 回调静默失败 */ }
       }
       return events.on(IPC.config.changed, (d: ConfigurationChangedPayload) => {
         const { key: k, value } = d;
-        if (!key || k === key) cb(value);
+        if (!key || k === key) cb(value as T);
       });
     },
     // ══ E5.7#76（E5.5#10r/E5.6#65 迁入）：以下 9 个方法为设置页专用

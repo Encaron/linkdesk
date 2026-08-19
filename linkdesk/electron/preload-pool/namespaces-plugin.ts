@@ -1,14 +1,16 @@
 /**
  * Pool preload 插件服务域命名空间集合——pluginManager/plugins/theme/keybindings/pluginState/
- * hotExit/menu/langDef/lsp/protocol/shell/getFilePath/window。
+ * hotExit/menu/langDef/lsp/protocol/shell/getFilePath（window 已抽共享模块 electron/window-namespace.ts，
+ * E5.8#20——双端口径完全一致，共享消克隆 + 防 setZoom 类漂移复发）。
  * E5.8#0d.10-4d：自 preload-pool.ts 拆出——无模块级状态的薄转发面（invoke/send/listenDirect/events.on）。
  * 依赖方向：namespaces-plugin → electron/ipc（channels/event-system）+ src/core/types（type）；无反向。
  */
 
 import { ipcRenderer, webUtils } from 'electron';
 import { IPC } from '../ipc/channels';
-import { listenDirect, type EventSystemApi } from '../ipc/event-system';
+import { type EventSystemApi } from '../ipc/event-system';
 import type { PluginStateChangedPayload } from '../../src/core/types/ipc/events';
+import type { MenuItemDescriptor } from '../../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
 import { keyboardInputToKeyString } from '../../src/core/utils/keybindingNormalization.js';
 
@@ -85,7 +87,9 @@ export function buildPluginState(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（pluginState 命名空间），无法共享
   /* jscpd:ignore-start */
   return {
-    get: (pluginId: string, key: string): Promise<unknown> =>
+    // E5.8#20：补泛型 + `| undefined`（契约 get<T = unknown>(pluginId, key): Promise<T | undefined>）——
+    // 主进程无键返回 undefined，签名承诺与运行时一致
+    get: <T = unknown>(pluginId: string, key: string): Promise<T | undefined> =>
       ipcRenderer.invoke(IPC.pluginState.get, pluginId, key),
     set: (pluginId: string, key: string, value: unknown): Promise<void> =>
       ipcRenderer.invoke(IPC.pluginState.set, pluginId, key, value),
@@ -118,12 +122,16 @@ export function buildHotExit() {
 
 /** menu 命名空间——菜单项注册/查询 */
 export function buildMenu() {
+  // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（menu 命名空间），无法共享
+  /* jscpd:ignore-start */
   return {
     registerItems: (menuId: string, pluginId: string, items: unknown[]) =>
       ipcRenderer.invoke(IPC.menu.registerItems, menuId, pluginId, items),
-    getItems: (menuId: string, context?: Record<string, unknown>): Promise<unknown[]> =>
+    // E5.8#20：补返回类型（契约 getItems(): Promise<MenuItemDescriptor[]>）——主进程返回壳侧解析后的描述形状
+    getItems: (menuId: string, context?: Record<string, unknown>): Promise<MenuItemDescriptor[]> =>
       ipcRenderer.invoke(IPC.menu.getItems, menuId, context),
   };
+  /* jscpd:ignore-end */
 }
 
 /**
@@ -191,22 +199,5 @@ export function buildShell() {
 export function buildGetFilePath() {
   return {
     getFilePath: (file: File) => webUtils.getPathForFile(file),
-  };
-}
-
-/**
- * window 命名空间——TitleBarZone 自定义 ─ □ × 按钮（preload-shell 同款搬入）。
- * 通道是主进程 handler（window:minimize 等）——非壳渲染进程 handler，不走 PROXY_CHANNELS。
- */
-export function buildWindow() {
-  return {
-    minimize:  () => ipcRenderer.send(IPC.window.minimize),
-    maximize:  () => ipcRenderer.send(IPC.window.maximize),
-    unmaximize:() => ipcRenderer.send(IPC.window.unmaximize),
-    close:     () => ipcRenderer.send(IPC.window.close),
-    toggleDevTools: () => ipcRenderer.invoke(IPC.window.toggleDevTools),
-    isMaximized:() => ipcRenderer.invoke(IPC.window.isMaximized),
-    onMaximizeChange: (cb: (maximized: boolean) => void) =>
-      listenDirect(ipcRenderer, IPC.window.maximizeChange, (m: boolean) => cb(m)),
   };
 }

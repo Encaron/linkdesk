@@ -76,6 +76,8 @@
 
 import { contextBridge } from 'electron';
 import { APP_NAMESPACE } from './constants';
+// E5.8#20：池暴露面契约——expose 对象 satisfies PoolExposed（tsc 即门禁，漂移编译期死）
+import type { PoolExposed } from '../src/core/api/linkdesk-api/surfaces';
 // ── E5.8#0d.10-4：13 子模块聚合——import 即触发模块级 IPC 注册（硬约束 20：先于 expose）──
 import { buildPool } from './preload-pool/layout';
 import { buildQuickPick, buildQuickPickHost } from './preload-pool/quickpick';
@@ -111,15 +113,17 @@ import {
   buildProtocol,
   buildShell,
   buildGetFilePath,
-  buildWindow,
 } from './preload-pool/namespaces-plugin';
+// E5.8#20：window 双端口径完全一致 → 抽共享模块（消 jscpd 克隆 + setZoom 漂移结构性消失）
+import { buildWindow } from './window-namespace';
 
 try {
   const events = createPoolEvents();
   const configurationObj = buildConfiguration(events);
   const commandsObj = buildCommands(events);
 
-  contextBridge.exposeInMainWorld(APP_NAMESPACE, {
+  // E5.8#20：契约面机械对齐——expose 对象 satisfies PoolExposed（39 命名空间，缺面/形状失配即编译红）
+  const poolExposed = {
     // ── 数据域（4d）──
     serial: buildSerial(events),
     filesystem: buildFilesystem(events),
@@ -170,7 +174,9 @@ try {
     contextKey: buildContextKey(),
     decorations: buildDecorations(),
     viewContainer: buildViewContainer(),
-  });
+  } satisfies PoolExposed;
+
+  contextBridge.exposeInMainWorld(APP_NAMESPACE, poolExposed);
 } catch (err) {
   contextBridge.exposeInMainWorld('__linkdesk_preload_error__', {
     message: String(err),
