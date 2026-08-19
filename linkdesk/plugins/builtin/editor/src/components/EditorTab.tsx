@@ -92,6 +92,12 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
   const dirtyRef = useRef(false);
   // E5#52：baseLabel 只算一次——脏/净切换只加减 ●，不重新取 baseName
   const baseLabelRef = useRef(lk.path.normalize(filePath).split("/").pop() || filePath);
+  // E5.8#25.3：初始路径冻结——load 只跑一次。改名后 filePath prop 变（壳 sourceId 迁移），
+  // 冻结避免重载丢 dirty/undo（新路径文件是 rename 结果，model 内容即真相，无需重读磁盘）。
+  const initialFilePathRef = useRef(filePath);
+  // E5.8#25.3：当前运行路径——由 file:renamed 事件迁移（对标串口会话改名即时联动）。
+  // 渲染/保存/监听/热备份都以它为运行路径；filePath prop 仅作初始值 + 订阅匹配键。
+  const [currentPath, setCurrentPath] = useState(filePath);
   // E4V#40o——自动保存计时器
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   // E4V#40o——onFocusChange 需要前一帧 isActive 判断切换方向
@@ -141,9 +147,9 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
   // E5.8#0d.9——缓冲区转"干净"的公共清理：保存成功 / 外部重载两条路径共用（归一化，防两处漂移）
   const markClean = useCallback(() => {
     dirtyRef.current = false;
-    clearDirtyFile(filePath);
-    tabs?.updateLabelBySourceId?.(filePath, baseLabelRef.current);
-  }, [filePath, tabs]);
+    clearDirtyFile(currentPath);
+    tabs?.updateLabelBySourceId?.(currentPath, baseLabelRef.current);
+  }, [currentPath, tabs]);
 
   // 保存——放前面，autoSave 逻辑引用它
   const handleSave = useCallback(async () => {
@@ -153,10 +159,10 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
       model.markSaved();
       markClean();
     } catch (err) {
-      console.error(`[EditorTab] 保存失败: ${filePath}`, err);
+      console.error(`[EditorTab] 保存失败: ${currentPath}`, err);
       setError(`${t("保存失败：")} ${(err as Error).message}`);
     }
-  }, [model, filePath, t, markClean]);
+  }, [model, currentPath, t, markClean]);
 
   // 加载文件
   useEffect(() => {
@@ -164,17 +170,17 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
     setLoading(true);
     setError(null);
     // E5.7#38——取消未决 unmount 清理（跨组移动/StrictMode 的 remount 路径）
-    cancelPendingClear(filePath);
+    cancelPendingClear(initialFilePathRef.current);
 
     (async () => {
       // E5.7#38——Hot Exit：崩溃重建/跨组移动后优先恢复备份内容（只读——重复读安全）
-      const backupContent = await loadBackup(filePath);
+      const backupContent = await loadBackup(initialFilePathRef.current);
       if (cancelled) return;
 
       if (backupContent !== null) {
         // 从磁盘正常加载（取编码/语言），但内容用备份
         try {
-          const m = await EditorModel.load(filePath);
+          const m = await EditorModel.load(initialFilePathRef.current);
           if (cancelled) return;
           m.setValue(backupContent);
           setModel(m);
@@ -186,13 +192,13 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
           }));
           // 标记为脏——备份内容未保存
           dirtyRef.current = true;
-          tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
-          trackDirtyFile(filePath, backupContent);
+          tabs?.updateLabelBySourceId?.(initialFilePathRef.current, `● ${baseLabelRef.current}`);
+          trackDirtyFile(initialFilePathRef.current, backupContent);
           setLoading(false);
         } catch {
           if (cancelled) return;
           // 从磁盘加载失败→只用备份内容
-          const fallback = EditorModel.fromContent(filePath, backupContent);
+          const fallback = EditorModel.fromContent(initialFilePathRef.current, backupContent);
           setModel(fallback);
           setValue(backupContent);
           setEditorStatus((prev) => ({
@@ -201,13 +207,13 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
             language: fallback.language,
           }));
           dirtyRef.current = true;
-          tabs?.updateLabelBySourceId?.(filePath, `● ${baseLabelRef.current}`);
-          trackDirtyFile(filePath, backupContent);
+          tabs?.updateLabelBySourceId?.(initialFilePathRef.current, `● ${baseLabelRef.current}`);
+          trackDirtyFile(initialFilePathRef.current, backupContent);
           setLoading(false);
         }
       } else {
         try {
-          const m = await EditorModel.load(filePath);
+          const m = await EditorModel.load(initialFilePathRef.current);
           if (cancelled) return;
           setModel(m);
           setValue(m.getValue());
@@ -219,7 +225,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
           setLoading(false);
         } catch (err) {
           if (cancelled) return;
-          console.error(`[EditorTab] 加载失败: ${filePath}`, err);
+          console.error(`[EditorTab] 加载失败: ${initialFilePathRef.current}`, err);
           setError(`${t("无法打开文件")}: ${(err as Error).message}`);
           setLoading(false);
         }
@@ -227,17 +233,52 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
     })();
 
     return () => { cancelled = true; };
-    // E5.7#99：per-tab 一次性加载管线（filePath 恒定）——tabs=window.linkdesk?.tabs 稳定对象；
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- t 入 deps 会语言切换时重载文件 → 新建 model 丢 undo/光标
-  }, [filePath]);
+    // E5.7#99：per-tab 一次性加载管线（初始路径冻结）；E5.8#25.3：改名后 prop 变化——ref 冻结避免重载丢 dirty/undo
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- 路径入 deps 会改名时重载文件 → 新建 model 丢 undo/光标
+  }, []);
 
   // E5.7#38——标签关闭 = unmount：脏文件延迟清备份（关闭即弃语义）；跨组移动/StrictMode 的
   // remount 在 mount 侧 cancelPendingClear 取消。池崩 = 进程死亡，此清理不执行 → 备份存活。
   useEffect(() => {
     return () => {
-      if (model?.isDirty()) scheduleClearOnUnmount(filePath);
+      if (model?.isDirty()) scheduleClearOnUnmount(currentPath);
     };
-  }, [model, filePath]);
+  }, [model, currentPath]);
+
+  // ── E5.8#25.3：文件重命名/移动联动——路径迁移（内容保留，dirty ● 保留）──
+  // 对标串口会话改名即时联动。事件源 = 文件树 emit file:renamed（池 broadcast 直达本 WCV，
+  // 与壳 #25.1 桥同源；editor 是池插件，事件同进程直收，零 IPC 中转）。迁移四件事：
+  //   EditorModel 路径（内容不动→dirty 保留）/ baseLabel / hot-exit 备份 key / 壳标签 ●。
+  // 幂等（同路径 no-op）——壳 sourceId 迁移与池事件可能先后抵达同一目标路径。
+  const applyRename = useCallback((newPath: string) => {
+    const normalized = lk.path.normalize(newPath);
+    if (normalized === currentPath) return;
+    model?.setFilePath(normalized);
+    baseLabelRef.current = normalized.split("/").pop() || normalized;
+    if (model?.isDirty()) {
+      // 热备份 key 迁移——删旧 key，重挂新 key（内容不丢；改名后保存即写新路径）
+      const content = model.getValue();
+      clearDirtyFile(currentPath);
+      trackDirtyFile(normalized, content);
+    }
+    // 壳标签栏——新 sourceId 已由壳 TabManager 迁移（但其 label 不带 ●），此处重挂保留脏前缀
+    const label = dirtyRef.current ? `● ${baseLabelRef.current}` : baseLabelRef.current;
+    tabs?.updateLabelBySourceId?.(normalized, label);
+    // 状态栏语言随新扩展名刷新（.txt→.ts 显示即切换）
+    setEditorStatus((prev) => ({ ...prev, language: model?.language ?? prev.language }));
+    setCurrentPath(normalized);
+  }, [model, currentPath, tabs]);
+
+  // 池事件主路径——改名即时到达（文件树与编辑器同 WCV，事件同进程广播）
+  useEffect(() => {
+    return lk.events.on<{ oldPath: string; newPath: string }>("file:renamed", (e) => {
+      const oldPath = e?.oldPath;
+      const newPath = e?.newPath;
+      if (typeof oldPath !== "string" || typeof newPath !== "string") return;
+      if (lk.path.normalize(oldPath) !== lk.path.normalize(currentPath)) return;
+      applyRename(newPath);
+    });
+  }, [currentPath, applyRename]);
 
   // E5.8#0d.9——外部文件变更自动重载（对标 VS Code "file changed on disk"）。
   // 监听父目录（Windows 原子替换/重命名下文件级监听不可靠）→ 200ms 防抖（避开写入中间态半读）
@@ -269,9 +310,9 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
     };
 
     lk.filesystem
-      .watch(lk.path.dirname(filePath), (e) => {
+      .watch(lk.path.dirname(currentPath), (e) => {
         if (cancelled || e.type === "deleted") return;
-        if (lk.path.normalize(e.path) !== lk.path.normalize(filePath)) return;
+        if (lk.path.normalize(e.path) !== lk.path.normalize(currentPath)) return;
         if (debounceTimer) clearTimeout(debounceTimer);
         debounceTimer = setTimeout(applyReload, 200);
       })
@@ -279,15 +320,16 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
         if (cancelled) { unsub(); return; }
         unsubscribe = unsub;
       })
-      .catch((err) => console.warn(`[EditorTab] 监听目录失败: ${lk.path.dirname(filePath)}`, err));
+      .catch((err) => console.warn(`[EditorTab] 监听目录失败: ${lk.path.dirname(currentPath)}`, err));
 
     return () => {
       cancelled = true;
       if (debounceTimer) clearTimeout(debounceTimer);
       unsubscribe?.();
     };
-    // E5.8#0d.9：per-file watcher——model 就绪后挂；t 入 deps 保证 confirm 文案语言新鲜（语言切换重挂 watcher 无害）
-  }, [filePath, model, t, markClean]);
+    // E5.8#0d.9：per-file watcher——model 就绪后挂；t 入 deps 保证 confirm 文案语言新鲜（语言切换重挂 watcher 无害）；
+    // E5.8#25.3：currentPath 入 deps——改名后重挂新目录监听（旧目录 watcher 随清理摘除）
+  }, [currentPath, model, t, markClean]);
 
   // E4V#40o——onFocusChange 自动保存：切走标签页时自动保存
   useEffect(() => {
@@ -323,11 +365,11 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
       dirtyRef.current = isDirty;
       // E5#52：只加减 ●，不重取 baseName——保留标签页去歧义后缀
       const label = isDirty ? `● ${baseLabelRef.current}` : baseLabelRef.current;
-      tabs?.updateLabelBySourceId?.(filePath, label);
+      tabs?.updateLabelBySourceId?.(currentPath, label);
     }
     // E4V#40n——Hot Exit：每次内容变更都更新备份，不在上面的状态守卫里（否则只保存第一次按键的内容）
     if (isDirty) {
-      trackDirtyFile(filePath, v);
+      trackDirtyFile(currentPath, v);
     }
     // E4V#40o——afterDelay 自动保存：每次变更重置 1s 计时器
     const autoSave = await lk.configuration.get("files.autoSave") ?? "off";
@@ -337,7 +379,7 @@ const EditorTab: React.FC<EditorTabProps> = ({ filePath, isActive, tabId }) => {
         handleSave();
       }, 1000);
     }
-  }, [model, filePath, tabs, handleSave]);
+  }, [model, currentPath, tabs, handleSave]);
 
   // E4V#40o——卸载时清理自动保存计时器
   useEffect(() => {

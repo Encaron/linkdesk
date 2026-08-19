@@ -19,8 +19,10 @@ import { getLanguageFromPath } from "./language-map";
 const lk = window.linkdesk;
 
 export class EditorModel {
-  readonly filePath: string;
-  readonly language: string;
+  /** 当前文件路径——E5.8#25.3 setFilePath 可迁移（重命名联动）；save/reload/uri 派生自动切换 */
+  filePath: string;
+  /** 当前语言——随 setFilePath 从新扩展名重派生 */
+  language: string;
   readonly encoding: string;
 
   /** 当前内存中的值 */
@@ -49,6 +51,16 @@ export class EditorModel {
 
   getValue(): string {
     return this._value;
+  }
+
+  /**
+   * E5.8#25.3——文件重命名/移动后路径迁移。内容（_value/_savedValue）不动 →
+   * dirty 状态天然保留（isDirty 比较两者）；uri/save/reload 的派生路径自动切换。
+   * 语言随新扩展名重派生（对标 VS Code：改名 .txt→.ts 语言即切换）。
+   */
+  setFilePath(newPath: string): void {
+    this.filePath = lk.path.normalize(newPath);
+    this.language = getLanguageFromPath(this.filePath);
   }
 
   setValue(v: string): void {
