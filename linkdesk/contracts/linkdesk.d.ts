@@ -1237,7 +1237,7 @@ export interface MemoryPressureData {
     totalRSS: number;
     threshold: number;
 }
-/** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——壳 preload 独有面 + 池控制双端合一 */
+/** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
     /** 壳↔插件通信中继——壳 preload 独有 */
     bridge?: {
@@ -1246,8 +1246,8 @@ export interface ShellAPI {
         broadcast(channel: string, payload: unknown): void;
         notifyConfigChanged(key: string, value: unknown): void;
     };
-    /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端合一面对齐 wire */
-    pool?: {
+    /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
+    pool: {
         // ── 壳侧（池 preload 无） ──
         pushLayout(layout: PoolLayout): void;
         onReady(cb: () => void): () => void;
@@ -1267,8 +1267,8 @@ export interface ShellAPI {
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
     };
-    /** 窗口控制——TitleBar 按钮映射，壳 preload 独有 */
-    window?: {
+    /** 窗口控制——TitleBar 按钮映射，双端注入（8 方法同通道，共享模块 electron/window-namespace.ts） */
+    window: {
         minimize(): void;
         maximize(): void;
         unmaximize(): void;
@@ -1279,26 +1279,27 @@ export interface ShellAPI {
         isMaximized(): Promise<boolean>;
         onMaximizeChange(cb: (maximized: boolean) => void): () => void;
     };
-    /** 壳级命令——revealInOS / openInTerminal / startDrag，壳 preload 独有 */
-    shell?: {
+    /** 壳级命令——revealInOS / openInTerminal / startDrag，双端注入 */
+    shell: {
         showItemInFolder(p: string): Promise<void>;
         openInTerminal(dirPath: string, terminalExe?: string, customCommand?: string): Promise<void>;
         startDrag(filePath: string, iconPath?: string): void;
     };
-    /** 热退出暂存——编辑器未保存内容落盘（E5.7#53） */
+    /** 热退出暂存——编辑器未保存内容落盘（E5.7#53）。`?`：池侧独有（壳 preload 不注入） */
     hotExit?: {
         save(filePath: string, content: string): Promise<void>;
         load(filePath: string): Promise<string | null>;
         clear(filePath: string): Promise<void>;
     };
-    /** OS 拖入文件路径获取 */
-    getFilePath?: (file: File) => string;
+    /** OS 拖入文件路径获取——双端注入 */
+    getFilePath: (file: File) => string;
 }
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
- * 壳 preload 独有面（bridge/pool/window/path/…）为 `?` 可选——池内不存在。
+ * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
+ * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
  * E5.8#0d.10-9e：由 10 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
