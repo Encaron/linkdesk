@@ -97,7 +97,8 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
       if (event.sender.isDestroyed()) return;
       // E5.8#6.5：归一化——文件变更推流唯一路径 = IpcBridge.broadcast（plugin:push 发壳+发池；
       // 原壳 direct send + 池手动遍历双发删除；池内文件树 watcher 随之 events.on 收到——修复语义保留）
-      IpcBridge.active?.broadcast(filesystemChanged(watcherId), change);
+      // E5.8#6.5-regress-2：storeForReplay=false——watcherId 动态通道不入 lastBroadcasts（原直发不重放）
+      IpcBridge.active?.broadcast(filesystemChanged(watcherId), change, undefined, false);
     });
     return watcherId;
   });

@@ -27,9 +27,10 @@ export function registerSerialHandlers(): void {
   // 将 serial-service 的数据推送到渲染进程。
   // setCallbacks 是覆盖式设置——必须在 guard 之前，每次调用重绑（回调走 IpcBridge.active 取最新实例）。
   serialService.setCallbacks({
-    onData: (text) => { IpcBridge.active?.broadcast(IPC.serial.data, text); },
-    onStats: (stats) => { IpcBridge.active?.broadcast(IPC.serial.stats, stats); },
-    onSystem: (msg) => { IpcBridge.active?.broadcast(IPC.serial.system, msg); },
+    // E5.8#6.5-regress-2：流数据 storeForReplay=false——串口高频数据不入 lastBroadcasts 重放（原直发不重放）
+    onData: (text) => { IpcBridge.active?.broadcast(IPC.serial.data, text, undefined, false); },
+    onStats: (stats) => { IpcBridge.active?.broadcast(IPC.serial.stats, stats, undefined, false); },
+    onSystem: (msg) => { IpcBridge.active?.broadcast(IPC.serial.system, msg, undefined, false); },
   });
 
   if (_registered) return;
