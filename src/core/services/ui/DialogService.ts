@@ -41,17 +41,25 @@ let _alertR: AlertRenderer | null = null;
 let _quickPickR: QuickPickRenderer | null = null;
 let _inputBoxR: InputBoxRenderer | null = null;
 
-/** UI 层注册渲染函数——DialogHost 组件挂载时调用 */
+/** UI 层注册渲染函数——DialogHost 组件挂载时调用。
+ *  E5.8#10：壳级 UI 渲染器（应用生命周期，非插件作用域）——返 disposer 不 track。
+ *  引用级守卫——dispose 不得抹掉后注册者的渲染器（QuickPick/InputBox 未传则不碰）。 */
 export function registerDialogRenderers(
   confirm: ConfirmRenderer,
   alert: AlertRenderer,
   quickPick?: QuickPickRenderer,
   inputBox?: InputBoxRenderer,
-): void {
+): () => void {
   _confirmR = confirm;
   _alertR = alert;
   if (quickPick) _quickPickR = quickPick;
   if (inputBox) _inputBoxR = inputBox;
+  return () => {
+    if (_confirmR === confirm) _confirmR = null;
+    if (_alertR === alert) _alertR = null;
+    if (quickPick && _quickPickR === quickPick) _quickPickR = null;
+    if (inputBox && _inputBoxR === inputBox) _inputBoxR = null;
+  };
 }
 
 /** UI 层注销渲染函数 */

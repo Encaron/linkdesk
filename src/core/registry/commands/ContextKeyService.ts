@@ -311,9 +311,16 @@ class ContextKeyServiceImpl {
   /** E5#19b fix: preload 同步 store 的 getter——注入式，不直接耦合 window.linkdesk */
   private _externalGetter: ((key: string) => unknown) | null = null;
 
-  /** 注册外部 getter——App 初始化时注入 preload 的同步 context key store */
-  registerExternalGetter(fn: (key: string) => unknown): void {
+  /** 注册外部 getter——App 初始化时注入 preload 的同步 context key store。
+   *  E5.8#10：全局值源 hook（壳服务生命周期 = 应用生命周期，非插件作用域）——
+   *  返 disposer 不 trackRegistration（设计 §5 定案）。 */
+  registerExternalGetter(fn: (key: string) => unknown): () => void {
     this._externalGetter = fn;
+    return () => {
+      if (this._externalGetter === fn) {
+        this._externalGetter = null;
+      }
+    };
   }
 
   /** 设置 context key 值——对标 VS Code setContext */

@@ -11,6 +11,7 @@
 
 import type { StatusBarItem } from "../../api/types";
 import { Emitter } from "../../react/events/CoreEvents";
+import { trackRegistration } from "../../registry/registrationTracker";
 
 /* ── 动态状态栏项——运行时可变字段 ── */
 
@@ -62,7 +63,7 @@ export function createStatusBarItem(
   bucket.set(id, item);
   onDidChangeStatusBar.fire();
 
-  return {
+  const handle: StatusBarItemHandle = {
     dispose() {
       const b = _items.get(pluginId);
       if (!b) return;
@@ -83,6 +84,9 @@ export function createStatusBarItem(
       onDidChangeStatusBar.fire();
     },
   };
+  // E5.8#10：卸载自动回滚——同一 handle 的 dispose 入 tracker（dispose 幂等，重放无害）
+  trackRegistration(pluginId, handle.dispose);
+  return handle;
 }
 
 /** 获取所有动态状态栏项（StatusBar.tsx 消费） */

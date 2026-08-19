@@ -10,6 +10,7 @@
  */
 
 import { Emitter } from "../../react/events/CoreEvents";
+import { trackRegistration } from "../../registry/registrationTracker";
 
 /* ── 类型 ── */
 
@@ -37,6 +38,9 @@ export interface LogChannel {
 
   /** 标记为可见——Output 面板应打开并切换到此频道（Phase 6 UI 消费） */
   show(): void;
+
+  /** 销毁频道——从注册表移除（E5.8#10：per-entry disposer） */
+  dispose(): void;
 }
 
 /* ── 频道注册表 ── */
@@ -82,9 +86,18 @@ export function createLogChannel(
     show() {
       onDidRequestShowChannel.fire(id);
     },
+
+    dispose() {
+      _channels.delete(id);
+    },
   };
 
   _channels.set(id, channel);
+  // E5.8#10：仅 fresh-create 路径追踪——重复创建返回既有频道不重复入层
+  // （dispose 幂等——频道已被 dispose 后再 rollback 删除同一 key 无害）
+  trackRegistration(pluginId, () => {
+    _channels.delete(id);
+  });
   return channel;
 }
 

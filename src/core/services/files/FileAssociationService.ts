@@ -23,6 +23,8 @@ export interface FileAssociation {
 
 /* ── 存储 ── */
 
+import { trackRegistration } from "../../registry/registrationTracker";
+
 /** extension（小写，不带点） → FileAssociation[] */
 const _associations = new Map<string, FileAssociation[]>();
 
@@ -35,16 +37,16 @@ const _pluginExtensions = new Map<string, Set<string>>();
  * 注册文件关联——loader 在 parseContributions 阶段调用。
  * 同一扩展名允许多个插件注册——"打开方式…"选择器消费全部。
  */
-export function registerFileAssociation(association: FileAssociation): void {
+export function registerFileAssociation(association: FileAssociation): () => void {
   const ext = normalizeExtension(association.extension);
   if (!ext) {
     console.warn(`[FileAssociationService] 忽略无效扩展名: "${association.extension}"`);
-    return;
+    return () => {};
   }
 
   const list = _associations.get(ext) ?? [];
-  // 同插件重复注册 → 静默忽略
-  if (list.some((a) => a.pluginId === association.pluginId)) return;
+  // 同插件重复注册 → 静默忽略——首次注册者的 disposer 持有删除权
+  if (list.some((a) => a.pluginId === association.pluginId)) return () => {};
 
   // #59f3：已有其他插件注册同一扩展名——警告（多注册合法，但开发者应知情）
   if (list.length > 0) {
@@ -53,13 +55,32 @@ export function registerFileAssociation(association: FileAssociation): void {
     );
   }
 
-  list.push({ ...association, extension: ext });
+  const entry: FileAssociation = { ...association, extension: ext };
+  list.push(entry);
   _associations.set(ext, list);
 
   // 维护 plugin → extensions 反向索引
   const exts = _pluginExtensions.get(association.pluginId) ?? new Set();
   exts.add(ext);
   _pluginExtensions.set(association.pluginId, exts);
+
+  // E5.8#10：引用级删除——只删自己这条，不误删后来注册者（设计 §8 同名覆盖风险表）
+  return trackRegistration(association.pluginId, () => {
+    const current = _associations.get(ext);
+    if (current) {
+      const kept = current.filter((a) => a !== entry);
+      if (kept.length === 0) {
+        _associations.delete(ext);
+      } else {
+        _associations.set(ext, kept);
+      }
+    }
+    const pluginExts = _pluginExtensions.get(association.pluginId);
+    if (pluginExts) {
+      pluginExts.delete(ext);
+      if (pluginExts.size === 0) _pluginExtensions.delete(association.pluginId);
+    }
+  });
 }
 
 /* ── 查询 ── */
