@@ -15,6 +15,7 @@ import {
   markLoadStarted,
   markLoadSuccess,
   markLoadFailed,
+  parkPending,
   unloadPlugin,
   getLoadDiagnostics,
   getLoadDiagnosticsSummary,
@@ -132,6 +133,52 @@ describe("loadState 状态机——迁移", () => {
     } finally {
       warnSpy.mockRestore();
     }
+  });
+});
+
+/* ── E5.8#14：缺依赖挂起——pendingReason + parkPending ── */
+
+describe("loadState 缺依赖挂起——parkPending + pendingReason", () => {
+  beforeEach(() => {
+    resetStateMachine();
+  });
+
+  it("挂起：loading → pending + 记录 pendingReason", () => {
+    markLoadStarted(PID);
+    parkPending(PID, "等待依赖: \"dep-plugin\"");
+    expect(getLoadDiagnostics(PID)).toMatchObject({
+      loadState: "pending",
+      pendingReason: "等待依赖: \"dep-plugin\"",
+    });
+  });
+
+  it("重载清 pendingReason：pending → loading → active", () => {
+    markLoadStarted(PID);
+    parkPending(PID, "等待依赖: \"dep-plugin\"");
+    markLoadStarted(PID);  // 依赖就绪重载
+    expect(getLoadDiagnostics(PID).pendingReason).toBeUndefined();
+    markLoadSuccess(PID);
+    expect(getLoadDiagnostics(PID).loadState).toBe("active");
+  });
+
+  it("未加载（默认 pending）挂起——只更新原因不告警", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+    try {
+      parkPending(PID, "等待依赖: \"dep-plugin\"");
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+    expect(getLoadDiagnostics(PID)).toMatchObject({ loadState: "pending", pendingReason: "等待依赖: \"dep-plugin\"" });
+  });
+
+  it("挂起后卸载——pendingReason 清空 + 收敛到 disposed", () => {
+    markLoadStarted(PID);
+    parkPending(PID, "等待依赖: \"dep-plugin\"");
+    unloadPlugin(PID, "uninstall", "测试插件");
+    const diag = getLoadDiagnostics(PID);
+    expect(diag.loadState).toBe("disposed");
+    expect(diag.pendingReason).toBeUndefined();
   });
 });
 
