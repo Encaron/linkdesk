@@ -1,0 +1,78 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    // E5.8#2：src 三页入口（tsx 直列——knip 实测不解析 Vite 风格 HTML 的 <script src="/src/...">，
+    // pool.html 单作 entry 时 pool 树 34 文件全断根报未用；tsx 模块根等价且可靠）。
+    //   index.html  → src/main.tsx（knip 6 自动识别 Vite 默认入口，手动列会报 redundant——不列）
+    //   pool.html   → src/pool/pool-main.tsx
+    //   preview.html→ src/pool/dev/preview-main.tsx（vite dev-only 预览页，仍定 entry 保分析根完整）
+    "src/pool/pool-main.tsx",
+    "src/pool/dev/preview-main.tsx",
+    // E5.8#2：electron 三件套（主进程 + 双 preload——preload-pool 池侧 / preload-shell 壳侧）
+    "electron/main.ts",
+    "electron/preload-pool.ts",
+    "electron/preload-shell.ts"
+  ],
+  "project": [
+    // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
+    "src/**/*.{ts,tsx}",
+    "electron/**/*.ts",
+    "scripts/**/*.{mjs,cjs}"
+  ],
+  "ignore": [
+    // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
+    //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
+    //   ProtocolParser/ConfigurationRegistry/FactorySlots/ThemeEngine/api-types/IpcBridgeHandler
+    //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面））
+    "src/core/index.ts",
+    "src/core/api/linkdesk-api.ts",
+    "src/core/api/linkdesk-api/types.ts",
+    "src/core/api/types.ts",
+    "src/core/commands/shell/coreCommands.ts",
+    "src/core/commands/input-bindings/shellKeybindings.ts",
+    "src/core/pipeline/ProtocolParser.ts",
+    "src/core/react/useConfiguration.ts",
+    "src/core/react/usePluginIpcEvent.ts",
+    "src/core/react/useSendData.ts",
+    "src/core/registry/ConfigurationRegistry.ts",
+    "src/core/registry/commands/CommandRegistry.ts",
+    "src/core/registry/commands/KeybindingRegistry.ts",
+    "src/core/registry/commands/KeybindingRegistry/*.ts",
+    "src/core/registry/commands/MenuRegistry.ts",
+    "src/core/registry/languages/LangDefRegistry.ts",
+    "src/core/registry/ProtocolRegistry.ts",
+    "src/core/services/bootstrap/FactorySlots.ts",
+    "src/core/services/configuration/ConfigurationApplier.ts",
+    "src/core/services/configuration/ConfigurationService.ts",
+    "src/core/services/files/FileAssociationService.ts",
+    "src/core/services/files/FileService.ts",
+    "src/core/services/layout/LayoutService.ts",
+    "src/core/services/layout/WorkspaceService.ts",
+    "src/core/services/plugins/IpcBridgeHandler.ts",
+    "src/core/services/plugins/IpcBridgeHandler/tabs.ts",
+    "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
+    "src/core/services/plugins/ProfileService.ts",
+    "src/core/services/ui/DialogService.ts",
+    "src/core/services/ui/LogChannel.ts",
+    "src/core/services/ui/NotificationService.ts",
+    "src/core/services/ui/StatusBarService.ts",
+    "src/core/services/ui/ThemeEngine.ts",
+    "src/core/utils/CancellationToken.ts",
+    "src/core/utils/plugin/pluginPaths.ts",
+    // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+
+    //   useClickPreview（file-tree 插件直引 @src/pool）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
+    "src/pool/dev/mockLinkdesk.ts",
+    "src/pool/hooks/useClickPreview.ts",
+    "src/hooks/useTabManager.ts",
+    // E5.8#2：手动开发工具（非门禁链，node scripts/audit-i18n.mjs 手动跑）
+    "scripts/audit-i18n.mjs"
+  ],
+  "ignoreDependencies": [
+    // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
+    "monaco-languageclient"
+  ],
+  "ignoreBinaries": [
+    // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
+    "xdg-open"
+  ]
+}
