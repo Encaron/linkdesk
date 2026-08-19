@@ -4,6 +4,8 @@
  * IpcRelay 缓冲 + onLayout 回放（硬约束 20）。pool 命名空间 = 池专属 API
  * （onLayout/ready/sidebarAction/tabAction）。
  * 依赖方向：layout → electron/ipc（IpcRelay/channels）+ src/core/types（type PoolLayout）；无反向。
+ * 🔥 E5.8#5 接收侧遵守 pushLayout 两条铁律（全文见 src/core/types/pool/poolLayout.ts 头注释）：
+ *   池按 whole-value 快照整帧渲染、不缓存旧值合并；崩溃重建重放时只信最后完整快照（IpcRelay 回放缓冲）。
  */
 
 import { ipcRenderer } from 'electron';
