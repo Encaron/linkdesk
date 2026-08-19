@@ -23,7 +23,7 @@ export function showLanguagePicker(): void {
   QuickPickService.show<{ id: string; label: string }>({
     mode: "language",
     items: langs,
-    placeholder: "选择语言…",
+    placeholder: i18n.t("选择语言…"),
     getSearchText: (l) => `${l.label} ${l.id}`,
     getKey: (l) => l.id,
     onSelect: (l) => {

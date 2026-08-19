@@ -193,6 +193,8 @@ import { getConfigurationValue } from "../configuration/ConfigurationService";
  */
 export function getEffectiveAccentColor(): string {
   const mode = (getConfigurationValue("app.accentMode") as string) ?? "custom";
+  // E5.8#6.6 hex 豁免：配置读取兜底默认值数据（与 startup.ts 默认值同源）
+  // eslint-disable-next-line linkdesk/no-hardcoded-hex
   const customColor = (getConfigurationValue("app.accentColor") as string) ?? "#0078d4";
   if (mode === "followTheme") {
     const theme = getCurrentTheme();

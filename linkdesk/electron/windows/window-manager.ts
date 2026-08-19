@@ -144,6 +144,8 @@ export class WindowManager {
     view.setVisible(false);
     // E5.6#10：Pool 背景色跟随主题——防止空内容时显示白色闪烁
     // nativeTheme.shouldUseDarkColors 反映当前实际主题（受 main.ts theme:changed IPC 更新）
+    // E5.8#6.6 hex 豁免：WebContentsView 背景色（OS 层 setBackgroundColor，CSS 变量不可达）
+    // eslint-disable-next-line linkdesk/no-hardcoded-hex
     view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f5f5f5');
     this.mainWindow.contentView.addChildView(view);
 

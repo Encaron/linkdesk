@@ -6,6 +6,7 @@
  */
 
 import { useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import "./NumberInput.css";
 
 interface NumberInputProps {
@@ -18,6 +19,7 @@ interface NumberInputProps {
 }
 
 export default function NumberInput({ value, onChange, min, max, step = 1, style }: NumberInputProps) {
+  const { t } = useTranslation();
   const clamp = useCallback(
     (v: number) => {
       let c = v;
@@ -41,7 +43,7 @@ export default function NumberInput({ value, onChange, min, max, step = 1, style
         onClick={handleStepDown}
         disabled={atMin}
         tabIndex={-1}
-        aria-label="减少"
+        aria-label={t("减少")}
       >−</button>
       <input
         className="input number-input-field"
@@ -58,7 +60,7 @@ export default function NumberInput({ value, onChange, min, max, step = 1, style
         onClick={handleStepUp}
         disabled={atMax}
         tabIndex={-1}
-        aria-label="增加"
+        aria-label={t("增加")}
       >+</button>
     </div>
   );

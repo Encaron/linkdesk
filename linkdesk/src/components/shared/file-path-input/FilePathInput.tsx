@@ -6,6 +6,8 @@
  * 非 Electron 环境下 📂 按钮不可用——用户可手动输入路径。
  */
 
+import { useTranslation } from "react-i18next";
+
 interface FilePathInputProps {
   value: string;
   onChange: (v: string) => void;
@@ -14,6 +16,7 @@ interface FilePathInputProps {
 }
 
 export default function FilePathInput({ value, onChange, dialogType }: FilePathInputProps) {
+  const { t } = useTranslation();
   const handleBrowse = async () => {
     const dialog = window.linkdesk?.dialog;
     if (!dialog) return;
@@ -21,7 +24,7 @@ export default function FilePathInput({ value, onChange, dialogType }: FilePathI
     const opts = dialogType === "directory"
       ? { directory: true }
       : {
-          filters: [{ name: "所有文件", extensions: ["*"] }],
+          filters: [{ name: t("所有文件"), extensions: ["*"] }],
         };
 
     try {
@@ -42,12 +45,12 @@ export default function FilePathInput({ value, onChange, dialogType }: FilePathI
         value={value}
         onChange={(e) => onChange(e.target.value)}
         style={{ flex: 1 }}
-        placeholder={dialogType === "directory" ? "选择目录…" : "选择文件…"}
+        placeholder={dialogType === "directory" ? t("选择目录…") : t("选择文件…")}
       />
       <button
         className="settings-action-btn"
         onClick={handleBrowse}
-        title={dialogType === "directory" ? "浏览目录…" : "浏览文件…"}
+        title={dialogType === "directory" ? t("浏览目录…") : t("浏览文件…")}
       >…</button>
     </div>
   );

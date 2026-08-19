@@ -45,7 +45,7 @@ export function showThemePicker(pluginId?: string): void {
   QuickPickService.show<string>({
     mode: "theme",
     items: themes,
-    placeholder: "选择颜色主题…",
+    placeholder: i18n.t("选择颜色主题…"),
     getSearchText: (name) => name,
     getKey: (name) => name,
     onSelect: (name) => {

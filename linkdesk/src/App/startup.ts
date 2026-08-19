@@ -108,6 +108,8 @@ export function useAppStartup({ setTheme, setLang, setReady }: AppStartupDeps): 
           },
           "app.accentColor": {
             type: "string",
+            // E5.8#6.6 hex 豁免：配置项默认值数据（用户可改，非样式硬编码）
+            // eslint-disable-next-line linkdesk/no-hardcoded-hex
             default: "#0078d4",
             description: t("自定义强调色（图标栏高亮、开关、焦点边框）"),
             dependsOn: { key: "app.accentMode", value: "custom" },
