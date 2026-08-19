@@ -23,6 +23,7 @@
     "dev:plugins": "node scripts/build-plugins.mjs --watch",
     "contracts:gen": "node scripts/generate-contract.mjs",
     "contracts:check": "node scripts/generate-contract.mjs --check",
+    "lsp:smoke": "node scripts/check-lsp-smoke.mjs",
     "postinstall": "node -e \"try{require('fs').rmSync('node_modules/.vite',{recursive:true,force:true})}catch(e){}\" && node scripts/install-lefthook.mjs"
   },
   "dependencies": {
