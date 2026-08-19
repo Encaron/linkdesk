@@ -6,13 +6,13 @@
 
 import { ipcRenderer } from 'electron';
 import { IPC, filesystemChanged } from '../ipc/channels';
-import { listenDirect } from '../ipc/event-system';
+import type { EventSystemApi } from '../ipc/event-system';
 import type { OpenPortConfig, SerialStats } from '../../src/core/types/ipc/serial';
 import type { FileChangeEvent } from '../../src/core/services/files/FileService';
 import type { SearchWireOptions, SearchWireResult } from '../../src/core/types/ipc/search';
 
-/** serial 命名空间——串口消费端（读/写/监听） */
-export function buildSerial() {
+/** serial 命名空间——串口消费端（读/写/监听）。E5.8#6.5：推送走 broadcast → plugin:push 分发 → events.on（原 listenDirect direct 已删） */
+export function buildSerial(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（serial 命名空间），无法共享
   /* jscpd:ignore-start */
   return {
@@ -24,15 +24,15 @@ export function buildSerial() {
     sendText: (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
     setDtr: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setDtr, enable),
     setRts: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setRts, enable),
-    onData: (cb: (text: string) => void) => listenDirect(ipcRenderer, IPC.serial.data, cb),
-    onStats: (cb: (stats: SerialStats) => void) => listenDirect(ipcRenderer, IPC.serial.stats, cb),
-    onSystem: (cb: (message: string) => void) => listenDirect(ipcRenderer, IPC.serial.system, cb),
+    onData: (cb: (text: string) => void) => events.on(IPC.serial.data, cb),
+    onStats: (cb: (stats: SerialStats) => void) => events.on(IPC.serial.stats, cb),
+    onSystem: (cb: (message: string) => void) => events.on(IPC.serial.system, cb),
   };
   /* jscpd:ignore-end */
 }
 
 /** filesystem 命名空间——路径守卫：池来源写操作经主进程校验（归一化 + 危险目录拒绝 + workspace 外用户确认，读放行） */
-export function buildFilesystem() {
+export function buildFilesystem(events: EventSystemApi) {
   return {
     readTextFile: (p: string) => ipcRenderer.invoke(IPC.filesystem.readTextFile, p),
     writeTextFile: (p: string, d: string) => ipcRenderer.invoke(IPC.filesystem.writeTextFile, p, d),
@@ -48,10 +48,10 @@ export function buildFilesystem() {
     watch: (dirPath: string, onEvent: (e: FileChangeEvent) => void) => {
       return ipcRenderer.invoke(IPC.filesystem.watch, dirPath).then((watcherId: number) => {
         const channel = filesystemChanged(watcherId);
-        const handler = (_event: Electron.IpcRendererEvent, change: FileChangeEvent) => onEvent(change);
-        ipcRenderer.on(channel, handler);
+        // E5.8#6.5：文件变更走 broadcast → plugin:push 分发 → events.on（原 ipcRenderer.on direct 已删）
+        const unsubscribe = events.on<FileChangeEvent>(channel, (change) => onEvent(change));
         return () => {
-          ipcRenderer.removeListener(channel, handler);
+          unsubscribe();
           ipcRenderer.invoke(IPC.filesystem.unwatch, watcherId).catch(() => {});
         };
       });

@@ -6,69 +6,30 @@
  *
  * 通信模型：
  *   renderer 请求 → invoke → main process 执行 → 返回结果
- *   main process 推送 → webContents.send → renderer ipcRenderer.on
+ *   main process 推送 → IpcBridge.broadcast（plugin:push 包装，壳+池双侧） → renderer events.on
  */
 
-import { BrowserWindow, ipcMain } from 'electron';
+import { ipcMain } from 'electron';
 import { serialService } from '../../services/serial-service.js';
 // E5.7#97：OpenPortConfig 归口 wire 契约（serial-service 只 import 不 re-export——原双份定义已删）
 import type { OpenPortConfig } from '../../../src/core/types/ipc/serial';
-import type { WindowManager } from '../../windows/window-manager.js';
 import { IPC } from '../channels.js';
+import { IpcBridge } from '../ipc-bridge.js';
 
-// E5.7#36：壳崩重建复用本函数——引用始终刷新（推送回调读模块引用），IPC 通道只注册一次
-let _mainWindow: BrowserWindow | null = null;
-let _windowManager: WindowManager | undefined;
 let _registered = false;
 
 /**
  * 注册所有串口 IPC 处理器。
- * E5#74b：windowManager 用于广播串口数据到插件 WebView。
+ * E5.8#6.5：数据推送唯一路径 = IpcBridge.broadcast（plugin:push 发壳+发池）——原壳 direct +
+ * 池手动遍历双发删除；IpcBridge.active 恒指最新实例，壳崩重建自动换（不再需要 _mainWindow 引用）。
  */
-export function registerSerialHandlers(mainWindow: BrowserWindow, windowManager?: WindowManager): void {
-  _mainWindow = mainWindow;
-  _windowManager = windowManager;
-
+export function registerSerialHandlers(): void {
   // 将 serial-service 的数据推送到渲染进程。
-  // setCallbacks 是覆盖式设置——必须在 guard 之前，重建后回调需指向新窗口/新 WM。
+  // setCallbacks 是覆盖式设置——必须在 guard 之前，每次调用重绑（回调走 IpcBridge.active 取最新实例）。
   serialService.setCallbacks({
-    onData: (text) => {
-      if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send(IPC.serial.data, text);
-      }
-      // E5#74b + E5.7#43：广播到唯一 Pool WebView（per-tab 实例循环已删）
-      if (_windowManager) {
-        for (const poolView of _windowManager.getAllPoolViews()) {
-          if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send(IPC.serial.data, text);
-          }
-        }
-      }
-    },
-    onStats: (stats) => {
-      if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send(IPC.serial.stats, stats);
-      }
-      if (_windowManager) {
-        for (const poolView of _windowManager.getAllPoolViews()) {
-          if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send(IPC.serial.stats, stats);
-          }
-        }
-      }
-    },
-    onSystem: (msg) => {
-      if (_mainWindow && !_mainWindow.isDestroyed()) {
-        _mainWindow.webContents.send(IPC.serial.system, msg);
-      }
-      if (_windowManager) {
-        for (const poolView of _windowManager.getAllPoolViews()) {
-          if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send(IPC.serial.system, msg);
-          }
-        }
-      }
-    },
+    onData: (text) => { IpcBridge.active?.broadcast(IPC.serial.data, text); },
+    onStats: (stats) => { IpcBridge.active?.broadcast(IPC.serial.stats, stats); },
+    onSystem: (msg) => { IpcBridge.active?.broadcast(IPC.serial.system, msg); },
   });
 
   if (_registered) return;

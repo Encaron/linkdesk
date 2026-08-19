@@ -112,8 +112,16 @@ export function listenDirect<T extends unknown[]>(
       // E5.7#81：安装进度——壳 loader emit → 主进程 → 池广播（走 plugin:push 分发）
       'plugin:installProgress',
       'window:zoomLevelChanged',
+      // E5.8#6.5：数据推流已归一化走 broadcast → plugin:push 分发 → 池/壳侧必须 events.on
+      IPC.serial.data,
+      IPC.serial.stats,
+      IPC.serial.system,
+      IPC.lsp.data,
     ];
-    if (PUSH_CHANNELS.includes(channel)) {
+    // E5.8#6.5：filesystem:changed:<watcherId> 为动态通道——watcherId 后缀，前缀匹配
+    const isPushChannel = (ch: string): boolean =>
+      PUSH_CHANNELS.includes(ch) || ch.startsWith('filesystem:changed:');
+    if (isPushChannel(channel)) {
       console.error(
         `[event-system] 🔴 listenDirect("${channel}") 错误！` +
         ` "${channel}" 走 plugin:push 分发，必须用 events.on("${channel}", cb)，不是 listenDirect。` +

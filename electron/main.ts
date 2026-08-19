@@ -102,10 +102,11 @@ function createWindow(): void {
   ipcBridge = new IpcBridge(win, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
 
-  // E5#74：依赖 WindowManager 的 handler 放在此处
-  registerLspHandlers(win);   // E5#74c
-  registerSerialHandlers(win, windowManager); // E5#74b
-  registerFileHandlers(windowManager);              // E5#80
+  // E5#74 + E5.8#6.5：serial/lsp/file 推送改走 IpcBridge.broadcast（IpcBridge.active 取最新实例）——
+  // 无需再传 win/windowManager（推送双发已删，参数随 #6.5 简化）
+  registerLspHandlers();   // E5#74c
+  registerSerialHandlers(); // E5#74b
+  registerFileHandlers();              // E5#80
   registerPoolHandlers(windowManager, win);  // E5.6#8e
 
   // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）

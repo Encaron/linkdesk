@@ -7,12 +7,13 @@
  * 危险目录拒绝 + workspace 外用户确认；壳来源（受信）直通。读操作放行。
  */
 
-import { ipcMain, BrowserWindow } from 'electron';
+import { ipcMain } from 'electron';
 import type { WebContents } from 'electron';
 import { fileService } from '../../services/file-service.js';
 import { guardPoolWrite } from '../../services/filesystem-guard.js';
 import type { WindowManager } from '../../windows/window-manager.js';
 import { IPC, filesystemChanged } from '../channels.js';
+import { IpcBridge } from '../ipc-bridge.js';
 
 // E5.7#36：壳崩重建复用本函数——引用始终刷新（watcher 广播回调读模块引用），IPC 通道只注册一次
 let _windowManager: WindowManager | undefined;
@@ -94,19 +95,9 @@ export function registerFileHandlers(windowManager?: WindowManager): void {
   ipcMain.handle(IPC.filesystem.watch, (event, dirPath: string) => {
     const watcherId = fileService.watch(dirPath, (change) => {
       if (event.sender.isDestroyed()) return;
-      const win = BrowserWindow.fromWebContents(event.sender);
-      if (win && !win.isDestroyed()) {
-        win.webContents.send(filesystemChanged(watcherId), change);
-      }
-      // E5#80 + E5.7#43：广播文件变更到唯一 Pool WebView（per-tab 实例循环已删——
-      // 修复潜伏 bug：池内文件树 watcher 此前收不到任何变更）
-      if (_windowManager) {
-        for (const poolView of _windowManager.getAllPoolViews()) {
-          if (!poolView.webContents.isDestroyed()) {
-            poolView.webContents.send(filesystemChanged(watcherId), change);
-          }
-        }
-      }
+      // E5.8#6.5：归一化——文件变更推流唯一路径 = IpcBridge.broadcast（plugin:push 发壳+发池；
+      // 原壳 direct send + 池手动遍历双发删除；池内文件树 watcher 随之 events.on 收到——修复语义保留）
+      IpcBridge.active?.broadcast(filesystemChanged(watcherId), change);
     });
     return watcherId;
   });
