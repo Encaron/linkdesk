@@ -8,12 +8,15 @@
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import type { EventSystemApi } from '../ipc/event-system';
+import { guardPush } from '../ipc/wire-guard';
 import type { ConfigurationChangedPayload, SettingsRequestGroupPayload, SettingsScrollToPayload, PluginPushEnvelope } from '../../src/core/types/ipc/events';
 
 // ── E5.5#7a: 配置缓存——防 React mount 前事件竞态 ──
 const _configCache = new Map<string, unknown>();
 ipcRenderer.on(IPC.plugin.push, (_event, data: PluginPushEnvelope) => {
   if (data?.channel === IPC.config.changed) {
+    // E5.8#22.5：config:changed 直收点接收边界断言——guard 只记录不阻断，透传缓存写入
+    guardPush(data.channel, data.payload);
     const { key, value } = data.payload as ConfigurationChangedPayload;
     _configCache.set(key, value);
   }

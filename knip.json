@@ -65,7 +65,10 @@
     "src/pool/hooks/useClickPreview.ts",
     "src/hooks/useTabManager.ts",
     // E5.8#2：手动开发工具（非门禁链，node scripts/audit-i18n.mjs 手动跑）
-    "scripts/audit-i18n.mjs"
+    "scripts/audit-i18n.mjs",
+    // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
+    //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
+    "electron/ipc/runtime-dto-registry.ts"
   ],
   "ignoreDependencies": [
     // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）

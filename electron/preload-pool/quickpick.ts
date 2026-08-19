@@ -9,6 +9,7 @@
 
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
+import { guardPush } from '../ipc/wire-guard';
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from '../../src/core/types/pool/poolQuickPick';
 
 type PluginQuickPickSettle = (key: string | null) => void;
@@ -22,6 +23,8 @@ let _quickPickCallback: ((data: PoolQuickPickData) => void) | null = null;
 let _quickPickActive = false;
 
 ipcRenderer.on(IPC.pool.quickpick, (_event, data: PoolQuickPickData) => {
+  // E5.8#22.5：pool:quickpick 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.quickpick, data);
   if (!_quickPickActive || !_quickPickCallback) {
     _quickPickBuffer.length = 0;
     _quickPickBuffer.push(data);

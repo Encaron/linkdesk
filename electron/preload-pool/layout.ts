@@ -11,6 +11,7 @@
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import { IpcRelay } from '../ipc/ipc-relay';
+import { guardPush } from '../ipc/wire-guard';
 import type { PoolLayout } from '../../src/core/types/pool/poolLayout';
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
@@ -18,6 +19,8 @@ import type { PoolLayout } from '../../src/core/types/pool/poolLayout';
 const _layoutRelay = new IpcRelay<PoolLayout>();
 
 ipcRenderer.on(IPC.pool.layout, (_event, layout: PoolLayout) => {
+  // E5.8#22.5：pool:layout 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.layout, layout);
   _layoutRelay.push(layout);
 });
 

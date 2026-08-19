@@ -8,6 +8,7 @@
 
 import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
+import { guardPush } from '../ipc/wire-guard';
 import type { PoolToastData } from '../../src/core/types/pool/poolToast';
 import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
 
@@ -19,6 +20,8 @@ let _toastCallback: ((data: PoolToastData) => void) | null = null;
 let _toastActive = false;
 
 ipcRenderer.on(IPC.pool.toast, (_event, data: PoolToastData) => {
+  // E5.8#22.5：pool:toast 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.toast, data);
   if (!_toastActive || !_toastCallback) {
     _toastBuffer.length = 0;
     _toastBuffer.push(data);
@@ -35,6 +38,8 @@ let _dialogCallback: ((data: PoolDialogData) => void) | null = null;
 let _dialogActive = false;
 
 ipcRenderer.on(IPC.pool.dialog, (_event, data: PoolDialogData) => {
+  // E5.8#22.5：pool:dialog 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.dialog, data);
   if (!_dialogActive || !_dialogCallback) {
     _dialogBuffer.length = 0;
     _dialogBuffer.push(data);
