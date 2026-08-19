@@ -105,6 +105,37 @@ describe("EditorModel", () => {
     expect(EditorModel.fromContent("/a.xyz", "").language).toBe("plaintext");
   });
 
+  /* ── setFilePath（E5.8#25.3 重命名迁移）── */
+
+  it("setFilePath——路径迁移：内容不变 + dirty 保留 + uri 切换", () => {
+    const m = EditorModel.fromContent("/a.ts", "hello");
+    m.setValue("world"); // 变脏
+    m.setFilePath("/renamed.ts");
+    expect(m.filePath).toBe("/renamed.ts");
+    expect(m.getValue()).toBe("world");
+    expect(m.isDirty()).toBe(true); // 内容未动 → dirty 保留
+    expect(m.uri).toBe("file:///renamed.ts"); // uri 派生切换（Monaco 新 uri model）
+  });
+
+  it("setFilePath——语言随新扩展名重派生（.txt→.ts）", () => {
+    const m = EditorModel.fromContent("/a.txt", "");
+    expect(m.language).toBe("plaintext");
+    m.setFilePath("/a.ts");
+    expect(m.language).toBe("typescript");
+  });
+
+  it("setFilePath——normalize 反斜杠后保存写新路径", async () => {
+    const linkdesk = window.linkdesk as unknown as {
+      filesystem: { writeTextFile: ReturnType<typeof vi.fn> };
+    };
+    linkdesk.filesystem.writeTextFile = vi.fn().mockResolvedValue(undefined);
+    const m = EditorModel.fromContent("E:\\a\\b.ts", "hello");
+    m.setFilePath("E:\\a\\renamed.ts");
+    await m.save();
+    // 保存目标 = 新路径（utf-8 走 writeTextFile）
+    expect(linkdesk.filesystem.writeTextFile).toHaveBeenCalledWith("E:/a/renamed.ts", "hello");
+  });
+
   /* ── reloadFromDisk（E5.8#0d.9）── */
 
   describe("reloadFromDisk", () => {
