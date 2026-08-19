@@ -9,8 +9,9 @@
  * 扫描路径（electron-builder.yml 实证：plugins/ 走 extraResources、不进 ASAR）：
  *   dev       → <项目根>/plugins/{builtin,user}/<pluginId>/plugin.json
  *   packaged  → <resources>/plugins/{builtin,user}/<pluginId>/plugin.json
- * 目录常量共享 src/core/pluginPaths.ts 的 PLUGINS_DIR / PLUGIN_SUBDIRS（硬约束 12——
- * 改一处全生效）；该文件的 glob 工厂是渲染进程 import.meta.glob 产物，主进程用 fs.readdir 直扫。
+ * 目录常量共享 src/core/utils/plugin/pluginPaths.ts 的 PLUGINS_DIR / PLUGIN_SUBDIRS（硬约束 12——
+ * 改一处全生效，E5.8#0d.11 自 core/ 根归位 utils/plugin/）；该文件的 glob 工厂是渲染进程
+ * import.meta.glob 产物，主进程用 fs.readdir 直扫。
  *
  * 注册幂等：register* 函数内建去重/覆盖（LangDef 覆盖 / FileAssociation 同插件去重 /
  * Protocol 覆盖）——启动预加载与装/卸重扫双路径天然安全，重复调用覆盖不叠加。
@@ -19,7 +20,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { app, ipcMain } from "electron";
-import { PLUGINS_DIR, PLUGIN_SUBDIRS } from "../../src/core/pluginPaths.js";
+import { PLUGINS_DIR, PLUGIN_SUBDIRS } from "../../src/core/utils/plugin/pluginPaths.js"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
 import type { PluginManifest, LangDefContribution } from "../../src/core/api/types.js";
 import { registerLangDef, clearLangDefs } from "../../src/core/registry/languages/LangDefRegistry.js";
 import { clearProtocols } from "../../src/core/registry/ProtocolRegistry.js";

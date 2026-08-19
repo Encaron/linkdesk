@@ -43,7 +43,7 @@ function errMsg(e: unknown): string {
 // Vite 在构建时展开 glob，生成所有插件的入口映射。
 // E2c #19j-structure-a：同时支持平铺结构和 src/ 子目录结构——过渡期内两种都匹配。
 // E4 #86：插件分离到 builtin/ 和 user/ 两个子目录——每个 glob 拆为两份。
-// E5#35b: 子目录/入口文件约定见 pluginPaths.ts（PLUGIN_SUBDIRS / PLUGIN_ENTRY_FILES）。
+// E5#35b: 子目录/入口文件约定见 utils/plugin/pluginPaths.ts（PLUGIN_SUBDIRS / PLUGIN_ENTRY_FILES，E5.8#0d.11 自 core/ 根归位）。
 // Vite import.meta.glob 需字符串字面量做静态分析，工厂函数不兼容——保持 spread 写法。
 const pluginModules = {
   ...import.meta.glob<{ default: React.ComponentType<{ isActive: boolean }> }>(

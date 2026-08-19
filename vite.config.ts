@@ -4,7 +4,7 @@ import { resolve, relative, dirname } from "path";
 import { fileURLToPath } from "url";
 import { existsSync, readdirSync, readFileSync } from "fs";
 import { DEV_SERVER_PORT } from "./electron/constants"; // E5.7#45.5：shared/ 并入 electron/constants.ts
-import { PLUGIN_SUBDIRS } from "./src/core/pluginPaths";
+import { PLUGIN_SUBDIRS } from "./src/core/utils/plugin/pluginPaths"; // E5.8#0d.11：自 core/ 根归位 utils/plugin/
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const host = process.env.TAURI_DEV_HOST;
@@ -19,7 +19,7 @@ function scanPluginEntries(): Record<string, string> {
 
   const entries: Record<string, string> = {};
   try {
-    // E5#35d: 子目录从 pluginPaths.ts 导入——PLUGIN_SUBDIRS 为唯一权威来源
+    // E5#35d: 子目录从 utils/plugin/pluginPaths.ts 导入——PLUGIN_SUBDIRS 为唯一权威来源（E5.8#0d.11 自 core/ 根归位）
     for (const sub of PLUGIN_SUBDIRS) {
       const subDir = resolve(pluginsDir, sub);
       if (!existsSync(subDir)) continue;
