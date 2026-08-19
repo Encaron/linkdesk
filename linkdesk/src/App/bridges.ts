@@ -9,7 +9,7 @@
 import { useEffect } from "react";
 import { QuickPickService } from "../core/services/ui/QuickPickService";
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "../core/services/ui/toast";
-import { registerDialogRenderers, unregisterDialogRenderers, type DialogOptions } from "../core/services/ui/DialogService";
+import { registerDialogRenderers, type DialogOptions } from "../core/services/ui/DialogService";
 import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
@@ -204,7 +204,8 @@ export function useUiBridges({ setPanelActiveViewId }: UiBridgesDeps): void {
         pushOpen(options, true);
       });
 
-    registerDialogRenderers(confirmRenderer, alertRenderer);
+    // E5.8#10：返 disposer——卸载时引用级撤自己（unregisterDialogRenderers 已删）
+    const unregisterRenderers = registerDialogRenderers(confirmRenderer, alertRenderer);
 
     // 池动作回传——先推关闭再 settle（settle 后消费方可能立即再开——
     // 若关闭推在 settle 之后，stale close 会覆盖新开对话框）。
@@ -222,7 +223,7 @@ export function useUiBridges({ setPanelActiveViewId }: UiBridgesDeps): void {
 
     return () => {
       unsubAction();
-      unregisterDialogRenderers();
+      unregisterRenderers();
     };
   }, []);
 }

@@ -62,14 +62,6 @@ export function registerDialogRenderers(
   };
 }
 
-/** UI 层注销渲染函数 */
-export function unregisterDialogRenderers(): void {
-  _confirmR = null;
-  _alertR = null;
-  _quickPickR = null;
-  _inputBoxR = null;
-}
-
 /* ── 公共 API ── */
 
 /**
