@@ -10,13 +10,6 @@
 
 // E5.7#49：LangDefRegistry/ProtocolRegistry import 已删——Registry 主进程化后壳侧零消费
 // （池经直连 IPC 读主进程实例，见 electron/ipc/registry-handlers.ts）
-import {
-  getKeybindings, registerKeybinding, saveUserKeybindings,
-  removeKeybindingForCommand, resetKeybindingToDefault,
-  findKeybindingForCommand, setKeybindingCaptureActive,
-  keybindingResolver,
-} from "../../registry/commands/KeybindingRegistry"; // E5.8#0d.10-10f：findKeybindingForCommand 随 keybindings 域迁出
-import { CoreEvents } from "../../react/events/CoreEvents"; // E5.5#7-p2: 快捷键变更广播
 import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // E5#70（仅 init 的 registerExternalGetter 保留）
 import { getPluginStateValue, setPluginStateValue } from "./PluginStateService"; // E5#71
 // E5.5#7：插件生命周期广播——设置页等保姆插件依赖此事件刷新配置分组
@@ -32,13 +25,13 @@ import { handleCommandsChannel } from "./IpcBridgeHandler/commands"; // E5.8#0d.
 import { handleTabsChannel } from "./IpcBridgeHandler/tabs"; // E5.8#0d.10-10c：标签页域
 import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace, unsubscribeWorkspace, subscribeViews, unsubscribeViews } from "./IpcBridgeHandler/workspace"; // E5.8#0d.10-10d：工作区/视图容器域
 import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handleUiMethod, subscribeUi, unsubscribeUi } from "./IpcBridgeHandler/ui"; // E5.8#0d.10-10e：UI 浮层域
+import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
 /** E5#103: 引用计数——>0 时 handler 活跃。StrictMode double mount/unmount/mount 安全。 */
 let _refCount = 0;
 let _lifecycleUnsub: (() => void) | null = null;
-let _keybindingsUnsub: (() => void) | null = null; // E5.5#7-p2
 
 export function initIpcBridgeHandler(): void {
   _refCount++;
@@ -193,10 +186,8 @@ export function initIpcBridgeHandler(): void {
   // ── E5.5#7：壳→设置页导航——齿轮"设置"跳转到指定分组/配置项（IpcBridgeHandler/ui 域）──
   subscribeUi(linkdesk);
 
-  // ── E5.5#7-p2：快捷键变更广播——设置页快捷键子栏实时刷新 ──
-  _keybindingsUnsub = CoreEvents.onDidChangeKeybindings.event(() => {
-    try { linkdesk.events?.emit("keybindings:changed", {}); } catch { /* 静默 */ }
-  });
+  // ── E5.5#7-p2：快捷键变更广播——设置页快捷键子栏实时刷新（IpcBridgeHandler/keybindings 域）──
+  subscribeKeybindings(linkdesk);
 
   // ── E5.5#7 Bug B fix + E5.6#11.5-A + E5.6#19e：工作区/活跃工作区/视图变更广播（IpcBridgeHandler/workspace 域）──
   subscribeWorkspace(linkdesk);
@@ -210,11 +201,10 @@ export function unregisterIpcBridgeHandler(): void {
     unsubscribeConfiguration();
     _lifecycleUnsub?.();
     _lifecycleUnsub = null;
-    _keybindingsUnsub?.();
-    _keybindingsUnsub = null;
     unsubscribeWorkspace();
     unsubscribeViews();
     unsubscribeUi();
+    unsubscribeKeybindings();
   }
 }
 
@@ -234,37 +224,16 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "isDisabled":
     case "getCommands":
       return handlePluginManagerMethod(method, args);
-    // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import ──
+    // ── E5.5#7-p2：快捷键 IPC——插件 WebView 零 @src/core import（IpcBridgeHandler/keybindings 域委派）──
     case "getKeybindings":
-      return getKeybindings();
     case "getKeybindingConflicts":
-      return keybindingResolver.detectConflicts();
-    case "registerKeybinding": {
-      const [binding] = args as [import("../../registry/commands/KeybindingRegistry").Keybinding];
-      registerKeybinding(binding);
-      break;
-    }
+    case "registerKeybinding":
     case "saveUserKeybindings":
-      return saveUserKeybindings();
-    case "removeKeybindingForCommand": {
-      const [commandId] = args as [string];
-      removeKeybindingForCommand(commandId);
-      break;
-    }
-    case "resetKeybindingToDefault": {
-      const [commandId] = args as [string];
-      resetKeybindingToDefault(commandId);
-      break;
-    }
-    case "findKeybindingForCommand": {
-      const [commandId] = args as [string];
-      return findKeybindingForCommand(commandId);
-    }
-    case "setKeybindingCaptureActive": {
-      const [active] = args as [boolean];
-      setKeybindingCaptureActive(active);
-      break;
-    }
+    case "removeKeybindingForCommand":
+    case "resetKeybindingToDefault":
+    case "findKeybindingForCommand":
+    case "setKeybindingCaptureActive":
+      return handleKeybindingsMethod(method, args);
     // ── 配置（E5.5#7：设置页 IPC 化）——IpcBridgeHandler/configuration 域委派 ──
     case "getSchema":
     case "getConfigurationContributions":
