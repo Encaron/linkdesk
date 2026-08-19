@@ -35,6 +35,11 @@ export class IpcBridge {
    */
   private static _active: IpcBridge | null = null;
 
+  /** E5.8#6.5：数据推流 handler（serial/lsp/file）取活动实例走 broadcast——壳崩重建自动换实例（active 恒指最新） */
+  static get active(): IpcBridge | null {
+    return IpcBridge._active;
+  }
+
   private pendingRequests = new Map<string, PendingRequest>();
   private requestCounter = 0;
 
@@ -228,10 +233,9 @@ export class IpcBridge {
   }) => {
     // E5#61b + E5.7#43：解析事件来源——壳 emit 标 "shell"，池 emit 标 "pool"
     const sourceId = event.sender === this.mainWindow.webContents ? "shell" : "pool";
+    // E5.8#6.5：broadcast 已归一化为发壳+发池——壳侧补发行随 #6.5 删除（原 234 行手动 plugin:push）
     // 广播到唯一 Pool WebView + 壳（含自己——对标 CoreEvents 模式）
     this.broadcast(channel, payload, sourceId);
-    // 也转发到壳渲染进程——壳侧 components 可订阅插件事件
-    this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source: sourceId });
   };
 
   // ═══════════════════════════════════════════════════════
@@ -245,16 +249,21 @@ export class IpcBridge {
     channel: string;
     payload: unknown;
   }) => {
-    // 壳发起的广播——source 为 "shell"
+    // 壳发起的广播——source 为 "shell"（E5.8#6.5：broadcast 内部发壳，原 251 行手动补发已删）
     this.broadcast(channel, payload, "shell");
-    // E5.6#2 → E5.7#43：壳侧组件也订阅广播事件（theme:changed 等）——双路径：池 + 壳
-    this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source: "shell" });
   };
 
-  /** E5.7#43：广播事件到唯一 Pool WebContentsView——并存储 payload 供新池重放（per-tab 实例循环已删） */
+  /** E5.7#43 + E5.8#6.5：广播事件到壳 + 唯一 Pool WebContentsView（plugin:push 包装）——
+   *  数据推流唯一路径：serial/lsp/file 推送一律走本方法；壳/池双侧 events.on 订阅。
+   *  存储 payload 供新池重放（per-tab 实例循环已删）；onPluginEmit/onBridgeBroadcast
+   *  的壳补发行随 #6.5 归一化进本方法——不再任何地方手动双发。 */
   broadcast(channel: string, payload: unknown, source?: string): void {
     this.lastBroadcasts.set(channel, payload);
-    // E5.6#10f → E5.7#43：Pool WebContentsView 是唯一接收方（lang:changed / theme:changed 等）
+    // 壳渲染进程（plugin:push）——壳侧 events.on 订阅（E5.6#2 双路径归一化进 broadcast）
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send(IPC.plugin.push, { channel, payload, source });
+    }
+    // 唯一 Pool WebContentsView（plugin:push）——lang:changed / theme:changed / serial.* 等
     for (const poolView of this.windowManager.getAllPoolViews()) {
       if (!poolView.webContents.isDestroyed()) {
         poolView.webContents.send(IPC.plugin.push, { channel, payload, source });
