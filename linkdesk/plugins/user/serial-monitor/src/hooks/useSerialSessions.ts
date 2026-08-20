@@ -26,6 +26,8 @@ export interface SerialSession {
   dtr: boolean; rts: boolean;
   // E5.8#30.19a：接收区 HEX+ASCII 双栏渲染开关（per-COM，侧栏「显示」group）——开 = 接收区并排 HEX/ASCII 两栏
   hexAsciiDualPane: boolean;
+  // E5.8#30.19b：不可见字符转义开关（per-COM，侧栏「显示」group）——`\n`/`\r`/`\t` 等显示为可见符号
+  escapeInvisibleChars: boolean;
   connected: boolean; timestampFormat: string; showEcho: boolean;
   showLineNumbers: boolean; separateSystemLog: boolean; lineEnding: string;
   autoRepeat: boolean; repeatInterval: number; autoClear: boolean;
@@ -35,7 +37,7 @@ export interface SerialSession {
 
 const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
   port: "", baudRate: "115200", dataBits: 8, stopBits: 1, parity: "none",
-  dtr: false, rts: false, hexAsciiDualPane: false, connected: false,
+  dtr: false, rts: false, hexAsciiDualPane: false, escapeInvisibleChars: false, connected: false,
   timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
   separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
   repeatInterval: 1000, autoClear: false, receiveMode: "text",
