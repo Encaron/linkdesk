@@ -27,6 +27,8 @@ import { clearProtocols } from "../../src/core/registry/ProtocolRegistry.js";
 import { registerFileAssociation, clearFileAssociations } from "../../src/core/services/files/FileAssociationService.js";
 import { ensureBuiltinProtocols } from "../../src/core/commands/infra/registerBuiltinProtocols.js";
 import { IPC } from '../ipc/channels.js';
+// E5.8#26 D8 卸载连坐——rescan 时回收孤儿端口（owner 插件已不在扫盘集合 = 被卸载）
+import { serialService } from '../services/serial-service.js';
 
 /** 插件根目录——dev 用项目根，packaged 用 extraResources 落点 */
 function getPluginsRoot(): string {
@@ -61,6 +63,9 @@ function registerManifestTables(pluginId: string, manifest: PluginManifest): voi
   }
 }
 
+/** E5.8#26 D8——当前已加载插件 ID 集合（rescan 时对比端口 owner，回收被卸载插件的孤儿端口） */
+const _loadedPluginIds = new Set<string>();
+
 /**
  * 全量扫盘——启动时 whenReady 调一次；装/卸/重装后经 plugins:rescanManifests 重扫。
  * 错误隔离：单个插件目录缺失 / plugin.json 损坏 → console.error + 跳过该插件，不中断整轮。
@@ -72,6 +77,7 @@ export function loadAllPluginManifests(): void {
   // 与现状壳代理 IpcBridgeHandler 的剥壳行为一致）。
   ensureBuiltinProtocols();
 
+  _loadedPluginIds.clear();
   const root = getPluginsRoot();
   for (const sub of PLUGIN_SUBDIRS) {
     const subDir = path.join(root, sub);
@@ -86,6 +92,8 @@ export function loadAllPluginManifests(): void {
     for (const name of entries) {
       const manifestPath = path.join(subDir, name, "plugin.json");
       if (!fs.existsSync(manifestPath)) continue;
+      // E5.8#26 D8：先登记存在性——plugin.json 解析失败（损坏）也算插件存在，防误连坐
+      _loadedPluginIds.add(name);
       try {
         const raw = fs.readFileSync(manifestPath, "utf-8");
         registerManifestTables(name, JSON.parse(raw) as PluginManifest);
@@ -109,10 +117,25 @@ let _rescanRegistered = false;
 export function registerManifestRescanHandler(): void {
   if (_rescanRegistered) return;
   _rescanRegistered = true;
-  ipcMain.on(IPC.plugins.rescanManifests, () => {
+  ipcMain.on(IPC.plugins.rescanManifests, async () => {
     clearLangDefs();
     clearProtocols();
     clearFileAssociations();
     loadAllPluginManifests();
+    // E5.8#26 D8 卸载连坐——端口 owner 已不在扫盘集合（插件被卸载移 .disabled/）→ 孤儿端口回收
+    await closeOrphanSerialPorts();
   });
+}
+
+/**
+ * E5.8#26 D8——rescan 后回收孤儿端口：owner 插件已不在扫盘集合（被卸载）→ closePortsByOwner。
+ * 挂钩复用 plugins:rescanManifests 既有主进程通道（Phase 2 #8 定案面：不新建生命周期通道）。
+ * 判定安全：禁用插件不移目录（仍被扫到）→ 不误回收；owner 未声明的口不在 getPortOwners → 不误关。
+ */
+async function closeOrphanSerialPorts(): Promise<void> {
+  for (const owner of serialService.getPortOwners()) {
+    if (!_loadedPluginIds.has(owner)) {
+      await serialService.closePortsByOwner(owner);
+    }
+  }
 }
