@@ -64,8 +64,9 @@ export function SessionListItem({
     setEditing(true);
   }, []);
 
+  // E5.8#30.17：协议字段已删——mockup 终态 subtitle = "COM3 · 115200"（口 + 波特率）
   const subtitle = session.port
-    ? `${session.baudRate} · ${session.protocol}`
+    ? `${session.port} · ${session.baudRate}`
     : t("未配置");
 
   return (

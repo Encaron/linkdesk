@@ -11,7 +11,7 @@
 
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { useTranslation } from "react-i18next";
-import OverlayPortal from "../overlay-portal/OverlayPortal";
+import SelectBoxDropdown from "./SelectBoxDropdown"; // E5.8#30.17：共用下拉骨架（定位 + Portal + 列表）
 import "./SelectBox.css";
 
 interface SelectBoxOption {
@@ -142,20 +142,14 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
         <span className={`codicon codicon-chevron-down selectbox-arrow ${open ? "selectbox-arrow-up" : ""}`} />
       </button>
 
-      {/* 下拉面板——E5#96f: Portal 到 body，脱离 zone 层叠上下文 */}
+      {/* 下拉面板——E5#96f: Portal 到 body，脱离 zone 层叠上下文。骨架共用 SelectBoxDropdown（E5.8#30.17 归一） */}
       {open && (
-        <OverlayPortal onClose={() => setOpen(false)} triggerRef={containerRef as React.RefObject<HTMLElement>}>
-        <div className="selectbox-dropdown" onKeyDown={handleKey}
-          style={{
-            position: "fixed",
-            left: containerRef.current?.getBoundingClientRect().left ?? 0,
-            top: (containerRef.current?.getBoundingClientRect().bottom ?? 0) + 2,
-            minWidth: containerRef.current?.getBoundingClientRect().width,
-            // 动态 maxWidth——面板不超过窗口右边缘 - 24px 呼吸，不硬编码固定值
-            maxWidth: window.innerWidth - (containerRef.current?.getBoundingClientRect().left ?? 0) - 24,
-          }}
-        >
-          {showSearch && (
+        <SelectBoxDropdown
+          containerRef={containerRef as React.RefObject<HTMLElement>}
+          onClose={() => setOpen(false)}
+          onKeyDown={handleKey}
+          listRef={listRef}
+          search={showSearch ? (
             <div className="selectbox-search">
               <input
                 ref={searchRef}
@@ -166,25 +160,23 @@ function SelectBox({ value, options, onChange, disabled, placeholder, title, cla
                 onChange={(e) => { setSearch(e.target.value); setFocusIdx(0); }}
               />
             </div>
+          ) : undefined}
+        >
+          {filtered.length === 0 ? (
+            <li className="selectbox-empty">{t("无匹配项")}</li>
+          ) : (
+            filtered.map((o, i) => (
+              <li
+                key={o.value}
+                className={`selectbox-item ${i === focusIdx ? "selectbox-item-focus" : ""} ${o.value === value ? "selectbox-item-selected" : ""}`}
+                onClick={() => select(o.value)}
+                onMouseEnter={() => setFocusIdx(i)}
+              >
+                {o.label}
+              </li>
+            ))
           )}
-          <ul ref={listRef} className="selectbox-list" tabIndex={-1}>
-            {filtered.length === 0 ? (
-              <li className="selectbox-empty">{t("无匹配项")}</li>
-            ) : (
-              filtered.map((o, i) => (
-                <li
-                  key={o.value}
-                  className={`selectbox-item ${i === focusIdx ? "selectbox-item-focus" : ""} ${o.value === value ? "selectbox-item-selected" : ""}`}
-                  onClick={() => select(o.value)}
-                  onMouseEnter={() => setFocusIdx(i)}
-                >
-                  {o.label}
-                </li>
-              ))
-            )}
-          </ul>
-        </div>
-        </OverlayPortal>
+        </SelectBoxDropdown>
       )}
     </div>
   );

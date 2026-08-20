@@ -1,20 +1,25 @@
 /**
  * 串口监视器控制面板——一行命令条。
- * Phase 5.5c Step C3：toolbar.tsx → ControlPanel.tsx（COM/波特率/协议 + 连接操作）。
+ * Phase 5.5c Step C3：toolbar.tsx → ControlPanel.tsx（COM/波特率/帧格式 + 连接操作）。
  *
  * 对标 VS Code 串口监视器面板的 shell 选择器——每标签页自包含。
  *
+ * E5.8#30.17（mockup 终态命令条 = 状态点 + COM + 波特率✎ + 8N1 + 校验 + spacer + 断开）：
+ *   协议下拉已删；波特率改壳通用 Combobox（候选快捷 + 手输任意非标值）；
+ *   8N1（数据位/停止位组合）+ 校验独立选择器——openPort 时透传 dataBits/stopBits/parity。
+ *
  * 硬规则（§3.12）：
- *   port/baudRate/protocol 唯一写入入口 → 本文件
+ *   port/baudRate/帧格式（8N1/校验） → 本文件
  *   connected → SerialContext 派生（不独立 set）
  *   ❌ 不碰编码/时间戳/回显等 12 项设置——那些的唯一入口在 sidebar.tsx
  */
 
 import { useTranslation } from "react-i18next";
-import { useState, useCallback, useEffect } from "react";
-import { useSerialContext, getOpenPorts } from "../services/SerialContext";
+import { useCallback, useEffect, useMemo } from "react";
+import { useSerialContext, getOpenPorts, type SerialFrame } from "../services/SerialContext";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
-// E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧 ProtocolRegistry）
+// E5.8#30.17（审视 ④）：壳通用可输入下拉——候选快捷 + 手输非标波特率
+import Combobox from "@src/components/shared/combobox/Combobox";
 import { useSession } from "../hooks/useSerialSessions";
 import "../styles/ControlPanel.css";
 
@@ -23,25 +28,18 @@ const BAUD_RATES = [
   "230400", "460800", "921600",
 ];
 
+// E5.8#30.17：8N1 = 数据位/停止位组合选择器（常见组合 8/7 数据位 × 1/2 停止位）
+const FRAME_FORMATS = ["8N1", "8N2", "7N1", "7N2"];
+
 function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports } = state;
   // E5.8#30.8：openPort/closePort 合并为 toggleOpen 单动作（本组件不再拆分支；openPort/closePort 保留为 SerialActions 公共原子动作）
-  const { setSourceName: setPortName, setBaudRate, refreshPorts, toggleOpen } = actions;
+  const { setSourceName: setPortName, setBaudRate, setFrame, refreshPorts, toggleOpen } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
   const { session: activeSession, update: updateSession } = useSession(sourceId);
-
-  // Phase 5e：协议列表当前是静态的（仅内置 bracket），Phase 7 多协议时加 CoreEvent 通知
-  // E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧），async → useState + useEffect
-  const [protocols, setProtocols] = useState<Array<{ id: string; name: string; pluginId: string; mode: string }>>([]);
-  const [shellActiveProtocolId, setShellActiveProtocolId] = useState("bracket");
-  useEffect(() => {
-    const lk = window.linkdesk;
-    lk?.protocol?.listProtocols?.().then((p) => setProtocols(p ?? []));
-    lk?.protocol?.getActiveProtocolId?.().then((id) => setShellActiveProtocolId(id ?? "bracket"));
-  }, []);
 
   // ── session.connected 派生规则（Bug 3 防御） ──
   // 不是独立 set——从 SerialContext 派生。
@@ -54,6 +52,21 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     refreshPorts();
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── E5.8#30.17：帧格式派生——会话 dataBits/stopBits/parity ↔ openPort 透传 SerialFrame ──
+  const frame = useMemo<SerialFrame>(() => ({
+    dataBits: activeSession?.dataBits ?? 8,
+    stopBits: activeSession?.stopBits ?? 1,
+    parity: activeSession?.parity ?? "none",
+  }), [activeSession?.dataBits, activeSession?.stopBits, activeSession?.parity]);
+  const frameFormat = `${frame.dataBits}N${frame.stopBits}`;
+
+  // 校验选项——新增文字全走 t() + i18n/en.json（硬约束 #2）
+  const parityOptions = useMemo(() => [
+    { value: "none", label: t("校验 无") },
+    { value: "odd", label: t("校验 奇") },
+    { value: "even", label: t("校验 偶") },
+  ], [t]);
+
   // ── 操作 ──
 
   const handlePortChange = useCallback(
@@ -64,11 +77,11 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       const oldPort = activeSession?.port ?? "";
       updateSession({ port });
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
-      setPortName(port, oldPort, activeSession?.receiveCoding);
+      setPortName(port, oldPort, activeSession?.receiveCoding, frame);
       // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
       window.linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
     },
-    [sourceId, updateSession, setPortName, activeSession?.port, activeSession?.receiveCoding],
+    [sourceId, updateSession, setPortName, activeSession?.port, activeSession?.receiveCoding, frame],
   );
 
   const handleBaudChange = useCallback(
@@ -76,17 +89,33 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       if (!sourceId) return;
       updateSession({ baudRate: baud });
       // E5.8#30.8：显式传会话口——setBaudRate 内部按该口真开着才关旧重开（per-tab 精确）
-      setBaudRate(baud, activeSession?.port ?? "", activeSession?.receiveCoding);
+      setBaudRate(baud, activeSession?.port ?? "", activeSession?.receiveCoding, frame);
     },
-    [sourceId, updateSession, setBaudRate, activeSession?.port, activeSession?.receiveCoding],
+    [sourceId, updateSession, setBaudRate, activeSession?.port, activeSession?.receiveCoding, frame],
   );
 
-  const handleProtocolChange = useCallback(
-    (protocolId: string) => {
-      window.linkdesk?.protocol?.setActiveProtocolId?.(protocolId);
-      updateSession({ protocol: protocolId });
+  // E5.8#30.17：改帧格式——8N1 拆 dataBits/stopBits 写 session + 口开着用新帧重开（setFrame 内部按口判断）
+  const handleFrameChange = useCallback(
+    (v: string) => {
+      if (!sourceId) return;
+      const dataBits = Number(v[0]);
+      const stopBits = Number(v[2]);
+      const next: SerialFrame = { ...frame, dataBits, stopBits };
+      updateSession({ dataBits, stopBits });
+      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding);
     },
-    [updateSession],
+    [sourceId, frame, activeSession, updateSession, setFrame],
+  );
+
+  // E5.8#30.17：改校验位——独立选择器（无/奇/偶 → parity none/odd/even）
+  const handleParityChange = useCallback(
+    (v: string) => {
+      if (!sourceId) return;
+      const next: SerialFrame = { ...frame, parity: v };
+      updateSession({ parity: v });
+      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding);
+    },
+    [sourceId, frame, activeSession, updateSession, setFrame],
   );
 
   // E5.8#30.8：开/关单动作合并进 toggleOpen（内部按口已开决策）——本组件只对齐 session 参数再委托。
@@ -101,8 +130,8 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       updateSession({ port: targetPort });
     }
     if (!targetPort) return;
-    await toggleOpen(targetPort, targetBaud, activeSession.receiveCoding);
-  }, [activeSession, toggleOpen, ports, updateSession]);
+    await toggleOpen(targetPort, targetBaud, activeSession.receiveCoding, frame);
+  }, [activeSession, toggleOpen, ports, updateSession, frame]);
 
   // ── 未连接 / 无会话状态 ──
 
@@ -131,22 +160,32 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
       <span className="control-sep" />
 
-      {/* 波特率下拉框 */}
-      <SelectBox
+      {/* 波特率——E5.8#30.17（审视 ④）壳通用 Combobox：候选快捷 + 手输任意非标值 */}
+      <Combobox
         value={baudRate}
         options={BAUD_RATES}
         onChange={handleBaudChange}
+        title={t("波特率")}
+        inputMode="numeric"
       />
 
       <span className="control-sep" />
 
-      {/* 协议下拉框 */}
+      {/* 8N1——数据位/停止位组合选择器（E5.8#30.17） */}
       <SelectBox
-        value={activeSession?.protocol ?? shellActiveProtocolId}
-        options={protocols.length > 0 ? protocols.map((p) => ({ value: p.id, label: p.name })) : []}
-        onChange={handleProtocolChange}
-        placeholder={t("方括号协议")}
-        title={t("协议解析器")}
+        value={frameFormat}
+        options={FRAME_FORMATS}
+        onChange={handleFrameChange}
+        title={`${t("数据位")}/${t("停止位")}`}
+        className="control-select-narrow"
+      />
+
+      {/* 校验位——独立选择器（E5.8#30.17）：无/奇/偶 */}
+      <SelectBox
+        value={frame.parity}
+        options={parityOptions}
+        onChange={handleParityChange}
+        title={t("校验")}
       />
 
       <span className="control-spacer" />
