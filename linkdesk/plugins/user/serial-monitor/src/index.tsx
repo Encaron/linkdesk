@@ -214,9 +214,17 @@ const timestampMarkField = StateField.define<RangeSet<Decoration>>({
 
 type LineType = "received" | "sent" | "system";
 
+/** E5.8#30.19a：接收区行——received 双形态（text=ASCII 栏 / hex=HEX 栏），sent/system 仅 text */
+interface ReceiveItem {
+  text: string;
+  hex?: string;
+  type: LineType;
+}
+
 interface ReceiveSnapshot {
   lines: { text: string; type: LineType }[];
-  ring: { text: string; type: LineType }[];
+  hexLines: { text: string; type: LineType }[];
+  ring: ReceiveItem[];
 }
 
 /** key = sourceId（会话 id）。同一会话跨组移动共享——合并写入，mount 即删。 */
@@ -338,13 +346,16 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const receiveCoding = activeSession?.receiveCoding ?? "UTF-8";
   const sendMode = activeSession?.sendMode ?? "text";
   const sendCoding = activeSession?.sendCoding ?? "UTF-8";
+  // E5.8#30.19a：HEX+ASCII 双栏——接收区双 CM6 并排渲染（per-COM 记忆，随会话联动）
+  const hexAsciiDualPane = activeSession?.hexAsciiDualPane ?? false;
 
   // E5.8#30.12（P6）：per-tab TX/RX——接收区工具栏计数（本会话口，非活动口也实时）
   const { txBytes, rxBytes, isOpen: portIsOpen } = usePortStats(activeSession?.port ?? null);
 
   /* ---- 状态 ---- */
   const [paused, setPaused] = useState(false);
-  const pausedBuffer = useRef<string[]>([]);
+  // E5.8#30.19a：暂停缓冲存完整 ReceiveItem——恢复时 ASCII/HEX 双栏都能补齐
+  const pausedBuffer = useRef<ReceiveItem[]>([]);
   const [pausedCount, setPausedCount] = useState(0);
   const [systemLog, setSystemLog] = useState<string[]>([]);
   // Phase 5.5c C4a：quickSends 从会话读取——per-session，不再走 ConfigurationService
@@ -420,32 +431,56 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const cmContainer = useRef<HTMLDivElement>(null);
   const cmView = useRef<EditorView | null>(null);
   const lineNumberCompartment = useRef(new Compartment());
+  // E5.8#30.19a：HEX 栏 CM6——第二个 EditorView 常驻挂载（keep-alive，CSS 显隐），随主栏同步追加
+  const hexContainer = useRef<HTMLDivElement>(null);
+  const hexView = useRef<EditorView | null>(null);
+  const hexLineNumberCompartment = useRef(new Compartment());
 
   useEffect(() => {
     if (!cmContainer.current) return;
+    // E5.8#30.19a：主栏 + HEX 栏共用扩展骨架（行色/时间戳/智能滚底/只读）——两栏同一 monospace 排版 → 逐行对齐
+    const makeExtensions = (lineComp: Compartment) => [
+      lineComp.of(showLineNumbers ? lineNumbers() : []),
+      darkTheme,
+      lineDecoField,
+      timestampMarkField,
+      scrollTracker,
+      EditorState.readOnly.of(true),
+      keymap.of([]),
+    ];
     const view = new EditorView({
       doc: "",
       extensions: [
-        lineNumberCompartment.current.of(showLineNumbers ? lineNumbers() : []),
-        darkTheme,
-        lineDecoField,
-        timestampMarkField,
+        ...makeExtensions(lineNumberCompartment.current),
         searchDecoField,
-        scrollTracker,
-        EditorState.readOnly.of(true),
         search({ top: true }),
-        keymap.of([]),
       ],
       parent: cmContainer.current,
     });
     cmView.current = view;
 
+    // E5.8#30.19a：HEX 栏 CM6——常驻挂载（keep-alive，CSS 显隐），随主栏同步追加。无 search（搜索走主栏）。
+    if (hexContainer.current) {
+      const hex = new EditorView({
+        doc: "",
+        extensions: makeExtensions(hexLineNumberCompartment.current),
+        parent: hexContainer.current,
+      });
+      hexView.current = hex;
+      hex.dom.addEventListener("contextmenu", (e: MouseEvent) => {
+        e.preventDefault();
+        setCtxMenu({ x: e.clientX, y: e.clientY });
+      });
+    }
+
 	  // E5.5#9-fix：WebView 初始 bounds 为 0×0——CM6 mount 早于 setBounds 导致 auto-height。
 	  // ResizeObserver 监听容器尺寸变化→触发 CM6 重测。也覆盖窗口缩放/分屏等 resize。
 	  const ro = new ResizeObserver(() => {
 	    view.requestMeasure();
+	    hexView.current?.requestMeasure();
 	  });
 	  ro.observe(cmContainer.current);
+    if (hexContainer.current) ro.observe(hexContainer.current);
 
 	  view.scrollDOM.addEventListener("scroll", () => {
       const dom = view.scrollDOM;
@@ -461,44 +496,31 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
 			ro.disconnect();
       // E5.8#30.14（P4）：合屏迁移 remount 前快照 CM6 行——本 effect cleanup 先跑、view 此刻仍存活。
       // 会话已删的 tab 不写（removeSession 后不会再有该会话的 remount，写 = _receiveSnapshots 泄漏）；
-      // 空文档不写（没内容可恢复）。RingBuffer 快照由下方独立 effect 合并到同一份。
+      // 双栏任一有内容都写（hexLines 一并存档，mount 时随双栏开关恢复）。RingBuffer 快照由下方独立 effect 合并。
       if (sourceId && getSessionById(sourceId)) {
         const lines = snapshotCmLines(view);
-        if (lines.length > 0) {
+        const hexLines = hexView.current ? snapshotCmLines(hexView.current) : [];
+        if (lines.length > 0 || hexLines.length > 0) {
           const prev = _receiveSnapshots.get(sourceId);
-          _receiveSnapshots.set(sourceId, { lines, ring: prev?.ring ?? [] });
+          _receiveSnapshots.set(sourceId, { lines, hexLines, ring: prev?.ring ?? [] });
         }
       }
       view.destroy();
+      hexView.current?.destroy();
+      hexView.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 动态切换行号
+  // 动态切换行号——主栏 + HEX 栏双 compartment 同步
   useEffect(() => {
-    const view = cmView.current;
-    if (!view) return;
-    view.dispatch({
-      effects: lineNumberCompartment.current.reconfigure(
-        showLineNumbers ? lineNumbers() : []
-      ),
-    });
+    const exts = showLineNumbers ? lineNumbers() : [];
+    cmView.current?.dispatch({ effects: lineNumberCompartment.current.reconfigure(exts) });
+    hexView.current?.dispatch({ effects: hexLineNumberCompartment.current.reconfigure(exts) });
   }, [showLineNumbers]);
 
-  /* ---- 追加一行（带颜色） ---- */
-  const appendLine = useCallback((text: string, color: "received" | "sent" | "system") => {
-    if (color === "sent" && !showEcho) return;
-
-    if (color === "system" && separateSystemLog) {
-      setSystemLog((prev) => {
-        const next = [...prev, text];
-        if (next.length > SYSTEM_LOG_MAX_LINES) next.shift();
-        return next;
-      });
-      return;
-    }
-
-    const view = cmView.current;
+  /* ---- 追加一行（带颜色）——核心 CM6 写入，主栏 / HEX 栏共用（E5.8#30.19a 抽取） ---- */
+  const appendToView = useCallback((view: EditorView | null, text: string, color: LineType) => {
     if (!view) return;
 
     const doc = view.state.doc;
@@ -524,7 +546,39 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       const line = view.state.doc.line(CM6_TRIM_KEEP_LINES);
       view.dispatch({ changes: { from: 0, to: line.from } });
     }
-  }, [showEcho, separateSystemLog]);
+  }, []);
+
+  /* ---- 主栏追加（带颜色）——路由：sent 回显开关 / system 独立日志 ---- */
+  const appendLine = useCallback((text: string, color: LineType) => {
+    if (color === "sent" && !showEcho) return;
+
+    if (color === "system" && separateSystemLog) {
+      setSystemLog((prev) => {
+        const next = [...prev, text];
+        if (next.length > SYSTEM_LOG_MAX_LINES) next.shift();
+        return next;
+      });
+      return;
+    }
+
+    appendToView(cmView.current, text, color);
+  }, [showEcho, separateSystemLog, appendToView]);
+
+  /* ---- HEX 栏追加——路由与主栏一致：received 用 hex 形态，sent/system 镜像原文本（双栏逐行对齐） ---- */
+  const appendHexLine = useCallback((item: ReceiveItem) => {
+    if (item.type === "sent" && !showEcho) return;
+    if (item.type === "system" && separateSystemLog) return; // system 行已进 React 独立日志，HEX 栏不镜像
+    appendToView(hexView.current, item.hex ?? item.text, item.type);
+  }, [showEcho, separateSystemLog, appendToView]);
+
+  /* ---- 渲染一行（单栏/双栏合一）——received 按 receiveMode 选形态；双栏时同步 HEX 栏 ---- */
+  const renderLine = useCallback((item: ReceiveItem) => {
+    const line = item.type === "received" && receiveModeRef.current === SEND_MODE_HEX && item.hex != null
+      ? item.hex
+      : item.text;
+    appendLine(line, item.type);
+    if (dualPaneRef.current) appendHexLine(item);
+  }, [appendLine, appendHexLine]);
 
   // C4a 迁移恢复：设置变更时打印系统消息。
   // 旧代码通过 onDidChangeConfiguration 订阅实现，C4a 切到 session 后删除。
@@ -555,8 +609,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     prevSettingsRef.current = { showEcho, showLineNumbers, separateSystemLog, timestampFormat, autoRepeat, repeatInterval, cmReady: true };
   }, [cmView, appendLine, showEcho, showLineNumbers, separateSystemLog, timestampFormat, autoRepeat, repeatInterval, t]);
 
-  // ⚠️ 独立 RingBuffer 多消费者
-  const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
+  // ⚠️ 独立 RingBuffer 多消费者（E5.8#30.19a：ReceiveItem 携带 hex 形态，双栏消费）
+  const ringBuffer = useRef(new RingBuffer<ReceiveItem>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(timestampFormat);
   tsFormatRef.current = timestampFormat;
   // E5.8#29（S13）：portOpenRef 全局门控已删除——数据接收改由 serial-data handler 的
@@ -570,12 +624,17 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const receiveModeRef = useRef(receiveMode);
   receiveModeRef.current = receiveMode;
 
+  // E5.8#30.19a：双栏开关 ref——rAF 消费循环读取（渲染时写，事件/消费时读，对标 tsFormatRef 已验证模式）
+  const dualPaneRef = useRef(hexAsciiDualPane);
+  dualPaneRef.current = hexAsciiDualPane;
+
   // E5：tab close / plugin uninstall → disconnect serial。
   // 已通过 tabBehavior.invokeBeforeClose 在 TabBar 层处理——确认关闭后、closeTab 前 invoke。
   // 此机制比 useEffect cleanup 更可靠（cleanup 在 unmount 时可能因 React 批处理不可靠）。
 
   // E5.8#30.14（P4）：mount 恢复——跨组 remount 时从 _receiveSnapshots 读回接收区历史。
   // CM6 逐行 appendLine 重放（行色 + 时间戳 mark 由 appendLine 复用运行时路径重算，零新逻辑）；
+  // E5.8#30.19a：双栏开 → 同步重放 hexLines 到 HEX 栏（直接 appendToView，零新逻辑）；
   // RingBuffer 逐条 write 回填（后续 data 连续衔接）。平时无快照 → 直接 no-op。
   // deps 含 appendLine 是保险：设置变更触发重跑时快照已删 → 空 return，无害。
   useEffect(() => {
@@ -584,8 +643,11 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     if (!snap) return;
     _receiveSnapshots.delete(sourceId);
     for (const it of snap.lines) appendLine(it.text, it.type);
+    if (dualPaneRef.current && hexView.current) {
+      for (const it of snap.hexLines) appendToView(hexView.current, it.text, it.type);
+    }
     for (const it of snap.ring) ringBuffer.current.write(it);
-  }, [sourceId, appendLine]);
+  }, [sourceId, appendLine, appendToView]);
 
   // E5.8#30.14（P4）：unmount 快照 RingBuffer——与 CM6 快照（CM6 effect cleanup）合并为同一份。
   // React cleanup 逆序执行：本 effect 后声明 → cleanup 先跑，CM6 view 仍存活，
@@ -599,7 +661,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       const ring = rb.drainAll();
       if (ring.length === 0) return;
       const prev = _receiveSnapshots.get(sourceId);
-      _receiveSnapshots.set(sourceId, { lines: prev?.lines ?? [], ring });
+      _receiveSnapshots.set(sourceId, { lines: prev?.lines ?? [], hexLines: prev?.hexLines ?? [], ring });
     };
   }, [sourceId]);
 
@@ -621,11 +683,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     const fmt = tsFormatRef.current;
     // string 容错保留——IPC 载荷运行时无编译期兜底（#22.5 兜错配，生产静默不崩）
     const text = typeof payload === "string" ? payload : payload.text;
-    const displayText = receiveModeRef.current === SEND_MODE_HEX
-      ? toHexDisplay(text)
-      : text;
+    // E5.8#30.19a：write 时同时算 ASCII 与 HEX 双形态（形态选择移到渲染时 renderLine 做）——
+    // 单栏 receiveMode 选形态 / 双栏 ASCII 栏 + HEX 栏各取所需，一条数据双栏都对齐
+    const prefix = fmt !== "无" ? `${formatTimestamp(fmt)} -> ` : "";
     ringBuffer.current.write({
-      text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${displayText}` : displayText,
+      text: `${prefix}${text}`,
+      hex: `${prefix}${toHexDisplay(text)}`,
       type: "received",
     });
   });
@@ -700,21 +763,23 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         }
         if (paused) {
           const wasFull = pausedBuffer.current.length >= PAUSED_BUFFER_MAX;
-          pausedBuffer.current.push(item.text);
+          // E5.8#30.19a：整条 ReceiveItem 入缓冲——恢复时双栏都能补齐
+          pausedBuffer.current.push(item);
           if (pausedBuffer.current.length > PAUSED_BUFFER_MAX) pausedBuffer.current.shift();
           setPausedCount(pausedBuffer.current.length);
           if (!wasFull && pausedBuffer.current.length >= 2000) {
             appendLine(t("⚠ 暂停缓冲已满（2000 条），最早的数据已被丢弃"), "system");
           }
         } else {
-          appendLine(item.text, item.type);
+          // E5.8#30.19a：renderLine 合一——单栏按 receiveMode 选形态，双栏同步 HEX 栏
+          renderLine(item);
         }
       }
       rafId = requestAnimationFrame(drain);
     };
     rafId = requestAnimationFrame(drain);
     return () => { cancelAnimationFrame(rafId); };
-  }, [appendLine, paused, t]);
+  }, [renderLine, appendLine, paused, t]);
 
   /* ---- 工具栏 ---- */
   const handlePause = () => {
@@ -722,7 +787,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     setPaused(!wasPaused);
     if (wasPaused) {
       const count = pausedBuffer.current.length;
-      for (const text of pausedBuffer.current) appendLine(text, "received");
+      // E5.8#30.19a：恢复走 renderLine——单栏形态选择 + 双栏同步一致
+      for (const item of pausedBuffer.current) renderLine(item);
       pausedBuffer.current = [];
       setPausedCount(0);
       if (count > 0)
@@ -735,12 +801,14 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   };
 
   const handleClear = () => {
-    const view = cmView.current;
-    if (!view) return;
-    view.dispatch({
-      changes: { from: 0, to: view.state.doc.length },
-      effects: clearAllDecos.of(undefined),
-    });
+    // E5.8#30.19a：主栏 + HEX 栏同步清空（双栏保持逐行对齐，任一边残留都会错位）
+    for (const view of [cmView.current, hexView.current]) {
+      if (!view) continue;
+      view.dispatch({
+        changes: { from: 0, to: view.state.doc.length },
+        effects: clearAllDecos.of(undefined),
+      });
+    }
   };
 
   const handleExport = async () => {
@@ -1380,9 +1448,14 @@ const writable = await handle.createWritable();
         </div>
       )}
 
-      {/* CM6 接收区 */}
-      <div className="cm-wrapper">
-        <div ref={cmContainer} className="cm-container" />
+      {/* CM6 接收区——E5.8#30.19a：双栏开关 → 并排 HEX/ASCII 两栏（.cm-pane 常驻挂载，CSS 显隐） */}
+      <div className={`cm-wrapper${hexAsciiDualPane ? " dual" : ""}`}>
+        <div className="cm-pane">
+          <div ref={cmContainer} className="cm-container" />
+        </div>
+        <div className="cm-pane cm-hex-pane">
+          <div ref={hexContainer} className="cm-container" />
+        </div>
         {paused && (
           <div className="paused-banner">
             {t("⏸ 已暂停 · {{count}} 条缓冲", { count: pausedCount })}

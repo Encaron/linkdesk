@@ -260,6 +260,26 @@
   position: relative;
 }
 
+/* E5.8#30.19a：HEX+ASCII 双栏——两 CM6 并排，同一 monospace 字号/行高 → ASCII/HEX 逐行对齐对照 */
+.cm-wrapper.dual {
+  display: flex;
+}
+.cm-pane {
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+.cm-wrapper.dual .cm-pane {
+  flex: 1;
+}
+.cm-hex-pane {
+  display: none;
+}
+.cm-wrapper.dual .cm-hex-pane {
+  display: block;
+  border-left: 1px solid var(--separator);
+}
+
 .cm-container {
   height: 100%;
   overflow: hidden;
