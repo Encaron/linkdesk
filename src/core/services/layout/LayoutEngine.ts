@@ -61,6 +61,20 @@ export interface ZoneBounds {
   height: number;
 }
 
+/* ── E5.8#36.9：dock.edge 窄化守卫——dock.edge 宽类型含 center（main zone 专用），
+   DTO 消费方 edge 类型更窄（panel 无 center / sidebar 仅 left|right）。语义安全收窄一处定义。 ── */
+
+/** 面板 edge 收窄——dock.edge 宽类型含 center，面板实际只落 bottom/top/left/right。center → bottom（语义安全）。 */
+export function narrowPanelEdge(edge: NonNullable<ZoneConfig["dock"]>["edge"] | undefined): "bottom" | "top" | "left" | "right" {
+  if (edge === "top" || edge === "left" || edge === "right") return edge;
+  return "bottom";
+}
+
+/** 侧栏 edge 收窄——dock.edge 宽类型含 center/top/bottom（其他 zone 语义），侧栏只落 left/right。 */
+export function narrowSidebarEdge(edge: NonNullable<ZoneConfig["dock"]>["edge"] | undefined): "left" | "right" {
+  return edge === "right" ? "right" : "left";
+}
+
 /* ── LayoutEngine ── */
 
 export class LayoutEngine {
@@ -326,3 +340,11 @@ export class LayoutEngine {
 
 /** 全局单例——壳内布局唯一权威（E5#9） */
 export const layoutEngine = new LayoutEngine();
+
+// E5.8#36.9：右侧栏真 zone——决策 6 addZone 消费方（双槽互换对边 + #37.5 grid 真渲染）。
+// 常驻引擎（recalculate 右边堆叠数学现成）但池推 rightSidebar.visible:false（无容器内容生产者，
+// Phase 12 填充）——零 DOM 变化；#37.6 dockTo("sidebar", edge) swap 的 rightSidebar 对边分支自此可命中。
+layoutEngine.addZone({
+  zone: "rightSidebar",
+  dock: { edge: "right", width: 300, minWidth: 180, maxWidth: 600, resizable: true },
+});

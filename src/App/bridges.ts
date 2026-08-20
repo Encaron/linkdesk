@@ -80,11 +80,23 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
       if (typeof payload === "string") setPanelActiveViewId(payload);
     });
     const offResize = events?.on("panel:resize", (payload) => {
-      // E5.7#97：通道契约——池 emit 只传 { height: number }。Number.isFinite 单守卫即排除
-      // undefined/NaN/字符串——双保险防坏值
-      const height = (payload as { height?: unknown } | null | undefined)?.height;
-      if (typeof height === "number" && Number.isFinite(height)) {
-        layoutEngine.resizeZoneHeight("panel", height);
+      // E5.8#36.9：轴感知——edge∈{left,right} → resizeZone（width 轴）；bottom/top → resizeZoneHeight（height 轴）。
+      // 壳按 panel 当前 edge 路由载荷，池按 edge 发射对应轴（#37.5 PanelZone 换轴后）——桥与池锁步改（S2）。
+      const p = (payload ?? {}) as { height?: unknown; width?: unknown };
+      const edge = layoutEngine.getZone("panel")?.dock?.edge ?? "bottom";
+      if (edge === "left" || edge === "right") {
+        // E5.7#97：通道契约——edge 竖条时池 emit 只传 { width: number }。Number.isFinite 单守卫双保险
+        const width = p.width;
+        if (typeof width === "number" && Number.isFinite(width)) {
+          layoutEngine.resizeZone("panel", width);
+        }
+      } else {
+        // E5.7#97：通道契约——edge 横带时池 emit 只传 { height: number }。Number.isFinite 单守卫即排除
+        // undefined/NaN/字符串——双保险防坏值
+        const height = p.height;
+        if (typeof height === "number" && Number.isFinite(height)) {
+          layoutEngine.resizeZoneHeight("panel", height);
+        }
       }
     });
     const offToggleVis = events?.on("panel:toggleViewVisibility", (payload) => {
