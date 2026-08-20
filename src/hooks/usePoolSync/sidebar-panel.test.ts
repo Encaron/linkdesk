@@ -107,7 +107,7 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
     ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出", titleActions }));
 
-    const metas = buildPanelViewMetas();
+    const metas = buildPanelViewMetas((k) => k);
     expect(metas).toHaveLength(1);
     expect(metas[0].id).toBe("demo-output");
     expect(metas[0].titleActions).toEqual(titleActions);
@@ -117,7 +117,7 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
     ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
 
-    const metas = buildPanelViewMetas();
+    const metas = buildPanelViewMetas((k) => k);
     expect(metas[0].titleActions).toBeUndefined();
   });
 
@@ -126,8 +126,23 @@ describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions �
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "explorer", title: "资源管理器", location: "sidebar" });
     ViewContainerService.registerView(PLUGIN_ID, "explorer", makeView({ id: "folders", title: "文件夹", titleActions }));
 
-    const metas = buildSidebarViewMetas("explorer");
+    const metas = buildSidebarViewMetas("explorer", (k) => k);
     expect(metas).toHaveLength(1);
     expect(metas[0].titleActions).toEqual(titleActions);
+  });
+
+  it("🔥 title 壳 t() 解析后推送（E5.8#37.9 P2 回归——侧栏/面板标题此前原样推中文）", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "explorer", title: "资源管理器", location: "sidebar" });
+    ViewContainerService.registerView(PLUGIN_ID, "explorer", makeView({ id: "folders", title: "文件夹" }));
+
+    const dict: Record<string, string> = { "输出": "Output", "文件夹": "Folder" };
+    const t = (k: string) => dict[k] ?? k;
+
+    expect(buildPanelViewMetas(t)[0].title).toBe("Output");
+    expect(buildSidebarViewMetas("explorer", t)[0].title).toBe("Folder");
+    // 无 key → 原文兜底（parseMissingKeyHandler 语义——P1 补 key 而不是吞掉）
+    expect(buildPanelViewMetas(t)[0].id).toBe("demo-output");
   });
 });

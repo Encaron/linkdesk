@@ -123,17 +123,18 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     let sidebar: SidebarLayout;
     if (effectiveSidebarView) {
       const container = ViewContainerService.getViewContainer(effectiveSidebarView);
-      const views = buildSidebarViewMetas(effectiveSidebarView);
+      const views = buildSidebarViewMetas(effectiveSidebarView, t);
       const collapsedSet = ViewContainerService.loadCollapsedState();
       const isCollapsed = sidebarWidth <= 48;
       // E5.7#84：keep-alive——全部侧栏容器序列化（非仅活动）。池按 containerId 常驻挂载、
       // display:none 切换——切容器不卸载视图（矩阵场景 1 ④：文件树折叠态保持）。
       // 真相源在壳：插件卸载 → 容器从清单消失 → 池自然卸载对应视图。
+      // 🔥 E5.8#37.9：containerTitle 壳 t() 推送（此前原样推 c.title → 侧栏标题全中文）。
       const containers = ViewContainerService.getViewContainers("sidebar").map((c) => ({
         containerId: c.id,
-        containerTitle: c.title,
+        containerTitle: t(c.title),
         mergeHeaderWhenSingle: c.mergeHeaderWhenSingle,
-        views: buildSidebarViewMetas(c.id),
+        views: buildSidebarViewMetas(c.id, t),
       }));
       sidebar = {
         visible: true,
@@ -141,7 +142,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         // E5.8#36.9：侧栏所在边——#37.6 dockTo 消费方（换边后池 grid 落左/右槽 + 双槽互换联动）
         edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge),
         containerId: effectiveSidebarView,
-        containerTitle: container?.title ?? effectiveSidebarView,
+        containerTitle: container?.title ? t(container.title) : effectiveSidebarView,
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
         views,
         containers,
@@ -171,7 +172,7 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     // E5.8#34：推送条件改为「有 panel 容器贡献」——全不勾（全部隐藏）也推 panel +
     // 切换器 + 空态（验收：全不勾 → 空态占位，且保留切换器恢复勾回）。无面板容器 → 不推
     // panel 字段（池维持 Phase 5 骨架的无面板空态）。高度真相源 = LayoutEngine panel zone。
-    const panelViews = buildPanelViewMetas();
+    const panelViews = buildPanelViewMetas(t);
     let panel: PanelLayout | undefined;
     // E5.8#31：显隐 = 不推 panel 字段——panelVisible false 时保持 undefined，
     // 池 `layout.panel?.visible && <PanelZone/>` → 不渲染（复用无 panel 贡献现网路径，零池改动）

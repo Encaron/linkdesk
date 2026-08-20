@@ -28,5 +28,7 @@
   "快速建议": "Quick suggestions",
   "补全列表显示单词建议": "Show word suggestions in completion list",
   "补全列表显示代码片段": "Show snippet suggestions in completion list",
-  "文件已在外部被修改，重新加载将丢失未保存的更改。重新加载？": "The file has been modified on disk. Reloading will discard your unsaved changes. Reload?"
+  "文件已在外部被修改，重新加载将丢失未保存的更改。重新加载？": "The file has been modified on disk. Reloading will discard your unsaved changes. Reload?",
+  "编辑器（双击文件打开）": "Editor (double-click a file to open)",
+  "加载对比…": "Loading comparison…"
 }

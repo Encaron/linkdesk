@@ -1,8 +1,13 @@
 /**
  * 插件 manifest 归一化 + 安装校验——纯函数集（无副作用，可独立单测）。
  * E5.8#0d.10-1b：自 loader.ts 拆出——E5#12 旧格式归一化 + E5.7#81 安装校验/版本裁决。
+ * 🔥 E5.8#37.9：版本冲突消息走 i18n.t（显示文本铁律——错误消息也是用户可见文本）。
+ * i18n.t 是幂等查询（key→译文，缺 key 返回 key 本身），不引入副作用——纯函数契约保留。
+ * parseMissingKeyHandler 对含 {{var}} 的 key 手动插值（src/i18n/index.ts:14-21）——
+ * 缺 key 时返回插值后的中文原文，测试断言（toContain 版本号 / 子串）天然兼容。
  */
 
+import i18n from "../i18n";
 import type { PluginManifest } from "../core/api/types";
 import { compareVersions } from "../core/utils/plugin/semverUtils";
 
@@ -94,14 +99,14 @@ export function resolveVersionConflict(
   if (!installed) return null;
   const iv = installed.version;
   if (!iv) {
-    return `已安装版本信息读取失败——请先卸载旧版本再安装。`;
+    return i18n.t("已安装版本信息读取失败——请先卸载旧版本再安装。");
   }
   const c = compareVersions(sourceVersion, iv);
   if (c === 0) {
-    return `已安装版本 ${iv} 与本次提供的 ${sourceVersion} 相同——无需重复安装。`;
+    return i18n.t("已安装版本 {{iv}} 与本次提供的 {{sourceVersion}} 相同——无需重复安装。", { iv, sourceVersion });
   }
   if (c < 0) {
-    return `本次提供的 ${sourceVersion} 低于已安装的 ${iv}——已跳过（如需降级请先卸载旧版本）。`;
+    return i18n.t("本次提供的 {{sourceVersion}} 低于已安装的 {{iv}}——已跳过（如需降级请先卸载旧版本）。", { sourceVersion, iv });
   }
-  return `已安装 ${iv}，本次提供 ${sourceVersion}——如需升级请先卸载旧版本再安装。`;
+  return i18n.t("已安装 {{iv}}，本次提供 {{sourceVersion}}——如需升级请先卸载旧版本再安装。", { iv, sourceVersion });
 }

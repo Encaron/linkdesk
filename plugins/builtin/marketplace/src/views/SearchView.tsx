@@ -37,7 +37,7 @@ export default function SearchView() {
   const handleInstall = useCallback(async () => {
     setInstalling(true);
     try {
-      const selected = await lk().dialog.open({ directory: true, title: "选择插件目录" });
+      const selected = await lk().dialog.open({ directory: true, title: t("选择插件目录") }); // E5.8#37.9：原生对话框标题壳侧 t() 解析后走 IPC
       if (selected) {
         // E5.7#81：校验/版本冲突失败要可见——不再静默吞错
         const r = await lk().pluginManager.install(selected as string);

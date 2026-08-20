@@ -7,6 +7,7 @@
  * 生命周期操作（disable/enable/uninstall/install）不在此——见 lifecycle-ops.ts。
  */
 
+import i18n from "../i18n"; // E5.8#37.9：markLoadFailed 失败原因壳 t() 解析（诊断文案也是用户可见文本）
 import type { PluginManifest } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, findTheme } from "../core/services/ui/ThemeEngine";
@@ -190,7 +191,7 @@ async function loadPlugin(
     } catch {
       pushToast({ message: `插件 "${pluginId}" 的 plugin.json 格式错误，已跳过` });
       console.warn(`[pluginLoader] plugin.json 格式错误 — "${pluginId}"`);
-      markLoadFailed(pluginId, "plugin.json 格式错误");
+      markLoadFailed(pluginId, i18n.t("plugin.json 格式错误"));
       return;
     }
   }
