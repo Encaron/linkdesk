@@ -756,7 +756,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // E3j #78：缓存最后一次连接状态——断开时 port 已关、getStatus 拿不到信息
   const lastPortInfoRef = useRef<{ portName: string; baudRate: number } | null>(null);
 
-  useIpcEvent<SerialSystemPayload>("serial-system", (payload) => {
+  useIpcEvent<SerialSystemPayload>("serial-system", async (payload) => {
     const fmt = tsFormatRef.current;
     // E5.8#29（S12）：删正则挖口名 hack——payload.portName 直接路由（#28 契约已带路由键）。
     // string 载荷容错保留（IPC 载荷运行时无编译期兜底）
@@ -777,6 +777,13 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
+      // E5.8#30.21：打开即发初始化序列——归一化复用 quickSends（不新建平行概念），打开时按序自动发送（per-COM 记忆）。
+      // 复用 handleQuickSend 同款 performSend 路径（ending/prefix 一致）；performSend 内部 try/catch，逐条 await 串行不丢序
+      if (activeSession?.sendInitOnOpen) {
+        for (const content of Object.values(activeSession.quickSends ?? {})) {
+          if (content.trim()) await performSend(content, { ending: "\r\n", prefix: "> " });
+        }
+      }
       // E3j #78：连接状态推到大厅 events 频道——结构化数据、消费者无需解析
       // E5.8#29：payload.portName 定向取该口（原正则解析）；无口名容错取数组第一口
       const statusFetch = payload.portName

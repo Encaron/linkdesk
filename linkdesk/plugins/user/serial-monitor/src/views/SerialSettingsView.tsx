@@ -165,6 +165,10 @@ export default function SerialSettingsView() {
         <FormRow label={t("发送后清空")}>
           {mkToggle("autoClear")}
         </FormRow>
+        {/* E5.8#30.21：打开即发初始化序列——打开端口自动发送 quickSends 序列（归一化复用，随会话联动，默认关=不无故发包） */}
+        <FormRow label={t("打开即发初始化序列")}>
+          {mkToggle("sendInitOnOpen")}
+        </FormRow>
       </div>
 
       {/* 编码 group */}

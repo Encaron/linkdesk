@@ -110,6 +110,7 @@
   "HEX+ASCII 双栏": "HEX+ASCII Dual Pane",
   "不可见字符转义": "Escape Invisible Characters",
   "自动保存接收区": "Auto-Save Receive Area",
+  "打开即发初始化序列": "Send Init Sequence on Open",
   "更多操作": "More actions",
   "关闭系统消息独立显示": "Hide Separate System Log",
   "关闭自动重发": "Disable Auto Resend",

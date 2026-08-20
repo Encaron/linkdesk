@@ -30,6 +30,8 @@ export interface SerialSession {
   escapeInvisibleChars: boolean;
   // E5.8#30.20：自动保存接收区开关（per-COM，侧栏「显示」group）——端口关闭 + 应用退出时落盘，防数据丢失
   autoSaveReceive: boolean;
+  // E5.8#30.21：打开即发初始化序列开关（per-COM，侧栏「发送行为」group）——打开端口自动发送 quickSends 序列（归一化复用，不新建平行概念）
+  sendInitOnOpen: boolean;
   connected: boolean; timestampFormat: string; showEcho: boolean;
   showLineNumbers: boolean; separateSystemLog: boolean; lineEnding: string;
   autoRepeat: boolean; repeatInterval: number; autoClear: boolean;
@@ -39,7 +41,7 @@ export interface SerialSession {
 
 const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
   port: "", baudRate: "115200", dataBits: 8, stopBits: 1, parity: "none",
-  dtr: false, rts: false, hexAsciiDualPane: false, escapeInvisibleChars: false, autoSaveReceive: true, connected: false,
+  dtr: false, rts: false, hexAsciiDualPane: false, escapeInvisibleChars: false, autoSaveReceive: true, sendInitOnOpen: false, connected: false,
   timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
   separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
   repeatInterval: 1000, autoClear: false, receiveMode: "text",
