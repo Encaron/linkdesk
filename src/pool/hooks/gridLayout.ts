@@ -10,10 +10,11 @@
  * 引擎只存配置。本模块 = 池侧唯一推导点（防两处字面量，S10）。
  *
  * 结构（决策 3）：
- *   pool-body 改 CSS grid。列 = [iconbar][left][main][right]（#37.5 首版 iconbar 恒最左，
- *   宽度全 auto——iconbar/侧栏/面板尺寸由 zone 组件自身根尺寸决定，内容驱动零硬编码；
- *   #37.6.5 iconbar 列随 sidebar.edge 换位）。面板竖条（edge∈{left,right}）插入 main 与
- *   对应侧栏之间成 5 带。顶/底面板占独立行（auto 高，PanelZone 根高度决定）。
+ *   pool-body 改 CSS grid。列 = [iconbar][left][main][right]（宽度全 auto——iconbar/侧栏/面板
+ *   尺寸由 zone 组件自身根尺寸决定，内容驱动零硬编码。#37.6.5：iconbar 恒贴主侧栏同侧外缘——
+ *   sidebar 在左 → [iconbar][left][main][right]；sidebar 在右 → [left][main][right][iconbar]）。
+ *   面板竖条（edge∈{left,right}）插入 main 与对应侧栏之间成 5 带。顶/底面板占独立行
+ *   （auto 高，PanelZone 根高度决定）。
  *
  * 行跨度（覆盖推导）：
  *   面板横带（顶/底）行存在时，侧栏默认只跨「内容行」（面板行处为空 = 侧栏缩短）。
@@ -81,10 +82,14 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
 
   // ── 列模板：宽度全 auto（内容驱动——iconbar 42px/侧栏宽/面板宽由 zone 组件根尺寸决定，
   //   零硬编码 + 隐藏 zone 内容空 → auto 列自然 0 宽） + main 1fr 吸剩余 ──
-  const cols: string[] = ["auto"]; // iconbar 列（#37.5 首版恒最左——#37.6.5 随 edge 换位）
-  const leftCol = 2;
+  // E5.8#37.6.5：iconbar 恒贴主侧栏同侧外缘——sidebar 在左 → 最左列；sidebar 在右 → 最右列
+  // （[左槽][主][右槽][iconbar]）。列位由 sidebarEdge 反推（不单独存 iconbar.edge——用户拍板先落基本行为）。
+  const cols: string[] = [];
+  const iconbarAtLeft = input.sidebarEdge === "left";
+  if (iconbarAtLeft) cols.push("auto"); // iconbar 列（最左）
+  const leftCol = cols.length + 1;
   cols.push("auto"); // left 槽（sidebar 或 rightSidebar 按 sidebarEdge 归属）
-  const panelLeftCol = 3;
+  const panelLeftCol = cols.length + 1;
   if (panel?.edge === "left") cols.push("auto"); // 面板竖条（左）——主区与左侧栏之间
   const mainCol = cols.length + 1;
   cols.push("1fr"); // main
@@ -92,6 +97,8 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
   if (panel?.edge === "right") cols.push("auto"); // 面板竖条（右）——主区与右侧栏之间
   const rightCol = cols.length + 1;
   cols.push("auto"); // right 槽
+  const iconbarCol = iconbarAtLeft ? 1 : cols.length + 1;
+  if (!iconbarAtLeft) cols.push("auto"); // iconbar 列（最右——比主侧栏更靠外）
 
   // ── 行模板：内容行 1fr + 顶/底面板行 auto（高由 PanelZone 根决定） ──
   const rows: string[] = [];
@@ -149,7 +156,8 @@ export function computePoolGrid(input: PoolGridInput): PoolGridSpec {
     gridTemplateColumns: cols.join(" "),
     gridTemplateRows: rows.join(" "),
     cells: {
-      iconbar: { rowStart: 1, colStart: 1, rowEnd: totalRows + 1, colEnd: 2 },
+      // E5.8#37.6.5：iconbar 列位随 sidebar.edge（最左/最右）——恒全高（行跨全）
+      iconbar: { rowStart: 1, colStart: iconbarCol, rowEnd: totalRows + 1, colEnd: iconbarCol + 1 },
       sidebar: { rowStart: sidebarRowStart, colStart: sidebarCol, rowEnd: sidebarRowEnd, colEnd: sidebarCol + 1 },
       panel: panelCell,
       main: { rowStart: contentRowStart, colStart: mainCol, rowEnd: contentRowEnd, colEnd: mainCol + 1 },

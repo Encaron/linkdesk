@@ -133,11 +133,26 @@ describe("computePoolGrid——竖条面板（5 带排布）", () => {
   });
 });
 
-describe("computePoolGrid——侧栏换右（swap 规则消费方）", () => {
-  it("sidebar.edge=right → sidebar 落右槽（列 4）、rightSidebar 落左槽（列 2）", () => {
+describe("computePoolGrid——侧栏换右（swap 规则 + iconbar 跟随 E5.8#37.6.5）", () => {
+  it("sidebar.edge=right → sidebar 落右槽（列 3）、rightSidebar 落左槽（列 1）、iconbar 最右（列 4）", () => {
     const input = base({ sidebarEdge: "right", panelVisible: true, panelEdge: "bottom", panelAlign: "center" });
     const spec = computePoolGrid(input);
-    expect(spec.cells.sidebar).toEqual({ rowStart: 1, colStart: 4, rowEnd: 3, colEnd: 5 }); // 右槽全高
-    expect(spec.cells.rightSidebar).toEqual({ rowStart: 1, colStart: 2, rowEnd: 3, colEnd: 3 }); // 左槽全高
+    expect(spec.gridTemplateColumns).toBe("auto 1fr auto auto"); // [左槽][main][右槽][iconbar]
+    expect(spec.cells.sidebar).toEqual({ rowStart: 1, colStart: 3, rowEnd: 3, colEnd: 4 }); // 右槽全高
+    expect(spec.cells.rightSidebar).toEqual({ rowStart: 1, colStart: 1, rowEnd: 3, colEnd: 2 }); // 左槽全高
+    expect(spec.cells.iconbar).toEqual({ rowStart: 1, colStart: 4, rowEnd: 3, colEnd: 5 }); // 最右（比主侧栏更靠外）
+  });
+  it("sidebar.edge=left（缺省）→ iconbar 最左（列 1），列模板同 #37.5", () => {
+    const spec = computePoolGrid(base());
+    expect(spec.gridTemplateColumns).toBe("auto auto 1fr auto");
+    expect(spec.cells.iconbar).toEqual({ rowStart: 1, colStart: 1, rowEnd: 2, colEnd: 2 });
+  });
+  it("sidebar.edge=right + 面板左竖条 → [左槽][面板][main][右槽][iconbar]，iconbar 最右", () => {
+    const input = base({ sidebarEdge: "right", panelVisible: true, panelEdge: "left", panelAlign: "center" });
+    const spec = computePoolGrid(input);
+    expect(spec.gridTemplateColumns).toBe("auto auto 1fr auto auto");
+    expect(spec.cells.iconbar).toEqual({ rowStart: 1, colStart: 5, rowEnd: 2, colEnd: 6 });
+    expect(spec.cells.sidebar).toEqual({ rowStart: 1, colStart: 4, rowEnd: 2, colEnd: 5 }); // 右槽
+    expect(spec.cells.panel).toEqual({ rowStart: 1, colStart: 2, rowEnd: 2, colEnd: 3 }); // 面板左竖条
   });
 });

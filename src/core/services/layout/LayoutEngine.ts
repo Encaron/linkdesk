@@ -93,7 +93,8 @@ export class LayoutEngine {
     this._zones = [
       {
         zone: "iconbar",
-        dock: { edge: "left", width: 42, minWidth: 42, maxWidth: 42 },
+        // E5.8#37.6.5：order 0 最小 → 同侧 zone 中最外缘（left 最左 / right 最右）——dockTo 换边后恒贴主侧栏外缘
+        dock: { edge: "left", width: 42, minWidth: 42, maxWidth: 42, order: 0 },
       },
       {
         zone: "sidebar",
@@ -147,7 +148,9 @@ export class LayoutEngine {
   }
 
   /** 移动 zone 的 dock 边（面板位置 + 侧栏换边消费方）。
-   *  E5 原版语义 + 双槽互换规则：sidebar ↔ rightSidebar 恒占对边（主侧栏换右 → agent 右侧栏自动跳左）。 */
+   *  E5 原版语义 + 双槽互换规则：sidebar ↔ rightSidebar 恒占对边（主侧栏换右 → agent 右侧栏自动跳左）。
+   *  E5.8#37.6.5：iconbar 恒贴主侧栏同侧外缘——dockTo("sidebar", edge) 联动 iconbar 同边
+   *  （外缘靠 recalculate 的 order 排序：iconbar order 0 最小 → left 侧最左 / right 侧最右）。 */
   dockTo(zoneId: string, edge: "left" | "right" | "center" | "bottom" | "top"): void {
     const z = this._zones.find((z) => z.zone === zoneId);
     if (!z || !z.dock) return;
@@ -155,6 +158,8 @@ export class LayoutEngine {
     if (zoneId === "sidebar" && (edge === "left" || edge === "right")) {
       const rs = this._zones.find((z) => z.zone === "rightSidebar");
       if (rs?.dock) rs.dock.edge = edge === "right" ? "left" : "right";
+      const iconbar = this._zones.find((z) => z.zone === "iconbar");
+      if (iconbar?.dock) iconbar.dock.edge = edge;
     }
     this._recalculate();
   }
