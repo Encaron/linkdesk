@@ -58,6 +58,11 @@ interface ResolvedItem {
   shortcut?: string;
   /** E5.8#37.7：当前项 √ 标记——壳侧 getItems 解析透传（面板位置/对齐命中项 + 视图显隐 visible） */
   checked?: boolean;
+  /**
+   * E5.8#37.7.1：每项命令载荷——壳侧 getItems 动态注入（面板视图清单 commandArgs=[containerId, viewId]）。
+   * context 整菜单共享，per-item 身份只能走命令载荷：executeCommand(id, undefined, ...commandArgs, context)。
+   */
+  commandArgs?: unknown[];
   /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板 */
   children?: ResolvedItem[];
 }
@@ -103,11 +108,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       if (rawChildren && rawChildren.length > 0) {
         // E5.7#98：wire 契约 children 是 string | MenuItemDescriptor 联合——
         // 字符串 = 命令引用原样透传（IpcBridgeHandler 序列化注释同义）。
-        // E5.8#37.7：checked 壳侧 getItems 解析透传（位置/对齐当前项 √ + 视图显隐 visible）
+        // E5.8#37.7：checked 壳侧 getItems 解析透传（位置/对齐当前项 √ + 视图显隐 visible）。
+        // E5.8#37.7.1：commandArgs 同步透传——子项同样可带命令载荷。
         children = rawChildren.map((c) =>
           typeof c === "string"
             ? { id: c, label: c, group }
-            : { id: c.command, label: c.label ?? c.command, group, checked: c.checked },
+            : { id: c.command, label: c.label ?? c.command, group, checked: c.checked, commandArgs: c.commandArgs },
         );
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
@@ -118,10 +124,14 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
 
       grouped.get(group)!.push({
         id: item.command || item.label || "",
-        label: item.title ?? item.label ?? item.command,
+        // E5.8#37.7.1：label 优先于命令 title——菜单项显式 label 是槽位显示文本（如 when 门控的
+        // 「移动到右侧/左侧」、面板视图清单的视图名）；命令 title 只是无 label 时的兜底
+        // （修复 #37.6 侧栏换边菜单项被命令 title「切换侧栏位置」遮蔽的潜在 bug）。
+        label: item.label ?? item.title ?? item.command,
         group,
         shortcut: item.shortcut,
         checked: item.checked,
+        commandArgs: item.commandArgs,
         children,
       });
     }
@@ -181,7 +191,9 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       else if (e.key === "Enter" && focusIdx >= 0) {
         e.preventDefault();
         const item = clickableItems[focusIdx];
-        if (item) { lk().commands?.executeCommand?.(item.id, undefined, context); onClose(); }
+        // E5.8#37.7.1：命令载荷透传——executeCommand(id, undefined, ...commandArgs, context)，
+        // 池 preload 剥 token 后原样转发 → 壳 handler 收 args = [...commandArgs, context]。
+        if (item) { lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context); onClose(); }
       }
     };
     window.addEventListener("keydown", onKeyNav);
@@ -193,9 +205,11 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
   }, [focusIdx]);
 
   /* ── 命令执行 ── */
-  const handleItemClick = useCallback(async (commandId: string) => {
+  // E5.8#37.7.1：整项传入（非 commandId）——载荷 commandArgs 随执行透传（context 共享，
+  // per-item 身份走命令载荷：executeCommand(id, undefined, ...commandArgs, context)）。
+  const handleItemClick = useCallback(async (item: ResolvedItem) => {
     onClose();
-    await lk().commands?.executeCommand?.(commandId, undefined, context);
+    await lk().commands?.executeCommand?.(item.id, undefined, ...(item.commandArgs ?? []), context);
   }, [context, onClose]);
 
   /* ── 视口自适应（E5#94a：两阶段渲染——先隐藏量测真实 DOM 尺寸再修正位置）── */
@@ -283,11 +297,13 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           const isDanger = item.group === "delete";
 
           return (
+            // E5.8#37.7.1：复合 key——共享命令 id 的动态项（面板视图清单全用同一 toggle 命令）会撞 key；
+            // 并入数组索引消歧（菜单项在菜单生命周期内静态，索引稳定）。
             <div
-              key={item.id}
+              key={`${item.id}::${i}`}
               ref={(el) => { if (el) itemRefs.current.set(idx, el); else itemRefs.current.delete(idx); }}
               className={`ctx-item${isFocused ? " focused" : ""}${isDanger ? " ctx-item-danger" : ""}`}
-              onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item.id); }}
+              onClick={(e) => { e.stopPropagation(); if (!hasKids) handleItemClick(item); }}
               onMouseEnter={(e) => {
                 setFocusIdx(idx);
                 if (hasKids) openSub(e.currentTarget as HTMLElement, item.children!);
@@ -315,7 +331,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
           onMouseLeave={closeSubDelayed}
         >
           {subData.items.map((child, ki) => (
-            <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+            <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child); }}>
               <span className="ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
               <span className="ctx-item-label">{child.label}</span>
             </div>

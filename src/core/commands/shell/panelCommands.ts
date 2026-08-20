@@ -9,6 +9,7 @@ import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegis
 import { shellEvents } from "../../react/events/ShellEvents";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
 import { layoutEngine, narrowSidebarEdge, narrowPanelEdge } from "../../services/layout/LayoutEngine"; // #37.6/#37.7 命令真相源
+import { ViewContainerService } from "../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单命令
 
 /* ── E5.8#37.7：面板位置/对齐命令映射——命令 ID → 目标 edge/align（单一真相：注册 + resolvePanelChecked 共用）── */
 
@@ -114,6 +115,24 @@ export function registerPanelCommands(): void {
       handler: async () => alignPanel(align as "left" | "center" | "right" | "justify"),
     });
   }
+
+  // E5.8#37.7.1：面板视图显隐切换命令——面板标签栏右键「视图清单」动态项点击执行。
+  // 与切换器勾选同语义（bridges.ts panel:toggleViewVisibility → 同一 endpoint）：
+  // 直接调 ViewContainerService.toggleViewVisibility——setVisible 落盘 + fire onDidChangeActiveViews
+  // → usePoolSync layoutVersion 重推回执（两端状态一致，本命令零额外接线）。
+  // per-item 身份走命令载荷：ContextMenu context 共享，containerId+viewId 由动态项 commandArgs
+  // 携带（executeCommand 追加到 context 前）→ handler 收 args = [containerId, viewId, context]。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.togglePanelViewVisibility",
+    title: "切换面板视图可见性",
+    category: "视图",
+    handler: async (...args: unknown[]) => {
+      const [containerId, viewId] = args as [string, string];
+      if (typeof containerId === "string" && typeof viewId === "string") {
+        ViewContainerService.toggleViewVisibility(containerId, viewId);
+      }
+    },
+  });
 
   // E5.8#33：菜单栏「面板」顶级菜单——壳声明招牌（空间归宿主，[[content-vs-space-ownership]]）。
   // 归并机制零新设施：插件 contributes.menus.menuBar/panel + group:"panel" 与壳招牌同组自动归入

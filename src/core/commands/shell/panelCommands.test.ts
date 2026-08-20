@@ -7,13 +7,15 @@
  *   - menu:getItems("panelViewContext") 端到端——子项 checked 壳侧解析透传（wire 契约）。
  */
 
-import { describe, it, expect, beforeEach, vi } from "vitest";
+import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { clearRegistrationLayers } from "../../registry/registrationTracker";
 import { executeCommand, clearCommands } from "../../registry/commands/CommandRegistry";
 import { clearMenus } from "../../registry/commands/MenuRegistry";
 import type { MenuItemDescriptor } from "../../api/linkdesk-api";
 import { handleSettingsChannel } from "../../services/plugins/IpcBridgeHandler/ui"; // #37.7：getItems 桥 checked 解析
 import { layoutEngine } from "../../services/layout/LayoutEngine";
+import { ViewContainerService } from "../../services/layout/ViewContainerService"; // #37.7.1：面板视图清单数据源
+import { clearPluginStates } from "../../services/plugins/PluginStateService"; // #37.7.1：setVisible 落盘测试隔离
 import { registerPanelCommands, resolvePanelChecked } from "./panelCommands";
 
 /** 重置全局引擎——E5 默认 5 zone + rightSidebar（swap 规则消费方） */
@@ -185,5 +187,68 @@ describe("panelViewContext getItems——checked 壳侧解析透传（E5.8#37.7 
     expect(childOf(pos, "workbench.action.positionPanelBottom")?.checked).toBe(false);
     expect(childOf(alignMenu, "workbench.action.alignPanelJustify")?.checked).toBe(true);
     expect(childOf(alignMenu, "workbench.action.alignPanelCenter")?.checked).toBe(false);
+  });
+});
+
+describe("panelViewContext getItems——视图显隐清单动态注入（E5.8#37.7.1）", () => {
+  const PLUGIN_ID = "panel-views-test";
+  const dummy = () => null;
+
+  /** 注册面板容器 + 两视图（默认可见）——单一声明面：插件声明视图即自动进清单 */
+  function seedPanelViews(): void {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-out", title: "输出", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "panel-out", { id: "out-log", title: "输出日志", render: dummy });
+    ViewContainerService.registerView(PLUGIN_ID, "panel-out", { id: "out-problems", title: "问题", render: dummy });
+  }
+
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    resetEngine();
+    registerPanelCommands();
+    seedPanelViews();
+  });
+
+  afterEach(() => {
+    ViewContainerService.unregisterAll(PLUGIN_ID);
+    clearPluginStates(); // setVisible 落盘——清隐藏持久化防跨测试泄漏
+  });
+
+  it("视图清单 = 面板容器全部视图，与位置/对齐同级（顶层项，非子菜单），默认全可见 ✓", async () => {
+    const items = await handleSettingsChannel("menu:getItems", ["panelViewContext", undefined]) as MenuItemDescriptor[];
+    const views = items.filter((i) => i.command === "workbench.action.togglePanelViewVisibility");
+    expect(views).toHaveLength(2);
+    expect(views[0]).toMatchObject({ label: "输出日志", group: "panelViews", checked: true, commandArgs: ["panel-out", "out-log"] });
+    expect(views[1]).toMatchObject({ label: "问题", group: "panelViews", checked: true, commandArgs: ["panel-out", "out-problems"] });
+  });
+
+  it("点击 = 显隐往返——toggle 命令携 commandArgs 执行 → visible 翻转 → getItems ✓ 跟随", async () => {
+    // 隐藏 out-log（模拟点击清单项）
+    await executeCommand("workbench.action.togglePanelViewVisibility", undefined, "panel-out", "out-log");
+    expect(ViewContainerService.isVisible("panel-out", "out-log")).toBe(false);
+    expect(ViewContainerService.isVisible("panel-out", "out-problems")).toBe(true);
+
+    // 重开菜单 → out-log ✗、out-problems ✓（打勾集合 = 标签栏 tab 集合，两端状态一致）
+    const items = await handleSettingsChannel("menu:getItems", ["panelViewContext", undefined]) as MenuItemDescriptor[];
+    const views = items.filter((i) => i.command === "workbench.action.togglePanelViewVisibility");
+    expect(views.find((v) => (v.commandArgs as string[])[1] === "out-log")?.checked).toBe(false);
+    expect(views.find((v) => (v.commandArgs as string[])[1] === "out-problems")?.checked).toBe(true);
+
+    // 再点 → 恢复可见
+    await executeCommand("workbench.action.togglePanelViewVisibility", undefined, "panel-out", "out-log");
+    expect(ViewContainerService.isVisible("panel-out", "out-log")).toBe(true);
+  });
+
+  it("缺参守卫——containerId/viewId 非字符串 → 不动作（坏值不崩）", async () => {
+    await executeCommand("workbench.action.togglePanelViewVisibility", undefined);
+    expect(ViewContainerService.isVisible("panel-out", "out-log")).toBe(true);
+  });
+
+  it("空面板容器（无贡献视图）→ 无视图项（壳侧不推空清单）", async () => {
+    ViewContainerService.unregisterAll(PLUGIN_ID);
+    clearPluginStates();
+    const items = await handleSettingsChannel("menu:getItems", ["panelViewContext", undefined]) as MenuItemDescriptor[];
+    expect(items.filter((i) => i.command === "workbench.action.togglePanelViewVisibility")).toHaveLength(0);
   });
 });
