@@ -13,6 +13,7 @@ import { registerDialogRenderers, type DialogOptions } from "../core/services/ui
 import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
+import { ViewContainerService } from "../core/services/layout/ViewContainerService"; // E5.8#34：面板切换器勾选显隐
 import i18n from "../i18n";
 import { showPanelCreatePicker } from "./panelCreatePicker"; // E5.8#32：面板 [+] 视图选择器
 
@@ -70,6 +71,8 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
   //   panel:viewSelected → App state（usePoolSync 重推 activeViewId，真相源在壳）
   //   panel:resize      → LayoutEngine resizeZoneHeight 钳制 → onDidChangeLayout → 重推回执（#13 同款）
   //   panel:createView  → Phase 12 面板创建消费——三件套范围外，暂无人监听（池 emit 零订阅 = no-op）
+  //   panel:toggleViewVisibility → ViewContainerService（E5.8#34 切换器勾选显隐——setVisible 落盘 +
+  //     fire onDidChangeActiveViews → usePoolSync layoutVersion 重推回执，全自动）
   useEffect(() => {
     const events = window.linkdesk?.events;
     const offSelect = events?.on("panel:viewSelected", (payload) => {
@@ -84,7 +87,14 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
         layoutEngine.resizeZoneHeight("panel", height);
       }
     });
-    return () => { offSelect?.(); offResize?.(); };
+    const offToggleVis = events?.on("panel:toggleViewVisibility", (payload) => {
+      // E5.7#97：通道契约——池 emit 只传 { containerId, viewId } 双字符串，双守卫防坏值
+      const p = (payload ?? {}) as { containerId?: unknown; viewId?: unknown };
+      if (typeof p.containerId === "string" && typeof p.viewId === "string") {
+        ViewContainerService.toggleViewVisibility(p.containerId, p.viewId);
+      }
+    });
+    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); };
   }, [setPanelActiveViewId]);
 
   // E5.8#32：桥接池面板 [+] 新建视图——panel:createView（现网 emit 零监听 no-op——#88 ③）→

@@ -15,13 +15,17 @@ import type { ViewDescriptor } from "./types";
 export class ViewContainerModel {
   /** 此容器注册的全部 view（含不可见的） */
   allViewDescriptors: ViewDescriptor[] = [];
-  /** 当前显式隐藏的 view id 集合（用户手动切换） */
-  private _hidden = new Set<string>();
+  /** 当前显式隐藏的 view id 集合（用户手动切换）——E5.8#34：构造种子来自 hidden.ts 持久化 */
+  private _hidden: Set<string>;
   /** 活跃 view 变更事件 */
   readonly onDidChangeActiveViewDescriptors = new Emitter<{
     added: ViewDescriptor[];
     removed: ViewDescriptor[];
   }>();
+
+  constructor(initialHidden: ReadonlySet<string> = new Set()) {
+    this._hidden = new Set(initialHidden);
+  }
 
   /** 获取当前可见的 view（满足 when 条件 + 未被用户隐藏） */
   get activeViewDescriptors(): ViewDescriptor[] {

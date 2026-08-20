@@ -51,6 +51,11 @@ import {
   setCollapsed as setCollapsedCore,
   isCollapsed as isCollapsedCore,
 } from "./ViewContainerService/collapsed";
+// E5.8#34：隐藏持久化域——同折叠模式（loadHiddenState 种子模型 + setHidden 落盘）
+import {
+  loadHiddenState,
+  setHidden,
+} from "./ViewContainerService/hidden";
 
 /* ── ViewContainerService ── */
 
@@ -101,7 +106,8 @@ class ViewContainerServiceClass extends RegistryBase {
 
     // 确保 model 存在
     if (!this._models.has(descriptor.id)) {
-      const model = new ViewContainerModel();
+      // E5.8#34：种子持久化隐藏态——重启后仍保持（hidden.ts 同 collapsed.ts 模式）
+      const model = new ViewContainerModel(loadHiddenState());
       model.onDidChangeActiveViewDescriptors.event((change) => {
         this.onDidChangeActiveViews.fire({
           containerId: descriptor.id,
@@ -248,6 +254,8 @@ class ViewContainerServiceClass extends RegistryBase {
     const model = this._models.get(containerId);
     if (!model) return;
     model.setVisible(viewId, visible);
+    // E5.8#34：隐藏态持久化——重启保持（面板容器切换器 + 侧栏「视图」子菜单共用此入口）
+    setHidden(viewId, !visible);
   }
 
   /** E5#44d：切换 view 可见性——Views 子菜单消费 */
@@ -384,7 +392,8 @@ class ViewContainerServiceClass extends RegistryBase {
           removed: [],
         });
       }
-      const model = new ViewContainerModel();
+      // E5.8#34：占位容器同样种子持久化隐藏态（与 registerViewContainer 同源）
+      const model = new ViewContainerModel(loadHiddenState());
       model.onDidChangeActiveViewDescriptors.event((change) => {
         this.onDidChangeActiveViews.fire({
           containerId,

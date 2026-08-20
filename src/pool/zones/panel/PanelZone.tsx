@@ -1,21 +1,27 @@
 /**
- * PanelZone——E5.7#21 骨架 + #63.7 数据生产者落地。
+ * PanelZone——E5.7#21 骨架 + #63.7 数据生产者落地 + E5.8#34 容器切换器完形。
  *
  * 职责：
+ *   - 容器切换器（#34）——标签行首 switcher 按钮（容器名 + ⌄），点击展开按容器分组下拉
+ *     （dd-group 容器标题 + dd-item：✓勾选/视图名/插件 sub——mockup 帧 2 拍板形态）。
+ *     点视图名 = 切换激活（panel:viewSelected 现成）；勾选 = 显隐（panel:toggleViewVisibility 新桥）；
+ *     隐藏视图点击名字自动恢复可见 + 激活（对齐 [+] 决策：含已隐藏视图选中自动恢复可见）。
  *   - PanelTabBar 28px 矮标签栏（views 来自 layout.panel.views——PanelViewMeta[]，标题壳 t() 推送）
  *   - keep-alive 内容区——所有 views 平级渲染 display 切换（MainZone TabContent 同模式）；
  *     E5.7#63.7：每 view 经 PluginComponent 按 renderPath 动态加载（侧栏同款 O(1) glob 查找，
  *     零静态表——写死 pluginId 违反插件独立铁律 + 硬约束 10）
+ *   - E5.8#34 空态——全不勾（全部隐藏）/ 无贡献视图时 .panel-empty 占位（emptyText/emptyHint 壳 t() 推送）
  *   - 顶部 4px resize handle——#13 同款模式（乐观本地高度 + mouseup commit，真相源在壳）
  *
  * 池→壳通道：window.linkdesk.events.emit（IconBarZone #6 同款）——
  *   "panel:viewSelected" / "panel:resize" 由 #63.7 壳侧消费（App.tsx 事件桥）；
+ *   "panel:toggleViewVisibility" 由 #34 壳侧消费（→ ViewContainerService.setVisible 落盘 + 重推回执）；
  *   "panel:createView" 归 Phase 12 面板创建（现无监听者——安全 no-op）。
  * 钳制界 minHeight/maxHeight 壳推（#13 同款——池零硬编码）。
  */
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { PanelLayout } from "../../../core/types/pool/poolLayout";
+import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+import type { PanelLayout, PanelSwitcherItem } from "../../../core/types/pool/poolLayout";
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import "./PanelZone.css";
@@ -25,7 +31,7 @@ interface PanelZoneProps {
 }
 
 export default function PanelZone({ panel }: PanelZoneProps) {
-  const { views, activeViewId } = panel;
+  const { views, activeViewId, switcher = [], emptyText, emptyHint } = panel;
 
   /* ── E5.7#21：顶部 resize handle 拖拽——#13 同款模式（乐观本地高度 + mouseup commit） ── */
 
@@ -134,6 +140,62 @@ export default function PanelZone({ panel }: PanelZoneProps) {
     document.body.style.userSelect = "none";
   }, []);
 
+  /* ── E5.8#34：容器切换器——switcher 按钮 + 分组下拉（mockup 帧 2 拍板） ── */
+
+  // 按钮 label = 激活视图所属容器（壳 t() 已推送），无激活回退首组；全空（无贡献视图）不渲染按钮
+  const switcherLabel = switcher.find((g) => g.items.some((i) => i.active))?.containerTitle
+    ?? switcher[0]?.containerTitle
+    ?? "";
+  const showSwitcher = switcher.length > 0;
+
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const switcherBtnRef = useRef<HTMLButtonElement>(null);
+  const switcherDropdownRef = useRef<HTMLDivElement>(null);
+  // 下拉锚点——fixed 定位在按钮正下方（TitleBarZone 下拉同款），打开时按当前按钮几何计算
+  const [switcherPos, setSwitcherPos] = useState<{ top: number; left: number } | null>(null);
+
+  const toggleSwitcher = useCallback(() => {
+    if (!switcherOpen) {
+      const rect = switcherBtnRef.current?.getBoundingClientRect();
+      if (rect) setSwitcherPos({ top: rect.bottom, left: rect.left });
+    }
+    setSwitcherOpen((o) => !o);
+  }, [switcherOpen]);
+
+  // 外部点击 + Escape 关闭——TitleBarZone 下拉同款（document 级；池 DOM 焦点天然分区）
+  useEffect(() => {
+    if (!switcherOpen) return;
+    const onMouseDown = (e: MouseEvent) => {
+      const target = e.target as Node;
+      if (switcherBtnRef.current?.contains(target) || switcherDropdownRef.current?.contains(target)) return;
+      setSwitcherOpen(false);
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSwitcherOpen(false);
+    };
+    document.addEventListener("mousedown", onMouseDown);
+    document.addEventListener("keydown", onKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", onMouseDown);
+      document.removeEventListener("keydown", onKeyDown);
+    };
+  }, [switcherOpen]);
+
+  /** 下拉 item 动作——切换器按 mockup 分离两交互：点视图名 = 切激活；勾选 = 显隐 */
+  const handleItemSelect = useCallback((item: PanelSwitcherItem, containerId: string) => {
+    // 点视图名 = 切换激活——隐藏视图点击自动恢复可见 + 激活（对齐 [+] 决策：含已隐藏视图选中自动恢复可见）
+    if (!item.visible) {
+      window.linkdesk?.events?.emit("panel:toggleViewVisibility", { containerId, viewId: item.viewId });
+    }
+    window.linkdesk?.events?.emit("panel:viewSelected", item.viewId);
+    setSwitcherOpen(false);
+  }, []);
+
+  const handleItemToggleVisible = useCallback((item: PanelSwitcherItem, containerId: string) => {
+    // 勾选 = 显隐——stopPropagation 不触发激活；下拉保持打开（可连续勾）
+    window.linkdesk?.events?.emit("panel:toggleViewVisibility", { containerId, viewId: item.viewId });
+  }, []);
+
   return (
     <div
       className={`panel-zone${localHeight !== null ? " resizing" : ""}`}
@@ -148,8 +210,23 @@ export default function PanelZone({ panel }: PanelZoneProps) {
         aria-hidden="true"
       />
 
-      {/* PanelTabBar 28px——标签 80px 固定不 shrink，列表溢出滚动，[+] 在滚动区外始终最右 */}
+      {/* PanelTabBar 28px——切换器在行首，标签 80px 固定不 shrink，列表溢出滚动，[+] 在滚动区外始终最右 */}
       <div className="panel-tabbar">
+        {/* E5.8#34：容器切换器按钮——容器名 + ⌄；全空（无贡献视图）不渲染（无内容可切） */}
+        {showSwitcher && (
+          <button
+            className={`panel-switcher${switcherOpen ? " open" : ""}`}
+            ref={switcherBtnRef}
+            onClick={toggleSwitcher}
+            aria-expanded={switcherOpen}
+            aria-haspopup="menu"
+            title={switcherLabel}
+          >
+            <span className="panel-switcher-label">{switcherLabel}</span>
+            <span className="panel-switcher-chev" aria-hidden="true">⌄</span>
+          </button>
+        )}
+
         <div className="panel-tabbar-list">
           {views.map((v) => (
             <div
@@ -180,23 +257,62 @@ export default function PanelZone({ panel }: PanelZoneProps) {
         </button>
       </div>
 
+      {/* E5.8#34：切换器下拉——按容器分组列全部视图（含隐藏）。fixed 定位在按钮下方，
+          fixed 逃逸 .panel-zone overflow:hidden——不裁剪（TitleBarZone 下拉同款） */}
+      {switcherOpen && switcherPos && (
+        <div className="panel-switcher-dropdown" style={switcherPos} ref={switcherDropdownRef} role="menu">
+          {switcher.map((g) => (
+            <Fragment key={g.containerId}>
+              <div className="panel-switcher-group">{g.containerTitle}</div>
+              {g.items.map((item) => (
+                <div
+                  key={item.viewId}
+                  className={`panel-switcher-item${item.active ? " active" : ""}${item.visible ? "" : " hidden-view"}`}
+                  role="menuitem"
+                  onClick={() => handleItemSelect(item, g.containerId)}
+                >
+                  {/* 勾选 = 显隐——stopPropagation 不触发激活；下拉保持打开（可连续勾） */}
+                  <span
+                    className={`panel-switcher-check${item.visible ? "" : " unchecked"}`}
+                    aria-hidden="true"
+                    onClick={(e) => { e.stopPropagation(); handleItemToggleVisible(item, g.containerId); }}
+                  >
+                    {item.visible ? "✓" : ""}
+                  </span>
+                  <span className="panel-switcher-name">{item.title}</span>
+                  <span className="panel-switcher-sub">{item.pluginId}</span>
+                </div>
+              ))}
+            </Fragment>
+          ))}
+        </div>
+      )}
+
       {/* keep-alive——所有 views 平级渲染，display 切换（MainZone TabContent 同模式）。
           E5.7#63.7：每 view 经 PluginComponent 按 renderPath 动态加载（侧栏 PoolSectionStack 同款；
-          PluginComponent 自带 ErrorBoundary + Suspense 兜底）。 */}
+          PluginComponent 自带 ErrorBoundary + Suspense 兜底）。
+          E5.8#34 空态：views 全空（全不勾 / 无贡献视图）→ .panel-empty 占位（文案壳 t() 推送） */}
       <div className="panel-content">
-        {views.map((v) => (
-          <div
-            key={v.id}
-            className="panel-view"
-            style={{ display: v.id === activeViewId ? "flex" : "none" }}
-          >
-            <PluginComponent
-              pluginId={v.pluginId}
-              renderPath={v.renderPath}
-              isActive={v.id === activeViewId}
-            />
+        {views.length === 0 ? (
+          <div className="panel-empty">
+            <div className="panel-empty-big">{emptyText}</div>
+            {emptyHint && <div className="panel-empty-hint">{emptyHint}</div>}
           </div>
-        ))}
+        ) : (
+          views.map((v) => (
+            <div
+              key={v.id}
+              className="panel-view"
+              style={{ display: v.id === activeViewId ? "flex" : "none" }}
+            >
+              <PluginComponent
+                pluginId={v.pluginId}
+                renderPath={v.renderPath}
+                isActive={v.id === activeViewId}
+              />
+            </div>
+          ))
+        )}
       </div>
     </div>
   );
