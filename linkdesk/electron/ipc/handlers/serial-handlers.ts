@@ -44,7 +44,9 @@ export function registerSerialHandlers(): void {
   });
 
   // 查询当前状态（F5 刷新恢复）
-  ipcMain.handle(IPC.serial.getStatus, () => {
+  // E5.8#26 D5 双形态：无参 → 全口数组 / 有参 → 单口快照
+  ipcMain.handle(IPC.serial.getStatus, (_event, portName?: string) => {
+    if (portName) return serialService.getStatus(portName);
     return serialService.getStatus();
   });
 
@@ -53,27 +55,27 @@ export function registerSerialHandlers(): void {
     await serialService.openPort(cfg);
   });
 
-  // 关闭串口
-  ipcMain.handle(IPC.serial.closePort, async () => {
-    await serialService.closePort();
+  // 关闭串口——E5.8#26 D2：portName 可选（缺省唯一口语义）
+  ipcMain.handle(IPC.serial.closePort, async (_event, portName?: string) => {
+    await serialService.closePort(portName);
   });
 
-  // 发送字节数据
-  ipcMain.handle(IPC.serial.sendData, (_event, data: number[]) => {
-    return serialService.sendData(data);
+  // 发送字节数据——portName 可选
+  ipcMain.handle(IPC.serial.sendData, (_event, data: number[], portName?: string) => {
+    return serialService.sendData(data, portName);
   });
 
-  // 发送文本（支持编码）
-  ipcMain.handle(IPC.serial.sendText, (_event, text: string, encoding: string) => {
-    return serialService.sendText(text, encoding);
+  // 发送文本（支持编码）——portName 可选
+  ipcMain.handle(IPC.serial.sendText, (_event, text: string, encoding: string, portName?: string) => {
+    return serialService.sendText(text, encoding, portName);
   });
 
-  // DTR / RTS 控制信号
-  ipcMain.handle(IPC.serial.setDtr, async (_event, enable: boolean) => {
-    await serialService.setDtr(enable);
+  // DTR / RTS 控制信号——portName 可选
+  ipcMain.handle(IPC.serial.setDtr, async (_event, enable: boolean, portName?: string) => {
+    await serialService.setDtr(enable, portName);
   });
 
-  ipcMain.handle(IPC.serial.setRts, async (_event, enable: boolean) => {
-    await serialService.setRts(enable);
+  ipcMain.handle(IPC.serial.setRts, async (_event, enable: boolean, portName?: string) => {
+    await serialService.setRts(enable, portName);
   });
 }

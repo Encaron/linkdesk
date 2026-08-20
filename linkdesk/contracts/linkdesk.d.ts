@@ -427,13 +427,16 @@ export interface DataAPI {
     /** 串口——读/写/监听，对标 VS Code SerialPort API */
     serial: {
         listPorts(): Promise<SerialPortInfo[]>;
-        getStatus(): Promise<SerialStatus>;
+        /** E5.8#26 D5 双形态：无参 → SerialStatus[]（全部打开口，空数组 = 全关）/ 有参 → 单口快照（F5 遍历恢复用） */
+        getStatus(): Promise<SerialStatus[]>;
+        getStatus(portName: string): Promise<SerialStatus>;
         openPort(cfg: OpenPortConfig): Promise<void>;
-        closePort(): Promise<void>;
-        sendData(data: number[]): Promise<void>;
-        sendText(text: string, enc: string): Promise<void>;
-        setDtr(enable: boolean): Promise<void>;
-        setRts(enable: boolean): Promise<void>;
+        /** E5.8#26 D2——portName 可选：缺省 = 唯一打开口（0 口抛「串口未打开」/ ≥2 口抛「多串口已打开，请指定 portName」） */
+        closePort(portName?: string): Promise<void>;
+        sendData(data: number[], portName?: string): Promise<void>;
+        sendText(text: string, enc: string, portName?: string): Promise<void>;
+        setDtr(enable: boolean, portName?: string): Promise<void>;
+        setRts(enable: boolean, portName?: string): Promise<void>;
         onData(cb: (text: string) => void): () => void;
         onStats(cb: (stats: SerialStats) => void): () => void;
         onSystem(cb: (message: string) => void): () => void;
