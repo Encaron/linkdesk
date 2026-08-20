@@ -56,7 +56,7 @@ export default function UninstalledListView() {
             style={{ cursor: "pointer" }}
           >
             <div className="ms-item-header">
-              <span className="ms-item-name">{p.name}</span>
+              <span className="ms-item-name">{t(p.name)}</span>{/* E5.8#37.9.1：插件显示名 t() 解析 */}
               {p.version && <span className="ms-item-version">v{p.version}</span>}
             </div>
             {p.description && <span className="ms-item-desc">{p.description}</span>}

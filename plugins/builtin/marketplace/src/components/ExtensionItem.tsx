@@ -81,7 +81,7 @@ export function ExtensionItem({ plugin, onClick, onDoubleClick }: ExtensionItemP
       {/* VS Code: .details */}
       <div className="ms-item-details">
         <div className="ms-item-header">
-          <span className="ms-item-name">{m.name}</span>
+          <span className="ms-item-name">{t(m.name ?? "")}</span>{/* E5.8#37.9.1：插件显示名 t() 解析——lang-defaults 持壳插件名 key（name 可空 → t("") 原样空） */}
           {/* E5.8#15.5：缺依赖挂起（PENDING）徽标——tooltip 显完整原因（"等待依赖: xxx"） */}
           {plugin.pendingReason && (
             <span className="ms-item-badge-pending" title={plugin.pendingReason}>{t("等待依赖")}</span>

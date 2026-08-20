@@ -32,7 +32,7 @@ import { ContextKeyService } from "../core/registry/commands/ContextKeyService";
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../core/utils/plugin/iconUtils";
-import { isShellRenderedTab } from "../core/utils/tabIdentity";
+import { isShellRenderedTab, resolvePoolTabTitle } from "../core/utils/tabIdentity";
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组 ──
 import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, computeGroupFlexes } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
@@ -243,26 +243,29 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       id: g.id,
       flex: flexMap.get(g.id) ?? 1,
       activeTabId: g.activeTabId,
-      tabs: g.tabs.map((t) => {
-        const pid = t.pluginId ?? t.type;
+      // E5.8#37.9.1：map 参数用 tab（不叫 t）——外层 useTranslation 的 t 是翻译函数，避免遮蔽
+      tabs: g.tabs.map((tab) => {
+        const pid = tab.pluginId ?? tab.type;
         const entry = getViewPlugin(pid);
         const resolved = entry?.manifest ? resolvePluginIcon(pid, entry.manifest) : null;
         const behavior = getTabBehavior(pid);
         return {
-          id: t.id,
+          id: tab.id,
           pluginId: pid,
-          title: t.label,
-          sourceId: t.sourceId,
-          dirty: t.dirty,
+          // E5.8#37.9.1：标签栏 title 推流时二次解析——getDefaultLabel 已 t()，此处兜底
+          // 语言切换/恢复的旧语言快照（label===原名或===翻译名都重解析回现语言，幂等）
+          title: resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
+          sourceId: tab.sourceId,
+          dirty: tab.dirty,
           // E5.6#16.5：TabBar 渲染元数据
           icon: resolved?.src ?? resolved?.emoji,
-          pinned: t.pinned,
+          pinned: tab.pinned,
           // E5.6#16.7k-4：欢迎页 closeBehavior 从 blocked → normal——壳 reduceCloseTab 已有 fallback 自动重建
           closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
           singleton: behavior.singleton,
-          shellRendered: isShellRenderedTab(t.type),
-          shellType: isShellRenderedTab(t.type) ? t.type : undefined,
-          detailPluginId: t.detailPluginId,
+          shellRendered: isShellRenderedTab(tab.type),
+          shellType: isShellRenderedTab(tab.type) ? tab.type : undefined,
+          detailPluginId: tab.detailPluginId,
         };
       }),
     }));
@@ -287,7 +290,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       // E5.8#30.15（P5）：聚焦面板 id——池侧 accent 环 + isActive 单聚焦判定
       activeGroupId: tabState.activeGroupId,
       // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
-      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
+      // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）
+      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
       // E5.7#63.7：底部面板——无贡献不推（undefined 字段不序列化进快照）
       ...(panel ? { panel } : {}),
       // E5.8#36.9：右侧栏——zone 常驻则推（visible:false 零 DOM；#37.5 真渲染消费宽度）
