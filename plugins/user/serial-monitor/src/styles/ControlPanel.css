@@ -51,6 +51,30 @@
   font-size: 12px;
 }
 
+/* ── E5.8#30.17：Combobox 在命令条内——与 SelectBox 同视觉密度 ── */
+
+.control-bar .combobox {
+  min-width: 86px;
+}
+
+.control-bar .combobox-field {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.control-bar .combobox-input {
+  font-size: 12px;
+}
+
+/* ── E5.8#30.17：8N1 窄下拉（只放 4 个组合）── */
+
+.control-bar .control-select-narrow {
+  min-width: 64px;
+}
+
 /* ── 1px 竖线分隔 ── */
 
 .control-sep {

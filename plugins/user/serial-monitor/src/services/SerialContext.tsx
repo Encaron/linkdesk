@@ -16,6 +16,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 interface PortInfo { name: string; description: string; }
 
+/** E5.8#30.17：帧格式——openPort 时透传 dataBits/stopBits/parity（wire OpenPortConfig 已支持）。 */
+export interface SerialFrame {
+  dataBits: number;
+  stopBits: number;
+  parity: string;
+}
+
 /** E5.8#27（S8/S10）——每打开口的独立状态（权威多口态）。单口投影 _sharedState 是"当前活动口"兼容视图。 */
 interface OpenPortEntry {
   baudRate: number;
@@ -42,15 +49,17 @@ interface SerialStatusDto {
 
 interface SerialActions {
   /** E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确） */
-  toggleOpen: (port: string, baudRate?: number, encoding?: string) => Promise<void>;
+  toggleOpen: (port: string, baudRate?: number, encoding?: string, frame?: SerialFrame) => Promise<void>;
   /** 明确打开指定端口——多标签页场景：ControlPanel 按 per-tab connected 决策，不盲翻转 */
-  openPort: (portName: string, baudRate: number, encoding?: string) => Promise<void>;
+  openPort: (portName: string, baudRate: number, encoding?: string, frame?: SerialFrame) => Promise<void>;
   /** E5.8#30.8：明确关闭指定端口——显式传口（不再读投影口 _sharedState.sourceName） */
   closePort: (port: string) => Promise<void>;
   /** E5.8#30.10（P7）：换口——显式传旧口 + per-tab 精确触发（旧口 ∈ openPorts 才关旧开新；否则只记配置） */
-  setSourceName: (name: string, oldPort: string, encoding?: string) => Promise<void>;
+  setSourceName: (name: string, oldPort: string, encoding?: string, frame?: SerialFrame) => Promise<void>;
   /** E5.8#30.8：改波特率——显式传口 + per-tab 精确判断（该口真开着才关旧重开） */
-  setBaudRate: (baud: string, port: string, encoding?: string) => Promise<void>;
+  setBaudRate: (baud: string, port: string, encoding?: string, frame?: SerialFrame) => Promise<void>;
+  /** E5.8#30.17：改帧格式（8N1/校验）——显式传口 + per-tab 精确判断（该口真开着才关旧重开，同 setBaudRate 语义） */
+  setFrame: (frame: SerialFrame, port: string, baudRate: number, encoding?: string) => Promise<void>;
   /** 刷新可用串口列表——USB 热插拔后下拉框即时更新 */
   refreshPorts: () => Promise<void>;
 }
@@ -294,11 +303,12 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   baudRateRef.current = state.baudRate;
 
   // 支线：明确打开/关闭——多标签页场景 ControlPanel 按 per-tab connected 决策
-  const openPort = useCallback(async (portName: string, baudRate: number, encoding?: string) => {
+  const openPort = useCallback(async (portName: string, baudRate: number, encoding?: string, frame?: SerialFrame) => {
     if (!s) return;
     sourceNameRef.current = portName;
     baudRateRef.current = String(baudRate);
-    await s.openPort({ portName, baudRate, encoding });
+    // E5.8#30.17：帧格式透传——openPortConfig dataBits/stopBits/parity（wire 已支持，#26 实锤）
+    await s.openPort({ portName, baudRate, encoding, dataBits: frame?.dataBits, stopBits: frame?.stopBits, parity: frame?.parity });
     // E5.8#27：定向取刚开的口——多口下 getStatus()[0] 未必是本次开的（#26 遗留，D5 定向修复）
     const fresh = (await s.getStatus(portName));
     if (fresh) _setState((p) => mergeStatus(p, fresh));
@@ -314,17 +324,17 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
 
   // E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确，D1 多口共存）。
   // 组合原子动作 closePort/openPort（审视 ③：灭 toggleOpen 死代码 + 「开关=一个动作一处写」归一）
-  const toggleOpen = useCallback(async (port: string, baudRate?: number, encoding?: string) => {
+  const toggleOpen = useCallback(async (port: string, baudRate?: number, encoding?: string, frame?: SerialFrame) => {
     if (!s || !port) return;
     if (_openPorts.has(port)) {
       await closePort(port);
     } else {
       // 口未开 → 开（D1 不影响其他已开口）；baudRate 缺省走投影 baudRateRef
-      await openPort(port, baudRate ?? Number(baudRateRef.current), encoding);
+      await openPort(port, baudRate ?? Number(baudRateRef.current), encoding, frame);
     }
   }, [s, closePort, openPort]);
 
-  const setSourceName = useCallback(async (name: string, oldPort: string, encoding?: string) => {
+  const setSourceName = useCallback(async (name: string, oldPort: string, encoding?: string, frame?: SerialFrame) => {
     if (!s) return;
     sourceNameRef.current = name;
     _setState((p) => ({ ...p, sourceName: name }));
@@ -337,11 +347,11 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       _openPorts.delete(oldPort);
       _notifyPort(oldPort); // E5.8#30.12：换口 → 旧口接收区 per-tab 计数归零
       _writePortState(oldPort, false);
-      await openPort(name, Number(baudRateRef.current), encoding);
+      await openPort(name, Number(baudRateRef.current), encoding, frame);
     }
   }, [s, openPort]);
 
-  const setBaudRate = useCallback(async (baud: string, port: string, encoding?: string) => {
+  const setBaudRate = useCallback(async (baud: string, port: string, encoding?: string, frame?: SerialFrame) => {
     if (!s) return;
     baudRateRef.current = baud;
     _setState((p) => ({ ...p, baudRate: baud }));
@@ -350,7 +360,17 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     // E5.8#30.9：closePort/openPort 组合——两原子动作已走灯写入咽喉（归一性）
     if (port && _openPorts.has(port)) {
       await closePort(port);
-      await openPort(port, Number(baud), encoding);
+      await openPort(port, Number(baud), encoding, frame);
+    }
+  }, [s, closePort, openPort]);
+
+  // E5.8#30.17：改帧格式（8N1/校验）——同 setBaudRate 语义（该口真开着才关旧重开，port 空 = 纯存配置）。
+  // 会话帧字段由 ControlPanel updateSession 写入；本动作只做「口开着 → 用新帧重开」的端口侧生效。
+  const setFrame = useCallback(async (frame: SerialFrame, port: string, baudRate: number, encoding?: string) => {
+    if (!s) return;
+    if (port && _openPorts.has(port)) {
+      await closePort(port);
+      await openPort(port, baudRate, encoding, frame);
     }
   }, [s, closePort, openPort]);
 
@@ -362,7 +382,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (ports) _setState((p) => ({ ...p, ports }));
   }, [s]);
 
-  return { state, actions: { toggleOpen, openPort, closePort, setSourceName, setBaudRate, refreshPorts } };
+  return { state, actions: { toggleOpen, openPort, closePort, setSourceName, setBaudRate, setFrame, refreshPorts } };
 }
 
 // ═══════════════════════════════════════════════════════

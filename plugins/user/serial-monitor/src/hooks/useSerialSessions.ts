@@ -7,7 +7,7 @@
  * pluginState 异步更新保证跨 WebView 一致性。
  *
  * 硬规则——每个字段只有一个写入入口（§3.12）：
- *   port/baudRate/protocol → ControlPanel
+ *   port/baudRate/帧格式（8N1/校验） → ControlPanel
  *   12 项收发设置 → sidebar "收发设置" Section
  *   quickSends → QuickSendBar（主区）
  *   connected → SerialContext 派生（不独立 set）
@@ -19,7 +19,9 @@ import { useState, useEffect, useCallback, useRef } from "react";
 // ── 类型 ──
 
 export interface SerialSession {
-  id: string; name: string; port: string; baudRate: string; protocol: string;
+  id: string; name: string; port: string; baudRate: string;
+  // E5.8#30.17：帧格式（数据位/停止位/校验）——命令条 8N1 + 校验选择器，openPort 时透传
+  dataBits: number; stopBits: number; parity: string;
   connected: boolean; timestampFormat: string; showEcho: boolean;
   showLineNumbers: boolean; separateSystemLog: boolean; lineEnding: string;
   autoRepeat: boolean; repeatInterval: number; autoClear: boolean;
@@ -28,7 +30,7 @@ export interface SerialSession {
 }
 
 const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
-  port: "", baudRate: "115200", protocol: "bracket", connected: false,
+  port: "", baudRate: "115200", dataBits: 8, stopBits: 1, parity: "none", connected: false,
   timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
   separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
   repeatInterval: 1000, autoClear: false, receiveMode: "text",
