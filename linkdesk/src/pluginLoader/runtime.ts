@@ -38,7 +38,7 @@ import {
   getDisabledList,
   getLoadedManifest,
 } from "./state";
-import { normalizeManifest, type OldFormatManifest } from "./manifest";
+import { normalizeManifest, hasSidebarContainers, type OldFormatManifest } from "./manifest";
 import {
   parseContributions,
   resolveRuntimePluginRoot,
@@ -295,6 +295,14 @@ async function loadPlugin(
       statusBarComponent,
     });
     log.appendLine(`[OK] 运行时视图插件 "${manifest.name}" (${pluginId}) 已注册`);
+  } else if (!manifest.entry && hasSidebarContainers(manifest)) {
+    // 🔥 E5.8#37.9.2.3：entryless 视图插件也进 viewRegistry——修复图标栏数据源缺口。
+    // 此前 getViewPlugins() 只含 entry 插件 → entryless 插件声明 appearsIn.iconBar 被静默丢弃
+    // （panel-demo/demo-en 未加 entry 前的真实现象）。组件由 ViewContainerService 经
+    // contributes.views[].render 加载，本注册表只作元数据/图标入口（component 为零，可选项）。
+    // 运行时与 glob 两路共用此分支（entryless 运行时插件同样能渲染 views）。
+    registerViewPlugin({ pluginId, manifest });
+    log.appendLine(`[OK] entryless 视图插件 "${manifest.name}" (${pluginId}) 已注册（图标栏入口）`);
   }
 
   // ═══ Step 5: 解析 contributes → 分发各 Registry ═══

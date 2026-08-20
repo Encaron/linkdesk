@@ -104,7 +104,8 @@ export function getStatusBarContributions(): Array<StatusBarItem & { pluginId: s
 /** 查找保底标签页——先查 viewRegistry，无则返回内置欢迎页 */
 export function findFallbackPlugin(): { pluginId: string } | undefined {
   for (const entry of registry.values()) {
-    if (entry.manifest.tabBehavior?.isFallback) return { pluginId: entry.pluginId };
+    // E5.8#37.9.2.3：fallback 须有 entry 组件（标签页渲染靠 entry）——component-less 注册不参与
+    if (entry.manifest.tabBehavior?.isFallback && entry.manifest.entry) return { pluginId: entry.pluginId };
   }
   // 内置 fallback：欢迎页
   return { pluginId: FALLBACK_PLUGIN_ID };
@@ -124,12 +125,14 @@ export function getIconLocation(pluginId: string): "top" | "bottom" | undefined 
 }
 
 /**
- * 获取可创建为标签页的视图插件——appearsIn.tabBar === true。
+ * 获取可创建为标签页的视图插件——appearsIn.tabBar === true 且有 entry 组件。
  * 消费端：WelcomeView 快捷卡片、TabBar [+] 菜单、命令面板"打开视图"等。
+ * E5.8#37.9.2.3：标签页渲染靠 entry（PluginComponent glob src/index.tsx）——component-less
+ * 注册只服务图标栏，即使误声明 appearsIn.tabBar 也不得成为标签页（防御性守卫）。
  */
 export function getTabCreatableViews(): ViewPluginEntry[] {
   return Array.from(registry.values()).filter(
-    (entry) => entry.manifest.appearsIn?.tabBar === true
+    (entry) => entry.manifest.appearsIn?.tabBar === true && !!entry.manifest.entry
   );
 }
 

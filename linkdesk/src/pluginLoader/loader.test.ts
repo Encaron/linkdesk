@@ -9,6 +9,7 @@
 
 import { describe, it, expect, beforeEach } from "vitest";
 import { parseContributions, validateInstallManifest, resolveVersionConflict, runtimeEntryPath } from "./loader";
+import { hasSidebarContainers } from "./manifest"; // E5.8#37.9.2.3：纯函数真源导入
 import { extractThemeColors } from "./contributions"; // E5.8#1c：真源导入，替代本地等价重实现
 import type { PluginManifest } from "../core/api/types";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
@@ -265,6 +266,44 @@ describe("E5.7#81 安装包装", () => {
 
     it("prod + entryless → 仍按 chunk 约定（打包格式不看 entry 字段）", () => {
       expect(runtimeEntryPath(manifestWith(), TEST_PLUGIN_ID, false)).toBe("test-plugin.js");
+    });
+  });
+
+  /* ── E5.8#37.9.2.3：hasSidebarContainers——entryless 视图插件进 viewRegistry 的判定 ── */
+  describe("hasSidebarContainers", () => {
+    const vc = (containers: Record<string, unknown>) => ({ contributes: { viewsContainers: containers } }) as unknown as PluginManifest;
+
+    it("有侧栏容器（location 未声明默认 sidebar）→ true", () => {
+      expect(hasSidebarContainers(vc({ "hello-sidebar": { title: "Hello" } }))).toBe(true);
+    });
+
+    it("有显式 location:\"sidebar\" 容器 → true", () => {
+      expect(hasSidebarContainers(vc({ "hello-sidebar": { title: "Hello", location: "sidebar" } }))).toBe(true);
+    });
+
+    it("只有 panel 容器 → false（图标栏语义 = 打开侧栏容器）", () => {
+      expect(hasSidebarContainers(vc({ "demo-panel": { title: "输出", location: "panel" } }))).toBe(false);
+    });
+
+    it("只有 auxiliarybar 容器 → false", () => {
+      expect(hasSidebarContainers(vc({ "aux": { title: "Aux", location: "auxiliarybar" } }))).toBe(false);
+    });
+
+    it("零 viewsContainers（Python 语言包等数据插件）→ false", () => {
+      expect(hasSidebarContainers({ contributes: { languages: [] } } as unknown as PluginManifest)).toBe(false);
+    });
+
+    it("contributes 为空 / 无 contributes → false", () => {
+      expect(hasSidebarContainers({} as PluginManifest)).toBe(false);
+      expect(hasSidebarContainers({ contributes: {} } as PluginManifest)).toBe(false);
+    });
+
+    it("viewsContainers 空对象 → false", () => {
+      expect(hasSidebarContainers(vc({}))).toBe(false);
+    });
+
+    it("entry 有无不影响判定（入口与容器是两个独立能力轴）", () => {
+      expect(hasSidebarContainers({ entry: "src/index.tsx", ...vc({ "s": { title: "S", location: "sidebar" } }) } as unknown as PluginManifest)).toBe(true);
     });
   });
 });

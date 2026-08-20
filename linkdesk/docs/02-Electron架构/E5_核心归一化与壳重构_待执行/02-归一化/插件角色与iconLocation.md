@@ -273,6 +273,29 @@ WebView 是否创建 = pluginRole === "view" && (appearsIn.tabBar || appearsIn.s
 
 ---
 
+---
+
+## 七、🆕 E5.8 修正——entryless 视图插件也可出现在图标栏
+
+> 2026-08-21。**E5.8#37.9.2.3 修复本章"完工标准"与实际实现的偏差。**
+
+§二 完工标准声称「`getViewPlugins()` 返回全部插件」——实际从 E5#12 起 `registerViewPlugin`
+只对有 `entry` 的插件调用（`role="data"` 派生跳过 entryless），**entryless 视图插件
+（panel-demo / demo-en 加 entry 前）即使声明 `appearsIn.iconBar` 也被静默丢弃**。
+schema 允许这么声明、运行时零报错 = 潜伏缺口（E5.7#63.7 引入第一个 entryless 视图插件时才暴露）。
+
+**修复（壳级，通用通道）：**
+- `runtime.ts` Step 4：entryless 且含**侧栏**视图容器（`hasSidebarContainers`，location 默认 sidebar；
+  panel/auxiliarybar 不算——图标栏语义 = 打开侧栏容器）的插件注册 component-less 条目进 viewRegistry。
+- `ViewPluginEntry.component` 改可选——entryless 条目的组件由 ViewContainerService 经
+  `contributes.views[].render` 加载，viewRegistry 只作元数据/图标入口。
+- `getTabCreatableViews()` / `findFallbackPlugin()` 加 `entry` 守卫——component-less 注册只服务
+  图标栏，绝不成为标签页（标签页渲染靠 entry）。
+
+**结论（data 插件仍无图标，本修复不放松 E5#13）：** Python 语言包等零侧栏容器的数据插件
+仍不进 viewRegistry、无图标——E5#13/#14 的设计意图完好。被修的是「**能渲染侧栏视图**但
+entryless 的插件也该能拿到图标」这一组合。
+
 > **← E5 索引：** `../00-README.md`
 > **← 执行清单：** `../05-执行清单.md` E5#13、E5#14
 > **← 关联：** E5#12 插件加载归一化——同轮
