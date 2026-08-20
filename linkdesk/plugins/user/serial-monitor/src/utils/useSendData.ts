@@ -49,6 +49,8 @@ export interface SendContext {
   sendCoding: string;
   lineEnding: string;
   timestampFormat: string;
+  /** E5.8#29：会话口——sendData/sendText 定向 portName（多口下各会话各发各的口；空串 → undefined 走 D2 缺省唯一口语义） */
+  port: string;
 }
 
 export interface SendCallbacks {
@@ -80,7 +82,7 @@ export function useSendData(
     try {
       if (ctx.sendMode === "hex") {
         const bytes = Array.from(hexToBytes(text));
-        await window.linkdesk.serial.sendData(bytes);
+        await window.linkdesk.serial.sendData(bytes, ctx.port || undefined);
         cb.onEcho(
           `${formatTimestamp(ctx.timestampFormat)} ---- 已发送 HEX 消息 (${bytes.length} 字节) ----`
         );
@@ -94,7 +96,7 @@ export function useSendData(
         const ending = (opts?.ending ?? ctx.lineEnding)
           .replace(/\\r/g, "\r")
           .replace(/\\n/g, "\n");
-        await window.linkdesk.serial.sendText(text + ending, ctx.sendCoding);
+        await window.linkdesk.serial.sendText(text + ending, ctx.sendCoding, ctx.port || undefined);
         const safeText = text
           .replace(/\r\n/g, "\\r\\n")
           .replace(/\n/g, "\\n")

@@ -12,7 +12,7 @@
 
 import { useTranslation } from "react-i18next";
 import { useState, useCallback, useEffect } from "react";
-import { useSerialContext } from "../services/SerialContext";
+import { useSerialContext, getOpenPorts } from "../services/SerialContext";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
 // E5.6#11.5h：协议注册表走 lk.protocol.*（IPC 到壳侧 ProtocolRegistry）
 import { useSession } from "../hooks/useSerialSessions";
@@ -26,7 +26,7 @@ const BAUD_RATES = [
 function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
-  const { ports, isOpen } = state;
+  const { ports } = state;
   const { setSourceName: setPortName, setBaudRate, refreshPorts, openPort, closePort } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
@@ -44,8 +44,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
 
   // ── session.connected 派生规则（Bug 3 防御） ──
   // 不是独立 set——从 SerialContext 派生。
-  // session.port 和 SourceState.sourceName 一致 + SourceState.isOpen = true → connected
-  const connected = isOpen && activeSession !== null && state.sourceName === activeSession.port;
+  // E5.8#29（S14）：多口下从「会话口 ∈ openPorts 集合」派生——state.sourceName 是共享投影口，
+  // 另一标签页开口会污染本标签页的 isOpen/sourceName 判断；按本会话口判才 per-tab 精确。
+  const connected = activeSession !== null && getOpenPorts().has(activeSession.port);
 
   // mount 时立即刷新端口列表——_initOnce() 是异步的，首帧 ports=[] 会显示"无可用串口"
   useEffect(() => {
@@ -91,7 +92,7 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       // 当前标签页的端口已打开 → 关闭
       await closePort();
     } else {
-      // 当前标签页的端口未打开 → 打开（serial-service 会自动先关其他端口）
+      // 当前标签页的端口未打开 → 打开（E5.8#29：多口共存 D1——不影响其他标签页的已开口）
       // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
       if (!activeSession.port && ports.length > 0) {
         updateSession({ port: ports[0].name });
@@ -117,12 +118,14 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       <span className={`control-dot${connected ? " on" : ""}`} />
 
       {/* COM 口下拉框——打开时自动刷新端口列表（USB 热插拔即时更新） */}
+      {/* E5.8#29（S14）：disabled={connected} 而非 isOpen——isOpen 是共享投影口状态，另一标签页
+          开口会禁用本标签页换口；本会话口已开才禁用（per-tab 精确） */}
       <SelectBox
         value={portName}
         options={ports.map((p) => ({ value: p.name, label: p.name }))}
         onChange={handlePortChange}
         onOpen={refreshPorts}
-        disabled={isOpen}
+        disabled={connected}
         placeholder={t("无可用串口")}
       />
 
