@@ -16,6 +16,8 @@ export interface LayoutPersistenceDeps {
   ready: boolean;
   tabState: TabState;
   panelActiveViewId: string | null;
+  /** E5.8#31：底部面板显隐——两处保存（beforeunload + 防抖）合并落盘，防覆盖 */
+  panelVisible: boolean;
 }
 
 /** 标签页组序列化——beforeunload 与 100ms 防抖保存共用同一形状（E5.8#1c 去重） */
@@ -41,7 +43,7 @@ function serializeGroups(
 }
 
 /** 布局持久化——tabState/panel 全真相源在壳，App 自己负责保存。三个独立 effect（beforeunload 注册一次，闭包经 ref 读活值） */
-export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: LayoutPersistenceDeps): void {
+export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible }: LayoutPersistenceDeps): void {
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
   const tabStateRef = useRef(tabState);
@@ -50,6 +52,8 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
   // beforeunload 读最新激活视图（handler 注册一次 deps []——闭包会过期，ref 同步）
   const panelActiveViewIdRef = useRef(panelActiveViewId);
   panelActiveViewIdRef.current = panelActiveViewId;
+  const panelVisibleRef = useRef(panelVisible);
+  panelVisibleRef.current = panelVisible;
 
   // beforeunload——F5 刷新/关闭窗口时同步写入
   useEffect(() => {
@@ -68,6 +72,7 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
           layout.panel = {
             height: panelHeight ?? 220,
             ...(panelActive ? { activeViewId: panelActive } : {}),
+            visible: panelVisibleRef.current, // E5.8#31：显隐合并落盘——防抖保存可能未覆盖
           };
         }
         syncWriteLayout(layout);
@@ -103,7 +108,7 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
   // 与上次落盘值比对——窗口 resize/sidebar 变化也 fire onDidChangeLayout，不变不写盘。
   const panelSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelSaveInitialized = useRef(false);
-  const lastSavedPanelRef = useRef<{ height: number; activeViewId?: string } | null>(null);
+  const lastSavedPanelRef = useRef<{ height: number; activeViewId?: string; visible?: boolean } | null>(null);
   useEffect(() => {
     if (!ready) return;
     if (!panelSaveInitialized.current) {
@@ -114,9 +119,14 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId }: Lay
     }
     const doSave = () => {
       const height = layoutEngine.getBounds("panel")?.height ?? 220;
-      const state = { height, ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}) };
+      // E5.8#31：合并显隐（ref 读活值）——toggle 立即落盘 + 本防抖保存同源同字段，最终一致
+      const state = {
+        height,
+        ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}),
+        visible: panelVisibleRef.current,
+      };
       const last = lastSavedPanelRef.current;
-      if (last && last.height === height && last.activeViewId === panelActiveViewId) return;
+      if (last && last.height === height && last.activeViewId === panelActiveViewId && last.visible === panelVisibleRef.current) return;
       lastSavedPanelRef.current = state;
       void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
     };

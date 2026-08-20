@@ -291,6 +291,7 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
 // E5#44-3：设置命令已提取到 settingsCommands.ts
 import { registerTabCommands } from "./tabCommands";
 import { registerSettingsCommands } from "./settingsCommands";
+import { registerPanelCommands } from "./panelCommands"; // E5.8#31：底部面板显隐命令（Ctrl+J）
 import { registerDeveloperCommands } from "./developerCommands";
 import { registerShellMenus } from "../input-bindings/shellMenus";
 import { registerQuickPickCommand } from "../palette/quickPickCommand"; // E5.7#18：quickpick.show 从 components/shared/QuickPick.tsx 迁入
@@ -306,6 +307,7 @@ export function ensureCoreCommands(): void {
   // E5#44-2/3：标签页 + 设置命令独立注册
   registerTabCommands();
   registerSettingsCommands();
+  registerPanelCommands(); // E5.8#31：底部面板显隐命令（Ctrl+J）
   registerDeveloperCommands();
   registerQuickPickCommand(); // E5.7#18：quickpick.show 插件命令
 

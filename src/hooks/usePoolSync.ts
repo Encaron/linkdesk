@@ -48,6 +48,8 @@ export interface UsePoolSyncInput {
   isSidebarVisible: boolean;
   /** E5.7#63.7：底部面板激活视图 ID——null = 尚未选择（回退 views[0]）。真相源在壳 App state */
   panelActiveViewId: string | null;
+  /** E5.8#31：底部面板显隐——false = 不推 panel 字段（池 panel?.visible undefined → PanelZone 不渲染） */
+  panelVisible: boolean;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
   onTabAction?: (action: PoolTabAction) => void; // E5.7#96：wire 契约定型
 }
@@ -58,7 +60,7 @@ export interface UsePoolSyncInput {
  * E5.7#9：侧栏宽度不再经 props——LayoutEngine getBounds 内部直读 + onDidChangeLayout 重推。
  * E5.7#63.7：面板高度同理——getBounds("panel") 内部直读，resizeZoneHeight → onDidChangeLayout 重推。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActiveViewId, onTabAction }: UsePoolSyncInput): void {
+export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, onTabAction }: UsePoolSyncInput): void {
   // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
   const { t } = useTranslation();
 
@@ -162,7 +164,9 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     // LayoutEngine panel zone（resizeZoneHeight 钳制后经 onDidChangeLayout → 本 effect 重推回执）。
     const panelViews = buildPanelViewMetas();
     let panel: PanelLayout | undefined;
-    if (panelViews.length > 0) {
+    // E5.8#31：显隐 = 不推 panel 字段——panelVisible false 时保持 undefined，
+    // 池 `layout.panel?.visible && <PanelZone/>` → 不渲染（复用无 panel 贡献现网路径，零池改动）
+    if (panelViews.length > 0 && panelVisible) {
       const panelZone = layoutEngine.getZone("panel");
       const validActiveId = panelActiveViewId && panelViews.some((v) => v.id === panelActiveViewId)
         ? panelActiveViewId
@@ -241,5 +245,5 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     };
 
     poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, panelActiveViewId, layoutVersion, t, chordLabel, eventEntries]);
+  }, [tabState, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries]);
 }

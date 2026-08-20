@@ -27,10 +27,12 @@ export interface CardLayout {
   minH?: number;
 }
 
-/** E5.7#63.7：底部面板布局状态——高度 + 激活视图（views 列表来自 contributes 注册，不持久化） */
+/** E5.7#63.7：底部面板布局状态——高度 + 激活视图（views 列表来自 contributes 注册，不持久化）
+ *  E5.8#31：加 visible——面板显隐持久化（Ctrl+J）。缺省（旧布局无此字段）→ 视为可见（?? true） */
 export interface PanelLayoutState {
   height: number;
   activeViewId?: string;
+  visible?: boolean;
 }
 
 export interface WorkspaceLayout {

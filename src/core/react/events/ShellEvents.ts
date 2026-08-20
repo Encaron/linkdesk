@@ -41,6 +41,9 @@ export interface ShellEvents {
    *  ① 池 ◀/▶ 按钮（usePoolSync 转发）② 壳命令 workbench.action.toggleSidebarVisibility（Ctrl+B）。
    *  App 侧栏宿主状态机 doCollapse 执行（E5.7#10 三条折叠路径之一）。无 payload。 */
   "sidebar:toggle": void;
+  /** 底部面板显隐切换请求（E5.8#31）——生产方 = 壳命令 workbench.action.togglePanel（Ctrl+J）。
+   *  App usePanelHost 消费：翻转 panelVisible + 立即落盘 layout.json。无 payload。 */
+  "panel:toggle": void;
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */
