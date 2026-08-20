@@ -136,10 +136,17 @@ export function registerMenuItems(
       }
     }
 
-    // 幂等——同一 menuId 下同一 pluginId 同一 command 不重复注册
+    // 幂等——同一 menuId 下同一 pluginId 同一 command 同一 when 不重复注册
     // 父菜单项（command 为空但有 children）不做幂等检查——允许多个同名组
+    // E5.8#37.6 回归：when 必须并入身份键——「移动到右侧/左侧」双 when 门控项共享同一
+    // 命令 ID（toggleSidebarPosition），仅 when 区分，是两条不同菜单项（对换当开关）；
+    // 仅按 command+pluginId 判重会把第二条当重复丢弃 → 换边后右键看不到回边选项。
     const duplicate = normalized.command
-      ? existing.some((e) => e.command === normalized.command && e.pluginId === normalized.pluginId)
+      ? existing.some((e) =>
+          e.command === normalized.command &&
+          e.pluginId === normalized.pluginId &&
+          (e.when ?? null) === (normalized.when ?? null)
+        )
       : false;
     if (!duplicate) {
       existing.push(normalized);

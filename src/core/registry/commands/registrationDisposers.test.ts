@@ -110,6 +110,25 @@ describe("MenuRegistry — register() 返 disposer", () => {
     expect(getMenuItems(MENU_SLOTS.EditorContext).some((i) => i.command === "test.cmd")).toBe(false);
   });
 
+  it("同 command 双 when 门控项 → 两条都注册（E5.8#37.6 回归——换边当开关）", () => {
+    // 两条共享 toggleSidebarPosition 命令、仅 when 区分——去重键须并入 when，否则第二条被当重复丢弃。
+    registerMenuItems(MENU_SLOTS.EditorContext, PID, [
+      { command: "test.toggle", label: "甲", when: "pos == 'a'" },
+      { command: "test.toggle", label: "乙", when: "pos == 'b'" },
+    ]);
+
+    const items = getMenuItems(MENU_SLOTS.EditorContext).filter((i) => i.command === "test.toggle");
+    expect(items).toHaveLength(2);
+    expect(items.map((i) => i.when)).toEqual(["pos == 'a'", "pos == 'b'"]);
+  });
+
+  it("同 command 同 when 重复注册 → 去重跳过（幂等不变）", () => {
+    registerMenuItems(MENU_SLOTS.EditorContext, PID, [{ command: "test.dup", when: "flag" }]);
+    registerMenuItems(MENU_SLOTS.EditorContext, PID, [{ command: "test.dup", when: "flag" }]);
+
+    expect(getMenuItems(MENU_SLOTS.EditorContext).filter((i) => i.command === "test.dup")).toHaveLength(1);
+  });
+
   it("批量部分去重——dispose 只删本次新增，先前条目保留", () => {
     registerMenuItems(MENU_SLOTS.EditorContext, PID, [{ command: "test.keep" }]);
     // test.keep 已存在 → 去重跳过；test.new 本次新增

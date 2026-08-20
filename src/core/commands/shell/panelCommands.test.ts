@@ -11,12 +11,14 @@ import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
 import { clearRegistrationLayers } from "../../registry/registrationTracker";
 import { executeCommand, clearCommands } from "../../registry/commands/CommandRegistry";
 import { clearMenus } from "../../registry/commands/MenuRegistry";
+import { ContextKeyService } from "../../registry/commands/ContextKeyService"; // #37.6 回归：换边当开关 when 门控
 import type { MenuItemDescriptor } from "../../api/linkdesk-api";
 import { handleSettingsChannel } from "../../services/plugins/IpcBridgeHandler/ui"; // #37.7：getItems 桥 checked 解析
-import { layoutEngine } from "../../services/layout/LayoutEngine";
+import { layoutEngine, narrowSidebarEdge } from "../../services/layout/LayoutEngine";
 import { ViewContainerService } from "../../services/layout/ViewContainerService"; // #37.7.1：面板视图清单数据源
 import { clearPluginStates } from "../../services/plugins/PluginStateService"; // #37.7.1：setVisible 落盘测试隔离
 import { registerPanelCommands, resolvePanelChecked } from "./panelCommands";
+import { registerShellMenus } from "../input-bindings/shellMenus"; // #37.6 回归：viewTitleContext 双 when 门控项真源
 
 /** 重置全局引擎——E5 默认 5 zone + rightSidebar（swap 规则消费方） */
 function resetEngine(): void {
@@ -250,5 +252,34 @@ describe("panelViewContext getItems——视图显隐清单动态注入（E5.8#3
     clearPluginStates();
     const items = await handleSettingsChannel("menu:getItems", ["panelViewContext", undefined]) as MenuItemDescriptor[];
     expect(items.filter((i) => i.command === "workbench.action.togglePanelViewVisibility")).toHaveLength(0);
+  });
+});
+
+describe("viewTitleContext getItems——侧栏换边双 when 门控（E5.8#37.6 回归）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    ContextKeyService.clear(); // 当开关 context key 重置——防跨测试污染
+    resetEngine();
+    registerPanelCommands(); // toggleSidebarPosition 命令（menu item 引用）
+    registerShellMenus();    // viewTitleContext 双 when 门控项真源（shellMenus.ts 原样）
+  });
+
+  it("sidebar=left → 只显示「移动到右侧」；dockTo right 后 → 只显示「移动到左侧」", async () => {
+    // 初始在左——「移动到右侧」项 when="sidebarPosition == 'left'" 命中
+    ContextKeyService.setValue("sidebarPosition", narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+    let items = await handleSettingsChannel("menu:getItems", ["viewTitleContext", undefined]) as MenuItemDescriptor[];
+    let toggle = items.filter((i) => i.command === "workbench.action.toggleSidebarPosition");
+    expect(toggle).toHaveLength(1);
+    expect(toggle[0].label).toBe("移动到右侧");
+
+    // 换到右——「移动到左侧」项 when="sidebarPosition == 'right'" 命中，另一项被过滤
+    layoutEngine.dockTo("sidebar", "right");
+    ContextKeyService.setValue("sidebarPosition", narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+    items = await handleSettingsChannel("menu:getItems", ["viewTitleContext", undefined]) as MenuItemDescriptor[];
+    toggle = items.filter((i) => i.command === "workbench.action.toggleSidebarPosition");
+    expect(toggle).toHaveLength(1);
+    expect(toggle[0].label).toBe("移动到左侧");
   });
 });
