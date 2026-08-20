@@ -1,0 +1,450 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>布局树数据化 — 各区域组合状态图</title>
+<style>
+  /* ── 设计系统：Dark + 区域语义色。布局依据 = 01-布局树数据化设计.md 决策 3（pool-body CSS grid）。
+     grid 模型忠实实现：列 4 轨道 [iconbar][左槽][主][右槽] + 行 2（内容行/横带行）；
+     顶/底面板占行且按 align 跨列；左/右面板插列成 5 带；侧栏行跨度按覆盖推导。 */
+  :root {
+    --bg-page:#0B1120; --bg-card:#0F172A; --bg-zone:#1E293B; --bg-muted:#273449;
+    --border:#2C3A50; --border-strong:#475569;
+    --text-primary:#F8FAFC; --text-secondary:#CBD5E1; --text-muted:#94A3B8;
+    --iconbar:#334155; --side:#1D4ED8; --main:#24344C; --panel:#D97706; --rs:#7C3AED;
+    --sb:#020617; --hl:#FBBF24;
+    --font-ui: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg-page); color:var(--text-primary); font-family:var(--font-ui); padding:24px; -webkit-font-smoothing:antialiased; }
+
+  /* ── 页头 ── */
+  header { max-width:980px; margin-bottom:20px; }
+  h1 { font-size:19px; font-weight:600; }
+  h1 .muted { color:var(--text-muted); font-weight:400; }
+  p.sub { color:var(--text-muted); font-size:13px; margin-top:6px; line-height:1.6; }
+  .legend { display:flex; gap:18px; margin-top:14px; flex-wrap:wrap; font-size:12px; color:var(--text-secondary); }
+  .legend span { display:inline-flex; align-items:center; gap:6px; }
+  .legend .sw { width:10px; height:10px; border-radius:2px; display:inline-block; }
+  .sw.ic{background:var(--iconbar)} .sw.sd{background:var(--side)} .sw.mn{background:var(--main)}
+  .sw.pn{background:var(--panel)} .sw.rs{background:var(--rs)} .sw.sb{background:var(--sb)} .sw.hl{background:var(--hl)}
+
+  /* ── 分组 ── */
+  .group { max-width:1280px; margin-bottom:26px; }
+  .group h2 { font-size:14px; color:var(--text-muted); font-weight:600; letter-spacing:.4px; margin-bottom:10px;
+    display:flex; align-items:center; gap:8px; }
+  .group h2::after { content:""; flex:1; height:1px; background:var(--border); }
+  .cards { display:grid; grid-template-columns:repeat(auto-fill, minmax(300px, 1fr)); gap:16px; }
+
+  /* ── 卡片 ── */
+  .card { background:var(--bg-card); border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .card-head { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 10px; }
+  .card-title { font-size:12.5px; font-weight:600; }
+  .badge { font-size:10px; color:var(--hl); border:1px solid rgba(251,191,36,.4); background:rgba(251,191,36,.08);
+    border-radius:8px; padding:0 6px; white-space:nowrap; }
+  .card-foot { padding:8px 10px 10px; font-size:11px; color:var(--text-muted); line-height:1.55; border-top:1px solid var(--border); }
+
+  /* ── 模拟窗口 ── */
+  .win { border:1px solid var(--border-strong); border-radius:4px; overflow:hidden; height:190px;
+    display:flex; flex-direction:column; background:var(--bg-zone); }
+  .win .bdy { flex:1; display:flex; min-height:0; }
+  .win .sb { height:14px; background:var(--sb); display:flex; align-items:center; padding:0 8px; }
+  .win .sb::before { content:"状态栏"; font-size:7.5px; color:#64748B; }
+
+  /* ── 区域 ── */
+  .zone { display:flex; align-items:center; justify-content:center; font-size:10px; letter-spacing:.3px;
+    color:rgba(248,250,252,.85); overflow:hidden; }
+  .zone small { font-size:8px; color:rgba(248,250,252,.6); }
+  .ic { background:var(--iconbar); color:rgba(248,250,252,.75); }
+  .sd { background:var(--side); }
+  .mn { background:var(--main); }
+  .pn { background:var(--panel); color:#1F2937; font-weight:600; }
+  .rs { background:var(--rs); }
+  .muted-zone { background:rgba(30,41,59,.35); color:#64748B; border:1px dashed var(--border-strong); }
+  .hl-zone { outline:2px solid var(--hl); outline-offset:-2px; z-index:1; }
+
+  /* ── 状态 A1/A2：默认底部面板（列 4 + 行 2）── */
+  .st-b-panel .bdy { display:grid; grid-template-columns:30px 90px 1fr 90px; grid-template-rows:1fr 46px; }
+  .st-b-panel .ic   { grid-area:1/1/3/2; }   /* iconbar 恒全高 */
+  .st-b-panel .sd   { grid-area:1/2/3/3; }   /* 侧栏 center 全高 */
+  .st-b-panel .mn   { grid-area:1/3/2/4; }
+  .st-b-panel .pn   { grid-area:2/3/3/4; }   /* center：只占主列 */
+  .st-b-panel .rs   { grid-area:1/4/3/5; }   /* agent 全高 */
+  .st-b-panel.no-rs .rs { display:none; }
+  .st-b-panel.no-rs .bdy { grid-template-columns:30px 90px 1fr; }   /* 修复：覆盖须作用在 grid 容器 .bdy——rs 列去 track → 主区 1fr 自动吃满 */
+
+  /* ── 状态 A2：主侧栏换右（双槽互换 + 图标栏跟随最右）── */
+  .st-swap .bdy { display:grid; grid-template-columns:90px 1fr 90px 30px; grid-template-rows:1fr 46px; }
+  .st-swap .ic { grid-area:1/4/3/5; }        /* iconbar 跟随 → 最右外缘 */
+  .st-swap .sd { grid-area:1/3/3/4; }        /* 主侧栏 → 右槽 */
+  .st-swap .mn { grid-area:1/2/2/3; }
+  .st-swap .pn { grid-area:2/2/3/3; }
+  .st-swap .rs { grid-area:1/1/3/2; }        /* agent 自动跳左 */
+
+  /* ── 状态 C1：面板顶部（列 4 + 行 2 反转——顶行=面板）── */
+  .st-t-panel .bdy { display:grid; grid-template-columns:30px 90px 1fr 90px; grid-template-rows:44px 1fr; }
+  .st-t-panel .ic { grid-area:1/1/3/2; }
+  .st-t-panel .sd { grid-area:1/2/3/3; }
+  .st-t-panel .mn { grid-area:2/3/3/4; }
+  .st-t-panel .pn { grid-area:1/3/2/4; }
+  .st-t-panel .rs { grid-area:1/4/3/5; }
+  .st-t-panel.left .pn { grid-area:1/2/2/4; }   /* 顶左对齐：贯穿到 iconbar */
+  .st-t-panel.left .sd { grid-area:2/2/3/3; }   /* 左栏缩短到内容行 */
+  .st-t-panel.justify .pn { grid-area:1/2/2/5; }
+  .st-t-panel.justify .sd { grid-area:2/2/3/3; }
+  .st-t-panel.justify .rs { grid-area:2/4/3/5; }
+
+  /* ── 状态 C2：面板左侧（竖条 5 带）── */
+  .st-l-panel .bdy { display:grid; grid-template-columns:30px 90px 52px 1fr 90px; }
+  .st-l-panel .ic { grid-column:1; }
+  .st-l-panel .sd { grid-column:2; }
+  .st-l-panel .pn { grid-column:3; }         /* 面板竖条：主侧栏与主区之间 */
+  .st-l-panel .mn { grid-column:4; }
+  .st-l-panel .rs { grid-column:5; }
+
+  /* ── 状态 C3：面板右侧（竖条 5 带）── */
+  .st-r-panel .bdy { display:grid; grid-template-columns:30px 90px 1fr 52px 90px; }
+  .st-r-panel .ic { grid-column:1; }
+  .st-r-panel .sd { grid-column:2; }
+  .st-r-panel .mn { grid-column:3; }
+  .st-r-panel .pn { grid-column:4; }         /* 面板竖条：主区与右侧栏之间 */
+  .st-r-panel .rs { grid-column:5; }
+
+  /* ── 状态 D：底部面板对齐（列 4 + 行 2，跨列）── */
+  .st-b-center .pn { grid-area:2/3/3/4; } .st-b-center .sd { grid-area:1/2/3/3; } .st-b-center .rs { grid-area:1/4/3/5; }
+  .st-b-left .pn { grid-area:2/2/3/4; }   .st-b-left .sd { grid-area:1/2/2/3; }  .st-b-left .rs { grid-area:1/4/3/5; }
+  .st-b-right .pn { grid-area:2/3/3/5; }  .st-b-right .sd { grid-area:1/2/3/3; }  .st-b-right .rs { grid-area:1/4/2/5; }
+  .st-b-justify .pn { grid-area:2/2/3/5; } .st-b-justify .sd { grid-area:1/2/2/3; } .st-b-justify .rs { grid-area:1/4/2/5; }
+  .st-b-base { display:grid; grid-template-columns:30px 90px 1fr 90px; grid-template-rows:1fr 46px; }
+  .st-b-base .ic { grid-area:1/1/3/2; }
+
+  .foot-note { max-width:980px; color:var(--text-muted); font-size:12px; line-height:1.7; }
+  .foot-note code { background:var(--bg-card); border:1px solid var(--border); border-radius:3px; padding:0 5px; font-size:11px; }
+
+  /* ── F. 右键菜单模拟（忠实 #37.6/#37.7/#37.7.1 设计）── */
+  .menu-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap:16px; }
+  .menu-demo { background:#0D1526; border:1px solid var(--border-strong); border-radius:6px; overflow:hidden; box-shadow:0 10px 26px rgba(0,0,0,.4); }
+  .menu-head { display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:10px; color:var(--text-muted); background:var(--bg-card); border-bottom:1px solid var(--border); }
+  .menu-head .tag { color:var(--hl); font-size:9px; border:1px solid rgba(251,191,36,.4); border-radius:8px; padding:0 5px; background:rgba(251,191,36,.08); }
+  .menu-item { display:flex; align-items:center; gap:8px; padding:7px 10px; font-size:12px; color:var(--text-primary); }
+  .menu-item:hover { background:var(--bg-muted); }
+  .menu-item .sp { flex:1; }
+  .menu-item .chev { color:var(--text-muted); font-size:9px; }
+  .menu-item .sub-inline { color:var(--text-muted); font-size:10px; }
+  .menu-item .tick { color:var(--hl); font-weight:700; width:12px; text-align:center; }
+  .menu-item .tick.off { visibility:hidden; }
+  .menu-item.new .dot { width:6px; height:6px; border-radius:50%; background:var(--hl); }
+  .menu-sep { height:1px; background:var(--border); margin:4px 0; }
+  .menu-sub-open { margin:0 8px 8px; border:1px solid var(--border); border-radius:4px; background:var(--bg-card); overflow:hidden; }
+  .menu-sub-item { display:flex; align-items:center; gap:8px; padding:6px 10px; font-size:11px; color:var(--text-secondary); }
+  .menu-sub-item.on { color:var(--text-primary); }
+  .menu-note { padding:8px 10px 10px; font-size:11px; color:var(--text-muted); line-height:1.55; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>布局树数据化 <span class="muted">— 各区域组合状态图</span></h1>
+  <p class="sub">复活 E5 dock 布局引擎后可达的区域组合。布局模型 = 池布局 grid 化（决策 3）：列 4 轨道 + 行 2 结构，纯 CSS 几何切换、换位零重挂。对照 → <code>01-布局树数据化设计.md</code>。</p>
+  <div class="legend">
+    <span><i class="sw ic"></i>图标栏</span>
+    <span><i class="sw sd"></i>主侧栏·文件树</span>
+    <span><i class="sw mn"></i>主区</span>
+    <span><i class="sw pn"></i>面板</span>
+    <span><i class="sw rs"></i>右侧栏·agent</span>
+    <span><i class="sw sb"></i>状态栏</span>
+    <span><i class="sw hl"></i>本状态变化区域</span>
+  </div>
+</header>
+
+<!-- ══════════ A. 基础形态 ══════════ -->
+<div class="group">
+  <h2>A. 基础形态</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-head"><span class="card-title">A1 · 多足鼎立（默认 5 带）</span><span class="badge">基础</span></div>
+      <div class="win st-b-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">图标栏 | 主侧栏 | 主区/面板底（居中）| 右侧栏全高。agent 插件注册右侧栏容器后推 <code>visible:true</code>。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">A2 · 现状（无右侧栏）</span><span class="badge">零 DOM</span></div>
+      <div class="win st-b-panel no-rs">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">右侧栏未注册容器 → <code>visible:false</code> 零 DOM（#36.9 已铺底座）。图标栏 + 主侧栏 + 主区/面板底 + 状态栏。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ B. 主侧栏换边（双槽互换 + 图标栏跟随）══════════ -->
+<div class="group">
+  <h2>B. 主侧栏换边 · 双槽互换</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-head"><span class="card-title">B1 · 主侧栏换右</span><span class="badge">#37.6 + #37.6.5</span></div>
+      <div class="win st-swap">
+        <div class="bdy">
+          <div class="zone rs">右侧栏<small>agent</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone sd hl-zone">主侧栏<small>文件树</small></div>
+          <div class="zone ic hl-zone">图标</div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">「移动到右侧」→ 主侧栏到右槽，<b>agent 自动跳左</b>（双槽互换）；<b>图标栏跟随到最右外缘</b>（比主侧栏还靠外，#37.6.5）。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">B2 · 换回左侧</span><span class="badge">同命令</span></div>
+      <div class="win st-b-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">「移动到左侧」→ 双槽互换 + 图标栏跟随全部还原。同命令 <code>toggleSidebarPosition</code>，双 when 门控菜单标签随位置对换。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ C. 面板位置四向 ══════════ -->
+<div class="group">
+  <h2>C. 面板位置四向（positionPanel*）</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-head"><span class="card-title">C1 · 面板 → 顶部</span><span class="badge">#37.7</span></div>
+      <div class="win st-t-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">面板占顶行（默认居中→只压主区），侧栏仍全高。主区降为内容行。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">C2 · 面板 → 左侧</span><span class="badge">5 带</span></div>
+      <div class="win st-l-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone pn">面板</div>
+          <div class="zone mn">主区</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">面板 = 主侧栏与主区之间全高竖条（<b>不能越过主侧栏</b>）。竖条轴 = width 拖拽（#36.9 轴感知已铺）。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">C3 · 面板 → 右侧</span><span class="badge">5 带</span></div>
+      <div class="win st-r-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">面板 = 主区与右侧栏（agent）之间竖条——与你描述的「12345 五栏分屏」一致。主侧栏换右时此形态随双槽互换镜像。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">C4 · 面板 → 底部（默认）</span><span class="badge">同边 no-op</span></div>
+      <div class="win st-b-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">位置选择器单选语义：已选「底部」再点 = 保持勾选 no-op（#37.7 拍板），「回到底部」走显式此项。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ D. 面板对齐（底部）══════════ -->
+<div class="group">
+  <h2>D. 面板对齐四态（底部，alignPanel*）</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-head"><span class="card-title">D1 · 居中（默认）</span><span class="badge">√</span></div>
+      <div class="win st-b-panel">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">双侧栏全高直通，面板只占主栏底。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">D2 · 左对齐</span><span class="badge">侧栏缩短</span></div>
+      <div class="win st-b-panel st-b-left">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd hl-zone">主侧栏<small>收上去</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn hl-zone">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">左侧栏收上去一点，面板贯穿到最左直到图标栏停下（<b>iconbar 恒全高不被覆盖</b>）。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">D3 · 右对齐</span><span class="badge">侧栏缩短</span></div>
+      <div class="win st-b-panel st-b-right">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd">主侧栏<small>文件树</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn hl-zone">面板</div>
+          <div class="zone rs hl-zone">右侧栏<small>收上去</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">右侧栏（agent）收上去一点，面板贯穿到最右。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">D4 · 两端对齐</span><span class="badge">贯穿全底</span></div>
+      <div class="win st-b-panel st-b-justify">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd hl-zone">主侧栏<small>收上去</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn hl-zone">面板</div>
+          <div class="zone rs hl-zone">右侧栏<small>收上去</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">双侧栏都收上去，面板贯穿整个底部（图标栏仍全高）。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ E. 面板对齐（顶部）══════════ -->
+<div class="group">
+  <h2>E. 面板对齐（顶部）</h2>
+  <div class="cards">
+    <div class="card">
+      <div class="card-head"><span class="card-title">E1 · 顶 + 左对齐</span><span class="badge">顶行贯穿</span></div>
+      <div class="win st-t-panel left">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd hl-zone">主侧栏<small>收上去</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn hl-zone">面板</div>
+          <div class="zone rs">右侧栏<small>agent</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">顶行面板贯穿到最左（iconbar 右侧），左侧栏缩短到内容行。</div>
+    </div>
+    <div class="card">
+      <div class="card-head"><span class="card-title">E2 · 顶 + 两端对齐</span><span class="badge">顶行全宽</span></div>
+      <div class="win st-t-panel justify">
+        <div class="bdy">
+          <div class="zone ic">图标</div>
+          <div class="zone sd hl-zone">主侧栏<small>收上去</small></div>
+          <div class="zone mn">主区</div>
+          <div class="zone pn hl-zone">面板</div>
+          <div class="zone rs hl-zone">右侧栏<small>收上去</small></div>
+        </div>
+        <div class="sb"></div>
+      </div>
+      <div class="card-foot">顶行贯穿整个宽度，双侧栏都缩短到内容行。</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════ F. 右键菜单内容 ══════════ -->
+<div class="group">
+  <h2>F. 右键菜单内容（本次新增）</h2>
+  <div class="menu-grid">
+
+    <!-- F1. 主侧栏标题右键（主侧栏在左） -->
+    <div class="menu-demo">
+      <div class="menu-head">主侧栏标题 · 右键 <span class="tag">#37.6</span></div>
+      <div class="menu-item">折叠</div>
+      <div class="menu-item">重置位置</div>
+      <div class="menu-item">视图 <span class="sp"></span><span class="chev">▸</span></div>
+      <div class="menu-sep"></div>
+      <div class="menu-item new"><span class="dot"></span>移动到右侧 <span class="sp"></span><span class="sub-inline">新增</span></div>
+      <div class="menu-note">主侧栏在左时显示「移动到右侧」——双 when 门控同命令 <code>toggleSidebarPosition</code>，点击 → <code>dockTo("sidebar","right")</code> 双槽互换 + 图标栏跟随（#37.6.5）。</div>
+    </div>
+
+    <!-- F2. 主侧栏标题右键（主侧栏在右） -->
+    <div class="menu-demo">
+      <div class="menu-head">主侧栏标题 · 右键 <span class="tag">双 when 对照</span></div>
+      <div class="menu-item">折叠</div>
+      <div class="menu-item">重置位置</div>
+      <div class="menu-item">视图 <span class="sp"></span><span class="chev">▸</span></div>
+      <div class="menu-sep"></div>
+      <div class="menu-item new"><span class="dot"></span>移动到左侧 <span class="sp"></span><span class="sub-inline">新增</span></div>
+      <div class="menu-note">主侧栏换到右边后，同一菜单项因 when 门控改显示「移动到左侧」（标签随位置对换，VS Code Move Side Bar 同款）——同命令点击换回左。</div>
+    </div>
+
+    <!-- F3. 面板标签栏右键（完整形态） -->
+    <div class="menu-demo">
+      <div class="menu-head">面板标签栏 · 右键 <span class="tag">#37.7 + #37.7.1</span></div>
+      <div class="menu-item">面板位置 <span class="sp"></span><span class="chev">▸</span></div>
+      <div class="menu-sub-open">
+        <div class="menu-sub-item">顶部</div>
+        <div class="menu-sub-item">左侧</div>
+        <div class="menu-sub-item">右侧</div>
+        <div class="menu-sub-item on"><span class="tick">✓</span>底部</div>
+      </div>
+      <div class="menu-item">对齐面板 <span class="sp"></span><span class="chev">▸</span></div>
+      <div class="menu-sub-open">
+        <div class="menu-sub-item on"><span class="tick">✓</span>居中</div>
+        <div class="menu-sub-item">两端对齐</div>
+        <div class="menu-sub-item">左对齐</div>
+        <div class="menu-sub-item">右对齐</div>
+      </div>
+      <div class="menu-sep"></div>
+      <div class="menu-item"><span class="tick">✓</span>问题</div>
+      <div class="menu-item"><span class="tick">✓</span>输出</div>
+      <div class="menu-item"><span class="tick">✓</span>终端</div>
+      <div class="menu-item"><span class="tick off">✓</span>调试控制台</div>
+      <div class="menu-note">位置/对齐 = 单选子菜单（当前项 ✓，同边 no-op）；视图清单与它们<b>同级</b>——打勾 = 显示成标签栏 tab，取消 = 从标签栏消失（#37.7.1，与切换器勾选同源）。「面板位置」「对齐面板」子菜单展开供参考。</div>
+    </div>
+
+  </div>
+</div>
+
+<p class="foot-note">
+  <b>注：</b>本图网格结构忠实对应实现——每状态 = 池 <code>pool-body</code> 的 <code>grid-template-columns/rows</code> + 各 zone 的 <code>grid-area</code>（决策 3）。所有状态切换 = 纯 CSS 几何变化，零 React 重挂（换位不丢视图状态）。实现顺序：<code>#37.5</code> grid 化 → <code>#37.6</code> 侧栏换边 → <code>#37.6.5</code> 图标栏跟随 → <code>#37.7</code> 位置/对齐右键 → <code>#37.7.1</code> 视图显隐列表 → <code>#37.8</code> 回归。
+</p>
+
+</body>
+</html>
