@@ -3,7 +3,7 @@
 > 一个比 VS Code 更高级的中性容器平台。前身 Serial Monitor V2（WPF 串口调试工具），用 Electron + React 18 + TypeScript 完全重写。
 > **全工程 AI 驱动——代码 95%+ 由 Claude 完成，人类做架构决策和质量把控。**
 > 🔥 **架构模型——圆形大厅。** LinkDesk = Link（连接）+ Desk（桌子）。核心是圆形大厅（提供桌子/电话本），插件是周边小房间（同一 Pool 渲染堆，preload 沙箱隔离）。交流走大厅，高频走后门。
-> **当前：E5.7 极简Pool——1 BrowserWindow + 1 WebContentsView，94 任务 16 Phase，全清单审计完成（2026-08-13），待执行。** E5.7 完结后进入 E6 插件生态与发布（47 任务 5 层），然后 04-出厂制造 10 款工厂插件、05-版本更新 v1.1→v1.6。
+> **当前（2026-08-20）：E5.8 归一化基建——96 任务 16 Phase，57/96 已勾，Phase 0–5.7 收官，Phase 6 多串口进行中。** 契约生成已落地（`linkdesk.d.ts` + `runtime-shapes.ts` + `@linkdesk/contracts` npm 包）——插件契约从「手写文档同步」升级为「生成 + 编译期钉死 + 运行期校验」。E5.7 极简Pool（1 BrowserWindow + 1 WebContentsView + preload 沙箱 = 3 进程固定）已于 2026-08-16 收官。E5.8 完结后进入 E6 插件生态与发布（51 主任务），然后 04-出厂制造 10 款工厂插件、05-版本更新 v1.1→v1.6。
 > **阅读时间：** 人类 30 分钟，AI 5 分钟。这份文档是给网页 AI 了解 LinkDesk 的第一门户——没有代码仓库权限的 AI，靠这份文档就能理解项目全貌、参与架构讨论。
 
 ---
@@ -12,12 +12,12 @@
 
 1. [零、项目性质——AI 驱动的圆形大厅](#零先说清楚这个软件的代码是谁写的)
 2. [一、本质——LinkDesk 是什么，以及它不是什么](#一这到底是什么)
-3. [1.5、七纪进化史——从 V2 到极简Pool](#15历史进程从-v2-到极简pool)
+3. [1.5、八纪进化史——从 V2 到契约生成](#15历史进程从-v2-到极简pool)
 4. [二、死理——8 条不可动摇的原则](#二我认的几条死理)
 5. [三、技术栈与两层容器架构](#三技术栈)
-6. [四、对标 VS Code——34 项能力对照表](#四对标-vs-code现在的进度2026-08-13)
-7. [五、当前执行——E5.7 极简Pool（94 任务 16 Phase）](#五当前执行e57-极简pool)
-8. [六、下一站——E6 插件生态与发布（47 任务 5 层）](#六下一站e6-插件生态与发布)
+6. [四、对标 VS Code——34 项能力对照表](#四对标-vs-code现在的进度2026-08-20)
+7. [五、当前执行——E5.8 归一化基建（96 任务 16 Phase）](#五当前执行e58-归一化基建)
+8. [六、下一站——E6 插件生态与发布（51 主任务 5 层）](#六下一站e6-插件生态与发布)
 9. [七、未来愿景——插件市场、出厂制造、Agent 基地](#七插件市场这个软件的真正能量)
 10. [八、人——一个不会写代码的人，做了这个软件](#八说真的一个不会写代码的人做软件)
 11. [九、给 AI 的话——12 点速览](#九写给另一个-ai-看这段话)
@@ -128,7 +128,7 @@ LinkDesk 从 Phase 1 就把主题引擎和双语引擎写进了脚手架。不�
 | 快捷键 | 写死的 | 插件声明 `contributes.keybindings`，registry 注册，when 条件过滤 |
 | 终端会话 | 全局唯一——新建标签页继承上一个的连接 | 每个会话独立——设备 A 和数据源 B 互不干扰 |
 | 图标栏 | Button 控件，悬停出系统蓝框，不能动态增删 | viewRegistry 动态列表——装插件图标出现，卸载消失 |
-| 测试 | 零 | 151 个核心通过 |
+| 测试 | 零 | 612 个测试全绿——门禁 `npm run check` 一键跑 |
 | 插件市场 | 没有——想装新功能等作者发新版 | 对标 VS Code Extensions 面板——搜索/安装/更新/卸载全 UI 操作 |
 | AI 能不能写插件 | AI 改不动 C# | AI 生成 plugin.json + React 组件 → 零风险，核心一行不动 |
 | 进程隔离 | 单进程——崩了全崩 | 极简Pool——3 进程固定；崩溃 2-4s 自动重建，Hot Exit 恢复未保存内容 |
@@ -137,7 +137,7 @@ LinkDesk 从 Phase 1 就把主题引擎和双语引擎写进了脚手架。不�
 
 ---
 
-## 1.5、历史进程——从 V2 到极简Pool
+## 1.5、历史进程——从 V2 到契约生成
 
 这个软件不是一天长成这样的。每一次转折下面都有一次"差点死掉"的教训。
 
@@ -181,7 +181,7 @@ P5.5：交互对标 VS Code。三栏布局。48/48 bug 全部修复。
 
 **LinkDesk = Link（连接）+ Desk（桌子）。** 这个名字在起名时就写好了——理解了今天才追上。
 
-**E4（67 任务，~2,500 行）——当时认为最后一批 E 编号：** 文件树 + Monaco 编辑器。第一批消费者插件。对标 VS Code Explorer + Search + Editor。**当时信念：E4 之后全是插件，不占 E 编号。**（后来 E5/E5.5/E5.6/E5.7 延续了 E 编号——见下方第五纪、第六纪、第七纪。）
+**E4（67 任务，~2,500 行）——当时认为最后一批 E 编号：** 文件树 + Monaco 编辑器。第一批消费者插件。对标 VS Code Explorer + Search + Editor。**当时信念：E4 之后全是插件，不占 E 编号。**（后来 E5/E5.5/E5.6/E5.7/E5.8 延续了 E 编号——见下方第五纪、第六纪、第七纪、第八纪。）
 
 ### 第五纪：E5——铁轨（2026-08-04 → 08-05）
 
@@ -200,7 +200,7 @@ P5.5：交互对标 VS Code。三栏布局。48/48 bug 全部修复。
 
 **E5.6——双Pool（已冻结，51%）：** 方案：4 个 WebContentsView（壳 DOM + SidebarPool + MainPool + OverlayWindow），O(1) 进程。执行到 317/644 子任务（51%）时按下暂停键。**为什么暂停：** OverlayWindow 的聪慧组件搬不进哑容器——三件事从同一个函数调用栈拆到三个进程（getItems / executeCommand / resolveChildren 各在一边），审计发现 ContextMenu 不能直接搬进 OverlayWindow，要先铺 9 个数据流基础设施任务。问题不在这 9 个任务——在于**方向**：安全靠进程数、UI 拆在多个窗口里，复杂度随 Pool 数线性增长。E5.6 清单封存（只留历史），剩余 ~327 子任务分流：直接搬 ~110 / 适配搬 ~140 / 删除 ~77。
 
-### 第七纪：E5.7——极简Pool（2026-08-12 → 现在）
+### 第七纪：E5.7——极简Pool（2026-08-12 → 08-16 收官）
 
 **认知跃迁——安全靠沙箱，不靠进程数。** 双Pool 的出发点是"多进程隔离更安全"。停下来细想：VS Code 的 Extension Host 隔离进程，靠的是 API 白名单收自由；LinkDesk 不收白名单，那进程隔离带来的安全本来就有限。真正的安全边界是 preload 沙箱——插件摸不到 Node/require/fs，只能走 `window.linkdesk.*`。想通这一点，双 Pool 立刻变得多余：
 
@@ -216,7 +216,7 @@ E5.6 双 Pool:                              E5.7 极简 Pool:
 
 **代价想清楚了：** 池崩 = 全 UI 崩。换来：2-4 秒自动重建 + Hot Exit（未保存内容恢复）+ tabState 持久化。VS Code 的 Extension Host 崩了也一样要重建整个渲染层——代价不是新事物，恢复能力才是差距。
 
-**94 任务 16 Phase（2026-08-13 全清单审计完成，待执行）：** Phase 0 E5.6 归档 → Phase 1 统一入口（PoolLayout v2 + PoolZoneShell）→ Phase 2 壳 DOM 迁入 Pool → Phase 3 SidebarPool 合并 → SidebarZone → Phase 4 OverlayWindow 消除 → Phase 5 Zone 分解 → Phase 6 浮层收尾 → Phase 7 分隔线简化 → Phase 8 脱出窗口 + 漂移面板（🔴 推迟 v1.3）→ Phase 9 崩溃恢复 → Phase 10 清理死代码 → Phase 11 Registry 主进程化 → Phase 12 API 补全 → Phase 13 硬编码消灭 → Phase 14 缩放联动 + ESLint → Phase 15 E6 前置 → Phase 16 全量回归。
+**94 任务 16 Phase（2026-08-13 全清单审计 → 08-16 全部收官，实际执行到 107 任务 18 Phase 全勾）：** Phase 0 E5.6 归档 → Phase 1 统一入口（PoolLayout v2 + PoolZoneShell）→ Phase 2 壳 DOM 迁入 Pool → Phase 3 SidebarPool 合并 → SidebarZone → Phase 4 OverlayWindow 消除 → Phase 5 Zone 分解 → Phase 6 浮层收尾 → Phase 7 分隔线简化 → Phase 8 脱出窗口 + 漂移面板（当时推迟 v1.3——已提上 E5.8 Phase 8/9）→ Phase 9 崩溃恢复 → Phase 10 清理死代码 → Phase 11 Registry 主进程化 → Phase 12 API 补全 → Phase 13 硬编码消灭 → Phase 14 缩放联动 + ESLint → Phase 15 E6 前置 → Phase 16 全量回归。**插件零改动**，验证通过。
 
 **关键设计决策：**
 
@@ -225,7 +225,7 @@ E5.6 双 Pool:                              E5.7 极简 Pool:
 - **插件隔离边界：进程 → 沙箱。** 所有插件共用一个 JS 堆，preload 沙箱隔离。**插件代码零改动**
 - **数据流：单向下行 + 意图上行。** pushLayout 下行，sidebarAction / tabAction 上行。缓冲回放防竞态
 - **PanelZone 内建。** 底部面板不再等 v1.2——终端/输出/问题/端口在 E5.7 就有家
-- **脱出窗口推迟 v1.3。** 设计稿就绪，上架后再做
+- **脱出窗口当时推迟 v1.3。** 设计稿就绪——后已提上 E5.8 Phase 8/9（壳内悬浮面板 + 可拖出面板）
 
 **消失的概念（净删 ~1,400 行）：** OverlayWindow 类 / LayoutEngine / preload-overlay.ts / preload-plugin.ts / useWebViewSync.ts / plugin-view.html / src/overlay/ 目录 / 双 Pool 协议与路由全链。
 
@@ -235,16 +235,29 @@ E5.6 双 Pool:                              E5.7 极简 Pool:
 
 - **加右侧栏 =** zones/ 加一个 RightSidebarZone 文件 + PoolZoneShell 一行
 - **加底部面板 =** PanelZone 已内建——终端/输出/问题/端口直接搬进去
-- **三态互转（main/modal/detached）：** 设计稿就绪，v1.3 启用
+- **三态互转（main/modal/detached）：** 设计稿就绪，当时说 v1.3 启用——已提前提上 E5.8 Phase 8/9（壳内悬浮 + 可拖出面板）
 - **未来六位置全景：** sidebar-left / main / bottom-panel / sidebar-right / modal（FloatingLayerHost）/ detached（脱出窗口）
+
+### 第八纪：E5.8——归一化基建（2026-08-16 → 现在）
+
+**认知跃迁——契约先行，接缝可枚举。** E5.7 收官后的下一站不是加功能，是"第三方作者真的能写插件"的地基——对标 VS Code 的 `@types/vscode` + `contributes` 体系。E5.8 借鉴 DeepSeek Harness 的工程纪律（**抄纪律不抄形态**），四根支柱：
+
+- **契约生成——插件契约第一次有了「唯一真相源」。** 生成器读 `src/core/api/linkdesk-api.ts` → 产出 `contracts/linkdesk.d.ts`（86 类型声明）+ `contracts/runtime-shapes.ts`（39 个运行期校验函数）+ 独立 npm 包 `@linkdesk/contracts`（版本号 = 壳版本，升级壳即换契约）。preload 暴露面 `poolExposed satisfies PoolExposed` 编译期钉死——缺一个命名空间 = 编译红。运行期 DTO 形状断言——dev 报错可诊断，生产不崩。**插件类型不再靠 README 手抄——漂移即编译错误。**
+- **可逆注册——装上的都能卸干净。** registrationTracker 管住"注册了就要能注销"——可卸载 ⇒ 可重装是插件性的定义本身。
+- **依赖编排——dependsOn 显式声明。** 插件依赖从隐式时序变显式声明。
+- **工程纪律门禁——`npm run check` 一键全绿。** tsc×2 零错误 + ESLint `--max-warnings 0` + vitest（612）+ 网格/pool-css/ipc-audit/jscpd/knip/契约 `--check`。
+
+**还顺手做了（用户实机 bug 驱动）：** IPC 广播归一化（数据推流全走 broadcast，直发通道清零）、编辑器健康度收尾（壳级全局剪贴板键劫持 Monaco 原生键的坑——Ctrl+C/V/X/A 修复）、快捷键模式化（池侧自监听，DOM 焦点天然分区）、资源事件→标签页联动（文件树改名/删除 → 标签/Monaco 全链路即时联动）。
+
+**当前进度（2026-08-20）：** 96 任务 16 Phase，57/96 已勾，Phase 0–5.7 收官。剩余 Phase 6–10：**多串口**（#26 进行中——serial-service 从单口七字段重构为 `Map<portName, PortState>`）→ 通道范式·设备插件独立 → 底部面板完形（#31–41，panel.reveal 通用 API）→ 壳内悬浮面板 + 可拖出面板（Phase 8/9，[面板窗口形态档案](docs/02-Electron架构/E5.8_归一化基建/面板窗口/面板窗口形态档案.md)）→ 壳半业务外推（外观玻璃态 #50.6–50.12）。
 
 ### 之后——E6 → 04-出厂制造 → 05-版本更新
 
-**E6——插件生态与发布（蓝图 47 任务 5 层，估 12-16 天）：** SDK 类型审计 + 动态加载改造 + glob 替换 + IPC handler 新建 + 内置插件独立化 + PluginInstallService + 路径解析归一化 + 脚手架 + dev/build 命令 + Mock 自动生成 + marketplace.json + 下载安装 UI + 测试插件全链路 + 开发指南 + CI + Shell 集成 + 多窗口。**E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。**
+**E6——插件生态与发布（蓝图 51 主任务 5 层，估 12-16 天）：** SDK 类型审计 + 动态加载改造 + glob 替换 + IPC handler 新建 + 内置插件独立化 + PluginInstallService + 路径解析归一化 + 脚手架 + dev/build 命令 + Mock 自动生成 + marketplace.json + 下载安装 UI + 测试插件全链路 + 开发指南 + CI + Shell 集成 + 多窗口。**E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。E5.8 已生成 `@linkdesk/contracts` 契约——E6 从「补类型」变成「SDK 派生 + 发布」。**
 
 **04-出厂制造——10 款工厂插件：** Theme Carousel（主题轮播）、More Themes ×3、FloatingPanel（通用悬浮面板）、ColorPicker（取色器）、Marketplace Store（插件市场）、Plugin Showcase（插件橱窗）、Theme Maker（主题制作器）、dependsOn Accent Mode（强调色联动）、Serial Simulator（串口模拟器）、Snapshot Share（快照分享）。**全是 plugin.json + React 组件，零框架改动。**
 
-**05-版本更新——v1.1→v1.6：** v1.1 插件生态扩展 → v1.2 面板与浮层增强（PanelZone E5.7 已内建——v1.2 做深度功能）→ v1.3 脱出窗口与漂移面板（E5.7 Phase 8 推迟至此）→ v1.4 Agent 集成 → v1.5 领域专版 → v1.6 LinkDesk OS（Agent 操作系统）。
+**05-版本更新——v1.1→v1.6：** v1.1 插件生态扩展 → v1.2 面板与浮层增强（PanelZone E5.7 已内建——v1.2 做深度功能）→ v1.3 浮层窗口级深化（壳内悬浮 + 可拖出面板已先行落地 E5.8 Phase 8/9）→ v1.4 Agent 集成 → v1.5 领域专版 → v1.6 LinkDesk OS（Agent 操作系统）。
 
 ---
 
@@ -268,8 +281,8 @@ ConfigurationRegistry = 公告栏           "serial-port.baudRate" 是什么？
 FileService        = 文件柜              "main.c" 是什么文件？
                      空柜子                → C 语言源代码。核心不知道。
 
-FileDecorationRegistry = 装饰登记桌       "M" 是什么标记？
-                     空登记簿              → Git 的修改标记。核心不知道。
+ProtocolRegistry     = 协议登记桌         "方括号协议" 是什么？
+                     空登记簿              → 串口监视器插件登记的。核心不知道"协议"。
 ```
 
 **第一层的东西再多，它们都是空的——空书架、白表格、空柜子。** 书架本身不是知识，书架上的书才是。卸载所有插件后：标签页+分屏还在（空的），数据管道还在（空的），命令系统还在（空的），主题引擎还在（空的）——但核心根本不知道它们存在过。
@@ -332,7 +345,7 @@ Phase 3 做拖拽分屏。我自己想了一个 closest-edge + 50% 的算法。1
 
 VS Code 的交互模式是千万用户十年验证出来的。Activity Bar / Side Bar / Editor Groups / Preview Editor / Notification Center——每一个都是无数次 A/B 测试和社区反馈打磨的。自己设计 = 重复踩坑。我现在的心态是：**VS Code 怎么做的，先抄。抄完了发现确实不适合我，再自己设计。**
 
-E5.7 的 Zone 模型同样对标 VS Code：SidebarPart → SidebarZone，EditorPart → MainZone，PanelPart → PanelZone，OverlayWidget → FloatingLayerHost。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板设计稿已就绪，推迟上架后 v1.3。
+E5.7 的 Zone 模型同样对标 VS Code：SidebarPart → SidebarZone，EditorPart → MainZone，PanelPart → PanelZone，OverlayWidget → FloatingLayerHost。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板设计稿已就绪，已提上 E5.8 Phase 8/9（壳内悬浮面板 + 可拖出面板）。
 
 ### 5. AI 必须能改——三层友好，不是一层
 
@@ -436,7 +449,8 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 | 发送栏 | Monaco Editor | VS Code 同款，单行模式 |
 | 串口 | `serialport` npm + Node.js | Electron 主进程直接调 Node.js——不需要 Rust 桥接 |
 | 构建 | Vite 6 | `import.meta.glob` 扫描插件目录（E5.7 Phase 11 主进程扫盘预加载 plugin.json；E6 替换为动态加载） |
-| 测试 | Vitest | 151 个核心通过 |
+| 测试 | Vitest | 612 个测试全绿——门禁 `npm run check` 一键跑（tsc×2 + ESLint `--max-warnings 0` + vitest + 网格/pool-css/ipc-audit/jscpd/knip/契约 `--check`） |
+| 契约 | 生成器 `scripts/generate-contract.mjs` | `linkdesk.d.ts`（86 类型）+ `runtime-shapes.ts`（39 校验函数）+ `@linkdesk/contracts` npm 包——插件契约唯一真相源，漂移即编译红 |
 | 图标 | `@vscode/codicons` | VS Code 同款，MIT |
 
 ### 两层容器架构
@@ -497,45 +511,46 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 | `WindowManager` | 单 WCV 生命周期 + pushLayout 缓冲回放 + 崩溃重建 |
 | `CrashRecovery` | 全池崩溃重建 + lastLayout 回放 + Hot Exit + 连续崩溃熔断 |
 | `PluginManifestLoader` | 主进程扫盘预加载 plugin.json——Registry 静态数据唯一真相源（E5.7 Phase 11） |
-| `FileDecorationRegistry` | 文件装饰器——Git/ESLint 注册，文件树/搜索/标签页消费 |
+| ~~`FileDecorationRegistry`~~ | **E5.7#60 整删**——注册表池内化：装饰 provider 是 JS 函数不可跨进程，真源与消费方同在池（走 `decorations` 命名空间） |
+| `registrationTracker` | E5.8 可逆注册——注册必可注销，「可卸载 ⇒ 可重装」的纪律肉身 |
 | `FileAssociationService` | 文件类型→插件路由——`.glsl`→Monaco，未知文件→editor fallback |
 
 ---
 
-## 四、对标 VS Code——现在的进度（2026-08-13）
+## 四、对标 VS Code——现在的进度（2026-08-20）
 
 | VS Code | LinkDesk | 状态 |
 |------|------|:--:|
 | Activity Bar | IconBar——动态列表 + 拖拽 + 底部固定 | ✅ |
 | Side Bar | SidePanel + SidebarSection 通用组件 | ✅ |
-| SidebarPart (独立进程) | SidebarZone——同 DOM 组件（SidebarPool WCV 删除） | 🔄 E5.7 |
+| SidebarPart (独立进程) | SidebarZone——同 DOM 组件（SidebarPool WCV 删除） | ✅ E5.7 |
 | Editor Groups | SplitNode 递归树——分屏/合并/拖拽 | ✅ |
-| EditorPart (独立进程) | MainZone——同 DOM 组件（MainPool WCV 删除） | 🔄 E5.7 |
+| EditorPart (独立进程) | MainZone——同 DOM 组件（MainPool WCV 删除） | ✅ E5.7 |
 | Preview Editor | Tab.pinned——斜体可替换 | ✅ |
 | Extensions 面板 | marketplace 侧栏 | ✅ |
 | Extension Detail | PluginDetailView——header + changelog | ✅ |
 | Notification Center | ToastContainer + 🔔 | ✅ |
 | Welcome Page | WelcomeView | ✅ |
 | Command Palette | Ctrl+Shift+P——模糊搜索 + when 过滤 | ✅ |
-| QuickPick（浮动面板） | FloatingLayerHost QuickPickHost（池内 position:fixed） | 🔄 E5.7 |
+| QuickPick（浮动面板） | FloatingLayerHost QuickPickHost（池内 position:fixed） | ✅ E5.7 |
 | `contributes.*` 体系 | plugin.json → Registry 全链路 | ✅ |
 | when 子句引擎 | context key 运行时更新 | ✅ |
 | 协议插件 | 装上去终端下拉框就多一项 | ✅ |
-| 进程隔离（WebView per Extension Host） | 单池沙箱隔离——安全靠 preload 沙箱，不靠进程数 | 🔄 E5.7 |
-| 崩溃隔离 | 崩溃 2-4s 自动重建 + Hot Exit + tabState 持久化 | 🔄 E5.7 |
-| 主题引擎跨进程 | 同 DOM CSS 变量自动继承——零广播 | 🔄 E5.7 |
+| 进程隔离（WebView per Extension Host） | 单池沙箱隔离——安全靠 preload 沙箱，不靠进程数 | ✅ E5.7 |
+| 崩溃隔离 | 崩溃 2-4s 自动重建 + Hot Exit + tabState 持久化 | ✅ E5.7 |
+| 主题引擎跨进程 | 同 DOM CSS 变量自动继承——零广播 | ✅ E5.7 |
 | 语言引擎跨进程 | 同 DOM 自动继承——标签在壳解析时已 t()，池哑渲染 | ✅ |
 | Profile 五维切换 | 插件/配置/布局/主题/语言一键切换 | ✅ |
-| FileDecorationRegistry | Git/ESLint 注册装饰器，文件树/搜索/标签页消费 | ✅ |
+| FileDecorationRegistry | ~~Git/ESLint 注册装饰器~~ → 池内化（E5.7#60 整删，走 `decorations` 命名空间） | ✅ 池内化 |
 | Explorer（文件树） | 虚拟滚动 + 懒加载 + revealInExplorer + 右键菜单 | ✅ E4 |
 | 编辑器 | Monaco 编辑器 + 编码检测 + JSON schema + LSP | ✅ E4 |
 | 文件搜索 | Ctrl+Shift+F 跨文件搜索 + 替换 | ✅ E4 |
-| OverlayWidget | FloatingLayerHost——右键菜单/分隔线/浮层（OverlayWindow 删除） | 🔄 E5.7 |
-| Panel Part（Terminal/Output/Problems） | PanelZone 内建（E5.7#21） | 🔄 E5.7 |
-| Modal Editor（浮动容器） | FloatingLayerHost Dialog + 三态互转设计稿 | 🔴 v1.3 |
-| Auxiliary Editor Part（拖出独立窗口） | 脱出窗口——设计稿就绪（E5.7 脱出窗口设计.md） | 🔴 v1.3 |
-| `vscode.window.showQuickPick()` | `linkdesk.quickPick.show()` IPC 版 | 🔄 E5.7#63 |
-| 插件 API 补全（10 命名空间） | workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick/sidebar + pool.* 单向 | 📋 E5.7 Phase 12 |
+| OverlayWidget | FloatingLayerHost——右键菜单/分隔线/浮层（OverlayWindow 删除） | ✅ E5.7 |
+| Panel Part（Terminal/Output/Problems） | PanelZone 内建（E5.7#21） | ✅ E5.7 |
+| Modal Editor（浮动容器） | 壳内悬浮面板——FloatingLayerHost + 窗口转移机械 | 🔄 E5.8 Phase 8 |
+| Auxiliary Editor Part（拖出独立窗口） | 可拖出面板——PanelZone ⤢ detachPanel | 🔄 E5.8 Phase 9 |
+| `vscode.window.showQuickPick()` | `linkdesk.quickPick.show()` IPC 版 | ✅ E5.7 |
+| 插件 API 补全 | workspace/commands/fileAssociation/viewContainer/events/fileDecoration/protocol/quickPick/sidebar + pool.* 单向 | ✅ E5.7（E5.8 升级为契约生成——`@linkdesk/contracts`） |
 | 插件市场后端 + 打包格式 | `.linkdesk-plugin` zip + 安装/更新/卸载 + GitHub Releases 后端 | 📋 E6 |
 | `yo code` 脚手架 | `npm create linkdesk-plugin`——一键生成模板 | 📋 E6 |
 | `vsce package` | `npm run build`——Vite 打包产出 `.linkdesk-plugin` | 📋 E6 |
@@ -543,103 +558,67 @@ V2.6 的变体："机制建了，但默认值是危险的，每个消费方都�
 | Windows 右键菜单 + 文件关联 | Shell 集成——`fileAssociations` + NSIS 注册表 | 📋 E6 |
 | 多窗口（`code C:\projA` + `code C:\projB`） | 同进程多 BrowserWindow + 独立 workspace | 📋 E6 |
 | 卡片工作台 | react-grid-layout + 数据管道 | 插件（E6 后） |
-| 终端系统 | node-pty + xterm.js + PanelZone | 🔄 E5.7 内建 + 终端插件声明式入面板 |
+| 终端系统 | node-pty + xterm.js + PanelZone | ✅ E5.7 内建 + 终端插件声明式入面板 |
 | 专业视图插件（地图/3D/数据可视化等） | 独立插件 | 插件（E6 后） |
 
 ---
 
-## 五、当前执行——E5.7 极简Pool
+## 五、当前执行——E5.8 归一化基建
 
-> **进度：全清单审计完成（2026-08-13），待执行。** 94 主任务 16 Phase，e5.7 分支就绪。E5.6 双Pool 封存在 51%——剩余 ~327 子任务已分流（直接搬 ~110 / 适配搬 ~140 / 删除 ~77）。审计修正了清单中的过期表述（死通道、计数误差、测试豁免缺口、推迟决策），执行开始前清单就是准的。
+> **进度（2026-08-20）：96 任务 16 Phase，57/96 已勾。Phase 0–5.7 收官，Phase 6 多串口进行中。** 进度唯一真相源：`docs/02-Electron架构/E5.8_归一化基建/E5.8-执行清单.md`。
 
-### Phase 全览
+### E5.8 在做什么——四个支柱 + 两次收尾
 
-| Phase | 内容 | 任务 | 依赖 | 策略 |
-|:--:|------|:--:|:--|:--|
-| 0 | E5.6 归档——封存双Pool清单，迁移记录入档 | 3 (#0a-#0c) | — | 🔴 串行——必须先做 |
-| 1 | 统一入口——PoolLayout v2 + PoolZoneShell | 4 (#1-#4) | P0 | 🔴 串行——必须先做 |
-| 2 | 壳 DOM 迁入 Pool | — | P1 | 🔴 串行 |
-| 3 | SidebarPool 合并 → SidebarZone | — | P2 | 🔴 串行 |
-| 4 | OverlayWindow 消除 | — | P3 | 🔴 串行 |
-| 5 | Zone 分解——MainRenderer 瘦身 | — | P4 | 🔴 串行 |
-| 6 | 浮层收尾 | — | P5 | 🔴 串行 |
-| 7 | 分隔线简化 | — | P6 | 🔴 串行 |
-| 8 | 突破边界——脱出窗口 + 漂移面板 | 4 (#32-#35) | — | 🔴 推迟 v1.3 |
-| 9 | 崩溃恢复——单点 + 快速重建 | 4 (#36-#39b) | P7 | 🔴 串行 |
-| 10 | 清理死代码 | 6 (#40-#45.5) | P4 后 | ⚡ 可并行 |
-| 11 | Registry 主进程化——消灭跨进程数据隔离 | 8 (#46-#53) | P1 后 | ⚡ 可并行 |
-| 12 | API 补全 | 10 (#54-#63.7) | P1 后 | ⚡ 可并行 |
-| 13 | 硬编码消灭 | 14 (#64-#77) | P1 后 | ⚡ 可并行 |
-| 14 | 缩放联动 + ESLint | 3 (#78-#80) | P1 后 | ⚡ 可并行 |
-| 15 | E6 前置——插件分发地基（IPC 骨架） | 3 (#81-#83) | P1 后 | ⚡ 可并行 |
-| 16 | 全量回归 | 11 (#84-#94) | 全部前 | 🔴 串行——必须最后 |
+E5.8 不是加功能，是「让第三方作者真的能写插件」的工程基建——对标 VS Code 的 `@types/vscode` + `contributes` 体系，**抄纪律不抄形态**（借鉴 DeepSeek Harness 的工程纪律）。
 
-> P2–P7 共 24 任务（#5–#31），任务号与细分以执行清单为准。
+| 支柱 | 落地 | 状态 |
+|------|------|:--:|
+| 契约生成 | `linkdesk-api.ts`（真相源）→ 生成器 → `linkdesk.d.ts`（86 类型）+ `runtime-shapes.ts`（39 校验函数）+ `@linkdesk/contracts` npm 包；版本 = 壳版本联动；preload 暴露面 `satisfies PoolExposed` 编译期钉死；运行期 DTO 校验 | ✅ Phase 4（#19–#22.6） |
+| 可逆注册 | registrationTracker——注册必可注销，「可卸载 ⇒ 可重装」 | ✅ Phase 2 |
+| 依赖编排 | dependsOn 显式声明插件依赖 | ✅ Phase 3 |
+| 工程纪律门禁 | `npm run check` 一键：tsc×2 + ESLint `--max-warnings 0` + vitest 612 + 网格/pool-css/ipc-audit/jscpd/knip/契约 `--check` | ✅ Phase 0–3 贯穿 |
+| IPC 广播归一化 | 数据推流全走 broadcast（铁律 2.5），直发通道清零 | ✅ Phase 1.5 |
+| 编辑器/快捷键/联动收尾 | 编辑器剪贴板键修复（壳级全局键劫持 Monaco 原生键的坑）+ 池侧自监听 + 资源事件→标签页联动 | ✅ Phase 5.5–5.7 |
 
-### 各 Phase 关键改动
+### 契约生成——这一代最重要的叙事
 
-**Phase 1 统一入口（最关键的架构切换）：**
-- `WindowManager` 裁剪为单 WCV 管理——删 SidebarPool / MainPool / OverlayWindow 三个 WCV
-- 新建 `PoolZoneShell`——flex 布局 + zones 条件渲染，一个 zone 一个文件（`src/pool/zones/`）
-- `PoolLayout v2`——单池协议，删 poolId；壳 pushLayout → 池哑渲染
-- LayoutEngine 整删——多 zone 布局由 PoolZoneShell 的 zones 文件接管
+**插件契约第一次有了「唯一真相源」。** 以前类型靠 README 手抄、靠文档同步——漂移是常态。现在：
 
-**Phase 2-3 壳 DOM 迁入：** TitleBar / 图标栏 / TabBar / StatusBar 从壳 DOM 迁入 Pool zones。SidebarPool WCV 删除，侧栏变 SidebarZone 同 DOM 组件——图标栏、文件树与编辑器第一次在同一 DOM。
+```
+src/core/api/linkdesk-api.ts（唯一真相源）
+   └─ 生成器 scripts/generate-contract.mjs
+       ├─ contracts/linkdesk.d.ts      ← 插件侧类型（86 声明），npm 包 @linkdesk/contracts 分发
+       ├─ contracts/runtime-shapes.ts  ← 运行期 DTO 校验（39 函数），dev 报错可诊断，生产不崩
+       └─ 版本号 = 壳版本（升级壳即换契约）
+preload 暴露面 poolExposed satisfies PoolExposed  ← 编译期钉死，缺命名空间即红
+```
 
-**Phase 4 OverlayWindow 消除：** OverlayWindow 类 + preload-overlay.ts + `src/overlay/` 整删。浮层改 FloatingLayerHost 池内 `position:fixed`（z-index 3000+）——菜单 / QuickPick / Toast / Dialog 四个 host。聪慧→哑数据流：壳解析菜单（t() 本地化 + 命令执行），池哑渲染字符串。同 DOM = 主题 CSS 变量自动继承、无坐标同步、无焦点窗口管理、天然不被裁剪。
+**直接服务于「AI 友好」与「第三方作者」两个承诺：** 插件作者 `npm i -D @linkdesk/contracts` 拿到与壳完全同步的类型；AI 写插件时类型错误 = 编译错误，不再靠人肉对文档。**发布本体留到 E6#2.5**（npm 账号 fengyili 已注册官方源，E6 清单已记 registry 陷阱）。
 
-**Phase 5-6 浮层收尾：** pointer-events 三段式（容器始终 none / 主体 auto / 退场 none）防穿透；键盘导航（↑↓ Enter）；Dialog 焦点陷阱；快捷菜单 i18n 纯净（标签壳解析时已 t()，池不二次翻译）。
+### 剩余 Phase 6–10
 
-**Phase 7 分隔线简化：** 拖拽线从 OverlayWindow 辅助窗口改为 CSS div + mousemove——遍历 resizable zones，共享常量，不再需要跨窗口坐标同步。
+| Phase | 内容 |
+|:--:|------|
+| 6 | 多串口——服务层 `Map<portName, PortState>` 化（🔴 进行中，#26 单口七字段 → 多口 Map） |
+| 6.5 | 通道范式 · 设备插件独立——设备无限归插件 / 通道收敛归壳 |
+| 7 | 底部面板完形——Ctrl+J、[+] 视图选择器、面板菜单、容器切换器、panel.reveal 通用 API（#31–#41） |
+| 8 | 壳内悬浮面板（类型 B）——窗口转移机械 + 手势/右键降级 |
+| 9 | 可拖出面板（类型 A）——PanelZone ⤢ detachPanel |
+| 10 | 壳半业务外推——外观玻璃态（surface/background + BackgroundLayer + Slider，#50.6–50.12） |
 
-**Phase 8 🔴 推迟：** 脱出窗口（拖 tab 出窗口）+ 漂移面板（PanelZone ⤢）——设计稿就绪，整个 Phase 推迟上架后 v1.3。
-
-**Phase 9 崩溃恢复：** 全池 render-process-gone → 重建 WCV + lastLayout 回放。壳崩 → 全窗口重建 + tabState 持久化恢复。Hot Exit（未保存内容恢复）。心跳 + 内存监控。10s 内 3 次崩溃 → 熔断停止重建，显示错误页。
-
-**Phase 10 清理死代码：** 删 useWebViewSync.ts / instanceId 路由 / preload-plugin.ts / plugin-view.html / 壳侧旧浮层渲染 / 多 WebView 分支。
-
-**Phase 11 Registry 主进程化：** plugin-manifest-loader 主进程扫盘预加载 plugin.json。LangDef / Protocol / FileAssociation 静态数据真源主进程——壳/池经 IPC 查询，禁止双写。ESLint no-restricted-imports 机械防线。
-
-**Phase 12 API 补全：** pool.ready() / pool.onLayout()（无 poolId）。workspace / commands / fileAssociation / viewContainer / events / fileDecoration / protocol / quickPick / sidebar 命名空间补全。删 pluginViews / pluginInstance 命名空间。
-
-**Phase 13 硬编码消灭：** 全量 grep `pluginId` 零字面量。MenuId enum → string。schema enum 审计。plugin-file-service 开放化——第三方插件可注册文件处理器。
-
-**Phase 14 缩放联动 + ESLint：** Ctrl+/- 池内直接处理（同进程），zoom 进 pushLayout 持久化。IpcRelay 缓冲回放归一化 3 处（preload-pool / preload-shell ×2）。`no-core-import-in-plugin` warn → error + 测试文件与 import type 豁免。
-
-**Phase 15 E6 前置：** #81 PluginInstallService IPC 骨架（E3a #31 链路已通，补包装）。#82 loader 打包格式分支（dev glob vs 已安装 plugin.js `import()`）。#83 plugin:installed / plugin:uninstalled 广播——主进程 emitter 新建（现全仓零 emit，死通道）。
-
-**Phase 16 全量回归：** 10 场景矩阵——侧栏交互 / 编辑器 / 分屏 / 浮层 / 底部面板 / 串口监视器 / 插件热重载 / 崩溃恢复 / 收尾检查（脱出窗口场景推迟 v1.3）。tsc 零错误 + ESLint 零新增 + vitest 基线 + grep 零残留（OverlayWindow/sidebarPoolView/pluginViews/instanceId/poolId/?zone=）+ 进程数 = 3。
-
-### 预估
-
-| 指标 | 值 |
-|:--|:--|
-| 净删代码 | ~1,400 行（E5.5 Per-Tab 遗留 + 双Pool + OverlayWindow + LayoutEngine 全链） |
-| 新增代码 | PoolZoneShell + zones/（6 个 zone 各一文件）+ FloatingLayerHost + crash-recovery + plugin-manifest-loader + channels.ts + constants.ts |
-| BrowserWindow | 2 → 1 |
-| WebContentsView | 3 → 1（100%×100%） |
-| 渲染进程 | 4 → 2（壳状态 + Pool 渲染） |
-| 进程总数 | 固定 3（主进程 + 壳 + Pool） |
-| 删除文件 | OverlayWindow 类 / LayoutEngine / preload-overlay.ts / preload-plugin.ts / useWebViewSync.ts / plugin-view.html / src/overlay/ 目录 |
-| 新增文件 | PoolZoneShell.tsx + zones/* + FloatingLayerHost + crash-recovery + plugin-manifest-loader + channels.ts + constants.ts |
-| 插件改动 | **0 行** |
-| 工期 | 以清单为准 |
-
-### E5.7 做完意味着什么
-
-WebView 数从 E5.5 的 O(N) 降到 1。开 30 个文件仍是 3 个进程。全部 UI 在一个 DOM——浮层不再被裁剪、拖拽天然跨 zone、主题零广播。崩溃 2-4 秒自动重建 + Hot Exit。安全靠 preload 沙箱不靠进程数。插件代码零改动。**此后加新 zone = zones/ 加一个文件。加新命名空间 = Phase 12 已铺好的注册点——不挖路基。**
+设计文档：多串口 [`01-多串口设计.md`](docs/02-Electron架构/E5.8_归一化基建/多串口/01-多串口设计.md)、面板窗口 [`面板窗口形态档案.md`](docs/02-Electron架构/E5.8_归一化基建/面板窗口/面板窗口形态档案.md)、外观玻璃态 [`02-外观玻璃态设计.md`](docs/02-Electron架构/E5.8_归一化基建/壳半业务外推/02-外观玻璃态设计.md)。
 
 ---
 
 ## 六、下一站——E6 插件生态与发布
 
-> **47 任务 5 层，估 12-16 天。** E5.7 全部完成后开始。目标：三个角色各有一条完整链路——插件作者开发→发布、普通用户下载→安装插件、维护者 build→发布软件。
+> **51 主任务 5 层（2026-08-16 衔接审计后，原 47），估 12-16 天。** E5.8 全部完成后开始。目标：三个角色各有一条完整链路——插件作者开发→发布、普通用户下载→安装插件、维护者 build→发布软件。**E5.8 已把最难的「类型定义」先做掉了**——`@linkdesk/contracts` 契约已生成，E6 从「从 preload 提取类型」变成「SDK 派生自契约 + 发布」。
 
 ### 为什么有 E6
 
 **一句话：LinkDesk 现在是一个工程师的工具，不是一个产品。**
 
-插件源码在 `plugins/builtin/` 和 `plugins/user/` 里，依赖全局 `node_modules/`——第三方作者不能 `npm install` 自己的依赖。插件和壳在同一个 Vite build 里——第三方插件要源码放进仓库才能跑。`window.linkdesk.*` API 存在但没有类型定义文件——作者写代码无智能提示。没有脚手架、没有独立 build、市场有前端 UI 但没有后端。
+插件源码在 `plugins/builtin/` 和 `plugins/user/` 里，依赖全局 `node_modules/`——第三方作者不能 `npm install` 自己的依赖。插件和壳在同一个 Vite build 里——第三方插件要源码放进仓库才能跑。`window.linkdesk.*` API 的类型定义（`@linkdesk/contracts`）E5.8 已生成——但还没有脚手架、没有独立 build、市场有前端 UI 但没有后端。
 
 ### 三个用户角色
 
@@ -652,7 +631,7 @@ WebView 数从 E5.5 的 O(N) 降到 1。开 30 个文件仍是 3 个进程。全
 ### 五层架构
 
 ```
-第 1 层：插件独立构建（地基——必须先做，E5.7 串行完成后再开始）
+第 1 层：插件独立构建（地基——必须先做，E5.8 串行完成后再开始）
   第 1.1 轮：plugin-sdk + 类型从 preload 自动生成         E6#1-#5（5 任务）
   第 1.2 轮：pool-main 动态加载 + loader glob 替换        E6#6-#14（9 任务）
              + .linkdesk-plugin + IPC handler 新建
@@ -678,8 +657,8 @@ WebView 数从 E5.5 的 O(N) 降到 1。开 30 个文件仍是 3 个进程。全
 
 **第 1.1 轮——@linkdesk/plugin-sdk（对标 `@types/vscode`）：**
 - E6#1：创建 `packages/plugin-sdk/`——npm 包目录
-- E6#2：`window.linkdesk.*` 完整类型定义——从 preload 提取，覆盖所有命名空间 + JSDoc
-- E6#3：🔴 类型从 `preload-pool.ts` 自动生成——不手抄。审计 preload 中每个 API 的实际返回类型（sync / fire-and-forget / async IPC），按审计结果标注
+- E6#2：`window.linkdesk.*` 完整类型定义——**E5.8 #19–#22 已生成 `@linkdesk/contracts`（linkdesk.d.ts 86 声明）**，E6#2 改为 SDK 从契约派生 + JSDoc 补全，不再手抄。E6#2a：plugin-sdk 直接依赖 `@linkdesk/contracts` 转发；E6#2.5：`@linkdesk/contracts` 正式发布（npm 账号 fengyili 已就绪，注意官方源 `--registry=https://registry.npmjs.org`）
+- E6#3：🔴 契约从 `linkdesk-api.ts` 生成器自动产出——不手抄。审计 preload 中每个 API 的实际返回类型（sync / fire-and-forget / async IPC），按审计结果标注
 - E6#4：`defineLinkdeskPluginConfig()`——Vite 插件构建配置，React/react-dom external，产出 `.linkdesk-plugin` zip
 - E6#5：`validatePluginJson()`——plugin.json 格式验证 + JSDoc
 
@@ -836,13 +815,13 @@ LinkDesk 本身成为 Agent 的操作系统，插件市场是它的技能商店�
 | 愿景 | 依赖的基础设施 | 状态 |
 |------|------|:--:|
 | 插件生态（任何人可发布任何类型的插件） | 插件系统 + marketplace | ✅ 已就绪 |
-| 插件崩溃快速恢复 | 极简Pool 沙箱隔离 + 崩溃 2-4s 重建 + Hot Exit | 🔄 E5.7 |
+| 插件崩溃快速恢复 | 极简Pool 沙箱隔离 + 崩溃 2-4s 重建 + Hot Exit | ✅ E5.7 |
 | 文件树 + Monaco 编辑器 | E4 完成 | ✅ |
 | 主题/语言社区贡献 | ThemeRegistry + LanguageRegistry | ✅ |
 | 数据管道——任意数据源 | 数据管道抽象（串口/CAN/TCP/文件/DB/HTTP 同一条 RingBuffer） | ✅ |
 | 卡片工作台——金融K线/科研论文分析/气象数据/任意数据可视化 | CardRegistry + 数据管道 + react-grid-layout | 📋 E6 后 |
-| 脱出窗口 + 漂移面板 | 脱出窗口设计稿（E5.7 Phase 8 推迟） | 🔴 v1.3 |
-| 底部面板——终端/输出/问题/端口 | PanelZone 内建（E5.7#21） | 🔄 E5.7 |
+| 脱出窗口 + 漂移面板 | 壳内悬浮面板（类型 B）+ 可拖出面板（类型 A） | 🔄 E5.8 Phase 8/9 |
+| 底部面板——终端/输出/问题/端口 | PanelZone 内建（E5.7#21） | ✅ E5.7（深度功能留 E5.8 Phase 7） |
 | Agent 自动扫描项目生成插件 | 纯文本配置 + PoolLayout v2 协议 + 六类插件接口 | ✅ 底座就绪 |
 | 插件市场在线分发 | `.linkdesk-plugin` zip + 安装/更新/卸载 + GitHub Releases | 📋 E6 |
 | 10 款工厂插件 | 全是 plugin.json + React 组件 | 📋 E6 后 |
@@ -913,13 +892,13 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
    - 一个概念一个名字，全代码库一致
    不需要爬文档，不需要读 wiki。读代码就是读文档。
 
-5. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。E5.7 的 Zone 模型对标 VS Code SidebarPart + EditorPart + PanelPart + OverlayWidget。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板推迟 v1.3。
+5. **跟着 VS Code 走。** 不要自创交互模式。不确定怎么做的时候，先翻 VS Code 源码——它已经替你踩了十年坑。E5.7 的 Zone 模型对标 VS Code SidebarPart + EditorPart + PanelPart + OverlayWidget。三态互转（main/modal/detached）完全对标 VS Code 三 Editor Part——脱出窗口与漂移面板已立案 E5.8 Phase 8/9（壳内悬浮面板 + 可拖出面板）。
 
-6. **🔥 E5.7 是当前任务——极简Pool。** 94 任务 16 Phase（2026-08-13 全清单审计完成，待执行）。从 Per-Tab WebView（O(N) 进程）重构为 1 BrowserWindow + 1 WebContentsView（3 进程固定）。净删 ~1,400 行。**插件零改动。** 执行清单见 `docs/02-Electron架构/E5.7_极简Pool/E5.7-执行清单.md`。进度唯一真相源在那个文件里。
+6. **🔥 E5.8 是当前任务——归一化基建。** 96 任务 16 Phase（57/96 已勾，2026-08-20：Phase 0–5.7 收官，Phase 6 多串口进行中）。E5.7 极简Pool 已于 2026-08-16 收官（1 BrowserWindow + 1 WebContentsView = 3 进程固定，插件零改动，净删 ~1,400 行）。E5.8 核心是契约生成——`linkdesk.d.ts` + `@linkdesk/contracts` + 运行期校验，第三方作者拿到「唯一真相源」。进度唯一真相源：`docs/02-Electron架构/E5.8_归一化基建/E5.8-执行清单.md`。
 
-7. **E5.5 和 E5.6 都是冻结分支——不要在上面改代码。** E5.5 的 Per-Tab WebView 代码完成了历史使命（证明多 WebView 路线能走通），然后光荣退役。E5.6 双Pool 执行到 51% 冻结——清单只留历史，剩余任务已分流进 E5.7。所有新工作在 e5.7 分支。
+7. **E5.5 和 E5.6 都是冻结分支——不要在上面改代码。** E5.5 的 Per-Tab WebView 代码完成了历史使命（证明多 WebView 路线能走通），然后光荣退役。E5.6 双Pool 执行到 51% 冻结——清单只留历史，剩余任务已分流进 E5.7，E5.7 已收官。所有新工作在 **e5.8 分支**。
 
-8. **E6 是下一站——插件生态与发布。** 47 任务 5 层，估 12-16 天。三层角色（插件作者/普通用户/维护者）各一条完整链路。`@linkdesk/plugin-sdk` npm 包（对标 `@types/vscode`）、`create-linkdesk-plugin` 脚手架（对标 `yo code`）、`.linkdesk-plugin` 打包格式（对标 `vsce package`）、GitHub Releases 市场后端 + marketplace.json、内置插件独立化 + 壳瘦身 + 协议重构、Windows Shell 集成 + 多窗口。E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。
+8. **E6 是下一站——插件生态与发布。** 51 主任务 5 层，估 12-16 天。三层角色（插件作者/普通用户/维护者）各一条完整链路。`@linkdesk/plugin-sdk` npm 包（对标 `@types/vscode`，类型已由 E5.8 `@linkdesk/contracts` 生成）、`create-linkdesk-plugin` 脚手架（对标 `yo code`）、`.linkdesk-plugin` 打包格式（对标 `vsce package`）、GitHub Releases 市场后端 + marketplace.json、内置插件独立化 + 壳瘦身 + 协议重构、Windows Shell 集成 + 多窗口。E5.7 Phase 15 已在铺 IPC 骨架——E6 从第一天就 IPC 原生。
 
 9. **插件通信唯一铁律——壳与插件隔离标准。** 对标 VS Code：插件只认 `vscode.*` API。LinkDesk 插件只认 `window.linkdesk.*` API。
    ```
@@ -944,14 +923,16 @@ E4 做文件树和 Monaco 编辑器。E5 铺铁轨——归一化、消灭硬编
 
 ---
 
-*最后更新：2026-08-13*
+*最后更新：2026-08-20*
 
-*这个文件见证了 LinkDesk 的六次认知跃迁：*
+*这个文件见证了 LinkDesk 的八次认知跃迁：*
 - *从"串口调试工具"到"通用容器平台"（2026-07-23）*
 - *从"通用容器平台"到"圆形大厅"（2026-07-25）*
 - *从"核心无知"到"两层模型——核心是空书架，不是空无一物"（2026-07-26）*
 - *从"Per-Tab O(N) 进程"到"Pool 模型 O(1) 进程"（2026-08-09）*
 - *从"多 WebView 堆叠"到"PoolLayout 声明式推送——壳不碰插件 React 树"（2026-08-09）*
 - *从"双 Pool"到"极简 Pool——壳退化为不可见状态持有者，安全靠沙箱不靠进程数"（2026-08-12）*
+- *从"E5.7 收官"到"E5.8 归一化基建——可逆注册 / 依赖编排 / 工程纪律门禁"（2026-08-16）*
+- *从"手写文档同步契约"到"契约生成——linkdesk.d.ts 编译期钉死 + 运行期校验 + 版本联动"（2026-08-16，E5.8）*
 
 *LinkDesk = Link（连接）+ Desk（桌子）。名字在起名时就写好了，理解到今天还在继续追上。*
