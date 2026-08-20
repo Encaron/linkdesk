@@ -363,6 +363,12 @@ export default function QuickPickHost() {
                   {/* 两排布局——rows(column) > row(flex)（E3f #53b） */}
                   <div className="quick-pick-item-content">
                     <div className="quick-pick-item-row">
+                      {/* E5.8#32：已激活项勾选标记——label 左侧 ✓。checked true/false（视图选择器）恒渲染占位保对齐；undefined（通用 QuickPick/插件请求）不渲染零回归 */}
+                      {item.checked !== undefined && (
+                        <span className={`quick-pick-item-check${item.checked ? " checked" : ""}`}>
+                          {item.checked ? <span className="codicon codicon-check" /> : null}
+                        </span>
+                      )}
                       <span className="quick-pick-item-label">{item.label}</span>
                       {item.category && (
                         <span className="quick-pick-item-category">{item.category}</span>
