@@ -16,6 +16,7 @@ import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // 
 import ErrorBoundary from "../error-boundary/ErrorBoundary"; // E5.7#20：池侧版（不 import 壳 components 目录）
 import SidebarSection from "../../../components/shared/sidebar-section/SidebarSection";
 import PluginComponent from "../plugin-component/PluginComponent";
+import ViewTitleActions from "../view-title-actions/ViewTitleActions"; // E5.8#36.6：section header 动作区（与面板 #36.5 同一渲染器）
 import { VIEW_DRAG_MIME } from "../../protocol/viewDragProtocol"; // E4V#48：跨容器拖放 MIME
 
 // ── 类型 ──
@@ -254,6 +255,9 @@ export default function PoolSectionStack({
         badge={view.badge}
         titleDescription={view.titleDescription}
         titleTooltip={view.titleTooltip}
+        actions={view.titleActions?.length
+          ? <ViewTitleActions actions={view.titleActions} />
+          : undefined}
         stickyTop={toolbarHeight}
         draggable={draggable}
         onDragStart={onDragStart}
