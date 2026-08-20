@@ -118,6 +118,9 @@ export interface MenuItemDescriptor {
   title?: string;
   /** 已解析快捷键 "ctrl+shift+p" 形式 */
   shortcut?: string;
+  /** E5.8#37.7：当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
+   *  位置/对齐子菜单（当前 edge/align 命中项）+ #37.7.1 视图显隐列表（visible 视图项）共用。 */
+  checked?: boolean;
   children?: Array<string | MenuItemDescriptor>;
 }
 

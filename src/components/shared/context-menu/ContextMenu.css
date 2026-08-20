@@ -96,6 +96,17 @@
   color: var(--text-secondary);
 }
 
+/* E5.8#37.7：当前项 √——固定 16px 宽占位（选中态 ✓ / 非选中态空）——标签行不错位。
+   颜色走 --accent（VS Code 菜单选中项同款强调）；flex-shrink:0 不参与收缩。 */
+.ctx-item-check {
+  flex-shrink: 0;
+  width: 16px;
+  font-size: 12px;
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+}
+
 /* 菜单项标签——允许文字截断 */
 .ctx-item-label {
   flex: 1;
