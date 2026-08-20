@@ -5,6 +5,7 @@
  * 壳 IpcBridgeHandler 的 setPluginAPI 注册在 loader.ts（聚合器），此处只定义操作。
  */
 
+import i18n from "../i18n"; // E5.8#37.9：toast 动作标签壳 t() 解析（显示文本铁律——ToastHost 哑渲染零自产文本）
 import type { PluginManifest } from "../core/api/types";
 import { getAvailableThemes } from "../core/services/ui/ThemeEngine";
 import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
@@ -267,7 +268,7 @@ export async function installPlugin(sourcePath: string): Promise<{ success: bool
         severity: "info",
         ttl: 0,
         actions: [
-          { label: "立即重启", isPrimary: true, onClick: () => window.location.reload() },
+          { label: i18n.t("立即重启"), isPrimary: true, onClick: () => window.location.reload() },
         ],
       });
       emitProgress("done", pluginId);

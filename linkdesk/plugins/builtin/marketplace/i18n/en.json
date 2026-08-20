@@ -16,5 +16,11 @@
   "搜索插件...": "Search plugins...",
   "加载中...": "Loading...",
   "未找到匹配的插件": "No matching plugins found",
-  "暂无已安装插件": "No plugins installed yet"
+  "暂无已安装插件": "No plugins installed yet",
+  "等待依赖": "Waiting for Dependencies",
+  "管理": "Manage",
+  "校验中...": "Validating...",
+  "复制中...": "Copying...",
+  "选择插件目录": "Select Plugin Directory",
+  "安装失败": "Install Failed"
 }

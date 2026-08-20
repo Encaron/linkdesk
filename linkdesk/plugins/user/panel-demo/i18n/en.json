@@ -1,0 +1,11 @@
+{
+  "待办": "Todo",
+  "输入待办事项，回车添加": "Type a todo and press Enter to add",
+  "新待办事项": "New Todo",
+  "暂无待办——添加一条试试": "No todos — try adding one",
+  "{{done}}/{{total}} 项已完成": "{{done}}/{{total}} completed",
+  "标记为未完成": "Mark as Incomplete",
+  "标记为已完成": "Mark as Complete",
+  "自动追加演示日志": "Auto-append demo logs",
+  "已暂停——点击继续": "Paused — click to resume"
+}

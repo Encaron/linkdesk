@@ -14,24 +14,26 @@ import type { SplitNode } from "../../core/utils/splitTree"; // E5.6#16：从分
  * E5.6#11d：从 ViewContainerService 构建完整 SidebarViewMeta[]。
  * containerId → getViewContainer（title/mergeHeaderWhenSingle）+ getActiveViews → 每条序列化。
  * renderPath 从 loader.ts 设置的 _renderPath 读——池 PluginComponent 按此 key O(1) 查找组件。
+ * 🔥 E5.8#37.9：title 壳 t() 解析后推送（显示文本铁律——池零自产文本）。此前原样推 v.title
+ * → 侧栏标题/视图子菜单全中文（key 存在也没走 t()）。t 必传（身份函数仅测试桩用）。
  */
-export function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
+export function buildSidebarViewMetas(containerId: string, t: (key: string) => string): SidebarViewMeta[] {
   const views = ViewContainerService.getActiveViews(containerId);
   return views.map((v) => {
     // E5.7#98：loader.ts 运行时附挂 _pluginId/_renderPath（registerView 契约外字段）——窄接口取型
     const desc = v as ViewDescriptor & { _pluginId?: string; _renderPath?: string };
     return {
       id: v.id,
-      title: v.title,
+      title: t(v.title),
       pluginId: desc._pluginId ?? "",
       renderPath: desc._renderPath ?? "",
       role: v.role,
       order: v.order,
       collapsed: v.collapsed,
       badge: v.badge,
-      titleDescription: v.titleDescription,
-      titleTooltip: v.titleTooltip,
-      singleViewPaneContainerTitle: v.singleViewPaneContainerTitle,
+      titleDescription: v.titleDescription ? t(v.titleDescription) : undefined,
+      titleTooltip: v.titleTooltip ? t(v.titleTooltip) : undefined,
+      singleViewPaneContainerTitle: v.singleViewPaneContainerTitle ? t(v.singleViewPaneContainerTitle) : undefined,
       minHeight: v.minHeight,
       // E5.8#36.6：titleActions 声明透传——侧栏 header 右侧动作区（#36.5 同声明，两处消费）
       titleActions: v.titleActions,
@@ -44,8 +46,9 @@ export function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
  * location:"panel" 的全部容器 → getActiveViews 展平（getViewContainers 已按容器 order 排序，
  * getActiveViews 按 view order 排序——两级排序对齐 VS Code panel 语义）。
  * renderPath 与侧栏同源（loader _renderPath）——池 PluginComponent 按此 key 动态 import。
+ * 🔥 E5.8#37.9：title 壳 t() 解析后推送（显示文本铁律，同 buildSidebarViewMetas）。
  */
-export function buildPanelViewMetas(): PanelViewMeta[] {
+export function buildPanelViewMetas(t: (key: string) => string): PanelViewMeta[] {
   const metas: PanelViewMeta[] = [];
   for (const container of ViewContainerService.getViewContainers("panel")) {
     for (const v of ViewContainerService.getActiveViews(container.id)) {
@@ -53,7 +56,7 @@ export function buildPanelViewMetas(): PanelViewMeta[] {
       const desc = v as ViewDescriptor & { _pluginId?: string; _renderPath?: string };
       metas.push({
         id: v.id,
-        title: v.title,
+        title: t(v.title),
         pluginId: desc._pluginId ?? "",
         renderPath: desc._renderPath ?? "",
         // E5.8#36.5：titleActions 声明透传——PanelZone 标签栏右侧动作区（无声明 → 右侧空白）

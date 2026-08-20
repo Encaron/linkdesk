@@ -5,6 +5,7 @@
   "description": "E5.7#63.7 验证用演示插件——声明 location:\"panel\" 视图容器：输出 + 待办。可安全卸载。",
   "author": "官方",
   "contributes": {
+    "i18n": { "en": "i18n/en.json" },
     "viewsContainers": {
       "panel-demo": { "title": "面板演示", "location": "panel" },
       "panel-demo-sidebar": { "title": "面板演示", "location": "sidebar" }
