@@ -110,6 +110,9 @@ export class LayoutEngine {
           height: 220,
           minHeight: 120,
           maxHeight: 600,
+          // E5.8#37.5：竖条钳制界（edge∈{left,right} 时 usePoolSync 组装推池 width + 钳制）——dockTo 换左/右边即启用
+          minWidth: 120,
+          maxWidth: 800,
           resizable: true,
           order: 1,
           align: "center",

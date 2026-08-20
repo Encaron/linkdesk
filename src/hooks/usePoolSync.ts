@@ -197,6 +197,9 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         emptyHint: t(hasAnyViews ? "从切换器勾选视图恢复显示" : "插件声明 contributes.views location:\"panel\" 后自动出现在这里"),
         minHeight: panelZone?.dock?.minHeight,
         maxHeight: panelZone?.dock?.maxHeight,
+        // E5.8#37.5：竖条面板（左/右）拖拽钳制界——dockTo 换左/右边时消费（#37.7 dockTo 后即生效）
+        minWidth: panelZone?.dock?.minWidth,
+        maxWidth: panelZone?.dock?.maxWidth,
         createTooltip: t("新建面板视图"),
       };
     }
@@ -205,10 +208,12 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     // 推 visible:false → 池零 DOM（PoolZoneShell 按 layout.rightSidebar?.visible 条件渲染）；
     // 宽度/钳制界随引擎——#37.5 grid 真渲染消费。edge 不携带（swap 规则 = sidebar 对边，池反推）。
     const rsZone = layoutEngine.getZone("rightSidebar");
+    // rsWidth 在三元条件（rsZone?.dock truthy 检查）外计算——安全链独立走，无收窄依赖
+    const rsWidth = layoutEngine.getBounds("rightSidebar")?.width ?? rsZone?.dock?.width ?? 300;
     const rightSidebar: PoolLayout["rightSidebar"] = rsZone?.dock
       ? {
           visible: false,
-          width: layoutEngine.getBounds("rightSidebar")?.width ?? rsZone.dock.width ?? 300,
+          width: rsWidth,
           containerId: null,
           containerTitle: "",
           views: [],
@@ -216,6 +221,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
           maxWidth: rsZone.dock.maxWidth,
           emptyText: t("此容器没有已注册的视图"),
           emptyHint: t("安装插件以添加视图"),
+          // E5.8#37.5：右栏折叠态 + 折叠 tooltip——#37.5 RightSidebarZone 真渲染消费（▶/◀ 按钮）。
+          // 壳无右栏容器生产者（Phase 12）——collapsed 派生自宽度（与左栏同判定）；安全 no-op 语义
+          collapsed: rsWidth <= 48,
+          expandTooltip: t("展开侧栏"),
+          collapseTooltip: t("折叠侧栏"),
         }
       : undefined;
 

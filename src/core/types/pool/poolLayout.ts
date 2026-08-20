@@ -83,7 +83,7 @@ export interface SidebarLayout {
 /** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
  *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
  *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
- *  无折叠按钮/工具提示字段（RightSidebarZone 差异注记 ①：折叠态归 Phase 12 侧栏完形再补）。 */
+ *  E5.8#37.5 RightSidebarZone 真渲染：折叠/展开按钮 + tooltip 全壳 t() 推送（显示文本铁律）。 */
 export interface RightSidebarLayout {
   visible: boolean;
   width: number;
@@ -94,13 +94,17 @@ export interface RightSidebarLayout {
   views: SidebarViewMeta[];
   containers?: SidebarContainerLayout[];
   collapsedViews?: string[];
-  /** 🆕 E5.8#36.8：右栏折叠态——#37.5 RightSidebarZone 真渲染（handle 镜像）预留；当前无壳侧生产者 */
+  /** 🆕 E5.8#36.8 + #37.5：右栏折叠态——宽度 ≤48 派生（池），▶/◀ 按钮切换 emit 安全 no-op（壳接线归 Phase 12） */
   collapsed?: boolean;
-  // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
+  // ── 拖拽钳制界 + 空态文案 + 折叠 tooltip（与 SidebarLayout 同语义）──
   minWidth?: number;
   maxWidth?: number;
   emptyText?: string;
   emptyHint?: string;
+  /** 🆕 E5.8#37.5：▶ 展开按钮 tooltip（壳 t() 推送） */
+  expandTooltip?: string;
+  /** 🆕 E5.8#37.5：◀ 折叠按钮 tooltip（壳 t() 推送） */
+  collapseTooltip?: string;
 }
 
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
@@ -270,9 +274,13 @@ export interface PanelLayout {
   width?: number;
   activeViewId: string;
   views: PanelViewMeta[];
-  // ── E5.7#21：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。 ──
+  // ── E5.7#21 + #37.5：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。
+  //   轴感知：横带（edge∈{bottom,top}）用 minHeight/maxHeight；竖条（edge∈{left,right}）用 minWidth/maxWidth。 ──
   minHeight?: number;
   maxHeight?: number;
+  /** 🆕 E5.8#37.5：竖条面板（左/右）拖拽最小/最大宽——壳 dock.minWidth/maxWidth 推送 */
+  minWidth?: number;
+  maxWidth?: number;
   /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
   createTooltip?: string;
   /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
