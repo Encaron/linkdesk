@@ -24,6 +24,8 @@ import { useIpcEvent } from "@src/hooks/useIpcEvent";
 import type { SerialDataPayload, SerialSystemPayload } from "@linkdesk/contracts";
 // E5.6#11.5h：RingBuffer 内联到 utils/——池插件零 @src/core 依赖
 import { RingBuffer } from "./utils/RingBuffer";
+// E5.8#29：端口键控过滤（S12/S13 收敛）——payload.portName 按会话口过滤，取代 portOpenRef 全局门控 + 正则挖口名
+import { matchesPort } from "./utils/portFilter";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useSerialSessions";
 import ControlPanel from "./components/ControlPanel";
@@ -479,9 +481,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const ringBuffer = useRef(new RingBuffer<{ text: string; type: "received" | "sent" | "system" }>(RING_BUFFER_CAPACITY));
   const tsFormatRef = useRef(timestampFormat);
   tsFormatRef.current = timestampFormat;
-  // 默认 false——新标签页未打开端口时不接收数据。
-  // 系统消息"已打开串行端口 XXX"匹配后才置 true。
-  const portOpenRef = useRef(false);
+  // E5.8#29（S13）：portOpenRef 全局门控已删除——数据接收改由 serial-data handler 的
+  // matchesPort 键控过滤接管（本会话口 ∈ 匹配才收），不再需要「打开才置 true」的全局位。
   // C1：per-tab session 绑定——IPC event handler 用 ref 读取当前 tab 的 session ID
   const sessionIdRef = useRef(sourceId);
   sessionIdRef.current = sourceId;
@@ -507,9 +508,11 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   useIpcEvent<SerialDataPayload>("serial-data", (payload) => {
     // C1：用当前 tab 的 session ID 判断——per-tab 绑定，非全局 activeSession
     if (!sessionIdRef.current) return;
-    if (!portOpenRef.current) return;
+    // E5.8#29（S13）：portFilter 键控过滤取代 portOpenRef 全局门控——payload.portName 匹配本会话口才收。
+    // 本会话口 = activeSession.port；无 key（旧数据/单口）→ 收（三态过滤兜底）；不匹配（他口数据）→ 滤
+    if (!matchesPort(payload.portName, activeSession?.port ?? null)) return;
     const fmt = tsFormatRef.current;
-    // E5.8#28：载荷对象化过渡——旧 string 载荷容错（单端口兼容）；#29 portFilter 键控过滤接管
+    // string 容错保留——IPC 载荷运行时无编译期兜底（#22.5 兜错配，生产静默不崩）
     const text = typeof payload === "string" ? payload : payload.text;
     const displayText = receiveModeRef.current === SEND_MODE_HEX
       ? toHexDisplay(text)
@@ -525,16 +528,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
 
   useIpcEvent<SerialSystemPayload>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
-    // E5.8#28：载荷对象化过渡——旧 string 载荷容错（单端口兼容）；payload.portName 结构化取口名
-    //（#29 删此正则 hack——S12：由 payload.portName 直接路由，免解析）
+    // E5.8#29（S12）：删正则挖口名 hack——payload.portName 直接路由（#28 契约已带路由键）。
+    // string 载荷容错保留（IPC 载荷运行时无编译期兜底）
     const msg = typeof payload === "string" ? payload : payload.message;
-    const portMatch = msg.match(/(?:已打开|关闭)串行端口\s+(\S+)/);
-    const msgPort = portMatch?.[1] ?? null;
     const myPort = activeSession?.port || null;
-    // 消息无端口名 → 容错，保持旧行为（消息格式不会永远不变）
-    // 标签页未配端口 → 不匹配（新标签页用户还没选 COM 口）
-    // 两者都有 → 精确比对
-    const isMyPort = !msgPort ? true : myPort ? msgPort === myPort : false;
+    // E5.8#29：portFilter 三态过滤（无 key→收 / 不匹配→滤 / 匹配→收）——与旧 isMyPort 逻辑等价
+    const isMyPort = matchesPort(payload.portName, myPort);
 
     if (/已打开/.test(msg)) {
       if (!isMyPort) {
@@ -545,15 +544,13 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         });
         return;
       }
-      portOpenRef.current = true;
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
       // E3j #78：连接状态推到大厅 events 频道——结构化数据、消费者无需解析
-      // E5.8#27：#26 后 getStatus() 无参返回全口数组，原单口快照访问 status.portName 得到 undefined——
-      // 系统消息已解析出 msgPort，定向取该口；无口名容错取数组第一口
-      const statusFetch = msgPort
-        ? window.linkdesk?.serial?.getStatus?.(msgPort)
+      // E5.8#29：payload.portName 定向取该口（原正则解析）；无口名容错取数组第一口
+      const statusFetch = payload.portName
+        ? window.linkdesk?.serial?.getStatus?.(payload.portName)
         : window.linkdesk?.serial?.getStatus?.()?.then((xs) => xs[0]);
       statusFetch?.then((status) => {
         if (status) {
@@ -570,7 +567,6 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         });
         return;
       }
-      portOpenRef.current = false;
       ringBuffer.current.drainAll();
       // E3j #78：断开用缓存的信息（端口已关无法查）
       window.linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
@@ -673,6 +669,7 @@ const writable = await handle.createWritable();
     sendCoding: sendCoding,
     lineEnding: lineEnding,
     timestampFormat: timestampFormat,
+    port: activeSession?.port ?? "",
   });
   // 保持 ctx ref 同步
   sendCtxRef.current = {
@@ -680,6 +677,8 @@ const writable = await handle.createWritable();
     sendCoding: sendCoding,
     lineEnding: lineEnding,
     timestampFormat: timestampFormat,
+    // E5.8#29：会话口——发送定向本标签页的口（多口下各会话各发各的）
+    port: activeSession?.port ?? "",
   };
 
   const recordHistory = useCallback((text: string) => {
@@ -800,7 +799,7 @@ const writable = await handle.createWritable();
     });
   }
 
-  // E5#64：handler 注册——不依赖 sourceId，闭包直接访问 portOpenRef
+  // E5#64：handler 注册——不依赖 sourceId（portOpenRef 已随 #29 删除，闭包经 useIpcEvent 的 callbackRef 拿最新 activeSession）
   useEffect(() => {
     // E5#64 → E5.7#98：invokeBeforeClose 否决回路随 E5.7#43 停用（requestToPlugin 链已删，
     // preload-pool 不再暴露 pluginRequest）——原 api.handle 注册是死 no-op，摘除。

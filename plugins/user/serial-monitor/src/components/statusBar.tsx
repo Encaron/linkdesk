@@ -13,43 +13,49 @@ import { useState, useEffect } from "react";
 import type { PluginStateChangedPayload } from "@linkdesk/contracts";
 import { useTranslation } from "react-i18next";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
+// E5.8#29：活动会话口——状态栏只显示活动标签页的口（多口下各标签页各亮各的）
+import { useSerialSessions } from "../hooks/useSerialSessions";
 
 const lk = () => window.linkdesk;
 
-/** E5.5#9l-fix：从 plugin-state:changed 通配事件读连接状态——key 带端口前缀（如 COM3:isOpen） */
-function useIsOpen(): boolean {
+/** E5.8#29：只响应活动会话口的连接状态——key = `${port}:isOpen`（原通配后缀会叠加所有口） */
+function useIsOpen(port: string | null): boolean {
   const [isOpen, setIsOpen] = useState(false);
   useEffect(() => {
+    setIsOpen(false); // 切口时重置——新口真实状态等事件到来
+    if (!port) return;
     const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
-      if (k.endsWith(":isOpen") && typeof data.value === "boolean") {
+      if (k === `${port}:isOpen` && typeof data.value === "boolean") {
         setIsOpen(data.value);
       }
     };
     const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => unsub?.();
-  }, []);
+  }, [port]);
   return isOpen;
 }
 
-/** E5.5#9l-fix：从 plugin-state:changed 通配事件读 TX/RX 计数 */
-function useSerialStats(): { txBytes: number; rxBytes: number } {
+/** E5.8#29：只响应活动会话口的 TX/RX——key = `${port}:txBytes`/`:rxBytes` */
+function useSerialStats(port: string | null): { txBytes: number; rxBytes: number } {
   const [stats, setStats] = useState({ txBytes: 0, rxBytes: 0 });
   useEffect(() => {
+    setStats({ txBytes: 0, rxBytes: 0 }); // 切口时重置
+    if (!port) return;
     const handler = (data: PluginStateChangedPayload) => {
       if (data?.pluginId !== SERIAL_MONITOR_PLUGIN_ID) return;
       const k: string = data.key ?? "";
-      if (k.endsWith(":txBytes") && typeof data.value === "number") {
+      if (k === `${port}:txBytes` && typeof data.value === "number") {
         setStats((p) => ({ ...p, txBytes: data.value as number }));
       }
-      if (k.endsWith(":rxBytes") && typeof data.value === "number") {
+      if (k === `${port}:rxBytes` && typeof data.value === "number") {
         setStats((p) => ({ ...p, rxBytes: data.value as number }));
       }
     };
     const unsub = lk()?.events?.on<PluginStateChangedPayload>("plugin-state:changed", handler);
     return () => unsub?.();
-  }, []);
+  }, [port]);
   return stats;
 }
 
@@ -71,8 +77,11 @@ function useStatusBarConfig(key: string, defaultValue: boolean): boolean {
 
 export default function SerialMonitorStatusBar() {
   const { t } = useTranslation();
-  const isOpen = useIsOpen();
-  const { txBytes, rxBytes } = useSerialStats();
+  // E5.8#29：活动会话口——状态栏灯/TX/RX 跟随活动标签页，切标签页时自动换口
+  const { sessions, activeSessionId } = useSerialSessions();
+  const port = sessions.find((s) => s.id === activeSessionId)?.port ?? null;
+  const isOpen = useIsOpen(port);
+  const { txBytes, rxBytes } = useSerialStats(port);
   const showTxRx = useStatusBarConfig("txrx", true);
   const showConnection = useStatusBarConfig("connection", true);
 

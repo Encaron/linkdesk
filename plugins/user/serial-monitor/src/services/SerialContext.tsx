@@ -140,6 +140,11 @@ function _subscribe(cb: () => void): () => void {
   return () => { _listeners.delete(id); };
 }
 
+/** E5.8#29：多口打开集合只读视图——ControlPanel per-tab connected 派生（会话口 ∈ 集合）。 */
+export function getOpenPorts(): ReadonlySet<string> {
+  return new Set(_openPorts.keys());
+}
+
 // E5.7#98：merge 入参 = wire SerialStatus（portName/baudRate/isOpen）+ 历史 DTO 防御性字段（tx/rx/lastError），零 any
 function mergeStatus(p: SerialState, status: SerialStatusDto): SerialState {
   return {
@@ -209,37 +214,36 @@ function _registerIPCListeners(): void {
 
   _ipcCleanups = [
     // 高频 stats 回调——累加而非覆盖
-    // E5.8#28 过渡期（S10）：载荷带 portName（每口计数器数据源）——本投影仍累加活动口条目，
-    // #29 会话-端口绑定后按 payload.portName 每口精确计数
+    // E5.8#29（S10 修根）：按 payload.portName 每口精确计数——_openPorts 权威态写对口计数器，
+    // 投影只累加活动口（_sharedState 是单口投影兼容视图，不再叠加所有口的计数）
     s.onStats?.((payload) => {
       const tx = payload.tx ?? 0;
       const rx = payload.rx ?? 0;
-      _setState((p) => ({
-        ...p,
-        txBytes: p.txBytes + tx,
-        rxBytes: p.rxBytes + rx,
-      }));
-      const active = _sharedState.sourceName;
-      if (active) {
-        const entry = _openPorts.get(active);
+      const port = payload.portName;
+      if (port) {
+        const entry = _openPorts.get(port);
         if (entry) {
           entry.txBytes += tx;
           entry.rxBytes += rx;
         }
+        if (port === _sharedState.sourceName) {
+          _setState((p) => ({ ...p, txBytes: p.txBytes + tx, rxBytes: p.rxBytes + rx }));
+        }
       }
     }),
     s.onSystem?.((payload) => {
-      // #28 载荷对象化过渡——旧 string 载荷容错（单端口兼容，D2 缺省语义兜底旧路径）
+      // #29 决策保留：错误消息不按口过滤——同口二开拒绝（D8）到达时 _sharedState.sourceName
+      // 可能尚未更新（异步 gap），按口过滤会吞掉错误提示 → 保守全局 lastError（现网通道）
       const msg = typeof payload === "string" ? payload : payload.message;
       _setState((p) => ({ ...p, lastError: msg }));
     }),
     // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
-    // E5.8#27 过渡期（S9）：贴当前活动口名；#28 后载荷带 portName（text/portName 分离），
-    // #29 每口消费后按 payload.portName 贴真名——多口并发错标边界 #29 消除
+    // E5.8#29（S9 修根）：payload.portName 贴真名——多口并发错标边界消除
+    //（原贴当前活动口名，另一标签页的口的数据会错标到活动口）
     s.onData?.((payload) => {
       const text = typeof payload === "string" ? payload : payload.text;
       window.linkdesk?.events?.emit("serial:rawData", {
-        sourceName: _sharedState.sourceName,
+        sourceName: typeof payload === "string" ? _sharedState.sourceName : payload.portName,
         text,
       });
     }),
