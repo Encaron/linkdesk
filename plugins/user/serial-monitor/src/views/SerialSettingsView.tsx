@@ -125,6 +125,10 @@ export default function SerialSettingsView() {
         <FormRow label={t("系统消息独立显示")}>
           {mkToggle("separateSystemLog")}
         </FormRow>
+        {/* E5.8#30.19a：HEX+ASCII 双栏——per-COM 记忆（随会话联动），开 = 接收区并排两栏 */}
+        <FormRow label={t("HEX+ASCII 双栏")}>
+          {mkToggle("hexAsciiDualPane")}
+        </FormRow>
       </div>
 
       {/* 发送行为 group */}
