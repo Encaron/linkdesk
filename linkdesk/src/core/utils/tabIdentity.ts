@@ -252,7 +252,7 @@ export function getDefaultLabel(
 
   if (plugin) {
     // 壳内部类型：插件详情页
-    if (type === "plugin-detail") return `${plugin.manifest.name} (介绍)`;
+    if (type === "plugin-detail") return `${i18n.t(plugin.manifest.name)} (${i18n.t("介绍")})`;
 
     // 声明式：identityField 有值 → 用其值作为标签
     if (idValue) {
@@ -266,7 +266,9 @@ export function getDefaultLabel(
       return idValue;
     }
 
-    return plugin.manifest.name;
+    // E5.8#37.9.1：插件显示名 = 用户可见文本——t() 解析后落盘（iconbar 同款 t(manifest.name)；
+    // 缺 key → parseMissingKeyHandler 原样返回 → 第三方插件名字不翻是插件作者责任）
+    return i18n.t(plugin.manifest.name);
   }
 
   // fallback：viewRegistry 不可用（测试/极端边界）
@@ -275,6 +277,26 @@ export function getDefaultLabel(
 }
 
 /* ── 语义函数：给类型字符串比较起名（AI 读到函数名即知意图）── */
+
+/**
+ * 池 tab DTO title 解析——E5.8#37.9.1。
+ *
+ * 背景：tab.label 落盘时已 t()（getDefaultLabel），但**已存在标签页/恢复的旧标签页**在语言切换后
+ * 仍是旧语言快照（label 存于 tab state，语言切换只触发重推不重建 tab）。此处推流时二次解析：
+ *   - label === manifest.name（仍是中文原名——zh 创建 / zh 保存后切 en 恢复）→ t(manifest.name) 现语言
+ *   - label === t(manifest.name)（已是翻译名——en 保存后切 zh 恢复）→ 重解析回现语言（t() 幂等）
+ *   - 否则（identityField 派生名/自定义 label——文件名、工作区名）→ 原样不动
+ * 纯函数 t 注入（测序同 buildPanelViewMetas 字典 mock 先例）——壳 t() 解析后推流，池哑渲染（铁律）。
+ */
+export function resolvePoolTabTitle(
+  label: string,
+  manifestName: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (!manifestName) return label;
+  if (label === manifestName || label === t(manifestName)) return t(manifestName);
+  return label;
+}
 
 /** 壳自己渲染的标签页（不走插件路由）。封闭集合——新插件不在此列。 */
 export function isShellRenderedTab(type: string): boolean {

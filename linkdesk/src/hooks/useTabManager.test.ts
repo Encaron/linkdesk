@@ -26,6 +26,7 @@ import {
 import { getAllLeafGroupIds, type SplitNode } from "../core/utils/splitTree";
 import { detectDropZone } from "../pool/hooks/tabDragTypes";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
+import { resolvePoolTabTitle } from "../core/utils/tabIdentity";
 import type { ViewPluginEntry } from "../core/api/types";
 
 // E5.7#98：分支/叶子窄类型——替代 (x as any) 直取联合专属字段
@@ -86,6 +87,36 @@ describe("createTabDefaults", () => {
     expect(createTabDefaults("workspace").label).toBe("workspace");
     expect(createTabDefaults("workspace", { workspaceName: "PID" }).label).toBe("PID");
     expect(createTabDefaults("settings").label).toBe("settings");
+  });
+});
+
+/* ── E5.8#37.9.1：池 tab title 推流二次解析（标签栏"设置"仍中文根因回归） ── */
+
+describe("resolvePoolTabTitle（E5.8#37.9.1）", () => {
+  const dict: Record<string, string> = { "设置": "Settings", "插件市场": "Marketplace" };
+  const t = (k: string) => dict[k] ?? k;
+
+  it("label === manifest.name（zh 创建/zh 保存后切 en 的旧快照）→ 重解析为现语言", () => {
+    // 用户实机报告：en 界面下标签栏「设置」仍中文——label 是 manifest.name 原样落盘，此处兜底重解析
+    expect(resolvePoolTabTitle("设置", "设置", t)).toBe("Settings");
+    expect(resolvePoolTabTitle("插件市场", "插件市场", t)).toBe("Marketplace");
+  });
+
+  it("label === t(manifest.name)（已是翻译名——en 保存后切 zh 恢复）→ 幂等重解析回现语言", () => {
+    expect(resolvePoolTabTitle("Settings", "设置", t)).toBe("Settings");
+  });
+
+  it("identityField 派生 label（文件名/工作区名）→ 原样不动", () => {
+    expect(resolvePoolTabTitle("main.ts", "编辑器", t)).toBe("main.ts");
+    expect(resolvePoolTabTitle("PID", "workspace", t)).toBe("PID");
+  });
+
+  it("缺 key（第三方插件名字无译文）→ parseMissingKeyHandler 原样返回不吞掉", () => {
+    expect(resolvePoolTabTitle("我的工具箱", "我的工具箱", t)).toBe("我的工具箱");
+  });
+
+  it("无 manifestName（非插件 tab）→ 透传", () => {
+    expect(resolvePoolTabTitle("欢迎", undefined, t)).toBe("欢迎");
   });
 });
 

@@ -53,8 +53,8 @@ export default function DisabledListView() {
           >
             <div className="ms-item-header">
               <span className="ms-item-name" style={{ opacity: 0.6 }}>
-                {p.name}
-              </span>
+                {t(p.name)}
+              </span>{/* E5.8#37.9.1：插件显示名 t() 解析 */}
               {p.version && <span className="ms-item-version">v{p.version}</span>}
             </div>
             {p.description && (
