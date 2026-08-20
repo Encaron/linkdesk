@@ -6,6 +6,7 @@
   "author": "Official",
   "icon": "globe",
   "appearsIn": { "iconBar": "top", "sidePanel": true },
+  "entry": "src/index.tsx",
   "contributes": {
     "viewsContainers": {
       "hello-sidebar": { "title": "Hello World", "location": "sidebar" }
