@@ -228,10 +228,20 @@ function _registerIPCListeners(): void {
       }
     }),
     s.onSystem?.((payload) => {
-      // #29 决策保留：错误消息不按口过滤——同口二开拒绝（D8）到达时 _sharedState.sourceName
-      // 可能尚未更新（异步 gap），按口过滤会吞掉错误提示 → 保守全局 lastError（现网通道）
-      const msg = typeof payload === "string" ? payload : payload.message;
-      _setState((p) => ({ ...p, lastError: msg }));
+      // E5.8#30.11（P1）：type 分类路由——status 按口过滤（他口开/关/波特率消息不显示），
+      // error 全局可见（D8 拒绝 / 驱动错误 / 拔线，非活动标签页也显示）。审视 ①：来源端打 type 标签，
+      // 不做文案关键词判断（字符串硬编码 + i18n 切语言失效 + 归一性三违）。
+      const raw = typeof payload === "string" ? null : payload;
+      const msg = raw?.message ?? (typeof payload === "string" ? payload : payload.message);
+      const type = raw?.type ?? "status"; // 兜底旧载荷（无 type 按 status）
+      const port = raw?.portName ?? _sharedState.sourceName;
+      if (type === "error") {
+        // 错误全局显示——凡非正常成功流程（#29 决策升级：按 type 而非不区分）
+        _setState((p) => ({ ...p, lastError: msg }));
+      } else if (port === _sharedState.sourceName) {
+        // status 按口过滤——只显示本标签页活动口的开/关/波特率消息；他口操作完全不显示
+        _setState((p) => ({ ...p, lastError: msg }));
+      }
     }),
     // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
     // E5.8#29（S9 修根）：payload.portName 贴真名——多口并发错标边界消除

@@ -74,8 +74,12 @@ describe("validateWire——正确载荷返回空数组", () => {
   it("serial:data 正确（E5.8#28 载荷对象化——portName + text）", () => {
     expect(validateWire("serial:data", { portName: "COM3", text: "S500" })).toEqual([]);
   });
-  it("serial:system 正确（E5.8#28 载荷对象化——portName + message）", () => {
-    expect(validateWire("serial:system", { portName: "COM3", message: "串口已打开" })).toEqual([]);
+  it("serial:system 正确（E5.8#28 载荷对象化 + #30.11 type 分类——status/error）", () => {
+    expect(validateWire("serial:system", { portName: "COM3", message: "---- 已打开串行端口 COM3 ----", type: "status" })).toEqual([]);
+    expect(validateWire("serial:system", { portName: "COM3", message: "串口已被打开", type: "error" })).toEqual([]);
+  });
+  it("serial:system 缺 type 报错（E5.8#30.11——分类标签契约必填）", () => {
+    expect(validateWire("serial:system", { portName: "COM3", message: "串口已打开" })).not.toEqual([]);
   });
   it("pool:quickpick 正确", () => {
     expect(validateWire("pool:quickpick", { open: true, placeholder: "选择", items: [{ key: "0", searchText: "a", label: "A" }] })).toEqual([]);
