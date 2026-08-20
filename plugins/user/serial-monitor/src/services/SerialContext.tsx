@@ -90,33 +90,27 @@ function _scopeKey(key: string, port?: string): string {
   return p ? `${p}:${key}` : key;
 }
 
+/**
+ * E5.8#30.9（P3）：灯按口显式写单一咽喉——isOpen/sourceName/TX-RX 清零按「显式传入 port」写 per-port pluginState 键。
+ * open/close/toggle/setSourceName/setBaudRate/F5 恢复全走它（审视 ②：防「一个 bug 多个地方出现」= 归一性）；
+ * 守卫读显式传入 port 而非投影口——谁打开写谁的，不短路（后开者不再覆盖前灯）。
+ * contextKey sourceOpen = 本口开闭（投影语义——多口并存时最后操作口决定，与 #30.8 前一致）。
+ */
+function _writePortState(port: string, isOpen: boolean): void {
+  window.linkdesk?.contextKey?.set("sourceOpen", isOpen).catch(() => {});
+  window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", port), isOpen).catch(() => {});
+  window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", port), port).catch(() => {});
+  if (!isOpen) {
+    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", port), 0).catch(() => {});
+    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", port), 0).catch(() => {});
+  }
+}
+
 function _setState(updater: (p: SerialState) => SerialState): void {
   const next = updater(_sharedState);
 
-  // isOpen 变化——立即同步连接状态 + 端口名到 pluginState（壳侧栏/状态栏跨 WebView 读取）
-  // E5.5#9l：key 加 _scopeKey 前缀，per-tab 隔离——多串口标签页不再互相覆盖
-  if (next.isOpen !== _sharedState.isOpen) {
-    // E5.8#47：sourceOpen contextKey 归插件自管——壳不再镜像串口 bit（硬约束 #9 核心无知）
-    // 真值经此咽喉单点写入，覆盖 toggleOpen/closePort/换端口/F5 恢复全部路径
-    window.linkdesk?.contextKey?.set("sourceOpen", next.isOpen).catch(() => {});
-    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", next.sourceName), next.isOpen)
-      .catch(() => {});
-    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
-      .catch(() => {});
-    // 关闭时立即清零 TX/RX——不等到防抖超时
-    if (!next.isOpen) {
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", next.sourceName), 0)
-        .catch(() => {});
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", next.sourceName), 0)
-        .catch(() => {});
-    }
-  }
-
-  // sourceName 变化——同步到 pluginState（壳侧栏 session connected 判断需要）
-  if (next.sourceName !== _sharedState.sourceName) {
-    window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", next.sourceName), next.sourceName)
-      .catch(() => {});
-  }
+  // E5.8#30.9（P3）：isOpen/sourceName 的 pluginState 写入已剥离到 _writePortState 单一咽喉——
+  // 旧守卫读投影口 + 单布尔短路 → 后开者写前灯/开一关一串灯。此处只保留投影内存态 + TX/RX 防抖同步。
 
   // TX/RX 变化且端口打开——防抖 250ms 同步到 pluginState。
   // onStats 高频回调累加计数，直接每次 set 会拥塞 IPC。防抖合并为一次 set。
@@ -193,8 +187,7 @@ function _initOnce(): void {
       const port = status.portName;
       if (!port) continue;
       _openPorts.set(port, { baudRate: status.baudRate ?? 0, txBytes: 0, rxBytes: 0 });
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", port), true).catch(() => {});
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", port), port).catch(() => {});
+      _writePortState(port, true); // E5.8#30.9：F5 恢复走单一咽喉（侧栏灯真相源）
     }
     // 单口投影兼容——现有主区 UI（ControlPanel）消费第一个打开口
     const first = statuses[0];
@@ -300,6 +293,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const fresh = (await s.getStatus(portName));
     if (fresh) _setState((p) => mergeStatus(p, fresh));
     _openPorts.set(portName, { baudRate, txBytes: 0, rxBytes: 0 });
+    _writePortState(portName, true); // E5.8#30.9：打开按口显式亮灯
   }, [s]);
 
   const closePort = useCallback(async (port: string) => {
@@ -307,6 +301,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     await s.closePort(port);
     _openPorts.delete(port);
     _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
+    _writePortState(port, false); // E5.8#30.9：关闭按口显式灭灯
   }, [s]);
 
   // E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确，D1 多口共存）。
@@ -324,6 +319,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
     // E5.8#27：改名前存旧口——换口 = 定向关旧口 + 开新口（D3 标签页内换口；多口下无参 closePort 抛歧义）
+    // E5.8#30.9：旧口按口显式灭灯 + 新口复用 openPort action 走咽喉（换口 per-tab 触发归 P7 #30.10）
     const oldPort = _sharedState.sourceName;
     sourceNameRef.current = name;
     _setState((p) => ({ ...p, sourceName: name }));
@@ -331,13 +327,11 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
       if (oldPort) {
         await s.closePort(oldPort);
         _openPorts.delete(oldPort);
+        _writePortState(oldPort, false);
       }
-      await s.openPort({ portName: name, baudRate: Number(baudRateRef.current), encoding });
-      const fresh = (await s.getStatus(name));
-      if (fresh) _setState((p) => mergeStatus(p, fresh));
-      _openPorts.set(name, { baudRate: Number(baudRateRef.current), txBytes: 0, rxBytes: 0 });
+      await openPort(name, Number(baudRateRef.current), encoding);
     }
-  }, [s]);
+  }, [s, openPort]);
 
   const setBaudRate = useCallback(async (baud: string, port: string, encoding?: string) => {
     if (!s) return;
@@ -345,14 +339,12 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     _setState((p) => ({ ...p, baudRate: baud }));
     // 改波特率 = 定向关 + 重开同口（E5.8#30.8：显式传口；per-tab 精确判断——该口真开着才重开，
     // 不再用投影 isOpen 判断避免他标签页口开着也误重开）；port 空 = 纯存配置（会话未开）
+    // E5.8#30.9：closePort/openPort 组合——两原子动作已走灯写入咽喉（归一性）
     if (port && _openPorts.has(port)) {
       await closePort(port);
-      await s.openPort({ portName: port, baudRate: Number(baud), encoding });
-      const fresh = (await s.getStatus(port));
-      if (fresh) _setState((p) => mergeStatus(p, fresh));
-      _openPorts.set(port, { baudRate: Number(baud), txBytes: 0, rxBytes: 0 });
+      await openPort(port, Number(baud), encoding);
     }
-  }, [s, closePort]);
+  }, [s, closePort, openPort]);
 
   // 支线：刷新可用串口列表——USB 热插拔后下拉框即时更新
   const refreshPorts = useCallback(async () => {
