@@ -129,6 +129,10 @@ export default function SerialSettingsView() {
         <FormRow label={t("HEX+ASCII 双栏")}>
           {mkToggle("hexAsciiDualPane")}
         </FormRow>
+        {/* E5.8#30.19b：不可见字符转义——`\n`/`\r`/`\t` 等显示为可见符号（随会话联动） */}
+        <FormRow label={t("不可见字符转义")}>
+          {mkToggle("escapeInvisibleChars")}
+        </FormRow>
       </div>
 
       {/* 发送行为 group */}

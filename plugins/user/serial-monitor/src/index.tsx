@@ -304,6 +304,19 @@ class ScrollTracker implements PluginValue {
 
 const scrollTracker = ViewPlugin.fromClass(ScrollTracker);
 
+/** E5.8#30.19b：不可见字符 → 可见符号（Unicode Control Pictures，␀-␟/␡/␉/␊/␍）。
+ *  渲染时转义，原始数据不动（导出/过滤/快照仍走原始文本）。 */
+function escapeInvisible(s: string): string {
+  return s.replace(/[\u0000-\u001F\u007F]/g, (c) => {
+    const code = c.charCodeAt(0);
+    if (code === 0x09) return "␉"; // TAB
+    if (code === 0x0A) return "␊"; // LF
+    if (code === 0x0D) return "␍"; // CR
+    if (code === 0x7F) return "␡"; // DEL
+    return String.fromCharCode(0x2400 + code); // 其余 C0 控制符
+  });
+}
+
 /* ---- 串口监视器视图 ---- */
 
 interface SerialMonitorViewProps {
@@ -348,6 +361,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const sendCoding = activeSession?.sendCoding ?? "UTF-8";
   // E5.8#30.19a：HEX+ASCII 双栏——接收区双 CM6 并排渲染（per-COM 记忆，随会话联动）
   const hexAsciiDualPane = activeSession?.hexAsciiDualPane ?? false;
+  // E5.8#30.19b：不可见字符转义——`\n`/`\r`/`\t` 等显示为可见符号（per-COM 记忆，随会话联动）
+  const escapeInvisibleChars = activeSession?.escapeInvisibleChars ?? false;
 
   // E5.8#30.12（P6）：per-tab TX/RX——接收区工具栏计数（本会话口，非活动口也实时）
   const { txBytes, rxBytes, isOpen: portIsOpen } = usePortStats(activeSession?.port ?? null);
@@ -572,11 +587,14 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   }, [showEcho, separateSystemLog, appendToView]);
 
   /* ---- 渲染一行（单栏/双栏合一）——received 按 receiveMode 选形态；双栏时同步 HEX 栏 ---- */
+  /* E5.8#30.19b：转义只在渲染时应用（received 文本形态）——原始数据不动，导出/过滤/快照不受影响 */
   const renderLine = useCallback((item: ReceiveItem) => {
-    const line = item.type === "received" && receiveModeRef.current === SEND_MODE_HEX && item.hex != null
-      ? item.hex
-      : item.text;
-    appendLine(line, item.type);
+    if (item.type === "received" && receiveModeRef.current === SEND_MODE_HEX && item.hex != null) {
+      appendLine(item.hex, item.type);
+    } else {
+      const text = item.type === "received" && escapeRef.current ? escapeInvisible(item.text) : item.text;
+      appendLine(text, item.type);
+    }
     if (dualPaneRef.current) appendHexLine(item);
   }, [appendLine, appendHexLine]);
 
@@ -627,6 +645,9 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // E5.8#30.19a：双栏开关 ref——rAF 消费循环读取（渲染时写，事件/消费时读，对标 tsFormatRef 已验证模式）
   const dualPaneRef = useRef(hexAsciiDualPane);
   dualPaneRef.current = hexAsciiDualPane;
+  // E5.8#30.19b：转义开关 ref——renderLine 渲染时读（渲染时转义，原始数据不动）
+  const escapeRef = useRef(escapeInvisibleChars);
+  escapeRef.current = escapeInvisibleChars;
 
   // E5：tab close / plugin uninstall → disconnect serial。
   // 已通过 tabBehavior.invokeBeforeClose 在 TabBar 层处理——确认关闭后、closeTab 前 invoke。
