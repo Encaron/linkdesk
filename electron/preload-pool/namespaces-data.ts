@@ -15,15 +15,16 @@ import type { SearchWireOptions, SearchWireResult } from '../../src/core/types/i
 export function buildSerial(events: EventSystemApi) {
   // E5.8#1d EXEMPT：壳 preload-shell 镜像——双 preload 各持 window.linkdesk.* 契约（serial 命名空间），无法共享
   /* jscpd:ignore-start */
+  // E5.8#26 D2/D5：全操作 portName? 透传（缺省唯一口语义，主进程 getPort 解析）；getStatus 双形态
   return {
     listPorts: () => ipcRenderer.invoke(IPC.serial.listPorts),
-    getStatus: () => ipcRenderer.invoke(IPC.serial.getStatus),
+    getStatus: (portName?: string) => ipcRenderer.invoke(IPC.serial.getStatus, portName),
     openPort: (cfg: OpenPortConfig) => ipcRenderer.invoke(IPC.serial.openPort, cfg),
-    closePort: () => ipcRenderer.invoke(IPC.serial.closePort),
-    sendData: (data: number[]) => ipcRenderer.invoke(IPC.serial.sendData, data),
-    sendText: (text: string, enc: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc),
-    setDtr: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setDtr, enable),
-    setRts: (enable: boolean) => ipcRenderer.invoke(IPC.serial.setRts, enable),
+    closePort: (portName?: string) => ipcRenderer.invoke(IPC.serial.closePort, portName),
+    sendData: (data: number[], portName?: string) => ipcRenderer.invoke(IPC.serial.sendData, data, portName),
+    sendText: (text: string, enc: string, portName?: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc, portName),
+    setDtr: (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setDtr, enable, portName),
+    setRts: (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setRts, enable, portName),
     onData: (cb: (text: string) => void) => events.on(IPC.serial.data, cb),
     onStats: (cb: (stats: SerialStats) => void) => events.on(IPC.serial.stats, cb),
     onSystem: (cb: (message: string) => void) => events.on(IPC.serial.system, cb),

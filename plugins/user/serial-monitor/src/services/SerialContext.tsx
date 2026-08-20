@@ -165,7 +165,9 @@ function _initOnce(): void {
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
   });
-  s.getStatus?.()?.then((status) => {
+  // E5.8#26 D5：getStatus() 无参返回全口数组——单口监视器取唯一打开口（[0]），多口 UI 适配留 #27
+  s.getStatus?.()?.then((statuses) => {
+    const status = statuses[0];
     if (status) _setState((p) => mergeStatus(p, status));
   });
 }
@@ -244,7 +246,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
 
   const toggleOpen = useCallback(async (encoding?: string) => {
     if (!s) return;
-    const status = await s.getStatus();
+    // E5.8#26 D5：getStatus() 无参返回全口数组——单口监视器取唯一打开口（[0]）
+    const status = (await s.getStatus())[0];
     if (status?.isOpen) {
       await s.closePort();
       _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
@@ -254,7 +257,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
         baudRate: Number(baudRateRef.current),
         encoding,
       });
-      const fresh = await s.getStatus();
+      const fresh = (await s.getStatus())[0];
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
   }, [s]);
@@ -265,7 +268,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     sourceNameRef.current = portName;
     baudRateRef.current = String(baudRate);
     await s.openPort({ portName, baudRate, encoding });
-    const fresh = await s.getStatus();
+    // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
+    const fresh = (await s.getStatus())[0];
     if (fresh) _setState((p) => mergeStatus(p, fresh));
   }, [s]);
 
@@ -282,7 +286,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (_sharedState.isOpen) {
       await s.closePort();
       await s.openPort({ portName: name, baudRate: Number(baudRateRef.current), encoding });
-      const fresh = await s.getStatus();
+      // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
+      const fresh = (await s.getStatus())[0];
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
   }, [s]);
@@ -294,7 +299,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (_sharedState.isOpen) {
       await s.closePort();
       await s.openPort({ portName: sourceNameRef.current, baudRate: Number(baud), encoding });
-      const fresh = await s.getStatus();
+      // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
+      const fresh = (await s.getStatus())[0];
       if (fresh) _setState((p) => mergeStatus(p, fresh));
     }
   }, [s]);
