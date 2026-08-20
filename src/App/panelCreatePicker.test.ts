@@ -2,26 +2,13 @@
  * showPanelCreatePicker 测试——E5.8#32 底部面板 [+] 视图选择器。
  * 覆盖：容器序 × 全量视图（含隐藏）两级展平 / 已激活项勾选标记 / 隐藏视图选中自动恢复可见 /
  * getKey = viewId 全局唯一键。
+ * ViewContainerService mock 共享于 viewContainerMocks.ts（#34.5 归一化去重）。
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { setVisibleMock, seedViewContainerMocks } from "./viewContainerMocks";
 
-const { showMock, setVisibleMock, getViewContainersMock, getViewsMock, isVisibleMock } = vi.hoisted(() => ({
-  showMock: vi.fn(),
-  setVisibleMock: vi.fn(),
-  getViewContainersMock: vi.fn(),
-  getViewsMock: vi.fn(),
-  isVisibleMock: vi.fn(),
-}));
-
-vi.mock("../core/services/layout/ViewContainerService", () => ({
-  ViewContainerService: {
-    getViewContainers: getViewContainersMock,
-    getViews: getViewsMock,
-    isVisible: isVisibleMock,
-    setVisible: setVisibleMock,
-  },
-}));
+const { showMock } = vi.hoisted(() => ({ showMock: vi.fn() }));
 
 vi.mock("../core/services/ui/QuickPickService", () => ({
   QuickPickService: { show: showMock },
@@ -39,20 +26,7 @@ function captureShow(): Record<string, unknown> {
 describe("showPanelCreatePicker（E5.8#32）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getViewContainersMock.mockReturnValue([
-      { id: "panel-main", title: "面板", location: "panel" },
-      { id: "panel-tools", title: "工具", location: "panel" },
-    ]);
-    getViewsMock.mockImplementation((cid: string) =>
-      cid === "panel-main"
-        ? [
-            { id: "problems", title: "问题", _pluginId: "linter" },
-            { id: "output", title: "输出", _pluginId: "panel-demo" },
-          ]
-        : [{ id: "terminal", title: "终端", _pluginId: "terminal" }],
-    );
-    // output 隐藏，其余可见
-    isVisibleMock.mockImplementation((_cid: string, vid: string) => vid !== "output");
+    seedViewContainerMocks();
   });
 
   it("数据源两级展平——容器序 × 全量视图（含已隐藏视图），非仅活跃", () => {

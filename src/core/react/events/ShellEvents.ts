@@ -44,6 +44,10 @@ export interface ShellEvents {
   /** 底部面板显隐切换请求（E5.8#31）——生产方 = 壳命令 workbench.action.togglePanel（Ctrl+J）。
    *  App usePanelHost 消费：翻转 panelVisible + 立即落盘 layout.json。无 payload。 */
   "panel:toggle": void;
+  /** 底部面板视图聚焦请求（E5.8#34.5 panel.reveal 通用 API）——生产方 = IpcBridgeHandler/panel 域
+   *  （插件 linkdesk.panel.reveal(viewId)）。App usePanelReveal 消费：面板隐藏则展开 +
+   *  切到该视图 + 隐藏视图恢复可见。payload = 目标 viewId。无贡献插件时消费方 no-op。 */
+  "panel:reveal": { viewId: string };
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */

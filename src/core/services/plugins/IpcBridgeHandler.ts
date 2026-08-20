@@ -26,6 +26,7 @@ import { handleWorkspaceChannel, handleViewContainerChannel, subscribeWorkspace,
 import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handleUiMethod, subscribeUi, unsubscribeUi } from "./IpcBridgeHandler/ui"; // E5.8#0d.10-10e：UI 浮层域
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
 import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
+import { handlePanelChannel } from "./IpcBridgeHandler/panel"; // E5.8#34.5：底部面板域（panel.reveal）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
@@ -129,6 +130,11 @@ export function initIpcBridgeHandler(): void {
         case "tabs:updateLabelBySourceId":
         case "tabs:closeBySourceId":
           result = await handleTabsChannel(req.channel, req.args);
+          break;
+
+        // ── E5.8#34.5：底部面板——插件调壳的 linkdesk.panel API（IpcBridgeHandler/panel 域）──
+        case "panel:reveal":
+          result = await handlePanelChannel(req.channel, req.args);
           break;
 
         // ── E5#67：弹窗归一化——插件调壳的 ConfirmDialog（IpcBridgeHandler/ui 域委派）──

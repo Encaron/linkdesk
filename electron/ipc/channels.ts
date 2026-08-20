@@ -100,6 +100,10 @@ export const IPC = {
     registerItems: 'menu:registerItems',
     getItems: 'menu:getItems',
   },
+  // E5.8#34.5：底部面板——插件 linkdesk.panel.reveal 请求（IpcBridge 代理到壳）
+  panel: {
+    reveal: 'panel:reveal',
+  },
   path: {
     appDataDir: 'path:appDataDir',
     join: 'path:join',

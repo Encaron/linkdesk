@@ -273,6 +273,10 @@ export function installMockLinkdesk(): void {
       getUninstalled: async () => [],
       isDisabled: async () => false,
     },
+    // E5.8#34.5：panel 命名空间——预览无壳侧消费，留壳日志（插件调 reveal 的桩）
+    panel: {
+      reveal: makeAsyncLogger("panel.reveal"),
+    },
   } satisfies Partial<LinkDeskAPI>;
 
   window.linkdesk = mockLinkdesk as unknown as LinkDeskAPI;

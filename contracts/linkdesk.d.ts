@@ -1369,16 +1369,23 @@ export interface ShellAPI {
     /** OS 拖入文件路径获取——双端注入 */
     getFilePath: (file: File) => string;
 }
+/** 底部面板命名空间面——对标 VS Code vscode.window.createTreeView 后 focus 语义 */
+export interface PanelAPI {
+    panel: {
+        /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
+        reveal(viewId: string): Promise<void>;
+    };
+}
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
  * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
  * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 10 个命名空间域接口交叉组装（interface→type intersection，
+ * E5.8#0d.10-9e：由 11 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI;
 /** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
 export interface PluginStateChangedPayload {
     pluginId: string;

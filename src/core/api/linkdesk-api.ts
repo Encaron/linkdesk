@@ -18,10 +18,10 @@
  *
  * 运行时实现：window.linkdesk（由 preload-pool.ts / preload-shell.ts 通过 contextBridge 注入）。
  *
- * E5.8#0d.10-9e：拆 linkdesk-api/ 子模块后，本文件 = 聚合器——10 个命名空间域接口交叉组装
+ * E5.8#0d.10-9e：拆 linkdesk-api/ 子模块后，本文件 = 聚合器——11 个命名空间域接口交叉组装
  * LinkDeskAPI + 13 独立接口 re-export + DialogOpenOptions 保路径 + getLinkDesk/linkdesk 运行时导出。
- * 分层依赖：types（独立接口基座）→ 10 域接口（Commands/Appearance/Tabs/Keybindings/Ui/Data/
- * Workspace/Editor/Plugins/Shell）→ 本聚合器交叉组装；域接口间零互依赖，单向无环。
+ * 分层依赖：types（独立接口基座）→ 11 域接口（Commands/Appearance/Tabs/Keybindings/Ui/Data/
+ * Workspace/Editor/Plugins/Shell/Panel）→ 本聚合器交叉组装；域接口间零互依赖，单向无环。
  * 外部消费方 import 路径零变更（"./linkdesk-api" 命中文件，"./linkdesk-api/types" 命中子模块）。
  */
 
@@ -35,6 +35,7 @@ import type { WorkspaceAPI } from "./linkdesk-api/workspace";
 import type { EditorAPI } from "./linkdesk-api/editor";
 import type { PluginsAPI } from "./linkdesk-api/plugins";
 import type { ShellAPI } from "./linkdesk-api/shell";
+import type { PanelAPI } from "./linkdesk-api/panel"; // E5.8#34.5：底部面板命名空间
 
 /**
  * linkdesk API——插件代码的类型安全入口。
@@ -42,10 +43,10 @@ import type { ShellAPI } from "./linkdesk-api/shell";
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
  * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
  * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 10 个命名空间域接口交叉组装（interface→type intersection，
+ * E5.8#0d.10-9e：由 11 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI;
 
 // ── 独立类型接口 re-export（types.ts 基座）──
 
