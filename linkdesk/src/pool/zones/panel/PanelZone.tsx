@@ -31,6 +31,7 @@ import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——
 import { useResizeDrag } from "../../hooks/useResizeDrag"; // E5.8#37.5：通用 resize 拖拽 hook（收敛结构性重复）
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.5：标签栏右侧动作区（活动视图 titleActions 声明）
+import ContextMenu from "../../../components/shared/context-menu/ContextMenu"; // E5.8#37.7：标签栏右键——位置/对齐子菜单 + 视图显隐（#37.7.1）
 import "../../shared/dropdown-card/dropdown-card.css"; // E5.8#36.5 共享下拉卡片本体（.dropdown-card）
 import "./PanelZone.css";
 
@@ -136,6 +137,11 @@ export default function PanelZone({ panel }: PanelZoneProps) {
     window.linkdesk?.events?.emit("panel:toggleViewVisibility", { containerId, viewId: item.viewId });
   }, []);
 
+  /* ── E5.8#37.7：标签栏右键菜单（用户拍板 ① 对整个标签栏右键，非单个 tab——#36.10 已去单 tab 右键，
+       容器级右键无单 tab 归属）。menuId "panelViewContext"——壳侧静态两子菜单（位置/对齐）+ 当前项 √
+       （resolvePanelChecked）+ #37.7.1 视图显隐列表动态注入。context 弃单 tab viewId（容器级，Path B 池只读）。 ── */
+  const [tabbarMenu, setTabbarMenu] = useState<{ x: number; y: number } | null>(null);
+
   return (
     <div
       className={`panel-zone${isVertical ? " vertical" : ""} edge-${edge}${resize.resizing ? " resizing" : ""}`}
@@ -149,7 +155,14 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       {/* 面板内容体——tabbar + keep-alive 内容区恒 column 排布（竖条时根 row + 本 wrapper column） */}
       <div className="panel-zone-body">
         {/* PanelTabBar 28px——切换器在行首，标签 80px 固定不 shrink，列表溢出滚动，[+] 在滚动区外始终最右 */}
-        <div className="panel-tabbar">
+        {/* E5.8#37.7：对整个标签栏右键 → 壳 ContextMenu（menuId panelViewContext——位置/对齐子菜单 + 视图显隐 #37.7.1） */}
+        <div
+          className="panel-tabbar"
+          onContextMenu={(e) => {
+            e.preventDefault();
+            setTabbarMenu({ x: e.clientX, y: e.clientY });
+          }}
+        >
           {/* E5.8#34：容器切换器按钮——容器名 + ⌄；全空（无贡献视图）不渲染（无内容可切） */}
           {showSwitcher && (
             <button
@@ -258,6 +271,17 @@ export default function PanelZone({ panel }: PanelZoneProps) {
       </div>
 
       {!handleFirst && handleEl}
+
+      {/* E5.8#37.7：标签栏右键菜单——壳 ContextMenu（聪慧→哑数据流：lk.menu.getItems 壳侧解析）。
+          context 只带容器标识（面板自身）——位置/对齐/视图清单上下文全走壳侧（Path B 池只读）。 */}
+      {tabbarMenu && (
+        <ContextMenu
+          menuId="panelViewContext"
+          anchor={tabbarMenu}
+          context={{ panelId: "panel" }}
+          onClose={() => setTabbarMenu(null)}
+        />
+      )}
     </div>
   );
 }

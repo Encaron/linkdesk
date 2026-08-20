@@ -56,6 +56,8 @@ interface ResolvedItem {
   label: string;
   group: string;
   shortcut?: string;
+  /** E5.8#37.7：当前项 √ 标记——壳侧 getItems 解析透传（面板位置/对齐命中项 + 视图显隐 visible） */
+  checked?: boolean;
   /** 子菜单项——有值则渲染为可展开项，hover 弹出子面板 */
   children?: ResolvedItem[];
 }
@@ -100,11 +102,12 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
       let children: ResolvedItem[] | undefined;
       if (rawChildren && rawChildren.length > 0) {
         // E5.7#98：wire 契约 children 是 string | MenuItemDescriptor 联合——
-        // 字符串 = 命令引用原样透传（IpcBridgeHandler 序列化注释同义）
+        // 字符串 = 命令引用原样透传（IpcBridgeHandler 序列化注释同义）。
+        // E5.8#37.7：checked 壳侧 getItems 解析透传（位置/对齐当前项 √ + 视图显隐 visible）
         children = rawChildren.map((c) =>
           typeof c === "string"
             ? { id: c, label: c, group }
-            : { id: c.command, label: c.label ?? c.command, group },
+            : { id: c.command, label: c.label ?? c.command, group, checked: c.checked },
         );
       } else if (rawChildren && rawChildren.length === 0 && resolveChildren) {
         const dyn = resolveChildren(item.command, context ?? {});
@@ -118,6 +121,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         label: item.title ?? item.label ?? item.command,
         group,
         shortcut: item.shortcut,
+        checked: item.checked,
         children,
       });
     }
@@ -291,6 +295,8 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
               onMouseLeave={() => { if (hasKids) closeSubDelayed(); }}
             >
               {/* E5.7#14：显示文本铁律——壳侧 t() 解析后推送，池哑渲染原文（不初始化 i18n） */}
+              {/* E5.8#37.7：当前项 √——固定宽占位保证选中项标签不错位（VS Code 菜单同款） */}
+              <span className="ctx-item-check" aria-hidden="true">{item.checked ? "✓" : ""}</span>
               <span className="ctx-item-label">{item.label}</span>
               {hasKids && <span className="ctx-item-chevron">›</span>}
               {item.shortcut && <span className="ctx-item-shortcut">{item.shortcut}</span>}
@@ -310,6 +316,7 @@ export default function ContextMenu({ menuId, anchor, context, onClose, resolveC
         >
           {subData.items.map((child, ki) => (
             <div key={ki} className="ctx-item" onClick={(e) => { e.stopPropagation(); handleItemClick(child.id); }}>
+              <span className="ctx-item-check" aria-hidden="true">{child.checked ? "✓" : ""}</span>
               <span className="ctx-item-label">{child.label}</span>
             </div>
           ))}

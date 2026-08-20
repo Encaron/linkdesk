@@ -10,15 +10,16 @@
 
 import { confirm, alert } from "../../ui/DialogService"; // E5#67
 import { pushToast, dismissToast, updateToast, type ToastSeverity } from "../../ui/toast";
-import { registerMenuItems, getMenuItems, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
+import { registerMenuItems, getMenuItems, MENU_SLOTS, type ManifestMenuItem } from "../../../registry/commands/MenuRegistry"; // E5#69
 import { ContextKeyService } from "../../../registry/commands/ContextKeyService"; // E5#70
 import { getCommands } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
+import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../../registry/ConfigurationRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
-import type { LinkDeskAPI } from "../../../api/linkdesk-api";
+import type { LinkDeskAPI, MenuItemDescriptor } from "../../../api/linkdesk-api";
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
@@ -79,6 +80,9 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
       const [menuId, context] = args as [string, Record<string, unknown> | undefined];
       const raw = getMenuItems(menuId) as ManifestMenuItem[];
       const allCmds = getCommands();
+      // E5.8#37.7：面板标签栏右键 checked 标记（当前项 √，单选）——壳侧对 panelViewContext 子项
+      // 逐项解析（位置命令 = 当前 edge 命中 / 对齐命令 = 当前 align 命中）。真相源 = LayoutEngine dock。
+      const isPanelViewContext = menuId === MENU_SLOTS.PanelViewContext;
       return raw
         .filter((item): item is Exclude<ManifestMenuItem, string> => {
           if (typeof item === "string") return false; // 分隔符/字符串引用——壳侧不返回
@@ -94,12 +98,15 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
             label: item.label ? i18n.t(item.label) : item.label,
             title: cmd?.title ? i18n.t(cmd.title) : cmd?.title,
             shortcut: kb?.key,
-            // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label。
+            // 子项：字符串 = 命令引用原样透传；对象 = 翻译 label（+ #37.7 checked 解析透传）。
             // （用 instanceof 而非 typeof——ESLint no-restricted-syntax 对"小写字面量比较"
             //  一律报 pluginId 硬编码误报，typeof x === "string" 是已知误报模式）
-            children: item.children?.map((c) =>
-              c instanceof Object ? { ...c, label: c.label ? i18n.t(c.label) : c.label } : c
-            ),
+            children: item.children?.map((c) => {
+              if (!(c instanceof Object)) return c;
+              const resolved = { ...c, label: c.label ? i18n.t(c.label) : c.label } as MenuItemDescriptor;
+              if (isPanelViewContext) resolved.checked = resolvePanelChecked(c.command);
+              return resolved;
+            }),
           };
         });
     }
