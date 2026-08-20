@@ -16,6 +16,13 @@ import { useState, useEffect, useCallback, useRef } from "react";
 
 interface PortInfo { name: string; description: string; }
 
+/** E5.8#27（S8/S10）——每打开口的独立状态（权威多口态）。单口投影 _sharedState 是"当前活动口"兼容视图。 */
+interface OpenPortEntry {
+  baudRate: number;
+  txBytes: number;
+  rxBytes: number;
+}
+
 interface SerialState {
   ports: PortInfo[];
   sourceName: string;
@@ -61,6 +68,12 @@ let _sharedState: SerialState = {
   rxBytes: 0,
   lastError: null,
 };
+
+// E5.8#27（S8/S10）：多口权威态——portName → 每口 baudRate/TX/RX。
+// F5 恢复（_initOnce 数组遍历）+ 动作路径（openPort/closePort/换口）共同维护；
+// 侧栏/状态栏跨 WebView 读的是 per-port pluginState 键（E5.5#9l 前缀），本 Map 是插件主区侧真相，
+// #29 会话-端口绑定（per-tab connected 派生）的直接消费源。
+const _openPorts = new Map<string, OpenPortEntry>();
 
 let _listenerId = 0;
 const _listeners = new Map<number, () => void>();
@@ -165,10 +178,20 @@ function _initOnce(): void {
   listPorts?.()?.then((ports: PortInfo[]) => {
     if (ports) _setState((p) => ({ ...p, ports }));
   });
-  // E5.8#26 D5：getStatus() 无参返回全口数组——单口监视器取唯一打开口（[0]），多口 UI 适配留 #27
+  // E5.8#27（设计 §8 #27）：getStatus() 无参返回全口数组——F5 Hot Exit 按口遍历恢复。
+  // 每口：写 _openPorts 权威态 + per-port pluginState 键（侧栏灯真相源，E5.5#9l 前缀打底）。
+  // 恢复顺序 = 主进程 getStatus Map 遍历序（服务层开端口序）；同口双会话争抢由 D8 拒绝 + #29 会话绑定消化。
   s.getStatus?.()?.then((statuses) => {
-    const status = statuses[0];
-    if (status) _setState((p) => mergeStatus(p, status));
+    for (const status of statuses) {
+      const port = status.portName;
+      if (!port) continue;
+      _openPorts.set(port, { baudRate: status.baudRate ?? 0, txBytes: 0, rxBytes: 0 });
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("isOpen", port), true).catch(() => {});
+      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("sourceName", port), port).catch(() => {});
+    }
+    // 单口投影兼容——现有主区 UI（ControlPanel）消费第一个打开口
+    const first = statuses[0];
+    if (first) _setState((p) => mergeStatus(p, first));
   });
 }
 
@@ -192,11 +215,23 @@ function _registerIPCListeners(): void {
         txBytes: p.txBytes + (stats.tx ?? 0),
         rxBytes: p.rxBytes + (stats.rx ?? 0),
       }));
+      // E5.8#27（S10）：同步多口权威态——onStats 载荷无口名（#28 改 payload.portName 根治），
+      // 过渡期只累加到"当前活动口"条目（#29 per-tab 化后每口精确计数）
+      const active = _sharedState.sourceName;
+      if (active) {
+        const entry = _openPorts.get(active);
+        if (entry) {
+          entry.txBytes += stats.tx ?? 0;
+          entry.rxBytes += stats.rx ?? 0;
+        }
+      }
     }),
     s.onSystem?.((msg) => {
       _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
     }),
     // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
+    // E5.8#27 过渡期（S9）：onData 载荷无口名（#28 改 payload.portName 修根），贴当前活动口名；
+    // 多口并发下非活动口的数据会错标——已知边界，#29 每口消费后消除
     s.onData?.((text: string) => {
       window.linkdesk?.events?.emit("serial:rawData", {
         sourceName: _sharedState.sourceName,
@@ -246,19 +281,24 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
 
   const toggleOpen = useCallback(async (encoding?: string) => {
     if (!s) return;
-    // E5.8#26 D5：getStatus() 无参返回全口数组——单口监视器取唯一打开口（[0]）
-    const status = (await s.getStatus())[0];
-    if (status?.isOpen) {
-      await s.closePort();
+    // E5.8#27：定向当前活动口（_sharedState.sourceName）——多口下无参 closePort 抛歧义（D2），
+    // 且 getStatus()[0] 未必是 UI 显示的口；toggle 语义 = 操作投影口（#29 会话绑定后 per-tab）
+    const port = _sharedState.sourceName;
+    if (_sharedState.isOpen && port) {
+      await s.closePort(port);
+      _openPorts.delete(port);
       _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
     } else {
+      const name = sourceNameRef.current;
       await s.openPort({
-        portName: sourceNameRef.current,
+        portName: name,
         baudRate: Number(baudRateRef.current),
         encoding,
       });
-      const fresh = (await s.getStatus())[0];
+      // E5.8#27：定向取刚开的口——多口下 getStatus()[0] 未必是本次开的
+      const fresh = (await s.getStatus(name));
       if (fresh) _setState((p) => mergeStatus(p, fresh));
+      if (name) _openPorts.set(name, { baudRate: Number(baudRateRef.current), txBytes: 0, rxBytes: 0 });
     }
   }, [s]);
 
@@ -268,40 +308,52 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     sourceNameRef.current = portName;
     baudRateRef.current = String(baudRate);
     await s.openPort({ portName, baudRate, encoding });
-    // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
-    const fresh = (await s.getStatus())[0];
+    // E5.8#27：定向取刚开的口——多口下 getStatus()[0] 未必是本次开的（#26 遗留，D5 定向修复）
+    const fresh = (await s.getStatus(portName));
     if (fresh) _setState((p) => mergeStatus(p, fresh));
+    _openPorts.set(portName, { baudRate, txBytes: 0, rxBytes: 0 });
   }, [s]);
 
   const closePort = useCallback(async () => {
     if (!s) return;
-    await s.closePort();
+    // E5.8#27：定向当前活动口——多口下无参 closePort 抛歧义（D2）；投影口就是 UI 关的那个口
+    const port = _sharedState.sourceName;
+    if (!port) return;
+    await s.closePort(port);
+    _openPorts.delete(port);
     _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
   }, [s]);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
+    // E5.8#27：改名前存旧口——换口 = 定向关旧口 + 开新口（D3 标签页内换口；多口下无参 closePort 抛歧义）
+    const oldPort = _sharedState.sourceName;
     sourceNameRef.current = name;
     _setState((p) => ({ ...p, sourceName: name }));
     if (_sharedState.isOpen) {
-      await s.closePort();
+      if (oldPort) {
+        await s.closePort(oldPort);
+        _openPorts.delete(oldPort);
+      }
       await s.openPort({ portName: name, baudRate: Number(baudRateRef.current), encoding });
-      // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
-      const fresh = (await s.getStatus())[0];
+      const fresh = (await s.getStatus(name));
       if (fresh) _setState((p) => mergeStatus(p, fresh));
+      _openPorts.set(name, { baudRate: Number(baudRateRef.current), txBytes: 0, rxBytes: 0 });
     }
   }, [s]);
 
   const setBaudRate = useCallback(async (baud: string, encoding?: string) => {
     if (!s) return;
+    const port = _sharedState.sourceName; // E5.8#27：当前活动口——改波特率 = 定向关 + 重开同口
     baudRateRef.current = baud;
     _setState((p) => ({ ...p, baudRate: baud }));
-    if (_sharedState.isOpen) {
-      await s.closePort();
-      await s.openPort({ portName: sourceNameRef.current, baudRate: Number(baud), encoding });
-      // E5.8#26 D5：getStatus() 无参返回全口数组——取唯一打开口（[0]）
-      const fresh = (await s.getStatus())[0];
+    if (_sharedState.isOpen && port) {
+      await s.closePort(port);
+      _openPorts.delete(port);
+      await s.openPort({ portName: port, baudRate: Number(baud), encoding });
+      const fresh = (await s.getStatus(port));
       if (fresh) _setState((p) => mergeStatus(p, fresh));
+      _openPorts.set(port, { baudRate: Number(baud), txBytes: 0, rxBytes: 0 });
     }
   }, [s]);
 

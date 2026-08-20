@@ -545,9 +545,14 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       setPausedCount(0);
       setPaused(false);
       // E3j #78：连接状态推到大厅 events 频道——结构化数据、消费者无需解析
-      window.linkdesk?.serial?.getStatus?.()?.then((status) => {
+      // E5.8#27：#26 后 getStatus() 无参返回全口数组，原单口快照访问 status.portName 得到 undefined——
+      // 系统消息已解析出 msgPort，定向取该口；无口名容错取数组第一口
+      const statusFetch = msgPort
+        ? window.linkdesk?.serial?.getStatus?.(msgPort)
+        : window.linkdesk?.serial?.getStatus?.()?.then((xs) => xs[0]);
+      statusFetch?.then((status) => {
         if (status) {
-          lastPortInfoRef.current = { portName: status.portName, baudRate: status.baudRate };
+          lastPortInfoRef.current = { portName: status.portName ?? "", baudRate: status.baudRate ?? 0 };
           window.linkdesk?.events?.emit("serial:connected", lastPortInfoRef.current);
         }
       });
