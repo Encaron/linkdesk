@@ -91,6 +91,16 @@
   background: var(--hover-overlay);
 }
 
+/* ── 空态——E5.8#36.6 侧栏演示视图（ui-ux-pro-max 空态指引：有用消息 + 动作提示） ── */
+
+.demo-log-empty {
+  padding: 8px 12px;
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
 .demo-log-time {
   color: var(--text-tertiary);
   flex-shrink: 0;

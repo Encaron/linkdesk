@@ -40,6 +40,7 @@ import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // 
 import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 // E5.6#11-fix4：header 右键菜单——壳 ContextMenu 聪慧组件（池内用法同 GroupTabBar）
 import ContextMenu from "../../../components/shared/context-menu/ContextMenu";
+import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
 import "./SidebarZone.css";
 
 /** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（防 pluginId 硬编码，
@@ -257,6 +258,10 @@ export default function SidebarZone({ sidebar }: SidebarZoneProps) {
                 }}
               >
                 <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+                {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
+                {c.mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
+                  ? <ViewTitleActions actions={sectionViews[0].titleActions} />
+                  : null}
                 {/* ◀ 折叠按钮——对标壳 SidePanel */}
                 <button
                   className="side-panel-collapse"

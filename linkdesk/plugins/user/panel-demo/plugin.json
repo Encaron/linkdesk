@@ -6,9 +6,40 @@
   "author": "官方",
   "contributes": {
     "viewsContainers": {
-      "panel-demo": { "title": "面板演示", "location": "panel" }
+      "panel-demo": { "title": "面板演示", "location": "panel" },
+      "panel-demo-sidebar": { "title": "面板演示", "location": "sidebar" }
     },
     "views": {
+      "panel-demo-sidebar": [
+        {
+          "id": "demo-sidebar",
+          "title": "侧栏演示",
+          "render": "src/views/DemoSidebarView.tsx",
+          "order": 0,
+          "titleActions": [
+            {
+              "type": "split",
+              "id": "sidebar-add-log",
+              "command": "panel-demo.sidebarAddLog",
+              "icon": "codicon-add",
+              "title": "侧栏添加演示日志",
+              "args": { "level": "info" },
+              "items": [
+                { "label": "侧栏添加信息", "command": "panel-demo.sidebarAddLog", "args": { "level": "info" } },
+                { "label": "侧栏添加警告", "command": "panel-demo.sidebarAddLog", "args": { "level": "warn" } },
+                { "label": "侧栏添加错误", "command": "panel-demo.sidebarAddLog", "args": { "level": "error" } }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "sidebar-clear-log",
+              "command": "panel-demo.sidebarClearLog",
+              "icon": "codicon-clear-all",
+              "title": "侧栏清空输出"
+            }
+          ]
+        }
+      ],
       "panel-demo": [
         {
           "id": "demo-output",

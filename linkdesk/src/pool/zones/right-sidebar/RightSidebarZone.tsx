@@ -23,6 +23,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot";
 import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
+import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
 import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout";
 import "./RightSidebarZone.css";
@@ -214,6 +215,10 @@ export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps
         {effectiveTitle && (
           <div className="side-panel-header">
             <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+            {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
+            {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
+              ? <ViewTitleActions actions={sectionViews[0].titleActions} />
+              : null}
           </div>
         )}
         {renderContent()}
