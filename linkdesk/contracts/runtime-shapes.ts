@@ -522,6 +522,12 @@ function chkRightSidebarLayout(v: unknown, p: string, errs: string[]): void {
     if (_t66.emptyHint !== undefined) {
     if (typeof _t66.emptyHint !== "string") errs.push(((p) + ".emptyHint") + ": 期望 string，实收 " + typeof _t66.emptyHint);
     }
+    if (_t66.expandTooltip !== undefined) {
+    if (typeof _t66.expandTooltip !== "string") errs.push(((p) + ".expandTooltip") + ": 期望 string，实收 " + typeof _t66.expandTooltip);
+    }
+    if (_t66.collapseTooltip !== undefined) {
+    if (typeof _t66.collapseTooltip !== "string") errs.push(((p) + ".collapseTooltip") + ": 期望 string，实收 " + typeof _t66.collapseTooltip);
+    }
   }
 }
 function chkPoolTab(v: unknown, p: string, errs: string[]): void {
@@ -687,6 +693,12 @@ function chkPanelLayout(v: unknown, p: string, errs: string[]): void {
     }
     if (_t83.maxHeight !== undefined) {
     if (typeof _t83.maxHeight !== "number") errs.push(((p) + ".maxHeight") + ": 期望 number，实收 " + typeof _t83.maxHeight);
+    }
+    if (_t83.minWidth !== undefined) {
+    if (typeof _t83.minWidth !== "number") errs.push(((p) + ".minWidth") + ": 期望 number，实收 " + typeof _t83.minWidth);
+    }
+    if (_t83.maxWidth !== undefined) {
+    if (typeof _t83.maxWidth !== "number") errs.push(((p) + ".maxWidth") + ": 期望 number，实收 " + typeof _t83.maxWidth);
     }
     if (_t83.createTooltip !== undefined) {
     if (typeof _t83.createTooltip !== "string") errs.push(((p) + ".createTooltip") + ": 期望 string，实收 " + typeof _t83.createTooltip);
