@@ -1,5 +1,5 @@
 /**
- * 壳面板命令——底部面板显隐（E5.8#31）+ 菜单栏「面板」菜单招牌（E5.8#33）。
+ * 壳面板命令——底部面板显隐（E5.8#31）+ 菜单栏「面板」菜单招牌（E5.8#33）+ 侧栏换边（E5.8#37.6）。
  * E5.8#31：自 coreCommands.ts 划分独立文件（settingsCommands 同款模式）。
  */
 
@@ -7,6 +7,7 @@ import { registerCommand } from "../../registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS } from "../../registry/commands/MenuRegistry"; // E5.8#33：面板菜单招牌
 import { shellEvents } from "../../react/events/ShellEvents";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import { layoutEngine, narrowSidebarEdge } from "../../services/layout/LayoutEngine"; // E5.8#37.6：换边命令真相源
 
 export function registerPanelCommands(): void {
   // E5.8#31：底部面板显隐切换（VS Code 标准 Ctrl+J）——与侧栏 Ctrl+B 同构：
@@ -18,6 +19,20 @@ export function registerPanelCommands(): void {
     category: "视图",
     handler: async () => {
       shellEvents.emit("panel:toggle", undefined);
+    },
+  });
+
+  // E5.8#37.6：侧栏换边（VS Code Move Side Bar 同款）——双 when 门控菜单项共用此命令。
+  // 命令 = 切到对边（toggle：当前 left → right / right → left）。真相源 = LayoutEngine dock.edge；
+  // dockTo 附 swap 规则联动 rightSidebar 对边（主侧栏换右 → agent 自动跳左）；持久化经
+  // onDidChangeLayout → App 防抖落盘（#36.9 底座，本命令零额外接线）。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.toggleSidebarPosition",
+    title: "切换侧栏位置",
+    category: "视图",
+    handler: async () => {
+      const current = narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge);
+      layoutEngine.dockTo("sidebar", current === "left" ? "right" : "left");
     },
   });
 

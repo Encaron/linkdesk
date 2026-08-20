@@ -884,8 +884,6 @@ export interface PoolMenuItem {
     command: string;
     /** 快捷键显示文本——formatKeyLabel 后。仅汉堡（showKeybindings）；titlebar 下拉无快捷键（同壳行为） */
     shortcut?: string;
-    /** when 不满足灰显——仅汉堡（checkWhen）。壳已判定，池哑渲染 */
-    disabled?: boolean;
     /** 子菜单——titlebar 仅 command+children 父项携带（无 command 父项由壳展平）；汉堡不展平 */
     children?: PoolMenuItem[];
 }
