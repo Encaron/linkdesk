@@ -28,6 +28,8 @@ import { RingBuffer } from "./utils/RingBuffer";
 import { matchesPort } from "./utils/portFilter";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
 import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useSerialSessions";
+// E5.8#30.12（P6）：per-port TX/RX——接收区工具栏每标签页计数（状态栏全局计数已删）
+import { usePortStats } from "./services/SerialContext";
 import ControlPanel from "./components/ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "./utils/useSendData";
 import SearchBar from "./components/SearchBar";
@@ -273,6 +275,9 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const receiveCoding = activeSession?.receiveCoding ?? "UTF-8";
   const sendMode = activeSession?.sendMode ?? "text";
   const sendCoding = activeSession?.sendCoding ?? "UTF-8";
+
+  // E5.8#30.12（P6）：per-tab TX/RX——接收区工具栏计数（本会话口，非活动口也实时）
+  const { txBytes, rxBytes, isOpen: portIsOpen } = usePortStats(activeSession?.port ?? null);
 
   /* ---- 状态 ---- */
   const [paused, setPaused] = useState(false);
@@ -1244,6 +1249,11 @@ const writable = await handle.createWritable();
           <span className="codicon codicon-search" />
           {t("搜索")}
         </button>
+
+        {/* E5.8#30.12（P6）：per-tab TX/RX 计数——归位接收区工具栏（状态栏已删全局计数） */}
+        <span className={`receive-stats${portIsOpen ? "" : " muted"}`}>
+          {portIsOpen ? `TX:${txBytes}  RX:${rxBytes}` : "TX:--  RX:--"}
+        </span>
       </div>
 
       <SearchBar

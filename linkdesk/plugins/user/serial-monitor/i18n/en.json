@@ -2,7 +2,6 @@
   "串口监视器": "Serial Monitor",
   "串口监视器会话": "Serial Monitor Sessions",
   "收发设置": "Send/Receive",
-  "状态栏显示 TX/RX 计数": "Show TX/RX count in status bar",
   "状态栏显示连接状态指示灯": "Show connection indicator in status bar",
   "复制": "Copy",
   "全选": "Select All",
