@@ -48,11 +48,17 @@
           "type": "boolean",
           "default": true,
           "description": "状态栏显示连接状态指示灯"
+        },
+        "serial-monitor.confirmOnClose": {
+          "type": "boolean",
+          "default": true,
+          "description": "关闭时提示"
         }
       }
     },
     "configurationDefaults": {
-      "serial-monitor.statusBar.connection": true
+      "serial-monitor.statusBar.connection": true,
+      "serial-monitor.confirmOnClose": true
     },
     "commands": [
       { "id": "serial-monitor.copy", "title": "复制", "category": "串口监视器", "when": "activeEditor == 'serial-monitor'" },
