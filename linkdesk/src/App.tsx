@@ -26,7 +26,6 @@ import { useUiBridges } from "./App/bridges";
 import { useSidebarHost } from "./App/sidebarHost";
 import { usePanelHost } from "./App/panelHost"; // E5.8#31：底部面板显隐宿主（Ctrl+J）
 import { usePanelReveal } from "./App/panelReveal"; // E5.8#34.5：panel.reveal 通用 API 壳侧消费
-import { usePanelMoveToEditor } from "./App/panelMoveToEditor"; // E5.8#35.5：panel.moveToEditor 通用 API 壳侧消费
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
 import "./App.css";
@@ -98,9 +97,6 @@ function App() {
     restoreClosedTab,
   } = useTabManager();
 
-  // E5.8#35.5：panel.moveToEditor 通用 API 壳侧消费——面板视图升级主区标签页（createTab 活动 group 尾部 + 面板内移除）
-  usePanelMoveToEditor({ createTab });
-
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
   useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });
 
@@ -112,8 +108,8 @@ function App() {
 
   // E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里
   const coreCallbacks: CoreCallbacks = useMemo(
-    () => createCoreCallbacks({ closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab: _duplicateTab, pinTab, createTab }),
-    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, createTab],
+    () => createCoreCallbacks({ closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab: _duplicateTab, pinTab }),
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab],
   );
   updateCoreCallbacks(coreCallbacks);
 
