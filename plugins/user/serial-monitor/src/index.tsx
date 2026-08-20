@@ -832,15 +832,17 @@ const writable = await handle.createWritable();
 
     // E3j #79：发送能力——工作台卡片等插件通过命令系统发数据到串口。
     // when:"false" = 纯程序化命令——不进命令面板，仅供插件 API 调用（E5.6 同款）。
-    reg("serial-monitor.send", async (sendMode: "text" | "hex", data: string) => {
+    reg("serial-monitor.send", async (sendMode: "text" | "hex", data: string, portName?: string) => {
       if (!data) return;
       const s = lk?.serial;
       if (!s) return;
+      // E5.8#30.8（P2）：显式传口——程序化命令调用方可传第三参定向指定口；
+      // 不传走 D2 缺省唯一口语义（兼容旧调用方/工作台卡片无口上下文场景）
       if (sendMode === SEND_MODE_HEX) {
         const bytes = data.split(/[\s,]+/).filter(Boolean).map((h: string) => parseInt(h, 16));
-        await s.sendData(bytes);
+        await s.sendData(bytes, portName);
       } else {
-        await s.sendText(data, "utf-8");
+        await s.sendText(data, "utf-8", portName);
       }
     }, { title: t("发送"), category: cat, when: "false" });
     reg("serial-monitor.copy", async () => {

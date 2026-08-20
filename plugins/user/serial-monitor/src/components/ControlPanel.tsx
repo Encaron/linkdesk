@@ -27,7 +27,8 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const { t } = useTranslation();
   const { state, actions } = useSerialContext();
   const { ports } = state;
-  const { setSourceName: setPortName, setBaudRate, refreshPorts, openPort, closePort } = actions;
+  // E5.8#30.8：openPort/closePort 合并为 toggleOpen 单动作（本组件不再拆分支；openPort/closePort 保留为 SerialActions 公共原子动作）
+  const { setSourceName: setPortName, setBaudRate, refreshPorts, toggleOpen } = actions;
 
   // C1：用 sourceId 绑定 per-tab session，而非读全局 activeSession
   const { session: activeSession, update: updateSession } = useSession(sourceId);
@@ -71,9 +72,10 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     (baud: string) => {
       if (!sourceId) return;
       updateSession({ baudRate: baud });
-      setBaudRate(baud, activeSession?.receiveCoding);
+      // E5.8#30.8：显式传会话口——setBaudRate 内部按该口真开着才关旧重开（per-tab 精确）
+      setBaudRate(baud, activeSession?.port ?? "", activeSession?.receiveCoding);
     },
-    [sourceId, updateSession, setBaudRate, activeSession?.receiveCoding],
+    [sourceId, updateSession, setBaudRate, activeSession?.port, activeSession?.receiveCoding],
   );
 
   const handleProtocolChange = useCallback(
@@ -84,25 +86,20 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
     [updateSession],
   );
 
+  // E5.8#30.8：开/关单动作合并进 toggleOpen（内部按口已开决策）——本组件只对齐 session 参数再委托。
+  // connected 仍派生用于 UI（状态点/禁用/按钮文字），但开/关决策不再在此拆分支。
   const handleToggleOpen = useCallback(async () => {
     if (!activeSession) return;
-    const enc = activeSession.receiveCoding;
-
-    if (connected) {
-      // 当前标签页的端口已打开 → 关闭
-      await closePort();
-    } else {
-      // 当前标签页的端口未打开 → 打开（E5.8#29：多口共存 D1——不影响其他标签页的已开口）
-      // 打开前：确保 SerialContext 的 portName 和 baudRate 和 session 对齐
-      if (!activeSession.port && ports.length > 0) {
-        updateSession({ port: ports[0].name });
-      }
-      const targetPort = activeSession.port || ports[0]?.name;
-      const targetBaud = Number(activeSession.baudRate || 115200);
-      if (!targetPort) return;
-      await openPort(targetPort, targetBaud, enc);
+    let targetPort = activeSession.port;
+    const targetBaud = Number(activeSession.baudRate || 115200);
+    if (!targetPort && ports.length > 0) {
+      // 打开前：会话无端口时选第一个可用口并落 session（E5.8#29 多口共存 D1——不影响其他已开口）
+      targetPort = ports[0].name;
+      updateSession({ port: targetPort });
     }
-  }, [connected, activeSession, closePort, openPort, ports, updateSession]);
+    if (!targetPort) return;
+    await toggleOpen(targetPort, targetBaud, activeSession.receiveCoding);
+  }, [activeSession, toggleOpen, ports, updateSession]);
 
   // ── 未连接 / 无会话状态 ──
 

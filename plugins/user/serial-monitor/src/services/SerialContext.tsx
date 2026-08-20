@@ -44,13 +44,15 @@ interface SerialStatusDto {
 }
 
 interface SerialActions {
-  toggleOpen: (encoding?: string) => Promise<void>;
+  /** E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确） */
+  toggleOpen: (port: string, baudRate?: number, encoding?: string) => Promise<void>;
   /** 明确打开指定端口——多标签页场景：ControlPanel 按 per-tab connected 决策，不盲翻转 */
   openPort: (portName: string, baudRate: number, encoding?: string) => Promise<void>;
-  /** 明确关闭当前端口 */
-  closePort: () => Promise<void>;
+  /** E5.8#30.8：明确关闭指定端口——显式传口（不再读投影口 _sharedState.sourceName） */
+  closePort: (port: string) => Promise<void>;
   setSourceName: (name: string, encoding?: string) => Promise<void>;
-  setBaudRate: (baud: string, encoding?: string) => Promise<void>;
+  /** E5.8#30.8：改波特率——显式传口 + per-tab 精确判断（该口真开着才关旧重开） */
+  setBaudRate: (baud: string, port: string, encoding?: string) => Promise<void>;
   /** 刷新可用串口列表——USB 热插拔后下拉框即时更新 */
   refreshPorts: () => Promise<void>;
 }
@@ -288,29 +290,6 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   const baudRateRef = useRef(state.baudRate);
   baudRateRef.current = state.baudRate;
 
-  const toggleOpen = useCallback(async (encoding?: string) => {
-    if (!s) return;
-    // E5.8#27：定向当前活动口（_sharedState.sourceName）——多口下无参 closePort 抛歧义（D2），
-    // 且 getStatus()[0] 未必是 UI 显示的口；toggle 语义 = 操作投影口（#29 会话绑定后 per-tab）
-    const port = _sharedState.sourceName;
-    if (_sharedState.isOpen && port) {
-      await s.closePort(port);
-      _openPorts.delete(port);
-      _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
-    } else {
-      const name = sourceNameRef.current;
-      await s.openPort({
-        portName: name,
-        baudRate: Number(baudRateRef.current),
-        encoding,
-      });
-      // E5.8#27：定向取刚开的口——多口下 getStatus()[0] 未必是本次开的
-      const fresh = (await s.getStatus(name));
-      if (fresh) _setState((p) => mergeStatus(p, fresh));
-      if (name) _openPorts.set(name, { baudRate: Number(baudRateRef.current), txBytes: 0, rxBytes: 0 });
-    }
-  }, [s]);
-
   // 支线：明确打开/关闭——多标签页场景 ControlPanel 按 per-tab connected 决策
   const openPort = useCallback(async (portName: string, baudRate: number, encoding?: string) => {
     if (!s) return;
@@ -323,15 +302,24 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     _openPorts.set(portName, { baudRate, txBytes: 0, rxBytes: 0 });
   }, [s]);
 
-  const closePort = useCallback(async () => {
-    if (!s) return;
-    // E5.8#27：定向当前活动口——多口下无参 closePort 抛歧义（D2）；投影口就是 UI 关的那个口
-    const port = _sharedState.sourceName;
-    if (!port) return;
+  const closePort = useCallback(async (port: string) => {
+    if (!s || !port) return;
     await s.closePort(port);
     _openPorts.delete(port);
     _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
   }, [s]);
+
+  // E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确，D1 多口共存）。
+  // 组合原子动作 closePort/openPort（审视 ③：灭 toggleOpen 死代码 + 「开关=一个动作一处写」归一）
+  const toggleOpen = useCallback(async (port: string, baudRate?: number, encoding?: string) => {
+    if (!s || !port) return;
+    if (_openPorts.has(port)) {
+      await closePort(port);
+    } else {
+      // 口未开 → 开（D1 不影响其他已开口）；baudRate 缺省走投影 baudRateRef
+      await openPort(port, baudRate ?? Number(baudRateRef.current), encoding);
+    }
+  }, [s, closePort, openPort]);
 
   const setSourceName = useCallback(async (name: string, encoding?: string) => {
     if (!s) return;
@@ -351,20 +339,20 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     }
   }, [s]);
 
-  const setBaudRate = useCallback(async (baud: string, encoding?: string) => {
+  const setBaudRate = useCallback(async (baud: string, port: string, encoding?: string) => {
     if (!s) return;
-    const port = _sharedState.sourceName; // E5.8#27：当前活动口——改波特率 = 定向关 + 重开同口
     baudRateRef.current = baud;
     _setState((p) => ({ ...p, baudRate: baud }));
-    if (_sharedState.isOpen && port) {
-      await s.closePort(port);
-      _openPorts.delete(port);
+    // 改波特率 = 定向关 + 重开同口（E5.8#30.8：显式传口；per-tab 精确判断——该口真开着才重开，
+    // 不再用投影 isOpen 判断避免他标签页口开着也误重开）；port 空 = 纯存配置（会话未开）
+    if (port && _openPorts.has(port)) {
+      await closePort(port);
       await s.openPort({ portName: port, baudRate: Number(baud), encoding });
       const fresh = (await s.getStatus(port));
       if (fresh) _setState((p) => mergeStatus(p, fresh));
       _openPorts.set(port, { baudRate: Number(baud), txBytes: 0, rxBytes: 0 });
     }
-  }, [s]);
+  }, [s, closePort]);
 
   // 支线：刷新可用串口列表——USB 热插拔后下拉框即时更新
   const refreshPorts = useCallback(async () => {
