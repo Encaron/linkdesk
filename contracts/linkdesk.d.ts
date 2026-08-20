@@ -1306,6 +1306,12 @@ export interface ShellAPI {
         ready(): void;
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
+        // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
+        // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
+        // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
+        registerBeforeClose(pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>): void;
+        unregisterBeforeClose(pluginId: string): void;
+        beforeClose(pluginId: string, tab: PoolTab): Promise<boolean>;
     };
     /** 窗口控制——TitleBar 按钮映射，双端注入（8 方法同通道，共享模块 electron/window-namespace.ts） */
     window: {

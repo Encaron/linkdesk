@@ -250,6 +250,19 @@ function _unregisterIPCListeners(): void {
   _ipcCleanups = [];
 }
 
+// E5.8#30.16（P8）：关闭串口的模块级咽喉——React action closePort 与 beforeClose handler 共用
+// （归一性：一个写入咽喉，审视 ②——防「同一个 bug 多处出现」）。非 React 上下文（标签页关闭 handler）
+// 也能关串口，且走与 UI 完全相同的灯写入链路（_writePortState 灭灯 + _openPorts 权威态 + per-port 通知）。
+export async function closePortFromModule(port: string): Promise<void> {
+  const s = window.linkdesk?.serial;
+  if (!s || !port) return;
+  await s.closePort(port);
+  _openPorts.delete(port);
+  _setState((p) => ({ ...p, isOpen: false }));
+  _notifyPort(port);
+  _writePortState(port, false);
+}
+
 // ═══════════════════════════════════════════════════════
 // useSerialContext
 // ═══════════════════════════════════════════════════════
@@ -295,13 +308,9 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   }, [s]);
 
   const closePort = useCallback(async (port: string) => {
-    if (!s || !port) return;
-    await s.closePort(port);
-    _openPorts.delete(port);
-    _setState((p) => ({ ...p, isOpen: false }));
-    _notifyPort(port); // E5.8#30.12：关闭 → 接收区 per-tab 计数归零
-    _writePortState(port, false); // E5.8#30.9：关闭按口显式灭灯
-  }, [s]);
+    // E5.8#30.16（P8）：委托模块级咽喉 closePortFromModule——UI 与 beforeClose handler 共用同一写入路径
+    await closePortFromModule(port);
+  }, []);
 
   // E5.8#30.8：开/关单动作——显式传口 + 按口已开决策（per-tab 精确，D1 多口共存）。
   // 组合原子动作 closePort/openPort（审视 ③：灭 toggleOpen 死代码 + 「开关=一个动作一处写」归一）
