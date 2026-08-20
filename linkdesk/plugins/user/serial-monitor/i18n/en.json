@@ -106,6 +106,7 @@
   "校验 无": "Parity: None",
   "校验 奇": "Parity: Odd",
   "校验 偶": "Parity: Even",
+  "握手信号": "Handshake",
   "更多操作": "More actions",
   "关闭系统消息独立显示": "Hide Separate System Log",
   "关闭自动重发": "Disable Auto Resend",

@@ -22,6 +22,8 @@ export interface SerialSession {
   id: string; name: string; port: string; baudRate: string;
   // E5.8#30.17：帧格式（数据位/停止位/校验）——命令条 8N1 + 校验选择器，openPort 时透传
   dataBits: number; stopBits: number; parity: string;
+  // E5.8#30.18：握手信号 DTR/RTS 初始电平（per-COM，侧栏「握手信号」group）——打开时应用 + 运行中切换直发
+  dtr: boolean; rts: boolean;
   connected: boolean; timestampFormat: string; showEcho: boolean;
   showLineNumbers: boolean; separateSystemLog: boolean; lineEnding: string;
   autoRepeat: boolean; repeatInterval: number; autoClear: boolean;
@@ -30,7 +32,8 @@ export interface SerialSession {
 }
 
 const DEFAULT_SESSION: Omit<SerialSession, "id" | "name" | "color"> = {
-  port: "", baudRate: "115200", dataBits: 8, stopBits: 1, parity: "none", connected: false,
+  port: "", baudRate: "115200", dataBits: 8, stopBits: 1, parity: "none",
+  dtr: false, rts: false, connected: false,
   timestampFormat: "HH:mm:ss:fff", showEcho: true, showLineNumbers: true,
   separateSystemLog: true, lineEnding: "\\r\\n", autoRepeat: false,
   repeatInterval: 1000, autoClear: false, receiveMode: "text",

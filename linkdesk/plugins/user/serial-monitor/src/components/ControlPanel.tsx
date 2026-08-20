@@ -16,7 +16,7 @@
 
 import { useTranslation } from "react-i18next";
 import { useCallback, useEffect, useMemo } from "react";
-import { useSerialContext, getOpenPorts, type SerialFrame } from "../services/SerialContext";
+import { useSerialContext, getOpenPorts, type SerialFrame, type HandshakeState } from "../services/SerialContext";
 import SelectBox from "@src/components/shared/select-box/SelectBox";
 // E5.8#30.17（审视 ④）：壳通用可输入下拉——候选快捷 + 手输非标波特率
 import Combobox from "@src/components/shared/combobox/Combobox";
@@ -60,6 +60,12 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   }), [activeSession?.dataBits, activeSession?.stopBits, activeSession?.parity]);
   const frameFormat = `${frame.dataBits}N${frame.stopBits}`;
 
+  // E5.8#30.18：握手信号初始电平——会话 dtr/rts，openPort 时应用（per-COM 随会话联动）
+  const handshake = useMemo<HandshakeState>(() => ({
+    dtr: Boolean(activeSession?.dtr),
+    rts: Boolean(activeSession?.rts),
+  }), [activeSession?.dtr, activeSession?.rts]);
+
   // 校验选项——新增文字全走 t() + i18n/en.json（硬约束 #2）
   const parityOptions = useMemo(() => [
     { value: "none", label: t("校验 无") },
@@ -77,11 +83,11 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       const oldPort = activeSession?.port ?? "";
       updateSession({ port });
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
-      setPortName(port, oldPort, activeSession?.receiveCoding, frame);
+      setPortName(port, oldPort, activeSession?.receiveCoding, frame, handshake);
       // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
       window.linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
     },
-    [sourceId, updateSession, setPortName, activeSession?.port, activeSession?.receiveCoding, frame],
+    [sourceId, updateSession, setPortName, activeSession?.port, activeSession?.receiveCoding, frame, handshake],
   );
 
   const handleBaudChange = useCallback(
@@ -89,9 +95,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       if (!sourceId) return;
       updateSession({ baudRate: baud });
       // E5.8#30.8：显式传会话口——setBaudRate 内部按该口真开着才关旧重开（per-tab 精确）
-      setBaudRate(baud, activeSession?.port ?? "", activeSession?.receiveCoding, frame);
+      setBaudRate(baud, activeSession?.port ?? "", activeSession?.receiveCoding, frame, handshake);
     },
-    [sourceId, updateSession, setBaudRate, activeSession?.port, activeSession?.receiveCoding, frame],
+    [sourceId, updateSession, setBaudRate, activeSession?.port, activeSession?.receiveCoding, frame, handshake],
   );
 
   // E5.8#30.17：改帧格式——8N1 拆 dataBits/stopBits 写 session + 口开着用新帧重开（setFrame 内部按口判断）
@@ -102,9 +108,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       const stopBits = Number(v[2]);
       const next: SerialFrame = { ...frame, dataBits, stopBits };
       updateSession({ dataBits, stopBits });
-      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding);
+      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding, handshake);
     },
-    [sourceId, frame, activeSession, updateSession, setFrame],
+    [sourceId, frame, activeSession, updateSession, setFrame, handshake],
   );
 
   // E5.8#30.17：改校验位——独立选择器（无/奇/偶 → parity none/odd/even）
@@ -113,9 +119,9 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       if (!sourceId) return;
       const next: SerialFrame = { ...frame, parity: v };
       updateSession({ parity: v });
-      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding);
+      if (activeSession) setFrame(next, activeSession.port, Number(activeSession.baudRate || 115200), activeSession.receiveCoding, handshake);
     },
-    [sourceId, frame, activeSession, updateSession, setFrame],
+    [sourceId, frame, activeSession, updateSession, setFrame, handshake],
   );
 
   // E5.8#30.8：开/关单动作合并进 toggleOpen（内部按口已开决策）——本组件只对齐 session 参数再委托。
@@ -130,8 +136,8 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
       updateSession({ port: targetPort });
     }
     if (!targetPort) return;
-    await toggleOpen(targetPort, targetBaud, activeSession.receiveCoding, frame);
-  }, [activeSession, toggleOpen, ports, updateSession, frame]);
+    await toggleOpen(targetPort, targetBaud, activeSession.receiveCoding, frame, handshake);
+  }, [activeSession, toggleOpen, ports, updateSession, frame, handshake]);
 
   // ── 未连接 / 无会话状态 ──
 
