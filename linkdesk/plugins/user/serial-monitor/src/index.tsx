@@ -242,9 +242,13 @@ function snapshotCmLines(view: EditorView): { text: string; type: LineType }[] {
     else if (cls === "cm-line-system") typeAt.set(from, "system");
   });
   const lines: { text: string; type: LineType }[] = [];
-  doc.forEachLine((line) => {
-    lines.push({ text: line.text, type: typeAt.get(line.from) ?? "received" });
-  });
+  // CM6 6.7.1 的 Text 无 forEachLine（运行期 + 类型都 MISSING）——用 iterLines() 迭代器。
+  // iterLines 产出每行文本字符串（不含换行符），行起始位 from 需手动累加（+1 = 换行；末行无换行越界 1 无害——之后不再查 from）。
+  let from = 0;
+  for (const text of doc.iterLines()) {
+    lines.push({ text, type: typeAt.get(from) ?? "received" });
+    from += text.length + 1;
+  }
   return lines;
 }
 
