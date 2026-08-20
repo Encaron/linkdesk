@@ -2,6 +2,11 @@
  * i18n 全量审计——扫描所有 .tsx/.ts 文件中的中文 UI 字符串，
  * 与 5 个 i18n/en.json 交叉比对，输出缺翻译清单。
  *
+ * 🔥 E5.8#37.9.2 边界说明——只扫中文，不扫英文/法文等非中文 key：
+ * 插件作者可用任意语言原文做 i18n key（docs/03-插件制造 约定已放宽）。
+ * 纯英文/纯法文插件的 key 即原文，缺译文时 parseMissingKeyHandler 静默回退
+ * 显示 key 本身 = 设计意图，不是漏翻。审计扫不到非中文 key 属预期，勿误报。
+ *
  * 用法：
  *   node scripts/audit-i18n.mjs          # 只报告
  *   node scripts/audit-i18n.mjs --strict # 门禁：缺翻译时 exit 1（已接入 npm run check）

@@ -243,7 +243,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `minAppVersion` | `string` | 最低软件版本要求 |
 | `docs` | `string` | 附带文档路径（资源插件联动） |
 | `cardDocMap` | `object` | 卡片 ID → 文档锚点映射 |
-| `i18n` | `object` | 插件自带翻译 `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }`——key=中文原文。放在 `contributes.i18n` 下，非顶层 |
+| `i18n` | `object` | 插件自带翻译 `{ "en": "i18n/en.json", "ja": "i18n/ja.json" }`——key=插件 UI 原文（建议作者母语）。放在 `contributes.i18n` 下，非顶层 |
 | `cssVars` | `object` | 插件自定义 CSS 变量 `{ "--name": { "dark": "#fff", "light": "#000" } }` |
 | `permissions` | `string[]` | 权限声明 `["serial", "filesystem", "network"]`（Phase 5+ 启用） |
 

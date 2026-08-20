@@ -1,0 +1,22 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "Hello World",
+  "version": "1.0.0",
+  "description": "E5.8#37.9.2 English-only example plugin——a foreign author who only speaks English, plugin for English users. i18n keys are English, no translation file ships, text shows as-is in any app language. Safe to uninstall.",
+  "author": "Official",
+  "contributes": {
+    "viewsContainers": {
+      "hello-sidebar": { "title": "Hello World", "location": "sidebar" }
+    },
+    "views": {
+      "hello-sidebar": [
+        {
+          "id": "greetings",
+          "title": "Greetings",
+          "render": "src/views/HelloView.tsx",
+          "order": 0
+        }
+      ]
+    }
+  }
+}
