@@ -25,6 +25,8 @@ export interface CoreCallbacks {
   duplicateTab: (tabId: string) => void;
   /** E5.6#16.7k：池 GroupTabBar 右键菜单——固定/取消固定 */
   pinTab: (tabId: string) => void;
+  /** E5.8#35.5：面板视图升级主区标签页（core.movePanelViewToEditor 右键命令）——createTab 活动 group 尾部 + 面板内移除 */
+  movePanelViewToEditor: (viewId: string) => void;
 }
 
 let _callbacks: CoreCallbacks | null = null;

@@ -247,5 +247,6 @@
   "暂无面板视图": "No panel views",
   "所有视图已隐藏": "All panel views are hidden",
   "从切换器勾选视图恢复显示": "Check views back from the switcher",
-  "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "Views appear here after a plugin declares contributes.views location:\"panel\""
+  "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "Views appear here after a plugin declares contributes.views location:\"panel\"",
+  "移至主区标签页": "Move to Editor Area"
 }

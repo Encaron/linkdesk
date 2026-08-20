@@ -48,6 +48,11 @@ export interface ShellEvents {
    *  （插件 linkdesk.panel.reveal(viewId)）。App usePanelReveal 消费：面板隐藏则展开 +
    *  切到该视图 + 隐藏视图恢复可见。payload = 目标 viewId。无贡献插件时消费方 no-op。 */
   "panel:reveal": { viewId: string };
+  /** 底部面板视图升级主区标签页请求（E5.8#35.5 panel.moveToEditor 通用 API）——生产方 = IpcBridgeHandler/panel 域
+   *  （插件 linkdesk.panel.moveToEditor(viewId)）+ 池 PanelZone 右键「移至主区标签页」（面板视图 tab 右键）。
+   *  App usePanelMoveToEditor 消费：createTab 活动 group 尾部 + 面板内移除（setVisible false 落盘）。
+   *  payload = 目标 viewId。无贡献插件时消费方 no-op。 */
+  "panel:moveToEditor": { viewId: string };
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */
