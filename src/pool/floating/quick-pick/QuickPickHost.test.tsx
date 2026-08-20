@@ -17,7 +17,7 @@ import type { PluginQuickPickRequest } from "../../../core/types/pool/poolQuickP
 /* ── mock window.linkdesk.quickPickHost —— preload-pool 同款形状 ── */
 
 type HostFn = (req: PluginQuickPickRequest, settle: (key: string | null) => void) => void;
-type ShowCb = (data: { open: boolean; placeholder?: string; prefix?: string; items: Array<{ key: string; searchText: string; label: string }> }) => void;
+type ShowCb = (data: { open: boolean; placeholder?: string; prefix?: string; items: Array<{ key: string; searchText: string; label: string; checked?: boolean }> }) => void;
 
 const { mockSelect, mockClose } = vi.hoisted(() => ({
   mockSelect: vi.fn(),
@@ -277,5 +277,23 @@ describe("壳推送模式回归", () => {
     const input = document.querySelector(".quick-pick-input") as HTMLInputElement;
     fireEvent.keyDown(input, { key: "Escape" });
     expect(mockClose).toHaveBeenCalled();
+  });
+
+  it("E5.8#32：壳推送 checked 勾选标记——true 渲染 codicon-check，false 空占位", () => {
+    const { container } = render(<QuickPickHost />);
+    pushShell({
+      open: true,
+      placeholder: "",
+      items: [
+        { key: "a", searchText: "问题", label: "问题", checked: true },
+        { key: "b", searchText: "输出", label: "输出", checked: false },
+      ],
+    });
+
+    expect(screen.getByText("问题")).toBeTruthy();
+    expect(screen.getByText("输出")).toBeTruthy();
+    // 仅 checked:true 项渲染 ✓（false 保留空占位保对齐，但不渲染图标）
+    expect(container.querySelectorAll(".quick-pick-item-check").length).toBe(2);
+    expect(container.querySelectorAll(".quick-pick-item-check .codicon-check").length).toBe(1);
   });
 });

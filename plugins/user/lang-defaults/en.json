@@ -238,5 +238,7 @@
   "放大": "Zoom In",
   "缩小": "Zoom Out",
   "重置缩放": "Reset Zoom",
-  "窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%": "Window zoom level — 0 is the original size; each ±1 zooms 20% larger or smaller"
+  "窗口缩放级别——0 为原始大小，每 ±1 放大/缩小 20%": "Window zoom level — 0 is the original size; each ±1 zooms 20% larger or smaller",
+  "选择要在面板显示的视图": "Select a view to display in the panel",
+  "已隐藏": "Hidden"
 }

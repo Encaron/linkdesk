@@ -11,7 +11,7 @@
  * App.tsx 本身 = 聚合器（零 effect 零业务逻辑）：state 声明 → 子 hook 编排 → usePoolSync 推池。
  * 消费方零变更（main.tsx 仍 import App 默认导出）。
  */
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager } from "./hooks/useTabManager";
@@ -51,7 +51,10 @@ function App() {
   // E5.7#63.7：底部面板激活视图——真相源在壳（池只被动渲染）。null = 尚未选择 → usePoolSync 回退 views[0]
   const [panelActiveViewId, setPanelActiveViewId] = useState<string | null>(null);
   // E5.8#0d.10-3d：壳↔池 UI 桥接器（池 events 转发 + QuickPick/Toast/Dialog 哑桥 + 内存压力）迁入 src/App/bridges.ts
-  useUiBridges({ setPanelActiveViewId });
+  // E5.8#32：面板激活视图 ref——bridges 桥 serialize 判断已激活勾选（ref 稳定，桥 effect 保持 deps 恒不变注册一次）
+  const panelActiveViewIdRef = useRef(panelActiveViewId);
+  panelActiveViewIdRef.current = panelActiveViewId;
+  useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef });
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E5.8#0d.10-3e：侧栏宿主状态机（折叠状态机 + 状态同步 + 启动恢复）迁入 src/App/sidebarHost.ts

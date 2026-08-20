@@ -678,6 +678,9 @@ function chkPoolQuickPickItem(v: unknown, p: string, errs: string[]): void {
     const _t80 = v as Record<string, unknown>;
     if (typeof _t80.key !== "string") errs.push(((p) + ".key") + ": 期望 string，实收 " + typeof _t80.key);
     if (typeof _t80.searchText !== "string") errs.push(((p) + ".searchText") + ": 期望 string，实收 " + typeof _t80.searchText);
+    if (_t80.checked !== undefined) {
+    if (!(_t80.checked === false || _t80.checked === true)) errs.push(((p) + ".checked") + ": 期望 false|true");
+    }
     if (typeof _t80.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t80.label);
     if (_t80.category !== undefined) {
     if (typeof _t80.category !== "string") errs.push(((p) + ".category") + ": 期望 string，实收 " + typeof _t80.category);

@@ -279,6 +279,8 @@ export interface PoolQuickPickItem {
     key: string;
     /** getSearchText(item)——池本地模糊匹配 */
     searchText: string;
+    /** E5.8#32：已激活项勾选标记——label 左侧 ✓。undefined = 无勾选（通用 QuickPick 不受影响）；true/false = 渲染固定占位保对齐 */
+    checked?: boolean;
     /** 第一行左——已 t() 解析 */
     label: string;
     /** 第一行右——已 t() 解析 */

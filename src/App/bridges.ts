@@ -14,13 +14,16 @@ import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import i18n from "../i18n";
+import { showPanelCreatePicker } from "./panelCreatePicker"; // E5.8#32：面板 [+] 视图选择器
 
 export interface UiBridgesDeps {
   setPanelActiveViewId: (v: string | null) => void;
+  /** E5.8#32：面板激活视图 ref（App 同步）——panel:createView 桥 serialize 判断已激活勾选。ref 稳定 → 桥 effect 不重注册 */
+  panelActiveViewIdRef: { current: string | null };
 }
 
 /** 壳↔池 UI 桥接器集合——全部独立 window/服务订阅，注册一次（setPanelActiveViewId 是 useState 稳定 setter，deps 恒不变） */
-export function useUiBridges({ setPanelActiveViewId }: UiBridgesDeps): void {
+export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiBridgesDeps): void {
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
   useEffect(() => {
@@ -83,6 +86,16 @@ export function useUiBridges({ setPanelActiveViewId }: UiBridgesDeps): void {
     });
     return () => { offSelect?.(); offResize?.(); };
   }, [setPanelActiveViewId]);
+
+  // E5.8#32：桥接池面板 [+] 新建视图——panel:createView（现网 emit 零监听 no-op——#88 ③）→
+  // QuickPick 视图选择器（showPanelCreatePicker 壳侧构建 + QuickPick 桥推 DTO，复用 #15 现成链路）。
+  // 无 panel 贡献容器时 picker 列表空（QuickPick 空态）——命令无可见效果。
+  useEffect(() => {
+    const unsub = window.linkdesk?.events?.on("panel:createView", () => {
+      showPanelCreatePicker(setPanelActiveViewId, panelActiveViewIdRef);
+    });
+    return () => { unsub?.(); };
+  }, [setPanelActiveViewId, panelActiveViewIdRef]);
 
   // E5.7#15：QuickPick 聪慧→哑桥——壳状态序列化成 DTO 推池 QuickPickHost 哑渲染，
   // 池动作（select/highlight/close/itemAction）按 key 回传，壳重解析原始 item 执行回调。
