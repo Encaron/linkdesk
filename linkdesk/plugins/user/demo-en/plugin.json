@@ -4,6 +4,8 @@
   "version": "1.0.0",
   "description": "E5.8#37.9.2 English-only example plugin——a foreign author who only speaks English, plugin for English users. i18n keys are English, no translation file ships, text shows as-is in any app language. Safe to uninstall.",
   "author": "Official",
+  "icon": "globe",
+  "appearsIn": { "iconBar": "top", "sidePanel": true },
   "contributes": {
     "viewsContainers": {
       "hello-sidebar": { "title": "Hello World", "location": "sidebar" }
