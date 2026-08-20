@@ -149,6 +149,10 @@ export function installMockLinkdesk(): void {
       ready: makeLogger("pool.ready"),
       sidebarAction: makeLogger("pool.sidebarAction"),
       tabAction: makeLogger("pool.tabAction"),
+      // E5.8#30.16（P8）：dev 预览无插件注册——关闭一律放行（beforeClose 返回 true，Handler 注册/注销留日志）
+      registerBeforeClose: makeLogger("pool.registerBeforeClose"),
+      unregisterBeforeClose: makeLogger("pool.unregisterBeforeClose"),
+      beforeClose: async () => true,
       // ── 壳侧面（preview 无壳侧消费——留壳日志 + no-op 订阅）──
       pushLayout: makeLogger("pool.pushLayout"),
       onReady: () => () => {},

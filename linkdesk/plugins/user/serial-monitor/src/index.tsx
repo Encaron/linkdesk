@@ -21,7 +21,8 @@ import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compart
 import { search, RegExpCursor } from "@codemirror/search";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
 // E5.8#28：serial 推流载荷契约化（@linkdesk/contracts，零 @src/core）——useIpcEvent 泛型窄化用
-import type { SerialDataPayload, SerialSystemPayload } from "@linkdesk/contracts";
+// E5.8#30.16（P8）：PoolTab——beforeClose handler 接收的标签页快照类型（契约导出，第三方插件同路径）
+import type { SerialDataPayload, SerialSystemPayload, PoolTab } from "@linkdesk/contracts";
 // E5.6#11.5h：RingBuffer 内联到 utils/——池插件零 @src/core 依赖
 import { RingBuffer } from "./utils/RingBuffer";
 // E5.8#29：端口键控过滤（S12/S13 收敛）——payload.portName 按会话口过滤，取代 portOpenRef 全局门控 + 正则挖口名
@@ -30,7 +31,10 @@ import { matchesPort } from "./utils/portFilter";
 // E5.8#30.14（P4）：getSessionById——unmount 快照前判会话是否仍存在（会话已删则不写，防快照泄漏）
 import { useSession, setActiveSessionId, getActiveSessionId, getSessionById } from "./hooks/useSerialSessions";
 // E5.8#30.12（P6）：per-port TX/RX——接收区工具栏每标签页计数（状态栏全局计数已删）
-import { usePortStats } from "./services/SerialContext";
+// E5.8#30.16（P8）：getOpenPorts（本会话口是否开）+ closePortFromModule（关串口咽喉）——beforeClose handler 用
+import { usePortStats, getOpenPorts, closePortFromModule } from "./services/SerialContext";
+// E5.8#30.16（P8）：handler 非 React 环境（模块顶层注册）——用全局 i18n 实例 t()（与 useTranslation 同源）
+import i18n from "i18next";
 import ControlPanel from "./components/ControlPanel";
 import { useSendData, formatTimestamp, type SendContext, type SendCallbacks } from "./utils/useSendData";
 import SearchBar from "./components/SearchBar";
@@ -68,6 +72,31 @@ window.linkdesk?.menu?.registerItems?.("quickSendContext", "serial-monitor", [
   { command: "serial-monitor.quickSendEdit", group: "edit", label: "编辑" },
   { command: "serial-monitor.quickSendDelete", group: "danger", label: "删除" },
 ]);
+
+// E5.8#30.16（P8）：通用「beforeClose 可取消」通道——插件注册自己的关闭前 handler（壳重建的通用通道，非串口业务）。
+// 串口逻辑：关开着串口的标签页 → 强确认「会话正在使用 {{port}}，将断开连接」（与 #30.13 P9 共用同一 key）→
+// 确认后先关串口再允许关（防数据丢失）；取消则标签页/串口双保留。防循环：handler 内 closePort 走
+// closePortFromModule（只关串口，不再触发关闭确认链）；防重入由壳 GroupTabBar closingRef 兜底（确认后 closePort 恰好一次）。
+// plugin.json `tabBehavior.invokeBeforeClose: "close_port"` 保留作声明信号（schema 兼容，壳不再消费其命令名）。
+window.linkdesk?.pool?.registerBeforeClose?.("serial-monitor", async (tab: PoolTab): Promise<boolean> => {
+  const session = getSessionById(tab.sourceId ?? tab.id);
+  if (!session || !session.port) return true; // 无会话/未选口——放行
+  if (!getOpenPorts().has(session.port)) return true; // 本会话口没开着——放行（关标签页不影响串口）
+  // 开着串口——按「关闭时提示」配置决定是否弹确认（P9 统一提示体系，默认开）
+  let promptOnClose = true;
+  try {
+    promptOnClose = (await window.linkdesk?.configuration?.get?.("serial-monitor.confirmOnClose")) !== false;
+  } catch { /* 读配置失败按默认开——宁多提示勿静默断口 */ }
+  if (promptOnClose) {
+    const confirmed = await window.linkdesk?.dialog?.confirm?.(
+      i18n.t("会话正在使用 {{port}}，将断开连接", { port: session.port })
+    );
+    if (!confirmed) return false; // 取消——标签页/串口双保留
+  }
+  // 确认（或配置关闭提示）——关串口恰好一次，走灯写入咽喉（#30.9，归一性）
+  await closePortFromModule(session.port);
+  return true; // 允许关
+});
 
 /* ---- 常量 ---- */
 const SCROLL_AT_BOTTOM_TOLERANCE = 5;

@@ -212,16 +212,27 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   }, []);
 
   // ── 关闭（带动画——对标旧 TabBar closeWithAnimation）──
-  // 先播 exit 动画 120ms → 再发 IPC 关闭。壳侧 handleTabAction 处理 invokeBeforeCloseTab。
+  // E5.8#30.16（P8）：先 await 通用 beforeClose 可取消通道（插件 handler 否决则标签页/串口双保留）→
+  // 再播 exit 动画 120ms → 发 IPC 关闭。壳侧 handleTabAction closeTab 处理 dirty 确认。
+  // closingRef 防重入：beforeClose 弹确认/动画进行中，同标签页的二次关闭点击直接忽略（确认后 closePort 恰好一次）。
+  const closingRef = useRef(new Set<string>());
   const handleClose = useCallback(
-    async (tabId: string, e?: ReactMouseEvent) => {
+    async (tab: PoolTab, e?: ReactMouseEvent) => {
       e?.stopPropagation();
-      setExitingTabId(tabId);
-      await new Promise((r) => setTimeout(r, 120));
-      tabAction({ action: "closeTab", tabId });
-      setExitingTabId(null);
+      if (closingRef.current.has(tab.id)) return;
+      closingRef.current.add(tab.id);
+      try {
+        const allowed = await poolApi?.beforeClose?.(tab.pluginId, tab) ?? true;
+        if (!allowed) return;
+        setExitingTabId(tab.id);
+        await new Promise((r) => setTimeout(r, 120));
+        tabAction({ action: "closeTab", tabId: tab.id });
+      } finally {
+        closingRef.current.delete(tab.id);
+        setExitingTabId(null);
+      }
     },
-    [tabAction],
+    [poolApi, tabAction],
   );
 
   // ── 渲染 ──
@@ -281,7 +292,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                   // 中键关闭
                   if (e.button === 1) {
                     e.preventDefault();
-                    handleClose(tab.id);
+                    handleClose(tab);
                     return;
                   }
                   // 左键拖拽——E5.6#16.7：交 MainRenderer 全局协调。
@@ -308,7 +319,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {tab.closeBehavior !== "blocked" && (
                   <button
                     className="group-tab-close"
-                    onClick={(e) => handleClose(tab.id, e)}
+                    onClick={(e) => handleClose(tab, e)}
                     title={t("关闭")}
                     aria-label={t("关闭")}
                   >
