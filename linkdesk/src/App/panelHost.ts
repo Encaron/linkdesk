@@ -22,7 +22,7 @@ export interface PanelHostDeps {
   panelActiveViewId: string | null;
 }
 
-export function usePanelHost({ panelActiveViewId }: PanelHostDeps): { panelVisible: boolean } {
+export function usePanelHost({ panelActiveViewId }: PanelHostDeps): { panelVisible: boolean; setPanelVisible: (v: boolean) => void } {
   // 初始 = 持久化值，旧布局（无 visible 字段）缺省可见（?? true）——#31 前老用户面板不消失
   const [panelVisible, setPanelVisible] = useState<boolean>(() => getPanelLayout()?.visible ?? true);
 
@@ -48,5 +48,6 @@ export function usePanelHost({ panelActiveViewId }: PanelHostDeps): { panelVisib
     });
   }, []);
 
-  return { panelVisible };
+  // E5.8#34.5：暴露 setPanelVisible 供 usePanelReveal 消费（面板展开）——useState setter 稳定
+  return { panelVisible, setPanelVisible };
 }

@@ -89,6 +89,7 @@ import { createPoolEvents } from './preload-pool/events';
 import { buildContextKey } from './preload-pool/contextkey';
 import { buildDecorations } from './preload-pool/decorations';
 import { buildViewContainer } from './preload-pool/viewcontainer';
+import { buildPanel } from './preload-pool/panel'; // E5.8#34.5：底部面板命名空间（panel.reveal）
 import {
   buildSerial,
   buildFilesystem,
@@ -174,6 +175,9 @@ try {
     contextKey: buildContextKey(),
     decorations: buildDecorations(),
     viewContainer: buildViewContainer(),
+
+    // ── E5.8#34.5：底部面板（插件聚焦面板视图）──
+    panel: buildPanel(),
   } satisfies PoolExposed;
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, poolExposed);
