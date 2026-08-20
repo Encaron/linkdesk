@@ -29,7 +29,7 @@ export interface ZoneConfig {
 
   dock?: {
     /** 贴哪条边 */
-    edge: "left" | "right" | "center" | "bottom";
+    edge: "left" | "right" | "center" | "bottom" | "top";
     /** 固定宽度（left/right zone） */
     width?: number;
     /** 固定高度（bottom zone） */
@@ -47,6 +47,9 @@ export interface ZoneConfig {
     order?: number;
     /** 🆕 E5#49a：折叠时的最小宽度（侧栏折叠后留 4px 竖条手柄） */
     collapsedWidth?: number;
+    /** 🆕 E5.8#36.7：面板横向对齐（顶/底面板消费——center=主栏宽 / left=延伸到左侧栏 / right=延伸到右侧栏 / justify=全宽）。
+     *  几何由池 grid 推导（DTO 尺寸 + 自身 CSS 常量），引擎只存配置 + 触发重推。默认 center。 */
+    align?: "left" | "center" | "right" | "justify";
   };
 }
 
@@ -88,13 +91,68 @@ export class LayoutEngine {
       },
       {
         zone: "panel",
-        dock: { edge: "bottom", height: 220, minHeight: 120, maxHeight: 600, resizable: true, order: 1 },
+        dock: {
+          edge: "bottom",
+          height: 220,
+          minHeight: 120,
+          maxHeight: 600,
+          resizable: true,
+          order: 1,
+          align: "center",
+        },
       },
       {
         zone: "statusbar",
         dock: { edge: "bottom", height: 24, minHeight: 24, maxHeight: 24, order: 0 },
       },
     ];
+  }
+
+  /* ── E5.8#36.7 复活 5 方法（E5 原版 c010bf1e^ 取回，适配当前 ZoneConfig——无 mode/float 字段）── */
+
+  /** 设置布局——替换全部 zone 配置 */
+  setLayout(zones: ZoneConfig[]): void {
+    this._zones = [...zones];
+    this._recalculate();
+  }
+
+  /** 添加一个 zone（右侧栏 zone 消费方） */
+  addZone(zone: ZoneConfig): void {
+    this._zones.push(zone);
+    this._recalculate();
+  }
+
+  /** 移除一个 zone */
+  removeZone(zoneId: string): void {
+    this._zones = this._zones.filter((z) => z.zone !== zoneId);
+    this._bounds.delete(zoneId);
+    this._onDidChangeLayout.fire();
+  }
+
+  /** 移动 zone 的 dock 边（面板位置 + 侧栏换边消费方）。
+   *  E5 原版语义 + 双槽互换规则：sidebar ↔ rightSidebar 恒占对边（主侧栏换右 → agent 右侧栏自动跳左）。 */
+  dockTo(zoneId: string, edge: "left" | "right" | "center" | "bottom" | "top"): void {
+    const z = this._zones.find((z) => z.zone === zoneId);
+    if (!z || !z.dock) return;
+    z.dock.edge = edge;
+    if (zoneId === "sidebar" && (edge === "left" || edge === "right")) {
+      const rs = this._zones.find((z) => z.zone === "rightSidebar");
+      if (rs?.dock) rs.dock.edge = edge === "right" ? "left" : "right";
+    }
+    this._recalculate();
+  }
+
+  /** 获取全部 zone 配置（只读） */
+  getAllZones(): readonly ZoneConfig[] {
+    return this._zones;
+  }
+
+  /** 设置面板横向对齐（E5 无此——本轮新消费方，dock 模型扩展）。几何由池 grid 推导，引擎只存配置 + 触发重推。 */
+  setAlign(zoneId: string, align: "left" | "center" | "right" | "justify"): void {
+    const z = this._zones.find((z) => z.zone === zoneId);
+    if (!z || !z.dock) return;
+    z.dock.align = align;
+    this._recalculate();
   }
 
   /** 设置容器尺寸（窗口 resize 时调用） */
@@ -159,6 +217,9 @@ export class LayoutEngine {
     const bottomZones = docked
       .filter((z) => z.dock!.edge === "bottom")
       .sort((a, b) => (a.dock!.order ?? 0) - (b.dock!.order ?? 0));
+    const topZones = docked
+      .filter((z) => z.dock!.edge === "top")
+      .sort((a, b) => (a.dock!.order ?? 0) - (b.dock!.order ?? 0));
     const leftZones = docked
       .filter((z) => z.dock!.edge === "left")
       .sort((a, b) => (a.dock!.order ?? 0) - (b.dock!.order ?? 0));
@@ -168,7 +229,15 @@ export class LayoutEngine {
     const centerZones = docked.filter((z) => z.dock!.edge === "center");
 
     const bottomHeight = bottomZones.reduce((sum, z) => sum + (z.dock!.height ?? 0), 0);
-    const contentHeight = Math.round(H - bottomHeight);
+    const topHeight = topZones.reduce((sum, z) => sum + (z.dock!.height ?? 0), 0);
+    // E5.8#36.7：contentHeight 负值钳制——top+bottom 横带超高（resizeZoneHeight clamp 后仍可能）→ 钳到 0 + 出声
+    const rawContentHeight = Math.round(H - topHeight - bottomHeight);
+    const contentHeight = Math.max(0, rawContentHeight);
+    if (contentHeight !== rawContentHeight) {
+      console.warn(
+        `[LayoutEngine] contentHeight 负值钳制: 计算 ${rawContentHeight}px → 0（top=${topHeight} bottom=${bottomHeight}）`,
+      );
+    }
 
     const leftWidth = leftZones.reduce((sum, z) => sum + (z.dock!.width ?? 0), 0);
     const rightWidth = rightZones.reduce((sum, z) => sum + (z.dock!.width ?? 0), 0);
@@ -200,11 +269,24 @@ export class LayoutEngine {
       });
     }
 
-    // Center zones——填满剩余空间
+    // Top zones——从顶向下堆叠，order 小的靠上（E5.8#36.7 新增）
+    let topY = 0;
+    for (const z of topZones) {
+      const h = z.dock!.height!;
+      this._bounds.set(z.zone, {
+        x: 0,
+        y: Math.round(topY),
+        width: W,
+        height: h,
+      });
+      topY += h;
+    }
+
+    // Center zones——填满剩余空间（顶横带存在时主区从 topHeight 起——池 grid 同为 row2）
     for (const z of centerZones) {
       this._bounds.set(z.zone, {
         x: Math.round(leftWidth),
-        y: 0,
+        y: Math.round(topHeight),
         width: centerWidth,
         height: contentHeight,
       });
@@ -228,7 +310,7 @@ export class LayoutEngine {
     // E5#9d：总宽度验证
     const totalW = docked.reduce((s, z) => {
       if (z.dock!.edge === "center") return s + centerWidth;
-      if (z.dock!.edge === "bottom") return s; // bottom zone 不计入宽度
+      if (z.dock!.edge === "bottom" || z.dock!.edge === "top") return s; // 横带不计入宽度
       return s + (z.dock!.width ?? 0);
     }, 0);
     if (Math.round(totalW) !== W) {
