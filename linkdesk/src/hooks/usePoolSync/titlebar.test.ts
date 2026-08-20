@@ -10,6 +10,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { clearRegistrationLayers } from "../../core/registry/registrationTracker";
 import { registerCommand, clearCommands } from "../../core/registry/commands/CommandRegistry";
 import { registerMenuItems, MENU_SLOTS, clearMenus } from "../../core/registry/commands/MenuRegistry";
+import { ContextKeyService } from "../../core/registry/commands/ContextKeyService"; // E5.8#37.6：when 过滤全局 context key
 import { buildTitleBarMenuGroups, buildHamburgerMenuGroups } from "./titlebar";
 
 const SHELL = "linkdesk.shell";
@@ -111,11 +112,62 @@ describe("buildTitleBarMenuGroups（E5.8#33 面板菜单）", () => {
   });
 });
 
+describe("when 过滤（E5.8#37.6 侧栏换边菜单项——当开关至多一项显示）", () => {
+  beforeEach(() => {
+    clearRegistrationLayers();
+    clearCommands();
+    clearMenus();
+    ContextKeyService.clear();
+  });
+
+  /** 注册完整「查看」组 + 换边双 when 门控项——shellMenus.ts 同款形状（菜单栏/汉堡共用 MenuBar 槽） */
+  function registerViewMenuWithToggle(): void {
+    registerMenuItems(MENU_SLOTS.MenuBar, SHELL, [
+      {
+        command: "",
+        label: "查看",
+        group: "view",
+        children: [
+          { command: "workbench.action.showCommands", group: "view" },
+          { command: "workbench.action.toggleSidebarPosition", label: "移动到右侧", group: "view", when: "sidebarPosition == 'left'" },
+          { command: "workbench.action.toggleSidebarPosition", label: "移动到左侧", group: "view", when: "sidebarPosition == 'right'" },
+        ],
+      },
+    ]);
+    registerCommand(SHELL, { id: "workbench.action.toggleSidebarPosition", title: "切换侧栏位置", handler: async () => {} });
+  }
+
+  it("菜单栏「查看」——sidebarPosition=left → 只显示「移动到右侧」；=right → 只显示「移动到左侧」", () => {
+    registerViewMenuWithToggle();
+
+    ContextKeyService.setValue("sidebarPosition", "left");
+    const left = buildTitleBarMenuGroups(id).find((g) => g.group === "view")!;
+    expect(left.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
+      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
+
+    ContextKeyService.setValue("sidebarPosition", "right");
+    const right = buildTitleBarMenuGroups(id).find((g) => g.group === "view")!;
+    expect(right.items.filter((i) => i.command === "workbench.action.toggleSidebarPosition"))
+      .toEqual([{ label: "移动到左侧", command: "workbench.action.toggleSidebarPosition" }]);
+  });
+
+  it("汉堡同款——when 不满足项隐藏（原灰显）", () => {
+    registerViewMenuWithToggle();
+
+    ContextKeyService.setValue("sidebarPosition", "left");
+    const view = buildHamburgerMenuGroups(id).find((g) => g.group === "view")!;
+    // 父项保留（汉堡不展平）——子面板只含 when 命中的换边项（另一项被过滤隐藏）
+    expect(view.items[0].children!.filter((c) => c.command === "workbench.action.toggleSidebarPosition"))
+      .toEqual([{ label: "移动到右侧", command: "workbench.action.toggleSidebarPosition" }]);
+  });
+});
+
 describe("buildHamburgerMenuGroups（E5.8#33 汉堡同样归并）", () => {
   beforeEach(() => {
     clearRegistrationLayers();
     clearCommands();
     clearMenus();
+    ContextKeyService.clear();
   });
 
   it("面板槽招牌 → 汉堡面板组——父项保留（不展平），子项 = 打开面板", () => {

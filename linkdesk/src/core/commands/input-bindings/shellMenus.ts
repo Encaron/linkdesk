@@ -31,6 +31,12 @@ export function registerShellMenus(): void {
         { command: "workbench.action.selectTheme", group: "view" },
         { command: "workbench.action.selectLanguage", group: "view" },
         { command: "workbench.action.openKeybindingsSettings", group: "view" },
+        // E5.8#37.6：侧栏换边——双 when 门控菜单项（左边 → 显示「移动到右侧」；右边 → 显示「移动到左侧」，
+        // 同命令 toggleSidebarPosition，当开关至多一项显示）。when 壳侧一站式过滤
+        // （菜单栏序列化 buildTitleBarMenuGroups / 汉堡 / ui.ts getItems）——sidebarPosition
+        // context key 由 usePoolSync 随布局推送保持同步。
+        { command: "workbench.action.toggleSidebarPosition", label: "移动到右侧", group: "view", when: "sidebarPosition == 'left'" },
+        { command: "workbench.action.toggleSidebarPosition", label: "移动到左侧", group: "view", when: "sidebarPosition == 'right'" },
       ],
     },
   ]);
@@ -87,6 +93,11 @@ export function registerShellMenus(): void {
   registerMenuItems(MENU_SLOTS.ViewTitleContext, APP_PLUGIN_ID, [
     { command: "workbench.action.toggleContainerCollapse", group: "navigation" },
     { command: "workbench.action.resetContainerPosition", group: "navigation" },
+    // E5.8#37.6：侧栏换边——双 when 门控（当开关至多一项显示），同命令 toggleSidebarPosition。
+    // when 过滤壳侧一站式（ui.ts getItems 的 menu:getItems）——sidebarPosition context key
+    // 由 usePoolSync 随布局推送保持同步（折叠/重置位置/视图同组 = 侧栏 title 右键）。
+    { command: "workbench.action.toggleSidebarPosition", label: "移动到右侧", group: "navigation", when: "sidebarPosition == 'left'" },
+    { command: "workbench.action.toggleSidebarPosition", label: "移动到左侧", group: "navigation", when: "sidebarPosition == 'right'" },
     // E5#44d：Views 子菜单——空 children 触发 ContextMenu.resolveChildren 回调
     { command: "", label: "视图", group: "views", children: [] },
   ]);

@@ -28,6 +28,7 @@ import type { StatusBarEntry } from "../core/react/events/ShellEvents"; // E5.7#
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
+import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import { resolvePluginIcon } from "../core/utils/plugin/iconUtils";
@@ -99,6 +100,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
   });
 
   useEffect(() => {
+    // E5.8#37.6：侧栏边 context key——当开关（双 when 门控菜单项 + 菜单栏「查看」+ 命令面板共用）。
+    // 真相源 = LayoutEngine dock.edge（narrowSidebarEdge 收窄）——随每次重推保持同步，
+    // 壳侧 when 过滤（buildTitleBarMenuGroups / buildHamburgerMenuGroups / ui.ts getItems）即可命中。
+    ContextKeyService.setValue("sidebarPosition", narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
+
     // E5.6#11-fix8：记住上次非空 sidebarView——图标栏坍塌时 emit null，但 collapsed ▶ 仍需知道容器
     if (sidebarView) {
       lastSidebarViewRef.current = sidebarView;

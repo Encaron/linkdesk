@@ -2,12 +2,13 @@
  * MenuItemList——池侧归一化菜单项渲染器。E5.7#6 从 TitleBarZone 提取（#5 建，供汉堡复用）。
  *
  * E5.8#2：壳 MenuRenderer.tsx 已删（零消费）——本组件为菜单项渲染唯一实现。
- * 池 = 哑渲染器：label/shortcut/disabled 全部壳侧解析后推送（显示文本铁律），
+ * 池 = 哑渲染器：label/shortcut 全部壳侧解析后推送（显示文本铁律），
  * 池只做 hover 时序（100ms 进 / 150ms 出——壳同款）与子面板弹出。
  *
  * 两种模式（对标壳 MenuRenderer 的 cssPrefix 参数）：
- *   - items（titlebar 下拉）：单列表，无组标题、无快捷键、无禁用态（壳 checkWhen=false）
- *   - groups（☰ 汉堡）：分组区块 + 组标题，快捷键 + when 灰显（壳 showGroups+showKeybindings+checkWhen）
+ *   - items（titlebar 下拉）：单列表，无组标题、无快捷键
+ *   - groups（☰ 汉堡）：分组区块 + 组标题，快捷键（壳 showGroups+showKeybindings）
+ *   - E5.8#37.6：when 不满足项由壳过滤隐藏（原灰显）——池不再接收 disabled 字段
  */
 
 import { useState, useRef, useCallback } from "react";
@@ -53,11 +54,10 @@ function MenuItemList({ items, groups, onCommand, cssPrefix }: MenuItemListProps
     return (
       <button
         key={key}
-        className={`${cssPrefix}-item${hoveredKey === key ? ` ${cssPrefix}-item-hovered` : ""}${item.disabled ? ` ${cssPrefix}-item-disabled` : ""}`}
-        disabled={item.disabled}
+        className={`${cssPrefix}-item${hoveredKey === key ? ` ${cssPrefix}-item-hovered` : ""}`}
         onMouseEnter={() => scheduleHover(hasChildren ? key : null)}
         onClick={() => {
-          if (item.disabled || hasChildren) return;
+          if (hasChildren) return;
           onCommand(item.command);
         }}
       >

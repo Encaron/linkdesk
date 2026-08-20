@@ -24,6 +24,13 @@ export const MENU_STYLE_HAMBURGER_VISIBLE: Record<string, boolean> = {
   both: true,
 };
 
+/** E5.8#37.6：when 过滤——when 缺失 = 恒匹配；不匹配 = 菜单项隐藏（对换菜单当开关）。
+ *  菜单栏/汉堡统一语义（壳 MenuRenderer 的 when 过滤壳侧一站式）。ContextKeyService.matches
+ *  读全局 context key（如 sidebarPosition——usePoolSync 随布局推送保持同步）。 */
+function whenMatch(item: MenuItem): boolean {
+  return !item.when || ContextKeyService.matches(item.when);
+}
+
 /**
  * E5.7#5：菜单栏数据序列化——壳 TitleBar 的 group 分组 / flattenGroupItems 展平 /
  * MenuRenderer getLabel 翻译三合一搬入壳侧，池哑渲染（显示文本铁律）。
@@ -58,17 +65,24 @@ export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGro
   const { groups, sortedGroupNames } = collectMenuBarGroups();
 
   // label 解析与壳 MenuRenderer 一致：item.label > command.title > command id，再 t()
-  const resolveItem = (item: MenuItem): PoolMenuItem => ({
-    label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
-    command: item.command,
-    ...(item.children?.length ? { children: item.children.map(resolveItem) } : {}),
-  });
+  // E5.8#37.6：when 过滤——不匹配的菜单项隐藏（顶层 flatten 与嵌套 children 双处）
+  const resolveItem = (item: MenuItem): PoolMenuItem => {
+    const children = item.children?.filter(whenMatch).map(resolveItem);
+    return {
+      label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
+      command: item.command,
+      ...(children?.length ? { children } : {}),
+    };
+  };
   const flattenGroupItems = (items: Array<MenuItem & { pluginId: string }>): PoolMenuItem[] => {
     const result: PoolMenuItem[] = [];
     for (const item of items) {
+      if (!whenMatch(item)) continue;
       if (item.children?.length) {
         if (!item.command) {
-          for (const child of item.children) result.push(resolveItem(child));
+          for (const child of item.children) {
+            if (whenMatch(child)) result.push(resolveItem(child));
+          }
         } else {
           result.push(resolveItem(item));
         }
@@ -112,16 +126,18 @@ export function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGr
       )
       .join(" ");
 
-  const resolveItem = (item: MenuItem): PoolMenuItem => {
+  // E5.8#37.6：when 不满足 → 隐藏（原灰显——对换菜单当开关，至多一项显示；壳 MenuRenderer 语义 = 过滤）。
+  // disabled 字段随此次移除（PoolMenuItem/MenuItemList/CSS 同步删——无生产者即成死代码）
+  const resolveItem = (item: MenuItem): PoolMenuItem | null => {
+    if (!whenMatch(item)) return null;
     const kb = allKeybindings.find((k) => k.command === item.command);
+    const children = item.children?.map(resolveItem).filter((c): c is PoolMenuItem => c !== null);
     return {
       label: item.label ? t(item.label) : item.command ? t(getCommand(item.command)?.title ?? item.command) : "",
       command: item.command,
       // 壳 MenuRenderer.getKeyLabel：showKeybindings + 无绑定 → 不显示
       ...(kb?.key ? { shortcut: formatKeyLabel(kb.key) } : {}),
-      // 壳 MenuRenderer.isDisabled：checkWhen + when 不满足 → 灰显（when 缺省 = 匹配）
-      ...(!ContextKeyService.matches(item.when) ? { disabled: true } : {}),
-      ...(item.children?.length ? { children: item.children.map(resolveItem) } : {}),
+      ...(children?.length ? { children } : {}),
     };
   };
 
@@ -130,7 +146,7 @@ export function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGr
     return {
       group: groupName,
       label: t(resolveGroupLabel(groupItems, groupName)),
-      items: groupItems.map(resolveItem),
+      items: groupItems.map(resolveItem).filter((x): x is PoolMenuItem => x !== null),
     };
   });
 }

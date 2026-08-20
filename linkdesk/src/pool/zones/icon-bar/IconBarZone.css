@@ -263,21 +263,7 @@
   opacity: 1;
 }
 
-/* 禁用态——when 条件不满足时灰色不可点击（壳侧已判定 disabled 字段） */
-.hamburger-item-disabled,
-.hamburger-item-disabled:hover,
-.hamburger-item-disabled.hamburger-item-hovered {
-  color: var(--text-muted);
-  opacity: 0.45;
-  background: none !important;
-  cursor: default;
-}
-
-.hamburger-item-disabled .hamburger-item-key,
-.hamburger-item-disabled .hamburger-chevron {
-  color: var(--text-muted);
-  opacity: 0.45;
-}
+/* E5.8#37.6：禁用态样式已删——when 不满足项由壳过滤隐藏（原灰显），disabled 字段不复存在 */
 /* jscpd:ignore-end */
 
 /* ── E5.7#6 补丁：拖拽换位——壳 IconBar.css 拖拽样式迁入 ── */
