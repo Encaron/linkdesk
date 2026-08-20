@@ -329,6 +329,14 @@ class SerialService {
 
   // ── E5.8#26 D8——卸载连坐（主进程内部，非公开 API）──
 
+  /** 当前端口 owner 去重集合——rescan 连坐回收判定用（loader 对比插件集合）。
+   *  ownerPluginId 未声明的口（壳/无归属打开）不进集合——绝不因任何插件卸载被误关。 */
+  getPortOwners(): string[] {
+    return [...this.ports.values()]
+      .map((s) => s.ownerPluginId)
+      .filter((id): id is string => Boolean(id));
+  }
+
   /** 关闭指定插件打开的全部端口——卸载插件时回收其硬件资源（S16 补洞）。
    *  挂钩走 Phase 2 可逆注册主进程侧机制（#8 定案面），本方法只做资源回收。
    *  幂等：重复调用（插件主动关 + 连坐）对已删条目 no-op。 */
