@@ -27,7 +27,8 @@ import { RingBuffer } from "./utils/RingBuffer";
 // E5.8#29：端口键控过滤（S12/S13 收敛）——payload.portName 按会话口过滤，取代 portOpenRef 全局门控 + 正则挖口名
 import { matchesPort } from "./utils/portFilter";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
-import { useSession, setActiveSessionId, getActiveSessionId } from "./hooks/useSerialSessions";
+// E5.8#30.14（P4）：getSessionById——unmount 快照前判会话是否仍存在（会话已删则不写，防快照泄漏）
+import { useSession, setActiveSessionId, getActiveSessionId, getSessionById } from "./hooks/useSerialSessions";
 // E5.8#30.12（P6）：per-port TX/RX——接收区工具栏每标签页计数（状态栏全局计数已删）
 import { usePortStats } from "./services/SerialContext";
 import ControlPanel from "./components/ControlPanel";
@@ -176,6 +177,39 @@ const timestampMarkField = StateField.define<RangeSet<Decoration>>({
   },
   provide: (f) => EditorView.decorations.from(f),
 });
+
+/* ---- E5.8#30.14（P4）：合屏迁移快照——跨组 remount 前存档，mount 后恢复 ---- */
+// 方向 c（P4 拍板）：不走会话级持久化（太重）也不走跨组 keep-alive（违背 B22）。
+// 只快照接收区内容（CM6 行 + RingBuffer），连接状态靠 _initOnce 自动恢复。
+// 生命周期：unmount cleanup 写（会话仍在才写，会话已删不写防泄漏）→ 下次 mount 读 + 立即删。
+
+type LineType = "received" | "sent" | "system";
+
+interface ReceiveSnapshot {
+  lines: { text: string; type: LineType }[];
+  ring: { text: string; type: LineType }[];
+}
+
+/** key = sourceId（会话 id）。同一会话跨组移动共享——合并写入，mount 即删。 */
+const _receiveSnapshots = new Map<string, ReceiveSnapshot>();
+
+/** 提取 CM6 每行文本 + 行色——lineDecoField 行装饰的 cls（cm-line-<color>）映射回类型。 */
+function snapshotCmLines(view: EditorView): { text: string; type: LineType }[] {
+  const doc = view.state.doc;
+  const decos = view.state.field(lineDecoField);
+  const typeAt = new Map<number, LineType>();
+  decos.between(0, doc.length, (from, _to, deco) => {
+    const cls = deco.spec?.class as string | undefined;
+    if (cls === "cm-line-received") typeAt.set(from, "received");
+    else if (cls === "cm-line-sent") typeAt.set(from, "sent");
+    else if (cls === "cm-line-system") typeAt.set(from, "system");
+  });
+  const lines: { text: string; type: LineType }[] = [];
+  doc.forEachLine((line) => {
+    lines.push({ text: line.text, type: typeAt.get(line.from) ?? "received" });
+  });
+  return lines;
+}
 
 /* ---- 搜索高亮装饰系统 ---- */
 
@@ -396,6 +430,16 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
 
     return () => {
 			ro.disconnect();
+      // E5.8#30.14（P4）：合屏迁移 remount 前快照 CM6 行——本 effect cleanup 先跑、view 此刻仍存活。
+      // 会话已删的 tab 不写（removeSession 后不会再有该会话的 remount，写 = _receiveSnapshots 泄漏）；
+      // 空文档不写（没内容可恢复）。RingBuffer 快照由下方独立 effect 合并到同一份。
+      if (sourceId && getSessionById(sourceId)) {
+        const lines = snapshotCmLines(view);
+        if (lines.length > 0) {
+          const prev = _receiveSnapshots.get(sourceId);
+          _receiveSnapshots.set(sourceId, { lines, ring: prev?.ring ?? [] });
+        }
+      }
       view.destroy();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -500,6 +544,35 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // E5：tab close / plugin uninstall → disconnect serial。
   // 已通过 tabBehavior.invokeBeforeClose 在 TabBar 层处理——确认关闭后、closeTab 前 invoke。
   // 此机制比 useEffect cleanup 更可靠（cleanup 在 unmount 时可能因 React 批处理不可靠）。
+
+  // E5.8#30.14（P4）：mount 恢复——跨组 remount 时从 _receiveSnapshots 读回接收区历史。
+  // CM6 逐行 appendLine 重放（行色 + 时间戳 mark 由 appendLine 复用运行时路径重算，零新逻辑）；
+  // RingBuffer 逐条 write 回填（后续 data 连续衔接）。平时无快照 → 直接 no-op。
+  // deps 含 appendLine 是保险：设置变更触发重跑时快照已删 → 空 return，无害。
+  useEffect(() => {
+    if (!sourceId) return;
+    const snap = _receiveSnapshots.get(sourceId);
+    if (!snap) return;
+    _receiveSnapshots.delete(sourceId);
+    for (const it of snap.lines) appendLine(it.text, it.type);
+    for (const it of snap.ring) ringBuffer.current.write(it);
+  }, [sourceId, appendLine]);
+
+  // E5.8#30.14（P4）：unmount 快照 RingBuffer——与 CM6 快照（CM6 effect cleanup）合并为同一份。
+  // React cleanup 逆序执行：本 effect 后声明 → cleanup 先跑，CM6 view 仍存活，
+  // 故 CM6 cleanup 读 prev 时能合并到本 effect 已写入的 ring，两份不互相覆盖。
+  useEffect(() => {
+    // useRef 持有 RingBuffer 实例、从不重赋——局部引用等价于 current，且避开
+    // exhaustive-deps 对「ref 值可能在 cleanup 时变化」的保守告警（DOM ref 才需防）。
+    const rb = ringBuffer.current;
+    return () => {
+      if (!sourceId || !getSessionById(sourceId)) return;
+      const ring = rb.drainAll();
+      if (ring.length === 0) return;
+      const prev = _receiveSnapshots.get(sourceId);
+      _receiveSnapshots.set(sourceId, { lines: prev?.lines ?? [], ring });
+    };
+  }, [sourceId]);
 
   /** 文本转十六进制显示——Phase 5e receiveMode="hex" */
   const toHexDisplay = (text: string): string => {
