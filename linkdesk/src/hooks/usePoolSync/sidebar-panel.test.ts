@@ -8,8 +8,9 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService";
 import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService";
+import type { TitleActionWidget } from "../../core/api/types";
 import { clearPluginStates } from "../../core/services/plugins/PluginStateService";
-import { buildPanelSwitcherGroups } from "./sidebar-panel";
+import { buildPanelSwitcherGroups, buildPanelViewMetas, buildSidebarViewMetas } from "./sidebar-panel";
 
 const PLUGIN_ID = "switcher-test";
 const id = (s: string) => s;
@@ -90,5 +91,43 @@ describe("buildPanelSwitcherGroups（E5.8#34 容器切换器 DTO）", () => {
     ViewContainerService.registerView(PLUGIN_ID, "explorer", makeView({ id: "folders", title: "文件夹" }));
 
     expect(buildPanelSwitcherGroups(id, "")).toEqual([]);
+  });
+});
+
+describe("buildPanelViewMetas / buildSidebarViewMetas（E5.8#36.5 titleActions 声明透传）", () => {
+  beforeEach(() => {
+    ViewContainerService.unregisterAll(PLUGIN_ID);
+    clearPluginStates();
+  });
+
+  it("面板视图——titleActions 原样透传到 PanelViewMeta", () => {
+    const titleActions: TitleActionWidget[] = [
+      { type: "icon", id: "clear", command: "demo.clear", icon: "codicon-clear-all", title: "清空输出" },
+    ];
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出", titleActions }));
+
+    const metas = buildPanelViewMetas();
+    expect(metas).toHaveLength(1);
+    expect(metas[0].id).toBe("demo-output");
+    expect(metas[0].titleActions).toEqual(titleActions);
+  });
+
+  it("面板视图——无 titleActions 声明 → 字段缺省（右侧空白）", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "panel-demo", title: "面板演示", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "panel-demo", makeView({ id: "demo-output", title: "输出" }));
+
+    const metas = buildPanelViewMetas();
+    expect(metas[0].titleActions).toBeUndefined();
+  });
+
+  it("侧栏视图——同一声明透传到 SidebarViewMeta（#36.6 两处消费）", () => {
+    const titleActions: TitleActionWidget[] = [{ type: "dropdown", id: "samples", items: [{ label: "重载", command: "demo.reload" }] }];
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "explorer", title: "资源管理器", location: "sidebar" });
+    ViewContainerService.registerView(PLUGIN_ID, "explorer", makeView({ id: "folders", title: "文件夹", titleActions }));
+
+    const metas = buildSidebarViewMetas("explorer");
+    expect(metas).toHaveLength(1);
+    expect(metas[0].titleActions).toEqual(titleActions);
   });
 });

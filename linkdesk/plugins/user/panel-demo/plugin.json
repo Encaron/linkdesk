@@ -10,7 +10,34 @@
     },
     "views": {
       "panel-demo": [
-        { "id": "demo-output", "title": "输出", "render": "src/views/DemoOutputView.tsx", "order": 0 },
+        {
+          "id": "demo-output",
+          "title": "输出",
+          "render": "src/views/DemoOutputView.tsx",
+          "order": 0,
+          "titleActions": [
+            {
+              "type": "split",
+              "id": "add-log",
+              "command": "panel-demo.addLog",
+              "icon": "codicon-add",
+              "title": "添加演示日志",
+              "args": { "level": "info", "text": "主按钮——添加信息日志" },
+              "items": [
+                { "label": "添加信息", "command": "panel-demo.addLog", "args": { "level": "info" } },
+                { "label": "添加警告", "command": "panel-demo.addLog", "args": { "level": "warn" } },
+                { "label": "添加错误", "command": "panel-demo.addLog", "args": { "level": "error" } }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "clear-log",
+              "command": "panel-demo.clearLog",
+              "icon": "codicon-clear-all",
+              "title": "清空输出"
+            }
+          ]
+        },
         { "id": "demo-todo", "title": "待办", "render": "src/views/DemoTodoView.tsx", "order": 1 }
       ]
     }

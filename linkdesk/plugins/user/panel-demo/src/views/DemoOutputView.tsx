@@ -75,6 +75,28 @@ export default function DemoOutputView({ isActive }: { isActive: boolean }) {
     if (el) el.scrollTop = el.scrollHeight;
   }, [lines]);
 
+  // E5.8#36.5：视图动作区命令注册——titleActions 声明 command 的执行真相源（池侧注册表，
+  // 池 executeCommand 优先命中，无壳 IPC 往返）。handler 闭包仅引用稳定值（setLines/makeLine）
+  // 无陈旧闭包；registerCommand 幂等（Map.set 覆盖）——StrictMode 双挂载安全。
+  // when:"false" = 纯程序化命令不进命令面板（titleActions 专属）。
+  useEffect(() => {
+    const api = window.linkdesk?.commands;
+    api?.registerCommand?.(
+      "panel-demo.addLog",
+      (args?: { level?: LogLevel; text?: string }) => {
+        const level = (args?.level as LogLevel) ?? "info";
+        const text = args?.text ?? `动作区命令——追加 ${level} 日志`;
+        setLines((prev) => [...prev, makeLine(level, text)].slice(-200));
+      },
+      { when: "false" },
+    );
+    api?.registerCommand?.(
+      "panel-demo.clearLog",
+      () => setLines([]),
+      { when: "false" },
+    );
+  }, []);
+
   return (
     <div className="demo-output">
       <div className="demo-toolbar">

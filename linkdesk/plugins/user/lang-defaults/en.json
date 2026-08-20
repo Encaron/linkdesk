@@ -248,5 +248,12 @@
   "所有视图已隐藏": "All panel views are hidden",
   "从切换器勾选视图恢复显示": "Check views back from the switcher",
   "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "Views appear here after a plugin declares contributes.views location:\"panel\"",
-  "移至主区标签页": "Move to Editor Area"
+  "移至主区标签页": "Move to Editor Area",
+  "视图操作": "View Actions",
+  "更多操作": "More Actions",
+  "添加演示日志": "Add Demo Log",
+  "添加信息": "Add Info",
+  "添加警告": "Add Warning",
+  "添加错误": "Add Error",
+  "清空输出": "Clear Output"
 }

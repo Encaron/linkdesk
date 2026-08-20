@@ -18,6 +18,7 @@
  */
 
 import type { SplitNode } from "../../../core/utils/splitTree";
+import type { TitleActionWidget } from "../../api/types"; // E5.8#36.5：titleActions DTO——声明面直传（JSON 可序列化）
 
 // ── E5.6#11a ──
 
@@ -35,6 +36,8 @@ export interface SidebarViewMeta {
   titleTooltip?: string;
   singleViewPaneContainerTitle?: string;  // mergeHeaderWhenSingle 时替代 containerTitle
   minHeight?: number;                     // 声明最小高度——PaneSash effectiveMinHeight
+  /** E5.8#36.6：视图动作区声明透传——侧栏 section header 右侧（#36.5 同一声明，两处消费） */
+  titleActions?: TitleActionWidget[];
 }
 
 /** E5.7#84：单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
@@ -202,6 +205,8 @@ export interface PanelViewMeta {
   /** E5.7#63.7：视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
    *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
   renderPath: string;
+  /** E5.8#36.5：视图动作区声明透传——PanelZone 标签栏右侧按活动视图渲染（无声明 → 右侧空白） */
+  titleActions?: TitleActionWidget[];
 }
 
 /** E5.8#34：容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */

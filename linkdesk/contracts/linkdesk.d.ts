@@ -969,6 +969,49 @@ export interface IconBarLayout {
         groups: PoolMenuGroup[];
     };
 }
+/** 动作区下拉条目——label 显示文本（i18n key），command 执行，args 作为单个位置参数透传 */
+export interface TitleActionItem {
+    /** 显示文本——i18n key（中文原文；池 t() 解析——显示文本铁律） */
+    label: string;
+    /** 点击执行的命令 ID */
+    command: string;
+    /** 命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化，无则省略） */
+    args?: unknown;
+}
+/** 动作区 widget——三形态：icon 按钮 / 下拉菜单 / 主按钮+下拉复合（VS Code 终端 [+] + [▾] 同款）。
+ *  widget 是通用件不是给终端造的——谁声明谁用（通用 API 壳先行建设不等消费方，插件独立铁律）。 */
+export type TitleActionWidget =
+/** 单图标按钮——点击执行 command */
+{
+    type: "icon";
+    id: string;
+    command: string;
+    /** codicon 类名（如 "codicon-add"）——池渲染 `<span className={`codicon ${icon}`} />` */
+    icon: string;
+    /** tooltip / aria-label——i18n key */
+    title: string;
+    args?: unknown;
+}
+/** 纯下拉——chevron 按钮展开 items 列表 */
+ | {
+    type: "dropdown";
+    id: string;
+    items: TitleActionItem[];
+    /** chevron tooltip——i18n key */
+    title?: string;
+}
+/** 主按钮+下拉复合——主按钮执行 command（默认动作），右侧 chevron 展开 items 备选 */
+ | {
+    type: "split";
+    id: string;
+    command: string;
+    /** 主按钮图标——无 icon 时用 title（t() 后）作文本按钮 */
+    icon?: string;
+    /** 主按钮 tooltip / aria-label / 无 icon 时的文本——i18n key */
+    title: string;
+    items: TitleActionItem[];
+    args?: unknown;
+};
 /** 侧栏 view 元数据——从 ViewContainerService 序列化，经 PoolLayout 推送到 SidebarPool */
 export interface SidebarViewMeta {
     id: string; // view ID（"folders" / "search" / "installed"）
@@ -983,6 +1026,8 @@ export interface SidebarViewMeta {
     titleTooltip?: string;
     singleViewPaneContainerTitle?: string; // mergeHeaderWhenSingle 时替代 containerTitle
     minHeight?: number; // 声明最小高度——PaneSash effectiveMinHeight
+    /** E5.8#36.6：视图动作区声明透传——侧栏 section header 右侧（#36.5 同一声明，两处消费） */
+    titleActions?: TitleActionWidget[];
 }
 /** E5.7#84：单个侧栏容器的池渲染数据——SidebarLayout.containers[] 元素（keep-alive 容器清单） */
 export interface SidebarContainerLayout {
@@ -1078,6 +1123,8 @@ export interface PanelViewMeta {
     /** E5.7#63.7：视图渲染入口路径——loader 解析（_renderPath），池 PluginComponent 动态 import。
      *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
     renderPath: string;
+    /** E5.8#36.5：视图动作区声明透传——PanelZone 标签栏右侧按活动视图渲染（无声明 → 右侧空白） */
+    titleActions?: TitleActionWidget[];
 }
 /** E5.8#34：容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */
 export interface PanelSwitcherItem {

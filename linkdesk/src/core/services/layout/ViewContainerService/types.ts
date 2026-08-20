@@ -5,6 +5,8 @@
  * 依赖方向：types → React 全局命名空间（ComponentType/ReactNode）；零业务逻辑；被聚合器 re-export。
  */
 
+import type { TitleActionWidget } from "../../../api/types"; // E5.8#36.5：titleActions 声明面——JSON 可序列化，壳↔池直传
+
 /** 容器所在位置。对标 VS Code ViewContainerLocation。 */
 export type ViewContainerLocation = "sidebar" | "panel" | "auxiliarybar";
 
@@ -67,6 +69,9 @@ export interface ViewDescriptor {
   titleTooltip?: string;
   /** 标题右侧标记——数字/短文字（如已安装数量 "15"）。对标 VS Code IViewDescriptor.badge */
   badge?: string | number;
+  /** E5.8#36.5：视图动作区声明——contributes.views[].titleActions 透传（JSON 可序列化）。
+   *  壳统一渲染器消费（面板标签栏/侧栏 header 右侧），随视图走随视图迁移。 */
+  titleActions?: TitleActionWidget[];
 }
 
 /** 容器变更事件 */

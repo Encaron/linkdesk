@@ -226,6 +226,8 @@ export async function parseContributions(pluginId: string, c: Record<string, unk
               showActions: viewDef.showActions as "always" | "whenExpanded" | "default" | undefined,
               titleTooltip: viewDef.titleTooltip,
               minHeight: viewDef.minHeight,
+              // E5.8#36.5：titleActions 声明透传——ViewDescriptor 原样存（JSON 可序列化，壳→池直传零加工）
+              titleActions: viewDef.titleActions,
             };
             desc._renderPath = renderPath;
             ViewContainerService.registerView(pluginId, containerId, desc);

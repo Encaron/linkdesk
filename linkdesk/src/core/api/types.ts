@@ -177,6 +177,53 @@ export interface PluginManifest {
   contributes?: Record<string, unknown>;
 }
 
+/* ── E5.8#36.5：视图动作区声明——contributes.views[].titleActions（随视图走，面板/侧栏两处消费） ── */
+
+/** 动作区下拉条目——label 显示文本（i18n key），command 执行，args 作为单个位置参数透传 */
+export interface TitleActionItem {
+  /** 显示文本——i18n key（中文原文；池 t() 解析——显示文本铁律） */
+  label: string;
+  /** 点击执行的命令 ID */
+  command: string;
+  /** 命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化，无则省略） */
+  args?: unknown;
+}
+
+/** 动作区 widget——三形态：icon 按钮 / 下拉菜单 / 主按钮+下拉复合（VS Code 终端 [+] + [▾] 同款）。
+ *  widget 是通用件不是给终端造的——谁声明谁用（通用 API 壳先行建设不等消费方，插件独立铁律）。 */
+export type TitleActionWidget =
+  /** 单图标按钮——点击执行 command */
+  | {
+      type: "icon";
+      id: string;
+      command: string;
+      /** codicon 类名（如 "codicon-add"）——池渲染 `<span className={`codicon ${icon}`} />` */
+      icon: string;
+      /** tooltip / aria-label——i18n key */
+      title: string;
+      args?: unknown;
+    }
+  /** 纯下拉——chevron 按钮展开 items 列表 */
+  | {
+      type: "dropdown";
+      id: string;
+      items: TitleActionItem[];
+      /** chevron tooltip——i18n key */
+      title?: string;
+    }
+  /** 主按钮+下拉复合——主按钮执行 command（默认动作），右侧 chevron 展开 items 备选 */
+  | {
+      type: "split";
+      id: string;
+      command: string;
+      /** 主按钮图标——无 icon 时用 title（t() 后）作文本按钮 */
+      icon?: string;
+      /** 主按钮 tooltip / aria-label / 无 icon 时的文本——i18n key */
+      title: string;
+      items: TitleActionItem[];
+      args?: unknown;
+    };
+
 /* ── E3.6：contributes 已知 key 类型——用于 as 类型断言，消费端安全访问 ── */
 
 /** contributes.viewsContainers 的形状 */
@@ -210,6 +257,8 @@ export interface ContributesViews {
     titleTooltip?: string;
     /** 面板区 dock 最小高度（E5.7#63.7：ViewContainerService 消费）——E5.8#1c 补录 schema */
     minHeight?: number;
+    /** 视图动作区声明（E5.8#36.5）——面板标签栏/侧栏 header 右侧 widget 列表。随视图走随视图迁移 */
+    titleActions?: TitleActionWidget[];
   }>;
 }
 
