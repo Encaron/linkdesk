@@ -96,7 +96,7 @@
 ## 硬约束——写任何一行插件代码前
 
 1. **所有颜色走 CSS 变量 `var(--xxx)`**，禁止硬编码 hex
-2. **所有 UI 文字走 `t()`**，禁止硬编码中文（i18n key = 中文原文）
+2. **所有 UI 文字走 `t()`**，禁止绕过 `t()` 硬编码显示字符串（i18n key = 插件 UI 原文，建议作者母语——中文插件用中文 key，英文/法文插件用自己的语言 key）
 3. **右键菜单用 `<ContextMenu>` + MenuRegistry**，禁止手写右键菜单
 4. **弹窗用 `createPortal` render 到 `document.body`**
 5. **持久化走 `window.linkdesk.config.*`**，禁止 `localStorage.setItem()`
