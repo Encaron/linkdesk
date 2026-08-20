@@ -12,8 +12,7 @@
     "identityField": "sourceId"
   },
   "statusBar": [
-    { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" },
-    { "id": "stats", "label": "TX:0  RX:0", "align": "left" }
+    { "id": "connection", "icon": "circle-filled", "label": "", "align": "left" }
   ],
   "contributes": {
     "i18n": { "en": "i18n/en.json" },
@@ -45,11 +44,6 @@
     "configuration": {
       "title": "串口监视器",
       "properties": {
-        "serial-monitor.statusBar.txrx": {
-          "type": "boolean",
-          "default": true,
-          "description": "状态栏显示 TX/RX 计数"
-        },
         "serial-monitor.statusBar.connection": {
           "type": "boolean",
           "default": true,
@@ -58,7 +52,6 @@
       }
     },
     "configurationDefaults": {
-      "serial-monitor.statusBar.txrx": true,
       "serial-monitor.statusBar.connection": true
     },
     "commands": [

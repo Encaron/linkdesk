@@ -97,6 +97,21 @@
   border-color: var(--accent);
 }
 
+/* E5.8#30.12（P6）：接收区工具栏 per-tab TX/RX 计数——margin-left:auto 推到最右 */
+.receive-stats {
+  margin-left: auto;
+  align-self: center;
+  font-size: 11px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.receive-stats.muted {
+  color: var(--text-muted);
+}
+
 /* === 搜索条 === */
 
 .search-bar {

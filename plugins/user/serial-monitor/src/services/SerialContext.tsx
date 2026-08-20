@@ -28,18 +28,15 @@ interface SerialState {
   sourceName: string;
   baudRate: string;
   isOpen: boolean;
-  txBytes: number;
-  rxBytes: number;
   lastError: string | null;
 }
 
-/** wire getStatus() 返回面（portName/baudRate/isOpen）+ 历史 DTO 防御性字段（E5.6 前曾带 tx/rx/lastError） */
+/** wire getStatus() 返回面（portName/baudRate/isOpen）+ 历史 DTO 防御性字段（E5.6 前曾带 lastError）。
+ *  E5.8#30.12（P6）：txBytes/rxBytes 已删——投影 _sharedState 不再持有全局 TX/RX（per-port 计数归 _openPorts）。 */
 interface SerialStatusDto {
   portName?: string;
   baudRate?: number;
   isOpen?: boolean;
-  txBytes?: number;
-  rxBytes?: number;
   lastError?: string | null;
 }
 
@@ -67,8 +64,6 @@ let _sharedState: SerialState = {
   sourceName: "",
   baudRate: "115200",
   isOpen: false,
-  txBytes: 0,
-  rxBytes: 0,
   lastError: null,
 };
 
@@ -81,8 +76,13 @@ const _openPorts = new Map<string, OpenPortEntry>();
 let _listenerId = 0;
 const _listeners = new Map<number, () => void>();
 
-// E5.5#7 Bug C fix：TX/RX 防抖同步——onStats 高频回调，不在 isOpen 变化守卫内。
-let _txRxSyncTimer: ReturnType<typeof setTimeout> | null = null;
+// E5.8#30.12（P6）：per-port 通知——接收区工具栏 per-tab TX/RX 实时刷新。
+// 非活动口的数据累计不触发全局 _setState（避免高频 onStats 全量重渲染），只通知本口订阅者。
+const _portListeners = new Map<string, Set<() => void>>();
+
+function _notifyPort(port: string): void {
+  _portListeners.get(port)?.forEach((fn) => fn());
+}
 
 /** E5.5#9l：per-tab 隔离——pluginState key 加 sourceName(COM 端口名) 前缀，防多实例互相覆盖 */
 /** E5.5#9l-fix：port 参数显式传入——_setState 内部 _sharedState 尚未更新，读 _sharedState.sourceName 会拿到旧值 */
@@ -111,20 +111,8 @@ function _setState(updater: (p: SerialState) => SerialState): void {
   const next = updater(_sharedState);
 
   // E5.8#30.9（P3）：isOpen/sourceName 的 pluginState 写入已剥离到 _writePortState 单一咽喉——
-  // 旧守卫读投影口 + 单布尔短路 → 后开者写前灯/开一关一串灯。此处只保留投影内存态 + TX/RX 防抖同步。
-
-  // TX/RX 变化且端口打开——防抖 250ms 同步到 pluginState。
-  // onStats 高频回调累加计数，直接每次 set 会拥塞 IPC。防抖合并为一次 set。
-  if (next.isOpen && (next.txBytes !== _sharedState.txBytes || next.rxBytes !== _sharedState.rxBytes)) {
-    if (_txRxSyncTimer) clearTimeout(_txRxSyncTimer);
-    const debounced = next;
-    _txRxSyncTimer = setTimeout(() => {
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("txBytes", debounced.sourceName), debounced.txBytes)
-        .catch(() => {});
-      window.linkdesk?.pluginState?.set("serial-monitor", _scopeKey("rxBytes", debounced.sourceName), debounced.rxBytes)
-        .catch(() => {});
-    }, 250);
-  }
+  // 旧守卫读投影口 + 单布尔短路 → 后开者写前灯/开一关一串灯。此处只保留投影内存态。
+  // E5.8#30.12（P6）：TX/RX 防抖同步已删——状态栏不再显示全局计数，per-port 计数走 _openPorts + _notifyPort。
 
   _sharedState = next;
   // 异步通知——让 React 18 自动批处理多个 _setState
@@ -149,8 +137,6 @@ function mergeStatus(p: SerialState, status: SerialStatusDto): SerialState {
     sourceName: status.portName ?? p.sourceName,
     baudRate: status.baudRate ?? p.baudRate,
     isOpen: status.isOpen ?? p.isOpen,
-    txBytes: status.txBytes ?? p.txBytes,
-    rxBytes: status.rxBytes ?? p.rxBytes,
     lastError: status.lastError ?? p.lastError,
   };
 }
@@ -188,6 +174,7 @@ function _initOnce(): void {
       const port = status.portName;
       if (!port) continue;
       _openPorts.set(port, { baudRate: status.baudRate ?? 0, txBytes: 0, rxBytes: 0 });
+      _notifyPort(port); // E5.8#30.12：F5 恢复 → 接收区 per-tab 计数刷新
       _writePortState(port, true); // E5.8#30.9：F5 恢复走单一咽喉（侧栏灯真相源）
     }
     // 单口投影兼容——现有主区 UI（ControlPanel）消费第一个打开口
@@ -210,8 +197,9 @@ function _registerIPCListeners(): void {
 
   _ipcCleanups = [
     // 高频 stats 回调——累加而非覆盖
-    // E5.8#29（S10 修根）：按 payload.portName 每口精确计数——_openPorts 权威态写对口计数器，
-    // 投影只累加活动口（_sharedState 是单口投影兼容视图，不再叠加所有口的计数）
+    // E5.8#29（S10 修根）：按 payload.portName 每口精确计数——_openPorts 权威态写对口计数器。
+    // E5.8#30.12（P6）：投影 _sharedState 的 TX/RX 已删（状态栏不再显示全局计数）——累计后仅 notify 本口订阅者
+    //（接收区工具栏 per-tab 计数；非活动口也实时，不触发全局 _setState 高频重渲染）。
     s.onStats?.((payload) => {
       const tx = payload.tx ?? 0;
       const rx = payload.rx ?? 0;
@@ -221,9 +209,7 @@ function _registerIPCListeners(): void {
         if (entry) {
           entry.txBytes += tx;
           entry.rxBytes += rx;
-        }
-        if (port === _sharedState.sourceName) {
-          _setState((p) => ({ ...p, txBytes: p.txBytes + tx, rxBytes: p.rxBytes + rx }));
+          _notifyPort(port);
         }
       }
     }),
@@ -304,6 +290,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     const fresh = (await s.getStatus(portName));
     if (fresh) _setState((p) => mergeStatus(p, fresh));
     _openPorts.set(portName, { baudRate, txBytes: 0, rxBytes: 0 });
+    _notifyPort(portName); // E5.8#30.12：打开 → 接收区 per-tab 计数从 0 起
     _writePortState(portName, true); // E5.8#30.9：打开按口显式亮灯
   }, [s]);
 
@@ -311,7 +298,8 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (!s || !port) return;
     await s.closePort(port);
     _openPorts.delete(port);
-    _setState((p) => ({ ...p, isOpen: false, txBytes: 0, rxBytes: 0 }));
+    _setState((p) => ({ ...p, isOpen: false }));
+    _notifyPort(port); // E5.8#30.12：关闭 → 接收区 per-tab 计数归零
     _writePortState(port, false); // E5.8#30.9：关闭按口显式灭灯
   }, [s]);
 
@@ -338,6 +326,7 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     if (oldPort && _openPorts.has(oldPort)) {
       await s.closePort(oldPort);
       _openPorts.delete(oldPort);
+      _notifyPort(oldPort); // E5.8#30.12：换口 → 旧口接收区 per-tab 计数归零
       _writePortState(oldPort, false);
       await openPort(name, Number(baudRateRef.current), encoding);
     }
@@ -365,4 +354,46 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
   }, [s]);
 
   return { state, actions: { toggleOpen, openPort, closePort, setSourceName, setBaudRate, refreshPorts } };
+}
+
+// ═══════════════════════════════════════════════════════
+// E5.8#30.12（P6）：per-port 只读 hooks——状态栏 (N) + 接收区工具栏 per-tab TX/RX
+// ═══════════════════════════════════════════════════════
+
+/** 打开口计数——状态栏 (N)（≥2 才显示数字）。订阅全局 _setState notify（开/关/换口/F5 都触发）。 */
+export function useOpenPortCount(): number {
+  const [count, setCount] = useState(_openPorts.size);
+  useEffect(() => {
+    const update = () => setCount(_openPorts.size);
+    update();
+    return _subscribe(update);
+  }, []);
+  return count;
+}
+
+/** per-port TX/RX + 开闭——接收区工具栏每标签页计数。订阅本口累计事件（活动/非活动口都实时）。 */
+export function usePortStats(port: string | null): { txBytes: number; rxBytes: number; isOpen: boolean } {
+  const [stats, setStats] = useState({ txBytes: 0, rxBytes: 0, isOpen: false });
+  useEffect(() => {
+    if (!port) {
+      setStats({ txBytes: 0, rxBytes: 0, isOpen: false });
+      return;
+    }
+    const entry = _openPorts.get(port);
+    setStats({ txBytes: entry?.txBytes ?? 0, rxBytes: entry?.rxBytes ?? 0, isOpen: _openPorts.has(port) });
+    const fn = () => {
+      const e = _openPorts.get(port);
+      setStats({ txBytes: e?.txBytes ?? 0, rxBytes: e?.rxBytes ?? 0, isOpen: _openPorts.has(port) });
+    };
+    let set = _portListeners.get(port);
+    if (!set) { set = new Set(); _portListeners.set(port, set); }
+    set.add(fn);
+    return () => {
+      const s = _portListeners.get(port);
+      if (!s) return;
+      s.delete(fn);
+      if (s.size === 0) _portListeners.delete(port);
+    };
+  }, [port]);
+  return stats;
 }
