@@ -7,9 +7,9 @@
  */
 
 import { useEffect, useRef } from "react";
-import { saveTabLayout, savePanelLayout, getPanelLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/layout/LayoutService";
+import { saveTabLayout, savePanelLayout, saveSidebarLayout, getPanelLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "../core/services/layout/WorkspaceService";
-import { layoutEngine } from "../core/services/layout/LayoutEngine";
+import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.8#36.9：edge 窄化守卫（dock.edge 宽类型 → DTO 窄类型）
 import type { TabState, LayoutData } from "../hooks/useTabManager";
 
 export interface LayoutPersistenceDeps {
@@ -68,13 +68,24 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
         // 不带上 panel 会在退出时冲掉面板状态。仅面板被用过（有激活视图/有历史状态）时写入。
         const panelActive = panelActiveViewIdRef.current;
         const panelHeight = layoutEngine.getBounds("panel")?.height;
+        // E5.8#36.9：位置/对齐同显隐合并落盘——防抖保存可能未覆盖，退出时兜底写入
+        const panelZone = layoutEngine.getZone("panel");
+        const panelEdge = narrowPanelEdge(panelZone?.dock?.edge);
+        const panelEdgeIsVertical = panelEdge === "left" || panelEdge === "right";
         if (panelActive || getPanelLayout()) {
           layout.panel = {
             height: panelHeight ?? 220,
+            ...(panelEdgeIsVertical
+              ? { width: layoutEngine.getBounds("panel")?.width ?? panelZone?.dock?.width ?? 300 }
+              : {}),
+            edge: panelEdge,
+            align: panelZone?.dock?.align ?? "center",
             ...(panelActive ? { activeViewId: panelActive } : {}),
             visible: panelVisibleRef.current, // E5.8#31：显隐合并落盘——防抖保存可能未覆盖
           };
         }
+        // E5.8#36.9：侧栏边——beforeunload 兜底落盘（防抖保存可能未覆盖）
+        layout.sidebar = { edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge) };
         syncWriteLayout(layout);
         syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
       } catch { /* 静默 */ }
@@ -104,31 +115,52 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
 
   // E5.7#63.7：面板布局状态持久化——100ms 防抖（标签页保存同款）。
   // 高度真相源 = LayoutEngine（App 不镜像 height state）；激活视图 = App state。
-  // 两路触发：panelActiveViewId 变化（effect 重跑）/ onDidChangeLayout（拖拽 resizeZoneHeight 后）。
+  // E5.8#36.9：+ 位置/对齐/宽度真相源同为 LayoutEngine（dockTo/setAlign/resizeZone）；
+  // 侧栏边锁步保存（同 onDidChangeLayout 触发）。
+  // 两路触发：panelActiveViewId 变化（effect 重跑）/ onDidChangeLayout（拖拽/换位/换边后）。
   // 与上次落盘值比对——窗口 resize/sidebar 变化也 fire onDidChangeLayout，不变不写盘。
   const panelSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const panelSaveInitialized = useRef(false);
-  const lastSavedPanelRef = useRef<{ height: number; activeViewId?: string; visible?: boolean } | null>(null);
+  const lastSavedPanelRef = useRef<{ height: number; edge: string; align: string; width?: number; activeViewId?: string; visible?: boolean } | null>(null);
+  const lastSavedSidebarEdgeRef = useRef<"left" | "right">(narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge));
   useEffect(() => {
     if (!ready) return;
     if (!panelSaveInitialized.current) {
-      // 首轮跳过——恢复（resizeZoneHeight 直设 + activeViewId 恢复）不该立刻写回盘。
+      // 首轮跳过——恢复（resizeZoneHeight 直设 + activeViewId 恢复 + dockTo/setAlign 恢复）不该立刻写回盘。
       // 恢复后 activeViewId 变化会触发本 effect 重跑进入正常保存。
       panelSaveInitialized.current = true;
       return;
     }
     const doSave = () => {
-      const height = layoutEngine.getBounds("panel")?.height ?? 220;
+      // E5.8#36.9：面板边/对齐/轴尺寸真相源 = LayoutEngine（壳不镜像 state）——与高度同源读取
+      const panelZone = layoutEngine.getZone("panel");
+      const edge = narrowPanelEdge(panelZone?.dock?.edge);
+      const align = panelZone?.dock?.align ?? "center";
+      const bounds = layoutEngine.getBounds("panel");
+      const height = bounds?.height ?? panelZone?.dock?.height ?? 220;
+      const isVertical = edge === "left" || edge === "right";
+      const width = isVertical ? (bounds?.width ?? panelZone?.dock?.width ?? 300) : undefined;
       // E5.8#31：合并显隐（ref 读活值）——toggle 立即落盘 + 本防抖保存同源同字段，最终一致
       const state = {
         height,
+        ...(isVertical ? { width } : {}),
+        edge,
+        align,
         ...(panelActiveViewId ? { activeViewId: panelActiveViewId } : {}),
         visible: panelVisibleRef.current,
       };
       const last = lastSavedPanelRef.current;
-      if (last && last.height === height && last.activeViewId === panelActiveViewId && last.visible === panelVisibleRef.current) return;
+      if (last && last.height === height && last.edge === edge && last.align === align && last.width === width
+          && last.activeViewId === panelActiveViewId && last.visible === panelVisibleRef.current) return;
       lastSavedPanelRef.current = state;
       void savePanelLayout(state).catch((e) => { console.error("[App] 保存面板布局失败:", e); });
+
+      // E5.8#36.9：侧栏边锁步保存——dockTo 换边 → onDidChangeLayout → 本防抖 → 落盘（#37.6 消费方）
+      const sidebarEdge = narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge);
+      if (lastSavedSidebarEdgeRef.current !== sidebarEdge) {
+        lastSavedSidebarEdgeRef.current = sidebarEdge;
+        void saveSidebarLayout({ edge: sidebarEdge }).catch((e) => { console.error("[App] 保存侧栏布局失败:", e); });
+      }
     };
     const schedule = () => {
       if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);

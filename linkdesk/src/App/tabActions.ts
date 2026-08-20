@@ -10,7 +10,7 @@
 import { useEffect } from "react";
 import { getViewPlugin } from "../pluginLoader/viewRegistry";
 import { shellEvents } from "../core/react/events/ShellEvents";
-import { getTabLayout, getPanelLayout } from "../core/services/layout/LayoutService";
+import { getTabLayout, getPanelLayout, getSidebarLayout } from "../core/services/layout/LayoutService";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
 import { syncCountersAfterRestore, type LayoutData } from "../hooks/useTabManager";
 import type { CreateTabOptions } from "../core/api/types";
@@ -99,14 +99,32 @@ export function useTabActions({
 
   // E5.7#63.7：mount 时恢复面板布局状态——高度直设 LayoutEngine（resizeZoneHeight 钳制，防坏值越界；
   // onDidChangeLayout → usePoolSync 重推恢复后的高度），激活视图设 App state（usePoolSync 校验存在性后回退 views[0]）。
-  // ready 守卫同标签页恢复（LayoutService 初始化完成后才能读）。
+  // E5.8#36.9：+ 恢复面板位置/对齐/轴尺寸（dockTo/setAlign/resizeZone）+ 侧栏边（dockTo swap 联动 rightSidebar）。
+  // 旧状态仅 height → edge/align 缺省 bottom/center（向后兼容）。ready 守卫同标签页恢复。
   useEffect(() => {
     if (!ready) return;
     try {
+      // E5.8#36.9：侧栏边恢复——dockTo 附 swap 规则同步 rightSidebar 对边；旧布局无 sidebar → 不动（保持 left）
+      const savedSidebar = getSidebarLayout();
+      if (savedSidebar?.edge) {
+        layoutEngine.dockTo("sidebar", savedSidebar.edge);
+      }
+
       const savedPanel = getPanelLayout();
       if (!savedPanel) return;
-      if (Number.isFinite(savedPanel.height)) {
-        layoutEngine.resizeZoneHeight("panel", savedPanel.height);
+      // E5.8#36.9：位置/对齐——先 dockTo 再 setAlign（各自触发 recalc + onDidChangeLayout 重推）
+      const edge = savedPanel.edge ?? "bottom";
+      layoutEngine.dockTo("panel", edge);
+      layoutEngine.setAlign("panel", savedPanel.align ?? "center");
+      if (edge === "left" || edge === "right") {
+        const w = savedPanel.width;
+        if (typeof w === "number" && Number.isFinite(w)) {
+          layoutEngine.resizeZone("panel", w);
+        }
+      } else {
+        if (Number.isFinite(savedPanel.height)) {
+          layoutEngine.resizeZoneHeight("panel", savedPanel.height);
+        }
       }
       if (savedPanel.activeViewId) {
         setPanelActiveViewId(savedPanel.activeViewId);

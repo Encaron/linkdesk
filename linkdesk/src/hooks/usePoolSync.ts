@@ -26,7 +26,7 @@ import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：
 import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
 import type { StatusBarEntry } from "../core/react/events/ShellEvents"; // E5.7#8：动态状态栏条目
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
-import { layoutEngine } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
+import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
 import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
@@ -132,6 +132,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       sidebar = {
         visible: true,
         width: sidebarWidth,
+        // E5.8#36.9：侧栏所在边——#37.6 dockTo 消费方（换边后池 grid 落左/右槽 + 双槽互换联动）
+        edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge),
         containerId: effectiveSidebarView,
         containerTitle: container?.title ?? effectiveSidebarView,
         mergeHeaderWhenSingle: container?.mergeHeaderWhenSingle,
@@ -169,6 +171,10 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     // 池 `layout.panel?.visible && <PanelZone/>` → 不渲染（复用无 panel 贡献现网路径，零池改动）
     if (panelVisible && ViewContainerService.getViewContainers("panel").length > 0) {
       const panelZone = layoutEngine.getZone("panel");
+      // E5.8#36.9：面板边 + 对齐——引擎配置推池（几何由池 grid #37.5 推导，引擎只存配置不推坐标）
+      const panelEdge = narrowPanelEdge(panelZone?.dock?.edge);
+      const isVerticalPanel = panelEdge === "left" || panelEdge === "right";
+      const panelBounds = layoutEngine.getBounds("panel");
       const validActiveId = panelActiveViewId && panelViews.some((v) => v.id === panelActiveViewId)
         ? panelActiveViewId
         : panelViews[0]?.id ?? "";
@@ -178,7 +184,11 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       );
       panel = {
         visible: true,
-        height: layoutEngine.getBounds("panel")?.height ?? panelZone?.dock?.height ?? 220,
+        edge: panelEdge,
+        align: panelZone?.dock?.align ?? "center",
+        height: panelBounds?.height ?? panelZone?.dock?.height ?? 220,
+        // E5.8#36.9：轴感知尺寸——左/右面板推 width（竖条宽，池 grid #37.5 消费）；顶/底仍 height
+        ...(isVerticalPanel ? { width: panelBounds?.width ?? panelZone?.dock?.width ?? 300 } : {}),
         activeViewId: validActiveId,
         views: panelViews,
         // 激活标记以渲染真源 validActiveId 为准——激活视图被隐藏时高亮回退视图而非隐藏视图
@@ -190,6 +200,24 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         createTooltip: t("新建面板视图"),
       };
     }
+
+    // E5.8#36.9：右侧栏真 zone——引擎常驻（LayoutEngine 模块级 addZone）但无容器内容生产者（Phase 12 填充）。
+    // 推 visible:false → 池零 DOM（PoolZoneShell 按 layout.rightSidebar?.visible 条件渲染）；
+    // 宽度/钳制界随引擎——#37.5 grid 真渲染消费。edge 不携带（swap 规则 = sidebar 对边，池反推）。
+    const rsZone = layoutEngine.getZone("rightSidebar");
+    const rightSidebar: PoolLayout["rightSidebar"] = rsZone?.dock
+      ? {
+          visible: false,
+          width: layoutEngine.getBounds("rightSidebar")?.width ?? rsZone.dock.width ?? 300,
+          containerId: null,
+          containerTitle: "",
+          views: [],
+          minWidth: rsZone.dock.minWidth,
+          maxWidth: rsZone.dock.maxWidth,
+          emptyText: t("此容器没有已注册的视图"),
+          emptyHint: t("安装插件以添加视图"),
+        }
+      : undefined;
 
     // 主区分屏组——每个 group 映射为一个 flex 区域
     // E5.6#16：从 SplitNode 树计算实际 flex 比例（不再硬编码 1）
@@ -245,6 +273,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
       // E5.7#63.7：底部面板——无贡献不推（undefined 字段不序列化进快照）
       ...(panel ? { panel } : {}),
+      // E5.8#36.9：右侧栏——zone 常驻则推（visible:false 零 DOM；#37.5 真渲染消费宽度）
+      ...(rightSidebar ? { rightSidebar } : {}),
       // E5.7#8：状态栏——条目（分隔线/component 标记壳侧算好）+ Chord 字符串 + 通知中心纯数据
       statusBar: {
         items: buildStatusBarItems(t, eventEntries),

@@ -28,11 +28,23 @@ export interface CardLayout {
 }
 
 /** E5.7#63.7：底部面板布局状态——高度 + 激活视图（views 列表来自 contributes 注册，不持久化）
- *  E5.8#31：加 visible——面板显隐持久化（Ctrl+J）。缺省（旧布局无此字段）→ 视为可见（?? true） */
+ *  E5.8#31：加 visible——面板显隐持久化（Ctrl+J）。缺省（旧布局无此字段）→ 视为可见（?? true）
+ *  E5.8#36.9：加 edge/align/width——面板位置/对齐持久化（#37.7 dockTo/setAlign 消费方）。旧状态仅 height → bottom+center 向后兼容 */
 export interface PanelLayoutState {
   height: number;
+  /** 🆕 E5.8#36.9：面板 dock 边——启动恢复 dockTo("panel", edge)。缺省 "bottom"。 */
+  edge?: "bottom" | "top" | "left" | "right";
+  /** 🆕 E5.8#36.9：面板横向对齐——启动恢复 setAlign("panel", align)。缺省 "center"。 */
+  align?: "left" | "center" | "right" | "justify";
+  /** 🆕 E5.8#36.9：面板宽——edge∈{left,right} 时（竖条宽，池 grid 消费）。缺省 300。 */
+  width?: number;
   activeViewId?: string;
   visible?: boolean;
+}
+
+/** E5.8#36.9：侧栏布局状态——edge 持久化（#37.6 侧栏换边消费方）。旧布局无此字段 → 缺省 "left"。 */
+export interface SidebarLayoutState {
+  edge?: "left" | "right";
 }
 
 export interface WorkspaceLayout {
@@ -40,6 +52,8 @@ export interface WorkspaceLayout {
   cards: CardLayout[];
   /** 底部面板状态——未启用过面板则缺省 */
   panel?: PanelLayoutState;
+  /** 🆕 E5.8#36.9：侧栏状态——edge 持久化（#37.6 换边）。未设置过则缺省（不落盘） */
+  sidebar?: SidebarLayoutState;
 }
 
 /* ── 缓存 ── */
@@ -78,6 +92,11 @@ export function getPanelLayout(): PanelLayoutState | undefined {
   return _layoutCache.panel;
 }
 
+/** E5.8#36.9：读取侧栏布局状态 */
+export function getSidebarLayout(): SidebarLayoutState | undefined {
+  return _layoutCache.sidebar;
+}
+
 /* ── 保存 ── */
 
 /** 保存标签页布局 */
@@ -104,6 +123,12 @@ export async function saveWorkspaceLayout(
 /** E5.7#63.7：保存底部面板布局状态 */
 export async function savePanelLayout(panel: PanelLayoutState): Promise<void> {
   _layoutCache.panel = panel;
+  await write("layout", _layoutCache);
+}
+
+/** E5.8#36.9：保存侧栏布局状态 */
+export async function saveSidebarLayout(sidebar: SidebarLayoutState): Promise<void> {
+  _layoutCache.sidebar = sidebar;
   await write("layout", _layoutCache);
 }
 
