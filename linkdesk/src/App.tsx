@@ -24,6 +24,7 @@ import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
 import { useSidebarHost } from "./App/sidebarHost";
+import { usePanelHost } from "./App/panelHost"; // E5.8#31：底部面板显隐宿主（Ctrl+J）
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
 import "./App.css";
@@ -55,6 +56,8 @@ function App() {
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E5.8#0d.10-3e：侧栏宿主状态机（折叠状态机 + 状态同步 + 启动恢复）迁入 src/App/sidebarHost.ts
   useSidebarHost({ setSidebarView, setIsSidebarExpanded, ready });
+  // E5.8#31：底部面板显隐宿主——panelVisible 真相源 + 订阅 panel:toggle（Ctrl+J）翻转 + 立即落盘
+  const { panelVisible } = usePanelHost({ panelActiveViewId });
 
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
@@ -113,10 +116,10 @@ function App() {
   );
 
   // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
-  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, onTabAction: handleTabAction });
+  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, onTabAction: handleTabAction });
 
   // E5.8#0d.10-3f：布局持久化（beforeunload 同步写入 + 标签页/面板 100ms 防抖保存）迁入 src/App/persistence.ts
-  useLayoutPersistence({ ready, tabState, panelActiveViewId });
+  useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible });
 
   if (!ready) return null;
 
