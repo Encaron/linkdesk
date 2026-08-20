@@ -26,7 +26,7 @@ export const MENU_SLOTS = {
   CommandPalette: "commandPalette",
   /** 标签栏标签右键 */
   TabContext: "tabContext",
-  /** E5.8#35.5：底部面板视图标签右键——「移至主区标签页」（壳 core.movePanelViewToEditor）。PanelZone 消费。 */
+  /** E5.8#37.7：面板标签栏右键——位置/对齐子菜单 + 视图显隐列表（#37.7.1 getItems 动态注入）。PanelZone 消费。 */
   PanelViewContext: "panelViewContext",
   /** 标签页主内容区右键（终端接收区、编辑器等） */
   EditorContext: "editorContext",

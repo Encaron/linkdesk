@@ -11,7 +11,7 @@
  * 持久化：setPanelVisible(true) + setPanelActiveViewId(viewId) 后由 useLayoutPersistence
  * （100ms 防抖 + beforeunload 同步含 visible）自动落盘——reveal 不自管持久化（同 Ctrl+J 最终一致）。
  *
- * resolvePanelView = 声明寻址共享基元（#34.5 reveal / #35.5 moveToEditor 同源消费）——返回
+ * resolvePanelView = 声明寻址共享基元（#34.5 panel.reveal 消费）——返回
  * viewId 所在 panel 容器 + ViewDescriptor（含 loader 运行时附挂 _pluginId）。null = 无贡献插件。
  */
 
@@ -28,8 +28,10 @@ export interface PanelRevealDeps {
 }
 
 /** 声明寻址共享基元——viewId 所在 panel 容器 + view（loader 附挂 _pluginId）。
- *  仅 location:"panel" 容器（#63.7 同源，零新注册面）。null = 不在任何 panel 容器（无贡献 no-op）。 */
-export function resolvePanelView(viewId: string): { containerId: string; view: ViewDescriptor & { _pluginId?: string } } | null {
+ *  仅 location:"panel" 容器（#63.7 同源，零新注册面）。null = 不在任何 panel 容器（无贡献 no-op）。
+ *  当前唯一消费方 = resolvePanelReveal（同文件）；未来 #37.7.1 视图显隐列表 getItems 动态注入
+ *  复用本基元定位容器时按需加回 export（壳先行建设，基元保留不删）。 */
+function resolvePanelView(viewId: string): { containerId: string; view: ViewDescriptor & { _pluginId?: string } } | null {
   for (const container of ViewContainerService.getViewContainers("panel")) {
     const view = ViewContainerService.getViews(container.id).find((v) => v.id === viewId);
     if (view) {
