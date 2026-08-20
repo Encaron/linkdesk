@@ -765,19 +765,19 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     // E5.8#29（S12）：删正则挖口名 hack——payload.portName 直接路由（#28 契约已带路由键）。
     // string 载荷容错保留（IPC 载荷运行时无编译期兜底）
     const msg = typeof payload === "string" ? payload : payload.message;
+    // E5.8#30.11（P1）：type 分类路由——status 按口过滤（他口开/关/波特率完全不显示），
+    // error 全局显示（D8 拒绝/驱动错误/拔线，他口也显示）。审视 ①：来源端打 type 标签，不做文案关键词判断。
+    const type = typeof payload === "string" ? "status" : (payload.type ?? "status");
     const myPort = activeSession?.port || null;
     // E5.8#29：portFilter 三态过滤（无 key→收 / 不匹配→滤 / 匹配→收）——与旧 isMyPort 逻辑等价
     const isMyPort = matchesPort(payload.portName, myPort);
+    // P1 接收区补全：#29 旧行为「他口系统消息只显示文本不激活」已废除——他口状态消息完全不显示；
+    // 此 return 后 status 消息必为本口，error 全局继续。{@link 8955db36} 只改了 lastError 路由漏了此处。
+    if (type !== "error" && !isMyPort) {
+      return;
+    }
 
     if (/已打开/.test(msg)) {
-      if (!isMyPort) {
-        // 不是这个标签页的端口——只显示系统消息文本，不激活数据接收
-        ringBuffer.current.write({
-          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${msg}` : msg,
-          type: "system",
-        });
-        return;
-      }
       pausedBuffer.current = [];
       setPausedCount(0);
       setPaused(false);
@@ -801,13 +801,6 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       });
     }
     if (/关闭/.test(msg)) {
-      if (!isMyPort) {
-        ringBuffer.current.write({
-          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${msg}` : msg,
-          type: "system",
-        });
-        return;
-      }
       ringBuffer.current.drainAll();
       // E5.8#30.20：端口关闭 → 自动保存接收区（落盘策略①，防数据丢失——此时 CM6 已含最新已渲染数据）
       saveReceiveToFile();
