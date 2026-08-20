@@ -207,6 +207,12 @@ html, body, #root, #pool-root {
 }
 .input:focus { border-color: var(--accent); }
 
+/* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
+   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex） */
+.group-pane-focused {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 /* Phase 3.5 新增 —— focus-visible 键盘导航指示器 */
 *:focus-visible {
   outline: 2px solid var(--accent);

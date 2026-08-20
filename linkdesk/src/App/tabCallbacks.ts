@@ -126,6 +126,8 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
 
 export interface TabActionHandlerDeps {
   handleFocusTab: (tabId: string) => void;
+  /** E5.8#30.15（P5）：仅聚焦面板（activeGroupId）——事件已由 useTabManager.focusGroup 内部处理 */
+  focusGroup: (groupId: string) => void;
   closeTab: (tabId: string) => Promise<CloseTabResult>;
   groups: TabState["groups"];
   reorderTab: (tabId: string, toIndex: number) => void;
@@ -143,11 +145,15 @@ export interface TabActionHandlerDeps {
  * E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
  */
 export function createTabActionHandler(deps: TabActionHandlerDeps): (action: PoolTabAction) => void {
-  const { handleFocusTab, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes } = deps;
+  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes } = deps;
   return (action) => {
     switch (action.action) {
       case "focusTab":
         handleFocusTab(action.tabId);
+        break;
+      // E5.8#30.15（P5）：点面板空白聚焦该面板——事件/activeEditor 由 useTabManager.focusGroup 统一处理
+      case "focusGroup":
+        focusGroup(action.groupId);
         break;
       case "closeTab":
         closeTab(action.tabId);

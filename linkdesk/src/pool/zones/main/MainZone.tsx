@@ -51,13 +51,15 @@ interface MainZoneProps {
   root?: SplitNode;
   /** E5.6#16.7k-3：可创建为标签页的视图——GroupTabBar [+] 按钮动态菜单 */
   creatableViews?: { pluginId: string; label: string }[];
+  /** E5.8#30.15（P5）：聚焦面板 id——壳 reduceFocusGroup/FocusTab 维护，accent 环 + isActive 单聚焦判定 */
+  activeGroupId?: string;
 }
 
 // ═══════════════════════════════════════════════════════════
 // Component
 // ═══════════════════════════════════════════════════════════
 
-export default function MainZone({ groups, root, creatableViews }: MainZoneProps) {
+export default function MainZone({ groups, root, creatableViews, activeGroupId }: MainZoneProps) {
   const { t } = useTranslation();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -101,6 +103,7 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
     return (
       <GroupPane
         group={group}
+        focused={group.id === activeGroupId}
         tabs={getEffectiveTabs(group.id, group)}
         draggingId={draggingId ?? undefined}
         dragInsertIndex={dragInsertGroupId === group.id ? dragInsertIndex : null}
@@ -162,6 +165,14 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
               <div
                 key={p.groupId}
                 data-group-id={p.groupId}
+                // E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影零布局位移
+                className={p.groupId === activeGroupId ? "group-pane-focused" : undefined}
+                // E5.8#30.15（P5）：点面板空白聚焦该面板——同组 no-op（省一次 IPC 回环）
+                onMouseDown={() => {
+                  if (activeGroupId !== p.groupId) {
+                    tabAction({ action: "focusGroup", groupId: p.groupId });
+                  }
+                }}
                 style={{
                   position: "absolute",
                   left: `${p.x}%`,
@@ -228,6 +239,13 @@ export default function MainZone({ groups, root, creatableViews }: MainZoneProps
           <div
             key={group.id}
             data-group-id={group.id}
+            // E5.8#30.15（P5）：单面板也带聚焦环（聚焦行为与多面板一致）
+            className={group.id === activeGroupId ? "group-pane-focused" : undefined}
+            onMouseDown={() => {
+              if (activeGroupId !== group.id) {
+                tabAction({ action: "focusGroup", groupId: group.id });
+              }
+            }}
             style={{
               flex: 1,
               display: "flex",

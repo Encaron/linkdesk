@@ -138,6 +138,14 @@ export function reduceFocusTab(prev: TabState, tabId: string): TabState {
   };
 }
 
+/** E5.8#30.15（P5）：仅聚焦面板——点击面板空白处（不改 activeTabId，只改 activeGroupId）。
+ *  原状态（activeGroupId 已同）或 groupId 不存在 → 原样返回（幂等，避免多余 pushLayout 回环）。 */
+export function reduceFocusGroup(prev: TabState, groupId: string): TabState {
+  if (prev.activeGroupId === groupId) return prev;
+  if (!prev.groups.some((g) => g.id === groupId)) return prev;
+  return { ...prev, activeGroupId: groupId };
+}
+
 export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };

@@ -641,6 +641,9 @@ function chkPoolLayout(v: unknown, p: string, errs: string[]): void {
           chkPoolGroup(_t15.groups[_t52], (((p) + ".groups") + "[" + _t52 + "]"), errs);
       }
     }
+    if (_t15.activeGroupId !== undefined) {
+    if (typeof _t15.activeGroupId !== "string") errs.push(((p) + ".activeGroupId") + ": 期望 string，实收 " + typeof _t15.activeGroupId);
+    }
     if (_t15.root !== undefined) {
     chkSplitNode(_t15.root, ((p) + ".root"), errs);
     }

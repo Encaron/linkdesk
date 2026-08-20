@@ -116,6 +116,8 @@ export function buildSampleLayout(): PoolLayout {
       },
     ],
     root: { type: "leaf", groupId: "group-1" },
+    // E5.8#30.15（P5）：dev 预览默认聚焦 group-1——accent 环可见
+    activeGroupId: "group-1",
     creatableViews: [
       { pluginId: "file-tree", label: "资源管理器" },
       { pluginId: "serial-monitor", label: "串口监视器" },
