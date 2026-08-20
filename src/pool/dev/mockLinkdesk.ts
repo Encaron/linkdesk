@@ -273,9 +273,10 @@ export function installMockLinkdesk(): void {
       getUninstalled: async () => [],
       isDisabled: async () => false,
     },
-    // E5.8#34.5：panel 命名空间——预览无壳侧消费，留壳日志（插件调 reveal 的桩）
+    // E5.8#34.5/#35.5：panel 命名空间——预览无壳侧消费，留壳日志（插件调 reveal/moveToEditor 的桩）
     panel: {
       reveal: makeAsyncLogger("panel.reveal"),
+      moveToEditor: makeAsyncLogger("panel.moveToEditor"),
     },
   } satisfies Partial<LinkDeskAPI>;
 

@@ -96,8 +96,9 @@ export class IpcBridge {
     IPC.viewContainer.getViews,
     IPC.viewContainer.getView,
     IPC.viewContainer.registerView,
-    // E5.8#34.5：panel——插件调壳聚焦底部面板视图（IpcBridgeHandler/panel 域消费）
+    // E5.8#34.5：panel——插件调壳聚焦底部面板视图/视图升级标签页（IpcBridgeHandler/panel 域消费）
     IPC.panel.reveal,
+    IPC.panel.moveToEditor,
   ];
 
   constructor(

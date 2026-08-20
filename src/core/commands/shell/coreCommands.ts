@@ -191,6 +191,20 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MENU_SLOTS.TabContext,
     menuGroup: "pin",
   },
+  // ── E5.8#35.5：底部面板视图升级主区标签页——池 PanelZone 面板视图 tab 右键「移至主区标签页」。
+  //    池 ContextMenu 点击 → executeCommand(core.movePanelViewToEditor, context) → 本 handler（args[0] = context）。
+  //    createTab 活动 group 尾部 + 面板内移除（movePanelViewToEditor 纯函数，语义见 panelMoveToEditor.ts）。
+  {
+    id: "core.movePanelViewToEditor",
+    title: "移至主区标签页",
+    category: "视图",
+    handler: async (...args) => {
+      const ctx = args[0] as { viewId?: string } | undefined;
+      if (ctx?.viewId) getCallbacks()?.movePanelViewToEditor(ctx.viewId);
+    },
+    menuId: MENU_SLOTS.PanelViewContext,
+    menuGroup: "navigation",
+  },
 
   // ── E3f #53：设置项齿轮命令 ──
 

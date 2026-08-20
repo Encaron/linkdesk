@@ -1369,11 +1369,13 @@ export interface ShellAPI {
     /** OS 拖入文件路径获取——双端注入 */
     getFilePath: (file: File) => string;
 }
-/** 底部面板命名空间面——对标 VS Code vscode.window.createTreeView 后 focus 语义 */
+/** 底部面板命名空间面——对标 VS Code vscode.window.createTreeView 后 focus / 视图提升语义 */
 export interface PanelAPI {
     panel: {
         /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
         reveal(viewId: string): Promise<void>;
+        /** 将底部面板视图升级为主区标签页（当前活动 group 尾部）+ 面板内移除。viewId 不在 panel 容器时 no-op */
+        moveToEditor(viewId: string): Promise<void>;
     };
 }
 /**

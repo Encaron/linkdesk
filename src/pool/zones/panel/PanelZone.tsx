@@ -20,10 +20,11 @@
  * 钳制界 minHeight/maxHeight 壳推（#13 同款——池零硬编码）。
  */
 
-import { useState, useEffect, useRef, useCallback, Fragment } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment, type MouseEvent as ReactMouseEvent } from "react";
 import type { PanelLayout, PanelSwitcherItem } from "../../../core/types/pool/poolLayout";
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
+import ContextMenu from "../../../components/shared/context-menu/ContextMenu"; // E5.8#35.5：面板视图 tab 右键（壳驱动，menuId "panelViewContext" 字符串直传）
 import "./PanelZone.css";
 
 interface PanelZoneProps {
@@ -196,6 +197,15 @@ export default function PanelZone({ panel }: PanelZoneProps) {
     window.linkdesk?.events?.emit("panel:toggleViewVisibility", { containerId, viewId: item.viewId });
   }, []);
 
+  /* ── E5.8#35.5：面板视图 tab 右键「移至主区标签页」——壳 ContextMenu（menuId "panelViewContext"）。
+       池零菜单逻辑（同 GroupTabBar TabContext 模式）：ContextMenu 经 lk.menu.getItems 壳侧解析 +
+       点击 executeCommand(core.movePanelViewToEditor, context) → 壳 movePanelViewToEditor。 */
+  const [contextMenuAnchor, setContextMenuAnchor] = useState<{ viewId: string; x: number; y: number } | null>(null);
+  const handleTabContextMenu = useCallback((viewId: string, e: ReactMouseEvent) => {
+    e.preventDefault();
+    setContextMenuAnchor({ viewId, x: e.clientX, y: e.clientY });
+  }, []);
+
   return (
     <div
       className={`panel-zone${localHeight !== null ? " resizing" : ""}`}
@@ -237,6 +247,7 @@ export default function PanelZone({ panel }: PanelZoneProps) {
                 // #63.7 App.tsx 消费——setPanelActiveViewId → usePoolSync 重推
                 window.linkdesk?.events?.emit("panel:viewSelected", v.id);
               }}
+              onContextMenu={(e) => handleTabContextMenu(v.id, e)}
             >
               <span className="panel-tab-label">{v.title}</span>
             </div>
@@ -256,6 +267,18 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           +
         </button>
       </div>
+
+      {/* E5.8#35.5：面板视图 tab 右键菜单——menuId "panelViewContext"（字符串直传不 import 壳 MenuRegistry，
+          Path B——字符串即桥契约；壳 coreCommands.ts 注册「移至主区标签页」条目）。
+          ContextMenu 自带 backdrop 吞第一击 + 视口自适应 + 键盘导航——池零菜单逻辑。 */}
+      {contextMenuAnchor && (
+        <ContextMenu
+          menuId="panelViewContext"
+          anchor={contextMenuAnchor}
+          context={{ viewId: contextMenuAnchor.viewId }}
+          onClose={() => setContextMenuAnchor(null)}
+        />
+      )}
 
       {/* E5.8#34：切换器下拉——按容器分组列全部视图（含隐藏）。fixed 定位在按钮下方，
           fixed 逃逸 .panel-zone overflow:hidden——不裁剪（TitleBarZone 下拉同款） */}

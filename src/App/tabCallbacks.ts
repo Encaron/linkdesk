@@ -7,6 +7,7 @@
 
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
+import { movePanelViewToEditor } from "./panelMoveToEditor"; // E5.8#35.5：面板视图升级主区标签页（右键命令回调）
 import { getAllLeafGroupIds } from "../core/utils/splitTree";
 import { allTabs } from "../hooks/useTabManager";
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
@@ -48,11 +49,13 @@ export interface CoreCallbacksDeps {
   restoreClosedTab: () => string | null;
   duplicateTab: (tabId: string) => string | null;
   pinTab: (tabId: string) => void;
+  /** E5.8#35.5：createTab——面板视图升级主区标签页（确定性新建实例，多实例语义，同 openTab 底层） */
+  createTab: (type: string, opts?: CreateTabOptions) => string;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, createTab } = deps;
   return {
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
@@ -119,6 +122,8 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
     },
     duplicateTab: (tabId) => duplicateTab(tabId),
     pinTab: (tabId) => pinTab(tabId),
+    // E5.8#35.5：面板视图升级主区标签页（core.movePanelViewToEditor 右键命令）——createTab 活动 group 尾部 + 面板内移除
+    movePanelViewToEditor: (viewId) => movePanelViewToEditor(viewId, createTab),
   };
 }
 

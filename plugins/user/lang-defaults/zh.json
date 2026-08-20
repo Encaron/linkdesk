@@ -143,5 +143,6 @@
   "暂无面板视图": "暂无面板视图",
   "所有视图已隐藏": "所有视图已隐藏",
   "从切换器勾选视图恢复显示": "从切换器勾选视图恢复显示",
-  "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "插件声明 contributes.views location:\"panel\" 后自动出现在这里"
+  "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "插件声明 contributes.views location:\"panel\" 后自动出现在这里",
+  "移至主区标签页": "移至主区标签页"
 }
