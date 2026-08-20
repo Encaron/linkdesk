@@ -14,6 +14,9 @@ export interface OpenPortConfig {
   stopBits?: number;
   parity?: string;
   encoding?: string;
+  /** E5.8#26 D8——资源归属声明：由插件 openPort 时自声明（pool WCV 多插件同 JS 上下文，
+   *  主进程无法从 sender 识别插件），卸载时 closePortsByOwner 按此回收硬件资源。 */
+  ownerPluginId?: string;
 }
 
 /** 串口状态快照——F5 刷新 / getStatus() 返回 */
