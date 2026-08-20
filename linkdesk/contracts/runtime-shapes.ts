@@ -113,6 +113,7 @@ function chkSerialSystemPayload(v: unknown, p: string, errs: string[]): void {
     const _t14 = v as Record<string, unknown>;
     if (typeof _t14.portName !== "string") errs.push(((p) + ".portName") + ": 期望 string，实收 " + typeof _t14.portName);
     if (typeof _t14.message !== "string") errs.push(((p) + ".message") + ": 期望 string，实收 " + typeof _t14.message);
+    if (!(_t14.type === "status" || _t14.type === "error")) errs.push(((p) + ".type") + ": 期望 status|error");
   }
 }
 function chkPoolMenuItem(v: unknown, p: string, errs: string[]): void {

@@ -156,7 +156,7 @@ class SerialService {
   async openPort(cfg: OpenPortConfig): Promise<void> {
     if (this.ports.has(cfg.portName)) {
       const msg = `串口 ${cfg.portName} 已被打开`;
-      this.callbacks?.onSystem({ portName: cfg.portName, message: msg });
+      this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
       throw new Error(msg);
     }
 
@@ -187,7 +187,7 @@ class SerialService {
       state.port.open((err) => {
         if (err) {
           const msg = `串口打开失败：${err.message}`;
-          this.callbacks?.onSystem({ portName: cfg.portName, message: msg });
+          this.callbacks?.onSystem({ portName: cfg.portName, message: msg, type: 'error' });
           reject(new Error(msg));
         } else {
           resolve();
@@ -204,7 +204,7 @@ class SerialService {
     this.startReadLoop(state);
 
     // 系统消息（V2 格式）
-    this.callbacks?.onSystem({ portName: cfg.portName, message: `---- 已打开串行端口 ${cfg.portName} ----` });
+    this.callbacks?.onSystem({ portName: cfg.portName, message: `---- 已打开串行端口 ${cfg.portName} ----`, type: 'status' });
   }
 
   // ── 读循环（对标 Rust read_loop——事件驱动替代轮询）──
@@ -246,6 +246,12 @@ class SerialService {
       // 冲刷行缓冲区残留（对标 Rust 读错误时的 residual 逻辑）
       this.flushLineResidual(state);
 
+      // E5.8#30.11（P1）：拔线/驱动错误——错误消息全局可见（范围含拔线，P1 拍板 §0.2）
+      this.callbacks?.onSystem({
+        portName: state.portName,
+        message: `串口连接异常（可能已拔线）：${err.message}`,
+        type: 'error',
+      });
       console.error('[serial-service] 串口读错误:', err.message);
       // serialport 在错误后可能自动重连或断连——不做额外处理
     });
@@ -329,7 +335,7 @@ class SerialService {
     state.isClosing = false;
     state.lineBuffer = [];
 
-    this.callbacks?.onSystem({ portName: name, message: `---- 关闭串行端口 ${name} ----` });
+    this.callbacks?.onSystem({ portName: name, message: `---- 关闭串行端口 ${name} ----`, type: 'status' });
   }
 
   // ── E5.8#26 D8——卸载连坐（主进程内部，非公开 API）──

@@ -49,11 +49,16 @@ export interface SerialStatsPayload {
 }
 
 /** 串口系统消息载荷——serial.system 推送（E5.8#28：由原无口名 string 演化——S12 正则挖口名 hack 的修根）。
- *  message 保留 V2 消息格式（如 `---- 已打开串行端口 COM3 ----`），portName 结构化免解析。 */
+ *  message 保留 V2 消息格式（如 `---- 已打开串行端口 COM3 ----`），portName 结构化免解析。
+ *  E5.8#30.11（P1）——type 分类标签（审视 ①：来源端分类，一个概念一处写，不做消费端文案关键词判断）：
+ *  status = 正常成功流程（开/关/波特率切换）；error = 非正常流程（同口二开拒绝 D8 / 驱动错误 / 拔线）。
+ *  消费端按键路由：status 按口过滤（他口操作不显示）、error 全局可见（非活动标签页也显示）。 */
 export interface SerialSystemPayload {
   /** 消息归属端口 = 路由键——本端口会话专属消费（开/关状态切换）；不匹配的会话仍可显示文本但不触发状态切换 */
   portName: string;
   message: string;
+  /** 消息分类——status 成功流程 / error 失败异常（D8 拒绝、驱动错误、拔线） */
+  type: "status" | "error";
 }
 
 /** 端口列表条目——listPorts() 返回 */
