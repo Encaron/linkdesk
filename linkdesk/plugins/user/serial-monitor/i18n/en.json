@@ -3,6 +3,8 @@
   "串口监视器会话": "Serial Monitor Sessions",
   "收发设置": "Send/Receive",
   "状态栏显示连接状态指示灯": "Show connection indicator in status bar",
+  "关闭时提示": "Prompt on Close",
+  "会话正在使用 {{port}}，将断开连接": "Session in use: {{port}}, will disconnect",
   "复制": "Copy",
   "全选": "Select All",
   "清空接收区": "Clear Receive",

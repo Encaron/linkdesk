@@ -8,6 +8,9 @@
 import { useState, useCallback, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useSerialSessions } from "../hooks/useSerialSessions";
+// E5.8#30.13（P9）：删除开着串口的会话 → 先断开——走 useSerialContext 的 actions.closePort
+//（与 ControlPanel 同一咽喉，_openPorts/灯/pluginState 一并维护；引用计数防重复注册 IPC 监听器）
+import { useSerialContext } from "../services/SerialContext";
 
 import { SessionListItem } from "../components/SessionListItem";
 import { SERIAL_MONITOR_PLUGIN_ID } from "../utils/pluginId";
@@ -64,6 +67,8 @@ export default function SessionListView() {
   // useSerialContext 的 _sharedState 是隔离实例，必须走跨 WebView 的 pluginState 通道。
   // E5.8#27（S15）：多口集合——每会话 connected = 自己的口 ∈ openPorts（各按口亮，互不顶替）
   const { openPorts } = useSerialConnection();
+  // E5.8#30.13（P9）：删除会话时断开串口——actions.closePort 走灯写入咽喉
+  const { actions } = useSerialContext();
 
   // Phase 5.5c C5：侧栏需要操作标签页——创建会话 → 开标签页，点会话 → 聚焦标签页
   const tabs = window.linkdesk?.tabs;
@@ -122,20 +127,33 @@ export default function SessionListView() {
     (id: string) => async () => {
       const session = sessions.find((s) => s.id === id);
       if (!session) return;
-      const confirmed = await window.linkdesk?.dialog?.confirm?.(
-        t("关闭会话「{{name}}」？", { name: session.name }) ??
-          `关闭会话「${session.name}」？`,
-      );
-      if (confirmed) {
-        // TODO Phase 5.5c C4: 如果 connected → 先断开串口
-        // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session。
-        // 用 closeTabBySourceId——sourceId 是 session↔tab 的唯一可靠链接。
-        // tab.id 和 session.id 可能因布局恢复/计数器漂移不一致。
-        tabs?.closeBySourceId(id);
-        removeSession(id);
+      // E5.8#30.13（P9）：开着串口的会话 → 强提示「会话正在使用 {{port}}，将断开连接」；
+      // 未开 → 原通用确认「关闭会话「{{name}}」？」；配置开关「关闭时提示」关 → 都不弹直接删。
+      const isOpen = openPorts.has(session.port);
+      let promptOnClose = true;
+      try {
+        promptOnClose = (await lk()?.configuration?.get?.("serial-monitor.confirmOnClose")) !== false;
+      } catch { /* 读配置失败按默认开——宁多提示勿静默断口 */ }
+      if (promptOnClose) {
+        const message = isOpen
+          ? t("会话正在使用 {{port}}，将断开连接", { port: session.port }) ??
+            `会话正在使用 ${session.port}，将断开连接`
+          : t("关闭会话「{{name}}」？", { name: session.name }) ??
+            `关闭会话「${session.name}」？`;
+        const confirmed = await window.linkdesk?.dialog?.confirm?.(message);
+        if (!confirmed) return;
       }
+      if (isOpen) {
+        // P9：确认后先断开串口——actions.closePort 走灯写入咽喉（#30.9，归一性）
+        await actions.closePort(session.port);
+      }
+      // Phase 5.5c C5：先关标签页（触发 confirmOnClose），再删 session。
+      // 用 closeTabBySourceId——sourceId 是 session↔tab 的唯一可靠链接。
+      // tab.id 和 session.id 可能因布局恢复/计数器漂移不一致。
+      tabs?.closeBySourceId(id);
+      removeSession(id);
     },
-    [sessions, t, removeSession, tabs],
+    [sessions, t, removeSession, tabs, openPorts, actions],
   );
 
   // 🔥 E3a #29a：侧栏↔标签页走 tabs.create 单一入口
