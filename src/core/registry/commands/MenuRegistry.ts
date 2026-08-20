@@ -34,6 +34,8 @@ export const MENU_SLOTS = {
   MarketplaceItemGear: "marketplaceItemGear",
   /** ☰ 汉堡菜单栏 */
   MenuBar: "menuBar",
+  /** E5.8#33：菜单栏「面板」菜单——壳声明招牌 + 打开/折叠条目；插件 contributes.menus.menuBar/panel + group:"panel" 自动归并 */
+  Panel: "panel",
   /** 文件树右键 */
   FileContext: "fileContext",
   /** 卡片右键 */
@@ -76,6 +78,8 @@ export type ManifestMenuItem =
       label?: string;
       when?: string;
       group?: string;
+      /** E5.8#33：排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
+      order?: number;
       /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
       children?: ManifestMenuItem[];
     };
@@ -104,6 +108,7 @@ export function registerMenuItems(
         label: item.label,
         group: item.group,
         when: item.when,
+        order: item.order, // E5.8#33：order 归一化透传——getMenuItems 排序依赖（面板招牌排文件/查看后）
         pluginId,
       };
       // E3f #52a：递归处理嵌套 children
@@ -115,10 +120,13 @@ export function registerMenuItems(
             label: c.label,
             group: c.group,
             when: c.when,
+            order: c.order,
             pluginId,
             ...(c.children ? {
               children: c.children.map((gc): MenuItem & { pluginId: string } =>
-                typeof gc === "string" ? { command: gc, pluginId } : { command: gc.command, label: gc.label, group: gc.group, when: gc.when, pluginId }
+                typeof gc === "string"
+                  ? { command: gc, pluginId }
+                  : { command: gc.command, label: gc.label, group: gc.group, when: gc.when, order: gc.order, pluginId }
               ),
             } : {}),
           };

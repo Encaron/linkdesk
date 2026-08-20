@@ -31,7 +31,9 @@ export const MENU_STYLE_HAMBURGER_VISIBLE: Record<string, boolean> = {
  */
 /** 收集 MenuBar 插槽菜单并按 group 分组排序——titlebar/汉堡共用（E5.8#1c 去重） */
 function collectMenuBarGroups(): { groups: Map<string, Array<MenuItem & { pluginId: string }>>; sortedGroupNames: string[] } {
-  const allItems = getMenuItems(MENU_SLOTS.MenuBar);
+  // E5.8#33：合并「面板」槽位（壳招牌）——槽位在前：招牌项先入组（菜单首位）+ 组序排文件/查看后（order 100）
+  // 插件 group:"panel" 条目（menuBar/panel 槽均可）与招牌同组自动归并
+  const allItems = [...getMenuItems(MENU_SLOTS.Panel), ...getMenuItems(MENU_SLOTS.MenuBar)];
   const groups = new Map<string, Array<MenuItem & { pluginId: string }>>();
   for (const item of allItems) {
     const group = item.group ?? "other";
@@ -42,6 +44,14 @@ function collectMenuBarGroups(): { groups: Map<string, Array<MenuItem & { plugin
     (a, b) => (groups.get(a)![0]?.order ?? 99) - (groups.get(b)![0]?.order ?? 99)
   );
   return { groups, sortedGroupNames };
+}
+
+/** E5.8#33：组标签 = 壳招牌父项（command 空 + label）——插件 group:"panel" 项先入组时不抢标签 */
+function resolveGroupLabel(
+  groupItems: Array<MenuItem & { pluginId: string }>,
+  groupName: string
+): string {
+  return groupItems.find((i) => i.command === "" && i.label)?.label ?? groupItems[0]?.label ?? groupName;
 }
 
 export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGroup[] {
@@ -73,7 +83,7 @@ export function buildTitleBarMenuGroups(t: (key: string) => string): PoolMenuGro
     const groupItems = groups.get(groupName)!;
     return {
       group: groupName,
-      label: t(groupItems[0]?.label ?? groupName),
+      label: t(resolveGroupLabel(groupItems, groupName)),
       items: flattenGroupItems(groupItems),
     };
   });
@@ -119,7 +129,7 @@ export function buildHamburgerMenuGroups(t: (key: string) => string): PoolMenuGr
     const groupItems = groups.get(groupName)!;
     return {
       group: groupName,
-      label: t(groupItems[0]?.label ?? groupName),
+      label: t(resolveGroupLabel(groupItems, groupName)),
       items: groupItems.map(resolveItem),
     };
   });
