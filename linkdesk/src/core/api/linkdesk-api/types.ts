@@ -121,6 +121,13 @@ export interface MenuItemDescriptor {
   /** E5.8#37.7：当前项 √ 标记（单选语义——壳侧 getItems 动态解析，VS Code 菜单当前项同款）。
    *  位置/对齐子菜单（当前 edge/align 命中项）+ #37.7.1 视图显隐列表（visible 视图项）共用。 */
   checked?: boolean;
+  /**
+   * E5.8#37.7.1：每项命令载荷——动态菜单项（如面板视图显隐清单）携带数据传给命令 handler。
+   * ContextMenu 的 context 是整菜单共享的（非 per-item），per-item 身份（如 containerId+viewId）
+   * 必须走命令载荷：executeCommand(id, undefined, ...commandArgs, context) → 壳 handler 收 args
+   * = [...commandArgs, context]。池哑渲染原文透传，不解释内容。
+   */
+  commandArgs?: unknown[];
   children?: Array<string | MenuItemDescriptor>;
 }
 
