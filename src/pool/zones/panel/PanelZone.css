@@ -77,25 +77,8 @@
 /* ── E5.8#34：切换器下拉——TitleBarZone 下拉同款（fixed 卡片 + shadow + 入场） ── */
 
 .panel-switcher-dropdown {
-  position: fixed;
-  display: flex;
-  flex-direction: column;
+  /* 卡片本体在 shared/dropdown-card/dropdown-card.css（.dropdown-card）——此处只留唯一 min-width */
   min-width: 180px;
-  max-width: 240px;
-  max-height: 60vh;
-  overflow-y: auto;
-  padding: 4px 0;
-  background: var(--bg-card);
-  border: 1px solid var(--separator);
-  box-shadow: var(--context-menu-shadow);
-  border-radius: 4px;
-  z-index: var(--z-dropdown);
-  animation: panel-switcher-dropdown-in 150ms ease-out;
-}
-
-@keyframes panel-switcher-dropdown-in {
-  from { opacity: 0; transform: translateY(-4px); }
-  to   { opacity: 1; transform: translateY(0); }
 }
 
 /* 分组标题（dd-group）——小字号大写感，muted */

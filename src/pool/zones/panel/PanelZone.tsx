@@ -25,6 +25,8 @@ import type { PanelLayout, PanelSwitcherItem } from "../../../core/types/pool/po
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级表——panelResizeHandle
 import PluginComponent from "../../shared/plugin-component/PluginComponent"; // E5.7#63.7：面板视图动态加载（侧栏同款）
 import ContextMenu from "../../../components/shared/context-menu/ContextMenu"; // E5.8#35.5：面板视图 tab 右键（壳驱动，menuId "panelViewContext" 字符串直传）
+import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.5：标签栏右侧动作区（活动视图 titleActions 声明）
+import "../../shared/dropdown-card/dropdown-card.css"; // E5.8#36.5 共享下拉卡片本体（.dropdown-card）
 import "./PanelZone.css";
 
 interface PanelZoneProps {
@@ -149,6 +151,10 @@ export default function PanelZone({ panel }: PanelZoneProps) {
     ?? "";
   const showSwitcher = switcher.length > 0;
 
+  /* ── E5.8#36.5：活动视图的 titleActions 声明——标签栏右侧动作区（无声明 → 右侧空白） ── */
+  const activeView = views.find((v) => v.id === activeViewId) ?? views[0];
+  const activeActions = activeView?.titleActions ?? [];
+
   const [switcherOpen, setSwitcherOpen] = useState(false);
   const switcherBtnRef = useRef<HTMLButtonElement>(null);
   const switcherDropdownRef = useRef<HTMLDivElement>(null);
@@ -253,6 +259,9 @@ export default function PanelZone({ panel }: PanelZoneProps) {
             </div>
           ))}
         </div>
+        {/* E5.8#36.5：标签栏右侧动作区——按活动视图 titleActions 声明渲染（widget 全壳提供，
+            视觉一致 + 插件独立铁律：第三方声明即用零壳改动）。无声明 → ViewTitleActions 渲染 null。 */}
+        <ViewTitleActions actions={activeActions} />
         {/* [+] 新建面板视图——panel:createView 归 Phase 12（现无监听者 no-op）；
             tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
         <button

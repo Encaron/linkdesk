@@ -514,7 +514,36 @@
                     "default": "default",
                     "description": "actions 显隐时机——always=始终, whenExpanded=展开时, default=hover 显示"
                   },
-                  "titleTooltip": { "type": "string", "description": "标题 hover tooltip——标题截断时显示完整文字" }
+                  "titleTooltip": { "type": "string", "description": "标题 hover tooltip——标题截断时显示完整文字" },
+                  "titleActions": {
+                    "type": "array",
+                    "description": "视图动作区声明（E5.8#36.5）——面板标签栏/侧栏 header 右侧 widget 列表，随视图走随视图迁移。三形态：icon 按钮 / dropdown 下拉菜单 / split 主按钮+下拉复合（VS Code 终端 [+] 新建 + [▾] 配置文件列表同款）。动作 = command + args，label/title 为 i18n key（中文原文）。",
+                    "items": {
+                      "type": "object",
+                      "required": ["type", "id"],
+                      "properties": {
+                        "type": { "type": "string", "enum": ["icon", "dropdown", "split"], "description": "widget 形态" },
+                        "id": { "type": "string", "description": "widget 唯一 ID——React key / 下拉展开状态定位" },
+                        "command": { "type": "string", "description": "点击执行的命令 ID（split=主按钮默认动作 / icon 必填）" },
+                        "icon": { "type": "string", "description": "codicon 类名（如 codicon-add）——icon/split 主按钮图标" },
+                        "title": { "type": "string", "description": "tooltip / aria-label——i18n key（split 无 icon 时作文本按钮）" },
+                        "args": { "description": "命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化）" },
+                        "items": {
+                          "type": "array",
+                          "description": "dropdown / split 下拉条目",
+                          "items": {
+                            "type": "object",
+                            "required": ["label", "command"],
+                            "properties": {
+                              "label": { "type": "string", "description": "显示文本——i18n key（中文原文）" },
+                              "command": { "type": "string", "description": "点击执行的命令 ID" },
+                              "args": { "description": "命令参数——单个位置参数透传" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
                 },
                 "additionalProperties": false
               }

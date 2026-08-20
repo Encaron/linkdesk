@@ -33,6 +33,8 @@ export function buildSidebarViewMetas(containerId: string): SidebarViewMeta[] {
       titleTooltip: v.titleTooltip,
       singleViewPaneContainerTitle: v.singleViewPaneContainerTitle,
       minHeight: v.minHeight,
+      // E5.8#36.6：titleActions 声明透传——侧栏 header 右侧动作区（#36.5 同声明，两处消费）
+      titleActions: v.titleActions,
     };
   });
 }
@@ -54,6 +56,8 @@ export function buildPanelViewMetas(): PanelViewMeta[] {
         title: v.title,
         pluginId: desc._pluginId ?? "",
         renderPath: desc._renderPath ?? "",
+        // E5.8#36.5：titleActions 声明透传——PanelZone 标签栏右侧动作区（无声明 → 右侧空白）
+        titleActions: v.titleActions,
       });
     }
   }
