@@ -25,14 +25,14 @@ import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot";
 import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
 import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
 import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
-import type { SidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout";
+import type { RightSidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout"; // E5.8#36.8：右栏真 zone 类型（消费字段同 SidebarLayout）
 import "./RightSidebarZone.css";
 
 /** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（SidebarZone #10 同款提大写常量） */
 const ROLE_TOOLBAR = "toolbar" as const;
 
 interface RightSidebarZoneProps {
-  rightSidebar: SidebarLayout;
+  rightSidebar: RightSidebarLayout;
 }
 
 export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps) {

@@ -52,6 +52,9 @@ interface SidebarContainerLayout {
 export interface SidebarLayout {
   visible: boolean;
   width: number;
+  /** 🆕 E5.8#36.8：侧栏所在边——#37.6 dockTo("sidebar", ...) 消费方（swap 规则：与 rightSidebar 恒占对边）。
+   *  池 grid（#37.5）据此决定 sidebar 落左槽还是右槽。缺省 "left"。 */
+  edge?: "left" | "right";
   // ── E5.6#11a：容器元数据 ──
   containerId: string | null;              // "file-explorer" / "marketplace" / "serial-monitor"
   containerTitle: string;                  // "资源管理器" / "插件市场" / "串口监视器"
@@ -75,6 +78,29 @@ export interface SidebarLayout {
   // ── 向后兼容 ──
   /** @deprecated 被 views[] 取代——保留给未迁移的代码 */
   viewId?: string | null;
+}
+
+/** 🆕 E5.8#36.8：右侧栏布局——右侧栏真 zone（决策 6，E5.8#36.7 addZone("rightSidebar") 消费方）。
+ *  与 SidebarLayout 对齐（消费字段同集），但**不携带自身 edge**——swap 规则保证 sidebar ↔ rightSidebar
+ *  恒占对边，右栏 edge = sidebar 对边（池 grid #37.5 推导，防两处字面量）。
+ *  无折叠按钮/工具提示字段（RightSidebarZone 差异注记 ①：折叠态归 Phase 12 侧栏完形再补）。 */
+export interface RightSidebarLayout {
+  visible: boolean;
+  width: number;
+  // ── 容器元数据（与 SidebarLayout 同语义）──
+  containerId: string | null;
+  containerTitle: string;
+  mergeHeaderWhenSingle?: boolean;
+  views: SidebarViewMeta[];
+  containers?: SidebarContainerLayout[];
+  collapsedViews?: string[];
+  /** 🆕 E5.8#36.8：右栏折叠态——#37.5 RightSidebarZone 真渲染（handle 镜像）预留；当前无壳侧生产者 */
+  collapsed?: boolean;
+  // ── 拖拽钳制界 + 空态文案（与 SidebarLayout 同语义）──
+  minWidth?: number;
+  maxWidth?: number;
+  emptyText?: string;
+  emptyHint?: string;
 }
 
 /** 标签页在池中的表示——壳 pushLayout 时序列化 */
@@ -234,6 +260,14 @@ export interface PanelSwitcherGroup {
 export interface PanelLayout {
   visible: boolean;
   height: number;
+  /** 🆕 E5.8#36.8：面板 dock 边——#37.7 dockTo 消费方（面板位置）。顶/底=横带（align 控列跨度）；
+   *  左/右=主区与对应侧栏间竖条（5 带排布）。缺省 "bottom"。 */
+  edge?: "bottom" | "top" | "left" | "right";
+  /** 🆕 E5.8#36.8：面板横向对齐——#37.7 setAlign 消费方。几何由池 grid 推导（#37.5），壳只推配置。
+   *  center=主栏宽 / left=延伸到左侧栏之下 / right=延伸到右侧栏之下 / justify=全宽。缺省 "center"。 */
+  align?: "left" | "center" | "right" | "justify";
+  /** 🆕 E5.8#36.8：面板宽——edge∈{left,right} 时使用（竖条宽）；顶/底仍用 height。缺省 300。 */
+  width?: number;
   activeViewId: string;
   views: PanelViewMeta[];
   // ── E5.7#21：拖拽钳制界——#13 同款（壳 LayoutEngine dock 声明推送，池零硬编码）。 ──
@@ -326,7 +360,8 @@ export interface PoolLayout {
   titleBar: TitleBarLayout;
   iconBar: IconBarLayout;
   sidebar: SidebarLayout;
-  rightSidebar?: SidebarLayout;
+  /** E5.8#36.8：右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
+  rightSidebar?: RightSidebarLayout;
   groups: PoolGroup[];
   /** E5.8#30.15（P5）：聚焦面板 id——点面板空白/点标签设置（壳 reduceFocusGroup/FocusTab）。
    *  池侧消费：accent 聚焦环 + isActive 单聚焦判定（tab.id === activeTabId && group.id === activeGroupId）。 */
