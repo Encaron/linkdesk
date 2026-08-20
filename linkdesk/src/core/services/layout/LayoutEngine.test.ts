@@ -133,9 +133,9 @@ describe("LayoutEngine", () => {
 
     // sidebar 现在在右边：x = 800 - 280 = 520
     expect(engine.getBounds("sidebar")).toEqual({ x: 520, y: 0, width: 280, height: 356 });
-    // iconbar 仍在左，main 填满中间（800 - 42 - 280 = 478）
-    expect(engine.getBounds("iconbar")).toEqual({ x: 0, y: 0, width: 42, height: 356 });
-    expect(engine.getBounds("main")).toEqual({ x: 42, y: 0, width: 478, height: 356 });
+    // E5.8#37.6.5：iconbar 恒贴主侧栏外缘——换右后也到最右（order0 最外缘），main 填满左边全宽
+    expect(engine.getBounds("iconbar")).toEqual({ x: 478, y: 0, width: 42, height: 356 });
+    expect(engine.getBounds("main")).toEqual({ x: 0, y: 0, width: 478, height: 356 });
   });
 
   it("onDidChangeLayout——setLayout 时触发", () => {
@@ -181,17 +181,31 @@ describe("LayoutEngine", () => {
     expect(fired).toHaveBeenCalledTimes(1);
   });
 
-  it("dockTo swap 规则——主侧栏换右 → 右侧栏自动跳左", () => {
+  it("dockTo swap 规则——主侧栏换右 → 右侧栏自动跳左 + iconbar 同边跟随（E5.8#37.6.5）", () => {
     const engine = new LayoutEngine();
     engine.addZone({ zone: "rightSidebar", dock: { edge: "right", width: 300 } });
 
     engine.dockTo("sidebar", "right");
     expect(engine.getZone("sidebar")?.dock?.edge).toBe("right");
     expect(engine.getZone("rightSidebar")?.dock?.edge).toBe("left");
+    expect(engine.getZone("iconbar")?.dock?.edge).toBe("right"); // iconbar 恒贴主侧栏同侧
 
     engine.dockTo("sidebar", "left");
     expect(engine.getZone("sidebar")?.dock?.edge).toBe("left");
     expect(engine.getZone("rightSidebar")?.dock?.edge).toBe("right");
+    expect(engine.getZone("iconbar")?.dock?.edge).toBe("left"); // 换回左 → iconbar 回左
+  });
+
+  it("dockTo 换右后 iconbar 外缘——order 最小贴窗口最右（比主侧栏更靠外）", () => {
+    const engine = new LayoutEngine();
+    engine.addZone({ zone: "rightSidebar", dock: { edge: "right", width: 300 } });
+    with800x600(engine);
+
+    engine.dockTo("sidebar", "right");
+    // right 侧堆叠（从右向左）：iconbar(42) order0 最外缘 → [478,520]；sidebar 280 在其内 → [520,800]。
+    // 高度 = contentHeight = 600 - 244（statusbar 24 + panel 220）= 356（引擎 bounds 不含底栏横带）
+    expect(engine.getBounds("iconbar")).toEqual({ x: 478, y: 0, width: 42, height: 356 });
+    expect(engine.getBounds("sidebar")).toEqual({ x: 520, y: 0, width: 280, height: 356 });
   });
 
   it("负 contentHeight 钳制——面板超高 → 主区高度 0 不产生 NaN", () => {
