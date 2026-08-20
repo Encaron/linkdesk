@@ -133,6 +133,10 @@ export default function SerialSettingsView() {
         <FormRow label={t("不可见字符转义")}>
           {mkToggle("escapeInvisibleChars")}
         </FormRow>
+        {/* E5.8#30.20：自动保存接收区——端口关闭 + 应用退出时落盘，防数据丢失（随会话联动，默认开=数据安全优先） */}
+        <FormRow label={t("自动保存接收区")}>
+          {mkToggle("autoSaveReceive")}
+        </FormRow>
       </div>
 
       {/* 发送行为 group */}

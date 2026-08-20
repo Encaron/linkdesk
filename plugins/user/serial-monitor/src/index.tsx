@@ -317,6 +317,12 @@ function escapeInvisible(s: string): string {
   });
 }
 
+/** E5.8#30.20：文件名消毒——Windows 非法文件名字符（\ / : * ? " < > |）与控制字符 → "_"（防路径穿越 + 防非法文件名）。 */
+function sanitizeFileName(name: string): string {
+  const cleaned = name.replace(/[\\/:*?"<>|]/g, "_").replace(/[\u0000-\u001F\u007F]/g, "_").trim();
+  return cleaned || "serial";
+}
+
 /* ---- 串口监视器视图 ---- */
 
 interface SerialMonitorViewProps {
@@ -363,6 +369,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   const hexAsciiDualPane = activeSession?.hexAsciiDualPane ?? false;
   // E5.8#30.19b：不可见字符转义——`\n`/`\r`/`\t` 等显示为可见符号（per-COM 记忆，随会话联动）
   const escapeInvisibleChars = activeSession?.escapeInvisibleChars ?? false;
+  // E5.8#30.20：自动保存接收区——端口关闭 + 应用退出时落盘，防数据丢失（per-COM 记忆，随会话联动，默认开）
+  const autoSaveReceive = activeSession?.autoSaveReceive ?? true;
 
   // E5.8#30.12（P6）：per-tab TX/RX——接收区工具栏计数（本会话口，非活动口也实时）
   const { txBytes, rxBytes, isOpen: portIsOpen } = usePortStats(activeSession?.port ?? null);
@@ -648,6 +656,37 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // E5.8#30.19b：转义开关 ref——renderLine 渲染时读（渲染时转义，原始数据不动）
   const escapeRef = useRef(escapeInvisibleChars);
   escapeRef.current = escapeInvisibleChars;
+  // E5.8#30.20：自动保存开关 ref——serial-system handler / pagehide（React 闭包外路径）读取
+  const autoSaveReceiveRef = useRef(autoSaveReceive);
+  autoSaveReceiveRef.current = autoSaveReceive;
+
+  /** E5.8#30.20：接收区内容落盘——<pluginDataDir>/receive-saves/<会话名>.txt（接收区原始文本）。
+   *  writeTextFile 走主进程 fs.mkdir recursive 自动建父目录（零壳 API 面改动）；
+   *  空接收区 / 关开关跳过（无 junk 文件）。 */
+  const saveReceiveToFile = useCallback(async () => {
+    if (!autoSaveReceiveRef.current) return;
+    const view = cmView.current;
+    if (!view) return;
+    const text = view.state.doc.toString();
+    if (!text.trim()) return;
+    try {
+      const env = await window.linkdesk?.env?.get?.("serial-monitor");
+      const dir = env?.pluginDataDir;
+      if (!dir) return;
+      const name = sanitizeFileName(activeSession?.name ?? "serial");
+      await window.linkdesk?.filesystem?.writeTextFile?.(`${dir}/receive-saves/${name}.txt`, text);
+    } catch (e) {
+      console.error("[serial-monitor] 自动保存接收区失败:", e);
+    }
+  }, [activeSession?.name]);
+
+  // E5.8#30.20：应用退出 → 落盘一次（pagehide 浏览器事件，best available——壳无应用退出广播；端口关闭保存是主路径）。
+  // 非键盘处理器，不涉「window 级 addEventListener = 全局劫持」反模式（该约束仅限键盘路由）。
+  useEffect(() => {
+    const onPageHide = () => { void saveReceiveToFile(); };
+    window.addEventListener("pagehide", onPageHide);
+    return () => window.removeEventListener("pagehide", onPageHide);
+  }, [saveReceiveToFile]);
 
   // E5：tab close / plugin uninstall → disconnect serial。
   // 已通过 tabBehavior.invokeBeforeClose 在 TabBar 层处理——确认关闭后、closeTab 前 invoke。
@@ -759,6 +798,8 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         return;
       }
       ringBuffer.current.drainAll();
+      // E5.8#30.20：端口关闭 → 自动保存接收区（落盘策略①，防数据丢失——此时 CM6 已含最新已渲染数据）
+      saveReceiveToFile();
       // E3j #78：断开用缓存的信息（端口已关无法查）
       window.linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
     }
