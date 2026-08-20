@@ -417,10 +417,27 @@ export interface OpenPortConfig {
      *  主进程无法从 sender 识别插件），卸载时 closePortsByOwner 按此回收硬件资源。 */
     ownerPluginId?: string;
 }
-/** 收发统计——serial.stats 推送载荷 */
-export interface SerialStats {
+/** 串口数据载荷——serial.data 推送（E5.8#28：由原无口名 string 演化——D6 载荷对象化）。 */
+export interface SerialDataPayload {
+    /** 数据源端口 = 路由键——消费方按 portName 收自己的口的数据（多口并存各口各收） */
+    portName: string;
+    /** 解码后的行文本 */
+    text: string;
+}
+/** 串口统计载荷——serial.stats 推送（E5.8#28：由原无口名 SerialStats 演化——S10 每口计数器的数据源）。
+ *  tx/rx 为推送增量（非累计值）——消费方自行累加。 */
+export interface SerialStatsPayload {
+    /** 统计归属端口 = 路由键——各口计数器独立累加 */
+    portName: string;
     tx?: number;
     rx?: number;
+}
+/** 串口系统消息载荷——serial.system 推送（E5.8#28：由原无口名 string 演化——S12 正则挖口名 hack 的修根）。
+ *  message 保留 V2 消息格式（如 `---- 已打开串行端口 COM3 ----`），portName 结构化免解析。 */
+export interface SerialSystemPayload {
+    /** 消息归属端口 = 路由键——本端口会话专属消费（开/关状态切换）；不匹配的会话仍可显示文本但不触发状态切换 */
+    portName: string;
+    message: string;
 }
 /** 串口/剪贴板/插件间通信/事件/持久化存储命名空间面——对标 VS Code SerialPort API + p2p + EventEmitter + state */
 export interface DataAPI {
@@ -437,9 +454,10 @@ export interface DataAPI {
         sendText(text: string, enc: string, portName?: string): Promise<void>;
         setDtr(enable: boolean, portName?: string): Promise<void>;
         setRts(enable: boolean, portName?: string): Promise<void>;
-        onData(cb: (text: string) => void): () => void;
-        onStats(cb: (stats: SerialStats) => void): () => void;
-        onSystem(cb: (message: string) => void): () => void;
+        /** E5.8#28：载荷对象化——SerialDataPayload.portName = 路由键（多口并存各口各收） */
+        onData(cb: (payload: SerialDataPayload) => void): () => void;
+        onStats(cb: (payload: SerialStatsPayload) => void): () => void;
+        onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
     };
     /** 剪贴板——读/写系统剪贴板 */
     clipboard: {

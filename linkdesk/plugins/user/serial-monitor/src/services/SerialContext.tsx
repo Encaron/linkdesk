@@ -209,30 +209,35 @@ function _registerIPCListeners(): void {
 
   _ipcCleanups = [
     // 高频 stats 回调——累加而非覆盖
-    s.onStats?.((stats) => {
+    // E5.8#28 过渡期（S10）：载荷带 portName（每口计数器数据源）——本投影仍累加活动口条目，
+    // #29 会话-端口绑定后按 payload.portName 每口精确计数
+    s.onStats?.((payload) => {
+      const tx = payload.tx ?? 0;
+      const rx = payload.rx ?? 0;
       _setState((p) => ({
         ...p,
-        txBytes: p.txBytes + (stats.tx ?? 0),
-        rxBytes: p.rxBytes + (stats.rx ?? 0),
+        txBytes: p.txBytes + tx,
+        rxBytes: p.rxBytes + rx,
       }));
-      // E5.8#27（S10）：同步多口权威态——onStats 载荷无口名（#28 改 payload.portName 根治），
-      // 过渡期只累加到"当前活动口"条目（#29 per-tab 化后每口精确计数）
       const active = _sharedState.sourceName;
       if (active) {
         const entry = _openPorts.get(active);
         if (entry) {
-          entry.txBytes += stats.tx ?? 0;
-          entry.rxBytes += stats.rx ?? 0;
+          entry.txBytes += tx;
+          entry.rxBytes += rx;
         }
       }
     }),
-    s.onSystem?.((msg) => {
-      _setState((p) => ({ ...p, lastError: typeof msg === "string" ? msg : p.lastError }));
+    s.onSystem?.((payload) => {
+      // #28 载荷对象化过渡——旧 string 载荷容错（单端口兼容，D2 缺省语义兜底旧路径）
+      const msg = typeof payload === "string" ? payload : payload.message;
+      _setState((p) => ({ ...p, lastError: msg }));
     }),
     // E3j #77：串口数据上桌——原始数据推到大厅 events 频道，供协议插件等消费
-    // E5.8#27 过渡期（S9）：onData 载荷无口名（#28 改 payload.portName 修根），贴当前活动口名；
-    // 多口并发下非活动口的数据会错标——已知边界，#29 每口消费后消除
-    s.onData?.((text: string) => {
+    // E5.8#27 过渡期（S9）：贴当前活动口名；#28 后载荷带 portName（text/portName 分离），
+    // #29 每口消费后按 payload.portName 贴真名——多口并发错标边界 #29 消除
+    s.onData?.((payload) => {
+      const text = typeof payload === "string" ? payload : payload.text;
       window.linkdesk?.events?.emit("serial:rawData", {
         sourceName: _sharedState.sourceName,
         text,

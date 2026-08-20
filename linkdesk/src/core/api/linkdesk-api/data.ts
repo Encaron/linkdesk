@@ -4,7 +4,7 @@
  * 依赖方向：data → types/ipc/serial；被聚合器交叉组装。
  */
 
-import type { OpenPortConfig, SerialStatus, SerialStats, SerialPortInfo } from "../../types/ipc/serial";
+import type { OpenPortConfig, SerialStatus, SerialDataPayload, SerialStatsPayload, SerialSystemPayload, SerialPortInfo } from "../../types/ipc/serial";
 
 /** 串口/剪贴板/插件间通信/事件/持久化存储命名空间面——对标 VS Code SerialPort API + p2p + EventEmitter + state */
 export interface DataAPI {
@@ -21,9 +21,10 @@ export interface DataAPI {
     sendText(text: string, enc: string, portName?: string): Promise<void>;
     setDtr(enable: boolean, portName?: string): Promise<void>;
     setRts(enable: boolean, portName?: string): Promise<void>;
-    onData(cb: (text: string) => void): () => void;
-    onStats(cb: (stats: SerialStats) => void): () => void;
-    onSystem(cb: (message: string) => void): () => void;
+    /** E5.8#28：载荷对象化——SerialDataPayload.portName = 路由键（多口并存各口各收） */
+    onData(cb: (payload: SerialDataPayload) => void): () => void;
+    onStats(cb: (payload: SerialStatsPayload) => void): () => void;
+    onSystem(cb: (payload: SerialSystemPayload) => void): () => void;
   };
 
   /** 剪贴板——读/写系统剪贴板 */

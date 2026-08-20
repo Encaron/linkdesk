@@ -29,7 +29,11 @@
 import { SerialPort } from 'serialport';
 import * as iconv from 'iconv-lite';
 // E5.7#97：OpenPortConfig/SerialStatus 归口 src/core/types/ipc/serial.ts（preload/API 三端同源）
-import type { OpenPortConfig, SerialStatus } from '../../src/core/types/ipc/serial';
+// E5.8#28：推流面载荷 SerialDataPayload/SerialStatsPayload/SerialSystemPayload 同源（callbacks 载荷对象化）
+import type {
+  OpenPortConfig, SerialStatus,
+  SerialDataPayload, SerialStatsPayload, SerialSystemPayload,
+} from '../../src/core/types/ipc/serial';
 
 // ── 类型 ──
 
@@ -53,10 +57,11 @@ interface PortState {
 }
 
 // E5.8#2：SerialStatus re-export 已删（消费方直引 src/core/types/ipc/serial 正源）
+// E5.8#28：三回调载荷对象化——portName = 路由键（D6——下游按口路由的前提，推流源头不带口名 = 下游无法路由）
 interface SerialCallbacks {
-  onData: (text: string) => void;
-  onStats: (stats: { tx?: number; rx?: number }) => void;
-  onSystem: (message: string) => void;
+  onData: (payload: SerialDataPayload) => void;
+  onStats: (payload: SerialStatsPayload) => void;
+  onSystem: (payload: SerialSystemPayload) => void;
 }
 
 // ── 编码解码（对标 Rust decode_bytes）──
@@ -151,7 +156,7 @@ class SerialService {
   async openPort(cfg: OpenPortConfig): Promise<void> {
     if (this.ports.has(cfg.portName)) {
       const msg = `串口 ${cfg.portName} 已被打开`;
-      this.callbacks?.onSystem(msg);
+      this.callbacks?.onSystem({ portName: cfg.portName, message: msg });
       throw new Error(msg);
     }
 
@@ -182,7 +187,7 @@ class SerialService {
       state.port.open((err) => {
         if (err) {
           const msg = `串口打开失败：${err.message}`;
-          this.callbacks?.onSystem(msg);
+          this.callbacks?.onSystem({ portName: cfg.portName, message: msg });
           reject(new Error(msg));
         } else {
           resolve();
@@ -199,7 +204,7 @@ class SerialService {
     this.startReadLoop(state);
 
     // 系统消息（V2 格式）
-    this.callbacks?.onSystem(`---- 已打开串行端口 ${cfg.portName} ----`);
+    this.callbacks?.onSystem({ portName: cfg.portName, message: `---- 已打开串行端口 ${cfg.portName} ----` });
   }
 
   // ── 读循环（对标 Rust read_loop——事件驱动替代轮询）──
@@ -218,7 +223,7 @@ class SerialService {
       }
 
       // RX 统计
-      this.callbacks?.onStats({ rx: chunk.length });
+      this.callbacks?.onStats({ portName: state.portName, rx: chunk.length });
 
       // 拼入行缓冲区
       state.lineBuffer.push(chunk);
@@ -271,7 +276,7 @@ class SerialService {
           const line = complete.subarray(start, i + 1);
           const text = decodeBuffer(Buffer.from(line), state.encoding).trim();
           if (text) {
-            this.callbacks?.onData(text);
+            this.callbacks?.onData({ portName: state.portName, text });
           }
           start = i + 1;
         }
@@ -292,7 +297,7 @@ class SerialService {
     const text = decodeBuffer(Buffer.from(merged), state.encoding).trim();
     state.lineBuffer = [];
     if (text) {
-      this.callbacks?.onData(text);
+      this.callbacks?.onData({ portName: state.portName, text });
     }
   }
 
@@ -324,7 +329,7 @@ class SerialService {
     state.isClosing = false;
     state.lineBuffer = [];
 
-    this.callbacks?.onSystem(`---- 关闭串行端口 ${name} ----`);
+    this.callbacks?.onSystem({ portName: name, message: `---- 关闭串行端口 ${name} ----` });
   }
 
   // ── E5.8#26 D8——卸载连坐（主进程内部，非公开 API）──
@@ -360,7 +365,7 @@ class SerialService {
     const buf = Buffer.isBuffer(data) ? data : Buffer.from(data);
     state.port.write(buf);
     const byteCount = buf.length;
-    this.callbacks?.onStats({ tx: byteCount });
+    this.callbacks?.onStats({ portName: state.portName, tx: byteCount });
     return byteCount;
   }
 
@@ -375,7 +380,7 @@ class SerialService {
     const buf = encodeText(text, encoding);
     state.port.write(buf);
     const byteCount = buf.length;
-    this.callbacks?.onStats({ tx: byteCount });
+    this.callbacks?.onStats({ portName: state.portName, tx: byteCount });
     return byteCount;
   }
 

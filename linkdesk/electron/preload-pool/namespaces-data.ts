@@ -7,7 +7,7 @@
 import { ipcRenderer } from 'electron';
 import { IPC, filesystemChanged } from '../ipc/channels';
 import type { EventSystemApi } from '../ipc/event-system';
-import type { OpenPortConfig, SerialStats } from '../../src/core/types/ipc/serial';
+import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../../src/core/types/ipc/serial';
 import type { FileChangeEvent } from '../../src/core/services/files/FileService';
 import type { SearchWireOptions, SearchWireResult } from '../../src/core/types/ipc/search';
 
@@ -25,9 +25,10 @@ export function buildSerial(events: EventSystemApi) {
     sendText: (text: string, enc: string, portName?: string) => ipcRenderer.invoke(IPC.serial.sendText, text, enc, portName),
     setDtr: (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setDtr, enable, portName),
     setRts: (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setRts, enable, portName),
-    onData: (cb: (text: string) => void) => events.on(IPC.serial.data, cb),
-    onStats: (cb: (stats: SerialStats) => void) => events.on(IPC.serial.stats, cb),
-    onSystem: (cb: (message: string) => void) => events.on(IPC.serial.system, cb),
+    // E5.8#28：回调载荷对象化（SerialDataPayload/SerialStatsPayload/SerialSystemPayload——portName 路由键）
+    onData: (cb: (payload: SerialDataPayload) => void) => events.on(IPC.serial.data, cb),
+    onStats: (cb: (payload: SerialStatsPayload) => void) => events.on(IPC.serial.stats, cb),
+    onSystem: (cb: (payload: SerialSystemPayload) => void) => events.on(IPC.serial.system, cb),
   };
   /* jscpd:ignore-end */
 }

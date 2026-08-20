@@ -28,7 +28,11 @@ import type { PoolLayout } from '../../src/core/types/pool/poolLayout';
 import type { PoolQuickPickData } from '../../src/core/types/pool/poolQuickPick';
 import type { PoolToastData } from '../../src/core/types/pool/poolToast';
 import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
-import type { SerialStats } from '../../src/core/types/ipc/serial';
+import type {
+  SerialDataPayload,
+  SerialStatsPayload,
+  SerialSystemPayload,
+} from '../../src/core/types/ipc/serial';
 
 /** 注册表行——channel = 接收边界实际到达的通道名；type = 契约类型名（须在本文件 import 声明） */
 export interface RuntimeDtoRow {
@@ -46,7 +50,10 @@ export const RUNTIME_DTO_REGISTRY: readonly RuntimeDtoRow[] = [
   { channel: 'workspace:activeChanged', type: 'WorkspaceActiveChangedPayload' },
   { channel: 'settings:requestGroup', type: 'SettingsRequestGroupPayload' },
   { channel: 'settings:scrollTo', type: 'SettingsScrollToPayload' },
-  { channel: IPC.serial.stats, type: 'SerialStats' },
+  // E5.8#28：serial 三推流通道全部注册——旧插件 vs 新壳载荷错配 dev 报错可诊断（#22.5 兜错配）
+  { channel: IPC.serial.data, type: 'SerialDataPayload' },
+  { channel: IPC.serial.stats, type: 'SerialStatsPayload' },
+  { channel: IPC.serial.system, type: 'SerialSystemPayload' },
   // ── 池直收（主进程 view.webContents.send 直达）──
   { channel: IPC.pool.layout, type: 'PoolLayout' },      // 壳发 push-layout → 主进程转 pool:layout → 池 layout.ts 收
   { channel: IPC.pool.quickpick, type: 'PoolQuickPickData' },

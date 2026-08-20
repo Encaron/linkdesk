@@ -28,9 +28,10 @@ export function registerSerialHandlers(): void {
   // setCallbacks 是覆盖式设置——必须在 guard 之前，每次调用重绑（回调走 IpcBridge.active 取最新实例）。
   serialService.setCallbacks({
     // E5.8#6.5-regress-2：流数据 storeForReplay=false——串口高频数据不入 lastBroadcasts 重放（原直发不重放）
-    onData: (text) => { IpcBridge.active?.broadcast(IPC.serial.data, text, undefined, false); },
-    onStats: (stats) => { IpcBridge.active?.broadcast(IPC.serial.stats, stats, undefined, false); },
-    onSystem: (msg) => { IpcBridge.active?.broadcast(IPC.serial.system, msg, undefined, false); },
+    // E5.8#28：载荷对象化（{portName, text/message/统计}）——下游按键路由（S9 修根的前提）
+    onData: (payload) => { IpcBridge.active?.broadcast(IPC.serial.data, payload, undefined, false); },
+    onStats: (payload) => { IpcBridge.active?.broadcast(IPC.serial.stats, payload, undefined, false); },
+    onSystem: (payload) => { IpcBridge.active?.broadcast(IPC.serial.system, payload, undefined, false); },
   });
 
   if (_registered) return;

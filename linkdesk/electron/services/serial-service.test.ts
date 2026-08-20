@@ -48,8 +48,9 @@ beforeEach(async () => {
   serialService.setCallbacks({
     onData: () => {},
     onStats: () => {},
-    onSystem: (msg) => {
-      systems.push(msg);
+    // E5.8#28：载荷对象化——取 payload.message（原 string 直存）
+    onSystem: (payload) => {
+      systems.push(payload.message);
     },
   });
 });
