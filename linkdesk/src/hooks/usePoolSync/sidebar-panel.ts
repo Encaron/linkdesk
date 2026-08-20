@@ -5,7 +5,7 @@
  * 依赖方向：sidebar-panel → core/services/layout + core/utils/splitTree（type）；无反向。
  */
 
-import type { SidebarViewMeta, PanelViewMeta } from "../../core/types/pool/poolLayout";
+import type { SidebarViewMeta, PanelViewMeta, PanelSwitcherGroup } from "../../core/types/pool/poolLayout";
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService";
 import type { ViewDescriptor } from "../../core/services/layout/ViewContainerService"; // E5.7#98：_pluginId/_renderPath 窄接口基型
 import type { SplitNode } from "../../core/utils/splitTree"; // E5.6#16：从分屏树计算 flex 比例
@@ -58,6 +58,36 @@ export function buildPanelViewMetas(): PanelViewMeta[] {
     }
   }
   return metas;
+}
+
+/**
+ * E5.8#34：构建容器切换器下拉 DTO——按容器分组列**全部**视图（含隐藏，mockup 帧 2）。
+ * 数据源 = ViewContainerService（#63.7 同源，零新注册面）：getViews 含隐藏 + isVisible 标记勾选 +
+ * activeViewId 标记激活。显示文本铁律：title/containerTitle 壳 t() 解析后推送，池零自产文本。
+ * 空容器（无注册视图）跳过——下拉只列有内容的容器。
+ */
+export function buildPanelSwitcherGroups(
+  t: (key: string) => string,
+  activeViewId: string
+): PanelSwitcherGroup[] {
+  const groups: PanelSwitcherGroup[] = [];
+  for (const container of ViewContainerService.getViewContainers("panel")) {
+    const views = ViewContainerService.getViews(container.id);
+    if (views.length === 0) continue;
+    const desc = (v: ViewDescriptor) => v as ViewDescriptor & { _pluginId?: string };
+    groups.push({
+      containerId: container.id,
+      containerTitle: t(container.title),
+      items: views.map((v) => ({
+        viewId: v.id,
+        title: t(v.title),
+        pluginId: desc(v)._pluginId ?? "",
+        visible: ViewContainerService.isVisible(container.id, v.id),
+        active: v.id === activeViewId,
+      })),
+    });
+  }
+  return groups;
 }
 
 /**

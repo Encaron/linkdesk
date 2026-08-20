@@ -1079,6 +1079,25 @@ export interface PanelViewMeta {
      *  ShellViewMeta 同款（sidebar 贡献），面板视图零特殊通道。 */
     renderPath: string;
 }
+/** E5.8#34：容器切换器下拉 item——含隐藏视图 + 显隐/激活标记（mockup 帧 2 拍板） */
+export interface PanelSwitcherItem {
+    viewId: string;
+    /** 视图名——壳 t() 已解析（显示文本铁律） */
+    title: string;
+    /** 所属插件 ID——sub 标签（如 "panel-demo"） */
+    pluginId: string;
+    /** 当前可见性——✓ 勾选 = 可见 */
+    visible: boolean;
+    /** 是否激活视图 */
+    active: boolean;
+}
+/** E5.8#34：容器切换器下拉分组——dd-group 容器标题 + dd-item 列表 */
+export interface PanelSwitcherGroup {
+    containerId: string;
+    /** 容器标题——壳 t() 已解析 */
+    containerTitle: string;
+    items: PanelSwitcherItem[];
+}
 /** 底部面板布局——Phase 5 #21 PanelZone 消费 */
 export interface PanelLayout {
     visible: boolean;
@@ -1090,6 +1109,12 @@ export interface PanelLayout {
     maxHeight?: number;
     /** E5.7#63.7：[+] 按钮 tooltip——壳 t("新建面板视图") 推送（显示文本铁律；面板创建归 Phase 12，目前壳侧 no-op） */
     createTooltip?: string;
+    /** E5.8#34：容器切换器下拉 DTO——按容器分组列全部视图（含隐藏），mockup 帧 2 */
+    switcher?: PanelSwitcherGroup[];
+    /** E5.8#34：空态占位主文本——全隐藏 / 无贡献视图时壳 t() 推送 */
+    emptyText?: string;
+    /** E5.8#34：空态占位指路——同 emptyText 壳 t() 推送 */
+    emptyHint?: string;
 }
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。
  *  E5.8#20-c：改名 PoolStatusBarItem——与 api/types.ts StatusBarItem（manifest 贡献型）同名，

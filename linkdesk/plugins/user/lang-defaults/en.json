@@ -243,5 +243,9 @@
   "已隐藏": "Hidden",
   "面板": "Panel",
   "打开面板": "Open Panel",
-  "切换底部面板可见性": "Toggle Panel Visibility"
+  "切换底部面板可见性": "Toggle Panel Visibility",
+  "暂无面板视图": "No panel views",
+  "所有视图已隐藏": "All panel views are hidden",
+  "从切换器勾选视图恢复显示": "Check views back from the switcher",
+  "插件声明 contributes.views location:\"panel\" 后自动出现在这里": "Views appear here after a plugin declares contributes.views location:\"panel\""
 }

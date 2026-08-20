@@ -33,7 +33,7 @@ import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLo
 import { resolvePluginIcon } from "../core/utils/plugin/iconUtils";
 import { isShellRenderedTab } from "../core/utils/tabIdentity";
 // ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组 ──
-import { buildSidebarViewMetas, buildPanelViewMetas, computeGroupFlexes } from "./usePoolSync/sidebar-panel";
+import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, computeGroupFlexes } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
 import { buildIconBar } from "./usePoolSync/iconbar";
 import { buildStatusBarItems } from "./usePoolSync/statusbar";
@@ -160,22 +160,31 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
     }
 
     // E5.7#63.7：底部面板——location:"panel" 容器全部活跃视图展平为 views[]。
-    // 无面板贡献 → 不推 panel 字段（池维持 Phase 5 骨架的无面板空态）。高度真相源 =
-    // LayoutEngine panel zone（resizeZoneHeight 钳制后经 onDidChangeLayout → 本 effect 重推回执）。
+    // E5.8#34：推送条件改为「有 panel 容器贡献」——全不勾（全部隐藏）也推 panel +
+    // 切换器 + 空态（验收：全不勾 → 空态占位，且保留切换器恢复勾回）。无面板容器 → 不推
+    // panel 字段（池维持 Phase 5 骨架的无面板空态）。高度真相源 = LayoutEngine panel zone。
     const panelViews = buildPanelViewMetas();
     let panel: PanelLayout | undefined;
     // E5.8#31：显隐 = 不推 panel 字段——panelVisible false 时保持 undefined，
     // 池 `layout.panel?.visible && <PanelZone/>` → 不渲染（复用无 panel 贡献现网路径，零池改动）
-    if (panelViews.length > 0 && panelVisible) {
+    if (panelVisible && ViewContainerService.getViewContainers("panel").length > 0) {
       const panelZone = layoutEngine.getZone("panel");
       const validActiveId = panelActiveViewId && panelViews.some((v) => v.id === panelActiveViewId)
         ? panelActiveViewId
         : panelViews[0]?.id ?? "";
+      // E5.8#34：空态双形态——有注册视图但全隐藏 →「所有视图已隐藏」；无任何视图 →「暂无面板视图」
+      const hasAnyViews = ViewContainerService.getViewContainers("panel").some(
+        (c) => ViewContainerService.getViews(c.id).length > 0
+      );
       panel = {
         visible: true,
         height: layoutEngine.getBounds("panel")?.height ?? panelZone?.dock?.height ?? 220,
         activeViewId: validActiveId,
         views: panelViews,
+        // 激活标记以渲染真源 validActiveId 为准——激活视图被隐藏时高亮回退视图而非隐藏视图
+        switcher: buildPanelSwitcherGroups(t, validActiveId),
+        emptyText: t(hasAnyViews ? "所有视图已隐藏" : "暂无面板视图"),
+        emptyHint: t(hasAnyViews ? "从切换器勾选视图恢复显示" : "插件声明 contributes.views location:\"panel\" 后自动出现在这里"),
         minHeight: panelZone?.dock?.minHeight,
         maxHeight: panelZone?.dock?.maxHeight,
         createTooltip: t("新建面板视图"),

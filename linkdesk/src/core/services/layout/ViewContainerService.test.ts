@@ -6,6 +6,8 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import { ViewContainerService } from "./ViewContainerService";
 import type { ViewDescriptor } from "./ViewContainerService";
+import { clearPluginStates } from "../plugins/PluginStateService"; // E5.8#34：隐藏持久化测试隔离
+import { loadHiddenState, setHidden } from "./ViewContainerService/hidden"; // E5.8#34：setVisible 落盘断言 + 重启模拟
 
 const PLUGIN_ID = "test-plugin";
 const PLUGIN_ID_2 = "test-plugin-2";
@@ -27,6 +29,7 @@ describe("ViewContainerService", () => {
     // 清理所有测试残留
     ViewContainerService.unregisterAll(PLUGIN_ID);
     ViewContainerService.unregisterAll(PLUGIN_ID_2);
+    clearPluginStates(); // E5.8#34：清隐藏持久化——setVisible 现在落盘
   });
 
   /* ═══ 容器管理 ═══ */
@@ -336,5 +339,52 @@ describe("ViewContainerService", () => {
     expect(() => {
       ViewContainerService.unregisterAll(PLUGIN_ID);
     }).not.toThrow();
+  });
+
+  /* ═══ E5.8#34 隐藏持久化（hidden.ts 域 + setVisible 落盘 + 模型种子） ═══ */
+
+  it("setVisible false → 持久化 hiddenViews 含该 view（重启保持）", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "v1" }));
+
+    ViewContainerService.setVisible("e", "v1", false);
+
+    expect(loadHiddenState().has("v1")).toBe(true);
+    expect(ViewContainerService.isVisible("e", "v1")).toBe(false);
+  });
+
+  it("setVisible true（恢复）→ hiddenViews 移除该 view", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "v1" }));
+
+    ViewContainerService.setVisible("e", "v1", false);
+    ViewContainerService.setVisible("e", "v1", true);
+
+    expect(loadHiddenState().has("v1")).toBe(false);
+    expect(ViewContainerService.isVisible("e", "v1")).toBe(true);
+  });
+
+  it("重启恢复——持久化隐藏态种子进新建模型（isVisible 直接反映）", () => {
+    // 模拟重启：经 hidden 域直接落盘隐藏态（等价上一会话 setVisible 已持久化），再新建容器 + view
+    setHidden("v1", true);
+    expect(loadHiddenState().has("v1")).toBe(true);
+
+    // 新建容器（新 model 种子 loadHiddenState）——同 viewId 保持隐藏
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "new-c", title: "新容器", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "new-c", makeView({ id: "v1", title: "同视图" }));
+
+    expect(ViewContainerService.isVisible("new-c", "v1")).toBe(false);
+    expect(ViewContainerService.getActiveViews("new-c")).toHaveLength(0);
+  });
+
+  it("toggleViewVisibility 往返——hiddenViews 正确跟随", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "v1" }));
+
+    ViewContainerService.toggleViewVisibility("e", "v1"); // 显示 → 隐藏
+    expect(loadHiddenState().has("v1")).toBe(true);
+
+    ViewContainerService.toggleViewVisibility("e", "v1"); // 隐藏 → 恢复
+    expect(loadHiddenState().has("v1")).toBe(false);
   });
 });
