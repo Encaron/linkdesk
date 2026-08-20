@@ -213,6 +213,8 @@ export type ManifestMenuItem = string | {
     label?: string;
     when?: string;
     group?: string;
+    /** E5.8#33：排序权重——同 group 内越小越靠前（壳招牌用于菜单栏组序） */
+    order?: number;
     /** E3f #52a：嵌套子菜单——有 children 时 command 可为空 */
     children?: ManifestMenuItem[];
 };
