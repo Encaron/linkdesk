@@ -267,8 +267,10 @@ export interface ContributesViews {
 export interface ViewPluginEntry {
   pluginId: string;
   manifest: PluginManifest;
-  /** React 组件（懒加载） */
-  component: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
+  /** React 组件（懒加载）——可选：E5.8#37.9.2.3 起 entryless 视图插件也注册进 viewRegistry
+   *  （图标栏数据源），其组件由 ViewContainerService 经 contributes.views[].render 加载，
+   *  本注册表只作元数据/图标入口，component 为零。渲染路径不读本字段（池 PluginComponent 直扫 glob）。 */
+  component?: React.ComponentType<{ isActive: boolean; sourceId?: string }>;
   /** 可选状态栏组件——插件自己渲染动态状态项，对标 VS Code StatusBarItem */
   statusBarComponent?: React.ComponentType;
 }

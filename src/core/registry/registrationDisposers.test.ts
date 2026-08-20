@@ -21,7 +21,7 @@ import { createStatusBarItem, getDynamicStatusBarItems, clearStatusBarItems } fr
 import { registerFileAssociation, getPluginsFor, getAssociationsForPlugin, clearFileAssociations } from "../services/files/FileAssociationService";
 import { registerDialogRenderers, confirm } from "../services/ui/DialogService";
 import { ContextKeyService } from "./commands/ContextKeyService";
-import { registerViewPlugin, getViewPlugin, clearRegistry } from "../../pluginLoader/viewRegistry";
+import { registerViewPlugin, getViewPlugin, clearRegistry, getIconLocation, getTabCreatableViews, findFallbackPlugin } from "../../pluginLoader/viewRegistry";
 import { registerPluginLanguageBundle } from "../../pluginLoader/i18nResources";
 import i18n from "../../i18n";
 import type { ViewPluginEntry } from "../api/types";
@@ -436,6 +436,39 @@ describe("viewRegistry — registerViewPlugin() 返 disposer（E5.8#10-4）", ()
     PluginLifecycle.onWillUninstall.fire({ pluginId: PID, reason: "uninstall" });
 
     expect(getViewPlugin(PID)).toBeUndefined();
+  });
+
+  it("E5.8#37.9.2.3 无组件注册（entryless 视图插件）——component 可省，getIconLocation 生效", () => {
+    registerViewPlugin({
+      pluginId: PID,
+      manifest: { name: "Hello", version: "1.0.0", appearsIn: { iconBar: "top", sidePanel: true } },
+    });
+
+    expect(getViewPlugin(PID)).toBeDefined();
+    expect(getViewPlugin(PID)!.component).toBeUndefined();
+    expect(getIconLocation(PID)).toBe("top");
+
+    // 图标栏数据源 getViewPlugins() 必须包含它——这是本修复的目的
+    expect(getViewPlugin(PID)!.manifest.contributes).toBeUndefined();
+  });
+
+  it("E5.8#37.9.2.3 entryless + appearsIn.tabBar 不得成为标签页（entry 守卫）", () => {
+    registerViewPlugin({
+      pluginId: PID,
+      manifest: { name: "Hello", version: "1.0.0", appearsIn: { tabBar: true } },
+    });
+
+    expect(getTabCreatableViews().some((e) => e.pluginId === PID)).toBe(false);
+  });
+
+  it("E5.8#37.9.2.3 entryless isFallback 不得成为保底标签页（entry 守卫）", () => {
+    registerViewPlugin({
+      pluginId: PID,
+      manifest: { name: "Hello", version: "1.0.0", tabBehavior: { isFallback: true } },
+    });
+
+    // 守卫下跳过 entryless → 走内置欢迎页；无守卫则返回 PID
+    expect(findFallbackPlugin()?.pluginId).not.toBe(PID);
   });
 });
 

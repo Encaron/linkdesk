@@ -1,9 +1,11 @@
 /**
  * demo-en 插件入口。E5.8#37.9.2 纯英文示范插件。
  *
- * E5.8#37.9.2.2：entry 是图标栏出现图标的必要条件——图标栏数据源 viewRegistry
- * 只收 registerViewPlugin 的插件（runtime.ts:282 有 entry 才走 loadPluginComponent），
- * entryless 插件（panel-demo 先例）即使声明 appearsIn.iconBar 也被静默丢弃。
- * file-tree 同款模式（侧栏专用 + 图标）：export default 主视图即可。
+ * E5.8#37.9.2.2 修复 + #37.9.2.3 壳级收口：本插件按 file-tree 同款标准模式
+ * （侧栏专用 + 图标）声明 entry —— 有 entry = 走 loadPluginComponent 注册进
+ * viewRegistry（图标栏数据源），是图标最直接的路径。entryless 插件也能拿图标了
+ * （E5.8#37.9.2.3：runtime.ts Step 4 对 entryless 且含侧栏视图容器的插件注册
+ * component-less 条目），但 entry 仍是官方推荐形态——第三方作者照抄本文件即可。
+ * export default 主视图，其余交给壳。
  */
 export { default } from "./views/HelloView";

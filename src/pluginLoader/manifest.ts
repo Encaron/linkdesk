@@ -42,6 +42,22 @@ export function normalizeManifest(manifest: PluginManifest): Record<string, unkn
   return c;
 }
 
+/**
+ * E5.8#37.9.2.3：是否有**侧栏**视图容器——entryless 视图插件进 viewRegistry（图标栏数据源）的判定。
+ * 视图容器 location 默认 sidebar（plugin.schema.json default），显式 panel/auxiliarybar 不算图标入口
+ * （图标栏点击语义 = 打开侧栏容器，对标 VS Code Activity Bar 只列侧栏/主侧栏视图）。
+ * 纯函数（测试覆盖）——数据插件（Python 语言包等）零 viewsContainers → false → 不进 viewRegistry。
+ */
+export function hasSidebarContainers(manifest: PluginManifest): boolean {
+  const vc = manifest.contributes?.viewsContainers;
+  if (!vc || typeof vc !== "object" || Array.isArray(vc)) return false;
+  return Object.values(vc).some((c) => {
+    if (!c || typeof c !== "object") return false;
+    const loc = (c as { location?: string }).location;
+    return loc === undefined || loc === "sidebar";
+  });
+}
+
 /* ── E5.7#81：安装源校验 + 版本冲突裁决——纯函数（测试覆盖） ── */
 
 /** E5.7#81：合法 pluginId 形状——安装目录名 = pluginId，路径穿越字符直通文件系统 */
