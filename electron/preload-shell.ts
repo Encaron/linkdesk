@@ -24,7 +24,7 @@ import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
-import type { OpenPortConfig, SerialStats } from '../src/core/types/ipc/serial';
+import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
@@ -124,9 +124,10 @@ try {
       setDtr:     (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setDtr, enable, portName),
       setRts:     (enable: boolean, portName?: string) => ipcRenderer.invoke(IPC.serial.setRts, enable, portName),
       // 数据推送监听——E5.8#6.5：走 broadcast → plugin:push 分发 → events.on（原 listenDirect direct 已删）
-      onData:     (cb: (text: string) => void)      => events.on(IPC.serial.data, cb),
-      onStats:    (cb: (stats: SerialStats) => void) => events.on(IPC.serial.stats, cb),
-      onSystem:   (cb: (message: string) => void)    => events.on(IPC.serial.system, cb),
+      // E5.8#28：回调载荷对象化（SerialDataPayload/SerialStatsPayload/SerialSystemPayload——portName 路由键）
+      onData:     (cb: (payload: SerialDataPayload) => void)   => events.on(IPC.serial.data, cb),
+      onStats:    (cb: (payload: SerialStatsPayload) => void)  => events.on(IPC.serial.stats, cb),
+      onSystem:   (cb: (payload: SerialSystemPayload) => void) => events.on(IPC.serial.system, cb),
     },
 
     // ── 文件系统（步 3 接入——对标 @tauri-apps/plugin-fs）──

@@ -20,6 +20,8 @@ import {
 import { EditorState, StateField, StateEffect, type Extension, RangeSet, Compartment } from "@codemirror/state";
 import { search, RegExpCursor } from "@codemirror/search";
 import { useIpcEvent } from "@src/hooks/useIpcEvent";
+// E5.8#28：serial 推流载荷契约化（@linkdesk/contracts，零 @src/core）——useIpcEvent 泛型窄化用
+import type { SerialDataPayload, SerialSystemPayload } from "@linkdesk/contracts";
 // E5.6#11.5h：RingBuffer 内联到 utils/——池插件零 @src/core 依赖
 import { RingBuffer } from "./utils/RingBuffer";
 // Phase 5.5c C4a：12 项设置切到 useSerialSessions——每会话独立，侧栏写入主区读取
@@ -502,14 +504,16 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       .join(" ");
   };
 
-  useIpcEvent<string>("serial-data", (payload) => {
+  useIpcEvent<SerialDataPayload>("serial-data", (payload) => {
     // C1：用当前 tab 的 session ID 判断——per-tab 绑定，非全局 activeSession
     if (!sessionIdRef.current) return;
     if (!portOpenRef.current) return;
     const fmt = tsFormatRef.current;
+    // E5.8#28：载荷对象化过渡——旧 string 载荷容错（单端口兼容）；#29 portFilter 键控过滤接管
+    const text = typeof payload === "string" ? payload : payload.text;
     const displayText = receiveModeRef.current === SEND_MODE_HEX
-      ? toHexDisplay(payload)
-      : payload;
+      ? toHexDisplay(text)
+      : text;
     ringBuffer.current.write({
       text: fmt !== "无" ? `${formatTimestamp(fmt)} -> ${displayText}` : displayText,
       type: "received",
@@ -519,11 +523,12 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
   // E3j #78：缓存最后一次连接状态——断开时 port 已关、getStatus 拿不到信息
   const lastPortInfoRef = useRef<{ portName: string; baudRate: number } | null>(null);
 
-  useIpcEvent<string>("serial-system", (payload) => {
+  useIpcEvent<SerialSystemPayload>("serial-system", (payload) => {
     const fmt = tsFormatRef.current;
-    // 解析系统消息中的端口名——"---- 已打开串行端口 COM13 ----" → COM13
-    // 只让端口匹配的标签页激活 portOpenRef，解决多标签页串口数据串流 bug。
-    const portMatch = payload.match(/(?:已打开|关闭)串行端口\s+(\S+)/);
+    // E5.8#28：载荷对象化过渡——旧 string 载荷容错（单端口兼容）；payload.portName 结构化取口名
+    //（#29 删此正则 hack——S12：由 payload.portName 直接路由，免解析）
+    const msg = typeof payload === "string" ? payload : payload.message;
+    const portMatch = msg.match(/(?:已打开|关闭)串行端口\s+(\S+)/);
     const msgPort = portMatch?.[1] ?? null;
     const myPort = activeSession?.port || null;
     // 消息无端口名 → 容错，保持旧行为（消息格式不会永远不变）
@@ -531,11 +536,11 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
     // 两者都有 → 精确比对
     const isMyPort = !msgPort ? true : myPort ? msgPort === myPort : false;
 
-    if (/已打开/.test(payload)) {
+    if (/已打开/.test(msg)) {
       if (!isMyPort) {
         // 不是这个标签页的端口——只显示系统消息文本，不激活数据接收
         ringBuffer.current.write({
-          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${msg}` : msg,
           type: "system",
         });
         return;
@@ -557,10 +562,10 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
         }
       });
     }
-    if (/关闭/.test(payload)) {
+    if (/关闭/.test(msg)) {
       if (!isMyPort) {
         ringBuffer.current.write({
-          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+          text: fmt !== "无" ? `${formatTimestamp(fmt)} ${msg}` : msg,
           type: "system",
         });
         return;
@@ -571,7 +576,7 @@ function SerialMonitorView({ isActive, sourceId: propSourceId }: SerialMonitorVi
       window.linkdesk?.events?.emit("serial:disconnected", lastPortInfoRef.current ?? {});
     }
     ringBuffer.current.write({
-      text: fmt !== "无" ? `${formatTimestamp(fmt)} ${payload}` : payload,
+      text: fmt !== "无" ? `${formatTimestamp(fmt)} ${msg}` : msg,
       type: "system",
     });
   });

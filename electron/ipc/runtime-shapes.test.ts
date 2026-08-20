@@ -67,9 +67,15 @@ describe("validateWire——正确载荷返回空数组", () => {
   it("settings:scrollTo 正确", () => {
     expect(validateWire("settings:scrollTo", { key: "appearance" })).toEqual([]);
   });
-  it("serial:stats 正确（可选字段缺省）", () => {
-    expect(validateWire("serial:stats", { tx: 10, rx: 20 })).toEqual([]);
-    expect(validateWire("serial:stats", {})).toEqual([]);
+  it("serial:stats 正确（portName 必填 + tx/rx 可选缺省）", () => {
+    expect(validateWire("serial:stats", { portName: "COM3", tx: 10, rx: 20 })).toEqual([]);
+    expect(validateWire("serial:stats", { portName: "COM3" })).toEqual([]);
+  });
+  it("serial:data 正确（E5.8#28 载荷对象化——portName + text）", () => {
+    expect(validateWire("serial:data", { portName: "COM3", text: "S500" })).toEqual([]);
+  });
+  it("serial:system 正确（E5.8#28 载荷对象化——portName + message）", () => {
+    expect(validateWire("serial:system", { portName: "COM3", message: "串口已打开" })).toEqual([]);
   });
   it("pool:quickpick 正确", () => {
     expect(validateWire("pool:quickpick", { open: true, placeholder: "选择", items: [{ key: "0", searchText: "a", label: "A" }] })).toEqual([]);
@@ -149,8 +155,5 @@ describe("validateWire——垃圾输入 never-throw（生产不崩）", () => {
 describe("validateWire——未注册通道返回 null（安全降级）", () => {
   it("未知通道 null", () => {
     expect(validateWire("no-such:channel", { any: true })).toBeNull();
-  });
-  it("值类型通道（serial:data 无结构可查）null", () => {
-    expect(validateWire("serial:data", "raw bytes")).toBeNull();
   });
 });

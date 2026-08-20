@@ -65,7 +65,7 @@ async function list(): Promise<FileEntry[]> {
 
 > **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** 当前仅 `npm pack` 本地验收闭环；真实 npm publish 已立案 [E6#2.5](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)。
 
-**路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（86 声明，零 import 依赖），拷贝即用。
+**路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（88 声明，零 import 依赖），拷贝即用。
 
 > **三个路径任选其一，禁止 `import type { ... } from "@src/core"`**——那是偷壳源码类型（见 §五）。
 
@@ -81,6 +81,7 @@ async function list(): Promise<FileEntry[]> {
 | **decorations** | **同步契约**：`provideDecoration` 返回 `FileDecoration \| null \| undefined`，**不得返回 Promise**（异步提供方被跳过）；同 pluginId 重复 `registerProvider` 幂等覆盖；注销/注册自动全量刷新通知 `onDidChange([])`；provider 抛异常自愈剔除该条目 |
 | **filesystem** | 插件权限：插件数据目录读写、workspace 目录读、**其他插件目录禁止** |
 | **configuration** | 配置 key 命名规则 `<pluginId>.<property>`（如 `editor.fontSize`、`serial-monitor.baudRate`） |
+| **serial** | **E5.8#28 多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口（D3），会话-端口绑定在插件侧 |
 | **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
 
 **壳广播事件（插件可订阅，走 `events.on`）：**
@@ -98,7 +99,7 @@ async function list(): Promise<FileEntry[]> {
 | 点 | 旧手写版 | 契约/实现实况（#20 后） |
 |------|------|------|
 | `serial.listPorts()` | 写成 `getPorts()` | 契约 `listPorts()`——实现一直叫这个，旧文档笔误 |
-| `serial.onData/onStats/onSystem` | `cb: (d: any)` | 契约分型：`onData(text: string)` / `onStats(stats: SerialStats)` / `onSystem(message: string)` |
+| `serial.onData/onStats/onSystem` | `cb: (d: any)` / string | **E5.8#28 载荷对象化**：`onData(p: SerialDataPayload)` / `onStats(p: SerialStatsPayload)` / `onSystem(p: SerialSystemPayload)`——三通道均带 `portName` 路由键（`SerialStats` 已删除，无死类型尾巴） |
 | `decorations.provideDecoration` | 写可返回 `Promise<FileDecoration>` | 契约**同步 only**（返回 Promise 的提供方被跳过） |
 | `pluginState.onChange` | 注释「未来多 WebView 恢复后可用」 | E5.7 池已注入 onChange——订阅可用；通配键名订阅走 `events.on("plugin-state:changed")`（E5.8#20 补导出 `PluginStateChangedPayload`） |
 
