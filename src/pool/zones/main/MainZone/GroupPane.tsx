@@ -15,6 +15,8 @@ import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout"
 
 interface GroupPaneProps {
   group: PoolGroup;
+  /** E5.8#30.15（P5）：本面板是否聚焦（group.id === activeGroupId）——isActive 单聚焦判定 */
+  focused?: boolean;
   /** getEffectiveTabs(group.id, group)——拖拽本地/回执覆盖序由父层解析 */
   tabs: PoolTab[];
   draggingId?: string;
@@ -27,6 +29,7 @@ interface GroupPaneProps {
 
 export default function GroupPane({
   group,
+  focused = true,
   tabs,
   draggingId,
   dragInsertIndex,
@@ -62,7 +65,9 @@ export default function GroupPane({
               <ErrorBoundary pluginId={tab.pluginId}>
                 <ShellViewRenderer
                   tab={tab}
-                  isActive={tab.id === group.activeTabId}
+                  // E5.8#30.15（P5）：isActive 单聚焦——仅聚焦面板的活跃标签（对标 VS Code：
+                  // 只有聚焦编辑组的活跃编辑器才是「活跃」；多面板下不再每面板各一个活跃标签）
+                  isActive={focused && tab.id === group.activeTabId}
                   creatableViews={creatableViews}
                 />
               </ErrorBoundary>
@@ -72,7 +77,7 @@ export default function GroupPane({
                   pluginId={tab.pluginId}
                   tabId={tab.id}
                   sourceId={tab.sourceId}
-                  isActive={tab.id === group.activeTabId}
+                  isActive={focused && tab.id === group.activeTabId}
                 />
               </ErrorBoundary>
             )}

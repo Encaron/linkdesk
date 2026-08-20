@@ -22,6 +22,9 @@ type TabSplitDirection = "horizontal" | "vertical";
 /** 池→壳 tab 动作——union literal 即 wire 枚举 */
 export type PoolTabAction =
   | { action: "focusTab"; tabId: string }
+  // E5.8#30.15（P5）：点击面板空白聚焦该面板——只改 activeGroupId 不改 activeTabId
+  //（activeTabId 已是该组活跃标签；焦点=用户在看哪个面板，命令路由/聚焦环依赖它）
+  | { action: "focusGroup"; groupId: string }
   | { action: "closeTab"; tabId: string }
   // closeOtherTabs/closeTabsToRight/closeAllTabs/duplicateTab 树内零发送方——
   // 但 tabAction 是插件可见 API（第三方插件可发），壳 switch 保留为契约面

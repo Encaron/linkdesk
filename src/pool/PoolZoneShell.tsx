@@ -51,7 +51,7 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
           {/* MainZone——E5.7#20（Phase 5）：MainRenderer 693 行行为零丢失提取（13 项验收）。
               tab bar 收在 panel 内 per-panel GroupTabBar——TabBarZone（#7）已取消。
               数据 = PoolLayout v2 的 groups / root / creatableViews 切片。 */}
-          <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} />
+          <MainZone groups={layout.groups} root={layout.root} creatableViews={layout.creatableViews} activeGroupId={layout.activeGroupId} />
 
           {/* PanelZone——E5.7#21 骨架 + #63.7 数据生产者：无面板贡献的插件时 layout.panel 缺省
               → 条件渲染永假 = 零 DOM（生产者建好前与建好后行为一致） */}

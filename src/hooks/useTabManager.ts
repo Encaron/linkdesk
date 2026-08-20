@@ -29,6 +29,7 @@ import {
   reduceCreateTab,
   reduceOpenOrFocus,
   reduceFocusTab,
+  reduceFocusGroup,
   reduceCloseTab,
   reduceForceCloseTab,
   reduceDuplicateTab,
@@ -41,6 +42,7 @@ export {
   reduceCreateTab,
   reduceOpenOrFocus,
   reduceFocusTab,
+  reduceFocusGroup,
   reduceCloseTab,
   reduceForceCloseTab,
   reduceDuplicateTab,
@@ -68,6 +70,12 @@ export {
 } from "./useTabManager/reducers-layout";
 
 /* ── Hook ── */
+
+/** E4V#32：标签页激活事件双发（CoreEvents + 插件 IPC）——聚焦/激活共用一处（归一性，E5.8#30.15 消重）。 */
+function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
+  CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
+  try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId, filePath }); } catch { /* 静默 */ }
+}
 
 export function useTabManager() {
   const [tabState, setTabState] = useState<TabState>(() => createInitialTabState());
@@ -124,8 +132,7 @@ export function useTabManager() {
         const g = findGroup(eager.state, eager.focusedId);
         const t = g?.tabs.find((tab) => tab.id === eager.focusedId);
         const filePath = t?.filePath;
-        CoreEvents.onDidChangeActiveTab.fire({ tabId: eager.focusedId, pluginId: type, filePath });
-        try { window.linkdesk?.events?.emit("tab:activated", { tabId: eager.focusedId, pluginId: type, filePath }); } catch { /* 静默 */ }
+        emitTabActivated(eager.focusedId, type, filePath);
       }
       return eager.focusedId;
     },
@@ -146,8 +153,23 @@ export function useTabManager() {
       return next;
     });
     // E4V#32: fire 后触发 autoReveal
-    CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId: tab?.pluginId, filePath: tab?.filePath });
-    try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId: tab?.pluginId, filePath: tab?.filePath }); } catch { /* 静默 */ }
+    emitTabActivated(tabId, tab?.pluginId, tab?.filePath);
+  }, []);
+
+  // E5.8#30.15（P5）：聚焦面板（点空白）——只改 activeGroupId，不改 activeTabId。
+  // 同组 no-op（幂等，省一次 pushLayout 回环）；聚焦面板的 active tab 即「当前编辑」——
+  // 事件同 focusTab（tab:focused → activeEditor 跟随，tab:activated → 插件激活语义）。
+  const focusGroup = useCallback((groupId: string) => {
+    const prev = tabStateRef.current;
+    if (prev.activeGroupId === groupId) return;
+    const group = prev.groups.find((g) => g.id === groupId);
+    if (!group) return;
+    setTabState((p) => reduceFocusGroup(p, groupId));
+    const tab = group.tabs.find((t) => t.id === group.activeTabId) ?? group.tabs[0];
+    if (tab) {
+      shellEvents.emit("tab:focused", { pluginId: tab.pluginId || tab.type, tabId: tab.id });
+      emitTabActivated(tab.id, tab.pluginId, tab.filePath);
+    }
   }, []);
 
   /** 按 sourceId 找标签页并聚焦——通用 API。
@@ -173,8 +195,7 @@ export function useTabManager() {
       return next;
     });
     if (tab) {
-      CoreEvents.onDidChangeActiveTab.fire({ tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath });
-      try { window.linkdesk?.events?.emit("tab:activated", { tabId: tab.id, pluginId: tab.pluginId, filePath: tab.filePath }); } catch { /* 静默 */ }
+      emitTabActivated(tab.id, tab.pluginId, tab.filePath);
     }
   }, []);
 
@@ -417,6 +438,7 @@ export function useTabManager() {
     createTab,
     openOrFocusTab,
     focusTab,
+    focusGroup,
     focusTabBySourceId,
     closeTabBySourceId,
     closeTab,

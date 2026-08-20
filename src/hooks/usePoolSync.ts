@@ -226,6 +226,8 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       sidebar,
       groups,
       root: tabState.root,
+      // E5.8#30.15（P5）：聚焦面板 id——池侧 accent 环 + isActive 单聚焦判定
+      activeGroupId: tabState.activeGroupId,
       // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: e.manifest.name })),
       // E5.7#63.7：底部面板——无贡献不推（undefined 字段不序列化进快照）

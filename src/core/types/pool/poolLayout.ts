@@ -296,6 +296,9 @@ export interface PoolLayout {
   sidebar: SidebarLayout;
   rightSidebar?: SidebarLayout;
   groups: PoolGroup[];
+  /** E5.8#30.15（P5）：聚焦面板 id——点面板空白/点标签设置（壳 reduceFocusGroup/FocusTab）。
+   *  池侧消费：accent 聚焦环 + isActive 单聚焦判定（tab.id === activeTabId && group.id === activeGroupId）。 */
+  activeGroupId?: string;
   /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
    *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
   root?: SplitNode;
