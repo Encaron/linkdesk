@@ -59,13 +59,16 @@ function ControlPanel({ sourceId }: { sourceId?: string }) {
   const handlePortChange = useCallback(
     (port: string) => {
       if (!sourceId) return;
+      // E5.8#30.10（P7）：换口前存旧口（updateSession 前的 activeSession.port）——显式传旧口给 setSourceName，
+      // per-tab 精确触发（本标签页旧口真开着才关旧开新；他标签页开着不误触）
+      const oldPort = activeSession?.port ?? "";
       updateSession({ port });
       // E8：receiveCoding 从 session 传入——不再读旧配置系统
-      setPortName(port, activeSession?.receiveCoding);
+      setPortName(port, oldPort, activeSession?.receiveCoding);
       // E2c #19f：串口监视器自己持久化 lastPort——壳不再知道 serial-monitor 插件
       window.linkdesk?.pluginState?.set("serial-monitor", "lastPort", port).catch((e) => { console.error("[serial-monitor] 保存最后端口失败:", e); });
     },
-    [sourceId, updateSession, setPortName, activeSession?.receiveCoding],
+    [sourceId, updateSession, setPortName, activeSession?.port, activeSession?.receiveCoding],
   );
 
   const handleBaudChange = useCallback(

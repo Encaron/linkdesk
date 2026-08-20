@@ -50,7 +50,8 @@ interface SerialActions {
   openPort: (portName: string, baudRate: number, encoding?: string) => Promise<void>;
   /** E5.8#30.8：明确关闭指定端口——显式传口（不再读投影口 _sharedState.sourceName） */
   closePort: (port: string) => Promise<void>;
-  setSourceName: (name: string, encoding?: string) => Promise<void>;
+  /** E5.8#30.10（P7）：换口——显式传旧口 + per-tab 精确触发（旧口 ∈ openPorts 才关旧开新；否则只记配置） */
+  setSourceName: (name: string, oldPort: string, encoding?: string) => Promise<void>;
   /** E5.8#30.8：改波特率——显式传口 + per-tab 精确判断（该口真开着才关旧重开） */
   setBaudRate: (baud: string, port: string, encoding?: string) => Promise<void>;
   /** 刷新可用串口列表——USB 热插拔后下拉框即时更新 */
@@ -316,19 +317,18 @@ export function useSerialContext(): { state: SerialState; actions: SerialActions
     }
   }, [s, closePort, openPort]);
 
-  const setSourceName = useCallback(async (name: string, encoding?: string) => {
+  const setSourceName = useCallback(async (name: string, oldPort: string, encoding?: string) => {
     if (!s) return;
-    // E5.8#27：改名前存旧口——换口 = 定向关旧口 + 开新口（D3 标签页内换口；多口下无参 closePort 抛歧义）
-    // E5.8#30.9：旧口按口显式灭灯 + 新口复用 openPort action 走咽喉（换口 per-tab 触发归 P7 #30.10）
-    const oldPort = _sharedState.sourceName;
     sourceNameRef.current = name;
     _setState((p) => ({ ...p, sourceName: name }));
-    if (_sharedState.isOpen) {
-      if (oldPort) {
-        await s.closePort(oldPort);
-        _openPorts.delete(oldPort);
-        _writePortState(oldPort, false);
-      }
+    // E5.8#30.10（P7）：换口触发条件 per-tab 精确——本标签页旧口真开着才关旧开新；
+    // 他标签页开着不误触（旧口显式传入，不读投影 _sharedState.sourceName）；新标签页选口
+    // （旧口空/未开）只记配置、点「打开」才开（被 per-tab 判断天然覆盖，无需单独拦）。
+    // 关旧口按口显式灭灯 + 开新口复用 openPort action 走咽喉（#30.9）。
+    if (oldPort && _openPorts.has(oldPort)) {
+      await s.closePort(oldPort);
+      _openPorts.delete(oldPort);
+      _writePortState(oldPort, false);
       await openPort(name, Number(baudRateRef.current), encoding);
     }
   }, [s, openPort]);
