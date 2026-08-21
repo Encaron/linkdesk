@@ -227,7 +227,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `$schema` | `string` | JSON Schema 引用路径 |
 | `core` | `boolean` | `true` = 核心控制面，不可卸载。默认 `false` |
 | `distribution` | `string` | `"builtin"` \| `"user"`。默认 `"user"`——第三方插件不填即可 |
-| `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。第三方通常不填 |
+| `factoryRole` | `string` | 系统插槽角色：`"settings"` \| `"marketplace"`。**填 = 形态二（替换/进槽位切换）；不填 = 形态一（普通视图插件并存）**——详见下方「`factoryRole` 字段详解」 |
 | `iconSource` | `string` | `"codicon"`（默认）/ `"svg"` / `"url"` |
 | `description` | `string` | 一句话描述，插件详情页展示。支持多行 |
 | `author` | `string` | 作者名 |
@@ -282,6 +282,28 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | `requires` | 插件级（plugin.json 顶层） | 激活顺序依赖——先依赖后本插件（E5.8#13） |
 | `dependsOn` | 配置项级（`contributes.configuration` 项内） | 某配置项依赖另一配置项的值 |
 | `extensionDependencies` | 插件级（历史字段） | 已废弃——归并到 `requires`（E5.8#14 落地） |
+
+### `factoryRole` 字段详解——形态一（并存）vs 形态二（替换）
+
+> **一句话：想和官方**并排出现**自己的图标/UI → 不填 `factoryRole`（普通视图插件，天然并存）；想**替换官方**成为系统默认（设置页/插件市场）→ 填 `factoryRole`（进槽位，切换使用）。**
+
+| | 形态一（并存） | 形态二（替换） |
+|---|---|---|
+| 声明 | **不填** `factoryRole` | **填** `factoryRole:"settings"` / `"marketplace"` |
+| 本质 | 普通视图插件（`appearsIn.iconBar` + 自己的 view） | 该角色的一个候选，进 FactorySlots 槽位 |
+| 图标栏 | 自己的图标和官方**并排** | 激活套图标**占槽**、非激活套隐藏 |
+| 切换 | 无——用户自己点哪个进哪个 | 设置页自动出该**角色名分组** + 切换按钮 |
+| 今天能做吗 | ✅ 零壳改动 | ⏳ 依赖 E5.8 方案A（#41.11 一对多）落地 |
+
+**名字不参与机制。** 壳没有任何「比名字」的逻辑——pluginId 各归各永不撞；视图 id 由 `(pluginId, viewId)` 复合键免疫碰撞；显示名只是给用户看的。所谓「同名分组」其实是「**同角色分组**」——分组按**角色名**命名（如「插件市场」），你叫 "Marketplace" 还是 "Map Store"，只要声明了同一 `factoryRole` 就进同一组。
+
+**怎么选（作者自选表达）：**
+- **想并存 → 不填。** 例：第三方做全新市场 UI，图标栏官方旁边多一个自己的图标，点进去是自己的 UI，和官方拿同一份数据
+- **想替换 → 填。** 例：声明 `factoryRole:"marketplace"` → 设置页出「插件市场」组 + 切换按钮，切过去后图标/内容换成你的
+
+> ⚠️ **形态二当前状态：** 方案A（E5.8 Phase 8.2 #41.10-#41.13）落地前，`factoryRole` 仍是单槽——多个声明同 role 时**第一个 core:true 胜出**（旧行为）。形态二的全套替换机制（一对多 + 切换 + 图标占槽）随方案A 生效；**形态一现在就能用**。
+>
+> 📖 设计拍板档案 → 记忆 `factory-role-coexistence`；任务 → E5.8 执行清单 #41.10 ⑧ / #37.9.3.6
 
 ### `icon` 字段详解
 
