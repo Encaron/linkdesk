@@ -373,6 +373,21 @@
           "description": "弱默认值——插件给其他配置项的建议值，用户手动设置优先",
           "additionalProperties": {}
         },
+        "themes": {
+          "type": "array",
+          "description": "主题声明——对标 VS Code contributes.themes。插件贡献主题供用户在主题浏览器/外观中切换。",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "uiTheme", "path"],
+            "properties": {
+              "id": { "type": "string", "description": "主题 ID——如 my-theme-dark" },
+              "label": { "type": "string", "description": "显示名称——如 My Theme Dark" },
+              "uiTheme": { "type": "string", "enum": ["dark", "light", "highContrast"], "description": "基础 UI 主题——暗色/亮色/高对比" },
+              "path": { "type": "string", "description": "主题定义 JSON 文件路径" }
+            },
+            "additionalProperties": false
+          }
+        },
         "iconThemes": {
           "type": "array",
           "description": "产品图标主题——对标 VS Code productIconThemes。插件声明图标集供用户切换。",
@@ -449,6 +464,41 @@
             },
             "additionalProperties": false
           }
+        },
+        "titleBar": {
+          "type": "object",
+          "description": "顶栏按钮声明——对标 VS Code titleBar。声明标题栏左侧/右侧的图标按钮。",
+          "properties": {
+            "left": {
+              "type": "array",
+              "description": "标题栏左侧按钮",
+              "items": {
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                  "command": { "type": "string", "description": "点击执行的命令 ID" },
+                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "right": {
+              "type": "array",
+              "description": "标题栏右侧按钮",
+              "items": {
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                  "command": { "type": "string", "description": "点击执行的命令 ID" },
+                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
         },
         "viewsContainers": {
           "type": "object",
