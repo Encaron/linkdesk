@@ -49,8 +49,10 @@ export function resolveFloatingPanelView(viewId: string): FloatingPanelResolveRe
     viewId,
     pluginId: view._pluginId,
     renderPath: view._renderPath,
-    // title 取视图声明 label——未声明时降级为 pluginId（壳产兜底，非池文本）
-    title: view.title || view._pluginId,
+    // 显示文本铁律（池零自产文本）：title 取视图声明 label 且壳侧 t() 解析（声明 = i18n key，
+    // 同 sidebar-panel/panelCreatePicker 惯例——ViewDescriptor 存裸声明，DTO 构建时解析）。
+    // 未声明 label 时降级为 pluginId（lang-defaults 同带 pluginId 键——"terminal":"终端" 先例）。
+    title: i18n.t(view.title || view._pluginId),
   };
 }
 
