@@ -1,0 +1,672 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>形态一 vs 形态二 —— 设置页高保真 mockup（4 个串口插件）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（复制自 src/index.css :root 暗色主题——
+   mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+   字体：IBM Plex Sans / JetBrains Mono
+   动画：Expo.out cubic-bezier(0.16,1,0.3,1)；prefers-reduced-motion 已考虑
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-status: #0078D4;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-active: #FFFFFF;
+  --icon-inactive: #858585;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --bg-toolbar: #1E1E22;
+  --bg-dropdown: #3C3C3C;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --tab-hover-bg: #353535;
+  --dirty-dot: #CCA700;
+  --sent-echo: #0078D4;
+  --status-connected: #4EC9B0;
+  --error: #E06C75;
+  /* 四插件角色色 */
+  --c-standard: #4EC9B0;
+  --c-light: #9A8BFF;
+  --c-minimal: #E0AF68;
+  --c-special: #F07E6C;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #101013;
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  padding: 32px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+h1 .hl { color: var(--status-connected); }
+
+/* ---------- 帧容器 ---------- */
+.frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 18px;
+}
+.frame-caption {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag {
+  font-size: 11px; color: #fff; background: var(--accent);
+  border-radius: 3px; padding: 1px 8px; font-weight: 600;
+}
+.frame-caption .tag.b { background: #5f5f6e; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  background: #26262a;
+}
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--error); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+
+/* ---------- 应用窗口骨架 ---------- */
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 640px;
+  background: var(--bg-window);
+  font-size: 12px;
+  overflow: hidden;
+}
+.titlebar {
+  height: 28px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: center;
+  padding: 0 10px 0 12px;
+  gap: 8px;
+  user-select: none;
+}
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.titlebar .drag { flex: 1; }
+.win-btns { display: flex; gap: 2px; }
+.win-btn {
+  width: 34px; height: 22px; border: none; background: transparent;
+  color: var(--text-secondary); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 150ms ease;
+}
+.win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+
+/* ---------- 图标栏（42px 最左） ---------- */
+.icon-bar {
+  width: 48px; flex: none;
+  background: var(--bg-icon-bar);
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 6px; gap: 2px;
+}
+.icon-btn {
+  width: 48px; height: 42px; border: none; background: transparent;
+  color: var(--icon-inactive);
+  display: flex; align-items: center; justify-content: center;
+  border-left: 2px solid transparent;
+  transition: color 150ms ease, background 150ms ease;
+}
+.icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* 图标栏中部 = 插件区：串口槽位 + 特殊版并存 */
+.ib-sep { width: 26px; height: 1px; background: var(--border); margin: 5px 0; }
+.ib-slot {
+  width: 48px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.ib-slot::before {
+  content: ""; position: absolute; inset: 7px 6px;
+  border: 1px dashed var(--text-muted); border-radius: 5px;
+  opacity: .55;
+}
+.ib-slot .slot-icon { width: 20px; height: 20px; display:flex; align-items:center; justify-content:center; }
+.ib-slot .slot-icon svg { width: 18px; height: 18px; }
+.ib-plain { width: 48px; height: 42px; display: flex; align-items: center; justify-content: center; }
+.ib-plain svg { width: 18px; height: 18px; }
+
+/* ---------- 侧栏（资源管理器） ---------- */
+.sidebar {
+  width: 172px; flex: none;
+  background: var(--bg-side-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  font-size: 12px;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 8px 12px; color: var(--text-secondary);
+  letter-spacing: 0.06em; font-size: 11px;
+  text-transform: uppercase; flex: none;
+}
+.tree-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 12px; color: var(--text-primary);
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+  transition: background 150ms ease; flex: none;
+}
+.tree-row:hover { background: var(--hover-overlay); }
+.tree-row .arrow { color: var(--text-muted); width: 12px; flex: none; }
+.tree-row svg { width: 13px; height: 13px; flex: none; color: var(--text-muted); }
+.tree-row.selected { background: rgba(0,120,212,0.18); }
+
+/* ---------- 主区 ---------- */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar {
+  height: 32px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  background: transparent;
+  font-size: 12px;
+  transition: background 150ms ease;
+}
+.tab:hover { background: var(--tab-hover-bg); }
+.tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+.tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+.tab .decl-mark { margin-left: 6px; font-size: 10px; color: var(--accent-hover); }
+
+/* ============================================================
+   设置页（真实 UI 结构：搜索栏 + 左两级树 + 右合并表单）
+   ============================================================ */
+.set-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.search-bar { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--separator); gap: 8px; flex: none; }
+.search-icon { color: var(--text-muted); flex: none; }
+.search-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; padding: 5px 8px; outline: none; border-radius: 3px; }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.json-btn { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; border-radius: 3px; }
+.json-btn:hover { background: var(--hover-overlay); }
+
+.set-body { flex: 1; display: flex; min-height: 0; }
+
+/* ---- 左两级树 ---- */
+.nav { width: 210px; flex: none; overflow-y: auto; border-right: 1px solid var(--separator); padding: 4px 0; }
+.nav-group-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 12px 6px 16px; font-size: 13px; color: var(--text-primary);
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; transition: background 100ms;
+  border-left: 2px solid transparent;
+}
+.nav-group-header:hover { background: var(--hover-overlay); }
+.nav-group-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.nav-group-header .lbl { display: flex; align-items: center; gap: 5px; }
+.nav-group-header .arrow { font-size: 10px; color: var(--text-muted); transition: transform 150ms; }
+.nav-group-header.expanded .arrow { transform: rotate(90deg); }
+.nav-group.flat > .nav-group-header[aria-current=page] { background: var(--hover-overlay); font-weight: 500; border-left-color: var(--accent); }
+.nav-group.has-kids > .nav-group-header.expanded { color: var(--text-primary); }
+.nav-sub { overflow: hidden; max-height: 0; transition: max-height 200ms ease; }
+.nav-sub.open { max-height: 240px; }
+.nav-sub-item {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 5px 12px 5px 36px; font-size: 12px; color: var(--text-secondary);
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; transition: background 100ms;
+  border-left: 2px solid transparent;
+}
+.nav-sub-item:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.nav-sub-item:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.nav-sub-item[aria-current=page] { background: var(--hover-overlay); color: var(--text-primary); font-weight: 500; border-left-color: var(--accent); }
+.nav-sub-count { font-size: 10px; color: var(--text-muted); }
+.nav-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; color: var(--status-connected); background: rgba(78,201,176,0.12); }
+
+/* ---- 右合并表单 ---- */
+.form { flex: 1; overflow-y: auto; padding: 20px 28px; }
+.main-title { font-size: 20px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
+.section-title { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; }
+.section-title code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+.section-block-header { font-size: 15px; font-weight: 600; color: var(--text-primary); padding-bottom: 8px; border-bottom: 1px solid var(--separator); margin-bottom: 4px; margin-top: 22px; }
+.section-block-header:first-of-type { margin-top: 0; }
+
+/* 设置行（真实控件） */
+.set-row { display: flex; align-items: flex-start; padding: 8px 12px; border-radius: 4px; border-left: 2px solid transparent; gap: 20px; transition: background 120ms; }
+.set-row:hover { background: var(--hover-overlay); }
+.set-row.modified { border-left-color: var(--accent); }
+.set-row-info { flex: 1; min-width: 0; }
+.set-row-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+.set-row-desc { display: block; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.set-row-ctrl { flex-shrink: 0; display: flex; align-items: center; gap: 6px; width: 150px; justify-content: flex-end; }
+.sel { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 12px; padding: 4px 8px; min-width: 110px; font-family: inherit; }
+.tgl { width: 28px; height: 16px; border-radius: 8px; background: var(--accent); position: relative; cursor: pointer; flex-shrink: 0; transition: background 150ms ease; }
+.tgl::after { content: ''; position: absolute; top: 2px; left: 14px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left 150ms ease; }
+.tgl.off { background: var(--border); }
+.tgl.off::after { left: 2px; }
+.txt-inp { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 12px; padding: 4px 8px; font-family: "JetBrains Mono", Consolas, monospace; outline: none; width: 150px; }
+.txt-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+/* ---- 形态二角色切换条 ---- */
+.role-card {
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  background: var(--bg-card);
+}
+.role-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+.role-head .role-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.role-head .role-tag { font-size: 10.5px; color: #fff; background: #5f5f6e; border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.role-head .role-tag.form2 { background: var(--accent); }
+.role-head .sp { flex: 1; }
+.role-head .role-note { font-size: 11px; color: var(--text-muted); }
+.switch-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.switch-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 12px; font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+.switch-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.switch-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch-btn.active {
+  background: rgba(0,120,212,0.18);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+.switch-btn .p-ic { display: flex; align-items: center; }
+.switch-btn .p-ic svg { width: 14px; height: 14px; }
+.switch-btn .p-src { font-size: 10px; color: var(--text-muted); margin-left: 1px; }
+.switch-btn.active .p-src { color: var(--text-secondary); }
+.role-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+.role-hint b { color: var(--text-secondary); }
+.role-hint .x { color: var(--c-special); }
+
+/* ---- 激活套配置区 ---- */
+.act-card { margin-top: 14px; }
+.act-head { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--separator); margin-bottom: 2px; }
+.act-head .p-ic { display: flex; align-items: center; }
+.act-head .p-ic svg { width: 15px; height: 15px; }
+.act-head .act-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+.act-head .act-src { font-size: 11px; color: var(--text-muted); }
+.act-head .sp { flex: 1; }
+.act-head .act-switch-label { font-size: 10.5px; color: var(--accent); font-weight: 600; }
+
+/* ---------- 状态栏 ---------- */
+.statusbar {
+  height: 22px; flex: none;
+  background: var(--bg-status);
+  color: #fff;
+  display: flex; align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+.statusbar .right { margin-left: auto; opacity: 0.9; }
+.statusbar .slot-name { font-weight: 600; }
+
+/* 说明箭头标注 */
+.pin { color: var(--text-muted); font-size: 11px; }
+.pin b { color: var(--text-secondary); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>形态一 vs 形态二 —— 设置页高保真 mockup（4 个串口插件）
+  <small>场景：内置<b style="color:var(--status-connected)">标准版</b> + 下载<b style="color:#9A8BFF">轻量版</b> + 下载<b style="color:#E0AF68">极简版</b>三套都声明 <code>factoryRole:"serial-monitor"</code>（<b class="hl">形态二</b>·进槽位切换）；下载<b style="color:#F07E6C">特殊版</b>不声明（<b class="hl">形态一</b>·并存）。<b>点右侧「串口监视器」页里的切换按钮</b>——配置区与左图标栏槽位一起变。</small>
+</h1>
+
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">高保真 mockup</span>
+    <b>真实设置页结构（搜索 + 左两级树 + 右合并表单）上叠加角色切换</b>
+    <span>图标栏：串口槽位 = 激活套图标 · 特殊版常在（形态一并存）</span>
+  </div>
+
+  <div class="app">
+
+    <!-- ═══ 标题栏 ═══ -->
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+
+    <div class="mid">
+
+      <!-- ═══ 图标栏（48px）——串口槽位 + 特殊版并存 ═══ -->
+      <div class="icon-bar">
+        <button class="icon-btn active" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+
+        <!-- 串口槽位：只显示激活套图标（虚线框 = 槽位） -->
+        <div class="ib-slot" id="ibSlot" title="串口监视器槽位——只显示激活套图标">
+          <span class="slot-icon" id="ibSlotIcon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--c-standard)" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg></span>
+        </div>
+
+        <!-- 特殊版：形态一并存，永远在 -->
+        <div class="ib-plain" title="特殊版（形态一并存——自己的图标 + 自己的 UI + 同一份数据）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z"/></svg>
+        </div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">特殊版常在</div>
+
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+
+      <!-- ═══ 侧栏（资源管理器，静态示意） ═══ -->
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>plugins</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+
+      <!-- ═══ 主区：设置页 ═══ -->
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">设置</div>
+          <div class="tab">串口监视器</div>
+          <div class="tab">main.ts</div>
+        </div>
+
+        <div class="set-wrap">
+          <!-- 搜索栏 -->
+          <div class="search-bar">
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+            <input class="search-input" placeholder="搜索设置">
+            <button class="json-btn">JSON</button>
+          </div>
+
+          <div class="set-body">
+            <!-- 左两级树 -->
+            <nav class="nav" id="leftNav"></nav>
+
+            <!-- 右合并表单 -->
+            <div class="form" id="rightForm"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ 状态栏 ═══ -->
+    <div class="statusbar">
+      <span>就绪</span>
+      <span>串口监视器 · 3 套候选</span>
+      <span class="right">激活角色套：<span class="slot-name" id="stActive">标准版（内置）</span> · 图标栏串口槽 = 激活套图标</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>验证点（<span class="ok">①②③ 为本次场景核心</span>）：</b>
+    ① 角色组切换按钮只有 <b>3 个候选</b>（标准/轻量/极简）——<span class="warn">特殊版（形态一）不进来</span>；
+    ② 特殊版图标<b>永远在图标栏</b>（形态一并存，谁都不替换谁）；
+    ③ 角色组<b>复用内置同名「串口监视器」组</b>，切换条在顶、激活套配置在下——没有出现第二个重复组；
+    ④ 特殊版自己的配置<b>独立成组</b>（「串口特殊版」），与角色组互不干扰；
+    ⑤ 分组<b>按角色名命名</b>，不是插件名——壳无比名逻辑。
+    边界：若特殊版作者把配置组也命名「串口监视器」会撞名（配置组名=插件自取），机制上形态一不参与角色组，建议避开。
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   四个插件（svg = 图标栏 + 切换条 + 激活套头部共用）
+   ════════════════════════════════════════ */
+const ICONS = {
+  standard: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-standard)" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg>',
+  light:    '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-light)" stroke-width="1.8"><path d="M12 4v6M12 10l7-5M12 10l-7-5M12 20v-5M12 15l6 3M12 15l-6 3" stroke-linecap="round"/></svg>',
+  minimal:  '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-minimal)" stroke-width="1.8"><circle cx="12" cy="12" r="2.4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke-linecap="round"/></svg>',
+  special:  '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z"/></svg>',
+};
+
+const CANDIDATES = {
+  standard: {
+    name: '标准版', src: '内置', key: 'standard', color: 'var(--c-standard)',
+    config: [
+      { label: '状态栏连接灯', desc: '状态栏显示连接状态指示灯', type: 'tgl', val: false, mod: true },
+      { label: '关闭时提示',   desc: '有活动连接时关闭标签页需确认', type: 'tgl', val: false, mod: false },
+      { label: '默认波特率',   desc: '新建连接的默认波特率', type: 'sel', opts: ['9600', '115200', '460800'], val: '115200', mod: false },
+    ],
+  },
+  light: {
+    name: '轻量版', src: '下载', key: 'light', color: 'var(--c-light)',
+    config: [
+      { label: '开机自动连接', desc: '启动软件后自动打开上次的连接', type: 'tgl', val: true, mod: true },
+      { label: '显示时间戳',   desc: '接收区每行前缀时间戳', type: 'tgl', val: false, mod: false },
+      { label: '通知音',       desc: '收到数据时播放提示音', type: 'tgl', val: false, mod: false },
+    ],
+  },
+  minimal: {
+    name: '极简版', src: '下载', key: 'minimal', color: 'var(--c-minimal)',
+    config: [
+      { label: '自动重连',     desc: '连接断开后自动尝试重连', type: 'tgl', val: true, mod: false },
+      { label: '仅显示接收',   desc: '隐藏发送区，只留接收视图', type: 'tgl', val: false, mod: false },
+    ],
+  },
+};
+
+/* 特殊版（形态一）配置——独立成组 */
+const SPECIAL = [
+  { label: '消息前缀', desc: '发送内容前自动追加的前缀', type: 'text', val: 'SPEC' },
+  { label: '启动即连', desc: '打开标签页立即连接上次端口', type: 'tgl', val: true, mod: true },
+  { label: '数据导出格式', desc: '导出接收数据的文件格式', type: 'sel', opts: ['CSV', 'JSON', 'TXT'], val: 'JSON', mod: false },
+];
+
+/* 左树结构：通用(有子节) + 串口监视器(角色组) + 串口特殊版(形态一) + 快捷键 */
+const TREE = [
+  { id: 'general',  title: '通用', hasKids: true, sections: [{ id: 'theme', title: '主题' }, { id: 'language', title: '语言' }] },
+  { id: 'serial',   title: '串口监视器', hasKids: false, role: true },
+  { id: 'special',  title: '串口特殊版', hasKids: false, badge: '形态一' },
+  { id: 'shortcut', title: '快捷键', hasKids: false },
+];
+
+let activePage = 'serial';
+let activeKey = 'standard';
+
+/* 行渲染（真实控件） */
+function renderRow(k) {
+  const mc = k.mod ? ' modified' : '';
+  let ctrl = '';
+  if (k.type === 'tgl') ctrl = `<span class="tgl${k.val ? '' : ' off'}"></span>`;
+  else if (k.type === 'sel') ctrl = `<select class="sel">${k.opts.map(o => `<option ${o === k.val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+  else if (k.type === 'text') ctrl = `<input class="txt-inp" value="${k.val || ''}">`;
+  return `<div class="set-row${mc}">
+    <div class="set-row-info"><span class="set-row-label">${k.label}</span><span class="set-row-desc">${k.desc}</span></div>
+    <div class="set-row-ctrl">${ctrl}</div>
+  </div>`;
+}
+
+function rowHTML(rows) { return rows.map(renderRow).join(''); }
+
+/* 角色组页面：切换条 + 激活套配置 */
+function serialHTML() {
+  return `
+    <div class="main-title">串口监视器</div>
+    <div class="section-title">3 套同角色插件（<code>factoryRole:"serial-monitor"</code>）· <b style="color:var(--status-connected)">形态二</b>——切换激活套，图标栏槽位一起换</div>
+    <div class="role-card">
+      <div class="role-head">
+        <span class="role-name">角色槽位</span>
+        <span class="role-tag form2">形态二 · 替换</span>
+        <span class="sp"></span>
+        <span class="role-note">组属角色所有 · 切换按钮在顶 · 激活套配置在下</span>
+      </div>
+      <div class="switch-row">
+        ${Object.values(CANDIDATES).map(c => `
+          <button class="switch-btn${c.key === activeKey ? ' active' : ''}" data-key="${c.key}" type="button">
+            <span class="p-ic">${ICONS[c.key]}</span>${c.name}<span class="p-src">· ${c.src}</span>
+          </button>`).join('')}
+      </div>
+      <div class="role-hint">切换 = 只换候选。特殊版（形态一）不在此列——<span class="x">它并排共存在左侧图标栏，此处不参与切换</span>。</div>
+    </div>
+    <div class="act-card" id="actCard"></div>`;
+}
+
+/* 特殊版页面（形态一） */
+function specialHTML() {
+  return `
+    <div class="main-title">串口特殊版</div>
+    <div class="section-title">下载 · 未声明 <code>factoryRole</code> · <b style="color:#F07E6C">形态一</b>——普通视图插件并存，自己的配置独立成组</div>
+    <div class="section-block-header">串口特殊版</div>
+    ${rowHTML(SPECIAL)}
+    <div class="role-hint">形态一照常贡献自己的配置组（<code>contributes.configuration</code>），与角色组互不干扰。图标栏里它的图标永远在。</div>`;
+}
+
+/* 通用页（衬托现实的其它组） */
+function generalHTML() {
+  return `
+    <div class="main-title">通用</div>
+    <div class="section-title">主题</div>
+    <div class="section-block-header">外观</div>
+    ${rowHTML([
+      { label: 'app.theme', desc: '选择界面配色主题', type: 'sel', opts: ['深色', '浅色', '琥珀高对比'], val: '深色', mod: true },
+      { label: 'app.accentColor', desc: '自定义强调色值', type: 'text', val: '#0078d4', mod: false },
+    ])}
+    <div class="section-block-header">语言</div>
+    ${rowHTML([{ label: 'app.language', desc: '界面显示语言', type: 'sel', opts: ['中文', 'English'], val: '中文', mod: false }])}`;
+}
+
+/* 快捷键页（衬托） */
+function shortcutHTML() {
+  return `
+    <div class="main-title">快捷键</div>
+    <div class="section-title">打开快捷键列表</div>
+    <div class="section-block-header">快捷键</div>
+    ${rowHTML([
+      { label: '串口监视器: 清空接收区', desc: 'Ctrl+K', type: 'tgl', val: true, mod: false },
+      { label: '串口监视器: 暂停接收', desc: 'Ctrl+P', type: 'tgl', val: true, mod: false },
+    ])}`;
+}
+
+/* 渲染激活套卡片（配置随切换换） */
+function renderActCard() {
+  const c = CANDIDATES[activeKey];
+  document.getElementById('actCard').innerHTML = `
+    <div class="act-head">
+      <span class="p-ic">${ICONS[c.key]}</span>
+      <span class="act-name">${c.name}</span>
+      <span class="act-src">· ${c.src}套 · 当前激活</span>
+      <span class="sp"></span>
+      <span class="act-switch-label">配置来自激活套</span>
+    </div>
+    ${rowHTML(c.config)}`;
+}
+
+/* 渲染左树 */
+function renderNav() {
+  const nav = document.getElementById('leftNav');
+  nav.innerHTML = TREE.map(g => {
+    const hasKids = g.hasKids;
+    const isCur = g.id === activePage;
+    const ariaCur = (!hasKids && isCur) ? 'page' : 'false';
+    const expanded = isCur ? 'expanded' : '';
+    let subs = '';
+    if (hasKids) {
+      subs = `<div class="nav-sub${isCur ? ' open' : ''}">` +
+        g.sections.map(s => `<button class="nav-sub-item" aria-current="${isCur ? 'page' : 'false'}" onclick="selectPage('${g.id}')">${s.title}<span class="nav-sub-count">${s.title === '主题' ? 2 : 1}</span></button>`).join('') + '</div>';
+    }
+    return `<div class="nav-group ${hasKids ? 'has-kids' : 'flat'}">
+      <button class="nav-group-header ${expanded}" aria-current="${ariaCur}" onclick="selectPage('${g.id}')">
+        <span class="lbl">${hasKids ? '<span class="arrow">▶</span>' : ''}${g.title}${g.badge ? `<span class="nav-badge">${g.badge}</span>` : ''}</span>
+      </button>${subs}
+    </div>`;
+  }).join('');
+}
+
+/* 渲染右表单 */
+function renderForm() {
+  const form = document.getElementById('rightForm');
+  switch (activePage) {
+    case 'serial': form.innerHTML = serialHTML(); renderActCard(); wireSwitch(); break;
+    case 'special': form.innerHTML = specialHTML(); break;
+    case 'general': form.innerHTML = generalHTML(); break;
+    default: form.innerHTML = shortcutHTML(); break;
+  }
+}
+
+/* 切换按钮接线 + 全局状态同步 */
+function wireSwitch() {
+  document.querySelectorAll('.switch-btn[data-key]').forEach(b => {
+    b.addEventListener('click', () => {
+      activeKey = b.dataset.key;
+      document.querySelectorAll('.switch-btn[data-key]').forEach(x =>
+        x.classList.toggle('active', x.dataset.key === activeKey));
+      renderActCard();
+      syncIconBar();
+      syncStatusbar();
+    });
+  });
+}
+
+/* 图标栏槽位 = 激活套图标（非激活套不在图标栏） */
+function syncIconBar() {
+  document.getElementById('ibSlotIcon').innerHTML = ICONS[activeKey];
+}
+
+function syncStatusbar() {
+  const c = CANDIDATES[activeKey];
+  document.getElementById('stActive').textContent = `${c.name}（${c.src}）`;
+}
+
+function selectPage(id) {
+  activePage = id;
+  renderNav();
+  renderForm();
+  document.getElementById('rightForm').scrollTop = 0;
+}
+
+renderNav();
+renderForm();
+syncIconBar();
+</script>
+</body>
+</html>
