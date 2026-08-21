@@ -397,7 +397,7 @@ registerCard({
   "author": "社区",
   "entry": "index.tsx",
   "sidebar": "sidebar.tsx",
-  "viewRole": "tabOnly",
+  "appearsIn": { "tabBar": true },
   "tabBehavior": {
     "confirmOnClose": "未保存的修改将丢失"
   },
