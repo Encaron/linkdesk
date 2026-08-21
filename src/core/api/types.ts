@@ -262,6 +262,14 @@ export interface ContributesViews {
   }>;
 }
 
+/** contributes.floatingPanel 的形状——声明某视图可在壳内悬浮面板显示（E5.8#39.5 类型 B）。
+ *  viewId 必须引用 contributes.views 中已注册的视图——声明寻址解析出 pluginId/renderPath/title。
+ *  首批声明者 = settings（#38 Ctrl+, 弹面板）；第二声明者验证载体 = floating-panel-demo 测试插件。 */
+export interface ContributesFloatingPanel {
+  /** 视图 ID——contributes.views 已注册视图（声明 floatingPanel 视图才有「在悬浮面板中打开」右键 I8-3） */
+  viewId: string;
+}
+
 /* ── 视图插件注册条目 ── */
 
 export interface ViewPluginEntry {

@@ -615,6 +615,15 @@
           },
           "additionalProperties": false
         },
+        "floatingPanel": {
+          "type": "object",
+          "description": "悬浮面板声明（E5.8#39.5）——声明 contributes.views 中某视图可在壳内悬浮面板显示（类型 B）。viewId 必须引用已注册视图——声明寻址解析出 pluginId/renderPath/title；未声明则无「在悬浮面板中打开」右键入口（I8-3 声明即出现）。首批声明者 = settings（#38 Ctrl+, 弹面板）。",
+          "required": ["viewId"],
+          "properties": {
+            "viewId": { "type": "string", "description": "视图 ID——contributes.views 已注册视图" }
+          },
+          "additionalProperties": false
+        },
         "i18n": {
           "type": "object",
           "description": "插件自带翻译——key=语言代码, value=相对插件根目录的 JSON 文件路径。如 { \"en\": \"i18n/en.json\" }。不需要 zh.json——中文 key 自带兜底。",
