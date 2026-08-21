@@ -22,7 +22,7 @@ import { InlineInput } from "@src/components/shared/inline-input/InlineInput";
 import KeybindingSettingsView from "./keybinding-settings/KeybindingSettingsView";
 import SettingRow from "./SettingsView/SettingRow";
 import useSettingsEvents from "./SettingsView/useSettingsEvents";
-import { lk } from "./SettingsView/helpers";
+import { lk, OWN_FACTORY_ROLE } from "./SettingsView/helpers";
 import type { GroupInfo, ConfigProperty, SettingsViewProps } from "./SettingsView/types";
 import "./SettingsView.css";
 
@@ -45,21 +45,70 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const loadData = useCallback(async () => {
     try {
       const cfg = lk();
-      // 并行拉取分组和 schema
-      const [entries, schema] = await Promise.all([
+      const fs = window.linkdesk.factorySlots;
+      // 并行拉取：配置分组 + schema + 角色枚举（#41.14 ⑤ 角色分组）
+      const [entries, schema, roles] = await Promise.all([
         cfg.getConfigurationContributions(),
         cfg.getSchema(),
+        fs.listRoles(),
       ]);
       // E5.8#41.14：getConfigurationContributions 契约已补全命名类型（LinkDeskConfigurationContribution）
       // ——不再需要 IPC 边界 cast，形状由契约保证
       const contributions = new Map(entries);
       const result: GroupInfo[] = [];
+
+      // ① contributes.configuration 分组（非空）
       for (const [pluginId, contrib] of contributions) {
         const keys = Object.keys(contrib.properties ?? {});
         if (keys.length > 0) {
           result.push({ pluginId, title: t(contrib.title ?? pluginId), keys });
         }
       }
+
+      // ② factoryRole 角色分组（#41.14 ⑤）——任何非本设置插件角色 ≥2 候选 → 该角色名组出现：
+      //    切换按钮在顶、激活套配置在下；复用同名组优先（按 pluginId 找激活候选自己的配置组，非显示名）、
+      //    没有才新建；激活套无配置项 → 空状态。自身角色切换 = 顶部通用区（#41.13），不进导航组。
+      const roleRows = await Promise.all(
+        roles
+          .filter((role) => role !== OWN_FACTORY_ROLE)
+          .map(async (role) => {
+            const [candidates, activeId] = await Promise.all([fs.list(role), fs.getActive(role)]);
+            return { role, candidates, activeId };
+          })
+      );
+      for (const { role, candidates, activeId } of roleRows) {
+        if (!candidates || candidates.length < 2) continue; // 单候选不建组（无切换意义）
+        const active = candidates.find((c) => c.pluginId === activeId) ?? candidates[0];
+        const existing = contributions.get(active.pluginId);
+        if (existing) {
+          // 复用同名组：切换条直接进激活候选自己的配置组，不新建
+          const idx = result.findIndex((g) => g.pluginId === active.pluginId);
+          if (idx >= 0) {
+            result[idx] = { ...result[idx], role, candidates, activeId: active.pluginId };
+          } else {
+            // 激活候选有贡献但组空（被 ① 过滤）——仍按贡献标题建组，保持命名语义
+            result.push({
+              pluginId: active.pluginId,
+              title: t(existing.title ?? active.title),
+              keys: Object.keys(existing.properties ?? {}),
+              role,
+              candidates,
+              activeId: active.pluginId,
+            });
+          }
+        } else {
+          // 没有才新建：候选不贡献配置 → 自动建组 + 激活套无配置项空状态
+          result.push({
+            pluginId: active.pluginId,
+            title: t(active.title),
+            keys: [],
+            role,
+            candidates,
+            activeId: active.pluginId,
+          });
+        }
+      }
+
       setGroupsRaw(result);
       setAllProps((schema ?? {}) as Record<string, ConfigProperty>);
       setDataLoaded(true);
@@ -98,12 +147,25 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
           );
         }),
       }))
-      .filter((g) => g.keys.length > 0);
+      // 配置分组按匹配键保留；角色分组（可能空配置）按标题匹配保留——空配置组搜索标题仍可达
+      .filter((g) => g.keys.length > 0 || (!!g.role && g.title.toLowerCase().includes(q)));
   }, [groupsRaw, search, allProps]);
 
-  // ── 默认选中第一个分组 ──
+  // ── 角色分组切换（#41.14 ⑤）——setActive 落盘后重拉数据，激活套配置随切换换 ──
+  const handleRoleSwitch = useCallback(async (role: string, pluginId: string) => {
+    try {
+      await window.linkdesk.factorySlots.setActive(role, pluginId);
+      setVersion((v) => v + 1);
+    } catch (e) {
+      console.error(`[SettingsView] 切换角色 "${role}" 激活套失败:`, e);
+    }
+  }, []);
+
+  // ── 默认选中第一个分组（角色分组按 role 匹配——切换激活候选不改选中）──
   const activeGroup =
-    filteredGroups.find((g) => g.pluginId === selectedGroup) ?? filteredGroups[0] ?? null;
+    filteredGroups.find((g) =>
+      g.role ? g.role === selectedGroup : g.pluginId === selectedGroup
+    ) ?? filteredGroups[0] ?? null;
 
   return (
     <div className="settings-editor">
@@ -173,12 +235,18 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
                 <>
                   {filteredGroups.map((g) => (
                     <button
-                      key={g.pluginId}
-                      className={`settings-nav-item ${activeGroup?.pluginId === g.pluginId ? "active" : ""}`}
-                      onClick={() => setSelectedGroup(g.pluginId)}
+                      key={g.role ?? g.pluginId}
+                      className={`settings-nav-item ${
+                        activeGroup && (g.role ? g.role === activeGroup.role : g.pluginId === activeGroup.pluginId)
+                          ? "active"
+                          : ""
+                      }`}
+                      onClick={() => setSelectedGroup(g.role ?? g.pluginId)}
                     >
                       {g.title}
-                      <span className="settings-nav-count">{g.keys.length}</span>
+                      <span className="settings-nav-count">
+                        {g.role ? g.candidates?.length ?? 0 : g.keys.length}
+                      </span>
                     </button>
                   ))}
                   {filteredGroups.length === 0 && (
@@ -192,15 +260,36 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
             <div className="settings-form" key={activeGroup?.pluginId}>
               {activeGroup ? (
                 <>
+                  {/* 角色分组（#41.14 ⑤）：切换按钮在顶、激活套配置在下 */}
+                  {activeGroup.role && activeGroup.candidates && (
+                    <div className="settings-role-switch">
+                      <span className="settings-role-switch-label">{t("激活角色套")}</span>
+                      {activeGroup.candidates.map((c) => (
+                        <button
+                          key={c.pluginId}
+                          className={`settings-role-switch-btn ${
+                            c.pluginId === activeGroup.activeId ? "active" : ""
+                          }`}
+                          onClick={() => handleRoleSwitch(activeGroup.role!, c.pluginId)}
+                        >
+                          {c.title}
+                        </button>
+                      ))}
+                    </div>
+                  )}
                   <h2 className="settings-group-title">{activeGroup.title}</h2>
-                  {activeGroup.keys.map((key) => (
-                    <SettingRow
-                      key={key}
-                      configKey={key}
-                      prop={allProps[key]}
-                      onChange={() => setVersion((v) => v + 1)}
-                    />
-                  ))}
+                  {activeGroup.keys.length > 0 ? (
+                    activeGroup.keys.map((key) => (
+                      <SettingRow
+                        key={key}
+                        configKey={key}
+                        prop={allProps[key]}
+                        onChange={() => setVersion((v) => v + 1)}
+                      />
+                    ))
+                  ) : activeGroup.role ? (
+                    <div className="settings-empty">{t("激活套无配置项")}</div>
+                  ) : null}
                 </>
               ) : (
                 <div className="settings-empty">

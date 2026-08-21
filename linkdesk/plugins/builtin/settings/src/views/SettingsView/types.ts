@@ -11,6 +11,12 @@ interface GroupInfo {
   pluginId: string;
   title: string;
   keys: string[];
+  /** 角色分组（#41.14 ⑤）——本组是 factoryRole 角色切换组：切换按钮在顶、激活套配置在下。未设置 = 普通配置分组 */
+  role?: string;
+  /** 角色候选 [{pluginId, title}]——切换按钮遍历渲染 */
+  candidates?: { pluginId: string; title: string }[];
+  /** 当前激活候选 pluginId——激活视觉标记 */
+  activeId?: string;
 }
 
 /** ConfigurationProperty 精简版——IPC 序列化后使用的本地类型 */

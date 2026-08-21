@@ -36,6 +36,8 @@ export async function handleFactorySlotMethod(method: string, args: unknown[]): 
       return undefined;
     }
     // ── 通用面（#41.14——list/getActive/setActive 收 role 参数，槽位无关）──
+    case "listFactorySlotRoles":
+      return factorySlots.listRoles();
     case "listFactorySlotPlugins": {
       const [role] = args as [string];
       return resolveSlotTitles(role);

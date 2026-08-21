@@ -13,6 +13,8 @@ import { IPC } from '../ipc/channels';
  * 返回不标注——ipcRenderer.invoke 推断 Promise<any>，assignable 到契约面（satisfies PoolExposed 门禁） */
 export function buildFactorySlots() {
   return {
+    /** 全部已填充角色的名字（注册序）——设置页角色分组枚举（#41.14 ⑤） */
+    listRoles: () => ipcRenderer.invoke(IPC.plugins.call, 'listFactorySlotRoles'),
     /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
     list: (role: string) => ipcRenderer.invoke(IPC.plugins.call, 'listFactorySlotPlugins', role),
     /** 指定角色的活动插件 ID——读持久化激活，无记录/已卸载回退默认（内置） */

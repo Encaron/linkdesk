@@ -164,6 +164,58 @@
   color: var(--text-muted);
 }
 
+/* ── 角色分组切换条（#41.14 ⑤）——切换按钮在顶、激活套配置在下 ── */
+/* 设计源：工厂角色并存 mockup .gen-switch-btn/.role-card（mockup 自绘开关样式）+ ui-ux-pro-max
+   focus-visible 可访问性 + 激活态视觉区分；配色全走 CSS 变量（硬约束 #1） */
+
+.settings-role-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.settings-role-switch-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.settings-role-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.settings-role-switch-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.settings-role-switch-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.settings-role-switch-btn.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
 /* ── 单个设置行 ── */
 
 .settings-row {

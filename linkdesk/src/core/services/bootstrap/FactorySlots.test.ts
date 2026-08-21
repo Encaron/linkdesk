@@ -115,6 +115,37 @@ describe("FactorySlots — 一对多（E5.8#41.11）", () => {
     expect(errorSpy).toHaveBeenCalledTimes(1); // 单候选不诊断
   });
 
+  it("listRoles 枚举全部已填充角色（注册序）——#41.14 ⑤ 角色分组枚举面", () => {
+    const slots = new FactorySlots();
+    slots.initialize([
+      entry("demo-settings", "settings"),
+      entry("demo-market", "marketplace"),
+      entry("demo-plain"), // 无角色不进槽
+    ]);
+    expect(slots.listRoles()).toEqual(["settings", "marketplace"]);
+  });
+
+  it("listRoles 空表返回空数组", () => {
+    const slots = new FactorySlots();
+    slots.initialize([entry("demo-plain")]);
+    expect(slots.listRoles()).toEqual([]);
+  });
+
+  it("listRoles 随 refreshFromPlugins 刷新——卸载后角色消失", () => {
+    const slots = new FactorySlots();
+    manifestsMock.mockReturnValue([
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-market", manifest: { name: "Demo Market", version: "1.0.0", factoryRole: "marketplace" } },
+    ]);
+    slots.refreshFromPlugins();
+    expect(slots.listRoles()).toEqual(["settings", "marketplace"]);
+    manifestsMock.mockReturnValue([
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+    ]);
+    slots.refreshFromPlugins();
+    expect(slots.listRoles()).toEqual(["settings"]);
+  });
+
   it("无 factoryRole 声明的插件不进任何槽", () => {
     const slots = new FactorySlots();
     slots.initialize([entry("demo-plain")]);
