@@ -17,7 +17,7 @@
 | **核心无知** | 壳不认识任何插件的 pluginId |
 | **合同优先** | 插件走 `window.linkdesk.*`，不走 `import @src/core` |
 | **同步优先** | 能同步的 API 不同步封装（`path` 纯函数不走 IPC） |
-| **安全** | 插件 preload 比壳 preload 窄——插件不能调 `plugins.install` 或 `window.createPluginView` |
+| **安全** | 插件 preload 比壳窄——**唯一缺 `bridge` 命名空间**（壳主控专用：插件 IPC 请求经主进程转发到壳侧服务的信封，E5.7#97）；且 preload 沙箱零 Node 能力（不暴露 require/fs/child_process） |
 
 ---
 
@@ -42,7 +42,7 @@
 
 **`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)**（自动生成，勿手改）。
 
-- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（10 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
+- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（11 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
 - **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
 - **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对（#21）
 - **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
@@ -65,7 +65,7 @@ async function list(): Promise<FileEntry[]> {
 
 > **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** 当前仅 `npm pack` 本地验收闭环；真实 npm publish 已立案 [E6#2.5](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)。
 
-**路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（88 声明，零 import 依赖），拷贝即用。
+**路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（94 声明，零 import 依赖），拷贝即用。
 
 > **三个路径任选其一，禁止 `import type { ... } from "@src/core"`**——那是偷壳源码类型（见 §五）。
 
@@ -82,6 +82,7 @@ async function list(): Promise<FileEntry[]> {
 | **filesystem** | 插件权限：插件数据目录读写、workspace 目录读、**其他插件目录禁止** |
 | **configuration** | 配置 key 命名规则 `<pluginId>.<property>`（如 `editor.fontSize`、`serial-monitor.baudRate`） |
 | **serial** | **E5.8#28 多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口（D3），会话-端口绑定在插件侧 |
+| **panel** | **E5.8#34.5：** `panel.reveal(viewId)` 声明寻址聚焦底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；已显示 → 切换聚焦；**viewId 不在 panel 容器 → no-op**（不报错）。**#36.10 已移除 `panel.moveToEditor`**（用户拍板弃内容迁移——zone 位置移动是 #37.6/#37.7 布局命令的事） |
 | **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
 
 **壳广播事件（插件可订阅，走 `events.on`）：**
@@ -124,8 +125,15 @@ async function list(): Promise<FileEntry[]> {
 | `import { getWorkspaceFolders } from "@src/core/WorkspaceService"` | `lk.workspace.getFolders()` |
 | `import type { FileEntry } from "@src/core/types/fileEntry"` | `import type { FileEntry } from "@linkdesk/contracts"` |
 
-**ESLint `error`（`noCoreImportInPlugin`，#20-d 收紧）：** `import { ... } from "@src/core/..."` **和** `import type { ... } from "@src/core/..."` → 🚫 编译失败。测试文件不再豁免（vitest 单进程理由不成立）。运行时 import 除白名单（唯一例外 `ContextKeyService`，测试专用）外一律禁止。
-**允许的 import：** `@linkdesk/contracts` 类型、React hooks（`useConfiguration`/`useSendData`）、`ViewContainerService`（侧栏组件）、白名单例外。
+**ESLint `error`（`noCoreImportInPlugin`，#20-d 收紧）：** `import { ... } from "@src/core/..."` **和** `import type { ... } from "@src/core/..."` → 🚫 编译失败。测试文件不再豁免（vitest 单进程理由不成立）。
+
+**允许的 import（白名单全表见 `eslint-local-rules.js` PLUGIN_IMPORT_WHITELIST）：**
+- `@linkdesk/contracts` **类型**（`import type`，零运行时耦合）
+- `@src/components/shared/*` **共享 UI 组件**（ContextMenu / PluginIcon / Toggle / SelectBox / Combobox / InlineInput / FormRow 等）
+- **纯工具白名单**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）
+- **例外记录表**：新例外必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
+
+> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.data` / `events`（见 `07-插件间通信.md`）。
 
 ---
 

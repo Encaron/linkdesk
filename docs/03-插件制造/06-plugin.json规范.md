@@ -18,7 +18,7 @@ plugins/user/my-plugin/
 │   ├── index.tsx            # 入口组件
 │   ├── sidebar.tsx          # 侧栏组件（如有）
 │   └── styles.css           # 样式
-└── dist/                    # 构建产物（自动生成，不手改）
+└── i18n/                    # 翻译文件（可选，contributes.i18n 声明）
 ```
 
 | 文件 | 说明 |
@@ -26,9 +26,11 @@ plugins/user/my-plugin/
 | `plugin.json` | **唯一必需文件。** 文件名固定，不可改名 |
 | `src/` | **推荐**源码放在 `src/` 子目录下，避免平铺。`entry`/`sidebar` 路径相对于 `plugin.json`，如 `"entry": "src/index.tsx"` |
 | `resources/` | 图标等静态资源。对标 VS Code 插件常见的 `resources/` / `assets/` 目录 |
-| `icon` 字段 | 相对于 `plugin.json` 的路径。如 `"icon": "resources/icon.svg"` → `linkdesk://` 协议自动加载 |
-| `dist/` | Vite 构建输出，由 `npm run build` 自动生成，不要手动编辑 |
+| `icon` 字段 | 相对于 `plugin.json` 的路径。如 `"icon": "resources/icon.svg"` |
+| `i18n/` | 翻译文件——每种语言一个 JSON（`contributes.i18n` 声明路径） |
 | `__tests__/` | 测试文件，推荐放 `src/__tests__/` |
+
+> **插件源码目录不产生 `dist/`**（构建产物在应用根 `dist/plugins/<id>.js`，作者不关心）。完整目录约定见 `09-插件目录规范.md`。
 
 ---
 
@@ -210,11 +212,12 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 
 | 字段 | 类型 | 说明 |
 |---|---|---|
-| `type` | `string` | 插件类型：`view` / `card` / `theme` / `language` / `protocol` / `resource` / `datasource` |
-| `name` | `string` | 显示名称，用户可见 |
-| `version` | `string` | 语义化版本，如 `"1.0.0"` |
-| `icon` | `string` | 图标标识——codicon 名称或 SVG 路径 |
-| `entry` | `string` | 入口文件路径，相对插件目录。`view` / `card` / `protocol` 必需 |
+| `name` | `string` | 显示名称，用户可见。**schema 级必需**（与 `version` 并列，唯二必填） |
+| `version` | `string` | 语义化版本，如 `"1.0.0"`。**schema 级必需** |
+| `entry` | `string` | 入口文件路径，相对插件目录。**仅视图/标签页插件需要**——不是 schema 级必需（entryless 侧栏插件零 entry，见「图标栏出现规则」） |
+| `icon` | `string` | 图标标识——codicon/Lucide 名称或 SVG 路径（可选，缺省用默认图标） |
+
+> **`type` 字段已废弃**（E5.7 起不再必需，也不在 schema 必需列表）——loader 从 `entry`/`themes`/`languages`/`mode`/`resources`/`contributes` 等声明字段自动检测贡献类型。
 
 ### 可选字段
 
@@ -307,7 +310,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 
 // 自定义 PNG——位图，多尺寸可能模糊
 { "icon": "resources/icon.png" }
-// 文件放在插件目录下：plugins/my-plugin/resources/icon.png
+// 文件放在插件目录下：plugins/user/my-plugin/resources/icon.png
 
 // 外部 URL
 { "icon": "https://example.com/icon.svg", "iconSource": "url" }
@@ -394,14 +397,16 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 **支持的 type：** `"string"` | `"number"` | `"boolean"` | `"integer"`
 **支持的约束：** `enum`（下拉列表）| `minimum` / `maximum`（数值范围）| `default`（默认值）
 
-**插件代码里读设置：**
+**插件代码里读设置（走 `window.linkdesk.configuration`——插件通信铁律，禁止 `import @src/core/...`）：**
 ```typescript
-import { useConfiguration } from "../../src/core/ConfigurationService";
-
 function CadView() {
-  const [gridSize] = useConfiguration("cad.gridSize");  // 10
-  const [units] = useConfiguration("cad.units");          // "mm"
-  // 用户在 Settings Editor 改值 → 组件自动重渲染
+  const [gridSize, setGridSize] = useState<number | undefined>(10);
+
+  useEffect(() => {
+    window.linkdesk.configuration.get<number>("cad.gridSize").then(setGridSize);
+    return window.linkdesk.configuration.onChange<number>("cad.gridSize", setGridSize);
+  }, []);
+  // 用户在 Settings Editor 改值 → onChange 回调 → 组件自动重渲染
 }
 ```
 
@@ -536,31 +541,31 @@ function CadView() {
 ```
 plugins/user/<pluginId>/    ← 第三方插件放这里
 plugins/builtin/<pluginId>/ ← 内置插件（随安装包分发）放这里
-├── plugin.json          ← 必需：元数据
-├── index.tsx            ← 视图/卡片入口（entry 字段指向的文件）
-├── sidebar.tsx          ← 可选的侧栏组件
-├── toolbar.tsx          ← 可选的工具栏组件
-├── *.css                ← 可选的样式文件
-└── assets/              ← 可选的资源目录（图片/字体等）
 ```
 
-`<pluginId>` = 文件夹名 = `plugin.json` 中引用的插件唯一标识。`distribution` 字段声明归属（默认 `"user"`，不填即可）。命名规则：
+`<pluginId>` = 文件夹名 = 插件唯一标识。`distribution` 字段声明归属（默认 `"user"`，不填即可）。命名规则：
 - 小写英文 + 连字符：`gps-map`、`protocol-sbq`、`theme-dracula`
 - 不带软件名、不带版本号：`terminal` 不是 `v3-terminal`
+
+> 完整目录结构（`resources/` / `src/utils/` / `__tests__/` 放什么、命名约定）见 `09-插件目录规范.md`。
 
 ---
 
 ## 校验规则
 
-加载器按以下顺序校验 `plugin.json`：
+加载器校验 `plugin.json`（`type` 字段不参与校验——已废弃，loader 从声明字段自动检测）：
 
+**安装期（复制到 `plugins/user/` 前拦截，E5.7#81）：**
+1. **缺 `plugin.json`** → 安装失败（不是有效插件）
+2. **JSON 格式错误** → 安装失败，给出错误信息
+3. **`validateInstallManifest` 校验**（pluginId/version/name 可解析）→ 不合法在复制前失败
+
+**加载期（启动扫描 + 运行时加载）：**
 1. **文件不存在** → 跳过该目录，日志记录
 2. **JSON 格式错误** → 跳过，toast 通知用户
-3. **缺少 `type`** → 跳过
-4. **`type` 未知** → 跳过（向后兼容——未来新增类型旧核心忽略）
-5. **缺少 `entry`**（view/card/protocol）→ 跳过，toast
-6. **`minAppVersion` 高于当前版本** → 跳过，标记"需升级"
-7. **同名插件重复** → 优先高版本，toast 提示
+3. **视图插件缺 `entry` / 入口文件未导出 default 组件** → 跳过，toast（不阻断其他插件）
+4. **`minAppVersion` 高于当前版本** → 跳过，标记"需升级"
+5. **同名插件重复** → 优先高版本，toast 提示
 
 任何校验失败的插件不阻断其他插件加载。
 
