@@ -250,30 +250,24 @@
   .fp {
     position: absolute;
     z-index: 21;
-    top: 12px; right: 12px; bottom: 12px;
-    width: 640px;                   /* 2026-08-17 用户拍板：默认加大 520→640 */
+    /* #41.6 默认居中大卡——mockup 用 % 示意 app 容器；真实实现 = top:10vh / left:7.5vw / 85vw×80vh
+       （vw/vh 随窗口 resize 自适应，零 JS）。拖拽/调高后转显式 px（帧 3） */
+    top: 10%; left: 7.5%;
+    width: 85%; height: 80%;
     background: var(--bg-window);
     border: 1px solid var(--separator);
     border-radius: 8px;
     box-shadow: 0 12px 40px rgba(0,0,0,0.5);
     display: flex; flex-direction: column;
     overflow: hidden;
+    /* #41.6 居中卡入场——淡入 + 微缩放（右滑入对居中违和） */
     animation: fp-in 250ms cubic-bezier(0.16,1,0.3,1);  /* I8-13 Expo.out */
   }
   @keyframes fp-in {
-    from { transform: translateX(48px); opacity: 0.35; }
-    to   { transform: translateX(0);    opacity: 1; }
+    from { transform: scale(0.96); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
   }
-  /* I8-5 顶部 6px 拖拽手柄 */
-  .fp-handle {
-    height: 6px; flex: none;
-    cursor: grab;
-    background: transparent;
-    transition: background 150ms ease;
-  }
-  .fp-handle:hover { background: rgba(0,120,212,0.35); }
-  .fp-handle:active { cursor: grabbing; }
-
+  /* #41.6 整条标题栏 = I8-5 拖拽面（原顶部 6px 手柄并入）——cursor:grab + no-drag + touch-action */
   .fp-title {
     height: 38px; flex: none;
     background: var(--bg-toolbar);
@@ -282,14 +276,18 @@
     gap: 8px;
     padding: 0 6px 0 14px;
     user-select: none;
+    cursor: grab;
+    touch-action: none;
+    -webkit-app-region: no-drag;   /* 本体验证 no-drag（#41.6 根治整窗误拖） */
   }
+  .fp-title:active { cursor: grabbing; }
   .fp-title .label {
     display: flex; align-items: center; gap: 7px;
     font-size: 12px; color: var(--text-primary);
   }
   .fp-title .label svg { width: 15px; height: 15px; color: var(--accent); }
 
-  .fp-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; }
+  .fp-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; cursor: default; }
 
   /* 标题栏动作——纯图标（2026-08-17 用户拍板）：
      「在主窗口中打开」hover 展开全文；□/✕ hover tooltip */
@@ -523,7 +521,7 @@
   /* ---------- 最大化态（I8-9：100vw，还原 = 同按钮 toggle） ---------- */
   .fp.max {
     top: 6px; right: 6px; bottom: 6px; left: 6px;
-    width: auto;
+    width: auto; height: auto;  /* 覆盖 #41.6 默认 85vw×80vh——top/bottom 拉伸铺满 */
     border-radius: 6px;
   }
   .fp.max .fp-resize { display: none; }
@@ -564,14 +562,14 @@
 <body>
 
 <h1>E5.8 Phase 8 壳内悬浮面板（类型 B FloatingPanel）——五帧 mockup
-  <small><b style="color:#4EC9B0">2026-08-17 用户三反馈已修正：① 默认面板 520→640px（加大）② 「在主窗口中打开」改纯图标——hover 展开全文（□/✕ hover tooltip）③ 右键菜单语义纠正——标签页右键只有「在悬浮面板中打开」（声明制），与面板标题栏「在主窗口中打开」不共存。</b>大 overlay 覆盖主区卡在壳内（对标 VS Code 设置面板），非 OS 窗口。全部颜色走 LinkDesk token；动画 = Expo.out <code>cubic-bezier(0.16,1,0.3,1)</code>（ui-ux-pro-max 确认 + prefers-reduced-motion）。</small>
+  <small><b style="color:#4EC9B0">2026-08-17 用户三反馈已修正 + <span style="color:#CCA700">#41.6 重画（2026-08-21）：默认形态右贴边 640px → 居中大卡 85vw×80vh</span>。① 默认居中大卡（vw/vh 随窗口自适应）② 「在主窗口中打开」改纯图标——hover 展开全文（□/✕ hover tooltip）③ 右键菜单语义纠正——标签页右键只有「在悬浮面板中打开」（声明制），与面板标题栏「在主窗口中打开」不共存。</b>#41.6 要点：整条标题栏 = 拖拽面（动作按钮区排除）· 本体 + 标题栏显式 no-drag · 入场改淡入 + 微缩放（scale 0.96→1，右滑入对居中违和）。大 overlay 覆盖主区卡在壳内（对标 VS Code 设置面板），非 OS 窗口。全部颜色走 LinkDesk token；动画 = Expo.out <code>cubic-bezier(0.16,1,0.3,1)</code>（ui-ux-pro-max 确认 + prefers-reduced-motion）。</small>
 </h1>
 
 <!-- ============ 帧 1：设置悬浮面板（默认态——主视觉，已加大） ============ -->
 <div class="frame">
   <div class="frame-caption">
     <span class="tag">默认态</span>
-    <b>设置悬浮面板（默认 640px——用户拍板加大）</b>
+    <b>设置悬浮面板（居中大卡 85vw×80vh——#41.6 改）</b>
     <span>#38 · 标题栏纯图标：⤢ hover 展开 · 身份开关键 I8-2</span>
   </div>
 
@@ -627,8 +625,7 @@
     <div class="fp-layer">
       <div class="fp-backdrop"></div>
       <div class="fp">
-        <div class="fp-handle" title="拖拽手柄（顶部 6px · cursor: grab）"></div>
-        <div class="fp-title">
+        <div class="fp-title" title="拖拽——整条标题栏（动作按钮区除外）">
           <span class="label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
             设置
@@ -698,7 +695,7 @@
     </div>
   </div>
 
-  <div class="frame-note"><b>默认态要点（2026-08-17 用户反馈修正后）：</b>① <b>默认加大 640px</b>（原 520 太小）；② 标题栏三动作全图标——「在主窗口中打开」默认纯图标、<b>hover 展开全文</b>（I8-4 B→T），□/✕ hover tooltip；③ 内容区 = 壳不持有渲染器，按 <code>viewId</code> 寻址插件视图注册表；④ 遮罩点击关闭 + Esc + 焦点入面板（I8-8）；⑤ 顶部 6px / 底部 8px 手柄；⑥ Z_INDEX 1500——右键/QuickPick/Dialog/Toast 全盖面板（I8-12）。</div>
+  <div class="frame-note"><b>默认态要点（#41.6 重画后）：</b>① <b>默认居中大卡 85vw×80vh</b>（原右贴边 640px 居中化——vw/vh 随窗口 resize 自适应，零 JS）；② 标题栏三动作全图标——「在主窗口中打开」默认纯图标、<b>hover 展开全文</b>（I8-4 B→T），□/✕ hover tooltip；③ 内容区 = 壳不持有渲染器，按 <code>viewId</code> 寻址插件视图注册表；④ 遮罩点击关闭 + Esc + 焦点入面板（I8-8）；⑤ <b>整条标题栏 = 拖拽面</b>（原顶部 6px 手柄并入，动作按钮区 startGesture 内排除）+ 底部 8px resize 手柄；⑥ 本体 + 标题栏显式 no-drag（根治整窗误拖）；⑦ 入场改淡入 + 微缩放（scale 0.96→1，右滑入对居中违和）；⑧ Z_INDEX 1500——右键/QuickPick/Dialog/Toast 全盖面板（I8-12）。</div>
 </div>
 
 <!-- ============ 帧 2：市场悬浮面板（第二消费者 + 视图动作区） ============ -->
@@ -754,8 +751,7 @@
     <div class="fp-layer">
       <div class="fp-backdrop"></div>
       <div class="fp">
-        <div class="fp-handle" title="拖拽手柄（顶部 6px · cursor: grab）"></div>
-        <div class="fp-title">
+        <div class="fp-title" title="拖拽——整条标题栏（动作按钮区除外）">
           <span class="label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
             市场
@@ -880,8 +876,7 @@
       <div class="clamp-label">壳内钳制——拖不出窗口边界</div>
       <!-- 面板拖到中部，半透明跟随 -->
       <div class="fp dragging" style="top:60px; left:90px; right:auto; bottom:auto; height:320px; width:520px;">
-        <div class="fp-handle" title="拖拽中…"></div>
-        <div class="fp-title">
+        <div class="fp-title" title="拖拽中…——整条标题栏">
           <span class="label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
             设置
@@ -929,7 +924,7 @@
     </div>
   </div>
 
-  <div class="frame-note"><b>拖拽要点：</b>① 顶部 6px 手柄 <code>cursor: grab</code>（按压 grab→grabbing）；② 拖拽中面板半透明跟随；③ <b>壳内钳制</b>——面板拖不出壳窗口边界（壳内定义，区别于类型 A 拖出窗口）；④ I8-6——拖拽中 mouseup 落在遮罩不得触发「遮罩点击关闭」（拖拽态标志禁遮罩点击，同 #13 buttons===0 纪律）。</div>
+  <div class="frame-note"><b>拖拽要点（#41.6 更新）：</b>① <b>整条标题栏 = 拖拽面</b> <code>cursor: grab</code>（按压 grab→grabbing；动作按钮区 startGesture 内排除——点按钮不误触拖拽）；② 拖拽中面板半透明跟随 + 显式 top/left/width/height（居中默认态转可拖几何）；③ <b>壳内钳制</b>——面板拖不出壳窗口边界（壳内定义，区别于类型 A 拖出窗口）；④ I8-6——拖拽中 mouseup 落在遮罩不得触发「遮罩点击关闭」（拖拽态标志禁遮罩点击，同 #13 buttons===0 纪律）。</div>
 </div>
 
 <!-- ============ 帧 4：最大化（100vw）+ 还原 ============ -->
@@ -982,8 +977,7 @@
     <div class="fp-layer">
       <div class="max-tag">最大化（还原 = 同按钮 toggle）</div>
       <div class="fp max">
-        <div class="fp-handle" title="拖拽手柄"></div>
-        <div class="fp-title">
+        <div class="fp-title" title="最大化态——不可拖/调（I8-9）">
           <span class="label">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
             设置
