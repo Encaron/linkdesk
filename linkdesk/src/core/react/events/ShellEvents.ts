@@ -48,6 +48,11 @@ export interface ShellEvents {
    *  （插件 linkdesk.panel.reveal(viewId)）。App usePanelReveal 消费：面板隐藏则展开 +
    *  切到该视图 + 隐藏视图恢复可见。payload = 目标 viewId。无贡献插件时消费方 no-op。 */
   "panel:reveal": { viewId: string };
+  /** 壳内悬浮面板请求（E5.8#39.5 panel.revealFloating 通用 API）——生产方 = IpcBridgeHandler/panel 域
+   *  （插件 linkdesk.panel.revealFloating(viewId)）。App useFloatingPanelReveal 消费：声明寻址
+   *  （contributes.views 任意容器全局索引）+ I8-2 身份开关键（无面板→开 / 同视图→关 / 他面板→替换）。
+   *  payload = 目标 viewId。未声明视图时消费方 no-op 不崩。 */
+  "panel:reveal-floating": { viewId: string };
 
   // ── 标签页（MainContent）──
   /** 标签页切换。payload = 新聚焦的标签页信息 */
