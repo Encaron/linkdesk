@@ -89,7 +89,7 @@
         },
         "invokeBeforeClose": {
           "type": "string",
-          "description": "关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
+          "description": "关闭前调用的命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\"（否决回路已停用 E5.7#43，声明保留待未来池侧 requests 命名空间）"
         },
         "identityField": {
           "type": "string",
