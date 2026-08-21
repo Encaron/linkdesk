@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -93,6 +93,12 @@ ipcRenderer.on(IPC.pool.toastAction, (_event, action: PoolToastAction) => {
 let _dialogActionHandler: ((action: PoolDialogAction) => void) | null = null;
 ipcRenderer.on(IPC.pool.dialogAction, (_event, action: PoolDialogAction) => {
   if (_dialogActionHandler) _dialogActionHandler(action);
+});
+
+// E5.8#37（Phase 8 类型 B）：悬浮面板动作回调——池→主进程→壳，壳侧 React 注册 handler 调 FloatingPanelService 桥
+let _floatingPanelActionHandler: ((action: PoolFloatingPanelAction) => void) | null = null;
+ipcRenderer.on(IPC.pool.floatingPanelAction, (_event, action: PoolFloatingPanelAction) => {
+  if (_floatingPanelActionHandler) _floatingPanelActionHandler(action);
 });
 
 // E5.7#39：内存压力通知——主进程 window-manager 单 Pool 采样超阈值 → 壳 toast 服务
@@ -419,6 +425,13 @@ try {
       onDialogAction: (cb: (action: PoolDialogAction) => void) => {
         _dialogActionHandler = cb;
         return () => { _dialogActionHandler = null; };
+      },
+      /** E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据到池——壳 FloatingPanelService 桥序列化后直推（聪慧→哑） */
+      pushFloatingPanel: (data: unknown) => ipcRenderer.send(IPC.pool.floatingPanelShow, data),
+      /** E5.8#37：注册悬浮面板动作回调——池→壳→FloatingPanelService 桥。返回 unsubscribe */
+      onFloatingPanelAction: (cb: (action: PoolFloatingPanelAction) => void) => {
+        _floatingPanelActionHandler = cb;
+        return () => { _floatingPanelActionHandler = null; };
       },
       /** E5.7#39：注册内存压力回调——主进程→壳→toast 服务。返回 unsubscribe */
       onMemoryPressure: (cb: (data: MemoryPressureData) => void) => {

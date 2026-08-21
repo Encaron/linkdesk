@@ -31,6 +31,7 @@
 import type { PoolToastData } from "../../core/types/pool/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions } from "../../core/types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/pool/poolDialog";
+import type { PoolFloatingPanelData } from "../../core/types/pool/poolFloatingPanel";
 import type { PoolLayout } from "../../core/types/pool/poolLayout";
 import type { LinkDeskAPI } from "../../core/api/linkdesk-api";
 import {
@@ -38,6 +39,7 @@ import {
   buildSampleToasts,
   buildSampleQuickPick,
   buildSampleDialog,
+  buildSampleFloatingPanel,
 } from "./sampleLayout";
 
 /* ── 迷你事件总线——events.on/emit 语义（unsubscribe 返回，同 event-system） ── */
@@ -115,6 +117,7 @@ export function installMockLinkdesk(): void {
   const toastReplay = createReplay<PoolToastData>();
   const quickPickReplay = createReplay<PoolQuickPickData>();
   const dialogReplay = createReplay<PoolDialogData>();
+  const floatingPanelReplay = createReplay<PoolFloatingPanelData>(); // E5.8#37：单实例全量快照（open/close 替换）
 
   // E5.7#63：插件 quickPick.show 本地桥——preload-pool 同款语义（hostFn 存储 + 缓冲回放 +
   // 结算契约：池侧回传 key → 本侧映射条目，null → undefined——插件收到结构化副本同款约定）。
@@ -165,6 +168,9 @@ export function installMockLinkdesk(): void {
       onToastAction: () => () => {},
       pushDialog: makeLogger("pool.pushDialog"),
       onDialogAction: () => () => {},
+      // E5.8#37（Phase 8 类型 B）：悬浮面板——pushPanel 哑渲染数据 + 动作回传（preview 无壳侧消费）
+      pushFloatingPanel: makeLogger("pool.pushFloatingPanel"),
+      onFloatingPanelAction: () => () => {},
       onMemoryPressure: () => () => {},
     },
     window: {
@@ -217,6 +223,12 @@ export function installMockLinkdesk(): void {
       onShow: dialogReplay.subscribe,
       confirm: makeLogger("dialogHost.confirm"),
       cancel: makeLogger("dialogHost.cancel"),
+    },
+    // E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染桥——preview 无壳侧消费，动作留壳日志
+    // （壳侧 pool.pushFloatingPanel 同步推 DTO，__mockPool.showFloatingPanel 推样例）
+    floatingPanelHost: {
+      onShow: floatingPanelReplay.subscribe,
+      action: makeLogger("floatingPanelHost.action"),
     },
     commands: {
       registerCommand: (id: string, handler: (...args: unknown[]) => unknown) => {
@@ -288,6 +300,8 @@ export function installMockLinkdesk(): void {
     hideQuickPick: () => quickPickReplay.push({ open: false, placeholder: "", items: [] }),
     showDialog: () => dialogReplay.push(buildSampleDialog()),
     hideDialog: () => dialogReplay.push({ open: false }),
+    showFloatingPanel: () => floatingPanelReplay.push(buildSampleFloatingPanel()),
+    hideFloatingPanel: () => floatingPanelReplay.push({ open: false }),
     emit: events.emit,
   };
 }

@@ -25,6 +25,7 @@ import { Z_INDEX } from "../../../constants";
 import QuickPickHost from "../../floating/quick-pick/QuickPickHost";
 import ToastHost from "../../floating/toast/ToastHost";
 import DialogHost from "../../floating/dialog/DialogHost";
+import FloatingPanelHost from "../../floating/floating-panel/FloatingPanelHost"; // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染
 
 function FloatingLayerHost() {
   return (
@@ -51,6 +52,13 @@ function FloatingLayerHost() {
 
       {/* Tooltip portal（如需要） */}
       <div id="tooltip-root" style={{ pointerEvents: "auto" }} />
+
+      {/* FloatingPanel portal——#37 接入（Phase 8 类型 B）：壳 FloatingPanelService 桥推 DTO，
+          FloatingPanelHost 哑渲染。容器固定元素 + Z_INDEX.floatingPanel（1500，I8-12）。
+          根级 opt-in（§2 纪律）+ no-drag 豁免（硬约束 18——见 FloatingPanel.css）。 */}
+      <div id="floating-panel-root" style={{ pointerEvents: "auto" }}>
+        <FloatingPanelHost />
+      </div>
 
       {/* ToastHost——#16 接入（设计 §2：Toast 始终在此，按需显示——空栈/null 自隐藏） */}
       <ToastHost />

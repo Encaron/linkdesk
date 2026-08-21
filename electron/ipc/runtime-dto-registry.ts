@@ -28,6 +28,7 @@ import type { PoolLayout } from '../../src/core/types/pool/poolLayout';
 import type { PoolQuickPickData } from '../../src/core/types/pool/poolQuickPick';
 import type { PoolToastData } from '../../src/core/types/pool/poolToast';
 import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
+import type { PoolFloatingPanelData } from '../../src/core/types/pool/poolFloatingPanel';
 import type {
   SerialDataPayload,
   SerialStatsPayload,
@@ -59,4 +60,6 @@ export const RUNTIME_DTO_REGISTRY: readonly RuntimeDtoRow[] = [
   { channel: IPC.pool.quickpick, type: 'PoolQuickPickData' },
   { channel: IPC.pool.toast, type: 'PoolToastData' },
   { channel: IPC.pool.dialog, type: 'PoolDialogData' },
+  // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——池直收（浮层哑渲染单实例 DTO）
+  { channel: IPC.pool.floatingPanel, type: 'PoolFloatingPanelData' },
 ];

@@ -10,6 +10,7 @@ import type { ManifestMenuItem } from "../../registry/commands/MenuRegistry";
 import type { PoolToastData } from "../../types/pool/poolToast";
 import type { PoolQuickPickData, PluginQuickPickOptions, PluginQuickPickRequest } from "../../types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../types/pool/poolDialog";
+import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
 
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Toast/Dialog 宿主桥 */
 export interface UiAPI {
@@ -69,5 +70,13 @@ export interface UiAPI {
     onShow(cb: (data: PoolDialogData) => void): () => void;
     confirm(): void;
     cancel(): void;
+  };
+
+  /** E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
+   * 命名 floatingPanelHost——面板请求 API（panel.revealFloating）归 PanelAPI，宿主渲染桥归本面 */
+  floatingPanelHost: {
+    onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
+    /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
+    action(actionId: string): void;
   };
 }

@@ -242,6 +242,16 @@ export class WindowManager {
     view.webContents.send(IPC.pool.dialog, data);
   }
 
+  /** E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据——壳 FloatingPanelService 桥序列化 DTO，池 FloatingPanelHost 纯渲染 */
+  pushFloatingPanel(data: unknown): void {
+    const view = this.mainPoolView;
+    if (!view || view.webContents.isDestroyed()) {
+      console.warn('[WindowManager] pushFloatingPanel 失败——Pool 不存在或已销毁');
+      return;
+    }
+    view.webContents.send(IPC.pool.floatingPanel, data);
+  }
+
   /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
   getPoolView(): WebContentsView | null {
     return this.mainPoolView;

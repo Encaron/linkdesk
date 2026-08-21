@@ -352,6 +352,38 @@ export type PoolDialogData = {
     /** alert 模式——只有确定按钮，无取消/Escape/backdrop 关闭 */
     isAlert: boolean;
 };
+/** 标题栏动作按钮——池渲染 + 回传壳侧重解析业务语义（池零语义，UI 机械知识除外）。
+ *  E5.8#20-c：改名 PoolFloatingPanelButton——与 poolActions.ts PoolFloatingPanelAction（IPC 回传动作）
+ *  同名，契约平铺进单文件会声明合并成幽灵复合型；按钮描述型用 Button 后缀消歧（poolToast 同款）。 */
+export interface PoolFloatingPanelButton {
+    /** 动作 id——open-in（在主窗口中打开）/ maximize（最大化）/ close（关闭），壳侧重解析 */
+    id: string;
+    /** 壳 t() 已解析的动作名——mockup：hover tooltip（open-in 展开全文） */
+    label: string;
+    /** 内建图标 id——池按 id 选 SVG（open-in/maximize/restore/close） */
+    icon: string;
+    /** 本地 toggle 专用（I8-9 最大化→还原 同按钮）——切换态图标，缺省 = 非 toggle 动作（回传壳） */
+    toggledIcon?: string;
+    /** 本地 toggle 切换态文案（如「还原」）——池零自产文本，两态文案都壳 t() 给 */
+    toggledLabel?: string;
+    /** open-in 类型——默认纯图标、hover 展开全文（mockup .fp-act.open-in） */
+    expandOnHover?: boolean;
+}
+export type PoolFloatingPanelData = {
+    open: false;
+} | {
+    open: true;
+    /** 面板身份——壳 FloatingPanelService 单实例语义按 viewId 裁决（I8-10：同 viewId 聚焦 / 异 viewId 替换） */
+    viewId: string;
+    /** 标题——壳 t() 已解析，池原样渲染 */
+    title: string;
+    /** 内容插件——池经 PluginComponent(pluginId, renderPath) 渲染（壳不持渲染器） */
+    pluginId: string;
+    /** 内容视图 renderPath——池视图注册表寻址 */
+    renderPath: string;
+    /** 标题栏动作按钮（顺序 = 渲染顺序：open-in / maximize / close） */
+    actions: PoolFloatingPanelButton[];
+};
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Toast/Dialog 宿主桥 */
 export interface UiAPI {
     /** 通知——插件弹出壳侧 toast，对标 VS Code vscode.window.showInformationMessage */
@@ -406,6 +438,13 @@ export interface UiAPI {
         onShow(cb: (data: PoolDialogData) => void): () => void;
         confirm(): void;
         cancel(): void;
+    };
+    /** E5.8#37（Phase 8 类型 B）：悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（壳 preload 无此面）。
+     * 命名 floatingPanelHost——面板请求 API（panel.revealFloating）归 PanelAPI，宿主渲染桥归本面 */
+    floatingPanelHost: {
+        onShow(cb: (data: PoolFloatingPanelData) => void): () => void;
+        /** 动作回传——open-in（在主窗口中打开）/ close，壳侧 settle（业务语义壳侧重解析） */
+        action(actionId: string): void;
     };
 }
 /** 端口列表条目——listPorts() 返回 */
@@ -1398,6 +1437,11 @@ export interface PoolToastAction {
 export interface PoolDialogAction {
     type: string;
 }
+/** 悬浮面板动作——action 按 actionId 回传（open-in/close），壳侧 settle Promise（E5.8#37 类型 B） */
+export interface PoolFloatingPanelAction {
+    type: string;
+    actionId?: string;
+}
 /** 内存压力通知——主进程 window-manager 采样超阈值（E5.7#39） */
 export interface MemoryPressureData {
     totalRSS: number;
@@ -1426,6 +1470,9 @@ export interface ShellAPI {
         onToastAction(cb: (action: PoolToastAction) => void): () => void;
         pushDialog(data: unknown): void;
         onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
+        // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+        pushFloatingPanel(data: unknown): void;
+        onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
         onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
         // ── 池侧（壳 preload 无） ──
         onLayout(cb: (layout: PoolLayout) => void): () => void;

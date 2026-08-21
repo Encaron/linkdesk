@@ -1,0 +1,188 @@
+/**
+ * FloatingPanelHost 样式——E5.8#37（Phase 8 壳内悬浮面板 类型 B）。
+ * 视觉依据 = mockups/02-壳内悬浮面板-mockup.html 五帧（2026-08-17 用户拍板）——
+ *   帧 1 默认右贴边 640px / 帧 3 拖拽中半透明 / 帧 4 最大化+还原。
+ * I8 交互 → 02-交互细节设计.md §3。动画 = ui-ux-pro-max 确认 Expo.out cubic-bezier(0.16,1,0.3,1)。
+ * z-index 不进文件——inline Z_INDEX.floatingPanel / floatingPanel-1（#26 常量表）。
+ * pointer-events 由 FloatingLayerHost #floating-panel-root 根级提供（§2 根级 opt-in）。
+ * 全部颜色走 CSS 变量，零硬编码 hex（accent 半透明走 color-mix——IconBarZone 同款先例）。
+ * 间距走 spacing-grid（padding/margin/gap 1-6px 或 4 倍数；mockup 的 14/7/9px 已归位 12/8px）。
+ */
+
+/* 硬约束 18：池顶部 .titlebar 30px 是 -webkit-app-region: drag 拖拽区——
+   面板默认 top:12px 落拖拽区内会被 OS 截鼠标事件。根容器 no-drag 豁免整个面板层
+   （含全屏遮罩），仿 .window-controls 先例。 */
+#floating-panel-root {
+  -webkit-app-region: no-drag;
+}
+
+.floating-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.35); /* mockup 遮罩——比 Dialog 0.5 轻（面板非模态确认） */
+}
+
+.floating-panel {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-window);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); /* mockup 大面板强投影 */
+  outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
+  /* I8-13 右侧滑入——250ms Expo.out（ui-ux-pro-max 确认）；prefers-reduced-motion 下关闭 */
+  animation: floating-panel-in 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes floating-panel-in {
+  from { transform: translateX(100%); opacity: 0.35; }
+  to   { transform: translateX(0); opacity: 1; }
+}
+
+/* I8-13 prefers-reduced-motion 关闭 */
+@media (prefers-reduced-motion: reduce) {
+  .floating-panel { animation: none; }
+}
+
+/* I8-5 拖拽中半透明跟随（mockup 帧 3 .fp.dragging） */
+.floating-panel.dragging {
+  opacity: 0.85;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+}
+
+/* I8-9 最大化铺满（mockup 帧 4 .fp.max）——resize 手柄由 JSX 隐藏 */
+.floating-panel.maximized {
+  border-radius: 6px;
+}
+
+/* I8-5 顶部 6px 拖拽手柄——cursor:grab，hover accent 微光 */
+.floating-panel-handle {
+  height: 6px;
+  flex: none;
+  cursor: grab;
+  touch-action: none;
+  transition: background 150ms ease;
+}
+.floating-panel-handle:hover {
+  background: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+.floating-panel-handle:active { cursor: grabbing; }
+
+/* 标题栏——38px，bg-toolbar（mockup 帧 1 .fp-title） */
+.floating-panel-title {
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+}
+
+.floating-panel-label {
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 动作区——纯图标（mockup 帧 1 .fp-actions/.fp-act） */
+.floating-panel-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+}
+
+.floating-panel-act {
+  position: relative;
+  height: 26px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.floating-panel-act svg { width: 14px; height: 14px; flex: none; }
+.floating-panel-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.floating-panel-act.close:hover { background: var(--titlebar-close-hover); color: var(--badge-text); }
+
+/* open-in：默认纯图标 28px，hover 展开全文（mockup .fp-act.open-in） */
+.floating-panel-act.open-in {
+  width: 28px;
+  padding: 0;
+  overflow: hidden;
+  transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), background 150ms ease, color 150ms ease;
+}
+.floating-panel-act.open-in .lbl {
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  max-width: 0;
+  transition: opacity 120ms ease 60ms, max-width 180ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.floating-panel-act.open-in:hover { width: 128px; justify-content: flex-start; padding: 0 8px; }
+.floating-panel-act.open-in:hover .lbl { opacity: 1; max-width: 100px; }
+.floating-panel-act.open-in svg { color: var(--accent); }
+
+/* □ / ✕：hover tooltip（data-tip 纯 CSS——文案来自 DTO label，池零自产文本）。
+   向下落入面板内部（标题栏在面板顶），overflow:hidden 不裁到 */
+.floating-panel-act.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--separator);
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.floating-panel-act.tip:hover::after { opacity: 1; transform: translateY(0); }
+
+/* I8-7 底部 8px resize 手柄（调高，cursor:ns-resize；mockup .fp-resize） */
+.floating-panel-resize {
+  height: 8px;
+  flex: none;
+  cursor: ns-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+}
+.floating-panel-resize::before {
+  content: "";
+  width: 26px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--separator);
+}
+.floating-panel-resize:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.floating-panel-resize:hover::before { background: var(--accent); }
+
+/* 内容区——插件视图（PluginComponent）占满剩余空间 */
+.floating-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}

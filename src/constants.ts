@@ -10,6 +10,9 @@ export const Z_INDEX = {
   panelResizeHandle: 200,    // 面板拖拽尺寸手柄
   dragPreview: 500,          // 标签页拖拽预览
   dropZone: 1000,            // 分屏拖拽预览（Glassmorphism 内发光）
+  // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——右键 3000/QuickPick 4000/Dialog 5000/Toast 2000 全盖面板；
+  // 面板盖池内容 + 拖拽预览（dropZone 1000）。I8-12。
+  floatingPanel: 1500,
   toast: 2000,               // Toast 通知
   contextMenu: 3000,         // 右键菜单
   quickPick: 4000,           // 命令面板 / QuickPick

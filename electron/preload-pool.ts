@@ -81,7 +81,7 @@ import type { PoolExposed } from '../src/core/api/linkdesk-api/surfaces';
 // ── E5.8#0d.10-4：13 子模块聚合——import 即触发模块级 IPC 注册（硬约束 20：先于 expose）──
 import { buildPool } from './preload-pool/layout';
 import { buildQuickPick, buildQuickPickHost } from './preload-pool/quickpick';
-import { buildToast, buildDialogHost } from './preload-pool/toast-dialog';
+import { buildToast, buildDialogHost, buildFloatingPanelHost } from './preload-pool/toast-dialog';
 import { buildCommands } from './preload-pool/commands';
 import { buildConfiguration } from './preload-pool/configuration';
 import { buildLanguage } from './preload-pool/language';
@@ -170,6 +170,8 @@ try {
     quickPickHost: buildQuickPickHost(),
     toast: buildToast(),
     dialogHost: buildDialogHost(),
+    // E5.8#37（Phase 8 类型 B）：壳内悬浮面板哑渲染桥
+    floatingPanelHost: buildFloatingPanelHost(),
 
     // ── 上下文/装饰/视图容器（4c）──
     contextKey: buildContextKey(),

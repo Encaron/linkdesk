@@ -9,7 +9,7 @@ import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
 import type { PoolTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, MemoryPressureData } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -35,6 +35,9 @@ export interface ShellAPI {
     onToastAction(cb: (action: PoolToastAction) => void): () => void;
     pushDialog(data: unknown): void;
     onDialogAction(cb: (action: PoolDialogAction) => void): () => void;
+    // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+    pushFloatingPanel(data: unknown): void;
+    onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
     onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
     // ── 池侧（壳 preload 无） ──
     onLayout(cb: (layout: PoolLayout) => void): () => void;
