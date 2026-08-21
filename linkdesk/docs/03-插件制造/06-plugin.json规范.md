@@ -290,6 +290,7 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 | 方式 | `icon` 值 | `iconSource` | 文件位置 |
 |------|-----------|-------------|---------|
 | codicon 内置图标 | `"package"` | 不写（默认 `"codicon"`） | 无需文件——系统内置 codicon 字体 |
+| Lucide 内置图标 | `"FolderTree"` | `"lucide"` | 无需文件——壳内置 Lucide 图标集（白名单见 PluginIcon `LUCIDE_MAP`：FolderTree/Folder/File/Package 等） |
 | 自定义 SVG / PNG | `"resources/icon.svg"` | 不写 | `plugins/user/<插件ID>/resources/icon.svg`（推荐 `resources/` 子目录） |
 | 自定义 PNG（无扩展名） | `"resources/icon"` | 不写 | `plugins/user/<插件ID>/resources/icon.png`（自动加 `.png`） |
 | 外部 URL | `"https://..."` | `"url"` | 任意可访问的 URL |
@@ -313,6 +314,44 @@ LinkDesk 通过 `distribution` 字段 + 物理目录区分两种插件：
 ```
 
 > **推荐 SVG + `fill="currentColor"`：** 一个文件适配所有尺寸（图标栏 24px、标签栏 14px、欢迎页 24px/16px），亮/暗主题自动变色。PNG 放大会模糊，不推荐。
+
+### 图标栏出现规则（appearsIn.iconBar）
+
+> **opt-IN——不声明 `appearsIn.iconBar` = 图标栏没有你的图标。** 曾经的 `iconLocation` 默认 `"top"`（opt-OUT——编辑器没声明也挤进图标栏）已被 E5#14 废弃，现在由 `appearsIn.iconBar` 声明式控制（`"top"` = 上部图标组，`"bottom"` = 底部固定组）。
+
+**两条路拿到图标：**
+
+| 路径 | 前提 | 说明 |
+|------|------|------|
+| **有 `entry`** | `entry` + `appearsIn.iconBar` | 经典形态——entry 组件注册进 viewRegistry，图标 + 可作为标签页打开 |
+| **entryless**（E5.8#37.9.2.3 起） | **无 `entry`** + `contributes.viewsContainers` 含侧栏容器 + `appearsIn.iconBar` | 侧栏专用插件的最简路径——**不需要写假 `src/index.tsx`**。壳注册 component-less 条目，图标照常出现 |
+
+**谁拿不到图标：**
+- **数据插件**（零侧栏容器，如语言包）——故意不显示。`pluginRole: "data"` 门控，防"为凑图标被迫写空壳"
+- **纯面板 / auxiliarybar 容器**——图标栏的语义是「打开侧栏容器」，panel / auxiliarybar 不算
+- **entryless 插件永远不是标签页**——`appearsIn.tabBar: true` 必须配合 `entry`（标签页渲染靠 entry 组件）
+
+**最小 entryless 侧栏插件——零 index.tsx：**
+
+```json
+{
+  "name": "侧栏工具",
+  "icon": "globe",
+  "appearsIn": { "iconBar": "top" },
+  "contributes": {
+    "viewsContainers": {
+      "my-sidebar": { "title": "侧栏工具", "location": "sidebar" }
+    },
+    "views": {
+      "my-sidebar": [
+        { "id": "main", "title": "主视图", "render": "src/views/MainView.tsx", "order": 0 }
+      ]
+    }
+  }
+}
+```
+
+视图由 ViewContainerService 按 `contributes.views[].render` 加载，图标走壳的 component-less 注册路径。**官方示范：`plugins/user/demo-en`（Hello World）**——侧栏专用插件要图标 = `appearsIn.iconBar` + sidebar `viewsContainers`，不需要 `entry`、不需要 `src/index.tsx`；**有标签页需求的插件才需要 `entry`**。
 
 ### `contributes` 字段（Phase 5+）——对标 VS Code
 

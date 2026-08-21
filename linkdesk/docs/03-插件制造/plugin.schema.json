@@ -49,7 +49,7 @@
     "iconSource": {
       "type": "string",
       "description": "图标来源",
-      "enum": ["codicon", "svg", "url"],
+      "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "description": {
@@ -254,27 +254,15 @@
         "enum": ["serial", "filesystem", "network"]
       }
     },
-    "iconLocation": {
-      "type": "string",
-      "description": "Phase 5g：图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区）。",
-      "enum": ["top", "bottom"],
-      "default": "top"
-    },
-    "viewRole": {
-      "type": "string",
-      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏，标签页由侧栏内操作触发，默认），tabOnly=纯标签页视图（直接开标签页）。tabPrimary 已移除——所有插件统一 sidebarPrimary。",
-      "enum": ["sidebarPrimary", "tabOnly"],
-      "default": "sidebarPrimary"
-    },
-    "shellRendered": {
-      "type": "boolean",
-      "description": "Phase 5g：壳自己渲染此视图（不走插件路由）。仅欢迎页/插件详情页等壳级视图声明。",
-      "default": false
-    },
-    "keepSidebarOnFocus": {
-      "type": "boolean",
-      "description": "Phase 5g：聚焦此视图时保留当前侧栏不清除。如插件详情页浏览时侧栏不变。",
-      "default": false
+    "appearsIn": {
+      "type": "object",
+      "description": "插件 UI 出现位置——声明式。替代 iconLocation+viewRole+keepSidebarOnFocus。不声明 = 不出现。",
+      "properties": {
+        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
+        "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
+        "tabBar": { "type": "boolean", "description": "可作为标签页打开（需 entry），默认 false" },
+        "statusBar": { "type": "boolean", "description": "有状态栏条目，默认 false" }
+      }
     },
     "contributes": {
       "type": "object",
