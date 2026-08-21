@@ -1,7 +1,8 @@
 /**
  * FloatingPanelHost 样式——E5.8#37（Phase 8 壳内悬浮面板 类型 B）。
  * 视觉依据 = mockups/02-壳内悬浮面板-mockup.html 五帧（2026-08-17 用户拍板）——
- *   帧 1 默认居中大卡 85vw×80vh（#41.6 改：原右贴边 640px 居中化）/ 帧 3 拖拽中半透明 / 帧 4 最大化+还原。
+ *   帧 1 默认居中大卡 85vw×80vh（#41.6 改：原右贴边 640px 居中化）/ 帧 3 拖拽中 / 帧 4 最大化+还原。
+ *   （帧 3 的半透明跟随已被用户否决——2026-08-22 删 opacity 0.85，仅留投影抬升，见 .dragging 规则。）
  * I8 交互 → 02-交互细节设计.md §3。动画 = ui-ux-pro-max 确认 Expo.out cubic-bezier(0.16,1,0.3,1)。
  * z-index 不进文件——inline Z_INDEX.floatingPanel / floatingPanel-1（#26 常量表）。
  * pointer-events 由 FloatingLayerHost #floating-panel-root 根级提供（§2 根级 opt-in）。
@@ -49,9 +50,8 @@
   .floating-panel { animation: none; }
 }
 
-/* I8-5 拖拽中半透明跟随（mockup 帧 3 .fp.dragging） */
+/* I8-5 拖拽中投影抬升（2026-08-22 用户否决半透明跟随——opacity 0.85 已删；保留投影作抬升反馈） */
 .floating-panel.dragging {
-  opacity: 0.85;
   box-shadow: var(--floating-panel-shadow-dragging);
 }
 

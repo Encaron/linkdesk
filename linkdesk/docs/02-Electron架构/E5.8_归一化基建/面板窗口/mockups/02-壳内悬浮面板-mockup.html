@@ -498,9 +498,9 @@
   }
   .mp-card .btn.installed { background: transparent; color: var(--text-secondary); border: 1px solid var(--separator); }
 
-  /* ---------- 拖拽态（I8-5/I8-6） ---------- */
+  /* ---------- 拖拽态（I8-5/I8-6） ----------
+     2026-08-22 用户否决半透明跟随——opacity 0.85 删除，仅保留投影抬升（与实现同步）。 */
   .fp.dragging {
-    opacity: 0.85;
     box-shadow: 0 18px 60px rgba(0,0,0,0.6);
   }
   .clamp-zone {
@@ -819,12 +819,12 @@
   <div class="frame-note"><b>第二消费者要点：</b>① 声明制 #39.5——<code>contributes.floatingPanel</code> 声明 + <code>linkdesk.panel.revealFloating</code> 通用 API（身份开关键语义 I8-15）；壳零硬编码 renderPath=settingsId（硬约束 10/11 同款消费）；② 卸载声明插件 → 条目消失 + Ctrl+, no-op 不崩；③ 未来主题制作器等第三方声明即用零壳改动；④ 标题栏动作区与设置面板完全一致（图标 hover 展开）。</div>
 </div>
 
-<!-- ============ 帧 3：拖拽中（半透明跟随 + 壳内钳制） ============ -->
+<!-- ============ 帧 3：拖拽中（投影抬升 + 壳内钳制） ============ -->
 <div class="frame">
   <div class="frame-caption">
     <span class="tag b">拖拽态</span>
-    <b>拖拽中——半透明跟随 + 壳内钳制</b>
-    <span>I8-5 拖不出壳窗口边界 · I8-6 拖拽中遮罩防误关</span>
+    <b>拖拽中——投影抬升 + 壳内钳制</b>
+    <span>I8-5 拖不出壳窗口边界 · I8-6 拖拽中遮罩防误关（2026-08-22 用户否决半透明——无 opacity 跟随）</span>
   </div>
 
   <div class="app">
@@ -866,7 +866,7 @@
     </div>
     <div class="statusbar">
       <span>就绪</span>
-      <span class="right">拖拽中：面板半透明跟随 · 松手落定（同 #13 拖拽机械 buttons===0）</span>
+      <span class="right">拖拽中：面板投影抬升（无半透明）· 松手落定（同 #13 拖拽机械 buttons===0）</span>
     </div>
 
     <div class="fp-layer">
@@ -874,7 +874,7 @@
       <!-- 壳内钳制边界（I8-5：拖不出壳窗口边界） -->
       <div class="clamp-zone"></div>
       <div class="clamp-label">壳内钳制——拖不出窗口边界</div>
-      <!-- 面板拖到中部，半透明跟随 -->
+      <!-- 面板拖到中部，投影抬升（无半透明） -->
       <div class="fp dragging" style="top:60px; left:90px; right:auto; bottom:auto; height:320px; width:520px;">
         <div class="fp-title" title="拖拽中…——整条标题栏">
           <span class="label">
