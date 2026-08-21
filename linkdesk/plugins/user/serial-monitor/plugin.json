@@ -33,7 +33,7 @@
           "minHeight": 120
         },
         {
-          "id": "settings",
+          "id": "receive-and-send",
           "title": "收发设置",
           "render": "src/views/SerialSettingsView.tsx",
           "order": 1,
