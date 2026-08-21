@@ -25,6 +25,8 @@ export interface CoreCallbacks {
   duplicateTab: (tabId: string) => void;
   /** E5.6#16.7k：池 GroupTabBar 右键菜单——固定/取消固定 */
   pinTab: (tabId: string) => void;
+  /** E5.8#38（I8-3/IX-1 单一实例）：聚焦已有插件标签页——找到则聚焦（跨 group 切换）返回 true，无返回 false */
+  focusTabByPluginId: (pluginId: string) => boolean;
 }
 
 let _callbacks: CoreCallbacks | null = null;

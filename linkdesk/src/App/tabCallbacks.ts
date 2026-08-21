@@ -119,6 +119,17 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
     },
     duplicateTab: (tabId) => duplicateTab(tabId),
     pinTab: (tabId) => pinTab(tabId),
+    // E5.8#38（I8-3/IX-1）：聚焦已有插件标签页——跨 group 切换（reduceFocusTab 语义），无则 false
+    focusTabByPluginId: (pluginId) => {
+      for (const g of tabState.groups) {
+        const tab = g.tabs.find((t) => t.pluginId === pluginId);
+        if (tab) {
+          handleFocusTab(tab.id);
+          return true;
+        }
+      }
+      return false;
+    },
   };
 }
 

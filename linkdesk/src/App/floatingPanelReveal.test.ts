@@ -9,6 +9,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { getViewMock, seedViewContainerMocks } from "./viewContainerMocks";
 import { resolveFloatingPanelView, decideFloatingPanelReveal, buildDefaultFloatingPanelActions } from "./floatingPanelReveal";
+import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
 
 describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", () => {
   beforeEach(() => {
@@ -70,7 +71,12 @@ describe("decideFloatingPanelReveal（I8-2 身份开关键决策）", () => {
 });
 
 describe("buildDefaultFloatingPanelActions（通用默认动作集）", () => {
-  it("最大化（I8-9 池本地 toggle 两态）+ 关闭——文案壳 t() 解析", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    clearRegistry();
+  });
+
+  it("最大化（I8-9 池本地 toggle 两态）+ 关闭——文案壳 t() 解析；未指定插件无 open-in", () => {
     const actions = buildDefaultFloatingPanelActions();
     expect(actions).toHaveLength(2);
     expect(actions[0]).toMatchObject({ id: "maximize", icon: "maximize", toggledIcon: "restore" });
@@ -78,7 +84,31 @@ describe("buildDefaultFloatingPanelActions（通用默认动作集）", () => {
     expect(actions[0].toggledLabel).toBeTruthy();
     expect(actions[1]).toMatchObject({ id: "close", icon: "close" });
     expect(actions[1].label).toBeTruthy();
-    // 池渲染分支语义按字段判定——open-in 不属通用默认（#38 settings 语义）
+    // 未指定 open-in 插件 → 无 open-in（池渲染分支语义按 expandOnHover 字段判定）
+    expect(actions.some((a) => a.expandOnHover)).toBe(false);
+  });
+
+  it("内容插件可开成标签页（appearsIn.tabBar + entry）→ open-in 按钮出现且居首（I8-4 面板↔标签页互转）", () => {
+    registerViewPlugin({
+      pluginId: "floating-panel-demo",
+      manifest: {
+        name: "悬浮面板演示",
+        version: "1.0.0",
+        entry: "src/index.tsx",
+        appearsIn: { tabBar: true },
+      },
+    });
+    const actions = buildDefaultFloatingPanelActions("floating-panel-demo");
+    expect(actions).toHaveLength(3);
+    expect(actions[0]).toMatchObject({ id: "open-in", icon: "open-in", expandOnHover: true });
+    expect(actions[0].label).toBeTruthy();
+    expect(actions[1]).toMatchObject({ id: "maximize", toggledIcon: "restore" });
+    expect(actions[2]).toMatchObject({ id: "close" });
+  });
+
+  it("内容插件无标签页形态（未注册 / entryless）→ 不出现 open-in（打开动作无 tab 可落）", () => {
+    const actions = buildDefaultFloatingPanelActions("never-registered");
+    expect(actions).toHaveLength(2);
     expect(actions.some((a) => a.expandOnHover)).toBe(false);
   });
 });

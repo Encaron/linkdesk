@@ -10,8 +10,10 @@
  * 无贡献视图 → no-op 不崩（#39.5 验收：卸载声明插件后 Ctrl+, 不崩）。
  *
  * I8-2 身份开关键：无面板 → 开 / 同视图 → 关（toggle）/ 他面板 → 替换。决策 = 纯函数 decideFloatingPanelReveal 可测。
- * 通用默认动作 = 最大化（I8-9 池本地 toggle）+ 关闭——open-in（在主窗口中打开）是 #38 settings 语义
- * （settings 可开成标签页——面板↔标签页互转），不进通用默认。
+ * 通用默认动作 = open-in「在主窗口中打开」（I8-4 面板↔标签页互转）+ 最大化（I8-9 池本地 toggle）+ 关闭。
+ * open-in 按内容插件「可开成标签页」（appearsIn.tabBar + entry，getTabCreatableViews）门控出现——settings/demo
+ * 有 tab 形态才有，entryless 声明者天然无此按钮（打开动作无 tab 可落）；open-in 点击 → 池回传壳 settle
+ * 'open-in' → 本 hook openTab 落当前活动 group 尾部（文件树打开落点规则同款，I8-4）。
  */
 
 import { useEffect } from "react";
@@ -23,6 +25,8 @@ import {
   closePanel,
   getCurrentFloatingPanelViewId,
 } from "../core/services/ui/FloatingPanelService";
+import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
+import { getTabCreatableViews } from "../pluginLoader/viewRegistry";
 import type { PoolFloatingPanelButton } from "../core/types/pool/poolFloatingPanel";
 import i18n from "../i18n";
 
@@ -66,9 +70,26 @@ export function decideFloatingPanelReveal(
   return { action: "open", result: resolved };
 }
 
-/** 通用默认动作集——最大化（I8-9 池本地 toggle，两态图标/文案 DTO 携带）+ 关闭。文案壳侧 t()（显示文本铁律）。 */
-export function buildDefaultFloatingPanelActions(): PoolFloatingPanelButton[] {
-  return [
+/**
+ * 通用默认动作集——open-in（I8-4 面板↔标签页互转）+ 最大化（I8-9 池本地 toggle，两态图标/文案 DTO 携带）+ 关闭。
+ * open-in 仅当内容插件可开成标签页（appearsIn.tabBar + entry）时出现——settings/demo 有 tab 形态才有，
+ * entryless 声明者传 openInPluginId 或传非 tab 型插件 → 按钮不出现（打开动作无 tab 可落）。
+ * 文案壳侧 t()（显示文本铁律）。顺序 = DTO 渲染序：open-in / maximize / close。
+ */
+export function buildDefaultFloatingPanelActions(openInPluginId?: string): PoolFloatingPanelButton[] {
+  const actions: PoolFloatingPanelButton[] = [];
+  const canOpenInTab =
+    typeof openInPluginId === "string" &&
+    getTabCreatableViews().some((v) => v.pluginId === openInPluginId);
+  if (canOpenInTab) {
+    actions.push({
+      id: "open-in",
+      label: i18n.t("在主窗口中打开"),
+      icon: "open-in",
+      expandOnHover: true, // mockup 帧 1：纯图标 hover 展开全文（open-in 专属形态）
+    });
+  }
+  actions.push(
     {
       id: "maximize",
       label: i18n.t("最大化"),
@@ -77,7 +98,8 @@ export function buildDefaultFloatingPanelActions(): PoolFloatingPanelButton[] {
       toggledLabel: i18n.t("还原"),
     },
     { id: "close", label: i18n.t("关闭"), icon: "close" },
-  ];
+  );
+  return actions;
 }
 
 /** 订阅 panel:reveal-floating——声明寻址 + I8-2 toggle + pushPanel。注册一次（事件驱动，deps 恒空） */
@@ -92,12 +114,17 @@ export function useFloatingPanelReveal(): void {
         closePanel();
         return;
       }
+      const pluginId = decision.result.pluginId;
+      // I8-4：「在主窗口中打开」——池回传 open-in → 面板已关（handleFloatingPanelAction 先推 close）→ 开成标签页
+      // 落当前活动 group 尾部（openOrFocusTab 文件树打开落点规则同款）；其他 settle 原因（close/replaced/programmatic）零动作
       pushPanel({
         viewId: decision.result.viewId,
         title: decision.result.title,
-        pluginId: decision.result.pluginId,
+        pluginId,
         renderPath: decision.result.renderPath,
-        actions: buildDefaultFloatingPanelActions(),
+        actions: buildDefaultFloatingPanelActions(pluginId),
+      }).then((reason) => {
+        if (reason === "open-in") getCallbacks()?.openTab(pluginId);
       });
     });
   }, []);

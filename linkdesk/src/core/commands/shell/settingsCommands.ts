@@ -11,6 +11,8 @@ import { getCallbacks } from "../infra/CoreCallbacks";
 import { openKeybindingsSettings } from "../../registry/commands/KeybindingRegistry";
 import { requestSettingsGroup, requestScrollToSetting } from "../../registry/ConfigurationRegistry";
 import { APP_PLUGIN_ID } from "../../services/plugins/PluginStateService";
+import { shellEvents } from "../../react/events/ShellEvents";
+import { getFloatingPanelViewId } from "../../../pluginLoader/viewRegistry";
 
 export function registerSettingsCommands(): void {
   const commands = [
@@ -22,8 +24,14 @@ export function registerSettingsCommands(): void {
         const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
         if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
         if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
-        const settingsId = factorySlots.getPluginId("settings");
-        if (settingsId) getCallbacks()?.openTab(settingsId);
+        const settingsPluginId = factorySlots.getPluginId("settings");
+        if (!settingsPluginId) return;
+        // E5.8#38（I8-3/IX-1 单一实例）：设置已是标签页 → 聚焦该标签页，不弹第二面板
+        if (getCallbacks()?.focusTabByPluginId(settingsPluginId)) return;
+        // E5.8#38（I8-1/I8-2）：声明制 revealFloating——面板身份开关键（无面板→开/同视图→关/他面板→替换）
+        // 走 #39.5 子项 B wire（壳侧 useFloatingPanelReveal 编排），声明未解析 → no-op 不崩
+        const fpViewId = getFloatingPanelViewId(settingsPluginId);
+        if (fpViewId) shellEvents.emit("panel:reveal-floating", { viewId: fpViewId });
       },
     },
     {
