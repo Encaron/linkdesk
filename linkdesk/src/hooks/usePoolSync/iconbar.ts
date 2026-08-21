@@ -9,6 +9,7 @@ import { getViewPlugins, getViewPlugin, getIconLocation } from "../../pluginLoad
 import { getConfigurationValue } from "../../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { resolvePluginIcon } from "../../core/utils/plugin/iconUtils";
 import { getPluginStateValue, APP_PLUGIN_ID } from "../../core/services/plugins/PluginStateService"; // E5.7#6：图标顺序（iconOrder）
+import { factorySlots } from "../../core/services/bootstrap/FactorySlots"; // E5.8#41.11：槽位感知——每 factoryRole 只渲染激活套图标
 import { MENU_STYLE_HAMBURGER_VISIBLE, buildHamburgerMenuGroups } from "./titlebar";
 
 /** E5.7#6：图标栏序列化——壳 IconBar 的 ordered 计算照搬（iconOrder 优先 + 剩余按注册序）。
@@ -34,8 +35,16 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
     if (p) ordered.push(p);
   }
 
+  // E5.8#41.11 槽位感知（#41.10 ⑧-2 形态二图标替换）：声明 factoryRole 者 = 形态二进槽——
+  // 每角色只渲染激活套图标（非激活套隐藏 = 「把原来的剔除换成作者自己的」）；未声明 = 形态一并存照旧全出。
+  // 激活 = getDefaultPluginId（#41.11 停靠点——默认=内置；#41.12 翻转 getActive 读持久化激活套）。
+  const slotActive = ordered.filter((p) => {
+    const role = p.manifest.factoryRole;
+    return !role || factorySlots.getDefaultPluginId(role) === p.pluginId;
+  });
+
   const icons: IconBarItem[] = [];
-  for (const p of ordered) {
+  for (const p of slotActive) {
     const location = getIconLocation(p.pluginId);
     if (!location) continue; // 无 iconBar 声明——不渲染（壳 topIcons/bottomIcons filter 同款）
     const resolved = resolvePluginIcon(p.pluginId, p.manifest);
