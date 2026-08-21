@@ -12,5 +12,24 @@
   "appearsIn": { "iconBar": "bottom", "tabBar": true },
   "tabBehavior": {
     "singleton": true
+  },
+  "contributes": {
+    "viewsContainers": {
+      "settings": {
+        "title": "设置",
+        "location": "auxiliarybar"
+      }
+    },
+    "views": {
+      "settings": [
+        {
+          "id": "settings",
+          "title": "设置",
+          "render": "src/views/SettingsView.tsx",
+          "order": 0
+        }
+      ]
+    },
+    "floatingPanel": { "viewId": "settings" }
   }
 }

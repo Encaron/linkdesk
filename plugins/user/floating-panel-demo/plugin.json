@@ -1,0 +1,30 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "悬浮面板演示",
+  "version": "1.0.0",
+  "icon": "layout",
+  "description": "E5.8#39.5 第二声明者验证载体——标签页型视图插件（entry + appearsIn.tabBar）声明 contributes.floatingPanel：标签页右键「在悬浮面板中打开」（I8-3 声明即出现）+ 与 settings 浮层互替验证。可安全卸载。",
+  "author": "官方",
+  "entry": "src/index.tsx",
+  "appearsIn": { "tabBar": true },
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+    "viewsContainers": {
+      "floating-panel-demo": {
+        "title": "悬浮面板演示",
+        "location": "auxiliarybar"
+      }
+    },
+    "views": {
+      "floating-panel-demo": [
+        {
+          "id": "floating-panel-demo",
+          "title": "悬浮面板演示",
+          "render": "src/views/FloatingPanelDemoView.tsx",
+          "order": 0
+        }
+      ]
+    },
+    "floatingPanel": { "viewId": "floating-panel-demo" }
+  }
+}
