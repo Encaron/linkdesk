@@ -175,9 +175,12 @@
 .floating-panel-resize:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
 .floating-panel-resize:hover::before { background: var(--accent); }
 
-/* 内容区——插件视图（PluginComponent）占满剩余空间 */
+/* 内容区——插件视图（PluginComponent）占满剩余空间。
+   #41.7 ① 修复「只剩左半」：flex-row 单子项 flex:0 1 auto = 内容宽，不横向伸展 → 视图只占左半；
+   改 flex-column（侧栏 SidebarZone 同款）——cross-axis stretch 让视图铺满面板宽。 */
 .floating-panel-body {
   flex: 1;
   min-height: 0;
   display: flex;
+  flex-direction: column;
 }
