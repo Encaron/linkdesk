@@ -17,7 +17,7 @@ import { findKeybindingForCommand } from "../../../registry/commands/KeybindingR
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
 import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
-import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../../registry/ConfigurationRegistry";
+import { onRequestSettingsGroup, onRequestScrollToSetting, onRequestOpenKeybindings, consumeSettingsGroup, consumeScrollToSetting, consumeOpenKeybindings } from "../../../registry/ConfigurationRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
 import i18n from "../../../../i18n";
@@ -25,6 +25,7 @@ import type { LinkDeskAPI, MenuItemDescriptor } from "../../../api/linkdesk-api"
 
 let _settingsGroupUnsub: (() => void) | null = null;
 let _scrollToUnsub: (() => void) | null = null;
+let _openKeybindingsUnsub: (() => void) | null = null; // E5.8#41.14：打开快捷键子栏契约通道订阅
 
 // ── 壳→设置页导航订阅──
 
@@ -38,6 +39,11 @@ export function subscribeUi(linkdesk: LinkDeskAPI): void {
   _scrollToUnsub = onRequestScrollToSetting.event((key) => {
     try { linkdesk.events?.emit("settings:scrollTo", { key }); } catch { /* 静默 */ }
   });
+  // E5.8#41.14 🔴 修复：壳→设置页切快捷键 tab——契约通道替代错配 window 事件死路由
+  // （dispatch 是 kebab linkdesk:open-keybindings-settings，监听方却在等 camel——永不命中）
+  _openKeybindingsUnsub = onRequestOpenKeybindings.event((payload) => {
+    try { linkdesk.events?.emit("settings:requestOpenKeybindings", payload); } catch { /* 静默 */ }
+  });
 }
 
 export function unsubscribeUi(): void {
@@ -45,6 +51,8 @@ export function unsubscribeUi(): void {
   _settingsGroupUnsub = null;
   _scrollToUnsub?.();
   _scrollToUnsub = null;
+  _openKeybindingsUnsub?.();
+  _openKeybindingsUnsub = null;
 }
 
 /** dialog:* 二 channel 处理器——插件调壳的 ConfirmDialog */
@@ -175,6 +183,9 @@ export async function handleSettingsMethod(method: string, args: unknown[]): Pro
       return consumeSettingsGroup();
     case "consumeScrollToSetting":
       return consumeScrollToSetting();
+    // E5.8#41.14 🔴 修复：打开快捷键子栏——契约双通道消费（替代错配 window 事件死路由）
+    case "consumeOpenKeybindings":
+      return consumeOpenKeybindings();
     case "getAvailableThemes":
       return getAvailableThemes();
     case "getCurrentTheme":

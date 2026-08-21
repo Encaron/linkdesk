@@ -8,6 +8,7 @@ import { readFile, writeFile, exists, watch, appDataDir, joinPath } from "../../
 import { normalizePath } from "../../../utils/path/pathUtils";
 import { CoreEvents, CUSTOM_EVENTS } from "../../../react/events/CoreEvents";
 import { clearUserKeybindings, registerKeybinding, getKeybindings } from "./registry";
+import { requestOpenKeybindings } from "../../ConfigurationRegistry"; // E5.8#41.14 🔴：切快捷键 tab 契约双通道（替代错配 window 事件死路由）
 
 const KEYBINDINGS_FILENAME = "keybindings.json";
 
@@ -135,10 +136,11 @@ export async function openKeybindingsSettings(opts?: { query?: string }): Promis
   }
   // E3f #59-A：先打开设置标签页，等 mount 后再切换快捷键 tab
   window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_SETTINGS));
+  // E5.8#41.14 🔴 修复：切快捷键 tab 改契约双通道——原 dispatch 是 kebab linkdesk:open-keybindings-settings，
+  // 监听方却等 camel linkdesk:openKeybindingsSettings（useSettingsEvents helpers 常量）→ 死路由，tab 永不跳转。
+  // 现走 ConfigurationRegistry Emitter + pending 双通道（M1 同款），错配结构性消失。
   setTimeout(() => {
-    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.OPEN_KEYBINDINGS_SETTINGS, {
-      detail: { query: opts?.query },
-    }));
+    requestOpenKeybindings(opts?.query);
   }, 100);
 }
 

@@ -52,6 +52,12 @@ export interface SettingsScrollToPayload {
   key: string;
 }
 
+/** 设置页切快捷键 tab——settings:requestOpenKeybindings 载荷（E5.8#41.14 契约通道替代错配 window 事件死路由） */
+export interface SettingsOpenKeybindingsPayload {
+  /** 搜索框预填命令名（"打开快捷键设置"命令 opts.query） */
+  query?: string;
+}
+
 /** plugin:push 中继信封——主进程 broadcast 包装（channel + 载荷）。
  *  原为 electron/event-system.ts 本地 PluginPushData——E5.7#97 归口此处。 */
 export interface PluginPushEnvelope {

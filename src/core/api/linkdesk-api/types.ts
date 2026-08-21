@@ -27,16 +27,34 @@ export interface LinkDeskLanguage {
   pluginId: string;
 }
 
-/** 配置 schema 中的单个属性定义 */
-export interface LinkDeskConfigSchema {
-  [key: string]: {
-    type: string;
-    default?: unknown;
-    description?: string;
-    enum?: string[];
-    enumDescriptions?: string[];
-  };
+/** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
+ * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
+export interface LinkDeskConfigProperty {
+  type: string;
+  default?: unknown;
+  description?: string;
+  enum?: string[];
+  enumDescriptions?: string[];
+  /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切 combobox/textarea/color 等） */
+  uiHint?: string;
+  /** 数值下限——uiHint 数值控件 min 校验 */
+  minimum?: number;
+  /** 数值上限——uiHint 数值控件 max 校验 */
+  maximum?: number;
+  /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
+  renderHint?: string;
+  /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
+  dependsOn?: { key: string; value: unknown };
 }
+
+/** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
+export interface LinkDeskConfigSchema {
+  [key: string]: LinkDeskConfigProperty;
+}
+
+/** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（E5.8#41.14 🛤 命名）。
+ * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, properties }] 对齐——第三方设置 UI 不再 need cast */
+export type LinkDeskConfigurationContribution = [string, { title: string; properties: Record<string, unknown> }];
 
 /** 插件列表条目——pluginManager.list() 返回（主进程序列化后的 manifest 子集）。
  *  E5.7#98：Partial<PluginManifest> 过宽（component 等字段 IPC 不可达）——收窄为

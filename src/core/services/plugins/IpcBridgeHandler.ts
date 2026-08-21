@@ -27,7 +27,7 @@ import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handl
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
 import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
 import { handlePanelChannel } from "./IpcBridgeHandler/panel"; // E5.8#34.5：底部面板域（panel.reveal）
-import { handleSettingsPluginMethod } from "./IpcBridgeHandler/settings"; // E5.8#41.12：设置套域（settings 命名空间 list/getActive/setActive）
+import { handleFactorySlotMethod } from "./IpcBridgeHandler/factory-slots"; // E5.8#41.14：系统插槽域（factorySlots 通用面 + settings 角色别名）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
 
@@ -228,12 +228,16 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "getAvailableLanguages":
     case "getCurrentLanguage":
       return handleSettingsMethod(method, args);
-    // ── E5.8#41.12：设置套枚举/切换——factoryRole:"settings" 多套并存查询 + 活动落盘
-    //    （IpcBridgeHandler/settings 域委派——区别于 handleSettingsMethod 的设置页导航）──
+    // ── E5.8#41.14：系统插槽枚举/切换——任意 factoryRole 多候选并存查询 + 活动落盘
+    //    （IpcBridgeHandler/factory-slots 域委派；settings.* 三方法为 #41.12 兼容别名）
+    //    （区别于 handleSettingsMethod 的设置页导航）──
     case "listSettingsPlugins":
     case "getActiveSettingsPlugin":
     case "setActiveSettingsPlugin":
-      return handleSettingsPluginMethod(method, args);
+    case "listFactorySlotPlugins":
+    case "getActiveFactorySlot":
+    case "setActiveFactorySlot":
+      return handleFactorySlotMethod(method, args);
     // E5.7#49：getLangDef/getAllLangDefs/protocol:* 五个代理 case 已删——Registry 主进程化后
     // 池经直连 IPC 读主进程实例（electron/ipc/registry-handlers.ts），不再经壳中转。
     // E3j #76：插件通知——跨进程触发壳侧 toast（IpcBridgeHandler/ui 域委派）

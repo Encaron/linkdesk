@@ -91,6 +91,7 @@ import { buildDecorations } from './preload-pool/decorations';
 import { buildViewContainer } from './preload-pool/viewcontainer';
 import { buildPanel } from './preload-pool/panel'; // E5.8#34.5：底部面板命名空间（panel.reveal）
 import { buildSettings } from './preload-pool/settings'; // E5.8#41.12：设置套命名空间（枚举/切换）
+import { buildFactorySlots } from './preload-pool/factory-slots'; // E5.8#41.14：系统插槽通用枚举面（槽位无关）
 import {
   buildSerial,
   buildFilesystem,
@@ -184,6 +185,9 @@ try {
 
     // ── E5.8#41.12：设置套（factoryRole:"settings" 多套并存枚举/切换）──
     settings: buildSettings(),
+
+    // ── E5.8#41.14：系统插槽通用枚举面（任意 factoryRole 候选枚举/切换——串口/市场/设置同源）──
+    factorySlots: buildFactorySlots(),
   } satisfies PoolExposed;
 
   contextBridge.exposeInMainWorld(APP_NAMESPACE, poolExposed);
