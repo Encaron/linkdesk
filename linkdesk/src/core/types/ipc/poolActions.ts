@@ -26,6 +26,12 @@ export interface PoolDialogAction {
   type: string;
 }
 
+/** 悬浮面板动作——action 按 actionId 回传（open-in/close），壳侧 settle Promise（E5.8#37 类型 B） */
+export interface PoolFloatingPanelAction {
+  type: string;
+  actionId?: string;
+}
+
 /** 内存压力通知——主进程 window-manager 采样超阈值（E5.7#39） */
 export interface MemoryPressureData {
   totalRSS: number;

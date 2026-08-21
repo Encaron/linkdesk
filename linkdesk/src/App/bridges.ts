@@ -10,6 +10,7 @@ import { useEffect } from "react";
 import { QuickPickService } from "../core/services/ui/QuickPickService";
 import { serializeToasts, runToastAction, subscribeToasts, subscribeToastSuppressed, dismissToast, TOAST_TTL_INFO } from "../core/services/ui/toast";
 import { registerDialogRenderers, type DialogOptions } from "../core/services/ui/DialogService";
+import { registerFloatingPanelRenderer, handleFloatingPanelAction } from "../core/services/ui/FloatingPanelService"; // E5.8#37（Phase 8 类型 B）
 import { pushToast } from "../core/services/ui/NotificationService";
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { layoutEngine } from "../core/services/layout/LayoutEngine";
@@ -280,6 +281,30 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
     return () => {
       unsubAction();
       unregisterRenderers();
+    };
+  }, []);
+
+  // E5.8#37：FloatingPanel 聪慧→哑桥——壳 FloatingPanelService 桥接 renderer 到池
+  // FloatingPanelHost 哑渲染（服务零 IPC——订阅走服务模块级注册），池动作（open-in/close）
+  // 回传 settle Promise（业务语义壳侧重解析 handleFloatingPanelAction，消费方 #38 接线）。
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi?.pushFloatingPanel || !poolApi?.onFloatingPanelAction) return;
+
+    // 注册渲染器——FloatingPanelService.pushPanel 序列化 DTO 推池（单实例语义 I8-10 壳侧裁决）。
+    // 引用级守卫——dispose 不得抹掉后注册者（服务内建）。
+    const unregisterRenderer = registerFloatingPanelRenderer((data) => poolApi.pushFloatingPanel(data));
+
+    // 池动作回传——handleFloatingPanelAction 内部先推 {open:false} 再 settle
+    // （settle 后消费方可能立即再开——stale close 不覆盖新开，dialog 桥同款纪律）。
+    const unsubAction = poolApi.onFloatingPanelAction((action) => {
+      // 池动作必带 actionId（open-in/close）——wire 型 actionId 可选，防御性守卫
+      if (action.actionId !== undefined) handleFloatingPanelAction(action.actionId);
+    });
+
+    return () => {
+      unsubAction();
+      unregisterRenderer();
     };
   }, []);
 }

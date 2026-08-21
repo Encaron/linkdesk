@@ -142,6 +142,10 @@ export const IPC = {
     dialog: 'pool:dialog',
     dialogShow: 'pool:dialog-show',
     dialogAction: 'pool:dialog-action',
+    // E5.8#37（Phase 8 类型 B）：壳内悬浮面板——pushPanel 哑渲染数据 + 动作回传
+    floatingPanel: 'pool:floating-panel',
+    floatingPanelShow: 'pool:floating-panel-show',
+    floatingPanelAction: 'pool:floating-panel-action',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',

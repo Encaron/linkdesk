@@ -11,6 +11,7 @@ import { IPC } from '../ipc/channels';
 import { guardPush } from '../ipc/wire-guard';
 import type { PoolToastData } from '../../src/core/types/pool/poolToast';
 import type { PoolDialogData } from '../../src/core/types/pool/poolDialog';
+import type { PoolFloatingPanelData } from '../../src/core/types/pool/poolFloatingPanel';
 
 // ── E5.7#16：pool:toast 缓冲回放——Toast 哑渲染数据可能在 ToastHost mount 前到达 ──
 // 对标 pool:quickpick 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
@@ -96,5 +97,46 @@ export function buildDialogHost() {
     confirm: () => ipcRenderer.send(IPC.pool.dialogAction, { type: 'confirm' }),
     /** 取消（取消按钮 / Escape / backdrop）——壳侧 settle(false) */
     cancel: () => ipcRenderer.send(IPC.pool.dialogAction, { type: 'cancel' }),
+  };
+}
+
+// ── E5.8#37：pool:floating-panel 缓冲回放——悬浮面板哑渲染数据可能在 FloatingPanelHost mount 前到达 ──
+// 对标 pool:dialog 模式（硬约束 20）：模块顶层注册 + 缓冲 + onShow 回放。
+// 只保留最后一份（单实例态——open/close 全量替换，I8-10 壳侧裁决后只推胜出者）。
+const _floatingPanelBuffer: PoolFloatingPanelData[] = [];
+let _floatingPanelCallback: ((data: PoolFloatingPanelData) => void) | null = null;
+let _floatingPanelActive = false;
+
+ipcRenderer.on(IPC.pool.floatingPanel, (_event, data: PoolFloatingPanelData) => {
+  // E5.8#22.5：pool:floating-panel 直收点接收边界断言——guard 只记录不阻断，透传缓冲
+  guardPush(IPC.pool.floatingPanel, data);
+  if (!_floatingPanelActive || !_floatingPanelCallback) {
+    _floatingPanelBuffer.length = 0;
+    _floatingPanelBuffer.push(data);
+  } else {
+    try { _floatingPanelCallback(data); } catch { /* contextBridge 回调静默失败 */ }
+  }
+});
+
+/** 悬浮面板哑渲染订阅——池 FloatingPanelHost 消费（缓冲+回放，只保留最后一份）。命名 floatingPanelHost */
+export function buildFloatingPanelHost() {
+  return {
+    /** 订阅壳推送的悬浮面板数据（缓冲+回放，只保留最后一份）。返回 unsubscribe */
+    onShow: (cb: (data: PoolFloatingPanelData) => void) => {
+      _floatingPanelCallback = cb;
+      _floatingPanelActive = true;
+      if (_floatingPanelBuffer.length > 0) {
+        for (const data of _floatingPanelBuffer) {
+          try { cb(data); } catch { /* contextBridge 回调静默失败 */ }
+        }
+        _floatingPanelBuffer.length = 0;
+      }
+      return () => {
+        _floatingPanelCallback = null;
+        _floatingPanelActive = false;
+      };
+    },
+    /** 动作回传——open-in（在主窗口中打开）/ close（关闭按钮/Esc/遮罩），壳侧 settle（业务语义壳侧重解析） */
+    action: (actionId: string) => ipcRenderer.send(IPC.pool.floatingPanelAction, { type: 'action', actionId }),
   };
 }

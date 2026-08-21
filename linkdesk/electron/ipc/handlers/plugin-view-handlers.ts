@@ -106,6 +106,18 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.8#37（Phase 8 类型 B）：壳→Pool——悬浮面板哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
+  ipcMain.on(IPC.pool.floatingPanelShow, (_event, data: unknown) => {
+    _windowManager?.pushFloatingPanel(data);
+  });
+
+  // E5.8#37：Pool→壳——悬浮面板动作（open-in/close 按 actionId），壳侧 settle
+  ipcMain.on(IPC.pool.floatingPanelAction, (_event, action: unknown) => {
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.floatingPanelAction, action);
+    }
+  });
+
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 11 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action）');
+  console.log('[pool-handlers] 已注册 13 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action）');
 }

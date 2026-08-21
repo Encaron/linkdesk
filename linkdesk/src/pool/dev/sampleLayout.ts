@@ -19,6 +19,7 @@ import type { PoolLayout } from "../../core/types/pool/poolLayout";
 import type { PoolToastItem } from "../../core/types/pool/poolToast";
 import type { PoolQuickPickData } from "../../core/types/pool/poolQuickPick";
 import type { PoolDialogData } from "../../core/types/pool/poolDialog";
+import type { PoolFloatingPanelData } from "../../core/types/pool/poolFloatingPanel";
 
 /** 菜单组样例——titlebar 下拉与 ☰ 汉堡共用（titlebar 忽略 shortcut，汉堡显示） */
 function buildSampleMenuGroups() {
@@ -251,5 +252,24 @@ export function buildSampleDialog(): PoolDialogData {
     confirmLabel: "关闭",
     cancelLabel: "取消",
     isAlert: false,
+  };
+}
+
+/** 悬浮面板样例——__mockPool.showFloatingPanel() 推浮层（调样式用）。E5.8#37。
+ * 内容 = file-tree 视图——preview 未镜像 plugins 命名空间 → PluginComponent 走
+ * 缺省回退（"插件不可用"）——面板 chrome（标题栏/动作/拖拽/调高）仍完整可调。
+ * 动作 = mockup 帧 1 三件套：open-in（hover 展开全文）/ maximize（两态 toggle）/ close */
+export function buildSampleFloatingPanel(): PoolFloatingPanelData {
+  return {
+    open: true,
+    viewId: "settings", // 身份仅用于 I8-10 单实例裁决——预览展示用（#38 Settings 真接线）
+    title: "设置",
+    pluginId: "file-tree",
+    renderPath: "../../plugins/builtin/file-tree/src/views/FoldersView.tsx",
+    actions: [
+      { id: "open-in", label: "在主窗口中打开", icon: "open-in", expandOnHover: true },
+      { id: "maximize", label: "最大化", icon: "maximize", toggledIcon: "restore", toggledLabel: "还原" },
+      { id: "close", label: "关闭", icon: "close" },
+    ],
   };
 }

@@ -986,6 +986,54 @@ function chkPoolDialogData(v: unknown, p: string, errs: string[]): void {
   if (_t117.length > 0) errs.push(..._t117);
   }
 }
+function chkPoolFloatingPanelButton(v: unknown, p: string, errs: string[]): void {
+  if (v === null || typeof v !== "object" || Array.isArray(v)) errs.push((p) + ": 期望 object");
+  else {
+    const _t124 = v as Record<string, unknown>;
+    if (typeof _t124.id !== "string") errs.push(((p) + ".id") + ": 期望 string，实收 " + typeof _t124.id);
+    if (typeof _t124.label !== "string") errs.push(((p) + ".label") + ": 期望 string，实收 " + typeof _t124.label);
+    if (typeof _t124.icon !== "string") errs.push(((p) + ".icon") + ": 期望 string，实收 " + typeof _t124.icon);
+    if (_t124.toggledIcon !== undefined) {
+    if (typeof _t124.toggledIcon !== "string") errs.push(((p) + ".toggledIcon") + ": 期望 string，实收 " + typeof _t124.toggledIcon);
+    }
+    if (_t124.toggledLabel !== undefined) {
+    if (typeof _t124.toggledLabel !== "string") errs.push(((p) + ".toggledLabel") + ": 期望 string，实收 " + typeof _t124.toggledLabel);
+    }
+    if (_t124.expandOnHover !== undefined) {
+    if (!(_t124.expandOnHover === false || _t124.expandOnHover === true)) errs.push(((p) + ".expandOnHover") + ": 期望 false|true");
+    }
+  }
+}
+function chkPoolFloatingPanelData(v: unknown, p: string, errs: string[]): void {
+  const _t118: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t118.push((p) + ": 期望 object");
+    else {
+      const _t119 = v as Record<string, unknown>;
+      if (_t119.open !== false) _t118.push(((p) + ".open") + ": 期望 false");
+    }
+  const _t120 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === false ? 1 : 0)) : 0);
+  if (_t118.length > 0) {
+  const _t121: string[] = [];
+    if (v === null || typeof v !== "object" || Array.isArray(v)) _t121.push((p) + ": 期望 object");
+    else {
+      const _t122 = v as Record<string, unknown>;
+      if (_t122.open !== true) _t121.push(((p) + ".open") + ": 期望 true");
+      if (typeof _t122.viewId !== "string") _t121.push(((p) + ".viewId") + ": 期望 string，实收 " + typeof _t122.viewId);
+      if (typeof _t122.title !== "string") _t121.push(((p) + ".title") + ": 期望 string，实收 " + typeof _t122.title);
+      if (typeof _t122.pluginId !== "string") _t121.push(((p) + ".pluginId") + ": 期望 string，实收 " + typeof _t122.pluginId);
+      if (typeof _t122.renderPath !== "string") _t121.push(((p) + ".renderPath") + ": 期望 string，实收 " + typeof _t122.renderPath);
+      if (!Array.isArray(_t122.actions)) _t121.push(((p) + ".actions") + ": 期望数组");
+      else {
+        for (let _t123 = 0; _t123 < _t122.actions.length; _t123++) {
+            chkPoolFloatingPanelButton(_t122.actions[_t123], (((p) + ".actions") + "[" + _t123 + "]"), _t121);
+        }
+      }
+    }
+  const _t125 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0)) : 0);
+  const _t126 = [{ e: _t118, s: _t120 }, { e: _t121, s: _t125 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
+  if (_t126.length > 0) errs.push(..._t126);
+  }
+}
 
 // ── 断言函数（注册表每 DTO 一个，返回错误串数组）──
 export function assertConfigurationChangedPayload(v: unknown): string[] {
@@ -1063,6 +1111,11 @@ export function assertPoolDialogData(v: unknown): string[] {
   chkPoolDialogData(v, "payload", errs);
   return errs;
 }
+export function assertPoolFloatingPanelData(v: unknown): string[] {
+  const errs: string[] = [];
+  chkPoolFloatingPanelData(v, "payload", errs);
+  return errs;
+}
 
 /** 通道 → 断言查表——未注册通道返回 null（无断言，安全降级）。never-throw（调用方决定上报） */
 export function validateWire(channel: string, payload: unknown): string[] | null {
@@ -1082,6 +1135,7 @@ export function validateWire(channel: string, payload: unknown): string[] | null
     case "pool:quickpick": return assertPoolQuickPickData(payload);
     case "pool:toast": return assertPoolToastData(payload);
     case "pool:dialog": return assertPoolDialogData(payload);
+    case "pool:floating-panel": return assertPoolFloatingPanelData(payload);
     default: return null;
   }
 }
