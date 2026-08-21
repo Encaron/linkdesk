@@ -43,6 +43,7 @@
 | 能力 | 声明方式 | 壳如何加载 | 例子 |
 |------|------|------|------|
 | **视图**（标签页/侧栏/面板） | `contributes.viewsContainers` + `contributes.views`（`render` 指向组件）；有标签页需求另加 `entry` | 池内 React 渲染 | 终端/地图/CAD/编辑器 |
+| **设置 UI**（整套设置界面替代品） | `factoryRole: "settings"` + `contributes.views`（+ 可选 `floatingPanel`） | 池内 React 渲染；多套并存，激活套由用户切换、持久化 | 内置设置 / settings-demo（→ `10-如何造一个设置插件.md`） |
 | **主题** | `contributes.themes`（`{id,label,uiTheme,path}`） | 壳注册主题 → CSS 变量 | Dracula/Solarized |
 | **语言包**（UI 翻译） | `contributes.languages`（`{id,label,path}`） | 注册到 i18next → UI 文字切换 | 日本語/English |
 | **协议解析** | `mode` 字段 + `window.linkdesk.protocol.*` | 主进程协议注册表（E5.7#49） | SBQ 心率协议 |
@@ -89,6 +90,7 @@
 | 7 | `07-插件间通信.md` | 插件之间怎么传数据——**三通信机制**：事件广播 / 命令调用 / 数据管道（高频推流） |
 | 8 | `08-ViewContainer-视图容器API.md` | 如何注册侧栏/面板视图、往别人的容器里加内容、titleActions 声明制 |
 | 9 | `09-插件目录规范.md` | 插件目录结构——文件放哪、命名约定 |
+| 10 | `10-如何造一个设置插件.md` | 整套设置 UI 替代品——factoryRole:settings 声明 + 数据 API 形状 + 白名单控件 + 切换激活套 |
 
 **JSON Schema：** `plugin.schema.json`——IDE 自动补全
 
