@@ -90,7 +90,7 @@ export default function SerialSettingsView() {
       ? `${t("收发设置")} — ${activeSession.name}`
       : t("收发设置");
     window.linkdesk?.viewContainer?.registerView?.("serial-monitor", "serial-monitor", {
-      id: "settings",
+      id: "receive-and-send",
       title,
     });
   }, [activeSession?.name, t]);
