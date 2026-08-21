@@ -5,7 +5,13 @@
  * LinkDesk 更进一步——这些是普通插件，壳只通过 factoryRole 查找。
  * 用户可以换一套设置插件：声明 factoryRole: "settings" → Ctrl+, 自动打开新插件。
  *
- * E2c #19e。
+ * E2c #19e。E5.8#41.11（Phase 8.2 方案 A）：**一槽多插件**——`Map<FactoryRole, string[]>`。
+ * 多个插件声明同一 factoryRole = **合法并存**（形态二进槽，设计见 工厂角色并存 档案）：
+ *   - 候选全收——不再静默 first-wins（旧实现 `if (!has) set` = 两个设置插件谁先扫到谁赢 = #41.5 同碰撞类隐患）
+ *   - 默认 = core:true 优先、否则注册序首声明（稳定排序保证「第一个 core:true 胜出」——不再靠扫描序巧合）
+ *   - 多候选 fail-loud 诊断点名全部候选 + 默认（对标 #24.6 失败必出声；每候选集合变化才重喷一次）
+ * 路由停靠点：**#41.11 消费方全走 `getDefaultPluginId`**（保持「默认=内置」行为）——概念生效的路由翻转在
+ * #41.12 改 `getActive()`（读持久化激活套）。#41.11 不暴露 window.linkdesk.factorySlots.*（#41.14 ⑤ 才建）。
  */
 
 import type { PluginManifest } from "../../api/types";
@@ -23,10 +29,18 @@ export interface SlotPluginEntry {
   manifest: PluginManifest;
 }
 
+/** 按角色收集的候选——default 解析需要 core 标志。 */
+interface RoleCandidate {
+  pluginId: string;
+  core: boolean;
+}
+
 /* ── 实现 ── */
 
-class FactorySlots {
-  private _slots = new Map<FactoryRole, string>();
+export class FactorySlots {
+  private _slots = new Map<FactoryRole, string[]>();
+  /** fail-loud 诊断去重——记录每角色最后诊断的候选签名，候选集合变化才重喷（refresh 不刷屏）。 */
+  private _diagnosedSig = new Map<FactoryRole, string>();
 
   constructor() {
     // 桌子管理规则——机制 2：插件进出自动重扫描
@@ -40,15 +54,32 @@ class FactorySlots {
 
   /**
    * 扫描所有已加载插件，自动填充插槽。
-   * 优先级：core: true > 第一个声明者。
+   * 一对多：每角色收集全部候选；稳定排序 core:true 置前（默认 = 内置），其余按注册序。
+   * 多候选并存合法——但默认解析显式 fail-loud 出声（对标 #24.6 失败必出声，不静默抢椅）。
    * 必须在插件加载完成后、首次消费前调用。
    */
   initialize(plugins: Iterable<SlotPluginEntry>): void {
+    const byRole = new Map<FactoryRole, RoleCandidate[]>();
     for (const p of plugins) {
       const role = p.manifest.factoryRole as FactoryRole | undefined;
       if (!role) continue;
-      if (!this._slots.has(role)) {
-        this._slots.set(role, p.pluginId);
+      const list = byRole.get(role) ?? [];
+      list.push({ pluginId: p.pluginId, core: !!p.manifest.core });
+      byRole.set(role, list);
+    }
+    for (const [role, candidates] of byRole) {
+      // 稳定排序：core:true 置前（ES2019 起稳定）——「第一个 core:true 胜出」由排序保证，非扫描序巧合
+      candidates.sort((a, b) => Number(b.core) - Number(a.core));
+      this._slots.set(role, candidates.map((c) => c.pluginId));
+      if (candidates.length > 1) {
+        const sig = candidates.map((c) => c.pluginId).sort().join(",");
+        if (this._diagnosedSig.get(role) !== sig) {
+          this._diagnosedSig.set(role, sig);
+          const names = candidates.map((c) => c.pluginId).join(" / ");
+          console.error(
+            `[FactorySlots] 角色 "${role}" 多候选并存：${names}。默认 = "${candidates[0].pluginId}"（core:true 优先，否则注册序首声明）——并存合法（形态二进槽，激活套占槽、非激活套图标隐藏），用户可在设置 UI 切换激活套。`
+          );
+        }
       }
     }
   }
@@ -66,14 +97,19 @@ class FactorySlots {
     this.initialize(plugins);
   }
 
-  /** 获取填充指定角色的插件 ID。未找到返回 undefined。 */
-  getPluginId(role: FactoryRole): string | undefined {
-    return this._slots.get(role);
+  /** 获取填充指定角色的全部候选插件 ID（默认=首）。未填充返回空数组（拷贝防外改）。 */
+  getPluginIds(role: FactoryRole): string[] {
+    return [...(this._slots.get(role) ?? [])];
+  }
+
+  /** 获取填充指定角色的默认插件 ID（core:true 优先，否则首声明）。未找到返回 undefined。 */
+  getDefaultPluginId(role: FactoryRole): string | undefined {
+    return this._slots.get(role)?.[0];
   }
 
   /** 检查是否有插件填充了该角色。 */
   hasSlot(role: FactoryRole): boolean {
-    return this._slots.has(role);
+    return (this._slots.get(role)?.length ?? 0) > 0;
   }
 }
 

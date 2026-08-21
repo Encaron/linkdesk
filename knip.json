@@ -22,8 +22,10 @@
   "ignore": [
     // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
     //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
-    //   ProtocolParser/ConfigurationRegistry/FactorySlots/ThemeEngine/api-types/IpcBridgeHandler
-    //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面））
+    //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
+    //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面）。
+    //   E5.8#41.11：FactorySlots 移出 ignore——一对多后 factorySlots 有直接消费方（settingsCommands/
+    //   lifecycle/iconbar）+ 测试直引 FactorySlots 类，knip 静态图全覆盖，不再需要豁免。）
     "src/core/index.ts",
     "src/core/api/linkdesk-api.ts",
     "src/core/api/linkdesk-api/types.ts",
@@ -41,7 +43,6 @@
     "src/core/registry/commands/MenuRegistry.ts",
     "src/core/registry/languages/LangDefRegistry.ts",
     "src/core/registry/ProtocolRegistry.ts",
-    "src/core/services/bootstrap/FactorySlots.ts",
     "src/core/services/configuration/ConfigurationApplier.ts",
     "src/core/services/configuration/ConfigurationService.ts",
     // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的

@@ -24,7 +24,8 @@ export function registerSettingsCommands(): void {
         const ctx = args[0] as { pluginId?: string; scrollTo?: string } | undefined;
         if (ctx?.pluginId) requestSettingsGroup(ctx.pluginId);
         if (ctx?.scrollTo) requestScrollToSetting(ctx.scrollTo);
-        const settingsPluginId = factorySlots.getPluginId("settings");
+        // E5.8#41.11：一对多后走 getDefaultPluginId（默认=内置）——#41.12 翻转 getActive 读持久化激活套
+        const settingsPluginId = factorySlots.getDefaultPluginId("settings");
         if (!settingsPluginId) return;
         // E5.8#38（I8-3/IX-1 单一实例）：设置已是标签页 → 聚焦该标签页，不弹第二面板
         if (getCallbacks()?.focusTabByPluginId(settingsPluginId)) return;

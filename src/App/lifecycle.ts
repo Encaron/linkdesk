@@ -138,7 +138,8 @@ export function useAppLifecycle({ setTheme, setLang, sidebarView, setSidebarView
     };
     window.addEventListener(CUSTOM_EVENTS.RESTORE_WORKSPACE, onRestoreWorkspace);
     const onOpenSettings = () => {
-      const settingsId = factorySlots.getPluginId("settings") ?? "welcome";
+      // E5.8#41.11：一对多后走 getDefaultPluginId（默认=内置）——#41.12 翻转 getActive 读持久化激活套
+      const settingsId = factorySlots.getDefaultPluginId("settings") ?? "welcome";
       shellEvents.emit("icon:selected", settingsId);
     };
     window.addEventListener(CUSTOM_EVENTS.OPEN_SETTINGS, onOpenSettings);

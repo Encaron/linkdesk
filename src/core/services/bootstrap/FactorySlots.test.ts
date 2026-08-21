@@ -1,60 +1,121 @@
 /**
- * FactorySlots 单元测试——initialize/getPluginId/hasSlot。
- * #36l6：核心 Registry/Service 层 vitest 覆盖。
+ * FactorySlots 单元测试——E5.8#41.11 一槽多插件：initialize/getPluginIds/getDefaultPluginId/hasSlot
+ * + 重复 factoryRole fail-loud + 卸载后槽位刷新。
  *
- * 注意：factorySlots 是单例，状态跨测试累积。
- * initialize() 不清理已存在的 slot——后续测试需考虑此行为。
+ * 覆盖：单槽 / 多角色多槽 / 多候选 core 优先排序（默认=内置）/ 无 core 首声明 / 重复声明 fail-loud
+ * 点名两 pluginId（每候选集合只喷一次）/ 卸载后 refreshFromPlugins 槽位刷新。
+ *
+ * 测试替身：插件身份用明显虚构值（demo-settings-a/b、demo-market、demo-plain）——硬约束 #21。
+ * getLoadedPluginManifests 走 vi.mock（卸载刷新场景喂可控清单）。
+ * 类已导出——每测试 new FactorySlots() 取干净实例（单例 factorySlots 状态跨测试累积，不直接复用）。
  */
 
-import { describe, it, expect } from "vitest";
-import { factorySlots } from "./FactorySlots";
+import { describe, it, expect, vi, afterEach } from "vitest";
+
+const manifestsMock = vi.hoisted(() => vi.fn());
+vi.mock("../../../pluginLoader/loader", () => ({
+  getLoadedPluginManifests: manifestsMock,
+}));
+
+import { FactorySlots } from "./FactorySlots";
 import type { SlotPluginEntry } from "./FactorySlots";
 
-// E5.7#98：测试替身只喂 FactorySlots 消费的字段——窄化为 SlotPluginEntry["manifest"]
-// （完整 PluginManifest 字段几十个，测试不需要）
-const SETTINGS_PLUGIN: SlotPluginEntry = {
-  pluginId: "my-settings",
-  manifest: { name: "My Settings", version: "1.0", factoryRole: "settings" } as SlotPluginEntry["manifest"],
-};
+// 窄化 fixture——只喂 FactorySlots 消费的字段（E5.7#98；完整 PluginManifest 字段几十个，测试不需要）
+const entry = (pluginId: string, factoryRole?: string, core?: boolean): SlotPluginEntry => ({
+  pluginId,
+  manifest: {
+    name: `Demo ${pluginId}`,
+    version: "1.0.0",
+    ...(factoryRole ? { factoryRole } : {}),
+    ...(core ? { core } : {}),
+  } as SlotPluginEntry["manifest"],
+});
 
-describe("FactorySlots — initialize / getPluginId / hasSlot", () => {
-  it("initialize — 声明 factoryRole 的插件被登记", () => {
-    factorySlots.initialize([SETTINGS_PLUGIN]);
-    expect(factorySlots.getPluginId("settings")).toBe("my-settings");
+describe("FactorySlots — 一对多（E5.8#41.11）", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
   });
 
-  it("hasSlot — 已登记返回 true，未登记返回 false", () => {
-    // settings 已由上一测试登记——hasSlot 应返回 true
-    expect(factorySlots.hasSlot("settings")).toBe(true);
-    expect(factorySlots.hasSlot("nonexistent")).toBe(false);
+  it("单槽——一个插件声明 factoryRole 被登记", () => {
+    const slots = new FactorySlots();
+    slots.initialize([entry("demo-settings", "settings")]);
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings"]);
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings");
+    expect(slots.hasSlot("settings")).toBe(true);
+    expect(slots.hasSlot("nonexistent")).toBe(false);
   });
 
-  it("initialize — 先注册者优先，后注册者不覆盖", () => {
-    factorySlots.initialize([
-      { pluginId: "other-settings", manifest: { name: "Other", version: "1.0", factoryRole: "settings" } as SlotPluginEntry["manifest"] },
+  it("多角色多槽——各角色候选互不干扰", () => {
+    const slots = new FactorySlots();
+    slots.initialize([entry("demo-settings", "settings"), entry("demo-market", "marketplace")]);
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings");
+    expect(slots.getDefaultPluginId("marketplace")).toBe("demo-market");
+  });
+
+  it("多候选 core 优先——后声明的 core:true 仍当选默认（排序保证，非扫描序巧合）", () => {
+    const slots = new FactorySlots();
+    slots.initialize([
+      entry("demo-settings-b", "settings"), // 非 core，先声明
+      entry("demo-settings-a", "settings", true), // core:true，后声明
     ]);
-    // 先注册者优先级高（settings 已在第一测试登记为 my-settings）
-    expect(factorySlots.getPluginId("settings")).toBe("my-settings");
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a", "demo-settings-b"]);
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-a"); // core 优先
   });
 
-  it("initialize — 无 factoryRole 声明的插件不影响已登记的 slot", () => {
-    const before = factorySlots.getPluginId("settings");
-    factorySlots.initialize([
-      { pluginId: "no-role", manifest: { name: "No Role", version: "1.0" } as SlotPluginEntry["manifest"] },
+  it("多候选无 core——首声明当选默认", () => {
+    const slots = new FactorySlots();
+    slots.initialize([entry("demo-settings-x", "settings"), entry("demo-settings-y", "settings")]);
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-x", "demo-settings-y"]);
+    expect(slots.getDefaultPluginId("settings")).toBe("demo-settings-x"); // 首声明
+  });
+
+  it("重复声明 fail-loud——多候选 console.error 点名全部候选 + 默认（对标 #24.6 失败必出声，不静默抢椅）", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const slots = new FactorySlots();
+    slots.initialize([
+      entry("demo-settings-a", "settings", true),
+      entry("demo-settings-b", "settings"),
     ]);
-    // 无 factoryRole 的插件不影响已登记 slot
-    expect(factorySlots.getPluginId("settings")).toBe(before);
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    const msg = errorSpy.mock.calls[0][0] as string;
+    expect(msg).toContain("demo-settings-a");
+    expect(msg).toContain("demo-settings-b");
+    expect(msg).toContain("demo-settings-a"); // 默认点名
   });
 
-  it("getPluginId — 未登记的 role 返回 undefined", () => {
-    expect(factorySlots.getPluginId("never-registered")).toBeUndefined();
+  it("fail-loud 每候选集合只喷一次——同集合重扫不刷屏，集合变化才重喷", () => {
+    const errorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const slots = new FactorySlots();
+    const both = [entry("demo-settings-a", "settings", true), entry("demo-settings-b", "settings")];
+    slots.initialize(both);
+    slots.initialize(both); // 同集合重扫——不重喷
+    expect(errorSpy).toHaveBeenCalledTimes(1);
+    slots.initialize([entry("demo-settings-b", "settings")]); // 集合变化（卸载 a）——重喷（新集合无多候选 → 不喷）
+    expect(errorSpy).toHaveBeenCalledTimes(1); // 单候选不诊断
   });
 
-  it("initialize — 多个角色同时登记", () => {
-    factorySlots.initialize([
-      { pluginId: "my-terminal", manifest: { name: "Terminal", version: "1.0", factoryRole: "terminal" } as SlotPluginEntry["manifest"] },
+  it("无 factoryRole 声明的插件不进任何槽", () => {
+    const slots = new FactorySlots();
+    slots.initialize([entry("demo-plain")]);
+    expect(slots.getPluginIds("settings")).toEqual([]);
+    expect(slots.hasSlot("settings")).toBe(false);
+    expect(slots.getDefaultPluginId("settings")).toBeUndefined();
+  });
+
+  it("卸载后槽位刷新——refreshFromPlugins 从已加载插件重扫（插件进出自动重扫）", () => {
+    const slots = new FactorySlots();
+    manifestsMock.mockReturnValue([
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+      { pluginId: "demo-settings-b", manifest: { name: "Demo B", version: "1.0.0", factoryRole: "settings" } },
     ]);
-    expect(factorySlots.getPluginId("settings")).toBe("my-settings");
-    expect(factorySlots.getPluginId("terminal")).toBe("my-terminal");
+    slots.refreshFromPlugins();
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a", "demo-settings-b"]);
+    // 卸载 demo-settings-b → 重扫后只剩一个
+    manifestsMock.mockReturnValue([
+      { pluginId: "demo-settings-a", manifest: { name: "Demo A", version: "1.0.0", factoryRole: "settings", core: true } },
+    ]);
+    slots.refreshFromPlugins();
+    expect(slots.getPluginIds("settings")).toEqual(["demo-settings-a"]);
+    expect(slots.hasSlot("settings")).toBe(true);
   });
 });
