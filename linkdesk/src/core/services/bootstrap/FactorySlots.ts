@@ -12,11 +12,19 @@
  *   - 多候选 fail-loud 诊断点名全部候选 + 默认（对标 #24.6 失败必出声；每候选集合变化才重喷一次）
  * 路由停靠点：**#41.11 消费方全走 `getDefaultPluginId`**（保持「默认=内置」行为）——概念生效的路由翻转在
  * #41.12 改 `getActive()`（读持久化激活套）。#41.11 不暴露 window.linkdesk.factorySlots.*（#41.14 ⑤ 才建）。
+ *
+ * E5.8#41.12（Phase 8.2 方案 A）：**活动套**——`getActive(role)` / `setActive(role, pluginId)`。
+ *   活动 = 用户切换的激活套（读持久化，无记录/已卸载回退默认）；setActive 校验候选后落盘
+ *   （PluginStateService `app.factorySlot:active:<role>` 键）——重启保持。概念生效接缝：
+ *   消费方（openSettings/lifecycle/图标栏槽位感知）#41.11 用 getDefaultPluginId → #41.12 翻转 getActive。
+ *   window.linkdesk.settings.* 三方法面（list/getActive/setActive）由 #41.12 建，泛化 factorySlots.* 在 #41.14 ⑤。
  */
 
 import type { PluginManifest } from "../../api/types";
 import { PluginLifecycle } from "../../../pluginLoader/lifecycle";
 import { getLoadedPluginManifests } from "../../../pluginLoader/loader";
+// E5.8#41.12：活动套落盘——持久化「用户选了哪套设置」，重启保持
+import { getPluginStateValue, setPluginStateValue, APP_PLUGIN_ID } from "../plugins/PluginStateService";
 
 /* ── 类型 ── */
 
@@ -33,6 +41,11 @@ export interface SlotPluginEntry {
 interface RoleCandidate {
   pluginId: string;
   core: boolean;
+}
+
+/** 活动套持久化键——按角色分区（role 含冒号时键仍唯一，防跨角色串号）。 */
+function activeKey(role: FactoryRole): string {
+  return `factorySlot:active:${role}`;
 }
 
 /* ── 实现 ── */
@@ -110,6 +123,35 @@ export class FactorySlots {
   /** 检查是否有插件填充了该角色。 */
   hasSlot(role: FactoryRole): boolean {
     return (this._slots.get(role)?.length ?? 0) > 0;
+  }
+
+  // ── E5.8#41.12：活动套——用户切换的激活插件，落盘持久化（重启保持）──
+
+  /**
+   * 获取填充指定角色的**活动**插件 ID。
+   * 读持久化激活套（#41.12 落盘）；无记录 / 已卸载（候选列表漂移）→ 回退默认。
+   * #41.11 停靠点 getDefaultPluginId 是「默认=内置」行为；#41.12 起消费方翻转走 getActive。
+   */
+  getActive(role: FactoryRole): string | undefined {
+    const candidates = this.getPluginIds(role);
+    if (candidates.length === 0) return undefined;
+    const activeId = getPluginStateValue<string>(APP_PLUGIN_ID, activeKey(role));
+    if (activeId && candidates.includes(activeId)) return activeId;
+    return candidates[0];
+  }
+
+  /**
+   * 切换填充指定角色的活动插件 ID——落盘持久化（重启保持）。
+   * 非候选 fail-loud 拒绝（对标 #24.6 失败必出声——不静默吞掉无效切换）。
+   */
+  async setActive(role: FactoryRole, pluginId: string): Promise<void> {
+    const candidates = this.getPluginIds(role);
+    if (!candidates.includes(pluginId)) {
+      throw new Error(
+        `[FactorySlots] 角色 "${role}" 无候选 "${pluginId}"（候选：${candidates.join(" / ") || "无"}）——不能设为激活`
+      );
+    }
+    await setPluginStateValue(APP_PLUGIN_ID, activeKey(role), pluginId);
   }
 }
 

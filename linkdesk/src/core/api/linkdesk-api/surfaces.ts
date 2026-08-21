@@ -19,7 +19,7 @@
  */
 import type { LinkDeskAPI } from "../linkdesk-api";
 
-/** 池 preload 必暴露面（41 = 40 唯一 + config 别名；唯一缺 bridge）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥） */
+/** 池 preload 必暴露面（42 = 41 唯一 + config 别名；唯一缺 bridge）——E5.8#34.5 加 panel（插件调 reveal 的池侧通道）；E5.8#37 加 floatingPanelHost（壳内悬浮面板哑渲染桥）；E5.8#41.12 加 settings（设置套枚举/切换，设置 UI 在池内渲染） */
 export type PoolExposed = Pick<LinkDeskAPI,
   | "commands" | "configuration" | "config" | "theme" | "language"
   | "tabs" | "keybindings" | "notifications" | "menu" | "contextKey"
@@ -28,7 +28,7 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "workspace" | "filesystem" | "path" | "env" | "search" | "encoding"
   | "decorations" | "fileAssociation" | "langDef" | "lsp" | "protocol"
   | "viewContainer" | "plugins" | "pluginManager" | "window"
-  | "shell" | "hotExit" | "getFilePath" | "panel"> & {
+  | "shell" | "hotExit" | "getFilePath" | "panel" | "settings"> & {
   /** pool 命名空间——分裂面方法级子集：池侧 = 收布局 + 发动作 + beforeClose 通道（壳侧 pushLayout/onReady/… 12 方法为壳→池推送面，池内不存在）。
    *  pool 契约必选（E5.8#22 审视 N1 修正后）——直接 Pick，无需 NonNullable
    *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await） */

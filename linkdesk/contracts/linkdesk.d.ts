@@ -1,7 +1,7 @@
 /**
  * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（11 域接口 + types.ts）
+ * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（12 域接口 + types.ts）
  *         + src/core/types/ipc/* + src/core/types/pool/*（wire 载荷类型）
  * 生成器：scripts/generate-contract.mjs（Route C——契约类型文件为源，纯类型打包）
  * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 check-contracts 强制）
@@ -1527,6 +1527,26 @@ export interface PanelAPI {
         revealFloating(viewId: string): Promise<void>;
     };
 }
+/** 设置套条目——settings.list() 返回的一行。
+ * 非导出（模块内接口）——契约生成器经 SettingsAPI.list 传递引用自动收集并 emit export；
+ * 壳内无第三方消费方，导出会被 knip 报未用（linkdesk-api.ts 排除域不算消费）。 */
+export interface SettingsPluginInfo {
+    /** 插件 ID——getActive/setActive 的句柄 */
+    pluginId: string;
+    /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
+    title: string;
+}
+/** 设置套命名空间面——双端注入（设置 UI 在池内渲染，壳侧实现走 IPC 桥） */
+export interface SettingsAPI {
+    settings: {
+        /** 全部声明 factoryRole:"settings" 的设置套（含默认/内置），注册序 */
+        list(): Promise<SettingsPluginInfo[]>;
+        /** 当前活动设置套 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */
+        getActive(): Promise<string | undefined>;
+        /** 切换活动设置套——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
+        setActive(pluginId: string): Promise<void>;
+    };
+}
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
@@ -1536,7 +1556,7 @@ export interface PanelAPI {
  * E5.8#0d.10-9e：由 11 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI;
 /** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
 export interface PluginStateChangedPayload {
     pluginId: string;
