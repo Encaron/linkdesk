@@ -6,7 +6,7 @@
  * 内容 = 插件视图——DTO 带 pluginId/renderPath，池经 PluginComponent 渲染（壳不持渲染器——#37 验收）。
  *
  * 交互（02-交互细节设计.md §3 I8 矩阵 + mockups/02-壳内悬浮面板-mockup.html 五帧）：
- *   - I8-5  顶部 6px 手柄拖拽（cursor:grab）+ 半透明跟随 + 壳内钳制（6px inset 拖不出壳窗口）
+ *   - I8-5  顶部 6px 手柄拖拽（cursor:grab）+ 拖拽中投影抬升（无半透明——用户 2026-08-22 否决）+ 壳内钳制（6px inset 拖不出壳窗口）
  *   - I8-6  拖拽/调整中松手落在遮罩不得触发「遮罩点击关闭」——suppress 标志 setTimeout(0)（同 #13 纪律）
  *   - I8-7  底部 8px 手柄调高（cursor:ns-resize，min 300px / max 窗口高-80px）
  *   - I8-8  遮罩点击关闭 + 面板本体 stopPropagation + Esc 关闭 + 焦点入面板
@@ -95,7 +95,7 @@ export default function FloatingPanelHost() {
   const [data, setData] = useState<PoolFloatingPanelData | null>(null);
   const [geo, setGeo] = useState<PanelGeometry | null>(null); // null = 默认右贴边
   const [maximized, setMaximized] = useState(false); // I8-9 池本地纯视觉 toggle
-  const [dragging, setDragging] = useState(false); // I8-5/6 半透明跟随 + CSS 态
+  const [dragging, setDragging] = useState(false); // I8-5 拖拽 CSS 态（投影抬升，无半透明）
   const panelRef = useRef<HTMLDivElement>(null);
   // I8-6 拖拽/调高后松手落在遮罩不得关闭——pointerup 后 click 同步触发，setTimeout(0) 延迟清标志
   const suppressBackdropRef = useRef(false);
@@ -192,7 +192,7 @@ export default function FloatingPanelHost() {
     });
   };
 
-  /** 手势收尾——清快照 + 退半透明 + 下一拍才放行遮罩点击（I8-6） */
+  /** 手势收尾——清快照 + 退拖拽 CSS 态 + 下一拍才放行遮罩点击（I8-6） */
   const endGesture = () => {
     gestureRef.current = null;
     setDragging(false);
