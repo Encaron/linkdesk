@@ -216,6 +216,17 @@
   color: var(--text-primary);
 }
 
+/* ── 顶部通用区切换条（E5.8#41.13）——设置套并存切换：内置画在编辑器最顶、整条虚线框 ── */
+/* 设计源：工厂角色并存 mockup 帧③ .gen-area（虚线 + accent 6% 底）+ ui-ux-pro-max
+   focus-visible 可访问性；配色全走 CSS 变量 + color-mix（硬约束 #1） */
+
+.settings-role-switch--gen {
+  margin: 10px 16px 0;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  flex: none;
+}
+
 /* ── 单个设置行 ── */
 
 .settings-row {

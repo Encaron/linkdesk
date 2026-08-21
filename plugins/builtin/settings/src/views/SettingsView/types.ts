@@ -5,6 +5,8 @@
 
 interface SettingsViewProps {
   isActive: boolean;
+  /** 所在标签页 id（E5.8#41.13 全插件侧换套）——由 PluginComponent 注入；浮动面板无标签页时为 undefined */
+  tabId?: string;
 }
 
 interface GroupInfo {
