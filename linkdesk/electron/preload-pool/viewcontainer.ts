@@ -67,8 +67,9 @@ export function buildViewContainer() {
       ipcRenderer.invoke(IPC.viewContainer.getContainer, id),
     getViews: (containerId: string): Promise<ViewDtoShape[]> =>
       ipcRenderer.invoke(IPC.viewContainer.getViews, containerId),
-    getView: (viewId: string): Promise<ViewDtoShape | undefined> =>
-      ipcRenderer.invoke(IPC.viewContainer.getView, viewId),
+    // E5.8#41.9.2：getView 复合寻址——(pluginId, viewId)（#41.8 §4 调用方 #2 方案 A，IPC 链带 pluginId）
+    getView: (pluginId: string, viewId: string): Promise<ViewDtoShape | undefined> =>
+      ipcRenderer.invoke(IPC.viewContainer.getView, pluginId, viewId),
     registerView: (pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void> =>
       ipcRenderer.invoke(IPC.viewContainer.registerView, pluginId, containerId, toViewMetaDto(descriptor)),
   };

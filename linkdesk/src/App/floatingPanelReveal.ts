@@ -41,7 +41,9 @@ export interface FloatingPanelResolveResult {
 /** 声明寻址共享基元——全局视图索引（contributes.views 任意容器；loader 运行时附挂 _pluginId/_renderPath）。
  *  null = 未注册 / 缺运行时附挂（声明未解析——#39.5 验收 no-op，防坏数据穿透）。 */
 export function resolveFloatingPanelView(viewId: string): FloatingPanelResolveResult | null {
-  const view = ViewContainerService.getView(viewId) as
+  // E5.8#41.9.2：声明扫描基元 getViewByViewId——revealFloating 契约只传 viewId（#41.5 验收不回退），
+  // 唯一命中用 / 多命中 fail-loud / 零命中 no-op（#41.8 §4.1）
+  const view = ViewContainerService.getViewByViewId(viewId) as
     | (ViewDescriptor & { _pluginId?: string; _renderPath?: string })
     | undefined;
   if (!view || !view._pluginId || !view._renderPath) return null;

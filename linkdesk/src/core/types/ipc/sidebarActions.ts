@@ -9,6 +9,8 @@ export interface SidebarAction {
   action: "reorder" | "setCollapsed" | "setVisible" | "toggleSidebarCollapse" | "setSidebarWidth";
   containerId?: string;
   viewId?: string;
+  /** E5.8#41.9.2：setCollapsed 复合键持久化——池侧 view 自带 pluginId（SidebarViewMeta），壳侧精确寻址同名视图 */
+  pluginId?: string;
   newIndex?: number;
   collapsed?: boolean;
   visible?: boolean;

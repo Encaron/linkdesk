@@ -45,7 +45,8 @@ export interface EditorAPI {
   viewContainer: {
     getViewContainer(id: string): Promise<Record<string, unknown> | undefined>;
     getViews(containerId: string): Promise<Array<Record<string, unknown>>>;
-    getView(viewId: string): Promise<Record<string, unknown> | undefined>;
+    // E5.8#41.9.2：getView 复合寻址——(pluginId, viewId) 精确查视图元数据（#41.8 碰撞面 #2）
+    getView(pluginId: string, viewId: string): Promise<Record<string, unknown> | undefined>;
     registerView(pluginId: string, containerId: string, descriptor: Record<string, unknown>): Promise<void>;
   };
 }

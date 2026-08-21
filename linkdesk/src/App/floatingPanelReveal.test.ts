@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { getViewMock, seedViewContainerMocks } from "./viewContainerMocks";
+import { getViewByViewIdMock, seedViewContainerMocks } from "./viewContainerMocks";
 import { resolveFloatingPanelView, decideFloatingPanelReveal, buildDefaultFloatingPanelActions } from "./floatingPanelReveal";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
 
@@ -46,7 +46,7 @@ describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", 
   });
 
   it("视图存在但缺运行时附挂 _renderPath → null（声明未解析，防坏数据穿透）", () => {
-    getViewMock.mockReturnValue({ id: "ghost", title: "幽灵" } as never);
+    getViewByViewIdMock.mockReturnValue({ id: "ghost", title: "幽灵" } as never);
     expect(resolveFloatingPanelView("ghost")).toBeNull();
   });
 });
