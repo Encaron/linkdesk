@@ -115,22 +115,23 @@
 .floating-panel-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
 .floating-panel-act.close:hover { background: var(--titlebar-close-hover); color: var(--badge-text); }
 
-/* open-in：默认纯图标 28px，hover 展开全文（mockup .fp-act.open-in） */
+/* open-in：默认纯图标 28px，hover 展开全文（mockup .fp-act.open-in）。
+   宽度走 max-content 内容自适应——不硬编码 px（2026-08-22 用户点修②：英文「Open in Main Window」
+   被硬编码 128px 截断显示不全——现按内容展开，任意语言完整显示）。 */
 .floating-panel-act.open-in {
   width: 28px;
   padding: 0;
   overflow: hidden;
-  transition: width 180ms cubic-bezier(0.16, 1, 0.3, 1), background 150ms ease, color 150ms ease;
 }
 .floating-panel-act.open-in .lbl {
   white-space: nowrap;
   font-size: 12px;
   opacity: 0;
   max-width: 0;
-  transition: opacity 120ms ease 60ms, max-width 180ms cubic-bezier(0.16, 1, 0.3, 1);
+  transition: opacity 120ms ease 60ms;
 }
-.floating-panel-act.open-in:hover { width: 128px; justify-content: flex-start; padding: 0 8px; }
-.floating-panel-act.open-in:hover .lbl { opacity: 1; max-width: 100px; }
+.floating-panel-act.open-in:hover { width: max-content; justify-content: flex-start; padding: 0 8px; }
+.floating-panel-act.open-in:hover .lbl { opacity: 1; max-width: none; }
 .floating-panel-act.open-in svg { color: var(--accent); }
 
 /* □ / ✕：hover tooltip（data-tip 纯 CSS——文案来自 DTO label，池零自产文本）。

@@ -306,19 +306,19 @@
   .fp-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
   .fp-act.close:hover { background: #c42b1c; color: #fff; }
 
-  /* 「在主窗口中打开」：默认纯图标 28px，hover 展开显示全文 */
+  /* 「在主窗口中打开」：默认纯图标 28px，hover 展开显示全文。
+     max-content 内容自适应——不硬编码 px（2026-08-22 用户点修②：硬编码 128px 英文「Open in Main Window」被截断） */
   .fp-act.open-in {
     width: 28px; padding: 0;
     overflow: hidden;
-    transition: width 180ms cubic-bezier(0.16,1,0.3,1), background 150ms ease, color 150ms ease;
   }
   .fp-act.open-in .lbl {
     white-space: nowrap; font-size: 12px;
     opacity: 0; max-width: 0;
-    transition: opacity 120ms ease 60ms, max-width 180ms cubic-bezier(0.16,1,0.3,1);
+    transition: opacity 120ms ease 60ms;
   }
-  .fp-act.open-in:hover { width: 128px; justify-content: flex-start; padding: 0 9px; }
-  .fp-act.open-in:hover .lbl { opacity: 1; max-width: 100px; }
+  .fp-act.open-in:hover { width: max-content; justify-content: flex-start; padding: 0 9px; }
+  .fp-act.open-in:hover .lbl { opacity: 1; max-width: none; }
   .fp-act.open-in svg { color: var(--accent); }
 
   /* □ / ✕：hover tooltip（data-tip 纯 CSS） */
