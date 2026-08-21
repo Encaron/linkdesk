@@ -1,5 +1,5 @@
 /**
- * SettingsView 类型层——自 SettingsView.tsx 拆出（E5.8#0d.10-7a）。
+ * SettingsView 类型层——自壳迁入（E5.8#41.14）。
  * 纯类型零逻辑。依赖方向：无（被聚合器 / useSettingsEvents / renderControl / SettingRow 消费）。
  */
 

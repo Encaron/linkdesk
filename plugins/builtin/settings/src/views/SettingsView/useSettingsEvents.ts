@@ -1,13 +1,13 @@
 /**
- * useSettingsEvents——SettingsView 订阅/跳转 effect 组（7 块整迁）。
- * E5.8#0d.10-7d：自 SettingsView.tsx 拆出——全部一次性/常驻订阅：
- *   配置变更版本号递增 + 插件生命周期刷新 + M1 双通道（齿轮"设置"跳分组）+ scrollTo 双通道 + 外部"打开快捷键"事件。
+ * useSettingsEvents——SettingsView 订阅/跳转 effect 组（自壳迁入，E5.8#41.14）。
+ * 配置变更版本号递增 + 插件生命周期刷新 + M1 双通道（齿轮"设置"跳分组）+ scrollTo 双通道
+ * + 契约双通道（打开快捷键 tab——替代错配 window 事件死路由）。
  * 状态 setter + groupsRaw 走入参；deps 补稳定 setter 恒稳定消 exhaustive-deps（零语义变化）。
- * 依赖方向：useSettingsEvents → helpers（lk/常量）+ types（GroupInfo）；被聚合器 SettingsView 消费。
+ * 依赖方向：useSettingsEvents → helpers（lk）+ types（GroupInfo）；被聚合器 SettingsView 消费。
  */
 
 import { useEffect } from "react";
-import { lk, CUSTOM_EVENT_OPEN_KEYBINDINGS } from "./helpers";
+import { lk } from "./helpers";
 import type { GroupInfo } from "./types";
 
 function useSettingsEvents({
@@ -99,15 +99,28 @@ function useSettingsEvents({
     } catch { return; }
   }, [groupsRaw, setSearch, setSelectedGroup]);
 
-  // ── 监听外部"打开快捷键设置"请求 ──
+  // ── E5.8#41.14 🔴 修复：打开快捷键 tab——契约双通道（替代错配 window 事件死路由）。
+  //    原 window.addEventListener(CUSTOM_EVENT_OPEN_KEYBINDINGS) 与壳 dispatch 字面量
+  //    （kebab vs camel）永不命中 → tab 从不跳转。改 consumeOpenKeybindings/onRequestOpenKeybindings。 ──
+  // 双通道 A：mount 时消费 pending——设置未打开时"打开快捷键设置"命令的请求
   useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent<{ query?: string }>).detail;
-      setActiveTab("keybindings");
-      if (detail?.query) setKeybindingQuery(detail.query);
-    };
-    window.addEventListener(CUSTOM_EVENT_OPEN_KEYBINDINGS, handler);
-    return () => window.removeEventListener(CUSTOM_EVENT_OPEN_KEYBINDINGS, handler);
+    lk().consumeOpenKeybindings().then((pending: { query?: string } | null) => {
+      if (pending) {
+        setActiveTab("keybindings");
+        if (pending.query) setKeybindingQuery(pending.query);
+      }
+    }).catch(() => {});
+  }, [setActiveTab, setKeybindingQuery]);
+
+  // 双通道 B：实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab
+  useEffect(() => {
+    try {
+      const unsub = lk().onRequestOpenKeybindings((payload: { query?: string }) => {
+        setActiveTab("keybindings");
+        if (payload?.query) setKeybindingQuery(payload.query);
+      });
+      return unsub;
+    } catch { return; }
   }, [setActiveTab, setKeybindingQuery]);
 }
 

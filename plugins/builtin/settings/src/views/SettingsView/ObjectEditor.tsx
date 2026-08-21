@@ -1,6 +1,6 @@
 /**
  * ObjectEditor——object/array 配置项键值对编辑器。
- * E5.8#0d.10-7b：自 SettingsView.tsx 拆出——纯展示组件：吃 value/onChange 无核心依赖。
+ * 自壳迁入（E5.8#41.14）：纯展示组件，零核心依赖。
  * 依赖方向：ObjectEditor → react-i18next；被 renderControl 消费。
  */
 
