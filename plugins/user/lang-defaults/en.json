@@ -40,6 +40,7 @@
   "未找到插件: {{id}}": "Plugin not found: {{id}}",
   "最大化": "Maximize",
   "最小化": "Minimize",
+  "在主窗口中打开": "Open in Main Window",
   "还原": "Restore",
   "刚刚": "Just now",
   "{{d}} 天前": "{{d}} days ago",
