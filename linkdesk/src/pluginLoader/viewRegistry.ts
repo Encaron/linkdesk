@@ -4,7 +4,7 @@
  * 设计依据：[[phase4-design-decisions]] 第 4 条。
  */
 
-import type { ViewPluginEntry, TabBehavior, StatusBarItem } from "../core/api/types";
+import type { ViewPluginEntry, TabBehavior, StatusBarItem, ContributesFloatingPanel } from "../core/api/types";
 import { getBuiltinTabBehavior } from "../core/utils/tabIdentity";
 import { Emitter } from "../core/react/events/CoreEvents";
 import { compareVersions } from "../core/utils/plugin/semverUtils";
@@ -63,6 +63,14 @@ export function getViewPlugin(pluginId: string): ViewPluginEntry | undefined {
 /** 获取所有已注册视图插件 */
 export function getViewPlugins(): ViewPluginEntry[] {
   return Array.from(registry.values());
+}
+
+/** 读取插件的壳内悬浮面板声明（E5.8#39.5 类型 B）——contributes.floatingPanel.viewId。
+ *  声明制（I8-3）：声明即出现——标签页右键「在悬浮面板中打开」注入条件 = 本函数非 null。
+ *  未声明 / 声明非字符串 → null（不注入）。声明寻址解析在 App revealFloatingPanel（resolve→toggle→push）。 */
+export function getFloatingPanelViewId(pluginId: string): string | null {
+  const declaration = registry.get(pluginId)?.manifest?.contributes?.floatingPanel as ContributesFloatingPanel | undefined;
+  return typeof declaration?.viewId === "string" ? declaration.viewId : null;
 }
 
 /** 获取标签页行为声明——plugin.json 声明覆盖内置规则 */

@@ -134,6 +134,22 @@ export function registerPanelCommands(): void {
     },
   });
 
+  // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」命令——薄命令只做入口 emit（同 togglePanel 模式）。
+  // 实际编排在 App useFloatingPanelReveal（resolve→toggle→push，子项 B wire 复用）——命令零编排。
+  // 命令载荷：menu:getItems 动态注入项 commandArgs=[viewId] 透传（context 共享，per-item 身份走载荷）
+  // → handler 收 args = [viewId, ...context]；非字符串 viewId 直接忽略（防坏值穿透）。
+  registerCommand(APP_PLUGIN_ID, {
+    id: "workbench.action.revealFloatingPanel",
+    title: "在悬浮面板中打开",
+    category: "视图",
+    handler: async (...args: unknown[]) => {
+      const [viewId] = args as [string];
+      if (typeof viewId === "string" && viewId) {
+        shellEvents.emit("panel:reveal-floating", { viewId });
+      }
+    },
+  });
+
   // E5.8#33：菜单栏「面板」顶级菜单——壳声明招牌（空间归宿主，[[content-vs-space-ownership]]）。
   // 归并机制零新设施：插件 contributes.menus.menuBar/panel + group:"panel" 与壳招牌同组自动归入
   // （titlebar collectMenuBarGroups 按 group 分组——注册表当桌子，双方零耦合）。

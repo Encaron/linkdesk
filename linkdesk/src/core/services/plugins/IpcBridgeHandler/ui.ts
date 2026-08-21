@@ -16,6 +16,7 @@ import { getCommands } from "../../../registry/commands/CommandRegistry";
 import { findKeybindingForCommand } from "../../../registry/commands/KeybindingRegistry";
 import { resolvePanelChecked } from "../../../commands/shell/panelCommands"; // E5.8#37.7：面板位置/对齐当前项 √ 解析
 import { ViewContainerService } from "../../../services/layout/ViewContainerService"; // E5.8#37.7.1：面板视图显隐清单数据源（壳布局真相，Path B 池只读）
+import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry"; // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」声明读取（tabIdentity 同源 core→pluginLoader）
 import { onRequestSettingsGroup, onRequestScrollToSetting, consumeSettingsGroup, consumeScrollToSetting } from "../../../registry/ConfigurationRegistry";
 import { getAvailableThemes, getCurrentTheme } from "../../ui/ThemeEngine";
 import { LanguageRegistry } from "../../../registry/languages/LanguageRegistry";
@@ -128,6 +129,26 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
               group: "panelViews",
               checked: ViewContainerService.isVisible(container.id, v.id),
               commandArgs: [container.id, v.id],
+            });
+          }
+        }
+      }
+
+      // E5.8#39.5 子项 C：标签页右键「在悬浮面板中打开」——壳侧 getItems 动态注入（I8-3 声明即出现）。
+      // 声明条件 = 右键标签页的插件声明 contributes.floatingPanel.viewId（viewRegistry 读取，getTabBehavior
+      // 同源模式；pluginId 由池 GroupTabBar 随 context 透传）。未声明 → 不注入（第三方插件零壳改动）。
+      // 点击 = 薄命令 workbench.action.revealFloatingPanel emit panel:reveal-floating → App useFloatingPanelReveal
+      // 复用 #39.5 子项 B wire（resolve→toggle→push，零新编排）；commandArgs=[viewId] per-item 身份走命令载荷
+      // （context 整菜单共享，同 #37.7.1）。
+      if (menuId === MENU_SLOTS.TabContext) {
+        const tabCtx = (context ?? {}) as { pluginId?: unknown };
+        if (typeof tabCtx.pluginId === "string") {
+          const fpViewId = getFloatingPanelViewId(tabCtx.pluginId);
+          if (fpViewId) {
+            items.push({
+              command: "workbench.action.revealFloatingPanel",
+              label: i18n.t("在悬浮面板中打开"),
+              commandArgs: [fpViewId],
             });
           }
         }

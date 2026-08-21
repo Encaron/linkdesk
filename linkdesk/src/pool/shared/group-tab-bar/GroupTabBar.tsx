@@ -100,7 +100,9 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   // ── E5.6#16.7k：右键菜单归一化——壳 ContextMenu，menuId="TabContext" ──
   // 壳 coreCommands.ts 已注册 TabContext 菜单项（close/closeOthers/closeRight/closeAll/splitDown/splitRight/duplicate/togglePin）。
   // 池不再硬编码菜单项——ContextMenu 通过 lk.menu.getItems("TabContext") 获取壳 MenuRegistry。
-  const [contextMenuAnchor, setContextMenuAnchor] = useState<{ x: number; y: number; tabId: string } | null>(null);
+  // E5.8#39.5 子项 C：anchor 携带 pluginId——右键标签页的插件身份随 context 传给壳 menu:getItems
+  // （I8-3 声明即出现：壳侧据此查该插件是否声明 contributes.floatingPanel → 动态注入「在悬浮面板中打开」）。
+  const [contextMenuAnchor, setContextMenuAnchor] = useState<{ x: number; y: number; tabId: string; pluginId: string } | null>(null);
 
   // ── E5.6#16.7k-3：PlusMenu [+] 按钮下拉 ──
   const [showPlusMenu, setShowPlusMenu] = useState(false);
@@ -172,9 +174,9 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   }, [showPlusMenu]);
 
   const onContextMenu = useCallback(
-    (tabId: string, e: ReactMouseEvent) => {
+    (tabId: string, pluginId: string, e: ReactMouseEvent) => {
       e.preventDefault();
-      setContextMenuAnchor({ tabId, x: e.clientX, y: e.clientY });
+      setContextMenuAnchor({ tabId, pluginId, x: e.clientX, y: e.clientY });
     },
     [],
   );
@@ -287,7 +289,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                   window.linkdesk?.events?.emit("tab:focusRequested", { tabId: tab.id });
                 }}
                 onDoubleClick={() => tabAction({ action: "pinTab", tabId: tab.id })}
-                onContextMenu={(e) => onContextMenu(tab.id, e)}
+                onContextMenu={(e) => onContextMenu(tab.id, tab.pluginId, e)}
                 onMouseDown={(e) => {
                   // 中键关闭
                   if (e.button === 1) {
@@ -399,7 +401,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
         <ContextMenu
           menuId={"tabContext"}
           anchor={contextMenuAnchor}
-          context={{ tabId: contextMenuAnchor.tabId, groupId }}
+          context={{ tabId: contextMenuAnchor.tabId, groupId, pluginId: contextMenuAnchor.pluginId }}
           onClose={() => setContextMenuAnchor(null)}
         />
       )}
