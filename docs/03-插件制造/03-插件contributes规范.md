@@ -1,6 +1,7 @@
 # 03 — 插件 contributes 规范
 
-> 2026-07-24。**plugin.json `contributes` 字段——插件声明"我能做什么"。** 对标 VS Code `package.json` contributes。壳自动接线——不改任何核心代码。
+> 2026-07-24 · E5.8 全量重写 2026-08-21。**plugin.json `contributes` 字段——插件声明"我能做什么"。** 对标 VS Code `package.json` contributes。壳自动接线——不改任何核心代码。
+> 真相源：`src/pluginLoader/contributions.ts`（parseContributions——壳侧 13 个消费点）+ `electron/plugins/plugin-manifest-loader.ts`（主进程 2 个消费点）+ `public/schemas/plugin.schema.json`（IDE 校验）。
 
 ---
 
@@ -14,24 +15,51 @@
 
 ## 二、全部贡献点
 
-| 贡献点 | Phase | 说明 | 壳消费方 |
+> 消费端分两处：**壳侧**（`parseContributions`，插件代码跑的地方）与**主进程**（`plugin-manifest-loader`，启动扫盘 + 装卸重扫三表）。
+
+### 壳侧消费（13 个）
+
+| 贡献点 | 状态 | 说明 | 壳消费方 |
 |------|:--:|------|------|
-| `commands` | ✅ 已实现 | 注册命令 → 命令面板/右键菜单/快捷键 | CommandRegistry |
-| `menus` | ✅ 已实现 | 注册菜单项 → 右键菜单/齿轮菜单 | MenuRegistry |
-| `keybindings` | ✅ 已实现 | 注册快捷键 | KeybindingRegistry |
-| `configuration` | ✅ 已实现 | 注册设置项 → Settings Editor 自动渲染 | ConfigurationRegistry |
-| `configurationDefaults` | ✅ 已实现 | 弱默认值——用户手动设置优先 | ConfigurationService |
-| `themes` | E3b | 注册主题 | ThemeRegistry |
-| `languages` | E3c | 注册语言包 | i18next |
-| `cards` | 🆕 | 注册卡片 → workspace 卡片网格渲染 | CardRegistry |
-| `protocols` | ✅ 已实现 | 注册协议解析器 | ProtocolRegistry |
-| `fileAssociations` | 🆕 E3 后 | 文件扩展名 → 编辑器插件路由 | FileAssociationService |
-| `icons` | E3g | 共享图标——插件 A 贡献、插件 B 引用 | IconRegistry |
-| `viewsContainers` | 🆕 E3.6 | 声明侧栏容器——点图标时切换到该容器 | ViewContainerService |
-| `viewsContainers` | 🆕 E3.6 | 声明侧栏容器——点图标栏切换到此容器 | ViewContainerService |
-| `views` | 🆕 E3.6 | 往容器注册视图——任何插件可往任意容器注册 | ViewContainerService |
-| `aiFunctions` | 远期 | AI 可调用的 Function 接口 | AI Agent |
-| `statusBar` | ✅ 已实现 | 状态栏条目 | StatusBar |
+| `commands` | ✅ | 注册命令 → 命令面板/右键菜单/快捷键 | CommandRegistry |
+| `menus` | ✅ | 注册菜单项 → 右键菜单/齿轮菜单/菜单栏 | MenuRegistry |
+| `keybindings` | ✅ | 注册快捷键 | KeybindingRegistry |
+| `configuration` | ✅ | 注册设置项 → Settings Editor 自动渲染 | ConfigurationRegistry |
+| `configurationDefaults` | ✅ | 弱默认值——用户手动设置优先 | ConfigurationRegistry |
+| `themes` | ✅ | 注册主题 → 主题浏览器/外观 | ThemeRegistry（数据异步加载） |
+| `iconThemes` | ✅ | 注册图标主题 → 用户切换图标集 | IconRegistry |
+| `icons` | ✅ | 共享图标——插件 A 贡献、插件 B 引用 | IconRegistry |
+| `languages` | ✅ | 注册 UI 语言包 | LanguageRegistry（数据异步加载） |
+| `titleBar` | ✅ | 顶栏左右槽位按钮 | MenuRegistry |
+| `viewsContainers` | ✅ | 声明侧栏/面板容器 | ViewContainerService |
+| `views` | ✅ | 往容器注册视图——任何插件可往任意容器注册 | ViewContainerService |
+| `i18n` | ✅ | 插件自带翻译文件 | i18nResources（i18next 命名空间） |
+
+### 主进程消费（2 个）
+
+| 贡献点 | 状态 | 说明 | 消费方 |
+|------|:--:|------|------|
+| `langDefs` | ✅ | **编程语言声明**（ID/扩展名/语法高亮/LSP）——主进程唯一写入方 | 主进程 LangDefRegistry（E5.7#49 壳侧注册已删） |
+| `fileAssociations` | ✅ | 文件扩展名 → 插件路由 | 主进程 FileAssociationService（E5.7#50 壳侧注册已删） |
+
+### 顶层字段（不是 contributes，但常被误认）
+
+| 字段 | 说明 |
+|------|------|
+| `statusBar` | **状态栏条目——顶层字段**，不是 contributes.statusBar（对标 VS Code `contributes.views` 之外的状态栏扩展点） |
+| `tabBehavior` | 标签页行为（singleton/isFallback/confirmOnClose/identityField）——见 `02 §六` |
+| `appearsIn` | 插件 UI 出现位置（iconBar/sidePanel/tabBar/statusBar）——替代旧 iconLocation/viewRole |
+| `requires` | 插件级激活顺序依赖（string 数组）——见 `02 §四` |
+| `factoryRole` | 系统插槽（settings=设置页 / marketplace=插件市场）——多个声明同 role → 第一个 core:true 胜出 |
+| `pluginRole` | 加载策略（view/data）——不填自动推导，见 `02 §二.1` |
+
+### ❌ 不存在 / 已删的假点
+
+| 贡献点 | 现状 |
+|------|------|
+| `cards` | **已删**——CardRegistry 随 E5.7#45.7 整删，卡片工作台是插件（硬约束 #3）。**写了不生效** |
+| `protocols` | **假点**——`contributes.protocols` 无消费方。协议解析走 `serial.onData` 数据管道 + `ProtocolParser`（白名单工具），不是 contributes 声明 |
+| `aiFunctions` | 从未实现 |
 
 ---
 
@@ -54,24 +82,23 @@
 }
 ```
 
-**字段：**
-
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `id` | ✅ | 命令 ID。命名：`<pluginId>.<action>`，如 `terminal.copy` |
-| `title` | ✅ | 显示名称 |
+| `title` | ✅ | 显示名称（i18n key——中文原文） |
 | `category` | ❌ | 命令面板分组——"CAD" / "终端" / "文件" |
 | `when` | ❌ | context key when 条件。不加 `when` = 任何上下文可见 |
 
-**插件代码里注册 handler：**
+**声明即注册元数据（placeholder）：** `contributes.commands` 只注册命令元数据（id/title/category/when），**真实 handler 在池侧注册**（E5.7 Bug C——池侧 `_poolCommands` 优先）。不注册 handler 的命令被调用 → no-op（诊断 warn）。
+
 ```typescript
-// 在激活阶段（组件 mount 时）注册
-window.linkdesk.commands.register("cad.importDxf", async () => {
-  const paths = await window.linkdesk.dialog.showOpenDialog({
-    filters: [{ name: "DXF 文件", extensions: ["dxf"] }]
+// 池侧注册真实 handler（组件 mount 时）
+useEffect(() => {
+  window.linkdesk.commands.registerCommand("cad.importDxf", async () => {
+    const paths = await window.linkdesk.dialog.openFile({ filters: [{ name: "DXF 文件", extensions: ["dxf"] }] });
+    // ...
   });
-  // ...
-});
+}, []);
 ```
 
 ### 3.2 `contributes.menus`——菜单项
@@ -86,28 +113,30 @@ window.linkdesk.commands.register("cad.importDxf", async () => {
       ],
       "tabContext": [
         { "command": "cad.closeAll", "when": "activeEditor == 'cad'" }
-      ],
-      "commandPalette": [
-        { "command": "cad.importDxf", "when": "activeEditor == 'cad'" }
       ]
     }
   }
 }
 ```
 
-**可用菜单 ID（MenuId）：**
+**MenuId 是开放 string（`MenuRegistry` `type MenuId = string`）——插件声明任意字符串即契约，无需壳加代码。** 壳内置注册点（MENU_SLOTS 常量表，14 槽）：
 
 | MenuId | 场景 |
 |------|------|
 | `commandPalette` | Ctrl+Shift+P 命令面板 |
-| `editorContext` | 标签页主内容区右键 |
 | `tabContext` | 标签栏标签右键 |
-| `fileContext` | 文件树右键（E3 后） |
-| `cardContext` | 卡片右键（E3 后） |
-| `iconBar` | 图标栏右键 |
-| `extensionGear` | 插件齿轮菜单 |
+| `panelViewContext` | 面板标签栏右键（位置/对齐子菜单 + 视图显隐列表） |
+| `editorContext` | 标签页主内容区右键 |
+| `extensionGear` | 底部齿轮菜单（设置/命令面板/主题选择器） |
+| `marketplaceItemGear` | 插件市场条目齿轮（启用/禁用/卸载） |
+| `menuBar` | ☰ 汉堡菜单栏 |
+| `panel` | 菜单栏「面板」菜单 |
+| `fileContext` | 文件树右键 |
+| `cardContext` | 卡片右键 |
 | `quickSendContext` | 快捷发送药丸右键 |
-| `menuBar` | ☰ 汉堡菜单（E3f） |
+| `iconBar` | 图标栏右键 |
+| `settingItemGear` | 设置项齿轮（Settings Editor 行 hover） |
+| `viewTitleContext` | 侧栏视图 title 右键（折叠/重置位置/视图同组） |
 
 **菜单项字段：**
 
@@ -132,13 +161,13 @@ window.linkdesk.commands.register("cad.importDxf", async () => {
 }
 ```
 
-**字段：**
-
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `command` | ✅ | 命令 ID |
 | `key` | ✅ | 键序列——`"ctrl+k"` / `"ctrl+shift+p"` / `"ctrl+k ctrl+o"`（Chord） |
 | `when` | ❌ | context key when 条件 |
+
+**⚠️ 轨道选择（`05 §4`）：** 只把**非文本键**写进 `contributes.keybindings`。`ctrl+c` / `ctrl+v` / `f2` 等文本编辑键写这里 = 主进程 `before-input-event` 无条件吞全池输入框。文本键/焦点绑定键正解 = 池侧容器 `onKeyDown`（DOM 焦点天然分区）。
 
 ### 3.4 `contributes.configuration`——设置项
 
@@ -151,14 +180,13 @@ window.linkdesk.commands.register("cad.importDxf", async () => {
         "cad.gridSize": {
           "type": "number",
           "default": 10,
-          "minimum": 1,
-          "maximum": 100,
           "description": "网格大小 (mm)"
         },
         "cad.units": {
           "type": "string",
           "default": "mm",
           "enum": ["mm", "cm", "inch"],
+          "enumDescriptions": ["毫米", "厘米", "英寸"],
           "description": "单位"
         },
         "cad.autoSave": {
@@ -166,10 +194,15 @@ window.linkdesk.commands.register("cad.importDxf", async () => {
           "default": true,
           "description": "自动保存"
         },
-        "cad.backupPath": {
-          "type": "string",
-          "default": "",
-          "description": "备份路径"
+        "cad.showGrid": {
+          "type": "object",
+          "default": { "enabled": true, "color": "#555" },
+          "description": "网格外观（对象）"
+        },
+        "cad.exportFormats": {
+          "type": "array",
+          "default": ["dxf", "stl"],
+          "description": "可导出的格式列表"
         }
       }
     }
@@ -177,21 +210,34 @@ window.linkdesk.commands.register("cad.importDxf", async () => {
 }
 ```
 
+**支持的类型（schema 全量）：** `"string"` | `"number"` | `"boolean"` | `"object"` | `"array"`
+
+> **注意：** 没有 `"integer"`——用 `"number"`。`minimum`/`maximum` 运行时类型支持，但 schema 暂未声明（IDE 会提示）——高级用法可写，加载不校验。
+
+**字段：**
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `type` | ✅ | string/number/boolean/object/array |
+| `default` | ✅ | 默认值 |
+| `description` | ✅ | 说明——Settings Editor 渲染为提示 |
+| `enum` | ❌ | 下拉选项（string 类型时可选） |
+| `enumDescriptions` | ❌ | 选项说明——和 enum 一一对应 |
+| `uiHint` | ❌ | 渲染提示——SettingsView 按 hint 选择控件（已知值 `"color"`/`"fontFamily"`/`"fontSize"`/`"file"`/`"directory"` 等，开放 string——未知 hint 降级回 type 默认渲染） |
+
 **安装后效果：** Settings Editor 左侧导航树自动出现 "CAD 查看器" 分组 → 右侧自动渲染表单——不需要手写设置界面。
-
-**支持的类型：** `"string"` | `"number"` | `"boolean"` | `"integer"`
-
-**约束字段（可选）：** `enum`（下拉列表）| `minimum` / `maximum`（数值范围）| `default`（默认值）
 
 **Key 命名规则：** `<pluginId>.<property>`，如 `cad.gridSize`、`terminal.baudRate`
 
-**插件读设置：**
+**插件读设置（插件通信铁律——只走 `window.linkdesk.configuration`）：**
 ```typescript
-const gridSize = await window.linkdesk.config.get<number>("cad.gridSize");
+const gridSize = await window.linkdesk.configuration.get<number>("cad.gridSize");
 // 或订阅变化
-window.linkdesk.config.onChange("cad.gridSize", (val) => {
-  // 用户在 Settings Editor 改值 → 自动通知
-});
+useEffect(() => {
+  return window.linkdesk.configuration.onChange<number>("cad.gridSize", (val) => {
+    // 用户在 Settings Editor 改值 → 自动通知
+  });
+}, []);
 ```
 
 ### 3.5 `contributes.configurationDefaults`——弱默认值
@@ -209,19 +255,13 @@ window.linkdesk.config.onChange("cad.gridSize", (val) => {
 
 和 `configuration` 的区别：`configuration` 定义了**自己的**设置项。`configurationDefaults` 给**别人的**设置项提供建议值。用户手动设置优先——弱默认只在用户从未设置过该 key 时生效。
 
-### 3.6 `contributes.cards`——卡片（🆕）
+### 3.6 `contributes.themes`——主题
 
 ```json
 {
   "contributes": {
-    "cards": [
-      {
-        "id": "temperature-gauge",
-        "name": "温度计",
-        "acceptsFields": ["temperature", "ambient_temp"],
-        "defaultSize": { "w": 2, "h": 2 },
-        "minSize": { "w": 1, "h": 1 }
-      }
+    "themes": [
+      { "id": "my-theme-dark", "label": "My Theme Dark", "uiTheme": "dark", "path": "themes/my-dark.json" }
     ]
   }
 }
@@ -229,48 +269,96 @@ window.linkdesk.config.onChange("cad.gridSize", (val) => {
 
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
-| `id` | ✅ | 卡片类型标识 |
-| `name` | ✅ | 显示名 |
-| `acceptsFields` | ✅ | 能消费哪些 cardId——DataDispatch 按此字段路由 |
-| `defaultSize` | ❌ | 默认尺寸（栅格单位） |
-| `minSize` | ❌ | 最小尺寸 |
+| `id` | ✅ | 主题 ID |
+| `label` | ✅ | 显示名称 |
+| `uiTheme` | ✅ | `"dark"` \| `"light"` \| `"highContrast"` |
+| `path` | ✅ | 主题定义 JSON 文件路径（含 `colors` 映射）——**相对插件目录** |
 
-**数据流：** 串口数据 → ProtocolRegistry 解析 → `DataDispatch.dispatchParsed()` → 按 `cardId` 匹配 `acceptsFields` → 卡片收到 `fields` 数据 → 渲染。
+声明是 metadata-only；主题颜色数据在加载时异步 fetch。旧格式顶层 `themes` 字段自动归一化（见 `02 §二.1`）。
 
-**JS 注册（不走 plugin.json 声明时）：**
-```typescript
-import { registerCard } from "@src/core/CardRegistry";
-registerCard({
-  id: "temperature-gauge",
-  name: "温度计",
-  pluginId: "my-sensor-plugin",
-  component: TemperatureGauge,
-  acceptsFields: ["temperature"],
-});
-```
-
-### 3.7 `contributes.fileAssociations`——文件关联（🆕 E3 后）
+### 3.7 `contributes.iconThemes`——图标主题
 
 ```json
 {
   "contributes": {
-    "fileAssociations": [
-      { "extension": "dxf", "pluginId": "cad-viewer" },
-      { "extension": "stl", "pluginId": "cad-viewer" },
-      { "extension": "step", "pluginId": "cad-viewer" },
-      { "extension": "stp", "pluginId": "cad-viewer" }
+    "iconThemes": [
+      { "id": "my-icons", "label": "My Icons", "path": "icons/icon-theme.json" }
     ]
   }
 }
 ```
 
-**壳消费方式：** `FileAssociationService` 维护 `extension → pluginId[]` 映射。双击文件 → 查找对应插件 → 未激活的先激活 → 打开标签页。多个插件注册同一扩展名 → 弹出"打开方式…"选择器。
+对标 VS Code `productIconThemes`。字段同 themes（id/label/path）。
 
-### 3.8 `contributes.viewsContainers` + `contributes.views`——侧栏视图（🆕 E3.6）
+### 3.8 `contributes.icons`——共享图标
 
-> 完整 API 文档：`08-ViewContainer-视图容器API.md`
+```json
+{
+  "contributes": {
+    "icons": {
+      "stm32-chip": {
+        "description": "STM32 芯片图标",
+        "default": { "fontPath": "icons.woff", "fontCharacter": "\\e001" }
+      }
+    }
+  }
+}
+```
 
-**viewsContainers——声明侧栏频道：**
+插件 A 贡献、插件 B 引用（`"icon": "stm32-chip"` + `"iconSource": "shared"`）。
+
+### 3.9 `contributes.languages`——UI 语言包 + `contributes.i18n`——插件自带翻译
+
+**两条翻译管道，别混：**
+
+| 管道 | 声明位置 | 作用 | 例子 |
+|------|------|------|------|
+| **UI 语言包** | `contributes.languages` | 换整个界面的语言（全局） | 中文/English/日本語 |
+| **插件自带翻译** | `contributes.i18n` | 本插件文字的多语言翻译（按语言代码声明文件） | `{ "en": "i18n/en.json" }` |
+
+```json
+{
+  "contributes": {
+    "languages": [
+      { "id": "zh", "label": "中文", "path": "lang/zh.json" },
+      { "id": "en", "label": "English", "path": "lang/en.json" }
+    ],
+    "i18n": { "en": "i18n/en.json" }
+  }
+}
+```
+
+- `contributes.i18n` 的 key = 语言代码，value = JSON 翻译文件路径（key = 中文原文，value = 译文）。**不需要 zh.json**——中文 key 自带兜底。
+- 翻译文件经 `fetchPluginDataFile` 加载（绕开 Vite glob 缓存——新装插件目录的 JSON 实时发现）。
+- 插件文字铁律：**所有 UI 文字走 `t()`**，i18n key = 中文原文（`05 §6`）。
+
+### 3.10 `contributes.titleBar`——顶栏按钮
+
+```json
+{
+  "contributes": {
+    "titleBar": {
+      "right": [
+        { "command": "myPlugin.openPanel", "icon": "codicon-graph-line", "when": "myContext" }
+      ]
+    }
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `command` | ✅ | 点击执行的命令 ID |
+| `icon` | ❌ | codicon 图标名或图片路径 |
+| `when` | ❌ | context key when 条件——不满足时按钮隐藏 |
+
+槽位：`left`（标题栏左侧）/ `right`（右侧）。
+
+### 3.11 `contributes.viewsContainers` + `contributes.views`——视图容器
+
+> **完整 API 文档：`08-ViewContainer-视图容器API.md`**（含 titleActions 声明制、panel.reveal、运行时元数据更新）。这里只给字段总表。
+
+**viewsContainers——声明侧栏/面板频道：**
 
 ```json
 {
@@ -289,10 +377,11 @@ registerCard({
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `title` | ✅ | 侧栏 header 显示的名称 |
-| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"`。默认 `"sidebar"` |
+| `location` | ❌ | `"sidebar"` \| `"panel"` \| `"auxiliarybar"`。默认 `"sidebar"`（sidebar=左/auxiliarybar=右/panel=底部面板标签栏） |
 | `hideIfEmpty` | ❌ | 无活跃 view 时自动隐藏容器 |
 | `order` | ❌ | 同位置排序。小值靠前 |
 | `icon` | ❌ | 覆盖插件自身图标 |
+| `mergeHeaderWhenSingle` | ❌ | 容器内只有一个 view 时隐藏 view header——标题合并到容器 header |
 
 **views——往容器注册内容：**
 
@@ -301,13 +390,8 @@ registerCard({
   "contributes": {
     "views": {
       "explorer": [
-        {
-          "id": "timeline",
-          "title": "TIMELINE",
-          "render": "src/views/TimelineView.tsx",
-          "order": 100,
-          "when": "gitOpen"
-        }
+        { "id": "folders", "title": "", "render": "src/views/FoldersView.tsx", "order": 0 },
+        { "id": "search", "title": "搜索", "render": "src/views/SearchView.tsx", "order": 1 }
       ]
     }
   }
@@ -317,43 +401,147 @@ registerCard({
 | 字段 | 必需 | 说明 |
 |------|:--:|------|
 | `id` | ✅ | View 唯一 ID |
-| `render` | ✅ | 组件模块路径。如 `"src/views/MyView.tsx"` |
+| `render` | ✅ | 组件模块路径——**相对插件目录** |
 | `title` | ❌ | SidebarSection 折叠头标题。空字符串 = 不渲染折叠头 |
+| `role` | ❌ | `"toolbar"` \| `"section"`——toolbar 粘顶不被 section 覆盖 |
 | `order` | ❌ | 容器内排序。小值在上 |
 | `collapsed` | ❌ | 初始折叠 |
-| `when` | ❌ | Context key 条件——满足时才显示 |
-| `canToggleVisibility` | ❌ | 用户可切换可见性（未来） |
-| `canMoveView` | ❌ | 用户可拖到其他容器（未来） |
-| `hideByDefault` | ❌ | 默认隐藏（未来） |
+| `when` | ❌ | context key 条件——满足时才显示 |
+| `canToggleVisibility` | ❌ | ✅ 已实现——用户可在面板切换器/侧栏「视图」子菜单切换可见性 |
+| `canMoveView` | ❌ | ✅ 已实现——用户可拖放此 view 到其他容器 |
+| `hideByDefault` | ❌ | ✅ 已实现——默认隐藏，用户需手动开启 |
+| `singleViewPaneContainerTitle` | ❌ | 单 view 且容器 `mergeHeaderWhenSingle` 时替代容器 title |
+| `titleDescription` | ❌ | 标题旁的副文字——如 `(5 files)` |
+| `showActions` | ❌ | `"always"` \| `"whenExpanded"` \| `"default"`——动作区显隐时机 |
+| `titleTooltip` | ❌ | 标题 hover tooltip——标题截断时显示完整文字 |
+| `minHeight` | ❌ | 拖拽 resize 最小高度（px）。默认 100 |
+| `titleActions` | ❌ | **视图动作区声明制**——见下方小节 |
 
 **关键特性：任何插件** 都能往别人的容器注册 view：
 ```json
 // Git 插件——往 file-tree 的 explorer 容器注册 TIMELINE
 { "contributes": { "views": { "explorer": [{ "id": "timeline", ... }] } } }
 ```
-文件树插件零改动。`registerView("explorer", ...)` 命令式等效。
+文件树插件零改动。
 
-### 3.9 `contributes.icons`——共享图标（🆕 E3g）
+#### titleActions——视图 header 右侧动作区（E5.8#36.5/36.6）
+
+**对标 VS Code 视图 header 右侧的 `[+][🔄][⊟]` / 终端 `[+][▾]`。** 三 widget 形态：
+
+| 类型 | 形态 | 点击行为 |
+|------|------|------|
+| `icon` | 单图标按钮 | 执行 `command` |
+| `dropdown` | 纯下拉（chevron） | 展开 `items` 列表，点条目执行对应 `command` |
+| `split` | 主按钮 + 下拉复合 | 主按钮执行 `command`（默认动作），右侧 chevron 展开 `items` |
+
+**widget 字段：** `id`（唯一）、`command`（点击执行的命令 ID）、`args`（可选——`executeCommand(command, args)` 单个位置参数透传）、`icon`（codicon 类名）、`title`（tooltip/aria-label）、`items`（dropdown/split 备选条目 `{ label, command, args }`）。**label/title 为 i18n key（中文原文）**。
 
 ```json
-// 插件 A 贡献图标
 {
-  "contributes": {
-    "icons": {
-      "stm32-chip": {
-        "description": "STM32 芯片图标",
-        "default": { "fontPath": "icons.woff", "fontCharacter": "\\e001" }
-      }
-    }
-  }
-}
-
-// 插件 B 引用
-{
-  "icon": "stm32-chip",
-  "iconSource": "shared"
+  "id": "demo-output",
+  "title": "输出",
+  "render": "src/views/DemoOutputView.tsx",
+  "order": 0,
+  "titleActions": [
+    {
+      "type": "split",
+      "id": "add-log",
+      "command": "panel-demo.addLog",
+      "icon": "codicon-add",
+      "title": "添加演示日志",
+      "args": { "level": "info" },
+      "items": [
+        { "label": "添加信息", "command": "panel-demo.addLog", "args": { "level": "info" } },
+        { "label": "添加警告", "command": "panel-demo.addLog", "args": { "level": "warn" } }
+      ]
+    },
+    { "type": "icon", "id": "clear-log", "command": "panel-demo.clearLog", "icon": "codicon-clear-all", "title": "清空输出" }
+  ]
 }
 ```
+
+**命令注册（titleActions 的 command 执行真相源 = 池侧命令注册表）：**
+```typescript
+useEffect(() => {
+  window.linkdesk.commands.registerCommand("panel-demo.addLog", (args) => { addLine(args.level, args.text); });
+}, []);
+```
+> **`when: "false"` = 纯程序化命令不进命令面板**——titleActions 专属命令都这样声明，防止在 Ctrl+Shift+P 里刷屏。壳统一渲染器 `ViewTitleActions.tsx` 两处消费：面板标签栏（活动视图）+ 侧栏 section 折叠头。真实示例见 `08 §三`。
+
+### 3.12 `contributes.langDefs`——编程语言声明（主进程）
+
+> **E5.7#49：唯一写入方是主进程** `plugin-manifest-loader`（启动扫盘 + 装卸重扫）。壳侧 `parseContributions` 不消费。插件侧不用管加载——声明即可。
+
+```json
+{
+  "contributes": {
+    "langDefs": [
+      {
+        "id": "cpp",
+        "extensions": [".cpp", ".cxx", ".h"],
+        "aliases": ["C++", "C"],
+        "monarch": { "tokenizer": { } },
+        "lsp": { "command": "node_modules/pyright/dist/pyright-langserver.js --stdio", "args": [] }
+      }
+    ]
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `id` | ✅ | 语言 ID——如 cpp / python / rust |
+| `extensions` | ✅ | 扩展名列表——如 `['.cpp', '.cxx', '.h']` |
+| `aliases` | ❌ | 别名——如 `['C++', 'C']` |
+| `monarch` | ❌ | Monarch tokenizer 定义（Monaco 内建语法高亮） |
+| `lsp` | ❌ | LSP 语言服务器配置（command/args） |
+
+### 3.13 `contributes.fileAssociations`——文件关联（主进程）
+
+> **E5.7#50：唯一写入方是主进程**。扩展名指给壳——由插件自己处理打开。
+
+```json
+{
+  "contributes": {
+    "fileAssociations": [
+      { "extension": "dxf", "command": "cad.openFile", "displayName": "DXF 图纸" },
+      { "extension": "stl" },
+      { "extension": "step" }
+    ]
+  }
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `extension` | ✅ | 文件扩展名——**不含点**，如 dxf / stl / step |
+| `command` | ❌ | 打开该扩展名文件时执行的命令 ID |
+| `displayName` | ❌ | "打开方式…"选择器中的显示名 |
+
+> **pluginId 不用声明**——主进程用目录名（与壳 loader 约定一致）。schema 已收录（E5.8#37.9.3.4 补录——此前 IDE 会报 additionalProperties）。
+
+### 3.14 `statusBar`——状态栏条目（顶层字段）
+
+```json
+{
+  "statusBar": [
+    { "id": "units", "label": "mm", "align": "right" },
+    { "id": "zoom", "label": "100%", "align": "right", "onClick": "cad.zoomFit" },
+    { "id": "lock", "icon": "codicon-lock", "configurable": true }
+  ]
+}
+```
+
+| 字段 | 必需 | 说明 |
+|------|:--:|------|
+| `id` | ✅ | 唯一标识 |
+| `label` | ❌ | 显示文字 |
+| `icon` | ❌ | codicon 名称或 SVG 路径 |
+| `align` | ❌ | `"left"` \| `"right"` |
+| `onClick` | ❌ | 点击行为——命令名 |
+| `configurable` | ❌ | 声明 `true` → 壳自动注册配置项 + 注入 visible prop。插件作者只写一行 JSON，零代码 |
+
+**注意：** `statusBar` 是**顶层**字段，不是 `contributes.statusBar`。组件放 `statusBar.tsx` / `src/statusBar.tsx` / `src/components/statusBar.tsx`（运行时自动尝试三条路径）。
 
 ---
 
@@ -384,49 +572,42 @@ registerCard({
 
 ---
 
-## 五、完整 plugin.json 示例——CAD 插件
+## 五、完整 plugin.json 示例——CAD 插件（字段全对齐真实消费面）
 
 ```json
 {
   "$schema": "plugin.schema.json",
   "name": "CAD 查看器",
   "version": "1.0.0",
-  "icon": "package",
-  "iconSource": "codicon",
+  "icon": "PencilRuler",
+  "iconSource": "lucide",
   "description": "DWG/DXF/STL 文件查看器",
   "author": "社区",
-  "entry": "index.tsx",
-  "sidebar": "sidebar.tsx",
-  "appearsIn": { "tabBar": true },
+  "entry": "src/index.tsx",
+  "appearsIn": { "iconBar": "top", "tabBar": true },
   "tabBehavior": {
+    "singleton": true,
     "confirmOnClose": "未保存的修改将丢失"
   },
+  "requires": ["file-tree"],
   "statusBar": [
-    { "id": "units", "label": "mm", "align": "right" },
-    { "id": "zoom", "label": "100%", "align": "right" }
+    { "id": "units", "label": "mm", "align": "right" }
   ],
-  "activationEvents": [
-    "onFileOpen:.dxf",
-    "onFileOpen:.dwg",
-    "onFileOpen:.stl",
-    "onFileOpen:.step"
-  ],
-  "permissions": ["filesystem"],
+  "activationEvents": ["*"],
   "contributes": {
+    "i18n": { "en": "i18n/en.json" },
     "commands": [
       { "id": "cad.importDxf", "title": "导入 DXF…", "category": "CAD" },
-      { "id": "cad.exportPdf", "title": "导出 PDF…", "category": "CAD", "when": "activeEditor == 'cad'" },
       { "id": "cad.zoomFit", "title": "适应窗口", "category": "CAD", "when": "activeEditor == 'cad'" }
     ],
     "menus": {
       "editorContext": [
         { "command": "cad.importDxf", "group": "navigation" },
-        { "command": "cad.exportPdf", "group": "edit" },
         { "command": "cad.zoomFit", "group": "view" }
       ],
       "commandPalette": [
         { "command": "cad.importDxf" },
-        { "command": "cad.exportPdf", "when": "activeEditor == 'cad'" }
+        { "command": "cad.zoomFit", "when": "activeEditor == 'cad'" }
       ]
     },
     "keybindings": [
@@ -435,23 +616,25 @@ registerCard({
     "configuration": {
       "title": "CAD 查看器",
       "properties": {
-        "cad.gridSize": { "type": "number", "default": 10, "minimum": 1, "maximum": 100, "description": "网格大小" },
+        "cad.gridSize": { "type": "number", "default": 10, "description": "网格大小" },
         "cad.units": { "type": "string", "default": "mm", "enum": ["mm", "cm", "inch"], "description": "单位" },
         "cad.autoSave": { "type": "boolean", "default": true, "description": "自动保存" }
       }
     },
+    "viewsContainers": {
+      "cad": { "title": "CAD 查看器", "location": "sidebar" }
+    },
+    "views": {
+      "cad": [
+        { "id": "layers", "title": "图层", "render": "src/views/LayersView.tsx", "order": 0 }
+      ]
+    },
     "fileAssociations": [
-      { "extension": "dxf", "pluginId": "cad-viewer" },
-      { "extension": "dwg", "pluginId": "cad-viewer" },
-      { "extension": "stl", "pluginId": "cad-viewer" }
+      { "extension": "dxf", "command": "cad.openFile", "displayName": "DXF 图纸" },
+      { "extension": "dwg" },
+      { "extension": "stl" }
     ]
-  },
-  "recommends": [
-    { "plugin": "file-tree", "reason": "文件树侧栏——浏览和打开 CAD 文件" }
-  ],
-  "requires": [
-    { "plugin": "monaco-editor", "version": "1.0.0" }
-  ]
+  }
 }
 ```
 
@@ -461,27 +644,29 @@ registerCard({
 
 | VS Code contributes | LinkDesk | 差异 |
 |------|------|------|
-| `commands` | ✅ | 同 |
-| `menus` | ✅ | LinkDesk 多了 `quickSendContext` / `cardContext` |
-| `keybindings` | ✅ | 同 |
-| `configuration` | ✅ | 同 |
+| `commands` | ✅ | 同——元数据声明 + 池侧注册 handler |
+| `menus` | ✅ | LinkDesk 多 `quickSendContext` / `cardContext` / `viewTitleContext` 等（MenuId 开放 string） |
+| `keybindings` | ✅ | 同——但文本键走池侧 onKeyDown（`05 §4`） |
+| `configuration` | ✅ | 同——类型含 object/array |
 | `configurationDefaults` | ✅ | 同 |
-| `themes` | E3b | 同 |
-| `languages` | E3c | VS Code 的 `languages` 是编程语言声明（语法高亮等）——LinkDesk 的 `languages` 是 UI 语言包（i18n），分工不同 |
-| `views` | 🆕 E3 后 | 侧栏视图容器 |
-| `viewsContainers` | 🆕 E3 后 | 对标 activitybar 视图容器 |
-| `fileAssociations` | 🆕 | 新增——VS Code 没有这个（由操作系统管理文件关联） |
-| `cards` | 🆕 | 新增——LinkDesk 独有（硬件数据卡片可视化） |
-| `protocols` | 🆕 | 新增——LinkDesk 独有（硬件协议解析） |
-| `icons` | E3g | 同 |
-| `aiFunctions` | 远期 | 新增——LinkDesk 独有（AI Agent 调用插件） |
-| `taskDefinitions` | 不在规划 | 构建任务——当前不需要 |
-| `snippets` | 不在规划 | 代码片段——Monaco 插件自带 |
-| `problemMatchers` | 不在规划 | 错误匹配器——LSP 插件自带 |
-| `breakpoints` / `debuggers` | 不在规划 | 调试器——当前不需要 |
+| `themes` | ✅ | 同 |
+| `productIconThemes` | ✅ `iconThemes` | 同 |
+| `icons` | ✅ | 同（共享图标，iconSource:shared） |
+| `languages`（编程语言） | ✅ `langDefs` | **主进程**消费——语法高亮/LSP |
+| `languages`（翻译包） | ✅ `languages` | LinkDesk 的 `languages` = UI 语言包（i18n）；VS Code 用 l10n 体系 |
+| `views` / `viewsContainers` | ✅ | 同 + LinkDesk 多 `titleActions` 声明制 + 显隐/迁移/panel.reveal |
+| `titleBar` | ✅ | 顶栏左右按钮 |
+| `viewsWelcome` | ⏳ | 欢迎内容——未来 |
+| `fileAssociations` | ✅ | **主进程**——VS Code 由操作系统管理文件关联，LinkDesk 内置 |
+| `extensionDependencies` | ✅ `requires` | string 数组（`02 §四`） |
+| `activationEvents` | ✅ | 顶层字段（`02 §五`） |
+| `snippets` / `problemMatchers` | ❌ 不在规划 | Monaco/LSP 插件自带 |
+| `breakpoints` / `debuggers` | ❌ 不在规划 | 调试器——当前不需要 |
 
 ---
 
 > **← 上一份：** `02-插件生命周期.md`
 > **→ 下一份：** `04-插件分发格式.md`
+> **→ 相关：** `08-ViewContainer-视图容器API.md`（views 完整语义）
+> **→ 真相源：** `src/pluginLoader/contributions.ts` / `public/schemas/plugin.schema.json`
 > **全部文档索引：** `00-README.md`

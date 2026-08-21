@@ -451,6 +451,20 @@
             "additionalProperties": false
           }
         },
+        "fileAssociations": {
+          "type": "array",
+          "description": "文件关联——文件扩展名 → 插件路由（主进程 plugin-manifest-loader 消费，E5.7#50 壳侧注册已删）。只声明扩展名 + 可选打开命令；pluginId 用目录名，无需声明。",
+          "items": {
+            "type": "object",
+            "required": ["extension"],
+            "properties": {
+              "extension": { "type": "string", "description": "文件扩展名——不含点，如 dxf / stl / step" },
+              "command": { "type": "string", "description": "可选——打开该扩展名文件时执行的命令 ID" },
+              "displayName": { "type": "string", "description": "可选——'打开方式…'选择器中的显示名" }
+            },
+            "additionalProperties": false
+          }
+        },
         "languages": {
           "type": "array",
           "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
