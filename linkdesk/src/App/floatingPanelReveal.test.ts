@@ -7,16 +7,35 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { renderHook } from "@testing-library/react";
 import { getViewByViewIdMock, seedViewContainerMocks } from "./viewContainerMocks";
-import { resolveFloatingPanelView, decideFloatingPanelReveal, buildDefaultFloatingPanelActions } from "./floatingPanelReveal";
+import {
+  resolveFloatingPanelView,
+  decideFloatingPanelReveal,
+  buildDefaultFloatingPanelActions,
+  useFloatingPanelReveal,
+} from "./floatingPanelReveal";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
+import { pushPanel, closePanel, registerFloatingPanelRenderer } from "../core/services/ui/FloatingPanelService";
 
 // E5.8#40 显示文本铁律判别——标题/动作文案壳侧 t() 解析（池零自产文本）。mock i18n.t 返回 "T:<key>"
 // 前缀：断言能证明「标题经 t() 路径」（若实现是裸声明透传，前缀不存在 → 测试红）。
-const { tMock } = vi.hoisted(() => ({
-  tMock: vi.fn((key: string) => `T:${key}`),
-}));
-vi.mock("../i18n", () => ({ default: { t: tMock } }));
+// languageEmitter：2026-08-22 点修③——useFloatingPanelReveal 订阅 i18n.languageChanged 重推面板文案，
+// mock 出 on/off/fire 判定「订阅存在 + 触发时重推」（面板未开 no-op）。
+const { tMock, rendererMock, languageEmitter } = vi.hoisted(() => {
+  const cbs = new Set<() => void>();
+  return {
+    tMock: vi.fn((key: string) => `T:${key}`),
+    rendererMock: vi.fn(),
+    languageEmitter: {
+      on: (_evt: string, cb: () => void) => { cbs.add(cb); },
+      off: (_evt: string, cb: () => void) => { cbs.delete(cb); },
+      fire: () => { cbs.forEach((cb) => cb()); },
+      clear: () => { cbs.clear(); },
+    },
+  };
+});
+vi.mock("../i18n", () => ({ default: { t: tMock, on: languageEmitter.on, off: languageEmitter.off } }));
 
 describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", () => {
   beforeEach(() => {
@@ -118,5 +137,48 @@ describe("buildDefaultFloatingPanelActions（通用默认动作集）", () => {
     const actions = buildDefaultFloatingPanelActions("never-registered");
     expect(actions).toHaveLength(2);
     expect(actions.some((a) => a.expandOnHover)).toBe(false);
+  });
+});
+
+describe("useFloatingPanelReveal 语言切换重推（2026-08-22 点修③）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    seedViewContainerMocks();
+    closePanel(); // 清 FloatingPanelService 模块级单实例态（_currentViewId/_currentOpen）
+    rendererMock.mockClear();
+    registerFloatingPanelRenderer((data) => rendererMock(data));
+    languageEmitter.clear();
+  });
+
+  it("面板开着时 languageChanged → refreshPanelText 重推（refresh:true + 重解析 title/动作，身份不变）", () => {
+    pushPanel({
+      viewId: "terminal",
+      title: "T:终端",
+      pluginId: "terminal",
+      renderPath: "/@fs/plugins/builtin/terminal/src/views/TerminalView.tsx",
+      actions: [],
+    });
+    rendererMock.mockClear(); // 清掉 pushPanel 的首次推
+
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+    languageEmitter.fire(); // i18n.changeLanguage 同步触发 languageChanged
+
+    const pushed = rendererMock.mock.calls[rendererMock.mock.calls.length - 1][0] as Extract<
+      import("../core/types/pool/poolFloatingPanel").PoolFloatingPanelData,
+      { open: true }
+    >;
+    expect(pushed.refresh).toBe(true); // 池据此跳过焦点获取
+    expect(pushed.viewId).toBe("terminal"); // 身份不变（refresh 不是替换）
+    expect(pushed.title).toBe("T:终端"); // 重解析——t() 前缀判别显示文本铁律
+    expect(Array.isArray(pushed.actions) && pushed.actions.length > 0).toBe(true); // 重建成默认动作集
+    unmount();
+  });
+
+  it("面板未开时 languageChanged → 零重推（no-op，不推不崩）", () => {
+    const { unmount } = renderHook(() => useFloatingPanelReveal());
+    rendererMock.mockClear();
+    languageEmitter.fire();
+    expect(rendererMock).not.toHaveBeenCalled();
+    unmount();
   });
 });
