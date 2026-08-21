@@ -1028,8 +1028,11 @@ function chkPoolFloatingPanelData(v: unknown, p: string, errs: string[]): void {
             chkPoolFloatingPanelButton(_t122.actions[_t123], (((p) + ".actions") + "[" + _t123 + "]"), _t121);
         }
       }
+      if (_t122.refresh !== undefined) {
+      if (!(_t122.refresh === false || _t122.refresh === true)) _t121.push(((p) + ".refresh") + ": 期望 false|true");
+      }
     }
-  const _t125 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0)) : 0);
+  const _t125 = (v !== null && typeof v === "object" && !Array.isArray(v) ? (((v as Record<string, unknown>).open === true ? 1 : 0) + (((v as Record<string, unknown>).refresh === false) || ((v as Record<string, unknown>).refresh === true) ? 1 : 0)) : 0);
   const _t126 = [{ e: _t118, s: _t120 }, { e: _t121, s: _t125 }].sort((a, b) => b.s - a.s || a.e.length - b.e.length)[0].e;
   if (_t126.length > 0) errs.push(..._t126);
   }

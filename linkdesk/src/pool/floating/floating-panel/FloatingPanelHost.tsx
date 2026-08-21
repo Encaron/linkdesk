@@ -9,7 +9,7 @@
  *   - I8-5  顶部 6px 手柄拖拽（cursor:grab）+ 拖拽中投影抬升（无半透明——用户 2026-08-22 否决）+ 壳内钳制（6px inset 拖不出壳窗口）
  *   - I8-6  拖拽/调整中松手落在遮罩不得触发「遮罩点击关闭」——suppress 标志 setTimeout(0)（同 #13 纪律）
  *   - I8-7  底部 8px 手柄调高（cursor:ns-resize，min 300px / max 窗口高-80px）
- *   - I8-8  遮罩点击关闭 + 面板本体 stopPropagation + Esc 关闭 + 焦点入面板
+ *   - I8-8  遮罩点击关闭 + 面板本体 stopPropagation + Esc 关闭 + 焦点入面板（refresh 重推——语言切换文案刷新——不抢焦点）
  *   - I8-9  最大化 100vw 同按钮 toggle——纯视觉态池本地切换，零壳 roundtrip（两态图标/文案 DTO 携带）
  *   - I8-12 Z_INDEX 1500——层级由 FloatingLayerHost #floating-panel-root 容器承载
  *   - I8-13 淡入 + 微缩放 scale(0.96)→1，250ms cubic-bezier(0.16,1,0.3,1)，prefers-reduced-motion 关闭（#41.6 居中卡——右滑入对居中违和）
@@ -113,8 +113,9 @@ export default function FloatingPanelHost() {
         setMaximized(false);
         return;
       }
-      // I8-8 焦点入面板（对标 DialogHost——Esc/键盘操作不误触面板外）
-      setTimeout(() => panelRef.current?.focus(), 50);
+      // I8-8 焦点入面板（对标 DialogHost——Esc/键盘操作不误触面板外）。
+      // refresh 重推（语言切换文案刷新）不抢焦点——面板已开，用户焦点可能在语言选择器/主区（2026-08-22 点修③）
+      if (!d.refresh) setTimeout(() => panelRef.current?.focus(), 50);
     });
   }, [api]);
 
