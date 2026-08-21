@@ -45,9 +45,11 @@
   to   { transform: scale(1); opacity: 1; }
 }
 
-/* I8-13 prefers-reduced-motion 关闭 */
+/* I8-13 prefers-reduced-motion 关闭（含 open-in 宽度动画——瞬时切换，overflow:hidden 保证无残影） */
 @media (prefers-reduced-motion: reduce) {
   .floating-panel { animation: none; }
+  .floating-panel-act.open-in,
+  .floating-panel-act.open-in .lbl { transition: none; }
 }
 
 /* I8-5 拖拽中投影抬升（2026-08-22 用户否决半透明跟随——opacity 0.85 已删；保留投影作抬升反馈） */
@@ -116,22 +118,43 @@
 .floating-panel-act.close:hover { background: var(--titlebar-close-hover); color: var(--badge-text); }
 
 /* open-in：默认纯图标 28px，hover 展开全文（mockup .fp-act.open-in）。
-   宽度走 max-content 内容自适应——不硬编码 px（2026-08-22 用户点修②：英文「Open in Main Window」
-   被硬编码 128px 截断显示不全——现按内容展开，任意语言完整显示）。 */
+   宽度动画走 CSS Grid fr 轨道过渡（grid-template-columns: auto 0fr → auto 1fr）——
+   0fr/1fr 可插值 → 展开/收回平滑；max-content/none 不可插值 = 瞬时跳变（2026-08-22 用户报
+   「不丝滑 + 收回半个字残影 0.5s」根因）。内容自适应零硬编码 px（点修② 英文完整显示）。
+   残影双杀：① label overflow:hidden 把文字裁在自身 0 宽盒内（旧版 text 溢出到按钮 28px
+   裁剪边漏出残影）+ ② 宽度动画取代瞬时裁剪（残影随动画同步收走，无静态半字停留）。
+   节奏 = ui-ux-pro-max：enter 180ms / exit 120ms（exit-faster-than-enter）+ 面板统一 Expo.out。 */
 .floating-panel-act.open-in {
-  width: 28px;
+  display: grid;
+  grid-template-columns: auto 0fr;
+  min-width: 28px;
   padding: 0;
   overflow: hidden;
+  transition:
+    grid-template-columns 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 150ms ease,
+    color 150ms ease;
+}
+.floating-panel-act.open-in:hover {
+  grid-template-columns: auto 1fr;
+  padding: 0 8px;
+  transition:
+    grid-template-columns 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 150ms ease,
+    color 150ms ease;
 }
 .floating-panel-act.open-in .lbl {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden; /* 残影①——文字裁在 label 盒内，不外溢到按钮裁剪边 */
   white-space: nowrap;
   font-size: 12px;
   opacity: 0;
-  max-width: 0;
-  transition: opacity 120ms ease 60ms;
+  transition: opacity 120ms ease;
 }
-.floating-panel-act.open-in:hover { width: max-content; justify-content: flex-start; padding: 0 8px; }
-.floating-panel-act.open-in:hover .lbl { opacity: 1; max-width: none; }
+.floating-panel-act.open-in:hover .lbl { opacity: 1; }
 .floating-panel-act.open-in svg { color: var(--accent); }
 
 /* □ / ✕：hover tooltip（data-tip 纯 CSS——文案来自 DTO label，池零自产文本）。
