@@ -1518,6 +1518,8 @@ export interface PanelAPI {
     panel: {
         /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
         reveal(viewId: string): Promise<void>;
+        /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op */
+        revealFloating(viewId: string): Promise<void>;
     };
 }
 /**

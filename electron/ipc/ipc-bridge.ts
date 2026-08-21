@@ -98,6 +98,8 @@ export class IpcBridge {
     IPC.viewContainer.registerView,
     // E5.8#34.5：panel——插件调壳聚焦底部面板视图（IpcBridgeHandler/panel 域消费）
     IPC.panel.reveal,
+    // E5.8#39.5：panel.revealFloating——悬浮面板声明制通用 API（同链代理；IpcBridgeHandler/panel 域消费）
+    IPC.panel.revealFloating,
   ];
 
   constructor(

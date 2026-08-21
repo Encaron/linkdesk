@@ -134,6 +134,7 @@ export function initIpcBridgeHandler(): void {
 
         // ── E5.8#34.5：底部面板——插件调壳的 linkdesk.panel API（IpcBridgeHandler/panel 域）──
         case "panel:reveal":
+        case "panel:reveal-floating": // E5.8#39.5：悬浮面板声明制（同域委派）
           result = await handlePanelChannel(req.channel, req.args);
           break;
 

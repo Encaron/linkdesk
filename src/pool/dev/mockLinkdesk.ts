@@ -286,8 +286,10 @@ export function installMockLinkdesk(): void {
       isDisabled: async () => false,
     },
     // E5.8#34.5：panel 命名空间——预览无壳侧消费，留壳日志（插件调 reveal 的桩）
+    // E5.8#39.5：revealFloating——悬浮面板声明制通用 API（壳侧消费，预览留桩）
     panel: {
       reveal: makeAsyncLogger("panel.reveal"),
+      revealFloating: makeAsyncLogger("panel.revealFloating"),
     },
   } satisfies Partial<LinkDeskAPI>;
 

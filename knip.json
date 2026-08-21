@@ -54,12 +54,9 @@
     "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
     "src/core/services/plugins/ProfileService.ts",
     "src/core/services/ui/DialogService.ts",
-    // E5.8#37：FloatingPanelService——壳先行建设（API 通用优先铁律，见 api-preference-existing-first）。
-    //   registerFloatingPanelRenderer/handleFloatingPanelAction 已由 bridges.ts 消费（#37 本任务）；
-    //   pushPanel/closePanel/getCurrentFloatingPanelViewId + FloatingPanelOptions/FloatingPanelCloseReason
-    //   是 #38 Settings 集成 Ctrl+, 的消费 API 面（#37 前置建服务面，同 DialogService 整文件豁免先例——
-    //   register 面 bridges 消费，消费 API 面待接线方）。
-    "src/core/services/ui/FloatingPanelService.ts",
+    // E5.8#37：FloatingPanelService 整文件豁免已摘除——#39.5 子项 B useFloatingPanelReveal hook
+    //   （src/App/floatingPanelReveal.ts）已消费 pushPanel/closePanel/getCurrentFloatingPanelViewId，
+    //   bridges.ts 消费 registerFloatingPanelRenderer/handleFloatingPanelAction——全部导出有消费方。
     "src/core/services/ui/LogChannel.ts",
     "src/core/services/ui/NotificationService.ts",
     "src/core/services/ui/ThemeEngine.ts",

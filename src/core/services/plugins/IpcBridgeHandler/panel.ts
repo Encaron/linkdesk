@@ -14,6 +14,12 @@ export async function handlePanelChannel(channel: string, args: unknown[]): Prom
       shellEvents.emit("panel:reveal", { viewId });
       break;
     }
+    // ── E5.8#39.5：悬浮面板声明制——插件调 linkdesk.panel.revealFloating(viewId) ──
+    case "panel:reveal-floating": {
+      const [viewId] = args as [string];
+      shellEvents.emit("panel:reveal-floating", { viewId });
+      break;
+    }
     default:
       throw new Error(`未知的 bridge channel: ${channel}`);
   }

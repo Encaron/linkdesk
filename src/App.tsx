@@ -26,6 +26,7 @@ import { useUiBridges } from "./App/bridges";
 import { useSidebarHost } from "./App/sidebarHost";
 import { usePanelHost } from "./App/panelHost"; // E5.8#31：底部面板显隐宿主（Ctrl+J）
 import { usePanelReveal } from "./App/panelReveal"; // E5.8#34.5：panel.reveal 通用 API 壳侧消费
+import { useFloatingPanelReveal } from "./App/floatingPanelReveal"; // E5.8#39.5：panel.revealFloating 悬浮面板声明制
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
 import "./App.css";
@@ -64,6 +65,8 @@ function App() {
   const { panelVisible, setPanelVisible } = usePanelHost({ panelActiveViewId });
   // E5.8#34.5：panel.reveal 通用 API 壳侧消费——面板展开 + 切到该视图（面板隐藏时同 Ctrl+J 机制）
   usePanelReveal({ setPanelVisible, setPanelActiveViewId });
+  // E5.8#39.5：panel.revealFloating 通用 API 壳侧消费——声明寻址 + I8-2 身份开关键 + pushPanel
+  useFloatingPanelReveal();
 
   // E3f #59-F：壳级快捷键已全部迁移到 KeybindingRegistry——声明式单一路径。
   // 原 capture-phase handler（Ctrl+, / Ctrl+Shift+P）和 bubble-phase handler
