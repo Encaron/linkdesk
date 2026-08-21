@@ -307,18 +307,41 @@
   .fp-act.close:hover { background: #c42b1c; color: #fff; }
 
   /* 「在主窗口中打开」：默认纯图标 28px，hover 展开显示全文。
-     max-content 内容自适应——不硬编码 px（2026-08-22 用户点修②：硬编码 128px 英文「Open in Main Window」被截断） */
+     宽度动画走 CSS Grid fr 轨道过渡（auto 0fr → auto 1fr）——0fr/1fr 可插值 → 展开/收回平滑；
+     max-content/none 不可插值 = 瞬时跳变（2026-08-22 用户报「不丝滑 + 收回半个字残影」根因）。
+     内容自适应零硬编码 px（点修② 英文完整显示）；label overflow:hidden 把文字裁在自身盒内 = 无残影。
+     节奏 = ui-ux-pro-max：enter 180ms / exit 120ms（exit-faster-than-enter）+ Expo.out。
+     ⚠ 此段 = FloatingPanel.css .floating-panel-act.open-in 的演示镜像——改实现须同步此 mockup。 */
   .fp-act.open-in {
-    width: 28px; padding: 0;
+    display: grid;
+    grid-template-columns: auto 0fr;
+    min-width: 28px;
+    padding: 0;
     overflow: hidden;
+    transition:
+      grid-template-columns 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      padding 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      background 150ms ease,
+      color 150ms ease;
+  }
+  .fp-act.open-in:hover {
+    grid-template-columns: auto 1fr;
+    padding: 0 8px;
+    transition:
+      grid-template-columns 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      padding 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      background 150ms ease,
+      color 150ms ease;
   }
   .fp-act.open-in .lbl {
+    grid-column: 2;
+    min-width: 0;
+    overflow: hidden;
     white-space: nowrap; font-size: 12px;
-    opacity: 0; max-width: 0;
-    transition: opacity 120ms ease 60ms;
+    opacity: 0;
+    transition: opacity 120ms ease;
   }
-  .fp-act.open-in:hover { width: max-content; justify-content: flex-start; padding: 0 9px; }
-  .fp-act.open-in:hover .lbl { opacity: 1; max-width: none; }
+  .fp-act.open-in:hover .lbl { opacity: 1; }
   .fp-act.open-in svg { color: var(--accent); }
 
   /* □ / ✕：hover tooltip（data-tip 纯 CSS） */
