@@ -44,19 +44,19 @@ describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", 
   });
 
   it("已注册视图 → 解析出 pluginId/renderPath/title（全局索引，不限 panel 容器）", () => {
-    expect(resolveFloatingPanelView("terminal")).toEqual({
-      viewId: "terminal",
-      pluginId: "terminal",
-      renderPath: "/@fs/plugins/builtin/terminal/src/views/TerminalView.tsx",
-      title: "T:终端", // 显示文本铁律——标题走壳侧 t()（i18n.t 返回 "T:<key>" 判别前缀）
+    expect(resolveFloatingPanelView("demo-view-c")).toEqual({
+      viewId: "demo-view-c",
+      pluginId: "demo-plugin-c",
+      renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx",
+      title: "T:Gamma", // 显示文本铁律——标题走壳侧 t()（i18n.t 返回 "T:<key>" 判别前缀）
     });
-    expect(tMock).toHaveBeenCalledWith("终端");
+    expect(tMock).toHaveBeenCalledWith("Gamma");
     // panel 容器视图同样可寻址（声明制 = 任意 contributes.views 已注册视图）
-    expect(resolveFloatingPanelView("problems")).toEqual({
-      viewId: "problems",
-      pluginId: "linter",
-      renderPath: "/@fs/plugins/builtin/linter/src/views/ProblemsView.tsx",
-      title: "T:问题",
+    expect(resolveFloatingPanelView("demo-view-a")).toEqual({
+      viewId: "demo-view-a",
+      pluginId: "demo-plugin-a",
+      renderPath: "/@fs/plugins/demo-plugin-a/src/views/DemoViewA.tsx",
+      title: "T:Alpha",
     });
   });
 
@@ -81,19 +81,19 @@ describe("decideFloatingPanelReveal（I8-2 身份开关键决策）", () => {
   });
 
   it("无面板 / 他面板 → open（决议带解析结果）", () => {
-    const d1 = decideFloatingPanelReveal("terminal", null);
+    const d1 = decideFloatingPanelReveal("demo-view-c", null);
     expect(d1.action).toBe("open");
     if (d1.action === "open") {
-      expect(d1.result.viewId).toBe("terminal");
-      expect(d1.result.pluginId).toBe("terminal");
+      expect(d1.result.viewId).toBe("demo-view-c");
+      expect(d1.result.pluginId).toBe("demo-plugin-c");
     }
     // 他面板开着（当前是别的 viewId）→ 替换 = open
-    const d2 = decideFloatingPanelReveal("terminal", "problems");
+    const d2 = decideFloatingPanelReveal("demo-view-c", "demo-view-a");
     expect(d2.action).toBe("open");
   });
 
   it("同视图再点 → toggle-close（面板关）", () => {
-    expect(decideFloatingPanelReveal("terminal", "terminal")).toEqual({ action: "toggle-close" });
+    expect(decideFloatingPanelReveal("demo-view-c", "demo-view-c")).toEqual({ action: "toggle-close" });
   });
 });
 
@@ -152,10 +152,10 @@ describe("useFloatingPanelReveal 语言切换重推（2026-08-22 点修③）", 
 
   it("面板开着时 languageChanged → refreshPanelText 重推（refresh:true + 重解析 title/动作，身份不变）", () => {
     pushPanel({
-      viewId: "terminal",
-      title: "T:终端",
-      pluginId: "terminal",
-      renderPath: "/@fs/plugins/builtin/terminal/src/views/TerminalView.tsx",
+      viewId: "demo-view-c",
+      title: "T:Gamma",
+      pluginId: "demo-plugin-c",
+      renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx",
       actions: [],
     });
     rendererMock.mockClear(); // 清掉 pushPanel 的首次推
@@ -168,8 +168,8 @@ describe("useFloatingPanelReveal 语言切换重推（2026-08-22 点修③）", 
       { open: true }
     >;
     expect(pushed.refresh).toBe(true); // 池据此跳过焦点获取
-    expect(pushed.viewId).toBe("terminal"); // 身份不变（refresh 不是替换）
-    expect(pushed.title).toBe("T:终端"); // 重解析——t() 前缀判别显示文本铁律
+    expect(pushed.viewId).toBe("demo-view-c"); // 身份不变（refresh 不是替换）
+    expect(pushed.title).toBe("T:Gamma"); // 重解析——t() 前缀判别显示文本铁律
     expect(Array.isArray(pushed.actions) && pushed.actions.length > 0).toBe(true); // 重建成默认动作集
     unmount();
   });

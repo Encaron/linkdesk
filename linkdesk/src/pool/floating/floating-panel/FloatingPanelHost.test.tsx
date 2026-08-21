@@ -44,18 +44,21 @@ function installFloatingPanelApi(): void {
   });
 }
 
-/** 默认样例——mockup 帧 1 三动作（open-in hover 展开 / maximize 两态 toggle / close） */
+/** 默认样例——mockup 帧 1 三动作（open-in hover 展开 / maximize 两态 toggle / close）。
+ *  插件身份 + 显示文本全用明显虚构值（demo-plugin/demo-view + Demo View/Open in Main Window…）——
+ *  测试 fixture 惰性字符串，组件不加载；真实插件名/真实 UI 文案（settings/设置/最大化…）一律不用，
+ *  避免误导（2026-08-22 用户「没有硬编码」标准）。refresh 用例用 Démo Vue（法文）演「换语言后的文案」。 */
 function sampleData(): PoolFloatingPanelData {
   return {
     open: true,
-    viewId: "settings",
-    title: "设置",
-    pluginId: "file-tree",
-    renderPath: "../../plugins/builtin/file-tree/src/views/FoldersView.tsx",
+    viewId: "demo-view",
+    title: "Demo View",
+    pluginId: "demo-plugin",
+    renderPath: "/@fs/plugins/demo-plugin/src/views/DemoView.tsx",
     actions: [
-      { id: "open-in", label: "在主窗口中打开", icon: "open-in", expandOnHover: true },
-      { id: "maximize", label: "最大化", icon: "maximize", toggledIcon: "restore", toggledLabel: "还原" },
-      { id: "close", label: "关闭", icon: "close" },
+      { id: "open-in", label: "Open in Main Window", icon: "open-in", expandOnHover: true },
+      { id: "maximize", label: "Maximize", icon: "maximize", toggledIcon: "restore", toggledLabel: "Restore" },
+      { id: "close", label: "Close", icon: "close" },
     ],
   };
 }
@@ -124,10 +127,10 @@ describe("壳推送渲染", () => {
     const { container } = render(<FloatingPanelHost />);
     pushShell(sampleData());
 
-    expect(screen.getByText("设置")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "在主窗口中打开" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "最大化" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "关闭" })).toBeTruthy();
+    expect(screen.getByText("Demo View")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Open in Main Window" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Maximize" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
 
     const panel = getPanel(container);
     expect(panel.style.top).toBe("10vh");
@@ -153,28 +156,28 @@ describe("最大化本地视觉 toggle（I8-9）", () => {
     const { container } = render(<FloatingPanelHost />);
     pushShell(sampleData());
 
-    fireEvent.click(screen.getByRole("button", { name: "最大化" }));
+    fireEvent.click(screen.getByRole("button", { name: "Maximize" }));
     expect(getPanel(container).className).toContain("maximized");
-    expect(screen.getByRole("button", { name: "还原" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "最大化" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Restore" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Maximize" })).toBeNull();
     expect(mockAction).not.toHaveBeenCalled(); // 纯视觉态——不触发 action 回传
 
-    fireEvent.click(screen.getByRole("button", { name: "还原" }));
+    fireEvent.click(screen.getByRole("button", { name: "Restore" }));
     expect(getPanel(container).className).not.toContain("maximized");
-    expect(screen.getByRole("button", { name: "最大化" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Maximize" })).toBeTruthy();
     expect(mockAction).not.toHaveBeenCalled();
   });
 
   it("重开回默认——最大化 → 关闭 → 重开不保留最大化态", () => {
     render(<FloatingPanelHost />);
     pushShell(sampleData());
-    fireEvent.click(screen.getByRole("button", { name: "最大化" }));
-    expect(screen.getByRole("button", { name: "还原" })).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Maximize" }));
+    expect(screen.getByRole("button", { name: "Restore" })).toBeTruthy();
 
     pushShell({ open: false });
     pushShell(sampleData());
-    expect(screen.getByRole("button", { name: "最大化" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: "还原" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Maximize" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Restore" })).toBeNull();
   });
 });
 
@@ -184,14 +187,14 @@ describe("动作回传壳（非 toggle）", () => {
   it("close 按钮 → action('close')", () => {
     render(<FloatingPanelHost />);
     pushShell(sampleData());
-    fireEvent.click(screen.getByRole("button", { name: "关闭" }));
+    fireEvent.click(screen.getByRole("button", { name: "Close" }));
     expect(mockAction).toHaveBeenCalledWith("close");
   });
 
   it("open-in 按钮 → action('open-in')", () => {
     render(<FloatingPanelHost />);
     pushShell(sampleData());
-    fireEvent.click(screen.getByRole("button", { name: "在主窗口中打开" }));
+    fireEvent.click(screen.getByRole("button", { name: "Open in Main Window" }));
     expect(mockAction).toHaveBeenCalledWith("open-in");
   });
 });
@@ -252,7 +255,7 @@ describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
 
   it("标题栏动作按钮按下不触发拖拽（actions 排除，#41.6）", () => {
     const { panel } = setupPanel();
-    const maximize = screen.getByRole("button", { name: "最大化" });
+    const maximize = screen.getByRole("button", { name: "Maximize" });
     startGesture(maximize, { x: 200, y: 100 });
     moveGesture(maximize, { x: 300, y: 200 });
     endGesture(maximize);
@@ -313,22 +316,22 @@ describe("语言切换文案重推（refresh）", () => {
       act(() => { vi.advanceTimersByTime(50); });
       expect(focusSpy).toHaveBeenCalledTimes(1); // I8-8 首次打开入焦点
 
-      // 语言切换 → 壳重推 refresh:true（标题/动作换新语言文案）
+      // 语言切换 → 壳重推 refresh:true（标题/动作换新语言文案——法文虚构值演「另一种语言」）
       pushShell({
         open: true,
-        viewId: "settings",
-        title: "Settings",
-        pluginId: "file-tree",
-        renderPath: "../../plugins/builtin/file-tree/src/views/FoldersView.tsx",
-        actions: [{ id: "close", label: "Close", icon: "close" }],
+        viewId: "demo-view",
+        title: "Démo Vue",
+        pluginId: "demo-plugin",
+        renderPath: "/@fs/plugins/demo-plugin/src/views/DemoView.tsx",
+        actions: [{ id: "close", label: "Fermer", icon: "close" }],
         refresh: true,
       });
       act(() => { vi.advanceTimersByTime(50); });
 
-      expect(screen.getByText("Settings")).toBeTruthy();
-      expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
-      expect(screen.queryByText("设置")).toBeNull();
-      expect(screen.queryByRole("button", { name: "在主窗口中打开" })).toBeNull();
+      expect(screen.getByText("Démo Vue")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Fermer" })).toBeTruthy();
+      expect(screen.queryByText("Demo View")).toBeNull();
+      expect(screen.queryByRole("button", { name: "Open in Main Window" })).toBeNull();
       expect(focusSpy).toHaveBeenCalledTimes(1); // refresh 重推不抢焦点
     } finally {
       focusSpy.mockRestore();
