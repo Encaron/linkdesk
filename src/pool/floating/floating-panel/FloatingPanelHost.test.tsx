@@ -300,3 +300,39 @@ describe("I8-7 resize（底部手柄调高）", () => {
     expect(panel.style.height).toBe("300px");
   });
 });
+
+/* ── 语言切换文案重推（refresh——2026-08-22 用户点修③） ── */
+
+describe("语言切换文案重推（refresh）", () => {
+  it("refresh:true 重推——更新标题/动作渲染，不抢焦点（首次打开已入焦点）", () => {
+    vi.useFakeTimers();
+    const focusSpy = vi.spyOn(HTMLElement.prototype, "focus").mockImplementation(() => {});
+    try {
+      render(<FloatingPanelHost />);
+      pushShell(sampleData());
+      act(() => { vi.advanceTimersByTime(50); });
+      expect(focusSpy).toHaveBeenCalledTimes(1); // I8-8 首次打开入焦点
+
+      // 语言切换 → 壳重推 refresh:true（标题/动作换新语言文案）
+      pushShell({
+        open: true,
+        viewId: "settings",
+        title: "Settings",
+        pluginId: "file-tree",
+        renderPath: "../../plugins/builtin/file-tree/src/views/FoldersView.tsx",
+        actions: [{ id: "close", label: "Close", icon: "close" }],
+        refresh: true,
+      });
+      act(() => { vi.advanceTimersByTime(50); });
+
+      expect(screen.getByText("Settings")).toBeTruthy();
+      expect(screen.getByRole("button", { name: "Close" })).toBeTruthy();
+      expect(screen.queryByText("设置")).toBeNull();
+      expect(screen.queryByRole("button", { name: "在主窗口中打开" })).toBeNull();
+      expect(focusSpy).toHaveBeenCalledTimes(1); // refresh 重推不抢焦点
+    } finally {
+      focusSpy.mockRestore();
+      vi.useRealTimers();
+    }
+  });
+});

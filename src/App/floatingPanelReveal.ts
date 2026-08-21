@@ -24,6 +24,7 @@ import {
   pushPanel,
   closePanel,
   getCurrentFloatingPanelViewId,
+  refreshPanelText,
 } from "../core/services/ui/FloatingPanelService";
 import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
 import { getTabCreatableViews } from "../pluginLoader/viewRegistry";
@@ -131,5 +132,22 @@ export function useFloatingPanelReveal(): void {
         if (reason === "open-in") getCallbacks()?.openTab(pluginId);
       });
     });
+  }, []);
+
+  // 语言切换文案重推（2026-08-22 用户点修③）——标题/动作由壳 t() 解析后推入 DTO，切换语言后
+  // 面板标题栏不会自刷新（内容区会——插件视图自带 useTranslation）；此处重新声明寻址 + 重建动作 → refreshPanelText。
+  // 单一订阅覆盖全部打开路径（core.openSettings 等命令都 emit panel:reveal-floating 走本 hook）。
+  useEffect(() => {
+    const onLangChanged = () => {
+      const viewId = getCurrentFloatingPanelViewId();
+      if (!viewId) return; // 面板未开 → no-op
+      const resolved = resolveFloatingPanelView(viewId);
+      if (!resolved) return; // 声明视图已被卸载（#39.5 no-op 纪律）——不重推
+      refreshPanelText(resolved.title, buildDefaultFloatingPanelActions(resolved.pluginId));
+    };
+    i18n.on("languageChanged", onLangChanged);
+    return () => {
+      i18n.off("languageChanged", onLangChanged);
+    };
   }, []);
 }

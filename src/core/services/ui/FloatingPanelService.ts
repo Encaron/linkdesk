@@ -10,7 +10,10 @@
  * 面板身份开关键（I8-2 toggle——无面板→开/同视图→关/他面板→替换）由消费者实现：
  * #38 先查 getCurrentFloatingPanelViewId() === 自己的 viewId → 相等 closePanel()，否则 pushPanel()。
  *
- * 状态：renderer/当前 viewId/pending 都是壳侧注册态（组件/消费者生命周期内）——本服务零 IPC，
+ * 语言切换文案重推（2026-08-22 用户点修③）：pushPanel 存最近 open DTO 底稿，消费者订阅 i18n
+ * languageChanged 调 refreshPanelText(title, actions) 重推——DTO 带 refresh 标记，池跳过焦点获取。
+ *
+ * 状态：renderer/当前 viewId/pending/currentOpen 都是壳侧注册态（组件/消费者生命周期内）——本服务零 IPC，
  * 订阅走 App/bridges.ts（硬约束 19）；同 DialogService 模块级注册模式。
  */
 
@@ -57,6 +60,9 @@ export function registerFloatingPanelRenderer(renderer: FloatingPanelRenderer): 
 
 let _currentViewId: string | null = null;
 
+/** 最近一次 open DTO 底稿——refreshPanelText（语言切换文案刷新）重推用，关闭即清 */
+let _currentOpen: Extract<PoolFloatingPanelData, { open: true }> | null = null;
+
 interface Pending {
   promise: Promise<FloatingPanelCloseReason>;
   settle: (reason: FloatingPanelCloseReason) => void;
@@ -88,20 +94,32 @@ export function pushPanel(options: FloatingPanelOptions): Promise<FloatingPanelC
   let settle!: (reason: FloatingPanelCloseReason) => void;
   const promise = new Promise<FloatingPanelCloseReason>((resolve) => { settle = resolve; });
   _pending = { promise, settle };
-  _renderer?.({
+  const data: Extract<PoolFloatingPanelData, { open: true }> = {
     open: true,
     viewId: options.viewId,
     title: options.title,
     pluginId: options.pluginId,
     renderPath: options.renderPath,
     actions: options.actions,
-  });
+  };
+  _currentOpen = data; // refreshPanelText 重推底稿
+  _renderer?.(data);
   return promise;
+}
+
+/**
+ * 语言切换文案重推——面板已开，仅标题/动作文案变化（i18n.languageChanged → 消费者重解析后调用）。
+ * 重推 DTO 带 refresh 标记 → 池跳过焦点获取（I8-8 首次打开才入焦点）；身份/几何不变，不 settle promise。
+ */
+export function refreshPanelText(title: string, actions: PoolFloatingPanelButton[]): void {
+  if (!_currentOpen) return; // 面板未开 → no-op（语言切换时面板不一定开着）
+  _renderer?.({ ..._currentOpen, title, actions, refresh: true });
 }
 
 /** 关闭悬浮面板（程序化）——先推 {open:false} 再 settle（dialog 桥纪律：stale close 不覆盖新开） */
 export function closePanel(): void {
   _currentViewId = null;
+  _currentOpen = null;
   _renderer?.({ open: false });
   const p = _pending;
   _pending = null;
@@ -114,6 +132,7 @@ export function closePanel(): void {
  */
 export function handleFloatingPanelAction(actionId: string): void {
   _currentViewId = null;
+  _currentOpen = null;
   _renderer?.({ open: false });
   const p = _pending;
   _pending = null;

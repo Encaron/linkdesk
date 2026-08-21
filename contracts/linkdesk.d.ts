@@ -383,6 +383,8 @@ export type PoolFloatingPanelData = {
     renderPath: string;
     /** 标题栏动作按钮（顺序 = 渲染顺序：open-in / maximize / close） */
     actions: PoolFloatingPanelButton[];
+    /** 语言切换文案重推标记（refreshPanelText）——池仅更新标题/动作渲染，跳过焦点获取（I8-8 首次打开才入焦点） */
+    refresh?: boolean;
 };
 /** UI 浮层/菜单/通知命名空间面——对标 VS Code vscode.window + ContextKey + 池内 QuickPick/Toast/Dialog 宿主桥 */
 export interface UiAPI {
