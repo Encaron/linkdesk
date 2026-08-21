@@ -1,0 +1,34 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "漂亮设置",
+  "version": "1.0.0",
+  "icon": "resources/icon.png",
+  "description": "设置 UI 参考实现（作者路径验证 E5.8#41.14 子D）——复制内置设置插件的自包含副本，换 id + 微改样式（卡片分区）。与内置设置并存，factoryRole=settings 双候选，可在设置页通用区切换激活套。演示用途，可卸载重装。",
+  "author": "官方",
+  "distribution": "user",
+  "factoryRole": "settings",
+  "entry": "src/index.tsx",
+  "appearsIn": { "iconBar": "bottom", "tabBar": true },
+  "tabBehavior": {
+    "singleton": true
+  },
+  "contributes": {
+    "viewsContainers": {
+      "settings": {
+        "title": "设置",
+        "location": "auxiliarybar"
+      }
+    },
+    "views": {
+      "settings": [
+        {
+          "id": "settings",
+          "title": "设置",
+          "render": "src/views/SettingsView.tsx",
+          "order": 0
+        }
+      ]
+    },
+    "floatingPanel": { "viewId": "settings" }
+  }
+}
