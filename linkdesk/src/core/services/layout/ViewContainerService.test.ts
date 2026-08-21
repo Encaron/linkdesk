@@ -3,7 +3,7 @@
  * E36#1 验证：核心桌子逻辑全覆盖。
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ViewContainerService } from "./ViewContainerService";
 import type { ViewDescriptor } from "./ViewContainerService";
 import { clearPluginStates } from "../plugins/PluginStateService"; // E5.8#34：隐藏持久化测试隔离
@@ -136,6 +136,8 @@ describe("ViewContainerService", () => {
   });
 
   it("声明式和命令式走同一条路径——不同 pluginId 同 view id 视为不同 view", () => {
+    // E5.8#41.9.1：撞名诊断是故意触发（fail-loud）——消音保持测试输出干净
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
     ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "v1", title: "来自 p1" }));
     // 不同 pluginId 同 view id——两条独立记录
@@ -144,10 +146,11 @@ describe("ViewContainerService", () => {
     // 注：此行为由 _pluginId 标记区分，测试验证实际行为
     ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "v1", title: "来自 p2" }));
 
-    // 两个不同插件的同 id view 应该都存在
+    // 两个不同插件的同 id view 应该都存在（E5.8#41.9.1 复合键——共存互不踩）
     const views = ViewContainerService.getViews("e");
     // 由于内部用 _pluginId 区分，第二条不会覆盖第一条
-    expect(views.length).toBeGreaterThanOrEqual(1);
+    expect(views).toHaveLength(2);
+    err.mockRestore();
   });
 
   /* ═══ unregisterAll ═══ */
@@ -240,6 +243,87 @@ describe("ViewContainerService", () => {
 
   it("getView 不存在的 id → undefined", () => {
     expect(ViewContainerService.getView("nonexistent")).toBeUndefined();
+  });
+
+  /* ═══ E5.8#41.9.1 视图复合键——同名共存 / fail-loud / 容器归属首主保有 / 空态复合键 ═══ */
+
+  it("两插件同名 viewId 注册 → 共存互不踩（getViews 两条独立记录）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "settings", title: "p1 同名" }));
+    ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "settings", title: "p2 同名" }));
+
+    const views = ViewContainerService.getViews("e");
+    expect(views).toHaveLength(2);
+    // 复合键互不覆盖——两条各自属主正确
+    expect(views.map((v) => v.title).sort()).toEqual(["p1 同名", "p2 同名"]);
+    err.mockRestore();
+  });
+
+  it("撞 id fail-loud——后注册者收到点名两 pluginId 的诊断", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "dup", title: "p1" }));
+    ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "dup", title: "p2" }));
+
+    expect(err).toHaveBeenCalled();
+    const msg = err.mock.calls.map((c) => String(c[0])).join(" ");
+    expect(msg).toContain("视图 id 撞名");
+    expect(msg).toContain(PLUGIN_ID);
+    expect(msg).toContain(PLUGIN_ID_2);
+    err.mockRestore();
+  });
+
+  it("同名 viewId 裸 id 解析多命中 → fail-loud + undefined（绝不静默返回错误视图）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "ambig", title: "p1" }));
+    ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "ambig", title: "p2" }));
+
+    const view = ViewContainerService.getView("ambig");
+    expect(view).toBeUndefined();
+    const msg = err.mock.calls.map((c) => String(c[0])).join(" ");
+    expect(msg).toContain('裸 viewId "ambig"');
+    expect(msg).toContain(PLUGIN_ID);
+    expect(msg).toContain(PLUGIN_ID_2);
+    err.mockRestore();
+  });
+
+  it("同名 viewId 唯一命中（仅一插件注册）→ getView 裸 id 正常返回", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "unique", title: "唯一" }));
+
+    const view = ViewContainerService.getView("unique");
+    expect(view).toBeDefined();
+    expect(view!.title).toBe("唯一");
+  });
+
+  it("容器归属首主保有——后声明者不覆盖属主（卸载不删错容器）", () => {
+    const err = vi.spyOn(console, "error").mockImplementation(() => {});
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "c1", title: "p1 容器" });
+    ViewContainerService.registerView(PLUGIN_ID, "c1", makeView({ id: "v1" }));
+    // p2 重复声明同容器——title 更新但归属保留 p1（fail-loud 诊断）
+    ViewContainerService.registerViewContainer(PLUGIN_ID_2, { id: "c1", title: "被忽略的 title" });
+
+    // p2 卸载——容器不删（归属 p1）
+    ViewContainerService.unregisterAll(PLUGIN_ID_2);
+    expect(ViewContainerService.getViewContainer("c1")).toBeDefined();
+    // p1 卸载——容器删（归属 p1）
+    ViewContainerService.unregisterAll(PLUGIN_ID);
+    expect(ViewContainerService.getViewContainer("c1")).toBeUndefined();
+    err.mockRestore();
+  });
+
+  it("_emptyContents 复合键——同名视图空态各存各的", () => {
+    ViewContainerService.registerViewEmptyContent(PLUGIN_ID, "e", "v1", "p1 空态");
+    ViewContainerService.registerViewEmptyContent(PLUGIN_ID_2, "e", "v1", "p2 空态");
+
+    const p1 = ViewContainerService.getViewEmptyContent(PLUGIN_ID, "v1");
+    const p2 = ViewContainerService.getViewEmptyContent(PLUGIN_ID_2, "v1");
+    expect(p1).toBeDefined();
+    expect(p2).toBeDefined();
+    expect(p1!.content).toBe("p1 空态");
+    expect(p2!.content).toBe("p2 空态");
   });
 
   /* ═══ 防线 ═══ */

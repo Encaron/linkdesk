@@ -56,6 +56,8 @@ import {
   loadHiddenState,
   setHidden,
 } from "./ViewContainerService/hidden";
+// E5.8#41.9.1：视图复合键域——`(pluginId, viewId)` 复合键 = 视图身份唯一来源（两插件同名视图共存不互踩）
+import { viewKey, splitViewKey } from "./ViewContainerService/keys";
 
 /* ── ViewContainerService ── */
 
@@ -69,9 +71,10 @@ class ViewContainerServiceClass extends RegistryBase {
   private _models = new Map<string, ViewContainerModel>();
   /** 容器归属——containerId → 声明此容器的 pluginId */
   private _containerOwner = new Map<string, string>();
-  /** 全局 view id → containerId 反向索引 */
+  /** E5.8#41.9.1：视图反向索引——`pluginId:viewId` 复合键 → containerId。
+   *  复合键 = 视图身份唯一来源（两插件同名 viewId 共存互不踩，见 keys.ts） */
   private _viewIndex = new Map<string, string>();
-  /** E4V#44——view 空状态占位内容注册表——viewId → descriptor */
+  /** E4V#44——view 空状态占位内容注册表——`pluginId:viewId` 复合键 → descriptor（同名视图空态各存各的） */
   private _emptyContents = new Map<string, ViewEmptyContentDescriptor>();
 
   /* ── 事件 ── */
@@ -96,8 +99,16 @@ class ViewContainerServiceClass extends RegistryBase {
     if (existing) {
       // 幂等——同 ID 容器已存在，更新 title（可能从占位升级为正式声明）
       Object.assign(existing, descriptor);
-      // 更新归属——可能是声明式覆盖占位
-      this._containerOwner.set(descriptor.id, pluginId);
+      // E5.8#41.9.1：容器归属首主保有——归属已存在且 pluginId 不同 → 保留首主 + fail-loud
+      //（无条件覆盖会让后声明者成为属主 → 卸载删错容器，见 #41.8 碰撞面 #7）
+      const owner = this._containerOwner.get(descriptor.id);
+      if (owner && owner !== pluginId) {
+        console.error(
+          `[ViewContainer] 容器 "${descriptor.id}" 已归属插件 "${owner}"，插件 "${pluginId}" 的声明被忽略（首主保有——卸载不会删错容器）。`
+        );
+      } else {
+        this._containerOwner.set(descriptor.id, pluginId);
+      }
       return;
     }
     this._containers.set(descriptor.id, { ...descriptor });
@@ -168,9 +179,22 @@ class ViewContainerServiceClass extends RegistryBase {
       }
     } else {
       model.allViewDescriptors.push(descriptor);
+      // E5.8#41.9.1：注册期撞 id 探测——异 pluginId 同 viewId 共存时对后注册者 fail-loud 点名两 pluginId。
+      // 共存合法（复合键各占各的），但解析链用裸 id 时会歧义——对标 #24.6 失败必出声。
+      const collided = model.allViewDescriptors.find(
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+        (v) => v.id === descriptor.id && (v as any)._pluginId !== pluginId
+      );
+      if (collided) {
+        console.error(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+          `[ViewContainer] 视图 id 撞名：插件 "${pluginId}" 注册 view "${descriptor.id}" 已与插件 "${(collided as any)._pluginId}" 同名共存（容器 "${containerId}"）。已共存（复合键 ${viewKey(pluginId, descriptor.id)}），但解析链用裸 id 时会歧义——请显式携带 pluginId 解析。`
+        );
+      }
     }
 
-    this._viewIndex.set(descriptor.id, containerId);
+    // E5.8#41.9.1：复合键索引——`(pluginId, viewId)` 唯一，两插件同名 viewId 永不互踩（#41.8 碰撞面 #1 正主）
+    this._viewIndex.set(viewKey(pluginId, descriptor.id), containerId);
     this._updateActiveViews(containerId);
 
     this.onDidChangeViews.fire({
@@ -207,26 +231,45 @@ class ViewContainerServiceClass extends RegistryBase {
     return model.activeViewDescriptors;
   }
 
-  /** 按 view id 查找。对标 VS Code IViewsRegistry.getView */
+  /** E5.8#41.9.1：声明扫描基元——按裸 viewId 匹配复合键索引（#41.8 §4.1 §4.2）。
+   *  唯一命中 → 返回；**多命中 → fail-loud 点名全部 (pluginId, viewId) 对 + undefined（绝不静默 no-op）**；
+   *  零命中 → undefined。裸 id 全局查已废弃（#41.8 碰撞面 #2），#41.9.2 将废弃为 getView(pluginId, viewId)
+   *  精确寻址——本基元供 revealFloating 声明扫描复用。 */
   getView(id: string): ViewDescriptor | undefined {
-    const containerId = this._viewIndex.get(id);
-    if (!containerId) return undefined;
+    const matches: Array<{ pluginId: string; containerId: string }> = [];
+    for (const [key, containerId] of this._viewIndex) {
+      const [pluginId, viewId] = splitViewKey(key);
+      if (viewId === id) matches.push({ pluginId, containerId });
+    }
+    if (matches.length === 0) return undefined;
+    if (matches.length > 1) {
+      console.error(
+        `[ViewContainer] 裸 viewId "${id}" 解析到 ${matches.length} 个视图（${matches.map((m) => `"${m.pluginId}:${id}"`).join("、")}）——歧义，调用方必须携带 pluginId 精确寻址或插件改名（#41.8）。`
+      );
+      return undefined;
+    }
+    const { pluginId, containerId } = matches[0];
     const model = this._models.get(containerId);
     if (!model) return undefined;
-    return model.allViewDescriptors.find((v) => v.id === id);
+    return model.allViewDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+      (v) => v.id === id && (v as any)._pluginId === pluginId
+    );
   }
 
   /* ═══ E4V#44 View 空状态占位内容 ═══ */
 
   /** 注册 view 的空状态占位内容。对标 VS Code IViewContentDescriptor。
-   *  view 无数据时（when 条件匹配）→ 壳渲染此 content 替代 view.render()。 */
-  registerViewEmptyContent(containerId: string, viewId: string, content: React.ReactNode, when?: string): void {
-    this._emptyContents.set(viewId, { containerId, viewId, content, when });
+   *  view 无数据时（when 条件匹配）→ 壳渲染此 content 替代 view.render()。
+   *  E5.8#41.9.1：签名加 pluginId——`(pluginId, viewId)` 复合键（同名视图空态各存各的）。当前零外部消费方。 */
+  registerViewEmptyContent(pluginId: string, containerId: string, viewId: string, content: React.ReactNode, when?: string): void {
+    this._emptyContents.set(viewKey(pluginId, viewId), { pluginId, containerId, viewId, content, when });
   }
 
-  /** 获取 view 的空状态占位内容，无注册返回 undefined */
-  getViewEmptyContent(viewId: string): ViewEmptyContentDescriptor | undefined {
-    return this._emptyContents.get(viewId);
+  /** 获取 view 的空状态占位内容，无注册返回 undefined。
+   *  E5.8#41.9.1：签名加 pluginId——精确寻址同名视图的空态。 */
+  getViewEmptyContent(pluginId: string, viewId: string): ViewEmptyContentDescriptor | undefined {
+    return this._emptyContents.get(viewKey(pluginId, viewId));
   }
 
   /* ═══ E4V#46 View 折叠持久化（委派 ViewContainerService/collapsed 域） ═══ */
@@ -345,9 +388,9 @@ class ViewContainerServiceClass extends RegistryBase {
     for (const [containerId, model] of this._models) {
       const removed = model.removePluginViews(pluginId);
       if (removed.length > 0) {
-        // 清理 view 索引
+        // 清理 view 索引——E5.8#41.9.1：复合键删除（`pluginId:viewId` 只删自己插件的条目）
         for (const v of removed) {
-          this._viewIndex.delete(v.id);
+          this._viewIndex.delete(viewKey(pluginId, v.id));
         }
         this._updateActiveViews(containerId);
         this.onDidChangeViews.fire({

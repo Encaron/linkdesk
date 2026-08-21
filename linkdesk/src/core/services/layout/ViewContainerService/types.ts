@@ -83,6 +83,8 @@ export interface ViewContainerChangeEvent {
 /** E4V#44——View 空状态占位内容。对标 VS Code IViewContentDescriptor。
  *  通用——不限于"欢迎"：搜索无结果/串口未连接/加载失败 等都走此机制。 */
 export interface ViewEmptyContentDescriptor {
+  /** E5.8#41.9.1：声明此空态内容的插件 id——复合键 `pluginId:viewId` 归属（同名视图空态各存各的） */
+  pluginId: string;
   viewId: string;
   containerId: string;
   /** 占位内容——view 无数据/不满足条件时显示 */
