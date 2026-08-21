@@ -37,10 +37,11 @@ export function buildIconBar(t: (key: string) => string, sidebarView: string | n
 
   // E5.8#41.11 槽位感知（#41.10 ⑧-2 形态二图标替换）：声明 factoryRole 者 = 形态二进槽——
   // 每角色只渲染激活套图标（非激活套隐藏 = 「把原来的剔除换成作者自己的」）；未声明 = 形态一并存照旧全出。
-  // 激活 = getDefaultPluginId（#41.11 停靠点——默认=内置；#41.12 翻转 getActive 读持久化激活套）。
+  // E5.8#41.12 🪡 概念生效接缝：getDefaultPluginId（默认=内置）→ getActive（读持久化激活套——
+  // 用户切到第三方设置套，图标栏跟着换成第三方图标，与 openSettings 路由一致）。
   const slotActive = ordered.filter((p) => {
     const role = p.manifest.factoryRole;
-    return !role || factorySlots.getDefaultPluginId(role) === p.pluginId;
+    return !role || factorySlots.getActive(role) === p.pluginId;
   });
 
   const icons: IconBarItem[] = [];
