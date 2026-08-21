@@ -98,7 +98,8 @@ export const CUSTOM_EVENTS = {
   SHOW_DEVTOOLS_PICKER: "linkdesk:show-devtools-picker", // E3f #58
   CHORD_CHANGED: "linkdesk:chord-changed",
   OPEN_SETTINGS: "linkdesk:open-settings", // E3f #59
-  OPEN_KEYBINDINGS_SETTINGS: "linkdesk:open-keybindings-settings", // E3f #59
+  // E5.8#41.14：OPEN_KEYBINDINGS_SETTINGS 已删——死路由（kebab dispatch vs camel listen 错配，永不命中）。
+  // 切快捷键 tab 改契约双通道（ConfigurationRegistry.onRequestOpenKeybindings）
   PLUGIN_REMOVED: "plugin-removed",
 } as const;
 

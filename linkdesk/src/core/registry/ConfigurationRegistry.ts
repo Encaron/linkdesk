@@ -238,3 +238,25 @@ export function consumeScrollToSetting(): string | null {
   _pendingScrollToKey = null;
   return v;
 }
+
+/* ── E5.8#41.14 🔴 修复：打开快捷键子栏——契约双通道（M1 同款）。
+ *    原 window 事件 dispatch/lisen 字面量错配（kebab linkdesk:open-keybindings-settings vs
+ *    camel linkdesk:openKeybindingsSettings）→ 快捷键 tab 永不跳转。改 Emitter + pending 双通道，错配结构性消失。── */
+
+let _pendingOpenKeybindings: { query?: string } | null = null;
+
+/** Emitter 通道——设置页已打开时实时切快捷键 tab */
+export const onRequestOpenKeybindings = new Emitter<{ query?: string }>();
+
+/** 标记：下次设置页 mount 后切快捷键 tab（query 可预填搜索框）。同时 fire Emitter——已打开时即时切换。 */
+export function requestOpenKeybindings(query?: string): void {
+  _pendingOpenKeybindings = { query };
+  onRequestOpenKeybindings.fire({ query });
+}
+
+/** 消费：SettingsView mount 时调用，返回目标（含预填 query）并清空 */
+export function consumeOpenKeybindings(): { query?: string } | null {
+  const v = _pendingOpenKeybindings;
+  _pendingOpenKeybindings = null;
+  return v;
+}

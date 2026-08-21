@@ -4,7 +4,7 @@
  * 依赖方向：commands → ./types（LinkDeskCommand）；被聚合器交叉组装。
  */
 
-import type { LinkDeskCommand, LinkDeskConfigSchema } from "./types";
+import type { LinkDeskCommand, LinkDeskConfigSchema, LinkDeskConfigurationContribution } from "./types";
 
 /** 命令 + 配置命名空间面——对标 VS Code vscode.commands + workspace.getConfiguration */
 export interface CommandsAPI {
@@ -52,7 +52,7 @@ export interface CommandsAPI {
     // ══ E5.7#76：以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
     // 池 preload 注入（SettingsView 在池渲染）——required，壳 preload 无此面。
     // 通用插件请用上面的 get/set/getSchema/onChange。 ══
-    getConfigurationContributions(): Promise<[string, unknown][]>;
+    getConfigurationContributions(): Promise<LinkDeskConfigurationContribution[]>;
     inspectConfiguration(key: string): Promise<unknown>;
     getUserSettings(): Promise<Record<string, unknown>>;
     onDidChangeConfiguration(cb: (key: string, value: unknown) => void): () => void;
@@ -61,6 +61,11 @@ export interface CommandsAPI {
     onRequestSettingsGroup(cb: (pluginId: string) => void): () => void;
     consumeScrollToSetting(): Promise<string | null>;
     onRequestScrollToSetting(cb: (key: string) => void): () => void;
+    /** E5.8#41.14 🔴 修复：切快捷键 tab——M1 同款双通道（替代错配 window 事件死路由）。
+     *  mount 时消费 pending（未打开时"打开快捷键设置"命令的请求）；无请求返回 null */
+    consumeOpenKeybindings(): Promise<{ query?: string } | null>;
+    /** E5.8#41.14：实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab */
+    onRequestOpenKeybindings(cb: (payload: { query?: string }) => void): () => void;
   };
 
   /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */

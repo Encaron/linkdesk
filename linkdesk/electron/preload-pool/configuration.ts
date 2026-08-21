@@ -9,7 +9,7 @@ import { ipcRenderer } from 'electron';
 import { IPC } from '../ipc/channels';
 import type { EventSystemApi } from '../ipc/event-system';
 import { guardPush } from '../ipc/wire-guard';
-import type { ConfigurationChangedPayload, SettingsRequestGroupPayload, SettingsScrollToPayload, PluginPushEnvelope } from '../../src/core/types/ipc/events';
+import type { ConfigurationChangedPayload, SettingsRequestGroupPayload, SettingsScrollToPayload, SettingsOpenKeybindingsPayload, PluginPushEnvelope } from '../../src/core/types/ipc/events';
 
 // ── E5.5#7a: 配置缓存——防 React mount 前事件竞态 ──
 const _configCache = new Map<string, unknown>();
@@ -43,7 +43,8 @@ export function buildConfiguration(events: EventSystemApi) {
     // ══ E5.7#76（E5.5#10r/E5.6#65 迁入）：以下 9 个方法为设置页专用
     // （SettingsView 渲染/实时刷新/插件生命周期联动/跳转到分组/跳转到具体配置项）。
     // 通用插件请用上面的 get/set/getSchema/onChange。 ══
-    getConfigurationContributions: (): Promise<[string, unknown][]> =>
+    // 返回不标注——ipcRenderer.invoke 推断 Promise<any>，assignable 到契约面（satisfies PoolExposed 门禁）
+    getConfigurationContributions: () =>
       ipcRenderer.invoke(IPC.plugins.call, 'getConfigurationContributions'),
     inspectConfiguration: (key: string): Promise<unknown> =>
       ipcRenderer.invoke(IPC.plugins.call, 'inspectConfiguration', key),
@@ -72,6 +73,14 @@ export function buildConfiguration(events: EventSystemApi) {
     onRequestScrollToSetting: (cb: (key: string) => void) => {
       return events.on('settings:scrollTo', (d: SettingsScrollToPayload) => {
         try { cb(d.key); } catch { /* contextBridge 回调静默失败 */ }
+      });
+    },
+    // ── E5.8#41.14 🔴 修复：切快捷键 tab——契约双通道（替代错配 window 事件死路由）──
+    consumeOpenKeybindings: (): Promise<{ query?: string } | null> =>
+      ipcRenderer.invoke(IPC.plugins.call, 'consumeOpenKeybindings'),
+    onRequestOpenKeybindings: (cb: (payload: { query?: string }) => void) => {
+      return events.on('settings:requestOpenKeybindings', (d: SettingsOpenKeybindingsPayload) => {
+        try { cb(d); } catch { /* contextBridge 回调静默失败 */ }
       });
     },
   };

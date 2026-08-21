@@ -1,7 +1,7 @@
 /**
  * 🔥 linkdesk.d.ts——window.linkdesk 插件 API 契约（自动生成，勿手改）
  *
- * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（12 域接口 + types.ts）
+ * 生成源：src/core/api/linkdesk-api.ts + linkdesk-api/（13 域接口 + types.ts）
  *         + src/core/types/ipc/* + src/core/types/pool/*（wire 载荷类型）
  * 生成器：scripts/generate-contract.mjs（Route C——契约类型文件为源，纯类型打包）
  * 改契约源 → 跑 `node scripts/generate-contract.mjs`（npm run check 里 check-contracts 强制）
@@ -18,16 +18,41 @@ export interface LinkDeskCommand {
     title: string;
     category?: string;
 }
-/** 配置 schema 中的单个属性定义 */
-export interface LinkDeskConfigSchema {
-    [key: string]: {
-        type: string;
-        default?: unknown;
-        description?: string;
-        enum?: string[];
-        enumDescriptions?: string[];
+/** 配置 schema 中的单个属性定义——E5.8#41.14 🛤 补全 uiHint/minimum/maximum/renderHint/dependsOn
+ * （壳 SettingsView renderControl/SettingRow 官方控件切换 + 依赖显隐字段，与 SettingsView/types ConfigProperty 对齐） */
+export interface LinkDeskConfigProperty {
+    type: string;
+    default?: unknown;
+    description?: string;
+    enum?: string[];
+    enumDescriptions?: string[];
+    /** 控件提示——uiHint 优先：plugin.json 声明式控件选择（renderControl 读它切 combobox/textarea/color 等） */
+    uiHint?: string;
+    /** 数值下限——uiHint 数值控件 min 校验 */
+    minimum?: number;
+    /** 数值上限——uiHint 数值控件 max 校验 */
+    maximum?: number;
+    /** 渲染提示——renderControl 第二判据（"action" 渲染操作按钮 / "color" 渲染色块预览） */
+    renderHint?: string;
+    /** 依赖条件——本项仅在 dependsOn.key 配置值 === value 时显示（SettingRow 读它显隐整行） */
+    dependsOn?: {
+        key: string;
+        value: unknown;
     };
 }
+/** 配置 schema——key → 属性定义（index signature 保持现有消费方） */
+export interface LinkDeskConfigSchema {
+    [key: string]: LinkDeskConfigProperty;
+}
+/** 配置贡献条目——configuration.getConfigurationContributions() 返回形状（E5.8#41.14 🛤 命名）。
+ * 与壳 ConfigurationRegistry 组装的 [pluginId, { title, properties }] 对齐——第三方设置 UI 不再 need cast */
+export type LinkDeskConfigurationContribution = [
+    string,
+    {
+        title: string;
+        properties: Record<string, unknown>;
+    }
+];
 /** 命令 + 配置命名空间面——对标 VS Code vscode.commands + workspace.getConfiguration */
 export interface CommandsAPI {
     /** 命令——对标 VS Code vscode.commands */
@@ -71,10 +96,7 @@ export interface CommandsAPI {
         // ══ E5.7#76：以下 9 个方法为设置页专用（SettingsView 渲染/实时刷新/跳转）。
         // 池 preload 注入（SettingsView 在池渲染）——required，壳 preload 无此面。
         // 通用插件请用上面的 get/set/getSchema/onChange。 ══
-        getConfigurationContributions(): Promise<[
-            string,
-            unknown
-        ][]>;
+        getConfigurationContributions(): Promise<LinkDeskConfigurationContribution[]>;
         inspectConfiguration(key: string): Promise<unknown>;
         getUserSettings(): Promise<Record<string, unknown>>;
         onDidChangeConfiguration(cb: (key: string, value: unknown) => void): () => void;
@@ -83,6 +105,15 @@ export interface CommandsAPI {
         onRequestSettingsGroup(cb: (pluginId: string) => void): () => void;
         consumeScrollToSetting(): Promise<string | null>;
         onRequestScrollToSetting(cb: (key: string) => void): () => void;
+        /** E5.8#41.14 🔴 修复：切快捷键 tab——M1 同款双通道（替代错配 window 事件死路由）。
+         *  mount 时消费 pending（未打开时"打开快捷键设置"命令的请求）；无请求返回 null */
+        consumeOpenKeybindings(): Promise<{
+            query?: string;
+        } | null>;
+        /** E5.8#41.14：实时订阅——设置已打开时"打开快捷键设置"命令即时切 tab */
+        onRequestOpenKeybindings(cb: (payload: {
+            query?: string;
+        }) => void): () => void;
     };
     /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
     config: CommandsAPI["configuration"];
@@ -1547,16 +1578,36 @@ export interface SettingsAPI {
         setActive(pluginId: string): Promise<void>;
     };
 }
+/** 插槽条目——factorySlots.list(role) 返回的一行。
+ * 非导出（模块内接口）——契约生成器经 list 传递引用自动收集并 emit export；
+ * 壳内无第三方消费方，导出会被 knip 报未用（linkdesk-api.ts 排除域不算消费）。 */
+export interface FactorySlotEntry {
+    /** 插件 ID——getActive/setActive 的句柄 */
+    pluginId: string;
+    /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
+    title: string;
+}
+/** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
+export interface FactorySlotsAPI {
+    factorySlots: {
+        /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
+        list(role: string): Promise<FactorySlotEntry[]>;
+        /** 指定角色的活动插件 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */
+        getActive(role: string): Promise<string | undefined>;
+        /** 切换指定角色活动插件——校验候选后落盘持久化（重启保持）。非候选 fail-loud 抛错 */
+        setActive(role: string, pluginId: string): Promise<void>;
+    };
+}
 /**
  * linkdesk API——插件代码的类型安全入口。
  * 对标 VS Code `vscode` 对象的全局命名空间结构。
  * 池 preload 注入的命名空间为插件运行时真相源（required）；
  * 仅 bridge（真壳独有）/ hotExit（池侧独有）为 `?` 可选——另一侧不注入（E5.8#22 审视 N1 修正：
  * 其余桥面 window/pool/shell/getFilePath 双端实有注入，契约标必选）。
- * E5.8#0d.10-9e：由 11 个命名空间域接口交叉组装（interface→type intersection，
+ * E5.8#0d.10-9e：由 12 个命名空间域接口交叉组装（interface→type intersection，
  * 索引访问 LinkDeskAPI["pool"]/["configuration"] 等消费方契约不变）。
  */
-export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI;
+export type LinkDeskAPI = CommandsAPI & AppearanceAPI & TabsAPI & KeybindingsAPI & UiAPI & DataAPI & WorkspaceAPI & EditorAPI & PluginsAPI & ShellAPI & PanelAPI & SettingsAPI & FactorySlotsAPI;
 /** 插件状态变更——plugin-state:changed 载荷（跨 WebView 状态同步原语） */
 export interface PluginStateChangedPayload {
     pluginId: string;
