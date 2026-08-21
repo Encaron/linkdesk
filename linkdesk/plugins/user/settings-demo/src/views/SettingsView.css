@@ -442,3 +442,14 @@
   padding: 10px 14px;
   margin-bottom: 8px;
 }
+
+/* ── 设置套切换条演示差异化（E5.8#41.13）——位置/形态随套 UI 变：内置 = 顶部平铺条；
+   演示 = 右下角胶囊（order 压到编辑器最底 + 左 auto 靠右 + 圆角实底）。结构零改动，
+   仅叠加 .settings-role-switch--gen；配色全走 CSS 变量（硬约束 #1） */
+
+.settings-role-switch--gen {
+  order: 99;
+  margin: 8px 16px 12px auto;
+  border-radius: 999px;
+  background: var(--bg-input);
+}

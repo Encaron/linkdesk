@@ -28,7 +28,7 @@ import "./SettingsView.css";
 
 /* ── 组件 ── */
 
-function SettingsView({ isActive: _isActive }: SettingsViewProps) {
+function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
   const { t } = useTranslation();
 
   const [activeTab, setActiveTab] = useState<"settings" | "keybindings">("settings");
@@ -42,15 +42,21 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
   const [allProps, setAllProps] = useState<Record<string, ConfigProperty>>({});
   const [dataLoaded, setDataLoaded] = useState(false);
 
+  // ── 顶部通用区（E5.8#41.13）——本角色（设置套）全部候选 + 激活 id，用于切整套设置 UI ──
+  const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string }[]>([]);
+  const [settingsActiveId, setSettingsActiveId] = useState<string | undefined>();
+
   const loadData = useCallback(async () => {
     try {
       const cfg = lk();
       const fs = window.linkdesk.factorySlots;
-      // 并行拉取：配置分组 + schema + 角色枚举（#41.14 ⑤ 角色分组）
-      const [entries, schema, roles] = await Promise.all([
+      // 并行拉取：配置分组 + schema + 角色枚举（#41.14 ⑤ 角色分组）+ 设置套候选/激活（#41.13）
+      const [entries, schema, roles, settingsCandidates, settingsActiveId] = await Promise.all([
         cfg.getConfigurationContributions(),
         cfg.getSchema(),
         fs.listRoles(),
+        fs.list(OWN_FACTORY_ROLE),
+        fs.getActive(OWN_FACTORY_ROLE),
       ]);
       // E5.8#41.14：getConfigurationContributions 契约已补全命名类型（LinkDeskConfigurationContribution）
       // ——不再需要 IPC 边界 cast，形状由契约保证
@@ -111,6 +117,8 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
       setGroupsRaw(result);
       setAllProps((schema ?? {}) as Record<string, ConfigProperty>);
+      setSettingsCandidates(settingsCandidates ?? []);
+      setSettingsActiveId(settingsActiveId);
       setDataLoaded(true);
     } catch (e) {
       console.error("[SettingsView] 加载配置数据失败:", e);
@@ -161,6 +169,22 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
     }
   }, []);
 
+  // ── 设置套切换（E5.8#41.13）——全插件侧换套：setActive 落盘 → 关本套标签页 → 开新激活套。
+  //    开关不触碰壳：换整套设置 UI = 换当前渲染的插件 tab（close 自身 tabId + create targetId，
+  //    singleton 去重已存在则聚焦）。浮动面板（无 tabId）退化为只开新激活套 tab。 ──
+  const handleSettingsSwitch = useCallback(async (targetId: string) => {
+    if (targetId === settingsActiveId) return; // 点当前激活套 = 无操作（不重开自身 tab）
+    try {
+      await window.linkdesk.factorySlots.setActive(OWN_FACTORY_ROLE, targetId);
+      if (tabId) {
+        await window.linkdesk.tabs.close(tabId).catch(() => {});
+      }
+      await window.linkdesk.tabs.create(targetId).catch(() => {});
+    } catch (e) {
+      console.error(`[SettingsView] 切换设置套 "${targetId}" 失败:`, e);
+    }
+  }, [tabId, settingsActiveId]);
+
   // ── 默认选中第一个分组（角色分组按 role 匹配——切换激活候选不改选中）──
   const activeGroup =
     filteredGroups.find((g) =>
@@ -169,6 +193,25 @@ function SettingsView({ isActive: _isActive }: SettingsViewProps) {
 
   return (
     <div className="settings-editor">
+      {/* 顶部通用区（E5.8#41.13）——N 套设置插件并存切换：全部入口含自身、激活高亮、
+          删除任意一套 → onPluginLifecycleChange → version 重拉 → 按钮自动消失。
+          位置/形态是本套 UI 的选择（内置 = 顶部平铺条，settings-demo = 右下角胶囊），非壳规定 */}
+      {settingsCandidates.length >= 2 && (
+        <div className="settings-role-switch settings-role-switch--gen">
+          <span className="settings-role-switch-label">{t("激活角色套")}</span>
+          {settingsCandidates.map((c) => (
+            <button
+              key={c.pluginId}
+              className={`settings-role-switch-btn ${
+                c.pluginId === settingsActiveId ? "active" : ""
+              }`}
+              onClick={() => handleSettingsSwitch(c.pluginId)}
+            >
+              {c.title}
+            </button>
+          ))}
+        </div>
+      )}
       {/* 双 tab——设置 / 快捷键 */}
       <div className="settings-tab-bar">
         <button
