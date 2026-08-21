@@ -11,6 +11,13 @@ import { getViewMock, seedViewContainerMocks } from "./viewContainerMocks";
 import { resolveFloatingPanelView, decideFloatingPanelReveal, buildDefaultFloatingPanelActions } from "./floatingPanelReveal";
 import { registerViewPlugin, clearRegistry } from "../pluginLoader/viewRegistry";
 
+// E5.8#40 显示文本铁律判别——标题/动作文案壳侧 t() 解析（池零自产文本）。mock i18n.t 返回 "T:<key>"
+// 前缀：断言能证明「标题经 t() 路径」（若实现是裸声明透传，前缀不存在 → 测试红）。
+const { tMock } = vi.hoisted(() => ({
+  tMock: vi.fn((key: string) => `T:${key}`),
+}));
+vi.mock("../i18n", () => ({ default: { t: tMock } }));
+
 describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -22,14 +29,15 @@ describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", 
       viewId: "terminal",
       pluginId: "terminal",
       renderPath: "/@fs/plugins/builtin/terminal/src/views/TerminalView.tsx",
-      title: "终端",
+      title: "T:终端", // 显示文本铁律——标题走壳侧 t()（i18n.t 返回 "T:<key>" 判别前缀）
     });
+    expect(tMock).toHaveBeenCalledWith("终端");
     // panel 容器视图同样可寻址（声明制 = 任意 contributes.views 已注册视图）
     expect(resolveFloatingPanelView("problems")).toEqual({
       viewId: "problems",
       pluginId: "linter",
       renderPath: "/@fs/plugins/builtin/linter/src/views/ProblemsView.tsx",
-      title: "问题",
+      title: "T:问题",
     });
   });
 

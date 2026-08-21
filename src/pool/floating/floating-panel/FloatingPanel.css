@@ -19,7 +19,7 @@
 .floating-panel-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35); /* mockup 遮罩——比 Dialog 0.5 轻（面板非模态确认） */
+  background: var(--floating-panel-backdrop); /* mockup 遮罩——比 Dialog 0.5 轻（面板非模态确认）；值走主题 token */
 }
 
 .floating-panel {
@@ -30,7 +30,7 @@
   background: var(--bg-window);
   border: 1px solid var(--separator);
   border-radius: 8px;
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5); /* mockup 大面板强投影 */
+  box-shadow: var(--floating-panel-shadow); /* mockup 大面板强投影（亮/暗主题 token） */
   outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
   /* I8-13 右侧滑入——250ms Expo.out（ui-ux-pro-max 确认）；prefers-reduced-motion 下关闭 */
   animation: floating-panel-in 250ms cubic-bezier(0.16, 1, 0.3, 1);
@@ -49,7 +49,7 @@
 /* I8-5 拖拽中半透明跟随（mockup 帧 3 .fp.dragging） */
 .floating-panel.dragging {
   opacity: 0.85;
-  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--floating-panel-shadow-dragging);
 }
 
 /* I8-9 最大化铺满（mockup 帧 4 .fp.max）——resize 手柄由 JSX 隐藏 */
