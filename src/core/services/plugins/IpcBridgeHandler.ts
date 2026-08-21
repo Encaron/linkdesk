@@ -234,6 +234,7 @@ async function handlePluginsCall(method: string, args: unknown[]): Promise<unkno
     case "listSettingsPlugins":
     case "getActiveSettingsPlugin":
     case "setActiveSettingsPlugin":
+    case "listFactorySlotRoles":
     case "listFactorySlotPlugins":
     case "getActiveFactorySlot":
     case "setActiveFactorySlot":

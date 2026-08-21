@@ -1590,6 +1590,8 @@ export interface FactorySlotEntry {
 /** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
 export interface FactorySlotsAPI {
     factorySlots: {
+        /** 全部已填充角色的名字（注册序）——设置页「任何 factoryRole ≥2 候选 → 该角色名组出现」先枚举角色再 list(role) 判候选数 */
+        listRoles(): Promise<string[]>;
         /** 全部声明指定 factoryRole 的候选插件 [{pluginId, title}]，注册序 */
         list(role: string): Promise<FactorySlotEntry[]>;
         /** 指定角色的活动插件 ID——读持久化激活（#41.12 落盘），无记录/已卸载回退默认（内置） */

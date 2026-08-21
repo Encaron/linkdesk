@@ -115,6 +115,15 @@ export class FactorySlots {
     return [...(this._slots.get(role) ?? [])];
   }
 
+  /**
+   * 获取全部已填充角色的名字（Map 键，注册序）。
+   * #41.14 ⑤ 角色分组枚举面——设置页「任何 factoryRole ≥2 候选 → 该角色名组出现」需要先知道有哪些角色
+   * （list(role) 是角色参数化查询，UI 无从猜角色名；本方法 = 壳把 settings.* 泛化后的完整枚举面）。
+   */
+  listRoles(): FactoryRole[] {
+    return [...this._slots.keys()];
+  }
+
   /** 获取填充指定角色的默认插件 ID（core:true 优先，否则首声明）。未找到返回 undefined。 */
   getDefaultPluginId(role: FactoryRole): string | undefined {
     return this._slots.get(role)?.[0];

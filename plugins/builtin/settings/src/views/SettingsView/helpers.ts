@@ -13,4 +13,11 @@ function lk() {
   return window.linkdesk.configuration;
 }
 
-export { lk };
+/**
+ * 本设置插件自己的 factoryRole（#41.14 ⑤）。
+ * 角色分组渲染排除自身——自身角色的切换 = 顶部通用区（#41.13，切换入口本身就是设置），不进导航组；
+ * 其余 factoryRole ≥2 候选才建角色分组。复制为第三方设置插件时与 plugin.json 的 factoryRole 同步改。
+ */
+const OWN_FACTORY_ROLE = "settings";
+
+export { lk, OWN_FACTORY_ROLE };
