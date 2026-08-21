@@ -112,8 +112,9 @@ export async function handleViewContainerChannel(channel: string, args: unknown[
       return ViewContainerService.getViews(containerId).map(toViewDto);
     }
     case "viewContainer:getView": {
-      const [viewId] = args as [string];
-      const view = ViewContainerService.getView(viewId);
+      // E5.8#41.9.2：IPC 链加 pluginId（#41.8 §4 调用方 #2 方案 A）——复合键精确寻址，避免裸 id 歧义
+      const [pluginId, viewId] = args as [string, string];
+      const view = ViewContainerService.getView(pluginId, viewId);
       return view ? toViewDto(view) : undefined;
     }
     case "viewContainer:registerView": {

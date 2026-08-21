@@ -57,7 +57,7 @@ import {
   setHidden,
 } from "./ViewContainerService/hidden";
 // E5.8#41.9.1：视图复合键域——`(pluginId, viewId)` 复合键 = 视图身份唯一来源（两插件同名视图共存不互踩）
-import { viewKey, splitViewKey } from "./ViewContainerService/keys";
+import { viewKey, splitViewKey, isViewKey } from "./ViewContainerService/keys";
 
 /* ── ViewContainerService ── */
 
@@ -231,20 +231,32 @@ class ViewContainerServiceClass extends RegistryBase {
     return model.activeViewDescriptors;
   }
 
-  /** E5.8#41.9.1：声明扫描基元——按裸 viewId 匹配复合键索引（#41.8 §4.1 §4.2）。
+  /** E5.8#41.9.2：精确寻址——`getView(pluginId, viewId)` 复合键查视图（#41.8 碰撞面 #2 正主）。
+   *  _viewIndex 复合键 O(1) 命中 → 模型内按 (pluginId, viewId) 双校验返回；未注册 → undefined。 */
+  getView(pluginId: string, viewId: string): ViewDescriptor | undefined {
+    const containerId = this._viewIndex.get(viewKey(pluginId, viewId));
+    if (!containerId) return undefined;
+    const model = this._models.get(containerId);
+    if (!model) return undefined;
+    return model.allViewDescriptors.find(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+      (v) => v.id === viewId && (v as any)._pluginId === pluginId
+    );
+  }
+
+  /** E5.8#41.9.2：声明扫描基元——按裸 viewId 匹配复合键索引（#41.8 §4.1 §4.2）。
    *  唯一命中 → 返回；**多命中 → fail-loud 点名全部 (pluginId, viewId) 对 + undefined（绝不静默 no-op）**；
-   *  零命中 → undefined。裸 id 全局查已废弃（#41.8 碰撞面 #2），#41.9.2 将废弃为 getView(pluginId, viewId)
-   *  精确寻址——本基元供 revealFloating 声明扫描复用。 */
-  getView(id: string): ViewDescriptor | undefined {
+   *  零命中 → undefined。供 revealFloating 声明扫描（契约只传 viewId，不改签名）复用。 */
+  getViewByViewId(viewId: string): ViewDescriptor | undefined {
     const matches: Array<{ pluginId: string; containerId: string }> = [];
     for (const [key, containerId] of this._viewIndex) {
-      const [pluginId, viewId] = splitViewKey(key);
-      if (viewId === id) matches.push({ pluginId, containerId });
+      const [pluginId, viewIdPart] = splitViewKey(key);
+      if (viewIdPart === viewId) matches.push({ pluginId, containerId });
     }
     if (matches.length === 0) return undefined;
     if (matches.length > 1) {
       console.error(
-        `[ViewContainer] 裸 viewId "${id}" 解析到 ${matches.length} 个视图（${matches.map((m) => `"${m.pluginId}:${id}"`).join("、")}）——歧义，调用方必须携带 pluginId 精确寻址或插件改名（#41.8）。`
+        `[ViewContainer] 裸 viewId "${viewId}" 解析到 ${matches.length} 个视图（${matches.map((m) => `"${m.pluginId}:${viewId}"`).join("、")}）——歧义，调用方必须携带 pluginId 精确寻址或插件改名（#41.8）。`
       );
       return undefined;
     }
@@ -253,7 +265,7 @@ class ViewContainerServiceClass extends RegistryBase {
     if (!model) return undefined;
     return model.allViewDescriptors.find(
       // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
-      (v) => v.id === id && (v as any)._pluginId === pluginId
+      (v) => v.id === viewId && (v as any)._pluginId === pluginId
     );
   }
 
@@ -279,14 +291,14 @@ class ViewContainerServiceClass extends RegistryBase {
     return loadCollapsedStateCore();
   }
 
-  /** 保存单个 view 折叠状态 */
-  setCollapsed(viewId: string, collapsed: boolean): void {
-    setCollapsedCore(viewId, collapsed);
+  /** 保存单个 view 折叠状态——E5.8#41.9.2：签名加 pluginId（复合键持久化，同名视图各存各的） */
+  setCollapsed(pluginId: string, viewId: string, collapsed: boolean): void {
+    setCollapsedCore(pluginId, viewId, collapsed);
   }
 
-  /** 查询 view 是否持久化为折叠 */
-  isCollapsed(viewId: string): boolean {
-    return isCollapsedCore(viewId);
+  /** 查询 view 是否持久化为折叠——E5.8#41.9.2：签名加 pluginId（复合键查询） */
+  isCollapsed(pluginId: string, viewId: string): boolean {
+    return isCollapsedCore(pluginId, viewId);
   }
 
   /* ═══ 可见性 ═══ */
@@ -296,9 +308,17 @@ class ViewContainerServiceClass extends RegistryBase {
   setVisible(containerId: string, viewId: string, visible: boolean): void {
     const model = this._models.get(containerId);
     if (!model) return;
+    const view = model.allViewDescriptors.find((v) => v.id === viewId);
+    if (!view) return;
     model.setVisible(viewId, visible);
     // E5.8#34：隐藏态持久化——重启保持（面板容器切换器 + 侧栏「视图」子菜单共用此入口）
-    setHidden(viewId, !visible);
+    // E5.8#41.9.2：setHidden 复合键——带 (pluginId, viewId)，同名视图隐藏态各存各的（#41.8 碰撞面 #4）
+    setHidden(
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+      (view as any)._pluginId,
+      viewId,
+      !visible
+    );
   }
 
   /** E5#44d：切换 view 可见性——Views 子菜单消费 */
@@ -351,8 +371,11 @@ class ViewContainerServiceClass extends RegistryBase {
     model.allViewDescriptors.splice(newIndex, 0, moved);
     // 更新 order 字段
     model.allViewDescriptors.forEach((v, i) => { v.order = i; });
-    // 持久化——按 container 存 viewOrder
-    const viewOrder = model.allViewDescriptors.map(v => v.id);
+    // 持久化——按 container 存 viewOrder（E5.8#41.9.2：复合键数组 `pluginId:viewId`——同名视图排序各存各的，#41.8 碰撞面 #6）
+    const viewOrder = model.allViewDescriptors.map((v) =>
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 内部标记字段
+      viewKey((v as any)._pluginId, v.id)
+    );
     setPluginStateValue(APP_PLUGIN_ID, `viewOrder.${containerId}`, viewOrder).catch((e) => { console.error("[ViewContainer] 保存视图排序失败:", e); });
     this._updateActiveViews(containerId);
     this.onDidChangeViews.fire({ containerId, views: [...model.allViewDescriptors] });
@@ -364,8 +387,12 @@ class ViewContainerServiceClass extends RegistryBase {
     if (!model) return;
     const savedOrder = getPluginStateValue<string[]>(APP_PLUGIN_ID, `viewOrder.${containerId}`);
     if (!savedOrder || savedOrder.length === 0) return;
-    // 按持久化的顺序重排
-    const orderMap = new Map(savedOrder.map((id, i) => [id, i]));
+    // 按持久化的顺序重排（E5.8#41.9.2：只收复合键 `pluginId:viewId` → strip 出 viewId；存量裸键静默弃，#41.8 §3.4）
+    const orderMap = new Map<string, number>();
+    savedOrder.forEach((id, i) => {
+      if (!isViewKey(id)) return;
+      orderMap.set(splitViewKey(id)[1], i);
+    });
     model.allViewDescriptors.sort((a, b) => {
       const ao = orderMap.get(a.id);
       const bo = orderMap.get(b.id);

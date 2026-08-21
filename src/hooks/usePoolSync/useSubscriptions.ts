@@ -98,8 +98,9 @@ export function useSyncSubscriptions({
           break;
         }
         case "setCollapsed": {
-          if (action.viewId === undefined || action.collapsed === undefined) break;
-          ViewContainerService.setCollapsed(action.viewId, action.collapsed);
+          if (action.pluginId === undefined || action.viewId === undefined || action.collapsed === undefined) break;
+          // E5.8#41.9.2：复合键持久化——(pluginId, viewId)
+          ViewContainerService.setCollapsed(action.pluginId, action.viewId, action.collapsed);
           setLayoutVersion((v) => v + 1);  // setCollapsed 不 fire 事件——手动触发重推
           break;
         }
@@ -143,18 +144,23 @@ export function useSyncSubscriptions({
   // 池内 ViewContainerService 是空实例——marketplaceShared 的 updateAllBadges 改走 events.emit，
   // 壳监听到后写入壳 ViewContainerService → onDidChangeActiveViews 触发 layoutVersion bump → 重推布局。
   useEffect(() => {
-    const unsub = window.linkdesk?.events?.on("marketplace:updateBadge", (data: { viewId: string; count: number }) => {
-      const existing = ViewContainerService.getView(data.viewId);
-      if (!existing) return;
-      // 防重推循环——badge 值未变则跳过
-      if (existing.badge === data.count) return;
-      ViewContainerService.registerView("marketplace", "marketplace", {
-        id: data.viewId,
-        title: existing.title,
-        render: existing.render,
-        badge: data.count,
-      });
-    });
+    // E5.8#41.9.2：payload 带 pluginId/containerId（marketplace 插件自持身份，#41.8 §4 调用方 #3）——
+    // 壳侧零硬编码插件 ID（硬约束 10），getView/registerView 复合寻址
+    const unsub = window.linkdesk?.events?.on(
+      "marketplace:updateBadge",
+      (data: { pluginId: string; containerId: string; viewId: string; count: number }) => {
+        const existing = ViewContainerService.getView(data.pluginId, data.viewId);
+        if (!existing) return;
+        // 防重推循环——badge 值未变则跳过
+        if (existing.badge === data.count) return;
+        ViewContainerService.registerView(data.pluginId, data.containerId, {
+          id: data.viewId,
+          title: existing.title,
+          render: existing.render,
+          badge: data.count,
+        });
+      }
+    );
     return () => { unsub?.(); };
   }, []);
 

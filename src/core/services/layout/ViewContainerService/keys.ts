@@ -24,3 +24,8 @@ export function splitViewKey(key: string): [string, string] {
   const sep = key.indexOf(VIEW_KEY_SEP);
   return [key.slice(0, sep), key.slice(sep + 1)];
 }
+
+/** 是否为复合视图键（含分隔符）——持久化 load 区分存量裸键（#41.8 §3.4 静默弃，不迁移不报错）。 */
+export function isViewKey(key: string): boolean {
+  return key.includes(VIEW_KEY_SEP);
+}

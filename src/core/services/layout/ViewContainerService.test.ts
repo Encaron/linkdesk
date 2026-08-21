@@ -6,7 +6,7 @@
 import { describe, it, expect, beforeEach, vi } from "vitest";
 import { ViewContainerService } from "./ViewContainerService";
 import type { ViewDescriptor } from "./ViewContainerService";
-import { clearPluginStates } from "../plugins/PluginStateService"; // E5.8#34：隐藏持久化测试隔离
+import { clearPluginStates, setPluginStateValueSync, APP_PLUGIN_ID } from "../plugins/PluginStateService"; // E5.8#34：隐藏持久化测试隔离；#41.9.2：存量裸键迁移测试直接写持久化
 import { loadHiddenState, setHidden } from "./ViewContainerService/hidden"; // E5.8#34：setVisible 落盘断言 + 重启模拟
 
 const PLUGIN_ID = "test-plugin";
@@ -177,8 +177,8 @@ describe("ViewContainerService", () => {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(views.every((v) => (v as any)._pluginId !== PLUGIN_ID)).toBe(true);
 
-    // p2 的 view 仍在
-    const p2View = ViewContainerService.getView("v2");
+    // p2 的 view 仍在（E5.8#41.9.2：getView 复合寻址——(pluginId, viewId)）
+    const p2View = ViewContainerService.getView(PLUGIN_ID_2, "v2");
     expect(p2View).toBeDefined();
 
     // 容器还在——p2 还有 view 在里面
@@ -230,19 +230,31 @@ describe("ViewContainerService", () => {
     expect(views.map((v) => v.id)).toEqual(["v1", "v2", "v3"]);
   });
 
-  /* ═══ getView 全局查找 ═══ */
+  /* ═══ getView 精确寻址（复合键） ═══ */
 
-  it("getView 按 view id 全局查找", () => {
+  it("getView(pluginId, viewId) 复合键精确查找", () => {
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
     ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "folders", title: "FOLDERS" }));
 
-    const view = ViewContainerService.getView("folders");
+    const view = ViewContainerService.getView(PLUGIN_ID, "folders");
     expect(view).toBeDefined();
     expect(view!.title).toBe("FOLDERS");
   });
 
-  it("getView 不存在的 id → undefined", () => {
-    expect(ViewContainerService.getView("nonexistent")).toBeUndefined();
+  it("getView(pluginId, viewId) 不存在 → undefined", () => {
+    expect(ViewContainerService.getView(PLUGIN_ID, "nonexistent")).toBeUndefined();
+    expect(ViewContainerService.getView("unknown-plugin", "v1")).toBeUndefined();
+  });
+
+  it("getView(pluginId, viewId) 同名视图精确寻址——各取各的，不混淆", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "search", title: "p1 search" }));
+    ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "search", title: "p2 search" }));
+
+    const p1 = ViewContainerService.getView(PLUGIN_ID, "search");
+    const p2 = ViewContainerService.getView(PLUGIN_ID_2, "search");
+    expect(p1!.title).toBe("p1 search");
+    expect(p2!.title).toBe("p2 search");
   });
 
   /* ═══ E5.8#41.9.1 视图复合键——同名共存 / fail-loud / 容器归属首主保有 / 空态复合键 ═══ */
@@ -274,13 +286,13 @@ describe("ViewContainerService", () => {
     err.mockRestore();
   });
 
-  it("同名 viewId 裸 id 解析多命中 → fail-loud + undefined（绝不静默返回错误视图）", () => {
+  it("getViewByViewId 裸 id 扫描多命中 → fail-loud + undefined（绝不静默返回错误视图）", () => {
     const err = vi.spyOn(console, "error").mockImplementation(() => {});
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
     ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "ambig", title: "p1" }));
     ViewContainerService.registerView(PLUGIN_ID_2, "e", makeView({ id: "ambig", title: "p2" }));
 
-    const view = ViewContainerService.getView("ambig");
+    const view = ViewContainerService.getViewByViewId("ambig");
     expect(view).toBeUndefined();
     const msg = err.mock.calls.map((c) => String(c[0])).join(" ");
     expect(msg).toContain('裸 viewId "ambig"');
@@ -289,13 +301,17 @@ describe("ViewContainerService", () => {
     err.mockRestore();
   });
 
-  it("同名 viewId 唯一命中（仅一插件注册）→ getView 裸 id 正常返回", () => {
+  it("getViewByViewId 裸 id 扫描唯一命中（仅一插件注册）→ 正常返回", () => {
     ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "资源管理器" });
     ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "unique", title: "唯一" }));
 
-    const view = ViewContainerService.getView("unique");
+    const view = ViewContainerService.getViewByViewId("unique");
     expect(view).toBeDefined();
     expect(view!.title).toBe("唯一");
+  });
+
+  it("getViewByViewId 零命中 → undefined（no-op 不崩，#39.5 声明插件卸载后）", () => {
+    expect(ViewContainerService.getViewByViewId("ghost")).toBeUndefined();
   });
 
   it("容器归属首主保有——后声明者不覆盖属主（卸载不删错容器）", () => {
@@ -450,7 +466,8 @@ describe("ViewContainerService", () => {
 
   it("重启恢复——持久化隐藏态种子进新建模型（isVisible 直接反映）", () => {
     // 模拟重启：经 hidden 域直接落盘隐藏态（等价上一会话 setVisible 已持久化），再新建容器 + view
-    setHidden("v1", true);
+    // E5.8#41.9.2：setHidden 复合键——(pluginId, viewId)
+    setHidden(PLUGIN_ID, "v1", true);
     expect(loadHiddenState().has("v1")).toBe(true);
 
     // 新建容器（新 model 种子 loadHiddenState）——同 viewId 保持隐藏
@@ -470,5 +487,48 @@ describe("ViewContainerService", () => {
 
     ViewContainerService.toggleViewVisibility("e", "v1"); // 隐藏 → 恢复
     expect(loadHiddenState().has("v1")).toBe(false);
+  });
+
+  /* ═══ E5.8#41.9.2 持久化复合键迁移 ═══ */
+
+  it("setHidden(pluginId, viewId) 复合键——同名视图隐藏态各存各的", () => {
+    ViewContainerService.registerViewContainer(PLUGIN_ID, { id: "e", title: "p1 容器" });
+    ViewContainerService.registerViewContainer(PLUGIN_ID_2, { id: "e2", title: "p2 容器", location: "panel" });
+    ViewContainerService.registerView(PLUGIN_ID, "e", makeView({ id: "dup", title: "p1" }));
+    ViewContainerService.registerView(PLUGIN_ID_2, "e2", makeView({ id: "dup", title: "p2" }));
+
+    // p1 隐藏 dup——存储层只落 p1 的复合键，p2 的 dup 不受影响
+    ViewContainerService.setVisible("e", "dup", false);
+    expect(ViewContainerService.isVisible("e", "dup")).toBe(false);
+    expect(ViewContainerService.isVisible("e2", "dup")).toBe(true);
+
+    // 恢复 p1——p2 若独立隐藏过也不会被连带清除（复合键精确增删）
+    ViewContainerService.setVisible("e", "dup", true);
+    expect(ViewContainerService.isVisible("e", "dup")).toBe(true);
+  });
+
+  it("存量裸键静默弃——升级遗留裸 viewId 不种入模型（#41.8 §3.4）", () => {
+    // 模拟升级前遗留：hiddenViews 直接存裸键（#41.8 碰撞面 #4 存量）
+    setPluginStateValueSync(APP_PLUGIN_ID, "hiddenViews", ["legacy-view"]);
+
+    // load 时静默弃——不种入模型（不迁移不报错）
+    expect(loadHiddenState().has("legacy-view")).toBe(false);
+    expect(loadHiddenState().size).toBe(0);
+
+    // 新复合键正常读写
+    setHidden(PLUGIN_ID, "v1", true);
+    expect(loadHiddenState().has("v1")).toBe(true);
+  });
+
+  it("setCollapsed(pluginId, viewId) 复合键——同名视图折叠态各存各的", () => {
+    ViewContainerService.setCollapsed(PLUGIN_ID, "fold", true);
+    ViewContainerService.setCollapsed(PLUGIN_ID_2, "fold", true);
+    expect(ViewContainerService.isCollapsed(PLUGIN_ID, "fold")).toBe(true);
+    expect(ViewContainerService.isCollapsed(PLUGIN_ID_2, "fold")).toBe(true);
+
+    // 恢复 p1——p2 的折叠键仍在（复合键精确增删，不连带）
+    ViewContainerService.setCollapsed(PLUGIN_ID, "fold", false);
+    expect(ViewContainerService.isCollapsed(PLUGIN_ID, "fold")).toBe(false);
+    expect(ViewContainerService.isCollapsed(PLUGIN_ID_2, "fold")).toBe(true);
   });
 });

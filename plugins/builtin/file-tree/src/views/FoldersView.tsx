@@ -342,7 +342,8 @@ const FoldersView: React.FC = () => {
       const title = folders.length === 1 ? folders[0].name : (folders.length > 1 ? t("工作区") : "");
       // E5.7#98：getView 是 IPC invoke（异步）——补 await。定向前为 undefined 恒真（同步用异步 API），
       // render 恒 ()=>null；await 后 existing.render 仍随 IPC 序列化剥函数 → 兜底行为不变，仅类型诚实
-      const existing = await window.linkdesk?.viewContainer?.getView("folders");
+      // E5.8#41.9.2：getView 复合寻址——(pluginId, viewId) 精确查（#41.8 §4 方案 A，IPC 链带 pluginId）
+      const existing = await window.linkdesk?.viewContainer?.getView("file-tree", "folders");
       window.linkdesk?.viewContainer?.registerView("file-tree", "explorer", {
         id: "folders",
         title,

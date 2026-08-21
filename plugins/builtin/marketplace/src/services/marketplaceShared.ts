@@ -80,12 +80,14 @@ async function refreshData(): Promise<void> {
 function updateAllBadges(): void {
   // E5.6#11-fix：池内 ViewContainerService 是空实例，badge 走事件 emit→壳监听→壳 ViewContainerService 写入。
   // 壳 usePoolSync 订阅 "marketplace:updateBadge" → 更新壳侧 ViewContainerService → layoutVersion bump → 重推布局。
+  // E5.8#41.9.2：payload 带 pluginId/containerId——插件自持身份（插件独立性），壳侧零硬编码（硬约束 10）
   const emit = lk()?.events?.emit;
   if (!emit) return;
-  emit("marketplace:updateBadge", { viewId: "installed", count: _allPlugins.filter((p) => !p.manifest.core).length });
-  emit("marketplace:updateBadge", { viewId: "builtin", count: _allPlugins.filter((p) => p.manifest.core).length });
-  emit("marketplace:updateBadge", { viewId: "disabled", count: _disabledPlugins.length });
-  emit("marketplace:updateBadge", { viewId: "uninstalled", count: _uninstalledPlugins.length });
+  const self = { pluginId: "marketplace", containerId: "marketplace" };
+  emit("marketplace:updateBadge", { ...self, viewId: "installed", count: _allPlugins.filter((p) => !p.manifest.core).length });
+  emit("marketplace:updateBadge", { ...self, viewId: "builtin", count: _allPlugins.filter((p) => p.manifest.core).length });
+  emit("marketplace:updateBadge", { ...self, viewId: "disabled", count: _disabledPlugins.length });
+  emit("marketplace:updateBadge", { ...self, viewId: "uninstalled", count: _uninstalledPlugins.length });
 }
 
 export function useMarketplacePlugins() {

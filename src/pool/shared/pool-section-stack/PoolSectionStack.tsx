@@ -263,8 +263,8 @@ export default function PoolSectionStack({
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onToggleCollapse={(collapsed) => {
-          // IPC → 壳 ViewContainerService.setCollapsed()
-          onSidebarAction({ action: "setCollapsed", containerId, viewId: view.id, collapsed });
+          // IPC → 壳 ViewContainerService.setCollapsed()（E5.8#41.9.2：带 pluginId——复合键持久化）
+          onSidebarAction({ action: "setCollapsed", containerId, viewId: view.id, pluginId: view.pluginId, collapsed });
           setCollapsedViewSet((prev) => {
             const next = new Set(prev);
             if (collapsed) next.add(view.id); else next.delete(view.id);
