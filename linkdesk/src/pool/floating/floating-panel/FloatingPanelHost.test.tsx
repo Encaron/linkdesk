@@ -2,7 +2,7 @@
  * @vitest-environment jsdom
  *
  * E5.8#37：FloatingPanelHost 壳推送回归（Phase 8 类型 B 壳内悬浮面板）。
- * 覆盖：open:true 渲染标题/三动作 + 默认右贴边几何（mockup 帧 1）/
+ * 覆盖：open:true 渲染标题/三动作 + 默认居中大卡几何（85vw×80vh，#41.6）/
  * open:false 关闭零 DOM + 重开重置最大化态 / maximize 本地视觉 toggle（两态文案，零 action 回传）/
  * 非 toggle 动作回传 action(id)（open-in/close）/ 遮罩点击关闭 / Esc 关闭 / 面板本体点击不关 /
  * I8-5 拖拽（delta 几何 + 壳内 6px 钳制）/ I8-6 拖拽松手同拍遮罩点击不关闭 /
@@ -120,7 +120,7 @@ afterEach(() => {
 /* ── 壳推送渲染 ── */
 
 describe("壳推送渲染", () => {
-  it("open:true 渲染标题 + 三动作 + 默认右贴边几何（mockup 帧 1）", () => {
+  it("open:true 渲染标题 + 三动作 + 默认居中大卡几何（#41.6）", () => {
     const { container } = render(<FloatingPanelHost />);
     pushShell(sampleData());
 
@@ -130,10 +130,10 @@ describe("壳推送渲染", () => {
     expect(screen.getByRole("button", { name: "关闭" })).toBeTruthy();
 
     const panel = getPanel(container);
-    expect(panel.style.top).toBe("12px");
-    expect(panel.style.right).toBe("12px");
-    expect(panel.style.bottom).toBe("12px");
-    expect(panel.style.width).toBe("640px");
+    expect(panel.style.top).toBe("10vh");
+    expect(panel.style.left).toBe("7.5vw");
+    expect(panel.style.width).toBe("85vw");
+    expect(panel.style.height).toBe("80vh");
   });
 
   it("open:false 关闭面板——返回 null 零 DOM", () => {
@@ -222,14 +222,14 @@ describe("遮罩 / Esc 关闭（I8-8）", () => {
   });
 });
 
-/* ── I8-5 拖拽（顶部手柄 + 壳内 6px 钳制） ── */
+/* ── I8-5 拖拽（整条标题栏 + 壳内 6px 钳制，#41.6） ── */
 
-describe("I8-5 拖拽（顶部手柄 + 壳内钳制）", () => {
+describe("I8-5 拖拽（整条标题栏 + 壳内钳制）", () => {
   it("拖拽移动面板——几何按 delta 更新", () => {
     const { panel } = setupPanel();
-    const handle = panel.querySelector(".floating-panel-handle") as HTMLElement;
-    startGesture(handle, { x: 200, y: 100 });
-    moveGesture(handle, { x: 300, y: 200 });
+    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    startGesture(title, { x: 200, y: 100 });
+    moveGesture(title, { x: 300, y: 200 });
 
     expect(panel.style.top).toBe("200px");
     expect(panel.style.left).toBe("300px");
@@ -242,12 +242,23 @@ describe("I8-5 拖拽（顶部手柄 + 壳内钳制）", () => {
     const maxTop = window.innerHeight - 400 - 6;
     const maxLeft = window.innerWidth - 640 - 6;
 
-    const handle = panel.querySelector(".floating-panel-handle") as HTMLElement;
-    startGesture(handle, { x: 200, y: 100 });
-    moveGesture(handle, { x: 3000, y: 3000 });
+    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    startGesture(title, { x: 200, y: 100 });
+    moveGesture(title, { x: 3000, y: 3000 });
 
     expect(panel.style.top).toBe(`${maxTop}px`);
     expect(panel.style.left).toBe(`${maxLeft}px`);
+  });
+
+  it("标题栏动作按钮按下不触发拖拽（actions 排除，#41.6）", () => {
+    const { panel } = setupPanel();
+    const maximize = screen.getByRole("button", { name: "最大化" });
+    startGesture(maximize, { x: 200, y: 100 });
+    moveGesture(maximize, { x: 300, y: 200 });
+    endGesture(maximize);
+
+    expect(panel.className).not.toContain("dragging");
+    expect(panel.style.top).toBe("10vh"); // 未转显式几何——仍默认居中大卡
   });
 });
 
@@ -256,10 +267,10 @@ describe("I8-5 拖拽（顶部手柄 + 壳内钳制）", () => {
 describe("I8-6 拖拽/调整后遮罩点击抑制", () => {
   it("松手同拍内 backdrop 点击被忽略（suppress 标志延迟一拍）", () => {
     const { container, panel } = setupPanel();
-    const handle = panel.querySelector(".floating-panel-handle") as HTMLElement;
-    startGesture(handle, { x: 200, y: 100 });
-    moveGesture(handle, { x: 220, y: 120 });
-    endGesture(handle);
+    const title = panel.querySelector(".floating-panel-title") as HTMLElement;
+    startGesture(title, { x: 200, y: 100 });
+    moveGesture(title, { x: 220, y: 120 });
+    endGesture(title);
 
     const backdrop = container.querySelector(".floating-panel-backdrop") as HTMLElement;
     fireEvent.click(backdrop);

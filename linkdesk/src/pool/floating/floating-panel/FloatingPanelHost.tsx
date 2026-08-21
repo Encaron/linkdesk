@@ -12,11 +12,12 @@
  *   - I8-8  遮罩点击关闭 + 面板本体 stopPropagation + Esc 关闭 + 焦点入面板
  *   - I8-9  最大化 100vw 同按钮 toggle——纯视觉态池本地切换，零壳 roundtrip（两态图标/文案 DTO 携带）
  *   - I8-12 Z_INDEX 1500——层级由 FloatingLayerHost #floating-panel-root 容器承载
- *   - I8-13 右侧滑入 translateX(100%)→0，250ms cubic-bezier(0.16,1,0.3,1)，prefers-reduced-motion 关闭
+ *   - I8-13 淡入 + 微缩放 scale(0.96)→1，250ms cubic-bezier(0.16,1,0.3,1)，prefers-reduced-motion 关闭（#41.6 居中卡——右滑入对居中违和）
  *
  * 状态闭环：壳 push {open:false} 驱动关闭——池不本地关闭（哑，I8-11）。例外：最大化是纯视觉态——池本地 toggle。
- * 几何：默认右贴边（top/right/bottom 12px + width 640，mockup 帧 1）；拖拽/调高后转显式 top/left/width/height；
- * 窗口 resize 时对显式几何再钳制。关闭即重置本地几何/最大化态（重开回默认右贴边）。
+ * 几何：默认居中大卡（top:10vh / left:7.5vw / 85vw×80vh，#41.6——vw/vh 随窗口 resize 自适应，零 JS）；
+ * 拖拽/调高后转显式 top/left/width/height；窗口 resize 时对显式几何再钳制。
+ * 关闭即重置本地几何/最大化态（重开回默认居中大卡）。
  *
  * Path B：不 import @src/core 运行时模块——类型 import type OK，Z_INDEX 走 constants。
  */
@@ -40,10 +41,9 @@ interface PoolFloatingPanelApi {
   action: (actionId: string) => void;
 }
 
-/* ── 几何常量（I8 矩阵 + mockup 帧 1/3） ── */
+/* ── 几何常量（I8 矩阵 + mockup 帧 1/3） ──
+   #41.6 默认居中大卡几何走 CSS vw/vh（内联 style 字符串）——EDGE_MARGIN/DEFAULT_WIDTH 常量已随右贴边默认态删除 */
 
-const DEFAULT_WIDTH = 640; // mockup 帧 1：默认面板宽（2026-08-17 用户拍板 520→640）
-const EDGE_MARGIN = 12; // mockup 帧 1：默认 top/right/bottom 12px
 const CLAMP_INSET = 6; // I8-5 壳内钳制：拖不出壳窗口边界（mockup clamp-zone inset:6px）
 const MIN_HEIGHT = 300; // I8-7 resize 最小高
 const RESIZE_MAX_OFFSET = 80; // I8-7 resize 最大 = 窗口高 - 80
@@ -150,6 +150,8 @@ export default function FloatingPanelHost() {
 
   const startGesture = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (maximized) return; // I8-9 最大化态铺满窗口，不可拖/调
+    // #41.6 整条标题栏拖拽——动作按钮区排除（点按钮不误触拖拽）
+    if ((e.target as Element).closest(".floating-panel-actions")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     const rect = panelRef.current?.getBoundingClientRect();
     if (!rect) return;
@@ -215,7 +217,8 @@ export default function FloatingPanelHost() {
     ? { top: CLAMP_INSET, left: CLAMP_INSET, right: CLAMP_INSET, bottom: CLAMP_INSET, width: "auto" as const }
     : geo
       ? { top: geo.top, left: geo.left, width: geo.width, height: geo.height }
-      : { top: EDGE_MARGIN, right: EDGE_MARGIN, bottom: EDGE_MARGIN, width: DEFAULT_WIDTH };
+      // #41.6 默认居中大卡——vw/vh 随窗口 resize 自适应（零 JS）；拖拽/调高后转显式 px
+      : { top: "10vh", left: "7.5vw", width: "85vw", height: "80vh" };
 
   return (
     <>
@@ -240,18 +243,16 @@ export default function FloatingPanelHost() {
         aria-modal="true"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* I8-5 顶部 6px 拖拽手柄 */}
+        {/* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏；actions 按钮区 startGesture 内排除）——
+            纯图标动作（mockup 帧 1：open-in hover 展开全文 / □✕ hover tooltip） */}
         <div
-          className="floating-panel-handle"
+          className="floating-panel-title"
           onPointerDown={startGesture}
           onPointerMove={onDragMove}
           onPointerUp={endGesture}
           onPointerCancel={endGesture}
           onLostPointerCapture={endGesture}
-        />
-
-        {/* 标题栏——纯图标动作（mockup 帧 1：open-in hover 展开全文 / □✕ hover tooltip） */}
-        <div className="floating-panel-title">
+        >
           <span className="floating-panel-label">{data.title}</span>
           <div className="floating-panel-actions">
             {data.actions.map((action) => {
