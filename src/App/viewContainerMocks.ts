@@ -30,29 +30,31 @@ vi.mock("../core/services/layout/ViewContainerService", () => ({
   },
 }));
 
-/** 种子数据：双 panel 容器 × 各自视图（panel-main 视图带 _pluginId——category 断言用）。仅 output 隐藏。
+/** 种子数据：双 panel 容器 × 各自视图（demo-panel-a 视图带 _pluginId——category 断言用）。仅 demo-view-b 隐藏。
  *  getViewByViewIdMock = 同 seed 的声明扫描索引（视图带运行时附挂 _pluginId/_renderPath——floatingPanel 声明寻址用）。
- *  调用方 beforeEach 先 vi.clearAllMocks() 再调本函数；特殊场景直接覆盖个别 mock。 */
+ *  调用方 beforeEach 先 vi.clearAllMocks() 再调本函数；特殊场景直接覆盖个别 mock。
+ *  插件/视图身份与显示文本全部用明显虚构值（demo-plugin-a/b/c、demo-view-a/b/c、Alpha/Beta/Gamma）——
+ *  测试桩惰性数据，不用真实插件名/真实 UI 文案避免误导（2026-08-22 用户「没有硬编码」标准）。 */
 export function seedViewContainerMocks(): void {
   getViewContainersMock.mockReturnValue([
-    { id: "panel-main", title: "面板", location: "panel" },
-    { id: "panel-tools", title: "工具", location: "panel" },
+    { id: "demo-panel-a", title: "Demo A", location: "panel" },
+    { id: "demo-panel-b", title: "Demo B", location: "panel" },
   ]);
   getViewsMock.mockImplementation((cid: string) =>
-    cid === "panel-main"
+    cid === "demo-panel-a"
       ? [
-          { id: "problems", title: "问题", _pluginId: "linter" },
-          { id: "output", title: "输出", _pluginId: "panel-demo" },
+          { id: "demo-view-a", title: "Alpha", _pluginId: "demo-plugin-a" },
+          { id: "demo-view-b", title: "Beta", _pluginId: "demo-plugin-b" },
         ]
-      : [{ id: "terminal", title: "终端", _pluginId: "terminal" }],
+      : [{ id: "demo-view-c", title: "Gamma", _pluginId: "demo-plugin-c" }],
   );
-  isVisibleMock.mockImplementation((_cid: string, vid: string) => vid !== "output");
+  isVisibleMock.mockImplementation((_cid: string, vid: string) => vid !== "demo-view-b");
   // E5.8#39.5：全局索引——视图带 loader 运行时附挂（renderPath 形状 = glob key）
   getViewByViewIdMock.mockImplementation((vid: string) => {
     const table: Record<string, { id: string; title: string; _pluginId: string; _renderPath: string }> = {
-      problems: { id: "problems", title: "问题", _pluginId: "linter", _renderPath: "/@fs/plugins/builtin/linter/src/views/ProblemsView.tsx" },
-      output: { id: "output", title: "输出", _pluginId: "panel-demo", _renderPath: "/@fs/plugins/builtin/panel-demo/src/views/OutputView.tsx" },
-      terminal: { id: "terminal", title: "终端", _pluginId: "terminal", _renderPath: "/@fs/plugins/builtin/terminal/src/views/TerminalView.tsx" },
+      "demo-view-a": { id: "demo-view-a", title: "Alpha", _pluginId: "demo-plugin-a", _renderPath: "/@fs/plugins/demo-plugin-a/src/views/DemoViewA.tsx" },
+      "demo-view-b": { id: "demo-view-b", title: "Beta", _pluginId: "demo-plugin-b", _renderPath: "/@fs/plugins/demo-plugin-b/src/views/DemoViewB.tsx" },
+      "demo-view-c": { id: "demo-view-c", title: "Gamma", _pluginId: "demo-plugin-c", _renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx" },
     };
     return table[vid];
   });

@@ -18,15 +18,17 @@ import type { PoolFloatingPanelData } from "../../types/pool/poolFloatingPanel";
 
 const { pushMock } = vi.hoisted(() => ({ pushMock: vi.fn() }));
 
+/** 插件身份 + 显示文本全用明显虚构值（demo-plugin/demo-view + Demo View/Maximize）——测试 fixture 惰性字符串，
+ *  服务不加载插件；真实插件名/真实 UI 文案（settings/设置/关闭…）一律不用，避免误导（2026-08-22 用户「没有硬编码」标准）。 */
 function sampleOptions() {
   return {
-    viewId: "settings",
-    title: "设置",
-    pluginId: "file-tree",
-    renderPath: "/@fs/plugins/builtin/file-tree/src/views/FoldersView.tsx",
+    viewId: "demo-view",
+    title: "Demo View",
+    pluginId: "demo-plugin",
+    renderPath: "/@fs/plugins/demo-plugin/src/views/DemoView.tsx",
     actions: [
-      { id: "maximize", label: "最大化", icon: "maximize", toggledIcon: "restore", toggledLabel: "还原" },
-      { id: "close", label: "关闭", icon: "close" },
+      { id: "maximize", label: "Maximize", icon: "maximize", toggledIcon: "restore", toggledLabel: "Restore" },
+      { id: "close", label: "Close", icon: "close" },
     ],
   };
 }
@@ -47,15 +49,15 @@ describe("refreshPanelText（语言切换文案重推）", () => {
     const reason = pushPanel(sampleOptions());
     pushMock.mockClear(); // 清 pushPanel 的首次推
 
-    refreshPanelText("Settings", [{ id: "close", label: "Close", icon: "close" }]);
+    refreshPanelText("Démo Vue", [{ id: "close", label: "Fermer", icon: "close" }]);
 
     const pushed = lastPush();
     expect(pushed.open).toBe(true);
-    expect(pushed.viewId).toBe("settings"); // 身份不变（refresh 不是替换）
-    expect(pushed.pluginId).toBe("file-tree");
+    expect(pushed.viewId).toBe("demo-view"); // 身份不变（refresh 不是替换）
+    expect(pushed.pluginId).toBe("demo-plugin");
     expect(pushed.renderPath).toBe(sampleOptions().renderPath);
-    expect(pushed.title).toBe("Settings");
-    expect(pushed.actions).toEqual([{ id: "close", label: "Close", icon: "close" }]);
+    expect(pushed.title).toBe("Démo Vue");
+    expect(pushed.actions).toEqual([{ id: "close", label: "Fermer", icon: "close" }]);
     expect(pushed.refresh).toBe(true); // 池据此跳过焦点获取
 
     // 不 settle promise——面板仍打开，consumer await 不到原因
@@ -66,7 +68,7 @@ describe("refreshPanelText（语言切换文案重推）", () => {
   });
 
   it("面板未开 → no-op 零推送", () => {
-    refreshPanelText("Settings", [{ id: "close", label: "Close", icon: "close" }]);
+    refreshPanelText("Démo Vue", [{ id: "close", label: "Fermer", icon: "close" }]);
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -75,7 +77,7 @@ describe("refreshPanelText（语言切换文案重推）", () => {
     closePanel();
     pushMock.mockClear();
 
-    refreshPanelText("Settings", [{ id: "close", label: "Close", icon: "close" }]);
+    refreshPanelText("Démo Vue", [{ id: "close", label: "Fermer", icon: "close" }]);
     expect(pushMock).not.toHaveBeenCalled();
   });
 
@@ -84,7 +86,7 @@ describe("refreshPanelText（语言切换文案重推）", () => {
     handleFloatingPanelAction("close");
     pushMock.mockClear();
 
-    refreshPanelText("Settings", [{ id: "close", label: "Close", icon: "close" }]);
+    refreshPanelText("Démo Vue", [{ id: "close", label: "Fermer", icon: "close" }]);
     expect(pushMock).not.toHaveBeenCalled();
     await expect(reason).resolves.toBe("close");
   });
@@ -106,9 +108,9 @@ describe("单实例语义（I8-10）", () => {
     const oldReason = pushPanel(sampleOptions());
     pushMock.mockClear();
 
-    const newReason = pushPanel({ ...sampleOptions(), viewId: "terminal", title: "终端", pluginId: "terminal" });
+    const newReason = pushPanel({ ...sampleOptions(), viewId: "other-view", title: "Other", pluginId: "other-plugin" });
     await expect(oldReason).resolves.toBe("replaced"); // 旧 consumer 不永远挂起
-    expect(lastPush().viewId).toBe("terminal"); // 新面板推送给池
+    expect(lastPush().viewId).toBe("other-view"); // 新面板推送给池
     expect(newReason).not.toBe(oldReason);
   });
 });
