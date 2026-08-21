@@ -1,15 +1,15 @@
 /**
  * renderControl——根据 property type/uiHint 渲染对应控件。
- * E5.8#0d.10-7b：自 SettingsView.tsx 拆出——纯函数：吃 ConfigProperty + value + onChange，零组件状态。
+ * 自壳迁入（E5.8#41.14）：控件 import 全走 @src/components/shared 例外表白名单（零 @src/core）。
  * 依赖方向：renderControl → shared 控件（Toggle/SelectBox/FontFamilySelect/FilePathInput/NumberInput）
  *   + ObjectEditor + types；被 SettingRow 消费。
  */
 
-import Toggle from "../../../shared/toggle/Toggle";
-import SelectBox from "../../../shared/select-box/SelectBox";
-import FontFamilySelect from "../../../shared/font-family-select/FontFamilySelect";
-import FilePathInput from "../../../shared/file-path-input/FilePathInput";
-import NumberInput from "../../../shared/number-input/NumberInput";
+import Toggle from "@src/components/shared/toggle/Toggle";
+import SelectBox from "@src/components/shared/select-box/SelectBox";
+import FontFamilySelect from "@src/components/shared/font-family-select/FontFamilySelect";
+import FilePathInput from "@src/components/shared/file-path-input/FilePathInput";
+import NumberInput from "@src/components/shared/number-input/NumberInput";
 import ObjectEditor from "./ObjectEditor";
 import type { ConfigProperty } from "./types";
 

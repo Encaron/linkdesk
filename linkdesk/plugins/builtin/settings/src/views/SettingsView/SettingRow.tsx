@@ -1,19 +1,22 @@
 /**
  * SettingRow——单个设置行（IPC 读写 + 声明式显隐 + 齿轮菜单 + 色块取色）。
- * E5.8#0d.10-7c：自 SettingsView.tsx 拆出——行组件：configKey + prop 入参，内部自持 gear/colorPicker 弹层状态。
- * 依赖方向：SettingRow → renderControl + shared（ContextMenu/ColorPicker）+ core（MENU_SLOTS/useConfigurationValueIpc）
- *   + helpers/types；被聚合器 SettingsView 消费。
+ * 自壳迁入（E5.8#41.14）：@src/core 三依赖全消除——useConfigurationValueIpc → 插件本地 hook；
+ * MENU_SLOTS.SettingItemGear → 本地常量（菜单槽 id 是壳稳定契约面，壳 coreCommands 已注册该槽菜单项）。
+ * 共享组件（ContextMenu/ColorPicker）走 @src/components/shared 例外表白名单。
+ * 依赖方向：SettingRow → renderControl + shared + hooks/helpers/types；被聚合器 SettingsView 消费。
  */
 
 import { useState, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
-import ContextMenu from "../../../shared/context-menu/ContextMenu";
-import ColorPicker from "../../../shared/color-picker/ColorPicker";
-import { useConfigurationValueIpc } from "../../../../core/react/useConfigurationIpc";
-import { MENU_SLOTS } from "../../../../core/registry/commands/MenuRegistry";
+import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
+import { useConfigurationValueIpc } from "../hooks/useConfigurationValueIpc";
 import renderControl from "./renderControl";
 import { lk } from "./helpers";
 import type { ConfigProperty } from "./types";
+
+/** 设置项齿轮菜单槽——壳 MenuRegistry.MENU_SLOTS.SettingItemGear 稳定槽 id（菜单项由壳 coreCommands 注册） */
+const SETTING_ITEM_GEAR_MENU = "settingItemGear";
 
 // E5.8#6.6 hex 豁免：取色器预设色板（颜色即数据——用户可选值，非样式硬编码）
 // eslint-disable-next-line linkdesk/no-hardcoded-hex
@@ -100,7 +103,7 @@ function SettingRow({
       </button>
       {gearAnchor && (
         <ContextMenu
-          menuId={MENU_SLOTS.SettingItemGear}
+          menuId={SETTING_ITEM_GEAR_MENU}
           anchor={gearAnchor}
           context={{ settingKey: configKey }}
           onClose={handleGearClose}
