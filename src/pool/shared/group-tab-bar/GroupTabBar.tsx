@@ -52,6 +52,8 @@ interface GroupTabBarProps {
   onTabBarMount?: (el: HTMLDivElement | null) => void;
   /** E5.6#16.7k-3：可创建为标签页的视图——[+] 按钮下拉菜单 */
   creatableViews?: { pluginId: string; label: string }[];
+  /** E5.8#44-C：吸附目标组 id——跨窗拖拽命中本组 TabBar → 整条点亮吸附高亮（壳按 windowId 定向池下发） */
+  adsorbGroupId?: string | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -79,7 +81,7 @@ function disambiguateLabels(tabs: PoolTab[]): Map<string, string> {
 // 组件
 // ═══════════════════════════════════════════════════════════════════
 
-export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews }: GroupTabBarProps) {
+export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews, adsorbGroupId }: GroupTabBarProps) {
   // ── i18n ──
   const { t } = useTranslation();
 
@@ -243,7 +245,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
   if (tabs.length === 0) return null;
 
   return (
-    <div className="group-tab-bar" ref={setBarRef}>
+    <div
+      className={`group-tab-bar${adsorbGroupId === groupId ? " tab-bar-adsorb" : ""}`}
+      ref={setBarRef}
+    >
       {/* 左滚动箭头 */}
       {overflowLeft && (
         <button

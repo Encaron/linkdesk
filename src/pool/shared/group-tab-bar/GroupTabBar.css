@@ -10,6 +10,26 @@
   user-select: none;
 }
 
+/* ── E5.8#44-C：吸附目标 TabBar 高亮（跨窗拖拽——目标窗池按壳下发的吸附提示点亮整条）──
+   视觉对齐 .drop-glass-zone 毛玻璃语言（半透明散射面 + 内发光 hairline 边界）。
+   实体条不 backdrop-filter（会模糊下方内容区）；不加 border（1px 边框=2px 布局位移）；
+   纯 inset 内发光 + 玻璃底色——零位移、零遮挡。动画 120ms 对齐 drop-zone-in。 */
+.group-tab-bar.tab-bar-adsorb {
+  background: var(--drop-glass-bg);
+  box-shadow: inset 0 0 0 1px var(--drop-glass-border), var(--drop-glass-inner);
+  animation: tab-bar-adsorb-in 120ms ease-out forwards;
+}
+
+@keyframes tab-bar-adsorb-in {
+  from { opacity: 0.6; }
+  to   { opacity: 1; }
+}
+
+/* prefers-reduced-motion（ui-ux-pro-max 确认）——关闭吸附动画，高亮瞬显 */
+@media (prefers-reduced-motion: reduce) {
+  .group-tab-bar.tab-bar-adsorb { animation: none; }
+}
+
 /* ── 标签页列表── */
 
 .group-tab-list {

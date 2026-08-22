@@ -16,7 +16,7 @@ import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout"
 import type { DropZone } from "../../../hooks/tabDragTypes";
 import { detectDropZone } from "../../../hooks/tabDragTypes";
 import type { PoolTabAction } from "../../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
-import type { TabBarViewportRect, TabDragPositionPayload } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
+import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
 import { useDragReorder } from "../../../hooks/useDragReorder";
 import { TAB_BAR_HEIGHT } from "./layout";
 
@@ -28,9 +28,11 @@ interface UseTabDragInput {
   tabBarRects?: (rects: TabBarViewportRect[]) => void;
   /** E5.8#44-C：拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测）——MainZone 传 pool.dragPosition 包装 */
   dragPosition?: (pos: TabDragPositionPayload) => void;
+  /** E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 时下发目标组高亮）。返回退订。MainZone 传 pool.onAdsorbHint 包装 */
+  onAdsorbHint?: (cb: (hint: AdsorbHintPayload) => void) => () => void;
 }
 
-export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition }: UseTabDragInput) {
+export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint }: UseTabDragInput) {
   // Stable groups ref——avoid useCallback deps on groups
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
@@ -60,11 +62,22 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     return () => window.removeEventListener("resize", report);
   }, [groups, tabBarRects]);
 
+  // E5.8#44-C：吸附提示订阅——壳→池（windowRelocation handleDragPosition 按 target windowId 定向下发）。
+  // 提示自带生命周期（命中发 groupId / 拖回·取消·释放·窗口增删发 null）→ 直写 state，零本地兜底清逻辑
+  //（被动目标窗可能同时自己也在拖——本地按 draggingId 清会误清别人的吸附高亮）。
+  useEffect(() => {
+    if (!onAdsorbHint) return;
+    const unsub = onAdsorbHint((hint) => setAdsorbGroupId(hint.groupId));
+    return unsub;
+  }, [onAdsorbHint]);
+
   const totalTabCount = groups.reduce((sum, g) => sum + g.tabs.length, 0);
   const sourceGroupRef = useRef<string | null>(null);
   const targetGroupRef = useRef<string | null>(null);
   const [dragInsertGroupId, setDragInsertGroupId] = useState<string | null>(null);
   const [dropZoneState, setDropZoneState] = useState<{ zone: DropZone; targetGroupId: string | null } | null>(null);
+  // E5.8#44-C：吸附目标组 id——壳下发（跨窗拖拽命中本窗 TabBar）→ 目标组 TabBar 高亮。null = 无高亮（拖回/取消/释放壳必发 null 清）
+  const [adsorbGroupId, setAdsorbGroupId] = useState<string | null>(null);
 
   // E5.7#86：同组标签排序的待回执记录——乐观提交序保留到壳 pushLayout 回执（分隔线同款回执对齐）
   const pendingReordersRef = useRef<Map<string, { preDragIds: string[]; committedIds: string[]; tabs: PoolTab[] }>>(new Map());
@@ -288,5 +301,7 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
+    // E5.8#44-C：吸附目标组 id——MainZone 传给 GroupPane → GroupTabBar 匹配 groupId 点亮高亮
+    adsorbGroupId,
   };
 }

@@ -34,7 +34,7 @@ import type { PoolGroup } from "../../../core/types/pool/poolLayout";
 import type { SplitNode } from "../../../core/utils/splitTree";
 import { getAllLeafGroupIds } from "../../../core/utils/splitTree";
 import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
-import type { TabBarViewportRect, TabDragPositionPayload } from "../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
+import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } from "../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报 + 吸附提示契约
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { computeLayout, buildBranchMaps } from "./MainZone/layout";
@@ -80,6 +80,12 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   const dragPosition = useCallback((pos: TabDragPositionPayload) => {
     poolApiRef.current?.dragPosition?.(pos);
   }, []);
+  // E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 下发目标组高亮）——onAdsorbHint 是订阅函数（返回退订），
+  // 池 API 缺失 → 返回 no-op 退订（useTabDrag effect 直接调用退订函数）
+  const onAdsorbHint = useCallback(
+    (cb: (hint: AdsorbHintPayload) => void) => poolApiRef.current?.onAdsorbHint?.(cb) ?? (() => {}),
+    [],
+  );
 
   // ── Group map ──
   const groupMap = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
@@ -105,7 +111,8 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
-  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition });
+    adsorbGroupId,
+  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint });
 
   // ── renderGroupPane——单个 group 的内容（GroupPane 接线：tabs/dragInsertIndex 由本层解析）──
   function renderGroupPane(group: PoolGroup): React.ReactNode {
@@ -119,6 +126,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
         onTabDragStart={handleTabDragStart}
         onTabBarMount={registerTabBar}
         creatableViews={creatableViews}
+        adsorbGroupId={adsorbGroupId}
       />
     );
   }
