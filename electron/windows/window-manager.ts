@@ -263,6 +263,14 @@ export class WindowManager {
   /** E5.8#43-1（A4）：壳侧主动关闭的窗口集合——closed 事件里跳过 notifyShellWindowClosed（壳已知道，防冗余通知） */
   private shellClosingWindows = new Set<string>();
 
+  /** E5.8#44 实机修复诊断：主进程关键路径写 protocol-debug.log（终端不可达时也能定位——与池 console-message 转发同文件） */
+  private logToFile(msg: string): void {
+    try {
+      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+      fs.appendFileSync(logFile, `[${new Date().toISOString()}] [window-manager] ${msg}\n`);
+    } catch { /* ignore */ }
+  }
+
   /**
    * 创建脱出池窗——壳驱动（壳生成 windowId + bounds，tab 归属归壳），主进程只执行窗口+池生命周期。
    * detach 核心 API 的窗口侧；纯工作区窗口（拍板 7：frame:false + 池内自绘标题栏），无原生 chrome/菜单栏。
@@ -284,6 +292,7 @@ export class WindowManager {
       width: opts.width ?? 900,
       height: opts.height ?? 600,
     });
+    this.logToFile(`createPoolWindow → windowId=${opts.windowId} clamped=${JSON.stringify(bounds)}`);
     const win = new BrowserWindow({
       width: bounds.width,
       height: bounds.height,
@@ -314,7 +323,17 @@ export class WindowManager {
     const reportBounds = () => this.notifyShellWindowBoundsChanged(opts.windowId);
     win.on('moved', reportBounds);
     win.on('resized', reportBounds);
-    return this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
+    const view = this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
+    // E5.8#44 实机修复：WCV 宿主窗自身的 ready-to-show 不保证触发（宿主无页面加载，只挂 WCV）——
+    // 显示时机改绑 WCV did-finish-load（内容就绪才亮，无白闪）+ 2s 兜底（WCV 加载失败/事件已过也不隐身）。
+    view.webContents.once('did-finish-load', () => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show();
+    });
+    setTimeout(() => {
+      if (!win.isDestroyed() && !win.isVisible()) win.show();
+    }, 2000);
+    this.logToFile(`createPoolWindow → 已注册 view（windowId=${opts.windowId}），等待 did-finish-load 显示`);
+    return view;
   }
 
   /** E5.8#43-3：主进程主动补发池窗就绪给壳——复用既有窗口时（壳刷新接管）壳需知道该窗已可推布局。

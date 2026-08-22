@@ -128,6 +128,8 @@ export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHo
           : [...prev, { windowId, mode, ready: false, tabState, ...(bounds ? { bounds } : {}) }],
       );
       // E5.8#43-3：恢复路径带持久化 bounds → 主进程 createPoolWindow 应用（重启新建）或复用忽略（F5）
+      // E5.8#44 实机修复诊断：hasAPI 区分「壳 preload 未暴露」vs「主进程未收到」两态（写 protocol-debug.log）
+      console.error(`[shell] createWindow IPC → windowId=${windowId} bounds=${JSON.stringify(bounds ?? null)} hasAPI=${typeof window.linkdesk?.pool?.createWindow}`);
       window.linkdesk?.pool?.createWindow?.({ windowId, ...(bounds ?? {}) });
     },
     [],
