@@ -12,6 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
 import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键路由：池 WCV 挂载（工厂处——含 rebuildPool 覆盖）
+import { resolveFocusedWindowId } from './focus-router.js'; // E5.8#46.12 Step2：聚焦池窗解析（纯函数，单测独立）
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from '../ipc/ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）
 import { IPC } from '../ipc/channels.js';
@@ -66,6 +67,11 @@ export class WindowManager {
 
   // ── E5.8#43-1（A2）：多窗口注册表——通用登记/枚举（主池='main'；脱出窗口由壳生成 id 传入）──
   private poolWindows = new Map<string, PoolWindowEntry>();
+
+  // E5.8#46.12 Step2：当前聚焦池窗——registerPool 每窗 focus 事件更新。
+  // 壳→池 UI 推流（QuickPick/Toast/Dialog/FloatingPanel）默认聚焦窗：用户在哪个窗触发，壳 UI 显示在哪个窗
+  // （脱出窗 Ctrl+Shift+P 命令面板、Ctrl+W dirty 确认弹窗归位）。null = 尚无聚焦事件 → 回退主池（getFocusedWindowId）。
+  private _focusedWindowId: string | null = null;
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
@@ -216,6 +222,10 @@ export class WindowManager {
     const reportBounds = () => this.notifyShellWindowBoundsChanged(windowId);
     hostWindow.on('moved', reportBounds);
     hostWindow.on('resized', reportBounds);
+    // E5.8#46.12 Step2：聚焦窗跟踪——主/脱出池共用创建路径统一挂载，用户聚焦哪个窗，
+    // 壳 UI 推流（pushQuickPick/pushToast/pushDialog/pushFloatingPanel）默认落该窗。
+    const onFocus = () => { this._focusedWindowId = windowId; };
+    hostWindow.on('focus', onFocus);
     this.poolWindows.set(windowId, {
       windowId,
       hostWindow,
@@ -224,6 +234,7 @@ export class WindowManager {
         hostWindow.removeListener('resize', onHostResize);
         hostWindow.removeListener('moved', reportBounds);
         hostWindow.removeListener('resized', reportBounds);
+        hostWindow.removeListener('focus', onFocus);
       },
     });
     this.syncPoolBounds(windowId);
@@ -392,6 +403,14 @@ export class WindowManager {
     return this.createMainPool();
   }
 
+  /**
+   * E5.8#46.12 Step2：当前聚焦池窗——壳→池 UI 推流默认目标（QuickPick/Toast/Dialog/FloatingPanel）。
+   * 聚焦窗已销毁（用户关了该窗）→ 回退主池（防御——迟到推流不落空窗）。
+   */
+  getFocusedWindowId(): string {
+    return resolveFocusedWindowId(this._focusedWindowId, new Set(this.poolWindows.keys()));
+  }
+
   /** E5.8#43-1（A2）：取指定 Pool 窗口条目（已销毁则告警 + undefined）——哑渲染通道守卫咽喉。send 通道仍各方法字面量直发（E5.7#63.6 通道审计）。 */
   private getPoolEntry(windowId: string, label: string): PoolWindowEntry | undefined {
     const entry = this.poolWindows.get(windowId);
@@ -419,29 +438,41 @@ export class WindowManager {
     entry.view.webContents.send(IPC.pool.layout, layout);
   }
 
-  /** E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染（按 windowId 定向，默认主池） */
-  pushQuickPick(data: unknown, windowId = 'main'): void {
+  /**
+   * E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染。
+   * E5.8#46.12 Step2：windowId 默认聚焦窗——脱出窗触发（Ctrl+Shift+P 命令面板/插件 API）落触发窗，主窗/无聚焦落主池。
+   */
+  pushQuickPick(data: unknown, windowId = this.getFocusedWindowId()): void {
     const entry = this.getPoolEntry(windowId, 'pushQuickPick');
     if (!entry) return;
     entry.view.webContents.send(IPC.pool.quickpick, data);
   }
 
-  /** E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染（按 windowId 定向，默认主池） */
-  pushToast(data: unknown, windowId = 'main'): void {
+  /**
+   * E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染。
+   * E5.8#46.12 Step2：windowId 默认聚焦窗——toast 出现在用户当前所在窗。
+   */
+  pushToast(data: unknown, windowId = this.getFocusedWindowId()): void {
     const entry = this.getPoolEntry(windowId, 'pushToast');
     if (!entry) return;
     entry.view.webContents.send(IPC.pool.toast, data);
   }
 
-  /** E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染（按 windowId 定向，默认主池） */
-  pushDialog(data: unknown, windowId = 'main'): void {
+  /**
+   * E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染。
+   * E5.8#46.12 Step2：windowId 默认聚焦窗——脱出窗 Ctrl+W dirty 确认等弹窗落触发窗，不再漏到主窗。
+   */
+  pushDialog(data: unknown, windowId = this.getFocusedWindowId()): void {
     const entry = this.getPoolEntry(windowId, 'pushDialog');
     if (!entry) return;
     entry.view.webContents.send(IPC.pool.dialog, data);
   }
 
-  /** E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据——壳 FloatingPanelService 桥序列化 DTO，池 FloatingPanelHost 纯渲染（按 windowId 定向，默认主池） */
-  pushFloatingPanel(data: unknown, windowId = 'main'): void {
+  /**
+   * E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据——壳 FloatingPanelService 桥序列化 DTO，池 FloatingPanelHost 纯渲染。
+   * E5.8#46.12 Step2：windowId 默认聚焦窗——面板浮层跟随触发窗。
+   */
+  pushFloatingPanel(data: unknown, windowId = this.getFocusedWindowId()): void {
     const entry = this.getPoolEntry(windowId, 'pushFloatingPanel');
     if (!entry) return;
     entry.view.webContents.send(IPC.pool.floatingPanel, data);
