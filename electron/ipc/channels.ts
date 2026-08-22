@@ -158,8 +158,10 @@ export const IPC = {
     tabBarRects: 'pool:tabbar-rects',
     // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测：窗内自然清提示，窗外命中目标窗 TabBar 高亮）
     dragPosition: 'pool:drag-position',
-    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 高亮/清除——按 windowId 定向推送）
+    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除——按 windowId 定向推送）
     adsorbHint: 'pool:adsorb-hint',
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（目标池算竖线落点后上报——主进程按 sender 注入 windowId）
+    adsorbIndex: 'pool:adsorb-index',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',

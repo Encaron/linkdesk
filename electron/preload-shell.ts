@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -89,6 +89,12 @@ ipcRenderer.on(IPC.pool.tabBarRects, (_event, payload: TabBarRectsPayload) => {
 let _dragPositionHandler: ((pos: ShellTabDragPosition) => void) | null = null;
 ipcRenderer.on(IPC.pool.dragPosition, (_event, pos: ShellTabDragPosition) => {
   if (_dragPositionHandler) _dragPositionHandler(pos);
+});
+
+// E5.8#46.10：吸附插入缝隙回传回调——池→主进程（按 sender 注入 windowId）→壳，壳存吸附注册表供释放并窗精确落位
+let _adsorbIndexHandler: ((payload: AdsorbIndexPayload) => void) | null = null;
+ipcRenderer.on(IPC.pool.adsorbIndex, (_event, payload: AdsorbIndexPayload) => {
+  if (_adsorbIndexHandler) _adsorbIndexHandler(payload);
 });
 
 // E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
@@ -430,7 +436,12 @@ try {
         _dragPositionHandler = cb;
         return () => { _dragPositionHandler = null; };
       },
-      /** E5.8#44-C：推送吸附提示到目标窗——壳命中解析出 targetWindowId 后定向推送（目标窗 TabBar 高亮/清除） */
+      /** E5.8#46.10：注册吸附插入缝隙回传回调——池→壳→吸附注册表（windowRelocation.handleAdsorbIndex，释放并窗精确落位）。返回 unsubscribe */
+      onAdsorbIndex: (cb: (payload: AdsorbIndexPayload) => void) => {
+        _adsorbIndexHandler = cb;
+        return () => { _adsorbIndexHandler = null; };
+      },
+      /** E5.8#44-C：推送吸附提示到目标窗——壳命中解析出 targetWindowId 后定向推送（目标窗 TabBar 插入指示/清除；#46.10 载荷带 viewport 坐标） */
       pushAdsorbHint: (hint: AdsorbHintPayload, windowId: string) =>
         ipcRenderer.send(IPC.pool.adsorbHint, hint, windowId),
       /** E5.7#15：推送 QuickPick 哑渲染数据到池——壳 QuickPickService 序列化后直推（聪慧→哑） */

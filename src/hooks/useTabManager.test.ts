@@ -518,4 +518,20 @@ describe("reduceInsertTab（E5.8#44）", () => {
     const next = reduceInsertTab(s, w("Alpha", "demo_alpha"));
     expect(next).toBe(s);
   });
+
+  it("E5.8#46.10：指定 index → splice 中插（竖线缝隙落位，非组尾追加）", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"), w("Beta", "demo_beta"), w("Gamma", "demo_gamma"));
+    const next = reduceInsertTab(s, w("Delta", "demo_delta"), "main", 1);
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(
+      ["workspace-demo_alpha", "workspace-demo_delta", "workspace-demo_beta", "workspace-demo_gamma"],
+    );
+  });
+
+  it("E5.8#46.10：index 越界 / 负数 → push 组尾（保守落位——竖线永不撒谎）", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"), w("Beta", "demo_beta"));
+    expect(reduceInsertTab(s, w("Gamma", "demo_gamma"), "main", 99).groups[0].tabs.map((t) => t.id))
+      .toEqual(["workspace-demo_alpha", "workspace-demo_beta", "workspace-demo_gamma"]);
+    expect(reduceInsertTab(s, w("Gamma", "demo_gamma"), "main", -1).groups[0].tabs.map((t) => t.id))
+      .toEqual(["workspace-demo_alpha", "workspace-demo_beta", "workspace-demo_gamma"]);
+  });
 });

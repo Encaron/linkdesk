@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef } from "react";
 import { allTabs, createGroup, reduceRemoveTab, reduceInsertTab } from "../hooks/useTabManager";
 import type { Tab, TabState } from "../hooks/useTabManager";
 import type { WindowShellState, WindowMode } from "./windows";
-import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, ShellTabDragPosition, AdsorbHintPayload } from "../core/types/ipc/poolActions";
+import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../core/types/ipc/poolActions";
 
 export interface UseWindowRelocationDeps {
   /** 壳窗口注册表（useWindowHost）——G6 ref 桥读最新，拖拽期间免重渲 */
@@ -26,13 +26,23 @@ export interface UseWindowRelocationDeps {
   updateTabState: (windowId: string, tabState: TabState) => void;
   /** main 窗专用（useTabManager）——源侧摘除（内建 ensureFallback）/ 目标侧插入 */
   removeTab: (tabId: string) => Tab | null;
-  insertTab: (tab: Tab, targetGroupId?: string) => void;
+  insertTab: (tab: Tab, targetGroupId?: string, index?: number) => void;
 }
 
 interface WindowTabRef {
   windowId: string;
   mode: WindowMode;
   tab: Tab;
+}
+
+/** E5.8#46.10：吸附目标注册表条目——windowId/groupId 命中目标；viewportX/Y = 光标在目标窗 viewport 坐标
+ *  （壳换算后随提示下发，目标池算缝隙）；insertIndex = 目标池回传的最新缝隙（释放并窗精确落位） */
+interface AdsorbTarget {
+  windowId: string;
+  groupId: string;
+  viewportX?: number;
+  viewportY?: number;
+  insertIndex?: number;
 }
 
 export interface UseWindowRelocationResult {
@@ -42,8 +52,8 @@ export interface UseWindowRelocationResult {
   detachTabToNewWindow(tabId: string, opts?: { sourceWindowId?: string; bounds?: PoolWindowBoundsPayload["bounds"] }): void;
   /** 并回主窗（右键「并回主窗口」——脱出窗专属命令） */
   mergeTabToMain(tabId: string): void;
-  /** 吸附并窗（#44-B 拖出释放命中目标窗 TabBar）——targetGroupId = 命中组 */
-  mergeTabToWindow(tabId: string, targetWindowId: string, targetGroupId?: string): void;
+  /** 吸附并窗（#44-B 拖出释放命中目标窗 TabBar）——targetGroupId = 命中组；insertIndex = #46.10 竖线缝隙（缺省 = 组尾追加） */
+  mergeTabToWindow(tabId: string, targetWindowId: string, targetGroupId?: string, insertIndex?: number): void;
   /** E5.8#44-B：存 TabBar rects 到注册表——App 订阅 pool.onTabBarRects 直通（吸附/释放命中检测数据源） */
   handleTabBarRects(payload: TabBarRectsPayload): void;
   /** E5.8#44-B：窗口外释放决策——命中目标窗 TabBar → 吸附并窗；空白 → 新窗（释放点附近落窗）。
@@ -61,9 +71,9 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
   // windowsRef（权威）。命中检测 = 读两 ref 转 screen（bounds.x + rect.left），零 setState 免拖拽重渲 churn。
   const tabBarRectsRef = useRef<Map<string, TabBarViewportRect[]>>(new Map());
 
-  // E5.8#44-C：吸附目标注册表——sourceWindowId → { 目标窗, 目标组 } | null（多窗拖拽互不干扰）。
-  // null = 源窗当前无吸附目标（拖回窗内/空白——壳下发 null 清目标窗高亮）。ref 承载——拖拽高频免重渲。
-  const adsorbTargetsRef = useRef<Map<string, { windowId: string; groupId: string } | null>>(new Map());
+  // E5.8#44-C：吸附目标注册表——sourceWindowId → AdsorbTarget | null（多窗拖拽互不干扰）。
+  // null = 源窗当前无吸附目标（拖回窗内/空白——壳下发 null 清目标窗插入指示）。ref 承载——拖拽高频免重渲。
+  const adsorbTargetsRef = useRef<Map<string, AdsorbTarget | null>>(new Map());
 
   const findTab = useCallback((tabId: string): WindowTabRef | null => {
     for (const w of windowsRef.current) {
@@ -101,15 +111,16 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     return r.removedTab;
   }, [removeTab, closeWindow, updateTabState]);
 
-  /** 向任意窗口插入 tab——main 走 useTabManager；detached 走 reduceInsertTab + updateTabState */
-  const insertIntoWindow = useCallback((windowId: string, tab: Tab, targetGroupId?: string): void => {
+  /** 向任意窗口插入 tab——main 走 useTabManager；detached 走 reduceInsertTab + updateTabState。
+   *  E5.8#46.10：index = 竖线缝隙（0..tabs.length）——松手落位与竖线一致（提示不撒谎）；缺省 = 组尾追加。 */
+  const insertIntoWindow = useCallback((windowId: string, tab: Tab, targetGroupId?: string, index?: number): void => {
     const target = windowsRef.current.find((w) => w.windowId === windowId);
     if (!target) return;
     if (target.mode === "main") {
-      insertTab(tab, targetGroupId);
+      insertTab(tab, targetGroupId, index);
       return;
     }
-    updateTabState(windowId, reduceInsertTab(target.tabState, tab, targetGroupId));
+    updateTabState(windowId, reduceInsertTab(target.tabState, tab, targetGroupId, index));
   }, [insertTab, updateTabState]);
 
   const detachTabToNewWindow = useCallback((tabId: string, opts?: { sourceWindowId?: string; bounds?: PoolWindowBoundsPayload["bounds"] }): void => {
@@ -132,17 +143,27 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     insertIntoWindow("main", removed);
   }, [findTab, removeFromWindow, insertIntoWindow]);
 
-  const mergeTabToWindow = useCallback((tabId: string, targetWindowId: string, targetGroupId?: string): void => {
+  const mergeTabToWindow = useCallback((tabId: string, targetWindowId: string, targetGroupId?: string, insertIndex?: number): void => {
     const found = findTab(tabId);
     if (!found || found.windowId === targetWindowId) return; // 同窗不并
     const removed = removeFromWindow(found.windowId, tabId);
     if (!removed) return;
-    insertIntoWindow(targetWindowId, removed, targetGroupId);
+    insertIntoWindow(targetWindowId, removed, targetGroupId, insertIndex);
   }, [findTab, removeFromWindow, insertIntoWindow]);
 
   /** E5.8#44-B：存 TabBar rects 到注册表——pool.onTabBarRects 直通（windowId 主进程注入） */
   const handleTabBarRects = useCallback((payload: TabBarRectsPayload): void => {
     tabBarRectsRef.current.set(payload.windowId, payload.rects);
+  }, []);
+
+  /** E5.8#46.10：目标池回传插入缝隙——写入所有瞄准该目标组窗的源窗注册（释放并窗精确落位 = 竖线指的那根缝）。
+   *  ref 内原地更新——拖拽高频免 setState。 */
+  const handleAdsorbIndex = useCallback((payload: AdsorbIndexPayload): void => {
+    for (const hit of adsorbTargetsRef.current.values()) {
+      if (hit && hit.windowId === payload.windowId && hit.groupId === payload.groupId) {
+        hit.insertIndex = payload.insertIndex;
+      }
+    }
   }, []);
 
   // E5.8#44-B：订阅池 TabBar rects 上报——池→主进程（附 windowId）→壳 preload → 本 hook 注册表（吸附命中检测数据源）
@@ -172,14 +193,21 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     return null;
   }, []);
 
-  /** E5.8#44-C：重算某窗吸附提示——跨全部 source 汇聚（多窗拖拽同 target 可叠加），恰好一个 distinct groupId → 高亮，
-   *  否则 null（多组歧义不误导——保守无光胜过错光）。下发目标窗池（pushAdsorbHint 按 windowId 定向）。 */
+  /** E5.8#44-C：重算某窗吸附提示——跨全部 source 汇聚（多窗拖拽同 target 可叠加），恰好一个 distinct groupId → 插入指示，
+   *  否则 null（多组歧义不误导——保守无光胜过错光）。下发目标窗池（pushAdsorbHint 按 windowId 定向）。
+   *  E5.8#46.10：命中时携带 viewportX/Y——目标池算缝隙（竖线落点）。 */
   const syncAdsorbHint = useCallback((windowId: string): void => {
-    const groups = new Set<string>();
+    let target: AdsorbTarget | null = null;
+    let groups = 0;
     for (const hit of adsorbTargetsRef.current.values()) {
-      if (hit && hit.windowId === windowId) groups.add(hit.groupId);
+      if (hit && hit.windowId === windowId) {
+        groups++;
+        target = hit; // 多 source 同组时取最后——位置相近（都瞄准同一组），缝隙等价
+      }
     }
-    const hint: AdsorbHintPayload = groups.size === 1 ? { groupId: [...groups][0] } : { groupId: null };
+    const hint: AdsorbHintPayload = groups === 1 && target
+      ? { groupId: target.groupId, viewportX: target.viewportX, viewportY: target.viewportY }
+      : { groupId: null };
     window.linkdesk?.pool?.pushAdsorbHint?.(hint, windowId);
   }, []);
 
@@ -191,7 +219,9 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     syncAdsorbHint(prev.windowId);
   }, [syncAdsorbHint]);
 
-  /** E5.8#44-C：拖拽位置上报——排除源窗命中检测 + 目标变化时下发吸附提示（目标未变免 IPC 抖动）。
+  /** E5.8#44-C：拖拽位置上报——排除源窗命中检测 + 目标/竖线落点变化时下发吸附提示。
+   *  E5.8#46.10：目标窗 TabBar 内持续下发 viewport 坐标（竖线随光标在 tab 间游走）——原「目标未变免 IPC 抖动」
+   *  放宽为「目标未变且 viewportX 位移 < 2px 免 IPC」（竖线没动就不发；组内横移 <2px 对缝隙判定无意义）。
    *  canceled（Esc 取消）→ 直接清源窗提示（keydown 无坐标）。 */
   const handleDragPosition = useCallback((pos: ShellTabDragPosition): void => {
     if (pos.canceled) {
@@ -200,11 +230,20 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     }
     const prev = adsorbTargetsRef.current.get(pos.sourceWindowId);
     const hit = hitTestTabBar(pos.screenX, pos.screenY, pos.sourceWindowId);
-    if (prev?.windowId === hit?.windowId && prev?.groupId === hit?.groupId) return;
-    adsorbTargetsRef.current.set(pos.sourceWindowId, hit);
+    // viewport 坐标 = 屏坐标 − 目标窗 bounds 原点——目标池 getBoundingClientRect 同坐标系（DIP 一致），算缝隙直接可比
+    const target = hit ? windowsRef.current.find((w) => w.windowId === hit.windowId) : undefined;
+    const viewportX = hit && target?.bounds ? pos.screenX - target.bounds.x : undefined;
+    const viewportY = hit && target?.bounds ? pos.screenY - target.bounds.y : undefined;
+    const next: AdsorbTarget | null = hit ? { ...hit, viewportX, viewportY } : null;
+    const sameTarget = prev?.windowId === next?.windowId && prev?.groupId === next?.groupId;
+    const settled = prev != null && next != null
+      && prev.viewportX != null && next.viewportX != null
+      && Math.abs(next.viewportX - prev.viewportX) < 2;
+    if (sameTarget && (next == null || settled)) return;
+    adsorbTargetsRef.current.set(pos.sourceWindowId, next);
     const affected = new Set<string>();
     if (prev) affected.add(prev.windowId);
-    if (hit) affected.add(hit.windowId);
+    if (next) affected.add(next.windowId);
     for (const wid of affected) syncAdsorbHint(wid);
   }, [hitTestTabBar, clearAdsorb, syncAdsorbHint]);
 
@@ -215,6 +254,14 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     const unsub = poolApi.onDragPosition?.(handleDragPosition);
     return unsub;
   }, [handleDragPosition]);
+
+  // E5.8#46.10：订阅目标池插入缝隙回传——池→主进程（附 windowId）→壳 preload → 本 hook 存注册表（释放并窗落位）
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi) return;
+    const unsub = poolApi.onAdsorbIndex?.(handleAdsorbIndex);
+    return unsub;
+  }, [handleAdsorbIndex]);
 
   // E5.8#44-C：窗口增删时清全部吸附提示——源窗拖拽中关闭/目标窗消失残留高亮防泄漏（live 拖拽下一拍 mousemove 自动恢复）
   useEffect(() => {
@@ -228,12 +275,16 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
   }, [windows, syncAdsorbHint]);
 
   /** E5.8#44-B：窗口外释放决策——命中 TabBar → 吸附并窗（mergeTabToWindow 同窗不并守卫）；空白 → 新窗（释放点附近落窗）。
-   *  E5.8#44-C：释放即清源窗吸附提示（吸附/新窗落定后残留高亮无意义）。 */
+   *  E5.8#44-C：释放即清源窗吸附提示（吸附/新窗落定后残留高亮无意义）。
+   *  E5.8#46.10：先取目标池最后回传的插入缝隙再 clearAdsorb（clear 删注册——insertIndex 一并丢）；
+   *  松手坐标 = 最后一帧 mousemove 坐标 → 回传缝隙恰好是释放点那根缝，落位 = 竖线。 */
   const releaseOutside = useCallback((tabId: string, screenX: number, screenY: number, sourceWindowId: string): void => {
+    const lastTarget = adsorbTargetsRef.current.get(sourceWindowId);
+    const insertIndex = lastTarget?.insertIndex;
     clearAdsorb(sourceWindowId);
     const hit = hitTestTabBar(screenX, screenY);
     if (hit) {
-      mergeTabToWindow(tabId, hit.windowId, hit.groupId);
+      mergeTabToWindow(tabId, hit.windowId, hit.groupId, insertIndex);
       return;
     }
     // 空白 → 新窗——释放点附近落窗（TabBar 拖拽点偏窗口上缘，窗口中心落在释放点下方）

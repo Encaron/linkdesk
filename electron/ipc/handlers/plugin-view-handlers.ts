@@ -99,9 +99,19 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
-  // E5.8#44-C：壳→池——吸附提示（目标窗 TabBar 高亮/清除）——按 windowId 定向推送（targetWindowId 壳命中解析）。
+  // E5.8#44-C：壳→池——吸附提示（目标窗 TabBar 插入指示/清除）——按 windowId 定向推送（targetWindowId 壳命中解析）。
   ipcMain.on(IPC.pool.adsorbHint, (_event, hint: unknown, windowId: string) => {
     _windowManager?.pushAdsorbHint(hint, windowId);
+  });
+
+  // E5.8#46.10：池→壳——吸附插入缝隙回传（目标池算竖线落点后上报）。
+  // 池组件 pool.adsorbIndex(p) 发送，主进程按 sender 解析 windowId 附上转发壳——壳存吸附注册表供释放并窗精确落位。
+  ipcMain.on(IPC.pool.adsorbIndex, (event, p: unknown) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const shellIndex = typeof p === 'object' && p !== null ? { ...p, windowId } : p;
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.adsorbIndex, shellIndex);
+    }
   });
 
   // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）

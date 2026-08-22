@@ -256,14 +256,19 @@ export function reduceRemoveTab(prev: TabState, tabId: string): { state: TabStat
 /**
  * E5.8#44：插入标签页对象——跨窗口搬家目标侧用（源窗摘出的原对象 insert，id 保持）。
  * targetGroupId 缺省 = activeGroupId；无匹配 → 首组。空状态（groups: []）→ 原样返回（防御——空窗不该 insert，壳已关）。
+ * E5.8#46.10：index = 插入缝隙（0..tabs.length，跨窗吸附竖线落点）——缺省 = 组尾追加（原语义）；
+ * index 钳制安全（splice 越界自动尾插）。
  */
-export function reduceInsertTab(prev: TabState, tab: Tab, targetGroupId?: string): TabState {
+export function reduceInsertTab(prev: TabState, tab: Tab, targetGroupId?: string, index?: number): TabState {
   const group = prev.groups.find((g) => g.id === (targetGroupId ?? prev.activeGroupId)) ?? prev.groups[0];
   if (!group) return prev;
+  const tabs = [...group.tabs];
+  if (index === undefined || index < 0 || index >= tabs.length) tabs.push(tab);
+  else tabs.splice(index, 0, tab);
   return {
     ...prev,
     activeGroupId: group.id,
-    groups: prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: [...g.tabs, tab], activeTabId: tab.id } : g)),
+    groups: prev.groups.map((g) => (g.id === group.id ? { ...g, tabs, activeTabId: tab.id } : g)),
   };
 }
 

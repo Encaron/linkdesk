@@ -9,7 +9,7 @@ import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
 import type { PoolTabAction, ShellTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect, TabDragPositionPayload, ShellTabDragPosition, AdsorbHintPayload, AdsorbIndexPayload } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -36,8 +36,10 @@ export interface ShellAPI {
     onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
     // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——sourceWindowId 由主进程注入（壳排除源窗命中）
     onDragPosition(cb: (pos: ShellTabDragPosition) => void): () => void;
-    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 高亮/清除）——windowId 壳命中解析后定向推送
+    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 插入指示/清除）——windowId 壳命中解析后定向推送（#46.10 载荷带 viewport 坐标）
     pushAdsorbHint(hint: AdsorbHintPayload, windowId: string): void;
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（壳侧——windowId 由主进程注入，壳存吸附注册表供释放并窗精确落位）
+    onAdsorbIndex(cb: (payload: AdsorbIndexPayload) => void): () => void;
     pushQuickPick(data: unknown): void;
     onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
     pushToast(data: unknown): void;
@@ -63,8 +65,10 @@ export interface ShellAPI {
     tabBarRects(rects: TabBarViewportRect[]): void;
     // E5.8#44-C：池→壳 拖拽位置上报（池侧——useDragReorder 拎起后 mousemove 上报，壳吸附命中）
     dragPosition(pos: TabDragPositionPayload): void;
-    // E5.8#44-C：壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 高亮/清除）
+    // E5.8#44-C：壳→池 吸附提示订阅（池侧——MainZone 订阅目标窗 TabBar 插入指示/清除）
     onAdsorbHint(cb: (hint: AdsorbHintPayload) => void): () => void;
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（池侧——目标池算竖线落点后上报，壳释放并窗精确落位）
+    adsorbIndex(payload: { groupId: string; insertIndex: number }): void;
     // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
     // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
     // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。

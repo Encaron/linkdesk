@@ -25,8 +25,8 @@ interface GroupPaneProps {
   onTabDragStart: (tabId: string, index: number, e: ReactMouseEvent) => void;
   onTabBarMount: (groupId: string, el: HTMLDivElement | null) => void;
   creatableViews?: { pluginId: string; label: string }[];
-  /** E5.8#44-C：吸附目标组 id（跨窗拖拽命中）——本组 id 匹配则 TabBar 点亮吸附高亮 */
-  adsorbGroupId?: string | null;
+  /** E5.8#46.10：吸附竖线缝隙（跨窗拖拽命中本组 TabBar）——父层已按组解析（非本组传 null），渲染插入指示竖线 */
+  adsorbInsertIndex?: number | null;
 }
 
 export default function GroupPane({
@@ -38,7 +38,7 @@ export default function GroupPane({
   onTabDragStart,
   onTabBarMount,
   creatableViews,
-  adsorbGroupId,
+  adsorbInsertIndex,
 }: GroupPaneProps) {
   return (
     <>
@@ -52,7 +52,7 @@ export default function GroupPane({
           onTabDragStart={onTabDragStart}
           onTabBarMount={(el) => onTabBarMount(group.id, el)}
           creatableViews={creatableViews}
-          adsorbGroupId={adsorbGroupId}
+          adsorbInsertIndex={adsorbInsertIndex}
         />
       </ErrorBoundary>
       <div style={{ flex: 1, overflow: "hidden", position: "relative" }}>

@@ -371,10 +371,10 @@ export function useTabManager() {
 
   /**
    * E5.8#44：插入标签页对象——跨窗口搬家目标侧用（源窗摘出的原对象 insert，id 保持）。
-   * targetGroupId 缺省 = activeGroupId。
+   * targetGroupId 缺省 = activeGroupId；E5.8#46.10：index = 插入缝隙（竖线落点，缺省组尾追加）。
    */
-  const insertTab = useCallback((tab: Tab, targetGroupId?: string) => {
-    setTabState((prev) => reduceInsertTab(prev, tab, targetGroupId));
+  const insertTab = useCallback((tab: Tab, targetGroupId?: string, index?: number) => {
+    setTabState((prev) => reduceInsertTab(prev, tab, targetGroupId, index));
   }, []);
 
   /**

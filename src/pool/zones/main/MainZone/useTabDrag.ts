@@ -14,7 +14,7 @@ import type * as React from "react";
 import type { MouseEvent as ReactMouseEvent } from "react";
 import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout";
 import type { DropZone } from "../../../hooks/tabDragTypes";
-import { detectDropZone } from "../../../hooks/tabDragTypes";
+import { detectDropZone, computeTabInsertIndex } from "../../../hooks/tabDragTypes";
 import type { PoolTabAction } from "../../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import type { TabBarViewportRect, TabDragPositionPayload, AdsorbHintPayload } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
 import { useDragReorder } from "../../../hooks/useDragReorder";
@@ -28,11 +28,13 @@ interface UseTabDragInput {
   tabBarRects?: (rects: TabBarViewportRect[]) => void;
   /** E5.8#44-C：拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测）——MainZone 传 pool.dragPosition 包装 */
   dragPosition?: (pos: TabDragPositionPayload) => void;
-  /** E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 时下发目标组高亮）。返回退订。MainZone 传 pool.onAdsorbHint 包装 */
+  /** E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 时下发目标组插入指示）。返回退订。MainZone 传 pool.onAdsorbHint 包装 */
   onAdsorbHint?: (cb: (hint: AdsorbHintPayload) => void) => () => void;
+  /** E5.8#46.10：吸附插入缝隙上报（池→壳——目标池算竖线落点后上报，壳存注册表供释放并窗精确落位）。MainZone 传 pool.adsorbIndex 包装 */
+  adsorbIndex?: (payload: { groupId: string; insertIndex: number }) => void;
 }
 
-export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint }: UseTabDragInput) {
+export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint, adsorbIndex }: UseTabDragInput) {
   // Stable groups ref——avoid useCallback deps on groups
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
@@ -63,21 +65,37 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
   }, [groups, tabBarRects]);
 
   // E5.8#44-C：吸附提示订阅——壳→池（windowRelocation handleDragPosition 按 target windowId 定向下发）。
-  // 提示自带生命周期（命中发 groupId / 拖回·取消·释放·窗口增删发 null）→ 直写 state，零本地兜底清逻辑
-  //（被动目标窗可能同时自己也在拖——本地按 draggingId 清会误清别人的吸附高亮）。
+  // 提示自带生命周期（命中发 groupId+viewport / 拖回·取消·释放·窗口增删发 null）→ 直写 state，零本地兜底清逻辑
+  //（被动目标窗可能同时自己也在拖——本地按 draggingId 清会误清别人的吸附指示）。
+  // E5.8#46.10：groupId 命中时用 viewportX 算插入缝隙（复用 computeTabInsertIndex——本地拖拽同一算法，归一化）→
+  // 渲染竖线 + 上报缝隙（壳存注册表，释放并窗落位 = 竖线）。viewport 缺失（旧壳/异常载荷）→ 保守清指示。
   useEffect(() => {
     if (!onAdsorbHint) return;
-    const unsub = onAdsorbHint((hint) => setAdsorbGroupId(hint.groupId));
+    const unsub = onAdsorbHint((hint) => {
+      if (!hint.groupId || hint.viewportX === undefined) {
+        setAdsorbInsert(null);
+        return;
+      }
+      const el = tabBarRefs.current.get(hint.groupId);
+      if (!el) {
+        setAdsorbInsert(null);
+        return;
+      }
+      const idx = computeTabInsertIndex(el, hint.viewportX);
+      setAdsorbInsert({ groupId: hint.groupId, index: idx });
+      adsorbIndex?.({ groupId: hint.groupId, insertIndex: idx });
+    });
     return unsub;
-  }, [onAdsorbHint]);
+  }, [onAdsorbHint, adsorbIndex]);
 
   const totalTabCount = groups.reduce((sum, g) => sum + g.tabs.length, 0);
   const sourceGroupRef = useRef<string | null>(null);
   const targetGroupRef = useRef<string | null>(null);
   const [dragInsertGroupId, setDragInsertGroupId] = useState<string | null>(null);
   const [dropZoneState, setDropZoneState] = useState<{ zone: DropZone; targetGroupId: string | null } | null>(null);
-  // E5.8#44-C：吸附目标组 id——壳下发（跨窗拖拽命中本窗 TabBar）→ 目标组 TabBar 高亮。null = 无高亮（拖回/取消/释放壳必发 null 清）
-  const [adsorbGroupId, setAdsorbGroupId] = useState<string | null>(null);
+  // E5.8#46.10：吸附插入指示——壳下发 viewport 后算出（{ 目标组, 竖线缝隙 }）。null = 无指示（拖回/取消/释放壳必发 null 清）。
+  // 替代原整条高亮（adsorbGroupId）——竖线语义明确（插入到哪根缝），叠窗归属自然清晰（现象二）
+  const [adsorbInsert, setAdsorbInsert] = useState<{ groupId: string; index: number } | null>(null);
 
   // E5.7#86：同组标签排序的待回执记录——乐观提交序保留到壳 pushLayout 回执（分隔线同款回执对齐）
   const pendingReordersRef = useRef<Map<string, { preDragIds: string[]; committedIds: string[]; tabs: PoolTab[] }>>(new Map());
@@ -124,16 +142,8 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
             clientY >= rect.top && clientY <= rect.bottom) {
           targetGroupRef.current = gid;
           setDragInsertGroupId(gid);
-          const scrollLeft = el.scrollLeft;
-          const mouseX = clientX - rect.left + scrollLeft;
-          const tabEls = el.querySelectorAll<HTMLElement>(".group-tab-item");
-          let idx = 0;
-          for (let i = 0; i < tabEls.length; i++) {
-            const tr = tabEls[i].getBoundingClientRect();
-            const midX = tr.left - rect.left + tr.width / 2 + scrollLeft;
-            if (mouseX < midX) break;
-            idx = i + 1;
-          }
+          // E5.8#46.10：缝隙计算提取到共享 computeTabInsertIndex——本地重排 + 跨窗吸附竖线同一算法（scrollLeft 补偿一处写）
+          let idx = computeTabInsertIndex(el, clientX);
           // 同组内拖拽：插入位置需补偿被拖走标签页的偏移
           if (gid === sourceGroupRef.current && idx > fromIndex) idx--;
           return idx;
@@ -301,7 +311,7 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
-    // E5.8#44-C：吸附目标组 id——MainZone 传给 GroupPane → GroupTabBar 匹配 groupId 点亮高亮
-    adsorbGroupId,
+    // E5.8#46.10：吸附插入指示（{ 目标组, 竖线缝隙 }）——MainZone 按组解析传给 GroupPane → GroupTabBar 渲染竖线（替代整条高亮）
+    adsorbInsert,
   };
 }

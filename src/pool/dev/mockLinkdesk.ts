@@ -174,6 +174,10 @@ export function installMockLinkdesk(): void {
       onAdsorbHint: () => () => {},
       // E5.8#44-C：壳推送吸附提示（preview 无壳侧消费——留日志）
       pushAdsorbHint: makeLogger("pool.pushAdsorbHint"),
+      // E5.8#46.10：吸附插入缝隙订阅（池→壳——preview 无壳侧消费，no-op 订阅）
+      onAdsorbIndex: () => () => {},
+      // E5.8#46.10：吸附插入缝隙上报（preview 无壳侧消费——留日志）
+      adsorbIndex: makeLogger("pool.adsorbIndex"),
       pushQuickPick: makeLogger("pool.pushQuickPick"),
       onQuickPickAction: () => () => {},
       pushToast: makeLogger("pool.pushToast"),

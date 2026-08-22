@@ -102,7 +102,20 @@ export interface TabDragPositionPayload {
 /** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */
 export type ShellTabDragPosition = TabDragPositionPayload & { sourceWindowId: string };
 
-/** 壳→池：吸附提示载荷——目标窗 TabBar 高亮（groupId 命中）/ 清除（groupId null = 无吸附目标，清光） */
+/** 壳→池：吸附提示载荷——目标窗 TabBar 插入指示（groupId 命中）/ 清除（groupId null = 无吸附目标，清光）。
+ *  E5.8#46.10：groupId 命中时携带 viewportX/Y——光标在目标窗 viewport 坐标（壳由屏坐标 − 窗口 bounds 原点换算），
+ *  目标池用它算插入缝隙（竖线落点，复用 computeTabInsertIndex）。 */
 export interface AdsorbHintPayload {
   groupId: string | null;
+  viewportX?: number;
+  viewportY?: number;
+}
+
+/** 池→壳：吸附插入缝隙回传——目标池每次算出新的缝隙（竖线落点）就上报，壳存吸附注册表供释放并窗精确落位。
+ *  windowId 由主进程按 sender 注入（池永远不知自身 windowId，E5.8#44 定案）。 */
+export interface AdsorbIndexPayload {
+  windowId: string;
+  groupId: string;
+  /** 插入缝隙 0..tabs.length（竖线落点）——松手 merge 落位 = 竖线指的那根缝（提示不撒谎） */
+  insertIndex: number;
 }

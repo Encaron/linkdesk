@@ -52,8 +52,9 @@ interface GroupTabBarProps {
   onTabBarMount?: (el: HTMLDivElement | null) => void;
   /** E5.6#16.7k-3：可创建为标签页的视图——[+] 按钮下拉菜单 */
   creatableViews?: { pluginId: string; label: string }[];
-  /** E5.8#44-C：吸附目标组 id——跨窗拖拽命中本组 TabBar → 整条点亮吸附高亮（壳按 windowId 定向池下发） */
-  adsorbGroupId?: string | null;
+  /** E5.8#46.10：吸附插入缝隙（跨窗拖拽命中本组 TabBar——壳下发 viewport，池算缝隙）——两 tab 间渲染细竖线
+   *  （VS Code 式插入指示，替代原整条 `tab-bar-adsorb` 高亮——归属随竖线落在哪个标签栏自然清晰）。父层已按组解析（非本组传 null） */
+  adsorbInsertIndex?: number | null;
 }
 
 // ═══════════════════════════════════════════════════════════════════
@@ -81,7 +82,7 @@ function disambiguateLabels(tabs: PoolTab[]): Map<string, string> {
 // 组件
 // ═══════════════════════════════════════════════════════════════════
 
-export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews, adsorbGroupId }: GroupTabBarProps) {
+export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dragInsertIndex, onTabDragStart, onTabBarMount, creatableViews, adsorbInsertIndex }: GroupTabBarProps) {
   // ── i18n ──
   const { t } = useTranslation();
 
@@ -246,7 +247,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
   return (
     <div
-      className={`group-tab-bar${adsorbGroupId === groupId ? " tab-bar-adsorb" : ""}`}
+      className="group-tab-bar"
       ref={setBarRef}
     >
       {/* 左滚动箭头 */}
@@ -277,6 +278,11 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
             <div key={tab.id} style={{ display: "contents" }}>
               {/* 拖拽插入指示器——E5.6#16.7：props 驱动 */}
               {dragInsertIndex === idx && draggingId !== tab.id && (
+                <div className="group-tab-drop-indicator" />
+              )}
+              {/* E5.8#46.10：跨窗吸附插入指示竖线（替代原整条 tab-bar-adsorb 高亮）——壳下发缝隙，父层按组解析。
+                  本地拖拽与被动吸附不同时发生（壳排除源窗），两指示器恒不同帧生效 */}
+              {adsorbInsertIndex === idx && (
                 <div className="group-tab-drop-indicator" />
               )}
               <div
@@ -340,6 +346,10 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
 
         {/* 末尾插入指示器 */}
         {dragInsertIndex === tabs.length && (
+          <div className="group-tab-drop-indicator" />
+        )}
+        {/* E5.8#46.10：吸附竖线——末尾缝隙（落到最后一个标签之后） */}
+        {adsorbInsertIndex === tabs.length && (
           <div className="group-tab-drop-indicator" />
         )}
 

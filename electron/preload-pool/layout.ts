@@ -52,8 +52,10 @@ export function buildPool() {
     tabBarRects: (rects: TabBarViewportRect[]) => ipcRenderer.send(IPC.pool.tabBarRects, rects),
     // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程）——主进程按 sender 注入 sourceWindowId 转壳吸附命中
     dragPosition: (pos: TabDragPositionPayload) => ipcRenderer.send(IPC.pool.dragPosition, pos),
-    // E5.8#44-C：壳→池 吸附提示订阅（缓冲+回放——目标窗 TabBar 高亮/清除，groupId null = 清光）
+    // E5.8#44-C：壳→池 吸附提示订阅（缓冲+回放——目标窗 TabBar 插入指示/清除，groupId null = 清光）
     onAdsorbHint: (cb: (hint: AdsorbHintPayload) => void) => _adsorbRelay.onReady(cb),
+    // E5.8#46.10：池→壳 吸附插入缝隙回传（目标池算竖线落点后上报——主进程按 sender 注入 windowId 转壳，释放并窗精确落位）
+    adsorbIndex: (p: { groupId: string; insertIndex: number }) => ipcRenderer.send(IPC.pool.adsorbIndex, p),
     // E5.8#30.16（P8）：注册/注销关闭前检查 handler——插件自己定逻辑（确认弹窗/清理资源）
     registerBeforeClose: (pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>) => {
       _beforeCloseHandlers.set(pluginId, handler);

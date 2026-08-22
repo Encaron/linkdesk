@@ -80,10 +80,17 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   const dragPosition = useCallback((pos: TabDragPositionPayload) => {
     poolApiRef.current?.dragPosition?.(pos);
   }, []);
-  // E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 下发目标组高亮）——onAdsorbHint 是订阅函数（返回退订），
+  // E5.8#44-C：吸附提示订阅（壳→池——跨窗拖拽命中本窗 TabBar 下发目标组插入指示）——onAdsorbHint 是订阅函数（返回退订），
   // 池 API 缺失 → 返回 no-op 退订（useTabDrag effect 直接调用退订函数）
   const onAdsorbHint = useCallback(
     (cb: (hint: AdsorbHintPayload) => void) => poolApiRef.current?.onAdsorbHint?.(cb) ?? (() => {}),
+    [],
+  );
+  // E5.8#46.10：吸附插入缝隙上报（池→壳——目标池算竖线落点后上报，壳存注册表供释放并窗精确落位）
+  const adsorbIndex = useCallback(
+    (payload: { groupId: string; insertIndex: number }) => {
+      poolApiRef.current?.adsorbIndex?.(payload);
+    },
     [],
   );
 
@@ -111,8 +118,8 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
-    adsorbGroupId,
-  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint });
+    adsorbInsert,
+  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition, onAdsorbHint, adsorbIndex });
 
   // ── renderGroupPane——单个 group 的内容（GroupPane 接线：tabs/dragInsertIndex 由本层解析）──
   function renderGroupPane(group: PoolGroup): React.ReactNode {
@@ -126,7 +133,8 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
         onTabDragStart={handleTabDragStart}
         onTabBarMount={registerTabBar}
         creatableViews={creatableViews}
-        adsorbGroupId={adsorbGroupId}
+        // E5.8#46.10：吸附竖线缝隙按组解析——仅目标组有值（替代原整条高亮 adsorbGroupId）
+        adsorbInsertIndex={adsorbInsert?.groupId === group.id ? adsorbInsert.index : null}
       />
     );
   }

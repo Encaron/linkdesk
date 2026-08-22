@@ -10,25 +10,9 @@
   user-select: none;
 }
 
-/* ── E5.8#44-C：吸附目标 TabBar 高亮（跨窗拖拽——目标窗池按壳下发的吸附提示点亮整条）──
-   视觉对齐 .drop-glass-zone 毛玻璃语言（半透明散射面 + 内发光 hairline 边界）。
-   实体条不 backdrop-filter（会模糊下方内容区）；不加 border（1px 边框=2px 布局位移）；
-   纯 inset 内发光 + 玻璃底色——零位移、零遮挡。动画 120ms 对齐 drop-zone-in。 */
-.group-tab-bar.tab-bar-adsorb {
-  background: var(--drop-glass-bg);
-  box-shadow: inset 0 0 0 1px var(--drop-glass-border), var(--drop-glass-inner);
-  animation: tab-bar-adsorb-in 120ms ease-out forwards;
-}
-
-@keyframes tab-bar-adsorb-in {
-  from { opacity: 0.6; }
-  to   { opacity: 1; }
-}
-
-/* prefers-reduced-motion（ui-ux-pro-max 确认）——关闭吸附动画，高亮瞬显 */
-@media (prefers-reduced-motion: reduce) {
-  .group-tab-bar.tab-bar-adsorb { animation: none; }
-}
+/* ── E5.8#46.10：整条 `tab-bar-adsorb` 高亮已删——吸附指示改为 .group-tab-drop-indicator
+   细竖线（两 tab 间插入缝隙，VS Code 式）。现象二（叠窗时横条被误认成菜单栏）随竖线
+   归属（竖线落在哪个标签栏）自然消除。零新 CSS——复用已过审的拖拽插入指示器样式。 ── */
 
 /* ── 标签页列表── */
 
