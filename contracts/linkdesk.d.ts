@@ -1349,13 +1349,16 @@ export interface StatusBarLayout {
 }
 /**
  * PoolLayout v2——E5.7 唯一的 Pool 收到全量布局快照。
- * titleBar/iconBar/sidebar/statusBar 必有；rightSidebar/panel 可选（未启用时不推）。
+ * titleBar 必有（窗口 chrome——池恒渲染）；iconBar/sidebar/statusBar/panel/rightSidebar 可选——
+ * 主池恒推全量，脱出窗（E5.8#43-2 窗口模式策略表）只推 titleBar+groups 子集（池按字段条件渲染，无空列/空条）。
  */
 export interface PoolLayout {
     version: 2;
     titleBar: TitleBarLayout;
-    iconBar: IconBarLayout;
-    sidebar: SidebarLayout;
+    /** 图标栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    iconBar?: IconBarLayout;
+    /** 侧栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    sidebar?: SidebarLayout;
     /** E5.8#36.8：右侧栏真 zone 布局——RightSidebarLayout（edge 反推 = sidebar 对边，不携带自身 edge） */
     rightSidebar?: RightSidebarLayout;
     groups: PoolGroup[];
@@ -1365,10 +1368,12 @@ export interface PoolLayout {
     /** E5.6#16.7：递归分屏树——MainRenderer 递归渲染，替代平铺 groups.map。
      *  leaf = 单 GroupPane，branch = 水平/垂直 flex 容器。 */
     root?: SplitNode;
-    /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单 */
+    /** E5.6#16.7k-3：可创建为标签页的视图列表——池 GroupTabBar [+] 按钮动态菜单。
+     *  空数组 = [+] 不提供创建菜单（脱出窗 I9-6）；缺省 = 池兜底欢迎页 */
     creatableViews?: CreatableViewMeta[];
     panel?: PanelLayout;
-    statusBar: StatusBarLayout;
+    /** 状态栏——缺省 = 池不渲染该 zone（脱出窗子集；主池恒推） */
+    statusBar?: StatusBarLayout;
 }
 /**
  * 池→壳侧栏动作 wire 契约——E5.7#97。
@@ -1503,7 +1508,8 @@ export interface ShellAPI {
     /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
     pool: {
         // ── 壳侧（池 preload 无） ──
-        pushLayout(layout: PoolLayout): void;
+        /** E5.8#43-2：windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+        pushLayout(layout: PoolLayout, windowId?: string): void;
         /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
         onReady(cb: (windowId: string) => void): () => void;
         toggleDevTools(): void;

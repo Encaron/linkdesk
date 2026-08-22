@@ -825,8 +825,12 @@ function chkPoolLayout(v: unknown, p: string, errs: string[]): void {
     const _t15 = v as Record<string, unknown>;
     if (_t15.version !== 2) errs.push(((p) + ".version") + ": 期望 2");
     chkTitleBarLayout(_t15.titleBar, ((p) + ".titleBar"), errs);
+    if (_t15.iconBar !== undefined) {
     chkIconBarLayout(_t15.iconBar, ((p) + ".iconBar"), errs);
+    }
+    if (_t15.sidebar !== undefined) {
     chkSidebarLayout(_t15.sidebar, ((p) + ".sidebar"), errs);
+    }
     if (_t15.rightSidebar !== undefined) {
     chkRightSidebarLayout(_t15.rightSidebar, ((p) + ".rightSidebar"), errs);
     }
@@ -853,7 +857,9 @@ function chkPoolLayout(v: unknown, p: string, errs: string[]): void {
     if (_t15.panel !== undefined) {
     chkPanelLayout(_t15.panel, ((p) + ".panel"), errs);
     }
+    if (_t15.statusBar !== undefined) {
     chkStatusBarLayout(_t15.statusBar, ((p) + ".statusBar"), errs);
+    }
   }
 }
 function chkPoolQuickPickButton(v: unknown, p: string, errs: string[]): void {

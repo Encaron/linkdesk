@@ -16,6 +16,7 @@ import { useHeartbeat } from "./hooks/useHeartbeat"; // E2a #5 心跳看门狗
 import { useMemoryMonitor } from "./hooks/useMemoryMonitor"; // E2a #6 内存监控
 import { useTabManager } from "./hooks/useTabManager";
 import { usePoolSync } from "./hooks/usePoolSync";
+import { useWindowHost } from "./App/windowHost"; // E5.8#43-2：壳窗口注册表（多窗口 tabState + 窗口模式策略）
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
@@ -100,6 +101,10 @@ function App() {
     restoreClosedTab,
   } = useTabManager();
 
+  // E5.8#43-2：壳窗口注册表——main tabState 活同步进注册表；createWindow/closeWindow/updateTabState
+  // 为 #44 脱出手势的 API 接入点（本次未接线，待 #44 消费）
+  const { windows } = useWindowHost({ mainTabState: tabState });
+
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
   useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });
 
@@ -124,8 +129,9 @@ function App() {
     [handleFocusTab, focusGroup, closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes],
   );
 
-  // E5.6#9a → E5.7#4：Pool 布局同步——tabState/sidebarView/panelActiveViewId 变化 → 全量推送到唯一 Pool
-  usePoolSync({ tabState, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, onTabAction: handleTabAction });
+  // E5.6#9a → E5.7#4：Pool 布局同步——壳窗口注册表/侧栏/面板变化 → 按窗口定向推送到各 Pool
+  // E5.8#43-2：windows 注册表替代单 tabState——主窗恒推全量，脱出窗按策略表 zones 推子集
+  usePoolSync({ windows, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, onTabAction: handleTabAction });
 
   // E5.8#0d.10-3f：布局持久化（beforeunload 同步写入 + 标签页/面板 100ms 防抖保存）迁入 src/App/persistence.ts
   useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible });

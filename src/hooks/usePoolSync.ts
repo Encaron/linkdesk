@@ -20,29 +20,29 @@
 
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
-import type { TabState } from "./useTabManager";
-import type { PoolLayout, SidebarLayout, PanelLayout, PoolGroup } from "../core/types/pool/poolLayout";
+import type { PoolLayout, SidebarLayout, PanelLayout } from "../core/types/pool/poolLayout";
 import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
 import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
 import type { StatusBarEntry } from "../core/react/events/ShellEvents"; // E5.7#8：动态状态栏条目
+import type { WindowShellState } from "../App/windows"; // E5.8#43-2：壳窗口注册表
 import { ViewContainerService } from "../core/services/layout/ViewContainerService";
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)；E5.8#36.9：edge 窄化守卫
 import { getConfigurationValue } from "../core/services/configuration/ConfigurationService"; // E5.7#1：titleBar.menuBarVisible
 import { ContextKeyService } from "../core/registry/commands/ContextKeyService"; // E5.8#37.6：sidebarPosition 当开关 context key
 import { getAssetPath } from "../core/utils/path/assetPath"; // E5.7#5：logoUrl——池不 import core，壳解析推送
-import { getViewPlugin, getTabBehavior, getTabCreatableViews } from "../pluginLoader/viewRegistry";
-import { resolvePluginIcon } from "../core/utils/plugin/iconUtils";
-import { isShellRenderedTab, resolvePoolTabTitle } from "../core/utils/tabIdentity";
-// ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组 ──
-import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups, computeGroupFlexes } from "./usePoolSync/sidebar-panel";
+import { getTabCreatableViews } from "../pluginLoader/viewRegistry";
+// ── E5.8#0d.10-5：6 子模块聚合——序列化器 + 订阅组；E5.8#43-2：+ windowLayout（按窗口组装）──
+import { buildSidebarViewMetas, buildPanelViewMetas, buildPanelSwitcherGroups } from "./usePoolSync/sidebar-panel";
 import { buildTitleBarMenuGroups, buildTitleBarSlots, MENU_STYLE_MENUBAR_VISIBLE } from "./usePoolSync/titlebar";
 import { buildIconBar } from "./usePoolSync/iconbar";
 import { buildStatusBarItems } from "./usePoolSync/statusbar";
 import { buildNotif } from "./usePoolSync/notif";
 import { useSyncSubscriptions } from "./usePoolSync/useSubscriptions";
+import { assembleWindowLayout, type WindowLayoutContext } from "./usePoolSync/windowLayout";
 
 export interface UsePoolSyncInput {
-  tabState: TabState;
+  /** E5.8#43-2：壳窗口注册表——每窗 tabState/mode/ready；本 hook 遍历就绪窗按模式策略组装布局并定向推送 */
+  windows: WindowShellState[];
   /** 侧栏当前容器 ID——null = 无活动侧栏视图 */
   sidebarView: string | null;
   /** 侧栏是否展开（未折叠） */
@@ -61,7 +61,7 @@ export interface UsePoolSyncInput {
  * E5.7#9：侧栏宽度不再经 props——LayoutEngine getBounds 内部直读 + onDidChangeLayout 重推。
  * E5.7#63.7：面板高度同理——getBounds("panel") 内部直读，resizeZoneHeight → onDidChangeLayout 重推。
  */
-export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, onTabAction }: UsePoolSyncInput): void {
+export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, onTabAction }: UsePoolSyncInput): void {
   // E5.7#5：菜单栏/槽位/窗口控件文案在壳解析——t() 变化（切语言）会触发下方 effect 重推
   const { t } = useTranslation();
 
@@ -236,46 +236,10 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
         }
       : undefined;
 
-    // 主区分屏组——每个 group 映射为一个 flex 区域
-    // E5.6#16：从 SplitNode 树计算实际 flex 比例（不再硬编码 1）
-    const flexMap = computeGroupFlexes(tabState.root);
-    const groups: PoolGroup[] = tabState.groups.map((g) => ({
-      id: g.id,
-      flex: flexMap.get(g.id) ?? 1,
-      activeTabId: g.activeTabId,
-      // E5.8#37.9.1：map 参数用 tab（不叫 t）——外层 useTranslation 的 t 是翻译函数，避免遮蔽
-      tabs: g.tabs.map((tab) => {
-        const pid = tab.pluginId ?? tab.type;
-        const entry = getViewPlugin(pid);
-        const resolved = entry?.manifest ? resolvePluginIcon(pid, entry.manifest) : null;
-        const behavior = getTabBehavior(pid);
-        return {
-          id: tab.id,
-          pluginId: pid,
-          // E5.8#37.9.1：标签栏 title 推流时二次解析——getDefaultLabel 已 t()，此处兜底
-          // 语言切换/恢复的旧语言快照（label===原名或===翻译名都重解析回现语言，幂等）
-          title: resolvePoolTabTitle(tab.label, entry?.manifest.name, t),
-          sourceId: tab.sourceId,
-          dirty: tab.dirty,
-          // E5.6#16.5：TabBar 渲染元数据
-          icon: resolved?.src ?? resolved?.emoji,
-          pinned: tab.pinned,
-          // E5.6#16.7k-4：欢迎页 closeBehavior 从 blocked → normal——壳 reduceCloseTab 已有 fallback 自动重建
-          closeBehavior: behavior.confirmOnClose ? "confirm" : "normal",
-          singleton: behavior.singleton,
-          shellRendered: isShellRenderedTab(tab.type),
-          shellType: isShellRenderedTab(tab.type) ? tab.type : undefined,
-          detailPluginId: tab.detailPluginId,
-        };
-      }),
-    }));
-
-    // E5.7#1/#4：PoolLayout v2 全量布局——唯一 Pool 单 WCV 直推完整快照。
-    // Phase 2 填充：titleBar 已由 #5 序列化；iconBar 已由 #6 序列化；statusBar（#8 StatusBarZone）待对应任务。
-    const fullLayout: PoolLayout = {
-      version: 2,
-      titleBar: {
-        title: document.title,
+    // E5.8#43-2：主窗 zone 数据一次性组装（侧栏/面板/图标栏/状态栏全是壳主窗状态）——
+    // 布局组装按窗口模式策略表 zones 决定每窗推哪些 zone（脱出窗只消费 titleBarBase + groups 侧）
+    const ctx: WindowLayoutContext = {
+      titleBarBase: {
         // 壳 getAssetPath 解析——Path B：池不 import core，logo 以同源相对 URL 推送
         logoUrl: getAssetPath("assets/logo.svg"),
         menuBarVisible: MENU_STYLE_MENUBAR_VISIBLE[getConfigurationValue<string>("app.menuStyle") ?? "titlebar"] ?? true,
@@ -285,25 +249,23 @@ export function usePoolSync({ tabState, sidebarView, isSidebarVisible, panelActi
       },
       iconBar: buildIconBar(t, sidebarView, isSidebarVisible),
       sidebar,
-      groups,
-      root: tabState.root,
-      // E5.8#30.15（P5）：聚焦面板 id——池侧 accent 环 + isActive 单聚焦判定
-      activeGroupId: tabState.activeGroupId,
-      // E5.6#16.7k-3：推 creatableViews——GroupTabBar [+] 按钮动态创建菜单
-      // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）
-      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
-      // E5.7#63.7：底部面板——无贡献不推（undefined 字段不序列化进快照）
-      ...(panel ? { panel } : {}),
-      // E5.8#36.9：右侧栏——zone 常驻则推（visible:false 零 DOM；#37.5 真渲染消费宽度）
-      ...(rightSidebar ? { rightSidebar } : {}),
-      // E5.7#8：状态栏——条目（分隔线/component 标记壳侧算好）+ Chord 字符串 + 通知中心纯数据
+      rightSidebar,
+      panel,
       statusBar: {
         items: buildStatusBarItems(t, eventEntries),
         ...(chordLabel ? { chordLabel } : {}),
         notif: buildNotif(t),
       },
+      // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）
+      creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
+      t,
     };
 
-    poolApi.pushLayout(fullLayout);
-  }, [tabState, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries]);
+    // E5.8#43-2：按窗口注册表定向推送——每窗就绪即推（主窗恒就绪；脱出窗 onReady 到达后首推）。
+    // 主池 = 全量布局（行为与 E5.7#4 单 WCV 直推一致）；脱出窗 = 策略表 zones 子集（titleBar+groups）
+    for (const win of windows) {
+      if (!win.ready) continue;
+      poolApi.pushLayout(assembleWindowLayout(win, ctx), win.windowId);
+    }
+  }, [windows, sidebarView, isSidebarVisible, panelActiveViewId, panelVisible, layoutVersion, t, chordLabel, eventEntries]);
 }
