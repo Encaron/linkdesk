@@ -173,6 +173,10 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
     // 切换器 + 空态（验收：全不勾 → 空态占位，且保留切换器恢复勾回）。无面板容器 → 不推
     // panel 字段（池维持 Phase 5 骨架的无面板空态）。高度真相源 = LayoutEngine panel zone。
     const panelViews = buildPanelViewMetas(t);
+    // E5.8#45：面板已脱出（存在 drift 窗）——true 时 main 停推 panel（独占，assembleWindowLayout 按
+    // ctx.panelDetached 裁决）+ main 面板不渲染 ⤢ 按钮（detachable=false）。drift 窗面板仍带
+    // detachable=false——面板已在外无需再脱出。真相源 = windows 注册表（mode 变化即重推）。
+    const panelDetached = windows.some((w) => w.mode === "drift");
     let panel: PanelLayout | undefined;
     // E5.8#31：显隐 = 不推 panel 字段——panelVisible false 时保持 undefined，
     // 池 `layout.panel?.visible && <PanelZone/>` → 不渲染（复用无 panel 贡献现网路径，零池改动）
@@ -208,6 +212,11 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
         minWidth: panelZone?.dock?.minWidth,
         maxWidth: panelZone?.dock?.maxWidth,
         createTooltip: t("新建面板视图"),
+        // E5.8#45：⤢ 脱出按钮——main 面板可脱出；面板已脱出（panelDetached）或本窗非 main 恒 false
+        // （漂移窗内置面板已在独立窗口，无再次脱出语义）。drift 窗布局经 assembleWindowLayout 组装，
+        // 其 panel 对象同来自本 ctx——detachable 统一 false 保证任何情况不出现多余 ⤢。
+        detachable: !panelDetached,
+        detachTooltip: t("面板独立窗口"),
       };
     }
 
@@ -260,7 +269,8 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
       // E5.8#45 面板独占性：存在漂移面板窗（mode:"drift"）→ 面板已脱出——main 停推 panel，
       // 漂移窗按 zones 推 panel。真相源 = 壳窗口注册表（windows 是依赖，mode 变化即重推）。
-      panelDetached: windows.some((w) => w.mode === "drift"),
+      // 与上方 panelDetached 同源（面板对象 detachable + 独占裁决共用同一判定）。
+      panelDetached,
       t,
     };
 

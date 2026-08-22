@@ -714,6 +714,12 @@ function chkPanelLayout(v: unknown, p: string, errs: string[]): void {
     if (_t83.emptyHint !== undefined) {
     if (typeof _t83.emptyHint !== "string") errs.push(((p) + ".emptyHint") + ": 期望 string，实收 " + typeof _t83.emptyHint);
     }
+    if (_t83.detachable !== undefined) {
+    if (!(_t83.detachable === false || _t83.detachable === true)) errs.push(((p) + ".detachable") + ": 期望 false|true");
+    }
+    if (_t83.detachTooltip !== undefined) {
+    if (typeof _t83.detachTooltip !== "string") errs.push(((p) + ".detachTooltip") + ": 期望 string，实收 " + typeof _t83.detachTooltip);
+    }
   }
 }
 function chkPoolStatusBarItem(v: unknown, p: string, errs: string[]): void {

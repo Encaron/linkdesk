@@ -265,6 +265,30 @@
   background: var(--hover-overlay);
 }
 
+/* ── E5.8#45：⤢ 脱出面板到独立窗口——与 [+] 同款方形按钮（28px 窄行内视觉一致）。
+      codicon-empty-window 画 14px（对齐 create 14px 字号）；hover 同 hover-overlay。 ── */
+
+.panel-tab-detach {
+  width: 28px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.panel-tab-detach .codicon {
+  font-size: 14px;
+}
+
+.panel-tab-detach:hover {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
 /* ── keep-alive 内容区 ── */
 
 .panel-content {

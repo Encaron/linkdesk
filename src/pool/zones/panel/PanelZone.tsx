@@ -196,6 +196,22 @@ export default function PanelZone({ panel }: PanelZoneProps) {
           {/* E5.8#36.5：标签栏右侧动作区——按活动视图 titleActions 声明渲染（widget 全壳提供，
               视觉一致 + 插件独立铁律：第三方声明即用零壳改动）。无声明 → ViewTitleActions 渲染 null。 */}
           <ViewTitleActions actions={activeActions} />
+          {/* E5.8#45：⤢ 脱出面板到独立窗口——panel.detachable 时才渲染（main 常驻面板可脱出；
+              漂移窗已在外置 detachable=false 无此按钮）。点击 emit "panel:detach" → 壳 detachPanel()
+              建 drift 窗 + 面板独占迁移（I9-13 拍板 A）。tooltip 壳 t() 推送（显示文本铁律）。 */}
+          {panel.detachable && (
+            <button
+              className="panel-tab-detach"
+              title={panel.detachTooltip}
+              aria-label={panel.detachTooltip}
+              onClick={() => {
+                // E5.7#97：events.emit 载荷参数 required——无载荷信号显式传 undefined（wire 契约对齐）
+                window.linkdesk?.events?.emit("panel:detach", undefined);
+              }}
+            >
+              <span className="codicon codicon-empty-window" aria-hidden="true" />
+            </button>
+          )}
           {/* [+] 新建面板视图——panel:createView 归 Phase 12（现无监听者 no-op）；
               tooltip 由壳推（panel.createTooltip——显示文本铁律，池零自产文本） */}
           <button

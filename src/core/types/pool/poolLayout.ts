@@ -287,6 +287,11 @@ export interface PanelLayout {
   emptyText?: string;
   /** E5.8#34：空态占位指路——同 emptyText 壳 t() 推送 */
   emptyHint?: string;
+  /** 🆕 E5.8#45：面板可脱出（PanelZone ⤢ 按钮显隐）——true 时渲染脱出按钮，点击 emit "panel:detach"（壳 detachPanel 接）
+   *  ——脱出后漂移面板窗独占渲染本面板（主区空占位 I9-13），drift 窗内置 false（面板已在外，无需再脱出） */
+  detachable?: boolean;
+  /** 🆕 E5.8#45：⤢ 按钮 tooltip——壳 t("面板独立窗口") 推送（显示文本铁律） */
+  detachTooltip?: string;
 }
 
 /** 状态栏条目——序列化自壳 StatusBar 三源（贡献/动态/事件）+ 壳固定项（显示文本铁律：壳 t() 已解析）。

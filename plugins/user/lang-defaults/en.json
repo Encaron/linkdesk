@@ -298,6 +298,7 @@
   "打开键盘快捷方式": "Open Keyboard Shortcuts",
   "切换主题": "Switch Theme",
   "新建面板视图": "New Panel View",
+  "面板独立窗口": "Detach Panel to Window",
   "立即重启": "Restart Now",
   "已安装版本信息读取失败——请先卸载旧版本再安装。": "Failed to read the installed version info — please uninstall the old version first, then reinstall.",
   "已安装版本 {{iv}} 与本次提供的 {{sourceVersion}} 相同——无需重复安装。": "Installed version {{iv}} is the same as provided {{sourceVersion}} — no need to reinstall.",
