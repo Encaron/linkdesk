@@ -88,6 +88,22 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.8#44-C：池→壳——拖拽位置上报（拎起后 mousemove 全程——吸附命中检测数据源）。
+  // 池组件 pool.dragPosition(pos) 发送，主进程按 sender 解析 sourceWindowId 附上转发壳——
+  // 壳排除源窗命中（窗内拖拽 = 非跨窗吸附，天然清提示）；窗外命中目标窗 TabBar → 下发高亮。
+  ipcMain.on(IPC.pool.dragPosition, (event, pos: unknown) => {
+    const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const shellPos = typeof pos === 'object' && pos !== null ? { ...pos, sourceWindowId } : pos;
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.dragPosition, shellPos);
+    }
+  });
+
+  // E5.8#44-C：壳→池——吸附提示（目标窗 TabBar 高亮/清除）——按 windowId 定向推送（targetWindowId 壳命中解析）。
+  ipcMain.on(IPC.pool.adsorbHint, (_event, hint: unknown, windowId: string) => {
+    _windowManager?.pushAdsorbHint(hint, windowId);
+  });
+
   // E5.7#15：壳→Pool——QuickPick 哑渲染数据（聪慧→哑：壳序列化 DTO，池纯渲染）
   ipcMain.on(IPC.pool.quickpickShow, (_event, data: unknown) => {
     _windowManager?.pushQuickPick(data);
@@ -151,5 +167,5 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 16 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
+  console.log('[pool-handlers] 已注册 18 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:drag-position / pool:adsorb-hint / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
 }

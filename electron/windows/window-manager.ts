@@ -421,6 +421,14 @@ export class WindowManager {
     entry.view.webContents.send(IPC.pool.floatingPanel, data);
   }
 
+  /** E5.8#44-C：推送吸附提示哑数据——壳窗口间拖拽吸附命中检测后的 TabBar 高亮/清除（按 windowId 定向，默认主池）。
+   *  载荷 = { groupId: string | null }——null 清光目标窗高亮。壳命中检测排除了源窗，故同窗恒不触发。 */
+  pushAdsorbHint(data: unknown, windowId = 'main'): void {
+    const entry = this.getPoolEntry(windowId, 'pushAdsorbHint');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.adsorbHint, data);
+  }
+
   /** E5.6#5h → E5.7#4：取主窗口 Pool WebContentsView（窗口控制/缩放/崩溃恢复兼容入口——主池专用） */
   getPoolView(): WebContentsView | null {
     return this.poolWindows.get('main')?.view ?? null;
