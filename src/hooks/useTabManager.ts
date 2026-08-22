@@ -81,8 +81,9 @@ export {
 
 /* ── Hook ── */
 
-/** E4V#32：标签页激活事件双发（CoreEvents + 插件 IPC）——聚焦/激活共用一处（归一性，E5.8#30.15 消重）。 */
-function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
+/** E4V#32：标签页激活事件双发（CoreEvents + 插件 IPC）——聚焦/激活共用一处（归一性，E5.8#30.15 消重）。
+ *  E5.8#46.9：export——脱出窗聚焦补发（tabCallbacks.applyDetachedTabAction）复用同一发射点，防 v2.6 分叉。 */
+export function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
   CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
   try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId, filePath }); } catch { /* 静默 */ }
 }

@@ -5,10 +5,12 @@
  *       #46.8 Ctrl+W 按聚焦窗——脱出窗关该窗 active tab / 空窗自灭 / 主窗路径不变 / 窗口缺失 no-op / dirty 否决。
  * 测试夹具全用虚构值（硬约束 21：demo-plugin/Demo Alpha/Demo Beta，非真实插件）。
  */
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { createTabActionHandler, createCoreCallbacks, createSourceIdRouters, createStableSourceIdRoutersBridge, type TabActionHandlerDeps, type SourceIdRouterDeps } from "./tabCallbacks";
 import type { WindowShellState } from "./windows";
 import type { TabState } from "../hooks/useTabManager";
+import { CoreEvents } from "../core/react/events/CoreEvents"; // E5.8#46.9：断言 tab:activated 壳侧 fire
+import { shellEvents } from "../core/react/events/ShellEvents"; // E5.8#46.9：断言 tab:focused 发射
 
 // E5.8#46.8：closeActiveTab 的 dirty 确认走 viewRegistry.invokeBeforeCloseTab——mock 隔离插件层
 vi.mock("../pluginLoader/viewRegistry", () => ({
@@ -148,6 +150,59 @@ describe("createTabActionHandler —— E5.8#46.4 按 sourceWindowId 路由", ()
     expect(showConfirm).toHaveBeenCalledTimes(1);
     expectDetachedUpdate(updateTabState, "det-1", 1);
     expect(closeWindow).not.toHaveBeenCalled();
+  });
+});
+
+/* ── E5.8#46.9：脱出窗聚焦事件补发（复现 B——tab:activated 不发 → file-tree autoReveal 不跟随）── */
+
+describe("E5.8#46.9 脱出窗 focusTab 事件补发", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    delete (globalThis as { window?: unknown }).window;
+  });
+
+  /** 断言环境——tab:activated 双通道（CoreEvents fire + 插件 IPC 广播）+ tab:focused（shellEvents） */
+  function makeEventSpies() {
+    const coreFireSpy = vi.spyOn(CoreEvents.onDidChangeActiveTab, "fire");
+    const linkdeskEmit = vi.fn();
+    (globalThis as { window?: unknown }).window = { linkdesk: { events: { emit: linkdeskEmit } } };
+    const shellEmitSpy = vi.spyOn(shellEvents, "emit");
+    return { coreFireSpy, linkdeskEmit, shellEmitSpy };
+  }
+
+  it("脱出窗 focusTab → reduceFocusTab + 补发 tab:focused（activeEditor）+ tab:activated（插件 autoReveal）", async () => {
+    const { deps, updateTabState } = makeDeps();
+    const { coreFireSpy, linkdeskEmit, shellEmitSpy } = makeEventSpies();
+
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "focusTab", tabId: "t2", sourceWindowId: "det-1" });
+
+    // 注册表 activeTabId 切到 t2（reduceFocusTab + updateTabState 照旧，事件补发不改变原行为）
+    expectDetachedUpdate(updateTabState, "det-1", 2);
+    const [, state] = updateTabState.mock.calls[0] as [string, TabState];
+    expect(state.groups[0].activeTabId).toBe("t2");
+
+    // tab:focused（activeEditor context key / 布局推流）
+    expect(shellEmitSpy).toHaveBeenCalledWith("tab:focused", { pluginId: "demo-plugin", tabId: "t2" });
+    // tab:activated 双通道（CoreEvents + 插件 IPC → 池 lk.tabs.onDidChangeActiveTab → autoReveal）
+    expect(coreFireSpy).toHaveBeenCalledWith({ tabId: "t2", pluginId: "demo-plugin", filePath: undefined });
+    expect(linkdeskEmit).toHaveBeenCalledWith("tab:activated", { tabId: "t2", pluginId: "demo-plugin", filePath: undefined });
+  });
+
+  it("脱出窗 focusTab 目标 tab 不存在 → 不发射事件（reduceFocusTab 原态照旧）", async () => {
+    const { deps } = makeDeps();
+    const { coreFireSpy, linkdeskEmit, shellEmitSpy } = makeEventSpies();
+
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "focusTab", tabId: "nope", sourceWindowId: "det-1" });
+
+    // 未找到 tab → focused 守卫拦截，事件一律不发射（updateTabState 原态照旧，非本任务范围）
+    expect(shellEmitSpy).not.toHaveBeenCalled();
+    expect(coreFireSpy).not.toHaveBeenCalled();
+    expect(linkdeskEmit).not.toHaveBeenCalled();
   });
 });
 

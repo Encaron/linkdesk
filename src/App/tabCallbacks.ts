@@ -24,7 +24,8 @@ import {
   findTabBySourceId,
   isTabDirty,
   confirmDirtyTabClose,
-} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新；Step3：dirty 判定/确认共用
+  emitTabActivated,
+} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新；Step3：dirty 判定/确认共用；#46.9：激活事件复用一处
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
@@ -203,9 +204,11 @@ export interface TabActionHandlerDeps {
 
 /**
  * E5.8#46.4：脱出窗 tab 操作——纯 reducer 应用到该窗注册表 tabState + updateTabState。
- * 与主窗差异：不发射事件（tab:focused/tab:activated——布局推流 activeTabId 驱动池渲染，插件 isActive
- * prop 已覆盖；KISS，实机暴露事件缺口再补）；closeTab 用 reduceRemoveTab（不查 dirty——池侧 × 已按
- * closeBehavior 确认过，与主窗 × 同语义）；空窗自灭（I9-8）由壳裁决（groups 全空 → closeWindow）。
+ * E5.8#46.9：focusTab 补发 tab:focused + tab:activated（实机复现 B：插件订阅如 file-tree autoReveal
+ * 需事件跟随，主窗 handleFocusTab 双发对齐）——其余动作仍不发射（布局推流 activeTabId 驱动池渲染，
+ * 插件 isActive prop 已覆盖；KISS，实机暴露缺口再补）。
+ * closeTab 用 reduceRemoveTab（不查 dirty——池侧 × 已按 closeBehavior 确认过，与主窗 × 同语义）；
+ * 空窗自灭（I9-8）由壳裁决（groups 全空 → closeWindow）。
  */
 function applyDetachedTabAction(
   win: WindowShellState,
@@ -215,9 +218,18 @@ function applyDetachedTabAction(
   let next = win.tabState;
   let changed = true;
   switch (action.action) {
-    case "focusTab":
+    case "focusTab": {
       next = reduceFocusTab(next, action.tabId);
+      // E5.8#46.9：脱出窗聚焦补发事件——此前 KISS 不发射（#46.4 注），实机复现 B 暴露缺口：
+      // tab:activated 不发 → 插件订阅（file-tree autoReveal）不跟随。双发与主窗 handleFocusTab 对齐
+      //（tab:focused → activeEditor/布局推流；tab:activated → CoreEvents + 插件 IPC 广播）。
+      const focused = next.groups.flatMap((g) => g.tabs).find((t) => t.id === action.tabId);
+      if (focused) {
+        shellEvents.emit("tab:focused", { pluginId: focused.pluginId || focused.type, tabId: focused.id });
+        emitTabActivated(focused.id, focused.pluginId, focused.filePath);
+      }
       break;
+    }
     case "focusGroup":
       next = reduceFocusGroup(next, action.groupId);
       break;
