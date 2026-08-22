@@ -20,9 +20,10 @@ function fireWindowKeyDown(key: string) {
   act(() => { window.dispatchEvent(new KeyboardEvent("keydown", { key, bubbles: true })); });
 }
 
-function createMockMouseEvent(x: number, y: number): React.MouseEvent {
+function createMockMouseEvent(x: number, y: number, screenX?: number, screenY?: number): React.MouseEvent {
   // E5.7#98：轻量事件桩——只填 hook 用到的字段，unknown 桥接替代 as any
-  return { clientX: x, clientY: y, preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.MouseEvent;
+  // E5.8#46.3：屏幕坐标（窗外释放判定数据源）——缺省 0 与 jsdom 合成事件一致（0 落窗内 bounds 判 false，不误触发）
+  return { clientX: x, clientY: y, screenX: screenX ?? 0, screenY: screenY ?? 0, preventDefault: vi.fn(), stopPropagation: vi.fn() } as unknown as React.MouseEvent;
 }
 
 describe("useDragReorder", () => {
@@ -208,5 +209,37 @@ describe("useDragReorder", () => {
     fireWindowMouseUp(110, 120);
 
     expect(onMoveToOther).toHaveBeenCalledWith("tab-1", "g2");
+  });
+
+  /* ── E5.8#46.3：屏幕坐标窗外释放判定（client 坐标跨窗不可靠——拖入主屏无动作根因的回归测试） ── */
+
+  it("拎起后释放在窗口屏幕 bounds 外 → 触发 onReleaseOutside（屏幕坐标判定）", () => {
+    // E5.8#1d EXEMPT：测试叙述重复——窗外/窗内用例共享拖拽序列样板
+    /* jscpd:ignore-start */
+    const onReleaseOutside = vi.fn();
+    const { result } = setup({ onReleaseOutside });
+    // mousedown client(100,100) + screen(500,300) → 窗口屏幕原点 (400,200)
+    act(() => { result.current.startDrag("tab-1", 0, createMockMouseEvent(100, 100, 500, 300)); });
+    // 拎起：client(160,100) screen(560,300)
+    act(() => { window.dispatchEvent(new MouseEvent("mousemove", { clientX: 160, clientY: 100, screenX: 560, screenY: 300, bubbles: true })); });
+    expect(result.current.draggingId).toBe("tab-1");
+    /* jscpd:ignore-end */
+    // 释放在窗口左缘(400)外：screenX=100 < 400 → 窗外 → 触发（clientX 落在视口内也照样判窗外——跨窗可靠）
+    act(() => { window.dispatchEvent(new MouseEvent("mouseup", { clientX: 300, clientY: 200, screenX: 100, screenY: 300, bubbles: true })); });
+    expect(onReleaseOutside).toHaveBeenCalledWith("tab-1", 100, 300);
+    // 复位拖拽态
+    expect(result.current.draggingId).toBeNull();
+  });
+
+  it("释放在窗口屏幕 bounds 内 → 不触发 onReleaseOutside（窗内死区 no-op，不误触发）", () => {
+    /* jscpd:ignore-start */
+    const onReleaseOutside = vi.fn();
+    const { result } = setup({ onReleaseOutside });
+    act(() => { result.current.startDrag("tab-1", 0, createMockMouseEvent(100, 100, 500, 300)); });
+    act(() => { window.dispatchEvent(new MouseEvent("mousemove", { clientX: 160, clientY: 100, screenX: 560, screenY: 300, bubbles: true })); });
+    /* jscpd:ignore-end */
+    // 窗口 bounds：x∈[400,400+innerWidth=1424] y∈[200,200+innerHeight]——screen(900,400) 在窗内
+    act(() => { window.dispatchEvent(new MouseEvent("mouseup", { clientX: 500, clientY: 200, screenX: 900, screenY: 400, bubbles: true })); });
+    expect(onReleaseOutside).not.toHaveBeenCalled();
   });
 });

@@ -22,6 +22,11 @@ interface DragState {
   startY: number;
   phase: DragPhase;
   lifted: boolean;
+  /** E5.8#46.3：窗口屏幕原点——startDrag 时由 screenX-clientX 推出（screen=屏幕绝对坐标，client=相对本窗视口，
+   *  相减=窗口屏幕左/上缘，同在逻辑坐标 DPI 一致）。跨窗释放判定用屏幕坐标对照窗口屏幕 bounds——client 坐标
+   *  跨窗口不可靠（tab 落在其他 OS 窗口上方时 clientX 恰落进本窗视口 → 判不出「窗外」→ 拖入主屏无动作根因）。 */
+  winScreenX: number;
+  winScreenY: number;
 }
 
 export interface UseDragReorderOptions {
@@ -107,6 +112,7 @@ export function useDragReorder(
 
   const dragState = useRef<DragState>({
     tabId: "", fromIndex: -1, toIndex: -1, startX: 0, startY: 0, phase: "idle", lifted: false,
+    winScreenX: 0, winScreenY: 0,
   });
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [insertIndex, setInsertIndex] = useState<number | null>(null);
@@ -127,6 +133,10 @@ export function useDragReorder(
         startY: e.clientY,
         phase: "reorder",
         lifted: false,
+        // E5.8#46.3：窗口屏幕原点——mousedown 时指针必在本窗内（刚按下标签），client 坐标未钳制，
+        // screenX-clientX = 窗口左缘精确。合成事件缺 screenX（undefined）→ ?? 0 兜底（测试桩，NaN 比较恒 false 安全）。
+        winScreenX: (e.screenX ?? 0) - e.clientX,
+        winScreenY: (e.screenY ?? 0) - e.clientY,
       };
       setInsertIndex(fromIndex);
     },
@@ -215,10 +225,15 @@ export function useDragReorder(
 
       // E5.8#44-B：窗口外释放 = 拖出手势——仅拎起后触发（防普通点击误判）。screenX/Y = 屏幕坐标，
       // 壳转 screen 命中 TabBar（并窗）/空白（新窗）。先于 reorder/split 正常流程处理并复位拖拽态。
+      // E5.8#46.3：判定用屏幕坐标对照窗口屏幕 bounds（winScreenX + innerWidth/Height）——client 坐标跨窗
+      // 不可靠：tab 拖到其他 OS 窗口上方时 clientX 相对本窗视口可能仍落进 [0,innerWidth] → 判不出窗外
+      // （拖入主屏无动作 bug 根因）。screenX/Y 是屏幕绝对坐标，不随窗口钳制，跨窗判定恒可靠；
+      // 窗内死区松手 = 屏幕坐标在 bounds 内 → 判 false → 正常走窗内逻辑 no-op（不误触发）。
       if (
         ds.lifted &&
         onReleaseOutside &&
-        (e.clientX < 0 || e.clientX > window.innerWidth || e.clientY < 0 || e.clientY > window.innerHeight)
+        (e.screenX < ds.winScreenX || e.screenX > ds.winScreenX + window.innerWidth ||
+         e.screenY < ds.winScreenY || e.screenY > ds.winScreenY + window.innerHeight)
       ) {
         onReleaseOutside(ds.tabId, e.screenX, e.screenY);
         ds.phase = "idle";
