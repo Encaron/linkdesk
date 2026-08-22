@@ -310,6 +310,13 @@ export class WindowManager {
     if (windowId === 'main') cacheLayoutSnapshot(layout);
     const entry = this.getPoolEntry(windowId, 'pushLayout');
     if (!entry) return;
+    // E5.8#43-2（B2）：窗口标题随活动 tab——title 由壳 windowTitleFor 计算进 layout.titleBar.title
+    //（壳侧策略单真相源），此处同步到 OS 层窗口标题（主窗原生标题栏 + 脱出窗任务栏）。布局 wire
+    // 载荷为 unknown——安全窄化读 titleBar.title，非必要不改（title 恒存在：壳恒推 titleBar）。
+    const title = (layout as { titleBar?: { title?: string } })?.titleBar?.title;
+    if (title && entry.hostWindow.getTitle() !== title) {
+      entry.hostWindow.setTitle(title);
+    }
     entry.view.webContents.send(IPC.pool.layout, layout);
   }
 
