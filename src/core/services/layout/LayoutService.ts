@@ -47,6 +47,14 @@ export interface SidebarLayoutState {
   edge?: "left" | "right";
 }
 
+/** E5.8#43-3：脱出窗持久化状态——重启/F5 恢复浮窗（I9-15）。此刻浮窗无 tab（tab 归属随 #44 拖出后扩展），仅落盘窗口矩形。 */
+export interface DetachedWindowState {
+  /** 壳生成 id——主进程按 id 幂等建/复窗 */
+  windowId: string;
+  /** 上次落盘的窗口矩形——重启 createPoolWindow 用（越界钳制主进程做，I9-14） */
+  bounds: { x: number; y: number; width: number; height: number };
+}
+
 export interface WorkspaceLayout {
   tabs: LayoutData;
   cards: CardLayout[];
@@ -54,6 +62,8 @@ export interface WorkspaceLayout {
   panel?: PanelLayoutState;
   /** 🆕 E5.8#36.9：侧栏状态——edge 持久化（#37.6 换边）。未设置过则缺省（不落盘） */
   sidebar?: SidebarLayoutState;
+  /** 🆕 E5.8#43-3：脱出窗清单——bounds 落盘（A6/I9-14），重启恢复建窗源。未脱出过则缺省（不落盘） */
+  detachedWindows?: DetachedWindowState[];
 }
 
 /* ── 缓存 ── */
@@ -97,6 +107,11 @@ export function getSidebarLayout(): SidebarLayoutState | undefined {
   return _layoutCache.sidebar;
 }
 
+/** E5.8#43-3：读取脱出窗清单——重启恢复建窗源（I9-15）。无则空数组 */
+export function getDetachedWindows(): DetachedWindowState[] {
+  return _layoutCache.detachedWindows ?? [];
+}
+
 /* ── 保存 ── */
 
 /** 保存标签页布局 */
@@ -129,6 +144,12 @@ export async function savePanelLayout(panel: PanelLayoutState): Promise<void> {
 /** E5.8#36.9：保存侧栏布局状态 */
 export async function saveSidebarLayout(sidebar: SidebarLayoutState): Promise<void> {
   _layoutCache.sidebar = sidebar;
+  await write("layout", _layoutCache);
+}
+
+/** E5.8#43-3：保存脱出窗清单——bounds 落盘（A6/I9-14），整表替换（壳注册表是脱出窗唯一真相源） */
+export async function saveDetachedWindows(windows: DetachedWindowState[]): Promise<void> {
+  _layoutCache.detachedWindows = windows;
   await write("layout", _layoutCache);
 }
 

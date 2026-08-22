@@ -19,7 +19,7 @@ vi.mock("../configuration/StorageService", () => ({
   writeSync: vi.fn(),
 }));
 
-import { getPanelLayout, savePanelLayout, getSidebarLayout, saveSidebarLayout, initLayoutService, clearLayoutCache } from "./LayoutService";
+import { getPanelLayout, savePanelLayout, getSidebarLayout, saveSidebarLayout, getDetachedWindows, saveDetachedWindows, initLayoutService, clearLayoutCache } from "./LayoutService";
 
 describe("LayoutService 面板布局持久化（E5.8#31 visible + E5.8#36.9 edge/align/width）", () => {
   beforeEach(() => {
@@ -73,5 +73,38 @@ describe("LayoutService 侧栏布局持久化（E5.8#36.9 sidebar.edge）", () =
     await saveSidebarLayout({ edge: "right" });
     await initLayoutService();
     expect(getSidebarLayout()).toEqual({ edge: "right" });
+  });
+});
+
+describe("LayoutService 脱出窗持久化（E5.8#43-3 A6/I9-14 bounds 落盘 + I9-15 重启恢复）", () => {
+  beforeEach(() => {
+    store.clear();
+    clearLayoutCache();
+  });
+
+  it("缺省（从未脱出）时 getDetachedWindows 返回空数组", () => {
+    expect(getDetachedWindows()).toEqual([]);
+  });
+
+  it("saveDetachedWindows 落盘 → 重启（initLayoutService）读回窗口清单（bounds 恢复源）", async () => {
+    await saveDetachedWindows([
+      { windowId: "w2", bounds: { x: 120, y: 80, width: 900, height: 600 } },
+      { windowId: "w3", bounds: { x: 640, y: 240, width: 720, height: 480 } },
+    ]);
+    await initLayoutService();
+    expect(getDetachedWindows()).toEqual([
+      { windowId: "w2", bounds: { x: 120, y: 80, width: 900, height: 600 } },
+      { windowId: "w3", bounds: { x: 640, y: 240, width: 720, height: 480 } },
+    ]);
+  });
+
+  it("saveDetachedWindows 整表替换——关闭某窗后清单不再含它（壳移除 → 重启不恢复已关窗）", async () => {
+    await saveDetachedWindows([
+      { windowId: "w2", bounds: { x: 120, y: 80, width: 900, height: 600 } },
+      { windowId: "w3", bounds: { x: 640, y: 240, width: 720, height: 480 } },
+    ]);
+    await saveDetachedWindows([{ windowId: "w2", bounds: { x: 200, y: 100, width: 800, height: 500 } }]);
+    await initLayoutService();
+    expect(getDetachedWindows()).toEqual([{ windowId: "w2", bounds: { x: 200, y: 100, width: 800, height: 500 } }]);
   });
 });

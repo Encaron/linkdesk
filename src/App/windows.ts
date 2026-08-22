@@ -12,6 +12,7 @@
  */
 
 import type { TabState } from "../hooks/useTabManager";
+import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
 
 /** 窗口模式——壳侧声明层。新增窗口类型 = 此处加枚举成员 + WINDOW_MODE_STRATEGIES 加一行。 */
 export type WindowMode = "main" | "detached";
@@ -63,4 +64,6 @@ export interface WindowShellState {
   ready: boolean;
   /** 该窗口的标签页状态——tab 归属 windowId（脱出 = 组从主窗移入此窗） */
   tabState: TabState;
+  /** E5.8#43-3：该窗最近一次 OS bounds（主进程 moved/resized 上报）——脱出窗重启恢复落盘源（I9-14）。主池缺省（不持久化）。 */
+  bounds?: PoolWindowBoundsPayload["bounds"];
 }

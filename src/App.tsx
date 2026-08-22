@@ -134,7 +134,8 @@ function App() {
   usePoolSync({ windows, sidebarView, isSidebarVisible: isSidebarExpanded, panelActiveViewId, panelVisible, onTabAction: handleTabAction });
 
   // E5.8#0d.10-3f：布局持久化（beforeunload 同步写入 + 标签页/面板 100ms 防抖保存）迁入 src/App/persistence.ts
-  useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible });
+  // E5.8#43-3：windows 传入——脱出窗 bounds 变化落盘（moved/resized 上报 → 注册表 → 持久化）
+  useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible, windows });
 
   if (!ready) return null;
 

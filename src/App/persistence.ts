@@ -7,10 +7,11 @@
  */
 
 import { useEffect, useRef } from "react";
-import { saveTabLayout, savePanelLayout, saveSidebarLayout, getPanelLayout, syncWriteLayout, type WorkspaceLayout } from "../core/services/layout/LayoutService";
+import { saveTabLayout, savePanelLayout, saveSidebarLayout, saveDetachedWindows, getPanelLayout, syncWriteLayout, type WorkspaceLayout, type DetachedWindowState } from "../core/services/layout/LayoutService";
 import { syncWriteWorkspaceFolders } from "../core/services/layout/WorkspaceService";
 import { layoutEngine, narrowPanelEdge, narrowSidebarEdge } from "../core/services/layout/LayoutEngine"; // E5.8#36.9：edge 窄化守卫（dock.edge 宽类型 → DTO 窄类型）
 import type { TabState, LayoutData } from "../hooks/useTabManager";
+import type { WindowShellState } from "./windows";
 
 export interface LayoutPersistenceDeps {
   ready: boolean;
@@ -18,6 +19,15 @@ export interface LayoutPersistenceDeps {
   panelActiveViewId: string | null;
   /** E5.8#31：底部面板显隐——两处保存（beforeunload + 防抖）合并落盘，防覆盖 */
   panelVisible: boolean;
+  /** E5.8#43-3：壳窗口注册表——脱出窗 bounds 变化落盘数据源（moved/resized 上报 → 注册表 → 本 hook 持久化） */
+  windows: WindowShellState[];
+}
+
+/** E5.8#43-3：注册表脱出窗子集 → 持久化形状（windowId + bounds；无 bounds 不落盘——未移过/未恢复的窗不建持久化记录） */
+function serializeDetachedWindows(windows: WindowShellState[]): DetachedWindowState[] {
+  return windows
+    .filter((w) => w.mode === "detached" && w.bounds)
+    .map((w) => ({ windowId: w.windowId, bounds: w.bounds! }));
 }
 
 /** 标签页组序列化——beforeunload 与 100ms 防抖保存共用同一形状（E5.8#1c 去重） */
@@ -43,11 +53,13 @@ function serializeGroups(
 }
 
 /** 布局持久化——tabState/panel 全真相源在壳，App 自己负责保存。三个独立 effect（beforeunload 注册一次，闭包经 ref 读活值） */
-export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible }: LayoutPersistenceDeps): void {
+export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panelVisible, windows }: LayoutPersistenceDeps): void {
   const layoutSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const layoutInitialized = useRef(false);
   const tabStateRef = useRef(tabState);
   tabStateRef.current = tabState;
+  const windowsRef = useRef(windows);
+  windowsRef.current = windows;
 
   // beforeunload 读最新激活视图（handler 注册一次 deps []——闭包会过期，ref 同步）
   const panelActiveViewIdRef = useRef(panelActiveViewId);
@@ -86,6 +98,9 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
         }
         // E5.8#36.9：侧栏边——beforeunload 兜底落盘（防抖保存可能未覆盖）
         layout.sidebar = { edge: narrowSidebarEdge(layoutEngine.getZone("sidebar")?.dock?.edge) };
+        // E5.8#43-3（A6/I9-14）：脱出窗 bounds 兜底落盘——防抖保存可能未覆盖，退出时同步写入
+        const detached = serializeDetachedWindows(windowsRef.current);
+        if (detached.length) layout.detachedWindows = detached;
         syncWriteLayout(layout);
         syncWriteWorkspaceFolders(); // E5.5#0e：退出/刷新时同步保存工作区文件夹列表
       } catch { /* 静默 */ }
@@ -173,4 +188,30 @@ export function useLayoutPersistence({ ready, tabState, panelActiveViewId, panel
       if (panelSaveTimer.current) clearTimeout(panelSaveTimer.current);
     };
   }, [ready, panelActiveViewId]);
+
+  // E5.8#43-3（A6/I9-14）：脱出窗 bounds 落盘——100ms 防抖（主进程 moved/resized 上报 → 注册表更新 → 本 effect 落盘）。
+  // 与上次落盘指纹比对——main tabState 活同步也触发 windows 变化，脱出子集不变不写盘。
+  // 首轮跳过：恢复（restore 建窗 + bounds 回填）不该立刻写回盘。
+  const detachedSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const detachedInitialized = useRef(false);
+  const lastSavedDetachedRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (!ready) return;
+    if (!detachedInitialized.current) {
+      detachedInitialized.current = true;
+      return;
+    }
+    const doSave = () => {
+      const detached = serializeDetachedWindows(windows);
+      const fingerprint = JSON.stringify(detached);
+      if (lastSavedDetachedRef.current === fingerprint) return;
+      lastSavedDetachedRef.current = fingerprint;
+      void saveDetachedWindows(detached).catch((e) => { console.error("[App] 保存脱出窗布局失败:", e); });
+    };
+    if (detachedSaveTimer.current) clearTimeout(detachedSaveTimer.current);
+    detachedSaveTimer.current = setTimeout(doSave, 100);
+    return () => {
+      if (detachedSaveTimer.current) clearTimeout(detachedSaveTimer.current);
+    };
+  }, [windows, ready]);
 }
