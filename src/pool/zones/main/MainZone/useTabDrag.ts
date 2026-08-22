@@ -16,7 +16,7 @@ import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout"
 import type { DropZone } from "../../../hooks/tabDragTypes";
 import { detectDropZone } from "../../../hooks/tabDragTypes";
 import type { PoolTabAction } from "../../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
-import type { TabBarViewportRect } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B：TabBar rect 上报契约
+import type { TabBarViewportRect, TabDragPositionPayload } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
 import { useDragReorder } from "../../../hooks/useDragReorder";
 import { TAB_BAR_HEIGHT } from "./layout";
 
@@ -26,9 +26,11 @@ interface UseTabDragInput {
   groups: PoolGroup[];
   /** E5.8#44-B：TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——MainZone 传 pool.tabBarRects 包装 */
   tabBarRects?: (rects: TabBarViewportRect[]) => void;
+  /** E5.8#44-C：拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测）——MainZone 传 pool.dragPosition 包装 */
+  dragPosition?: (pos: TabDragPositionPayload) => void;
 }
 
-export function useTabDrag({ containerRef, tabAction, groups, tabBarRects }: UseTabDragInput) {
+export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition }: UseTabDragInput) {
   // Stable groups ref——avoid useCallback deps on groups
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
@@ -233,6 +235,8 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects }: Use
     },
     // E5.8#44-B：窗口外释放 → tabAction（壳侧命中检测：TabBar→并窗 / 空白→新窗）——恒启用（拖出即手势）
     onReleaseOutside: (tabId, screenX, screenY) => tabAction({ action: "releaseOutsideWindow", tabId, screenX, screenY }),
+    // E5.8#44-C：拎起后全程上报拖拽位置（壳排除源窗命中——窗内自然清提示，窗外命中目标窗 TabBar 高亮）
+    onDragPosition: (pos) => dragPosition?.(pos),
   });
 
   // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──

@@ -34,7 +34,7 @@ import type { PoolGroup } from "../../../core/types/pool/poolLayout";
 import type { SplitNode } from "../../../core/utils/splitTree";
 import { getAllLeafGroupIds } from "../../../core/utils/splitTree";
 import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
-import type { TabBarViewportRect } from "../../../core/types/ipc/poolActions"; // E5.8#44-B：TabBar rect 上报契约
+import type { TabBarViewportRect, TabDragPositionPayload } from "../../../core/types/ipc/poolActions"; // E5.8#44-B/#44-C：TabBar rect + 拖拽位置上报契约
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { computeLayout, buildBranchMaps } from "./MainZone/layout";
@@ -76,6 +76,10 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   const tabBarRects = useCallback((rects: TabBarViewportRect[]) => {
     poolApiRef.current?.tabBarRects?.(rects);
   }, []);
+  // E5.8#44-C：拖拽位置上报（拎起后 mousemove 全程——壳排除源窗吸附命中）——经 preload 直发主进程附 sourceWindowId 转壳
+  const dragPosition = useCallback((pos: TabDragPositionPayload) => {
+    poolApiRef.current?.dragPosition?.(pos);
+  }, []);
 
   // ── Group map ──
   const groupMap = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
@@ -101,7 +105,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
-  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects });
+  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragPosition });
 
   // ── renderGroupPane——单个 group 的内容（GroupPane 接线：tabs/dragInsertIndex 由本层解析）──
   function renderGroupPane(group: PoolGroup): React.ReactNode {

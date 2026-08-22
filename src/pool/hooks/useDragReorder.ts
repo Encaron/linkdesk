@@ -8,6 +8,7 @@
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import type { DropZone } from "./tabDragTypes";
+import type { TabDragPositionPayload } from "../../core/types/ipc/poolActions"; // E5.8#44-C：拖拽位置上报 wire 契约
 
 /* ── 类型 ── */
 
@@ -66,6 +67,9 @@ export interface UseDragReorderOptions {
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   /** E5.8#44-B：窗口外释放回调——拖出手势（标签页拖出窗口边界后释放）。screenX/Y = 屏幕坐标（壳转 screen 命中 TabBar/新窗）。仅拎起后触发。 */
   onReleaseOutside?: (tabId: string, screenX: number, screenY: number) => void;
+  /** E5.8#44-C：拖拽位置上报回调——拎起后 mousemove 全程（含窗内——壳排除源窗命中，窗内自然清提示）。
+   *  canceled = Esc 取消拖拽（keydown 无坐标，壳清吸附提示）。仅拎起后触发。 */
+  onDragPosition?: (pos: TabDragPositionPayload) => void;
 }
 
 export interface UseDragReorderResult {
@@ -98,6 +102,7 @@ export function useDragReorder(
     findOtherContainer,
     computeSplitZone,
     onReleaseOutside,
+    onDragPosition,
   } = options;
 
   const dragState = useRef<DragState>({
@@ -147,6 +152,11 @@ export function useDragReorder(
       if (ds.phase === "reorder" && !ds.lifted) {
         ds.lifted = true;
         setDraggingId(ds.tabId);
+      }
+
+      // E5.8#44-C：拎起后全程上报拖拽位置（含窗内——壳排除源窗命中，窗内拖拽自然 null 清提示；窗外命中目标窗 TabBar 高亮）
+      if (ds.lifted && onDragPosition) {
+        onDragPosition({ tabId: ds.tabId, screenX: e.screenX, screenY: e.screenY });
       }
 
       // 检测鼠标下是否有标签栏
@@ -273,6 +283,10 @@ export function useDragReorder(
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape" && dragState.current.phase !== "idle") {
+        // E5.8#44-C：Esc 取消拖拽——上报 canceled 供壳清吸附提示（keydown 无坐标，screenX/Y 填 0）
+        if (dragState.current.lifted && onDragPosition) {
+          onDragPosition({ tabId: dragState.current.tabId, screenX: 0, screenY: 0, canceled: true });
+        }
         dragState.current.phase = "idle";
         onDragDropZone?.(null);
         onDraggingChange?.(false);
@@ -293,7 +307,7 @@ export function useDragReorder(
   }, [
     containerRef, threshold, splitThreshold, editorAreaRef, itemCount,
     onReorder, onDropSplit, onDropCopySplit, onMoveToOther, onDraggingChange, onDragDropZone,
-    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone, onReleaseOutside,
+    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone, onReleaseOutside, onDragPosition,
   ]);
 
   return { draggingId, insertIndex, previewPos, startDrag };
