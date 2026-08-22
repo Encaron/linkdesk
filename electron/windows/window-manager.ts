@@ -411,10 +411,12 @@ export class WindowManager {
     return resolveFocusedWindowId(this._focusedWindowId, new Set(this.poolWindows.keys()));
   }
 
-  /** E5.8#43-1（A2）：取指定 Pool 窗口条目（已销毁则告警 + undefined）——哑渲染通道守卫咽喉。send 通道仍各方法字面量直发（E5.7#63.6 通道审计）。 */
+  /** E5.8#43-1（A2）：取指定 Pool 窗口条目（已销毁则告警 + undefined）——哑渲染通道守卫咽喉。send 通道仍各方法字面量直发（E5.7#63.6 通道审计）。
+   *  E5.8#46.12 回归加固：补 hostWindow.isDestroyed() 守卫（392/512 行同款）——WebContents 存活但宿主窗
+   *  已销毁时 entry 仍残留 → pushLayout 的 getTitle()/setTitle() 抛 "Object has been destroyed"（实机崩溃 trace）。 */
   private getPoolEntry(windowId: string, label: string): PoolWindowEntry | undefined {
     const entry = this.poolWindows.get(windowId);
-    if (!entry || entry.view.webContents.isDestroyed()) {
+    if (!entry || entry.view.webContents.isDestroyed() || entry.hostWindow.isDestroyed()) {
       console.warn(`[WindowManager] ${label} 失败——Pool "${windowId}" 不存在或已销毁`);
       return undefined;
     }

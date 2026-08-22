@@ -6,7 +6,7 @@
  * 测试夹具全用虚构值（硬约束 21：demo-plugin/Demo Alpha/Demo Beta，非真实插件）。
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTabActionHandler, createCoreCallbacks, createSourceIdRouters, type TabActionHandlerDeps, type SourceIdRouterDeps } from "./tabCallbacks";
+import { createTabActionHandler, createCoreCallbacks, createSourceIdRouters, createStableSourceIdRoutersBridge, type TabActionHandlerDeps, type SourceIdRouterDeps } from "./tabCallbacks";
 import type { WindowShellState } from "./windows";
 import type { TabState } from "../hooks/useTabManager";
 
@@ -363,5 +363,42 @@ describe("createSourceIdRouters —— E5.8#46.12 按来源窗路由 sourceId �
     expect(focusTabBySourceId).not.toHaveBeenCalled();
     expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
     expect(closeTabBySourceId).not.toHaveBeenCalled();
+  });
+});
+
+/* ── E5.8#46.12 回归：createStableSourceIdRoutersBridge 死循环止血（恒等函数引用 + 最新路由）── */
+
+describe("createStableSourceIdRoutersBridge —— 函数经 routerRef 委托，换 ref 后路由跟随最新", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("换 routerRef.current 后路由跟随最新路由器（正确性不降——App 每 render 刷新 ref 指向）", () => {
+    const a = makeSourceIdDeps();
+    const b = makeSourceIdDeps();
+    const routerRef = { current: a.routers };
+    const bridge = createStableSourceIdRoutersBridge(routerRef);
+
+    // 指向 a：主窗路径落 a 的 useTabManager 桩
+    bridge.focusTabBySourceId("t1", "main");
+    expect(a.focusTabBySourceId).toHaveBeenCalledWith("t1");
+    expect(b.focusTabBySourceId).not.toHaveBeenCalled();
+
+    // 换指向 b：脱出窗路径落 b 的注册表（ref 读活值——路由不因函数恒等而冻结在旧 windows 快照）
+    routerRef.current = b.routers;
+    bridge.updateTabLabelBySourceId("t1", "● Demo Alpha", "det-1");
+    expect(b.updateTabState).toHaveBeenCalledTimes(1);
+    expect(a.updateTabState).not.toHaveBeenCalled();
+  });
+
+  it("三个函数全部经桥转发、零路由逻辑——委托到路由器的同签名（防转发遗漏）", () => {
+    const { routers, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId } = makeSourceIdDeps();
+    const bridge = createStableSourceIdRoutersBridge({ current: routers });
+    bridge.focusTabBySourceId("t1", "main");
+    bridge.updateTabLabelBySourceId("t1", "x", "main");
+    bridge.closeTabBySourceId("t1", "main");
+    expect(focusTabBySourceId).toHaveBeenCalledWith("t1");
+    expect(updateTabLabelBySourceId).toHaveBeenCalledWith("t1", "x");
+    expect(closeTabBySourceId).toHaveBeenCalledWith("t1");
   });
 });

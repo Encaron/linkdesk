@@ -20,7 +20,7 @@ import { useWindowHost } from "./App/windowHost"; // E5.8#43-2：壳窗口注册
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
-import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler, createSourceIdRouters } from "./App/tabCallbacks";
+import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler, createSourceIdRouters, createStableSourceIdRoutersBridge } from "./App/tabCallbacks";
 import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
@@ -140,8 +140,15 @@ function App() {
     [windows, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId],
   );
 
+  // 🔥 E5.8#46.12 回归修复（实机卡死根因）：sourceIdRouters 闭包抓 windows（每次 tabState 变化换引用）
+  // → 三路由函数引用不稳 → useTabActions u5/u6/u7 订阅 effect 每 render 重订阅 → ShellEvents.on()
+  // 回放缓冲重放 tab:create → createTab 死循环。ref 读活值 + 稳定桥钉死函数引用（恒等），路由不降。
+  const sourceIdRoutersRef = useRef(sourceIdRouters);
+  sourceIdRoutersRef.current = sourceIdRouters;
+  const stableSourceIdRouters = useMemo(() => createStableSourceIdRoutersBridge(sourceIdRoutersRef), []);
+
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
-  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: sourceIdRouters.focusTabBySourceId, updateTabLabelBySourceId: sourceIdRouters.updateTabLabelBySourceId, closeTabBySourceId: sourceIdRouters.closeTabBySourceId, restoreLayout, setPanelActiveViewId });
+  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: stableSourceIdRouters.focusTabBySourceId, updateTabLabelBySourceId: stableSourceIdRouters.updateTabLabelBySourceId, closeTabBySourceId: stableSourceIdRouters.closeTabBySourceId, restoreLayout, setPanelActiveViewId });
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useMemo(

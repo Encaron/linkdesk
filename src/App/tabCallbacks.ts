@@ -414,12 +414,38 @@ export interface SourceIdRouterDeps {
   closeTabBySourceId: (sourceId: string) => void;
 }
 
+/** E5.8#46.12：sourceId 路由产物类型——createSourceIdRouters 与稳定桥共用，一处定义 */
+export interface SourceIdRouters {
+  focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
+  updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string) => void;
+  closeTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
+}
+
+/**
+ * E5.8#46.12 回归修复（实机卡死根因）：sourceId 路由函数**恒等**化——死循环止血。
+ *
+ * 死循环链：createSourceIdRouters 闭包抓 windows → windows 每次 tabState 变化换引用
+ * （useWindowHost 主窗同步 effect 恒 map 新数组）→ 传入 useTabActions 的三路由函数引用不稳 →
+ * u5/u6/u7 订阅 effect deps 变 → 每 render 重订阅 → ShellEvents.on() 回放缓冲重放最近一次
+ * tab:create → u1 createTab 再触发 → setTabState → windows 再变 → 无限循环（2800MB+ 崩溃）。
+ *
+ * 本桥：函数引用由 useMemo([]) 钉死一次（恒等），内部经 routerRef.current 读**最新**路由——
+ * 路由正确性不降（脱出窗注册表/主窗双路仍按当前 windows 裁决），订阅 effect 永不再重跑。
+ */
+export function createStableSourceIdRoutersBridge(routerRef: { current: SourceIdRouters }): SourceIdRouters {
+  return {
+    focusTabBySourceId: (sourceId, sourceWindowId) => routerRef.current.focusTabBySourceId(sourceId, sourceWindowId),
+    updateTabLabelBySourceId: (sourceId, label, sourceWindowId) => routerRef.current.updateTabLabelBySourceId(sourceId, label, sourceWindowId),
+    closeTabBySourceId: (sourceId, sourceWindowId) => routerRef.current.closeTabBySourceId(sourceId, sourceWindowId),
+  };
+}
+
 /**
  * E5.8#46.12：sourceId 族（改标签/关标签/聚焦）按来源窗路由——信封章（主进程 sender 反查）落脱出窗
  * 注册表纯 reducer + updateTabState；主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗
  * label/dirty 黑点不同步、close/focus 静默 no-op）——与 #46.4 脱出窗 tabAction 同构归一化。
  */
-export function createSourceIdRouters(deps: SourceIdRouterDeps) {
+export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters {
   const { windows, updateTabState, closeWindow } = deps;
   /**
    * 信封来源窗章 → 三态路由：
