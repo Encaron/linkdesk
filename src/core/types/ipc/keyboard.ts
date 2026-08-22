@@ -15,6 +15,15 @@ export interface KeyboardInput {
   code: string;
 }
 
+/**
+ * E5.8#46.8：主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
+ * KeyboardInput 保持纯净（纯键盘字段）；来源作为组合类型必选字段（attachKeyboardRouting 恒有 windowId）。
+ * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（#46.4 归一化）。
+ */
+export interface ForwardedKeyboardInput extends KeyboardInput {
+  sourceWindowId: string;
+}
+
 /** 壳→主进程快捷键表同步载荷（KeybindingRegistry.getKeybindingSyncData 输出） */
 export interface KeybindingSyncData {
   shortcuts: string[];

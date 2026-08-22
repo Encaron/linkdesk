@@ -5,7 +5,7 @@
  */
 
 import type { Keybinding } from "../../registry/commands/KeybindingRegistry";
-import type { KeyboardInput, KeybindingSyncData } from "../../types/ipc/keyboard";
+import type { ForwardedKeyboardInput, KeybindingSyncData } from "../../types/ipc/keyboard";
 
 /** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
 export interface KeybindingsAPI {
@@ -24,7 +24,7 @@ export interface KeybindingsAPI {
     onChange(cb: () => void): () => void;
     /** 壳→主进程同步快捷键表（chord 状态机查表） */
     syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-    /** 接收主进程 before-input-event 转发的拦截事件 */
-    onForwardedEvent?(cb: (input: KeyboardInput) => void): () => void;
+    /** 接收主进程 before-input-event 转发的拦截事件（E5.8#46.8：载荷含 sourceWindowId——按聚焦窗裁决） */
+    onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
   };
 }

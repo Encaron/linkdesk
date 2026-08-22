@@ -23,7 +23,7 @@ import { buildWindow } from './window-namespace';
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
 import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
-import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
+import type { ForwardedKeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
@@ -60,8 +60,9 @@ ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
 const _shellCommands = new Map<string, (...args: unknown[]) => unknown>();
 
 // E5.5#7-p6：键盘路由——接收主进程 before-input-event 转发的快捷键
-let _keyboardForwardHandler: ((input: KeyboardInput) => void) | null = null;
-ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: KeyboardInput) => {
+// E5.8#46.8：载荷含 sourceWindowId（ForwardedKeyboardInput）——壳按聚焦窗裁决
+let _keyboardForwardHandler: ((input: ForwardedKeyboardInput) => void) | null = null;
+ipcRenderer.on(IPC.keyboard.executeShortcut, (_event, input: ForwardedKeyboardInput) => {
   if (_keyboardForwardHandler) _keyboardForwardHandler(input);
 });
 
@@ -317,7 +318,7 @@ try {
       // E5.5#7-p7：壳→主进程同步快捷键表
       syncToMainProcess: (data: KeybindingSyncData) => ipcRenderer.invoke(IPC.keyboard.syncShortcuts, data),
       // E5.5#7-p7：接收主进程转发的 before-input-event 拦截事件
-      onForwardedEvent: (cb: (input: KeyboardInput) => void) => {
+      onForwardedEvent: (cb: (input: ForwardedKeyboardInput) => void) => {
         _keyboardForwardHandler = cb;
         return () => { _keyboardForwardHandler = null; };
       },

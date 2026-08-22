@@ -13,7 +13,10 @@ export function registerTabCommands(): void {
       id: "workbench.action.closeActiveTab",
       title: "关闭标签页",
       category: "标签页",
-      handler: async () => { getCallbacks()?.closeActiveTab(); },
+      // E5.8#46.8：快捷键转发带 sourceWindowId（键盘路由按聚焦窗裁决）——从命令 args 末尾取并透传给 callbacks
+      handler: async (...args: unknown[]) => {
+        getCallbacks()?.closeActiveTab((args[args.length - 1] as { sourceWindowId?: string } | undefined)?.sourceWindowId);
+      },
     },
     {
       id: "workbench.action.reopenClosedEditor",

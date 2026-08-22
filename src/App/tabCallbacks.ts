@@ -65,11 +65,15 @@ export interface CoreCallbacksDeps {
   detachTab: (tabId: string) => void;
   mergeTabToMain: (tabId: string) => void;
   findTabWindow: (tabId: string) => { windowId: string; mode: WindowMode } | null;
+  /** E5.8#46.8：壳窗口注册表——Ctrl+W 按聚焦窗路由（脱出窗走 registry reduceRemoveTab + 空窗自灭） */
+  windows: WindowShellState[];
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  closeWindow: (windowId: string) => void;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow, windows, updateTabState, closeWindow } = deps;
   return {
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
@@ -89,7 +93,19 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
       return null;
     },
     openTab: (pluginId) => openOrFocusTab(pluginId, { pinned: true })!,
-    closeActiveTab: async () => {
+    // E5.8#46.8：Ctrl+W 按聚焦窗路由——脱出窗（sourceWindowId ≠ "main"）关该窗 registry active tab
+    // （reduceRemoveTab + 空窗自灭 I9-8，复用 #46.4 applyDetachedTabAction）；主窗/未注走 useTabManager。
+    closeActiveTab: async (sourceWindowId) => {
+      if (sourceWindowId && sourceWindowId !== "main") {
+        const win = windows.find((w) => w.windowId === sourceWindowId);
+        if (!win) return;
+        const group = win.tabState.groups.find((g) => g.id === win.tabState.activeGroupId);
+        const tab = group?.tabs.find((t) => t.id === group.activeTabId);
+        if (!tab) return;
+        if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+        applyDetachedTabAction(win, { action: "closeTab", tabId: tab.id, sourceWindowId }, { updateTabState, closeWindow });
+        return;
+      }
       const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
       const tab = group?.tabs.find((t) => t.id === group.activeTabId);
       if (!tab) return;

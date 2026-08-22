@@ -145,8 +145,9 @@ function App() {
       closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab,
       duplicateTab: _duplicateTab, pinTab,
       detachTab: relocation.detachTabToNewWindow, mergeTabToMain: relocation.mergeTabToMain, findTabWindow: relocation.findTabWindow,
+      windows, updateTabState, closeWindow,
     }),
-    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, relocation],
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, relocation, windows, updateTabState, closeWindow],
   );
   updateCoreCallbacks(coreCallbacks);
 

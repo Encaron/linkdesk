@@ -167,7 +167,7 @@ export class WindowManager {
     // （Ctrl+Shift+P 等全灭）。工厂处挂载 = 初始创建 + rebuildPool 崩溃恢复全覆盖
     // （E5.5#7 只挂了插件 WebView——极简Pool 时代池是唯一视图）。
     // E5.8#43-1：恒指 this.mainWindow（壳窗口）——命中快捷键转发给壳执行；脱出窗池的输入同样发主窗壳（壳=唯一真相源），不随 hostWindow 变。
-    attachKeyboardRouting(view, this.mainWindow);
+    attachKeyboardRouting(view, this.mainWindow, windowId);
 
     // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
     // 对标 per-tab 时代的 replayToPlugin（E5.7#43 已删）——池创建晚于初始广播，需补发。

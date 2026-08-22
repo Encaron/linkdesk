@@ -15,7 +15,8 @@ export interface CoreCallbacks {
   splitTab: (tabId: string, direction: "horizontal" | "vertical") => void;
   findGroupByTabId: (tabId: string) => { groupId: string; tabs: Array<{ id: string }> } | null;
   openTab: (pluginId: string) => string;
-  closeActiveTab: () => void;
+  /** E5.8#46.8：按聚焦窗关闭 active tab——sourceWindowId 来自键盘转发载荷（脱出窗关本窗 tab）；主窗/未注为 undefined */
+  closeActiveTab: (sourceWindowId?: string) => void;
   reopenClosedTab: () => string | null;
   focusNextTab: (shift: boolean) => void;
   toggleSplit: () => void;

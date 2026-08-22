@@ -208,6 +208,14 @@ export interface KeyboardInput {
     key: string;
     code: string;
 }
+/**
+ * E5.8#46.8：主进程 before-input-event 转发的 executeShortcut 载荷——键盘快照 + 来源窗标注。
+ * KeyboardInput 保持纯净（纯键盘字段）；来源作为组合类型必选字段（attachKeyboardRouting 恒有 windowId）。
+ * 壳 dispatch 据此按聚焦窗裁决快捷键（Ctrl+W 关本窗 tab）——与 ShellTabAction 顶层 sourceWindowId 同构（#46.4 归一化）。
+ */
+export interface ForwardedKeyboardInput extends KeyboardInput {
+    sourceWindowId: string;
+}
 /** 快捷键——壳/池双端注入（syncToMainProcess/onForwardedEvent 为壳侧独有）。池插件消费 setKeybindingCaptureActive（file-tree），必选 */
 export interface KeybindingsAPI {
     keybindings: {
@@ -225,8 +233,8 @@ export interface KeybindingsAPI {
         onChange(cb: () => void): () => void;
         /** 壳→主进程同步快捷键表（chord 状态机查表） */
         syncToMainProcess?(data: KeybindingSyncData): Promise<void>;
-        /** 接收主进程 before-input-event 转发的拦截事件 */
-        onForwardedEvent?(cb: (input: KeyboardInput) => void): () => void;
+        /** 接收主进程 before-input-event 转发的拦截事件（E5.8#46.8：载荷含 sourceWindowId——按聚焦窗裁决） */
+        onForwardedEvent?(cb: (input: ForwardedKeyboardInput) => void): () => void;
     };
 }
 /** 进度通知句柄——progress=true 时 show() 返回 */
