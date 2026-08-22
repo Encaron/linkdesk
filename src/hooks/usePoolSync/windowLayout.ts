@@ -96,8 +96,15 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
   const include = (zone: PoolZone): boolean => strategy.zones.includes(zone);
   return {
     version: 2,
-    // titleBar 恒推（窗口 chrome——池恒渲染）；title 每窗随活动 tab
-    titleBar: { ...ctx.titleBarBase, title: windowTitleFor(win, ctx.t) },
+    // titleBar 恒推（窗口 chrome——池恒渲染）；title 每窗随活动 tab。
+    // 菜单栏按模式策略（拍板 7——02 §6）：main 随全局菜单样式配置照推；detached/drift 纯工作区
+    // 窗口无菜单栏——menuBarVisible 恒 false + 菜单组不推（标题栏 logo/拖拽区/窗口控制照常）
+    titleBar: {
+      ...ctx.titleBarBase,
+      title: windowTitleFor(win, ctx.t),
+      menuBarVisible: strategy.titleBarMenu && ctx.titleBarBase.menuBarVisible,
+      menuGroups: strategy.titleBarMenu ? ctx.titleBarBase.menuGroups : [],
+    },
     iconBar: include("iconBar") ? ctx.iconBar : undefined,
     sidebar: include("sidebar") ? ctx.sidebar : undefined,
     rightSidebar: include("rightSidebar") ? ctx.rightSidebar : undefined,

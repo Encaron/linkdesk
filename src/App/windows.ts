@@ -38,6 +38,9 @@ export interface WindowModeStrategy {
   closeSemantics: "quitApp" | "closeTabs";
   /** [+] 创建标签菜单：main=提供（getTabCreatableViews 真实列表）；detached=不提供（I9-6——creatableViews 推空数组，池 [+] 按钮无创建菜单） */
   tabBarCreate: "provided" | "suppressed";
+  /** 标题栏菜单栏（拍板 7——02 §6「纯工作区窗口」）：main=随全局菜单样式配置（menuBarVisible/menuGroups 照推）；
+   *  detached/drift=无菜单栏（menuBarVisible 恒 false + 菜单组不推——标题栏 logo/拖拽区/窗口控制照常） */
+  titleBarMenu: boolean;
 }
 
 /** 窗口模式策略表——新增窗口类型 = 加一行，零改他处（#43 架构内核） */
@@ -47,12 +50,14 @@ export const WINDOW_MODE_STRATEGIES: Record<WindowMode, WindowModeStrategy> = {
     emptyBehavior: "fallback",
     closeSemantics: "quitApp",
     tabBarCreate: "provided",
+    titleBarMenu: true,
   },
   detached: {
     zones: ["titleBar", "groups"],
     emptyBehavior: "autoClose",
     closeSemantics: "closeTabs",
     tabBarCreate: "suppressed",
+    titleBarMenu: false,
   },
   // E5.8#45 漂移面板窗：zones = titleBar + groups（空=主区空占位，I9-13）+ panel。
   // 面板独占性 = 布局组装按 ctx.panelDetached 裁决（main 有 drift 窗时停推 panel——面板恒只在
@@ -63,6 +68,7 @@ export const WINDOW_MODE_STRATEGIES: Record<WindowMode, WindowModeStrategy> = {
     emptyBehavior: "autoClose",
     closeSemantics: "closeTabs",
     tabBarCreate: "suppressed",
+    titleBarMenu: false,
   },
 };
 

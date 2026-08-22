@@ -1,8 +1,9 @@
 /**
  * 按窗口组装 PoolLayout 纯函数测试——E5.8#43-2。
  *
- * 覆盖：窗口模式策略表 zones/tabBarCreate 声明驱动（main 全 zone + [+] 提供；
- * detached 只 titleBar+groups 子集 + [+] 抑制）、窗口标题随活动 tab（windowTitleFor）。
+ * 覆盖：窗口模式策略表 zones/tabBarCreate/titleBarMenu 声明驱动（main 全 zone + [+] 提供 +
+ * 标题栏菜单随全局配置；detached 只 titleBar+groups 子集 + [+] 抑制 + 纯工作区无菜单栏
+ * ——E5.8#46.15 拍板 7）、窗口标题随活动 tab（windowTitleFor）。
  * 纯函数零 React——fixture 直接构造 TabState/WindowShellState/WindowLayoutContext。
  * 测试插件 ID 一律虚构（demo-plugin）——viewRegistry 未注册 → getViewPlugin undefined
  * → resolvePoolTabTitle 走原样分支，断言与注册表状态解耦（硬约束 10/21 精神）。
@@ -48,7 +49,8 @@ function makeCtx(): WindowLayoutContext {
     titleBarBase: {
       logoUrl: "assets/logo.svg",
       menuBarVisible: true,
-      menuGroups: [],
+      // 非空菜单组——#46.15 测「脱出窗菜单栏抑制」需要全局有可抑制的菜单数据（虚构值，硬约束 21）
+      menuGroups: [{ group: "demo-menu", label: "Demo Menu", items: [{ label: "Demo Item", command: "" }] }],
       slots: { left: [], right: [] },
       windowControls: { minimize: "最小化", maximize: "最大化", restore: "还原", close: "关闭" },
     },
@@ -85,6 +87,34 @@ describe("assembleWindowLayout 按窗口模式策略组装", () => {
     expect(layout.panel).toBeUndefined();
     expect(layout.statusBar).toBeUndefined();
     expect(layout.creatableViews).toEqual([]);
+  });
+
+  it("标题栏菜单按模式策略（E5.8#46.15 拍板 7）——main 随全局配置；detached/drift 恒抑制", () => {
+    // main 默认（titlebar 菜单样式）：menuBarVisible=true + 菜单组照推
+    const mainLayout = assembleWindowLayout(makeWindow(), makeCtx());
+    expect(mainLayout.titleBar?.menuBarVisible).toBe(true);
+    expect(mainLayout.titleBar?.menuGroups).toHaveLength(1);
+    // main hamburger 模式（menuBarVisible=false）：随全局配置照推（菜单不渲染但配置保留）
+    const hamburgerCtx = makeCtx();
+    hamburgerCtx.titleBarBase.menuBarVisible = false;
+    const mainHamburger = assembleWindowLayout(makeWindow(), hamburgerCtx);
+    expect(mainHamburger.titleBar?.menuBarVisible).toBe(false);
+    expect(mainHamburger.titleBar?.menuGroups).toHaveLength(1);
+    // detached：纯工作区窗口无菜单栏——menuBarVisible 恒 false + 菜单组不推（拍板 7）
+    const detachedLayout = assembleWindowLayout(makeWindow({ windowId: "w2", mode: "detached" }), makeCtx());
+    expect(detachedLayout.titleBar?.menuBarVisible).toBe(false);
+    expect(detachedLayout.titleBar?.menuGroups).toEqual([]);
+    // drift：同（面板专用窗也是纯工作区）
+    const driftLayout = assembleWindowLayout(
+      makeWindow({
+        windowId: "d1",
+        mode: "drift",
+        tabState: { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } },
+      }),
+      makeCtx(),
+    );
+    expect(driftLayout.titleBar?.menuBarVisible).toBe(false);
+    expect(driftLayout.titleBar?.menuGroups).toEqual([]);
   });
 
   it("布局携带该窗口自身 tabState——groups/root/activeGroupId 随窗", () => {
