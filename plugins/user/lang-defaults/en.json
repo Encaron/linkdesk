@@ -268,6 +268,8 @@
   "关闭全部": "Close All",
   "复制标签页": "Duplicate Tab",
   "固定/取消固定": "Pin / Unpin",
+  "在新窗口中打开": "Open in New Window",
+  "并回主窗口": "Merge Back to Main Window",
   "pool 池窗口": "Pool Window",
   "Pool 池窗口": "Pool Window",
   "池窗口 DevTools": "Pool DevTools",

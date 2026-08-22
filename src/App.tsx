@@ -30,6 +30,7 @@ import { usePanelReveal } from "./App/panelReveal"; // E5.8#34.5：panel.reveal 
 import { useFloatingPanelReveal } from "./App/floatingPanelReveal"; // E5.8#39.5：panel.revealFloating 悬浮面板声明制
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
+import { useWindowRelocation } from "./App/windowRelocation"; // E5.8#44：壳侧窗口间标签页搬迁（detach/merge）
 import "./App.css";
 
 function App() {
@@ -99,11 +100,23 @@ function App() {
     closeTabBySourceId,
     updateTabLabelBySourceId,
     restoreClosedTab,
+    removeTab, // E5.8#44：跨窗口搬迁源侧摘除（main 专用，内建 ensureFallback）
+    insertTab, // E5.8#44：跨窗口搬迁目标侧插入（main）
   } = useTabManager();
 
   // E5.8#43-2：壳窗口注册表——main tabState 活同步进注册表；createWindow/closeWindow/updateTabState
-  // 为 #44 脱出手势的 API 接入点（本次未接线，待 #44 消费）
-  const { windows } = useWindowHost({ mainTabState: tabState });
+  // 供 #44 脱出手势/右键命令消费
+  const { windows, createWindow, closeWindow, updateTabState } = useWindowHost({ mainTabState: tabState });
+
+  // E5.8#44：壳侧窗口间标签页搬迁——detach（拖出/右键「在新窗口中打开」）+ merge（吸附并窗/「并回主窗口」）
+  const relocation = useWindowRelocation({
+    windows,
+    createWindow,
+    closeWindow,
+    updateTabState,
+    removeTab,
+    insertTab,
+  });
 
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
   useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });
@@ -116,8 +129,12 @@ function App() {
 
   // E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里
   const coreCallbacks: CoreCallbacks = useMemo(
-    () => createCoreCallbacks({ closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab: _duplicateTab, pinTab }),
-    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab],
+    () => createCoreCallbacks({
+      closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab,
+      duplicateTab: _duplicateTab, pinTab,
+      detachTab: relocation.detachTabToNewWindow, mergeTabToMain: relocation.mergeTabToMain, findTabWindow: relocation.findTabWindow,
+    }),
+    [closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, _duplicateTab, pinTab, relocation],
   );
   updateCoreCallbacks(coreCallbacks);
 

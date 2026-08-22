@@ -27,6 +27,12 @@ export interface CoreCallbacks {
   pinTab: (tabId: string) => void;
   /** E5.8#38（I8-3/IX-1 单一实例）：聚焦已有插件标签页——找到则聚焦（跨 group 切换）返回 true，无返回 false */
   focusTabByPluginId: (pluginId: string) => boolean;
+  /** E5.8#44：拖出 tab 到新窗（右键「在新窗口中打开」） */
+  detachTab: (tabId: string) => void;
+  /** E5.8#44：并回主窗（右键「并回主窗口」——脱出窗专属） */
+  mergeTabToMain: (tabId: string) => void;
+  /** E5.8#44：找 tab 所在窗口——「并回主窗口」可见性判定（detached 才注入） */
+  findTabWindow: (tabId: string) => { windowId: string; mode: "main" | "detached" } | null;
 }
 
 let _callbacks: CoreCallbacks | null = null;

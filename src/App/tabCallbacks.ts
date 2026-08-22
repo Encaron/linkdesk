@@ -48,11 +48,15 @@ export interface CoreCallbacksDeps {
   restoreClosedTab: () => string | null;
   duplicateTab: (tabId: string) => string | null;
   pinTab: (tabId: string) => void;
+  /** E5.8#44：可拖出窗口——右键「在新窗口中打开」/「并回主窗口」/ tab 窗口判定 */
+  detachTab: (tabId: string) => void;
+  mergeTabToMain: (tabId: string) => void;
+  findTabWindow: (tabId: string) => { windowId: string; mode: "main" | "detached" } | null;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */
 export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
-  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab } = deps;
+  const { closeTab, splitTab, tabState, handleFocusTab, unsplit, openOrFocusTab, restoreClosedTab, duplicateTab, pinTab, detachTab, mergeTabToMain, findTabWindow } = deps;
   return {
     closeTab,
     closeOtherTabs: (groupId, exceptTabId) => {
@@ -130,6 +134,10 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
       }
       return false;
     },
+    // E5.8#44：可拖出窗口——壳侧 relocation（windowRelocation.ts）直通
+    detachTab: (tabId) => detachTab(tabId),
+    mergeTabToMain: (tabId) => mergeTabToMain(tabId),
+    findTabWindow: (tabId) => findTabWindow(tabId),
   };
 }
 

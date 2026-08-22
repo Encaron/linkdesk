@@ -19,6 +19,8 @@ import {
   reduceUnsplit,
   reduceSetDirty,
   reduceRestoreLayout,
+  reduceRemoveTab,
+  reduceInsertTab,
   type Tab,
   type TabState,
   type LayoutData,
@@ -44,6 +46,22 @@ function stateWithTabs(...tabs: Tab[]): TabState {
     groups: [{ id: "main", tabs, activeTabId: tabs[0]?.id ?? "" }],
     activeGroupId: "main",
     root: { type: "leaf", groupId: "main" },
+  };
+}
+
+/** E5.8#44：双面板状态（g1/g2 各 1 tab，branch root）——跨窗口搬迁多面板 fixture（reduceRemoveTab/reduceInsertTab 共用） */
+function twoGroupState(): TabState {
+  return {
+    groups: [
+      { id: "g1", tabs: [w("Alpha", "demo_alpha")], activeTabId: "workspace-demo_alpha" },
+      { id: "g2", tabs: [w("Beta", "demo_beta")], activeTabId: "workspace-demo_beta" },
+    ],
+    activeGroupId: "g1",
+    root: {
+      type: "branch", direction: "horizontal",
+      children: [{ type: "leaf", groupId: "g1" }, { type: "leaf", groupId: "g2" }],
+      sizes: [50, 50],
+    },
   };
 }
 
@@ -438,5 +456,66 @@ describe("detectDropZone", () => {
     expect(detectDropZone(300, 350, rect)).toBe("down");
     expect(detectDropZone(300, 250, rect)).toBe("center");
     expect(detectDropZone(50, 250, rect)).toBeNull();
+  });
+});
+
+/* ── E5.8#44：跨窗口搬迁 reducer——detach/merge 源侧摘除（reduceRemoveTab）+ 目标侧插入（reduceInsertTab） ── */
+
+describe("reduceRemoveTab（E5.8#44）", () => {
+  it("摘除 tab → 返回 removedTab + 组内剩余保留", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"), w("Beta", "demo_beta"));
+    const r = reduceRemoveTab(s, "workspace-demo_alpha");
+    expect(r.removedTab?.id).toBe("workspace-demo_alpha");
+    expect(r.state.groups[0].tabs.map((t) => t.id)).toEqual(["workspace-demo_beta"]);
+    expect(r.state.groups[0].activeTabId).toBe("workspace-demo_beta");
+  });
+
+  it("单面板最后一个 tab 摘走 → 保留空组（不补 fallback——壳按窗口模式决策：main=ensureFallback / detached=关窗）", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"));
+    const r = reduceRemoveTab(s, "workspace-demo_alpha");
+    expect(r.removedTab?.id).toBe("workspace-demo_alpha");
+    expect(r.state.groups).toHaveLength(1);
+    expect(r.state.groups[0].tabs).toHaveLength(0);
+    expect(r.state.groups[0].activeTabId).toBe("");
+  });
+
+  it("多面板组空 → 摘除该 leaf（同 reduceCloseTab unsplit 语义）", () => {
+    const s = twoGroupState();
+    const r = reduceRemoveTab(s, "workspace-demo_alpha");
+    expect(r.removedTab?.id).toBe("workspace-demo_alpha");
+    expect(getAllLeafGroupIds(r.state.root)).toHaveLength(1);
+    expect(r.state.groups).toHaveLength(1);
+    expect(r.state.groups[0].id).toBe("g2");
+    expect(r.state.activeGroupId).toBe("g2");
+  });
+
+  it("tab 不存在 → 原样返回 + removedTab null", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"));
+    const r = reduceRemoveTab(s, "workspace-nope");
+    expect(r.removedTab).toBeNull();
+    expect(r.state).toBe(s);
+  });
+});
+
+describe("reduceInsertTab（E5.8#44）", () => {
+  it("缺省 targetGroupId → 插入 activeGroupId 组尾 + 激活该 tab", () => {
+    const s = stateWithTabs(w("Alpha", "demo_alpha"));
+    const next = reduceInsertTab(s, w("Beta", "demo_beta"));
+    expect(next.groups[0].tabs.map((t) => t.id)).toEqual(["workspace-demo_alpha", "workspace-demo_beta"]);
+    expect(next.groups[0].activeTabId).toBe("workspace-demo_beta");
+    expect(next.activeGroupId).toBe("main");
+  });
+
+  it("指定 targetGroupId → 插入该组（多面板）", () => {
+    const s = twoGroupState();
+    const next = reduceInsertTab(s, w("Gamma", "demo_gamma"), "g2");
+    expect(next.groups.find((g) => g.id === "g2")!.tabs.map((t) => t.id)).toEqual(["workspace-demo_beta", "workspace-demo_gamma"]);
+    expect(next.activeGroupId).toBe("g2");
+  });
+
+  it("空状态（groups: []）→ 原样返回（防御——空窗该被壳关，不 insert）", () => {
+    const s: TabState = { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } };
+    const next = reduceInsertTab(s, w("Alpha", "demo_alpha"));
+    expect(next).toBe(s);
   });
 });

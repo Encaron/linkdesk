@@ -10,7 +10,7 @@ import { FALLBACK_PLUGIN_ID } from "../../core/utils/plugin/fallbackPluginId";
 import { findTabByIdentity, isSameTabIdentity } from "../../core/utils/tabIdentity";
 import { getAllLeafGroupIds, removeLeafFromTree } from "../../core/utils/splitTree";
 import { allTabs, findGroup } from "./types";
-import type { TabState, CreateTabResult, CloseTabResult } from "./types";
+import type { TabState, CreateTabResult, CloseTabResult, Tab } from "./types";
 import { createTabDefaults, ensureFallback, pickNextActive } from "./defaults";
 
 export function reduceCreateTab(
@@ -146,6 +146,23 @@ export function reduceFocusGroup(prev: TabState, groupId: string): TabState {
   return { ...prev, activeGroupId: groupId };
 }
 
+/**
+ * 组空时移除面板 leaf（reduceCloseTab/reduceRemoveTab 共用——同一逻辑只一处写）。
+ * 多面板 → 从树中摘除该组返回新状态；单面板 → 返回 null（保留空组，兜底策略归调用方：
+ * close=ensureFallback 补欢迎页 / remove=壳按窗口模式决策）。
+ */
+function reduceRemoveEmptyGroup(prev: TabState, groupId: string): TabState | null {
+  const allLeafIds = getAllLeafGroupIds(prev.root);
+  if (allLeafIds.length <= 1) return null;
+  const result = removeLeafFromTree(prev.root, groupId);
+  if (!result) return null;
+  return {
+    groups: prev.groups.filter((g) => g.id !== groupId),
+    activeGroupId: result.survivingSiblingGroupId,
+    root: result.tree,
+  };
+}
+
 export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
   const group = findGroup(prev, tabId);
   if (!group) return { closed: false, tabId, reason: "blocked" };
@@ -162,20 +179,11 @@ export function reduceCloseTab(prev: TabState, tabId: string): CloseTabResult {
 
   // 该组变空
   if (remaining.length === 0) {
-    const allLeafIds = getAllLeafGroupIds(prev.root);
-    if (allLeafIds.length > 1) {
-      // 多面板 → 移除该 leaf
-      const result = removeLeafFromTree(prev.root, group.id);
-      if (result) {
-        const newGroups = prev.groups.filter((g) => g.id !== group.id);
-        const survivingGroup = prev.groups.find((g) => g.id === result.survivingSiblingGroupId);
-        const newState = ensureFallback({
-          groups: newGroups,
-          activeGroupId: result.survivingSiblingGroupId,
-          root: result.tree,
-        });
-        return { closed: true, tabId, reason: "unsplit", state: newState, newActiveTabId: survivingGroup?.activeTabId ?? "" };
-      }
+    const removedTree = reduceRemoveEmptyGroup(prev, group.id);
+    if (removedTree) {
+      // 多面板 → 移除该 leaf（ensureFallback 兜底幸存组——其余组非空时不生效）
+      const survivingGroup = prev.groups.find((g) => g.id === removedTree.activeGroupId);
+      return { closed: true, tabId, reason: "unsplit", state: ensureFallback(removedTree), newActiveTabId: survivingGroup?.activeTabId ?? "" };
     }
     // 单面板 + 最后一个标签页 → 全场 0 标签，ensureFallback 补欢迎页
     const fbId = findFallbackPlugin()?.pluginId ?? FALLBACK_PLUGIN_ID;
@@ -214,6 +222,49 @@ export function reduceForceCloseTab(prev: TabState, tabId: string): CloseTabResu
     })),
   };
   return reduceCloseTab(cleaned, tabId);
+}
+
+/**
+ * E5.8#44：摘除标签页（不关不查 dirty）——跨窗口搬家源侧用（detach/merge 源窗）。
+ * 差异 vs reduceCloseTab：无 dirty 阻断、不自动补 fallback——窗口模式策略归壳决策
+ * （main 源 → ensureFallback 补欢迎页；detached 源 → 壳读 groups 空则关窗自灭 I9-8）。
+ * 组变空 → 多面板移除该 leaf（同 reduceCloseTab）；单面板保留空组（壳按窗口模式处理）。
+ * 返回 { state, removedTab }——removedTab 给目标窗 reduceInsertTab 用（id 保持，keep-alive key 不换）。
+ */
+export function reduceRemoveTab(prev: TabState, tabId: string): { state: TabState; removedTab: Tab | null } {
+  const group = findGroup(prev, tabId);
+  const tab = group?.tabs.find((t) => t.id === tabId);
+  if (!group || !tab) return { state: prev, removedTab: null };
+
+  const remaining = group.tabs.filter((t) => t.id !== tabId);
+  if (remaining.length === 0) {
+    // 多面板 → 摘除该 leaf（reduceCloseTab 共用 helper）
+    const removedTree = reduceRemoveEmptyGroup(prev, group.id);
+    if (removedTree) return { state: removedTree, removedTab: tab };
+    // 单面板 → 保留空组，壳按窗口模式决策（main=ensureFallback 补欢迎页 / detached=关窗自灭）
+    const newGroups = prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: [], activeTabId: "" } : g));
+    return { state: { ...prev, groups: newGroups }, removedTab: tab };
+  }
+
+  const newActiveId = pickNextActive(remaining, tabId);
+  return {
+    state: { ...prev, groups: prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: remaining, activeTabId: newActiveId } : g)) },
+    removedTab: tab,
+  };
+}
+
+/**
+ * E5.8#44：插入标签页对象——跨窗口搬家目标侧用（源窗摘出的原对象 insert，id 保持）。
+ * targetGroupId 缺省 = activeGroupId；无匹配 → 首组。空状态（groups: []）→ 原样返回（防御——空窗不该 insert，壳已关）。
+ */
+export function reduceInsertTab(prev: TabState, tab: Tab, targetGroupId?: string): TabState {
+  const group = prev.groups.find((g) => g.id === (targetGroupId ?? prev.activeGroupId)) ?? prev.groups[0];
+  if (!group) return prev;
+  return {
+    ...prev,
+    activeGroupId: group.id,
+    groups: prev.groups.map((g) => (g.id === group.id ? { ...g, tabs: [...g.tabs, tab], activeTabId: tab.id } : g)),
+  };
 }
 
 /** 复制标签页——新 ID、新实例、相同属性。对标 VS Code Shift+拖 */

@@ -191,6 +191,31 @@ const CORE_COMMANDS: Array<Command & { menuGroup?: string; menuId?: MenuId }> = 
     menuId: MENU_SLOTS.TabContext,
     menuGroup: "pin",
   },
+  // ── E5.8#44：可拖出窗口——标签页右键「在新窗口中打开」/「并回主窗口」。
+  //    可见性：#39.5 同款动态注入（ui.ts menu:getItems TabContext 分支）——
+  //    「并回主窗口」仅脱出窗 tab 注入（findTabWindow → detached）；「在新窗口中打开」恒有。
+  {
+    id: "core.openInNewWindow",
+    title: "在新窗口中打开",
+    category: "标签页",
+    handler: async (...args) => {
+      const ctx = args[0] as { tabId?: string } | undefined;
+      if (ctx?.tabId) getCallbacks()?.detachTab(ctx.tabId);
+    },
+    menuId: MENU_SLOTS.TabContext,
+    menuGroup: "window",
+  },
+  {
+    id: "core.mergeBackToMain",
+    title: "并回主窗口",
+    category: "标签页",
+    handler: async (...args) => {
+      const ctx = args[0] as { tabId?: string } | undefined;
+      if (ctx?.tabId) getCallbacks()?.mergeTabToMain(ctx.tabId);
+    },
+    // 无 menuId——不常驻所有 tab 右键。可见性 = ui.ts menu:getItems TabContext 分支动态注入
+    // （findTabWindow → detached 才注入，#39.5 同款）。命令本身已注册（点击可执行）。
+  },
   // ── E3f #53：设置项齿轮命令 ──
 
   {

@@ -18,12 +18,12 @@ import { getTabBehavior } from "../pluginLoader/viewRegistry";
 import { CoreEvents } from "../core/react/events/CoreEvents";
 
 import { findGroup } from "./useTabManager/types";
-import type { TabState, LayoutData, CloseTabResult } from "./useTabManager/types";
+import type { TabState, LayoutData, CloseTabResult, Tab } from "./useTabManager/types";
 export { allTabs, findGroup } from "./useTabManager/types";
 export type { TabType, Tab, TabGroup, TabState, LayoutData, CreateTabResult, CloseTabResult } from "./useTabManager/types";
 
-import { createInitialTabState } from "./useTabManager/defaults";
-export { createTabDefaults, createInitialTabState, resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./useTabManager/defaults";
+import { createInitialTabState, ensureFallback } from "./useTabManager/defaults";
+export { createTabDefaults, createInitialTabState, createGroup, resetPluginCounter, syncCountersAfterRestore, resetFallbackCounter } from "./useTabManager/defaults";
 
 import {
   reduceCreateTab,
@@ -37,6 +37,8 @@ import {
   reduceUpdateTabLabel,
   reduceReorderTab,
   reducePinTab,
+  reduceRemoveTab,
+  reduceInsertTab,
 } from "./useTabManager/reducers-tab";
 export {
   reduceCreateTab,
@@ -50,6 +52,8 @@ export {
   reduceUpdateTabLabel,
   reduceReorderTab,
   reducePinTab,
+  reduceRemoveTab,
+  reduceInsertTab,
 } from "./useTabManager/reducers-tab";
 
 import {
@@ -354,6 +358,26 @@ export function useTabManager() {
   }, []);
 
   /**
+   * E5.8#44：摘除标签页（不关不查 dirty）——跨窗口搬家源侧用（detach/merge 源窗）。
+   * 🔥 E5.7 Bug A：removedTab 返回值用 tabStateRef eager 预计算（updater 内只应用，不读返回值）。
+   * main 专用（detached 源走 windowRelocation reduceRemoveTab + updateTabState 路径）——
+   * main 摘到空 = 组空 → ensureFallback 补欢迎页（main 恒非空，welcome 兜底）。
+   */
+  const removeTab = useCallback((tabId: string): Tab | null => {
+    const eager = reduceRemoveTab(tabStateRef.current, tabId);
+    setTabState((prev) => ensureFallback(reduceRemoveTab(prev, tabId).state));
+    return eager.removedTab;
+  }, []);
+
+  /**
+   * E5.8#44：插入标签页对象——跨窗口搬家目标侧用（源窗摘出的原对象 insert，id 保持）。
+   * targetGroupId 缺省 = activeGroupId。
+   */
+  const insertTab = useCallback((tab: Tab, targetGroupId?: string) => {
+    setTabState((prev) => reduceInsertTab(prev, tab, targetGroupId));
+  }, []);
+
+  /**
    * 恢复布局并返回恢复后的聚焦标签——E5.7 Bug D：重启后 activeEditor 未设置，
    * App 恢复 effect 用返回值 emit tab:focused（eager 计算——不读 setState 结果，Bug A 教训）。
    */
@@ -453,6 +477,10 @@ export function useTabManager() {
     duplicateTab,
     reorderTab,
     pinTab,
+
+    // ── 跨窗口搬迁（#44——detach/merge 源侧摘除 + 目标侧插入）──
+    removeTab,
+    insertTab,
 
     // ── 状态（标记/标签）──
     setDirty,
