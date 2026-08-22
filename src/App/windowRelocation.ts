@@ -12,11 +12,11 @@
  * releaseOutsideWindow（#44-B 接入）。
  */
 
-import { useCallback, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 import { allTabs, createGroup, reduceRemoveTab, reduceInsertTab } from "../hooks/useTabManager";
 import type { Tab, TabState } from "../hooks/useTabManager";
 import type { WindowShellState, WindowMode } from "./windows";
-import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
+import type { PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect } from "../core/types/ipc/poolActions";
 
 export interface UseWindowRelocationDeps {
   /** 壳窗口注册表（useWindowHost）——G6 ref 桥读最新，拖拽期间免重渲 */
@@ -44,6 +44,11 @@ export interface UseWindowRelocationResult {
   mergeTabToMain(tabId: string): void;
   /** 吸附并窗（#44-B 拖出释放命中目标窗 TabBar）——targetGroupId = 命中组 */
   mergeTabToWindow(tabId: string, targetWindowId: string, targetGroupId?: string): void;
+  /** E5.8#44-B：存 TabBar rects 到注册表——App 订阅 pool.onTabBarRects 直通（吸附/释放命中检测数据源） */
+  handleTabBarRects(payload: TabBarRectsPayload): void;
+  /** E5.8#44-B：窗口外释放决策——命中目标窗 TabBar → 吸附并窗；空白 → 新窗（释放点附近落窗）。
+   *  sourceWindowId = 主进程注入的源窗（拖出手势源） */
+  releaseOutside(tabId: string, screenX: number, screenY: number, sourceWindowId: string): void;
 }
 
 export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRelocationResult {
@@ -51,6 +56,10 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
   // G6 ref 桥——拖拽期间壳注册表只读不 setState（#44 吸附命中检测走模块级，避免重渲 churn）
   const windowsRef = useRef(windows);
   windowsRef.current = windows;
+
+  // E5.8#44-B：TabBar viewport rects 注册表——池上报（pool:tabbar-rects）→ 壳存这里；窗口 bounds 在
+  // windowsRef（权威）。命中检测 = 读两 ref 转 screen（bounds.x + rect.left），零 setState 免拖拽重渲 churn。
+  const tabBarRectsRef = useRef<Map<string, TabBarViewportRect[]>>(new Map());
 
   const findTab = useCallback((tabId: string): WindowTabRef | null => {
     for (const w of windowsRef.current) {
@@ -127,5 +136,49 @@ export function useWindowRelocation(deps: UseWindowRelocationDeps): UseWindowRel
     insertIntoWindow(targetWindowId, removed, targetGroupId);
   }, [findTab, removeFromWindow, insertIntoWindow]);
 
-  return { findTabWindow, detachTabToNewWindow, mergeTabToMain, mergeTabToWindow };
+  /** E5.8#44-B：存 TabBar rects 到注册表——pool.onTabBarRects 直通（windowId 主进程注入） */
+  const handleTabBarRects = useCallback((payload: TabBarRectsPayload): void => {
+    tabBarRectsRef.current.set(payload.windowId, payload.rects);
+  }, []);
+
+  // E5.8#44-B：订阅池 TabBar rects 上报——池→主进程（附 windowId）→壳 preload → 本 hook 注册表（吸附命中检测数据源）
+  useEffect(() => {
+    const poolApi = window.linkdesk?.pool;
+    if (!poolApi) return;
+    const unsub = poolApi.onTabBarRects?.(handleTabBarRects);
+    return unsub;
+  }, [handleTabBarRects]);
+
+  /** E5.8#44-B：屏幕坐标命中目标窗 TabBar——bounds + viewport rect 转 screen（bounds.x + rect.left），返回 { 目标窗, 目标组 } */
+  const hitTestTabBar = useCallback((screenX: number, screenY: number): { windowId: string; groupId: string } | null => {
+    for (const w of windowsRef.current) {
+      const bounds = w.bounds;
+      const rects = tabBarRectsRef.current.get(w.windowId);
+      if (!bounds || !rects || rects.length === 0) continue; // bounds 未上报 / rects 未报 → 不可命中
+      for (const r of rects) {
+        const sx = bounds.x + r.left;
+        const sy = bounds.y + r.top;
+        if (screenX >= sx && screenX <= sx + r.width && screenY >= sy && screenY <= sy + r.height) {
+          return { windowId: w.windowId, groupId: r.groupId };
+        }
+      }
+    }
+    return null;
+  }, []);
+
+  /** E5.8#44-B：窗口外释放决策——命中 TabBar → 吸附并窗（mergeTabToWindow 同窗不并守卫）；空白 → 新窗（释放点附近落窗） */
+  const releaseOutside = useCallback((tabId: string, screenX: number, screenY: number, sourceWindowId: string): void => {
+    const hit = hitTestTabBar(screenX, screenY);
+    if (hit) {
+      mergeTabToWindow(tabId, hit.windowId, hit.groupId);
+      return;
+    }
+    // 空白 → 新窗——释放点附近落窗（TabBar 拖拽点偏窗口上缘，窗口中心落在释放点下方）
+    detachTabToNewWindow(tabId, {
+      sourceWindowId,
+      bounds: { x: screenX - 100, y: screenY - 40, width: 900, height: 600 },
+    });
+  }, [hitTestTabBar, mergeTabToWindow, detachTabToNewWindow]);
+
+  return { findTabWindow, detachTabToNewWindow, mergeTabToMain, mergeTabToWindow, handleTabBarRects, releaseOutside };
 }

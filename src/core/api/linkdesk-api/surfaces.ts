@@ -31,8 +31,9 @@ export type PoolExposed = Pick<LinkDeskAPI,
   | "shell" | "hotExit" | "getFilePath" | "panel" | "settings" | "factorySlots"> & {
   /** pool 命名空间——分裂面方法级子集：池侧 = 收布局 + 发动作 + beforeClose 通道（壳侧 pushLayout/onReady/… 12 方法为壳→池推送面，池内不存在）。
    *  pool 契约必选（E5.8#22 审视 N1 修正后）——直接 Pick，无需 NonNullable
-   *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await） */
-  pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+   *  E5.8#30.16（P8）：beforeClose 三方法唯一池侧（插件注册 handler / GroupTabBar 关闭路径 await）
+   *  E5.8#44-B：tabBarRects 唯一池侧（MainZone 上报 TabBar rects——壳侧无发送面） */
+  pool: Pick<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };
 
 /** 壳 preload 必暴露面（22；bridge 真壳独有）。commands/tabs/pool 三命名空间方法级子集：
@@ -46,5 +47,5 @@ export type ShellExposed = Pick<LinkDeskAPI,
   | "clipboard" | "shell" | "env" | "events" | "bridge" | "window"> & {
   commands: Pick<LinkDeskAPI["commands"], "registerCommand" | "_executeShellLocal">;
   tabs: Omit<LinkDeskAPI["tabs"], "onDidChangeActiveTab">;
-  pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
+  pool: Omit<LinkDeskAPI["pool"], "onLayout" | "ready" | "sidebarAction" | "tabAction" | "tabBarRects" | "registerBeforeClose" | "unregisterBeforeClose" | "beforeClose">;
 };

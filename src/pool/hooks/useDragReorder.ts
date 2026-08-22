@@ -64,6 +64,8 @@ export interface UseDragReorderOptions {
   onDropSplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
   /** Shift+拖 = 复制标签页到新面板（对标 VS Code） */
   onDropCopySplit?: (tabId: string, zone: Exclude<DropZone, null | "center">, targetGroupId?: string) => void;
+  /** E5.8#44-B：窗口外释放回调——拖出手势（标签页拖出窗口边界后释放）。screenX/Y = 屏幕坐标（壳转 screen 命中 TabBar/新窗）。仅拎起后触发。 */
+  onReleaseOutside?: (tabId: string, screenX: number, screenY: number) => void;
 }
 
 export interface UseDragReorderResult {
@@ -95,6 +97,7 @@ export function useDragReorder(
     isInPureEditor,
     findOtherContainer,
     computeSplitZone,
+    onReleaseOutside,
   } = options;
 
   const dragState = useRef<DragState>({
@@ -106,6 +109,11 @@ export function useDragReorder(
 
   const startDrag = useCallback(
     (tabId: string, fromIndex: number, e: React.MouseEvent) => {
+      // E5.8#44-B：指针捕获——鼠标拖出窗口边界后仍收 mouseup（Windows 隐式捕获之外的跨平台稳健）。
+      // pointerId 在 PointerEvent 上（React.MouseEvent 泛型类型无）——nativeEvent 运行时取；测试合成事件
+      // nativeEvent 缺（undefined）或非指针事件 → 跳过捕获（拖出手势在真实环境恒为指针事件）。
+      const pointerId = (e.nativeEvent as PointerEvent | undefined)?.pointerId;
+      if (typeof pointerId === "number") e.currentTarget.setPointerCapture?.(pointerId);
       dragState.current = {
         tabId,
         fromIndex,
@@ -195,6 +203,23 @@ export function useDragReorder(
       const ds = dragState.current;
       if (ds.phase === "idle") return;
 
+      // E5.8#44-B：窗口外释放 = 拖出手势——仅拎起后触发（防普通点击误判）。screenX/Y = 屏幕坐标，
+      // 壳转 screen 命中 TabBar（并窗）/空白（新窗）。先于 reorder/split 正常流程处理并复位拖拽态。
+      if (
+        ds.lifted &&
+        onReleaseOutside &&
+        (e.clientX < 0 || e.clientX > window.innerWidth || e.clientY < 0 || e.clientY > window.innerHeight)
+      ) {
+        onReleaseOutside(ds.tabId, e.screenX, e.screenY);
+        ds.phase = "idle";
+        onDragDropZone?.(null);
+        onDraggingChange?.(false);
+        setPreviewPos(null);
+        setInsertIndex(null);
+        setDraggingId(null);
+        return;
+      }
+
       if (ds.phase === "split") {
         // 检测是否放到另一个容器上
         let moved = false;
@@ -268,7 +293,7 @@ export function useDragReorder(
   }, [
     containerRef, threshold, splitThreshold, editorAreaRef, itemCount,
     onReorder, onDropSplit, onDropCopySplit, onMoveToOther, onDraggingChange, onDragDropZone,
-    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone,
+    computeInsertIndex, isInPureEditor, findOtherContainer, computeSplitZone, onReleaseOutside,
   ]);
 
   return { draggingId, insertIndex, previewPos, startDrag };

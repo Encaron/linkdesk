@@ -34,6 +34,7 @@ import type { PoolGroup } from "../../../core/types/pool/poolLayout";
 import type { SplitNode } from "../../../core/utils/splitTree";
 import { getAllLeafGroupIds } from "../../../core/utils/splitTree";
 import type { PoolTabAction } from "../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { TabBarViewportRect } from "../../../core/types/ipc/poolActions"; // E5.8#44-B：TabBar rect 上报契约
 import type { LinkDeskAPI } from "../../../core/api/linkdesk-api"; // E5.7#98：pool 命名空间契约类型
 import { Z_INDEX } from "../../../constants"; // E5.7#26：浮层层级常量表（替代 9999/99999 裸数字）
 import { computeLayout, buildBranchMaps } from "./MainZone/layout";
@@ -71,6 +72,10 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
   const tabAction = useCallback((action: PoolTabAction) => {
     poolApiRef.current?.tabAction?.(action);
   }, []);
+  // E5.8#44-B：TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——经 preload 直发主进程附 windowId 转壳
+  const tabBarRects = useCallback((rects: TabBarViewportRect[]) => {
+    poolApiRef.current?.tabBarRects?.(rects);
+  }, []);
 
   // ── Group map ──
   const groupMap = useMemo(() => new Map(groups.map((g) => [g.id, g])), [groups]);
@@ -96,7 +101,7 @@ export default function MainZone({ groups, root, creatableViews, activeGroupId }
     registerTabBar,
     getEffectiveTabs,
     handleTabDragStart,
-  } = useTabDrag({ containerRef, tabAction, groups });
+  } = useTabDrag({ containerRef, tabAction, groups, tabBarRects });
 
   // ── renderGroupPane——单个 group 的内容（GroupPane 接线：tabs/dragInsertIndex 由本层解析）──
   function renderGroupPane(group: PoolGroup): React.ReactNode {

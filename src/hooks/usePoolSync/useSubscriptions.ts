@@ -11,7 +11,7 @@ import { useEffect } from "react";
 import type { Dispatch, MutableRefObject, SetStateAction } from "react";
 import { useTranslation } from "react-i18next";
 import type { LinkDeskAPI } from "../../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
-import type { PoolTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { ShellTabAction } from "../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约（E5.8#44-B：壳侧收 ShellTabAction 含 sourceWindowId）
 import type { SidebarAction } from "../../core/types/ipc/sidebarActions"; // E5.7#98：onSidebarAction 回调参数正源
 import { ViewContainerService } from "../../core/services/layout/ViewContainerService";
 import { layoutEngine } from "../../core/services/layout/LayoutEngine"; // E5.6#11-fix7：池◀按钮→壳 setZoneWidth("sidebar", 28)
@@ -25,7 +25,7 @@ import { _seenIds } from "./notif"; // 通知未读追踪——事件回传共�
 
 interface UseSyncSubscriptionsInput {
   poolApiRef: MutableRefObject<NonNullable<LinkDeskAPI["pool"]> | null>;
-  onTabAction?: (action: PoolTabAction) => void; // E5.7#96：wire 契约定型
+  onTabAction?: (action: ShellTabAction) => void; // E5.7#96：wire 契约定型（E5.8#44-B：ShellTabAction 含 sourceWindowId）
   setLayoutVersion: Dispatch<SetStateAction<number>>;
   setChordLabel: Dispatch<SetStateAction<string | null>>;
   setEventEntries: Dispatch<SetStateAction<StatusBarEntry[]>>;
@@ -134,7 +134,7 @@ export function useSyncSubscriptions({
   useEffect(() => {
     const poolApi = poolApiRef.current;
     if (!poolApi || !onTabAction) return;
-    const unsub = poolApi.onTabAction?.((action: PoolTabAction) => {
+    const unsub = poolApi.onTabAction?.((action: ShellTabAction) => {
       onTabAction(action);
     });
     return unsub;

@@ -21,14 +21,14 @@ import type { ShellExposed } from '../src/core/api/linkdesk-api/surfaces';
 import { buildWindow } from './window-namespace';
 // ── E5.7#97：wire 契约归口——preload 边界载荷全部从 src/core/types/ipc/ import type ──
 import type { PoolLayout } from '../src/core/types/pool/poolLayout';
-import type { PoolTabAction } from '../src/core/types/ipc/tabActions';
+import type { ShellTabAction } from '../src/core/types/ipc/tabActions';
 import type { SidebarAction } from '../src/core/types/ipc/sidebarActions';
 import type { KeyboardInput, KeybindingSyncData } from '../src/core/types/ipc/keyboard';
 import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSystemPayload } from '../src/core/types/ipc/serial';
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -72,9 +72,16 @@ ipcRenderer.on(IPC.pool.sidebarAction, (_event, action: SidebarAction) => {
 });
 
 // E5.6#16.5：主区 tab 操作回调——池→主进程→壳，壳侧 React 注册 handler 调 useTabManager
-let _tabActionHandler: ((action: PoolTabAction) => void) | null = null;
-ipcRenderer.on(IPC.pool.tabAction, (_event, action: PoolTabAction) => {
+// E5.8#44-B：主进程按 sender 注入 sourceWindowId → 壳收 ShellTabAction（#43-4 权威窗口身份）
+let _tabActionHandler: ((action: ShellTabAction) => void) | null = null;
+ipcRenderer.on(IPC.pool.tabAction, (_event, action: ShellTabAction) => {
   if (_tabActionHandler) _tabActionHandler(action);
+});
+
+// E5.8#44-B：TabBar viewport rects 上报回调——池→主进程→壳，壳侧 React 注册 handler 存吸附命中注册表
+let _tabBarRectsHandler: ((payload: TabBarRectsPayload) => void) | null = null;
+ipcRenderer.on(IPC.pool.tabBarRects, (_event, payload: TabBarRectsPayload) => {
+  if (_tabBarRectsHandler) _tabBarRectsHandler(payload);
 });
 
 // E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
@@ -401,10 +408,15 @@ try {
         _sidebarActionHandler = cb;
         return () => { _sidebarActionHandler = null; };
       },
-      /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager。返回 unsubscribe */
-      onTabAction: (cb: (action: PoolTabAction) => void) => {
+      /** E5.6#16.5：注册主区 tab 操作回调——池→壳→useTabManager（E5.8#44-B：载荷 = ShellTabAction，含 sourceWindowId）。返回 unsubscribe */
+      onTabAction: (cb: (action: ShellTabAction) => void) => {
         _tabActionHandler = cb;
         return () => { _tabActionHandler = null; };
+      },
+      /** E5.8#44-B：注册 TabBar rects 上报回调——池→壳→吸附命中注册表（windowRelocation.handleTabBarRects）。返回 unsubscribe */
+      onTabBarRects: (cb: (payload: TabBarRectsPayload) => void) => {
+        _tabBarRectsHandler = cb;
+        return () => { _tabBarRectsHandler = null; };
       },
       /** E5.7#15：推送 QuickPick 哑渲染数据到池——壳 QuickPickService 序列化后直推（聪慧→哑） */
       pushQuickPick: (data: unknown) => ipcRenderer.send(IPC.pool.quickpickShow, data),

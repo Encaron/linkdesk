@@ -342,6 +342,12 @@ export class WindowManager {
     }
   }
 
+  /** E5.8#44-B：壳侧主动请求某窗当前 bounds——pool:ready 时补推（主窗启动 bounds 壳未握，TabBar 命中检测需权威 bounds）。
+   *  复用 notifyShellWindowBoundsChanged（同通道同载荷），仅公共化入口。 */
+  pushWindowBounds(windowId: string): void {
+    this.notifyShellWindowBoundsChanged(windowId);
+  }
+
   /** E5.8#43-3（I9-14 A6）：上报池窗当前 bounds 给壳——moved/resized 完成事件触发，壳据 windowId 更新注册表 + 落盘浮窗位置 */
   private notifyShellWindowBoundsChanged(windowId: string): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return;

@@ -71,3 +71,20 @@ export interface PoolWindowBoundsPayload {
   windowId: string;
   bounds: WindowBounds;
 }
+
+/** E5.8#44-B：TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
+ *  坐标 = 视口相对（0,0 = 窗口内容区左上），壳持权威 window bounds 后转 screen（bounds.x + rect.left）。
+ *  groupId 携带——命中后 mergeTabToWindow 直落目标组。 */
+export interface TabBarViewportRect {
+  groupId: string;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId（E5.8#44-B） */
+export interface TabBarRectsPayload {
+  windowId: string;
+  rects: TabBarViewportRect[];
+}

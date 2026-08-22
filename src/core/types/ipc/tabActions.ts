@@ -37,4 +37,12 @@ export type PoolTabAction =
   | { action: "duplicateTab"; tabId: string }
   | { action: "pinTab"; tabId: string }
   | { action: "createTab"; pluginId?: string; workspaceName?: string }
-  | { action: "updateSplitSizes"; anchorGroupId: string; sizes: [number, number]; branchIndex?: number };
+  | { action: "updateSplitSizes"; anchorGroupId: string; sizes: [number, number]; branchIndex?: number }
+  // E5.8#44-B：标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
+  | { action: "releaseOutsideWindow"; tabId: string; screenX: number; screenY: number };
+
+/**
+ * E5.8#43-4 ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（#44-B 权威窗口身份）。
+ * 池永远不知自身 windowId；壳读 sourceWindowId 判源窗（detach 源 / 同窗不并）。
+ */
+export type ShellTabAction = PoolTabAction & { sourceWindowId: string };

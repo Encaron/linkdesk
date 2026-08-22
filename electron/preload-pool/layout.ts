@@ -13,6 +13,7 @@ import { IPC } from '../ipc/channels';
 import { IpcRelay } from '../ipc/ipc-relay';
 import { guardPush } from '../ipc/wire-guard';
 import type { PoolLayout, PoolTab } from '../../src/core/types/pool/poolLayout';
+import type { TabBarViewportRect } from '../../src/core/types/ipc/poolActions'; // E5.8#44-B：TabBar rect 上报 wire 契约
 
 // ── E5.6#8b：pool:layout 缓冲回放——IPC 可能在 React mount 前到达 ──
 // E5.7#78：手写 buffer+callback+active 三件套 → IpcRelay<T>（electron/ipc/ipc-relay.ts）
@@ -37,6 +38,8 @@ export function buildPool() {
     sidebarAction: (action: unknown) => ipcRenderer.send(IPC.pool.sidebarAction, action),
     // E5.6#16.5：池→壳 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）
     tabAction: (action: unknown) => ipcRenderer.send(IPC.pool.tabAction, action),
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——主进程附 windowId 转发壳
+    tabBarRects: (rects: TabBarViewportRect[]) => ipcRenderer.send(IPC.pool.tabBarRects, rects),
     // E5.8#30.16（P8）：注册/注销关闭前检查 handler——插件自己定逻辑（确认弹窗/清理资源）
     registerBeforeClose: (pluginId: string, handler: (tab: PoolTab) => boolean | Promise<boolean>) => {
       _beforeCloseHandlers.set(pluginId, handler);

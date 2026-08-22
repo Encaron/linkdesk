@@ -38,6 +38,9 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     if (_mainWindow && !_mainWindow.isDestroyed()) {
       _mainWindow.webContents.send(IPC.pool.ready, { windowId });
     }
+    // E5.8#44-B：补推窗口 bounds——主窗启动时壳注册表 bounds 恒缺（moved/resized 上报只在用户移动后触发），
+    // TabBar 命中检测需权威 bounds（视口 rect 转 screen 坐标）。脱出窗 created 已带 bounds，同样幂等补推。
+    _windowManager?.pushWindowBounds(windowId);
     console.log(`[pool-handlers] Pool 就绪 (windowId=${windowId})`);
   });
 
@@ -65,10 +68,23 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
 
   // E5.6#16.5：Pool→壳——主区 tab 操作（切标签/关闭/拖拽排序/分屏/右键菜单等）。
   // 池组件通过 pool.tabAction() 发送，主进程转发到壳窗口。
-  // 壳侧 preload 接收后调 useTabManager 方法。
-  ipcMain.on(IPC.pool.tabAction, (_event, action: unknown) => {
+  // E5.8#44-B：按 sender 反查 windowId 注入 sourceWindowId（#43-4 权威窗口身份——池永远不知自身
+  // windowId）。壳读 sourceWindowId 判源窗（releaseOutsideWindow 拖出源 / detach 同窗不并）。
+  ipcMain.on(IPC.pool.tabAction, (event, action: unknown) => {
+    const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    const shellAction = typeof action === 'object' && action !== null ? { ...action, sourceWindowId } : action;
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.tabAction, action);
+      _mainWindow.webContents.send(IPC.pool.tabAction, shellAction);
+    }
+  });
+
+  // E5.8#44-B：池→壳——TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）。
+  // 池组件 pool.tabBarRects(rects) 发送，主进程按 sender 解析 windowId 附上转发壳——
+  // 窗口 bounds 壳已掌握（onWindowBoundsChanged），视口 rect 转 screen 坐标壳做（bounds.x + rect.left）。
+  ipcMain.on(IPC.pool.tabBarRects, (event, rects: unknown) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    if (_mainWindow && !_mainWindow.isDestroyed()) {
+      _mainWindow.webContents.send(IPC.pool.tabBarRects, { windowId, rects });
     }
   });
 
@@ -135,5 +151,5 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   });
 
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 15 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
+  console.log('[pool-handlers] 已注册 16 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:tabbar-rects / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
 }

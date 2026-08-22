@@ -7,9 +7,9 @@
 
 import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
-import type { PoolTabAction } from "../../types/ipc/tabActions";
+import type { PoolTabAction, ShellTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload, TabBarRectsPayload, TabBarViewportRect } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -30,7 +30,10 @@ export interface ShellAPI {
     onReady(cb: (windowId: string) => void): () => void;
     toggleDevTools(): void;
     onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-    onTabAction(cb: (action: PoolTabAction) => void): () => void;
+    // E5.8#44-B：壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——#43-4 权威窗口身份）
+    onTabAction(cb: (action: ShellTabAction) => void): () => void;
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+    onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
     pushQuickPick(data: unknown): void;
     onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
     pushToast(data: unknown): void;
@@ -52,6 +55,8 @@ export interface ShellAPI {
     ready(): void;
     sidebarAction(action: SidebarAction): void;
     tabAction(action: PoolTabAction): void;
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+    tabBarRects(rects: TabBarViewportRect[]): void;
     // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
     // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
     // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。

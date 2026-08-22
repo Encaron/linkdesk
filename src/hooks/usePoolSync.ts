@@ -21,7 +21,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useTranslation } from "react-i18next";
 import type { PoolLayout, SidebarLayout, PanelLayout } from "../core/types/pool/poolLayout";
-import type { PoolTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约（E5.8#44-B：壳侧收 ShellTabAction）
 import type { LinkDeskAPI } from "../core/api/linkdesk-api"; // E5.7#98：poolApiRef 类型正源
 import type { StatusBarEntry } from "../core/react/events/ShellEvents"; // E5.7#8：动态状态栏条目
 import type { WindowShellState } from "../App/windows"; // E5.8#43-2：壳窗口注册表
@@ -52,7 +52,7 @@ export interface UsePoolSyncInput {
   /** E5.8#31：底部面板显隐——false = 不推 panel 字段（池 panel?.visible undefined → PanelZone 不渲染） */
   panelVisible: boolean;
   /** E5.6#16.5：MainPool tab 操作回调——池→壳→useTabManager（含分屏比例更新） */
-  onTabAction?: (action: PoolTabAction) => void; // E5.7#96：wire 契约定型
+  onTabAction?: (action: ShellTabAction) => void; // E5.7#96：wire 契约定型（E5.8#44-B：ShellTabAction 含 sourceWindowId）
 }
 
 /**

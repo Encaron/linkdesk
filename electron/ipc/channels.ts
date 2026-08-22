@@ -154,6 +154,8 @@ export const IPC = {
     windowClosed: 'pool:window-closed',
     // E5.8#43-3：主→壳 池窗 bounds 变更通知（moved/resized 上报，壳落盘浮窗位置 I9-14）
     windowBoundsChanged: 'pool:window-bounds-changed',
+    // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源——窗口 bounds 壳已掌握，视口 rect 转 screen 壳做）
+    tabBarRects: 'pool:tabbar-rects',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',

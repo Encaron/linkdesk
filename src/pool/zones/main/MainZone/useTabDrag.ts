@@ -16,6 +16,7 @@ import type { PoolGroup, PoolTab } from "../../../../core/types/pool/poolLayout"
 import type { DropZone } from "../../../hooks/tabDragTypes";
 import { detectDropZone } from "../../../hooks/tabDragTypes";
 import type { PoolTabAction } from "../../../../core/types/ipc/tabActions"; // E5.7#96：池→壳 tab 动作 wire 契约
+import type { TabBarViewportRect } from "../../../../core/types/ipc/poolActions"; // E5.8#44-B：TabBar rect 上报契约
 import { useDragReorder } from "../../../hooks/useDragReorder";
 import { TAB_BAR_HEIGHT } from "./layout";
 
@@ -23,9 +24,11 @@ interface UseTabDragInput {
   containerRef: React.RefObject<HTMLDivElement | null>;
   tabAction: (action: PoolTabAction) => void;
   groups: PoolGroup[];
+  /** E5.8#44-B：TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——MainZone 传 pool.tabBarRects 包装 */
+  tabBarRects?: (rects: TabBarViewportRect[]) => void;
 }
 
-export function useTabDrag({ containerRef, tabAction, groups }: UseTabDragInput) {
+export function useTabDrag({ containerRef, tabAction, groups, tabBarRects }: UseTabDragInput) {
   // Stable groups ref——avoid useCallback deps on groups
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
@@ -36,6 +39,24 @@ export function useTabDrag({ containerRef, tabAction, groups }: UseTabDragInput)
     if (el) tabBarRefs.current.set(groupId, el);
     else tabBarRefs.current.delete(groupId);
   }, []);
+
+  // E5.8#44-B：TabBar viewport rects 上报——组/注册变化时读 tabBarRefs getBoundingClientRect 报告壳
+  //（吸附/释放并窗命中检测数据源：窗口 bounds 壳已掌，视口 rect 转 screen 壳做）。窗口 resize 也重报
+  //（视口变化 rects 失效）。registerTabBar 在 commit 阶段已更新 refs，本 effect 其后跑 → 恒最新。
+  useEffect(() => {
+    if (!tabBarRects) return;
+    const report = () => {
+      const rects: TabBarViewportRect[] = [];
+      for (const [gid, el] of tabBarRefs.current) {
+        const r = el.getBoundingClientRect();
+        rects.push({ groupId: gid, left: r.left, top: r.top, width: r.width, height: r.height });
+      }
+      tabBarRects(rects);
+    };
+    report();
+    window.addEventListener("resize", report);
+    return () => window.removeEventListener("resize", report);
+  }, [groups, tabBarRects]);
 
   const totalTabCount = groups.reduce((sum, g) => sum + g.tabs.length, 0);
   const sourceGroupRef = useRef<string | null>(null);
@@ -210,6 +231,8 @@ export function useTabDrag({ containerRef, tabAction, groups }: UseTabDragInput)
     onDragDropZone: (zone, targetGroupId) => {
       setDropZoneState(zone ? { zone, targetGroupId: targetGroupId ?? null } : null);
     },
+    // E5.8#44-B：窗口外释放 → tabAction（壳侧命中检测：TabBar→并窗 / 空白→新窗）——恒启用（拖出即手势）
+    onReleaseOutside: (tabId, screenX, screenY) => tabAction({ action: "releaseOutsideWindow", tabId, screenX, screenY }),
   });
 
   // ── dragLocalTabs：同组拖拽时乐观重排标签页（视觉反馈）──

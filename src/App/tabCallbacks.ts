@@ -11,7 +11,7 @@ import { getAllLeafGroupIds } from "../core/utils/splitTree";
 import { allTabs } from "../hooks/useTabManager";
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
-import type { PoolTabAction } from "../core/types/ipc/tabActions";
+import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
 import type { CloseTabResult, TabState } from "../hooks/useTabManager";
 
@@ -156,6 +156,8 @@ export interface TabActionHandlerDeps {
   pinTab: (tabId: string) => void;
   createTab: (type: string, opts?: CreateTabOptions) => string;
   updateSplitSizes: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
+  /** E5.8#44-B：窗口外释放决策（拖出手势）——命中 TabBar→并窗 / 空白→新窗 */
+  releaseOutside: (tabId: string, screenX: number, screenY: number, sourceWindowId: string) => void;
 }
 
 /**
@@ -163,8 +165,8 @@ export interface TabActionHandlerDeps {
  * 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
  * E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
  */
-export function createTabActionHandler(deps: TabActionHandlerDeps): (action: PoolTabAction) => void {
-  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes } = deps;
+export function createTabActionHandler(deps: TabActionHandlerDeps): (action: ShellTabAction) => void {
+  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside } = deps;
   return (action) => {
     switch (action.action) {
       case "focusTab":
@@ -247,6 +249,11 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: Poo
       // E5.6#16：分隔线拖拽结束（#16.5 后从 pool.sidebarAction 迁到 pool.tabAction）
       case "updateSplitSizes":
         updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
+        break;
+      // E5.8#44-B：窗口外释放——拖出手势（拖出标签页到窗口边界外释放）。screenX/Y 屏幕坐标，
+      // sourceWindowId 主进程注入（#43-4 权威窗口身份）。壳命中检测：TabBar→并窗 / 空白→新窗。
+      case "releaseOutsideWindow":
+        releaseOutside(action.tabId, action.screenX, action.screenY, action.sourceWindowId);
         break;
     }
   };

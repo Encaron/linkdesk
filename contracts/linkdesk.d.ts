@@ -1461,7 +1461,36 @@ export type PoolTabAction = {
         number
     ];
     branchIndex?: number;
+}
+// E5.8#44-B：标签页拖出窗口后释放——screenX/Y = 释放点屏幕坐标（壳侧命中检测：TabBar→并窗 / 空白→新窗）
+ | {
+    action: "releaseOutsideWindow";
+    tabId: string;
+    screenX: number;
+    screenY: number;
 };
+/**
+ * E5.8#43-4 ① 同款：壳侧接收的 tab 动作——主进程按 sender 解析注入 sourceWindowId（#44-B 权威窗口身份）。
+ * 池永远不知自身 windowId；壳读 sourceWindowId 判源窗（detach 源 / 同窗不并）。
+ */
+export type ShellTabAction = PoolTabAction & {
+    sourceWindowId: string;
+};
+/** E5.8#44-B：TabBar viewport rect——池侧 getBoundingClientRect 上报（吸附/释放并窗命中检测数据源）。
+ *  坐标 = 视口相对（0,0 = 窗口内容区左上），壳持权威 window bounds 后转 screen（bounds.x + rect.left）。
+ *  groupId 携带——命中后 mergeTabToWindow 直落目标组。 */
+export interface TabBarViewportRect {
+    groupId: string;
+    left: number;
+    top: number;
+    width: number;
+    height: number;
+}
+/** 池→壳：TabBar rects 上报载荷——主进程按 sender 解析附上 windowId（E5.8#44-B） */
+export interface TabBarRectsPayload {
+    windowId: string;
+    rects: TabBarViewportRect[];
+}
 /** QuickPick 动作——select/highlight/close/itemAction 按 key 回传 */
 export interface PoolQuickPickAction {
     type: string;
@@ -1527,7 +1556,10 @@ export interface ShellAPI {
         onReady(cb: (windowId: string) => void): () => void;
         toggleDevTools(): void;
         onSidebarAction(cb: (action: SidebarAction) => void): () => void;
-        onTabAction(cb: (action: PoolTabAction) => void): () => void;
+        // E5.8#44-B：壳侧收 action = ShellTabAction（主进程按 sender 注入 sourceWindowId——#43-4 权威窗口身份）
+        onTabAction(cb: (action: ShellTabAction) => void): () => void;
+        // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源）——windowId 由主进程注入
+        onTabBarRects(cb: (payload: TabBarRectsPayload) => void): () => void;
         pushQuickPick(data: unknown): void;
         onQuickPickAction(cb: (action: PoolQuickPickAction) => void): () => void;
         pushToast(data: unknown): void;
@@ -1549,6 +1581,8 @@ export interface ShellAPI {
         ready(): void;
         sidebarAction(action: SidebarAction): void;
         tabAction(action: PoolTabAction): void;
+        // E5.8#44-B：池→壳 TabBar viewport rects 上报（池侧——MainZone useTabDrag 报告 getBoundingClientRect）
+        tabBarRects(rects: TabBarViewportRect[]): void;
         // ── E5.8#30.16（P8）：通用「beforeClose 可取消」通道（池侧）──
         // 插件注册 handler（自己定逻辑：弹确认/清理资源/返回 boolean 决定是否允许关标签页）；
         // GroupTabBar 关闭路径 `await beforeClose`——handler 返回 false（或 Promise<false>）则关闭被取消。
