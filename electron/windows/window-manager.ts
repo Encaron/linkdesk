@@ -7,7 +7,7 @@
  * 安全靠 preload 沙箱，不靠进程数。
  */
 
-import { BrowserWindow, WebContentsView, WebContents, app, nativeTheme } from 'electron';
+import { BrowserWindow, WebContentsView, WebContents, app, nativeTheme, screen } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
@@ -31,6 +31,32 @@ interface PoolWindowEntry {
   view: WebContentsView;
   /** 该窗 resize 跟随解绑函数——destroyPoolWindow 时成对清理（防监听泄漏） */
   unbindResize: () => void;
+}
+
+/** 窗口最小可见宽度/高度——越界钳制时保证窗口在屏幕可视区内至少露出这么多（I9-14） */
+const MIN_VISIBLE_EDGE = 80;
+
+/**
+ * E5.8#43-3：越界钳制（I9-14）——窗口起点移出屏幕可视区 → 拉回最近屏 workArea 边缘。
+ * 多屏：getDisplayMatching 取与 bounds 相交最多的显示器，宽高收窄到该屏 workArea 内，
+ * 起点钳到 [workArea 左缘 + MIN_VISIBLE - width, 右缘 - MIN_VISIBLE] 区间——窗口至少 MIN_VISIBLE 可见。
+ * 纯函数（仅依赖 electron.screen）——app ready 后调用（createPoolWindow 由壳驱动，安全）。
+ */
+export function clampToWorkArea(bounds: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+  if (screen.getAllDisplays().length === 0) return bounds;
+  const display = screen.getDisplayMatching({
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.max(bounds.width, 1),
+    height: Math.max(bounds.height, 1),
+  });
+  const wa = display.workArea;
+  const width = Math.min(bounds.width, wa.width);
+  const height = Math.min(bounds.height, wa.height);
+  // width ≤ wa.width 保证 x 区间非空（MIN_VISIBLE ≤ width + wa.width - MIN_VISIBLE 恒真）
+  const x = Math.min(Math.max(bounds.x, wa.x + MIN_VISIBLE_EDGE - width), wa.x + wa.width - MIN_VISIBLE_EDGE);
+  const y = Math.min(Math.max(bounds.y, wa.y), wa.y + wa.height - MIN_VISIBLE_EDGE);
+  return { x, y, width, height };
 }
 
 export class WindowManager {
@@ -242,11 +268,26 @@ export class WindowManager {
    * tab 内容由壳 pushLayout 定向到该 windowId（#43-2 接线）。
    */
   createPoolWindow(opts: CreatePoolWindowRequest): WebContentsView {
-    const win = new BrowserWindow({
+    // E5.8#43-3：幂等复用——F5 壳刷新后壳按持久化清单重建接管，窗口仍在 → 复用已有 view + 重发就绪
+    //（壳 onReady 收到 → 标记该窗 ready → 定向推布局；窗口 bounds 保持当前实际值，不重设用户已移动位置）。
+    const existing = this.poolWindows.get(opts.windowId);
+    if (existing) {
+      console.warn(`[WindowManager] 脱出池窗 "${opts.windowId}" 已存在——复用并重发就绪（壳刷新接管）`);
+      this.sendShellPoolReady(opts.windowId);
+      return existing.view;
+    }
+    // E5.8#43-3：越界钳制（I9-14）——持久化 bounds 可能因显示器拔掉/分辨率变化越界，拉回最近屏边缘
+    const bounds = clampToWorkArea({
+      x: opts.x ?? 200,
+      y: opts.y ?? 120,
       width: opts.width ?? 900,
       height: opts.height ?? 600,
-      x: opts.x,
-      y: opts.y,
+    });
+    const win = new BrowserWindow({
+      width: bounds.width,
+      height: bounds.height,
+      x: bounds.x,
+      y: bounds.y,
       minWidth: 480,
       minHeight: 320,
       frame: false, // E5.8 拍板 7：自绘标题栏——脱出窗纯工作区窗口
@@ -268,6 +309,14 @@ export class WindowManager {
       this.notifyShellWindowClosed(opts.windowId);
     });
     return this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
+  }
+
+  /** E5.8#43-3：主进程主动补发池窗就绪给壳——复用既有窗口时（壳刷新接管）壳需知道该窗已可推布局。
+   *  就绪流的常态路径 = 池 WCV 发 IPC.pool.ready → 主进程按 sender 解析转壳；此处跳过池（窗口没重建），主进程直发壳。 */
+  private sendShellPoolReady(windowId: string): void {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send(IPC.pool.ready, { windowId });
+    }
   }
 
   /** E5.8#43-1（A4）：关闭脱出池窗——壳侧主动调用（空窗自灭/并回主窗口销毁）。attach 核心 API 的窗口侧。 */
