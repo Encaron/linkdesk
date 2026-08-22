@@ -316,7 +316,7 @@ export default function GroupTabBar({ groupId, tabs, activeTabId, draggingId, dr
                 {tab.icon && (
                   tab.icon.length <= 2 && /[\p{Emoji}]/u.test(tab.icon)
                     ? <span className="group-tab-icon-emoji">{tab.icon}</span>
-                    : <img className="group-tab-icon" src={tab.icon} alt="" />
+                    : <img className="group-tab-icon" src={tab.icon} alt="" draggable={false} />
                 )}
 
                 {/* 标签文字 */}

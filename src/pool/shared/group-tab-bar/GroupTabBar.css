@@ -95,6 +95,8 @@
   height: 14px;
   flex-shrink: 0;
   opacity: 0.8;
+  /* E5.8#46.6：禁原生 HTML5 拖拽——img 默认可拖，会与标签页指针拖拽抢手势（拖 tab 出原生图标拖影） */
+  -webkit-user-drag: none;
 }
 .group-tab-item.active .group-tab-icon {
   opacity: 1;
