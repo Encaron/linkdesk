@@ -200,8 +200,15 @@ export function registerShellLocalCommand(
  */
 export function unregisterPoolCommands(pluginId: string, windowId?: string): void {
   const prefix = `${pluginId}.`;
-  for (const id of [..._poolRuntimeCommands]) {
-    if (!id.startsWith(prefix)) continue;
+  // E5.8#46.14：遍历集 = _poolRuntimeCommands ∪ _poolCommandWindows 键——plugin.json 声明命令
+  // 从未入 _poolRuntimeCommands（loader 元数据先注册，registerPoolCommandMetadata existing 分支
+  // 直接 return），旧实现漏摘其归属 → 残留旧窗 id → executeInPool origin 亲和误路由到已无 handler
+  // 的旧窗 → 「未在池内注册」。摘归属只清本窗口；归属摘空后仅运行时命令整条删 _commands，
+  // plugin.json 声明命令由 loader 持有保留（palette 可见性走 when 门控）。
+  const ids = new Set<string>();
+  for (const id of _poolRuntimeCommands) if (id.startsWith(prefix)) ids.add(id);
+  for (const id of _poolCommandWindows.keys()) if (id.startsWith(prefix)) ids.add(id);
+  for (const id of ids) {
     if (windowId) {
       const set = _poolCommandWindows.get(id);
       if (set) {
@@ -209,10 +216,12 @@ export function unregisterPoolCommands(pluginId: string, windowId?: string): voi
         if (set.size > 0) continue; // 他窗口仍注册该命令 → 保留条目（路由仍可达）
       }
     }
-    _poolRuntimeCommands.delete(id);
     _poolCommandWindows.delete(id);
-    _commands.delete(id);
-    _pluginCommands.get(pluginId)?.delete(id);
+    if (_poolRuntimeCommands.has(id)) {
+      _poolRuntimeCommands.delete(id);
+      _commands.delete(id);
+      _pluginCommands.get(pluginId)?.delete(id);
+    }
   }
 }
 

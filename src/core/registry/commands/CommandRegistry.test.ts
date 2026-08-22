@@ -119,6 +119,32 @@ describe("CommandRegistry 归属表维护（E5.8#43-4 ③）", () => {
     expect(getCommand("demo.other")).toBeDefined();
   });
 
+  it("E5.8#46.14 回归——plugin.json 声明命令 unregister 摘归属保留元数据，脱出窗命令不再路由回旧窗", async () => {
+    // loader 先注册元数据（serial-monitor.clear 类 plugin.json 声明命令——placeholder 占位）
+    registerCommand("demo", {
+      id: "demo.cmd", title: "清空", when: "activeEditor == 'demo-view'",
+      placeholder: true, handler: async () => undefined,
+    });
+    // 主池视图 mount → registerPoolCommandMetadata existing 分支：只加归属，不入 _poolRuntimeCommands
+    registerPoolCommandMetadata("demo.cmd", { title: "清空" }, "main");
+    expect(getCommand("demo.cmd")).toBeDefined();
+
+    // 标签页拖出 → 主池视图 unmount → unregister 摘 "main" 归属（声明命令元数据保留，loader 持有）
+    unregisterPoolCommands("demo", "main");
+    expect(getCommand("demo.cmd")).toBeDefined();
+
+    // 脱出池视图 mount → 注册归属 detached-w1
+    registerPoolCommandMetadata("demo.cmd", { title: "清空" }, "detached-w1");
+
+    // 脱出窗执行（origin 缺省 main）→ 归属 {det-1} 唯一注册者定向发脱出池（不再残留 main 误路由旧窗）
+    const p = executeCommand("demo.cmd");
+    await flush();
+    expect(emitted).toHaveLength(1);
+    expect(emitted[0].targetWindowId).toBe("detached-w1");
+    resolvePoolExecution(emitted[0].requestId, { result: "detach-exec" }, "detached-w1");
+    await expect(p).resolves.toBe("detach-exec");
+  });
+
   it("registerCommand 直注册（壳侧）不受归属表影响——execute 走壳侧 handler 不进 executeInPool", async () => {
     let called = 0;
     registerCommand("demo", { id: "demo.local", title: "Demo", handler: async () => { called++; return "shell"; } });
