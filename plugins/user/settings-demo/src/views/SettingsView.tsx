@@ -40,7 +40,7 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
 
   // ── 顶部通用区（E5.8#41.13）——本角色（设置套）全部候选 + 激活 id，用于切整套设置 UI。
   //    本套 UI 形态 = 右下角胶囊（mockup .fancy-switch），非内置的顶部条 ──
-  const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string }[]>([]);
+  const [settingsCandidates, setSettingsCandidates] = useState<{ pluginId: string; title: string; viewId?: string }[]>([]);
   const [settingsActiveId, setSettingsActiveId] = useState<string | undefined>();
 
   // ── 卡片网格跳转（无导航组）：齿轮「设置」→ 滚动到目标组卡片 ──
@@ -196,13 +196,23 @@ function SettingsView({ isActive: _isActive, tabId }: SettingsViewProps) {
     try {
       await window.linkdesk.factorySlots.setActive(OWN_FACTORY_ROLE, targetId);
       if (tabId) {
+        // 标签页形态：关自身 tab + 开目标 tab（singleton 去重已存在则聚焦）
         await window.linkdesk.tabs.close(tabId).catch(() => {});
+        await window.linkdesk.tabs.create(targetId).catch(() => {});
+      } else {
+        // 悬浮面板形态（E5.8#41.18）：原地换套——revealFloating 复合替换（同 viewId 异插件 → 面板换内容）
+        const target = settingsCandidates.find((c) => c.pluginId === targetId);
+        if (target?.viewId) {
+          await window.linkdesk.panel.revealFloating(target.viewId, target.pluginId).catch(() => {});
+        } else {
+          // 目标套未声明 floatingPanel → 退回开标签页（无悬浮面板可换）
+          await window.linkdesk.tabs.create(targetId).catch(() => {});
+        }
       }
-      await window.linkdesk.tabs.create(targetId).catch(() => {});
     } catch (e) {
       console.error(`[SettingsView] 切换设置套 "${targetId}" 失败:`, e);
     }
-  }, [tabId, settingsActiveId]);
+  }, [tabId, settingsActiveId, settingsCandidates]);
 
   // ── 打开 settings.json（同内置：走 fileAssociation 不写死编辑器插件 ID——硬约束 #10）──
   const openJson = useCallback(async () => {

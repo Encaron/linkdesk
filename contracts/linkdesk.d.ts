@@ -1554,8 +1554,10 @@ export interface PanelAPI {
     panel: {
         /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
         reveal(viewId: string): Promise<void>;
-        /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op */
-        revealFloating(viewId: string): Promise<void>;
+        /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op。
+         *  E5.8#41.18：可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
+         *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
+        revealFloating(viewId: string, pluginId?: string): Promise<void>;
     };
 }
 /** 设置套条目——settings.list() 返回的一行。
@@ -1586,6 +1588,8 @@ export interface FactorySlotEntry {
     pluginId: string;
     /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
     title: string;
+    /** E5.8#41.18：该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
+    viewId?: string;
 }
 /** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */
 export interface FactorySlotsAPI {

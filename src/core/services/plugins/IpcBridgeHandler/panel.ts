@@ -14,10 +14,12 @@ export async function handlePanelChannel(channel: string, args: unknown[]): Prom
       shellEvents.emit("panel:reveal", { viewId });
       break;
     }
-    // ── E5.8#39.5：悬浮面板声明制——插件调 linkdesk.panel.revealFloating(viewId) ──
+    // ── E5.8#39.5：悬浮面板声明制——插件调 linkdesk.panel.revealFloating(viewId, pluginId?) ──
     case "panel:reveal-floating": {
-      const [viewId] = args as [string];
-      shellEvents.emit("panel:reveal-floating", { viewId });
+      // E5.8#41.18：插件侧可选 pluginId 复合寻址——双设置套同名 viewId 并存时精确命中目标套
+      //（壳侧路径 Ctrl+,/右键同款载荷；裸 viewId 多命中 fail-loud no-op）
+      const [viewId, pluginId] = args as [string, string | undefined];
+      shellEvents.emit("panel:reveal-floating", { viewId, pluginId });
       break;
     }
     default:

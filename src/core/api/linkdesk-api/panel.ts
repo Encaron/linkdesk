@@ -16,7 +16,9 @@ export interface PanelAPI {
   panel: {
     /** 聚焦底部面板视图——面板隐藏则展开并切到该视图；已显示则切换聚焦。viewId 不在 panel 容器时 no-op */
     reveal(viewId: string): Promise<void>;
-    /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op */
-    revealFloating(viewId: string): Promise<void>;
+    /** 壳内悬浮面板（类型 B）——按声明弹出某视图（I8-2 身份开关键）。viewId 未声明视图时 no-op。
+     *  E5.8#41.18：可选 pluginId 复合寻址——两插件同名 viewId（双设置套并存）时插件侧携带
+     *  pluginId 精确命中目标套（壳侧路径 Ctrl+,/右键已带；裸 viewId 多命中 fail-loud no-op） */
+    revealFloating(viewId: string, pluginId?: string): Promise<void>;
   };
 }
