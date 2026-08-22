@@ -21,15 +21,17 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
     }
     case "commands:executeResult": {
       // E5.7 Bug C：壳→池占位命令执行回传——resolve 壳侧 pending（已超时则静默丢弃）
-      const [requestId, payload] = args as [string, { result?: unknown; error?: string }];
-      resolvePoolExecution(requestId, payload);
+      // E5.8#43-4（①④）：末位 windowId = 回执来源窗口（主进程 sender 注入）——回执校验只收目标窗口
+      const [requestId, payload, windowId] = args as [string, { result?: unknown; error?: string }, string?];
+      resolvePoolExecution(requestId, payload, windowId);
       break;
     }
     case "commands:register": {
       // E5.7 Bug C 补全：池侧 registerCommand 元数据回传——title/category/when 同步进壳注册表
       // （命令面板可见性 + 动态 toggle 标题）；runtime 命令以占位条目登记，执行走转发桥。
-      const [commandId, meta] = args as [string, { title?: string; category?: string; when?: string } | null];
-      registerPoolCommandMetadata(commandId, meta ?? {});
+      // E5.8#43-4（①③）：末位 windowId = 注册窗口归属（主进程 sender 注入）——归属表登记路由
+      const [commandId, meta, windowId] = args as [string, { title?: string; category?: string; when?: string } | null, string?];
+      registerPoolCommandMetadata(commandId, meta ?? {}, windowId);
       break;
     }
     case "commands:registerShell": {
@@ -41,8 +43,9 @@ export async function handleCommandsChannel(channel: string, args: unknown[]): P
     }
     case "commands:unregister": {
       // E5.7 Bug C 补全：池侧 unregisterCommands 回传——移除运行时命令条目（loader 元数据保留）
-      const [pluginId] = args as [string];
-      unregisterPoolCommands(pluginId);
+      // E5.8#43-4（③ 归属表维护）：末位 windowId = 注销来源窗口——多窗口只摘本窗口归属，他窗仍注册保留
+      const [pluginId, windowId] = args as [string, string?];
+      unregisterPoolCommands(pluginId, windowId);
       break;
     }
     default:

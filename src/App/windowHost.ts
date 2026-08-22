@@ -19,6 +19,7 @@ import type { TabState } from "../hooks/useTabManager";
 import type { WindowShellState } from "./windows";
 import { getDetachedWindows } from "../core/services/layout/LayoutService";
 import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
+import { purgePoolCommandWindows } from "../core/registry/commands/CommandRegistry"; // E5.8#43-4：窗口关闭 → 归属表清该窗命令
 
 interface UseWindowHostOptions {
   /** 主窗标签页真相源（useTabManager）——活同步进注册表，主窗布局随标签操作即时重推 */
@@ -77,6 +78,10 @@ export function useWindowHost({ mainTabState }: UseWindowHostOptions): UseWindow
         if (!entry || entry.mode === "main") return prev;
         return prev.filter((w) => w.windowId !== windowId);
       });
+      // E5.8#43-4（③ 归属表清理）：onWindowClosed 仅脱出池窗触发（主窗关闭走 app.quit 不走本 IPC）——
+      // 摘除该窗注册的全部命令归属。池窗销毁无 unregister IPC（池进程没了），不清理 → 路由仍
+      // 指向已关窗 → 定向发空视图 → 10s 超时。
+      purgePoolCommandWindows(windowId);
     });
     return unsub;
   }, []);
@@ -110,6 +115,8 @@ export function useWindowHost({ mainTabState }: UseWindowHostOptions): UseWindow
   const closeWindow = useCallback((windowId: string) => {
     setWindows((prev) => prev.filter((w) => w.windowId !== windowId));
     window.linkdesk?.pool?.closeWindow?.(windowId);
+    // E5.8#43-4（③ 归属表清理）：壳驱动关窗同样销毁池 → 摘除该窗命令归属（同 onWindowClosed 理由）
+    purgePoolCommandWindows(windowId);
   }, []);
 
   /** 更新某窗口 tabState——脱出窗标签操作经它写注册表（#44 TabBar 复用接线） */

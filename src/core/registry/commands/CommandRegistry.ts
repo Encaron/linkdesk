@@ -103,6 +103,13 @@ export function registerCommand(pluginId: string, command: Command): () => void 
 const _poolRuntimeCommands = new Set<string>();
 
 /**
+ * E5.8#43-4（③ 归属表）：命令 id → 注册窗口集合（声明式数据，壳唯一真相源）。
+ * "commands:register" IPC 带 sender windowId 回传（主进程边界注入，插件零改动）维护。
+ * 多窗口下命令执行路由的判定依据：origin 亲和优先 → 归属表唯一注册者 → 全池广播兜底（§8.6 方案 B）。
+ */
+const _poolCommandWindows = new Map<string, Set<string>>();
+
+/**
  * 池侧 registerCommand 的元数据回传——preload-pool 经 "commands:register" IPC 调用。
  *
  * 命令面板/右键菜单的标题、分类、when 过滤全部由壳侧 getCommands 消费——
@@ -112,11 +119,24 @@ const _poolRuntimeCommands = new Set<string>();
  *   loader 元数据条目保持转发语义（Bug C 桥），壳原生命令保持壳侧执行。
  * 不存在条目：plugin.json 未声明的池内运行时命令——以占位条目登记入壳注册表
  *   （命令面板可见，执行走 executeInPool 转发到池）。
+ *
+ * E5.8#43-4（③）：windowId 参数 = 注册窗口归属（主进程 sender 解析注入）——两分支都记入
+ *   归属表 `_poolCommandWindows`（路由 origin 亲和/归属表兜底的声明式数据源）。
  */
 export function registerPoolCommandMetadata(
   commandId: string,
   meta: { title?: string; category?: string; when?: string },
+  windowId?: string,
 ): void {
+  // §8.6 归属表：登记该命令的注册窗口（多窗口同一命令在每窗各注册一次 → 集合多成员）
+  if (windowId) {
+    let set = _poolCommandWindows.get(commandId);
+    if (!set) {
+      set = new Set();
+      _poolCommandWindows.set(commandId, set);
+    }
+    set.add(windowId);
+  }
   const existing = _commands.get(commandId);
   if (existing) {
     if (meta.title !== undefined) existing.title = meta.title;
@@ -173,14 +193,44 @@ export function registerShellLocalCommand(
 /**
  * 池侧 unregisterCommands 的回传——移除该插件的运行时命令条目。
  * loader 元数据条目保留——插件仍加载，plugin.json 静态声明仍在。
+ *
+ * E5.8#43-4（③ 归属表维护）：windowId = 注销来源窗口（主进程 sender 解析注入）。
+ * 多窗口下同一命令可在多窗注册——注销只摘本窗口归属，他窗仍在注册 → 命令保留（路由仍可达）；
+ * 本窗口摘空（或旧路径未带 windowId）→ 整条命令删除（兼容单窗口原语义）。
  */
-export function unregisterPoolCommands(pluginId: string): void {
+export function unregisterPoolCommands(pluginId: string, windowId?: string): void {
   const prefix = `${pluginId}.`;
   for (const id of [..._poolRuntimeCommands]) {
     if (!id.startsWith(prefix)) continue;
+    if (windowId) {
+      const set = _poolCommandWindows.get(id);
+      if (set) {
+        set.delete(windowId);
+        if (set.size > 0) continue; // 他窗口仍注册该命令 → 保留条目（路由仍可达）
+      }
+    }
     _poolRuntimeCommands.delete(id);
+    _poolCommandWindows.delete(id);
     _commands.delete(id);
     _pluginCommands.get(pluginId)?.delete(id);
+  }
+}
+
+/**
+ * E5.8#43-4（③ 归属表清理）：窗口关闭时壳调——摘除该窗注册的全部命令归属。
+ * 池窗销毁无 unregister IPC（池进程没了），若不清理 → 路由仍指向已关窗 → 定向发空视图 → 10s 超时。
+ * 某命令最后一扇注册窗关闭 → 整条摘除（命令面板不再显示该幽灵命令，防执行超时）。
+ */
+export function purgePoolCommandWindows(windowId: string): void {
+  for (const [commandId, set] of [..._poolCommandWindows]) {
+    set.delete(windowId);
+    if (set.size > 0) continue;
+    _poolCommandWindows.delete(commandId);
+    _poolRuntimeCommands.delete(commandId);
+    _commands.delete(commandId);
+    for (const [pid, ids] of _pluginCommands) {
+      if (ids.delete(commandId) && ids.size === 0) _pluginCommands.delete(pid);
+    }
   }
 }
 
@@ -245,6 +295,8 @@ interface PoolPendingEntry {
   resolve: (value: unknown) => void;
   reject: (err: Error) => void;
   timer: ReturnType<typeof setTimeout>;
+  /** E5.8#43-4（④）：executeRequest 定向发时的目标窗口——executeResult 回执校验只收目标窗口（防模式 B 双执行） */
+  targetWindowId?: string;
 }
 
 const _poolPending = new Map<string, PoolPendingEntry>();
@@ -252,38 +304,56 @@ let _poolRequestSeq = 0;
 
 /**
  * 占位命令转发到池执行。
- * 壳 emit("commands:executeRequest") → 主进程 plugin:push 广播 → 池 preload 订阅执行
+ * 壳 emit("commands:executeRequest") → 主进程 plugin:push 定向广播 → 池 preload 订阅执行
  * → invoke("commands:executeResult") → IpcBridgeHandler 调 resolvePoolExecution 回传。
+ *
+ * E5.8#43-4（③ 路由）：origin 亲和优先 → origin 不在注册集 → 归属表唯一注册者 → 全池广播兜底。
+ *   originWindowId = 命令调用来源窗口（壳 = 唯一执行发起方 → 恒主窗；§8.6 声明式 origin，声明式数据）。
+ *   targetWindowId 进载荷 → 主进程 broadcast 按窗口定向发池（不再全池广播，杜绝模式 B 双执行）。
  *
  * token 不转发——池 handler 不消费 CancellationToken（与 preload-pool 剥离 token 占位同约定）。
  * 无 preload 桥（dev 预览/单测）时回退占位 handler 的诊断 warn——与 E5.7 前行为一致。
  */
-async function executeInPool(cmd: Command, args: unknown[]): Promise<unknown> {
+async function executeInPool(cmd: Command, args: unknown[], originWindowId = "main"): Promise<unknown> {
   const events = window.linkdesk?.events;
   if (!events?.emit) {
     return cmd.handler(undefined, ...args);
   }
   const requestId = `pool-cmd:${++_poolRequestSeq}`;
+  // §8.6 路由：origin 亲和优先 → 归属表唯一注册者 → 兜底广播（targetWindowId 缺省 → 主进程全池广播）
+  const registered = _poolCommandWindows.get(cmd.id) ?? new Set<string>();
+  let targetWindowId: string | undefined;
+  if (registered.has(originWindowId)) {
+    targetWindowId = originWindowId;
+  } else if (registered.size === 1) {
+    targetWindowId = [...registered][0];
+  }
   return new Promise<unknown>((resolve, reject) => {
     const timer = setTimeout(() => {
       _poolPending.delete(requestId);
       reject(new Error(`命令 "${cmd.id}" 池内执行超时（${POOL_EXEC_TIMEOUT_MS / 1000} 秒）`));
     }, POOL_EXEC_TIMEOUT_MS);
-    _poolPending.set(requestId, { resolve, reject, timer });
-    events.emit("commands:executeRequest", { requestId, commandId: cmd.id, args });
+    _poolPending.set(requestId, { resolve, reject, timer, targetWindowId });
+    events.emit("commands:executeRequest", { requestId, commandId: cmd.id, args, targetWindowId });
   });
 }
 
 /**
  * 池执行结果回传入口——IpcBridgeHandler 的 "commands:executeResult" 通道调用。
  * 已超时清理的迟到结果直接丢弃（pending 已删）。
+ *
+ * E5.8#43-4（④ 回执校验）：windowId = 回执来源窗口（主进程 sender 解析注入）。
+ *   定向发（pending.targetWindowId 已定）→ 只收目标窗口回执——他窗迟到/双执行回执静默丢弃；
+ *   兜底广播（targetWindowId 缺省）→ 任意窗口回执都收（兼容旧路径/单测直调）。
  */
 export function resolvePoolExecution(
   requestId: string,
   payload: { result?: unknown; error?: string },
+  windowId?: string,
 ): void {
   const pending = _poolPending.get(requestId);
   if (!pending) return;
+  if (pending.targetWindowId && windowId && pending.targetWindowId !== windowId) return;
   clearTimeout(pending.timer);
   _poolPending.delete(requestId);
   if (payload.error) pending.reject(new Error(payload.error));
@@ -327,4 +397,8 @@ export function getPluginCommands(pluginId: string): string[] {
 export function clearCommands(): void {
   _commands.clear();
   _pluginCommands.clear();
+  _poolRuntimeCommands.clear();
+  _poolCommandWindows.clear();
+  for (const [, pending] of _poolPending) clearTimeout(pending.timer);
+  _poolPending.clear();
 }

@@ -441,6 +441,12 @@ export class WindowManager {
     return entry && !entry.hostWindow.isDestroyed() ? entry.hostWindow : null;
   }
 
+  /** E5.8#43-4（②）：取指定 Pool 窗口的 WebContentsView——IpcBridge.broadcast 定向发目标窗口池用（未知/已销毁返回 null） */
+  getPoolViewByWindowId(windowId: string): WebContentsView | null {
+    const entry = this.poolWindows.get(windowId);
+    return entry && !entry.view.webContents.isDestroyed() ? entry.view : null;
+  }
+
   /** E5.8#43-2（B3）：宿主窗口最大化状态 → 该窗池 WCV（按宿主窗反查注册表）——TitleBar □/还原按钮态跟随所在窗口。
    *  ⚠ 主进程事件（win.on('maximize')）发宿主 webContents 是壳渲染进程——池是独立 WCV，须定向池发。
    *  专用方法（字面量频道）——check-ipc-audit 要求直发通道可审计，变量 channel 走不了。 */
