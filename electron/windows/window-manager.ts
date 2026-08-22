@@ -20,18 +20,29 @@ import { IPC } from '../ipc/channels.js';
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
 const MEMORY_CHECK_INTERVAL = 30_000; // 每 30s 采样一次
 
+/**
+ * E5.8#43-1（A2）：一个 Pool 窗口的注册条目——窗口层哑，只登记窗口/视图 + resize 解绑。
+ * windowId 由壳侧声明（主池='main'，脱出窗壳自生成 id）——主进程不知「脱出」概念。
+ */
+interface PoolWindowEntry {
+  windowId: string;
+  hostWindow: BrowserWindow;
+  view: WebContentsView;
+  /** 该窗 resize 跟随解绑函数——destroyPoolWindow 时成对清理（防监听泄漏） */
+  unbindResize: () => void;
+}
+
 export class WindowManager {
   private memoryTimer: ReturnType<typeof setInterval> | null = null;
   private ipcBridge: IpcBridge | null = null;
 
-  // ── E5.6#5 → E5.7#4：单Pool——极简Pool 只有唯一 WebContentsView（#12 提前：SidebarPool 已删）──
-  private mainPoolView: WebContentsView | null = null;
+  // ── E5.8#43-1（A2）：多窗口注册表——通用登记/枚举（主池='main'；脱出窗口由壳生成 id 传入）──
+  private poolWindows = new Map<string, PoolWindowEntry>();
 
   constructor(private mainWindow: BrowserWindow) {
     this.startMemoryMonitoring();
     // E5.7#12.5：Pool bounds 换主——主进程跟随窗口 resize 满窗（壳不再推流）。
-    // 注册在构造函数而非 createMainPool——rebuildPool 会重复注册。
-    this.mainWindow.on('resize', this.syncPoolBounds);
+    // E5.8#43-1（A2）：resize 跟随移入 registerPool（每窗各自挂载）——rebuildPool 销毁重建不重复注册。
   }
 
   /** E3c #40：setter——IpcBridge 晚于 WindowManager 创建（池 did-finish-load 重放广播用） */
@@ -86,7 +97,7 @@ export class WindowManager {
    * E5.8#43-1（A1）：参数化宿主窗口——多窗口底座第一步，去 mainWindow 硬编码。
    * 主池传 this.mainWindow；未来脱出窗池传脱出 BrowserWindow（view 挂其 contentView + resize 跟随）。
    */
-  private createPoolView(hostWindow: BrowserWindow, debugLabel: string): WebContentsView {
+  private createPoolView(hostWindow: BrowserWindow, windowId: string, debugLabel: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
         // E5.8#0d.8-2 回归修复：preload-pool 留根，window-manager 已入 windows/——__dirname 变化后需 ../ 回根。
@@ -118,9 +129,10 @@ export class WindowManager {
       console.error(`[WindowManager] Pool "${debugLabel}" 加载失败: ${errorDescription} (code ${errorCode}) URL=${validatedURL}`);
     });
 
-    // 外部关闭（非 destroyPool 主动调用）→ 清理字段
+    // 外部关闭（非 destroyPoolWindow 主动调用）→ 注册表摘除条目（幂等：destroyPoolWindow 已删则 no-op）
     view.webContents.on('destroyed', () => {
-      if (this.mainPoolView === view) this.mainPoolView = null;
+      const entry = this.poolWindows.get(windowId);
+      if (entry?.view === view) this.poolWindows.delete(windowId);
     });
 
     // E5.7 键盘路由：before-input-event 挂池 WCV——焦点永远在池上，壳 keydown 收不到全局快捷键
@@ -159,45 +171,65 @@ export class WindowManager {
     return view;
   }
 
-  /** E5.6#5c → E5.7#4：创建唯一 Pool WebContentsView */
-  createMainPool(): WebContentsView {
-    if (this.mainPoolView) {
-      console.warn('[WindowManager] MainPool 已存在，返回已有 view');
-      return this.mainPoolView;
-    }
-    this.mainPoolView = this.createPoolView(this.mainWindow, 'pool');
-    // E5.7#12.5：创建即满窗接管——bounds 由主进程算（窗口内容区），不再等壳推流
-    this.syncPoolBounds();
-    this.mainPoolView.setVisible(true);
-    return this.mainPoolView;
+  /**
+   * 注册一个 Pool 窗口到注册表——创建视图 + 挂 resize 跟随 + 满窗 + 可见。
+   * E5.8#43-1（A2）：createMainPool 与未来脱出窗创建共用此入口（通用登记，无「脱出」概念）。
+   */
+  private registerPool(hostWindow: BrowserWindow, windowId: string, debugLabel: string): WebContentsView {
+    const view = this.createPoolView(hostWindow, windowId, debugLabel);
+    // E5.7#12.5：创建即满窗接管——bounds 由主进程算（窗口内容区），不再等壳推流。
+    // E5.8#43-1（A2）：resize 跟随每窗各自挂载——rebuildPool 销毁重建后重建条目自带监听。
+    const onHostResize = () => this.syncPoolBounds(windowId);
+    hostWindow.on('resize', onHostResize);
+    this.poolWindows.set(windowId, {
+      windowId,
+      hostWindow,
+      view,
+      unbindResize: () => hostWindow.removeListener('resize', onHostResize),
+    });
+    this.syncPoolBounds(windowId);
+    view.setVisible(true);
+    return view;
   }
 
-  /**
-   * E5.7#12.5：Pool 满窗零偏移——bounds 换主。
-   * 主进程 = bounds 唯一真相源：窗口内容区即 Pool bounds，resize 时跟随。
-   * E5.6 时代壳推流（pool:set-bounds）已死链删除——titlebar 是池内 zone，无需 TITLE_BAR_HEIGHT 偏移。
-   */
-  private syncPoolBounds = (): void => {
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) return;
-    const { width, height } = this.mainWindow.getContentBounds();
-    view.setBounds({ x: 0, y: 0, width, height });
+  /** E5.6#5c → E5.7#4：创建主窗口的 Pool WebContentsView */
+  createMainPool(): WebContentsView {
+    const existing = this.poolWindows.get('main');
+    if (existing) {
+      console.warn('[WindowManager] MainPool 已存在，返回已有 view');
+      return existing.view;
+    }
+    return this.registerPool(this.mainWindow, 'main', 'pool');
+  }
+
+  /** E5.7#12.5：某 Pool 窗口满窗零偏移——bounds 换主进程，默认主池。resize 跟随按 windowId 定向。 */
+  private syncPoolBounds = (windowId = 'main'): void => {
+    const entry = this.poolWindows.get(windowId);
+    if (!entry || entry.view.webContents.isDestroyed()) return;
+    const { width, height } = entry.hostWindow.getContentBounds();
+    entry.view.setBounds({ x: 0, y: 0, width, height });
   };
 
-  /** E5.6#5e → E5.7#4：销毁唯一 Pool WebContentsView */
+  /** E5.6#5e → E5.7#4：销毁主窗口 Pool WebContentsView（兼容入口——壳崩重建/退出用） */
   destroyPool(): void {
-    const view = this.mainPoolView;
-    if (!view) return;
+    this.destroyPoolWindow('main');
+  }
+
+  /** E5.8#43-1（A2）：销毁指定 Pool 窗口——视图摘除 + resize 解绑 + 注册表摘除（主进程不知「脱出」，通用销毁） */
+  destroyPoolWindow(windowId: string): void {
+    const entry = this.poolWindows.get(windowId);
+    if (!entry) return;
 
     try {
-      this.mainWindow.contentView.removeChildView(view);
+      entry.hostWindow.contentView.removeChildView(entry.view);
     } catch (err) {
       console.error(`[WindowManager] 移除 Pool 失败:`, err);
     }
 
-    view.webContents.close();
-    this.mainPoolView = null;
-    console.log(`[WindowManager] Pool 已销毁`);
+    entry.view.webContents.close();
+    entry.unbindResize();
+    this.poolWindows.delete(windowId);
+    console.log(`[WindowManager] Pool "${windowId}" 已销毁`);
   }
 
   /** E5.6#5f → E5.7#4：重建 Pool——destroy → create（设计 §9.2 崩溃恢复用） */
@@ -206,83 +238,78 @@ export class WindowManager {
     return this.createMainPool();
   }
 
-  /** E5.6#5g → E5.7#4：推送布局协议——单 WCV 直推（无 zone 路由） */
-  pushLayout(layout: unknown): void {
-    // E5.7#36：缓存布局快照——Pool 崩溃后主进程不依赖壳即时响应即可回放
-    cacheLayoutSnapshot(layout);
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) {
-      console.warn('[WindowManager] pushLayout 失败——Pool 不存在或已销毁');
-      return;
+  /** E5.8#43-1（A2）：取指定 Pool 窗口条目（已销毁则告警 + undefined）——哑渲染通道守卫咽喉。send 通道仍各方法字面量直发（E5.7#63.6 通道审计）。 */
+  private getPoolEntry(windowId: string, label: string): PoolWindowEntry | undefined {
+    const entry = this.poolWindows.get(windowId);
+    if (!entry || entry.view.webContents.isDestroyed()) {
+      console.warn(`[WindowManager] ${label} 失败——Pool "${windowId}" 不存在或已销毁`);
+      return undefined;
     }
-    view.webContents.send(IPC.pool.layout, layout);
+    return entry;
   }
 
-  /** E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染 */
-  pushQuickPick(data: unknown): void {
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) {
-      console.warn('[WindowManager] pushQuickPick 失败——Pool 不存在或已销毁');
-      return;
-    }
-    view.webContents.send(IPC.pool.quickpick, data);
+  /** E5.6#5g → E5.7#4：推送布局协议——按 windowId 定向（默认主池）。 */
+  pushLayout(layout: unknown, windowId = 'main'): void {
+    // E5.7#36：缓存布局快照——Pool 崩溃后主进程不依赖壳即时响应即可回放。
+    // E5.8#43-1（A2）：仅主池布局写快照——脱出池布局不得污染主池崩溃重放（壳崩恢复只回放主窗）。
+    if (windowId === 'main') cacheLayoutSnapshot(layout);
+    const entry = this.getPoolEntry(windowId, 'pushLayout');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.layout, layout);
   }
 
-  /** E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染 */
-  pushToast(data: unknown): void {
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) {
-      console.warn('[WindowManager] pushToast 失败——Pool 不存在或已销毁');
-      return;
-    }
-    view.webContents.send(IPC.pool.toast, data);
+  /** E5.7#15：推送 QuickPick 哑渲染数据——壳序列化 DTO，池 QuickPickHost 纯渲染（按 windowId 定向，默认主池） */
+  pushQuickPick(data: unknown, windowId = 'main'): void {
+    const entry = this.getPoolEntry(windowId, 'pushQuickPick');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.quickpick, data);
   }
 
-  /** E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染 */
-  pushDialog(data: unknown): void {
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) {
-      console.warn('[WindowManager] pushDialog 失败——Pool 不存在或已销毁');
-      return;
-    }
-    view.webContents.send(IPC.pool.dialog, data);
+  /** E5.7#16：推送 Toast 哑渲染数据——壳 toast 服务序列化 DTO，池 ToastHost 纯渲染（按 windowId 定向，默认主池） */
+  pushToast(data: unknown, windowId = 'main'): void {
+    const entry = this.getPoolEntry(windowId, 'pushToast');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.toast, data);
   }
 
-  /** E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据——壳 FloatingPanelService 桥序列化 DTO，池 FloatingPanelHost 纯渲染 */
-  pushFloatingPanel(data: unknown): void {
-    const view = this.mainPoolView;
-    if (!view || view.webContents.isDestroyed()) {
-      console.warn('[WindowManager] pushFloatingPanel 失败——Pool 不存在或已销毁');
-      return;
-    }
-    view.webContents.send(IPC.pool.floatingPanel, data);
+  /** E5.7#17：推送 Dialog 哑渲染数据——壳 DialogService 桥序列化 DTO，池 DialogHost 纯渲染（按 windowId 定向，默认主池） */
+  pushDialog(data: unknown, windowId = 'main'): void {
+    const entry = this.getPoolEntry(windowId, 'pushDialog');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.dialog, data);
   }
 
-  /** E5.6#5h → E5.7#4：取唯一 Pool WebContentsView */
+  /** E5.8#37（Phase 8 类型 B）：推送悬浮面板哑渲染数据——壳 FloatingPanelService 桥序列化 DTO，池 FloatingPanelHost 纯渲染（按 windowId 定向，默认主池） */
+  pushFloatingPanel(data: unknown, windowId = 'main'): void {
+    const entry = this.getPoolEntry(windowId, 'pushFloatingPanel');
+    if (!entry) return;
+    entry.view.webContents.send(IPC.pool.floatingPanel, data);
+  }
+
+  /** E5.6#5h → E5.7#4：取主窗口 Pool WebContentsView（窗口控制/缩放/崩溃恢复兼容入口——主池专用） */
   getPoolView(): WebContentsView | null {
-    return this.mainPoolView;
+    return this.poolWindows.get('main')?.view ?? null;
   }
 
-  /** E5.6#10f：返回已创建的 Pool WebContentsView（广播/重放用） */
+  /** E5.6#10f：返回全部 Pool WebContentsView（广播/重放/主题背景/发送者判定用）——多窗口通用 */
   getAllPoolViews(): WebContentsView[] {
-    if (this.mainPoolView && !this.mainPoolView.webContents.isDestroyed()) {
-      return [this.mainPoolView];
-    }
-    return [];
+    return [...this.poolWindows.values()]
+      .filter((e) => !e.view.webContents.isDestroyed())
+      .map((e) => e.view);
   }
 
   /**
-   * 销毁唯一 Pool WebContentsView + 停止监控——应用退出时调用。
+   * 销毁全部 Pool 窗口 + 停止监控——应用退出/壳崩重建时调用。
+   * E5.8#43-1（A2）：清空注册表全部条目（主池 resize 解绑随 destroyPoolWindow 成对清理）。
    */
   dispose(): void {
     if (this.memoryTimer) {
       clearInterval(this.memoryTimer);
       this.memoryTimer = null;
     }
-    // E5.7#12.5：注销 resize 跟随监听——与构造函数注册成对
-    this.mainWindow.removeListener('resize', this.syncPoolBounds);
-    // E5.6#5 → E5.7#4：清理唯一 Pool WebContentsView
-    this.destroyPool();
+    for (const windowId of [...this.poolWindows.keys()]) {
+      this.destroyPoolWindow(windowId);
+    }
   }
 
 }
