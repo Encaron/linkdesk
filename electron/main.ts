@@ -146,13 +146,19 @@ function createWindow(): void {
   });
 
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
+  // E5.8#43-2（B3）：按发送者路由——池 TitleBarZone 按钮来自哪个 Pool 窗口就作用于哪个宿主窗
+  //（脱出窗点 ─ □ × 作用于自身；壳渲染进程 sender 不在 poolWindows 注册表 → 回退主窗）。
+  const hostWindowFor = (event: Electron.IpcMainEvent | Electron.IpcMainInvokeEvent): BrowserWindow => {
+    const windowId = windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
+    return windowManager?.getHostWindow(windowId) ?? mainWindow!;
+  };
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
-    ipcMain.on(IPC.window.minimize, () => mainWindow?.minimize());
-    ipcMain.on(IPC.window.maximize, () => mainWindow?.maximize());
-    ipcMain.on(IPC.window.unmaximize, () => mainWindow?.unmaximize());
-    ipcMain.on(IPC.window.close, () => mainWindow?.close());
-    ipcMain.handle(IPC.window.isMaximized, () => mainWindow?.isMaximized() ?? false);
+    ipcMain.on(IPC.window.minimize, (event) => hostWindowFor(event)?.minimize());
+    ipcMain.on(IPC.window.maximize, (event) => hostWindowFor(event)?.maximize());
+    ipcMain.on(IPC.window.unmaximize, (event) => hostWindowFor(event)?.unmaximize());
+    ipcMain.on(IPC.window.close, (event) => hostWindowFor(event)?.close());
+    ipcMain.handle(IPC.window.isMaximized, (event) => hostWindowFor(event)?.isMaximized() ?? false);
     // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
     // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
     ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {
@@ -171,8 +177,11 @@ function createWindow(): void {
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });
   }
-  win.on('maximize', () => win.webContents.send(IPC.window.maximizeChange, true));
-  win.on('unmaximize', () => win.webContents.send(IPC.window.maximizeChange, false));
+  // E5.8#43-2（B3）：最大化状态 → 该窗池 WCV（TitleBar □/还原按钮态跟随所在窗口）。
+  // 原 win.webContents.send 发的是壳渲染进程（index.html）——池是独立 WCV 收不到（E5.7 潜伏缺口），
+  // 且脱出窗壳 webContents 无人消费。sendPoolByHost 按宿主窗反查池定向发送。
+  win.on('maximize', () => windowManager?.sendPoolByHost(win, IPC.window.maximizeChange, true));
+  win.on('unmaximize', () => windowManager?.sendPoolByHost(win, IPC.window.maximizeChange, false));
 
   // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
   if (!_shellIpcRegistered) {

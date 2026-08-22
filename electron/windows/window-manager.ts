@@ -368,6 +368,23 @@ export class WindowManager {
     return null;
   }
 
+  /** E5.8#43-2（B3）：取指定 Pool 窗口的宿主 BrowserWindow——窗口控制按发送者路由消费（未知/已销毁返回 null） */
+  getHostWindow(windowId: string): BrowserWindow | null {
+    const entry = this.poolWindows.get(windowId);
+    return entry && !entry.hostWindow.isDestroyed() ? entry.hostWindow : null;
+  }
+
+  /** E5.8#43-2（B3）：宿主窗口事件 → 该窗池 WCV（按宿主窗反查注册表）——TitleBar 最大化按钮态跟随所在窗口。
+   *  ⚠ 主进程事件（win.on('maximize')）发宿主 webContents 是壳渲染进程——池是独立 WCV，须定向池发。 */
+  sendPoolByHost(hostWindow: BrowserWindow, channel: string, ...args: unknown[]): void {
+    for (const entry of this.poolWindows.values()) {
+      if (entry.hostWindow === hostWindow && !entry.view.webContents.isDestroyed()) {
+        entry.view.webContents.send(channel, ...args);
+        return;
+      }
+    }
+  }
+
   /**
    * 销毁全部 Pool 窗口 + 停止监控——应用退出/壳崩重建时调用。
    * E5.8#43-1（A2）：清空注册表全部条目（主池 resize 解绑随 destroyPoolWindow 成对清理）。
