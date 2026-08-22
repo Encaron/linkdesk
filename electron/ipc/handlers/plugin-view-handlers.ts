@@ -26,9 +26,9 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   if (_poolHandlersRegistered) return;
   _poolHandlersRegistered = true;
 
-  // 壳→Pool：推送布局快照——单 WCV 直推（E5.7#4）
-  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown) => {
-    _windowManager?.pushLayout(layout);
+  // 壳→Pool：推送布局快照——按 windowId 定向（缺省 'main'，E5.7#4 单 WCV 直推；E5.8#43-2 脱出窗按 id 推送）
+  ipcMain.on(IPC.pool.pushLayout, (_event, layout: unknown, windowId?: string) => {
+    _windowManager?.pushLayout(layout, windowId);
   });
 
   // Pool→壳：池 React 挂载完成（E5.8#43-1 A3：按 sender 反查 windowId 转发——壳据 windowId 定向推该窗布局）。

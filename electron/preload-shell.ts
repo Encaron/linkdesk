@@ -384,7 +384,8 @@ try {
     // ── E5.6#8c → E5.7#4：pool API——壳推送布局到唯一池、监听池就绪 ──
     pool: {
       /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
-      pushLayout: (layout: PoolLayout) => ipcRenderer.send(IPC.pool.pushLayout, layout),
+      // E5.8#43-2：windowId 可选——缺省 'main'。壳据窗口注册表定向推送（脱出窗 = 壳生成 id）
+      pushLayout: (layout: PoolLayout, windowId?: string) => ipcRenderer.send(IPC.pool.pushLayout, layout, windowId),
       /** 监听池就绪——回调收 windowId（E5.8#43-1 A3：主池='main'，脱出池=壳生成 id，壳据 id 定向推该窗布局）。返回 unsubscribe */
       onReady: (cb: (windowId: string) => void) => {
         const handler = (_event: unknown, payload: PoolReadyPayload) => {

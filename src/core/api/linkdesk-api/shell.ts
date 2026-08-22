@@ -24,7 +24,8 @@ export interface ShellAPI {
   /** 池控制——壳 preload：推送布局 + 注册池→壳动作回调；池 preload：收布局 + 发动作。双端各实现自己那半（方法级子集面，surfaces.ts） */
   pool: {
     // ── 壳侧（池 preload 无） ──
-    pushLayout(layout: PoolLayout): void;
+    /** E5.8#43-2：windowId 可选定向推送（缺省 'main'）——壳窗口注册表遍历按 id 推送各窗布局 */
+    pushLayout(layout: PoolLayout, windowId?: string): void;
     /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
     onReady(cb: (windowId: string) => void): () => void;
     toggleDevTools(): void;
