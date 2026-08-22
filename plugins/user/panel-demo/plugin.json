@@ -1,0 +1,77 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "面板演示",
+  "version": "1.0.0",
+  "description": "E5.7#63.7 验证用演示插件——声明 location:\"panel\" 视图容器：输出 + 待办。可安全卸载。",
+  "author": "官方",
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+    "viewsContainers": {
+      "panel-demo": { "title": "面板演示", "location": "panel" },
+      "panel-demo-sidebar": { "title": "面板演示", "location": "sidebar" }
+    },
+    "views": {
+      "panel-demo-sidebar": [
+        {
+          "id": "demo-sidebar",
+          "title": "侧栏演示",
+          "render": "src/views/DemoSidebarView.tsx",
+          "order": 0,
+          "titleActions": [
+            {
+              "type": "split",
+              "id": "sidebar-add-log",
+              "command": "panel-demo.sidebarAddLog",
+              "icon": "codicon-add",
+              "title": "侧栏添加演示日志",
+              "args": { "level": "info" },
+              "items": [
+                { "label": "侧栏添加信息", "command": "panel-demo.sidebarAddLog", "args": { "level": "info" } },
+                { "label": "侧栏添加警告", "command": "panel-demo.sidebarAddLog", "args": { "level": "warn" } },
+                { "label": "侧栏添加错误", "command": "panel-demo.sidebarAddLog", "args": { "level": "error" } }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "sidebar-clear-log",
+              "command": "panel-demo.sidebarClearLog",
+              "icon": "codicon-clear-all",
+              "title": "侧栏清空输出"
+            }
+          ]
+        }
+      ],
+      "panel-demo": [
+        {
+          "id": "demo-output",
+          "title": "输出",
+          "render": "src/views/DemoOutputView.tsx",
+          "order": 0,
+          "titleActions": [
+            {
+              "type": "split",
+              "id": "add-log",
+              "command": "panel-demo.addLog",
+              "icon": "codicon-add",
+              "title": "添加演示日志",
+              "args": { "level": "info", "text": "主按钮——添加信息日志" },
+              "items": [
+                { "label": "添加信息", "command": "panel-demo.addLog", "args": { "level": "info" } },
+                { "label": "添加警告", "command": "panel-demo.addLog", "args": { "level": "warn" } },
+                { "label": "添加错误", "command": "panel-demo.addLog", "args": { "level": "error" } }
+              ]
+            },
+            {
+              "type": "icon",
+              "id": "clear-log",
+              "command": "panel-demo.clearLog",
+              "icon": "codicon-clear-all",
+              "title": "清空输出"
+            }
+          ]
+        },
+        { "id": "demo-todo", "title": "待办", "render": "src/views/DemoTodoView.tsx", "order": 1 }
+      ]
+    }
+  }
+}

@@ -1,0 +1,306 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 920" font-family="Inter, system-ui, -apple-system, 'Segoe UI', sans-serif">
+  <defs>
+    <filter id="card" x="-4%" y="-8%" width="108%" height="120%">
+      <feDropShadow dx="0" dy="1.5" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.05"/>
+    </filter>
+    <filter id="coreGlow" x="-8%" y="-8%" width="116%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="6" flood-color="#1e3a8a" flood-opacity="0.10"/>
+    </filter>
+    <filter id="deep" x="-4%" y="-8%" width="108%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#0f172a" flood-opacity="0.12"/>
+    </filter>
+    <linearGradient id="coreFill" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#1E3A8A"/>
+      <stop offset="100%" stop-color="#2563EB"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1120" height="920" fill="#F8FAFC"/>
+
+  <!-- ── Title ── -->
+  <text x="560" y="36" text-anchor="middle" fill="#0F172A" font-size="19" font-weight="700" letter-spacing="-0.3">LinkDesk 架构全景 · 圆形大厅模型</text>
+  <text x="560" y="54" text-anchor="middle" fill="#64748B" font-size="11">E5 完工后 After E5 · Round Hall Model · Low Coupling High Cohesion · 低耦合 高内聚</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 5: PLUGINS 插件 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="70" width="1072" height="166" rx="10" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="1.2" stroke-dasharray="6,4" opacity="0.7"/>
+  <rect x="36" y="62" width="175" height="18" rx="3" fill="#F5F3FF"/>
+  <text x="124" y="75" text-anchor="middle" fill="#7C3AED" font-size="11" font-weight="700" letter-spacing="2">PLUGINS 插件层</text>
+
+  <!-- Plugin cards row 1 -->
+  <!-- File Tree -->
+  <rect x="48" y="88" width="155" height="64" rx="8" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" filter="url(#card)"/>
+  <rect x="48" y="88" width="155" height="3.5" rx="1.5" fill="#7C3AED"/>
+  <text x="125" y="110" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="600">📁 文件树</text>
+  <text x="125" y="124" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="500">File Tree</text>
+  <text x="125" y="140" text-anchor="middle" fill="#94A3B8" font-size="7.5">图标栏 top · 侧栏 · view</text>
+
+  <!-- Editor -->
+  <rect x="218" y="88" width="155" height="64" rx="8" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" filter="url(#card)"/>
+  <rect x="218" y="88" width="155" height="3.5" rx="1.5" fill="#7C3AED"/>
+  <text x="295" y="110" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="600">📝 编辑器</text>
+  <text x="295" y="124" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="500">Editor</text>
+  <text x="295" y="140" text-anchor="middle" fill="#94A3B8" font-size="7.5">标签页 tabBar · Monaco+LSP</text>
+
+  <!-- Serial Monitor -->
+  <rect x="388" y="88" width="155" height="64" rx="8" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" filter="url(#card)"/>
+  <rect x="388" y="88" width="155" height="3.5" rx="1.5" fill="#7C3AED"/>
+  <text x="465" y="110" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="600">🪢 串口监视器</text>
+  <text x="465" y="124" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="500">Serial Monitor</text>
+  <text x="465" y="140" text-anchor="middle" fill="#94A3B8" font-size="7.5">图标栏 top · 侧栏 · 标签页</text>
+
+  <!-- Marketplace -->
+  <rect x="558" y="88" width="155" height="64" rx="8" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" filter="url(#card)"/>
+  <rect x="558" y="88" width="155" height="3.5" rx="1.5" fill="#7C3AED"/>
+  <text x="635" y="110" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="600">🛒 插件市场</text>
+  <text x="635" y="124" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="500">Marketplace</text>
+  <text x="635" y="140" text-anchor="middle" fill="#94A3B8" font-size="7.5">factoryRole: marketplace</text>
+
+  <!-- Settings -->
+  <rect x="728" y="88" width="155" height="64" rx="8" fill="#FFFFFF" stroke="#DDD6FE" stroke-width="1" filter="url(#card)"/>
+  <rect x="728" y="88" width="155" height="3.5" rx="1.5" fill="#7C3AED"/>
+  <text x="805" y="110" text-anchor="middle" fill="#1E293B" font-size="12" font-weight="600">⚙ 设置</text>
+  <text x="805" y="124" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="500">Settings</text>
+  <text x="805" y="140" text-anchor="middle" fill="#94A3B8" font-size="7.5">图标栏 bottom · 保姆插件</text>
+
+  <!-- Row 2 -->
+  <!-- Python -->
+  <rect x="48" y="164" width="155" height="56" rx="8" fill="#F0FDF4" stroke="#BBF7D0" stroke-width="1" filter="url(#card)"/>
+  <rect x="48" y="164" width="3.5" height="56" rx="1.5" fill="#22C55E"/>
+  <text x="125" y="186" text-anchor="middle" fill="#166534" font-size="11" font-weight="600">🐍 Python 语言</text>
+  <text x="125" y="203" text-anchor="middle" fill="#15803D" font-size="7.5">pluginRole: data · langDefs only · 零代码 Zero Code</text>
+
+  <!-- New Plugin -->
+  <rect x="218" y="164" width="155" height="56" rx="8" fill="#FAFBFC" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3,2" filter="url(#card)"/>
+  <text x="295" y="185" text-anchor="middle" fill="#94A3B8" font-size="11" font-weight="600">+ 新插件</text>
+  <text x="295" y="202" text-anchor="middle" fill="#94A3B8" font-size="7.5">plugin.json → 放入目录即生效</text>
+
+  <rect x="388" y="164" width="155" height="56" rx="8" fill="#FAFBFC" stroke="#E2E8F0" stroke-width="1" stroke-dasharray="3,2" filter="url(#card)"/>
+  <text x="465" y="185" text-anchor="middle" fill="#94A3B8" font-size="11" font-weight="600">🪟 终端面板</text>
+  <text x="465" y="202" text-anchor="middle" fill="#94A3B8" font-size="7.5">v1.4 floating zone</text>
+
+  <!-- Promise -->
+  <rect x="558" y="164" width="510" height="56" rx="8" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="1" filter="url(#card)"/>
+  <text x="813" y="186" text-anchor="middle" fill="#0369A1" font-size="10.5" font-weight="600">+ 新插件 New plugin = plugin.json + 入口 entry + 放入目录 drop into directory</text>
+  <text x="813" y="204" text-anchor="middle" fill="#0C4A6E" font-size="9">零壳代码改动 Zero shell code changes · 对标 VS Code — extension = folder, drop &amp; run</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 4: PLUGIN LOADER 插件加载器 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="252" width="1072" height="60" rx="8" fill="#EDE9FE" stroke="#A78BFA" stroke-width="1"/>
+  <rect x="36" y="244" width="175" height="18" rx="3" fill="#EDE9FE"/>
+  <text x="124" y="257" text-anchor="middle" fill="#6D28D9" font-size="11" font-weight="700" letter-spacing="2">PLUGIN LOADER 插件加载器</text>
+
+  <!-- Flow -->
+  <rect x="60" y="274" width="175" height="24" rx="5" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="0.6"/>
+  <text x="147" y="290" text-anchor="middle" fill="#5B21B6" font-size="9" font-weight="500">loadPluginLifecycle()</text>
+  <text x="243" y="291" fill="#A78BFA" font-size="14">→</text>
+  <rect x="256" y="274" width="160" height="24" rx="5" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="0.6"/>
+  <text x="336" y="290" text-anchor="middle" fill="#5B21B6" font-size="9" font-weight="500">parseContributions()</text>
+  <text x="424" y="291" fill="#A78BFA" font-size="14">→</text>
+  <rect x="437" y="274" width="168" height="24" rx="5" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="0.6"/>
+  <text x="521" y="290" text-anchor="middle" fill="#5B21B6" font-size="9" font-weight="500">loadPluginComponent()</text>
+  <text x="613" y="291" fill="#A78BFA" font-size="14">→</text>
+  <rect x="626" y="274" width="95" height="24" rx="5" fill="#FFFFFF" stroke="#C4B5FD" stroke-width="0.6"/>
+  <text x="673" y="290" text-anchor="middle" fill="#5B21B6" font-size="9" font-weight="500">viewRegistry</text>
+
+  <!-- pluginRole + appearsIn -->
+  <rect x="745" y="272" width="145" height="28" rx="5" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="0.5"/>
+  <text x="817" y="290" text-anchor="middle" fill="#7C3AED" font-size="8" font-weight="600">pluginRole: view | data</text>
+  <rect x="900" y="272" width="180" height="28" rx="5" fill="#F5F3FF" stroke="#C4B5FD" stroke-width="0.5"/>
+  <text x="990" y="290" text-anchor="middle" fill="#7C3AED" font-size="8" font-weight="600">appearsIn: iconBar · tabBar ·…</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 3: SHELL SKELETON 壳骨架 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="328" width="1072" height="116" rx="8" fill="#F1F5F9" stroke="#94A3B8" stroke-width="1"/>
+  <rect x="36" y="320" width="175" height="18" rx="3" fill="#F1F5F9"/>
+  <text x="124" y="333" text-anchor="middle" fill="#334155" font-size="11" font-weight="700" letter-spacing="2">SHELL SKELETON 壳骨架</text>
+  <text x="310" y="333" fill="#64748B" font-size="9">— 四个区域 Four Zones · 只通过 ShellEvents 通信 · 互不 import</text>
+
+  <!-- IconBar -->
+  <rect x="48" y="346" width="148" height="84" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" filter="url(#card)"/>
+  <rect x="48" y="346" width="3.5" height="84" rx="1.5" fill="#3B82F6"/>
+  <text x="122" y="368" text-anchor="middle" fill="#1E293B" font-size="11.5" font-weight="600">IconBar 图标栏</text>
+  <text x="122" y="383" text-anchor="middle" fill="#64748B" font-size="8">Left · 42px</text>
+  <text x="122" y="399" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="600">emit() only</text>
+  <text x="122" y="416" text-anchor="middle" fill="#94A3B8" font-size="7.5">过滤 appearsIn.iconBar</text>
+
+  <!-- SidePanel -->
+  <rect x="210" y="346" width="178" height="84" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" filter="url(#card)"/>
+  <rect x="210" y="346" width="3.5" height="84" rx="1.5" fill="#3B82F6"/>
+  <text x="299" y="368" text-anchor="middle" fill="#1E293B" font-size="11.5" font-weight="600">SidePanel 侧栏</text>
+  <text x="299" y="383" text-anchor="middle" fill="#64748B" font-size="8">Left · 280px · resizable</text>
+  <text x="299" y="399" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="600">on() subscribe</text>
+  <text x="299" y="416" text-anchor="middle" fill="#94A3B8" font-size="7.5">过滤 appearsIn.sidePanel</text>
+
+  <!-- MainContent -->
+  <rect x="402" y="346" width="230" height="84" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" filter="url(#card)"/>
+  <rect x="402" y="346" width="3.5" height="84" rx="1.5" fill="#3B82F6"/>
+  <text x="517" y="368" text-anchor="middle" fill="#1E293B" font-size="11.5" font-weight="600">MainContent 主区</text>
+  <text x="517" y="383" text-anchor="middle" fill="#64748B" font-size="8">Center · flex:1</text>
+  <text x="517" y="399" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="600">emit() + on()</text>
+  <text x="517" y="416" text-anchor="middle" fill="#94A3B8" font-size="7.5">TabManager · WebView 同步 · keep-alive</text>
+
+  <!-- StatusBar -->
+  <rect x="646" y="346" width="148" height="84" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" filter="url(#card)"/>
+  <rect x="646" y="346" width="3.5" height="84" rx="1.5" fill="#3B82F6"/>
+  <text x="720" y="368" text-anchor="middle" fill="#1E293B" font-size="11.5" font-weight="600">StatusBar 状态栏</text>
+  <text x="720" y="383" text-anchor="middle" fill="#64748B" font-size="8">Bottom · 24px</text>
+  <text x="720" y="399" text-anchor="middle" fill="#3B82F6" font-size="8" font-weight="600">on() only</text>
+  <text x="720" y="416" text-anchor="middle" fill="#94A3B8" font-size="7.5">订阅 tab:focused 事件</text>
+
+  <!-- App.tsx -->
+  <rect x="808" y="346" width="115" height="84" rx="7" fill="#FFFFFF" stroke="#CBD5E1" stroke-width="1" filter="url(#card)"/>
+  <rect x="808" y="346" width="3.5" height="84" rx="1.5" fill="#475569"/>
+  <text x="865" y="370" text-anchor="middle" fill="#1E293B" font-size="11" font-weight="600">App.tsx</text>
+  <text x="865" y="386" text-anchor="middle" fill="#64748B" font-size="8">去胶水化</text>
+  <text x="865" y="402" text-anchor="middle" fill="#64748B" font-size="8">De-glued</text>
+  <text x="865" y="418" text-anchor="middle" fill="#94A3B8" font-size="7.5">仅全局逻辑</text>
+
+  <!-- ShellEvents connection lines -->
+  <line x1="196" y1="388" x2="210" y2="388" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="4,4" opacity="0.55"/>
+  <line x1="388" y1="388" x2="402" y2="388" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="4,4" opacity="0.55"/>
+  <line x1="632" y1="388" x2="646" y2="388" stroke="#3B82F6" stroke-width="1.2" stroke-dasharray="4,4" opacity="0.55"/>
+  <line x1="808" y1="388" x2="794" y2="388" stroke="#94A3B8" stroke-width="0.8" stroke-dasharray="3,4" opacity="0.35"/>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 2: CORE 圆形大厅 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="460" width="1072" height="232" rx="10" fill="#EFF6FF" stroke="#93C5FD" stroke-width="1.5"/>
+  <rect x="36" y="452" width="240" height="18" rx="3" fill="#EFF6FF"/>
+  <text x="156" y="465" text-anchor="middle" fill="#1E3A8A" font-size="11" font-weight="700" letter-spacing="2">⚬ CORE · 圆形大厅 Round Hall ⚬</text>
+  <text x="500" y="465" fill="#64748B" font-size="9">— 核心不知道软件是干什么的 · 只提供桌子 + 电话本 Core provides tables + directories, doesn't know content</text>
+
+  <!-- ShellEvents -->
+  <rect x="440" y="476" width="170" height="34" rx="7" fill="url(#coreFill)" filter="url(#coreGlow)"/>
+  <text x="525" y="498" text-anchor="middle" fill="#FFFFFF" font-size="12.5" font-weight="700">ShellEvents</text>
+
+  <!-- Registries -->
+  <rect x="48" y="476" width="190" height="24" rx="4" fill="#DBEAFE" stroke="#93C5FD" stroke-width="0.5"/>
+  <text x="143" y="493" text-anchor="middle" fill="#1E40AF" font-size="9" font-weight="700">注册表 REGISTRIES</text>
+
+  <rect x="48" y="504" width="92" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="94" y="519" text-anchor="middle" fill="#334155" font-size="8">Command</text>
+  <rect x="144" y="504" width="94" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="191" y="519" text-anchor="middle" fill="#334155" font-size="8">Clipboard 🆕</text>
+
+  <rect x="48" y="528" width="92" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="94" y="543" text-anchor="middle" fill="#334155" font-size="8">Configuration</text>
+  <rect x="144" y="528" width="94" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="191" y="543" text-anchor="middle" fill="#334155" font-size="8">Keybinding</text>
+
+  <rect x="48" y="552" width="92" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="94" y="567" text-anchor="middle" fill="#334155" font-size="8">Menu</text>
+  <rect x="144" y="552" width="94" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="191" y="567" text-anchor="middle" fill="#334155" font-size="8">Theme</text>
+
+  <rect x="48" y="576" width="92" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="94" y="591" text-anchor="middle" fill="#334155" font-size="8">Language</text>
+  <rect x="144" y="576" width="94" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="191" y="591" text-anchor="middle" fill="#334155" font-size="8">LangDef 🆕</text>
+
+  <rect x="48" y="600" width="92" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="94" y="615" text-anchor="middle" fill="#334155" font-size="8">FileAssoc</text>
+  <rect x="144" y="600" width="94" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="191" y="615" text-anchor="middle" fill="#334155" font-size="8">ViewContainer</text>
+
+  <rect x="48" y="624" width="190" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="143" y="639" text-anchor="middle" fill="#334155" font-size="8">Card · Protocol · Icon · …</text>
+
+  <!-- Services -->
+  <rect x="640" y="476" width="195" height="24" rx="4" fill="#DBEAFE" stroke="#93C5FD" stroke-width="0.5"/>
+  <text x="737" y="493" text-anchor="middle" fill="#1E40AF" font-size="9" font-weight="700">服务 SERVICES</text>
+
+  <rect x="640" y="504" width="95" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="687" y="519" text-anchor="middle" fill="#334155" font-size="8">LayoutEngine 🆕</text>
+  <rect x="739" y="504" width="96" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="787" y="519" text-anchor="middle" fill="#334155" font-size="8">FileService</text>
+
+  <rect x="640" y="528" width="95" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="687" y="543" text-anchor="middle" fill="#334155" font-size="8">ErrorService 🆕</text>
+  <rect x="739" y="528" width="96" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="787" y="543" text-anchor="middle" fill="#334155" font-size="8">Workspace</text>
+
+  <rect x="640" y="552" width="95" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="687" y="567" text-anchor="middle" fill="#334155" font-size="8">ConfigService</text>
+  <rect x="739" y="552" width="96" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="787" y="567" text-anchor="middle" fill="#334155" font-size="8">Storage</text>
+
+  <rect x="640" y="576" width="95" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="687" y="591" text-anchor="middle" fill="#334155" font-size="8">Dialog</text>
+  <rect x="739" y="576" width="96" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="787" y="591" text-anchor="middle" fill="#334155" font-size="8">Notification</text>
+
+  <rect x="640" y="600" width="95" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="687" y="615" text-anchor="middle" fill="#334155" font-size="8">PluginState</text>
+  <rect x="739" y="600" width="96" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="787" y="615" text-anchor="middle" fill="#334155" font-size="8">Profile</text>
+
+  <rect x="640" y="624" width="195" height="22" rx="3.5" fill="#FFFFFF" stroke="#BFDBFE" stroke-width="0.5"/>
+  <text x="737" y="639" text-anchor="middle" fill="#334155" font-size="8">ThemeEngine · StatusBarSvc ·…</text>
+
+  <!-- Core admission criteria -->
+  <rect x="640" y="654" width="430" height="30" rx="5" fill="#F0F9FF" stroke="#BAE6FD" stroke-width="0.6"/>
+  <text x="855" y="674" text-anchor="middle" fill="#0369A1" font-size="8.5" font-weight="600">核心准入 Core Admission — 多提供方 Multi-provider · 多消费方 Multi-consumer · 桌子不知内容 Table doesn't know content</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 1b: PRELOAD BRIDGE -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="708" width="1072" height="34" rx="6" fill="#F1F5F9" stroke="#CBD5E1" stroke-width="1"/>
+  <text x="58" y="730" fill="#475569" font-size="10" font-weight="700" letter-spacing="1">PRELOAD BRIDGE</text>
+  <text x="210" y="730" fill="#64748B" font-size="9">linkdesk.clipboard.readText()  ·  linkdesk.filesystem.createDir()  ·  linkdesk.serial.listPorts()  ·  linkdesk.language.getInitial()  ·  …</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LAYER 1: ELECTRON RUNTIME -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="750" width="1072" height="56" rx="8" fill="#1E293B" filter="url(#deep)"/>
+  <text x="58" y="774" fill="#94A3B8" font-size="10" font-weight="700" letter-spacing="2">ELECTRON RUNTIME 运行时</text>
+
+  <rect x="260" y="760" width="120" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="320" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">Main Process</text>
+
+  <rect x="392" y="760" width="120" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="452" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">IPC Bridge</text>
+
+  <rect x="524" y="760" width="130" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="589" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">Window Manager</text>
+
+  <rect x="666" y="760" width="100" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="716" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">File System</text>
+
+  <rect x="778" y="760" width="100" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="828" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">Clipboard 🆕</text>
+
+  <rect x="890" y="760" width="130" height="36" rx="5" fill="#334155" stroke="#475569" stroke-width="0.6"/>
+  <text x="955" y="783" text-anchor="middle" fill="#CBD5E1" font-size="9" font-weight="500">Child Process</text>
+
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <!-- LEGEND 图例 -->
+  <!-- ═══════════════════════════════════════════════════════ -->
+  <rect x="24" y="822" width="1072" height="80" rx="8" fill="#FFFFFF" stroke="#E2E8F0" stroke-width="1"/>
+  <text x="56" y="844" fill="#334155" font-size="10" font-weight="700" letter-spacing="2">通信模式 COMMUNICATION PATTERNS</text>
+
+  <!-- Registry -->
+  <rect x="56" y="856" width="14" height="14" rx="3" fill="#3B82F6"/>
+  <text x="78" y="868" fill="#1E293B" font-size="9" font-weight="600">大厅通信 Registry</text>
+  <text x="210" y="868" fill="#64748B" font-size="8.5">松耦合 · 多提供方/多消费方 · 不知道对方是谁 Loose coupling · multi-provider/consumer · unknown counterparty</text>
+
+  <!-- ShellEvents -->
+  <rect x="56" y="878" width="14" height="14" rx="3" fill="#7C3AED"/>
+  <text x="78" y="890" fill="#1E293B" font-size="9" font-weight="600">壳事件 ShellEvents</text>
+  <text x="210" y="890" fill="#64748B" font-size="8.5">壳内四区域通信 · 编译期类型检查 · tsc 自动验证 Four-zone event bus · compile-time type check · tsc-verified</text>
+
+  <!-- IPC -->
+  <rect x="560" y="856" width="14" height="14" rx="3" fill="#1E293B"/>
+  <text x="582" y="868" fill="#1E293B" font-size="9" font-weight="600">IPC 管道 Pipe</text>
+  <text x="690" y="868" fill="#64748B" font-size="8.5">高频数据推流 · 紧耦合 · 知道对方身份 High-freq streaming · tight coupling · known identity</text>
+
+  <!-- E5 Promise -->
+  <rect x="560" y="878" width="14" height="14" rx="3" fill="#22C55E"/>
+  <text x="582" y="890" fill="#1E293B" font-size="9" font-weight="600">E5 完工后 After E5</text>
+  <text x="690" y="890" fill="#64748B" font-size="8.5">新壳区域 = 1 行配置 New zone = 1-liner  ·  新插件 = 零壳改动 New plugin = zero shell edits  ·  转框架 = 壳零改动 Framework migration = zero shell edits</text>
+
+</svg>

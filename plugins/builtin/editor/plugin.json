@@ -1,0 +1,218 @@
+{
+  "$schema": "../../../public/schemas/plugin.schema.json",
+  "name": "编辑器",
+  "version": "1.0.0",
+  "description": "Monaco 代码编辑器——语法高亮、智能提示、Diff 对比",
+  "author": "官方",
+  "distribution": "builtin",
+  "core": true,
+  "entry": "src/index.tsx",
+  "appearsIn": { "tabBar": true },
+  "tabBehavior": {
+    "singleton": false,
+    "identityField": "filePath"
+  },
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+    "commands": [
+      { "id": "editor.reopenClosedEditor", "title": "重新打开已关闭的编辑器" },
+      { "id": "editor.compareFiles", "title": "比较文件" }
+    ],
+    "configuration": {
+      "title": "编辑器",
+      "properties": {
+        "files.autoSave": {
+          "type": "string",
+          "enum": ["off", "afterDelay", "onFocusChange"],
+          "default": "off",
+          "description": "自动保存——off 手动保存 / afterDelay 1秒空闲后自动保存 / onFocusChange 切换标签页时自动保存"
+        },
+        "editor.fontSize": {
+          "type": "number",
+          "default": 14,
+          "uiHint": "fontSize",
+          "description": "编辑器字号"
+        },
+        "editor.fontFamily": {
+          "type": "string",
+          "default": "Consolas",
+          "uiHint": "fontFamily",
+          "description": "编辑器字体"
+        },
+        "editor.fontWeight": {
+          "type": "string",
+          "enum": ["normal", "bold", "100", "200", "300", "400", "500", "600", "700", "800", "900"],
+          "default": "normal",
+          "description": "编辑器字重"
+        },
+        "editor.lineHeight": {
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 100,
+          "description": "行高——0 表示自动计算"
+        },
+        "editor.tabSize": {
+          "type": "number",
+          "default": 4,
+          "minimum": 1,
+          "maximum": 16,
+          "description": "Tab 缩进空格数"
+        },
+        "editor.insertSpaces": {
+          "type": "boolean",
+          "default": true,
+          "description": "Tab 键插入空格而非制表符"
+        },
+        "editor.detectIndentation": {
+          "type": "boolean",
+          "default": true,
+          "description": "自动检测文件缩进设置"
+        },
+        "editor.wordWrap": {
+          "type": "string",
+          "enum": ["off", "on", "wordWrapColumn", "bounded"],
+          "default": "off",
+          "description": "自动换行模式"
+        },
+        "editor.lineNumbers": {
+          "type": "string",
+          "enum": ["on", "off", "relative", "interval"],
+          "default": "on",
+          "description": "行号显示"
+        },
+        "editor.minimap.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "显示代码缩略图"
+        },
+        "editor.renderWhitespace": {
+          "type": "string",
+          "enum": ["none", "boundary", "selection", "trailing", "all"],
+          "default": "selection",
+          "description": "空白符渲染"
+        },
+        "editor.cursorStyle": {
+          "type": "string",
+          "enum": ["line", "block", "underline", "line-thin", "block-outline", "underline-thin"],
+          "default": "line",
+          "description": "光标样式"
+        },
+        "editor.cursorBlinking": {
+          "type": "string",
+          "enum": ["blink", "smooth", "phase", "expand", "solid"],
+          "default": "blink",
+          "description": "光标闪烁方式"
+        },
+        "editor.mouseWheelZoom": {
+          "type": "boolean",
+          "default": true,
+          "description": "Ctrl+滚轮缩放字号"
+        },
+        "editor.smoothScrolling": {
+          "type": "boolean",
+          "default": true,
+          "description": "平滑滚动"
+        },
+        "editor.autoClosingBrackets": {
+          "type": "string",
+          "enum": ["always", "languageDefined", "beforeWhitespace", "never"],
+          "default": "always",
+          "description": "自动闭合括号"
+        },
+        "editor.bracketPairColorization": {
+          "type": "boolean",
+          "default": true,
+          "description": "括号对着色"
+        },
+        "editor.guides.indentation": {
+          "type": "boolean",
+          "default": true,
+          "description": "缩进引导线"
+        },
+        "editor.linkedEditing": {
+          "type": "boolean",
+          "default": true,
+          "description": "HTML/XML 标签同步重命名"
+        },
+        "editor.occurrencesHighlight": {
+          "type": "boolean",
+          "default": true,
+          "description": "选中单词所有出现处高亮"
+        },
+        "editor.selectionHighlight": {
+          "type": "boolean",
+          "default": true,
+          "description": "选区匹配文本高亮"
+        },
+        "editor.parameterHints.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "函数参数提示"
+        },
+        "editor.quickSuggestions": {
+          "type": "boolean",
+          "default": true,
+          "description": "快速建议"
+        },
+        "editor.suggest.showWords": {
+          "type": "boolean",
+          "default": true,
+          "description": "补全列表显示单词建议"
+        },
+        "editor.suggest.showSnippets": {
+          "type": "boolean",
+          "default": true,
+          "description": "补全列表显示代码片段"
+        }
+      }
+    },
+    "fileAssociations": [
+      { "extension": "ts", "displayName": "TypeScript" },
+      { "extension": "tsx", "displayName": "TypeScript React" },
+      { "extension": "js", "displayName": "JavaScript" },
+      { "extension": "jsx", "displayName": "JavaScript React" },
+      { "extension": "mjs", "displayName": "JavaScript ES Module" },
+      { "extension": "cjs", "displayName": "JavaScript CommonJS" },
+      { "extension": "json", "displayName": "JSON" },
+      { "extension": "jsonc", "displayName": "JSON with Comments" },
+      { "extension": "html", "displayName": "HTML" },
+      { "extension": "htm", "displayName": "HTML" },
+      { "extension": "css", "displayName": "CSS" },
+      { "extension": "scss", "displayName": "SCSS" },
+      { "extension": "less", "displayName": "Less" },
+      { "extension": "md", "displayName": "Markdown" },
+      { "extension": "mdx", "displayName": "MDX" },
+      { "extension": "py", "displayName": "Python" },
+      { "extension": "rs", "displayName": "Rust" },
+      { "extension": "c", "displayName": "C" },
+      { "extension": "h", "displayName": "C Header" },
+      { "extension": "cpp", "displayName": "C++" },
+      { "extension": "hpp", "displayName": "C++ Header" },
+      { "extension": "go", "displayName": "Go" },
+      { "extension": "java", "displayName": "Java" },
+      { "extension": "xml", "displayName": "XML" },
+      { "extension": "svg", "displayName": "SVG" },
+      { "extension": "yaml", "displayName": "YAML" },
+      { "extension": "yml", "displayName": "YAML" },
+      { "extension": "toml", "displayName": "TOML" },
+      { "extension": "sh", "displayName": "Shell" },
+      { "extension": "bash", "displayName": "Bash" },
+      { "extension": "sql", "displayName": "SQL" },
+      { "extension": "lua", "displayName": "Lua" },
+      { "extension": "php", "displayName": "PHP" },
+      { "extension": "rb", "displayName": "Ruby" },
+      { "extension": "swift", "displayName": "Swift" },
+      { "extension": "kt", "displayName": "Kotlin" },
+      { "extension": "dart", "displayName": "Dart" },
+      { "extension": "diff", "displayName": "Diff" },
+      { "extension": "patch", "displayName": "Patch" },
+      { "extension": "bat", "displayName": "Batch" },
+      { "extension": "cmd", "displayName": "Batch" },
+      { "extension": "ini", "displayName": "INI" },
+      { "extension": "cfg", "displayName": "Config" },
+      { "extension": "txt", "displayName": "Text" },
+      { "extension": "log", "displayName": "Log" }
+    ]
+  }
+}

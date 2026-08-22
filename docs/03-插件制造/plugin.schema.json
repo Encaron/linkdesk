@@ -26,6 +26,12 @@
       "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
       "enum": ["settings", "marketplace"]
     },
+    "distribution": {
+      "type": "string",
+      "enum": ["builtin", "user"],
+      "default": "user",
+      "description": "分发渠道——builtin=内置（随安装包分发，放 plugins/builtin/），user=用户安装（放 plugins/user/）。第三方插件不填即可，默认 user。"
+    },
     "name": {
       "type": "string",
       "description": "显示名称",
@@ -43,7 +49,7 @@
     "iconSource": {
       "type": "string",
       "description": "图标来源",
-      "enum": ["codicon", "svg", "url"],
+      "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "description": {
@@ -83,7 +89,7 @@
         },
         "invokeBeforeClose": {
           "type": "string",
-          "description": "关闭前调用的 Tauri invoke 命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\""
+          "description": "关闭前调用的命令（在 confirmOnClose 确认之后、标签页关闭之前）。如终端声明 \"close_port\"（否决回路已停用 E5.7#43，声明保留待未来池侧 requests 命名空间）"
         },
         "identityField": {
           "type": "string",
@@ -180,16 +186,9 @@
     },
     "requires": {
       "type": "array",
-      "description": "硬依赖——未满足则安装按钮禁用",
-      "items": {
-        "type": "object",
-        "required": ["plugin", "version"],
-        "properties": {
-          "plugin": { "type": "string" },
-          "version": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+      "description": "插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。缺依赖 → 插件挂起（PENDING），依赖就绪自动加载。",
+      "items": { "type": "string" },
+      "uniqueItems": true
     },
     "changelog": {
       "type": "array",
@@ -255,27 +254,15 @@
         "enum": ["serial", "filesystem", "network"]
       }
     },
-    "iconLocation": {
-      "type": "string",
-      "description": "Phase 5g：图标在图标栏的位置。top（默认，上部可拖拽区）或 bottom（底部固定区）。",
-      "enum": ["top", "bottom"],
-      "default": "top"
-    },
-    "viewRole": {
-      "type": "string",
-      "description": "Phase 5g：视图在壳中的交互角色。sidebarPrimary=侧栏为主（点击 toggle 侧栏，标签页由侧栏内操作触发，默认），tabOnly=纯标签页视图（直接开标签页）。tabPrimary 已移除——所有插件统一 sidebarPrimary。",
-      "enum": ["sidebarPrimary", "tabOnly"],
-      "default": "sidebarPrimary"
-    },
-    "shellRendered": {
-      "type": "boolean",
-      "description": "Phase 5g：壳自己渲染此视图（不走插件路由）。仅欢迎页/插件详情页等壳级视图声明。",
-      "default": false
-    },
-    "keepSidebarOnFocus": {
-      "type": "boolean",
-      "description": "Phase 5g：聚焦此视图时保留当前侧栏不清除。如插件详情页浏览时侧栏不变。",
-      "default": false
+    "appearsIn": {
+      "type": "object",
+      "description": "插件 UI 出现位置——声明式。替代 iconLocation+viewRole+keepSidebarOnFocus。不声明 = 不出现。",
+      "properties": {
+        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
+        "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
+        "tabBar": { "type": "boolean", "description": "可作为标签页打开（需 entry），默认 false" },
+        "statusBar": { "type": "boolean", "description": "有状态栏条目，默认 false" }
+      }
     },
     "contributes": {
       "type": "object",

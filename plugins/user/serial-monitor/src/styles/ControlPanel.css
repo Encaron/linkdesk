@@ -1,0 +1,138 @@
+:root { --serial-monitor-ok: #22C55E; }
+
+/**
+ * 控制面板样式——Phase 5.5c。
+ * 对标 VS Code 终端面板 shell 选择器：一行命令条 36px。
+ *
+ * 设计 DNA（§3.13.3）：
+ * - 透明背景 select，session 色文字
+ * - 1px 竖线分隔（border-subtle）
+ * - 连接状态点 ● 8px，绿脉冲/灰静态
+ * - 少用边框，多用颜色/透明度区分层级
+ */
+
+/* ── 命令条容器 ── */
+
+.control-bar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 36px;
+  padding: 0 8px;
+  background: var(--bg-base, var(--bg-window));
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+/* ── 连接状态点 ── */
+
+.control-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--status-disconnected);
+  flex-shrink: 0;
+  margin-right: 2px;
+  transition: background 300ms ease, box-shadow 300ms ease;
+}
+
+.control-dot.on {
+  background: var(--serial-monitor-ok);
+  box-shadow: 0 0 6px var(--serial-monitor-ok);
+}
+
+/* ── SelectBox 在命令条内——加可感知的交互感 ── */
+
+.control-bar .selectbox-trigger {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+/* ── E5.8#30.17：Combobox 在命令条内——与 SelectBox 同视觉密度 ── */
+
+.control-bar .combobox {
+  min-width: 86px;
+}
+
+.control-bar .combobox-field {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 2px 8px;
+  font-size: 12px;
+}
+
+.control-bar .combobox-input {
+  font-size: 12px;
+}
+
+/* ── E5.8#30.17：8N1 窄下拉（只放 4 个组合）── */
+
+.control-bar .control-select-narrow {
+  min-width: 64px;
+}
+
+/* ── 1px 竖线分隔 ── */
+
+.control-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border-subtle, var(--separator));
+  flex-shrink: 0;
+  margin: 0 2px;
+}
+
+/* ── 弹性空白——把右侧按钮推到最右 ── */
+
+.control-spacer {
+  flex: 1;
+  min-width: 4px;
+}
+
+/* ── 连接/断开按钮 ── */
+
+.control-connect-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--border-subtle, var(--separator));
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 120ms, border-color 120ms, color 120ms;
+  flex-shrink: 0;
+}
+
+.control-connect-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.control-connect-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.control-connect-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.control-connect-btn.connected {
+  border-color: var(--serial-monitor-ok);
+  color: var(--serial-monitor-ok);
+}
+
+.control-connect-btn.connected:hover {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+

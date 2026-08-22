@@ -298,6 +298,75 @@ body {
 .legend-dot.added { background: #22C55E; }
 .legend-dot.deleted { background: #EF4444; }
 
+/* === View Section (ViewContainer 子视图) === */
+
+.view-section {
+  border-bottom: 1px solid var(--separator);
+}
+.view-section:last-child { border-bottom: none; }
+
+.view-section-header {
+  display: flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 8px;
+  gap: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+}
+.view-section-header.expanded { font-weight: 700; }
+.view-section-header.collapsed { font-weight: 600; }
+
+.view-section-header .tree-twistie {
+  width: 16px;
+  height: 16px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  font-size: 10px;
+  color: var(--tree-twistie);
+  transition: transform 100ms ease-out;
+}
+.view-section-header.expanded .tree-twistie { transform: rotate(90deg); }
+.view-section-header .tree-twistie.dimmed { color: var(--separator); }
+
+.view-section-title {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.view-section-title.root-name {
+  font-weight: 700;
+  color: var(--text-primary);
+  text-transform: none;
+  font-size: 13px;
+}
+.view-section-title.dimmed { color: var(--tree-dimmed); }
+
+.view-section-actions {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+.view-section-hint {
+  font-size: 10px;
+  font-weight: 400;
+  text-transform: none;
+  color: var(--tree-dimmed);
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* dimmed sections (插件未安装时灰显) */
+.view-section.outline-section,
+.view-section.timeline-section {
+  opacity: 0.5;
+}
+
 /* click ripple */
 @keyframes clickRipple {
   0% { box-shadow: inset 0 0 0 0 rgba(34,197,94,0.3); }
@@ -309,7 +378,7 @@ body {
 <body>
 
 <div class="sidebar">
-  <!-- Header -->
+  <!-- Explorer Header (viewlet title) -->
   <div class="sidebar-header">
     <span class="sidebar-header-title">资源管理器</span>
     <span class="sidebar-header-actions">
@@ -317,23 +386,53 @@ body {
     </span>
   </div>
 
-  <!-- Path Breadcrumb -->
-  <div class="path-breadcrumb">
-    <span class="root-icon">📁</span>
-    <span class="path-text">linkdesk-project</span>
-    <span class="path-switch" title="切换工作区">▾</span>
+  <!-- OPEN EDITORS (collapsed section —— ViewContainer 子视图 1) -->
+  <div class="view-section">
+    <div class="view-section-header collapsed">
+      <span class="tree-twistie">▶</span>
+      <span class="view-section-title">OPEN EDITORS</span>
+    </div>
   </div>
 
-  <!-- Toolbar -->
-  <div class="toolbar">
-    <button class="toolbar-btn" data-tooltip="新建文件">📄</button>
-    <button class="toolbar-btn" data-tooltip="新建文件夹">📂</button>
-    <button class="toolbar-btn" data-tooltip="刷新">↻</button>
-    <button class="toolbar-btn" data-tooltip="收起所有文件夹">⊟</button>
+  <!-- ═══ FOLDERS section ═══
+       🔥 2026-07-31: E4V#15b 已回退——单根多根统一在树中显示根节点（depth=1）。
+       单根：header = 根名，树中一个根节点
+       多根（R15）：header = workspace 名，树中多个根节点（加粗+选中高亮）
+  -->
+  <!-- FOLDERS section (root name + toolbar inline —— ViewContainer 子视图 2) -->
+  <div class="view-section">
+    <div class="view-section-header folders expanded">
+      <span class="tree-twistie">▶</span>
+      <span class="root-icon">📁</span>
+      <span class="view-section-title root-name">linkdesk-project</span>
+      <span class="view-section-actions">
+        <button class="toolbar-btn" data-tooltip="新建文件">📄</button>
+        <button class="toolbar-btn" data-tooltip="新建文件夹">📂</button>
+        <button class="toolbar-btn" data-tooltip="刷新">↻</button>
+        <button class="toolbar-btn" data-tooltip="收起所有文件夹">⊟</button>
+      </span>
+    </div>
+    <!-- Tree -->
+    <div class="tree-body" id="treeBody"></div>
   </div>
 
-  <!-- Tree -->
-  <div class="tree-body" id="treeBody"></div>
+  <!-- OUTLINE (collapsed section —— 语言插件可贡献的 ViewContainer 子视图) -->
+  <div class="view-section outline-section">
+    <div class="view-section-header collapsed dimmed">
+      <span class="tree-twistie dimmed">▶</span>
+      <span class="view-section-title dimmed">大纲</span>
+      <span class="view-section-hint">需要语言扩展</span>
+    </div>
+  </div>
+
+  <!-- TIMELINE (collapsed section —— Git 插件可贡献的 ViewContainer 子视图) -->
+  <div class="view-section timeline-section">
+    <div class="view-section-header collapsed dimmed">
+      <span class="tree-twistie dimmed">▶</span>
+      <span class="view-section-title dimmed">时间线</span>
+      <span class="view-section-hint">需要 Git 扩展</span>
+    </div>
+  </div>
 </div>
 
 <!-- Legend -->
@@ -381,6 +480,41 @@ const treeData = {
           ]
         },
         {
+          // 单子目录链——CompactFolder 压缩为 "utils / helpers"
+          name: 'utils',
+          isDir: true,
+          compact: true,
+          children: [
+            {
+              name: 'helpers',
+              isDir: true,
+              compact: true,
+              children: [
+                { name: 'format.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+                { name: 'validate.ts', isDir: false, icon: '🔷', iconColor: '#3178C6' },
+              ]
+            },
+            {
+              // 🔴 Bug B 复现：目录链→文件→压缩后 twistie 消失
+              //   utils/STLINK Utility/v4.6.0/setup.exe
+              //   压缩链: "STLINK Utility / v4.6.0"
+              //   findLeaf 返回 setup.exe(文件)→无 twistie→回不去
+              name: 'STLINK Utility',
+              isDir: true,
+              compact: true,
+              children: [
+                {
+                  name: 'v4.6.0',
+                  isDir: true,
+                  children: [
+                    { name: 'STM32 ST-LINK Utility v4.6.0-setup.exe', isDir: false, icon: '⚙', iconColor: '#94A3B8' },
+                  ]
+                },
+              ]
+            },
+          ]
+        },
+        {
           name: 'core',
           isDir: true,
           children: [
@@ -402,7 +536,7 @@ const treeData = {
       isDir: true,
       children: [
         {
-          name: 'factory',
+          name: 'builtin',
           isDir: true,
           children: [
             {
@@ -465,19 +599,55 @@ const expandedPaths = new Set([
   '/linkdesk-project/src/components/shared',
   '/linkdesk-project/src/core',
   '/linkdesk-project/plugins',
-  '/linkdesk-project/plugins/factory',
-  '/linkdesk-project/plugins/factory/file-tree',
+  '/linkdesk-project/plugins/builtin',
+  '/linkdesk-project/plugins/builtin/file-tree',
   '/linkdesk-project/plugins/market',
   '/linkdesk-project/docs',
 ]);
 
 let selectedPath = '/linkdesk-project/src/core/CoreEvents.ts';
 
+function getCompactedPath(node) {
+  // 对标 LinkDesk CompactFolder：单子目录链压缩
+  if (!node.isDir || !node.children || node.children.length !== 1) return null;
+  const child = node.children[0];
+  if (!child.isDir) return null;
+  const childSegments = getCompactedPath(child);
+  if (childSegments) return [node.name, ...childSegments];
+  return [node.name, child.name];
+}
+
+function findLeaf(node) {
+  if (!node.isDir || !node.children || node.children.length !== 1) return node;
+  const child = node.children[0];
+  if (!child.isDir) return child;
+  return findLeaf(child);
+}
+
 function flattenTree(node, depth, path, result) {
   const isExpanded = expandedPaths.has(path);
   const hasChildren = node.isDir && node.children !== null && node.children !== undefined;
   const hasLoadedChildren = hasChildren && Array.isArray(node.children);
-  const isEmpty = node.isDir && Array.isArray(node.children) && node.children.length === 0;
+
+  // CompactFolder：单子目录链 → 压缩为一行
+  if (node.isDir && !isExpanded && hasLoadedChildren) {
+    const compacted = getCompactedPath(node);
+    if (compacted) {
+      const leaf = findLeaf(node);
+      result.push({
+        ...leaf,
+        depth,
+        path,
+        expanded: false,
+        hasChildren: leaf.isDir && !!leaf.children && leaf.children.length > 0,
+        hasLoadedChildren: false,
+        isEmpty: false,
+        compactedSegments: compacted,
+        guideDepth: null,
+      });
+      return; // 跳过子节点
+    }
+  }
 
   result.push({
     ...node,
@@ -486,8 +656,8 @@ function flattenTree(node, depth, path, result) {
     expanded: isExpanded,
     hasChildren,
     hasLoadedChildren,
-    isEmpty,
-    guideDepth: null, // computed later
+    isEmpty: node.isDir && Array.isArray(node.children) && node.children.length === 0,
+    guideDepth: null,
   });
 
   if (isExpanded && hasLoadedChildren) {
@@ -499,7 +669,8 @@ function flattenTree(node, depth, path, result) {
 
 function buildVisibleList() {
   const flat = [];
-  flattenTree(treeData, 0, '/linkdesk-project', flat);
+  // 2026-07-31: E4V#15b 已回退——单根多根统一，根在树中
+  flattenTree(treeData, 0, '', flat);
   return flat;
 }
 
@@ -557,6 +728,15 @@ function render() {
     // name with dimmed if needed
     let nameClass = 'tree-name';
     if (item.dimmed) nameClass += ' dimmed';
+    if (item.compactedSegments) nameClass += ' compact-folder';
+
+    // CompactFolder display
+    let nameHtml = item.name;
+    if (item.compactedSegments) {
+      nameHtml = item.compactedSegments.map((seg, i) =>
+        (i > 0 ? '<span class="cf-separator"> / </span>' : '') + seg
+      ).join('');
+    }
 
     // badge
     let badgeHtml = '';
@@ -569,7 +749,7 @@ function render() {
       <div class="${rowClass}" data-path="${item.path}" style="padding-left:${indent}px;">
         <span class="${twistieClass}">▶</span>
         ${iconHtml}
-        <span class="${nameClass}">${item.name}</span>
+        <span class="${nameClass}">${nameHtml}</span>
         ${badgeHtml}
       </div>`;
   }
@@ -588,12 +768,20 @@ function bindEvents() {
       const twistie = row.querySelector('.tree-twistie');
       if (twistie && e.target === twistie) {
         e.stopPropagation();
-        if (expandedPaths.has(path)) {
-          expandedPaths.delete(path);
-        } else {
-          expandedPaths.add(path);
-          // auto-expand parent chain
+        // CompactFolder: twistie controls leaf directory expansion
+        let expandPath = path;
+        if (item.compactedSegments && item.compactedSegments.length > 1) {
+          // Reconstruct leaf path from compacted segments
           const parts = path.split('/');
+          parts.pop(); // remove leaf name
+          expandPath = parts.concat(item.compactedSegments).join('/');
+        }
+        if (expandedPaths.has(expandPath)) {
+          expandedPaths.delete(expandPath);
+        } else {
+          expandedPaths.add(expandPath);
+          // auto-expand parent chain
+          const parts = expandPath.split('/');
           for (let i = 2; i < parts.length; i++) {
             expandedPaths.add(parts.slice(0, i).join('/'));
           }
@@ -622,6 +810,22 @@ function findItem(path) {
   }
   return node;
 }
+
+// === FOLDERS section header twistie ===
+document.querySelector('.folders').addEventListener('click', function(e) {
+  const header = this;  // .folders 自己就是 header
+  const rootPath = '/linkdesk-project';
+  if (expandedPaths.has(rootPath)) {
+    expandedPaths.delete(rootPath);
+    header.classList.remove('expanded');
+    header.classList.add('collapsed');
+  } else {
+    expandedPaths.add(rootPath);
+    header.classList.remove('collapsed');
+    header.classList.add('expanded');
+  }
+  render();
+});
 
 // === Init ===
 render();

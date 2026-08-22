@@ -13,8 +13,7 @@
     },
     "type": {
       "type": "string",
-      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。",
-      "enum": ["view", "card", "theme", "language", "protocol", "resource", "datasource"]
+      "description": "【已废弃】插件类型——不再必需。loader 从 entry/mode/themes/languages/resources 等声明字段自动检测贡献类型。保留仅用于向后兼容。E5.7#66：enum 开放为任意字符串。"
     },
     "core": {
       "type": "boolean",
@@ -23,7 +22,27 @@
     },
     "factoryRole": {
       "type": "string",
-      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。",
+      "description": "系统插槽角色——声明此插件填充哪个系统级功能。settings=设置页（Ctrl+, 打开），marketplace=插件市场。多个插件声明同一 role → 第一个 core: true 的胜出。"
+    },
+    "pluginRole": {
+      "type": "string",
+      "description": "插件加载策略——view=有 React UI 组件，data=纯数据（主题/语言/协议），不填则自动推导。E5.7#66：enum 开放——第三方可声明新加载策略名。"
+    },
+    "appearsIn": {
+      "type": "object",
+      "description": "插件 UI 出现位置——声明式。替代 iconLocation+viewRole+keepSidebarOnFocus。",
+      "properties": {
+        "iconBar": { "type": "string", "enum": ["top", "bottom"], "description": "图标栏位置，不填=不显示图标" },
+        "sidePanel": { "type": "boolean", "description": "有侧栏视图容器，默认 false" },
+        "tabBar": { "type": "boolean", "description": "可作为标签页打开，默认 false" },
+        "statusBar": { "type": "boolean", "description": "有状态栏条目，默认 false" }
+      }
+    },
+    "distribution": {
+      "type": "string",
+      "enum": ["builtin", "user"],
+      "default": "user",
+      "description": "分发渠道——builtin=内置（随安装包分发，放 plugins/builtin/），user=用户安装（放 plugins/user/）。第三方插件不填即可，默认 user。"
     },
     "name": {
       "type": "string",
@@ -42,7 +61,7 @@
     "iconSource": {
       "type": "string",
       "description": "图标来源",
-      "enum": ["codicon", "svg", "url"],
+      "enum": ["codicon", "svg", "url", "lucide"],
       "default": "codicon"
     },
     "description": {
@@ -179,16 +198,9 @@
     },
     "requires": {
       "type": "array",
-      "description": "硬依赖——未满足则安装按钮禁用",
-      "items": {
-        "type": "object",
-        "required": ["plugin", "version"],
-        "properties": {
-          "plugin": { "type": "string" },
-          "version": { "type": "string" }
-        },
-        "additionalProperties": false
-      }
+      "description": "插件级激活顺序依赖（E5.8#13）——按 pluginId 声明，加载时先加载依赖再加载本插件。无版本约束。缺依赖 → 插件挂起（PENDING），依赖就绪自动加载。",
+      "items": { "type": "string" },
+      "uniqueItems": true
     },
     "changelog": {
       "type": "array",
@@ -230,7 +242,7 @@
     },
     "i18n": {
       "type": "object",
-      "description": "插件自带翻译文件",
+      "description": "@deprecated 使用 contributes.i18n 代替——翻译文件声明已迁移到 contributes 下。保留仅向后兼容。",
       "additionalProperties": { "type": "string" }
     },
     "cssVars": {
@@ -248,10 +260,9 @@
     "permissions": {
       "type": "array",
       "description": "权限声明",
-      "$comment": "Phase 6 启用——serial/filesystem/network 权限白名单",
+      "$comment": "Phase 6 启用——serial/filesystem/network 为第一批白名单值。E5.7#66：enum 开放——第三方可声明新权限名（主进程解释）。",
       "items": {
-        "type": "string",
-        "enum": ["serial", "filesystem", "network"]
+        "type": "string"
       }
     },
     "iconLocation": {
@@ -297,10 +308,7 @@
         },
         "menus": {
           "type": "object",
-          "description": "菜单项声明——按 MenuId 分组",
-          "propertyNames": {
-            "enum": ["commandPalette", "tabContext", "editorContext", "extensionGear", "marketplaceItemGear", "menuBar", "fileContext", "cardContext", "quickSendContext", "iconBar", "settingItemGear"]
-          },
+          "description": "菜单项声明——按 MenuId 分组。壳内置注册点见 MenuRegistry MENU_SLOTS 常量表；E5.7#64 起 MenuId 开放字符串，第三方可声明任意新注册点（propertyNames enum 已删）。",
           "additionalProperties": {
             "type": "array",
             "items": {
@@ -347,10 +355,12 @@
                 "type": "object",
                 "required": ["type", "default", "description"],
                 "properties": {
-                  "type": { "type": "string", "enum": ["string", "number", "boolean"] },
+                  "type": { "type": "string", "enum": ["string", "number", "boolean", "object", "array"] },
                   "default": {},
                   "enum": { "type": "array" },
-                  "description": { "type": "string" }
+                  "enumDescriptions": { "type": "object", "description": "enum 值 → 显示名映射" },
+                  "description": { "type": "string" },
+                  "uiHint": { "type": "string", "description": "设置编辑器渲染提示。SettingsView 按提示选择控件。不认识的 hint 降级回 type 默认渲染——不抛错。E5.7#66：enum 开放——第三方可声明新 hint 名。" }
                 },
                 "additionalProperties": false
               }
@@ -362,6 +372,21 @@
           "type": "object",
           "description": "弱默认值——插件给其他配置项的建议值，用户手动设置优先",
           "additionalProperties": {}
+        },
+        "themes": {
+          "type": "array",
+          "description": "主题声明——对标 VS Code contributes.themes。插件贡献主题供用户在主题浏览器/外观中切换。",
+          "items": {
+            "type": "object",
+            "required": ["id", "label", "uiTheme", "path"],
+            "properties": {
+              "id": { "type": "string", "description": "主题 ID——如 my-theme-dark" },
+              "label": { "type": "string", "description": "显示名称——如 My Theme Dark" },
+              "uiTheme": { "type": "string", "enum": ["dark", "light", "highContrast"], "description": "基础 UI 主题——暗色/亮色/高对比" },
+              "path": { "type": "string", "description": "主题定义 JSON 文件路径" }
+            },
+            "additionalProperties": false
+          }
         },
         "iconThemes": {
           "type": "array",
@@ -397,6 +422,49 @@
             "additionalProperties": false
           }
         },
+        "langDefs": {
+          "type": "array",
+          "description": "编程语言定义——对标 VS Code contributes.languages。声明新语言的 ID/扩展名/语法高亮/LSP 支持。",
+          "items": {
+            "type": "object",
+            "required": ["id", "extensions"],
+            "properties": {
+              "id": { "type": "string", "description": "语言 ID——如 cpp / python / rust" },
+              "extensions": { "type": "array", "items": { "type": "string" }, "description": "扩展名列表——如 ['.cpp', '.cxx', '.h']" },
+              "aliases": { "type": "array", "items": { "type": "string" }, "description": "别名——如 ['C++', 'C']" },
+              "monarch": {
+                "type": "object",
+                "description": "可选——Monarch tokenizer 定义（Monaco 内建语法高亮）",
+                "properties": {
+                  "tokenizer": { "type": "object" }
+                }
+              },
+              "lsp": {
+                "type": "object",
+                "description": "可选——LSP 语言服务器配置",
+                "properties": {
+                  "command": { "type": "string", "description": "启动命令——如 node_modules/pyright/dist/pyright-langserver.js --stdio" },
+                  "args": { "type": "array", "items": { "type": "string" }, "description": "启动参数" }
+                }
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "fileAssociations": {
+          "type": "array",
+          "description": "文件关联——文件扩展名 → 插件路由（主进程 plugin-manifest-loader 消费，E5.7#50 壳侧注册已删）。只声明扩展名 + 可选打开命令；pluginId 用目录名，无需声明。",
+          "items": {
+            "type": "object",
+            "required": ["extension"],
+            "properties": {
+              "extension": { "type": "string", "description": "文件扩展名——不含点，如 dxf / stl / step" },
+              "command": { "type": "string", "description": "可选——打开该扩展名文件时执行的命令 ID" },
+              "displayName": { "type": "string", "description": "可选——'打开方式…'选择器中的显示名" }
+            },
+            "additionalProperties": false
+          }
+        },
         "languages": {
           "type": "array",
           "description": "语言包——对标 VS Code language extension point。合集语言包一个 plugin.json 声明多个条目。",
@@ -410,6 +478,156 @@
             },
             "additionalProperties": false
           }
+        },
+        "titleBar": {
+          "type": "object",
+          "description": "顶栏按钮声明——对标 VS Code titleBar。声明标题栏左侧/右侧的图标按钮。",
+          "properties": {
+            "left": {
+              "type": "array",
+              "description": "标题栏左侧按钮",
+              "items": {
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                  "command": { "type": "string", "description": "点击执行的命令 ID" },
+                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                },
+                "additionalProperties": false
+              }
+            },
+            "right": {
+              "type": "array",
+              "description": "标题栏右侧按钮",
+              "items": {
+                "type": "object",
+                "required": ["command"],
+                "properties": {
+                  "command": { "type": "string", "description": "点击执行的命令 ID" },
+                  "icon": { "type": "string", "description": "codicon 图标名（如 codicon-settings）或图片路径" },
+                  "when": { "type": "string", "description": "context key when 条件——不满足时按钮隐藏" }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "viewsContainers": {
+          "type": "object",
+          "description": "声明侧栏容器——点此插件图标时切换到此容器。对标 VS Code viewsContainers。",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "object",
+              "required": ["title"],
+              "properties": {
+                "title": { "type": "string", "description": "容器标题——侧栏 header 显示" },
+                "icon": { "type": "string", "description": "容器图标——覆盖插件自身的图标" },
+                "location": {
+                  "type": "string",
+                  "enum": ["sidebar", "panel", "auxiliarybar"],
+                  "default": "sidebar",
+                  "description": "容器位置——sidebar=侧栏, panel=底部面板, auxiliarybar=辅助侧栏"
+                },
+                "hideIfEmpty": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "无活跃 view 时自动隐藏容器"
+                },
+                "order": {
+                  "type": "number",
+                  "description": "同位置内的排序权重。小值靠前"
+                },
+                "mergeHeaderWhenSingle": {
+                  "type": "boolean",
+                  "default": false,
+                  "description": "容器内只有一个 view 时隐藏 view header——标题合并到容器 header。对标 VS Code mergeViewWithContainerWhenSingleView"
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "additionalProperties": false
+        },
+        "views": {
+          "type": "object",
+          "description": "往容器注册视图——key = 容器 ID。对标 VS Code views。",
+          "patternProperties": {
+            "^[a-z][a-z0-9-]*$": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["id", "render"],
+                "properties": {
+                  "id": { "type": "string", "description": "View 唯一 ID——如 folders / sessions / settings" },
+                  "title": { "type": "string", "description": "显示标题——SidebarSection 的 header 文字。空字符串=不显示折叠头" },
+                  "render": { "type": "string", "description": "视图组件的模块路径——相对插件根目录" },
+                  "when": { "type": "string", "description": "Context key when 条件" },
+                  "order": { "type": "number", "description": "同容器内的排序权重。小值在上" },
+                  "role": { "type": "string", "enum": ["toolbar", "section"], "default": "section", "description": "容器角色——toolbar 粘顶不被覆盖，section 有折叠头同级替换" },
+                  "collapsed": { "type": "boolean", "default": false, "description": "初始折叠状态" },
+                  "canToggleVisibility": { "type": "boolean", "default": true, "description": "用户可通过 Views 子菜单切换可见性" },
+                  "canMoveView": { "type": "boolean", "default": true, "description": "用户可将此 view 移到其他容器" },
+                  "hideByDefault": { "type": "boolean", "default": false, "description": "默认隐藏——用户需手动从 Views 菜单开启" },
+                  "singleViewPaneContainerTitle": { "type": "string", "description": "单 view 且容器 mergeHeaderWhenSingle 时替代容器 title" },
+                  "titleDescription": { "type": "string", "description": "标题旁的副文字——如 (5 files)" },
+                  "showActions": {
+                    "type": "string",
+                    "enum": ["always", "whenExpanded", "default"],
+                    "default": "default",
+                    "description": "actions 显隐时机——always=始终, whenExpanded=展开时, default=hover 显示"
+                  },
+                  "titleTooltip": { "type": "string", "description": "标题 hover tooltip——标题截断时显示完整文字" },
+                  "titleActions": {
+                    "type": "array",
+                    "description": "视图动作区声明（E5.8#36.5）——面板标签栏/侧栏 header 右侧 widget 列表，随视图走随视图迁移。三形态：icon 按钮 / dropdown 下拉菜单 / split 主按钮+下拉复合（VS Code 终端 [+] 新建 + [▾] 配置文件列表同款）。动作 = command + args，label/title 为 i18n key（中文原文）。",
+                    "items": {
+                      "type": "object",
+                      "required": ["type", "id"],
+                      "properties": {
+                        "type": { "type": "string", "enum": ["icon", "dropdown", "split"], "description": "widget 形态" },
+                        "id": { "type": "string", "description": "widget 唯一 ID——React key / 下拉展开状态定位" },
+                        "command": { "type": "string", "description": "点击执行的命令 ID（split=主按钮默认动作 / icon 必填）" },
+                        "icon": { "type": "string", "description": "codicon 类名（如 codicon-add）——icon/split 主按钮图标" },
+                        "title": { "type": "string", "description": "tooltip / aria-label——i18n key（split 无 icon 时作文本按钮）" },
+                        "args": { "description": "命令参数——executeCommand(command, args) 单个位置参数透传（JSON 可序列化）" },
+                        "items": {
+                          "type": "array",
+                          "description": "dropdown / split 下拉条目",
+                          "items": {
+                            "type": "object",
+                            "required": ["label", "command"],
+                            "properties": {
+                              "label": { "type": "string", "description": "显示文本——i18n key（中文原文）" },
+                              "command": { "type": "string", "description": "点击执行的命令 ID" },
+                              "args": { "description": "命令参数——单个位置参数透传" }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          },
+          "additionalProperties": false
+        },
+        "floatingPanel": {
+          "type": "object",
+          "description": "悬浮面板声明（E5.8#39.5）——声明 contributes.views 中某视图可在壳内悬浮面板显示（类型 B）。viewId 必须引用已注册视图——声明寻址解析出 pluginId/renderPath/title；未声明则无「在悬浮面板中打开」右键入口（I8-3 声明即出现）。首批声明者 = settings（#38 Ctrl+, 弹面板）。",
+          "required": ["viewId"],
+          "properties": {
+            "viewId": { "type": "string", "description": "视图 ID——contributes.views 已注册视图" }
+          },
+          "additionalProperties": false
+        },
+        "i18n": {
+          "type": "object",
+          "description": "插件自带翻译——key=语言代码, value=相对插件根目录的 JSON 文件路径。如 { \"en\": \"i18n/en.json\" }。不需要 zh.json——中文 key 自带兜底。",
+          "additionalProperties": { "type": "string" }
         }
       },
       "additionalProperties": false
@@ -441,5 +659,5 @@
       }
     }
   ],
-  "additionalProperties": false
+  "additionalProperties": true
 }

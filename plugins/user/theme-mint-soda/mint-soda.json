@@ -1,0 +1,56 @@
+{
+  "name": "薄荷苏打 Mint Soda",
+  "type": "light",
+  "colors": {
+    "bg-icon-bar": "#B8ECD6",
+    "bg-side-panel": "#E4EBFF",
+    "bg-toolbar": "#FFEDDF",
+    "bg-window": "#FFFBF5",
+    "bg-card": "#FFFFFF",
+    "bg-status": "#EDE3FF",
+    "bg-input": "#FFFFFF",
+
+    "accent": "#6B4AE0",
+    "accent-hover": "#8B6CF0",
+
+    "text-primary": "#382E24",
+    "text-secondary": "#7A7268",
+    "text-muted": "#8A7A66",
+
+    "border": "#E8E0D8",
+    "separator": "#EDE5DD",
+
+    "icon-active": "#6B4AE0",
+    "icon-inactive": "#8A7C98",
+
+    "toggle-knob": "#6B4AE0",
+    "toggle-knob-on": "#FFFFFF",
+
+    "status-connected": "#34D399",
+    "status-disconnected": "#D4C8B8",
+
+    "scrollbar-thumb": "rgba(107, 74, 224, 0.12)",
+    "scrollbar-thumb-hover": "rgba(107, 74, 224, 0.22)",
+
+    "tab-hover-bg": "#F5F0E8",
+    "drop-indicator": "rgba(107, 74, 224, 0.04)",
+    "dirty-dot": "#6B4AE0",
+
+    "context-menu-shadow": "0 4px 16px rgba(56, 46, 36, 0.10)",
+    "drag-preview-shadow": "0 4px 20px rgba(56, 46, 36, 0.12)",
+
+    "hover-overlay": "rgba(107, 74, 224, 0.04)",
+
+    "system-log": "#7A7268",
+    "sent-echo": "#6B4AE0",
+    "received": "#382E24",
+
+    "cm-timestamp": "#A49A90",
+
+    "badge-text": "#FFFFFF",
+    "text-on-accent": "#FFFFFF",
+    "danger": "#DC2626",
+    "error": "#DC2626",
+    "warning": "#D97706"
+  }
+}

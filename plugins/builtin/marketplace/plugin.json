@@ -1,0 +1,35 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "插件市场",
+  "version": "1.0.0",
+  "icon": "resources/icon.svg",
+  "description": "浏览、安装和管理插件",
+  "author": "官方",
+  "distribution": "builtin",
+  "core": true,
+  "factoryRole": "marketplace",
+  "entry": "src/index.tsx",
+  "appearsIn": { "iconBar": "top", "sidePanel": true },
+  "tabBehavior": {
+    "singleton": true
+  },
+  "contributes": {
+    "i18n": { "en": "i18n/en.json" },
+    "viewsContainers": {
+      "marketplace": {
+        "title": "插件市场",
+        "location": "sidebar",
+        "hideIfEmpty": false
+      }
+    },
+    "views": {
+      "marketplace": [
+        { "id": "search",      "role": "toolbar", "title": "搜索", "render": "src/views/SearchView.tsx",             "order": -1 },
+        { "id": "installed",   "title": "已安装", "render": "src/views/InstalledListView.tsx",   "order": 0 },
+        { "id": "builtin",     "title": "内置",   "render": "src/views/BuiltinListView.tsx",     "order": 1, "collapsed": true },
+        { "id": "disabled",    "title": "已禁用", "render": "src/views/DisabledListView.tsx",    "order": 2, "collapsed": true },
+        { "id": "uninstalled", "title": "待安装", "render": "src/views/UninstalledListView.tsx",  "order": 3, "collapsed": true }
+      ]
+    }
+  }
+}

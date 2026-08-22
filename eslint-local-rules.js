@@ -456,10 +456,726 @@ const noModuleLevelIpcListener = {
   },
 };
 
+// ═══════════════════════════════════════════════════════════
+// 规则 6：禁止 QuickPick renderItem——新代码必须走 slot props
+// ═══════════════════════════════════════════════════════════
+//
+// E3.5 #CP17 QuickPick 布局归一化：renderItem 自由度过高导致视觉不统一。
+// 新代码必须用 renderLabel/renderCategory/renderDetail/renderDetailRight。
+// renderItem 仅保留向后兼容，已迁移的 5 个消费者全部切 slot。
+//
+// 错误示例：
+//   <QuickPick renderItem={(item) => <span>...</span>} ... />
+//
+// 正确示例：
+//   <QuickPick renderLabel={(item) => item.title} renderDetail={(item) => item.id} ... />
+
+const noQuickpickRenderItem = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "QuickPick 禁止 renderItem——新代码必须用 structured slot props",
+      recommended: true,
+    },
+    messages: {
+      noRenderItem:
+        "🔥 QuickPick renderItem 已废弃——E3.5 #CP17 布局归一化后禁止使用。" +
+        " renderItem 自由度过高导致各面板视觉不统一。" +
+        " 改用 slot props：renderLabel / renderCategory / renderDetail / renderDetailRight。" +
+        " 详见 docs/02-Electron架构/E3.5-软件生态美化/命令面板美化/03-QuickPick布局归一化.md",
+    },
+  },
+
+  create(context) {
+    return {
+      // 匹配 <QuickPick renderItem={...} ... />
+      JSXElement(node) {
+        const tagName = node.openingElement.name;
+        if (tagName.type !== "Identifier" || tagName.name !== "QuickPick") return;
+
+        for (const attr of node.openingElement.attributes) {
+          if (attr.type === "JSXAttribute" && attr.name.type === "JSXIdentifier" && attr.name.name === "renderItem") {
+            context.report({ node: attr, messageId: "noRenderItem" });
+            return;
+          }
+        }
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 7：React 组件内禁止裸调 getConfigurationValue——必须用 useConfigurationValue hook
+// ═══════════════════════════════════════════════════════════
+//
+// excludeGitIgnore 漏订阅 bug 教训：getConfigurationValue + onDidChangeConfiguration 是
+// 两个独立调用——人脑配对，漏了就是死配置（改设置不生效）。
+// useConfigurationValue hook 内部已配对——用 hook 不可能漏。
+//
+// 错误示例（组件函数体内）：
+//   function MyView() {
+//     const val = getConfigurationValue<boolean>("my.config"); // ← 漏订阅
+//     return <div>{val}</div>;
+//   }
+//
+// 正确示例：
+//   function MyView() {
+//     const val = useConfigurationValue<boolean>("my.config"); // ← 自动订阅
+//     return <div>{val}</div>;
+//   }
+//
+// 非 React 代码（.ts 文件、async handler 内）不受限——直调 getConfigurationValue 合法。
+
+const noRawConfigurationRead = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "React 组件内禁止裸调 getConfigurationValue——必须用 useConfigurationValue hook 防漏订阅",
+      recommended: true,
+    },
+    messages: {
+      noRawRead:
+        "🔥 React 组件内禁止裸调 getConfigurationValue('{{key}}')。" +
+        " 只读不订阅 = 改设置不生效（excludeGitIgnore 漏订阅教训）。" +
+        " 修复：改用 useConfigurationValue<{{type}}>('{{key}}')——hook 内部已配 onDidChangeConfiguration。" +
+        " 非组件代码（.ts / 模块级函数 / async handler 内）可忽略此规则。",
+    },
+  },
+
+  create(context) {
+    const filename = context.filename || context.getFilename?.() || "";
+
+    /** 判断函数是否在 React 组件内——查找祖先函数有没有大写开头的（组件惯例） */
+    function isInsideComponent(node) {
+      let cur = node.parent;
+      while (cur) {
+        if (
+          cur.type === "FunctionDeclaration" ||
+          cur.type === "FunctionExpression" ||
+          cur.type === "ArrowFunctionExpression"
+        ) {
+          const name = cur.id?.name || "";
+          // 组件惯例：函数名大写开头（FoldersView/App/SettingsView）
+          if (name && /^[A-Z]/.test(name)) return true;
+        }
+        cur = cur.parent;
+      }
+      return false;
+    }
+
+    return {
+      CallExpression(node) {
+        if (
+          node.callee.type !== "Identifier" ||
+          node.callee.name !== "getConfigurationValue"
+        )
+          return;
+
+        if (!filename.endsWith(".tsx")) return;
+
+        const func = findEnclosingFunction(node);
+        if (!func) return;
+
+        // async 函数 → handler/syncRoots → 允许
+        if (func.async) return;
+
+        // use 开头 → 已在 hook 内 → 允许
+        const funcName = (func.id && func.id.name) || "";
+        if (funcName.startsWith("use")) return;
+
+        // 不在 React 组件内 → 模块级函数 → 允许
+        if (!isInsideComponent(node)) return;
+
+        const keyArg = node.arguments[0];
+        const key = keyArg && keyArg.type === "Literal" ? keyArg.value
+          : context.getSourceCode().getText(keyArg || node);
+
+        context.report({
+          node,
+          messageId: "noRawRead",
+          data: { key, type: "T" },
+        });
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 8：禁止手写 replace(/\\/g, "/") —— 必须走 normalizePath
+// ═══════════════════════════════════════════════════════════
+//
+// E4V#60 路径归一化。Windows \ vs / 正反斜杠不匹配是反复出现的 bug：
+// WorkspaceService.addFolder/removeFolder → findIndex === → 找不到
+// compileGlob dist/ 尾斜杠 → 不匹配
+// 每次都是不同模块忘了归一化。现在 normalizePath 已提到 core——
+// 手写 replace(/\\/g, "/") 等于绕过唯一正源。
+//
+// 错误示例：
+//   const p = uri.replace(/\\/g, "/");          // ← 绕过 normalizePath
+//   const match = raw.includes(p.replace(/\\/g, "/")); // ← 同上
+//
+// 正确示例：
+//   import { normalizePath } from "@src/core/utils/path/pathUtils"; // 或 from "./path/pathUtils"
+//   const p = normalizePath(uri);
+//
+// 例外：src/core/utils/path/pathUtils.ts 自身（唯一正源定义处）
+
+const noRawPathReplace = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath（E4V#60 归一化）",
+      recommended: true,
+    },
+    messages: {
+      noRawReplace:
+        "🔥 禁止手写 replace(/\\\\/g, '/')——必须走 normalizePath。" +
+        " Windows \\ vs / 不匹配是反复出现的 bug（WorkspaceService/compileGlob/dist尾斜杠）。" +
+        " 修复：import { normalizePath } from '@src/core/utils/path/pathUtils' 然后 normalizePath(uri)。" +
+        " src/core/utils/path/pathUtils.ts 自身是唯一正源定义处——此规则不适用。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
+
+    // pathUtils.ts 自身是 normalizePath 正源定义处——放行
+    if (filename.endsWith("/src/core/utils/path/pathUtils.ts")) return {};
+    // electron/ main 进程独立构建——无法 import src/core/utils/path/pathUtils
+    if (filename.includes("/electron/")) return {};
+
+    return {
+      Literal(node) {
+        if (!node.regex) return;
+        // 匹配 /\\/g 正则字面量
+        const raw = node.raw || "";
+        if (raw === "/\\\\/g" || raw === "/\\\\/gi") {
+          // 检查是否用于 replace 调用
+          const parent = node.parent;
+          if (
+            parent &&
+            parent.type === "CallExpression" &&
+            parent.callee.type === "MemberExpression" &&
+            parent.callee.property.type === "Identifier" &&
+            parent.callee.property.name === "replace"
+          ) {
+            // 检查 replace 的目标是否是字符串，替换值是否是 "/"
+            const args = parent.arguments;
+            if (args.length >= 2) {
+              const replacement = args[1];
+              if (
+                replacement &&
+                replacement.type === "Literal" &&
+                (replacement.value === "/" || replacement.value === "\\")
+              ) {
+                context.report({
+                  node: parent,
+                  messageId: "noRawReplace",
+                });
+              }
+            }
+          }
+        }
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 9：useEffect 内禁止注册 IPC 监听器（E5#11l Bug 4 教训）
+// ═══════════════════════════════════════════════════════════
+//
+// E5#11l 验证发现：useEffect(() => { pv.onReady(cb) }, []) 在 React mount
+// 之后才注册 ipcRenderer.on——插件 WebView 的 notifyReady IPC 事件可能在此
+// 之前到达，事件静默丢失，多 WebView 间歇性失效。
+//
+// 正确模式：preload 脚本模块顶层 ipcRenderer.on + 缓冲 + 回放。
+// 详见 memory [[e5-multi-webview-6-bugs]] Bug 4。
+//
+// 错误示例：
+//   useEffect(() => {
+//     const pv = window.linkdesk.pluginViews;
+//     pv.onReady((pluginId) => { ... });  // ← IPC 监听器在 mount 后才注册
+//   }, []);
+//
+// 正确示例（preload-shell.ts 模块顶层）：
+//   const _readyBuffer: string[] = [];
+//   let _onReadyActive = false;
+//   ipcRenderer.on('plugin-view:ready', (_e, pid) => {
+//     if (!_onReadyActive) _readyBuffer.push(pid);
+//   });
+//   // contextBridge 暴露 onReady: (cb) => { 回放 + 注册 }
+
+const noIpcListenerInEffect = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "useEffect 内禁止注册 IPC 监听器——事件可能在 mount 前到达（E5#11l Bug 4）",
+      recommended: true,
+    },
+    messages: {
+      noEffectIpc:
+        "🔥 useEffect 内注册了 IPC 监听器（{{method}}），依赖数组为 []。" +
+        " IPC 事件可能在 React mount 之前到达——事件静默丢失（E5#11l Bug 4 notifyReady 竞态）。" +
+        " 修复：在 preload 脚本模块顶层用 ipcRenderer.on + 缓冲数组 + onReady 回调回放模式。" +
+        " 详见 memory [[e5-multi-webview-6-bugs]] Bug 4 和 Bug 5 修法。",
+    },
+  },
+
+  create(context) {
+    // IPC 相关的方法名——onReady / onData / onStats / onSystem / ipcRenderer.on
+    const IPC_METHODS = new Set(["onReady", "onData", "onStats", "onSystem"]);
+
+    return {
+      CallExpression(node) {
+        // 只检查 useEffect
+        if (
+          node.callee.type !== "Identifier" ||
+          node.callee.name !== "useEffect"
+        )
+          return;
+
+        const args = node.arguments;
+        if (args.length < 2) return;
+        const depsArg = args[1];
+        // 依赖数组非空 → 可能是有意的条件注册 → 放行（只拦截 [] 这种"只跑一次"的模式）
+        if (
+          !depsArg ||
+          depsArg.type !== "ArrayExpression" ||
+          depsArg.elements.length > 0
+        )
+          return;
+
+        const body = args[0];
+        if (
+          !body ||
+          (body.type !== "ArrowFunctionExpression" &&
+            body.type !== "FunctionExpression")
+        )
+          return;
+
+        const bodyText = context.getSourceCode().getText(body);
+
+        // 检测 pv.onReady / xxx.onReady 调用
+        for (const method of IPC_METHODS) {
+          if (bodyText.includes(`.${method}(`)) {
+            context.report({
+              node,
+              messageId: "noEffectIpc",
+              data: { method: `.${method}` },
+            });
+            return;
+          }
+        }
+
+        // 检测 ipcRenderer.on( 调用
+        if (bodyText.includes("ipcRenderer.on(")) {
+          context.report({
+            node,
+            messageId: "noEffectIpc",
+            data: { method: "ipcRenderer.on" },
+          });
+        }
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 10：插件 import 核心模块（多 WebView 火种——机械检查）
+// ═══════════════════════════════════════════════════════════
+//
+// 多 WebView 下插件在独立 JS 堆——import 核心模块有副作用的调用静默失效。
+// 此规则 warn 级——检测到后 AI 必须在 memory/plugin-import-exceptions.md 记录例外。
+//
+// 白名单（允许的 import，不触发 warn）：
+//   - 纯类型/枚举: MenuRegistry 的 MenuId、plugin.json 的 tabBehavior/viewRole 类型
+//   - 纯工具函数: RingBuffer/DataConverter/HexToBytes/DataDispatch/ProtocolParser/EncodingService/FileSearcher
+//   - 已有 API 替代: 无（所有 Registry/Service 都应走 linkdesk.* API）
+
+const PLUGIN_IMPORT_WHITELIST = new Set([
+  // 纯类型 / 枚举
+  "@src/core/registry/commands/MenuRegistry",  // MenuId 枚举
+  // 纯工具函数（无模块级状态，无副作用）
+  "@src/core/pipeline/DataConverter",
+  "@src/core/pipeline/DataDispatch",
+  "@src/core/pipeline/RingBuffer",
+  "@src/core/pipeline/ProtocolParser",
+  "@src/core/utils/CancellationToken",
+  "@src/core/services/EncodingService",
+  "@src/core/services/FileSearcher",
+  // 壳内 React 组件（跨 WebView 渲染 DOM——暂无法 IPC 化，火种保留）
+  "@src/components/shared/ContextMenu",
+  "@src/components/shared/MenuRenderer",
+  "@src/components/shared/InlineInput",
+  "@src/components/shared/SelectBox",
+  "@src/components/shared/ConfirmDialog",
+  "@src/components/shared/OverlayPortal",
+  "@src/components/views/PluginDetailView",
+  // React hooks / context（纯渲染逻辑，无服务端状态）
+  "@src/core/react/CoreEvents",
+  "@src/core/react/useSendData",
+  "@src/core/react/usePluginIpcEvent",
+  "@src/core/hooks/useTabManager",
+  "@src/core/hooks/useIpcEvent",
+  // E5.8#20-c：测试专用运行时 import——FileTreeClipboard.test.ts 需真实 ContextKeyService 实例（唯一测试运行时例外，白名单收口）
+  "@src/core/registry/commands/ContextKeyService",
+]);
+
+const noCoreImportInPlugin = {
+  meta: {
+    type: "problem",
+    docs: {
+      description:
+        "插件禁止直接 import 核心模块——多 WebView 下静默失效。检查 memory/plugin-import-exceptions.md 记录例外。",
+      recommended: true,
+    },
+    messages: {
+      noCoreImport:
+        "🔥 插件 import 了核心模块 \"{{source}}\"——多 WebView 下 {{reason}}。" +
+        " 请确认 memory/plugin-import-exceptions.md 是否已记录此例外。" +
+        " 若未记录：评估 → 记录原因+替代方案 → 或切到 linkdesk.* API。" +
+        " 见 memory [[plugin-import-iron-law]]。",
+    },
+  },
+
+  create(context) {
+    const filename = context.filename || context.getFilename?.() || "";
+    if (!filename.includes("plugins")) return {};
+
+    // E5.8#20-d：测试豁免已取消（原 E5.7#80）——测试文件同样检查 @src/core import。
+    // #20-c 迁移后插件零 @src/core 类型 import，唯一运行时例外 ContextKeyService 走白名单。
+    // 判断模块类型的辅助函数
+    function classify(source) {
+      if (PLUGIN_IMPORT_WHITELIST.has(source)) return null; // 白名单——不报
+      if (source.includes("/registry/") || source.includes("/services/"))
+        return "有模块级状态（Registry/Service）→ 调用方的修改壳进程看不到";
+      if (source.includes("@src/core"))
+        return "插件和壳不在同一 JS 堆 → 副作用不共享";
+      return null; // 非 @src/core —— 不报
+    }
+
+    return {
+      ImportDeclaration(node) {
+        // E5.8#20-d：类型 import 豁免已取消（原 E5.7#80）——类型擦除后虽零运行时耦合，
+        // 但 #18 拍板"类型也禁"：插件类型消费唯一合法路径 = @linkdesk/contracts（契约产物）。
+        const source = node.source.value;
+        if (!source.startsWith("@src/core/")) return;
+        const reason = classify(source);
+        if (!reason) return;
+        context.report({ node, messageId: "noCoreImport", data: { source, reason } });
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 11：JSX 文本/属性中的硬编码中文必须走 t() 包裹
+// ═══════════════════════════════════════════════════════════
+//
+// E5#36 已清理 42 处硬编码中文——但人是会忘的。此规则机械拦截。
+// warn 级——不阻塞构建，但提醒开发者包 t()。
+//
+// 错误示例：
+//   <span>你好</span>
+//   <input placeholder="搜索..." />
+//
+// 正确示例：
+//   <span>{t("你好")}</span>
+//   <input placeholder={t("搜索...")} />
+
+const CHINESE_RE = /[一-鿿]/;
+
+function hasChinese(text) {
+  return CHINESE_RE.test(text);
+}
+
+function isInsideTranslationCall(node) {
+  let cur = node.parent;
+  while (cur) {
+    if (cur.type === "CallExpression") {
+      const callee = cur.callee;
+      if (callee.type === "Identifier" && (callee.name === "t" || callee.name === "i18n")) return true;
+      if (callee.type === "MemberExpression" &&
+          callee.object.type === "Identifier" && callee.object.name === "i18n" &&
+          callee.property.type === "Identifier" && callee.property.name === "t") return true;
+    }
+    if (cur.type === "JSXExpressionContainer" || cur.type === "JSXAttribute") break;
+    cur = cur.parent;
+  }
+  return false;
+}
+
+// E5.8#6.6：字面量是否落在 JSX 表达式上下文——向上穿透三元/逻辑链。
+// 盲区修复前 `placeholder={cond ? "选择目录…" : "选择文件…"}` 的 Literal 父级是
+// ConditionalExpression 非 JSXExpressionContainer，规则漏报（FilePathInput 教训）。
+// 只允许穿透 ConditionalExpression / LogicalExpression——遇到函数参数（CallExpression）
+// 等非 JSX 容器立即 break，不扩大误报面。
+function isInJsxContext(node) {
+  let cur = node.parent;
+  while (cur) {
+    if (cur.type === "JSXExpressionContainer" || cur.type === "JSXAttribute") return true;
+    if (cur.type === "ConditionalExpression" || cur.type === "LogicalExpression") {
+      cur = cur.parent;
+      continue;
+    }
+    break;
+  }
+  return false;
+}
+
+const noHardcodedChinese = {
+  meta: {
+    type: "suggestion",
+    docs: {
+      description: "JSX 中的中文字符必须走 t() 包裹——防 i18n 遗漏",
+      recommended: true,
+    },
+    messages: {
+      noChinese: "🔤 JSX 中的中文字符 \"{{text}}\" 未用 t() 包裹。" +
+        " 修复：<span>{t(\"中文\")}</span> 或 placeholder={t(\"中文\")}。" +
+        " 注释/console/测试文件可忽略。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "");
+
+    return {
+      // JSX 标签间的文本：<span>你好</span>
+      JSXText(node) {
+        const text = node.value.trim();
+        if (!text || !hasChinese(text)) return;
+        context.report({
+          node,
+          messageId: "noChinese",
+          data: { text: text.slice(0, 20) },
+        });
+      },
+
+      // 字符串字面量：placeholder="搜索..." 或 const x = "你好"
+      Literal(node) {
+        if (typeof node.value !== "string" || !hasChinese(node.value)) return;
+
+        // 跳过 t("...") / i18n.t("...") 内的字符串
+        if (isInsideTranslationCall(node)) return;
+
+        // 只报告 JSX 属性/表达式中的字符串（非 JSX 上下文走下一规则或忽略）。
+        // E5.8#6.6：向上穿透三元/逻辑链（isInJsxContext），补 FilePathInput 盲区。
+        if (isInJsxContext(node)) {
+          context.report({
+            node,
+            messageId: "noChinese",
+            data: { text: node.value.slice(0, 20) },
+          });
+        }
+      },
+
+      // 模板字符串：`你好 ${name}`
+      TemplateLiteral(node) {
+        if (node.quasis.length === 1 && hasChinese(node.quasis[0].value.raw)) {
+          if (isInsideTranslationCall(node)) return;
+          // E5.8#6.6：向上穿透三元/逻辑链（isInJsxContext），与 Literal 同判据
+          if (isInJsxContext(node)) {
+            context.report({
+              node,
+              messageId: "noChinese",
+              data: { text: node.quasis[0].value.raw.slice(0, 20) },
+            });
+          }
+        }
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 11.5：E5.8#6.6 硬约束 1——颜色禁止硬编码 hex，走 CSS 变量 var(--xxx)
+// ═══════════════════════════════════════════════════════════
+//
+// 拦截字符串字面量中的 `#hex`（3/4/6/8 位）。豁免策略：
+//   1. var(--x, #hex) 回退值——本身就是合规形态（var() 主值 + hex 兜底）
+//   2. 主题引擎默认色数据（ThemeEngine.ts / startup.ts `#0078d4`）——不是 UI 硬编码，
+//      是主题未定义 token 时的兜底值；含 `#0078d4` 魔数本身来自主题契约（见文件注释）
+//   3. 取色器（color-picker/）与预设色板（SettingRow presets / serial SESSION_COLORS）——
+//      色板是"颜色即数据"（用户可选值），非样式硬编码
+//   4. 测试文件 / Canvas 绘图（canvas 颜色必然硬编码，无 CSS 变量）
+//
+// 规则形态参照 no-hardcoded-chinese：只拦引号内字面量（注释/非字符串不拦），
+// 豁免文件用 path 白名单（flat config 块级 options 传给自定义规则参数）。
+const HEX_RE = /#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})\b/;
+
+// var(--x, #hex) 回退——整串里出现 var( 即视为回退形态（跳过 hex 单独匹配）
+const CSS_VAR_FALLBACK_RE = /var\(/;
+
+const noHardcodedHex = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "颜色禁止硬编码 hex——走 CSS 变量 var(--xxx)。硬约束 1（E5.8#6.6 机械哨兵）",
+      recommended: true,
+    },
+    messages: {
+      noHex:
+        "🎨 颜色硬编码 hex \"{{text}}\" 未走 CSS 变量。硬约束 1：所有颜色走 var(--xxx)。" +
+        " 若这是默认色数据/取色器色板/canvas 绘图，加 `// eslint-disable-next-line linkdesk/no-hardcoded-hex -- 理由` 并注明豁免类别。",
+    },
+  },
+
+  create(context) {
+    const filename = (context.filename || context.getFilename?.() || "").replace(/\\/g, "/");
+
+    // 豁免文件类别（path 白名单——按审计账本五类证据）
+    const isExemptFile =
+      /\.(test|spec)\.(ts|tsx)$/.test(filename) ||
+      /\/themes?\//.test(filename) || // 主题定义文件（主题即数据）
+      /\/i18n\//.test(filename) || // i18n 资源（文案数据）
+      /\/color-picker\//.test(filename) || // 取色器组件（色板数据）
+      /canvas/i.test(filename); // Canvas 绘图（无 CSS 变量可用）
+
+    return {
+      Literal(node) {
+        if (typeof node.value !== "string") return;
+        if (isExemptFile) return;
+        if (!HEX_RE.test(node.value)) return;
+        // var(--x, #hex) 回退值——合规形态
+        if (CSS_VAR_FALLBACK_RE.test(node.value)) return;
+        context.report({
+          node,
+          messageId: "noHex",
+          data: { text: node.value.slice(0, 20) },
+        });
+      },
+    };
+  },
+};
+
+// ═══════════════════════════════════════════════════════════
+// 规则 12：E5.7 Phase 10 已删概念字面量禁止复活（E5.7#45）
+// ═══════════════════════════════════════════════════════════
+//
+// OverlayWindow / sidebarPoolView / pluginViews / instanceId 随 per-tab 多实例
+// 与多Pool 模型消亡（E5.7#12/#19/#41-#44）。设计出处：
+// docs/02-Electron架构/E5.7_极简Pool/清理/清理方案.md §5。
+//
+// ⚠️ 为什么不用 no-restricted-syntax 的第二个条目：flat config 同规则跨块合并时
+// 高 severity 胜出且低 severity 的 options 被丢弃——实测会静默吞掉
+// warn 级 v3-/pluginId 硬编码选择器（警告 859→537）。独立规则 = 独立 severity。
+//
+// 拦截字符串字面量（channel 名 / 日志标签 / 命名空间键）。注释不拦截（ESLint 语义）。
+
+const noDeletedE57Concepts = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "E5.7 Phase 10 已删概念（OverlayWindow/sidebarPoolView/pluginViews/instanceId）字面量禁止复活",
+      recommended: true,
+    },
+    messages: {
+      deletedConcept:
+        "🚫 E5.7 极简Pool 已删除此概念（{{value}}）——per-tab 多实例与多Pool 模型随 E5.7#12/#19/#41-#44 消亡。" +
+        " 新代码不得出现这些字面量。详见 docs/02-Electron架构/E5.7_极简Pool/清理/清理方案.md §5。",
+    },
+  },
+
+  create(context) {
+    return {
+      Literal(node) {
+        if (typeof node.value !== "string") return;
+        if (/OverlayWindow|sidebarPoolView|pluginViews|instanceId/.test(node.value)) {
+          context.report({
+            node,
+            messageId: "deletedConcept",
+            data: { value: node.value },
+          });
+        }
+      },
+    };
+  },
+};
+
+// ═══ E5.7#95：pluginId 硬编码比较——no-restricted-syntax 原 pluginId selector 收窄 + 补盲点 ═══
+// 原 selector（no-restricted-syntax warn 级）：BinaryExpression > Literal[/^[a-z]/]——匹配任何
+// 与小写字符串字面量的比较，误伤率极高（label === "typescript" 等合法 tag 判别，294 处）。
+// #95 收窄到 pluginId 语境（左操作数名字含 plugin/pluginId）+ 补 switch/includes 两种同危害类盲点。
+// 独立成局原因同 no-deleted-e5.7-concepts（#45 实测：flat config 同规则跨块合并高 severity 胜出、
+// 低 severity options 被丢弃）——本规则 error 级 + v3- selector 保留 warn 级在 no-restricted-syntax，两防线共存。
+
+const noPluginIdHardcode = {
+  meta: {
+    type: "problem",
+    docs: {
+      description: "E5.7#95 禁止 pluginId 语境下的硬编码比较（含 switch/includes 盲点 + 可选链形态）",
+      recommended: true,
+    },
+    messages: {
+      noPluginIdHardcode:
+        "🚫 禁止 pluginId 硬编码比较。插件 ID 是动态的——新插件不应触发壳代码修改。请读 plugin.json 声明字段或 Registry 查询；" +
+        "确为壳内部已知插件请用大写常量（如 FALLBACK_PLUGIN_ID）代替裸字符串。",
+    },
+  },
+
+  create(context) {
+    // 解开可选链包裹（data?.pluginId → ChainExpression.expression）
+    const unwrap = (node) => (node?.type === "ChainExpression" ? node.expression : node);
+
+    // 语境判定：名字含 plugin 的 Identifier / MemberExpression 属性（pluginId/activePlugin/pluginIds……）
+    const pluginishName = (node) => {
+      const u = unwrap(node);
+      if (!u) return null;
+      if (u.type === "Identifier") return u.name;
+      if (u.type === "MemberExpression") return u.property?.name ?? null;
+      return null;
+    };
+
+    const isLowerLiteral = (node) =>
+      node?.type === "Literal" && typeof node.value === "string" && /^[a-z]/.test(node.value);
+
+    return {
+      // pluginId === "editor" / data?.pluginId !== "serial-monitor"
+      BinaryExpression(node) {
+        if (!/^[!=]==?$/.test(node.operator)) return;
+        if (!isLowerLiteral(node.right)) return;
+        if (!/plugin/i.test(pluginishName(node.left) ?? "")) return;
+        context.report({ node, messageId: "noPluginIdHardcode" });
+      },
+      // 盲点 1：switch (pluginId) { case "literal" }——原 selector 拦不住
+      // （node.cases 自带 case 列表，无需父节点查找——ESLint 9 sourceCode 无 getParent）
+      SwitchStatement(node) {
+        if (!/plugin/i.test(pluginishName(node.discriminant) ?? "")) return;
+        for (const c of node.cases) {
+          if (isLowerLiteral(c.test)) {
+            context.report({ node: c.test ?? c, messageId: "noPluginIdHardcode" });
+          }
+        }
+      },
+      // 盲点 2：pluginIds.includes("literal")——同危害类归一化
+      CallExpression(node) {
+        if (node.callee?.type !== "MemberExpression") return;
+        const callee = node.callee;
+        if (!callee.property || callee.property.name !== "includes") return;
+        if (!node.arguments.some(isLowerLiteral)) return;
+        if (!/plugin/i.test(pluginishName(callee.object) ?? "")) return;
+        context.report({ node, messageId: "noPluginIdHardcode" });
+      },
+    };
+  },
+};
+
 export default {
   "no-async-init-guard-only": noAsyncInitGuardOnly,
   "no-effect-callback-without-active-guard": noEffectCallbackWithoutActiveGuard,
   "no-dynamic-import-in-effect-cleanup": noDynamicImportInEffectCleanup,
   "no-ref-current-in-jsx": noRefCurrentInJsx,
   "no-module-level-ipc-listener": noModuleLevelIpcListener,
+  "no-ipc-listener-in-effect": noIpcListenerInEffect,
+  "no-quickpick-render-item": noQuickpickRenderItem,
+  "no-raw-configuration-read": noRawConfigurationRead,
+  "no-raw-path-replace": noRawPathReplace,
+  "no-core-import-in-plugin": noCoreImportInPlugin,
+  "no-hardcoded-chinese": noHardcodedChinese,
+  "no-hardcoded-hex": noHardcodedHex,
+  "no-deleted-e5.7-concepts": noDeletedE57Concepts,
+  "no-plugin-id-hardcode": noPluginIdHardcode,
 };

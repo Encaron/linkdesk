@@ -8,18 +8,11 @@
  */
 
 import * as fs from 'fs/promises';
-import { existsSync, watch } from 'fs';
+import { existsSync, watch as fsWatch } from 'fs';
 import * as path from 'path';
 import { app } from 'electron';
+import type { FileEntry } from '../../src/core/types/fileEntry'; // E5.7#45.5：shared/types.ts 迁入 src/core/types/
 
-export interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  isFile: boolean;
-  size?: number;
-  modifiedAt?: number;
-}
 
 class FileService {
   // ── 路径工具（对标 @tauri-apps/api/path）──
@@ -58,7 +51,7 @@ class FileService {
     return existsSync(filePath);
   }
 
-  async mkdir(dirPath: string): Promise<void> {
+  async createDir(dirPath: string): Promise<void> {
     await fs.mkdir(dirPath, { recursive: true });
   }
 
@@ -79,6 +72,21 @@ class FileService {
         await fs.copyFile(srcPath, destPath);
       }
     }
+  }
+
+  /** 复制文件或目录——自动判断源类型 */
+  async copy(src: string, dest: string): Promise<void> {
+    const s = await fs.stat(src);
+    if (s.isDirectory()) {
+      await this.copyDir(src, dest);
+    } else {
+      await fs.copyFile(src, dest);
+    }
+  }
+
+  /** E5.8#25.2：重命名/移动文件或目录——fs.rename 原子操作（同盘内；对标 POSIX rename / VS Code fs.rename） */
+  async rename(src: string, dest: string): Promise<void> {
+    await fs.rename(src, dest);
   }
 
   async remove(dirPath: string): Promise<void> {
@@ -108,12 +116,14 @@ class FileService {
         isDirectory: entry.isDirectory(),
         isFile: entry.isFile(),
       };
-      // 文件补充 size + modifiedAt（目录跳过——stat 目录性能无意义）
+      // 文件补充 size + modifiedAt + readonly（目录跳过——stat 目录性能无意义）
       if (entry.isFile()) {
         try {
           const s = await fs.stat(fullPath);
           entryData.size = s.size;
           entryData.modifiedAt = s.mtimeMs;
+          // E4V#10: 检查写权限——Windows 兼容（mode 0o222 = owner/group/other write）
+          entryData.isReadonly = (s.mode & 0o222) === 0;
         } catch { /* 文件可能刚被删除 */ }
       }
       result.push(entryData);
@@ -126,12 +136,19 @@ class FileService {
     return fs.readFile(filePath);
   }
 
+  /** E4V#40w——写入二进制文件（GBK/UTF-16 编码保存） */
+  async writeBinaryFile(filePath: string, data: Buffer): Promise<void> {
+    const dir = path.dirname(filePath);
+    await fs.mkdir(dir, { recursive: true });
+    await fs.writeFile(filePath, data);
+  }
+
   /** 开始监听文件/目录变化——返回 watcherId */
-  watchFile(
+  watch(
     dirPath: string,
     onEvent: (event: { path: string; type: "created" | "changed" | "deleted" }) => void,
   ): number {
-    const watcher = watch(dirPath, { recursive: false }, (eventType, filename) => {
+    const watcher = fsWatch(dirPath, { recursive: false }, (eventType, filename) => {
       if (!filename) return;
       const fullPath = path.join(dirPath, filename);
       onEvent({ path: fullPath, type: eventType as "created" | "changed" | "deleted" });
@@ -159,7 +176,7 @@ class FileService {
   }
 
   private _nextWatcherId = 1;
-  private _watchers = new Map<number, ReturnType<typeof watch>>();
+  private _watchers = new Map<number, ReturnType<typeof fsWatch>>();
 }
 
 export const fileService = new FileService();

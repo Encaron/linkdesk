@@ -1,0 +1,34 @@
+{
+  "name": "薄荷苏打",
+  "version": "1.0.0",
+  "description": "清凉薄荷色系主题合集——薄荷冰露/海盐薄荷/青柠薄荷/薄荷苏打，Claymorphism 软萌风，全系亮色",
+  "author": "LinkDesk",
+  "contributes": {
+    "themes": [
+      {
+        "id": "mint-soda",
+        "label": "薄荷苏打 Mint Soda",
+        "uiTheme": "light",
+        "path": "mint-soda.json"
+      },
+      {
+        "id": "mint-dew",
+        "label": "薄荷冰露 Mint Dew",
+        "uiTheme": "light",
+        "path": "mint-dew.json"
+      },
+      {
+        "id": "sea-salt-mint",
+        "label": "海盐薄荷 Sea Salt Mint",
+        "uiTheme": "light",
+        "path": "sea-salt-mint.json"
+      },
+      {
+        "id": "lime-mint",
+        "label": "青柠薄荷 Lime Mint",
+        "uiTheme": "light",
+        "path": "lime-mint.json"
+      }
+    ]
+  }
+}

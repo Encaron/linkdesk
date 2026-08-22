@@ -1,0 +1,271 @@
+/**
+ * SearchView 样式——文件搜索侧栏面板。
+ * E4V#37d：全部颜色走 CSS 变量。
+ */
+
+.search-view {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 4px 8px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* ── 输入行 ── */
+
+.search-input-row {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  position: relative;
+}
+
+.search-input {
+  flex: 1;
+  height: 28px;
+  padding: 0 8px;
+  border: 1px solid var(--input-border, var(--border-color));
+  border-radius: 4px;
+  background: var(--bg-card);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input-actions {
+  display: flex;
+  gap: 2px;
+}
+
+.search-option-btn {
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.search-option-btn:hover {
+  background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));
+}
+
+.search-option-btn--active {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+/* ── 替换 ── */
+
+.search-replace-btn {
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+  font-size: 11px;
+  cursor: pointer;
+  border-radius: 3px;
+  white-space: nowrap;
+}
+
+.search-replace-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* ── 过滤行 ── */
+
+.search-filter-row {
+  display: flex;
+  gap: 4px;
+}
+
+.search-filter-input {
+  flex: 1;
+  height: 22px;
+  padding: 0 4px;
+  border: 1px solid var(--input-border, var(--border-color));
+  background: var(--input-bg, var(--bg-primary));
+  color: var(--text-secondary);
+  font-size: 11px;
+  outline: none;
+}
+
+.search-filter-input:focus {
+  border-color: var(--accent);
+}
+
+/* ── 工具栏 ── */
+
+.search-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.search-stats {
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+
+.search-toolbar-actions {
+  display: flex;
+  gap: 4px;
+}
+
+/* ── 错误 ── */
+
+.search-error {
+  padding: 4px 8px;
+  font-size: 11px;
+  color: var(--text-error, #f44336);
+}
+
+/* ── 结果列表 ── */
+
+.search-results {
+  flex: 1;
+  overflow-y: auto;
+}
+
+.search-file {
+  margin-bottom: 2px;
+}
+
+.search-file-header {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 22px;
+  padding: 0 4px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.search-file-header:hover {
+  background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));
+}
+
+.search-file-chevron {
+  font-size: 12px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.search-file-icon {
+  font-size: 14px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+.search-file-name {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.search-file-path {
+  flex: 1;
+  font-size: 10px;
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-left: 4px;
+}
+
+.search-file-count {
+  font-size: 11px;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
+
+/* ── 匹配行 ── */
+
+.search-matches {
+  padding-left: 20px;
+}
+
+.search-match {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  height: 22px;
+  padding: 0 8px;
+  cursor: pointer;
+  border-radius: 3px;
+}
+
+.search-match:hover {
+  background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));
+}
+
+.search-match-line {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  min-width: 28px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.search-match-text {
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── 空状态 ── */
+
+.search-empty {
+  padding: 16px 8px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+/* ── 搜索历史 ── */
+
+.search-history {
+  position: absolute;
+  top: 28px;
+  left: 0;
+  right: 0;
+  background: var(--bg-card, var(--bg-primary));
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  z-index: 10;
+  max-height: 220px;
+  overflow-y: auto;
+}
+
+.search-history-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.search-history-item:hover {
+  background: var(--tree-bg-hover, color-mix(in srgb, var(--text-primary) 6%, transparent));
+}
+
+.search-history-item .codicon {
+  font-size: 14px;
+  color: var(--text-secondary);
+}

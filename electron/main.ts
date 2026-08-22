@@ -7,20 +7,29 @@
  * 对标 VS Code 的主进程管理模式。
  */
 
-import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu } from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, dialog, nativeTheme, Menu, shell } from 'electron';
+import { exec } from 'child_process';
+import * as fs from 'fs';
 import * as path from 'path';
-import { registerSerialHandlers } from './ipc/serial-handlers.js';
-import { registerFileHandlers } from './ipc/file-handlers.js';
-import { registerPluginHandlers } from './ipc/plugin-handlers.js';
-import { registerDialogHandlers } from './ipc/dialog-handlers.js';
-import { registerEnvHandlers } from './ipc/env-handlers.js';
-import { registerPluginViewHandlers } from './ipc/plugin-view-handlers.js'; // E3a #29
-import { registerProtocol } from './protocol.js';
+import { registerSerialHandlers } from './ipc/handlers/serial-handlers.js';
+import { registerFileHandlers } from './ipc/handlers/file-handlers.js';
+import { loadAllPluginManifests, registerManifestRescanHandler } from './plugins/plugin-manifest-loader.js'; // E5.7#48：Registry 主进程化——三表预加载
+import { registerPluginHandlers } from './ipc/handlers/plugin-handlers.js';
+import { registerDialogHandlers } from './ipc/handlers/dialog-handlers.js';
+import { registerEnvHandlers } from './ipc/handlers/env-handlers.js';
+import { registerClipboardHandlers } from './ipc/handlers/clipboard-handlers.js';
+import { registerRegistryHandlers } from './ipc/handlers/registry-handlers.js'; // E5.7#49：主进程三表直连 IPC
+import { registerHotExitHandlers } from './ipc/handlers/hot-exit-handlers.js'; // E5.7#38
+import { registerPoolHandlers } from './ipc/handlers/plugin-view-handlers.js'; // E5.6#8d
+import { registerLspHandlers } from './ipc/handlers/lsp-handlers.js'; // E4V#40s1
+import { registerProtocol } from './plugins/protocol.js';
 import { fileService } from './services/file-service.js';
-import { WindowManager } from './window-manager.js';
-import { PluginViewRegistry } from './plugin-view-registry.js';
-import { IpcBridge } from './ipc-bridge.js';
-import { APP_SCHEME } from './constants.js';
+import { WindowManager } from './windows/window-manager.js';
+import { syncKeybindings } from './windows/keyboard-router.js'; // E5.5#7-p6
+import { IpcBridge } from './ipc/ipc-bridge.js';
+import { setupCrashRecovery, replayAfterShellRebuild, type CrashRecoveryDeps } from './windows/crash-recovery.js'; // E5.7#36
+import { APP_SCHEME, DEV_SERVER_URL } from './constants.js'; // E5#102b：DEV_SERVER_URL 定义在 constants.ts
+import { IPC } from './ipc/channels.js';
 // ── 单实例锁 ──
 const gotLock = app.requestSingleInstanceLock();
 if (!gotLock) {
@@ -31,13 +40,17 @@ if (!gotLock) {
 let mainWindow: BrowserWindow | null = null;
 // E3a #24：插件 WebContentsView 生命周期管理
 let windowManager: WindowManager | null = null;
-// E3a #25：插件 ID→View 映射 + bounds 管理 + 重载
-let pluginViewRegistry: PluginViewRegistry | null = null;
-// E3a #26：插件 WebView ↔ 壳渲染进程 IPC 中继
+// E3a #26：池渲染进程 ↔ 壳渲染进程 IPC 中继（E5.7#43）
 let ipcBridge: IpcBridge | null = null;
 
 const isDev = !app.isPackaged;
 let _windowIpcRegistered = false; // E3f #52f：窗口控制 IPC handler 只注册一次
+// E5.7#79：最后应用的缩放因子——壳崩重建/池重建（createWindow → createMainPool）后重放。
+// 主进程模块级变量在 rebuildShell 中存活（进程不重启），壳侧配置 onApply 在渲染进程加载后才推来。
+let _lastZoomFactor = 1;
+// E5.7#36：无状态 shell IPC 只注册一次（壳崩重建 createWindow 会再次经过——不 guard 则重复注册抛异常）
+let _keyboardSyncRegistered = false;
+let _shellIpcRegistered = false;
 
 function createWindow(): void {
   // E3f #51：标题栏暗色化——跟随 LinkDesk 暗色主题
@@ -45,13 +58,18 @@ function createWindow(): void {
   // E3f #52：去掉 Electron 默认菜单栏（File/Edit/View/Window）——LinkDesk 用自己的
   Menu.setApplicationMenu(null);
 
-  mainWindow = new BrowserWindow({
+  // E5.7#36：local win——closed 处理器需身份校验（旧窗销毁不得清掉重建后的新引用）
+  const win = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 800,
     minHeight: 500,
-    icon: path.join(__dirname, '../build/icon.ico'), // 任务栏/窗口图标——dev 用 build/icon.ico
+    icon: isDev
+      ? path.join(__dirname, '../../build/icon.ico')
+      : path.join(process.resourcesPath, 'icon.ico'), // 打包后 icon.ico 在 extraResources，不在 ASAR 中
     frame: false, // E3f #52f：隐藏原生窗口框架——LinkDesk 自己画 TitleBar
+    // E5.8#6.6 hex 豁免：主进程窗口初始背景色（OS 层，渲染进程 CSS 变量不可达；E3f #51 防启动白屏）
+    // eslint-disable-next-line linkdesk/no-hardcoded-hex
     backgroundColor: '#1e1e1e', // E3f #51：暗色背景——消除启动白屏
     webPreferences: {
       preload: path.join(__dirname, 'preload-shell.js'),
@@ -63,81 +81,239 @@ function createWindow(): void {
     title: 'LinkDesk',
     show: false, // ready-to-show 后再显示，避免白屏闪烁
   });
+  mainWindow = win; // E5.7#36：壳崩重建复用 createWindow——模块引用先指向新窗
 
-  // ── 注册 IPC 处理器 ──
-  registerSerialHandlers(mainWindow);
-  registerFileHandlers();
+  // ── 注册 IPC 处理器（E5.7#36：全部幂等——首次注册 + 重建时刷新引用；无状态 handler 重复调用直接跳过）──
   registerPluginHandlers();
   registerDialogHandlers();
   registerEnvHandlers();
+  registerClipboardHandlers();
+  registerRegistryHandlers();  // E5.7#49：三表直连（数据由 plugin-manifest-loader 预加载）
+  registerHotExitHandlers();   // E5.7#38
 
-  // E3a #24：初始化 WindowManager
-  windowManager = new WindowManager(mainWindow);
-  // E3a #25：初始化 PluginViewRegistry（包装 WindowManager）
-  pluginViewRegistry = new PluginViewRegistry(windowManager);
-  // E3a #29：注册插件视图管理 IPC handler——壳侧 MainContent 通过它控制 WebView 显隐/位置
-  registerPluginViewHandlers(pluginViewRegistry, mainWindow);
-  // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道
-  ipcBridge = new IpcBridge(mainWindow, windowManager);
+  // E3a #24：初始化 WindowManager（E5.7#43：PluginViewRegistry 已删）
+  windowManager = new WindowManager(win);
+  // E5.5#7-p7：壳同步快捷键表到主进程（无窗口引用——只注册一次）
+  if (!_keyboardSyncRegistered) {
+    _keyboardSyncRegistered = true;
+    ipcMain.handle(IPC.keyboard.syncShortcuts, (_event, data) => {
+      syncKeybindings(data);
+    });
+  }
+  // E3a #26-#27：初始化 IpcBridge——注册 config/command 代理 + 事件推送通道（换实例摘旧挂新）
+  ipcBridge = new IpcBridge(win, windowManager);
   windowManager.setIpcBridge(ipcBridge); // E3c #40：IpcBridge 注入 WindowManager——新 WebView 重放广播
+
+  // E5#74 + E5.8#6.5：serial/lsp/file 推送改走 IpcBridge.broadcast（IpcBridge.active 取最新实例）——
+  // lsp/serial 推送无窗引用依赖 → 可无参；file 必须保留 windowManager——isPoolSender 壳/池来源判定靠它
+  // （#6.5 回归：误删参数 → _windowManager 恒 undefined → 壳受信写也被当池来源守卫 → 启动弹十几个"工作区外写入确认"）
+  registerLspHandlers();   // E5#74c
+  registerSerialHandlers(); // E5#74b
+  registerFileHandlers(windowManager);              // E5#80
+  registerPoolHandlers(windowManager, win);  // E5.6#8e
+
+  // E5.6#9 → E5.7#4：创建唯一 Pool WebContentsView——极简Pool 单 WCV（#12 提前：SidebarPool 已删）
+  windowManager.createMainPool();
+
+  // E5.7#79：重放最后缩放因子——壳崩重建时壳配置 onApply 尚未跑（渲染进程加载后才有），
+  // 新池默认 100% 会闪一下。首次启动 _lastZoomFactor=1 → no-op。
+  if (_lastZoomFactor !== 1) {
+    const poolView = windowManager.getPoolView();
+    if (poolView && !poolView.webContents.isDestroyed()) {
+      poolView.webContents.setZoomFactor(_lastZoomFactor);
+    }
+  }
 
   // ── 加载内容：dev 模式从 Vite dev server，prod 模式从 dist/ ──
   if (isDev) {
-    mainWindow.loadURL('http://localhost:1420');
+    win.loadURL(DEV_SERVER_URL);
   } else {
-    mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
+    win.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 
   // ready-to-show 后才显示窗口
-  mainWindow.once('ready-to-show', () => {
-    mainWindow?.show();
+  win.once('ready-to-show', () => {
+    if (win && !win.isDestroyed()) win.show();
+  });
+
+  // 🔥 E5#114d 诊断：把渲染进程 console 输出转发到文件——生产环境 F12 禁用
+  win.webContents.on('console-message', (_event, _level, message) => {
+    try {
+      const logFile = path.join(app.getPath('userData'), 'protocol-debug.log');
+      const ts = new Date().toISOString();
+      fs.appendFileSync(logFile, `[${ts}] [renderer] ${message}\n`);
+    } catch { /* ignore */ }
   });
 
   // E3f #52f：自定义窗口控制（─ □ ×）——TitleBar 按钮 → 主进程窗口操作
   if (!_windowIpcRegistered) {
     _windowIpcRegistered = true;
-    ipcMain.on('window:minimize', () => mainWindow?.minimize());
-    ipcMain.on('window:maximize', () => mainWindow?.maximize());
-    ipcMain.on('window:unmaximize', () => mainWindow?.unmaximize());
-    ipcMain.on('window:close', () => mainWindow?.close());
-    ipcMain.handle('window:isMaximized', () => mainWindow?.isMaximized() ?? false);
+    ipcMain.on(IPC.window.minimize, () => mainWindow?.minimize());
+    ipcMain.on(IPC.window.maximize, () => mainWindow?.maximize());
+    ipcMain.on(IPC.window.unmaximize, () => mainWindow?.unmaximize());
+    ipcMain.on(IPC.window.close, () => mainWindow?.close());
+    ipcMain.handle(IPC.window.isMaximized, () => mainWindow?.isMaximized() ?? false);
+    // E5.7#79：窗口缩放——壳配置 onApply 推来的因子应用到池 WCV（可见 UI 全在池）。
+    // 缓存供 createWindow 重建池后重放（池 WCV 是新 webContents，缩放不随窗口重建保留）。
+    ipcMain.on(IPC.window.setZoom, (_event, factor: number) => {
+      // Number.isFinite 而非 typeof === "number"——no-restricted-syntax 字符串比较启发式误报
+      const n = Number(factor);
+      _lastZoomFactor = Number.isFinite(n) ? n : 1;
+      const poolView = windowManager?.getPoolView();
+      if (poolView && !poolView.webContents.isDestroyed()) {
+        poolView.webContents.setZoomFactor(_lastZoomFactor);
+      }
+    });
     // E3f #58：切换壳窗口 DevTools——多 WebView 未激活时的兜底
-    ipcMain.handle('window:toggleDevTools', () => {
+    ipcMain.handle(IPC.window.toggleDevTools, () => {
       if (!mainWindow || app.isPackaged) return;
       const wc = mainWindow.webContents;
       wc.isDevToolsOpened() ? wc.closeDevTools() : wc.openDevTools({ mode: 'detach' });
     });
   }
-  mainWindow.on('maximize', () => mainWindow?.webContents.send('window:maximize-change', true));
-  mainWindow.on('unmaximize', () => mainWindow?.webContents.send('window:maximize-change', false));
+  win.on('maximize', () => win.webContents.send(IPC.window.maximizeChange, true));
+  win.on('unmaximize', () => win.webContents.send(IPC.window.maximizeChange, false));
 
-  mainWindow.on('closed', () => {
-    mainWindow = null;
+  // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
+  if (!_shellIpcRegistered) {
+    _shellIpcRegistered = true;
+
+    // E4V#18: Shell IPC——revealInOS
+    ipcMain.handle(IPC.shell.showItemInFolder, async (_e, p: string) => shell.showItemInFolder(p));
+
+    // E5#108b：文件拖出到桌面——Electron 原生 API。低版本无 startDrag 则静默
+    ipcMain.on(IPC.shell.startDrag, (event, filePath: string, iconPath?: string) => {
+      if (!filePath) return;
+      // E5.7#98：startDrag 是 WebContents 类型化 API——as any 删除，typeof 守卫保留（低版本运行时无此方法）。
+      // 本版 typings Item.icon 必填而运行时可选——按需装配后调用点窄化
+      const sender = event.sender;
+      if (typeof sender.startDrag !== 'function') return;
+      const opts: Record<string, unknown> = { file: filePath };
+      if (iconPath && fs.existsSync(iconPath)) opts.icon = iconPath;
+      else if (process.platform === 'win32') {
+        const defIcon = path.join(__dirname, '../../build/icon.ico');
+        if (fs.existsSync(defIcon)) opts.icon = defIcon;
+      }
+      sender.startDrag(opts as unknown as Electron.Item);
+    });
+
+    // E4V#19 + E5#22: 在系统终端打开目录——可配置终端类型，不再硬编码 PowerShell
+    ipcMain.handle(IPC.shell.openInTerminal, async (_e, dirPath: string, terminalExe?: string, customCommand?: string) => {
+      if (process.platform === 'win32') {
+        const exe = terminalExe || 'powershell';
+        let cmd: string;
+        switch (exe) {
+          case 'cmd':
+            cmd = `start cmd /K "cd /d "${dirPath}""`;
+            break;
+          case 'wt':
+            cmd = `wt -d "${dirPath}"`;
+            break;
+          case 'git-bash': {
+            const gitBashPaths = [
+              'C:\\Program Files\\Git\\git-bash.exe',
+              'C:\\Program Files (x86)\\Git\\git-bash.exe',
+              `${process.env.LOCALAPPDATA}\\Programs\\Git\\git-bash.exe`,
+            ];
+            const gitBash = gitBashPaths.find(p => fs.existsSync(p));
+            if (gitBash) {
+              cmd = `start "" "${gitBash}" --cd="${dirPath}"`;
+            } else {
+              console.error('[shell:openInTerminal] Git Bash 未找到');
+              return;
+            }
+            break;
+          }
+          case 'custom':
+            // 🔥 不硬编码——渲染进程传模板，替换 {{dirPath}} 占位符
+            cmd = (customCommand || '').replace(/\{\{dirPath\}\}/g, dirPath);
+            if (!cmd) { console.error('[shell:openInTerminal] 自定义命令为空'); return; }
+            break;
+          case 'powershell':
+          default:
+            cmd = `start powershell -NoExit -Command "cd '${dirPath}'"`;
+            break;
+        }
+        exec(cmd, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      } else if (process.platform === 'darwin') {
+        exec(`open -a Terminal "${dirPath}"`, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      } else {
+        // Linux（E5#22 bug fix——原来无此分支，走 macOS 命令无效）
+        exec(`xdg-open "${dirPath}"`, (err) => {
+          if (err) console.error('[shell:openInTerminal] 启动终端失败:', err);
+        });
+      }
+      });
+    }
+
+  win.on('closed', () => {
+    // E5.7#36：身份校验——壳崩重建先建新窗后毁旧窗，旧窗的 closed 不得清掉新引用
+    if (mainWindow === win) mainWindow = null;
   });
 }
 
+/**
+ * E5.7#36：壳渲染进程崩溃——全窗口重建（设计 §2.1 场景 B）。
+ * createWindow 内全部 ipcMain 注册已 once-guard（审计①）——重复调用只刷新引用，不重注册；
+ * IpcBridge 换实例摘旧挂新。先建后毁：窗口数不为零，window-all-closed 不触发退出。
+ */
+function rebuildShell(): void {
+  const oldWin = mainWindow;
+  const oldWm = windowManager;
+  const oldBridge = ipcBridge;
+  oldBridge?.dispose(); // 拒绝旧壳未决请求
+  oldWm?.dispose();     // 清内存定时器 + 注销 resize 监听 + 销毁旧池
+  createWindow();
+  replayAfterShellRebuild(crashRecoveryDeps); // 新池就绪后回放 lastLayout 兜底
+  if (oldWin && !oldWin.isDestroyed()) oldWin.destroy();
+}
+
+// E5.7#36：崩溃恢复接线——getter 闭包运行时读最新引用（重建后自动指向新实例）
+const crashRecoveryDeps: CrashRecoveryDeps = {
+  getMainWindow: () => mainWindow,
+  getWindowManager: () => windowManager,
+  rebuildShell,
+};
+
+setupCrashRecovery(crashRecoveryDeps);
+
 // E3f #51：渲染进程主题变更 → 同步标题栏 + 窗口背景色
-ipcMain.on('theme-changed', (_event, isDark: boolean) => {
+ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
   nativeTheme.themeSource = isDark ? 'dark' : 'light';
+  // E5.8#6.6 hex 豁免：窗口背景色随主题（OS 层 setBackgroundColor，CSS 变量不可达）
+  // eslint-disable-next-line linkdesk/no-hardcoded-hex
+  const bg = isDark ? '#1e1e1e' : '#f5f5f5';
   if (mainWindow && !mainWindow.isDestroyed()) {
-    mainWindow.setBackgroundColor(isDark ? '#1e1e1e' : '#f5f5f5');
+    mainWindow.setBackgroundColor(bg);
+  }
+  // E5.6#10f：Pool WebContentsView 背景跟随主题——池创建时 nativeTheme 尚未反映用户主题
+  if (windowManager) {
+    for (const poolView of windowManager.getAllPoolViews()) {
+      if (!poolView.webContents.isDestroyed()) {
+        poolView.setBackgroundColor(bg);
+      }
+    }
   }
 });
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
-ipcMain.on('preload-ready', () => {
+ipcMain.on(IPC.app.preloadReady, () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──
-// 渲染进程每 500ms 发 heartbeat。主进程每 1s 检查一次，
-// 若超过 2s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
+// 渲染进程每 2s 发 heartbeat。主进程每 3s 检查一次，
+// 若超过 30s 未收到 → JS 主线程可能卡死 → 弹出原生对话框。
 // 限制：单 WebView 下只能检测，无法恢复。E3 多进程后改为只重载卡死的 WebView。
 let lastHeartbeat = 0; // 0 = 尚未收到任何心跳（渲染进程未就绪前不弹窗）
-const HEARTBEAT_TIMEOUT = 10_000; // 10s 无心跳 → 判定卡死
+const HEARTBEAT_TIMEOUT = 30_000; // 30s 无心跳 → 判定卡死
 const HEARTBEAT_CHECK_INTERVAL = 3000; // 每 3s 检查一次
 
-ipcMain.on('heartbeat', () => {
+ipcMain.on(IPC.app.heartbeat, () => {
   lastHeartbeat = Date.now();
 });
 
@@ -165,12 +341,21 @@ setInterval(() => {
 
 // ── 注册 linkdesk:// 协议（必须在 app.whenReady 之前声明 privileged）──
 protocol.registerSchemesAsPrivileged([
-  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } },
+  { scheme: APP_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } },
+  // E5.6#9h：注册 extension-file 协议——@codingame Monaco 内部虚拟文件系统，
+  // 无此注册则 extension-file:// fetch 请求全 404，console 噪音。
+  { scheme: "extension-file", privileges: { standard: true, secure: true, supportFetchAPI: true } },
 ]);
 
 // ── 应用生命周期 ──
 app.whenReady().then(() => {
   registerProtocol();
+  // E5.7#48：Registry 主进程化——静态声明三表（LangDef/Protocol/FileAssociation）预加载，
+  // 必须在 createWindow（池 WCV 创建于其内）之前——首个 IPC 查询到达时表已填好，无竞态窗口。
+  // 装/卸/重装重扫通道注册一次；壳崩重建走 rebuildShell→createWindow，不经过 whenReady，
+  // 主进程三表数据天然存活、无需重扫。
+  registerManifestRescanHandler();
+  loadAllPluginManifests();
   createWindow();
 });
 
@@ -203,5 +388,5 @@ app.on('second-instance', () => {
 });
 
 // 导出窗口引用——后续步 2-4 的 SerialService 等服务需要它推送数据到渲染进程
-// E3a #24-#26：导出 WindowManager + PluginViewRegistry + IpcBridge——MainContent 等需要它们
-export { mainWindow, windowManager, pluginViewRegistry, ipcBridge };
+// E3a #24-#26：导出 WindowManager + IpcBridge（E5.7#43：PluginViewRegistry 已删）
+export { mainWindow, windowManager, ipcBridge };

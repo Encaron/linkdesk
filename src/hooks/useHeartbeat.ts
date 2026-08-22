@@ -18,7 +18,7 @@ const HEARTBEAT_INTERVAL = 2000;
 
 function sendHeartbeat(): void {
   try {
-    (window as any).linkdesk?.events?.heartbeat();
+    window.linkdesk?.events?.heartbeat?.();
   } catch {
     // preload 未就绪时静默
   }

@@ -33,6 +33,11 @@ extraResources:
     filter:
       - "**/*"
       - "!.disabled/**"
+  - from: build/icon.ico
+    to: icon.ico
+  # E5#114d：LSP 语言服务器——需在 ASAR 外（外部 child_process.spawn 读不了 ASAR）
+  - from: node_modules/pyright
+    to: node_modules/pyright
 
 win:
   target:

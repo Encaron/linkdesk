@@ -1,0 +1,428 @@
+/* PluginDetailView — 对标 VS Code extensionEditor.css */
+
+.plugin-detail {
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 0;
+  color: var(--text-primary);
+}
+
+.plugin-detail-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+
+/* ═══ Header — VS Code: padding-top 20, padding-bottom 12, padding-left 20 ═══ */
+
+.pd-header {
+  display: flex;
+  padding: 20px 20px 12px 20px;
+  gap: 16px;
+}
+
+.pd-icon-container {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.pd-icon-img {
+  width: 96px;
+  height: 96px;
+  display: block;
+}
+
+.pd-icon-codicon {
+  font-size: 96px !important;
+  color: var(--text-secondary);
+  display: block;
+}
+
+.pd-icon-badge {
+  position: absolute;
+  right: -4px;
+  bottom: -4px;
+  width: 28px;
+  height: 28px;
+  line-height: 28px;
+  border-radius: 14px;
+  background: var(--accent);
+  color: var(--badge-text);
+  font-size: 16px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pd-header-details {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  justify-content: center;
+}
+
+.pd-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.pd-name {
+  font-size: 26px;
+  line-height: 30px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+}
+
+.pd-version {
+  font-size: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
+.pd-badge {
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.pd-badge-core {
+  background: var(--accent);
+  color: var(--badge-text);
+}
+
+.pd-badge-singleton {
+  border: 1px solid var(--separator);
+  color: var(--text-muted);
+}
+
+.pd-subtitle {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.pd-short-desc {
+  font-size: 13px;
+  color: var(--text-secondary);
+  margin: 4px 0 0;
+  line-height: 1.4;
+}
+
+/* ═══ Action Bar ═══ */
+
+.pd-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 20px 12px;
+  flex-wrap: wrap;
+}
+
+.pd-btn {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--separator);
+  background: transparent;
+  color: var(--text-primary);
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.pd-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+}
+
+.pd-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.pd-btn-uninstall {
+  border-color: rgba(231, 76, 60, 0.5);
+  color: var(--error);
+}
+
+.pd-btn-disable {
+  border-color: var(--separator);
+  color: var(--text-secondary);
+}
+
+.pd-btn-disable:hover:not(:disabled) {
+  color: var(--warning);
+  border-color: rgba(204, 167, 0, 0.5);
+}
+
+.pd-btn-enable {
+  border-color: rgba(76, 175, 80, 0.5);
+  color: var(--status-connected);
+}
+
+/* 对标 VS Code extensionButton 绿色安装按钮 */
+.pd-btn-install {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--badge-text);
+}
+
+.pd-btn-install:hover:not(:disabled) {
+  opacity: 0.9;
+}
+
+.pd-btn .codicon {
+  font-size: 12px;
+  vertical-align: middle;
+}
+
+.pd-action-error {
+  font-size: 12px;
+  color: var(--error);
+  flex-basis: 100%;
+}
+
+.pd-core-notice {
+  font-size: 12px;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.pd-core-notice .codicon {
+  font-size: 14px;
+}
+
+/* E5.8#15.5：缺依赖挂起（PENDING）提示条——琥珀信息态（等待非错误，ui-ux-pro-max muted chip） */
+.pd-pending-notice {
+  font-size: 12px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border: 1px solid var(--separator);
+  border-radius: 4px;
+  padding: 6px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 8px 0;
+}
+
+.pd-pending-notice .codicon {
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.pd-reverse-warn {
+  font-size: 11px;
+  color: var(--warning);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: auto;
+}
+
+/* ═══ NavBar — VS Code .navbar tabs ═══ */
+
+.pd-navbar {
+  display: flex;
+  border-bottom: 1px solid var(--separator);
+  padding: 0 20px;
+  flex-shrink: 0;
+}
+
+.pd-navtab {
+  background: none;
+  border: none;
+  border-bottom: 2px solid transparent;
+  padding: 8px 12px;
+  font-size: 13px;
+  font-family: inherit;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 120ms, border-color 120ms;
+}
+
+.pd-navtab:hover {
+  color: var(--text-primary);
+}
+
+.pd-navtab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* ═══ Body ═══ */
+
+.pd-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+/* ── Details layout: main content + info sidebar ── */
+
+.pd-details-layout {
+  display: flex;
+  gap: 32px;
+}
+
+.pd-details-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pd-description {
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+  margin: 0 0 20px;
+}
+
+/* 推荐 / 可选 / 依赖 */
+
+.pd-recommend-section {
+  margin-bottom: 16px;
+}
+
+.pd-recommend-section h4 {
+  font-size: 12px;
+  font-weight: 600;
+  margin: 0 0 6px;
+  color: var(--text-primary);
+}
+
+.pd-recommend-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.pd-recommend-section li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
+.pd-recommend-section li:hover {
+  background: var(--bg-card);
+}
+
+.pd-recommend-section li.installed {
+  opacity: 0.6;
+}
+
+.pd-recommend-section li .codicon {
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.pd-rec-name {
+  font-weight: 500;
+  font-family: monospace;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.pd-rec-reason {
+  flex: 1;
+  font-size: 12px;
+}
+
+.pd-rec-ver {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pd-rec-status {
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.pd-rec-status.missing {
+  color: var(--error);
+}
+
+/* 信息侧栏 */
+
+.pd-info-sidebar {
+  width: 220px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+}
+
+.pd-info-item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 4px 0;
+}
+
+.pd-info-label {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pd-info-value {
+  font-size: 12px;
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+.pd-info-value.mono {
+  font-family: monospace;
+  font-size: 11px;
+}
+
+/* ═══ Changelog ═══ */
+
+.pd-changelog {
+  max-width: 640px;
+}
+
+.pd-changelog-entry {
+  margin-bottom: 16px;
+}
+
+.pd-changelog-header {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pd-changelog-ver {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.pd-changelog-date {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.pd-changelog ul {
+  padding-left: 16px;
+  margin: 4px 0;
+  font-size: 13px;
+  color: var(--text-secondary);
+  line-height: 1.6;
+}

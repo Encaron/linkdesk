@@ -1,0 +1,35 @@
+{
+  "$schema": "../../public/schemas/plugin.schema.json",
+  "name": "设置",
+  "version": "1.0.0",
+  "icon": "resources/icon.png",
+  "description": "软件设置——主题、语言、插件管理",
+  "author": "官方",
+  "distribution": "builtin",
+  "core": true,
+  "factoryRole": "settings",
+  "entry": "src/index.tsx",
+  "appearsIn": { "iconBar": "bottom", "tabBar": true },
+  "tabBehavior": {
+    "singleton": true
+  },
+  "contributes": {
+    "viewsContainers": {
+      "settings": {
+        "title": "设置",
+        "location": "auxiliarybar"
+      }
+    },
+    "views": {
+      "settings": [
+        {
+          "id": "settings",
+          "title": "设置",
+          "render": "src/views/SettingsView.tsx",
+          "order": 0
+        }
+      ]
+    },
+    "floatingPanel": { "viewId": "settings" }
+  }
+}

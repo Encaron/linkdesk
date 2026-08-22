@@ -67,7 +67,71 @@ html, body {
 /* ═══════════ LAYOUT ═══════════ */
 #app {
   display: flex;
-  height: 100vh;
+  height: calc(100vh - 44px); /* subtract tab bar */
+}
+
+/* ═══════════ TAB BAR ═══════════ */
+#tab-bar {
+  display: flex;
+  align-items: center;
+  height: 44px;
+  background: var(--bg-sidebar);
+  border-bottom: 1px solid var(--border);
+  padding: 0 12px;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* ── Quick-copy pill in tab bar ── */
+#quick-copy {
+  margin-left: auto;
+  padding: 5px 14px;
+  font-family: "JetBrains Mono", "Cascadia Code", "Consolas", monospace;
+  font-size: 13px;
+  font-weight: 500;
+  color: #34d399;
+  background: rgba(52,211,153,0.12);
+  border: 1px solid rgba(52,211,153,0.3);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+}
+#quick-copy:hover {
+  background: rgba(52,211,153,0.22);
+  border-color: #34d399;
+  box-shadow: 0 0 8px rgba(52,211,153,0.2);
+}
+#quick-copy.copied {
+  color: #fff;
+  background: #22C55E;
+  border-color: #22C55E;
+}
+#tab-bar .tab-label {
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--fg-dim);
+  letter-spacing: 0.8px;
+  margin-right: 12px;
+}
+.tab-btn {
+  padding: 6px 16px;
+  font-family: "Inter", "Noto Sans SC", sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--fg-dim);
+  background: none;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.tab-btn:hover { color: var(--fg-heading); background: rgba(255,255,255,0.04); }
+.tab-btn.active {
+  color: var(--accent);
+  background: var(--accent-soft);
+  font-weight: 600;
 }
 
 /* ═══════════ SIDEBAR ═══════════ */
@@ -236,6 +300,15 @@ html, body {
   color: #f1f5f9;
 }
 
+/* ── Placeholder marker text — easy to spot and change ── */
+.placeholder {
+  color: #f59e0b;
+  font-weight: 600;
+  background: rgba(245,158,11,0.12);
+  padding: 1px 4px;
+  border-radius: 3px;
+}
+
 .card-header {
   display: flex;
   align-items: center;
@@ -362,6 +435,14 @@ mark {
 </style>
 </head>
 <body>
+<!-- ═══════════ TAB BAR ═══════════ -->
+<div id="tab-bar">
+  <span class="tab-label">切换模式</span>
+  <button class="tab-btn active" data-tab="new">🆕 新AI对话</button>
+  <button class="tab-btn" data-tab="e35">🎨 E3.5对话</button>
+  <button id="quick-copy" title="点击复制 npm run electron:dev">npm run electron:dev</button>
+</div>
+
 <div id="app">
 
 <!-- ═══════════ SIDEBAR ═══════════ -->
@@ -402,6 +483,9 @@ mark {
 <!-- ═══════════ MAIN ═══════════ -->
 <main id="main">
 
+<!-- ═══════════ TAB: 新AI对话 ═══════════ -->
+<div id="tab-new">
+
 <!-- S1: 新会话开场白 -->
 <section id="s1" class="section">
   <div class="section-title">🚀 新会话开场白</div>
@@ -409,12 +493,12 @@ mark {
 
   <div class="card">
     <div class="card-header">
-      <span class="card-label">E3 继续 — 标准开场</span>
-      <span class="card-tags"><span class="tag">E3</span><span class="tag">开场</span></span>
+      <span class="card-label">E5 继续 — 标准开场</span>
+      <span class="card-tags"><span class="tag">E5</span><span class="tag">开场</span></span>
     </div>
     <div class="card-body">
-      <button class="copy-btn" data-text="你将继续做E3剩下部分，自行阅读，明确自己接下来需要做什么。你知道制作规矩吧？说说看。一次只能且必须改一小步。要求每次开始和结束前说说当前进行到什么地方。先说，先不能动手改代码。">复制</button>
-      <pre>你将继续做E3剩下部分，自行阅读，明确自己接下来需要做什么。你知道制作规矩吧？说说看。一次只能且必须改一小步。要求每次开始和结束前说说当前进行到什么地方。先说，先不能动手改代码。</pre>
+      <button class="copy-btn" data-text="你将继续做 E5.5 剩下部分，自行阅读，明确自己接下来需要做什么。你知道制作规矩吧？说说看。一次只能且必须改一小步。要求每次开始和结束前说说当前进行到什么地方。做完后告诉我：从 UI 上可以验证什么，有没有遗漏。先说，先不能动手改代码。">复制</button>
+      <pre>你将继续做E5.5剩下部分，自行阅读，明确自己接下来需要做什么。你知道制作规矩吧？说说看。一次只能且必须改一小步。要求每次开始和结束前说说当前进行到什么地方。做完后告诉我：从 UI 上可以验证什么，有没有遗漏。先说，先不能动手改代码。</pre>
     </div>
   </div>
 
@@ -424,8 +508,8 @@ mark {
       <span class="card-tags"><span class="tag">继续</span><span class="tag">简短</span></span>
     </div>
     <div class="card-body">
-      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
-      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git</pre>
+      <button class="copy-btn" data-text="继续，禁止心急，我从来不急着推进任务，你也别急。注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git">复制</button>
+      <pre>继续，禁止心急，我从来不急着推进任务，你也别急。注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git</pre>
     </div>
   </div>
 
@@ -443,7 +527,7 @@ mark {
     </div>
     <div class="card-body">
       <button class="copy-btn" data-text="记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题">复制</button>
-      <pre>记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</pre>
+      <pre>记录文档(工程内和记忆内，任务清单里该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</pre>
     </div>
   </div>
 </section>
@@ -472,10 +556,10 @@ mark {
     <div class="card-body">
       <button class="copy-btn" data-text="工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
       <pre>工程内文件夹有无要更新的？
 
-我要做的是精益求精，慢工出细活，完美的软件，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
     </div>
   </div>
 </section>
@@ -597,8 +681,8 @@ mark {
       <span class="card-tags"><span class="tag">继续</span><span class="tag">执行</span></span>
     </div>
     <div class="card-body">
-      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
-      <pre>继续，注意tsc + ESLint + vitest测试，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</pre>
+      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git">复制</button>
+      <pre>继续，注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，记得存git</pre>
     </div>
   </div>
 </section>
@@ -915,6 +999,130 @@ full-output-enforcement → 强制完整输出、禁止占位符</pre>
   </div>
 </section>
 
+</div><!-- /tab-new -->
+
+<!-- ═══════════ TAB: E3.5对话 ═══════════ -->
+<div id="tab-e35" class="hidden">
+
+<!-- E35-S1: E3.5 开场白 -->
+<section id="e35-s1" class="section">
+  <div class="section-title">🎨 E3.5 开场白</div>
+  <div class="section-desc">E3.5 AI 进场第一条消息——说明身份、范围、规矩</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">E3.5 标准开场</span>
+      <span class="card-tags"><span class="tag">E3.5</span><span class="tag">开场</span><span class="tag">美化</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="1. 要求必须读 html。
+2. 你现在是 E3.5 部分的 AI，主要负责界面美化。E4 的 AI 在并行执行其他任务。你的起点是     <span class="placeholder">E3.5软件生态美化文件夹</span>      ——     <span class="placeholder">05-执行清单.md</span>     是唯一进度真相。我知道有设置界面等部分美化，那些需要重新单独创作，而不和这些小的夹杂在一起。制作规矩跟新对话 AI 一样：一次只改一小步，开始和结束前说明当前进度。做完后告诉我：从 UI 上可以验证什么，有没有遗漏。先说，先不能动手改代码。
+3. 说说设计部分涉及多少逻辑部分代码？
+4. 我的理解是按清单，这是进度唯一真相。从第一组开始。">复制</button>
+      <pre>1. 要求必须读 html。
+2. 你现在是 E3.5 部分的 AI，主要负责界面美化。E4 的 AI 在并行执行其他任务。你的起点是     <span class="placeholder">E3.5软件生态美化文件夹</span>      ——     <span class="placeholder">05-执行清单.md</span>     是唯一进度真相。我知道有设置界面等部分美化，那些需要重新单独创作，而不和这些小的夹杂在一起。制作规矩跟新对话 AI 一样：一次只改一小步，开始和结束前说明当前进度。做完后告诉我：从 UI 上可以验证什么，有没有遗漏。先说，先不能动手改代码。
+3. 说说设计部分涉及多少逻辑部分代码？
+4. 我的理解是按清单，这是进度唯一真相。从第一组开始。</pre>
+    </div>
+  </div>
+</section>
+
+<!-- E35-S2: UI改动影响检查 -->
+<section id="e35-s2" class="section">
+  <div class="section-title">🔍 UI 改动影响检查</div>
+  <div class="section-desc">每次改 UI 后追问——防止美化破坏逻辑</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">UI 改动影响追问</span>
+      <span class="card-tags"><span class="tag">UI</span><span class="tag">逻辑</span><span class="tag">影响</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="你所改的 UI 部分会对整个程序的逻辑造成什么影响吗？">复制</button>
+      <pre>你所改的 UI 部分会对整个程序的逻辑造成什么影响吗？</pre>
+    </div>
+  </div>
+</section>
+
+<!-- E35-S3: 继续执行 -->
+<section id="e35-s3" class="section">
+  <div class="section-title">📝 继续执行</div>
+  <div class="section-desc">确认后继续，一次一小步</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">E3.5 继续执行</span>
+      <span class="card-tags"><span class="tag">继续</span><span class="tag">E3.5</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="继续，注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git">复制</button>
+      <pre>继续，注意tsc + ESLint + vitest测试，低耦合，高内聚，保证无错，保证归一化，无硬编码，同时牢记记忆中的各种规定，一次只能做一个小任务，做完等我检查，记得存git</pre>
+    </div>
+  </div>
+</section>
+
+<!-- E35-S4: 收尾 -->
+<section id="e35-s4" class="section">
+  <div class="section-title">📦 收尾记录</div>
+  <div class="section-desc">全部完成后收尾 + 交接</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">E3.5 收尾</span>
+      <span class="card-tags"><span class="tag">收尾</span><span class="tag">记录</span><span class="tag">Git</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题">复制</button>
+      <pre>记录文档(工程内和记忆内，该勾的勾掉)，记录bug（如果有），更新记忆，存git,我将和新ai共同解决之后的问题</pre>
+    </div>
+  </div>
+</section>
+
+<!-- E35-S5: 质量追问 -->
+<section id="e35-s5" class="section">
+  <div class="section-title">🔍 质量追问</div>
+  <div class="section-desc">修完 bug 后的深度追问</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">归一化 / 硬编码 / Bug 分析</span>
+      <span class="card-tags"><span class="tag">质量</span><span class="tag">归一化</span><span class="tag">bug</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="这个bug常见吗？属于未归一化的bug吗,有硬编码吗？">复制</button>
+      <pre>这个bug常见吗？属于未归一化的bug吗,有硬编码吗？</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">生态 vs 死代码 追问</span>
+      <span class="card-tags"><span class="tag">生态</span><span class="tag">归一性</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="如今的配置后，对未来的各种百花齐放的插件开发是有利还是不利，有利于我软件生态吗？还是说这是为这个插件写的死代码？符合归一性吗？">复制</button>
+      <pre>如今的配置后，对未来的各种百花齐放的插件开发是有利还是不利，有利于我软件生态吗？还是说这是为这个插件写的死代码？符合归一性吗？</pre>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-label">品质九条自查</span>
+      <span class="card-tags"><span class="tag">质量</span><span class="tag">全面</span></span>
+    </div>
+    <div class="card-body">
+      <button class="copy-btn" data-text="工程内文件夹有无要更新的？
+
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求">复制</button>
+      <pre>工程内文件夹有无要更新的？
+
+我要做的是精益求精，慢工出细活，完美的软件，低耦合，高内聚，同时保证ai友好度，归一化（不会发生v2.6，不会一个bug多个地方出现）插件自由化，vscode化程度相似的，禁止硬编码，时刻注意声明式，易操作的软件，你做的是否满足这个要求</pre>
+    </div>
+  </div>
+</section>
+
+</div><!-- /tab-e35 -->
+
 </main>
 </div>
 
@@ -943,6 +1151,57 @@ full-output-enforcement → 强制完整输出、禁止占位符</pre>
     sessionStorage.setItem(KEY, main.scrollTop);
   });
 })();
+
+// ── Tab switching ──
+const tabBtns = document.querySelectorAll('.tab-btn');
+const tabNew = document.getElementById('tab-new');
+const tabE35 = document.getElementById('tab-e35');
+const sidebarCategories = document.querySelectorAll('.nav-category');
+const sidebarItems = document.querySelectorAll('.nav-item');
+
+tabBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const tab = btn.dataset.tab;
+    tabBtns.forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const sidebar = document.getElementById('sidebar');
+    if (tab === 'new') {
+      tabNew.classList.remove('hidden');
+      tabE35.classList.add('hidden');
+      sidebar.style.display = '';
+    } else {
+      tabNew.classList.add('hidden');
+      tabE35.classList.remove('hidden');
+      sidebar.style.display = 'none';
+    }
+
+    // Reset scroll
+    main.scrollTop = 0;
+    sessionStorage.setItem('ld-corpus-tab', tab);
+  });
+});
+
+// Restore last active tab
+(function() {
+  const savedTab = sessionStorage.getItem('ld-corpus-tab');
+  if (savedTab === 'e35') {
+    document.querySelector('.tab-btn[data-tab="e35"]')?.click();
+  }
+})();
+
+// ── Quick-copy pill ──
+const quickCopy = document.getElementById('quick-copy');
+quickCopy.addEventListener('click', () => {
+  navigator.clipboard.writeText('npm run electron:dev').then(() => {
+    quickCopy.textContent = '✓ 已复制';
+    quickCopy.classList.add('copied');
+    setTimeout(() => {
+      quickCopy.textContent = 'npm run electron:dev';
+      quickCopy.classList.remove('copied');
+    }, 1200);
+  });
+});
 
 // ── Copy to clipboard ──
 document.querySelectorAll('.copy-btn').forEach(btn => {

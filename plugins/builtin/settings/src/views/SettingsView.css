@@ -1,0 +1,443 @@
+/**
+ * Settings Editor 样式——对标 VS Code Settings UI。
+ * Phase 5 柱子 2。控件样式由共享 Toggle/Select 组件提供，此文件只管布局。
+ */
+
+.settings-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-window);
+  color: var(--text-primary);
+}
+
+/* ── E3f #59：双 tab 栏── */
+
+.settings-tab-bar {
+  display: flex;
+  border-bottom: 1px solid var(--border);
+  padding: 0 16px;
+}
+
+.settings-tab {
+  padding: 8px 16px;
+  font-size: 13px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  margin-bottom: -1px;
+}
+
+.settings-tab:hover {
+  color: var(--text-primary);
+}
+
+.settings-tab.active {
+  color: var(--text-primary);
+  border-bottom-color: var(--accent);
+}
+
+/* ── 搜索栏 ── */
+
+.settings-search-bar {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  gap: 8px;
+}
+
+.settings-search-icon {
+  font-size: 14px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+/* ── E5#19c: 搜索框已迁移到 InlineInput 共享组件 ── */
+
+/* Open JSON 按钮 */
+.settings-json-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-primary);
+  font-size: 12px;
+  cursor: pointer;
+  border-radius: 2px;
+}
+
+.settings-json-btn:hover {
+  background: var(--hover-overlay);
+}
+
+.settings-json-label {
+  font-size: 11px;
+}
+
+/* ── 主体：左树 + 右表单 ── */
+
+.settings-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── 左侧分组树 ── */
+
+.settings-nav {
+  width: 200px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  padding: 8px 0;
+}
+
+.settings-nav-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 6px 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  cursor: pointer;
+  text-align: left;
+}
+
+.settings-nav-item:hover {
+  background: var(--hover-overlay);
+}
+
+.settings-nav-item.active {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+  font-weight: 500;
+  border-left-color: var(--accent);
+}
+
+.settings-nav-count {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: var(--hover-overlay);
+  padding: 0 6px;
+  border-radius: 10px;
+}
+
+.settings-nav-empty {
+  padding: 20px;
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── 右侧设置表单 ── */
+
+.settings-form {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px 28px;
+}
+
+.settings-group-title {
+  font-size: 18px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-primary);
+}
+
+.settings-empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+/* ── 角色分组切换条（#41.14 ⑤）——切换按钮在顶、激活套配置在下 ── */
+/* 设计源：工厂角色并存 mockup .gen-switch-btn/.role-card（mockup 自绘开关样式）+ ui-ux-pro-max
+   focus-visible 可访问性 + 激活态视觉区分；配色全走 CSS 变量（硬约束 #1） */
+
+.settings-role-switch {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--accent) 4%, transparent);
+}
+
+.settings-role-switch-label {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.settings-role-switch-btn {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+
+.settings-role-switch-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.settings-role-switch-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.settings-role-switch-btn.active {
+  background: color-mix(in srgb, var(--accent) 18%, transparent);
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+/* ── 顶部通用区切换条（E5.8#41.13）——设置套并存切换：内置画在编辑器最顶、整条虚线框 ── */
+/* 设计源：工厂角色并存 mockup 帧③ .gen-area（虚线 + accent 6% 底）+ ui-ux-pro-max
+   focus-visible 可访问性；配色全走 CSS 变量 + color-mix（硬约束 #1） */
+
+.settings-role-switch--gen {
+  margin: 10px 16px 0;
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  flex: none;
+}
+
+/* ── 单个设置行 ── */
+
+.settings-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  gap: 20px;
+}
+
+.settings-row-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.settings-row-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-primary);
+  margin-bottom: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-row-desc {
+  display: block;
+  font-size: 12px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+/* ── 控件区 ── */
+
+.settings-row-control {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  min-width: 100px;
+  justify-content: flex-end;
+}
+
+/* ── E3f #53c：设置项齿轮——hover 时出现，对标 VS Code Settings Editor ── */
+
+.settings-row-gear {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 120ms ease, background 120ms ease;
+  margin-left: 4px;
+}
+
+.settings-row:hover .settings-row-gear {
+  opacity: 1;
+}
+
+.settings-row-gear:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* E3f #59d3：色块预览——#59e ColorPicker 替换为弹出调色器 */
+.settings-color-control {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.settings-color-swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 3px;
+  border: 1px solid var(--separator);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.settings-color-swatch:hover {
+  border-color: var(--accent);
+}
+
+/* E4V#46——action 按钮（renderHint: "action"） */
+.settings-action-btn {
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 3px;
+  padding: 4px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.settings-action-btn:hover { opacity: 0.85; }
+
+/* ── ObjectEditor——object/array 配置项键值对编辑器 ── */
+
+.object-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.object-editor-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.object-editor-key {
+  flex: 1;
+  min-width: 80px;
+  font-size: 12px;
+  padding: 2px 6px;
+  height: 24px;
+}
+
+.object-editor-colon {
+  font-size: 12px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.object-editor-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: background 150ms ease, color 150ms ease, border-color 150ms ease;
+}
+
+.object-editor-toggle:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.object-editor-toggle--on {
+  color: var(--accent);
+  border-color: var(--accent);
+}
+
+.object-editor-toggle--on:hover {
+  color: var(--accent);
+}
+
+.object-editor-value {
+  flex: 1;
+  min-width: 60px;
+  font-size: 12px;
+  padding: 2px 6px;
+  height: 24px;
+}
+
+.object-editor-delete {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: color 150ms ease, background 150ms ease;
+}
+
+.object-editor-delete:hover {
+  color: var(--error);
+  background: var(--hover-overlay);
+}
+
+.object-editor-add {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px dashed var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: color 150ms ease, border-color 150ms ease;
+}
+
+.object-editor-add:hover {
+  color: var(--text-primary);
+  border-color: var(--accent);
+}

@@ -1,0 +1,321 @@
+/* IconBarZone——E5.7#6。壳 IconBar.css + HamburgerMenu.css 迁入池。
+   CSS 类名保持与壳一致（池是独立文档，无冲突；迁移零差异）。
+   颜色全部走 CSS 变量（硬约束 #1）——壳侧硬编码归一化：
+     - active 高亮 rgba(0,120,212,0.12) → color-mix(in srgb, var(--accent) 12%, transparent)
+     - 汉堡下拉阴影 rgba(0,0,0,0.3) → var(--context-menu-shadow)
+   拖拽相关样式（drop 指示线/拖影/换位提示）已随 #6 补丁迁入（2026-08-14，零丢失铁律——
+   原"远期"废止）。拖影 48px→42px 与注记③同源修正；阴影归一化 → var(--context-menu-shadow)。 */
+
+/* ── 图标栏——42px 垂直列（Zone分解设计.md:81；壳 icon-btn 48px 溢出已修正为 42px） ── */
+
+.icon-bar {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  width: 42px;
+  height: 100%;
+  flex-shrink: 0;
+  background: var(--bg-icon-bar);
+}
+
+.icon-bar-top {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 4px;
+  gap: 4px;
+}
+
+/* 底部——对标 VS Code 左下角 Manage 齿轮 */
+.icon-bar-bottom {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 4px;
+  gap: 4px;
+}
+
+.icon-btn {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  position: relative;
+  transition: background 150ms;
+}
+
+.icon-btn:hover {
+  background: var(--hover-overlay);
+}
+
+.icon-btn.active {
+  background: radial-gradient(circle at center, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+}
+
+.icon-btn.active::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 2px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+/* E2c #19j：icon-bar-plugin-icon——PoolPluginIcon 统一渲染（类名与壳 PluginIcon 输出一致） */
+.icon-btn .plugin-icon--img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.55;
+  filter: brightness(0) saturate(100%) invert(55%);
+  transition: opacity 150ms, filter 150ms;
+}
+
+.icon-btn .plugin-icon--codicon {
+  font-size: 24px !important;
+  opacity: 0.55;
+  color: var(--text-primary);
+  transition: opacity 150ms, color 150ms;
+}
+
+/* E5#100: Lucide SVG 图标——对齐 codicon 尺寸和透明态 */
+.icon-btn .plugin-icon--lucide {
+  width: 24px;
+  height: 24px;
+  opacity: 0.55;
+  color: var(--text-primary);
+  transition: opacity 150ms, color 150ms;
+}
+
+.icon-btn .plugin-icon--emoji {
+  font-size: 24px;
+  line-height: 1;
+  opacity: 0.55;
+  transition: opacity 150ms;
+}
+
+.icon-btn:hover .plugin-icon--codicon,
+.icon-btn.active .plugin-icon--codicon,
+.icon-btn:hover .plugin-icon--lucide,
+.icon-btn.active .plugin-icon--lucide {
+  opacity: 1;
+}
+
+.icon-btn:hover .plugin-icon--img {
+  opacity: 0.85;
+}
+
+.icon-btn.active .plugin-icon--img {
+  opacity: 1;
+  filter: brightness(0) saturate(100%) invert(100%);
+}
+
+.icon-btn:hover .plugin-icon--emoji,
+.icon-btn.active .plugin-icon--emoji {
+  opacity: 1;
+}
+
+/* ── ☰ 汉堡菜单（壳 HamburgerMenu.css 迁入——E5.8#2 壳组件已删，本块为唯一实现） ── */
+/* E5.8#1d EXEMPT：pool-css gate（禁池 CSS @import）→ 池 zone CSS 自包含壳同款块，结构性重复 */
+/* jscpd:ignore-start */
+
+/* 按钮——和图标栏按钮同尺寸，颜色更淡区分于视图图标 */
+.hamburger-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 20px;
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+}
+
+.hamburger-btn:hover,
+.hamburger-btn.hamburger-open {
+  color: var(--text-primary);
+}
+
+/* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
+.hamburger-dropdown {
+  position: fixed;
+  top: 30px; /* TitleBar 高度——避开 -webkit-app-region: drag 拖拽区截鼠标事件（硬约束 #18） */
+  left: 42px; /* 图标栏宽度 */
+  display: flex;
+  max-height: calc(100vh - 30px);
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  border-left: none;
+  border-radius: 0 6px 6px 0; /* 左边贴图标栏无圆角，其余三边 6px */
+  box-shadow: var(--context-menu-shadow);
+  z-index: var(--z-dropdown);
+  animation: hamburger-dropdown-in 150ms ease-out;
+}
+
+@keyframes hamburger-dropdown-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+/* 主面板（左侧） */
+.hamburger-main-panel {
+  width: 180px;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* 子面板（右侧——hover 时出现） */
+.hamburger-sub-panel {
+  width: 200px;
+  padding: 4px 0;
+  border-left: 1px solid var(--separator);
+  margin-left: -1px; /* 消主面板→子面板间 1px 缝——鼠标划过缝隙会触发 mouseLeave 导致子面板消失 */
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* 组 */
+.hamburger-group {
+  padding: 4px 0;
+}
+
+.hamburger-group + .hamburger-group {
+  border-top: 1px solid var(--separator);
+}
+
+/* 组标题 */
+.hamburger-group-label {
+  padding: 2px 12px 0;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--text-muted);
+}
+
+/* 菜单项（主面板 + 子面板共用） */
+.hamburger-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 80ms;
+}
+
+.hamburger-item:hover,
+.hamburger-item.hamburger-item-hovered {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* 右侧：快捷键 + chevron */
+.hamburger-item-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* 快捷键提示 */
+.hamburger-item-key {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+.hamburger-item:hover .hamburger-item-key,
+.hamburger-item.hamburger-item-hovered .hamburger-item-key {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+/* 展开箭头 */
+.hamburger-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.hamburger-item:hover .hamburger-chevron,
+.hamburger-item.hamburger-item-hovered .hamburger-chevron {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+
+/* E5.8#37.6：禁用态样式已删——when 不满足项由壳过滤隐藏（原灰显），disabled 字段不复存在 */
+/* jscpd:ignore-end */
+
+/* ── E5.7#6 补丁：拖拽换位——壳 IconBar.css 拖拽样式迁入 ── */
+
+/* 拖拽 wrapper：包裹图标和 drop 指示线 */
+.icon-bar-item-wrapper {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* VS Code 风格 drop 指示线 */
+.icon-drop-indicator {
+  width: 28px;
+  height: 2px;
+  background: var(--accent);
+  border-radius: 1px;
+  margin: 0 auto;
+  z-index: 1;
+}
+
+.icon-btn.dragging {
+  opacity: 0.4;
+}
+
+/* 拖影——对标 TabBar 的半透明跟随（壳 48px → 池 42px，注记③同源） */
+.icon-drag-preview {
+  position: fixed;
+  z-index: var(--z-drag-preview); /* E5#98: 拖拽预览线——最高层 */
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  box-shadow: 0 4px 16px var(--context-menu-shadow);
+  opacity: 0.85;
+  pointer-events: none;
+}
+
+.icon-drag-preview .plugin-icon--img {
+  width: 24px;
+  height: 24px;
+  opacity: 0.8;
+}
+
+/* ── E4V#48：跨容器拖放落点高亮（#10 并入）——数据含 VIEW_DRAG_MIME 时整图标描边 ── */
+
+.icon-btn.view-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

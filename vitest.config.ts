@@ -4,8 +4,9 @@ import { resolve } from "path";
 export default defineConfig({
   test: {
     globals: true,
-    environment: "node",
-    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "plugins/**/*.test.ts", "plugins/**/*.test.tsx"],
+    environment: "jsdom",
+    setupFiles: ["./vitest.setup.ts"],
+    include: ["src/**/*.test.ts", "src/**/*.test.tsx", "plugins/**/*.test.ts", "plugins/**/*.test.tsx", "electron/**/*.test.ts"],
   },
   resolve: {
     alias: {

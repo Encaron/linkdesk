@@ -8,7 +8,7 @@
 
 对标 VS Code：把编辑器标签页拖出壳窗口 → 自动变成独立 OS 窗口 → 拖回来 → 自动并回去。
 
-技术原理：Electron `WebContentsView` 不绑定创建它的 `BrowserWindow`——可以跨窗口转移。`webContents` 全程不变——JS 堆、IPC 通道、React 状态全部保留。
+技术原理（**2026-08-17 修正——E5.7 极简Pool 形态**）：1 主窗口 + 1 WCV 装全部标签页——拖出 = 新 BrowserWindow + 新 WCV（同 pool.html + 同 preload-pool）+ pushLayout 只推脱出的 tab。**tab 跨窗口 = unmount + remount，renderer 状态不保留**（脱出窗口设计 审计 1——兜底方案见 E5.8 Phase 9 #42 拍板）。多 tab 并窗吸附/逐个拖回/空窗自灭/窗口 chrome 等交互细节 → [02-交互细节设计.md](../../02-Electron架构/E5.8_归一化基建/面板窗口/02-交互细节设计.md)。
 
 ```
 ┌─ 壳窗口 ──────────────┐     ┌─ 独立窗口 ────────┐

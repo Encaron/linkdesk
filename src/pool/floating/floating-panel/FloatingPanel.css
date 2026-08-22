@@ -1,0 +1,210 @@
+/**
+ * FloatingPanelHost 样式——E5.8#37（Phase 8 壳内悬浮面板 类型 B）。
+ * 视觉依据 = mockups/02-壳内悬浮面板-mockup.html 五帧（2026-08-17 用户拍板）——
+ *   帧 1 默认居中大卡 85vw×80vh（#41.6 改：原右贴边 640px 居中化）/ 帧 3 拖拽中 / 帧 4 最大化+还原。
+ *   （帧 3 的半透明跟随已被用户否决——2026-08-22 删 opacity 0.85，仅留投影抬升，见 .dragging 规则。）
+ * I8 交互 → 02-交互细节设计.md §3。动画 = ui-ux-pro-max 确认 Expo.out cubic-bezier(0.16,1,0.3,1)。
+ * z-index 不进文件——inline Z_INDEX.floatingPanel / floatingPanel-1（#26 常量表）。
+ * pointer-events 由 FloatingLayerHost #floating-panel-root 根级提供（§2 根级 opt-in）。
+ * 全部颜色走 CSS 变量，零硬编码 hex（accent 半透明走 color-mix——IconBarZone 同款先例）。
+ * 间距走 spacing-grid（padding/margin/gap 1-6px 或 4 倍数；mockup 的 14/7/9px 已归位 12/8px）。
+ */
+
+/* 硬约束 18：池顶部 .titlebar 30px 是 -webkit-app-region: drag 拖拽区——
+   面板默认 top:12px 落拖拽区内会被 OS 截鼠标事件。根容器 no-drag 豁免整个面板层
+   （含全屏遮罩），仿 .window-controls 先例。 */
+#floating-panel-root {
+  -webkit-app-region: no-drag;
+}
+
+.floating-panel-backdrop {
+  position: fixed;
+  inset: 0;
+  background: var(--floating-panel-backdrop); /* mockup 遮罩——比 Dialog 0.5 轻（面板非模态确认）；值走主题 token */
+}
+
+.floating-panel {
+  position: fixed;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-window);
+  border: 1px solid var(--separator);
+  border-radius: 8px;
+  box-shadow: var(--floating-panel-shadow); /* mockup 大面板强投影（亮/暗主题 token） */
+  outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
+  /* #41.6 no-drag 链——本体显式豁免（根治⑤整窗误拖；根容器 no-drag 已有，双重防御） */
+  -webkit-app-region: no-drag;
+  /* I8-13 淡入 + 微缩放——250ms Expo.out（ui-ux-pro-max 确认）；prefers-reduced-motion 下关闭 */
+  animation: floating-panel-in 250ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* #41.6 居中卡入场——右滑入对居中违和 → 淡入 + 微缩放（from scale 0.96/opacity 0） */
+@keyframes floating-panel-in {
+  from { transform: scale(0.96); opacity: 0; }
+  to   { transform: scale(1); opacity: 1; }
+}
+
+/* I8-13 prefers-reduced-motion 关闭（含 open-in 宽度动画——瞬时切换，overflow:hidden 保证无残影） */
+@media (prefers-reduced-motion: reduce) {
+  .floating-panel { animation: none; }
+  .floating-panel-act.open-in,
+  .floating-panel-act.open-in .lbl { transition: none; }
+}
+
+/* I8-5 拖拽中投影抬升（2026-08-22 用户否决半透明跟随——opacity 0.85 已删；保留投影作抬升反馈） */
+.floating-panel.dragging {
+  box-shadow: var(--floating-panel-shadow-dragging);
+}
+
+/* I8-9 最大化铺满（mockup 帧 4 .fp.max）——resize 手柄由 JSX 隐藏 */
+.floating-panel.maximized {
+  border-radius: 6px;
+}
+
+/* 标题栏 = I8-5 拖拽面（#41.6 顶部 6px 手柄 → 整条标题栏）——cursor:grab + no-drag + touch-action */
+.floating-panel-title {
+  height: 38px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 6px 0 12px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--border);
+  user-select: none;
+  cursor: grab;
+  touch-action: none;
+  -webkit-app-region: no-drag;
+}
+.floating-panel-title:active { cursor: grabbing; }
+
+.floating-panel-label {
+  font-size: 12px;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 动作区——纯图标（mockup 帧 1 .fp-actions/.fp-act） */
+.floating-panel-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex: none;
+  cursor: default; /* 按钮区排除拖拽——不误导 grab 光标（按钮自身 cursor:pointer） */
+}
+
+.floating-panel-act {
+  position: relative;
+  height: 26px;
+  padding: 0 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: none;
+  background: transparent;
+  color: var(--text-secondary);
+  font-size: 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.floating-panel-act svg { width: 14px; height: 14px; flex: none; }
+.floating-panel-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.floating-panel-act.close:hover { background: var(--titlebar-close-hover); color: var(--badge-text); }
+
+/* open-in：默认纯图标 28px，hover 展开全文（mockup .fp-act.open-in）。
+   宽度动画走 CSS Grid fr 轨道过渡（grid-template-columns: auto 0fr → auto 1fr）——
+   0fr/1fr 可插值 → 展开/收回平滑；max-content/none 不可插值 = 瞬时跳变（2026-08-22 用户报
+   「不丝滑 + 收回半个字残影 0.5s」根因）。内容自适应零硬编码 px（点修② 英文完整显示）。
+   残影双杀：① label overflow:hidden 把文字裁在自身 0 宽盒内（旧版 text 溢出到按钮 28px
+   裁剪边漏出残影）+ ② 宽度动画取代瞬时裁剪（残影随动画同步收走，无静态半字停留）。
+   节奏 = ui-ux-pro-max：enter 180ms / exit 120ms（exit-faster-than-enter）+ 面板统一 Expo.out。 */
+.floating-panel-act.open-in {
+  display: grid;
+  grid-template-columns: auto 0fr;
+  min-width: 28px;
+  padding: 0;
+  overflow: hidden;
+  transition:
+    grid-template-columns 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 120ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 150ms ease,
+    color 150ms ease;
+}
+.floating-panel-act.open-in:hover {
+  grid-template-columns: auto 1fr;
+  padding: 0 8px;
+  transition:
+    grid-template-columns 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    padding 180ms cubic-bezier(0.16, 1, 0.3, 1),
+    background 150ms ease,
+    color 150ms ease;
+}
+.floating-panel-act.open-in .lbl {
+  grid-column: 2;
+  min-width: 0;
+  overflow: hidden; /* 残影①——文字裁在 label 盒内，不外溢到按钮裁剪边 */
+  white-space: nowrap;
+  font-size: 12px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+.floating-panel-act.open-in:hover .lbl { opacity: 1; }
+.floating-panel-act.open-in svg { color: var(--accent); }
+
+/* □ / ✕：hover tooltip（data-tip 纯 CSS——文案来自 DTO label，池零自产文本）。
+   向下落入面板内部（标题栏在面板顶），overflow:hidden 不裁到 */
+.floating-panel-act.tip::after {
+  content: attr(data-tip);
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--bg-input);
+  border: 1px solid var(--separator);
+  color: var(--text-primary);
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(-3px);
+  transition: opacity 120ms ease, transform 120ms ease;
+}
+.floating-panel-act.tip:hover::after { opacity: 1; transform: translateY(0); }
+
+/* I8-7 底部 8px resize 手柄（调高，cursor:ns-resize；mockup .fp-resize） */
+.floating-panel-resize {
+  height: 8px;
+  flex: none;
+  cursor: ns-resize;
+  touch-action: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 150ms ease;
+}
+.floating-panel-resize::before {
+  content: "";
+  width: 26px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--separator);
+}
+.floating-panel-resize:hover { background: color-mix(in srgb, var(--accent) 20%, transparent); }
+.floating-panel-resize:hover::before { background: var(--accent); }
+
+/* 内容区——插件视图（PluginComponent）占满剩余空间。
+   #41.7 ① 修复「只剩左半」：flex-row 单子项 flex:0 1 auto = 内容宽，不横向伸展 → 视图只占左半；
+   改 flex-column（侧栏 SidebarZone 同款）——cross-axis stretch 让视图铺满面板宽。 */
+.floating-panel-body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}

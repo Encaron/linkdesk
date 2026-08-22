@@ -1,0 +1,91 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    // E5.8#2：src 三页入口（tsx 直列——knip 实测不解析 Vite 风格 HTML 的 <script src="/src/...">，
+    // pool.html 单作 entry 时 pool 树 34 文件全断根报未用；tsx 模块根等价且可靠）。
+    //   index.html  → src/main.tsx（knip 6 自动识别 Vite 默认入口，手动列会报 redundant——不列）
+    //   pool.html   → src/pool/pool-main.tsx
+    //   preview.html→ src/pool/dev/preview-main.tsx（vite dev-only 预览页，仍定 entry 保分析根完整）
+    "src/pool/pool-main.tsx",
+    "src/pool/dev/preview-main.tsx",
+    // E5.8#2：electron 三件套（主进程 + 双 preload——preload-pool 池侧 / preload-shell 壳侧）
+    "electron/main.ts",
+    "electron/preload-pool.ts",
+    "electron/preload-shell.ts"
+  ],
+  "project": [
+    // E5.8#2：plugins/ 排除——插件是独立 vite 构建产物（dist/plugins/*.js 构建自证），knip 只管壳 src/ + electron/
+    "src/**/*.{ts,tsx}",
+    "electron/**/*.ts",
+    "scripts/**/*.{mjs,cjs}"
+  ],
+  "ignore": [
+    // E5.8#2：core 聚合器 + 其 re-export 面（@src/core 插件 API 入口，壳内按需直引具体文件——
+    //   桶导出面向 plugins/ 排除域与 window.linkdesk 契约，knip 静态图不覆盖 IPC 字符串分发。
+    //   ProtocolParser/ConfigurationRegistry/ThemeEngine/api-types/IpcBridgeHandler
+    //   均被 src/core/index.ts `export *` 透传——整文件豁免（其 exports 全部构成公共 API 面）。
+    //   E5.8#41.11：FactorySlots 移出 ignore——一对多后 factorySlots 有直接消费方（settingsCommands/
+    //   lifecycle/iconbar）+ 测试直引 FactorySlots 类，knip 静态图全覆盖，不再需要豁免。）
+    "src/core/index.ts",
+    "src/core/api/linkdesk-api.ts",
+    "src/core/api/linkdesk-api/types.ts",
+    "src/core/api/types.ts",
+    "src/core/commands/shell/coreCommands.ts",
+    "src/core/commands/input-bindings/shellKeybindings.ts",
+    "src/core/pipeline/ProtocolParser.ts",
+    "src/core/react/useConfiguration.ts",
+    "src/core/react/usePluginIpcEvent.ts",
+    "src/core/react/useSendData.ts",
+    "src/core/registry/ConfigurationRegistry.ts",
+    "src/core/registry/commands/CommandRegistry.ts",
+    "src/core/registry/commands/KeybindingRegistry.ts",
+    "src/core/registry/commands/KeybindingRegistry/*.ts",
+    "src/core/registry/commands/MenuRegistry.ts",
+    "src/core/registry/languages/LangDefRegistry.ts",
+    "src/core/registry/ProtocolRegistry.ts",
+    "src/core/services/configuration/ConfigurationApplier.ts",
+    "src/core/services/configuration/ConfigurationService.ts",
+    // E5.8#12：FileAssociationService/StatusBarService 移出 ignore——#12 删了其 unreachable 的
+    //   unregisterFileAssociations/unregisterStatusBarPlugin，剩余 exports 全部可达，knip 不再需要豁免。
+    "src/core/services/files/FileService.ts",
+    "src/core/services/layout/LayoutService.ts",
+    "src/core/services/layout/WorkspaceService.ts",
+    "src/core/services/plugins/IpcBridgeHandler.ts",
+    "src/core/services/plugins/IpcBridgeHandler/tabs.ts",
+    "src/core/services/plugins/IpcBridgeHandler/workspace.ts",
+    "src/core/services/plugins/ProfileService.ts",
+    "src/core/services/ui/DialogService.ts",
+    // E5.8#37：FloatingPanelService 整文件豁免已摘除——#39.5 子项 B useFloatingPanelReveal hook
+    //   （src/App/floatingPanelReveal.ts）已消费 pushPanel/closePanel/getCurrentFloatingPanelViewId，
+    //   bridges.ts 消费 registerFloatingPanelRenderer/handleFloatingPanelAction——全部导出有消费方。
+    "src/core/services/ui/LogChannel.ts",
+    "src/core/services/ui/NotificationService.ts",
+    "src/core/services/ui/ThemeEngine.ts",
+    "src/core/utils/CancellationToken.ts",
+    "src/core/utils/plugin/pluginPaths.ts",
+    // E5.8#2：池侧 dev/插件共享面——mockLinkdesk（dev 预览 side-effect 安装 window.linkdesk）+
+    //   useClickPreview / useClipboardKeys（file-tree 插件直引 @src/pool）+ useTabManager 聚合器门面（E5.8#0d.10-2e 全量 re-export）
+    "src/pool/dev/mockLinkdesk.ts",
+    "src/pool/hooks/useClipboardKeys.ts",
+    "src/pool/hooks/useClickPreview.ts",
+    "src/hooks/useTabManager.ts",
+    // E5.8#37.9：audit-i18n.mjs 已从手动工具升格为 npm run check 门禁成员（package.json check 链
+    //   第三段）——从 ignore 移除，knip 纳入静态分析（脚本仅用 fs/path，零悬挂依赖）。
+    // E5.8#22.5：契约运行期校验——生成器 AST 输入（scripts/generate-contract.mjs 读入发射
+    //   contracts/runtime-shapes.ts），非运行时消费面。产物 runtime-shapes.ts 在 contracts/ 不在 knip project 域。
+    "electron/ipc/runtime-dto-registry.ts"
+  ],
+  "ignoreDependencies": [
+    // E5.8#2：monaco-languageclient 被 plugins/builtin/editor 直引（排除域——插件共用根 node_modules，独立 vite 构建时解析）
+    "monaco-languageclient",
+    // E5.8#24 回归修复：pyright 被 electron/ipc/handlers/lsp-handlers.ts 以 spawn 字符串路径运行时调用
+    //   （"node_modules/pyright/dist/pyright-langserver.js"，非 import 引用）——knip 静态图只认 import，
+    //   看不到字符串 spawn → #2b 误删导致 .py LSP 跳转回归（node_modules/pyright 物理消失 → spawn ENOENT）。
+    //   装回 + 此处豁免防复发；打包态 electron-builder.yml extraResources 同源拷贝 node_modules/pyright。
+    "pyright"
+  ],
+  "ignoreBinaries": [
+    // E5.8#2：Linux 分支的真实外部命令（electron/main.ts openInTerminal 平台分支，xdg-open 是 Linux 版 exec 字符串）
+    "xdg-open"
+  ]
+}

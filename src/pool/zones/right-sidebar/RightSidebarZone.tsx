@@ -1,0 +1,169 @@
+/**
+ * RightSidebarZone——E5.7#22 骨架 + E5.8#37.5 真渲染。右侧栏 Zone（greenfield——设计 Zone分解设计.md §2.7）。
+ *
+ * 和 SidebarZone（#10）同构——复用 pool/shared/ 的 PoolSectionStack / PoolToolbarSlot（#11 已迁入）。
+ * 默认隐藏：PoolZoneShell 按 layout.rightSidebar?.visible 条件渲染（无数据 → 零 DOM）。
+ *
+ * 职责（#37.5 真渲染）：
+ *   - header（containerTitle 壳 t() 推送——显示文本铁律）
+ *   - toolbar 粘顶（PoolToolbarSlot）+ section stack（PoolSectionStack——折叠/拖排/PaneSash 自带）
+ *   - 左侧 4px resize handle——useResizeDrag（#37.5 抽 hook 收敛，growSign -1 左拖增宽，#13 语义零差异迁移）
+ *   - collapsed 态（宽度 ≤48 派生）——▶ 展开按钮；header ◀ 折叠按钮；tooltip 壳 t() 推送
+ *   - 空态文案 emptyText/emptyHint 壳 t() 推送（SidebarLayout 既有字段）
+ *
+ * 🔴 壳侧无生产者（rightSidebar 数据填充归 Phase 12）——当前真渲染的是「空容器」形态
+ *   （宽度/折叠/展开/handle 镜像全可用）。与 SidebarZone 的差异（诚实注记）：
+ *   ① 折叠/展开按钮 → events.emit("rightSidebar:toggleCollapse", { collapsed })——壳无监听 =
+ *      安全 no-op（池 emit 零订阅先例）；Phase 12 接线后直达壳折叠真相源（⚑ 不借 toggleSidebarCollapse
+ *      ——该 action 壳 handler 是左栏专属语义，无 containerId 参数）；
+ *   ② 视图 reorder/setCollapsed → pool.sidebarAction（通道按 containerId 泛化——
+ *      右栏容器注册后同一通道直达壳 ViewContainerService；Phase 12 生效前安全 no-op）；
+ *   ③ 宽度 commit → events.emit("rightSidebar:resize", { width })——不借 setSidebarWidth
+ *      （该 action 壳 handler 是左栏专属语义，无 containerId 参数）——Phase 12 #63.7 消费。
+ */
+
+import { useState, useCallback } from "react";
+import PoolToolbarSlot from "../../shared/pool-toolbar-slot/PoolToolbarSlot";
+import PoolSectionStack from "../../shared/pool-section-stack/PoolSectionStack";
+import ViewTitleActions from "../../shared/view-title-actions/ViewTitleActions"; // E5.8#36.6：mergeHeaderWhenSingle 单视图时容器 header 即视图 header——同声明消费
+import type { SidebarAction } from "../../../core/types/ipc/sidebarActions"; // E5.7#97：wire 契约归口
+import type { RightSidebarLayout, SidebarViewMeta } from "../../../core/types/pool/poolLayout"; // E5.8#36.8：右栏真 zone 类型（消费字段同 SidebarLayout）
+import { useResizeDrag } from "../../hooks/useResizeDrag"; // E5.8#37.5：通用 resize 拖拽 hook（收敛结构性重复）
+import "./RightSidebarZone.css";
+
+/** role 判别字面量——eslint no-restricted-syntax 拦 `=== "小写字面量"`（SidebarZone #10 同款提大写常量） */
+const ROLE_TOOLBAR = "toolbar" as const;
+
+interface RightSidebarZoneProps {
+  rightSidebar: RightSidebarLayout;
+}
+
+export default function RightSidebarZone({ rightSidebar }: RightSidebarZoneProps) {
+  // toolbar height tracked for PoolToolbarSlot（SidebarZone #10 同款）
+  const setToolbarHeight = useState(0)[1];
+
+  // 池→壳 IPC 回调（E5.6#11j 通道——按 containerId 泛化，右栏容器 Phase 12 注册后直达）
+  const handleSidebarAction = useCallback((action: SidebarAction) => {
+    window.linkdesk?.pool?.sidebarAction?.(action);
+  }, []);
+
+  /* ── E5.7#22 + E5.8#37.5：左侧 resize handle——useResizeDrag（#13 语义零差异迁移：
+       乐观本地宽 + rAF 节流 + mouseup/buttons===0 一次性 commit + 无位移 no-op + pushLayout 回执对齐）。
+       左侧 handle 向左拖 = 增宽（growSign -1）。 ── */
+
+  const resize = useResizeDrag({
+    axis: "col",
+    growSign: -1,
+    min: rightSidebar.minWidth ?? 0,
+    max: rightSidebar.maxWidth ?? Infinity,
+    value: rightSidebar.width,
+    cursor: "col-resize",
+    onCommit: (width) => {
+      // 真相源在壳——Phase 12 #63.7 消费（钳制 → pushLayout 回执）
+      window.linkdesk?.events?.emit("rightSidebar:resize", { width });
+    },
+  });
+
+  const { views, containerId, containerTitle, mergeHeaderWhenSingle, collapsedViews } = rightSidebar;
+
+  // 折叠态派生——拖拽期间本地宽实时判定（与 SidebarZone #10 同款；壳 collapsed 只在重推时更新）
+  const collapsed = resize.resizing ? resize.size <= 48 : rightSidebar.collapsed === true;
+
+  // 分离 toolbar / section 角色（SidebarZone #10 同款）
+  const toolbarViews: SidebarViewMeta[] = [];
+  const sectionViews: SidebarViewMeta[] = [];
+  for (const v of views) {
+    if (v.role === ROLE_TOOLBAR) {
+      toolbarViews.push(v);
+    } else {
+      sectionViews.push(v);
+    }
+  }
+
+  // mergeHeaderWhenSingle：只有一个 section view 时，view 的 singleViewPaneContainerTitle 替代容器标题
+  const effectiveTitle = (mergeHeaderWhenSingle && sectionViews.length === 1 && sectionViews[0].singleViewPaneContainerTitle)
+    ? sectionViews[0].singleViewPaneContainerTitle
+    : containerTitle;
+
+  const renderContent = () => {
+    // 无视图——空状态（文案壳侧 t() 推送——显示文本铁律）
+    if (!views || views.length === 0) {
+      return (
+        <div className="side-panel-placeholder">
+          <p>{rightSidebar.emptyText}</p>
+          {rightSidebar.emptyHint && <p className="side-panel-placeholder-hint">{rightSidebar.emptyHint}</p>}
+        </div>
+      );
+    }
+    return (
+      <div className="side-panel-content">
+        {/* ToolbarSlot——粘顶，flex-shrink:0 保证永不滚动消失（SidebarZone #10 同款） */}
+        <div style={{ flexShrink: 0 }}>
+          <PoolToolbarSlot views={toolbarViews} onHeightChange={setToolbarHeight} />
+        </div>
+
+        {/* SectionStack——可折叠 / 可拖排 / PaneSash resize（shared/ 复用，#11 已迁入） */}
+        <div style={{ flex: 1, overflowY: "auto", minHeight: 0 }}>
+          <PoolSectionStack
+            views={sectionViews}
+            containerId={containerId ?? ""}
+            toolbarHeight={0}
+            mergeHeaderWhenSingle={mergeHeaderWhenSingle}
+            collapsedViews={collapsedViews}
+            onSidebarAction={handleSidebarAction}
+          />
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div
+      className="right-sidebar-zone"
+      style={rightSidebar.visible ? undefined : { display: "none" }}
+    >
+      {/* E5.7#22：左侧 4px resize handle（#13 同款视觉——--separator → --separator-hover） */}
+      <div
+        className="right-sidebar-resize-handle"
+        onMouseDown={resize.onResizeStart}
+        aria-hidden="true"
+      />
+
+      {/* 折叠态——▶ 展开按钮（与 SidebarZone #10 同款：容器视图常驻挂载，折叠不丢状态） */}
+      {collapsed && (
+        <div className="side-panel collapsed" style={{ width: resize.size, height: "100%" }}>
+          <button
+            className="side-panel-expand"
+            onClick={() => window.linkdesk?.events?.emit("rightSidebar:toggleCollapse", { collapsed: true })}
+            title={rightSidebar.expandTooltip}
+          >
+            ▶
+          </button>
+        </div>
+      )}
+
+      {/* 非折叠——完整面板：header + 内容（空态 / toolbar + section stack） */}
+      <div className={`side-panel${resize.resizing ? " resizing" : ""}`} style={{ width: resize.size, height: "100%" }}>
+        {/* 容器 header——#37.5 补 ◀ 折叠按钮（SidebarZone 同款；差异注记 ①：emit 安全 no-op 接线归 Phase 12） */}
+        {effectiveTitle && (
+          <div className="side-panel-header">
+            <span className="side-panel-title" title={effectiveTitle}>{effectiveTitle}</span>
+            {/* E5.8#36.6：mergeHeaderWhenSingle 单视图合并——容器 header 即视图 header，titleActions 同声明消费 */}
+            {mergeHeaderWhenSingle === true && sectionViews.length === 1 && sectionViews[0].titleActions?.length
+              ? <ViewTitleActions actions={sectionViews[0].titleActions} />
+              : null}
+            {/* ◀ 折叠按钮——右栏折叠真相源归 Phase 12（壳无监听 = 安全 no-op） */}
+            <button
+              className="side-panel-collapse"
+              onClick={() => window.linkdesk?.events?.emit("rightSidebar:toggleCollapse", { collapsed: false })}
+              title={rightSidebar.collapseTooltip}
+            >
+              ◀
+            </button>
+          </div>
+        )}
+        {renderContent()}
+      </div>
+    </div>
+  );
+}

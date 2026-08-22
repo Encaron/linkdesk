@@ -1,0 +1,57 @@
+/**
+ * NumberInput——自定义 +/- 步进按钮。
+ * E5#57: 替代原生 <input type="number"> spinner，跟主题配色走。
+ */
+
+.number-input {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+}
+
+.number-input-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+  user-select: none;
+}
+
+.number-input-btn:first-child {
+  border-radius: 4px 0 0 4px;
+  border-right: none;
+}
+
+.number-input-btn:last-child {
+  border-radius: 0 4px 4px 0;
+  border-left: none;
+}
+
+.number-input-btn:hover:not(:disabled) {
+  background: var(--tab-hover-bg);
+}
+
+.number-input-btn:active:not(:disabled) {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.number-input-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.number-input-field {
+  border-radius: 0;
+  text-align: center;
+  width: 44px;
+}

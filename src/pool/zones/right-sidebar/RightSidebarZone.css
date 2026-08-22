@@ -1,0 +1,140 @@
+/* RightSidebarZone——E5.7#22。右侧栏骨架样式（设计 §2.7）。
+   与 SidebarZone.css 同源——基础面板类（.side-panel*）+ shared 组件类（.side-panel-toolbar）
+   在本文件自包含一份（池 zone 零跨 zone import 纪律——壳目录规范；重复定义同值，无害）。
+   .sidebar-pane-* 类由 PoolSectionStack 自带（components/shared/SidebarSection.css 既有 import）。 */
+
+/* zone 包装——pool-body flex 行的直接子项。顺序：handle（左边缘）→ panel */
+.right-sidebar-zone {
+  display: flex;
+  flex-direction: row;
+  flex-shrink: 0;
+  height: 100%;
+  min-height: 0;
+}
+
+/* ── E5.7#22：左侧 resize handle——4px + col-resize（#13 同款视觉） ── */
+
+.right-sidebar-resize-handle {
+  width: 4px;
+  height: 100%;
+  flex-shrink: 0;
+  cursor: col-resize;
+  background: var(--separator, rgba(255, 255, 255, 0.08));
+  transition: background 0.15s;
+}
+
+.right-sidebar-resize-handle:hover {
+  background: var(--separator-hover, rgba(255, 255, 255, 0.15));
+}
+
+/* ── 基础面板（SidebarZone.css 同源拷贝） ── */
+/* E5.8#1d EXEMPT：pool-css gate → RightSidebarZone 基础面板类自包含 SidebarZone 同款（.side-panel* 全套），结构性重复 */
+/* jscpd:ignore-start */
+.side-panel {
+  background: var(--bg-side-panel);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex-shrink: 0;
+  min-height: 0;
+  transition: width 150ms ease;
+}
+
+/* E5.8#37.5：折叠态（宽度 ≤48 派生）——▶ 展开按钮容器（SidebarZone.css 同款） */
+.side-panel.collapsed {
+  width: 28px;
+}
+
+/* 拖拽期间关闭宽度 transition（#13 同因——rAF 帧帧改宽，150ms 过渡会滞后成橡皮筋） */
+.side-panel.resizing {
+  transition: none;
+}
+
+.side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 35px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--separator);
+  background: var(--bg-side-panel);
+}
+
+/* 🔥 UX06：对标 VS Code——11px/uppercase/letter-spacing/ellipsis（SidebarZone.css 同款） */
+.side-panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--text-secondary);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.side-panel-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 0 8px 8px 8px;
+}
+
+/* 🔥 UX10：工具栏 sticky wrapper——z-index 高于 section header（PoolToolbarSlot 依赖） */
+.side-panel-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: calc(var(--z-sidebar-sticky-header) + 1);
+  background: var(--bg-side-panel);
+  overflow: hidden;
+}
+
+.side-panel-placeholder {
+  color: var(--text-muted);
+  font-size: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+/* E5.8#37.5：◀ 折叠 / ▶ 展开按钮（SidebarZone.css 同款） */
+.side-panel-collapse,
+.side-panel-expand {
+  width: 22px;
+  height: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 10px;
+  border-radius: 4px;
+  transition: color 150ms, background 150ms;
+}
+
+.side-panel-collapse:hover,
+.side-panel-expand:hover {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
+.side-panel-expand {
+  margin-top: 8px;
+  align-self: center;
+}
+
+/* 🔥 UX04：尊重系统"减少动画"偏好——关闭所有 transition（SidebarZone.css 同款） */
+@media (prefers-reduced-motion: reduce) {
+  .side-panel,
+  .side-panel-collapse,
+  .side-panel-expand {
+    transition: none !important;
+  }
+}
+
+/* 🔥 UX05：键盘导航可见焦点环——侧栏内所有可聚焦元素（SidebarZone.css 同款） */
+.side-panel :focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+/* jscpd:ignore-end */

@@ -1,0 +1,255 @@
+/**
+ * SidebarSection CSS —— Phase 5.5b。
+ * 对标 VS Code section header：22px / 11px / 600 / uppercase。
+ *
+ * CSS 变量（theme 作者可覆盖——不覆盖也有 fallback 正常工作）：
+ *   --sidebar-section-header-height     默认 22px（TSX 中 HEADER_H 同步读此值）
+ *   --sidebar-section-header-fg        默认 var(--text-muted)
+ *   --sidebar-section-header-hover-fg  默认 var(--text-primary)
+ */
+
+/* ── 区块容器 ── */
+
+.sidebar-section {
+  /* 无额外样式——消费者通过 children 或外层 wrapper 控制间距 */
+}
+
+/* ── Header —— VS Code: 22px / 11px / 600 / uppercase ── */
+
+.sidebar-section-header {
+  height: var(--sidebar-section-header-height, 22px);
+  padding: 0 8px;
+  cursor: pointer;
+  user-select: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  color: var(--sidebar-section-header-fg, var(--text-muted));
+  transition: color 0.1s ease;
+  /* sticky 由外层 .sidebar-section-sticky-head 接管——不再各自算 top */
+  background: var(--bg-side-panel);
+}
+
+.sidebar-section-header:hover {
+  color: var(--sidebar-section-header-hover-fg, var(--text-primary));
+}
+
+/* 不可折叠时——无 pointer cursor，无 hover 变色 */
+.sidebar-section-header.not-collapsible {
+  cursor: default;
+}
+
+.sidebar-section-header.not-collapsible:hover {
+  color: var(--sidebar-section-header-fg, var(--text-muted));
+}
+
+/* ── 三角箭头 ── */
+
+.sidebar-section-arrow {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  font-size: 10px;
+  flex-shrink: 0;
+  transition: transform 0.1s ease;
+}
+
+.sidebar-section-arrow.collapsed {
+  transform: rotate(-90deg);
+}
+
+/* ── 标题 ── */
+
+.sidebar-section-title {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* ── Badge —— 对标 VS Code .badge ── */
+
+.sidebar-section-badge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--badge-background, var(--accent));
+  color: var(--badge-foreground, var(--badge-text));
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+  text-transform: none;
+  /* 主题作者可通过 --badge-background / --badge-foreground 覆盖颜色 */
+}
+
+/* ── Spacer —— 把 actions 推到右侧 ── */
+
+.sidebar-section-spacer {
+  flex: 1;
+  min-width: 4px;
+}
+
+/* ── Actions slot —— 点击不冒泡（由 TSX stopPropagation 保证） ── */
+
+.sidebar-section-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  /* actions 内的按钮自己控制样式，这里只给容器 */
+}
+
+/* ── 🆕 E3.6：标题副文字——对标 VS Code titleDescription ── */
+
+.sidebar-section-title-description {
+  flex-shrink: 0;
+  font-weight: 400;
+  text-transform: none;
+  opacity: 0.7;
+  font-size: 10px;
+}
+
+/* ── 🆕 E3.6：showActions CSS ── */
+
+/* default：hover 才显示 actions。对标 VS Code ViewPaneShowActions.Default */
+.sidebar-section-actions.show-on-hover {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.sidebar-section-header:hover .sidebar-section-actions.show-on-hover {
+  opacity: 1;
+}
+
+/* whenExpanded + 折叠时：隐藏 */
+.sidebar-section-actions.hidden {
+  display: none;
+}
+
+/* E4V#43——溢出时裁切：overflow:hidden 自然裁切超宽按钮 */
+.sidebar-section-actions.overflow {
+  overflow: hidden;
+}
+
+/* E4V#43——… 更多操作按钮 */
+.sidebar-section-more {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  cursor: pointer;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1;
+  color: var(--text-muted);
+  position: relative;
+}
+
+.sidebar-section-more:hover {
+  color: var(--text-primary);
+  background: var(--hover-bg, rgba(255,255,255,0.06));
+}
+
+.sidebar-section-more.show-on-hover {
+  opacity: 0;
+  transition: opacity 0.1s ease;
+}
+
+.sidebar-section-header:hover .sidebar-section-more.show-on-hover {
+  opacity: 1;
+}
+
+/* E4V#43——… 下拉菜单 */
+.sidebar-section-more-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  padding: 4px;
+  background: var(--panel-bg, var(--bg-side-panel));
+  border: 1px solid var(--border-color, rgba(255,255,255,0.1));
+  border-radius: 4px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  z-index: var(--z-dropdown, 100);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 24px;
+}
+
+/* ── 🆕 StickyHead —— header + pinned 共用的粘顶容器 ── */
+/* 消除 HEADER_H 硬编码——浏览器处理堆叠，不各自算 top */
+
+.sidebar-section-sticky-head {
+  position: sticky;
+  z-index: var(--z-sidebar-sticky-header, 2);
+  background: var(--bg-side-panel);
+}
+
+/* ── 🆕 PinnedSlot —— sticky head 内的粘顶内容 ── */
+
+.sidebar-section-pinned {
+  background: var(--bg-side-panel);
+}
+
+/* ── Body —— 折叠时不渲染（由 TSX 条件渲染保证） ── */
+
+.sidebar-section-body {
+  /* 内容自己决定布局——不给 padding/margin，让消费者完全控制 */
+}
+
+/* ── E4V#45：Pane resize——view 间可拖拽分隔线 ── */
+
+/* view 容器 wrapper——flex:1 均分 + 拖拽后固定高度。
+   🔥 不设 overflow——sticky header 在 overflow:hidden 父容器中失效。
+   仅被 sash 拖过固定高度的 view 才由 inline style 设 overflow。 */
+.sidebar-pane-view {
+  /* overflow 由 inline style 控制 */
+}
+
+/* 分隔线——4px，hover 变粗变亮 */
+.sidebar-pane-sash {
+  height: 4px;
+  flex-shrink: 0;
+  cursor: row-resize;
+  background: transparent;
+  transition: background 0.15s ease;
+  position: relative;
+  z-index: 1;
+}
+
+.sidebar-pane-sash:hover {
+  background: var(--accent);
+  opacity: 0.5;
+}
+
+/* ── E4V#47：拖拽排序指示器 ── */
+
+.sidebar-pane-view.drop-before::before {
+  content: "";
+  display: block;
+  height: 2px;
+  background: var(--accent);
+  margin-bottom: -2px;
+  position: relative;
+  z-index: 2;
+}
+
+/* draggable header——拖拽时半透明 */
+.sidebar-section-header[draggable="true"] {
+  cursor: grab;
+}
+
+.sidebar-section-header[draggable="true"]:active {
+  cursor: grabbing;
+}

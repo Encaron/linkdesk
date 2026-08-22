@@ -1,0 +1,212 @@
+/* TitleBarZone——E5.7#5。壳 TitleBar.css + WindowControls.css 迁入池。
+   CSS 类名保持与壳一致（池是独立文档，无冲突；迁移零差异）。
+   颜色全部走 CSS 变量（硬约束 #1）——壳侧的两处硬编码阴影/悬停已归一化到
+   var(--context-menu-shadow) / var(--hover-overlay)。 */
+
+/* 标题栏容器——30px 高，可拖拽移动窗口 */
+.titlebar {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  background: var(--bg-titlebar);
+  -webkit-app-region: drag;
+  user-select: none;
+  flex-shrink: 0;
+  padding: 0;
+}
+
+/* Logo——左侧品牌标识 */
+.titlebar-logo {
+  width: 22px;
+  height: 22px;
+  margin: 0 8px;
+  flex-shrink: 0;
+  -webkit-app-region: no-drag;
+}
+
+/* 菜单按钮容器 */
+.titlebar-menus {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+
+/* 菜单按钮——如"文件""查看" */
+.titlebar-menu-btn {
+  padding: 4px 8px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  border-radius: 3px;
+  transition: background 120ms, color 120ms;
+  white-space: nowrap;
+}
+
+.titlebar-menu-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.titlebar-menu-btn.titlebar-btn-open {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* 拖拽区——菜单按钮右侧的空白区域，可拖拽窗口 */
+.titlebar-drag-area {
+  flex: 1;
+  height: 100%;
+  -webkit-app-region: drag;
+}
+
+/* 槽位按钮——插件 contributes.titleBar 的左右槽小图标按钮 */
+.titlebar-slot-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 30px;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 14px;
+  cursor: pointer;
+  -webkit-app-region: no-drag;
+  border-radius: 3px;
+  transition: background 120ms, color 120ms;
+  flex-shrink: 0;
+}
+
+.titlebar-slot-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+/* ── 窗口控制（─ □ ×）——fixed 右上角（池 WCV 满窗 = 窗口坐标） ── */
+
+.window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  z-index: var(--z-sticky);
+  -webkit-app-region: no-drag;
+}
+
+.wc-btn {
+  width: 38px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 12px;
+  font-family: inherit;
+  transition: background 120ms, color 120ms;
+}
+
+.wc-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.wc-close:hover {
+  background: var(--titlebar-close-hover);
+  color: var(--text-on-accent);
+}
+
+/* ── 下拉面板 ── */
+
+/* 下拉容器——flex 横向，左侧主面板 + 右侧子面板 */
+.titlebar-dropdown {
+  position: fixed;
+  display: flex;
+  max-height: 60vh;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+  box-shadow: var(--context-menu-shadow);
+  z-index: var(--z-dropdown);
+  border-radius: 4px;
+  animation: titlebar-dropdown-in 150ms ease-out;
+}
+
+@keyframes titlebar-dropdown-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* E5.8#1d EXEMPT：pool-css gate → TitleBarZone 下拉菜单自包含壳同款（main/sub-panel + item/right/chevron），结构性重复 */
+/* jscpd:ignore-start */
+/* 主面板（左侧） */
+.titlebar-main-panel {
+  width: 200px;
+  padding: 4px 0;
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* 子面板（右侧——hover 时出现） */
+.titlebar-sub-panel {
+  width: 200px;
+  padding: 4px 0;
+  border-left: 1px solid var(--separator);
+  overflow-y: auto;
+  flex-shrink: 0;
+}
+
+/* 菜单项 */
+.titlebar-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  padding: 4px 12px;
+  background: none;
+  border: none;
+  color: var(--text-primary);
+  font-size: 12px;
+  line-height: 24px;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+  transition: background 80ms;
+}
+
+.titlebar-item:hover,
+.titlebar-item.titlebar-item-hovered {
+  background: var(--tab-hover-bg);
+  color: var(--text-primary);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+/* 右侧：chevron */
+.titlebar-item-right {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  margin-left: auto;
+}
+
+/* 展开箭头 */
+.titlebar-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.titlebar-item:hover .titlebar-chevron,
+.titlebar-item.titlebar-item-hovered .titlebar-chevron {
+  color: var(--text-secondary);
+  opacity: 1;
+}
+/* jscpd:ignore-end */

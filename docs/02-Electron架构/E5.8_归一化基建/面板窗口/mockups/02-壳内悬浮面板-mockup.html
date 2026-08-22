@@ -1,0 +1,1139 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 Phase 8 壳内悬浮面板（类型 B FloatingPanel）——五帧 mockup（#37-#41 拍板素材）</title>
+<style>
+  /* ============================================================
+     LinkDesk 设计 token（复制自 src/index.css :root 暗色主题——
+     mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+     字体：ui-ux-pro-max 指引 JetBrains Mono / IBM Plex Sans
+     动画：ui-ux-pro-max 确认 Expo.out cubic-bezier(0.16,1,0.3,1)
+           = I8-13 右侧滑入；prefers-reduced-motion 已考虑
+     ============================================================ */
+  :root {
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-status: #0078D4;
+    --bg-input: #3C3C3C;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --border: #3C3C3C;
+    --separator: #474747;
+    --icon-active: #FFFFFF;
+    --icon-inactive: #858585;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --bg-toolbar: #1E1E22;
+    --bg-dropdown: #3C3C3C;
+    --hover-overlay: rgba(255,255,255,0.06);
+    --tab-hover-bg: #353535;
+    --dirty-dot: #CCA700;
+    --sent-echo: #0078D4;
+    --received: #D4D4D4;
+    --status-connected: #4EC9B0;
+    --error: #E06C75;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #101013;
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    max-width: 1900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.6; }
+
+  /* ---------- 帧容器 ---------- */
+  .frame {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 200ms ease;
+  }
+  .frame:hover { border-color: var(--separator); }
+  .frame-caption {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .frame-caption b { font-size: 14px; }
+  .frame-caption .tag {
+    font-size: 11px;
+    color: var(--text-on-accent, #fff);
+    background: var(--accent);
+    border-radius: 3px;
+    padding: 1px 8px;
+    font-weight: 600;
+  }
+  .frame-caption .tag.b { background: #5f5f6e; }
+  .frame-caption span { color: var(--text-secondary); font-size: 12px; }
+  .frame-note {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.7;
+    background: #26262a;
+  }
+  .frame-note b { color: var(--text-secondary); }
+  .frame-note code {
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11px;
+    color: var(--sent-echo);
+  }
+
+  /* ---------- 应用窗口骨架 ---------- */
+  .app {
+    flex: 1;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    min-height: 480px;
+    background: var(--bg-window);
+    font-size: 12px;
+    overflow: hidden;
+  }
+  .titlebar {
+    height: 28px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: center;
+    padding: 0 10px 0 12px;
+    gap: 8px;
+    user-select: none;
+  }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .drag { flex: 1; }
+  .win-btns { display: flex; gap: 2px; }
+  .win-btn {
+    width: 34px; height: 22px; border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+  .mid { flex: 1; display: flex; min-height: 0; }
+
+  .icon-bar {
+    width: 42px; flex: none;
+    background: var(--bg-icon-bar);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 6px; gap: 2px;
+  }
+  .icon-btn {
+    width: 42px; height: 42px; border: none; background: transparent;
+    color: var(--icon-inactive);
+    display: flex; align-items: center; justify-content: center;
+    border-left: 2px solid transparent;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  .sidebar {
+    width: 200px; flex: none;
+    background: var(--bg-side-panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    font-size: 12px;
+  }
+  .sidebar-header {
+    padding: 8px 12px; color: var(--text-secondary);
+    letter-spacing: 0.06em; font-size: 11px;
+    text-transform: uppercase;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 12px; color: var(--text-primary);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+    transition: background 150ms ease;
+  }
+  .tree-row:hover { background: var(--hover-overlay); }
+  .tree-row .arrow { color: var(--text-muted); width: 12px; }
+  .tree-row svg { width: 13px; height: 13px; flex: none; color: var(--text-muted); }
+  .tree-row.selected { background: rgba(0,120,212,0.18); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  .tabbar {
+    height: 32px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    overflow: visible;
+    position: relative;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+    border-top: 2px solid transparent;
+    background: transparent;
+    font-size: 12px;
+    position: relative;
+    transition: background 150ms ease;
+  }
+  .tab:hover { background: var(--tab-hover-bg); }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+  .tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+  .tab .decl-mark { margin-left: 6px; font-size: 10px; color: var(--accent-hover); }
+
+  .editor {
+    flex: 1; min-height: 0;
+    background: var(--bg-window);
+    padding: 10px 16px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11.5px; line-height: 1.65;
+    overflow: hidden;
+  }
+  .code .kw { color: #569CD6; }
+  .code .fn { color: #DCDCAA; }
+  .code .str { color: #CE9178; }
+  .code .cm { color: #6A9955; }
+  .code .num { color: #B5CEA8; }
+  .code .ln { color: #464648; user-select: none; display: inline-block; width: 30px; text-align: right; margin-right: 14px; }
+
+  .statusbar {
+    height: 22px; flex: none;
+    background: var(--bg-status);
+    color: #fff;
+    display: flex; align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+  .statusbar .right { margin-left: auto; opacity: 0.9; }
+
+  /* ============================================================
+     悬浮面板（类型 B FloatingPanel）——Phase 8
+     层级（I8-12）：floatingPanel 1500——右键 3000/QuickPick 4000/
+     Dialog 5000/Toast 2000 全盖面板；面板盖池内容 + dropZone 1000
+     ============================================================ */
+  .fp-layer {
+    position: absolute; inset: 0;
+    z-index: 20;                 /* mockup 内示意——真实 1500 */
+  }
+  .fp-backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.35);   /* 遮罩透明度走 CSS 变量（#40） */
+  }
+  .fp {
+    position: absolute;
+    z-index: 21;
+    /* #41.6 默认居中大卡——mockup 用 % 示意 app 容器；真实实现 = top:10vh / left:7.5vw / 85vw×80vh
+       （vw/vh 随窗口 resize 自适应，零 JS）。拖拽/调高后转显式 px（帧 3） */
+    top: 10%; left: 7.5%;
+    width: 85%; height: 80%;
+    background: var(--bg-window);
+    border: 1px solid var(--separator);
+    border-radius: 8px;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.5);
+    display: flex; flex-direction: column;
+    overflow: hidden;
+    /* #41.6 居中卡入场——淡入 + 微缩放（右滑入对居中违和） */
+    animation: fp-in 250ms cubic-bezier(0.16,1,0.3,1);  /* I8-13 Expo.out */
+  }
+  @keyframes fp-in {
+    from { transform: scale(0.96); opacity: 0; }
+    to   { transform: scale(1);    opacity: 1; }
+  }
+  /* #41.6 整条标题栏 = I8-5 拖拽面（原顶部 6px 手柄并入）——cursor:grab + no-drag + touch-action */
+  .fp-title {
+    height: 38px; flex: none;
+    background: var(--bg-toolbar);
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center;
+    gap: 8px;
+    padding: 0 6px 0 14px;
+    user-select: none;
+    cursor: grab;
+    touch-action: none;
+    -webkit-app-region: no-drag;   /* 本体验证 no-drag（#41.6 根治整窗误拖） */
+  }
+  .fp-title:active { cursor: grabbing; }
+  .fp-title .label {
+    display: flex; align-items: center; gap: 7px;
+    font-size: 12px; color: var(--text-primary);
+  }
+  .fp-title .label svg { width: 15px; height: 15px; color: var(--accent); }
+
+  .fp-actions { margin-left: auto; display: flex; align-items: center; gap: 2px; cursor: default; }
+
+  /* 标题栏动作——纯图标（2026-08-17 用户拍板）：
+     「在主窗口中打开」hover 展开全文；□/✕ hover tooltip */
+  .fp-act {
+    position: relative;
+    height: 26px; border: none; background: transparent;
+    color: var(--text-secondary);
+    display: flex; align-items: center; justify-content: center; gap: 5px;
+    padding: 0 7px;
+    font-size: 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .fp-act svg { width: 14px; height: 14px; flex: none; }
+  .fp-act:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .fp-act.close:hover { background: #c42b1c; color: #fff; }
+
+  /* 「在主窗口中打开」：默认纯图标 28px，hover 展开显示全文。
+     宽度动画走 CSS Grid fr 轨道过渡（auto 0fr → auto 1fr）——0fr/1fr 可插值 → 展开/收回平滑；
+     max-content/none 不可插值 = 瞬时跳变（2026-08-22 用户报「不丝滑 + 收回半个字残影」根因）。
+     内容自适应零硬编码 px（点修② 英文完整显示）；label overflow:hidden 把文字裁在自身盒内 = 无残影。
+     节奏 = ui-ux-pro-max：enter 180ms / exit 120ms（exit-faster-than-enter）+ Expo.out。
+     ⚠ 此段 = FloatingPanel.css .floating-panel-act.open-in 的演示镜像——改实现须同步此 mockup。 */
+  .fp-act.open-in {
+    display: grid;
+    grid-template-columns: auto 0fr;
+    min-width: 28px;
+    padding: 0;
+    overflow: hidden;
+    transition:
+      grid-template-columns 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      padding 120ms cubic-bezier(0.16, 1, 0.3, 1),
+      background 150ms ease,
+      color 150ms ease;
+  }
+  .fp-act.open-in:hover {
+    grid-template-columns: auto 1fr;
+    padding: 0 8px;
+    transition:
+      grid-template-columns 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      padding 180ms cubic-bezier(0.16, 1, 0.3, 1),
+      background 150ms ease,
+      color 150ms ease;
+  }
+  .fp-act.open-in .lbl {
+    grid-column: 2;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap; font-size: 12px;
+    opacity: 0;
+    transition: opacity 120ms ease;
+  }
+  .fp-act.open-in:hover .lbl { opacity: 1; }
+  .fp-act.open-in svg { color: var(--accent); }
+
+  /* □ / ✕：hover tooltip（data-tip 纯 CSS） */
+  .fp-act.tip::after {
+    content: attr(data-tip);
+    position: absolute; top: calc(100% + 6px); right: 0;
+    background: var(--bg-dropdown);
+    border: 1px solid var(--separator);
+    color: var(--text-primary); font-size: 11px;
+    padding: 3px 8px; border-radius: 4px;
+    white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transform: translateY(-3px);
+    transition: opacity 120ms ease, transform 120ms ease;
+    z-index: 30;
+  }
+  .fp-act.tip:hover::after { opacity: 1; transform: translateY(0); }
+
+  /* I8-7 底部 8px resize 手柄（最小 300px / 最大窗口高-80px） */
+  .fp-resize {
+    height: 8px; flex: none;
+    cursor: ns-resize;
+    background: transparent;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .fp-resize::before {
+    content: ""; width: 26px; height: 2px; border-radius: 1px;
+    background: var(--separator);
+  }
+  .fp-resize:hover { background: rgba(0,120,212,0.2); }
+  .fp-resize:hover::before { background: var(--accent); }
+
+  .fp-body { flex: 1; min-height: 0; display: flex; }
+
+  /* ---------- 设置面板内容（#38 首个消费者） ---------- */
+  .set-search {
+    display: flex; align-items: center; gap: 7px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .set-search svg { width: 13px; height: 13px; color: var(--text-muted); flex: none; }
+  .set-search input {
+    flex: 1; border: none; background: transparent;
+    color: var(--text-primary); font-size: 12px; outline: none;
+  }
+  .set-search input::placeholder { color: var(--text-muted); }
+
+  .set-cats {
+    width: 148px; flex: none;
+    border-right: 1px solid var(--border);
+    padding: 6px 0;
+  }
+  .set-cat {
+    padding: 5px 12px;
+    color: var(--text-secondary);
+    font-size: 12px;
+    border-left: 2px solid transparent;
+    cursor: default;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .set-cat:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .set-cat.active {
+    color: var(--text-primary);
+    background: rgba(0,120,212,0.18);
+    border-left-color: var(--accent);
+  }
+
+  .set-pane {
+    flex: 1; overflow: hidden;
+    padding: 12px 14px;
+    display: flex; flex-direction: column; gap: 14px;
+  }
+  .set-group-title {
+    color: var(--text-muted); font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .set-row { display: flex; align-items: center; gap: 10px; min-height: 26px; }
+  .set-row .name { flex: 1; font-size: 12px; color: var(--text-primary); }
+  .set-row .desc { flex: 1; font-size: 11px; color: var(--text-muted); }
+  .set-row .ctrl { flex: none; }
+
+  .select {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--separator);
+    border-radius: 4px;
+    padding: 3px 8px;
+    font-size: 11.5px; color: var(--text-primary);
+    min-width: 108px; justify-content: space-between;
+    cursor: default;
+  }
+  .select .chev { color: var(--text-muted); font-size: 9px; }
+  .swatch {
+    width: 26px; height: 18px;
+    border-radius: 4px;
+    border: 1px solid rgba(255,255,255,0.18);
+    background: conic-gradient(#0078D4 0 90deg, #1A8CE8 0 180deg, #4EC9B0 0 270deg, #CCA700 0);
+    cursor: default;
+  }
+  .switch {
+    width: 34px; height: 18px;
+    border-radius: 9px;
+    background: var(--bg-input);
+    border: 1px solid var(--separator);
+    position: relative;
+    cursor: default;
+  }
+  .switch.on { background: var(--accent); border-color: var(--accent); }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 12px; height: 12px; border-radius: 50%;
+    background: #fff; transition: left 150ms ease;
+  }
+  .switch.on::after { left: 18px; }
+
+  /* ---------- 市场面板内容（#39 第二个消费者） ---------- */
+  .mp-bar {
+    display: flex; align-items: center; gap: 8px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .mp-search {
+    flex: 1;
+    display: flex; align-items: center; gap: 7px;
+    background: var(--bg-input);
+    border: 1px solid var(--separator);
+    border-radius: 4px;
+    padding: 4px 9px;
+    color: var(--text-muted); font-size: 12px;
+  }
+  .mp-search svg { width: 12px; height: 12px; }
+  .mp-filter {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--bg-input);
+    border: 1px solid var(--separator);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11.5px; color: var(--text-primary);
+    cursor: default;
+  }
+  .mp-grid {
+    flex: 1; overflow: hidden;
+    padding: 10px 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    align-content: start;
+  }
+  .mp-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px;
+    display: flex; gap: 9px;
+    transition: border-color 150ms ease;
+  }
+  .mp-card:hover { border-color: var(--separator); }
+  .mp-card .ic {
+    width: 30px; height: 30px; flex: none;
+    border-radius: 6px;
+    background: var(--bg-input);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .mp-card .ic svg { width: 16px; height: 16px; color: var(--accent); }
+  .mp-card .meta { flex: 1; min-width: 0; }
+  .mp-card .nm { font-size: 12px; color: var(--text-primary); }
+  .mp-card .ds { font-size: 10.5px; color: var(--text-muted); line-height: 1.5; margin-top: 1px; }
+  .mp-card .stat { font-size: 10.5px; color: var(--status-connected); margin-top: 3px; }
+  .mp-card .stat.off { color: var(--text-muted); }
+  .mp-card .btn {
+    align-self: center; flex: none;
+    background: var(--accent); color: #fff;
+    border: none; border-radius: 4px;
+    padding: 3px 10px; font-size: 11px;
+    cursor: pointer;
+  }
+  .mp-card .btn.installed { background: transparent; color: var(--text-secondary); border: 1px solid var(--separator); }
+
+  /* ---------- 拖拽态（I8-5/I8-6） ----------
+     2026-08-22 用户否决半透明跟随——opacity 0.85 删除，仅保留投影抬升（与实现同步）。 */
+  .fp.dragging {
+    box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+  }
+  .clamp-zone {
+    position: absolute; inset: 6px;
+    border: 1px dashed rgba(0,120,212,0.45);
+    border-radius: 4px;
+    pointer-events: none;
+    z-index: 19;
+  }
+  .clamp-label {
+    position: absolute; top: 10px; left: 12px;
+    color: var(--accent-hover); font-size: 11px;
+    background: rgba(0,30,60,0.7);
+    padding: 2px 8px; border-radius: 3px;
+    z-index: 19;
+  }
+
+  /* ---------- 最大化态（I8-9：100vw，还原 = 同按钮 toggle） ---------- */
+  .fp.max {
+    top: 6px; right: 6px; bottom: 6px; left: 6px;
+    width: auto; height: auto;  /* 覆盖 #41.6 默认 85vw×80vh——top/bottom 拉伸铺满 */
+    border-radius: 6px;
+  }
+  .fp.max .fp-resize { display: none; }
+  .max-tag {
+    position: absolute; top: 0; right: 96px;
+    background: var(--bg-dropdown); border: 1px solid var(--separator);
+    border-radius: 4px;
+    color: var(--text-muted); font-size: 11px;
+    padding: 3px 9px;
+    z-index: 22;
+  }
+
+  /* ---------- 标签页右键菜单（I8-3 回程 T→B——按声明出现，无「在主窗口中打开」） ---------- */
+  .ctx {
+    position: absolute; z-index: 40;
+    width: 200px;
+    background: var(--bg-dropdown);
+    border: 1px solid var(--separator);
+    border-radius: 6px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    padding: 4px;
+    font-size: 12px;
+  }
+  .ctx-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    color: var(--text-primary);
+    border-radius: 4px;
+    transition: background 150ms ease;
+  }
+  .ctx-item:hover { background: var(--hover-overlay); }
+  .ctx-item .sub { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+  .ctx-sep { height: 1px; background: var(--separator); margin: 4px 6px; }
+  .ctx-item.rule { color: var(--text-muted); font-size: 11px; }
+  .ctx-item.rule:hover { background: transparent; }
+</style>
+</head>
+<body>
+
+<h1>E5.8 Phase 8 壳内悬浮面板（类型 B FloatingPanel）——五帧 mockup
+  <small><b style="color:#4EC9B0">2026-08-17 用户三反馈已修正 + <span style="color:#CCA700">#41.6 重画（2026-08-21）：默认形态右贴边 640px → 居中大卡 85vw×80vh</span>。① 默认居中大卡（vw/vh 随窗口自适应）② 「在主窗口中打开」改纯图标——hover 展开全文（□/✕ hover tooltip）③ 右键菜单语义纠正——标签页右键只有「在悬浮面板中打开」（声明制），与面板标题栏「在主窗口中打开」不共存。</b>#41.6 要点：整条标题栏 = 拖拽面（动作按钮区排除）· 本体 + 标题栏显式 no-drag · 入场改淡入 + 微缩放（scale 0.96→1，右滑入对居中违和）。大 overlay 覆盖主区卡在壳内（对标 VS Code 设置面板），非 OS 窗口。全部颜色走 LinkDesk token；动画 = Expo.out <code>cubic-bezier(0.16,1,0.3,1)</code>（ui-ux-pro-max 确认 + prefers-reduced-motion）。</small>
+</h1>
+
+<!-- ============ 帧 1：设置悬浮面板（默认态——主视觉，已加大） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">默认态</span>
+    <b>设置悬浮面板（居中大卡 85vw×80vh——#41.6 改）</b>
+    <span>#38 · 标题栏纯图标：⤢ hover 展开 · 身份开关键 I8-2</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="资源管理器"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn" title="扩展"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>src</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor.tsx</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>README.md</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+          <div class="tab">serial-monitor.tsx</div>
+          <div class="tab">README.md</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>&nbsp;&nbsp;<span class="fn">registerViews</span>(<span class="num">42</span>);</div>
+          <div><span class="ln">7</span>};</div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">Ln 42, Col 7 · UTF-8 · <b>Ctrl+,</b> 设置面板（身份开关键）</span>
+    </div>
+
+    <!-- 悬浮面板层 -->
+    <div class="fp-layer">
+      <div class="fp-backdrop"></div>
+      <div class="fp">
+        <div class="fp-title" title="拖拽——整条标题栏（动作按钮区除外）">
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+            设置
+          </span>
+          <div class="fp-actions">
+            <!-- B → T：面板转标签页。默认纯图标，hover 展开全文（I8-4） -->
+            <button class="fp-act open-in" title="在主窗口中打开（面板转标签页）">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
+              <span class="lbl">在主窗口中打开</span>
+            </button>
+            <button class="fp-act tip" data-tip="最大化（100vw）/ 还原（同按钮 toggle）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+            <button class="fp-act close tip" data-tip="关闭（Esc 同效）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+          </div>
+        </div>
+        <div class="fp-body">
+          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div class="set-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input placeholder="搜索设置…">
+            </div>
+            <div style="flex:1; display:flex; min-height:0;">
+              <div class="set-cats">
+                <div class="set-cat">常用</div>
+                <div class="set-cat active">外观</div>
+                <div class="set-cat">编辑器</div>
+                <div class="set-cat">串口</div>
+                <div class="set-cat">语言</div>
+                <div class="set-cat">插件</div>
+              </div>
+              <div class="set-pane">
+                <div>
+                  <div class="set-group-title">外观</div>
+                  <div class="set-row">
+                    <span class="name">主题</span>
+                    <span class="ctrl select">深色 <span class="chev">⌄</span></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="name">强调色</span>
+                    <span class="ctrl swatch"></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="name">底部面板</span>
+                    <span class="desc">Ctrl+J 切换显隐</span>
+                    <span class="ctrl switch on"></span>
+                  </div>
+                </div>
+                <div>
+                  <div class="set-group-title">语言</div>
+                  <div class="set-row">
+                    <span class="name">界面语言</span>
+                    <span class="ctrl select">简体中文 <span class="chev">⌄</span></span>
+                  </div>
+                </div>
+                <div>
+                  <div class="set-group-title">窗口</div>
+                  <div class="set-row">
+                    <span class="name">菜单栏</span>
+                    <span class="ctrl switch on"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fp-resize" title="resize 手柄（底部 8px · 最小 300px · 最大窗口高-80px）"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>默认态要点（#41.6 重画后）：</b>① <b>默认居中大卡 85vw×80vh</b>（原右贴边 640px 居中化——vw/vh 随窗口 resize 自适应，零 JS）；② 标题栏三动作全图标——「在主窗口中打开」默认纯图标、<b>hover 展开全文</b>（I8-4 B→T），□/✕ hover tooltip；③ 内容区 = 壳不持有渲染器，按 <code>viewId</code> 寻址插件视图注册表；④ 遮罩点击关闭 + Esc + 焦点入面板（I8-8）；⑤ <b>整条标题栏 = 拖拽面</b>（原顶部 6px 手柄并入，动作按钮区 startGesture 内排除）+ 底部 8px resize 手柄；⑥ 本体 + 标题栏显式 no-drag（根治整窗误拖）；⑦ 入场改淡入 + 微缩放（scale 0.96→1，右滑入对居中违和）；⑧ Z_INDEX 1500——右键/QuickPick/Dialog/Toast 全盖面板（I8-12）。</div>
+</div>
+
+<!-- ============ 帧 2：市场悬浮面板（第二消费者 + 视图动作区） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">第二消费者</span>
+    <b>市场悬浮面板（声明制 #39.5）</b>
+    <span>市场入口改走面板——壳零硬编码 renderPath · 插件声明即用</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>};</div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">市场入口 → 面板（身份开关键再按 = 关）</span>
+    </div>
+
+    <div class="fp-layer">
+      <div class="fp-backdrop"></div>
+      <div class="fp">
+        <div class="fp-title" title="拖拽——整条标题栏（动作按钮区除外）">
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>
+            市场
+          </span>
+          <div class="fp-actions">
+            <button class="fp-act open-in" title="在主窗口中打开（面板转标签页）">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
+              <span class="lbl">在主窗口中打开</span>
+            </button>
+            <button class="fp-act tip" data-tip="最大化 / 还原"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+            <button class="fp-act close tip" data-tip="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+          </div>
+        </div>
+        <div class="fp-body">
+          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div class="mp-bar">
+              <span class="mp-search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>搜索扩展…</span>
+              <span class="mp-filter">全部 <span style="font-size:9px;color:var(--text-muted)">⌄</span></span>
+            </div>
+            <div class="mp-grid">
+              <div class="mp-card">
+                <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M4 5h16M4 12h16M4 19h10"/></svg></div>
+                <div class="meta">
+                  <div class="nm">数据演示器</div>
+                  <div class="ds">卡片工作台 · 结构化数据可视化</div>
+                  <div class="stat off">未安装</div>
+                </div>
+                <button class="btn">安装</button>
+              </div>
+              <div class="mp-card">
+                <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/></svg></div>
+                <div class="meta">
+                  <div class="nm">串口模拟器</div>
+                  <div class="ds">虚拟串口 · 无硬件调试</div>
+                  <div class="stat">已安装</div>
+                </div>
+                <button class="btn installed">已装</button>
+              </div>
+              <div class="mp-card">
+                <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8"/></svg></div>
+                <div class="meta">
+                  <div class="nm">主题轮播</div>
+                  <div class="ds">循环预览各主题风格</div>
+                  <div class="stat">已安装</div>
+                </div>
+                <button class="btn installed">已装</button>
+              </div>
+              <div class="mp-card">
+                <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><path d="M12 21s-7-4.5-7-10a4.5 4.5 0 0 1 8.5-2A4.5 4.5 0 0 1 22 11c0 5.5-7 10-10 10z"/></svg></div>
+                <div class="meta">
+                  <div class="nm">快照分享</div>
+                  <div class="ds">工作区快照 · 一键分发</div>
+                  <div class="stat off">未安装</div>
+                </div>
+                <button class="btn">安装</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fp-resize" title="resize 手柄（底部 8px · 最小 300px）"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>第二消费者要点：</b>① 声明制 #39.5——<code>contributes.floatingPanel</code> 声明 + <code>linkdesk.panel.revealFloating</code> 通用 API（身份开关键语义 I8-15）；壳零硬编码 renderPath=settingsId（硬约束 10/11 同款消费）；② 卸载声明插件 → 条目消失 + Ctrl+, no-op 不崩；③ 未来主题制作器等第三方声明即用零壳改动；④ 标题栏动作区与设置面板完全一致（图标 hover 展开）。</div>
+</div>
+
+<!-- ============ 帧 3：拖拽中（投影抬升 + 壳内钳制） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">拖拽态</span>
+    <b>拖拽中——投影抬升 + 壳内钳制</b>
+    <span>I8-5 拖不出壳窗口边界 · I8-6 拖拽中遮罩防误关（2026-08-22 用户否决半透明——无 opacity 跟随）</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>};</div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">拖拽中：面板投影抬升（无半透明）· 松手落定（同 #13 拖拽机械 buttons===0）</span>
+    </div>
+
+    <div class="fp-layer">
+      <div class="fp-backdrop"></div>
+      <!-- 壳内钳制边界（I8-5：拖不出壳窗口边界） -->
+      <div class="clamp-zone"></div>
+      <div class="clamp-label">壳内钳制——拖不出窗口边界</div>
+      <!-- 面板拖到中部，投影抬升（无半透明） -->
+      <div class="fp dragging" style="top:60px; left:90px; right:auto; bottom:auto; height:320px; width:520px;">
+        <div class="fp-title" title="拖拽中…——整条标题栏">
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+            设置
+          </span>
+          <span class="lbl" style="color:var(--text-muted); font-size:11px;">拖拽中…</span>
+          <div class="fp-actions">
+            <button class="fp-act open-in" title="在主窗口中打开">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
+              <span class="lbl">在主窗口中打开</span>
+            </button>
+            <button class="fp-act tip" data-tip="最大化 / 还原"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="6" width="12" height="12" rx="1.5"/></svg></button>
+            <button class="fp-act close tip" data-tip="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+          </div>
+        </div>
+        <div class="fp-body">
+          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div class="set-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input placeholder="搜索设置…">
+            </div>
+            <div style="flex:1; display:flex; min-height:0;">
+              <div class="set-cats" style="width:130px;">
+                <div class="set-cat">常用</div>
+                <div class="set-cat active">外观</div>
+                <div class="set-cat">编辑器</div>
+              </div>
+              <div class="set-pane">
+                <div>
+                  <div class="set-group-title">外观</div>
+                  <div class="set-row">
+                    <span class="name">主题</span>
+                    <span class="ctrl select">深色 <span class="chev">⌄</span></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="name">强调色</span>
+                    <span class="ctrl swatch"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="fp-resize"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>拖拽要点（#41.6 更新）：</b>① <b>整条标题栏 = 拖拽面</b> <code>cursor: grab</code>（按压 grab→grabbing；动作按钮区 startGesture 内排除——点按钮不误触拖拽）；② 拖拽中面板半透明跟随 + 显式 top/left/width/height（居中默认态转可拖几何）；③ <b>壳内钳制</b>——面板拖不出壳窗口边界（壳内定义，区别于类型 A 拖出窗口）；④ I8-6——拖拽中 mouseup 落在遮罩不得触发「遮罩点击关闭」（拖拽态标志禁遮罩点击，同 #13 buttons===0 纪律）。</div>
+</div>
+
+<!-- ============ 帧 4：最大化（100vw）+ 还原 ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">最大化</span>
+    <b>最大化（100vw）+ 还原（同按钮 toggle）</b>
+    <span>I8-9 旧稿无还原定义——缺口已补：按钮图标随态切换</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// 最大化态——面板铺满整个窗口，遮罩消失</span></div>
+          <div><span class="ln">2</span><span class="cm">// 还原 = 点同按钮（图标切换为还原）</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">最大化 100vw · 还原同按钮 toggle</span>
+    </div>
+
+    <!-- 最大化面板（I8-9：100vw）——遮罩消失，面板铺满窗口 -->
+    <div class="fp-layer">
+      <div class="max-tag">最大化（还原 = 同按钮 toggle）</div>
+      <div class="fp max">
+        <div class="fp-title" title="最大化态——不可拖/调（I8-9）">
+          <span class="label">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>
+            设置
+          </span>
+          <div class="fp-actions">
+            <button class="fp-act open-in" title="在主窗口中打开（面板转标签页）">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5h7v7M19 5l-8 8"/><path d="M5 9a2 2 0 0 1 2-2h2M5 15v4h4M19 15v4h-4"/></svg>
+              <span class="lbl">在主窗口中打开</span>
+            </button>
+            <!-- 最大化态：图标切换为「还原」 -->
+            <button class="fp-act tip" data-tip="还原"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 4h11v11M9 4a5 5 0 0 1 11 0"/><rect x="4" y="9" width="11" height="11" rx="1.5"/></svg></button>
+            <button class="fp-act close tip" data-tip="关闭"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M7 7l10 10M17 7L7 17"/></svg></button>
+          </div>
+        </div>
+        <div class="fp-body">
+          <div style="flex:1; display:flex; flex-direction:column; min-height:0;">
+            <div class="set-search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>
+              <input placeholder="搜索设置…">
+            </div>
+            <div style="flex:1; display:flex; min-height:0;">
+              <div class="set-cats">
+                <div class="set-cat">常用</div>
+                <div class="set-cat active">外观</div>
+                <div class="set-cat">编辑器</div>
+                <div class="set-cat">串口</div>
+                <div class="set-cat">语言</div>
+                <div class="set-cat">插件</div>
+              </div>
+              <div class="set-pane">
+                <div>
+                  <div class="set-group-title">外观</div>
+                  <div class="set-row">
+                    <span class="name">主题</span>
+                    <span class="ctrl select">深色 <span class="chev">⌄</span></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="name">强调色</span>
+                    <span class="ctrl swatch"></span>
+                  </div>
+                  <div class="set-row">
+                    <span class="name">底部面板</span>
+                    <span class="desc">Ctrl+J 切换显隐</span>
+                    <span class="ctrl switch on"></span>
+                  </div>
+                </div>
+                <div>
+                  <div class="set-group-title">语言</div>
+                  <div class="set-row">
+                    <span class="name">界面语言</span>
+                    <span class="ctrl select">简体中文 <span class="chev">⌄</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>最大化要点：</b>I8-9 最大化 = 100vw，遮罩消失、无 resize 手柄；<b>还原 = 同按钮 toggle</b>——按钮图标随态切换（□ → ⤡ 还原），旧稿无还原定义，缺口已补。</div>
+</div>
+
+<!-- ============ 帧 5：标签页右键回程（T→B——语义纠正后） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">互转回程</span>
+    <b>标签页右键「在悬浮面板中打开」——仅无悬浮窗口时出现（声明制）</b>
+    <span>I8-3 · 前提：此刻没有悬浮窗口（身份开关键 I8-15 无面板→开）· 无「在主窗口中打开」</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+          <!-- 声明 floatingPanel 的视图 → 右键有「在悬浮面板中打开」；编辑器不声明 → 无 -->
+          <div class="tab">设置<span class="decl-mark">·</span></div>
+          <div class="tab">串口监视器</div>
+
+          <!-- T→B 回程右键菜单（I8-3：仅无悬浮窗口时出现 · 仅声明标签页有 · 无「在主窗口中打开」） -->
+          <div class="ctx" style="top:34px; left:120px;">
+            <div class="ctx-item rule">设置标签页 · 右键（此刻无悬浮窗口）</div>
+            <div class="ctx-sep"></div>
+            <div class="ctx-item">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" style="width:13px;height:13px;color:var(--accent)"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M8 7V5a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/></svg>
+              在悬浮面板中打开 <span class="sub">⌘,</span>
+            </div>
+            <div class="ctx-sep"></div>
+            <div class="ctx-item">关闭</div>
+            <div class="ctx-item">关闭其他</div>
+          </div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// 前提：此刻没有悬浮窗口——此条目才出现（身份开关键 I8-15 无面板→开）</span></div>
+          <div><span class="ln">2</span><span class="cm">// 面板已开（同视图已浮着）→ 此条目不出现（= 同视图再按 toggle 关面板）</span></div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="cm">// 仅声明了 floatingPanel 的标签页有此条目（main.ts/串口监视器不声明 → 右键无）</span></div>
+          <div><span class="ln">5</span>&nbsp;</div>
+          <div><span class="ln">6</span><span class="cm">// 「在主窗口中打开」只属于悬浮面板标题栏（B → T），两者不共存</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">此刻无悬浮窗口 → 右键条目才出现 · 仅声明标签页有 · Ctrl+, 单实例聚焦</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>互转语义（2026-08-17 用户两轮纠正后）：</b>①「在主窗口中打开」与「在悬浮面板中打开」<b>不可能共存</b>——前者是悬浮面板标题栏专属动作（B→T：面板转标签页），后者是标签页右键动作（T→B 回程），两者属于不同表面。② 标签页右键的「在悬浮面板中打开」<b>只在没有悬浮窗口时出现</b>（身份开关键 I8-15：无面板→开；同视图已浮着 → 此条目不出现，此时再触发 = toggle 关面板）；③ 此条目<b>仅声明了 floatingPanel 的标签页</b>才有（main.ts/串口监视器不声明 → 右键无此条目）。</div>
+</div>
+
+</body>
+</html>

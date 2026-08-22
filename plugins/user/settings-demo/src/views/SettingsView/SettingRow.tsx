@@ -1,0 +1,127 @@
+/**
+ * SettingRow——单个设置行（IPC 读写 + 声明式显隐 + 齿轮菜单 + 色块取色）。
+ * 自壳迁入（E5.8#41.14）：@src/core 三依赖全消除——useConfigurationValueIpc → 插件本地 hook；
+ * MENU_SLOTS.SettingItemGear → 本地常量（菜单槽 id 是壳稳定契约面，壳 coreCommands 已注册该槽菜单项）。
+ * 共享组件（ContextMenu/ColorPicker）走 @src/components/shared 例外表白名单。
+ * 依赖方向：SettingRow → renderControl + shared + hooks/helpers/types；被聚合器 SettingsView 消费。
+ */
+
+import { useState, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import ContextMenu from "@src/components/shared/context-menu/ContextMenu";
+import ColorPicker from "@src/components/shared/color-picker/ColorPicker";
+import { useConfigurationValueIpc } from "../hooks/useConfigurationValueIpc";
+import renderControl from "./renderControl";
+import { lk } from "./helpers";
+import type { ConfigProperty } from "./types";
+
+/** 设置项齿轮菜单槽——壳 MenuRegistry.MENU_SLOTS.SettingItemGear 稳定槽 id（菜单项由壳 coreCommands 注册） */
+const SETTING_ITEM_GEAR_MENU = "settingItemGear";
+
+// E5.8#6.6 hex 豁免：取色器预设色板（颜色即数据——用户可选值，非样式硬编码）
+// eslint-disable-next-line linkdesk/no-hardcoded-hex
+const COLOR_PICKER_PRESETS = ["#0078d4", "#e81123", "#10893e", "#ff8c00", "#6b69d6", "#0099bc"];
+
+function SettingRow({
+  configKey,
+  prop,
+  onChange,
+}: {
+  configKey: string;
+  prop: ConfigProperty | undefined;
+  onChange: () => void;
+}) {
+  const { t } = useTranslation();
+  const gearRef = useRef<HTMLButtonElement>(null);
+  const [gearAnchor, setGearAnchor] = useState<{ x: number; y: number } | null>(null);
+  const [colorPickerOpen, setColorPickerOpen] = useState(false);
+  const [colorPickerAnchor, setColorPickerAnchor] = useState<{ x: number; y: number } | null>(null);
+
+  // IPC 版 hook——替代 useConfigurationValue
+  const currentValue = useConfigurationValueIpc(configKey);
+  const depValue = useConfigurationValueIpc(prop?.dependsOn?.key ?? "");
+
+  const handleChange = useCallback(
+    async (value: unknown) => {
+      try {
+        await lk().set(configKey, value);
+        onChange();
+      } catch (e) {
+        console.error("[SettingsView] 设置失败:", configKey, e);
+      }
+    },
+    [configKey, onChange],
+  );
+
+  // 齿轮打开前设 context key
+  const handleGearClick = useCallback(async () => {
+    try {
+      window.linkdesk?.contextKey?.set("settingKey", configKey);
+      // inspectConfiguration 异步获取修改状态——wire 面 unknown，IPC 边界收窄（主进程组装 { userValue, ... }）
+      const insp = await lk().inspectConfiguration(configKey) as { userValue?: unknown } | undefined;
+      window.linkdesk?.contextKey?.set("settingModified", insp?.userValue !== undefined);
+    } catch { /* 静默 */ }
+    const rect = gearRef.current?.getBoundingClientRect();
+    if (rect) {
+      setGearAnchor({ x: rect.left, y: rect.bottom + 4 });
+    }
+  }, [configKey]);
+
+  // 齿轮关闭——清理 context key
+  const handleGearClose = useCallback(() => {
+    setGearAnchor(null);
+    window.linkdesk?.contextKey?.set("settingKey", undefined);
+    window.linkdesk?.contextKey?.set("settingModified", false);
+  }, []);
+
+  if (!prop) return null;
+
+  // 声明式条件显隐
+  if (prop.dependsOn && depValue !== prop.dependsOn.value) return null;
+
+  return (
+    <div className="settings-row" id={`setting-row-${configKey}`}>
+      <div className="settings-row-info">
+        <label className="settings-row-label">{configKey}</label>
+        <span className="settings-row-desc">{t(prop.description ?? "")}</span>
+      </div>
+      <div className="settings-row-control">
+        {renderControl(prop, currentValue, handleChange, t, (e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          setColorPickerAnchor({ x: rect.right + 4, y: rect.top });
+          setColorPickerOpen(true);
+        })}
+      </div>
+      {/* hover 齿轮 */}
+      <button
+        ref={gearRef}
+        className="settings-row-gear"
+        title={t("更多操作")}
+        onClick={handleGearClick}
+      >
+        <span className="codicon codicon-gear" />
+      </button>
+      {gearAnchor && (
+        <ContextMenu
+          menuId={SETTING_ITEM_GEAR_MENU}
+          anchor={gearAnchor}
+          context={{ settingKey: configKey }}
+          onClose={handleGearClose}
+        />
+      )}
+      {/* 色块点击 → ColorPicker */}
+      {prop.renderHint === "color" && (
+        <ColorPicker
+          open={colorPickerOpen}
+          value={String(currentValue ?? prop.default ?? "")}
+          onChange={(hex) => handleChange(hex)}
+          onClose={() => setColorPickerOpen(false)}
+          anchor={colorPickerAnchor}
+          presets={COLOR_PICKER_PRESETS}
+        />
+      )}
+    </div>
+  );
+}
+
+export default SettingRow;

@@ -13,56 +13,19 @@
  * @see loader.ts —— 5 个函数只管触发此总线的事件
  */
 
-import { Emitter, CUSTOM_EVENTS } from "../core/CoreEvents";
-import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/NotificationService";
-import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/PluginStateService";
-import { unregisterConfiguration, unregisterConfigurationDefaults } from "../core/ConfigurationRegistry";
-import { unregisterPluginCommands } from "../core/CommandRegistry";
-import { unregisterPluginKeybindings } from "../core/KeybindingRegistry";
-import { unregisterPluginMenus, unregisterPluginTitleBarContributions } from "../core/MenuRegistry";
-import { unregisterPluginProtocols } from "../core/ProtocolRegistry";
-import { unregisterPluginCards } from "../core/CardRegistry";
-import { unregisterPluginChannels } from "../core/LogChannel";
-import { unregisterPluginFileAssociations } from "../core/FileAssociationService";
-import { unregisterPluginThemes } from "../core/ThemeEngine";
-import { ThemeRegistry } from "../core/ThemeRegistry";
-import { unregisterStatusBarPlugin } from "../core/StatusBarService";
-import i18n from "../i18n";
-import type { PluginManifest } from "../core/types";
+import { CUSTOM_EVENTS } from "../core/react/events/CoreEvents";
+import { pushToast, TOAST_TTL_ERROR, TOAST_TTL_INFO } from "../core/services/ui/NotificationService";
+import { getPluginStateValue, setPluginStateValueSync, APP_PLUGIN_ID } from "../core/services/plugins/PluginStateService";
 
-/* ── 事件类型 ── */
-
-export interface PluginInstallEvent {
-  pluginId: string;
-  manifest: PluginManifest;
-  /** 'install' | 'reinstall' = 新装/重装 → 追加到图标末尾；'enable' = 恢复 → 保持原位；'startup' = 启动加载 → 保持原位 */
-  reason: "install" | "reinstall" | "enable" | "startup";
-}
-
-export interface PluginUninstallEvent {
-  pluginId: string;
-  /** 'uninstall' = 卸载 → 从 iconOrder 移除；'disable' = 禁用 → 保留 iconOrder 位置 */
-  reason: "uninstall" | "disable";
-  /** 显示名称——onDidUninstall 触发时 viewRegistry 已注销，提前传入避免 toast 显示 pluginId */
-  displayName?: string;
-}
-
-/* ── 事件定义 ── */
-
-export const PluginLifecycle = {
-  /** 插件已安装并注册完成（install/reinstall/enable/startup）*/
-  onDidInstall: new Emitter<PluginInstallEvent>(),
-
-  /** 插件即将卸载/禁用——在 viewRegistry 注销之前 */
-  onWillUninstall: new Emitter<PluginUninstallEvent>(),
-
-  /** 插件已卸载/禁用完成——在 viewRegistry 注销之后 */
-  onDidUninstall: new Emitter<PluginUninstallEvent>(),
-};
+// E5.8#9：事件定义抽到轻模块 lifecycle-events.ts——registrationTracker 直接 import 它，
+// 避免 CommandRegistry → tracker → lifecycle → CommandRegistry 循环依赖。
+// 本地 import（notifyPluginViews 引用 onPluginLifecycleChange）+ 重导出（既有调用面零改动）。
+import { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
+export { PluginLifecycle, onPluginLifecycleChange } from "./lifecycle-events";
+// 只重导出有消费方的类型——PluginUninstallEvent 全仓零 import（knip 实锤），不重导出
+export type { PluginInstallEvent } from "./lifecycle-events";
 
 /* ── 视图刷新——Emitter 模式（对标 viewRegistry 的 onDidRegister） ── */
-
-export const onPluginLifecycleChange = new Emitter<void>();
 
 function notifyPluginViews(): void {
   onPluginLifecycleChange.fire();
@@ -94,34 +57,11 @@ export function initLifecycleConsumers(): void {
     // 'disable' → 保留 iconOrder 位置（下次启用时恢复原位）
   });
 
-  /* ─── 消费端 2：配置注册清理 ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // B70 教训：卸载/禁用时必须清理配置注册——不管 reason
-    unregisterConfiguration(pluginId);
-    unregisterConfigurationDefaults(pluginId);
-  });
-
-  /* ─── 消费端 2b：注册表全量清理（Phase 5 验收 B2——6 个 unregister* 从未被调用） ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 卸载/禁用时清理全部注册表——和消费端 2（config）覆盖所有 9 个注册表
-    unregisterPluginCommands(pluginId);
-    unregisterPluginKeybindings(pluginId);
-    unregisterPluginMenus(pluginId);
-    unregisterPluginTitleBarContributions(pluginId);
-    unregisterPluginProtocols(pluginId);
-    unregisterPluginCards(pluginId);
-    unregisterPluginChannels(pluginId);
-    unregisterPluginFileAssociations(pluginId);
-    unregisterPluginThemes(pluginId);
-    ThemeRegistry.unregisterPlugin(pluginId);
-    unregisterStatusBarPlugin(pluginId);
-    // H6：清理语言插件注册的 i18n 资源（按 pluginId 命名空间追踪）
-    for (const lang of i18n.languages ?? []) {
-      i18n.removeResourceBundle(lang, pluginId);
-    }
-  });
+  // E5.8#12：消费端 2/2b 已删——所有 register() 的 per-entry disposer 经 registrationTracker
+  // （模块加载时订阅 onWillUninstall）在 fire 内自动逆序回滚，卸载清理全机械，无手动 unregister*。
+  // E5.8#11：卸载路径全部收口到 loadState.unloadPlugin（唯一 fire 生产方）——onWillUninstall/
+  // onDidUninstall 只在合法状态迁移上发，顺序由迁移图机械保障（L6b）；notifyPluginRemoved
+  // 被 unloadPlugin 调用（本模块定义，loadState 消费）。
 
   /* ─── 消费端 3：toast 通知 ─── */
 
@@ -158,17 +98,44 @@ export function initLifecycleConsumers(): void {
     });
   });
 
-  /* ─── 消费端 4：标签页清理 ─── */
-
-  PluginLifecycle.onWillUninstall.event(({ pluginId }) => {
-    // 通知壳关闭使用此插件的标签页——必须在 unregisterViewPlugin 之前
-    window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.PLUGIN_REMOVED, { detail: { pluginId } }));
-  });
-
   /* ─── 消费端 5：视图刷新通知（CustomEvent + 版本标记双保险） ─── */
 
   PluginLifecycle.onDidUninstall.event(() => { notifyPluginViews(); });
   PluginLifecycle.onDidInstall.event(() => { notifyPluginViews(); });
+
+  /* ─── 消费端 6：IPC 广播——安装/卸载通知到唯一 Pool（E5.7#83） ─── */
+
+  // plugin:installed / plugin:uninstalled 带 pluginId 载荷——池侧按插件精确反应
+  // （全量刷新走泛化 nudge plugin-lifecycle:changed；本通道供按插件消费方）。
+  // 链：壳 events.emit → 主进程 onPluginEmit → broadcast → 池 events.on（同 plugin:installProgress）。
+  // 只在 install/reinstall/uninstall 触发——enable/disable/startup 是状态切换非装卸，不进。
+  PluginLifecycle.onDidInstall.event(({ pluginId, manifest, reason }) => {
+    if (reason !== "install" && reason !== "reinstall") return;
+    try {
+      window.linkdesk?.events?.emit("plugin:installed", {
+        pluginId,
+        version: manifest?.version,
+        reason,
+      });
+    } catch { /* 广播失败不阻塞生命周期 */ }
+  });
+
+  PluginLifecycle.onDidUninstall.event(({ pluginId, reason }) => {
+    if (reason !== "uninstall") return;
+    try {
+      window.linkdesk?.events?.emit("plugin:uninstalled", { pluginId, reason });
+    } catch { /* 广播失败不阻塞生命周期 */ }
+  });
+}
+
+/**
+ * 卸载/禁用前通知壳关闭相关标签页 + 侧栏视图（E5.8#12 移自消费端 4）。
+ * 🔥 必须在本插件的 onWillUninstall.fire() 之前调用——App/lifecycle.ts 的
+ * revertContainerIfCurrent 要读 getViewPlugin(pluginId).manifest（viewRegistry 还在）。
+ * tracker 回滚在 fire 内自动删除 viewRegistry 条目——若先 fire 再通知，侧栏回退会静默失效。
+ */
+export function notifyPluginRemoved(pluginId: string): void {
+  window.dispatchEvent(new CustomEvent(CUSTOM_EVENTS.PLUGIN_REMOVED, { detail: { pluginId } }));
 }
 
 /* ── 图标排序辅助（和 loader.ts 共享——放在这里归一化） ── */
@@ -184,8 +151,8 @@ function updateIconOrder(pluginId: string, mode: "append" | "remove"): void {
     if (mode === "append") filtered.push(pluginId);
     setPluginStateValueSync(APP_PLUGIN_ID, "iconOrder", filtered);
     // 异步落盘——不阻塞
-    import("../core/PluginStateService").then(({ setPluginStateValue }) => {
-      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch(() => {});
+    import("../core/services/plugins/PluginStateService").then(({ setPluginStateValue }) => {
+      setPluginStateValue(APP_PLUGIN_ID, "iconOrder", filtered).catch((e) => { console.error("[lifecycle] 保存图标排序失败:", e); });
     });
   } catch { /* 非关键路径 */ }
 }

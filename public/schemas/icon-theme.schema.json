@@ -1,0 +1,89 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://linkdesk.dev/schemas/icon-theme.schema.json",
+  "title": "LinkDesk Icon Theme",
+  "description": "文件图标主题定义格式——对标 VS Code file icon theme。",
+
+  "type": "object",
+  "required": ["iconDefinitions"],
+
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "description": "JSON Schema 引用"
+    },
+    "iconDefinitions": {
+      "type": "object",
+      "description": "图标定义表——id → { fontCharacter | fontPath }。键为图标 ID，供 fileExtensions/fileNames/folderNames 引用。",
+      "additionalProperties": {
+        "type": "object",
+        "minProperties": 1,
+        "maxProperties": 2,
+        "properties": {
+          "fontCharacter": {
+            "type": "string",
+            "description": "图标字体字符码——如 \\e001（对应 codicon 图标字体）"
+          },
+          "fontPath": {
+            "type": "string",
+            "description": "自定义字体文件路径——如 ./icons/my-icons.woff2"
+          }
+        },
+        "additionalProperties": false
+      }
+    },
+    "fileExtensions": {
+      "type": "object",
+      "description": "扩展名 → 图标 ID。如 { \".tsx\": \"react\" }。优先级高于默认映射。",
+      "additionalProperties": {
+        "type": "string",
+        "description": "iconDefinitions 中的图标 ID"
+      }
+    },
+    "fileNames": {
+      "type": "object",
+      "description": "文件名 → 图标 ID。如 { \"package.json\": \"npm\" }。优先级高于 fileExtensions。",
+      "additionalProperties": {
+        "type": "string",
+        "description": "iconDefinitions 中的图标 ID"
+      }
+    },
+    "folderNames": {
+      "type": "object",
+      "description": "目录名 → 图标 ID（折叠态）。如 { \"src\": \"src-folder\" }。",
+      "additionalProperties": {
+        "type": "string",
+        "description": "iconDefinitions 中的图标 ID"
+      }
+    },
+    "folderNamesExpanded": {
+      "type": "object",
+      "description": "目录名 → 图标 ID（展开态）。如 { \"src\": \"src-folder-open\" }。",
+      "additionalProperties": {
+        "type": "string",
+        "description": "iconDefinitions 中的图标 ID"
+      }
+    },
+    "light": {
+      "type": "object",
+      "description": "浅色主题下的覆盖——结构同上述字段。为 null 表示浅色和深色共用。",
+      "properties": {
+        "fileExtensions": { "$ref": "#/properties/fileExtensions" },
+        "fileNames": { "$ref": "#/properties/fileNames" },
+        "folderNames": { "$ref": "#/properties/folderNames" },
+        "folderNamesExpanded": { "$ref": "#/properties/folderNamesExpanded" }
+      },
+      "additionalProperties": false
+    },
+    "highContrast": {
+      "type": "object",
+      "description": "高对比度主题下的覆盖。",
+      "properties": {
+        "fileExtensions": { "$ref": "#/properties/fileExtensions" },
+        "fileNames": { "$ref": "#/properties/fileNames" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,584 @@
+:root { --serial-monitor-ok: #22C55E; }
+
+/* === 串口监视器视图整体 === */
+
+.serial-monitor-view {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--bg-card);
+}
+
+/* === C4b Bug 7：会话已失效占位 === */
+
+/* serial-monitor-body 始终在 DOM 中——保证 CM6 在 mount 时初始化。
+   activeSession 为 null 时隐藏内容、显示占位。 */
+.serial-monitor-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.serial-monitor-body.hidden {
+  display: none;
+}
+
+.serial-monitor-placeholder {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 40px;
+  color: var(--text-muted);
+  user-select: none;
+}
+
+.serial-monitor-placeholder-icon {
+  font-size: 32px;
+  opacity: 0.3;
+}
+
+.serial-monitor-placeholder-title {
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.serial-monitor-placeholder-hint {
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* === 工具栏 === */
+
+.serial-monitor-toolbar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-toolbar);
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  font-size: 12px;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: background 150ms, color 150ms;
+}
+
+.toolbar-btn:hover {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.08);
+}
+
+.toolbar-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.toolbar-btn.active {
+  background: var(--accent);
+  color: var(--text-primary);
+  border-color: var(--accent);
+}
+
+/* E5.8#30.12（P6）：接收区工具栏 per-tab TX/RX 计数——margin-left:auto 推到最右 */
+.receive-stats {
+  margin-left: auto;
+  align-self: center;
+  font-size: 11px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.receive-stats.muted {
+  color: var(--text-muted);
+}
+
+/* === 搜索条 === */
+
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.search-icon {
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.search-input {
+  flex: 1;
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 3px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  outline: none;
+  min-width: 120px;
+}
+
+.search-input:focus {
+  border-color: var(--accent);
+}
+
+.search-input:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.search-count {
+  color: var(--text-secondary);
+  font-size: 11px;
+  white-space: nowrap;
+  flex-shrink: 0;
+  min-width: 36px;
+  text-align: center;
+}
+
+.search-opt {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  cursor: pointer;
+  transition: background 100ms, color 100ms;
+}
+
+.search-opt:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.search-opt.active {
+  background: var(--accent);
+  color: white;
+  border-color: var(--accent);
+}
+
+.search-nav {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  padding: 3px 6px;
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.search-nav:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.search-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.search-close:hover {
+  color: var(--text-primary);
+}
+
+/* === 关键字过滤输入 === */
+
+.filter-keyword-input {
+  height: 24px;
+  font-size: 12px;
+}
+
+/* === 系统消息区域（对标 V2 lbSystemLog：固定两行 36px + accent 左边框） === */
+
+.system-log-area {
+  height: 36px;
+  min-height: 18px;
+  max-height: 72px;
+  background: var(--bg-input);
+  border-left: 3px solid var(--accent);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+  overflow-y: auto;
+  padding: 2px 4px;
+  transition: opacity 200ms ease;
+}
+
+.system-log-line {
+  font-size: 11px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--system-log);
+  line-height: 1.4;
+  padding: 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* === CM6 接收区 === */
+
+.cm-wrapper {
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+}
+
+/* E5.8#30.19a：HEX+ASCII 双栏——两 CM6 并排，同一 monospace 字号/行高 → ASCII/HEX 逐行对齐对照 */
+.cm-wrapper.dual {
+  display: flex;
+}
+.cm-pane {
+  height: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+.cm-wrapper.dual .cm-pane {
+  flex: 1;
+}
+.cm-hex-pane {
+  display: none;
+}
+.cm-wrapper.dual .cm-hex-pane {
+  display: block;
+  border-left: 1px solid var(--separator);
+}
+
+.cm-container {
+  height: 100%;
+  overflow: hidden;
+}
+
+.cm-container .cm-editor {
+  height: 100%;
+}
+
+.cm-container .cm-scroller {
+  overflow: auto;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  font-size: 12px;
+}
+
+/* 暂停横幅 */
+.paused-banner {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  padding: 4px 10px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-size: 11px;
+  text-align: center;
+  animation: slideDown 200ms ease;
+  z-index: var(--z-sticky);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+/* === CM6 原生搜索面板 === */
+
+.cm-panels {
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--separator);
+}
+
+.cm-panels input[type="text"],
+.cm-panels .cm-textfield input {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 4px 8px;
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+}
+.cm-panels input[type="text"]:focus {
+  border-color: var(--accent);
+}
+
+.cm-panels button {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+.cm-panels button:hover {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-primary);
+}
+
+.cm-panels label {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.cm-panels input[type="checkbox"] {
+  accent-color: var(--accent);
+}
+
+
+/* "↓ 回到底部" 浮动按钮 */
+.back-to-bottom {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  background: var(--accent);
+  color: var(--text-on-accent);
+  border: none;
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  transition: opacity 150ms;
+  animation: fadeIn 150ms ease;
+  z-index: var(--z-sticky);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+
+/* === FilterMenu overlay——.ctx-overlay 已抬升到 src/index.css，FilterMenu 从壳 CSS 消费 === */
+
+/* === 快捷发送条 === */
+
+.quick-send-bar {
+  display: flex;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--separator);
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  min-height: 30px;
+}
+
+.quick-send-pill {
+  background: var(--bg-input);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 11px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 150ms;
+  flex-shrink: 0;
+  line-height: 1.5;
+}
+
+.quick-send-pill:hover {
+  background: var(--accent);
+}
+
+.quick-send-pill:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.quick-send-add {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 2px 10px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 150ms, color 150ms;
+}
+
+.quick-send-add:hover {
+  border-color: var(--accent);
+  color: var(--text-primary);
+}
+
+.quick-send-add-form {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.qs-input {
+  width: 100px;
+  height: 24px;
+  font-size: 11px;
+  padding: 2px 6px;
+}
+
+/* === 发送区 === */
+
+.sender-area {
+  flex-shrink: 0;
+  border-top: 1px solid var(--border);
+  background: var(--bg-card);
+}
+
+.hex-warning {
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--warning-text);
+  background: var(--warning-bg);
+  border-bottom: 1px solid rgba(255, 200, 0, 0.2);
+}
+
+.send-editor-wrapper {
+  display: flex;
+  align-items: stretch;
+  border-bottom: 1px solid var(--separator);
+}
+
+.send-editor-prefix {
+  display: flex;
+  align-items: center;
+  padding: 0 6px 0 10px;
+  color: var(--accent);
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
+  font-size: 14px;
+  font-weight: 600;
+  background: var(--bg-card);
+  flex-shrink: 0;
+}
+
+/* CM6 发送编辑器容器 */
+.send-editor-cm {
+  flex: 1;
+  min-height: 32px;
+  max-height: 80px;
+}
+
+.send-editor-cm .cm-editor {
+  height: 100%;
+  outline: none;
+}
+
+/* 项目标准焦点环——覆盖 CM6 默认 dotted 虚线 */
+.send-editor-cm .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.send-editor-cm .cm-editor .cm-scroller {
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
+  font-size: 13px;
+}
+
+.send-editor-cm .cm-editor .cm-content {
+  padding: 6px 0;
+}
+
+/* 光标可见——CM6 theme 扩展 (sendTheme) 为主，CSS 为后备 */
+.send-editor-cm .cm-editor .cm-cursor {
+  border-left: 2px solid var(--text-primary);
+}
+
+/* 隐藏发送区 CM6 的 gutter（无需行号） */
+.send-editor-cm .cm-editor .cm-gutters {
+  display: none;
+}
+
+.sender-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 4px 8px;
+}
+
+.history-wrapper {
+  position: relative;
+}
+
+.history-dropdown {
+  position: absolute;
+  bottom: 100%;
+  right: 0;
+  margin-bottom: 4px;
+  min-width: 280px;
+  max-height: 260px;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+  z-index: var(--z-dropdown);
+}
+
+.history-item {
+  padding: 6px 12px;
+  font-size: 12px;
+  font-family: 'Sarasa Mono SC', Consolas, 'Courier New', monospace;
+  color: var(--text-primary);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background 100ms;
+}
+
+.history-item:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+.history-item + .history-item {
+  border-top: 1px solid var(--separator);
+}
+
+.send-btn {
+  background: var(--accent);
+  border: none;
+  border-radius: 4px;
+  color: var(--text-on-accent);
+  font-size: 12px;
+  padding: 4px 20px;
+  cursor: pointer;
+  transition: background 150ms;
+}
+
+.send-btn:hover {
+  background: var(--accent-hover);
+}

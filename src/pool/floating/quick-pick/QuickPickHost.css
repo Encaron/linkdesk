@@ -1,0 +1,305 @@
+/**
+ * QuickPickHost 样式——E5.7#15。
+ * 从壳 index.css palette 块迁移（E3.5 CP 系列打磨保留），按浮层归一化设计.md §5.1 改：
+ *   - 面板 width 500px → 400px
+ *   - top 20% → 15vh
+ *   - max-height min(360px, 60vh) → 60vh
+ * 约束：所有颜色走 CSS 变量——禁止硬编码 hex（backdrop 黑遮罩为设计 §5.1 指定值）。
+ * z-index 不写死——inline Z_INDEX.quickPick / quickPick-1（constants.ts 常量表，#26）。
+ * pointer-events 不在此写——由 FloatingLayerHost #quick-pick-root 根级提供（§2 根级 opt-in，补丁 2026-08-14）。
+ */
+
+/* ── Backdrop ── */
+
+.quick-pick-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3); /* 设计 §5.1 */
+  /* E3.5 #CP02: 遮罩 fade 动画 */
+  opacity: 0;
+  transition: opacity 150ms ease-out;
+}
+
+.quick-pick-backdrop.show {
+  opacity: 1;
+}
+
+/* E3.5 #CP03: 退场快于入场——closing 期间缩短到 100ms */
+.quick-pick-backdrop.closing {
+  transition-duration: 100ms;
+}
+
+/* ── Panel ── */
+
+.quick-pick-panel {
+  position: fixed;
+  top: 15vh; /* 设计 §5.1（原 20%）——远离 TitleBar 拖拽区（硬约束 18） */
+  left: 50%;
+  transform: translateX(-50%) scale(0.95);
+  width: 400px; /* 设计 §5.1（原 500px） */
+  max-height: 60vh; /* 设计 §5.1 */
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* E3.5 #CP01: scale+opacity 出现动画——对标 VS Code quickInput */
+  opacity: 0;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+
+.quick-pick-panel.show {
+  opacity: 1;
+  transform: translateX(-50%) scale(1);
+}
+
+.quick-pick-panel.closing {
+  transition-duration: 100ms;
+}
+
+/* ── Input 行（E3.5 #CP10） ── */
+
+.quick-pick-input-row {
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--separator);
+}
+
+.quick-pick-prefix {
+  padding-left: 14px;
+  font-size: 14px;
+  color: var(--text-muted);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.quick-pick-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 12px 12px 8px 12px;
+  color: var(--text-primary);
+  font-size: 13px;
+  outline: none;
+}
+
+/* E3.5 #CP13a: 清除按钮 */
+.quick-pick-clear {
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-radius: 4px;
+  font-size: 14px;
+  margin-right: 4px;
+}
+
+.quick-pick-clear:hover {
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* ── 列表 ── */
+
+.quick-pick-list {
+  flex: 1;
+  overflow-y: auto;
+  /* E3.5 #CP15: 滚动条——6px 细条 */
+  scrollbar-width: thin;
+}
+
+.quick-pick-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.quick-pick-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.quick-pick-list::-webkit-scrollbar-thumb {
+  background: var(--separator);
+  border-radius: 3px;
+}
+
+/* ── 列表项 ── */
+
+.quick-pick-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background 100ms;
+}
+
+.quick-pick-item:hover,
+.quick-pick-item.selected {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* E3f #53b：对标 VS Code 两排布局——rows(column) > row(flex) */
+.quick-pick-item-content {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-pick-item-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+/* E5.8#32：已激活项勾选标记——label 左侧 ✓。颜色继承（hover/selected accent 态自动变 text-on-accent）——零新 hex。
+ * 固定 width 占位——未激活项空占保对齐（对齐 VS Code quickInput 勾选列） */
+.quick-pick-item-check {
+  flex-shrink: 0;
+  width: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  color: inherit;
+  opacity: 0.9;
+}
+
+.quick-pick-item-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+.quick-pick-item-category {
+  flex-shrink: 0;
+  font-size: 11px;
+  opacity: 0.7;
+  white-space: nowrap;
+}
+
+/* E3.5 #CP04: detail 行——ID(左) + 快捷键pill(右) 对标 VS Code */
+.quick-pick-item-detail {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  opacity: 0.55;
+  margin-top: 1px;
+}
+
+.quick-pick-item-detail-id {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.quick-pick-item-detail-right {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+  margin-left: 8px;
+}
+
+/* ── 快捷键 keycap pill（E3.5 #CP06 #CP07） ── */
+
+.keybinding-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 10px;
+}
+
+.keybinding-pill kbd {
+  display: inline-block;
+  padding: 1px 5px;
+  font-size: 10px;
+  font-family: var(--font-mono, 'Cascadia Code', Consolas, monospace);
+  background: rgba(128, 128, 128, 0.1);
+  border: 1px solid rgba(128, 128, 128, 0.12);
+  border-radius: 3px;
+  line-height: 1.5;
+}
+
+.keybinding-sep {
+  opacity: 0.4;
+  margin: 0 1px;
+}
+
+/* hover/selected 态 keycap 变亮 */
+.quick-pick-item:hover .keybinding-pill kbd,
+.quick-pick-item.selected .keybinding-pill kbd {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.35);
+}
+
+.quick-pick-item:hover .quick-pick-item-category,
+.quick-pick-item:hover .quick-pick-item-detail,
+.quick-pick-item.selected .quick-pick-item-category,
+.quick-pick-item.selected .quick-pick-item-detail {
+  opacity: 0.85;
+}
+
+/* ── 行内操作按钮（E3f #53b：命令面板齿轮） ── */
+
+.quick-pick-item-actions {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.quick-pick-item-btn {
+  background: none;
+  border: none;
+  color: inherit;
+  cursor: pointer;
+  padding: 2px;
+  font-size: 14px;
+  opacity: 0;
+  transition: opacity 100ms;
+  border-radius: 3px;
+}
+
+.quick-pick-item:hover .quick-pick-item-btn,
+.quick-pick-item.selected .quick-pick-item-btn {
+  opacity: 0.8;
+}
+
+.quick-pick-item-btn:hover {
+  opacity: 1 !important;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+/* ── 空态（E3.5 #CP08a） ── */
+
+.quick-pick-empty {
+  padding: 20px 16px;
+  font-size: 12px;
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* ── 结果计数（E3.5 #CP16） ── */
+
+.quick-pick-count {
+  padding: 4px 12px 8px;
+  font-size: 10px;
+  color: var(--text-muted);
+  opacity: 0.5;
+}

@@ -1,0 +1,263 @@
+/* panel-demo 视图样式——E5.7#63.7 验证演示插件（输出 + 待办）。
+   设计依据：ui-ux-pro-max 设计系统——Dark Mode (OLED) 风格 / 密集面板密度 8
+   （8–32px 间距刻度）/ Inter 排版 / 最小化发光。落地原则：
+   - 全部颜色走 var(--xxx) token（硬约束 1）——零硬编码 hex，暗色主题自动适配
+   - 图标走 codicon（禁 emoji 图标）；hover 150ms（150–300ms 区间）；focus-visible 键盘环
+   - 对比度靠既有文本 token（--text-primary/muted/tertiary 已满足 4.5:1 设计基线）
+   - prefers-reduced-motion 全关 transition */
+
+.demo-output,
+.demo-todo {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-window);
+}
+
+/* ── 工具栏（两视图共用语义） ── */
+
+.demo-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.demo-toolbar-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+/* ── 图标按钮（22px 幽灵钮——密集面板刻度） ── */
+
+.demo-icon-btn {
+  width: 22px;
+  height: 22px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  font-size: 13px;
+  padding: 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.demo-icon-btn:hover:not(:disabled) {
+  background: var(--hover-overlay);
+  color: var(--text-primary);
+}
+
+.demo-icon-btn:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: -1px;
+}
+
+.demo-icon-btn:disabled {
+  color: var(--text-muted);
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* ── 输出日志区——等宽 12px，三级着色（info/warn/error） ── */
+
+.demo-log {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px 0;
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.demo-log-line {
+  display: flex;
+  gap: 8px;
+  padding: 0 10px;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.demo-log-line:hover {
+  background: var(--hover-overlay);
+}
+
+/* ── 空态——E5.8#36.6 侧栏演示视图（ui-ux-pro-max 空态指引：有用消息 + 动作提示） ── */
+
+.demo-log-empty {
+  padding: 8px 12px;
+  font-family: var(--font-mono, Consolas, monospace);
+  font-size: 12px;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+.demo-log-time {
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+}
+
+.demo-log-text {
+  color: var(--text-muted); /* info 默认 */
+}
+
+.demo-log-line.warn .demo-log-text {
+  color: var(--warning);
+}
+
+.demo-log-line.error .demo-log-text {
+  color: var(--error);
+}
+
+/* ── 待办输入行 ── */
+
+.demo-todo-form {
+  display: flex;
+  gap: 6px;
+  padding: 8px;
+  border-bottom: 1px solid var(--separator);
+  flex-shrink: 0;
+}
+
+.demo-todo-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-size: 12px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.demo-todo-input::placeholder {
+  color: var(--text-tertiary);
+}
+
+.demo-todo-input:focus {
+  border-color: var(--accent);
+}
+
+/* ── 待办列表 ── */
+
+.demo-todo-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+}
+
+.demo-todo-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  padding: 0 8px;
+}
+
+.demo-todo-item:hover {
+  background: var(--hover-overlay);
+}
+
+/* 勾选框——16px 空心方框，完成态 accent 填充 + check 图标 */
+.demo-todo-check {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--text-on-accent);
+  cursor: pointer;
+  font-size: 11px;
+  transition: background 0.15s, border-color 0.15s;
+}
+
+.demo-todo-check:hover {
+  border-color: var(--accent);
+}
+
+.demo-todo-check:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.demo-todo-item.done .demo-todo-check {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.demo-todo-text {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.demo-todo-item.done .demo-todo-text {
+  color: var(--text-tertiary);
+  text-decoration: line-through;
+}
+
+/* 删除钮——常显但弱化（不依赖 hover 才可见——触屏可用），悬停转 danger */
+.demo-todo-remove {
+  flex-shrink: 0;
+  opacity: 0.55;
+}
+
+.demo-todo-remove:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--danger);
+}
+
+/* ── 空态 + 底部计数 ── */
+
+.demo-todo-empty {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.demo-todo-footer {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  border-top: 1px solid var(--separator);
+  font-size: 11px;
+  color: var(--text-tertiary);
+  user-select: none;
+}
+
+/* ── reduced motion——过渡全关（仅装饰性过渡，非信息传达） ── */
+
+@media (prefers-reduced-motion: reduce) {
+  .demo-icon-btn,
+  .demo-todo-input,
+  .demo-todo-check {
+    transition: none;
+  }
+}

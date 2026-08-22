@@ -1,0 +1,84 @@
+/**
+ * DialogHost 样式——E5.7#17（浮层归一化设计.md §7）。
+ * 从壳 ConfirmDialog.css 迁移，按设计 §7.1 规格：
+ *   - backdrop rgba(0,0,0,0.5)（壳旧值 0.4——设计规格为准）
+ *   - 居中 50%/50% translate(-50%,-50%)
+ *   - minWidth 300 / maxWidth 80vw / maxHeight 80vh（壳旧值 320px/420px——设计规格为准）
+ * z-index 不在本文件——inline Z_INDEX.dialog / dialog-1（#26 常量表）。
+ * pointer-events 不在此写——由 FloatingLayerHost #dialog-root 根级提供（§2 根级 opt-in，补丁 2026-08-14）。
+ * 全部颜色走 CSS 变量，零硬编码 hex。
+ */
+
+.dialog-host-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-host-panel {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  min-width: 300px;
+  max-width: 80vw;
+  max-height: 80vh;
+  overflow-y: auto;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: var(--context-menu-shadow);
+  padding: 20px 24px;
+  box-sizing: border-box;
+  outline: none; /* 面板聚焦（tabIndex=-1）不显示 outline */
+}
+
+.dialog-host-title {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.dialog-host-message {
+  margin: 0 0 20px 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text-primary);
+  white-space: pre-wrap;
+  user-select: text;
+}
+
+.dialog-host-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.dialog-host-btn {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  border: none;
+  height: 28px;
+}
+
+.dialog-host-btn-primary {
+  background: var(--accent);
+  color: var(--badge-text);
+}
+
+.dialog-host-btn-primary:hover {
+  opacity: 0.85;
+}
+
+.dialog-host-btn-secondary {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+.dialog-host-btn-secondary:hover {
+  background: var(--bg-hover);
+}

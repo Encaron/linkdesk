@@ -1,0 +1,70 @@
+/* ViewTitleActions——E5.8#36.5 视图动作区统一渲染器。全部 CSS 变量零硬编码。
+   与 PanelZone.css / GroupTabBar.css 同款样式语言（hover overlay / separator / card 下拉）。 */
+
+/* 动作区容器——28px 与 panel-tabbar 等高，横向排布 */
+.vta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 0 4px;
+}
+
+/* widget 容器——split 主按钮+chevron 视觉成组 */
+.vta-widget {
+  display: flex;
+  align-items: center;
+}
+
+/* 动作按钮——28px 方形（panel-tab-create 同款），muted → hover 高亮 */
+.vta-btn {
+  height: 28px;
+  min-width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  border-radius: 4px;
+  transition: background 150ms ease, color 150ms ease;
+}
+
+.vta-btn:hover {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
+/* 打开态——保持 hover 高亮，明确"下拉已展开" */
+.vta-chev.open {
+  color: var(--text-primary);
+  background: var(--hover-overlay);
+}
+
+/* 下拉——共享 .dropdown-card（PanelZone 切换器下拉同源卡片本体）+ 本组件唯一 min-width */
+.vta-dropdown {
+  min-width: 140px;
+}
+
+/* 条目——小字号单行，hover 高亮 */
+.vta-item {
+  padding: 4px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  cursor: pointer;
+  user-select: none;
+  transition: background 150ms ease;
+}
+
+.vta-item:hover,
+.vta-item:focus-visible {
+  background: var(--hover-overlay);
+  outline: none;
+}

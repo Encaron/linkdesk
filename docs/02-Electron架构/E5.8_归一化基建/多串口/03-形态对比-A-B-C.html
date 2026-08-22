@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>串口监视器最终形态 — UI 维持现状 + P1-P9 + 设置扩展</title>
+<style>
+  /* ── 设计系统：Dark (OLED) + JetBrains Mono，密度 8/10（LinkDesk 串口监视器）──
+     真实布局依据（代码为准）：
+     · ControlPanel.css  .control-bar 36px，SelectBox 无 label，连接按钮透明底绿字
+     · SerialMonitorView.css  工具栏 toolbar-btn（codicon+文字）/ quick-send-pill 胶囊 / send-btn
+     · SerialMonitorSidebar.css  session-item（2px 色条+6px dot+名称+副标题）/ setting-group
+     · src/index.css  .toggle 36×20 旋钮16px ON 时 accent 底 */
+  :root {
+    --bg-page:   #0B1120;
+    --bg-window: #0F172A;
+    --bg-card:   #1E293B;
+    --bg-input:  #1B2436;
+    --bg-muted:  #272F42;
+    --bg-toolbar:#141C2E;
+    --hover:     #334155;
+    --border:    #475569;
+    --border-subtle: #2C3A50;
+    --separator: #2A3550;
+    --text-primary:   #F8FAFC;
+    --text-secondary: #CBD5E1;
+    --text-muted:     #94A3B8;
+    --accent:    #22C55E;   /* --serial-monitor-ok */
+    --accent-dim:#166534;
+    --danger:    #EF4444;
+    --sent:      #7DD3FC;
+    --sys:       #94A3B8;
+    --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, 'Courier New', monospace;
+    --font-ui:   system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --radius: 4px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg-page);
+    color: var(--text-primary);
+    font-family: var(--font-ui);
+    padding: 24px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── 页头 ── */
+  header.page-head { margin-bottom: 16px; max-width: 980px; }
+  h1 { font-size: 19px; font-weight: 600; letter-spacing: .2px; }
+  h1 .muted { color: var(--text-muted); font-weight: 400; }
+  p.sub { color: var(--text-muted); font-size: 13px; margin-top: 6px; line-height: 1.6; }
+  .legend { display: flex; gap: 16px; margin-top: 12px; flex-wrap: wrap; font-size: 12px; color: var(--text-secondary); }
+  .legend .dot { display:inline-block; width:7px; height:7px; border-radius:50%; margin-right:4px; vertical-align:1px; }
+  .legend .dot.open { background: var(--accent); }
+  .legend .dot.closed { background: var(--border); }
+  .badge-new { background: var(--accent-dim); color: var(--accent); border-radius: 8px; padding: 0 6px; font-size: 10px; white-space: nowrap; }
+
+  /* ── 模拟 LinkDesk 窗口 ── */
+  .window {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,.35);
+    max-width: 980px;
+    font-size: 12px;
+  }
+  .window-main {
+    flex: 1;
+    display: grid;
+    grid-template-columns: 42px 220px 1fr; /* 图标栏 42 / 侧栏 220 / 主区 */
+    min-height: 0;
+  }
+
+  /* ── 图标栏 ── */
+  .iconbar { background: var(--bg-page); border-right: 1px solid var(--border); padding: 8px 0; display: flex; flex-direction: column; gap: 6px; align-items: center; }
+  .iconbar .ic { width: 26px; height: 26px; border-radius: 5px; display: grid; place-items: center; color: var(--text-muted); }
+  .iconbar .ic.on { background: var(--accent-dim); color: var(--accent); }
+
+  /* ── 侧栏 ── */
+  .sidebar { background: var(--bg-window); border-right: 1px solid var(--border); display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow-y: auto; }
+  .sec-title { padding: 8px 12px 4px; font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; }
+  /* 会话项——真实 session-item：2px 色条 + 6px dot + 名称13 + 副标题11 */
+  .sess { display: flex; align-items: center; gap: 6px; padding: 6px 8px 6px 6px; border-left: 2px solid transparent; cursor: pointer; }
+  .sess.active { background: rgba(255,255,255,.04); border-left-color: var(--accent); }
+  .sess:hover { background: rgba(255,255,255,.03); }
+  .sess .dot { width: 6px; height: 6px; border-radius: 50%; flex: none; }
+  .sess .dot.open { background: var(--accent); box-shadow: 0 0 4px var(--accent); }
+  .sess .dot.closed { background: var(--border); }
+  .sess .meta { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+  .sess .nm { font-size: 13px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.4; }
+  .sess.active .nm { font-weight: 600; }
+  .sess .pt { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-family: var(--font-mono); line-height: 1.3; }
+  .sb-add { background: transparent; border: none; color: var(--text-muted); font-size: 11px; padding: 2px 8px; text-align: left; cursor: pointer; margin-top: 2px; }
+  .sb-add:hover { background: rgba(255,255,255,.06); color: var(--text-primary); }
+  .sb-sep { height: 1px; background: var(--separator); margin: 6px 0; }
+
+  /* 收发设置——真实 setting-group + FormRow */
+  .group { padding: 4px 12px; }
+  .group + .group { border-top: 1px solid var(--separator); }
+  .gl { font-size: 11px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .5px; padding: 8px 0 4px; }
+  .row { display: flex; align-items: center; justify-content: space-between; gap: 6px; padding: 3px 0; min-height: 26px; }
+  .row .rl { font-size: 12px; color: var(--text-secondary); }
+  .row .new { margin-right: 4px; }
+
+  /* 真实 Toggle 胶囊（src/index.css .toggle：36×20 旋钮16px，ON=accent 底） */
+  .toggle {
+    width: 36px; height: 20px; border-radius: 10px;
+    background: var(--border); position: relative; flex: none; cursor: pointer;
+    transition: background 150ms;
+  }
+  .toggle::after {
+    content: ""; position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px; border-radius: 50%;
+    background: #CBD5E1; transition: transform 150ms, background 150ms;
+  }
+  .toggle.on { background: var(--accent); }
+  .toggle.on::after { transform: translateX(16px); background: #052e16; }
+
+  /* 真实 SelectBox trigger（SelectBox.css .selectbox-trigger：bg-input、radius2、13px/20px） */
+  .sb {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: var(--bg-input); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 2px;
+    padding: 3px 6px; font-family: var(--font-mono); font-size: 12px; line-height: 18px;
+    white-space: nowrap; cursor: pointer; flex: none;
+  }
+  .sb::after { content: "▾"; color: var(--text-muted); font-size: 10px; }
+  .input {
+    background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px;
+    padding: 3px 8px; color: var(--text-primary); font-size: 12px; font-family: var(--font-mono);
+    width: 80px; text-align: right;
+  }
+
+  /* ── 主区 ── */
+  .main { background: var(--bg-window); display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+  /* 标签栏（主区内，35px） */
+  .tabbar { display: flex; align-items: center; gap: 6px; height: 35px; padding: 0 8px; border-bottom: 1px solid var(--separator); background: var(--bg-card); flex-shrink: 0; }
+  .tabbar .tab { display: inline-flex; align-items: center; gap: 6px; background: var(--bg-window); border: 1px solid var(--border-subtle); border-bottom: none; border-radius: 5px 5px 0 0; padding: 4px 10px; font-size: 12px; color: var(--text-secondary); }
+  .tabbar .tab .x { color: var(--text-muted); }
+
+  /* 命令条——真实 .control-bar：36px，无 label，状态点 + 下拉 + 竖线 + 按钮 */
+  .ctrl { display: flex; align-items: center; gap: 4px; height: 36px; padding: 0 8px; border-bottom: 1px solid var(--separator); background: var(--bg-window); flex-shrink: 0; }
+  .ctrl .dot { width: 8px; height: 8px; border-radius: 50%; margin-right: 2px; flex: none; }
+  .ctrl .dot.on { background: var(--accent); box-shadow: 0 0 6px var(--accent); }
+  .ctrl .dot.off { background: var(--border); }
+  .ctrl .sep { width: 1px; height: 18px; background: var(--border-subtle); flex: none; margin: 0 2px; }
+  .ctrl .spacer { flex: 1; }
+  .ctrl .sb.editable { padding-right: 22px; position: relative; }
+  .ctrl .sb.editable::before { content: "✎"; position: absolute; right: 20px; color: var(--accent); font-size: 10px; font-style: normal; }
+  /* DTR/RTS 开关——连接参数，真实 Toggle 36×20（不缩放） */
+  .ctrl .ctrl-chk { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); flex: none; }
+
+  /* 连接按钮——真实 .control-connect-btn：透明底，connected 绿字绿边 */
+  .conn-btn {
+    background: transparent; border: 1px solid var(--border-subtle); border-radius: 4px;
+    color: var(--text-secondary); font-size: 12px; padding: 3px 10px; cursor: pointer; flex-shrink: 0;
+  }
+  .conn-btn.connected { border-color: var(--accent); color: var(--accent); }
+
+  /* 工具栏——真实 .serial-monitor-toolbar */
+  .toolbar { display: flex; align-items: center; gap: 4px; padding: 6px 10px; background: var(--bg-toolbar); border-bottom: 1px solid var(--separator); flex-shrink: 0; flex-wrap: wrap; }
+  .tbtn {
+    display: inline-flex; align-items: center; gap: 4px; background: transparent;
+    border: 1px solid var(--border); border-radius: 4px; color: var(--text-secondary);
+    font-size: 12px; padding: 3px 10px; cursor: pointer; font-family: var(--font-ui);
+  }
+  .tbtn:hover { background: var(--hover); color: var(--text-primary); }
+  .toolbar .grow { flex: 1; }
+  .toolbar .txrx { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-mono); font-size: 11px; color: var(--text-secondary); padding: 0 4px; flex-shrink: 0; }
+  .toolbar .txrx b { color: var(--text-muted); font-weight: 400; }
+  .toolbar .kw { background: var(--bg-input); border: 1px solid var(--border); border-radius: 4px; padding: 2px 8px; color: var(--text-primary); font-size: 12px; width: 110px; height: 24px; font-family: var(--font-ui); }
+  .toolbar .kw::placeholder { color: var(--text-muted); }
+
+  /* 系统消息区——真实 .system-log-area：36px、accent 左边框 */
+  .syslog { height: 36px; background: var(--bg-input); border-left: 3px solid var(--accent); border-top: 1px solid var(--border); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); flex-shrink: 0; display: flex; align-items: center; overflow: hidden; }
+  .syslog span { font-size: 11px; font-family: var(--font-mono); color: var(--sys); padding: 0 8px; white-space: nowrap; }
+
+  /* 接收区——CM6：行号 gutter + 三色行 */
+  .recv { flex: 1; display: flex; font-family: var(--font-mono); font-size: 12px; line-height: 1.6; overflow: hidden; min-height: 120px; background: var(--bg-card); position: relative; }
+  .recv .gutter { width: 44px; flex: none; background: var(--bg-window); border-right: 1px solid var(--separator); color: var(--text-muted); text-align: right; padding: 4px 8px 0 0; user-select: none; }
+  .recv .body { flex: 1; padding: 4px 8px 0; overflow: hidden; }
+  .recv .ln { white-space: pre-wrap; word-break: break-all; }
+  .ln .ts { color: var(--text-muted); }
+  .ln-sent { color: var(--sent); }
+  .ln-sys { color: var(--sys); }
+  .recv .btb { position: absolute; bottom: 12px; right: 12px; background: var(--accent); color: #052e16; border: none; border-radius: 50%; width: 30px; height: 30px; font-size: 14px; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+
+  /* 快捷发送条——真实 .quick-send-bar */
+  .qs { display: flex; align-items: center; gap: 4px; padding: 6px 10px; border-top: 1px solid var(--separator); flex-wrap: wrap; flex-shrink: 0; }
+  .qs .pill { background: var(--bg-input); border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-family: var(--font-mono); font-size: 11px; color: var(--text-primary); cursor: pointer; line-height: 1.5; }
+  .qs .pill:hover { background: var(--accent); color: #052e16; }
+  .qs .add { background: transparent; border: 1px solid var(--border); border-radius: 12px; padding: 2px 10px; font-size: 11px; color: var(--text-muted); cursor: pointer; }
+
+  /* 发送区——真实 .sender-area：→ 前缀 + CM6 + 历史/清空/发送 */
+  .send { border-top: 1px solid var(--border); background: var(--bg-card); flex-shrink: 0; }
+  .send .ed { display: flex; align-items: stretch; border-bottom: 1px solid var(--separator); }
+  .send .ed .prefix { display: flex; align-items: center; padding: 0 6px 0 10px; color: var(--accent); font-family: var(--font-mono); font-size: 14px; font-weight: 600; background: var(--bg-card); }
+  .send .ed .field { flex: 1; min-height: 32px; max-height: 80px; background: var(--bg-card); font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); padding: 6px 0; }
+  .send .actions { display: flex; justify-content: flex-end; gap: 4px; padding: 4px 8px; }
+  .send .sbtn { background: var(--accent); border: none; border-radius: 4px; color: #052e16; font-size: 12px; padding: 4px 20px; cursor: pointer; font-weight: 600; }
+
+  /* ── 状态栏（P6 后：灯带 + (N)，无全局 TX/RX） ── */
+  .statusbar { height: 24px; display: flex; align-items: center; gap: 12px; padding: 0 10px; background: var(--bg-page); border-top: 1px solid var(--border); font-size: 11px; color: var(--text-secondary); flex-shrink: 0; }
+  .statusbar .sdot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 5px var(--accent); display: inline-block; margin-right: 4px; vertical-align: -1px; }
+  .statusbar .right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+  .statusbar .right span { cursor: pointer; color: var(--text-muted); }
+</style>
+</head>
+<body>
+
+<header class="page-head">
+  <h1>串口监视器最终形态 <span class="muted">— UI 维持现状 + 状态模型 per-tab 化（P1-P9 + 设置扩展落地）</span></h1>
+  <p class="sub">
+    不再搬动侧栏/主区结构。侧栏 = 会话导航 + 收发设置（per-COM，随选中会话联动）；主区串口标签页 = 命令条 + 工具栏 + 接收区 + 快捷发送 + 发送区。
+    绿色 <span class="badge-new">新增</span> 标注 = 本次 P1-P9 修复 / 设置扩展（#30.8-#30.21）落地的可见改动。控件形态按真实代码绘制（Toggle 36×20、SelectBox 触发、命令条无 label）。
+    侧栏收发设置按真实结构绘制：动态标题「收发设置 — 会话名」（随选中会话联动）+ 分组标题（显示 / 发送行为 / 编码，新增「握手信号」），每组顶部名字 = setting-section-label。
+    ✅ 命令条「方括号协议」下拉 + 状态栏协议指示已按拍板删除——协议解析归卡片工作台等消费方，串口监视器不显示。DTR/RTS 按拍板移入侧栏「握手信号」（命令条不挤）。命令条剩 4 控件（COM/波特率✎/8N1/校验），主区 ~718px、内容 ~300px 放得下；若仍嫌挤，8N1+校验移侧栏是用户备选（未拍板）。DTR/RTS 形态（开关 vs 初始电平选择）未拍板，先按开关画。
+  </p>
+  <div class="legend">
+    <span><span class="dot open"></span>连接中</span>
+    <span><span class="dot closed"></span>已关闭</span>
+    <span class="badge-new">新增</span><span>设置扩展（#30.17+）</span>
+    <span>TX:0 RX:0 前标 <span class="badge-new">P6</span> = 状态栏 TX/RX 删后归位接收区工具栏</span>
+  </div>
+</header>
+
+<div class="window">
+  <div class="window-main">
+
+    <!-- 图标栏 -->
+    <div class="iconbar">
+      <div class="ic">☰</div>
+      <div class="ic">▤</div>
+      <div class="ic on">◉</div>
+      <div class="ic">⚙</div>
+    </div>
+
+    <!-- 侧栏 -->
+    <div class="sidebar">
+      <div class="sec-title">串口监视器会话</div>
+      <div class="sess active"><span class="dot open"></span><span class="meta"><span class="nm">调试板A</span><span class="pt">COM3 · 115200</span></span></div>
+      <div class="sess"><span class="dot open"></span><span class="meta"><span class="nm">调试板B</span><span class="pt">COM13 · 9600</span></span></div>
+      <button class="sb-add">＋ 新建会话</button>
+      <div class="sb-sep"></div>
+
+      <div class="sec-title">收发设置 — 调试板A</div>
+      <div class="group">
+        <div class="gl">握手信号</div>
+        <div class="row"><span class="rl"><span class="badge-new">新增</span>DTR</span><span class="toggle on"></span></div>
+        <div class="row"><span class="rl"><span class="badge-new">新增</span>RTS</span><span class="toggle"></span></div>
+      </div>
+      <div class="group">
+        <div class="gl">显示</div>
+        <div class="row"><span class="rl">时间戳</span><span class="sb">HH:mm:ss:fff</span></div>
+        <div class="row"><span class="rl">消息回显</span><span class="toggle on"></span></div>
+        <div class="row"><span class="rl">行号显示</span><span class="toggle on"></span></div>
+        <div class="row"><span class="rl">系统消息独立显示</span><span class="toggle on"></span></div>
+        <div class="row"><span class="rl"><span class="badge-new">新增</span>HEX+ASCII 双栏</span><span class="toggle"></span></div>
+        <div class="row"><span class="rl"><span class="badge-new">新增</span>不可见字符转义</span><span class="toggle"></span></div>
+      </div>
+      <div class="group">
+        <div class="gl">发送行为</div>
+        <div class="row"><span class="rl">换行符</span><span class="sb">\r\n</span></div>
+        <div class="row"><span class="rl">定时发送</span><span class="toggle"></span></div>
+        <div class="row"><span class="rl">间隔(ms)</span><span class="input">1000</span></div>
+        <div class="row"><span class="rl">发送后清空</span><span class="toggle"></span></div>
+      </div>
+      <div class="group">
+        <div class="gl">编码</div>
+        <div class="row"><span class="rl">接收模式</span><span class="sb">文本</span></div>
+        <div class="row"><span class="rl">接收编码</span><span class="sb">UTF-8</span></div>
+        <div class="row"><span class="rl">发送模式</span><span class="sb">文本</span></div>
+        <div class="row"><span class="rl">发送编码</span><span class="sb">UTF-8</span></div>
+      </div>
+    </div>
+
+    <!-- 主区 -->
+    <div class="main">
+      <!-- 标签栏 -->
+      <div class="tabbar">
+        <div class="tab">◉ 串口监视器 — 调试板A<span class="x">✕</span></div>
+      </div>
+
+      <!-- 串口标签页内容 -->
+      <!-- 命令条：状态点 + COM + 波特率(可输入) + 端口参数 + 协议 + 开/断 -->
+      <div class="ctrl">
+        <span class="dot on"></span>
+        <span class="sb">COM3</span>
+        <span class="sep"></span>
+        <span class="sb editable">115200</span>
+        <span class="sep"></span>
+        <span class="sb"><span class="badge-new" style="margin-right:4px">新增</span>8N1</span>
+        <span class="sb"><span class="badge-new" style="margin-right:4px">新增</span>校验 无</span>
+        <span class="spacer"></span>
+        <button class="conn-btn connected">断开</button>
+      </div>
+
+      <!-- 工具栏（P6：右侧 TX/RX per-tab 归位） -->
+      <div class="toolbar">
+        <button class="tbtn">⏸ 暂停</button>
+        <button class="tbtn">⇩ 导出日志</button>
+        <button class="tbtn">⌫ 清空接收区</button>
+        <span class="sb">全部</span>
+        <input class="kw" placeholder="关键字过滤…" />
+        <span class="grow"></span>
+        <span class="badge-new">P6</span>
+        <span class="txrx">TX:128 RX:2,048</span>
+      </div>
+
+      <!-- 系统消息区 -->
+      <div class="syslog"><span>---- 消息回显：开 ----</span></div>
+
+      <!-- 接收区（CM6） -->
+      <div class="recv">
+        <div class="gutter">1<br/>2<br/>3<br/>4<br/>5<br/>6<br/>7</div>
+        <div class="body">
+          <div class="ln ln-sys"><span class="ts">15:03:20.001</span> 系统：已打开串行端口 COM3</div>
+          <div class="ln ln-sent"><span class="ts">15:03:21.847</span> &gt; AT\r\n</div>
+          <div class="ln"><span class="ts">15:03:21.853</span> &lt; OK\r\n</div>
+          <div class="ln ln-sent"><span class="ts">15:03:22.110</span> &gt; AT+GMR\r\n</div>
+          <div class="ln"><span class="ts">15:03:22.118</span> &lt; +GMR: 1.3.2\r\n</div>
+          <div class="ln"><span class="ts">15:03:22.120</span> &lt; OK\r\n</div>
+        </div>
+        <button class="btb">↓</button>
+      </div>
+
+      <!-- 快捷发送条 -->
+      <div class="qs">
+        <span class="pill">AT</span><span class="pill">AT+GMR</span><span class="pill">AT+CSQ</span>
+        <span class="add">＋ 添加</span>
+      </div>
+
+      <!-- 发送区 -->
+      <div class="send">
+        <div class="ed">
+          <span class="prefix">→</span>
+          <div class="field">AT+CSQ</div>
+        </div>
+        <div class="actions">
+          <button class="tbtn">▼</button>
+          <button class="tbtn">清空发送区</button>
+          <button class="sbtn">发送</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 状态栏（P6 后：连接灯 + (2)，无全局 TX/RX） -->
+  <div class="statusbar">
+    <span><span class="sdot"></span>COM3 已连接 (2)</span>
+    <span class="right"><span>中:EN</span><span>☀</span><span>🔔</span></span>
+  </div>
+</div>
+
+</body>
+</html>

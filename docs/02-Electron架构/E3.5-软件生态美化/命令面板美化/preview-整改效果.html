@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>命令面板 E3.5 整改 — Before vs After 左右对比</title>
+<style>
+/* ═══ CSS 变量 ═══ */
+:root {
+  --bg-window: #1e1e1e;
+  --bg-card: #252526;
+  --bg-input: #3c3c3c;
+  --text-primary: #d4d4d4;
+  --text-secondary: #999;
+  --text-muted: #777;
+  --border: #3c3c3c;
+  --separator: #454545;
+  --accent: #0078d4;
+  --accent-hover: #1a8ad4;
+  --text-on-accent: #fff;
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Sarasa Mono SC', 'Cascadia Code', Consolas, monospace;
+  color-scheme: dark;
+}
+body.light {
+  --bg-window: #f3f3f3;
+  --bg-card: #fff;
+  --bg-input: #fff;
+  --text-primary: #333;
+  --text-secondary: #666;
+  --text-muted: #999;
+  --border: #d4d4d4;
+  --separator: #e8e8e8;
+  --accent: #0078d4;
+  --accent-hover: #106ebe;
+  --text-on-accent: #fff;
+  color-scheme: light;
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: var(--font-ui);
+  background: #0d0d0d;
+  color: var(--text-primary);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 24px 16px;
+  min-height: 100vh;
+}
+body.light { background: #e8e8e8; }
+
+/* ═══ 工具栏 ═══ */
+.toolbar {
+  display: flex; align-items: center; gap: 20px; margin-bottom: 24px;
+  flex-wrap: wrap; justify-content: center;
+}
+.toolbar label { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+.toolbar select {
+  font-family: var(--font-ui); padding: 5px 10px; font-size: 12px;
+  border: 1px solid var(--border); border-radius: 4px;
+  background: var(--bg-card); color: var(--text-primary); cursor: pointer;
+}
+.toolbar h1 { font-size: 16px; font-weight: 700; }
+
+/* ═══ 左右对比 ═══ */
+.compare-wrap {
+  display: flex; gap: 20px; width: 100%; max-width: 1220px;
+  align-items: flex-start;
+}
+.compare-col {
+  flex: 1; min-width: 0;
+  background: var(--bg-window);
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.3);
+}
+.col-header {
+  height: 36px; display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--separator);
+}
+.col-header.before { background: #3d2020; color: #f87171; }
+.col-header.after  { background: #1a3d1a; color: #4ade80; }
+
+.demo-inner {
+  padding: 28px 20px;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+}
+
+/* ═══ 模拟编辑器背景 ═══ */
+.editor-bg {
+  width: 100%; height: 260px; background: var(--bg-window);
+  border-radius: 6px; position: relative; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--separator);
+}
+.editor-hint {
+  font-size: 13px; color: var(--text-muted); text-align: center;
+}
+
+/* ═══════════════════════════════════════════════════════
+   命令面板 — AFTER
+   ═══════════════════════════════════════════════════════ */
+
+.ctx-improvements {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.ctx-improvements span {
+  font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600;
+}
+.imp-anim  { background: #8b5cf620; color: #8b5cf6; }
+.imp-prefix { background: #22c55e20; color: #22c55e; }
+.imp-kb    { background: #f59e0b20; color: #f59e0b; }
+.imp-empty { background: #3b82f620; color: #3b82f6; }
+.imp-clear { background: #ec489920; color: #ec4899; }
+.imp-resp  { background: #14b8a620; color: #14b8a6; }
+
+.palette-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.35);
+  z-index: 5; opacity: 1;
+}
+body.light .palette-overlay { background: rgba(0,0,0,0.12); }
+
+.palette-card {
+  position: absolute; top: 16%; left: 50%; transform: translateX(-50%);
+  width: 500px; max-height: 340px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 8px;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.55);
+  z-index: 6;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.palette-input-row {
+  display: flex; align-items: center; border-bottom: 1px solid var(--separator);
+}
+.palette-prefix {
+  padding-left: 14px; font-size: 14px; color: var(--text-muted);
+  user-select: none; flex-shrink: 0;
+}
+.palette-input {
+  flex: 1; background: transparent; border: none;
+  padding: 10px 12px 10px 6px;
+  color: var(--text-primary); font-size: 13px; font-family: var(--font-ui); outline: none;
+}
+.palette-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+.palette-clear {
+  flex-shrink: 0; width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; color: var(--text-muted);
+  cursor: pointer; border-radius: 4px; font-size: 14px; margin-right: 4px;
+}
+.palette-list {
+  flex: 1; overflow-y: auto; max-height: 280px;
+}
+.palette-list::-webkit-scrollbar { width: 6px; }
+.palette-list::-webkit-scrollbar-track { background: transparent; }
+.palette-list::-webkit-scrollbar-thumb { background: var(--separator); border-radius: 3px; }
+
+.palette-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 14px; font-size: 12px;
+  color: var(--text-primary); cursor: pointer;
+  transition: background 80ms;
+}
+.palette-item:hover,
+.palette-item.selected {
+  background: var(--accent); color: var(--text-on-accent);
+}
+.palette-item-content { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-width: 0; }
+.palette-item-row { display: flex; align-items: baseline; gap: 8px; }
+.palette-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.palette-item-category { flex-shrink: 0; font-size: 10px; opacity: 0.7; white-space: nowrap; }
+.palette-item-detail {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 10px; opacity: 0.55; margin-top: 1px;
+}
+.palette-item-detail-id { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+.palette-item-detail-right { display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 8px; }
+.palette-item:hover .palette-item-category,
+.palette-item:hover .palette-item-detail,
+.palette-item.selected .palette-item-category,
+.palette-item.selected .palette-item-detail { opacity: 0.9; }
+
+/* keycap pill */
+.keybinding-pill { display: inline-flex; align-items: center; gap: 3px; font-size: 10px; }
+.keybinding-pill kbd {
+  display: inline-block; padding: 1px 5px; font-size: 10px;
+  font-family: var(--font-mono);
+  background: rgba(128,128,128,0.1); border: 1px solid rgba(128,128,128,0.12);
+  border-radius: 3px; line-height: 1.5;
+}
+.palette-item:not(:hover):not(.selected) .keybinding-pill kbd {
+  background: rgba(128,128,128,0.1); border-color: rgba(128,128,128,0.12);
+}
+.palette-item:hover .keybinding-pill kbd,
+.palette-item.selected .keybinding-pill kbd {
+  background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.35); color: inherit;
+}
+.palette-item-actions { flex-shrink: 0; display: flex; align-items: center; }
+.palette-item-gear {
+  background: none; border: none; color: inherit; cursor: pointer;
+  padding: 2px; font-size: 14px; opacity: 0; transition: opacity 100ms; border-radius: 3px;
+}
+.palette-item:hover .palette-item-gear,
+.palette-item.selected .palette-item-gear { opacity: 0.8; }
+.palette-item-gear:hover { opacity: 1 !important; background: rgba(255,255,255,0.15); }
+.palette-empty { padding: 20px 14px; font-size: 12px; color: var(--text-muted); text-align: center; }
+.palette-count { padding: 4px 14px 8px; font-size: 10px; color: var(--text-muted); opacity: 0.5; }
+
+/* ═══════════════════════════════════════════════════════
+   命令面板 — BEFORE
+   ═══════════════════════════════════════════════════════ */
+
+.before-overlay {
+  position: absolute; inset: 0; background: rgba(0,0,0,0.35); z-index: 5;
+}
+.before-card {
+  position: absolute; top: 20%; left: 50%; transform: translateX(-50%);
+  width: 420px; max-height: 300px;
+  background: var(--bg-card); border: 1px solid var(--border);
+  border-radius: 6px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  z-index: 6;
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.before-input {
+  background: var(--bg-input); border: none; border-bottom: 1px solid var(--separator);
+  padding: 10px 14px; color: var(--text-primary); font-size: 13px; outline: none;
+}
+.before-input::placeholder { color: var(--text-muted); opacity: 0.7; }
+.before-list { overflow-y: auto; max-height: 240px; }
+
+.before-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 6px 14px; font-size: 12px;
+  color: var(--text-primary); cursor: pointer;
+  transition: background 100ms;
+}
+.before-item:hover,
+.before-item.selected {
+  background: var(--accent); color: #fff;
+}
+.before-item-content { display: flex; flex-direction: column; overflow: hidden; flex: 1; min-width: 0; }
+.before-item-row { display: flex; align-items: baseline; gap: 8px; }
+.before-item-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; }
+.before-item-category { flex-shrink: 0; font-size: 11px; opacity: 0.7; white-space: nowrap; }
+.before-item-detail { font-size: 11px; opacity: 0.6; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 1px; }
+.before-item:hover .before-item-category,
+.before-item:hover .before-item-detail,
+.before-item.selected .before-item-category,
+.before-item.selected .before-item-detail { opacity: 0.85; }
+.before-item-actions { flex-shrink: 0; display: flex; align-items: center; }
+.before-item-gear {
+  background: none; border: none; color: inherit; cursor: pointer;
+  padding: 2px; font-size: 14px; opacity: 0; transition: opacity 100ms; border-radius: 3px;
+}
+.before-item:hover .before-item-gear,
+.before-item.selected .before-item-gear { opacity: 0.8; }
+
+/* callout */
+.callout {
+  position: absolute; font-size: 10px; padding: 3px 8px; border-radius: 4px;
+  pointer-events: none; white-space: nowrap; z-index: 20; font-weight: 600;
+}
+.callout.bad  { background: #ef444420; color: #ef4444; border: 1px solid #ef444440; }
+.callout.good { background: #22c55e15; color: #22c55e; border: 1px solid #22c55e30; }
+
+/* pain / improvement tags */
+.pain-points, .improvements {
+  display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.pain-points span, .improvements span {
+  font-size: 10px; padding: 2px 8px; border-radius: 8px; font-weight: 600;
+}
+.pain-contrast { background: #ef444420; color: #ef4444; }
+.pain-missing  { background: #f59e0b20; color: #f59e0b; }
+.pain-instant  { background: #8b5cf620; color: #8b5cf6; }
+.pain-narrow   { background: #ec489920; color: #ec4899; }
+
+/* ═══ 图例 ═══ */
+.legend {
+  display: flex; gap: 24px; flex-wrap: wrap; margin-top: 20px;
+  font-size: 11px; color: var(--text-muted); justify-content: center;
+}
+.legend-item { display: flex; align-items: center; gap: 6px; }
+.legend-dot { width: 10px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.ld-new { background: #22c55e; } .ld-fix { background: #f59e0b; } .ld-bad { background: #ef4444; }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <h1>命令面板 · Before vs After</h1>
+  <label>主题
+    <select id="themeSelect">
+      <option value="dark">暗色</option>
+      <option value="light">浅色</option>
+    </select>
+  </label>
+</div>
+
+<div class="compare-wrap">
+
+  <!-- ═══════════ 整改前 ═══════════ -->
+  <div class="compare-col">
+    <div class="col-header before">整改前 — 4 个痛点</div>
+    <div class="demo-inner">
+
+      <div class="pain-points">
+        <span class="pain-contrast">❌ 无动画</span>
+        <span class="pain-missing">❌ 无快捷键</span>
+        <span class="pain-instant">❌ 无 &gt; 前缀</span>
+        <span class="pain-narrow">❌ 高度写死 300px</span>
+      </div>
+
+      <div class="editor-bg" style="position:relative;">
+        <div class="editor-hint" style="position:absolute; bottom:20px; opacity:0.4;">编辑器区</div>
+
+        <!-- callout -->
+        <div class="callout bad" style="right:50px; top:8px;">瞬间弹出<br>无过渡动画</div>
+        <div class="callout bad" style="right:50px; top:72px;">无 &gt; 前缀</div>
+        <div class="callout bad" style="right:50px; top:130px;">无快捷键显示<br>ID 行是噪音</div>
+        <div class="callout bad" style="right:50px; top:210px;">420px 窄<br>300px 矮</div>
+
+        <div class="before-overlay"></div>
+        <div class="before-card">
+          <input class="before-input" type="text" placeholder="输入命令…" value="toggle">
+          <div class="before-list">
+            <div class="before-item">
+              <div class="before-item-content">
+                <div class="before-item-row">
+                  <span class="before-item-label">切换主题</span>
+                  <span class="before-item-category">外观</span>
+                </div>
+                <span class="before-item-detail">linkdesk.toggleTheme</span>
+              </div>
+              <span class="before-item-actions">
+                <button class="before-item-gear">⚙</button>
+              </span>
+            </div>
+            <div class="before-item selected">
+              <div class="before-item-content">
+                <div class="before-item-row">
+                  <span class="before-item-label">切换语言</span>
+                  <span class="before-item-category">国际化</span>
+                </div>
+                <span class="before-item-detail">linkdesk.toggleLang</span>
+              </div>
+              <span class="before-item-actions">
+                <button class="before-item-gear">⚙</button>
+              </span>
+            </div>
+            <div class="before-item">
+              <div class="before-item-content">
+                <div class="before-item-row">
+                  <span class="before-item-label">切换串口连接</span>
+                  <span class="before-item-category">串口监视器</span>
+                </div>
+                <span class="before-item-detail">terminal.toggleSerial</span>
+              </div>
+              <span class="before-item-actions">
+                <button class="before-item-gear">⚙</button>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════ 整改后 ═══════════ -->
+  <div class="compare-col">
+    <div class="col-header after">整改后 — 6 项改进</div>
+    <div class="demo-inner">
+
+      <div class="ctx-improvements">
+        <span class="imp-anim">✓ 动画 150ms</span>
+        <span class="imp-prefix">✓ &gt; 前缀</span>
+        <span class="imp-kb">✓ 快捷键 pill</span>
+        <span class="imp-empty">✓ 空态提示</span>
+        <span class="imp-clear">✓ 清除按钮</span>
+        <span class="imp-resp">✓ 响应式高宽</span>
+      </div>
+
+      <div class="editor-bg" style="position:relative;">
+        <div class="editor-hint" style="position:absolute; bottom:20px; opacity:0.4;">编辑器区</div>
+
+        <!-- callout -->
+        <div class="callout good" style="right:40px; top:4px;">scale+opacity<br>150ms 过渡</div>
+        <div class="callout good" style="right:40px; top:58px;">&gt; 前缀<br>标明命令模式</div>
+        <div class="callout good" style="right:40px; top:110px;">ID 保留 + 快捷键 pill<br>findKeybindingForCommand 接线</div>
+        <div class="callout good" style="right:40px; top:178px;">清除 ✕ 按钮<br>搜索无匹配 → 空态提示</div>
+        <div class="callout good" style="right:40px; top:238px;">宽 500px / 高 min(340px,55vh)</div>
+
+        <div class="palette-overlay"></div>
+        <div class="palette-card">
+          <div class="palette-input-row">
+            <span class="palette-prefix">&gt;</span>
+            <input class="palette-input" type="text" placeholder="输入命令…" value="toggle">
+            <button class="palette-clear" style="display:flex;">✕</button>
+          </div>
+          <div class="palette-list">
+            <!-- item 1 -->
+            <div class="palette-item">
+              <div class="palette-item-content">
+                <div class="palette-item-row">
+                  <span class="palette-item-label">切换主题</span>
+                  <span class="palette-item-category">外观</span>
+                </div>
+                <span class="palette-item-detail">
+                  <span class="palette-item-detail-id">linkdesk.toggleTheme</span>
+                  <span class="palette-item-detail-right">
+                    <span class="keybinding-pill"><kbd>Ctrl</kbd><span style="opacity:0.4;margin:0 1px;">+</span><kbd>T</kbd></span>
+                  </span>
+                </span>
+              </div>
+              <span class="palette-item-actions"><button class="palette-item-gear">⚙</button></span>
+            </div>
+            <!-- item 2 - selected -->
+            <div class="palette-item selected">
+              <div class="palette-item-content">
+                <div class="palette-item-row">
+                  <span class="palette-item-label">切换语言</span>
+                  <span class="palette-item-category">国际化</span>
+                </div>
+                <span class="palette-item-detail">
+                  <span class="palette-item-detail-id">linkdesk.toggleLang</span>
+                  <span class="palette-item-detail-right"></span>
+                </span>
+              </div>
+              <span class="palette-item-actions"><button class="palette-item-gear" style="opacity:0.8;">⚙</button></span>
+            </div>
+            <!-- item 3 -->
+            <div class="palette-item">
+              <div class="palette-item-content">
+                <div class="palette-item-row">
+                  <span class="palette-item-label">切换串口连接</span>
+                  <span class="palette-item-category">串口监视器</span>
+                </div>
+                <span class="palette-item-detail">
+                  <span class="palette-item-detail-id">terminal.toggleSerial</span>
+                  <span class="palette-item-detail-right">
+                    <span class="keybinding-pill"><kbd>F5</kbd></span>
+                  </span>
+                </span>
+              </div>
+              <span class="palette-item-actions"><button class="palette-item-gear">⚙</button></span>
+            </div>
+            <!-- item 4 -->
+            <div class="palette-item">
+              <div class="palette-item-content">
+                <div class="palette-item-row">
+                  <span class="palette-item-label">切换缩略图</span>
+                  <span class="palette-item-category">编辑器</span>
+                </div>
+                <span class="palette-item-detail">
+                  <span class="palette-item-detail-id">editor.action.toggleMinimap</span>
+                  <span class="palette-item-detail-right"></span>
+                </span>
+              </div>
+              <span class="palette-item-actions"><button class="palette-item-gear">⚙</button></span>
+            </div>
+          </div>
+          <div class="palette-count">4 个命令</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-dot ld-new"></span> 新增 — 动画 / &gt;前缀 / 快捷键pill / 空态 / 清除 / 计数 / 响应式</div>
+  <div class="legend-item"><span class="legend-dot ld-fix"></span> 改进 — ID保留+快捷键右置 / 滚动条 / 对比度</div>
+  <div class="legend-item"><span class="legend-dot ld-bad"></span> 整改前 — 无动画 / 无前缀 / 无快捷键 / 写死尺寸</div>
+</div>
+
+<script>
+document.getElementById('themeSelect').addEventListener('change', (e) => {
+  document.body.classList.toggle('light', e.target.value === 'light');
+});
+</script>
+</body>
+</html>

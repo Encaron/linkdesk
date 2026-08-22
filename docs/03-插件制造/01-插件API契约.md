@@ -1,8 +1,12 @@
 # 01 — 插件 API 契约
 
-> 2026-07-24。**`window.linkdesk.*` 完整 API 定义。** 这是插件开发者能调用的全部系统级能力。Web 平台能力（Canvas/WebGL/WebRTC/fetch 等）不限——只有系统级能力走此 API。
+> 2026-08-04。**`window.linkdesk.*`——插件开发者能调用的全部系统级能力。** Web 平台能力（Canvas/WebGL/WebRTC/fetch 等）不限——只有系统级能力走此 API。
 >
-> **对标 VS Code：** `vscode` 命名空间。但 LinkDesk 更窄——只暴露系统能力，Web 能力不封装。
+> **E5#85 更新：** 单 WebView 回退后，`linkdesk.*` API 是插件访问壳的唯一正路。ESLint `error` 级拦截直接 import `ConfigurationService/FileService/pathUtils`。
+>
+> **E5.8#22 更新：** 本文档从「手写命名空间表（第二份真相源）」改为**指针**——方法明细不再手写，唯一真相源 = **生成的契约文件** `contracts/linkdesk.d.ts`（见 §三）。原则/导航保留。
+>
+> **对标 VS Code：** `vscode` 命名空间。
 
 ---
 
@@ -10,464 +14,149 @@
 
 | 原则 | 如何体现 |
 |------|------|
-| **核心无知** | 主进程 IPC handler 只看 `pluginId + channel`，不读 payload |
-| **归一化** | 所有系统级能力走 `window.linkdesk.*`——一个入口 |
-| **安全** | 插件 preload 比壳 preload 窄——插件不能调 `plugins.install` 或 `window.createPluginView` |
-| **AI 友好** | 完整 TypeScript 类型——AI 看类型就知道能调什么 |
+| **核心无知** | 壳不认识任何插件的 pluginId |
+| **合同优先** | 插件走 `window.linkdesk.*`，不走 `import @src/core` |
+| **同步优先** | 能同步的 API 不同步封装（`path` 纯函数不走 IPC） |
+| **安全** | 插件 preload 比壳窄——**唯一缺 `bridge` 命名空间**（壳主控专用：插件 IPC 请求经主进程转发到壳侧服务的信封，E5.7#97）；且 preload 沙箱零 Node 能力（不暴露 require/fs/child_process） |
 
 ---
 
 ## 二、壳 vs 插件——API 差异
 
-插件在自己的 WebContentsView 中运行（E3a 后）。插件 preload 比壳 preload **窄**——核心无知原则。
+插件与壳在同一个渲染进程中运行，但注入的命名空间面不同。**每一面在哪个进程可用、池/壳/mock 四面覆盖如何——唯一真相源是[命名空间矩阵 §2 覆盖表](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)**，这里不再手写第二份清单。
 
-| 命名空间 | 壳可调 | 插件可调 | 为什么 |
-|------|:--:|:--:|------|
-| `serial.*` | ✅ | ✅ | 插件需要串口 |
-| `filesystem.*` | ✅ 全部 | ✅ 受限 | 插件能读写但不能枚举其他插件目录 |
-| `path.*` | ✅ | ❌ | 主进程路径拼接——插件不需要 |
-| `config.*` | ❌ 壳直接读 ConfigurationService | ✅ | 插件配置走 IPC |
-| `commands.*` | ✅ execute | ✅ execute | 插件执行命令；注册命令走 plugin.json contributes |
-| `pluginManager.*` | ✅ | ✅ | 插件市场需要查询/启用/禁用/安装/卸载 |
-| `window.*` | ✅ | ❌ | 插件不能创建/关闭 WebView |
-| `dialog.*` | ✅ | ❌ | 插件不弹系统对话框——走壳的 UI（E3g 计划开放） |
-| `events.*` | ✅ | ✅ | 插件需要订阅事件 |
-| `lang.*` | ✅ | ✅ | 插件需要接收语言切换广播 |
-| `notifications.*` | ✅ | ✅ | 插件需要弹出 toast 通知用户 |
-| `clipboard.*` | — | ✅ | 读/写系统剪贴板 |
-| `env.*` | — | ✅ | 读 app 版本/平台/语言 |
+几个要点（矩阵 §2 的摘要，细节以矩阵为准）：
+
+| 事实 | 说明 |
+|------|------|
+| **契约 40 命名空间** | 池注入 39（唯一缺 `bridge`）；壳注入 22；mock 注入 12 |
+| **池 = 插件运行时真相源** | 插件运行在池（pool）preload——池注入的命名空间为 **required**；`bridge` 真壳独有 |
+| **「仅壳」≠ 插件不可调** | `window.*`/`shell.*`/`hotExit.*`/`getFilePath` 池**实有注入**（N1 超集注记）——旧版把这几面标 ❌ 仅壳是错的 |
+| **契约必选面漂移已清零** | D1 `env.get(pluginId)` 转发、D2 `clipboard.readText` 壳补、D3 `dialog.openFile` 壳补——#20 全补实现，无 `?` 降级 |
 
 ---
 
-## 三、完整 API 定义
+## 三、完整 API 定义 → 指针
 
-### 3.1 `serial`——串口
+### 3.0 唯一真相源
+
+**`window.linkdesk.*` 的全部方法签名、入参、返回、载荷类型 = [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts)**（自动生成，勿手改）。
+
+- **生成源：** `src/core/api/linkdesk-api.ts` + `linkdesk-api/`（11 域接口）+ `src/core/types/ipc/*` + `src/core/types/pool/*`（wire 载荷类型）
+- **生成器：** `scripts/generate-contract.mjs`（Route C——契约类型文件为源，纯类型打包单文件）
+- **机械门禁：** preload 双端 `satisfies` 契约面类型 → tsc 漂移门禁；`npm run check` 内 `contracts:check` hash 字节比对（#21）
+- **覆盖矩阵：** 每个命名空间 × 池/壳/mock 四面覆盖 → [命名空间矩阵 §2](../02-Electron架构/E5.8_归一化基建/契约生成/命名空间矩阵.md#2-命名空间--四面覆盖矩阵)
+
+### 3.1 插件侧怎么消费
+
+**路径 A——仓库 tsconfig 别名（本仓库内插件）：** 根 `tsconfig.json` 已配 `"@linkdesk/contracts": ["./contracts/linkdesk.d.ts"]`，类型 import 直走契约文件：
 
 ```typescript
-interface OpenPortConfig {
-  portName: string;
-  baudRate: number;
-  dataBits?: 5 | 6 | 7 | 8;
-  stopBits?: 1 | 1.5 | 2;
-  parity?: "none" | "even" | "odd" | "mark" | "space";
-  flowControl?: "none" | "hardware" | "software";
-}
+// 类型——契约文件里命名的面接口（`import type`，零运行时耦合）
+import type { FileEntry, PluginStateChangedPayload } from "@linkdesk/contracts";
 
-interface PortInfo {
-  name: string;        // "COM3"
-  manufacturer?: string;
-  serialNumber?: string;
-  pnpId?: string;
-}
-
-interface SerialStats {
-  txBytes: number;
-  rxBytes: number;
+// 运行时——ambient 类型直出（文件内 `declare global Window.linkdesk`，无需 import）
+async function list(): Promise<FileEntry[]> {
+  return window.linkdesk.filesystem.listDir("/workspace");
 }
 ```
 
-```typescript
-window.linkdesk.serial.getPorts(): Promise<PortInfo[]>
-  // 枚举可用串口
+**路径 B——独立 npm 包（第三方插件，#22.6）：** `npm i -D @linkdesk/contracts` 后同款 `import type { ... } from "@linkdesk/contracts"`。
 
-window.linkdesk.serial.getStatus(): Promise<{ isOpen: boolean; portName?: string; baudRate?: number }>
-  // 当前串口状态
+> **包形态（E5.8#22.6 建）：** `contracts/` 即 npm 包根（`@linkdesk/contracts`，`types` 入口直指 `linkdesk.d.ts`，零构建，`files` 白名单只 d.ts）。**版本联动：** 包版本 = 壳版本——生成器自动同步写入 `contracts/package.json`，漂移即 `contracts:check` 红。**消费形态验收：** 仓库根 `contracts-example/`——独立 tsconfig + `file:../contracts` 本地引用，`npx tsc --noEmit` 零错误，全程零 `@src/core`（`npm pack` 出 tarball → 装真实 npm 包路径同样通过）。**发布态：** 当前仅 `npm pack` 本地验收闭环；真实 npm publish 已立案 [E6#2.5](../02-Electron架构/E6_插件生态与发布/E6-执行清单.md)。
 
-window.linkdesk.serial.openPort(config: OpenPortConfig): Promise<void>
-  // 打开串口。失败 throw Error
+**路径 C——拷贝文件：** 直接把 `contracts/linkdesk.d.ts` 拷进插件项目 + tsconfig 引用。契约文件单文件自包含（94 声明，零 import 依赖），拷贝即用。
 
-window.linkdesk.serial.closePort(): Promise<void>
-  // 关闭串口
+> **三个路径任选其一，禁止 `import type { ... } from "@src/core"`**——那是偷壳源码类型（见 §五）。
 
-window.linkdesk.serial.sendData(data: Uint8Array): Promise<number>
-  // 发送二进制数据。返回已发送字节数（0 是合法值）
+### 3.2 运行时语义约定（d.ts 表达不了的，在这里）
 
-window.linkdesk.serial.sendText(text: string, encoding: string): Promise<number>
-  // 发送文本。encoding: "utf-8" | "gbk" | "shift-jis" 等
+> 方法签名以契约文件为准；以下是不进类型的**行为契约**——插件侧必须按此写。
 
-window.linkdesk.serial.setDtr(enable: boolean): Promise<void>
-window.linkdesk.serial.setRts(enable: boolean): Promise<void>
-  // 硬件流控引脚控制
+| 命名空间 | 运行时约定 |
+|------|------|
+| **events** | 频道命名 `<插件id>:<数据名>`（如 `serial:rawData`、`sbq-protocol:parsed`）。壳广播事件表见下 |
+| **quickPick** | Promise resolve **结构化副本**（contextBridge 跨世界结构化克隆，`===` 原对象不可行）；Escape/点遮罩/失焦/被新 `show()` 顶掉 → resolve `undefined`（last-wins）；`opts.items` 非数组 → reject。壳浮层优先级更高。**调用放组件 effect 内**——壳侧执行半程调 `show` 因无此 API 而 no-op |
+| **viewContainer** | **元数据单向流**：视图注册以 plugin.json `contributes.views` 为准；`registerView` 更新既有视图只覆盖元数据、`render` 保留原组件；`descriptor` 传 `render`/`actions`/`pinnedContent` 池侧白名单剥掉（不可跨 IPC）；查询不存在的容器/视图 → `undefined`/`[]` |
+| **decorations** | **同步契约**：`provideDecoration` 返回 `FileDecoration \| null \| undefined`，**不得返回 Promise**（异步提供方被跳过）；同 pluginId 重复 `registerProvider` 幂等覆盖；注销/注册自动全量刷新通知 `onDidChange([])`；provider 抛异常自愈剔除该条目 |
+| **filesystem** | 插件权限：插件数据目录读写、workspace 目录读、**其他插件目录禁止** |
+| **configuration** | 配置 key 命名规则 `<pluginId>.<property>`（如 `editor.fontSize`、`serial-monitor.baudRate`） |
+| **serial** | **E5.8#28 多口路由：** 打开/关闭/动作定向接口的 `portName` **可选**——缺省 = 唯一打开口（0 口抛「串口未打开」；≥2 口抛「多串口已打开，请指定 portName」；**失败可见，不静默**）。三推流通道（`onData`/`onStats`/`onSystem`）载荷**对象化**带 `portName` 路由键（`SerialDataPayload`/`SerialStatsPayload`/`SerialSystemPayload`）——订阅方按**会话口**过滤（key=portName 是通用路由键模式：谁消费谁过滤，壳不代收）。每标签页仍单口（D3），会话-端口绑定在插件侧 |
+| **panel** | **E5.8#34.5：** `panel.reveal(viewId)` 声明寻址聚焦底部面板视图——面板隐藏 → 展开并切到该视图（Ctrl+J 同机制）；已显示 → 切换聚焦；**viewId 不在 panel 容器 → no-op**（不报错）。**#36.10 已移除 `panel.moveToEditor`**（用户拍板弃内容迁移——zone 位置移动是 #37.6/#37.7 布局命令的事）。**E5.8#39.5：** `panel.revealFloating(viewId)` 壳内悬浮面板（类型 B）——按声明弹出某视图为悬浮面板。声明寻址 = ViewContainerService 全局视图索引（`contributes.views` 已注册**任意容器**视图，不限 panel——插件声明 `contributes.floatingPanel.viewId` 引用之）。**身份开关键（I8-2）**：无面板 → 开；同视图 → 关（toggle）；他面板 → 替换；**viewId 未声明/声明插件未装 → no-op**（不崩）。面板默认动作 =「在主窗口中打开」（仅声明插件可开成标签页时出现）+ 最大化 toggle + 关闭 |
+| **hotExit** | 崩溃恢复专用——脏内容落盘 `%APPDATA%/linkdesk/hot-exit/`（主进程路径约定单源，插件零直写）；保存/关闭标签页后调 `clear` 删备份 |
 
-window.linkdesk.serial.onData(callback: (text: string) => void): void
-  // 订阅串口接收数据。不需要取消函数——插件 WebView 销毁时自动清理
-
-window.linkdesk.serial.onStats(callback: (stats: SerialStats) => void): void
-  // 订阅 TX/RX 统计
-
-window.linkdesk.serial.onSystem(callback: (msg: string) => void): void
-  // 订阅系统消息（如 "USB 设备已拔出"）
-```
-
-### 3.2 `filesystem`——文件系统
-
-```typescript
-interface FileEntry {
-  name: string;
-  path: string;
-  isDirectory: boolean;
-  isFile: boolean;
-  size?: number;
-  modifiedAt?: number;
-}
-```
-
-```typescript
-// ── 壳 preload（全部） ──
-window.linkdesk.filesystem.readTextFile(path: string): Promise<string>
-window.linkdesk.filesystem.writeTextFile(path: string, data: string): Promise<void>
-window.linkdesk.filesystem.readFile(path: string): Promise<Uint8Array>
-window.linkdesk.filesystem.writeFile(path: string, data: Uint8Array): Promise<void>
-window.linkdesk.filesystem.exists(path: string): Promise<boolean>
-window.linkdesk.filesystem.mkdir(path: string, opts?: { recursive?: boolean }): Promise<void>
-window.linkdesk.filesystem.readdir(path: string): Promise<FileEntry[]>
-window.linkdesk.filesystem.copy(src: string, dest: string): Promise<void>
-window.linkdesk.filesystem.remove(path: string): Promise<void>
-
-// ── 插件 preload（受限——只能读写有权限的路径） ──
-window.linkdesk.filesystem.readTextFile(path: string): Promise<string>
-window.linkdesk.filesystem.writeTextFile(path: string, data: string): Promise<void>
-```
-
-**插件文件系统权限约定：**
-
-| 路径 | 权限 | 用途 |
-|------|:--:|------|
-| `.linkdesk/plugins/<pluginId>/data/` | 读+写 | **插件自己的数据目录——持久化、缓存、导出** |
-| 用户通过对话框选择的文件 | 读+写 | 编辑器打开文件、CAD 导入导出 |
-| Workspace 目录（用户打开的文件夹） | 读 | 文件树浏览、编辑器打开 |
-| 其他插件目录 | ❌ | 禁止 |
-| 系统目录 | ❌ | 禁止 |
-
-### 3.3 `config`——配置
-
-```typescript
-window.linkdesk.config.get<T>(key: string): Promise<T>
-  // 读配置项，返回当前值
-
-window.linkdesk.config.set<T>(key: string, value: T): Promise<void>
-  // 写配置项。自动持久化 + 通知所有订阅者
-
-window.linkdesk.config.onChange(key: string, callback: (value: unknown) => void): void
-  // 订阅配置变化。Settings Editor 改值 → 你的插件收到通知
-```
-
-**配置 key 命名规则：** `<pluginId>.<property>`，如 `terminal.baudRate`、`cad.gridSize`。
-
-### 3.4 `commands`——命令
-
-```typescript
-// ── 插件注册命令──
-// 🔒 命令注册不走 runtime API——handler 函数无法通过 IPC 序列化。
-// 在 plugin.json 的 contributes.commands 中声明命令 ID + title + category，
-// 壳根据 plugin.json 自动注册到 CommandRegistry + 命令面板。
-// 插件代码中只需 export 对应的命令处理函数（index.tsx 中导出同名函数）。
-// 详见 `03-插件contributes规范.md` §命令注册。
-
-// ── 插件执行命令（调用"壳或其他插件能做什么"）──
-window.linkdesk.commands.execute(id: string, ...args: unknown[]): Promise<unknown>
-  // 执行任意已注册命令。壳的核心命令（closeTab/splitRight/toggleSidebar 等）也可调用
-```
-
-**使用示例：**
-```typescript
-// 插件注册命令——在 plugin.json 声明 + 代码 export handler
-// plugin.json:
-//   "contributes": {
-//     "commands": [{ "id": "cad.importDxf", "title": "导入 DXF" }]
-//   }
-// index.tsx:
-//   export function cad_importDxf() { ... }   // handler 命名：id 中的 . 换 _
-
-// 插件执行其他插件/壳提供的命令
-const color = await linkdesk.commands.execute('color-picker.pick', { initialColor: '#ff0000' })
-const choice = await linkdesk.commands.execute('quickpick.show', { title: '选择端口', items: [{ label: 'COM3' }, { label: 'COM5' }] })
-await linkdesk.commands.execute('serial-monitor.send', [0xFF, 0x01, 0x01])
-```
-
-**已知可调用的命令（壳/其他插件注册）：**
-
-| 命令 ID | 提供方 | 参数 | 返回值 | 说明 |
-|------|------|------|------|------|
-| `color-picker.pick` | 壳（#59e） | `{ initialColor, title? }` | `string \| undefined` | 弹出调色盘→返回用户选的颜色；取消返回 undefined |
-| `quickpick.show` | 壳（#80） | `{ title?, items: { label, description? }[] }` | `{ label, description? } \| undefined` | 弹出浮动列表让用户选一项；对标 VS Code `showQuickPick()` |
-| `serial-monitor.send` | 终端（#79） | `number[] \| string` | `Promise<void>` | 发送数据到串口 |
-| `sbq-protocol.encode` | 协议插件 | `Record<string, unknown>` | `number[]` | 编码字段为串口字节（示例——尚未实现） |
-| … | 任何插件 | … | … | 🆕 新插件注册命令→往此表加一行 |
-
-// 插件执行壳命令——打开新标签页
-await window.linkdesk.commands.execute("workbench.action.splitRight");
-```
-
-### 3.5 `events`——事件发布与订阅
-
-> 插件之间数据通信的唯一通道。不是"终端开个门给协议"——所有数据走同一根管道，频道名是插件自己起的字符串。核心不知道频道名是什么意思。
-
-```typescript
-// ── 订阅（已有）──
-window.linkdesk.events.on(channel: string, callback: (payload: unknown) => void): () => void
-  // 订阅任意频道。返回 unsubscribe 函数——组件 unmount 时调用清理。
-  // ⚠️ 回调中用到 React state 必须用 ref 桥接（见 §四 IPC 可靠性约定）
-
-// ── 发布（🆕 E3j #77 计划）──
-window.linkdesk.events.emit(channel: string, payload: unknown): Promise<void>
-  // 往频道推数据。所有订阅该频道的插件都会收到。
-  // 频道名约定：<插件id>:<数据名>——如 serial:rawData、sbq-protocol:parsed
-```
-
-**频道命名约定：** `<发出数据的插件id>:<数据名>`。一眼就知道数据来源和内容。不是随机字符串。
-
-**壳广播事件（`events.on` 可订阅——壳发出，插件接收）：**
+**壳广播事件（插件可订阅，走 `events.on`）：**
 
 | 频道 | payload | 触发时机 |
 |------|------|------|
-| `theme:changed` | `{ themeId: string; themeType: string; variables: Record<string, string> }` | 用户切换主题（CSS 变量自动注入，无需手动订阅） |
-| `lang:changed` | `{ lang: string; resources: Record<string, unknown> }` | 用户切换语言 |
-| `workspace:changed` | `{ rootPath: string }` | 用户打开/切换文件夹 |
-| `plugin:unregistered` | `{ pluginId: string }` | 其他插件被卸载 |
+| `theme:changed` | `{ themeId, themeType, variables }` | 用户切换主题（CSS 变量自动注入，无需手动订阅） |
+| `lang:changed` | `{ lang, resources }` | 用户切换语言 |
+| `workspace:changed` | `{ rootPath }` | 用户打开/切换文件夹 |
 
-**插件广播事件（`events.emit` 发出——插件发出，其他插件订阅）：**
+### 3.3 与旧手写版的差异（读者注意）
 
-| 频道 | 发出方 | payload | 说明 |
-|------|------|------|------|
-| `serial:rawData` | 终端插件 | `{ portName: string; text: string }` | 原始串口数据——协议插件订阅后解析 |
-| `serial:connected` | 终端插件 | `{ portName: string; baudRate: number }` | 串口连接建立 |
-| `serial:disconnected` | 终端插件 | `{ portName: string }` | 串口连接断开 |
-| … | 任何插件 | … | 🆕 新插件往此表加一行——核心不感知 |
+旧版 §3.x 逐命名空间方法清单已删除（= 手写第二份真相源，必然漂移）。生成的契约解决了几处**旧文档与实现不符**的漂移：
 
-### 3.6 `dialog`——对话框（🆕 E3g 计划）
-
-```typescript
-// ── 壳 preload 暴露，插件 preload 不暴露 ──
-
-window.linkdesk.dialog.showConfirm(message: string): Promise<boolean>
-  // 确认对话框。返回 true = 用户点了"确定"
-
-window.linkdesk.dialog.showOpenDialog(options?: {
-  title?: string;
-  defaultPath?: string;
-  filters?: { name: string; extensions: string[] }[];
-  properties?: Array<"openFile" | "openDirectory" | "multiSelections">;
-}): Promise<string[]>
-  // 系统文件选择器。返回用户选中的文件路径数组
-
-window.linkdesk.dialog.showSaveDialog(options?: {
-  title?: string;
-  defaultPath?: string;
-  filters?: { name: string; extensions: string[] }[];
-}): Promise<string | undefined>
-  // 系统保存文件对话框。返回用户选的路径
-
-window.linkdesk.dialog.showInputBox(options?: {
-  title?: string;
-  prompt?: string;
-  value?: string;
-  placeHolder?: string;
-  validateInput?: (value: string) => string | undefined;
-}): Promise<string | undefined>
-  // 输入框。对标 VS Code window.showInputBox()
-```
-
-### 3.7 `clipboard`——剪贴板
-
-```typescript
-window.linkdesk.clipboard.readText(): Promise<string>
-window.linkdesk.clipboard.writeText(text: string): Promise<void>
-```
-
-### 3.8 `env`——环境信息
-
-```typescript
-interface AppEnv {
-  appVersion: string;       // "1.0.0"
-  platform: string;         // "win32" | "darwin" | "linux"
-  locale: string;           // "zh-CN"
-  appDataDir: string;       // LinkDesk 数据目录绝对路径
-  pluginDataDir: string;    // 当前插件专用数据目录绝对路径
-}
-
-window.linkdesk.env.get(): Promise<AppEnv>
-```
-
-### 3.9 `pluginManager`——插件管理
-
-> 查询已加载插件、启用/禁用/安装/卸载。对标 VS Code 的 `vscode.extensions`。
-
-```typescript
-// ── 查询 ──
-window.linkdesk.pluginManager.list(): Promise<PluginInfo[]>
-  // 获取所有已加载插件的清单（含 pluginId + manifest 摘要）
-  // 返回：{ pluginId, manifest: { name, description, version, core, author, statusBar, contributes } }[]
-
-window.linkdesk.pluginManager.getDisabled(): Promise<string[]>
-  // 获取被禁用的插件 ID 列表
-
-window.linkdesk.pluginManager.getUninstalled(): Promise<string[]>
-  // 获取已卸载但残留数据的插件 ID 列表
-
-window.linkdesk.pluginManager.isDisabled(pluginId: string): Promise<boolean>
-  // 检查插件是否被禁用
-
-// ── 操作 ──
-window.linkdesk.pluginManager.enable(pluginId: string): Promise<void>
-  // 启用已禁用的插件
-
-window.linkdesk.pluginManager.disable(pluginId: string): Promise<void>
-  // 禁用插件——插件从 UI 移除但文件不删，可重新启用
-
-window.linkdesk.pluginManager.install(pluginPath: string): Promise<void>
-  // 安装插件——从 .linkdesk 文件或目录路径安装
-
-window.linkdesk.pluginManager.uninstall(pluginId: string): Promise<void>
-  // 卸载插件——删除插件文件 + 清理注册表
-
-window.linkdesk.pluginManager.reinstall(pluginId: string): Promise<void>
-  // 重装插件——卸载后立即重装，保留插件 ID 不变
-```
-
-**使用示例：**
-```typescript
-// 插件市场列出所有已安装插件
-const plugins = await window.linkdesk.pluginManager.list();
-for (const p of plugins) {
-  console.log(`${p.manifest.name} (${p.pluginId})`);
-}
-
-// 禁用插件
-await window.linkdesk.pluginManager.disable("community.light-theme");
-
-// 检查状态
-const disabled = await window.linkdesk.pluginManager.isDisabled("community.light-theme");
-```
-
-### 3.10 `lang`——语言同步
-
-> 接收壳广播的语言数据。对标 VS Code 的 `vscode.env.language` + `vscode.l10n`。
-> 壳切换语言时自动推送新的翻译资源到所有插件 WebView。
-
-```typescript
-window.linkdesk.lang.getInitial(): { lang: string; resources: Record<string, unknown> } | null
-  // 获取插件 WebView 启动时壳已推送的初始语言数据。
-  // 返回 null = 尚未收到壳广播（极早期调用）。
-  // resources: { "终端": "Terminal", "设置": "Settings", ... }——按 key 取翻译文本
-
-window.linkdesk.lang.onChange(callback: (data: { lang: string; resources: Record<string, unknown> }) => void): () => void
-  // 订阅语言变更。返回 unsubscribe 函数。
-  // 用户切换语言 → 壳广播 → 所有插件收到新的 resources
-```
-
-**使用示例：**
-```typescript
-// 启动时获取初始语言
-const initial = window.linkdesk.lang.getInitial();
-if (initial) {
-  console.log(`当前语言: ${initial.lang}`);
-}
-
-// 订阅语言切换
-const unsub = window.linkdesk.lang.onChange(({ lang, resources }) => {
-  // 更新插件内部的 i18n 缓存
-  i18next.addResourceBundle(lang, 'translation', resources, true, true);
-  i18next.changeLanguage(lang);
-});
-
-// 组件卸载时清理
-// unsub();
-```
-
-### 3.11 `notifications`——通知（🆕 E3j #76 计划）
-
-> 右下角 toast 通知。对标 VS Code `vscode.window.showInformationMessage` / `showWarningMessage` / `showErrorMessage` / `withProgress`。
-> 插件通知走壳的 `pushToast()` 基础设施——不重复造轮子。
-
-```typescript
-type NotificationType = "info" | "warning" | "error";
-
-interface NotificationOptions {
-  type?: NotificationType;       // 默认 "info"
-  progress?: boolean;            // true = 进度条模式（可 update/finish）
-  cancellable?: boolean;         // 进度条模式下是否显示取消按钮
-  source?: string;               // 通知来源 ID（通常为 pluginId——自动填入）
-  actions?: { label: string; callback: () => void }[];  // 操作按钮（Phase 6+）
-}
-
-interface NotificationHandle {
-  update(message: string): void;   // 更新通知文字
-  finish(message?: string): void;  // 进度条跳到 100% 后消失
-  cancel(): void;                  // 立即移除
-}
-
-window.linkdesk.notifications.show(message: string, options?: NotificationOptions): NotificationHandle
-  // 右下角弹出 toast。返回 handle——进度条模式下调 update/finish/cancel。
-```
-
-**使用示例：**
-```typescript
-// 简单通知
-window.linkdesk.notifications.show("导出完成");
-
-// 带类型
-window.linkdesk.notifications.show("连接超时", { type: "error" });
-
-// 进度条模式——对标 VS Code vscode.window.withProgress
-const handle = window.linkdesk.notifications.show("正在处理...", { progress: true, cancellable: true });
-await doStep1();
-handle.update("步骤 2/3：解析数据...");
-await doStep2();
-handle.update("步骤 3/3：写入文件...");
-await doStep3();
-handle.finish("处理完成");
-```
+| 点 | 旧手写版 | 契约/实现实况（#20 后） |
+|------|------|------|
+| `serial.listPorts()` | 写成 `getPorts()` | 契约 `listPorts()`——实现一直叫这个，旧文档笔误 |
+| `serial.onData/onStats/onSystem` | `cb: (d: any)` / string | **E5.8#28 载荷对象化**：`onData(p: SerialDataPayload)` / `onStats(p: SerialStatsPayload)` / `onSystem(p: SerialSystemPayload)`——三通道均带 `portName` 路由键（`SerialStats` 已删除，无死类型尾巴） |
+| `decorations.provideDecoration` | 写可返回 `Promise<FileDecoration>` | 契约**同步 only**（返回 Promise 的提供方被跳过） |
+| `pluginState.onChange` | 注释「未来多 WebView 恢复后可用」 | E5.7 池已注入 onChange——订阅可用；通配键名订阅走 `events.on("plugin-state:changed")`（E5.8#20 补导出 `PluginStateChangedPayload`） |
 
 ---
 
 ## 四、IPC 可靠性约定
 
-每个 `window.linkdesk.*` 调用底层走 `ipcRenderer.invoke()` —— 异步 IPC。
-
-**规则：**
-1. **每个 invoke 有 5s 超时。** 超时 throw `Error("IPC timeout: <channel>")`
-2. **返回值有 falsy 可能。** `""` / `0` / `false` 是合法值。用 `isNaN(n) ? default : n` 而非 `n || default`（G22 教训）
-3. **IPC 回调里用到 React state → 用 ref 桥接。** 不能假设闭包里的 state 是最新的（B86 教训）
-
-```typescript
-// ❌ IPC 回调里读 state——拿到的是注册时的旧值
-const [portName, setPortName] = useState("");
-useEffect(() => {
-  window.linkdesk.serial.onData((text) => {
-    if (portName === "COM3") { ... }  // portName 永远是 ""
-  });
-}, []);
-
-// ✅ 用 ref 桥接——永远读最新值
-const portNameRef = useRef(portName);
-portNameRef.current = portName;
-useEffect(() => {
-  window.linkdesk.serial.onData((text) => {
-    if (portNameRef.current === "COM3") { ... }  // 永远最新
-  });
-}, []);
-```
+1. **每个 invoke 有 10s 超时。** 超时 throw `Error`
+2. **返回值有 falsy 可能。** `""`/`0`/`false` 是合法值。用 `isNaN(n) ? default : n` 而非 `n || default`
+3. **IPC 回调里用到 React state → 用 ref 桥接**
+4. **`onChange` 回调模式**（configuration/language）——返回 unsubscribe 函数，组件 unmount 时调用清理
 
 ---
 
-## 五、迁移对照——Tauri → Electron
+## 五、禁止事项
 
-| Tauri（旧） | Electron（新） | 变化 |
-|------|------|:--:|
-| `invoke("list_ports")` | `window.linkdesk.serial.getPorts()` | 名变，参不变 |
-| `invoke("open_port", {...})` | `window.linkdesk.serial.openPort({...})` | 名变，参不变 |
-| `invoke("close_port")` | `window.linkdesk.serial.closePort()` | 名变 |
-| `invoke("send_data", {...})` | `window.linkdesk.serial.sendData(...)` | 名变，参不变 |
-| `invoke("send_text", {...})` | `window.linkdesk.serial.sendText(...)` | 名变，参不变 |
-| `listen("serial-data", cb)` | `window.linkdesk.serial.onData(cb)` | 事件→回调 |
-| `invoke("list_plugin_dirs")` | 壳专属——插件无此能力 | — |
-| `invoke("install_plugin")` | 壳专属——插件无此能力 | — |
-| `@tauri-apps/plugin-fs` | `window.linkdesk.filesystem.*` | 名变，接口同 |
-| `@tauri-apps/api/path` | 插件不需要——主进程处理路径 | — |
-| `window.__TAURI__` 检测 | `window.linkdesk` 是否存在 | 检测目标变了 |
+| ❌ | ✅ 替代 |
+|---|---|
+| `import { normalizePath } from "@src/core/pathUtils"` | `lk.path.normalize(p)` |
+| `import { getConfigurationValue } from "@src/core/ConfigurationService"` | `lk.configuration.get(key)` |
+| `import { listDir } from "@src/core/FileService"` | `lk.filesystem.listDir(p)` |
+| `import { getWorkspaceFolders } from "@src/core/WorkspaceService"` | `lk.workspace.getFolders()` |
+| `import type { FileEntry } from "@src/core/types/fileEntry"` | `import type { FileEntry } from "@linkdesk/contracts"` |
+
+**ESLint `error`（`noCoreImportInPlugin`，#20-d 收紧）：** `import { ... } from "@src/core/..."` **和** `import type { ... } from "@src/core/..."` → 🚫 编译失败。测试文件不再豁免（vitest 单进程理由不成立）。
+
+**允许的 import（白名单全表见 `eslint-local-rules.js` PLUGIN_IMPORT_WHITELIST）：**
+- `@linkdesk/contracts` **类型**（`import type`，零运行时耦合）
+- `@src/components/shared/*` **共享 UI 组件**（ContextMenu / PluginIcon / Toggle / SelectBox / Combobox / InlineInput / FormRow 等）
+- **纯工具白名单**：`@src/core/pipeline/*`（DataConverter / DataDispatch / RingBuffer / ProtocolParser）+ `@src/core/utils/CancellationToken` + `@src/core/registry/commands/MenuRegistry`（仅 MenuId 类型/枚举）
+- **例外记录表**：新例外必须写进 memory `plugin-import-exceptions.md` 再放行（插件独立铁律审计项）
+
+> **`useConfiguration` / `useSendData` / `ViewContainerService` 等壳 hooks/服务禁止 import**（有模块级状态 → 调用方的修改壳进程看不到）——插件读配置走 `window.linkdesk.configuration`，状态同步走 `window.linkdesk.data` / `events`（见 `07-插件间通信.md`）。
 
 ---
 
-> **下一份：** `02-插件生命周期.md`——注册→激活→运行→卸载全状态机
-> **全部文档索引：** `00-README.md`
+## 六、设备通道边界（E5.8#30.6）
+
+> 接「二、壳 vs 插件」——**设备插件作者能独立做到哪一步、平台承诺到哪里。** 依据 = 通道范式（E5.8 Phase 6.5 用户拍板），完整论证见 [通道范式·设备插件独立](../02-Electron架构/通道范式·设备插件独立.md)。
+
+**一句话：解析归你、通道现成——不需要找壳作者、不需要等壳发版。** 通道类型收敛归壳（可枚举），设备无限归插件。
+
+| 层 | 设备示例 | 通道 | 作者状态 |
+|:--|:--|:--|:--|
+| **串口系**（最大头） | USB-CAN 适配器（CH340/CP210x 虚拟串口）、GPS 模块（NMEA）、USB-TTL、便宜逻辑分析仪 | `linkdesk.serial.*`（Phase 6 通用化后） | ✅ **立即可写，零壳依赖**；多口/多插件并存成立 |
+| **自定义 USB** | 专业逻辑分析仪（Saleae 类，自定义 USB 端点） | 未来 `usb` 通道 | ⏳ E6 后版本化演进加一条通用通道（一次性，同 serial 同构）；**加完前这类设备要等** |
+| **厂商私有 DLL** | 高端设备（只有厂商 SDK/DLL） | 原生通道 | ⚠️ 独立架构课题（渲染沙箱无 Node 权限）；非 E5.8 范围 |
+
+**平台责任边界（作者可放心依赖）：**
+- **通道正确性 + API 稳定承诺**——平台作者负责通道（打开 → 流式读写 → 关闭/错误/多实例/资源回收）；E6 上架后改 API = 版本化演进（`engines` 声明），加了不违约、不加不影响存量插件。
+- **设备协议正确性作者自持**——CAN 帧/NMEA/采样解析全归插件，壳不认识任何设备。
+- **同一物理口仅单消费方**——OS 驱动排他（`serial-monitor` 打开的口，其他插件/标签页不能同时打开；多插件并存 = 各开各的口）。
+
+> 确认 `linkdesk.serial.*` 现成能力 → [contracts/linkdesk.d.ts](../../contracts/linkdesk.d.ts) `Serial` 域。要自定义 USB/原生通道 → 提给平台作者——这是「加通道」范畴（收敛、可枚举、一次性），不是给某插件打工。
+
+---
+
+> **下一份：** `02-插件生命周期.md`
+> **索引：** `00-README.md`

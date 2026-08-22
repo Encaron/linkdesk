@@ -2,7 +2,8 @@
 
 > **Tauri v2 + React 18 + TypeScript → 🔥 迁移到 Electron。通用容器。** 比 VS Code 更高级：VS Code 核心嵌了 Monaco 编辑器甩不掉，LinkDesk 核心是空壳。万物皆插件。
 >
-> **Tauri 时代 P1-P6 🎉 全部完成。🔥 E3 🎉 架构最后一站——E3a-E3i 全部完成，E3j 11/12（仅 #81 双份渲染根因待新 AI）。E4 文档已就绪。进度见 `docs/02-Electron架构/E3_多WebView与壳收尾_暂定/08-执行清单.md`。**
+> **Tauri 时代 P1-P6 🎉。E3 🎉。E4 🎉（2026-08-03）。E5 🎉（2026-08-04）。** 壳通信骨架 + 三通信机制 + linkdesk.* 20 命名空间 API + ESLint 防线。Per-Tab WebView 已废弃（E5.5#9，O(N) 进程→E5.7 极简Pool O(1) 取代）。
+> **当前进度：** 🔥 E5.7 极简Pool——1 BrowserWindow + 1 WebContentsView 100%×100%。107 主任务 18 Phase。进度唯一真相源：`docs/02-Electron架构/E5.7_极简Pool/E5.7-执行清单.md`。E5.6 双Pool 已封存（51%）。
 
 ## 架构——圆形大厅模型
 
@@ -27,7 +28,7 @@
                      │   只提供桌子 + 电话本              │
                      └─────────────────────────────────┘
 
-插件 = 周边小房间（独立 WebContentsView）
+插件 = 周边小房间（同一 Pool 渲染进程内，preload 沙箱隔离）
 交流 = 走大厅的桌子（Registry/Service）——插件互不知道对方存在
 后门 = IPC 数据管道（高频推流：串口数据等）——紧耦合，知道对方是谁
 ```
@@ -42,9 +43,17 @@
 
 三条有一条不满足 → 不放核心，放插件里。详见 memory `core-admission-criteria`。
 
-标签页系统永不 import CardRegistry。卡片工作台是插件，不是架构第二层。
+标签页系统永不持有卡片注册表。卡片工作台是插件，不是架构第二层。
 
-## 当前阶段——E3 架构最后一站
+## 当前阶段——E4 收尾 → E5 铁轨
+
+> **E4 文件树+Monaco 编辑器完工在即。E5 执行清单已就绪——4 层 15 轮 28 任务，~1,120 行。**
+> **E5 是第一优先：先铺铁轨再跑 04/05 的火车。** 壳内低耦合+布局引擎做完后，FloatingPanel/终端系统/可拖出标签页每个从 4+ 文件改为 1 文件+1 行配置。
+> **E5 执行清单：** `docs/02-Electron架构/E5_核心归一化与壳重构_待执行/05-执行清单.md`
+>
+> ---
+>
+> ## E3 历史记录（已封站）
 
 > Phase 1-5 任务是建基础设施。终端插件作为第一个视图插件验证了全部基础设施——标签页分屏、命令系统、配置注册表、插件生命周期、数据管道。**以下终端相关条目是基础设施的验证载体，不是软件的定义。**
 
@@ -114,9 +123,10 @@ Phase 1-5h ✅ 完成
 | **P1-P6** | **Tauri 时代——全部基础设施 + 48/48 bug** | ✅ | ✅ |
 | **E1** | **Electron 迁移——换地基（7 步，~1,190 行）** | ✅ | ✅ |
 | **E2** | **底层加固 + 侧栏扩展位（36/40 任务，~1,310 行）** | ✅ | ✅ E2a+E2b+E2c ✅，E2d 4 任务取消 |
-| **E3** | **多 WebView + 壳收尾（103 任务，~3,602 行）🏁 架构最后一站** | ❌ | 🔄 E3a ✅ E3b ✅ E3c ✅ E3d ✅ E3e ✅ E3f 55/70 E3g 3/4 E3h 🎉 E3i 🎉 E3j ⬜ |
-| **E4** | **文件树 + Monaco 编辑器（34 任务，~1,930 行）🏁 最后 E 编号** | ❌ | 📋 文档已就绪 |
-| 之后 | 工作台/OLED/地图/逻辑分析仪——全是插件 | ❌ | 📋 |
+| **E3** | **多 WebView + 壳收尾（103 任务，~3,602 行）🏁 架构最后一站** | ❌ | 🎉 E3a-j 全部完成 |
+| **E4** | **文件树 + Monaco 编辑器（67 任务，~2,500 行）🏁 最后 E 编号** | ❌ | 🎉 全部完成（2026-08-03） |
+| **E5** | **核心归一化与壳重构（79 任务，~2,070 行）——铁轨** | ❌ | 🔥 L1 壳通信骨架 ✅（E5#1-#8）→ L2-L4 待执行 |
+| 之后 | 04-出厂制造（FloatingPanel/终端/悬浮窗）→ 05-版本更新（v1.1-v1.6）→ 卡片工作台 | ❌ | 📋 |
 
 > Phase 5 拆分为 5a-5h 八批次——每批交一个可用软件。拆分细节见 `docs/phase5_应用基础设施/V3-Phase5-设计.md` §九。
 
@@ -124,10 +134,10 @@ Phase 1-5h ✅ 完成
 
 **🔥 机械操作，不是建议。** 每步必须执行，少一步不提交。
 
-1. `npm run check` 零错误——一条命令跑完 tsc + ESLint + vitest。ESLint 自动跑硬约束 13/14
+1. `npm run check` 全绿——一条命令 = 双工程 tsc 零错误（壳 + electron/）+ ESLint `--max-warnings 0`（硬约束 13/14 全绿，零警告才过）+ vitest 全绿 + 间距网格 + pool-css。**无"基线接受"——红灯必须修到绿灯才提交。**
 2. `git diff --stat` 确认无调试日志残留（`console.log` / `debugger` / 临时注释）
 3. `git diff --staged | grep -E 'pluginId === "[a-z]|case "[a-z].*":|BOTTOM_ICONS|PLUGIN_ICON_PATH'` 返回空（无新增插件 ID 硬编码）
-4. **🔥 修了任何 `import`/`export` 路径 → 删 `node_modules/.vite` 清 Vite deps 缓存。** 不手动清 → 缓存了失败模块 → 路径改对也白屏。`tsc` 抓不到这个。（memory `vite-cache-after-import-fix.md`）
+4. **🔥 Vite deps 缓存自动清——`postinstall` 脚本会在每次 `npm install` 后自动 `rmSync node_modules/.vite`。** 极端情况（postinstall 被跳过、缓存仍有问题）→ 手动 `rm -rf node_modules/.vite` 再重启。（memory `vite-cache-after-import-fix.md`）
 
 详见 memory `ai-pre-commit-checklist.md`——五条：完整性（改 N 个漏 M 个？）/ 归一化（同一个逻辑只一处写？）/ 边界（空/null/竞态测了吗？）/ 注册注销（mount-unmount-remount 对吗？）/ 提交前机械操作。
 
@@ -135,7 +145,7 @@ Phase 1-5h ✅ 完成
 
 1. **所有颜色走 CSS 变量 `var(--xxx)`**，禁止硬编码 hex
 2. **所有 UI 文字走 `t()`**，禁止硬编码中文（i18n key = 中文原文）
-3. **标签页系统不 import CardRegistry**（Phase 3→4 硬边界）
+3. **标签页系统不持有卡片注册表**（Phase 3→4 硬边界——卡片工作台是插件，卡片状态归插件自持；原 CardRegistry 骨架已随 E5.7#45.7 整删，未来重建亦不得进标签页系统）
 4. **workspace.json 禁止嵌套**，必须是一层平铺数组
 5. **IPC 事件订阅必须用 generation counter 模式**（B11 教训，`useIpcEvent` 已内置）
 6. **`setState` 函数式更新器内部不写副作用**（B25 教训）
@@ -144,7 +154,7 @@ Phase 1-5h ✅ 完成
 9. **核心无知原则**（memory `core-ignorance-principle.md`）：核心不知道软件是干什么的。只定义"怎么接"，不定义"接什么"。往核心加东西前先问：加了之后核心变得更"知道自己是干什么的"了吗？是 → 别加，做成插件
 10. **禁止在 core/ 或 pluginLoader/ 中写死插件 ID。** 禁止 `if (pluginId === "terminal")` / `switch (pluginId) { case "terminal": ... }` / `PLUGIN_ICON_PATH["terminal"]` / `BOTTOM_ICONS = ["settings"]` 等任何形式的插件 ID 字面量硬编码。所有插件差异性行为走 plugin.json 声明（`viewRole` / `tabBehavior` / `iconLocation` / `keepSidebarOnFocus` 等字段）→ Registry 模式消费。**Phase 5g 把 `TabType` 从 8 个联合类型改成 `string` 就是为了消灭这个模式——不要再写回来。**
 11. **插件身份唯一来源是 plugin.json 声明字段。** 禁止用文件位置、目录名、是否在 Vite glob 中、是否在源码树里来推断插件属性。`core: true` 定义不可卸载，`tabBehavior` 定义标签页行为，`entry` 定义入口文件——所有属性都在 `PluginManifest` 类型和 JSON Schema 中有对应字段。代码注释中禁止发明 schema 里没有的分类名词（如"工厂插件""内置插件"）——用字段名：`core: true 的插件`、`glob 中的插件`。
-12. **🔥 禁止硬编码路径——所有资产路径走 `getAssetPath()`（`src/core/assetPath.ts`）。** 禁止手写 `/assets/...`、`/icons/...`、`/plugins/...` 等绝对路径字面量。打包后 Electron 走 `file://` 协议，绝对路径全部炸裂。dev 模式 `http://localhost:1420` 能工作只是巧合。插件作者的自定义图标也必须走这条路——`resolvePluginIcon` 已内置。
+12. **🔥 禁止硬编码路径——所有资产路径走 `getAssetPath()`（`src/core/utils/assetPath.ts`）。** 禁止手写 `/assets/...`、`/icons/...`、`/plugins/...` 等绝对路径字面量。打包后 Electron 走 `file://` 协议，绝对路径全部炸裂。dev 模式 `http://localhost:1420` 能工作只是巧合。插件作者的自定义图标也必须走这条路——`resolvePluginIcon` 已内置。
 13. **🔥 async 初始化函数必须防 StrictMode 双重 effect 竞态。** `init*()` 有 `_initialized` guard 不够——第一次调用是 async，第二次可能在第一次完成前到达。第二次调必须返回第一次的进行中 Promise（`_loadingPromise`），不能直接 return undefined。详见 memory `invisible-bugs-lesson-59c.md` Bug 1。
 14. **🔥 useEffect 有回调 prop（onChange/onHighlight/onSelect 等）做非 DOM 副作用时，必须加活跃守卫。** 组件 `return null` 不代表 effect 不跑——React effect 只看挂载不看 DOM。守卫模式：`if (!open) return;` / `if (!isActive) return;`，且 `open`/`isActive` 必须纳入依赖数组。**写完后 grep 同组件的其他 effect——所有 effect 应有同样的守卫，漏掉的就是 bug。** 详见 memory `invisible-bugs-lesson-59c.md` Bug 2。
 15. **🔥🔥🔥 出了隐形 bug 不要猜——`git checkout` 逐 commit 二分定位。** 静态分析死胡同就立刻跳版本，`git checkout -f <commit>` 测完一个再跳。找到最后一个正常版本和第一个异常版本之间的 diff，bug 就在那个 commit 里。不要墨迹。
@@ -152,6 +162,8 @@ Phase 1-5h ✅ 完成
 17. **🔥 `useRef` 不得用于影响渲染输出的状态。** ref 更新不触发重渲染——React 输出和实际状态脱节。异步拿到数据 → ref 更新 → 组件不知道 → 下次任何事件触发重渲染时突然切到"新状态"→ UI 跳变/空白。渲染决策（显隐、内容切换、列表过滤）走 `useState`。ref 仅用于：DOM 引用、前值对比（不渲染）、generation counter。**教训：** #58e 用 ref 存 WebView ID → 切标签页时第二帧跳空 div → 全插件标签页空白。
 18. **🔥 Electron 窗口顶部 30px 是 `-webkit-app-region: drag` 拖拽区。** `position: fixed` 叠加层（弹窗/下拉/tooltip）放在 `top: 0` 范围内→OS 截鼠标事件做窗口拖拽。`z-index` 无效——这是 OS 级别的。所有 fixed 叠加层必须 `top: 30px`（或更高）避开 TitleBar 拖拽区。**教训：** ☰ 子面板 `top: 0` →上半部分被 TitleBar drag region 截事件 → 子面板消失 (9e6f936→8ff7a68)。
 19. **🔥 禁止模块级 `_initialized` guard + IPC 监听器注册。** 模块级函数 = 导入就执行 = 永不清理。壳 fallback 的 IPC 监听器在 WebView 就绪后成为僵尸回调（E3j #81 教训）。正确做法：一次性数据拉取（`_initOnce`）走模块级，IPC 监听器走 React `useEffect` + 引用计数（mount 注册 / unmount 清理）。ESLint `linkdesk/no-module-level-ipc-listener` 机械拦截。
+20. **🔥 preload 脚本的 IPC 监听器必须在模块顶层注册（`ipcRenderer.on` 在 `contextBridge.exposeInMainWorld` 之前），用缓冲+回放模式。** React `useEffect` 内注册太晚——IPC 事件可能在 mount 前到达。模式：模块级常驻 `ipcRenderer.on(channel, handler)` → push 到 `_buffer` → `onReady(cb)` 调用时回放 `_buffer` + 设置 `_active=true` 停止缓冲。**教训：** E5#11l Bug 4——`notifyReady` 在 `onReady` useEffect 之前到达，事件静默丢失，多 WebView 间歇性失效。详见 memory [[e5-multi-webview-6-bugs]] Bug 4。
+21. **🔥 测试 fixture 禁止真实插件名 + 真实 UI 文案（含英文，如 `"Settings"` 就是 settings 插件的英文标题）。** 测试桩数据（`viewId`/`pluginId`/`renderPath`/`title`/动作 `label`）一律用明显虚构值（`demo-plugin`/`demo-view`、`Demo View`/`Démo Vue`、`Alpha`/`Beta`/`Gamma`）——测试替身不指向真实插件，避免读者/AI 误以为存在运行时引用（硬约束 10 生产代码禁令向测试豁免区的延伸；2026-08-22 用户拍板）。**边界：** 断言被测代码产出的真实行为文案（如 i18n 输出"已隐藏"）不算违规；loader/FactorySlots 等验证真实接线而必须用真 id 的测试除外。不做 ESLint 机械规则——非时序 bug，且真 id 合法出现场景多，机械拦截必然误伤。
 
 固定名称，不用"三栏中间那个"。详见 `docs/总体设计/V3-部件命名规范.md`
 
@@ -188,7 +200,7 @@ Phase 1-5h ✅ 完成
 ## 开发命令
 
 ```bash
-# 🔥 提交前必跑——一条命令 = tsc + ESLint + vitest
+# 🔥 提交前必跑——一条命令 = 双工程 tsc + ESLint --max-warnings 0 + vitest + 网格/pool-css
 npm run check
 
 npm run lint         # 单独跑 ESLint（含硬约束 13/14 自定义规则）
@@ -207,7 +219,9 @@ npx vitest run       # 单元测试（151 个）
 | 🔥🔥🔥 迁移执行——每步检查项 | **`docs/02-Electron架构/00-元文档/00-迁移执行守则.md`** — 10 个 bug 模式 + 6 个新风险 → 每步/每任务的具体检查项清单 |
 | 🔥 E1 执行前必读 | **`docs/02-Electron架构/E1_Electron迁移_暂定/10-迁移方案缺口补丁.md`** — 7 个缺口（Vite/main.ts/测试/dev workflow/entry/RingBuffer/G14/preload防御/plugin-handlers完整性） |
 | 🔥 全方案审计 | **`docs/02-Electron架构/00-元文档/00-全方案步进审计.md`** — 29 份文档 + 18 个源文件逐步推演 + 两轮审计 20 项缺失已全部修复 |
+| 🔥🔥🔥 加文件前——确认放哪个目录 | **`docs/开发管理/壳目录规范.md`** — core/pool/components/hooks 每个子目录语义和准入标准。E5#42→#36k 的教训——先查此表再加文件 |
 | 理解架构 | `docs/开发管理/当前状态.md` |
+| 🔥🔥 改壳边界 | **`docs/02-Electron架构/通道范式·设备插件独立.md`** — 改壳=加通用通道≠加设备业务（E5.8 Phase 6.5 用户拍板）。写壳代码/提议改壳前必读 |
 | Phase 4 设计 | `docs/phase4_插件系统/` |
 | Phase 3.5 任务 | `docs/phase3_标签页分屏/V3-Phase3.5-品质打磨.md` |
 | 标签页/分屏设计 | `docs/phase3_标签页分屏/V3-Phase3-标签页分屏设计.md` |

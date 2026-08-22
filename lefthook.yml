@@ -1,0 +1,27 @@
+# E5.8#3：Git hooks（lefthook）——local checkpoints fast；无 CI，pre-push 是最后防线。
+# 安装：postinstall 自动跑 `node scripts/install-lefthook.mjs`（不靠文档要求装）。
+# 快检分层（对标 dsh "local checkpoints fast; CI owns the full matrix" 的无 CI 等价）：
+#   pre-commit 只检暂存文件（staged eslint --fix + whitespace，秒级）——commit 不被全量矩阵拖慢；
+#   全量门禁矩阵归 pre-push（typecheck，tsc 双工程）——最后防线。
+#
+# 🔥 monorepo 布局关键：git root = 仓库根（E:/linkdesk），package.json 在 linkdesk/ 子目录。
+# lefthook 强制 job 在 git root 跑——所有 job 必须 `root: linkdesk` 才能找到 eslint.config.js/package.json。
+
+pre-commit:
+  jobs:
+    - name: eslint (staged)
+      root: linkdesk
+      glob: '*.{ts,tsx}'
+      # E5.8#19：--no-warn-ignored——契约生成物 contracts/ 已被 ignores 忽略，显式传入时不再 warn
+      run: npx eslint --fix --max-warnings 0 --no-warn-ignored {staged_files}
+      stage_fixed: true
+
+    - name: whitespace (staged)
+      root: linkdesk
+      run: git diff --cached --check
+
+pre-push:
+  jobs:
+    - name: typecheck
+      root: linkdesk
+      run: npm run typecheck

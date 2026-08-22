@@ -1,0 +1,209 @@
+/**
+ * WelcomePoolView 样式——E5.6#16.7k-1。
+ * 全部颜色走 CSS 变量，零硬编码 hex。
+ * 设计依据：[V3-Phase4-欢迎页设计.md §4]
+ *
+ * 🔴 2026-08-14 潜伏 bug 修复：本文件原为
+ *     @import "../../components/views/WelcomeView.css";
+ *     E5.7#9（c5407294）删壳 UI DOM 时删掉了壳侧 WelcomeView.css，
+ *     但此 @import 幸存 → Vite ENOENT（路径走到盘根 E:\components\...）。
+ *     #20 MainZone 挂载首次激活欢迎页渲染链才引爆。
+ *     修复：壳 CSS 原样自包含拷入（池不 import 壳 components 目录——
+ *     Path B + 壳目录规范 + zone 零跨 zone import 纪律同款）。
+ *
+ * 2026-08-15 审计清理（十条原则复核）：
+ *   - 删 .welcome-card:active——--tab-active-bg 自 883f4fb9（2026-07-20
+ *     phase4 欢迎页诞生）起从未被定义过（全历史零定义），该规则从未生效，
+ *     点击反而回退透明背景。删 = 消除死引用；若要真激活反馈另立任务走 skill 定值。
+ *   - 删 .welcome-card-desc——E5.6#16.7k-1 池移植丢 desc 渲染后零消费方，死规则。
+ */
+
+.welcome-page {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  color: var(--text-primary);
+  background: var(--bg-window);
+}
+
+.welcome-scroll {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 48px 32px 32px;
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* ── Hero ── */
+
+.welcome-hero {
+  text-align: center;
+  margin-bottom: 40px;
+}
+
+.welcome-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  color: var(--text-primary);
+}
+
+.welcome-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin: 0;
+}
+
+/* ── Section ── */
+
+.welcome-section {
+  width: 100%;
+  max-width: 560px;
+  margin-bottom: 32px;
+}
+
+.welcome-section-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 0 0 12px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid var(--separator);
+}
+
+/* ── Card Grid ── */
+
+.welcome-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.welcome-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  background: var(--bg-card);
+  cursor: pointer;
+  transition: background 120ms ease;
+  text-align: center;
+}
+
+.welcome-card:hover {
+  background: var(--tab-hover-bg);
+}
+
+.welcome-card-icon.plugin-icon--img {
+  width: 24px;
+  height: 24px;
+}
+.welcome-card-icon.plugin-icon--codicon,
+.welcome-card-icon.plugin-icon--emoji {
+  font-size: 24px;
+  line-height: 1;
+}
+
+.welcome-card-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+/* ── Empty State ── */
+
+.welcome-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: center;
+  padding: 16px;
+}
+
+/* ── Recent List ── */
+
+.welcome-recent-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.welcome-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+  color: var(--text-primary);
+  font-size: 13px;
+  text-align: left;
+  transition: background 120ms ease;
+}
+
+.welcome-recent-item:hover {
+  background: var(--tab-hover-bg);
+}
+
+.welcome-recent-icon.plugin-icon--img {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+.welcome-recent-icon.plugin-icon--codicon,
+.welcome-recent-icon.plugin-icon--emoji {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.welcome-recent-label {
+  flex: 1;
+}
+
+.welcome-recent-workspace {
+  font-size: 11px;
+  color: var(--text-muted);
+  padding: 1px 6px;
+  border-radius: 3px;
+  background: var(--bg-card);
+  border: 1px solid var(--separator);
+}
+
+/* ── Help Links ── */
+
+.welcome-help-links {
+  display: flex;
+  gap: 16px;
+}
+
+.welcome-help-item {
+  font-size: 13px;
+  color: var(--text-muted);
+  cursor: default;
+}
+
+/* NodeDesk 大 Logo 水印背景——对标 VS Code 欢迎页 */
+.welcome-logo-bg {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(600px, 80vw);
+  height: min(600px, 80vw);
+  opacity: 0.06;
+  pointer-events: none;
+  z-index: 0;
+}
+
+.welcome-logo-bg svg {
+  width: 100%;
+  height: 100%;
+}

@@ -1,0 +1,35 @@
+/**
+ * InlineInput 归一化样式。
+ * E5#18b：两套尺寸——compact 22px（文件树行内）/ normal 32px（设置/串口）。
+ * 全部颜色走 CSS 变量，不硬编码 hex。
+ */
+
+.inline-input {
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-primary);
+  font-family: inherit;
+  outline: none;
+  box-sizing: border-box;
+  width: 100%;
+  transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+}
+
+.inline-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent);
+}
+
+/* 22px——文件树行内重命名 */
+.inline-input--compact {
+  height: 22px;
+  font-size: 12px;
+  padding: 0 4px;
+}
+
+/* 32px——设置搜索框 / 串口发送区 */
+.inline-input--normal {
+  height: 32px;
+  font-size: 13px;
+  padding: 0 8px;
+}

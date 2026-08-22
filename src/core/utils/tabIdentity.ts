@@ -1,0 +1,318 @@
+/**
+ * 标签页身份元数据 —— 标签页系统内部逻辑。
+ *
+ * Phase 5g：singleton/confirmOnClose 已迁移到 plugin.json tabBehavior——
+ *           getTabBehavior() 合并 plugin.json 声明 + 本表 builtin（isFallback）。
+ *
+ * E2c #19d：TAB_IDENTITY 硬编码表消灭——identityField 从 plugin.json tabBehavior 声明，
+ *           generateId 自动推导，fallbackLabel 从 manifest.name 读取。
+ *           壳内部类型（plugin-detail / welcome）保留最小特殊处理。
+ * E5.7#67：FALLBACK_META 兜底表整删（terminal/workspace/editor 等插件 ID 硬编码表，
+ *           硬约束 10 违例）——identityField 唯一来源 = plugin.json tabBehavior.identityField，
+ *           viewRegistry 不可用时走通用兜底 null。测试模拟插件声明（useTabManager.test.ts beforeEach）。
+ *
+ * 新插件不需要在此加任何代码——getMeta() 从 viewRegistry 自动推导。
+ *
+ * VS Code 对标：EditorInput.matches() —— 一个方法定义 editor 身份。
+ *
+ * findTabByIdentity / isSameTabIdentity / getDefaultLabel / resolveLegacyPluginId
+ * 全部引用此模块。
+ */
+
+import i18n from "../../i18n";
+import { getViewPlugin } from "../../pluginLoader/viewRegistry";
+import type { Tab } from "../../hooks/useTabManager";
+import type { CreateTabOptions } from "../api/types";
+import { normalizePath } from "./path/pathUtils";
+import { FALLBACK_PLUGIN_ID } from "./plugin/fallbackPluginId";
+
+/* ── 元数据接口 ── */
+
+interface TabIdentityMeta {
+  /** 是否为保底标签页（全场无标签时自动创建，不可关闭）。
+   *  仅欢迎页声明——它没有 plugin.json，由本模块提供。 */
+  isFallback?: boolean;
+  /** 身份字段——同 type+同此字段值=同一标签页。null=允许多实例不去重 */
+  identityField: string | null;
+  /** 生成标签页 ID——每种类型有自己的策略 */
+  generateId: (opts?: CreateTabOptions) => string;
+  /** viewRegistry 不可用时的兜底标签名 */
+  fallbackLabel: string;
+  /** 旧 type→pluginId 映射（Phase 4 过渡期）*/
+  legacyPluginId?: string;
+}
+
+/* ── 统一计数器 ── */
+
+const _counters: Record<string, number> = {};
+
+function nextCounter(type: string): number {
+  const n = (_counters[type] ?? 0) + 1;
+  _counters[type] = n;
+  return n;
+}
+
+export function resetPluginCounter(pluginId: string, n = 0): void { _counters[pluginId] = n; }
+export function resetFallbackCounter(_n = 0): void {
+  // 清除所有计数器——测试 beforeEach 用
+  for (const k of Object.keys(_counters)) delete _counters[k];
+}
+
+/**
+ * G3：恢复布局后同步计数器——扫描所有 tab ID 提取最大值。
+ * 防止 F5 后计数器归零、新建 tab 与恢复的旧 tab ID 碰撞。
+ *
+ * E2c #19d：泛化——不再按 terminal/workspace/fallback 硬编码分支，
+ * 统一用 `${type}-(\d+)` 模式匹配。
+ */
+export function syncCountersAfterRestore(tabs: { id: string; type: string }[]): void {
+  for (const tab of tabs) {
+    const m = tab.id.match(/^(.+)-(\d+)$/);
+    if (m) {
+      const prefix = m[1];
+      const n = parseInt(m[2]);
+      _counters[prefix] = Math.max(_counters[prefix] ?? 0, n);
+    }
+  }
+}
+
+/* ── generateId 自动推导 ── */
+
+/** 根据 identityField 自动生成 generateId 函数。 */
+function makeGenerateId(type: string, identityField: string | null): (opts?: CreateTabOptions) => string {
+  if (!identityField) {
+    return () => `${type}-${nextCounter(type)}`;
+  }
+  return (opts) => {
+    const value = opts
+      ? (opts as Record<string, unknown>)[identityField] as string | undefined
+      : undefined;
+    if (value) {
+      // 文件名类字段需 sanitize（如 editor 的 filePath 含 / \ 空格）
+      const sanitized = value.replace(/[^a-zA-Z0-9一-鿿_-]/g, "_");
+      return `${type}-${sanitized}`;
+    }
+    return `${type}-${nextCounter(type)}`;
+  };
+}
+
+/* ── 壳内部视图类型（Shell-rendered, not plugins）──
+ * 这些类型不由插件注册表渲染——壳自己处理（MainContent renderTabContent）。
+ * 新插件不需要加到这里。这是封闭集合——只有壳级视图。 */
+
+const SHELL_RENDERED_TYPES = new Set(["plugin-detail", FALLBACK_PLUGIN_ID, "output"]); // E3f #54
+
+/* ── 壳内部类型元数据（最小特殊处理——仅 plugin-detail 和 welcome）── */
+
+const SHELL_META: Record<string, TabIdentityMeta> = {
+  "plugin-detail": {
+    identityField: "detailPluginId",
+    fallbackLabel: "插件详情",
+    generateId: (opts) =>
+      `plugin-detail-${opts?.detailPluginId ?? opts?.pluginId ?? Date.now()}`,
+  },
+};
+
+/* ── 核心：getMeta —— 从声明推导，不查表 ── */
+
+export function getMeta(type: string): TabIdentityMeta {
+  // 1. 壳内部类型
+  if (type in SHELL_META) return SHELL_META[type];
+
+  // 2. 欢迎页（FALLBACK_PLUGIN_ID）——无 plugin.json，内置
+  if (type === FALLBACK_PLUGIN_ID) {
+    return {
+      isFallback: true,
+      identityField: null,
+      fallbackLabel: "欢迎",
+      generateId: () => `${FALLBACK_PLUGIN_ID}-${nextCounter(FALLBACK_PLUGIN_ID)}`,
+    };
+  }
+
+  // 3. 插件视图——从 plugin.json tabBehavior 推导
+  const plugin = getViewPlugin(type);
+  if (plugin) {
+    const identityField = plugin.manifest.tabBehavior?.identityField ?? null;
+    return {
+      identityField,
+      fallbackLabel: plugin.manifest.name,
+      legacyPluginId: type,
+      generateId: makeGenerateId(type, identityField),
+    };
+  }
+
+  // 4. 未知类型——合理默认值（新插件不需要在本模块加代码）
+  //    E5.7#67：FALLBACK_META 硬编码表整删——identityField 唯一来源是
+  //    plugin.json tabBehavior.identityField（editor 早已声明 filePath），未知类型走 null。
+  const identityField = null;
+  return {
+    identityField,
+    fallbackLabel: type,
+    generateId: makeGenerateId(type, identityField),
+  };
+}
+
+/** 获取内置行为——仅 isFallback 仍在本模块（welcome 无 plugin.json）。
+ *  singleton/confirmOnClose 已迁移到 plugin.json tabBehavior，getTabBehavior() 合并两者。 */
+export function getBuiltinTabBehavior(type: string): { singleton?: boolean; isFallback?: boolean; confirmOnClose?: string } {
+  const meta = getMeta(type);
+  const result: { singleton?: boolean; isFallback?: boolean; confirmOnClose?: string } = {};
+  if (meta.isFallback) result.isFallback = true;
+  return result;
+}
+
+/* ── 公开 API ── */
+
+/**
+ * VS Code findEditor 对标：查找身份匹配的已有标签页。
+ * - singleton → 匹配 type 或 pluginId
+ * - identityField 有值 → 匹配 type + 该字段值
+ * - identityField 为 null → 不去重（允许多实例，如 terminal）
+ */
+export function findTabByIdentity(
+  all: Tab[],
+  type: string,
+  opts?: CreateTabOptions
+): Tab | undefined {
+  const meta = getMeta(type);
+
+  // singleton 去重由 reduceCreateTab Step 2 负责（getTabBehavior().singleton ——
+  //   合并 viewRegistry plugin.json + builtin isFallback）。
+  // 本函数只负责 identityField 身份匹配——避免同一 workspace/file 重复打开。
+
+  if (meta.identityField) {
+    const field = meta.identityField;
+    const value = opts
+      ? (opts as Record<string, unknown>)[field] as string | undefined
+        ?? (field === "detailPluginId" ? (opts as Record<string, unknown>)["pluginId"] as string | undefined : undefined)
+      : undefined;
+    if (value) {
+      // filePath 大小写不敏感——Windows 驱动器字母 TS 返回 e:/ 文件树是 E:/
+      const matchValue = field === "filePath" ? normalizePath(value).toLowerCase() : value;
+      return all.find((t) => {
+        const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
+        if (!tabVal) return false;
+        const matchTabVal = field === "filePath" ? normalizePath(tabVal).toLowerCase() : tabVal;
+        const matched = t.type === type && matchTabVal === matchValue;
+        return matched;
+      });
+    }
+  }
+
+  // identityField 为 null：允许多实例，不去重
+  return undefined;
+}
+
+/**
+ * VS Code isPinned 对标：判断已有标签页 t 是否与要创建的 (type, opts) 同一身份。
+ */
+export function isSameTabIdentity(t: Tab, type: string, opts?: CreateTabOptions): boolean {
+  if (t.type !== type) return false;
+  const meta = getMeta(type);
+
+  // singleton 或 identityField 为 null：身份 = type 本身
+  const isSingleton = getViewPlugin(type)?.manifest?.tabBehavior?.singleton === true;
+  if (isSingleton || !meta.identityField) return true;
+
+  // identityField 有值：身份 = type + 字段值
+  const field = meta.identityField;
+  const newValue = opts
+    ? (opts as Record<string, unknown>)[field] as string | undefined
+      ?? (field === "detailPluginId" ? (opts as Record<string, unknown>)["pluginId"] as string | undefined : undefined)
+    : undefined;
+  // filePath 大小写不敏感——Windows 驱动器字母
+  if (field === "filePath" && typeof newValue === "string") {
+    const tabVal = (t as unknown as Record<string, unknown>)[field] as string | undefined;
+    return normalizePath(tabVal ?? "").toLowerCase() === normalizePath(newValue).toLowerCase();
+  }
+  return (t as unknown as Record<string, unknown>)[field] === newValue;
+}
+
+/**
+ * 标签名——声明式推导，壳不知道具体插件是什么。
+ *
+ * 优先级：
+ * 1. opts.label（调用方显式指定）
+ * 2. identityField 的值——路径类取最后一段（文件名），非路径类取原值
+ * 3. plugin.manifest.name（viewRegistry 可用时）
+ * 4. fallbackLabel（viewRegistry 不可用时）
+ *
+ * 🔥 新插件声明 tabBehavior.identityField 即可——不需要在此函数加分支。
+ */
+export function getDefaultLabel(
+  type: string,
+  opts?: CreateTabOptions,
+): string {
+  const targetPluginId = isPluginDetailView(type) ? opts?.detailPluginId : opts?.pluginId;
+  const plugin = getViewPlugin(targetPluginId ?? type);
+  const idField = getMeta(type).identityField;
+  const idValue = idField && opts
+    ? (opts as Record<string, unknown>)[idField] as string | undefined
+    : undefined;
+
+  if (plugin) {
+    // 壳内部类型：插件详情页
+    if (type === "plugin-detail") return `${i18n.t(plugin.manifest.name)} (${i18n.t("介绍")})`;
+
+    // 声明式：identityField 有值 → 用其值作为标签
+    if (idValue) {
+      // 路径类（含 / 或 \）→ 取最后一段（文件名/目录名），非路径类 → 取原值
+      // 壳不知道"这是文件路径还是工作区名"——只看字符串长什么样
+      if (idValue.includes("/") || idValue.includes("\\")) {
+        const normalized = normalizePath(idValue);
+        const segments = normalized.split("/");
+        return segments[segments.length - 1] || idValue;
+      }
+      return idValue;
+    }
+
+    // E5.8#37.9.1：插件显示名 = 用户可见文本——t() 解析后落盘（iconbar 同款 t(manifest.name)；
+    // 缺 key → parseMissingKeyHandler 原样返回 → 第三方插件名字不翻是插件作者责任）
+    return i18n.t(plugin.manifest.name);
+  }
+
+  // fallback：viewRegistry 不可用（测试/极端边界）
+  if (idValue) return idValue;
+  return i18n.t(getMeta(type).fallbackLabel);
+}
+
+/* ── 语义函数：给类型字符串比较起名（AI 读到函数名即知意图）── */
+
+/**
+ * 池 tab DTO title 解析——E5.8#37.9.1。
+ *
+ * 背景：tab.label 落盘时已 t()（getDefaultLabel），但**已存在标签页/恢复的旧标签页**在语言切换后
+ * 仍是旧语言快照（label 存于 tab state，语言切换只触发重推不重建 tab）。此处推流时二次解析：
+ *   - label === manifest.name（仍是中文原名——zh 创建 / zh 保存后切 en 恢复）→ t(manifest.name) 现语言
+ *   - label === t(manifest.name)（已是翻译名——en 保存后切 zh 恢复）→ 重解析回现语言（t() 幂等）
+ *   - 否则（identityField 派生名/自定义 label——文件名、工作区名）→ 原样不动
+ * 纯函数 t 注入（测序同 buildPanelViewMetas 字典 mock 先例）——壳 t() 解析后推流，池哑渲染（铁律）。
+ */
+export function resolvePoolTabTitle(
+  label: string,
+  manifestName: string | undefined,
+  t: (key: string) => string,
+): string {
+  if (!manifestName) return label;
+  if (label === manifestName || label === t(manifestName)) return t(manifestName);
+  return label;
+}
+
+/** 壳自己渲染的标签页（不走插件路由）。封闭集合——新插件不在此列。 */
+export function isShellRenderedTab(type: string): boolean {
+  return SHELL_RENDERED_TYPES.has(type);
+}
+
+/** 是否为插件详情视图——壳内部类型，展示另一个插件的元数据。 */
+export function isPluginDetailView(type: string): boolean {
+  return type === "plugin-detail";
+}
+
+// E5.8#2：shouldKeepSidebarOnFocus 已删——零消费（判定逻辑已内联 viewRegistry.hasKeepSidebarOnFocus）
+
+/**
+ * 旧 type→pluginId 映射（Phase 4 过渡期——旧布局 JSON 不含 pluginId）。
+ */
+export function resolveLegacyPluginId(type: string): string | undefined {
+  return getMeta(type).legacyPluginId;
+}

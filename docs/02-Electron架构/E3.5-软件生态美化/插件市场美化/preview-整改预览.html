@@ -1,0 +1,967 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>插件市场美化 — 设计效果预览</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@vscode/codicons@0.0.35/dist/codicon.css">
+<style>
+/* ═══════════════════════════════════════════════════════════
+   设计系统 (UI/UX Pro Max)
+   Product: Developer Tool | Style: Dark OLED Minimal
+   Density: 8 (Dense) | Motion: 2 (Subtle)
+   ═══════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── 暗色主题 (OLED 优化) ── */
+  --bg-root: #0A0A0A;
+  --bg-window: #1E1E1E;
+  --bg-card: #252526;
+  --bg-input: #2D2D2D;
+  --bg-side-panel: #1A1A1E;
+  --bg-hover: rgba(255,255,255,0.04);
+  --bg-active: rgba(255,255,255,0.08);
+
+  --text-primary: #CCCCCC;
+  --text-secondary: #999999;
+  --text-muted: #6A6A6A;
+
+  --accent: #0078D4;
+  --accent-dim: rgba(0,120,212,0.15);
+  --success: #4CAF50;
+  --error: #E06C75;
+  --warning: #CCA700;
+
+  --border: #3C3C3C;
+  --separator: #333333;
+
+  --radius-sm: 4px;
+  --radius-md: 6px;
+  --radius-lg: 8px;
+
+  --font-ui: Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+
+  --transition-fast: 150ms ease;
+  --transition-smooth: 200ms ease;
+}
+
+[data-theme="light"] {
+  --bg-root: #ECECEC;
+  --bg-window: #FFFFFF;
+  --bg-card: #F5F5F5;
+  --bg-input: #FFFFFF;
+  --bg-side-panel: #F3F3F3;
+  --bg-hover: rgba(0,0,0,0.03);
+  --bg-active: rgba(0,0,0,0.06);
+
+  --text-primary: #2D2D2D;
+  --text-secondary: #5A5A5A;
+  --text-muted: #8A8A8A;
+
+  --accent: #0078D4;
+  --accent-dim: rgba(0,120,212,0.12);
+  --success: #388A34;
+  --error: #D32F2F;
+  --warning: #D4A017;
+
+  --border: #D4D4D4;
+  --separator: #E8E8E8;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg-root);
+  color: var(--text-primary);
+  display: flex; flex-direction: column; align-items: center;
+  min-height: 100vh; padding: 16px;
+}
+
+/* ── 顶栏 ── */
+.top-bar {
+  width: 100%; max-width: 1100px;
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.top-bar h1 {
+  font-size: 14px; font-weight: 600; color: var(--text-secondary);
+  letter-spacing: 0.3px;
+}
+.top-bar h1 span { color: var(--accent); }
+.theme-toggle {
+  display: flex; gap: 4px; background: var(--bg-card);
+  border-radius: var(--radius-md); padding: 2px;
+}
+.theme-toggle button {
+  padding: 4px 14px; border: none; border-radius: 4px;
+  background: transparent; color: var(--text-secondary);
+  cursor: pointer; font-size: 11px; font-family: var(--font-ui);
+  transition: all var(--transition-fast);
+}
+.theme-toggle button.active { background: var(--accent); color: #fff; }
+
+/* ── 对比容器 ── */
+.compare-grid {
+  width: 100%; max-width: 1100px;
+  display: flex; gap: 16px; margin-bottom: 20px;
+}
+.col-header {
+  font-size: 11px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; padding: 8px 0; margin-bottom: 8px;
+  display: flex; align-items: center; gap: 8px;
+}
+.col-header .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.col-header .dot.before { background: var(--text-muted); }
+.col-header .dot.after { background: var(--accent); }
+
+/* ═══════════════════════════════════════
+   左侧：当前 UI (Before)
+   ═══════════════════════════════════════ */
+.before-col, .after-col { flex: 1; min-width: 0; }
+
+.panel {
+  background: var(--bg-side-panel);
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--separator);
+  overflow: hidden;
+  height: 600px; display: flex; flex-direction: column;
+}
+.panel-titlebar {
+  height: 26px; background: rgba(0,0,0,0.2);
+  display: flex; align-items: center; padding: 0 10px;
+  font-size: 10px; color: var(--text-muted); flex-shrink: 0;
+  letter-spacing: 0.3px;
+}
+
+/* ── BEFORE: 当前侧栏样式 (还原现状) ── */
+.before-panel .sb-header { padding: 5px 12px 8px; }
+.before-panel .sb-install-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border: 1px solid var(--separator); border-radius: 4px;
+  background: transparent; color: var(--text-primary); cursor: pointer;
+  font-size: 11px; font-family: var(--font-ui);
+}
+.before-panel .sb-search-wrap { position: relative; }
+.before-panel .sb-search-box {
+  width: 100%; height: 28px; padding: 4px 8px;
+  border: 1px solid var(--separator); border-radius: 4px;
+  background: var(--bg-input); color: var(--text-primary);
+  font-size: 12px; font-family: var(--font-ui); outline: none;
+}
+.before-panel .sb-search-box::placeholder { color: var(--text-muted); }
+.before-panel .sb-search-box:focus { border-color: var(--accent); }
+.before-panel .sb-list { flex: 1; overflow-y: auto; padding-top: 2px; }
+
+/* Section */
+.before-panel .sb-sec-btn {
+  display: flex; align-items: center; gap: 4px;
+  width: 100%; min-height: 22px; padding: 4px 12px;
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted);
+}
+.before-panel .sb-sec-btn:hover { color: var(--text-primary); }
+.before-panel .sb-sec-btn .codicon { font-size: 12px; }
+
+/* Item */
+.before-panel .sb-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px 8px 20px; cursor: pointer;
+}
+.before-panel .sb-item:hover { background: rgba(255,255,255,0.03); }
+.before-panel .sb-item-icon {
+  width: 36px; height: 36px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+}
+.before-panel .sb-item-icon .codicon { font-size: 24px; color: var(--text-secondary); }
+.before-panel .sb-item-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.before-panel .sb-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.before-panel .sb-item-desc { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.before-panel .sb-item-footer { display: flex; gap: 8px; margin-top: 2px; }
+.before-panel .sb-item-author { font-size: 10px; color: var(--text-muted); }
+.before-panel .sb-item-ver { font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+
+/* Gear - hover only */
+.before-panel .sb-item-gear {
+  flex-shrink: 0; align-self: center;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 4px; font-size: 14px; border-radius: 4px;
+  opacity: 0; transition: opacity 120ms;
+}
+.before-panel .sb-item:hover .sb-item-gear { opacity: 1; }
+
+/* Enable button - hardcoded green */
+.before-panel .sb-enable-btn {
+  flex-shrink: 0; align-self: center;
+  background: none; border: 1px solid rgba(76,175,80,0.4);
+  border-radius: 4px; color: #4caf50; cursor: pointer;
+  padding: 3px 8px; font-size: 14px; margin-left: 8px;
+}
+.before-panel .sb-enable-btn:hover { background: rgba(76,175,80,0.1); }
+
+/* Install button */
+.before-panel .sb-install-item-btn {
+  flex-shrink: 0; align-self: center;
+  background: var(--accent); border: 1px solid var(--accent); border-radius: 4px;
+  color: #fff; cursor: pointer; padding: 3px 10px;
+  font-size: 11px; font-family: var(--font-ui); white-space: nowrap; margin-left: 8px;
+}
+.before-panel .sb-empty {
+  padding: 24px 12px; text-align: center; font-size: 12px; color: var(--text-muted);
+}
+
+/* Star badge */
+.before-panel .sb-badge {
+  position: absolute; bottom: 0; right: -2px;
+  font-size: 10px; color: var(--accent);
+}
+
+/* ═══════════════════════════════════════
+   右侧：设计改进 (After)
+   ═══════════════════════════════════════ */
+
+/* ── 1. 搜索框加图标 ── */
+.after-panel .sb-header { padding: 8px 12px; }
+.after-panel .sb-header-top { display: flex; justify-content: flex-end; margin-bottom: 8px; }
+
+.after-panel .sb-install-btn {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 4px 12px; border: 1px solid var(--separator); border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-primary); cursor: pointer;
+  font-size: 11px; font-family: var(--font-ui);
+  transition: background var(--transition-fast);
+}
+.after-panel .sb-install-btn:hover { background: var(--bg-hover); }
+
+/* 搜索框 —— 内部左侧图标 ✨ */
+.after-panel .sb-search-wrap {
+  position: relative; display: flex; align-items: center;
+}
+.after-panel .sb-search-icon {
+  position: absolute; left: 8px; z-index: 1;
+  font-size: 14px; color: var(--text-muted); pointer-events: none;
+  transition: color var(--transition-fast);
+}
+.after-panel .sb-search-box {
+  width: 100%; height: 30px;
+  padding: 4px 28px 4px 28px; /* 左边留给图标 */
+  border: 1px solid var(--separator); border-radius: var(--radius-md);
+  background: var(--bg-input); color: var(--text-primary);
+  font-size: 12px; font-family: var(--font-ui); outline: none;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+}
+.after-panel .sb-search-box::placeholder { color: var(--text-muted); }
+.after-panel .sb-search-box:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px var(--accent-dim);
+}
+.after-panel .sb-search-box:focus ~ .sb-search-icon { color: var(--accent); }
+
+.after-panel .sb-search-clear {
+  position: absolute; right: 4px;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 3px; font-size: 12px; border-radius: 3px;
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.after-panel .sb-search-clear:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+/* ── 2. 分区标题带计数徽章 ✨ ── */
+.after-panel .sb-list { flex: 1; overflow-y: auto; }
+
+.after-panel .sb-sec-btn {
+  display: flex; align-items: center; gap: 6px;
+  width: 100%; min-height: 26px; padding: 6px 12px;
+  background: none; border: none; cursor: pointer;
+  font-family: var(--font-ui); font-size: 11px; font-weight: 600;
+  text-transform: uppercase; letter-spacing: 0.3px; color: var(--text-muted);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.after-panel .sb-sec-btn:hover {
+  color: var(--text-primary);
+  background: var(--bg-hover);
+}
+.after-panel .sb-sec-btn .codicon {
+  font-size: 12px; width: 14px; flex-shrink: 0;
+  transition: transform var(--transition-smooth);
+}
+
+/* 计数徽章 */
+.after-panel .sb-sec-count {
+  font-size: 10px; font-weight: 500;
+  background: var(--bg-active); color: var(--text-muted);
+  padding: 1px 6px; border-radius: 8px;
+  margin-left: auto;
+}
+
+/* ── 3. 列表项：左侧 accent 条 hover ✨ ── */
+.after-panel .sb-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 8px 12px 8px 18px; cursor: pointer;
+  position: relative; border-left: 2px solid transparent;
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.after-panel .sb-item:hover {
+  background: var(--bg-hover);
+  border-left-color: var(--accent);
+}
+
+/* 图标容器 —— 微背景 ✨ */
+.after-panel .sb-item-icon {
+  position: relative;
+  width: 32px; height: 32px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg-active); border-radius: var(--radius-sm);
+  transition: background var(--transition-fast);
+}
+.after-panel .sb-item:hover .sb-item-icon { background: var(--accent-dim); }
+.after-panel .sb-item-icon .codicon { font-size: 18px; color: var(--text-secondary); }
+.after-panel .sb-item:hover .sb-item-icon .codicon { color: var(--accent); }
+
+.after-panel .sb-item-details { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.after-panel .sb-item-name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.after-panel .sb-item-desc { font-size: 11px; color: var(--text-secondary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.after-panel .sb-item-footer { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.after-panel .sb-item-author { font-size: 10px; color: var(--text-muted); }
+.after-panel .sb-item-ver { font-size: 10px; color: var(--text-muted); flex-shrink: 0; }
+
+/* 齿轮——hover + focus 可见 ✨ */
+.after-panel .sb-item-gear {
+  flex-shrink: 0; align-self: center;
+  background: none; border: none; color: var(--text-muted); cursor: pointer;
+  padding: 4px; font-size: 14px; border-radius: var(--radius-sm);
+  opacity: 0;
+  transition: opacity var(--transition-fast), color var(--transition-fast), background var(--transition-fast);
+}
+.after-panel .sb-item:hover .sb-item-gear { opacity: 1; }
+.after-panel .sb-item-gear:hover { color: var(--text-primary); background: var(--bg-active); }
+
+/* 启用按钮 —— CSS 变量 ✨ */
+.after-panel .sb-enable-btn {
+  flex-shrink: 0; align-self: center;
+  background: none; border: 1px solid var(--success);
+  border-radius: var(--radius-sm); color: var(--success); cursor: pointer;
+  padding: 3px 8px; font-size: 14px; margin-left: 8px;
+  opacity: 0.7; transition: opacity var(--transition-fast), background var(--transition-fast);
+}
+.after-panel .sb-enable-btn:hover { opacity: 1; background: rgba(76,175,80,0.1); }
+
+/* 安装按钮 ✨ */
+.after-panel .sb-install-item-btn {
+  flex-shrink: 0; align-self: center;
+  background: var(--accent); border: none; border-radius: var(--radius-sm);
+  color: #fff; cursor: pointer; padding: 4px 12px;
+  font-size: 11px; font-family: var(--font-ui); font-weight: 500;
+  white-space: nowrap; margin-left: 8px;
+  transition: opacity var(--transition-fast);
+}
+.after-panel .sb-install-item-btn:hover { opacity: 0.85; }
+
+/* ── 4. 空状态 ✨ ── */
+.after-panel .sb-empty {
+  padding: 32px 12px; text-align: center;
+  display: flex; flex-direction: column; align-items: center; gap: 8px;
+}
+.after-panel .sb-empty .codicon {
+  font-size: 36px; color: var(--text-muted); opacity: 0.3;
+}
+.after-panel .sb-empty-text { font-size: 12px; color: var(--text-muted); }
+.after-panel .sb-empty-hint { font-size: 11px; color: var(--text-muted); opacity: 0.6; }
+
+/* Star badge */
+.after-panel .sb-badge {
+  position: absolute; bottom: -4px; right: -4px;
+  width: 16px; height: 16px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 9px; display: flex; align-items: center; justify-content: center;
+}
+
+/* ═══════════════════════════════════════
+   下半部分：详情页对比
+   ═══════════════════════════════════════ */
+
+.detail-compare { width: 100%; max-width: 1100px; display: flex; gap: 16px; }
+
+.before-detail, .after-detail {
+  background: var(--bg-window); border-radius: var(--radius-lg);
+  border: 1px solid var(--separator); overflow: hidden;
+  height: 520px; display: flex; flex-direction: column; flex: 1; min-width: 0;
+}
+
+/* ── BEFORE 详情页 ── */
+.bd-header {
+  display: flex; padding: 20px 20px 12px; gap: 16px;
+}
+.bd-icon-wrap {
+  width: 96px; height: 96px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; position: relative;
+}
+.bd-icon-wrap .codicon { font-size: 96px; color: var(--text-secondary); }
+.bd-icon-badge {
+  position: absolute; right: -4px; bottom: -4px;
+  width: 28px; height: 28px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 16px; display: flex; align-items: center; justify-content: center;
+}
+.bd-info { flex: 1; display: flex; flex-direction: column; gap: 4px; justify-content: center; }
+.bd-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bd-name { font-size: 26px; font-weight: 600; }
+.bd-version { font-size: 14px; color: var(--text-muted); }
+.bd-badge {
+  font-size: 10px; padding: 1px 6px; border-radius: 4px; font-weight: 500; white-space: nowrap;
+}
+.bd-badge-core { background: var(--accent); color: #fff; }
+.bd-badge-single { border: 1px solid var(--separator); color: var(--text-muted); }
+.bd-author { font-size: 13px; color: var(--text-secondary); }
+.bd-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+
+/* Action bar */
+.bd-actions { display: flex; gap: 8px; padding: 8px 20px 12px; }
+.bd-btn {
+  font-size: 12px; padding: 5px 14px; border-radius: 4px; cursor: pointer;
+  font-family: var(--font-ui); background: transparent; color: var(--text-primary);
+  border: 1px solid var(--separator);
+}
+.bd-btn:hover { background: var(--bg-hover); }
+.bd-btn-danger { border-color: rgba(231,76,60,0.5); color: var(--error); }
+
+/* Nav tabs */
+.bd-nav {
+  display: flex; border-bottom: 1px solid var(--separator); padding: 0 20px;
+}
+.bd-tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 8px 12px; font-size: 13px; font-family: var(--font-ui);
+  color: var(--text-muted); cursor: pointer;
+}
+.bd-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+/* Body */
+.bd-body { flex: 1; overflow-y: auto; padding: 16px 20px; }
+.bd-layout { display: flex; gap: 32px; }
+.bd-main { flex: 1; }
+.bd-side { width: 200px; flex-shrink: 0; }
+
+.bd-p { font-size: 13px; color: var(--text-secondary); line-height: 1.6; margin-bottom: 20px; }
+
+.bd-sec { margin-bottom: 16px; }
+.bd-sec h4 { font-size: 12px; font-weight: 600; margin-bottom: 6px; }
+.bd-sec ul { list-style: none; padding: 0; }
+.bd-sec li {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 8px; border-radius: 4px; font-size: 13px; color: var(--text-secondary);
+}
+
+.bd-info-item { display: flex; flex-direction: column; gap: 2px; padding: 4px 0; }
+.bd-info-label { font-size: 11px; color: var(--text-muted); }
+.bd-info-val { font-size: 12px; color: var(--text-primary); word-break: break-all; }
+.bd-info-val.mono { font-family: var(--font-mono); font-size: 11px; }
+
+/* ── AFTER 详情页 ✨ ── */
+
+/* Header 改进：图标缩小 + 布局优化 */
+.ad-header {
+  display: flex; padding: 24px 20px 16px; gap: 20px; align-items: center;
+}
+.ad-icon-wrap {
+  width: 72px; height: 72px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; position: relative;
+  background: var(--bg-card); border-radius: var(--radius-lg);
+  border: 1px solid var(--separator);
+}
+.ad-icon-wrap .codicon { font-size: 40px; color: var(--accent); }
+.ad-icon-badge {
+  position: absolute; right: -6px; bottom: -6px;
+  width: 22px; height: 22px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 12px; display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--bg-window);
+}
+.ad-info { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+.ad-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ad-name { font-size: 22px; font-weight: 600; }
+.ad-version { font-size: 13px; color: var(--text-muted); background: var(--bg-active); padding: 2px 8px; border-radius: 10px; }
+.ad-badge {
+  font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 500; white-space: nowrap;
+}
+.ad-badge-core { background: var(--accent); color: #fff; }
+.ad-badge-single { border: 1px solid var(--separator); color: var(--text-muted); }
+.ad-author { font-size: 13px; color: var(--text-secondary); }
+.ad-desc { font-size: 13px; color: var(--text-secondary); line-height: 1.5; }
+
+/* Action bar 改进：按钮分组 ✨ */
+.ad-actions {
+  display: flex; align-items: center; gap: 0; padding: 8px 20px 16px;
+}
+/* 按钮组 */
+.ad-btn-group {
+  display: flex; gap: 0;
+}
+.ad-btn-group .ad-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.ad-btn-group .ad-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.ad-btn-group .ad-btn:not(:first-child) { border-left: none; }
+
+.ad-btn {
+  font-size: 12px; padding: 6px 14px; cursor: pointer;
+  font-family: var(--font-ui); background: transparent; color: var(--text-primary);
+  border: 1px solid var(--separator);
+  transition: background var(--transition-fast), color var(--transition-fast);
+}
+.ad-btn:hover { background: var(--bg-hover); }
+.ad-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.ad-btn.primary:hover { opacity: 0.9; }
+.ad-btn.danger { color: var(--error); }
+
+/* Nav tabs 改进：下划线更粗 ✨ */
+.ad-nav {
+  display: flex; border-bottom: 1px solid var(--separator); padding: 0 20px; gap: 0;
+}
+.ad-tab {
+  background: none; border: none; border-bottom: 2px solid transparent;
+  padding: 10px 16px; font-size: 13px; font-family: var(--font-ui);
+  color: var(--text-muted); cursor: pointer;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+.ad-tab:hover { color: var(--text-primary); }
+.ad-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); font-weight: 500; }
+
+/* Body ✨ */
+.ad-body { flex: 1; overflow-y: auto; padding: 20px; }
+.ad-layout { display: flex; gap: 28px; }
+.ad-main { flex: 1; }
+
+.ad-p { font-size: 13px; color: var(--text-secondary); line-height: 1.7; margin-bottom: 24px; max-width: 560px; }
+
+/* 推荐区块 —— 卡片式 ✨ */
+.ad-sec {
+  margin-bottom: 20px;
+  background: var(--bg-card); border-radius: var(--radius-md);
+  border: 1px solid var(--separator); overflow: hidden;
+}
+.ad-sec-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 14px; font-size: 12px; font-weight: 600;
+  border-bottom: 1px solid var(--separator);
+}
+.ad-sec-header .codicon { font-size: 14px; color: var(--accent); }
+.ad-sec ul { list-style: none; padding: 0; }
+.ad-sec li {
+  display: flex; align-items: center; gap: 8px;
+  padding: 8px 14px; font-size: 13px; color: var(--text-secondary);
+  transition: background var(--transition-fast);
+}
+.ad-sec li:hover { background: var(--bg-hover); }
+.ad-sec li + li { border-top: 1px solid var(--separator); }
+.ad-sec li .codicon { font-size: 12px; flex-shrink: 0; color: var(--text-muted); }
+.ad-rec-name { font-weight: 500; font-family: var(--font-mono); font-size: 12px; color: var(--text-primary); }
+.ad-rec-reason { flex: 1; font-size: 12px; }
+.ad-rec-status { font-size: 11px; flex-shrink: 0; padding: 1px 8px; border-radius: 8px; background: var(--bg-active); color: var(--text-muted); }
+.ad-rec-status.installed { color: var(--success); }
+
+/* 信息侧栏 —— 卡片式 ✨ */
+.ad-side { width: 200px; flex-shrink: 0; }
+
+.ad-info-card {
+  background: var(--bg-card); border-radius: var(--radius-md);
+  border: 1px solid var(--separator); overflow: hidden;
+}
+.ad-info-card-title {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  padding: 10px 14px 6px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.ad-info-item {
+  display: flex; flex-direction: column; gap: 2px; padding: 6px 14px;
+  border-top: 1px solid var(--separator);
+}
+.ad-info-label { font-size: 10px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.3px; }
+.ad-info-val { font-size: 12px; color: var(--text-primary); word-break: break-all; }
+.ad-info-val.mono { font-family: var(--font-mono); font-size: 11px; }
+.ad-info-item:last-child { padding-bottom: 10px; }
+
+/* ── 变动标记 ── */
+.change-marker {
+  position: absolute; top: -6px; right: -6px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--accent); color: #fff;
+  font-size: 9px; display: flex; align-items: center; justify-content: center;
+  font-weight: 700;
+}
+
+/* ── Reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; animation-duration: 0s !important; }
+}
+
+/* ── Label over panel ── */
+.panel-label {
+  font-size: 10px; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.8px; padding: 4px 0; margin-bottom: 6px;
+  color: var(--text-muted);
+}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="top-bar">
+  <h1>插件市场美化 <span>E3.5</span></h1>
+  <div class="theme-toggle">
+    <button id="btn-dark" class="active" onclick="setTheme('dark')">暗色</button>
+    <button id="btn-light" onclick="setTheme('light')">浅色</button>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 侧栏对比 ═══════════════════════ -->
+<div class="compare-grid">
+  <!-- BEFORE -->
+  <div class="before-col">
+    <div class="col-header"><span class="dot before"></span> 当前</div>
+    <div class="panel before-panel">
+      <div class="panel-titlebar">插件市场 — 侧栏</div>
+      <div class="sb-header">
+        <div style="display:flex;justify-content:flex-end;margin-bottom:4px">
+          <button class="sb-install-btn"><span class="codicon codicon-add"></span> 安装</button>
+        </div>
+        <div class="sb-search-wrap">
+          <input class="sb-search-box" type="text" placeholder="搜索插件...">
+        </div>
+      </div>
+      <div class="sb-list">
+        <button class="sb-sec-btn">
+          <span class="codicon codicon-chevron-down"></span>已安装 (3)
+        </button>
+
+        <div class="sb-item" style="position:relative">
+          <div class="sb-item-icon" style="position:relative">
+            <span class="codicon codicon-package"></span>
+            <span class="sb-badge codicon codicon-star-full"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">插件市场</div>
+            <div class="sb-item-desc">浏览、安装和管理插件</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span></div>
+          </div>
+        </div>
+
+        <div class="sb-item">
+          <div class="sb-item-icon"><span class="codicon codicon-plug"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">串口监视器</div>
+            <div class="sb-item-desc">串口数据收发与监视</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-item-gear"><span class="codicon codicon-gear"></span></button>
+        </div>
+
+        <div class="sb-item">
+          <div class="sb-item-icon"><span class="codicon codicon-window"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">工作台</div>
+            <div class="sb-item-desc">卡片化工作空间</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-item-gear"><span class="codicon codicon-gear"></span></button>
+        </div>
+
+        <button class="sb-sec-btn"><span class="codicon codicon-chevron-right"></span>内置 (6)</button>
+
+        <button class="sb-sec-btn"><span class="codicon codicon-chevron-down"></span>已禁用 (1)</button>
+        <div class="sb-item" style="opacity:0.7">
+          <div class="sb-item-icon"><span class="codicon codicon-globe"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">日语测试包</div>
+            <div class="sb-item-desc">Language test: ja</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-enable-btn"><span class="codicon codicon-play"></span></button>
+        </div>
+
+        <button class="sb-sec-btn"><span class="codicon codicon-chevron-down"></span>待安装 (1)</button>
+        <div class="sb-item" style="opacity:0.6">
+          <div class="sb-item-icon"><span class="codicon codicon-symbol-color"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">抹茶拿铁主题</div>
+            <div class="sb-item-desc">柔和温暖的浅色主题</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-install-item-btn"><span class="codicon codicon-cloud-download"></span> 安装</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER ✨ -->
+  <div class="after-col">
+    <div class="col-header"><span class="dot after"></span> 设计改进</div>
+    <div class="panel after-panel">
+      <div class="panel-titlebar">插件市场 — 侧栏</div>
+      <div class="sb-header">
+        <div class="sb-header-top">
+          <button class="sb-install-btn"><span class="codicon codicon-add"></span> 安装</button>
+        </div>
+        <div class="sb-search-wrap" style="position:relative">
+          <span class="codicon codicon-search sb-search-icon" style="position:absolute;left:8px;top:8px;z-index:1;font-size:14px;color:var(--text-muted);pointer-events:none"></span>
+          <input class="sb-search-box" type="text" placeholder="搜索插件..." style="padding-left:28px">
+        </div>
+      </div>
+      <div class="sb-list">
+        <!-- ✨ 分区带计数徽章 -->
+        <button class="sb-sec-btn">
+          <span class="codicon codicon-chevron-down"></span>已安装
+          <span class="sb-sec-count">3</span>
+        </button>
+
+        <div class="sb-item" style="position:relative">
+          <div class="sb-item-icon" style="position:relative">
+            <span class="codicon codicon-package"></span>
+            <span class="sb-badge codicon codicon-star-full"></span>
+          </div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">插件市场</div>
+            <div class="sb-item-desc">浏览、安装和管理插件</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span></div>
+          </div>
+        </div>
+
+        <div class="sb-item">
+          <div class="sb-item-icon"><span class="codicon codicon-plug"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">串口监视器</div>
+            <div class="sb-item-desc">串口数据收发与监视</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-item-gear"><span class="codicon codicon-gear"></span></button>
+        </div>
+
+        <div class="sb-item">
+          <div class="sb-item-icon"><span class="codicon codicon-window"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">工作台</div>
+            <div class="sb-item-desc">卡片化工作空间</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-item-gear"><span class="codicon codicon-gear"></span></button>
+        </div>
+
+        <!-- ✨ 折叠分区 -->
+        <button class="sb-sec-btn">
+          <span class="codicon codicon-chevron-right"></span>内置
+          <span class="sb-sec-count">6</span>
+        </button>
+
+        <button class="sb-sec-btn">
+          <span class="codicon codicon-chevron-down"></span>已禁用
+          <span class="sb-sec-count">1</span>
+        </button>
+        <div class="sb-item" style="opacity:0.65">
+          <div class="sb-item-icon" style="opacity:0.5"><span class="codicon codicon-globe"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">日语测试包</div>
+            <div class="sb-item-desc">Language test: ja</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-enable-btn"><span class="codicon codicon-play"></span></button>
+        </div>
+
+        <button class="sb-sec-btn">
+          <span class="codicon codicon-chevron-down"></span>待安装
+          <span class="sb-sec-count">1</span>
+        </button>
+        <div class="sb-item" style="opacity:0.55">
+          <div class="sb-item-icon" style="opacity:0.5"><span class="codicon codicon-symbol-color"></span></div>
+          <div class="sb-item-details">
+            <div class="sb-item-name">抹茶拿铁主题</div>
+            <div class="sb-item-desc">柔和温暖的浅色主题</div>
+            <div class="sb-item-footer"><span class="sb-item-author">官方</span> <span class="sb-item-ver">v1.0.0</span></div>
+          </div>
+          <button class="sb-install-item-btn"><span class="codicon codicon-cloud-download"></span> 安装</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════ 详情页对比 ═══════════════════════ -->
+<div class="detail-compare">
+  <!-- BEFORE 详情页 -->
+  <div class="before-detail">
+    <div class="panel-titlebar">插件详情 — 串口监视器</div>
+    <!-- Header -->
+    <div class="bd-header">
+      <div class="bd-icon-wrap">
+        <span class="codicon codicon-plug"></span>
+        <span class="bd-icon-badge codicon codicon-star-full"></span>
+      </div>
+      <div class="bd-info">
+        <div class="bd-title-row">
+          <span class="bd-name">串口监视器</span>
+          <span class="bd-version">v1.0.0</span>
+          <span class="bd-badge bd-badge-core">内置</span>
+          <span class="bd-badge bd-badge-single">单例</span>
+        </div>
+        <div class="bd-author">官方</div>
+        <div class="bd-desc">串口数据收发与监视——LinkDesk 第一个视图插件</div>
+      </div>
+    </div>
+    <!-- Actions -->
+    <div class="bd-actions">
+      <button class="bd-btn">禁用</button>
+      <button class="bd-btn bd-btn-danger">卸载</button>
+    </div>
+    <!-- Nav -->
+    <div class="bd-nav">
+      <button class="bd-tab active">详情</button>
+      <button class="bd-tab">更新日志</button>
+    </div>
+    <!-- Body -->
+    <div class="bd-body">
+      <div class="bd-layout">
+        <div class="bd-main">
+          <p class="bd-p">串口数据收发与监视。支持多会话管理、CM6 接收区、Monaco 发送区、协议解析、快捷发送等完整功能。</p>
+          <div class="bd-sec"><h4>📦 推荐同时安装</h4><ul>
+            <li><span style="font-size:12px">&#10003;</span> serial-simulator <span style="font-size:12px;color:var(--text-muted)">离线开发时需要模拟数据源</span></li>
+          </ul></div>
+          <div class="bd-sec"><h4>💡 可选</h4><ul>
+            <li><span style="font-size:12px">&#9679;</span> protocol-custom <span style="font-size:12px;color:var(--text-muted)">自定义协议解析规则</span></li>
+          </ul></div>
+          <div class="bd-sec"><h4>🔒 依赖</h4><ul>
+            <li><span style="font-size:12px">&#128274;</span> serial-service</li>
+          </ul></div>
+        </div>
+        <div class="bd-side">
+          <div class="bd-info-item"><span class="bd-info-label">标识符</span><span class="bd-info-val mono">serial-monitor</span></div>
+          <div class="bd-info-item"><span class="bd-info-label">版本</span><span class="bd-info-val">v1.0.0</span></div>
+          <div class="bd-info-item"><span class="bd-info-label">类型</span><span class="bd-info-val">view</span></div>
+          <div class="bd-info-item"><span class="bd-info-label">入口</span><span class="bd-info-val mono">src/index.tsx</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AFTER 详情页 ✨ -->
+  <div class="after-detail">
+    <div class="panel-titlebar">插件详情 — 串口监视器</div>
+    <!-- ✨ Header: 图标 72px 卡片式 -->
+    <div class="ad-header">
+      <div class="ad-icon-wrap">
+        <span class="codicon codicon-plug"></span>
+        <span class="ad-icon-badge codicon codicon-star-full"></span>
+      </div>
+      <div class="ad-info">
+        <div class="ad-title-row">
+          <span class="ad-name">串口监视器</span>
+          <span class="ad-version">v1.0.0</span>
+          <span class="ad-badge ad-badge-core">内置</span>
+          <span class="ad-badge ad-badge-single">单例</span>
+        </div>
+        <div class="ad-author">官方</div>
+        <div class="ad-desc">串口数据收发与监视——LinkDesk 第一个视图插件</div>
+      </div>
+    </div>
+    <!-- ✨ Actions: 按钮分组 -->
+    <div class="ad-actions">
+      <div class="ad-btn-group">
+        <button class="ad-btn">禁用</button>
+        <button class="ad-btn danger">卸载</button>
+      </div>
+    </div>
+    <!-- ✨ Nav: 更粗的下划线 -->
+    <div class="ad-nav">
+      <button class="ad-tab active">详情</button>
+      <button class="ad-tab">更新日志</button>
+    </div>
+    <!-- ✨ Body: 卡片式区块 + 信息侧栏卡片 -->
+    <div class="ad-body">
+      <div class="ad-layout">
+        <div class="ad-main">
+          <p class="ad-p">串口数据收发与监视。支持多会话管理、CM6 接收区、Monaco 发送区、协议解析、快捷发送等完整功能。</p>
+          <!-- ✨ 卡片式推荐区块 -->
+          <div class="ad-sec">
+            <div class="ad-sec-header"><span class="codicon codicon-package"></span> 推荐同时安装</div>
+            <ul>
+              <li>
+                <span class="codicon codicon-check"></span>
+                <span class="ad-rec-name">serial-simulator</span>
+                <span class="ad-rec-reason">离线开发时需要模拟数据源</span>
+                <span class="ad-rec-status installed">已安装</span>
+              </li>
+            </ul>
+          </div>
+          <div class="ad-sec">
+            <div class="ad-sec-header"><span class="codicon codicon-lightbulb"></span> 可选</div>
+            <ul>
+              <li>
+                <span class="codicon codicon-circle-outline"></span>
+                <span class="ad-rec-name">protocol-custom</span>
+                <span class="ad-rec-reason">自定义协议解析规则</span>
+              </li>
+            </ul>
+          </div>
+          <div class="ad-sec">
+            <div class="ad-sec-header"><span class="codicon codicon-lock"></span> 依赖</div>
+            <ul>
+              <li>
+                <span class="codicon codicon-lock"></span>
+                <span class="ad-rec-name">serial-service</span>
+                <span class="ad-rec-status installed">已安装</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+        <!-- ✨ 信息侧栏卡片 -->
+        <div class="ad-side">
+          <div class="ad-info-card">
+            <div class="ad-info-card-title">插件信息</div>
+            <div class="ad-info-item"><span class="ad-info-label">标识符</span><span class="ad-info-val mono">serial-monitor</span></div>
+            <div class="ad-info-item"><span class="ad-info-label">版本</span><span class="ad-info-val">v1.0.0</span></div>
+            <div class="ad-info-item"><span class="ad-info-label">类型</span><span class="ad-info-val">view</span></div>
+            <div class="ad-info-item"><span class="ad-info-label">入口</span><span class="ad-info-val mono">src/index.tsx</span></div>
+            <div class="ad-info-item"><span class="ad-info-label">状态栏</span><span class="ad-info-val">serial-status</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 设计要点说明 -->
+<div style="max-width:1100px;width:100%;margin-top:20px;display:flex;gap:16px">
+  <div style="flex:1;background:var(--bg-card);border-radius:var(--radius-lg);padding:16px 20px;border:1px solid var(--separator)">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px"><span class="codicon codicon-list-flat" style="color:var(--accent)"></span> 侧栏 5 项可视化改进</h3>
+    <table style="width:100%;font-size:12px;line-height:2;color:var(--text-secondary)">
+      <tr><td style="color:var(--accent);width:20px">1</td><td>搜索框内左侧 <span class="codicon codicon-search" style="font-size:12px;color:var(--accent)"></span> 图标——不再是纯 placeholder</td></tr>
+      <tr><td style="color:var(--accent)">2</td><td>分区标题右侧 <span style="display:inline-block;font-size:10px;background:var(--bg-active);padding:1px 6px;border-radius:8px;color:var(--text-muted)">3</span> 计数徽章</td></tr>
+      <tr><td style="color:var(--accent)">3</td><td>列表项 hover 左侧 <span style="display:inline-block;width:2px;height:12px;background:var(--accent);vertical-align:middle;border-radius:1px"></span> accent 色条</td></tr>
+      <tr><td style="color:var(--accent)">4</td><td>插件图标带 <span style="display:inline-block;padding:2px 6px;background:var(--bg-active);border-radius:4px;font-size:10px">微背景</span> 容器——hover 时变色</td></tr>
+      <tr><td style="color:var(--accent)">5</td><td>搜索框 focus 时 <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 4px var(--accent)"></span> 光晕 + 图标同步变色</td></tr>
+    </table>
+  </div>
+  <div style="flex:1;background:var(--bg-card);border-radius:var(--radius-lg);padding:16px 20px;border:1px solid var(--separator)">
+    <h3 style="font-size:13px;font-weight:600;margin-bottom:10px;display:flex;align-items:center;gap:6px"><span class="codicon codicon-file-text" style="color:var(--accent)"></span> 详情页 5 项可视化改进</h3>
+    <table style="width:100%;font-size:12px;line-height:2;color:var(--text-secondary)">
+      <tr><td style="color:var(--accent);width:20px">1</td><td>插件图标缩小 <b>96→72px</b> 卡片式——带圆角背景+边框，更精致</td></tr>
+      <tr><td style="color:var(--accent)">2</td><td>版本号从纯文字改为 <span style="display:inline-block;padding:2px 8px;background:var(--bg-active);border-radius:10px;font-size:10px">v1.0.0</span> 胶囊标签</td></tr>
+      <tr><td style="color:var(--accent)">3</td><td>推荐/可选/依赖分区——<span style="display:inline-block;padding:3px 8px;border:1px solid var(--separator);border-radius:6px;font-size:10px">卡片式</span>，有标题栏+分隔线</td></tr>
+      <tr><td style="color:var(--accent)">4</td><td>信息侧栏——<span style="display:inline-block;padding:3px 8px;border:1px solid var(--separator);border-radius:6px;font-size:10px">卡片容器</span>，标题"插件信息"</td></tr>
+      <tr><td style="color:var(--accent)">5</td><td>Action 按钮分组——<span style="display:inline-block;padding:3px 10px;background:var(--accent);color:#fff;border-radius:4px 0 0 4px;font-size:10px">禁用</span><span style="display:inline-block;padding:3px 10px;border:1px solid var(--error);color:var(--error);border-radius:0 4px 4px 0;font-size:10px">卸载</span> 无间隙并排</td></tr>
+    </table>
+  </div>
+</div>
+
+<p style="text-align:center;color:var(--text-muted);font-size:11px;margin:24px 0 40px;max-width:1100px">
+  E3.5 插件市场美化 · 设计预览 &nbsp;|&nbsp;
+  左侧 = 还原当前 UI · 右侧 = 设计改进 &nbsp;|&nbsp;
+  右上角切换暗色/浅色主题 &nbsp;|&nbsp;
+  Hover 右侧列表项看 accent 色条 + 齿轮按钮效果
+</p>
+
+<script>
+function setTheme(t) {
+  document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : '');
+  document.getElementById('btn-dark').classList.toggle('active', t === 'dark');
+  document.getElementById('btn-light').classList.toggle('active', t === 'light');
+}
+</script>
+</body>
+</html>

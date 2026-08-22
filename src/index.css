@@ -24,13 +24,24 @@
   /* Phase 3 新增 */
   --tab-hover-bg: #353535;
   --drop-indicator: rgba(255, 255, 255, 0.06);
+  /* E5.6 分屏拖拽 glass drop zone——毛玻璃半区叠加层
+     Glassmorphism：backdrop-filter blur + 半透明散射面 + 内发光边界（替代虚线边框） */
+  --drop-glass-bg: rgba(255, 255, 255, 0.08);
+  --drop-glass-border: rgba(255, 255, 255, 0.10);
+  --drop-glass-inner: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
   --dirty-dot: #CCA700;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  /* E5.8#40 壳内悬浮面板（类型 B）——遮罩 + 强投影 + 拖拽投影（mockups/02 暗色值） */
+  --floating-panel-backdrop: rgba(0, 0, 0, 0.35);
+  --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  --floating-panel-shadow-dragging: 0 18px 60px rgba(0, 0, 0, 0.6);
   /* Phase 4 新增 —— 通知/错误/徽章 */
   --error: #E06C75;
   --warning: #CCA700;
-  --badge-text: #FFFFFF;
+  /* badge-text = text-on-accent 别名 —— 归一化：所有 accent 底上的文字走同一 token。
+     主题覆盖 text-on-accent 即可同时覆盖 badge-text；单独覆盖 badge-text 也生效。 */
+  --badge-text: var(--text-on-accent);
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-titlebar: #252526;
   --bg-icon-bar: #18181B;
@@ -40,18 +51,30 @@
   --toggle-knob: #FFFFFF;
   --hover-overlay: rgba(255, 255, 255, 0.06);
   --cm-timestamp: #8A8A8A;
-  /* Phase 3.5 新增 —— z-index 语义层级 */
-  --z-dropdown: 100;
+  /* Phase 3.5 新增 —— z-index 语义层级。
+     🔥 E5#98 重新平衡：对照实际裸数字相对顺序——dropdown 在 overlay 之上，drag 最高。 */
+  --z-dropdown: 650;
   --z-sticky: 200;
   --z-overlay-backdrop: 500;
   --z-overlay: 600;
-  /* Phase 3.5 新增 —— 间距体系 */
+  --z-drag-preview: 1000;
+  /* 🔥 UX10：侧栏内 z-index 分层 */
+  --z-sidebar-content: 0;
+  --z-sidebar-sticky-header: 10;
+  --z-sidebar-context-menu: 100;
+  /* Phase 3.5 新增 —— 间距体系。4px 节奏：xs/sm/md/lg/xl/2xl/3xl */
   --space-xs: 4px;
   --space-sm: 8px;
   --space-md: 12px;
   --space-lg: 16px;
-  --space-xl: 24px;
-  --space-2xl: 32px;
+  --space-xl: 20px;
+  --space-2xl: 24px;
+  --space-3xl: 32px;
+  /* E3.5 新增 —— 串口监视器 UI 整改 */
+  --warning-text: #E8AB3E;
+  --warning-bg: rgba(255, 200, 0, 0.12);
+  --text-on-accent: #FFFFFF;
+  --danger: #EF4444;
 }
 
 [data-theme="light"] {
@@ -78,9 +101,16 @@
   /* Phase 3 新增 */
   --tab-hover-bg: #E8E8E8;
   --drop-indicator: rgba(0, 0, 0, 0.06);
+  --drop-glass-bg: rgba(0, 0, 0, 0.05);
+  --drop-glass-border: rgba(0, 0, 0, 0.08);
+  --drop-glass-inner: inset 0 0 0 1px rgba(0, 0, 0, 0.04);
   --dirty-dot: #D4A017;
   --context-menu-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
   --drag-preview-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  /* E5.8#40 壳内悬浮面板——亮色值：遮罩减密（亮面底色黑幕过读）；投影沿 --context-menu-shadow ×0.4 主题差 */
+  --floating-panel-backdrop: rgba(0, 0, 0, 0.28);
+  --floating-panel-shadow: 0 12px 40px rgba(0, 0, 0, 0.2);
+  --floating-panel-shadow-dragging: 0 18px 60px rgba(0, 0, 0, 0.25);
   /* Phase 3.5 新增 —— 主题全覆盖 */
   --bg-titlebar: #DDDDDD;
   --bg-icon-bar: #F0F0F0;
@@ -89,6 +119,11 @@
   --toggle-knob: #2D2D2D;
   --hover-overlay: rgba(0, 0, 0, 0.04);
   --cm-timestamp: #767676;
+  /* E3.5 新增 —— 串口监视器 UI 整改（浅色覆写） */
+  --warning-text: #BF8800;
+  --warning-bg: rgba(200, 150, 0, 0.08);
+  --text-on-accent: #FFFFFF;
+  --danger: #D32F2F;
 }
 
 *,
@@ -99,9 +134,11 @@
   padding: 0;
 }
 
-html, body, #root {
+html, body, #root, #pool-root {
   height: 100%;
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
   background: var(--bg-window);
   color: var(--text-primary);
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -138,7 +175,7 @@ html, body, #root {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-secondary);
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
 
 .toggle {
@@ -157,7 +194,13 @@ html, body, #root {
   background: var(--toggle-knob);
   transition: transform 150ms;
 }
-.toggle.on::after { transform: translateX(16px); }
+.toggle.on::after {
+  transform: translateX(16px);
+  /* toggle-knob-on: ON 态旋钮色，fallback toggle-knob。
+     亮色主题 accent 深 + border 浅 → 同一 knob 色无法同时在两态可见。
+     主题作者可设 toggle-knob: #333 (OFF 态可见) + toggle-knob-on: #FFF (ON 态可见)。 */
+  background: var(--toggle-knob-on, var(--toggle-knob));
+}
 .toggle.disabled { opacity: 0.4; cursor: not-allowed; }
 
 .input {
@@ -172,6 +215,12 @@ html, body, #root {
 }
 .input:focus { border-color: var(--accent); }
 
+/* E5.8#30.15（P5）：聚焦面板 accent 环——inset 阴影不占布局（聚焦/失焦零位移），
+   var(--accent) 走 CSS 变量可主题化（硬约束 #1 禁硬编码 hex） */
+.group-pane-focused {
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+
 /* Phase 3.5 新增 —— focus-visible 键盘导航指示器 */
 *:focus-visible {
   outline: 2px solid var(--accent);
@@ -179,138 +228,9 @@ html, body, #root {
 }
 /* 保留 input 的原生 outline:none 设计，:focus 用 border-color 表示 */
 .input:focus-visible,
-.search-input:focus-visible,
-.palette-input:focus-visible {
+.search-input:focus-visible {
   outline: 2px solid var(--accent);
   outline-offset: 1px;
-}
-
-/* === CommandPalette + 共享 overlay（E2c #18：从 plugins/terminal/ 抬升到壳级 CSS） === */
-
-.ctx-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-overlay-backdrop);
-}
-
-.palette {
-  position: fixed;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 420px;
-  max-height: 300px;
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
-  z-index: var(--z-overlay);
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.palette-input {
-  background: var(--bg-input);
-  border: none;
-  border-bottom: 1px solid var(--separator);
-  padding: 10px 14px;
-  color: var(--text-primary);
-  font-size: 13px;
-  outline: none;
-}
-
-.palette-list {
-  overflow-y: auto;
-  max-height: 240px;
-}
-
-.palette-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 14px;
-  font-size: 12px;
-  color: var(--text-primary);
-  cursor: pointer;
-  transition: background 100ms;
-}
-
-.palette-item:hover,
-.palette-item.selected {
-  background: var(--accent);
-  color: white;
-}
-
-/* E3f #53b：对标 VS Code 两排布局——rows(column) > row(flex) */
-.palette-item-content {
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex: 1;
-  min-width: 0;
-}
-
-.palette-item-row {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-
-.palette-item-label {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-}
-
-.palette-item-category {
-  flex-shrink: 0;
-  font-size: 11px;
-  opacity: 0.7;
-  white-space: nowrap;
-}
-
-.palette-item-detail {
-  font-size: 11px;
-  opacity: 0.6;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  margin-top: 1px;
-}
-
-.palette-item:hover .palette-item-category,
-.palette-item:hover .palette-item-detail,
-.palette-item.selected .palette-item-category,
-.palette-item.selected .palette-item-detail {
-  opacity: 0.85;
-}
-
-/* E3f #53b：命令面板齿轮——hover 时显示，对标 VS Code per-command gear */
-.palette-item-actions {
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-}
-.palette-item-gear {
-  background: none;
-  border: none;
-  color: inherit;
-  cursor: pointer;
-  padding: 2px;
-  font-size: 14px;
-  opacity: 0;
-  transition: opacity 100ms;
-  border-radius: 3px;
-}
-.palette-item:hover .palette-item-gear,
-.palette-item.selected .palette-item-gear {
-  opacity: 0.8;
-}
-.palette-item-gear:hover {
-  opacity: 1 !important;
-  background: rgba(255, 255, 255, 0.15);
 }
 
 /* Phase 3.5 新增 —— prefers-reduced-motion */
@@ -387,3 +307,36 @@ select {
   overflow-y: auto;
   overflow-x: hidden;
 }
+
+/* === E5.7#3 PoolZoneShell 布局骨架——.pool-root/.pool-body（#37.5 grid 化）+ .pool-grid-cell。
+   占位样式（.zone-placeholder/.zone-sidebar/.zone-panel/.zone-right-sidebar）已随
+   Phase 2/3/5 zone 组件替换全部删除（E5.7#20/#21/#22 收官）。
+   E5.8#37.5：.pool-body flex row → CSS grid（决策 3——对齐延伸到侧栏/侧栏缩短/面板四向/
+   双栏互换唯一可行结构）。grid-template 由 PoolZoneShell 从 DTO 动态推导（computePoolGrid），
+   此处只留 display:grid + 溢出语义。.pool-main-column 已删——MainZone 直接成 grid cell，
+   PanelZone 移出为独立 cell。 */
+
+.pool-root {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: var(--bg-window);
+}
+
+.pool-body {
+  flex: 1;
+  display: grid;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* grid cell 包装——各 zone 的 grid 放置容器。min-width/min-height 0 保证 1fr 轨道内
+   内容正确收缩（grid item 默认 min-content 不收缩会撑破主区）。 */
+.pool-grid-cell {
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+}
+

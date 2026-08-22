@@ -1,0 +1,1413 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>形态一 vs 形态二 —— 三角色设置页高保真 mockup（串口 / 插件市场 / 设置）</title>
+<style>
+/* ═══════════════════════════════════════════════════════
+   LinkDesk 设计 token（复制自 src/index.css :root 暗色主题——
+   mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+   字体：IBM Plex Sans / JetBrains Mono
+   动画：Expo.out cubic-bezier(0.16,1,0.3,1)；prefers-reduced-motion 已考虑
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-window: #1E1E1E;
+  --bg-card: #2D2D2D;
+  --bg-status: #0078D4;
+  --bg-input: #3C3C3C;
+  --text-primary: #D4D4D4;
+  --text-secondary: #9D9D9D;
+  --text-muted: #8A8A8A;
+  --accent: #0078D4;
+  --accent-hover: #1A8CE8;
+  --border: #3C3C3C;
+  --separator: #474747;
+  --icon-active: #FFFFFF;
+  --icon-inactive: #858585;
+  --bg-titlebar: #252526;
+  --bg-icon-bar: #18181B;
+  --bg-side-panel: #1E1E22;
+  --bg-toolbar: #1E1E22;
+  --bg-dropdown: #3C3C3C;
+  --hover-overlay: rgba(255,255,255,0.06);
+  --tab-hover-bg: #353535;
+  --dirty-dot: #CCA700;
+  --sent-echo: #0078D4;
+  --status-connected: #4EC9B0;
+  --error: #E06C75;
+  /* 四插件角色色 */
+  --c-standard: #4EC9B0;
+  --c-light: #9A8BFF;
+  --c-minimal: #E0AF68;
+  --c-special: #F07E6C;
+  --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background: #101013;
+  color: var(--text-primary);
+  font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+  font-size: 13px;
+  padding: 32px;
+  max-width: 1500px;
+  margin: 0 auto;
+}
+
+h1 { font-size: 20px; font-weight: 600; letter-spacing: 0.02em; margin-bottom: 6px; }
+h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.7; }
+h1 code, .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+h1 .hl { color: var(--status-connected); }
+
+/* ---------- 帧容器 ---------- */
+.frame {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 18px;
+}
+.frame-caption {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.frame-caption b { font-size: 14px; }
+.frame-caption .tag {
+  font-size: 11px; color: #fff; background: var(--accent);
+  border-radius: 3px; padding: 1px 8px; font-weight: 600;
+}
+.frame-caption .tag.b { background: #5f5f6e; }
+.frame-caption .tag.v { background: #8B5CF6; }
+.frame-caption span { color: var(--text-secondary); font-size: 12px; }
+.frame-note {
+  padding: 10px 14px;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.8;
+  background: #26262a;
+}
+.frame-note b { color: var(--text-secondary); }
+.frame-note .ok { color: var(--status-connected); }
+.frame-note .warn { color: var(--error); }
+.frame-note code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+
+/* ---------- 应用窗口骨架 ---------- */
+.app {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-height: 600px;
+  background: var(--bg-window);
+  font-size: 12px;
+  overflow: hidden;
+}
+.titlebar {
+  height: 28px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: center;
+  padding: 0 10px 0 12px;
+  gap: 8px;
+  user-select: none;
+}
+.titlebar .logo { width: 14px; height: 14px; flex: none; }
+.titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+.titlebar .drag { flex: 1; }
+.win-btns { display: flex; gap: 2px; }
+.win-btn {
+  width: 34px; height: 22px; border: none; background: transparent;
+  color: var(--text-secondary); border-radius: 3px;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 150ms ease;
+}
+.win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+.mid { flex: 1; display: flex; min-height: 0; }
+
+/* ---------- 图标栏（48px 最左） ---------- */
+.icon-bar {
+  width: 48px; flex: none;
+  background: var(--bg-icon-bar);
+  display: flex; flex-direction: column; align-items: center;
+  padding-top: 6px; gap: 2px;
+}
+.icon-btn {
+  width: 48px; height: 42px; border: none; background: transparent;
+  color: var(--icon-inactive);
+  display: flex; align-items: center; justify-content: center;
+  border-left: 2px solid transparent;
+  transition: color 150ms ease, background 150ms ease;
+}
+.icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+.icon-btn svg { width: 20px; height: 20px; }
+
+/* 图标栏中部 = 插件区：槽位 + 形态一并存 */
+.ib-sep { width: 26px; height: 1px; background: var(--border); margin: 5px 0; }
+.ib-slot {
+  width: 48px; height: 42px;
+  display: flex; align-items: center; justify-content: center;
+  position: relative;
+}
+.ib-slot::before {
+  content: ""; position: absolute; inset: 7px 6px;
+  border: 1px dashed var(--text-muted); border-radius: 5px;
+  opacity: .55;
+}
+.ib-slot .slot-icon { width: 20px; height: 20px; display:flex; align-items:center; justify-content:center; }
+.ib-slot .slot-icon svg { width: 18px; height: 18px; }
+.ib-plain { width: 48px; height: 42px; display: flex; align-items: center; justify-content: center; }
+.ib-plain svg { width: 18px; height: 18px; }
+.pin { color: var(--text-muted); font-size: 11px; }
+.pin b { color: var(--text-secondary); }
+
+/* ---------- 侧栏（资源管理器） ---------- */
+.sidebar {
+  width: 172px; flex: none;
+  background: var(--bg-side-panel);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  font-size: 12px;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 8px 12px; color: var(--text-secondary);
+  letter-spacing: 0.06em; font-size: 11px;
+  text-transform: uppercase; flex: none;
+}
+.tree-row {
+  display: flex; align-items: center; gap: 6px;
+  padding: 3px 12px; color: var(--text-primary);
+  font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+  transition: background 150ms ease; flex: none;
+}
+.tree-row:hover { background: var(--hover-overlay); }
+.tree-row .arrow { color: var(--text-muted); width: 12px; flex: none; }
+.tree-row svg { width: 13px; height: 13px; flex: none; color: var(--text-muted); }
+.tree-row.selected { background: rgba(0,120,212,0.18); }
+
+/* ---------- 主区 ---------- */
+.main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.tabbar {
+  height: 32px; flex: none;
+  background: var(--bg-titlebar);
+  display: flex; align-items: stretch;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 12px;
+  color: var(--text-secondary);
+  border-right: 1px solid var(--border);
+  border-top: 2px solid transparent;
+  background: transparent;
+  font-size: 12px;
+  transition: background 150ms ease;
+}
+.tab:hover { background: var(--tab-hover-bg); }
+.tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+.tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+/* 主区标签 = 壳级标签条（有关闭按钮、衬在标题栏底上）——与设置页内部的下划线 tab 视觉区分 */
+.tab .tab-close { display: flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 3px; color: var(--text-muted); font-size: 10px; flex: none; }
+.tab:hover .tab-close { color: var(--text-secondary); }
+.tab .tab-close:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+/* ============================================================
+   设置页（真实 UI 结构：搜索栏 + 左两级树 + 右合并表单）
+   ============================================================ */
+.set-wrap { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.search-bar { display: flex; align-items: center; padding: 8px 16px; border-bottom: 1px solid var(--separator); gap: 8px; flex: none; }
+.search-icon { color: var(--text-muted); flex: none; }
+.search-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 13px; padding: 5px 8px; outline: none; border-radius: 3px; }
+.search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.json-btn { display: flex; align-items: center; gap: 4px; padding: 4px 8px; background: transparent; border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; border-radius: 3px; }
+.json-btn:hover { background: var(--hover-overlay); }
+
+/* ---- 设置页内容包裹层（内部双 tab 的两栏：设置子页 / 快捷键子页） ---- */
+.settings-pane { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.settings-pane[hidden], .kb-pane[hidden] { display: none; }
+
+/* ---- 通用区（设置专用：切换入口本身就是设置） ---- */
+.gen-area {
+  margin: 10px 16px 0;
+  border: 1px dashed var(--accent);
+  border-radius: 6px;
+  padding: 8px 12px;
+  display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap;
+  background: color-mix(in srgb, var(--accent) 6%, transparent);
+  flex: none;
+}
+.gen-area .gen-label { font-size: 11px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+.gen-area .gen-tag { font-size: 10px; color: #fff; background: var(--accent); border-radius: 3px; padding: 1px 6px; font-weight: 600; }
+.gen-switch-row { display: flex; gap: 6px; }
+.gen-switch-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 4px 10px; border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 11.5px; font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+.gen-switch-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.gen-switch-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.gen-switch-btn.active { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); color: var(--text-primary); }
+.gen-switch-btn .p-ic { display: flex; align-items: center; }
+.gen-switch-btn .p-ic svg { width: 13px; height: 13px; }
+.gen-switch-btn .p-src { font-size: 10px; color: var(--text-muted); }
+.gen-note { font-size: 11px; color: var(--text-muted); }
+.gen-note b { color: var(--text-secondary); }
+
+.set-body { flex: 1; display: flex; min-height: 0; }
+
+/* ---- 左两级树 ---- */
+.nav { width: 210px; flex: none; overflow-y: auto; border-right: 1px solid var(--separator); padding: 4px 0; }
+.nav-group-header {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 6px 12px 6px 16px; font-size: 13px; color: var(--text-primary);
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; transition: background 100ms;
+  border-left: 2px solid transparent;
+}
+.nav-group-header:hover { background: var(--hover-overlay); }
+.nav-group-header:focus-visible { outline: 2px solid var(--accent); outline-offset: -1px; }
+.nav-group-header .lbl { display: flex; align-items: center; gap: 5px; }
+.nav-group-header .arrow { font-size: 10px; color: var(--text-muted); transition: transform 150ms; }
+.nav-group-header.expanded .arrow { transform: rotate(90deg); }
+.nav-group.flat > .nav-group-header[aria-current=page] { background: var(--hover-overlay); font-weight: 500; border-left-color: var(--accent); }
+.nav-sub { overflow: hidden; max-height: 0; transition: max-height 200ms ease; }
+.nav-sub.open { max-height: 240px; }
+.nav-sub-item {
+  display: flex; align-items: center; justify-content: space-between;
+  width: 100%; padding: 5px 12px 5px 36px; font-size: 12px; color: var(--text-secondary);
+  background: transparent; border: none; cursor: pointer; text-align: left;
+  font-family: inherit; transition: background 100ms;
+  border-left: 2px solid transparent;
+}
+.nav-sub-item:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.nav-sub-item[aria-current=page] { background: var(--hover-overlay); color: var(--text-primary); font-weight: 500; border-left-color: var(--accent); }
+.nav-sub-count { font-size: 10px; color: var(--text-muted); }
+.nav-badge { font-size: 10px; padding: 1px 6px; border-radius: 8px; color: var(--status-connected); background: rgba(78,201,176,0.12); }
+.nav-badge.new { color: var(--accent); background: rgba(0,120,212,0.12); }
+.nav-badge.f1 { color: var(--c-special); background: rgba(240,126,108,0.12); }
+
+/* ---- 右合并表单 ---- */
+.form { flex: 1; overflow-y: auto; padding: 20px 28px; }
+.main-title { font-size: 20px; font-weight: 600; margin: 0 0 4px; color: var(--text-primary); }
+.section-title { font-size: 13px; color: var(--text-muted); margin: 0 0 18px; line-height: 1.7; }
+.section-title code { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; color: var(--sent-echo); }
+.section-title b { color: var(--text-secondary); }
+.section-block-header { font-size: 15px; font-weight: 600; color: var(--text-primary); padding-bottom: 8px; border-bottom: 1px solid var(--separator); margin-bottom: 4px; margin-top: 22px; }
+.section-block-header:first-of-type { margin-top: 0; }
+
+/* 设置行（真实控件） */
+.set-row { display: flex; align-items: flex-start; padding: 8px 12px; border-radius: 4px; border-left: 2px solid transparent; gap: 20px; transition: background 120ms; }
+.set-row:hover { background: var(--hover-overlay); }
+.set-row.modified { border-left-color: var(--accent); }
+.set-row-info { flex: 1; min-width: 0; }
+.set-row-label { display: block; font-size: 13px; font-weight: 500; color: var(--text-primary); margin-bottom: 2px; }
+.set-row-desc { display: block; font-size: 12px; color: var(--text-muted); line-height: 1.5; }
+.set-row-ctrl { flex-shrink: 0; display: flex; align-items: center; gap: 6px; width: 150px; justify-content: flex-end; }
+.sel { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 12px; padding: 4px 8px; min-width: 110px; font-family: inherit; }
+.tgl { width: 28px; height: 16px; border-radius: 8px; background: var(--accent); position: relative; cursor: pointer; flex-shrink: 0; transition: background 150ms ease; }
+.tgl::after { content: ''; position: absolute; top: 2px; left: 14px; width: 12px; height: 12px; border-radius: 50%; background: #fff; transition: left 150ms ease; }
+.tgl.off { background: var(--border); }
+.tgl.off::after { left: 2px; }
+.txt-inp { background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; color: var(--text-primary); font-size: 12px; padding: 4px 8px; font-family: "JetBrains Mono", Consolas, monospace; outline: none; width: 150px; }
+.txt-inp:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+
+/* ---- 形态二角色切换条 ---- */
+.role-card {
+  border: 1px solid var(--separator);
+  border-radius: 6px;
+  padding: 12px 14px;
+  margin-top: 14px;
+  background: var(--bg-card);
+}
+.role-head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.role-head .role-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+.role-head .role-tag { font-size: 10.5px; color: #fff; background: #5f5f6e; border-radius: 3px; padding: 1px 8px; font-weight: 600; }
+.role-head .role-tag.form2 { background: var(--accent); }
+.role-head .sp { flex: 1; }
+.role-head .role-note { font-size: 11px; color: var(--text-muted); }
+.switch-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.switch-btn {
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 5px 12px; border-radius: 4px;
+  border: 1px solid var(--border);
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 12px; font-family: inherit;
+  cursor: pointer;
+  transition: border-color 150ms ease, background 150ms ease, color 150ms ease;
+}
+.switch-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+.switch-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.switch-btn.active { background: color-mix(in srgb, var(--accent) 18%, transparent); border-color: var(--accent); color: var(--text-primary); }
+.switch-btn .p-ic { display: flex; align-items: center; }
+.switch-btn .p-ic svg { width: 14px; height: 14px; }
+.switch-btn .p-src { font-size: 10px; color: var(--text-muted); margin-left: 1px; }
+.switch-btn.active .p-src { color: var(--text-secondary); }
+.role-hint { font-size: 11px; color: var(--text-muted); margin-top: 8px; line-height: 1.7; }
+.role-hint b { color: var(--text-secondary); }
+.role-hint .x { color: var(--c-special); }
+
+/* ---- 激活套配置区 ---- */
+.act-card { margin-top: 14px; }
+.act-head { display: flex; align-items: center; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--separator); margin-bottom: 2px; flex-wrap: wrap; }
+.act-head .p-ic { display: flex; align-items: center; }
+.act-head .p-ic svg { width: 15px; height: 15px; }
+.act-head .act-name { font-size: 12.5px; font-weight: 600; color: var(--text-primary); }
+.act-head .act-src { font-size: 11px; color: var(--text-muted); }
+.act-head .sp { flex: 1; }
+.act-head .act-switch-label { font-size: 10.5px; color: var(--accent); font-weight: 600; }
+.empty-state {
+  margin-top: 14px;
+  border: 1px dashed var(--separator);
+  border-radius: 6px;
+  padding: 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+.empty-state b { color: var(--text-secondary); }
+
+/* 设置帧 fancy 态（第二套设置 UI——位置/格式/风格彻底不同：横幅头 + 卡片栅格 + 右下角悬浮胶囊切换） */
+.set-wrap.fancy {
+  --accent: #9A8BFF; --accent-hover: #B0A0FF;
+  position: relative;
+}
+.statusbar.fancy { background: #8B5CF6; }
+
+.fancy-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 20px;
+  background: color-mix(in srgb, var(--accent) 12%, var(--bg-titlebar));
+  border-bottom: 1px solid var(--separator);
+  flex: none;
+}
+.fancy-logo { font-size: 15px; color: var(--accent); display: flex; }
+.fancy-title { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+.fancy-sub { font-size: 11px; color: var(--text-muted); }
+.fancy-cards {
+  flex: 1; overflow-y: auto;
+  padding: 18px 22px;
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px;
+  align-content: start;
+}
+.fancy-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 16px;
+}
+.fancy-card-head { display: flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600; color: var(--text-primary); padding-bottom: 6px; border-bottom: 1px solid var(--separator); margin-bottom: 4px; }
+.fancy-card .set-row { padding: 6px 2px; gap: 10px; }
+.fancy-card .set-row-ctrl { width: auto; min-width: 90px; }
+.fancy-card .set-row-desc { font-size: 11px; }
+/* 帧④ 组合场景——漂亮设置把角色组画成卡片胶囊横排（不走导航组，但它自己的选择） */
+.fancy-serial-row { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; padding: 8px 0 2px; }
+.fancy-role-tag { font-size: 10px; color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 10px; padding: 1px 8px; font-weight: 600; margin-left: 6px; }
+
+/* 漂亮设置的切换入口 = 右下角悬浮胶囊（不在顶部了） */
+.fancy-switch {
+  position: absolute; right: 18px; bottom: 18px;
+  display: flex; align-items: center; gap: 6px;
+  background: var(--bg-dropdown);
+  border: 1px solid color-mix(in srgb, var(--accent) 55%, var(--border));
+  border-radius: 22px;
+  padding: 4px 6px 4px 14px;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+}
+.fs-label { font-size: 10.5px; color: var(--text-muted); }
+.fs-btn {
+  display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid transparent; background: transparent;
+  color: var(--text-secondary); font-size: 11.5px;
+  padding: 3px 10px; border-radius: 18px;
+  cursor: pointer; font-family: inherit;
+  transition: background 150ms ease, color 150ms ease;
+}
+.fs-btn .p-ic { display: flex; align-items: center; }
+.fs-btn .p-ic svg { width: 12px; height: 12px; }
+.fs-btn .p-src { font-size: 10px; opacity: .8; }
+.fs-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+.fs-btn.active { background: var(--accent); color: #fff; }
+
+/* ── 设置内部双 tab（对标真实 settings-tab-bar）── */
+.kb-tabbar { display: flex; border-bottom: 1px solid var(--border); padding: 0 16px; flex: none; }
+.kb-tab { padding: 8px 16px; font-size: 13px; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--text-muted); cursor: pointer; margin-bottom: -1px; font-family: inherit; transition: color 120ms ease; }
+.kb-tab:hover { color: var(--text-primary); }
+.kb-tab.active { color: var(--text-primary); border-bottom-color: var(--accent); }
+
+/* ── 快捷键平铺表格（内置的快捷键页——对标真实 KeybindingSettingsView）── */
+.kb-pane { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+.kb-search-bar { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid var(--border); }
+.kb-search-icon { color: var(--text-muted); display: flex; flex: none; }
+.kb-search-input { flex: 1; background: var(--bg-input); border: 1px solid var(--border); color: var(--text-primary); font-size: 12px; padding: 5px 8px; outline: none; border-radius: 3px; }
+.kb-search-input:focus { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.kb-table { flex: 1; overflow-y: auto; }
+.kb-header, .kb-row { display: grid; grid-template-columns: 2.2fr 1.6fr 0.7fr 1.2fr; gap: 10px; padding: 7px 16px; align-items: center; }
+.kb-header { color: var(--text-muted); font-size: 11px; border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: 0.05em; }
+.kb-row { border-bottom: 1px solid var(--border); font-size: 12px; transition: background 120ms ease; }
+.kb-row:hover { background: var(--hover-overlay); }
+.kb-col-command div:first-child { color: var(--text-primary); }
+.kb-col-command-id { font-family: "JetBrains Mono", Consolas, monospace; font-size: 10.5px; color: var(--text-muted); }
+.kb-col-key-cell { display: flex; align-items: center; gap: 8px; }
+.kb-col-key { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px; color: var(--text-secondary); background: var(--bg-input); border: 1px solid var(--border); border-radius: 3px; padding: 1px 8px; display: inline-block; }
+.kb-gear { background: transparent; border: none; color: var(--text-muted); font-size: 11px; cursor: pointer; opacity: 0; transition: opacity 120ms ease, color 120ms ease; }
+.kb-row:hover .kb-gear { opacity: 1; }
+.kb-gear:hover { color: var(--text-primary); }
+.kb-col-source { color: var(--text-muted); font-size: 11.5px; }
+.kb-col-when { color: var(--text-muted); font-size: 11.5px; font-family: "JetBrains Mono", Consolas, monospace; }
+
+/* ── 快捷键卡片分区（漂亮设置——插件作者自己画的样式，同一份数据）── */
+.kb-chip-row { display: flex; align-items: center; justify-content: space-between; padding: 5px 2px; border-bottom: 1px dashed var(--separator); }
+.kb-chip-row:last-child { border-bottom: none; }
+.kb-chip-cmd { font-size: 12px; color: var(--text-primary); }
+.fancy-key { display: inline-flex; align-items: center; }
+.keycap { display: inline-block; background: var(--bg-input); border: 1px solid var(--border); border-bottom-width: 2px; border-radius: 4px; padding: 1px 6px; margin-left: 3px; font-size: 10.5px; font-family: "JetBrains Mono", Consolas, monospace; color: var(--text-secondary); }
+.fancy-kb-note { margin-top: 8px; font-size: 10.5px; color: var(--text-muted); line-height: 1.6; }
+
+/* ---------- 状态栏 ---------- */
+.statusbar {
+  height: 22px; flex: none;
+  background: var(--bg-status);
+  color: #fff;
+  display: flex; align-items: center;
+  gap: 14px;
+  padding: 0 12px;
+  font-size: 11px;
+}
+.statusbar .right { margin-left: auto; opacity: 0.9; }
+.statusbar .slot-name { font-weight: 600; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+
+<h1>形态一 vs 形态二 —— 四种角色分组的高保真 mockup
+  <small>四帧<b>分开画</b>（三角色 + 一组合）：
+  ① <b class="hl">串口监视器</b>——复用同名「串口监视器」组（有同名组 → 直接进，不新建）；
+  ② <b class="hl">插件市场</b>——无配置组 → 自动新建「插件市场」组（没有才新建）+ 激活套无配置项；
+  ③ <b class="hl">设置</b>——切换入口<b>本身就是设置</b>：整个 UI（含切换入口、含快捷键页）都是设置插件自己画的，壳只注入数据；<b>主区标签只有「设置」</b>，快捷键是<b>设置页内部 tab</b>，不是主区标签、不是导航项；
+  ④ <b class="hl">组合</b>——③+①+② 同屏一页：顶部通用区（设置套切换）+ 左侧「串口监视器」组（复用同名组 3 候选）+「插件市场」组（没有才新建 2 候选）——三个角色组用<b>同一个 factoryRole 槽位机制</b>，在设置页里一页共存，切换按钮各管各的候选。</small>
+</h1>
+
+<!-- ════════════════════════════════════════════════════════════
+     帧 1：串口监视器（复用同名组 + 形态一并存）
+     ════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">场景 ①</span>
+    <b>串口监视器 —— 复用同名组（有同名配置组 → 切换条直接进「串口监视器」组）</b>
+    <span>4 插件：3 套形态二候选 + 1 套形态一并存</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <div class="ib-slot" id="s1Slot" title="串口监视器槽位——只显示激活套图标">
+          <span class="slot-icon" id="s1SlotIcon"></span>
+        </div>
+        <div class="ib-plain" title="特殊版（形态一并存）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z"/></svg>
+        </div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">特殊版常在</div>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>plugins</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">设置<span class="tab-close">✕</span></div><div class="tab">串口监视器<span class="tab-close">✕</span></div><div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="set-wrap">
+          <div class="kb-tabbar" id="s1KbBar">
+            <button class="kb-tab active" data-bt="settings" type="button">设置</button>
+            <button class="kb-tab" data-bt="keybindings" type="button">快捷键</button>
+          </div>
+          <div class="settings-pane" id="s1SettingsPane">
+            <div class="search-bar">
+              <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+              <input class="search-input" placeholder="搜索设置">
+              <button class="json-btn">JSON</button>
+            </div>
+            <div class="set-body">
+              <nav class="nav" id="s1Nav"></nav>
+              <div class="form" id="s1Form"></div>
+            </div>
+          </div>
+          <div class="kb-pane" id="s1KbPane" hidden></div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>串口监视器 · 3 套候选</span>
+      <span class="right">激活角色套：<span class="slot-name" id="s1StActive">标准版（内置）</span> · 图标栏串口槽 = 激活套图标</span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>① 验证点（复用同名组场景）：</b>内置串口监视器本就贡献「串口监视器」配置组 → <b>切换条直接进这个组</b>，不新建第二个；切换按钮 = 3 候选（标准/轻量/极简）；<span class="warn">特殊版（形态一）不进来、图标常在</span>；激活套配置在切换条之下随切换换。分组按<b>角色名</b>命名，不是插件名。<br>设置页顶部 [设置|快捷键] 双 tab = 设置页自己的子页（快捷键是设置的一部分——非主区标签、非导航项，点「快捷键」看平铺表格）。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     帧 2：插件市场（没有才新建组 + 空配置 + 形态一并存）
+     ════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag v">场景 ②</span>
+    <b>插件市场 —— 无配置组 → 自动新建「插件市场」组（没有才新建）+ 激活套无配置项</b>
+    <span>3 插件：官方 + 漂亮 2 套形态二候选 · 极客 1 套形态一并存</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <div class="ib-slot" id="s2Slot" title="插件市场槽位——只显示激活套图标">
+          <span class="slot-icon" id="s2SlotIcon"></span>
+        </div>
+        <div class="ib-plain" title="极客市场（形态一并存——普通视图插件，自己的图标自己的 UI）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z"/></svg>
+        </div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">极客常在</div>
+        <div class="ib-sep"></div>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>plugins</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>marketplace</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">设置<span class="tab-close">✕</span></div><div class="tab">插件市场<span class="tab-close">✕</span></div><div class="tab">main.ts<span class="tab-close">✕</span></div>
+        </div>
+        <div class="set-wrap">
+          <div class="kb-tabbar" id="s2KbBar">
+            <button class="kb-tab active" data-bt="settings" type="button">设置</button>
+            <button class="kb-tab" data-bt="keybindings" type="button">快捷键</button>
+          </div>
+          <div class="settings-pane" id="s2SettingsPane">
+            <div class="search-bar">
+              <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+              <input class="search-input" placeholder="搜索设置">
+              <button class="json-btn">JSON</button>
+            </div>
+            <div class="set-body">
+              <nav class="nav" id="s2Nav"></nav>
+              <div class="form" id="s2Form"></div>
+            </div>
+          </div>
+          <div class="kb-pane" id="s2KbPane" hidden></div>
+        </div>
+      </div>
+    </div>
+    <div class="statusbar">
+      <span>就绪</span><span>插件市场 · 2 套候选</span>
+      <span class="right">激活角色套：<span class="slot-name" id="s2StActive">官方市场（内置）</span></span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>② 验证点（没有才新建场景）：</b>市场插件<b>不贡献任何配置组</b> → 设置页本来没有「插件市场」组（图里左侧的「插件市场」组是<b>自动新建</b>的——没有同名组可复用，这就是规则的另一半「没有才新建」）；切换按钮 = 2 候选（官方/漂亮）；激活套配置区<b>空</b>——市场没有设置选项（当前假设，未来 float 模式加设置项后此处即出现）；<span class="warn">极客市场（形态一）不进切换、图标常在</span>。<br>设置页顶部 [设置|快捷键] 双 tab = 设置页自己的子页（快捷键是设置的一部分——非主区标签、非导航项，点「快捷键」看平铺表格）。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     帧 3：设置（切换入口本身就是设置——但它长在设置插件的 UI 里，位置/格式随 UI 变）
+     ════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">场景 ③</span>
+    <b>设置 —— 切换入口本身就是设置：壳只注入数据，整个 UI（含切换入口、含快捷键页）都是设置插件自己画的</b>
+    <span>主区标签只有「设置」；点切换按钮换整套设置 UI——内置（顶部条 + 页内[设置|快捷键]双 tab + 平铺表格）⇄ 漂亮（右下角胶囊 + 卡片分区键帽）；极简（形态一）并排常在不进切换</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="设置（打开激活设置套）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        <div class="ib-plain" title="极简设置（形态一——普通视图插件，自己的图标自己的页，不进切换）">
+          <svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>
+        </div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">极简常在</div>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">设置<span class="tab-close">✕</span></div>
+        </div>
+        <div id="s3Content"></div>
+      </div>
+    </div>
+    <div class="statusbar" id="s3Status">
+      <span>就绪</span>
+      <span class="right" id="s3StRight"></span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>③ 验证点（设置 = 特殊角色——整个 UI 含切换入口、含快捷键页都是设置插件自己画的）：</b>设置<b>不像串口监视器</b>靠配置组承载切换——设置本身就是一个切换页，<b>切换入口本身就是设置</b>。壳只注入数据（全部 N 个设置入口 + 快捷键数据）并保证可切换（逃生门）。
+    <b>两层标签要分开看：</b>主区标签栏 = 打开哪些视图（壳画，[设置] 只是其中之一，带关闭按钮）；设置页内部 [设置|快捷键] = 设置页自己的两个子页（设置插件画，下划线高亮）。快捷键<b>只在这一层出现一次</b>——不是主区标签、不是左侧导航项。
+    换 UI：切换入口的<b>位置/格式/风格都可能变</b>（内置顶部条 ⇄ 漂亮右下角胶囊）；<b>快捷键页也一样</b>——内置画成<b>平铺表格</b>（对标真实 KeybindingSettingsView），漂亮把<b>同一份数据</b>画成卡片分区（键帽胶囊）。快捷键<b>是设置的一部分、不独立</b>，随套走，作者只取数据、呈现自由。「恒在」= <b>可触达性</b>，不是固定在最上面。极简设置（形态一，不声明 factoryRole）<b>不进切换</b>——图标常在、自己的页。
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════
+     帧 4：组合——③+①+② 同屏一页：设置套切换 + 串口复用同名组 + 市场没有才新建
+     ════════════════════════════════════════════════════════════ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag v">场景 ④</span>
+    <b>组合 —— 一个设置页里同时有「设置套切换」「串口监视器组」「插件市场组」三个角色组的切换条</b>
+    <span>同一个 factoryRole 槽位机制：顶部通用区 = 设置角色（切换入口本身就是设置）；左侧「串口监视器」组 = 串口角色（复用同名组优先，3 候选）；「插件市场」组 = 市场角色（没有才新建，2 候选 + 空配置）——三组一页共存，点各角色组自己的切换按钮换候选</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button><button class="win-btn">□</button><button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn" title="文件树"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <div class="ib-sep"></div>
+        <div class="ib-slot" id="s4SerialSlot" title="串口监视器槽位——只显示激活套图标（随切换换）"><span class="slot-icon" id="s4SerialSlotIc"></span></div>
+        <div class="ib-plain" title="串口特殊版（形态一——普通视图插件，自己的图标自己的页，不进切换）"><svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z"/></svg></div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">特殊版常在</div>
+        <div class="ib-slot" id="s4MktSlot" title="插件市场槽位——只显示激活套图标（随切换换）"><span class="slot-icon" id="s4MktSlotIc"></span></div>
+        <div class="ib-plain" title="极客市场（形态一——不进切换）"><svg viewBox="0 0 24 24" fill="none" stroke="var(--c-special)" stroke-width="1.8"><path d="m12 3 1.9 5.4 5.4 1.9-5.4 1.9L12 17.6l-1.9-5.4-5.4-1.9 5.4-1.9z" opacity=".7"/><circle cx="12" cy="12" r="1.6"/></svg></div>
+        <div class="pin" style="writing-mode:vertical-rl;margin-top:2px;opacity:.8">极客常在</div>
+        <div class="ib-sep"></div>
+        <button class="icon-btn active" title="设置（打开激活设置套）"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>settings.tsx</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active">设置<span class="tab-close">✕</span></div>
+        </div>
+        <div id="s4Content"></div>
+      </div>
+    </div>
+    <div class="statusbar" id="s4Status">
+      <span>就绪</span>
+      <span class="right" id="s4StRight"></span>
+    </div>
+  </div>
+
+  <div class="frame-note">
+    <b>④ 验证点（③+①+② 同屏——同一个机制，三种角色）：</b>设置页里<b>每个 factoryRole 角色组都有自己的切换条</b>。<b>顶部通用区 = 「设置」角色</b>（特殊——切换入口本身就是设置，整个 UI 都是设置插件自己画的）；<b>左侧「串口监视器」组 = 「串口监视器」角色</b>（复用同名组优先——内置串口监视器已贡献配置组，切换条直接进组不新建）；<b>「插件市场」组 = 「市场」角色</b>（没有才新建——市场不贡献配置，自动建组 + 激活套空配置）。三条切换条是<b>同一个槽位机制</b>，只是角色不同、各管各的候选。
+    <b>换设置套 = 整个 UI 连角色组的呈现方式一起换：</b>顶部通用区切到「漂亮设置」→ 导航组/平铺表格全消失，串口监视器角色组变成<b>卡片胶囊横排</b>（漂亮自己画的）、市场组同理——<b>角色组随套换、数据不变</b>。
+    <b>形态一（特殊版/极客）图标常在、不进任何切换</b>。快捷键仍是设置页内部 tab（内置平铺表格），只出现一次。左侧导航组的角色组也可以点——点「串口监视器/插件市场」看对应组，点「通用/串口特殊版」看普通配置。
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════
+   公共小工具
+   ════════════════════════════════════════════════════════════ */
+function rowHTML(rows) {
+  return rows.map(k => {
+    let ctrl = '';
+    if (k.type === 'tgl') ctrl = `<span class="tgl${k.val ? '' : ' off'}"></span>`;
+    else if (k.type === 'sel') ctrl = `<select class="sel">${k.opts.map(o => `<option ${o === k.val ? 'selected' : ''}>${o}</option>`).join('')}</select>`;
+    else ctrl = `<input class="txt-inp" value="${k.val || ''}">`;
+    return `<div class="set-row${k.mod ? ' modified' : ''}">
+      <div class="set-row-info"><span class="set-row-label">${k.label}</span><span class="set-row-desc">${k.desc}</span></div>
+      <div class="set-row-ctrl">${ctrl}</div>
+    </div>`;
+  }).join('');
+}
+function navHTML(groups, active) {
+  return groups.map(g => {
+    const isCur = g.id === active;
+    let subs = '';
+    if (g.kids) {
+      subs = `<div class="nav-sub${isCur ? ' open' : ''}">` +
+        g.kids.map(k => `<div class="nav-sub-item" aria-current="${isCur ? 'page' : 'false'}">${k}<span class="nav-sub-count">•</span></div>`).join('') + '</div>';
+    }
+    return `<div class="nav-group ${g.kids ? 'has-kids' : 'flat'}" data-nav="${g.id}">
+      <div class="nav-group-header ${isCur && g.kids ? 'expanded' : ''}" aria-current="${!g.kids && isCur ? 'page' : 'false'}">
+        <span class="lbl">${g.kids ? '<span class="arrow">▶</span>' : ''}${g.title}${g.badge ? `<span class="nav-badge ${g.badgeCls || ''}">${g.badge}</span>` : ''}</span>
+      </div>${subs}
+    </div>`;
+  }).join('');
+}
+/* 内置设置的快捷键页 = 平铺表格（对标真实 KeybindingSettingsView：命令 | 快捷键 | 来源 | when 条件）。
+   三帧共用同一张表——快捷键是设置页内部 tab 的内容，不是主区标签、不是导航项。 */
+function kbTableHTML() {
+  const rows = [
+    ['打开设置', 'linkdesk.settings.open', 'Ctrl+,', '内置', '—'],
+    ['命令面板', 'linkdesk.commandPalette.toggle', 'Ctrl+Shift+P', '内置', '—'],
+    ['打开文件', 'linkdesk.fileTree.openFile', 'Ctrl+O', '内置', '—'],
+    ['关闭标签页', 'linkdesk.tabs.close', 'Ctrl+W', '用户', 'editorFocus'],
+  ];
+  return `<div class="kb-search-bar">
+      <span class="kb-search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+      <input class="kb-search-input" placeholder="搜索快捷键">
+    </div>
+    <div class="kb-table">
+      <div class="kb-header"><span>命令</span><span>快捷键</span><span>来源</span><span>when 条件</span></div>
+      ${rows.map(([title, cmd, key, src, when]) => `
+        <div class="kb-row">
+          <div class="kb-col-command"><div>${title}</div><div class="kb-col-command-id">${cmd}</div></div>
+          <div class="kb-col-key-cell">
+            <span class="kb-col-key">${key}</span>
+            ${src === '用户' ? `<button class="kb-gear" title="重置为默认">⚙</button>` : ''}
+          </div>
+          <div class="kb-col-source">${src}</div>
+          <div class="kb-col-when">${when}</div>
+        </div>`).join('')}
+    </div>`;
+}
+
+/* ════════════════════════════════════════════════════════════
+   帧 1：串口监视器（4 插件）
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  const ICONS = {
+    standard: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-standard)" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg>',
+    light: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-light)" stroke-width="1.8"><path d="M12 4v6M12 10l7-5M12 10l-7-5M12 20v-5M12 15l6 3M12 15l-6 3" stroke-linecap="round"/></svg>',
+    minimal: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-minimal)" stroke-width="1.8"><circle cx="12" cy="12" r="2.4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke-linecap="round"/></svg>',
+  };
+  const CAND = {
+    standard: { name: '标准版', src: '内置', config: [
+      { label: '状态栏连接灯', desc: '状态栏显示连接状态指示灯', type: 'tgl', val: false, mod: true },
+      { label: '关闭时提示', desc: '有活动连接时关闭标签页需确认', type: 'tgl', val: false },
+      { label: '默认波特率', desc: '新建连接的默认波特率', type: 'sel', opts: ['9600', '115200', '460800'], val: '115200' },
+    ]},
+    light: { name: '轻量版', src: '下载', config: [
+      { label: '开机自动连接', desc: '启动软件后自动打开上次的连接', type: 'tgl', val: true, mod: true },
+      { label: '显示时间戳', desc: '接收区每行前缀时间戳', type: 'tgl', val: false },
+      { label: '通知音', desc: '收到数据时播放提示音', type: 'tgl', val: false },
+    ]},
+    minimal: { name: '极简版', src: '下载', config: [
+      { label: '自动重连', desc: '连接断开后自动尝试重连', type: 'tgl', val: true },
+      { label: '仅显示接收', desc: '隐藏发送区，只留接收视图', type: 'tgl', val: false },
+    ]},
+  };
+  let activeKey = 'standard';
+
+  function serialPage() {
+    return `<div class="main-title">串口监视器</div>
+      <div class="section-title">3 套同角色插件（<code>factoryRole:"serial-monitor"</code>）· 形态二——<b>复用内置同名「串口监视器」配置组</b>，切换条直接进这个组</div>
+      <div class="role-card">
+        <div class="role-head">
+          <span class="role-name">角色槽位</span><span class="role-tag form2">形态二 · 替换</span>
+          <span class="sp"></span><span class="role-note">组属角色所有 · 切换按钮在顶 · 激活套配置在下</span>
+        </div>
+        <div class="switch-row">
+          ${Object.entries(CAND).map(([k, c]) => `
+            <button class="switch-btn s1-sw${k === activeKey ? ' active' : ''}" data-key="${k}" type="button">
+              <span class="p-ic">${ICONS[k]}</span>${c.name}<span class="p-src">· ${c.src}</span></button>`).join('')}
+        </div>
+        <div class="role-hint">切换 = 只换候选。特殊版（形态一）不在此列——<span class="x">它并排共存在左侧图标栏，此处不参与切换</span>。</div>
+      </div>
+      <div class="act-card" id="s1ActCard"></div>`;
+  }
+
+  function renderAct() {
+    const c = CAND[activeKey];
+    document.getElementById('s1ActCard').innerHTML = `
+      <div class="act-head">
+        <span class="p-ic">${ICONS[activeKey]}</span>
+        <span class="act-name">${c.name}</span><span class="act-src">· ${c.src}套 · 当前激活</span>
+        <span class="sp"></span><span class="act-switch-label">配置来自激活套</span>
+      </div>${rowHTML(c.config)}`;
+  }
+
+  function render() {
+    document.getElementById('s1Nav').innerHTML = navHTML([
+      { id: 'general', title: '通用', kids: ['主题', '语言'] },
+      { id: 'serial', title: '串口监视器' },
+      { id: 'special', title: '串口特殊版', badge: '形态一', badgeCls: 'f1' },
+    ], 'serial');
+    document.getElementById('s1Form').innerHTML = serialPage();
+    renderAct();
+    document.querySelectorAll('.s1-sw').forEach(b => b.addEventListener('click', () => {
+      activeKey = b.dataset.key;
+      document.querySelectorAll('.s1-sw').forEach(x => x.classList.toggle('active', x.dataset.key === activeKey));
+      renderAct();
+      document.getElementById('s1SlotIcon').innerHTML = ICONS[activeKey];
+      document.getElementById('s1StActive').textContent = `${CAND[activeKey].name}（${CAND[activeKey].src}）`;
+    }));
+  }
+  document.getElementById('s1SlotIcon').innerHTML = ICONS.standard;
+  render();
+  // 设置页内部双 tab：设置 / 快捷键——快捷键是设置的一部分，不是主区标签、不是导航项
+  (function initKb() {
+    const bar = document.getElementById('s1KbBar');
+    const setPane = document.getElementById('s1SettingsPane');
+    const kbPane = document.getElementById('s1KbPane');
+    kbPane.innerHTML = kbTableHTML();
+    bar.querySelectorAll('.kb-tab').forEach(bt => bt.addEventListener('click', () => {
+      const isKb = bt.dataset.bt === 'keybindings';
+      setPane.hidden = isKb;
+      kbPane.hidden = !isKb;
+      bar.querySelectorAll('.kb-tab').forEach(x => x.classList.toggle('active', x.dataset.bt === bt.dataset.bt));
+    }));
+  })();
+})();
+
+/* ════════════════════════════════════════════════════════════
+   帧 2：插件市场（没有才新建组 + 空配置）
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  const ICONS = {
+    official: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+    fancy: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-light)" stroke-width="1.8"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z" opacity=".9"/><circle cx="12" cy="12" r="2"/></svg>',
+  };
+  const CAND = {
+    official: { name: '官方市场', src: '内置' },
+    fancy: { name: '漂亮市场', src: '下载' },
+  };
+  let activeKey = 'official';
+
+  function marketPage() {
+    return `<div class="main-title">插件市场</div>
+      <div class="section-title">2 套同角色插件（<code>factoryRole:"marketplace"</code>）· 形态二——本组是<b>自动新建</b>的（没有才新建）：市场插件<b>不贡献配置组</b>，没有同名组可复用</div>
+      <div class="role-card">
+        <div class="role-head">
+          <span class="role-name">角色槽位</span><span class="role-tag form2">形态二 · 替换</span>
+          <span class="sp"></span><span class="role-note">切换后图标栏市场槽 / 打开哪个市场，都随激活套走</span>
+        </div>
+        <div class="switch-row">
+          ${Object.entries(CAND).map(([k, c]) => `
+            <button class="switch-btn s2-sw${k === activeKey ? ' active' : ''}" data-key="${k}" type="button">
+              <span class="p-ic">${ICONS[k]}</span>${c.name}<span class="p-src">· ${c.src}</span></button>`).join('')}
+        </div>
+        <div class="role-hint">切换 = 只换候选。极客市场（形态一）不在此列——<span class="x">它并排共存在左侧图标栏，此处不参与切换</span>。</div>
+      </div>
+      <div class="act-head" style="margin-top:14px;">
+        <span class="p-ic" id="s2ActIc"></span>
+        <span class="act-name" id="s2ActNm"></span><span class="act-src"> · 当前激活</span>
+        <span class="sp"></span><span class="act-switch-label">配置来自激活套</span>
+      </div>
+      <div class="empty-state"><b>此套无配置项</b>——插件市场当前没有设置选项（2026-08-21 假设）。<br>未来 float 模式若给市场加设置项，这一区即出现配置行。</div>`;
+  }
+
+  function render() {
+    document.getElementById('s2Nav').innerHTML = navHTML([
+      { id: 'general', title: '通用', kids: ['主题', '语言'] },
+      { id: 'market', title: '插件市场', badge: '没有才新建', badgeCls: 'new' },
+      { id: 'serial', title: '串口监视器' },
+    ], 'market');
+    document.getElementById('s2Form').innerHTML = marketPage();
+    sync();
+    document.querySelectorAll('.s2-sw').forEach(b => b.addEventListener('click', () => {
+      activeKey = b.dataset.key;
+      document.querySelectorAll('.s2-sw').forEach(x => x.classList.toggle('active', x.dataset.key === activeKey));
+      sync();
+    }));
+  }
+  function sync() {
+    document.getElementById('s2ActIc').innerHTML = ICONS[activeKey];
+    document.getElementById('s2ActNm').textContent = CAND[activeKey].name;
+    document.getElementById('s2SlotIcon').innerHTML = ICONS[activeKey];
+    document.getElementById('s2StActive').textContent = `${CAND[activeKey].name}（${CAND[activeKey].src}）`;
+  }
+  render();
+  // 设置页内部双 tab：设置 / 快捷键——快捷键是设置的一部分，不是主区标签、不是导航项
+  (function initKb() {
+    const bar = document.getElementById('s2KbBar');
+    const setPane = document.getElementById('s2SettingsPane');
+    const kbPane = document.getElementById('s2KbPane');
+    kbPane.innerHTML = kbTableHTML();
+    bar.querySelectorAll('.kb-tab').forEach(bt => bt.addEventListener('click', () => {
+      const isKb = bt.dataset.bt === 'keybindings';
+      setPane.hidden = isKb;
+      kbPane.hidden = !isKb;
+      bar.querySelectorAll('.kb-tab').forEach(x => x.classList.toggle('active', x.dataset.bt === bt.dataset.bt));
+    }));
+  })();
+})();
+
+/* ════════════════════════════════════════════════════════════
+   帧 3：设置（切换入口本身就是设置——但它在设置插件的 UI 里，
+   壳只注入「全部 N 个入口」数据，位置/格式/风格是插件自己画的）
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  const ICONS = {
+    builtin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>',
+    fancy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z"/></svg>',
+  };
+  const STATES = {
+    builtin: {
+      name: '内置设置', src: '内置',
+      groups: [
+        { id: 'general', title: '通用', kids: ['主题', '语言'] },
+        { id: 'serial', title: '串口监视器' },
+      ],
+      page: () => `<div class="main-title">通用</div>
+        <div class="section-title">内置设置（<code>factoryRole:"settings"</code>）· 默认激活套</div>
+        <div class="section-block-header">外观</div>
+        ${rowHTML([
+          { label: 'app.theme', desc: '选择界面配色主题', type: 'sel', opts: ['深色', '浅色', '琥珀高对比'], val: '深色', mod: true },
+          { label: 'app.accentColor', desc: '自定义强调色值', type: 'text', val: '#0078d4' },
+          { label: '界面字体大小', desc: '13px', type: 'sel', opts: ['12px', '13px', '14px', '15px'], val: '13px', mod: true },
+        ])}
+        <div class="section-block-header">语言</div>
+        ${rowHTML([{ label: 'app.language', desc: '界面显示语言', type: 'sel', opts: ['中文', 'English'], val: '中文' }])}`,
+    },
+    fancy: {
+      name: '漂亮设置', src: '下载',
+      cards: [
+        { head: '🎨 外观', rows: [
+          { label: '主题风格', desc: '卡片式浅色渐变', type: 'sel', opts: ['卡片深色', '卡片浅色'], val: '卡片深色', mod: true },
+          { label: '强调色', desc: '自定义强调色值', type: 'text', val: '#9A8BFF' },
+        ]},
+        { head: '🔔 通知', rows: [
+          { label: '更新通知', desc: '有版本更新时弹通知', type: 'tgl', val: true, mod: true },
+          { label: '声音', desc: '通知播放提示音', type: 'tgl', val: false },
+        ]},
+        { head: '⌨️ 快捷键', kb: true },
+        { head: '📊 数据', rows: [
+          { label: '数据目录', desc: '用户数据保存位置', type: 'text', val: '%APPDATA%/linkdesk' },
+        ]},
+        { head: '⚙️ 关于', rows: [
+          { label: '版本', desc: 'LinkDesk 0.9.0', type: 'text', val: '0.9.0' },
+        ]},
+      ],
+    },
+  };
+  let cur = 'builtin';
+  let btab = 'settings'; // 内置设置内部 tab：设置 / 快捷键
+
+  function switchBtns(cls) {
+    return Object.keys(STATES).map(k => `
+      <button class="${cls}${k === cur ? ' active' : ''}" data-st="${k}" type="button">
+        <span class="p-ic">${ICONS[k]}</span>${STATES[k].name}<span class="p-src">· ${STATES[k].src}</span></button>`).join('');
+  }
+
+  // 漂亮的快捷键页 = 插件作者自己画（分区卡片 + 键帽胶囊——同一份数据，不走平铺表格）。
+  // 内置的平铺表格在共享作用域 kbTableHTML()——三帧同一张表。
+  function kbChipsHTML() {
+    const chips = [
+      ['打开设置', ['Ctrl', ',']],
+      ['命令面板', ['Ctrl', 'Shift', 'P']],
+      ['打开文件', ['Ctrl', 'O']],
+      ['关闭标签页', ['Ctrl', 'W']],
+    ];
+    return chips.map(([name, keys]) => `
+      <div class="kb-chip-row">
+        <span class="kb-chip-cmd">${name}</span>
+        <span class="fancy-key">${keys.map(k => `<span class="keycap">${k}</span>`).join('')}</span>
+      </div>`).join('');
+  }
+
+  function renderBuiltin() {
+    const s = STATES.builtin;
+    const settingsPane = `<div class="settings-pane">
+      <div class="search-bar">
+        <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+        <input class="search-input" placeholder="搜索设置">
+        <button class="json-btn">JSON</button>
+      </div>
+      <div class="set-body"><nav class="nav" id="s3Nav"></nav><div class="form" id="s3Form"></div></div>
+    </div>`;
+    const kbPane = `<div class="kb-pane">${kbTableHTML()}</div>`;
+    document.getElementById('s3Content').innerHTML = `<div class="set-wrap">
+      <div class="gen-area">
+        <span class="gen-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="12" height="12"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>通用区</span>
+        <span class="gen-tag">设置套切换 · 内置画的</span>
+        <div class="gen-switch-row" id="s3GenRow"></div>
+        <span class="gen-note">内置把切换入口画在顶部条——这只是这一套 UI 的选择，不是壳规定的</span>
+      </div>
+      <div class="kb-tabbar">
+        <button class="kb-tab${btab === 'settings' ? ' active' : ''}" data-bt="settings" type="button">设置</button>
+        <button class="kb-tab${btab === 'keybindings' ? ' active' : ''}" data-bt="keybindings" type="button">快捷键</button>
+      </div>
+      ${btab === 'settings' ? settingsPane : kbPane}
+    </div>`;
+    document.getElementById('s3GenRow').innerHTML = switchBtns('gen-switch-btn');
+    if (btab === 'settings') {
+      document.getElementById('s3Nav').innerHTML = navHTML(s.groups, s.groups[0].id);
+      document.getElementById('s3Form').innerHTML = s.page();
+    }
+    wire('#s3GenRow .gen-switch-btn');
+    document.querySelectorAll('#s3Content .kb-tab').forEach(bt => bt.addEventListener('click', () => {
+      const next = bt.dataset.bt;
+      if (next === btab) return;
+      btab = next;
+      renderBuiltin();
+    }));
+    document.getElementById('s3StRight').innerHTML = btab === 'settings'
+      ? `激活设置套：<span class="slot-name">内置设置</span> · 切换入口 = 顶部通用区条`
+      : `激活设置套：<span class="slot-name">内置设置</span> · 正在看快捷键子页`;
+  }
+
+  function renderFancy() {
+    const s = STATES.fancy;
+    document.getElementById('s3Content').innerHTML = `<div class="set-wrap fancy">
+      <div class="fancy-header">
+        <span class="fancy-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z"/></svg></span>
+        <span class="fancy-title">漂亮设置</span><span class="fancy-sub">· 第三方整套软件设置 UI</span>
+        <span style="flex:1"></span>
+        <span class="fancy-sub">切换入口在右下角胶囊——不在顶部了</span>
+      </div>
+      <div class="fancy-cards">
+        ${s.cards.map(c => c.kb
+          ? `<div class="fancy-card"><div class="fancy-card-head">${c.head}</div>${kbChipsHTML()}<div class="fancy-kb-note">同一份快捷键数据——插件作者自己画（分区/胶囊，不走平铺表格）</div></div>`
+          : `<div class="fancy-card"><div class="fancy-card-head">${c.head}</div>${rowHTML(c.rows)}</div>`).join('')}
+      </div>
+      <div class="fancy-switch">
+        <span class="fs-label">设置套切换</span>
+        <div id="s3FancyBtns"></div>
+      </div>
+    </div>`;
+    document.getElementById('s3FancyBtns').innerHTML = switchBtns('fs-btn');
+    wire('#s3FancyBtns .fs-btn');
+    document.getElementById('s3StRight').innerHTML = `激活设置套：<span class="slot-name">漂亮设置</span> · 切换入口 = 右下角胶囊`;
+  }
+
+  function wire(sel) {
+    document.querySelectorAll(sel).forEach(b => b.addEventListener('click', () => {
+      const next = b.dataset.st;
+      if (next === cur) return; // 点自身 = 已在
+      cur = next;
+      render();
+    }));
+  }
+
+  function render() {
+    const st = document.getElementById('s3Status');
+    if (cur === 'builtin') {
+      st.classList.remove('fancy');
+      renderBuiltin();
+    } else {
+      st.classList.add('fancy');
+      renderFancy();
+    }
+  }
+
+  render();
+})();
+
+/* ════════════════════════════════════════════════════════════
+   帧 4：组合——③+①+② 同屏一页。
+   内置设置页同时画三条角色切换条：顶部通用区（设置套）+ 左侧「串口监视器」组（复用同名组 3 候选）+「插件市场」组（没有才新建 2 候选）。
+   换设置套 → 连角色组的呈现方式一起换（内置导航组 ⇄ 漂亮卡片胶囊）。
+   ════════════════════════════════════════════════════════════ */
+(function () {
+  const ICONS = {
+    builtin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>',
+    fancy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z"/></svg>',
+    standard: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-standard)" stroke-width="1.8"><rect x="4" y="5" width="16" height="12" rx="2"/><path d="M9 17v3M15 17v3M12 17v2"/><path d="m9 9 6 4M15 9l-6 4" opacity=".55"/></svg>',
+    light: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-light)" stroke-width="1.8"><path d="M12 4v6M12 10l7-5M12 10l-7-5M12 20v-5M12 15l6 3M12 15l-6 3" stroke-linecap="round"/></svg>',
+    minimal: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-minimal)" stroke-width="1.8"><circle cx="12" cy="12" r="2.4"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3" stroke-linecap="round"/></svg>',
+    official: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="1.8"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg>',
+    fancyMkt: '<svg viewBox="0 0 24 24" fill="none" stroke="var(--c-light)" stroke-width="1.8"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z" opacity=".9"/><circle cx="12" cy="12" r="2"/></svg>',
+  };
+  const SERIAL = {
+    standard: { name: '标准版', src: '内置', config: [
+      { label: '状态栏连接灯', desc: '状态栏显示连接状态指示灯', type: 'tgl', val: false, mod: true },
+      { label: '关闭时提示', desc: '有活动连接时关闭标签页需确认', type: 'tgl', val: false },
+      { label: '默认波特率', desc: '新建连接的默认波特率', type: 'sel', opts: ['9600', '115200', '460800'], val: '115200' },
+    ]},
+    light: { name: '轻量版', src: '下载', config: [
+      { label: '开机自动连接', desc: '启动软件后自动打开上次的连接', type: 'tgl', val: true, mod: true },
+      { label: '显示时间戳', desc: '接收区每行前缀时间戳', type: 'tgl', val: false },
+    ]},
+    minimal: { name: '极简版', src: '下载', config: [
+      { label: '自动重连', desc: '连接断开后自动尝试重连', type: 'tgl', val: true },
+    ]},
+  };
+  const MARKET = {
+    official: { name: '官方市场', src: '内置' },
+    fancy: { name: '漂亮市场', src: '下载' },
+  };
+  let suite = 'builtin';   // 设置套：内置设置 / 漂亮设置
+  let sbt = 'settings';    // 内置设置内部 tab：设置 / 快捷键
+  let navSel = 'serial';   // 左侧导航选中组：通用 / 串口监视器 / 串口特殊版 / 插件市场
+  let serialKey = 'standard';
+  let mktKey = 'official';
+
+  function suiteBtns(cls) {
+    return ['builtin', 'fancy'].map(k => `
+      <button class="${cls}${k === suite ? ' active' : ''}" data-suite="${k}" type="button">
+        <span class="p-ic">${ICONS[k]}</span>${k === 'builtin' ? '内置设置' : '漂亮设置'}<span class="p-src">· ${k === 'builtin' ? '内置' : '下载'}</span></button>`).join('');
+  }
+  function serialBtns(cls) {
+    return Object.entries(SERIAL).map(([k, c]) => `
+      <button class="${cls}${k === serialKey ? ' active' : ''}" data-sk="${k}" type="button">
+        <span class="p-ic">${ICONS[k]}</span>${c.name}<span class="p-src">· ${c.src}</span></button>`).join('');
+  }
+  function mktBtns(cls) {
+    return Object.entries(MARKET).map(([k, c]) => `
+      <button class="${cls}${k === mktKey ? ' active' : ''}" data-mk="${k}" type="button">
+        <span class="p-ic">${ICONS[k]}</span>${c.name}<span class="p-src">· ${c.src}</span></button>`).join('');
+  }
+
+  function generalCard() {
+    return `<div class="main-title">通用</div>
+      <div class="section-title">内置设置（<code>factoryRole:"settings"</code>）· 默认激活套</div>
+      <div class="section-block-header">外观</div>
+      ${rowHTML([
+        { label: 'app.theme', desc: '选择界面配色主题', type: 'sel', opts: ['深色', '浅色', '琥珀高对比'], val: '深色', mod: true },
+        { label: 'app.accentColor', desc: '自定义强调色值', type: 'text', val: '#0078d4' },
+      ])}
+      <div class="section-block-header">语言</div>
+      ${rowHTML([{ label: 'app.language', desc: '界面显示语言', type: 'sel', opts: ['中文', 'English'], val: '中文' }])}`;
+  }
+  function serialCard() {
+    return `<div class="main-title">串口监视器</div>
+      <div class="section-title">形态二 · 复用同名组（3 套候选 <code>factoryRole:"serial-monitor"</code>）——内置串口监视器本就贡献「串口监视器」配置组，切换条<b>直接进组不新建</b></div>
+      <div class="role-card">
+        <div class="role-head">
+          <span class="role-name">串口监视器角色槽位</span><span class="role-tag form2">形态二 · 替换</span>
+          <span class="sp"></span><span class="role-note">组属角色所有 · 切换按钮在顶 · 激活套配置在下</span>
+        </div>
+        <div class="switch-row">${serialBtns('switch-btn s4-serial')}</div>
+        <div class="role-hint">与顶部通用区是<b>同一个槽位机制</b>——通用区是「设置」角色（特殊），这里是「串口监视器」角色（常规）。<span class="x">特殊版（形态一）不在此列，图标常在左侧</span>。</div>
+      </div>
+      <div class="act-card" id="s4SerialAct"></div>`;
+  }
+  function specialCard() {
+    return `<div class="main-title">串口特殊版</div>
+      <div class="section-title">形态一 · 并存（不声明 <code>factoryRole</code>）——自己的图标自己的配置，不进任何切换</div>
+      ${rowHTML([
+        { label: '精简界面', desc: '隐藏非核心控件', type: 'tgl', val: true, mod: true },
+        { label: '仅接收', desc: '默认只显示接收视图', type: 'tgl', val: false },
+      ])}`;
+  }
+  function marketCard() {
+    return `<div class="main-title">插件市场</div>
+      <div class="section-title">形态二 · 没有才新建（2 套候选 <code>factoryRole:"marketplace"</code>）——市场插件不贡献配置组，本组是<b>自动新建</b>的</div>
+      <div class="role-card">
+        <div class="role-head">
+          <span class="role-name">插件市场角色槽位</span><span class="role-tag form2">形态二 · 替换</span>
+          <span class="sp"></span><span class="role-note">组属角色所有 · 切换按钮在顶 · 激活套配置在下</span>
+        </div>
+        <div class="switch-row">${mktBtns('switch-btn s4-mkt')}</div>
+        <div class="role-hint">切换 = 只换候选。<span class="x">极客市场（形态一）不在此列，图标常在左侧</span>。</div>
+      </div>
+      <div class="act-head" style="margin-top:14px;">
+        <span class="p-ic" id="s4MktActIc"></span>
+        <span class="act-name" id="s4MktActNm"></span><span class="act-src"> · 当前激活</span>
+        <span class="sp"></span><span class="act-switch-label">配置来自激活套</span>
+      </div>
+      <div class="empty-state"><b>此套无配置项</b>——插件市场当前没有设置选项。<br>未来 float 模式若给市场加设置项，这一区即出现配置行。</div>`;
+  }
+
+  function renderSerialAct() {
+    const c = SERIAL[serialKey];
+    document.getElementById('s4SerialAct').innerHTML = `
+      <div class="act-head">
+        <span class="p-ic">${ICONS[serialKey]}</span>
+        <span class="act-name">${c.name}</span><span class="act-src">· ${c.src}套 · 当前激活</span>
+        <span class="sp"></span><span class="act-switch-label">配置来自激活套</span>
+      </div>${rowHTML(c.config)}`;
+  }
+  function status4() {
+    const set = suite === 'builtin' ? '内置设置' : '漂亮设置';
+    document.getElementById('s4StRight').innerHTML = `设置套：<span class="slot-name">${set}</span> · 串口套：<span class="slot-name">${SERIAL[serialKey].name}</span> · 市场套：<span class="slot-name">${MARKET[mktKey].name}</span>`;
+  }
+
+  function renderBuiltin() {
+    const genArea = `<div class="gen-area">
+      <span class="gen-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" width="12" height="12"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg>通用区</span>
+      <span class="gen-tag">设置套切换 · 设置角色</span>
+      <div class="gen-switch-row" id="s4SuiteRow"></div>
+      <span class="gen-note">设置这个角色：切换入口本身就是设置——整个 UI 含此区都是设置插件画的（内置顶部条 ⇄ 漂亮右下角胶囊）</span>
+    </div>`;
+    const settingsPane = `<div class="settings-pane">
+      <div class="search-bar">
+        <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="13" height="13"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></span>
+        <input class="search-input" placeholder="搜索设置">
+        <button class="json-btn">JSON</button>
+      </div>
+      <div class="set-body"><nav class="nav" id="s4Nav"></nav><div class="form" id="s4Form"></div></div>
+    </div>`;
+    const kbPane = `<div class="kb-pane">${kbTableHTML()}</div>`;
+    document.getElementById('s4Content').innerHTML = `<div class="set-wrap">
+      ${genArea}
+      <div class="kb-tabbar">
+        <button class="kb-tab${sbt === 'settings' ? ' active' : ''}" data-bt="settings" type="button">设置</button>
+        <button class="kb-tab${sbt === 'keybindings' ? ' active' : ''}" data-bt="keybindings" type="button">快捷键</button>
+      </div>
+      ${sbt === 'settings' ? settingsPane : kbPane}
+    </div>`;
+    document.getElementById('s4SuiteRow').innerHTML = suiteBtns('gen-switch-btn');
+    if (sbt === 'settings') {
+      document.getElementById('s4Nav').innerHTML = navHTML([
+        { id: 'general', title: '通用', kids: ['主题', '语言'] },
+        { id: 'serial', title: '串口监视器', badge: '3 候选', badgeCls: 'new' },
+        { id: 'special', title: '串口特殊版', badge: '形态一', badgeCls: 'f1' },
+        { id: 'market', title: '插件市场', badge: '2 候选', badgeCls: 'new' },
+      ], navSel);
+      document.getElementById('s4Form').innerHTML = {
+        general: generalCard, serial: serialCard, special: specialCard, market: marketCard,
+      }[navSel]();
+      if (navSel === 'serial') renderSerialAct();
+      if (navSel === 'market') {
+        document.getElementById('s4MktActIc').innerHTML = ICONS[mktKey];
+        document.getElementById('s4MktActNm').textContent = MARKET[mktKey].name;
+      }
+    }
+    wire4();
+    status4();
+  }
+
+  function renderFancy() {
+    document.getElementById('s4Content').innerHTML = `<div class="set-wrap fancy">
+      <div class="fancy-header">
+        <span class="fancy-logo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" width="15" height="15"><path d="M12 3l2.1 6.1 6.1 2.1-6.1 2.1L12 19.4l-2.1-6.1-6.1-2.1 6.1-2.1z"/></svg></span>
+        <span class="fancy-title">漂亮设置</span><span class="fancy-sub">· 第三方整套软件设置 UI</span>
+        <span style="flex:1"></span>
+        <span class="fancy-sub">角色组也随套换——串口监视器画成卡片胶囊，不走导航组</span>
+      </div>
+      <div class="fancy-cards">
+        <div class="fancy-card">
+          <div class="fancy-card-head">🔌 串口监视器 <span class="fancy-role-tag">形态二 · 3 候选</span></div>
+          <div class="fancy-serial-row">${serialBtns('fs-btn f4-fs')}</div>
+          <div class="fancy-kb-note">复用同名组——同一个「串口监视器」角色，漂亮设置自己画（胶囊横排）；图标栏串口槽位随切换换</div>
+        </div>
+        <div class="fancy-card">
+          <div class="fancy-card-head">🛒 插件市场 <span class="fancy-role-tag">形态二 · 2 候选</span></div>
+          <div class="fancy-serial-row">${mktBtns('fs-btn f4-fm')}</div>
+          <div class="fancy-kb-note">没有才新建——市场无配置组自动建组，漂亮也画自己的空状态；图标栏市场槽位随切换换</div>
+        </div>
+        <div class="fancy-card">
+          <div class="fancy-card-head">🎨 外观</div>
+          ${rowHTML([
+            { label: '主题风格', desc: '卡片式浅色渐变', type: 'sel', opts: ['卡片深色', '卡片浅色'], val: '卡片深色', mod: true },
+            { label: '强调色', desc: '自定义强调色值', type: 'text', val: '#9A8BFF' },
+          ])}
+        </div>
+        <div class="fancy-card">
+          <div class="fancy-card-head">⌨️ 快捷键 <span class="fancy-role-tag">设置页自己的子页</span></div>
+          <div class="fancy-kb-note">快捷键是设置的一部分——漂亮把同一份数据画成卡片（此处省略键帽明细，见帧③）</div>
+        </div>
+      </div>
+      <div class="fancy-switch">
+        <span class="fs-label">设置套切换</span>
+        <div id="s4FancyBtns"></div>
+      </div>
+    </div>`;
+    document.getElementById('s4FancyBtns').innerHTML = suiteBtns('fs-btn');
+    wire4();
+    status4();
+  }
+
+  function wire4() {
+    // 设置套切换：内置顶部条 / 漂亮右下角胶囊
+    document.querySelectorAll('#s4Content .gen-switch-btn, #s4Content .fancy-switch .fs-btn').forEach(b => b.addEventListener('click', () => {
+      const next = b.dataset.suite;
+      if (next && next !== suite) { suite = next; render(); }
+    }));
+    // 设置页内部 [设置|快捷键] tab（只有内置有）
+    document.querySelectorAll('#s4Content .kb-tab').forEach(bt => bt.addEventListener('click', () => {
+      const next = bt.dataset.bt;
+      if (next === sbt) return;
+      sbt = next;
+      renderBuiltin();
+    }));
+    // 左侧导航组点击切换（内置）
+    document.querySelectorAll('#s4Content .nav-group').forEach(g => g.addEventListener('click', () => {
+      const next = g.dataset.nav;
+      if (next && next !== navSel) { navSel = next; renderBuiltin(); }
+    }));
+    // 串口候选切换（内置 switch-btn / 漂亮胶囊）
+    document.querySelectorAll('#s4Content .s4-serial, #s4Content .f4-fs').forEach(b => b.addEventListener('click', () => {
+      serialKey = b.dataset.sk;
+      document.querySelectorAll('#s4Content .s4-serial, #s4Content .f4-fs').forEach(x => x.classList.toggle('active', x.dataset.sk === serialKey));
+      if (suite === 'builtin') renderSerialAct();
+      document.getElementById('s4SerialSlotIc').innerHTML = ICONS[serialKey];
+      status4();
+    }));
+    // 市场候选切换
+    document.querySelectorAll('#s4Content .s4-mkt, #s4Content .f4-fm').forEach(b => b.addEventListener('click', () => {
+      mktKey = b.dataset.mk;
+      document.querySelectorAll('#s4Content .s4-mkt, #s4Content .f4-fm').forEach(x => x.classList.toggle('active', x.dataset.mk === mktKey));
+      if (suite === 'builtin') {
+        document.getElementById('s4MktActIc').innerHTML = ICONS[mktKey];
+        document.getElementById('s4MktActNm').textContent = MARKET[mktKey].name;
+      }
+      document.getElementById('s4MktSlotIc').innerHTML = ICONS[mktKey];
+      status4();
+    }));
+  }
+
+  function render() {
+    const st = document.getElementById('s4Status');
+    if (suite === 'builtin') { st.classList.remove('fancy'); renderBuiltin(); }
+    else { st.classList.add('fancy'); renderFancy(); }
+  }
+
+  document.getElementById('s4SerialSlotIc').innerHTML = ICONS.standard;
+  document.getElementById('s4MktSlotIc').innerHTML = ICONS.official;
+  render();
+})();
+</script>
+</body>
+</html>

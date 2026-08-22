@@ -1,0 +1,728 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>E5.8 Phase 7 底部面板完形 —— 四帧 mockup（#34 拍板素材）</title>
+<style>
+  /* ============================================================
+     LinkDesk 设计 token（复制自 src/index.css :root 暗色主题——
+     mockup 仅示意，真实实现走 var(--xxx) + ThemeEngine）
+     字体：ui-ux-pro-max 指引 JetBrains Mono / IBM Plex Sans
+     （离线 mockup 回退 Segoe UI / Consolas）
+     ============================================================ */
+  :root {
+    --bg-window: #1E1E1E;
+    --bg-card: #2D2D2D;
+    --bg-status: #0078D4;
+    --bg-input: #3C3C3C;
+    --text-primary: #D4D4D4;
+    --text-secondary: #9D9D9D;
+    --text-muted: #8A8A8A;
+    --accent: #0078D4;
+    --accent-hover: #1A8CE8;
+    --border: #3C3C3C;
+    --separator: #474747;
+    --icon-active: #FFFFFF;
+    --icon-inactive: #858585;
+    --bg-titlebar: #252526;
+    --bg-icon-bar: #18181B;
+    --bg-side-panel: #1E1E22;
+    --bg-toolbar: #1E1E22;
+    --bg-dropdown: #3C3C3C;
+    --hover-overlay: rgba(255,255,255,0.06);
+    --tab-hover-bg: #353535;
+    --dirty-dot: #CCA700;
+    --sent-echo: #0078D4;
+    --received: #D4D4D4;
+    --status-connected: #4EC9B0;
+    --error: #E06C75;
+    --space-xs: 4px; --space-sm: 8px; --space-md: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #101013;
+    color: var(--text-primary);
+    font-family: "IBM Plex Sans", "Segoe UI", "Microsoft YaHei", system-ui, sans-serif;
+    font-size: 13px;
+    padding: 32px;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 32px;
+    max-width: 1900px;
+    margin: 0 auto;
+  }
+
+  h1 {
+    grid-column: 1 / -1;
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  h1 small { font-size: 13px; font-weight: 400; color: var(--text-muted); display: block; margin-top: 6px; line-height: 1.6; }
+
+  /* ---------- 帧容器 ---------- */
+  .frame {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    transition: border-color 200ms ease;
+  }
+  .frame:hover { border-color: var(--separator); }
+  .frame-caption {
+    padding: 10px 14px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+  }
+  .frame-caption b { font-size: 14px; }
+  .frame-caption .tag {
+    font-size: 11px;
+    color: var(--text-on-accent, #fff);
+    background: var(--accent);
+    border-radius: 3px;
+    padding: 1px 8px;
+    font-weight: 600;
+  }
+  .frame-caption .tag.b { background: #5f5f6e; }
+  .frame-caption span { color: var(--text-secondary); font-size: 12px; }
+  .frame-note {
+    padding: 8px 14px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted);
+    font-size: 12px;
+    line-height: 1.6;
+    background: #26262a;
+  }
+  .frame-note b { color: var(--text-secondary); }
+
+  /* ---------- 应用窗口骨架 ---------- */
+  .app {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    min-height: 460px;
+    background: var(--bg-window);
+    font-size: 12px;
+  }
+  .titlebar {
+    height: 28px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: center;
+    padding: 0 10px 0 12px;
+    gap: 8px;
+    user-select: none;
+  }
+  .titlebar .logo { width: 14px; height: 14px; flex: none; }
+  .titlebar .app-name { font-size: 12px; color: var(--text-secondary); }
+  .titlebar .drag { flex: 1; }
+  .win-btns { display: flex; gap: 2px; }
+  .win-btn {
+    width: 34px; height: 22px; border: none; background: transparent;
+    color: var(--text-secondary); border-radius: 3px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease;
+  }
+  .win-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+  .win-btn.close:hover { background: #c42b1c; color: #fff; }
+
+  .mid { flex: 1; display: flex; min-height: 0; }
+
+  .icon-bar {
+    width: 42px; flex: none;
+    background: var(--bg-icon-bar);
+    display: flex; flex-direction: column; align-items: center;
+    padding-top: 6px; gap: 2px;
+  }
+  .icon-btn {
+    width: 42px; height: 42px; border: none; background: transparent;
+    color: var(--icon-inactive);
+    display: flex; align-items: center; justify-content: center;
+    border-left: 2px solid transparent;
+    transition: color 150ms ease, background 150ms ease;
+  }
+  .icon-btn:hover { color: var(--text-primary); background: var(--hover-overlay); }
+  .icon-btn.active { color: var(--icon-active); border-left-color: var(--accent); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  .sidebar {
+    width: 200px; flex: none;
+    background: var(--bg-side-panel);
+    border-right: 1px solid var(--border);
+    display: flex; flex-direction: column;
+    font-size: 12px;
+  }
+  .sidebar-header {
+    padding: 8px 12px; color: var(--text-secondary);
+    letter-spacing: 0.06em; font-size: 11px;
+    text-transform: uppercase;
+  }
+  .tree-row {
+    display: flex; align-items: center; gap: 6px;
+    padding: 3px 12px; color: var(--text-primary);
+    font-family: "JetBrains Mono", Consolas, monospace; font-size: 11.5px;
+    transition: background 150ms ease;
+  }
+  .tree-row:hover { background: var(--hover-overlay); }
+  .tree-row .arrow { color: var(--text-muted); width: 12px; }
+  .tree-row svg { width: 13px; height: 13px; flex: none; color: var(--text-muted); }
+  .tree-row.selected { background: rgba(0,120,212,0.18); }
+
+  .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+
+  /* ---------- 标签栏（编辑器） ---------- */
+  .tabbar {
+    height: 32px; flex: none;
+    background: var(--bg-titlebar);
+    display: flex; align-items: stretch;
+    border-bottom: 1px solid var(--border);
+    overflow: hidden;
+  }
+  .tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 12px;
+    color: var(--text-secondary);
+    border-right: 1px solid var(--border);
+    border-top: 2px solid transparent;
+    background: transparent;
+    font-size: 12px;
+    position: relative;
+    transition: background 150ms ease;
+  }
+  .tab:hover { background: var(--tab-hover-bg); }
+  .tab.active { background: var(--bg-window); color: var(--text-primary); border-top-color: var(--accent); }
+  .tab .dirty { width: 7px; height: 7px; border-radius: 50%; background: var(--dirty-dot); flex: none; }
+
+  .editor {
+    flex: 1; min-height: 0;
+    background: var(--bg-window);
+    padding: 10px 16px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11.5px; line-height: 1.65;
+    overflow: hidden;
+  }
+  .code .kw { color: #569CD6; }
+  .code .fn { color: #DCDCAA; }
+  .code .str { color: #CE9178; }
+  .code .cm { color: #6A9955; }
+  .code .num { color: #B5CEA8; }
+  .code .ln { color: #464648; user-select: none; display: inline-block; width: 30px; text-align: right; margin-right: 14px; }
+
+  /* ---------- 底部面板（PanelZone 完形） ---------- */
+  .panel {
+    flex: none;
+    background: var(--bg-window);
+    border-top: 1px solid var(--separator);
+    display: flex; flex-direction: column;
+    height: 190px;
+  }
+  /* 顶部 4px 拖高手柄（I7-4：120-600 钳制 + 持久化） */
+  .panel-handle {
+    height: 4px; flex: none;
+    cursor: ns-resize;
+    background: transparent;
+    transition: background 150ms ease;
+  }
+  .panel-handle:hover { background: rgba(0,120,212,0.5); }
+
+  .panel-tabs {
+    height: 30px; flex: none;
+    background: var(--bg-toolbar);
+    display: flex; align-items: stretch;
+    padding: 0 6px 0 0;
+    position: relative;
+  }
+  .container-label {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 12px;
+    color: var(--text-muted);
+    font-size: 11px;
+    border-right: 1px solid var(--border);
+    letter-spacing: 0.03em;
+  }
+  .panel-tab {
+    display: flex; align-items: center; gap: 6px;
+    padding: 0 11px;
+    color: var(--text-secondary);
+    background: transparent;
+    border: none;
+    font-size: 12px;
+    position: relative;
+    transition: background 150ms ease;
+  }
+  .panel-tab:hover { background: var(--tab-hover-bg); color: var(--text-primary); }
+  .panel-tab.active { background: var(--bg-window); color: var(--text-primary); }
+  .panel-tab.active::before {
+    content: ""; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: var(--accent);
+  }
+  .badge {
+    background: var(--bg-input); color: var(--text-secondary);
+    border-radius: 8px; padding: 0 6px; font-size: 10.5px; line-height: 15px;
+  }
+  .panel-actions { margin-left: auto; display: flex; }
+  .panel-btn {
+    width: 28px; height: 100%;
+    border: none; background: transparent;
+    color: var(--text-secondary);
+    font-size: 16px; line-height: 1;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 150ms ease, color 150ms ease;
+  }
+  .panel-btn:hover { background: var(--hover-overlay); color: var(--text-primary); }
+
+  /* 容器切换器（版本 B——对标侧栏） */
+  .switcher {
+    display: flex; align-items: center; gap: 5px;
+    padding: 0 11px;
+    color: var(--text-primary);
+    background: var(--hover-overlay);
+    border: none; border-right: 1px solid var(--border);
+    font-size: 12px;
+    transition: background 150ms ease;
+  }
+  .switcher:hover { background: var(--tab-hover-bg); }
+  .switcher .chev { color: var(--text-muted); font-size: 10px; }
+
+  .dropdown {
+    position: absolute; top: 30px; left: 0;
+    width: 240px;
+    background: var(--bg-dropdown);
+    border: 1px solid var(--separator);
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    padding: 4px;
+    z-index: 10;
+  }
+  .dd-group { color: var(--text-muted); font-size: 11px; padding: 6px 10px 3px; letter-spacing: 0.05em; }
+  .dd-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    color: var(--text-primary);
+    border-radius: 4px;
+    transition: background 150ms ease;
+  }
+  .dd-item:hover { background: var(--hover-overlay); }
+  .dd-item .check { width: 14px; color: var(--accent); font-size: 12px; text-align: center; }
+  .dd-item .sub { color: var(--text-muted); font-size: 11px; margin-left: auto; }
+
+  .panel-body { flex: 1; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+  .log {
+    flex: 1; overflow: hidden;
+    padding: 6px 12px;
+    font-family: "JetBrains Mono", Consolas, monospace;
+    font-size: 11.5px; line-height: 1.75;
+  }
+  .log .ts { color: var(--text-muted); }
+  .log .ok { color: var(--status-connected); }
+  .log .tx { color: var(--sent-echo); }
+  .log .err { color: var(--error); }
+
+  /* 空态 */
+  .empty {
+    flex: 1;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+    gap: 6px;
+    color: var(--text-muted);
+  }
+  .empty .big { font-size: 13px; color: var(--text-secondary); }
+  .empty .mono { font-family: "JetBrains Mono", Consolas, monospace; font-size: 11px; }
+
+  /* 状态栏 */
+  .statusbar {
+    height: 22px; flex: none;
+    background: var(--bg-status);
+    color: #fff;
+    display: flex; align-items: center;
+    gap: 14px;
+    padding: 0 12px;
+    font-size: 11px;
+  }
+  .statusbar .right { margin-left: auto; opacity: 0.9; }
+
+  /* ---------- QuickPick（帧 4 覆盖层） ---------- */
+  .overlay {
+    position: relative; flex: 1; display: flex; flex-direction: column; min-height: 0;
+  }
+  .backdrop {
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.4);
+    display: flex; justify-content: center;
+    padding-top: 48px;
+    z-index: 5;
+  }
+  .quickpick {
+    width: 420px; height: fit-content;
+    background: var(--bg-dropdown);
+    border: 1px solid var(--separator);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .qp-input {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-primary);
+  }
+  .qp-input .gt { color: var(--accent); font-weight: 600; }
+  .qp-input .val { color: var(--text-muted); }
+  .qp-list { padding: 4px; }
+  .qp-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 5px 10px;
+    color: var(--text-primary);
+    border-radius: 4px;
+  }
+  .qp-item:hover, .qp-item.sel { background: var(--hover-overlay); }
+  .qp-item.sel { outline: 1px solid var(--accent); outline-offset: -1px; }
+  .qp-item .check { width: 14px; color: var(--accent); }
+  .qp-item .desc { margin-left: auto; color: var(--text-muted); font-size: 11px; }
+  .qp-foot {
+    padding: 5px 10px;
+    border-top: 1px solid var(--border);
+    color: var(--text-muted); font-size: 11px;
+  }
+  .qp-foot b { color: var(--text-secondary); }
+</style>
+</head>
+<body>
+
+<h1>E5.8 Phase 7 底部面板完形 —— 四帧 mockup
+  <small><b style="color:#4EC9B0">✅ 已拍板（2026-08-17 用户过目后拍）：#34 = B 下拉勾选（点名字切换 + 勾选显隐）；[+] = 单层切换列表。</b> A 版落选（帧 1 保留对照）。全部颜色走 LinkDesk token（var(--xxx)），面板高度 190px 示意（真实 120-600 钳制）。视图名「问题/输出/终端/待办清单」为示意——真实内容由插件 contributes.views 声明。</small>
+</h1>
+
+<!-- ============ 帧 1：版本 A —— 标签栏显容器名 ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">版本 A（落选）</span>
+    <b>标签栏显容器名（轻量）</b>
+    <span>容器名「面板」作为标签行首的静态标识，零新交互、零新状态</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active" title="资源管理器"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn" title="搜索"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn" title="扩展"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn" title="设置"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>src</div>
+        <div class="tree-row selected"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor.tsx</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>README.md</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+          <div class="tab">serial-monitor.tsx</div>
+          <div class="tab">README.md</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>&nbsp;&nbsp;<span class="fn">registerViews</span>(<span class="num">42</span>);</div>
+          <div><span class="ln">7</span>};</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 面板：版本 A ===== -->
+    <div class="panel">
+      <div class="panel-handle" title="拖高手柄（120-600 钳制）"></div>
+      <div class="panel-tabs">
+        <span class="container-label">面板 ▾</span>
+        <button class="panel-tab">问题 <span class="badge">3</span></button>
+        <button class="panel-tab active">输出</button>
+        <button class="panel-tab">终端</button>
+        <button class="panel-tab">待办清单</button>
+        <div class="panel-actions">
+          <button class="panel-btn" title="新建视图（QuickPick）">+</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="log">
+          <div><span class="ts">[12:01:03]</span> 插件已激活：<span class="ok">panel-demo</span></div>
+          <div><span class="ts">[12:01:05]</span> 视图注册完成：输出 / 待办清单</div>
+          <div><span class="ts">[12:01:09]</span> 串口 <span class="ok">COM3</span> 已打开 @115200</div>
+          <div><span class="ts">[12:01:12]</span> <span class="tx">→ AT+RST</span></div>
+          <div><span class="ts">[12:01:12]</span> <span class="tx">← OK</span></div>
+          <div><span class="ts">[12:01:15]</span> <span class="err">✗ 端口被占用：COM3（另一标签页已打开）</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">Ln 42, Col 7 · UTF-8 · <b>Ctrl+J</b> 切换面板</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>版本 A（落选——2026-08-17 用户拍 B）：</b>容器名以静态标签列在标签行首（「面板 ▾」无下拉行为），随活动视图所属容器变化——一行代码级成本，无新状态、无新交互面，但面板缺的「显隐入口」依旧没有。保留对照。</div>
+</div>
+
+<!-- ============ 帧 2：版本 B —— 切换器下拉（对标侧栏） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">版本 B（✅ 已拍板）</span>
+    <b>切换器下拉（对标侧栏）</b>
+    <span>点击容器名展开——点视图名切换 + 勾选显隐（下拉已展开状态示意）</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>src</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>serial-monitor.tsx</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>README.md</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+          <div class="tab">serial-monitor.tsx</div>
+          <div class="tab">README.md</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>&nbsp;&nbsp;<span class="fn">registerViews</span>(<span class="num">42</span>);</div>
+          <div><span class="ln">7</span>};</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 面板：版本 B（下拉展开态） ===== -->
+    <div class="panel">
+      <div class="panel-handle" title="拖高手柄（120-600 钳制）"></div>
+      <div class="panel-tabs">
+        <button class="switcher">▾ 面板 <span class="chev">⌄</span></button>
+        <button class="panel-tab">问题 <span class="badge">3</span></button>
+        <button class="panel-tab active">输出</button>
+        <button class="panel-tab">终端</button>
+        <button class="panel-tab">待办清单</button>
+        <div class="panel-actions">
+          <button class="panel-btn" title="新建视图（QuickPick）">+</button>
+        </div>
+
+        <div class="dropdown">
+          <div class="dd-group">面板</div>
+          <div class="dd-item"><span class="check">✓</span>输出 <span class="sub">panel-demo</span></div>
+          <div class="dd-item"><span class="check">&nbsp;</span>待办清单 <span class="sub">panel-demo</span></div>
+          <div class="dd-group">调试</div>
+          <div class="dd-item"><span class="check">&nbsp;</span>问题 <span class="sub">linter</span></div>
+          <div class="dd-item"><span class="check">&nbsp;</span>调用堆栈 <span class="sub">debugger</span></div>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="log">
+          <div><span class="ts">[12:01:03]</span> 插件已激活：<span class="ok">panel-demo</span></div>
+          <div><span class="ts">[12:01:05]</span> 视图注册完成：输出 / 待办清单</div>
+          <div><span class="ts">[12:01:09]</span> 串口 <span class="ok">COM3</span> 已打开 @115200</div>
+          <div><span class="ts">[12:01:12]</span> <span class="tx">→ AT+RST</span></div>
+          <div><span class="ts">[12:01:12]</span> <span class="tx">← OK</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">Ln 42, Col 7 · UTF-8 · <b>Ctrl+J</b> 切换面板</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>版本 B（✅ 2026-08-17 已拍板）：</b>容器名变成可点击切换器——<b>点视图名 = 切换激活；勾选 = 显示/隐藏</b>（对标侧栏 header 右键「视图」子菜单——E5#44d toggleViewVisibility 壳内现成，面板加入口即消费；隐藏持久化）。下拉按容器分组列全部视图；数据源 = ViewContainerService（#63.7 同源，零新注册面）。</div>
+</div>
+
+<!-- ============ 帧 3：空态（无贡献视图） ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag b">空态</span>
+    <b>无贡献视图</b>
+    <span>卸载全部 panel 贡献插件后（Ctrl+J no-op 不崩）</span>
+  </div>
+
+  <div class="app">
+    <div class="titlebar">
+      <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+      <span class="app-name">LinkDesk</span>
+      <span class="drag"></span>
+      <div class="win-btns">
+        <button class="win-btn">─</button>
+        <button class="win-btn">□</button>
+        <button class="win-btn close">✕</button>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="icon-bar">
+        <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+        <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+      </div>
+      <div class="sidebar">
+        <div class="sidebar-header">资源管理器</div>
+        <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+        <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+      </div>
+      <div class="main">
+        <div class="tabbar">
+          <div class="tab active"><span class="dirty"></span>main.ts</div>
+        </div>
+        <div class="editor code">
+          <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+          <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+          <div><span class="ln">3</span>&nbsp;</div>
+          <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+          <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+          <div><span class="ln">6</span>};</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ===== 面板：空态 ===== -->
+    <div class="panel">
+      <div class="panel-handle"></div>
+      <div class="panel-tabs">
+        <span class="container-label">面板 ▾</span>
+        <div class="panel-actions">
+          <button class="panel-btn" title="新建视图（QuickPick）">+</button>
+        </div>
+      </div>
+      <div class="panel-body">
+        <div class="empty">
+          <div class="big">暂无面板视图</div>
+          <div class="mono">插件声明 contributes.views location:"panel" 后自动出现在这里</div>
+          <div class="mono">（无贡献时 Ctrl+J no-op · [+] 仍可用）</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="statusbar">
+      <span>就绪</span>
+      <span class="right">Ln 42, Col 7 · UTF-8 · <b>Ctrl+J</b> 切换面板</span>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>空态决策：</b>占位文案 + 声明指路（#35 逐项过目项之一）。面板容器本身保留（拖高/持久化机制照常），只是无标签无内容。</div>
+</div>
+
+<!-- ============ 帧 4：[+] QuickPick 视图选择器 ============ -->
+<div class="frame">
+  <div class="frame-caption">
+    <span class="tag">[+] 选择器（✅ 已拍板单层）</span>
+    <b>QuickPick 视图选择器（#32）</b>
+    <span>复用 E5.7 QuickPick 桥（E5.7 #15 现成）——点击 [+] 弹出</span>
+  </div>
+
+  <div class="app">
+    <div class="overlay">
+      <div class="titlebar">
+        <svg class="logo" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="2.5" fill="#0078D4"/><rect x="5" y="5" width="6" height="6" rx="1" fill="#fff"/></svg>
+        <span class="app-name">LinkDesk</span>
+        <span class="drag"></span>
+        <div class="win-btns">
+          <button class="win-btn">─</button>
+          <button class="win-btn">□</button>
+          <button class="win-btn close">✕</button>
+        </div>
+      </div>
+      <div class="mid" style="flex:1">
+        <div class="icon-bar">
+          <button class="icon-btn active"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/></svg></button>
+          <button class="icon-btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8"/></svg></button>
+        </div>
+        <div class="sidebar">
+          <div class="sidebar-header">资源管理器</div>
+          <div class="tree-row"><span class="arrow">▾</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/></svg>linkdesk</div>
+          <div class="tree-row"><span class="arrow">&nbsp;</span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5h16M4 12h16M4 19h10"/></svg>main.ts</div>
+        </div>
+        <div class="main">
+          <div class="tabbar">
+            <div class="tab active"><span class="dirty"></span>main.ts</div>
+          </div>
+          <div class="editor code">
+            <div><span class="ln">1</span><span class="cm">// LinkDesk 壳入口——面板视图由插件声明贡献</span></div>
+            <div><span class="ln">2</span><span class="kw">import</span> { initShell } <span class="kw">from</span> <span class="str">"@src/core"</span>;</div>
+            <div><span class="ln">3</span>&nbsp;</div>
+            <div><span class="ln">4</span><span class="kw">const</span> <span class="fn">main</span> = <span class="kw">async</span> () =&gt; {</div>
+            <div><span class="ln">5</span>&nbsp;&nbsp;<span class="kw">await</span> <span class="fn">initShell</span>();</div>
+            <div><span class="ln">6</span>};</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- QuickPick 覆盖层 -->
+      <div class="backdrop">
+        <div class="quickpick">
+          <div class="qp-input"><span class="gt">&gt;</span><span class="val">选择要在面板显示的视图</span></div>
+          <div class="qp-list">
+            <div class="qp-item"><span class="check">✓</span>问题 <span class="desc">linter · 面板</span></div>
+            <div class="qp-item sel"><span class="check">&nbsp;</span>输出 <span class="desc">panel-demo · 面板</span></div>
+            <div class="qp-item"><span class="check">&nbsp;</span>终端 <span class="desc">terminal · 面板</span></div>
+            <div class="qp-item"><span class="check">&nbsp;</span>待办清单 <span class="desc">panel-demo · 面板</span></div>
+          </div>
+          <div class="qp-foot"><b>↑↓</b> 导航 · <b>Enter</b> 显示 · <b>Esc</b> 关闭</div>
+        </div>
+      </div>
+
+      <div class="statusbar" style="position:relative; z-index:6">
+        <span>就绪</span>
+        <span class="right">Ln 42, Col 7 · UTF-8 · <b>Ctrl+J</b> 切换面板</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="frame-note"><b>[+] 决策（✅ 2026-08-17 已拍板单层）：</b>数据源 = ViewContainerService.getViewContainers("panel") + getActiveViews 两级展平（#63.7 同源）；已显示项打勾；<b>含已隐藏视图——选中自动恢复可见</b>；仅 1 个贡献视图时列表长度 1 正常。选中 → 面板切到该视图（I7-3）。否决两级子页面——显隐管理归 B 下拉，两件事各管一个入口。</div>
+</div>
+
+</body>
+</html>

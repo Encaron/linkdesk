@@ -17,11 +17,14 @@ import { useEffect, useRef, useState } from "react";
 
 type IpcEventName = "serial-data" | "serial-stats" | "serial-system";
 
-/** 事件通道 → preload 注册器映射 */
-const EVENT_SUBSCRIBERS: Record<IpcEventName, (cb: (payload: any) => void) => () => void> = {
-  "serial-data":  (cb) => (window as any).linkdesk?.serial?.onData?.(cb) ?? (() => {}),
-  "serial-stats": (cb) => (window as any).linkdesk?.serial?.onStats?.(cb) ?? (() => {}),
-  "serial-system":(cb) => (window as any).linkdesk?.serial?.onSystem?.(cb) ?? (() => {}),
+/** 事件通道 → preload 注册器映射。E5.7#98：unknown 兜底——各通道 payload 形状不同，
+ *  消费方 useIpcEvent<T> 泛型自行窄化。
+ *  E5.8#28：serial 三通道载荷对象化（SerialDataPayload/SerialStatsPayload/SerialSystemPayload，
+ *  带 portName 路由键）——消费方 `useIpcEvent<SerialDataPayload>("serial-data", ...)` 取 payload.portName 过滤 */
+const EVENT_SUBSCRIBERS: Record<IpcEventName, (cb: (payload: unknown) => void) => () => void> = {
+  "serial-data":  (cb) => window.linkdesk?.serial?.onData?.(cb) ?? (() => {}),
+  "serial-stats": (cb) => window.linkdesk?.serial?.onStats?.(cb) ?? (() => {}),
+  "serial-system":(cb) => window.linkdesk?.serial?.onSystem?.(cb) ?? (() => {}),
 };
 
 /**
@@ -40,10 +43,11 @@ export function useIpcEvent<T = string>(
     const gen = ++genRef.current;
     let unsubscribe: (() => void) | undefined;
 
-    const hasIpc = !!(window as any).linkdesk?.serial;
+    const hasIpc = !!window.linkdesk?.serial;
     const subscribe = EVENT_SUBSCRIBERS[eventName];
-    unsubscribe = subscribe((payload: T) => {
-      if (genRef.current === gen) callbackRef.current(payload);
+    // wire 是 unknown——消费方声明的 T 在此边界窄化（E5.7#98）
+    unsubscribe = subscribe((payload: unknown) => {
+      if (genRef.current === gen) callbackRef.current(payload as T);
     });
     if (hasIpc) {
       setIsReady(true);
@@ -59,11 +63,3 @@ export function useIpcEvent<T = string>(
   return { isReady };
 }
 
-/**
- * state 模式——只保留最新 payload。
- */
-export function useIpcEventState<T = string>(eventName: IpcEventName) {
-  const [data, setData] = useState<T | null>(null);
-  const { isReady } = useIpcEvent<T>(eventName, (payload) => setData(payload));
-  return { data, isReady };
-}
