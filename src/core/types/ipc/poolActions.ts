@@ -88,3 +88,21 @@ export interface TabBarRectsPayload {
   windowId: string;
   rects: TabBarViewportRect[];
 }
+
+/** E5.8#44-C：拖拽位置上报载荷——池拖出手势（拎起后 mousemove 全程）上报，壳排除源窗转 screen 吸附命中检测。
+ *  坐标 = 屏幕坐标（e.screenX/screenY——窗口 bounds 同为屏幕坐标，可直接命中）。canceled = Esc 取消（keydown 无坐标）。 */
+export interface TabDragPositionPayload {
+  tabId: string;
+  screenX: number;
+  screenY: number;
+  /** Esc 取消拖拽——壳清吸附提示（keydown 无坐标，仅置标志；screenX/screenY 填 0） */
+  canceled?: boolean;
+}
+
+/** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */
+export type ShellTabDragPosition = TabDragPositionPayload & { sourceWindowId: string };
+
+/** 壳→池：吸附提示载荷——目标窗 TabBar 高亮（groupId 命中）/ 清除（groupId null = 无吸附目标，清光） */
+export interface AdsorbHintPayload {
+  groupId: string | null;
+}

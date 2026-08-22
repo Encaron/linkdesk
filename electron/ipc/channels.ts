@@ -156,6 +156,10 @@ export const IPC = {
     windowBoundsChanged: 'pool:window-bounds-changed',
     // E5.8#44-B：池→壳 TabBar viewport rects 上报（吸附/释放并窗命中检测数据源——窗口 bounds 壳已掌握，视口 rect 转 screen 壳做）
     tabBarRects: 'pool:tabbar-rects',
+    // E5.8#44-C：池→壳 拖拽位置上报（拎起后 mousemove 全程——壳排除源窗命中检测：窗内自然清提示，窗外命中目标窗 TabBar 高亮）
+    dragPosition: 'pool:drag-position',
+    // E5.8#44-C：壳→池 吸附提示（目标窗 TabBar 高亮/清除——按 windowId 定向推送）
+    adsorbHint: 'pool:adsorb-hint',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',
