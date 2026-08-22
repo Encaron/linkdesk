@@ -81,8 +81,12 @@ export class WindowManager {
   // E5.6#5 → E5.7#4：单Pool管理——极简Pool 唯一 WebContentsView
   // ═══════════════════════════════════════════════════════════════
 
-  /** 创建唯一 Pool WebContentsView——pool.html 无 ?zone= 路由（E5.7#2 单入口） */
-  private createPoolView(debugLabel: string): WebContentsView {
+  /**
+   * 创建 Pool WebContentsView——pool.html 无 ?zone= 路由（E5.7#2 单入口）。
+   * E5.8#43-1（A1）：参数化宿主窗口——多窗口底座第一步，去 mainWindow 硬编码。
+   * 主池传 this.mainWindow；未来脱出窗池传脱出 BrowserWindow（view 挂其 contentView + resize 跟随）。
+   */
+  private createPoolView(hostWindow: BrowserWindow, debugLabel: string): WebContentsView {
     const view = new WebContentsView({
       webPreferences: {
         // E5.8#0d.8-2 回归修复：preload-pool 留根，window-manager 已入 windows/——__dirname 变化后需 ../ 回根。
@@ -122,6 +126,7 @@ export class WindowManager {
     // E5.7 键盘路由：before-input-event 挂池 WCV——焦点永远在池上，壳 keydown 收不到全局快捷键
     // （Ctrl+Shift+P 等全灭）。工厂处挂载 = 初始创建 + rebuildPool 崩溃恢复全覆盖
     // （E5.5#7 只挂了插件 WebView——极简Pool 时代池是唯一视图）。
+    // E5.8#43-1：恒指 this.mainWindow（壳窗口）——命中快捷键转发给壳执行；脱出窗池的输入同样发主窗壳（壳=唯一真相源），不随 hostWindow 变。
     attachKeyboardRouting(view, this.mainWindow);
 
     // E5.6#14-fix：Pool 加载完成后回放初始广播状态（theme:changed/lang:changed/accent:changed 等）
@@ -147,7 +152,8 @@ export class WindowManager {
     // E5.8#6.6 hex 豁免：WebContentsView 背景色（OS 层 setBackgroundColor，CSS 变量不可达）
     // eslint-disable-next-line linkdesk/no-hardcoded-hex
     view.setBackgroundColor(nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f5f5f5');
-    this.mainWindow.contentView.addChildView(view);
+    // E5.8#43-1（A1）：挂载到宿主窗口 contentView（主池=mainWindow，脱出窗池=脱出窗口）
+    hostWindow.contentView.addChildView(view);
 
     console.log(`[WindowManager] Pool "${debugLabel}" WebContentsView 已创建`);
     return view;
@@ -159,7 +165,7 @@ export class WindowManager {
       console.warn('[WindowManager] MainPool 已存在，返回已有 view');
       return this.mainPoolView;
     }
-    this.mainPoolView = this.createPoolView('pool');
+    this.mainPoolView = this.createPoolView(this.mainWindow, 'pool');
     // E5.7#12.5：创建即满窗接管——bounds 由主进程算（窗口内容区），不再等壳推流
     this.syncPoolBounds();
     this.mainPoolView.setVisible(true);
