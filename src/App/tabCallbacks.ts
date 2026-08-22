@@ -8,13 +8,25 @@
 import { shellEvents } from "../core/react/events/ShellEvents";
 import { invokeBeforeCloseTab } from "../pluginLoader/viewRegistry";
 import { getAllLeafGroupIds } from "../core/utils/splitTree";
-import { allTabs } from "../hooks/useTabManager";
+import {
+  allTabs,
+  reduceCreateTab,
+  reduceFocusTab,
+  reduceFocusGroup,
+  reduceRemoveTab,
+  reduceReorderTab,
+  reduceMoveTab,
+  reduceSplitTabAt,
+  reduceDuplicateTab,
+  reducePinTab,
+  reduceUpdateSplitSizes,
+} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
 import type { CloseTabResult, TabState } from "../hooks/useTabManager";
-import type { WindowMode } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化
+import type { WindowMode, WindowShellState } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化；#46.4：脱出窗路由查注册表
 
 /* ── handleFocusTab ── */
 
@@ -159,16 +171,120 @@ export interface TabActionHandlerDeps {
   updateSplitSizes: (anchorGroupId: string, sizes: [number, number], branchIndex?: number) => void;
   /** E5.8#44-B：窗口外释放决策（拖出手势）——命中 TabBar→并窗 / 空白→新窗 */
   releaseOutside: (tabId: string, screenX: number, screenY: number, sourceWindowId: string) => void;
+  /** E5.8#46.4：壳窗口注册表——脱出窗 tabAction 按 sourceWindowId 路由（查该窗 tabState + 空窗裁决） */
+  windows: WindowShellState[];
+  /** E5.8#46.4：写脱出窗 tabState（纯 reducer 结果）→ usePoolSync 按窗重推布局 */
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  /** E5.8#46.4：空窗自灭（I9-8）——脱出窗无标签 → closeWindow（不 updateTabState） */
+  closeWindow: (windowId: string) => void;
+}
+
+/**
+ * E5.8#46.4：脱出窗 tab 操作——纯 reducer 应用到该窗注册表 tabState + updateTabState。
+ * 与主窗差异：不发射事件（tab:focused/tab:activated——布局推流 activeTabId 驱动池渲染，插件 isActive
+ * prop 已覆盖；KISS，实机暴露事件缺口再补）；closeTab 用 reduceRemoveTab（不查 dirty——池侧 × 已按
+ * closeBehavior 确认过，与主窗 × 同语义）；空窗自灭（I9-8）由壳裁决（groups 全空 → closeWindow）。
+ */
+function applyDetachedTabAction(
+  win: WindowShellState,
+  action: ShellTabAction,
+  deps: Pick<TabActionHandlerDeps, "updateTabState" | "closeWindow">,
+): void {
+  let next = win.tabState;
+  let changed = true;
+  switch (action.action) {
+    case "focusTab":
+      next = reduceFocusTab(next, action.tabId);
+      break;
+    case "focusGroup":
+      next = reduceFocusGroup(next, action.groupId);
+      break;
+    case "closeTab":
+      next = reduceRemoveTab(next, action.tabId).state;
+      break;
+    case "closeOtherTabs": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) for (const t of g.tabs) if (t.id !== action.tabId) next = reduceRemoveTab(next, t.id).state;
+      break;
+    }
+    case "closeTabsToRight": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) {
+        const idx = g.tabs.findIndex((t) => t.id === action.tabId);
+        if (idx >= 0) for (let i = g.tabs.length - 1; i > idx; i--) next = reduceRemoveTab(next, g.tabs[i].id).state;
+      }
+      break;
+    }
+    case "closeAllTabs": {
+      const g = next.groups.find((x) => x.id === action.groupId);
+      if (g) for (const t of [...g.tabs]) next = reduceRemoveTab(next, t.id).state;
+      break;
+    }
+    case "reorderTab":
+      next = reduceReorderTab(next, action.tabId, action.newIndex);
+      break;
+    case "moveTab":
+      next = reduceMoveTab(next, action.tabId, action.targetGroupId);
+      break;
+    case "splitTab":
+      next = reduceSplitTabAt(
+        next,
+        action.tabId,
+        action.direction,
+        action.targetGroupId,
+        action.zone && action.zone !== "center" ? action.zone : undefined,
+      );
+      break;
+    case "duplicateTab": {
+      const r = reduceDuplicateTab(next, action.tabId);
+      if (!r) { changed = false; break; }
+      next = r;
+      break;
+    }
+    case "pinTab":
+      next = reducePinTab(next, action.tabId);
+      break;
+    case "createTab":
+      next = reduceCreateTab(next, action.pluginId ?? FALLBACK_PLUGIN_ID, { workspaceName: action.workspaceName }).state;
+      break;
+    case "updateSplitSizes":
+      next = reduceUpdateSplitSizes(next, action.anchorGroupId, action.sizes, action.branchIndex);
+      break;
+    default:
+      changed = false; // releaseOutsideWindow 已在路由前消费；未识别动作不写回
+  }
+  if (!changed) return;
+  // 空窗自灭（I9-8）：脱出窗无标签 → closeWindow；否则写回注册表（usePoolSync 按窗重推布局）
+  if (next.groups.length === 0 || next.groups.every((g) => g.tabs.length === 0)) {
+    deps.closeWindow(win.windowId);
+  } else {
+    deps.updateTabState(win.windowId, next);
+  }
 }
 
 /**
  * E5.6#16.5：MainPool tab 操作→壳 useTabManager。
  * 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
  * E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
+ * E5.8#46.4：按 sourceWindowId 路由——主窗走 useTabManager；脱出窗走注册表 tabState + 纯 reducer。
  */
 export function createTabActionHandler(deps: TabActionHandlerDeps): (action: ShellTabAction) => void {
-  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside } = deps;
+  const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside, windows, updateTabState, closeWindow } = deps;
   return (action) => {
+    // E5.8#44-B：窗口外释放恒走全局 relocation（跨窗命中检测——sourceWindowId 内部路由），不随源窗分流
+    if (action.action === "releaseOutsideWindow") {
+      releaseOutside(action.tabId, action.screenX, action.screenY, action.sourceWindowId);
+      return;
+    }
+    // E5.8#46.4：窗内标签操作按 sourceWindowId 路由——脱出窗走注册表 tabState + 纯 reducer +
+    // updateTabState（此前全部无脑打主窗 useTabManager → 脱出窗 tabId 不在主窗 tabState → 静默 no-op，
+    // 窗内分屏/关闭/重排/聚焦全失效根因）。窗已关的迟到动作 → 静默丢弃。
+    const sourceWindowId = action.sourceWindowId;
+    if (sourceWindowId && sourceWindowId !== "main") {
+      const win = windows.find((w) => w.windowId === sourceWindowId);
+      if (win) applyDetachedTabAction(win, action, { updateTabState, closeWindow });
+      return;
+    }
     switch (action.action) {
       case "focusTab":
         handleFocusTab(action.tabId);
@@ -251,11 +367,7 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: She
       case "updateSplitSizes":
         updateSplitSizes(action.anchorGroupId, action.sizes, action.branchIndex);
         break;
-      // E5.8#44-B：窗口外释放——拖出手势（拖出标签页到窗口边界外释放）。screenX/Y 屏幕坐标，
-      // sourceWindowId 主进程注入（#43-4 权威窗口身份）。壳命中检测：TabBar→并窗 / 空白→新窗。
-      case "releaseOutsideWindow":
-        releaseOutside(action.tabId, action.screenX, action.screenY, action.sourceWindowId);
-        break;
+      // releaseOutsideWindow 已在路由前（handler 顶部）统一消费——跨窗手势不随源窗分流
     }
   };
 }

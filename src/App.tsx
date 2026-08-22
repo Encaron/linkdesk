@@ -154,8 +154,8 @@ function App() {
   // 池 GroupTabBar 通过 pool.tabAction() → IPC → 此 handler → tabState 更新 → pushLayout 回环。
   // E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
   const handleTabAction = useMemo(
-    () => createTabActionHandler({ handleFocusTab, focusGroup, closeTab, groups: tabState.groups, reorderTab, moveTab, splitTabAt, duplicateTab: _duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside: relocation.releaseOutside }),
-    [handleFocusTab, focusGroup, closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, relocation.releaseOutside],
+    () => createTabActionHandler({ handleFocusTab, focusGroup, closeTab, groups: tabState.groups, reorderTab, moveTab, splitTabAt, duplicateTab: _duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside: relocation.releaseOutside, windows, updateTabState, closeWindow }),
+    [handleFocusTab, focusGroup, closeTab, tabState.groups, reorderTab, moveTab, splitTabAt, _duplicateTab, pinTab, createTab, updateSplitSizes, relocation.releaseOutside, windows, updateTabState, closeWindow],
   );
 
   // E5.6#9a → E5.7#4：Pool 布局同步——壳窗口注册表/侧栏/面板变化 → 按窗口定向推送到各 Pool
