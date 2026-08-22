@@ -113,4 +113,15 @@ describe("单实例语义（I8-10）", () => {
     expect(lastPush().viewId).toBe("other-view"); // 新面板推送给池
     expect(newReason).not.toBe(oldReason);
   });
+
+  it("同 viewId 但异插件（双设置套同名 viewId 并存）→ 替换内容而非同视图聚焦（E5.8#41.16 复合键）", async () => {
+    const oldReason = pushPanel(sampleOptions()); // demo-view / demo-plugin
+    pushMock.mockClear();
+
+    const newReason = pushPanel({ ...sampleOptions(), pluginId: "demo-plugin-b" }); // 同 viewId 异插件
+    await expect(oldReason).resolves.toBe("replaced"); // 裸 viewId 会误判"同视图已开"→ 零推送；复合键 = 异面板 → 替换
+    expect(lastPush().pluginId).toBe("demo-plugin-b");
+    expect(lastPush().viewId).toBe("demo-view");
+    expect(newReason).not.toBe(oldReason);
+  });
 });

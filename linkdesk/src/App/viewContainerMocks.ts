@@ -10,21 +10,23 @@
 
 import { vi } from "vitest";
 
-const { getViewContainersMock, getViewsMock, getViewByViewIdMock, isVisibleMock, setVisibleMock } = vi.hoisted(() => ({
+const { getViewContainersMock, getViewsMock, getViewByViewIdMock, getViewMock, isVisibleMock, setVisibleMock } = vi.hoisted(() => ({
   getViewContainersMock: vi.fn(),
   getViewsMock: vi.fn(),
   getViewByViewIdMock: vi.fn(), // E5.8#39.5→#41.9.2：floatingPanelReveal 声明扫描寻址（getViewByViewId 声明扫描基元）
+  getViewMock: vi.fn(), // E5.8#41.16：floatingPanelReveal 复合寻址（getView(pluginId, viewId) 复合键）
   isVisibleMock: vi.fn(),
   setVisibleMock: vi.fn(),
 }));
 // isVisibleMock 仅 seed 内部消费（无测试直接 import）——不导出（knip 门禁）
-export { getViewContainersMock, getViewsMock, getViewByViewIdMock, setVisibleMock };
+export { getViewContainersMock, getViewsMock, getViewByViewIdMock, getViewMock, setVisibleMock };
 
 vi.mock("../core/services/layout/ViewContainerService", () => ({
   ViewContainerService: {
     getViewContainers: getViewContainersMock,
     getViews: getViewsMock,
     getViewByViewId: getViewByViewIdMock,
+    getView: getViewMock,
     isVisible: isVisibleMock,
     setVisible: setVisibleMock,
   },
@@ -57,5 +59,17 @@ export function seedViewContainerMocks(): void {
       "demo-view-c": { id: "demo-view-c", title: "Gamma", _pluginId: "demo-plugin-c", _renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx" },
     };
     return table[vid];
+  });
+  // E5.8#41.16 复合键 mock——getView(pluginId, viewId)：按插件解析（任意 viewId 命中该插件的 descriptor，
+  // 镜像真实 _viewIndex 复合键索引的 O(1) 语义）。插件未知 → undefined。
+  getViewMock.mockImplementation((pid: string, vid: string) => {
+    const byPlugin: Record<string, { title: string; _renderPath: string }> = {
+      "demo-plugin-a": { title: "Alpha", _renderPath: "/@fs/plugins/demo-plugin-a/src/views/DemoViewA.tsx" },
+      "demo-plugin-b": { title: "Beta", _renderPath: "/@fs/plugins/demo-plugin-b/src/views/DemoViewB.tsx" },
+      "demo-plugin-c": { title: "Gamma", _renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx" },
+    };
+    const p = byPlugin[pid];
+    if (!p) return undefined;
+    return { id: vid, title: p.title, _pluginId: pid, _renderPath: p._renderPath };
   });
 }

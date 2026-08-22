@@ -23,7 +23,7 @@ import type { PoolFloatingPanelData, PoolFloatingPanelButton } from "../../types
 
 /** 面板请求——消费者（#38 Settings 命令）构造，标题/动作文案已 t() 解析 */
 export interface FloatingPanelOptions {
-  /** 面板身份——单实例语义按 viewId 裁决（I8-10） */
+  /** 面板身份——单实例语义按 (viewId, pluginId) 复合键裁决（I8-10，E5.8#41.16：两插件同名 viewId 并存不互踩） */
   viewId: string;
   /** 标题——壳侧 t() 已解析 */
   title: string;
@@ -59,6 +59,8 @@ export function registerFloatingPanelRenderer(renderer: FloatingPanelRenderer): 
 /* ── 单实例状态（I8-10） ── */
 
 let _currentViewId: string | null = null;
+/** E5.8#41.16：当前面板内容插件——复合键身份（_currentViewId 同名视图并存时区分谁在面板里，I8-2 toggle 判据） */
+let _currentPluginId: string | null = null;
 
 /** 最近一次 open DTO 底稿——refreshPanelText（语言切换文案刷新）重推用，关闭即清 */
 let _currentOpen: Extract<PoolFloatingPanelData, { open: true }> | null = null;
@@ -75,22 +77,30 @@ export function getCurrentFloatingPanelViewId(): string | null {
   return _currentViewId;
 }
 
+/** E5.8#41.16：当前面板内容插件 id——复合键身份查询（decideFloatingPanelReveal 判同面板用）：null = 无面板 */
+export function getCurrentFloatingPanelPluginId(): string | null {
+  return _currentPluginId;
+}
+
 /**
  * 打开/聚焦悬浮面板——返回面板关闭原因（settle 语义，DialogService 同款）。
- * 单实例（I8-10）：同 viewId 聚焦（已开 = no-op，复用现有 promise）、异 viewId 替换（旧 promise settle 'replaced'）。
+ * 单实例（I8-10）：同 (viewId, pluginId) 聚焦（已开 = no-op，复用现有 promise）、异复合键替换（旧 promise settle 'replaced'）。
+ * E5.8#41.16：复合键——两插件同名 viewId（双设置套都 viewId="settings"）并存时，builtin 面板 + push demo
+ * 是「异插件 → 替换内容」，不是「同视图聚焦」（裸 viewId 裁决会把 demo 面板误判为已开 → 不渲染）。
  */
 export function pushPanel(options: FloatingPanelOptions): Promise<FloatingPanelCloseReason> {
-  if (_currentViewId === options.viewId && _pending) {
-    // I8-10 同 viewId 聚焦——已开同一面板，复用现有 promise（消费者 await 仍会在关闭时收到原因）
+  if (_currentViewId === options.viewId && _currentPluginId === options.pluginId && _pending) {
+    // I8-10 同复合键聚焦——已开同一面板，复用现有 promise（消费者 await 仍会在关闭时收到原因）
     return _pending.promise;
   }
-  // 异 viewId 替换——settle 旧 promise（避免旧消费者永远挂起）
+  // 异复合键替换——settle 旧 promise（避免旧消费者永远挂起）
   if (_pending) {
     const p = _pending;
     _pending = null;
     p.settle("replaced");
   }
   _currentViewId = options.viewId;
+  _currentPluginId = options.pluginId;
   let settle!: (reason: FloatingPanelCloseReason) => void;
   const promise = new Promise<FloatingPanelCloseReason>((resolve) => { settle = resolve; });
   _pending = { promise, settle };
@@ -119,6 +129,7 @@ export function refreshPanelText(title: string, actions: PoolFloatingPanelButton
 /** 关闭悬浮面板（程序化）——先推 {open:false} 再 settle（dialog 桥纪律：stale close 不覆盖新开） */
 export function closePanel(): void {
   _currentViewId = null;
+  _currentPluginId = null;
   _currentOpen = null;
   _renderer?.({ open: false });
   const p = _pending;
@@ -132,6 +143,7 @@ export function closePanel(): void {
  */
 export function handleFloatingPanelAction(actionId: string): void {
   _currentViewId = null;
+  _currentPluginId = null;
   _currentOpen = null;
   _renderer?.({ open: false });
   const p = _pending;

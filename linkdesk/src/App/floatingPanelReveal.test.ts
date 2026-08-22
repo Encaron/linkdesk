@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { renderHook } from "@testing-library/react";
-import { getViewByViewIdMock, seedViewContainerMocks } from "./viewContainerMocks";
+import { getViewByViewIdMock, getViewMock, seedViewContainerMocks } from "./viewContainerMocks";
 import {
   resolveFloatingPanelView,
   decideFloatingPanelReveal,
@@ -68,6 +68,18 @@ describe("resolveFloatingPanelView（E5.8#39.5 revealFloating 声明寻址）", 
     getViewByViewIdMock.mockReturnValue({ id: "ghost", title: "幽灵" } as never);
     expect(resolveFloatingPanelView("ghost")).toBeNull();
   });
+
+  it("携带 pluginId → 复合键精确寻址（裸 viewId 多命中 fail-loud 也不影响——#41.8 §4.2）", () => {
+    // 双设置套并存场景：裸扫描歧义（getViewByViewId fail-loud → undefined），复合键 getView 精确命中
+    getViewByViewIdMock.mockReturnValue(undefined);
+    expect(resolveFloatingPanelView("demo-view-c", "demo-plugin-c")).toEqual({
+      viewId: "demo-view-c",
+      pluginId: "demo-plugin-c",
+      renderPath: "/@fs/plugins/demo-plugin-c/src/views/DemoViewC.tsx",
+      title: "T:Gamma",
+    });
+    expect(getViewByViewIdMock).not.toHaveBeenCalled(); // 复合路径不走裸扫描
+  });
 });
 
 describe("decideFloatingPanelReveal（I8-2 身份开关键决策）", () => {
@@ -94,6 +106,23 @@ describe("decideFloatingPanelReveal（I8-2 身份开关键决策）", () => {
 
   it("同视图再点 → toggle-close（面板关）", () => {
     expect(decideFloatingPanelReveal("demo-view-c", "demo-view-c")).toEqual({ action: "toggle-close" });
+  });
+
+  it("复合身份开关键：viewId 相同但插件不同（双设置套同名 viewId）→ open 替换内容", () => {
+    // 当前面板 = demo-view-c（demo-plugin-c），请求同 viewId 但另一插件 → 不同面板 → open（替换）
+    const d = decideFloatingPanelReveal("demo-view-c", "demo-view-c", "demo-plugin-a", "demo-plugin-c");
+    expect(d.action).toBe("open");
+  });
+
+  it("复合身份开关键：viewId + pluginId 均相同 → toggle-close（同面板再点关）", () => {
+    expect(decideFloatingPanelReveal("demo-view-c", "demo-view-c", "demo-plugin-c", "demo-plugin-c")).toEqual({
+      action: "toggle-close",
+    });
+  });
+
+  it("复合路径 resolve 歧义 → noop（getView 精确寻址未命中，声明未注册不崩）", () => {
+    getViewMock.mockReturnValue(undefined);
+    expect(decideFloatingPanelReveal("demo-view-c", null, "never-plugin")).toEqual({ action: "noop" });
   });
 });
 
