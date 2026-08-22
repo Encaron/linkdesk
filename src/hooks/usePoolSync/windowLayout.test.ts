@@ -58,6 +58,8 @@ function makeCtx(): WindowLayoutContext {
     panel: { visible: true, height: 220, activeViewId: "", views: [] },
     statusBar: { items: [], notif: { unread: 0, bellTitle: "", panelTitle: "", clearLabel: "", emptyLabel: "", dismissTitle: "", groups: [] } },
     creatableViews: [{ pluginId: "demo-plugin", label: "Demo View" }],
+    // E5.8#45：面板已脱出（存在 drift 窗）→ true；测试各场景显式覆盖
+    panelDetached: false,
     t,
   };
 }
@@ -92,6 +94,33 @@ describe("assembleWindowLayout 按窗口模式策略组装", () => {
     expect(layout.groups[0].activeTabId).toBe("t1");
     expect(layout.root).toEqual({ type: "leaf", groupId: "g1" });
     expect(layout.activeGroupId).toBe("g1");
+  });
+
+  it("drift 推 titleBar+groups+panel——空 tabState 恒空 groups、面板独占（ctx.panelDetached=false 时仍推）", () => {
+    // 漂移面板窗真实构造 = emptyTabState（面板专用窗，主区空占位 I9-13）——fixture 对齐
+    const win = makeWindow({
+      windowId: "d1",
+      mode: "drift",
+      tabState: { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } },
+    });
+    const layout = assembleWindowLayout(win, makeCtx());
+    expect(layout.titleBar).toBeDefined();
+    expect(layout.groups).toEqual([]); // 恒空（主区空占位）
+    expect(layout.panel).toBeDefined();
+    expect(layout.iconBar).toBeUndefined();
+    expect(layout.sidebar).toBeUndefined();
+    expect(layout.rightSidebar).toBeUndefined();
+    expect(layout.statusBar).toBeUndefined();
+    expect(layout.creatableViews).toEqual([]);
+  });
+
+  it("面板独占性——存在 drift 窗（ctx.panelDetached=true）时 main 停推 panel、drift 窗仍推", () => {
+    const mainWin = makeWindow(); // mode:main
+    const driftWin = makeWindow({ windowId: "d1", mode: "drift" });
+    const ctx = makeCtx();
+    ctx.panelDetached = true;
+    expect(assembleWindowLayout(mainWin, ctx).panel).toBeUndefined();
+    expect(assembleWindowLayout(driftWin, ctx).panel).toBeDefined();
   });
 });
 

@@ -13,9 +13,10 @@
 
 import type { TabState } from "../hooks/useTabManager";
 import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
-
-/** 窗口模式——壳侧声明层。新增窗口类型 = 此处加枚举成员 + WINDOW_MODE_STRATEGIES 加一行。 */
-export type WindowMode = "main" | "detached";
+// E5.8#45：WindowMode 下沉 core/types/windows.ts——core 回调契约（CoreCallbacks.findTabWindow）
+// 与壳策略层共享单一真相源（core 不 import App）。re-export 保既有消费方 `./windows` 零改动。
+import type { WindowMode } from "../core/types/windows";
+export type { WindowMode };
 
 /** PoolLayout 顶层 zone 字段——策略表 zones 声明用（布局组装按此表决定推哪些 zone） */
 export type PoolZone =
@@ -49,6 +50,16 @@ export const WINDOW_MODE_STRATEGIES: Record<WindowMode, WindowModeStrategy> = {
   },
   detached: {
     zones: ["titleBar", "groups"],
+    emptyBehavior: "autoClose",
+    closeSemantics: "closeTabs",
+    tabBarCreate: "suppressed",
+  },
+  // E5.8#45 漂移面板窗：zones = titleBar + groups（空=主区空占位，I9-13）+ panel。
+  // 面板独占性 = 布局组装按 ctx.panelDetached 裁决（main 有 drift 窗时停推 panel——面板恒只在
+  // 一个窗口渲染）。恒空 groups 零 tab 操作 → emptyBehavior/closeSemantics 实际不触发（无 tab）；
+  // 关窗×语义 = 关闭面板（I9-13 拍板 A——windowHost onDriftWindowClosed 回调消费）。
+  drift: {
+    zones: ["titleBar", "groups", "panel"],
     emptyBehavior: "autoClose",
     closeSemantics: "closeTabs",
     tabBarCreate: "suppressed",

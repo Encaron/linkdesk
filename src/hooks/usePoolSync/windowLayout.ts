@@ -39,6 +39,9 @@ export interface WindowLayoutContext {
   rightSidebar: PoolLayout["rightSidebar"];
   panel: PoolLayout["panel"];
   statusBar: StatusBarLayout;
+  /** E5.8#45：面板已脱出到漂移窗（windows 存在 mode:"drift"）——main 停推 panel（面板独占性：
+   *  面板恒只在一个窗口渲染；漂移窗按 zones 推 panel，main 按本标记抑制） */
+  panelDetached: boolean;
   /** 可创建视图列表——main 消费（detached 按 tabBarCreate 抑制） */
   creatableViews: CreatableViewMeta[];
   t: TFunction;
@@ -103,7 +106,9 @@ export function assembleWindowLayout(win: WindowShellState, ctx: WindowLayoutCon
     activeGroupId: win.tabState.activeGroupId,
     // 空数组 = [+] 按钮无创建菜单（池 GroupTabBar 空列表不弹菜单）
     creatableViews: strategy.tabBarCreate === "provided" ? ctx.creatableViews : [],
-    panel: include("panel") ? ctx.panel : undefined,
+    // E5.8#45 面板独占性：策略 zones 含 panel 时，main 遇 ctx.panelDetached 停推（面板已移漂移窗）；
+    // 漂移窗恒推 panel（I9-13——漂移窗 = 面板专用窗）
+    panel: include("panel") && !(win.mode === "main" && ctx.panelDetached) ? ctx.panel : undefined,
     statusBar: include("statusBar") ? ctx.statusBar : undefined,
   };
 }

@@ -14,6 +14,7 @@ import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
 import type { CloseTabResult, TabState } from "../hooks/useTabManager";
+import type { WindowMode } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化
 
 /* ── handleFocusTab ── */
 
@@ -51,7 +52,7 @@ export interface CoreCallbacksDeps {
   /** E5.8#44：可拖出窗口——右键「在新窗口中打开」/「并回主窗口」/ tab 窗口判定 */
   detachTab: (tabId: string) => void;
   mergeTabToMain: (tabId: string) => void;
-  findTabWindow: (tabId: string) => { windowId: string; mode: "main" | "detached" } | null;
+  findTabWindow: (tabId: string) => { windowId: string; mode: WindowMode } | null;
 }
 
 /** E5#5e-ii-f：核心回调——注册到 coreCommands，壳快捷键（Ctrl+W/Ctrl+Tab 等）走这里 */

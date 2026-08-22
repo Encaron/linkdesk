@@ -6,6 +6,8 @@
  * 对标 VS Code：workbench 回调注册模式。
  */
 
+import type { WindowMode } from "../../types/windows"; // E5.8#45：WindowMode 单一真相源（core/types——壳策略层同源引用）
+
 export interface CoreCallbacks {
   closeTab: (tabId: string) => void;
   closeOtherTabs: (groupId: string, exceptTabId: string) => void;
@@ -32,7 +34,7 @@ export interface CoreCallbacks {
   /** E5.8#44：并回主窗（右键「并回主窗口」——脱出窗专属） */
   mergeTabToMain: (tabId: string) => void;
   /** E5.8#44：找 tab 所在窗口——「并回主窗口」可见性判定（detached 才注入） */
-  findTabWindow: (tabId: string) => { windowId: string; mode: "main" | "detached" } | null;
+  findTabWindow: (tabId: string) => { windowId: string; mode: WindowMode } | null;
 }
 
 let _callbacks: CoreCallbacks | null = null;

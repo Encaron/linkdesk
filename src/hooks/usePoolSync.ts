@@ -258,6 +258,9 @@ export function usePoolSync({ windows, sidebarView, isSidebarVisible, panelActiv
       },
       // E5.8#37.9.1：标签栏 [+] 创建菜单 label 同 manifest.name——t() 解析后推流（iconbar 同款）
       creatableViews: getTabCreatableViews().map((e) => ({ pluginId: e.pluginId, label: t(e.manifest.name) })),
+      // E5.8#45 面板独占性：存在漂移面板窗（mode:"drift"）→ 面板已脱出——main 停推 panel，
+      // 漂移窗按 zones 推 panel。真相源 = 壳窗口注册表（windows 是依赖，mode 变化即重推）。
+      panelDetached: windows.some((w) => w.mode === "drift"),
       t,
     };
 

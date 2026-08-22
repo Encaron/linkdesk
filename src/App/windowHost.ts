@@ -14,9 +14,9 @@
  *   onWindowClosed(windowId) → 按策略关窗×语义处理（detached=移除窗口状态；main=主进程管）
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { TabState } from "../hooks/useTabManager";
-import type { WindowShellState } from "./windows";
+import type { WindowShellState, WindowMode } from "./windows";
 import { getDetachedWindows } from "../core/services/layout/LayoutService";
 import type { PoolWindowBoundsPayload } from "../core/types/ipc/poolActions";
 import { purgePoolCommandWindows } from "../core/registry/commands/CommandRegistry"; // E5.8#43-4：窗口关闭 → 归属表清该窗命令
@@ -24,29 +24,41 @@ import { purgePoolCommandWindows } from "../core/registry/commands/CommandRegist
 interface UseWindowHostOptions {
   /** 主窗标签页真相源（useTabManager）——活同步进注册表，主窗布局随标签操作即时重推 */
   mainTabState: TabState;
+  /** E5.8#45：漂移面板窗关闭回调——壳消费关闭面板（I9-13 拍板 A：关窗即关会话，不回归主窗口）。
+   *   OS ×（onWindowClosed）与壳驱动 closeWindow 双路径同触发。 */
+  onDriftWindowClosed?: () => void;
 }
 
 export interface UseWindowHostResult {
   /** 全部窗口状态注册表——usePoolSync 遍历就绪窗按模式策略组装布局并定向推送 */
   windows: WindowShellState[];
-  /** 壳登记一个脱出窗口 + 通知主进程建窗（#44 手势消费：被脱出的组归属该窗；#43-3 恢复传 bounds） */
-  createWindow(windowId: string, tabState: TabState, bounds?: PoolWindowBoundsPayload["bounds"]): void;
+  /** 壳登记一个窗口 + 通知主进程建窗（#44 手势消费：被脱出的组归属该窗；#43-3 恢复传 bounds；
+   *   #45 漂移面板传 mode:"drift"）。mode 缺省 "detached"。 */
+  createWindow(windowId: string, tabState: TabState, bounds?: PoolWindowBoundsPayload["bounds"], mode?: WindowMode): void;
   /** 壳移除一个脱出窗口 + 通知主进程关窗（空窗自灭/非回归关闭） */
   closeWindow(windowId: string): void;
   /** 更新某窗口的 tabState（脱出窗标签操作——#44 TabBar 复用接线） */
   updateTabState(windowId: string, tabState: TabState): void;
 }
 
-/** 空脱出窗 tabState——恢复窗口用（#43-3 此刻无 tab，组归属随 #44 拖出后写入） */
+/** 空窗 tabState——恢复窗用（#43-3 此刻无 tab，组归属随 #44 拖出后写入）；#45 漂移面板窗（恒空，主区空占位 I9-13）。
+ *  #45-C panelDrift 复用需导出时再导出（knip 门禁：无消费方不导出）。 */
 function emptyTabState(): TabState {
   return { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } };
 }
 
-export function useWindowHost({ mainTabState }: UseWindowHostOptions): UseWindowHostResult {
+export function useWindowHost({ mainTabState, onDriftWindowClosed }: UseWindowHostOptions): UseWindowHostResult {
   // 初始只有主窗——ready:true（主池可立即接收布局，preload 缓冲回放；onReady('main') 仅确认）
   const [windows, setWindows] = useState<WindowShellState[]>(() => [
     { windowId: "main", mode: "main", ready: true, tabState: mainTabState },
   ]);
+
+  // E5.8#45：windows 活引用——onWindowClosed/closeWindow 判 drift 模式走 ref（setState 更新器恒纯，硬约束 6）
+  const windowsRef = useRef(windows);
+  windowsRef.current = windows;
+  // onDriftWindowClosed 稳定 ref——effect 依赖 [] 注册一次，回调体读活值
+  const onDriftWindowClosedRef = useRef(onDriftWindowClosed);
+  onDriftWindowClosedRef.current = onDriftWindowClosed;
 
   // main tabState 活同步进注册表——真相源 = useTabManager（任一标签操作 → 主窗布局重推）
   useEffect(() => {
@@ -73,11 +85,15 @@ export function useWindowHost({ mainTabState }: UseWindowHostOptions): UseWindow
     const poolApi = window.linkdesk?.pool;
     if (!poolApi) return;
     const unsub = poolApi.onWindowClosed?.((windowId: string) => {
+      // E5.8#45：漂移面板窗判定走 ref（闭包外读）——setState 更新器内不写副作用（硬约束 6）
+      const isDrift = windowsRef.current.find((w) => w.windowId === windowId)?.mode === "drift";
       setWindows((prev) => {
         const entry = prev.find((w) => w.windowId === windowId);
         if (!entry || entry.mode === "main") return prev;
         return prev.filter((w) => w.windowId !== windowId);
       });
+      // E5.8#45：漂移面板窗关闭 = 关闭面板（I9-13 拍板 A——关窗即关会话，不回归主窗口）
+      if (isDrift) onDriftWindowClosedRef.current?.();
       // E5.8#43-4（③ 归属表清理）：onWindowClosed 仅脱出池窗触发（主窗关闭走 app.quit 不走本 IPC）——
       // 摘除该窗注册的全部命令归属。池窗销毁无 unregister IPC（池进程没了），不清理 → 路由仍
       // 指向已关窗 → 定向发空视图 → 10s 超时。
@@ -102,19 +118,29 @@ export function useWindowHost({ mainTabState }: UseWindowHostOptions): UseWindow
     return unsub;
   }, []);
 
-  /** 壳登记脱出窗口 + 主进程建窗（#44 手势接入点；#43-3 恢复传 bounds）——幂等：同 windowId 不重复登记 */
-  const createWindow = useCallback((windowId: string, tabState: TabState, bounds?: PoolWindowBoundsPayload["bounds"]) => {
-    setWindows((prev) =>
-      prev.some((w) => w.windowId === windowId) ? prev : [...prev, { windowId, mode: "detached", ready: false, tabState, ...(bounds ? { bounds } : {}) }],
-    );
-    // E5.8#43-3：恢复路径带持久化 bounds → 主进程 createPoolWindow 应用（重启新建）或复用忽略（F5）
-    window.linkdesk?.pool?.createWindow?.({ windowId, ...(bounds ?? {}) });
-  }, []);
+  /** 壳登记窗口 + 主进程建窗（#44 手势接入点；#43-3 恢复传 bounds；#45 漂移面板传 mode:"drift"）——
+   *  幂等：同 windowId 不重复登记。mode 缺省 "detached"（既有调用零改动）。 */
+  const createWindow = useCallback(
+    (windowId: string, tabState: TabState, bounds?: PoolWindowBoundsPayload["bounds"], mode: WindowMode = "detached") => {
+      setWindows((prev) =>
+        prev.some((w) => w.windowId === windowId)
+          ? prev
+          : [...prev, { windowId, mode, ready: false, tabState, ...(bounds ? { bounds } : {}) }],
+      );
+      // E5.8#43-3：恢复路径带持久化 bounds → 主进程 createPoolWindow 应用（重启新建）或复用忽略（F5）
+      window.linkdesk?.pool?.createWindow?.({ windowId, ...(bounds ?? {}) });
+    },
+    [],
+  );
 
-  /** 壳移除脱出窗口 + 主进程关窗（空窗自灭/并回主窗口销毁——#44 消费） */
+  /** 壳移除窗口 + 主进程关窗（空窗自灭/并回主窗口销毁——#44 消费；#45 漂移面板窗经它关闭=关闭面板） */
   const closeWindow = useCallback((windowId: string) => {
+    // E5.8#45：漂移判定走 ref（更新器外读）——更新器恒纯（硬约束 6）
+    const isDrift = windowsRef.current.find((w) => w.windowId === windowId)?.mode === "drift";
     setWindows((prev) => prev.filter((w) => w.windowId !== windowId));
     window.linkdesk?.pool?.closeWindow?.(windowId);
+    // E5.8#45：漂移面板窗关闭 = 关闭面板（I9-13 拍板 A——关窗即关会话，不回归主窗口）
+    if (isDrift) onDriftWindowClosedRef.current?.();
     // E5.8#43-4（③ 归属表清理）：壳驱动关窗同样销毁池 → 摘除该窗命令归属（同 onWindowClosed 理由）
     purgePoolCommandWindows(windowId);
   }, []);
