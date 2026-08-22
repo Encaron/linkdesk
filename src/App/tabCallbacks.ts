@@ -22,7 +22,9 @@ import {
   reduceUpdateSplitSizes,
   reduceUpdateTabLabelBySourceId,
   findTabBySourceId,
-} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新
+  isTabDirty,
+  confirmDirtyTabClose,
+} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新；Step3：dirty 判定/确认共用
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
@@ -105,6 +107,8 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
         const tab = group?.tabs.find((t) => t.id === group.activeTabId);
         if (!tab) return;
         if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
+        // E5.8#46.12 Step3：脱出窗 Ctrl+W 补 dirty 确认（镜像主窗 closeTab——此前静默关脏标签丢数据）
+        if (!(await confirmDirtyTabClose(tab))) return;
         applyDetachedTabAction(win, { action: "closeTab", tabId: tab.id, sourceWindowId }, { updateTabState, closeWindow });
         return;
       }
@@ -286,9 +290,9 @@ function applyDetachedTabAction(
  * E5.7#96：action 载荷定型为 PoolTabAction wire 契约——枚举值/字段名壳池双端 tsc 对齐。
  * E5.8#46.4：按 sourceWindowId 路由——主窗走 useTabManager；脱出窗走注册表 tabState + 纯 reducer。
  */
-export function createTabActionHandler(deps: TabActionHandlerDeps): (action: ShellTabAction) => void {
+export function createTabActionHandler(deps: TabActionHandlerDeps): (action: ShellTabAction) => Promise<void> {
   const { handleFocusTab, focusGroup, closeTab, groups, reorderTab, moveTab, splitTabAt, duplicateTab, pinTab, createTab, updateSplitSizes, releaseOutside, windows, updateTabState, closeWindow } = deps;
-  return (action) => {
+  return async (action) => {
     // E5.8#44-B：窗口外释放恒走全局 relocation（跨窗命中检测——sourceWindowId 内部路由），不随源窗分流
     if (action.action === "releaseOutsideWindow") {
       releaseOutside(action.tabId, action.screenX, action.screenY, action.sourceWindowId);
@@ -300,7 +304,14 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: She
     const sourceWindowId = action.sourceWindowId;
     if (sourceWindowId && sourceWindowId !== "main") {
       const win = windows.find((w) => w.windowId === sourceWindowId);
-      if (win) applyDetachedTabAction(win, action, { updateTabState, closeWindow });
+      if (win) {
+        // E5.8#46.12 Step3：脱出窗关闭补 dirty 确认（镜像主窗 closeTab——池侧 × 此前静默关脏标签丢数据）
+        if (action.action === "closeTab") {
+          const tab = win.tabState.groups.flatMap((g) => g.tabs).find((t) => t.id === action.tabId);
+          if (tab && !(await confirmDirtyTabClose(tab))) return;
+        }
+        applyDetachedTabAction(win, action, { updateTabState, closeWindow });
+      }
       return;
     }
     switch (action.action) {
@@ -449,6 +460,9 @@ export function createSourceIdRouters(deps: SourceIdRouterDeps) {
       if (r.kind === "gone") return;
       const tab = findTabBySourceId(r.win.tabState, sourceId);
       if (!tab) return;
+      // E5.8#46.12 Step3：脱出窗 sourceId 关脏 tab 静默阻断（镜像主窗 reduceCloseTab dirty 阻断语义，
+      // 不弹窗——程序化关闭由插件自行确认）。比主窗多查 ● 前缀——与 isTabDirty 判定统一，不分叉。
+      if (isTabDirty(tab)) return;
       applyDetachedTabAction(r.win, { action: "closeTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
     },
   };

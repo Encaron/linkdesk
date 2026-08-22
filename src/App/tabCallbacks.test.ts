@@ -14,9 +14,16 @@ import type { TabState } from "../hooks/useTabManager";
 vi.mock("../pluginLoader/viewRegistry", () => ({
   invokeBeforeCloseTab: vi.fn(async () => true),
 }));
+// E5.8#46.12 Step3：脱出窗 close 路径的 dirty 确认走 DialogService.showConfirm——mock 隔离真实弹窗
+vi.mock("../core/services/ui/DialogService", () => ({
+  showConfirm: vi.fn(async () => true),
+}));
+import { showConfirm } from "../core/services/ui/DialogService";
 
 const TAB1 = { id: "t1", type: "demo-plugin", label: "Demo Alpha", dirty: false, pluginId: "demo-plugin" };
 const TAB2 = { id: "t2", type: "demo-plugin", label: "Demo Beta", dirty: false, pluginId: "demo-plugin" };
+/** E5.8#46.12 Step3：脏 tab fixture——dirty:true 字段路径（EditorTab 另一表现是 label ● 前缀，由 isTabDirty 覆盖） */
+const DIRTY = { id: "t3", type: "demo-plugin", label: "Demo Gamma", dirty: true, pluginId: "demo-plugin" };
 
 function makeState(tabs: Array<typeof TAB1>): TabState {
   return { groups: [{ id: "g1", tabs, activeTabId: tabs[0].id }], activeGroupId: "g1", root: { type: "leaf", groupId: "g1" } };
@@ -58,56 +65,88 @@ function expectDetachedUpdate(updateTabState: ReturnType<typeof vi.fn>, wid: str
 }
 
 describe("createTabActionHandler —— E5.8#46.4 按 sourceWindowId 路由", () => {
-  it("脱出窗 splitTab → 该窗 tabState 纯 reducer 分屏 + updateTabState（窗内分屏失效修复）", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+  it("脱出窗 splitTab → 该窗 tabState 纯 reducer 分屏 + updateTabState（窗内分屏失效修复）", async () => {
     const { deps, updateTabState } = makeDeps();
     const handler = createTabActionHandler(deps);
-    handler({ action: "splitTab", tabId: "t1", direction: "horizontal", zone: "right", targetGroupId: "g1", sourceWindowId: "det-1" });
+    await handler({ action: "splitTab", tabId: "t1", direction: "horizontal", zone: "right", targetGroupId: "g1", sourceWindowId: "det-1" });
     expect(updateTabState).toHaveBeenCalledTimes(1);
     const [wid, state] = updateTabState.mock.calls[0] as [string, TabState];
     expect(wid).toBe("det-1");
     expect(state.groups.length).toBe(2); // 分屏成功——t1 移入新组，t2 留源组
   });
 
-  it("脱出窗关闭一个标签（窗仍非空）→ updateTabState，不关窗", () => {
+  it("脱出窗关闭一个标签（窗仍非空）→ updateTabState，不关窗", async () => {
     const { deps, updateTabState, closeWindow } = makeDeps();
     const handler = createTabActionHandler(deps);
-    handler({ action: "closeTab", tabId: "t1", sourceWindowId: "det-1" });
+    await handler({ action: "closeTab", tabId: "t1", sourceWindowId: "det-1" });
     expectDetachedUpdate(updateTabState, "det-1", 1);
     expect(closeWindow).not.toHaveBeenCalled();
   });
 
-  it("脱出窗关闭最后一个标签 → 空窗自灭 closeWindow（I9-8，不 updateTabState）", () => {
+  it("脱出窗关闭最后一个标签 → 空窗自灭 closeWindow（I9-8，不 updateTabState）", async () => {
     const { deps, updateTabState, closeWindow } = makeDeps();
     deps.windows[0].tabState = makeState([TAB1]); // 只剩一个标签
     const handler = createTabActionHandler(deps);
-    handler({ action: "closeTab", tabId: "t1", sourceWindowId: "det-1" });
+    await handler({ action: "closeTab", tabId: "t1", sourceWindowId: "det-1" });
     expect(closeWindow).toHaveBeenCalledWith("det-1");
     expect(updateTabState).not.toHaveBeenCalled();
   });
 
-  it("窗口外释放（脱出源窗）→ 恒走 releaseOutside relocation，不随源窗分流", () => {
+  it("窗口外释放（脱出源窗）→ 恒走 releaseOutside relocation，不随源窗分流", async () => {
     const { deps, releaseOutside, updateTabState, closeWindow } = makeDeps();
     const handler = createTabActionHandler(deps);
-    handler({ action: "releaseOutsideWindow", tabId: "t1", screenX: 300, screenY: 200, sourceWindowId: "det-1" });
+    await handler({ action: "releaseOutsideWindow", tabId: "t1", screenX: 300, screenY: 200, sourceWindowId: "det-1" });
     expect(releaseOutside).toHaveBeenCalledWith("t1", 300, 200, "det-1");
     expect(updateTabState).not.toHaveBeenCalled();
     expect(closeWindow).not.toHaveBeenCalled();
   });
 
-  it("主窗 action → 走 useTabManager 主路径（reorderTab），不碰注册表", () => {
+  it("主窗 action → 走 useTabManager 主路径（reorderTab），不碰注册表", async () => {
     const { deps, reorderTab, updateTabState, closeWindow } = makeDeps();
     const handler = createTabActionHandler(deps);
-    handler({ action: "reorderTab", groupId: "g1", tabId: "t1", newIndex: 1, oldIndex: 0, sourceWindowId: "main" });
+    await handler({ action: "reorderTab", groupId: "g1", tabId: "t1", newIndex: 1, oldIndex: 0, sourceWindowId: "main" });
     expect(reorderTab).toHaveBeenCalledWith("t1", 1);
     expect(updateTabState).not.toHaveBeenCalled();
     expect(closeWindow).not.toHaveBeenCalled();
   });
 
-  it("脱出窗已关闭的迟到动作 → 静默丢弃（window 找不到）", () => {
+  it("脱出窗已关闭的迟到动作 → 静默丢弃（window 找不到）", async () => {
     const { deps, updateTabState, closeWindow } = makeDeps();
     const handler = createTabActionHandler(deps);
-    handler({ action: "closeTab", tabId: "t1", sourceWindowId: "gone-1" });
+    await handler({ action: "closeTab", tabId: "t1", sourceWindowId: "gone-1" });
     expect(updateTabState).not.toHaveBeenCalled();
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
+
+  // E5.8#46.12 Step3：脱出窗池侧 × 关脏 tab 补 dirty 确认（此前静默关脏丢数据）
+  it("脱出窗池侧 × 关非脏 tab → 不弹确认，直接关", async () => {
+    const { deps, updateTabState } = makeDeps();
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeTab", tabId: "t1", sourceWindowId: "det-1" });
+    expect(showConfirm).not.toHaveBeenCalled();
+    expectDetachedUpdate(updateTabState, "det-1", 1);
+  });
+
+  it("脱出窗池侧 × 关脏 tab → dirty 确认否决 → 不关（showConfirm 被调）", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false);
+    const { deps, updateTabState, closeWindow } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([DIRTY, TAB2]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeTab", tabId: "t3", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expect(updateTabState).not.toHaveBeenCalled();
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗池侧 × 关脏 tab → dirty 确认通过 → 关闭 + updateTabState", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true);
+    const { deps, updateTabState, closeWindow } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([DIRTY, TAB2]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeTab", tabId: "t3", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 1);
     expect(closeWindow).not.toHaveBeenCalled();
   });
 });
@@ -189,6 +228,25 @@ describe("createCoreCallbacks.closeActiveTab —— E5.8#46.8 按聚焦窗路由
     expect(updateTabState).not.toHaveBeenCalled();
     expect(closeWindow).not.toHaveBeenCalled();
   });
+
+  // E5.8#46.12 Step3：脱出窗 Ctrl+W 关脏 tab 走 DialogService dirty 确认（此前静默关脏丢数据）
+  it("脱出窗 Ctrl+W 关脏 tab → dirty 确认否决 → 不关（showConfirm 被调）", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false);
+    const { callbacks, updateTabState, closeWindow } = makeCoreCallbacks([DIRTY, TAB2]);
+    await callbacks.closeActiveTab("det-1");
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expect(updateTabState).not.toHaveBeenCalled();
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 Ctrl+W 关脏 tab → dirty 确认通过 → 关闭 + updateTabState", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true);
+    const { callbacks, updateTabState, closeWindow } = makeCoreCallbacks([DIRTY, TAB2]);
+    await callbacks.closeActiveTab("det-1");
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 1);
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
 });
 
 /* ── E5.8#46.12：createSourceIdRouters 按来源窗路由 sourceId 族（信封章）── */
@@ -256,6 +314,15 @@ describe("createSourceIdRouters —— E5.8#46.12 按来源窗路由 sourceId �
     routers.closeTabBySourceId("t1", "det-1");
     expect(closeWindow).toHaveBeenCalledWith("det-1");
     expect(updateTabState).not.toHaveBeenCalled();
+  });
+
+  // E5.8#46.12 Step3：脱出窗 sourceId 关脏 tab 静默阻断（镜像主窗 reduceCloseTab dirty 阻断，不弹窗）
+  it("脱出窗 closeBySourceId 关脏 tab → 静默阻断（不 updateTabState/不关窗/不弹确认）", () => {
+    const { routers, updateTabState, closeWindow } = makeSourceIdDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([DIRTY, TAB2]) }] });
+    routers.closeTabBySourceId("t3", "det-1");
+    expect(showConfirm).not.toHaveBeenCalled();
+    expect(updateTabState).not.toHaveBeenCalled();
+    expect(closeWindow).not.toHaveBeenCalled();
   });
 
   it("主窗/未注 closeBySourceId → 走 useTabManager 主路径", () => {

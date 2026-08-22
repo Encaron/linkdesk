@@ -322,6 +322,12 @@ export function findTabBySourceId(state: TabState, sourceId: string): Tab | unde
   );
 }
 
+/** E5.8#46.12 Step3：tab 脏判定——dirty 字段或 label ● 前缀（EditorTab 只改 label 不改 dirty）。
+ *  主窗 closeTab / 脱出窗 close 路径共用，一处定义（防 v2.6 判定分叉）。 */
+export function isTabDirty(tab: Tab | undefined): boolean {
+  return tab?.dirty === true || (tab?.label?.startsWith("● ") ?? false);
+}
+
 /** E5.8#46.12：按 sourceId 更新标签标题——脱出窗 label/dirty 同步（● 黑点）落来源窗注册表。tab 找不到 → 原引用（React bailout） */
 export function reduceUpdateTabLabelBySourceId(prev: TabState, sourceId: string, label: string): TabState {
   const tab = findTabBySourceId(prev, sourceId);

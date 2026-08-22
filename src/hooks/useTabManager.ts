@@ -37,6 +37,7 @@ import {
   reduceUpdateTabLabel,
   reduceUpdateTabLabelBySourceId,
   findTabBySourceId,
+  isTabDirty,
   reduceReorderTab,
   reducePinTab,
   reduceRemoveTab,
@@ -54,6 +55,7 @@ export {
   reduceUpdateTabLabel,
   reduceUpdateTabLabelBySourceId,
   findTabBySourceId,
+  isTabDirty,
   reduceReorderTab,
   reducePinTab,
   reduceRemoveTab,
@@ -83,6 +85,15 @@ export {
 function emitTabActivated(tabId: string, pluginId: string | undefined, filePath: string | undefined): void {
   CoreEvents.onDidChangeActiveTab.fire({ tabId, pluginId, filePath });
   try { window.linkdesk?.events?.emit("tab:activated", { tabId, pluginId, filePath }); } catch { /* 静默 */ }
+}
+
+/** E5.8#46.12 Step3：dirty tab 关闭确认——主窗 closeTab + 脱出窗 close 路径共用，一处定义（防 v2.6 判定分叉）。
+ *  非脏 → true（直接过）；脏 → 弹确认框。label ● 前缀剥掉再展示（黑点不污染文案）。 */
+export async function confirmDirtyTabClose(tab: Tab | undefined): Promise<boolean> {
+  if (!isTabDirty(tab)) return true;
+  const raw = tab?.label ?? "";
+  const displayLabel = raw.startsWith("● ") ? raw.slice(2) : raw;
+  return showConfirm(i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) }));
 }
 
 export function useTabManager() {
@@ -244,13 +255,9 @@ export function useTabManager() {
     async (tabId: string): Promise<CloseTabResult> => {
       const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find((t) => t.id === tabId);
       // E5#52：dirty 可能在 tab.dirty 字段，也可能在 label 的 ● 前缀（EditorTab 只改 label 不改 dirty）
-      const isDirty = tab?.dirty || (tab?.label?.startsWith("● ") ?? false);
-      if (isDirty) {
-        const displayLabel = tab!.label.startsWith("● ") ? tab!.label.slice(2) : tab!.label;
-        const confirmed = await showConfirm(
-          i18n.t("「{{label}}」有未保存的修改，确定关闭？", { label: i18n.t(displayLabel) })
-        );
-        if (!confirmed) return { closed: false, tabId, reason: "dirty" };
+      // E5.8#46.12 Step3：判定/确认下沉共享 helper（isTabDirty + confirmDirtyTabClose）——脱出窗 close 路径同语义复用，一处定义
+      if (isTabDirty(tab)) {
+        if (!(await confirmDirtyTabClose(tab))) return { closed: false, tabId, reason: "dirty" };
         // 确认弹窗 await 之后重新读提交态（期间状态可能已变）
         return commitForceClose(tabId);
       }
