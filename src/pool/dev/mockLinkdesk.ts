@@ -154,6 +154,8 @@ export function installMockLinkdesk(): void {
       tabAction: makeLogger("pool.tabAction"),
       // E5.8#44-B：TabBar rects 上报（拖出手势/吸附命中检测数据源——preview 无壳侧消费，留日志）
       tabBarRects: makeLogger("pool.tabBarRects"),
+      // E5.8#44-C：拖拽位置上报（拎起后 mousemove——preview 无壳侧消费，留日志）
+      dragPosition: makeLogger("pool.dragPosition"),
       // E5.8#30.16（P8）：dev 预览无插件注册——关闭一律放行（beforeClose 返回 true，Handler 注册/注销留日志）
       registerBeforeClose: makeLogger("pool.registerBeforeClose"),
       unregisterBeforeClose: makeLogger("pool.unregisterBeforeClose"),
@@ -166,6 +168,12 @@ export function installMockLinkdesk(): void {
       onTabAction: () => () => {},
       // E5.8#44-B：TabBar rects 上报订阅（preview 无壳侧消费——no-op 订阅）
       onTabBarRects: () => () => {},
+      // E5.8#44-C：拖拽位置订阅（preview 无壳侧消费——no-op 订阅）
+      onDragPosition: () => () => {},
+      // E5.8#44-C：吸附提示订阅（preview 无壳侧消费——no-op 订阅）
+      onAdsorbHint: () => () => {},
+      // E5.8#44-C：壳推送吸附提示（preview 无壳侧消费——留日志）
+      pushAdsorbHint: makeLogger("pool.pushAdsorbHint"),
       pushQuickPick: makeLogger("pool.pushQuickPick"),
       onQuickPickAction: () => () => {},
       pushToast: makeLogger("pool.pushToast"),

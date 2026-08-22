@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload, TabBarRectsPayload, ShellTabDragPosition, AdsorbHintPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -82,6 +82,12 @@ ipcRenderer.on(IPC.pool.tabAction, (_event, action: ShellTabAction) => {
 let _tabBarRectsHandler: ((payload: TabBarRectsPayload) => void) | null = null;
 ipcRenderer.on(IPC.pool.tabBarRects, (_event, payload: TabBarRectsPayload) => {
   if (_tabBarRectsHandler) _tabBarRectsHandler(payload);
+});
+
+// E5.8#44-C：拖拽位置上报回调——池→主进程→壳，壳侧 React 注册 handler 做吸附命中检测（排除源窗）
+let _dragPositionHandler: ((pos: ShellTabDragPosition) => void) | null = null;
+ipcRenderer.on(IPC.pool.dragPosition, (_event, pos: ShellTabDragPosition) => {
+  if (_dragPositionHandler) _dragPositionHandler(pos);
 });
 
 // E5.7#15：QuickPick 动作回调——池→主进程→壳，壳侧 React 注册 handler 调 QuickPickService
@@ -418,6 +424,14 @@ try {
         _tabBarRectsHandler = cb;
         return () => { _tabBarRectsHandler = null; };
       },
+      /** E5.8#44-C：注册拖拽位置上报回调——池→壳→吸附命中检测（windowRelocation.handleDragPosition，排除源窗）。返回 unsubscribe */
+      onDragPosition: (cb: (pos: ShellTabDragPosition) => void) => {
+        _dragPositionHandler = cb;
+        return () => { _dragPositionHandler = null; };
+      },
+      /** E5.8#44-C：推送吸附提示到目标窗——壳命中解析出 targetWindowId 后定向推送（目标窗 TabBar 高亮/清除） */
+      pushAdsorbHint: (hint: AdsorbHintPayload, windowId: string) =>
+        ipcRenderer.send(IPC.pool.adsorbHint, hint, windowId),
       /** E5.7#15：推送 QuickPick 哑渲染数据到池——壳 QuickPickService 序列化后直推（聪慧→哑） */
       pushQuickPick: (data: unknown) => ipcRenderer.send(IPC.pool.quickpickShow, data),
       /** E5.7#15：注册 QuickPick 动作回调——池→壳→QuickPickService。返回 unsubscribe */
