@@ -34,8 +34,9 @@ import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#2
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   // E5.8#37.5：归一化 DTO → 池 grid 唯一推导（列/行模板 + 各 zone grid 放置）。
   // width/height 不进推导（auto 内容驱动——PanelZone 自身根尺寸决定面板行/列大小）。
+  // E5.8#43-2：iconBar/sidebar/statusBar 可选（脱出窗子集不推）——sidebar 缺省 edge 兜底 left
   const grid = computePoolGrid({
-    sidebarEdge: layout.sidebar.edge ?? "left",
+    sidebarEdge: layout.sidebar?.edge ?? "left",
     panelVisible: layout.panel?.visible === true,
     panelEdge: layout.panel?.edge ?? "bottom",
     panelAlign: layout.panel?.align ?? "center",
@@ -57,18 +58,24 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
         className="pool-body"
         style={{ gridTemplateColumns: grid.gridTemplateColumns, gridTemplateRows: grid.gridTemplateRows }}
       >
-        {/* IconBar——E5.7#6（Phase 2）：42px 图标列 + 激活高亮 + ☰ 汉堡。恒全高（行跨全） */}
-        <div className="pool-grid-cell" style={cellStyle(grid.cells.iconbar)}>
-          <IconBarZone iconBar={layout.iconBar} />
-        </div>
+        {/* IconBar——E5.7#6（Phase 2）：42px 图标列 + 激活高亮 + ☰ 汉堡。恒全高（行跨全）。
+            E5.8#43-2：layout.iconBar 缺省（脱出窗子集）→ 不渲染该 cell → auto 列 0 宽（无空列） */}
+        {layout.iconBar && (
+          <div className="pool-grid-cell" style={cellStyle(grid.cells.iconbar)}>
+            <IconBarZone iconBar={layout.iconBar} />
+          </div>
+        )}
 
         {/* Sidebar——E5.7#10（Phase 3）：全量哑渲染 zone。
             visible=false → zone 内 display:none（保持挂载，视图状态不丢）。
             #13 分隔线已接入——zone 内 4px handle（乐观本地 + mouseup commit，真相源在壳）。
-            #37.5：恒挂载 + grid 放置随 sidebar.edge（左/右槽，swap 规则对边）。 */}
-        <div className="pool-grid-cell" style={cellStyle(grid.cells.sidebar)}>
-          <SidebarZone sidebar={layout.sidebar} />
-        </div>
+            #37.5：恒挂载 + grid 放置随 sidebar.edge（左/右槽，swap 规则对边）。
+            E5.8#43-2：layout.sidebar 缺省（脱出窗子集）→ 不渲染该 cell → auto 列 0 宽 */}
+        {layout.sidebar && (
+          <div className="pool-grid-cell" style={cellStyle(grid.cells.sidebar)}>
+            <SidebarZone sidebar={layout.sidebar} />
+          </div>
+        )}
 
         {/* MainZone——E5.7#20（Phase 5）：MainRenderer 693 行行为零丢失提取（13 项验收）。
             tab bar 收在 panel 内 per-panel GroupTabBar——TabBarZone（#7）已取消。
@@ -95,8 +102,9 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
         )}
       </div>
 
-      {/* Row 3: StatusBar——E5.7#8（Phase 2）：条目 + Chord + 通知中心 */}
-      <StatusBarZone statusBar={layout.statusBar} />
+      {/* Row 3: StatusBar——E5.7#8（Phase 2）：条目 + Chord + 通知中心。
+          E5.8#43-2：layout.statusBar 缺省（脱出窗子集）→ 不渲染该行 */}
+      {layout.statusBar && <StatusBarZone statusBar={layout.statusBar} />}
 
       {/* FloatingLayerHost——#25（Phase 4）：浮层统一容器——始终挂载 + pointer-events: none 默认穿透 */}
       <FloatingLayerHost />
