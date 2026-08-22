@@ -316,8 +316,12 @@ ipcMain.on(IPC.theme.changed, (_event, isDark: boolean) => {
 });
 
 // ── preload 加载确认（新风险 3 防御——preload 抛异常不进 ErrorBoundary）──
+// E5.8#46.11：每次壳加载（fresh+reload）主动 seed 全部池窗 bounds——壳 reload 后注册表 bounds 清空、
+// 池不随壳 reload 重发 pool:ready → main.bounds 恒缺直至用户动窗（#46.10 吸附对无 bounds 窗跳过命中）。
+// preloadReady 恒在池注册之后触发（windowManager 建于壳页面加载前），此 handler 无需等待窗。
 ipcMain.on(IPC.app.preloadReady, () => {
   console.log('[main] preload-shell 加载成功，window.linkdesk 已就绪');
+  windowManager?.pushAllWindowBounds();
 });
 
 // ── E2a #5：心跳看门狗——检测 JS 主线程死循环/卡死 ──

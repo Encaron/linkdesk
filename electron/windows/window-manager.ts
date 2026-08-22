@@ -385,6 +385,14 @@ export class WindowManager {
     this.notifyShellWindowBoundsChanged(windowId);
   }
 
+  /** E5.8#46.11：全量补推当前 bounds——壳每次加载（preloadReady）seed 用。壳 reload 后注册表 bounds 清空、
+   *  池不随壳 reload 重发 pool:ready → 主进程主动播种；单窗幂等推送合并到 notifyShellWindowBoundsChanged 守卫内。 */
+  pushAllWindowBounds(): void {
+    for (const windowId of this.poolWindows.keys()) {
+      this.notifyShellWindowBoundsChanged(windowId);
+    }
+  }
+
   /** E5.8#43-3（I9-14 A6）：上报池窗当前 bounds 给壳——moved/resized 完成事件触发，壳据 windowId 更新注册表 + 落盘浮窗位置 */
   private notifyShellWindowBoundsChanged(windowId: string): void {
     if (!this.mainWindow || this.mainWindow.isDestroyed()) return;

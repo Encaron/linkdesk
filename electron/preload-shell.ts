@@ -53,6 +53,14 @@ ipcRenderer.on(IPC.bridge.request, (_event, req: BridgeRequestPayload) => {
   _bridgeRequestRelay.push(req);
 });
 
+// ── E5.8#46.11：池窗 bounds 上报缓冲——壳 reload 后主进程 preloadReady seed 补推（见 main.ts），
+// 缓冲+回放防 IPC 早于 React 订阅到达（对标 _bridgeRequestRelay 硬约束 20 同款）──
+const _windowBoundsRelay = new IpcRelay<PoolWindowBoundsPayload>();
+
+ipcRenderer.on(IPC.pool.windowBoundsChanged, (_event, payload: PoolWindowBoundsPayload) => {
+  _windowBoundsRelay.push(payload);
+});
+
 // ── E5.7#56：壳侧命令 handler 地图——插件入口模块双进程执行（壳 glob loader + 池视图渲染）──
 // 壳进程执行时 registerCommand 传入的 handler 是页面世界函数（contextBridge 双向代理，
 // 隔离世界可调用——preload-pool _poolCommands 同款机制）。壳 CommandRegistry 条目执行时
@@ -490,14 +498,8 @@ try {
         ipcRenderer.on(IPC.pool.windowClosed, handler);
         return () => ipcRenderer.removeListener(IPC.pool.windowClosed, handler);
       },
-      /** E5.8#43-3：主→壳 监听池窗位置/大小变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）。返回 unsubscribe */
-      onWindowBoundsChanged: (cb: (payload: PoolWindowBoundsPayload) => void) => {
-        const handler = (_event: unknown, payload: PoolWindowBoundsPayload) => {
-          try { cb(payload); } catch { /* contextBridge 回调静默失败 */ }
-        };
-        ipcRenderer.on(IPC.pool.windowBoundsChanged, handler);
-        return () => ipcRenderer.removeListener(IPC.pool.windowBoundsChanged, handler);
-      },
+      /** E5.8#43-3：主→壳 监听池窗位置/大小变更（moved/resized 上报 + #46.11 preloadReady seed）——壳注册表更新 + 落盘浮窗位置（I9-14）。返回 unsubscribe */
+      onWindowBoundsChanged: (cb: (payload: PoolWindowBoundsPayload) => void) => _windowBoundsRelay.onReady(cb),
     },
 
     // ── E3f #52f：窗口控制——TitleBar 的自定义 ─ □ × 按钮（E5.8#20 共享模块——双端同版，防 setZoom 类漂移）──
