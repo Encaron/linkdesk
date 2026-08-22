@@ -179,9 +179,9 @@ function createWindow(): void {
   }
   // E5.8#43-2（B3）：最大化状态 → 该窗池 WCV（TitleBar □/还原按钮态跟随所在窗口）。
   // 原 win.webContents.send 发的是壳渲染进程（index.html）——池是独立 WCV 收不到（E5.7 潜伏缺口），
-  // 且脱出窗壳 webContents 无人消费。sendPoolByHost 按宿主窗反查池定向发送。
-  win.on('maximize', () => windowManager?.sendPoolByHost(win, IPC.window.maximizeChange, true));
-  win.on('unmaximize', () => windowManager?.sendPoolByHost(win, IPC.window.maximizeChange, false));
+  // 且脱出窗壳 webContents 无人消费。sendPoolMaximizeChange 按宿主窗反查池定向发送。
+  win.on('maximize', () => windowManager?.sendPoolMaximizeChange(win, true));
+  win.on('unmaximize', () => windowManager?.sendPoolMaximizeChange(win, false));
 
   // ── E5.7#36：无状态 shell IPC——无窗口引用，只注册一次 ──
   if (!_shellIpcRegistered) {
