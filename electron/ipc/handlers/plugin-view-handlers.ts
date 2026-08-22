@@ -120,6 +120,20 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     }
   });
 
+  // E5.8#43-1（A4）：壳→主——创建脱出池窗（壳驱动：壳生成 windowId + bounds，主进程只执行窗口+池生命周期）
+  ipcMain.on(IPC.pool.createWindow, (_event, opts: { windowId: string; width?: number; height?: number; x?: number; y?: number }) => {
+    if (!opts?.windowId) {
+      console.error('[pool-handlers] createWindow 缺 windowId');
+      return;
+    }
+    _windowManager?.createPoolWindow(opts);
+  });
+
+  // E5.8#43-1（A4）：壳→主——关闭脱出池窗（空窗自灭/并回主窗口销毁；tab 归属已由壳先行处理）
+  ipcMain.on(IPC.pool.closeWindow, (_event, windowId: string) => {
+    _windowManager?.closePoolWindow(windowId);
+  });
+
   // E5.7#12.5：pool:set-bounds 已死链删除——bounds 换主进程（window-manager syncPoolBounds）
-  console.log('[pool-handlers] 已注册 13 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action）');
+  console.log('[pool-handlers] 已注册 15 个 pool IPC handler（pool:push-layout / pool:ready / pool:toggleDevTools / pool:sidebar-action / pool:tab-action / pool:quickpick-show / pool:quickpick-action / pool:toast-show / pool:toast-action / pool:dialog-show / pool:dialog-action / pool:floating-panel-show / pool:floating-panel-action / pool:create-window / pool:close-window）');
 }

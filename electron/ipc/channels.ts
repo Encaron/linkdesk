@@ -148,6 +148,10 @@ export const IPC = {
     floatingPanel: 'pool:floating-panel',
     floatingPanelShow: 'pool:floating-panel-show',
     floatingPanelAction: 'pool:floating-panel-action',
+    // E5.8#43-1（A4）：多窗口底座——壳→主创建/关闭池窗 + 主→壳 OS 关窗通知（壳驱动，主进程执行）
+    createWindow: 'pool:create-window',
+    closeWindow: 'pool:close-window',
+    windowClosed: 'pool:window-closed',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',

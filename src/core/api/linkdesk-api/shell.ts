@@ -9,7 +9,7 @@ import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
 import type { PoolTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -40,6 +40,10 @@ export interface ShellAPI {
     pushFloatingPanel(data: unknown): void;
     onFloatingPanelAction(cb: (action: PoolFloatingPanelAction) => void): () => void;
     onMemoryPressure(cb: (data: MemoryPressureData) => void): () => void;
+    // ── E5.8#43-1（A4）：多窗口底座——壳驱动创建/关闭池窗 + 监听 OS 关窗（主进程执行窗口生命周期）──
+    createWindow(opts: CreatePoolWindowRequest): void;
+    closeWindow(windowId: string): void;
+    onWindowClosed(cb: (windowId: string) => void): () => void;
     // ── 池侧（壳 preload 无） ──
     onLayout(cb: (layout: PoolLayout) => void): () => void;
     ready(): void;

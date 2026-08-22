@@ -172,6 +172,10 @@ export function installMockLinkdesk(): void {
       pushFloatingPanel: makeLogger("pool.pushFloatingPanel"),
       onFloatingPanelAction: () => () => {},
       onMemoryPressure: () => () => {},
+      // E5.8#43-1（A4）：多窗口底座——壳侧创建/关闭池窗 + 监听 OS 关窗（preview 无壳侧消费——留日志 + no-op 订阅）
+      createWindow: makeLogger("pool.createWindow"),
+      closeWindow: makeLogger("pool.closeWindow"),
+      onWindowClosed: () => () => {},
     },
     window: {
       minimize: makeLogger("window.minimize"),

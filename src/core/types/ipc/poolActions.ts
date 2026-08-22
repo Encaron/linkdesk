@@ -42,3 +42,17 @@ export interface MemoryPressureData {
 export interface PoolReadyPayload {
   windowId: string;
 }
+
+/** 壳→主：创建池窗请求——windowId 壳生成（tabState 归属），bounds 可选（E5.8#43-1 A4 多窗口底座） */
+export interface CreatePoolWindowRequest {
+  windowId: string;
+  width?: number;
+  height?: number;
+  x?: number;
+  y?: number;
+}
+
+/** 主→壳：池窗被 OS 关闭通知（用户点 × / OS 关窗）——壳据 windowId 按窗口策略处理 tab（E5.8#43-1 A4） */
+export interface PoolWindowClosedPayload {
+  windowId: string;
+}

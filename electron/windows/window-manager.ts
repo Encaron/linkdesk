@@ -15,6 +15,7 @@ import { attachKeyboardRouting } from './keyboard-router.js'; // E5.7 快捷键�
 import { cacheLayoutSnapshot } from './crash-recovery.js'; // E5.7#36：崩溃恢复快照——pushLayout 中转处缓存
 import type { IpcBridge } from '../ipc/ipc-bridge.js'; // 类型引用——无运行时环（ipc-bridge 反向同是 type-only）
 import { IPC } from '../ipc/channels.js';
+import type { CreatePoolWindowRequest } from '../../src/core/types/ipc/poolActions'; // E5.8#43-1（A4）多窗口底座 wire 契约
 
 /** RSS 超过 1GB 时触发内存压力警告（MemoryInfo.workingSetSize 单位是 KB） */
 const MEMORY_PRESSURE_THRESHOLD = 1024 * 1024; // 1GB = 1,048,576 KB
@@ -230,6 +231,60 @@ export class WindowManager {
     entry.unbindResize();
     this.poolWindows.delete(windowId);
     console.log(`[WindowManager] Pool "${windowId}" 已销毁`);
+  }
+
+  /** E5.8#43-1（A4）：壳侧主动关闭的窗口集合——closed 事件里跳过 notifyShellWindowClosed（壳已知道，防冗余通知） */
+  private shellClosingWindows = new Set<string>();
+
+  /**
+   * 创建脱出池窗——壳驱动（壳生成 windowId + bounds，tab 归属归壳），主进程只执行窗口+池生命周期。
+   * detach 核心 API 的窗口侧；纯工作区窗口（拍板 7：frame:false + 池内自绘标题栏），无原生 chrome/菜单栏。
+   * tab 内容由壳 pushLayout 定向到该 windowId（#43-2 接线）。
+   */
+  createPoolWindow(opts: CreatePoolWindowRequest): WebContentsView {
+    const win = new BrowserWindow({
+      width: opts.width ?? 900,
+      height: opts.height ?? 600,
+      x: opts.x,
+      y: opts.y,
+      minWidth: 480,
+      minHeight: 320,
+      frame: false, // E5.8 拍板 7：自绘标题栏——脱出窗纯工作区窗口
+      // E5.8#6.6 hex 豁免：OS 层窗口背景色（渲染进程 CSS 变量不可达；防池加载前白闪）
+      // eslint-disable-next-line linkdesk/no-hardcoded-hex
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#1e1e1e' : '#f5f5f5',
+      show: false, // ready-to-show 后再显示，避免白屏闪烁
+      title: 'LinkDesk',
+    });
+    win.once('ready-to-show', () => {
+      if (!win.isDestroyed()) win.show();
+    });
+    // OS 关闭（用户点 × / 系统关窗）→ 通知壳按窗口策略处理 tab（空窗自灭/关窗×语义归壳决策）
+    win.on('closed', () => {
+      if (this.shellClosingWindows.has(opts.windowId)) {
+        this.shellClosingWindows.delete(opts.windowId);
+        return;
+      }
+      this.notifyShellWindowClosed(opts.windowId);
+    });
+    return this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
+  }
+
+  /** E5.8#43-1（A4）：关闭脱出池窗——壳侧主动调用（空窗自灭/并回主窗口销毁）。attach 核心 API 的窗口侧。 */
+  closePoolWindow(windowId: string): void {
+    const entry = this.poolWindows.get(windowId);
+    if (!entry) return;
+    this.shellClosingWindows.add(windowId);
+    const win = entry.hostWindow;
+    this.destroyPoolWindow(windowId);
+    if (!win.isDestroyed()) win.destroy();
+  }
+
+  /** E5.8#43-1（A4）：通知壳某池窗被 OS 关闭——主进程只报窗口事实，tab 处理策略归壳（#43-2 窗口模式策略表消费） */
+  private notifyShellWindowClosed(windowId: string): void {
+    if (this.mainWindow && !this.mainWindow.isDestroyed()) {
+      this.mainWindow.webContents.send(IPC.pool.windowClosed, { windowId });
+    }
   }
 
   /** E5.6#5f → E5.7#4：重建 Pool——destroy → create（设计 §9.2 崩溃恢复用） */

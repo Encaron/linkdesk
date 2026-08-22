@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -437,6 +437,19 @@ try {
       onMemoryPressure: (cb: (data: MemoryPressureData) => void) => {
         _memoryPressureHandler = cb;
         return () => { _memoryPressureHandler = null; };
+      },
+      // ── E5.8#43-1（A4）：多窗口底座——创建/关闭池窗 + 监听 OS 关窗（壳驱动，主进程执行窗口生命周期）──
+      /** 壳→主：创建脱出池窗——windowId 壳生成（tab 归属），bounds 可选。tab 内容随后 pushLayout 定向该 windowId */
+      createWindow: (opts: CreatePoolWindowRequest) => ipcRenderer.send(IPC.pool.createWindow, opts),
+      /** 壳→主：关闭脱出池窗——空窗自灭/并回主窗口销毁（tab 归属已由壳先行处理） */
+      closeWindow: (windowId: string) => ipcRenderer.send(IPC.pool.closeWindow, windowId),
+      /** 主→壳：监听池窗被 OS 关闭（用户点 ×/系统关窗）——回调收 windowId，壳按窗口策略处理 tab。返回 unsubscribe */
+      onWindowClosed: (cb: (windowId: string) => void) => {
+        const handler = (_event: unknown, payload: PoolWindowClosedPayload) => {
+          try { cb(payload?.windowId ?? ''); } catch { /* contextBridge 回调静默失败 */ }
+        };
+        ipcRenderer.on(IPC.pool.windowClosed, handler);
+        return () => ipcRenderer.removeListener(IPC.pool.windowClosed, handler);
       },
     },
 
