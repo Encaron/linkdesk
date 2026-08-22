@@ -15,6 +15,8 @@ interface FactorySlotEntry {
   pluginId: string;
   /** 插件显示名（manifest.name 原文，消费方自做 i18n） */
   title: string;
+  /** E5.8#41.18：该插件 contributes.floatingPanel.viewId（无声明 = undefined）——切换/打开候选悬浮面板用 */
+  viewId?: string;
 }
 
 /** factorySlots 命名空间面——双端注入（池内渲染侧实现走 IPC 桥） */

@@ -11,14 +11,20 @@
 
 import { factorySlots } from "../../bootstrap/FactorySlots";
 import { getLoadedPluginManifests } from "../../../../pluginLoader/loader";
+import { getFloatingPanelViewId } from "../../../../pluginLoader/viewRegistry";
 
-/** title 解析——插件显示名 = manifest.name 原文（消费方自做 i18n）；清单缺失回退 pluginId（不裸崩） */
-function resolveSlotTitles(role: string): { pluginId: string; title: string }[] {
+/** 条目解析——插件显示名 = manifest.name 原文（消费方自做 i18n）；清单缺失回退 pluginId（不裸崩）。
+ *  E5.8#41.18：viewId = 该插件 contributes.floatingPanel.viewId（切换/打开候选悬浮面板用；无声明 = undefined） */
+function resolveSlotTitles(role: string): { pluginId: string; title: string; viewId?: string }[] {
   const titleById = new Map<string, string>();
   for (const p of getLoadedPluginManifests()) titleById.set(p.pluginId, p.manifest.name);
   return factorySlots
     .getPluginIds(role)
-    .map((pluginId) => ({ pluginId, title: titleById.get(pluginId) ?? pluginId }));
+    .map((pluginId) => ({
+      pluginId,
+      title: titleById.get(pluginId) ?? pluginId,
+      viewId: getFloatingPanelViewId(pluginId) ?? undefined,
+    }));
 }
 
 /** factorySlots 命名空间方法路由——listFactorySlotPlugins/getActiveFactorySlot/setActiveFactorySlot（收 role）
