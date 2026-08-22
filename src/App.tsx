@@ -106,7 +106,12 @@ function App() {
 
   // E5.8#43-2：壳窗口注册表——main tabState 活同步进注册表；createWindow/closeWindow/updateTabState
   // 供 #44 脱出手势/右键命令消费
-  const { windows, createWindow, closeWindow, updateTabState } = useWindowHost({ mainTabState: tabState });
+  // E5.8#45：onDriftWindowClosed——漂移面板窗关闭 = 关闭面板（I9-13 拍板 A：关窗即关会话，不回归主窗口）。
+  // 双路径（OS 点 × / 壳驱动 closeWindow）同触发；setPanelVisible 稳定（usePanelHost）→ 回调恒等
+  const { windows, createWindow, closeWindow, updateTabState } = useWindowHost({
+    mainTabState: tabState,
+    onDriftWindowClosed: () => setPanelVisible(false),
+  });
 
   // E5.8#44：壳侧窗口间标签页搬迁——detach（拖出/右键「在新窗口中打开」）+ merge（吸附并窗/「并回主窗口」）
   const relocation = useWindowRelocation({
