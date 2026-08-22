@@ -20,7 +20,9 @@ import {
   reduceDuplicateTab,
   reducePinTab,
   reduceUpdateSplitSizes,
-} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）
+  reduceUpdateTabLabelBySourceId,
+  findTabBySourceId,
+} from "../hooks/useTabManager"; // E5.8#46.4：脱出窗 tab 操作纯 reducer（聚合器 re-export）；#46.12：sourceId 族共用查找/更新
 import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
@@ -385,5 +387,69 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: She
         break;
       // releaseOutsideWindow 已在路由前（handler 顶部）统一消费——跨窗手势不随源窗分流
     }
+  };
+}
+
+/* ── E5.8#46.12：sourceId 族按窗路由（信封来源窗章）── */
+
+export interface SourceIdRouterDeps {
+  /** 壳窗口注册表——脱出窗 sourceId 操作落该窗 tabState（#46.4 同源） */
+  windows: WindowShellState[];
+  updateTabState: (windowId: string, tabState: TabState) => void;
+  closeWindow: (windowId: string) => void;
+  /** 主窗路径（useTabManager）——sourceWindowId 未注/为 main 时走原路 */
+  focusTabBySourceId: (sourceId: string) => void;
+  updateTabLabelBySourceId: (sourceId: string, label: string) => void;
+  closeTabBySourceId: (sourceId: string) => void;
+}
+
+/**
+ * E5.8#46.12：sourceId 族（改标签/关标签/聚焦）按来源窗路由——信封章（主进程 sender 反查）落脱出窗
+ * 注册表纯 reducer + updateTabState；主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗
+ * label/dirty 黑点不同步、close/focus 静默 no-op）——与 #46.4 脱出窗 tabAction 同构归一化。
+ */
+export function createSourceIdRouters(deps: SourceIdRouterDeps) {
+  const { windows, updateTabState, closeWindow } = deps;
+  /**
+   * 信封来源窗章 → 三态路由：
+   *  - main（未注/显式 "main"）→ 走 useTabManager 主路径
+   *  - detached（章指注册表存在）→ 走该窗注册表纯 reducer
+   *  - gone（章指非 main 且注册表无此窗）→ 静默丢弃——窗已关的迟到动作（#46.4 同语义，
+   *    不误触主窗同名 tab；若 tab 已并回主窗，并入时对象自带 label，迟到更新无意义）
+   */
+  type SourceIdRoute =
+    | { kind: "main" }
+    | { kind: "detached"; win: WindowShellState }
+    | { kind: "gone" };
+  const route = (sourceWindowId?: string): SourceIdRoute => {
+    if (!sourceWindowId || sourceWindowId === "main") return { kind: "main" };
+    const win = windows.find((w) => w.windowId === sourceWindowId);
+    return win ? { kind: "detached", win } : { kind: "gone" };
+  };
+  return {
+    focusTabBySourceId: (sourceId: string, sourceWindowId?: string): void => {
+      const r = route(sourceWindowId);
+      if (r.kind === "main") { deps.focusTabBySourceId(sourceId); return; }
+      if (r.kind === "gone") return; // 迟到/已迁走，静默
+      const tab = findTabBySourceId(r.win.tabState, sourceId);
+      if (!tab) return; // 脱出窗无此 tab → 静默（不误触主窗同名 tab）
+      applyDetachedTabAction(r.win, { action: "focusTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
+    },
+    updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string): void => {
+      const r = route(sourceWindowId);
+      if (r.kind === "main") { deps.updateTabLabelBySourceId(sourceId, label); return; }
+      if (r.kind === "gone") return;
+      const next = reduceUpdateTabLabelBySourceId(r.win.tabState, sourceId, label);
+      if (next === r.win.tabState) return; // 脱出窗无此 tab → 静默
+      updateTabState(r.win.windowId, next);
+    },
+    closeTabBySourceId: (sourceId: string, sourceWindowId?: string): void => {
+      const r = route(sourceWindowId);
+      if (r.kind === "main") { deps.closeTabBySourceId(sourceId); return; }
+      if (r.kind === "gone") return;
+      const tab = findTabBySourceId(r.win.tabState, sourceId);
+      if (!tab) return;
+      applyDetachedTabAction(r.win, { action: "closeTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
+    },
   };
 }

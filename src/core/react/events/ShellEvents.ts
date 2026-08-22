@@ -88,9 +88,9 @@ export interface ShellEvents {
   "tab:openOrFocus": { type: string; opts?: Record<string, unknown> };
   "tab:focus": { tabId: string };
   "tab:close": { tabId: string };
-  "tab:focusBySourceId": { sourceId: string };
-  "tab:updateLabelBySourceId": { sourceId: string; label: string };
-  "tab:closeBySourceId": { sourceId: string };
+  "tab:focusBySourceId": { sourceId: string; sourceWindowId?: string };
+  "tab:updateLabelBySourceId": { sourceId: string; label: string; sourceWindowId?: string };
+  "tab:closeBySourceId": { sourceId: string; sourceWindowId?: string };
 
   // ── 编辑器（跨文件跳转）──
   /** F12/跨文件跳转——目标编辑器消费 pendingReveal。不依赖 isActive 变化 */

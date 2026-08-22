@@ -35,6 +35,8 @@ import {
   reduceDuplicateTab,
   reduceSetDirty,
   reduceUpdateTabLabel,
+  reduceUpdateTabLabelBySourceId,
+  findTabBySourceId,
   reduceReorderTab,
   reducePinTab,
   reduceRemoveTab,
@@ -50,6 +52,8 @@ export {
   reduceDuplicateTab,
   reduceSetDirty,
   reduceUpdateTabLabel,
+  reduceUpdateTabLabelBySourceId,
+  findTabBySourceId,
   reduceReorderTab,
   reducePinTab,
   reduceRemoveTab,
@@ -182,13 +186,10 @@ export function useTabManager() {
   const focusTabBySourceId = useCallback((sourceId: string) => {
     // 🔥 E5.7 Bug A 修复：focusedId 守卫 + 事件数据同 createTab——不能从 updater 里读。
     // 预计算只做"提交态里找到 tab 与否"——聚焦不改 tab 字段，事件数据即找到的 tab 本身。
-    const tab = tabStateRef.current.groups.flatMap((g) => g.tabs).find(
-      (t) => t.sourceId === sourceId || t.id === sourceId,
-    );
+    // E5.8#46.12：查找统一走 findTabBySourceId（sourceId 族一处定义，归一化）
+    const tab = findTabBySourceId(tabStateRef.current, sourceId);
     setTabState((prev) => {
-      const found = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
+      const found = findTabBySourceId(prev, sourceId);
       if (!found) return prev;
       const next = reduceFocusTab(prev, found.id);
       const group = findGroup(next, found.id);
@@ -209,15 +210,12 @@ export function useTabManager() {
   const closeTabBySourceId = useCallback(
     (sourceId: string): CloseTabResult => {
       // 🔥 E5.7 Bug A 修复：返回值同 createTab——不能从 updater 里读。
+      // E5.8#46.12：查找统一走 findTabBySourceId（sourceId 族一处定义，归一化）
       const prev = tabStateRef.current;
-      const tab = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
+      const tab = findTabBySourceId(prev, sourceId);
       const eager = tab ? reduceCloseTab(prev, tab.id) : null;
       setTabState((prev2) => {
-        const found = prev2.groups.flatMap((g) => g.tabs).find(
-          (t) => t.sourceId === sourceId || t.id === sourceId,
-        );
+        const found = findTabBySourceId(prev2, sourceId);
         if (!found) return prev2;
         const r = reduceCloseTab(prev2, found.id);
         return r.state ?? prev2;
@@ -337,15 +335,9 @@ export function useTabManager() {
     setTabState((prev) => reduceUpdateTabLabel(prev, tabId, label));
   }, []);
 
-  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。 */
+  /** 按 sourceId 更新标签页标题——A2+N1：侧栏改会话名 → 标签栏标题同步。E5.8#46.12：纯 reducer 化（脱出窗路由复用） */
   const updateTabLabelBySourceId = useCallback((sourceId: string, label: string) => {
-    setTabState((prev) => {
-      const tab = prev.groups.flatMap((g) => g.tabs).find(
-        (t) => t.sourceId === sourceId || t.id === sourceId,
-      );
-      if (!tab) return prev;
-      return reduceUpdateTabLabel(prev, tab.id, label);
-    });
+    setTabState((prev) => reduceUpdateTabLabelBySourceId(prev, sourceId, label));
   }, []);
 
   const reorderTab = useCallback((tabId: string, toIndex: number) => {

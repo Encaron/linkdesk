@@ -315,6 +315,20 @@ export function reduceUpdateTabLabel(prev: TabState, tabId: string, label: strin
   };
 }
 
+/** E5.8#46.12：按 sourceId 找标签页（sourceId 或 id 双命中）——useTabManager 三处内联查找 + 按窗路由共用，一处定义（归一化） */
+export function findTabBySourceId(state: TabState, sourceId: string): Tab | undefined {
+  return state.groups.flatMap((g) => g.tabs).find(
+    (t) => t.sourceId === sourceId || t.id === sourceId,
+  );
+}
+
+/** E5.8#46.12：按 sourceId 更新标签标题——脱出窗 label/dirty 同步（● 黑点）落来源窗注册表。tab 找不到 → 原引用（React bailout） */
+export function reduceUpdateTabLabelBySourceId(prev: TabState, sourceId: string, label: string): TabState {
+  const tab = findTabBySourceId(prev, sourceId);
+  if (!tab) return prev;
+  return reduceUpdateTabLabel(prev, tab.id, label);
+}
+
 /** 标签栏内拖拽重排——在组内交换位置 */
 export function reduceReorderTab(prev: TabState, tabId: string, toIndex: number): TabState {
   const group = findGroup(prev, tabId);

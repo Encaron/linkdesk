@@ -6,7 +6,7 @@
  * 测试夹具全用虚构值（硬约束 21：demo-plugin/Demo Alpha/Demo Beta，非真实插件）。
  */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { createTabActionHandler, createCoreCallbacks, type TabActionHandlerDeps } from "./tabCallbacks";
+import { createTabActionHandler, createCoreCallbacks, createSourceIdRouters, type TabActionHandlerDeps, type SourceIdRouterDeps } from "./tabCallbacks";
 import type { WindowShellState } from "./windows";
 import type { TabState } from "../hooks/useTabManager";
 
@@ -188,5 +188,113 @@ describe("createCoreCallbacks.closeActiveTab —— E5.8#46.8 按聚焦窗路由
     await callbacks.closeActiveTab("det-1");
     expect(updateTabState).not.toHaveBeenCalled();
     expect(closeWindow).not.toHaveBeenCalled();
+  });
+});
+
+/* ── E5.8#46.12：createSourceIdRouters 按来源窗路由 sourceId 族（信封章）── */
+
+function makeSourceIdDeps(overrides: Partial<SourceIdRouterDeps> = {}) {
+  const updateTabState = vi.fn();
+  const closeWindow = vi.fn();
+  const focusTabBySourceId = vi.fn();
+  const updateTabLabelBySourceId = vi.fn();
+  const closeTabBySourceId = vi.fn();
+  const win: WindowShellState = { windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, TAB2]) };
+  const deps: SourceIdRouterDeps = {
+    windows: [win],
+    updateTabState,
+    closeWindow,
+    focusTabBySourceId,
+    updateTabLabelBySourceId,
+    closeTabBySourceId,
+    ...overrides,
+  };
+  const routers = createSourceIdRouters(deps);
+  return { routers, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId };
+}
+
+describe("createSourceIdRouters —— E5.8#46.12 按来源窗路由 sourceId 族", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("脱出窗 updateLabelBySourceId → 该窗注册表 label 更新 + updateTabState（黑点同步根修）", () => {
+    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
+    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "det-1");
+    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
+    expect(updateTabState).toHaveBeenCalledTimes(1);
+    const [wid, state] = updateTabState.mock.calls[0] as [string, TabState];
+    expect(wid).toBe("det-1");
+    expect(state.groups[0].tabs[0].label).toBe("● Demo Alpha");
+  });
+
+  it("主窗/未注 updateLabelBySourceId → 走 useTabManager 主路径", () => {
+    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
+    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "main");
+    routers.updateTabLabelBySourceId("t1", "● Demo Alpha");
+    expect(updateTabLabelBySourceId).toHaveBeenCalledTimes(2);
+    expect(updateTabState).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 updateLabelBySourceId 但窗内无此 tab → 静默 no-op（不误触主窗同名 tab）", () => {
+    const { routers, updateTabState, updateTabLabelBySourceId } = makeSourceIdDeps();
+    routers.updateTabLabelBySourceId("ghost", "● Demo", "det-1");
+    expect(updateTabState).not.toHaveBeenCalled();
+    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 closeBySourceId → 关该窗 tab + updateTabState（窗仍非空，不关窗）", () => {
+    const { routers, updateTabState, closeWindow, closeTabBySourceId } = makeSourceIdDeps();
+    routers.closeTabBySourceId("t1", "det-1");
+    expect(closeTabBySourceId).not.toHaveBeenCalled();
+    expectDetachedUpdate(updateTabState, "det-1", 1);
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 closeBySourceId 关最后一个 tab → 空窗自灭 closeWindow（不 updateTabState）", () => {
+    const { routers, updateTabState, closeWindow } = makeSourceIdDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1]) }] });
+    routers.closeTabBySourceId("t1", "det-1");
+    expect(closeWindow).toHaveBeenCalledWith("det-1");
+    expect(updateTabState).not.toHaveBeenCalled();
+  });
+
+  it("主窗/未注 closeBySourceId → 走 useTabManager 主路径", () => {
+    const { routers, updateTabState, closeTabBySourceId } = makeSourceIdDeps();
+    routers.closeTabBySourceId("t1", "main");
+    routers.closeTabBySourceId("t1");
+    expect(closeTabBySourceId).toHaveBeenCalledTimes(2);
+    expect(updateTabState).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 focusBySourceId → 该窗 activeTabId 切到目标（reduceFocusTab + updateTabState）", () => {
+    // 初始 active 为 t2（makeState 默认 t1）——聚焦 t1 验证真的发生切换
+    const win: WindowShellState = { windowId: "det-1", mode: "detached", ready: true, tabState: { groups: [{ id: "g1", tabs: [TAB1, TAB2], activeTabId: "t2" }], activeGroupId: "g1", root: { type: "leaf", groupId: "g1" } } };
+    const { routers, updateTabState, focusTabBySourceId } = makeSourceIdDeps({ windows: [win] });
+    routers.focusTabBySourceId("t1", "det-1");
+    expect(focusTabBySourceId).not.toHaveBeenCalled();
+    expect(updateTabState).toHaveBeenCalledTimes(1);
+    const [wid, state] = updateTabState.mock.calls[0] as [string, TabState];
+    expect(wid).toBe("det-1");
+    expect(state.groups[0].activeTabId).toBe("t1");
+  });
+
+  it("主窗/未注 focusBySourceId → 走 useTabManager 主路径", () => {
+    const { routers, updateTabState, focusTabBySourceId } = makeSourceIdDeps();
+    routers.focusTabBySourceId("t1", "main");
+    routers.focusTabBySourceId("t1");
+    expect(focusTabBySourceId).toHaveBeenCalledTimes(2);
+    expect(updateTabState).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗已关（章指 gone-1）→ sourceId 族全静默丢弃（#46.4 同语义，不误触主窗）", () => {
+    const { routers, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId } = makeSourceIdDeps();
+    routers.updateTabLabelBySourceId("t1", "● Demo Alpha", "gone-1");
+    routers.closeTabBySourceId("t1", "gone-1");
+    routers.focusTabBySourceId("t1", "gone-1");
+    expect(updateTabState).not.toHaveBeenCalled();
+    expect(closeWindow).not.toHaveBeenCalled();
+    expect(focusTabBySourceId).not.toHaveBeenCalled();
+    expect(updateTabLabelBySourceId).not.toHaveBeenCalled();
+    expect(closeTabBySourceId).not.toHaveBeenCalled();
   });
 });

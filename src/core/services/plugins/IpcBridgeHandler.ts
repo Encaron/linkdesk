@@ -27,6 +27,7 @@ import { handleDialogChannel, handleSettingsChannel, handleSettingsMethod, handl
 import { handleKeybindingsMethod, subscribeKeybindings, unsubscribeKeybindings } from "./IpcBridgeHandler/keybindings"; // E5.8#0d.10-10f：快捷键域
 import { handleDataChannel, subscribeData, unsubscribeData } from "./IpcBridgeHandler/data"; // E5.8#0d.10-10g：数据域（pluginState/search/encoding/生命周期广播）
 import { handlePanelChannel } from "./IpcBridgeHandler/panel"; // E5.8#34.5：底部面板域（panel.reveal）
+import type { BridgeRequestPayload } from "../../types/ipc/bridge"; // E5.8#46.12：信封契约（含来源窗盖章）
 import { handleFactorySlotMethod } from "./IpcBridgeHandler/factory-slots"; // E5.8#41.14：系统插槽域（factorySlots 通用面 + settings 角色别名）
 export { setPluginAPI } from "./IpcBridgeHandler/pluginManager"; // E5#43：接口反转——loader 注册自己（loader.ts import 路径不变）
 export type { PluginManagementAPI } from "./IpcBridgeHandler/pluginManager"; // core/index export * 透传面保持
@@ -53,7 +54,7 @@ export function initIpcBridgeHandler(): void {
   // E5.7#97：闭包内窄化失效（bridge 非 readonly 属性）——守卫后捕获局部引用，回调内直用
   const bridge = linkdesk.bridge;
 
-  bridge.onRequest(async (req: { requestId: string; channel: string; args: unknown[] }) => {
+  bridge.onRequest(async (req: BridgeRequestPayload) => {
     try {
       let result: unknown;
 
@@ -130,7 +131,8 @@ export function initIpcBridgeHandler(): void {
         case "tabs:focusBySourceId":
         case "tabs:updateLabelBySourceId":
         case "tabs:closeBySourceId":
-          result = await handleTabsChannel(req.channel, req.args);
+          // E5.8#46.12：信封来源窗章传给标签页域——按窗路由 sourceId 族
+          result = await handleTabsChannel(req.channel, req.args, req.sourceWindowId);
           break;
 
         // ── E5.8#34.5：底部面板——插件调壳的 linkdesk.panel API（IpcBridgeHandler/panel 域）──

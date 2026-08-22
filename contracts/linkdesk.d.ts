@@ -966,6 +966,12 @@ export interface BridgeRequestPayload {
     requestId: string;
     channel: string;
     args: unknown[];
+    /**
+     * E5.8#46.12：信封来源窗盖章——主进程按 sender 反查 windowId（池不知自身 windowId，#43-4 铁律），
+     * 池→壳每一请求自带来源窗身份。壳按此路由按窗操作（sourceId 族：标签改/关/聚焦落到来源窗注册表，
+     * 主窗照旧）——窗口身份丢失类（黑点/面板/弹窗）同根归一化。壳侧 switch 收窄时按需消费，无消费方忽略。
+     */
+    sourceWindowId?: string;
 }
 /** 菜单项——壳侧已解析（显示文本铁律：label 已 t()，池哑渲染）。titlebar 下拉与 ☰ 汉堡共用。 */
 export interface PoolMenuItem {

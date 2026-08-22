@@ -186,6 +186,10 @@ export class IpcBridge {
 
         const requestId = `bridge-${++this.requestCounter}-${Date.now()}`;
 
+        // E5.8#46.12：信封来源窗盖章——池→壳每一请求自带来源窗身份（#43-4 同款 sender 反查）。
+        // 壳按此路由按窗操作（sourceId 族落到来源窗注册表）——窗口身份丢失类同根归一化。
+        const sourceWindowId = this.windowManager.getWindowIdByWebContents(_event.sender) ?? 'main';
+
         const doRequest = (): Promise<unknown> => {
           return new Promise<unknown>((resolve, reject) => {
             const timer = setTimeout(() => {
@@ -199,6 +203,7 @@ export class IpcBridge {
               requestId,
               channel,
               args: forwardedArgs,
+              sourceWindowId,
             });
           });
         };

@@ -20,7 +20,7 @@ import { useWindowHost } from "./App/windowHost"; // E5.8#43-2：壳窗口注册
 
 // Phase 5b：核心命令注册（右键菜单归一化）+ E5#5e-ii-f：核心回调（壳快捷键执行标签页操作）
 import { updateCoreCallbacks, type CoreCallbacks } from "./core/commands/shell/coreCommands";
-import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler } from "./App/tabCallbacks";
+import { createCoreCallbacks, createTabActionHandler, createFocusTabHandler, createSourceIdRouters } from "./App/tabCallbacks";
 import { useAppStartup } from "./App/startup";
 import { useAppLifecycle } from "./App/lifecycle";
 import { useUiBridges } from "./App/bridges";
@@ -130,8 +130,18 @@ function App() {
   // deps 恒等（setPanelActiveViewId useState setter + panelActiveViewIdRef ref + detachPanel useCallback 稳定）
   useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detachPanel });
 
+  // E5.8#46.12：sourceId 族按窗路由——信封来源窗章（池→壳请求自动盖章）落脱出窗注册表（黑点/关/聚焦），
+  // 主窗/未注走 useTabManager。修窗口身份丢失类同根 bug（脱出窗 label/dirty 不同步 + close/focus 静默 no-op）。
+  const sourceIdRouters = useMemo(
+    () => createSourceIdRouters({
+      windows, updateTabState, closeWindow,
+      focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId,
+    }),
+    [windows, updateTabState, closeWindow, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId],
+  );
+
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
-  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });
+  useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId: sourceIdRouters.focusTabBySourceId, updateTabLabelBySourceId: sourceIdRouters.updateTabLabelBySourceId, closeTabBySourceId: sourceIdRouters.closeTabBySourceId, restoreLayout, setPanelActiveViewId });
 
   // E5#5c：包装 focusTab——emit tab:focused 通知状态栏
   const handleFocusTab = useMemo(

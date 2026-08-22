@@ -21,9 +21,10 @@ export interface TabActionsDeps {
   openOrFocusTab: (type: string, opts?: CreateTabOptions) => string | null;
   focusTab: (tabId: string) => void;
   closeTab: (tabId: string) => Promise<unknown>;
-  focusTabBySourceId: (sourceId: string) => void;
-  updateTabLabelBySourceId: (sourceId: string, label: string) => void;
-  closeTabBySourceId: (sourceId: string) => void;
+  /** E5.8#46.12：sourceWindowId = 信封来源窗章——脱出窗 sourceId 操作落到该窗注册表（黑点/关/聚焦），主窗/未注走主路径 */
+  focusTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
+  updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string) => void;
+  closeTabBySourceId: (sourceId: string, sourceWindowId?: string) => void;
   restoreLayout: (saved: LayoutData) => { pluginId: string; tabId: string } | null;
   setPanelActiveViewId: (v: string | null) => void;
 }
@@ -70,9 +71,10 @@ export function useTabActions({
     });
     const u3 = shellEvents.on("tab:focus", ({ tabId }) => focusTab(tabId));
     const u4 = shellEvents.on("tab:close", ({ tabId }) => closeTab(tabId));
-    const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId }) => focusTabBySourceId(sourceId));
-    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label }) => updateTabLabelBySourceId(sourceId, label));
-    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId }) => closeTabBySourceId(sourceId));
+    // E5.8#46.12：sourceWindowId 透传——按窗路由 sourceId 族（信封章 → 注册表 vs 主窗）
+    const u5 = shellEvents.on("tab:focusBySourceId", ({ sourceId, sourceWindowId }) => focusTabBySourceId(sourceId, sourceWindowId));
+    const u6 = shellEvents.on("tab:updateLabelBySourceId", ({ sourceId, label, sourceWindowId }) => updateTabLabelBySourceId(sourceId, label, sourceWindowId));
+    const u7 = shellEvents.on("tab:closeBySourceId", ({ sourceId, sourceWindowId }) => closeTabBySourceId(sourceId, sourceWindowId));
     return () => { u1(); u2(); u3(); u4(); u5(); u6(); u7(); };
   }, [createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId]);
 
