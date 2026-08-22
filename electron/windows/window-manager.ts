@@ -7,7 +7,7 @@
  * 安全靠 preload 沙箱，不靠进程数。
  */
 
-import { BrowserWindow, WebContentsView, app, nativeTheme } from 'electron';
+import { BrowserWindow, WebContentsView, WebContents, app, nativeTheme } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
 import { DEV_SERVER_URL } from '../constants.js'; // E5.6#5：Pool URL 构建（E5.7#45.5：shared/ 并入 constants.ts）
@@ -296,6 +296,14 @@ export class WindowManager {
     return [...this.poolWindows.values()]
       .filter((e) => !e.view.webContents.isDestroyed())
       .map((e) => e.view);
+  }
+
+  /** E5.8#43-1（A3）：按发送者 webContents 反查 windowId——池 IPC 的 sender 校验/就绪路由用（非池来源返回 null） */
+  getWindowIdByWebContents(wc: WebContents): string | null {
+    for (const [windowId, entry] of this.poolWindows) {
+      if (entry.view.webContents === wc) return windowId;
+    }
+    return null;
   }
 
   /**

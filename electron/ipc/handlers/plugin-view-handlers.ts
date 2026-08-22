@@ -31,12 +31,14 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
     _windowManager?.pushLayout(layout);
   });
 
-  // Pool→壳：池 React 挂载完成（E5.7#54：zone 参数已删——单 Pool 无路由）
-  ipcMain.on(IPC.pool.ready, (_event) => {
+  // Pool→壳：池 React 挂载完成（E5.8#43-1 A3：按 sender 反查 windowId 转发——壳据 windowId 定向推该窗布局）。
+  // 主池→'main'，脱出池→脱出窗 id；sender 非注册池来源则兜底 'main'。
+  ipcMain.on(IPC.pool.ready, (event) => {
+    const windowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
     if (_mainWindow && !_mainWindow.isDestroyed()) {
-      _mainWindow.webContents.send(IPC.pool.ready);
+      _mainWindow.webContents.send(IPC.pool.ready, { windowId });
     }
-    console.log('[pool-handlers] Pool 就绪');
+    console.log(`[pool-handlers] Pool 就绪 (windowId=${windowId})`);
   });
 
   // E5.6#9 → E5.7#4：壳→Pool：切换 Pool DevTools——调试用

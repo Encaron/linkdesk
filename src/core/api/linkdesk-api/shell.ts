@@ -25,7 +25,8 @@ export interface ShellAPI {
   pool: {
     // ── 壳侧（池 preload 无） ──
     pushLayout(layout: PoolLayout): void;
-    onReady(cb: () => void): () => void;
+    /** E5.8#43-1 A3：回调收 windowId（主池='main'，脱出池=壳生成 id）——壳据 id 定向推该窗布局 */
+    onReady(cb: (windowId: string) => void): () => void;
     toggleDevTools(): void;
     onSidebarAction(cb: (action: SidebarAction) => void): () => void;
     onTabAction(cb: (action: PoolTabAction) => void): () => void;

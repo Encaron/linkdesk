@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -385,10 +385,10 @@ try {
     pool: {
       /** 推送布局到唯一 Pool——单 WCV 直推（E5.7#4） */
       pushLayout: (layout: PoolLayout) => ipcRenderer.send(IPC.pool.pushLayout, layout),
-      /** 监听池就绪（E5.7#54：zone 过滤已删——单 Pool）。返回 unsubscribe */
-      onReady: (cb: () => void) => {
-        const handler = () => {
-          try { cb(); } catch { /* contextBridge 回调静默失败 */ }
+      /** 监听池就绪——回调收 windowId（E5.8#43-1 A3：主池='main'，脱出池=壳生成 id，壳据 id 定向推该窗布局）。返回 unsubscribe */
+      onReady: (cb: (windowId: string) => void) => {
+        const handler = (_event: unknown, payload: PoolReadyPayload) => {
+          try { cb(payload?.windowId ?? 'main'); } catch { /* contextBridge 回调静默失败 */ }
         };
         ipcRenderer.on(IPC.pool.ready, handler);
         return () => ipcRenderer.removeListener(IPC.pool.ready, handler);

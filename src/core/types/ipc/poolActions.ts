@@ -37,3 +37,8 @@ export interface MemoryPressureData {
   totalRSS: number;
   threshold: number;
 }
+
+/** Pool 就绪通知载荷——主进程按 sender 解析 windowId 转发壳（E5.8#43-1 A3 多窗口就绪流） */
+export interface PoolReadyPayload {
+  windowId: string;
+}
