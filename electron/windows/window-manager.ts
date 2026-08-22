@@ -209,11 +209,22 @@ export class WindowManager {
     // E5.8#43-1（A2）：resize 跟随每窗各自挂载——rebuildPool 销毁重建后重建条目自带监听。
     const onHostResize = () => this.syncPoolBounds(windowId);
     hostWindow.on('resize', onHostResize);
+    // E5.8#46.5 修复：moved/resized → 壳 bounds 上报——归一化收拢到共用创建路径（主池/脱出池同源）。
+    // 此前仅脱出窗在 createPoolWindow 挂载 → 主窗移动后壳注册表 bounds 冻结在启动值，跨窗命中检测
+    // 对旧位置算 → 拖入主窗=新窗根因（用户移动主窗即复现；脱出窗有上报故恒新鲜）。moved/resized =
+    // 完成事件（Windows/macOS，用户操作后触发一次）；初始 clamp 发生在监听挂载前，不触发自上报。
+    const reportBounds = () => this.notifyShellWindowBoundsChanged(windowId);
+    hostWindow.on('moved', reportBounds);
+    hostWindow.on('resized', reportBounds);
     this.poolWindows.set(windowId, {
       windowId,
       hostWindow,
       view,
-      unbindResize: () => hostWindow.removeListener('resize', onHostResize),
+      unbindResize: () => {
+        hostWindow.removeListener('resize', onHostResize);
+        hostWindow.removeListener('moved', reportBounds);
+        hostWindow.removeListener('resized', reportBounds);
+      },
     });
     this.syncPoolBounds(windowId);
     view.setVisible(true);
@@ -318,11 +329,7 @@ export class WindowManager {
       }
       this.notifyShellWindowClosed(opts.windowId);
     });
-    // E5.8#43-3（I9-14 A6）：用户移动/缩放浮窗 → 主进程上报当前 bounds——壳更新注册表 + 落盘（重启/F5 恢复）
-    // moved/resized = 完成事件（Windows/macOS，用户操作后触发一次）；初始 clamp 发生在监听挂载前，不触发自上报。
-    const reportBounds = () => this.notifyShellWindowBoundsChanged(opts.windowId);
-    win.on('moved', reportBounds);
-    win.on('resized', reportBounds);
+    // E5.8#46.5：moved/resized → 壳 bounds 上报已归一化收拢进 registerPool（主池/脱出池同源），此处不再重复挂载。
     const view = this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
     // E5.8#44 实机修复：WCV 宿主窗自身的 ready-to-show 不保证触发（宿主无页面加载，只挂 WCV）——
     // 显示时机改绑 WCV did-finish-load（内容就绪才亮，无白闪）+ 2s 兜底（WCV 加载失败/事件已过也不隐身）。
