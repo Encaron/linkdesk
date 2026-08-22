@@ -261,7 +261,13 @@ function createWindow(): void {
 
   win.on('closed', () => {
     // E5.7#36：身份校验——壳崩重建先建新窗后毁旧窗，旧窗的 closed 不得清掉新引用
-    if (mainWindow === win) mainWindow = null;
+    if (mainWindow !== win) return;
+    mainWindow = null;
+    // E5.8#43-3（2026-08-22 用户拍板）：主窗关闭 = 整个应用退出——脱出窗一同关闭（quitApp）。
+    // 不能靠 window-all-closed（脱出窗还开着时不触发 → 壳死 + 脱出窗变僵尸：池收不到 pushLayout、
+    // 键盘路由挂已销毁 mainWindow）。壳 = 主窗 webContents，主窗没了壳就死 → 必须连带退出全部窗口。
+    // app.quit() 关全部窗口 → 壳 beforeunload 落盘（syncWriteLayout 含脱出窗 bounds）→ 正常退出。
+    app.quit();
   });
 }
 
