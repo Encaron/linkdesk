@@ -143,9 +143,14 @@ export function registerPanelCommands(): void {
     title: "在悬浮面板中打开",
     category: "视图",
     handler: async (...args: unknown[]) => {
-      const [viewId] = args as [string];
+      const [viewId, pluginId] = args as [string, string];
+      // E5.8#41.16：载荷复合寻址——commandArgs 携带 pluginId（标签页右键知道右键的是谁）→
+      // 双插件同名 viewId 并存不歧义；仅 viewId（旧调用/插件裸调）→ 退化为裸声明扫描
       if (typeof viewId === "string" && viewId) {
-        shellEvents.emit("panel:reveal-floating", { viewId });
+        shellEvents.emit("panel:reveal-floating", {
+          viewId,
+          pluginId: typeof pluginId === "string" && pluginId ? pluginId : undefined,
+        });
       }
     },
   });

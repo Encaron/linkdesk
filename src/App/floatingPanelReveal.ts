@@ -24,6 +24,7 @@ import {
   pushPanel,
   closePanel,
   getCurrentFloatingPanelViewId,
+  getCurrentFloatingPanelPluginId,
   refreshPanelText,
 } from "../core/services/ui/FloatingPanelService";
 import { getCallbacks } from "../core/commands/infra/CoreCallbacks";
@@ -40,11 +41,20 @@ export interface FloatingPanelResolveResult {
 }
 
 /** 声明寻址共享基元——全局视图索引（contributes.views 任意容器；loader 运行时附挂 _pluginId/_renderPath）。
+ *  E5.8#41.16 复合寻址：调用方已知插件（壳侧路径 core.openSettings/标签页右键带 pluginId）→
+ *  ViewContainerService.getView(pluginId, viewId) 复合键 O(1) 精确命中（两插件同名 viewId 并存不歧义）；
+ *  未知插件（插件公开 API panel.revealFloating 契约只有 viewId）→ 裸声明扫描 getViewByViewId
+ *  （唯一命中用 / 多命中 fail-loud / 零命中 no-op——#41.8 §4.1 §4.2）。
  *  null = 未注册 / 缺运行时附挂（声明未解析——#39.5 验收 no-op，防坏数据穿透）。 */
-export function resolveFloatingPanelView(viewId: string): FloatingPanelResolveResult | null {
-  // E5.8#41.9.2：声明扫描基元 getViewByViewId——revealFloating 契约只传 viewId（#41.5 验收不回退），
-  // 唯一命中用 / 多命中 fail-loud / 零命中 no-op（#41.8 §4.1）
-  const view = ViewContainerService.getViewByViewId(viewId) as
+export function resolveFloatingPanelView(
+  viewId: string,
+  pluginId?: string,
+): FloatingPanelResolveResult | null {
+  const view = (
+    pluginId
+      ? ViewContainerService.getView(pluginId, viewId)
+      : ViewContainerService.getViewByViewId(viewId)
+  ) as
     | (ViewDescriptor & { _pluginId?: string; _renderPath?: string })
     | undefined;
   if (!view || !view._pluginId || !view._renderPath) return null;
@@ -68,10 +78,18 @@ export type FloatingPanelRevealDecision =
 export function decideFloatingPanelReveal(
   viewId: string,
   currentViewId: string | null,
+  pluginId?: string,
+  currentPluginId?: string,
 ): FloatingPanelRevealDecision {
-  const resolved = resolveFloatingPanelView(viewId);
+  const resolved = resolveFloatingPanelView(viewId, pluginId);
   if (!resolved) return { action: "noop" };
-  if (currentViewId === viewId) return { action: "toggle-close" };
+  // E5.8#41.16 复合身份开关键：viewId 相同 且（任一方不知插件 或 插件相同）→ 同面板 toggle-close。
+  // 两设置套同名 viewId="settings" 并存：当前面板 = 内置、请求 = demo（pluginId 不同）→ 不同面板 → open 替换
+  //（裸 viewId 裁决会误判同视图 → 关掉用户想看的 demo）。任一侧无 pluginId（历史路径）→ 退化为裸 viewId 裁决。
+  const sameView =
+    currentViewId === viewId &&
+    (pluginId === undefined || currentPluginId === undefined || pluginId === currentPluginId);
+  if (sameView) return { action: "toggle-close" };
   return { action: "open", result: resolved };
 }
 
@@ -110,10 +128,16 @@ export function buildDefaultFloatingPanelActions(openInPluginId?: string): PoolF
 /** 订阅 panel:reveal-floating——声明寻址 + I8-2 toggle + pushPanel。注册一次（事件驱动，deps 恒空） */
 export function useFloatingPanelReveal(): void {
   useEffect(() => {
-    return shellEvents.on("panel:reveal-floating", ({ viewId }) => {
+    return shellEvents.on("panel:reveal-floating", ({ viewId, pluginId: payloadPluginId }) => {
       // wire 兜底——非字符串 viewId 直接忽略（防坏值穿透）
       if (typeof viewId !== "string" || !viewId) return;
-      const decision = decideFloatingPanelReveal(viewId, getCurrentFloatingPanelViewId());
+      // E5.8#41.16：载荷 pluginId（壳侧路径带）+ 当前面板复合键 → 复合身份开关键
+      const decision = decideFloatingPanelReveal(
+        viewId,
+        getCurrentFloatingPanelViewId(),
+        payloadPluginId,
+        getCurrentFloatingPanelPluginId() ?? undefined,
+      );
       if (decision.action === "noop") return; // 未声明视图 → no-op 不崩
       if (decision.action === "toggle-close") {
         closePanel();
@@ -141,7 +165,8 @@ export function useFloatingPanelReveal(): void {
     const onLangChanged = () => {
       const viewId = getCurrentFloatingPanelViewId();
       if (!viewId) return; // 面板未开 → no-op
-      const resolved = resolveFloatingPanelView(viewId);
+      // E5.8#41.16：复合键重推——当前面板插件已知时按 (pluginId, viewId) 精确寻址（同名 viewId 并存不歧义）
+      const resolved = resolveFloatingPanelView(viewId, getCurrentFloatingPanelPluginId() ?? undefined);
       if (!resolved) return; // 声明视图已被卸载（#39.5 no-op 纪律）——不重推
       refreshPanelText(resolved.title, buildDefaultFloatingPanelActions(resolved.pluginId));
     };

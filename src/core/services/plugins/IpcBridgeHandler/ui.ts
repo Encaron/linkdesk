@@ -153,10 +153,12 @@ export async function handleSettingsChannel(channel: string, args: unknown[]): P
         if (typeof tabCtx.pluginId === "string") {
           const fpViewId = getFloatingPanelViewId(tabCtx.pluginId);
           if (fpViewId) {
+            // E5.8#41.16：commandArgs 携带 pluginId（右键的标签页就是目标插件）——revealFloatingPanel
+            // 载荷复合寻址，双插件同名 viewId 并存不歧义（#41.8 §4.2「调用方必须携带 pluginId」）
             items.push({
               command: "workbench.action.revealFloatingPanel",
               label: i18n.t("在悬浮面板中打开"),
-              commandArgs: [fpViewId],
+              commandArgs: [fpViewId, tabCtx.pluginId],
             });
           }
         }
