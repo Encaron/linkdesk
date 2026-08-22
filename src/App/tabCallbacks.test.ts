@@ -151,6 +151,63 @@ describe("createTabActionHandler —— E5.8#46.4 按 sourceWindowId 路由", ()
     expectDetachedUpdate(updateTabState, "det-1", 1);
     expect(closeWindow).not.toHaveBeenCalled();
   });
+
+  // E5.8#46.13：脱出窗批量关闭（ContextMenu 关其他/右侧/全部）补 dirty 确认——此前静默关脏丢数据
+  //（主窗同动作逐条 closeTab 逐个弹确认，行为对齐）
+  it("脱出窗 closeOtherTabs 全非脏 → 不弹确认，批量关闭", async () => {
+    const { deps, updateTabState } = makeDeps(); // 默认 [TAB1, TAB2] 全非脏
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeOtherTabs", groupId: "g1", tabId: "t1", sourceWindowId: "det-1" });
+    expect(showConfirm).not.toHaveBeenCalled();
+    expectDetachedUpdate(updateTabState, "det-1", 1); // t2 保留
+  });
+
+  it("脱出窗 closeOtherTabs 含脏 → dirty 确认否决 → 脏保留、非脏关", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false);
+    const { deps, updateTabState } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, TAB2, DIRTY]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeOtherTabs", groupId: "g1", tabId: "t1", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 2); // t1(anchor) + DIRTY 保留，t2 关
+  });
+
+  it("脱出窗 closeOtherTabs 含脏 → dirty 确认通过 → 全部关闭", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true);
+    const { deps, updateTabState } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, TAB2, DIRTY]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeOtherTabs", groupId: "g1", tabId: "t1", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 1); // 只剩 anchor t1
+  });
+
+  it("脱出窗 closeTabsToRight 含脏 → 否决 → 脏保留、右侧非脏关", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false);
+    const { deps, updateTabState } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, TAB2, DIRTY]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeTabsToRight", groupId: "g1", tabId: "t1", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 2); // t1 + DIRTY 保留，t2 关
+  });
+
+  it("脱出窗 closeAllTabs 含脏 → 否决 → 脏保留、其余关", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(false);
+    const { deps, updateTabState, closeWindow } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, DIRTY]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeAllTabs", groupId: "g1", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expectDetachedUpdate(updateTabState, "det-1", 1); // 只剩 DIRTY
+    expect(closeWindow).not.toHaveBeenCalled();
+  });
+
+  it("脱出窗 closeAllTabs 含脏 → 全部通过 → 空窗自灭 closeWindow", async () => {
+    vi.mocked(showConfirm).mockResolvedValueOnce(true);
+    const { deps, updateTabState, closeWindow } = makeDeps({ windows: [{ windowId: "det-1", mode: "detached", ready: true, tabState: makeState([TAB1, DIRTY]) }] });
+    const handler = createTabActionHandler(deps);
+    await handler({ action: "closeAllTabs", groupId: "g1", sourceWindowId: "det-1" });
+    expect(showConfirm).toHaveBeenCalledTimes(1);
+    expect(closeWindow).toHaveBeenCalledWith("det-1");
+    expect(updateTabState).not.toHaveBeenCalled();
+  });
 });
 
 /* ── E5.8#46.9：脱出窗聚焦事件补发（复现 B——tab:activated 不发 → file-tree autoReveal 不跟随）── */

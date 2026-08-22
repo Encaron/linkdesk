@@ -30,7 +30,7 @@ import { FALLBACK_PLUGIN_ID } from "../core/utils/plugin/fallbackPluginId";
 import type { CoreCallbacks } from "../core/commands/shell/coreCommands";
 import type { ShellTabAction } from "../core/types/ipc/tabActions"; // E5.8#44-B：壳侧收 ShellTabAction（含 sourceWindowId）
 import type { CreateTabOptions } from "../core/api/types";
-import type { CloseTabResult, TabState } from "../hooks/useTabManager";
+import type { CloseTabResult, TabState, Tab } from "../hooks/useTabManager";
 import type { WindowMode, WindowShellState } from "./windows"; // E5.8#45：deps 类型同 relocation 返回值（WindowMode）——core 契约已宽化；#46.4：脱出窗路由查注册表
 
 /* ── handleFocusTab ── */
@@ -110,7 +110,7 @@ export function createCoreCallbacks(deps: CoreCallbacksDeps): CoreCallbacks {
         if (tab.pluginId && !await invokeBeforeCloseTab(tab.pluginId)) return;
         // E5.8#46.12 Step3：脱出窗 Ctrl+W 补 dirty 确认（镜像主窗 closeTab——此前静默关脏标签丢数据）
         if (!(await confirmDirtyTabClose(tab))) return;
-        applyDetachedTabAction(win, { action: "closeTab", tabId: tab.id, sourceWindowId }, { updateTabState, closeWindow });
+        await applyDetachedTabAction(win, { action: "closeTab", tabId: tab.id, sourceWindowId }, { updateTabState, closeWindow });
         return;
       }
       const group = tabState.groups.find((g) => g.id === tabState.activeGroupId);
@@ -209,12 +209,27 @@ export interface TabActionHandlerDeps {
  * 插件 isActive prop 已覆盖；KISS，实机暴露缺口再补）。
  * closeTab 用 reduceRemoveTab（不查 dirty——池侧 × 已按 closeBehavior 确认过，与主窗 × 同语义）；
  * 空窗自灭（I9-8）由壳裁决（groups 全空 → closeWindow）。
+ * E5.8#46.13：三批量 case（closeOtherTabs/closeTabsToRight/closeAllTabs）逐 tab 确认后移除——
+ * 此前静默关脏丢数据（主窗同动作逐条 closeTab 逐个弹确认）；async 化只在批量 case 首个 await 前同步，
+ * 单 tab/focus 路径副作用仍同步（既有测试不破坏）。
  */
-function applyDetachedTabAction(
+
+/** E5.8#46.13：批量关闭目标逐 tab 过滤——非脏直关、脏逐个弹确认、被否决的跳过（与主窗
+ *  closeOtherTabs/closeRightTabs/closeAllTabs 逐条 closeTab 确认语义对齐；confirmDirtyTabClose
+ *  非脏恒 true 短路，判定一处不分叉）。返回实际应移除的 tab 集。 */
+async function confirmBatchDirtyTabs(tabs: Tab[]): Promise<Tab[]> {
+  const approved: Tab[] = [];
+  for (const t of tabs) {
+    if (await confirmDirtyTabClose(t)) approved.push(t);
+  }
+  return approved;
+}
+
+async function applyDetachedTabAction(
   win: WindowShellState,
   action: ShellTabAction,
   deps: Pick<TabActionHandlerDeps, "updateTabState" | "closeWindow">,
-): void {
+): Promise<void> {
   let next = win.tabState;
   let changed = true;
   switch (action.action) {
@@ -238,20 +253,28 @@ function applyDetachedTabAction(
       break;
     case "closeOtherTabs": {
       const g = next.groups.find((x) => x.id === action.groupId);
-      if (g) for (const t of g.tabs) if (t.id !== action.tabId) next = reduceRemoveTab(next, t.id).state;
+      if (g) {
+        const targets = g.tabs.filter((t) => t.id !== action.tabId);
+        for (const t of await confirmBatchDirtyTabs(targets)) next = reduceRemoveTab(next, t.id).state;
+      }
       break;
     }
     case "closeTabsToRight": {
       const g = next.groups.find((x) => x.id === action.groupId);
       if (g) {
         const idx = g.tabs.findIndex((t) => t.id === action.tabId);
-        if (idx >= 0) for (let i = g.tabs.length - 1; i > idx; i--) next = reduceRemoveTab(next, g.tabs[i].id).state;
+        if (idx >= 0) {
+          const targets = g.tabs.slice(idx + 1);
+          for (const t of await confirmBatchDirtyTabs(targets)) next = reduceRemoveTab(next, t.id).state;
+        }
       }
       break;
     }
     case "closeAllTabs": {
       const g = next.groups.find((x) => x.id === action.groupId);
-      if (g) for (const t of [...g.tabs]) next = reduceRemoveTab(next, t.id).state;
+      if (g) {
+        for (const t of await confirmBatchDirtyTabs([...g.tabs])) next = reduceRemoveTab(next, t.id).state;
+      }
       break;
     }
     case "reorderTab":
@@ -322,7 +345,7 @@ export function createTabActionHandler(deps: TabActionHandlerDeps): (action: She
           const tab = win.tabState.groups.flatMap((g) => g.tabs).find((t) => t.id === action.tabId);
           if (tab && !(await confirmDirtyTabClose(tab))) return;
         }
-        applyDetachedTabAction(win, action, { updateTabState, closeWindow });
+        await applyDetachedTabAction(win, action, { updateTabState, closeWindow });
       }
       return;
     }
@@ -482,7 +505,7 @@ export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters
       if (r.kind === "gone") return; // 迟到/已迁走，静默
       const tab = findTabBySourceId(r.win.tabState, sourceId);
       if (!tab) return; // 脱出窗无此 tab → 静默（不误触主窗同名 tab）
-      applyDetachedTabAction(r.win, { action: "focusTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
+      void applyDetachedTabAction(r.win, { action: "focusTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
     },
     updateTabLabelBySourceId: (sourceId: string, label: string, sourceWindowId?: string): void => {
       const r = route(sourceWindowId);
@@ -501,7 +524,7 @@ export function createSourceIdRouters(deps: SourceIdRouterDeps): SourceIdRouters
       // E5.8#46.12 Step3：脱出窗 sourceId 关脏 tab 静默阻断（镜像主窗 reduceCloseTab dirty 阻断语义，
       // 不弹窗——程序化关闭由插件自行确认）。比主窗多查 ● 前缀——与 isTabDirty 判定统一，不分叉。
       if (isTabDirty(tab)) return;
-      applyDetachedTabAction(r.win, { action: "closeTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
+      void applyDetachedTabAction(r.win, { action: "closeTab", tabId: tab.id, sourceWindowId: r.win.windowId }, { updateTabState, closeWindow });
     },
   };
 }
