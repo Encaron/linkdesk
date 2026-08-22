@@ -152,6 +152,8 @@ export const IPC = {
     createWindow: 'pool:create-window',
     closeWindow: 'pool:close-window',
     windowClosed: 'pool:window-closed',
+    // E5.8#43-3：主→壳 池窗 bounds 变更通知（moved/resized 上报，壳落盘浮窗位置 I9-14）
+    windowBoundsChanged: 'pool:window-bounds-changed',
   },
   protocol: {
     listProtocols: 'protocol:listProtocols',

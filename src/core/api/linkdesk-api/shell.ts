@@ -9,7 +9,7 @@ import type { BridgeRequestPayload } from "../../types/ipc/bridge";
 import type { PoolLayout, PoolTab } from "../../types/pool/poolLayout";
 import type { PoolTabAction } from "../../types/ipc/tabActions";
 import type { SidebarAction } from "../../types/ipc/sidebarActions";
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest } from "../../types/ipc/poolActions";
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, CreatePoolWindowRequest, PoolWindowBoundsPayload } from "../../types/ipc/poolActions";
 
 /** 壳↔插件中继/池控制/窗口/壳级命令/热退出暂存命名空间面——双端注入面（bridge 真壳独有 / hotExit 池侧独有） */
 export interface ShellAPI {
@@ -45,6 +45,8 @@ export interface ShellAPI {
     createWindow(opts: CreatePoolWindowRequest): void;
     closeWindow(windowId: string): void;
     onWindowClosed(cb: (windowId: string) => void): () => void;
+    // ── E5.8#43-3：主→壳 池窗 bounds 变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）──
+    onWindowBoundsChanged(cb: (payload: PoolWindowBoundsPayload) => void): () => void;
     // ── 池侧（壳 preload 无） ──
     onLayout(cb: (layout: PoolLayout) => void): () => void;
     ready(): void;

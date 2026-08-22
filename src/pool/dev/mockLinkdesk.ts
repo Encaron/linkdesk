@@ -176,6 +176,8 @@ export function installMockLinkdesk(): void {
       createWindow: makeLogger("pool.createWindow"),
       closeWindow: makeLogger("pool.closeWindow"),
       onWindowClosed: () => () => {},
+      // E5.8#43-3：池窗 bounds 变更上报（preview 无壳侧消费——no-op 订阅）
+      onWindowBoundsChanged: () => () => {},
     },
     window: {
       minimize: makeLogger("window.minimize"),

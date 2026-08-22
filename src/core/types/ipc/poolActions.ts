@@ -56,3 +56,18 @@ export interface CreatePoolWindowRequest {
 export interface PoolWindowClosedPayload {
   windowId: string;
 }
+
+/** E5.8#43-3：池窗位置/大小变更矩形——主进程 moved/resized 事件上报（壳据 windowId 更新注册表 + 落盘 A6）。
+ *  非独立契约入口（契约生成器 walkRefs 命中引用即强制 export 进 linkdesk.d.ts）——源码不 export，knip 不报死面。 */
+interface WindowBounds {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/** 主→壳：脱出池窗 bounds 变更通知（用户移动/缩放窗口）——壳持久化浮窗位置（I9-14 位置/大小记录） */
+export interface PoolWindowBoundsPayload {
+  windowId: string;
+  bounds: WindowBounds;
+}

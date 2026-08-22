@@ -28,7 +28,7 @@ import type { OpenPortConfig, SerialDataPayload, SerialStatsPayload, SerialSyste
 import type { DialogOpenOptions } from '../src/core/types/ipc/dialogs';
 import type { ConfigurationChangedPayload, PluginStateChangedPayload } from '../src/core/types/ipc/events';
 import type { BridgeRequestPayload } from '../src/core/types/ipc/bridge';
-import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload } from '../src/core/types/ipc/poolActions';
+import type { PoolQuickPickAction, PoolToastAction, PoolDialogAction, PoolFloatingPanelAction, MemoryPressureData, PoolReadyPayload, CreatePoolWindowRequest, PoolWindowClosedPayload, PoolWindowBoundsPayload } from '../src/core/types/ipc/poolActions';
 import type { FileChangeEvent } from '../src/core/services/files/FileService';
 import type { MenuItemDescriptor } from '../src/core/api/linkdesk-api/types'; // E5.8#20：契约语义类型——menu.getItems 返回面
 // E5.8#1b：keybinding 归一化集中——主进程/壳/池三端共用单一权威源（防 E5.7#79 漂移复发）
@@ -451,6 +451,14 @@ try {
         };
         ipcRenderer.on(IPC.pool.windowClosed, handler);
         return () => ipcRenderer.removeListener(IPC.pool.windowClosed, handler);
+      },
+      /** E5.8#43-3：主→壳 监听池窗位置/大小变更（moved/resized 上报）——壳注册表更新 + 落盘浮窗位置（I9-14）。返回 unsubscribe */
+      onWindowBoundsChanged: (cb: (payload: PoolWindowBoundsPayload) => void) => {
+        const handler = (_event: unknown, payload: PoolWindowBoundsPayload) => {
+          try { cb(payload); } catch { /* contextBridge 回调静默失败 */ }
+        };
+        ipcRenderer.on(IPC.pool.windowBoundsChanged, handler);
+        return () => ipcRenderer.removeListener(IPC.pool.windowBoundsChanged, handler);
       },
     },
 

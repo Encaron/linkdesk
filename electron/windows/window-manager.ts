@@ -41,8 +41,9 @@ const MIN_VISIBLE_EDGE = 80;
  * 多屏：getDisplayMatching 取与 bounds 相交最多的显示器，宽高收窄到该屏 workArea 内，
  * 起点钳到 [workArea 左缘 + MIN_VISIBLE - width, 右缘 - MIN_VISIBLE] 区间——窗口至少 MIN_VISIBLE 可见。
  * 纯函数（仅依赖 electron.screen）——app ready 后调用（createPoolWindow 由壳驱动，安全）。
+ * 非 export——纯内部工具（createPoolWindow 越界钳制一处消费），无外部消费面即不留死 export（knip 门禁）。
  */
-export function clampToWorkArea(bounds: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
+function clampToWorkArea(bounds: { x: number; y: number; width: number; height: number }): { x: number; y: number; width: number; height: number } {
   if (screen.getAllDisplays().length === 0) return bounds;
   const display = screen.getDisplayMatching({
     x: bounds.x,
@@ -308,6 +309,11 @@ export class WindowManager {
       }
       this.notifyShellWindowClosed(opts.windowId);
     });
+    // E5.8#43-3（I9-14 A6）：用户移动/缩放浮窗 → 主进程上报当前 bounds——壳更新注册表 + 落盘（重启/F5 恢复）
+    // moved/resized = 完成事件（Windows/macOS，用户操作后触发一次）；初始 clamp 发生在监听挂载前，不触发自上报。
+    const reportBounds = () => this.notifyShellWindowBoundsChanged(opts.windowId);
+    win.on('moved', reportBounds);
+    win.on('resized', reportBounds);
     return this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
   }
 
@@ -334,6 +340,18 @@ export class WindowManager {
     if (this.mainWindow && !this.mainWindow.isDestroyed()) {
       this.mainWindow.webContents.send(IPC.pool.windowClosed, { windowId });
     }
+  }
+
+  /** E5.8#43-3（I9-14 A6）：上报池窗当前 bounds 给壳——moved/resized 完成事件触发，壳据 windowId 更新注册表 + 落盘浮窗位置 */
+  private notifyShellWindowBoundsChanged(windowId: string): void {
+    if (!this.mainWindow || this.mainWindow.isDestroyed()) return;
+    const entry = this.poolWindows.get(windowId);
+    if (!entry || entry.hostWindow.isDestroyed()) return;
+    const b = entry.hostWindow.getBounds();
+    this.mainWindow.webContents.send(IPC.pool.windowBoundsChanged, {
+      windowId,
+      bounds: { x: b.x, y: b.y, width: b.width, height: b.height },
+    });
   }
 
   /** E5.6#5f → E5.7#4：重建 Pool——destroy → create（设计 §9.2 崩溃恢复用） */
