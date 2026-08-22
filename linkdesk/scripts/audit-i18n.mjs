@@ -60,6 +60,7 @@ const I18N_FILES = [
   "plugins/builtin/marketplace/i18n/en.json",
   "plugins/user/panel-demo/i18n/en.json", // E5.8#37.9：演示插件 UI 串归插件自持
   "plugins/user/floating-panel-demo/i18n/en.json", // E5.8#39.5：第二声明者验证载体 UI 串归插件自持
+  "plugins/user/settings-demo/i18n/en.json", // E5.8#41.17：漂亮设置卡片分区 UI 串归插件自持
 ];
 
 const translated = new Set();
