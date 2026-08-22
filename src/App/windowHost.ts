@@ -42,8 +42,8 @@ export interface UseWindowHostResult {
 }
 
 /** 空窗 tabState——恢复窗用（#43-3 此刻无 tab，组归属随 #44 拖出后写入）；#45 漂移面板窗（恒空，主区空占位 I9-13）。
- *  #45-C panelDrift 复用需导出时再导出（knip 门禁：无消费方不导出）。 */
-function emptyTabState(): TabState {
+ *  #45-C panelDrift 复用——两消费方（恢复 effect 同模块 + panelDrift 建 drift 窗）。 */
+export function emptyTabState(): TabState {
   return { groups: [], activeGroupId: "", root: { type: "leaf", groupId: "" } };
 }
 

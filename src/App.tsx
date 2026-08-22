@@ -31,6 +31,7 @@ import { useFloatingPanelReveal } from "./App/floatingPanelReveal"; // E5.8#39.5
 import { useLayoutPersistence } from "./App/persistence";
 import { useTabActions } from "./App/tabActions";
 import { useWindowRelocation } from "./App/windowRelocation"; // E5.8#44：壳侧窗口间标签页搬迁（detach/merge）
+import { usePanelDrift } from "./App/panelDrift"; // E5.8#45：面板脱出到独立窗口（drift 窗）
 import "./App.css";
 
 function App() {
@@ -58,7 +59,6 @@ function App() {
   // E5.8#32：面板激活视图 ref——bridges 桥 serialize 判断已激活勾选（ref 稳定，桥 effect 保持 deps 恒不变注册一次）
   const panelActiveViewIdRef = useRef(panelActiveViewId);
   panelActiveViewIdRef.current = panelActiveViewId;
-  useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef });
   // E5.6#9d：侧栏展开/折叠状态——订阅侧栏宿主状态机（原 SidePanel，E5.7#10 迁入 App）发出的 sidebar:toggled
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(false);
   // E5.8#0d.10-3e：侧栏宿主状态机（折叠状态机 + 状态同步 + 启动恢复）迁入 src/App/sidebarHost.ts
@@ -117,6 +117,13 @@ function App() {
     removeTab,
     insertTab,
   });
+
+  // E5.8#45：面板脱出到独立窗口——detachPanel（PanelZone ⤢ → panel:detach 桥消费）。
+  // 需 windows/createWindow（上方 useWindowHost）→ useUiBridges 随之移到本行之后接线
+  const { detachPanel } = usePanelDrift({ windows, createWindow });
+  // E5.8#0d.10-3d：壳↔池 UI 桥接器——移到 usePanelDrift 之后（detachPanel 依赖 windows/createWindow 就绪）。
+  // deps 恒等（setPanelActiveViewId useState setter + panelActiveViewIdRef ref + detachPanel useCallback 稳定）
+  useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detachPanel });
 
   // E5.8#0d.10-3g：标签页动作（图标直开/TabActions 桥接）+ 启动恢复——迁入 src/App/tabActions.ts
   useTabActions({ ready, createTab, openOrFocusTab, focusTab, closeTab, focusTabBySourceId, updateTabLabelBySourceId, closeTabBySourceId, restoreLayout, setPanelActiveViewId });

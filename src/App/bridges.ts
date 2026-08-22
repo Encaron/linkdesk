@@ -22,10 +22,13 @@ export interface UiBridgesDeps {
   setPanelActiveViewId: (v: string | null) => void;
   /** E5.8#32：面板激活视图 ref（App 同步）——panel:createView 桥 serialize 判断已激活勾选。ref 稳定 → 桥 effect 不重注册 */
   panelActiveViewIdRef: { current: string | null };
+  /** E5.8#45：脱出面板——panel:detach 桥消费（usePanelDrift.detachPanel——建 drift 窗 + 面板独占迁移）。
+   *  稳定 ref 包装（App useCallback 恒等）→ 桥 effect 不重注册 */
+  detachPanel: () => void;
 }
 
 /** 壳↔池 UI 桥接器集合——全部独立 window/服务订阅，注册一次（setPanelActiveViewId 是 useState 稳定 setter，deps 恒不变） */
-export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiBridgesDeps): void {
+export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef, detachPanel }: UiBridgesDeps): void {
   // E5.7#6：桥接池图标栏点击——池 events.emit("icon:selected") → 主进程 plugin:emit →
   // 壳 plugin:push → linkdesk.events.on → 转壳内 shellEvents（消费方 App/useTabManager 开标签）。
   useEffect(() => {
@@ -107,8 +110,13 @@ export function useUiBridges({ setPanelActiveViewId, panelActiveViewIdRef }: UiB
         ViewContainerService.toggleViewVisibility(p.containerId, p.viewId);
       }
     });
-    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); };
-  }, [setPanelActiveViewId]);
+    // E5.8#45：桥接池 ⤢ 脱出面板——PanelZone emit "panel:detach"（无载荷）→ 壳 detachPanel()
+    // 建漂移面板窗（detachPanel 内建幂等：已有 drift 窗 no-op）。detachPanel 稳定（App useCallback 恒等）。
+    const offDetach = events?.on("panel:detach", () => {
+      detachPanel();
+    });
+    return () => { offSelect?.(); offResize?.(); offToggleVis?.(); offDetach?.(); };
+  }, [setPanelActiveViewId, detachPanel]);
 
   // E5.8#32：桥接池面板 [+] 新建视图——panel:createView（现网 emit 零监听 no-op——#88 ③）→
   // QuickPick 视图选择器（showPanelCreatePicker 壳侧构建 + QuickPick 桥推 DTO，复用 #15 现成链路）。
