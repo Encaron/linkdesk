@@ -30,6 +30,7 @@ import FloatingLayerHost from "./zones/floating-layer/FloatingLayerHost"; // E5.
 import MainZone from "./zones/main/MainZone"; // E5.7#20：Phase 5 替换主区占位（MainRenderer 693 行行为零丢失提取）
 import PanelZone from "./zones/panel/PanelZone"; // E5.7#21 骨架 + #63.7 数据生产者（贡献路由/动态加载/高度持久化已落地）
 import RightSidebarZone from "./zones/right-sidebar/RightSidebarZone"; // E5.7#22：Phase 5 右侧栏骨架（数据生产者归 Phase 12）
+import BackgroundLayer from "./zones/BackgroundLayer"; // E5.8#50.8：全窗背景图片层（shell 首子，z-index 0——FloatingLayerHost 底镜像）
 
 function PoolZoneShell({ layout }: { layout: PoolLayout }) {
   // E5.8#37.5：归一化 DTO → 池 grid 唯一推导（列/行模板 + 各 zone grid 放置）。
@@ -53,6 +54,9 @@ function PoolZoneShell({ layout }: { layout: PoolLayout }) {
 
   return (
     <div className="pool-root">
+      {/* E5.8#50.8：全窗背景图片层——zone 层之下（z-index 0），图从表面缝隙透出（#50.7 悬浮留缝） */}
+      <BackgroundLayer />
+
       {/* Row 1: TitleBar——E5.7#5（Phase 2） */}
       <TitleBarZone titleBar={layout.titleBar} />
 

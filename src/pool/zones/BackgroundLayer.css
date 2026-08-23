@@ -1,0 +1,24 @@
+/* BackgroundLayer——E5.8#50.8。全窗背景图片层（FloatingLayerHost 底镜像）。
+   消费 #50.6 ThemeEngine 写 :root 的 --bg-image / --bg-opacity / --bg-mask；
+   默认 none / 1 / 0 = 不可见零成本（无图主题零变化）。
+   全窗 fixed + pointer-events:none 不挡交互（避硬约束 #18——本层 z-index 0 在表面 z-index 1 之下
+   永不接收事件，pointer-events:none 双保险）。
+   图 + 遮罩：::after 暗化遮罩（--bg-mask，对标 dsh mask-photo 0.88——图+玻璃可读性生命线）。 */
+.background-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--bg-image, none);
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: var(--bg-opacity, 1);
+  pointer-events: none;
+}
+
+.background-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, var(--bg-mask, 0));
+}
