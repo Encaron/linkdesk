@@ -340,6 +340,11 @@ export class WindowManager {
       }
       this.notifyShellWindowClosed(opts.windowId);
     });
+    // E5.8#46.16：脱出窗宿主窗最大化/还原 → 该窗池 WCV 推 maximizeChange（TitleBarZone □/还原按钮态跟随）。
+    // main.ts createWindow（仅主窗）已挂 maximize/unmaximize 监听——脱出窗走本方法创建宿主窗，此前漏挂
+    // → 池收不到状态（图标不变）且点 □ 恒走 maximize 分支（无法还原）。sendPoolMaximizeChange 按宿主窗反查天然覆盖本窗。
+    win.on('maximize', () => this.sendPoolMaximizeChange(win, true));
+    win.on('unmaximize', () => this.sendPoolMaximizeChange(win, false));
     // E5.8#46.5：moved/resized → 壳 bounds 上报已归一化收拢进 registerPool（主池/脱出池同源），此处不再重复挂载。
     const view = this.registerPool(win, opts.windowId, `detached:${opts.windowId}`);
     // E5.8#44 实机修复：WCV 宿主窗自身的 ready-to-show 不保证触发（宿主无页面加载，只挂 WCV）——
