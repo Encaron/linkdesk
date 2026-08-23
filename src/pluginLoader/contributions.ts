@@ -13,8 +13,7 @@
 import type { PluginManifest, ViewPluginEntry, ThemeContribution, IconThemeContribution, IconContribution, LanguageContribution, ContributesViews } from "../core/api/types";
 import { registerViewPlugin } from "./viewRegistry";
 import { registerTheme, getAvailableThemes } from "../core/services/ui/ThemeEngine";
-import type { ThemeSurface, ThemeBackground } from "../core/services/ui/ThemeEngine";
-import { ThemeRegistry } from "../core/registry/appearance/ThemeRegistry";
+import { ThemeRegistry, parseThemeRecipe } from "../core/registry/appearance/ThemeRegistry";
 import { IconRegistry } from "../core/registry/appearance/IconRegistry";
 import { LanguageRegistry } from "../core/registry/languages/LanguageRegistry";
 import { pushToast } from "../core/services/ui/NotificationService";
@@ -403,7 +402,9 @@ async function fetchPluginDataFile(pluginId: string, filePath: string): Promise<
 
 /* ── 主题 JSON 数据异步加载（对标 loadLanguageContributionData） ── */
 
-/** 加载 contributes.themes 声明的 JSON 颜色文件——用 fetch() 绕开 glob 缓存 */
+/** 加载 contributes.themes 声明的 JSON 颜色文件——用 fetch() 绕开 glob 缓存。
+ *  E5.8#50.15：05 schema 解析——主题 JSON → Recipe → ThemeRegistry.registerRecipe（数据层单真源）；
+ *  同时桥接 flat Theme → ThemeEngine（现 apply 路径仍读 flat，引擎 Recipe 化在 #50.16）。 */
 async function loadThemeContributionData(pluginId: string, manifest: PluginManifest): Promise<void> {
   const themeList = manifest.contributes?.themes as ThemeContribution[] | undefined;
   if (!themeList?.length) return;
@@ -411,12 +412,27 @@ async function loadThemeContributionData(pluginId: string, manifest: PluginManif
   for (const tc of themeList) {
     const data = await fetchPluginDataFile(pluginId, tc.path);
     if (!data) continue;
-    const themeType = (data.type as "dark" | "light") ?? tc.uiTheme;
-    const colors = extractThemeColors(data);
-    // E5.8#50.6：surface/background 透传——主题 JSON 质感字段（缺省 = undefined → 引擎默认零值）
-    const surface = (data.surface as ThemeSurface) || undefined;
-    const background = (data.background as ThemeBackground) || undefined;
-    registerTheme({ name: tc.label, type: themeType as "dark" | "light", colors, surface, background }, pluginId);
+    const recipe = parseThemeRecipe(data, tc);
+    if (!recipe) {
+      console.warn(`[theme] "${tc.label}" 解析失败——既无 colorways[] 也无平铺 colors（决策 F：只读新格式）`);
+      continue;
+    }
+    // 数据层：Recipe 登记（05 schema 配方单真源）
+    ThemeRegistry.registerRecipe(recipe, pluginId);
+    // 桥接：flat Theme → ThemeEngine（现 apply 路径；#50.16 引擎按 Recipe 合并后此桥退役）
+    const themeType = recipe.type ?? (tc.uiTheme === "light" ? "light" : "dark");
+    const surface = recipe.appearance?.glass;
+    const background = recipe.appearance?.background;
+    registerTheme(
+      {
+        name: recipe.name,
+        type: themeType,
+        colors: recipe.colorways[0]?.colors ?? {},
+        surface,
+        background,
+      },
+      pluginId
+    );
   }
 }
 

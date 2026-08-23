@@ -118,9 +118,10 @@ export interface CommandsAPI {
     /** @deprecated E3j #75——向后兼容别名，新代码用 configuration */
     config: CommandsAPI["configuration"];
 }
-/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
+/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮）。
+ * 纹理 texture 与 glass 正交（⑬ 纸纹分区不带玻璃也能用 per-surface 纹理）。 */
 export interface ThemeSurface {
-    /** 玻璃配方——缺省 = 无玻璃（纹理 texture 与 glass 正交，⑬ 纸纹分区不带玻璃也能用 per-surface 纹理） */
+    /** 玻璃配方——缺省 = 无玻璃 */
     type?: "glass";
     /** backdrop blur px——0 = 关 */
     blur?: number;
@@ -153,7 +154,7 @@ export interface ThemeBackground {
     opacity?: number;
     /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
     mask?: number;
-    /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区，图不铺全窗） */
+    /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区） */
     mode?: "panorama" | "zones";
 }
 export interface LinkDeskTheme {

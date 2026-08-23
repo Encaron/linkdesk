@@ -6,50 +6,9 @@
 import { CoreEvents } from "../../react/events/CoreEvents";
 import { trackRegistration } from "../../registry/registrationTracker"; // E5.8#10：register 返 disposer——卸载自动逆序回滚
 import { normalizePath } from "../../utils/path/pathUtils"; // E5.8#50.10：Windows 路径归一化（ESLint no-raw-path-replace 强制走正源）
-
-export interface ThemeColors {
-  [key: string]: string;
-}
-
-/** E5.8#50.6：玻璃 + 悬浮面板质感字段——主题 JSON `surface`（缺省 = 无玻璃无悬浮） */
-export interface ThemeSurface {
-  /** 玻璃配方——缺省 = 无玻璃（纹理 texture 与 glass 正交，⑬ 纸纹分区不带玻璃也能用 per-surface 纹理） */
-  type?: "glass";
-  /** backdrop blur px——0 = 关 */
-  blur?: number;
-  /** 饱和度增强——1 = 关 */
-  saturate?: number;
-  /** 玻璃面叠加色 */
-  tint?: string;
-  /** 玻璃面不透明度——1 = 不透明 */
-  opacity?: number;
-  /** 液态玻璃顶部高光强度——0 = 关 */
-  specular?: number;
-  /** 形变过渡 ms——0 = 关 */
-  morph?: number;
-  /** 悬浮圆角 px——0 = 直角贴边 */
-  radius?: number;
-  /** 四周留缝 px——0 = 贴边 */
-  inset?: number;
-  /** 投影浮起——true = 悬浮投影（引擎映射 --shadow-lift） */
-  shadow?: boolean;
-  /** E5.8#50.28：可平铺纹理图资产路径（⑬ 纸纹分区）——应用全部 5 zone 表面，与 glass 正交独立生效 */
-  texture?: string;
-  /** 纹理不透明度——1 = 不透明 */
-  textureOpacity?: number;
-}
-
-/** E5.8#50.6：图片背景质感字段——主题 JSON `background`（缺省 = 无图） */
-export interface ThemeBackground {
-  /** 图片路径——作者提供可解析 URL，引擎写入 `--bg-image` 时 url() 包裹 */
-  image?: string;
-  /** 图片层不透明度——1 = 不透明 */
-  opacity?: number;
-  /** 图片遮罩明暗（0-1 rgba 透明度）——0 = 无遮罩 */
-  mask?: number;
-  /** E5.8#50.29：切片模式——"panorama"（默认）= 现全窗语义零变化；"zones" = 同图连续切片挂 5 zone 表面（⑭ 影像分区，图不铺全窗） */
-  mode?: "panorama" | "zones";
-}
+// E5.8#50.15：质感类型下沉 core/types/theme.ts（05 schema 配方数据模型）——此处重导出兼容既有消费方
+import type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
+export type { ThemeColors, ThemeSurface, ThemeBackground } from "../../types/theme";
 
 export interface Theme {
   name: string;
