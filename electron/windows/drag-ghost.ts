@@ -26,9 +26,21 @@ const GHOST_OFFSET_X = 14;
 const GHOST_OFFSET_Y = 14;
 
 /**
+ * 幽灵外观契约——池经 TabDragPositionPayload.ghost 上报（源池 getComputedStyle 读主题 hex + 被拖标签图标）。
+ * 主进程只消费（不持 tabState）；主题三色 / 图标渲染全由池侧归一化好再上传。
+ */
+export interface GhostAppearance {
+  theme: { bg: string; border: string; text: string };
+  icon: string | null;
+  iconKind: "emoji" | "img" | null;
+}
+
+/**
  * 标签框 HTML——data URL 内联（裸 renderer 无 React/主题/i18n，对标 crash-recovery ERROR_PAGE 例外声明：
  * 硬约束「颜色走主题 token / 文案走 t()」不适用，中文注释直书）。
- * 视觉照抄 VS Code `.monaco-drag-image`——半透明中灰 + 圆角 + 轻阴影（千万用户验证的拖影语言）。
+ * 视觉照抄 VS Code `.monaco-drag-image`——圆角 + 轻阴影（千万用户验证的拖影语言）。颜色默认中灰
+ * （rgba(83,89,93,0.55)）；E5.8#46.19 进化后由池上报主题三色覆盖（bg/border/text），无上报时保持默认。
+ * 结构：#ghost 容器 + #ghost-icon（emoji 文本 / img 图标槽位，无图标隐藏）+ #ghost-title（文字，可省略号）。
  */
 const GHOST_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTYPE html>
 <html lang="zh-CN">
@@ -49,18 +61,19 @@ const GHOST_HTML = `data:text/html;charset=utf-8,${encodeURIComponent(`<!DOCTYPE
     border: 1px solid rgba(255, 255, 255, 0.25);
     border-radius: 5px;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
   }
+  #ghost-icon { display: none; margin-right: 5px; flex-shrink: 0; line-height: 0; }
+  #ghost-icon img { width: 14px; height: 14px; display: block; }
+  #ghost-title { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
 </style></head>
-<body><div id="ghost"></div></body>
+<body><div id="ghost"><span id="ghost-icon"></span><span id="ghost-title"></span></div></body>
 </html>`)}`;
 
 let _ghost: BrowserWindow | null = null;
 let _visible = false;
-let _currentTitle = '';
 let _loadPromise: Promise<void> | null = null;
+/** 已应用内容指纹——title+ghost 序列化；内容没变就不重跑 executeJavaScript（mousemove 每帧 showDragGhost 都到） */
+let _currentKey: string | null = null;
 
 function ensureGhost(): BrowserWindow | null {
   if (_ghost && !_ghost.isDestroyed()) return _ghost;
@@ -84,28 +97,67 @@ function ensureGhost(): BrowserWindow | null {
   win.on('closed', () => {
     _ghost = null;
     _visible = false;
-    _currentTitle = '';
     _loadPromise = null;
+    _currentKey = null;
   });
   _loadPromise = win.loadURL(GHOST_HTML).then(() => undefined);
   _ghost = win;
   return win;
 }
 
-/** 应用标题到幽灵框——loadURL 未完成时挂到 load 完成后执行（catch 静默：标题丢了不致命，下一帧会重试） */
-function applyTitle(title: string): void {
-  _currentTitle = title;
+/**
+ * 应用外观（主题三色 + 图标 + 标题）到幽灵框——loadURL 未完成时挂到 load 完成后执行（catch 静默：
+ * 内容没上不致命，下次内容变化会重试）。值全部 JSON.stringify 进 JS 源码（注入安全：hex/标题/图标 URL
+ * 都是字符串字面量，不用字符串拼接拼 HTML——img 用 DOM API 创建）；内容指纹未变（同拖拽每帧同载荷）
+ * 直接跳过，不反复 executeJavaScript。
+ */
+function applyContent(title: string | undefined, ghost?: GhostAppearance): void {
+  const key = `${title ?? ""}|${JSON.stringify(ghost ?? null)}`;
+  if (key === _currentKey) return;
+  _currentKey = key;
+
+  const t = JSON.stringify(title ?? "");
+  const bg = JSON.stringify(ghost?.theme.bg ?? "");
+  const border = JSON.stringify(ghost?.theme.border ?? "");
+  const text = JSON.stringify(ghost?.theme.text ?? "");
+  const icon = JSON.stringify(ghost?.icon ?? null);
+  const kind = JSON.stringify(ghost?.iconKind ?? null);
+  const script = `(() => {
+    const g = document.getElementById('ghost');
+    const iconEl = document.getElementById('ghost-icon');
+    const titleEl = document.getElementById('ghost-title');
+    if (${bg}) g.style.background = ${bg};
+    if (${border}) g.style.borderColor = ${border};
+    if (${text}) g.style.color = ${text};
+    if (${kind} === 'emoji') {
+      iconEl.style.display = 'inline-block';
+      iconEl.textContent = ${icon};
+    } else if (${kind} === 'img') {
+      iconEl.style.display = 'inline-block';
+      iconEl.textContent = '';
+      const im = document.createElement('img');
+      im.src = ${icon};
+      im.alt = '';
+      iconEl.appendChild(im);
+    } else {
+      iconEl.style.display = 'none';
+      iconEl.textContent = '';
+    }
+    titleEl.textContent = ${t};
+  })();`;
+
   const exec = () => {
     if (_ghost && !_ghost.isDestroyed()) {
-      _ghost.webContents.executeJavaScript(`document.getElementById('ghost').textContent = ${JSON.stringify(title)};`).catch(() => {});
+      _ghost.webContents.executeJavaScript(script).catch(() => {});
     }
   };
   if (_loadPromise) _loadPromise.then(exec);
   else exec();
 }
 
-/** 显示/移动幽灵——首次显示建窗 + showInactive（不抢焦点），后续只 setPosition 跟随光标 */
-export function showDragGhost(screenX: number, screenY: number, title?: string): void {
+/** 显示/移动幽灵——首次显示建窗 + showInactive（不抢焦点），后续只 setPosition 跟随光标。
+ *  ghost 为池上报的幽灵外观（主题三色 + 图标）——无则保持默认中灰无图标（旧池/异常载荷兜底）。 */
+export function showDragGhost(screenX: number, screenY: number, title?: string, ghost?: GhostAppearance): void {
   const win = ensureGhost();
   if (!win) return;
   const x = Math.round(screenX - GHOST_OFFSET_X);
@@ -115,7 +167,7 @@ export function showDragGhost(screenX: number, screenY: number, title?: string):
     _visible = true;
     win.showInactive();
   }
-  if (title && title !== _currentTitle) applyTitle(title);
+  applyContent(title, ghost);
 }
 
 /** 隐藏幽灵——拖拽终止（canceled / releaseOutsideWindow） */

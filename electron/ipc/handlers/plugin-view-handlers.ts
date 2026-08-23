@@ -12,6 +12,7 @@ import type { WindowManager } from '../../windows/window-manager.js'; // E5.6#8d
 import { IPC } from '../channels.js';
 // E5.8#46.19：OS 级拖拽幽灵窗——drag-position 流直接驱动（取消/释放隐藏，其余跟随光标）
 import { showDragGhost, hideDragGhost } from '../../windows/drag-ghost.js';
+import type { GhostAppearance } from '../../windows/drag-ghost.js';
 
 let _mainWindow: BrowserWindow | null = null;
 let _windowManager: WindowManager | null = null;
@@ -102,13 +103,14 @@ export function registerPoolHandlers(windowManager: WindowManager, mainWindow: B
   ipcMain.on(IPC.pool.dragPosition, (event, pos: unknown) => {
     const sourceWindowId = _windowManager?.getWindowIdByWebContents(event.sender) ?? 'main';
     const p = typeof pos === 'object' && pos !== null
-      ? pos as { canceled?: boolean; outside?: boolean; screenX?: number; screenY?: number; title?: string }
+      ? pos as { canceled?: boolean; outside?: boolean; screenX?: number; screenY?: number; title?: string; ghost?: GhostAppearance }
       : null;
     if (p) {
       if (p.canceled) {
         hideDragGhost();
       } else if (p.outside && typeof p.screenX === 'number' && typeof p.screenY === 'number') {
-        showDragGhost(p.screenX, p.screenY, p.title);
+        // E5.8#46.19 进化：透传 ghost 外观（主题三色 + 图标）——幽灵窗跟主题、带图标；旧池无此字段自动走默认中灰
+        showDragGhost(p.screenX, p.screenY, p.title, p.ghost);
       } else if (p.outside === false) {
         hideDragGhost();
       }

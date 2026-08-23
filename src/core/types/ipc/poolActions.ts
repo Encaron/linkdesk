@@ -102,6 +102,15 @@ export interface TabDragPositionPayload {
   /** E5.8#46.19：光标是否在源窗外（屏坐标对照 winScreenX+视口尺寸，与 onMouseUp 窗外判定同源）——
    *  窗外 → 主进程 OS 幽灵显示（DOM 浮块出窗被裁剪）；窗内 → OS 幽灵隐藏（DOM 浮块可见）。壳/吸附忽略此字段 */
   outside?: boolean;
+  /** E5.8#46.19 进化：拖拽幽灵外观——主题三色（源池 getComputedStyle 读 --bg-card/--border/--text-primary，
+   *  均为纯 hex 值）+ 被拖标签图标（tab.icon：emoji 字符或 getAssetPath 解析的图片 URL，iconKind 区分渲染）。
+   *  仅 outside=true（窗外）时主进程消费；壳/吸附忽略此字段。可选用——旧池不带上限。
+   *  iconKind 判定与 DragOverlays 浮块同款（emoji：len≤2 且命中 emoji 正则；img：其余一律当图片 URL）。 */
+  ghost?: {
+    theme: { bg: string; border: string; text: string };
+    icon: string | null;
+    iconKind: "emoji" | "img" | null;
+  };
 }
 
 /** 池→壳：拖拽位置上报载荷——主进程按 sender 解析附上 sourceWindowId（E5.8#44-C 源窗排除——池永远不知自身 windowId） */

@@ -39,6 +39,20 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
   const groupsRef = useRef(groups);
   groupsRef.current = groups;
 
+  // E5.8#46.19 进化：幽灵外观主题色缓存——拖拽启动时 getComputedStyle 读一次（preload-pool theme:changed 把变量
+  // setProperty 到 documentElement，读得当前主题纯 hex）。拖拽期间不重读（mousemove 高频）；下次拖拽启动重读
+  // （主题可能已切换）。取值可能为空串（dev 预览无 preload 注入）——透传后主进程 applyContent 空串守卫跳过，
+  // 幽灵保持默认中灰（设计的降级路径，非硬编码 hex）。
+  const ghostAppearanceRef = useRef<{ bg: string; border: string; text: string } | null>(null);
+  const readGhostAppearance = (): { bg: string; border: string; text: string } => {
+    const cs = getComputedStyle(document.documentElement);
+    return {
+      bg: cs.getPropertyValue("--bg-card").trim(),
+      border: cs.getPropertyValue("--border").trim(),
+      text: cs.getPropertyValue("--text-primary").trim(),
+    };
+  };
+
   // ── Tab bar DOM refs (MainZone reads bounding rects during drag) ──
   const tabBarRefs = useRef<Map<string, HTMLDivElement>>(new Map());
   const registerTabBar = useCallback((groupId: string, el: HTMLDivElement | null) => {
@@ -260,10 +274,19 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
     onReleaseOutside: (tabId, screenX, screenY) => tabAction({ action: "releaseOutsideWindow", tabId, screenX, screenY }),
     // E5.8#44-C：拎起后全程上报拖拽位置（壳排除源窗命中——窗内自然清提示，窗外命中目标窗 TabBar 高亮）
     // E5.8#46.19：附带被拖标签标题——主进程幽灵窗渲染文字（主进程不持 tabState，标题由池上报）
+    // E5.8#46.19 进化：附带幽灵外观——主题三色（拖拽启动缓存）+ 图标（复用 DragOverlays 同款 emoji/img 判定）。
+    // iconKind：len≤2 且命中 emoji → "emoji"（文本直渲）；其余 → "img"（URL）；无 icon → null。
     onDragPosition: (pos) => {
       const srcGroup = groupsRef.current.find((g) => g.tabs.some((t) => t.id === pos.tabId));
-      const title = srcGroup?.tabs.find((t) => t.id === pos.tabId)?.title;
-      dragPosition?.({ ...pos, title });
+      const tab = srcGroup?.tabs.find((t) => t.id === pos.tabId);
+      const icon = tab?.icon ?? null;
+      const iconKind = icon && icon.length <= 2 && /[\p{Emoji}]/u.test(icon) ? "emoji" : icon ? "img" : null;
+      const theme = ghostAppearanceRef.current ?? readGhostAppearance();
+      dragPosition?.({
+        ...pos,
+        title: tab?.title,
+        ghost: { theme, icon, iconKind },
+      });
     },
   });
 
@@ -304,6 +327,8 @@ export function useTabDrag({ containerRef, tabAction, groups, tabBarRects, dragP
       targetGroupRef.current = sourceGroup.id;
       setDragInsertGroupId(sourceGroup.id);
     }
+    // E5.8#46.19 进化：拖拽启动读一次主题色缓存——本次拖拽幽灵外观固定（拖拽期间主题不会切，mousemove 高频不重读）
+    ghostAppearanceRef.current = readGhostAppearance();
     startDrag(tabId, index, e);
   }, [startDrag]);
 
